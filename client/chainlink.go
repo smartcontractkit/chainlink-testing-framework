@@ -12,6 +12,7 @@ import (
 var ErrNotFound = errors.New("unexpected response code, got 404")
 var ErrUnprocessableEntity = errors.New("unexpected response code, got 422")
 
+// Chainlink interface that enables interactions with a chainlink node
 type Chainlink interface {
 	CreateJob(spec string) (*Job, error)
 	ReadJob(id string) error
