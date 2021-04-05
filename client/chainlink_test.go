@@ -36,6 +36,7 @@ var spec = `{
   ]
 }`
 
+// Mocks the creation, read, delete cycle for any job type
 func TestNodeClient_CreateReadDeleteJob(t *testing.T) {
 	server := mockedServer(func(rw http.ResponseWriter, req *http.Request) {
 		switch req.Method {
@@ -69,6 +70,7 @@ func TestNodeClient_CreateReadDeleteJob(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+// Mocks the creation, read, delete cycle for any job spec
 func TestNodeClient_CreateReadDeleteSpec(t *testing.T) {
 	specID := "c142042149f64911bb4698fb08572040"
 
@@ -104,6 +106,7 @@ func TestNodeClient_CreateReadDeleteSpec(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+// Mocks the creation, read, delete cycle for Chainlink bridges
 func TestNodeClient_CreateReadDeleteBridge(t *testing.T) {
 	bta := BridgeTypeAttributes{
 		Name: "example",
@@ -145,6 +148,7 @@ func TestNodeClient_CreateReadDeleteBridge(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+// Mocks the creation, read, delete cycle for OCR keys
 func TestNodeClient_CreateReadDeleteOCRKey(t *testing.T) {
 	ocrKeyData := OCRKeyData{
 		Attributes: OCRKeyAttributes{
@@ -185,6 +189,7 @@ func TestNodeClient_CreateReadDeleteOCRKey(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+// Mocks the creation, read, delete cycle for P2P keys
 func TestNodeClient_CreateReadDeleteP2PKey(t *testing.T) {
 	p2pKeyData := P2PKeyData{
 		P2PKeyAttributes{
@@ -224,6 +229,7 @@ func TestNodeClient_CreateReadDeleteP2PKey(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+// Mocks the creation, read, delete cycle for ETH keys
 func TestNodeClient_ReadETHKeys(t *testing.T) {
 	ethKeyData := ETHKeyData{
 		Attributes: ETHKeyAttributes{
