@@ -4,13 +4,14 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
-	"integrations-framework/contracts"
 	"log"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+
+	storage "integrations-framework/storage"
 )
 
 // Etherum client that wraps the go-ethereum client and adds some helper methods
@@ -58,14 +59,13 @@ func (clientWrapper EthereumClient) CreateContract() (contractAddress string, er
 	auth.GasLimit = uint64(300000) // in units
 	auth.GasPrice = gasPrice
 
-	input := "1.0"
-	address, tx, instance, err := contracts.DeployContracts(auth, clientWrapper.Client, input)
+	address, tx, instance, err := storage.DeployStorage(auth, clientWrapper.Client, "1.0")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Println(address.Hex())   // 0x147B8eb97fD247D06C4006D269c90C1908Fb5D54
-	fmt.Println(tx.Hash().Hex()) // 0xdae8ba5444eefdc99f4d45cd0c4f24056cba6a02cefbf78066ef9f4188ff7dc0
+	fmt.Println(address.Hex())
+	fmt.Println(tx.Hash().Hex())
 
 	_ = instance
 	return "", nil
