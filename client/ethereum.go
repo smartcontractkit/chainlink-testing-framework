@@ -29,7 +29,7 @@ func NewEthereumClient(rpcConnectionString string) EthereumClient {
 }
 
 // Creates a default contract (need to parameterize this)
-func (clientWrapper EthereumClient) CreateContract() (contractAddress string, err error) {
+func (clientWrapper EthereumClient) CreateContract() (contractAddress string) {
 	privateKey, err := crypto.HexToECDSA("HexPrivateKey")
 	if err != nil {
 		log.Fatal(err)
@@ -73,5 +73,5 @@ func (clientWrapper EthereumClient) CreateContract() (contractAddress string, er
 	fmt.Println(tx.Hash().Hex())
 
 	_ = instance
-	return "", nil
+	return address.String()
 }
