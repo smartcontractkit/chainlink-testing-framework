@@ -1,4 +1,4 @@
-package storage
+package contracts
 
 import (
 	"math/big"
