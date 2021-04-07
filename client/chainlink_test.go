@@ -3,11 +3,12 @@ package client
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var spec = `{
@@ -35,6 +36,7 @@ var spec = `{
   ]
 }`
 
+// Mocks the creation, read, delete cycle for any job type
 func TestNodeClient_CreateReadDeleteJob(t *testing.T) {
 	server := mockedServer(func(rw http.ResponseWriter, req *http.Request) {
 		switch req.Method {
@@ -68,6 +70,7 @@ func TestNodeClient_CreateReadDeleteJob(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+// Mocks the creation, read, delete cycle for any job spec
 func TestNodeClient_CreateReadDeleteSpec(t *testing.T) {
 	specID := "c142042149f64911bb4698fb08572040"
 
@@ -103,6 +106,7 @@ func TestNodeClient_CreateReadDeleteSpec(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+// Mocks the creation, read, delete cycle for Chainlink bridges
 func TestNodeClient_CreateReadDeleteBridge(t *testing.T) {
 	bta := BridgeTypeAttributes{
 		Name: "example",
@@ -142,6 +146,119 @@ func TestNodeClient_CreateReadDeleteBridge(t *testing.T) {
 
 	err = c.DeleteBridge(bta.Name)
 	assert.NoError(t, err)
+}
+
+// Mocks the creation, read, delete cycle for OCR keys
+func TestNodeClient_CreateReadDeleteOCRKey(t *testing.T) {
+	ocrKeyData := OCRKeyData{
+		Attributes: OCRKeyAttributes{
+			ID:                    "1",
+			ConfigPublicKey:       "someNon3sens3",
+			OffChainPublicKey:     "mor3Non3sens3",
+			OnChainSigningAddress: "thisActuallyMak3sS3ns3",
+		},
+	}
+
+	server := mockedServer(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.Method {
+		case http.MethodPost:
+			assert.Equal(t, "/v2/keys/ocr", req.URL.Path)
+			writeResponse(t, rw, http.StatusOK, OCRKey{ocrKeyData})
+		case http.MethodGet:
+			writeResponse(t, rw, http.StatusOK, OCRKeys{
+				Data: []OCRKeyData{ocrKeyData},
+			})
+		case http.MethodDelete:
+			assert.Equal(t, "/v2/keys/ocr/1", req.URL.Path)
+			writeResponse(t, rw, http.StatusOK, nil)
+		}
+	})
+	defer server.Close()
+
+	c := newDefaultClient(server.URL)
+	c.SetClient(server.Client())
+
+	receivedKey, err := c.CreateOCRKey()
+	assert.NoError(t, err)
+
+	keys, err := c.ReadOCRKeys()
+	assert.NoError(t, err)
+	assert.Contains(t, keys.Data, receivedKey.Data)
+
+	err = c.DeleteOCRKey("1")
+	assert.NoError(t, err)
+}
+
+// Mocks the creation, read, delete cycle for P2P keys
+func TestNodeClient_CreateReadDeleteP2PKey(t *testing.T) {
+	p2pKeyData := P2PKeyData{
+		P2PKeyAttributes{
+			ID:        1,
+			PeerID:    "someNon3sens3",
+			PublicKey: "mor3Non3sens3",
+		},
+	}
+
+	server := mockedServer(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.Method {
+		case http.MethodPost:
+			assert.Equal(t, "/v2/keys/p2p", req.URL.Path)
+			writeResponse(t, rw, http.StatusOK, P2PKey{p2pKeyData})
+		case http.MethodGet:
+			writeResponse(t, rw, http.StatusOK, P2PKeys{
+				Data: []P2PKeyData{p2pKeyData},
+			})
+		case http.MethodDelete:
+			assert.Equal(t, "/v2/keys/p2p/1", req.URL.Path)
+			writeResponse(t, rw, http.StatusOK, nil)
+		}
+	})
+	defer server.Close()
+
+	c := newDefaultClient(server.URL)
+	c.SetClient(server.Client())
+
+	receivedKey, err := c.CreateP2PKey()
+	assert.NoError(t, err)
+
+	keys, err := c.ReadP2PKeys()
+	assert.NoError(t, err)
+	assert.Contains(t, keys.Data, receivedKey.Data)
+
+	err = c.DeleteP2PKey(1)
+	assert.NoError(t, err)
+}
+
+// Mocks the creation, read, delete cycle for ETH keys
+func TestNodeClient_ReadETHKeys(t *testing.T) {
+	ethKeyData := ETHKeyData{
+		Attributes: ETHKeyAttributes{
+			Address: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+		},
+	}
+
+	server := mockedServer(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.Method {
+		case http.MethodPost:
+			assert.Equal(t, "/v2/keys/ocr", req.URL.Path)
+			writeResponse(t, rw, http.StatusOK, ETHKey{ethKeyData})
+		case http.MethodGet:
+			writeResponse(t, rw, http.StatusOK, ETHKeys{
+				Data: []ETHKeyData{ethKeyData},
+			})
+		case http.MethodDelete:
+			assert.Equal(t, "/v2/keys/ocr/1", req.URL.Path)
+			writeResponse(t, rw, http.StatusOK, nil)
+		}
+	})
+	defer server.Close()
+
+	c := newDefaultClient(server.URL)
+	c.SetClient(server.Client())
+
+	receivedKeys, err := c.ReadETHKeys()
+	assert.NoError(t, err)
+	assert.Contains(t, receivedKeys.Data, ethKeyData)
 }
 
 func newDefaultClient(url string) Chainlink {
