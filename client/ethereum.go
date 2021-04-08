@@ -3,14 +3,11 @@ package client
 import (
 	"context"
 	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
 	"integrations-framework/contracts"
 	"log"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -19,27 +16,29 @@ import (
 
 // Etherum client that wraps the go-ethereum client and adds some helper methods
 type EthereumClient struct {
-	Client bind.ContractBackend
+	Client        *ethclient.Client
+	EthChainID    *big.Int
+	SourceAddress common.Address
 }
 
 // Builds a new ethereum client based on a connection string
-func NewEthereumClient(rpcConnectionString string) EthereumClient {
+// Need to handle rpc over websocket as well
+func NewEthereumClient(rpcConnectionString string, chainID *big.Int) EthereumClient {
 	cl, err := ethclient.Dial(rpcConnectionString)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	return EthereumClient{Client: cl}
-}
-
-// Builds a new ethereum client pointing to a locally simulated blockchain
-func NewSimulatedEthereumClient(backend *backends.SimulatedBackend) EthereumClient {
-	return EthereumClient{Client: backend}
+	return EthereumClient{
+		Client:     cl,
+		EthChainID: chainID,
+	}
 }
 
 // Creates a default contract (need to parameterize this)
 func (clientWrapper EthereumClient) DeployStorageContract() (common.Address, *types.Transaction, *contracts.Storage) {
-	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	// Needs paramaterization to work with hardhat and others
+	privateKey, err := crypto.HexToECDSA("ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -61,16 +60,15 @@ func (clientWrapper EthereumClient) DeployStorageContract() (common.Address, *ty
 		log.Fatal(err)
 	}
 
-	chainID := big.NewInt(0)
-
-	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, chainID)
+	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, clientWrapper.EthChainID)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	auth.Nonce = big.NewInt(int64(nonce))
-	auth.Value = big.NewInt(99999999999) // in wei
-	auth.GasLimit = uint64(1)            // in units
+	auth.Value = big.NewInt(3) // in wei
+	// Needs parameterization
+	auth.GasLimit = 9500000 // in units
 	auth.GasPrice = gasPrice
 
 	addr, tx, instance, err := contracts.DeployStorage(auth, clientWrapper.Client, "1.0")

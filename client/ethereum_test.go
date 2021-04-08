@@ -1,19 +1,27 @@
 package client
 
 import (
+	"math/big"
+	"net/http"
 	"testing"
-
-	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
-	"github.com/ethereum/go-ethereum/core"
 )
+
+const HardhatConnectionString string = "http://localhost:8545"
+const HardHatChainID int64 = 31337
 
 // Tests ethereum contract deployment on a simulated blockchain
 func TestEthereumClient_DeployStorageContract(t *testing.T) {
-	sim := backends.NewSimulatedBackend(core.DefaultGenesisBlock().Alloc, 1000)
-	defer sim.Close()
-	client := NewSimulatedEthereumClient(sim)
+	checkIsHardhatUp(t)
 
-	client.DeployStorageContract()
+	simulatedClient := NewEthereumClient(HardhatConnectionString, big.NewInt(HardHatChainID))
 
-	sim.Commit()
+	simulatedClient.DeployStorageContract()
+}
+
+// Tests if a local hardhat network is running, fails the test if it does not
+func checkIsHardhatUp(t *testing.T) {
+	_, isUp := http.Get(HardhatConnectionString)
+	if isUp != nil {
+		t.Fatal("Hardhat network has not been started!")
+	}
 }
