@@ -24,6 +24,6 @@ jobs:
       - name: Install Hardhat
         run: npm install --save-dev hardhat
       - name: Run Hardhat
-        run: npm hardhat node
+        run: npx hardhat node
       - name: Test
         run: go test ./...
