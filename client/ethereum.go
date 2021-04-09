@@ -23,22 +23,23 @@ type EthereumClient struct {
 
 // Builds a new ethereum client based on a connection string
 // Need to handle rpc over websocket as well
-func NewEthereumClient(rpcConnectionString string, chainID *big.Int) EthereumClient {
+func NewEthereumClient(rpcConnectionString string, chainID *big.Int, sourceAddress common.Address) EthereumClient {
 	cl, err := ethclient.Dial(rpcConnectionString)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	return EthereumClient{
-		Client:     cl,
-		EthChainID: chainID,
+		Client:        cl,
+		EthChainID:    chainID,
+		SourceAddress: sourceAddress,
 	}
 }
 
 // Creates a default contract (need to parameterize this)
 func (clientWrapper EthereumClient) DeployStorageContract() (common.Address, *types.Transaction, *contracts.Storage) {
 	// Needs paramaterization to work with hardhat and others
-	privateKey, err := crypto.HexToECDSA("ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80")
+	privateKey, err := crypto.HexToECDSA(clientWrapper.SourceAddress.Hex())
 	if err != nil {
 		log.Fatal(err)
 	}
