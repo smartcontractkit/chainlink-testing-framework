@@ -48,13 +48,13 @@ type chainlink struct {
 	Cookies []*http.Cookie
 }
 
-// Creates a new chainlink model using a provided config
+// NewChainlink creates a new chainlink model using a provided config
 func NewChainlink(c *ChainlinkConfig) Chainlink {
 	cl := &chainlink{Config: c}
 	return cl
 }
 
-// Creates a Chainlink job based on the provided spec string
+// CreateJob creates a Chainlink job based on the provided spec string
 func (c *chainlink) CreateJob(spec string) (*Job, error) {
 	job := &Job{}
 	_, err := c.do(http.MethodPost, "/v2/jobs", &JobForm{
@@ -63,104 +63,105 @@ func (c *chainlink) CreateJob(spec string) (*Job, error) {
 	return job, err
 }
 
-// Reads a job with the provided ID from the Chainlink node
+// ReadJob reads a job with the provided ID from the Chainlink node
 func (c *chainlink) ReadJob(id string) error {
 	_, err := c.do(http.MethodGet, fmt.Sprintf("/v2/jobs/%s", id), nil, nil, http.StatusOK)
 	return err
 }
 
-// Deletes a job with a provided ID from the Chainlink node
+// DeleteJob deletes a job with a provided ID from the Chainlink node
 func (c *chainlink) DeleteJob(id string) error {
 	_, err := c.do(http.MethodDelete, fmt.Sprintf("/v2/jobs/%s", id), nil, nil, http.StatusNoContent)
 	return err
 }
 
-// Creates a job spec on the Chainlink node
+// CreateSpec creates a job spec on the Chainlink node
 func (c *chainlink) CreateSpec(spec string) (*Spec, error) {
 	s := &Spec{}
 	_, err := c.doRaw(http.MethodPost, "/v2/specs", []byte(spec), s, http.StatusOK)
 	return s, err
 }
 
-// Reads a job spec with the provided ID on the Chainlink node
+// ReadSpec reads a job spec with the provided ID on the Chainlink node
 func (c *chainlink) ReadSpec(id string) (*Response, error) {
 	specObj := &Response{}
 	_, err := c.do(http.MethodGet, fmt.Sprintf("/v2/specs/%s", id), nil, specObj, http.StatusOK)
 	return specObj, err
 }
 
-// Deletes a job spec with the provided ID from the Chainlink node
+// DeleteSpec deletes a job spec with the provided ID from the Chainlink node
 func (c *chainlink) DeleteSpec(id string) error {
 	_, err := c.do(http.MethodDelete, fmt.Sprintf("/v2/specs/%s", id), nil, nil, http.StatusNoContent)
 	return err
 }
 
-// Creates a bridge on the Chainlink node based on the provided attributes
+// CreateBridge creates a bridge on the Chainlink node based on the provided attributes
 func (c *chainlink) CreateBridge(bta *BridgeTypeAttributes) error {
 	_, err := c.do(http.MethodPost, "/v2/bridge_types", bta, nil, http.StatusOK)
 	return err
 }
 
-// Reads a bridge from the Chainlink node based on the provided name
+// ReadBridge reads a bridge from the Chainlink node based on the provided name
 func (c *chainlink) ReadBridge(name string) (*BridgeType, error) {
 	bt := BridgeType{}
 	_, err := c.do(http.MethodGet, fmt.Sprintf("/v2/bridge_types/%s", name), nil, &bt, http.StatusOK)
 	return &bt, err
 }
 
-// Deletes a bridge on the Chainlink node based on the provided name
+// DeleteBridge deletes a bridge on the Chainlink node based on the provided name
 func (c *chainlink) DeleteBridge(name string) error {
 	_, err := c.do(http.MethodDelete, fmt.Sprintf("/v2/bridge_types/%s", name), nil, nil, http.StatusOK)
 	return err
 }
 
-// Creates an OCRKey on the Chainlink node
+// CreateOCRKey creates an OCRKey on the Chainlink node
 func (c *chainlink) CreateOCRKey() (*OCRKey, error) {
 	ocrKey := &OCRKey{}
 	_, err := c.do(http.MethodPost, "/v2/keys/ocr", nil, ocrKey, http.StatusOK)
 	return ocrKey, err
 }
 
-// Reads all OCRKeys from the Chainlink node
+// ReadOCRKeys reads all OCRKeys from the Chainlink node
 func (c *chainlink) ReadOCRKeys() (*OCRKeys, error) {
 	ocrKeys := &OCRKeys{}
 	_, err := c.do(http.MethodGet, "/v2/keys/ocr", nil, ocrKeys, http.StatusOK)
 	return ocrKeys, err
 }
 
-// Deltes an OCRKey based on the provided ID
+// DeleteOCRKey deletes an OCRKey based on the provided ID
 func (c *chainlink) DeleteOCRKey(id string) error {
 	_, err := c.do(http.MethodDelete, fmt.Sprintf("/v2/keys/ocr/%s", id), nil, nil, http.StatusOK)
 	return err
 }
 
-// Creates an P2PKey on the Chainlink node
+// CreateP2PKey creates an P2PKey on the Chainlink node
 func (c *chainlink) CreateP2PKey() (*P2PKey, error) {
 	p2pKey := &P2PKey{}
 	_, err := c.do(http.MethodPost, "/v2/keys/p2p", nil, p2pKey, http.StatusOK)
 	return p2pKey, err
 }
 
-// Reads all P2PKeys from the Chainlink node
+// ReadP2PKeys reads all P2PKeys from the Chainlink node
 func (c *chainlink) ReadP2PKeys() (*P2PKeys, error) {
 	p2pKeys := &P2PKeys{}
 	_, err := c.do(http.MethodGet, "/v2/keys/p2p", nil, p2pKeys, http.StatusOK)
 	return p2pKeys, err
 }
 
-// Deletes a P2PKey on the Chainlink node based on the provided ID
+// DeleteP2PKey deletes a P2PKey on the Chainlink node based on the provided ID
 func (c *chainlink) DeleteP2PKey(id int) error {
 	_, err := c.do(http.MethodDelete, fmt.Sprintf("/v2/keys/p2p/%d", id), nil, nil, http.StatusOK)
 	return err
 }
 
-// Reads all ETH keys from the Chainlink node
+// ReadETHKeys reads all ETH keys from the Chainlink node
 func (c *chainlink) ReadETHKeys() (*ETHKeys, error) {
 	ethKeys := &ETHKeys{}
 	_, err := c.do(http.MethodGet, "/v2/keys/eth", nil, ethKeys, http.StatusOK)
 	return ethKeys, err
 }
 
+// SetSessionCookie authenticates against the Chainlink node and stores the cookie in client state
 func (c *chainlink) SetSessionCookie() error {
 	session := &Session{Email: c.Config.Email, Password: c.Config.Password}
 	b, err := json.Marshal(session)
@@ -209,6 +210,7 @@ func (c *chainlink) SetSessionCookie() error {
 	return nil
 }
 
+// SetClient overrides the http client, used for mocking out the Chainlink server for unit testing
 func (c *chainlink) SetClient(client *http.Client) {
 	c.Client = client
 }

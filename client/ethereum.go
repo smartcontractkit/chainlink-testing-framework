@@ -2,66 +2,49 @@ package client
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"integrations-framework/contracts"
 	"log"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
-// Etherum client that wraps the go-ethereum client and adds some helper methods
+// EthereumClient wraps the client and the BlockChain network to interact with an EVM based Blockchain
 type EthereumClient struct {
-	Client        *ethclient.Client
-	EthChainID    *big.Int
-	SourceAddress common.Address
+	Client  *ethclient.Client
+	Network BlockchainNetwork
 }
 
-// Builds a new ethereum client based on a connection string
-// Need to handle rpc over websocket as well
-func NewEthereumClient(rpcConnectionString string, chainID *big.Int, sourceAddress common.Address) EthereumClient {
-	cl, err := ethclient.Dial(rpcConnectionString)
+// NewEthereumClient returns an instantiated instance of the Ethereum client that has connected to the server
+func NewEthereumClient(network BlockchainNetwork) (*EthereumClient, error) {
+	cl, err := ethclient.Dial(network.URL())
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	return EthereumClient{
-		Client:        cl,
-		EthChainID:    chainID,
-		SourceAddress: sourceAddress,
-	}
+	return &EthereumClient{
+		Client:     cl,
+		Network: network,
+	}, nil
 }
 
-// Creates a default contract (need to parameterize this)
-func (clientWrapper EthereumClient) DeployStorageContract() (common.Address, *types.Transaction, *contracts.Storage) {
-	// Needs paramaterization to work with hardhat and others
-	privateKey, err := crypto.HexToECDSA(clientWrapper.SourceAddress.Hex())
+// DeployStorageContract deploys a vanilla storage contract that is a kv store
+func (e *EthereumClient) DeployStorageContract(wallet BlockchainWallet) error {
+	gasPrice, err := e.Client.SuggestGasPrice(context.Background())
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	publicKey := privateKey.Public()
-	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
-	if !ok {
-		log.Fatal("cannot assert type: publicKey is not of type *ecdsa.PublicKey")
-	}
-
-	fromAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
-	nonce, err := clientWrapper.Client.PendingNonceAt(context.Background(), fromAddress)
+	nonce, err := e.Client.PendingNonceAt(context.Background(), common.HexToAddress(wallet.Address()))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	gasPrice, err := clientWrapper.Client.SuggestGasPrice(context.Background())
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, clientWrapper.EthChainID)
+	privateKey, _ := crypto.HexToECDSA(wallet.PrivateKey())
+	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, e.Network.ChainID())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -72,10 +55,6 @@ func (clientWrapper EthereumClient) DeployStorageContract() (common.Address, *ty
 	auth.GasLimit = 9500000 // in units
 	auth.GasPrice = gasPrice
 
-	addr, tx, instance, err := contracts.DeployStorage(auth, clientWrapper.Client, "1.0")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return addr, tx, instance
+	_, _, _, err = contracts.DeployStorage(auth, e.Client, "1.0")
+	return err
 }
