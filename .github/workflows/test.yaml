@@ -16,7 +16,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     services:
       hardhat:
-        image: smartcontractkit/deploy-hardhat
+        image: smartcontract/hardhat-network
+        ports:
+          - 8545:8545
     steps:
       - name: Install Go
         uses: actions/setup-go@v2
