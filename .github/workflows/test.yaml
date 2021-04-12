@@ -19,6 +19,11 @@ jobs:
         image: smartcontract/hardhat-network
         ports:
           - 8545:8545
+        options: >-
+          --health-cmd "curl -X POST --data '{"jsonrpc":"2.0","method":"net_listening","params":[],"id":31337}' http://localhost:8545"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Install Go
         uses: actions/setup-go@v2
