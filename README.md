@@ -1,4 +1,7 @@
 # Chainlink Integration Framework
+![Tests](https://github.com/smartcontractkit/integrations-framework/actions/workflows/test.yaml/badge.svg)
+![Lint](https://github.com/smartcontractkit/integrations-framework/actions/workflows/lint.yaml/badge.svg)
+
 A framework for interacting with chainlink nodes, environments, and other blockchain systems. The framework is primarilly intended to facillitate testing chainlink features and stability.
 
 ### How to Test
