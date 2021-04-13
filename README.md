@@ -1,17 +1,20 @@
 # Chainlink Integration Framework
+
 ![Tests](https://github.com/smartcontractkit/integrations-framework/actions/workflows/test.yaml/badge.svg)
 ![Lint](https://github.com/smartcontractkit/integrations-framework/actions/workflows/lint.yaml/badge.svg)
 
 A framework for interacting with chainlink nodes, environments, and other blockchain systems. The framework is primarilly intended to facillitate testing chainlink features and stability.
 
-### How to Test
+## How to Test
+
 `npx hardhat node` to start a local hardhat instance of ethereum
 
 then
 
 `go test ./...`
 
-### // TODO
+## // TODO
+
 * Streamline the test running process
 * Add more chainlink node checks
 * Enable connecting chainlink node interfaces to actual running nodes in an environment

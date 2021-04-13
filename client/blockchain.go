@@ -2,10 +2,12 @@ package client
 
 import (
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
+	"integrations-framework/constants"
 	"math/big"
 	"os"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 const NetworkEthereumHardhat = "Ethereum Hardhat"
@@ -123,12 +125,12 @@ func (e *EthereumWallet) Address() string {
 
 // DefaultHardhatWallets returns the instantiated BlockchainWallets containing the default set of Hardhat wallets
 func DefaultHardhatWallets() BlockchainWallets {
-	w0, _ := NewEthereumWallet("ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80")
-	w1, _ := NewEthereumWallet("59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d")
-	w2, _ := NewEthereumWallet("5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a")
+	w0, _ := NewEthereumWallet(constants.HardhatDefaultWallet1)
+	w1, _ := NewEthereumWallet(constants.HardhatDefaultWallet2)
+	w2, _ := NewEthereumWallet(constants.HardhatDefaultWallet3)
 	return &Wallets{
 		defaultWallet: 0,
-		wallets: []BlockchainWallet{w0, w1, w2},
+		wallets:       []BlockchainWallet{w0, w1, w2},
 	}
 }
 
