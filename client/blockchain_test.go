@@ -1,9 +1,10 @@
 package client
 
 import (
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 // Tests ethereum contract deployment on a simulated blockchain
