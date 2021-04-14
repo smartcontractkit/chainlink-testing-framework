@@ -2,7 +2,6 @@ package client
 
 import (
 	"fmt"
-	"integrations-framework/constants"
 	"math/big"
 	"os"
 
@@ -10,7 +9,9 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
-const NetworkEthereumHardhat = "Ethereum Hardhat"
+const (
+	NetworkEthereumHardhat string = "EthereumHardhat"
+)
 
 // Generalized blockchain client for interaction with multiple different blockchains
 type BlockchainClient interface {
@@ -26,12 +27,12 @@ func NewBlockchainClient(network BlockchainNetwork) (BlockchainClient, error) {
 	return nil, fmt.Errorf("invalid blockchain network was given")
 }
 
-// BlockchainNetwork is the interface that when implemented, defines a new blockchain network that can
-// be tested against
+// BlockchainNetwork is the interface that when implemented, defines a new blockchain network that can be tested against
 type BlockchainNetwork interface {
 	Name() string
 	URL() string
 	ChainID() *big.Int
+	Wallets() BlockchainWallets
 }
 
 // EthereumHardhat is the implementation of BlockchainNetwork for the local ETH dev server
@@ -47,9 +48,14 @@ func (e *EthereumHardhat) URL() string {
 	return ethereumURL(e)
 }
 
-// ChainID returns the on-chain ID of the network being connected to, returning hardhats default
+// ChainID returns the on-chain ID of the network being connected to, returning hardhat's default
 func (e *EthereumHardhat) ChainID() *big.Int {
 	return big.NewInt(31337)
+}
+
+// Wallets returns all the viable wallets used for testing on chain, returning hardhat's default
+func (e *EthereumHardhat) Wallets() BlockchainWallets {
+	return GetEthWallets(e.Name())
 }
 
 // BlockchainWallets is an interface that when implemented is a representation of a slice of wallets for
@@ -67,25 +73,25 @@ type Wallets struct {
 }
 
 // Default returns the default wallet to be used for a transaction on-chain
-func (e *Wallets) Default() BlockchainWallet {
-	return e.wallets[e.defaultWallet]
+func (w *Wallets) Default() BlockchainWallet {
+	return w.wallets[w.defaultWallet]
 }
 
 // SetDefault changes the default wallet to be used for on-chain transactions
-func (e *Wallets) SetDefault(i int) error {
-	if err := walletSliceIndexInRange(e.wallets, i); err != nil {
+func (w *Wallets) SetDefault(i int) error {
+	if err := walletSliceIndexInRange(w.wallets, i); err != nil {
 		return err
 	}
-	e.defaultWallet = i
+	w.defaultWallet = i
 	return nil
 }
 
 // Wallet returns a wallet based on a given index in the slice
-func (e *Wallets) Wallet(i int) (BlockchainWallet, error) {
-	if err := walletSliceIndexInRange(e.wallets, i); err != nil {
+func (w *Wallets) Wallet(i int) (BlockchainWallet, error) {
+	if err := walletSliceIndexInRange(w.wallets, i); err != nil {
 		return nil, err
 	}
-	return e.wallets[i], nil
+	return w.wallets[i], nil
 }
 
 // BlockchainWallet when implemented is the interface to allow multiple wallet implementations for each
@@ -121,17 +127,6 @@ func (e *EthereumWallet) PrivateKey() string {
 // Address returns the ETH address for a given wallet
 func (e *EthereumWallet) Address() string {
 	return e.address.String()
-}
-
-// DefaultHardhatWallets returns the instantiated BlockchainWallets containing the default set of Hardhat wallets
-func DefaultHardhatWallets() BlockchainWallets {
-	w0, _ := NewEthereumWallet(constants.HardhatDefaultWallet1)
-	w1, _ := NewEthereumWallet(constants.HardhatDefaultWallet2)
-	w2, _ := NewEthereumWallet(constants.HardhatDefaultWallet3)
-	return &Wallets{
-		defaultWallet: 0,
-		wallets:       []BlockchainWallet{w0, w1, w2},
-	}
 }
 
 func ethereumURL(network BlockchainNetwork) string {
