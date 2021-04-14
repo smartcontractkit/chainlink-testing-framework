@@ -33,12 +33,15 @@ jobs:
         uses: actions/checkout@v2
       - name: Test
         run: go test ./client -v -covermode=count -coverprofile=coverage.out
+      - name: Check This
+        run: ls
       - name: Convert coverage to lcov
         uses: jandelgado/gcov2lcov-action@v1.0.5
       - name: Report code coverage
         uses: zgosalvez/github-actions-report-lcov@v1
         with:
-          coverage-files: coverage.out
+          coverage-files: coverage.lcov
           minimum-coverage: 60
           artifact-name: code-coverage-report
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          
