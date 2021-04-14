@@ -1,6 +1,7 @@
 package client
 
 import (
+	"log"
 	"os"
 	"strings"
 	"testing"
@@ -22,10 +23,21 @@ func TestEthereumWallet_EnvVariable(t *testing.T) {
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			os.Setenv(testCase.name, testCase.privateKey)
+			// Set up
+			err := os.Setenv(testCase.name, testCase.privateKey)
+			if err != nil {
+				log.Panic(err)
+			}
+
 			wallets := testCase.network.Wallets()
 			assert.Equal(t, testCase.privateKey, wallets.Default().PrivateKey())
 			assert.Equal(t, testCase.address, strings.ToLower(wallets.Default().Address()))
+
+			// Tear down
+			err = os.Unsetenv(testCase.name)
+			if err != nil {
+				log.Panic(err)
+			}
 		})
 	}
 }
