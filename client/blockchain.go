@@ -2,31 +2,12 @@ package client
 
 import (
 	"fmt"
-	"io/ioutil"
+	"integrations-framework/config"
 	"math/big"
-	"os"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"gopkg.in/yaml.v3"
-)
-
-// KeyType specifies a few possible methods of retrieving configurations - namely wallets - from
-type KeyType string
-
-// ChainType specifies the possible underlying blockchain technologies, e.g. Ethereum
-type ChainType string
-
-const (
-	NetworkEthereumHardhat   = "EthereumHardhat"
-	WalletConfigFileLocation = "../wallets.yml" // Can make this an optional command line param?
-
-	EnvKeyType            KeyType = "env"
-	FileKeyType           KeyType = "file"
-	SecretsManagerKeyType KeyType = "secret"
-
-	EthereumChainType ChainType = "ethereum"
 )
 
 // Generalized blockchain client for interaction with multiple different blockchains
@@ -48,40 +29,60 @@ type BlockchainNetwork interface {
 	Name() string
 	URL() string
 	ChainID() *big.Int
-	ChainType() ChainType
-	Wallets(KeyType) (BlockchainWallets, error)
+	Wallets() (BlockchainWallets, error)
+	Config() *config.NetworkConfig
 }
 
 // EthereumHardhat is the implementation of BlockchainNetwork for the local ETH dev server
-type EthereumHardhat struct{}
+type EthereumHardhat struct {
+	networkConfig *config.NetworkConfig
+}
+
+func NewEthereumHardhat(conf *config.NetworkConfig) *EthereumHardhat {
+	return &EthereumHardhat{conf}
+}
 
 // Name returns the readable name of the hardhat network
 func (e *EthereumHardhat) Name() string {
-	return NetworkEthereumHardhat
+	return e.networkConfig.Name
 }
 
 // URL returns the RPC URL used for connecting to hardhat
 func (e *EthereumHardhat) URL() string {
-	return ethereumURL(e)
+	return e.networkConfig.URL
 }
 
 // ChainID returns the on-chain ID of the network being connected to, returning hardhat's default
 func (e *EthereumHardhat) ChainID() *big.Int {
-	return big.NewInt(31337)
+	return e.networkConfig.ChainID
 }
 
-// ChainType returns the type of infrastrucructure the blockchain is built on, returning ethereum
-func (e *EthereumHardhat) ChainType() ChainType {
-	return EthereumChainType
+func (e *EthereumHardhat) Config() *config.NetworkConfig {
+	return e.networkConfig
 }
 
 // Wallets returns all the viable wallets used for testing on chain, returning hardhat's default
-func (e *EthereumHardhat) Wallets(keyType KeyType) (BlockchainWallets, error) {
-	walletString, err := retrieveWalletStrings(keyType, e.Name())
+func (e *EthereumHardhat) Wallets() (BlockchainWallets, error) {
+	// Check private keystore value, create wallets from such
+	walletString, err := e.networkConfig.PrivateKeyStore.Fetch()
 	if err != nil {
 		return &Wallets{}, err
 	}
-	return processWalletStrings(walletString, e.ChainType())
+	var processedWallets []BlockchainWallet
+	splitKeys := strings.Split(walletString, ",")
+
+	for _, key := range splitKeys {
+		wallet, err := NewEthereumWallet(strings.TrimSpace(key))
+		if err != nil {
+			return &Wallets{}, err
+		}
+		processedWallets = append(processedWallets, wallet)
+	}
+
+	return &Wallets{
+		defaultWallet: 0,
+		wallets:       processedWallets,
+	}, nil
 }
 
 // BlockchainWallets is an interface that when implemented is a representation of a slice of wallets for
@@ -155,68 +156,9 @@ func (e *EthereumWallet) Address() string {
 	return e.address.String()
 }
 
-func ethereumURL(network BlockchainNetwork) string {
-	env := getNetworkURLEnv(network.ChainID())
-	if len(env) > 0 {
-		return env
-	}
-	return "http://localhost:8545"
-}
-
-func getNetworkURLEnv(chainID *big.Int) string {
-	return os.Getenv(fmt.Sprintf("NETWORK_%d_URL", chainID))
-}
-
 func walletSliceIndexInRange(wallets []BlockchainWallet, i int) error {
 	if i > len(wallets)-1 {
 		return fmt.Errorf("invalid index in list of wallets")
 	}
 	return nil
-}
-
-// Retrieves a comma separated list of wallet private keys, depending on the config source and blockchain name
-func retrieveWalletStrings(keyType KeyType, networkName string) (string, error) {
-	var toProcess string
-	var err error
-	switch keyType {
-	case EnvKeyType:
-		toProcess = os.Getenv(networkName)
-	case FileKeyType:
-		keyFile, err := ioutil.ReadFile(WalletConfigFileLocation)
-		if err != nil {
-			return "", err
-		}
-
-		var config map[string]string
-		err = yaml.Unmarshal(keyFile, &config)
-		if err != nil {
-			return "", err
-		}
-		toProcess = config[networkName]
-	case SecretsManagerKeyType:
-		// Get from whichever secrets manager we choose
-	}
-	return toProcess, err
-}
-
-// Processes a comma separated list of wallet private keys and gives back actual wallets based on blockchain type
-func processWalletStrings(walletKeys string, blockchainType ChainType) (*Wallets, error) {
-	var processedWallets []BlockchainWallet
-	splitKeys := strings.Split(walletKeys, ",")
-
-	for _, key := range splitKeys {
-		switch blockchainType {
-		case EthereumChainType:
-			wallet, err := NewEthereumWallet(strings.TrimSpace(key))
-			if err != nil {
-				return &Wallets{}, err
-			}
-			processedWallets = append(processedWallets, wallet)
-		}
-	}
-
-	return &Wallets{
-		defaultWallet: 0,
-		wallets:       processedWallets,
-	}, nil
 }

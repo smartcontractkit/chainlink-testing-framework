@@ -27,7 +27,7 @@ func TestEthereumWallet_EnvVariable(t *testing.T) {
 			err := os.Setenv(testCase.name, testCase.privateKey)
 			require.Nil(t, err)
 
-			wallets, err := testCase.network.Wallets(EnvKeyType)
+			wallets, err := testCase.network.Wallets()
 			require.Nil(t, err)
 			assert.Equal(t, testCase.privateKey, wallets.Default().PrivateKey())
 			assert.Equal(t, testCase.address, strings.ToLower(wallets.Default().Address()))
@@ -53,7 +53,7 @@ func TestEthereumWallet_ConfigFile(t *testing.T) {
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			wallets, err := testCase.network.Wallets(FileKeyType)
+			wallets, err := testCase.network.Wallets()
 			require.Nil(t, err)
 			assert.Equal(t, testCase.privateKey, wallets.Default().PrivateKey())
 			assert.Equal(t, testCase.address, strings.ToLower(wallets.Default().Address()))
@@ -74,7 +74,7 @@ func TestEthereumClient_DeployStorageContract(t *testing.T) {
 			client, err := NewBlockchainClient(testCase.network)
 			require.Nil(t, err)
 
-			wallets, err := testCase.network.Wallets(FileKeyType)
+			wallets, err := testCase.network.Wallets()
 			require.Nil(t, err)
 
 			err = client.DeployStorageContract(wallets.Default())
