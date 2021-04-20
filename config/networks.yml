@@ -34,6 +34,6 @@ networks:
         url: "kovan.url.com"
         chain_id: 42
         private_keys:
-            - Names
-            - of
-            - secrets
+            - These
+            - ain't
+            - real

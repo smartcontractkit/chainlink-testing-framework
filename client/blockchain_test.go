@@ -12,22 +12,23 @@ import (
 
 // Tests retrieving wallet values from env variables for ethereum wallets
 func TestEthereumWallet_EnvVariable(t *testing.T) {
-	conf, err := config.NewConfig(config.ConfigurationFile)
+	conf, err := config.NewConfig(config.EnvironmentConfig)
 	require.Nil(t, err)
 	testCases := []struct {
-		name       string // Name of the test case as well as the env variable to set
-		network    BlockchainNetwork
-		privateKey string
-		address    string
+		name          string
+		envConfigName string
+		network       BlockchainNetwork
+		privateKey    string
+		address       string
 	}{
-		{"EthereumHardhat", NewEthereumHardhat(*conf),
+		{"Ethereum Hardhat", "ethereum_hardhat", NewEthereumHardhat(conf.Networks["etherum_hardhat"]),
 			"cfff63a9931f8e948f8475795dd015065be59e5cecffeb7c2e2bfa48981d9d24",
 			"0x5ff19251b8f8702d485f127d96232301023119f1"},
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			// Set up
-			err := os.Setenv(testCase.name, testCase.privateKey)
+			err := os.Setenv("networks"+testCase.envConfigName+".private_keys", testCase.privateKey)
 			require.Nil(t, err)
 
 			wallets, err := testCase.network.Wallets()
@@ -44,7 +45,7 @@ func TestEthereumWallet_EnvVariable(t *testing.T) {
 
 // Tests retrieving wallet values from env variables for ethereum wallets
 func TestEthereumWallet_ConfigFile(t *testing.T) {
-	conf, err := config.NewConfig(config.ConfigurationFile)
+	conf, err := config.NewConfig(config.FileConfig)
 	require.Nil(t, err)
 	testCases := []struct {
 		name       string
@@ -52,7 +53,7 @@ func TestEthereumWallet_ConfigFile(t *testing.T) {
 		privateKey string
 		address    string
 	}{
-		{"EthereumHardhat", NewEthereumHardhat(*conf),
+		{"Ethereum Hardhat", NewEthereumHardhat(conf.Networks["ethereum_hardhat"]),
 			"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
 			"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"},
 	}
@@ -68,13 +69,13 @@ func TestEthereumWallet_ConfigFile(t *testing.T) {
 
 // Tests ethereum contract deployment on a simulated blockchain
 func TestEthereumClient_DeployStorageContract(t *testing.T) {
-	conf, err := config.NewConfig(config.ConfigurationFile)
+	conf, err := config.NewConfig(config.FileConfig)
 	require.Nil(t, err)
 	testCases := []struct {
 		name    string
 		network BlockchainNetwork
 	}{
-		{"Ethereum Hardhat", NewEthereumHardhat(*conf)},
+		{"Ethereum Hardhat", NewEthereumHardhat(conf.Networks["etherum_hardhat"])},
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {

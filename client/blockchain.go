@@ -38,8 +38,8 @@ type EthereumHardhat struct {
 	networkConfig *config.NetworkConfig
 }
 
-func NewEthereumHardhat(conf config.Config) *EthereumHardhat {
-	return &EthereumHardhat{conf.Networks["EthereumHardhat"]}
+func NewEthereumHardhat(conf *config.NetworkConfig) *EthereumHardhat {
+	return &EthereumHardhat{conf}
 }
 
 // Name returns the readable name of the hardhat network
@@ -54,7 +54,7 @@ func (e *EthereumHardhat) URL() string {
 
 // ChainID returns the on-chain ID of the network being connected to, returning hardhat's default
 func (e *EthereumHardhat) ChainID() *big.Int {
-	return big.NewInt(int64(e.networkConfig.ChainID))
+	return big.NewInt(e.networkConfig.ChainID)
 }
 
 func (e *EthereumHardhat) Config() *config.NetworkConfig {
@@ -64,14 +64,13 @@ func (e *EthereumHardhat) Config() *config.NetworkConfig {
 // Wallets returns all the viable wallets used for testing on chain, returning hardhat's default
 func (e *EthereumHardhat) Wallets() (BlockchainWallets, error) {
 	// Check private keystore value, create wallets from such
-	walletString, err := e.networkConfig.PrivateKeyStore.Fetch()
-	if err != nil {
-		return &Wallets{}, err
-	}
 	var processedWallets []BlockchainWallet
-	splitKeys := strings.Split(walletString, ",")
+	keys, err := e.networkConfig.PrivateKeys.Fetch()
+	if err != nil {
+		return nil, err
+	}
 
-	for _, key := range splitKeys {
+	for _, key := range keys {
 		wallet, err := NewEthereumWallet(strings.TrimSpace(key))
 		if err != nil {
 			return &Wallets{}, err

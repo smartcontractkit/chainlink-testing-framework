@@ -13,16 +13,17 @@ type Config struct {
 }
 
 type NetworkConfig struct {
-	Name            string          `mapstructure:"name"`
-	URL             string          `mapstructure:"url"`
-	ChainID         int             `mapstructure:"chain_id"`
-	PrivateKeyStore PrivateKeyStore `mapstructure:"private_keys"`
+	Name        string   `mapstructure:"name"`
+	URL         string   `mapstructure:"url"`
+	ChainID     int64    `mapstructure:"chain_id"`
+	RawKeys     []string `mapstructure:"private_keys"`
+	PrivateKeys PrivateKeyStore
 }
 
 const (
-	EnvironmentVariables ConfigurationType = "env"
-	ConfigurationFile    ConfigurationType = "file"
-	SecretStore          ConfigurationType = "secret"
+	EnvironmentConfig ConfigurationType = "env"
+	FileConfig        ConfigurationType = "file"
+	SecretConfig      ConfigurationType = "secret"
 )
 
 // NewConfig creates a new configuration instance via viper from env vars, conig file, or a secret store
@@ -30,41 +31,64 @@ func NewConfig(configType ConfigurationType) (*Config, error) {
 	v := viper.New()
 
 	switch configType {
-	case EnvironmentVariables:
+	case EnvironmentConfig:
 		v.AutomaticEnv()
-	case ConfigurationFile:
+	case FileConfig:
 		v.SetConfigName("networks")
 		v.AddConfigPath("./config/")
 		v.AddConfigPath("../config/") // Not a huge fan of this, alternatives?
 		v.SetConfigType("yml")
-	case SecretStore:
+		err := v.ReadInConfig()
+		if err != nil {
+			return nil, err
+		}
+	case SecretConfig:
 		// Deal with secret store
-	}
-	err := v.ReadInConfig()
-	if err != nil {
-		return nil, err
 	}
 
 	conf := &Config{}
-	err = v.Unmarshal(conf)
+	err := v.Unmarshal(conf)
 	for _, networkConf := range conf.Networks {
-		networkConf.PrivateKeyStore = &FileStore{} // TODO: Adjust as needed for config type sent in
+		networkConf.PrivateKeys = NewPrivateKeyStore(configType, networkConf.RawKeys)
 	}
 	return conf, err
 }
 
 type PrivateKeyStore interface {
-	Fetch() (string, error)
+	Fetch() ([]string, error)
 }
 
-type EnvStore struct{}
-
-func (e *EnvStore) Fetch() (string, error) {
-	return "", nil
+func NewPrivateKeyStore(configType ConfigurationType, keys []string) PrivateKeyStore {
+	switch configType {
+	case EnvironmentConfig:
+		return &EnvStore{keys}
+	case FileConfig:
+		return &FileStore{keys}
+	case SecretConfig:
+		return &SecretStore{}
+	}
+	return nil
 }
 
-type FileStore struct{}
+type EnvStore struct {
+	rawKeys []string
+}
 
-func (f *FileStore) Fetch() (string, error) {
-	return "", nil
+func (e *EnvStore) Fetch() ([]string, error) {
+	return e.rawKeys, nil
+}
+
+type FileStore struct {
+	rawKeys []string
+}
+
+func (f *FileStore) Fetch() ([]string, error) {
+	return f.rawKeys, nil
+}
+
+type SecretStore struct{}
+
+func (s *SecretStore) Fetch() ([]string, error) {
+	// TODO: Set up connection with whatever secret store we choose
+	return []string{""}, nil
 }
