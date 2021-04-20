@@ -24,34 +24,28 @@ type NetworkConfig struct {
 }
 
 const (
-	EnvironmentConfig ConfigurationType = "env"
-	FileConfig        ConfigurationType = "file"
-	SecretConfig      ConfigurationType = "secret"
+	LocalConfig  ConfigurationType = "local"
+	SecretConfig ConfigurationType = "secret"
 )
 
 // NewConfig creates a new configuration instance via viper from env vars, config file, or a secret store
 func NewConfig(configType ConfigurationType) (*Config, error) {
 	v := viper.New()
+	v.AutomaticEnv()
 
-	switch configType {
-	case EnvironmentConfig:
-		v.AutomaticEnv()
-	case FileConfig:
-		v.SetConfigName("networks")
-		v.AddConfigPath("./config/")
-		v.AddConfigPath("../config/") // Not a huge fan of this, alternatives?
-		v.SetConfigType("yml")
-		if err := v.ReadInConfig(); err != nil {
-			return nil, err
-		}
-	case SecretConfig:
-		// Deal with secret store
+	// File acts as defaults
+	v.SetConfigName("networks")
+	v.AddConfigPath("./config/")
+	v.AddConfigPath("../config/")
+	v.SetConfigType("yml")
+	if err := v.ReadInConfig(); err != nil {
+		return nil, err
 	}
 
 	conf := &Config{}
 	err := v.Unmarshal(conf)
 	for _, networkConf := range conf.Networks {
-		networkConf.PrivateKeys = NewPrivateKeyStore(configType, networkConf.RawKeys)
+		networkConf.PrivateKeys = NewPrivateKeyStore(configType, networkConf.RawKeys, networkConf.Name)
 	}
 	return conf, err
 }
@@ -62,40 +56,36 @@ type PrivateKeyStore interface {
 }
 
 // NewPrivateKeyStore returns a keystore of a specific type, depending on where it should source its keys from
-func NewPrivateKeyStore(configType ConfigurationType, keys []string) PrivateKeyStore {
+func NewPrivateKeyStore(configType ConfigurationType, keys []string, networkName string) PrivateKeyStore {
 	switch configType {
-	case EnvironmentConfig:
-		return &EnvStore{keys}
-	case FileConfig:
-		return &FileStore{keys}
+	case LocalConfig:
+		return &LocalStore{keys}
 	case SecretConfig:
-		return &SecretStore{}
+		return &SecretStore{networkName}
 	}
 	return nil
 }
 
-// EnvStore retrieves keys dictated in environment variables
-type EnvStore struct {
-	rawKeys []string
-}
-
-func (e *EnvStore) Fetch() ([]string, error) {
-	return e.rawKeys, nil
-}
-
 // FileStore retrieves keys defined in a networks.yml config file
-type FileStore struct {
+type LocalStore struct {
 	rawKeys []string
 }
 
-func (f *FileStore) Fetch() ([]string, error) {
-	return f.rawKeys, nil
+// Fetch private keys from local environment variables or a config file
+func (l *LocalStore) Fetch() ([]string, error) {
+	return l.rawKeys, nil
 }
 
 // SecretStore retrieves keys from an encrypted secret storage service TBD
-type SecretStore struct{}
+type SecretStore struct {
+	networkName string
+}
 
+// Fetch private keys from env variables or a secret management system
 func (s *SecretStore) Fetch() ([]string, error) {
 	// TODO: Set up connection with whatever secret store we choose
+	// Connect to secrets service / local encryption setup
+	// Fetch keys based on the networkName
+	// Return them
 	return []string{""}, nil
 }

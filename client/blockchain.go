@@ -58,6 +58,7 @@ func (e *EthereumHardhat) ChainID() *big.Int {
 	return big.NewInt(e.networkConfig.ChainID)
 }
 
+// Config returns the blockchain network configuration
 func (e *EthereumHardhat) Config() *config.NetworkConfig {
 	return e.networkConfig
 }

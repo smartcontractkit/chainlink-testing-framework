@@ -12,7 +12,7 @@ import (
 
 // Tests retrieving wallet values from env variables for ethereum wallets
 func TestEthereumWallet_EnvVariable(t *testing.T) {
-	conf, err := config.NewConfig(config.EnvironmentConfig)
+	conf, err := config.NewConfig(config.LocalConfig)
 	require.Nil(t, err)
 	testCases := []struct {
 		name          string
@@ -28,7 +28,8 @@ func TestEthereumWallet_EnvVariable(t *testing.T) {
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			// Set up
-			err := os.Setenv("networks"+testCase.envConfigName+".private_keys", testCase.privateKey)
+			envVar := strings.ToUpper("networks." + testCase.envConfigName + ".private_keys")
+			err := os.Setenv(envVar, testCase.privateKey)
 			require.Nil(t, err)
 
 			wallets, err := testCase.network.Wallets()
@@ -43,9 +44,9 @@ func TestEthereumWallet_EnvVariable(t *testing.T) {
 	}
 }
 
-// Tests retrieving wallet values from env variables for ethereum wallets
+// Tests retrieving wallet values from a configuration file for ethereum wallets
 func TestEthereumWallet_ConfigFile(t *testing.T) {
-	conf, err := config.NewConfig(config.FileConfig)
+	conf, err := config.NewConfig(config.LocalConfig)
 	require.Nil(t, err)
 	testCases := []struct {
 		name       string
@@ -69,7 +70,7 @@ func TestEthereumWallet_ConfigFile(t *testing.T) {
 
 // Tests ethereum contract deployment on a simulated blockchain
 func TestEthereumClient_DeployStorageContract(t *testing.T) {
-	conf, err := config.NewConfig(config.FileConfig)
+	conf, err := config.NewConfig(config.LocalConfig)
 	require.Nil(t, err)
 	testCases := []struct {
 		name    string
