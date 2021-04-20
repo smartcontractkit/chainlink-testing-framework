@@ -4,14 +4,17 @@ import (
 	"github.com/spf13/viper"
 )
 
+// ConfigurationType refers to the different ways that configurations can be set
 type ConfigurationType string
 
+// Config is the overall config for the framework, holding configurations for supported networks
 type Config struct {
 	Networks map[string]*NetworkConfig `mapstructure:"networks"`
 	// "EthHardhat": conf, etc...
 	DefaultKeyStore string
 }
 
+// NetworkConfig holds the basic values that identify a blockchain network and contains private keys on the network
 type NetworkConfig struct {
 	Name        string   `mapstructure:"name"`
 	URL         string   `mapstructure:"url"`
@@ -26,7 +29,7 @@ const (
 	SecretConfig      ConfigurationType = "secret"
 )
 
-// NewConfig creates a new configuration instance via viper from env vars, conig file, or a secret store
+// NewConfig creates a new configuration instance via viper from env vars, config file, or a secret store
 func NewConfig(configType ConfigurationType) (*Config, error) {
 	v := viper.New()
 
@@ -38,8 +41,7 @@ func NewConfig(configType ConfigurationType) (*Config, error) {
 		v.AddConfigPath("./config/")
 		v.AddConfigPath("../config/") // Not a huge fan of this, alternatives?
 		v.SetConfigType("yml")
-		err := v.ReadInConfig()
-		if err != nil {
+		if err := v.ReadInConfig(); err != nil {
 			return nil, err
 		}
 	case SecretConfig:
@@ -54,10 +56,12 @@ func NewConfig(configType ConfigurationType) (*Config, error) {
 	return conf, err
 }
 
+// PrivateKeyStore enables access, through a variety of methods, to private keys for use in blockchain networks
 type PrivateKeyStore interface {
 	Fetch() ([]string, error)
 }
 
+// NewPrivateKeyStore returns a keystore of a specific type, depending on where it should source its keys from
 func NewPrivateKeyStore(configType ConfigurationType, keys []string) PrivateKeyStore {
 	switch configType {
 	case EnvironmentConfig:
@@ -70,6 +74,7 @@ func NewPrivateKeyStore(configType ConfigurationType, keys []string) PrivateKeyS
 	return nil
 }
 
+// EnvStore retrieves keys dictated in environment variables
 type EnvStore struct {
 	rawKeys []string
 }
@@ -78,6 +83,7 @@ func (e *EnvStore) Fetch() ([]string, error) {
 	return e.rawKeys, nil
 }
 
+// FileStore retrieves keys defined in a networks.yml config file
 type FileStore struct {
 	rawKeys []string
 }
@@ -86,6 +92,7 @@ func (f *FileStore) Fetch() ([]string, error) {
 	return f.rawKeys, nil
 }
 
+// SecretStore retrieves keys from an encrypted secret storage service TBD
 type SecretStore struct{}
 
 func (s *SecretStore) Fetch() ([]string, error) {

@@ -38,6 +38,7 @@ type EthereumHardhat struct {
 	networkConfig *config.NetworkConfig
 }
 
+// NewEthereumHardhat creates a way to interact with the ethereum hardhat blockchain
 func NewEthereumHardhat(conf *config.NetworkConfig) *EthereumHardhat {
 	return &EthereumHardhat{conf}
 }
