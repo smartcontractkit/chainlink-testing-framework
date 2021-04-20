@@ -1,8 +1,6 @@
 package config
 
 import (
-	"math/big"
-
 	"github.com/spf13/viper"
 )
 
@@ -15,10 +13,10 @@ type Config struct {
 }
 
 type NetworkConfig struct {
-	Name            string   `mapstructure:"name"`
-	URL             string   `mapstructure:"url"`
-	ChainID         *big.Int `mapstructure:"chain_id"`
-	PrivateKeyStore PrivateKeyStore
+	Name            string          `mapstructure:"name"`
+	URL             string          `mapstructure:"url"`
+	ChainID         int             `mapstructure:"chain_id"`
+	PrivateKeyStore PrivateKeyStore `mapstructure:"private_keys"`
 }
 
 const (
@@ -36,6 +34,8 @@ func NewConfig(configType ConfigurationType) (*Config, error) {
 		v.AutomaticEnv()
 	case ConfigurationFile:
 		v.SetConfigName("networks")
+		v.AddConfigPath("./config/")
+		v.AddConfigPath("../config/") // Not a huge fan of this, alternatives?
 		v.SetConfigType("yml")
 	case SecretStore:
 		// Deal with secret store
@@ -47,15 +47,14 @@ func NewConfig(configType ConfigurationType) (*Config, error) {
 
 	conf := &Config{}
 	err = v.Unmarshal(conf)
+	for _, networkConf := range conf.Networks {
+		networkConf.PrivateKeyStore = &FileStore{} // TODO: Adjust as needed for config type sent in
+	}
 	return conf, err
 }
 
 type PrivateKeyStore interface {
 	Fetch() (string, error)
-}
-
-func NewPrivateKeyStore() {
-
 }
 
 type EnvStore struct{}

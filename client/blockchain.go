@@ -38,8 +38,8 @@ type EthereumHardhat struct {
 	networkConfig *config.NetworkConfig
 }
 
-func NewEthereumHardhat(conf *config.NetworkConfig) *EthereumHardhat {
-	return &EthereumHardhat{conf}
+func NewEthereumHardhat(conf config.Config) *EthereumHardhat {
+	return &EthereumHardhat{conf.Networks["EthereumHardhat"]}
 }
 
 // Name returns the readable name of the hardhat network
@@ -54,7 +54,7 @@ func (e *EthereumHardhat) URL() string {
 
 // ChainID returns the on-chain ID of the network being connected to, returning hardhat's default
 func (e *EthereumHardhat) ChainID() *big.Int {
-	return e.networkConfig.ChainID
+	return big.NewInt(int64(e.networkConfig.ChainID))
 }
 
 func (e *EthereumHardhat) Config() *config.NetworkConfig {
