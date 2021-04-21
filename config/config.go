@@ -20,6 +20,13 @@ type Config struct {
 	DefaultKeyStore string
 }
 
+func (c *Config) GetNetworkConfig(name string) (*NetworkConfig, error) {
+	if network, ok := c.Networks[name]; ok {
+		return network, nil
+	}
+	return nil, errors.New("no supported network of name " + name + " was found. Ensure that the config for it exists.")
+}
+
 // NetworkConfig holds the basic values that identify a blockchain network and contains private keys on the network
 type NetworkConfig struct {
 	Name        string   `mapstructure:"name" yaml:"name"`
