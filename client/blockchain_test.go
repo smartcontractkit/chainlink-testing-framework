@@ -35,13 +35,13 @@ func TestWalletConfig(t *testing.T) {
 
 // Tests ethereum contract deployment on a simulated blockchain
 func TestEthereumClient_DeployStorageContract(t *testing.T) {
-	conf, err := config.NewConfig(config.LocalConfig)
+	conf, err := config.NewConfigWithPath(config.LocalConfig, "../config")
 	require.Nil(t, err)
 	testCases := []struct {
 		name    string
 		network BlockchainNetwork
 	}{
-		{"Ethereum Hardhat", NewEthereumHardhat(conf.Networks["etherum_hardhat"])},
+		{"Ethereum Hardhat", NewEthereumHardhat(conf.Networks["ethereum_hardhat"])},
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {

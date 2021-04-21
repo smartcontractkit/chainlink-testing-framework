@@ -1,6 +1,8 @@
 package config
 
 import (
+	"errors"
+
 	"github.com/spf13/viper"
 )
 
@@ -79,6 +81,9 @@ type LocalStore struct {
 
 // Fetch private keys from local environment variables or a config file
 func (l *LocalStore) Fetch() ([]string, error) {
+	if l.rawKeys == nil {
+		return nil, errors.New("no keys found, ensure your configuration is properly set")
+	}
 	return l.rawKeys, nil
 }
 
