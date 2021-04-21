@@ -2,7 +2,6 @@ package client
 
 import (
 	"integrations-framework/config"
-	"os"
 	"strings"
 	"testing"
 
@@ -10,43 +9,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Tests retrieving wallet values from env variables for ethereum wallets
-func TestEthereumWallet_EnvVariable(t *testing.T) {
-	conf, err := config.NewConfig(config.LocalConfig)
-	require.Nil(t, err)
-	testCases := []struct {
-		name          string
-		envConfigName string
-		network       BlockchainNetwork
-		privateKey    string
-		address       string
-	}{
-		{"Ethereum Hardhat", "ethereum_hardhat", NewEthereumHardhat(conf.Networks["etherum_hardhat"]),
-			"cfff63a9931f8e948f8475795dd015065be59e5cecffeb7c2e2bfa48981d9d24",
-			"0x5ff19251b8f8702d485f127d96232301023119f1"},
-	}
-	for _, testCase := range testCases {
-		t.Run(testCase.name, func(t *testing.T) {
-			// Set up
-			envVar := strings.ToUpper("networks." + testCase.envConfigName + ".private_keys")
-			err := os.Setenv(envVar, testCase.privateKey)
-			require.Nil(t, err)
-
-			wallets, err := testCase.network.Wallets()
-			require.Nil(t, err)
-			assert.Equal(t, testCase.privateKey, wallets.Default().PrivateKey())
-			assert.Equal(t, testCase.address, strings.ToLower(wallets.Default().Address()))
-
-			// Tear down
-			err = os.Unsetenv(testCase.name)
-			require.Nil(t, err)
-		})
-	}
-}
-
 // Tests retrieving wallet values from a configuration file for ethereum wallets
-func TestEthereumWallet_ConfigFile(t *testing.T) {
-	conf, err := config.NewConfig(config.LocalConfig)
+func TestWalletConfig(t *testing.T) {
+	conf, err := config.NewConfigWithPath(config.LocalConfig, "../config")
 	require.Nil(t, err)
 	testCases := []struct {
 		name       string

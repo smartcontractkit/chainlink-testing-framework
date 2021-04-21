@@ -7,37 +7,43 @@ import (
 // ConfigurationType refers to the different ways that configurations can be set
 type ConfigurationType string
 
-// Config is the overall config for the framework, holding configurations for supported networks
-type Config struct {
-	Networks map[string]*NetworkConfig `mapstructure:"networks"`
-	// "EthHardhat": conf, etc...
-	DefaultKeyStore string
-}
-
-// NetworkConfig holds the basic values that identify a blockchain network and contains private keys on the network
-type NetworkConfig struct {
-	Name        string   `mapstructure:"name"`
-	URL         string   `mapstructure:"url"`
-	ChainID     int64    `mapstructure:"chain_id"`
-	RawKeys     []string `mapstructure:"private_keys"`
-	PrivateKeys PrivateKeyStore
-}
-
 const (
 	LocalConfig  ConfigurationType = "local"
 	SecretConfig ConfigurationType = "secret"
 )
 
+// Config is the overall config for the framework, holding configurations for supported networks
+type Config struct {
+	Networks        map[string]*NetworkConfig `mapstructure:"networks" yaml:"networks"`
+	DefaultKeyStore string
+}
+
+// NetworkConfig holds the basic values that identify a blockchain network and contains private keys on the network
+type NetworkConfig struct {
+	Name        string   `mapstructure:"name" yaml:"name"`
+	URL         string   `mapstructure:"url" yaml:"url"`
+	ChainID     int64    `mapstructure:"chain_id" yaml:"chain_id"`
+	RawKeys     []string `mapstructure:"private_keys" yaml:"private_keys"`
+	PrivateKeys PrivateKeyStore
+}
+
 // NewConfig creates a new configuration instance via viper from env vars, config file, or a secret store
 func NewConfig(configType ConfigurationType) (*Config, error) {
+	return NewConfigWithPath(configType, "")
+}
+
+// NewConfigWithPath creates a new configuration with a specified path for the config file
+func NewConfigWithPath(configType ConfigurationType, configFilePath string) (*Config, error) {
 	v := viper.New()
 	v.AutomaticEnv()
-
-	// File acts as defaults
-	v.SetConfigName("networks")
-	v.AddConfigPath("./config/")
-	v.AddConfigPath("../config/")
+	v.SetConfigName("config")
 	v.SetConfigType("yml")
+
+	if len(configFilePath) == 0 {
+		configFilePath = "./" // Use default
+	}
+	v.AddConfigPath(configFilePath)
+
 	if err := v.ReadInConfig(); err != nil {
 		return nil, err
 	}
@@ -45,7 +51,7 @@ func NewConfig(configType ConfigurationType) (*Config, error) {
 	conf := &Config{}
 	err := v.Unmarshal(conf)
 	for _, networkConf := range conf.Networks {
-		networkConf.PrivateKeys = NewPrivateKeyStore(configType, networkConf.RawKeys, networkConf.Name)
+		networkConf.PrivateKeys = NewPrivateKeyStore(configType, networkConf)
 	}
 	return conf, err
 }
@@ -56,17 +62,17 @@ type PrivateKeyStore interface {
 }
 
 // NewPrivateKeyStore returns a keystore of a specific type, depending on where it should source its keys from
-func NewPrivateKeyStore(configType ConfigurationType, keys []string, networkName string) PrivateKeyStore {
+func NewPrivateKeyStore(configType ConfigurationType, network *NetworkConfig) PrivateKeyStore {
 	switch configType {
 	case LocalConfig:
-		return &LocalStore{keys}
+		return &LocalStore{network.RawKeys}
 	case SecretConfig:
-		return &SecretStore{networkName}
+		return &SecretStore{network.Name}
 	}
 	return nil
 }
 
-// FileStore retrieves keys defined in a networks.yml config file
+// LocalStore retrieves keys defined in a config.yml file, or from environment variables
 type LocalStore struct {
 	rawKeys []string
 }
