@@ -19,7 +19,7 @@ func TestWalletConfig(t *testing.T) {
 		privateKey string
 		address    string
 	}{
-		{"Ethereum Hardhat", NewEthereumHardhat(conf.Networks["ethereum_hardhat"]),
+		{"Ethereum Hardhat", NewEthereumHardhat(conf),
 			"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
 			"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"},
 	}
@@ -38,10 +38,11 @@ func TestEthereumClient_DeployStorageContract(t *testing.T) {
 	conf, err := config.NewConfigWithPath(config.LocalConfig, "../config")
 	require.Nil(t, err)
 	testCases := []struct {
-		name    string
-		network BlockchainNetwork
+		name        string
+		networkName string
+		network     BlockchainNetwork
 	}{
-		{"Ethereum Hardhat", NewEthereumHardhat(conf.Networks["ethereum_hardhat"])},
+		{"Ethereum Hardhat", "etherum_hardhat", NewEthereumHardhat(conf)},
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {

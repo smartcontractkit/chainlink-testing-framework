@@ -20,6 +20,7 @@ type Config struct {
 	DefaultKeyStore string
 }
 
+// GetNetworkConfig finds a specified network config based on its name
 func (c *Config) GetNetworkConfig(name string) (*NetworkConfig, error) {
 	if network, ok := c.Networks[name]; ok {
 		return network, nil
