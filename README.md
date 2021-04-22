@@ -7,11 +7,8 @@ A framework for interacting with chainlink nodes, environments, and other blockc
 
 ## How to Test
 
-`npx hardhat node` to start a local hardhat instance of ethereum
-
-then
-
-`go test ./...`
+1. Start a local hardhat network. You can easily do so by using our [docker container](https://hub.docker.com/r/smartcontract/hardhat-network). You could also deploy [your own local version](https://hardhat.org/hardhat-network/), if you are so inclined.
+2. Run `go test ./...`
 
 ## // TODO
 
