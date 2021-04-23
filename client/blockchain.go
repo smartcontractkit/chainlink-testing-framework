@@ -2,13 +2,15 @@ package client
 
 import (
 	"fmt"
+	"integrations-framework/config"
+	"math/big"
+	"strings"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"math/big"
-	"os"
 )
 
-const NetworkEthereumHardhat = "Ethereum Hardhat"
+const EthereumHardhatID = "ethereum_hardhat"
 
 // Generalized blockchain client for interaction with multiple different blockchains
 type BlockchainClient interface {
@@ -24,30 +26,49 @@ func NewBlockchainClient(network BlockchainNetwork) (BlockchainClient, error) {
 	return nil, fmt.Errorf("invalid blockchain network was given")
 }
 
-// BlockchainNetwork is the interface that when implemented, defines a new blockchain network that can
-// be tested against
+// BlockchainNetwork is the interface that when implemented, defines a new blockchain network that can be tested against
 type BlockchainNetwork interface {
-	Name() string
+	ID() string
 	URL() string
 	ChainID() *big.Int
+	Wallets() (BlockchainWallets, error)
+	Config() *config.NetworkConfig
 }
 
 // EthereumHardhat is the implementation of BlockchainNetwork for the local ETH dev server
-type EthereumHardhat struct{}
+type EthereumHardhat struct {
+	networkConfig *config.NetworkConfig
+}
 
-// Name returns the readable name of the hardhat network
-func (e *EthereumHardhat) Name() string {
-	return NetworkEthereumHardhat
+// NewEthereumHardhat creates a way to interact with the ethereum hardhat blockchain
+func NewEthereumHardhat(conf *config.Config) *EthereumHardhat {
+	networkConf, _ := conf.GetNetworkConfig(EthereumHardhatID)
+	return &EthereumHardhat{networkConf}
+}
+
+// ID returns the readable name of the hardhat network
+func (e *EthereumHardhat) ID() string {
+	return EthereumHardhatID
 }
 
 // URL returns the RPC URL used for connecting to hardhat
 func (e *EthereumHardhat) URL() string {
-	return ethereumURL(e)
+	return e.networkConfig.URL
 }
 
-// ChainID returns the on-chain ID of the network being connected to, returning hardhats default
+// ChainID returns the on-chain ID of the network being connected to, returning hardhat's default
 func (e *EthereumHardhat) ChainID() *big.Int {
-	return big.NewInt(31337)
+	return big.NewInt(e.networkConfig.ChainID)
+}
+
+// Config returns the blockchain network configuration
+func (e *EthereumHardhat) Config() *config.NetworkConfig {
+	return e.networkConfig
+}
+
+// Wallets returns all the viable wallets used for testing on chain, returning hardhat's default
+func (e *EthereumHardhat) Wallets() (BlockchainWallets, error) {
+	return newEthereumWallets(e.networkConfig.PrivateKeyStore)
 }
 
 // BlockchainWallets is an interface that when implemented is a representation of a slice of wallets for
@@ -65,25 +86,25 @@ type Wallets struct {
 }
 
 // Default returns the default wallet to be used for a transaction on-chain
-func (e *Wallets) Default() BlockchainWallet {
-	return e.wallets[e.defaultWallet]
+func (w *Wallets) Default() BlockchainWallet {
+	return w.wallets[w.defaultWallet]
 }
 
 // SetDefault changes the default wallet to be used for on-chain transactions
-func (e *Wallets) SetDefault(i int) error {
-	if err := walletSliceIndexInRange(e.wallets, i); err != nil {
+func (w *Wallets) SetDefault(i int) error {
+	if err := walletSliceIndexInRange(w.wallets, i); err != nil {
 		return err
 	}
-	e.defaultWallet = i
+	w.defaultWallet = i
 	return nil
 }
 
 // Wallet returns a wallet based on a given index in the slice
-func (e *Wallets) Wallet(i int) (BlockchainWallet, error) {
-	if err := walletSliceIndexInRange(e.wallets, i); err != nil {
+func (w *Wallets) Wallet(i int) (BlockchainWallet, error) {
+	if err := walletSliceIndexInRange(w.wallets, i); err != nil {
 		return nil, err
 	}
-	return e.wallets[i], nil
+	return w.wallets[i], nil
 }
 
 // BlockchainWallet when implemented is the interface to allow multiple wallet implementations for each
@@ -121,27 +142,26 @@ func (e *EthereumWallet) Address() string {
 	return e.address.String()
 }
 
-// DefaultHardhatWallets returns the instantiated BlockchainWallets containing the default set of Hardhat wallets
-func DefaultHardhatWallets() BlockchainWallets {
-	w0, _ := NewEthereumWallet("ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80")
-	w1, _ := NewEthereumWallet("59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d")
-	w2, _ := NewEthereumWallet("5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a")
+func newEthereumWallets(pkStore config.PrivateKeyStore) (BlockchainWallets, error) {
+	// Check private keystore value, create wallets from such
+	var processedWallets []BlockchainWallet
+	keys, err := pkStore.Fetch()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, key := range keys {
+		wallet, err := NewEthereumWallet(strings.TrimSpace(key))
+		if err != nil {
+			return &Wallets{}, err
+		}
+		processedWallets = append(processedWallets, wallet)
+	}
+
 	return &Wallets{
 		defaultWallet: 0,
-		wallets: []BlockchainWallet{w0, w1, w2},
-	}
-}
-
-func ethereumURL(network BlockchainNetwork) string {
-	env := getNetworkURLEnv(network.ChainID())
-	if len(env) > 0 {
-		return env
-	}
-	return "http://localhost:8545"
-}
-
-func getNetworkURLEnv(chainID *big.Int) string {
-	return os.Getenv(fmt.Sprintf("NETWORK_%d_URL", chainID))
+		wallets:       processedWallets,
+	}, nil
 }
 
 func walletSliceIndexInRange(wallets []BlockchainWallet, i int) error {

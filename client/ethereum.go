@@ -26,7 +26,7 @@ func NewEthereumClient(network BlockchainNetwork) (*EthereumClient, error) {
 	}
 
 	return &EthereumClient{
-		Client:     cl,
+		Client:  cl,
 		Network: network,
 	}, nil
 }
