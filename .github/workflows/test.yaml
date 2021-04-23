@@ -41,7 +41,8 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           lcov-file: ./coverage.lcov
       - name: Publish Unit Test Results
-        uses: EnricoMi/publish-unit-test-result-action@v1
+        uses: mikepenz/action-junit-report@v2
         if: always()
         with:
-          files: ./**/*.xml
+          report_paths: '**/junit.xml'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
