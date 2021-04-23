@@ -10,6 +10,8 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
+const EthereumHardhatID = "ethereum_hardhat"
+
 // Generalized blockchain client for interaction with multiple different blockchains
 type BlockchainClient interface {
 	DeployStorageContract(wallet BlockchainWallet) error
@@ -26,7 +28,7 @@ func NewBlockchainClient(network BlockchainNetwork) (BlockchainClient, error) {
 
 // BlockchainNetwork is the interface that when implemented, defines a new blockchain network that can be tested against
 type BlockchainNetwork interface {
-	Name() string
+	ID() string
 	URL() string
 	ChainID() *big.Int
 	Wallets() (BlockchainWallets, error)
@@ -40,14 +42,13 @@ type EthereumHardhat struct {
 
 // NewEthereumHardhat creates a way to interact with the ethereum hardhat blockchain
 func NewEthereumHardhat(conf *config.Config) *EthereumHardhat {
-	networkConf, _ := conf.GetNetworkConfig("ethereum_hardhat")
-
+	networkConf, _ := conf.GetNetworkConfig(EthereumHardhatID)
 	return &EthereumHardhat{networkConf}
 }
 
-// Name returns the readable name of the hardhat network
-func (e *EthereumHardhat) Name() string {
-	return e.networkConfig.Name
+// ID returns the readable name of the hardhat network
+func (e *EthereumHardhat) ID() string {
+	return EthereumHardhatID
 }
 
 // URL returns the RPC URL used for connecting to hardhat
