@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 	"integrations-framework/contracts"
-	"log"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -35,18 +34,18 @@ func NewEthereumClient(network BlockchainNetwork) (*EthereumClient, error) {
 func (e *EthereumClient) DeployStorageContract(wallet BlockchainWallet) error {
 	gasPrice, err := e.Client.SuggestGasPrice(context.Background())
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	nonce, err := e.Client.PendingNonceAt(context.Background(), common.HexToAddress(wallet.Address()))
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	privateKey, _ := crypto.HexToECDSA(wallet.PrivateKey())
 	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, e.Network.ChainID())
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	auth.Nonce = big.NewInt(int64(nonce))

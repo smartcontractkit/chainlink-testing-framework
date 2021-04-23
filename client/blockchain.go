@@ -35,13 +35,15 @@ type BlockchainNetwork interface {
 	Config() *config.NetworkConfig
 }
 
+type BlockchainNetworkInit func(conf *config.Config) BlockchainNetwork
+
 // EthereumHardhat is the implementation of BlockchainNetwork for the local ETH dev server
 type EthereumHardhat struct {
 	networkConfig *config.NetworkConfig
 }
 
 // NewEthereumHardhat creates a way to interact with the ethereum hardhat blockchain
-func NewEthereumHardhat(conf *config.Config) *EthereumHardhat {
+func NewEthereumHardhat(conf *config.Config) BlockchainNetwork {
 	networkConf, _ := conf.GetNetworkConfig(EthereumHardhatID)
 	return &EthereumHardhat{networkConf}
 }
