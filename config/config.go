@@ -30,11 +30,11 @@ func (c *Config) GetNetworkConfig(name string) (*NetworkConfig, error) {
 
 // NetworkConfig holds the basic values that identify a blockchain network and contains private keys on the network
 type NetworkConfig struct {
-	Name        string   `mapstructure:"name" yaml:"name"`
-	URL         string   `mapstructure:"url" yaml:"url"`
-	ChainID     int64    `mapstructure:"chain_id" yaml:"chain_id"`
-	RawKeys     []string `mapstructure:"private_keys" yaml:"private_keys"`
-	PrivateKeys PrivateKeyStore
+	Name            string   `mapstructure:"name" yaml:"name"`
+	URL             string   `mapstructure:"url" yaml:"url"`
+	ChainID         int64    `mapstructure:"chain_id" yaml:"chain_id"`
+	PrivateKeys     []string `mapstructure:"private_keys" yaml:"private_keys"`
+	PrivateKeyStore PrivateKeyStore
 }
 
 // NewConfig creates a new configuration instance via viper from env vars, config file, or a secret store
@@ -61,7 +61,7 @@ func NewConfigWithPath(configType ConfigurationType, configFilePath string) (*Co
 	conf := &Config{}
 	err := v.Unmarshal(conf)
 	for _, networkConf := range conf.Networks {
-		networkConf.PrivateKeys = NewPrivateKeyStore(configType, networkConf)
+		networkConf.PrivateKeyStore = NewPrivateKeyStore(configType, networkConf)
 	}
 	return conf, err
 }
@@ -75,7 +75,7 @@ type PrivateKeyStore interface {
 func NewPrivateKeyStore(configType ConfigurationType, network *NetworkConfig) PrivateKeyStore {
 	switch configType {
 	case LocalConfig:
-		return &LocalStore{network.RawKeys}
+		return &LocalStore{network.PrivateKeys}
 	case SecretConfig:
 		return &SecretStore{network.Name}
 	}

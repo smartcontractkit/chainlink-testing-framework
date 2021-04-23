@@ -68,25 +68,7 @@ func (e *EthereumHardhat) Config() *config.NetworkConfig {
 
 // Wallets returns all the viable wallets used for testing on chain, returning hardhat's default
 func (e *EthereumHardhat) Wallets() (BlockchainWallets, error) {
-	// Check private keystore value, create wallets from such
-	var processedWallets []BlockchainWallet
-	keys, err := e.networkConfig.PrivateKeys.Fetch()
-	if err != nil {
-		return nil, err
-	}
-
-	for _, key := range keys {
-		wallet, err := NewEthereumWallet(strings.TrimSpace(key))
-		if err != nil {
-			return &Wallets{}, err
-		}
-		processedWallets = append(processedWallets, wallet)
-	}
-
-	return &Wallets{
-		defaultWallet: 0,
-		wallets:       processedWallets,
-	}, nil
+	return newEthereumWallets(e.networkConfig.PrivateKeyStore)
 }
 
 // BlockchainWallets is an interface that when implemented is a representation of a slice of wallets for
@@ -158,6 +140,28 @@ func (e *EthereumWallet) PrivateKey() string {
 // Address returns the ETH address for a given wallet
 func (e *EthereumWallet) Address() string {
 	return e.address.String()
+}
+
+func newEthereumWallets(pkStore config.PrivateKeyStore) (BlockchainWallets, error) {
+	// Check private keystore value, create wallets from such
+	var processedWallets []BlockchainWallet
+	keys, err := pkStore.Fetch()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, key := range keys {
+		wallet, err := NewEthereumWallet(strings.TrimSpace(key))
+		if err != nil {
+			return &Wallets{}, err
+		}
+		processedWallets = append(processedWallets, wallet)
+	}
+
+	return &Wallets{
+		defaultWallet: 0,
+		wallets:       processedWallets,
+	}, nil
 }
 
 func walletSliceIndexInRange(wallets []BlockchainWallet, i int) error {
