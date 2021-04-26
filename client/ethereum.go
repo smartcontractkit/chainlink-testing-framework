@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"integrations-framework/contracts"
 	"math/big"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"golang.org/x/crypto/sha3"
 )
 
 // EthereumClient wraps the client and the BlockChain network to interact with an EVM based Blockchain
@@ -31,24 +33,39 @@ func NewEthereumClient(network BlockchainNetwork) (*EthereumClient, error) {
 	}, nil
 }
 
-func (e *EthereumClient) GetLatestBlock() (Block, error) {
+// GetLatestBlock retrieves the latest valid block from the EVM based chain
+func (e *EthereumClient) GetLatestBlock() (*Block, error) {
 	latestHeader, err := e.Client.HeaderByNumber(context.Background(), nil)
 	if err != nil {
-		return nil, err
+		return &Block{}, err
 	}
 
+	latestBlock, err := e.Client.BlockByNumber(context.Background(), latestHeader.Number)
+	if err != nil {
+		return &Block{}, err
+	}
+
+	return &Block{
+		Hash:   latestBlock.Hash().Hex(),
+		Number: latestBlock.Number().Uint64(),
+	}, nil
 }
 
-func (e *EthereumClient) GetBlockByHash(hash string) (Block, error) {
+// GetBlockByHash retrieves a valid block from the EVM based chain, based on the provided hash
+func (e *EthereumClient) GetBlockByHash(hash string) (*Block, error) {
 	block, err := e.Client.BlockByHash(context.Background(), common.HexToHash(hash))
 	if err != nil {
-		return nil, err
+		return &Block{}, err
 	}
 
+	return &Block{
+		Hash:   block.Hash().Hex(),
+		Number: block.NumberU64(),
+	}, nil
 }
 
-// SendTransaction sends a specified amount of WEI from a selected wallet to an address
-func (e *EthereumClient) SendTransaction(fromWallet BlockchainWallet, toAddress string, weiAmount int64) (string, error) {
+// SendNativeTransaction sends a specified amount of WEI from a selected wallet to an address
+func (e *EthereumClient) SendNativeTransaction(fromWallet BlockchainWallet, toHexAddress string, amount *big.Int) (string, error) {
 	gasPrice, err := e.Client.SuggestGasPrice(context.Background())
 	if err != nil {
 		return "", err
@@ -62,7 +79,7 @@ func (e *EthereumClient) SendTransaction(fromWallet BlockchainWallet, toAddress 
 	privateKey, _ := crypto.HexToECDSA(fromWallet.PrivateKey())
 
 	unsignedTransaction :=
-		types.NewTransaction(nonce, common.HexToAddress(toAddress), big.NewInt(weiAmount),
+		types.NewTransaction(nonce, common.HexToAddress(toHexAddress), amount,
 			e.Network.Config().TransactionLimit, gasPrice, nil)
 
 	signedTransaction, err := types.SignTx(unsignedTransaction, types.NewEIP2930Signer(e.Network.ChainID()), privateKey)
@@ -72,6 +89,62 @@ func (e *EthereumClient) SendTransaction(fromWallet BlockchainWallet, toAddress 
 
 	err = e.Client.SendTransaction(context.Background(), signedTransaction)
 	return signedTransaction.Hash().Hex(), err
+}
+
+// SendLinkTransaction sends a specified amount of LINK from a wallet to a public address
+func (e *EthereumClient) SendLinkTransaction(
+	fromWallet BlockchainWallet, toHexAddress string, amount *big.Int) (string, error) {
+
+	linkTokenAddress := common.HexToAddress(e.Network.Config().LinkTokenAddress)
+	toAddress := common.HexToAddress(toHexAddress)
+	gasPrice, err := e.Client.SuggestGasPrice(context.Background())
+	if err != nil {
+		return "", err
+	}
+
+	nonce, err := e.Client.PendingNonceAt(context.Background(), common.HexToAddress(fromWallet.Address()))
+	if err != nil {
+		return "", err
+	}
+
+	privateKey, _ := crypto.HexToECDSA(fromWallet.PrivateKey())
+
+	// Prepare data to transfer LINK token
+	transferFnSignature := []byte("transfer(address,uint256)")
+	hash := sha3.NewLegacyKeccak256()
+	hash.Write(transferFnSignature)
+	methodID := hash.Sum(nil)[:4]
+	paddedAddress := common.LeftPadBytes(toAddress.Bytes(), 32)
+	paddedAmount := common.LeftPadBytes(amount.Bytes(), 32)
+
+	// Marshall data
+	var data []byte
+	data = append(data, methodID...)
+	data = append(data, paddedAddress...)
+	data = append(data, paddedAmount...)
+
+	unsignedTransaction := types.NewTransaction(nonce, linkTokenAddress, big.NewInt(0),
+		e.Network.Config().TransactionLimit, gasPrice, data)
+
+	signedTransaction, err := types.SignTx(unsignedTransaction, types.NewEIP2930Signer(e.Network.ChainID()), privateKey)
+	if err != nil {
+		return "", err
+	}
+
+	err = e.Client.SendTransaction(context.Background(), signedTransaction)
+	return signedTransaction.Hash().Hex(), err
+}
+
+// GetNativeBalance returns the balance of ETH a public address has in WEI
+func (e *EthereumClient) GetNativeBalance(addressHex string) (*big.Int, error) {
+	accountAddress := common.HexToAddress(addressHex)
+	return e.Client.BalanceAt(context.Background(), accountAddress, nil)
+}
+
+// GetLinkBalance returns to balance of LINK a public address has
+func (e *EthereumClient) GetLinkBalance(addressHex string) (*big.Int, error) {
+	// TODO: Needs LINK token in hardhat
+	return nil, errors.New("not implemented yet")
 }
 
 // DeployStorageContract deploys a vanilla storage contract that is a kv store
@@ -99,8 +172,4 @@ func (e *EthereumClient) DeployStorageContract(wallet BlockchainWallet) error {
 
 	_, _, _, err = contracts.DeployStorage(auth, e.Client, "1.0")
 	return err
-}
-
-func ethBlockToGeneralBlock(block types.Block) (Block, error) {
-
 }
