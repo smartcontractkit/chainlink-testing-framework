@@ -45,9 +45,15 @@ func (e *EthereumClient) GetLatestBlock() (*Block, error) {
 		return &Block{}, err
 	}
 
+	transactions, err := getTransactions(latestBlock)
+	if err != nil {
+		return &Block{}, err
+	}
+
 	return &Block{
-		Hash:   latestBlock.Hash().Hex(),
-		Number: latestBlock.Number().Uint64(),
+		Hash:         latestBlock.Hash().Hex(),
+		Number:       latestBlock.Number().Uint64(),
+		Transactions: transactions,
 	}, nil
 }
 
@@ -58,14 +64,22 @@ func (e *EthereumClient) GetBlockByHash(hash string) (*Block, error) {
 		return &Block{}, err
 	}
 
+	transactions, err := getTransactions(block)
+	if err != nil {
+		return &Block{}, err
+	}
+
 	return &Block{
-		Hash:   block.Hash().Hex(),
-		Number: block.NumberU64(),
+		Hash:         block.Hash().Hex(),
+		Number:       block.NumberU64(),
+		Transactions: transactions,
 	}, nil
 }
 
 // SendNativeTransaction sends a specified amount of WEI from a selected wallet to an address
-func (e *EthereumClient) SendNativeTransaction(fromWallet BlockchainWallet, toHexAddress string, amount *big.Int) (string, error) {
+func (e *EthereumClient) SendNativeTransaction(
+	fromWallet BlockchainWallet, toHexAddress string, amount *big.Int) (string, error) {
+
 	gasPrice, err := e.Client.SuggestGasPrice(context.Background())
 	if err != nil {
 		return "", err
@@ -172,4 +186,25 @@ func (e *EthereumClient) DeployStorageContract(wallet BlockchainWallet) error {
 
 	_, _, _, err = contracts.DeployStorage(auth, e.Client, "1.0")
 	return err
+}
+
+// Marshalls ethereum specific transactions in a block into our generic transactions type
+func getTransactions(block *types.Block) (Transactions, error) {
+	transactions := make(Transactions)
+	for _, tx := range block.Transactions() {
+		message, err := tx.AsMessage(types.EIP155Signer{})
+		if err != nil {
+			return nil, err
+		}
+
+		transactions[tx.Hash().Hex()] = &Transaction{
+			From:            message.From().Hex(),
+			To:              tx.To().Hex(),
+			NativeAmount:    tx.Value(),
+			LinkTokenAmount: nil, // TODO: This is tricky, looking into it further
+		}
+
+	}
+
+	return transactions, nil
 }

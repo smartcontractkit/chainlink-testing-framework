@@ -47,8 +47,18 @@ type BlockchainNetwork interface {
 type BlockchainNetworkInit func(conf *config.Config) BlockchainNetwork
 
 type Block struct {
-	Hash   string
-	Number uint64
+	Hash         string
+	Number       uint64
+	Transactions Transactions
+}
+
+type Transactions map[string]*Transaction
+
+type Transaction struct {
+	From            string
+	To              string
+	NativeAmount    *big.Int
+	LinkTokenAmount *big.Int
 }
 
 // EthereumHardhat is the implementation of BlockchainNetwork for the local ETH dev server
