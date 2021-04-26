@@ -57,3 +57,7 @@ func TestEthereumClient_DeployStorageContract(t *testing.T) {
 		})
 	}
 }
+
+func TestTransaction(t *testing.T) {
+
+}
