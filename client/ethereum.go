@@ -31,31 +31,20 @@ func NewEthereumClient(network BlockchainNetwork) (*EthereumClient, error) {
 	}, nil
 }
 
-// DeployStorageContract deploys a vanilla storage contract that is a kv store
-func (e *EthereumClient) DeployStorageContract(wallet BlockchainWallet) error {
-	gasPrice, err := e.Client.SuggestGasPrice(context.Background())
+func (e *EthereumClient) GetLatestBlock() (Block, error) {
+	latestHeader, err := e.Client.HeaderByNumber(context.Background(), nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	nonce, err := e.Client.PendingNonceAt(context.Background(), common.HexToAddress(wallet.Address()))
+}
+
+func (e *EthereumClient) GetBlockByHash(hash string) (Block, error) {
+	block, err := e.Client.BlockByHash(context.Background(), common.HexToHash(hash))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	privateKey, _ := crypto.HexToECDSA(wallet.PrivateKey())
-	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, e.Network.ChainID())
-	if err != nil {
-		return err
-	}
-
-	auth.Nonce = big.NewInt(int64(nonce))
-	auth.Value = big.NewInt(3)                          // in wei
-	auth.GasLimit = e.Network.Config().TransactionLimit // in units
-	auth.GasPrice = gasPrice
-
-	_, _, _, err = contracts.DeployStorage(auth, e.Client, "1.0")
-	return err
 }
 
 // SendTransaction sends a specified amount of WEI from a selected wallet to an address
@@ -83,4 +72,35 @@ func (e *EthereumClient) SendTransaction(fromWallet BlockchainWallet, toAddress 
 
 	err = e.Client.SendTransaction(context.Background(), signedTransaction)
 	return signedTransaction.Hash().Hex(), err
+}
+
+// DeployStorageContract deploys a vanilla storage contract that is a kv store
+func (e *EthereumClient) DeployStorageContract(wallet BlockchainWallet) error {
+	gasPrice, err := e.Client.SuggestGasPrice(context.Background())
+	if err != nil {
+		return err
+	}
+
+	nonce, err := e.Client.PendingNonceAt(context.Background(), common.HexToAddress(wallet.Address()))
+	if err != nil {
+		return err
+	}
+
+	privateKey, _ := crypto.HexToECDSA(wallet.PrivateKey())
+	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, e.Network.ChainID())
+	if err != nil {
+		return err
+	}
+
+	auth.Nonce = big.NewInt(int64(nonce))
+	auth.Value = big.NewInt(3)                          // in wei
+	auth.GasLimit = e.Network.Config().TransactionLimit // in units
+	auth.GasPrice = gasPrice
+
+	_, _, _, err = contracts.DeployStorage(auth, e.Client, "1.0")
+	return err
+}
+
+func ethBlockToGeneralBlock(block types.Block) (Block, error) {
+
 }
