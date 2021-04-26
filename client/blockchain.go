@@ -15,6 +15,7 @@ const EthereumHardhatID = "ethereum_hardhat"
 // Generalized blockchain client for interaction with multiple different blockchains
 type BlockchainClient interface {
 	DeployStorageContract(wallet BlockchainWallet) error
+	SendTransaction(BlockchainWallet, string, int64) (string, error)
 }
 
 // NewBlockchainClient returns an implementation of a BlockchainClient based on the given network

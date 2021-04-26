@@ -30,11 +30,12 @@ func (c *Config) GetNetworkConfig(name string) (*NetworkConfig, error) {
 
 // NetworkConfig holds the basic values that identify a blockchain network and contains private keys on the network
 type NetworkConfig struct {
-	Name            string   `mapstructure:"name" yaml:"name"`
-	URL             string   `mapstructure:"url" yaml:"url"`
-	ChainID         int64    `mapstructure:"chain_id" yaml:"chain_id"`
-	PrivateKeys     []string `mapstructure:"private_keys" yaml:"private_keys"`
-	PrivateKeyStore PrivateKeyStore
+	Name             string   `mapstructure:"name" yaml:"name"`
+	URL              string   `mapstructure:"url" yaml:"url"`
+	ChainID          int64    `mapstructure:"chain_id" yaml:"chain_id"`
+	PrivateKeys      []string `mapstructure:"private_keys" yaml:"private_keys"`
+	TransactionLimit uint64   `mapstructure:"transaction_limit" yaml:"transaction_limit"`
+	PrivateKeyStore  PrivateKeyStore
 }
 
 // NewConfig creates a new configuration instance via viper from env vars, config file, or a secret store
