@@ -35,6 +35,7 @@ type NetworkConfig struct {
 	ChainID          int64    `mapstructure:"chain_id" yaml:"chain_id"`
 	PrivateKeys      []string `mapstructure:"private_keys" yaml:"private_keys"`
 	TransactionLimit uint64   `mapstructure:"transaction_limit" yaml:"transaction_limit"`
+	LinkTokenAddress string   `mapstructure:"link_token_address" yaml:"link_token_address"`
 	PrivateKeyStore  PrivateKeyStore
 }
 
