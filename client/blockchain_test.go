@@ -73,7 +73,7 @@ var _ = Describe("Client", func() {
 
 		toWallet, err := wallets.Wallet(1)
 		Expect(err).ShouldNot(HaveOccurred())
-		txHash, err := client.SendNativeTransaction(wallets.Default(), toWallet.Address(), big.NewInt(500))
+		_, err = client.SendNativeTransaction(wallets.Default(), toWallet.Address(), big.NewInt(500))
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// Get latest block and make sure our transaction went through

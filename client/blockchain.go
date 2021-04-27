@@ -15,10 +15,9 @@ const EthereumHardhatID = "ethereum_hardhat"
 // Generalized blockchain client for interaction with multiple different blockchains
 type BlockchainClient interface {
 	// Common blockchain interactions
-	GetLatestBlock() (*Block, error)
-	GetBlockByHash(blockHash string) (*Block, error)
 	GetNativeBalance(addressHex string) (*big.Int, error)
 	GetLinkBalance(addressHex string) (*big.Int, error)
+	SendRawTransaction(fromWallet BlockchainWallet, rawTxDataHex string) (string, error)
 	SendNativeTransaction(fromWallet BlockchainWallet, toHexAddress string, amount *big.Int) (string, error)
 	SendLinkTransaction(fromWallet BlockchainWallet, toHexAddress string, amount *big.Int) (string, error)
 
@@ -45,21 +44,6 @@ type BlockchainNetwork interface {
 }
 
 type BlockchainNetworkInit func(conf *config.Config) BlockchainNetwork
-
-type Block struct {
-	Hash         string
-	Number       uint64
-	Transactions Transactions
-}
-
-type Transactions map[string]*Transaction
-
-type Transaction struct {
-	From            string
-	To              string
-	NativeAmount    *big.Int
-	LinkTokenAmount *big.Int
-}
 
 // EthereumHardhat is the implementation of BlockchainNetwork for the local ETH dev server
 type EthereumHardhat struct {
