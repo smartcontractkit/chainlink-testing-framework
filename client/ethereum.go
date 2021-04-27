@@ -2,15 +2,18 @@ package client
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"integrations-framework/contracts"
 	"math/big"
+	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rlp"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -33,50 +36,36 @@ func NewEthereumClient(network BlockchainNetwork) (*EthereumClient, error) {
 	}, nil
 }
 
-// GetLatestBlock retrieves the latest valid block from the EVM based chain
-func (e *EthereumClient) GetLatestBlock() (*Block, error) {
-	latestHeader, err := e.Client.HeaderByNumber(context.Background(), nil)
+// SendRawTransaction uses a specified wallet and raw hex data to sign and send a raw transaction
+func (e *EthereumClient) SendRawTransaction(fromWallet BlockchainWallet, rawTxDataHex string) (string, error) {
+	rawTxData, err := hex.DecodeString(rawTxDataHex)
 	if err != nil {
-		return &Block{}, err
+		return "", err
 	}
 
-	latestBlock, err := e.Client.BlockByNumber(context.Background(), latestHeader.Number)
+	// Marshal raw data into a transaction
+	transaction := new(types.Transaction)
+	rlp.DecodeBytes(rawTxData, &transaction)
+
+	privateKey, _ := crypto.HexToECDSA(fromWallet.PrivateKey())
+
+	signedTransaction, err := types.SignTx(transaction, types.NewEIP2930Signer(e.Network.ChainID()), privateKey)
 	if err != nil {
-		return &Block{}, err
+		return "", err
 	}
 
-	transactions, err := getTransactions(latestBlock)
+	err = e.Client.SendTransaction(context.Background(), signedTransaction)
 	if err != nil {
-		return &Block{}, err
+		return "", err
 	}
 
-	return &Block{
-		Hash:         latestBlock.Hash().Hex(),
-		Number:       latestBlock.Number().Uint64(),
-		Transactions: transactions,
-	}, nil
+	e.waitForTransaction(signedTransaction.Hash())
+
+	return signedTransaction.Hash().Hex(), err
 }
 
-// GetBlockByHash retrieves a valid block from the EVM based chain, based on the provided hash
-func (e *EthereumClient) GetBlockByHash(hash string) (*Block, error) {
-	block, err := e.Client.BlockByHash(context.Background(), common.HexToHash(hash))
-	if err != nil {
-		return &Block{}, err
-	}
-
-	transactions, err := getTransactions(block)
-	if err != nil {
-		return &Block{}, err
-	}
-
-	return &Block{
-		Hash:         block.Hash().Hex(),
-		Number:       block.NumberU64(),
-		Transactions: transactions,
-	}, nil
-}
-
-// SendNativeTransaction sends a specified amount of WEI from a selected wallet to an address
+// SendNativeTransaction sends a specified amount of WEI from a selected wallet to an address, and blocks until the
+// transaction completes
 func (e *EthereumClient) SendNativeTransaction(
 	fromWallet BlockchainWallet, toHexAddress string, amount *big.Int) (string, error) {
 
@@ -102,6 +91,12 @@ func (e *EthereumClient) SendNativeTransaction(
 	}
 
 	err = e.Client.SendTransaction(context.Background(), signedTransaction)
+	if err != nil {
+		return "", err
+	}
+
+	e.waitForTransaction(signedTransaction.Hash())
+
 	return signedTransaction.Hash().Hex(), err
 }
 
@@ -146,6 +141,12 @@ func (e *EthereumClient) SendLinkTransaction(
 	}
 
 	err = e.Client.SendTransaction(context.Background(), signedTransaction)
+	if err != nil {
+		return "", err
+	}
+
+	e.waitForTransaction(signedTransaction.Hash())
+
 	return signedTransaction.Hash().Hex(), err
 }
 
@@ -188,23 +189,17 @@ func (e *EthereumClient) DeployStorageContract(wallet BlockchainWallet) error {
 	return err
 }
 
-// Marshalls ethereum specific transactions in a block into our generic transactions type
-func getTransactions(block *types.Block) (Transactions, error) {
-	transactions := make(Transactions)
-	for _, tx := range block.Transactions() {
-		message, err := tx.AsMessage(types.EIP155Signer{})
+// Keep checking until the transaction is no longer pending, or if there is an error
+func (e *EthereumClient) waitForTransaction(txHash common.Hash) (bool, error) {
+	_, isPending, err := e.Client.TransactionByHash(context.Background(), txHash)
+	done := 0
+	for isPending {
 		if err != nil {
-			return nil, err
+			break
 		}
-
-		transactions[tx.Hash().Hex()] = &Transaction{
-			From:            message.From().Hex(),
-			To:              tx.To().Hex(),
-			NativeAmount:    tx.Value(),
-			LinkTokenAmount: nil, // TODO: This is tricky, looking into it further
-		}
-
+		time.Sleep(1 * time.Second)
+		_, isPending, err = e.Client.TransactionByHash(context.Background(), txHash)
+		done++
 	}
-
-	return transactions, nil
+	return isPending, err
 }
