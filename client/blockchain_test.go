@@ -70,16 +70,26 @@ var _ = Describe("Client", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		client, err := NewBlockchainClient(networkConfig)
 		Expect(err).ShouldNot(HaveOccurred())
-
 		toWallet, err := wallets.Wallet(1)
 		Expect(err).ShouldNot(HaveOccurred())
-		_, err = client.SendNativeTransaction(wallets.Default(), toWallet.Address(), big.NewInt(500))
+
+		valueToTransfer := big.NewInt(500)
+
+		originNativeStartBalance, err := client.GetNativeBalance(wallets.Default().Address())
+		Expect(err).ShouldNot(HaveOccurred())
+		targetNativeStartBalance, err := client.GetNativeBalance(toWallet.Address())
 		Expect(err).ShouldNot(HaveOccurred())
 
-		// Get latest block and make sure our transaction went through
-		// This can be tricky, there's lots to potentially parameterize around this
-		// Current idea I'm working with is to include a txTimeout config variable
-		// There's more potential issues I thought of but forgot
+		_, err = client.SendNativeTransaction(wallets.Default(), toWallet.Address(), valueToTransfer)
+		Expect(err).ShouldNot(HaveOccurred())
+
+		originNativeEndBalance, err := client.GetNativeBalance(wallets.Default().Address())
+		Expect(err).ShouldNot(HaveOccurred())
+		targetNativeEndBalance, err := client.GetNativeBalance(toWallet.Address())
+		Expect(err).ShouldNot(HaveOccurred())
+
+		Expect(originNativeEndBalance).NotTo(Equal(originNativeStartBalance))
+		Expect(targetNativeEndBalance).NotTo(Equal(targetNativeStartBalance))
 	},
 		Entry("Ethereum Hardhat", NewEthereumHardhat),
 	)
