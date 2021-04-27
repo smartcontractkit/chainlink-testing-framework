@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"encoding/hex"
 	"errors"
 	"integrations-framework/contracts"
@@ -47,21 +48,14 @@ func (e *EthereumClient) SendRawTransaction(fromWallet BlockchainWallet, rawTxDa
 	transaction := new(types.Transaction)
 	rlp.DecodeBytes(rawTxData, &transaction)
 
-	privateKey, _ := crypto.HexToECDSA(fromWallet.PrivateKey())
-
-	signedTransaction, err := types.SignTx(transaction, types.NewEIP2930Signer(e.Network.ChainID()), privateKey)
+	_, _, privateKey, err := e.getEthTransactionBasics(fromWallet)
 	if err != nil {
 		return "", err
 	}
 
-	err = e.Client.SendTransaction(context.Background(), signedTransaction)
-	if err != nil {
-		return "", err
-	}
+	txHash, err := e.signAndSendTransaction(transaction, privateKey)
 
-	e.waitForTransaction(signedTransaction.Hash())
-
-	return signedTransaction.Hash().Hex(), err
+	return txHash.Hex(), err
 }
 
 // SendNativeTransaction sends a specified amount of WEI from a selected wallet to an address, and blocks until the
@@ -69,35 +63,18 @@ func (e *EthereumClient) SendRawTransaction(fromWallet BlockchainWallet, rawTxDa
 func (e *EthereumClient) SendNativeTransaction(
 	fromWallet BlockchainWallet, toHexAddress string, amount *big.Int) (string, error) {
 
-	gasPrice, err := e.Client.SuggestGasPrice(context.Background())
+	gasPrice, nonce, privateKey, err := e.getEthTransactionBasics(fromWallet)
 	if err != nil {
 		return "", err
 	}
-
-	nonce, err := e.Client.PendingNonceAt(context.Background(), common.HexToAddress(fromWallet.Address()))
-	if err != nil {
-		return "", err
-	}
-
-	privateKey, _ := crypto.HexToECDSA(fromWallet.PrivateKey())
 
 	unsignedTransaction :=
 		types.NewTransaction(nonce, common.HexToAddress(toHexAddress), amount,
 			e.Network.Config().TransactionLimit, gasPrice, nil)
 
-	signedTransaction, err := types.SignTx(unsignedTransaction, types.NewEIP2930Signer(e.Network.ChainID()), privateKey)
-	if err != nil {
-		return "", err
-	}
+	txHash, err := e.signAndSendTransaction(unsignedTransaction, privateKey)
 
-	err = e.Client.SendTransaction(context.Background(), signedTransaction)
-	if err != nil {
-		return "", err
-	}
-
-	e.waitForTransaction(signedTransaction.Hash())
-
-	return signedTransaction.Hash().Hex(), err
+	return txHash.Hex(), err
 }
 
 // SendLinkTransaction sends a specified amount of LINK from a wallet to a public address
@@ -106,17 +83,10 @@ func (e *EthereumClient) SendLinkTransaction(
 
 	linkTokenAddress := common.HexToAddress(e.Network.Config().LinkTokenAddress)
 	toAddress := common.HexToAddress(toHexAddress)
-	gasPrice, err := e.Client.SuggestGasPrice(context.Background())
+	gasPrice, nonce, privateKey, err := e.getEthTransactionBasics(fromWallet)
 	if err != nil {
 		return "", err
 	}
-
-	nonce, err := e.Client.PendingNonceAt(context.Background(), common.HexToAddress(fromWallet.Address()))
-	if err != nil {
-		return "", err
-	}
-
-	privateKey, _ := crypto.HexToECDSA(fromWallet.PrivateKey())
 
 	// Prepare data to transfer LINK token
 	transferFnSignature := []byte("transfer(address,uint256)")
@@ -135,19 +105,9 @@ func (e *EthereumClient) SendLinkTransaction(
 	unsignedTransaction := types.NewTransaction(nonce, linkTokenAddress, big.NewInt(0),
 		e.Network.Config().TransactionLimit, gasPrice, data)
 
-	signedTransaction, err := types.SignTx(unsignedTransaction, types.NewEIP2930Signer(e.Network.ChainID()), privateKey)
-	if err != nil {
-		return "", err
-	}
+	txHash, err := e.signAndSendTransaction(unsignedTransaction, privateKey)
 
-	err = e.Client.SendTransaction(context.Background(), signedTransaction)
-	if err != nil {
-		return "", err
-	}
-
-	e.waitForTransaction(signedTransaction.Hash())
-
-	return signedTransaction.Hash().Hex(), err
+	return txHash.Hex(), err
 }
 
 // GetNativeBalance returns the balance of ETH a public address has in WEI
@@ -164,17 +124,11 @@ func (e *EthereumClient) GetLinkBalance(addressHex string) (*big.Int, error) {
 
 // DeployStorageContract deploys a vanilla storage contract that is a kv store
 func (e *EthereumClient) DeployStorageContract(wallet BlockchainWallet) error {
-	gasPrice, err := e.Client.SuggestGasPrice(context.Background())
+	gasPrice, nonce, privateKey, err := e.getEthTransactionBasics(wallet)
 	if err != nil {
 		return err
 	}
 
-	nonce, err := e.Client.PendingNonceAt(context.Background(), common.HexToAddress(wallet.Address()))
-	if err != nil {
-		return err
-	}
-
-	privateKey, _ := crypto.HexToECDSA(wallet.PrivateKey())
 	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, e.Network.ChainID())
 	if err != nil {
 		return err
@@ -189,17 +143,44 @@ func (e *EthereumClient) DeployStorageContract(wallet BlockchainWallet) error {
 	return err
 }
 
-// Keep checking until the transaction is no longer pending, or if there is an error
-func (e *EthereumClient) waitForTransaction(txHash common.Hash) (bool, error) {
-	_, isPending, err := e.Client.TransactionByHash(context.Background(), txHash)
-	done := 0
+// Returns the suggested gas price, nonce, private key, and any errors encountered
+func (e *EthereumClient) getEthTransactionBasics(wallet BlockchainWallet) (*big.Int, uint64, *ecdsa.PrivateKey, error) {
+	gasPrice, err := e.Client.SuggestGasPrice(context.Background())
+	if err != nil {
+		return nil, 0, nil, err
+	}
+
+	nonce, err := e.Client.PendingNonceAt(context.Background(), common.HexToAddress(wallet.Address()))
+	if err != nil {
+		return nil, 0, nil, err
+	}
+
+	privateKey, err := crypto.HexToECDSA(wallet.PrivateKey())
+	return gasPrice, nonce, privateKey, err
+}
+
+// Helper function to sign and send any ethereum transaction, waiting for it to complete before returning
+func (e *EthereumClient) signAndSendTransaction(
+	unsignedTransaction *types.Transaction, privateKey *ecdsa.PrivateKey) (common.Hash, error) {
+
+	signedTransaction, err := types.SignTx(unsignedTransaction, types.NewEIP2930Signer(e.Network.ChainID()), privateKey)
+	if err != nil {
+		return signedTransaction.Hash(), err
+	}
+
+	err = e.Client.SendTransaction(context.Background(), signedTransaction)
+	if err != nil {
+		return signedTransaction.Hash(), err
+	}
+
+	_, isPending, err := e.Client.TransactionByHash(context.Background(), signedTransaction.Hash())
 	for isPending {
 		if err != nil {
 			break
 		}
 		time.Sleep(1 * time.Second)
-		_, isPending, err = e.Client.TransactionByHash(context.Background(), txHash)
-		done++
+		_, isPending, err = e.Client.TransactionByHash(context.Background(), signedTransaction.Hash())
 	}
-	return isPending, err
+
+	return signedTransaction.Hash(), err
 }
