@@ -86,8 +86,8 @@ var _ = Describe("Client", func() {
 		targetNativeEndBalance, err := client.GetNativeBalance(toWallet.Address())
 		Expect(err).ShouldNot(HaveOccurred())
 
-		Expect(originNativeEndBalance).NotTo(Equal(originNativeStartBalance))
-		Expect(targetNativeEndBalance).NotTo(Equal(targetNativeStartBalance))
+		Expect(originNativeEndBalance.Cmp(originNativeStartBalance)).To(Equal(-1))
+		Expect(targetNativeEndBalance.Cmp(targetNativeStartBalance)).To(Equal(1))
 	},
 		Entry("Ethereum Hardhat", NewEthereumHardhat),
 	)
