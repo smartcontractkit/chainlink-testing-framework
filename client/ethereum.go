@@ -12,7 +12,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rlp"
 	"golang.org/x/crypto/sha3"
@@ -38,8 +37,12 @@ func NewEthereumClient(network BlockchainNetwork) (*EthereumClient, error) {
 }
 
 // SendRawTransaction uses a specified wallet and raw hex data to sign and send a raw transaction
-func (e *EthereumClient) SendRawTransaction(fromWallet BlockchainWallet, rawTxDataHex string) (string, error) {
-	rawTxData, err := hex.DecodeString(rawTxDataHex)
+func (e *EthereumClient) SendRawTransaction(options TransactionOptions) (string, error) {
+	rawHex, err := options.Hex()
+	if err != nil {
+		return "", err
+	}
+	rawTxData, err := hex.DecodeString(rawHex)
 	if err != nil {
 		return "", err
 	}
@@ -51,14 +54,13 @@ func (e *EthereumClient) SendRawTransaction(fromWallet BlockchainWallet, rawTxDa
 		return "", err
 	}
 
-	_, _, privateKey, err := e.getEthTransactionBasics(fromWallet)
+	err = e.Client.SendTransaction(context.Background(), transaction)
 	if err != nil {
 		return "", err
 	}
 
-	txHash, err := e.signAndSendTransaction(transaction, privateKey)
-
-	return txHash.Hex(), err
+	err = e.waitForTransaction(transaction.Hash())
+	return transaction.Hash().Hex(), err
 }
 
 // SendNativeTransaction sends a specified amount of WEI from a selected wallet to an address, and blocks until the
@@ -158,20 +160,12 @@ func (e *EthereumClient) getEthTransactionBasics(wallet BlockchainWallet) (*big.
 		return nil, 0, nil, err
 	}
 
-	privateKey, err := crypto.HexToECDSA(wallet.PrivateKey())
-	return gasPrice, nonce, privateKey, err
+	return gasPrice, nonce, wallet.PrivateKey(), err
 }
 
 // Helper function to sign and send any ethereum transaction, waiting for it to complete before returning
 func (e *EthereumClient) signAndSendTransaction(
 	unsignedTransaction *types.Transaction, privateKey *ecdsa.PrivateKey) (common.Hash, error) {
-
-	headerChannel := make(chan *types.Header)
-	subscription, err := e.Client.SubscribeNewHead(context.Background(), headerChannel)
-	defer subscription.Unsubscribe()
-	if err != nil {
-		return common.Hash{}, err
-	}
 
 	signedTransaction, err := types.SignTx(unsignedTransaction, types.NewEIP2930Signer(e.Network.ChainID()), privateKey)
 	if err != nil {
@@ -184,15 +178,26 @@ func (e *EthereumClient) signAndSendTransaction(
 	}
 	log.Println("Sending transaction. Hash: ", signedTransaction.Hash().Hex())
 
+	return signedTransaction.Hash(), err
+}
+
+func (e *EthereumClient) waitForTransaction(transactionHash common.Hash) error {
+	headerChannel := make(chan *types.Header)
+	subscription, err := e.Client.SubscribeNewHead(context.Background(), headerChannel)
+	defer subscription.Unsubscribe()
+	if err != nil {
+		return err
+	}
+
 	// Hardhat is a specific case due to instant block mining
 	if e.Network.ID() == EthereumHardhatID {
 		for {
-			_, isPending, err := e.Client.TransactionByHash(context.Background(), signedTransaction.Hash())
+			_, isPending, err := e.Client.TransactionByHash(context.Background(), transactionHash)
 			if err != nil {
-				return signedTransaction.Hash(), err
+				return err
 			}
 			if !isPending {
-				return signedTransaction.Hash(), err
+				return err
 			}
 		}
 	}
@@ -201,21 +206,21 @@ func (e *EthereumClient) signAndSendTransaction(
 	for {
 		select {
 		case err := <-subscription.Err():
-			return signedTransaction.Hash(), err
+			return err
 		case header := <-headerChannel:
 			// Get latest block
 			block, err := e.Client.BlockByHash(context.Background(), header.Hash())
 			if err != nil {
-				return signedTransaction.Hash(), err
+				return err
 			}
 			log.Println("New block mined. Hash: ", block.Hash().Hex())
 			// Look through it for our transaction
-			_, isPending, err := e.Client.TransactionByHash(context.Background(), signedTransaction.Hash())
+			_, isPending, err := e.Client.TransactionByHash(context.Background(), transactionHash)
 			if err != nil {
-				return signedTransaction.Hash(), err
+				return err
 			}
 			if !isPending {
-				return signedTransaction.Hash(), err
+				return err
 			}
 		}
 	}
