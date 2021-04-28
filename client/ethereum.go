@@ -6,8 +6,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"integrations-framework/contracts"
+	"log"
 	"math/big"
-	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -163,6 +163,13 @@ func (e *EthereumClient) getEthTransactionBasics(wallet BlockchainWallet) (*big.
 func (e *EthereumClient) signAndSendTransaction(
 	unsignedTransaction *types.Transaction, privateKey *ecdsa.PrivateKey) (common.Hash, error) {
 
+	headerChannel := make(chan *types.Header)
+	subscription, err := e.Client.SubscribeNewHead(context.Background(), headerChannel)
+	defer subscription.Unsubscribe()
+	if err != nil {
+		return common.Hash{}, err
+	}
+
 	signedTransaction, err := types.SignTx(unsignedTransaction, types.NewEIP2930Signer(e.Network.ChainID()), privateKey)
 	if err != nil {
 		return signedTransaction.Hash(), err
@@ -172,26 +179,22 @@ func (e *EthereumClient) signAndSendTransaction(
 	if err != nil {
 		return signedTransaction.Hash(), err
 	}
+	log.Println("Sending transaction. Hash: ", signedTransaction.Hash().Hex())
 
-	// Option 1: Poll blockchain every few seconds, asking if a transaction hash has cleared or not
-	// Quick, dirty and easy
-	_, isPending, err := e.Client.TransactionByHash(context.Background(), signedTransaction.Hash())
-	for isPending {
-		if err != nil {
-			break
+	// Hardhat is a specific case due to instant block mining
+	if e.Network.ID() == EthereumHardhatID {
+		for {
+			_, isPending, err := e.Client.TransactionByHash(context.Background(), signedTransaction.Hash())
+			if err != nil {
+				return signedTransaction.Hash(), err
+			}
+			if !isPending {
+				return signedTransaction.Hash(), err
+			}
 		}
-		time.Sleep(1 * time.Second)
-		_, isPending, err = e.Client.TransactionByHash(context.Background(), signedTransaction.Hash())
 	}
 
-	// Option 2: Subscribe to the new blockchain and wait for new blocks to check if transaction is in them or not
-	// The more proper way, but Hardhat doesn't seem to support this, oddly enough
-	headerChannel := make(chan *types.Header)
-	subscription, err := e.Client.SubscribeNewHead(context.Background(), headerChannel)
-	if err != nil {
-		return signedTransaction.Hash(), err
-	}
-
+	// Wait for new block to show in subscription
 	for {
 		select {
 		case err := <-subscription.Err():
@@ -202,15 +205,15 @@ func (e *EthereumClient) signAndSendTransaction(
 			if err != nil {
 				return signedTransaction.Hash(), err
 			}
+			log.Println("New block mined. Hash: ", block.Hash().Hex())
 			// Look through it for our transaction
-			for _, transaction := range block.Transactions() {
-				if transaction.Hash() == signedTransaction.Hash() {
-					return signedTransaction.Hash(), err
-				}
+			_, isPending, err := e.Client.TransactionByHash(context.Background(), signedTransaction.Hash())
+			if err != nil {
+				return signedTransaction.Hash(), err
 			}
-
+			if !isPending {
+				return signedTransaction.Hash(), err
+			}
 		}
 	}
-
-	return signedTransaction.Hash(), err
 }

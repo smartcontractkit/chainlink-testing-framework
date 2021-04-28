@@ -29,7 +29,7 @@ var _ = Describe("Client", func() {
 		Expect(privateKey).To(Equal(wallets.Default().PrivateKey()))
 		Expect(address).To(Equal(wallets.Default().Address()))
 	},
-		Entry("Ethereum Hardhat", NewEthereumHardhat, "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", "WRONG0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"),
+		Entry("on Ethereum Hardhat", NewEthereumHardhat, "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", "WRONG0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"),
 	)
 
 	DescribeTable("deploy the storage contract", func(initFunc BlockchainNetworkInit) {
@@ -41,7 +41,7 @@ var _ = Describe("Client", func() {
 		err = client.DeployStorageContract(wallets.Default())
 		Expect(err).ShouldNot(HaveOccurred())
 	},
-		Entry("Ethereum Hardhat", NewEthereumHardhat),
+		Entry("on Ethereum Hardhat", NewEthereumHardhat),
 	)
 
 	DescribeTable("create new wallet configurations", func(
@@ -55,7 +55,7 @@ var _ = Describe("Client", func() {
 		Expect(privateKey).To(Equal(wallets.Default().PrivateKey()))
 		Expect(address).To(Equal(wallets.Default().Address()))
 	},
-		Entry("Ethereum Hardhat", NewEthereumHardhat,
+		Entry("on Ethereum Hardhat", NewEthereumHardhat,
 			"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
 			"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"),
 	)
@@ -89,7 +89,7 @@ var _ = Describe("Client", func() {
 		Expect(originNativeEndBalance.Cmp(originNativeStartBalance)).To(Equal(-1))
 		Expect(targetNativeEndBalance.Cmp(targetNativeStartBalance)).To(Equal(1))
 	},
-		Entry("Ethereum Hardhat", NewEthereumHardhat),
+		Entry("on Ethereum Hardhat", NewEthereumHardhat),
 	)
 })
 
