@@ -163,7 +163,7 @@ func (e *EthereumClient) getEthTransactionBasics(wallet BlockchainWallet) (*big.
 	return gasPrice, nonce, wallet.PrivateKey(), err
 }
 
-// Helper function to sign and send any ethereum transaction, waiting for it to complete before returning
+// Helper function to sign and send any ethereum transaction
 func (e *EthereumClient) signAndSendTransaction(
 	unsignedTransaction *types.Transaction, privateKey *ecdsa.PrivateKey) (common.Hash, error) {
 
@@ -181,6 +181,7 @@ func (e *EthereumClient) signAndSendTransaction(
 	return signedTransaction.Hash(), err
 }
 
+// Helper function that waits for a specified transaction to clear
 func (e *EthereumClient) waitForTransaction(transactionHash common.Hash) error {
 	headerChannel := make(chan *types.Header)
 	subscription, err := e.Client.SubscribeNewHead(context.Background(), headerChannel)

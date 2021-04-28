@@ -4,6 +4,7 @@ import (
 	"integrations-framework/config"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
@@ -20,13 +21,16 @@ var _ = Describe("Client", func() {
 
 	DescribeTable("create new wallet configurations", func(
 		initFunc BlockchainNetworkInit,
-		privateKey string,
+		privateKeyString string,
 		address string,
 	) {
+		suppliedPrivateKey, err := crypto.HexToECDSA(privateKeyString)
+		Expect(err).ShouldNot(HaveOccurred())
 		networkConfig := initFunc(conf)
 		wallets, err := networkConfig.Wallets()
+		privateKeyToCheckAgainst := wallets.Default().PrivateKey()
 		Expect(err).ShouldNot(HaveOccurred())
-		Expect(privateKey).To(Equal(wallets.Default().PrivateKey()))
+		Expect(suppliedPrivateKey.Equal(privateKeyToCheckAgainst)).To(BeTrue())
 		Expect(address).To(Equal(wallets.Default().Address()))
 	},
 		Entry("on Ethereum Hardhat", NewEthereumHardhat, "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", "WRONG0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"),
@@ -42,22 +46,6 @@ var _ = Describe("Client", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 	},
 		Entry("on Ethereum Hardhat", NewEthereumHardhat),
-	)
-
-	DescribeTable("create new wallet configurations", func(
-		initFunc BlockchainNetworkInit,
-		privateKey string,
-		address string,
-	) {
-		networkConfig := initFunc(conf)
-		wallets, err := networkConfig.Wallets()
-		Expect(err).ShouldNot(HaveOccurred())
-		Expect(privateKey).To(Equal(wallets.Default().PrivateKey()))
-		Expect(address).To(Equal(wallets.Default().Address()))
-	},
-		Entry("on Ethereum Hardhat", NewEthereumHardhat,
-			"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
-			"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"),
 	)
 
 	DescribeTable("send basic ETH transactions", func(
