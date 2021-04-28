@@ -78,7 +78,11 @@ func (e *EthereumClient) SendNativeTransaction(
 			e.Network.Config().TransactionLimit, gasPrice, nil)
 
 	txHash, err := e.signAndSendTransaction(unsignedTransaction, privateKey)
+	if err != nil {
+		return "", err
+	}
 
+	err = e.waitForTransaction(txHash)
 	return txHash.Hex(), err
 }
 
@@ -111,6 +115,11 @@ func (e *EthereumClient) SendLinkTransaction(
 		e.Network.Config().TransactionLimit, gasPrice, data)
 
 	txHash, err := e.signAndSendTransaction(unsignedTransaction, privateKey)
+	if err != nil {
+		return "", err
+	}
+
+	err = e.waitForTransaction(txHash)
 
 	return txHash.Hex(), err
 }
