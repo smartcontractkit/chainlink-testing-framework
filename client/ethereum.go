@@ -173,6 +173,7 @@ func (e *EthereumClient) signAndSendTransaction(
 		return signedTransaction.Hash(), err
 	}
 
+	// Option 1: Poll blockchain every few seconds, asking if a transaction hash has cleared or not
 	_, isPending, err := e.Client.TransactionByHash(context.Background(), signedTransaction.Hash())
 	for isPending {
 		if err != nil {
@@ -180,6 +181,34 @@ func (e *EthereumClient) signAndSendTransaction(
 		}
 		time.Sleep(1 * time.Second)
 		_, isPending, err = e.Client.TransactionByHash(context.Background(), signedTransaction.Hash())
+	}
+
+	// Option 2: Subscribe to the new blockchain and wait for new blocks to check if transaction is in them or not
+	// Hardhat doesn't seem to support this, oddly enough
+	headerChannel := make(chan *types.Header)
+	subscription, err := e.Client.SubscribeNewHead(context.Background(), headerChannel)
+	if err != nil {
+		return signedTransaction.Hash(), err
+	}
+
+	for {
+		select {
+		case err := <-subscription.Err():
+			return signedTransaction.Hash(), err
+		case header := <-headerChannel:
+			// Get latest block
+			block, err := e.Client.BlockByHash(context.Background(), header.Hash())
+			if err != nil {
+				return signedTransaction.Hash(), err
+			}
+			// Look through it for our transaction
+			for _, transaction := range block.Transactions() {
+				if transaction.Hash() == signedTransaction.Hash() {
+					return signedTransaction.Hash(), err
+				}
+			}
+
+		}
 	}
 
 	return signedTransaction.Hash(), err
