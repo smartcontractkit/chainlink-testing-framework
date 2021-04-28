@@ -31,7 +31,7 @@ networks:
         link_token_address: "0x514910771af9ca656af840dff83e8264ecf986ca" # TODO: placeholder, need LINK contract on hardhat
     ethereum_kovan:
         name: "Ethereum Kovan"
-        url: "kwss://parity-kovan.eth.devnet.tools/ws"
+        url: "wss://parity-kovan.eth.devnet.tools/ws"
         chain_id: 42
         private_keys:
             - These
