@@ -46,7 +46,10 @@ func (e *EthereumClient) SendRawTransaction(fromWallet BlockchainWallet, rawTxDa
 
 	// Marshal raw data into a transaction
 	transaction := new(types.Transaction)
-	rlp.DecodeBytes(rawTxData, &transaction)
+	err = rlp.DecodeBytes(rawTxData, &transaction)
+	if err != nil {
+		return "", err
+	}
 
 	_, _, privateKey, err := e.getEthTransactionBasics(fromWallet)
 	if err != nil {
