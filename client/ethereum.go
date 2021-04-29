@@ -4,8 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"encoding/hex"
-	"errors"
-	"integrations-framework/contracts"
+	"integrations-framework/contracts/ethereum"
 	"log"
 	"math/big"
 
@@ -36,8 +35,68 @@ func NewEthereumClient(network BlockchainNetwork) (*EthereumClient, error) {
 	}, nil
 }
 
+// SendTransaction sends a specified amount of WEI from a selected wallet to an address, and blocks until the
+// transaction completes
+func (e *EthereumClient) SendTransaction(
+	fromWallet BlockchainWallet, toHexAddress string, amount int64) (string, error) {
+
+	gasPrice, nonce, privateKey, err := e.getEthTransactionBasics(fromWallet)
+	if err != nil {
+		return "", err
+	}
+
+	unsignedTransaction :=
+		types.NewTransaction(nonce.Uint64(), common.HexToAddress(toHexAddress), big.NewInt(amount),
+			e.Network.Config().TransactionLimit, gasPrice, nil)
+
+	txHash, err := e.signAndSendTransaction(unsignedTransaction, privateKey)
+	if err != nil {
+		return "", err
+	}
+
+	err = e.waitForTransaction(txHash)
+	return txHash.Hex(), err
+}
+
+// DeployStorageContract deploys a vanilla storage contract that is a kv store
+func (e *EthereumClient) DeployStorageContract(fromWallet, fundingWallet BlockchainWallet) (Storage, error) {
+	opts, err := e.getTransactionOpts(fromWallet, big.NewInt(0))
+	if err != nil {
+		return nil, err
+	}
+
+	// Deploy contract
+	contractAddress, transaction, storageInstance, err := ethereum.DeployStorage(opts, e.Client, "1.0")
+	if err != nil {
+		return nil, err
+	}
+	result, err := e.Client.TransactionReceipt(context.Background(), transaction.Hash())
+	if err != nil {
+		return nil, err
+	}
+	log.Println("Contract transaction result:", result.Status)
+	err = e.waitForTransaction(transaction.Hash())
+	if err != nil {
+		return nil, err
+	}
+	log.Println("Deployed Storage Contract at", contractAddress)
+
+	// Fund it
+	txHash, err := e.SendTransaction(fundingWallet, contractAddress.Hex(), 500000)
+	if err != nil {
+		return nil, err
+	}
+	err = e.waitForTransaction(common.HexToHash(txHash))
+	if err != nil {
+		return nil, err
+	}
+	log.Println("Funded Storage Contract at", contractAddress)
+
+	return NewEthereumStorage(e, storageInstance, fromWallet), err
+}
+
 // SendRawTransaction uses a specified wallet and raw hex data to sign and send a raw transaction
-func (e *EthereumClient) SendRawTransaction(options TransactionOptions) (string, error) {
+func (e *EthereumClient) sendRawTransaction(options TransactionOptions) (string, error) {
 	rawHex, err := options.Hex()
 	if err != nil {
 		return "", err
@@ -63,31 +122,8 @@ func (e *EthereumClient) SendRawTransaction(options TransactionOptions) (string,
 	return transaction.Hash().Hex(), err
 }
 
-// SendNativeTransaction sends a specified amount of WEI from a selected wallet to an address, and blocks until the
-// transaction completes
-func (e *EthereumClient) SendNativeTransaction(
-	fromWallet BlockchainWallet, toHexAddress string, amount *big.Int) (string, error) {
-
-	gasPrice, nonce, privateKey, err := e.getEthTransactionBasics(fromWallet)
-	if err != nil {
-		return "", err
-	}
-
-	unsignedTransaction :=
-		types.NewTransaction(nonce, common.HexToAddress(toHexAddress), amount,
-			e.Network.Config().TransactionLimit, gasPrice, nil)
-
-	txHash, err := e.signAndSendTransaction(unsignedTransaction, privateKey)
-	if err != nil {
-		return "", err
-	}
-
-	err = e.waitForTransaction(txHash)
-	return txHash.Hex(), err
-}
-
 // SendLinkTransaction sends a specified amount of LINK from a wallet to a public address
-func (e *EthereumClient) SendLinkTransaction(
+func (e *EthereumClient) sendLinkTransaction(
 	fromWallet BlockchainWallet, toHexAddress string, amount *big.Int) (string, error) {
 
 	linkTokenAddress := common.HexToAddress(e.Network.Config().LinkTokenAddress)
@@ -111,7 +147,7 @@ func (e *EthereumClient) SendLinkTransaction(
 	data = append(data, paddedAddress...)
 	data = append(data, paddedAmount...)
 
-	unsignedTransaction := types.NewTransaction(nonce, linkTokenAddress, big.NewInt(0),
+	unsignedTransaction := types.NewTransaction(nonce.Uint64(), linkTokenAddress, big.NewInt(0),
 		e.Network.Config().TransactionLimit, gasPrice, data)
 
 	txHash, err := e.signAndSendTransaction(unsignedTransaction, privateKey)
@@ -124,52 +160,19 @@ func (e *EthereumClient) SendLinkTransaction(
 	return txHash.Hex(), err
 }
 
-// GetNativeBalance returns the balance of ETH a public address has in WEI
-func (e *EthereumClient) GetNativeBalance(addressHex string) (*big.Int, error) {
-	accountAddress := common.HexToAddress(addressHex)
-	return e.Client.BalanceAt(context.Background(), accountAddress, nil)
-}
-
-// GetLinkBalance returns to balance of LINK a public address has
-func (e *EthereumClient) GetLinkBalance(addressHex string) (*big.Int, error) {
-	// TODO: Needs LINK token in hardhat
-	return nil, errors.New("not implemented yet")
-}
-
-// DeployStorageContract deploys a vanilla storage contract that is a kv store
-func (e *EthereumClient) DeployStorageContract(wallet BlockchainWallet) error {
-	gasPrice, nonce, privateKey, err := e.getEthTransactionBasics(wallet)
-	if err != nil {
-		return err
-	}
-
-	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, e.Network.ChainID())
-	if err != nil {
-		return err
-	}
-
-	auth.Nonce = big.NewInt(int64(nonce))
-	auth.Value = big.NewInt(3)                          // in wei
-	auth.GasLimit = e.Network.Config().TransactionLimit // in units
-	auth.GasPrice = gasPrice
-
-	_, _, _, err = contracts.DeployStorage(auth, e.Client, "1.0")
-	return err
-}
-
 // Returns the suggested gas price, nonce, private key, and any errors encountered
-func (e *EthereumClient) getEthTransactionBasics(wallet BlockchainWallet) (*big.Int, uint64, *ecdsa.PrivateKey, error) {
+func (e *EthereumClient) getEthTransactionBasics(wallet BlockchainWallet) (*big.Int, *big.Int, *ecdsa.PrivateKey, error) {
 	gasPrice, err := e.Client.SuggestGasPrice(context.Background())
 	if err != nil {
-		return nil, 0, nil, err
+		return nil, nil, nil, err
 	}
 
 	nonce, err := e.Client.PendingNonceAt(context.Background(), common.HexToAddress(wallet.Address()))
 	if err != nil {
-		return nil, 0, nil, err
+		return nil, nil, nil, err
 	}
 
-	return gasPrice, nonce, wallet.PrivateKey(), err
+	return gasPrice, new(big.Int).SetUint64(nonce), wallet.PrivateKey(), err
 }
 
 // Helper function to sign and send any ethereum transaction
@@ -185,7 +188,7 @@ func (e *EthereumClient) signAndSendTransaction(
 	if err != nil {
 		return signedTransaction.Hash(), err
 	}
-	log.Println("Sending transaction. Hash: ", signedTransaction.Hash().Hex())
+	log.Println("Sending transaction", signedTransaction.Hash().Hex())
 
 	return signedTransaction.Hash(), err
 }
@@ -234,4 +237,24 @@ func (e *EthereumClient) waitForTransaction(transactionHash common.Hash) error {
 			}
 		}
 	}
+}
+
+// Builds the default TransactOpts object used for various eth transaction types
+func (e *EthereumClient) getTransactionOpts(fromWallet BlockchainWallet, value *big.Int) (*bind.TransactOpts, error) {
+	gasPrice, nonce, privateKey, err := e.getEthTransactionBasics(fromWallet)
+	if err != nil {
+		return nil, err
+	}
+
+	opts, err := bind.NewKeyedTransactorWithChainID(privateKey, e.Network.ChainID())
+	if err != nil {
+		return nil, err
+	}
+
+	opts.Nonce = nonce
+	opts.Value = value                                  // in wei
+	opts.GasLimit = e.Network.Config().TransactionLimit // in units
+	opts.GasPrice = gasPrice
+
+	return opts, err
 }

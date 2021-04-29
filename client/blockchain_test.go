@@ -1,8 +1,8 @@
 package client
 
 import (
+	"context"
 	"integrations-framework/config"
-	"math/big"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	. "github.com/onsi/ginkgo"
@@ -38,47 +38,25 @@ var _ = Describe("Client", func() {
 			"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"),
 	)
 
-	DescribeTable("deploy the storage contract", func(initFunc BlockchainNetworkInit) {
-		networkConfig := initFunc(conf)
-		client, err := NewBlockchainClient(networkConfig)
-		Expect(err).ShouldNot(HaveOccurred())
-		wallets, err := networkConfig.Wallets()
-		Expect(err).ShouldNot(HaveOccurred())
-		err = client.DeployStorageContract(wallets.Default())
-		Expect(err).ShouldNot(HaveOccurred())
-	},
-		Entry("on Ethereum Hardhat", NewEthereumHardhat),
-	)
-
-	DescribeTable("send basic ETH transactions", func(
+	DescribeTable("deploy and interact with the storage contract", func(
 		initFunc BlockchainNetworkInit,
+		contractVersion string,
 	) {
+		// Deploy contract
 		networkConfig := initFunc(conf)
-		wallets, err := networkConfig.Wallets()
-		Expect(err).ShouldNot(HaveOccurred())
 		client, err := NewBlockchainClient(networkConfig)
 		Expect(err).ShouldNot(HaveOccurred())
-		toWallet, err := wallets.Wallet(1)
+		wallets, err := networkConfig.Wallets()
+		Expect(err).ShouldNot(HaveOccurred())
+		storageInstance, err := client.DeployStorageContract(wallets.Default(), wallets.Default())
 		Expect(err).ShouldNot(HaveOccurred())
 
-		valueToTransfer := big.NewInt(500)
-
-		originNativeStartBalance, err := client.GetNativeBalance(wallets.Default().Address())
+		// Interact with contract
+		vers, err := storageInstance.Version(context.Background())
 		Expect(err).ShouldNot(HaveOccurred())
-		targetNativeStartBalance, err := client.GetNativeBalance(toWallet.Address())
-		Expect(err).ShouldNot(HaveOccurred())
-
-		_, err = client.SendNativeTransaction(wallets.Default(), toWallet.Address(), valueToTransfer)
-		Expect(err).ShouldNot(HaveOccurred())
-
-		originNativeEndBalance, err := client.GetNativeBalance(wallets.Default().Address())
-		Expect(err).ShouldNot(HaveOccurred())
-		targetNativeEndBalance, err := client.GetNativeBalance(toWallet.Address())
-		Expect(err).ShouldNot(HaveOccurred())
-
-		Expect(originNativeEndBalance.Cmp(originNativeStartBalance)).To(Equal(-1))
-		Expect(targetNativeEndBalance.Cmp(targetNativeStartBalance)).To(Equal(1))
+		Expect(vers).To(Equal(contractVersion))
 	},
-		Entry("on Ethereum Hardhat", NewEthereumHardhat),
+		Entry("on Ethereum Hardhat", NewEthereumHardhat, "1.0"),
 	)
+
 })

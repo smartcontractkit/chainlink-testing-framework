@@ -1,4 +1,4 @@
-package contracts
+package ethereum
 
 import (
 	"math/big"
