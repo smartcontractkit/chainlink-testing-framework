@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 	"crypto/ecdsa"
-	"encoding/hex"
 	"integrations-framework/contracts/ethereum"
 	"log"
 	"math/big"
@@ -12,8 +11,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/rlp"
-	"golang.org/x/crypto/sha3"
 )
 
 // EthereumClient wraps the client and the BlockChain network to interact with an EVM based Blockchain
@@ -82,71 +79,6 @@ func (e *EthereumClient) DeployStorageContract(fromWallet, fundingWallet Blockch
 	log.Println("Deployed Storage Contract at", contractAddress.Hex())
 
 	return NewEthereumStorage(e, storageInstance, fromWallet), err
-}
-
-// SendRawTransaction uses a specified wallet and raw hex data to sign and send a raw transaction
-func (e *EthereumClient) sendRawTransaction(options TransactionOptions) (string, error) {
-	rawHex, err := options.Hex()
-	if err != nil {
-		return "", err
-	}
-	rawTxData, err := hex.DecodeString(rawHex)
-	if err != nil {
-		return "", err
-	}
-
-	// Marshal raw data into a transaction
-	transaction := new(types.Transaction)
-	err = rlp.DecodeBytes(rawTxData, &transaction)
-	if err != nil {
-		return "", err
-	}
-
-	err = e.Client.SendTransaction(context.Background(), transaction)
-	if err != nil {
-		return "", err
-	}
-
-	err = e.waitForTransaction(transaction.Hash())
-	return transaction.Hash().Hex(), err
-}
-
-// SendLinkTransaction sends a specified amount of LINK from a wallet to a public address
-func (e *EthereumClient) sendLinkTransaction(
-	fromWallet BlockchainWallet, toHexAddress string, amount *big.Int) (string, error) {
-
-	linkTokenAddress := common.HexToAddress(e.Network.Config().LinkTokenAddress)
-	toAddress := common.HexToAddress(toHexAddress)
-	gasPrice, nonce, privateKey, err := e.getEthTransactionBasics(fromWallet)
-	if err != nil {
-		return "", err
-	}
-
-	// Prepare data to transfer LINK token
-	transferFnSignature := []byte("transfer(address,uint256)")
-	hash := sha3.NewLegacyKeccak256()
-	hash.Write(transferFnSignature)
-	methodID := hash.Sum(nil)[:4]
-	paddedAddress := common.LeftPadBytes(toAddress.Bytes(), 32)
-	paddedAmount := common.LeftPadBytes(amount.Bytes(), 32)
-
-	// Marshall data
-	var data []byte
-	data = append(data, methodID...)
-	data = append(data, paddedAddress...)
-	data = append(data, paddedAmount...)
-
-	unsignedTransaction := types.NewTransaction(nonce.Uint64(), linkTokenAddress, big.NewInt(0),
-		e.Network.Config().TransactionLimit, gasPrice, data)
-
-	txHash, err := e.signAndSendTransaction(unsignedTransaction, privateKey)
-	if err != nil {
-		return "", err
-	}
-
-	err = e.waitForTransaction(txHash)
-
-	return txHash.Hex(), err
 }
 
 // Returns the suggested gas price, nonce, private key, and any errors encountered
