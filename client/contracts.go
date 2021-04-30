@@ -10,43 +10,31 @@ import (
 )
 
 type Storage interface {
-	// FilterItemSet(uint64, uint64, context.Context)
-	Items(context.Context, [32]byte) ([32]byte, error)
-	// ParseItemSet()
-	SetItem(context.Context, [32]byte, [32]byte) error
-	Version(context.Context) (string, error)
-	// WatchItemSet()
+	Get(ctxt context.Context) (*big.Int, error)
+	Set(context.Context, *big.Int) error
 }
 
 type EthereumStorage struct {
 	client       *EthereumClient
-	storage      *ethereum.Storage
+	store        *ethereum.Store
 	callerWallet BlockchainWallet
 }
 
-func NewEthereumStorage(client *EthereumClient, storage *ethereum.Storage, callerWallet BlockchainWallet) Storage {
+func NewEthereumStorage(client *EthereumClient, store *ethereum.Store, callerWallet BlockchainWallet) Storage {
 	return &EthereumStorage{
 		client:       client,
-		storage:      storage,
+		store:        store,
 		callerWallet: callerWallet,
 	}
 }
 
-func (e *EthereumStorage) Items(ctxt context.Context, key [32]byte) ([32]byte, error) {
-	opts := &bind.CallOpts{
-		Pending: false,
-		Context: ctxt,
-	}
-	return e.storage.Items(opts, key)
-}
-
-func (e *EthereumStorage) SetItem(ctxt context.Context, key, value [32]byte) error {
+func (e *EthereumStorage) Set(ctxt context.Context, value *big.Int) error {
 	opts, err := e.client.getTransactionOpts(e.callerWallet, big.NewInt(0))
 	if err != nil {
 		return err
 	}
 
-	transaction, err := e.storage.SetItem(opts, key, value)
+	transaction, err := e.store.Set(opts, value)
 	if err != nil {
 		return err
 	}
@@ -54,12 +42,12 @@ func (e *EthereumStorage) SetItem(ctxt context.Context, key, value [32]byte) err
 	return e.client.waitForTransaction(transaction.Hash())
 }
 
-func (e *EthereumStorage) Version(ctxt context.Context) (string, error) {
+func (e *EthereumStorage) Get(ctxt context.Context) (*big.Int, error) {
 	opts := &bind.CallOpts{
 		From:    common.HexToAddress(e.callerWallet.Address()),
-		Pending: false,
+		Pending: true,
 		Context: ctxt,
 	}
-	return e.storage.Version(opts)
+	return e.store.Get(opts)
 
 }

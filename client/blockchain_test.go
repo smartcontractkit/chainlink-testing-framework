@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"integrations-framework/config"
+	"math/big"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	. "github.com/onsi/ginkgo"
@@ -40,7 +41,7 @@ var _ = Describe("Client", func() {
 
 	DescribeTable("deploy and interact with the storage contract", func(
 		initFunc BlockchainNetworkInit,
-		contractVersion string,
+		value *big.Int,
 	) {
 		// Deploy contract
 		networkConfig := initFunc(conf)
@@ -48,15 +49,17 @@ var _ = Describe("Client", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		wallets, err := networkConfig.Wallets()
 		Expect(err).ShouldNot(HaveOccurred())
-		storageInstance, err := client.DeployStorageContract(wallets.Default(), wallets.Default())
+		storeInstance, err := client.DeployStorageContract(wallets.Default(), wallets.Default())
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// Interact with contract
-		vers, err := storageInstance.Version(context.Background())
+		err = storeInstance.Set(context.Background(), big.NewInt(5))
 		Expect(err).ShouldNot(HaveOccurred())
-		Expect(vers).To(Equal(contractVersion))
+		val, err := storeInstance.Get(context.Background())
+		Expect(err).ShouldNot(HaveOccurred())
+		Expect(val).To(Equal(value))
 	},
-		Entry("on Ethereum Hardhat", NewEthereumHardhat, "1.0"),
+		Entry("on Ethereum Hardhat", NewEthereumHardhat, big.NewInt(5)),
 	)
 
 })

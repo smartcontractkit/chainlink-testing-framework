@@ -66,7 +66,7 @@ func (e *EthereumClient) DeployStorageContract(fromWallet, fundingWallet Blockch
 	}
 
 	// Deploy contract
-	contractAddress, transaction, storageInstance, err := ethereum.DeployStorage(opts, e.Client, "1.0")
+	contractAddress, transaction, storageInstance, err := ethereum.DeployStore(opts, e.Client)
 	if err != nil {
 		return nil, err
 	}
@@ -79,18 +79,7 @@ func (e *EthereumClient) DeployStorageContract(fromWallet, fundingWallet Blockch
 	if err != nil {
 		return nil, err
 	}
-	log.Println("Deployed Storage Contract at", contractAddress)
-
-	// Fund it
-	txHash, err := e.SendTransaction(fundingWallet, contractAddress.Hex(), 500000)
-	if err != nil {
-		return nil, err
-	}
-	err = e.waitForTransaction(common.HexToHash(txHash))
-	if err != nil {
-		return nil, err
-	}
-	log.Println("Funded Storage Contract at", contractAddress)
+	log.Println("Deployed Storage Contract at", contractAddress.Hex())
 
 	return NewEthereumStorage(e, storageInstance, fromWallet), err
 }

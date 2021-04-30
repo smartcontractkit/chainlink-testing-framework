@@ -11,7 +11,10 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
-const EthereumHardhatID = "ethereum_hardhat"
+const (
+	EthereumHardhatID = "ethereum_hardhat"
+	EthereumKovanID   = "ethereum_kovan"
+)
 
 // Generalized blockchain client for interaction with multiple different blockchains
 type BlockchainClient interface {

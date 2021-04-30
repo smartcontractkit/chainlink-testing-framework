@@ -1,17 +1,13 @@
-pragma solidity ^0.4.24;
+pragma solidity >=0.8.0;
 
 contract Storage {
-    event ItemSet(bytes32 key, bytes32 value);
+    uint storedData;
 
-    string public version;
-    mapping (bytes32 => bytes32) public items;
-
-    constructor(string _version) public {
-        version = _version;
+    function set(uint x) public {
+        storedData = x;
     }
 
-    function setItem(bytes32 key, bytes32 value) external {
-        items[key] = value;
-        emit ItemSet(key, value);
+    function get() public view returns (uint) {
+        return storedData;
     }
 }
