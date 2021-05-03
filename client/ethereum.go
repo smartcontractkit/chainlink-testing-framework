@@ -4,9 +4,9 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
-	"integrations-framework/contracts"
 	"integrations-framework/contracts/ethereum"
 	"math/big"
+	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -63,7 +63,7 @@ func (e *EthereumClient) SendTransaction(
 }
 
 // DeployStorageContract deploys a vanilla storage contract that is a kv store
-func (e *EthereumClient) DeployStorageContract(fromWallet, fundingWallet BlockchainWallet) (contracts.Storage, error) {
+func (e *EthereumClient) DeployStorageContract(fromWallet, fundingWallet BlockchainWallet) (Storage, error) {
 	opts, err := e.getTransactionOpts(fromWallet, big.NewInt(0))
 	if err != nil {
 		return nil, err
@@ -81,7 +81,7 @@ func (e *EthereumClient) DeployStorageContract(fromWallet, fundingWallet Blockch
 		return nil, err
 	}
 
-	return contracts.NewEthereumStorage(e, storageInstance, fromWallet), err
+	return NewEthereumStorage(e, storageInstance, fromWallet), err
 }
 
 // Returns the suggested gas price, nonce, private key, and any errors encountered
@@ -126,21 +126,8 @@ func (e *EthereumClient) waitForTransaction(transactionHash common.Hash) error {
 		return err
 	}
 
-	// Hardhat is a specific case due to instant block mining
-	if e.Network.ID() == EthereumHardhatID {
-		for {
-			_, isPending, err := e.Client.TransactionByHash(context.Background(), transactionHash)
-			if err != nil {
-				return err
-			}
-			if !isPending {
-				return err
-			}
-		}
-	}
-
-	// Wait for new block to show in subscription
-	for {
+	// Wait for new block to show in subscription, or timeout
+	for start := time.Now(); time.Since(start) < e.Network.Config().Timeout*time.Second; {
 		select {
 		case err := <-subscription.Err():
 			return err
@@ -161,6 +148,8 @@ func (e *EthereumClient) waitForTransaction(transactionHash common.Hash) error {
 			}
 		}
 	}
+	log.Info().Msg("Timeout waiting for transaction after " + e.Network.Config().Timeout.String() + " seconds")
+	return err
 }
 
 // Builds the default TransactOpts object used for various eth transaction types

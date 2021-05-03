@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -30,12 +31,13 @@ func (c *Config) GetNetworkConfig(name string) (*NetworkConfig, error) {
 
 // NetworkConfig holds the basic values that identify a blockchain network and contains private keys on the network
 type NetworkConfig struct {
-	Name             string   `mapstructure:"name" yaml:"name"`
-	URL              string   `mapstructure:"url" yaml:"url"`
-	ChainID          int64    `mapstructure:"chain_id" yaml:"chain_id"`
-	PrivateKeys      []string `mapstructure:"private_keys" yaml:"private_keys"`
-	TransactionLimit uint64   `mapstructure:"transaction_limit" yaml:"transaction_limit"`
-	LinkTokenAddress string   `mapstructure:"link_token_address" yaml:"link_token_address"`
+	Name             string        `mapstructure:"name" yaml:"name"`
+	URL              string        `mapstructure:"url" yaml:"url"`
+	ChainID          int64         `mapstructure:"chain_id" yaml:"chain_id"`
+	PrivateKeys      []string      `mapstructure:"private_keys" yaml:"private_keys"`
+	TransactionLimit uint64        `mapstructure:"transaction_limit" yaml:"transaction_limit"`
+	Timeout          time.Duration `mapstructure:"transaction_timeout_seconds" yaml:"transaction_timeout_seconds"`
+	LinkTokenAddress string        `mapstructure:"link_token_address" yaml:"link_token_address"`
 	PrivateKeyStore  PrivateKeyStore
 }
 

@@ -3,7 +3,6 @@ package client
 import (
 	"fmt"
 	"integrations-framework/config"
-	"integrations-framework/contracts"
 	"math/big"
 	"strings"
 
@@ -22,7 +21,7 @@ type BlockchainClient interface {
 	SendTransaction(BlockchainWallet, string, int64) (string, error)
 
 	// Deploy a PoC kv store contract
-	DeployStorageContract(fromWallet, fundingWallet BlockchainWallet) (contracts.Storage, error)
+	DeployStorageContract(fromWallet, fundingWallet BlockchainWallet) (Storage, error)
 }
 
 // NewBlockchainClient returns an implementation of a BlockchainClient based on the given network
