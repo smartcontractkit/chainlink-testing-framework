@@ -1,9 +1,9 @@
 package client
 
 import (
-	"crypto/ecdsa"
 	"fmt"
 	"integrations-framework/config"
+	"integrations-framework/contracts"
 	"math/big"
 	"strings"
 
@@ -22,7 +22,7 @@ type BlockchainClient interface {
 	SendTransaction(BlockchainWallet, string, int64) (string, error)
 
 	// Deploy a PoC kv store contract
-	DeployStorageContract(fromWallet, fundingWallet BlockchainWallet) (Storage, error)
+	DeployStorageContract(fromWallet, fundingWallet BlockchainWallet) (contracts.Storage, error)
 }
 
 // NewBlockchainClient returns an implementation of a BlockchainClient based on the given network
@@ -120,13 +120,13 @@ func (w *Wallets) Wallet(i int) (BlockchainWallet, error) {
 // BlockchainWallet when implemented is the interface to allow multiple wallet implementations for each
 // BlockchainNetwork that is supported
 type BlockchainWallet interface {
-	PrivateKey() *ecdsa.PrivateKey
+	PrivateKey() string
 	Address() string
 }
 
 // EthereumWallet is the implementation to allow testing with ETH based wallets
 type EthereumWallet struct {
-	privateKey *ecdsa.PrivateKey
+	privateKey string
 	address    common.Address
 }
 
@@ -137,13 +137,13 @@ func NewEthereumWallet(pk string) (*EthereumWallet, error) {
 		return nil, fmt.Errorf("invalid private key: %v", err)
 	}
 	return &EthereumWallet{
-		privateKey: privateKey,
+		privateKey: pk,
 		address:    crypto.PubkeyToAddress(privateKey.PublicKey),
 	}, nil
 }
 
 // PrivateKey returns the private key for a given Ethereum wallet
-func (e *EthereumWallet) PrivateKey() *ecdsa.PrivateKey {
+func (e *EthereumWallet) PrivateKey() string {
 	return e.privateKey
 }
 

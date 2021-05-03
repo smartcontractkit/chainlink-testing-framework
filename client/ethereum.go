@@ -3,14 +3,17 @@ package client
 import (
 	"context"
 	"crypto/ecdsa"
+	"fmt"
+	"integrations-framework/contracts"
 	"integrations-framework/contracts/ethereum"
-	"log"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/rs/zerolog/log"
 )
 
 // EthereumClient wraps the client and the BlockChain network to interact with an EVM based Blockchain
@@ -37,9 +40,13 @@ func NewEthereumClient(network BlockchainNetwork) (*EthereumClient, error) {
 func (e *EthereumClient) SendTransaction(
 	fromWallet BlockchainWallet, toHexAddress string, amount int64) (string, error) {
 
-	gasPrice, nonce, privateKey, err := e.getEthTransactionBasics(fromWallet)
+	gasPrice, nonce, pk, err := e.getEthTransactionBasics(fromWallet)
 	if err != nil {
 		return "", err
+	}
+	privateKey, err := crypto.HexToECDSA(pk)
+	if err != nil {
+		return "", fmt.Errorf("invalid private key: %v", err)
 	}
 
 	unsignedTransaction :=
@@ -56,7 +63,7 @@ func (e *EthereumClient) SendTransaction(
 }
 
 // DeployStorageContract deploys a vanilla storage contract that is a kv store
-func (e *EthereumClient) DeployStorageContract(fromWallet, fundingWallet BlockchainWallet) (Storage, error) {
+func (e *EthereumClient) DeployStorageContract(fromWallet, fundingWallet BlockchainWallet) (contracts.Storage, error) {
 	opts, err := e.getTransactionOpts(fromWallet, big.NewInt(0))
 	if err != nil {
 		return nil, err
@@ -67,30 +74,26 @@ func (e *EthereumClient) DeployStorageContract(fromWallet, fundingWallet Blockch
 	if err != nil {
 		return nil, err
 	}
-	result, err := e.Client.TransactionReceipt(context.Background(), transaction.Hash())
-	if err != nil {
-		return nil, err
-	}
-	log.Println("Contract transaction result:", result.Status)
+
+	log.Info().Str("Contract address", contractAddress.Hex()).Msg("Deployed storage contract")
 	err = e.waitForTransaction(transaction.Hash())
 	if err != nil {
 		return nil, err
 	}
-	log.Println("Deployed Storage Contract at", contractAddress.Hex())
 
-	return NewEthereumStorage(e, storageInstance, fromWallet), err
+	return contracts.NewEthereumStorage(e, storageInstance, fromWallet), err
 }
 
 // Returns the suggested gas price, nonce, private key, and any errors encountered
-func (e *EthereumClient) getEthTransactionBasics(wallet BlockchainWallet) (*big.Int, *big.Int, *ecdsa.PrivateKey, error) {
+func (e *EthereumClient) getEthTransactionBasics(wallet BlockchainWallet) (*big.Int, *big.Int, string, error) {
 	gasPrice, err := e.Client.SuggestGasPrice(context.Background())
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, "", err
 	}
 
 	nonce, err := e.Client.PendingNonceAt(context.Background(), common.HexToAddress(wallet.Address()))
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, "", err
 	}
 
 	return gasPrice, new(big.Int).SetUint64(nonce), wallet.PrivateKey(), err
@@ -109,7 +112,7 @@ func (e *EthereumClient) signAndSendTransaction(
 	if err != nil {
 		return signedTransaction.Hash(), err
 	}
-	log.Println("Sending transaction", signedTransaction.Hash().Hex())
+	log.Info().Str("TX Hash", signedTransaction.Hash().Hex()).Msg("Sending transaction")
 
 	return signedTransaction.Hash(), err
 }
@@ -147,7 +150,7 @@ func (e *EthereumClient) waitForTransaction(transactionHash common.Hash) error {
 			if err != nil {
 				return err
 			}
-			log.Println("New block mined. Hash: ", block.Hash().Hex())
+			log.Info().Str("Block Hash", block.Hash().Hex()).Msg("New block mined")
 			// Look through it for our transaction
 			_, isPending, err := e.Client.TransactionByHash(context.Background(), transactionHash)
 			if err != nil {
@@ -162,9 +165,13 @@ func (e *EthereumClient) waitForTransaction(transactionHash common.Hash) error {
 
 // Builds the default TransactOpts object used for various eth transaction types
 func (e *EthereumClient) getTransactionOpts(fromWallet BlockchainWallet, value *big.Int) (*bind.TransactOpts, error) {
-	gasPrice, nonce, privateKey, err := e.getEthTransactionBasics(fromWallet)
+	gasPrice, nonce, pk, err := e.getEthTransactionBasics(fromWallet)
 	if err != nil {
 		return nil, err
+	}
+	privateKey, err := crypto.HexToECDSA(pk)
+	if err != nil {
+		return nil, fmt.Errorf("invalid private key: %v", err)
 	}
 
 	opts, err := bind.NewKeyedTransactorWithChainID(privateKey, e.Network.ChainID())

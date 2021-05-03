@@ -5,7 +5,6 @@ import (
 	"integrations-framework/config"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/crypto"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
@@ -25,13 +24,10 @@ var _ = Describe("Client", func() {
 		privateKeyString string,
 		address string,
 	) {
-		suppliedPrivateKey, err := crypto.HexToECDSA(privateKeyString)
-		Expect(err).ShouldNot(HaveOccurred())
 		networkConfig := initFunc(conf)
 		wallets, err := networkConfig.Wallets()
-		privateKeyToCheckAgainst := wallets.Default().PrivateKey()
 		Expect(err).ShouldNot(HaveOccurred())
-		Expect(suppliedPrivateKey.Equal(privateKeyToCheckAgainst)).To(BeTrue())
+		Expect(wallets.Default().PrivateKey()).To(Equal(privateKeyString))
 		Expect(address).To(Equal(wallets.Default().Address()))
 	},
 		Entry("on Ethereum Hardhat", NewEthereumHardhat,

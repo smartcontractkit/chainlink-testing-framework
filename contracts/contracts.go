@@ -1,7 +1,8 @@
-package client
+package contracts
 
 import (
 	"context"
+	"integrations-framework/client"
 	"integrations-framework/contracts/ethereum"
 	"math/big"
 
@@ -15,12 +16,13 @@ type Storage interface {
 }
 
 type EthereumStorage struct {
-	client       *EthereumClient
+	client       *client.EthereumClient
 	store        *ethereum.Store
-	callerWallet BlockchainWallet
+	callerWallet client.BlockchainWallet
 }
 
-func NewEthereumStorage(client *EthereumClient, store *ethereum.Store, callerWallet BlockchainWallet) Storage {
+// Creates a new instance of the storage contract for ethereum chains
+func NewEthereumStorage(client *client.EthereumClient, store *ethereum.Store, callerWallet client.BlockchainWallet) Storage {
 	return &EthereumStorage{
 		client:       client,
 		store:        store,
@@ -28,6 +30,7 @@ func NewEthereumStorage(client *EthereumClient, store *ethereum.Store, callerWal
 	}
 }
 
+// Set sets a value in the storage contract
 func (e *EthereumStorage) Set(ctxt context.Context, value *big.Int) error {
 	opts, err := e.client.getTransactionOpts(e.callerWallet, big.NewInt(0))
 	if err != nil {
@@ -42,6 +45,7 @@ func (e *EthereumStorage) Set(ctxt context.Context, value *big.Int) error {
 	return e.client.waitForTransaction(transaction.Hash())
 }
 
+// Get retrieves a set value from the storage contract
 func (e *EthereumStorage) Get(ctxt context.Context) (*big.Int, error) {
 	opts := &bind.CallOpts{
 		From:    common.HexToAddress(e.callerWallet.Address()),
