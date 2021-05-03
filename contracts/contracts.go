@@ -1,7 +1,8 @@
-package client
+package contracts
 
 import (
 	"context"
+	"integrations-framework/client"
 	"integrations-framework/contracts/ethereum"
 	"math/big"
 
@@ -15,13 +16,13 @@ type Storage interface {
 }
 
 type EthereumStorage struct {
-	client       *EthereumClient
+	client       *client.EthereumClient
 	store        *ethereum.Store
-	callerWallet BlockchainWallet
+	callerWallet client.BlockchainWallet
 }
 
 // Creates a new instance of the storage contract for ethereum chains
-func NewEthereumStorage(client *EthereumClient, store *ethereum.Store, callerWallet BlockchainWallet) Storage {
+func NewEthereumStorage(client *client.EthereumClient, store *ethereum.Store, callerWallet client.BlockchainWallet) Storage {
 	return &EthereumStorage{
 		client:       client,
 		store:        store,

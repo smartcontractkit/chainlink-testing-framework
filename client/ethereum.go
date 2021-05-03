@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
+	"integrations-framework/contracts"
 	"integrations-framework/contracts/ethereum"
 	"math/big"
 	"time"
@@ -40,7 +41,7 @@ func NewEthereumClient(network BlockchainNetwork) (*EthereumClient, error) {
 func (e *EthereumClient) SendTransaction(
 	fromWallet BlockchainWallet, toHexAddress string, amount int64) (string, error) {
 
-	gasPrice, nonce, pk, err := e.getEthTransactionBasics(fromWallet)
+	gasPrice, nonce, pk, err := e.GetEthTransactionBasics(fromWallet)
 	if err != nil {
 		return "", err
 	}
@@ -58,13 +59,13 @@ func (e *EthereumClient) SendTransaction(
 		return "", err
 	}
 
-	err = e.waitForTransaction(txHash)
+	err = e.WaitForTransaction(txHash)
 	return txHash.Hex(), err
 }
 
 // DeployStorageContract deploys a vanilla storage contract that is a kv store
 func (e *EthereumClient) DeployStorageContract(fromWallet, fundingWallet BlockchainWallet) (Storage, error) {
-	opts, err := e.getTransactionOpts(fromWallet, big.NewInt(0))
+	opts, err := e.GetTransactionOpts(fromWallet, big.NewInt(0))
 	if err != nil {
 		return nil, err
 	}
@@ -76,16 +77,16 @@ func (e *EthereumClient) DeployStorageContract(fromWallet, fundingWallet Blockch
 	}
 
 	log.Info().Str("Contract address", contractAddress.Hex()).Msg("Deployed storage contract")
-	err = e.waitForTransaction(transaction.Hash())
+	err = e.WaitForTransaction(transaction.Hash())
 	if err != nil {
 		return nil, err
 	}
 
-	return NewEthereumStorage(e, storageInstance, fromWallet), err
+	return contracts.NewEthereumStorage(e, storageInstance, fromWallet), err
 }
 
 // Returns the suggested gas price, nonce, private key, and any errors encountered
-func (e *EthereumClient) getEthTransactionBasics(wallet BlockchainWallet) (*big.Int, *big.Int, string, error) {
+func (e *EthereumClient) GetEthTransactionBasics(wallet BlockchainWallet) (*big.Int, *big.Int, string, error) {
 	gasPrice, err := e.Client.SuggestGasPrice(context.Background())
 	if err != nil {
 		return nil, nil, "", err
@@ -118,7 +119,7 @@ func (e *EthereumClient) signAndSendTransaction(
 }
 
 // Helper function that waits for a specified transaction to clear
-func (e *EthereumClient) waitForTransaction(transactionHash common.Hash) error {
+func (e *EthereumClient) WaitForTransaction(transactionHash common.Hash) error {
 	headerChannel := make(chan *types.Header)
 	subscription, err := e.Client.SubscribeNewHead(context.Background(), headerChannel)
 	defer subscription.Unsubscribe()
@@ -153,8 +154,8 @@ func (e *EthereumClient) waitForTransaction(transactionHash common.Hash) error {
 }
 
 // Builds the default TransactOpts object used for various eth transaction types
-func (e *EthereumClient) getTransactionOpts(fromWallet BlockchainWallet, value *big.Int) (*bind.TransactOpts, error) {
-	gasPrice, nonce, pk, err := e.getEthTransactionBasics(fromWallet)
+func (e *EthereumClient) GetTransactionOpts(fromWallet BlockchainWallet, value *big.Int) (*bind.TransactOpts, error) {
+	gasPrice, nonce, pk, err := e.GetEthTransactionBasics(fromWallet)
 	if err != nil {
 		return nil, err
 	}
