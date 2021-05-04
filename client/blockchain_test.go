@@ -21,26 +21,28 @@ var _ = Describe("Client", func() {
 
 	DescribeTable("create new wallet configurations", func(
 		initFunc BlockchainNetworkInit,
+		networkID BlockchainNetworkID,
 		privateKeyString string,
 		address string,
 	) {
-		networkConfig := initFunc(conf)
+		networkConfig := initFunc(conf, networkID)
 		wallets, err := networkConfig.Wallets()
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(wallets.Default().PrivateKey()).To(Equal(privateKeyString))
 		Expect(address).To(Equal(wallets.Default().Address()))
 	},
-		Entry("on Ethereum Hardhat", NewEthereumHardhat,
+		Entry("on Ethereum Hardhat", NewEthereumNetwork, EthereumHardhatID,
 			"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
 			"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"),
 	)
 
 	DescribeTable("deploy and interact with the storage contract", func(
 		initFunc BlockchainNetworkInit,
+		networkID BlockchainNetworkID,
 		value *big.Int,
 	) {
 		// Deploy contract
-		networkConfig := initFunc(conf)
+		networkConfig := initFunc(conf, networkID)
 		client, err := NewBlockchainClient(networkConfig)
 		Expect(err).ShouldNot(HaveOccurred())
 		wallets, err := networkConfig.Wallets()
@@ -55,7 +57,7 @@ var _ = Describe("Client", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(val).To(Equal(value))
 	},
-		Entry("on Ethereum Hardhat", NewEthereumHardhat, big.NewInt(5)),
+		Entry("on Ethereum Hardhat", NewEthereumNetwork, EthereumHardhatID, big.NewInt(5)),
 	)
 
 })
