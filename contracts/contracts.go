@@ -2,7 +2,6 @@ package contracts
 
 import (
 	"context"
-	"errors"
 	"integrations-framework/client"
 	"integrations-framework/contracts/ethereum"
 	"math/big"
@@ -34,22 +33,17 @@ func NewEthereumStorage(client *client.EthereumClient, store *ethereum.Store, ca
 }
 
 // DeployStorageContract deploys a vanilla storage contract that is a value store
-func DeployStorageContract(blockChainClient client.BlockchainClient, fromWallet client.BlockchainWallet) (Storage, error) {
-	switch blockChainClient.(type) {
-	case *client.EthereumClient:
-		ethClient := blockChainClient.(*client.EthereumClient)
-		_, _, instance, err := ethClient.DeployContract(fromWallet, func(
-			auth *bind.TransactOpts,
-			backend bind.ContractBackend,
-		) (common.Address, *types.Transaction, interface{}, error) {
-			return ethereum.DeployStore(auth, backend)
-		})
-		if err != nil {
-			return nil, err
-		}
-		return NewEthereumStorage(ethClient, instance.(*ethereum.Store), fromWallet), nil
+func DeployStorageContract(ethClient *client.EthereumClient, fromWallet client.BlockchainWallet) (Storage, error) {
+	_, _, instance, err := ethClient.DeployContract(fromWallet, func(
+		auth *bind.TransactOpts,
+		backend bind.ContractBackend,
+	) (common.Address, *types.Transaction, interface{}, error) {
+		return ethereum.DeployStore(auth, backend)
+	})
+	if err != nil {
+		return nil, err
 	}
-	return nil, errors.New("no storage contract deployment supported for the supplied client type")
+	return NewEthereumStorage(ethClient, instance.(*ethereum.Store), fromWallet), nil
 }
 
 // Set sets a value in the storage contract
