@@ -23,7 +23,8 @@ var _ = Describe("Client", func() {
 		privateKeyString string,
 		address string,
 	) {
-		networkConfig := initFunc(conf, networkID)
+		networkConfig, err := initFunc(conf, networkID)
+		Expect(err).ShouldNot(HaveOccurred())
 		wallets, err := networkConfig.Wallets()
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(wallets.Default().PrivateKey()).To(Equal(privateKeyString))

@@ -15,6 +15,7 @@ type BlockchainNetworkID string
 const (
 	EthereumHardhatID BlockchainNetworkID = "ethereum_hardhat"
 	EthereumKovanID   BlockchainNetworkID = "ethereum_kovan"
+	EthereumGoerliID  BlockchainNetworkID = "ethereum_goerli"
 )
 
 // Generalized blockchain client for interaction with multiple different blockchains
@@ -41,7 +42,7 @@ type BlockchainNetwork interface {
 	Config() *config.NetworkConfig
 }
 
-type BlockchainNetworkInit func(conf *config.Config, networkID BlockchainNetworkID) BlockchainNetwork
+type BlockchainNetworkInit func(conf *config.Config, networkID BlockchainNetworkID) (BlockchainNetwork, error)
 
 // EthereumNetwork is the implementation of BlockchainNetwork for the local ETH dev server
 type EthereumNetwork struct {

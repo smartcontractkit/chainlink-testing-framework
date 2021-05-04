@@ -26,7 +26,8 @@ var _ = Describe("Client", func() {
 		value *big.Int,
 	) {
 		// Deploy contract
-		networkConfig := initFunc(conf, networkID)
+		networkConfig, err := initFunc(conf, networkID)
+		Expect(err).ShouldNot(HaveOccurred())
 		client, err := client.NewEthereumClient(networkConfig)
 		Expect(err).ShouldNot(HaveOccurred())
 		wallets, err := networkConfig.Wallets()
