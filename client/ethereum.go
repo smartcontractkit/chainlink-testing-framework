@@ -83,6 +83,7 @@ func (e *EthereumClient) DeployContract(
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	log.Info().Str("Contract Address", contractAddress.Hex()).Msg("Deployed contract")
 	return &contractAddress, transaction, contractInstance, err
 }
 
@@ -114,7 +115,8 @@ func (e *EthereumClient) signAndSendTransaction(
 	if err != nil {
 		return signedTransaction.Hash(), err
 	}
-	log.Info().Str("TX Hash", signedTransaction.Hash().Hex()).Msg("Sending transaction")
+	log.Info().Str("Network", e.Network.Config().Name).
+		Str("TX Hash", signedTransaction.Hash().Hex()).Msg("Sending transaction")
 
 	return signedTransaction.Hash(), err
 }
@@ -135,22 +137,27 @@ func (e *EthereumClient) WaitForTransaction(transactionHash common.Hash) error {
 			return err
 		case header := <-headerChannel:
 			// Get latest block
-			block, err := e.Client.BlockByHash(context.Background(), header.Hash())
+			block, err := e.Client.BlockByNumber(context.Background(), header.Number)
 			if err != nil {
 				return err
 			}
-			log.Info().Str("Block Hash", block.Hash().Hex()).Msg("New block mined")
+			log.Info().Str("Network", e.Network.Config().Name).Str("Block Hash", block.Hash().Hex()).
+				Str("Block Number", block.Number().String()).Msg("New block mined")
 			// Look through it for our transaction
 			_, isPending, err := e.Client.TransactionByHash(context.Background(), transactionHash)
 			if err != nil {
 				return err
 			}
 			if !isPending {
+				log.Info().Str("Network", e.Network.Config().Name).Str("Block Hash", block.Hash().Hex()).
+					Str("Block Number", block.Number().String()).Str("Tx Hash", transactionHash.Hex()).
+					Msg("Found Transaction")
 				return err
 			}
 		}
 	}
-	log.Info().Msg("Timeout waiting for transaction after " + e.Network.Config().Timeout.String() + " seconds")
+	log.Info().Str("Network", e.Network.Config().Name).
+		Msg("Timeout waiting for transaction after " + e.Network.Config().Timeout.String() + " seconds")
 	return err
 }
 

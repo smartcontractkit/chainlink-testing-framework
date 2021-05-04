@@ -33,5 +33,11 @@ var _ = Describe("Client", func() {
 		Entry("on Ethereum Hardhat", NewEthereumNetwork, EthereumHardhatID,
 			"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
 			"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"),
+		Entry("on Ethereum Kovan", NewEthereumNetwork, EthereumKovanID,
+			"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+			"0x8fd379246834eac74B8419FfdA202CF8051F7A03"),
+		Entry("on Ethereum Goerli", NewEthereumNetwork, EthereumGoerliID,
+			"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+			"0x8fd379246834eac74B8419FfdA202CF8051F7A03"),
 	)
 })

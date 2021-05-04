@@ -43,5 +43,7 @@ var _ = Describe("Client", func() {
 		Expect(val).To(Equal(value))
 	},
 		Entry("on Ethereum Hardhat", client.NewEthereumNetwork, client.EthereumHardhatID, big.NewInt(5)),
+		// Entry("on Ethereum Kovan", client.NewEthereumNetwork, client.EthereumKovanID, big.NewInt(5)),
+		// Entry("on Ethereum Goerli", client.NewEthereumNetwork, client.EthereumGoerliID, big.NewInt(5)),
 	)
 })
