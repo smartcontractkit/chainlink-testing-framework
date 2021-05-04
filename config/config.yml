@@ -35,7 +35,6 @@ networks:
         url: "wss://parity-kovan.eth.devnet.tools/ws"
         chain_id: 42
         private_keys:
-            - b78af76799b79173746fdfcd0a44f32b6838af219e3566d28e228ebb4e2ca6e3
             - aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
         transaction_limit: 1000000 
         transaction_timeout_seconds: 10
@@ -45,7 +44,6 @@ networks:
         url: "wss://geth-goerli.eth.devnet.tools/ws"
         chain_id: 5
         private_keys:
-            - b78af76799b79173746fdfcd0a44f32b6838af219e3566d28e228ebb4e2ca6e3
             - aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
         transaction_limit: 1000000 
         transaction_timeout_seconds: 10
