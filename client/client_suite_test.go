@@ -8,7 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestIntegrationsFramework(t *testing.T) {
+func TestClient(t *testing.T) {
 	RegisterFailHandler(Fail)
 
 	junitReporter := reporters.NewJUnitReporter("junit.xml")

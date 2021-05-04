@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
-	"integrations-framework/contracts/ethereum"
 	"math/big"
 	"time"
 
@@ -21,6 +20,8 @@ type EthereumClient struct {
 	Client  *ethclient.Client
 	Network BlockchainNetwork
 }
+
+type ContractDeployer func(auth *bind.TransactOpts, backend bind.ContractBackend) (common.Address, *types.Transaction, interface{}, error)
 
 // NewEthereumClient returns an instantiated instance of the Ethereum client that has connected to the server
 func NewEthereumClient(network BlockchainNetwork) (*EthereumClient, error) {
@@ -40,7 +41,7 @@ func NewEthereumClient(network BlockchainNetwork) (*EthereumClient, error) {
 func (e *EthereumClient) SendTransaction(
 	fromWallet BlockchainWallet, toHexAddress string, amount int64) (string, error) {
 
-	gasPrice, nonce, pk, err := e.getEthTransactionBasics(fromWallet)
+	gasPrice, nonce, pk, err := e.GetEthTransactionBasics(fromWallet)
 	if err != nil {
 		return "", err
 	}
@@ -58,34 +59,35 @@ func (e *EthereumClient) SendTransaction(
 		return "", err
 	}
 
-	err = e.waitForTransaction(txHash)
+	err = e.WaitForTransaction(txHash)
 	return txHash.Hex(), err
 }
 
 // DeployStorageContract deploys a vanilla storage contract that is a kv store
-func (e *EthereumClient) DeployStorageContract(fromWallet, fundingWallet BlockchainWallet) (Storage, error) {
-	opts, err := e.getTransactionOpts(fromWallet, big.NewInt(0))
+func (e *EthereumClient) DeployContract(
+	fromWallet BlockchainWallet,
+	deployer ContractDeployer,
+) (*common.Address, *types.Transaction, interface{}, error) {
+	opts, err := e.GetTransactionOpts(fromWallet, big.NewInt(0))
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 
 	// Deploy contract
-	contractAddress, transaction, storageInstance, err := ethereum.DeployStore(opts, e.Client)
+	contractAddress, transaction, contractInstance, err := deployer(opts, e.Client)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 
-	log.Info().Str("Contract address", contractAddress.Hex()).Msg("Deployed storage contract")
-	err = e.waitForTransaction(transaction.Hash())
+	err = e.WaitForTransaction(transaction.Hash())
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
-
-	return NewEthereumStorage(e, storageInstance, fromWallet), err
+	return &contractAddress, transaction, contractInstance, err
 }
 
 // Returns the suggested gas price, nonce, private key, and any errors encountered
-func (e *EthereumClient) getEthTransactionBasics(wallet BlockchainWallet) (*big.Int, *big.Int, string, error) {
+func (e *EthereumClient) GetEthTransactionBasics(wallet BlockchainWallet) (*big.Int, *big.Int, string, error) {
 	gasPrice, err := e.Client.SuggestGasPrice(context.Background())
 	if err != nil {
 		return nil, nil, "", err
@@ -118,7 +120,7 @@ func (e *EthereumClient) signAndSendTransaction(
 }
 
 // Helper function that waits for a specified transaction to clear
-func (e *EthereumClient) waitForTransaction(transactionHash common.Hash) error {
+func (e *EthereumClient) WaitForTransaction(transactionHash common.Hash) error {
 	headerChannel := make(chan *types.Header)
 	subscription, err := e.Client.SubscribeNewHead(context.Background(), headerChannel)
 	defer subscription.Unsubscribe()
@@ -153,8 +155,8 @@ func (e *EthereumClient) waitForTransaction(transactionHash common.Hash) error {
 }
 
 // Builds the default TransactOpts object used for various eth transaction types
-func (e *EthereumClient) getTransactionOpts(fromWallet BlockchainWallet, value *big.Int) (*bind.TransactOpts, error) {
-	gasPrice, nonce, pk, err := e.getEthTransactionBasics(fromWallet)
+func (e *EthereumClient) GetTransactionOpts(fromWallet BlockchainWallet, value *big.Int) (*bind.TransactOpts, error) {
+	gasPrice, nonce, pk, err := e.GetEthTransactionBasics(fromWallet)
 	if err != nil {
 		return nil, err
 	}
