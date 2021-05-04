@@ -19,9 +19,6 @@ const (
 type BlockchainClient interface {
 	// Send transaction in the blockchain's native currency, sent from a wallet to address
 	SendTransaction(BlockchainWallet, string, int64) (string, error)
-
-	// Deploy a PoC kv store contract
-	DeployStorageContract(fromWallet, fundingWallet BlockchainWallet) (Storage, error)
 }
 
 // NewBlockchainClient returns an implementation of a BlockchainClient based on the given network

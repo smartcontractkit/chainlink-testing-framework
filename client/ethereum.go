@@ -4,8 +4,6 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
-	"integrations-framework/contracts"
-	"integrations-framework/contracts/ethereum"
 	"math/big"
 	"time"
 
@@ -22,6 +20,8 @@ type EthereumClient struct {
 	Client  *ethclient.Client
 	Network BlockchainNetwork
 }
+
+type ContractDeployer func(auth *bind.TransactOpts, backend bind.ContractBackend) (common.Address, *types.Transaction, interface{}, error)
 
 // NewEthereumClient returns an instantiated instance of the Ethereum client that has connected to the server
 func NewEthereumClient(network BlockchainNetwork) (*EthereumClient, error) {
@@ -64,25 +64,26 @@ func (e *EthereumClient) SendTransaction(
 }
 
 // DeployStorageContract deploys a vanilla storage contract that is a kv store
-func (e *EthereumClient) DeployStorageContract(fromWallet, fundingWallet BlockchainWallet) (Storage, error) {
+func (e *EthereumClient) DeployContract(
+	fromWallet BlockchainWallet,
+	deployer ContractDeployer,
+) (*common.Address, *types.Transaction, interface{}, error) {
 	opts, err := e.GetTransactionOpts(fromWallet, big.NewInt(0))
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 
 	// Deploy contract
-	contractAddress, transaction, storageInstance, err := ethereum.DeployStore(opts, e.Client)
+	contractAddress, transaction, contractInstance, err := deployer(opts, e.Client)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 
-	log.Info().Str("Contract address", contractAddress.Hex()).Msg("Deployed storage contract")
 	err = e.WaitForTransaction(transaction.Hash())
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
-
-	return contracts.NewEthereumStorage(e, storageInstance, fromWallet), err
+	return &contractAddress, transaction, contractInstance, err
 }
 
 // Returns the suggested gas price, nonce, private key, and any errors encountered

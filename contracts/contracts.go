@@ -2,6 +2,7 @@ package contracts
 
 import (
 	"context"
+	"github.com/ethereum/go-ethereum/core/types"
 	"integrations-framework/client"
 	"integrations-framework/contracts/ethereum"
 	"math/big"
@@ -30,9 +31,23 @@ func NewEthereumStorage(client *client.EthereumClient, store *ethereum.Store, ca
 	}
 }
 
+// DeployStorageContract deploys a vanilla storage contract that is a kv store
+func DeployStorageContract(client *client.EthereumClient, fromWallet client.BlockchainWallet) (Storage, error) {
+	_, _, instance, err := client.DeployContract(fromWallet, func(
+		auth *bind.TransactOpts,
+		backend bind.ContractBackend,
+	) (common.Address, *types.Transaction, interface{}, error) {
+		return ethereum.DeployStore(auth, backend)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return NewEthereumStorage(client, instance.(*ethereum.Store), fromWallet), nil
+}
+
 // Set sets a value in the storage contract
 func (e *EthereumStorage) Set(ctxt context.Context, value *big.Int) error {
-	opts, err := e.client.getTransactionOpts(e.callerWallet, big.NewInt(0))
+	opts, err := e.client.GetTransactionOpts(e.callerWallet, big.NewInt(0))
 	if err != nil {
 		return err
 	}
@@ -41,8 +56,7 @@ func (e *EthereumStorage) Set(ctxt context.Context, value *big.Int) error {
 	if err != nil {
 		return err
 	}
-
-	return e.client.waitForTransaction(transaction.Hash())
+	return e.client.WaitForTransaction(transaction.Hash())
 }
 
 // Get retrieves a set value from the storage contract
@@ -53,5 +67,4 @@ func (e *EthereumStorage) Get(ctxt context.Context) (*big.Int, error) {
 		Context: ctxt,
 	}
 	return e.store.Get(opts)
-
 }
