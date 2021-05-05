@@ -12,11 +12,13 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+// Storage represents generalized interactions with the stoarge contract
 type Storage interface {
 	Get(ctxt context.Context) (*big.Int, error)
 	Set(context.Context, *big.Int) error
 }
 
+// EthereumStorage acts as a conduit for the ethereum version of the storage contract
 type EthereumStorage struct {
 	client       *client.EthereumClient
 	store        *ethereum.Store
