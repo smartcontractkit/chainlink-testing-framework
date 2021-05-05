@@ -23,7 +23,7 @@ type EthereumStorage struct {
 	callerWallet client.BlockchainWallet
 }
 
-// Creates a new instance of the storage contract for ethereum chains
+// NewEthereumStorage creates a new instance of the storage contract for ethereum chains
 func NewEthereumStorage(client *client.EthereumClient, store *ethereum.Store, callerWallet client.BlockchainWallet) Storage {
 	return &EthereumStorage{
 		client:       client,

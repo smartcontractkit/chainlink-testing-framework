@@ -21,7 +21,9 @@ type EthereumClient struct {
 	Network BlockchainNetwork
 }
 
-type ContractDeployer func(auth *bind.TransactOpts, backend bind.ContractBackend) (common.Address, *types.Transaction, interface{}, error)
+// ContractDeployer acts as a go-between function for general contract deployment
+type ContractDeployer func(auth *bind.TransactOpts, backend bind.ContractBackend) (
+	common.Address, *types.Transaction, interface{}, error)
 
 // NewEthereumClient returns an instantiated instance of the Ethereum client that has connected to the server
 func NewEthereumClient(network BlockchainNetwork) (*EthereumClient, error) {
@@ -63,7 +65,7 @@ func (e *EthereumClient) SendTransaction(
 	return txHash.Hex(), err
 }
 
-// DeployStorageContract deploys a vanilla storage contract that is a kv store
+// DeployContract acts as a general contract deployment tool to an ethereum chain
 func (e *EthereumClient) DeployContract(
 	fromWallet BlockchainWallet,
 	deployer ContractDeployer,
@@ -87,7 +89,7 @@ func (e *EthereumClient) DeployContract(
 	return &contractAddress, transaction, contractInstance, err
 }
 
-// Returns the suggested gas price, nonce, private key, and any errors encountered
+// GetEthTransactionBasics returns the suggested gas price, nonce, private key, and any errors encountered
 func (e *EthereumClient) GetEthTransactionBasics(wallet BlockchainWallet) (*big.Int, *big.Int, string, error) {
 	gasPrice, err := e.Client.SuggestGasPrice(context.Background())
 	if err != nil {
@@ -121,7 +123,7 @@ func (e *EthereumClient) signAndSendTransaction(
 	return signedTransaction.Hash(), err
 }
 
-// Helper function that waits for a specified transaction to clear
+// WaitForTransaction helper function that waits for a specified transaction to clear
 func (e *EthereumClient) WaitForTransaction(transactionHash common.Hash) error {
 	headerChannel := make(chan *types.Header)
 	subscription, err := e.Client.SubscribeNewHead(context.Background(), headerChannel)
@@ -161,7 +163,7 @@ func (e *EthereumClient) WaitForTransaction(transactionHash common.Hash) error {
 	return err
 }
 
-// Builds the default TransactOpts object used for various eth transaction types
+// GetTransactionOpts builds the default TransactOpts object used for various eth transaction types
 func (e *EthereumClient) GetTransactionOpts(fromWallet BlockchainWallet, value *big.Int) (*bind.TransactOpts, error) {
 	gasPrice, nonce, pk, err := e.GetEthTransactionBasics(fromWallet)
 	if err != nil {
