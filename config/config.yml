@@ -35,7 +35,16 @@ networks:
         url: "wss://parity-kovan.eth.devnet.tools/ws"
         chain_id: 42
         private_keys:
-            - not real
-        transaction_limit: 53444 # Minimum gas limit to deploy a contract
-        transaction_timeout_seconds: 0
+            - aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        transaction_limit: 1000000 
+        transaction_timeout_seconds: 10
         link_token_address: "0xa36085F69e2889c224210F603D836748e7dC0088"
+    ethereum_goerli:
+        name: "Ethereum Goerli"
+        url: "wss://geth-goerli.eth.devnet.tools/ws"
+        chain_id: 5
+        private_keys:
+            - aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        transaction_limit: 1000000 
+        transaction_timeout_seconds: 10
+        link_token_address: "0x326c977e6efc84e512bb9c30f76e30c160ed06fb"

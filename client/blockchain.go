@@ -10,9 +10,12 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
+type BlockchainNetworkID string
+
 const (
-	EthereumHardhatID = "ethereum_hardhat"
-	EthereumKovanID   = "ethereum_kovan"
+	EthereumHardhatID BlockchainNetworkID = "ethereum_hardhat"
+	EthereumKovanID   BlockchainNetworkID = "ethereum_kovan"
+	EthereumGoerliID  BlockchainNetworkID = "ethereum_goerli"
 )
 
 // Generalized blockchain client for interaction with multiple different blockchains
@@ -24,7 +27,7 @@ type BlockchainClient interface {
 // NewBlockchainClient returns an implementation of a BlockchainClient based on the given network
 func NewBlockchainClient(network BlockchainNetwork) (BlockchainClient, error) {
 	switch network.(type) {
-	case *EthereumHardhat:
+	case *EthereumNetwork:
 		return NewEthereumClient(network)
 	}
 	return nil, fmt.Errorf("invalid blockchain network was given")
@@ -39,41 +42,63 @@ type BlockchainNetwork interface {
 	Config() *config.NetworkConfig
 }
 
-type BlockchainNetworkInit func(conf *config.Config) BlockchainNetwork
+type BlockchainNetworkInit func(conf *config.Config) (BlockchainNetwork, error)
 
-// EthereumHardhat is the implementation of BlockchainNetwork for the local ETH dev server
-type EthereumHardhat struct {
+// EthereumNetwork is the implementation of BlockchainNetwork for the local ETH dev server
+type EthereumNetwork struct {
+	networkID     string
 	networkConfig *config.NetworkConfig
 }
 
-// NewEthereumHardhat creates a way to interact with the ethereum hardhat blockchain
-func NewEthereumHardhat(conf *config.Config) BlockchainNetwork {
-	networkConf, _ := conf.GetNetworkConfig(EthereumHardhatID)
-	return &EthereumHardhat{networkConf}
+// NewEthereumNetwork creates a way to interact with any specified EVM blockchain
+func newEthereumNetwork(conf *config.Config, networkID BlockchainNetworkID) (BlockchainNetwork, error) {
+	networkConf, err := conf.GetNetworkConfig(string(networkID))
+	if err != nil {
+		return nil, err
+	}
+	return &EthereumNetwork{
+		networkID:     string(networkID),
+		networkConfig: networkConf,
+	}, nil
 }
 
-// ID returns the readable name of the hardhat network
-func (e *EthereumHardhat) ID() string {
-	return EthereumHardhatID
+// NewHardhatNetwork prepares settings for a connection to a hardhat blockchain
+func NewHardhatNetwork(conf *config.Config) (BlockchainNetwork, error) {
+	return newEthereumNetwork(conf, EthereumHardhatID)
 }
 
-// URL returns the RPC URL used for connecting to hardhat
-func (e *EthereumHardhat) URL() string {
+// NewKovanNetwork prepares settings for a connection to the kovan testnet
+func NewKovanNetwork(conf *config.Config) (BlockchainNetwork, error) {
+	return newEthereumNetwork(conf, EthereumKovanID)
+}
+
+// NewGoerliNetwork prepares settings for a connection to the Goerli testnet
+func NewGoerliNetwork(conf *config.Config) (BlockchainNetwork, error) {
+	return newEthereumNetwork(conf, EthereumGoerliID)
+}
+
+// ID returns the readable name of the EVM network
+func (e *EthereumNetwork) ID() string {
+	return e.networkID
+}
+
+// URL returns the RPC URL used for connecting to the network
+func (e *EthereumNetwork) URL() string {
 	return e.networkConfig.URL
 }
 
-// ChainID returns the on-chain ID of the network being connected to, returning hardhat's default
-func (e *EthereumHardhat) ChainID() *big.Int {
+// ChainID returns the on-chain ID of the network being connected to
+func (e *EthereumNetwork) ChainID() *big.Int {
 	return big.NewInt(e.networkConfig.ChainID)
 }
 
 // Config returns the blockchain network configuration
-func (e *EthereumHardhat) Config() *config.NetworkConfig {
+func (e *EthereumNetwork) Config() *config.NetworkConfig {
 	return e.networkConfig
 }
 
-// Wallets returns all the viable wallets used for testing on chain, returning hardhat's default
-func (e *EthereumHardhat) Wallets() (BlockchainWallets, error) {
+// Wallets returns all the viable wallets used for testing on chain
+func (e *EthereumNetwork) Wallets() (BlockchainWallets, error) {
 	return newEthereumWallets(e.networkConfig.PrivateKeyStore)
 }
 

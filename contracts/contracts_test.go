@@ -25,7 +25,8 @@ var _ = Describe("Client", func() {
 		value *big.Int,
 	) {
 		// Deploy contract
-		networkConfig := initFunc(conf)
+		networkConfig, err := initFunc(conf)
+		Expect(err).ShouldNot(HaveOccurred())
 		client, err := client.NewEthereumClient(networkConfig)
 		Expect(err).ShouldNot(HaveOccurred())
 		wallets, err := networkConfig.Wallets()
@@ -40,6 +41,9 @@ var _ = Describe("Client", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(val).To(Equal(value))
 	},
-		Entry("on Ethereum Hardhat", client.NewEthereumHardhat, big.NewInt(5)),
+		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, big.NewInt(5)),
+		// Tested locally successfully. We need to implement secrets system as well as testing wallets for CI use
+		// Entry("on Ethereum Kovan", client.NewKovanNetwork, big.NewInt(5)),
+		// Entry("on Ethereum Goerli", client.NewGoerliNetwork, big.NewInt(5)),
 	)
 })

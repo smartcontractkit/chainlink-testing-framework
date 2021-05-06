@@ -21,7 +21,9 @@ type EthereumClient struct {
 	Network BlockchainNetwork
 }
 
-type ContractDeployer func(auth *bind.TransactOpts, backend bind.ContractBackend) (common.Address, *types.Transaction, interface{}, error)
+// ContractDeployer acts as a go-between function for general contract deployment
+type ContractDeployer func(auth *bind.TransactOpts, backend bind.ContractBackend) (
+	common.Address, *types.Transaction, interface{}, error)
 
 // NewEthereumClient returns an instantiated instance of the Ethereum client that has connected to the server
 func NewEthereumClient(network BlockchainNetwork) (*EthereumClient, error) {
@@ -63,7 +65,7 @@ func (e *EthereumClient) SendTransaction(
 	return txHash.Hex(), err
 }
 
-// DeployStorageContract deploys a vanilla storage contract that is a kv store
+// DeployContract acts as a general contract deployment tool to an ethereum chain
 func (e *EthereumClient) DeployContract(
 	fromWallet BlockchainWallet,
 	deployer ContractDeployer,
@@ -83,10 +85,11 @@ func (e *EthereumClient) DeployContract(
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	log.Info().Str("Contract Address", contractAddress.Hex()).Msg("Deployed contract")
 	return &contractAddress, transaction, contractInstance, err
 }
 
-// Returns the suggested gas price, nonce, private key, and any errors encountered
+// GetEthTransactionBasics returns the suggested gas price, nonce, private key, and any errors encountered
 func (e *EthereumClient) GetEthTransactionBasics(wallet BlockchainWallet) (*big.Int, *big.Int, string, error) {
 	gasPrice, err := e.Client.SuggestGasPrice(context.Background())
 	if err != nil {
@@ -114,12 +117,13 @@ func (e *EthereumClient) signAndSendTransaction(
 	if err != nil {
 		return signedTransaction.Hash(), err
 	}
-	log.Info().Str("TX Hash", signedTransaction.Hash().Hex()).Msg("Sending transaction")
+	log.Info().Str("Network", e.Network.Config().Name).
+		Str("TX Hash", signedTransaction.Hash().Hex()).Msg("Sending transaction")
 
 	return signedTransaction.Hash(), err
 }
 
-// Helper function that waits for a specified transaction to clear
+// WaitForTransaction helper function that waits for a specified transaction to clear
 func (e *EthereumClient) WaitForTransaction(transactionHash common.Hash) error {
 	headerChannel := make(chan *types.Header)
 	subscription, err := e.Client.SubscribeNewHead(context.Background(), headerChannel)
@@ -135,26 +139,31 @@ func (e *EthereumClient) WaitForTransaction(transactionHash common.Hash) error {
 			return err
 		case header := <-headerChannel:
 			// Get latest block
-			block, err := e.Client.BlockByHash(context.Background(), header.Hash())
+			block, err := e.Client.BlockByNumber(context.Background(), header.Number)
 			if err != nil {
 				return err
 			}
-			log.Info().Str("Block Hash", block.Hash().Hex()).Msg("New block mined")
+			log.Info().Str("Network", e.Network.Config().Name).Str("Block Hash", block.Hash().Hex()).
+				Str("Block Number", block.Number().String()).Msg("New block mined")
 			// Look through it for our transaction
 			_, isPending, err := e.Client.TransactionByHash(context.Background(), transactionHash)
 			if err != nil {
 				return err
 			}
 			if !isPending {
+				log.Info().Str("Network", e.Network.Config().Name).Str("Block Hash", block.Hash().Hex()).
+					Str("Block Number", block.Number().String()).Str("Tx Hash", transactionHash.Hex()).
+					Msg("Found Transaction")
 				return err
 			}
 		}
 	}
-	log.Info().Msg("Timeout waiting for transaction after " + e.Network.Config().Timeout.String() + " seconds")
+	log.Info().Str("Network", e.Network.Config().Name).
+		Msg("Timeout waiting for transaction after " + e.Network.Config().Timeout.String() + " seconds")
 	return err
 }
 
-// Builds the default TransactOpts object used for various eth transaction types
+// GetTransactionOpts builds the default TransactOpts object used for various eth transaction types
 func (e *EthereumClient) GetTransactionOpts(fromWallet BlockchainWallet, value *big.Int) (*bind.TransactOpts, error) {
 	gasPrice, nonce, pk, err := e.GetEthTransactionBasics(fromWallet)
 	if err != nil {
