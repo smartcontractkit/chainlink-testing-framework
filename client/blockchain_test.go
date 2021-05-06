@@ -1,59 +1,34 @@
 package client
 
 import (
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/extensions/table"
+	. "github.com/onsi/gomega"
 	"integrations-framework/config"
-	"strings"
-	"testing"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
-// Tests retrieving wallet values from a configuration file for ethereum wallets
-func TestWalletConfig(t *testing.T) {
-	conf, err := config.NewConfigWithPath(config.LocalConfig, "../config")
-	require.Nil(t, err)
-	testCases := []struct {
-		name       string
-		network    BlockchainNetwork
-		privateKey string
-		address    string
-	}{
-		{"Ethereum Hardhat", NewEthereumHardhat(conf),
+var _ = Describe("Client", func() {
+	var conf *config.Config
+
+	BeforeEach(func() {
+		var err error
+		conf, err = config.NewConfigWithPath(config.LocalConfig, "../config")
+		Expect(err).ShouldNot(HaveOccurred())
+	})
+
+	DescribeTable("create new wallet configurations", func(
+		initFunc BlockchainNetworkInit,
+		privateKeyString string,
+		address string,
+	) {
+		networkConfig := initFunc(conf)
+		wallets, err := networkConfig.Wallets()
+		Expect(err).ShouldNot(HaveOccurred())
+		Expect(wallets.Default().PrivateKey()).To(Equal(privateKeyString))
+		Expect(address).To(Equal(wallets.Default().Address()))
+	},
+		Entry("on Ethereum Hardhat", NewEthereumHardhat,
 			"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
-			"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"},
-	}
-	for _, testCase := range testCases {
-		t.Run(testCase.name, func(t *testing.T) {
-			wallets, err := testCase.network.Wallets()
-			require.Nil(t, err)
-			assert.Equal(t, testCase.privateKey, wallets.Default().PrivateKey())
-			assert.Equal(t, testCase.address, strings.ToLower(wallets.Default().Address()))
-		})
-	}
-}
-
-// Tests ethereum contract deployment on a simulated blockchain
-func TestEthereumClient_DeployStorageContract(t *testing.T) {
-	conf, err := config.NewConfigWithPath(config.LocalConfig, "../config")
-	require.Nil(t, err)
-	testCases := []struct {
-		name        string
-		networkName string
-		network     BlockchainNetwork
-	}{
-		{"Ethereum Hardhat", "etherum_hardhat", NewEthereumHardhat(conf)},
-	}
-	for _, testCase := range testCases {
-		t.Run(testCase.name, func(t *testing.T) {
-			client, err := NewBlockchainClient(testCase.network)
-			require.Nil(t, err)
-
-			wallets, err := testCase.network.Wallets()
-			require.Nil(t, err)
-
-			err = client.DeployStorageContract(wallets.Default())
-			assert.Nil(t, err)
-		})
-	}
-}
+			"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"),
+	)
+})
