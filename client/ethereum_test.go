@@ -20,10 +20,9 @@ var _ = Describe("Ethereum functionality", func() {
 
 	DescribeTable("eth transaction basics", func(
 		initFunc BlockchainNetworkInit,
-		networkID BlockchainNetworkID,
 	) {
 		// Setup
-		networkConfig, err := initFunc(conf, networkID)
+		networkConfig, err := initFunc(conf)
 		Expect(err).ShouldNot(HaveOccurred())
 		client, err := NewEthereumClient(networkConfig)
 		Expect(err).ShouldNot(HaveOccurred())
@@ -42,6 +41,6 @@ var _ = Describe("Ethereum functionality", func() {
 		_, err = client.SendTransaction(wallets.Default(), toWallet.Address(), 0)
 		Expect(err).ShouldNot(HaveOccurred())
 	},
-		Entry("on Ethereum Hardhat", NewEthereumNetwork, EthereumHardhatID),
+		Entry("on Ethereum Hardhat", NewHardhatNetwork),
 	)
 })
