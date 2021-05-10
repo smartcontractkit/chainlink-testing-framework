@@ -101,8 +101,9 @@ func DeployFluxAggregatorContract(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
-		linkAddress := ethClient.Network.Config().LinkTokenAddress
-		return ethereum.DeployFluxAggregator(auth, backend, common.HexToAddress(linkAddress))
+		// Gets a bit more complicated here, want to break this up
+		return common.Address{}, nil, nil, nil
+		// return ethereum.DeployFluxAggregator(auth, backend, common.HexToAddress(linkAddress))
 	})
 	if err != nil {
 		return nil, err
