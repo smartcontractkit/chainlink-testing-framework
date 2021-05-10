@@ -42,9 +42,16 @@ func DeployFluxAggregatorContract(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
-		// Gets a bit more complicated here, want to break this up
-		return common.Address{}, nil, nil, nil
-		// return ethereum.DeployFluxAggregator(auth, backend, common.HexToAddress(linkAddress))
+		linkAddress := common.HexToAddress(ethClient.Network.Config().LinkTokenAddress)
+		paymentAmount := big.NewInt(1)
+		timeout := uint32(60)
+		var validator common.Address
+		minSubValue := big.NewInt(1)
+		maxSubValue := big.NewInt(10)
+		decimals := uint8(18)
+		desc := "Test Flux Aggregator"
+		return ethereum.DeployFluxAggregator(auth, backend, linkAddress, paymentAmount, timeout, validator,
+			minSubValue, maxSubValue, decimals, desc)
 	})
 	if err != nil {
 		return nil, err
