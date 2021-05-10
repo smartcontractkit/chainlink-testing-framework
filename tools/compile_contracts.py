@@ -4,7 +4,9 @@ import os
 from os import path
 import shutil
 
-solc_versions = ["v0.4", "v0.6"]
+# A proof of concept / convenient script to quickly compile contracts and their go bindings
+
+solc_versions = ["v0.4", "v0.6", "v0.7"]
 rootdir = "./artifacts/contracts/ethereum/"
 targetdir = "./contracts/ethereum"
 
@@ -19,15 +21,19 @@ with open("hardhat.config.js", "w") as hardhat_config:
 solidity: {
     compilers: [
     {
+        version: "0.8.0",
+        settings: {}
+    },
+    {
+        version: "0.7.0",
+        settings: {}
+    },
+    {
         version: "0.6.6"
     },
     {
         version: "0.4.11",
         settings: {} 
-    },
-    {
-        version: "0.8.0",
-        settings: {}
     },
     {
         version: "0.4.24",
