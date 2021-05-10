@@ -15,6 +15,10 @@ type FluxAggregator interface {
 	Description(context.Context) (string, error)
 }
 
+type LinkToken interface {
+	Name(context.Context) (string, error)
+}
+
 type VRF interface {
 	ProofLength(context.Context) (*big.Int, error)
 }

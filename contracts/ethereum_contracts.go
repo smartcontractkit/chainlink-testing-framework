@@ -121,6 +121,61 @@ func (f *EthereumFluxAggregator) Description(ctxt context.Context) (string, erro
 	return f.fluxAggregator.Description(opts)
 }
 
+// EthereumLinkToken represents a LinkToken address
+type EthereumLinkToken struct {
+	client       *client.EthereumClient
+	linkToken    *ethereum.LinkToken
+	callerWallet client.BlockchainWallet
+}
+
+// NewEthereumLinkToken creates a new instance of the Link Token contract for EVM chains
+func NewEthereumLinkToken(client *client.EthereumClient,
+	l *ethereum.LinkToken,
+	callerWallet client.BlockchainWallet,
+) LinkToken {
+
+	return &EthereumLinkToken{
+		client:       client,
+		linkToken:    l,
+		callerWallet: callerWallet,
+	}
+}
+
+// DeployLinkTokenContract deploys a Link Token contract to an EVM chain
+func DeployLinkTokenContract(ethClient *client.EthereumClient, fromWallet client.BlockchainWallet) (LinkToken, error) {
+	// First check if link token is already deployed
+	linkTokenAddress := ethClient.Network.Config().LinkTokenAddress
+	if linkTokenAddress != "" {
+		tokenInstance, err := ethereum.NewLinkToken(common.HexToAddress(linkTokenAddress), ethClient.Client)
+		if err != nil {
+			return nil, err
+		}
+		return NewEthereumLinkToken(ethClient, tokenInstance, fromWallet), err
+	}
+
+	// Otherwise, deploy a new one
+	_, _, instance, err := ethClient.DeployContract(fromWallet, func(
+		auth *bind.TransactOpts,
+		backend bind.ContractBackend,
+	) (common.Address, *types.Transaction, interface{}, error) {
+		return ethereum.DeployLinkToken(auth, backend)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return NewEthereumLinkToken(ethClient, instance.(*ethereum.LinkToken), fromWallet), nil
+}
+
+// Name returns the name of the link token
+func (l *EthereumLinkToken) Name(ctxt context.Context) (string, error) {
+	opts := &bind.CallOpts{
+		From:    common.HexToAddress(l.callerWallet.Address()),
+		Pending: true,
+		Context: ctxt,
+	}
+	return l.linkToken.Name(opts)
+}
+
 // EthereumVRF represents a VRF contract
 type EthereumVRF struct {
 	client       *client.EthereumClient
