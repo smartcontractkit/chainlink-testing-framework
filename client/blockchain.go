@@ -18,21 +18,6 @@ const (
 	EthereumGoerliID  BlockchainNetworkID = "ethereum_goerli"
 )
 
-// Generalized blockchain client for interaction with multiple different blockchains
-type BlockchainClient interface {
-	// Send transaction in the blockchain's native currency, sent from a wallet to address
-	SendTransaction(BlockchainWallet, string, int64) (string, error)
-}
-
-// NewBlockchainClient returns an implementation of a BlockchainClient based on the given network
-func NewBlockchainClient(network BlockchainNetwork) (BlockchainClient, error) {
-	switch network.(type) {
-	case *EthereumNetwork:
-		return NewEthereumClient(network)
-	}
-	return nil, fmt.Errorf("invalid blockchain network was given")
-}
-
 // BlockchainNetwork is the interface that when implemented, defines a new blockchain network that can be tested against
 type BlockchainNetwork interface {
 	ID() string
