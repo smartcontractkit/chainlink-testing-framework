@@ -1,6 +1,7 @@
 package client
 
 import (
+	"github.com/ethereum/go-ethereum/common"
 	"integrations-framework/config"
 	"math/big"
 
@@ -14,7 +15,7 @@ var _ = Describe("Ethereum functionality", func() {
 
 	BeforeEach(func() {
 		var err error
-		conf, err = config.NewConfigWithPath(config.LocalConfig, "../config")
+		conf, err = config.NewWithPath(config.LocalConfig, "../config")
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 
@@ -29,16 +30,15 @@ var _ = Describe("Ethereum functionality", func() {
 		wallets, err := networkConfig.Wallets()
 		Expect(err).ShouldNot(HaveOccurred())
 
-		// Transaction Settings
-		_, _, _, err = client.GetEthTransactionBasics(wallets.Default())
-		Expect(err).ShouldNot(HaveOccurred())
-		_, err = client.GetTransactionOpts(wallets.Default(), big.NewInt(0))
-		Expect(err).ShouldNot(HaveOccurred())
-
 		// Actual transaction
 		toWallet, err := wallets.Wallet(1)
 		Expect(err).ShouldNot(HaveOccurred())
-		_, err = client.SendTransaction(wallets.Default(), toWallet.Address(), 0)
+		_, err = client.SendTransaction(
+			wallets.Default(),
+			common.HexToAddress(toWallet.Address()),
+			big.NewInt(0),
+			common.Hash{},
+		)
 		Expect(err).ShouldNot(HaveOccurred())
 	},
 		Entry("on Ethereum Hardhat", NewHardhatNetwork),

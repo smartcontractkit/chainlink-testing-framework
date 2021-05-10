@@ -2,17 +2,16 @@ package client
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"fmt"
-	"math/big"
-	"time"
-
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/rs/zerolog/log"
+	"math/big"
+	"time"
 )
 
 // EthereumClient wraps the client and the BlockChain network to interact with an EVM based Blockchain
@@ -23,7 +22,11 @@ type EthereumClient struct {
 
 // ContractDeployer acts as a go-between function for general contract deployment
 type ContractDeployer func(auth *bind.TransactOpts, backend bind.ContractBackend) (
-	common.Address, *types.Transaction, interface{}, error)
+	common.Address,
+	*types.Transaction,
+	interface{},
+	error,
+)
 
 // NewEthereumClient returns an instantiated instance of the Ethereum client that has connected to the server
 func NewEthereumClient(network BlockchainNetwork) (*EthereumClient, error) {
@@ -41,28 +44,43 @@ func NewEthereumClient(network BlockchainNetwork) (*EthereumClient, error) {
 // SendTransaction sends a specified amount of WEI from a selected wallet to an address, and blocks until the
 // transaction completes
 func (e *EthereumClient) SendTransaction(
-	fromWallet BlockchainWallet, toHexAddress string, amount int64) (string, error) {
-
-	gasPrice, nonce, pk, err := e.GetEthTransactionBasics(fromWallet)
+	from BlockchainWallet,
+	to common.Address,
+	value *big.Int,
+	data common.Hash,
+) (*common.Hash, error) {
+	callMsg, err := e.TransactionCallMessage(from, to, value, data)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	privateKey, err := crypto.HexToECDSA(pk)
+	privateKey, err := crypto.HexToECDSA(from.PrivateKey())
 	if err != nil {
-		return "", fmt.Errorf("invalid private key: %v", err)
+		return nil, fmt.Errorf("invalid private key: %v", err)
 	}
-
-	unsignedTransaction :=
-		types.NewTransaction(nonce.Uint64(), common.HexToAddress(toHexAddress), big.NewInt(amount),
-			e.Network.Config().TransactionLimit, gasPrice, nil)
-
-	txHash, err := e.signAndSendTransaction(unsignedTransaction, privateKey)
+	nonce, err := e.Client.PendingNonceAt(context.Background(), common.HexToAddress(from.Address()))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	err = e.WaitForTransaction(txHash)
-	return txHash.Hex(), err
+	tx, err := types.SignNewTx(privateKey, types.NewEIP2930Signer(e.Network.ChainID()), &types.LegacyTx{
+		To:       callMsg.To,
+		Value:    callMsg.Value,
+		Data:     callMsg.Data,
+		GasPrice: callMsg.GasPrice,
+		Gas:      callMsg.Gas,
+		Nonce:    nonce,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if err := e.Client.SendTransaction(context.Background(), tx); err != nil {
+		return nil, err
+	}
+
+	err = e.WaitForTransaction(tx.Hash())
+	hash := tx.Hash()
+	return &hash, err
 }
 
 // DeployContract acts as a general contract deployment tool to an ethereum chain
@@ -70,17 +88,14 @@ func (e *EthereumClient) DeployContract(
 	fromWallet BlockchainWallet,
 	deployer ContractDeployer,
 ) (*common.Address, *types.Transaction, interface{}, error) {
-	opts, err := e.GetTransactionOpts(fromWallet, big.NewInt(0))
+	opts, err := e.TransactionOpts(fromWallet, common.Address{}, big.NewInt(0), common.Hash{})
 	if err != nil {
 		return nil, nil, nil, err
 	}
-
-	// Deploy contract
 	contractAddress, transaction, contractInstance, err := deployer(opts, e.Client)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-
 	err = e.WaitForTransaction(transaction.Hash())
 	if err != nil {
 		return nil, nil, nil, err
@@ -89,100 +104,129 @@ func (e *EthereumClient) DeployContract(
 	return &contractAddress, transaction, contractInstance, err
 }
 
-// GetEthTransactionBasics returns the suggested gas price, nonce, private key, and any errors encountered
-func (e *EthereumClient) GetEthTransactionBasics(wallet BlockchainWallet) (*big.Int, *big.Int, string, error) {
+// TransactionCallMessage returns a filled Ethereum CallMsg object with suggest gas price and limit
+func (e *EthereumClient) TransactionCallMessage(
+	from BlockchainWallet,
+	to common.Address,
+	value *big.Int,
+	data common.Hash,
+) (*ethereum.CallMsg, error) {
 	gasPrice, err := e.Client.SuggestGasPrice(context.Background())
 	if err != nil {
-		return nil, nil, "", err
+		return nil, err
 	}
-
-	nonce, err := e.Client.PendingNonceAt(context.Background(), common.HexToAddress(wallet.Address()))
+	msg := ethereum.CallMsg{
+		From:     common.HexToAddress(from.Address()),
+		To:       &to,
+		GasPrice: gasPrice,
+		Value:    value,
+		Data:     data.Bytes(),
+	}
+	gasLimit, err := e.Client.EstimateGas(context.Background(), msg)
 	if err != nil {
-		return nil, nil, "", err
+		return &msg, err
 	}
-
-	return gasPrice, new(big.Int).SetUint64(nonce), wallet.PrivateKey(), err
+	msg.Gas = gasLimit + e.Network.Config().GasEstimationBuffer
+	return &msg, nil
 }
 
-// Helper function to sign and send any ethereum transaction
-func (e *EthereumClient) signAndSendTransaction(
-	unsignedTransaction *types.Transaction, privateKey *ecdsa.PrivateKey) (common.Hash, error) {
-
-	signedTransaction, err := types.SignTx(unsignedTransaction, types.NewEIP2930Signer(e.Network.ChainID()), privateKey)
+// TransactionOpts return the base binding transaction options to create a new valid tx for contract deployment
+func (e *EthereumClient) TransactionOpts(
+	from BlockchainWallet,
+	to common.Address,
+	value *big.Int,
+	data common.Hash,
+) (*bind.TransactOpts, error) {
+	callMsg, err := e.TransactionCallMessage(from, to, value, data)
 	if err != nil {
-		return signedTransaction.Hash(), err
+		return nil, err
 	}
-
-	err = e.Client.SendTransaction(context.Background(), signedTransaction)
+	nonce, err := e.Client.PendingNonceAt(context.Background(), common.HexToAddress(from.Address()))
 	if err != nil {
-		return signedTransaction.Hash(), err
+		return nil, err
 	}
-	log.Info().Str("Network", e.Network.Config().Name).
-		Str("TX Hash", signedTransaction.Hash().Hex()).Msg("Sending transaction")
+	privateKey, err := crypto.HexToECDSA(from.PrivateKey())
+	if err != nil {
+		return nil, fmt.Errorf("invalid private key: %v", err)
+	}
+	opts, err := bind.NewKeyedTransactorWithChainID(privateKey, e.Network.ChainID())
+	if err != nil {
+		return nil, err
+	}
+	opts.From = callMsg.From
+	opts.Nonce = big.NewInt(int64(nonce))
+	opts.Value = value
+	opts.GasPrice = callMsg.GasPrice
+	opts.GasLimit = callMsg.Gas
+	opts.Context = context.Background()
 
-	return signedTransaction.Hash(), err
+	return opts, nil
 }
 
 // WaitForTransaction helper function that waits for a specified transaction to clear
 func (e *EthereumClient) WaitForTransaction(transactionHash common.Hash) error {
 	headerChannel := make(chan *types.Header)
 	subscription, err := e.Client.SubscribeNewHead(context.Background(), headerChannel)
-	defer subscription.Unsubscribe()
 	if err != nil {
 		return err
 	}
+	defer subscription.Unsubscribe()
 
-	// Wait for new block to show in subscription, or timeout
-	for start := time.Now(); time.Since(start) < e.Network.Config().Timeout*time.Second; {
+	timeout := e.Network.Config().Timeout
+	confirmations := 0
+
+	for {
 		select {
 		case err := <-subscription.Err():
 			return err
 		case header := <-headerChannel:
-			// Get latest block
+			minConfirmations := e.Network.Config().MinimumConfirmations
+
 			block, err := e.Client.BlockByNumber(context.Background(), header.Number)
 			if err != nil {
 				return err
 			}
-			log.Info().Str("Network", e.Network.Config().Name).Str("Block Hash", block.Hash().Hex()).
-				Str("Block Number", block.Number().String()).Msg("New block mined")
-			// Look through it for our transaction
-			_, isPending, err := e.Client.TransactionByHash(context.Background(), transactionHash)
+			confirmationLog := log.Info().Str("Network", e.Network.Config().Name).
+				Str("Block Hash", block.Hash().Hex()).
+				Str("Block Number", block.Number().String()).Str("Tx Hash", transactionHash.Hex()).
+				Int("Minimum Confirmations", minConfirmations).
+				Int("Total Confirmations", confirmations)
+
+			isConfirmed, err := e.isTxConfirmed(transactionHash)
 			if err != nil {
 				return err
+			} else if !isConfirmed {
+				confirmationLog.Msg("Transaction still pending, waiting for confirmation")
+				continue
 			}
-			if !isPending {
-				log.Info().Str("Network", e.Network.Config().Name).Str("Block Hash", block.Hash().Hex()).
-					Str("Block Number", block.Number().String()).Str("Tx Hash", transactionHash.Hex()).
-					Msg("Found Transaction")
+
+			confirmations++
+			confirmationLog.Msg("Transaction confirmed, waiting on confirmations")
+
+			if confirmations == minConfirmations {
+				confirmationLog.Msg("Minimum confirmations met")
 				return err
+			} else {
+				confirmationLog.Msg("Waiting on minimum confirmations")
 			}
+		case <-time.After(timeout):
+			isConfirmed, err := e.isTxConfirmed(transactionHash)
+			if err != nil {
+				return err
+			} else if isConfirmed {
+				return nil
+			}
+
+			err = fmt.Errorf("timeout waiting for transaction after %f seconds", timeout.Seconds())
+			log.Error().
+				Str("Network", e.Network.Config().Name).
+				Err(err)
+			return err
 		}
 	}
-	log.Info().Str("Network", e.Network.Config().Name).
-		Msg("Timeout waiting for transaction after " + e.Network.Config().Timeout.String() + " seconds")
-	return err
 }
 
-// GetTransactionOpts builds the default TransactOpts object used for various eth transaction types
-func (e *EthereumClient) GetTransactionOpts(fromWallet BlockchainWallet, value *big.Int) (*bind.TransactOpts, error) {
-	gasPrice, nonce, pk, err := e.GetEthTransactionBasics(fromWallet)
-	if err != nil {
-		return nil, err
-	}
-	privateKey, err := crypto.HexToECDSA(pk)
-	if err != nil {
-		return nil, fmt.Errorf("invalid private key: %v", err)
-	}
-
-	opts, err := bind.NewKeyedTransactorWithChainID(privateKey, e.Network.ChainID())
-	if err != nil {
-		return nil, err
-	}
-
-	opts.Nonce = nonce
-	opts.Value = value                                  // in wei
-	opts.GasLimit = e.Network.Config().TransactionLimit // in units
-	opts.GasPrice = gasPrice
-
-	return opts, err
+func (e *EthereumClient) isTxConfirmed(txHash common.Hash) (bool, error) {
+	_, isPending, err := e.Client.TransactionByHash(context.Background(), txHash)
+	return !isPending, err
 }

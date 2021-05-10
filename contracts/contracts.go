@@ -50,7 +50,7 @@ func DeployStorageContract(ethClient *client.EthereumClient, fromWallet client.B
 
 // Set sets a value in the storage contract
 func (e *EthereumStorage) Set(ctxt context.Context, value *big.Int) error {
-	opts, err := e.client.GetTransactionOpts(e.callerWallet, big.NewInt(0))
+	opts, err := e.client.TransactionOpts(e.callerWallet, common.Address{}, big.NewInt(0), common.Hash{})
 	if err != nil {
 		return err
 	}
