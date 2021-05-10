@@ -31,23 +31,25 @@ func (c *Config) GetNetworkConfig(name string) (*NetworkConfig, error) {
 
 // NetworkConfig holds the basic values that identify a blockchain network and contains private keys on the network
 type NetworkConfig struct {
-	Name             string        `mapstructure:"name" yaml:"name"`
-	URL              string        `mapstructure:"url" yaml:"url"`
-	ChainID          int64         `mapstructure:"chain_id" yaml:"chain_id"`
-	PrivateKeys      []string      `mapstructure:"private_keys" yaml:"private_keys"`
-	TransactionLimit uint64        `mapstructure:"transaction_limit" yaml:"transaction_limit"`
-	Timeout          time.Duration `mapstructure:"transaction_timeout_seconds" yaml:"transaction_timeout_seconds"`
-	LinkTokenAddress string        `mapstructure:"link_token_address" yaml:"link_token_address"`
-	PrivateKeyStore  PrivateKeyStore
+	Name                 string        `mapstructure:"name" yaml:"name"`
+	URL                  string        `mapstructure:"url" yaml:"url"`
+	ChainID              int64         `mapstructure:"chain_id" yaml:"chain_id"`
+	PrivateKeys          []string      `mapstructure:"private_keys" yaml:"private_keys"`
+	TransactionLimit     uint64        `mapstructure:"transaction_limit" yaml:"transaction_limit"`
+	Timeout              time.Duration `mapstructure:"transaction_timeout" yaml:"transaction_timeout"`
+	LinkTokenAddress     string        `mapstructure:"link_token_address" yaml:"link_token_address"`
+	MinimumConfirmations int           `mapstructure:"minimum_confirmations" yaml:"minimum_confirmations"`
+	GasEstimationBuffer  uint64        `mapstructure:"gas_estimation_buffer" yaml:"gas_estimation_buffer"`
+	PrivateKeyStore      PrivateKeyStore
 }
 
 // NewConfig creates a new configuration instance via viper from env vars, config file, or a secret store
 func NewConfig(configType ConfigurationType) (*Config, error) {
-	return NewConfigWithPath(configType, "")
+	return NewWithPath(configType, "")
 }
 
-// NewConfigWithPath creates a new configuration with a specified path for the config file
-func NewConfigWithPath(configType ConfigurationType, configFilePath string) (*Config, error) {
+// NewWithPath creates a new configuration with a specified path for the config file
+func NewWithPath(configType ConfigurationType, configFilePath string) (*Config, error) {
 	v := viper.New()
 	v.AutomaticEnv()
 	v.SetConfigName("config")

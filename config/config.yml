@@ -28,8 +28,9 @@ networks:
             - de9be858da4a475276426320d5e9262ecfc3ba460bfac56360bfa6c4c28b4ee0
             - df57089febbacf7ba0bc227dafbffa9fc08a93fdc68e1e42411a14efcf23656e
         transaction_limit: 958108 
-        transaction_timeout_seconds: 0
+        transaction_timeout: 0
         link_token_address: "0x514910771af9ca656af840dff83e8264ecf986ca" # TODO: placeholder, need LINK contract on hardhat
+        gas_estimation_buffer: 100000
     ethereum_kovan:
         name: "Ethereum Kovan"
         url: "wss://parity-kovan.eth.devnet.tools/ws"
@@ -37,7 +38,7 @@ networks:
         private_keys:
             - aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
         transaction_limit: 1000000 
-        transaction_timeout_seconds: 10
+        transaction_timeout: 5m
         link_token_address: "0xa36085F69e2889c224210F603D836748e7dC0088"
     ethereum_goerli:
         name: "Ethereum Goerli"
@@ -45,6 +46,6 @@ networks:
         chain_id: 5
         private_keys:
             - aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-        transaction_limit: 1000000 
-        transaction_timeout_seconds: 10
+        transaction_limit: 1000000
+        transaction_timeout: 5m
         link_token_address: "0x326c977e6efc84e512bb9c30f76e30c160ed06fb"

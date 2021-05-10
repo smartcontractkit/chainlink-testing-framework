@@ -20,7 +20,12 @@ type EthereumStorage struct {
 }
 
 // NewEthereumStorage creates a new instance of the storage contract for ethereum chains
-func NewEthereumStorage(client *client.EthereumClient, store *ethereum.Store, callerWallet client.BlockchainWallet) Storage {
+func NewEthereumStorage(
+	client *client.EthereumClient,
+	store *ethereum.Store,
+	callerWallet client.BlockchainWallet,
+) Storage {
+
 	return &EthereumStorage{
 		client:       client,
 		store:        store,
@@ -44,7 +49,7 @@ func DeployStorageContract(ethClient *client.EthereumClient, fromWallet client.B
 
 // Set sets a value in the storage contract
 func (e *EthereumStorage) Set(ctxt context.Context, value *big.Int) error {
-	opts, err := e.client.GetTransactionOpts(e.callerWallet, big.NewInt(0))
+	opts, err := e.client.TransactionOpts(e.callerWallet, common.Address{}, big.NewInt(0), common.Hash{})
 	if err != nil {
 		return err
 	}
@@ -66,13 +71,19 @@ func (e *EthereumStorage) Get(ctxt context.Context) (*big.Int, error) {
 	return e.store.Get(opts)
 }
 
+// EthereumFluxAggregator represents the basic flux aggregation contract
 type EthereumFluxAggregator struct {
 	client         *client.EthereumClient
 	fluxAggregator *ethereum.FluxAggregator
 	callerWallet   client.BlockchainWallet
 }
 
-func NewEthereumFluxAggregator(client *client.EthereumClient, f *ethereum.FluxAggregator, callerWallet client.BlockchainWallet) FluxAggregator {
+// NewEthereumFluxAggregator creates a new instances of the Flux Aggregator contract for EVM chains
+func NewEthereumFluxAggregator(client *client.EthereumClient,
+	f *ethereum.FluxAggregator,
+	callerWallet client.BlockchainWallet,
+) FluxAggregator {
+
 	return &EthereumFluxAggregator{
 		client:         client,
 		fluxAggregator: f,
@@ -80,12 +91,19 @@ func NewEthereumFluxAggregator(client *client.EthereumClient, f *ethereum.FluxAg
 	}
 }
 
-func DeployFluxAggregatorContract(ethClient *client.EthereumClient, fromWallet client.BlockchainWallet) (FluxAggregator, error) {
+// DeployFluxAggregatorContract deploys the Flux Aggregator Contract on an EVM chain
+func DeployFluxAggregatorContract(
+	ethClient *client.EthereumClient,
+	fromWallet client.BlockchainWallet,
+) (FluxAggregator, error) {
+
 	_, _, instance, err := ethClient.DeployContract(fromWallet, func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
-		return ethereum.DeployFluxAggregator(auth, backend)
+		linkAddress := ethClient.Network.Config().LinkTokenAddress
+
+		return ethereum.DeployFluxAggregator(auth, backend, common.HexToAddress(linkAddress))
 	})
 	if err != nil {
 		return nil, err
@@ -93,6 +111,7 @@ func DeployFluxAggregatorContract(ethClient *client.EthereumClient, fromWallet c
 	return NewEthereumFluxAggregator(ethClient, instance.(*ethereum.FluxAggregator), fromWallet), nil
 }
 
+// Description returns the description of the flux aggregator contract
 func (f *EthereumFluxAggregator) Description(ctxt context.Context) (string, error) {
 	opts := &bind.CallOpts{
 		From:    common.HexToAddress(f.callerWallet.Address()),

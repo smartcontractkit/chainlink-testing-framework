@@ -5,6 +5,8 @@ import os
 rootdir = "./artifacts/contracts/ethereum/src"
 targetdir = "./contracts/ethereum"
 
+used_contract_names = ["FluxAggregator", "VRF", "OffchainAggregator", "LinkToken"]
+
 for subdir, dirs, files in os.walk(rootdir):
     for f in files:
         if ".dbg." not in f:
@@ -23,5 +25,6 @@ for subdir, dirs, files in os.walk(rootdir):
             abi_file.close()
             bin_file.close()
 
-            subprocess.run("abigen --bin=" + bin_name + " --abi=" + abi_name + " --pkg=" + contract_name + " --out=" + 
-            targetdir + "/" + contract_name + ".go", shell=True, check=True)
+            if contract_name in used_contract_names:
+                subprocess.run("abigen --bin=" + bin_name + " --abi=" + abi_name + " --pkg=" + contract_name + " --out=" + 
+                targetdir + "/" + contract_name + ".go", shell=True, check=True)
