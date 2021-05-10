@@ -25,6 +25,10 @@ solidity: {
         settings: {}
     },
     {
+        version: "0.7.1",
+        settings: {}
+    },
+    {
         version: "0.7.0",
         settings: {}
     },
@@ -48,9 +52,7 @@ subprocess.run('npx hardhat compile', shell=True, check=True)
 
 print("Creating contract go bindings...")
 for version in solc_versions:
-    print(version + "\n---------------------------------")
     for subdir, dirs, files in os.walk(rootdir + version):
-        print(version, subdir, dirs, files)
         for f in files:
             if ".dbg." not in f:
                 print(f)
