@@ -19,19 +19,6 @@ type EthereumFluxAggregator struct {
 	callerWallet   client.BlockchainWallet
 }
 
-// NewEthereumFluxAggregator creates a new instances of the Flux Aggregator contract for EVM chains
-func NewEthereumFluxAggregator(client *client.EthereumClient,
-	f *ethereum.FluxAggregator,
-	callerWallet client.BlockchainWallet,
-) FluxAggregator {
-
-	return &EthereumFluxAggregator{
-		client:         client,
-		fluxAggregator: f,
-		callerWallet:   callerWallet,
-	}
-}
-
 // DeployFluxAggregatorContract deploys the Flux Aggregator Contract on an EVM chain
 func DeployFluxAggregatorContract(
 	ethClient *client.EthereumClient,
@@ -42,6 +29,7 @@ func DeployFluxAggregatorContract(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
+		// Some defaults for deploying this test contract
 		linkAddress := common.HexToAddress(ethClient.Network.Config().LinkTokenAddress)
 		paymentAmount := big.NewInt(1)
 		timeout := uint32(60)
@@ -56,7 +44,11 @@ func DeployFluxAggregatorContract(
 	if err != nil {
 		return nil, err
 	}
-	return NewEthereumFluxAggregator(ethClient, instance.(*ethereum.FluxAggregator), fromWallet), nil
+	return &EthereumFluxAggregator{
+		client:         ethClient,
+		fluxAggregator: instance.(*ethereum.FluxAggregator),
+		callerWallet:   fromWallet,
+	}, nil
 }
 
 // Description returns the description of the flux aggregator contract
@@ -76,19 +68,6 @@ type EthereumLinkToken struct {
 	callerWallet client.BlockchainWallet
 }
 
-// NewEthereumLinkToken creates a new instance of the Link Token contract for EVM chains
-func NewEthereumLinkToken(client *client.EthereumClient,
-	l *ethereum.LinkToken,
-	callerWallet client.BlockchainWallet,
-) LinkToken {
-
-	return &EthereumLinkToken{
-		client:       client,
-		linkToken:    l,
-		callerWallet: callerWallet,
-	}
-}
-
 // DeployLinkTokenContract deploys a Link Token contract to an EVM chain
 func DeployLinkTokenContract(ethClient *client.EthereumClient, fromWallet client.BlockchainWallet) (LinkToken, error) {
 	// First check if link token is already deployed
@@ -98,7 +77,11 @@ func DeployLinkTokenContract(ethClient *client.EthereumClient, fromWallet client
 		if err != nil {
 			return nil, err
 		}
-		return NewEthereumLinkToken(ethClient, tokenInstance, fromWallet), err
+		return &EthereumLinkToken{
+			client:       ethClient,
+			linkToken:    tokenInstance,
+			callerWallet: fromWallet,
+		}, err
 	}
 
 	// Otherwise, deploy a new one
@@ -111,7 +94,11 @@ func DeployLinkTokenContract(ethClient *client.EthereumClient, fromWallet client
 	if err != nil {
 		return nil, err
 	}
-	return NewEthereumLinkToken(ethClient, instance.(*ethereum.LinkToken), fromWallet), nil
+	return &EthereumLinkToken{
+		client:       ethClient,
+		linkToken:    instance.(*ethereum.LinkToken),
+		callerWallet: fromWallet,
+	}, err
 }
 
 // Name returns the name of the link token
@@ -130,17 +117,26 @@ type EthereumOffchainAggregator struct {
 	callerWallet client.BlockchainWallet
 }
 
-func NewEthereumOffchainAggregator(
-	client *client.EthereumClient,
-	ocr *ethereum.OffchainAggregator,
-	callerWallet client.BlockchainWallet,
-) OffchainAggregator {
+func DeployOffChainAggregator(
+	ethClient *client.EthereumClient,
+	fromWallet client.BlockchainWallet,
+) (OffchainAggregator, error) {
 
-	return &EthereumOffchainAggregator{
-		client:       client,
-		ocr:          ocr,
-		callerWallet: callerWallet,
+	_, _, instance, err := ethClient.DeployContract(fromWallet, func(
+		auth *bind.TransactOpts,
+		backend bind.ContractBackend,
+	) (common.Address, *types.Transaction, interface{}, error) {
+		// This is complicated, want to wait a bit to clarify approach before implementing this
+		return common.Address{}, nil, nil, nil
+	})
+	if err != nil {
+		return nil, err
 	}
+	return &EthereumOffchainAggregator{
+		client:       ethClient,
+		ocr:          instance.(*ethereum.OffchainAggregator),
+		callerWallet: fromWallet,
+	}, err
 }
 
 // Link returns the LINK contract address on the EVM chain
@@ -160,20 +156,6 @@ type EthereumStorage struct {
 	callerWallet client.BlockchainWallet
 }
 
-// NewEthereumStorage creates a new instance of the storage contract for ethereum chains
-func NewEthereumStorage(
-	client *client.EthereumClient,
-	store *ethereum.Store,
-	callerWallet client.BlockchainWallet,
-) Storage {
-
-	return &EthereumStorage{
-		client:       client,
-		store:        store,
-		callerWallet: callerWallet,
-	}
-}
-
 // DeployStorageContract deploys a vanilla storage contract that is a value store
 func DeployStorageContract(ethClient *client.EthereumClient, fromWallet client.BlockchainWallet) (Storage, error) {
 	_, _, instance, err := ethClient.DeployContract(fromWallet, func(
@@ -185,7 +167,11 @@ func DeployStorageContract(ethClient *client.EthereumClient, fromWallet client.B
 	if err != nil {
 		return nil, err
 	}
-	return NewEthereumStorage(ethClient, instance.(*ethereum.Store), fromWallet), nil
+	return &EthereumStorage{
+		client:       ethClient,
+		store:        instance.(*ethereum.Store),
+		callerWallet: fromWallet,
+	}, err
 }
 
 // Set sets a value in the storage contract
@@ -219,15 +205,6 @@ type EthereumVRF struct {
 	callerWallet client.BlockchainWallet
 }
 
-// NewEthereumVRF creates a new VRF contract instance
-func NewEthereumVRF(client *client.EthereumClient, vrf *ethereum.VRF, callerWallet client.BlockchainWallet) VRF {
-	return &EthereumVRF{
-		client:       client,
-		vrf:          vrf,
-		callerWallet: callerWallet,
-	}
-}
-
 // DeployVRFContract deploys a VRF contract
 func DeployVRFContract(ethClient *client.EthereumClient, fromWallet client.BlockchainWallet) (VRF, error) {
 	_, _, instance, err := ethClient.DeployContract(fromWallet, func(
@@ -239,7 +216,11 @@ func DeployVRFContract(ethClient *client.EthereumClient, fromWallet client.Block
 	if err != nil {
 		return nil, err
 	}
-	return NewEthereumVRF(ethClient, instance.(*ethereum.VRF), fromWallet), nil
+	return &EthereumVRF{
+		client:       ethClient,
+		vrf:          instance.(*ethereum.VRF),
+		callerWallet: fromWallet,
+	}, err
 }
 
 // ProofLength returns the PROOFLENGTH call from the VRF contract
