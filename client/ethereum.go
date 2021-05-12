@@ -48,7 +48,7 @@ func (e *EthereumClient) SendTransaction(
 	from BlockchainWallet,
 	to common.Address,
 	value *big.Int,
-	data common.Hash,
+	data []byte,
 ) (*common.Hash, error) {
 	callMsg, err := e.TransactionCallMessage(from, to, value, data)
 	if err != nil {
@@ -95,7 +95,7 @@ func (e *EthereumClient) DeployContract(
 	contractName string,
 	deployer ContractDeployer,
 ) (*common.Address, *types.Transaction, interface{}, error) {
-	opts, err := e.TransactionOpts(fromWallet, common.Address{}, big.NewInt(0), common.Hash{})
+	opts, err := e.TransactionOpts(fromWallet, common.Address{}, big.NewInt(0), nil)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -120,7 +120,7 @@ func (e *EthereumClient) TransactionCallMessage(
 	from BlockchainWallet,
 	to common.Address,
 	value *big.Int,
-	data common.Hash,
+	data []byte,
 ) (*ethereum.CallMsg, error) {
 	gasPrice, err := e.Client.SuggestGasPrice(context.Background())
 	if err != nil {
@@ -132,14 +132,10 @@ func (e *EthereumClient) TransactionCallMessage(
 		To:       &to,
 		GasPrice: gasPrice,
 		Value:    value,
-		Data:     data.Bytes(),
+		Data:     data,
 	}
-	gasLimit, err := e.Client.EstimateGas(context.Background(), msg)
-	if err != nil {
-		return &msg, err
-	}
-	msg.Gas = gasLimit + e.Network.Config().GasEstimationBuffer
-	log.Debug().Uint64("Gas Limit", gasLimit).Uint64("Limit + Buffer", msg.Gas)
+	msg.Gas = e.Network.Config().TransactionLimit + e.Network.Config().GasEstimationBuffer
+	log.Debug().Uint64("Gas Limit", e.Network.Config().TransactionLimit).Uint64("Limit + Buffer", msg.Gas)
 	return &msg, nil
 }
 
@@ -148,7 +144,7 @@ func (e *EthereumClient) TransactionOpts(
 	from BlockchainWallet,
 	to common.Address,
 	value *big.Int,
-	data common.Hash,
+	data []byte,
 ) (*bind.TransactOpts, error) {
 	callMsg, err := e.TransactionCallMessage(from, to, value, data)
 	if err != nil {

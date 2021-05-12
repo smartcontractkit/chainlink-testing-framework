@@ -8,7 +8,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/rs/zerolog/log"
-	"golang.org/x/crypto/sha3"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -105,7 +104,7 @@ func (f *EthereumFluxAggregator) SetOracles(
 	toAdd, toRemove, toAdmin []common.Address,
 	minSubmissions, maxSubmissions, restartDelay uint32) error {
 
-	opts, err := f.client.TransactionOpts(fromWallet, *f.address, big.NewInt(0), common.Hash{})
+	opts, err := f.client.TransactionOpts(fromWallet, *f.address, big.NewInt(0), nil)
 	if err != nil {
 		return err
 	}
@@ -248,7 +247,7 @@ func (o *EthereumOffchainAggregator) SetPayees(
 	transmitters, payees []common.Address,
 ) error {
 
-	opts, err := o.client.TransactionOpts(fromWallet, *o.address, big.NewInt(0), common.Hash{})
+	opts, err := o.client.TransactionOpts(fromWallet, *o.address, big.NewInt(0), nil)
 	if err != nil {
 		return err
 	}
@@ -270,7 +269,7 @@ func (o *EthereumOffchainAggregator) SetConfig(
 	encoded []byte,
 ) error {
 
-	opts, err := o.client.TransactionOpts(fromWallet, *o.address, big.NewInt(0), common.Hash{})
+	opts, err := o.client.TransactionOpts(fromWallet, *o.address, big.NewInt(0), nil)
 	if err != nil {
 		return err
 	}
@@ -319,7 +318,7 @@ func DeployStorageContract(ethClient *client.EthereumClient, fromWallet client.B
 
 // Set sets a value in the storage contract
 func (e *EthereumStorage) Set(ctxt context.Context, value *big.Int) error {
-	opts, err := e.client.TransactionOpts(e.callerWallet, common.Address{}, big.NewInt(0), common.Hash{})
+	opts, err := e.client.TransactionOpts(e.callerWallet, common.Address{}, big.NewInt(0), nil)
 	if err != nil {
 		return err
 	}
@@ -398,7 +397,7 @@ func fund(
 			Str("To", toAddress.Hex()).
 			Str("Amount", ethAmount.String()).
 			Msg("Funding Contract")
-		_, err := ethClient.SendTransaction(fromWallet, toAddress, ethAmount, common.Hash{})
+		_, err := ethClient.SendTransaction(fromWallet, toAddress, ethAmount, nil)
 		if err != nil {
 			return err
 		}
@@ -414,18 +413,20 @@ func fund(
 			Str("Amount", linkAmount.String()).
 			Msg("Funding Contract")
 		linkAddress := common.HexToAddress(ethClient.Network.Config().LinkTokenAddress)
-		transferFnSignature := []byte("transfer(address,uint)")
-		hash := sha3.NewLegacyKeccak256()
-		hash.Write(transferFnSignature)
-		methodID := hash.Sum(nil)[:4]
-		paddedAddress := common.LeftPadBytes(toAddress.Bytes(), 32)
-		paddedAmount := common.LeftPadBytes(linkAmount.Bytes(), 32)
-		var data []byte
-		data = append(data, methodID...)
-		data = append(data, paddedAddress...)
-		data = append(data, paddedAmount...)
+		linkInstance, err := ethereum.NewLinkToken(linkAddress, ethClient.Client)
+		if err != nil {
+			return err
+		}
+		opts, err := ethClient.TransactionOpts(fromWallet, toAddress, nil, nil)
+		if err != nil {
+			return err
+		}
+		tx, err := linkInstance.Transfer(opts, toAddress, linkAmount)
+		if err != nil {
+			return err
+		}
 
-		_, err := ethClient.SendTransaction(fromWallet, linkAddress, big.NewInt(0), common.BytesToHash(data))
+		err = ethClient.WaitForTransaction(tx.Hash())
 		if err != nil {
 			return err
 		}
