@@ -69,6 +69,8 @@ var _ = Describe("Client", func() {
 		// Deploy FluxMonitor contract
 		fluxInstance, err := DeployFluxAggregatorContract(client, wallets.Default(), fluxOptions)
 		Expect(err).ShouldNot(HaveOccurred())
+		err = fluxInstance.Fund(wallets.Default(), big.NewInt(0), big.NewInt(5))
+		Expect(err).ShouldNot(HaveOccurred())
 
 		// Interact with contract
 		desc, err := fluxInstance.Description(context.Background())
@@ -87,4 +89,38 @@ var _ = Describe("Client", func() {
 		// Entry("on Ethereum Kovan", client.NewKovanNetwork, big.NewInt(5)),
 		// Entry("on Ethereum Goerli", client.NewGoerliNetwork, big.NewInt(5)),
 	)
+
+	// DescribeTable("deploy and interact with the OffChain Aggregator contract", func(
+	// 	initFunc client.BlockchainNetworkInit,
+	// 	offchainOptions OffchainOptions,
+	// ) {
+	// 	// Setup network and client
+	// 	networkConfig, err := initFunc(conf)
+	// 	Expect(err).ShouldNot(HaveOccurred())
+	// 	client, err := client.NewEthereumClient(networkConfig)
+	// 	Expect(err).ShouldNot(HaveOccurred())
+	// 	wallets, err := networkConfig.Wallets()
+	// 	Expect(err).ShouldNot(HaveOccurred())
+
+	// 	// Deploy LINK contract
+	// 	linkInstance, err := DeployLinkTokenContract(client, wallets.Default())
+	// 	Expect(err).ShouldNot(HaveOccurred())
+	// 	name, err := linkInstance.Name(context.Background())
+	// 	Expect(err).ShouldNot(HaveOccurred())
+	// 	Expect(name).To(Equal("ChainLink Token"))
+
+	// 	// Deploy Offchain contract
+	// 	offChainInstance, err := DeployOffChainAggregator(client, wallets.Default(), offchainOptions)
+	// 	Expect(err).ShouldNot(HaveOccurred())
+	// 	err = offChainInstance.Fund(wallets.Default(), nil, big.NewInt(50000000000))
+	// 	Expect(err).ShouldNot(HaveOccurred())
+	// },
+	// 	Entry("on Ethereum Hardhat", client.NewHardhatNetwork, OffchainOptions{
+	// 		Decimals:    uint8(8),
+	// 		Description: "Hardhat OffChain Aggregator",
+	// 	}),
+	// 	// Tested locally successfully. We need to implement secrets system as well as testing wallets for CI use
+	// 	// Entry("on Ethereum Kovan", client.NewKovanNetwork, big.NewInt(5)),
+	// 	// Entry("on Ethereum Goerli", client.NewGoerliNetwork, big.NewInt(5)),
+	// )
 })

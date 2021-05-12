@@ -78,6 +78,11 @@ func (e *EthereumClient) SendTransaction(
 	if err := e.Client.SendTransaction(context.Background(), tx); err != nil {
 		return nil, err
 	}
+	log.Info().
+		Str("From", from.Address()).
+		Str("To", tx.To().Hex()).
+		Str("Value", tx.Value().String()).
+		Msg("Sending Transaction")
 
 	err = e.WaitForTransaction(tx.Hash())
 	hash := tx.Hash()
@@ -87,6 +92,7 @@ func (e *EthereumClient) SendTransaction(
 // DeployContract acts as a general contract deployment tool to an ethereum chain
 func (e *EthereumClient) DeployContract(
 	fromWallet BlockchainWallet,
+	contractName string,
 	deployer ContractDeployer,
 ) (*common.Address, *types.Transaction, interface{}, error) {
 	opts, err := e.TransactionOpts(fromWallet, common.Address{}, big.NewInt(0), common.Hash{})
@@ -101,7 +107,11 @@ func (e *EthereumClient) DeployContract(
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	log.Info().Str("Contract Address", contractAddress.Hex()).Msg("Deployed contract")
+	log.Info().
+		Str("Contract Address", contractAddress.Hex()).
+		Str("Contract Name", contractName).
+		Str("From", fromWallet.Address()).
+		Msg("Deployed contract")
 	return &contractAddress, transaction, contractInstance, err
 }
 
@@ -206,7 +216,7 @@ func (e *EthereumClient) WaitForTransaction(transactionHash common.Hash) error {
 			confirmations++
 			confirmationLog.Msg("Transaction confirmed, waiting on confirmations")
 
-			if confirmations == minConfirmations {
+			if confirmations >= minConfirmations {
 				confirmationLog.Msg("Minimum confirmations met")
 				return err
 			} else {

@@ -29,18 +29,18 @@ networks:
             - df57089febbacf7ba0bc227dafbffa9fc08a93fdc68e1e42411a14efcf23656e
         transaction_limit: 2000000 
         transaction_timeout: 0
-        link_token_address: "" 
+        minimum_confirmations: 0
         gas_estimation_buffer: 9478871
     ethereum_kovan:
         name: "Ethereum Kovan"
         url: "wss://parity-kovan.eth.devnet.tools/ws"
         chain_id: 42
         private_keys:
-            - aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-        transaction_limit: 1000000 
+            - b78af76799b79173746fdfcd0a44f32b6838af219e3566d28e228ebb4e2ca6e3
+        transaction_limit: 10000000 
         transaction_timeout: 5m
-        link_token_address: "0xa36085F69e2889c224210F603D836748e7dC0088"
-        gas_estimation_buffer: 100000
+        minimum_confirmations: 2
+        gas_estimation_buffer: 2000000
     ethereum_goerli:
         name: "Ethereum Goerli"
         url: "wss://geth-goerli.eth.devnet.tools/ws"
@@ -49,5 +49,5 @@ networks:
             - aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
         transaction_limit: 1000000
         transaction_timeout: 5m
-        link_token_address: "0x326c977e6efc84e512bb9c30f76e30c160ed06fb"
+        minimum_confirmations: 2
         gas_estimation_buffer: 100000

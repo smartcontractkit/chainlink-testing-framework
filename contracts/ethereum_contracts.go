@@ -29,21 +29,10 @@ func DeployFluxAggregatorContract(
 	fluxOptions FluxAggregatorOptions,
 ) (FluxAggregator, error) {
 
-	address, _, instance, err := ethClient.DeployContract(fromWallet, func(
+	address, _, instance, err := ethClient.DeployContract(fromWallet, "Flux Aggregator", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
-		// Some defaults for deploying this test contract, saving for now
-		// defaultOptions := &FluxAggregatorOptions{
-		// 	PaymentAmount: big.NewInt(1),
-		// 	Timeout:       uint32(60),
-		// 	Validator:     common.Address{},
-		// 	MinSubValue:   big.NewInt(1),
-		// 	MaxSubValue:   big.NewInt(10),
-		// 	Decimals:      uint8(8),
-		// 	Description:   "Test Flux Aggregator",
-		// }
-
 		linkAddress := common.HexToAddress(ethClient.Network.Config().LinkTokenAddress)
 		return ethereum.DeployFluxAggregator(auth,
 			backend,
@@ -143,27 +132,12 @@ type EthereumLinkToken struct {
 	client       *client.EthereumClient
 	linkToken    *ethereum.LinkToken
 	callerWallet client.BlockchainWallet
+	address      common.Address
 }
 
 // DeployLinkTokenContract deploys a Link Token contract to an EVM chain
 func DeployLinkTokenContract(ethClient *client.EthereumClient, fromWallet client.BlockchainWallet) (LinkToken, error) {
-	// First check if link token is already deployed
-	linkTokenAddress := ethClient.Network.Config().LinkTokenAddress
-	if linkTokenAddress != "" {
-		log.Info().Str("Contract Address", linkTokenAddress).Msg("Found already deployed LINK contract")
-		tokenInstance, err := ethereum.NewLinkToken(common.HexToAddress(linkTokenAddress), ethClient.Client)
-		if err != nil {
-			return nil, err
-		}
-		return &EthereumLinkToken{
-			client:       ethClient,
-			linkToken:    tokenInstance,
-			callerWallet: fromWallet,
-		}, err
-	}
-
-	// Otherwise, deploy a new one
-	address, _, instance, err := ethClient.DeployContract(fromWallet, func(
+	linkTokenAddress, _, instance, err := ethClient.DeployContract(fromWallet, "LINK Token", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -173,13 +147,19 @@ func DeployLinkTokenContract(ethClient *client.EthereumClient, fromWallet client
 		return nil, err
 	}
 	// Set config address
-	ethClient.Network.Config().LinkTokenAddress = address.Hex()
+	ethClient.Network.Config().LinkTokenAddress = linkTokenAddress.Hex()
 
 	return &EthereumLinkToken{
 		client:       ethClient,
 		linkToken:    instance.(*ethereum.LinkToken),
 		callerWallet: fromWallet,
+		address:      *linkTokenAddress,
 	}, err
+}
+
+// Fund the LINK Token contract with ETH to distribute the token
+func (l *EthereumLinkToken) Fund(fromWallet client.BlockchainWallet, ethAmount *big.Int) error {
+	return fund(l.client, fromWallet, l.address, ethAmount, nil)
 }
 
 // Name returns the name of the link token
@@ -206,7 +186,7 @@ func DeployOffChainAggregator(
 	fromWallet client.BlockchainWallet,
 	offchainOptions OffchainOptions,
 ) (OffchainAggregator, error) {
-	address, _, instance, err := ethClient.DeployContract(fromWallet, func(
+	address, _, instance, err := ethClient.DeployContract(fromWallet, "OffChain Aggregator", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -321,7 +301,7 @@ type EthereumStorage struct {
 
 // DeployStorageContract deploys a vanilla storage contract that is a value store
 func DeployStorageContract(ethClient *client.EthereumClient, fromWallet client.BlockchainWallet) (Storage, error) {
-	_, _, instance, err := ethClient.DeployContract(fromWallet, func(
+	_, _, instance, err := ethClient.DeployContract(fromWallet, "Storage", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -371,7 +351,7 @@ type EthereumVRF struct {
 
 // DeployVRFContract deploys a VRF contract
 func DeployVRFContract(ethClient *client.EthereumClient, fromWallet client.BlockchainWallet) (VRF, error) {
-	address, _, instance, err := ethClient.DeployContract(fromWallet, func(
+	address, _, instance, err := ethClient.DeployContract(fromWallet, "VRF", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -411,7 +391,13 @@ func fund(
 ) error {
 
 	// Send ETH if not 0
-	if ethAmount != big.NewInt(0) || ethAmount != nil {
+	if big.NewInt(0).Cmp(ethAmount) != 0 && ethAmount != nil {
+		log.Info().
+			Str("Token", "ETH").
+			Str("From", fromWallet.Address()).
+			Str("To", toAddress.Hex()).
+			Str("Amount", ethAmount.String()).
+			Msg("Funding Contract")
 		_, err := ethClient.SendTransaction(fromWallet, toAddress, ethAmount, common.Hash{})
 		if err != nil {
 			return err
@@ -419,10 +405,16 @@ func fund(
 	}
 
 	// Send LINK if not 0
-	if linkAmount != big.NewInt(0) || linkAmount != nil {
+	if big.NewInt(0).Cmp(linkAmount) != 0 && linkAmount != nil {
 		// Prepare data field for token tx
+		log.Info().
+			Str("Token", "LINK").
+			Str("From", fromWallet.Address()).
+			Str("To", toAddress.Hex()).
+			Str("Amount", linkAmount.String()).
+			Msg("Funding Contract")
 		linkAddress := common.HexToAddress(ethClient.Network.Config().LinkTokenAddress)
-		transferFnSignature := []byte("transfer(address,uint256)")
+		transferFnSignature := []byte("transfer(address,uint)")
 		hash := sha3.NewLegacyKeccak256()
 		hash.Write(transferFnSignature)
 		methodID := hash.Sum(nil)[:4]

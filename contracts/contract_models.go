@@ -26,7 +26,7 @@ type FluxAggregatorData struct {
 }
 
 type FluxAggregator interface {
-	Fund(client.BlockchainWallet, *big.Int, *big.Int) error
+	Fund(fromWallet client.BlockchainWallet, ethAmount *big.Int, linkAmount *big.Int) error
 	GetContractData(context.Context) (*FluxAggregatorData, error)
 	SetOracles(context.Context,
 		client.BlockchainWallet,
@@ -41,6 +41,7 @@ type FluxAggregator interface {
 }
 
 type LinkToken interface {
+	Fund(fromWallet client.BlockchainWallet, ethAmount *big.Int) error
 	Name(context.Context) (string, error)
 }
 
