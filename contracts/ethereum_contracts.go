@@ -7,6 +7,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/rs/zerolog/log"
 	"golang.org/x/crypto/sha3"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -71,6 +72,62 @@ func (f *EthereumFluxAggregator) Fund(fromWallet client.BlockchainWallet, ethAmo
 	return fund(f.client, fromWallet, *f.address, ethAmount, linkAmount)
 }
 
+// GetContractData retrieves basic data for the flux aggregator contract
+func (f *EthereumFluxAggregator) GetContractData(ctxt context.Context) (*FluxAggregatorData, error) {
+	opts := &bind.CallOpts{
+		From:    common.HexToAddress(f.callerWallet.Address()),
+		Pending: true,
+		Context: ctxt,
+	}
+
+	allocated, err := f.fluxAggregator.AllocatedFunds(opts)
+	if err != nil {
+		return &FluxAggregatorData{}, err
+	}
+
+	available, err := f.fluxAggregator.AvailableFunds(opts)
+	if err != nil {
+		return &FluxAggregatorData{}, err
+	}
+
+	lr, err := f.fluxAggregator.LatestRoundData(opts)
+	if err != nil {
+		return &FluxAggregatorData{}, err
+	}
+	latestRound := RoundData(lr)
+
+	oracles, err := f.fluxAggregator.GetOracles(opts)
+	if err != nil {
+		return &FluxAggregatorData{}, err
+	}
+
+	return &FluxAggregatorData{
+		AllocatedFunds:  allocated,
+		AvailableFunds:  available,
+		LatestRoundData: latestRound,
+		Oracles:         oracles,
+	}, nil
+}
+
+// SetOracles allows the ability to add and/or remove oracles from the contract, and to set admins
+func (f *EthereumFluxAggregator) SetOracles(
+	ctxt context.Context,
+	fromWallet client.BlockchainWallet,
+	toAdd, toRemove, toAdmin []common.Address,
+	minSubmissions, maxSubmissions, restartDelay uint32) error {
+
+	opts, err := f.client.TransactionOpts(fromWallet, *f.address, big.NewInt(0), common.Hash{})
+	if err != nil {
+		return err
+	}
+
+	tx, err := f.fluxAggregator.ChangeOracles(opts, toRemove, toAdd, toAdmin, minSubmissions, maxSubmissions, restartDelay)
+	if err != nil {
+		return err
+	}
+	return f.client.WaitForTransaction(tx.Hash())
+}
+
 // Description returns the description of the flux aggregator contract
 func (f *EthereumFluxAggregator) Description(ctxt context.Context) (string, error) {
 	opts := &bind.CallOpts{
@@ -93,6 +150,7 @@ func DeployLinkTokenContract(ethClient *client.EthereumClient, fromWallet client
 	// First check if link token is already deployed
 	linkTokenAddress := ethClient.Network.Config().LinkTokenAddress
 	if linkTokenAddress != "" {
+		log.Info().Str("Contract Address", linkTokenAddress).Msg("Found already deployed LINK contract")
 		tokenInstance, err := ethereum.NewLinkToken(common.HexToAddress(linkTokenAddress), ethClient.Client)
 		if err != nil {
 			return nil, err
@@ -182,6 +240,66 @@ func DeployOffChainAggregator(
 // Fund sends specified currencies to the contract
 func (o *EthereumOffchainAggregator) Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Int) error {
 	return fund(o.client, fromWallet, *o.address, ethAmount, linkAmount)
+}
+
+// GetContractData retrieves basic data for the offchain aggregator contract
+func (o *EthereumOffchainAggregator) GetContractData(ctxt context.Context) (*OffchainAggregatorData, error) {
+	opts := &bind.CallOpts{
+		From:    common.HexToAddress(o.callerWallet.Address()),
+		Pending: true,
+		Context: ctxt,
+	}
+
+	lr, err := o.ocr.LatestRoundData(opts)
+	if err != nil {
+		return &OffchainAggregatorData{}, err
+	}
+	latestRound := RoundData(lr)
+
+	return &OffchainAggregatorData{
+		LatestRoundData: latestRound,
+	}, nil
+}
+
+// SetPayees sets wallets for the contract to pay out to?
+func (o *EthereumOffchainAggregator) SetPayees(
+	ctxt context.Context,
+	fromWallet client.BlockchainWallet,
+	transmitters, payees []common.Address,
+) error {
+
+	opts, err := o.client.TransactionOpts(fromWallet, *o.address, big.NewInt(0), common.Hash{})
+	if err != nil {
+		return err
+	}
+
+	tx, err := o.ocr.SetPayees(opts, transmitters, payees)
+	if err != nil {
+		return err
+	}
+	return o.client.WaitForTransaction(tx.Hash())
+}
+
+// SetConfig sets offchain reporting protocol configuration including participating oracles
+func (o *EthereumOffchainAggregator) SetConfig(
+	ctxt context.Context,
+	fromWallet client.BlockchainWallet,
+	signers, transmitters []common.Address,
+	threshold uint8,
+	encodedConfigVersion uint64,
+	encoded []byte,
+) error {
+
+	opts, err := o.client.TransactionOpts(fromWallet, *o.address, big.NewInt(0), common.Hash{})
+	if err != nil {
+		return err
+	}
+
+	tx, err := o.ocr.SetConfig(opts, signers, transmitters, threshold, encodedConfigVersion, encoded)
+	if err != nil {
+		return err
+	}
+	return o.client.WaitForTransaction(tx.Hash())
 }
 
 // Link returns the LINK contract address on the EVM chain

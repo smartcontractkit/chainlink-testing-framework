@@ -3,6 +3,9 @@ package client
 import (
 	"context"
 	"fmt"
+	"math/big"
+	"time"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -10,8 +13,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/rs/zerolog/log"
-	"math/big"
-	"time"
 )
 
 // EthereumClient wraps the client and the BlockChain network to interact with an EVM based Blockchain
@@ -115,6 +116,7 @@ func (e *EthereumClient) TransactionCallMessage(
 	if err != nil {
 		return nil, err
 	}
+	log.Debug().Str("Suggested Gas Price", gasPrice.String())
 	msg := ethereum.CallMsg{
 		From:     common.HexToAddress(from.Address()),
 		To:       &to,
@@ -127,6 +129,7 @@ func (e *EthereumClient) TransactionCallMessage(
 		return &msg, err
 	}
 	msg.Gas = gasLimit + e.Network.Config().GasEstimationBuffer
+	log.Debug().Uint64("Gas Limit", gasLimit).Uint64("Limit + Buffer", msg.Gas)
 	return &msg, nil
 }
 

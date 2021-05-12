@@ -18,8 +18,25 @@ type FluxAggregatorOptions struct {
 	Description   string         // A short description of what is being reported
 }
 
+type FluxAggregatorData struct {
+	AllocatedFunds  *big.Int         // The amount of payment yet to be withdrawn by oracles
+	AvailableFunds  *big.Int         // The amount of future funding available to oracles
+	LatestRoundData RoundData        // Data about the latest round
+	Oracles         []common.Address // Addresses of oracles on the contract
+}
+
 type FluxAggregator interface {
 	Fund(client.BlockchainWallet, *big.Int, *big.Int) error
+	GetContractData(context.Context) (*FluxAggregatorData, error)
+	SetOracles(context.Context,
+		client.BlockchainWallet,
+		[]common.Address,
+		[]common.Address,
+		[]common.Address,
+		uint32,
+		uint32,
+		uint32,
+	) error
 	Description(context.Context) (string, error)
 }
 
@@ -41,8 +58,14 @@ type OffchainOptions struct {
 	Description               string         // A short description of what is being reported
 }
 
+type OffchainAggregatorData struct {
+	LatestRoundData RoundData // Data about the latest round
+}
+
 type OffchainAggregator interface {
 	Fund(client.BlockchainWallet, *big.Int, *big.Int) error
+	GetContractData(ctxt context.Context) (*OffchainAggregatorData, error)
+	SetPayees(context.Context, client.BlockchainWallet, []common.Address, []common.Address) error
 	Link(ctxt context.Context) (common.Address, error)
 }
 
@@ -54,4 +77,12 @@ type Storage interface {
 type VRF interface {
 	Fund(client.BlockchainWallet, *big.Int, *big.Int) error
 	ProofLength(context.Context) (*big.Int, error)
+}
+
+type RoundData struct {
+	RoundId         *big.Int
+	Answer          *big.Int
+	StartedAt       *big.Int
+	UpdatedAt       *big.Int
+	AnsweredInRound *big.Int
 }
