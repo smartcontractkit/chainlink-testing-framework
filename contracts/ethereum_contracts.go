@@ -7,6 +7,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/core/types"
+	"golang.org/x/crypto/sha3"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -17,29 +18,42 @@ type EthereumFluxAggregator struct {
 	client         *client.EthereumClient
 	fluxAggregator *ethereum.FluxAggregator
 	callerWallet   client.BlockchainWallet
+	address        *common.Address
 }
 
 // DeployFluxAggregatorContract deploys the Flux Aggregator Contract on an EVM chain
 func DeployFluxAggregatorContract(
 	ethClient *client.EthereumClient,
 	fromWallet client.BlockchainWallet,
+	fluxOptions FluxAggregatorOptions,
 ) (FluxAggregator, error) {
 
-	_, _, instance, err := ethClient.DeployContract(fromWallet, func(
+	address, _, instance, err := ethClient.DeployContract(fromWallet, func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
-		// Some defaults for deploying this test contract
+		// Some defaults for deploying this test contract, saving for now
+		// defaultOptions := &FluxAggregatorOptions{
+		// 	PaymentAmount: big.NewInt(1),
+		// 	Timeout:       uint32(60),
+		// 	Validator:     common.Address{},
+		// 	MinSubValue:   big.NewInt(1),
+		// 	MaxSubValue:   big.NewInt(10),
+		// 	Decimals:      uint8(8),
+		// 	Description:   "Test Flux Aggregator",
+		// }
+
 		linkAddress := common.HexToAddress(ethClient.Network.Config().LinkTokenAddress)
-		paymentAmount := big.NewInt(1)
-		timeout := uint32(60)
-		var validator common.Address
-		minSubValue := big.NewInt(1)
-		maxSubValue := big.NewInt(10)
-		decimals := uint8(18)
-		desc := "Test Flux Aggregator"
-		return ethereum.DeployFluxAggregator(auth, backend, linkAddress, paymentAmount, timeout, validator,
-			minSubValue, maxSubValue, decimals, desc)
+		return ethereum.DeployFluxAggregator(auth,
+			backend,
+			linkAddress,
+			fluxOptions.PaymentAmount,
+			fluxOptions.Timeout,
+			fluxOptions.Validator,
+			fluxOptions.MinSubValue,
+			fluxOptions.MaxSubValue,
+			fluxOptions.Decimals,
+			fluxOptions.Description)
 	})
 	if err != nil {
 		return nil, err
@@ -48,7 +62,13 @@ func DeployFluxAggregatorContract(
 		client:         ethClient,
 		fluxAggregator: instance.(*ethereum.FluxAggregator),
 		callerWallet:   fromWallet,
+		address:        address,
 	}, nil
+}
+
+// Fund sends specified currencies to the contract
+func (f *EthereumFluxAggregator) Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Int) error {
+	return fund(f.client, fromWallet, *f.address, ethAmount, linkAmount)
 }
 
 // Description returns the description of the flux aggregator contract
@@ -85,7 +105,7 @@ func DeployLinkTokenContract(ethClient *client.EthereumClient, fromWallet client
 	}
 
 	// Otherwise, deploy a new one
-	_, _, instance, err := ethClient.DeployContract(fromWallet, func(
+	address, _, instance, err := ethClient.DeployContract(fromWallet, func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -94,6 +114,9 @@ func DeployLinkTokenContract(ethClient *client.EthereumClient, fromWallet client
 	if err != nil {
 		return nil, err
 	}
+	// Set config address
+	ethClient.Network.Config().LinkTokenAddress = address.Hex()
+
 	return &EthereumLinkToken{
 		client:       ethClient,
 		linkToken:    instance.(*ethereum.LinkToken),
@@ -111,23 +134,39 @@ func (l *EthereumLinkToken) Name(ctxt context.Context) (string, error) {
 	return l.linkToken.Name(opts)
 }
 
+// EthereumOffchainAggregator represents the offchain aggregation contract
 type EthereumOffchainAggregator struct {
 	client       *client.EthereumClient
 	ocr          *ethereum.OffchainAggregator
 	callerWallet client.BlockchainWallet
+	address      *common.Address
 }
 
+// DeployOffChainAggregator deploys the offchain aggregation contract to the EVM chain
 func DeployOffChainAggregator(
 	ethClient *client.EthereumClient,
 	fromWallet client.BlockchainWallet,
+	offchainOptions OffchainOptions,
 ) (OffchainAggregator, error) {
-
-	_, _, instance, err := ethClient.DeployContract(fromWallet, func(
+	address, _, instance, err := ethClient.DeployContract(fromWallet, func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
-		// This is complicated, want to wait a bit to clarify approach before implementing this
-		return common.Address{}, nil, nil, nil
+		linkAddress := common.HexToAddress(ethClient.Network.Config().LinkTokenAddress)
+		return ethereum.DeployOffchainAggregator(auth,
+			backend,
+			offchainOptions.MaximumGasPrice,
+			offchainOptions.ReasonableGasPrice,
+			offchainOptions.MicroLinkPerEth,
+			offchainOptions.LinkGweiPerObservation,
+			offchainOptions.LinkGweiPerTransmission,
+			linkAddress,
+			offchainOptions.MinimumAnswer,
+			offchainOptions.MaximumAnswer,
+			offchainOptions.BillingAccessController,
+			offchainOptions.RequesterAccessController,
+			offchainOptions.Decimals,
+			offchainOptions.Description)
 	})
 	if err != nil {
 		return nil, err
@@ -136,7 +175,13 @@ func DeployOffChainAggregator(
 		client:       ethClient,
 		ocr:          instance.(*ethereum.OffchainAggregator),
 		callerWallet: fromWallet,
+		address:      address,
 	}, err
+}
+
+// Fund sends specified currencies to the contract
+func (o *EthereumOffchainAggregator) Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Int) error {
+	return fund(o.client, fromWallet, *o.address, ethAmount, linkAmount)
 }
 
 // Link returns the LINK contract address on the EVM chain
@@ -203,11 +248,12 @@ type EthereumVRF struct {
 	client       *client.EthereumClient
 	vrf          *ethereum.VRF
 	callerWallet client.BlockchainWallet
+	address      *common.Address
 }
 
 // DeployVRFContract deploys a VRF contract
 func DeployVRFContract(ethClient *client.EthereumClient, fromWallet client.BlockchainWallet) (VRF, error) {
-	_, _, instance, err := ethClient.DeployContract(fromWallet, func(
+	address, _, instance, err := ethClient.DeployContract(fromWallet, func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -220,7 +266,13 @@ func DeployVRFContract(ethClient *client.EthereumClient, fromWallet client.Block
 		client:       ethClient,
 		vrf:          instance.(*ethereum.VRF),
 		callerWallet: fromWallet,
+		address:      address,
 	}, err
+}
+
+// Fund sends specified currencies to the contract
+func (v *EthereumVRF) Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Int) error {
+	return fund(v.client, fromWallet, *v.address, ethAmount, linkAmount)
 }
 
 // ProofLength returns the PROOFLENGTH call from the VRF contract
@@ -231,4 +283,42 @@ func (v *EthereumVRF) ProofLength(ctxt context.Context) (*big.Int, error) {
 		Context: ctxt,
 	}
 	return v.vrf.PROOFLENGTH(opts)
+}
+
+func fund(
+	ethClient *client.EthereumClient,
+	fromWallet client.BlockchainWallet,
+	toAddress common.Address,
+	ethAmount, linkAmount *big.Int,
+) error {
+
+	// Send ETH if not 0
+	if ethAmount != big.NewInt(0) || ethAmount != nil {
+		_, err := ethClient.SendTransaction(fromWallet, toAddress, ethAmount, common.Hash{})
+		if err != nil {
+			return err
+		}
+	}
+
+	// Send LINK if not 0
+	if linkAmount != big.NewInt(0) || linkAmount != nil {
+		// Prepare data field for token tx
+		linkAddress := common.HexToAddress(ethClient.Network.Config().LinkTokenAddress)
+		transferFnSignature := []byte("transfer(address,uint256)")
+		hash := sha3.NewLegacyKeccak256()
+		hash.Write(transferFnSignature)
+		methodID := hash.Sum(nil)[:4]
+		paddedAddress := common.LeftPadBytes(toAddress.Bytes(), 32)
+		paddedAmount := common.LeftPadBytes(linkAmount.Bytes(), 32)
+		var data []byte
+		data = append(data, methodID...)
+		data = append(data, paddedAddress...)
+		data = append(data, paddedAmount...)
+
+		_, err := ethClient.SendTransaction(fromWallet, linkAddress, big.NewInt(0), common.BytesToHash(data))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
