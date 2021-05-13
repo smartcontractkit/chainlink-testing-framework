@@ -66,6 +66,14 @@ type OffchainAggregatorData struct {
 type OffchainAggregator interface {
 	Fund(client.BlockchainWallet, *big.Int, *big.Int) error
 	GetContractData(ctxt context.Context) (*OffchainAggregatorData, error)
+	SetConfig(
+		ctxt context.Context,
+		fromWallet client.BlockchainWallet,
+		signers, transmitters []common.Address,
+		threshold uint8,
+		encodedConfigVersion uint64,
+		encoded []byte,
+	) error
 	SetPayees(context.Context, client.BlockchainWallet, []common.Address, []common.Address) error
 	Link(ctxt context.Context) (common.Address, error)
 }

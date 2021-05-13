@@ -2,6 +2,7 @@ package contracts
 
 import (
 	"context"
+	"fmt"
 	"integrations-framework/client"
 	"integrations-framework/contracts/ethereum"
 	"math/big"
@@ -190,6 +191,8 @@ func DeployOffChainAggregator(
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
 		linkAddress := common.HexToAddress(ethClient.Network.Config().LinkTokenAddress)
+		out := fmt.Sprintf("%#v", offchainOptions)
+		log.Info().Str("Options", out).Msg("Off Chain Options")
 		return ethereum.DeployOffchainAggregator(auth,
 			backend,
 			offchainOptions.MaximumGasPrice,
@@ -390,7 +393,7 @@ func fund(
 ) error {
 
 	// Send ETH if not 0
-	if big.NewInt(0).Cmp(ethAmount) != 0 && ethAmount != nil {
+	if ethAmount != nil && big.NewInt(0).Cmp(ethAmount) != 0 {
 		log.Info().
 			Str("Token", "ETH").
 			Str("From", fromWallet.Address()).
@@ -404,7 +407,7 @@ func fund(
 	}
 
 	// Send LINK if not 0
-	if big.NewInt(0).Cmp(linkAmount) != 0 && linkAmount != nil {
+	if linkAmount != nil && big.NewInt(0).Cmp(linkAmount) != 0 {
 		// Prepare data field for token tx
 		log.Info().
 			Str("Token", "LINK").
