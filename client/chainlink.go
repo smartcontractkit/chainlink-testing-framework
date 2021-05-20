@@ -7,6 +7,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os/exec"
+	"strings"
+	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
 var ErrNotFound = errors.New("unexpected response code, got 404")
@@ -52,6 +57,78 @@ type chainlink struct {
 func NewChainlink(c *ChainlinkConfig) Chainlink {
 	cl := &chainlink{Config: c}
 	return cl
+}
+
+// CreateTemplateNodes lauches 5 chainlink nodes in a default config for testing
+func CreateTemplateNodes(network BlockchainNetwork, linkAddress string) ([]Chainlink, error) {
+	urlBase := "http://localhost:"
+	email := "notreal@fakeemail.ch"
+	pass := "twochains"
+	ports := []string{"6711", "6722", "6733", "6744", "6755"}
+
+	p, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
+	if err != nil {
+		return nil, err
+	}
+	projectDir := strings.TrimSpace(string(p))
+
+	log.Info().Str("CMD", "docker-compose -f docker-compose.yml up").Msg("Running command")
+	cmd := exec.Command("docker-compose", "-f", "docker-compose.yml", "up")
+	cmd.Dir = string(projectDir) + "/chainlink_nodes"
+	ethUrl := "ETH_URL=" + network.URL()
+	if network.ID() == string(EthereumHardhatID) {
+		ethUrl = "ETH_URL=ws://host.docker.internal:8545"
+	}
+	chainId := "ETH_CHAIN_ID=" + network.ChainID().String()
+	la := "LINK_CONTRACT_ADDRESS=" + linkAddress
+	cmd.Env = []string{ethUrl, chainId, la}
+	var e bytes.Buffer
+	cmd.Stderr = &e
+	cmd.Start()
+
+	// Wait for Docker Compose to be up and healthy
+	resp, err := http.Get(urlBase + "6711")
+	for start := time.Now(); time.Since(start) < 2*time.Minute; time.Sleep(time.Second * 20) {
+		resp, err = http.Get(urlBase + "6711")
+		if err == nil && resp.StatusCode == 200 {
+			break
+		}
+	}
+	if err != nil {
+		log.Error().Str("ERROR", e.String()).Msg("STDERR")
+		if resp != nil {
+			log.Info().Int("Status Code", resp.StatusCode).Msg("Monitor Response")
+		} else {
+			log.Error().Msg("Monitor Response NIL")
+		}
+		CleanTemplateNodes()
+		return nil, err
+	}
+
+	var cls []Chainlink
+	for _, port := range ports {
+		c := &ChainlinkConfig{
+			URL:      urlBase + port,
+			Email:    email,
+			Password: pass,
+		}
+		cls = append(cls, NewChainlink(c))
+	}
+	return cls, err
+}
+
+// CleanTemplateNodes cleans the default setup for chainlink nodes
+func CleanTemplateNodes() error {
+	p, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
+	if err != nil {
+		return err
+	}
+	projectDir := strings.TrimSpace(string(p))
+	cmd := exec.Command("docker-compose", "-f", "./docker-compose.yml", "down", "-v", "--remove-orphans")
+	cmd.Dir = string(projectDir) + "/chainlink_nodes"
+
+	log.Info().Str("CMD", "docker-compose -f ./docker-compose.yml down -v --remove-orphans").Msg("Running command")
+	return cmd.Run()
 }
 
 // CreateJob creates a Chainlink job based on the provided spec string

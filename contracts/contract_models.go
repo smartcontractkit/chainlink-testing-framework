@@ -41,6 +41,7 @@ type FluxAggregator interface {
 }
 
 type LinkToken interface {
+	Address() string
 	Fund(fromWallet client.BlockchainWallet, ethAmount *big.Int) error
 	Name(context.Context) (string, error)
 }

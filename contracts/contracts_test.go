@@ -11,6 +11,45 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+var _ = Describe("Chainlink Node", func() {
+	var conf *config.Config
+
+	BeforeEach(func() {
+		var err error
+		conf, err = config.NewWithPath(config.LocalConfig, "../config")
+		Expect(err).ShouldNot(HaveOccurred())
+	})
+
+	DescribeTable("deploy and use basic functionality", func(
+		initFunc client.BlockchainNetworkInit,
+	) {
+		// Setup
+		networkConfig, err := initFunc(conf)
+		Expect(err).ShouldNot(HaveOccurred())
+		ethClient, err := client.NewEthereumClient(networkConfig)
+		Expect(err).ShouldNot(HaveOccurred())
+		wallets, err := networkConfig.Wallets()
+		Expect(err).ShouldNot(HaveOccurred())
+		linkInstance, err := DeployLinkTokenContract(ethClient, wallets.Default())
+		Expect(err).ShouldNot(HaveOccurred())
+
+		// Launch Nodes
+		_, err = client.CreateTemplateNodes(networkConfig, linkInstance.Address())
+		Expect(err).ShouldNot(HaveOccurred())
+
+		// Cleanup
+		err = client.CleanTemplateNodes()
+		Expect(err).ShouldNot(HaveOccurred())
+
+	},
+		Entry("on Ethereum Hardhat", client.NewHardhatNetwork),
+		// Tested locally successfully. We need to implement secrets system as well as testing wallets for CI use
+		// Entry("on Ethereum Kovan", NewKovanNetwork),
+		// Entry("on Ethereum Goerli", NewGoerliNetwork),
+	)
+
+})
+
 var _ = Describe("Client", func() {
 	var conf *config.Config
 

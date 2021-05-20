@@ -157,6 +157,11 @@ func DeployLinkTokenContract(ethClient *client.EthereumClient, fromWallet client
 	}, err
 }
 
+// Address of the the link token address
+func (l *EthereumLinkToken) Address() string {
+	return l.address.Hex()
+}
+
 // Fund the LINK Token contract with ETH to distribute the token
 func (l *EthereumLinkToken) Fund(fromWallet client.BlockchainWallet, ethAmount *big.Int) error {
 	return fund(l.client, fromWallet, l.address, ethAmount, nil)

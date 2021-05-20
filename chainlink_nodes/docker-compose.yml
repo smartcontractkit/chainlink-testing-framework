@@ -1,0 +1,183 @@
+# Builds a chainlink environment based on the latest published docker image
+
+version: '3.5'
+services:
+  node-db:
+    container_name: chainlink-db
+    image: postgres:11.6
+    volumes:
+      - ./drop_tables.sql:/docker-entrypoint-initdb.d/1-drop_tables.sql
+      - ./create_tables.sql:/docker-entrypoint-initdb.d/2-create_tables.sql
+    environment:
+      POSTGRES_DB: $CHAINLINK_DB_NAME
+      POSTGRES_PASSWORD: $CHAINLINK_PGPASSWORD
+    ports:
+      - 5432:5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  node:
+    container_name: chainlink-node-1
+    image: $CHAINLINK_DOCKER_IMAGE
+    command: node start -d -p /run/secrets/node_password -a /run/secrets/apicredentials
+    restart: always
+    deploy:
+      restart_policy:
+        condition: on-failure
+    healthcheck:
+      test: tee | grep "Listening and serving HTTP on port 6688" -q
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      node-db:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql://postgres:$CHAINLINK_PGPASSWORD@node-db:5432/chainlink_1_test?sslmode=disable
+      - LOG_LEVEL=info
+      - ETH_URL
+      - ETH_CHAIN_ID
+      - LINK_CONTRACT_ADDRESS
+    env_file:
+      - chainlink-variables.env
+    ports:
+      - 6711:6688      
+      - "6060:6060"
+    secrets:
+      - node_password
+      - apicredentials
+      - keystore
+  node-2:
+    depends_on:
+      node-db:
+        condition: service_healthy
+    container_name: chainlink-node-2
+    image: $CHAINLINK_DOCKER_IMAGE 
+    command: node start -d -p /run/secrets/node_password -a /run/secrets/apicredentials
+    restart: always    
+    deploy:
+      restart_policy:
+        condition: on-failure
+    healthcheck:
+      test: tee | grep "Listening and serving HTTP on port 6688" -q
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    environment:      
+      - DATABASE_URL=postgresql://postgres:$CHAINLINK_PGPASSWORD@node-db:5432/chainlink_2_test?sslmode=disable
+      - LOG_LEVEL=info
+      - EXPLORER_URL=ws://explore-team-1.ngrok.io
+      - ETH_URL
+      - ETH_CHAIN_ID
+      - LINK_CONTRACT_ADDRESS
+    env_file:
+      - chainlink-variables.env
+    ports:
+      - 6722:6688
+      - 6062:6060      
+    secrets:
+      - node_password
+      - apicredentials
+      - keystore       
+  node-3:
+    depends_on:
+      node-db:
+        condition: service_healthy
+    container_name: chainlink-node-3
+    image: $CHAINLINK_DOCKER_IMAGE 
+    command: node start -d -p /run/secrets/node_password -a /run/secrets/apicredentials
+    restart: always  
+    deploy:
+      restart_policy:
+        condition: on-failure
+    healthcheck:
+      test: tee | grep "Listening and serving HTTP on port 6688" -q
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    environment:
+      - DATABASE_URL=postgresql://postgres:$CHAINLINK_PGPASSWORD@node-db:5432/chainlink_3_test?sslmode=disable
+      - LOG_LEVEL=info 
+      - ETH_URL
+      - ETH_CHAIN_ID
+      - LINK_CONTRACT_ADDRESS
+    env_file:
+      - chainlink-variables.env
+    ports:
+      - 6733:6688
+      - 6063:6060
+    secrets:
+      - node_password
+      - apicredentials
+      - keystore    
+  node-4:
+    depends_on:
+      node-db:
+        condition: service_healthy
+    container_name: chainlink-node-4
+    image: $CHAINLINK_DOCKER_IMAGE 
+    command: node start -d -p /run/secrets/node_password -a /run/secrets/apicredentials
+    restart: always   
+    deploy:
+      restart_policy:
+        condition: on-failure
+    healthcheck:
+      test: tee | grep "Listening and serving HTTP on port 6688" -q
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    environment:
+      - DATABASE_URL=postgresql://postgres:$CHAINLINK_PGPASSWORD@node-db:5432/chainlink_4_test?sslmode=disable
+      - LOG_LEVEL=info
+      - ETH_URL
+      - ETH_CHAIN_ID
+      - LINK_CONTRACT_ADDRESS
+    env_file:
+      - chainlink-variables.env
+    ports:
+      - 6744:6688 
+      - 6064:6060     
+    secrets:
+      - node_password
+      - apicredentials
+      - keystore    
+  node-5:
+    depends_on:
+      node-db:
+        condition: service_healthy
+    container_name: chainlink-node-5
+    image: $CHAINLINK_DOCKER_IMAGE 
+    command: node start -d -p /run/secrets/node_password -a /run/secrets/apicredentials
+    restart: always 
+    deploy:
+      restart_policy:
+        condition: on-failure
+    healthcheck:
+      test: tee | grep "Listening and serving HTTP on port 6688" -q
+      interval: 5s
+      timeout: 5s
+      retries: 5   
+    environment:
+      - DATABASE_URL=postgresql://postgres:$CHAINLINK_PGPASSWORD@node-db:5432/chainlink_5_test?sslmode=disable
+      - LOG_LEVEL=info
+      - ETH_URL
+      - ETH_CHAIN_ID
+      - LINK_CONTRACT_ADDRESS
+    env_file:
+      - chainlink-variables.env
+    ports:
+      - 6755:6688 
+      - 6065:6060   
+    secrets:
+      - node_password
+      - apicredentials
+      - keystore       
+secrets:
+  node_password:
+    file: ./password.txt
+  apicredentials:
+    file: ./apicredentials
+  keystore:
+    file: ./0xb90c7E3F7815F59EAD74e7543eB6D9E8538455D6.json
