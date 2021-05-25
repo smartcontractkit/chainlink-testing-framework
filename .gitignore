@@ -7,6 +7,9 @@ package-lock.json
 package.json
 artifacts/
 
+# Dynamic File
+config/ocr_config.json
+
 # Binaries for programs and plugins
 *.exe
 *.exe~

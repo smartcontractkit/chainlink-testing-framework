@@ -1,11 +1,15 @@
 package contracts
 
 import (
+	"bytes"
 	"context"
-	"fmt"
+	"encoding/json"
 	"integrations-framework/client"
 	"integrations-framework/contracts/ethereum"
 	"math/big"
+	"os"
+	"os/exec"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/rs/zerolog/log"
@@ -185,7 +189,8 @@ type EthereumOffchainAggregator struct {
 	address      *common.Address
 }
 
-// DeployOffChainAggregator deploys the offchain aggregation contract to the EVM chain
+// DeployOffChainAggregator deploys the offchain aggregation contract to the EVM chain, using supplied chainlink nodes
+// for setting its configuration
 func DeployOffChainAggregator(
 	ethClient *client.EthereumClient,
 	fromWallet client.BlockchainWallet,
@@ -196,8 +201,6 @@ func DeployOffChainAggregator(
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
 		linkAddress := common.HexToAddress(ethClient.Network.Config().LinkTokenAddress)
-		out := fmt.Sprintf("%#v", offchainOptions)
-		log.Info().Str("Options", out).Msg("Off Chain Options")
 		return ethereum.DeployOffchainAggregator(auth,
 			backend,
 			offchainOptions.MaximumGasPrice,
@@ -222,6 +225,11 @@ func DeployOffChainAggregator(
 		callerWallet: fromWallet,
 		address:      address,
 	}, err
+}
+
+// Address of the the ocr contract
+func (o *EthereumOffchainAggregator) Address() string {
+	return o.address.Hex()
 }
 
 // Fund sends specified currencies to the contract
@@ -271,22 +279,92 @@ func (o *EthereumOffchainAggregator) SetPayees(
 func (o *EthereumOffchainAggregator) SetConfig(
 	ctxt context.Context,
 	fromWallet client.BlockchainWallet,
-	signers, transmitters []common.Address,
-	threshold uint8,
-	encodedConfigVersion uint64,
-	encoded []byte,
+	chainlinkNodes []client.Chainlink,
 ) error {
 
-	opts, err := o.client.TransactionOpts(fromWallet, *o.address, big.NewInt(0), nil)
+	ocrConfig := OffChainAggregatorConfig{
+		AlphaPPB:         1,
+		DeltaC:           "120s",
+		DeltaGrace:       "1s",
+		DeltaProgress:    "30s",
+		DeltaStage:       "3s",
+		DeltaResend:      "10s",
+		DeltaRound:       "20s",
+		RMax:             4,
+		N:                4,
+		F:                1,
+		OracleIdentities: []OracleIdentity{},
+	}
+
+	// Gather necessary addresses and keys from our chainlink nodes to properly configure the OCR contract
+	for _, node := range chainlinkNodes {
+		ocrKeys, err := node.ReadOCRKeys()
+		if err != nil {
+			return err
+		}
+		ethKeys, err := node.ReadETHKeys()
+		if err != nil {
+			return err
+		}
+		p2pKeys, err := node.ReadP2PKeys()
+		if err != nil {
+			return err
+		}
+
+		oracleIdentity := OracleIdentity{
+			TransmitAddress:       ethKeys.Data[0].Attributes.Address,
+			OnchainSigningAddress: p2pKeys.Data[0].Attributes.PublicKey,
+			PeerID:                p2pKeys.Data[0].Attributes.PeerID,
+			OffchainPublicKey:     ocrKeys.Data[0].Attributes.OffChainPublicKey,
+			ConfigPublicKey:       ocrKeys.Data[0].Attributes.ConfigPublicKey,
+		}
+		ocrConfig.OracleIdentities = append(ocrConfig.OracleIdentities, oracleIdentity)
+	}
+
+	p, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
+	if err != nil {
+		return err
+	}
+	projectDir := strings.TrimSpace(string(p))
+
+	// Build a config file for Lorenz's prototype script to run from
+	confWrap := map[string]interface{}{
+		o.address.Hex(): ocrConfig,
+	}
+
+	confJson, err := json.MarshalIndent(confWrap, "", " ")
 	if err != nil {
 		return err
 	}
 
-	tx, err := o.ocr.SetConfig(opts, signers, transmitters, threshold, encodedConfigVersion, encoded)
+	confFile, err := os.OpenFile(projectDir+"/config/ocr_config.json", os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}
-	return o.client.WaitForTransaction(tx.Hash())
+	_, err = confFile.Write(confJson)
+	if err != nil {
+		return err
+	}
+	confFile.Close()
+
+	// Run the script to configure the contract
+
+	log.Info().Str("CMD", "./prototype -mode=configure -rpcurl="+o.client.Network.URL()+" -configfile="+
+		projectDir+"/config/ocr_config.json").
+		Msg("Running command")
+	cmd := exec.Command(
+		"./prototype", "-mode=configure",
+		"-rpcurl="+o.client.Network.URL(),
+		"-configfile="+projectDir+"/config/ocr_config.json",
+	)
+	cmd.Dir = string(projectDir) + "/../offchain-reporting/lib/prototype"
+	var e bytes.Buffer
+	cmd.Stderr = &e
+	err = cmd.Run()
+	if err != nil {
+		log.Error().Str("ERROR", e.String()).Msg("STDERR")
+	}
+	return err
 }
 
 // Link returns the LINK contract address on the EVM chain

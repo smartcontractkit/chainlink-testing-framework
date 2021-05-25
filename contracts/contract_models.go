@@ -60,21 +60,37 @@ type OffchainOptions struct {
 	Description               string         // A short description of what is being reported
 }
 
+type OracleIdentity struct {
+	TransmitAddress       string
+	OnchainSigningAddress string
+	PeerID                string
+	OffchainPublicKey     string
+	ConfigPublicKey       string
+}
+
+type OffChainAggregatorConfig struct {
+	DeltaProgress    string
+	DeltaResend      string
+	DeltaRound       string
+	DeltaGrace       string
+	DeltaC           string
+	AlphaPPB         uint64
+	DeltaStage       string
+	RMax             uint8
+	F                int
+	N                int
+	OracleIdentities []OracleIdentity
+}
+
 type OffchainAggregatorData struct {
 	LatestRoundData RoundData // Data about the latest round
 }
 
 type OffchainAggregator interface {
+	Address() string
 	Fund(client.BlockchainWallet, *big.Int, *big.Int) error
 	GetContractData(ctxt context.Context) (*OffchainAggregatorData, error)
-	SetConfig(
-		ctxt context.Context,
-		fromWallet client.BlockchainWallet,
-		signers, transmitters []common.Address,
-		threshold uint8,
-		encodedConfigVersion uint64,
-		encoded []byte,
-	) error
+	SetConfig(ctxt context.Context, fromWallet client.BlockchainWallet, chainlinkNodes []client.Chainlink) error
 	SetPayees(context.Context, client.BlockchainWallet, []common.Address, []common.Address) error
 	Link(ctxt context.Context) (common.Address, error)
 }

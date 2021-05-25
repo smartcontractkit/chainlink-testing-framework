@@ -56,6 +56,7 @@ type chainlink struct {
 // NewChainlink creates a new chainlink model using a provided config
 func NewChainlink(c *ChainlinkConfig) Chainlink {
 	cl := &chainlink{Config: c}
+	cl.SetSessionCookie()
 	return cl
 }
 
@@ -104,6 +105,7 @@ func CreateTemplateNodes(network BlockchainNetwork, linkAddress string) ([]Chain
 		CleanTemplateNodes()
 		return nil, err
 	}
+	log.Info().Str("URL", urlBase+"6711").Msg("Chainlink Node Healthy")
 
 	var cls []Chainlink
 	for _, port := range ports {
@@ -112,8 +114,11 @@ func CreateTemplateNodes(network BlockchainNetwork, linkAddress string) ([]Chain
 			Email:    email,
 			Password: pass,
 		}
-		cls = append(cls, NewChainlink(c))
+		cl := NewChainlink(c)
+		cl.SetClient(http.DefaultClient)
+		cls = append(cls, cl)
 	}
+
 	return cls, err
 }
 
@@ -134,6 +139,7 @@ func CleanTemplateNodes() error {
 // CreateJob creates a Chainlink job based on the provided spec string
 func (c *chainlink) CreateJob(spec string) (*Job, error) {
 	job := &Job{}
+	log.Info().Str("Chainlink Node URL", c.Config.URL).Msg("Creating Job")
 	_, err := c.do(http.MethodPost, "/v2/jobs", &JobForm{
 		TOML: spec,
 	}, &job, http.StatusOK)
@@ -202,6 +208,11 @@ func (c *chainlink) CreateOCRKey() (*OCRKey, error) {
 func (c *chainlink) ReadOCRKeys() (*OCRKeys, error) {
 	ocrKeys := &OCRKeys{}
 	_, err := c.do(http.MethodGet, "/v2/keys/ocr", nil, ocrKeys, http.StatusOK)
+	for index := range ocrKeys.Data {
+		ocrKeys.Data[index].Attributes.ConfigPublicKey = strings.TrimPrefix(ocrKeys.Data[index].Attributes.ConfigPublicKey, "ocrcfg_")
+		ocrKeys.Data[index].Attributes.OffChainPublicKey = strings.TrimPrefix(ocrKeys.Data[index].Attributes.OffChainPublicKey, "ocroff_")
+		ocrKeys.Data[index].Attributes.OnChainSigningAddress = strings.TrimPrefix(ocrKeys.Data[index].Attributes.OnChainSigningAddress, "ocrsad_")
+	}
 	return ocrKeys, err
 }
 
@@ -222,6 +233,9 @@ func (c *chainlink) CreateP2PKey() (*P2PKey, error) {
 func (c *chainlink) ReadP2PKeys() (*P2PKeys, error) {
 	p2pKeys := &P2PKeys{}
 	_, err := c.do(http.MethodGet, "/v2/keys/p2p", nil, p2pKeys, http.StatusOK)
+	for index := range p2pKeys.Data {
+		p2pKeys.Data[index].Attributes.PeerID = strings.TrimPrefix(p2pKeys.Data[index].Attributes.PeerID, "p2p_")
+	}
 	return p2pKeys, err
 }
 
@@ -365,5 +379,11 @@ func (c *chainlink) do(
 	if body != nil && err != nil {
 		return nil, err
 	}
+	log.Info().
+		Str("Method", method).
+		Str("Endpoint", endpoint).
+		Str("URL", c.Config.URL).
+		Str("Body", string(b)).
+		Msg("Calling to Chainlink node")
 	return c.doRaw(method, endpoint, b, obj, expectedStatusCode)
 }

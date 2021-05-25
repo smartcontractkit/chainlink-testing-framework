@@ -68,7 +68,6 @@ services:
     environment:      
       - DATABASE_URL=postgresql://postgres:$CHAINLINK_PGPASSWORD@node-db:5432/chainlink_2_test?sslmode=disable
       - LOG_LEVEL=info
-      - EXPLORER_URL=ws://explore-team-1.ngrok.io
       - ETH_URL
       - ETH_CHAIN_ID
       - LINK_CONTRACT_ADDRESS

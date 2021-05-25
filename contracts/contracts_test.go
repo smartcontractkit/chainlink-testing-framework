@@ -2,6 +2,7 @@ package contracts
 
 import (
 	"context"
+	"fmt"
 	"integrations-framework/client"
 	"integrations-framework/config"
 	"math/big"
@@ -32,14 +33,38 @@ var _ = Describe("Chainlink Node", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		linkInstance, err := DeployLinkTokenContract(ethClient, wallets.Default())
 		Expect(err).ShouldNot(HaveOccurred())
-
+		ocrOptions := OffchainOptions{
+			MaximumGasPrice:         uint32(500000000),
+			ReasonableGasPrice:      uint32(28000),
+			MicroLinkPerEth:         uint32(500),
+			LinkGweiPerObservation:  uint32(500),
+			LinkGweiPerTransmission: uint32(500),
+			MinimumAnswer:           big.NewInt(1),
+			MaximumAnswer:           big.NewInt(5000),
+			Decimals:                8,
+			Description:             "Test OCR",
+		}
 		// Launch Nodes
-		_, err = client.CreateTemplateNodes(networkConfig, linkInstance.Address())
+		chainlinkNodes, err := client.CreateTemplateNodes(networkConfig, linkInstance.Address())
+		Expect(err).ShouldNot(HaveOccurred())
+		ocrInstance, err := DeployOffChainAggregator(ethClient, wallets.Default(), ocrOptions)
+		Expect(err).ShouldNot(HaveOccurred())
+		err = ocrInstance.SetConfig(context.Background(), wallets.Default(), chainlinkNodes)
+		Expect(err).ShouldNot(HaveOccurred())
+
+		// Initialize Node
+		p2pKeys, err := chainlinkNodes[0].ReadP2PKeys()
+		Expect(err).ShouldNot(HaveOccurred())
+		bootstrapSpec := buildBootstrapSpec(ocrInstance.Address(), p2pKeys.Data[0].Attributes.PeerID)
+		ocrSpec := buildOCRSpec(ocrInstance.Address(), p2pKeys.Data[0].Attributes.PeerID)
+		_, err = chainlinkNodes[0].CreateJob(bootstrapSpec)
+		Expect(err).ShouldNot(HaveOccurred())
+		_, err = chainlinkNodes[0].CreateJob(ocrSpec)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// Cleanup
-		err = client.CleanTemplateNodes()
-		Expect(err).ShouldNot(HaveOccurred())
+		// err = client.CleanTemplateNodes()
+		// Expect(err).ShouldNot(HaveOccurred())
 
 	},
 		Entry("on Ethereum Hardhat", client.NewHardhatNetwork),
@@ -171,3 +196,40 @@ var _ = Describe("Client", func() {
 		// Entry("on Ethereum Goerli", client.NewGoerliNetwork, big.NewInt(5)),
 	)
 })
+
+func buildOCRSpec(contractAddress string, p2pId string) string {
+	return fmt.Sprintf(`type = "offchainreporting"
+schemaVersion = 1
+contractAddress = "%v"
+p2pPeerID = "%v"
+p2pBootstrapPeers = [
+		"/dns4/chainlink-node-1/tcp/6690/p2p/%v"  
+]
+isBootstrapPeer = false
+keyBundleID = ""
+monitoringEndpoint = "chain.link:4321"
+transmitterAddress = "0x73c3290F588B29dd354922c4cecfd4f3D177C218"
+observationTimeout = "10s"
+blockchainTimeout  = "20s"
+contractConfigTrackerSubscribeInterval = "2m"
+contractConfigTrackerPollInterval = "1m"
+contractConfigConfirmations = 3
+observationSource = """
+	fetch    [type=http method=POST url="http://external-adapter:6644" requestData="{}"];
+	parse    [type=jsonparse path="data,result"];    
+	fetch -> parse;
+	"""`, contractAddress, p2pId, p2pId)
+}
+
+func buildBootstrapSpec(contractAddress string, p2pID string) string {
+	return fmt.Sprintf(`blockchainTimeout = "20s"
+contractAddress = "%v"
+contractConfigConfirmations = 3
+contractConfigTrackerPollInterval = "1m"
+contractConfigTrackerSubscribeInterval = "2m"
+isBootstrapPeer = true
+p2pBootstrapPeers = []
+p2pPeerID = "%v"
+schemaVersion = 1
+type = "offchainreporting"`, contractAddress, p2pID)
+}
