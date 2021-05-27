@@ -5,12 +5,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"integrations-framework/contracts/ethereum"
 	"io/ioutil"
+	"math/big"
 	"net/http"
 	"os/exec"
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/rs/zerolog/log"
 )
 
@@ -19,6 +22,9 @@ var ErrUnprocessableEntity = errors.New("unexpected response code, got 422")
 
 // Chainlink interface that enables interactions with a chainlink node
 type Chainlink interface {
+	// Fund sends specified currencies to the contract
+	Fund(fromWallet BlockchainWallet, ethAmount *big.Int, linkAmount *big.Int) error
+
 	CreateJob(spec string) (*Job, error)
 	ReadJob(id string) error
 	DeleteJob(id string) error
@@ -48,20 +54,25 @@ type Chainlink interface {
 }
 
 type chainlink struct {
-	Client  *http.Client
-	Config  *ChainlinkConfig
-	Cookies []*http.Cookie
+	EthClient  *EthereumClient
+	HttpClient *http.Client
+	Config     *ChainlinkConfig
+	Cookies    []*http.Cookie
 }
 
 // NewChainlink creates a new chainlink model using a provided config
-func NewChainlink(c *ChainlinkConfig) Chainlink {
-	cl := &chainlink{Config: c}
+func NewChainlink(c *ChainlinkConfig, ethClient *EthereumClient) Chainlink {
+	cl := &chainlink{Config: c, EthClient: ethClient}
 	cl.SetSessionCookie()
 	return cl
 }
 
 // CreateTemplateNodes lauches 5 chainlink nodes in a default config for testing
-func CreateTemplateNodes(network BlockchainNetwork, linkAddress string) ([]Chainlink, error) {
+func CreateTemplateNodes(ethClient *EthereumClient, linkAddress string) ([]Chainlink, error) {
+	err := CleanTemplateNodes()
+	if err != nil {
+		return nil, err
+	}
 	urlBase := "http://localhost:"
 	email := "notreal@fakeemail.ch"
 	pass := "twochains"
@@ -75,12 +86,12 @@ func CreateTemplateNodes(network BlockchainNetwork, linkAddress string) ([]Chain
 
 	log.Info().Str("CMD", "docker-compose -f docker-compose.yml up").Msg("Running command")
 	cmd := exec.Command("docker-compose", "-f", "docker-compose.yml", "up")
-	cmd.Dir = string(projectDir) + "/chainlink_nodes"
-	ethUrl := "ETH_URL=" + network.URL()
-	if network.ID() == string(EthereumHardhatID) {
+	cmd.Dir = string(projectDir) + "/tools/chainlink_nodes"
+	ethUrl := "ETH_URL=" + ethClient.Network.URL()
+	if ethClient.Network.ID() == string(EthereumHardhatID) {
 		ethUrl = "ETH_URL=ws://host.docker.internal:8545"
 	}
-	chainId := "ETH_CHAIN_ID=" + network.ChainID().String()
+	chainId := "ETH_CHAIN_ID=" + ethClient.Network.ChainID().String()
 	la := "LINK_CONTRACT_ADDRESS=" + linkAddress
 	cmd.Env = []string{ethUrl, chainId, la}
 	var e bytes.Buffer
@@ -88,24 +99,26 @@ func CreateTemplateNodes(network BlockchainNetwork, linkAddress string) ([]Chain
 	cmd.Start()
 
 	// Wait for Docker Compose to be up and healthy
-	resp, err := http.Get(urlBase + "6711")
-	for start := time.Now(); time.Since(start) < 2*time.Minute; time.Sleep(time.Second * 20) {
-		resp, err = http.Get(urlBase + "6711")
-		if err == nil && resp.StatusCode == 200 {
-			break
+	for _, port := range ports {
+		resp, err := http.Get(urlBase + port)
+		for start := time.Now(); time.Since(start) < 2*time.Minute; time.Sleep(time.Second * 3) {
+			resp, err = http.Get(urlBase + port)
+			if err == nil && resp.StatusCode == 200 {
+				break
+			}
 		}
-	}
-	if err != nil {
-		log.Error().Str("ERROR", e.String()).Msg("STDERR")
-		if resp != nil {
-			log.Info().Int("Status Code", resp.StatusCode).Msg("Monitor Response")
-		} else {
-			log.Error().Msg("Monitor Response NIL")
+		if err != nil {
+			log.Error().Str("ERROR", e.String()).Msg("STDERR")
+			if resp != nil {
+				log.Info().Int("Status Code", resp.StatusCode).Msg("Monitor Response")
+			} else {
+				log.Error().Msg("Monitor Response NIL")
+			}
+			CleanTemplateNodes()
+			return nil, err
 		}
-		CleanTemplateNodes()
-		return nil, err
+		log.Info().Str("URL", urlBase+port).Msg("Chainlink Node Healthy")
 	}
-	log.Info().Str("URL", urlBase+"6711").Msg("Chainlink Node Healthy")
 
 	var cls []Chainlink
 	for _, port := range ports {
@@ -114,7 +127,7 @@ func CreateTemplateNodes(network BlockchainNetwork, linkAddress string) ([]Chain
 			Email:    email,
 			Password: pass,
 		}
-		cl := NewChainlink(c)
+		cl := NewChainlink(c, ethClient)
 		cl.SetClient(http.DefaultClient)
 		cls = append(cls, cl)
 	}
@@ -130,7 +143,7 @@ func CleanTemplateNodes() error {
 	}
 	projectDir := strings.TrimSpace(string(p))
 	cmd := exec.Command("docker-compose", "-f", "./docker-compose.yml", "down", "-v", "--remove-orphans")
-	cmd.Dir = string(projectDir) + "/chainlink_nodes"
+	cmd.Dir = string(projectDir) + "/tools/chainlink_nodes"
 
 	log.Info().Str("CMD", "docker-compose -f ./docker-compose.yml down -v --remove-orphans").Msg("Running command")
 	return cmd.Run()
@@ -144,6 +157,60 @@ func (c *chainlink) CreateJob(spec string) (*Job, error) {
 		TOML: spec,
 	}, &job, http.StatusOK)
 	return job, err
+}
+
+// Fund sends specified currencies to the contract
+func (c *chainlink) Fund(fromWallet BlockchainWallet, ethAmount, linkAmount *big.Int) error {
+	ethKeys, err := c.ReadETHKeys()
+	if err != nil {
+		return err
+	}
+	toAddress := ethKeys.Data[0].Attributes.Address
+	// Send ETH if not 0
+	if ethAmount != nil && big.NewInt(0).Cmp(ethAmount) != 0 {
+		log.Info().
+			Str("Token", "ETH").
+			Str("From", fromWallet.Address()).
+			Str("To", toAddress).
+			Str("Amount", ethAmount.String()).
+			Str("Node URL", c.Config.URL).
+			Msg("Funding Chainlink Node")
+		_, err := c.EthClient.SendTransaction(fromWallet, common.HexToAddress(toAddress), ethAmount, nil)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Send LINK if not 0
+	if linkAmount != nil && big.NewInt(0).Cmp(linkAmount) != 0 {
+		// Prepare data field for token tx
+		log.Info().
+			Str("Token", "LINK").
+			Str("From", fromWallet.Address()).
+			Str("To", toAddress).
+			Str("Amount", linkAmount.String()).
+			Str("Node URL", c.Config.URL).
+			Msg("Funding Chainlink Node")
+		linkAddress := common.HexToAddress(c.EthClient.Network.Config().LinkTokenAddress)
+		linkInstance, err := ethereum.NewLinkToken(linkAddress, c.EthClient.Client)
+		if err != nil {
+			return err
+		}
+		opts, err := c.EthClient.TransactionOpts(fromWallet, common.HexToAddress(toAddress), nil, nil)
+		if err != nil {
+			return err
+		}
+		tx, err := linkInstance.Transfer(opts, common.HexToAddress(toAddress), linkAmount)
+		if err != nil {
+			return err
+		}
+
+		err = c.EthClient.WaitForTransaction(tx.Hash())
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // ReadJob reads a job with the provided ID from the Chainlink node
@@ -209,9 +276,12 @@ func (c *chainlink) ReadOCRKeys() (*OCRKeys, error) {
 	ocrKeys := &OCRKeys{}
 	_, err := c.do(http.MethodGet, "/v2/keys/ocr", nil, ocrKeys, http.StatusOK)
 	for index := range ocrKeys.Data {
-		ocrKeys.Data[index].Attributes.ConfigPublicKey = strings.TrimPrefix(ocrKeys.Data[index].Attributes.ConfigPublicKey, "ocrcfg_")
-		ocrKeys.Data[index].Attributes.OffChainPublicKey = strings.TrimPrefix(ocrKeys.Data[index].Attributes.OffChainPublicKey, "ocroff_")
-		ocrKeys.Data[index].Attributes.OnChainSigningAddress = strings.TrimPrefix(ocrKeys.Data[index].Attributes.OnChainSigningAddress, "ocrsad_")
+		ocrKeys.Data[index].Attributes.ConfigPublicKey = strings.TrimPrefix(
+			ocrKeys.Data[index].Attributes.ConfigPublicKey, "ocrcfg_")
+		ocrKeys.Data[index].Attributes.OffChainPublicKey = strings.TrimPrefix(
+			ocrKeys.Data[index].Attributes.OffChainPublicKey, "ocroff_")
+		ocrKeys.Data[index].Attributes.OnChainSigningAddress = strings.TrimPrefix(
+			ocrKeys.Data[index].Attributes.OnChainSigningAddress, "ocrsad_")
 	}
 	return ocrKeys, err
 }
@@ -303,7 +373,7 @@ func (c *chainlink) SetSessionCookie() error {
 
 // SetClient overrides the http client, used for mocking out the Chainlink server for unit testing
 func (c *chainlink) SetClient(client *http.Client) {
-	c.Client = client
+	c.HttpClient = client
 }
 
 func (c *chainlink) doRaw(
@@ -312,7 +382,7 @@ func (c *chainlink) doRaw(
 	body []byte, obj interface{},
 	expectedStatusCode int,
 ) (*http.Response, error) {
-	client := c.Client
+	client := c.HttpClient
 
 	req, err := http.NewRequest(
 		method,

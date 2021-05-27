@@ -194,13 +194,24 @@ type EthereumOffchainAggregator struct {
 func DeployOffChainAggregator(
 	ethClient *client.EthereumClient,
 	fromWallet client.BlockchainWallet,
-	offchainOptions OffchainOptions,
 ) (OffchainAggregator, error) {
 	address, _, instance, err := ethClient.DeployContract(fromWallet, "OffChain Aggregator", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
 		linkAddress := common.HexToAddress(ethClient.Network.Config().LinkTokenAddress)
+		// Defaults
+		offchainOptions := OffchainOptions{
+			MaximumGasPrice:         uint32(500000000),
+			ReasonableGasPrice:      uint32(28000),
+			MicroLinkPerEth:         uint32(500),
+			LinkGweiPerObservation:  uint32(500),
+			LinkGweiPerTransmission: uint32(500),
+			MinimumAnswer:           big.NewInt(1),
+			MaximumAnswer:           big.NewInt(5000),
+			Decimals:                8,
+			Description:             "Test OCR",
+		}
 		return ethereum.DeployOffchainAggregator(auth,
 			backend,
 			offchainOptions.MaximumGasPrice,
@@ -291,7 +302,7 @@ func (o *EthereumOffchainAggregator) SetConfig(
 		DeltaResend:      "10s",
 		DeltaRound:       "20s",
 		RMax:             4,
-		N:                4,
+		N:                5,
 		F:                1,
 		OracleIdentities: []OracleIdentity{},
 	}
@@ -313,10 +324,10 @@ func (o *EthereumOffchainAggregator) SetConfig(
 
 		oracleIdentity := OracleIdentity{
 			TransmitAddress:       ethKeys.Data[0].Attributes.Address,
-			OnchainSigningAddress: p2pKeys.Data[0].Attributes.PublicKey,
+			OnchainSigningAddress: ocrKeys.Data[0].Attributes.OnChainSigningAddress,
 			PeerID:                p2pKeys.Data[0].Attributes.PeerID,
-			OffchainPublicKey:     ocrKeys.Data[0].Attributes.OffChainPublicKey,
-			ConfigPublicKey:       ocrKeys.Data[0].Attributes.ConfigPublicKey,
+			OffchainPublicKey:     "0x" + ocrKeys.Data[0].Attributes.OffChainPublicKey,
+			ConfigPublicKey:       "0x" + ocrKeys.Data[0].Attributes.ConfigPublicKey,
 		}
 		ocrConfig.OracleIdentities = append(ocrConfig.OracleIdentities, oracleIdentity)
 	}
@@ -375,6 +386,38 @@ func (o *EthereumOffchainAggregator) Link(ctxt context.Context) (common.Address,
 		Context: ctxt,
 	}
 	return o.ocr.LINK(opts)
+}
+
+// GetLatestAnswer returns the latest answer from the OCR contract
+func (o *EthereumOffchainAggregator) GetLatestAnswer(ctxt context.Context) (*big.Int, error) {
+	opts := &bind.CallOpts{
+		From:    common.HexToAddress(o.callerWallet.Address()),
+		Pending: true,
+		Context: ctxt,
+	}
+	return o.ocr.LatestAnswer(opts)
+}
+
+// GetLatestRound returns data from the latest round
+func (o *EthereumOffchainAggregator) GetLatestRound(ctxt context.Context) (*RoundData, error) {
+	opts := &bind.CallOpts{
+		From:    common.HexToAddress(o.callerWallet.Address()),
+		Pending: true,
+		Context: ctxt,
+	}
+
+	roundData, err := o.ocr.LatestRoundData(opts)
+	if err != nil {
+		return nil, err
+	}
+
+	return &RoundData{
+		RoundId:         roundData.RoundId,
+		Answer:          roundData.Answer,
+		AnsweredInRound: roundData.AnsweredInRound,
+		StartedAt:       roundData.StartedAt,
+		UpdatedAt:       roundData.UpdatedAt,
+	}, err
 }
 
 // EthereumStorage acts as a conduit for the ethereum version of the storage contract

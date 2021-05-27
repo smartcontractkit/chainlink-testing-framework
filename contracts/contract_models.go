@@ -93,6 +93,8 @@ type OffchainAggregator interface {
 	SetConfig(ctxt context.Context, fromWallet client.BlockchainWallet, chainlinkNodes []client.Chainlink) error
 	SetPayees(context.Context, client.BlockchainWallet, []common.Address, []common.Address) error
 	Link(ctxt context.Context) (common.Address, error)
+	GetLatestAnswer(ctxt context.Context) (*big.Int, error)
+	GetLatestRound(ctxt context.Context) (*RoundData, error)
 }
 
 type Storage interface {

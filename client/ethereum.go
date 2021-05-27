@@ -78,11 +78,6 @@ func (e *EthereumClient) SendTransaction(
 	if err := e.Client.SendTransaction(context.Background(), tx); err != nil {
 		return nil, err
 	}
-	log.Info().
-		Str("From", from.Address()).
-		Str("To", tx.To().Hex()).
-		Str("Value", tx.Value().String()).
-		Msg("Sending Transaction")
 
 	err = e.WaitForTransaction(tx.Hash())
 	hash := tx.Hash()

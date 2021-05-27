@@ -52,11 +52,11 @@ type OCRKey struct {
 // OCRKeyData is the model that represents the created OCR keys when read
 type OCRKeyData struct {
 	Attributes OCRKeyAttributes `json:"attributes"`
+	ID         string           `json:"id"`
 }
 
 // OCRKeyAttributes is the model that represents the created OCR keys when read
 type OCRKeyAttributes struct {
-	ID                    string `json:"id"`
 	ConfigPublicKey       string `json:"configPublicKey"`
 	OffChainPublicKey     string `json:"offChainPublicKey"`
 	OnChainSigningAddress string `json:"onChainSigningAddress"`

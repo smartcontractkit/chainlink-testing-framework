@@ -151,8 +151,8 @@ func TestNodeClient_CreateReadDeleteBridge(t *testing.T) {
 // Mocks the creation, read, delete cycle for OCR keys
 func TestNodeClient_CreateReadDeleteOCRKey(t *testing.T) {
 	ocrKeyData := OCRKeyData{
+		ID: "1",
 		Attributes: OCRKeyAttributes{
-			ID:                    "1",
 			ConfigPublicKey:       "someNon3sens3",
 			OffChainPublicKey:     "mor3Non3sens3",
 			OnChainSigningAddress: "thisActuallyMak3sS3ns3",
@@ -266,7 +266,7 @@ func newDefaultClient(url string) Chainlink {
 		Email:    "admin@node.local",
 		Password: "twochains",
 		URL:      url,
-	})
+	}, nil)
 	return cl
 }
 
