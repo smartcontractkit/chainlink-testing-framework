@@ -1,5 +1,5 @@
 {
- "0xFb3099346A724CFa1d45aF598Ae42A38B226092e": {
+ "0x13dDfaC82AA85d4513BE758E7d6419E3F239171E": {
   "DeltaProgress": "30s",
   "DeltaResend": "10s",
   "DeltaRound": "20s",
@@ -12,39 +12,39 @@
   "N": 5,
   "OracleIdentities": [
    {
-    "TransmitAddress": "0x36612b5F390a508db08a71AF04Bd8c874721Daab",
-    "OnchainSigningAddress": "0x5960d6fab386716f201f3bc74ced7cfbf77674e5",
-    "PeerID": "12D3KooWPoAJWBHK4KawkU7MURAqu6Jo4EbGCXgMeGL5nxr64wk6",
-    "OffchainPublicKey": "0x2fec0c4aa2a39e4b5fb668390dc3d94f8cc1eedd712b42b6dce70cfb93168858",
-    "ConfigPublicKey": "0x9ac68c2974afc4ef182258ef5d7e172e67ff66d126f625bf43e21ed3babb8f7b"
+    "TransmitAddress": "0xF8D0d72597935FE2891C07270949989f61a7adEa",
+    "OnchainSigningAddress": "0xd30e4c9e5e8e6686ba715eb9924364747cda0d0c",
+    "PeerID": "12D3KooWMbUDvcmKcMsGodcEQjHnm3GCRqSjTbzfxvfe2Bo5Sy4e",
+    "OffchainPublicKey": "0x3d3018e3e57413c1fc67b803067a2019b73f90e08511c6edd0dcce74656036da",
+    "ConfigPublicKey": "0x8f3314f2965fa4295da72c35e3cbbbcd3ca97e3136c7e63fdd51ba18c01f6205"
    },
    {
-    "TransmitAddress": "0xb7F7a3Bb00F1c40a9ffCED21B5FCDFC6283c043a",
-    "OnchainSigningAddress": "0xd0c029f52c9483b2a4151001f13606e18a51a473",
-    "PeerID": "12D3KooWPnbjw6EW5wszYJBUP8CLwq58RLR8yHeXhst9B7bMsUR2",
-    "OffchainPublicKey": "0xc134a6241bcb05247bd6840d676d848467633751e2a82bd6413090dd33dea101",
-    "ConfigPublicKey": "0xf9bf8f9bb51fb58ff293595b4dd13789453f02b4a95edbcf38ddc114bed9174c"
+    "TransmitAddress": "0xc6B5A290f31a62e98F42d47dEce3a0F2508cDb9d",
+    "OnchainSigningAddress": "0x10e64b07a8cc05b8097026ba06febd42097d9235",
+    "PeerID": "12D3KooWQyHsMAk37gDffKG7g9DFCkkdQzP5Tp3vgaPySY2aFEWv",
+    "OffchainPublicKey": "0x1deac661df10166ef96343517b655b61c521510f4f9f6c13fd08a9c59e88384e",
+    "ConfigPublicKey": "0xc2262a4056b6a94d32b09b5b1dda10b4515912e42ea5509e70dcfafd5dc28f42"
    },
    {
-    "TransmitAddress": "0x6bd1E4EC738bb262F97DC757f9D742745C72a3ce",
-    "OnchainSigningAddress": "0x6b4226377589b4716d615ce1b7d74cea50d01606",
-    "PeerID": "12D3KooWJpKqnjaJGktS5WsJhGCLfRC5y6xdLpeRJrgY2v4wNRXq",
-    "OffchainPublicKey": "0x36fba78cc15abb03d24cbcf7b3f9c4e4644b2467c91c064e74f37e6123b3e1de",
-    "ConfigPublicKey": "0x89059108a503480fa416d9bad24ccac97143893d7b9c13b9dd6a2462e83a6d25"
+    "TransmitAddress": "0xF189E00903472A3C0986b82dA31E78cBf10Bc538",
+    "OnchainSigningAddress": "0x69fb0dc4ec98195677736705ca0e540918c45f37",
+    "PeerID": "12D3KooWFDW18mS32ymzViXzRF8znkMDcWzHAMfwtZ9UFV9iVohj",
+    "OffchainPublicKey": "0x88020166dc6fc5e700167d5fa4e67d9fe44003d7ad63c9e5631378fccf715912",
+    "ConfigPublicKey": "0xfb89dce32ed9c455e7be656f72584ec320c8974b0464da2e1fbba4a2c8bcc215"
    },
    {
-    "TransmitAddress": "0x7413AE1eEE71FBe47178e4fb2D266E8B691bb4A2",
-    "OnchainSigningAddress": "0x1fb66e23c3d0953138c1770c625042602f69d63d",
-    "PeerID": "12D3KooWQsWo9U2BMnTxUkkQEyZkq5yyPELVHqBB1BaFKZYk8bJM",
-    "OffchainPublicKey": "0x9b42bccc73c402eb5a0da7bec36e9a29de99dd6704ed8d77ad77a1666606eb7b",
-    "ConfigPublicKey": "0xac9e1ea1836aa63cb22ce8e17ca26d253100761b5f87fbfdbcaca95910e51273"
+    "TransmitAddress": "0x241612a9FF458e585e5dF81e73F849E811A93B37",
+    "OnchainSigningAddress": "0x95f0a3bf9045221462cee194fa7c44dcc0d945e1",
+    "PeerID": "12D3KooWPgBfQPn3xZKA8c91m6fgBwP2DJ6p5tLvgujLDy6Sewub",
+    "OffchainPublicKey": "0xd388f8b59f51c83be50df93a08993baf9dbc97622f2375e0c4354b341d8a8dec",
+    "ConfigPublicKey": "0x2303451a1ada0ddf33680db8ba1f189db997ca5d3aa10141de619a3186032e1f"
    },
    {
-    "TransmitAddress": "0x26E1060c72098939A5Dd050428456Ba377761264",
-    "OnchainSigningAddress": "0xd7290e02ed2d9e010246c9c62abfaa79ea7f507b",
-    "PeerID": "12D3KooWE7f8oxWvpphH88hrGSuTnVt74dt4RUd43eTTQWJYFqYz",
-    "OffchainPublicKey": "0xfb34c17805fb61f8e5049b77be877d06e94953be9514fcf75403002152e0ab88",
-    "ConfigPublicKey": "0xc68887511cfab987f9aa39518db81b7b6453fcf9e4d03df4e4c1ebb8b8972672"
+    "TransmitAddress": "0xbC14e3F228c8F8b03b98DD26bB941c219b4057C5",
+    "OnchainSigningAddress": "0xbef8eeb5b4d4789247464b894a6ccb130a4022a2",
+    "PeerID": "12D3KooWFrQNJWANQQqCygF1b2VbHH7Eko2HQdRyDYW53T2WSg6x",
+    "OffchainPublicKey": "0x89886ad5f0d4c1fe2eb1c4e1fc54d9ecd23e1c0484b0d12577e6ecc169dcb6e1",
+    "ConfigPublicKey": "0xadc3f0f741f445a978d33118bc538d2393ec31abfd67cda36e65124d00dfab53"
    }
   ]
  }

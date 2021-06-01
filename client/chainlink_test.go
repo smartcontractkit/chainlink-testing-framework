@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -42,12 +43,16 @@ var _ = Describe("Client", func() {
 		server := mockedServer(func(rw http.ResponseWriter, req *http.Request) {
 			switch req.Method {
 			case http.MethodPost:
-				Expect("/v2/jobs").Should(Equal(req.URL.Path))
-				writeResponse(rw, http.StatusOK, Job{
-					Data: JobData{
-						ID: "1",
-					},
-				})
+				Expect(req.URL.Path).Should(Or(Equal("/v2/jobs"), Equal("/sessions")))
+				if req.URL.Path == "/sessions" {
+					writeCookie(rw)
+				} else {
+					writeResponse(rw, http.StatusOK, Job{
+						Data: JobData{
+							ID: "1",
+						},
+					})
+				}
 			case http.MethodGet:
 				Expect("/v2/jobs/1").Should(Equal(req.URL.Path))
 				writeResponse(rw, http.StatusOK, nil)
@@ -79,10 +84,14 @@ var _ = Describe("Client", func() {
 		server := mockedServer(func(rw http.ResponseWriter, req *http.Request) {
 			switch req.Method {
 			case http.MethodPost:
-				Expect("/v2/specs").Should(Equal(req.URL.Path))
-				writeResponse(rw, http.StatusOK, Spec{
-					Data: SpecData{ID: specID},
-				})
+				Expect(req.URL.Path).Should(Or(Equal("/v2/specs"), Equal("/sessions")))
+				if req.URL.Path == "/sessions" {
+					writeCookie(rw)
+				} else {
+					writeResponse(rw, http.StatusOK, Spec{
+						Data: SpecData{ID: specID},
+					})
+				}
 			case http.MethodGet:
 				Expect(fmt.Sprintf("/v2/specs/%s", specID)).Should(Equal(req.URL.Path))
 				writeResponse(rw, http.StatusOK, Response{
@@ -119,8 +128,12 @@ var _ = Describe("Client", func() {
 		server := mockedServer(func(rw http.ResponseWriter, req *http.Request) {
 			switch req.Method {
 			case http.MethodPost:
-				Expect("/v2/bridge_types").Should(Equal(req.URL.Path))
-				writeResponse(rw, http.StatusOK, nil)
+				Expect(req.URL.Path).Should(Or(Equal("/v2/bridge_types"), Equal("/sessions")))
+				if req.URL.Path == "/sessions" {
+					writeCookie(rw)
+				} else {
+					writeResponse(rw, http.StatusOK, nil)
+				}
 			case http.MethodGet:
 				Expect("/v2/bridge_types/example").Should(Equal(req.URL.Path))
 				writeResponse(rw, http.StatusOK, BridgeType{
@@ -166,8 +179,12 @@ var _ = Describe("Client", func() {
 		server := mockedServer(func(rw http.ResponseWriter, req *http.Request) {
 			switch req.Method {
 			case http.MethodPost:
-				Expect("/v2/keys/ocr").Should(Equal(req.URL.Path))
-				writeResponse(rw, http.StatusOK, OCRKey{ocrKeyData})
+				Expect(req.URL.Path).Should(Or(Equal("/v2/keys/ocr"), Equal("/sessions")))
+				if req.URL.Path == "/sessions" {
+					writeCookie(rw)
+				} else {
+					writeResponse(rw, http.StatusOK, OCRKey{ocrKeyData})
+				}
 			case http.MethodGet:
 				Expect("/v2/keys/ocr").Should(Equal(req.URL.Path))
 				writeResponse(rw, http.StatusOK, OCRKeys{
@@ -208,8 +225,12 @@ var _ = Describe("Client", func() {
 		server := mockedServer(func(rw http.ResponseWriter, req *http.Request) {
 			switch req.Method {
 			case http.MethodPost:
-				Expect("/v2/keys/p2p").Should(Equal(req.URL.Path))
-				writeResponse(rw, http.StatusOK, P2PKey{p2pKeyData})
+				Expect(req.URL.Path).Should(Or(Equal("/v2/keys/p2p"), Equal("/sessions")))
+				if req.URL.Path == "/sessions" {
+					writeCookie(rw)
+				} else {
+					writeResponse(rw, http.StatusOK, P2PKey{p2pKeyData})
+				}
 			case http.MethodGet:
 				Expect("/v2/keys/p2p").Should(Equal(req.URL.Path))
 				writeResponse(rw, http.StatusOK, P2PKeys{
@@ -248,8 +269,12 @@ var _ = Describe("Client", func() {
 		server := mockedServer(func(rw http.ResponseWriter, req *http.Request) {
 			switch req.Method {
 			case http.MethodPost:
-				Expect("/v2/keys/eth").Should(Equal(req.URL.Path))
-				writeResponse(rw, http.StatusOK, ETHKey{ethKeyData})
+				Expect(req.URL.Path).Should(Or(Equal("/v2/keys/eth"), Equal("/sessions")))
+				if req.URL.Path == "/sessions" {
+					writeCookie(rw)
+				} else {
+					writeResponse(rw, http.StatusOK, ETHKey{ethKeyData})
+				}
 			case http.MethodGet:
 				Expect("/v2/keys/eth").Should(Equal(req.URL.Path))
 				writeResponse(rw, http.StatusOK, ETHKeys{
@@ -284,6 +309,15 @@ func newDefaultClient(url string) (Chainlink, error) {
 
 func mockedServer(handlerFunc http.HandlerFunc) *httptest.Server {
 	return httptest.NewServer(handlerFunc)
+}
+
+func writeCookie(rw http.ResponseWriter) {
+	cookie := http.Cookie{
+		Name:    "clsession",
+		Value:   "something",
+		Expires: time.Now().Add(time.Minute * 5),
+	}
+	http.SetCookie(rw, &cookie)
 }
 
 func writeResponse(rw http.ResponseWriter, statusCode int, obj interface{}) {
