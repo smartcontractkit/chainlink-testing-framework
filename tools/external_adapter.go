@@ -46,7 +46,7 @@ func randomNumber(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		Error:    nil,
 	}
 	log.Info().Int("Result", num).Msg("Sending Result from Adapter")
-	json.NewEncoder(w).Encode(result)
+	_ = json.NewEncoder(w).Encode(result)
 }
 
 // five returns five
@@ -58,6 +58,5 @@ func five(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		Error:    nil,
 	}
 	log.Info().Int("Result", 5).Msg("Sending Result from Adapter")
-	json.NewEncoder(w).Encode(result)
-
+	_ = json.NewEncoder(w).Encode(result)
 }
