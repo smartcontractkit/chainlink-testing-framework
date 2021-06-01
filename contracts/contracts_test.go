@@ -35,7 +35,7 @@ var _ = Describe("Client", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// Interact with contract
-		err = storeInstance.Set(context.Background(), value)
+		err = storeInstance.Set(value)
 		Expect(err).ShouldNot(HaveOccurred())
 		val, err := storeInstance.Get(context.Background())
 		Expect(err).ShouldNot(HaveOccurred())

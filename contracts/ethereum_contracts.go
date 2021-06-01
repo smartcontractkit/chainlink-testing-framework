@@ -100,11 +100,9 @@ func (f *EthereumFluxAggregator) GetContractData(ctxt context.Context) (*FluxAgg
 
 // SetOracles allows the ability to add and/or remove oracles from the contract, and to set admins
 func (f *EthereumFluxAggregator) SetOracles(
-	ctxt context.Context,
 	fromWallet client.BlockchainWallet,
 	toAdd, toRemove, toAdmin []common.Address,
 	minSubmissions, maxSubmissions, restartDelay uint32) error {
-
 	opts, err := f.client.TransactionOpts(fromWallet, *f.address, big.NewInt(0), nil)
 	if err != nil {
 		return err
@@ -245,11 +243,9 @@ func (o *EthereumOffchainAggregator) GetContractData(ctxt context.Context) (*Off
 
 // SetPayees sets wallets for the contract to pay out to?
 func (o *EthereumOffchainAggregator) SetPayees(
-	ctxt context.Context,
 	fromWallet client.BlockchainWallet,
 	transmitters, payees []common.Address,
 ) error {
-
 	opts, err := o.client.TransactionOpts(fromWallet, *o.address, big.NewInt(0), nil)
 	if err != nil {
 		return err
@@ -264,14 +260,12 @@ func (o *EthereumOffchainAggregator) SetPayees(
 
 // SetConfig sets offchain reporting protocol configuration including participating oracles
 func (o *EthereumOffchainAggregator) SetConfig(
-	ctxt context.Context,
 	fromWallet client.BlockchainWallet,
 	signers, transmitters []common.Address,
 	threshold uint8,
 	encodedConfigVersion uint64,
 	encoded []byte,
 ) error {
-
 	opts, err := o.client.TransactionOpts(fromWallet, *o.address, big.NewInt(0), nil)
 	if err != nil {
 		return err
@@ -320,7 +314,7 @@ func DeployStorageContract(ethClient *client.EthereumClient, fromWallet client.B
 }
 
 // Set sets a value in the storage contract
-func (e *EthereumStorage) Set(ctxt context.Context, value *big.Int) error {
+func (e *EthereumStorage) Set(value *big.Int) error {
 	opts, err := e.client.TransactionOpts(e.callerWallet, common.Address{}, big.NewInt(0), nil)
 	if err != nil {
 		return err
