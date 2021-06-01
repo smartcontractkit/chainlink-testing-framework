@@ -63,7 +63,6 @@ type chainlink struct {
 // NewChainlink creates a new chainlink model using a provided config
 func NewChainlink(c *ChainlinkConfig, ethClient *EthereumClient) Chainlink {
 	cl := &chainlink{Config: c, EthClient: ethClient}
-	cl.SetSessionCookie()
 	return cl
 }
 
@@ -96,7 +95,10 @@ func CreateTemplateNodes(ethClient *EthereumClient, linkAddress string) ([]Chain
 	cmd.Env = []string{ethUrl, chainId, la}
 	var e bytes.Buffer
 	cmd.Stderr = &e
-	cmd.Start()
+	err = cmd.Start()
+	if err != nil {
+		return nil, err
+	}
 
 	// Wait for Docker Compose to be up and healthy
 	for _, port := range ports {
@@ -128,6 +130,10 @@ func CreateTemplateNodes(ethClient *EthereumClient, linkAddress string) ([]Chain
 			Password: pass,
 		}
 		cl := NewChainlink(c, ethClient)
+		err = cl.SetSessionCookie()
+		if err != nil {
+			return nil, err
+		}
 		cl.SetClient(http.DefaultClient)
 		cls = append(cls, cl)
 	}

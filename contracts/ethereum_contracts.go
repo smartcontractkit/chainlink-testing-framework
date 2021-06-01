@@ -356,7 +356,10 @@ func (o *EthereumOffchainAggregator) SetConfig(
 	if err != nil {
 		return err
 	}
-	confFile.Close()
+	err = confFile.Close()
+	if err != nil {
+		return err
+	}
 
 	// Run the script to configure the contract
 	log.Info().Str("CMD", "./prototype -mode=configure -rpcurl="+o.client.Network.URL()+" -configfile="+
