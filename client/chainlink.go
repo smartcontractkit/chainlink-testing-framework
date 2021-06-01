@@ -87,7 +87,7 @@ func CreateTemplateNodes(ethClient *EthereumClient, linkAddress string) ([]Chain
 	cmd := exec.Command("docker-compose", "-f", "docker-compose.yml", "up")
 	cmd.Dir = string(projectDir) + "/tools/chainlink_nodes"
 	ethUrl := "ETH_URL=" + ethClient.Network.URL()
-	if ethClient.Network.ID() == string(EthereumHardhatID) {
+	if ethClient.Network.ID() == EthereumHardhatID {
 		ethUrl = "ETH_URL=ws://host.docker.internal:8545"
 	}
 	chainId := "ETH_CHAIN_ID=" + ethClient.Network.ChainID().String()

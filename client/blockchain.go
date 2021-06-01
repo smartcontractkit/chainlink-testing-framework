@@ -20,7 +20,7 @@ const (
 
 // BlockchainNetwork is the interface that when implemented, defines a new blockchain network that can be tested against
 type BlockchainNetwork interface {
-	ID() string
+	ID() BlockchainNetworkID
 	URL() string
 	ChainID() *big.Int
 	Wallets() (BlockchainWallets, error)
@@ -31,7 +31,7 @@ type BlockchainNetworkInit func(conf *config.Config) (BlockchainNetwork, error)
 
 // EthereumNetwork is the implementation of BlockchainNetwork for the local ETH dev server
 type EthereumNetwork struct {
-	networkID     string
+	networkID     BlockchainNetworkID
 	networkConfig *config.NetworkConfig
 }
 
@@ -42,7 +42,7 @@ func newEthereumNetwork(conf *config.Config, networkID BlockchainNetworkID) (Blo
 		return nil, err
 	}
 	return &EthereumNetwork{
-		networkID:     string(networkID),
+		networkID:     networkID,
 		networkConfig: networkConf,
 	}, nil
 }
@@ -63,7 +63,7 @@ func NewGoerliNetwork(conf *config.Config) (BlockchainNetwork, error) {
 }
 
 // ID returns the readable name of the EVM network
-func (e *EthereumNetwork) ID() string {
+func (e *EthereumNetwork) ID() BlockchainNetworkID {
 	return e.networkID
 }
 
