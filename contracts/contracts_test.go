@@ -61,7 +61,7 @@ var _ = Describe("Chainlink Node", func() {
 		// Deploy and config OCR contract
 		ocrInstance, err := DeployOffChainAggregator(ethClient, ocrContractWallet)
 		Expect(err).ShouldNot(HaveOccurred())
-		err = ocrInstance.SetConfig(context.Background(), ocrContractWallet, chainlinkNodes)
+		err = ocrInstance.SetConfig(ocrContractWallet, chainlinkNodes)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// Create external adapter, returns 5 every time
@@ -160,7 +160,7 @@ var _ = Describe("Contracts", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// Interact with contract
-		err = storeInstance.Set(context.Background(), value)
+		err = storeInstance.Set(value)
 		Expect(err).ShouldNot(HaveOccurred())
 		val, err := storeInstance.Get(context.Background())
 		Expect(err).ShouldNot(HaveOccurred())

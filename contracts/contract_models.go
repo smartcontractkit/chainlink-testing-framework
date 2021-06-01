@@ -27,8 +27,8 @@ type FluxAggregatorData struct {
 
 type FluxAggregator interface {
 	Fund(fromWallet client.BlockchainWallet, ethAmount *big.Int, linkAmount *big.Int) error
-	GetContractData(context.Context) (*FluxAggregatorData, error)
-	SetOracles(context.Context,
+	GetContractData(ctxt context.Context) (*FluxAggregatorData, error)
+	SetOracles(
 		client.BlockchainWallet,
 		[]common.Address,
 		[]common.Address,
@@ -37,7 +37,7 @@ type FluxAggregator interface {
 		uint32,
 		uint32,
 	) error
-	Description(context.Context) (string, error)
+	Description(ctxt context.Context) (string, error)
 }
 
 type LinkToken interface {
@@ -90,16 +90,16 @@ type OffchainAggregator interface {
 	Address() string
 	Fund(client.BlockchainWallet, *big.Int, *big.Int) error
 	GetContractData(ctxt context.Context) (*OffchainAggregatorData, error)
-	SetConfig(ctxt context.Context, fromWallet client.BlockchainWallet, chainlinkNodes []client.Chainlink) error
-	SetPayees(context.Context, client.BlockchainWallet, []common.Address, []common.Address) error
+	SetConfig(fromWallet client.BlockchainWallet, chainlinkNodes []client.Chainlink) error
+	SetPayees(client.BlockchainWallet, []common.Address, []common.Address) error
 	Link(ctxt context.Context) (common.Address, error)
 	GetLatestAnswer(ctxt context.Context) (*big.Int, error)
 	GetLatestRound(ctxt context.Context) (*RoundData, error)
 }
 
 type Storage interface {
-	Get(context.Context) (*big.Int, error)
-	Set(context.Context, *big.Int) error
+	Get(ctxt context.Context) (*big.Int, error)
+	Set(*big.Int) error
 }
 
 type VRF interface {
