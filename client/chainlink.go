@@ -116,7 +116,7 @@ func CreateTemplateNodes(ethClient *EthereumClient, linkAddress string) ([]Chain
 			} else {
 				log.Error().Msg("Monitor Response NIL")
 			}
-			CleanTemplateNodes()
+			_ = CleanTemplateNodes()
 			return nil, err
 		}
 		log.Info().Str("URL", urlBase+port).Msg("Chainlink Node Healthy")
