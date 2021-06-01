@@ -95,8 +95,9 @@ var _ = Describe("Chainlink Node", func() {
 		// Quickly create 50 new blocks on hardhat
 		if networkConfig.ID() == client.EthereumHardhatID {
 			for i := 0; i < 50; i++ {
-				ethClient.SendTransaction(wallets.Default(), common.HexToAddress(extraFundingWallet.Address()),
+				_, err = ethClient.SendTransaction(wallets.Default(), common.HexToAddress(extraFundingWallet.Address()),
 					big.NewInt(123456789), nil)
+				Expect(err).ShouldNot(HaveOccurred())
 				round, err := ocrInstance.GetLatestRound(context.Background())
 				Expect(err).ShouldNot(HaveOccurred())
 				log.Info().
