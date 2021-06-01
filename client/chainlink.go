@@ -61,9 +61,9 @@ type chainlink struct {
 }
 
 // NewChainlink creates a new chainlink model using a provided config
-func NewChainlink(c *ChainlinkConfig, ethClient *EthereumClient) Chainlink {
+func NewChainlink(c *ChainlinkConfig, ethClient *EthereumClient) (Chainlink, error) {
 	cl := &chainlink{Config: c, EthClient: ethClient}
-	return cl
+	return cl, cl.SetSessionCookie()
 }
 
 // CreateTemplateNodes lauches 5 chainlink nodes in a default config for testing
@@ -129,8 +129,7 @@ func CreateTemplateNodes(ethClient *EthereumClient, linkAddress string) ([]Chain
 			Email:    email,
 			Password: pass,
 		}
-		cl := NewChainlink(c, ethClient)
-		err = cl.SetSessionCookie()
+		cl, err := NewChainlink(c, ethClient)
 		if err != nil {
 			return nil, err
 		}

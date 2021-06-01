@@ -58,7 +58,8 @@ var _ = Describe("Client", func() {
 		})
 		defer server.Close()
 
-		c := newDefaultClient(server.URL)
+		c, err := newDefaultClient(server.URL)
+		Expect(err).ShouldNot(HaveOccurred())
 		c.SetClient(server.Client())
 
 		s, err := c.CreateJob("schemaVersion = 1")
@@ -94,7 +95,8 @@ var _ = Describe("Client", func() {
 		})
 		defer server.Close()
 
-		c := newDefaultClient(server.URL)
+		c, err := newDefaultClient(server.URL)
+		Expect(err).ShouldNot(HaveOccurred())
 		c.SetClient(server.Client())
 
 		s, err := c.CreateSpec(spec)
@@ -133,10 +135,11 @@ var _ = Describe("Client", func() {
 		})
 		defer server.Close()
 
-		c := newDefaultClient(server.URL)
+		c, err := newDefaultClient(server.URL)
+		Expect(err).ShouldNot(HaveOccurred())
 		c.SetClient(server.Client())
 
-		err := c.CreateBridge(&bta)
+		err = c.CreateBridge(&bta)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		bt, err := c.ReadBridge(bta.Name)
@@ -177,7 +180,8 @@ var _ = Describe("Client", func() {
 		})
 		defer server.Close()
 
-		c := newDefaultClient(server.URL)
+		c, err := newDefaultClient(server.URL)
+		Expect(err).ShouldNot(HaveOccurred())
 		c.SetClient(server.Client())
 
 		receivedKey, err := c.CreateOCRKey()
@@ -218,7 +222,8 @@ var _ = Describe("Client", func() {
 		})
 		defer server.Close()
 
-		c := newDefaultClient(server.URL)
+		c, err := newDefaultClient(server.URL)
+		Expect(err).ShouldNot(HaveOccurred())
 		c.SetClient(server.Client())
 
 		receivedKey, err := c.CreateP2PKey()
@@ -257,7 +262,8 @@ var _ = Describe("Client", func() {
 		})
 		defer server.Close()
 
-		c := newDefaultClient(server.URL)
+		c, err := newDefaultClient(server.URL)
+		Expect(err).ShouldNot(HaveOccurred())
 		c.SetClient(server.Client())
 
 		receivedKeys, err := c.ReadETHKeys()
@@ -267,13 +273,13 @@ var _ = Describe("Client", func() {
 
 })
 
-func newDefaultClient(url string) Chainlink {
-	cl := NewChainlink(&ChainlinkConfig{
+func newDefaultClient(url string) (Chainlink, error) {
+	cl, err := NewChainlink(&ChainlinkConfig{
 		Email:    "admin@node.local",
 		Password: "twochains",
 		URL:      url,
 	}, nil)
-	return cl
+	return cl, err
 }
 
 func mockedServer(handlerFunc http.HandlerFunc) *httptest.Server {

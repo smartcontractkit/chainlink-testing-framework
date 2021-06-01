@@ -10,6 +10,5 @@ require (
 	github.com/onsi/gomega v1.10.1
 	github.com/rs/zerolog v1.21.0
 	github.com/spf13/viper v1.7.1
-	github.com/stretchr/testify v1.7.0
 	golang.org/x/crypto v0.0.0-20210506145944-38f3c27a63bf // indirect
 )
