@@ -359,7 +359,6 @@ func (o *EthereumOffchainAggregator) SetConfig(
 	confFile.Close()
 
 	// Run the script to configure the contract
-
 	log.Info().Str("CMD", "./prototype -mode=configure -rpcurl="+o.client.Network.URL()+" -configfile="+
 		projectDir+"/config/ocr_config.json").
 		Msg("Running command")
@@ -368,7 +367,7 @@ func (o *EthereumOffchainAggregator) SetConfig(
 		"-rpcurl="+o.client.Network.URL(),
 		"-configfile="+projectDir+"/config/ocr_config.json",
 	)
-	cmd.Dir = string(projectDir) + "/../offchain-reporting/lib/prototype"
+	cmd.Dir = projectDir + "/tools"
 	var e bytes.Buffer
 	cmd.Stderr = &e
 	err = cmd.Run()

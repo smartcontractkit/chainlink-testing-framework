@@ -31,11 +31,12 @@ func NewExternalAdapter(portNumber string) {
 	log.Fatal().AnErr("Error", http.ListenAndServe(":"+portNumber, router)).Msg("Error occured while running external adapter")
 }
 
+// index allows a status check on the adapter
 func index(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	fmt.Fprint(w, "Adapter listening!")
 }
 
-// RandomNumber returns a random int from 0 to 10
+// RandomNumber returns a random int from 0 to 100
 func randomNumber(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	num := rand.Intn(100)
@@ -44,10 +45,11 @@ func randomNumber(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		Data:     ExternalAdapterData{Result: num},
 		Error:    nil,
 	}
-	log.Info().Int("Result", num).Str("Requester", r.RemoteAddr).Msg("Sending Result from Adapter")
+	log.Info().Int("Result", num).Msg("Sending Result from Adapter")
 	json.NewEncoder(w).Encode(result)
 }
 
+// five returns five
 func five(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	result := &ExternalAdapterResponse{
@@ -55,7 +57,7 @@ func five(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		Data:     ExternalAdapterData{Result: 5},
 		Error:    nil,
 	}
-	log.Info().Int("Result", 5).Str("Requester", r.RemoteAddr).Msg("Sending Result from Adapter")
+	log.Info().Int("Result", 5).Msg("Sending Result from Adapter")
 	json.NewEncoder(w).Encode(result)
 
 }

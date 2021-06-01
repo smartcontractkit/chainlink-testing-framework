@@ -2,9 +2,9 @@
 
 Here are some QoL tools used by the framework.
 
-## `tools.go`
+## `chainlink_nodes`
 
-Basic import for the [ginkgo test framework](https://github.com/onsi/ginkgo)
+Contains necessary resources to deploy a local chainlink node cluster. Hoping to strip this out in the coming times.
 
 ## `compile_contracts.py`
 
@@ -19,3 +19,15 @@ This will:
 3. Use `abigen` to generate golang bindings for the compiled contracts
 4. Cleanup `hardhat` installation and files
 
+## `external_adapter.go`
+
+A simple external adapter implementation for local chainlink nodes to interact with.
+
+## `prototype`
+
+Compiled binary of Lorenz's [OCR prototype](https://github.com/smartcontractkit/offchain-reporting/tree/master/lib/prototype)
+that we use for the trickier bits of configuring OCR smart contracts. I hope to make this an API / library call later on.
+
+## `tools.go`
+
+Basic import for the [ginkgo test framework](https://github.com/onsi/ginkgo).

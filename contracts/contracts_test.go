@@ -7,13 +7,11 @@ import (
 	"integrations-framework/config"
 	"integrations-framework/tools"
 	"math/big"
-	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
-	"github.com/rs/zerolog/log"
 )
 
 var _ = Describe("Chainlink Node", func() {
@@ -93,25 +91,25 @@ var _ = Describe("Chainlink Node", func() {
 		}
 
 		// Quickly create a bunch of new blocks
-		for {
-			time.Sleep(time.Second * 2)
-			ethClient.SendTransaction(wallets.Default(), common.HexToAddress(extraFundingWallet.Address()),
-				big.NewInt(123456789), nil)
-			round, err := ocrInstance.GetLatestRound(context.Background())
-			Expect(err).ShouldNot(HaveOccurred())
-			log.Info().
-				Str("Contract Address", ocrInstance.Address()).
-				Str("Answer", round.Answer.String()).
-				Str("Round ID", round.RoundId.String()).
-				Str("Answered in Round", round.AnsweredInRound.String()).
-				Str("Started At", round.StartedAt.String()).
-				Str("Updated At", round.UpdatedAt.String()).
-				Msg("Latest Round Data")
-		}
+		// for {
+		// 	time.Sleep(time.Second * 1)
+		// 	ethClient.SendTransaction(wallets.Default(), common.HexToAddress(extraFundingWallet.Address()),
+		// 		big.NewInt(123456789), nil)
+		// 	round, err := ocrInstance.GetLatestRound(context.Background())
+		// 	Expect(err).ShouldNot(HaveOccurred())
+		// 	log.Info().
+		// 		Str("Contract Address", ocrInstance.Address()).
+		// 		Str("Answer", round.Answer.String()).
+		// 		Str("Round ID", round.RoundId.String()).
+		// 		Str("Answered in Round", round.AnsweredInRound.String()).
+		// 		Str("Started At", round.StartedAt.String()).
+		// 		Str("Updated At", round.UpdatedAt.String()).
+		// 		Msg("Latest Round Data")
+		// }
 
 		// Cleanup
-		// err = client.CleanTemplateNodes()
-		// Expect(err).ShouldNot(HaveOccurred())
+		err = client.CleanTemplateNodes()
+		Expect(err).ShouldNot(HaveOccurred())
 
 	},
 		Entry("on Ethereum Hardhat", client.NewHardhatNetwork),
@@ -135,13 +133,15 @@ var _ = Describe("Chainlink Node", func() {
 // 		initFunc client.BlockchainNetworkInit,
 // 		value *big.Int,
 // 	) {
-// 		// Deploy contract
+// 		// Setup Network
 // 		networkConfig, err := initFunc(conf)
 // 		Expect(err).ShouldNot(HaveOccurred())
 // 		client, err := client.NewEthereumClient(networkConfig)
 // 		Expect(err).ShouldNot(HaveOccurred())
 // 		wallets, err := networkConfig.Wallets()
 // 		Expect(err).ShouldNot(HaveOccurred())
+
+// 		// Deploy Contract
 // 		storeInstance, err := DeployStorageContract(client, wallets.Default())
 // 		Expect(err).ShouldNot(HaveOccurred())
 
@@ -153,9 +153,8 @@ var _ = Describe("Chainlink Node", func() {
 // 		Expect(val).To(Equal(value))
 // 	},
 // 		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, big.NewInt(5)),
-// 		// Tested locally successfully. We need to implement secrets system as well as testing wallets for CI use
-// 		// Entry("on Ethereum Kovan", client.NewKovanNetwork, big.NewInt(5)),
-// 		// Entry("on Ethereum Goerli", client.NewGoerliNetwork, big.NewInt(5)),
+// 		Entry("on Ethereum Kovan", client.NewKovanNetwork, big.NewInt(5)),
+// 		Entry("on Ethereum Goerli", client.NewGoerliNetwork, big.NewInt(5)),
 // 	)
 
 // 	DescribeTable("deploy and interact with the FluxAggregator contract", func(
@@ -203,7 +202,6 @@ var _ = Describe("Chainlink Node", func() {
 
 // 	DescribeTable("deploy and interact with the OffChain Aggregator contract", func(
 // 		initFunc client.BlockchainNetworkInit,
-// 		offchainOptions OffchainOptions,
 // 	) {
 // 		// Setup network and client
 // 		networkConfig, err := initFunc(conf)
@@ -221,26 +219,15 @@ var _ = Describe("Chainlink Node", func() {
 // 		Expect(name).To(Equal("ChainLink Token"))
 
 // 		// Deploy Offchain contract
-// 		offChainInstance, err := DeployOffChainAggregator(client, wallets.Default(), offchainOptions)
+// 		offChainInstance, err := DeployOffChainAggregator(client, wallets.Default())
 // 		Expect(err).ShouldNot(HaveOccurred())
 // 		err = offChainInstance.Fund(wallets.Default(), nil, big.NewInt(50000000000))
 // 		Expect(err).ShouldNot(HaveOccurred())
 // 	},
-// 		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, OffchainOptions{
-// 			// Some defaults from Lorenz's project. Not sure if we want this in a config file in future?
-// 			MaximumGasPrice:         uint32(1000),
-// 			ReasonableGasPrice:      uint32(200),
-// 			MicroLinkPerEth:         3.6e7,
-// 			LinkGweiPerObservation:  1e8,
-// 			LinkGweiPerTransmission: 4e8,
-// 			MinimumAnswer:           big.NewInt(1),
-// 			MaximumAnswer:           big.NewInt(100),
-// 			Decimals:                uint8(8),
-// 			Description:             "Hardhat OffChain Aggregator",
-// 		}),
+// 		Entry("on Ethereum Hardhat", client.NewHardhatNetwork),
 // 		// Tested locally successfully. We need to implement secrets system as well as testing wallets for CI use
-// 		// Entry("on Ethereum Kovan", client.NewKovanNetwork, big.NewInt(5)),
-// 		// Entry("on Ethereum Goerli", client.NewGoerliNetwork, big.NewInt(5)),
+// 		Entry("on Ethereum Kovan", client.NewKovanNetwork),
+// 		Entry("on Ethereum Goerli", client.NewGoerliNetwork),
 // 	)
 // })
 

@@ -39,7 +39,7 @@ networks:
             - aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
         transaction_limit: 1000000 
         transaction_timeout: 5m
-        minimum_confirmations: 2
+        minimum_confirmations: 1
         gas_estimation_buffer: 10000
     ethereum_goerli:
         name: "Ethereum Goerli"
@@ -49,5 +49,5 @@ networks:
             - aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
         transaction_limit: 1000000
         transaction_timeout: 5m
-        minimum_confirmations: 2
+        minimum_confirmations: 1
         gas_estimation_buffer: 10000
