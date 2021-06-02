@@ -111,7 +111,7 @@ var _ = Describe("Chainlink Node", func() {
 				if round.RoundId.Cmp(big.NewInt(0)) > 0 {
 					break // Break when OCR round processes
 				}
-				time.Sleep(time.Second * 1)
+				time.Sleep(time.Millisecond * 500)
 			}
 		}
 
@@ -119,7 +119,7 @@ var _ = Describe("Chainlink Node", func() {
 		answer, err := ocrInstance.GetLatestAnswer(context.Background())
 		log.Info().Str("Answer", answer.String()).Msg("Final Answer")
 		Expect(err).ShouldNot(HaveOccurred())
-		Expect(big.NewInt(5).Cmp(answer)).Should(Equal(0))
+		Expect(answer.Int64()).Should(Equal(int64(5)))
 
 		// Cleanup
 		err = client.CleanTemplateNodes()
@@ -127,9 +127,6 @@ var _ = Describe("Chainlink Node", func() {
 
 	},
 		Entry("on Ethereum Hardhat", client.NewHardhatNetwork),
-		// Tested locally successfully. We need to implement secrets system as well as testing wallets for CI use
-		// Entry("on Ethereum Kovan", NewKovanNetwork),
-		// Entry("on Ethereum Goerli", NewGoerliNetwork),
 	)
 
 })

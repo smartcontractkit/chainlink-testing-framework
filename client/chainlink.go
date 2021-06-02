@@ -68,59 +68,53 @@ func NewChainlink(c *ChainlinkConfig, ethClient *EthereumClient) (Chainlink, err
 
 // CreateTemplateNodes lauches 5 chainlink nodes in a default config for testing
 func CreateTemplateNodes(ethClient *EthereumClient, linkAddress string) ([]Chainlink, error) {
-	err := CleanTemplateNodes()
-	if err != nil {
-		return nil, err
-	}
 	urlBase := "http://localhost:"
 	email := "notreal@fakeemail.ch"
 	pass := "twochains"
+	// TODO: Make this more dynamic as we integrate K8s scaling
 	ports := []string{"6711", "6722", "6733", "6744", "6755"}
+	var stdErrBuffer bytes.Buffer
 
-	p, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
-	if err != nil {
-		return nil, err
-	}
-	projectDir := strings.TrimSpace(string(p))
+	// Check if nodes are already up, for CI setup or continuously up local ones
+	log.Info().Msg("Checking if chainlink nodes are already running...")
+	nodesHealthy, _ := checkNodesHealth(urlBase, ports, 0)
 
-	cmd := exec.Command("docker-compose", "-f", "docker-compose.yml", "up")
-	cmd.Dir = string(projectDir) + "/tools/chainlink_nodes"
-	ethUrl := "ETH_URL=" + ethClient.Network.URL()
-	if ethClient.Network.ID() == EthereumHardhatID {
-		ethUrl = "ETH_URL=ws://host.docker.internal:8545"
-	}
-	chainId := "ETH_CHAIN_ID=" + ethClient.Network.ChainID().String()
-	la := "LINK_CONTRACT_ADDRESS=" + linkAddress
-	cmd.Env = []string{ethUrl, chainId, la}
-	var e bytes.Buffer
-	cmd.Stderr = &e
-	err = cmd.Start()
-	log.Info().Str("CMD", "docker-compose -f docker-compose.yml up").Msg("Running command")
-	if err != nil {
-		return nil, err
-	}
-
-	log.Info().Msg("Checking health of chainlink nodes...")
-	// Wait for Docker Compose to be up and healthy
-	for _, port := range ports {
-		resp, err := http.Get(urlBase + port)
-		for start := time.Now(); time.Since(start) < 2*time.Minute; time.Sleep(time.Second * 3) {
-			resp, err = http.Get(urlBase + port)
-			if err == nil && resp.StatusCode == 200 {
-				break
-			}
-		}
+	// If they aren't, spin them up
+	if !nodesHealthy {
+		log.Info().Msg("Chainlink nodes not already running, creating them...")
+		p, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
 		if err != nil {
-			log.Error().Str("ERROR", e.String()).Msg("STDERR")
-			if resp != nil {
-				log.Info().Int("Status Code", resp.StatusCode).Msg("Monitor Response")
-			} else {
-				log.Error().Msg("Monitor Response NIL")
-			}
-			_ = CleanTemplateNodes()
 			return nil, err
 		}
-		log.Info().Str("URL", urlBase+port).Msg("Chainlink Node Healthy")
+		projectDir := strings.TrimSpace(string(p))
+
+		// TODO: Port to K8s setup, generally make this smoother than a CLI call
+		cmd := exec.Command("docker-compose", "-f", "docker-compose.yml", "up")
+		cmd.Dir = string(projectDir) + "/tools/chainlink_nodes"
+		ethUrl := "ETH_URL=" + ethClient.Network.URL()
+		if ethClient.Network.ID() == EthereumHardhatID {
+			ethUrl = "ETH_URL=ws://host.docker.internal:8545"
+		}
+		chainId := "ETH_CHAIN_ID=" + ethClient.Network.ChainID().String()
+		la := "LINK_CONTRACT_ADDRESS=" + linkAddress
+		cmd.Env = []string{ethUrl, chainId, la}
+		cmd.Stderr = &stdErrBuffer
+		err = cmd.Start()
+		log.Info().Str("CMD", "docker-compose -f docker-compose.yml up").Msg("Running command")
+		if err != nil {
+			return nil, err
+		}
+
+		log.Info().Msg("Checking health of chainlink nodes...")
+		nodesHealthy, err = checkNodesHealth(urlBase, ports, 2)
+		if err != nil || !nodesHealthy {
+			log.Err(err).Str("STDERR", stdErrBuffer.String()).Msg("Error checking on chainlink node health")
+			cleanErr := CleanTemplateNodes()
+			if cleanErr != nil {
+				log.Err(cleanErr).Msg("Error trying to cleanup nodes")
+			}
+			return nil, err
+		}
 	}
 
 	var cls []Chainlink
@@ -138,7 +132,7 @@ func CreateTemplateNodes(ethClient *EthereumClient, linkAddress string) ([]Chain
 		cls = append(cls, cl)
 	}
 
-	return cls, err
+	return cls, nil
 }
 
 // CleanTemplateNodes cleans the default setup for chainlink nodes
@@ -158,7 +152,7 @@ func CleanTemplateNodes() error {
 // CreateJob creates a Chainlink job based on the provided spec string
 func (c *chainlink) CreateJob(spec string) (*Job, error) {
 	job := &Job{}
-	log.Info().Str("Chainlink Node URL", c.Config.URL).Msg("Creating Job")
+	log.Info().Str("Node URL", c.Config.URL).Msg("Creating Job")
 	_, err := c.do(http.MethodPost, "/v2/jobs", &JobForm{
 		TOML: spec,
 	}, &job, http.StatusOK)
@@ -221,12 +215,14 @@ func (c *chainlink) Fund(fromWallet BlockchainWallet, ethAmount, linkAmount *big
 
 // ReadJob reads a job with the provided ID from the Chainlink node
 func (c *chainlink) ReadJob(id string) error {
+	log.Info().Str("Node URL", c.Config.URL).Str("ID", id).Msg("Reading Job")
 	_, err := c.do(http.MethodGet, fmt.Sprintf("/v2/jobs/%s", id), nil, nil, http.StatusOK)
 	return err
 }
 
 // DeleteJob deletes a job with a provided ID from the Chainlink node
 func (c *chainlink) DeleteJob(id string) error {
+	log.Info().Str("Node URL", c.Config.URL).Str("ID", id).Msg("Deleting Job")
 	_, err := c.do(http.MethodDelete, fmt.Sprintf("/v2/jobs/%s", id), nil, nil, http.StatusNoContent)
 	return err
 }
@@ -234,6 +230,8 @@ func (c *chainlink) DeleteJob(id string) error {
 // CreateSpec creates a job spec on the Chainlink node
 func (c *chainlink) CreateSpec(spec string) (*Spec, error) {
 	s := &Spec{}
+	r := strings.NewReplacer("\n", "", " ", "", "\\", "") // Makes it more compact and readable for logging
+	log.Info().Str("Node URL", c.Config.URL).Str("Spec", r.Replace(spec)).Msg("Creating Spec")
 	_, err := c.doRaw(http.MethodPost, "/v2/specs", []byte(spec), s, http.StatusOK)
 	return s, err
 }
@@ -241,18 +239,21 @@ func (c *chainlink) CreateSpec(spec string) (*Spec, error) {
 // ReadSpec reads a job spec with the provided ID on the Chainlink node
 func (c *chainlink) ReadSpec(id string) (*Response, error) {
 	specObj := &Response{}
+	log.Info().Str("Node URL", c.Config.URL).Str("ID", id).Msg("Reading Spec")
 	_, err := c.do(http.MethodGet, fmt.Sprintf("/v2/specs/%s", id), nil, specObj, http.StatusOK)
 	return specObj, err
 }
 
 // DeleteSpec deletes a job spec with the provided ID from the Chainlink node
 func (c *chainlink) DeleteSpec(id string) error {
+	log.Info().Str("Node URL", c.Config.URL).Str("ID", id).Msg("Deleting Spec")
 	_, err := c.do(http.MethodDelete, fmt.Sprintf("/v2/specs/%s", id), nil, nil, http.StatusNoContent)
 	return err
 }
 
 // CreateBridge creates a bridge on the Chainlink node based on the provided attributes
 func (c *chainlink) CreateBridge(bta *BridgeTypeAttributes) error {
+	log.Info().Str("Node URL", c.Config.URL).Str("Name", bta.Name).Msg("Creating Bridge")
 	_, err := c.do(http.MethodPost, "/v2/bridge_types", bta, nil, http.StatusOK)
 	return err
 }
@@ -260,12 +261,14 @@ func (c *chainlink) CreateBridge(bta *BridgeTypeAttributes) error {
 // ReadBridge reads a bridge from the Chainlink node based on the provided name
 func (c *chainlink) ReadBridge(name string) (*BridgeType, error) {
 	bt := BridgeType{}
+	log.Info().Str("Node URL", c.Config.URL).Str("Name", name).Msg("Reading Bridge")
 	_, err := c.do(http.MethodGet, fmt.Sprintf("/v2/bridge_types/%s", name), nil, &bt, http.StatusOK)
 	return &bt, err
 }
 
 // DeleteBridge deletes a bridge on the Chainlink node based on the provided name
 func (c *chainlink) DeleteBridge(name string) error {
+	log.Info().Str("Node URL", c.Config.URL).Str("Name", name).Msg("Deleting Bridge")
 	_, err := c.do(http.MethodDelete, fmt.Sprintf("/v2/bridge_types/%s", name), nil, nil, http.StatusOK)
 	return err
 }
@@ -273,6 +276,7 @@ func (c *chainlink) DeleteBridge(name string) error {
 // CreateOCRKey creates an OCRKey on the Chainlink node
 func (c *chainlink) CreateOCRKey() (*OCRKey, error) {
 	ocrKey := &OCRKey{}
+	log.Info().Str("Node URL", c.Config.URL).Msg("Creating OCR Key")
 	_, err := c.do(http.MethodPost, "/v2/keys/ocr", nil, ocrKey, http.StatusOK)
 	return ocrKey, err
 }
@@ -280,6 +284,7 @@ func (c *chainlink) CreateOCRKey() (*OCRKey, error) {
 // ReadOCRKeys reads all OCRKeys from the Chainlink node
 func (c *chainlink) ReadOCRKeys() (*OCRKeys, error) {
 	ocrKeys := &OCRKeys{}
+	log.Info().Str("Node URL", c.Config.URL).Msg("Reading OCR Keys")
 	_, err := c.do(http.MethodGet, "/v2/keys/ocr", nil, ocrKeys, http.StatusOK)
 	for index := range ocrKeys.Data {
 		ocrKeys.Data[index].Attributes.ConfigPublicKey = strings.TrimPrefix(
@@ -294,6 +299,7 @@ func (c *chainlink) ReadOCRKeys() (*OCRKeys, error) {
 
 // DeleteOCRKey deletes an OCRKey based on the provided ID
 func (c *chainlink) DeleteOCRKey(id string) error {
+	log.Info().Str("Node URL", c.Config.URL).Str("ID", id).Msg("Deleting OCR Key")
 	_, err := c.do(http.MethodDelete, fmt.Sprintf("/v2/keys/ocr/%s", id), nil, nil, http.StatusOK)
 	return err
 }
@@ -301,6 +307,7 @@ func (c *chainlink) DeleteOCRKey(id string) error {
 // CreateP2PKey creates an P2PKey on the Chainlink node
 func (c *chainlink) CreateP2PKey() (*P2PKey, error) {
 	p2pKey := &P2PKey{}
+	log.Info().Str("Node URL", c.Config.URL).Msg("Creating P2P Key")
 	_, err := c.do(http.MethodPost, "/v2/keys/p2p", nil, p2pKey, http.StatusOK)
 	return p2pKey, err
 }
@@ -308,6 +315,7 @@ func (c *chainlink) CreateP2PKey() (*P2PKey, error) {
 // ReadP2PKeys reads all P2PKeys from the Chainlink node
 func (c *chainlink) ReadP2PKeys() (*P2PKeys, error) {
 	p2pKeys := &P2PKeys{}
+	log.Info().Str("Node URL", c.Config.URL).Msg("Reading P2P Keys")
 	_, err := c.do(http.MethodGet, "/v2/keys/p2p", nil, p2pKeys, http.StatusOK)
 	for index := range p2pKeys.Data {
 		p2pKeys.Data[index].Attributes.PeerID = strings.TrimPrefix(p2pKeys.Data[index].Attributes.PeerID, "p2p_")
@@ -317,6 +325,7 @@ func (c *chainlink) ReadP2PKeys() (*P2PKeys, error) {
 
 // DeleteP2PKey deletes a P2PKey on the Chainlink node based on the provided ID
 func (c *chainlink) DeleteP2PKey(id int) error {
+	log.Info().Str("Node URL", c.Config.URL).Int("ID", id).Msg("Deleting P2P Key")
 	_, err := c.do(http.MethodDelete, fmt.Sprintf("/v2/keys/p2p/%d", id), nil, nil, http.StatusOK)
 	return err
 }
@@ -324,6 +333,7 @@ func (c *chainlink) DeleteP2PKey(id int) error {
 // ReadETHKeys reads all ETH keys from the Chainlink node
 func (c *chainlink) ReadETHKeys() (*ETHKeys, error) {
 	ethKeys := &ETHKeys{}
+	log.Info().Str("Node URL", c.Config.URL).Msg("Reading ETH Keys")
 	_, err := c.do(http.MethodGet, "/v2/keys/eth", nil, ethKeys, http.StatusOK)
 	return ethKeys, err
 }
@@ -375,6 +385,25 @@ func (c *chainlink) SetSessionCookie() error {
 		return fmt.Errorf("chainlink: session cookie wasn't returned on login")
 	}
 	return nil
+}
+
+// checkNodesHealth checks if the nodes at the provided URLs are healthy or not
+func checkNodesHealth(urlBase string, ports []string, minutesToWait int) (bool, error) {
+	// Wait for Docker Compose to be up and healthy
+	for _, port := range ports {
+		resp, err := http.Get(urlBase + port)
+		for start := time.Now(); time.Since(start) < time.Duration(minutesToWait)*time.Minute; time.Sleep(time.Second * 3) {
+			if err == nil && resp.StatusCode == 200 {
+				break
+			}
+			resp, err = http.Get(urlBase + port)
+		}
+		if err != nil {
+			return false, err
+		}
+		log.Info().Str("URL", urlBase+port).Msg("Chainlink Node Healthy")
+	}
+	return true, nil
 }
 
 // SetClient overrides the http client, used for mocking out the Chainlink server for unit testing
@@ -455,11 +484,5 @@ func (c *chainlink) do(
 	if body != nil && err != nil {
 		return nil, err
 	}
-	log.Info().
-		Str("Method", method).
-		Str("Endpoint", endpoint).
-		Str("URL", c.Config.URL).
-		Str("Body", string(b)).
-		Msg("Calling to Chainlink node")
 	return c.doRaw(method, endpoint, b, obj, expectedStatusCode)
 }

@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/spf13/viper"
@@ -51,6 +52,7 @@ func NewConfig(configType ConfigurationType) (*Config, error) {
 // NewWithPath creates a new configuration with a specified path for the config file
 func NewWithPath(configType ConfigurationType, configFilePath string) (*Config, error) {
 	v := viper.New()
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
 	v.SetConfigName("config")
 	v.SetConfigType("yml")

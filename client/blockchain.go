@@ -27,6 +27,7 @@ type BlockchainNetwork interface {
 	Config() *config.NetworkConfig
 }
 
+// BlockchainNetworkInit is a helper function to obtain different blockchain networks
 type BlockchainNetworkInit func(conf *config.Config) (BlockchainNetwork, error)
 
 // EthereumNetwork is the implementation of BlockchainNetwork for the local ETH dev server
@@ -91,6 +92,7 @@ func (e *EthereumNetwork) Wallets() (BlockchainWallets, error) {
 // a specific network
 type BlockchainWallets interface {
 	Default() BlockchainWallet
+	Raw() []BlockchainWallet
 	SetDefault(i int) error
 	Wallet(i int) (BlockchainWallet, error)
 }
@@ -104,6 +106,11 @@ type Wallets struct {
 // Default returns the default wallet to be used for a transaction on-chain
 func (w *Wallets) Default() BlockchainWallet {
 	return w.wallets[w.defaultWallet]
+}
+
+// Raw returns the raw representation of Wallets
+func (w *Wallets) Raw() []BlockchainWallet {
+	return w.wallets
 }
 
 // SetDefault changes the default wallet to be used for on-chain transactions

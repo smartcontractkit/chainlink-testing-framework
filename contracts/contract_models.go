@@ -4,8 +4,10 @@ import (
 	"context"
 	"integrations-framework/client"
 	"math/big"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	ocrConfigHelper "github.com/smartcontractkit/libocr/offchainreporting/confighelper"
 )
 
 type FluxAggregatorOptions struct {
@@ -60,26 +62,20 @@ type OffchainOptions struct {
 	Description               string         // A short description of what is being reported
 }
 
-type OracleIdentity struct {
-	TransmitAddress       string
-	OnchainSigningAddress string
-	PeerID                string
-	OffchainPublicKey     string
-	ConfigPublicKey       string
-}
-
+// https://uploads-ssl.webflow.com/5f6b7190899f41fb70882d08/603651a1101106649eef6a53_chainlink-ocr-protocol-paper-02-24-20.pdf
 type OffChainAggregatorConfig struct {
-	DeltaProgress    string
-	DeltaResend      string
-	DeltaRound       string
-	DeltaGrace       string
-	DeltaC           string
-	AlphaPPB         uint64
-	DeltaStage       string
-	RMax             uint8
-	F                int
-	N                int
-	OracleIdentities []OracleIdentity
+	DeltaProgress    time.Duration // The duration in which a leader must achieve progress or be replaced
+	DeltaResend      time.Duration // The interval at which nodes resend NEWEPOCH messages
+	DeltaRound       time.Duration // The duration after which a new round is started
+	DeltaGrace       time.Duration // The duration of the grace period during which delayed oracles can still submit observations
+	DeltaC           time.Duration // Limits how often updates are transmitted to the contract as long as the median isn’t changing by more then AlphaPPB
+	AlphaPPB         uint64        // Allows larger changes of the median to be reported immediately, bypassing DeltaC
+	DeltaStage       time.Duration // Used to stagger stages of the transmission protocol. Multiple Ethereum blocks must be mineable in this period
+	RMax             uint8         // The maximum number of rounds in an epoch
+	S                []int         // Transmission Schedule
+	F                int           // The allowed number of "bad" oracles
+	N                int           // The number of oracles
+	OracleIdentities []ocrConfigHelper.OracleIdentityExtra
 }
 
 type OffchainAggregatorData struct {

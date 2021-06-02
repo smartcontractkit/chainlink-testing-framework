@@ -19,24 +19,19 @@ var _ = Describe("Client", func() {
 
 	DescribeTable("create new wallet configurations", func(
 		initFunc BlockchainNetworkInit,
-		privateKeyString string,
-		address string,
 	) {
 		networkConfig, err := initFunc(conf)
 		Expect(err).ShouldNot(HaveOccurred())
 		wallets, err := networkConfig.Wallets()
 		Expect(err).ShouldNot(HaveOccurred())
-		Expect(wallets.Default().PrivateKey()).To(Equal(privateKeyString))
-		Expect(address).To(Equal(wallets.Default().Address()))
+		rawWallets := wallets.Raw()
+		for index := range rawWallets {
+			_, err := wallets.Wallet(index)
+			Expect(err).ShouldNot(HaveOccurred())
+		}
 	},
-		Entry("on Ethereum Hardhat", NewHardhatNetwork,
-			"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
-			"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"),
-		Entry("on Ethereum Kovan", NewKovanNetwork,
-			"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-			"0x8fd379246834eac74B8419FfdA202CF8051F7A03"),
-		Entry("on Ethereum Goerli", NewGoerliNetwork,
-			"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-			"0x8fd379246834eac74B8419FfdA202CF8051F7A03"),
+		Entry("on Ethereum Hardhat", NewHardhatNetwork),
+		Entry("on Ethereum Kovan", NewKovanNetwork),
+		Entry("on Ethereum Goerli", NewGoerliNetwork),
 	)
 })

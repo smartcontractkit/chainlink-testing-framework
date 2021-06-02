@@ -1,0 +1,8 @@
+FROM smartcontract/chainlink:0.10.7
+
+COPY ./password.txt /run/secrets/
+COPY ./apicredentials /run/secrets/
+COPY ./0xb90c7E3F7815F59EAD74e7543eB6D9E8538455D6.json /run/secrets/
+
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+    CMD curl "http://localhost:6688" -q
