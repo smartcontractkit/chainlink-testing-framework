@@ -83,7 +83,6 @@ func CreateTemplateNodes(ethClient *EthereumClient, linkAddress string) ([]Chain
 	}
 	projectDir := strings.TrimSpace(string(p))
 
-	log.Info().Str("CMD", "docker-compose -f docker-compose.yml up").Msg("Running command")
 	cmd := exec.Command("docker-compose", "-f", "docker-compose.yml", "up")
 	cmd.Dir = string(projectDir) + "/tools/chainlink_nodes"
 	ethUrl := "ETH_URL=" + ethClient.Network.URL()
@@ -96,10 +95,12 @@ func CreateTemplateNodes(ethClient *EthereumClient, linkAddress string) ([]Chain
 	var e bytes.Buffer
 	cmd.Stderr = &e
 	err = cmd.Start()
+	log.Info().Str("CMD", "docker-compose -f docker-compose.yml up").Msg("Running command")
 	if err != nil {
 		return nil, err
 	}
 
+	log.Info().Msg("Checking health of chainlink nodes...")
 	// Wait for Docker Compose to be up and healthy
 	for _, port := range ports {
 		resp, err := http.Get(urlBase + port)
