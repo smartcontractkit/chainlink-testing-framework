@@ -31,8 +31,6 @@ var _ = Describe("Chainlink Node", func() {
 		// Setup
 		networkConfig, err := initFunc(conf)
 		Expect(err).ShouldNot(HaveOccurred())
-		// Hardcoded one used by Lorenz's protoype to configure the OCR contract
-		ocrContractWallet, err := client.NewEthereumWallet("000000000000000000000000000000000000000000000000015c9a825f7c0878")
 		Expect(err).ShouldNot(HaveOccurred())
 		ethClient, err := client.NewEthereumClient(networkConfig)
 		Expect(err).ShouldNot(HaveOccurred())
@@ -50,18 +48,11 @@ var _ = Describe("Chainlink Node", func() {
 			err = chainlinkNodes[index].Fund(wallets.Default(), big.NewInt(2000000000000000000), big.NewInt(2000000000000000000))
 			Expect(err).ShouldNot(HaveOccurred())
 		}
-		// Fund the default wallet used by Lorenz's prototype script for configuration
-		// TODO: Either recreate the prototype code for this section, or get it in an API form
-		txhash, err := ethClient.SendTransaction(extraFundingWallet,
-			common.HexToAddress(ocrContractWallet.Address()), big.NewInt(7900000000000000000), nil)
-		Expect(err).ShouldNot(HaveOccurred())
-		err = ethClient.WaitForTransaction(*txhash)
-		Expect(err).ShouldNot(HaveOccurred())
 
 		// Deploy and config OCR contract
-		ocrInstance, err := DeployOffChainAggregator(ethClient, ocrContractWallet)
+		ocrInstance, err := DeployOffChainAggregator(ethClient, wallets.Default())
 		Expect(err).ShouldNot(HaveOccurred())
-		err = ocrInstance.SetConfig(ocrContractWallet, chainlinkNodes)
+		err = ocrInstance.SetConfig(wallets.Default(), chainlinkNodes)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// Create external adapter, returns 5 every time
@@ -92,9 +83,9 @@ var _ = Describe("Chainlink Node", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 		}
 
-		// Quickly create 50 new blocks on hardhat
+		// Quickly create 100 new blocks on hardhat
 		if networkConfig.ID() == client.EthereumHardhatID {
-			for i := 0; i < 50; i++ {
+			for i := 0; i < 100; i++ {
 				_, err = ethClient.SendTransaction(wallets.Default(), common.HexToAddress(extraFundingWallet.Address()),
 					big.NewInt(123456789), nil)
 				Expect(err).ShouldNot(HaveOccurred())

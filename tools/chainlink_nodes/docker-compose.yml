@@ -20,9 +20,7 @@ services:
       retries: 5
   node:
     container_name: chainlink-node-1
-    build:
-      dockerfile: ./DOCKERFILE
-      context: .
+    image: $CHAINLINK_DOCKER_IMAGE
     command: node start -d -p /run/secrets/node_password -a /run/secrets/apicredentials
     restart: always
     deploy:
@@ -41,17 +39,15 @@ services:
     ports:
       - 6711:6688      
       - "6060:6060"
-    # secrets:
-    #   - node_password
-    #   - apicredentials
-    #   - keystore
+    secrets:
+      - node_password
+      - apicredentials
+      - keystore
   node-2:
     depends_on:
       - "node-db"
     container_name: chainlink-node-2
-    build:
-      dockerfile: ./DOCKERFILE
-      context: .
+    image: $CHAINLINK_DOCKER_IMAGE
     command: node start -d -p /run/secrets/node_password -a /run/secrets/apicredentials
     restart: always    
     deploy:
@@ -68,17 +64,15 @@ services:
     ports:
       - 6722:6688
       - 6062:6060      
-    # secrets:
-    #   - node_password
-    #   - apicredentials
-    #   - keystore       
+    secrets:
+      - node_password
+      - apicredentials
+      - keystore       
   node-3:
     depends_on:
       - "node-db"
     container_name: chainlink-node-3
-    build:
-      dockerfile: ./DOCKERFILE
-      context: .
+    image: $CHAINLINK_DOCKER_IMAGE
     command: node start -d -p /run/secrets/node_password -a /run/secrets/apicredentials
     restart: always  
     deploy:
@@ -95,17 +89,15 @@ services:
     ports:
       - 6733:6688
       - 6063:6060
-    # secrets:
-    #   - node_password
-    #   - apicredentials
-    #   - keystore    
+    secrets:
+      - node_password
+      - apicredentials
+      - keystore    
   node-4:
     depends_on:
       - "node-db"
     container_name: chainlink-node-4
-    build:
-      dockerfile: ./DOCKERFILE
-      context: .
+    image: $CHAINLINK_DOCKER_IMAGE
     command: node start -d -p /run/secrets/node_password -a /run/secrets/apicredentials
     restart: always   
     deploy:
@@ -122,16 +114,14 @@ services:
     ports:
       - 6744:6688 
       - 6064:6060     
-    # secrets:
-    #   - node_password
-    #   - apicredentials
-    #   - keystore    
+    secrets:
+      - node_password
+      - apicredentials
+      - keystore    
   node-5:
     depends_on:
       - "node-db"
-    build:
-      dockerfile: ./DOCKERFILE
-      context: .
+    image: $CHAINLINK_DOCKER_IMAGE
     command: node start -d -p /run/secrets/node_password -a /run/secrets/apicredentials
     restart: always 
     deploy:
@@ -148,14 +138,14 @@ services:
     ports:
       - 6755:6688 
       - 6065:6060   
-    # secrets:
-    #   - node_password
-    #   - apicredentials
-    #   - keystore       
-# secrets:
-#   node_password:
-#     file: ./password.txt
-#   apicredentials:
-#     file: ./apicredentials
-#   keystore:
-#     file: ./0xb90c7E3F7815F59EAD74e7543eB6D9E8538455D6.json
+    secrets:
+      - node_password
+      - apicredentials
+      - keystore       
+secrets:
+  node_password:
+    file: ./password.txt
+  apicredentials:
+    file: ./apicredentials
+  keystore:
+    file: ./0xb90c7E3F7815F59EAD74e7543eB6D9E8538455D6.json
