@@ -37,9 +37,15 @@ func NewEthereumClient(network BlockchainNetwork) (*EthereumClient, error) {
 	}
 
 	return &EthereumClient{
-		Client:  cl,
 		Network: network,
+		Client:  cl,
 	}, nil
+}
+
+// Get returns the underlying client type to be used generically across the framework for switching
+// network types
+func (e *EthereumClient) Get() interface{} {
+	return e
 }
 
 // SendTransaction sends a specified amount of WEI from a selected wallet to an address, and blocks until the
