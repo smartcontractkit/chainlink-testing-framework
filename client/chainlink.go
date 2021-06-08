@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"math/big"
 	"net/http"
-	"os/exec"
 	"strings"
 	"time"
 
@@ -66,87 +65,24 @@ func NewChainlink(c *ChainlinkConfig, ethClient *EthereumClient) (Chainlink, err
 	return cl, cl.SetSessionCookie()
 }
 
-// CreateTemplateNodes lauches 5 chainlink nodes in a default config for testing
-func CreateTemplateNodes(ethClient *EthereumClient, linkAddress string) ([]Chainlink, error) {
-	urlBase := "http://localhost:"
-	email := "notreal@fakeemail.ch"
-	pass := "twochains"
-	// TODO: Make this more dynamic as we integrate K8s scaling
+// ConnectToTemplateNodes assumes that 5 template nodes are running locally, check out our setup for that here:
+// https://github.com/smartcontractkit/chainlink-node-compose
+func ConnectToTemplateNodes(ethClient *EthereumClient) ([]Chainlink, error) {
 	ports := []string{"6711", "6722", "6733", "6744", "6755"}
-	var stdErrBuffer bytes.Buffer
-
-	// Check if nodes are already up, for CI setup or continuously up local ones
-	log.Info().Msg("Checking if chainlink nodes are already running...")
-	nodesHealthy, _ := checkNodesHealth(urlBase, ports, 0)
-
-	// If they aren't, spin them up
-	if !nodesHealthy {
-		log.Info().Msg("Chainlink nodes not already running, creating them...")
-		p, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
-		if err != nil {
-			return nil, err
-		}
-		projectDir := strings.TrimSpace(string(p))
-
-		// TODO: Port to K8s setup, generally make this smoother than a CLI call
-		cmd := exec.Command("docker-compose", "-f", "docker-compose.yml", "up")
-		cmd.Dir = string(projectDir) + "/tools/chainlink_nodes"
-		ethUrl := "ETH_URL=" + ethClient.Network.URL()
-		if ethClient.Network.ID() == EthereumHardhatID {
-			ethUrl = "ETH_URL=ws://host.docker.internal:8545"
-		}
-		chainId := "ETH_CHAIN_ID=" + ethClient.Network.ChainID().String()
-		la := "LINK_CONTRACT_ADDRESS=" + linkAddress
-		cmd.Env = []string{ethUrl, chainId, la}
-		cmd.Stderr = &stdErrBuffer
-		err = cmd.Start()
-		log.Info().Str("CMD", "docker-compose -f docker-compose.yml up").Msg("Running command")
-		if err != nil {
-			return nil, err
-		}
-
-		log.Info().Msg("Checking health of chainlink nodes...")
-		nodesHealthy, err = checkNodesHealth(urlBase, ports, 2)
-		if err != nil || !nodesHealthy {
-			log.Err(err).Str("STDERR", stdErrBuffer.String()).Msg("Error checking on chainlink node health")
-			cleanErr := CleanTemplateNodes()
-			if cleanErr != nil {
-				log.Err(cleanErr).Msg("Error trying to cleanup nodes")
-			}
-			return nil, err
-		}
-	}
-
 	var cls []Chainlink
 	for _, port := range ports {
 		c := &ChainlinkConfig{
-			URL:      urlBase + port,
-			Email:    email,
-			Password: pass,
+			URL:      "http://localhost:" + port,
+			Email:    "notreal@fakeemail.ch",
+			Password: "twochains",
 		}
 		cl, err := NewChainlink(c, ethClient)
 		if err != nil {
 			return nil, err
 		}
-		cl.SetClient(http.DefaultClient)
 		cls = append(cls, cl)
 	}
-
 	return cls, nil
-}
-
-// CleanTemplateNodes cleans the default setup for chainlink nodes
-func CleanTemplateNodes() error {
-	p, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
-	if err != nil {
-		return err
-	}
-	projectDir := strings.TrimSpace(string(p))
-	cmd := exec.Command("docker-compose", "-f", "./docker-compose.yml", "down", "-v", "--remove-orphans")
-	cmd.Dir = string(projectDir) + "/tools/chainlink_nodes"
-
-	log.Info().Str("CMD", "docker-compose -f ./docker-compose.yml down -v --remove-orphans").Msg("Running command")
-	return cmd.Run()
 }
 
 // CreateJob creates a Chainlink job based on the provided spec string

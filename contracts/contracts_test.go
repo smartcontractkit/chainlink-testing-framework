@@ -31,7 +31,6 @@ var _ = Describe("Chainlink Node", func() {
 		// Setup
 		networkConfig, err := initFunc(conf)
 		Expect(err).ShouldNot(HaveOccurred())
-		Expect(err).ShouldNot(HaveOccurred())
 		ethClient, err := client.NewEthereumClient(networkConfig)
 		Expect(err).ShouldNot(HaveOccurred())
 		wallets, err := networkConfig.Wallets()
