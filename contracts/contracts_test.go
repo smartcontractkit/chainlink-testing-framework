@@ -27,11 +27,13 @@ var _ = Describe("Client", func() {
 		// Deploy contract
 		networkConfig, err := initFunc(conf)
 		Expect(err).ShouldNot(HaveOccurred())
-		client, err := client.NewEthereumClient(networkConfig)
+		client, err := client.NewBlockchainClient(networkConfig)
 		Expect(err).ShouldNot(HaveOccurred())
 		wallets, err := networkConfig.Wallets()
 		Expect(err).ShouldNot(HaveOccurred())
-		storeInstance, err := DeployStorageContract(client, wallets.Default())
+		contractDeployer, err := NewContractDeployer(client)
+		Expect(err).ShouldNot(HaveOccurred())
+		storeInstance, err := contractDeployer.DeployStorageContract(wallets.Default())
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// Interact with contract
@@ -54,20 +56,22 @@ var _ = Describe("Client", func() {
 		// Setup network and client
 		networkConfig, err := initFunc(conf)
 		Expect(err).ShouldNot(HaveOccurred())
-		client, err := client.NewEthereumClient(networkConfig)
+		client, err := client.NewBlockchainClient(networkConfig)
 		Expect(err).ShouldNot(HaveOccurred())
 		wallets, err := networkConfig.Wallets()
 		Expect(err).ShouldNot(HaveOccurred())
+		contractDeployer, err := NewContractDeployer(client)
+		Expect(err).ShouldNot(HaveOccurred())
 
 		// Deploy LINK contract
-		linkInstance, err := DeployLinkTokenContract(client, wallets.Default())
+		linkInstance, err := contractDeployer.DeployLinkTokenContract(wallets.Default())
 		Expect(err).ShouldNot(HaveOccurred())
 		name, err := linkInstance.Name(context.Background())
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(name).To(Equal("ChainLink Token"))
 
 		// Deploy FluxMonitor contract
-		fluxInstance, err := DeployFluxAggregatorContract(client, wallets.Default(), fluxOptions)
+		fluxInstance, err := contractDeployer.DeployFluxAggregatorContract(wallets.Default(), fluxOptions)
 		Expect(err).ShouldNot(HaveOccurred())
 		err = fluxInstance.Fund(wallets.Default(), big.NewInt(0), big.NewInt(50000000000))
 		Expect(err).ShouldNot(HaveOccurred())
@@ -101,16 +105,18 @@ var _ = Describe("Client", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		wallets, err := networkConfig.Wallets()
 		Expect(err).ShouldNot(HaveOccurred())
+		contractDeployer, err := NewContractDeployer(client)
+		Expect(err).ShouldNot(HaveOccurred())
 
 		// Deploy LINK contract
-		linkInstance, err := DeployLinkTokenContract(client, wallets.Default())
+		linkInstance, err := contractDeployer.DeployLinkTokenContract(wallets.Default())
 		Expect(err).ShouldNot(HaveOccurred())
 		name, err := linkInstance.Name(context.Background())
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(name).To(Equal("ChainLink Token"))
 
 		// Deploy Offchain contract
-		offChainInstance, err := DeployOffChainAggregator(client, wallets.Default(), offchainOptions)
+		offChainInstance, err := contractDeployer.DeployOffChainAggregator(wallets.Default(), offchainOptions)
 		Expect(err).ShouldNot(HaveOccurred())
 		err = offChainInstance.Fund(wallets.Default(), nil, big.NewInt(50000000000))
 		Expect(err).ShouldNot(HaveOccurred())
