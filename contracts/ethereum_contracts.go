@@ -2,16 +2,10 @@ package contracts
 
 import (
 	"context"
-<<<<<<< HEAD
 	"encoding/hex"
-=======
->>>>>>> f8d2e2f189e3975d97fdf58ce55b60a8cb8218d3
 	"integrations-framework/client"
 	"integrations-framework/contracts/ethereum"
 	"math/big"
-	"time"
-
-	"github.com/rs/zerolog/log"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -29,7 +23,7 @@ type EthereumFluxAggregator struct {
 
 // Fund sends specified currencies to the contract
 func (f *EthereumFluxAggregator) Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Int) error {
-	return fund(f.client, fromWallet, *f.address, ethAmount, linkAmount)
+	return f.client.Fund(fromWallet, f.address.Hex(), ethAmount, linkAmount)
 }
 
 // GetContractData retrieves basic data for the flux aggregator contract
@@ -106,7 +100,7 @@ type EthereumLinkToken struct {
 
 // Fund the LINK Token contract with ETH to distribute the token
 func (l *EthereumLinkToken) Fund(fromWallet client.BlockchainWallet, ethAmount *big.Int) error {
-	return fund(l.client, fromWallet, l.address, ethAmount, nil)
+	return l.client.Fund(fromWallet, l.address.Hex(), ethAmount, nil)
 }
 
 // Name returns the name of the link token
@@ -119,6 +113,10 @@ func (l *EthereumLinkToken) Name(ctxt context.Context) (string, error) {
 	return l.linkToken.Name(opts)
 }
 
+func (l *EthereumLinkToken) Address() string {
+	return l.address.Hex()
+}
+
 // EthereumOffchainAggregator represents the offchain aggregation contract
 type EthereumOffchainAggregator struct {
 	client       *client.EthereumClient
@@ -129,7 +127,7 @@ type EthereumOffchainAggregator struct {
 
 // Fund sends specified currencies to the contract
 func (o *EthereumOffchainAggregator) Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Int) error {
-	return fund(o.client, fromWallet, *o.address, ethAmount, linkAmount)
+	return o.client.Fund(fromWallet, o.address.Hex(), ethAmount, linkAmount)
 }
 
 // GetContractData retrieves basic data for the offchain aggregator contract
@@ -172,57 +170,46 @@ func (o *EthereumOffchainAggregator) SetPayees(
 func (o *EthereumOffchainAggregator) SetConfig(
 	fromWallet client.BlockchainWallet,
 	chainlinkNodes []client.Chainlink,
+	ocrConfig OffChainAggregatorConfig,
 ) error {
-	ocrConfig := OffChainAggregatorConfig{
-		AlphaPPB:         1,
-		DeltaC:           time.Second * 15,
-		DeltaGrace:       time.Second,
-		DeltaProgress:    time.Second * 30,
-		DeltaStage:       time.Second * 3,
-		DeltaResend:      time.Second * 5,
-		DeltaRound:       time.Second * 10,
-		RMax:             4,
-		S:                []int{1, 1, 1, 1, 1},
-		N:                5,
-		F:                1,
-		OracleIdentities: []ocrConfigHelper.OracleIdentityExtra{},
-	}
-
 	// Gather necessary addresses and keys from our chainlink nodes to properly configure the OCR contract
 	for _, node := range chainlinkNodes {
 		ocrKeys, err := node.ReadOCRKeys()
 		if err != nil {
 			return err
 		}
+		primaryOCRKey := ocrKeys.Data[0]
 		ethKeys, err := node.ReadETHKeys()
 		if err != nil {
 			return err
 		}
+		primaryEthKey := ethKeys.Data[0]
 		p2pKeys, err := node.ReadP2PKeys()
 		if err != nil {
 			return err
 		}
+		primaryP2PKey := p2pKeys.Data[0]
 
 		// Need to convert the key representations
 		var onChainSigningAddress [20]byte
 		var configPublicKey [32]byte
-		offchainSigningAddress, err := hex.DecodeString(ocrKeys.Data[0].Attributes.OffChainPublicKey)
+		offchainSigningAddress, err := hex.DecodeString(primaryOCRKey.Attributes.OffChainPublicKey)
 		if err != nil {
 			return err
 		}
-		decodeConfigKey, err := hex.DecodeString(ocrKeys.Data[0].Attributes.ConfigPublicKey)
+		decodeConfigKey, err := hex.DecodeString(primaryOCRKey.Attributes.ConfigPublicKey)
 		if err != nil {
 			return err
 		}
 
 		// https://stackoverflow.com/questions/8032170/how-to-assign-string-to-bytes-array
-		copy(onChainSigningAddress[:], common.HexToAddress(ocrKeys.Data[0].Attributes.OnChainSigningAddress).Bytes())
+		copy(onChainSigningAddress[:], common.HexToAddress(primaryOCRKey.Attributes.OnChainSigningAddress).Bytes())
 		copy(configPublicKey[:], decodeConfigKey)
 
 		oracleIdentity := ocrConfigHelper.OracleIdentity{
-			TransmitAddress:       common.HexToAddress(ethKeys.Data[0].Attributes.Address),
+			TransmitAddress:       common.HexToAddress(primaryEthKey.Attributes.Address),
 			OnChainSigningAddress: onChainSigningAddress,
-			PeerID:                p2pKeys.Data[0].Attributes.PeerID,
+			PeerID:                primaryP2PKey.Attributes.PeerID,
 			OffchainPublicKey:     offchainSigningAddress,
 		}
 		oracleIdentityExtra := ocrConfigHelper.OracleIdentityExtra{
@@ -273,6 +260,19 @@ func (o *EthereumOffchainAggregator) SetConfig(
 	return o.client.WaitForTransaction(tx.Hash())
 }
 
+// RequestNewRound requests the OCR contract to create a new round
+func (o *EthereumOffchainAggregator) RequestNewRound(fromWallet client.BlockchainWallet) error {
+	opts, err := o.client.TransactionOpts(fromWallet, *o.address, big.NewInt(0), nil)
+	if err != nil {
+		return err
+	}
+	tx, err := o.ocr.RequestNewRound(opts)
+	if err != nil {
+		return err
+	}
+	return o.client.WaitForTransaction(tx.Hash())
+}
+
 // Link returns the LINK contract address on the EVM chain
 func (o *EthereumOffchainAggregator) Link(ctxt context.Context) (common.Address, error) {
 	opts := &bind.CallOpts{
@@ -291,6 +291,10 @@ func (o *EthereumOffchainAggregator) GetLatestAnswer(ctxt context.Context) (*big
 		Context: ctxt,
 	}
 	return o.ocr.LatestAnswer(opts)
+}
+
+func (o *EthereumOffchainAggregator) Address() string {
+	return o.address.Hex()
 }
 
 // GetLatestRound returns data from the latest round
@@ -356,7 +360,7 @@ type EthereumVRF struct {
 
 // Fund sends specified currencies to the contract
 func (v *EthereumVRF) Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Int) error {
-	return fund(v.client, fromWallet, *v.address, ethAmount, linkAmount)
+	return v.client.Fund(fromWallet, v.address.Hex(), ethAmount, linkAmount)
 }
 
 // ProofLength returns the PROOFLENGTH call from the VRF contract
@@ -367,56 +371,4 @@ func (v *EthereumVRF) ProofLength(ctxt context.Context) (*big.Int, error) {
 		Context: ctxt,
 	}
 	return v.vrf.PROOFLENGTH(opts)
-}
-
-func fund(
-	ethClient *client.EthereumClient,
-	fromWallet client.BlockchainWallet,
-	toAddress common.Address,
-	ethAmount, linkAmount *big.Int,
-) error {
-
-	// Send ETH if not 0
-	if ethAmount != nil && big.NewInt(0).Cmp(ethAmount) != 0 {
-		log.Info().
-			Str("Token", "ETH").
-			Str("From", fromWallet.Address()).
-			Str("To", toAddress.Hex()).
-			Str("Amount", ethAmount.String()).
-			Msg("Funding Contract")
-		_, err := ethClient.SendTransaction(fromWallet, toAddress, ethAmount, nil)
-		if err != nil {
-			return err
-		}
-	}
-
-	// Send LINK if not 0
-	if linkAmount != nil && big.NewInt(0).Cmp(linkAmount) != 0 {
-		// Prepare data field for token tx
-		log.Info().
-			Str("Token", "LINK").
-			Str("From", fromWallet.Address()).
-			Str("To", toAddress.Hex()).
-			Str("Amount", linkAmount.String()).
-			Msg("Funding Contract")
-		linkAddress := common.HexToAddress(ethClient.Network.Config().LinkTokenAddress)
-		linkInstance, err := ethereum.NewLinkToken(linkAddress, ethClient.Client)
-		if err != nil {
-			return err
-		}
-		opts, err := ethClient.TransactionOpts(fromWallet, toAddress, nil, nil)
-		if err != nil {
-			return err
-		}
-		tx, err := linkInstance.Transfer(opts, toAddress, linkAmount)
-		if err != nil {
-			return err
-		}
-
-		err = ethClient.WaitForTransaction(tx.Hash())
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }

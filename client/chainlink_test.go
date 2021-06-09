@@ -303,7 +303,7 @@ func newDefaultClient(url string) (Chainlink, error) {
 		Email:    "admin@node.local",
 		Password: "twochains",
 		URL:      url,
-	}, nil)
+	}, nil, nil)
 	return cl, err
 }
 

@@ -2,13 +2,15 @@ package contracts
 
 import (
 	"errors"
-	"fmt"
+	"integrations-framework/client"
+	"integrations-framework/contracts/ethereum"
+	"math/big"
+	"time"
+
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/rs/zerolog/log"
-	"integrations-framework/client"
-	"integrations-framework/contracts/ethereum"
+	ocrConfigHelper "github.com/smartcontractkit/libocr/offchainreporting/confighelper"
 )
 
 // ContractDeployer is an interface for abstracting the contract deployment methods across network implementations
@@ -44,6 +46,18 @@ type EthereumContractDeployer struct {
 func NewEthereumContractDeployer(ethClient *client.EthereumClient) *EthereumContractDeployer {
 	return &EthereumContractDeployer{
 		eth: ethClient,
+	}
+}
+
+// DefaultFluxAggregatorOptions produces some basic defaults for a flux aggregator contract
+func DefaultFluxAggregatorOptions() FluxAggregatorOptions {
+	return FluxAggregatorOptions{
+		PaymentAmount: big.NewInt(1),
+		Timeout:       uint32(5),
+		MinSubValue:   big.NewInt(1),
+		MaxSubValue:   big.NewInt(10),
+		Decimals:      uint8(8),
+		Description:   "Hardhat Flux Aggregator",
 	}
 }
 
@@ -101,6 +115,39 @@ func (e *EthereumContractDeployer) DeployLinkTokenContract(fromWallet client.Blo
 	}, err
 }
 
+// DefaultOffChainAggregatorOptions returns some base defaults for deploying an OCR contract
+func DefaultOffChainAggregatorOptions() OffchainOptions {
+	return OffchainOptions{
+		MaximumGasPrice:         uint32(500000000),
+		ReasonableGasPrice:      uint32(28000),
+		MicroLinkPerEth:         uint32(500),
+		LinkGweiPerObservation:  uint32(500),
+		LinkGweiPerTransmission: uint32(500),
+		MinimumAnswer:           big.NewInt(1),
+		MaximumAnswer:           big.NewInt(5000),
+		Decimals:                8,
+		Description:             "Test OCR",
+	}
+}
+
+// DefaultOffChainAggregatorConfig returns some base defaults for configuring an OCR contract
+func DefaultOffChainAggregatorConfig() OffChainAggregatorConfig {
+	return OffChainAggregatorConfig{
+		AlphaPPB:         1,
+		DeltaC:           time.Second * 15,
+		DeltaGrace:       time.Second,
+		DeltaProgress:    time.Second * 30,
+		DeltaStage:       time.Second * 3,
+		DeltaResend:      time.Second * 5,
+		DeltaRound:       time.Second * 10,
+		RMax:             4,
+		S:                []int{1, 1, 1, 1, 1},
+		N:                5,
+		F:                1,
+		OracleIdentities: []ocrConfigHelper.OracleIdentityExtra{},
+	}
+}
+
 // DeployOffChainAggregator deploys the offchain aggregation contract to the EVM chain
 func (e *EthereumContractDeployer) DeployOffChainAggregator(
 	fromWallet client.BlockchainWallet,
@@ -111,7 +158,6 @@ func (e *EthereumContractDeployer) DeployOffChainAggregator(
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
 		linkAddress := common.HexToAddress(e.eth.Network.Config().LinkTokenAddress)
-		log.Info().Str("Options", fmt.Sprintf("%#v", offchainOptions)).Msg("Off Chain Options")
 		return ethereum.DeployOffchainAggregator(auth,
 			backend,
 			offchainOptions.MaximumGasPrice,

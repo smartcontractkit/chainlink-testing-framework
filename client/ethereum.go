@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"fmt"
+	ethContracts "integrations-framework/contracts/ethereum"
 	"math/big"
 	"time"
 
@@ -46,6 +47,56 @@ func NewEthereumClient(network BlockchainNetwork) (*EthereumClient, error) {
 // network types
 func (e *EthereumClient) Get() interface{} {
 	return e
+}
+
+func (e *EthereumClient) Fund(
+	fromWallet BlockchainWallet,
+	toAddress string,
+	ethAmount, linkAmount *big.Int,
+) error {
+	ethAddress := common.HexToAddress(toAddress)
+	// Send ETH if not 0
+	if ethAmount != nil && big.NewInt(0).Cmp(ethAmount) != 0 {
+		log.Info().
+			Str("Token", "ETH").
+			Str("From", fromWallet.Address()).
+			Str("To", toAddress).
+			Str("Amount", ethAmount.String()).
+			Msg("Funding Address")
+		_, err := e.SendTransaction(fromWallet, ethAddress, ethAmount, nil)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Send LINK if not 0
+	if linkAmount != nil && big.NewInt(0).Cmp(linkAmount) != 0 {
+		log.Info().
+			Str("Token", "LINK").
+			Str("From", fromWallet.Address()).
+			Str("To", toAddress).
+			Str("Amount", linkAmount.String()).
+			Msg("Funding Address")
+		linkAddress := common.HexToAddress(e.Network.Config().LinkTokenAddress)
+		linkInstance, err := ethContracts.NewLinkToken(linkAddress, e.Client)
+		if err != nil {
+			return err
+		}
+		opts, err := e.TransactionOpts(fromWallet, ethAddress, nil, nil)
+		if err != nil {
+			return err
+		}
+		tx, err := linkInstance.Transfer(opts, ethAddress, linkAmount)
+		if err != nil {
+			return err
+		}
+
+		err = e.WaitForTransaction(tx.Hash())
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // SendTransaction sends a specified amount of WEI from a selected wallet to an address, and blocks until the

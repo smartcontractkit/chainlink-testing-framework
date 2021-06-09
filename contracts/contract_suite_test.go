@@ -15,5 +15,5 @@ func TestContracts(t *testing.T) {
 	RegisterFailHandler(Fail)
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	junitReporter := reporters.NewJUnitReporter("junit.xml")
-	RunSpecsWithCustomReporters(t, "Contract Suite", []Reporter{junitReporter})
+	RunSpecsWithDefaultAndCustomReporters(t, "Contract Suite", []Reporter{junitReporter})
 }

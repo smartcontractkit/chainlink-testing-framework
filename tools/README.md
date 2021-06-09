@@ -2,10 +2,6 @@
 
 Here are some QoL tools used by the framework.
 
-## `chainlink_nodes`
-
-Contains necessary resources to deploy a local chainlink node cluster. Hoping to strip this out in the coming times.
-
 ## `compile_contracts.py`
 
 A proof of concept script to conveniently compile solidity source and generate golang bindings.

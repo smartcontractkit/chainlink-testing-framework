@@ -78,6 +78,52 @@ type OffChainAggregatorConfig struct {
 	OracleIdentities []ocrConfigHelper.OracleIdentityExtra
 }
 
+type OffChainAggregatorSpec struct {
+	ContractAddress    string // Address of the OCR contract
+	P2PId              string // This node's P2P ID
+	BootstrapP2PId     string // The P2P ID of the bootstrap node
+	KeyBundleId        string // ID of the ETH key bundle of this chainlink node
+	TransmitterAddress string // Primary ETH address of this chainlink node
+}
+
+type OffChainAggregatorBootstrapSpec struct {
+	ContractAddress string // Address of the OCR contract
+	P2PId           string // This node's P2P ID
+}
+
+const ocrBootstrapSpecTemplateString string = `blockchainTimeout = "20s"
+contractAddress = "{{.ContractAddress}}"
+contractConfigConfirmations = 3
+contractConfigTrackerPollInterval = "1m"
+contractConfigTrackerSubscribeInterval = "2m"
+isBootstrapPeer = true
+p2pBootstrapPeers = []
+p2pPeerID = "{{.P2PId}}"
+schemaVersion = 1
+type = "offchainreporting"`
+
+const ocrJobSpecTemplateString string = `type = "offchainreporting"
+schemaVersion = 1
+contractAddress = "{{.ContractAddress}}"
+p2pPeerID = "{{.P2PId}}"
+p2pBootstrapPeers = [
+		"/dns4/chainlink-node-1/tcp/6690/p2p/{{.BootstrapP2PId}}"  
+]
+isBootstrapPeer = false
+keyBundleID = "{{.KeyBundleId}}"
+monitoringEndpoint = "chain.link:4321"
+transmitterAddress = "{{.TransmitterAddress}}"
+observationTimeout = "10s"
+blockchainTimeout  = "20s"
+contractConfigTrackerSubscribeInterval = "2m"
+contractConfigTrackerPollInterval = "1m"
+contractConfigConfirmations = 3
+observationSource = """
+	fetch    [type=http method=POST url="http://host.docker.internal:6644/five" requestData="{}"];
+	parse    [type=jsonparse path="data,result"];    
+	fetch -> parse;
+	"""`
+
 type OffchainAggregatorData struct {
 	LatestRoundData RoundData // Data about the latest round
 }
@@ -86,8 +132,13 @@ type OffchainAggregator interface {
 	Address() string
 	Fund(client.BlockchainWallet, *big.Int, *big.Int) error
 	GetContractData(ctxt context.Context) (*OffchainAggregatorData, error)
-	SetConfig(fromWallet client.BlockchainWallet, chainlinkNodes []client.Chainlink) error
+	SetConfig(
+		fromWallet client.BlockchainWallet,
+		chainlinkNodes []client.Chainlink,
+		ocrConfig OffChainAggregatorConfig,
+	) error
 	SetPayees(client.BlockchainWallet, []common.Address, []common.Address) error
+	RequestNewRound(fromWallet client.BlockchainWallet) error
 	Link(ctxt context.Context) (common.Address, error)
 	GetLatestAnswer(ctxt context.Context) (*big.Int, error)
 	GetLatestRound(ctxt context.Context) (*RoundData, error)

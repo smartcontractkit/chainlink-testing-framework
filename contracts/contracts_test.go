@@ -1,15 +1,15 @@
 package contracts
 
 import (
+	"bytes"
 	"context"
-	"fmt"
 	"integrations-framework/client"
 	"integrations-framework/config"
 	"integrations-framework/tools"
 	"math/big"
+	"text/template"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
@@ -31,38 +31,59 @@ var _ = Describe("Chainlink Node", func() {
 		// Setup
 		networkConfig, err := initFunc(conf)
 		Expect(err).ShouldNot(HaveOccurred())
-		ethClient, err := client.NewEthereumClient(networkConfig)
+		blockchainClient, err := client.NewBlockchainClient(networkConfig)
+		Expect(err).ShouldNot(HaveOccurred())
+		contractDeployer, err := NewContractDeployer(blockchainClient)
 		Expect(err).ShouldNot(HaveOccurred())
 		wallets, err := networkConfig.Wallets()
 		Expect(err).ShouldNot(HaveOccurred())
-		extraFundingWallet, err := wallets.Wallet(2)
-		Expect(err).ShouldNot(HaveOccurred())
-		linkInstance, err := DeployLinkTokenContract(ethClient, wallets.Default())
+		_, err = contractDeployer.DeployLinkTokenContract(wallets.Default())
 		Expect(err).ShouldNot(HaveOccurred())
 
-		// Launch Nodes
-		chainlinkNodes, err := client.CreateTemplateNodes(ethClient, linkInstance.Address())
+		// Connect to running chainlink nodes
+		chainlinkNodes, err := client.ConnectToTemplateNodes(blockchainClient)
 		Expect(err).ShouldNot(HaveOccurred())
-		for index := range chainlinkNodes {
-			err = chainlinkNodes[index].Fund(wallets.Default(), big.NewInt(2000000000000000000), big.NewInt(2000000000000000000))
+		Expect(len(chainlinkNodes)).To(Equal(5))
+		// Fund each chainlink node
+		for _, node := range chainlinkNodes {
+			nodeEthKeys, err := node.ReadETHKeys()
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(len(nodeEthKeys.Data)).Should(BeNumerically(">=", 1))
+			primaryEthKey := nodeEthKeys.Data[0]
+
+			err = blockchainClient.Fund(
+				wallets.Default(),
+				primaryEthKey.Attributes.Address,
+				big.NewInt(200000000000000000), big.NewInt(200000000000000000),
+			)
 			Expect(err).ShouldNot(HaveOccurred())
 		}
 
 		// Deploy and config OCR contract
-		ocrInstance, err := DeployOffChainAggregator(ethClient, wallets.Default())
 		Expect(err).ShouldNot(HaveOccurred())
-		err = ocrInstance.SetConfig(wallets.Default(), chainlinkNodes)
+		ocrInstance, err := contractDeployer.DeployOffChainAggregator(wallets.Default(), DefaultOffChainAggregatorOptions())
+		Expect(err).ShouldNot(HaveOccurred())
+		err = ocrInstance.SetConfig(wallets.Default(), chainlinkNodes, DefaultOffChainAggregatorConfig())
+		Expect(err).ShouldNot(HaveOccurred())
+		err = ocrInstance.Fund(wallets.Default(), big.NewInt(2000000000000000), big.NewInt(2000000000000000))
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// Create external adapter, returns 5 every time
 		go tools.NewExternalAdapter("6644")
 
 		// Initialize bootstrap node
-		bootstrapP2PIds, err := chainlinkNodes[0].ReadP2PKeys()
+		bootstrapNode := chainlinkNodes[0]
+		bootstrapP2PIds, err := bootstrapNode.ReadP2PKeys()
 		Expect(err).ShouldNot(HaveOccurred())
 		bootstrapP2PId := bootstrapP2PIds.Data[0].Attributes.PeerID
-		bootstrapSpec := buildBootstrapSpec(ocrInstance.Address(), bootstrapP2PId)
-		_, err = chainlinkNodes[0].CreateJob(bootstrapSpec)
+		bootstrapSpecStruct := OffChainAggregatorBootstrapSpec{
+			ContractAddress: ocrInstance.Address(),
+			P2PId:           bootstrapP2PId,
+		}
+		bootstrapSpec, err := templatizeOCRBootsrapSpec(bootstrapSpecStruct)
+		Expect(err).ShouldNot(HaveOccurred())
+
+		_, err = bootstrapNode.CreateJob(bootstrapSpec)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// Send OCR job to other nodes
@@ -77,32 +98,38 @@ var _ = Describe("Chainlink Node", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			nodeOCRKeyId := nodeOCRKeys.Data[0].ID
 
-			ocrSpec := buildOCRSpec(ocrInstance.Address(), nodeP2PId, bootstrapP2PId, nodeOCRKeyId, nodeTransmitterAddress)
+			ocrSpecStruct := OffChainAggregatorSpec{
+				ContractAddress:    ocrInstance.Address(),
+				P2PId:              nodeP2PId,
+				BootstrapP2PId:     bootstrapP2PId,
+				KeyBundleId:        nodeOCRKeyId,
+				TransmitterAddress: nodeTransmitterAddress,
+			}
+			ocrSpec, err := templatizeOCRJobSpec(ocrSpecStruct)
+			Expect(err).ShouldNot(HaveOccurred())
 			_, err = chainlinkNodes[index].CreateJob(ocrSpec)
 			Expect(err).ShouldNot(HaveOccurred())
 		}
 
-		// Quickly create 100 new blocks on hardhat
-		if networkConfig.ID() == client.EthereumHardhatID {
-			for i := 0; i < 100; i++ {
-				_, err = ethClient.SendTransaction(wallets.Default(), common.HexToAddress(extraFundingWallet.Address()),
-					big.NewInt(123456789), nil)
-				Expect(err).ShouldNot(HaveOccurred())
-				round, err := ocrInstance.GetLatestRound(context.Background())
-				Expect(err).ShouldNot(HaveOccurred())
-				log.Info().
-					Str("Contract Address", ocrInstance.Address()).
-					Str("Answer", round.Answer.String()).
-					Str("Round ID", round.RoundId.String()).
-					Str("Answered in Round", round.AnsweredInRound.String()).
-					Str("Started At", round.StartedAt.String()).
-					Str("Updated At", round.UpdatedAt.String()).
-					Msg("Latest Round Data")
-				if round.RoundId.Cmp(big.NewInt(0)) > 0 {
-					break // Break when OCR round processes
-				}
-				time.Sleep(time.Millisecond * 500)
+		// Request a new round from the OCR
+		ocrInstance.RequestNewRound(wallets.Default())
+
+		// Wait for a round
+		for i := 0; i < 60; i++ {
+			round, err := ocrInstance.GetLatestRound(context.Background())
+			Expect(err).ShouldNot(HaveOccurred())
+			log.Info().
+				Str("Contract Address", ocrInstance.Address()).
+				Str("Answer", round.Answer.String()).
+				Str("Round ID", round.RoundId.String()).
+				Str("Answered in Round", round.AnsweredInRound.String()).
+				Str("Started At", round.StartedAt.String()).
+				Str("Updated At", round.UpdatedAt.String()).
+				Msg("Latest Round Data")
+			if round.RoundId.Cmp(big.NewInt(0)) > 0 {
+				break // Break when OCR round processes
 			}
+			time.Sleep(time.Second)
 		}
 
 		// Check answer is as expected
@@ -110,15 +137,9 @@ var _ = Describe("Chainlink Node", func() {
 		log.Info().Str("Answer", answer.String()).Msg("Final Answer")
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(answer.Int64()).Should(Equal(int64(5)))
-
-		// Cleanup
-		err = client.CleanTemplateNodes()
-		Expect(err).ShouldNot(HaveOccurred())
-
 	},
 		Entry("on Ethereum Hardhat", client.NewHardhatNetwork),
 	)
-
 })
 
 var _ = Describe("Contracts", func() {
@@ -154,9 +175,6 @@ var _ = Describe("Contracts", func() {
 		Expect(val).To(Equal(value))
 	},
 		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, big.NewInt(5)),
-		// Tested locally successfully. We need to implement secrets system as well as testing wallets for CI use
-		// Entry("on Ethereum Kovan", client.NewKovanNetwork, big.NewInt(5)),
-		// Entry("on Ethereum Goerli", client.NewGoerliNetwork, big.NewInt(5)),
 	)
 
 	DescribeTable("deploy and interact with the FluxAggregator contract", func(
@@ -180,19 +198,8 @@ var _ = Describe("Contracts", func() {
 		Expect(name).To(Equal("ChainLink Token"))
 
 		// Deploy FluxMonitor contract
-<<<<<<< HEAD
-		fluxOptions := FluxAggregatorOptions{
-			PaymentAmount: big.NewInt(1),
-			Timeout:       uint32(5),
-			MinSubValue:   big.NewInt(1),
-			MaxSubValue:   big.NewInt(10),
-			Decimals:      uint8(8),
-			Description:   "Hardhat Flux Aggregator",
-		}
-		fluxInstance, err := DeployFluxAggregatorContract(client, wallets.Default(), fluxOptions)
-=======
+		fluxOptions := DefaultFluxAggregatorOptions()
 		fluxInstance, err := contractDeployer.DeployFluxAggregatorContract(wallets.Default(), fluxOptions)
->>>>>>> f8d2e2f189e3975d97fdf58ce55b60a8cb8218d3
 		Expect(err).ShouldNot(HaveOccurred())
 		err = fluxInstance.Fund(wallets.Default(), big.NewInt(0), big.NewInt(50000000000))
 		Expect(err).ShouldNot(HaveOccurred())
@@ -203,9 +210,6 @@ var _ = Describe("Contracts", func() {
 		Expect(desc).To(Equal(fluxOptions.Description))
 	},
 		Entry("on Ethereum Hardhat", client.NewHardhatNetwork),
-		// Tested locally successfully. We need to implement secrets system as well as testing wallets for CI use
-		// Entry("on Ethereum Kovan", client.NewKovanNetwork, big.NewInt(5)),
-		// Entry("on Ethereum Goerli", client.NewGoerliNetwork, big.NewInt(5)),
 	)
 
 	DescribeTable("deploy and interact with the OffChain Aggregator contract", func(
@@ -229,56 +233,37 @@ var _ = Describe("Contracts", func() {
 		Expect(name).To(Equal("ChainLink Token"))
 
 		// Deploy Offchain contract
-<<<<<<< HEAD
-		offChainInstance, err := DeployOffChainAggregator(client, wallets.Default())
-=======
-		offChainInstance, err := contractDeployer.DeployOffChainAggregator(wallets.Default(), offchainOptions)
->>>>>>> f8d2e2f189e3975d97fdf58ce55b60a8cb8218d3
+		offChainInstance, err := contractDeployer.DeployOffChainAggregator(wallets.Default(), DefaultOffChainAggregatorOptions())
 		Expect(err).ShouldNot(HaveOccurred())
 		err = offChainInstance.Fund(wallets.Default(), nil, big.NewInt(50000000000))
 		Expect(err).ShouldNot(HaveOccurred())
 	},
 		Entry("on Ethereum Hardhat", client.NewHardhatNetwork),
-		// Tested locally successfully. We need to implement secrets system as well as testing wallets for CI use
-		// Entry("on Ethereum Kovan", client.NewKovanNetwork),
-		// Entry("on Ethereum Goerli", client.NewGoerliNetwork),
 	)
 })
 
-// TODO: Templatize these
-func buildOCRSpec(contractAddress, p2pId, bootstrapP2PId, keyBundleId, transmitterAddress string) string {
-	return fmt.Sprintf(`type = "offchainreporting"
-schemaVersion = 1
-contractAddress = "%v"
-p2pPeerID = "%v"
-p2pBootstrapPeers = [
-		"/dns4/chainlink-node-1/tcp/6690/p2p/%v"  
-]
-isBootstrapPeer = false
-keyBundleID = "%v"
-monitoringEndpoint = "chain.link:4321"
-transmitterAddress = "%v"
-observationTimeout = "10s"
-blockchainTimeout  = "20s"
-contractConfigTrackerSubscribeInterval = "2m"
-contractConfigTrackerPollInterval = "1m"
-contractConfigConfirmations = 3
-observationSource = """
-	fetch    [type=http method=POST url="http://host.docker.internal:6644/five" requestData="{}"];
-	parse    [type=jsonparse path="data,result"];    
-	fetch -> parse;
-	"""`, contractAddress, p2pId, bootstrapP2PId, keyBundleId, transmitterAddress)
+func templatizeOCRJobSpec(spec OffChainAggregatorSpec) (string, error) {
+	var buf bytes.Buffer
+	tmpl, err := template.New("OCR Job Spec Template").Parse(ocrJobSpecTemplateString)
+	if err != nil {
+		return "", err
+	}
+	err = tmpl.Execute(&buf, spec)
+	if err != nil {
+		return "", err
+	}
+	return buf.String(), err
 }
 
-func buildBootstrapSpec(contractAddress string, p2pID string) string {
-	return fmt.Sprintf(`blockchainTimeout = "20s"
-contractAddress = "%v"
-contractConfigConfirmations = 3
-contractConfigTrackerPollInterval = "1m"
-contractConfigTrackerSubscribeInterval = "2m"
-isBootstrapPeer = true
-p2pBootstrapPeers = []
-p2pPeerID = "%v"
-schemaVersion = 1
-type = "offchainreporting"`, contractAddress, p2pID)
+func templatizeOCRBootsrapSpec(spec OffChainAggregatorBootstrapSpec) (string, error) {
+	var buf bytes.Buffer
+	tmpl, err := template.New("OCR Bootstrap Spec Template").Parse(ocrBootstrapSpecTemplateString)
+	if err != nil {
+		return "", err
+	}
+	err = tmpl.Execute(&buf, spec)
+	if err != nil {
+		return "", err
+	}
+	return buf.String(), err
 }

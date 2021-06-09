@@ -41,6 +41,7 @@ type NetworkConfig struct {
 	LinkTokenAddress     string        `mapstructure:"link_token_address" yaml:"link_token_address"`
 	MinimumConfirmations int           `mapstructure:"minimum_confirmations" yaml:"minimum_confirmations"`
 	GasEstimationBuffer  uint64        `mapstructure:"gas_estimation_buffer" yaml:"gas_estimation_buffer"`
+	AverageBlockTime     time.Duration `mapstructure:"average_block_time" yaml:"average_block_time"`
 	PrivateKeyStore      PrivateKeyStore
 }
 

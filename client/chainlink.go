@@ -5,14 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"integrations-framework/contracts/ethereum"
 	"io/ioutil"
-	"math/big"
 	"net/http"
 	"strings"
-	"time"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/rs/zerolog/log"
 )
 
@@ -21,9 +17,6 @@ var ErrUnprocessableEntity = errors.New("unexpected response code, got 422")
 
 // Chainlink interface that enables interactions with a chainlink node
 type Chainlink interface {
-	// Fund sends specified currencies to the contract
-	Fund(fromWallet BlockchainWallet, ethAmount *big.Int, linkAmount *big.Int) error
-
 	CreateJob(spec string) (*Job, error)
 	ReadJob(id string) error
 	DeleteJob(id string) error
@@ -53,35 +46,54 @@ type Chainlink interface {
 }
 
 type chainlink struct {
-	EthClient  *EthereumClient
-	HttpClient *http.Client
-	Config     *ChainlinkConfig
-	Cookies    []*http.Cookie
+	HttpClient       *http.Client
+	BlockchainClient BlockchainClient
+	Config           *ChainlinkConfig
+	Cookies          []*http.Cookie
 }
 
 // NewChainlink creates a new chainlink model using a provided config
-func NewChainlink(c *ChainlinkConfig, ethClient *EthereumClient) (Chainlink, error) {
-	cl := &chainlink{Config: c, EthClient: ethClient}
+func NewChainlink(c *ChainlinkConfig, httpClient *http.Client, blockchainClient BlockchainClient) (Chainlink, error) {
+	cl := &chainlink{
+		Config:           c,
+		HttpClient:       httpClient,
+		BlockchainClient: blockchainClient,
+	}
 	return cl, cl.SetSessionCookie()
 }
 
-// ConnectToTemplateNodes assumes that 5 template nodes are running locally, check out our setup for that here:
+// ConnectToTemplateNodes assumes that 5 template nodes are running locally, check out a quick setup for that here:
 // https://github.com/smartcontractkit/chainlink-node-compose
-func ConnectToTemplateNodes(ethClient *EthereumClient) ([]Chainlink, error) {
+func ConnectToTemplateNodes(blockchainClient BlockchainClient) ([]Chainlink, error) {
+	urlBase := "http://localhost:"
 	ports := []string{"6711", "6722", "6733", "6744", "6755"}
+	// Checks if those nodes are actually up and healthy
+	for _, port := range ports {
+		_, err := http.Get(urlBase + port)
+		if err != nil {
+			log.Err(err).Str("URL", urlBase+port).Msg("Chainlink node unhealthy / not up. Make sure nodes are already up")
+			return nil, err
+		}
+		log.Info().Str("URL", urlBase+port).Msg("Chainlink Node Healthy")
+	}
+
 	var cls []Chainlink
 	for _, port := range ports {
 		c := &ChainlinkConfig{
-			URL:      "http://localhost:" + port,
+			URL:      urlBase + port,
 			Email:    "notreal@fakeemail.ch",
 			Password: "twochains",
 		}
-		cl, err := NewChainlink(c, ethClient)
+		cl, err := NewChainlink(c, http.DefaultClient, blockchainClient)
 		if err != nil {
 			return nil, err
 		}
+		if _, err := cl.ReadETHKeys(); err != nil {
+			log.Err(err).Str("Node URL", urlBase+port).Msg("Issue establishing connection to node")
+		}
 		cls = append(cls, cl)
 	}
+
 	return cls, nil
 }
 
@@ -93,60 +105,6 @@ func (c *chainlink) CreateJob(spec string) (*Job, error) {
 		TOML: spec,
 	}, &job, http.StatusOK)
 	return job, err
-}
-
-// Fund sends specified currencies to the contract
-func (c *chainlink) Fund(fromWallet BlockchainWallet, ethAmount, linkAmount *big.Int) error {
-	ethKeys, err := c.ReadETHKeys()
-	if err != nil {
-		return err
-	}
-	toAddress := ethKeys.Data[0].Attributes.Address
-	// Send ETH if not 0
-	if ethAmount != nil && big.NewInt(0).Cmp(ethAmount) != 0 {
-		log.Info().
-			Str("Token", "ETH").
-			Str("From", fromWallet.Address()).
-			Str("To", toAddress).
-			Str("Amount", ethAmount.String()).
-			Str("Node URL", c.Config.URL).
-			Msg("Funding Chainlink Node")
-		_, err := c.EthClient.SendTransaction(fromWallet, common.HexToAddress(toAddress), ethAmount, nil)
-		if err != nil {
-			return err
-		}
-	}
-
-	// Send LINK if not 0
-	if linkAmount != nil && big.NewInt(0).Cmp(linkAmount) != 0 {
-		// Prepare data field for token tx
-		log.Info().
-			Str("Token", "LINK").
-			Str("From", fromWallet.Address()).
-			Str("To", toAddress).
-			Str("Amount", linkAmount.String()).
-			Str("Node URL", c.Config.URL).
-			Msg("Funding Chainlink Node")
-		linkAddress := common.HexToAddress(c.EthClient.Network.Config().LinkTokenAddress)
-		linkInstance, err := ethereum.NewLinkToken(linkAddress, c.EthClient.Client)
-		if err != nil {
-			return err
-		}
-		opts, err := c.EthClient.TransactionOpts(fromWallet, common.HexToAddress(toAddress), nil, nil)
-		if err != nil {
-			return err
-		}
-		tx, err := linkInstance.Transfer(opts, common.HexToAddress(toAddress), linkAmount)
-		if err != nil {
-			return err
-		}
-
-		err = c.EthClient.WaitForTransaction(tx.Hash())
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // ReadJob reads a job with the provided ID from the Chainlink node
@@ -321,25 +279,6 @@ func (c *chainlink) SetSessionCookie() error {
 		return fmt.Errorf("chainlink: session cookie wasn't returned on login")
 	}
 	return nil
-}
-
-// checkNodesHealth checks if the nodes at the provided URLs are healthy or not
-func checkNodesHealth(urlBase string, ports []string, minutesToWait int) (bool, error) {
-	// Wait for Docker Compose to be up and healthy
-	for _, port := range ports {
-		resp, err := http.Get(urlBase + port)
-		for start := time.Now(); time.Since(start) < time.Duration(minutesToWait)*time.Minute; time.Sleep(time.Second * 3) {
-			if err == nil && resp.StatusCode == 200 {
-				break
-			}
-			resp, err = http.Get(urlBase + port)
-		}
-		if err != nil {
-			return false, err
-		}
-		log.Info().Str("URL", urlBase+port).Msg("Chainlink Node Healthy")
-	}
-	return true, nil
 }
 
 // SetClient overrides the http client, used for mocking out the Chainlink server for unit testing
