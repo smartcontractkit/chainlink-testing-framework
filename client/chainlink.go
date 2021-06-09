@@ -46,25 +46,23 @@ type Chainlink interface {
 }
 
 type chainlink struct {
-	HttpClient       *http.Client
-	BlockchainClient BlockchainClient
-	Config           *ChainlinkConfig
-	Cookies          []*http.Cookie
+	HttpClient *http.Client
+	Config     *ChainlinkConfig
+	Cookies    []*http.Cookie
 }
 
 // NewChainlink creates a new chainlink model using a provided config
-func NewChainlink(c *ChainlinkConfig, httpClient *http.Client, blockchainClient BlockchainClient) (Chainlink, error) {
+func NewChainlink(c *ChainlinkConfig, httpClient *http.Client) (Chainlink, error) {
 	cl := &chainlink{
-		Config:           c,
-		HttpClient:       httpClient,
-		BlockchainClient: blockchainClient,
+		Config:     c,
+		HttpClient: httpClient,
 	}
 	return cl, cl.SetSessionCookie()
 }
 
 // ConnectToTemplateNodes assumes that 5 template nodes are running locally, check out a quick setup for that here:
 // https://github.com/smartcontractkit/chainlink-node-compose
-func ConnectToTemplateNodes(blockchainClient BlockchainClient) ([]Chainlink, error) {
+func ConnectToTemplateNodes() ([]Chainlink, error) {
 	urlBase := "http://localhost:"
 	ports := []string{"6711", "6722", "6733", "6744", "6755"}
 	// Checks if those nodes are actually up and healthy
@@ -84,7 +82,7 @@ func ConnectToTemplateNodes(blockchainClient BlockchainClient) ([]Chainlink, err
 			Email:    "notreal@fakeemail.ch",
 			Password: "twochains",
 		}
-		cl, err := NewChainlink(c, http.DefaultClient, blockchainClient)
+		cl, err := NewChainlink(c, http.DefaultClient)
 		if err != nil {
 			return nil, err
 		}

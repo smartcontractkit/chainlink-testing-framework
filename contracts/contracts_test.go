@@ -41,7 +41,7 @@ var _ = Describe("Chainlink Node", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// Connect to running chainlink nodes
-		chainlinkNodes, err := client.ConnectToTemplateNodes(blockchainClient)
+		chainlinkNodes, err := client.ConnectToTemplateNodes()
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(len(chainlinkNodes)).To(Equal(5))
 		// Fund each chainlink node
@@ -54,7 +54,7 @@ var _ = Describe("Chainlink Node", func() {
 			err = blockchainClient.Fund(
 				wallets.Default(),
 				primaryEthKey.Attributes.Address,
-				big.NewInt(200000000000000000), big.NewInt(200000000000000000),
+				big.NewInt(2000000000000000000), big.NewInt(2000000000000000000),
 			)
 			Expect(err).ShouldNot(HaveOccurred())
 		}
@@ -112,7 +112,8 @@ var _ = Describe("Chainlink Node", func() {
 		}
 
 		// Request a new round from the OCR
-		ocrInstance.RequestNewRound(wallets.Default())
+		err = ocrInstance.RequestNewRound(wallets.Default())
+		Expect(err).ShouldNot(HaveOccurred())
 
 		// Wait for a round
 		for i := 0; i < 60; i++ {

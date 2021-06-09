@@ -9,6 +9,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/rs/zerolog/log"
 	ocrConfigHelper "github.com/smartcontractkit/libocr/offchainreporting/confighelper"
 	ocrTypes "github.com/smartcontractkit/libocr/offchainreporting/types"
 )
@@ -270,6 +271,7 @@ func (o *EthereumOffchainAggregator) RequestNewRound(fromWallet client.Blockchai
 	if err != nil {
 		return err
 	}
+	log.Info().Str("Contract Address", o.address.Hex()).Msg("New OCR round requested")
 	return o.client.WaitForTransaction(tx.Hash())
 }
 
