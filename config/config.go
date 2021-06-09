@@ -1,3 +1,4 @@
+// Package config enables loading and utilizing configuration options for different blockchain networks
 package config
 
 import (

@@ -1,3 +1,4 @@
+// Package contracts handles deployment, management, and interactions of smart contracts on various chains
 package contracts
 
 import (
