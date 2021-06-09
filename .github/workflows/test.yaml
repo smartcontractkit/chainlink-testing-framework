@@ -36,7 +36,7 @@ jobs:
         uses: jandelgado/gcov2lcov-action@v1.0.5
         if: always()
       - name: Report code coverage
-        uses: romeovs/lcov-reporter-action@v0.2.16
+        uses: romeovs/lcov-reporter-action@v0.2.21
         if: always()
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
