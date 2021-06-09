@@ -95,43 +95,7 @@ type OffChainAggregatorBootstrapSpec struct {
 }
 
 func TemplatizeOCRJobSpec(spec OffChainAggregatorSpec) (string, error) {
-	var buf bytes.Buffer
-	tmpl, err := template.New("OCR Job Spec Template").Parse(ocrJobSpecTemplateString)
-	if err != nil {
-		return "", err
-	}
-	err = tmpl.Execute(&buf, spec)
-	if err != nil {
-		return "", err
-	}
-	return buf.String(), err
-}
-
-func TemplatizeOCRBootsrapSpec(spec OffChainAggregatorBootstrapSpec) (string, error) {
-	var buf bytes.Buffer
-	tmpl, err := template.New("OCR Bootstrap Spec Template").Parse(ocrBootstrapSpecTemplateString)
-	if err != nil {
-		return "", err
-	}
-	err = tmpl.Execute(&buf, spec)
-	if err != nil {
-		return "", err
-	}
-	return buf.String(), err
-}
-
-const ocrBootstrapSpecTemplateString string = `blockchainTimeout = "20s"
-contractAddress = "{{.ContractAddress}}"
-contractConfigConfirmations = 3
-contractConfigTrackerPollInterval = "1m"
-contractConfigTrackerSubscribeInterval = "2m"
-isBootstrapPeer = true
-p2pBootstrapPeers = []
-p2pPeerID = "{{.P2PId}}"
-schemaVersion = 1
-type = "offchainreporting"`
-
-const ocrJobSpecTemplateString string = `type = "offchainreporting"
+	ocrJobSpecTemplateString := `type = "offchainreporting"
 schemaVersion = 1
 contractAddress = "{{.ContractAddress}}"
 p2pPeerID = "{{.P2PId}}"
@@ -152,6 +116,40 @@ observationSource = """
 	parse    [type=jsonparse path="data,result"];    
 	fetch -> parse;
 	"""`
+	var buf bytes.Buffer
+	tmpl, err := template.New("OCR Job Spec Template").Parse(ocrJobSpecTemplateString)
+	if err != nil {
+		return "", err
+	}
+	err = tmpl.Execute(&buf, spec)
+	if err != nil {
+		return "", err
+	}
+	return buf.String(), err
+}
+
+func TemplatizeOCRBootsrapSpec(spec OffChainAggregatorBootstrapSpec) (string, error) {
+	ocrBootstrapSpecTemplateString := `blockchainTimeout = "20s"
+contractAddress = "{{.ContractAddress}}"
+contractConfigConfirmations = 3
+contractConfigTrackerPollInterval = "1m"
+contractConfigTrackerSubscribeInterval = "2m"
+isBootstrapPeer = true
+p2pBootstrapPeers = []
+p2pPeerID = "{{.P2PId}}"
+schemaVersion = 1
+type = "offchainreporting"`
+	var buf bytes.Buffer
+	tmpl, err := template.New("OCR Bootstrap Spec Template").Parse(ocrBootstrapSpecTemplateString)
+	if err != nil {
+		return "", err
+	}
+	err = tmpl.Execute(&buf, spec)
+	if err != nil {
+		return "", err
+	}
+	return buf.String(), err
+}
 
 type OffchainAggregatorData struct {
 	LatestRoundData RoundData // Data about the latest round

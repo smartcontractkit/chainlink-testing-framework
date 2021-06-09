@@ -17,12 +17,7 @@ This will:
 
 ## `external_adapter.go`
 
-A simple external adapter implementation for local chainlink nodes to interact with.
-
-## `prototype`
-
-Compiled binary of Lorenz's [OCR prototype](https://github.com/smartcontractkit/offchain-reporting/tree/master/lib/prototype)
-that we use for the trickier bits of configuring OCR smart contracts. I hope to make this an API / library call later on.
+A simple external adapter implementation for local chainlink nodes to interact with. Used for local testing.
 
 ## `tools.go`
 
