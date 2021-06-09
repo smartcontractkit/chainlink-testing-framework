@@ -109,7 +109,7 @@ func (e *EthereumNetwork) Wallets() (BlockchainWallets, error) {
 // a specific network
 type BlockchainWallets interface {
 	Default() BlockchainWallet
-	Raw() []BlockchainWallet
+	All() []BlockchainWallet
 	SetDefault(i int) error
 	Wallet(i int) (BlockchainWallet, error)
 }
@@ -125,8 +125,8 @@ func (w *Wallets) Default() BlockchainWallet {
 	return w.wallets[w.defaultWallet]
 }
 
-// Raw returns the raw representation of Wallets
-func (w *Wallets) Raw() []BlockchainWallet {
+// All returns the raw representation of Wallets
+func (w *Wallets) All() []BlockchainWallet {
 	return w.wallets
 }
 

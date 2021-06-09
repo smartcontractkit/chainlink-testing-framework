@@ -1,7 +1,9 @@
 package contracts
 
 import (
+	"bytes"
 	"context"
+	"html/template"
 	"integrations-framework/client"
 	"math/big"
 	"time"
@@ -89,6 +91,32 @@ type OffChainAggregatorSpec struct {
 type OffChainAggregatorBootstrapSpec struct {
 	ContractAddress string // Address of the OCR contract
 	P2PId           string // This node's P2P ID
+}
+
+func TemplatizeOCRJobSpec(spec OffChainAggregatorSpec) (string, error) {
+	var buf bytes.Buffer
+	tmpl, err := template.New("OCR Job Spec Template").Parse(ocrJobSpecTemplateString)
+	if err != nil {
+		return "", err
+	}
+	err = tmpl.Execute(&buf, spec)
+	if err != nil {
+		return "", err
+	}
+	return buf.String(), err
+}
+
+func TemplatizeOCRBootsrapSpec(spec OffChainAggregatorBootstrapSpec) (string, error) {
+	var buf bytes.Buffer
+	tmpl, err := template.New("OCR Bootstrap Spec Template").Parse(ocrBootstrapSpecTemplateString)
+	if err != nil {
+		return "", err
+	}
+	err = tmpl.Execute(&buf, spec)
+	if err != nil {
+		return "", err
+	}
+	return buf.String(), err
 }
 
 const ocrBootstrapSpecTemplateString string = `blockchainTimeout = "20s"

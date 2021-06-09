@@ -24,7 +24,7 @@ var _ = Describe("Client", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		wallets, err := networkConfig.Wallets()
 		Expect(err).ShouldNot(HaveOccurred())
-		rawWallets := wallets.Raw()
+		rawWallets := wallets.All()
 		for index := range rawWallets {
 			_, err := wallets.Wallet(index)
 			Expect(err).ShouldNot(HaveOccurred())

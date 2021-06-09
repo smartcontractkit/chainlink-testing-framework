@@ -1,13 +1,11 @@
 package contracts
 
 import (
-	"bytes"
 	"context"
 	"integrations-framework/client"
 	"integrations-framework/config"
 	"integrations-framework/tools"
 	"math/big"
-	"text/template"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -27,6 +25,7 @@ var _ = Describe("Chainlink Node", func() {
 
 	DescribeTable("deploy and use basic functionality", func(
 		initFunc client.BlockchainNetworkInit,
+		ocrOptions OffchainOptions,
 	) {
 		// Setup
 		networkConfig, err := initFunc(conf)
@@ -61,7 +60,7 @@ var _ = Describe("Chainlink Node", func() {
 
 		// Deploy and config OCR contract
 		Expect(err).ShouldNot(HaveOccurred())
-		ocrInstance, err := contractDeployer.DeployOffChainAggregator(wallets.Default(), DefaultOffChainAggregatorOptions())
+		ocrInstance, err := contractDeployer.DeployOffChainAggregator(wallets.Default(), ocrOptions)
 		Expect(err).ShouldNot(HaveOccurred())
 		err = ocrInstance.SetConfig(wallets.Default(), chainlinkNodes, DefaultOffChainAggregatorConfig())
 		Expect(err).ShouldNot(HaveOccurred())
@@ -80,7 +79,7 @@ var _ = Describe("Chainlink Node", func() {
 			ContractAddress: ocrInstance.Address(),
 			P2PId:           bootstrapP2PId,
 		}
-		bootstrapSpec, err := templatizeOCRBootsrapSpec(bootstrapSpecStruct)
+		bootstrapSpec, err := TemplatizeOCRBootsrapSpec(bootstrapSpecStruct)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		_, err = bootstrapNode.CreateJob(bootstrapSpec)
@@ -105,7 +104,7 @@ var _ = Describe("Chainlink Node", func() {
 				KeyBundleId:        nodeOCRKeyId,
 				TransmitterAddress: nodeTransmitterAddress,
 			}
-			ocrSpec, err := templatizeOCRJobSpec(ocrSpecStruct)
+			ocrSpec, err := TemplatizeOCRJobSpec(ocrSpecStruct)
 			Expect(err).ShouldNot(HaveOccurred())
 			_, err = chainlinkNodes[index].CreateJob(ocrSpec)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -139,7 +138,7 @@ var _ = Describe("Chainlink Node", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(answer.Int64()).Should(Equal(int64(5)))
 	},
-		Entry("on Ethereum Hardhat", client.NewHardhatNetwork),
+		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, DefaultOffChainAggregatorOptions()),
 	)
 })
 
@@ -180,6 +179,7 @@ var _ = Describe("Contracts", func() {
 
 	DescribeTable("deploy and interact with the FluxAggregator contract", func(
 		initFunc client.BlockchainNetworkInit,
+		fluxOptions FluxAggregatorOptions,
 	) {
 		// Setup network and client
 		networkConfig, err := initFunc(conf)
@@ -199,7 +199,6 @@ var _ = Describe("Contracts", func() {
 		Expect(name).To(Equal("ChainLink Token"))
 
 		// Deploy FluxMonitor contract
-		fluxOptions := DefaultFluxAggregatorOptions()
 		fluxInstance, err := contractDeployer.DeployFluxAggregatorContract(wallets.Default(), fluxOptions)
 		Expect(err).ShouldNot(HaveOccurred())
 		err = fluxInstance.Fund(wallets.Default(), big.NewInt(0), big.NewInt(50000000000))
@@ -210,11 +209,12 @@ var _ = Describe("Contracts", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(desc).To(Equal(fluxOptions.Description))
 	},
-		Entry("on Ethereum Hardhat", client.NewHardhatNetwork),
+		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, DefaultFluxAggregatorOptions()),
 	)
 
 	DescribeTable("deploy and interact with the OffChain Aggregator contract", func(
 		initFunc client.BlockchainNetworkInit,
+		ocrOptions OffchainOptions,
 	) {
 		// Setup network and client
 		networkConfig, err := initFunc(conf)
@@ -234,37 +234,11 @@ var _ = Describe("Contracts", func() {
 		Expect(name).To(Equal("ChainLink Token"))
 
 		// Deploy Offchain contract
-		offChainInstance, err := contractDeployer.DeployOffChainAggregator(wallets.Default(), DefaultOffChainAggregatorOptions())
+		offChainInstance, err := contractDeployer.DeployOffChainAggregator(wallets.Default(), ocrOptions)
 		Expect(err).ShouldNot(HaveOccurred())
 		err = offChainInstance.Fund(wallets.Default(), nil, big.NewInt(50000000000))
 		Expect(err).ShouldNot(HaveOccurred())
 	},
-		Entry("on Ethereum Hardhat", client.NewHardhatNetwork),
+		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, DefaultOffChainAggregatorOptions()),
 	)
 })
-
-func templatizeOCRJobSpec(spec OffChainAggregatorSpec) (string, error) {
-	var buf bytes.Buffer
-	tmpl, err := template.New("OCR Job Spec Template").Parse(ocrJobSpecTemplateString)
-	if err != nil {
-		return "", err
-	}
-	err = tmpl.Execute(&buf, spec)
-	if err != nil {
-		return "", err
-	}
-	return buf.String(), err
-}
-
-func templatizeOCRBootsrapSpec(spec OffChainAggregatorBootstrapSpec) (string, error) {
-	var buf bytes.Buffer
-	tmpl, err := template.New("OCR Bootstrap Spec Template").Parse(ocrBootstrapSpecTemplateString)
-	if err != nil {
-		return "", err
-	}
-	err = tmpl.Execute(&buf, spec)
-	if err != nil {
-		return "", err
-	}
-	return buf.String(), err
-}

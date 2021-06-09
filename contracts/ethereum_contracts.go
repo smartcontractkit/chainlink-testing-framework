@@ -238,6 +238,7 @@ func (o *EthereumOffchainAggregator) SetConfig(
 		return err
 	}
 
+	// Set Payees
 	opts, err := o.client.TransactionOpts(fromWallet, *o.address, big.NewInt(0), nil)
 	if err != nil {
 		return err
@@ -252,8 +253,12 @@ func (o *EthereumOffchainAggregator) SetConfig(
 		return err
 	}
 
-	// Increment nonce
-	opts.Nonce.Add(opts.Nonce, big.NewInt(1))
+	// Set Config
+	opts, err = o.client.TransactionOpts(fromWallet, *o.address, big.NewInt(0), nil)
+	if err != nil {
+		return err
+	}
+
 	tx, err = o.ocr.SetConfig(opts, signers, transmitters, threshold, encodedConfigVersion, encodedConfig)
 	if err != nil {
 		return err
