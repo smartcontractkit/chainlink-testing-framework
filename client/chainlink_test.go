@@ -67,7 +67,7 @@ var _ = Describe("Client", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		c.SetClient(server.Client())
 
-		s, err := c.CreateJob("schemaVersion = 1")
+		s, err := c.CreateJobRaw("schemaVersion = 1")
 		Expect(err).ShouldNot(HaveOccurred())
 
 		err = c.ReadJob(s.Data.ID)
