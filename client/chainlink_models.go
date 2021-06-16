@@ -1,5 +1,11 @@
 package client
 
+import (
+	"bytes"
+	"text/template"
+	"time"
+)
+
 // ChainlinkConfig represents the variables needed to connect to a Chainlink node
 type ChainlinkConfig struct {
 	URL      string
@@ -7,7 +13,7 @@ type ChainlinkConfig struct {
 	Password string
 }
 
-// ResponseArray is the generic model that can be used for all Chainlink API responses that are an slice
+// ResponseSlice is the generic model that can be used for all Chainlink API responses that are an slice
 type ResponseSlice struct {
 	Data []map[string]interface{}
 }
@@ -132,4 +138,231 @@ type Job struct {
 // JobData contains the ID for a given job
 type JobData struct {
 	ID string `json:"id"`
+}
+
+// JobSpec represents the different possible job types that chainlink nodes can handle
+type JobSpec interface {
+	Type() string
+	// Returns TOML representation of the job
+	String() (string, error)
+}
+
+// Helper to marshall templates of job specs
+func marshallTemplate(jobSpec JobSpec, name, templateString string) (string, error) {
+	var buf bytes.Buffer
+	tmpl, err := template.New(name).Parse(templateString)
+	if err != nil {
+		return "", err
+	}
+	err = tmpl.Execute(&buf, jobSpec)
+	if err != nil {
+		return "", err
+	}
+	return buf.String(), err
+}
+
+// CronJobSpec represents a cron job spec
+type CronJobSpec struct {
+	Schedule          string `toml:"schedule"`          // CRON job style schedule string
+	ObservationSource string `toml:"observationSource"` // List of commands for the chainlink node
+}
+
+func (c *CronJobSpec) Type() string { return "cron" }
+func (c *CronJobSpec) String() (string, error) {
+	cronJobTemplateString := `type     = "cron"
+schemaVersion     = 1
+schedule          = "{{.Schedule}}"
+observationSource = """
+{{.ObservationSource}}
+"""`
+	return marshallTemplate(c, "CRON Job", cronJobTemplateString)
+}
+
+// DirectRequestJobSpec represents a direct request spec
+type DirectRequestJobSpec struct {
+	Name              string `toml:"name"`
+	ContractAddress   string `toml:"contractAddress"`
+	ObservationSource string `toml:"observationSource"` // List of commands for the chainlink node
+}
+
+func (d *DirectRequestJobSpec) Type() string { return "directrequest" }
+func (d *DirectRequestJobSpec) String() (string, error) {
+	directRequestTemplateString := `type     = "directrequest"
+schemaVersion     = 1
+name              = "{{.Name}}"
+contractAddress   = "{{.ContractAddress}}"
+observationSource = """
+{{.ObservationSource}}
+"""`
+	return marshallTemplate(d, "Direct Request Job", directRequestTemplateString)
+}
+
+// FluxMonitorJobSpec represents a flux monitor spec
+type FluxMonitorJobSpec struct {
+	Name              string        `toml:"name"`
+	ContractAddress   string        `toml:"contractAddress"`   // Address of the Flux Monitor script
+	Precision         int           `toml:"precision"`         // Optional
+	Threshold         float32       `toml:"threshold"`         // Optional
+	AbsoluteThreshold float32       `toml:"absoluteThreshold"` // Optional
+	IdleTimerPeriod   time.Duration `toml:"idleTimerPeriod"`   // Optional
+	IdleTimerDisabled bool          `toml:"idleTimerDisabled"` // Optional
+	PollTimerPeriod   time.Duration `toml:"pollTimerPeriod"`   // Optional
+	PollTimerDisabled bool          `toml:"pollTimerDisabled"` // Optional
+	ObservationSource string        `toml:"observationSource"` // List of commands for the chainlink node
+}
+
+func (f *FluxMonitorJobSpec) Type() string { return "fluxmonitor" }
+func (f *FluxMonitorJobSpec) String() (string, error) {
+	fluxMonitorTemplateString := `type              = "fluxmonitor"
+schemaVersion     = 1
+name              = "{{.Name}}"
+contractAddress   = "{{.ContractAddress}}"
+precision         ={{if not .Precision}} 2 {{else}} {{.Precision}} {{end}}
+threshold         ={{if not .Threshold}} 0.5 {{else}} {{.Threshold}} {{end}}
+absoluteThreshold ={{if not .AbsoluteThreshold}} 0.0 {{else}} {{.AbsoluteThreshold}} {{end}}
+
+idleTimerPeriod   ={{if not .IdleTimerPeriod}} "1s" {{else}} "{{.IdleTimerPeriod}}" {{end}}
+idleTimerDisabled ={{if not .IdleTimerDisabled}} false {{else}} {{.IdleTimerDisabled}} {{end}}
+
+pollTimerPeriod   ={{if not .PollTimerPeriod}} "1m" {{else}} "{{.PollTimerPeriod}}" {{end}}
+pollTimerDisabled ={{if not .PollTimerDisabled}} false {{else}} {{.PollTimerDisabled}} {{end}}
+
+observationSource = """
+{{.ObservationSource}}
+"""`
+	return marshallTemplate(f, "Flux Monitor Job", fluxMonitorTemplateString)
+}
+
+// KeeperJobSpec represents a keeper spec
+type KeeperJobSpec struct {
+	Name            string `toml:"name"`
+	ContractAddress string `toml:"contractAddress"`
+	FromAddress     string `toml:"fromAddress"` // Hex representation of the from address
+}
+
+func (k *KeeperJobSpec) Type() string { return "keeper" }
+func (k *KeeperJobSpec) String() (string, error) {
+	fluxMonitorTemplateString := `type            = "keeper"
+schemaVersion   = 1
+name            = "{{.Name}}"
+contractAddress = "{{.ContractAddress}}"
+fromAddress     = "{{.FromAddress}}"`
+	return marshallTemplate(k, "Keeper Job", fluxMonitorTemplateString)
+}
+
+// OCRBootstrapJobSpec represents the spec for bootstrapping an OCR job, given to one node that then must be linked
+// back to by others by OCRTaskJobSpecs
+type OCRBootstrapJobSpec struct {
+	Name                     string        `toml:"name"`
+	BlockChainTimeout        time.Duration `toml:"blockchainTimeout"`                      // Optional
+	ContractConfirmations    int           `toml:"contractConfigConfirmations"`            // Optional
+	TrackerPollInterval      time.Duration `toml:"contractConfigTrackerPollInterval"`      // Optional
+	TrackerSubscribeInterval time.Duration `toml:"contractConfigTrackerSubscribeInterval"` // Optional
+	ContractAddress          string        `toml:"contractAddress"`                        // Address of the OCR contract
+	P2PBootstrapPeers        []string      `toml:"p2pBootstrapPeers"`                      // Typically empty for our tests
+	IsBootstrapPeer          bool          `toml:"isBootstrapPeer"`                        // Typically true
+	P2PPeerID                string        `toml:"p2pPeerID"`                              // This node's P2P ID
+}
+
+func (o *OCRBootstrapJobSpec) Type() string { return "offchainreporting" }
+func (o *OCRBootstrapJobSpec) String() (string, error) {
+	fluxMonitorTemplateString := `type = "offchainreporting"
+schemaVersion                          = 1
+blockchainTimeout                      ={{if not .BlockChainTimeout}} "20s" {{else}} {{.BlockChainTimeout}} {{end}}
+contractConfigConfirmations            ={{if not .ContractConfirmations}} 3 {{else}} {{.ContractConfirmations}} {{end}}
+contractConfigTrackerPollInterval      ={{if not .TrackerPollInterval}} "1m" {{else}} {{.TrackerPollInterval}} {{end}}
+contractConfigTrackerSubscribeInterval ={{if not .TrackerSubscribeInterval}} "2m" {{else}} {{.TrackerSubscribeInterval}} {{end}}
+contractAddress                        = "{{.ContractAddress}}"
+{{if .P2PBootstrapPeers}}
+p2pBootstrapPeers                      = [
+  {{range $peer := .P2PBootstrapPeers}}
+  "/dns4/chainlink-node-1/tcp/6690/p2p/{{$peer}}",
+  {{end}}
+]
+{{else}}
+p2pBootstrapPeers                      = []
+{{end}}
+isBootstrapPeer                        = {{.IsBootstrapPeer}}
+p2pPeerID                              = "{{.P2PPeerID}}"`
+	return marshallTemplate(o, "OCR Bootstrap Job", fluxMonitorTemplateString)
+}
+
+// OCRTaskJobSpec represents an OCR job that is given to other nodes, meant to communicate with the bootstrap node,
+// and provide their answers
+type OCRTaskJobSpec struct {
+	Name                     string        `toml:"name"`
+	BlockChainTimeout        time.Duration `toml:"blockchainTimeout"`                      // Optional
+	ContractConfirmations    int           `toml:"contractConfigConfirmations"`            // Optional
+	TrackerPollInterval      time.Duration `toml:"contractConfigTrackerPollInterval"`      // Optional
+	TrackerSubscribeInterval time.Duration `toml:"contractConfigTrackerSubscribeInterval"` // Optional
+	ContractAddress          string        `toml:"contractAddress"`                        // Address of the OCR contract
+	P2PBootstrapPeers        []string      `toml:"p2pBootstrapPeers"`                      // P2P ID of the bootstrap node
+	IsBootstrapPeer          bool          `toml:"isBootstrapPeer"`                        // Typically false
+	P2PPeerID                string        `toml:"p2pPeerID"`                              // This node's P2P ID
+	KeyBundleID              string        `toml:"keyBundleID"`                            // ID of this node's OCR key bundle
+	MonitoringEndpoint       string        `toml:"monitoringEndpoint"`                     // Typically "chain.link:4321"
+	TransmitterAddress       string        `toml:"transmitterAddress"`                     // ETH address this node will use to transmit its answer
+	ObservationSource        string        `toml:"observationSource"`                      // List of commands for the chainlink node
+}
+
+func (o *OCRTaskJobSpec) Type() string { return "offchainreporting" }
+func (o *OCRTaskJobSpec) String() (string, error) {
+	fluxMonitorTemplateString := `type = "offchainreporting"
+schemaVersion                          = 1
+blockchainTimeout                      ={{if not .BlockChainTimeout}} "20s" {{else}} {{.BlockChainTimeout}} {{end}}
+contractConfigConfirmations            ={{if not .ContractConfirmations}} 3 {{else}} {{.ContractConfirmations}} {{end}}
+contractConfigTrackerPollInterval      ={{if not .TrackerPollInterval}} "1m" {{else}} {{.TrackerPollInterval}} {{end}}
+contractConfigTrackerSubscribeInterval ={{if not .TrackerSubscribeInterval}} "2m" {{else}} {{.TrackerSubscribeInterval}} {{end}}
+contractAddress                        = "{{.ContractAddress}}"
+{{if .P2PBootstrapPeers}}
+p2pBootstrapPeers                      = [
+  {{range $peer := .P2PBootstrapPeers}}
+  "/dns4/chainlink-node-1/tcp/6690/p2p/{{$peer}}",
+  {{end}}
+]
+{{else}}
+p2pBootstrapPeers                      = []
+{{end}}
+isBootstrapPeer                        = {{.IsBootstrapPeer}}
+p2pPeerID                              = "{{.P2PPeerID}}"
+keyBundleID                            = "{{.KeyBundleID}}"
+monitoringEndpoint                     ={{if not .MonitoringEndpoint}} "chain.link:4321" {{else}} "{{.MonitoringEndpoint}}" {{end}}
+transmitterAddress                     = "{{.TransmitterAddress}}"
+observationSource                      = """
+{{.ObservationSource}}
+"""`
+	return marshallTemplate(o, "OCR Job", fluxMonitorTemplateString)
+}
+
+// VRFJobSpec represents a VRF job
+type VRFJobSpec struct {
+	Name               string `toml:"name"`
+	CoordinatorAddress string `toml:"coordinatorAddress"` // Address of the VRF Coordinator contract
+	PublicKey          string `toml:"publicKey"`          // Public key of the proving key
+	Confirmations      int    `toml:"confirmations"`      // Number of block confirmations to wait for
+}
+
+func (v *VRFJobSpec) Type() string { return "vrf" }
+func (v *VRFJobSpec) String() (string, error) {
+	fluxMonitorTemplateString := `type = "vrf"
+schemaVersion      = 1
+coordinatorAddress = "{{.CoordinatorAddress}}"
+publicKey          = "{{.PublicKey}}"
+confirmations      = {{.Confirmations}}`
+	return marshallTemplate(v, "VRF Job", fluxMonitorTemplateString)
+}
+
+// WebhookJobSpec reprsents a webhook job
+type WebhookJobSpec struct {
+	ObservationSource string `toml:"observationSource"` // List of commands for the chainlink node
+}
+
+func (w *WebhookJobSpec) Type() string { return "webhook" }
+func (w *WebhookJobSpec) String() (string, error) {
+	fluxMonitorTemplateString := `type = "webhook"
+schemaVersion      = 1
+observationSource = """
+{{.ObservationSource}}
+"""`
+	return marshallTemplate(w, "Webhook Job", fluxMonitorTemplateString)
 }
