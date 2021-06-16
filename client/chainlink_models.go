@@ -13,7 +13,7 @@ type ChainlinkConfig struct {
 	Password string
 }
 
-// ResponseArray is the generic model that can be used for all Chainlink API responses that are an slice
+// ResponseSlice is the generic model that can be used for all Chainlink API responses that are an slice
 type ResponseSlice struct {
 	Data []map[string]interface{}
 }

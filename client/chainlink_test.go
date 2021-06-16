@@ -54,8 +54,17 @@ var _ = Describe("Client", func() {
 					})
 				}
 			case http.MethodGet:
-				Expect("/v2/jobs/1").Should(Equal(req.URL.Path))
-				writeResponse(rw, http.StatusOK, nil)
+				switch req.URL.Path {
+				case "/v2/jobs":
+					writeResponse(rw, http.StatusOK, ResponseSlice{
+						Data: []map[string]interface{}{},
+					})
+				default:
+					Expect("/v2/jobs/1").Should(Equal(req.URL.Path))
+					writeResponse(rw, http.StatusOK, Response{
+						Data: map[string]interface{}{},
+					})
+				}
 			case http.MethodDelete:
 				Expect("/v2/jobs/1").Should(Equal(req.URL.Path))
 				writeResponse(rw, http.StatusNoContent, nil)
@@ -70,7 +79,7 @@ var _ = Describe("Client", func() {
 		s, err := c.CreateJobRaw("schemaVersion = 1")
 		Expect(err).ShouldNot(HaveOccurred())
 
-		err = c.ReadJob(s.Data.ID)
+		_, err = c.ReadJob(s.Data.ID)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		err = c.DeleteJob(s.Data.ID)

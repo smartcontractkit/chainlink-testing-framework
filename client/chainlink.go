@@ -19,7 +19,8 @@ var ErrUnprocessableEntity = errors.New("unexpected response code, got 422")
 type Chainlink interface {
 	CreateJob(spec JobSpec) (*Job, error)
 	CreateJobRaw(spec string) (*Job, error)
-	ReadJob(id string) error
+	ReadJobs() (*ResponseSlice, error)
+	ReadJob(id string) (*Response, error)
 	DeleteJob(id string) error
 
 	CreateSpec(spec string) (*Spec, error)
@@ -120,11 +121,20 @@ func (c *chainlink) CreateJob(spec JobSpec) (*Job, error) {
 	return job, err
 }
 
+// ReadJobs reads all jobs from the Chainlink node
+func (c *chainlink) ReadJobs() (*ResponseSlice, error) {
+	specObj := &ResponseSlice{}
+	log.Info().Str("Node URL", c.Config.URL).Msg("Getting Jobs")
+	_, err := c.do(http.MethodGet, "/v2/jobs", nil, specObj, http.StatusOK)
+	return specObj, err
+}
+
 // ReadJob reads a job with the provided ID from the Chainlink node
-func (c *chainlink) ReadJob(id string) error {
+func (c *chainlink) ReadJob(id string) (*Response, error) {
+	specObj := &Response{}
 	log.Info().Str("Node URL", c.Config.URL).Str("ID", id).Msg("Reading Job")
-	_, err := c.do(http.MethodGet, fmt.Sprintf("/v2/jobs/%s", id), nil, nil, http.StatusOK)
-	return err
+	_, err := c.do(http.MethodGet, fmt.Sprintf("/v2/jobs/%s", id), nil, specObj, http.StatusOK)
+	return specObj, err
 }
 
 // DeleteJob deletes a job with a provided ID from the Chainlink node
