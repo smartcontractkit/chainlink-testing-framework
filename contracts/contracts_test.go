@@ -75,13 +75,11 @@ var _ = Describe("Chainlink Node", func() {
 		bootstrapP2PIds, err := bootstrapNode.ReadP2PKeys()
 		Expect(err).ShouldNot(HaveOccurred())
 		bootstrapP2PId := bootstrapP2PIds.Data[0].Attributes.PeerID
-		bootstrapSpecStruct := OffChainAggregatorBootstrapSpec{
+		bootstrapSpec := &client.OCRBootstrapJobSpec{
 			ContractAddress: ocrInstance.Address(),
-			P2PId:           bootstrapP2PId,
+			P2PPeerID:       bootstrapP2PId,
+			IsBootstrapPeer: true,
 		}
-		bootstrapSpec, err := TemplatizeOCRBootsrapSpec(bootstrapSpecStruct)
-		Expect(err).ShouldNot(HaveOccurred())
-
 		_, err = bootstrapNode.CreateJob(bootstrapSpec)
 		Expect(err).ShouldNot(HaveOccurred())
 
@@ -97,15 +95,17 @@ var _ = Describe("Chainlink Node", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			nodeOCRKeyId := nodeOCRKeys.Data[0].ID
 
-			ocrSpecStruct := OffChainAggregatorSpec{
+			observationSource := `fetch    [type=http method=POST url="http://host.docker.internal:6644/five" requestData="{}"];
+			parse    [type=jsonparse path="data,result"];    
+			fetch -> parse;`
+			ocrSpec := &client.OCRTaskJobSpec{
 				ContractAddress:    ocrInstance.Address(),
-				P2PId:              nodeP2PId,
-				BootstrapP2PId:     bootstrapP2PId,
-				KeyBundleId:        nodeOCRKeyId,
+				P2PPeerID:          nodeP2PId,
+				P2PBootstrapPeers:  []string{bootstrapP2PId},
+				KeyBundleID:        nodeOCRKeyId,
 				TransmitterAddress: nodeTransmitterAddress,
+				ObservationSource:  observationSource,
 			}
-			ocrSpec, err := TemplatizeOCRJobSpec(ocrSpecStruct)
-			Expect(err).ShouldNot(HaveOccurred())
 			_, err = chainlinkNodes[index].CreateJob(ocrSpec)
 			Expect(err).ShouldNot(HaveOccurred())
 		}

@@ -17,7 +17,8 @@ var ErrUnprocessableEntity = errors.New("unexpected response code, got 422")
 
 // Chainlink interface that enables interactions with a chainlink node
 type Chainlink interface {
-	CreateJob(spec string) (*Job, error)
+	CreateJob(spec JobSpec) (*Job, error)
+	CreateJobRaw(spec string) (*Job, error)
 	ReadJobs() (*ResponseSlice, error)
 	ReadJob(id string) (*Response, error)
 	DeleteJob(id string) error
@@ -97,11 +98,25 @@ func ConnectToTemplateNodes() ([]Chainlink, error) {
 }
 
 // CreateJob creates a Chainlink job based on the provided spec string
-func (c *chainlink) CreateJob(spec string) (*Job, error) {
+func (c *chainlink) CreateJobRaw(spec string) (*Job, error) {
 	job := &Job{}
 	log.Info().Str("Node URL", c.Config.URL).Msg("Creating Job")
 	_, err := c.do(http.MethodPost, "/v2/jobs", &JobForm{
 		TOML: spec,
+	}, &job, http.StatusOK)
+	return job, err
+}
+
+// CreateJob creates a Chainlink job based on the provided spec struct
+func (c *chainlink) CreateJob(spec JobSpec) (*Job, error) {
+	job := &Job{}
+	specString, err := spec.String()
+	if err != nil {
+		return nil, err
+	}
+	log.Info().Str("Node URL", c.Config.URL).Msg("Creating Job")
+	_, err = c.do(http.MethodPost, "/v2/jobs", &JobForm{
+		TOML: specString,
 	}, &job, http.StatusOK)
 	return job, err
 }

@@ -2,9 +2,7 @@
 package contracts
 
 import (
-	"bytes"
 	"context"
-	"html/template"
 	"math/big"
 	"time"
 
@@ -80,76 +78,6 @@ type OffChainAggregatorConfig struct {
 	F                int           // The allowed number of "bad" oracles
 	N                int           // The number of oracles
 	OracleIdentities []ocrConfigHelper.OracleIdentityExtra
-}
-
-type OffChainAggregatorSpec struct {
-	ContractAddress    string // Address of the OCR contract
-	P2PId              string // This node's P2P ID
-	BootstrapP2PId     string // The P2P ID of the bootstrap node
-	KeyBundleId        string // ID of the ETH key bundle of this chainlink node
-	TransmitterAddress string // Primary ETH address of this chainlink node
-}
-
-type OffChainAggregatorBootstrapSpec struct {
-	ContractAddress string // Address of the OCR contract
-	P2PId           string // This node's P2P ID
-}
-
-func TemplatizeOCRJobSpec(spec OffChainAggregatorSpec) (string, error) {
-	ocrJobSpecTemplateString := `type = "offchainreporting"
-schemaVersion = 1
-contractAddress = "{{.ContractAddress}}"
-p2pPeerID = "{{.P2PId}}"
-p2pBootstrapPeers = [
-		"/dns4/chainlink-node-1/tcp/6690/p2p/{{.BootstrapP2PId}}"  
-]
-isBootstrapPeer = false
-keyBundleID = "{{.KeyBundleId}}"
-monitoringEndpoint = "chain.link:4321"
-transmitterAddress = "{{.TransmitterAddress}}"
-observationTimeout = "10s"
-blockchainTimeout  = "20s"
-contractConfigTrackerSubscribeInterval = "2m"
-contractConfigTrackerPollInterval = "1m"
-contractConfigConfirmations = 3
-observationSource = """
-	fetch    [type=http method=POST url="http://host.docker.internal:6644/five" requestData="{}"];
-	parse    [type=jsonparse path="data,result"];    
-	fetch -> parse;
-	"""`
-	var buf bytes.Buffer
-	tmpl, err := template.New("OCR Job Spec Template").Parse(ocrJobSpecTemplateString)
-	if err != nil {
-		return "", err
-	}
-	err = tmpl.Execute(&buf, spec)
-	if err != nil {
-		return "", err
-	}
-	return buf.String(), err
-}
-
-func TemplatizeOCRBootsrapSpec(spec OffChainAggregatorBootstrapSpec) (string, error) {
-	ocrBootstrapSpecTemplateString := `blockchainTimeout = "20s"
-contractAddress = "{{.ContractAddress}}"
-contractConfigConfirmations = 3
-contractConfigTrackerPollInterval = "1m"
-contractConfigTrackerSubscribeInterval = "2m"
-isBootstrapPeer = true
-p2pBootstrapPeers = []
-p2pPeerID = "{{.P2PId}}"
-schemaVersion = 1
-type = "offchainreporting"`
-	var buf bytes.Buffer
-	tmpl, err := template.New("OCR Bootstrap Spec Template").Parse(ocrBootstrapSpecTemplateString)
-	if err != nil {
-		return "", err
-	}
-	err = tmpl.Execute(&buf, spec)
-	if err != nil {
-		return "", err
-	}
-	return buf.String(), err
 }
 
 type OffchainAggregatorData struct {
