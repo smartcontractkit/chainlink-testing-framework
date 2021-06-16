@@ -5,9 +5,10 @@ import (
 	"bytes"
 	"context"
 	"html/template"
-	"integrations-framework/client"
 	"math/big"
 	"time"
+
+	"github.com/smartcontractkit/integrations-framework/client"
 
 	"github.com/ethereum/go-ethereum/common"
 	ocrConfigHelper "github.com/smartcontractkit/libocr/offchainreporting/confighelper"
