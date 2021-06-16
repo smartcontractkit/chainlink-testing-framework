@@ -3,9 +3,10 @@ package client
 import (
 	"context"
 	"fmt"
-	ethContracts "integrations-framework/contracts/ethereum"
 	"math/big"
 	"time"
+
+	ethContracts "github.com/smartcontractkit/integrations-framework/contracts/ethereum"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"

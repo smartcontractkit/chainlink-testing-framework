@@ -2,10 +2,11 @@ package contracts
 
 import (
 	"errors"
-	"integrations-framework/client"
-	"integrations-framework/contracts/ethereum"
 	"math/big"
 	"time"
+
+	"github.com/smartcontractkit/integrations-framework/client"
+	"github.com/smartcontractkit/integrations-framework/contracts/ethereum"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"

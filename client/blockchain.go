@@ -4,9 +4,10 @@ package client
 import (
 	"errors"
 	"fmt"
-	"integrations-framework/config"
 	"math/big"
 	"strings"
+
+	"github.com/smartcontractkit/integrations-framework/config"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"

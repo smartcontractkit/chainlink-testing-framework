@@ -1,4 +1,4 @@
-module integrations-framework
+module github.com/smartcontractkit/integrations-framework
 
 go 1.16
 

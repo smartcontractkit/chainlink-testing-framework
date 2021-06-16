@@ -2,11 +2,12 @@ package contracts
 
 import (
 	"context"
-	"integrations-framework/client"
-	"integrations-framework/config"
-	"integrations-framework/tools"
 	"math/big"
 	"time"
+
+	"github.com/smartcontractkit/integrations-framework/client"
+	"github.com/smartcontractkit/integrations-framework/config"
+	"github.com/smartcontractkit/integrations-framework/tools"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
@@ -59,7 +60,6 @@ var _ = Describe("Chainlink Node", func() {
 		}
 
 		// Deploy and config OCR contract
-		Expect(err).ShouldNot(HaveOccurred())
 		ocrInstance, err := contractDeployer.DeployOffChainAggregator(wallets.Default(), ocrOptions)
 		Expect(err).ShouldNot(HaveOccurred())
 		err = ocrInstance.SetConfig(wallets.Default(), chainlinkNodes, DefaultOffChainAggregatorConfig())

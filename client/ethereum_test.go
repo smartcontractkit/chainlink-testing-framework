@@ -1,8 +1,9 @@
 package client
 
 import (
-	"integrations-framework/config"
 	"math/big"
+
+	"github.com/smartcontractkit/integrations-framework/config"
 
 	"github.com/ethereum/go-ethereum/common"
 

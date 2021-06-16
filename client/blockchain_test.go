@@ -1,7 +1,7 @@
 package client
 
 import (
-	"integrations-framework/config"
+	"github.com/smartcontractkit/integrations-framework/config"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
