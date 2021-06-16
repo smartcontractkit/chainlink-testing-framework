@@ -59,7 +59,6 @@ var _ = Describe("Chainlink Node", func() {
 		}
 
 		// Deploy and config OCR contract
-		Expect(err).ShouldNot(HaveOccurred())
 		ocrInstance, err := contractDeployer.DeployOffChainAggregator(wallets.Default(), ocrOptions)
 		Expect(err).ShouldNot(HaveOccurred())
 		err = ocrInstance.SetConfig(wallets.Default(), chainlinkNodes, DefaultOffChainAggregatorConfig())
