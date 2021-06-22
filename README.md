@@ -19,6 +19,7 @@ breaking.
  [your own local version](https://hardhat.org/hardhat-network/), if you are so inclined.
 2. Start few local chainlink nodes, utilizing our `docker-compose` setup
    [here](https://github.com/smartcontractkit/chainlink-node-compose)
+   (set your Docker-Preferences->Resourses->RAM to 6Gb min)
 3. Run `go test ./...`
 
 ## Example Usage
