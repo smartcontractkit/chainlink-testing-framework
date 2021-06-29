@@ -25,6 +25,9 @@ type DefaultSuiteSetup struct {
 
 func DefaultSetup(initFunc client.BlockchainNetworkInit) (*DefaultSuiteSetup, error) {
 	conf, err := config.NewWithPath(config.LocalConfig, "../config")
+	if err != nil {
+		return nil, err
+	}
 	networkConfig, err := initFunc(conf)
 	if err != nil {
 		return nil, err
@@ -70,23 +73,24 @@ var _ = Describe("Flux aggregator suite", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// Update funds
-		err = fluxInstance.UpdateAvailableFunds(nil, s.Wallets.Default())
+		err = fluxInstance.UpdateAvailableFunds(context.Background(), s.Wallets.Default())
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// check funds updated
-		payment, err := fluxInstance.PaymentAmount(nil)
+		payment, err := fluxInstance.PaymentAmount(context.Background())
 		Expect(err).ShouldNot(HaveOccurred())
 		log.Info().Int("payment", int(payment.Int64())).Msg("payment amount")
 
-		avFunds, err := fluxInstance.AvailableFunds(nil)
+		avFunds, err := fluxInstance.AvailableFunds(context.Background())
 		Expect(err).ShouldNot(HaveOccurred())
 		log.Info().Int("available funds", int(avFunds.Int64())).Msg("funds")
 
-		alFunds, err := fluxInstance.AllocatedFunds(nil)
+		alFunds, err := fluxInstance.AllocatedFunds(context.Background())
 		Expect(err).ShouldNot(HaveOccurred())
 		log.Info().Int("allocated funds", int(alFunds.Int64())).Msg("funds")
 
 		clNodes, addrs, err := client.ConnectToTemplateNodes()
+		Expect(err).ShouldNot(HaveOccurred())
 		err = client.FundTemplateNodes(s.Client, s.Wallets, clNodes, 2e18, 2e18)
 		Expect(err).ShouldNot(HaveOccurred())
 
@@ -100,7 +104,9 @@ var _ = Describe("Flux aggregator suite", func() {
 				MaxSubmissions:     3,
 				RestartDelayRounds: 0,
 			})
-		oracles, err := fluxInstance.GetOracles(nil)
+		Expect(err).ShouldNot(HaveOccurred())
+		oracles, err := fluxInstance.GetOracles(context.Background())
+		Expect(err).ShouldNot(HaveOccurred())
 		oraclesString := strings.Join(oracles, ",")
 		log.Info().Str("Oracles", oraclesString).Msg("oracles set")
 
@@ -111,7 +117,7 @@ var _ = Describe("Flux aggregator suite", func() {
 
 		go tools.NewExternalAdapter("6644")
 		time.Sleep(2 * time.Second)
-		_, err = tools.SetVariableMockData(0.05)
+		_, _ = tools.SetVariableMockData(0.05)
 
 		// Send Flux job to other nodes
 		for index := 0; index < 3; index++ {
@@ -140,7 +146,7 @@ var _ = Describe("Flux aggregator suite", func() {
 		}
 		time.Sleep(30 * time.Second)
 
-		r2, err := fluxInstance.LatestRound(nil)
+		r2, err := fluxInstance.LatestRound(context.Background())
 		Expect(err).ShouldNot(HaveOccurred())
 		log.Info().Str("round_id", r2.String()).Msg("latest round")
 
