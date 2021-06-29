@@ -3,13 +3,20 @@ package tools
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/phayes/freeport"
 	"math/rand"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/rs/zerolog/log"
 )
+
+type ExternalAdapter struct {
+	LocalAddr        string
+	InsideDockerAddr string
+}
 
 type ExternalAdapterResponse struct {
 	JobRunId string              `json:"id"`
@@ -25,17 +32,34 @@ type OkResult struct{}
 
 var variableData int
 
-// NewExternalAdapter starts an external adapter on specified port
-func NewExternalAdapter(portNumber string) {
-	router := httprouter.New()
-	router.GET("/", index)
-	router.POST("/random", randomNumber)
-	router.POST("/five", five)
-	router.POST("/variable", variable)
-	router.POST("/set_variable", setVariable)
+func FreePort() string {
+	port, err := freeport.GetFreePort()
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to acquire free port")
+	}
+	return strconv.Itoa(port)
+}
 
-	log.Info().Str("Port", portNumber).Msg("Starting external adapter")
-	log.Fatal().AnErr("Error", http.ListenAndServe(":"+portNumber, router)).Msg("Error occured while running external adapter")
+// NewExternalAdapter starts an external adapter on specified port
+func NewExternalAdapter() ExternalAdapter {
+	p := FreePort()
+	// TODO: graceful is needed for some cases and nightly
+	go func() {
+		router := httprouter.New()
+		router.GET("/", index)
+		router.POST("/random", randomNumber)
+		router.POST("/five", five)
+		router.POST("/variable", variable)
+		router.POST("/set_variable", setVariable)
+
+		log.Info().Str("Port", p).Msg("Starting external adapter")
+		log.Fatal().AnErr("Error", http.ListenAndServe(":"+p, router)).Msg("Error occured while running external adapter")
+	}()
+	time.Sleep(1 * time.Second)
+	return ExternalAdapter{
+		LocalAddr:        fmt.Sprintf("http://0.0.0.0:%s", p),
+		InsideDockerAddr: fmt.Sprintf("http://host.docker.internal:%s", p),
+	}
 }
 
 func SetVariableMockData(url string, data int) (*http.Response, error) {

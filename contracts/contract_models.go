@@ -30,12 +30,12 @@ type FluxAggregatorData struct {
 }
 
 type SetOraclesOptions struct {
-	AddList            []common.Address
-	RemoveList         []common.Address
-	AdminList          []common.Address
-	MinSubmissions     uint32
-	MaxSubmissions     uint32
-	RestartDelayRounds uint32
+	AddList            []common.Address // oracle addresses to add
+	RemoveList         []common.Address // oracle addresses to remove
+	AdminList          []common.Address // oracle addresses to become admin
+	MinSubmissions     uint32           // min amount of submissions in round
+	MaxSubmissions     uint32           // max amount of submissions in round
+	RestartDelayRounds uint32           // rounds to wait after oracles has changed
 }
 
 type FluxAggregator interface {

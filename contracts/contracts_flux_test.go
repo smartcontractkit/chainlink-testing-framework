@@ -66,9 +66,7 @@ var _ = Describe("Flux monitor suite", func() {
 		log.Info().Str("Oracles", oraclesString).Msg("oracles set")
 
 		// set variable adapter
-		localAdapterUrl := "http://0.0.0.0:6645"
-		go tools.NewExternalAdapter("6645")
-		time.Sleep(1 * time.Second)
+		adapter := tools.NewExternalAdapter()
 
 		// Send Flux job to chainlink nodes
 		for index := 0; index < 3; index++ {
@@ -77,14 +75,14 @@ var _ = Describe("Flux monitor suite", func() {
 				ContractAddress:   fluxInstance.Address(),
 				PollTimerPeriod:   15 * time.Second, // min 15s
 				PollTimerDisabled: false,
-				ObservationSource: ObservationSourceSpec("http://host.docker.internal:6645/variable"),
+				ObservationSource: ObservationSourceSpec(adapter.InsideDockerAddr + "/variable"),
 			}
 			_, err = clNodes[index].CreateJob(fluxSpec)
 			Expect(err).ShouldNot(HaveOccurred())
 		}
 		time.Sleep(5 * time.Second)
 		// first change
-		_, _ = tools.SetVariableMockData(localAdapterUrl, 5)
+		_, _ = tools.SetVariableMockData(adapter.LocalAddr, 5)
 		time.Sleep(20 * time.Second)
 		{
 			data, err := fluxInstance.GetContractData(context.Background())
@@ -98,7 +96,7 @@ var _ = Describe("Flux monitor suite", func() {
 			Expect(data.AllocatedFunds.Int64()).Should(Equal(int64(3)))
 		}
 		// second change + 20%
-		_, _ = tools.SetVariableMockData(localAdapterUrl, 6)
+		_, _ = tools.SetVariableMockData(adapter.LocalAddr, 6)
 		time.Sleep(20 * time.Second)
 		{
 			data, err := fluxInstance.GetContractData(context.Background())

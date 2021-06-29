@@ -27,7 +27,13 @@ breaking.
    docker compose up
    ```
    clean db with `docker compose down` if needed
-3. Run `go test ./...`
+3. Run `make install-deps`
+4. Run some test mode
+    ```
+    make test
+    make test_race
+    make test_nightly
+    ```
 
 ## Example Usage
 

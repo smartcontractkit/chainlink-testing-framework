@@ -68,7 +68,7 @@ var _ = Describe("Chainlink Node", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// Create external adapter, returns 5 every time
-		go tools.NewExternalAdapter("6644")
+		adapter := tools.NewExternalAdapter()
 
 		// Initialize bootstrap node
 		bootstrapNode := chainlinkNodes[0]
@@ -101,7 +101,7 @@ var _ = Describe("Chainlink Node", func() {
 				P2PBootstrapPeers:  []string{bootstrapP2PId},
 				KeyBundleID:        nodeOCRKeyId,
 				TransmitterAddress: nodeTransmitterAddress,
-				ObservationSource:  ObservationSourceSpec("http://host.docker.internal:6644/five"),
+				ObservationSource:  ObservationSourceSpec(adapter.InsideDockerAddr + "/five"),
 			}
 			_, err = chainlinkNodes[index].CreateJob(ocrSpec)
 			Expect(err).ShouldNot(HaveOccurred())
