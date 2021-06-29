@@ -220,7 +220,7 @@ name              = "{{.Name}}"
 contractAddress   = "{{.ContractAddress}}"
 precision         ={{if not .Precision}} 0 {{else}} {{.Precision}} {{end}}
 threshold         ={{if not .Threshold}} 0.5 {{else}} {{.Threshold}} {{end}}
-absoluteThreshold ={{if not .AbsoluteThreshold}} 0.0 {{else}} {{.AbsoluteThreshold}} {{end}}
+absoluteThreshold ={{if not .AbsoluteThreshold}} 0.1 {{else}} {{.AbsoluteThreshold}} {{end}}
 
 idleTimerPeriod   ={{if not .IdleTimerPeriod}} "1s" {{else}} "{{.IdleTimerPeriod}}" {{end}}
 idleTimerDisabled ={{if not .IdleTimerDisabled}} false {{else}} {{.IdleTimerDisabled}} {{end}}

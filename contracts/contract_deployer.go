@@ -55,8 +55,8 @@ func DefaultFluxAggregatorOptions() FluxAggregatorOptions {
 	return FluxAggregatorOptions{
 		PaymentAmount: big.NewInt(1),
 		Timeout:       uint32(30),
-		MinSubValue:   big.NewInt(4),
-		MaxSubValue:   big.NewInt(6),
+		MinSubValue:   big.NewInt(3),
+		MaxSubValue:   big.NewInt(7),
 		Decimals:      uint8(0),
 		Description:   "Hardhat Flux Aggregator",
 	}
