@@ -208,6 +208,7 @@ type FluxMonitorJobSpec struct {
 	IdleTimerDisabled bool          `toml:"idleTimerDisabled"` // Optional
 	PollTimerPeriod   time.Duration `toml:"pollTimerPeriod"`   // Optional
 	PollTimerDisabled bool          `toml:"pollTimerDisabled"` // Optional
+	MaxTaskDuration   time.Duration `toml:"maxTaskDuration"`   // Optional
 	ObservationSource string        `toml:"observationSource"` // List of commands for the chainlink node
 }
 
@@ -226,6 +227,8 @@ idleTimerDisabled ={{if not .IdleTimerDisabled}} false {{else}} {{.IdleTimerDisa
 
 pollTimerPeriod   ={{if not .PollTimerPeriod}} "1m" {{else}} "{{.PollTimerPeriod}}" {{end}}
 pollTimerDisabled ={{if not .PollTimerDisabled}} false {{else}} {{.PollTimerDisabled}} {{end}}
+
+maxTaskDuration = {{if not .Precision}} "0s" {{else}} {{.Precision}} {{end}}
 
 observationSource = """
 {{.ObservationSource}}

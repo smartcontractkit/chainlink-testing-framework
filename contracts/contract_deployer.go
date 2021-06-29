@@ -54,7 +54,7 @@ func NewEthereumContractDeployer(ethClient *client.EthereumClient) *EthereumCont
 func DefaultFluxAggregatorOptions() FluxAggregatorOptions {
 	return FluxAggregatorOptions{
 		PaymentAmount: big.NewInt(1),
-		Timeout:       uint32(5),
+		Timeout:       uint32(60),
 		MinSubValue:   big.NewInt(1),
 		MaxSubValue:   big.NewInt(10),
 		Decimals:      uint8(8),

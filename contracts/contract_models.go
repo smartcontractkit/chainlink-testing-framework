@@ -29,19 +29,29 @@ type FluxAggregatorData struct {
 	Oracles         []common.Address // Addresses of oracles on the contract
 }
 
+type SetOraclesOptions struct {
+	AddList            []common.Address
+	RemoveList         []common.Address
+	AdminList          []common.Address
+	MinSubmissions     uint32
+	MaxSubmissions     uint32
+	RestartDelayRounds uint32
+}
+
 type FluxAggregator interface {
+	Address() string
 	Fund(fromWallet client.BlockchainWallet, ethAmount *big.Int, linkAmount *big.Int) error
+	LatestRound(ctx context.Context) (*big.Int, error)
 	GetContractData(ctxt context.Context) (*FluxAggregatorData, error)
-	SetOracles(
-		client.BlockchainWallet,
-		[]common.Address,
-		[]common.Address,
-		[]common.Address,
-		uint32,
-		uint32,
-		uint32,
-	) error
+	AvailableFunds(ctx context.Context) (*big.Int, error)
+	AllocatedFunds(ctx context.Context) (*big.Int, error)
+	UpdateAvailableFunds(ctx context.Context, fromWallet client.BlockchainWallet) error
+	PaymentAmount(ctx context.Context) (*big.Int, error)
+	RequestNewRound(ctx context.Context, fromWallet client.BlockchainWallet) error
+	GetOracles(ctx context.Context) ([]string, error)
+	SetOracles(client.BlockchainWallet, SetOraclesOptions) error
 	Description(ctxt context.Context) (string, error)
+	SetRequesterPermissions(ctx context.Context, fromWallet client.BlockchainWallet, addr common.Address, authorized bool, roundsDelay uint32) error
 }
 
 type LinkToken interface {

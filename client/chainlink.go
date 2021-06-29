@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
 	"io/ioutil"
+	"math/big"
 	"net/http"
 	"strings"
 
@@ -62,9 +64,29 @@ func NewChainlink(c *ChainlinkConfig, httpClient *http.Client) (Chainlink, error
 	return cl, cl.SetSessionCookie()
 }
 
+func FundTemplateNodes(blockchainClient BlockchainClient, wallets BlockchainWallets, nodes []Chainlink, ethAmount int64, linkAmount int64) error {
+	for _, node := range nodes {
+		nodeEthKeys, err := node.ReadETHKeys()
+		if err != nil {
+			return err
+		}
+		primaryEthKey := nodeEthKeys.Data[0]
+
+		err = blockchainClient.Fund(
+			wallets.Default(),
+			primaryEthKey.Attributes.Address,
+			big.NewInt(ethAmount), big.NewInt(linkAmount),
+		)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // ConnectToTemplateNodes assumes that 5 template nodes are running locally, check out a quick setup for that here:
 // https://github.com/smartcontractkit/chainlink-node-compose
-func ConnectToTemplateNodes() ([]Chainlink, error) {
+func ConnectToTemplateNodes() ([]Chainlink, []common.Address, error) {
 	urlBase := "http://localhost:"
 	ports := []string{"6711", "6722", "6733", "6744", "6755"}
 	// Checks if those nodes are actually up and healthy
@@ -72,12 +94,13 @@ func ConnectToTemplateNodes() ([]Chainlink, error) {
 		_, err := http.Get(urlBase + port)
 		if err != nil {
 			log.Err(err).Str("URL", urlBase+port).Msg("Chainlink node unhealthy / not up. Make sure nodes are already up")
-			return nil, err
+			return nil, nil, err
 		}
 		log.Info().Str("URL", urlBase+port).Msg("Chainlink Node Healthy")
 	}
 
 	var cls []Chainlink
+	var clsAddresses []common.Address
 	for _, port := range ports {
 		c := &ChainlinkConfig{
 			URL:      urlBase + port,
@@ -86,15 +109,19 @@ func ConnectToTemplateNodes() ([]Chainlink, error) {
 		}
 		cl, err := NewChainlink(c, http.DefaultClient)
 		if err != nil {
-			return nil, err
-		}
-		if _, err := cl.ReadETHKeys(); err != nil {
-			log.Err(err).Str("Node URL", urlBase+port).Msg("Issue establishing connection to node")
+			return nil, nil, err
 		}
 		cls = append(cls, cl)
+		nodeEthKeys, err := cl.ReadETHKeys()
+		if err != nil {
+			log.Err(err).Str("Node URL", urlBase+port).Msg("Issue establishing connection to node")
+		}
+		primaryEthKey := nodeEthKeys.Data[0]
+		ethAddress := primaryEthKey.Attributes.Address
+		clsAddresses = append(clsAddresses, common.HexToAddress(ethAddress))
 	}
 
-	return cls, nil
+	return cls, clsAddresses, nil
 }
 
 // CreateJob creates a Chainlink job based on the provided spec string

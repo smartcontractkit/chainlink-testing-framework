@@ -41,7 +41,7 @@ var _ = Describe("Chainlink Node", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// Connect to running chainlink nodes
-		chainlinkNodes, err := client.ConnectToTemplateNodes()
+		chainlinkNodes, _, err := client.ConnectToTemplateNodes()
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(len(chainlinkNodes)).To(Equal(5))
 		// Fund each chainlink node

@@ -23,9 +23,124 @@ type EthereumFluxAggregator struct {
 	address        *common.Address
 }
 
+func (f *EthereumFluxAggregator) Address() string {
+	return f.address.Hex()
+}
+
 // Fund sends specified currencies to the contract
 func (f *EthereumFluxAggregator) Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Int) error {
 	return f.client.Fund(fromWallet, f.address.Hex(), ethAmount, linkAmount)
+}
+
+func (f *EthereumFluxAggregator) AvailableFunds(ctx context.Context) (*big.Int, error) {
+	opts := &bind.CallOpts{
+		From:    common.HexToAddress(f.callerWallet.Address()),
+		Pending: true,
+		Context: ctx,
+	}
+	funds, err := f.fluxAggregator.AvailableFunds(opts)
+	if err != nil {
+		return nil, err
+	}
+	return funds, nil
+}
+
+func (f *EthereumFluxAggregator) UpdateAvailableFunds(ctx context.Context, fromWallet client.BlockchainWallet) error {
+	opts, err := f.client.TransactionOpts(fromWallet, *f.address, big.NewInt(0), nil)
+	if err != nil {
+		return err
+	}
+	tx, err := f.fluxAggregator.UpdateAvailableFunds(opts)
+	if err != nil {
+		return err
+	}
+	if err := f.client.WaitForTransaction(tx.Hash()); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (f *EthereumFluxAggregator) AllocatedFunds(ctx context.Context) (*big.Int, error) {
+	opts := &bind.CallOpts{
+		From:    common.HexToAddress(f.callerWallet.Address()),
+		Pending: true,
+		Context: ctx,
+	}
+	funds, err := f.fluxAggregator.AllocatedFunds(opts)
+	if err != nil {
+		return nil, err
+	}
+	return funds, nil
+}
+
+func (f *EthereumFluxAggregator) PaymentAmount(ctx context.Context) (*big.Int, error) {
+	opts := &bind.CallOpts{
+		From:    common.HexToAddress(f.callerWallet.Address()),
+		Pending: true,
+		Context: ctx,
+	}
+	payment, err := f.fluxAggregator.PaymentAmount(opts)
+	if err != nil {
+		return nil, err
+	}
+	return payment, nil
+}
+
+func (f *EthereumFluxAggregator) RequestNewRound(ctx context.Context, fromWallet client.BlockchainWallet) error {
+	opts, err := f.client.TransactionOpts(fromWallet, *f.address, big.NewInt(0), nil)
+	if err != nil {
+		return err
+	}
+	tx, err := f.fluxAggregator.RequestNewRound(opts)
+	if err != nil {
+		return err
+	}
+	if err := f.client.WaitForTransaction(tx.Hash()); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (f *EthereumFluxAggregator) SetRequesterPermissions(ctx context.Context, fromWallet client.BlockchainWallet, addr common.Address, authorized bool, roundsDelay uint32) error {
+	opts, err := f.client.TransactionOpts(fromWallet, *f.address, big.NewInt(0), nil)
+	if err != nil {
+		return err
+	}
+	tx, err := f.fluxAggregator.SetRequesterPermissions(opts, addr, authorized, roundsDelay)
+	if err != nil {
+		return err
+	}
+	return f.client.WaitForTransaction(tx.Hash())
+}
+
+func (f *EthereumFluxAggregator) GetOracles(ctx context.Context) ([]string, error) {
+	opts := &bind.CallOpts{
+		From:    common.HexToAddress(f.callerWallet.Address()),
+		Pending: true,
+		Context: ctx,
+	}
+	addresses, err := f.fluxAggregator.GetOracles(opts)
+	if err != nil {
+		return nil, err
+	}
+	var oracleAddrs []string
+	for _, o := range addresses {
+		oracleAddrs = append(oracleAddrs, o.Hex())
+	}
+	return oracleAddrs, nil
+}
+
+func (f *EthereumFluxAggregator) LatestRound(ctx context.Context) (*big.Int, error) {
+	opts := &bind.CallOpts{
+		From:    common.HexToAddress(f.callerWallet.Address()),
+		Pending: true,
+		Context: ctx,
+	}
+	rID, err := f.fluxAggregator.LatestRound(opts)
+	if err != nil {
+		return nil, err
+	}
+	return rID, nil
 }
 
 // GetContractData retrieves basic data for the flux aggregator contract
@@ -68,14 +183,13 @@ func (f *EthereumFluxAggregator) GetContractData(ctxt context.Context) (*FluxAgg
 // SetOracles allows the ability to add and/or remove oracles from the contract, and to set admins
 func (f *EthereumFluxAggregator) SetOracles(
 	fromWallet client.BlockchainWallet,
-	toAdd, toRemove, toAdmin []common.Address,
-	minSubmissions, maxSubmissions, restartDelay uint32) error {
+	o SetOraclesOptions) error {
 	opts, err := f.client.TransactionOpts(fromWallet, *f.address, big.NewInt(0), nil)
 	if err != nil {
 		return err
 	}
 
-	tx, err := f.fluxAggregator.ChangeOracles(opts, toRemove, toAdd, toAdmin, minSubmissions, maxSubmissions, restartDelay)
+	tx, err := f.fluxAggregator.ChangeOracles(opts, o.RemoveList, o.AddList, o.AdminList, o.MinSubmissions, o.MaxSubmissions, o.RestartDelayRounds)
 	if err != nil {
 		return err
 	}
