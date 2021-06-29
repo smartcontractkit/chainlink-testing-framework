@@ -218,7 +218,7 @@ func (f *FluxMonitorJobSpec) String() (string, error) {
 schemaVersion     = 1
 name              = "{{.Name}}"
 contractAddress   = "{{.ContractAddress}}"
-precision         ={{if not .Precision}} 2 {{else}} {{.Precision}} {{end}}
+precision         ={{if not .Precision}} 0 {{else}} {{.Precision}} {{end}}
 threshold         ={{if not .Threshold}} 0.5 {{else}} {{.Threshold}} {{end}}
 absoluteThreshold ={{if not .AbsoluteThreshold}} 0.0 {{else}} {{.AbsoluteThreshold}} {{end}}
 
@@ -228,7 +228,7 @@ idleTimerDisabled ={{if not .IdleTimerDisabled}} false {{else}} {{.IdleTimerDisa
 pollTimerPeriod   ={{if not .PollTimerPeriod}} "1m" {{else}} "{{.PollTimerPeriod}}" {{end}}
 pollTimerDisabled ={{if not .PollTimerDisabled}} false {{else}} {{.PollTimerDisabled}} {{end}}
 
-maxTaskDuration = {{if not .Precision}} "0s" {{else}} {{.Precision}} {{end}}
+maxTaskDuration = {{if not .Precision}} "60s" {{else}} {{.Precision}} {{end}}
 
 observationSource = """
 {{.ObservationSource}}

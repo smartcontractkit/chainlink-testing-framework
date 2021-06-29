@@ -97,11 +97,11 @@ var _ = Describe("Flux aggregator suite", func() {
 		// set oracles and submissions
 		err = fluxInstance.SetOracles(s.Wallets.Default(),
 			SetOraclesOptions{
-				AddList:            addrs[:3],
+				AddList:            addrs[:2],
 				RemoveList:         []common.Address{},
-				AdminList:          addrs[:3],
-				MinSubmissions:     3,
-				MaxSubmissions:     3,
+				AdminList:          addrs[:2],
+				MinSubmissions:     2,
+				MaxSubmissions:     2,
 				RestartDelayRounds: 0,
 			})
 		Expect(err).ShouldNot(HaveOccurred())
@@ -110,17 +110,17 @@ var _ = Describe("Flux aggregator suite", func() {
 		oraclesString := strings.Join(oracles, ",")
 		log.Info().Str("Oracles", oraclesString).Msg("oracles set")
 
-		//err = fluxInstance.SetRequesterPermissions(nil, s.Wallets.Default(), common.HexToAddress(s.Wallets.Default().Address()), true, 0)
-		//Expect(err).ShouldNot(HaveOccurred())
-		//err = fluxInstance.RequestNewRound(nil, s.Wallets.Default())
-		//Expect(err).ShouldNot(HaveOccurred())
+		err = fluxInstance.SetRequesterPermissions(nil, s.Wallets.Default(), common.HexToAddress(s.Wallets.Default().Address()), true, 0)
+		Expect(err).ShouldNot(HaveOccurred())
+		err = fluxInstance.RequestNewRound(nil, s.Wallets.Default())
+		Expect(err).ShouldNot(HaveOccurred())
 
-		go tools.NewExternalAdapter("6644")
-		time.Sleep(2 * time.Second)
-		_, _ = tools.SetVariableMockData(0.05)
+		go tools.NewExternalAdapter("6645")
+		time.Sleep(1 * time.Second)
+		_, _ = tools.SetVariableMockData("http://0.0.0.0:6645", 5)
 
 		// Send Flux job to other nodes
-		for index := 0; index < 3; index++ {
+		for index := 0; index < 2; index++ {
 			// TODO: also try with a bridge source
 			//bridgeName := fmt.Sprintf("flux-bridge-%d", index)
 			//err = clNodes[index].CreateBridge(&client.BridgeTypeAttributes{
@@ -128,17 +128,14 @@ var _ = Describe("Flux aggregator suite", func() {
 			//	URL:  "http://host.docker.internal:6644/five",
 			//})
 			//Expect(err).ShouldNot(HaveOccurred())
-			observationSource := `fetch    [type=http method=POST url="http://host.docker.internal:6644/variable" requestData="{}"];
+			observationSource := `fetch    [type=http method=POST url="http://host.docker.internal:6645/variable" requestData="{}"];
 			parse    [type=jsonparse path="data,result"];
 			fetch -> parse;`
 			fluxSpec := &client.FluxMonitorJobSpec{
 				Name:              "flux_monitor",
 				ContractAddress:   fluxInstance.Address(),
-				IdleTimerPeriod:   5 * time.Second,
-				IdleTimerDisabled: false,
 				PollTimerPeriod:   15 * time.Second, // min 15s
 				PollTimerDisabled: false,
-				AbsoluteThreshold: float32(0.1),
 				ObservationSource: observationSource,
 			}
 			_, err = clNodes[index].CreateJob(fluxSpec)
