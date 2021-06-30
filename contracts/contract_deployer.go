@@ -135,12 +135,12 @@ func DefaultOffChainAggregatorOptions() OffchainOptions {
 func DefaultOffChainAggregatorConfig() OffChainAggregatorConfig {
 	return OffChainAggregatorConfig{
 		AlphaPPB:         1,
-		DeltaC:           time.Second * 15,
+		DeltaC:           time.Minute * 10,
 		DeltaGrace:       time.Second,
 		DeltaProgress:    time.Second * 30,
-		DeltaStage:       time.Second * 3,
-		DeltaResend:      time.Second * 5,
-		DeltaRound:       time.Second * 10,
+		DeltaStage:       time.Second * 10,
+		DeltaResend:      time.Second * 10,
+		DeltaRound:       time.Second * 20,
 		RMax:             4,
 		S:                []int{1, 1, 1, 1, 1},
 		N:                5,
