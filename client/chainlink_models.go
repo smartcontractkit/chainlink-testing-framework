@@ -222,7 +222,7 @@ precision         ={{if not .Precision}} 0 {{else}} {{.Precision}} {{end}}
 threshold         ={{if not .Threshold}} 0.5 {{else}} {{.Threshold}} {{end}}
 absoluteThreshold ={{if not .AbsoluteThreshold}} 0.1 {{else}} {{.AbsoluteThreshold}} {{end}}
 
-idleTimerPeriod   ={{if not .IdleTimerPeriod}} "1s" {{else}} "{{.IdleTimerPeriod}}" {{end}}
+idleTimerPeriod   ={{if not .IdleTimerPeriod}} "10s" {{else}} "{{.IdleTimerPeriod}}" {{end}}
 idleTimerDisabled ={{if not .IdleTimerDisabled}} false {{else}} {{.IdleTimerDisabled}} {{end}}
 
 pollTimerPeriod   ={{if not .PollTimerPeriod}} "1m" {{else}} "{{.PollTimerPeriod}}" {{end}}

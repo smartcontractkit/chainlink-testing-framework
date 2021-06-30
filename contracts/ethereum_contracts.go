@@ -143,12 +143,17 @@ func (f *EthereumFluxAggregator) LatestRound(ctx context.Context) (*big.Int, err
 	return rID, nil
 }
 
-func (f *EthereumFluxAggregator) WithdrawPayment(ctx context.Context, fromWallet client.BlockchainWallet, to common.Address, amount *big.Int) error {
-	opts, err := f.client.TransactionOpts(fromWallet, *f.address, big.NewInt(0), nil)
+func (f *EthereumFluxAggregator) WithdrawPayment(
+	ctx context.Context,
+	caller client.BlockchainWallet,
+	from common.Address,
+	to common.Address,
+	amount *big.Int) error {
+	opts, err := f.client.TransactionOpts(caller, *f.address, big.NewInt(0), nil)
 	if err != nil {
 		return err
 	}
-	tx, err := f.fluxAggregator.WithdrawPayment(opts, common.HexToAddress(fromWallet.Address()), to, amount)
+	tx, err := f.fluxAggregator.WithdrawPayment(opts, from, to, amount)
 	if err != nil {
 		return err
 	}

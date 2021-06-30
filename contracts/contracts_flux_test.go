@@ -51,6 +51,7 @@ var _ = Describe("Flux monitor suite", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// set oracles and submissions
+		//oracleAdmins := append(oraclesAtTest, common.HexToAddress(s.Wallets.Default().Address()))
 		err = fluxInstance.SetOracles(s.Wallets.Default(),
 			SetOraclesOptions{
 				AddList:            oraclesAtTest,
@@ -70,7 +71,7 @@ var _ = Describe("Flux monitor suite", func() {
 		adapter := tools.NewExternalAdapter()
 
 		// Send Flux job to chainlink nodes
-		for index := 0; index < 3; index++ {
+		for _, n := range clNodes {
 			fluxSpec := &client.FluxMonitorJobSpec{
 				Name:              "flux_monitor",
 				ContractAddress:   fluxInstance.Address(),
@@ -78,7 +79,7 @@ var _ = Describe("Flux monitor suite", func() {
 				PollTimerDisabled: false,
 				ObservationSource: ObservationSourceSpec(adapter.InsideDockerAddr + "/variable"),
 			}
-			_, err = clNodes[index].CreateJob(fluxSpec)
+			_, err = n.CreateJob(fluxSpec)
 			Expect(err).ShouldNot(HaveOccurred())
 		}
 		time.Sleep(5 * time.Second)
