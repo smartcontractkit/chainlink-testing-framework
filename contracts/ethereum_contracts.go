@@ -143,6 +143,31 @@ func (f *EthereumFluxAggregator) LatestRound(ctx context.Context) (*big.Int, err
 	return rID, nil
 }
 
+func (f *EthereumFluxAggregator) WithdrawPayment(ctx context.Context, fromWallet client.BlockchainWallet, to common.Address, amount *big.Int) error {
+	opts, err := f.client.TransactionOpts(fromWallet, *f.address, big.NewInt(0), nil)
+	if err != nil {
+		return err
+	}
+	tx, err := f.fluxAggregator.WithdrawPayment(opts, common.HexToAddress(fromWallet.Address()), to, amount)
+	if err != nil {
+		return err
+	}
+	return f.client.WaitForTransaction(tx.Hash())
+}
+
+func (f *EthereumFluxAggregator) WithdrawablePayment(ctx context.Context, addr common.Address) (*big.Int, error) {
+	opts := &bind.CallOpts{
+		From:    common.HexToAddress(f.callerWallet.Address()),
+		Pending: true,
+		Context: ctx,
+	}
+	balance, err := f.fluxAggregator.WithdrawablePayment(opts, addr)
+	if err != nil {
+		return nil, err
+	}
+	return balance, nil
+}
+
 // GetContractData retrieves basic data for the flux aggregator contract
 func (f *EthereumFluxAggregator) GetContractData(ctxt context.Context) (*FluxAggregatorData, error) {
 	opts := &bind.CallOpts{
@@ -217,6 +242,19 @@ type EthereumLinkToken struct {
 // Fund the LINK Token contract with ETH to distribute the token
 func (l *EthereumLinkToken) Fund(fromWallet client.BlockchainWallet, ethAmount *big.Int) error {
 	return l.client.Fund(fromWallet, l.address.Hex(), ethAmount, nil)
+}
+
+func (l *EthereumLinkToken) BalanceOf(ctx context.Context, addr common.Address) (*big.Int, error) {
+	opts := &bind.CallOpts{
+		From:    common.HexToAddress(l.callerWallet.Address()),
+		Pending: true,
+		Context: ctx,
+	}
+	balance, err := l.linkToken.BalanceOf(opts, addr)
+	if err != nil {
+		return nil, err
+	}
+	return balance, nil
 }
 
 // Name returns the name of the link token

@@ -48,6 +48,8 @@ type FluxAggregator interface {
 	UpdateAvailableFunds(ctx context.Context, fromWallet client.BlockchainWallet) error
 	PaymentAmount(ctx context.Context) (*big.Int, error)
 	RequestNewRound(ctx context.Context, fromWallet client.BlockchainWallet) error
+	WithdrawPayment(ctx context.Context, fromWallet client.BlockchainWallet, to common.Address, amount *big.Int) error
+	WithdrawablePayment(ctx context.Context, addr common.Address) (*big.Int, error)
 	GetOracles(ctx context.Context) ([]string, error)
 	SetOracles(client.BlockchainWallet, SetOraclesOptions) error
 	Description(ctxt context.Context) (string, error)
@@ -56,6 +58,7 @@ type FluxAggregator interface {
 
 type LinkToken interface {
 	Address() string
+	BalanceOf(ctx context.Context, addr common.Address) (*big.Int, error)
 	Fund(fromWallet client.BlockchainWallet, ethAmount *big.Int) error
 	Name(context.Context) (string, error)
 }

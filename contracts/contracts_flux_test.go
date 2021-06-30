@@ -44,17 +44,18 @@ var _ = Describe("Flux monitor suite", func() {
 		log.Info().Int("allocated funds", int(alFunds.Int64())).Msg("funds")
 
 		// get nodes and their addresses
-		clNodes, addrs, err := client.ConnectToTemplateNodes()
+		clNodes, nodeAddrs, err := client.ConnectToTemplateNodes()
+		oraclesAtTest := nodeAddrs[:3]
 		Expect(err).ShouldNot(HaveOccurred())
-		err = client.FundTemplateNodes(s.Client, s.Wallets, clNodes, 2e18, 2e18)
+		err = client.FundTemplateNodes(s.Client, s.Wallets, clNodes, 2e18, 0)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// set oracles and submissions
 		err = fluxInstance.SetOracles(s.Wallets.Default(),
 			SetOraclesOptions{
-				AddList:            addrs[:3],
+				AddList:            oraclesAtTest,
 				RemoveList:         []common.Address{},
-				AdminList:          addrs[:3],
+				AdminList:          oraclesAtTest,
 				MinSubmissions:     3,
 				MaxSubmissions:     3,
 				RestartDelayRounds: 0,
@@ -108,6 +109,11 @@ var _ = Describe("Flux monitor suite", func() {
 			Expect(data.AvailableFunds.Int64()).Should(Equal(int64(999999999999999994)))
 			Expect(data.AllocatedFunds.Int64()).Should(Equal(int64(6)))
 			log.Info().Interface("data", data).Msg("round data")
+		}
+		// check available payments for oracles
+		for _, oracleAddr := range oraclesAtTest {
+			payment, _ := fluxInstance.WithdrawablePayment(context.Background(), oracleAddr)
+			Expect(payment.Int64()).Should(Equal(int64(2)))
 		}
 	},
 		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, DefaultFluxAggregatorOptions()),
