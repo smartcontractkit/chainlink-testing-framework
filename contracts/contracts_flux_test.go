@@ -28,20 +28,8 @@ var _ = Describe("Flux monitor suite", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		err = fluxInstance.Fund(s.Wallets.Default(), big.NewInt(0), big.NewInt(1e18))
 		Expect(err).ShouldNot(HaveOccurred())
-
-		// Update funds
 		err = fluxInstance.UpdateAvailableFunds(context.Background(), s.Wallets.Default())
 		Expect(err).ShouldNot(HaveOccurred())
-
-		// check funds updated, no allocations, all available
-		avFunds, err := fluxInstance.AvailableFunds(context.Background())
-		Expect(err).ShouldNot(HaveOccurred())
-		Expect(avFunds.Int64()).Should(Equal(int64(1e18)))
-		log.Info().Int("available funds", int(avFunds.Int64())).Msg("funds")
-		alFunds, err := fluxInstance.AllocatedFunds(context.Background())
-		Expect(err).ShouldNot(HaveOccurred())
-		Expect(alFunds.Int64()).Should(Equal(int64(0)))
-		log.Info().Int("allocated funds", int(alFunds.Int64())).Msg("funds")
 
 		// get nodes and their addresses
 		clNodes, nodeAddrs, err := client.ConnectToTemplateNodes()
@@ -64,8 +52,7 @@ var _ = Describe("Flux monitor suite", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		oracles, err := fluxInstance.GetOracles(context.Background())
 		Expect(err).ShouldNot(HaveOccurred())
-		oraclesString := strings.Join(oracles, ",")
-		log.Info().Str("Oracles", oraclesString).Msg("oracles set")
+		log.Info().Str("Oracles", strings.Join(oracles, ",")).Msg("oracles set")
 
 		// set variable adapter
 		adapter := tools.NewExternalAdapter()

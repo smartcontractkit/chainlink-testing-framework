@@ -28,12 +28,15 @@ breaking.
    ```
    clean db with `docker compose down` if needed
 3. Run `make install-deps`
-4. Run some test mode
+4. Run a test mode
     ```
     make test
     make test_race
     make test_nightly
     ```
+   test_race - race detector on, no parallel
+   
+   test_nightly - run tests 20 times in a row, no parallel
 
 ## Example Usage
 
