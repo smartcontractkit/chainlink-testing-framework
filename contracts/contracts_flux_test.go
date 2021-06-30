@@ -34,12 +34,12 @@ var _ = Describe("Flux monitor suite", func() {
 		// get nodes and their addresses
 		clNodes, nodeAddrs, err := client.ConnectToTemplateNodes()
 		oraclesAtTest := nodeAddrs[:3]
+		clNodesAtTest := clNodes[:3]
 		Expect(err).ShouldNot(HaveOccurred())
 		err = client.FundTemplateNodes(s.Client, s.Wallets, clNodes, 2e18, 0)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// set oracles and submissions
-		//oracleAdmins := append(oraclesAtTest, common.HexToAddress(s.Wallets.Default().Address()))
 		err = fluxInstance.SetOracles(s.Wallets.Default(),
 			SetOraclesOptions{
 				AddList:            oraclesAtTest,
@@ -58,7 +58,7 @@ var _ = Describe("Flux monitor suite", func() {
 		adapter := tools.NewExternalAdapter()
 
 		// Send Flux job to chainlink nodes
-		for _, n := range clNodes {
+		for _, n := range clNodesAtTest {
 			fluxSpec := &client.FluxMonitorJobSpec{
 				Name:              "flux_monitor",
 				ContractAddress:   fluxInstance.Address(),
