@@ -4,17 +4,15 @@ import (
 	"context"
 	"encoding/hex"
 	"github.com/avast/retry-go"
-	"github.com/pkg/errors"
-	"math/big"
-
-	"github.com/smartcontractkit/integrations-framework/client"
-	"github.com/smartcontractkit/integrations-framework/contracts/ethereum"
-
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+	"github.com/smartcontractkit/integrations-framework/client"
+	"github.com/smartcontractkit/integrations-framework/contracts/ethereum"
 	ocrConfigHelper "github.com/smartcontractkit/libocr/offchainreporting/confighelper"
 	ocrTypes "github.com/smartcontractkit/libocr/offchainreporting/types"
+	"math/big"
 )
 
 // EthereumFluxAggregator represents the basic flux aggregation contract
@@ -119,8 +117,53 @@ func (f *EthereumFluxAggregator) LatestRound(ctx context.Context) (*big.Int, err
 	return rID, nil
 }
 
-// AwaitNextRound awaits for the next round to happen, see config.yaml for default values
-func (f *EthereumFluxAggregator) AwaitNextRound(ctx context.Context) error {
+// AwaitNewRoundEvent awaits for the next round to happen
+func (f *EthereumFluxAggregator) AwaitNewRoundEvent(ctx context.Context, id *big.Int, startedBy []common.Address) error {
+	// ############# sink
+	//sink := make(chan *ethereum.FluxAggregatorNewRound)
+	//_, err := f.fluxAggregator.WatchNewRound(nil, sink, []*big.Int{id}, startedBy)
+	//if err != nil {
+	//	return err
+	//}
+	//newRound := <-sink
+	//log.Info().Int64("round", newRound.RoundId.Int64()).Msg("new round have started")
+
+	// ############ iter
+	//it, err := f.fluxAggregator.FilterNewRound(&bind.FilterOpts{
+	//	Context: ctx,
+	//}, []*big.Int{id}, []common.Address{common.HexToAddress(f.Address())})
+	//if err != nil {
+	//	return err
+	//}
+	//for !it.Next() {
+	//	time.Sleep(1*time.Second)
+	//	log.Info().Msg("awaiting new round")
+	//}
+	//log.Info().Int64("round", it.Event.RoundId.Int64()).Msg("new round have started")
+
+	// ######### all events
+	//myAddr := common.HexToAddress(f.Address())
+	//query := orig_ethereum.FilterQuery{
+	//	Addresses: []common.Address{myAddr},
+	//}
+	//
+	//logs := make(chan types.Log)
+	//sub, err := f.client.Client.SubscribeFilterLogs(context.Background(), query, logs)
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//for {
+	//	select {
+	//	case err := <-sub.Err():
+	//		log.Err(err).Msg("subscription error")
+	//	case vLog := <-logs:
+	//		log.Info().Interface("event", vLog).Msg("event received")
+	//		return nil
+	//	}
+	//}
+
+	/// ###### poll
 	lr, err := f.LatestRound(ctx)
 	if err != nil {
 		return err

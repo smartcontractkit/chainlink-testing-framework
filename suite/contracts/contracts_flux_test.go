@@ -17,7 +17,7 @@ import (
 )
 
 var _ = Describe("Flux monitor suite", func() {
-	DescribeTable("Answering to deviation in rounds", func(
+	FDescribeTable("Answering to deviation in rounds", func(
 		initFunc client.BlockchainNetworkInit,
 		fluxOptions contracts.FluxAggregatorOptions,
 	) {
@@ -72,7 +72,7 @@ var _ = Describe("Flux monitor suite", func() {
 		}
 		// first change
 		_, _ = tools.SetVariableMockData(adapter.LocalAddr, 5)
-		err = fluxInstance.AwaitNextRound(context.Background())
+		err = fluxInstance.AwaitNewRoundEvent(context.Background(), big.NewInt(1), nodeAddrs)
 		Expect(err).ShouldNot(HaveOccurred())
 		{
 			data, err := fluxInstance.GetContractData(context.Background())
@@ -87,7 +87,7 @@ var _ = Describe("Flux monitor suite", func() {
 		}
 		// second change + 20%
 		_, _ = tools.SetVariableMockData(adapter.LocalAddr, 6)
-		err = fluxInstance.AwaitNextRound(context.Background())
+		err = fluxInstance.AwaitNewRoundEvent(context.Background(), big.NewInt(2), nodeAddrs)
 		Expect(err).ShouldNot(HaveOccurred())
 		{
 			data, err := fluxInstance.GetContractData(context.Background())
