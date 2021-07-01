@@ -1,4 +1,4 @@
-package contracts_test
+package suite_test
 
 import (
 	"os"

@@ -2,6 +2,7 @@ package client
 
 import (
 	"bytes"
+	"fmt"
 	"text/template"
 	"time"
 )
@@ -143,7 +144,7 @@ type JobData struct {
 // JobSpec represents the different possible job types that chainlink nodes can handle
 type JobSpec interface {
 	Type() string
-	// Returns TOML representation of the job
+	// String Returns TOML representation of the job
 	String() (string, error)
 }
 
@@ -262,7 +263,7 @@ type OCRBootstrapJobSpec struct {
 	TrackerPollInterval      time.Duration `toml:"contractConfigTrackerPollInterval"`      // Optional
 	TrackerSubscribeInterval time.Duration `toml:"contractConfigTrackerSubscribeInterval"` // Optional
 	ContractAddress          string        `toml:"contractAddress"`                        // Address of the OCR contract
-	P2PBootstrapPeers        []string      `toml:"p2pBootstrapPeers"`                      // Typically empty for our tests
+	P2PBootstrapPeers        []string      `toml:"p2pBootstrapPeers"`                      // Typically empty for our suite
 	IsBootstrapPeer          bool          `toml:"isBootstrapPeer"`                        // Typically true
 	P2PPeerID                string        `toml:"p2pPeerID"`                              // This node's P2P ID
 }
@@ -368,4 +369,10 @@ observationSource = """
 {{.ObservationSource}}
 """`
 	return marshallTemplate(w, "Webhook Job", fluxMonitorTemplateString)
+}
+
+func ObservationSourceSpec(url string) string {
+	return fmt.Sprintf(`fetch    [type=http method=POST url="%s" requestData="{}"];
+			parse    [type=jsonparse path="data,result"];    
+			fetch -> parse;`, url)
 }

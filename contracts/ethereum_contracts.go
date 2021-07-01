@@ -3,6 +3,8 @@ package contracts
 import (
 	"context"
 	"encoding/hex"
+	"github.com/avast/retry-go"
+	"github.com/pkg/errors"
 	"math/big"
 
 	"github.com/smartcontractkit/integrations-framework/client"
@@ -32,19 +34,6 @@ func (f *EthereumFluxAggregator) Fund(fromWallet client.BlockchainWallet, ethAmo
 	return f.client.Fund(fromWallet, f.address.Hex(), ethAmount, linkAmount)
 }
 
-func (f *EthereumFluxAggregator) AvailableFunds(ctx context.Context) (*big.Int, error) {
-	opts := &bind.CallOpts{
-		From:    common.HexToAddress(f.callerWallet.Address()),
-		Pending: true,
-		Context: ctx,
-	}
-	funds, err := f.fluxAggregator.AvailableFunds(opts)
-	if err != nil {
-		return nil, err
-	}
-	return funds, nil
-}
-
 func (f *EthereumFluxAggregator) UpdateAvailableFunds(ctx context.Context, fromWallet client.BlockchainWallet) error {
 	opts, err := f.client.TransactionOpts(fromWallet, *f.address, big.NewInt(0), nil)
 	if err != nil {
@@ -58,19 +47,6 @@ func (f *EthereumFluxAggregator) UpdateAvailableFunds(ctx context.Context, fromW
 		return err
 	}
 	return nil
-}
-
-func (f *EthereumFluxAggregator) AllocatedFunds(ctx context.Context) (*big.Int, error) {
-	opts := &bind.CallOpts{
-		From:    common.HexToAddress(f.callerWallet.Address()),
-		Pending: true,
-		Context: ctx,
-	}
-	funds, err := f.fluxAggregator.AllocatedFunds(opts)
-	if err != nil {
-		return nil, err
-	}
-	return funds, nil
 }
 
 func (f *EthereumFluxAggregator) PaymentAmount(ctx context.Context) (*big.Int, error) {
@@ -141,6 +117,28 @@ func (f *EthereumFluxAggregator) LatestRound(ctx context.Context) (*big.Int, err
 		return nil, err
 	}
 	return rID, nil
+}
+
+// AwaitNextRound awaits for the next round to happen, see config.yaml for default values
+func (f *EthereumFluxAggregator) AwaitNextRound(ctx context.Context) error {
+	lr, err := f.LatestRound(ctx)
+	if err != nil {
+		return err
+	}
+	log.Info().Int64("round", lr.Int64()).Msg("awaiting next round after")
+	if err := retry.Do(func() error {
+		newRound, err := f.LatestRound(ctx)
+		if err != nil {
+			return errors.Wrap(err, "failed to get round in retry loop")
+		}
+		if newRound.Cmp(lr) <= 0 {
+			return errors.New("awaiting new round")
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (f *EthereumFluxAggregator) WithdrawPayment(

@@ -1,4 +1,4 @@
-package contracts
+package suite
 
 import (
 	"context"
@@ -8,6 +8,8 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/client"
+	"github.com/smartcontractkit/integrations-framework/contracts"
+	"github.com/smartcontractkit/integrations-framework/suite"
 	"github.com/smartcontractkit/integrations-framework/tools"
 	"math/big"
 	"strings"
@@ -17,10 +19,9 @@ import (
 var _ = Describe("Flux monitor suite", func() {
 	DescribeTable("Answering to deviation in rounds", func(
 		initFunc client.BlockchainNetworkInit,
-		fluxOptions FluxAggregatorOptions,
+		fluxOptions contracts.FluxAggregatorOptions,
 	) {
-		// Setup network and blockchainClient
-		s, err := DefaultLocalSetup(initFunc)
+		s, err := suite.DefaultLocalSetup(initFunc)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// Deploy FluxMonitor contract
@@ -32,16 +33,16 @@ var _ = Describe("Flux monitor suite", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// get nodes and their addresses
-		clNodes, nodeAddrs, err := client.ConnectToTemplateNodes()
+		clNodes, nodeAddrs, err := suite.ConnectToTemplateNodes()
 		oraclesAtTest := nodeAddrs[:3]
 		clNodesAtTest := clNodes[:3]
 		Expect(err).ShouldNot(HaveOccurred())
-		err = client.FundTemplateNodes(s.Client, s.Wallets, clNodes, 2e18, 0)
+		err = suite.FundTemplateNodes(s.Client, s.Wallets, clNodes, 2e18, 0)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// set oracles and submissions
 		err = fluxInstance.SetOracles(s.Wallets.Default(),
-			SetOraclesOptions{
+			contracts.SetOraclesOptions{
 				AddList:            oraclesAtTest,
 				RemoveList:         []common.Address{},
 				AdminList:          oraclesAtTest,
@@ -64,15 +65,15 @@ var _ = Describe("Flux monitor suite", func() {
 				ContractAddress:   fluxInstance.Address(),
 				PollTimerPeriod:   15 * time.Second, // min 15s
 				PollTimerDisabled: false,
-				ObservationSource: ObservationSourceSpec(adapter.InsideDockerAddr + "/variable"),
+				ObservationSource: client.ObservationSourceSpec(adapter.InsideDockerAddr + "/variable"),
 			}
 			_, err = n.CreateJob(fluxSpec)
 			Expect(err).ShouldNot(HaveOccurred())
 		}
-		time.Sleep(5 * time.Second)
 		// first change
 		_, _ = tools.SetVariableMockData(adapter.LocalAddr, 5)
-		time.Sleep(20 * time.Second)
+		err = fluxInstance.AwaitNextRound(context.Background())
+		Expect(err).ShouldNot(HaveOccurred())
 		{
 			data, err := fluxInstance.GetContractData(context.Background())
 			Expect(err).ShouldNot(HaveOccurred())
@@ -86,7 +87,8 @@ var _ = Describe("Flux monitor suite", func() {
 		}
 		// second change + 20%
 		_, _ = tools.SetVariableMockData(adapter.LocalAddr, 6)
-		time.Sleep(20 * time.Second)
+		err = fluxInstance.AwaitNextRound(context.Background())
+		Expect(err).ShouldNot(HaveOccurred())
 		{
 			data, err := fluxInstance.GetContractData(context.Background())
 			Expect(err).ShouldNot(HaveOccurred())
@@ -104,69 +106,69 @@ var _ = Describe("Flux monitor suite", func() {
 			Expect(payment.Int64()).Should(Equal(int64(2)))
 		}
 	},
-		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, DefaultFluxAggregatorOptions()),
+		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, contracts.DefaultFluxAggregatorOptions()),
 	)
 
 	DescribeTable("Check removing/adding oracles, check new rounds is correct", func(
 		initFunc client.BlockchainNetworkInit,
-		fluxOptions FluxAggregatorOptions,
+		fluxOptions contracts.FluxAggregatorOptions,
 	) {
 		// TODO
 	},
-		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, DefaultFluxAggregatorOptions()),
+		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, contracts.DefaultFluxAggregatorOptions()),
 	)
 
 	DescribeTable("Check oracle cooldown when add", func(
 		initFunc client.BlockchainNetworkInit,
-		fluxOptions FluxAggregatorOptions,
+		fluxOptions contracts.FluxAggregatorOptions,
 	) {
 		// TODO
 	},
-		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, DefaultFluxAggregatorOptions()),
+		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, contracts.DefaultFluxAggregatorOptions()),
 	)
 
 	DescribeTable("Adapter went offline, come online, round data received in suggested round", func(
 		initFunc client.BlockchainNetworkInit,
-		fluxOptions FluxAggregatorOptions,
+		fluxOptions contracts.FluxAggregatorOptions,
 	) {
 		// TODO
 	},
-		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, DefaultFluxAggregatorOptions()),
+		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, contracts.DefaultFluxAggregatorOptions()),
 	)
 
 	DescribeTable("Different sources, only one have flux", func(
 		initFunc client.BlockchainNetworkInit,
-		fluxOptions FluxAggregatorOptions,
+		fluxOptions contracts.FluxAggregatorOptions,
 	) {
 		// TODO
 	},
-		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, DefaultFluxAggregatorOptions()),
+		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, contracts.DefaultFluxAggregatorOptions()),
 	)
 
 	DescribeTable("Bridge source", func(
 		initFunc client.BlockchainNetworkInit,
-		fluxOptions FluxAggregatorOptions,
+		fluxOptions contracts.FluxAggregatorOptions,
 	) {
 		// TODO
 	},
-		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, DefaultFluxAggregatorOptions()),
+		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, contracts.DefaultFluxAggregatorOptions()),
 	)
 
 	DescribeTable("Check withdrawal with respect to RESERVE_ROUNDS", func(
 		initFunc client.BlockchainNetworkInit,
-		fluxOptions FluxAggregatorOptions,
+		fluxOptions contracts.FluxAggregatorOptions,
 	) {
 		// TODO
 	},
-		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, DefaultFluxAggregatorOptions()),
+		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, contracts.DefaultFluxAggregatorOptions()),
 	)
 
 	DescribeTable("Person other than oracles starting a round", func(
 		initFunc client.BlockchainNetworkInit,
-		fluxOptions FluxAggregatorOptions,
+		fluxOptions contracts.FluxAggregatorOptions,
 	) {
 		// TODO
 	},
-		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, DefaultFluxAggregatorOptions()),
+		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, contracts.DefaultFluxAggregatorOptions()),
 	)
 })
