@@ -51,3 +51,6 @@ networks:
         transaction_timeout: 5m
         minimum_confirmations: 1
         gas_estimation_buffer: 10000
+retry:
+    attempts: 20
+    linear_delay: 1s

@@ -3,16 +3,16 @@ package contracts
 import (
 	"context"
 	"encoding/hex"
-	"math/big"
-
-	"github.com/smartcontractkit/integrations-framework/client"
-	"github.com/smartcontractkit/integrations-framework/contracts/ethereum"
-
+	"github.com/avast/retry-go"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+	"github.com/smartcontractkit/integrations-framework/client"
+	"github.com/smartcontractkit/integrations-framework/contracts/ethereum"
 	ocrConfigHelper "github.com/smartcontractkit/libocr/offchainreporting/confighelper"
 	ocrTypes "github.com/smartcontractkit/libocr/offchainreporting/types"
+	"math/big"
 )
 
 // EthereumFluxAggregator represents the basic flux aggregation contract
@@ -23,9 +23,150 @@ type EthereumFluxAggregator struct {
 	address        *common.Address
 }
 
+func (f *EthereumFluxAggregator) Address() string {
+	return f.address.Hex()
+}
+
 // Fund sends specified currencies to the contract
 func (f *EthereumFluxAggregator) Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Int) error {
 	return f.client.Fund(fromWallet, f.address.Hex(), ethAmount, linkAmount)
+}
+
+func (f *EthereumFluxAggregator) UpdateAvailableFunds(ctx context.Context, fromWallet client.BlockchainWallet) error {
+	opts, err := f.client.TransactionOpts(fromWallet, *f.address, big.NewInt(0), nil)
+	if err != nil {
+		return err
+	}
+	tx, err := f.fluxAggregator.UpdateAvailableFunds(opts)
+	if err != nil {
+		return err
+	}
+	if err := f.client.WaitForTransaction(tx.Hash()); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (f *EthereumFluxAggregator) PaymentAmount(ctx context.Context) (*big.Int, error) {
+	opts := &bind.CallOpts{
+		From:    common.HexToAddress(f.callerWallet.Address()),
+		Pending: true,
+		Context: ctx,
+	}
+	payment, err := f.fluxAggregator.PaymentAmount(opts)
+	if err != nil {
+		return nil, err
+	}
+	return payment, nil
+}
+
+func (f *EthereumFluxAggregator) RequestNewRound(ctx context.Context, fromWallet client.BlockchainWallet) error {
+	opts, err := f.client.TransactionOpts(fromWallet, *f.address, big.NewInt(0), nil)
+	if err != nil {
+		return err
+	}
+	tx, err := f.fluxAggregator.RequestNewRound(opts)
+	if err != nil {
+		return err
+	}
+	if err := f.client.WaitForTransaction(tx.Hash()); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (f *EthereumFluxAggregator) SetRequesterPermissions(ctx context.Context, fromWallet client.BlockchainWallet, addr common.Address, authorized bool, roundsDelay uint32) error {
+	opts, err := f.client.TransactionOpts(fromWallet, *f.address, big.NewInt(0), nil)
+	if err != nil {
+		return err
+	}
+	tx, err := f.fluxAggregator.SetRequesterPermissions(opts, addr, authorized, roundsDelay)
+	if err != nil {
+		return err
+	}
+	return f.client.WaitForTransaction(tx.Hash())
+}
+
+func (f *EthereumFluxAggregator) GetOracles(ctx context.Context) ([]string, error) {
+	opts := &bind.CallOpts{
+		From:    common.HexToAddress(f.callerWallet.Address()),
+		Pending: true,
+		Context: ctx,
+	}
+	addresses, err := f.fluxAggregator.GetOracles(opts)
+	if err != nil {
+		return nil, err
+	}
+	var oracleAddrs []string
+	for _, o := range addresses {
+		oracleAddrs = append(oracleAddrs, o.Hex())
+	}
+	return oracleAddrs, nil
+}
+
+func (f *EthereumFluxAggregator) LatestRound(ctx context.Context) (*big.Int, error) {
+	opts := &bind.CallOpts{
+		From:    common.HexToAddress(f.callerWallet.Address()),
+		Pending: true,
+		Context: ctx,
+	}
+	rID, err := f.fluxAggregator.LatestRound(opts)
+	if err != nil {
+		return nil, err
+	}
+	return rID, nil
+}
+
+// AwaitNextRoundFinalized awaits for the next round to be finalized
+func (f *EthereumFluxAggregator) AwaitNextRoundFinalized(ctx context.Context) error {
+	lr, err := f.LatestRound(ctx)
+	if err != nil {
+		return err
+	}
+	log.Info().Int64("round", lr.Int64()).Msg("awaiting next round after")
+	if err := retry.Do(func() error {
+		newRound, err := f.LatestRound(ctx)
+		if err != nil {
+			return errors.Wrap(err, "failed to get round in retry loop")
+		}
+		if newRound.Cmp(lr) <= 0 {
+			return errors.New("awaiting new round")
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (f *EthereumFluxAggregator) WithdrawPayment(
+	ctx context.Context,
+	caller client.BlockchainWallet,
+	from common.Address,
+	to common.Address,
+	amount *big.Int) error {
+	opts, err := f.client.TransactionOpts(caller, *f.address, big.NewInt(0), nil)
+	if err != nil {
+		return err
+	}
+	tx, err := f.fluxAggregator.WithdrawPayment(opts, from, to, amount)
+	if err != nil {
+		return err
+	}
+	return f.client.WaitForTransaction(tx.Hash())
+}
+
+func (f *EthereumFluxAggregator) WithdrawablePayment(ctx context.Context, addr common.Address) (*big.Int, error) {
+	opts := &bind.CallOpts{
+		From:    common.HexToAddress(f.callerWallet.Address()),
+		Pending: true,
+		Context: ctx,
+	}
+	balance, err := f.fluxAggregator.WithdrawablePayment(opts, addr)
+	if err != nil {
+		return nil, err
+	}
+	return balance, nil
 }
 
 // GetContractData retrieves basic data for the flux aggregator contract
@@ -68,14 +209,13 @@ func (f *EthereumFluxAggregator) GetContractData(ctxt context.Context) (*FluxAgg
 // SetOracles allows the ability to add and/or remove oracles from the contract, and to set admins
 func (f *EthereumFluxAggregator) SetOracles(
 	fromWallet client.BlockchainWallet,
-	toAdd, toRemove, toAdmin []common.Address,
-	minSubmissions, maxSubmissions, restartDelay uint32) error {
+	o SetOraclesOptions) error {
 	opts, err := f.client.TransactionOpts(fromWallet, *f.address, big.NewInt(0), nil)
 	if err != nil {
 		return err
 	}
 
-	tx, err := f.fluxAggregator.ChangeOracles(opts, toRemove, toAdd, toAdmin, minSubmissions, maxSubmissions, restartDelay)
+	tx, err := f.fluxAggregator.ChangeOracles(opts, o.RemoveList, o.AddList, o.AdminList, o.MinSubmissions, o.MaxSubmissions, o.RestartDelayRounds)
 	if err != nil {
 		return err
 	}
@@ -103,6 +243,19 @@ type EthereumLinkToken struct {
 // Fund the LINK Token contract with ETH to distribute the token
 func (l *EthereumLinkToken) Fund(fromWallet client.BlockchainWallet, ethAmount *big.Int) error {
 	return l.client.Fund(fromWallet, l.address.Hex(), ethAmount, nil)
+}
+
+func (l *EthereumLinkToken) BalanceOf(ctx context.Context, addr common.Address) (*big.Int, error) {
+	opts := &bind.CallOpts{
+		From:    common.HexToAddress(l.callerWallet.Address()),
+		Pending: true,
+		Context: ctx,
+	}
+	balance, err := l.linkToken.BalanceOf(opts, addr)
+	if err != nil {
+		return nil, err
+	}
+	return balance, nil
 }
 
 // Name returns the name of the link token

@@ -20,6 +20,7 @@ const (
 // Config is the overall config for the framework, holding configurations for supported networks
 type Config struct {
 	Networks        map[string]*NetworkConfig `mapstructure:"networks" yaml:"networks"`
+	Retry           *RetryConfig              `mapstructure:"retry" yaml:"retry"`
 	DefaultKeyStore string
 }
 
@@ -116,4 +117,9 @@ func (s *SecretStore) Fetch() ([]string, error) {
 	// Fetch keys based on the networkName
 	// Return them
 	return []string{""}, nil
+}
+
+type RetryConfig struct {
+	Attempts    uint          `mapstructure:"attempts" yaml:"attempts"`
+	LinearDelay time.Duration `mapstructure:"linear_delay" yaml:"linear_delay"`
 }
