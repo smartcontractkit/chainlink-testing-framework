@@ -1,5 +1,4 @@
 # Retains default and configurable name-values for the integration framework
-# Names reference the blockchain that they store information for
 
 networks:
     ethereum_hardhat:
