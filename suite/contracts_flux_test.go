@@ -2,46 +2,78 @@ package suite
 
 import (
 	"context"
+	"github.com/smartcontractkit/integrations-framework/actions"
+	"math/big"
+	"strings"
+	"time"
+
 	"github.com/ethereum/go-ethereum/common"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/client"
+	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/contracts"
-	"github.com/smartcontractkit/integrations-framework/suite"
-	"github.com/smartcontractkit/integrations-framework/tools"
-	"math/big"
-	"strings"
-	"time"
+	"github.com/smartcontractkit/integrations-framework/environment"
 )
 
 var _ = Describe("Flux monitor suite", func() {
+	var conf *config.Config
+
+	BeforeEach(func() {
+		var err error
+		conf, err = config.NewWithPath(config.LocalConfig, "../config")
+		Expect(err).ShouldNot(HaveOccurred())
+	})
+
 	DescribeTable("Answering to deviation in rounds", func(
 		initFunc client.BlockchainNetworkInit,
 		fluxOptions contracts.FluxAggregatorOptions,
 	) {
-		s, err := suite.DefaultLocalSetup(initFunc)
+		network, err := initFunc(conf)
+		Expect(err).ShouldNot(HaveOccurred())
+		env, err := environment.NewK8sEnvironment(environment.NewChainlinkCluster("../", 5), conf, network)
+		Expect(err).ShouldNot(HaveOccurred())
+		defer env.TearDown()
+
+		chainlinkNodes, err := environment.GetChainlinkClients(env)
+		Expect(err).ShouldNot(HaveOccurred())
+		blockchain, err := environment.NewBlockchainClient(env, network)
+		Expect(err).ShouldNot(HaveOccurred())
+		wallets, err := network.Wallets()
+		Expect(err).ShouldNot(HaveOccurred())
+		adapter, err := environment.GetExternalAdapter(env)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// Deploy FluxMonitor contract
-		fluxInstance, err := s.Deployer.DeployFluxAggregatorContract(s.Wallets.Default(), fluxOptions)
+		deployer, err := contracts.NewContractDeployer(blockchain)
 		Expect(err).ShouldNot(HaveOccurred())
-		err = fluxInstance.Fund(s.Wallets.Default(), big.NewInt(0), big.NewInt(1e18))
+
+		fluxInstance, err := deployer.DeployFluxAggregatorContract(wallets.Default(), fluxOptions)
 		Expect(err).ShouldNot(HaveOccurred())
-		err = fluxInstance.UpdateAvailableFunds(context.Background(), s.Wallets.Default())
+		err = fluxInstance.Fund(wallets.Default(), big.NewInt(0), big.NewInt(1e18))
+		Expect(err).ShouldNot(HaveOccurred())
+		err = fluxInstance.UpdateAvailableFunds(context.Background(), wallets.Default())
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// get nodes and their addresses
-		clNodes, nodeAddrs, err := suite.ConnectToTemplateNodes()
-		oraclesAtTest := nodeAddrs[:3]
-		clNodesAtTest := clNodes[:3]
+		nodeAddrs, err := actions.ChainlinkNodeAddresses(chainlinkNodes)
 		Expect(err).ShouldNot(HaveOccurred())
-		err = suite.FundTemplateNodes(s.Client, s.Wallets, clNodes, 2e18, 0)
+		oraclesAtTest := nodeAddrs[:3]
+		clNodesAtTest := chainlinkNodes[:3]
+		Expect(err).ShouldNot(HaveOccurred())
+		err = actions.FundChainlinkNodes(
+			chainlinkNodes,
+			blockchain,
+			wallets.Default(),
+			big.NewInt(2e18),
+			nil,
+		)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// set oracles and submissions
-		err = fluxInstance.SetOracles(s.Wallets.Default(),
+		err = fluxInstance.SetOracles(wallets.Default(),
 			contracts.SetOraclesOptions{
 				AddList:            oraclesAtTest,
 				RemoveList:         []common.Address{},
@@ -53,33 +85,23 @@ var _ = Describe("Flux monitor suite", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		oracles, err := fluxInstance.GetOracles(context.Background())
 		Expect(err).ShouldNot(HaveOccurred())
-		log.Info().Str("Oracles", strings.Join(oracles, ",")).Msg("oracles set")
-
-		// set variable adapter
-		adapter := tools.NewExternalAdapter()
+		log.Info().Str("Oracles", strings.Join(oracles, ",")).Msg("Oracles set")
 
 		// Send Flux job to chainlink nodes
-		os := &client.PipelineSpec{
-			URL:         adapter.InsideDockerAddr + "/variable",
-			Method:      "POST",
-			RequestData: "{}",
-			DataPath:    "data,result",
-		}
-		ost, err := os.String()
-		Expect(err).ShouldNot(HaveOccurred())
 		for _, n := range clNodesAtTest {
 			fluxSpec := &client.FluxMonitorJobSpec{
 				Name:              "flux_monitor",
 				ContractAddress:   fluxInstance.Address(),
 				PollTimerPeriod:   15 * time.Second, // min 15s
 				PollTimerDisabled: false,
-				ObservationSource: ost,
+				ObservationSource: client.ObservationSourceSpec(adapter.ClusterURL() + "/variable"),
 			}
 			_, err = n.CreateJob(fluxSpec)
 			Expect(err).ShouldNot(HaveOccurred())
 		}
 		// first change
-		_, _ = tools.SetVariableMockData(adapter.LocalAddr, 5)
+		err = adapter.SetVariable(5)
+		Expect(err).ShouldNot(HaveOccurred())
 		err = fluxInstance.AwaitNextRoundFinalized(context.Background())
 		Expect(err).ShouldNot(HaveOccurred())
 		{
@@ -94,7 +116,8 @@ var _ = Describe("Flux monitor suite", func() {
 			Expect(data.AllocatedFunds.Int64()).Should(Equal(int64(3)))
 		}
 		// second change + 20%
-		_, _ = tools.SetVariableMockData(adapter.LocalAddr, 6)
+		err = adapter.SetVariable(6)
+		Expect(err).ShouldNot(HaveOccurred())
 		err = fluxInstance.AwaitNextRoundFinalized(context.Background())
 		Expect(err).ShouldNot(HaveOccurred())
 		{

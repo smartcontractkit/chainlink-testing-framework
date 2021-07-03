@@ -41,6 +41,7 @@ func NewBlockchainClient(network BlockchainNetwork) (BlockchainClient, error) {
 type BlockchainNetwork interface {
 	ID() BlockchainNetworkID
 	URL() string
+	SetURL(string)
 	ChainID() *big.Int
 	Wallets() (BlockchainWallets, error)
 	Config() *config.NetworkConfig
@@ -90,6 +91,11 @@ func (e *EthereumNetwork) ID() BlockchainNetworkID {
 // URL returns the RPC URL used for connecting to the network
 func (e *EthereumNetwork) URL() string {
 	return e.networkConfig.URL
+}
+
+// SetURL sets the RPC URL, useful for when blockchain URLs might be dynamic
+func (e *EthereumNetwork) SetURL(newURL string) {
+	e.networkConfig.URL = newURL
 }
 
 // ChainID returns the on-chain ID of the network being connected to

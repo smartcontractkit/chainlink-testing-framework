@@ -1,0 +1,11 @@
+objectmeta:
+  name: dummy-adapter
+spec:
+  ports:
+  - name: access
+    port: {{ .Values.chainlinkCluster.adapter.apiPort }}
+    targetport:
+      intval: {{ .Values.chainlinkCluster.adapter.apiPort }}
+  selector:
+    app: dummy-adapter
+  type: ClusterIP

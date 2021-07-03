@@ -1,0 +1,11 @@
+objectmeta:
+  name: hardhat-network
+spec:
+  ports:
+  - name: access
+    port: {{ .Values.hardhat.rpcPort }}
+    targetport:
+      intval: {{ .Values.hardhat.rpcPort }}
+  selector:
+    app: hardhat-network
+  type: ClusterIP
