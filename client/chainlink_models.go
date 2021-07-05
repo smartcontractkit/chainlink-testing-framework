@@ -24,6 +24,32 @@ type Response struct {
 	Data map[string]interface{}
 }
 
+// JobRunsResponse job runs
+type JobRunsResponse struct {
+	Data []RunsResponseData `json:"data"`
+	Meta RunsMetaResponse   `json:"meta"`
+}
+
+// RunsResponseData runs response data
+type RunsResponseData struct {
+	Type       string                 `json:"type"`
+	ID         string                 `json:"id"`
+	Attributes RunsAttributesResponse `json:"attributes"`
+}
+
+// RunsAttributesResponse runs attributes
+type RunsAttributesResponse struct {
+	Meta       interface{}   `json:"meta"`
+	Errors     []interface{} `json:"errors"`
+	CreatedAt  time.Time     `json:"createdAt"`
+	FinishedAt time.Time     `json:"finishedAt"`
+}
+
+// RunsMetaResponse runs meta
+type RunsMetaResponse struct {
+	Count int `json:"count"`
+}
+
 // BridgeType is the model that represents the bridge when read or created on a Chainlink node
 type BridgeType struct {
 	Data BridgeTypeData `json:"data"`
