@@ -29,7 +29,6 @@ var _ = Describe("Environment functionality", func() {
 
 		env, err := NewBasicEnvironment(envName, 1, networkConfig)
 		Expect(err).ShouldNot(HaveOccurred())
-
 		Expect(len(env.GetChainlinkNodes())).ShouldNot(Equal(0))
 
 		mainNode := env.GetChainlinkNodes()[0]
@@ -37,8 +36,8 @@ var _ = Describe("Environment functionality", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		log.Info().Str("ETH Address", keys.Data[0].Attributes.Address).Msg("Got address")
 
-		err = env.TearDown()
-		Expect(err).ShouldNot(HaveOccurred())
+		// err = env.TearDown()
+		// Expect(err).ShouldNot(HaveOccurred())
 	},
 		Entry("on Ethereum Hardhat", "basic-hardhat", client.NewHardhatNetwork),
 	)

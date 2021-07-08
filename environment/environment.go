@@ -36,10 +36,11 @@ type Environment interface {
 }
 
 type environment struct {
-	name           string
-	kubeClient     *kubernetes.Clientset
-	network        client.BlockchainNetwork
-	chainlinkNodes []client.Chainlink
+	name                  string
+	kubeClient            *kubernetes.Clientset
+	network               client.BlockchainNetwork
+	chainlinkNodes        []client.Chainlink
+	forwardedPortChannels []chan os.Signal
 }
 
 // NewBasicEnvironment launches a new environment of standard chainlink nodes connected to the specified network
@@ -79,8 +80,8 @@ func NewBasicEnvironment(environmentName string, nodeCount int, network client.B
 		if err != nil {
 			return nil, err
 		}
-		log.Info().Str("Internal IP", hardhatService.Spec.ClusterIP).Msg("Deployed Hardhat")
-		network.SetURL("ws://" + hardhatService.Spec.ClusterIP + ":8545")
+		log.Info().Msg("Deployed Hardhat")
+		network.SetURL("ws://" + hardhatService.Spec.ClusterIP + ":8545") // Intra-cluster IP for hardhat
 	}
 
 	env := &environment{
@@ -90,7 +91,6 @@ func NewBasicEnvironment(environmentName string, nodeCount int, network client.B
 		chainlinkNodes: []client.Chainlink{},
 	}
 
-	nodeServices := []*apiv1.Service{}
 	for i := 0; i < nodeCount; i++ {
 		deploymentSpec := newChainlinkDeployment(network, LatestChainlinkVersion)
 		nodeDeployment, err := deploymentsClient.Create(context.Background(), deploymentSpec, metav1.CreateOptions{})
@@ -99,15 +99,18 @@ func NewBasicEnvironment(environmentName string, nodeCount int, network client.B
 		}
 
 		serviceSpec := newChainlinkService(nodeDeployment.Name)
-		nodeService, err := servicesClient.Create(context.Background(), serviceSpec, metav1.CreateOptions{})
+		_, err = servicesClient.Create(context.Background(), serviceSpec, metav1.CreateOptions{})
 		if err != nil {
 			return nil, err
 		}
-		nodeServices = append(nodeServices, nodeService)
+		log.Info().Str("Name", nodeDeployment.Name).Msg("Deployed chainlink node")
 	}
 	// Wait for everything to be up and healthy
 	waitForHealthyPods(kubeClient, namespace.Name)
-	forwardedPorts, err := forwardPorts(namespace.Name)
+	forwardedPorts, hardhatPort, err := env.forwardPorts(namespace.Name)
+	if network.ID() == client.EthereumHardhatID { // URL to connect to hardhat from outside the cluster
+		network.SetURL("ws://127.0.0.1:" + hardhatPort)
+	}
 
 	for _, port := range forwardedPorts {
 		if err != nil {
@@ -136,6 +139,11 @@ func (env *environment) GetChainlinkNodes() []client.Chainlink {
 
 // TearDown calls delete on all the environment's resources
 func (env *environment) TearDown() error {
+	// Close all open forwarded ports
+	for _, sigChan := range env.forwardedPortChannels {
+		sigChan <- syscall.SIGTERM
+		close(sigChan)
+	}
 	err := env.kubeClient.CoreV1().Namespaces().Delete(context.Background(), env.name, metav1.DeleteOptions{})
 	log.Info().Str("Name", env.name).Msg("Deleted Environment")
 	return err
@@ -175,6 +183,16 @@ func newHardhat() (*appsv1.Deployment, *apiv1.Service) {
 									ContainerPort: 8545,
 								},
 							},
+							ReadinessProbe: &apiv1.Probe{
+								Handler: apiv1.Handler{
+									HTTPGet: &apiv1.HTTPGetAction{
+										Path: "/",
+										Port: intstr.FromInt(8545),
+									},
+								},
+								PeriodSeconds:       2,
+								InitialDelaySeconds: 3,
+							},
 						},
 					},
 				},
@@ -187,7 +205,7 @@ func newHardhat() (*appsv1.Deployment, *apiv1.Service) {
 			Name: "hardhat-network",
 		},
 		Spec: apiv1.ServiceSpec{
-			Type: apiv1.ServiceTypeLoadBalancer,
+			Type: apiv1.ServiceTypeClusterIP,
 			Selector: map[string]string{
 				"app": "hardhat-network",
 			},
@@ -209,6 +227,7 @@ func waitForHealthyPods(kubeClient *kubernetes.Clientset, namespace string) erro
 	start := time.Now()
 	log.Info().Str("Name", namespace).Msg("Waiting for environment to be healthy")
 	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
 	for {
 		select {
 		case <-ticker.C:
@@ -231,7 +250,7 @@ func waitForHealthyPods(kubeClient *kubernetes.Clientset, namespace string) erro
 			if healthyPodCount == len(pods.Items) {
 				log.Info().
 					Str("Name", namespace).
-					Str("Wait Length", time.Since(start).String()).
+					Str("Wait Length", time.Since(start).Round(time.Second).String()).
 					Msg("Environment healthy")
 				return nil
 			}
@@ -310,8 +329,8 @@ func newChainlinkDeployment(network client.BlockchainNetwork, chainlinkVersion s
 										Port: intstr.FromInt(6688),
 									},
 								},
-								PeriodSeconds:       15,
-								InitialDelaySeconds: 20,
+								PeriodSeconds:       2,
+								InitialDelaySeconds: 10,
 							},
 							VolumeMounts: []apiv1.VolumeMount{
 								{
@@ -355,8 +374,8 @@ func newChainlinkDeployment(network client.BlockchainNetwork, chainlinkVersion s
 										Command: []string{"pg_isready", "-U", "postgres"},
 									},
 								},
-								PeriodSeconds:       15,
-								InitialDelaySeconds: 20,
+								PeriodSeconds:       5,
+								InitialDelaySeconds: 10,
 							},
 						},
 					},
@@ -395,6 +414,7 @@ func chainlinkNodeSecret() *apiv1.Secret {
 		Data: map[string][]byte{
 			"apicredentials": []byte("notreal@fakeemail.ch\ntwochains"),
 			"node-password":  []byte("T.tLHkcmwePT/p,]sYuntjwHKAsrhm#4eRs4LuKHwvHejWYAC2JP4M8HimwgmbaZ"),
+			// This bit can probably be removed, waiting on full confirmation
 			"0xb90c7E3F7815F59EAD74e7543eB6D9E8538455D6.json": []byte(`{
 "address": "b90c7e3f7815f59ead74e7543eb6d9e8538455d6",
 "crypto": {
@@ -437,32 +457,30 @@ func kubeConfig() (*rest.Config, error) {
 	return kubeConfig.ClientConfig()
 }
 
-func forwardPorts(namespaceName string) ([]string, error) {
+// Forwards all ports needed to connect to the environment, along with the hardhat port
+func (env *environment) forwardPorts(namespaceName string) ([]string, string, error) {
 	kubeClient, err := kubeClient()
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	kubeConfig, err := kubeConfig()
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
-	// TODO: Figure out a way to do this for services, just keep getting weird errors otherwise
+	// TODO: Figure out a way to do this for services, the obvious way gives inscrutable errors
 	// https://gianarb.it/blog/programmatically-kube-port-forward-in-go
 	// https://github.com/gianarb/kube-port-forward/issues/3
 	podInterface := kubeClient.CoreV1().Pods(namespaceName)
 	podList, err := podInterface.List(context.Background(), metav1.ListOptions{})
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	log.Info().Msg("Forwarding Ports")
 	forwardedPorts := []string{}
+	hardhatPort := ""
 	for _, pod := range podList.Items {
-		if !strings.HasPrefix(pod.Name, "chainlink-node") {
-			continue // Skip for pods that aren't nodes
-		}
-
 		// stopCh control the port forwarding lifecycle. When it gets closed the
 		// port forward will terminate
 		stopCh := make(chan struct{}, 1)
@@ -473,11 +491,11 @@ func forwardPorts(namespaceName string) ([]string, error) {
 		// the output eventually
 		stream := genericclioptions.IOStreams{
 			In:     os.Stdin,
-			Out:    os.Stdout,
+			Out:    nil, // Changing this the os.Stdout can help with debugging
 			ErrOut: os.Stderr,
 		}
 		// receive the forwarded port when it is generated and ready
-		portCh := make(chan string)
+		portCh := make(chan string, 1)
 
 		// managing termination signal from the terminal. As you can see the stopCh
 		// gets closed to gracefully handle its termination.
@@ -487,35 +505,45 @@ func forwardPorts(namespaceName string) ([]string, error) {
 			<-sigs
 			close(stopCh)
 		}()
+		env.forwardedPortChannels = append(env.forwardedPortChannels, sigs)
 
 		go func() {
-			err := forwardPort(portForwardRequest{
+			err := env.forwardPort(portForwardRequest{
 				RestConfig: kubeConfig,
 				Pod:        pod,
-				PodPort:    6688,
 				Streams:    stream,
 				StopCh:     stopCh,
 				ReadyCh:    readyCh,
 				PortCh:     portCh,
 			})
 			if err != nil {
-				log.Err(err).Str("Pod", pod.Name).Msg("Error while forwarding port")
+				log.Err(err).Str("Pod", pod.Name).Msg("Error while forwarding port, tearing down env")
+				env.TearDown()
+				return
 			}
 		}()
 
 		select {
 		case forwardedPort := <-portCh:
-			forwardedPorts = append(forwardedPorts, forwardedPort)
+			if strings.HasPrefix(pod.Name, "hardhat-network") {
+				hardhatPort = forwardedPort
+			} else {
+				forwardedPorts = append(forwardedPorts, forwardedPort)
+			}
 			log.Info().Str("Pod", pod.Name).Str("Port", forwardedPort).Msg("Forwarded local port")
 			break
 		}
 	}
-	return forwardedPorts, err
+	return forwardedPorts, hardhatPort, err
 }
 
-func forwardPort(req portForwardRequest) error {
-	path := fmt.Sprintf("/api/v1/namespaces/%s/pods/%s/portforward",
-		req.Pod.Namespace, req.Pod.Name)
+// Starts a go routine needed to actively forward a port
+func (env *environment) forwardPort(req portForwardRequest) error {
+	portForwardRequest := []string{"0:6688"} // Default for chainlink nodes
+	if strings.HasPrefix(req.Pod.Name, "hardhat-network") {
+		portForwardRequest = []string{"0:8545"}
+	}
+	path := fmt.Sprintf("/api/v1/namespaces/%s/pods/%s/portforward", req.Pod.Namespace, req.Pod.Name)
 	hostIP := strings.TrimLeft(req.RestConfig.Host, "htps:/")
 
 	transport, upgrader, err := spdy.RoundTripperFor(req.RestConfig)
@@ -524,14 +552,16 @@ func forwardPort(req portForwardRequest) error {
 	}
 
 	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, http.MethodPost, &url.URL{Scheme: "https", Path: path, Host: hostIP})
-	fw, err := portforward.New(dialer, []string{fmt.Sprintf("0:%d", req.PodPort)}, req.StopCh, req.ReadyCh, req.Streams.Out, req.Streams.ErrOut)
+	fw, err := portforward.New(dialer, portForwardRequest, req.StopCh, req.ReadyCh, req.Streams.Out, req.Streams.ErrOut)
 	if err != nil {
 		return err
 	}
 	go func() {
 		err = fw.ForwardPorts()
 		if err != nil {
-			log.Err(err).Msg("Error while forwarding ports")
+			log.Err(err).Str("Pod", req.Pod.Name).Msg("Error while forwarding port, tearing down env")
+			env.TearDown()
+			return
 		}
 	}()
 	select {
@@ -551,8 +581,6 @@ type portForwardRequest struct {
 	RestConfig *rest.Config
 	// Pod is the selected pod for this port forwarding
 	Pod apiv1.Pod
-	// PodPort is the target port for the pod
-	PodPort int
 	// Steams configures where to write or read input from
 	Streams genericclioptions.IOStreams
 	// StopCh is the channel used to manage the port forward lifecycle

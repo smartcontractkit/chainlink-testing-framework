@@ -33,8 +33,11 @@ func (c *Config) GetNetworkConfig(name string) (*NetworkConfig, error) {
 
 // NetworkConfig holds the basic values that identify a blockchain network and contains private keys on the network
 type NetworkConfig struct {
-	Name                 string        `mapstructure:"name" yaml:"name"`
-	URL                  string        `mapstructure:"url" yaml:"url"`
+	Name string `mapstructure:"name" yaml:"name"`
+	URL  string `mapstructure:"url" yaml:"url"`
+	// InternalURL is used for when the blockchain is in an internal network, like a K8s deployment. If you're not using
+	// harhdat or deploying your own chain, you probably don't need to worry about this
+	InternalURL          string
 	ChainID              int64         `mapstructure:"chain_id" yaml:"chain_id"`
 	PrivateKeys          []string      `mapstructure:"private_keys" yaml:"private_keys"`
 	TransactionLimit     uint64        `mapstructure:"transaction_limit" yaml:"transaction_limit"`

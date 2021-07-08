@@ -5,14 +5,15 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/config"
+	"github.com/smartcontractkit/integrations-framework/environment"
 	"github.com/smartcontractkit/integrations-framework/tools"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
-	"github.com/rs/zerolog/log"
 )
 
 var _ = Describe("Chainlink Node", func() {
@@ -96,7 +97,7 @@ var _ = Describe("Chainlink Node", func() {
 			nodeOCRKeyId := nodeOCRKeys.Data[0].ID
 
 			observationSource := `fetch    [type=http method=POST url="http://host.docker.internal:6644/five" requestData="{}"];
-			parse    [type=jsonparse path="data,result"];    
+			parse    [type=jsonparse path="data,result"];
 			fetch -> parse;`
 			ocrSpec := &client.OCRTaskJobSpec{
 				ContractAddress:    ocrInstance.Address(),
@@ -155,8 +156,11 @@ var _ = Describe("Contracts", func() {
 		initFunc client.BlockchainNetworkInit,
 		value *big.Int,
 	) {
+
 		// Setup Network
 		networkConfig, err := initFunc(conf)
+		Expect(err).ShouldNot(HaveOccurred())
+		env, err := environment.NewBasicEnvironment("storage-contract", 0, networkConfig)
 		Expect(err).ShouldNot(HaveOccurred())
 		client, err := client.NewBlockchainClient(networkConfig)
 		Expect(err).ShouldNot(HaveOccurred())
@@ -173,6 +177,9 @@ var _ = Describe("Contracts", func() {
 		val, err := storeInstance.Get(context.Background())
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(val).To(Equal(value))
+
+		err = env.TearDown()
+		Expect(err).ShouldNot(HaveOccurred())
 	},
 		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, big.NewInt(5)),
 	)
@@ -183,6 +190,8 @@ var _ = Describe("Contracts", func() {
 	) {
 		// Setup network and client
 		networkConfig, err := initFunc(conf)
+		Expect(err).ShouldNot(HaveOccurred())
+		env, err := environment.NewBasicEnvironment("storage-contract", 0, networkConfig)
 		Expect(err).ShouldNot(HaveOccurred())
 		client, err := client.NewBlockchainClient(networkConfig)
 		Expect(err).ShouldNot(HaveOccurred())
@@ -208,6 +217,9 @@ var _ = Describe("Contracts", func() {
 		desc, err := fluxInstance.Description(context.Background())
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(desc).To(Equal(fluxOptions.Description))
+
+		err = env.TearDown()
+		Expect(err).ShouldNot(HaveOccurred())
 	},
 		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, DefaultFluxAggregatorOptions()),
 	)
@@ -218,6 +230,8 @@ var _ = Describe("Contracts", func() {
 	) {
 		// Setup network and client
 		networkConfig, err := initFunc(conf)
+		Expect(err).ShouldNot(HaveOccurred())
+		env, err := environment.NewBasicEnvironment("storage-contract", 0, networkConfig)
 		Expect(err).ShouldNot(HaveOccurred())
 		client, err := client.NewEthereumClient(networkConfig)
 		Expect(err).ShouldNot(HaveOccurred())
@@ -237,6 +251,9 @@ var _ = Describe("Contracts", func() {
 		offChainInstance, err := contractDeployer.DeployOffChainAggregator(wallets.Default(), ocrOptions)
 		Expect(err).ShouldNot(HaveOccurred())
 		err = offChainInstance.Fund(wallets.Default(), nil, big.NewInt(50000000000))
+		Expect(err).ShouldNot(HaveOccurred())
+
+		err = env.TearDown()
 		Expect(err).ShouldNot(HaveOccurred())
 	},
 		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, DefaultOffChainAggregatorOptions()),
