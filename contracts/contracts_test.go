@@ -32,6 +32,10 @@ var _ = Describe("Chainlink Node", func() {
 		// Setup
 		networkConfig, err := initFunc(conf)
 		Expect(err).ShouldNot(HaveOccurred())
+		environment, err := environment.NewBasicEnvironment("ocr-contract", 3, networkConfig)
+		Expect(err).ShouldNot(HaveOccurred())
+		chainlinkNodes := environment.ChainlinkNodes()
+		Expect(len(chainlinkNodes)).To(Equal(3))
 		blockchainClient, err := client.NewBlockchainClient(networkConfig)
 		Expect(err).ShouldNot(HaveOccurred())
 		contractDeployer, err := NewContractDeployer(blockchainClient)
@@ -41,10 +45,6 @@ var _ = Describe("Chainlink Node", func() {
 		_, err = contractDeployer.DeployLinkTokenContract(wallets.Default())
 		Expect(err).ShouldNot(HaveOccurred())
 
-		// Connect to running chainlink nodes
-		chainlinkNodes, err := client.ConnectToTemplateNodes()
-		Expect(err).ShouldNot(HaveOccurred())
-		Expect(len(chainlinkNodes)).To(Equal(5))
 		// Fund each chainlink node
 		for _, node := range chainlinkNodes {
 			nodeEthKeys, err := node.ReadETHKeys()
@@ -96,7 +96,7 @@ var _ = Describe("Chainlink Node", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			nodeOCRKeyId := nodeOCRKeys.Data[0].ID
 
-			observationSource := `fetch    [type=http method=POST url="http://host.docker.internal:6644/five" requestData="{}"];
+			observationSource := `fetch    [type=http method=POST url="http://localhost:6644/five" requestData="{}"];
 			parse    [type=jsonparse path="data,result"];
 			fetch -> parse;`
 			ocrSpec := &client.OCRTaskJobSpec{
@@ -138,6 +138,9 @@ var _ = Describe("Chainlink Node", func() {
 		log.Info().Str("Answer", answer.String()).Msg("Final Answer")
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(answer.Int64()).Should(Equal(int64(5)))
+
+		err = environment.TearDown()
+		Expect(err).ShouldNot(HaveOccurred())
 	},
 		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, DefaultOffChainAggregatorOptions()),
 	)

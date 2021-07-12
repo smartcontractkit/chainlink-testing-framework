@@ -19,6 +19,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/kubernetes"
+	kubeAppTypes "k8s.io/client-go/kubernetes/typed/apps/v1"
+	kubeCoreTypes "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/portforward"
@@ -28,22 +30,21 @@ import (
 const LatestChainlinkVersion string = "0.10.8"
 
 type Environment interface {
-	GetChainlinkNodes() []client.Chainlink
+	ChainlinkNodes() []client.Chainlink
 	TearDown() error
-
-	AddToEnv(nodeCount int) (client.Chainlink, error)
-	RemoveNode(client.Chainlink) error
 }
 
 type environment struct {
 	name                  string
 	kubeClient            *kubernetes.Clientset
+	deploymentsClient     kubeAppTypes.DeploymentInterface
+	servicesClient        kubeCoreTypes.ServiceInterface
 	network               client.BlockchainNetwork
 	chainlinkNodes        []client.Chainlink
 	forwardedPortChannels []chan os.Signal
 }
 
-// NewBasicEnvironment launches a new environment of standard chainlink nodes connected to the specified network
+// NewBasicEnvironment launches a new environment of latest version chainlink nodes, connected to the specified network
 func NewBasicEnvironment(environmentName string, nodeCount int, network client.BlockchainNetwork) (Environment, error) {
 	kubeClient, err := kubeClient()
 	if err != nil {
@@ -69,44 +70,36 @@ func NewBasicEnvironment(environmentName string, nodeCount int, network client.B
 	deploymentsClient := kubeClient.AppsV1().Deployments(namespace.Name)
 	servicesClient := kubeClient.CoreV1().Services(namespace.Name)
 
+	env := &environment{
+		name:              namespace.Name,
+		kubeClient:        kubeClient,
+		deploymentsClient: deploymentsClient,
+		servicesClient:    servicesClient,
+		network:           network,
+		chainlinkNodes:    []client.Chainlink{},
+	}
+
 	// Launch hardhat setup if that's what we're testing on
 	if network.ID() == client.EthereumHardhatID {
-		hardhatDeploySpec, hardhatServiceSpec := newHardhat()
-		_, err := deploymentsClient.Create(context.Background(), hardhatDeploySpec, metav1.CreateOptions{})
+		connectionString, err := env.deployHardhat()
 		if err != nil {
 			return nil, err
 		}
-		hardhatService, err := servicesClient.Create(context.Background(), hardhatServiceSpec, metav1.CreateOptions{})
-		if err != nil {
-			return nil, err
-		}
-		log.Info().Msg("Deployed Hardhat")
-		network.SetURL("ws://" + hardhatService.Spec.ClusterIP + ":8545") // Intra-cluster IP for hardhat
+		network.SetURL(connectionString)
 	}
 
-	env := &environment{
-		name:           namespace.Name,
-		kubeClient:     kubeClient,
-		network:        network,
-		chainlinkNodes: []client.Chainlink{},
-	}
-
+	// Launch chainlink nodes
 	for i := 0; i < nodeCount; i++ {
-		deploymentSpec := newChainlinkDeployment(network, LatestChainlinkVersion)
-		nodeDeployment, err := deploymentsClient.Create(context.Background(), deploymentSpec, metav1.CreateOptions{})
+		err = env.deployChainlink()
 		if err != nil {
 			return nil, err
 		}
-
-		serviceSpec := newChainlinkService(nodeDeployment.Name)
-		_, err = servicesClient.Create(context.Background(), serviceSpec, metav1.CreateOptions{})
-		if err != nil {
-			return nil, err
-		}
-		log.Info().Str("Name", nodeDeployment.Name).Msg("Deployed chainlink node")
 	}
 	// Wait for everything to be up and healthy
-	waitForHealthyPods(kubeClient, namespace.Name)
+	err = waitForHealthyPods(kubeClient, namespace.Name)
+	if err != nil {
+		return nil, err
+	}
 	forwardedPorts, hardhatPort, err := env.forwardPorts(namespace.Name)
 	if network.ID() == client.EthereumHardhatID { // URL to connect to hardhat from outside the cluster
 		network.SetURL("ws://127.0.0.1:" + hardhatPort)
@@ -133,7 +126,7 @@ func NewBasicEnvironment(environmentName string, nodeCount int, network client.B
 }
 
 // GetChainlinkNodes returns all the chainlink nodes in the launched environment
-func (env *environment) GetChainlinkNodes() []client.Chainlink {
+func (env *environment) ChainlinkNodes() []client.Chainlink {
 	return env.chainlinkNodes
 }
 
@@ -149,14 +142,36 @@ func (env *environment) TearDown() error {
 	return err
 }
 
-// TODO:
-func (env *environment) AddToEnv(nodeCount int) (client.Chainlink, error) {
-	return nil, nil
+// Deploys a chainlink pod to the cluster
+func (env *environment) deployChainlink() error {
+	deploymentSpec := newChainlinkDeployment(env.network, LatestChainlinkVersion)
+	nodeDeployment, err := env.deploymentsClient.Create(context.Background(), deploymentSpec, metav1.CreateOptions{})
+	if err != nil {
+		return err
+	}
+
+	serviceSpec := newChainlinkService(nodeDeployment.Name)
+	_, err = env.servicesClient.Create(context.Background(), serviceSpec, metav1.CreateOptions{})
+	if err != nil {
+		return err
+	}
+	log.Info().Str("Name", nodeDeployment.Name).Msg("Deployed chainlink node")
+	return err
 }
 
-// TODO:
-func (env *environment) RemoveNode(client.Chainlink) error {
-	return nil
+// Deploys a hardhat pod to the cluster
+func (env *environment) deployHardhat() (string, error) {
+	hardhatDeploySpec, hardhatServiceSpec := newHardhat()
+	_, err := env.deploymentsClient.Create(context.Background(), hardhatDeploySpec, metav1.CreateOptions{})
+	if err != nil {
+		return "", err
+	}
+	hardhatService, err := env.servicesClient.Create(context.Background(), hardhatServiceSpec, metav1.CreateOptions{})
+	if err != nil {
+		return "", err
+	}
+	log.Info().Msg("Deployed Hardhat")
+	return "ws://" + hardhatService.Spec.ClusterIP + ":8545", err
 }
 
 // Builds all that's needed for launching a hardhat network for testing
@@ -258,6 +273,7 @@ func waitForHealthyPods(kubeClient *kubernetes.Clientset, namespace string) erro
 	}
 }
 
+// Creates K8s deployment object for chainlink node setup
 func newChainlinkDeployment(network client.BlockchainNetwork, chainlinkVersion string) *appsv1.Deployment {
 	chainID := network.ChainID()
 	chainUrl := network.URL()
@@ -329,8 +345,8 @@ func newChainlinkDeployment(network client.BlockchainNetwork, chainlinkVersion s
 										Port: intstr.FromInt(6688),
 									},
 								},
-								PeriodSeconds:       2,
-								InitialDelaySeconds: 10,
+								PeriodSeconds:       5,
+								InitialDelaySeconds: 2,
 							},
 							VolumeMounts: []apiv1.VolumeMount{
 								{
@@ -375,7 +391,7 @@ func newChainlinkDeployment(network client.BlockchainNetwork, chainlinkVersion s
 									},
 								},
 								PeriodSeconds:       5,
-								InitialDelaySeconds: 10,
+								InitialDelaySeconds: 2,
 							},
 						},
 					},
@@ -387,6 +403,7 @@ func newChainlinkDeployment(network client.BlockchainNetwork, chainlinkVersion s
 	return deployment
 }
 
+// Creates K8s service object for chainlink node setup
 func newChainlinkService(deploymentName string) *apiv1.Service {
 	return &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -408,6 +425,7 @@ func newChainlinkService(deploymentName string) *apiv1.Service {
 	}
 }
 
+// Creates K8s secret object for chainlink node setup
 func chainlinkNodeSecret() *apiv1.Secret {
 	return &apiv1.Secret{
 		Type: apiv1.SecretType("Opaque"),
@@ -519,7 +537,7 @@ func (env *environment) forwardPorts(namespaceName string) ([]string, string, er
 			if err != nil {
 				log.Err(err).Str("Pod", pod.Name).Msg("Error while forwarding port, tearing down env")
 				env.TearDown()
-				return
+				panic(err)
 			}
 		}()
 
@@ -561,7 +579,7 @@ func (env *environment) forwardPort(req portForwardRequest) error {
 		if err != nil {
 			log.Err(err).Str("Pod", req.Pod.Name).Msg("Error while forwarding port, tearing down env")
 			env.TearDown()
-			return
+			panic(err)
 		}
 	}()
 	select {
@@ -576,6 +594,7 @@ func (env *environment) forwardPort(req portForwardRequest) error {
 	return err
 }
 
+// All info needed to forward a K8s port
 type portForwardRequest struct {
 	// RestConfig is the kubernetes config
 	RestConfig *rest.Config

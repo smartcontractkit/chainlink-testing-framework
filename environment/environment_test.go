@@ -27,17 +27,17 @@ var _ = Describe("Environment functionality", func() {
 		networkConfig, err := initFunc(conf)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		env, err := NewBasicEnvironment(envName, 1, networkConfig)
+		env, err := NewBasicEnvironment(envName, 3, networkConfig)
 		Expect(err).ShouldNot(HaveOccurred())
-		Expect(len(env.GetChainlinkNodes())).ShouldNot(Equal(0))
+		Expect(len(env.ChainlinkNodes())).ShouldNot(Equal(0))
 
-		mainNode := env.GetChainlinkNodes()[0]
+		mainNode := env.ChainlinkNodes()[0]
 		keys, err := mainNode.ReadETHKeys()
 		Expect(err).ShouldNot(HaveOccurred())
 		log.Info().Str("ETH Address", keys.Data[0].Attributes.Address).Msg("Got address")
 
-		// err = env.TearDown()
-		// Expect(err).ShouldNot(HaveOccurred())
+		err = env.TearDown()
+		Expect(err).ShouldNot(HaveOccurred())
 	},
 		Entry("on Ethereum Hardhat", "basic-hardhat", client.NewHardhatNetwork),
 	)
