@@ -29,23 +29,35 @@ type FluxAggregatorData struct {
 	Oracles         []common.Address // Addresses of oracles on the contract
 }
 
+type SetOraclesOptions struct {
+	AddList            []common.Address // oracle addresses to add
+	RemoveList         []common.Address // oracle addresses to remove
+	AdminList          []common.Address // oracle addresses to become admin
+	MinSubmissions     uint32           // min amount of submissions in round
+	MaxSubmissions     uint32           // max amount of submissions in round
+	RestartDelayRounds uint32           // rounds to wait after oracles has changed
+}
+
 type FluxAggregator interface {
+	Address() string
 	Fund(fromWallet client.BlockchainWallet, ethAmount *big.Int, linkAmount *big.Int) error
+	AwaitNextRoundFinalized(ctx context.Context) error
+	LatestRound(ctx context.Context) (*big.Int, error)
 	GetContractData(ctxt context.Context) (*FluxAggregatorData, error)
-	SetOracles(
-		client.BlockchainWallet,
-		[]common.Address,
-		[]common.Address,
-		[]common.Address,
-		uint32,
-		uint32,
-		uint32,
-	) error
+	UpdateAvailableFunds(ctx context.Context, fromWallet client.BlockchainWallet) error
+	PaymentAmount(ctx context.Context) (*big.Int, error)
+	RequestNewRound(ctx context.Context, fromWallet client.BlockchainWallet) error
+	WithdrawPayment(ctx context.Context, caller client.BlockchainWallet, from common.Address, to common.Address, amount *big.Int) error
+	WithdrawablePayment(ctx context.Context, addr common.Address) (*big.Int, error)
+	GetOracles(ctx context.Context) ([]string, error)
+	SetOracles(client.BlockchainWallet, SetOraclesOptions) error
 	Description(ctxt context.Context) (string, error)
+	SetRequesterPermissions(ctx context.Context, fromWallet client.BlockchainWallet, addr common.Address, authorized bool, roundsDelay uint32) error
 }
 
 type LinkToken interface {
 	Address() string
+	BalanceOf(ctx context.Context, addr common.Address) (*big.Int, error)
 	Fund(fromWallet client.BlockchainWallet, ethAmount *big.Int) error
 	Name(context.Context) (string, error)
 }

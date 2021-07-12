@@ -2,6 +2,7 @@ package client
 
 import (
 	"bytes"
+	"fmt"
 	"text/template"
 	"time"
 )
@@ -143,7 +144,7 @@ type JobData struct {
 // JobSpec represents the different possible job types that chainlink nodes can handle
 type JobSpec interface {
 	Type() string
-	// Returns TOML representation of the job
+	// String Returns TOML representation of the job
 	String() (string, error)
 }
 
@@ -208,6 +209,7 @@ type FluxMonitorJobSpec struct {
 	IdleTimerDisabled bool          `toml:"idleTimerDisabled"` // Optional
 	PollTimerPeriod   time.Duration `toml:"pollTimerPeriod"`   // Optional
 	PollTimerDisabled bool          `toml:"pollTimerDisabled"` // Optional
+	MaxTaskDuration   time.Duration `toml:"maxTaskDuration"`   // Optional
 	ObservationSource string        `toml:"observationSource"` // List of commands for the chainlink node
 }
 
@@ -217,15 +219,17 @@ func (f *FluxMonitorJobSpec) String() (string, error) {
 schemaVersion     = 1
 name              = "{{.Name}}"
 contractAddress   = "{{.ContractAddress}}"
-precision         ={{if not .Precision}} 2 {{else}} {{.Precision}} {{end}}
+precision         ={{if not .Precision}} 0 {{else}} {{.Precision}} {{end}}
 threshold         ={{if not .Threshold}} 0.5 {{else}} {{.Threshold}} {{end}}
-absoluteThreshold ={{if not .AbsoluteThreshold}} 0.0 {{else}} {{.AbsoluteThreshold}} {{end}}
+absoluteThreshold ={{if not .AbsoluteThreshold}} 0.1 {{else}} {{.AbsoluteThreshold}} {{end}}
 
-idleTimerPeriod   ={{if not .IdleTimerPeriod}} "1s" {{else}} "{{.IdleTimerPeriod}}" {{end}}
+idleTimerPeriod   ={{if not .IdleTimerPeriod}} "10s" {{else}} "{{.IdleTimerPeriod}}" {{end}}
 idleTimerDisabled ={{if not .IdleTimerDisabled}} false {{else}} {{.IdleTimerDisabled}} {{end}}
 
 pollTimerPeriod   ={{if not .PollTimerPeriod}} "1m" {{else}} "{{.PollTimerPeriod}}" {{end}}
 pollTimerDisabled ={{if not .PollTimerDisabled}} false {{else}} {{.PollTimerDisabled}} {{end}}
+
+maxTaskDuration = {{if not .Precision}} "60s" {{else}} {{.Precision}} {{end}}
 
 observationSource = """
 {{.ObservationSource}}
@@ -259,7 +263,7 @@ type OCRBootstrapJobSpec struct {
 	TrackerPollInterval      time.Duration `toml:"contractConfigTrackerPollInterval"`      // Optional
 	TrackerSubscribeInterval time.Duration `toml:"contractConfigTrackerSubscribeInterval"` // Optional
 	ContractAddress          string        `toml:"contractAddress"`                        // Address of the OCR contract
-	P2PBootstrapPeers        []string      `toml:"p2pBootstrapPeers"`                      // Typically empty for our tests
+	P2PBootstrapPeers        []string      `toml:"p2pBootstrapPeers"`                      // Typically empty for our suite
 	IsBootstrapPeer          bool          `toml:"isBootstrapPeer"`                        // Typically true
 	P2PPeerID                string        `toml:"p2pPeerID"`                              // This node's P2P ID
 }
@@ -365,4 +369,10 @@ observationSource = """
 {{.ObservationSource}}
 """`
 	return marshallTemplate(w, "Webhook Job", fluxMonitorTemplateString)
+}
+
+func ObservationSourceSpec(url string) string {
+	return fmt.Sprintf(`fetch    [type=http method=POST url="%s" requestData="{}"];
+			parse    [type=jsonparse path="data,result"];    
+			fetch -> parse;`, url)
 }

@@ -62,41 +62,6 @@ func NewChainlink(c *ChainlinkConfig, httpClient *http.Client) (Chainlink, error
 	return cl, cl.SetSessionCookie()
 }
 
-// ConnectToTemplateNodes assumes that 5 template nodes are running locally, check out a quick setup for that here:
-// https://github.com/smartcontractkit/chainlink-node-compose
-func ConnectToTemplateNodes() ([]Chainlink, error) {
-	urlBase := "http://localhost:"
-	ports := []string{"6711", "6722", "6733", "6744", "6755"}
-	// Checks if those nodes are actually up and healthy
-	for _, port := range ports {
-		_, err := http.Get(urlBase + port)
-		if err != nil {
-			log.Err(err).Str("URL", urlBase+port).Msg("Chainlink node unhealthy / not up. Make sure nodes are already up")
-			return nil, err
-		}
-		log.Info().Str("URL", urlBase+port).Msg("Chainlink Node Healthy")
-	}
-
-	var cls []Chainlink
-	for _, port := range ports {
-		c := &ChainlinkConfig{
-			URL:      urlBase + port,
-			Email:    "notreal@fakeemail.ch",
-			Password: "twochains",
-		}
-		cl, err := NewChainlink(c, http.DefaultClient)
-		if err != nil {
-			return nil, err
-		}
-		if _, err := cl.ReadETHKeys(); err != nil {
-			log.Err(err).Str("Node URL", urlBase+port).Msg("Issue establishing connection to node")
-		}
-		cls = append(cls, cl)
-	}
-
-	return cls, nil
-}
-
 // CreateJob creates a Chainlink job based on the provided spec string
 func (c *chainlink) CreateJobRaw(spec string) (*Job, error) {
 	job := &Job{}
