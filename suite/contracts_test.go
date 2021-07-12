@@ -5,12 +5,12 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/contracts"
-	"github.com/smartcontractkit/integrations-framework/suite"
+	"github.com/smartcontractkit/integrations-framework/environment"
 
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/client"
-	"github.com/smartcontractkit/integrations-framework/tools"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
@@ -18,40 +18,36 @@ import (
 )
 
 var _ = Describe("Chainlink Node", func() {
+	var conf *config.Config
+
+	BeforeEach(func() {
+		var err error
+		conf, err = config.NewWithPath(config.LocalConfig, "../config")
+		Expect(err).ShouldNot(HaveOccurred())
+	})
+
 	DescribeTable("deploy and use basic functionality", func(
 		initFunc client.BlockchainNetworkInit,
 		ocrOptions contracts.OffchainOptions,
 	) {
 		// Setup
-		s, err := suite.DefaultSetup(initFunc)
+		network, err := initFunc(conf)
 		Expect(err).ShouldNot(HaveOccurred())
-		chainlinkNodes := s.Environment.ChainlinkNodes()
+		testEnv, err := environment.NewBasicEnvironment("basic-ocr", 3, network)
+		Expect(err).ShouldNot(HaveOccurred())
+		chainlinkNodes := testEnv.ChainlinkNodes()
 
 		// Fund each chainlink node
-		for _, node := range chainlinkNodes {
-			nodeEthKeys, err := node.ReadETHKeys()
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(len(nodeEthKeys.Data)).Should(BeNumerically(">=", 1))
-			primaryEthKey := nodeEthKeys.Data[0]
-
-			err = s.Client.Fund(
-				s.Wallets.Default(),
-				primaryEthKey.Attributes.Address,
-				big.NewInt(2000000000000000000), big.NewInt(2000000000000000000),
-			)
-			Expect(err).ShouldNot(HaveOccurred())
-		}
+		err = testEnv.FundAllNodes(testEnv.Wallets().Default(), big.NewInt(2000000000000000000), big.NewInt(2000000000000000000))
+		Expect(err).ShouldNot(HaveOccurred())
 
 		// Deploy and config OCR contract
-		ocrInstance, err := s.Deployer.DeployOffChainAggregator(s.Wallets.Default(), ocrOptions)
+		ocrInstance, err := testEnv.ContractDeployer().DeployOffChainAggregator(testEnv.Wallets().Default(), ocrOptions)
 		Expect(err).ShouldNot(HaveOccurred())
-		err = ocrInstance.SetConfig(s.Wallets.Default(), chainlinkNodes, contracts.DefaultOffChainAggregatorConfig())
+		err = ocrInstance.SetConfig(testEnv.Wallets().Default(), chainlinkNodes, contracts.DefaultOffChainAggregatorConfig())
 		Expect(err).ShouldNot(HaveOccurred())
-		err = ocrInstance.Fund(s.Wallets.Default(), big.NewInt(2000000000000000), big.NewInt(2000000000000000))
+		err = ocrInstance.Fund(testEnv.Wallets().Default(), big.NewInt(2000000000000000), big.NewInt(2000000000000000))
 		Expect(err).ShouldNot(HaveOccurred())
-
-		// Create external adapter, returns 5 every time
-		adapter := tools.NewExternalAdapter()
 
 		// Initialize bootstrap node
 		bootstrapNode := chainlinkNodes[0]
@@ -71,9 +67,8 @@ var _ = Describe("Chainlink Node", func() {
 			nodeP2PIds, err := chainlinkNodes[index].ReadP2PKeys()
 			Expect(err).ShouldNot(HaveOccurred())
 			nodeP2PId := nodeP2PIds.Data[0].Attributes.PeerID
-			nodeTransmitterAddresses, err := chainlinkNodes[index].ReadETHKeys()
+			nodeTransmitterAddress, err := chainlinkNodes[index].PrimaryEthAddress()
 			Expect(err).ShouldNot(HaveOccurred())
-			nodeTransmitterAddress := nodeTransmitterAddresses.Data[0].Attributes.Address
 			nodeOCRKeys, err := chainlinkNodes[index].ReadOCRKeys()
 			Expect(err).ShouldNot(HaveOccurred())
 			nodeOCRKeyId := nodeOCRKeys.Data[0].ID
@@ -84,14 +79,14 @@ var _ = Describe("Chainlink Node", func() {
 				P2PBootstrapPeers:  []string{bootstrapP2PId},
 				KeyBundleID:        nodeOCRKeyId,
 				TransmitterAddress: nodeTransmitterAddress,
-				ObservationSource:  client.ObservationSourceSpec(adapter.InsideDockerAddr + "/five"),
+				ObservationSource:  client.ObservationSourceSpec(testEnv.Adapter().ClusterURL + "/five"),
 			}
 			_, err = chainlinkNodes[index].CreateJob(ocrSpec)
 			Expect(err).ShouldNot(HaveOccurred())
 		}
 
 		// Request a new round from the OCR
-		err = ocrInstance.RequestNewRound(s.Wallets.Default())
+		err = ocrInstance.RequestNewRound(testEnv.Wallets().Default())
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// Wait for a round
@@ -118,7 +113,7 @@ var _ = Describe("Chainlink Node", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(answer.Int64()).Should(Equal(int64(5)))
 
-		err = s.Environment.TearDown()
+		err = testEnv.TearDown()
 		Expect(err).ShouldNot(HaveOccurred())
 	},
 		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, contracts.DefaultOffChainAggregatorOptions()),
@@ -126,14 +121,24 @@ var _ = Describe("Chainlink Node", func() {
 })
 
 var _ = Describe("Contracts", func() {
+	var conf *config.Config
+
+	BeforeEach(func() {
+		var err error
+		conf, err = config.NewWithPath(config.LocalConfig, "../config")
+		Expect(err).ShouldNot(HaveOccurred())
+	})
+
 	DescribeTable("deploy and interact with the storage contract", func(
 		initFunc client.BlockchainNetworkInit,
 		value *big.Int,
 	) {
-		s, err := suite.DefaultSetup(initFunc)
+		network, err := initFunc(conf)
+		Expect(err).ShouldNot(HaveOccurred())
+		testEnv, err := environment.NewBasicEnvironment("storage-contract", 0, network)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		storeInstance, err := s.Deployer.DeployStorageContract(s.Wallets.Default())
+		storeInstance, err := testEnv.ContractDeployer().DeployStorageContract(testEnv.Wallets().Default())
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// Interact with contract
@@ -143,7 +148,7 @@ var _ = Describe("Contracts", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(val).To(Equal(value))
 
-		err = s.Environment.TearDown()
+		err = testEnv.TearDown()
 		Expect(err).ShouldNot(HaveOccurred())
 	},
 		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, big.NewInt(5)),
@@ -153,20 +158,22 @@ var _ = Describe("Contracts", func() {
 		initFunc client.BlockchainNetworkInit,
 		fluxOptions contracts.FluxAggregatorOptions,
 	) {
-		s, err := suite.DefaultSetup(initFunc)
+		network, err := initFunc(conf)
+		Expect(err).ShouldNot(HaveOccurred())
+		testEnv, err := environment.NewBasicEnvironment("flux-aggregator-contract", 0, network)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// Deploy LINK contract
-		linkInstance, err := s.Deployer.DeployLinkTokenContract(s.Wallets.Default())
+		linkInstance, err := testEnv.ContractDeployer().DeployLinkTokenContract(testEnv.Wallets().Default())
 		Expect(err).ShouldNot(HaveOccurred())
 		name, err := linkInstance.Name(context.Background())
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(name).To(Equal("ChainLink Token"))
 
 		// Deploy FluxMonitor contract
-		fluxInstance, err := s.Deployer.DeployFluxAggregatorContract(s.Wallets.Default(), fluxOptions)
+		fluxInstance, err := testEnv.ContractDeployer().DeployFluxAggregatorContract(testEnv.Wallets().Default(), fluxOptions)
 		Expect(err).ShouldNot(HaveOccurred())
-		err = fluxInstance.Fund(s.Wallets.Default(), big.NewInt(0), big.NewInt(50000000000))
+		err = fluxInstance.Fund(testEnv.Wallets().Default(), big.NewInt(0), big.NewInt(50000000000))
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// Interact with contract
@@ -174,7 +181,7 @@ var _ = Describe("Contracts", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(desc).To(Equal(fluxOptions.Description))
 
-		err = s.Environment.TearDown()
+		err = testEnv.TearDown()
 		Expect(err).ShouldNot(HaveOccurred())
 	},
 		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, contracts.DefaultFluxAggregatorOptions()),
@@ -184,23 +191,25 @@ var _ = Describe("Contracts", func() {
 		initFunc client.BlockchainNetworkInit,
 		ocrOptions contracts.OffchainOptions,
 	) {
-		s, err := suite.DefaultSetup(initFunc)
+		network, err := initFunc(conf)
+		Expect(err).ShouldNot(HaveOccurred())
+		testEnv, err := environment.NewBasicEnvironment("ocr-contract", 0, network)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// Deploy LINK contract
-		linkInstance, err := s.Deployer.DeployLinkTokenContract(s.Wallets.Default())
+		linkInstance, err := testEnv.ContractDeployer().DeployLinkTokenContract(testEnv.Wallets().Default())
 		Expect(err).ShouldNot(HaveOccurred())
 		name, err := linkInstance.Name(context.Background())
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(name).To(Equal("ChainLink Token"))
 
 		// Deploy Offchain contract
-		offChainInstance, err := s.Deployer.DeployOffChainAggregator(s.Wallets.Default(), ocrOptions)
+		offChainInstance, err := testEnv.ContractDeployer().DeployOffChainAggregator(testEnv.Wallets().Default(), ocrOptions)
 		Expect(err).ShouldNot(HaveOccurred())
-		err = offChainInstance.Fund(s.Wallets.Default(), nil, big.NewInt(50000000000))
+		err = offChainInstance.Fund(testEnv.Wallets().Default(), nil, big.NewInt(50000000000))
 		Expect(err).ShouldNot(HaveOccurred())
 
-		err = s.Environment.TearDown()
+		err = testEnv.TearDown()
 		Expect(err).ShouldNot(HaveOccurred())
 	},
 		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, contracts.DefaultOffChainAggregatorOptions()),

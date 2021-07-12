@@ -20,25 +20,24 @@ var _ = Describe("Environment functionality", func() {
 	})
 
 	DescribeTable("basic environment", func(
-		envName string,
 		initFunc client.BlockchainNetworkInit,
 	) {
 		// Setup
 		networkConfig, err := initFunc(conf)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		env, err := NewBasicEnvironment(envName, 3, networkConfig)
+		env, err := NewBasicEnvironment("check-basic-environment", 1, networkConfig)
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(len(env.ChainlinkNodes())).ShouldNot(Equal(0))
 
 		mainNode := env.ChainlinkNodes()[0]
-		keys, err := mainNode.ReadETHKeys()
+		key, err := mainNode.PrimaryEthAddress()
 		Expect(err).ShouldNot(HaveOccurred())
-		log.Info().Str("ETH Address", keys.Data[0].Attributes.Address).Msg("Got address")
+		log.Info().Str("ETH Address", key).Msg("Got address")
 
 		err = env.TearDown()
 		Expect(err).ShouldNot(HaveOccurred())
 	},
-		Entry("on Ethereum Hardhat", "basic-hardhat", client.NewHardhatNetwork),
+		Entry("on Ethereum Hardhat", client.NewHardhatNetwork),
 	)
 })

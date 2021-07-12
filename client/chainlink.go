@@ -40,6 +40,7 @@ type Chainlink interface {
 	DeleteP2PKey(id int) error
 
 	ReadETHKeys() (*ETHKeys, error)
+	PrimaryEthAddress() (string, error)
 
 	SetSessionCookie() error
 
@@ -218,6 +219,15 @@ func (c *chainlink) ReadETHKeys() (*ETHKeys, error) {
 	log.Info().Str("Node URL", c.Config.URL).Msg("Reading ETH Keys")
 	_, err := c.do(http.MethodGet, "/v2/keys/eth", nil, ethKeys, http.StatusOK)
 	return ethKeys, err
+}
+
+// PrimaryEthAddress returns the primary ETH address for the chainlink node
+func (c *chainlink) PrimaryEthAddress() (string, error) {
+	ethKeys, err := c.ReadETHKeys()
+	if err != nil {
+		return "", err
+	}
+	return ethKeys.Data[0].Attributes.Address, nil
 }
 
 // SetSessionCookie authenticates against the Chainlink node and stores the cookie in client state

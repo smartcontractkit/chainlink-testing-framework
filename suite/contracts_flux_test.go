@@ -2,46 +2,60 @@ package suite
 
 import (
 	"context"
+	"math/big"
+	"strings"
+	"time"
+
 	"github.com/ethereum/go-ethereum/common"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/client"
+	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/contracts"
-	"github.com/smartcontractkit/integrations-framework/suite"
-	"github.com/smartcontractkit/integrations-framework/tools"
-	"math/big"
-	"strings"
-	"time"
+	"github.com/smartcontractkit/integrations-framework/environment"
 )
 
 var _ = Describe("Flux monitor suite", func() {
+	var conf *config.Config
+
+	BeforeEach(func() {
+		var err error
+		conf, err = config.NewWithPath(config.LocalConfig, "../config")
+		Expect(err).ShouldNot(HaveOccurred())
+	})
+
 	DescribeTable("Answering to deviation in rounds", func(
 		initFunc client.BlockchainNetworkInit,
 		fluxOptions contracts.FluxAggregatorOptions,
 	) {
-		s, err := suite.DefaultLocalSetup(initFunc)
+		network, err := initFunc(conf)
 		Expect(err).ShouldNot(HaveOccurred())
+		testEnv, err := environment.NewBasicEnvironment("basic-flux-monitor", 3, network)
+		Expect(err).ShouldNot(HaveOccurred())
+		defaultWallet := testEnv.Wallets().Default()
 
 		// Deploy FluxMonitor contract
-		fluxInstance, err := s.Deployer.DeployFluxAggregatorContract(s.Wallets.Default(), fluxOptions)
+		fluxInstance, err := testEnv.ContractDeployer().DeployFluxAggregatorContract(defaultWallet, fluxOptions)
 		Expect(err).ShouldNot(HaveOccurred())
-		err = fluxInstance.Fund(s.Wallets.Default(), big.NewInt(0), big.NewInt(1e18))
+		err = fluxInstance.Fund(defaultWallet, big.NewInt(0), big.NewInt(1e18))
 		Expect(err).ShouldNot(HaveOccurred())
-		err = fluxInstance.UpdateAvailableFunds(context.Background(), s.Wallets.Default())
+		err = fluxInstance.UpdateAvailableFunds(context.Background(), defaultWallet)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// get nodes and their addresses
-		clNodes, nodeAddrs, err := suite.ConnectToTemplateNodes()
+		clNodes := testEnv.ChainlinkNodes()
+		nodeAddrs, err := testEnv.ChainlinkNodeETHAddresses()
+		Expect(err).ShouldNot(HaveOccurred())
 		oraclesAtTest := nodeAddrs[:3]
 		clNodesAtTest := clNodes[:3]
 		Expect(err).ShouldNot(HaveOccurred())
-		err = suite.FundTemplateNodes(s.Client, s.Wallets, clNodes, 2e18, 0)
+		err = testEnv.FundAllNodes(defaultWallet, big.NewInt(2e18), nil)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// set oracles and submissions
-		err = fluxInstance.SetOracles(s.Wallets.Default(),
+		err = fluxInstance.SetOracles(defaultWallet,
 			contracts.SetOraclesOptions{
 				AddList:            oraclesAtTest,
 				RemoveList:         []common.Address{},
@@ -55,9 +69,6 @@ var _ = Describe("Flux monitor suite", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		log.Info().Str("Oracles", strings.Join(oracles, ",")).Msg("oracles set")
 
-		// set variable adapter
-		adapter := tools.NewExternalAdapter()
-
 		// Send Flux job to chainlink nodes
 		for _, n := range clNodesAtTest {
 			fluxSpec := &client.FluxMonitorJobSpec{
@@ -65,7 +76,7 @@ var _ = Describe("Flux monitor suite", func() {
 				ContractAddress:   fluxInstance.Address(),
 				PollTimerPeriod:   15 * time.Second, // min 15s
 				PollTimerDisabled: false,
-				ObservationSource: client.ObservationSourceSpec(adapter.InsideDockerAddr + "/variable"),
+				ObservationSource: client.ObservationSourceSpec(testEnv.Adapter().ClusterURL + "/variable"),
 			}
 			_, err = n.CreateJob(fluxSpec)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -105,6 +116,9 @@ var _ = Describe("Flux monitor suite", func() {
 			payment, _ := fluxInstance.WithdrawablePayment(context.Background(), oracleAddr)
 			Expect(payment.Int64()).Should(Equal(int64(2)))
 		}
+
+		err = testEnv.TearDown()
+		Expect(err).ShouldNot(HaveOccurred())
 	},
 		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, contracts.DefaultFluxAggregatorOptions()),
 	)

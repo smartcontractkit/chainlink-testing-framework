@@ -3,6 +3,7 @@ package environment
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"net/http"
 	"net/url"
 	"os"
@@ -11,8 +12,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/client"
+	"github.com/smartcontractkit/integrations-framework/contracts"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,6 +34,14 @@ const LatestChainlinkVersion string = "0.10.8"
 
 type Environment interface {
 	ChainlinkNodes() []client.Chainlink
+	ChainlinkNodeETHAddresses() ([]common.Address, error)
+	Adapter() ExternalAdapter
+	BlockchainClient() client.BlockchainClient
+	Wallets() client.BlockchainWallets
+	ContractDeployer() contracts.ContractDeployer
+	LinkContract() contracts.LinkToken
+
+	FundAllNodes(fromWallet client.BlockchainWallet, nativeAmount, linkAmount *big.Int) error
 	TearDown() error
 }
 
@@ -42,6 +53,11 @@ type environment struct {
 	network               client.BlockchainNetwork
 	chainlinkNodes        []client.Chainlink
 	forwardedPortChannels []chan os.Signal
+	adapter               ExternalAdapter
+	blockchainClient      client.BlockchainClient
+	wallets               client.BlockchainWallets
+	contractDeployer      contracts.ContractDeployer
+	linkContract          contracts.LinkToken
 }
 
 // NewBasicEnvironment launches a new environment of latest version chainlink nodes, connected to the specified network
@@ -88,6 +104,16 @@ func NewBasicEnvironment(environmentName string, nodeCount int, network client.B
 		network.SetURL(connectionString)
 	}
 
+	// If nodes are being deployed, also deploy an adapter for them
+	environmentAdapter := &externalAdapter{}
+	if nodeCount > 0 {
+		url, err := env.deployExternalAdapter()
+		if err != nil {
+			return nil, err
+		}
+		environmentAdapter.clusterURL = url
+	}
+
 	// Launch chainlink nodes
 	for i := 0; i < nodeCount; i++ {
 		err = env.deployChainlink()
@@ -100,7 +126,10 @@ func NewBasicEnvironment(environmentName string, nodeCount int, network client.B
 	if err != nil {
 		return nil, err
 	}
-	forwardedPorts, hardhatPort, err := env.forwardPorts(namespace.Name)
+	forwardedPorts, hardhatPort, adapterPort, err := env.forwardPorts(namespace.Name)
+	environmentAdapter.localURL = "http://127.0.0.1:" + adapterPort
+	env.adapter = environmentAdapter
+
 	if network.ID() == client.EthereumHardhatID { // URL to connect to hardhat from outside the cluster
 		network.SetURL("ws://127.0.0.1:" + hardhatPort)
 	}
@@ -121,13 +150,64 @@ func NewBasicEnvironment(environmentName string, nodeCount int, network client.B
 		}
 		env.chainlinkNodes = append(env.chainlinkNodes, cl)
 	}
+	err = env.setEnvTools()
 
 	return env, err
 }
 
-// GetChainlinkNodes returns all the chainlink nodes in the launched environment
+// ChainlinkNodes returns all the chainlink nodes in the launched environment
 func (env *environment) ChainlinkNodes() []client.Chainlink {
 	return env.chainlinkNodes
+}
+
+// Adapter returns dummy external adapter that the environment has deployed
+func (env *environment) Adapter() ExternalAdapter {
+	return env.adapter
+}
+
+// ChainlinkNodeAddresses returns the primary ETH addresses of all the chainlink nodes in the launched environment
+func (env *environment) ChainlinkNodeETHAddresses() ([]common.Address, error) {
+	addresses := make([]common.Address, len(env.chainlinkNodes))
+	for _, node := range env.chainlinkNodes {
+		primaryAddress, err := node.PrimaryEthAddress()
+		if err != nil {
+			return nil, err
+		}
+		addresses = append(addresses, common.HexToAddress(primaryAddress))
+	}
+	return addresses, nil
+}
+
+// BlockchainClient retrieves the blockchain client for the environment
+func (env *environment) BlockchainClient() client.BlockchainClient {
+	return env.blockchainClient
+}
+
+// Wallets retrieves the configured wallets for the environment
+func (env *environment) Wallets() client.BlockchainWallets {
+	return env.wallets
+}
+
+// ContractDeployer retrieves the deployer that allows further contracts to be deployed to the environment
+func (env *environment) ContractDeployer() contracts.ContractDeployer {
+	return env.contractDeployer
+}
+
+// LinkContract retrieves the deployed link contract for the environment
+func (env *environment) LinkContract() contracts.LinkToken {
+	return env.linkContract
+}
+
+// FundAllNodes funds all chainlink nodes in the environment with the specified wallet for the specified amounts
+func (env *environment) FundAllNodes(fromWallet client.BlockchainWallet, nativeAmount, linkAmount *big.Int) error {
+	for _, cl := range env.chainlinkNodes {
+		toAddress, err := cl.PrimaryEthAddress()
+		if err != nil {
+			return err
+		}
+		env.blockchainClient.Fund(fromWallet, toAddress, nativeAmount, linkAmount)
+	}
+	return nil
 }
 
 // TearDown calls delete on all the environment's resources
@@ -141,6 +221,46 @@ func (env *environment) TearDown() error {
 	log.Info().Str("Name", env.name).Msg("Deleted Environment")
 	return err
 }
+
+// ExternalAdapter represents a dummy external adapter within the environment
+type ExternalAdapter interface {
+	LocalURL() string
+	ClusterURL() string
+	SetVariable(variable int) error
+}
+
+type externalAdapter struct {
+	// LocalURL communicates with the dummy adapter from outside the cluster
+	localURL string
+	// ClusterURL communicates with the dummy adapter from within the cluster
+	clusterURL string
+}
+
+// LocalURL is used for communication with the dummy adapter from outside the cluster
+func (ex *externalAdapter) LocalURL() string {
+	return ex.localURL
+}
+
+// ClusterURL is used for communication with the dummy adapter from within the cluster
+func (ex *externalAdapter) ClusterURL() string {
+	return ex.clusterURL
+}
+
+// SetVariable set the variable that's retrieved by the `/variable` call on the dummy adapter
+func (ex *externalAdapter) SetVariable(variable int) error {
+	_, err := http.Post(
+		fmt.Sprintf("%s/set_variable?var=%d", ex.localURL, variable),
+		"application/json",
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// --------------- INTERNAL HELPERS ---------------
+// Convenience methods / functions
 
 // Deploys a chainlink pod to the cluster
 func (env *environment) deployChainlink() error {
@@ -156,6 +276,30 @@ func (env *environment) deployChainlink() error {
 		return err
 	}
 	log.Info().Str("Name", nodeDeployment.Name).Msg("Deployed chainlink node")
+	return err
+}
+
+func (env *environment) setEnvTools() error {
+	blockchainClient, err := client.NewBlockchainClient(env.network)
+	if err != nil {
+		return err
+	}
+	wallets, err := env.network.Wallets()
+	if err != nil {
+		return err
+	}
+	contractDeployer, err := contracts.NewContractDeployer(blockchainClient)
+	if err != nil {
+		return err
+	}
+	linkContract, err := contractDeployer.DeployLinkTokenContract(wallets.Default())
+	if err != nil {
+		return err
+	}
+	env.blockchainClient = blockchainClient
+	env.wallets = wallets
+	env.contractDeployer = contractDeployer
+	env.linkContract = linkContract
 	return err
 }
 
@@ -205,8 +349,7 @@ func newHardhat() (*appsv1.Deployment, *apiv1.Service) {
 										Port: intstr.FromInt(8545),
 									},
 								},
-								PeriodSeconds:       2,
-								InitialDelaySeconds: 3,
+								PeriodSeconds: 1,
 							},
 						},
 					},
@@ -229,6 +372,83 @@ func newHardhat() (*appsv1.Deployment, *apiv1.Service) {
 					Name:       "access",
 					Port:       int32(8545),
 					TargetPort: intstr.FromInt(8545),
+				},
+			},
+		},
+	}
+
+	return deployment, service
+}
+
+// Deploys a dummy external adapter to the cluster
+func (env *environment) deployExternalAdapter() (string, error) {
+	adapterDeploySpec, adapterServiceSpec := newExternalAdapter()
+	_, err := env.deploymentsClient.Create(context.Background(), adapterDeploySpec, metav1.CreateOptions{})
+	if err != nil {
+		return "", err
+	}
+	adapterService, err := env.servicesClient.Create(context.Background(), adapterServiceSpec, metav1.CreateOptions{})
+	if err != nil {
+		return "", err
+	}
+	log.Info().Msg("Deployed Hardhat")
+	return "http://" + adapterService.Spec.ClusterIP + ":6060", err
+}
+
+// Builds all that's needed for launching a dummy external adapter for testing
+func newExternalAdapter() (*appsv1.Deployment, *apiv1.Service) {
+	deployment := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "dummy-adapter",
+		},
+		Spec: appsv1.DeploymentSpec{
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{"app": "dummy-adapter"},
+			},
+			Template: apiv1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{"app": "dummy-adapter"},
+				},
+				Spec: apiv1.PodSpec{
+					Containers: []apiv1.Container{
+						{
+							Name:  "dummy-adapter",
+							Image: "smartcontract/dummy-external-adapter",
+							Ports: []apiv1.ContainerPort{
+								{
+									ContainerPort: 6060,
+								},
+							},
+							ReadinessProbe: &apiv1.Probe{
+								Handler: apiv1.Handler{
+									HTTPGet: &apiv1.HTTPGetAction{
+										Path: "/",
+										Port: intstr.FromInt(6060),
+									},
+								},
+								PeriodSeconds: 1,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	service := &apiv1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "dummy-adapter",
+		},
+		Spec: apiv1.ServiceSpec{
+			Type: apiv1.ServiceTypeClusterIP,
+			Selector: map[string]string{
+				"app": "dummy-adapter",
+			},
+			Ports: []apiv1.ServicePort{
+				{
+					Name:       "access",
+					Port:       int32(6060),
+					TargetPort: intstr.FromInt(6060),
 				},
 			},
 		},
@@ -476,14 +696,14 @@ func kubeConfig() (*rest.Config, error) {
 }
 
 // Forwards all ports needed to connect to the environment, along with the hardhat port
-func (env *environment) forwardPorts(namespaceName string) ([]string, string, error) {
+func (env *environment) forwardPorts(namespaceName string) ([]string, string, string, error) {
 	kubeClient, err := kubeClient()
 	if err != nil {
-		return nil, "", err
+		return nil, "", "", err
 	}
 	kubeConfig, err := kubeConfig()
 	if err != nil {
-		return nil, "", err
+		return nil, "", "", err
 	}
 
 	// TODO: Figure out a way to do this for services, the obvious way gives inscrutable errors
@@ -492,12 +712,13 @@ func (env *environment) forwardPorts(namespaceName string) ([]string, string, er
 	podInterface := kubeClient.CoreV1().Pods(namespaceName)
 	podList, err := podInterface.List(context.Background(), metav1.ListOptions{})
 	if err != nil {
-		return nil, "", err
+		return nil, "", "", err
 	}
 
 	log.Info().Msg("Forwarding Ports")
 	forwardedPorts := []string{}
 	hardhatPort := ""
+	adapterPort := ""
 	for _, pod := range podList.Items {
 		// stopCh control the port forwarding lifecycle. When it gets closed the
 		// port forward will terminate
@@ -545,6 +766,8 @@ func (env *environment) forwardPorts(namespaceName string) ([]string, string, er
 		case forwardedPort := <-portCh:
 			if strings.HasPrefix(pod.Name, "hardhat-network") {
 				hardhatPort = forwardedPort
+			} else if strings.HasPrefix(pod.Name, "dummy-adapter") {
+				adapterPort = forwardedPort
 			} else {
 				forwardedPorts = append(forwardedPorts, forwardedPort)
 			}
@@ -552,7 +775,7 @@ func (env *environment) forwardPorts(namespaceName string) ([]string, string, er
 			break
 		}
 	}
-	return forwardedPorts, hardhatPort, err
+	return forwardedPorts, hardhatPort, adapterPort, err
 }
 
 // Starts a go routine needed to actively forward a port
