@@ -467,36 +467,34 @@ func newExternalAdapter() (*appsv1.Deployment, *apiv1.Service) {
 func waitForHealthyPods(kubeClient *kubernetes.Clientset, namespace string) error {
 	start := time.Now()
 	log.Info().Str("Name", namespace).Msg("Waiting for environment to be healthy")
-	ticker := time.NewTicker(time.Second)
+	ticker := time.NewTicker(time.Millisecond * 500)
 	defer ticker.Stop()
-	for {
-		select {
-		case <-ticker.C:
-			podInterface := kubeClient.CoreV1().Pods(namespace)
-			pods, err := podInterface.List(context.Background(), metav1.ListOptions{})
-			if err != nil {
-				return err
-			}
-			healthyPodCount := 0
-			for _, pod := range pods.Items {
-				for _, condition := range pod.Status.Conditions { // Each pod has an unordered list of conditions
-					if condition.Type == apiv1.PodReady {
-						if condition.Status == apiv1.ConditionTrue {
-							healthyPodCount += 1
-							break
-						}
+	for range ticker.C {
+		podInterface := kubeClient.CoreV1().Pods(namespace)
+		pods, err := podInterface.List(context.Background(), metav1.ListOptions{})
+		if err != nil {
+			return err
+		}
+		healthyPodCount := 0
+		for _, pod := range pods.Items {
+			for _, condition := range pod.Status.Conditions { // Each pod has an unordered list of conditions
+				if condition.Type == apiv1.PodReady {
+					if condition.Status == apiv1.ConditionTrue {
+						healthyPodCount += 1
+						break
 					}
 				}
 			}
-			if healthyPodCount == len(pods.Items) {
-				log.Info().
-					Str("Name", namespace).
-					Str("Wait Length", time.Since(start).Round(time.Second).String()).
-					Msg("Environment healthy")
-				return nil
-			}
+		}
+		if healthyPodCount == len(pods.Items) {
+			log.Info().
+				Str("Name", namespace).
+				Str("Wait Length", time.Since(start).Round(time.Second).String()).
+				Msg("Environment healthy")
+			return nil
 		}
 	}
+	return nil
 }
 
 // Creates K8s deployment object for chainlink node setup
@@ -810,10 +808,10 @@ func (env *environment) forwardPort(req portForwardRequest) error {
 			panic(err)
 		}
 	}()
-	select {
-	case <-req.ReadyCh:
-		break
-	}
+
+	// Wait on port forward to be ready
+	<-req.ReadyCh
+
 	forwarded, err := fw.GetPorts()
 	if err != nil {
 		return err
