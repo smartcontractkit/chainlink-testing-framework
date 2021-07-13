@@ -82,7 +82,10 @@ func NewBasicEnvironment(environmentName string, nodeCount int, network client.B
 		Msg("Deploying K8s environment")
 	// Clients for each portion of our K8s cluster
 	secretsClient := kubeClient.CoreV1().Secrets(namespace.Name)
-	secretsClient.Create(context.Background(), chainlinkNodeSecret(), metav1.CreateOptions{})
+	_, err = secretsClient.Create(context.Background(), chainlinkNodeSecret(), metav1.CreateOptions{})
+	if err != nil {
+		return nil, err
+	}
 	deploymentsClient := kubeClient.AppsV1().Deployments(namespace.Name)
 	servicesClient := kubeClient.CoreV1().Services(namespace.Name)
 
@@ -205,7 +208,10 @@ func (env *environment) FundAllNodes(fromWallet client.BlockchainWallet, nativeA
 		if err != nil {
 			return err
 		}
-		env.blockchainClient.Fund(fromWallet, toAddress, nativeAmount, linkAmount)
+		err = env.blockchainClient.Fund(fromWallet, toAddress, nativeAmount, linkAmount)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -757,23 +763,21 @@ func (env *environment) forwardPorts(namespaceName string) ([]string, string, st
 			})
 			if err != nil {
 				log.Err(err).Str("Pod", pod.Name).Msg("Error while forwarding port, tearing down env")
-				env.TearDown()
+				_ = env.TearDown()
+				// TODO: Not a fan of this, but otherwise caught in an infinite loop if something goes wrong.
 				panic(err)
 			}
 		}()
 
-		select {
-		case forwardedPort := <-portCh:
-			if strings.HasPrefix(pod.Name, "hardhat-network") {
-				hardhatPort = forwardedPort
-			} else if strings.HasPrefix(pod.Name, "dummy-adapter") {
-				adapterPort = forwardedPort
-			} else {
-				forwardedPorts = append(forwardedPorts, forwardedPort)
-			}
-			log.Info().Str("Pod", pod.Name).Str("Port", forwardedPort).Msg("Forwarded local port")
-			break
+		forwardedPort := <-portCh
+		if strings.HasPrefix(pod.Name, "hardhat-network") {
+			hardhatPort = forwardedPort
+		} else if strings.HasPrefix(pod.Name, "dummy-adapter") {
+			adapterPort = forwardedPort
+		} else {
+			forwardedPorts = append(forwardedPorts, forwardedPort)
 		}
+		log.Info().Str("Pod", pod.Name).Str("Port", forwardedPort).Msg("Forwarded local port")
 	}
 	return forwardedPorts, hardhatPort, adapterPort, err
 }
@@ -801,7 +805,8 @@ func (env *environment) forwardPort(req portForwardRequest) error {
 		err = fw.ForwardPorts()
 		if err != nil {
 			log.Err(err).Str("Pod", req.Pod.Name).Msg("Error while forwarding port, tearing down env")
-			env.TearDown()
+			_ = env.TearDown()
+			// TODO: Not a fan of this, but otherwise caught in an infinite loop if something goes wrong.
 			panic(err)
 		}
 	}()

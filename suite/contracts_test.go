@@ -79,7 +79,7 @@ var _ = Describe("Chainlink Node", func() {
 				P2PBootstrapPeers:  []string{bootstrapP2PId},
 				KeyBundleID:        nodeOCRKeyId,
 				TransmitterAddress: nodeTransmitterAddress,
-				ObservationSource:  client.ObservationSourceSpec(testEnv.Adapter().ClusterURL + "/five"),
+				ObservationSource:  client.ObservationSourceSpec(testEnv.Adapter().ClusterURL() + "/five"),
 			}
 			_, err = chainlinkNodes[index].CreateJob(ocrSpec)
 			Expect(err).ShouldNot(HaveOccurred())

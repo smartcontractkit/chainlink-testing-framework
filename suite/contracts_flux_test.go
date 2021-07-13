@@ -76,13 +76,14 @@ var _ = Describe("Flux monitor suite", func() {
 				ContractAddress:   fluxInstance.Address(),
 				PollTimerPeriod:   15 * time.Second, // min 15s
 				PollTimerDisabled: false,
-				ObservationSource: client.ObservationSourceSpec(testEnv.Adapter().ClusterURL + "/variable"),
+				ObservationSource: client.ObservationSourceSpec(testEnv.Adapter().ClusterURL() + "/variable"),
 			}
 			_, err = n.CreateJob(fluxSpec)
 			Expect(err).ShouldNot(HaveOccurred())
 		}
 		// first change
-		_, _ = tools.SetVariableMockData(adapter.LocalAddr, 5)
+		err = testEnv.Adapter().SetVariable(5)
+		Expect(err).ShouldNot(HaveOccurred())
 		err = fluxInstance.AwaitNextRoundFinalized(context.Background())
 		Expect(err).ShouldNot(HaveOccurred())
 		{
@@ -97,7 +98,8 @@ var _ = Describe("Flux monitor suite", func() {
 			Expect(data.AllocatedFunds.Int64()).Should(Equal(int64(3)))
 		}
 		// second change + 20%
-		_, _ = tools.SetVariableMockData(adapter.LocalAddr, 6)
+		err = testEnv.Adapter().SetVariable(6)
+		Expect(err).ShouldNot(HaveOccurred())
 		err = fluxInstance.AwaitNextRoundFinalized(context.Background())
 		Expect(err).ShouldNot(HaveOccurred())
 		{
