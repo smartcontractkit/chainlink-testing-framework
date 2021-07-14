@@ -119,7 +119,7 @@ func NewBasicEnvironment(environmentName string, nodeCount int, network client.B
 
 	// Launch chainlink nodes
 	for i := 0; i < nodeCount; i++ {
-		err = env.deployChainlink()
+		err = env.deployChainlink(i == 0) // Launches only 1 bootstrap chainlink node
 		if err != nil {
 			return nil, err
 		}
@@ -134,7 +134,7 @@ func NewBasicEnvironment(environmentName string, nodeCount int, network client.B
 	env.adapter = environmentAdapter
 
 	if network.ID() == client.EthereumHardhatID { // URL to connect to hardhat from outside the cluster
-		network.SetURL("ws://127.0.0.1:" + hardhatPort)
+		env.network.SetURL("ws://127.0.0.1:" + hardhatPort)
 	}
 
 	for _, port := range forwardedPorts {
@@ -147,7 +147,6 @@ func NewBasicEnvironment(environmentName string, nodeCount int, network client.B
 			Email:    "notreal@fakeemail.ch",
 			Password: "twochains",
 		}, http.DefaultClient)
-		log.Info().Str("URL", "http://127.0.0.1:"+port).Msg("Created Chainlink connection")
 		if err != nil {
 			return nil, err
 		}
@@ -268,23 +267,6 @@ func (ex *externalAdapter) SetVariable(variable int) error {
 // --------------- INTERNAL HELPERS ---------------
 // Convenience methods / functions
 
-// Deploys a chainlink pod to the cluster
-func (env *environment) deployChainlink() error {
-	deploymentSpec := newChainlinkDeployment(env.network, LatestChainlinkVersion)
-	nodeDeployment, err := env.deploymentsClient.Create(context.Background(), deploymentSpec, metav1.CreateOptions{})
-	if err != nil {
-		return err
-	}
-
-	serviceSpec := newChainlinkService(nodeDeployment.Name)
-	_, err = env.servicesClient.Create(context.Background(), serviceSpec, metav1.CreateOptions{})
-	if err != nil {
-		return err
-	}
-	log.Info().Str("Name", nodeDeployment.Name).Msg("Deployed chainlink node")
-	return err
-}
-
 func (env *environment) setEnvTools() error {
 	blockchainClient, err := client.NewBlockchainClient(env.network)
 	if err != nil {
@@ -397,9 +379,11 @@ func (env *environment) deployExternalAdapter() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	log.Info().Msg("Deployed Hardhat")
+	log.Info().Msg("Deployed Dummy Adapter")
 	return "http://" + adapterService.Spec.ClusterIP + ":6060", err
 }
+
+// TODO: ADD RESOURCE REQUESTS
 
 // Builds all that's needed for launching a dummy external adapter for testing
 func newExternalAdapter() (*appsv1.Deployment, *apiv1.Service) {
@@ -418,8 +402,9 @@ func newExternalAdapter() (*appsv1.Deployment, *apiv1.Service) {
 				Spec: apiv1.PodSpec{
 					Containers: []apiv1.Container{
 						{
-							Name:  "dummy-adapter",
-							Image: "smartcontract/dummy-external-adapter",
+							Name: "dummy-adapter",
+							// Hosting on my personal docker hub for now, unable to get a smartcontract repo right now
+							Image: "kalverra/dummy-external-adapter",
 							Ports: []apiv1.ContainerPort{
 								{
 									ContainerPort: 6060,
@@ -432,7 +417,8 @@ func newExternalAdapter() (*appsv1.Deployment, *apiv1.Service) {
 										Port: intstr.FromInt(6060),
 									},
 								},
-								PeriodSeconds: 1,
+								InitialDelaySeconds: 5,
+								PeriodSeconds:       30,
 							},
 						},
 					},
@@ -497,15 +483,40 @@ func waitForHealthyPods(kubeClient *kubernetes.Clientset, namespace string) erro
 	return nil
 }
 
+// Deploys a chainlink pod to the cluster
+func (env *environment) deployChainlink(bootstrap bool) error {
+	deploymentSpec := newChainlinkDeployment(env.network, LatestChainlinkVersion, bootstrap)
+	nodeDeployment, err := env.deploymentsClient.Create(context.Background(), deploymentSpec, metav1.CreateOptions{})
+	if err != nil {
+		return err
+	}
+
+	serviceSpec := newChainlinkService(nodeDeployment.Name)
+	service, err := env.servicesClient.Create(context.Background(), serviceSpec, metav1.CreateOptions{})
+	if err != nil {
+		return err
+	}
+	log.Info().Str("Name", nodeDeployment.Name).Str("Cluster URL", service.Spec.ClusterIP).Msg("Deployed chainlink node")
+	return err
+}
+
 // Creates K8s deployment object for chainlink node setup
-func newChainlinkDeployment(network client.BlockchainNetwork, chainlinkVersion string) *appsv1.Deployment {
+func newChainlinkDeployment(network client.BlockchainNetwork, chainlinkVersion string, bootstrap bool) *appsv1.Deployment {
 	chainID := network.ChainID()
 	chainUrl := network.URL()
+	var meta metav1.ObjectMeta
+	if bootstrap {
+		meta = metav1.ObjectMeta{
+			Name: "chainlink-node-bootstrap",
+		}
+	} else {
+		meta = metav1.ObjectMeta{
+			GenerateName: "chainlink-node-",
+		}
+	}
 
 	deployment := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: "chainlink-node-",
-		},
+		ObjectMeta: meta,
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
@@ -538,8 +549,8 @@ func newChainlinkDeployment(network client.BlockchainNetwork, chainlinkVersion s
 									Name:          "access",
 									ContainerPort: 6688,
 								}, {
-									Name:          "node",
-									ContainerPort: 6060,
+									Name:          "p2p",
+									ContainerPort: 6690,
 								},
 							},
 							Env: defaultChainlinkEnvVars(chainUrl, chainID.String()),
@@ -640,6 +651,11 @@ func newChainlinkService(deploymentName string) *apiv1.Service {
 					Name:       "node-port",
 					Port:       int32(6688),
 					TargetPort: intstr.FromInt(6688),
+				},
+				{
+					Name:       "p2p-port",
+					Port:       int32(6690),
+					TargetPort: intstr.FromInt(6690),
 				},
 			},
 			Selector: map[string]string{
@@ -775,7 +791,7 @@ func (env *environment) forwardPorts(namespaceName string) ([]string, string, st
 		} else {
 			forwardedPorts = append(forwardedPorts, forwardedPort)
 		}
-		log.Info().Str("Pod", pod.Name).Str("Port", forwardedPort).Msg("Forwarded local port")
+		log.Info().Str("Pod", pod.Name).Str("Local URL", "127.0.0.1:"+forwardedPort).Msg("Pod Locally Accessible")
 	}
 	return forwardedPorts, hardhatPort, adapterPort, err
 }
@@ -785,6 +801,8 @@ func (env *environment) forwardPort(req portForwardRequest) error {
 	portForwardRequest := []string{"0:6688"} // Default for chainlink nodes
 	if strings.HasPrefix(req.Pod.Name, "hardhat-network") {
 		portForwardRequest = []string{"0:8545"}
+	} else if strings.HasPrefix(req.Pod.Name, "dummy-adapter") {
+		portForwardRequest = []string{"0:6060"}
 	}
 	path := fmt.Sprintf("/api/v1/namespaces/%s/pods/%s/portforward", req.Pod.Namespace, req.Pod.Name)
 	hostIP := strings.TrimLeft(req.RestConfig.Host, "htps:/")

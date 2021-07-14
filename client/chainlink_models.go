@@ -280,7 +280,7 @@ contractAddress                        = "{{.ContractAddress}}"
 {{if .P2PBootstrapPeers}}
 p2pBootstrapPeers                      = [
   {{range $peer := .P2PBootstrapPeers}}
-  "/dns4/chainlink-node-1/tcp/6690/p2p/{{$peer}}",
+  "/dns4/chainlink-node-bootstrap/tcp/6690/p2p/{{$peer}}",
   {{end}}
 ]
 {{else}}
@@ -321,7 +321,7 @@ contractAddress                        = "{{.ContractAddress}}"
 {{if .P2PBootstrapPeers}}
 p2pBootstrapPeers                      = [
   {{range $peer := .P2PBootstrapPeers}}
-  "/dns4/chainlink-node-1/tcp/6690/p2p/{{$peer}}",
+  "/dns4/chainlink-node-bootstrap/tcp/6690/p2p/{{$peer}}",
   {{end}}
 ]
 {{else}}
@@ -372,7 +372,7 @@ observationSource = """
 }
 
 func ObservationSourceSpec(url string) string {
-	return fmt.Sprintf(`fetch    [type=http method=POST url="%s" requestData="{}"];
-			parse    [type=jsonparse path="data,result"];    
-			fetch -> parse;`, url)
+	return fmt.Sprintf(`fetch    [type=http method=GET url="%s"];
+parse    [type=jsonparse path="data,result"];    
+fetch -> parse;`, url)
 }

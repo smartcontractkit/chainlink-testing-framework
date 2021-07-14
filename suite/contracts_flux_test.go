@@ -32,7 +32,7 @@ var _ = Describe("Flux monitor suite", func() {
 	) {
 		network, err := initFunc(conf)
 		Expect(err).ShouldNot(HaveOccurred())
-		testEnv, err := environment.NewBasicEnvironment("basic-flux-monitor", 3, network)
+		testEnv, err := environment.NewBasicEnvironment("basic-flux-monitor", 5, network)
 		Expect(err).ShouldNot(HaveOccurred())
 		defaultWallet := testEnv.Wallets().Default()
 
@@ -67,7 +67,7 @@ var _ = Describe("Flux monitor suite", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		oracles, err := fluxInstance.GetOracles(context.Background())
 		Expect(err).ShouldNot(HaveOccurred())
-		log.Info().Str("Oracles", strings.Join(oracles, ",")).Msg("oracles set")
+		log.Info().Str("Oracles", strings.Join(oracles, ",")).Msg("Oracles set")
 
 		// Send Flux job to chainlink nodes
 		for _, n := range clNodesAtTest {

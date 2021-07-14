@@ -329,6 +329,7 @@ func (o *EthereumOffchainAggregator) SetConfig(
 	ocrConfig OffChainAggregatorConfig,
 ) error {
 	// Gather necessary addresses and keys from our chainlink nodes to properly configure the OCR contract
+	log.Info().Str("Contract Address", o.address.Hex()).Msg("Configuring OCR Contract")
 	for _, node := range chainlinkNodes {
 		ocrKeys, err := node.ReadOCRKeys()
 		if err != nil {
@@ -397,7 +398,6 @@ func (o *EthereumOffchainAggregator) SetConfig(
 	if err != nil {
 		return err
 	}
-
 	tx, err := o.ocr.SetPayees(opts, transmitters, transmitters)
 	if err != nil {
 		return err
@@ -412,7 +412,6 @@ func (o *EthereumOffchainAggregator) SetConfig(
 	if err != nil {
 		return err
 	}
-
 	tx, err = o.ocr.SetConfig(opts, signers, transmitters, threshold, encodedConfigVersion, encodedConfig)
 	if err != nil {
 		return err
