@@ -209,6 +209,7 @@ observationSource = """
 type DirectRequestJobSpec struct {
 	Name              string `toml:"name"`
 	ContractAddress   string `toml:"contractAddress"`
+	ExternalJobID     string `toml:"externalJobID"`
 	ObservationSource string `toml:"observationSource"` // List of commands for the chainlink node
 }
 
@@ -217,7 +218,9 @@ func (d *DirectRequestJobSpec) String() (string, error) {
 	directRequestTemplateString := `type     = "directrequest"
 schemaVersion     = 1
 name              = "{{.Name}}"
+maxTaskDuration   = "60s"
 contractAddress   = "{{.ContractAddress}}"
+externalJobID     = "{{.ExternalJobID}}"
 observationSource = """
 {{.ObservationSource}}
 """`
@@ -401,4 +404,24 @@ func ObservationSourceSpec(url string) string {
 	return fmt.Sprintf(`fetch    [type=http method=POST url="%s" requestData="{}"];
 			parse    [type=jsonparse path="data,result"];    
 			fetch -> parse;`, url)
+}
+
+// ObservationSourceConsumerTxEncode spec to put back "directrequest" job data on-chain
+func ObservationSourceConsumerTxEncode(url string) string {
+	return fmt.Sprintf(`
+            decode_log   [type=ethabidecodelog
+                         abi="OracleRequest(bytes32 indexed specId, address requester, bytes32 requestId, uint256 payment, address callbackAddr, bytes4 callbackFunctionId, uint256 cancelExpiration, uint256 dataVersion, bytes data)"
+                         data="$(jobRun.logData)"
+                         topics="$(jobRun.logTopics)"]
+			encode_tx  [type=ethabiencode
+                        abi="fulfill(bytes32 _requestId, uint256 _data)"
+                        data=<{
+                          "_requestId": $(decode_log.requestId),
+                          "_data": $(parse)
+                         }>
+                       ]
+            fetch    [type=http method=POST url="%s" requestData="{}"]
+			parse    [type=jsonparse path="data,result"]
+            submit   [type=ethtx to="$(decode_log.requester)" data="$(encode_tx)"]
+			decode_log -> fetch -> parse -> encode_tx -> submit`, url)
 }

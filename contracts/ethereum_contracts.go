@@ -15,6 +15,91 @@ import (
 	"math/big"
 )
 
+// EthereumOracle oracle for "directrequest" job tests
+type EthereumOracle struct {
+	address      *common.Address
+	client       *client.EthereumClient
+	oracle       *ethereum.Oracle
+	callerWallet client.BlockchainWallet
+}
+
+func (e *EthereumOracle) Address() string {
+	return e.address.Hex()
+}
+
+func (e *EthereumOracle) Fund(fromWallet client.BlockchainWallet, ethAmount *big.Int, linkAmount *big.Int) error {
+	return e.client.Fund(fromWallet, e.address.Hex(), ethAmount, linkAmount)
+}
+
+// SetFulfillmentPermission sets fulfillment permission for particular address
+func (e *EthereumOracle) SetFulfillmentPermission(fromWallet client.BlockchainWallet, address string, allowed bool) error {
+	opts, err := e.client.TransactionOpts(fromWallet, *e.address, big.NewInt(0), nil)
+	if err != nil {
+		return err
+	}
+	tx, err := e.oracle.SetFulfillmentPermission(opts, common.HexToAddress(address), allowed)
+	if err != nil {
+		return err
+	}
+	if err := e.client.WaitForTransaction(tx.Hash()); err != nil {
+		return err
+	}
+	return nil
+}
+
+// EthereumAPIConsumer API consumer for job type "directrequest" tests
+type EthereumAPIConsumer struct {
+	address      *common.Address
+	client       *client.EthereumClient
+	consumer     *ethereum.APIConsumer
+	callerWallet client.BlockchainWallet
+}
+
+func (e *EthereumAPIConsumer) Address() string {
+	return e.address.Hex()
+}
+
+func (e *EthereumAPIConsumer) Fund(fromWallet client.BlockchainWallet, ethAmount *big.Int, linkAmount *big.Int) error {
+	return e.client.Fund(fromWallet, e.address.Hex(), ethAmount, linkAmount)
+}
+
+func (e *EthereumAPIConsumer) Data(ctx context.Context) (*big.Int, error) {
+	opts := &bind.CallOpts{
+		From:    common.HexToAddress(e.callerWallet.Address()),
+		Pending: true,
+		Context: ctx,
+	}
+	data, err := e.consumer.Data(opts)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+// CreateRequestTo creates request to an oracle for particular jobID with params
+func (e *EthereumAPIConsumer) CreateRequestTo(
+	fromWallet client.BlockchainWallet,
+	oracleAddr string,
+	jobID [32]byte,
+	payment *big.Int,
+	url string,
+	path string,
+	times *big.Int,
+) error {
+	opts, err := e.client.TransactionOpts(fromWallet, *e.address, big.NewInt(0), nil)
+	if err != nil {
+		return err
+	}
+	tx, err := e.consumer.CreateRequestTo(opts, common.HexToAddress(oracleAddr), jobID, payment, url, path, times)
+	if err != nil {
+		return err
+	}
+	if err := e.client.WaitForTransaction(tx.Hash()); err != nil {
+		return err
+	}
+	return nil
+}
+
 // EthereumFluxAggregator represents the basic flux aggregation contract
 type EthereumFluxAggregator struct {
 	client         *client.EthereumClient

@@ -10,7 +10,7 @@ solc_versions = ["v0.4", "v0.6", "v0.7"]
 rootdir = "./artifacts/contracts/ethereum/"
 targetdir = "./contracts/ethereum"
 
-used_contract_names = ["FluxAggregator", "VRF", "OffchainAggregator", "LinkToken"]
+used_contract_names = ["FluxAggregator", "VRF", "OffchainAggregator", "LinkToken", "Oracle", "APIConsumer"]
 
 print("Locally installing hardhat...")
 subprocess.run('npm install --save-dev hardhat', shell=True, check=True)
@@ -57,14 +57,14 @@ solidity: {
         }
     },
     {
-        version: "0.4.11",
-        settings: {
-            optimizer: {
-                enabled: true,
-                runs: 1000
+            version: "0.6.0",
+            settings: {
+                optimizer: {
+                    enabled: true,
+                    runs: 1000
+                }
             }
-        }
-    },
+        },
     {
         version: "0.4.24",
         settings: {
