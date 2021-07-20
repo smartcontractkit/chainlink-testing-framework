@@ -21,6 +21,10 @@ test: ## run tests
 	go test -v ./... -count 1 -p 1
 
 .PHONY: test_race
+test_refill: ## runs refill suite
+	go test -v ./suite/refill -count 1 -p 1
+
+.PHONY: test_race
 test_race: ## run tests with race
 	go test -v ./... -race -count 1 -p 1
 
