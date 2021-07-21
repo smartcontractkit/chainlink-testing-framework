@@ -17,6 +17,8 @@ import (
 // ContractDeployer is an interface for abstracting the contract deployment methods across network implementations
 type ContractDeployer interface {
 	DeployStorageContract(fromWallet client.BlockchainWallet) (Storage, error)
+	DeployAPIConsumer(fromWallet client.BlockchainWallet, linkAddr string) (APIConsumer, error)
+	DeployOracle(fromWallet client.BlockchainWallet, linkAddr string) (Oracle, error)
 	DeployFluxAggregatorContract(
 		fromWallet client.BlockchainWallet,
 		fluxOptions FluxAggregatorOptions,
@@ -199,6 +201,44 @@ func (e *EthereumContractDeployer) DeployStorageContract(fromWallet client.Block
 	return &EthereumStorage{
 		client:       e.eth,
 		store:        instance.(*ethereum.Store),
+		callerWallet: fromWallet,
+	}, err
+}
+
+// DeployAPIConsumer deploys api consumer for oracle
+func (e *EthereumContractDeployer) DeployAPIConsumer(fromWallet client.BlockchainWallet, linkAddr string) (APIConsumer, error) {
+	addr, _, instance, err := e.eth.DeployContract(fromWallet, "APIConsumer", func(
+		auth *bind.TransactOpts,
+		backend bind.ContractBackend,
+	) (common.Address, *types.Transaction, interface{}, error) {
+		return ethereum.DeployAPIConsumer(auth, backend, common.HexToAddress(linkAddr))
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &EthereumAPIConsumer{
+		address:      addr,
+		client:       e.eth,
+		consumer:     instance.(*ethereum.APIConsumer),
+		callerWallet: fromWallet,
+	}, err
+}
+
+// DeployOracle deploys oracle for consumer test
+func (e *EthereumContractDeployer) DeployOracle(fromWallet client.BlockchainWallet, linkAddr string) (Oracle, error) {
+	addr, _, instance, err := e.eth.DeployContract(fromWallet, "Oracle", func(
+		auth *bind.TransactOpts,
+		backend bind.ContractBackend,
+	) (common.Address, *types.Transaction, interface{}, error) {
+		return ethereum.DeployOracle(auth, backend, common.HexToAddress(linkAddr))
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &EthereumOracle{
+		address:      addr,
+		client:       e.eth,
+		oracle:       instance.(*ethereum.Oracle),
 		callerWallet: fromWallet,
 	}, err
 }

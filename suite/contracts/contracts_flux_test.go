@@ -59,13 +59,21 @@ var _ = Describe("Flux monitor suite", func() {
 		adapter := tools.NewExternalAdapter()
 
 		// Send Flux job to chainlink nodes
+		os := &client.PipelineSpec{
+			URL:         adapter.InsideDockerAddr + "/variable",
+			Method:      "POST",
+			RequestData: "{}",
+			DataPath:    "data,result",
+		}
+		ost, err := os.String()
+		Expect(err).ShouldNot(HaveOccurred())
 		for _, n := range clNodesAtTest {
 			fluxSpec := &client.FluxMonitorJobSpec{
 				Name:              "flux_monitor",
 				ContractAddress:   fluxInstance.Address(),
 				PollTimerPeriod:   15 * time.Second, // min 15s
 				PollTimerDisabled: false,
-				ObservationSource: client.ObservationSourceSpec(adapter.InsideDockerAddr + "/variable"),
+				ObservationSource: ost,
 			}
 			_, err = n.CreateJob(fluxSpec)
 			Expect(err).ShouldNot(HaveOccurred())

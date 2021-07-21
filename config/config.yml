@@ -5,7 +5,7 @@ networks:
     ethereum_hardhat:
         name: "Ethereum Hardhat"
         url: "ws://localhost:8545"
-        chain_id: 31337
+        chain_id: 1337
         private_keys:
             - ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
             - 59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d
@@ -28,7 +28,7 @@ networks:
             - de9be858da4a475276426320d5e9262ecfc3ba460bfac56360bfa6c4c28b4ee0
             - df57089febbacf7ba0bc227dafbffa9fc08a93fdc68e1e42411a14efcf23656e
         transaction_limit: 9500000 
-        transaction_timeout: 1s
+        transaction_timeout: 2s
         minimum_confirmations: 1
         gas_estimation_buffer: 0
     ethereum_kovan:

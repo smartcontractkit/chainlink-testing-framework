@@ -2,7 +2,6 @@ package client
 
 import (
 	"bytes"
-	"fmt"
 	"text/template"
 	"time"
 )
@@ -205,10 +204,62 @@ observationSource = """
 	return marshallTemplate(c, "CRON Job", cronJobTemplateString)
 }
 
+// PipelineSpec common API call pipeline
+type PipelineSpec struct {
+	URL         string
+	Method      string
+	RequestData string
+	DataPath    string
+}
+
+func (d *PipelineSpec) Type() string {
+	return "common_pipeline"
+}
+
+func (d *PipelineSpec) String() (string, error) {
+	sourceString := `fetch    [type=http method={{.Method}} url="{{.URL}}" requestData="{{.RequestData}}"];
+			parse    [type=jsonparse path="{{.DataPath}}"];    
+			fetch -> parse;`
+	return marshallTemplate(d, "API call pipeline template", sourceString)
+}
+
+// DirectRequestTxPipelineSpec oracle request with tx callback
+type DirectRequestTxPipelineSpec struct {
+	URL         string
+	Method      string
+	RequestData string
+	DataPath    string
+}
+
+func (d *DirectRequestTxPipelineSpec) Type() string {
+	return "directrequest_pipeline"
+}
+
+func (d *DirectRequestTxPipelineSpec) String() (string, error) {
+	sourceString := `
+            decode_log   [type=ethabidecodelog
+                         abi="OracleRequest(bytes32 indexed specId, address requester, bytes32 requestId, uint256 payment, address callbackAddr, bytes4 callbackFunctionId, uint256 cancelExpiration, uint256 dataVersion, bytes data)"
+                         data="$(jobRun.logData)"
+                         topics="$(jobRun.logTopics)"]
+			encode_tx  [type=ethabiencode
+                        abi="fulfill(bytes32 _requestId, uint256 _data)"
+                        data=<{
+                          "_requestId": $(decode_log.requestId),
+                          "_data": $(parse)
+                         }>
+                       ]
+            fetch    [type=http method={{.Method}} url="{{.URL}}" requestData="{{.RequestData}}"]
+			parse    [type=jsonparse path="{{.DataPath}}"]
+            submit   [type=ethtx to="$(decode_log.requester)" data="$(encode_tx)"]
+			decode_log -> fetch -> parse -> encode_tx -> submit`
+	return marshallTemplate(d, "Direct request pipeline template", sourceString)
+}
+
 // DirectRequestJobSpec represents a direct request spec
 type DirectRequestJobSpec struct {
 	Name              string `toml:"name"`
 	ContractAddress   string `toml:"contractAddress"`
+	ExternalJobID     string `toml:"externalJobID"`
 	ObservationSource string `toml:"observationSource"` // List of commands for the chainlink node
 }
 
@@ -217,7 +268,9 @@ func (d *DirectRequestJobSpec) String() (string, error) {
 	directRequestTemplateString := `type     = "directrequest"
 schemaVersion     = 1
 name              = "{{.Name}}"
+maxTaskDuration   = "60s"
 contractAddress   = "{{.ContractAddress}}"
+externalJobID     = "{{.ExternalJobID}}"
 observationSource = """
 {{.ObservationSource}}
 """`
@@ -395,10 +448,4 @@ observationSource = """
 {{.ObservationSource}}
 """`
 	return marshallTemplate(w, "Webhook Job", fluxMonitorTemplateString)
-}
-
-func ObservationSourceSpec(url string) string {
-	return fmt.Sprintf(`fetch    [type=http method=POST url="%s" requestData="{}"];
-			parse    [type=jsonparse path="data,result"];    
-			fetch -> parse;`, url)
 }

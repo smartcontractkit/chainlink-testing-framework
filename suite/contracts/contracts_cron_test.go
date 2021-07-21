@@ -24,9 +24,17 @@ var _ = Describe("Cronjob suite", func() {
 
 		adapter := tools.NewExternalAdapter()
 
+		os := &client.PipelineSpec{
+			URL:         adapter.InsideDockerAddr + "/five",
+			Method:      "POST",
+			RequestData: "{}",
+			DataPath:    "data,result",
+		}
+		ost, err := os.String()
+		Expect(err).ShouldNot(HaveOccurred())
 		job, err := chainlinkNodes[0].CreateJob(&client.CronJobSpec{
 			Schedule:          "CRON_TZ=UTC * * * * * *",
-			ObservationSource: client.ObservationSourceSpec(adapter.InsideDockerAddr + "/five"),
+			ObservationSource: ost,
 		})
 		Expect(err).ShouldNot(HaveOccurred())
 		err = retry.Do(func() error {
