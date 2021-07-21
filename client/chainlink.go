@@ -31,6 +31,8 @@ type Chainlink interface {
 	ReadBridge(name string) (*BridgeType, error)
 	DeleteBridge(name string) error
 
+	ReadRunsByJob(jobID string) (*JobRunsResponse, error)
+
 	CreateOCRKey() (*OCRKey, error)
 	ReadOCRKeys() (*OCRKeys, error)
 	DeleteOCRKey(id string) error
@@ -124,6 +126,14 @@ func (c *chainlink) ReadSpec(id string) (*Response, error) {
 	log.Info().Str("Node URL", c.Config.URL).Str("ID", id).Msg("Reading Spec")
 	_, err := c.do(http.MethodGet, fmt.Sprintf("/v2/specs/%s", id), nil, specObj, http.StatusOK)
 	return specObj, err
+}
+
+// ReadRunsForJob reads all runs for a job
+func (c *chainlink) ReadRunsByJob(jobID string) (*JobRunsResponse, error) {
+	runsObj := &JobRunsResponse{}
+	log.Info().Str("Node URL", c.Config.URL).Str("JobID", jobID).Msg("Reading runs for a job")
+	_, err := c.do(http.MethodGet, fmt.Sprintf("/v2/jobs/%s/runs", jobID), nil, runsObj, http.StatusOK)
+	return runsObj, err
 }
 
 // DeleteSpec deletes a job spec with the provided ID from the Chainlink node
