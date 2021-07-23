@@ -617,3 +617,105 @@ func (v *EthereumVRF) ProofLength(ctxt context.Context) (*big.Int, error) {
 	}
 	return v.vrf.PROOFLENGTH(opts)
 }
+
+// EthereumBlockhashStore represents a blockhash store for VRF contract
+type EthereumBlockhashStore struct {
+	address        *common.Address
+	client         *client.EthereumClient
+	blockHashStore *ethereum.BlockhashStore
+	callerWallet   client.BlockchainWallet
+}
+
+func (v *EthereumBlockhashStore) Address() string {
+	return v.address.Hex()
+}
+
+// EthereumVRFCoordinator represents VRF coordinator contract
+type EthereumVRFCoordinator struct {
+	address      *common.Address
+	client       *client.EthereumClient
+	coordinator  *ethereum.VRFCoordinator
+	callerWallet client.BlockchainWallet
+}
+
+func (v *EthereumVRFCoordinator) Address() string {
+	return v.address.Hex()
+}
+
+func (v *EthereumVRFCoordinator) HashOfKey(ctx context.Context, pubKey [2]*big.Int) ([32]byte, error) {
+	opts := &bind.CallOpts{
+		From:    common.HexToAddress(v.callerWallet.Address()),
+		Pending: true,
+		Context: ctx,
+	}
+	hash, err := v.coordinator.HashOfKey(opts, pubKey)
+	if err != nil {
+		return [32]byte{}, err
+	}
+	return hash, nil
+}
+
+func (v *EthereumVRFCoordinator) RegisterProvingKey(
+	fromWallet client.BlockchainWallet,
+	fee *big.Int,
+	oracleAddr string,
+	publicProvingKey [2]*big.Int,
+	jobID [32]byte,
+) error {
+	opts, err := v.client.TransactionOpts(fromWallet, *v.address, big.NewInt(0), nil)
+	if err != nil {
+		return err
+	}
+	tx, err := v.coordinator.RegisterProvingKey(opts, fee, common.HexToAddress(oracleAddr), publicProvingKey, jobID)
+	if err != nil {
+		return err
+	}
+	if err := v.client.WaitForTransaction(tx.Hash()); err != nil {
+		return err
+	}
+	return nil
+}
+
+// EthereumVRFConsumer represents VRF consumer contract
+type EthereumVRFConsumer struct {
+	address      *common.Address
+	client       *client.EthereumClient
+	consumer     *ethereum.VRFConsumer
+	callerWallet client.BlockchainWallet
+}
+
+func (v *EthereumVRFConsumer) Address() string {
+	return v.address.Hex()
+}
+
+func (v *EthereumVRFConsumer) Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Float) error {
+	return v.client.Fund(fromWallet, v.address.Hex(), ethAmount, linkAmount)
+}
+
+func (v *EthereumVRFConsumer) RequestRandomness(fromWallet client.BlockchainWallet, hash [32]byte, fee *big.Int) error {
+	opts, err := v.client.TransactionOpts(fromWallet, *v.address, big.NewInt(0), nil)
+	if err != nil {
+		return err
+	}
+	tx, err := v.consumer.TestRequestRandomness(opts, hash, fee)
+	if err != nil {
+		return err
+	}
+	if err := v.client.WaitForTransaction(tx.Hash()); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (v *EthereumVRFConsumer) RandomnessOutput(ctx context.Context) (*big.Int, error) {
+	opts := &bind.CallOpts{
+		From:    common.HexToAddress(v.callerWallet.Address()),
+		Pending: true,
+		Context: ctx,
+	}
+	out, err := v.consumer.RandomnessOutput(opts)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}

@@ -19,6 +19,7 @@ spec:
         - /etc/node-secrets-volume/node-password
         - -a
         - /etc/node-secrets-volume/apicredentials
+        - --vrfpassword=/etc/node-secrets-volume/apicredentials
         ports:
         - name: access
           containerport: {{ .Values.chainlinkCluster.chainlink.webPort }}

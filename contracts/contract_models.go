@@ -143,6 +143,28 @@ type VRF interface {
 	ProofLength(context.Context) (*big.Int, error)
 }
 
+type BlockHashStore interface {
+	Address() string
+}
+
+type VRFCoordinator interface {
+	RegisterProvingKey(
+		fromWallet client.BlockchainWallet,
+		fee *big.Int,
+		oracleAddr string,
+		publicProvingKey [2]*big.Int,
+		jobID [32]byte,
+	) error
+	HashOfKey(ctx context.Context, pubKey [2]*big.Int) ([32]byte, error)
+	Address() string
+}
+
+type VRFConsumer interface {
+	RequestRandomness(fromWallet client.BlockchainWallet, hash [32]byte, fee *big.Int) error
+	RandomnessOutput(ctx context.Context) (*big.Int, error)
+	Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Float) error
+}
+
 type RoundData struct {
 	RoundId         *big.Int
 	Answer          *big.Int
