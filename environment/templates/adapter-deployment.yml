@@ -1,0 +1,24 @@
+objectmeta:
+  name: dummy-adapter
+spec:
+  selector:
+    matchlabels:
+      app: dummy-adapter
+  template:
+    objectmeta:
+      labels:
+        app: dummy-adapter
+    spec:
+      containers:
+      - name: dummy-adapter
+        image: kalverra/dummy-external-adapter
+        ports:
+        - containerport: 6060
+        readinessprobe:
+          handler:
+            httpget:
+              path: /
+              port:
+                intval: 6060
+          initialdelayseconds: 5
+          periodseconds: 30

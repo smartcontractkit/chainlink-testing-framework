@@ -33,7 +33,7 @@ var _ = Describe("OCR Feed", func() {
 		// Setup
 		network, err := initFunc(conf)
 		Expect(err).ShouldNot(HaveOccurred())
-		testEnv, err := environment.NewBasicEnvironment("basic-ocr", 7, network)
+		testEnv, err := environment.NewK8sEnvironment("basic-ocr", 7, network)
 		Expect(err).ShouldNot(HaveOccurred())
 		chainlinkNodes := testEnv.ChainlinkNodes()
 
@@ -139,7 +139,7 @@ var _ = Describe("OCR Feed", func() {
 // 	) {
 // 		network, err := initFunc(conf)
 // 		Expect(err).ShouldNot(HaveOccurred())
-// 		testEnv, err := environment.NewBasicEnvironment("storage-contract", 0, network)
+// 		testEnv, err := environment.NewK8sEnvironment("storage-contract", 0, network)
 // 		Expect(err).ShouldNot(HaveOccurred())
 
 // 		storeInstance, err := testEnv.ContractDeployer().DeployStorageContract(testEnv.Wallets().Default())
@@ -164,7 +164,7 @@ var _ = Describe("OCR Feed", func() {
 // 	) {
 // 		network, err := initFunc(conf)
 // 		Expect(err).ShouldNot(HaveOccurred())
-// 		testEnv, err := environment.NewBasicEnvironment("flux-aggregator-contract", 0, network)
+// 		testEnv, err := environment.NewK8sEnvironment("flux-aggregator-contract", 0, network)
 // 		Expect(err).ShouldNot(HaveOccurred())
 
 // 		// Deploy LINK contract
@@ -197,7 +197,7 @@ var _ = Describe("OCR Feed", func() {
 // 	) {
 // 		network, err := initFunc(conf)
 // 		Expect(err).ShouldNot(HaveOccurred())
-// 		testEnv, err := environment.NewBasicEnvironment("ocr-contract", 0, network)
+// 		testEnv, err := environment.NewK8sEnvironment("ocr-contract", 0, network)
 // 		Expect(err).ShouldNot(HaveOccurred())
 
 // 		// Deploy LINK contract

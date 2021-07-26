@@ -1,0 +1,26 @@
+objectmeta:
+  name: hardhat-network
+spec:
+  replicas: null
+  selector:
+    matchlabels:
+      app: hardhat-network
+    matchexpressions: []
+  template:
+    objectmeta:
+      labels:
+        app: hardhat-network
+    spec:
+      containers:
+      - name: hardhat-network
+        image: smartcontract/hardhat-network
+        ports:
+        - containerport: 8545
+        readinessprobe:
+          handler:
+            exec: null
+            httpget:
+              path: /
+              port:
+                intval: 8545
+          periodseconds: 1

@@ -1,0 +1,15 @@
+objectmeta:
+  name: chainlink-test
+spec:
+  ports:
+  - name: node-port
+    port: 6688
+    targetport:
+      intval: 6688
+  - name: p2p-port
+    port: 6690
+    targetport:
+      intval: 6690
+  selector:
+    app: chainlink-node
+  type: ClusterIP

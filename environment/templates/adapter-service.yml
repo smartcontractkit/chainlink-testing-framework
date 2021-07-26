@@ -1,0 +1,11 @@
+objectmeta:
+  name: dummy-adapter
+spec:
+  ports:
+  - name: access
+    port: 6060
+    targetport:
+      intval: 6060
+  selector:
+    app: dummy-adapter
+  type: ClusterIP

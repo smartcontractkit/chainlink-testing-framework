@@ -19,14 +19,14 @@ var _ = Describe("Environment functionality", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 
-	DescribeTable("basic environment", func(
+	DescribeTable("basic k8sEnvironment", func(
 		initFunc client.BlockchainNetworkInit,
 	) {
 		// Setup
 		networkConfig, err := initFunc(conf)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		env, err := NewBasicEnvironment("check-basic-environment", 1, networkConfig)
+		env, err := NewK8sEnvironment(BasicChainlinkEnvironment(1), networkConfig)
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(len(env.ChainlinkNodes())).ShouldNot(Equal(0))
 
