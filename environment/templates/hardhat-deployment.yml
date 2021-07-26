@@ -1,0 +1,21 @@
+objectmeta:
+  name: hardhat-network
+spec:
+  template:
+    objectmeta:
+      labels:
+        app: hardhat-network
+    spec:
+      containers:
+      - name: hardhat-network
+        image: smartcontract/hardhat-network
+        ports:
+        - containerport: {{ .Values.hardhat.rpcPort }}
+        readinessprobe:
+          handler:
+            exec: null
+            httpget:
+              path: /
+              port:
+                intval: 8545
+          periodseconds: 2

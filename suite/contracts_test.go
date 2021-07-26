@@ -2,6 +2,7 @@ package suite
 
 import (
 	"context"
+	"github.com/smartcontractkit/integrations-framework/actions"
 	"math/big"
 	"time"
 
@@ -33,24 +34,42 @@ var _ = Describe("OCR Feed", func() {
 		// Setup
 		network, err := initFunc(conf)
 		Expect(err).ShouldNot(HaveOccurred())
-		testEnv, err := environment.NewBasicEnvironment("basic-ocr", 7, network)
+		env, err := environment.NewK8sEnvironment(environment.NewChainlinkCluster("../", 7), conf, network)
 		Expect(err).ShouldNot(HaveOccurred())
-		chainlinkNodes := testEnv.ChainlinkNodes()
+		defer env.TearDown()
+
+		chainlinkNodes, err := environment.GetChainlinkClients(env)
+		Expect(err).ShouldNot(HaveOccurred())
+		blockchain, err := environment.NewBlockchainClient(env, network)
+		Expect(err).ShouldNot(HaveOccurred())
+		wallets, err := network.Wallets()
+		Expect(err).ShouldNot(HaveOccurred())
+		adapter, err := environment.GetExternalAdapter(env)
+		Expect(err).ShouldNot(HaveOccurred())
 
 		// Fund each chainlink node
-		err = testEnv.FundAllNodes(testEnv.Wallets().Default(), big.NewInt(2000000000000000000), big.NewInt(2000000000000000000))
+		err = actions.FundAllChainlinkNodes(
+			chainlinkNodes,
+			blockchain,
+			wallets.Default(),
+			big.NewInt(2^18),
+			big.NewInt(2^18),
+		)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// Deploy and config OCR contract
-		ocrInstance, err := testEnv.ContractDeployer().DeployOffChainAggregator(testEnv.Wallets().Default(), ocrOptions)
+		deployer, err := contracts.NewContractDeployer(blockchain)
+		Expect(err).ShouldNot(HaveOccurred())
+
+		ocrInstance, err := deployer.DeployOffChainAggregator(wallets.Default(), ocrOptions)
 		Expect(err).ShouldNot(HaveOccurred())
 		err = ocrInstance.SetConfig(
-			testEnv.Wallets().Default(),
+			wallets.Default(),
 			chainlinkNodes,
 			contracts.DefaultOffChainAggregatorConfig(len(chainlinkNodes)),
 		)
 		Expect(err).ShouldNot(HaveOccurred())
-		err = ocrInstance.Fund(testEnv.Wallets().Default(), big.NewInt(2000000000000000), big.NewInt(2000000000000000))
+		err = ocrInstance.Fund(wallets.Default(), big.NewInt(2^18), big.NewInt(2^18))
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// Initialize bootstrap node
@@ -83,18 +102,18 @@ var _ = Describe("OCR Feed", func() {
 				P2PBootstrapPeers:  []string{bootstrapP2PId},
 				KeyBundleID:        nodeOCRKeyId,
 				TransmitterAddress: nodeTransmitterAddress,
-				ObservationSource:  client.ObservationSourceSpec(testEnv.Adapter().ClusterURL() + "/five"),
+				ObservationSource:  client.ObservationSourceSpec(adapter.ClusterURL() + "/five"),
 			}
 			_, err = chainlinkNodes[index].CreateJob(ocrSpec)
 			Expect(err).ShouldNot(HaveOccurred())
 		}
 
 		// Request a new round from the OCR
-		err = ocrInstance.RequestNewRound(testEnv.Wallets().Default())
+		err = ocrInstance.RequestNewRound(wallets.Default())
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// Wait for a round
-		for i := 0; i < 5000; i++ {
+		for i := 0; i < 30; i++ {
 			round, err := ocrInstance.GetLatestRound(context.Background())
 			Expect(err).ShouldNot(HaveOccurred())
 			log.Info().
@@ -116,9 +135,6 @@ var _ = Describe("OCR Feed", func() {
 		log.Info().Str("Answer", answer.String()).Msg("Final Answer")
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(answer.Int64()).Should(Equal(int64(5)))
-
-		err = testEnv.TearDown()
-		Expect(err).ShouldNot(HaveOccurred())
 	},
 		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, contracts.DefaultOffChainAggregatorOptions()),
 	)
@@ -139,7 +155,7 @@ var _ = Describe("OCR Feed", func() {
 // 	) {
 // 		network, err := initFunc(conf)
 // 		Expect(err).ShouldNot(HaveOccurred())
-// 		testEnv, err := environment.NewBasicEnvironment("storage-contract", 0, network)
+// 		testEnv, err := environment.NewK8sEnvironment("storage-contract", 0, network)
 // 		Expect(err).ShouldNot(HaveOccurred())
 
 // 		storeInstance, err := testEnv.ContractDeployer().DeployStorageContract(testEnv.Wallets().Default())
@@ -164,7 +180,7 @@ var _ = Describe("OCR Feed", func() {
 // 	) {
 // 		network, err := initFunc(conf)
 // 		Expect(err).ShouldNot(HaveOccurred())
-// 		testEnv, err := environment.NewBasicEnvironment("flux-aggregator-contract", 0, network)
+// 		testEnv, err := environment.NewK8sEnvironment("flux-aggregator-contract", 0, network)
 // 		Expect(err).ShouldNot(HaveOccurred())
 
 // 		// Deploy LINK contract
@@ -197,7 +213,7 @@ var _ = Describe("OCR Feed", func() {
 // 	) {
 // 		network, err := initFunc(conf)
 // 		Expect(err).ShouldNot(HaveOccurred())
-// 		testEnv, err := environment.NewBasicEnvironment("ocr-contract", 0, network)
+// 		testEnv, err := environment.NewK8sEnvironment("ocr-contract", 0, network)
 // 		Expect(err).ShouldNot(HaveOccurred())
 
 // 		// Deploy LINK contract

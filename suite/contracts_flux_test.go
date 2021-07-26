@@ -2,6 +2,7 @@ package suite
 
 import (
 	"context"
+	"github.com/smartcontractkit/integrations-framework/actions"
 	"math/big"
 	"strings"
 	"time"
@@ -32,30 +33,47 @@ var _ = Describe("Flux monitor suite", func() {
 	) {
 		network, err := initFunc(conf)
 		Expect(err).ShouldNot(HaveOccurred())
-		testEnv, err := environment.NewBasicEnvironment("basic-flux-monitor", 5, network)
+		env, err := environment.NewK8sEnvironment(environment.NewChainlinkCluster("../", 5), conf, network)
 		Expect(err).ShouldNot(HaveOccurred())
-		defaultWallet := testEnv.Wallets().Default()
+		defer env.TearDown()
+
+		chainlinkNodes, err := environment.GetChainlinkClients(env)
+		Expect(err).ShouldNot(HaveOccurred())
+		blockchain, err := environment.NewBlockchainClient(env, network)
+		Expect(err).ShouldNot(HaveOccurred())
+		wallets, err := network.Wallets()
+		Expect(err).ShouldNot(HaveOccurred())
+		adapter, err := environment.GetExternalAdapter(env)
+		Expect(err).ShouldNot(HaveOccurred())
 
 		// Deploy FluxMonitor contract
-		fluxInstance, err := testEnv.ContractDeployer().DeployFluxAggregatorContract(defaultWallet, fluxOptions)
+		deployer, err := contracts.NewContractDeployer(blockchain)
 		Expect(err).ShouldNot(HaveOccurred())
-		err = fluxInstance.Fund(defaultWallet, big.NewInt(0), big.NewInt(1e18))
+
+		fluxInstance, err := deployer.DeployFluxAggregatorContract(wallets.Default(), fluxOptions)
 		Expect(err).ShouldNot(HaveOccurred())
-		err = fluxInstance.UpdateAvailableFunds(context.Background(), defaultWallet)
+		err = fluxInstance.Fund(wallets.Default(), big.NewInt(0), big.NewInt(1e18))
+		Expect(err).ShouldNot(HaveOccurred())
+		err = fluxInstance.UpdateAvailableFunds(context.Background(), wallets.Default())
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// get nodes and their addresses
-		clNodes := testEnv.ChainlinkNodes()
-		nodeAddrs, err := testEnv.ChainlinkNodeETHAddresses()
+		nodeAddrs, err := actions.ChainlinkNodeAddresses(chainlinkNodes)
 		Expect(err).ShouldNot(HaveOccurred())
 		oraclesAtTest := nodeAddrs[:3]
-		clNodesAtTest := clNodes[:3]
+		clNodesAtTest := chainlinkNodes[:3]
 		Expect(err).ShouldNot(HaveOccurred())
-		err = testEnv.FundAllNodes(defaultWallet, big.NewInt(2e18), nil)
+		err = actions.FundAllChainlinkNodes(
+			chainlinkNodes,
+			blockchain,
+			wallets.Default(),
+			big.NewInt(2e18),
+			nil,
+		)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// set oracles and submissions
-		err = fluxInstance.SetOracles(defaultWallet,
+		err = fluxInstance.SetOracles(wallets.Default(),
 			contracts.SetOraclesOptions{
 				AddList:            oraclesAtTest,
 				RemoveList:         []common.Address{},
@@ -76,13 +94,13 @@ var _ = Describe("Flux monitor suite", func() {
 				ContractAddress:   fluxInstance.Address(),
 				PollTimerPeriod:   15 * time.Second, // min 15s
 				PollTimerDisabled: false,
-				ObservationSource: client.ObservationSourceSpec(testEnv.Adapter().ClusterURL() + "/variable"),
+				ObservationSource: client.ObservationSourceSpec(adapter.ClusterURL() + "/variable"),
 			}
 			_, err = n.CreateJob(fluxSpec)
 			Expect(err).ShouldNot(HaveOccurred())
 		}
 		// first change
-		err = testEnv.Adapter().SetVariable(5)
+		err = adapter.SetVariable(5)
 		Expect(err).ShouldNot(HaveOccurred())
 		err = fluxInstance.AwaitNextRoundFinalized(context.Background())
 		Expect(err).ShouldNot(HaveOccurred())
@@ -98,7 +116,7 @@ var _ = Describe("Flux monitor suite", func() {
 			Expect(data.AllocatedFunds.Int64()).Should(Equal(int64(3)))
 		}
 		// second change + 20%
-		err = testEnv.Adapter().SetVariable(6)
+		err = adapter.SetVariable(6)
 		Expect(err).ShouldNot(HaveOccurred())
 		err = fluxInstance.AwaitNextRoundFinalized(context.Background())
 		Expect(err).ShouldNot(HaveOccurred())
@@ -118,9 +136,6 @@ var _ = Describe("Flux monitor suite", func() {
 			payment, _ := fluxInstance.WithdrawablePayment(context.Background(), oracleAddr)
 			Expect(payment.Int64()).Should(Equal(int64(2)))
 		}
-
-		err = testEnv.TearDown()
-		Expect(err).ShouldNot(HaveOccurred())
 	},
 		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, contracts.DefaultFluxAggregatorOptions()),
 	)

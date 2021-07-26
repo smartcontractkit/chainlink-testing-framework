@@ -21,23 +21,29 @@ var _ = Describe("Environment functionality", func() {
 
 	DescribeTable("basic environment", func(
 		initFunc client.BlockchainNetworkInit,
+		envInitFunc K8sEnvSpecInit,
+		nodeCount int,
 	) {
 		// Setup
 		networkConfig, err := initFunc(conf)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		env, err := NewBasicEnvironment("check-basic-environment", 1, networkConfig)
+		env, err := NewK8sEnvironment(envInitFunc, conf, networkConfig)
 		Expect(err).ShouldNot(HaveOccurred())
-		Expect(len(env.ChainlinkNodes())).ShouldNot(Equal(0))
+		defer env.TearDown()
 
-		mainNode := env.ChainlinkNodes()[0]
-		key, err := mainNode.PrimaryEthAddress()
+		clients, err := GetChainlinkClients(env)
 		Expect(err).ShouldNot(HaveOccurred())
-		log.Info().Str("ETH Address", key).Msg("Got address")
+		Expect(len(clients)).Should(Equal(nodeCount))
 
-		err = env.TearDown()
+		for _, client := range clients {
+			key, err := client.PrimaryEthAddress()
+			Expect(err).ShouldNot(HaveOccurred())
+			log.Info().Str("ETH Address", key).Msg("Got address")
+		}
 		Expect(err).ShouldNot(HaveOccurred())
 	},
-		Entry("on Ethereum Hardhat", client.NewHardhatNetwork),
+		Entry("1 node cluster", client.NewHardhatNetwork, NewChainlinkCluster("../", 1), 1),
+		Entry("5 node cluster", client.NewHardhatNetwork, NewChainlinkCluster("../", 5), 5),
 	)
 })

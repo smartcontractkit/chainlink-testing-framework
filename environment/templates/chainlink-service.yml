@@ -1,0 +1,15 @@
+objectmeta:
+  generatename: chainlink-
+spec:
+  ports:
+  - name: node-port
+    port: {{ .Values.chainlinkCluster.chainlink.webPort }}
+    targetport:
+      intval: {{ .Values.chainlinkCluster.chainlink.webPort }}
+  - name: p2p-port
+    port: {{ .Values.chainlinkCluster.chainlink.p2pPort }}
+    targetport:
+      intval: {{ .Values.chainlinkCluster.chainlink.p2pPort }}
+  selector:
+    app: chainlink-node
+  type: ClusterIP
