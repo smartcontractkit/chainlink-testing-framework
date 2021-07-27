@@ -33,7 +33,7 @@ var _ = Describe("OCR Feed", func() {
 		// Setup
 		network, err := initFunc(conf)
 		Expect(err).ShouldNot(HaveOccurred())
-		testEnv, err := environment.NewK8sEnvironment("basic-ocr", 7, network)
+		testEnv, err := environment.NewK8sEnvironment(environment.BasicChainlinkEnvironment(7), network)
 		Expect(err).ShouldNot(HaveOccurred())
 		chainlinkNodes := testEnv.ChainlinkNodes()
 

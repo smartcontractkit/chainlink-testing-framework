@@ -2,11 +2,14 @@ package environment
 
 import (
 	"fmt"
-	"github.com/smartcontractkit/integrations-framework/client"
 	"net/http"
+
+	"github.com/rs/zerolog/log"
+	"github.com/smartcontractkit/integrations-framework/client"
 )
 
 var Adapter = &K8sManifest{
+	Type:           "adapter",
 	DeploymentFile: "templates/adapter-deployment.yml",
 	ServiceFile:    "templates/adapter-service.yml",
 
@@ -32,7 +35,7 @@ var Adapter = &K8sManifest{
 }
 
 var Chainlink = &K8sManifest{
-	SecretFile:     "templates/chainlink-secret.yml",
+	Type:           "chainlink",
 	DeploymentFile: "templates/chainlink-deployment.yml",
 	ServiceFile:    "templates/chainlink-service.yml",
 
@@ -47,6 +50,7 @@ var Chainlink = &K8sManifest{
 				if err != nil {
 					return err
 				}
+				log.Logger.Info().Str("url", fmt.Sprintf("http://127.0.0.1:%d", ports.Local)).Msg("Adding chainlink node to env")
 				env.chainlinkNodes = append(env.chainlinkNodes, cl)
 			}
 		}
@@ -55,15 +59,16 @@ var Chainlink = &K8sManifest{
 }
 
 var Hardhat = &K8sManifest{
+	Type:           "hardhat",
 	DeploymentFile: "templates/hardhat-deployment.yml",
 	ServiceFile:    "templates/hardhat-service.yml",
 
 	CallbackFunc: func(env *k8sEnvironment) error {
-		if services, err := env.findServicesBySelector(SelectorLabelKey, BlockchainAppLabelValue); err != nil {
+		if _, err := env.findServicesBySelector(SelectorLabelKey, BlockchainAppLabelValue); err != nil {
 			return err
 		} else {
-			service := services[0]
-			env.network.SetURL(fmt.Sprintf("ws://127.0.0.1:%d", service.Spec.Ports[0].Port))
+			port := env.ports[BlockchainAppLabelValue]
+			env.network.SetURL(fmt.Sprintf("ws://127.0.0.1:%d", port[0].Local))
 		}
 		return nil
 	},

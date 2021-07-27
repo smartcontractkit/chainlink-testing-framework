@@ -1,16 +1,16 @@
 objectmeta:
-  name: dummy-adapter
+  name: external-adapter
 spec:
   selector:
     matchlabels:
-      app: dummy-adapter
+      app: external-adapter
   template:
     objectmeta:
       labels:
-        app: dummy-adapter
+        app: external-adapter
     spec:
       containers:
-      - name: dummy-adapter
+      - name: external-adapter
         image: kalverra/dummy-external-adapter
         ports:
         - containerport: 6060

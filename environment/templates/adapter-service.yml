@@ -1,5 +1,5 @@
 objectmeta:
-  name: dummy-adapter
+  name: external-adapter
 spec:
   ports:
   - name: access
@@ -7,5 +7,5 @@ spec:
     targetport:
       intval: 6060
   selector:
-    app: dummy-adapter
+    app: external-adapter
   type: ClusterIP

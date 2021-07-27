@@ -38,7 +38,8 @@ spec:
           value: chainlink
           valuefrom: null
         - name: ETH_URL
-          value: ws://localhost:8545
+          {{$hardhat := index . "hardhat"}}
+          value: ws://{{ $hardhat.Service.Spec.ClusterIP }}:8545
           valuefrom: null
         - name: ETH_CHAIN_ID
           value: "31337"

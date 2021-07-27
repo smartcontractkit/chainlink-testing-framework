@@ -4,12 +4,12 @@ spec:
   replicas: null
   selector:
     matchlabels:
-      app: hardhat-network
+      app: blockchain
     matchexpressions: []
   template:
     objectmeta:
       labels:
-        app: hardhat-network
+        app: blockchain
     spec:
       containers:
       - name: hardhat-network

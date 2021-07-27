@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/smartcontractkit/integrations-framework/config"
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"math/big"
 	"net/http"
@@ -14,6 +12,9 @@ import (
 	"sync"
 	"text/template"
 	"time"
+
+	"github.com/smartcontractkit/integrations-framework/config"
+	"gopkg.in/yaml.v2"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/rs/zerolog/log"
@@ -32,7 +33,7 @@ import (
 const (
 	SelectorLabelKey        = "app"
 	BlockchainAppLabelValue = "blockchain"
-	ChainlinkAppLabelValue  = "chainlink"
+	ChainlinkAppLabelValue  = "chainlink-node"
 	AdapterAppLabelValue    = "external-adapter"
 )
 
@@ -83,6 +84,9 @@ func NewK8sEnvironment(envInit K8sEnvironmentInit, network client.BlockchainNetw
 		return nil, err
 	}
 	k8sClient, err := kubernetes.NewForConfig(k8sConfig)
+	if err != nil {
+		return nil, err
+	}
 	env := &k8sEnvironment{
 		kubeClient:     k8sClient,
 		kubeConfig:     k8sConfig,
@@ -94,8 +98,14 @@ func NewK8sEnvironment(envInit K8sEnvironmentInit, network client.BlockchainNetw
 	environmentName, k8sManifests := envInit()
 	env.manifests = k8sManifests
 	namespace, err := env.createNamespace(environmentName)
+	if err != nil {
+		return nil, err
+	}
 	env.namespace = namespace
 
+	if err := env.deployChainlinkSecrets(); err != nil {
+		return nil, err
+	}
 	if err := env.deployManifests(); err != nil {
 		return nil, err
 	}
@@ -230,15 +240,12 @@ func (env *k8sEnvironment) createNamespace(namespace string) (*coreV1.Namespace,
 
 func (env *k8sEnvironment) deployManifests() error {
 	k8sSecrets := env.kubeClient.CoreV1().Secrets(env.namespace.Name)
-	k8sDeployment := env.kubeClient.AppsV1().Deployments(env.namespace.Name)
+	k8sDeployments := env.kubeClient.AppsV1().Deployments(env.namespace.Name)
 	k8sServices := env.kubeClient.CoreV1().Services(env.namespace.Name)
+	deployedManifests := map[string]*K8sManifest{}
 
 	for k, manifest := range env.manifests {
-		previousManifests := map[string]*K8sManifest{}
-		for i := k - 1; i >= 0; i-- {
-			previousManifests[manifest.ServiceFile] = manifest
-		}
-		if err := manifest.Parse(previousManifests); err != nil {
+		if err := manifest.Parse(env.network, deployedManifests); err != nil {
 			return err
 		}
 
@@ -255,7 +262,7 @@ func (env *k8sEnvironment) deployManifests() error {
 		}
 
 		if len(manifest.DeploymentFile) > 0 {
-			if deployment, err := k8sDeployment.Create(
+			if deployment, err := k8sDeployments.Create(
 				context.Background(),
 				manifest.Deployment,
 				metaV1.CreateOptions{},
@@ -277,6 +284,7 @@ func (env *k8sEnvironment) deployManifests() error {
 				env.manifests[k].Service = service
 			}
 		}
+		deployedManifests[manifest.Type] = manifest
 	}
 	return nil
 }
@@ -370,7 +378,7 @@ func (env *k8sEnvironment) waitForHealthyPods() error {
 	return nil
 }
 
-// Forwards all ports needed to connect to the k8sEnvironment, along with the hardhat port
+// Forwards all ports needed to connect to the k8sEnvironment
 func (env *k8sEnvironment) forwardPorts() (map[string][]portforward.ForwardedPort, error) {
 	forwardedPorts := map[string][]portforward.ForwardedPort{}
 
@@ -456,6 +464,25 @@ func (env *k8sEnvironment) doPortForward(pod *coreV1.Pod, forwarder *portforward
 	}
 }
 
+// TODO: Use templating for this bit, going to have an anneuryism if I try to debug this any longer
+func (env *k8sEnvironment) deployChainlinkSecrets() error {
+	k8sSecrets := env.kubeClient.CoreV1().Secrets(env.namespace.Name)
+
+	secret := &coreV1.Secret{
+		ObjectMeta: metaV1.ObjectMeta{
+			Name: "node-secrets",
+		},
+		Type: coreV1.SecretType("Opaque"),
+		StringData: map[string]string{
+			"apicredentials": "notreal@fakeemail.ch\ntwochains",
+			"node-password":  "T.tLHkcmwePT/p,]sYuntjwHKAsrhm#4eRs4LuKHwvHejWYAC2JP4M8HimwgmbaZ",
+		},
+	}
+
+	_, err := k8sSecrets.Create(context.Background(), secret, metaV1.CreateOptions{})
+	return err
+}
+
 type K8sEnvironmentInit func() (string, K8sManifests)
 
 type K8sManifests map[int]*K8sManifest
@@ -463,6 +490,7 @@ type K8sManifests map[int]*K8sManifest
 type k8sCallback func(env *k8sEnvironment) error
 
 type K8sManifest struct {
+	Type           string
 	DeploymentFile string
 	ServiceFile    string
 	SecretFile     string
@@ -474,20 +502,12 @@ type K8sManifest struct {
 	CallbackFunc k8sCallback
 }
 
-func (k8s *K8sManifest) Parse(previousManifests map[string]*K8sManifest) error {
+func (k8s *K8sManifest) Parse(network client.BlockchainNetwork, previousManifests map[string]*K8sManifest) error {
 	if len(k8s.SecretFile) > 0 {
 		if k8s.Secret == nil {
 			k8s.Secret = &coreV1.Secret{}
 		}
-		if err := k8s.parse(k8s.SecretFile, k8s.Secret, previousManifests); err != nil {
-			return err
-		}
-	}
-	if len(k8s.DeploymentFile) > 0 {
-		if k8s.Deployment == nil {
-			k8s.Deployment = &appsV1.Deployment{}
-		}
-		if err := k8s.parse(k8s.DeploymentFile, k8s.Deployment, previousManifests); err != nil {
+		if err := k8s.parse(k8s.SecretFile, k8s.Secret, network, previousManifests); err != nil {
 			return err
 		}
 	}
@@ -495,14 +515,26 @@ func (k8s *K8sManifest) Parse(previousManifests map[string]*K8sManifest) error {
 		if k8s.Service == nil {
 			k8s.Service = &coreV1.Service{}
 		}
-		if err := k8s.parse(k8s.ServiceFile, k8s.Service, previousManifests); err != nil {
+		if err := k8s.parse(k8s.ServiceFile, k8s.Service, network, previousManifests); err != nil {
+			return err
+		}
+	}
+	if len(k8s.DeploymentFile) > 0 {
+		if k8s.Deployment == nil {
+			k8s.Deployment = &appsV1.Deployment{}
+		}
+		if err := k8s.parse(k8s.DeploymentFile, k8s.Deployment, network, previousManifests); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (k8s *K8sManifest) parse(path string, obj interface{}, previousManifests map[string]*K8sManifest) error {
+func (k8s *K8sManifest) parse(
+	path string, obj interface{},
+	network client.BlockchainNetwork, // TODO: Use this if hardhat is not available
+	previousManifests map[string]*K8sManifest,
+) error {
 	fileBytes, err := ioutil.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("failed to read k8s file: %v", err)
@@ -511,6 +543,7 @@ func (k8s *K8sManifest) parse(path string, obj interface{}, previousManifests ma
 	if err != nil {
 		return fmt.Errorf("failed to read k8s template file %s: %v", path, err)
 	}
+
 	var tplBuffer bytes.Buffer
 	if err := tpl.Execute(&tplBuffer, previousManifests); err != nil {
 		return fmt.Errorf("failed to execute k8s template file %s: %v", path, err)

@@ -7,5 +7,5 @@ spec:
     targetport:
       intval: 8545
   selector:
-    app: hardhat-network
+    app: blockchain
   type: ClusterIP
