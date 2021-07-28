@@ -57,7 +57,10 @@ type FluxAggregator interface {
 
 type LinkToken interface {
 	Address() string
+	Approve(fromWallet client.BlockchainWallet, to string, amount *big.Int) error
+	Transfer(fromWallet client.BlockchainWallet, to string, amount *big.Int) error
 	BalanceOf(ctx context.Context, addr common.Address) (*big.Int, error)
+	TransferAndCall(fromWallet client.BlockchainWallet, to string, amount *big.Int, data []byte) error
 	Fund(fromWallet client.BlockchainWallet, ethAmount *big.Float) error
 	Name(context.Context) (string, error)
 }
@@ -141,6 +144,87 @@ type Storage interface {
 type VRF interface {
 	Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Float) error
 	ProofLength(context.Context) (*big.Int, error)
+}
+
+type MockETHLINKFeed interface {
+	Address() string
+}
+
+type MockGasFeed interface {
+	Address() string
+}
+
+type UpkeepRegistrar interface {
+	Address() string
+	SetRegistrarConfig(
+		fromWallet client.BlockchainWallet,
+		autoRegister bool,
+		windowSizeBlocks uint32,
+		allowedPerWindow uint16,
+		registryAddr string,
+		minLinkJuels *big.Int,
+	) error
+	EncodeRegisterRequest(
+		name string,
+		email []byte,
+		upkeepAddr string,
+		gasLimit uint32,
+		adminAddr string,
+		checkData []byte,
+		amount *big.Int,
+		source uint8,
+	) ([]byte, error)
+	Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Float) error
+}
+
+type KeeperRegistry interface {
+	Address() string
+	Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Float) error
+	SetRegistrar(fromWallet client.BlockchainWallet, registrarAddr string) error
+	AddUpkeepFunds(fromWallet client.BlockchainWallet, id *big.Int, amount *big.Int) error
+	GetUpkeepInfo(ctx context.Context, id *big.Int) (*UpkeepInfo, error)
+	GetKeeperInfo(ctx context.Context, keeperAddr string) (*KeeperInfo, error)
+	SetKeepers(fromWallet client.BlockchainWallet, keepers []string, payees []string) error
+	GetKeeperList(ctx context.Context) ([]string, error)
+	RegisterUpkeep(fromWallet client.BlockchainWallet, target string, gasLimit uint32, admin string, checkData []byte) error
+}
+
+type KeeperConsumer interface {
+	Address() string
+	Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Float) error
+	Counter(ctx context.Context) (*big.Int, error)
+}
+
+// KeeperRegistryOpts opts to deploy keeper registry
+type KeeperRegistryOpts struct {
+	LinkAddr             string
+	ETHFeedAddr          string
+	GasFeedAddr          string
+	PaymentPremiumPPB    uint32
+	BlockCountPerTurn    *big.Int
+	CheckGasLimit        uint32
+	StalenessSeconds     *big.Int
+	GasCeilingMultiplier uint16
+	FallbackGasPrice     *big.Int
+	FallbackLinkPrice    *big.Int
+}
+
+// KeeperInfo keeper status and balance info
+type KeeperInfo struct {
+	Payee   string
+	Active  bool
+	Balance *big.Int
+}
+
+// UpkeepInfo keeper target info
+type UpkeepInfo struct {
+	Target              string
+	ExecuteGas          uint32
+	CheckData           []byte
+	Balance             *big.Int
+	LastKeeper          string
+	Admin               string
+	MaxValidBlocknumber uint64
 }
 
 type BlockHashStore interface {

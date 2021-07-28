@@ -3,6 +3,8 @@ package client
 import (
 	"context"
 	"fmt"
+	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/pkg/errors"
 	"math/big"
 	"time"
 
@@ -292,7 +294,7 @@ func (e *EthereumClient) WaitForTransaction(transactionHash common.Hash) error {
 }
 
 func (e *EthereumClient) isTxConfirmed(txHash common.Hash) (bool, error) {
-	_, isPending, err := e.Client.TransactionByHash(context.Background(), txHash)
+	tx, isPending, err := e.Client.TransactionByHash(context.Background(), txHash)
 	if err != nil {
 		return !isPending, err
 	}
@@ -303,7 +305,37 @@ func (e *EthereumClient) isTxConfirmed(txHash common.Hash) (bool, error) {
 		}
 		if receipt.Status == 0 {
 			log.Warn().Str("TX Hash", txHash.Hex()).Msg("Transaction failed and was reverted!")
+			reason, err := e.errorReason(e.Client, tx, receipt)
+			if err != nil {
+				return false, err
+			}
+			log.Debug().Str("Revert reason", reason).Send()
 		}
 	}
 	return !isPending, err
+}
+
+// errorReason decodes tx revert reason
+func (e *EthereumClient) errorReason(b ethereum.ContractCaller, tx *types.Transaction, receipt *types.Receipt) (string, error) {
+	chID, err := e.Client.NetworkID(context.Background())
+	if err != nil {
+		return "", err
+	}
+	msg, err := tx.AsMessage(types.NewEIP155Signer(chID), nil)
+	if err != nil {
+		return "", err
+	}
+	callMsg := ethereum.CallMsg{
+		From:     msg.From(),
+		To:       tx.To(),
+		Gas:      tx.Gas(),
+		GasPrice: tx.GasPrice(),
+		Value:    tx.Value(),
+		Data:     tx.Data(),
+	}
+	res, err := b.CallContract(context.Background(), callMsg, receipt.BlockNumber)
+	if err != nil {
+		return "", errors.Wrap(err, "CallContract")
+	}
+	return abi.UnpackRevert(res)
 }
