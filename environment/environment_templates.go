@@ -9,7 +9,7 @@ import (
 )
 
 var Adapter = &K8sManifest{
-	Type:           "adapter",
+	Type:           AdapterAppLabelValue,
 	DeploymentFile: "templates/adapter-deployment.yml",
 	ServiceFile:    "templates/adapter-service.yml",
 
@@ -35,7 +35,7 @@ var Adapter = &K8sManifest{
 }
 
 var Chainlink = &K8sManifest{
-	Type:           "chainlink",
+	Type:           ChainlinkAppLabelValue,
 	DeploymentFile: "templates/chainlink-deployment.yml",
 	ServiceFile:    "templates/chainlink-service.yml",
 
@@ -59,7 +59,7 @@ var Chainlink = &K8sManifest{
 }
 
 var Hardhat = &K8sManifest{
-	Type:           "hardhat",
+	Type:           BlockchainAppLabelValue,
 	DeploymentFile: "templates/hardhat-deployment.yml",
 	ServiceFile:    "templates/hardhat-service.yml",
 

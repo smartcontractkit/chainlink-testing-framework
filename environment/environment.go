@@ -103,6 +103,7 @@ func NewK8sEnvironment(envInit K8sEnvironmentInit, network client.BlockchainNetw
 	}
 	env.namespace = namespace
 
+	// TODO: Use templating for this bit
 	if err := env.deployChainlinkSecrets(); err != nil {
 		return nil, err
 	}
@@ -284,6 +285,7 @@ func (env *k8sEnvironment) deployManifests() error {
 				env.manifests[k].Service = service
 			}
 		}
+
 		deployedManifests[manifest.Type] = manifest
 	}
 	return nil
@@ -464,7 +466,6 @@ func (env *k8sEnvironment) doPortForward(pod *coreV1.Pod, forwarder *portforward
 	}
 }
 
-// TODO: Use templating for this bit, going to have an anneuryism if I try to debug this any longer
 func (env *k8sEnvironment) deployChainlinkSecrets() error {
 	k8sSecrets := env.kubeClient.CoreV1().Secrets(env.namespace.Name)
 
@@ -532,7 +533,7 @@ func (k8s *K8sManifest) Parse(network client.BlockchainNetwork, previousManifest
 
 func (k8s *K8sManifest) parse(
 	path string, obj interface{},
-	network client.BlockchainNetwork, // TODO: Use this if hardhat is not available
+	network client.BlockchainNetwork,
 	previousManifests map[string]*K8sManifest,
 ) error {
 	fileBytes, err := ioutil.ReadFile(path)
@@ -544,8 +545,20 @@ func (k8s *K8sManifest) parse(
 		return fmt.Errorf("failed to read k8s template file %s: %v", path, err)
 	}
 
+	chainlinkConnectDetails := struct {
+		Version  string
+		ChainID  string
+		ChainURL string
+	}{
+		Version:  "0.10.10", // TODO: Make this variable
+		ChainID:  network.ChainID().String(),
+		ChainURL: network.URL(),
+	}
+	if chainManifest, ok := previousManifests[BlockchainAppLabelValue]; ok {
+		chainlinkConnectDetails.ChainURL = "ws://" + chainManifest.Service.Spec.ClusterIP + ":8545"
+	}
 	var tplBuffer bytes.Buffer
-	if err := tpl.Execute(&tplBuffer, previousManifests); err != nil {
+	if err := tpl.Execute(&tplBuffer, chainlinkConnectDetails); err != nil {
 		return fmt.Errorf("failed to execute k8s template file %s: %v", path, err)
 	}
 	if err := yaml.Unmarshal(tplBuffer.Bytes(), obj); err != nil {

@@ -16,7 +16,7 @@ spec:
             secretname: node-secrets
       containers:
       - name: node
-        image: smartcontract/chainlink:0.10.10
+        image: smartcontract/chainlink:{{ .Version }}
         args:
         - node
         - start
@@ -38,11 +38,10 @@ spec:
           value: chainlink
           valuefrom: null
         - name: ETH_URL
-          {{$hardhat := index . "hardhat"}}
-          value: ws://{{ $hardhat.Service.Spec.ClusterIP }}:8545
+          value: {{ .ChainURL }}
           valuefrom: null
         - name: ETH_CHAIN_ID
-          value: "31337"
+          value: "{{ .ChainID }}"
           valuefrom: null
         - name: ALLOW_ORIGINS
           value: '*'
