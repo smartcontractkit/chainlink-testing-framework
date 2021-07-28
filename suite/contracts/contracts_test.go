@@ -79,13 +79,21 @@ var _ = Describe("Chainlink Node", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			nodeOCRKeyId := nodeOCRKeys.Data[0].ID
 
+			os := &client.PipelineSpec{
+				URL:         adapter.InsideDockerAddr + "/five",
+				Method:      "POST",
+				RequestData: "{}",
+				DataPath:    "data,result",
+			}
+			ost, err := os.String()
+			Expect(err).ShouldNot(HaveOccurred())
 			ocrSpec := &client.OCRTaskJobSpec{
 				ContractAddress:    ocrInstance.Address(),
 				P2PPeerID:          nodeP2PId,
 				P2PBootstrapPeers:  []string{bootstrapP2PId},
 				KeyBundleID:        nodeOCRKeyId,
 				TransmitterAddress: nodeTransmitterAddress,
-				ObservationSource:  client.ObservationSourceSpec(adapter.InsideDockerAddr + "/five"),
+				ObservationSource:  ost,
 			}
 			_, err = chainlinkNodes[index].CreateJob(ocrSpec)
 			Expect(err).ShouldNot(HaveOccurred())

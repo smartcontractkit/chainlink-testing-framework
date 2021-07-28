@@ -112,6 +112,27 @@ type OffchainAggregator interface {
 	GetLatestRound(ctxt context.Context) (*RoundData, error)
 }
 
+type Oracle interface {
+	Address() string
+	Fund(fromWallet client.BlockchainWallet, ethAmount *big.Int, linkAmount *big.Int) error
+	SetFulfillmentPermission(fromWallet client.BlockchainWallet, address string, allowed bool) error
+}
+
+type APIConsumer interface {
+	Address() string
+	Fund(fromWallet client.BlockchainWallet, ethAmount *big.Int, linkAmount *big.Int) error
+	Data(ctx context.Context) (*big.Int, error)
+	CreateRequestTo(
+		fromWallet client.BlockchainWallet,
+		oracleAddr string,
+		jobID [32]byte,
+		payment *big.Int,
+		url string,
+		path string,
+		times *big.Int,
+	) error
+}
+
 type Storage interface {
 	Get(ctxt context.Context) (*big.Int, error)
 	Set(*big.Int) error
