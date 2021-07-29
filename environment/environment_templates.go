@@ -2,10 +2,11 @@ package environment
 
 import (
 	"fmt"
+	"path/filepath"
+
 	"github.com/smartcontractkit/integrations-framework/config"
 	coreV1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"path/filepath"
 )
 
 const (

@@ -16,8 +16,9 @@ import (
 
 var _ = Describe("Basic Contract Interactions", func() {
 	var suiteSetup *actions.DefaultSuiteSetup
+	var defaultWallet client.BlockchainWallet
 
-	BeforeSuite(func() {
+	BeforeEach(func() {
 		By("Deploying the environment", func() {
 			var err error
 			suiteSetup, err = actions.DefaultLocalSetup(
@@ -25,23 +26,18 @@ var _ = Describe("Basic Contract Interactions", func() {
 				client.NewNetworkFromConfig,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
-
-			// Deploy LINK contract
-			linkInstance, err := suiteSetup.Deployer.DeployLinkTokenContract(suiteSetup.Wallets.Default())
-			Expect(err).ShouldNot(HaveOccurred())
-			name, err := linkInstance.Name(context.Background())
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(name).To(Equal("ChainLink Token"))
+			defaultWallet = suiteSetup.Wallets.Default()
 		})
 	})
 
 	Describe("with the storage contract", func() {
 		It("should properly store and return values", func() {
 			// Deploy storage
-			storeInstance, err := suiteSetup.Deployer.DeployStorageContract(suiteSetup.Wallets.Default())
+			storeInstance, err := suiteSetup.Deployer.DeployStorageContract(defaultWallet)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			testVal := big.NewInt(5)
+
 			// Interact with contract
 			err = storeInstance.Set(testVal)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -55,9 +51,9 @@ var _ = Describe("Basic Contract Interactions", func() {
 		It("should deploy and be able to interact", func() {
 			// Deploy FluxMonitor contract
 			fluxOptions := contracts.DefaultFluxAggregatorOptions()
-			fluxInstance, err := suiteSetup.Deployer.DeployFluxAggregatorContract(suiteSetup.Wallets.Default(), fluxOptions)
+			fluxInstance, err := suiteSetup.Deployer.DeployFluxAggregatorContract(defaultWallet, fluxOptions)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = fluxInstance.Fund(suiteSetup.Wallets.Default(), big.NewInt(0), big.NewInt(50000000000))
+			err = fluxInstance.Fund(defaultWallet, big.NewInt(0), big.NewInt(50000000000))
 			Expect(err).ShouldNot(HaveOccurred())
 
 			// Interact with contract
@@ -72,9 +68,9 @@ var _ = Describe("Basic Contract Interactions", func() {
 		It("should deploy and be able to interact", func() {
 			// Deploy Offchain contract
 			ocrOptions := contracts.DefaultOffChainAggregatorOptions()
-			offChainInstance, err := suiteSetup.Deployer.DeployOffChainAggregator(suiteSetup.Wallets.Default(), ocrOptions)
+			offChainInstance, err := suiteSetup.Deployer.DeployOffChainAggregator(defaultWallet, ocrOptions)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = offChainInstance.Fund(suiteSetup.Wallets.Default(), nil, big.NewInt(50000000000))
+			err = offChainInstance.Fund(defaultWallet, nil, big.NewInt(50000000000))
 			Expect(err).ShouldNot(HaveOccurred())
 
 			// Check a round
