@@ -12,32 +12,41 @@ The framework is primarilly intended to facillitate testing chainlink features a
 This framework is still very much a work in progress, and will have frequent changes, many of which will probably be
 breaking.
 
-## How to Test
+## Execution Environment
 
-1. Start a local hardhat network. You can easily do so by using our
- [docker container](https://hub.docker.com/r/smartcontract/hardhat-network). You could also deploy
- [your own local version](https://hardhat.org/hardhat-network/), if you are so inclined.
-   ```
-   docker run --rm -it -p 8545:8545 smartcontract/hardhat-network
-   ```
-2. Start few local chainlink nodes, utilizing our `docker-compose` setup
-   [here](https://github.com/smartcontractkit/chainlink-node-compose)
-   (set your Docker-Preferences->Resourses->RAM to 6Gb min)
-   ```
-   docker compose up
-   ```
-   clean db with `docker compose down` if needed
-3. Run `make install-deps`
-4. Run a test mode
-    ```
-    make test
-    make test_race
-    make test_nightly
-    ```
-   test_race - race detector on, no parallel
-   
-   test_nightly - run tests 20 times in a row, no parallel
+Ephemeral environments are automatically deployed with Kubernetes. To run tests, you either need a deployed cluster 
+in an environment, or a local installation.
 
-## Example Usage
+### Locally
 
-You can see our tests for some basic usage examples. The most complete can be found in `contracts/contracts_test.go`
+When running tests locally, it's advised to use minikube. To spin up a cluster, use:
+
+```
+minikube start
+```
+
+### Remotely
+
+To run against a remote Kubernetes cluster, ensure your current context is the cluster you want to run against as the 
+framework always uses current context.
+
+## Test Execution
+
+This framework advises the use of [Ginkgo](https://github.com/onsi/ginkgo) for test execution, but tests still can be 
+ran with the go CLI.
+
+### Ginkgo
+
+Run:
+
+```
+ginkgo -r
+```
+
+### Go
+
+Run:
+
+```
+go test ./..
+```
