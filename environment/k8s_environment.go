@@ -748,15 +748,16 @@ func findServicesWithPort(
 ) ([]*coreV1.Service, error) {
 	var services []*coreV1.Service
 
-	k8sServices := k8sClient.CoreV1().Services(namespace.Name)
-	servicesList, err := k8sServices.List(context.Background(), metaV1.ListOptions{})
+	k8sPods := k8sClient.CoreV1().Services(namespace.Name)
+	servicesList, err := k8sPods.List(context.Background(), metaV1.ListOptions{})
 	if err != nil {
 		return services, err
 	}
 	for _, service := range servicesList.Items {
+		s := service
 		for _, port := range service.Spec.Ports {
 			if port.Port == int32(remotePort) {
-				services = append(services, &service)
+				services = append(services, &s)
 			}
 		}
 	}
