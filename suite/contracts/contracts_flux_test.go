@@ -1,4 +1,4 @@
-package suite
+package contracts
 
 import (
 	"context"
@@ -13,48 +13,36 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/client"
-	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/contracts"
 	"github.com/smartcontractkit/integrations-framework/environment"
 )
 
 var _ = Describe("Flux monitor suite", func() {
-	var conf *config.Config
-
-	BeforeEach(func() {
-		var err error
-		conf, err = config.NewWithPath(config.LocalConfig, "../config")
-		Expect(err).ShouldNot(HaveOccurred())
-	})
+	var s *actions.DefaultSuiteSetup
+	var err error
 
 	DescribeTable("Answering to deviation in rounds", func(
-		initFunc client.BlockchainNetworkInit,
+		envInitFunc environment.K8sEnvSpecInit,
+		networkInitFunc client.BlockchainNetworkInit,
 		fluxOptions contracts.FluxAggregatorOptions,
 	) {
-		network, err := initFunc(conf)
+		s, err = actions.DefaultLocalSetup(envInitFunc, networkInitFunc)
 		Expect(err).ShouldNot(HaveOccurred())
-		env, err := environment.NewK8sEnvironment(environment.NewChainlinkCluster("../", 5), conf, network)
-		Expect(err).ShouldNot(HaveOccurred())
-		defer env.TearDown()
 
-		chainlinkNodes, err := environment.GetChainlinkClients(env)
+		chainlinkNodes, err := environment.GetChainlinkClients(s.Env)
 		Expect(err).ShouldNot(HaveOccurred())
-		blockchain, err := environment.NewBlockchainClient(env, network)
-		Expect(err).ShouldNot(HaveOccurred())
-		wallets, err := network.Wallets()
-		Expect(err).ShouldNot(HaveOccurred())
-		adapter, err := environment.GetExternalAdapter(env)
+		adapter, err := environment.GetExternalAdapter(s.Env)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// Deploy FluxMonitor contract
-		deployer, err := contracts.NewContractDeployer(blockchain)
+		deployer, err := contracts.NewContractDeployer(s.Client)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		fluxInstance, err := deployer.DeployFluxAggregatorContract(wallets.Default(), fluxOptions)
+		fluxInstance, err := deployer.DeployFluxAggregatorContract(s.Wallets.Default(), fluxOptions)
 		Expect(err).ShouldNot(HaveOccurred())
-		err = fluxInstance.Fund(wallets.Default(), big.NewInt(0), big.NewInt(1e18))
+		err = fluxInstance.Fund(s.Wallets.Default(), big.NewInt(0), big.NewInt(1e18))
 		Expect(err).ShouldNot(HaveOccurred())
-		err = fluxInstance.UpdateAvailableFunds(context.Background(), wallets.Default())
+		err = fluxInstance.UpdateAvailableFunds(context.Background(), s.Wallets.Default())
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// get nodes and their addresses
@@ -65,15 +53,15 @@ var _ = Describe("Flux monitor suite", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		err = actions.FundChainlinkNodes(
 			chainlinkNodes,
-			blockchain,
-			wallets.Default(),
+			s.Client,
+			s.Wallets.Default(),
 			big.NewInt(2e18),
 			nil,
 		)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// set oracles and submissions
-		err = fluxInstance.SetOracles(wallets.Default(),
+		err = fluxInstance.SetOracles(s.Wallets.Default(),
 			contracts.SetOraclesOptions{
 				AddList:            oraclesAtTest,
 				RemoveList:         []common.Address{},
@@ -202,4 +190,8 @@ var _ = Describe("Flux monitor suite", func() {
 	},
 		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, contracts.DefaultFluxAggregatorOptions()),
 	)
+
+	AfterEach(func() {
+		s.Env.TearDown()
+	})
 })

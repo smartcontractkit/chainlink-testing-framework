@@ -7,21 +7,25 @@ import (
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog/log"
+	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
-	"github.com/smartcontractkit/integrations-framework/suite"
-	"github.com/smartcontractkit/integrations-framework/tools"
+	"github.com/smartcontractkit/integrations-framework/environment"
 	"math/big"
 	"strings"
 	"time"
 )
 
 var _ = Describe("ETH refill suite", func() {
+	var s *actions.DefaultSuiteSetup
+	var err error
+
 	DescribeTable("Can work after refill", func(
-		initFunc client.BlockchainNetworkInit,
+		envInitFunc environment.K8sEnvSpecInit,
+		networkInitFunc client.BlockchainNetworkInit,
 		fluxOptions contracts.FluxAggregatorOptions,
 	) {
-		s, err := suite.DefaultLocalSetup(initFunc)
+		s, err = actions.DefaultLocalSetup(envInitFunc, networkInitFunc)
 		Expect(err).ShouldNot(HaveOccurred())
 		fluxInstance, err := s.Deployer.DeployFluxAggregatorContract(s.Wallets.Default(), fluxOptions)
 		Expect(err).ShouldNot(HaveOccurred())
@@ -29,16 +33,16 @@ var _ = Describe("ETH refill suite", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		err = fluxInstance.UpdateAvailableFunds(context.Background(), s.Wallets.Default())
 		Expect(err).ShouldNot(HaveOccurred())
-		clNodes, nodeAddrs, err := suite.ConnectToTemplateNodes()
-		oraclesAtTest := nodeAddrs[:3]
-		clNodesAtTest := clNodes[:3]
+		clNodes, err := environment.GetChainlinkClients(s.Env)
+		Expect(err).ShouldNot(HaveOccurred())
+		nodeAddrs, err := actions.ChainlinkNodeAddresses(clNodes)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		err = fluxInstance.SetOracles(s.Wallets.Default(),
 			contracts.SetOraclesOptions{
-				AddList:            oraclesAtTest,
+				AddList:            nodeAddrs,
 				RemoveList:         []common.Address{},
-				AdminList:          oraclesAtTest,
+				AdminList:          nodeAddrs,
 				MinSubmissions:     3,
 				MaxSubmissions:     3,
 				RestartDelayRounds: 0,
@@ -48,16 +52,18 @@ var _ = Describe("ETH refill suite", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		log.Info().Str("Oracles", strings.Join(oracles, ",")).Msg("oracles set")
 
-		adapter := tools.NewExternalAdapter()
+		adapter, err := environment.GetExternalAdapter(s.Env)
+		Expect(err).ShouldNot(HaveOccurred())
+
 		os := &client.PipelineSpec{
-			URL:         adapter.InsideDockerAddr + "/five",
+			URL:         adapter.ClusterURL() + "/five",
 			Method:      "POST",
 			RequestData: "{}",
 			DataPath:    "data,result",
 		}
 		ost, err := os.String()
 		Expect(err).ShouldNot(HaveOccurred())
-		for _, n := range clNodesAtTest {
+		for _, n := range clNodes {
 			fluxSpec := &client.FluxMonitorJobSpec{
 				Name:              "flux_monitor",
 				ContractAddress:   fluxInstance.Address(),
@@ -69,17 +75,19 @@ var _ = Describe("ETH refill suite", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 		}
 		// fund enough for one round
-		err = suite.FundTemplateNodes(s.Client, s.Wallets, clNodes, 1e16, 0)
+		err = actions.FundChainlinkNodes(clNodes, s.Client, s.Wallets.Default(), big.NewInt(1e16), nil)
 		Expect(err).ShouldNot(HaveOccurred())
-		_, _ = tools.SetVariableMockData(adapter.LocalAddr, 6)
+		err = adapter.SetVariable(6)
+		Expect(err).ShouldNot(HaveOccurred())
 		err = fluxInstance.AwaitNextRoundFinalized(context.Background())
 		Expect(err).ShouldNot(HaveOccurred())
 		// no ETH
-		_, _ = tools.SetVariableMockData(adapter.LocalAddr, 5)
+		err = adapter.SetVariable(5)
+		Expect(err).ShouldNot(HaveOccurred())
 		err = fluxInstance.AwaitNextRoundFinalized(context.Background())
 		Expect(err).Should(HaveOccurred())
 		// refill and check if it works
-		err = suite.FundTemplateNodes(s.Client, s.Wallets, clNodes, 2e18, 0)
+		err = actions.FundChainlinkNodes(clNodes, s.Client, s.Wallets.Default(), big.NewInt(2e18), nil)
 		Expect(err).ShouldNot(HaveOccurred())
 		err = fluxInstance.AwaitNextRoundFinalized(context.Background())
 		Expect(err).ShouldNot(HaveOccurred())
@@ -89,4 +97,8 @@ var _ = Describe("ETH refill suite", func() {
 	},
 		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, contracts.DefaultFluxAggregatorOptions()),
 	)
+
+	AfterEach(func() {
+		s.Env.TearDown()
+	})
 })

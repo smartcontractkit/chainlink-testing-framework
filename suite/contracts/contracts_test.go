@@ -1,4 +1,4 @@
-package suite
+package contracts
 
 import (
 	"context"
@@ -23,7 +23,7 @@ var _ = Describe("OCR Feed", func() {
 
 	BeforeEach(func() {
 		var err error
-		conf, err = config.NewWithPath(config.LocalConfig, "../config")
+		conf, err = config.NewWithPath(config.LocalConfig, "../../config")
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 
@@ -34,7 +34,7 @@ var _ = Describe("OCR Feed", func() {
 		// Setup
 		network, err := initFunc(conf)
 		Expect(err).ShouldNot(HaveOccurred())
-		env, err := environment.NewK8sEnvironment(environment.NewChainlinkCluster("../", 7), conf, network)
+		env, err := environment.NewK8sEnvironment(environment.NewChainlinkCluster("../../", 7), conf, network)
 		Expect(err).ShouldNot(HaveOccurred())
 		defer env.TearDown()
 
@@ -145,7 +145,7 @@ var _ = Describe("OCR Feed", func() {
 
 // 	BeforeEach(func() {
 // 		var err error
-// 		conf, err = config.NewWithPath(config.LocalConfig, "../config")
+// 		conf, err = config.NewWithPath(config.LocalConfig, "../../config")
 // 		Expect(err).ShouldNot(HaveOccurred())
 // 	})
 
