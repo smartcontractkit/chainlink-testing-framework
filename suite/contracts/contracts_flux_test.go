@@ -125,7 +125,7 @@ var _ = Describe("Flux monitor suite", func() {
 			Expect(payment.Int64()).Should(Equal(int64(2)))
 		}
 	},
-		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, contracts.DefaultFluxAggregatorOptions()),
+		Entry("on Ethereum Hardhat", client.NewNetworkFromConfig, contracts.DefaultFluxAggregatorOptions()),
 	)
 
 	DescribeTable("Check removing/adding oracles, check new rounds is correct", func(
@@ -134,7 +134,7 @@ var _ = Describe("Flux monitor suite", func() {
 	) {
 		// TODO
 	},
-		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, contracts.DefaultFluxAggregatorOptions()),
+		Entry("on Ethereum Hardhat", client.NewNetworkFromConfig, contracts.DefaultFluxAggregatorOptions()),
 	)
 
 	DescribeTable("Check oracle cooldown when add", func(
@@ -143,7 +143,7 @@ var _ = Describe("Flux monitor suite", func() {
 	) {
 		// TODO
 	},
-		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, contracts.DefaultFluxAggregatorOptions()),
+		Entry("on Ethereum Hardhat", client.NewNetworkFromConfig, contracts.DefaultFluxAggregatorOptions()),
 	)
 
 	DescribeTable("Adapter went offline, come online, round data received in suggested round", func(
@@ -152,7 +152,7 @@ var _ = Describe("Flux monitor suite", func() {
 	) {
 		// TODO
 	},
-		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, contracts.DefaultFluxAggregatorOptions()),
+		Entry("on Ethereum Hardhat", client.NewNetworkFromConfig, contracts.DefaultFluxAggregatorOptions()),
 	)
 
 	DescribeTable("Different sources, only one have flux", func(
@@ -161,7 +161,7 @@ var _ = Describe("Flux monitor suite", func() {
 	) {
 		// TODO
 	},
-		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, contracts.DefaultFluxAggregatorOptions()),
+		Entry("on Ethereum Hardhat", client.NewNetworkFromConfig, contracts.DefaultFluxAggregatorOptions()),
 	)
 
 	DescribeTable("Bridge source", func(
@@ -170,7 +170,7 @@ var _ = Describe("Flux monitor suite", func() {
 	) {
 		// TODO
 	},
-		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, contracts.DefaultFluxAggregatorOptions()),
+		Entry("on Ethereum Hardhat", client.NewNetworkFromConfig, contracts.DefaultFluxAggregatorOptions()),
 	)
 
 	DescribeTable("Check withdrawal with respect to RESERVE_ROUNDS", func(
@@ -179,7 +179,7 @@ var _ = Describe("Flux monitor suite", func() {
 	) {
 		// TODO
 	},
-		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, contracts.DefaultFluxAggregatorOptions()),
+		Entry("on Ethereum Hardhat", client.NewNetworkFromConfig, contracts.DefaultFluxAggregatorOptions()),
 	)
 
 	DescribeTable("Person other than oracles starting a round", func(
@@ -188,7 +188,7 @@ var _ = Describe("Flux monitor suite", func() {
 	) {
 		// TODO
 	},
-		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, contracts.DefaultFluxAggregatorOptions()),
+		Entry("on Ethereum Hardhat", client.NewNetworkFromConfig, contracts.DefaultFluxAggregatorOptions()),
 	)
 
 	AfterEach(func() {

@@ -59,7 +59,7 @@ var _ = Describe("Cronjob suite", func() {
 		Entry(
 			"on Ethereum Hardhat",
 			environment.NewChainlinkCluster("../../", 1),
-			client.NewHardhatNetwork,
+			client.NewNetworkFromConfig,
 			contracts.DefaultOffChainAggregatorOptions(),
 		),
 	)

@@ -2,6 +2,7 @@ package environment
 
 import (
 	"fmt"
+	"github.com/smartcontractkit/integrations-framework/config"
 	coreV1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"path/filepath"
@@ -93,20 +94,28 @@ func NewHardhatManifest(rootPath string) *K8sManifest {
 
 // NewChainlinkCluster is a basic environment that deploys hardhat with a chainlink cluster and an external adapter
 func NewChainlinkCluster(rootPath string, nodeCount int) K8sEnvSpecInit {
-	k8sEnvSpecs := K8sEnvSpecs{
-		0: NewHardhatManifest(rootPath),
-	}
 	manifests := []*K8sManifest{NewAdapterManifest(rootPath)}
 	for i := 0; i < nodeCount; i++ {
 		manifests = append(manifests, NewChainlinkManifest(rootPath))
 	}
-	k8sEnvSpecs[1] = &K8sManifestGroup{
+	chainlinkCluster := &K8sManifestGroup{
 		id:        "chainlinkCluster",
 		manifests: manifests,
 	}
 
-	return func() (string, K8sEnvSpecs) {
-		return "basic-chainlink", k8sEnvSpecs
+	envWithHardhat := K8sEnvSpecs{
+		0: NewHardhatManifest(rootPath),
+		1: chainlinkCluster,
+	}
+	envWithoutHardhat := K8sEnvSpecs{
+		0: chainlinkCluster,
+	}
+	return func(config *config.NetworkConfig) (string, K8sEnvSpecs) {
+		envName := "basic-chainlink"
+		if len(config.URL) > 0 {
+			return envName, envWithoutHardhat
+		}
+		return envName, envWithHardhat
 	}
 }
 
