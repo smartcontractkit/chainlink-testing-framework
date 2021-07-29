@@ -48,7 +48,7 @@ var _ = Describe("OCR Feed", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// Fund each chainlink node
-		err = actions.FundAllChainlinkNodes(
+		err = actions.FundChainlinkNodes(
 			chainlinkNodes,
 			blockchain,
 			wallets.Default(),

@@ -6,8 +6,8 @@ import (
 	"math/big"
 )
 
-// FundAllChainlinkNodes will fund all of the Chainlink nodes with a given amount of ETH in wei
-func FundAllChainlinkNodes(
+// FundChainlinkNodes will fund all of the Chainlink nodes with a given amount of ETH in wei
+func FundChainlinkNodes(
 	nodes []client.Chainlink,
 	blockchain client.BlockchainClient,
 	fromWallet client.BlockchainWallet,

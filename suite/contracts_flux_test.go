@@ -63,7 +63,7 @@ var _ = Describe("Flux monitor suite", func() {
 		oraclesAtTest := nodeAddrs[:3]
 		clNodesAtTest := chainlinkNodes[:3]
 		Expect(err).ShouldNot(HaveOccurred())
-		err = actions.FundAllChainlinkNodes(
+		err = actions.FundChainlinkNodes(
 			chainlinkNodes,
 			blockchain,
 			wallets.Default(),

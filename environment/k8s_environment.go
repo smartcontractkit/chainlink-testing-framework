@@ -136,7 +136,7 @@ func (env *k8sEnvironment) GetLocalPort(remotePort uint16) (uint16, error) {
 	}
 }
 
-// GetRemoteURL returns the remote host URL of the k8s cluster being used for deployements
+// GetRemoteURL returns the remote host URL of the k8s cluster being used for deployments
 func (env *k8sEnvironment) GetRemoteURL() (*url.URL, error) {
 	return url.Parse(env.k8sConfig.Host)
 }
@@ -211,6 +211,10 @@ type k8sTemplateData struct {
 
 type k8sSetValuesFunc func(*K8sManifest) error
 
+// K8sManifest represents a manifest of k8s definitions to be deployed. It implements the K8sEnvResource interface
+// to allow the deployment of the definitions into a cluster. It consists of a k8s secret, deployment and service
+// but can be expanded to allow more definitions if needed, or extended with another interface to expand on its
+// functionality.
 type K8sManifest struct {
 	id string
 
@@ -588,7 +592,7 @@ func (m *K8sManifest) forwardPodPorts(pod *coreV1.Pod) ([]portforward.ForwardedP
 // Chainlink nodes on deploy, only later on within the test lifecycle which means they can be included within a single
 // group.
 // Whereas, Chainlink does depend on a deployed Geth, Hardhat, Ganache on deploy so they cannot be included in the group
-// as Chainlink's definition needs to know the cluster IP of the deployment for it to boot.
+// as Chainlink definition needs to know the cluster IP of the deployment for it to boot.
 type K8sManifestGroup struct {
 	id        string
 	manifests []*K8sManifest
