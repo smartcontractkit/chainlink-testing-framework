@@ -96,7 +96,7 @@ var _ = Describe("Direct request suite", func() {
 		Entry(
 			"on Ethereum Hardhat",
 			environment.NewChainlinkCluster("../../", 1),
-			client.NewHardhatNetwork,
+			client.NewNetworkFromConfig,
 			contracts.DefaultFluxAggregatorOptions(),
 		),
 	)

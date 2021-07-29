@@ -27,7 +27,7 @@ var _ = Describe("FluxAggregator ETH Refill", func() {
 		By("Deploying the environment", func() {
 			s, err = actions.DefaultLocalSetup(
 				environment.NewChainlinkCluster("../../", 3),
-				client.NewHardhatNetwork,
+				client.NewNetworkFromConfig,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
 			adapter, err = environment.GetExternalAdapter(s.Env)

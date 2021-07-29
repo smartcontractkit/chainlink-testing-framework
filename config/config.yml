@@ -1,10 +1,11 @@
 # Retains default and configurable name-values for the integration framework
 
+network: "ethereum_hardhat" # Selected network for test execution
 networks:
     ethereum_hardhat:
         name: "Ethereum Hardhat"
-        url: "ws://localhost:8545"
         chain_id: 1337
+        type: evm
         private_keys:
             - ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
             - 59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d
@@ -34,6 +35,7 @@ networks:
         name: "Ethereum Kovan"
         url: "wss://parity-kovan.eth.devnet.tools/ws"
         chain_id: 42
+        type: evm
         private_keys:
             - aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
         transaction_limit: 1000000 
@@ -44,6 +46,7 @@ networks:
         name: "Ethereum Goerli"
         url: "wss://geth-goerli.eth.devnet.tools/ws"
         chain_id: 5
+        type: evm
         private_keys:
             - aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
         transaction_limit: 1000000

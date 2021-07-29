@@ -121,6 +121,6 @@ var _ = Describe("Contracts", func() {
 		err = offChainInstance.Fund(wallets.Default(), nil, big.NewInt(50000000000))
 		Expect(err).ShouldNot(HaveOccurred())
 	},
-		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, contracts.DefaultOffChainAggregatorOptions()),
+		Entry("on Ethereum Hardhat", client.NewNetworkFromConfig, contracts.DefaultOffChainAggregatorOptions()),
 	)
 })

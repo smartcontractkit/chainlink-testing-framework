@@ -30,7 +30,7 @@ var _ = Describe("Client", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 		}
 	},
-		Entry("on Ethereum Hardhat", NewHardhatNetwork),
+		Entry("on Ethereum Hardhat", NewNetworkFromConfig),
 		Entry("on Ethereum Kovan", NewKovanNetwork),
 		Entry("on Ethereum Goerli", NewGoerliNetwork),
 	)
