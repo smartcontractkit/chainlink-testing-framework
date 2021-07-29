@@ -2,10 +2,15 @@ package environment
 
 import (
 	"fmt"
+	"os/exec"
+	"path/filepath"
+	"strings"
+
+	"github.com/rs/zerolog/log"
+
 	"github.com/smartcontractkit/integrations-framework/config"
 	coreV1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"path/filepath"
 )
 
 const (
@@ -16,11 +21,11 @@ const (
 )
 
 // NewAdapterManifest is the k8s manifest that when used will deploy an external adapter to an environment
-func NewAdapterManifest(rootPath string) *K8sManifest {
+func NewAdapterManifest() *K8sManifest {
 	return &K8sManifest{
 		id:             "adapter",
-		DeploymentFile: prependRootPath(rootPath, "environment/templates/adapter-deployment.yml"),
-		ServiceFile:    prependRootPath(rootPath, "environment/templates/adapter-service.yml"),
+		DeploymentFile: filepath.Join(getDirectoryRoot(), "/environment/templates/adapter-deployment.yml"),
+		ServiceFile:    filepath.Join(getDirectoryRoot(), "/environment/templates/adapter-service.yml"),
 
 		values: map[string]interface{}{
 			"apiPort": AdapterAPIPort,
@@ -45,11 +50,11 @@ func NewAdapterManifest(rootPath string) *K8sManifest {
 }
 
 // NewChainlinkManifest is the k8s manifest that when used will deploy a chainlink node to an environment
-func NewChainlinkManifest(rootPath string) *K8sManifest {
+func NewChainlinkManifest() *K8sManifest {
 	return &K8sManifest{
 		id:             "chainlink",
-		DeploymentFile: prependRootPath(rootPath, "environment/templates/chainlink-deployment.yml"),
-		ServiceFile:    prependRootPath(rootPath, "environment/templates/chainlink-service.yml"),
+		DeploymentFile: filepath.Join(getDirectoryRoot(), "/environment/templates/chainlink-deployment.yml"),
+		ServiceFile:    filepath.Join(getDirectoryRoot(), "/environment/templates/chainlink-service.yml"),
 
 		values: map[string]interface{}{
 			"webPort": ChainlinkWebPort,
@@ -70,11 +75,11 @@ func NewChainlinkManifest(rootPath string) *K8sManifest {
 }
 
 // NewHardhatManifest is the k8s manifest that when used will deploy hardhat to an environment
-func NewHardhatManifest(rootPath string) *K8sManifest {
+func NewHardhatManifest() *K8sManifest {
 	return &K8sManifest{
 		id:             "hardhat",
-		DeploymentFile: prependRootPath(rootPath, "environment/templates/hardhat-deployment.yml"),
-		ServiceFile:    prependRootPath(rootPath, "environment/templates/hardhat-service.yml"),
+		DeploymentFile: filepath.Join(getDirectoryRoot(), "/environment/templates/hardhat-deployment.yml"),
+		ServiceFile:    filepath.Join(getDirectoryRoot(), "/environment/templates/hardhat-service.yml"),
 
 		values: map[string]interface{}{
 			"rpcPort": EVMRPCPort,
@@ -93,10 +98,10 @@ func NewHardhatManifest(rootPath string) *K8sManifest {
 }
 
 // NewChainlinkCluster is a basic environment that deploys hardhat with a chainlink cluster and an external adapter
-func NewChainlinkCluster(rootPath string, nodeCount int) K8sEnvSpecInit {
-	manifests := []*K8sManifest{NewAdapterManifest(rootPath)}
+func NewChainlinkCluster(nodeCount int) K8sEnvSpecInit {
+	manifests := []*K8sManifest{NewAdapterManifest()}
 	for i := 0; i < nodeCount; i++ {
-		manifests = append(manifests, NewChainlinkManifest(rootPath))
+		manifests = append(manifests, NewChainlinkManifest())
 	}
 	chainlinkCluster := &K8sManifestGroup{
 		id:        "chainlinkCluster",
@@ -104,7 +109,7 @@ func NewChainlinkCluster(rootPath string, nodeCount int) K8sEnvSpecInit {
 	}
 
 	envWithHardhat := K8sEnvSpecs{
-		0: NewHardhatManifest(rootPath),
+		0: NewHardhatManifest(),
 		1: chainlinkCluster,
 	}
 	envWithoutHardhat := K8sEnvSpecs{
@@ -119,6 +124,10 @@ func NewChainlinkCluster(rootPath string, nodeCount int) K8sEnvSpecInit {
 	}
 }
 
-func prependRootPath(rootPath, templateFile string) string {
-	return filepath.Join(rootPath, templateFile)
+func getDirectoryRoot() string {
+	out, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
+	if err != nil {
+		log.Err(err).Msg("Error retrieving project root directory via 'git rev-parse --show-toplevel'")
+	}
+	return strings.TrimSpace(string(out))
 }

@@ -2,9 +2,10 @@ package contracts
 
 import (
 	"context"
-	"github.com/smartcontractkit/integrations-framework/actions"
 	"math/big"
 	"time"
+
+	"github.com/smartcontractkit/integrations-framework/actions"
 
 	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/contracts"
@@ -34,7 +35,7 @@ var _ = Describe("OCR Feed", func() {
 		// Setup
 		network, err := initFunc(conf)
 		Expect(err).ShouldNot(HaveOccurred())
-		env, err := environment.NewK8sEnvironment(environment.NewChainlinkCluster("../../", 7), conf, network)
+		env, err := environment.NewK8sEnvironment(environment.NewChainlinkCluster(7), conf, network)
 		Expect(err).ShouldNot(HaveOccurred())
 		defer env.TearDown()
 

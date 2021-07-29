@@ -2,6 +2,10 @@ package refill
 
 import (
 	"context"
+	"math/big"
+	"strings"
+	"time"
+
 	"github.com/ethereum/go-ethereum/common"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -10,9 +14,6 @@ import (
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
 	"github.com/smartcontractkit/integrations-framework/environment"
-	"math/big"
-	"strings"
-	"time"
 )
 
 var _ = Describe("FluxAggregator ETH Refill", func() {
@@ -26,7 +27,7 @@ var _ = Describe("FluxAggregator ETH Refill", func() {
 	BeforeSuite(func() {
 		By("Deploying the environment", func() {
 			s, err = actions.DefaultLocalSetup(
-				environment.NewChainlinkCluster("../../", 3),
+				environment.NewChainlinkCluster(3),
 				client.NewNetworkFromConfig,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
