@@ -11,7 +11,8 @@ import (
 type Environment interface {
 	GetLocalPorts(remotePort uint16) ([]uint16, error)
 	GetLocalPort(remotePort uint16) (uint16, error)
-	GetRemoteURL() (*url.URL, error)
+	GetRemoteURLs(remotePort uint16) ([]*url.URL, error)
+	GetRemoteURL(remotePort uint16) (*url.URL, error)
 
 	TearDown()
 }
@@ -77,7 +78,7 @@ func (ex *externalAdapter) SetVariable(variable int) error {
 
 // GetExternalAdapter will return a deployed external adapter on an environment
 func GetExternalAdapter(env Environment) (ExternalAdapter, error) {
-	u, err := env.GetRemoteURL()
+	u, err := env.GetRemoteURL(AdapterAPIPort)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +88,7 @@ func GetExternalAdapter(env Environment) (ExternalAdapter, error) {
 	}
 	return &externalAdapter{
 		localURL:   fmt.Sprintf("http://127.0.0.1:%d", port),
-		clusterURL: fmt.Sprintf("http://%s:%d", u.Host, AdapterAPIPort),
+		clusterURL: u.String(),
 	}, nil
 }
 

@@ -40,7 +40,7 @@ var _ = Describe("FluxAggregator ETH Refill", func() {
 	})
 
 	BeforeEach(func() {
-		By("Deploying and fund the contract", func() {
+		By("Deploying and funding the contract", func() {
 			fluxInstance, err = s.Deployer.DeployFluxAggregatorContract(
 				s.Wallets.Default(),
 				contracts.DefaultFluxAggregatorOptions(),

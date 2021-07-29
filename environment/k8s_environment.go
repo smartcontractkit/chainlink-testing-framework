@@ -136,9 +136,32 @@ func (env *k8sEnvironment) GetLocalPort(remotePort uint16) (uint16, error) {
 	}
 }
 
+// GetRemoteURLs returns all the URLs for a remote service as accessible by the k8s services. These URLs are needed
+// for it you're configuring any of the pre-deployed services to use another already deployed service.
+func (env *k8sEnvironment) GetRemoteURLs(remotePort uint16) ([]*url.URL, error) {
+	var urls []*url.URL
+
+	services, err := findServicesWithPort(env.k8sClient, env.namespace, remotePort)
+	if err != nil {
+		return nil, err
+	}
+	for _, service := range services {
+		u, err := url.Parse(fmt.Sprintf("http://%s:%d", service.Spec.ClusterIP, remotePort))
+		if err != nil {
+			return nil, err
+		}
+		urls = append(urls, u)
+	}
+	return urls, nil
+}
+
 // GetRemoteURL returns the remote host URL of the k8s cluster being used for deployments
-func (env *k8sEnvironment) GetRemoteURL() (*url.URL, error) {
-	return url.Parse(env.k8sConfig.Host)
+func (env *k8sEnvironment) GetRemoteURL(remotePort uint16) (*url.URL, error) {
+	if urls, err := env.GetRemoteURLs(remotePort); err != nil {
+		return nil, err
+	} else {
+		return urls[0], err
+	}
 }
 
 // TearDown cycles through all the specifications and tears down the deployments. This typically entails cleaning
@@ -716,6 +739,31 @@ func k8sConfig() (*rest.Config, error) {
 	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
 	kubeConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, &clientcmd.ConfigOverrides{})
 	return kubeConfig.ClientConfig()
+}
+
+func findServicesWithPort(
+	k8sClient *kubernetes.Clientset,
+	namespace *coreV1.Namespace,
+	remotePort uint16,
+) ([]*coreV1.Service, error) {
+	var services []*coreV1.Service
+
+	k8sServices := k8sClient.CoreV1().Services(namespace.Name)
+	servicesList, err := k8sServices.List(context.Background(), metaV1.ListOptions{})
+	if err != nil {
+		return services, err
+	}
+	for _, service := range servicesList.Items {
+		for _, port := range service.Spec.Ports {
+			if port.Port == int32(remotePort) {
+				services = append(services, &service)
+			}
+		}
+	}
+	if len(services) == 0 {
+		return services, fmt.Errorf("no services with the port %d have been found in the deployment", remotePort)
+	}
+	return services, nil
 }
 
 func waitForHealthyPods(k8sClient *kubernetes.Clientset, namespace *coreV1.Namespace, pods *coreV1.PodList) error {
