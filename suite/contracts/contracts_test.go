@@ -136,7 +136,7 @@ var _ = Describe("OCR Feed", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(answer.Int64()).Should(Equal(int64(5)))
 	},
-		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, contracts.DefaultOffChainAggregatorOptions()),
+		Entry("on Ethereum Hardhat", client.NewNetworkFromConfig, contracts.DefaultOffChainAggregatorOptions()),
 	)
 })
 
@@ -171,7 +171,7 @@ var _ = Describe("OCR Feed", func() {
 // 		err = testEnv.TearDown()
 // 		Expect(err).ShouldNot(HaveOccurred())
 // 	},
-// 		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, big.NewInt(5)),
+// 		Entry("on Ethereum Hardhat", client.NewNetworkFromConfig, big.NewInt(5)),
 // 	)
 
 // 	DescribeTable("deploy and interact with the FluxAggregator contract", func(
@@ -204,7 +204,7 @@ var _ = Describe("OCR Feed", func() {
 // 		err = testEnv.TearDown()
 // 		Expect(err).ShouldNot(HaveOccurred())
 // 	},
-// 		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, contracts.DefaultFluxAggregatorOptions()),
+// 		Entry("on Ethereum Hardhat", client.NewNetworkFromConfig, contracts.DefaultFluxAggregatorOptions()),
 // 	)
 
 // 	DescribeTable("deploy and interact with the OffChain Aggregator contract", func(
@@ -232,6 +232,6 @@ var _ = Describe("OCR Feed", func() {
 // 		err = testEnv.TearDown()
 // 		Expect(err).ShouldNot(HaveOccurred())
 // 	},
-// 		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, contracts.DefaultOffChainAggregatorOptions()),
+// 		Entry("on Ethereum Hardhat", client.NewNetworkFromConfig, contracts.DefaultOffChainAggregatorOptions()),
 // 	)
 // })

@@ -39,7 +39,7 @@ type K8sEnvSpecs map[int]K8sEnvResource
 
 // K8sEnvSpecInit is the initiator that will return the name of the environment and the specifications to be deployed.
 // The name of the environment returned determines the namespace.
-type K8sEnvSpecInit func() (string, K8sEnvSpecs)
+type K8sEnvSpecInit func(*config.NetworkConfig) (string, K8sEnvSpecs)
 
 // K8sEnvResource is the interface for deploying a given environment resource. Creating an interface for resource
 // deployment allows it to be extended, deploying k8s resources in different ways. For example: K8sManifest deploys
@@ -96,7 +96,7 @@ func NewK8sEnvironment(
 		network:   network,
 	}
 
-	environmentName, deployables := init()
+	environmentName, deployables := init(network.Config())
 	namespace, err := env.createNamespace(environmentName)
 	env.namespace = namespace
 	env.specs = deployables
