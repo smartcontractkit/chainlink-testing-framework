@@ -50,6 +50,7 @@ func (e *EthereumClient) Get() interface{} {
 	return e
 }
 
+// Fund funds a specified address with LINK token and or ETH from the given wallet
 func (e *EthereumClient) Fund(
 	fromWallet BlockchainWallet,
 	toAddress string,

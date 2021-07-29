@@ -1,7 +1,12 @@
-package suite
+package contracts
 
 import (
 	"context"
+	"github.com/smartcontractkit/integrations-framework/actions"
+	"math/big"
+	"strings"
+	"time"
+
 	"github.com/ethereum/go-ethereum/common"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
@@ -9,23 +14,31 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
-	"github.com/smartcontractkit/integrations-framework/suite"
-	"github.com/smartcontractkit/integrations-framework/tools"
-	"math/big"
-	"strings"
-	"time"
+	"github.com/smartcontractkit/integrations-framework/environment"
 )
 
 var _ = Describe("Flux monitor suite", func() {
+	var s *actions.DefaultSuiteSetup
+	var err error
+
 	DescribeTable("Answering to deviation in rounds", func(
-		initFunc client.BlockchainNetworkInit,
+		envInitFunc environment.K8sEnvSpecInit,
+		networkInitFunc client.BlockchainNetworkInit,
 		fluxOptions contracts.FluxAggregatorOptions,
 	) {
-		s, err := suite.DefaultLocalSetup(initFunc)
+		s, err = actions.DefaultLocalSetup(envInitFunc, networkInitFunc)
+		Expect(err).ShouldNot(HaveOccurred())
+
+		chainlinkNodes, err := environment.GetChainlinkClients(s.Env)
+		Expect(err).ShouldNot(HaveOccurred())
+		adapter, err := environment.GetExternalAdapter(s.Env)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// Deploy FluxMonitor contract
-		fluxInstance, err := s.Deployer.DeployFluxAggregatorContract(s.Wallets.Default(), fluxOptions)
+		deployer, err := contracts.NewContractDeployer(s.Client)
+		Expect(err).ShouldNot(HaveOccurred())
+
+		fluxInstance, err := deployer.DeployFluxAggregatorContract(s.Wallets.Default(), fluxOptions)
 		Expect(err).ShouldNot(HaveOccurred())
 		err = fluxInstance.Fund(s.Wallets.Default(), big.NewInt(0), big.NewInt(1e18))
 		Expect(err).ShouldNot(HaveOccurred())
@@ -33,11 +46,18 @@ var _ = Describe("Flux monitor suite", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// get nodes and their addresses
-		clNodes, nodeAddrs, err := suite.ConnectToTemplateNodes()
-		oraclesAtTest := nodeAddrs[:3]
-		clNodesAtTest := clNodes[:3]
+		nodeAddrs, err := actions.ChainlinkNodeAddresses(chainlinkNodes)
 		Expect(err).ShouldNot(HaveOccurred())
-		err = suite.FundTemplateNodes(s.Client, s.Wallets, clNodes, 2e18, 0)
+		oraclesAtTest := nodeAddrs[:3]
+		clNodesAtTest := chainlinkNodes[:3]
+		Expect(err).ShouldNot(HaveOccurred())
+		err = actions.FundChainlinkNodes(
+			chainlinkNodes,
+			s.Client,
+			s.Wallets.Default(),
+			big.NewInt(2e18),
+			nil,
+		)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// set oracles and submissions
@@ -53,33 +73,23 @@ var _ = Describe("Flux monitor suite", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		oracles, err := fluxInstance.GetOracles(context.Background())
 		Expect(err).ShouldNot(HaveOccurred())
-		log.Info().Str("Oracles", strings.Join(oracles, ",")).Msg("oracles set")
-
-		// set variable adapter
-		adapter := tools.NewExternalAdapter()
+		log.Info().Str("Oracles", strings.Join(oracles, ",")).Msg("Oracles set")
 
 		// Send Flux job to chainlink nodes
-		os := &client.PipelineSpec{
-			URL:         adapter.InsideDockerAddr + "/variable",
-			Method:      "POST",
-			RequestData: "{}",
-			DataPath:    "data,result",
-		}
-		ost, err := os.String()
-		Expect(err).ShouldNot(HaveOccurred())
 		for _, n := range clNodesAtTest {
 			fluxSpec := &client.FluxMonitorJobSpec{
 				Name:              "flux_monitor",
 				ContractAddress:   fluxInstance.Address(),
 				PollTimerPeriod:   15 * time.Second, // min 15s
 				PollTimerDisabled: false,
-				ObservationSource: ost,
+				ObservationSource: client.ObservationSourceSpec(adapter.ClusterURL() + "/variable"),
 			}
 			_, err = n.CreateJob(fluxSpec)
 			Expect(err).ShouldNot(HaveOccurred())
 		}
 		// first change
-		_, _ = tools.SetVariableMockData(adapter.LocalAddr, 5)
+		err = adapter.SetVariable(5)
+		Expect(err).ShouldNot(HaveOccurred())
 		err = fluxInstance.AwaitNextRoundFinalized(context.Background())
 		Expect(err).ShouldNot(HaveOccurred())
 		{
@@ -94,7 +104,8 @@ var _ = Describe("Flux monitor suite", func() {
 			Expect(data.AllocatedFunds.Int64()).Should(Equal(int64(3)))
 		}
 		// second change + 20%
-		_, _ = tools.SetVariableMockData(adapter.LocalAddr, 6)
+		err = adapter.SetVariable(6)
+		Expect(err).ShouldNot(HaveOccurred())
 		err = fluxInstance.AwaitNextRoundFinalized(context.Background())
 		Expect(err).ShouldNot(HaveOccurred())
 		{
@@ -114,7 +125,7 @@ var _ = Describe("Flux monitor suite", func() {
 			Expect(payment.Int64()).Should(Equal(int64(2)))
 		}
 	},
-		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, contracts.DefaultFluxAggregatorOptions()),
+		Entry("on Ethereum Hardhat", client.NewNetworkFromConfig, contracts.DefaultFluxAggregatorOptions()),
 	)
 
 	DescribeTable("Check removing/adding oracles, check new rounds is correct", func(
@@ -123,7 +134,7 @@ var _ = Describe("Flux monitor suite", func() {
 	) {
 		// TODO
 	},
-		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, contracts.DefaultFluxAggregatorOptions()),
+		Entry("on Ethereum Hardhat", client.NewNetworkFromConfig, contracts.DefaultFluxAggregatorOptions()),
 	)
 
 	DescribeTable("Check oracle cooldown when add", func(
@@ -132,7 +143,7 @@ var _ = Describe("Flux monitor suite", func() {
 	) {
 		// TODO
 	},
-		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, contracts.DefaultFluxAggregatorOptions()),
+		Entry("on Ethereum Hardhat", client.NewNetworkFromConfig, contracts.DefaultFluxAggregatorOptions()),
 	)
 
 	DescribeTable("Adapter went offline, come online, round data received in suggested round", func(
@@ -141,7 +152,7 @@ var _ = Describe("Flux monitor suite", func() {
 	) {
 		// TODO
 	},
-		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, contracts.DefaultFluxAggregatorOptions()),
+		Entry("on Ethereum Hardhat", client.NewNetworkFromConfig, contracts.DefaultFluxAggregatorOptions()),
 	)
 
 	DescribeTable("Different sources, only one have flux", func(
@@ -150,7 +161,7 @@ var _ = Describe("Flux monitor suite", func() {
 	) {
 		// TODO
 	},
-		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, contracts.DefaultFluxAggregatorOptions()),
+		Entry("on Ethereum Hardhat", client.NewNetworkFromConfig, contracts.DefaultFluxAggregatorOptions()),
 	)
 
 	DescribeTable("Bridge source", func(
@@ -159,7 +170,7 @@ var _ = Describe("Flux monitor suite", func() {
 	) {
 		// TODO
 	},
-		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, contracts.DefaultFluxAggregatorOptions()),
+		Entry("on Ethereum Hardhat", client.NewNetworkFromConfig, contracts.DefaultFluxAggregatorOptions()),
 	)
 
 	DescribeTable("Check withdrawal with respect to RESERVE_ROUNDS", func(
@@ -168,7 +179,7 @@ var _ = Describe("Flux monitor suite", func() {
 	) {
 		// TODO
 	},
-		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, contracts.DefaultFluxAggregatorOptions()),
+		Entry("on Ethereum Hardhat", client.NewNetworkFromConfig, contracts.DefaultFluxAggregatorOptions()),
 	)
 
 	DescribeTable("Person other than oracles starting a round", func(
@@ -177,6 +188,10 @@ var _ = Describe("Flux monitor suite", func() {
 	) {
 		// TODO
 	},
-		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, contracts.DefaultFluxAggregatorOptions()),
+		Entry("on Ethereum Hardhat", client.NewNetworkFromConfig, contracts.DefaultFluxAggregatorOptions()),
 	)
+
+	AfterEach(func() {
+		s.Env.TearDown()
+	})
 })

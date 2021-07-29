@@ -13,13 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
-type BlockchainNetworkID string
-
-const (
-	EthereumHardhatID BlockchainNetworkID = "ethereum_hardhat"
-	EthereumKovanID   BlockchainNetworkID = "ethereum_kovan"
-	EthereumGoerliID  BlockchainNetworkID = "ethereum_goerli"
-)
+const BlockchainTypeEVM = "evm"
 
 // BlockchainClient is the interface that wraps a given client implementation for a blockchain, to allow for switching
 // of network types within the test suite
@@ -30,8 +24,8 @@ type BlockchainClient interface {
 
 // NewBlockchainClient returns an instantiated network client implementation based on the network configuration given
 func NewBlockchainClient(network BlockchainNetwork) (BlockchainClient, error) {
-	switch network.ID() {
-	case EthereumHardhatID, EthereumKovanID, EthereumGoerliID:
+	switch network.Type() {
+	case BlockchainTypeEVM:
 		return NewEthereumClient(network)
 	}
 	return nil, errors.New("invalid blockchain network ID, not found")
@@ -39,8 +33,10 @@ func NewBlockchainClient(network BlockchainNetwork) (BlockchainClient, error) {
 
 // BlockchainNetwork is the interface that when implemented, defines a new blockchain network that can be tested against
 type BlockchainNetwork interface {
-	ID() BlockchainNetworkID
+	ID() string
 	URL() string
+	Type() string
+	SetURL(string)
 	ChainID() *big.Int
 	Wallets() (BlockchainWallets, error)
 	Config() *config.NetworkConfig
@@ -51,45 +47,53 @@ type BlockchainNetworkInit func(conf *config.Config) (BlockchainNetwork, error)
 
 // EthereumNetwork is the implementation of BlockchainNetwork for the local ETH dev server
 type EthereumNetwork struct {
-	networkID     BlockchainNetworkID
+	networkID     string
 	networkConfig *config.NetworkConfig
 }
 
 // NewEthereumNetwork creates a way to interact with any specified EVM blockchain
-func newEthereumNetwork(conf *config.Config, networkID BlockchainNetworkID) (BlockchainNetwork, error) {
-	networkConf, err := conf.GetNetworkConfig(string(networkID))
-	if err != nil {
-		return nil, err
-	}
+func newEthereumNetwork(ID string, networkConfig *config.NetworkConfig) (BlockchainNetwork, error) {
 	return &EthereumNetwork{
-		networkID:     networkID,
-		networkConfig: networkConf,
+		networkID:     ID,
+		networkConfig: networkConfig,
 	}, nil
 }
 
-// NewHardhatNetwork prepares settings for a connection to a hardhat blockchain
-func NewHardhatNetwork(conf *config.Config) (BlockchainNetwork, error) {
-	return newEthereumNetwork(conf, EthereumHardhatID)
-}
-
-// NewKovanNetwork prepares settings for a connection to the kovan testnet
-func NewKovanNetwork(conf *config.Config) (BlockchainNetwork, error) {
-	return newEthereumNetwork(conf, EthereumKovanID)
-}
-
-// NewGoerliNetwork prepares settings for a connection to the Goerli testnet
-func NewGoerliNetwork(conf *config.Config) (BlockchainNetwork, error) {
-	return newEthereumNetwork(conf, EthereumGoerliID)
+// NewNetworkFromConfig prepares settings for a connection to a hardhat blockchain
+func NewNetworkFromConfig(conf *config.Config) (BlockchainNetwork, error) {
+	networkConfig, err := conf.GetNetworkConfig(conf.Network)
+	if err != nil {
+		return nil, err
+	}
+	switch networkConfig.Type {
+	case BlockchainTypeEVM:
+		return newEthereumNetwork(conf.Network, networkConfig)
+	}
+	return nil, fmt.Errorf(
+		"network %s uses an unspported network type of: %s",
+		conf.Network,
+		networkConfig.Type,
+	)
 }
 
 // ID returns the readable name of the EVM network
-func (e *EthereumNetwork) ID() BlockchainNetworkID {
+func (e *EthereumNetwork) ID() string {
 	return e.networkID
+}
+
+// Type returns the readable type of the EVM network
+func (e *EthereumNetwork) Type() string {
+	return BlockchainTypeEVM
 }
 
 // URL returns the RPC URL used for connecting to the network
 func (e *EthereumNetwork) URL() string {
 	return e.networkConfig.URL
+}
+
+// SetURL sets the RPC URL, useful for when blockchain URLs might be dynamic
+func (e *EthereumNetwork) SetURL(newURL string) {
+	e.networkConfig.URL = newURL
 }
 
 // ChainID returns the on-chain ID of the network being connected to

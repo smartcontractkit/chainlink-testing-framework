@@ -1,4 +1,4 @@
-package suite
+package contracts
 
 import (
 	"github.com/avast/retry-go"
@@ -6,26 +6,30 @@ import (
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
+	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
-	"github.com/smartcontractkit/integrations-framework/suite"
-	"github.com/smartcontractkit/integrations-framework/tools"
+	"github.com/smartcontractkit/integrations-framework/environment"
 )
 
 var _ = Describe("Cronjob suite", func() {
+	var s *actions.DefaultSuiteSetup
+	var err error
+
 	DescribeTable("use cron job", func(
-		initFunc client.BlockchainNetworkInit,
+		envInitFunc environment.K8sEnvSpecInit,
+		networkInitFunc client.BlockchainNetworkInit,
 		ocrOptions contracts.OffchainOptions,
 	) {
-		_, err := suite.DefaultLocalSetup(initFunc)
+		s, err = actions.DefaultLocalSetup(envInitFunc, networkInitFunc)
 		Expect(err).ShouldNot(HaveOccurred())
-		chainlinkNodes, _, err := suite.ConnectToTemplateNodes()
+		chainlinkNodes, err := environment.GetChainlinkClients(s.Env)
 		Expect(err).ShouldNot(HaveOccurred())
-
-		adapter := tools.NewExternalAdapter()
+		adapter, err := environment.GetExternalAdapter(s.Env)
+		Expect(err).ShouldNot(HaveOccurred())
 
 		os := &client.PipelineSpec{
-			URL:         adapter.InsideDockerAddr + "/five",
+			URL:         adapter.ClusterURL() + "/five",
 			Method:      "POST",
 			RequestData: "{}",
 			DataPath:    "data,result",
@@ -52,6 +56,15 @@ var _ = Describe("Cronjob suite", func() {
 		})
 		Expect(err).ShouldNot(HaveOccurred())
 	},
-		Entry("on Ethereum Hardhat", client.NewHardhatNetwork, contracts.DefaultOffChainAggregatorOptions()),
+		Entry(
+			"on Ethereum Hardhat",
+			environment.NewChainlinkCluster("../../", 1),
+			client.NewNetworkFromConfig,
+			contracts.DefaultOffChainAggregatorOptions(),
+		),
 	)
+
+	AfterEach(func() {
+		s.Env.TearDown()
+	})
 })

@@ -2,9 +2,11 @@ package contracts
 
 import (
 	"errors"
+	"math"
 	"math/big"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts/ethereum"
 
@@ -134,7 +136,16 @@ func DefaultOffChainAggregatorOptions() OffchainOptions {
 }
 
 // DefaultOffChainAggregatorConfig returns some base defaults for configuring an OCR contract
-func DefaultOffChainAggregatorConfig() OffChainAggregatorConfig {
+func DefaultOffChainAggregatorConfig(numberNodes int) OffChainAggregatorConfig {
+	s := []int{}
+	for i := 0; i < numberNodes; i++ {
+		s = append(s, 1)
+	}
+	if numberNodes <= 3 {
+		log.Warn().
+			Int("Number Chainlink Nodes", numberNodes).
+			Msg("You likely need more chainlink nodes to properly configure OCR, try 5 or more.")
+	}
 	return OffChainAggregatorConfig{
 		AlphaPPB:         1,
 		DeltaC:           time.Minute * 10,
@@ -144,12 +155,12 @@ func DefaultOffChainAggregatorConfig() OffChainAggregatorConfig {
 		DeltaResend:      time.Second * 10,
 		DeltaRound:       time.Second * 20,
 		RMax:             4,
-		S:                []int{1, 1, 1, 1, 1},
-		N:                5,
-		F:                1,
+		S:                s,
+		N:                numberNodes,
+		F:                int(math.Max(1, float64(numberNodes/3-1))),
 		OracleIdentities: []ocrConfigHelper.OracleIdentityExtra{},
 	}
-}
+} // VM Exception while processing transaction: revert faulty-oracle threshold too high
 
 // DeployOffChainAggregator deploys the offchain aggregation contract to the EVM chain
 func (e *EthereumContractDeployer) DeployOffChainAggregator(

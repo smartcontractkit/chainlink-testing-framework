@@ -19,6 +19,7 @@ const (
 
 // Config is the overall config for the framework, holding configurations for supported networks
 type Config struct {
+	Network         string                    `mapstructure:"network" yaml:"network"`
 	Networks        map[string]*NetworkConfig `mapstructure:"networks" yaml:"networks"`
 	Retry           *RetryConfig              `mapstructure:"retry" yaml:"retry"`
 	DefaultKeyStore string
@@ -37,6 +38,7 @@ type NetworkConfig struct {
 	Name                 string        `mapstructure:"name" yaml:"name"`
 	URL                  string        `mapstructure:"url" yaml:"url"`
 	ChainID              int64         `mapstructure:"chain_id" yaml:"chain_id"`
+	Type                 string        `mapstructure:"type" yaml:"type"`
 	PrivateKeys          []string      `mapstructure:"private_keys" yaml:"private_keys"`
 	TransactionLimit     uint64        `mapstructure:"transaction_limit" yaml:"transaction_limit"`
 	Timeout              time.Duration `mapstructure:"transaction_timeout" yaml:"transaction_timeout"`

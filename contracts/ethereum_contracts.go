@@ -3,6 +3,8 @@ package contracts
 import (
 	"context"
 	"encoding/hex"
+	"math/big"
+
 	"github.com/avast/retry-go"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -12,7 +14,6 @@ import (
 	"github.com/smartcontractkit/integrations-framework/contracts/ethereum"
 	ocrConfigHelper "github.com/smartcontractkit/libocr/offchainreporting/confighelper"
 	ocrTypes "github.com/smartcontractkit/libocr/offchainreporting/types"
-	"math/big"
 )
 
 // EthereumOracle oracle for "directrequest" job tests
@@ -413,17 +414,17 @@ func (o *EthereumOffchainAggregator) SetConfig(
 	ocrConfig OffChainAggregatorConfig,
 ) error {
 	// Gather necessary addresses and keys from our chainlink nodes to properly configure the OCR contract
+	log.Info().Str("Contract Address", o.address.Hex()).Msg("Configuring OCR Contract")
 	for _, node := range chainlinkNodes {
 		ocrKeys, err := node.ReadOCRKeys()
 		if err != nil {
 			return err
 		}
 		primaryOCRKey := ocrKeys.Data[0]
-		ethKeys, err := node.ReadETHKeys()
+		primaryEthKey, err := node.PrimaryEthAddress()
 		if err != nil {
 			return err
 		}
-		primaryEthKey := ethKeys.Data[0]
 		p2pKeys, err := node.ReadP2PKeys()
 		if err != nil {
 			return err
@@ -447,7 +448,7 @@ func (o *EthereumOffchainAggregator) SetConfig(
 		copy(configPublicKey[:], decodeConfigKey)
 
 		oracleIdentity := ocrConfigHelper.OracleIdentity{
-			TransmitAddress:       common.HexToAddress(primaryEthKey.Attributes.Address),
+			TransmitAddress:       common.HexToAddress(primaryEthKey),
 			OnChainSigningAddress: onChainSigningAddress,
 			PeerID:                primaryP2PKey.Attributes.PeerID,
 			OffchainPublicKey:     offchainSigningAddress,
@@ -482,7 +483,6 @@ func (o *EthereumOffchainAggregator) SetConfig(
 	if err != nil {
 		return err
 	}
-
 	tx, err := o.ocr.SetPayees(opts, transmitters, transmitters)
 	if err != nil {
 		return err
@@ -497,7 +497,6 @@ func (o *EthereumOffchainAggregator) SetConfig(
 	if err != nil {
 		return err
 	}
-
 	tx, err = o.ocr.SetConfig(opts, signers, transmitters, threshold, encodedConfigVersion, encodedConfig)
 	if err != nil {
 		return err
