@@ -3,7 +3,6 @@ package config
 
 import (
 	"errors"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -65,7 +64,7 @@ func NewConfig(configType ConfigurationType) (*Config, error) {
 	v.AutomaticEnv()
 	v.SetConfigName("config")
 	v.SetConfigType("yml")
-	v.AddConfigPath(filepath.Join(tools.ProjectRoot, "config"))
+	v.AddConfigPath(tools.ProjectRoot)
 
 	if err := v.ReadInConfig(); err != nil {
 		return nil, err

@@ -34,7 +34,7 @@ networks:
         gas_estimation_buffer: 0
     ethereum_kovan:
         name: "Ethereum Kovan"
-        url: "wss://parity-kovan.eth.devnet.tools/ws"
+        url: "wss://127.0.0.1:8545"
         chain_id: 42
         type: evm
         private_keys:
@@ -45,7 +45,7 @@ networks:
         gas_estimation_buffer: 10000
     ethereum_goerli:
         name: "Ethereum Goerli"
-        url: "wss://geth-goerli.eth.devnet.tools/ws"
+        url: "wss://127.0.0.1:8545"
         chain_id: 5
         type: evm
         private_keys:
