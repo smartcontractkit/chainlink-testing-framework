@@ -1,6 +1,9 @@
 package actions
 
 import (
+	"github.com/onsi/ginkgo"
+	"github.com/rs/zerolog/log"
+	"strings"
 	"time"
 
 	"github.com/avast/retry-go"
@@ -8,6 +11,12 @@ import (
 	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/contracts"
 	"github.com/smartcontractkit/integrations-framework/environment"
+)
+
+const (
+	KeepEnvironmentsNever  = "never"
+	KeepEnvironmentsOnFail = "onfail"
+	KeepEnvironmentsAlways = "always"
 )
 
 type DefaultSuiteSetup struct {
@@ -66,4 +75,24 @@ func DefaultLocalSetup(
 		Link:     link,
 		Env:      env,
 	}, nil
+}
+
+func (s *DefaultSuiteSetup) TearDown() func() {
+	return func() {
+		switch strings.ToLower(s.Config.KeepEnvironments) {
+		case KeepEnvironmentsNever:
+			s.Env.TearDown()
+		case KeepEnvironmentsOnFail:
+			if !ginkgo.CurrentGinkgoTestDescription().Failed {
+				s.Env.TearDown()
+			} else {
+				log.Info().Str("Namespace", s.Env.ID()).Msg("Kept environment due to test failure")
+			}
+		case KeepEnvironmentsAlways:
+			log.Info().Str("Namespace", s.Env.ID()).Msg("Kept environment")
+			return
+		default:
+			s.Env.TearDown()
+		}
+	}
 }

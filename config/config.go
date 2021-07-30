@@ -21,10 +21,11 @@ const (
 
 // Config is the overall config for the framework, holding configurations for supported networks
 type Config struct {
-	Network         string                    `mapstructure:"network" yaml:"network"`
-	Networks        map[string]*NetworkConfig `mapstructure:"networks" yaml:"networks"`
-	Retry           *RetryConfig              `mapstructure:"retry" yaml:"retry"`
-	DefaultKeyStore string
+	Network          string                    `mapstructure:"network" yaml:"network"`
+	Networks         map[string]*NetworkConfig `mapstructure:"networks" yaml:"networks"`
+	Retry            *RetryConfig              `mapstructure:"retry" yaml:"retry"`
+	KeepEnvironments string                    `mapstructure:"keep_environments" yaml:"keep_environments"`
+	DefaultKeyStore  string
 }
 
 // GetNetworkConfig finds a specified network config based on its name
