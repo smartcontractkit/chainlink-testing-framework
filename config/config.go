@@ -65,6 +65,7 @@ type AppConfig struct {
 
 // ChainlinkConfig holds the configuration for the chainlink nodes to be deployed
 type ChainlinkConfig struct {
+	Image   string `mapstructure:"image" yaml:"image"`
 	Version string `mapstructure:"version" yaml:"version"`
 }
 

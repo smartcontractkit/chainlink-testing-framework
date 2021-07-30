@@ -71,10 +71,34 @@ func NewChainlinkManifest() *K8sManifest {
 	}
 }
 
+// NewGethManifest is the k8s manifest that when used will deploy geth to an environment
+func NewGethManifest() *K8sManifest {
+	return &K8sManifest{
+		id:             "evm",
+		DeploymentFile: filepath.Join(tools.ProjectRoot, "environment/templates/geth-deployment.yml"),
+		ServiceFile:    filepath.Join(tools.ProjectRoot, "environment/templates/geth-service.yml"),
+		ConfigMapFile:  filepath.Join(tools.ProjectRoot, "environment/templates/geth-config-map.yml"),
+
+		values: map[string]interface{}{
+			"rpcPort": EVMRPCPort,
+		},
+
+		SetValuesFunc: func(manifest *K8sManifest) error {
+			manifest.values["clusterURL"] = fmt.Sprintf(
+				"ws://%s:%d",
+				manifest.Service.Spec.ClusterIP,
+				manifest.Service.Spec.Ports[0].Port,
+			)
+			manifest.values["localURL"] = fmt.Sprintf("ws://127.0.0.1:%d", manifest.ports[0].Local)
+			return nil
+		},
+	}
+}
+
 // NewHardhatManifest is the k8s manifest that when used will deploy hardhat to an environment
 func NewHardhatManifest() *K8sManifest {
 	return &K8sManifest{
-		id:             "hardhat",
+		id:             "evm",
 		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/hardhat-deployment.yml"),
 		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/hardhat-service.yml"),
 
@@ -109,11 +133,18 @@ func NewChainlinkCluster(nodeCount int) K8sEnvSpecInit {
 		0: NewHardhatManifest(),
 		1: chainlinkCluster,
 	}
+	envWithGeth := K8sEnvSpecs{
+		0: NewGethManifest(),
+		1: chainlinkCluster,
+	}
 	envWithoutHardhat := K8sEnvSpecs{
 		0: chainlinkCluster,
 	}
 	return func(config *config.NetworkConfig) (string, K8sEnvSpecs) {
 		envName := "basic-chainlink"
+		if config.Name == "Ethereum Geth dev" {
+			return envName, envWithGeth
+		}
 		if len(config.URL) > 0 {
 			return envName, envWithoutHardhat
 		}

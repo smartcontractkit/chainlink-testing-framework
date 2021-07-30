@@ -260,8 +260,10 @@ type K8sManifest struct {
 	DeploymentFile string
 	ServiceFile    string
 	SecretFile     string
+	ConfigMapFile  string
 	Deployment     *appsV1.Deployment
 	Service        *coreV1.Service
+	ConfigMap      *coreV1.ConfigMap
 	Secret         *coreV1.Secret
 	SetValuesFunc  k8sSetValuesFunc
 
@@ -302,6 +304,9 @@ func (m *K8sManifest) ID() string {
 
 // Deploy will create the definitions for each manifest on the k8s cluster
 func (m *K8sManifest) Deploy(values map[string]interface{}) error {
+	if err := m.createConfigMap(values); err != nil {
+		return err
+	}
 	if err := m.createSecret(values); err != nil {
 		return err
 	}
@@ -448,6 +453,38 @@ func (m *K8sManifest) createService(values map[string]interface{}) error {
 			return fmt.Errorf("failed to deploy %s in k8s: %v", m.SecretFile, err)
 		} else {
 			m.Service = service
+		}
+	}
+	return nil
+}
+
+func (m *K8sManifest) createConfigMap(values map[string]interface{}) error {
+	cm := m.k8sClient.CoreV1().ConfigMaps(m.namespace.Name)
+	if err := m.parseConfigMap(m.config, m.network, values); err != nil {
+		return err
+	}
+	if m.ConfigMap != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+		defer cancel()
+
+		if configMap, err := cm.Create(ctx, m.ConfigMap, metaV1.CreateOptions{}); err != nil {
+			return fmt.Errorf("failed to deploy %s in k8s: %v", m.ConfigMap, err)
+		} else {
+			m.ConfigMap = configMap
+		}
+	}
+	return nil
+}
+
+func (m *K8sManifest) parseConfigMap(
+	cfg *config.Config,
+	network *config.NetworkConfig,
+	values map[string]interface{},
+) error {
+	if len(m.ConfigMapFile) > 0 && m.ConfigMap == nil {
+		m.ConfigMap = &coreV1.ConfigMap{}
+		if err := m.parse(m.ConfigMapFile, m.ConfigMap, m.initTemplateData(cfg, network, values)); err != nil {
+			return err
 		}
 	}
 	return nil
