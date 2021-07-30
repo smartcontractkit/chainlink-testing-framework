@@ -219,7 +219,7 @@ func (f *EthereumFluxAggregator) AwaitNextRoundFinalized(ctx context.Context) er
 			return errors.New("awaiting new round")
 		}
 		return nil
-	}); err != nil {
+	}, retry.Attempts(60)); err != nil {
 		return err
 	}
 	return nil

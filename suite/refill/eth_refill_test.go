@@ -17,12 +17,14 @@ import (
 )
 
 var _ = Describe("FluxAggregator ETH Refill", func() {
-	var s *actions.DefaultSuiteSetup
-	var adapter environment.ExternalAdapter
-	var nodes []client.Chainlink
-	var nodeAddresses []common.Address
-	var err error
-	var fluxInstance contracts.FluxAggregator
+	var (
+		s             *actions.DefaultSuiteSetup
+		adapter       environment.ExternalAdapter
+		nodes         []client.Chainlink
+		nodeAddresses []common.Address
+		err           error
+		fluxInstance  contracts.FluxAggregator
+	)
 
 	BeforeSuite(func() {
 		By("Deploying the environment", func() {
@@ -71,8 +73,8 @@ var _ = Describe("FluxAggregator ETH Refill", func() {
 
 		By("Adding FluxAggregator jobs to nodes", func() {
 			os := &client.PipelineSpec{
-				URL:         adapter.ClusterURL() + "/five",
-				Method:      "POST",
+				URL:         adapter.ClusterURL() + "/variable",
+				Method:      "GET",
 				RequestData: "{}",
 				DataPath:    "data,result",
 			}
