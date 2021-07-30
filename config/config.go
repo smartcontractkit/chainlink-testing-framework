@@ -23,7 +23,8 @@ type Config struct {
 	Network          string                    `mapstructure:"network" yaml:"network"`
 	Networks         map[string]*NetworkConfig `mapstructure:"networks" yaml:"networks"`
 	Retry            *RetryConfig              `mapstructure:"retry" yaml:"retry"`
-	KubernetesConfig KubernetesConfig          `mapstructure:"kubernetes" yaml:"kubernetes"`
+	Apps             AppConfig                 `mapstructure:"apps" yaml:"apps"`
+	Kubernetes       KubernetesConfig          `mapstructure:"kubernetes" yaml:"kubernetes"`
 	KeepEnvironments string                    `mapstructure:"keep_environments" yaml:"keep_environments"`
 	DefaultKeyStore  string
 }
@@ -55,6 +56,16 @@ type NetworkConfig struct {
 type KubernetesConfig struct {
 	QPS   float32 `mapstructure:"qps" yaml:"qps"`
 	Burst int     `mapstructure:"burst" yaml:"burst"`
+}
+
+// AppConfig holds all the configuration for the core apps that are deployed for testing
+type AppConfig struct {
+	Chainlink ChainlinkConfig `mapstructure:"chainlink" yaml:"chainlink"`
+}
+
+// ChainlinkConfig holds the configuration for the chainlink nodes to be deployed
+type ChainlinkConfig struct {
+	Version string `mapstructure:"version" yaml:"version"`
 }
 
 // NewConfig creates a new configuration instance via viper from env vars, config file, or a secret store
