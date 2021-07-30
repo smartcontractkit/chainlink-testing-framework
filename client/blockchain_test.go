@@ -13,7 +13,7 @@ var _ = Describe("Client", func() {
 
 	BeforeEach(func() {
 		var err error
-		conf, err = config.NewWithPath(config.LocalConfig, "../config")
+		conf, err = config.NewConfig(config.LocalConfig)
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 

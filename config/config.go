@@ -3,9 +3,11 @@ package config
 
 import (
 	"errors"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/smartcontractkit/integrations-framework/internal"
 	"github.com/spf13/viper"
 )
 
@@ -50,21 +52,12 @@ type NetworkConfig struct {
 
 // NewConfig creates a new configuration instance via viper from env vars, config file, or a secret store
 func NewConfig(configType ConfigurationType) (*Config, error) {
-	return NewWithPath(configType, "")
-}
-
-// NewWithPath creates a new configuration with a specified path for the config file
-func NewWithPath(configType ConfigurationType, configFilePath string) (*Config, error) {
 	v := viper.New()
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
 	v.SetConfigName("config")
 	v.SetConfigType("yml")
-
-	if len(configFilePath) == 0 {
-		configFilePath = "./" // Use default
-	}
-	v.AddConfigPath(configFilePath)
+	v.AddConfigPath(filepath.Join(internal.ProjectRoot, "config"))
 
 	if err := v.ReadInConfig(); err != nil {
 		return nil, err
