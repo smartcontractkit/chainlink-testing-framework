@@ -99,6 +99,9 @@ func NewK8sEnvironment(
 
 	environmentName, deployables := init(network.Config())
 	namespace, err := env.createNamespace(environmentName)
+	if err != nil {
+		return nil, err
+	}
 	env.namespace = namespace
 	env.specs = deployables
 
@@ -106,6 +109,14 @@ func NewK8sEnvironment(
 		return nil, err
 	}
 	return env, err
+}
+
+// ID returns the canonical name of the environment, which in the case of k8s is the namespace
+func (env *k8sEnvironment) ID() string {
+	if env.namespace != nil {
+		return env.namespace.Name
+	}
+	return ""
 }
 
 // GetLocalPorts returns the local ports for any given remote port, achieved via port forwarding within k8s.

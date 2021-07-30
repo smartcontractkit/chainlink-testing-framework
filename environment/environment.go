@@ -9,6 +9,8 @@ import (
 
 // Environment is the interface that represents a deployed environment, whether locally or on remote machines
 type Environment interface {
+	ID() string
+
 	GetLocalPorts(remotePort uint16) ([]uint16, error)
 	GetLocalPort(remotePort uint16) (uint16, error)
 	GetRemoteURLs(remotePort uint16) ([]*url.URL, error)

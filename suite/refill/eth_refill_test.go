@@ -26,7 +26,7 @@ var _ = Describe("FluxAggregator ETH Refill", func() {
 		fluxInstance  contracts.FluxAggregator
 	)
 
-	BeforeSuite(func() {
+	BeforeEach(func() {
 		By("Deploying the environment", func() {
 			s, err = actions.DefaultLocalSetup(
 				environment.NewChainlinkCluster(3),
@@ -42,7 +42,7 @@ var _ = Describe("FluxAggregator ETH Refill", func() {
 		})
 	})
 
-	BeforeEach(func() {
+	JustBeforeEach(func() {
 		By("Deploying and funding the contract", func() {
 			fluxInstance, err = s.Deployer.DeployFluxAggregatorContract(
 				s.Wallets.Default(),
@@ -122,9 +122,7 @@ var _ = Describe("FluxAggregator ETH Refill", func() {
 		})
 	})
 
-	AfterSuite(func() {
-		By("Tearing down the environment", func() {
-			s.Env.TearDown()
-		})
+	AfterEach(func() {
+		By("Tearing down the environment", s.TearDown())
 	})
 })

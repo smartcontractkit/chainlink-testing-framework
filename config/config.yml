@@ -1,6 +1,7 @@
 # Retains default and configurable name-values for the integration framework
 
 network: "ethereum_hardhat" # Selected network for test execution
+keep_environments: Never # Options: Always, OnFail, Never
 networks:
     ethereum_hardhat:
         name: "Ethereum Hardhat"
