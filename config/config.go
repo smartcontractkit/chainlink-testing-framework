@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/smartcontractkit/integrations-framework/internal"
+	"github.com/smartcontractkit/integrations-framework/tools"
 	"github.com/spf13/viper"
 )
 
@@ -57,7 +57,7 @@ func NewConfig(configType ConfigurationType) (*Config, error) {
 	v.AutomaticEnv()
 	v.SetConfigName("config")
 	v.SetConfigType("yml")
-	v.AddConfigPath(filepath.Join(internal.ProjectRoot, "config"))
+	v.AddConfigPath(filepath.Join(tools.ProjectRoot, "config"))
 
 	if err := v.ReadInConfig(); err != nil {
 		return nil, err
