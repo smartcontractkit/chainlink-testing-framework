@@ -4,10 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/avast/retry-go"
-	"github.com/hashicorp/go-multierror"
-	"github.com/smartcontractkit/integrations-framework/config"
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -15,6 +11,11 @@ import (
 	"sync"
 	"text/template"
 	"time"
+
+	"github.com/avast/retry-go"
+	"github.com/hashicorp/go-multierror"
+	"github.com/smartcontractkit/integrations-framework/config"
+	"gopkg.in/yaml.v2"
 
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/client"
@@ -601,7 +602,7 @@ func (m *K8sManifest) forwardPodPorts(pod *coreV1.Pod) ([]portforward.ForwardedP
 	}
 	if len(out.String()) > 0 {
 		msg := strings.ReplaceAll(out.String(), "\n", " ")
-		log.Debug().Str("Pod", pod.Name).Msgf("Debug message on port forward: %s", msg)
+		log.Debug().Str("Pod", pod.Name).Msgf("%s", msg)
 	}
 
 	m.stopChannels = append(m.stopChannels, stopChan)
