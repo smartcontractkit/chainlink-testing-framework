@@ -3,6 +3,9 @@ package contracts
 import (
 	"context"
 	"errors"
+	"math/big"
+	"strings"
+
 	"github.com/avast/retry-go"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
@@ -13,8 +16,6 @@ import (
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
 	"github.com/smartcontractkit/integrations-framework/environment"
-	"math/big"
-	"strings"
 )
 
 var _ = Describe("Direct request suite", func() {
@@ -94,7 +95,7 @@ var _ = Describe("Direct request suite", func() {
 	},
 		Entry(
 			"on Ethereum Hardhat",
-			environment.NewChainlinkCluster("../../", 1),
+			environment.NewChainlinkCluster(1),
 			client.NewNetworkFromConfig,
 			contracts.DefaultFluxAggregatorOptions(),
 		),

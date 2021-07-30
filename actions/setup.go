@@ -1,12 +1,13 @@
 package actions
 
 import (
+	"time"
+
 	"github.com/avast/retry-go"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/contracts"
 	"github.com/smartcontractkit/integrations-framework/environment"
-	"time"
 )
 
 type DefaultSuiteSetup struct {
@@ -23,7 +24,7 @@ func DefaultLocalSetup(
 	envInitFunc environment.K8sEnvSpecInit,
 	initFunc client.BlockchainNetworkInit,
 ) (*DefaultSuiteSetup, error) {
-	conf, err := config.NewWithPath(config.LocalConfig, "../../config")
+	conf, err := config.NewConfig(config.LocalConfig)
 	if err != nil {
 		return nil, err
 	}

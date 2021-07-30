@@ -24,7 +24,7 @@ var _ = Describe("OCR Feed", func() {
 		By("Deploying the environment", func() {
 			var err error
 			suiteSetup, err = actions.DefaultLocalSetup(
-				environment.NewChainlinkCluster("../../", 5),
+				environment.NewChainlinkCluster(5),
 				client.NewNetworkFromConfig,
 			)
 			Expect(err).ShouldNot(HaveOccurred())

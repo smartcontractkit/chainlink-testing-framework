@@ -15,7 +15,7 @@ var _ = Describe("Environment functionality", func() {
 
 	BeforeEach(func() {
 		var err error
-		conf, err = config.NewWithPath(config.LocalConfig, "../config")
+		conf, err = config.NewConfig(config.LocalConfig)
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 
@@ -43,7 +43,7 @@ var _ = Describe("Environment functionality", func() {
 		}
 		Expect(err).ShouldNot(HaveOccurred())
 	},
-		Entry("1 node cluster", client.NewNetworkFromConfig, NewChainlinkCluster("../", 1), 1),
-		Entry("5 node cluster", client.NewNetworkFromConfig, NewChainlinkCluster("../", 5), 5),
+		Entry("1 node cluster", client.NewNetworkFromConfig, NewChainlinkCluster(1), 1),
+		Entry("5 node cluster", client.NewNetworkFromConfig, NewChainlinkCluster(5), 5),
 	)
 })
