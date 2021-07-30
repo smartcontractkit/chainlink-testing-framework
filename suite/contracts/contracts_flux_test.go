@@ -130,6 +130,6 @@ var _ = Describe("Flux monitor suite", func() {
 	})
 
 	AfterEach(func() {
-		s.Env.TearDown()
+		By("Tearing down the environment", s.TearDown())
 	})
 })

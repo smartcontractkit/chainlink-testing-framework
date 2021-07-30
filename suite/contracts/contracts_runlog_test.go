@@ -116,6 +116,6 @@ var _ = Describe("Direct request suite", func() {
 	})
 
 	AfterEach(func() {
-		s.Env.TearDown()
+		By("Tearing down the environment", s.TearDown())
 	})
 })
