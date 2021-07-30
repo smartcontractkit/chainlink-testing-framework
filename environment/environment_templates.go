@@ -2,13 +2,10 @@ package environment
 
 import (
 	"fmt"
-	"os/exec"
 	"path/filepath"
-	"strings"
-
-	"github.com/rs/zerolog/log"
 
 	"github.com/smartcontractkit/integrations-framework/config"
+	"github.com/smartcontractkit/integrations-framework/internal"
 	coreV1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -24,8 +21,8 @@ const (
 func NewAdapterManifest() *K8sManifest {
 	return &K8sManifest{
 		id:             "adapter",
-		DeploymentFile: filepath.Join(getDirectoryRoot(), "/environment/templates/adapter-deployment.yml"),
-		ServiceFile:    filepath.Join(getDirectoryRoot(), "/environment/templates/adapter-service.yml"),
+		DeploymentFile: filepath.Join(internal.ProjectRoot, "/environment/templates/adapter-deployment.yml"),
+		ServiceFile:    filepath.Join(internal.ProjectRoot, "/environment/templates/adapter-service.yml"),
 
 		values: map[string]interface{}{
 			"apiPort": AdapterAPIPort,
@@ -53,8 +50,8 @@ func NewAdapterManifest() *K8sManifest {
 func NewChainlinkManifest() *K8sManifest {
 	return &K8sManifest{
 		id:             "chainlink",
-		DeploymentFile: filepath.Join(getDirectoryRoot(), "/environment/templates/chainlink-deployment.yml"),
-		ServiceFile:    filepath.Join(getDirectoryRoot(), "/environment/templates/chainlink-service.yml"),
+		DeploymentFile: filepath.Join(internal.ProjectRoot, "/environment/templates/chainlink-deployment.yml"),
+		ServiceFile:    filepath.Join(internal.ProjectRoot, "/environment/templates/chainlink-service.yml"),
 
 		values: map[string]interface{}{
 			"webPort": ChainlinkWebPort,
@@ -78,8 +75,8 @@ func NewChainlinkManifest() *K8sManifest {
 func NewHardhatManifest() *K8sManifest {
 	return &K8sManifest{
 		id:             "hardhat",
-		DeploymentFile: filepath.Join(getDirectoryRoot(), "/environment/templates/hardhat-deployment.yml"),
-		ServiceFile:    filepath.Join(getDirectoryRoot(), "/environment/templates/hardhat-service.yml"),
+		DeploymentFile: filepath.Join(internal.ProjectRoot, "/environment/templates/hardhat-deployment.yml"),
+		ServiceFile:    filepath.Join(internal.ProjectRoot, "/environment/templates/hardhat-service.yml"),
 
 		values: map[string]interface{}{
 			"rpcPort": EVMRPCPort,
@@ -122,12 +119,4 @@ func NewChainlinkCluster(nodeCount int) K8sEnvSpecInit {
 		}
 		return envName, envWithHardhat
 	}
-}
-
-func getDirectoryRoot() string {
-	out, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
-	if err != nil {
-		log.Err(err).Msg("Error retrieving project root directory via 'git rev-parse --show-toplevel'")
-	}
-	return strings.TrimSpace(string(out))
 }
