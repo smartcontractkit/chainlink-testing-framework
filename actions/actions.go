@@ -29,7 +29,7 @@ func FundChainlinkNodes(
 
 // ChainlinkNodeAddresses will return all the on-chain wallet addresses for a set of Chainlink nodes
 func ChainlinkNodeAddresses(nodes []client.Chainlink) ([]common.Address, error) {
-	addresses := make([]common.Address, len(nodes))
+	addresses := make([]common.Address, 0)
 	for _, node := range nodes {
 		primaryAddress, err := node.PrimaryEthAddress()
 		if err != nil {
