@@ -291,5 +291,17 @@ func (e *EthereumClient) WaitForTransaction(transactionHash common.Hash) error {
 
 func (e *EthereumClient) isTxConfirmed(txHash common.Hash) (bool, error) {
 	_, isPending, err := e.Client.TransactionByHash(context.Background(), txHash)
+	if err != nil {
+		return !isPending, err
+	}
+	if !isPending {
+		receipt, err := e.Client.TransactionReceipt(context.Background(), txHash)
+		if err != nil {
+			return !isPending, err
+		}
+		if receipt.Status == 0 {
+			log.Warn().Str("TX Hash", txHash.Hex()).Msg("Transaction failed and was reverted!")
+		}
+	}
 	return !isPending, err
 }

@@ -81,8 +81,6 @@ var _ = Describe("Basic Contract Interactions", func() {
 	})
 
 	AfterEach(func() {
-		By("Tearing down the environment", func() {
-			suiteSetup.Env.TearDown()
-		})
+		By("Tearing down the environment", suiteSetup.TearDown())
 	})
 })

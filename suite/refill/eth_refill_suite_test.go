@@ -11,7 +11,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func TestContracts(t *testing.T) {
+func TestRefill(t *testing.T) {
 	RegisterFailHandler(Fail)
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	junitReporter := reporters.NewJUnitReporter("junit.xml")
