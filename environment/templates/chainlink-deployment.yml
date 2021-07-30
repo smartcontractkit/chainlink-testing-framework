@@ -10,7 +10,7 @@ spec:
             secretname: {{ .Manifest.Secret.ObjectMeta.Name }}
       containers:
       - name: node
-        image: smartcontract/chainlink:0.10.10
+        image: smartcontract/chainlink:{{ .Config.Apps.Chainlink.Version }}
         args:
         - node
         - start
@@ -35,7 +35,7 @@ spec:
           value: {{ if .Values.hardhat.clusterURL }}{{ .Values.hardhat.clusterURL }}{{ else }}{{ .Network.URL }}{{ end }}
           valuefrom: null
         - name: ETH_CHAIN_ID
-          value: "1337"
+          value: {{ .Network.ChainID }}
           valuefrom: null
         - name: ALLOW_ORIGINS
           value: '*'

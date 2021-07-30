@@ -3,7 +3,6 @@ package config
 
 import (
 	"errors"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -24,7 +23,8 @@ type Config struct {
 	Network          string                    `mapstructure:"network" yaml:"network"`
 	Networks         map[string]*NetworkConfig `mapstructure:"networks" yaml:"networks"`
 	Retry            *RetryConfig              `mapstructure:"retry" yaml:"retry"`
-	KubernetesConfig KubernetesConfig          `mapstructure:"kubernetes" yaml:"kubernetes"`
+	Apps             AppConfig                 `mapstructure:"apps" yaml:"apps"`
+	Kubernetes       KubernetesConfig          `mapstructure:"kubernetes" yaml:"kubernetes"`
 	KeepEnvironments string                    `mapstructure:"keep_environments" yaml:"keep_environments"`
 	DefaultKeyStore  string
 }
@@ -58,6 +58,16 @@ type KubernetesConfig struct {
 	Burst int     `mapstructure:"burst" yaml:"burst"`
 }
 
+// AppConfig holds all the configuration for the core apps that are deployed for testing
+type AppConfig struct {
+	Chainlink ChainlinkConfig `mapstructure:"chainlink" yaml:"chainlink"`
+}
+
+// ChainlinkConfig holds the configuration for the chainlink nodes to be deployed
+type ChainlinkConfig struct {
+	Version string `mapstructure:"version" yaml:"version"`
+}
+
 // NewConfig creates a new configuration instance via viper from env vars, config file, or a secret store
 func NewConfig(configType ConfigurationType) (*Config, error) {
 	v := viper.New()
@@ -65,7 +75,7 @@ func NewConfig(configType ConfigurationType) (*Config, error) {
 	v.AutomaticEnv()
 	v.SetConfigName("config")
 	v.SetConfigType("yml")
-	v.AddConfigPath(filepath.Join(tools.ProjectRoot, "config"))
+	v.AddConfigPath(tools.ProjectRoot)
 
 	if err := v.ReadInConfig(); err != nil {
 		return nil, err
