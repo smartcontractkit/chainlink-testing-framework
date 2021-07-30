@@ -37,100 +37,97 @@ var _ = Describe("OCR Feed", func() {
 	})
 
 	Describe("deploy an OCR feed", func() {
-		var ocrInstance contracts.OffchainAggregator
+		err := actions.FundChainlinkNodes(
+			chainlinkNodes,
+			suiteSetup.Client,
+			defaultWallet,
+			big.NewInt(2^18),
+			big.NewInt(2^18),
+		)
+		Expect(err).ShouldNot(HaveOccurred())
 
-		It("funds nodes and deploys OCR contract", func() {
-			err := actions.FundChainlinkNodes(
-				chainlinkNodes,
-				suiteSetup.Client,
-				defaultWallet,
-				big.NewInt(2^18),
-				big.NewInt(2^18),
-			)
-			Expect(err).ShouldNot(HaveOccurred())
+		// Deploy and config OCR contract
+		deployer, err := contracts.NewContractDeployer(suiteSetup.Client)
+		Expect(err).ShouldNot(HaveOccurred())
 
-			// Deploy and config OCR contract
-			deployer, err := contracts.NewContractDeployer(suiteSetup.Client)
-			Expect(err).ShouldNot(HaveOccurred())
+		ocrInstance, err := deployer.DeployOffChainAggregator(defaultWallet, contracts.DefaultOffChainAggregatorOptions())
+		Expect(err).ShouldNot(HaveOccurred())
+		err = ocrInstance.SetConfig(
+			defaultWallet,
+			chainlinkNodes,
+			contracts.DefaultOffChainAggregatorConfig(len(chainlinkNodes)),
+		)
+		Expect(err).ShouldNot(HaveOccurred())
+		err = ocrInstance.Fund(defaultWallet, big.NewInt(2^18), big.NewInt(2^18))
+		Expect(err).ShouldNot(HaveOccurred())
 
-			ocrInstance, err = deployer.DeployOffChainAggregator(defaultWallet, contracts.DefaultOffChainAggregatorOptions())
-			Expect(err).ShouldNot(HaveOccurred())
-			err = ocrInstance.SetConfig(
-				defaultWallet,
-				chainlinkNodes,
-				contracts.DefaultOffChainAggregatorConfig(len(chainlinkNodes)),
-			)
-			Expect(err).ShouldNot(HaveOccurred())
-			err = ocrInstance.Fund(defaultWallet, big.NewInt(2^18), big.NewInt(2^18))
-			Expect(err).ShouldNot(HaveOccurred())
-		})
+		// Initialize bootstrap node
+		bootstrapNode := chainlinkNodes[0]
+		bootstrapP2PIds, err := bootstrapNode.ReadP2PKeys()
+		Expect(err).ShouldNot(HaveOccurred())
+		bootstrapP2PId := bootstrapP2PIds.Data[0].Attributes.PeerID
+		bootstrapSpec := &client.OCRBootstrapJobSpec{
+			ContractAddress: ocrInstance.Address(),
+			P2PPeerID:       bootstrapP2PId,
+			IsBootstrapPeer: true,
+		}
+		_, err = bootstrapNode.CreateJob(bootstrapSpec)
+		Expect(err).ShouldNot(HaveOccurred())
 
-		It("sends OCR jobs to chainlink nodes", func() {
-			// Initialize bootstrap node
-			bootstrapNode := chainlinkNodes[0]
-			bootstrapP2PIds, err := bootstrapNode.ReadP2PKeys()
+		// Send OCR job to other nodes
+		for index := 1; index < len(chainlinkNodes); index++ {
+			nodeP2PIds, err := chainlinkNodes[index].ReadP2PKeys()
 			Expect(err).ShouldNot(HaveOccurred())
-			bootstrapP2PId := bootstrapP2PIds.Data[0].Attributes.PeerID
-			bootstrapSpec := &client.OCRBootstrapJobSpec{
-				ContractAddress: ocrInstance.Address(),
-				P2PPeerID:       bootstrapP2PId,
-				IsBootstrapPeer: true,
+			nodeP2PId := nodeP2PIds.Data[0].Attributes.PeerID
+			nodeTransmitterAddress, err := chainlinkNodes[index].PrimaryEthAddress()
+			Expect(err).ShouldNot(HaveOccurred())
+			nodeOCRKeys, err := chainlinkNodes[index].ReadOCRKeys()
+			Expect(err).ShouldNot(HaveOccurred())
+			nodeOCRKeyId := nodeOCRKeys.Data[0].ID
+
+			ocrSpec := &client.OCRTaskJobSpec{
+				ContractAddress:    ocrInstance.Address(),
+				P2PPeerID:          nodeP2PId,
+				P2PBootstrapPeers:  []string{bootstrapP2PId},
+				KeyBundleID:        nodeOCRKeyId,
+				TransmitterAddress: nodeTransmitterAddress,
+				ObservationSource:  client.ObservationSourceSpec(adapter.ClusterURL() + "/five"),
 			}
-			_, err = bootstrapNode.CreateJob(bootstrapSpec)
+			_, err = chainlinkNodes[index].CreateJob(ocrSpec)
 			Expect(err).ShouldNot(HaveOccurred())
+		}
 
-			// Send OCR job to other nodes
-			for index := 1; index < len(chainlinkNodes); index++ {
-				nodeP2PIds, err := chainlinkNodes[index].ReadP2PKeys()
-				Expect(err).ShouldNot(HaveOccurred())
-				nodeP2PId := nodeP2PIds.Data[0].Attributes.PeerID
-				nodeTransmitterAddress, err := chainlinkNodes[index].PrimaryEthAddress()
-				Expect(err).ShouldNot(HaveOccurred())
-				nodeOCRKeys, err := chainlinkNodes[index].ReadOCRKeys()
-				Expect(err).ShouldNot(HaveOccurred())
-				nodeOCRKeyId := nodeOCRKeys.Data[0].ID
+		err = ocrInstance.RequestNewRound(defaultWallet)
+		Expect(err).ShouldNot(HaveOccurred())
 
-				ocrSpec := &client.OCRTaskJobSpec{
-					ContractAddress:    ocrInstance.Address(),
-					P2PPeerID:          nodeP2PId,
-					P2PBootstrapPeers:  []string{bootstrapP2PId},
-					KeyBundleID:        nodeOCRKeyId,
-					TransmitterAddress: nodeTransmitterAddress,
-					ObservationSource:  client.ObservationSourceSpec(adapter.ClusterURL() + "/five"),
-				}
-				_, err = chainlinkNodes[index].CreateJob(ocrSpec)
-				Expect(err).ShouldNot(HaveOccurred())
+		// Wait for a round
+		for i := 0; i < 30; i++ {
+			round, err := ocrInstance.GetLatestRound(context.Background())
+			Expect(err).ShouldNot(HaveOccurred())
+			log.Info().
+				Str("Contract Address", ocrInstance.Address()).
+				Str("Answer", round.Answer.String()).
+				Str("Round ID", round.RoundId.String()).
+				Str("Answered in Round", round.AnsweredInRound.String()).
+				Str("Started At", round.StartedAt.String()).
+				Str("Updated At", round.UpdatedAt.String()).
+				Msg("Latest Round Data")
+			if round.RoundId.Cmp(big.NewInt(0)) > 0 {
+				break // Break when OCR round processes
 			}
+			time.Sleep(time.Second)
+		}
+
+		// Check answer is as expected
+		answer, err := ocrInstance.GetLatestAnswer(context.Background())
+		log.Info().Str("Answer", answer.String()).Msg("Final Answer")
+		Expect(err).ShouldNot(HaveOccurred())
+		Expect(answer.Int64()).Should(Equal(int64(5)))
+	})
+
+	AfterEach(func() {
+		By("Tearing down the environment", func() {
+			suiteSetup.Env.TearDown()
 		})
-
-		It("waits for a OCR to complete a round and checks its answer", func() {
-			err := ocrInstance.RequestNewRound(defaultWallet)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			// Wait for a round
-			for i := 0; i < 30; i++ {
-				round, err := ocrInstance.GetLatestRound(context.Background())
-				Expect(err).ShouldNot(HaveOccurred())
-				log.Info().
-					Str("Contract Address", ocrInstance.Address()).
-					Str("Answer", round.Answer.String()).
-					Str("Round ID", round.RoundId.String()).
-					Str("Answered in Round", round.AnsweredInRound.String()).
-					Str("Started At", round.StartedAt.String()).
-					Str("Updated At", round.UpdatedAt.String()).
-					Msg("Latest Round Data")
-				if round.RoundId.Cmp(big.NewInt(0)) > 0 {
-					break // Break when OCR round processes
-				}
-				time.Sleep(time.Second)
-			}
-
-			// Check answer is as expected
-			answer, err := ocrInstance.GetLatestAnswer(context.Background())
-			log.Info().Str("Answer", answer.String()).Msg("Final Answer")
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(answer.Int64()).Should(Equal(int64(5)))
-		})
-
 	})
 })

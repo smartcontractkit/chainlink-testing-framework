@@ -82,7 +82,7 @@ func (c *chainlink) CreateJob(spec JobSpec) (*Job, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Info().Str("Node URL", c.Config.URL).Str("Job Body", specString).Msg("Creating Job")
+	log.Info().Str("Node URL", c.Config.URL).Msg("Creating Job")
 	_, err = c.do(http.MethodPost, "/v2/jobs", &JobForm{
 		TOML: specString,
 	}, &job, http.StatusOK)

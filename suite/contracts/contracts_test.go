@@ -22,7 +22,7 @@ var _ = Describe("Basic Contract Interactions", func() {
 		By("Deploying the environment", func() {
 			var err error
 			suiteSetup, err = actions.DefaultLocalSetup(
-				environment.NewChainlinkCluster("../../", 0),
+				environment.NewChainlinkCluster(0),
 				client.NewNetworkFromConfig,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -80,7 +80,7 @@ var _ = Describe("Basic Contract Interactions", func() {
 		})
 	})
 
-	AfterSuite(func() {
+	AfterEach(func() {
 		By("Tearing down the environment", func() {
 			suiteSetup.Env.TearDown()
 		})
