@@ -86,6 +86,9 @@ func NewK8sEnvironment(
 	if err != nil {
 		return nil, err
 	}
+	k8sConfig.QPS = cfg.KubernetesConfig.QPS
+	k8sConfig.Burst = cfg.KubernetesConfig.Burst
+
 	k8sClient, err := kubernetes.NewForConfig(k8sConfig)
 	if err != nil {
 		return nil, err

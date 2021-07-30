@@ -24,6 +24,7 @@ type Config struct {
 	Network          string                    `mapstructure:"network" yaml:"network"`
 	Networks         map[string]*NetworkConfig `mapstructure:"networks" yaml:"networks"`
 	Retry            *RetryConfig              `mapstructure:"retry" yaml:"retry"`
+	KubernetesConfig KubernetesConfig          `mapstructure:"kubernetes" yaml:"kubernetes"`
 	KeepEnvironments string                    `mapstructure:"keep_environments" yaml:"keep_environments"`
 	DefaultKeyStore  string
 }
@@ -49,6 +50,12 @@ type NetworkConfig struct {
 	MinimumConfirmations int           `mapstructure:"minimum_confirmations" yaml:"minimum_confirmations"`
 	GasEstimationBuffer  uint64        `mapstructure:"gas_estimation_buffer" yaml:"gas_estimation_buffer"`
 	PrivateKeyStore      PrivateKeyStore
+}
+
+// KubernetesConfig holds the configuration for how the framework interacts with the k8s cluster
+type KubernetesConfig struct {
+	QPS   float32 `mapstructure:"qps" yaml:"qps"`
+	Burst int     `mapstructure:"burst" yaml:"burst"`
 }
 
 // NewConfig creates a new configuration instance via viper from env vars, config file, or a secret store
