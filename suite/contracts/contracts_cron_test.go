@@ -69,6 +69,6 @@ var _ = Describe("Cronjob suite", func() {
 	})
 
 	AfterEach(func() {
-		s.Env.TearDown()
+		By("Tearing down the environment", s.TearDown())
 	})
 })
