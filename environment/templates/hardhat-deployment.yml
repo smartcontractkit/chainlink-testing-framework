@@ -10,12 +10,12 @@ spec:
       - name: hardhat-network
         image: smartcontract/hardhat-network
         ports:
-        - containerport: {{ .Values.hardhat.rpcPort }}
+        - containerport: {{ .Values.evm.rpcPort }}
         readinessprobe:
           handler:
             exec: null
             httpget:
               path: /
               port:
-                intval: 8545
+                intval: {{ .Values.evm.rpcPort }}
           periodseconds: 2

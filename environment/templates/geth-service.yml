@@ -1,5 +1,5 @@
 objectmeta:
-  name: hardhat-network
+  name: geth-dev-network
 spec:
   ports:
   - name: access
@@ -7,5 +7,5 @@ spec:
     targetport:
       intval: {{ .Values.evm.rpcPort }}
   selector:
-    app: hardhat-network
+    app: geth-dev-network
   type: ClusterIP
