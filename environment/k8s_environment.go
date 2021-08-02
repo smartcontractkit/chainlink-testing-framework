@@ -57,6 +57,7 @@ type K8sEnvResource interface {
 	Deploy(values map[string]interface{}) error
 	WaitUntilHealthy() error
 	Ports() []portforward.ForwardedPort
+	GetServices() []*ServiceDetails
 	Values() map[string]interface{}
 	Teardown() error
 }
@@ -119,61 +120,46 @@ func (env *k8sEnvironment) ID() string {
 	return ""
 }
 
-// GetLocalPorts returns the local ports for any given remote port, achieved via port forwarding within k8s.
-// For example, if you call this function with port 6688, it will return all of the forwarded local ports of the
-// deployed Chainlink nodes.
-func (env *k8sEnvironment) GetLocalPorts(remotePort uint16) ([]uint16, error) {
-	var ports []uint16
+// GetServices collects details for all the services in a launched environment
+func (env *k8sEnvironment) GetServices() []*ServiceDetails {
+	services := []*ServiceDetails{}
 	for _, spec := range env.specs {
-		specPorts := spec.Ports()
-		for _, port := range specPorts {
+		for _, service := range spec.GetServices() {
+			services = append(services, service)
+		}
+	}
+	return services
+}
+
+// GetService gets the first service it finds with that remote port
+func (env *k8sEnvironment) GetService(remotePort uint16) *ServiceDetails {
+	for _, service := range env.GetServices() {
+		for _, port := range service.Ports {
 			if port.Remote == remotePort {
-				ports = append(ports, port.Local)
+				return service
 			}
 		}
 	}
-	if len(ports) == 0 {
-		return nil, fmt.Errorf("no services with the remote port %d have been deployed", remotePort)
-	}
-	return ports, nil
+	return nil
 }
 
-// GetLocalPort returns the first port within a list from GetLocalPorts. This function is useful if on integrating,
-// when there's only one of a given service deployed, or only a single service is wanted.
-func (env *k8sEnvironment) GetLocalPort(remotePort uint16) (uint16, error) {
-	if ports, err := env.GetLocalPorts(remotePort); err != nil {
-		return 0, err
-	} else {
-		return ports[0], nil
-	}
-}
-
-// GetRemoteURLs returns all the URLs for a remote service as accessible by the k8s services. These URLs are needed
-// for it you're configuring any of the pre-deployed services to use another already deployed service.
-func (env *k8sEnvironment) GetRemoteURLs(remotePort uint16) ([]*url.URL, error) {
-	var urls []*url.URL
-
-	services, err := findServicesWithPort(env.k8sClient, env.namespace, remotePort)
-	if err != nil {
-		return nil, err
-	}
-	for _, service := range services {
-		u, err := url.Parse(fmt.Sprintf("http://%s:%d", service.Spec.ClusterIP, remotePort))
-		if err != nil {
-			return nil, err
+// GetChainlinkServices collects the service details for all deployed chainlink nodes
+func (env *k8sEnvironment) GetChainlinkServices() []*ServiceDetails {
+	services := []*ServiceDetails{}
+	for _, service := range env.GetServices() {
+		for _, port := range service.Ports {
+			if port.Remote == ChainlinkWebPort {
+				services = append(services, service)
+				continue
+			}
 		}
-		urls = append(urls, u)
 	}
-	return urls, nil
+	return services
 }
 
-// GetRemoteURL returns the remote host URL of the k8s cluster being used for deployments
-func (env *k8sEnvironment) GetRemoteURL(remotePort uint16) (*url.URL, error) {
-	if urls, err := env.GetRemoteURLs(remotePort); err != nil {
-		return nil, err
-	} else {
-		return urls[0], err
-	}
+// GetAdapterServices collects the service details for deployed external adapters
+func (env *k8sEnvironment) GetAdapterService() *ServiceDetails {
+	return env.GetService(AdapterAPIPort)
 }
 
 // TearDown cycles through all the specifications and tears down the deployments. This typically entails cleaning
@@ -363,6 +349,14 @@ func (m *K8sManifest) WaitUntilHealthy() error {
 // Ports returns all the exposed ports from the deployed services
 func (m *K8sManifest) Ports() []portforward.ForwardedPort {
 	return m.ports
+}
+
+// GetServices returns the service details for the manifest
+func (m *K8sManifest) GetServices() []*ServiceDetails {
+	return []*ServiceDetails{&ServiceDetails{
+		RemoteIP: m.Service.Spec.ClusterIP,
+		Ports:    m.ports,
+	}}
 }
 
 // Values returns all the values to be exposed in the definition templates
@@ -696,6 +690,17 @@ func (mg *K8sManifestGroup) WaitUntilHealthy() error {
 	}
 	wg.Wait()
 	return errGroup
+}
+
+// GetServices returns the service details for all the services in the manifest group
+func (mg *K8sManifestGroup) GetServices() []*ServiceDetails {
+	services := []*ServiceDetails{}
+	for _, m := range mg.manifests {
+		for _, service := range m.GetServices() {
+			services = append(services, service)
+		}
+	}
+	return services
 }
 
 // Ports will return all the ports exposed within a manifest group

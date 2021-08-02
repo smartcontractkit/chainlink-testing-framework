@@ -12,6 +12,7 @@ type ChainlinkConfig struct {
 	URL      string
 	Email    string
 	Password string
+	RemoteIP string
 }
 
 // ResponseSlice is the generic model that can be used for all Chainlink API responses that are an slice
@@ -238,21 +239,21 @@ func (d *DirectRequestTxPipelineSpec) Type() string {
 
 func (d *DirectRequestTxPipelineSpec) String() (string, error) {
 	sourceString := `
-            decode_log   [type=ethabidecodelog
-                         abi="OracleRequest(bytes32 indexed specId, address requester, bytes32 requestId, uint256 payment, address callbackAddr, bytes4 callbackFunctionId, uint256 cancelExpiration, uint256 dataVersion, bytes data)"
-                         data="$(jobRun.logData)"
-                         topics="$(jobRun.logTopics)"]
-			encode_tx  [type=ethabiencode
-                        abi="fulfill(bytes32 _requestId, uint256 _data)"
-                        data=<{
-                          "_requestId": $(decode_log.requestId),
-                          "_data": $(parse)
-                         }>
-                       ]
-            fetch    [type=http method={{.Method}} url="{{.URL}}" requestData="{{.RequestData}}"]
-			parse    [type=jsonparse path="{{.DataPath}}"]
-            submit   [type=ethtx to="$(decode_log.requester)" data="$(encode_tx)"]
-			decode_log -> fetch -> parse -> encode_tx -> submit`
+decode_log   [type=ethabidecodelog
+				abi="OracleRequest(bytes32 indexed specId, address requester, bytes32 requestId, uint256 payment, address callbackAddr, bytes4 callbackFunctionId, uint256 cancelExpiration, uint256 dataVersion, bytes data)"
+				data="$(jobRun.logData)"
+				topics="$(jobRun.logTopics)"]
+encode_tx  [type=ethabiencode
+			abi="fulfill(bytes32 _requestId, uint256 _data)"
+			data=<{
+				"_requestId": $(decode_log.requestId),
+				"_data": $(parse)
+				}>
+			]
+fetch    [type=http method={{.Method}} url="{{.URL}}" requestData="{{.RequestData}}"]
+parse    [type=jsonparse path="{{.DataPath}}"]
+submit   [type=ethtx to="$(decode_log.requester)" data="$(encode_tx)"]
+decode_log -> fetch -> parse -> encode_tx -> submit`
 	return marshallTemplate(d, "Direct request pipeline template", sourceString)
 }
 
@@ -343,7 +344,7 @@ type OCRBootstrapJobSpec struct {
 	TrackerPollInterval      time.Duration `toml:"contractConfigTrackerPollInterval"`      // Optional
 	TrackerSubscribeInterval time.Duration `toml:"contractConfigTrackerSubscribeInterval"` // Optional
 	ContractAddress          string        `toml:"contractAddress"`                        // Address of the OCR contract
-	P2PBootstrapPeers        []string      `toml:"p2pBootstrapPeers"`                      // Typically empty for our suite
+	P2PBootstrapPeers        []Chainlink   `toml:"p2pBootstrapPeers"`                      // Typically empty for our suite
 	IsBootstrapPeer          bool          `toml:"isBootstrapPeer"`                        // Typically true
 	P2PPeerID                string        `toml:"p2pPeerID"`                              // This node's P2P ID
 }
@@ -360,7 +361,7 @@ contractAddress                        = "{{.ContractAddress}}"
 {{if .P2PBootstrapPeers}}
 p2pBootstrapPeers                      = [
   {{range $peer := .P2PBootstrapPeers}}
-  "/dns4/chainlink-node-bootstrap/tcp/6690/p2p/{{$peer}}",
+  "/dns4/{{$peer.ClusterURL}}/tcp/6690/p2p/{{$peer}}",
   {{end}}
 ]
 {{else}}
@@ -380,7 +381,7 @@ type OCRTaskJobSpec struct {
 	TrackerPollInterval      time.Duration `toml:"contractConfigTrackerPollInterval"`      // Optional
 	TrackerSubscribeInterval time.Duration `toml:"contractConfigTrackerSubscribeInterval"` // Optional
 	ContractAddress          string        `toml:"contractAddress"`                        // Address of the OCR contract
-	P2PBootstrapPeers        []string      `toml:"p2pBootstrapPeers"`                      // P2P ID of the bootstrap node
+	P2PBootstrapPeers        []Chainlink   `toml:"p2pBootstrapPeers"`                      // Bootstrap Node
 	IsBootstrapPeer          bool          `toml:"isBootstrapPeer"`                        // Typically false
 	P2PPeerID                string        `toml:"p2pPeerID"`                              // This node's P2P ID
 	KeyBundleID              string        `toml:"keyBundleID"`                            // ID of this node's OCR key bundle
@@ -401,7 +402,7 @@ contractAddress                        = "{{.ContractAddress}}"
 {{if .P2PBootstrapPeers}}
 p2pBootstrapPeers                      = [
   {{range $peer := .P2PBootstrapPeers}}
-  "/dns4/chainlink-node-bootstrap/tcp/6690/p2p/{{$peer}}",
+  "/dns4/{{$peer.ClusterURL}}/tcp/6690/p2p/{{$peer}}",
   {{end}}
 ]
 {{else}}

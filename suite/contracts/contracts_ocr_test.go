@@ -70,6 +70,8 @@ var _ = Describe("OCR Feed", func() {
 		By("Sending OCR jobs to chainlink nodes", func() {
 			// Initialize bootstrap node
 			bootstrapNode := chainlinkNodes[0]
+			/* TODO: p2pBootstrapPeers = ["/dns4/chainlink-node-bootstrap ...]
+			need to get service URL or something from the environment to snag for OCR creation */
 			bootstrapP2PIds, err := bootstrapNode.ReadP2PKeys()
 			Expect(err).ShouldNot(HaveOccurred())
 			bootstrapP2PId := bootstrapP2PIds.Data[0].Attributes.PeerID
@@ -95,7 +97,7 @@ var _ = Describe("OCR Feed", func() {
 				ocrSpec := &client.OCRTaskJobSpec{
 					ContractAddress:    ocrInstance.Address(),
 					P2PPeerID:          nodeP2PId,
-					P2PBootstrapPeers:  []string{bootstrapP2PId},
+					P2PBootstrapPeers:  []client.Chainlink{bootstrapNode},
 					KeyBundleID:        nodeOCRKeyId,
 					TransmitterAddress: nodeTransmitterAddress,
 					ObservationSource:  client.ObservationSourceSpec(adapter.ClusterURL() + "/five"),
