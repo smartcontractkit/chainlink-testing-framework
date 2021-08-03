@@ -2,9 +2,10 @@ package environment
 
 import (
 	"fmt"
-	"github.com/smartcontractkit/integrations-framework/client"
 	"net/http"
 	"net/url"
+
+	"github.com/smartcontractkit/integrations-framework/client"
 )
 
 // Environment is the interface that represents a deployed environment, whether locally or on remote machines
@@ -19,30 +20,31 @@ type Environment interface {
 
 // ServiceDetails contains all of the connectivity properties about a given deployed service
 type ServiceDetails struct {
-	RemoteURL  *url.URL
-	LocalURL   *url.URL
+	RemoteURL *url.URL
+	LocalURL  *url.URL
 }
 
 // GetChainlinkClients will return all instantiated Chainlink clients for a given environment
-func GetChainlinkClients(env Environment) ([]client.Chainlink, []*ServiceDetails, error) {
+func GetChainlinkClients(env Environment) ([]client.Chainlink, error) {
 	var clients []client.Chainlink
 
 	sd, err := env.GetAllServiceDetails(ChainlinkWebPort)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	for _, service := range sd {
 		linkClient, err := client.NewChainlink(&client.ChainlinkConfig{
 			URL:      service.LocalURL.String(),
 			Email:    "notreal@fakeemail.ch",
 			Password: "twochains",
+			RemoteIP: service.RemoteURL.Hostname(),
 		}, http.DefaultClient)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		clients = append(clients, linkClient)
 	}
-	return clients, sd, nil
+	return clients, nil
 }
 
 // ExternalAdapter represents a dummy external adapter within the k8sEnvironment

@@ -12,6 +12,7 @@ type ChainlinkConfig struct {
 	URL      string
 	Email    string
 	Password string
+	RemoteIP string
 }
 
 // ResponseSlice is the generic model that can be used for all Chainlink API responses that are an slice
@@ -175,7 +176,7 @@ type JobSpec interface {
 }
 
 // Helper to marshall templates of job specs
-func marshallTemplate(jobSpec JobSpec, name, templateString string) (string, error) {
+func marshallTemplate(jobSpec interface{}, name, templateString string) (string, error) {
 	var buf bytes.Buffer
 	tmpl, err := template.New(name).Parse(templateString)
 	if err != nil {
@@ -326,12 +327,12 @@ type KeeperJobSpec struct {
 
 func (k *KeeperJobSpec) Type() string { return "keeper" }
 func (k *KeeperJobSpec) String() (string, error) {
-	fluxMonitorTemplateString := `type            = "keeper"
+	keeperTemplateString := `type            = "keeper"
 schemaVersion   = 1
 name            = "{{.Name}}"
 contractAddress = "{{.ContractAddress}}"
 fromAddress     = "{{.FromAddress}}"`
-	return marshallTemplate(k, "Keeper Job", fluxMonitorTemplateString)
+	return marshallTemplate(k, "Keeper Job", keeperTemplateString)
 }
 
 // OCRBootstrapJobSpec represents the spec for bootstrapping an OCR job, given to one node that then must be linked
@@ -350,7 +351,7 @@ type OCRBootstrapJobSpec struct {
 
 func (o *OCRBootstrapJobSpec) Type() string { return "offchainreporting" }
 func (o *OCRBootstrapJobSpec) String() (string, error) {
-	fluxMonitorTemplateString := `type = "offchainreporting"
+	ocrTemplateString := `type = "offchainreporting"
 schemaVersion                          = 1
 blockchainTimeout                      ={{if not .BlockChainTimeout}} "20s" {{else}} {{.BlockChainTimeout}} {{end}}
 contractConfigConfirmations            ={{if not .ContractConfirmations}} 3 {{else}} {{.ContractConfirmations}} {{end}}
@@ -368,7 +369,7 @@ p2pBootstrapPeers                      = []
 {{end}}
 isBootstrapPeer                        = {{.IsBootstrapPeer}}
 p2pPeerID                              = "{{.P2PPeerID}}"`
-	return marshallTemplate(o, "OCR Bootstrap Job", fluxMonitorTemplateString)
+	return marshallTemplate(o, "OCR Bootstrap Job", ocrTemplateString)
 }
 
 // OCRTaskJobSpec represents an OCR job that is given to other nodes, meant to communicate with the bootstrap node,
@@ -380,7 +381,7 @@ type OCRTaskJobSpec struct {
 	TrackerPollInterval      time.Duration `toml:"contractConfigTrackerPollInterval"`      // Optional
 	TrackerSubscribeInterval time.Duration `toml:"contractConfigTrackerSubscribeInterval"` // Optional
 	ContractAddress          string        `toml:"contractAddress"`                        // Address of the OCR contract
-	P2PBootstrapPeers        []string      `toml:"p2pBootstrapPeers"`                      // P2P ID of the bootstrap node
+	P2PBootstrapPeers        []Chainlink   `toml:"p2pBootstrapPeers"`                      // P2P ID of the bootstrap node
 	IsBootstrapPeer          bool          `toml:"isBootstrapPeer"`                        // Typically false
 	P2PPeerID                string        `toml:"p2pPeerID"`                              // This node's P2P ID
 	KeyBundleID              string        `toml:"keyBundleID"`                            // ID of this node's OCR key bundle
@@ -389,9 +390,55 @@ type OCRTaskJobSpec struct {
 	ObservationSource        string        `toml:"observationSource"`                      // List of commands for the chainlink node
 }
 
+type P2PData struct {
+	RemoteIP string
+	PeerID   string
+}
+
 func (o *OCRTaskJobSpec) Type() string { return "offchainreporting" }
 func (o *OCRTaskJobSpec) String() (string, error) {
-	fluxMonitorTemplateString := `type = "offchainreporting"
+	// Pre-process P2P data for easier templating
+	peers := []P2PData{}
+	for _, peer := range o.P2PBootstrapPeers {
+		p2pKeys, err := peer.ReadP2PKeys()
+		if err != nil {
+			return "", err
+		}
+		peers = append(peers, P2PData{
+			RemoteIP: peer.RemoteIP(),
+			PeerID:   p2pKeys.Data[0].Attributes.PeerID,
+		})
+	}
+	specWrap := struct {
+		Name                     string
+		BlockChainTimeout        time.Duration
+		ContractConfirmations    int
+		TrackerPollInterval      time.Duration
+		TrackerSubscribeInterval time.Duration
+		ContractAddress          string
+		P2PBootstrapPeers        []P2PData
+		IsBootstrapPeer          bool
+		P2PPeerID                string
+		KeyBundleID              string
+		MonitoringEndpoint       string
+		TransmitterAddress       string
+		ObservationSource        string
+	}{
+		Name:                     o.Name,
+		BlockChainTimeout:        o.BlockChainTimeout,
+		ContractConfirmations:    o.ContractConfirmations,
+		TrackerPollInterval:      o.TrackerPollInterval,
+		TrackerSubscribeInterval: o.TrackerSubscribeInterval,
+		ContractAddress:          o.ContractAddress,
+		P2PBootstrapPeers:        peers,
+		IsBootstrapPeer:          o.IsBootstrapPeer,
+		P2PPeerID:                o.P2PPeerID,
+		KeyBundleID:              o.KeyBundleID,
+		MonitoringEndpoint:       o.MonitoringEndpoint,
+		TransmitterAddress:       o.TransmitterAddress,
+		ObservationSource:        o.ObservationSource,
+	}
+	ocrTemplateString := `type = "offchainreporting"
 schemaVersion                          = 1
 blockchainTimeout                      ={{if not .BlockChainTimeout}} "20s" {{else}} {{.BlockChainTimeout}} {{end}}
 contractConfigConfirmations            ={{if not .ContractConfirmations}} 3 {{else}} {{.ContractConfirmations}} {{end}}
@@ -401,7 +448,7 @@ contractAddress                        = "{{.ContractAddress}}"
 {{if .P2PBootstrapPeers}}
 p2pBootstrapPeers                      = [
   {{range $peer := .P2PBootstrapPeers}}
-  "/dns4/chainlink-node-bootstrap/tcp/6690/p2p/{{$peer}}",
+  "/dns4/{{$peer.RemoteIP}}/tcp/6690/p2p/{{$peer.PeerID}}",
   {{end}}
 ]
 {{else}}
@@ -415,7 +462,8 @@ transmitterAddress                     = "{{.TransmitterAddress}}"
 observationSource                      = """
 {{.ObservationSource}}
 """`
-	return marshallTemplate(o, "OCR Job", fluxMonitorTemplateString)
+
+	return marshallTemplate(specWrap, "OCR Job", ocrTemplateString)
 }
 
 // VRFJobSpec represents a VRF job
@@ -428,12 +476,12 @@ type VRFJobSpec struct {
 
 func (v *VRFJobSpec) Type() string { return "vrf" }
 func (v *VRFJobSpec) String() (string, error) {
-	fluxMonitorTemplateString := `type = "vrf"
+	vrfTemplateString := `type = "vrf"
 schemaVersion      = 1
 coordinatorAddress = "{{.CoordinatorAddress}}"
 publicKey          = "{{.PublicKey}}"
 confirmations      = {{.Confirmations}}`
-	return marshallTemplate(v, "VRF Job", fluxMonitorTemplateString)
+	return marshallTemplate(v, "VRF Job", vrfTemplateString)
 }
 
 // WebhookJobSpec reprsents a webhook job
@@ -443,12 +491,12 @@ type WebhookJobSpec struct {
 
 func (w *WebhookJobSpec) Type() string { return "webhook" }
 func (w *WebhookJobSpec) String() (string, error) {
-	fluxMonitorTemplateString := `type = "webhook"
+	webHookTemplateString := `type = "webhook"
 schemaVersion      = 1
 observationSource = """
 {{.ObservationSource}}
 """`
-	return marshallTemplate(w, "Webhook Job", fluxMonitorTemplateString)
+	return marshallTemplate(w, "Webhook Job", webHookTemplateString)
 }
 
 func ObservationSourceSpec(url string) string {

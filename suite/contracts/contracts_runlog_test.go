@@ -3,6 +3,9 @@ package contracts
 import (
 	"context"
 	"errors"
+	"math/big"
+	"strings"
+
 	"github.com/avast/retry-go"
 	"github.com/ethereum/go-ethereum/common"
 	. "github.com/onsi/ginkgo"
@@ -13,8 +16,6 @@ import (
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
 	"github.com/smartcontractkit/integrations-framework/environment"
-	"math/big"
-	"strings"
 )
 
 var _ = Describe("Direct request suite", func() {
@@ -40,7 +41,7 @@ var _ = Describe("Direct request suite", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("Funding Chainlink nodes", func() {
-			nodes, _, err = environment.GetChainlinkClients(s.Env)
+			nodes, err = environment.GetChainlinkClients(s.Env)
 			Expect(err).ShouldNot(HaveOccurred())
 			nodeAddresses, err = actions.ChainlinkNodeAddresses(nodes)
 			Expect(err).ShouldNot(HaveOccurred())

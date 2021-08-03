@@ -2,10 +2,11 @@ package contracts
 
 import (
 	"context"
-	"github.com/smartcontractkit/integrations-framework/actions"
 	"math/big"
 	"strings"
 	"time"
+
+	"github.com/smartcontractkit/integrations-framework/actions"
 
 	"github.com/ethereum/go-ethereum/common"
 	. "github.com/onsi/ginkgo"
@@ -33,7 +34,7 @@ var _ = Describe("Flux monitor suite", func() {
 				client.NewNetworkFromConfig,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
-			nodes, _, err = environment.GetChainlinkClients(s.Env)
+			nodes, err = environment.GetChainlinkClients(s.Env)
 			Expect(err).ShouldNot(HaveOccurred())
 			adapter, err = environment.GetExternalAdapter(s.Env)
 			Expect(err).ShouldNot(HaveOccurred())

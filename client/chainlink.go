@@ -44,6 +44,7 @@ type Chainlink interface {
 	ReadETHKeys() (*ETHKeys, error)
 	PrimaryEthAddress() (string, error)
 
+	RemoteIP() string
 	SetSessionCookie() error
 
 	// Used for testing
@@ -238,6 +239,11 @@ func (c *chainlink) PrimaryEthAddress() (string, error) {
 		return "", err
 	}
 	return ethKeys.Data[0].Attributes.Address, nil
+}
+
+// RemoteIP retrieves the inter-cluster IP of the chainlink node, for use with inter-node communications
+func (c *chainlink) RemoteIP() string {
+	return c.Config.RemoteIP
 }
 
 // SetSessionCookie authenticates against the Chainlink node and stores the cookie in client state
