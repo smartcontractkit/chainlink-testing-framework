@@ -94,7 +94,7 @@ var _ = Describe("FluxAggregator ETH Refill", func() {
 		})
 
 		By("Funding ETH for a single round", func() {
-			err = actions.FundChainlinkNodes(nodes, s.Client, s.Wallets.Default(), big.NewFloat(1), nil)
+			err = actions.FundChainlinkNodes(nodes, s.Client, s.Wallets.Default(), big.NewFloat(.01), nil)
 			Expect(err).ShouldNot(HaveOccurred())
 			err = adapter.SetVariable(6)
 			Expect(err).ShouldNot(HaveOccurred())
