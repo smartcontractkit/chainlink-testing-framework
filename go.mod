@@ -4,9 +4,8 @@ go 1.16
 
 require (
 	github.com/avast/retry-go v3.0.0+incompatible
+	github.com/aws/aws-sdk-go v1.27.0
 	github.com/ethereum/go-ethereum v1.10.8
-	github.com/aws/aws-sdk-go v1.27.0 // indirect
-	github.com/ethereum/go-ethereum v1.10.4
 	github.com/ghodss/yaml v1.0.0
 	github.com/google/go-cmp v0.5.6 // indirect
 	github.com/google/go-github v17.0.0+incompatible
@@ -21,11 +20,13 @@ require (
 	github.com/rs/zerolog v1.21.0
 	github.com/satori/go.uuid v1.2.0
 	github.com/smartcontractkit/libocr v0.0.0-20210803133922-ddddd3dce7e5
-	github.com/spf13/cobra v1.1.1
+	github.com/spf13/cobra v1.1.3
 	github.com/spf13/viper v1.8.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	google.golang.org/protobuf v1.26.0
+	helm.sh/helm/v3 v3.6.3
 	k8s.io/api v0.22.0
 	k8s.io/apimachinery v0.22.0
 	k8s.io/client-go v0.22.0
+	rsc.io/letsencrypt v0.0.3 // indirect
 )

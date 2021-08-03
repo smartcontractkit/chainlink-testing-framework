@@ -139,7 +139,9 @@ func GetExternalAdapter(env Environment) (ExternalAdapter, error) {
 func NewBlockchainClient(env Environment, network client.BlockchainNetwork) (client.BlockchainClient, error) {
 	sd, err := env.GetServiceDetails(EVMRPCPort)
 	if err == nil {
-		network.SetURL(fmt.Sprintf("ws://%s", sd.LocalURL.Host))
+		url := fmt.Sprintf("ws://%s", sd.LocalURL.Host)
+		log.Debug().Str("URL", url).Msg("Selecting network")
+		network.SetURL(url)
 	}
 
 	network.Config().PrivateKeyStore, err = NewPrivateKeyStoreFromEnv(env, network.Config())
