@@ -1,9 +1,10 @@
 package actions
 
 import (
+	"math/big"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/smartcontractkit/integrations-framework/client"
-	"math/big"
 )
 
 // FundChainlinkNodes will fund all of the Chainlink nodes with a given amount of ETH in wei
@@ -12,7 +13,7 @@ func FundChainlinkNodes(
 	blockchain client.BlockchainClient,
 	fromWallet client.BlockchainWallet,
 	nativeAmount,
-	linkAmount *big.Int,
+	linkAmount *big.Float,
 ) error {
 	for _, cl := range nodes {
 		toAddress, err := cl.PrimaryEthAddress()

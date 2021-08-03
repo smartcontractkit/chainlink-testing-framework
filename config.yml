@@ -4,8 +4,8 @@
 # KEEP_ENVIRONMENTS=OnFail
 # APPS_CHAINLINK_VERSION=1.0.0
 
-network: "ethereum_hardhat" # Selected network for test execution
-keep_environments: OnFail # Options: Always, OnFail, Never
+network: "ethereum_geth" # Selected network for test execution
+keep_environments: Never # Options: Always, OnFail, Never
 
 apps:
     chainlink:

@@ -44,6 +44,6 @@ var _ = Describe("Environment functionality", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 	},
 		Entry("1 node cluster", client.NewNetworkFromConfig, NewChainlinkCluster(1), 1),
-		Entry("5 node cluster", client.NewNetworkFromConfig, NewChainlinkCluster(5), 5),
+		Entry("3 node cluster", client.NewNetworkFromConfig, NewChainlinkCluster(3), 3),
 	)
 })

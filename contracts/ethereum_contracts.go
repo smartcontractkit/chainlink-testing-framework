@@ -28,7 +28,7 @@ func (e *EthereumOracle) Address() string {
 	return e.address.Hex()
 }
 
-func (e *EthereumOracle) Fund(fromWallet client.BlockchainWallet, ethAmount *big.Int, linkAmount *big.Int) error {
+func (e *EthereumOracle) Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Float) error {
 	return e.client.Fund(fromWallet, e.address.Hex(), ethAmount, linkAmount)
 }
 
@@ -60,7 +60,7 @@ func (e *EthereumAPIConsumer) Address() string {
 	return e.address.Hex()
 }
 
-func (e *EthereumAPIConsumer) Fund(fromWallet client.BlockchainWallet, ethAmount *big.Int, linkAmount *big.Int) error {
+func (e *EthereumAPIConsumer) Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Float) error {
 	return e.client.Fund(fromWallet, e.address.Hex(), ethAmount, linkAmount)
 }
 
@@ -114,7 +114,7 @@ func (f *EthereumFluxAggregator) Address() string {
 }
 
 // Fund sends specified currencies to the contract
-func (f *EthereumFluxAggregator) Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Int) error {
+func (f *EthereumFluxAggregator) Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Float) error {
 	return f.client.Fund(fromWallet, f.address.Hex(), ethAmount, linkAmount)
 }
 
@@ -327,7 +327,7 @@ type EthereumLinkToken struct {
 }
 
 // Fund the LINK Token contract with ETH to distribute the token
-func (l *EthereumLinkToken) Fund(fromWallet client.BlockchainWallet, ethAmount *big.Int) error {
+func (l *EthereumLinkToken) Fund(fromWallet client.BlockchainWallet, ethAmount *big.Float) error {
 	return l.client.Fund(fromWallet, l.address.Hex(), ethAmount, nil)
 }
 
@@ -367,7 +367,7 @@ type EthereumOffchainAggregator struct {
 }
 
 // Fund sends specified currencies to the contract
-func (o *EthereumOffchainAggregator) Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Int) error {
+func (o *EthereumOffchainAggregator) Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Float) error {
 	return o.client.Fund(fromWallet, o.address.Hex(), ethAmount, linkAmount)
 }
 
@@ -604,7 +604,7 @@ type EthereumVRF struct {
 }
 
 // Fund sends specified currencies to the contract
-func (v *EthereumVRF) Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Int) error {
+func (v *EthereumVRF) Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Float) error {
 	return v.client.Fund(fromWallet, v.address.Hex(), ethAmount, linkAmount)
 }
 

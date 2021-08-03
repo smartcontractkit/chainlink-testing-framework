@@ -46,8 +46,8 @@ var _ = FDescribe("OCR Feed", func() {
 				chainlinkNodes,
 				suiteSetup.Client,
 				defaultWallet,
-				big.NewInt(2^18),
-				big.NewInt(2^18),
+				big.NewFloat(2),
+				big.NewFloat(2),
 			)
 			Expect(err).ShouldNot(HaveOccurred())
 
@@ -63,7 +63,7 @@ var _ = FDescribe("OCR Feed", func() {
 				contracts.DefaultOffChainAggregatorConfig(len(chainlinkNodes)),
 			)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = ocrInstance.Fund(defaultWallet, big.NewInt(0), big.NewInt(2^18))
+			err = ocrInstance.Fund(defaultWallet, nil, big.NewFloat(2))
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
@@ -110,7 +110,7 @@ var _ = FDescribe("OCR Feed", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			// Wait for a round
-			for i := 0; i < 100; i++ {
+			for i := 0; i < 10000; i++ {
 				round, err := ocrInstance.GetLatestRound(context.Background())
 				Expect(err).ShouldNot(HaveOccurred())
 				log.Info().

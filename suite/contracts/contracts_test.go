@@ -51,7 +51,7 @@ var _ = Describe("Basic Contract Interactions", func() {
 			fluxOptions := contracts.DefaultFluxAggregatorOptions()
 			fluxInstance, err := suiteSetup.Deployer.DeployFluxAggregatorContract(defaultWallet, fluxOptions)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = fluxInstance.Fund(defaultWallet, big.NewInt(0), big.NewInt(50000000000))
+			err = fluxInstance.Fund(defaultWallet, nil, big.NewFloat(.005))
 			Expect(err).ShouldNot(HaveOccurred())
 
 			// Interact with contract
@@ -65,7 +65,7 @@ var _ = Describe("Basic Contract Interactions", func() {
 			ocrOptions := contracts.DefaultOffChainAggregatorOptions()
 			offChainInstance, err := suiteSetup.Deployer.DeployOffChainAggregator(defaultWallet, ocrOptions)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = offChainInstance.Fund(defaultWallet, nil, big.NewInt(50000000000))
+			err = offChainInstance.Fund(defaultWallet, nil, big.NewFloat(.005))
 			Expect(err).ShouldNot(HaveOccurred())
 
 			// Check a round

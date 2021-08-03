@@ -42,7 +42,7 @@ var _ = Describe("Flux monitor suite", func() {
 		By("Deploying and funding contract", func() {
 			fluxInstance, err = s.Deployer.DeployFluxAggregatorContract(s.Wallets.Default(), contracts.DefaultFluxAggregatorOptions())
 			Expect(err).ShouldNot(HaveOccurred())
-			err = fluxInstance.Fund(s.Wallets.Default(), big.NewInt(0), big.NewInt(1e18))
+			err = fluxInstance.Fund(s.Wallets.Default(), nil, big.NewFloat(1))
 			Expect(err).ShouldNot(HaveOccurred())
 			err = fluxInstance.UpdateAvailableFunds(context.Background(), s.Wallets.Default())
 			Expect(err).ShouldNot(HaveOccurred())
@@ -54,7 +54,7 @@ var _ = Describe("Flux monitor suite", func() {
 				nodes,
 				s.Client,
 				s.Wallets.Default(),
-				big.NewInt(2e18),
+				big.NewFloat(2),
 				nil,
 			)
 			Expect(err).ShouldNot(HaveOccurred())

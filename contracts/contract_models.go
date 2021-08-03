@@ -40,7 +40,7 @@ type SetOraclesOptions struct {
 
 type FluxAggregator interface {
 	Address() string
-	Fund(fromWallet client.BlockchainWallet, ethAmount *big.Int, linkAmount *big.Int) error
+	Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Float) error
 	AwaitNextRoundFinalized(ctx context.Context) error
 	LatestRound(ctx context.Context) (*big.Int, error)
 	GetContractData(ctxt context.Context) (*FluxAggregatorData, error)
@@ -58,7 +58,7 @@ type FluxAggregator interface {
 type LinkToken interface {
 	Address() string
 	BalanceOf(ctx context.Context, addr common.Address) (*big.Int, error)
-	Fund(fromWallet client.BlockchainWallet, ethAmount *big.Int) error
+	Fund(fromWallet client.BlockchainWallet, ethAmount *big.Float) error
 	Name(context.Context) (string, error)
 }
 
@@ -98,7 +98,7 @@ type OffchainAggregatorData struct {
 
 type OffchainAggregator interface {
 	Address() string
-	Fund(client.BlockchainWallet, *big.Int, *big.Int) error
+	Fund(fromWallet client.BlockchainWallet, nativeAmount, linkAmount *big.Float) error
 	GetContractData(ctxt context.Context) (*OffchainAggregatorData, error)
 	SetConfig(
 		fromWallet client.BlockchainWallet,
@@ -114,13 +114,13 @@ type OffchainAggregator interface {
 
 type Oracle interface {
 	Address() string
-	Fund(fromWallet client.BlockchainWallet, ethAmount *big.Int, linkAmount *big.Int) error
+	Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Float) error
 	SetFulfillmentPermission(fromWallet client.BlockchainWallet, address string, allowed bool) error
 }
 
 type APIConsumer interface {
 	Address() string
-	Fund(fromWallet client.BlockchainWallet, ethAmount *big.Int, linkAmount *big.Int) error
+	Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Float) error
 	Data(ctx context.Context) (*big.Int, error)
 	CreateRequestTo(
 		fromWallet client.BlockchainWallet,
@@ -139,7 +139,7 @@ type Storage interface {
 }
 
 type VRF interface {
-	Fund(client.BlockchainWallet, *big.Int, *big.Int) error
+	Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Float) error
 	ProofLength(context.Context) (*big.Int, error)
 }
 

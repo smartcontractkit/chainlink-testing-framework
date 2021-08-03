@@ -160,7 +160,7 @@ func DefaultOffChainAggregatorConfig(numberNodes int) OffChainAggregatorConfig {
 		F:                int(math.Max(1, float64(numberNodes/3-1))),
 		OracleIdentities: []ocrConfigHelper.OracleIdentityExtra{},
 	}
-} // VM Exception while processing transaction: revert faulty-oracle threshold too high
+}
 
 // DeployOffChainAggregator deploys the offchain aggregation contract to the EVM chain
 func (e *EthereumContractDeployer) DeployOffChainAggregator(
