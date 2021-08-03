@@ -122,7 +122,9 @@ func NewHardhatManifest() *K8sManifest {
 func NewChainlinkCluster(nodeCount int) K8sEnvSpecInit {
 	manifests := []*K8sManifest{NewAdapterManifest()}
 	for i := 0; i < nodeCount; i++ {
-		manifests = append(manifests, NewChainlinkManifest())
+		manifest := NewChainlinkManifest()
+		manifest.id = fmt.Sprintf("%s-%d", manifest.id, i)
+		manifests = append(manifests, manifest)
 	}
 	chainlinkCluster := &K8sManifestGroup{
 		id:        "chainlinkCluster",

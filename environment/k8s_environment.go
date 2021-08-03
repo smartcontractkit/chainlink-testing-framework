@@ -56,7 +56,7 @@ type K8sEnvResource interface {
 	) error
 	Deploy(values map[string]interface{}) error
 	WaitUntilHealthy() error
-	Ports() []portforward.ForwardedPort
+	ServiceDetails() ([]*ServiceDetails, error)
 	Values() map[string]interface{}
 	Teardown() error
 }
@@ -122,60 +122,35 @@ func (env *k8sEnvironment) ID() string {
 	return ""
 }
 
-// GetLocalPorts returns the local ports for any given remote port, achieved via port forwarding within k8s.
-// For example, if you call this function with port 6688, it will return all of the forwarded local ports of the
-// deployed Chainlink nodes.
-func (env *k8sEnvironment) GetLocalPorts(remotePort uint16) ([]uint16, error) {
-	var ports []uint16
+// GetAllServiceDetails returns all the connectivity details for a deployed service by its remote port within k8s
+func (env *k8sEnvironment) GetAllServiceDetails(remotePort uint16) ([]*ServiceDetails, error) {
+	var serviceDetails []*ServiceDetails
+	var matchedServiceDetails []*ServiceDetails
+
 	for _, spec := range env.specs {
-		specPorts := spec.Ports()
-		for _, port := range specPorts {
-			if port.Remote == remotePort {
-				ports = append(ports, port.Local)
-			}
-		}
-	}
-	if len(ports) == 0 {
-		return nil, fmt.Errorf("no services with the remote port %d have been deployed", remotePort)
-	}
-	return ports, nil
-}
-
-// GetLocalPort returns the first port within a list from GetLocalPorts. This function is useful if on integrating,
-// when there's only one of a given service deployed, or only a single service is wanted.
-func (env *k8sEnvironment) GetLocalPort(remotePort uint16) (uint16, error) {
-	if ports, err := env.GetLocalPorts(remotePort); err != nil {
-		return 0, err
-	} else {
-		return ports[0], nil
-	}
-}
-
-// GetRemoteURLs returns all the URLs for a remote service as accessible by the k8s services. These URLs are needed
-// for it you're configuring any of the pre-deployed services to use another already deployed service.
-func (env *k8sEnvironment) GetRemoteURLs(remotePort uint16) ([]*url.URL, error) {
-	var urls []*url.URL
-
-	services, err := findServicesWithPort(env.k8sClient, env.namespace, remotePort)
-	if err != nil {
-		return nil, err
-	}
-	for _, service := range services {
-		u, err := url.Parse(fmt.Sprintf("http://%s:%d", service.Spec.ClusterIP, remotePort))
+		specServiceDetails, err := spec.ServiceDetails()
 		if err != nil {
 			return nil, err
 		}
-		urls = append(urls, u)
+		serviceDetails = append(serviceDetails, specServiceDetails...)
 	}
-	return urls, nil
+	for _, service := range serviceDetails {
+		if service.RemoteURL.Port() == fmt.Sprint(remotePort) {
+			matchedServiceDetails = append(matchedServiceDetails, service)
+		}
+	}
+	if len(matchedServiceDetails) == 0 {
+		return nil, fmt.Errorf("no services with the remote port %d have been deployed", remotePort)
+	}
+	return matchedServiceDetails, nil
 }
 
-// GetRemoteURL returns the remote host URL of the k8s cluster being used for deployments
-func (env *k8sEnvironment) GetRemoteURL(remotePort uint16) (*url.URL, error) {
-	if urls, err := env.GetRemoteURLs(remotePort); err != nil {
+// GetServiceDetails returns all the connectivity details for a deployed service by its remote port within k8s
+func (env *k8sEnvironment) GetServiceDetails(remotePort uint16) (*ServiceDetails, error) {
+	if serviceDetails, err := env.GetAllServiceDetails(remotePort); err != nil {
 		return nil, err
 	} else {
-		return urls[0], err
+		return serviceDetails[0], err
 	}
 }
 
@@ -368,9 +343,24 @@ func (m *K8sManifest) WaitUntilHealthy() error {
 	return nil
 }
 
-// Ports returns all the exposed ports from the deployed services
-func (m *K8sManifest) Ports() []portforward.ForwardedPort {
-	return m.ports
+// ServiceDetails returns the connectivity details for a deployed service
+func (m *K8sManifest) ServiceDetails() ([]*ServiceDetails, error) {
+	var serviceDetails []*ServiceDetails
+	for _, port := range m.ports {
+		remoteURL, err := url.Parse(fmt.Sprintf("http://%s:%d", m.Service.Spec.ClusterIP, port.Remote))
+		if err != nil {
+			return serviceDetails, err
+		}
+		localURL, err := url.Parse(fmt.Sprintf("http://127.0.0.1:%d", port.Local))
+		if err != nil {
+			return serviceDetails, err
+		}
+		serviceDetails = append(serviceDetails, &ServiceDetails{
+			RemoteURL:  remoteURL,
+			LocalURL:   localURL,
+		})
+	}
+	return serviceDetails, nil
 }
 
 // Values returns all the values to be exposed in the definition templates
@@ -738,13 +728,17 @@ func (mg *K8sManifestGroup) WaitUntilHealthy() error {
 	return errGroup
 }
 
-// Ports will return all the ports exposed within a manifest group
-func (mg *K8sManifestGroup) Ports() []portforward.ForwardedPort {
-	var ports []portforward.ForwardedPort
+// ServiceDetails will return all the details of the services within a group
+func (mg *K8sManifestGroup) ServiceDetails() ([]*ServiceDetails, error) {
+	var serviceDetails []*ServiceDetails
 	for _, m := range mg.manifests {
-		ports = append(m.Ports(), ports...)
+		if manifestServiceDetails, err := m.ServiceDetails(); err != nil {
+			return nil, err
+		} else {
+			serviceDetails = append(serviceDetails, manifestServiceDetails...)
+		}
 	}
-	return ports
+	return serviceDetails, nil
 }
 
 // Values will return all of the defined values to be exposed in the template definitions.
@@ -757,15 +751,12 @@ func (mg *K8sManifestGroup) Ports() []portforward.ForwardedPort {
 func (mg *K8sManifestGroup) Values() map[string]interface{} {
 	values := map[string]interface{}{}
 	for _, m := range mg.manifests {
-		counter := 0
-		for {
-			id := fmt.Sprintf("%s_%d", m.id, counter)
-			if _, ok := values[id]; !ok {
-				values[id] = m.Values()
-				values[m.id] = m.Values()
-				break
-			}
-			counter++
+		id := strings.Split(m.id, "-")
+		if len(id) > 1 {
+			values[strings.Join(id, "_")] = m.Values()
+		}
+		if _, ok := values[id[0]]; !ok {
+			values[id[0]] = m.Values()
 		}
 	}
 	return values
@@ -791,32 +782,6 @@ func k8sConfig() (*rest.Config, error) {
 	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
 	kubeConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, &clientcmd.ConfigOverrides{})
 	return kubeConfig.ClientConfig()
-}
-
-func findServicesWithPort(
-	k8sClient *kubernetes.Clientset,
-	namespace *coreV1.Namespace,
-	remotePort uint16,
-) ([]*coreV1.Service, error) {
-	var services []*coreV1.Service
-
-	k8sPods := k8sClient.CoreV1().Services(namespace.Name)
-	servicesList, err := k8sPods.List(context.Background(), metaV1.ListOptions{})
-	if err != nil {
-		return services, err
-	}
-	for _, service := range servicesList.Items {
-		s := service
-		for _, port := range service.Spec.Ports {
-			if port.Port == int32(remotePort) {
-				services = append(services, &s)
-			}
-		}
-	}
-	if len(services) == 0 {
-		return services, fmt.Errorf("no services with the port %d have been found in the deployment", remotePort)
-	}
-	return services, nil
 }
 
 func waitForHealthyPods(k8sClient *kubernetes.Clientset, namespace *coreV1.Namespace, pods *coreV1.PodList) error {

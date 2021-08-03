@@ -32,7 +32,7 @@ var _ = Describe("Environment functionality", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		defer env.TearDown()
 
-		clients, err := GetChainlinkClients(env)
+		clients, _, err := GetChainlinkClients(env)
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(len(clients)).Should(Equal(nodeCount))
 

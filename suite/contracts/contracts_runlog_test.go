@@ -40,7 +40,7 @@ var _ = Describe("Direct request suite", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("Funding Chainlink nodes", func() {
-			nodes, err = environment.GetChainlinkClients(s.Env)
+			nodes, _, err = environment.GetChainlinkClients(s.Env)
 			Expect(err).ShouldNot(HaveOccurred())
 			nodeAddresses, err = actions.ChainlinkNodeAddresses(nodes)
 			Expect(err).ShouldNot(HaveOccurred())
