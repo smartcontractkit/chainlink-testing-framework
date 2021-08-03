@@ -19,7 +19,7 @@ const BlockchainTypeEVM = "evm"
 // of network types within the test suite
 type BlockchainClient interface {
 	Get() interface{}
-	Fund(fromWallet BlockchainWallet, toAddress string, nativeMultiplier, linkMultiplier *big.Float) error
+	Fund(fromWallet BlockchainWallet, toAddress string, nativeAmount, linkAmount *big.Float) error
 }
 
 // NewBlockchainClient returns an instantiated network client implementation based on the network configuration given
