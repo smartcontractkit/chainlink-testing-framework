@@ -39,7 +39,7 @@ var _ = Describe("OCR Feed", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		defer env.TearDown()
 
-		chainlinkNodes, err := environment.GetChainlinkClients(env)
+		chainlinkNodes, _, err := environment.GetChainlinkClients(env)
 		Expect(err).ShouldNot(HaveOccurred())
 		blockchain, err := environment.NewBlockchainClient(env, network)
 		Expect(err).ShouldNot(HaveOccurred())

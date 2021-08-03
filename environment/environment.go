@@ -11,34 +11,38 @@ import (
 type Environment interface {
 	ID() string
 
-	GetLocalPorts(remotePort uint16) ([]uint16, error)
-	GetLocalPort(remotePort uint16) (uint16, error)
-	GetRemoteURLs(remotePort uint16) ([]*url.URL, error)
-	GetRemoteURL(remotePort uint16) (*url.URL, error)
+	GetAllServiceDetails(remotePort uint16) ([]*ServiceDetails, error)
+	GetServiceDetails(remotePort uint16) (*ServiceDetails, error)
 
 	TearDown()
 }
 
+// ServiceDetails contains all of the connectivity properties about a given deployed service
+type ServiceDetails struct {
+	RemoteURL  *url.URL
+	LocalURL   *url.URL
+}
+
 // GetChainlinkClients will return all instantiated Chainlink clients for a given environment
-func GetChainlinkClients(env Environment) ([]client.Chainlink, error) {
+func GetChainlinkClients(env Environment) ([]client.Chainlink, []*ServiceDetails, error) {
 	var clients []client.Chainlink
 
-	ports, err := env.GetLocalPorts(ChainlinkWebPort)
+	sd, err := env.GetAllServiceDetails(ChainlinkWebPort)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	for _, port := range ports {
+	for _, service := range sd {
 		linkClient, err := client.NewChainlink(&client.ChainlinkConfig{
-			URL:      fmt.Sprintf("http://127.0.0.1:%d", port),
+			URL:      service.LocalURL.String(),
 			Email:    "notreal@fakeemail.ch",
 			Password: "twochains",
 		}, http.DefaultClient)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		clients = append(clients, linkClient)
 	}
-	return clients, nil
+	return clients, sd, nil
 }
 
 // ExternalAdapter represents a dummy external adapter within the k8sEnvironment
@@ -80,17 +84,13 @@ func (ex *externalAdapter) SetVariable(variable int) error {
 
 // GetExternalAdapter will return a deployed external adapter on an environment
 func GetExternalAdapter(env Environment) (ExternalAdapter, error) {
-	u, err := env.GetRemoteURL(AdapterAPIPort)
-	if err != nil {
-		return nil, err
-	}
-	port, err := env.GetLocalPort(AdapterAPIPort)
+	sd, err := env.GetServiceDetails(AdapterAPIPort)
 	if err != nil {
 		return nil, err
 	}
 	return &externalAdapter{
-		localURL:   fmt.Sprintf("http://127.0.0.1:%d", port),
-		clusterURL: u.String(),
+		localURL:   sd.LocalURL.String(),
+		clusterURL: sd.RemoteURL.String(),
 	}, nil
 }
 
@@ -98,9 +98,9 @@ func GetExternalAdapter(env Environment) (ExternalAdapter, error) {
 // deployed into the environment. If there's no deployed blockchain in the environment, the URL from the network
 // config will be used
 func NewBlockchainClient(env Environment, network client.BlockchainNetwork) (client.BlockchainClient, error) {
-	port, err := env.GetLocalPort(EVMRPCPort)
+	sd, err := env.GetServiceDetails(EVMRPCPort)
 	if err == nil {
-		network.SetURL(fmt.Sprintf("ws://127.0.0.1:%d", port))
+		network.SetURL(fmt.Sprintf("ws://%s", sd.LocalURL.Host))
 	}
 	return client.NewBlockchainClient(network)
 }

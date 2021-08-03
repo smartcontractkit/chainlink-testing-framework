@@ -26,7 +26,7 @@ var _ = Describe("Cronjob suite", func() {
 				client.NewNetworkFromConfig,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
-			nodes, err = environment.GetChainlinkClients(s.Env)
+			nodes, _, err = environment.GetChainlinkClients(s.Env)
 			Expect(err).ShouldNot(HaveOccurred())
 			adapter, err = environment.GetExternalAdapter(s.Env)
 			Expect(err).ShouldNot(HaveOccurred())
