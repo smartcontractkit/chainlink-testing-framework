@@ -255,7 +255,7 @@ func (e *EthereumClient) WaitForTransaction(transactionHash common.Hash) error {
 			if err != nil {
 				return err
 			}
-			confirmationLog := log.Info().Str("Network", e.Network.Config().Name).
+			confirmationLog := log.Debug().Str("Network", e.Network.Config().Name).
 				Str("Block Hash", block.Hash().Hex()).
 				Str("Block Number", block.Number().String()).Str("Tx Hash", transactionHash.Hex()).
 				Int("Minimum Confirmations", minConfirmations).
@@ -269,13 +269,10 @@ func (e *EthereumClient) WaitForTransaction(transactionHash common.Hash) error {
 			}
 
 			confirmations++
-			confirmationLog.Msg("Transaction confirmed, waiting on confirmations")
 
 			if confirmations >= minConfirmations {
-				confirmationLog.Msg("Minimum confirmations met")
+				confirmationLog.Msg("Transaction Confirmations Met")
 				return err
-			} else {
-				confirmationLog.Msg("Waiting on minimum confirmations")
 			}
 		case <-time.After(timeout):
 			isConfirmed, err := e.isTxConfirmed(transactionHash)

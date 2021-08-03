@@ -110,7 +110,7 @@ var _ = FDescribe("OCR Feed", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			// Wait for a round
-			for i := 0; i < 10000; i++ {
+			for i := 0; i < 10; i++ {
 				round, err := ocrInstance.GetLatestRound(context.Background())
 				Expect(err).ShouldNot(HaveOccurred())
 				log.Info().
