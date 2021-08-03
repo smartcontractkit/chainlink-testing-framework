@@ -16,7 +16,7 @@ import (
 var ErrNotFound = errors.New("unexpected response code, got 404")
 var ErrUnprocessableEntity = errors.New("unexpected response code, got 422")
 
-var OneLINK = big.NewFloat(1000000000000000000)
+var OneLINK = big.NewFloat(10 ^ 18)
 
 // Chainlink interface that enables interactions with a chainlink node
 type Chainlink interface {
