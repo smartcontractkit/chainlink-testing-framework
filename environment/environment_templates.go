@@ -96,14 +96,16 @@ func NewGethManifest() *K8sManifest {
 }
 
 // NewHardhatManifest is the k8s manifest that when used will deploy hardhat to an environment
-func NewHardhatManifest() *K8sManifest {
+func NewHardhatManifest(configMapName string) *K8sManifest {
 	return &K8sManifest{
 		id:             "evm",
 		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/hardhat-deployment.yml"),
 		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/hardhat-service.yml"),
+		ConfigMapFile:  filepath.Join(tools.ProjectRoot, "/environment/templates/"+configMapName+".yml"),
 
 		values: map[string]interface{}{
-			"rpcPort": EVMRPCPort,
+			"rpcPort":   EVMRPCPort,
+			"configMap": configMapName,
 		},
 
 		SetValuesFunc: func(manifest *K8sManifest) error {
@@ -120,30 +122,30 @@ func NewHardhatManifest() *K8sManifest {
 
 // NewChainlinkCluster is a basic environment that deploys hardhat with a chainlink cluster and an external adapter
 func NewChainlinkCluster(nodeCount int) K8sEnvSpecInit {
-	manifests := []*K8sManifest{NewAdapterManifest()}
-	for i := 0; i < nodeCount; i++ {
-		manifest := NewChainlinkManifest()
-		manifest.id = fmt.Sprintf("%s-%d", manifest.id, i)
-		manifests = append(manifests, manifest)
-	}
-	chainlinkCluster := &K8sManifestGroup{
-		id:        "chainlinkCluster",
-		manifests: manifests,
-	}
-
-	envWithHardhat := K8sEnvSpecs{
-		0: NewHardhatManifest(),
-		1: chainlinkCluster,
-	}
-	envWithGeth := K8sEnvSpecs{
-		0: NewGethManifest(),
-		1: chainlinkCluster,
-	}
-	envWithoutHardhat := K8sEnvSpecs{
-		0: chainlinkCluster,
-	}
 	return func(config *config.NetworkConfig) (string, K8sEnvSpecs) {
 		envName := "basic-chainlink"
+		manifests := []*K8sManifest{NewAdapterManifest()}
+		for i := 0; i < nodeCount; i++ {
+			manifest := NewChainlinkManifest()
+			manifest.id = fmt.Sprintf("%s-%d", manifest.id, i)
+			manifests = append(manifests, manifest)
+		}
+		chainlinkCluster := &K8sManifestGroup{
+			id:        "chainlinkCluster",
+			manifests: manifests,
+		}
+
+		envWithHardhat := K8sEnvSpecs{
+			0: NewHardhatManifest(config.ConfigMap),
+			1: chainlinkCluster,
+		}
+		envWithGeth := K8sEnvSpecs{
+			0: NewGethManifest(),
+			1: chainlinkCluster,
+		}
+		envWithoutHardhat := K8sEnvSpecs{
+			0: chainlinkCluster,
+		}
 		if config.Name == "Ethereum Geth dev" {
 			return envName, envWithGeth
 		}
