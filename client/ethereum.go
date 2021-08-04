@@ -17,7 +17,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-var OneEth = big.NewFloat(10 ^ 18)
+var OneEth = big.NewFloat(1e18)
 
 // EthereumClient wraps the client and the BlockChain network to interact with an EVM based Blockchain
 type EthereumClient struct {
