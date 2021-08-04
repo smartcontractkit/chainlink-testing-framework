@@ -64,7 +64,7 @@ var _ = Describe("FluxAggregator ETH Refill @refill", func() {
 
 		By("Setting FluxAggregator options", func() {
 			err = fluxInstance.SetOracles(s.Wallets.Default(),
-				contracts.SetOraclesOptions{
+				contracts.FluxAggregatorSetOraclesOptions{
 					AddList:            nodeAddresses,
 					RemoveList:         []common.Address{},
 					AdminList:          nodeAddresses,

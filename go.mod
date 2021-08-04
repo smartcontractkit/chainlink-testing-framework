@@ -8,15 +8,20 @@ require (
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/google/uuid v1.2.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1
+	github.com/montanaflynn/stats v0.6.6
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.13.0
 	github.com/pkg/errors v0.9.1
+	github.com/prometheus/client_golang v1.8.0
+	github.com/prometheus/common v0.14.0
 	github.com/rs/zerolog v1.21.0
 	github.com/satori/go.uuid v1.2.0
 	github.com/smartcontractkit/integrations-framework/explorer v0.0.0
 	github.com/smartcontractkit/libocr v0.0.0-20210803133922-ddddd3dce7e5
 	github.com/spf13/cobra v1.1.1
 	github.com/spf13/viper v1.8.0
+	golang.org/x/crypto v0.0.0-20210506145944-38f3c27a63bf // indirect
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.21.2
 	k8s.io/apimachinery v0.21.2

@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/pkg/errors"
 	"math/big"
 	"time"
-
-	"github.com/ethereum/go-ethereum/core/types"
 
 	"strings"
 
@@ -154,6 +154,26 @@ func (f *EthereumFluxAggregator) RequestNewRound(ctx context.Context, fromWallet
 	return f.client.ProcessTransaction(tx.Hash())
 }
 
+// FilterRoundSubmissions filters rounds submissions, if there isn't enogh submissions found returns and error
+func (f *EthereumFluxAggregator) FilterRoundSubmissions(ctx context.Context, submissionVal *big.Int, roundID int) ([]*SubmissionEvent, error) {
+	events := make([]*SubmissionEvent, 0)
+	iter, err := f.fluxAggregator.FilterSubmissionReceived(&bind.FilterOpts{Context: ctx}, []*big.Int{submissionVal}, []uint32{uint32(roundID)}, nil)
+	if err != nil {
+		return events, err
+	}
+	if iter.Event != nil {
+		events = append(events, &SubmissionEvent{iter.Event.Submission, iter.Event.Round, iter.Event.Raw.BlockNumber})
+	}
+	for iter.Next() {
+		events = append(events, &SubmissionEvent{iter.Event.Submission, iter.Event.Round, iter.Event.Raw.BlockNumber})
+	}
+	if len(events) == 0 {
+		return nil, errors.New(fmt.Sprintf("no events found for contract: %s", f.address.Hex()))
+	}
+	_ = iter.Close()
+	return events, nil
+}
+
 func (f *EthereumFluxAggregator) SetRequesterPermissions(ctx context.Context, fromWallet client.BlockchainWallet, addr common.Address, authorized bool, roundsDelay uint32) error {
 	opts, err := f.client.TransactionOpts(fromWallet, *f.address, big.NewInt(0), nil)
 	if err != nil {
@@ -183,7 +203,7 @@ func (f *EthereumFluxAggregator) GetOracles(ctx context.Context) ([]string, erro
 	return oracleAddrs, nil
 }
 
-func (f *EthereumFluxAggregator) LatestRound(ctx context.Context) (*big.Int, error) {
+func (f *EthereumFluxAggregator) LatestRoundID(ctx context.Context) (*big.Int, error) {
 	opts := &bind.CallOpts{
 		From:    common.HexToAddress(f.callerWallet.Address()),
 		Pending: true,
@@ -226,12 +246,25 @@ func (f *EthereumFluxAggregator) WithdrawablePayment(ctx context.Context, addr c
 	return balance, nil
 }
 
-// GetContractData retrieves basic data for the flux aggregator contract
-func (f *EthereumFluxAggregator) GetContractData(ctxt context.Context) (*FluxAggregatorData, error) {
+func (f *EthereumFluxAggregator) LatestRoundData(ctx context.Context) (RoundData, error) {
 	opts := &bind.CallOpts{
 		From:    common.HexToAddress(f.callerWallet.Address()),
 		Pending: true,
-		Context: ctxt,
+		Context: ctx,
+	}
+	lr, err := f.fluxAggregator.LatestRoundData(opts)
+	if err != nil {
+		return RoundData{}, err
+	}
+	return lr, nil
+}
+
+// GetContractData retrieves basic data for the flux aggregator contract
+func (f *EthereumFluxAggregator) GetContractData(ctx context.Context) (*FluxAggregatorData, error) {
+	opts := &bind.CallOpts{
+		From:    common.HexToAddress(f.callerWallet.Address()),
+		Pending: true,
+		Context: ctx,
 	}
 
 	allocated, err := f.fluxAggregator.AllocatedFunds(opts)
@@ -266,7 +299,7 @@ func (f *EthereumFluxAggregator) GetContractData(ctxt context.Context) (*FluxAgg
 // SetOracles allows the ability to add and/or remove oracles from the contract, and to set admins
 func (f *EthereumFluxAggregator) SetOracles(
 	fromWallet client.BlockchainWallet,
-	o SetOraclesOptions) error {
+	o FluxAggregatorSetOraclesOptions) error {
 	opts, err := f.client.TransactionOpts(fromWallet, *f.address, big.NewInt(0), nil)
 	if err != nil {
 		return err
@@ -314,9 +347,9 @@ func NewFluxAggregatorRoundConfirmer(
 	}
 }
 
-// ReceiveHeader will query the latest FluxAggregator round and check to see whether the round has confirmed
-func (f *FluxAggregatorRoundConfirmer) ReceiveHeader(*types.Header) error {
-	lr, err := f.fluxInstance.LatestRound(context.Background())
+// ReceiveBlock will query the latest FluxAggregator round and check to see whether the round has confirmed
+func (f *FluxAggregatorRoundConfirmer) ReceiveBlock(_ *types.Block) error {
+	lr, err := f.fluxInstance.LatestRoundID(context.Background())
 	if err != nil {
 		return err
 	}
@@ -653,8 +686,8 @@ func NewOffchainAggregatorRoundConfirmer(
 	}
 }
 
-// ReceiveHeader will query the latest OffchainAggregator round and check to see whether the round has confirmed
-func (o *OffchainAggregatorRoundConfirmer) ReceiveHeader(*types.Header) error {
+// ReceiveBlock will query the latest OffchainAggregator round and check to see whether the round has confirmed
+func (o *OffchainAggregatorRoundConfirmer) ReceiveBlock(_ *types.Block) error {
 	lr, err := o.ocrInstance.GetLatestRound(context.Background())
 	if err != nil {
 		return err
