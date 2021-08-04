@@ -101,6 +101,7 @@ func NewHardhatManifest() *K8sManifest {
 		id:             "evm",
 		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/hardhat-deployment.yml"),
 		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/hardhat-service.yml"),
+		ConfigMapFile:  filepath.Join(tools.ProjectRoot, "/environment/templates/hardhat-config-map.yml"),
 
 		values: map[string]interface{}{
 			"rpcPort": EVMRPCPort,

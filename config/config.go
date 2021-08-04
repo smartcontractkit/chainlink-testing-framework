@@ -26,7 +26,12 @@ type Config struct {
 	Apps             AppConfig                 `mapstructure:"apps" yaml:"apps"`
 	Kubernetes       KubernetesConfig          `mapstructure:"kubernetes" yaml:"kubernetes"`
 	KeepEnvironments string                    `mapstructure:"keep_environments" yaml:"keep_environments"`
+	Prometheus       *PrometheusConfig         `mapstructure:"prometheus" yaml:"prometheus"`
 	DefaultKeyStore  string
+}
+
+type PrometheusConfig struct {
+	URL string `mapstructure:"url" yaml:"url"`
 }
 
 // GetNetworkConfig finds a specified network config based on its name

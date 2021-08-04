@@ -2,6 +2,7 @@
 package client
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -19,6 +20,8 @@ const BlockchainTypeEVM = "evm"
 // BlockchainClient is the interface that wraps a given client implementation for a blockchain, to allow for switching
 // of network types within the test suite
 type BlockchainClient interface {
+	BlockNumber(ctx context.Context) (uint64, error)
+	HeaderTimestampByNumber(ctx context.Context, bn *big.Int) (uint64, error)
 	Get() interface{}
 	Fund(fromWallet BlockchainWallet, toAddress string, nativeAmount, linkAmount *big.Float) error
 	ParallelTransactions(enabled bool)
@@ -226,6 +229,6 @@ func walletSliceIndexInRange(wallets []BlockchainWallet, i int) error {
 
 // HeaderEventSubscription is an interface for allowing callbacks when the client receives a new header
 type HeaderEventSubscription interface {
-	ReceiveHeader(header *types.Header) error
+	ReceiveBlock(header *types.Block) error
 	Wait() error
 }

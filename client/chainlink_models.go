@@ -356,13 +356,13 @@ precision         ={{if not .Precision}} 0 {{else}} {{.Precision}} {{end}}
 threshold         ={{if not .Threshold}} 0.5 {{else}} {{.Threshold}} {{end}}
 absoluteThreshold ={{if not .AbsoluteThreshold}} 0.1 {{else}} {{.AbsoluteThreshold}} {{end}}
 
-idleTimerPeriod   ={{if not .IdleTimerPeriod}} "10s" {{else}} "{{.IdleTimerPeriod}}" {{end}}
+idleTimerPeriod   ={{if not .IdleTimerPeriod}} "1ms" {{else}} "{{.IdleTimerPeriod}}" {{end}}
 idleTimerDisabled ={{if not .IdleTimerDisabled}} false {{else}} {{.IdleTimerDisabled}} {{end}}
 
 pollTimerPeriod   ={{if not .PollTimerPeriod}} "1m" {{else}} "{{.PollTimerPeriod}}" {{end}}
 pollTimerDisabled ={{if not .PollTimerDisabled}} false {{else}} {{.PollTimerDisabled}} {{end}}
 
-maxTaskDuration = {{if not .Precision}} "60s" {{else}} {{.Precision}} {{end}}
+maxTaskDuration = {{if not .Precision}} "180s" {{else}} {{.Precision}} {{end}}
 
 observationSource = """
 {{.ObservationSource}}

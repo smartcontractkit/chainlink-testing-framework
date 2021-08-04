@@ -20,6 +20,7 @@ var OneLINK = big.NewFloat(1e18)
 
 // Chainlink interface that enables interactions with a chainlink node
 type Chainlink interface {
+	URL() string
 	CreateJob(spec JobSpec) (*Job, error)
 	CreateJobRaw(spec string) (*Job, error)
 	ReadJobs() (*ResponseSlice, error)
@@ -70,7 +71,12 @@ func NewChainlink(c *ChainlinkConfig, httpClient *http.Client) (Chainlink, error
 	return cl, cl.SetSessionCookie()
 }
 
-// CreateJob creates a Chainlink job based on the provided spec string
+// URL chainlink instance http url
+func (c *chainlink) URL() string {
+	return c.Config.URL
+}
+
+// CreateJobRaw creates a Chainlink job based on the provided spec string
 func (c *chainlink) CreateJobRaw(spec string) (*Job, error) {
 	job := &Job{}
 	log.Info().Str("Node URL", c.Config.URL).Msg("Creating Job")
@@ -134,10 +140,10 @@ func (c *chainlink) ReadSpec(id string) (*Response, error) {
 	return specObj, err
 }
 
-// ReadRunsForJob reads all runs for a job
+// ReadRunsByJob reads all runs for a job
 func (c *chainlink) ReadRunsByJob(jobID string) (*JobRunsResponse, error) {
 	runsObj := &JobRunsResponse{}
-	log.Info().Str("Node URL", c.Config.URL).Str("JobID", jobID).Msg("Reading runs for a job")
+	log.Debug().Str("Node URL", c.Config.URL).Str("JobID", jobID).Msg("Reading runs for a job")
 	_, err := c.do(http.MethodGet, fmt.Sprintf("/v2/jobs/%s/runs", jobID), nil, runsObj, http.StatusOK)
 	return runsObj, err
 }

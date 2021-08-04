@@ -26,14 +26,34 @@ var OneEth = big.NewFloat(1e18)
 
 // EthereumClient wraps the client and the BlockChain network to interact with an EVM based Blockchain
 type EthereumClient struct {
-	Client  *ethclient.Client
-	Network BlockchainNetwork
-
+	Client              *ethclient.Client
+	Network             BlockchainNetwork
+	BorrowNonces        bool
+	NonceMu             *sync.Mutex
+	Nonces              map[string]uint64
 	txQueue             chan common.Hash
 	headerSubscriptions map[string]HeaderEventSubscription
 	mutex               *sync.Mutex
 	queueTransactions   bool
 	doneChan            chan struct{}
+}
+
+// BlockNumber gets latest block number
+func (e *EthereumClient) BlockNumber(ctx context.Context) (uint64, error) {
+	bn, err := e.Client.BlockNumber(ctx)
+	if err != nil {
+		return 0, err
+	}
+	return bn, nil
+}
+
+// HeaderTimestampByNumber gets header timestamp by number
+func (e *EthereumClient) HeaderTimestampByNumber(ctx context.Context, bn *big.Int) (uint64, error) {
+	h, err := e.Client.HeaderByNumber(ctx, bn)
+	if err != nil {
+		return 0, err
+	}
+	return h.Time, nil
 }
 
 // ContractDeployer acts as a go-between function for general contract deployment
@@ -54,6 +74,9 @@ func NewEthereumClient(network BlockchainNetwork) (*EthereumClient, error) {
 	ec := &EthereumClient{
 		Network:             network,
 		Client:              cl,
+		BorrowNonces:        true,
+		NonceMu:             &sync.Mutex{},
+		Nonces:              make(map[string]uint64),
 		txQueue:             make(chan common.Hash, 64), // Max buffer of 64 tx
 		headerSubscriptions: map[string]HeaderEventSubscription{},
 		mutex:               &sync.Mutex{},
@@ -61,7 +84,7 @@ func NewEthereumClient(network BlockchainNetwork) (*EthereumClient, error) {
 		doneChan:            make(chan struct{}),
 	}
 	go ec.newHeadersLoop()
-	return ec, err
+	return ec, nil
 }
 
 // Close tears down the current open Ethereum client
@@ -69,6 +92,34 @@ func (e *EthereumClient) Close() error {
 	e.doneChan <- struct{}{}
 	e.Client.Close()
 	return nil
+}
+
+// BorrowedNonces allows to handle nonces concurrently without requesting them every time
+func (e *EthereumClient) BorrowedNonces(n bool) {
+	e.BorrowNonces = n
+}
+
+// GetNonce keep tracking of nonces per address, add last nonce for addr if the map is empty
+func (e *EthereumClient) GetNonce(ctx context.Context, addr common.Address) (uint64, error) {
+	if e.BorrowNonces {
+		e.NonceMu.Lock()
+		defer e.NonceMu.Unlock()
+		if _, ok := e.Nonces[addr.Hex()]; !ok {
+			lastNonce, err := e.Client.PendingNonceAt(ctx, addr)
+			if err != nil {
+				return 0, err
+			}
+			e.Nonces[addr.Hex()] = lastNonce
+			return lastNonce, nil
+		}
+		e.Nonces[addr.Hex()] += 1
+		return e.Nonces[addr.Hex()], nil
+	}
+	lastNonce, err := e.Client.PendingNonceAt(ctx, addr)
+	if err != nil {
+		return 0, err
+	}
+	return lastNonce, nil
 }
 
 // Get returns the underlying client type to be used generically across the framework for switching
@@ -150,7 +201,7 @@ func (e *EthereumClient) SendTransaction(
 	if err != nil {
 		return common.Hash{}, fmt.Errorf("invalid private key: %v", err)
 	}
-	nonce, err := e.Client.PendingNonceAt(context.Background(), common.HexToAddress(from.Address()))
+	nonce, err := e.GetNonce(context.Background(), common.HexToAddress(from.Address()))
 	if err != nil {
 		return common.Hash{}, err
 	}
@@ -228,7 +279,7 @@ func (e *EthereumClient) TransactionCallMessage(
 	if err != nil {
 		return nil, err
 	}
-	log.Debug().Str("Suggested Gas Price", gasPrice.String())
+	log.Debug().Str("Suggested Gas Price", gasPrice.String()).Send()
 	msg := ethereum.CallMsg{
 		From:     common.HexToAddress(from.Address()),
 		To:       &to,
@@ -237,7 +288,7 @@ func (e *EthereumClient) TransactionCallMessage(
 		Data:     data,
 	}
 	msg.Gas = e.Network.Config().TransactionLimit + e.Network.Config().GasEstimationBuffer
-	log.Debug().Uint64("Gas Limit", e.Network.Config().TransactionLimit).Uint64("Limit + Buffer", msg.Gas)
+	log.Debug().Uint64("Gas Limit", e.Network.Config().TransactionLimit).Uint64("Limit + Buffer", msg.Gas).Send()
 	return &msg, nil
 }
 
@@ -252,7 +303,7 @@ func (e *EthereumClient) TransactionOpts(
 	if err != nil {
 		return nil, err
 	}
-	nonce, err := e.Client.PendingNonceAt(context.Background(), common.HexToAddress(from.Address()))
+	nonce, err := e.GetNonce(context.Background(), common.HexToAddress(from.Address()))
 	if err != nil {
 		return nil, err
 	}
@@ -358,12 +409,23 @@ func (e *EthereumClient) subscribeToNewHeaders() error {
 				Str("Block Number", header.Number.String()).
 				Msg("Received block header")
 
-			queuedTx := e.GetHeaderSubscriptions()
-			for _, sub := range queuedTx {
-				if err := sub.ReceiveHeader(header); err != nil {
-					log.Error().Msgf("Error while sending header to receiver: %v", err)
-				}
+			subs := e.GetHeaderSubscriptions()
+			block, err := e.Client.BlockByNumber(context.Background(), header.Number)
+			if err != nil {
+				return err
 			}
+			wg := &sync.WaitGroup{}
+			wg.Add(len(subs))
+			for _, sub := range subs {
+				sub := sub
+				go func() {
+					defer wg.Done()
+					if err := sub.ReceiveBlock(block); err != nil {
+						log.Error().Msgf("Error while sending header to receiver: %v", err)
+					}
+				}()
+			}
+			wg.Wait()
 		case <-e.doneChan:
 			return nil
 		}
@@ -448,13 +510,9 @@ func NewTransactionConfirmer(eth *EthereumClient, txHash common.Hash, minConfirm
 	return tc
 }
 
-// ReceiveHeader the implementation of the HeaderEventSubscription that receives each block header and checks
+// ReceiveBlock the implementation of the HeaderEventSubscription that receives each block and checks
 // tx confirmation
-func (t *TransactionConfirmer) ReceiveHeader(header *types.Header) error {
-	block, err := t.eth.Client.BlockByNumber(context.Background(), header.Number)
-	if err != nil {
-		return err
-	}
+func (t *TransactionConfirmer) ReceiveBlock(block *types.Block) error {
 	confirmationLog := log.Debug().Str("Network", t.eth.Network.ID()).
 		Str("Block Hash", block.Hash().Hex()).
 		Str("Block Number", block.Number().String()).Str("Tx Hash", t.txHash.Hex()).
@@ -490,8 +548,8 @@ func (t *TransactionConfirmer) Wait() error {
 // InstantConfirmations is a no-op confirmer as all transactions are instantly mined so no confs are needed
 type InstantConfirmations struct{}
 
-// ReceiveHeader is a no-op
-func (i *InstantConfirmations) ReceiveHeader(*types.Header) error {
+// ReceiveBlock is a no-op
+func (i *InstantConfirmations) ReceiveBlock(*types.Block) error {
 	return nil
 }
 
@@ -499,4 +557,3 @@ func (i *InstantConfirmations) ReceiveHeader(*types.Header) error {
 func (i *InstantConfirmations) Wait() error {
 	return nil
 }
-

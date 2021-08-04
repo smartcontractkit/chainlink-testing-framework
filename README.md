@@ -50,3 +50,8 @@ Run:
 ```
 go test ./..
 ```
+
+### Volume tests
+```
+NETWORK="ethereum_geth_volume" make test_volume
+```

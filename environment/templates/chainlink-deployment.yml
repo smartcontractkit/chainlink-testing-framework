@@ -2,6 +2,9 @@ objectmeta:
   generatename: chainlink-node-
 spec:
   template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: 'true'
     spec:
       volumes:
       - name: node-secrets-volume
@@ -88,6 +91,9 @@ spec:
           valuefrom: null
         - name: SECURE_COOKIES
           value: "false"
+          valuefrom: null
+        - name: ETH_MAX_IN_FLIGHT_TRANSACTIONS
+          value: "5000"
           valuefrom: null
         # keeper https://github.com/smartcontractkit/chainlink/wiki/How-to-Run-Keeper-Jobs
         - name: KEEPER_DEFAULT_TRANSACTION_QUEUE_DEPTH
