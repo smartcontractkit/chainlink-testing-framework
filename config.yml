@@ -61,8 +61,8 @@ networks:
         chain_id: 1337
         type: evm
         <<: *private_keys
-        transaction_limit: 9500000
-        transaction_timeout: 10s
+        transaction_limit: 9500000 
+        transaction_timeout: 1s
         minimum_confirmations: 1
         gas_estimation_buffer: 0
     ethereum_ganache:

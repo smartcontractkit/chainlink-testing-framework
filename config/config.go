@@ -21,14 +21,14 @@ const (
 
 // Config is the overall config for the framework, holding configurations for supported networks
 type Config struct {
-	Network          string                    `mapstructure:"network" yaml:"network"`
-	Networks         map[string]*NetworkConfig `mapstructure:"networks" yaml:"networks"`
-	Retry            *RetryConfig              `mapstructure:"retry" yaml:"retry"`
-	Apps             AppConfig                 `mapstructure:"apps" yaml:"apps"`
-	Kubernetes       KubernetesConfig          `mapstructure:"kubernetes" yaml:"kubernetes"`
-	KeepEnvironments string                    `mapstructure:"keep_environments" yaml:"keep_environments"`
+	Network            string                    `mapstructure:"network" yaml:"network"`
+	Networks           map[string]*NetworkConfig `mapstructure:"networks" yaml:"networks"`
+	Retry              *RetryConfig              `mapstructure:"retry" yaml:"retry"`
+	Apps               AppConfig                 `mapstructure:"apps" yaml:"apps"`
+	Kubernetes         KubernetesConfig          `mapstructure:"kubernetes" yaml:"kubernetes"`
+	KeepEnvironments   string                    `mapstructure:"keep_environments" yaml:"keep_environments"`
 	Prometheus       *PrometheusConfig         `mapstructure:"prometheus" yaml:"prometheus"`
-	DefaultKeyStore  string
+	DefaultKeyStore    string
 	ConfigFileLocation string
 }
 

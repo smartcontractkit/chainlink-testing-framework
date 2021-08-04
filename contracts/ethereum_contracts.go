@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/pkg/errors"
 	"math/big"
 	"time"
 
