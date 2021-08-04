@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"math/big"
 	"net/http"
 	"strings"
 
@@ -14,6 +15,8 @@ import (
 
 var ErrNotFound = errors.New("unexpected response code, got 404")
 var ErrUnprocessableEntity = errors.New("unexpected response code, got 422")
+
+var OneLINK = big.NewFloat(10 ^ 18)
 
 // Chainlink interface that enables interactions with a chainlink node
 type Chainlink interface {
@@ -44,6 +47,7 @@ type Chainlink interface {
 	ReadETHKeys() (*ETHKeys, error)
 	PrimaryEthAddress() (string, error)
 
+	RemoteIP() string
 	SetSessionCookie() error
 
 	// Used for testing
@@ -82,7 +86,7 @@ func (c *chainlink) CreateJob(spec JobSpec) (*Job, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Info().Str("Node URL", c.Config.URL).Str("Job Body", specString).Msg("Creating Job")
+	log.Info().Str("Node URL", c.Config.URL).Msg("Creating Job")
 	_, err = c.do(http.MethodPost, "/v2/jobs", &JobForm{
 		TOML: specString,
 	}, &job, http.StatusOK)
@@ -238,6 +242,11 @@ func (c *chainlink) PrimaryEthAddress() (string, error) {
 		return "", err
 	}
 	return ethKeys.Data[0].Attributes.Address, nil
+}
+
+// RemoteIP retrieves the inter-cluster IP of the chainlink node, for use with inter-node communications
+func (c *chainlink) RemoteIP() string {
+	return c.Config.RemoteIP
 }
 
 // SetSessionCookie authenticates against the Chainlink node and stores the cookie in client state

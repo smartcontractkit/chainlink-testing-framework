@@ -17,6 +17,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+var OneEth = big.NewFloat(10 ^ 18)
+
 // EthereumClient wraps the client and the BlockChain network to interact with an EVM based Blockchain
 type EthereumClient struct {
 	Client  *ethclient.Client
@@ -54,30 +56,32 @@ func (e *EthereumClient) Get() interface{} {
 func (e *EthereumClient) Fund(
 	fromWallet BlockchainWallet,
 	toAddress string,
-	ethAmount, linkAmount *big.Int,
+	ethAmount, linkAmount *big.Float,
 ) error {
 	ethAddress := common.HexToAddress(toAddress)
 	// Send ETH if not 0
-	if ethAmount != nil && big.NewInt(0).Cmp(ethAmount) != 0 {
+	if ethAmount != nil && big.NewFloat(0).Cmp(ethAmount) != 0 {
+		eth := big.NewFloat(1).Mul(OneEth, ethAmount)
 		log.Info().
 			Str("Token", "ETH").
 			Str("From", fromWallet.Address()).
 			Str("To", toAddress).
-			Str("Amount", ethAmount.String()).
+			Str("Amount", eth.String()).
 			Msg("Funding Address")
-		_, err := e.SendTransaction(fromWallet, ethAddress, ethAmount, nil)
+		_, err := e.SendTransaction(fromWallet, ethAddress, eth, nil)
 		if err != nil {
 			return err
 		}
 	}
 
 	// Send LINK if not 0
-	if linkAmount != nil && big.NewInt(0).Cmp(linkAmount) != 0 {
+	if linkAmount != nil && big.NewFloat(0).Cmp(linkAmount) != 0 {
+		link := big.NewFloat(1).Mul(OneLINK, linkAmount)
 		log.Info().
 			Str("Token", "LINK").
 			Str("From", fromWallet.Address()).
 			Str("To", toAddress).
-			Str("Amount", linkAmount.String()).
+			Str("Amount", link.String()).
 			Msg("Funding Address")
 		linkAddress := common.HexToAddress(e.Network.Config().LinkTokenAddress)
 		linkInstance, err := ethContracts.NewLinkToken(linkAddress, e.Client)
@@ -88,7 +92,8 @@ func (e *EthereumClient) Fund(
 		if err != nil {
 			return err
 		}
-		tx, err := linkInstance.Transfer(opts, ethAddress, linkAmount)
+		linkInt, _ := link.Int(nil)
+		tx, err := linkInstance.Transfer(opts, ethAddress, linkInt)
 		if err != nil {
 			return err
 		}
@@ -106,10 +111,11 @@ func (e *EthereumClient) Fund(
 func (e *EthereumClient) SendTransaction(
 	from BlockchainWallet,
 	to common.Address,
-	value *big.Int,
+	value *big.Float,
 	data []byte,
 ) (*common.Hash, error) {
-	callMsg, err := e.TransactionCallMessage(from, to, value, data)
+	intVal, _ := value.Int(nil)
+	callMsg, err := e.TransactionCallMessage(from, to, intVal, data)
 	if err != nil {
 		return nil, err
 	}
@@ -249,7 +255,7 @@ func (e *EthereumClient) WaitForTransaction(transactionHash common.Hash) error {
 			if err != nil {
 				return err
 			}
-			confirmationLog := log.Info().Str("Network", e.Network.Config().Name).
+			confirmationLog := log.Debug().Str("Network", e.Network.Config().Name).
 				Str("Block Hash", block.Hash().Hex()).
 				Str("Block Number", block.Number().String()).Str("Tx Hash", transactionHash.Hex()).
 				Int("Minimum Confirmations", minConfirmations).
@@ -259,18 +265,14 @@ func (e *EthereumClient) WaitForTransaction(transactionHash common.Hash) error {
 			if err != nil {
 				return err
 			} else if !isConfirmed {
-				confirmationLog.Msg("Transaction still pending, waiting for confirmation")
 				continue
 			}
 
 			confirmations++
-			confirmationLog.Msg("Transaction confirmed, waiting on confirmations")
 
 			if confirmations >= minConfirmations {
-				confirmationLog.Msg("Minimum confirmations met")
+				confirmationLog.Msg("Transaction Confirmations Met")
 				return err
-			} else {
-				confirmationLog.Msg("Waiting on minimum confirmations")
 			}
 		case <-time.After(timeout):
 			isConfirmed, err := e.isTxConfirmed(transactionHash)
@@ -291,5 +293,17 @@ func (e *EthereumClient) WaitForTransaction(transactionHash common.Hash) error {
 
 func (e *EthereumClient) isTxConfirmed(txHash common.Hash) (bool, error) {
 	_, isPending, err := e.Client.TransactionByHash(context.Background(), txHash)
+	if err != nil {
+		return !isPending, err
+	}
+	if !isPending {
+		receipt, err := e.Client.TransactionReceipt(context.Background(), txHash)
+		if err != nil {
+			return !isPending, err
+		}
+		if receipt.Status == 0 {
+			log.Warn().Str("TX Hash", txHash.Hex()).Msg("Transaction failed and was reverted!")
+		}
+	}
 	return !isPending, err
 }

@@ -3,6 +3,9 @@ package contracts
 import (
 	"context"
 	"errors"
+	"math/big"
+	"strings"
+
 	"github.com/avast/retry-go"
 	"github.com/ethereum/go-ethereum/common"
 	. "github.com/onsi/ginkgo"
@@ -13,8 +16,6 @@ import (
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
 	"github.com/smartcontractkit/integrations-framework/environment"
-	"math/big"
-	"strings"
 )
 
 var _ = Describe("Direct request suite", func() {
@@ -40,11 +41,11 @@ var _ = Describe("Direct request suite", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("Funding Chainlink nodes", func() {
-			nodes, _, err = environment.GetChainlinkClients(s.Env)
+			nodes, err = environment.GetChainlinkClients(s.Env)
 			Expect(err).ShouldNot(HaveOccurred())
 			nodeAddresses, err = actions.ChainlinkNodeAddresses(nodes)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = actions.FundChainlinkNodes(nodes, s.Client, s.Wallets.Default(), big.NewInt(2e18), nil)
+			err = actions.FundChainlinkNodes(nodes, s.Client, s.Wallets.Default(), big.NewFloat(2), nil)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("Deploying and funding the contracts", func() {
@@ -52,7 +53,7 @@ var _ = Describe("Direct request suite", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			consumer, err = s.Deployer.DeployAPIConsumer(s.Wallets.Default(), s.Link.Address())
 			Expect(err).ShouldNot(HaveOccurred())
-			err = consumer.Fund(s.Wallets.Default(), nil, big.NewInt(2e18))
+			err = consumer.Fund(s.Wallets.Default(), nil, big.NewFloat(2))
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("Permitting node to fulfill request", func() {
