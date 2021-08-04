@@ -99,6 +99,7 @@ func NewK8sEnvironment(
 		config:    cfg,
 		network:   network,
 	}
+	log.Info().Str("Host", k8sConfig.Host).Msg("Using Kubernetes cluster")
 
 	environmentName, deployables := init(network.Config())
 	namespace, err := env.createNamespace(environmentName)
