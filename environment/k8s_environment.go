@@ -233,7 +233,7 @@ func (env *k8sEnvironment) logFailures() {
 		if err != nil {
 			log.Err(err).Str("Env Name", env.namespace.Name).Msg("error in copying information from podLogs to a buffer")
 		}
-		logFile.Write(buf.Bytes())
+		_, _ = logFile.Write(buf.Bytes())
 
 		_ = logFile.Close()
 		_ = podLogs.Close()
