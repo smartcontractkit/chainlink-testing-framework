@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"text/template"
@@ -14,7 +17,9 @@ import (
 
 	"github.com/avast/retry-go"
 	"github.com/hashicorp/go-multierror"
+	"github.com/onsi/ginkgo"
 	"github.com/smartcontractkit/integrations-framework/config"
+	"github.com/smartcontractkit/integrations-framework/tools"
 	"gopkg.in/yaml.v2"
 
 	"github.com/rs/zerolog/log"
@@ -29,7 +34,7 @@ import (
 	"k8s.io/client-go/transport/spdy"
 )
 
-const SelectorLabelKey = "app"
+const SelectorLabelKey string = "app"
 
 // K8sEnvSpecs represents a series of environment resources to be deployed. The map keys need to be continuous with
 // no gaps. For example:
@@ -158,6 +163,9 @@ func (env *k8sEnvironment) GetServiceDetails(remotePort uint16) (*ServiceDetails
 // TearDown cycles through all the specifications and tears down the deployments. This typically entails cleaning
 // up port forwarding requests and deleting the namespace that then destroys all definitions.
 func (env *k8sEnvironment) TearDown() {
+	if ginkgo.CurrentGinkgoTestDescription().Failed { // If a test fails, dump logs
+		env.logFailures()
+	}
 	for _, spec := range env.specs {
 		if err := spec.Teardown(); err != nil {
 			log.Error().Err(err)
@@ -167,6 +175,68 @@ func (env *k8sEnvironment) TearDown() {
 	err := env.k8sClient.CoreV1().Namespaces().Delete(context.Background(), env.namespace.Name, metaV1.DeleteOptions{})
 	log.Info().Str("Namespace", env.namespace.Name).Msg("Deleted environment")
 	log.Error().Err(err)
+}
+
+// On a test failure, dump all the pod logs
+func (env *k8sEnvironment) logFailures() {
+	// Create logs directory if non-existent
+	log.Info().Msg("Creating log files on test failure")
+	logsFolder := tools.ProjectRoot + "/logs/"
+	if _, err := os.Stat(logsFolder); os.IsNotExist(err) {
+		if err = os.Mkdir(logsFolder, 0755); err != nil {
+			log.Err(err).Str("Folder Name", logsFolder).Msg("Error creating logs directory")
+		}
+	}
+
+	// Create specific test folder
+	testLogFolder := logsFolder + strings.Replace(ginkgo.CurrentGinkgoTestDescription().TestText, " ", "-", -1) +
+		"_" + env.namespace.Name + "/"
+	if _, err := os.Stat(testLogFolder); os.IsNotExist(err) {
+		if err = os.Mkdir(testLogFolder, 0755); err != nil {
+			log.Err(err).Str("Folder Name", testLogFolder).Msg("Error creating logs directory")
+		}
+	}
+
+	// Get logs from K8s pods
+	podsClient := env.k8sClient.CoreV1().Pods(env.namespace.Name)
+	podsList, err := podsClient.List(context.Background(), metaV1.ListOptions{})
+	if err != nil {
+		log.Err(err).Str("Env Name", env.namespace.Name).Msg("Error retrieving pod list from K8s environment")
+	}
+
+	// Each Pod gets a file
+	for _, pod := range podsList.Items {
+		podName := pod.Labels[SelectorLabelKey]
+		logFile, err := os.Create(filepath.Join(testLogFolder, podName) + ".log")
+		if err != nil {
+			log.Err(err).Str("File Name", logFile.Name()).Msg("Error creating log file")
+		}
+		defer logFile.Close()
+
+		logFile.WriteString("======================================================================================\n")
+		logFile.WriteString("Test file name: " + ginkgo.CurrentGinkgoTestDescription().FileName + "\n")
+		logFile.WriteString("Test file line: " + fmt.Sprint(ginkgo.CurrentGinkgoTestDescription().LineNumber) + "\n")
+		logFile.WriteString("======================================================================================\n")
+
+		podLogOptions := &coreV1.PodLogOptions{}
+		if strings.Contains(podName, "chainlink") {
+			podLogOptions = &coreV1.PodLogOptions{Container: "node"}
+		}
+
+		podLogRequest := podsClient.GetLogs(pod.Name, podLogOptions)
+		podLogs, err := podLogRequest.Stream(context.Background())
+		if err != nil {
+			log.Err(err).Str("Env Name", env.namespace.Name).Msg("error in opening pod logging stream")
+		}
+		defer podLogs.Close()
+
+		buf := new(bytes.Buffer)
+		_, err = io.Copy(buf, podLogs)
+		if err != nil {
+			log.Err(err).Str("Env Name", env.namespace.Name).Msg("error in copying information from podLogs to a buffer")
+		}
+		logFile.Write(buf.Bytes())
+	}
 }
 
 func (env *k8sEnvironment) deploySpecs() error {
@@ -357,8 +427,8 @@ func (m *K8sManifest) ServiceDetails() ([]*ServiceDetails, error) {
 			return serviceDetails, err
 		}
 		serviceDetails = append(serviceDetails, &ServiceDetails{
-			RemoteURL:  remoteURL,
-			LocalURL:   localURL,
+			RemoteURL: remoteURL,
+			LocalURL:  localURL,
 		})
 	}
 	return serviceDetails, nil

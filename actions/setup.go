@@ -1,10 +1,11 @@
 package actions
 
 import (
-	"github.com/onsi/ginkgo"
-	"github.com/rs/zerolog/log"
 	"strings"
 	"time"
+
+	"github.com/onsi/ginkgo"
+	"github.com/rs/zerolog/log"
 
 	"github.com/avast/retry-go"
 	"github.com/smartcontractkit/integrations-framework/client"
