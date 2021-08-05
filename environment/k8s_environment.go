@@ -211,12 +211,11 @@ func (env *k8sEnvironment) logFailures() {
 		if err != nil {
 			log.Err(err).Str("File Name", logFile.Name()).Msg("Error creating log file")
 		}
-		defer logFile.Close()
 
-		logFile.WriteString("======================================================================================\n")
-		logFile.WriteString("Test file name: " + ginkgo.CurrentGinkgoTestDescription().FileName + "\n")
-		logFile.WriteString("Test file line: " + fmt.Sprint(ginkgo.CurrentGinkgoTestDescription().LineNumber) + "\n")
-		logFile.WriteString("======================================================================================\n")
+		_, _ = logFile.WriteString("======================================================================================\n")
+		_, _ = logFile.WriteString("Test file name: " + ginkgo.CurrentGinkgoTestDescription().FileName + "\n")
+		_, _ = logFile.WriteString("Test file line: " + fmt.Sprint(ginkgo.CurrentGinkgoTestDescription().LineNumber) + "\n")
+		_, _ = logFile.WriteString("======================================================================================\n")
 
 		podLogOptions := &coreV1.PodLogOptions{}
 		if strings.Contains(podName, "chainlink") {
@@ -228,7 +227,6 @@ func (env *k8sEnvironment) logFailures() {
 		if err != nil {
 			log.Err(err).Str("Env Name", env.namespace.Name).Msg("error in opening pod logging stream")
 		}
-		defer podLogs.Close()
 
 		buf := new(bytes.Buffer)
 		_, err = io.Copy(buf, podLogs)
@@ -236,6 +234,9 @@ func (env *k8sEnvironment) logFailures() {
 			log.Err(err).Str("Env Name", env.namespace.Name).Msg("error in copying information from podLogs to a buffer")
 		}
 		logFile.Write(buf.Bytes())
+
+		_ = logFile.Close()
+		_ = podLogs.Close()
 	}
 }
 
