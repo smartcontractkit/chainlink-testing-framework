@@ -1,6 +1,8 @@
 package actions
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -12,6 +14,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/contracts"
 	"github.com/smartcontractkit/integrations-framework/environment"
+	"github.com/smartcontractkit/integrations-framework/tools"
 )
 
 const (
@@ -79,6 +82,25 @@ func DefaultLocalSetup(
 }
 
 func (s *DefaultSuiteSetup) TearDown() func() {
+	if ginkgo.CurrentGinkgoTestDescription().Failed { // If a test fails, dump logs
+		logsFolder := tools.ProjectRoot + "/logs/"
+		if _, err := os.Stat(logsFolder); os.IsNotExist(err) {
+			if err = os.Mkdir(logsFolder, 0755); err != nil {
+				log.Err(err).Str("Log Folder", logsFolder).Msg("Error creating logs directory")
+			}
+		}
+		testLogFolder := filepath.Join(logsFolder, strings.Replace(ginkgo.CurrentGinkgoTestDescription().TestText, " ", "-", -1)+
+			"_"+s.Env.ID()+"/")
+		// Create specific test folder
+		if _, err := os.Stat(testLogFolder); os.IsNotExist(err) {
+			if err = os.Mkdir(testLogFolder, 0755); err != nil {
+				log.Err(err).Str("Log Folder", testLogFolder).Msg("Error creating logs directory")
+			}
+		}
+
+		s.Env.WriteLogs(testLogFolder)
+		log.Info().Str("Log Folder", testLogFolder).Msg("Wrote environment logs")
+	}
 	return func() {
 		switch strings.ToLower(s.Config.KeepEnvironments) {
 		case KeepEnvironmentsNever:

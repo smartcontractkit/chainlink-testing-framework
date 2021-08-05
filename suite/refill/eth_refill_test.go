@@ -16,6 +16,37 @@ import (
 	"github.com/smartcontractkit/integrations-framework/environment"
 )
 
+var _ = FDescribe("TODO", func() {
+	var (
+		suiteSetup *actions.DefaultSuiteSetup
+		err        error
+	)
+
+	BeforeEach(func() {
+		suiteSetup, err = actions.DefaultLocalSetup(
+			environment.NewChainlinkCluster(2),
+			client.NewNetworkFromConfig,
+		)
+		Expect(err).ShouldNot(HaveOccurred())
+	})
+
+	It("should fail", func() {
+		By("being wrong", func() {
+			Expect(1).Should(Equal(2))
+		})
+	})
+
+	It("should also fail", func() {
+		By("being wrong", func() {
+			Expect(1).Should(Equal(2))
+		})
+	})
+
+	AfterEach(func() {
+		By("tearing down", suiteSetup.TearDown())
+	})
+})
+
 var _ = Describe("FluxAggregator ETH Refill", func() {
 	var (
 		s             *actions.DefaultSuiteSetup
