@@ -45,6 +45,7 @@ type Chainlink interface {
 	DeleteP2PKey(id int) error
 
 	ReadETHKeys() (*ETHKeys, error)
+	ReadVRFKeys() (*VRFKeys, error)
 	PrimaryEthAddress() (string, error)
 
 	RemoteIP() string
@@ -232,6 +233,14 @@ func (c *chainlink) ReadETHKeys() (*ETHKeys, error) {
 	ethKeys := &ETHKeys{}
 	log.Info().Str("Node URL", c.Config.URL).Msg("Reading ETH Keys")
 	_, err := c.do(http.MethodGet, "/v2/keys/eth", nil, ethKeys, http.StatusOK)
+	return ethKeys, err
+}
+
+// ReadVRFKeys reads all VRF keys from the Chainlink node
+func (c *chainlink) ReadVRFKeys() (*VRFKeys, error) {
+	ethKeys := &VRFKeys{}
+	log.Info().Str("Node URL", c.Config.URL).Msg("Reading VRF Keys")
+	_, err := c.do(http.MethodGet, "/v2/keys/vrf", nil, ethKeys, http.StatusOK)
 	return ethKeys, err
 }
 
