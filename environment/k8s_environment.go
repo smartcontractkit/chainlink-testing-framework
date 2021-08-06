@@ -1,7 +1,6 @@
 package environment
 
 import (
-	"archive/tar"
 	"bytes"
 	"context"
 	"fmt"
@@ -18,7 +17,6 @@ import (
 
 	"github.com/avast/retry-go"
 	"github.com/hashicorp/go-multierror"
-	"github.com/onsi/ginkgo"
 	"github.com/smartcontractkit/integrations-framework/config"
 	"gopkg.in/yaml.v2"
 
@@ -211,62 +209,14 @@ func (env *k8sEnvironment) writeDatabaseContents(pod coreV1.Pod, podFolder strin
 	for _, container := range pod.Spec.Containers {
 		if strings.Contains(container.Image, "postgres") { // If there's a postgres image, dump its DB
 			srcFilePath := "/tmp/db.csv"
-			buf := &bytes.Buffer{}
-			errBuf := &bytes.Buffer{}
-			postRequestBase := env.k8sClient.RESTClient().Post().Namespace(pod.Namespace).Resource("pods").Name(pod.Name).SubResource("exec")
-			getRequestBase := env.k8sClient.RESTClient().Get().Namespace(pod.Namespace).Resource("pods").Name(pod.Name).SubResource("exec")
 
-			// Copy the DB contents to a CSV
-			exportDBRequest := postRequestBase.VersionedParams(
-				&coreV1.PodExecOptions{
-					Container: container.Name,
-					Command: []string{"/bin/sh", "-c", "psql", "-U", "postgres", "-d", "chainlink", "-c",
-						"'COPY chainlink TO '" + srcFilePath + "' WITH (FORMAT CSV, HEADER);'"},
-					Stdin:  false,
-					Stdout: true,
-					Stderr: true,
-					TTY:    true,
-				}, scheme.ParameterCodec)
-			exec, err := remotecommand.NewSPDYExecutor(env.k8sConfig, "POST", exportDBRequest.URL())
-			if err != nil {
-				return err
-			}
-			err = exec.Stream(remotecommand.StreamOptions{
-				Stdout: buf,
-				Stderr: errBuf,
-			})
-			if err != nil {
-				return fmt.Errorf("error copying DB to a CSV file: %v\nSTDOUT: %s\nSTDERR: %s", err, buf.String(), errBuf.String()) // here
-			}
-
-			// Get the CSV
-			getFileRequest := getRequestBase.VersionedParams(
-				&coreV1.PodExecOptions{
-					Container: container.Name,
-					Command:   []string{"tar", "cf", "-", srcFilePath},
-					Stdin:     false,
-					Stdout:    true,
-					Stderr:    true,
-					TTY:       false,
-				}, scheme.ParameterCodec)
-			exec, err = remotecommand.NewSPDYExecutor(env.k8sConfig, "POST", getFileRequest.URL())
-			if err != nil {
-				return err
-			}
-			err = exec.Stream(remotecommand.StreamOptions{
-				Stdout: buf,
-				Stderr: errBuf,
-			})
-			if err != nil {
+			if err := env.dbToCSV(srcFilePath, pod, container); err != nil {
 				return err
 			}
 
 			// Write CSV to log file
 			logFile, err := os.Create(filepath.Join(podFolder, container.Name) + ".csv")
 			if err != nil {
-				return err
-			}
-			if _, err = io.Copy(logFile, tar.NewReader(buf)); err != nil {
 				return err
 			}
 
@@ -276,6 +226,62 @@ func (env *k8sEnvironment) writeDatabaseContents(pod coreV1.Pod, podFolder strin
 	return nil
 }
 
+// Copy db contents on a pod to a remote CSV file
+func (env *k8sEnvironment) dbToCSV(srcFilePath string, pod coreV1.Pod, container coreV1.Container) error {
+	buf := &bytes.Buffer{}
+	errBuf := &bytes.Buffer{}
+	postRequestBase := env.k8sClient.RESTClient().Post().Namespace(pod.Namespace).Resource("pods").Name(pod.Name).SubResource("exec")
+	exportDBRequest := postRequestBase.VersionedParams(
+		&coreV1.PodExecOptions{
+			Container: container.Name,
+			Command: []string{"/bin/sh", "-c", "psql", "-U", "postgres", "-d", "chainlink", "-c",
+				"'COPY chainlink TO '" + srcFilePath + "' WITH (FORMAT CSV, HEADER);'"},
+			Stdin:  false,
+			Stdout: true,
+			Stderr: true,
+			TTY:    true,
+		}, scheme.ParameterCodec)
+	exec, err := remotecommand.NewSPDYExecutor(env.k8sConfig, "POST", exportDBRequest.URL())
+	if err != nil {
+		return err
+	}
+	err = exec.Stream(remotecommand.StreamOptions{
+		Stdout: buf,
+		Stderr: errBuf,
+	})
+	if err != nil {
+		return fmt.Errorf("error copying DB to a CSV file: %v\nSTDOUT: %s\nSTDERR: %s", err, buf.String(), errBuf.String()) // here
+	}
+	return err
+}
+
+// Copy db contents on a pod to a remote CSV file
+func (env *k8sEnvironment) copyFileFromPod(srcFilePath string, pod coreV1.Pod, container coreV1.Container) error {
+	buf := &bytes.Buffer{}
+	errBuf := &bytes.Buffer{}
+	getRequestBase := env.k8sClient.RESTClient().Get().Namespace(pod.Namespace).Resource("pods").Name(pod.Name).SubResource("exec")
+
+	// Get the CSV
+	getFileRequest := getRequestBase.VersionedParams(
+		&coreV1.PodExecOptions{
+			Container: container.Name,
+			Command:   []string{"tar", "cf", "-", srcFilePath},
+			Stdin:     false,
+			Stdout:    true,
+			Stderr:    true,
+			TTY:       false,
+		}, scheme.ParameterCodec)
+	exec, err := remotecommand.NewSPDYExecutor(env.k8sConfig, "POST", getFileRequest.URL())
+	if err != nil {
+		return err
+	}
+	err = exec.Stream(remotecommand.StreamOptions{
+		Stdout: buf,
+		Stderr: errBuf,
+	})
+	return err
+}
+
 // Writes logs for each container in a pod
 func writeLogsForPod(podsClient v1.PodInterface, pod coreV1.Pod, podFolder string) error {
 	for _, container := range pod.Spec.Containers {
@@ -283,11 +289,6 @@ func writeLogsForPod(podsClient v1.PodInterface, pod coreV1.Pod, podFolder strin
 		if err != nil {
 			return err
 		}
-
-		_, _ = logFile.WriteString("======================================================================================\n")
-		_, _ = logFile.WriteString("Test file name: " + ginkgo.CurrentGinkgoTestDescription().FileName + "\n")
-		_, _ = logFile.WriteString("Test file line: " + fmt.Sprint(ginkgo.CurrentGinkgoTestDescription().LineNumber) + "\n")
-		_, _ = logFile.WriteString("======================================================================================\n")
 
 		podLogRequest := podsClient.GetLogs(pod.Name, &coreV1.PodLogOptions{Container: container.Name})
 		podLogs, err := podLogRequest.Stream(context.Background())
