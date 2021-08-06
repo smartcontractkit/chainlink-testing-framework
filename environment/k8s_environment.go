@@ -217,10 +217,17 @@ func writeLogsForPod(podsClient v1.PodInterface, pod coreV1.Pod, podFolder strin
 		if err != nil {
 			return err
 		}
-		_, _ = logFile.Write(buf.Bytes())
+		_, err = logFile.Write(buf.Bytes())
+		if err != nil {
+			return err
+		}
 
-		_ = logFile.Close()
-		_ = podLogs.Close()
+		if err = logFile.Close(); err != nil {
+			return err
+		}
+		if err = podLogs.Close(); err != nil {
+			return err
+		}
 	}
 	return nil
 }
