@@ -17,7 +17,6 @@ import (
 
 	"github.com/avast/retry-go"
 	"github.com/hashicorp/go-multierror"
-	"github.com/onsi/ginkgo"
 	"github.com/smartcontractkit/integrations-framework/config"
 	"gopkg.in/yaml.v2"
 
@@ -206,11 +205,6 @@ func writeLogsForPod(podsClient v1.PodInterface, pod coreV1.Pod, podFolder strin
 		if err != nil {
 			log.Err(err).Str("File Name", logFile.Name()).Msg("Error creating log file")
 		}
-
-		_, _ = logFile.WriteString("======================================================================================\n")
-		_, _ = logFile.WriteString("Test file name: " + ginkgo.CurrentGinkgoTestDescription().FileName + "\n")
-		_, _ = logFile.WriteString("Test file line: " + fmt.Sprint(ginkgo.CurrentGinkgoTestDescription().LineNumber) + "\n")
-		_, _ = logFile.WriteString("======================================================================================\n")
 
 		podLogRequest := podsClient.GetLogs(pod.Name, &coreV1.PodLogOptions{Container: container.Name})
 		podLogs, err := podLogRequest.Stream(context.Background())
