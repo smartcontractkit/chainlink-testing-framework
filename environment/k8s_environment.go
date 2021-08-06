@@ -1,6 +1,7 @@
 package environment
 
 import (
+	"archive/tar"
 	"bytes"
 	"context"
 	"fmt"
@@ -27,10 +28,12 @@ import (
 	coreV1 "k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/portforward"
+	"k8s.io/client-go/tools/remotecommand"
 	"k8s.io/client-go/transport/spdy"
 )
 
@@ -160,7 +163,7 @@ func (env *k8sEnvironment) GetServiceDetails(remotePort uint16) (*ServiceDetails
 	}
 }
 
-// On a test failure, dump all the pod logs
+// WriteLogs dumps all the pod logs within the environment into local log files, used near exclusively on test failure
 func (env *k8sEnvironment) WriteLogs(testLogFolder string) {
 	// Get logs from K8s pods
 	podsClient := env.k8sClient.CoreV1().Pods(env.namespace.Name)
@@ -177,6 +180,10 @@ func (env *k8sEnvironment) WriteLogs(testLogFolder string) {
 			if err = os.Mkdir(podFolder, 0755); err != nil {
 				log.Err(err).Str("Folder Name", podFolder).Msg("Error creating logs directory")
 			}
+		}
+		err = env.writeDatabaseContents(pod, podFolder)
+		if err != nil {
+			log.Err(err).Str("Namespace", env.ID()).Str("Pod", pod.Name).Msg("Error fetching DB contents for pod")
 		}
 		err = writeLogsForPod(podsClient, pod, podFolder)
 		if err != nil {
@@ -199,12 +206,82 @@ func (env *k8sEnvironment) TearDown() {
 	log.Error().Err(err)
 }
 
+// Collects the contents of DB containers and writes them to local log files
+func (env *k8sEnvironment) writeDatabaseContents(pod coreV1.Pod, podFolder string) error {
+	for _, container := range pod.Spec.Containers {
+		if strings.Contains(container.Image, "postgres") { // If there's a postgres image, dump its DB
+			srcFilePath := "/tmp/db.csv"
+			buf := &bytes.Buffer{}
+			errBuf := &bytes.Buffer{}
+			postRequestBase := env.k8sClient.RESTClient().Post().Namespace(pod.Namespace).Resource("pods").Name(pod.Name).SubResource("exec")
+			getRequestBase := env.k8sClient.RESTClient().Get().Namespace(pod.Namespace).Resource("pods").Name(pod.Name).SubResource("exec")
+
+			// Copy the DB contents to a CSV
+			exportDBRequest := postRequestBase.VersionedParams(
+				&coreV1.PodExecOptions{
+					Container: container.Name,
+					Command: []string{"/bin/sh", "-c", "psql", "-U", "postgres", "-d", "chainlink", "-c",
+						"'COPY chainlink TO '" + srcFilePath + "' WITH (FORMAT CSV, HEADER);'"},
+					Stdin:  false,
+					Stdout: true,
+					Stderr: true,
+					TTY:    true,
+				}, scheme.ParameterCodec)
+			exec, err := remotecommand.NewSPDYExecutor(env.k8sConfig, "POST", exportDBRequest.URL())
+			if err != nil {
+				return err
+			}
+			err = exec.Stream(remotecommand.StreamOptions{
+				Stdout: buf,
+				Stderr: errBuf,
+			})
+			if err != nil {
+				return fmt.Errorf("error copying DB to a CSV file: %v\nSTDOUT: %s\nSTDERR: %s", err, buf.String(), errBuf.String()) // here
+			}
+
+			// Get the CSV
+			getFileRequest := getRequestBase.VersionedParams(
+				&coreV1.PodExecOptions{
+					Container: container.Name,
+					Command:   []string{"tar", "cf", "-", srcFilePath},
+					Stdin:     false,
+					Stdout:    true,
+					Stderr:    true,
+					TTY:       false,
+				}, scheme.ParameterCodec)
+			exec, err = remotecommand.NewSPDYExecutor(env.k8sConfig, "POST", getFileRequest.URL())
+			if err != nil {
+				return err
+			}
+			err = exec.Stream(remotecommand.StreamOptions{
+				Stdout: buf,
+				Stderr: errBuf,
+			})
+			if err != nil {
+				return err
+			}
+
+			// Write CSV to log file
+			logFile, err := os.Create(filepath.Join(podFolder, container.Name) + ".csv")
+			if err != nil {
+				return err
+			}
+			if _, err = io.Copy(logFile, tar.NewReader(buf)); err != nil {
+				return err
+			}
+
+			_ = logFile.Close()
+		}
+	}
+	return nil
+}
+
 // Writes logs for each container in a pod
 func writeLogsForPod(podsClient v1.PodInterface, pod coreV1.Pod, podFolder string) error {
 	for _, container := range pod.Spec.Containers {
 		logFile, err := os.Create(filepath.Join(podFolder, container.Name) + ".log")
 		if err != nil {
-			log.Err(err).Str("File Name", logFile.Name()).Msg("Error creating log file")
+			return err
 		}
 
 		_, _ = logFile.WriteString("======================================================================================\n")
