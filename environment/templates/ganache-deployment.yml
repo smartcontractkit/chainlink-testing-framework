@@ -1,0 +1,26 @@
+objectmeta:
+  name: ganache
+spec:
+  template:
+    objectmeta:
+      labels:
+        app: ganache-network
+    spec:
+      containers:
+      - name: ganache-network
+        image: trufflesuite/ganache-cli:v6.12.2
+        ports:
+        - containerport: {{ .Values.evm.rpcPort }}
+        args:
+          - -d
+          - myth like bonus scare over problem client lizard pioneer submit female collect
+          - -a
+          - 20
+          - -i
+          - 1337
+          - -l
+          - 10000000
+        readinessProbe:
+          tcpSocket:
+            port: {{ .Values.evm.rpcPort }}
+          periodSeconds: 2

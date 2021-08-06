@@ -1,0 +1,11 @@
+objectmeta:
+  name: ganache-network
+spec:
+  ports:
+  - name: access
+    port: {{ .Values.evm.rpcPort }}
+    targetport:
+      intval: {{ .Values.evm.rpcPort }}
+  selector:
+    app: ganache-network
+  type: ClusterIP

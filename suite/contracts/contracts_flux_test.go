@@ -38,6 +38,8 @@ var _ = Describe("Flux monitor suite", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			adapter, err = environment.GetExternalAdapter(s.Env)
 			Expect(err).ShouldNot(HaveOccurred())
+
+			s.Client.ParallelTransactions(true)
 		})
 		By("Deploying and funding contract", func() {
 			fluxInstance, err = s.Deployer.DeployFluxAggregatorContract(s.Wallets.Default(), contracts.DefaultFluxAggregatorOptions())
@@ -45,6 +47,8 @@ var _ = Describe("Flux monitor suite", func() {
 			err = fluxInstance.Fund(s.Wallets.Default(), nil, big.NewFloat(1))
 			Expect(err).ShouldNot(HaveOccurred())
 			err = fluxInstance.UpdateAvailableFunds(context.Background(), s.Wallets.Default())
+			Expect(err).ShouldNot(HaveOccurred())
+			err = s.Client.WaitForTransactions()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("Funding Chainlink nodes", func() {
@@ -69,6 +73,8 @@ var _ = Describe("Flux monitor suite", func() {
 					MaxSubmissions:     3,
 					RestartDelayRounds: 0,
 				})
+			Expect(err).ShouldNot(HaveOccurred())
+			err = s.Client.WaitForTransactions()
 			Expect(err).ShouldNot(HaveOccurred())
 			oracles, err := fluxInstance.GetOracles(context.Background())
 			Expect(err).ShouldNot(HaveOccurred())
@@ -98,7 +104,7 @@ var _ = Describe("Flux monitor suite", func() {
 			{
 				data, err := fluxInstance.GetContractData(context.Background())
 				Expect(err).ShouldNot(HaveOccurred())
-				log.Info().Interface("data", data).Msg("round data")
+				log.Info().Interface("data", data).Msg("Round data")
 				Expect(len(data.Oracles)).Should(Equal(3))
 				Expect(data.LatestRoundData.Answer.Int64()).Should(Equal(int64(5)))
 				Expect(data.LatestRoundData.RoundId.Int64()).Should(Equal(int64(1)))
@@ -120,7 +126,7 @@ var _ = Describe("Flux monitor suite", func() {
 				Expect(data.LatestRoundData.AnsweredInRound.Int64()).Should(Equal(int64(2)))
 				Expect(data.AvailableFunds.Int64()).Should(Equal(int64(999999999999999994)))
 				Expect(data.AllocatedFunds.Int64()).Should(Equal(int64(6)))
-				log.Info().Interface("data", data).Msg("round data")
+				log.Info().Interface("data", data).Msg("Round data")
 			}
 
 			for _, oracleAddr := range nodeAddresses {

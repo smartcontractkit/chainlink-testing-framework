@@ -1,9 +1,9 @@
 package actions
 
 import (
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
 	"github.com/satori/go.uuid"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"math/big"
 	"strings"
@@ -27,7 +27,7 @@ func FundChainlinkNodes(
 			return err
 		}
 	}
-	return nil
+	return blockchain.WaitForTransactions()
 }
 
 // ChainlinkNodeAddresses will return all the on-chain wallet addresses for a set of Chainlink nodes

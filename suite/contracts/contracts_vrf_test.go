@@ -56,7 +56,7 @@ var _ = Describe("VRF suite", func() {
 			for _, n := range nodes {
 				nodeKeys, err := n.ReadVRFKeys()
 				Expect(err).ShouldNot(HaveOccurred())
-				log.Debug().Interface("Proving key", nodeKeys).Send()
+				log.Debug().Interface("Key JSON", nodeKeys).Msg("Created proving key")
 				pubKeyCompressed := nodeKeys.Data[0].ID
 				jobUUID := uuid.NewV4()
 				_, err = n.CreateJob(&client.VRFJobSpec{
@@ -99,7 +99,7 @@ var _ = Describe("VRF suite", func() {
 				if out.Uint64() == 0 {
 					return errors.New("randomness has not fulfilled yet")
 				}
-				log.Debug().Uint64("Output", out.Uint64()).Send()
+				log.Debug().Uint64("Output", out.Uint64()).Msg("Randomness fulfilled")
 				return nil
 			})
 			Expect(err).ShouldNot(HaveOccurred())

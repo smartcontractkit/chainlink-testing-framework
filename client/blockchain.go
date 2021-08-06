@@ -20,6 +20,9 @@ const BlockchainTypeEVM = "evm"
 type BlockchainClient interface {
 	Get() interface{}
 	Fund(fromWallet BlockchainWallet, toAddress string, nativeAmount, linkAmount *big.Float) error
+	ParallelTransactions(enabled bool)
+	WaitForTransactions() error
+	Close() error
 }
 
 // NewBlockchainClient returns an instantiated network client implementation based on the network configuration given

@@ -102,6 +102,12 @@ func (s *DefaultSuiteSetup) TearDown() func() {
 		log.Info().Str("Log Folder", testLogFolder).Msg("Wrote environment logs")
 	}
 	return func() {
+		if err := s.Client.Close(); err != nil {
+			log.Error().
+				Str("Network", s.Config.Network).
+				Msgf("Error while closing the Blockchain client: %v", err)
+		}
+
 		switch strings.ToLower(s.Config.KeepEnvironments) {
 		case KeepEnvironmentsNever:
 			s.Env.TearDown()
