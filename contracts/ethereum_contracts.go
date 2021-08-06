@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	"github.com/avast/retry-go"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
@@ -14,6 +15,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/contracts/ethereum"
 	ocrConfigHelper "github.com/smartcontractkit/libocr/offchainreporting/confighelper"
 	ocrTypes "github.com/smartcontractkit/libocr/offchainreporting/types"
+	"strings"
 )
 
 // EthereumOracle oracle for "directrequest" job tests
@@ -358,6 +360,42 @@ func (l *EthereumLinkToken) Address() string {
 	return l.address.Hex()
 }
 
+func (l *EthereumLinkToken) Approve(fromWallet client.BlockchainWallet, to string, amount *big.Int) error {
+	opts, err := l.client.TransactionOpts(fromWallet, l.address, big.NewInt(0), nil)
+	if err != nil {
+		return err
+	}
+	tx, err := l.linkToken.Approve(opts, common.HexToAddress(to), amount)
+	if err != nil {
+		return err
+	}
+	return l.client.WaitForTransaction(tx.Hash())
+}
+
+func (l *EthereumLinkToken) Transfer(fromWallet client.BlockchainWallet, to string, amount *big.Int) error {
+	opts, err := l.client.TransactionOpts(fromWallet, l.address, big.NewInt(0), nil)
+	if err != nil {
+		return err
+	}
+	tx, err := l.linkToken.Transfer(opts, common.HexToAddress(to), amount)
+	if err != nil {
+		return err
+	}
+	return l.client.WaitForTransaction(tx.Hash())
+}
+
+func (l *EthereumLinkToken) TransferAndCall(fromWallet client.BlockchainWallet, to string, amount *big.Int, data []byte) error {
+	opts, err := l.client.TransactionOpts(fromWallet, l.address, big.NewInt(0), nil)
+	if err != nil {
+		return err
+	}
+	tx, err := l.linkToken.TransferAndCall(opts, common.HexToAddress(to), amount, data)
+	if err != nil {
+		return err
+	}
+	return l.client.WaitForTransaction(tx.Hash())
+}
+
 // EthereumOffchainAggregator represents the offchain aggregation contract
 type EthereumOffchainAggregator struct {
 	client       *client.EthereumClient
@@ -616,6 +654,267 @@ func (v *EthereumVRF) ProofLength(ctxt context.Context) (*big.Int, error) {
 		Context: ctxt,
 	}
 	return v.vrf.PROOFLENGTH(opts)
+}
+
+// EthereumMockETHLINKFeed represents mocked ETH/LINK feed contract
+type EthereumMockETHLINKFeed struct {
+	client       *client.EthereumClient
+	feed         *ethereum.MockETHLINKAggregator
+	callerWallet client.BlockchainWallet
+	address      *common.Address
+}
+
+func (v *EthereumMockETHLINKFeed) Address() string {
+	return v.address.Hex()
+}
+
+// EthereumMockGASFeed represents mocked Gas feed contract
+type EthereumMockGASFeed struct {
+	client       *client.EthereumClient
+	feed         *ethereum.MockGASAggregator
+	callerWallet client.BlockchainWallet
+	address      *common.Address
+}
+
+func (v *EthereumMockGASFeed) Address() string {
+	return v.address.Hex()
+}
+
+// EthereumKeeperRegistry represents keeper registry contract
+type EthereumKeeperRegistry struct {
+	client       *client.EthereumClient
+	registry     *ethereum.KeeperRegistry
+	callerWallet client.BlockchainWallet
+	address      *common.Address
+}
+
+func (v *EthereumKeeperRegistry) Address() string {
+	return v.address.Hex()
+}
+
+func (v *EthereumKeeperRegistry) Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Float) error {
+	return v.client.Fund(fromWallet, v.address.Hex(), ethAmount, linkAmount)
+}
+
+func (v *EthereumKeeperRegistry) SetRegistrar(fromWallet client.BlockchainWallet, registrarAddr string) error {
+	opts, err := v.client.TransactionOpts(fromWallet, *v.address, big.NewInt(0), nil)
+	if err != nil {
+		return err
+	}
+	tx, err := v.registry.SetRegistrar(opts, common.HexToAddress(registrarAddr))
+	if err != nil {
+		return err
+	}
+	return v.client.WaitForTransaction(tx.Hash())
+}
+
+// AddUpkeepFunds adds link for particular upkeep id
+func (v *EthereumKeeperRegistry) AddUpkeepFunds(fromWallet client.BlockchainWallet, id *big.Int, amount *big.Int) error {
+	opts, err := v.client.TransactionOpts(fromWallet, *v.address, big.NewInt(0), nil)
+	if err != nil {
+		return err
+	}
+	tx, err := v.registry.AddFunds(opts, id, amount)
+	if err != nil {
+		return err
+	}
+	if err := v.client.WaitForTransaction(tx.Hash()); err != nil {
+		return err
+	}
+	return nil
+}
+
+// GetUpkeepInfo gets upkeep info
+func (v *EthereumKeeperRegistry) GetUpkeepInfo(ctx context.Context, id *big.Int) (*UpkeepInfo, error) {
+	opts := &bind.CallOpts{
+		From:    common.HexToAddress(v.callerWallet.Address()),
+		Pending: true,
+		Context: ctx,
+	}
+	uk, err := v.registry.GetUpkeep(opts, id)
+	if err != nil {
+		return nil, err
+	}
+	return &UpkeepInfo{
+		Target:              uk.Target.Hex(),
+		ExecuteGas:          uk.ExecuteGas,
+		CheckData:           uk.CheckData,
+		Balance:             uk.Balance,
+		LastKeeper:          uk.LastKeeper.Hex(),
+		Admin:               uk.Admin.Hex(),
+		MaxValidBlocknumber: uk.MaxValidBlocknumber,
+	}, nil
+}
+
+func (v *EthereumKeeperRegistry) GetKeeperInfo(ctx context.Context, keeperAddr string) (*KeeperInfo, error) {
+	opts := &bind.CallOpts{
+		From:    common.HexToAddress(v.callerWallet.Address()),
+		Pending: true,
+		Context: ctx,
+	}
+	info, err := v.registry.GetKeeperInfo(opts, common.HexToAddress(keeperAddr))
+	if err != nil {
+		return nil, err
+	}
+	return &KeeperInfo{
+		Payee:   info.Payee.Hex(),
+		Active:  info.Active,
+		Balance: info.Balance,
+	}, nil
+}
+
+func (v *EthereumKeeperRegistry) SetKeepers(fromWallet client.BlockchainWallet, keepers []string, payees []string) error {
+	opts, err := v.client.TransactionOpts(fromWallet, *v.address, big.NewInt(0), nil)
+	if err != nil {
+		return err
+	}
+	keepersAddresses := make([]common.Address, 0)
+	for _, k := range keepers {
+		keepersAddresses = append(keepersAddresses, common.HexToAddress(k))
+	}
+	payeesAddresses := make([]common.Address, 0)
+	for _, p := range payees {
+		payeesAddresses = append(payeesAddresses, common.HexToAddress(p))
+	}
+	tx, err := v.registry.SetKeepers(opts, keepersAddresses, payeesAddresses)
+	if err != nil {
+		return err
+	}
+	if err := v.client.WaitForTransaction(tx.Hash()); err != nil {
+		return err
+	}
+	return nil
+}
+
+// RegisterUpkeep registers contract to perform upkeep
+func (v *EthereumKeeperRegistry) RegisterUpkeep(fromWallet client.BlockchainWallet, target string, gasLimit uint32, admin string, checkData []byte) error {
+	opts, err := v.client.TransactionOpts(fromWallet, *v.address, big.NewInt(0), nil)
+	if err != nil {
+		return err
+	}
+	tx, err := v.registry.RegisterUpkeep(opts, common.HexToAddress(target), gasLimit, common.HexToAddress(admin), checkData)
+	if err != nil {
+		return err
+	}
+	if err := v.client.WaitForTransaction(tx.Hash()); err != nil {
+		return err
+	}
+	return nil
+}
+
+// GetKeeperList get list of all registered keeper addresses
+func (v *EthereumKeeperRegistry) GetKeeperList(ctx context.Context) ([]string, error) {
+	opts := &bind.CallOpts{
+		From:    common.HexToAddress(v.callerWallet.Address()),
+		Pending: true,
+		Context: ctx,
+	}
+	list, err := v.registry.GetKeeperList(opts)
+	if err != nil {
+		return []string{}, err
+	}
+	addrs := make([]string, 0)
+	for _, ca := range list {
+		addrs = append(addrs, ca.Hex())
+	}
+	return addrs, nil
+}
+
+// EthereumKeeperConsumer represents keeper consumer (upkeep) contract
+type EthereumKeeperConsumer struct {
+	client       *client.EthereumClient
+	consumer     *ethereum.KeeperConsumer
+	callerWallet client.BlockchainWallet
+	address      *common.Address
+}
+
+func (v *EthereumKeeperConsumer) Address() string {
+	return v.address.Hex()
+}
+
+func (v *EthereumKeeperConsumer) Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Float) error {
+	return v.client.Fund(fromWallet, v.address.Hex(), ethAmount, linkAmount)
+}
+
+func (v *EthereumKeeperConsumer) Counter(ctx context.Context) (*big.Int, error) {
+	opts := &bind.CallOpts{
+		From:    common.HexToAddress(v.callerWallet.Address()),
+		Pending: true,
+		Context: ctx,
+	}
+	cnt, err := v.consumer.Counter(opts)
+	if err != nil {
+		return nil, err
+	}
+	return cnt, nil
+}
+
+// EthereumUpkeepRegistrationRequests keeper contract to register upkeeps
+type EthereumUpkeepRegistrationRequests struct {
+	client       *client.EthereumClient
+	registrar    *ethereum.UpkeepRegistrationRequests
+	callerWallet client.BlockchainWallet
+	address      *common.Address
+}
+
+func (v *EthereumUpkeepRegistrationRequests) Address() string {
+	return v.address.Hex()
+}
+
+// SetRegistrarConfig sets registrar config, allowing auto register or pending requests for manual registration
+func (v *EthereumUpkeepRegistrationRequests) SetRegistrarConfig(
+	fromWallet client.BlockchainWallet,
+	autoRegister bool,
+	windowSizeBlocks uint32,
+	allowedPerWindow uint16,
+	registryAddr string,
+	minLinkJuels *big.Int,
+) error {
+	opts, err := v.client.TransactionOpts(fromWallet, *v.address, big.NewInt(0), nil)
+	if err != nil {
+		return err
+	}
+	tx, err := v.registrar.SetRegistrationConfig(opts, autoRegister, windowSizeBlocks, allowedPerWindow, common.HexToAddress(registryAddr), minLinkJuels)
+	if err != nil {
+		return err
+	}
+	return v.client.WaitForTransaction(tx.Hash())
+}
+
+func (v *EthereumUpkeepRegistrationRequests) Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Float) error {
+	return v.client.Fund(fromWallet, v.address.Hex(), ethAmount, linkAmount)
+}
+
+// EncodeRegisterRequest encodes register request to call it through link token TransferAndCall
+func (v *EthereumUpkeepRegistrationRequests) EncodeRegisterRequest(
+	name string,
+	email []byte,
+	upkeepAddr string,
+	gasLimit uint32,
+	adminAddr string,
+	checkData []byte,
+	amount *big.Int,
+	source uint8,
+) ([]byte, error) {
+	registryABI, err := abi.JSON(strings.NewReader(ethereum.UpkeepRegistrationRequestsABI))
+	if err != nil {
+		return nil, err
+	}
+	req, err := registryABI.Pack(
+		"register",
+		name,
+		email,
+		common.HexToAddress(upkeepAddr),
+		gasLimit,
+		common.HexToAddress(adminAddr),
+		checkData,
+		amount,
+		source,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return req, nil
 }
 
 // EthereumBlockhashStore represents a blockhash store for VRF contract

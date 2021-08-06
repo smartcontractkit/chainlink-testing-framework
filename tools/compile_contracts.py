@@ -58,6 +58,15 @@ solidity: {
         }
     },
     {
+            version: "0.7.6",
+            settings: {
+                optimizer: {
+                    enabled: true,
+                    runs: 1000
+                }
+            }
+        },
+    {
         version: "0.6.6",
         settings: {
             optimizer: {
@@ -112,7 +121,7 @@ for version in solc_versions:
                 bin_file.close()
 
                 if contract_name in used_contract_names:
-                    subprocess.run("abigen --bin=" + bin_name + " --abi=" + abi_name + " --pkg=" + contract_name + " --out=" + 
+                    subprocess.run("abigen --bin=" + bin_name + " --abi=" + abi_name + " --pkg=" + contract_name + " --out=" +
                     targetdir + "/" + contract_name + ".go", shell=True, check=True)
             
 print("Cleaning up Hardhat...")

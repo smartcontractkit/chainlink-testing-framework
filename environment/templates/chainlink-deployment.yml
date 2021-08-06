@@ -89,6 +89,22 @@ spec:
         - name: SECURE_COOKIES
           value: "false"
           valuefrom: null
+        # keeper https://github.com/smartcontractkit/chainlink/wiki/How-to-Run-Keeper-Jobs
+        - name: KEEPER_DEFAULT_TRANSACTION_QUEUE_DEPTH
+          value: "1"
+          valuefrom: null
+        - name: KEEPER_REGISTRY_SYNC_INTERVAL
+          value: "5s"
+          valuefrom: null
+        - name: KEEPER_MINIMUM_REQUIRED_CONFIRMATIONS
+          value: "1"
+          valuefrom: null
+        - name: KEEPER_MINIMUM_REQUIRED_CONFIRMATIONS
+          value: "200000"
+          valuefrom: null
+        - name: KEEPER_REGISTRY_PERFORM_GAS_OVERHEAD
+          value: "150000"
+          valuefrom: null
         volumemounts:
         - name: node-secrets-volume
           readonly: false
