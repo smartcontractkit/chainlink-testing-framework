@@ -474,7 +474,7 @@ func (t *TransactionConfirmer) Wait() error {
 			t.cancel()
 			return nil
 		case <-t.context.Done():
-			return t.context.Err()
+			return fmt.Errorf("timeout waiting for transaction to confirm: %s", t.txHash.String())
 		}
 	}
 }

@@ -42,7 +42,7 @@ networks:
         type: evm
         <<: *private_keys
         transaction_limit: 9500000
-        transaction_timeout: 2s
+        transaction_timeout: 10s
         minimum_confirmations: 1
         gas_estimation_buffer: 0
     ethereum_hardhat:
