@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"text/template"
@@ -23,13 +26,14 @@ import (
 	coreV1 "k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/portforward"
 	"k8s.io/client-go/transport/spdy"
 )
 
-const SelectorLabelKey = "app"
+const SelectorLabelKey string = "app"
 
 // K8sEnvSpecs represents a series of environment resources to be deployed. The map keys need to be continuous with
 // no gaps. For example:
@@ -155,6 +159,31 @@ func (env *k8sEnvironment) GetServiceDetails(remotePort uint16) (*ServiceDetails
 	}
 }
 
+// On a test failure, dump all the pod logs
+func (env *k8sEnvironment) WriteLogs(testLogFolder string) {
+	// Get logs from K8s pods
+	podsClient := env.k8sClient.CoreV1().Pods(env.namespace.Name)
+	podsList, err := podsClient.List(context.Background(), metaV1.ListOptions{})
+	if err != nil {
+		log.Err(err).Str("Env Name", env.namespace.Name).Msg("Error retrieving pod list from K8s environment")
+	}
+
+	// Each Pod gets a folder
+	for _, pod := range podsList.Items {
+		podName := pod.Labels[SelectorLabelKey]
+		podFolder := filepath.Join(testLogFolder, podName)
+		if _, err := os.Stat(podFolder); os.IsNotExist(err) {
+			if err = os.Mkdir(podFolder, 0755); err != nil {
+				log.Err(err).Str("Folder Name", podFolder).Msg("Error creating logs directory")
+			}
+		}
+		err = writeLogsForPod(podsClient, pod, podFolder)
+		if err != nil {
+			log.Err(err).Str("Namespace", env.ID()).Str("Pod", pod.Name).Msg("Error writing logs for pod")
+		}
+	}
+}
+
 // TearDown cycles through all the specifications and tears down the deployments. This typically entails cleaning
 // up port forwarding requests and deleting the namespace that then destroys all definitions.
 func (env *k8sEnvironment) TearDown() {
@@ -167,6 +196,40 @@ func (env *k8sEnvironment) TearDown() {
 	err := env.k8sClient.CoreV1().Namespaces().Delete(context.Background(), env.namespace.Name, metaV1.DeleteOptions{})
 	log.Info().Str("Namespace", env.namespace.Name).Msg("Deleted environment")
 	log.Error().Err(err)
+}
+
+// Writes logs for each container in a pod
+func writeLogsForPod(podsClient v1.PodInterface, pod coreV1.Pod, podFolder string) error {
+	for _, container := range pod.Spec.Containers {
+		logFile, err := os.Create(filepath.Join(podFolder, container.Name) + ".log")
+		if err != nil {
+			log.Err(err).Str("File Name", logFile.Name()).Msg("Error creating log file")
+		}
+
+		podLogRequest := podsClient.GetLogs(pod.Name, &coreV1.PodLogOptions{Container: container.Name})
+		podLogs, err := podLogRequest.Stream(context.Background())
+		if err != nil {
+			return err
+		}
+
+		buf := new(bytes.Buffer)
+		_, err = io.Copy(buf, podLogs)
+		if err != nil {
+			return err
+		}
+		_, err = logFile.Write(buf.Bytes())
+		if err != nil {
+			return err
+		}
+
+		if err = logFile.Close(); err != nil {
+			return err
+		}
+		if err = podLogs.Close(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (env *k8sEnvironment) deploySpecs() error {
@@ -357,8 +420,8 @@ func (m *K8sManifest) ServiceDetails() ([]*ServiceDetails, error) {
 			return serviceDetails, err
 		}
 		serviceDetails = append(serviceDetails, &ServiceDetails{
-			RemoteURL:  remoteURL,
-			LocalURL:   localURL,
+			RemoteURL: remoteURL,
+			LocalURL:  localURL,
 		})
 	}
 	return serviceDetails, nil
