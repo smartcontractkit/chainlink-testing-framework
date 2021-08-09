@@ -49,13 +49,15 @@ type NetworkConfig struct {
 	LinkTokenAddress     string        `mapstructure:"link_token_address" yaml:"link_token_address"`
 	MinimumConfirmations int           `mapstructure:"minimum_confirmations" yaml:"minimum_confirmations"`
 	GasEstimationBuffer  uint64        `mapstructure:"gas_estimation_buffer" yaml:"gas_estimation_buffer"`
+	BlockGasLimit        uint64        `mapstructure:"block_gas_limit" yaml:"block_gas_limit"`
 	PrivateKeyStore      PrivateKeyStore
 }
 
 // KubernetesConfig holds the configuration for how the framework interacts with the k8s cluster
 type KubernetesConfig struct {
-	QPS   float32 `mapstructure:"qps" yaml:"qps"`
-	Burst int     `mapstructure:"burst" yaml:"burst"`
+	QPS               float32       `mapstructure:"qps" yaml:"qps"`
+	Burst             int           `mapstructure:"burst" yaml:"burst"`
+	DeploymentTimeout time.Duration `mapstructure:"deployment_timeout" yaml:"deployment_timeout"`
 }
 
 // AppConfig holds all the configuration for the core apps that are deployed for testing

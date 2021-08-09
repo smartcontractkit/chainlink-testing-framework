@@ -118,6 +118,29 @@ func NewHardhatManifest() *K8sManifest {
 	}
 }
 
+// NewGanacheManifest is the k8s manifest that when used will deploy ganache to an environment
+func NewGanacheManifest() *K8sManifest {
+	return &K8sManifest{
+		id:             "evm",
+		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/ganache-deployment.yml"),
+		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/ganache-service.yml"),
+
+		values: map[string]interface{}{
+			"rpcPort": EVMRPCPort,
+		},
+
+		SetValuesFunc: func(manifest *K8sManifest) error {
+			manifest.values["clusterURL"] = fmt.Sprintf(
+				"ws://%s:%d",
+				manifest.Service.Spec.ClusterIP,
+				manifest.Service.Spec.Ports[0].Port,
+			)
+			manifest.values["localURL"] = fmt.Sprintf("ws://127.0.0.1:%d", manifest.ports[0].Local)
+			return nil
+		},
+	}
+}
+
 // NewChainlinkCluster is a basic environment that deploys hardhat with a chainlink cluster and an external adapter
 func NewChainlinkCluster(nodeCount int) K8sEnvSpecInit {
 	manifests := []*K8sManifest{NewAdapterManifest()}
@@ -135,6 +158,10 @@ func NewChainlinkCluster(nodeCount int) K8sEnvSpecInit {
 		0: NewHardhatManifest(),
 		1: chainlinkCluster,
 	}
+	envWithGanache := K8sEnvSpecs{
+		0: NewGanacheManifest(),
+		1: chainlinkCluster,
+	}
 	envWithGeth := K8sEnvSpecs{
 		0: NewGethManifest(),
 		1: chainlinkCluster,
@@ -144,12 +171,15 @@ func NewChainlinkCluster(nodeCount int) K8sEnvSpecInit {
 	}
 	return func(config *config.NetworkConfig) (string, K8sEnvSpecs) {
 		envName := "basic-chainlink"
-		if config.Name == "Ethereum Geth dev" {
+		switch config.Name {
+		case "Ethereum Geth dev":
 			return envName, envWithGeth
-		}
-		if len(config.URL) > 0 {
+		case "Ethereum Hardhat":
+			return envName, envWithHardhat
+		case "Ethereum Ganache":
+			return envName, envWithGanache
+		default:
 			return envName, envWithoutHardhat
 		}
-		return envName, envWithHardhat
 	}
 }

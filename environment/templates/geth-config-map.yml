@@ -58,7 +58,7 @@ data:
   genesis.json: |
     {
       "config": {
-        "chainId": 1337,
+        "chainId": {{ .Network.ChainID }},
         "homesteadBlock": 0,
         "eip150Block": 0,
         "eip155Block": 0,
@@ -70,7 +70,7 @@ data:
       "coinbase": "0x3333333333333333333333333333333333333333",
       "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
       "extraData": "0x",
-      "gasLimit": "0xE8D4A50FFF",
+      "gasLimit": "{{ .Network.BlockGasLimit }}",
       "alloc": {
         "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266": {
           "balance": "20000000000000000000000"
