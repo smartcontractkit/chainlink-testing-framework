@@ -229,7 +229,7 @@ func (env *k8sEnvironment) writeDatabaseContents(pod coreV1.Pod, podFolder strin
 				return err
 			}
 
-			// Write CSV to log file
+			// Write pg_dump
 			logFile, err := os.Create(filepath.Join(podFolder, container.Name+"_dump") + ".log")
 			if err != nil {
 				return err
@@ -271,7 +271,6 @@ func (env *k8sEnvironment) dumpDB(pod coreV1.Pod, container coreV1.Container) (s
 		Stderr: errBuff,
 		Tty:    false,
 	})
-	log.Info().Str("STDOUT", outBuff.String()).Str("STDERR", errBuff.String()).Msg("Copying output")
 	if err != nil || errBuff.Len() > 0 {
 		return "", fmt.Errorf("Error in dumping DB contents | STDOUT: %v | STDERR: %v", outBuff.String(),
 			errBuff.String())
