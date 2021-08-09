@@ -55,8 +55,9 @@ type NetworkConfig struct {
 
 // KubernetesConfig holds the configuration for how the framework interacts with the k8s cluster
 type KubernetesConfig struct {
-	QPS   float32 `mapstructure:"qps" yaml:"qps"`
-	Burst int     `mapstructure:"burst" yaml:"burst"`
+	QPS               float32       `mapstructure:"qps" yaml:"qps"`
+	Burst             int           `mapstructure:"burst" yaml:"burst"`
+	DeploymentTimeout time.Duration `mapstructure:"deployment_timeout" yaml:"deployment_timeout"`
 }
 
 // AppConfig holds all the configuration for the core apps that are deployed for testing

@@ -91,7 +91,9 @@ retry:
     attempts: 20
     linear_delay: 1s
 
-# Increase k8s default throttling variables to avoid test slowdown
 kubernetes:
+    # Increase k8s default throttling variables to avoid test slowdown
     qps: 50
     burst: 50
+    # How long to wait for the environment to deploy & be marked as healthy before test errors
+    deployment_timeout: 3m
