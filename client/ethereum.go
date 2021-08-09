@@ -278,13 +278,22 @@ func (e *EthereumClient) WaitForTransactions() error {
 	var errGroup error
 
 	queuedTx := e.GetQueuedTransactions()
+	wg := sync.WaitGroup{}
+	wg.Add(len(queuedTx))
+
 	for txHash, sub := range queuedTx {
 		sub := sub
-		if err := sub.Wait(); err != nil {
-			errGroup = multierror.Append(errGroup, err)
-		}
-		e.DeleteQueuedTransaction(txHash)
+		txHash := txHash
+		go func() {
+			defer wg.Done()
+			if err := sub.Wait(); err != nil {
+				errGroup = multierror.Append(errGroup, err)
+			}
+			e.DeleteQueuedTransaction(txHash)
+		}()
 	}
+	wg.Wait()
+
 	return errGroup
 }
 
