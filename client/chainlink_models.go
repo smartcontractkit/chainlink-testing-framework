@@ -73,6 +73,28 @@ type Session struct {
 	Password string `json:"password"`
 }
 
+// VRFKeyAttributes is the model that represents the created VRF key attributes when read
+type VRFKeyAttributes struct {
+	Compressed   string      `json:"compressed"`
+	Uncompressed string      `json:"uncompressed"`
+	Hash         string      `json:"hash"`
+	CreatedAt    time.Time   `json:"createdAt"`
+	UpdatedAt    time.Time   `json:"updatedAt"`
+	DeletedAt    interface{} `json:"deletedAt"`
+}
+
+// VRFKey is the model that represents the created VRF key when read
+type VRFKey struct {
+	Type       string           `json:"type"`
+	ID         string           `json:"id"`
+	Attributes VRFKeyAttributes `json:"attributes"`
+}
+
+// VRFKeys is the model that represents the created VRF keys when read
+type VRFKeys struct {
+	Data []VRFKey `json:"data"`
+}
+
 // OCRKeys is the model that represents the created OCR keys when read
 type OCRKeys struct {
 	Data []OCRKeyData `json:"data"`
@@ -472,15 +494,19 @@ type VRFJobSpec struct {
 	CoordinatorAddress string `toml:"coordinatorAddress"` // Address of the VRF Coordinator contract
 	PublicKey          string `toml:"publicKey"`          // Public key of the proving key
 	Confirmations      int    `toml:"confirmations"`      // Number of block confirmations to wait for
+	ExternalJobID      string `toml:"externalJobID"`
 }
 
 func (v *VRFJobSpec) Type() string { return "vrf" }
 func (v *VRFJobSpec) String() (string, error) {
 	vrfTemplateString := `type = "vrf"
 schemaVersion      = 1
+name               = "{{.Name}}"
 coordinatorAddress = "{{.CoordinatorAddress}}"
 publicKey          = "{{.PublicKey}}"
-confirmations      = {{.Confirmations}}`
+confirmations      = {{.Confirmations}}
+externalJobID     = "{{.ExternalJobID}}"
+`
 	return marshallTemplate(v, "VRF Job", vrfTemplateString)
 }
 

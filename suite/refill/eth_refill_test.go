@@ -39,6 +39,8 @@ var _ = Describe("FluxAggregator ETH Refill", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			nodeAddresses, err = actions.ChainlinkNodeAddresses(nodes)
 			Expect(err).ShouldNot(HaveOccurred())
+
+			s.Client.ParallelTransactions(true)
 		})
 	})
 
@@ -53,6 +55,8 @@ var _ = Describe("FluxAggregator ETH Refill", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			err = fluxInstance.UpdateAvailableFunds(context.Background(), s.Wallets.Default())
 			Expect(err).ShouldNot(HaveOccurred())
+			err = s.Client.WaitForTransactions()
+			Expect(err).ShouldNot(HaveOccurred())
 		})
 
 		By("Setting FluxAggregator options", func() {
@@ -64,11 +68,13 @@ var _ = Describe("FluxAggregator ETH Refill", func() {
 					MinSubmissions:     3,
 					MaxSubmissions:     3,
 					RestartDelayRounds: 0,
-				})
+				},
+			)
+			err = s.Client.WaitForTransactions()
 			Expect(err).ShouldNot(HaveOccurred())
 			oracles, err := fluxInstance.GetOracles(context.Background())
 			Expect(err).ShouldNot(HaveOccurred())
-			log.Info().Str("Oracles", strings.Join(oracles, ",")).Msg("oracles set")
+			log.Info().Str("Oracles", strings.Join(oracles, ",")).Msg("Oracles set")
 		})
 
 		By("Adding FluxAggregator jobs to nodes", func() {
@@ -96,6 +102,8 @@ var _ = Describe("FluxAggregator ETH Refill", func() {
 		By("Funding ETH for a single round", func() {
 			err = actions.FundChainlinkNodes(nodes, s.Client, s.Wallets.Default(), big.NewFloat(.01), nil)
 			Expect(err).ShouldNot(HaveOccurred())
+			err = s.Client.WaitForTransactions()
+			Expect(err).ShouldNot(HaveOccurred())
 			err = adapter.SetVariable(6)
 			Expect(err).ShouldNot(HaveOccurred())
 			err = fluxInstance.AwaitNextRoundFinalized(context.Background())
@@ -113,6 +121,8 @@ var _ = Describe("FluxAggregator ETH Refill", func() {
 	Describe("with FluxAggregator", func() {
 		It("should refill and await the next round", func() {
 			err = actions.FundChainlinkNodes(nodes, s.Client, s.Wallets.Default(), big.NewFloat(2), nil)
+			Expect(err).ShouldNot(HaveOccurred())
+			err = s.Client.WaitForTransactions()
 			Expect(err).ShouldNot(HaveOccurred())
 			err = fluxInstance.AwaitNextRoundFinalized(context.Background())
 			Expect(err).ShouldNot(HaveOccurred())

@@ -115,8 +115,24 @@ func NewK8sEnvironment(
 	env.namespace = namespace
 	env.specs = deployables
 
-	if err := env.deploySpecs(); err != nil {
-		return nil, err
+	ctx, ctxCancel := context.WithTimeout(context.Background(), env.config.Kubernetes.DeploymentTimeout)
+	defer ctxCancel()
+
+	errChan := make(chan error)
+	go env.deploySpecs(errChan)
+
+deploymentLoop:
+	for {
+		select {
+		case err, open := <-errChan:
+			if err != nil {
+				return nil, err
+			} else if !open {
+				break deploymentLoop
+			}
+		case <-ctx.Done():
+			return nil, fmt.Errorf("error while waiting for deployment: %v", ctx.Err())
+		}
 	}
 	return env, err
 }
@@ -297,12 +313,13 @@ func writeLogsForPod(podsClient v1.PodInterface, pod coreV1.Pod, podFolder strin
 	return nil
 }
 
-func (env *k8sEnvironment) deploySpecs() error {
+func (env *k8sEnvironment) deploySpecs(errChan chan<- error) {
 	values := map[string]interface{}{}
 	for i := 0; i < len(env.specs); i++ {
 		spec, ok := env.specs[i]
 		if !ok {
-			return fmt.Errorf("specifcation %d wasn't found on deploy, make sure the set are in order", i)
+			errChan <- fmt.Errorf("specifcation %d wasn't found on deploy, make sure the set are in order", i)
+			return
 		}
 		if err := spec.SetEnvironment(
 			env.k8sClient,
@@ -311,18 +328,21 @@ func (env *k8sEnvironment) deploySpecs() error {
 			env.network.Config(),
 			env.namespace,
 		); err != nil {
-			return err
+			errChan <- err
+			return
 		}
 		values[spec.ID()] = spec.Values()
 		if err := spec.Deploy(values); err != nil {
-			return err
+			errChan <- err
+			return
 		}
 		if err := spec.WaitUntilHealthy(); err != nil {
-			return err
+			errChan <- err
+			return
 		}
 		values[spec.ID()] = spec.Values()
 	}
-	return nil
+	close(errChan)
 }
 
 func (env *k8sEnvironment) createNamespace(namespace string) (*coreV1.Namespace, error) {

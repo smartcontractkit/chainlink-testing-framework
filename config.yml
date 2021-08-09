@@ -42,9 +42,10 @@ networks:
         type: evm
         <<: *private_keys
         transaction_limit: 9500000
-        transaction_timeout: 2s
+        transaction_timeout: 10s
         minimum_confirmations: 1
         gas_estimation_buffer: 0
+        block_gas_limit: 40000000
     ethereum_hardhat:
         name: "Ethereum Hardhat"
         chain_id: 1337
@@ -54,6 +55,16 @@ networks:
         transaction_timeout: 1s
         minimum_confirmations: 1
         gas_estimation_buffer: 0
+    ethereum_ganache:
+        name: "Ethereum Ganache"
+        chain_id: 1337
+        type: evm
+        <<: *private_keys
+        transaction_limit: 9500000
+        transaction_timeout: 1s
+        minimum_confirmations: 0
+        gas_estimation_buffer: 0
+        block_gas_limit: 40000000
     ethereum_kovan:
         name: "Ethereum Kovan"
         url: "wss://127.0.0.1:8545"
@@ -80,7 +91,9 @@ retry:
     attempts: 20
     linear_delay: 1s
 
-# Increase k8s default throttling variables to avoid test slowdown
 kubernetes:
+    # Increase k8s default throttling variables to avoid test slowdown
     qps: 50
     burst: 50
+    # How long to wait for the environment to deploy & be marked as healthy before test errors
+    deployment_timeout: 3m

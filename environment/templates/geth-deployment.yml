@@ -124,10 +124,12 @@ spec:
           - 0xdD2FD4581271e230360230F9337D5c0430Bf44C0
           - --unlock
           - 0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199
-          - --networkid=1337
+          - --networkid={{ .Network.ChainID }}
           - --mine
           - --miner.threads
           - 1
+          - --miner.gastarget
+          - {{ .Network.BlockGasLimit }}
           - --miner.etherbase
           - 0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266
           - --rpcapi="admin,debug,web3,eth,txpool,personal,clique,miner,net"
