@@ -14,7 +14,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/environment"
 )
 
-var _ = FDescribe("OCR Feed", func() {
+var _ = Describe("OCR Feed", func() {
 	var (
 		suiteSetup     *actions.DefaultSuiteSetup
 		chainlinkNodes []client.Chainlink
