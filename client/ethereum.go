@@ -3,12 +3,13 @@ package client
 import (
 	"context"
 	"fmt"
-	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
 	"math/big"
 	"sync"
 	"time"
+
+	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/hashicorp/go-multierror"
+	"github.com/pkg/errors"
 
 	ethContracts "github.com/smartcontractkit/integrations-framework/contracts/ethereum"
 
