@@ -124,6 +124,9 @@ spec:
         - name: PGPASSWORD
           value: node
           valuefrom: null
+        - name: PGUSER
+          value: postgres
+          valuefrom: null
         livenessprobe:
           handler:
             exec:
