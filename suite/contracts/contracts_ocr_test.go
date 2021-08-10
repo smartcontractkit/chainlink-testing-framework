@@ -110,6 +110,7 @@ var _ = Describe("OCR Feed", func() {
 
 		By("Checking OCR rounds", func() {
 			roundTimeout := time.Minute * 2
+			// Set adapter answer to 5
 			err := adapter.SetVariable(5)
 			Expect(err).ShouldNot(HaveOccurred())
 			err = ocrInstance.RequestNewRound(defaultWallet)
@@ -126,9 +127,9 @@ var _ = Describe("OCR Feed", func() {
 			// Check answer is as expected
 			answer, err := ocrInstance.GetLatestAnswer(context.Background())
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(answer.Int64()).Should(Equal(int64(5)))
+			Expect(answer.Int64()).Should(Equal(int64(5)), "Latest answer from OCR is not as expected")
 
-			// Change adapter answer
+			// Change adapter answer to 10
 			err = adapter.SetVariable(10)
 			Expect(err).ShouldNot(HaveOccurred())
 
@@ -141,7 +142,7 @@ var _ = Describe("OCR Feed", func() {
 			// Check answer is as expected
 			answer, err = ocrInstance.GetLatestAnswer(context.Background())
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(answer.Int64()).Should(Equal(int64(10)))
+			Expect(answer.Int64()).Should(Equal(int64(10)), "Latest answer from OCR is not as expected")
 		})
 	})
 
