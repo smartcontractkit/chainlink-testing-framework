@@ -38,6 +38,8 @@ var _ = Describe("Keeper suite", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			nodeAddresses, err = actions.ChainlinkNodeAddresses(nodes)
 			Expect(err).ShouldNot(HaveOccurred())
+
+			s.Client.ParallelTransactions(true)
 		})
 		By("Funding Chainlink nodes", func() {
 			err = actions.FundChainlinkNodes(
@@ -76,6 +78,8 @@ var _ = Describe("Keeper suite", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			err = consumer.Fund(s.Wallets.Default(), big.NewFloat(0), big.NewFloat(1))
 			Expect(err).ShouldNot(HaveOccurred())
+			err = s.Client.WaitForTransactions()
+			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("Registering upkeep target", func() {
 			registrar, err := s.Deployer.DeployUpkeepRegistrationRequests(
@@ -108,6 +112,8 @@ var _ = Describe("Keeper suite", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			err = s.Link.TransferAndCall(s.Wallets.Default(), registrar.Address(), big.NewInt(9e18), req)
 			Expect(err).ShouldNot(HaveOccurred())
+			err = s.Client.WaitForTransactions()
+			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("Adding Keepers and a job", func() {
 			keys, err := nodes[0].ReadETHKeys()
@@ -130,6 +136,8 @@ var _ = Describe("Keeper suite", func() {
 				ContractAddress: registry.Address(),
 				FromAddress:     na,
 			})
+			Expect(err).ShouldNot(HaveOccurred())
+			err = s.Client.WaitForTransactions()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 	})

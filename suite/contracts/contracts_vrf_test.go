@@ -35,6 +35,8 @@ var _ = Describe("VRF suite", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			nodes, err = environment.GetChainlinkClients(s.Env)
 			Expect(err).ShouldNot(HaveOccurred())
+
+			s.Client.ParallelTransactions(true)
 		})
 		By("Funding Chainlink nodes", func() {
 			err = actions.FundChainlinkNodes(nodes, s.Client, s.Wallets.Default(), big.NewFloat(2), nil)
@@ -50,6 +52,8 @@ var _ = Describe("VRF suite", func() {
 			err = consumer.Fund(s.Wallets.Default(), big.NewFloat(0), big.NewFloat(2))
 			Expect(err).ShouldNot(HaveOccurred())
 			_, err = s.Deployer.DeployVRFContract(s.Wallets.Default())
+			Expect(err).ShouldNot(HaveOccurred())
+			err = s.Client.WaitForTransactions()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("Creating jobs and registering proving keys", func() {
