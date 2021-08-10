@@ -15,7 +15,7 @@ type Environment interface {
 	GetAllServiceDetails(remotePort uint16) ([]*ServiceDetails, error)
 	GetServiceDetails(remotePort uint16) (*ServiceDetails, error)
 
-	WriteLogs(testLogFolder string)
+	WriteArtifacts(testLogFolder string)
 	TearDown()
 }
 

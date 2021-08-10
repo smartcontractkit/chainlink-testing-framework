@@ -29,11 +29,11 @@ type EthereumClient struct {
 	Client  *ethclient.Client
 	Network BlockchainNetwork
 
-	txQueue            chan common.Hash
-	queuedTransactions map[string]EthereumTransactionConfirmer
-	mutex              *sync.Mutex
-	queueTransactions  bool
-	doneChan           chan struct{}
+	txQueue             chan common.Hash
+	headerSubscriptions map[string]HeaderEventSubscription
+	mutex               *sync.Mutex
+	queueTransactions   bool
+	doneChan            chan struct{}
 }
 
 // ContractDeployer acts as a go-between function for general contract deployment
@@ -52,13 +52,13 @@ func NewEthereumClient(network BlockchainNetwork) (*EthereumClient, error) {
 	}
 
 	ec := &EthereumClient{
-		Network:            network,
-		Client:             cl,
-		txQueue:            make(chan common.Hash, 64), // Max buffer of 64 tx
-		queuedTransactions: map[string]EthereumTransactionConfirmer{},
-		mutex:              &sync.Mutex{},
-		queueTransactions:  false,
-		doneChan:           make(chan struct{}),
+		Network:             network,
+		Client:              cl,
+		txQueue:             make(chan common.Hash, 64), // Max buffer of 64 tx
+		headerSubscriptions: map[string]HeaderEventSubscription{},
+		mutex:               &sync.Mutex{},
+		queueTransactions:   false,
+		doneChan:            make(chan struct{}),
 	}
 	go ec.newHeadersLoop()
 	return ec, err
@@ -78,7 +78,7 @@ func (e *EthereumClient) Get() interface{} {
 }
 
 // ParallelTransactions when enabled, sends the transaction without waiting for transaction confirmations. The hashes
-// are then stored within the client and confirmations can be waited on by calling WaitForTransactions.
+// are then stored within the client and confirmations can be waited on by calling WaitForEvents.
 // When disabled, the minimum confirmations are waited on when the transaction is sent, so parallelisation is disabled.
 func (e *EthereumClient) ParallelTransactions(enabled bool) {
 	e.queueTransactions = enabled
@@ -174,20 +174,20 @@ func (e *EthereumClient) SendTransaction(
 
 // ProcessTransaction will queue or wait on a transaction depending on whether queue transactions is enabled
 func (e *EthereumClient) ProcessTransaction(txHash common.Hash) error {
-	var txConfirmer EthereumTransactionConfirmer
+	var txConfirmer HeaderEventSubscription
 	if e.Network.Config().MinimumConfirmations == 0 {
 		txConfirmer = &InstantConfirmations{}
 	} else {
 		txConfirmer = NewTransactionConfirmer(e, txHash, e.Network.Config().MinimumConfirmations)
 	}
 
-	e.AddQueuedTransaction(txHash.String(), txConfirmer)
+	e.AddHeaderEventSubscription(txHash.String(), txConfirmer)
 
 	if !e.queueTransactions {
 		if err := txConfirmer.Wait(); err != nil {
 			return err
 		}
-		e.DeleteQueuedTransaction(txHash.String())
+		e.DeleteHeaderEventSubscription(txHash.String())
 	}
 	return nil
 }
@@ -274,45 +274,54 @@ func (e *EthereumClient) TransactionOpts(
 	return opts, nil
 }
 
-// WaitForTransactions is a blocking function that waits for all transactions that have been queued within the client.
-func (e *EthereumClient) WaitForTransactions() error {
+// WaitForEvents is a blocking function that waits for all event subscriptions that have been queued within the client.
+func (e *EthereumClient) WaitForEvents() error {
 	var errGroup error
 
-	queuedTx := e.GetQueuedTransactions()
+	queuedTx := e.GetHeaderSubscriptions()
+	wg := sync.WaitGroup{}
+	wg.Add(len(queuedTx))
+
 	for txHash, sub := range queuedTx {
 		sub := sub
-		if err := sub.Wait(); err != nil {
-			errGroup = multierror.Append(errGroup, err)
-		}
-		e.DeleteQueuedTransaction(txHash)
+		txHash := txHash
+		go func() {
+			defer wg.Done()
+			if err := sub.Wait(); err != nil {
+				errGroup = multierror.Append(errGroup, err)
+			}
+			e.DeleteHeaderEventSubscription(txHash)
+		}()
 	}
+	wg.Wait()
+
 	return errGroup
 }
 
-// GetQueuedTransactions returns a duplicate map of the queued transactions
-func (e *EthereumClient) GetQueuedTransactions() map[string]EthereumTransactionConfirmer {
+// GetHeaderSubscriptions returns a duplicate map of the queued transactions
+func (e *EthereumClient) GetHeaderSubscriptions() map[string]HeaderEventSubscription {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 
-	newMap := map[string]EthereumTransactionConfirmer{}
-	for k, v := range e.queuedTransactions {
+	newMap := map[string]HeaderEventSubscription{}
+	for k, v := range e.headerSubscriptions {
 		newMap[k] = v
 	}
 	return newMap
 }
 
-// AddQueuedTransaction adds a new header subscriber within the client to receive new headers
-func (e *EthereumClient) AddQueuedTransaction(key string, subscriber EthereumTransactionConfirmer) {
+// AddHeaderEventSubscription adds a new header subscriber within the client to receive new headers
+func (e *EthereumClient) AddHeaderEventSubscription(key string, subscriber HeaderEventSubscription) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
-	e.queuedTransactions[key] = subscriber
+	e.headerSubscriptions[key] = subscriber
 }
 
-// DeleteQueuedTransaction removes a header subscriber from the map
-func (e *EthereumClient) DeleteQueuedTransaction(key string) {
+// DeleteHeaderEventSubscription removes a header subscriber from the map
+func (e *EthereumClient) DeleteHeaderEventSubscription(key string) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
-	delete(e.queuedTransactions, key)
+	delete(e.headerSubscriptions, key)
 }
 
 func (e *EthereumClient) newHeadersLoop() {
@@ -349,7 +358,7 @@ func (e *EthereumClient) subscribeToNewHeaders() error {
 				Str("Block Number", header.Number.String()).
 				Msg("Received block header")
 
-			queuedTx := e.GetQueuedTransactions()
+			queuedTx := e.GetHeaderSubscriptions()
 			for _, sub := range queuedTx {
 				if err := sub.ReceiveHeader(header); err != nil {
 					log.Error().Msgf("Error while sending header to receiver: %v", err)
@@ -384,7 +393,11 @@ func (e *EthereumClient) isTxConfirmed(txHash common.Hash) (bool, error) {
 }
 
 // errorReason decodes tx revert reason
-func (e *EthereumClient) errorReason(b ethereum.ContractCaller, tx *types.Transaction, receipt *types.Receipt) (string, error) {
+func (e *EthereumClient) errorReason(
+	b ethereum.ContractCaller,
+	tx *types.Transaction,
+	receipt *types.Receipt,
+) (string, error) {
 	chID, err := e.Client.NetworkID(context.Background())
 	if err != nil {
 		return "", err
@@ -408,13 +421,7 @@ func (e *EthereumClient) errorReason(b ethereum.ContractCaller, tx *types.Transa
 	return abi.UnpackRevert(res)
 }
 
-// EthereumTransactionConfirmer is an interface for allowing callbacks when the client receives a new header
-type EthereumTransactionConfirmer interface {
-	ReceiveHeader(header *types.Header) error
-	Wait() error
-}
-
-// TransactionConfirmer is an implementation of EthereumTransactionConfirmer that checks whether tx are confirmed
+// TransactionConfirmer is an implementation of HeaderEventSubscription that checks whether tx are confirmed
 type TransactionConfirmer struct {
 	minConfirmations int
 	confirmations    int
@@ -441,7 +448,7 @@ func NewTransactionConfirmer(eth *EthereumClient, txHash common.Hash, minConfirm
 	return tc
 }
 
-// ReceiveHeader the implementation of the EthereumTransactionConfirmer that receives each block header and checks
+// ReceiveHeader the implementation of the HeaderEventSubscription that receives each block header and checks
 // tx confirmation
 func (t *TransactionConfirmer) ReceiveHeader(header *types.Header) error {
 	block, err := t.eth.Client.BlockByNumber(context.Background(), header.Number)
@@ -492,3 +499,4 @@ func (i *InstantConfirmations) ReceiveHeader(*types.Header) error {
 func (i *InstantConfirmations) Wait() error {
 	return nil
 }
+

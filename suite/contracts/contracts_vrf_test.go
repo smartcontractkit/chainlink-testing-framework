@@ -35,6 +35,8 @@ var _ = Describe("VRF suite", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			nodes, err = environment.GetChainlinkClients(s.Env)
 			Expect(err).ShouldNot(HaveOccurred())
+
+			s.Client.ParallelTransactions(true)
 		})
 		By("Funding Chainlink nodes", func() {
 			err = actions.FundChainlinkNodes(nodes, s.Client, s.Wallets.Default(), big.NewFloat(2), nil)
@@ -51,6 +53,8 @@ var _ = Describe("VRF suite", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			_, err = s.Deployer.DeployVRFContract(s.Wallets.Default())
 			Expect(err).ShouldNot(HaveOccurred())
+			err = s.Client.WaitForEvents()
+			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("Creating jobs and registering proving keys", func() {
 			for _, n := range nodes {
@@ -59,12 +63,18 @@ var _ = Describe("VRF suite", func() {
 				log.Debug().Interface("Key JSON", nodeKeys).Msg("Created proving key")
 				pubKeyCompressed := nodeKeys.Data[0].ID
 				jobUUID := uuid.NewV4()
+				os := &client.VRFTxPipelineSpec{
+					Address: coordinator.Address(),
+				}
+				ost, err := os.String()
+				Expect(err).ShouldNot(HaveOccurred())
 				_, err = n.CreateJob(&client.VRFJobSpec{
 					Name:               "vrf",
 					CoordinatorAddress: coordinator.Address(),
 					PublicKey:          pubKeyCompressed,
 					Confirmations:      1,
 					ExternalJobID:      jobUUID.String(),
+					ObservationSource:  ost,
 				})
 				Expect(err).ShouldNot(HaveOccurred())
 

@@ -66,7 +66,7 @@ var _ = Describe("OCR Feed", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			err = ocrInstance.Fund(defaultWallet, nil, big.NewFloat(2))
 			Expect(err).ShouldNot(HaveOccurred())
-			err = suiteSetup.Client.WaitForTransactions()
+			err = suiteSetup.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
@@ -111,7 +111,7 @@ var _ = Describe("OCR Feed", func() {
 		By("Checking OCR rounds", func() {
 			err := ocrInstance.RequestNewRound(defaultWallet)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = suiteSetup.Client.WaitForTransactions()
+			err = suiteSetup.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 
 			// Wait for a round
