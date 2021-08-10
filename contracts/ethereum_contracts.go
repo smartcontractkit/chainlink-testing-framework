@@ -4,9 +4,12 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"github.com/ethereum/go-ethereum/core/types"
 	"math/big"
 	"time"
+
+	"github.com/ethereum/go-ethereum/core/types"
+
+	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -16,7 +19,6 @@ import (
 	"github.com/smartcontractkit/integrations-framework/contracts/ethereum"
 	ocrConfigHelper "github.com/smartcontractkit/libocr/offchainreporting/confighelper"
 	ocrTypes "github.com/smartcontractkit/libocr/offchainreporting/types"
-	"strings"
 )
 
 // EthereumOracle oracle for "directrequest" job tests
@@ -624,6 +626,64 @@ func (o *EthereumOffchainAggregator) GetLatestRound(ctxt context.Context) (*Roun
 		StartedAt:       roundData.StartedAt,
 		UpdatedAt:       roundData.UpdatedAt,
 	}, err
+}
+
+// OffchainAggregatorRoundConfirmer is a header subscription that awaits for a certain OCR round to be completed
+type OffchainAggregatorRoundConfirmer struct {
+	ocrInstance OffchainAggregator
+	roundID     *big.Int
+	doneChan    chan struct{}
+	context     context.Context
+	cancel      context.CancelFunc
+}
+
+// NewOffchainAggregatorRoundConfirmer provides a new instance of a OffchainAggregatorRoundConfirmer
+func NewOffchainAggregatorRoundConfirmer(
+	contract OffchainAggregator,
+	roundID *big.Int,
+	timeout time.Duration,
+) *OffchainAggregatorRoundConfirmer {
+	ctx, ctxCancel := context.WithTimeout(context.Background(), timeout)
+	return &OffchainAggregatorRoundConfirmer{
+		ocrInstance: contract,
+		roundID:     roundID,
+		doneChan:    make(chan struct{}),
+		context:     ctx,
+		cancel:      ctxCancel,
+	}
+}
+
+// ReceiveHeader will query the latest OffchainAggregator round and check to see whether the round has confirmed
+func (o *OffchainAggregatorRoundConfirmer) ReceiveHeader(*types.Header) error {
+	lr, err := o.ocrInstance.GetLatestRound(context.Background())
+	if err != nil {
+		return err
+	}
+	currRound := lr.RoundId
+	ocrLog := log.Info().
+		Str("Contract Address", o.ocrInstance.Address()).
+		Int64("Current Round", currRound.Int64()).
+		Int64("Waiting for Round", o.roundID.Int64())
+	if currRound.Cmp(o.roundID) >= 0 {
+		ocrLog.Msg("OCR round completed")
+		o.doneChan <- struct{}{}
+	} else {
+		ocrLog.Msg("Waiting for OCR round")
+	}
+	return nil
+}
+
+// Wait is a blocking function that will wait until the round has confirmed, and timeout if the deadline has passed
+func (o *OffchainAggregatorRoundConfirmer) Wait() error {
+	for {
+		select {
+		case <-o.doneChan:
+			o.cancel()
+			return nil
+		case <-o.context.Done():
+			return fmt.Errorf("timeout waiting for OCR round to confirm: %d", o.roundID)
+		}
+	}
 }
 
 // EthereumStorage acts as a conduit for the ethereum version of the storage contract
