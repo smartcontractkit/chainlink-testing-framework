@@ -55,7 +55,7 @@ var _ = Describe("FluxAggregator ETH Refill", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			err = fluxInstance.UpdateAvailableFunds(context.Background(), s.Wallets.Default())
 			Expect(err).ShouldNot(HaveOccurred())
-			err = s.Client.WaitForTransactions()
+			err = s.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
@@ -70,7 +70,7 @@ var _ = Describe("FluxAggregator ETH Refill", func() {
 					RestartDelayRounds: 0,
 				},
 			)
-			err = s.Client.WaitForTransactions()
+			err = s.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 			oracles, err := fluxInstance.GetOracles(context.Background())
 			Expect(err).ShouldNot(HaveOccurred())
@@ -102,7 +102,7 @@ var _ = Describe("FluxAggregator ETH Refill", func() {
 		By("Funding ETH for a single round", func() {
 			err = actions.FundChainlinkNodes(nodes, s.Client, s.Wallets.Default(), big.NewFloat(.01), nil)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = s.Client.WaitForTransactions()
+			err = s.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 			err = adapter.SetVariable(6)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -122,7 +122,7 @@ var _ = Describe("FluxAggregator ETH Refill", func() {
 		It("should refill and await the next round", func() {
 			err = actions.FundChainlinkNodes(nodes, s.Client, s.Wallets.Default(), big.NewFloat(2), nil)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = s.Client.WaitForTransactions()
+			err = s.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 			err = fluxInstance.AwaitNextRoundFinalized(context.Background())
 			Expect(err).ShouldNot(HaveOccurred())

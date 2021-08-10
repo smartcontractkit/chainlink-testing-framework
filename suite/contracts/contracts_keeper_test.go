@@ -78,7 +78,7 @@ var _ = Describe("Keeper suite", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			err = consumer.Fund(s.Wallets.Default(), big.NewFloat(0), big.NewFloat(1))
 			Expect(err).ShouldNot(HaveOccurred())
-			err = s.Client.WaitForTransactions()
+			err = s.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("Registering upkeep target", func() {
@@ -112,7 +112,7 @@ var _ = Describe("Keeper suite", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			err = s.Link.TransferAndCall(s.Wallets.Default(), registrar.Address(), big.NewInt(9e18), req)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = s.Client.WaitForTransactions()
+			err = s.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("Adding Keepers and a job", func() {
@@ -137,7 +137,7 @@ var _ = Describe("Keeper suite", func() {
 				FromAddress:     na,
 			})
 			Expect(err).ShouldNot(HaveOccurred())
-			err = s.Client.WaitForTransactions()
+			err = s.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 	})

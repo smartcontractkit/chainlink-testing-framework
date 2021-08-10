@@ -27,7 +27,7 @@ func FundChainlinkNodes(
 			return err
 		}
 	}
-	return blockchain.WaitForTransactions()
+	return blockchain.WaitForEvents()
 }
 
 // ChainlinkNodeAddresses will return all the on-chain wallet addresses for a set of Chainlink nodes

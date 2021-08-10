@@ -48,7 +48,7 @@ var _ = Describe("Flux monitor suite", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			err = fluxInstance.UpdateAvailableFunds(context.Background(), s.Wallets.Default())
 			Expect(err).ShouldNot(HaveOccurred())
-			err = s.Client.WaitForTransactions()
+			err = s.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("Funding Chainlink nodes", func() {
@@ -74,7 +74,7 @@ var _ = Describe("Flux monitor suite", func() {
 					RestartDelayRounds: 0,
 				})
 			Expect(err).ShouldNot(HaveOccurred())
-			err = s.Client.WaitForTransactions()
+			err = s.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 			oracles, err := fluxInstance.GetOracles(context.Background())
 			Expect(err).ShouldNot(HaveOccurred())
