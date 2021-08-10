@@ -2,12 +2,12 @@ package contracts
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
@@ -101,7 +101,7 @@ var _ = Describe("OCR Feed", func() {
 					P2PBootstrapPeers:  []client.Chainlink{bootstrapNode},
 					KeyBundleID:        nodeOCRKeyId,
 					TransmitterAddress: nodeTransmitterAddress,
-					ObservationSource:  client.ObservationSourceSpec(adapter.ClusterURL() + "/five"),
+					ObservationSource:  client.ObservationSourceSpec(fmt.Sprintf("%s/variable", adapter.ClusterURL())),
 				}
 				_, err = chainlinkNodes[index].CreateJob(ocrSpec)
 				Expect(err).ShouldNot(HaveOccurred())
@@ -109,34 +109,39 @@ var _ = Describe("OCR Feed", func() {
 		})
 
 		By("Checking OCR rounds", func() {
-			err := ocrInstance.RequestNewRound(defaultWallet)
+			roundTimeout := time.Minute * 2
+			err := adapter.SetVariable(5)
+			Expect(err).ShouldNot(HaveOccurred())
+			err = ocrInstance.RequestNewRound(defaultWallet)
 			Expect(err).ShouldNot(HaveOccurred())
 			err = suiteSetup.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 
-			// Wait for a round
-			for i := 0; i < 10; i++ {
-				round, err := ocrInstance.GetLatestRound(context.Background())
-				Expect(err).ShouldNot(HaveOccurred())
-				log.Info().
-					Str("Contract Address", ocrInstance.Address()).
-					Str("Answer", round.Answer.String()).
-					Str("Round ID", round.RoundId.String()).
-					Str("Answered in Round", round.AnsweredInRound.String()).
-					Str("Started At", round.StartedAt.String()).
-					Str("Updated At", round.UpdatedAt.String()).
-					Msg("Latest Round Data")
-				if round.RoundId.Cmp(big.NewInt(0)) > 0 {
-					break // Break when OCR round processes
-				}
-				time.Sleep(time.Second)
-			}
+			// Wait for the first round
+			ocrRound := contracts.NewOffchainAggregatorRoundConfirmer(ocrInstance, big.NewInt(1), roundTimeout)
+			suiteSetup.Client.AddHeaderEventSubscription(ocrInstance.Address(), ocrRound)
+			err = suiteSetup.Client.WaitForEvents()
+			Expect(err).ShouldNot(HaveOccurred())
 
 			// Check answer is as expected
 			answer, err := ocrInstance.GetLatestAnswer(context.Background())
-			log.Info().Str("Answer", answer.String()).Msg("Final Answer")
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(answer.Int64()).Should(Equal(int64(5)))
+
+			// Change adapter answer
+			err = adapter.SetVariable(10)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			// Wait for the second round
+			ocrRound = contracts.NewOffchainAggregatorRoundConfirmer(ocrInstance, big.NewInt(2), roundTimeout)
+			suiteSetup.Client.AddHeaderEventSubscription(ocrInstance.Address(), ocrRound)
+			err = suiteSetup.Client.WaitForEvents()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			// Check answer is as expected
+			answer, err = ocrInstance.GetLatestAnswer(context.Background())
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(answer.Int64()).Should(Equal(int64(10)))
 		})
 	})
 
