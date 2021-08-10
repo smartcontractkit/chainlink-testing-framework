@@ -77,7 +77,7 @@ func (e *EthereumClient) Get() interface{} {
 }
 
 // ParallelTransactions when enabled, sends the transaction without waiting for transaction confirmations. The hashes
-// are then stored within the client and confirmations can be waited on by calling WaitForTransactions.
+// are then stored within the client and confirmations can be waited on by calling WaitForEvents.
 // When disabled, the minimum confirmations are waited on when the transaction is sent, so parallelisation is disabled.
 func (e *EthereumClient) ParallelTransactions(enabled bool) {
 	e.queueTransactions = enabled
@@ -309,14 +309,14 @@ func (e *EthereumClient) GetHeaderSubscriptions() map[string]HeaderEventSubscrip
 	return newMap
 }
 
-// AddHeaderSubscription adds a new header subscriber within the client to receive new headers
+// AddHeaderEventSubscription adds a new header subscriber within the client to receive new headers
 func (e *EthereumClient) AddHeaderEventSubscription(key string, subscriber HeaderEventSubscription) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 	e.headerSubscriptions[key] = subscriber
 }
 
-// DeleteHeaderSubscription removes a header subscriber from the map
+// DeleteHeaderEventSubscription removes a header subscriber from the map
 func (e *EthereumClient) DeleteHeaderEventSubscription(key string) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
@@ -498,3 +498,4 @@ func (i *InstantConfirmations) ReceiveHeader(*types.Header) error {
 func (i *InstantConfirmations) Wait() error {
 	return nil
 }
+

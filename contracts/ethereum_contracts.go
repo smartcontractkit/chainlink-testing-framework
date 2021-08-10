@@ -3,13 +3,14 @@ package contracts
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
+	"github.com/ethereum/go-ethereum/core/types"
 	"math/big"
+	"time"
 
-	"github.com/avast/retry-go"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts/ethereum"
@@ -193,28 +194,6 @@ func (f *EthereumFluxAggregator) LatestRound(ctx context.Context) (*big.Int, err
 	return rID, nil
 }
 
-// AwaitNextRoundFinalized awaits for the next round to be finalized
-func (f *EthereumFluxAggregator) AwaitNextRoundFinalized(ctx context.Context) error {
-	lr, err := f.LatestRound(ctx)
-	if err != nil {
-		return err
-	}
-	log.Info().Int64("Round", lr.Int64()).Msg("Awaiting next round after")
-	if err := retry.Do(func() error {
-		newRound, err := f.LatestRound(ctx)
-		if err != nil {
-			return errors.Wrap(err, "failed to get round in retry loop")
-		}
-		if newRound.Cmp(lr) <= 0 {
-			return errors.New("awaiting new round")
-		}
-		return nil
-	}, retry.Attempts(60)); err != nil {
-		return err
-	}
-	return nil
-}
-
 func (f *EthereumFluxAggregator) WithdrawPayment(
 	ctx context.Context,
 	caller client.BlockchainWallet,
@@ -306,6 +285,63 @@ func (f *EthereumFluxAggregator) Description(ctxt context.Context) (string, erro
 		Context: ctxt,
 	}
 	return f.fluxAggregator.Description(opts)
+}
+
+// FluxAggregatorRoundConfirmer is a header subscription that awaits for a certain flux round to be completed
+type FluxAggregatorRoundConfirmer struct {
+	fluxInstance FluxAggregator
+	roundID      *big.Int
+	doneChan     chan struct{}
+	context      context.Context
+	cancel       context.CancelFunc
+}
+
+// NewFluxAggregatorRoundConfirmer provides a new instance of a FluxAggregatorRoundConfirmer
+func NewFluxAggregatorRoundConfirmer(
+	contract FluxAggregator,
+	roundID *big.Int,
+	timeout time.Duration,
+) *FluxAggregatorRoundConfirmer {
+	ctx, ctxCancel := context.WithTimeout(context.Background(), timeout)
+	return &FluxAggregatorRoundConfirmer{
+		fluxInstance: contract,
+		roundID:      roundID,
+		doneChan:     make(chan struct{}),
+		context:      ctx,
+		cancel:       ctxCancel,
+	}
+}
+
+// ReceiveHeader will query the latest FluxAggregator round and check to see whether the round has confirmed
+func (f *FluxAggregatorRoundConfirmer) ReceiveHeader(*types.Header) error {
+	lr, err := f.fluxInstance.LatestRound(context.Background())
+	if err != nil {
+		return err
+	}
+	fluxLog := log.Info().
+		Str("Contract Address", f.fluxInstance.Address()).
+		Int64("Current Round", lr.Int64()).
+		Int64("Waiting for Round", f.roundID.Int64())
+	if lr.Cmp(f.roundID) >= 0 {
+		fluxLog.Msg("FluxAggregator round completed")
+		f.doneChan <- struct{}{}
+	} else {
+		fluxLog.Msg("Waiting for FluxAggregator round")
+	}
+	return nil
+}
+
+// Wait is a blocking function that will wait until the round has confirmed, and timeout if the deadline has passed
+func (f *FluxAggregatorRoundConfirmer) Wait() error {
+	for {
+		select {
+		case <-f.doneChan:
+			f.cancel()
+			return nil
+		case <-f.context.Done():
+			return fmt.Errorf("timeout waiting for flux round to confirm: %d", f.roundID)
+		}
+	}
 }
 
 // EthereumLinkToken represents a LinkToken address

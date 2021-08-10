@@ -41,7 +41,6 @@ type SetOraclesOptions struct {
 type FluxAggregator interface {
 	Address() string
 	Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Float) error
-	AwaitNextRoundFinalized(ctx context.Context) error
 	LatestRound(ctx context.Context) (*big.Int, error)
 	GetContractData(ctxt context.Context) (*FluxAggregatorData, error)
 	UpdateAvailableFunds(ctx context.Context, fromWallet client.BlockchainWallet) error
