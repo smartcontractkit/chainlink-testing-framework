@@ -177,8 +177,9 @@ func (env *k8sEnvironment) GetServiceDetails(remotePort uint16) (*ServiceDetails
 	}
 }
 
-// WriteLogs dumps all the pod logs within the environment into local log files, used near exclusively on test failure
-func (env *k8sEnvironment) WriteLogs(testLogFolder string) {
+// WriteArtifacts dumps pod logs and DB info within the environment into local log files,
+// used near exclusively on test failure
+func (env *k8sEnvironment) WriteArtifacts(testLogFolder string) {
 	// Get logs from K8s pods
 	podsClient := env.k8sClient.CoreV1().Pods(env.namespace.Name)
 	podsList, err := podsClient.List(context.Background(), metaV1.ListOptions{})
@@ -230,7 +231,7 @@ func (env *k8sEnvironment) writeDatabaseContents(pod coreV1.Pod, podFolder strin
 			}
 
 			// Write pg_dump
-			logFile, err := os.Create(filepath.Join(podFolder, container.Name+"_dump") + ".log")
+			logFile, err := os.Create(filepath.Join(podFolder, fmt.Sprintf("%s_dump.sql", container.Name)))
 			if err != nil {
 				return err
 			}
