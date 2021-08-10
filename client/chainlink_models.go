@@ -247,6 +247,36 @@ func (d *PipelineSpec) String() (string, error) {
 	return marshallTemplate(d, "API call pipeline template", sourceString)
 }
 
+// VRFTxPipelineSpec VRF request with tx callback
+type VRFTxPipelineSpec struct {
+	Address string
+}
+
+func (d *VRFTxPipelineSpec) Type() string {
+	return "vrf_pipeline"
+}
+
+func (d *VRFTxPipelineSpec) String() (string, error) {
+	sourceString := `
+decode_log   [type=ethabidecodelog
+              abi="RandomnessRequest(bytes32 keyHash,uint256 seed,bytes32 indexed jobID,address sender,uint256 fee,bytes32 requestID)"
+              data="$(jobRun.logData)"
+              topics="$(jobRun.logTopics)"]
+vrf          [type=vrf
+              publicKey="$(jobSpec.publicKey)"
+              requestBlockHash="$(jobRun.logBlockHash)"
+              requestBlockNumber="$(jobRun.logBlockNumber)"
+              topics="$(jobRun.logTopics)"]
+encode_tx    [type=ethabiencode
+              abi="fulfillRandomnessRequest(bytes proof)"
+              data="{\\"proof\\": $(vrf)}"]
+submit_tx  [type=ethtx to="{{.Address}}"
+            data="$(encode_tx)"
+            txMeta="{\\"requestTxHash\\": $(jobRun.logTxHash),\\"requestID\\": $(decode_log.requestID),\\"jobID\\": $(jobSpec.databaseID)}"]
+decode_log->vrf->encode_tx->submit_tx`
+	return marshallTemplate(d, "VRF pipeline template", sourceString)
+}
+
 // DirectRequestTxPipelineSpec oracle request with tx callback
 type DirectRequestTxPipelineSpec struct {
 	URL         string
@@ -495,6 +525,7 @@ type VRFJobSpec struct {
 	PublicKey          string `toml:"publicKey"`          // Public key of the proving key
 	Confirmations      int    `toml:"confirmations"`      // Number of block confirmations to wait for
 	ExternalJobID      string `toml:"externalJobID"`
+	ObservationSource  string `toml:"observationSource"` // List of commands for the chainlink node
 }
 
 func (v *VRFJobSpec) Type() string { return "vrf" }
@@ -506,6 +537,9 @@ coordinatorAddress = "{{.CoordinatorAddress}}"
 publicKey          = "{{.PublicKey}}"
 confirmations      = {{.Confirmations}}
 externalJobID     = "{{.ExternalJobID}}"
+observationSource = """
+{{.ObservationSource}}
+"""
 `
 	return marshallTemplate(v, "VRF Job", vrfTemplateString)
 }

@@ -59,12 +59,18 @@ var _ = Describe("VRF suite", func() {
 				log.Debug().Interface("Key JSON", nodeKeys).Msg("Created proving key")
 				pubKeyCompressed := nodeKeys.Data[0].ID
 				jobUUID := uuid.NewV4()
+				os := &client.VRFTxPipelineSpec{
+					Address: coordinator.Address(),
+				}
+				ost, err := os.String()
+				Expect(err).ShouldNot(HaveOccurred())
 				_, err = n.CreateJob(&client.VRFJobSpec{
 					Name:               "vrf",
 					CoordinatorAddress: coordinator.Address(),
 					PublicKey:          pubKeyCompressed,
 					Confirmations:      1,
 					ExternalJobID:      jobUUID.String(),
+					ObservationSource:  ost,
 				})
 				Expect(err).ShouldNot(HaveOccurred())
 
