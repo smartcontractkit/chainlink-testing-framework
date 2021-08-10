@@ -26,6 +26,7 @@ var _ = Describe("Flux monitor suite", func() {
 		fluxInstance  contracts.FluxAggregator
 		err           error
 	)
+	fluxRoundTimeout := time.Minute * 2
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
@@ -48,7 +49,7 @@ var _ = Describe("Flux monitor suite", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			err = fluxInstance.UpdateAvailableFunds(context.Background(), s.Wallets.Default())
 			Expect(err).ShouldNot(HaveOccurred())
-			err = s.Client.WaitForTransactions()
+			err = s.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("Funding Chainlink nodes", func() {
@@ -74,7 +75,7 @@ var _ = Describe("Flux monitor suite", func() {
 					RestartDelayRounds: 0,
 				})
 			Expect(err).ShouldNot(HaveOccurred())
-			err = s.Client.WaitForTransactions()
+			err = s.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 			oracles, err := fluxInstance.GetOracles(context.Background())
 			Expect(err).ShouldNot(HaveOccurred())
@@ -99,35 +100,39 @@ var _ = Describe("Flux monitor suite", func() {
 		It("performs two rounds and has withdrawable payments for oracles", func() {
 			err = adapter.SetVariable(5)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = fluxInstance.AwaitNextRoundFinalized(context.Background())
+
+			fluxRound := contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(1), fluxRoundTimeout)
+			s.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRound)
+			err = s.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
-			{
-				data, err := fluxInstance.GetContractData(context.Background())
-				Expect(err).ShouldNot(HaveOccurred())
-				log.Info().Interface("data", data).Msg("Round data")
-				Expect(len(data.Oracles)).Should(Equal(3))
-				Expect(data.LatestRoundData.Answer.Int64()).Should(Equal(int64(5)))
-				Expect(data.LatestRoundData.RoundId.Int64()).Should(Equal(int64(1)))
-				Expect(data.LatestRoundData.AnsweredInRound.Int64()).Should(Equal(int64(1)))
-				Expect(data.AvailableFunds.Int64()).Should(Equal(int64(999999999999999997)))
-				Expect(data.AllocatedFunds.Int64()).Should(Equal(int64(3)))
-			}
+
+			data, err := fluxInstance.GetContractData(context.Background())
+			Expect(err).ShouldNot(HaveOccurred())
+			log.Info().Interface("data", data).Msg("Round data")
+			Expect(len(data.Oracles)).Should(Equal(3))
+			Expect(data.LatestRoundData.Answer.Int64()).Should(Equal(int64(5)))
+			Expect(data.LatestRoundData.RoundId.Int64()).Should(Equal(int64(1)))
+			Expect(data.LatestRoundData.AnsweredInRound.Int64()).Should(Equal(int64(1)))
+			Expect(data.AvailableFunds.Int64()).Should(Equal(int64(999999999999999997)))
+			Expect(data.AllocatedFunds.Int64()).Should(Equal(int64(3)))
 
 			err = adapter.SetVariable(6)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = fluxInstance.AwaitNextRoundFinalized(context.Background())
+
+			fluxRound = contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(2), fluxRoundTimeout)
+			s.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRound)
+			err = s.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
-			{
-				data, err := fluxInstance.GetContractData(context.Background())
-				Expect(err).ShouldNot(HaveOccurred())
-				Expect(len(data.Oracles)).Should(Equal(3))
-				Expect(data.LatestRoundData.Answer.Int64()).Should(Equal(int64(6)))
-				Expect(data.LatestRoundData.RoundId.Int64()).Should(Equal(int64(2)))
-				Expect(data.LatestRoundData.AnsweredInRound.Int64()).Should(Equal(int64(2)))
-				Expect(data.AvailableFunds.Int64()).Should(Equal(int64(999999999999999994)))
-				Expect(data.AllocatedFunds.Int64()).Should(Equal(int64(6)))
-				log.Info().Interface("data", data).Msg("Round data")
-			}
+
+			data, err = fluxInstance.GetContractData(context.Background())
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(len(data.Oracles)).Should(Equal(3))
+			Expect(data.LatestRoundData.Answer.Int64()).Should(Equal(int64(6)))
+			Expect(data.LatestRoundData.RoundId.Int64()).Should(Equal(int64(2)))
+			Expect(data.LatestRoundData.AnsweredInRound.Int64()).Should(Equal(int64(2)))
+			Expect(data.AvailableFunds.Int64()).Should(Equal(int64(999999999999999994)))
+			Expect(data.AllocatedFunds.Int64()).Should(Equal(int64(6)))
+			log.Info().Interface("data", data).Msg("Round data")
 
 			for _, oracleAddr := range nodeAddresses {
 				payment, _ := fluxInstance.WithdrawablePayment(context.Background(), oracleAddr)

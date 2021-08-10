@@ -4,6 +4,7 @@ package client
 import (
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/core/types"
 	"math/big"
 	"strings"
 
@@ -21,8 +22,11 @@ type BlockchainClient interface {
 	Get() interface{}
 	Fund(fromWallet BlockchainWallet, toAddress string, nativeAmount, linkAmount *big.Float) error
 	ParallelTransactions(enabled bool)
-	WaitForTransactions() error
 	Close() error
+
+	AddHeaderEventSubscription(key string, subscriber HeaderEventSubscription)
+	DeleteHeaderEventSubscription(key string)
+	WaitForEvents() error
 }
 
 // NewBlockchainClient returns an instantiated network client implementation based on the network configuration given
@@ -218,4 +222,10 @@ func walletSliceIndexInRange(wallets []BlockchainWallet, i int) error {
 		return fmt.Errorf("invalid index in list of wallets")
 	}
 	return nil
+}
+
+// HeaderEventSubscription is an interface for allowing callbacks when the client receives a new header
+type HeaderEventSubscription interface {
+	ReceiveHeader(header *types.Header) error
+	Wait() error
 }

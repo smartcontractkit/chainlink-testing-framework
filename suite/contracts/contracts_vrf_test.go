@@ -53,7 +53,7 @@ var _ = Describe("VRF suite", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			_, err = s.Deployer.DeployVRFContract(s.Wallets.Default())
 			Expect(err).ShouldNot(HaveOccurred())
-			err = s.Client.WaitForTransactions()
+			err = s.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("Creating jobs and registering proving keys", func() {
