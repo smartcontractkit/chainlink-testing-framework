@@ -98,7 +98,7 @@ func (s *DefaultSuiteSetup) TearDown() func() {
 			}
 		}
 
-		s.Env.WriteLogs(testLogFolder)
+		s.Env.WriteArtifacts(testLogFolder)
 		log.Info().Str("Log Folder", testLogFolder).Msg("Wrote environment logs")
 	}
 	return func() {
