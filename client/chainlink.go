@@ -52,7 +52,9 @@ type Chainlink interface {
 	RemoteIP() string
 	SetSessionCookie() error
 
-	// Used for testing
+	SetPageSize(size int)
+
+	// SetClient is used for testing
 	SetClient(client *http.Client)
 }
 
@@ -60,6 +62,8 @@ type chainlink struct {
 	HttpClient *http.Client
 	Config     *ChainlinkConfig
 	Cookies    []*http.Cookie
+
+	pageSize int
 }
 
 // NewChainlink creates a new chainlink model using a provided config
@@ -67,6 +71,7 @@ func NewChainlink(c *ChainlinkConfig, httpClient *http.Client) (Chainlink, error
 	cl := &chainlink{
 		Config:     c,
 		HttpClient: httpClient,
+		pageSize:   25,
 	}
 	return cl, cl.SetSessionCookie()
 }
@@ -318,6 +323,11 @@ func (c *chainlink) SetClient(client *http.Client) {
 	c.HttpClient = client
 }
 
+// SetPageSize globally sets the page
+func (c *chainlink) SetPageSize(size int) {
+	c.pageSize = size
+}
+
 func (c *chainlink) doRaw(
 	method,
 	endpoint string,
@@ -337,6 +347,10 @@ func (c *chainlink) doRaw(
 	for _, cookie := range c.Cookies {
 		req.AddCookie(cookie)
 	}
+
+	q := req.URL.Query()
+	q.Add("size", fmt.Sprint(c.pageSize))
+	req.URL.RawQuery = q.Encode()
 
 	resp, err := client.Do(req)
 	if err != nil {
