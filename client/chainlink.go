@@ -52,13 +52,16 @@ type Chainlink interface {
 	RemoteIP() string
 	SetSessionCookie() error
 
-	// Used for testing
+	SetPageSize(size int)
+
+	// SetClient is used for testing
 	SetClient(client *http.Client)
 }
 
 type chainlink struct {
 	*BasicHTTPClient
 	Config *ChainlinkConfig
+	pageSize int
 }
 
 // NewChainlink creates a new chainlink model using a provided config
@@ -66,6 +69,7 @@ func NewChainlink(c *ChainlinkConfig, httpClient *http.Client) (Chainlink, error
 	cl := &chainlink{
 		Config:          c,
 		BasicHTTPClient: NewBasicHTTPClient(httpClient, c.URL),
+		pageSize:   25,
 	}
 	return cl, cl.SetSessionCookie()
 }
@@ -338,4 +342,89 @@ func (c *chainlink) SetSessionCookie() error {
 // SetClient overrides the http client, used for mocking out the Chainlink server for unit testing
 func (c *chainlink) SetClient(client *http.Client) {
 	c.HttpClient = client
+}
+
+// SetPageSize globally sets the page
+func (c *chainlink) SetPageSize(size int) {
+	c.pageSize = size
+}
+
+func (c *chainlink) doRaw(
+	method,
+	endpoint string,
+	body []byte, obj interface{},
+	expectedStatusCode int,
+) (*http.Response, error) {
+	client := c.HttpClient
+
+	req, err := http.NewRequest(
+		method,
+		fmt.Sprintf("%s%s", c.Config.URL, endpoint),
+		bytes.NewBuffer(body),
+	)
+	if err != nil {
+		return nil, err
+	}
+	for _, cookie := range c.Cookies {
+		req.AddCookie(cookie)
+	}
+
+	q := req.URL.Query()
+	q.Add("size", fmt.Sprint(c.pageSize))
+	req.URL.RawQuery = q.Encode()
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return resp, err
+	}
+
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"error while reading response: %v\nURL: %s\nresponse received: %s",
+			err,
+			c.Config.URL,
+			string(b),
+		)
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		return resp, ErrNotFound
+	} else if resp.StatusCode == http.StatusUnprocessableEntity {
+		return resp, ErrUnprocessableEntity
+	} else if resp.StatusCode != expectedStatusCode {
+		return resp, fmt.Errorf(
+			"unexpected response code, got %d, expected 200\nURL: %s\nresponse received: %s",
+			resp.StatusCode,
+			c.Config.URL,
+			string(b),
+		)
+	}
+
+	if obj == nil {
+		return resp, err
+	}
+	err = json.Unmarshal(b, &obj)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"error while unmarshaling response: %v\nURL: %s\nresponse received: %s",
+			err,
+			c.Config.URL,
+			string(b),
+		)
+	}
+	return resp, err
+}
+
+func (c *chainlink) do(
+	method,
+	endpoint string,
+	body interface{},
+	obj interface{},
+	expectedStatusCode int,
+) (*http.Response, error) {
+	b, err := json.Marshal(body)
+	if body != nil && err != nil {
+		return nil, err
+	}
+	return c.doRaw(method, endpoint, b, obj, expectedStatusCode)
 }

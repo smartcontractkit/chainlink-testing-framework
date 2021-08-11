@@ -46,7 +46,7 @@ networks:
         minimum_confirmations: 1
         gas_estimation_buffer: 100000
         block_gas_limit: 40000000
-    ethereum_geth_volume:
+    ethereum_geth_performance:
         name: "Ethereum Geth dev"
         chain_id: 1337
         type: evm

@@ -39,15 +39,17 @@ type FluxAggregatorSetOraclesOptions struct {
 }
 
 type SubmissionEvent struct {
+	Contract    common.Address
 	Submission  *big.Int
 	Round       uint32
 	BlockNumber uint64
+	Oracle      common.Address
 }
 
 type FluxAggregator interface {
 	Address() string
 	Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Float) error
-	LatestRoundID(ctx context.Context) (*big.Int, error)
+	LatestRoundID(ctx context.Context, blockNumber *big.Int) (*big.Int, error)
 	LatestRoundData(ctx context.Context) (RoundData, error)
 	GetContractData(ctxt context.Context) (*FluxAggregatorData, error)
 	UpdateAvailableFunds(ctx context.Context, fromWallet client.BlockchainWallet) error
@@ -59,7 +61,7 @@ type FluxAggregator interface {
 	SetOracles(client.BlockchainWallet, FluxAggregatorSetOraclesOptions) error
 	Description(ctxt context.Context) (string, error)
 	SetRequesterPermissions(ctx context.Context, fromWallet client.BlockchainWallet, addr common.Address, authorized bool, roundsDelay uint32) error
-	FilterRoundSubmissions(ctx context.Context, submissionVal *big.Int, roundID int) ([]*SubmissionEvent, error)
+	WatchSubmissionReceived(ctx context.Context, eventChan chan <-*SubmissionEvent) error
 }
 
 type LinkToken interface {

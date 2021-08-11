@@ -3,12 +3,12 @@ package client
 import (
 	"context"
 	"fmt"
+	"golang.org/x/sync/errgroup"
 	"math/big"
 	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
 	ethContracts "github.com/smartcontractkit/integrations-framework/contracts/ethereum"
@@ -296,7 +296,6 @@ func (e *EthereumClient) TransactionCallMessage(
 	if err != nil {
 		return nil, err
 	}
-	log.Debug().Str("Suggested Gas Price", gasPrice.String()).Send()
 	msg := ethereum.CallMsg{
 		From:     common.HexToAddress(from.Address()),
 		To:       &to,
@@ -305,7 +304,6 @@ func (e *EthereumClient) TransactionCallMessage(
 		Data:     data,
 	}
 	msg.Gas = e.Network.Config().TransactionLimit + e.Network.Config().GasEstimationBuffer
-	log.Debug().Uint64("Gas Limit", e.Network.Config().TransactionLimit).Uint64("Limit + Buffer", msg.Gas).Send()
 	return &msg, nil
 }
 
@@ -344,26 +342,18 @@ func (e *EthereumClient) TransactionOpts(
 
 // WaitForEvents is a blocking function that waits for all event subscriptions that have been queued within the client.
 func (e *EthereumClient) WaitForEvents() error {
-	var errGroup error
+	queuedEvents := e.GetHeaderSubscriptions()
+	g := errgroup.Group{}
 
-	queuedTx := e.GetHeaderSubscriptions()
-	wg := sync.WaitGroup{}
-	wg.Add(len(queuedTx))
-
-	for txHash, sub := range queuedTx {
+	for events, sub := range queuedEvents {
 		sub := sub
-		txHash := txHash
-		go func() {
-			defer wg.Done()
-			if err := sub.Wait(); err != nil {
-				errGroup = multierror.Append(errGroup, err)
-			}
-			e.DeleteHeaderEventSubscription(txHash)
-		}()
+		txHash := events
+		g.Go(func() error {
+			defer e.DeleteHeaderEventSubscription(txHash)
+			return sub.Wait()
+		})
 	}
-	wg.Wait()
-
-	return errGroup
+	return g.Wait()
 }
 
 // GetHeaderSubscriptions returns a duplicate map of the queued transactions
@@ -421,31 +411,34 @@ func (e *EthereumClient) subscribeToNewHeaders() error {
 		case err := <-subscription.Err():
 			return err
 		case header := <-headerChannel:
-			log.Debug().
-				Str("Network", e.Network.ID()).
-				Str("Block Number", header.Number.String()).
-				Msg("Received block header")
-
-			subs := e.GetHeaderSubscriptions()
-			block, err := e.Client.BlockByNumber(context.Background(), header.Number)
-			if err != nil {
-				return err
-			}
-			wg := &sync.WaitGroup{}
-			wg.Add(len(subs))
-			for _, sub := range subs {
-				sub := sub
-				go func() {
-					defer wg.Done()
-					if err := sub.ReceiveBlock(block); err != nil {
-						log.Error().Msgf("Error while sending header to receiver: %v", err)
-					}
-				}()
-			}
-			wg.Wait()
+			e.receiveHeader(header)
 		case <-e.doneChan:
 			return nil
 		}
+	}
+}
+
+func (e *EthereumClient) receiveHeader(header *types.Header) {
+	log.Debug().
+		Str("Network", e.Network.ID()).
+		Str("Block Number", header.Number.String()).
+		Msg("Received block header")
+
+	subs := e.GetHeaderSubscriptions()
+	block, err := e.Client.BlockByNumber(context.Background(), header.Number)
+	if err != nil {
+		log.Err(fmt.Errorf("error fetching block by number: %v", err))
+	}
+
+	g := errgroup.Group{}
+	for _, sub := range subs {
+		sub := sub
+		g.Go(func() error {
+			return sub.ReceiveBlock(block)
+		})
+	}
+	if err := g.Wait(); err != nil {
+		log.Err(fmt.Errorf("error on sending block to recivers: %v", err))
 	}
 }
 
