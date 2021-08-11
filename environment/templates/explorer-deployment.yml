@@ -1,4 +1,4 @@
-objectmeta:
+metadata:
   name: explorer-mock
 spec:
   selector:
@@ -13,11 +13,16 @@ spec:
       - name: explorer-mock
         image: f4hrenh9it/explorer-mock:latest
         ports:
-        - containerport: 4321
-        readinessprobe:
-          handler:
-            httpget:
-              path: /count
-              port:
-                intval: 4321
-          periodseconds: 2
+        - containerPort: 4321
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "500m"
+          limits:
+            memory: "512Mi"
+            cpu: "1024m"
+        readinessProbe:
+          httpGet:
+            path: /count
+            port: 4321
+          periodSeconds: 2

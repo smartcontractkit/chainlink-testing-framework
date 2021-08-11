@@ -18,7 +18,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/environment"
 )
 
-var _ = FDescribe("Flux monitor external validator suite", func() {
+var _ = Describe("Flux monitor external validator suite", func() {
 	var (
 		s                  *actions.DefaultSuiteSetup
 		adapter            environment.ExternalAdapter

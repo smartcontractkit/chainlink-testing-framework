@@ -98,7 +98,6 @@ func NewGethManifest() *K8sManifest {
 
 // NewExplorerManifest is the k8s manifest that when used will deploy explorer mock service
 func NewExplorerManifest() *K8sManifest {
-	// ws://explorer_stub:4321
 	return &K8sManifest{
 		id:             "explorer",
 		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/explorer-deployment.yml"),
