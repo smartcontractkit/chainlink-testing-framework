@@ -1,11 +1,10 @@
-objectmeta:
+metadata:
   name: explorer-mock
 spec:
   ports:
   - name: access
     port: 4321
-    targetport:
-      intval: 4321
+    targetPort: 4321
   selector:
     app: explorer-mock
   type: ClusterIP

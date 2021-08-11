@@ -1,6 +1,6 @@
 package explorer
 
-// original pb here https://github.com/smartcontractkit/offchain-reporting/blob/master/lib/offchainreporting/internal/serialization/protobuf/cl_offchainreporting_telemetry.pb.go
+// original pb https://github.com/smartcontractkit/offchain-reporting/blob/master/lib/offchainreporting/internal/serialization/protobuf/cl_offchainreporting_telemetry.pb.go
 
 import (
 	reflect "reflect"
