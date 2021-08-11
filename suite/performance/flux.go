@@ -2,9 +2,9 @@ package performance
 
 import (
 	"context"
-	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/onsi/ginkgo"
+	"fmt"
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/client"
@@ -106,9 +106,6 @@ func (f *FluxTest) Run() error {
 	if err != nil {
 		return err
 	}
-	if err := f.adapter.SetVariable(0); err != nil {
-		return err
-	}
 	g.Go(func() error {
 		return f.watchSubmissions(ctx, chainlinkMap)
 	})
@@ -116,15 +113,11 @@ func (f *FluxTest) Run() error {
 	if err := f.createChainlinkJobs(); err != nil {
 		return err
 	}
-	if err := f.waitForAllContractRounds(big.NewInt(1)); err != nil {
-		return err
-	}
-
 	for i := 1; int64(i) <= f.TestOptions.NumberOfRounds; i++ {
 		if err := f.adapter.SetVariable(i); err != nil {
 			return err
 		}
-		if err := f.waitForAllContractRounds(big.NewInt(int64(i))); err != nil {
+		if err := f.waitForAllContractRounds(big.NewInt(int64(i+1))); err != nil {
 			return err
 		}
 	}
@@ -199,19 +192,20 @@ func (f *FluxTest) deployContract(contractChan chan<- contracts.FluxAggregator) 
 
 func (f *FluxTest) createChainlinkJobs() error {
 	jobsChan := make(chan FluxJobMap, len(f.chainlinkClients)*len(f.contractInstances))
-	g := errgroup.Group{}
 
 	for _, contract := range f.contractInstances {
 		contract := contract
+		g := errgroup.Group{}
+
 		for _, node := range f.chainlinkClients {
 			node := node
 			g.Go(func() error {
 				return f.createChainlinkJob(contract, node, jobsChan)
 			})
 		}
-	}
-	if err := g.Wait(); err != nil {
-		return err
+		if err := g.Wait(); err != nil {
+			return err
+		}
 	}
 	close(jobsChan)
 
@@ -441,14 +435,14 @@ func (f *FluxTest) calculateLatencies(b ginkgo.Benchmarker) error {
 		for contract, contractResults := range testResults {
 			for node, nodeResults := range contractResults {
 				if nodeResults.StartTime.IsZero() {
-					log.Info().
+					log.Warn().
 						Int64("Round ID", roundID).
 						Str("Contract", contract.Address()).
 						Str("Node", node.URL()).
 						Msg("Start time zero")
 				}
 				if nodeResults.EndTime.IsZero() {
-					log.Info().
+					log.Warn().
 						Int64("Round ID", roundID).
 						Str("Contract", contract.Address()).
 						Str("Node", node.URL()).
@@ -456,7 +450,7 @@ func (f *FluxTest) calculateLatencies(b ginkgo.Benchmarker) error {
 				}
 				latency := nodeResults.EndTime.Sub(nodeResults.StartTime)
 				if latency.Seconds() < 0 {
-					log.Info().
+					log.Warn().
 						Time("Start", nodeResults.StartTime).
 						Time("End", nodeResults.EndTime).
 						Int64("Round ID", roundID).
