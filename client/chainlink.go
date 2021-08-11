@@ -3,7 +3,6 @@ package client
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"math/big"
@@ -12,9 +11,6 @@ import (
 
 	"github.com/rs/zerolog/log"
 )
-
-var ErrNotFound = errors.New("unexpected response code, got 404")
-var ErrUnprocessableEntity = errors.New("unexpected response code, got 422")
 
 var OneLINK = big.NewFloat(1e18)
 
@@ -63,18 +59,16 @@ type Chainlink interface {
 }
 
 type chainlink struct {
-	HttpClient *http.Client
-	Config     *ChainlinkConfig
-	Cookies    []*http.Cookie
-
+	*BasicHTTPClient
+	Config *ChainlinkConfig
 	pageSize int
 }
 
 // NewChainlink creates a new chainlink model using a provided config
 func NewChainlink(c *ChainlinkConfig, httpClient *http.Client) (Chainlink, error) {
 	cl := &chainlink{
-		Config:     c,
-		HttpClient: httpClient,
+		Config:          c,
+		BasicHTTPClient: NewBasicHTTPClient(httpClient, c.URL),
 		pageSize:   25,
 	}
 	return cl, cl.SetSessionCookie()
@@ -331,7 +325,7 @@ func (c *chainlink) SetSessionCookie() error {
 	if len(resp.Cookies()) == 0 {
 		return fmt.Errorf("no cookie was returned after getting a session")
 	}
-	c.Cookies = resp.Cookies()
+	c.BasicHTTPClient.Cookies = resp.Cookies()
 
 	sessionFound := false
 	for _, cookie := range resp.Cookies() {

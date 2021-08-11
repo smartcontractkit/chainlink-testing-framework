@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/client"
+	"github.com/smartcontractkit/integrations-framework/config"
 	"net/http"
 	"net/url"
 )
@@ -23,6 +24,18 @@ type Environment interface {
 type ServiceDetails struct {
 	RemoteURL *url.URL
 	LocalURL  *url.URL
+}
+
+// GetExplorerMockClient will return all instantiated Explorer mock client for a given environment
+func GetExplorerMockClient(env Environment) (*client.ExplorerClient, error) {
+	sd, err := env.GetServiceDetails(ExplorerWSPort)
+	if err != nil {
+		return nil, err
+	}
+	forwardedURL := sd.LocalURL.String()
+	return client.NewExplorerMockClient(&config.ExplorerMockConfig{
+		URL: forwardedURL,
+	}), nil
 }
 
 // GetChainlinkClients will return all instantiated Chainlink clients for a given environment

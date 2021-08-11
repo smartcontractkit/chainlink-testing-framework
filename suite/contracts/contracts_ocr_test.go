@@ -3,6 +3,7 @@ package contracts
 import (
 	"context"
 	"fmt"
+	"github.com/rs/zerolog/log"
 	"math/big"
 	"time"
 
@@ -19,6 +20,7 @@ var _ = Describe("OCR Feed", func() {
 	var (
 		suiteSetup     *actions.DefaultSuiteSetup
 		chainlinkNodes []client.Chainlink
+		em             *client.ExplorerClient
 		adapter        environment.ExternalAdapter
 		defaultWallet  client.BlockchainWallet
 	)
@@ -31,6 +33,8 @@ var _ = Describe("OCR Feed", func() {
 				client.NewNetworkFromConfig,
 				tools.ProjectRoot,
 			)
+			Expect(err).ShouldNot(HaveOccurred())
+			em, err = environment.GetExplorerMockClient(suiteSetup.Env)
 			Expect(err).ShouldNot(HaveOccurred())
 			adapter, err = environment.GetExternalAdapter(suiteSetup.Env)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -145,6 +149,16 @@ var _ = Describe("OCR Feed", func() {
 			answer, err = ocrInstance.GetLatestAnswer(context.Background())
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(answer.Int64()).Should(Equal(int64(10)), "Latest answer from OCR is not as expected")
+		})
+		By("Checking explorer telemetry", func() {
+			mc, err := em.Count()
+			log.Debug().Interface("Telemetry", mc).Msg("Explorer messages count")
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(mc.Errors).Should(Equal(0))
+			Expect(mc.Broadcast).Should(BeNumerically(">", 1))
+			Expect(mc.Received).Should(BeNumerically(">", 1))
+			Expect(mc.Sent).Should(BeNumerically(">", 1))
+			Expect(mc.RoundStarted).Should(BeNumerically(">", 1))
 		})
 	})
 

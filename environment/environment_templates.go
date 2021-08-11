@@ -15,6 +15,7 @@ const (
 	ChainlinkWebPort = 6688
 	ChainlinkP2PPort = 6690
 	EVMRPCPort       = 8545
+	ExplorerWSPort   = 4321
 )
 
 // NewAdapterManifest is the k8s manifest that when used will deploy an external adapter to an environment
@@ -83,6 +84,25 @@ func NewGethManifest() *K8sManifest {
 			"rpcPort": EVMRPCPort,
 		},
 
+		SetValuesFunc: func(manifest *K8sManifest) error {
+			manifest.values["clusterURL"] = fmt.Sprintf(
+				"ws://%s:%d",
+				manifest.Service.Spec.ClusterIP,
+				manifest.Service.Spec.Ports[0].Port,
+			)
+			manifest.values["localURL"] = fmt.Sprintf("ws://127.0.0.1:%d", manifest.ports[0].Local)
+			return nil
+		},
+	}
+}
+
+// NewExplorerManifest is the k8s manifest that when used will deploy explorer mock service
+func NewExplorerManifest() *K8sManifest {
+	// ws://explorer_stub:4321
+	return &K8sManifest{
+		id:             "explorer",
+		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/explorer-deployment.yml"),
+		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/explorer-service.yml"),
 		SetValuesFunc: func(manifest *K8sManifest) error {
 			manifest.values["clusterURL"] = fmt.Sprintf(
 				"ws://%s:%d",
@@ -165,7 +185,8 @@ func NewChainlinkCluster(nodeCount int) K8sEnvSpecInit {
 	}
 	envWithGeth := K8sEnvSpecs{
 		0: NewGethManifest(),
-		1: chainlinkCluster,
+		1: NewExplorerManifest(),
+		2: chainlinkCluster,
 	}
 	envWithoutHardhat := K8sEnvSpecs{
 		0: chainlinkCluster,
