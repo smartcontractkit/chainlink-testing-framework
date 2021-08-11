@@ -14,7 +14,6 @@ import (
 	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/contracts"
 	"github.com/smartcontractkit/integrations-framework/environment"
-	"github.com/smartcontractkit/integrations-framework/tools"
 )
 
 const (
@@ -81,9 +80,29 @@ func DefaultLocalSetup(
 	}, nil
 }
 
+// DefaultLocalSetupSpecifyConfig gives a default testing environment setup with a specified config file path
+func DefaultLocalSetupSpecifyConfig(
+	envInitFunc environment.K8sEnvSpecInit,
+	initFunc client.BlockchainNetworkInit,
+	configPath string,
+) (*DefaultSuiteSetup, error) {
+	s, err := DefaultLocalSetup(envInitFunc, initFunc)
+	if err != nil {
+		return nil, err
+	}
+	specifiedConf, err := config.NewConfigWithPath(config.LocalConfig, configPath)
+	if err != nil {
+		return nil, err
+	}
+	s.Config = specifiedConf
+	return s, err
+}
+
+// TearDown checks for test failure, writes logs if there is one, then tears down the test environment, based on the
+// keep_environments config value
 func (s *DefaultSuiteSetup) TearDown() func() {
 	if ginkgo.CurrentGinkgoTestDescription().Failed { // If a test fails, dump logs
-		logsFolder := tools.ProjectRoot + "/logs/"
+		logsFolder := filepath.Join(s.Config.ConfigFileLocation, "/logs/")
 		if _, err := os.Stat(logsFolder); os.IsNotExist(err) {
 			if err = os.Mkdir(logsFolder, 0755); err != nil {
 				log.Err(err).Str("Log Folder", logsFolder).Msg("Error creating logs directory")
