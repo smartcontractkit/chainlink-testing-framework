@@ -1,0 +1,23 @@
+objectmeta:
+  name: explorer-mock
+spec:
+  selector:
+    matchlabels:
+      app: explorer-mock
+  template:
+    objectmeta:
+      labels:
+        app: explorer-mock
+    spec:
+      containers:
+      - name: explorer-mock
+        image: f4hrenh9it/explorer-mock:latest
+        ports:
+        - containerport: 4321
+        readinessprobe:
+          handler:
+            httpget:
+              path: /count
+              port:
+                intval: 4321
+          periodseconds: 2

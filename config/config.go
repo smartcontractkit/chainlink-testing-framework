@@ -145,3 +145,7 @@ type RetryConfig struct {
 	Attempts    uint          `mapstructure:"attempts" yaml:"attempts"`
 	LinearDelay time.Duration `mapstructure:"linear_delay" yaml:"linear_delay"`
 }
+
+type ExplorerMockConfig struct {
+	URL string
+}
