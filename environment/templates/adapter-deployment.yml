@@ -1,23 +1,21 @@
-objectmeta:
+metadata:
   name: dummy-adapter
 spec:
   selector:
     matchlabels:
       app: dummy-adapter
   template:
-    objectmeta:
+    metadata:
       labels:
         app: dummy-adapter
     spec:
       containers:
-      - name: dummy-adapter
-        image: kalverra/dummy-external-adapter
-        ports:
-        - containerport: {{ .Values.chainlinkCluster.adapter.apiPort }}
-        readinessprobe:
-          handler:
-            httpget:
+        - name: dummy-adapter
+          image: kalverra/dummy-external-adapter
+          ports:
+            - containerPort: {{ .Values.chainlinkCluster.adapter.apiPort }}
+          readinessProbe:
+            httpGet:
               path: /
-              port:
-                intval: 6060
-          periodseconds: 2
+              port: 6060
+            periodSeconds: 2
