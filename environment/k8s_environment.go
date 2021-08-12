@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/ghodss/yaml"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -17,11 +18,9 @@ import (
 
 	"github.com/avast/retry-go"
 	"github.com/hashicorp/go-multierror"
-	"github.com/smartcontractkit/integrations-framework/config"
-	"gopkg.in/yaml.v2"
-
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/client"
+	"github.com/smartcontractkit/integrations-framework/config"
 	appsV1 "k8s.io/api/apps/v1"
 	coreV1 "k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"

@@ -5,6 +5,7 @@ go 1.16
 require (
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/ethereum/go-ethereum v1.10.4
+	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/google/uuid v1.2.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/montanaflynn/stats v0.6.6

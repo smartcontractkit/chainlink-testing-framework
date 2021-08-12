@@ -1,5 +1,5 @@
-objectmeta:
-  generatename: chainlink-node-
+metadata:
+  generateName: chainlink-node-
 spec:
   template:
     metadata:
@@ -8,9 +8,8 @@ spec:
     spec:
       volumes:
       - name: node-secrets-volume
-        volumesource:
-          secret:
-            secretname: {{ .Manifest.Secret.ObjectMeta.Name }}
+        secret:
+          secretName: {{ .Manifest.Secret.ObjectMeta.Name }}
       containers:
       - name: node
         image: {{ .Config.Apps.Chainlink.Image }}:{{ .Config.Apps.Chainlink.Version }}
@@ -25,118 +24,86 @@ spec:
         - --vrfpassword=/etc/node-secrets-volume/apicredentials
         ports:
         - name: access
-          containerport: {{ .Values.chainlinkCluster.chainlink.webPort }}
+          containerPort: {{ .Values.chainlinkCluster.chainlink.webPort }}
         - name: p2p
-          containerport: {{ .Values.chainlinkCluster.chainlink.p2pPort }}
+          containerPort: {{ .Values.chainlinkCluster.chainlink.p2pPort }}
         env:
         - name: DATABASE_URL
           value: postgresql://postgres:node@127.0.0.1:5432/chainlink?sslmode=disable
-          valuefrom: null
         - name: DATABASE_NAME
           value: chainlink
-          valuefrom: null
         - name: ETH_URL
           value: {{ if .Values.evm.clusterURL }}{{ .Values.evm.clusterURL }}{{ else }}{{ .Network.URL }}{{ end }}
-          valuefrom: null
         - name: ETH_CHAIN_ID
           value: {{ .Network.ChainID }}
-          valuefrom: null
         - name: ALLOW_ORIGINS
           value: '*'
-          valuefrom: null
         - name: CHAINLINK_DEV
           value: "true"
-          valuefrom: null
         - name: CHAINLINK_PGPASSWORD
           value: node
-          valuefrom: null
         - name: CHAINLINK_PORT
           value: "6688"
-          valuefrom: null
         - name: CHAINLINK_TLS_PORT
           value: "0"
-          valuefrom: null
         - name: DEFAULT_HTTP_ALLOW_UNRESTRICTED_NETWORK_ACCESS
           value: "true"
-          valuefrom: null
         - name: ENABLE_BULLETPROOF_TX_MANAGER
           value: "true"
-          valuefrom: null
         - name: FEATURE_OFFCHAIN_REPORTING
           value: "true"
-          valuefrom: null
         - name: JSON_CONSOLE
           value: "false"
-          valuefrom: null
         - name: LOG_LEVEL
           value: info
-          valuefrom: null
         - name: MAX_EXPORT_HTML_THREADS
           value: "2"
-          valuefrom: null
         - name: MINIMUM_CONTRACT_PAYMENT
           value: "0"
-          valuefrom: null
         - name: OCR_TRACE_LOGGING
           value: "true"
-          valuefrom: null
         - name: P2P_LISTEN_IP
           value: 0.0.0.0
-          valuefrom: null
         - name: P2P_LISTEN_PORT
           value: "6690"
-          valuefrom: null
         - name: ROOT
           value: ./clroot
-          valuefrom: null
         - name: SECURE_COOKIES
           value: "false"
-          valuefrom: null
         - name: ETH_MAX_IN_FLIGHT_TRANSACTIONS
           value: "5000"
-          valuefrom: null
         # keeper https://github.com/smartcontractkit/chainlink/wiki/How-to-Run-Keeper-Jobs
         - name: KEEPER_DEFAULT_TRANSACTION_QUEUE_DEPTH
           value: "1"
-          valuefrom: null
         - name: KEEPER_REGISTRY_SYNC_INTERVAL
           value: "5s"
-          valuefrom: null
         - name: KEEPER_MINIMUM_REQUIRED_CONFIRMATIONS
           value: "1"
-          valuefrom: null
         - name: KEEPER_MINIMUM_REQUIRED_CONFIRMATIONS
           value: "200000"
-          valuefrom: null
         - name: KEEPER_REGISTRY_PERFORM_GAS_OVERHEAD
           value: "150000"
-          valuefrom: null
-        volumemounts:
+        volumeMounts:
         - name: node-secrets-volume
           readonly: false
-          mountpath: /etc/node-secrets-volume/
-        livenessprobe:
-          handler:
-            exec: null
-            httpget:
-              path: /
-              port:
-                intval: {{ .Values.chainlinkCluster.chainlink.webPort }}
-          initialdelayseconds: 90
-          periodseconds: 10
-        readinessprobe:
-          handler:
-            httpget:
-              path: /
-              port:
-                intval: {{ .Values.chainlinkCluster.chainlink.webPort }}
-          initialdelayseconds: 2
-          periodseconds: 2
+          mountPath: /etc/node-secrets-volume/
+        livenessProbe:
+          httpGet:
+            path: /
+            port: {{ .Values.chainlinkCluster.chainlink.webPort }}
+          initialDelaySeconds: 90
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: {{ .Values.chainlinkCluster.chainlink.webPort }}
+          initialDelaySeconds: 2
+          periodSeconds: 2
       - name: db
         image: postgres:11.6
         ports:
         - name: postgres
-          containerport: 5432
+          containerPort: 5432
         env:
         - name: POSTGRES_DB
           value: chainlink
@@ -151,20 +118,18 @@ spec:
           value: postgres
           valuefrom: null
         livenessprobe:
-          handler:
-            exec:
-              command:
+          exec:
+            command:
               - pg_isready
               - -U
               - postgres
-          initialdelayseconds: 60
-          periodseconds: 60
-        readinessprobe:
-          handler:
-            exec:
-              command:
+          initialDelaySeconds: 60
+          periodSeconds: 60
+        readinessProbe:
+          exec:
+            command:
               - pg_isready
               - -U
               - postgres
-          initialdelayseconds: 2
-          periodseconds: 2
+          initialDelaySeconds: 2
+          periodSeconds: 2

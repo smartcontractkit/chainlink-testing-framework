@@ -1,8 +1,8 @@
-objectmeta:
+metadata:
   name: hardhat-network
 spec:
   template:
-    objectmeta:
+    metadata:
       labels:
         app: hardhat-network
     spec:
@@ -20,12 +20,9 @@ spec:
             mountpath: /usr/app/hardhat.config.js
             subpath: hardhat.config.js
         ports:
-        - containerport: {{ .Values.evm.rpcPort }}
-        readinessprobe:
-          handler:
-            exec: null
-            httpget:
-              path: /
-              port:
-                intval: {{ .Values.evm.rpcPort }}
-          periodseconds: 2
+        - containerPort: {{ .Values.evm.rpcPort }}
+        readinessProbe:
+          httpGet:
+            path: /
+            port: { { .Values.evm.rpcPort } }
+          periodSeconds: 2
