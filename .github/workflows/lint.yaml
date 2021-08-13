@@ -16,4 +16,4 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
-          args: --exclude-use-default=false --skip-dirs=contracts/ethereum
+          args: --exclude-use-default=false --skip-dirs=contracts/ethereum --timeout=3m
