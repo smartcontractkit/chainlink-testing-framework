@@ -29,6 +29,7 @@ type DefaultSuiteSetup struct {
 	Deployer contracts.ContractDeployer
 	Link     contracts.LinkToken
 	Env      environment.Environment
+	Network  client.BlockchainNetwork
 }
 
 // DefaultLocalSetup setup minimum required components for test
@@ -41,19 +42,19 @@ func DefaultLocalSetup(
 	if err != nil {
 		return nil, err
 	}
-	networkConfig, err := initFunc(conf)
+	network, err := initFunc(conf)
 	if err != nil {
 		return nil, err
 	}
-	env, err := environment.NewK8sEnvironment(envInitFunc, conf, networkConfig)
+	env, err := environment.NewK8sEnvironment(envInitFunc, conf, network)
 	if err != nil {
 		return nil, err
 	}
-	blockchainClient, err := environment.NewBlockchainClient(env, networkConfig)
+	blockchainClient, err := environment.NewBlockchainClient(env, network)
 	if err != nil {
 		return nil, err
 	}
-	wallets, err := networkConfig.Wallets()
+	wallets, err := network.Wallets()
 	if err != nil {
 		return nil, err
 	}
@@ -78,6 +79,7 @@ func DefaultLocalSetup(
 		Deployer: contractDeployer,
 		Link:     link,
 		Env:      env,
+		Network:  network,
 	}, nil
 }
 

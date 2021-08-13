@@ -22,6 +22,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+var OneGWei = big.NewInt(1e9)
 var OneEth = big.NewFloat(1e18)
 
 // EthereumClient wraps the client and the BlockChain network to interact with an EVM based Blockchain
@@ -126,6 +127,22 @@ func (e *EthereumClient) GetNonce(ctx context.Context, addr common.Address) (uin
 // network types
 func (e *EthereumClient) Get() interface{} {
 	return e
+}
+
+// CalculateTxGas calculates tx gas cost accordingly gas used plus buffer, converts it to big.Float for funding
+func (e *EthereumClient) CalculateTxGas(gasUsed *big.Int) (*big.Float, error) {
+	gp, err := e.Client.SuggestGasPrice(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	gpWei := gp.Mul(gp, OneGWei)
+	log.Debug().Int64("Gas price", gp.Int64()).Msg("Suggested gas price")
+	buf := big.NewInt(int64(e.Network.Config().GasEstimationBuffer))
+	gasUsedWithBuf := gasUsed.Add(gasUsed, buf)
+	cost := big.NewInt(1).Mul(gpWei, gasUsedWithBuf)
+	log.Debug().Int64("TX Gas cost", cost.Int64()).Msg("Estimated tx gas cost with buffer")
+	bf := new(big.Float).SetInt(cost)
+	return big.NewFloat(1).Quo(bf, OneEth), nil
 }
 
 // ParallelTransactions when enabled, sends the transaction without waiting for transaction confirmations. The hashes

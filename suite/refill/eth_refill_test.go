@@ -26,7 +26,7 @@ var _ = Describe("FluxAggregator ETH Refill", func() {
 		err           error
 		fluxInstance  contracts.FluxAggregator
 	)
-	fluxRoundTimeout := time.Minute * 2
+	fluxRoundTimeout := 30 * time.Second
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
@@ -97,13 +97,17 @@ var _ = Describe("FluxAggregator ETH Refill", func() {
 					PollTimerDisabled: false,
 					ObservationSource: ost,
 				}
-				_, err = n.CreateJob(fluxSpec)
+				_, err := n.CreateJob(fluxSpec)
 				Expect(err).ShouldNot(HaveOccurred())
 			}
 		})
 
 		By("Funding ETH for a single round", func() {
-			err = actions.FundChainlinkNodes(nodes, s.Client, s.Wallets.Default(), big.NewFloat(.01), nil)
+			submissionGasUsed, err := s.Network.FluxMonitorSubmissionGasUsed()
+			Expect(err).ShouldNot(HaveOccurred())
+			txCost, err := s.Client.CalculateTxGas(submissionGasUsed)
+			Expect(err).ShouldNot(HaveOccurred())
+			err = actions.FundChainlinkNodes(nodes, s.Client, s.Wallets.Default(), txCost, nil)
 			Expect(err).ShouldNot(HaveOccurred())
 			err = s.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -123,7 +127,7 @@ var _ = Describe("FluxAggregator ETH Refill", func() {
 			fluxRound := contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(2), fluxRoundTimeout)
 			s.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRound)
 			err = s.Client.WaitForEvents()
-			Expect(err).ShouldNot(HaveOccurred())
+			Expect(err.Error()).Should(ContainSubstring("timeout waiting for flux round to confirm"))
 		})
 	})
 
