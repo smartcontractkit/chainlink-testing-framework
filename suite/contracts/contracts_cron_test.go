@@ -8,6 +8,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/environment"
+	"github.com/smartcontractkit/integrations-framework/tools"
 )
 
 var _ = Describe("Cronjob suite", func() {
@@ -24,6 +25,7 @@ var _ = Describe("Cronjob suite", func() {
 			s, err = actions.DefaultLocalSetup(
 				environment.NewChainlinkCluster(1),
 				client.NewNetworkFromConfig,
+				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
 			nodes, err = environment.GetChainlinkClients(s.Env)

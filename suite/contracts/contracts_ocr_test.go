@@ -12,6 +12,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
 	"github.com/smartcontractkit/integrations-framework/environment"
+	"github.com/smartcontractkit/integrations-framework/tools"
 )
 
 var _ = Describe("OCR Feed", func() {
@@ -28,6 +29,7 @@ var _ = Describe("OCR Feed", func() {
 			suiteSetup, err = actions.DefaultLocalSetup(
 				environment.NewChainlinkCluster(5),
 				client.NewNetworkFromConfig,
+				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
 			adapter, err = environment.GetExternalAdapter(suiteSetup.Env)
