@@ -14,6 +14,8 @@ breaking.
 
 ## Usage
 
+A simple example on deploying and interaction with a simple contract using this framework and [Ginkgo](https://github.com/onsi/ginkgo)
+
 ```go
 var _ = Describe("Basic Contract Interactions", func() {
 	var suiteSetup *actions.DefaultSuiteSetup
@@ -26,7 +28,7 @@ var _ = Describe("Basic Contract Interactions", func() {
 			suiteSetup, err = actions.DefaultLocalSetup(
 				environment.NewChainlinkCluster(0),
 				client.NewNetworkFromConfig,
-				tools.ProjectRoot, // Folder location of the
+				confFileLocation, // Directory where config.yml is placed
 			)
 			Expect(err).ShouldNot(HaveOccurred())
 			defaultWallet = suiteSetup.Wallets.Default()
@@ -58,7 +60,7 @@ var _ = Describe("Basic Contract Interactions", func() {
 
 ## Execution Environment
 
-Ephemeral environments are automatically deployed with Kubernetes. To run tests, you either need a deployed cluster 
+Ephemeral environments are automatically deployed with Kubernetes. To run tests, you either need a deployed cluster
 in an environment, or a local installation.
 
 ### Locally
@@ -71,12 +73,12 @@ minikube start
 
 ### Remotely
 
-To run against a remote Kubernetes cluster, ensure your current context is the cluster you want to run against as the 
+To run against a remote Kubernetes cluster, ensure your current context is the cluster you want to run against as the
 framework always uses current context.
 
 ## Test Execution
 
-This framework advises the use of [Ginkgo](https://github.com/onsi/ginkgo) for test execution, but tests still can be 
+This framework advises the use of [Ginkgo](https://github.com/onsi/ginkgo) for test execution, but tests still can be
 ran with the go CLI.
 
 ### Ginkgo
