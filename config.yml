@@ -44,7 +44,7 @@ networks:
         transaction_limit: 9500000
         transaction_timeout: 10s
         minimum_confirmations: 1
-        gas_estimation_buffer: 0
+        gas_estimation_buffer: 100000
         block_gas_limit: 40000000
     ethereum_hardhat:
         name: "Ethereum Hardhat"
