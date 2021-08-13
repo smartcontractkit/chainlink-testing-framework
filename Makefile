@@ -4,7 +4,7 @@ export GO111MODULE ?= on
 
 .PHONY: lint
 lint: ## run linter
-	${BIN_DIR}/golangci-lint --color=always run ./... -v --timeout 5m
+	${BIN_DIR}/golangci-lint --color=always run ./... -v --timeout=3m
 
 .PHONY: golangci
 golangci: ## install golangci-linter
