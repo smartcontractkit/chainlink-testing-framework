@@ -2,6 +2,7 @@ package client
 
 import (
 	"github.com/smartcontractkit/integrations-framework/config"
+	"github.com/smartcontractkit/integrations-framework/tools"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
@@ -13,7 +14,7 @@ var _ = Describe("Client", func() {
 
 	BeforeEach(func() {
 		var err error
-		conf, err = config.NewConfig(config.LocalConfig)
+		conf, err = config.NewConfig(config.LocalConfig, tools.ProjectRoot)
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 

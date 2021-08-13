@@ -74,11 +74,7 @@ type ChainlinkConfig struct {
 }
 
 // NewConfig creates a new configuration instance via viper from env vars, config file, or a secret store
-func NewConfig(configType ConfigurationType) (*Config, error) {
-	return NewConfigWithPath(configType, tools.ProjectRoot)
-}
-
-func NewConfigWithPath(configType ConfigurationType, configPath string) (*Config, error) {
+func NewConfig(configType ConfigurationType, configPath string) (*Config, error) {
 	v := viper.New()
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()

@@ -3,6 +3,8 @@ package contracts
 import (
 	"context"
 	"errors"
+	"math/big"
+
 	"github.com/avast/retry-go"
 	"github.com/ethereum/go-ethereum/common"
 	. "github.com/onsi/ginkgo"
@@ -12,7 +14,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
 	"github.com/smartcontractkit/integrations-framework/environment"
-	"math/big"
+	"github.com/smartcontractkit/integrations-framework/tools"
 )
 
 var _ = Describe("Keeper suite", func() {
@@ -32,6 +34,7 @@ var _ = Describe("Keeper suite", func() {
 				// need to register at least 5 nodes to perform upkeep
 				environment.NewChainlinkCluster(5),
 				client.NewNetworkFromConfig,
+				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
 			nodes, err = environment.GetChainlinkClients(s.Env)

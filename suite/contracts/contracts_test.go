@@ -7,6 +7,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/contracts"
 	"github.com/smartcontractkit/integrations-framework/environment"
+	"github.com/smartcontractkit/integrations-framework/tools"
 
 	"github.com/smartcontractkit/integrations-framework/client"
 
@@ -24,6 +25,7 @@ var _ = Describe("Basic Contract Interactions", func() {
 			suiteSetup, err = actions.DefaultLocalSetup(
 				environment.NewChainlinkCluster(0),
 				client.NewNetworkFromConfig,
+				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
 			defaultWallet = suiteSetup.Wallets.Default()

@@ -35,8 +35,9 @@ type DefaultSuiteSetup struct {
 func DefaultLocalSetup(
 	envInitFunc environment.K8sEnvSpecInit,
 	initFunc client.BlockchainNetworkInit,
+	configPath string,
 ) (*DefaultSuiteSetup, error) {
-	conf, err := config.NewConfig(config.LocalConfig)
+	conf, err := config.NewConfig(config.LocalConfig, configPath)
 	if err != nil {
 		return nil, err
 	}
@@ -78,24 +79,6 @@ func DefaultLocalSetup(
 		Link:     link,
 		Env:      env,
 	}, nil
-}
-
-// DefaultLocalSetupSpecifyConfig gives a default testing environment setup with a specified config file path
-func DefaultLocalSetupSpecifyConfig(
-	envInitFunc environment.K8sEnvSpecInit,
-	initFunc client.BlockchainNetworkInit,
-	configPath string,
-) (*DefaultSuiteSetup, error) {
-	s, err := DefaultLocalSetup(envInitFunc, initFunc)
-	if err != nil {
-		return nil, err
-	}
-	specifiedConf, err := config.NewConfigWithPath(config.LocalConfig, configPath)
-	if err != nil {
-		return nil, err
-	}
-	s.Config = specifiedConf
-	return s, err
 }
 
 // TearDown checks for test failure, writes logs if there is one, then tears down the test environment, based on the
