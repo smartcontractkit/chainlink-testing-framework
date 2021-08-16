@@ -6,7 +6,6 @@ import (
 )
 
 var (
-	_, b, _, _ = runtime.Caller(0)
-	// Root folder of this project
+	_, b, _, _  = runtime.Caller(0)
 	ProjectRoot = filepath.Join(filepath.Dir(b), "/..")
 )

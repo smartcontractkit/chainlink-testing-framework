@@ -4,6 +4,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/config"
+	"github.com/smartcontractkit/integrations-framework/tools"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
@@ -15,7 +16,7 @@ var _ = Describe("Environment functionality", func() {
 
 	BeforeEach(func() {
 		var err error
-		conf, err = config.NewConfig(config.LocalConfig)
+		conf, err = config.NewConfig(config.LocalConfig, tools.ProjectRoot)
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 

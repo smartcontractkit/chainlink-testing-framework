@@ -2,6 +2,8 @@ package contracts
 
 import (
 	"context"
+	"math/big"
+
 	"github.com/avast/retry-go"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -12,7 +14,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
 	"github.com/smartcontractkit/integrations-framework/environment"
-	"math/big"
+	"github.com/smartcontractkit/integrations-framework/tools"
 )
 
 var _ = Describe("VRF suite", func() {
@@ -31,6 +33,7 @@ var _ = Describe("VRF suite", func() {
 			s, err = actions.DefaultLocalSetup(
 				environment.NewChainlinkCluster(1),
 				client.NewNetworkFromConfig,
+				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
 			nodes, err = environment.GetChainlinkClients(s.Env)

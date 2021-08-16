@@ -2,10 +2,12 @@ package cmd
 
 import (
 	"fmt"
+
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/environment"
+	"github.com/smartcontractkit/integrations-framework/tools"
 	"github.com/spf13/cobra"
 )
 
@@ -29,7 +31,7 @@ func createRunE(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	cfg, err := config.NewConfig(config.LocalConfig)
+	cfg, err := config.NewConfig(config.LocalConfig, tools.ProjectRoot)
 	if err != nil {
 		return err
 	}

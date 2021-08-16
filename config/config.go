@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/tools"
 	"github.com/spf13/viper"
 )
@@ -20,13 +21,14 @@ const (
 
 // Config is the overall config for the framework, holding configurations for supported networks
 type Config struct {
-	Network          string                    `mapstructure:"network" yaml:"network"`
-	Networks         map[string]*NetworkConfig `mapstructure:"networks" yaml:"networks"`
-	Retry            *RetryConfig              `mapstructure:"retry" yaml:"retry"`
-	Apps             AppConfig                 `mapstructure:"apps" yaml:"apps"`
-	Kubernetes       KubernetesConfig          `mapstructure:"kubernetes" yaml:"kubernetes"`
-	KeepEnvironments string                    `mapstructure:"keep_environments" yaml:"keep_environments"`
-	DefaultKeyStore  string
+	Network            string                    `mapstructure:"network" yaml:"network"`
+	Networks           map[string]*NetworkConfig `mapstructure:"networks" yaml:"networks"`
+	Retry              *RetryConfig              `mapstructure:"retry" yaml:"retry"`
+	Apps               AppConfig                 `mapstructure:"apps" yaml:"apps"`
+	Kubernetes         KubernetesConfig          `mapstructure:"kubernetes" yaml:"kubernetes"`
+	KeepEnvironments   string                    `mapstructure:"keep_environments" yaml:"keep_environments"`
+	DefaultKeyStore    string
+	ConfigFileLocation string
 }
 
 // GetNetworkConfig finds a specified network config based on its name
@@ -72,19 +74,23 @@ type ChainlinkConfig struct {
 }
 
 // NewConfig creates a new configuration instance via viper from env vars, config file, or a secret store
-func NewConfig(configType ConfigurationType) (*Config, error) {
+func NewConfig(configType ConfigurationType, configPath string) (*Config, error) {
 	v := viper.New()
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
 	v.SetConfigName("config")
 	v.SetConfigType("yml")
+	v.AddConfigPath(configPath)
 	v.AddConfigPath(tools.ProjectRoot)
 
 	if err := v.ReadInConfig(); err != nil {
 		return nil, err
 	}
 
-	conf := &Config{}
+	conf := &Config{
+		ConfigFileLocation: strings.TrimRight(v.ConfigFileUsed(), "config.yml"),
+	}
+	log.Info().Str("File Location", v.ConfigFileUsed()).Msg("Loading config file")
 	err := v.Unmarshal(conf)
 	for _, networkConf := range conf.Networks {
 		networkConf.PrivateKeyStore = NewPrivateKeyStore(configType, networkConf)
