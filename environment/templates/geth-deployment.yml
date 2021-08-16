@@ -1,81 +1,79 @@
-objectmeta:
+metadata:
   name: geth-dev-network
 spec:
   template:
     spec:
       volumes:
       - name: geth-configmap-volume
-        volumesource:
-          configmap:
-            localobjectreference:
-              name: gdmap
+        configMap:
+          name: gdmap
       containers:
       - name: geth-network
         image: ethereum/client-go:v1.10.3
         entrypoint: sh ./root/init.sh
-        volumemounts:
+        volumeMounts:
         - name: geth-configmap-volume
-          mountpath: /root/config
+          mountPath: /root/config
         - name: geth-configmap-volume
-          mountpath: /root/.ethereum/devchain/keystore/key1
-          subpath: key1
+          mountPath: /root/.ethereum/devchain/keystore/key1
+          subPath: key1
         - name: geth-configmap-volume
-          mountpath: /root/.ethereum/devchain/keystore/key2
-          subpath: key2
+          mountPath: /root/.ethereum/devchain/keystore/key2
+          subPath: key2
         - name: geth-configmap-volume
-          mountpath: /root/.ethereum/devchain/keystore/key3
-          subpath: key3
+          mountPath: /root/.ethereum/devchain/keystore/key3
+          subPath: key3
         - name: geth-configmap-volume
-          mountpath: /root/.ethereum/devchain/keystore/key4
-          subpath: key4
+          mountPath: /root/.ethereum/devchain/keystore/key4
+          subPath: key4
         - name: geth-configmap-volume
-          mountpath: /root/.ethereum/devchain/keystore/key5
-          subpath: key5
+          mountPath: /root/.ethereum/devchain/keystore/key5
+          subPath: key5
         - name: geth-configmap-volume
-          mountpath: /root/.ethereum/devchain/keystore/key6
-          subpath: key6
+          mountPath: /root/.ethereum/devchain/keystore/key6
+          subPath: key6
         - name: geth-configmap-volume
-          mountpath: /root/.ethereum/devchain/keystore/key7
-          subpath: key7
+          mountPath: /root/.ethereum/devchain/keystore/key7
+          subPath: key7
         - name: geth-configmap-volume
-          mountpath: /root/.ethereum/devchain/keystore/key8
-          subpath: key8
+          mountPath: /root/.ethereum/devchain/keystore/key8
+          subPath: key8
         - name: geth-configmap-volume
-          mountpath: /root/.ethereum/devchain/keystore/key9
-          subpath: key9
+          mountPath: /root/.ethereum/devchain/keystore/key9
+          subPath: key9
         - name: geth-configmap-volume
-          mountpath: /root/.ethereum/devchain/keystore/key10
-          subpath: key10
+          mountPath: /root/.ethereum/devchain/keystore/key10
+          subPath: key10
         - name: geth-configmap-volume
-          mountpath: /root/.ethereum/devchain/keystore/key11
-          subpath: key11
+          mountPath: /root/.ethereum/devchain/keystore/key11
+          subPath: key11
         - name: geth-configmap-volume
-          mountpath: /root/.ethereum/devchain/keystore/key12
-          subpath: key12
+          mountPath: /root/.ethereum/devchain/keystore/key12
+          subPath: key12
         - name: geth-configmap-volume
-          mountpath: /root/.ethereum/devchain/keystore/key13
-          subpath: key13
+          mountPath: /root/.ethereum/devchain/keystore/key13
+          subPath: key13
         - name: geth-configmap-volume
-          mountpath: /root/.ethereum/devchain/keystore/key14
-          subpath: key14
+          mountPath: /root/.ethereum/devchain/keystore/key14
+          subPath: key14
         - name: geth-configmap-volume
-          mountpath: /root/.ethereum/devchain/keystore/key15
-          subpath: key15
+          mountPath: /root/.ethereum/devchain/keystore/key15
+          subPath: key15
         - name: geth-configmap-volume
-          mountpath: /root/.ethereum/devchain/keystore/key16
-          subpath: key16
+          mountPath: /root/.ethereum/devchain/keystore/key16
+          subPath: key16
         - name: geth-configmap-volume
-          mountpath: /root/.ethereum/devchain/keystore/key17
-          subpath: key17
+          mountPath: /root/.ethereum/devchain/keystore/key17
+          subPath: key17
         - name: geth-configmap-volume
-          mountpath: /root/.ethereum/devchain/keystore/key18
-          subpath: key18
+          mountPath: /root/.ethereum/devchain/keystore/key18
+          subPath: key18
         - name: geth-configmap-volume
-          mountpath: /root/.ethereum/devchain/keystore/key19
-          subpath: key19
+          mountPath: /root/.ethereum/devchain/keystore/key19
+          subPath: key19
         - name: geth-configmap-volume
-          mountpath: /root/.ethereum/devchain/keystore/key20
-          subpath: key20
+          mountPath: /root/.ethereum/devchain/keystore/key20
+          subPath: key20
         args:
           - --dev
           - --dev.period
@@ -153,4 +151,4 @@ spec:
           - "*"
           - --vmdebug
         ports:
-        - containerport: {{ .Values.evm.rpcPort }}
+        - containerPort: {{ .Values.evm.rpcPort }}

@@ -1,11 +1,10 @@
-objectmeta:
+metadata:
   name: geth-dev-network
 spec:
   ports:
   - name: access
     port: {{ .Values.evm.rpcPort }}
-    targetport:
-      intval: {{ .Values.evm.rpcPort }}
+    targetPort: {{ .Values.evm.rpcPort }}
   selector:
     app: geth-dev-network
   type: ClusterIP
