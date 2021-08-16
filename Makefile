@@ -16,6 +16,10 @@ gomod: ## install go modules
 
 install-deps: gomod golangci ## install necessary dependencies
 
+.PHONY: install_cli
+install_cli: ## install framework CLI
+	go install cli/ifcli.go
+
 .PHONY: test
 test: ## run tests
 	go test -v ./suite/contracts ./client -count 1 -p 1

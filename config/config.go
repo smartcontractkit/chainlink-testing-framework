@@ -29,6 +29,7 @@ type Config struct {
 	Kubernetes         KubernetesConfig          `mapstructure:"kubernetes" yaml:"kubernetes"`
 	KeepEnvironments   string                    `mapstructure:"keep_environments" yaml:"keep_environments"`
 	Prometheus         *PrometheusConfig         `mapstructure:"prometheus" yaml:"prometheus"`
+	Contracts          *ContractsConfig          `mapstructure:"contracts" yaml:"contracts"`
 	DefaultKeyStore    string
 	ConfigFileLocation string
 }
@@ -47,6 +48,43 @@ func (c *Config) GetNetworkConfig(name string) (*NetworkConfig, error) {
 		return network, nil
 	}
 	return nil, errors.New("no supported network of name " + name + " was found. Ensure that the config for it exists.")
+}
+
+// ContractsConfig contracts sources config
+type ContractsConfig struct {
+	Ethereum EthereumSources `mapstructure:"ethereum" yaml:"ethereum"`
+}
+
+// EthereumSources sources to generate bindings to ethereum contracts
+type EthereumSources struct {
+	ExecutablePath string     `mapstructure:"executable_path" yaml:"executable_path"`
+	OutPath        string     `mapstructure:"out_path" yaml:"out_path"`
+	Sources        SourcesMap `mapstructure:"sources" yaml:"sources"`
+}
+
+// SourcesMap describes different sources types, local or remote s3 (external)
+type SourcesMap struct {
+	Local    LocalSource     `mapstructure:"local" yaml:"local"`
+	External ExternalSources `mapstructure:"external" yaml:"external"`
+}
+
+// ExternalSources are sources downloaded from remote
+type ExternalSources struct {
+	RootPath     string                    `mapstructure:"path" yaml:"path"`
+	Region       string                    `mapstructure:"region" yaml:"region"`
+	S3URL        string                    `mapstructure:"s3_path" yaml:"s3_path"`
+	Repositories map[string]ExternalSource `mapstructure:"repositories" yaml:"repositories"`
+}
+
+// LocalSource local contracts artifacts directory
+type LocalSource struct {
+	Path string `mapstructure:"path" yaml:"path"`
+}
+
+// ExternalSource remote contracts artifacts source directory
+type ExternalSource struct {
+	Path   string `mapstructure:"path" yaml:"path"`
+	Commit string `mapstructure:"commit" yaml:"commit"`
 }
 
 // NetworkConfig holds the basic values that identify a blockchain network and contains private keys on the network
