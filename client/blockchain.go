@@ -20,6 +20,7 @@ const BlockchainTypeEVM = "evm"
 // of network types within the test suite
 type BlockchainClient interface {
 	Get() interface{}
+	CalculateTxGas(gasUsedValue *big.Int) (*big.Float, error)
 	Fund(fromWallet BlockchainWallet, toAddress string, nativeAmount, linkAmount *big.Float) error
 	ParallelTransactions(enabled bool)
 	Close() error
@@ -40,6 +41,7 @@ func NewBlockchainClient(network BlockchainNetwork) (BlockchainClient, error) {
 
 // BlockchainNetwork is the interface that when implemented, defines a new blockchain network that can be tested against
 type BlockchainNetwork interface {
+	GasUsedEstimations
 	ID() string
 	URL() string
 	Type() string
@@ -116,6 +118,14 @@ func (e *EthereumNetwork) Config() *config.NetworkConfig {
 // Wallets returns all the viable wallets used for testing on chain
 func (e *EthereumNetwork) Wallets() (BlockchainWallets, error) {
 	return newEthereumWallets(e.networkConfig.PrivateKeyStore)
+}
+
+// FluxMonitorSubmissionGasUsed Flux Monitor one submission gasUsed value
+func (e *EthereumNetwork) FluxMonitorSubmissionGasUsed() (*big.Int, error) {
+	if e.networkConfig.Name == "Ethereum Geth dev" {
+		return big.NewInt(400000), nil
+	}
+	return nil, errors.New("unknown gas used estimation")
 }
 
 // BlockchainWallets is an interface that when implemented is a representation of a slice of wallets for
@@ -228,4 +238,9 @@ func walletSliceIndexInRange(wallets []BlockchainWallet, i int) error {
 type HeaderEventSubscription interface {
 	ReceiveHeader(header *types.Header) error
 	Wait() error
+}
+
+// GasUsedEstimations contains some known gas values for contracts for every network
+type GasUsedEstimations interface {
+	FluxMonitorSubmissionGasUsed() (*big.Int, error)
 }
