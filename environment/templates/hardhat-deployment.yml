@@ -14,5 +14,5 @@ spec:
         readinessProbe:
           httpGet:
             path: /
-            port: { { .Values.evm.rpcPort } }
+            port: {{ .Values.evm.rpcPort }}
           periodSeconds: 2
