@@ -48,6 +48,10 @@ type Chainlink interface {
 	ReadVRFKeys() (*VRFKeys, error)
 	PrimaryEthAddress() (string, error)
 
+	CreateEI(eia *EIAttributes) (*EIKeyCreate, error)
+	ReadEIs() (*EIKeys, error)
+	DeleteEI(name string) error
+
 	RemoteIP() string
 	SetSessionCookie() error
 
@@ -251,6 +255,29 @@ func (c *chainlink) PrimaryEthAddress() (string, error) {
 		return "", err
 	}
 	return ethKeys.Data[0].Attributes.Address, nil
+}
+
+// CreateEI creates an EI on the Chainlink node based on the provided attributes and returns the respective secrets
+func (c *chainlink) CreateEI(eia *EIAttributes) (*EIKeyCreate, error) {
+	ei := EIKeyCreate{}
+	log.Info().Str("Node URL", c.Config.URL).Str("Name", eia.Name).Msg("Creating External Initiator")
+	_, err := c.do(http.MethodPost, "/v2/external_initiators", eia, &ei, http.StatusCreated)
+	return &ei, err
+}
+
+// ReadEIs reads all of the configured EIs from the chainlink node
+func (c *chainlink) ReadEIs() (*EIKeys, error) {
+	ei := EIKeys{}
+	log.Info().Str("Node URL", c.Config.URL).Msg("Reading EI Keys")
+	_, err := c.do(http.MethodGet, "/v2/external_initiators", nil, &ei, http.StatusOK)
+	return &ei, err
+}
+
+// DeleteEI deletes a bridge on the Chainlink node based on the provided name
+func (c *chainlink) DeleteEI(name string) error {
+	log.Info().Str("Node URL", c.Config.URL).Str("Name", name).Msg("Deleting EI")
+	_, err := c.do(http.MethodDelete, fmt.Sprintf("/v2/external_initiators/%s", name), nil, nil, http.StatusNoContent)
+	return err
 }
 
 // RemoteIP retrieves the inter-cluster IP of the chainlink node, for use with inter-node communications
