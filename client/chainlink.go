@@ -273,7 +273,7 @@ func (c *chainlink) ReadEIs() (*EIKeys, error) {
 	return &ei, err
 }
 
-// DeleteEI deletes a bridge on the Chainlink node based on the provided name
+// DeleteEI deletes an external initiator in the Chainlink node based on the provided name
 func (c *chainlink) DeleteEI(name string) error {
 	log.Info().Str("Node URL", c.Config.URL).Str("Name", name).Msg("Deleting EI")
 	_, err := c.do(http.MethodDelete, fmt.Sprintf("/v2/external_initiators/%s", name), nil, nil, http.StatusNoContent)

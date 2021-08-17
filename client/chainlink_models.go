@@ -181,7 +181,7 @@ type EIKeyCreate struct {
 	Data EIKey `json:"data"`
 }
 
-// EIKey is the model taht represents the EI configs when read
+// EIKey is the model that represents the EI configs when read
 type EIKey struct {
 	Attributes EIAttributes `json:"attributes"`
 }
