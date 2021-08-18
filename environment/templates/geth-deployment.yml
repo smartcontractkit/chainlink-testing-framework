@@ -154,9 +154,9 @@ spec:
         - containerPort: {{ .Values.evm.rpcPort }}
         resources:
           requests:
-            memory: "1024Mi"
-            cpu: "150m"
+            memory: {{ .Config.Apps.Geth.Requests.Memory }}
+            cpu: {{ .Config.Apps.Geth.Requests.Cpu }}
           limits:
-            memory: "1536Mi"
-            cpu: "225m"
+            memory: {{ .Config.Apps.Geth.Limits.Memory }}
+            cpu: {{ .Config.Apps.Geth.Limits.Cpu }}
 

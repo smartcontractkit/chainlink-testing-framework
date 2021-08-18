@@ -96,11 +96,11 @@ spec:
           periodSeconds: 2
         resources:
           requests:
-            memory: "768Mi"
-            cpu: "300m"
+            memory: {{ .Config.Apps.Chainlink.NodeRequests.Memory }}
+            cpu: {{ .Config.Apps.Chainlink.NodeRequests.Cpu }}
           limits:
-            memory: "1024Mi"
-            cpu: "450m"
+            memory: {{ .Config.Apps.Chainlink.NodeLimits.Memory }}
+            cpu: {{ .Config.Apps.Chainlink.NodeLimits.Cpu }}
       - name: db
         image: postgres:11.6
         ports:
@@ -137,8 +137,8 @@ spec:
           periodSeconds: 2
         resources:
           requests:
-            memory: "512Mi"
-            cpu: "200m"
+            memory: {{ .Config.Apps.Chainlink.PostgresRequests.Memory }}
+            cpu: {{ .Config.Apps.Chainlink.PostgresRequests.Cpu }}
           limits:
-            memory: "1024Mi"
-            cpu: "350m"
+            memory: {{ .Config.Apps.Chainlink.PostgresLimits.Memory }}
+            cpu: {{ .Config.Apps.Chainlink.PostgresLimits.Cpu }}

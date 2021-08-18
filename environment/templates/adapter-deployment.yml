@@ -21,8 +21,8 @@ spec:
             periodSeconds: 2
           resources:
             requests:
-              memory: "64Mi"
-              cpu: "25m"
+              memory: {{ .Config.Apps.Adapter.Requests.Memory }}
+              cpu: {{ .Config.Apps.Adapter.Requests.Cpu }}
             limits:
-              memory: "96Mi"
-              cpu: "50m"
+              memory: {{ .Config.Apps.Adapter.Limits.Memory }}
+              cpu: {{ .Config.Apps.Adapter.Limits.Cpu }}
