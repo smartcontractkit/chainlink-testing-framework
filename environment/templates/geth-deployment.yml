@@ -152,3 +152,11 @@ spec:
           - --vmdebug
         ports:
         - containerPort: {{ .Values.evm.rpcPort }}
+        resources:
+          requests:
+            memory: "1024Mi"
+            cpu: "150m"
+          limits:
+            memory: "1536Mi"
+            cpu: "225m"
+

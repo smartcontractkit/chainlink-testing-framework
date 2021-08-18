@@ -94,6 +94,13 @@ spec:
             port: {{ .Values.chainlinkCluster.chainlink.webPort }}
           initialDelaySeconds: 2
           periodSeconds: 2
+        resources:
+          requests:
+            memory: "768Mi"
+            cpu: "300m"
+          limits:
+            memory: "1024Mi"
+            cpu: "450m"
       - name: db
         image: postgres:11.6
         ports:
@@ -128,3 +135,10 @@ spec:
               - postgres
           initialDelaySeconds: 2
           periodSeconds: 2
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "200m"
+          limits:
+            memory: "1024Mi"
+            cpu: "350m"

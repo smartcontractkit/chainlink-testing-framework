@@ -19,3 +19,10 @@ spec:
               path: /
               port: 6060
             periodSeconds: 2
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "25m"
+            limits:
+              memory: "96Mi"
+              cpu: "50m"
