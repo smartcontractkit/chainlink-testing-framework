@@ -13,12 +13,16 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.21.0
 	github.com/satori/go.uuid v1.2.0
-	github.com/smartcontractkit/libocr v0.0.0-20210604141828-45d17f043949
+	github.com/smartcontractkit/integrations-framework/explorer v0.0.0
+	github.com/smartcontractkit/libocr v0.0.0-20210803133922-ddddd3dce7e5
 	github.com/spf13/cobra v1.1.1
 	github.com/spf13/viper v1.8.0
-	golang.org/x/crypto v0.0.0-20210506145944-38f3c27a63bf // indirect
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.21.2
 	k8s.io/apimachinery v0.21.2
 	k8s.io/client-go v0.21.2
+)
+
+replace (
+    github.com/smartcontractkit/integrations-framework/explorer => ./explorer/
 )
