@@ -1139,3 +1139,80 @@ func (v *EthereumVRFConsumer) RandomnessOutput(ctx context.Context) (*big.Int, e
 	}
 	return out, nil
 }
+
+// EthereumReadAccessController represents read access controller contract
+type EthereumReadAccessController struct {
+	client       *client.EthereumClient
+	rac          *ethereum.SimpleReadAccessController
+	callerWallet client.BlockchainWallet
+	address      *common.Address
+}
+
+// AddAccess grants access to particular address to raise a flag
+func (e *EthereumReadAccessController) AddAccess(fromWallet client.BlockchainWallet, addr string) error {
+	opts, err := e.client.TransactionOpts(fromWallet, *e.address, big.NewInt(0), nil)
+	if err != nil {
+		return err
+	}
+	log.Debug().Str("Address", addr).Msg("Adding access for address")
+	tx, err := e.rac.AddAccess(opts, common.HexToAddress(addr))
+	if err != nil {
+		return err
+	}
+	return e.client.ProcessTransaction(tx.Hash())
+}
+
+// DisableAccessCheck disables all access checks
+func (e *EthereumReadAccessController) DisableAccessCheck(fromWallet client.BlockchainWallet) error {
+	opts, err := e.client.TransactionOpts(fromWallet, *e.address, big.NewInt(0), nil)
+	if err != nil {
+		return err
+	}
+	tx, err := e.rac.DisableAccessCheck(opts)
+	if err != nil {
+		return err
+	}
+	return e.client.ProcessTransaction(tx.Hash())
+}
+
+func (e *EthereumReadAccessController) Address() string {
+	return e.address.Hex()
+}
+
+// EthereumFlags represents flags contract
+type EthereumFlags struct {
+	client       *client.EthereumClient
+	flags        *ethereum.Flags
+	callerWallet client.BlockchainWallet
+	address      *common.Address
+}
+
+func (e *EthereumFlags) Address() string {
+	return e.address.Hex()
+}
+
+// GetFlag returns boolean if a flag was set for particular address
+func (e *EthereumFlags) GetFlag(ctx context.Context, addr string) (bool, error) {
+	opts := &bind.CallOpts{
+		From:    common.HexToAddress(e.callerWallet.Address()),
+		Pending: true,
+		Context: ctx,
+	}
+	flag, err := e.flags.GetFlag(opts, common.HexToAddress(addr))
+	if err != nil {
+		return false, err
+	}
+	return flag, nil
+}
+
+// EthereumDeviationFlaggingValidator represents deviation flagging validator contract
+type EthereumDeviationFlaggingValidator struct {
+	client       *client.EthereumClient
+	dfv          *ethereum.DeviationFlaggingValidator
+	callerWallet client.BlockchainWallet
+	address      *common.Address
+}
+
+func (e *EthereumDeviationFlaggingValidator) Address() string {
+	return e.address.Hex()
+}

@@ -271,3 +271,22 @@ type RoundData struct {
 	UpdatedAt       *big.Int
 	AnsweredInRound *big.Int
 }
+
+// ReadAccessController is read/write access controller, just named by interface
+type ReadAccessController interface {
+	Address() string
+	AddAccess(fromWallet client.BlockchainWallet, addr string) error
+	DisableAccessCheck(fromWallet client.BlockchainWallet) error
+}
+
+// Flags flags contract interface
+type Flags interface {
+	Address() string
+	GetFlag(ctx context.Context, addr string) (bool, error)
+}
+
+// DeviationFlaggingValidator contract used as an external validator,
+// fox ex. in flux monitor rounds validation
+type DeviationFlaggingValidator interface {
+	Address() string
+}
