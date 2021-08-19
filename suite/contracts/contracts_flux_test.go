@@ -18,7 +18,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/environment"
 )
 
-var _ = Describe("Flux monitor suite", func() {
+var _ = Describe("Flux monitor suite @flux", func() {
 	var (
 		s             *actions.DefaultSuiteSetup
 		adapter       environment.ExternalAdapter
@@ -44,6 +44,7 @@ var _ = Describe("Flux monitor suite", func() {
 
 			s.Client.ParallelTransactions(true)
 		})
+
 		By("Deploying and funding contract", func() {
 			fluxInstance, err = s.Deployer.DeployFluxAggregatorContract(s.Wallets.Default(), contracts.DefaultFluxAggregatorOptions())
 			Expect(err).ShouldNot(HaveOccurred())
@@ -54,6 +55,7 @@ var _ = Describe("Flux monitor suite", func() {
 			err = s.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		By("Funding Chainlink nodes", func() {
 			nodeAddresses, err = actions.ChainlinkNodeAddresses(nodes)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -66,6 +68,7 @@ var _ = Describe("Flux monitor suite", func() {
 			)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		By("Setting oracle options", func() {
 			err = fluxInstance.SetOracles(s.Wallets.Default(),
 				contracts.SetOraclesOptions{
@@ -83,14 +86,24 @@ var _ = Describe("Flux monitor suite", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			log.Info().Str("Oracles", strings.Join(oracles, ",")).Msg("Oracles set")
 		})
+
 		By("Creating flux jobs", func() {
+			bta := client.BridgeTypeAttributes{
+				Name: "variable",
+				URL:  adapter.ClusterURL() + "/variable",
+			}
 			for _, n := range nodes {
+				// create the bridge
+				err = n.CreateBridge(&bta)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				// create the job
 				fluxSpec := &client.FluxMonitorJobSpec{
 					Name:              "flux_monitor",
 					ContractAddress:   fluxInstance.Address(),
 					PollTimerPeriod:   15 * time.Second, // min 15s
 					PollTimerDisabled: false,
-					ObservationSource: client.ObservationSourceSpec(adapter.ClusterURL() + "/variable"),
+					ObservationSource: client.ObservationSourceSpecBridge(bta),
 				}
 				_, err = n.CreateJob(fluxSpec)
 				Expect(err).ShouldNot(HaveOccurred())

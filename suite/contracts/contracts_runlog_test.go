@@ -19,7 +19,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/tools"
 )
 
-var _ = Describe("Direct request suite", func() {
+var _ = Describe("Direct request suite @runlog", func() {
 	var (
 		s             *actions.DefaultSuiteSetup
 		adapter       environment.ExternalAdapter
@@ -42,6 +42,7 @@ var _ = Describe("Direct request suite", func() {
 			adapter, err = environment.GetExternalAdapter(s.Env)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		By("Funding Chainlink nodes", func() {
 			nodes, err = environment.GetChainlinkClients(s.Env)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -50,6 +51,7 @@ var _ = Describe("Direct request suite", func() {
 			err = actions.FundChainlinkNodes(nodes, s.Client, s.Wallets.Default(), big.NewFloat(2), nil)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		By("Deploying and funding the contracts", func() {
 			oracle, err = s.Deployer.DeployOracle(s.Wallets.Default(), s.Link.Address())
 			Expect(err).ShouldNot(HaveOccurred())
@@ -58,20 +60,31 @@ var _ = Describe("Direct request suite", func() {
 			err = consumer.Fund(s.Wallets.Default(), nil, big.NewFloat(2))
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		By("Permitting node to fulfill request", func() {
 			err = oracle.SetFulfillmentPermission(s.Wallets.Default(), nodeAddresses[0].Hex(), true)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		By("Creating directrequest job", func() {
 			jobUUID = uuid.NewV4()
+			// create the bridge
+			bta := client.BridgeTypeAttributes{
+				Name: "five",
+				URL:  adapter.ClusterURL() + "/five",
+			}
+			err = nodes[0].CreateBridge(&bta)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			// create the pipeline spec string
 			os := &client.DirectRequestTxPipelineSpec{
-				URL:         adapter.ClusterURL() + "/five",
-				Method:      "GET",
-				RequestData: "{}",
-				DataPath:    "data,result",
+				BridgeTypeAttributes: bta,
+				DataPath:             "data,result",
 			}
 			ost, err := os.String()
 			Expect(err).ShouldNot(HaveOccurred())
+
+			// create the job
 			_, err = nodes[0].CreateJob(&client.DirectRequestJobSpec{
 				Name:              "direct_request",
 				ContractAddress:   oracle.Address(),
@@ -80,9 +93,9 @@ var _ = Describe("Direct request suite", func() {
 			})
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		By("Calling oracle contract", func() {
 			jobUUIDReplaces := strings.Replace(jobUUID.String(), "-", "", 4)
-			Expect(err).ShouldNot(HaveOccurred())
 			var jobID [32]byte
 			copy(jobID[:], jobUUIDReplaces)
 			err = consumer.CreateRequestTo(

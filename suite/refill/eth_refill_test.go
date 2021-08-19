@@ -17,7 +17,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/tools"
 )
 
-var _ = Describe("FluxAggregator ETH Refill", func() {
+var _ = Describe("FluxAggregator ETH Refill @ethRefill", func() {
 	var (
 		s             *actions.DefaultSuiteSetup
 		adapter       environment.ExternalAdapter
@@ -81,15 +81,25 @@ var _ = Describe("FluxAggregator ETH Refill", func() {
 		})
 
 		By("Adding FluxAggregator jobs to nodes", func() {
-			os := &client.PipelineSpec{
+			// create the bridge
+			bta := client.BridgeTypeAttributes{
+				Name:        "variable",
 				URL:         adapter.ClusterURL() + "/variable",
-				Method:      "GET",
 				RequestData: "{}",
-				DataPath:    "data,result",
+			}
+
+			os := &client.PipelineSpec{
+				BridgeTypeAttributes: bta,
+				DataPath:             "data,result",
 			}
 			ost, err := os.String()
 			Expect(err).ShouldNot(HaveOccurred())
+
 			for _, n := range nodes {
+				// create the brige
+				err = n.CreateBridge(&bta)
+				Expect(err).ShouldNot(HaveOccurred())
+
 				fluxSpec := &client.FluxMonitorJobSpec{
 					Name:              "flux_monitor",
 					ContractAddress:   fluxInstance.Address(),

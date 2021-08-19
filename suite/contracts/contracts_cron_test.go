@@ -11,7 +11,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/tools"
 )
 
-var _ = Describe("Cronjob suite", func() {
+var _ = Describe("Cronjob suite @cron", func() {
 	var (
 		s       *actions.DefaultSuiteSetup
 		adapter environment.ExternalAdapter
@@ -35,17 +35,19 @@ var _ = Describe("Cronjob suite", func() {
 		})
 
 		By("Adding cron job to a node", func() {
-			os := &client.PipelineSpec{
+			// create the bta
+			bta := client.BridgeTypeAttributes{
+				Name:        "five",
 				URL:         adapter.ClusterURL() + "/five",
-				Method:      "GET",
 				RequestData: "{}",
-				DataPath:    "data,result",
 			}
-			ost, err := os.String()
+			err = nodes[0].CreateBridge(&bta)
 			Expect(err).ShouldNot(HaveOccurred())
+
+			// create the job
 			job, err = nodes[0].CreateJob(&client.CronJobSpec{
 				Schedule:          "CRON_TZ=UTC * * * * * *",
-				ObservationSource: ost,
+				ObservationSource: client.ObservationSourceSpecBridge(bta),
 			})
 			Expect(err).ShouldNot(HaveOccurred())
 		})

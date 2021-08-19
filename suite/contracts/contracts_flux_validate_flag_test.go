@@ -2,10 +2,11 @@ package contracts
 
 import (
 	"context"
-	"github.com/rs/zerolog/log"
 	"math/big"
 	"strings"
 	"time"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/tools"
@@ -116,7 +117,7 @@ var _ = Describe("Flux monitor external validator suite", func() {
 					ContractAddress:   fluxInstance.Address(),
 					PollTimerPeriod:   15 * time.Second, // min 15s
 					PollTimerDisabled: false,
-					ObservationSource: client.ObservationSourceSpec(adapter.ClusterURL() + "/variable"),
+					ObservationSource: client.ObservationSourceSpecHttp(adapter.ClusterURL() + "/variable"),
 				}
 				_, err = n.CreateJob(fluxSpec)
 				Expect(err).ShouldNot(HaveOccurred())
