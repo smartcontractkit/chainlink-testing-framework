@@ -7,6 +7,7 @@ import (
 	"time"
 
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/client"
@@ -16,18 +17,22 @@ import (
 )
 
 var _ = Describe("OCR Feed", func() {
-	var (
-		suiteSetup     *actions.DefaultSuiteSetup
-		chainlinkNodes []client.Chainlink
-		adapter        environment.ExternalAdapter
-		defaultWallet  client.BlockchainWallet
-	)
 
-	BeforeEach(func() {
+	DescribeTable("Deploy and watch an OCR feed", func(
+		suiteInit environment.K8sEnvSpecInit,
+	) {
+		var (
+			suiteSetup     *actions.DefaultSuiteSetup
+			chainlinkNodes []client.Chainlink
+			adapter        environment.ExternalAdapter
+			defaultWallet  client.BlockchainWallet
+			ocrInstance    contracts.OffchainAggregator
+		)
+
 		By("Deploying the environment", func() {
 			var err error
 			suiteSetup, err = actions.DefaultLocalSetup(
-				environment.NewChainlinkCluster(5),
+				suiteInit,
 				client.NewNetworkFromConfig,
 				tools.ProjectRoot,
 			)
@@ -39,10 +44,6 @@ var _ = Describe("OCR Feed", func() {
 			defaultWallet = suiteSetup.Wallets.Default()
 			suiteSetup.Client.ParallelTransactions(true)
 		})
-	})
-
-	It("Deploys an OCR feed", func() {
-		var ocrInstance contracts.OffchainAggregator
 
 		By("Funding nodes and deploying OCR contract", func() {
 			err := actions.FundChainlinkNodes(
@@ -146,9 +147,10 @@ var _ = Describe("OCR Feed", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(answer.Int64()).Should(Equal(int64(10)), "Latest answer from OCR is not as expected")
 		})
-	})
 
-	AfterEach(func() {
 		By("Tearing down the environment", suiteSetup.TearDown())
-	})
+	},
+		Entry("all the same version", environment.NewChainlinkCluster(5)),
+		Entry("different versions", environment.NewMixedVersionChainlinkCluster(5)),
+	)
 })
