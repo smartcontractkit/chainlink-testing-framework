@@ -19,6 +19,9 @@ const (
 	SecretConfig ConfigurationType = "secret"
 )
 
+var ChainlinkVersion string
+var ChainlinkImage string
+
 // Config is the overall config for the framework, holding configurations for supported networks
 type Config struct {
 	Network            string                    `mapstructure:"network" yaml:"network"`
@@ -92,6 +95,8 @@ func NewConfig(configType ConfigurationType, configPath string) (*Config, error)
 	}
 	log.Info().Str("File Location", v.ConfigFileUsed()).Msg("Loading config file")
 	err := v.Unmarshal(conf)
+	ChainlinkVersion = conf.Apps.Chainlink.Version
+	ChainlinkImage = conf.Apps.Chainlink.Image
 	for _, networkConf := range conf.Networks {
 		networkConf.PrivateKeyStore = NewPrivateKeyStore(configType, networkConf)
 	}

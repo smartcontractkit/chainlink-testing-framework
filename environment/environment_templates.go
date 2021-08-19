@@ -1,9 +1,12 @@
 package environment
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 
+	"github.com/google/go-github/v38/github"
+	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/tools"
 	coreV1 "k8s.io/api/core/v1"
@@ -56,6 +59,33 @@ func NewChainlinkManifest() *K8sManifest {
 		values: map[string]interface{}{
 			"webPort": ChainlinkWebPort,
 			"p2pPort": ChainlinkP2PPort,
+		},
+
+		Secret: &coreV1.Secret{
+			ObjectMeta: v1.ObjectMeta{
+				GenerateName: "chainlink-",
+			},
+			Type: "Opaque",
+			Data: map[string][]byte{
+				"apicredentials": []byte("notreal@fakeemail.ch\ntwochains"),
+				"node-password":  []byte("T.tLHkcmwePT/p,]sYuntjwHKAsrhm#4eRs4LuKHwvHejWYAC2JP4M8HimwgmbaZ"),
+			},
+		},
+	}
+}
+
+// NewVersionedChainlinkManifest launches a chainlink node at a specific image / version
+func NewVersionedChainlinkManifest(image, version string) *K8sManifest {
+	return &K8sManifest{
+		id:             "chainlink",
+		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/chainlink-deployment.yml"),
+		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/chainlink-service.yml"),
+
+		values: map[string]interface{}{
+			"webPort": ChainlinkWebPort,
+			"p2pPort": ChainlinkP2PPort,
+			"image":   image,
+			"version": version,
 		},
 
 		Secret: &coreV1.Secret{
@@ -154,6 +184,53 @@ func NewChainlinkCluster(nodeCount int) K8sEnvSpecInit {
 		manifests: manifests,
 	}
 
+	return newChainlinkManifest(chainlinkCluster, "basic-chainlink")
+}
+
+// NewMixedVersionChainlinkCluster mixes the currently latest chainlink version (as defined by the config file) with
+// the past two stable versions, ensuring that at least one of each is deployed
+func NewMixedVersionChainlinkCluster(nodeCount int) K8sEnvSpecInit {
+	if nodeCount < 3 {
+		log.Warn().
+			Int("Provided Node Count", nodeCount).
+			Int("Recommended Minimum Node Count", 3).
+			Msg("You're using less than the recommended number of nodes for a mixed version deployment")
+	}
+	manifests := []*K8sManifest{NewAdapterManifest()}
+	testImage := config.ChainlinkImage
+	testVersion := config.ChainlinkVersion
+
+	// Get latest 2 releases
+	githubClient := github.NewClient(nil)
+	releases, _, err := githubClient.Repositories.ListReleases(
+		context.Background(),
+		"smartcontractkit",
+		"chainlink",
+		&github.ListOptions{},
+	)
+	if err != nil {
+		log.Err(err).Msg("Error retrieving latest chainlink version")
+	}
+	ecrImage := "public.ecr.aws/chainlink/chainlink"
+	log.Info().Str("Release 0 name", releases[0].GetTagName()).Str("Release 1 name", releases[1].GetTagName()).Msg("Got latest releases")
+	mixedImages := []string{testImage, ecrImage, ecrImage}
+	mixedVersions := []string{testVersion, releases[0].GetTagName(), releases[1].GetTagName()}
+
+	for i := 0; i < nodeCount; i++ {
+		manifest := NewVersionedChainlinkManifest(mixedImages[i%len(mixedImages)], mixedVersions[i%len(mixedVersions)])
+		manifest.id = fmt.Sprintf("%s-%d", manifest.id, i)
+		manifests = append(manifests, manifest)
+	}
+	chainlinkCluster := &K8sManifestGroup{
+		id:        "chainlinkCluster",
+		manifests: manifests,
+	}
+
+	return newChainlinkManifest(chainlinkCluster, "mixed-version-chainlink")
+}
+
+// Builds possible chainlink manifests
+func newChainlinkManifest(chainlinkCluster *K8sManifestGroup, envName string) K8sEnvSpecInit {
 	envWithHardhat := K8sEnvSpecs{
 		0: NewHardhatManifest(),
 		1: chainlinkCluster,
@@ -166,11 +243,11 @@ func NewChainlinkCluster(nodeCount int) K8sEnvSpecInit {
 		0: NewGethManifest(),
 		1: chainlinkCluster,
 	}
-	envWithoutHardhat := K8sEnvSpecs{
+	envNoSimulatedChain := K8sEnvSpecs{
 		0: chainlinkCluster,
 	}
+
 	return func(config *config.NetworkConfig) (string, K8sEnvSpecs) {
-		envName := "basic-chainlink"
 		switch config.Name {
 		case "Ethereum Geth dev":
 			return envName, envWithGeth
@@ -179,7 +256,7 @@ func NewChainlinkCluster(nodeCount int) K8sEnvSpecInit {
 		case "Ethereum Ganache":
 			return envName, envWithGanache
 		default:
-			return envName, envWithoutHardhat
+			return envName, envNoSimulatedChain
 		}
 	}
 }

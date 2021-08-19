@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/ghodss/yaml"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -15,6 +14,8 @@ import (
 	"sync"
 	"text/template"
 	"time"
+
+	"github.com/ghodss/yaml"
 
 	"github.com/avast/retry-go"
 	"github.com/hashicorp/go-multierror"
@@ -247,7 +248,7 @@ func (env *k8sEnvironment) writeDatabaseContents(pod coreV1.Pod, podFolder strin
 	return nil
 }
 
-// Copy db contents on a pod to a remote CSV file
+// Dumps db contents to a log file
 func (env *k8sEnvironment) dumpDB(pod coreV1.Pod, container coreV1.Container) (string, error) {
 	postRequestBase := env.k8sClient.CoreV1().RESTClient().Post().
 		Namespace(pod.Namespace).Resource("pods").Name(pod.Name).SubResource("exec")
