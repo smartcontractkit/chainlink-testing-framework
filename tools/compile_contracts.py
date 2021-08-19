@@ -19,7 +19,11 @@ used_contract_names = [
   "VRF",
   "VRFCoordinator",
   "VRFConsumer",
-  "BlockhashStore"
+  "BlockhashStore",
+  "DeviationFlaggingValidator",
+  "Flags",
+  "SimpleWriteAccessController",
+  "SimpleReadAccessController"
 ]
 
 print("Locally installing hardhat...")
