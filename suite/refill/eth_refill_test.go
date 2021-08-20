@@ -2,6 +2,7 @@ package refill
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"strings"
 	"time"
@@ -84,7 +85,7 @@ var _ = Describe("FluxAggregator ETH Refill @ethRefill", func() {
 			// create the bridge
 			bta := client.BridgeTypeAttributes{
 				Name:        "variable",
-				URL:         adapter.ClusterURL() + "/variable",
+				URL:         fmt.Sprintf("%s/variable", adapter.ClusterURL()),
 				RequestData: "{}",
 			}
 
@@ -96,7 +97,6 @@ var _ = Describe("FluxAggregator ETH Refill @ethRefill", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			for _, n := range nodes {
-				// create the brige
 				err = n.CreateBridge(&bta)
 				Expect(err).ShouldNot(HaveOccurred())
 

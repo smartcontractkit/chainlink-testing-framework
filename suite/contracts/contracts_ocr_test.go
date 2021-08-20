@@ -2,6 +2,7 @@ package contracts
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"time"
 
@@ -92,7 +93,7 @@ var _ = Describe("OCR Feed @ocr", func() {
 
 			bta := client.BridgeTypeAttributes{
 				Name: "variable",
-				URL:  adapter.ClusterURL() + "/variable",
+				URL:  fmt.Sprintf("%s/variable", adapter.ClusterURL()),
 			}
 
 			// Send OCR job to other nodes
@@ -106,7 +107,6 @@ var _ = Describe("OCR Feed @ocr", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 				nodeOCRKeyId := nodeOCRKeys.Data[0].ID
 
-				// create the bridge
 				err = chainlinkNodes[index].CreateBridge(&bta)
 				Expect(err).ShouldNot(HaveOccurred())
 

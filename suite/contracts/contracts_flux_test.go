@@ -2,6 +2,7 @@ package contracts
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"strings"
 	"time"
@@ -90,14 +91,12 @@ var _ = Describe("Flux monitor suite @flux", func() {
 		By("Creating flux jobs", func() {
 			bta := client.BridgeTypeAttributes{
 				Name: "variable",
-				URL:  adapter.ClusterURL() + "/variable",
+				URL:  fmt.Sprintf("%s/variable", adapter.ClusterURL()),
 			}
 			for _, n := range nodes {
-				// create the bridge
 				err = n.CreateBridge(&bta)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				// create the job
 				fluxSpec := &client.FluxMonitorJobSpec{
 					Name:              "flux_monitor",
 					ContractAddress:   fluxInstance.Address(),

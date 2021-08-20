@@ -68,10 +68,6 @@ type BridgeTypeAttributes struct {
 	RequestData string `json:"requestData,omitempty"`
 }
 
-func (bta *BridgeTypeAttributes) Task() string {
-	return fmt.Sprintf(`fetch [type=bridge name="%s" requestData="%s"];`, bta.Name, bta.RequestData)
-}
-
 // Session is the form structure used for authenticating
 type Session struct {
 	Email    string `json:"email"`
@@ -270,9 +266,10 @@ func (d *PipelineSpec) Type() string {
 }
 
 func (d *PipelineSpec) String() (string, error) {
-	sourceString := d.BridgeTypeAttributes.Task() + `
-			parse    [type=jsonparse path="{{.DataPath}}"];
-			fetch -> parse;`
+	sourceString := `
+		fetch [type=bridge name="{{.BridgeTypeAttributes.Name}}" requestData="{{.BridgeTypeAttributes.RequestData}}"];
+		parse [type=jsonparse path="{{.DataPath}}"];
+		fetch -> parse;`
 	return marshallTemplate(d, "API call pipeline template", sourceString)
 }
 
@@ -329,9 +326,9 @@ func (d *DirectRequestTxPipelineSpec) String() (string, error) {
                           "_data": $(parse)
                          }>
                        ]
-            ` + d.BridgeTypeAttributes.Task() + `
-			parse    [type=jsonparse path="{{.DataPath}}"]
-            submit   [type=ethtx to="$(decode_log.requester)" data="$(encode_tx)"]
+			fetch  [type=bridge name="{{.BridgeTypeAttributes.Name}}" requestData="{{.BridgeTypeAttributes.RequestData}}"];
+			parse  [type=jsonparse path="{{.DataPath}}"]
+            submit [type=ethtx to="$(decode_log.requester)" data="$(encode_tx)"]
 			decode_log -> fetch -> parse -> encode_tx -> submit`
 	return marshallTemplate(d, "Direct request pipeline template", sourceString)
 }
@@ -586,16 +583,18 @@ observationSource = """
 	return marshallTemplate(w, "Webhook Job", webHookTemplateString)
 }
 
-// ObservationSourceSpecHttp creates a http GET task spec for json data
-func ObservationSourceSpecHttp(url string) string {
-	return fmt.Sprintf(`fetch    [type=http method=GET url="%s"];
-parse    [type=jsonparse path="data,result"];
-fetch -> parse;`, url)
+// ObservationSourceSpecHTTP creates a http GET task spec for json data
+func ObservationSourceSpecHTTP(url string) string {
+	return fmt.Sprintf(`
+		fetch [type=http method=GET url="%s"];
+		parse [type=jsonparse path="data,result"];
+		fetch -> parse;`, url)
 }
 
 // ObservationSourceSpecBridge creates a bridge task spec for json data
 func ObservationSourceSpecBridge(bta BridgeTypeAttributes) string {
-	return bta.Task() + `
-parse    [type=jsonparse path="data,result"];
-fetch -> parse;`
+	return fmt.Sprintf(`
+		fetch [type=bridge name="%s" requestData="%s"];
+		parse [type=jsonparse path="data,result"];
+		fetch -> parse;`, bta.Name, bta.RequestData)
 }

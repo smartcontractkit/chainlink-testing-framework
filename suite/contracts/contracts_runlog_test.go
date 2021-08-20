@@ -3,6 +3,7 @@ package contracts
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
 	"strings"
 
@@ -68,15 +69,14 @@ var _ = Describe("Direct request suite @runlog", func() {
 
 		By("Creating directrequest job", func() {
 			jobUUID = uuid.NewV4()
-			// create the bridge
+
 			bta := client.BridgeTypeAttributes{
 				Name: "five",
-				URL:  adapter.ClusterURL() + "/five",
+				URL:  fmt.Sprintf("%s/five", adapter.ClusterURL()),
 			}
 			err = nodes[0].CreateBridge(&bta)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			// create the pipeline spec string
 			os := &client.DirectRequestTxPipelineSpec{
 				BridgeTypeAttributes: bta,
 				DataPath:             "data,result",
@@ -84,7 +84,6 @@ var _ = Describe("Direct request suite @runlog", func() {
 			ost, err := os.String()
 			Expect(err).ShouldNot(HaveOccurred())
 
-			// create the job
 			_, err = nodes[0].CreateJob(&client.DirectRequestJobSpec{
 				Name:              "direct_request",
 				ContractAddress:   oracle.Address(),
@@ -103,7 +102,7 @@ var _ = Describe("Direct request suite @runlog", func() {
 				oracle.Address(),
 				jobID,
 				big.NewInt(1e18),
-				adapter.ClusterURL()+"/five",
+				fmt.Sprintf("%s/five", adapter.ClusterURL()),
 				"data,result",
 				big.NewInt(100),
 			)

@@ -1,6 +1,8 @@
 package contracts
 
 import (
+	"fmt"
+
 	"github.com/avast/retry-go"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -35,16 +37,14 @@ var _ = Describe("Cronjob suite @cron", func() {
 		})
 
 		By("Adding cron job to a node", func() {
-			// create the bta
 			bta := client.BridgeTypeAttributes{
 				Name:        "five",
-				URL:         adapter.ClusterURL() + "/five",
+				URL:         fmt.Sprintf("%s/five", adapter.ClusterURL()),
 				RequestData: "{}",
 			}
 			err = nodes[0].CreateBridge(&bta)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			// create the job
 			job, err = nodes[0].CreateJob(&client.CronJobSpec{
 				Schedule:          "CRON_TZ=UTC * * * * * *",
 				ObservationSource: client.ObservationSourceSpecBridge(bta),
