@@ -9,7 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Client", func() {
+var _ = Describe("Blockchain @unit", func() {
 	var conf *config.Config
 
 	BeforeEach(func() {

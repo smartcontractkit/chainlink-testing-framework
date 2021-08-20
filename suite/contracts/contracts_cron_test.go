@@ -11,7 +11,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/tools"
 )
 
-var _ = Describe("Cronjob suite", func() {
+var _ = Describe("Cronjob suite @cron", func() {
 	var (
 		s       *actions.DefaultSuiteSetup
 		adapter environment.ExternalAdapter

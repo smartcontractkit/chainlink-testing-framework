@@ -18,7 +18,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/environment"
 )
 
-var _ = Describe("Flux monitor suite", func() {
+var _ = Describe("Flux monitor suite @flux", func() {
 	var (
 		s             *actions.DefaultSuiteSetup
 		adapter       environment.ExternalAdapter
