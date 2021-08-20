@@ -9,7 +9,7 @@ spec:
           secretName: {{ .Manifest.Secret.ObjectMeta.Name }}
       containers:
       - name: node
-        image: {{ if .Values.chainlinkCluster.chainlink.image }}{{ .Values.chainlinkCluster.chainlink.image }}{{ else }}{{ .Config.Apps.Chainlink.Image }}{{ end }}:{{ if .Values.chainlinkCluster.chainlink.version }}{{ .Values.chainlinkCluster.chainlink.version }}{{ else }}{{ .Config.Apps.Chainlink.Version }}{{ end }}
+        image: {{ if .Values.chainlinkCluster.chainlink.images }}{{ iterateImage .Values.chainlinkCluster.chainlink.images }}{{ else }}{{ .Config.Apps.Chainlink.Image }}{{ end }}:{{ if .Values.chainlinkCluster.chainlink.versions }}{{ iterateVersion .Values.chainlinkCluster.chainlink.versions }}{{ else }}{{ .Config.Apps.Chainlink.Version }}{{ end }}
         args:
         - node
         - start
@@ -78,6 +78,8 @@ spec:
           value: "200000"
         - name: KEEPER_REGISTRY_PERFORM_GAS_OVERHEAD
           value: "150000"
+        - name: EXPLORER_URL
+          value: {{ .Values.explorer.clusterURL }}
         volumeMounts:
         - name: node-secrets-volume
           readonly: false
@@ -112,7 +114,7 @@ spec:
         - name: PGUSER
           value: postgres
           valuefrom: null
-        livenessprobe:
+        livenessProbe:
           exec:
             command:
               - pg_isready

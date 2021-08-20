@@ -728,12 +728,47 @@ func (m *K8sManifest) setValues() error {
 	return nil
 }
 
+// Indexes to keep track of which versions have been deployed already
+var (
+	imageIndex   int = 0
+	versionIndex int = 0
+	imageMutex   sync.Mutex
+	versionMutex sync.Mutex
+)
+
 func (m *K8sManifest) parse(path string, obj interface{}, data interface{}) error {
 	fileBytes, err := ioutil.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("failed to read k8s file: %v", err)
 	}
-	tpl, err := template.New(path).Parse(string(fileBytes))
+	tpl, err := template.New(path).Funcs(template.FuncMap{
+		"iterateImage": func(images []string) string {
+			imageMutex.Lock()
+			defer imageMutex.Unlock()
+			image := images[imageIndex%len(images)]
+			imageIndex++
+			if image == "" {
+				image = m.config.Apps.Chainlink.Image
+				if image == "" { // If the image is not provided in the config, then get the latest from github
+					image = images[1]
+				}
+			}
+			return image
+		},
+		"iterateVersion": func(versions []string) string {
+			versionMutex.Lock()
+			defer versionMutex.Unlock()
+			version := versions[versionIndex%len(versions)]
+			versionIndex++
+			if version == "" {
+				version = m.config.Apps.Chainlink.Version
+				if version == "" { // If the version is not provided in the config, then get the latest from github
+					version = versions[1]
+				}
+			}
+			return version
+		},
+	}).Parse(string(fileBytes))
 	if err != nil {
 		return fmt.Errorf("failed to read k8s template file %s: %v", path, err)
 	}

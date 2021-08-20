@@ -6,6 +6,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/rs/zerolog/log"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
@@ -27,6 +29,7 @@ var _ = Describe("OCR Feed", func() {
 			adapter        environment.ExternalAdapter
 			defaultWallet  client.BlockchainWallet
 			ocrInstance    contracts.OffchainAggregator
+			em             *client.ExplorerClient
 		)
 
 		By("Deploying the environment", func() {
@@ -36,6 +39,8 @@ var _ = Describe("OCR Feed", func() {
 				client.NewNetworkFromConfig,
 				tools.ProjectRoot,
 			)
+			Expect(err).ShouldNot(HaveOccurred())
+			em, err = environment.GetExplorerMockClient(suiteSetup.Env)
 			Expect(err).ShouldNot(HaveOccurred())
 			adapter, err = environment.GetExternalAdapter(suiteSetup.Env)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -146,6 +151,22 @@ var _ = Describe("OCR Feed", func() {
 			answer, err = ocrInstance.GetLatestAnswer(context.Background())
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(answer.Int64()).Should(Equal(int64(10)), "Latest answer from OCR is not as expected")
+		})
+
+		By("Checking explorer telemetry", func() {
+			mc, err := em.Count()
+			log.Debug().Interface("Telemetry", mc).Msg("Explorer messages count")
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(mc.Errors).Should(Equal(0))
+			Expect(mc.Unknown).Should(Equal(0))
+			Expect(mc.Broadcast).Should(BeNumerically(">", 1))
+			Expect(mc.DHTAnnounce).Should(BeNumerically(">", 1))
+			Expect(mc.NewEpoch).Should(BeNumerically(">", 1))
+			Expect(mc.ObserveReq).Should(BeNumerically(">", 1))
+			Expect(mc.Received).Should(BeNumerically(">", 1))
+			Expect(mc.ReportReq).Should(BeNumerically(">", 1))
+			Expect(mc.RoundStarted).Should(BeNumerically(">", 1))
+			Expect(mc.Sent).Should(BeNumerically(">", 1))
 		})
 
 		By("Tearing down the environment", suiteSetup.TearDown())

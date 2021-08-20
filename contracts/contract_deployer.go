@@ -21,6 +21,13 @@ type ContractDeployer interface {
 	DeployStorageContract(fromWallet client.BlockchainWallet) (Storage, error)
 	DeployAPIConsumer(fromWallet client.BlockchainWallet, linkAddr string) (APIConsumer, error)
 	DeployOracle(fromWallet client.BlockchainWallet, linkAddr string) (Oracle, error)
+	DeployReadAccessController(fromWallet client.BlockchainWallet) (ReadAccessController, error)
+	DeployFlags(fromWallet client.BlockchainWallet, rac string) (Flags, error)
+	DeployDeviationFlaggingValidator(
+		fromWallet client.BlockchainWallet,
+		flags string,
+		flaggingThreshold *big.Int,
+	) (DeviationFlaggingValidator, error)
 	DeployFluxAggregatorContract(
 		fromWallet client.BlockchainWallet,
 		fluxOptions FluxAggregatorOptions,
@@ -75,6 +82,74 @@ func DefaultFluxAggregatorOptions() FluxAggregatorOptions {
 		Decimals:      uint8(0),
 		Description:   "Hardhat Flux Aggregator",
 	}
+}
+
+// DeployReadAccessController deploys read/write access controller contract
+func (e *EthereumContractDeployer) DeployReadAccessController(
+	fromWallet client.BlockchainWallet,
+) (ReadAccessController, error) {
+	address, _, instance, err := e.eth.DeployContract(fromWallet, "Read Access Controller", func(
+		auth *bind.TransactOpts,
+		backend bind.ContractBackend,
+	) (common.Address, *types.Transaction, interface{}, error) {
+		return ethereum.DeploySimpleReadAccessController(auth, backend)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &EthereumReadAccessController{
+		client:       e.eth,
+		rac:          instance.(*ethereum.SimpleReadAccessController),
+		callerWallet: fromWallet,
+		address:      address,
+	}, nil
+}
+
+// DeployFlags deploys flags contract
+func (e *EthereumContractDeployer) DeployFlags(
+	fromWallet client.BlockchainWallet,
+	rac string,
+) (Flags, error) {
+	address, _, instance, err := e.eth.DeployContract(fromWallet, "Flags", func(
+		auth *bind.TransactOpts,
+		backend bind.ContractBackend,
+	) (common.Address, *types.Transaction, interface{}, error) {
+		racAddr := common.HexToAddress(rac)
+		return ethereum.DeployFlags(auth, backend, racAddr)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &EthereumFlags{
+		client:       e.eth,
+		flags:        instance.(*ethereum.Flags),
+		callerWallet: fromWallet,
+		address:      address,
+	}, nil
+}
+
+// DeployDeviationFlaggingValidator deploys deviation flagging validator contract
+func (e *EthereumContractDeployer) DeployDeviationFlaggingValidator(
+	fromWallet client.BlockchainWallet,
+	flags string,
+	flaggingThreshold *big.Int,
+) (DeviationFlaggingValidator, error) {
+	address, _, instance, err := e.eth.DeployContract(fromWallet, "Deviation flagging validator", func(
+		auth *bind.TransactOpts,
+		backend bind.ContractBackend,
+	) (common.Address, *types.Transaction, interface{}, error) {
+		flagAddr := common.HexToAddress(flags)
+		return ethereum.DeployDeviationFlaggingValidator(auth, backend, flagAddr, flaggingThreshold)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &EthereumDeviationFlaggingValidator{
+		client:       e.eth,
+		dfv:          instance.(*ethereum.DeviationFlaggingValidator),
+		callerWallet: fromWallet,
+		address:      address,
+	}, nil
 }
 
 // DeployFluxAggregatorContract deploys the Flux Aggregator Contract on an EVM chain

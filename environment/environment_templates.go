@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/google/go-github/v38/github"
 	"github.com/rs/zerolog/log"
@@ -18,6 +19,7 @@ const (
 	ChainlinkWebPort = 6688
 	ChainlinkP2PPort = 6690
 	EVMRPCPort       = 8545
+	ExplorerWSPort   = 4321
 )
 
 // NewAdapterManifest is the k8s manifest that when used will deploy an external adapter to an environment
@@ -125,6 +127,24 @@ func NewGethManifest() *K8sManifest {
 	}
 }
 
+// NewExplorerManifest is the k8s manifest that when used will deploy explorer mock service
+func NewExplorerManifest() *K8sManifest {
+	return &K8sManifest{
+		id:             "explorer",
+		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/explorer-deployment.yml"),
+		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/explorer-service.yml"),
+		SetValuesFunc: func(manifest *K8sManifest) error {
+			manifest.values["clusterURL"] = fmt.Sprintf(
+				"ws://%s:%d",
+				manifest.Service.Spec.ClusterIP,
+				manifest.Service.Spec.Ports[0].Port,
+			)
+			manifest.values["localURL"] = fmt.Sprintf("ws://127.0.0.1:%d", manifest.ports[0].Local)
+			return nil
+		},
+	}
+}
+
 // NewHardhatManifest is the k8s manifest that when used will deploy hardhat to an environment
 func NewHardhatManifest() *K8sManifest {
 	return &K8sManifest{
@@ -197,8 +217,6 @@ func NewMixedVersionChainlinkCluster(nodeCount int) K8sEnvSpecInit {
 			Msg("You're using less than the recommended number of nodes for a mixed version deployment")
 	}
 	manifests := []*K8sManifest{NewAdapterManifest()}
-	testImage := config.ChainlinkImage
-	testVersion := config.ChainlinkVersion
 
 	// Get latest 2 releases
 	githubClient := github.NewClient(nil)
@@ -211,13 +229,9 @@ func NewMixedVersionChainlinkCluster(nodeCount int) K8sEnvSpecInit {
 	if err != nil {
 		log.Err(err).Msg("Error retrieving latest chainlink version")
 	}
-	ecrImage := "public.ecr.aws/chainlink/chainlink"
-	log.Info().Str("Release 0 name", releases[0].GetTagName()).Str("Release 1 name", releases[1].GetTagName()).Msg("Got latest releases")
-	mixedImages := []string{testImage, ecrImage, ecrImage}
-	mixedVersions := []string{testVersion, releases[0].GetTagName(), releases[1].GetTagName()}
 
 	for i := 0; i < nodeCount; i++ {
-		manifest := NewVersionedChainlinkManifest(mixedImages[i%len(mixedImages)], mixedVersions[i%len(mixedVersions)])
+		manifest := NewChainlinkManifest()
 		manifest.id = fmt.Sprintf("%s-%d", manifest.id, i)
 		manifests = append(manifests, manifest)
 	}
@@ -225,6 +239,19 @@ func NewMixedVersionChainlinkCluster(nodeCount int) K8sEnvSpecInit {
 		id:        "chainlinkCluster",
 		manifests: manifests,
 	}
+	chainlinkValues, ok := chainlinkCluster.Values()["chainlink"].(map[string]interface{})
+	if !ok {
+		log.Warn().
+			Str("Values", fmt.Sprintf("%v", chainlinkCluster.Values()["chainlink"])).
+			Msg("Unable to manipulate chainlink values: unable to launch mixed versions")
+		return newChainlinkManifest(chainlinkCluster, "mixed-version-chainlink")
+	}
+	ecrImage := "public.ecr.aws/chainlink/chainlink"
+	mixedImages := []string{"", ecrImage, ecrImage}
+	mixedVersions := []string{"", strings.TrimLeft(releases[0].GetTagName(), "v"), strings.TrimLeft(releases[1].GetTagName(), "v")}
+
+	chainlinkValues["images"] = mixedImages
+	chainlinkValues["versions"] = mixedVersions
 
 	return newChainlinkManifest(chainlinkCluster, "mixed-version-chainlink")
 }
@@ -241,7 +268,8 @@ func newChainlinkManifest(chainlinkCluster *K8sManifestGroup, envName string) K8
 	}
 	envWithGeth := K8sEnvSpecs{
 		0: NewGethManifest(),
-		1: chainlinkCluster,
+		1: NewExplorerManifest(),
+		2: chainlinkCluster,
 	}
 	envNoSimulatedChain := K8sEnvSpecs{
 		0: chainlinkCluster,

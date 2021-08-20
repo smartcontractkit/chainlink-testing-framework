@@ -160,6 +160,32 @@ type ETHKeyAttributes struct {
 	Address string `json:"address"`
 }
 
+// EIAttributes is the model that represents the EI keys when created and read
+type EIAttributes struct {
+	Name              string `json:"name,omitempty"`
+	URL               string `json:"url,omitempty"`
+	IncomingAccessKey string `json:"incomingAccessKey,omitempty"`
+	AccessKey         string `json:"accessKey,omitempty"`
+	Secret            string `json:"incomingSecret,omitempty"`
+	OutgoingToken     string `json:"outgoingToken,omitempty"`
+	OutgoingSecret    string `json:"outgoingSecret,omitempty"`
+}
+
+// EIKeys is the model that represents the EI configs when read
+type EIKeys struct {
+	Data []EIKey `json:"data"`
+}
+
+// EIKeyCreate is the model that represents the EI config when created
+type EIKeyCreate struct {
+	Data EIKey `json:"data"`
+}
+
+// EIKey is the model that represents the EI configs when read
+type EIKey struct {
+	Attributes EIAttributes `json:"attributes"`
+}
+
 // SpecForm is the form used when creating a v2 job spec, containing the TOML of the v2 job
 type SpecForm struct {
 	TOML string `json:"toml"`
@@ -242,7 +268,7 @@ func (d *PipelineSpec) Type() string {
 
 func (d *PipelineSpec) String() (string, error) {
 	sourceString := `fetch    [type=http method={{.Method}} url="{{.URL}}" requestData="{{.RequestData}}"];
-			parse    [type=jsonparse path="{{.DataPath}}"];    
+			parse    [type=jsonparse path="{{.DataPath}}"];
 			fetch -> parse;`
 	return marshallTemplate(d, "API call pipeline template", sourceString)
 }
@@ -561,6 +587,6 @@ observationSource = """
 
 func ObservationSourceSpec(url string) string {
 	return fmt.Sprintf(`fetch    [type=http method=GET url="%s"];
-parse    [type=jsonparse path="data,result"];    
+parse    [type=jsonparse path="data,result"];
 fetch -> parse;`, url)
 }
