@@ -29,6 +29,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-duration-seconds: 3600
       - name: Install Ginkgo CLI
         run: go install github.com/onsi/ginkgo/ginkgo
       - name: Run Tests
@@ -36,12 +37,12 @@ jobs:
          export PATH=$PATH:$(go env GOPATH)/bin
          ginkgo -r -p -keepGoing --randomizeAllSpecs -cover --coverprofile=coverage.out ./...
       - name: Publish Artifacts
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v1
         with:
           name: test-logs
           path: ./logs
-      - name: Convert coverage to lcov
+      - name: Convert coverage to lcov # We're public repo now, check out codecov
         uses: jandelgado/gcov2lcov-action@v1.0.5
         if: always()
       - name: Report code coverage
