@@ -82,7 +82,6 @@ var _ = Describe("FluxAggregator ETH Refill @ethRefill", func() {
 		})
 
 		By("Adding FluxAggregator jobs to nodes", func() {
-			// create the bridge
 			bta := client.BridgeTypeAttributes{
 				Name:        "variable",
 				URL:         fmt.Sprintf("%s/variable", adapter.ClusterURL()),
