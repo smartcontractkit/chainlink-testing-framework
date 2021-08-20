@@ -34,32 +34,32 @@ test_nightly: ## run nightly tests
 
 .PHONY: test_unit
 test_unit: ## run unit tests
-	ginkgo -r --focus @unit
+	ginkgo -r --focus=@unit
 
 .PHONY: test_cron
 test_cron: ## run cron tests
-	ginkgo -r --focus @cron
+	ginkgo -r --focus=@cron
 
 .PHONY: test_flux
 test_flux: ## run flux tests
-	ginkgo -r --focus @flux
+	ginkgo -r --focus=@flux
 
 .PHONY: test_keeper
 test_keeper: ## run keeper tests
-	ginkgo -r --focus @keeper
+	ginkgo -r --focus=@keeper
 
 .PHONY: test_ocr
 test_ocr: ## run ocr tests
-	ginkgo -r --focus @ocr
+	ginkgo -r --focus=@ocr
 
 .PHONY: test_runlog
 test_runlog: ## run runlog tests
-	ginkgo -r --focus @runlog
+	ginkgo -r --focus=@runlog
 
 .PHONY: test_contract
 test_contract: ## run contract tests
-	ginkgo -r --focus @contract
+	ginkgo -r --focus=@contract
 
 .PHONY: test_vrf
 test_vrf: ## run vrf tests
-	ginkgo -r --focus @vrf
+	ginkgo -r --focus=@vrf
