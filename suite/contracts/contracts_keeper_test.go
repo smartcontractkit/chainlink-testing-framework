@@ -17,7 +17,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/tools"
 )
 
-var _ = Describe("Keeper suite", func() {
+var _ = Describe("Keeper suite @keeper", func() {
 	var (
 		s                *actions.DefaultSuiteSetup
 		nodes            []client.Chainlink

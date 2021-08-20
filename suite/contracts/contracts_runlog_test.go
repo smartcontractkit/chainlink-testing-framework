@@ -19,7 +19,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/tools"
 )
 
-var _ = Describe("Direct request suite", func() {
+var _ = Describe("Direct request suite @runlog", func() {
 	var (
 		s             *actions.DefaultSuiteSetup
 		adapter       environment.ExternalAdapter
