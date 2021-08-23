@@ -32,6 +32,10 @@ test_race: ## run tests with race
 test_nightly: ## run nightly tests
 	go test -v ./... -race -count 20 -p 1
 
+.PHONY: test_coverage
+test_coverage: ## run tests with coverage
+	go test -v ./... -cover -count 1 -p 1
+
 .PHONY: test_unit
 test_unit: ## run unit tests
 	ginkgo -r --focus=@unit
