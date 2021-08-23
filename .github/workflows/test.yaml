@@ -34,6 +34,8 @@ jobs:
         run: echo "${{ secrets.KUBECONFIG }}" >> /tmp/KUBECONFIG
       - name: Install Ginkgo CLI
         run: go install github.com/onsi/ginkgo/ginkgo
+      - name: Download Go Vendor Packages
+        run: go mod download
       - name: Run Tests
         run: |
          export PATH=$PATH:$(go env GOPATH)/bin
