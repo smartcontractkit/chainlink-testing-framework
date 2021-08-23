@@ -38,14 +38,16 @@ var _ = Describe("Config unit tests @unit", func() {
 		})
 
 		It("should overwrite default values with ENV variables", func() {
-			os.Setenv("KEEP_ENVIRONMENTS", "OnFail")
+			err := os.Setenv("KEEP_ENVIRONMENTS", "OnFail")
+			Expect(err).ShouldNot(HaveOccurred())
 			conf, err := NewConfig(LocalConfig, tools.ProjectRoot)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(conf.KeepEnvironments).Should(Equal("OnFail"))
 		})
 
 		It("should overwrite specified file values with ENV variables", func() {
-			os.Setenv("KEEP_ENVIRONMENTS", "OnFail")
+			err := os.Setenv("KEEP_ENVIRONMENTS", "OnFail")
+			Expect(err).ShouldNot(HaveOccurred())
 			conf, err := NewConfig(LocalConfig, fmt.Sprintf(specifiedConfig, tools.ProjectRoot))
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(conf.KeepEnvironments).Should(Equal("OnFail"))
@@ -59,7 +61,8 @@ var _ = Describe("Config unit tests @unit", func() {
 		})
 
 		AfterEach(func() {
-			os.Unsetenv("KEEP_ENVIRONMENTS")
+			err := os.Unsetenv("KEEP_ENVIRONMENTS")
+			Expect(err).ShouldNot(HaveOccurred())
 		})
 	})
 
