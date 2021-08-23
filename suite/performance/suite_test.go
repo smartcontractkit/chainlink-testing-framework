@@ -1,4 +1,4 @@
-package contracts_test
+package performance_test
 
 import (
 	"github.com/smartcontractkit/integrations-framework/config"
@@ -22,5 +22,5 @@ func TestContracts(t *testing.T) {
 	}
 	log.Logger = log.Logger.Level(zerolog.Level(conf.Logging.Level))
 	junitReporter := reporters.NewJUnitReporter("junit.xml")
-	RunSpecsWithDefaultAndCustomReporters(t, "Contract Suite", []Reporter{junitReporter})
+	RunSpecsWithDefaultAndCustomReporters(t, "Performance suite", []Reporter{junitReporter})
 }
