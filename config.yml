@@ -10,7 +10,7 @@ keep_environments: Never # Options: Always, OnFail, Never
 apps:
     chainlink:
         image: public.ecr.aws/chainlink/chainlink
-        version: 0.10.11
+        version: 0.10.12
 
 private_keys: &private_keys
     private_keys:

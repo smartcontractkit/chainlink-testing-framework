@@ -105,7 +105,7 @@ var _ = Describe("Direct request suite @runlog", func() {
 				if d == nil {
 					return errors.New("no data")
 				}
-				log.Debug().Int64("Data", d.Int64()).Send()
+				log.Debug().Int64("Data", d.Int64()).Msg("Found on chain")
 				if d.Int64() != 5 {
 					return errors.New("data is not on chain")
 				}
