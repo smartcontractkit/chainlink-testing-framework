@@ -26,3 +26,4 @@ artifacts/
 junit.xml
 
 logs/
+bin/
