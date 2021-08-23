@@ -9,6 +9,13 @@ import (
 	"github.com/smartcontractkit/integrations-framework/tools"
 )
 
+// Test config files
+const (
+	specifiedConfig     string = "%s/config/test_configs/specified_config"
+	badConfig           string = "%s/config/test_configs/bad_config"
+	noPrivateKeysConfig string = "%s/config/test_configs/no_private_keys"
+)
+
 var _ = Describe("Config unit tests @unit", func() {
 
 	Describe("Verify order of importance for environment variables and config files", func() {
@@ -19,13 +26,13 @@ var _ = Describe("Config unit tests @unit", func() {
 		})
 
 		It("should load a specified file", func() {
-			conf, err := NewConfig(LocalConfig, fmt.Sprintf("%s/config/test_configs/specified_config", tools.ProjectRoot))
+			conf, err := NewConfig(LocalConfig, fmt.Sprintf(specifiedConfig, tools.ProjectRoot))
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(conf.KeepEnvironments).Should(Equal("Always"))
 		})
 
 		It("should fail to load a bad file", func() {
-			_, err := NewConfig(LocalConfig, fmt.Sprintf("%s/config/test_configs/bad_config", tools.ProjectRoot))
+			_, err := NewConfig(LocalConfig, fmt.Sprintf(badConfig, tools.ProjectRoot))
 			Expect(err).Should(HaveOccurred())
 			Expect(err.Error()).Should(ContainSubstring("line 1: cannot unmarshal"))
 		})
@@ -39,7 +46,7 @@ var _ = Describe("Config unit tests @unit", func() {
 
 		It("should overwrite specified file values with ENV variables", func() {
 			os.Setenv("KEEP_ENVIRONMENTS", "OnFail")
-			conf, err := NewConfig(LocalConfig, fmt.Sprintf("%s/config/test_configs/specified_config", tools.ProjectRoot))
+			conf, err := NewConfig(LocalConfig, fmt.Sprintf(specifiedConfig, tools.ProjectRoot))
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(conf.KeepEnvironments).Should(Equal("OnFail"))
 
@@ -57,7 +64,7 @@ var _ = Describe("Config unit tests @unit", func() {
 	})
 
 	It("should get the network config with a valid name", func() {
-		conf, err := NewConfig(LocalConfig, fmt.Sprintf("%s/config/test_configs/specified_config", tools.ProjectRoot))
+		conf, err := NewConfig(LocalConfig, fmt.Sprintf(specifiedConfig, tools.ProjectRoot))
 		Expect(err).ShouldNot(HaveOccurred())
 		network, err := conf.GetNetworkConfig("test_this_geth")
 		Expect(err).ShouldNot(HaveOccurred())
@@ -65,7 +72,7 @@ var _ = Describe("Config unit tests @unit", func() {
 	})
 
 	It("should not get the network config with an invalid name", func() {
-		conf, err := NewConfig(LocalConfig, fmt.Sprintf("%s/config/test_configs/specified_config", tools.ProjectRoot))
+		conf, err := NewConfig(LocalConfig, fmt.Sprintf(specifiedConfig, tools.ProjectRoot))
 		Expect(err).ShouldNot(HaveOccurred())
 		_, err = conf.GetNetworkConfig("bad_name")
 		Expect(err).Should(HaveOccurred())
@@ -73,7 +80,7 @@ var _ = Describe("Config unit tests @unit", func() {
 	})
 
 	It("should fetch private keys when they exist", func() {
-		conf, err := NewConfig(LocalConfig, fmt.Sprintf("%s/config/test_configs/specified_config", tools.ProjectRoot))
+		conf, err := NewConfig(LocalConfig, fmt.Sprintf(specifiedConfig, tools.ProjectRoot))
 		Expect(err).ShouldNot(HaveOccurred())
 		network, err := conf.GetNetworkConfig("test_this_geth")
 		Expect(err).ShouldNot(HaveOccurred())
@@ -85,7 +92,7 @@ var _ = Describe("Config unit tests @unit", func() {
 	})
 
 	It("should not fetch private keys when they do not exist", func() {
-		conf, err := NewConfig(LocalConfig, fmt.Sprintf("%s/config/test_configs/no_private_keys", tools.ProjectRoot))
+		conf, err := NewConfig(LocalConfig, fmt.Sprintf(noPrivateKeysConfig, tools.ProjectRoot))
 		Expect(err).ShouldNot(HaveOccurred())
 		network, err := conf.GetNetworkConfig("test_this_geth")
 		Expect(err).ShouldNot(HaveOccurred())
