@@ -109,12 +109,10 @@ func (f *FluxTest) Run() error {
 	g.Go(func() error {
 		return f.watchSubmissions(ctx, chainlinkMap)
 	})
-	time.Sleep(time.Second * 10)
 
 	if err := f.createChainlinkJobs(); err != nil {
 		return err
 	}
-
 	for i := 1; int64(i) <= f.TestOptions.NumberOfRounds; i++ {
 		if err := f.adapter.SetVariable(i); err != nil {
 			return err
@@ -132,7 +130,9 @@ func (f *FluxTest) Run() error {
 // RecordValues will query all of the latencies of the FluxAggregator rounds and then record them within the
 // test runner
 func (f *FluxTest) RecordValues(b ginkgo.Benchmarker) error {
-	actions.SetChainlinkAPIPageSize(f.chainlinkClients, int(f.TestOptions.NumberOfRounds))
+	// for each submission we can have 2 runs,
+	// one is triggered by poll timer, another when node sees log with another node submission
+	actions.SetChainlinkAPIPageSize(f.chainlinkClients, int(f.TestOptions.NumberOfRounds)*2)
 	if err := f.setResultStartTimes(); err != nil {
 		return err
 	}
@@ -196,7 +196,6 @@ func (f *FluxTest) createChainlinkJobs() error {
 	for _, contract := range f.contractInstances {
 		contract := contract
 		g := errgroup.Group{}
-
 		for _, node := range f.chainlinkClients {
 			node := node
 			g.Go(func() error {
@@ -270,6 +269,7 @@ func (f *FluxTest) setResultStartTimeByContract(contract contracts.FluxAggregato
 		if err != nil {
 			return err
 		}
+		log.Debug().Str("Contract", contract.Address()).Interface("Start times", startTimes).Msg("Earliest start times")
 		for roundID, startTime := range startTimes {
 			result := f.testResults.Get(roundID, contract, chainlink)
 			result.StartTime = startTime
@@ -278,23 +278,46 @@ func (f *FluxTest) setResultStartTimeByContract(contract contracts.FluxAggregato
 	return nil
 }
 
+// takeEarliestRunsByAnswer takes earliest node job run for an answer
+func (f *FluxTest) takeEarliestRunsByAnswer(runs []client.RunsResponseData) []client.RunsResponseData {
+	deduplicated := make([]client.RunsResponseData, 0)
+	sort.SliceStable(runs, func(i, j int) bool {
+		return runs[i].Attributes.CreatedAt.Before(runs[j].Attributes.CreatedAt)
+	})
+	seen := make(map[int]bool)
+	for _, data := range runs {
+		answer := data.Attributes.Inputs.Parse
+		if int64(answer) > f.TestOptions.NumberOfRounds {
+			continue
+		}
+		if _, ok := seen[answer]; !ok {
+			deduplicated = append(deduplicated, data)
+		}
+		seen[answer] = true
+	}
+	return deduplicated
+}
+
 func (f *FluxTest) getJobStartTimes(chainlink client.Chainlink, jobID string) (map[int64]time.Time, error) {
 	jobRuns, err := chainlink.ReadRunsByJob(jobID)
 	if err != nil {
 		return nil, err
 	}
+	log.Debug().
+		Str("Node", chainlink.URL()).
+		Int("Runs", len(jobRuns.Data)).
+		Interface("Data", jobRuns.Data).
+		Msg("Total runs")
+	earliestRuns := f.takeEarliestRunsByAnswer(jobRuns.Data)
 	var runsStartTimes []time.Time
-	for _, run := range jobRuns.Data {
+	for _, run := range earliestRuns {
 		runsStartTimes = append(runsStartTimes, run.Attributes.CreatedAt)
 	}
-	sort.Slice(runsStartTimes, func(i, j int) bool {
-		return runsStartTimes[i].Before(runsStartTimes[j])
-	})
 
 	// Place into a map to preserve order
 	startTimesMap := map[int64]time.Time{}
 	for i, startTime := range runsStartTimes {
-		startTimesMap[int64(i + 1)] = startTime
+		startTimesMap[int64(i+1)] = startTime
 	}
 	return startTimesMap, nil
 }
@@ -316,7 +339,7 @@ func (f *FluxTest) watchSubmissions(ctx context.Context, chainlinkMap map[string
 			if int64(event.Round) > f.TestOptions.NumberOfRounds {
 				continue
 			}
-			log.Info().
+			log.Debug().
 				Str("Contract Address", event.Contract.String()).
 				Uint32("Round ID", event.Round).
 				Str("Oracle", event.Oracle.String()).
@@ -359,14 +382,15 @@ func (f *FluxTest) setResultEndTime(
 	}
 
 	if _, ok := f.headerTimestampCache[submission.BlockNumber]; !ok {
-		if blockTime, err := f.Blockchain.HeaderTimestampByNumber(
+		blockTime, err := f.Blockchain.HeaderTimestampByNumber(
 			context.Background(),
 			big.NewInt(int64(submission.BlockNumber)),
-		); err != nil {
+		)
+		if err != nil {
 			return err
-		} else {
-			f.headerTimestampCache[submission.BlockNumber] = time.Unix(int64(blockTime), 0)
 		}
+		loc, _ := time.LoadLocation("UTC")
+		f.headerTimestampCache[submission.BlockNumber] = time.Unix(int64(blockTime), 0).In(loc)
 	}
 
 	roundID := int64(submission.Round)
@@ -376,6 +400,7 @@ func (f *FluxTest) setResultEndTime(
 		chainlinkMap[strings.ToLower(submission.Oracle.String())],
 	)
 	testResult.EndTime = f.headerTimestampCache[submission.BlockNumber]
+	log.Debug().Str("Contract", contract.Address()).Str("Oracle", submission.Oracle.Hex()).Time("End time", testResult.EndTime).Send()
 	return nil
 }
 
@@ -407,19 +432,36 @@ func (f *FluxTest) calculateLatencies(b ginkgo.Benchmarker) error {
 	var latencies []time.Duration
 
 	for roundID, testResults := range f.testResults.GetAll() {
+		if roundID > f.TestOptions.NumberOfRounds {
+			continue
+		}
 		log.Info().Int64("Round ID", roundID).Msg("Calculating latencies for round")
 
 		for contract, contractResults := range testResults {
 			for node, nodeResults := range contractResults {
 				if nodeResults.StartTime.IsZero() {
-					log.Info().Int64("Round ID", roundID).Str("Contract", contract.Address()).Str("Node", node.URL()).Msg("Start time zero")
+					log.Warn().
+						Int64("Round ID", roundID).
+						Str("Contract", contract.Address()).
+						Str("Node", node.URL()).
+						Msg("Start time zero")
 				}
 				if nodeResults.EndTime.IsZero() {
-					log.Info().Int64("Round ID", roundID).Str("Contract", contract.Address()).Str("Node", node.URL()).Msg("End time zero")
+					log.Warn().
+						Int64("Round ID", roundID).
+						Str("Contract", contract.Address()).
+						Str("Node", node.URL()).
+						Msg("End time zero")
 				}
 				latency := nodeResults.EndTime.Sub(nodeResults.StartTime)
 				if latency.Seconds() < 0 {
-					log.Info().Time("Start", nodeResults.StartTime).Time("End", nodeResults.EndTime).Int64("Round ID", roundID).Str("Contract", contract.Address()).Str("Node", node.URL()).Msg("Latency below zero")
+					log.Warn().
+						Time("Start", nodeResults.StartTime).
+						Time("End", nodeResults.EndTime).
+						Int64("Round ID", roundID).
+						Str("Contract", contract.Address()).
+						Str("Node", node.URL()).
+						Msg("Latency below zero")
 				}
 				latencies = append(latencies, latency)
 			}

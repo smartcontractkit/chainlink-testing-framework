@@ -108,5 +108,8 @@ kubernetes:
     # How long to wait for the environment to deploy & be marked as healthy before test errors
     deployment_timeout: 3m
 
+logging:
+    # panic=5, fatal=4, error=3, warn=2, info=1, debug=0, trace=-1
+    level: 0
 prometheus:
-    url: https://prometheus.qa.stage.cldev.sh
+    url: ""

@@ -7,6 +7,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
 	"github.com/smartcontractkit/integrations-framework/environment"
+	"github.com/smartcontractkit/integrations-framework/tools"
 	"math/big"
 	"time"
 )
@@ -26,6 +27,7 @@ var _ = Describe("Performance tests", func() {
 			s, err = actions.DefaultLocalSetup(
 				environment.NewChainlinkCluster(numberOfNodes),
 				client.NewNetworkFromConfig,
+				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
 			nodes, err = environment.GetChainlinkClients(s.Env)
@@ -53,8 +55,8 @@ var _ = Describe("Performance tests", func() {
 						NumberOfRounds:    numberOfRounds,
 					},
 					RequiredSubmissions: numberOfNodes,
-					RestartDelayRounds: 0,
-					NodePollTimePeriod: time.Second * 15,
+					RestartDelayRounds:  0,
+					NodePollTimePeriod:  time.Second * 15,
 				},
 				contracts.DefaultFluxAggregatorOptions(),
 				s.Env,
