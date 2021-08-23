@@ -76,33 +76,6 @@ func NewChainlinkManifest() *K8sManifest {
 	}
 }
 
-// NewVersionedChainlinkManifest launches a chainlink node at a specific image / version
-func NewVersionedChainlinkManifest(image, version string) *K8sManifest {
-	return &K8sManifest{
-		id:             "chainlink",
-		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/chainlink-deployment.yml"),
-		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/chainlink-service.yml"),
-
-		values: map[string]interface{}{
-			"webPort": ChainlinkWebPort,
-			"p2pPort": ChainlinkP2PPort,
-			"image":   image,
-			"version": version,
-		},
-
-		Secret: &coreV1.Secret{
-			ObjectMeta: v1.ObjectMeta{
-				GenerateName: "chainlink-",
-			},
-			Type: "Opaque",
-			Data: map[string][]byte{
-				"apicredentials": []byte("notreal@fakeemail.ch\ntwochains"),
-				"node-password":  []byte("T.tLHkcmwePT/p,]sYuntjwHKAsrhm#4eRs4LuKHwvHejWYAC2JP4M8HimwgmbaZ"),
-			},
-		},
-	}
-}
-
 // NewGethManifest is the k8s manifest that when used will deploy geth to an environment
 func NewGethManifest() *K8sManifest {
 	return &K8sManifest{
