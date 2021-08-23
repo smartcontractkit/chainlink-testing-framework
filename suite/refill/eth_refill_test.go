@@ -17,7 +17,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/tools"
 )
 
-var _ = Describe("FluxAggregator ETH Refill", func() {
+var _ = Describe("FluxAggregator ETH Refill @refill", func() {
 	var (
 		s             *actions.DefaultSuiteSetup
 		adapter       environment.ExternalAdapter
@@ -64,7 +64,7 @@ var _ = Describe("FluxAggregator ETH Refill", func() {
 
 		By("Setting FluxAggregator options", func() {
 			err = fluxInstance.SetOracles(s.Wallets.Default(),
-				contracts.SetOraclesOptions{
+				contracts.FluxAggregatorSetOraclesOptions{
 					AddList:            nodeAddresses,
 					RemoveList:         []common.Address{},
 					AdminList:          nodeAddresses,

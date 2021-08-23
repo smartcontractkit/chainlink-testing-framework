@@ -738,14 +738,6 @@ func (m *K8sManifest) setValues() error {
 	return nil
 }
 
-// Indexes to keep track of which versions have been deployed already
-var (
-	imageIndex   int = 0
-	versionIndex int = 0
-	imageMutex   sync.Mutex
-	versionMutex sync.Mutex
-)
-
 func (m *K8sManifest) parse(path string, obj interface{}, data interface{}) error {
 	fileBytes, err := ioutil.ReadFile(path)
 	if err != nil {

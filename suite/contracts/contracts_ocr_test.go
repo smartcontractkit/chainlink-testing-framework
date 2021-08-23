@@ -20,7 +20,7 @@ import (
 
 var _ = Describe("OCR Feed", func() {
 
-	DescribeTable("Deploy and watch an OCR feed", func(
+	DescribeTable("Deploys and watches an OCR feed @ocr", func(
 		suiteInit environment.K8sEnvSpecInit,
 	) {
 		var (

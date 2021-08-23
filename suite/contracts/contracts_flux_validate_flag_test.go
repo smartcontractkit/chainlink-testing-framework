@@ -2,10 +2,11 @@ package contracts
 
 import (
 	"context"
-	"github.com/rs/zerolog/log"
 	"math/big"
 	"strings"
 	"time"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/tools"
@@ -18,7 +19,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/environment"
 )
 
-var _ = Describe("Flux monitor external validator suite", func() {
+var _ = Describe("Flux monitor external validator suite @flux", func() {
 	var (
 		s                  *actions.DefaultSuiteSetup
 		adapter            environment.ExternalAdapter
@@ -94,7 +95,7 @@ var _ = Describe("Flux monitor external validator suite", func() {
 		})
 		By("Setting oracle options", func() {
 			err = fluxInstance.SetOracles(s.Wallets.Default(),
-				contracts.SetOraclesOptions{
+				contracts.FluxAggregatorSetOraclesOptions{
 					AddList:            nodeAddresses,
 					RemoveList:         []common.Address{},
 					AdminList:          nodeAddresses,

@@ -17,7 +17,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/tools"
 )
 
-var _ = Describe("VRF suite", func() {
+var _ = Describe("VRF suite @vrf", func() {
 
 	var (
 		s                  *actions.DefaultSuiteSetup
