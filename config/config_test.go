@@ -105,4 +105,25 @@ var _ = Describe("Config unit tests @unit", func() {
 		Expect(err.Error()).Should(ContainSubstring("no keys found"))
 	})
 
+	It("should fetch secret store, code still has a todo so fix this test when the code is updated", func() {
+		conf, err := NewConfig(SecretConfig, fmt.Sprintf(specifiedConfig, tools.ProjectRoot))
+		Expect(err).ShouldNot(HaveOccurred())
+		network, err := conf.GetNetworkConfig("test_this_geth")
+		Expect(err).ShouldNot(HaveOccurred())
+		privateKeys := NewPrivateKeyStore(SecretConfig, network)
+		keys, err := privateKeys.Fetch()
+		Expect(err).ShouldNot(HaveOccurred())
+		Expect(len(keys)).Should(Equal(1), "The number of private keys was incorrect")
+		Expect(keys[0]).Should(Equal(""), "The private key did not get read correctly")
+	})
+
+	It("should not fetch private keys when asking for a bad configuration type", func() {
+		conf, err := NewConfig("badConfigurationType", fmt.Sprintf(noPrivateKeysConfig, tools.ProjectRoot))
+		Expect(err).ShouldNot(HaveOccurred())
+		network, err := conf.GetNetworkConfig("test_this_geth")
+		Expect(err).ShouldNot(HaveOccurred())
+		privateKeys := NewPrivateKeyStore("badConfigurationType", network)
+		Expect(privateKeys).Should(BeNil(), "We should have no keystore for invalid configuration types")
+	})
+
 })
