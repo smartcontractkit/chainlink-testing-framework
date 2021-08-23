@@ -22,13 +22,13 @@ var _ = Describe("Config unit tests @unit", func() {
 		It("should load the default config file", func() {
 			conf, err := NewConfig(LocalConfig, tools.ProjectRoot)
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(conf.KeepEnvironments).Should(Equal("Never"))
+			Expect(conf.KeepEnvironments).Should(Equal("Never"), "We either changed the default value in the config or it did not load correctly")
 		})
 
 		It("should load a specified file", func() {
 			conf, err := NewConfig(LocalConfig, fmt.Sprintf(specifiedConfig, tools.ProjectRoot))
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(conf.KeepEnvironments).Should(Equal("Always"))
+			Expect(conf.KeepEnvironments).Should(Equal("Always"), "We did not load the correct config file")
 		})
 
 		It("should fail to load a bad file", func() {
@@ -42,7 +42,7 @@ var _ = Describe("Config unit tests @unit", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			conf, err := NewConfig(LocalConfig, tools.ProjectRoot)
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(conf.KeepEnvironments).Should(Equal("OnFail"))
+			Expect(conf.KeepEnvironments).Should(Equal("OnFail"), "The environment variable should have been used to change the config value")
 		})
 
 		It("should overwrite specified file values with ENV variables", func() {
@@ -50,14 +50,14 @@ var _ = Describe("Config unit tests @unit", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			conf, err := NewConfig(LocalConfig, fmt.Sprintf(specifiedConfig, tools.ProjectRoot))
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(conf.KeepEnvironments).Should(Equal("OnFail"))
+			Expect(conf.KeepEnvironments).Should(Equal("OnFail"), "The environment variable should have been used to change the config value")
 
 		})
 
 		It("should load the config if we specify a Secret Config type", func() {
 			conf, err := NewConfig(SecretConfig, tools.ProjectRoot)
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(conf.KeepEnvironments).Should(Equal("Never"))
+			Expect(conf.KeepEnvironments).Should(Equal("Never"), "We either changed the default value in the config or it did not load correctly")
 		})
 
 		AfterEach(func() {
@@ -71,7 +71,7 @@ var _ = Describe("Config unit tests @unit", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		network, err := conf.GetNetworkConfig("test_this_geth")
 		Expect(err).ShouldNot(HaveOccurred())
-		Expect(network.Name).Should(Equal("Tester Ted"))
+		Expect(network.Name).Should(Equal("Tester Ted"), "The network config was not loaded correctly")
 	})
 
 	It("should not get the network config with an invalid name", func() {
@@ -90,8 +90,8 @@ var _ = Describe("Config unit tests @unit", func() {
 		privateKeys := NewPrivateKeyStore(LocalConfig, network)
 		keys, err := privateKeys.Fetch()
 		Expect(err).ShouldNot(HaveOccurred())
-		Expect(len(keys)).Should(Equal(1))
-		Expect(keys[0]).Should((Equal("abcdefg")))
+		Expect(len(keys)).Should(Equal(1), "The number of private keys was incorrect")
+		Expect(keys[0]).Should(Equal("abcdefg"), "The private key did not get read correctly")
 	})
 
 	It("should not fetch private keys when they do not exist", func() {
