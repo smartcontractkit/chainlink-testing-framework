@@ -18,7 +18,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/tools"
 )
 
-var _ = Describe("FluxAggregator ETH Refill @ethRefill", func() {
+var _ = Describe("FluxAggregator ETH Refill @refill", func() {
 	var (
 		s             *actions.DefaultSuiteSetup
 		adapter       environment.ExternalAdapter

@@ -46,7 +46,7 @@ var _ = Describe("OCR Feed @ocr", func() {
 		})
 	})
 
-	It("Deploys an OCR feed", func() {
+	It("Deploys an OCR feed @ocr", func() {
 		var ocrInstance contracts.OffchainAggregator
 
 		By("Funding nodes and deploying OCR contract", func() {
