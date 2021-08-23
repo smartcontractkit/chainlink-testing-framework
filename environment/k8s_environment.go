@@ -549,11 +549,21 @@ func (m *K8sManifest) createSecret(values map[string]interface{}) error {
 	return nil
 }
 
+var deploymentMutex sync.Mutex
+
 func (m *K8sManifest) createDeployment(values map[string]interface{}) error {
 	k8sDeployments := m.k8sClient.AppsV1().Deployments(m.namespace.Name)
 
+	if image, ok := m.Values()["image"]; ok {
+		deploymentMutex.Lock()
+		m.config.Apps.Chainlink.Image = image.(string)
+		m.config.Apps.Chainlink.Version = m.Values()["version"].(string)
+	}
 	if err := m.parseDeployment(m.config, m.network, values); err != nil {
 		return err
+	}
+	if _, ok := m.Values()["image"]; ok {
+		deploymentMutex.Unlock()
 	}
 
 	if m.Deployment != nil {
@@ -741,34 +751,7 @@ func (m *K8sManifest) parse(path string, obj interface{}, data interface{}) erro
 	if err != nil {
 		return fmt.Errorf("failed to read k8s file: %v", err)
 	}
-	tpl, err := template.New(path).Funcs(template.FuncMap{
-		"iterateImage": func(images []string) string {
-			imageMutex.Lock()
-			defer imageMutex.Unlock()
-			image := images[imageIndex%len(images)]
-			imageIndex++
-			if image == "" {
-				image = m.config.Apps.Chainlink.Image
-				if image == "" { // If the image is not provided in the config, then get the latest from github
-					image = images[1]
-				}
-			}
-			return image
-		},
-		"iterateVersion": func(versions []string) string {
-			versionMutex.Lock()
-			defer versionMutex.Unlock()
-			version := versions[versionIndex%len(versions)]
-			versionIndex++
-			if version == "" {
-				version = m.config.Apps.Chainlink.Version
-				if version == "" { // If the version is not provided in the config, then get the latest from github
-					version = versions[1]
-				}
-			}
-			return version
-		},
-	}).Parse(string(fileBytes))
+	tpl, err := template.New(path).Parse(string(fileBytes))
 	if err != nil {
 		return fmt.Errorf("failed to read k8s template file %s: %v", path, err)
 	}
@@ -868,13 +851,22 @@ func (mg *K8sManifestGroup) SetEnvironment(
 	return nil
 }
 
-// Deploy concurrency creates all of the definitions on the k8s cluster
+// Deploy concurrently creates all of the definitions on the k8s cluster
 func (mg *K8sManifestGroup) Deploy(values map[string]interface{}) error {
 	var errGroup error
-
 	wg := mg.waitGroup()
+
+	originalImage := mg.manifests[0].config.Apps.Chainlink.Image
+	originalVersion := mg.manifests[0].config.Apps.Chainlink.Version
+	// Deploy manifests
 	for _, manifest := range mg.manifests {
 		m := manifest
+		if manifestImage, ok := m.values["image"]; ok { // Check if manifest has specified image
+			if manifestImage == "" { // Blank means the default from the config file
+				m.values["image"] = originalImage
+				m.values["version"] = originalVersion
+			}
+		}
 		go func() {
 			defer wg.Done()
 			if err := m.Deploy(values); err != nil {
@@ -882,6 +874,7 @@ func (mg *K8sManifestGroup) Deploy(values map[string]interface{}) error {
 			}
 		}()
 	}
+
 	wg.Wait()
 	return errGroup
 }

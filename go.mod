@@ -6,7 +6,8 @@ require (
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/ethereum/go-ethereum v1.10.4
 	github.com/ghodss/yaml v1.0.0
-	github.com/google/go-github/v38 v38.1.0
+	github.com/google/go-cmp v0.5.6 // indirect
+	github.com/google/go-github v17.0.0+incompatible
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.13.0

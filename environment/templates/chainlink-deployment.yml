@@ -9,7 +9,7 @@ spec:
           secretName: {{ .Manifest.Secret.ObjectMeta.Name }}
       containers:
       - name: node
-        image: {{ if .Values.chainlinkCluster.chainlink.images }}{{ iterateImage .Values.chainlinkCluster.chainlink.images }}{{ else }}{{ .Config.Apps.Chainlink.Image }}{{ end }}:{{ if .Values.chainlinkCluster.chainlink.versions }}{{ iterateVersion .Values.chainlinkCluster.chainlink.versions }}{{ else }}{{ .Config.Apps.Chainlink.Version }}{{ end }}
+        image: {{ .Config.Apps.Chainlink.Image }}:{{ .Config.Apps.Chainlink.Version }}
         args:
         - node
         - start

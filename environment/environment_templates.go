@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/google/go-github/v38/github"
+	"github.com/google/go-github/github"
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/tools"
@@ -208,17 +208,45 @@ func NewChainlinkCluster(nodeCount int) K8sEnvSpecInit {
 }
 
 // NewMixedVersionChainlinkCluster mixes the currently latest chainlink version (as defined by the config file) with
-// the past two stable versions, ensuring that at least one of each is deployed
-func NewMixedVersionChainlinkCluster(nodeCount int) K8sEnvSpecInit {
+// a number of past stable versions (defined by pastVersionsCount), ensuring that at least one of each is deployed
+func NewMixedVersionChainlinkCluster(nodeCount, pastVersionsCount int) K8sEnvSpecInit {
 	if nodeCount < 3 {
 		log.Warn().
 			Int("Provided Node Count", nodeCount).
-			Int("Recommended Minimum Node Count", 3).
+			Int("Recommended Minimum Node Count", pastVersionsCount+1).
 			Msg("You're using less than the recommended number of nodes for a mixed version deployment")
 	}
 	manifests := []*K8sManifest{NewAdapterManifest()}
 
-	// Get latest 2 releases
+	ecrImage := "public.ecr.aws/chainlink/chainlink"
+	mixedImages := []string{""}
+	for i := 0; i < pastVersionsCount; i++ {
+		mixedImages = append(mixedImages, ecrImage)
+	}
+
+	retrievedVersions, err := getMixedVersions(pastVersionsCount)
+	if err != nil {
+		log.Err(err).Msg("Error retrieving versions from github")
+	}
+	mixedVersions := append([]string{""}, retrievedVersions...)
+
+	for i := 0; i < nodeCount; i++ {
+		manifest := NewChainlinkManifest()
+		manifest.values["image"] = mixedImages[i%len(mixedImages)]
+		manifest.values["version"] = mixedVersions[i%len(mixedVersions)]
+		manifest.id = fmt.Sprintf("%s-%d", manifest.id, i)
+		manifests = append(manifests, manifest)
+	}
+	chainlinkCluster := &K8sManifestGroup{
+		id:        "chainlinkCluster",
+		manifests: manifests,
+	}
+
+	return newChainlinkManifest(chainlinkCluster, "mixed-version-chainlink")
+}
+
+// Queries github for the latest major release versions
+func getMixedVersions(versionCount int) ([]string, error) {
 	githubClient := github.NewClient(nil)
 	releases, _, err := githubClient.Repositories.ListReleases(
 		context.Background(),
@@ -227,33 +255,13 @@ func NewMixedVersionChainlinkCluster(nodeCount int) K8sEnvSpecInit {
 		&github.ListOptions{},
 	)
 	if err != nil {
-		log.Err(err).Msg("Error retrieving latest chainlink version")
+		return []string{}, err
 	}
-
-	for i := 0; i < nodeCount; i++ {
-		manifest := NewChainlinkManifest()
-		manifest.id = fmt.Sprintf("%s-%d", manifest.id, i)
-		manifests = append(manifests, manifest)
+	mixedVersions := []string{}
+	for i := 0; i < versionCount; i++ {
+		mixedVersions = append(mixedVersions, strings.TrimLeft(*releases[i].TagName, "v"))
 	}
-	chainlinkCluster := &K8sManifestGroup{
-		id:        "chainlinkCluster",
-		manifests: manifests,
-	}
-	chainlinkValues, ok := chainlinkCluster.Values()["chainlink"].(map[string]interface{})
-	if !ok {
-		log.Warn().
-			Str("Values", fmt.Sprintf("%v", chainlinkCluster.Values()["chainlink"])).
-			Msg("Unable to manipulate chainlink values: unable to launch mixed versions")
-		return newChainlinkManifest(chainlinkCluster, "mixed-version-chainlink")
-	}
-	ecrImage := "public.ecr.aws/chainlink/chainlink"
-	mixedImages := []string{"", ecrImage, ecrImage}
-	mixedVersions := []string{"", strings.TrimLeft(releases[0].GetTagName(), "v"), strings.TrimLeft(releases[1].GetTagName(), "v")}
-
-	chainlinkValues["images"] = mixedImages
-	chainlinkValues["versions"] = mixedVersions
-
-	return newChainlinkManifest(chainlinkCluster, "mixed-version-chainlink")
+	return mixedVersions, nil
 }
 
 // Builds possible chainlink manifests
