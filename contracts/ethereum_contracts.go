@@ -4,10 +4,9 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"github.com/ethereum/go-ethereum/core/types"
 	"math/big"
 	"time"
-
-	"github.com/ethereum/go-ethereum/core/types"
 
 	"strings"
 
@@ -154,6 +153,33 @@ func (f *EthereumFluxAggregator) RequestNewRound(ctx context.Context, fromWallet
 	return f.client.ProcessTransaction(tx.Hash())
 }
 
+// WatchSubmissionReceived subscribes to any submissions on a flux feed
+func (f *EthereumFluxAggregator) WatchSubmissionReceived(ctx context.Context, eventChan chan<- *SubmissionEvent) error {
+	ethEventChan := make(chan *ethereum.FluxAggregatorSubmissionReceived)
+	sub, err := f.fluxAggregator.WatchSubmissionReceived(&bind.WatchOpts{}, ethEventChan, nil, nil, nil)
+	if err != nil {
+		return err
+	}
+	defer sub.Unsubscribe()
+
+	for {
+		select {
+		case event := <-ethEventChan:
+			eventChan <- &SubmissionEvent{
+				Contract:    event.Raw.Address,
+				Submission:  event.Submission,
+				Round:       event.Round,
+				BlockNumber: event.Raw.BlockNumber,
+				Oracle:      event.Oracle,
+			}
+		case err := <-sub.Err():
+			return err
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
 func (f *EthereumFluxAggregator) SetRequesterPermissions(ctx context.Context, fromWallet client.BlockchainWallet, addr common.Address, authorized bool, roundsDelay uint32) error {
 	opts, err := f.client.TransactionOpts(fromWallet, *f.address, big.NewInt(0), nil)
 	if err != nil {
@@ -183,11 +209,12 @@ func (f *EthereumFluxAggregator) GetOracles(ctx context.Context) ([]string, erro
 	return oracleAddrs, nil
 }
 
-func (f *EthereumFluxAggregator) LatestRound(ctx context.Context) (*big.Int, error) {
+func (f *EthereumFluxAggregator) LatestRoundID(ctx context.Context, blockNumber *big.Int) (*big.Int, error) {
 	opts := &bind.CallOpts{
-		From:    common.HexToAddress(f.callerWallet.Address()),
-		Pending: true,
-		Context: ctx,
+		From:        common.HexToAddress(f.callerWallet.Address()),
+		Pending:     true,
+		BlockNumber: blockNumber,
+		Context:     ctx,
 	}
 	rID, err := f.fluxAggregator.LatestRound(opts)
 	if err != nil {
@@ -226,12 +253,25 @@ func (f *EthereumFluxAggregator) WithdrawablePayment(ctx context.Context, addr c
 	return balance, nil
 }
 
-// GetContractData retrieves basic data for the flux aggregator contract
-func (f *EthereumFluxAggregator) GetContractData(ctxt context.Context) (*FluxAggregatorData, error) {
+func (f *EthereumFluxAggregator) LatestRoundData(ctx context.Context) (RoundData, error) {
 	opts := &bind.CallOpts{
 		From:    common.HexToAddress(f.callerWallet.Address()),
 		Pending: true,
-		Context: ctxt,
+		Context: ctx,
+	}
+	lr, err := f.fluxAggregator.LatestRoundData(opts)
+	if err != nil {
+		return RoundData{}, err
+	}
+	return lr, nil
+}
+
+// GetContractData retrieves basic data for the flux aggregator contract
+func (f *EthereumFluxAggregator) GetContractData(ctx context.Context) (*FluxAggregatorData, error) {
+	opts := &bind.CallOpts{
+		From:    common.HexToAddress(f.callerWallet.Address()),
+		Pending: true,
+		Context: ctx,
 	}
 
 	allocated, err := f.fluxAggregator.AllocatedFunds(opts)
@@ -266,7 +306,7 @@ func (f *EthereumFluxAggregator) GetContractData(ctxt context.Context) (*FluxAgg
 // SetOracles allows the ability to add and/or remove oracles from the contract, and to set admins
 func (f *EthereumFluxAggregator) SetOracles(
 	fromWallet client.BlockchainWallet,
-	o SetOraclesOptions) error {
+	o FluxAggregatorSetOraclesOptions) error {
 	opts, err := f.client.TransactionOpts(fromWallet, *f.address, big.NewInt(0), nil)
 	if err != nil {
 		return err
@@ -296,6 +336,7 @@ type FluxAggregatorRoundConfirmer struct {
 	doneChan     chan struct{}
 	context      context.Context
 	cancel       context.CancelFunc
+	done         bool
 }
 
 // NewFluxAggregatorRoundConfirmer provides a new instance of a FluxAggregatorRoundConfirmer
@@ -314,18 +355,23 @@ func NewFluxAggregatorRoundConfirmer(
 	}
 }
 
-// ReceiveHeader will query the latest FluxAggregator round and check to see whether the round has confirmed
-func (f *FluxAggregatorRoundConfirmer) ReceiveHeader(*types.Header) error {
-	lr, err := f.fluxInstance.LatestRound(context.Background())
+// ReceiveBlock will query the latest FluxAggregator round and check to see whether the round has confirmed
+func (f *FluxAggregatorRoundConfirmer) ReceiveBlock(block *types.Block) error {
+	if f.done {
+		return nil
+	}
+	lr, err := f.fluxInstance.LatestRoundID(context.Background(), block.Number())
 	if err != nil {
 		return err
 	}
-	fluxLog := log.Info().
+	fluxLog := log.Debug().
 		Str("Contract Address", f.fluxInstance.Address()).
 		Int64("Current Round", lr.Int64()).
-		Int64("Waiting for Round", f.roundID.Int64())
+		Int64("Waiting for Round", f.roundID.Int64()).
+		Uint64("Block Number", block.NumberU64())
 	if lr.Cmp(f.roundID) >= 0 {
 		fluxLog.Msg("FluxAggregator round completed")
+		f.done = true
 		f.doneChan <- struct{}{}
 	} else {
 		fluxLog.Msg("Waiting for FluxAggregator round")
@@ -653,8 +699,8 @@ func NewOffchainAggregatorRoundConfirmer(
 	}
 }
 
-// ReceiveHeader will query the latest OffchainAggregator round and check to see whether the round has confirmed
-func (o *OffchainAggregatorRoundConfirmer) ReceiveHeader(*types.Header) error {
+// ReceiveBlock will query the latest OffchainAggregator round and check to see whether the round has confirmed
+func (o *OffchainAggregatorRoundConfirmer) ReceiveBlock(_ *types.Block) error {
 	lr, err := o.ocrInstance.GetLatestRound(context.Background())
 	if err != nil {
 		return err

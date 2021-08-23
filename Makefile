@@ -18,9 +18,13 @@ install-deps: gomod golangci ## install necessary dependencies
 
 .PHONY: test
 test: ## run tests
-	go test -v ./... -count 1 -p 1
+	go test -v ./suite/contracts ./client -count 1 -p 1
 
-.PHONY: test_race
+.PHONY: test
+test_performance: ## run performance tests
+	go test -v ./suite/performance/... -count 1 -p 1 -timeout 100m
+
+.PHONY: test_refill
 test_refill: ## runs refill suite
 	go test -v ./suite/refill -count 1 -p 1
 
@@ -31,3 +35,35 @@ test_race: ## run tests with race
 .PHONY: test_nightly
 test_nightly: ## run nightly tests
 	go test -v ./... -race -count 20 -p 1
+
+.PHONY: test_unit
+test_unit: ## run unit tests
+	ginkgo -r --focus=@unit
+
+.PHONY: test_cron
+test_cron: ## run cron tests
+	ginkgo -r --focus=@cron
+
+.PHONY: test_flux
+test_flux: ## run flux tests
+	ginkgo -r --focus=@flux
+
+.PHONY: test_keeper
+test_keeper: ## run keeper tests
+	ginkgo -r --focus=@keeper
+
+.PHONY: test_ocr
+test_ocr: ## run ocr tests
+	ginkgo -r --focus=@ocr
+
+.PHONY: test_runlog
+test_runlog: ## run runlog tests
+	ginkgo -r --focus=@runlog
+
+.PHONY: test_contract
+test_contract: ## run contract tests
+	ginkgo -r --focus=@contract
+
+.PHONY: test_vrf
+test_vrf: ## run vrf tests
+	ginkgo -r --focus=@vrf

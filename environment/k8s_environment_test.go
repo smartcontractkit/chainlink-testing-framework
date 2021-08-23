@@ -11,7 +11,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Environment functionality", func() {
+var _ = Describe("Environment functionality @unit", func() {
 	var conf *config.Config
 
 	BeforeEach(func() {

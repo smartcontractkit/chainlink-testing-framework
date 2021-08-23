@@ -43,6 +43,13 @@ func ChainlinkNodeAddresses(nodes []client.Chainlink) ([]common.Address, error) 
 	return addresses, nil
 }
 
+// SetChainlinkAPIPageSize specifies the page size from the Chainlink API, useful for high volume testing
+func SetChainlinkAPIPageSize(nodes []client.Chainlink, pageSize int) {
+	for _, n := range nodes {
+		n.SetPageSize(pageSize)
+	}
+}
+
 // EncodeOnChainExternalJobID encodes external job uuid to on-chain representation
 func EncodeOnChainExternalJobID(jobID uuid.UUID) [32]byte {
 	var ji [32]byte

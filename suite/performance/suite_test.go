@@ -1,11 +1,10 @@
-package contracts_test
+package performance_test
 
 import (
-	"os"
-	"testing"
-
 	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/tools"
+	"os"
+	"testing"
 
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/reporters"
@@ -22,6 +21,6 @@ func TestContracts(t *testing.T) {
 		Fail("failed to load config")
 	}
 	log.Logger = log.Logger.Level(zerolog.Level(conf.Logging.Level))
-	junitReporter := reporters.NewJUnitReporter("../logs/tests-conracts.xml.xml")
-	RunSpecsWithDefaultAndCustomReporters(t, "Contract Suite", []Reporter{junitReporter})
+	junitReporter := reporters.NewJUnitReporter("junit.xml")
+	RunSpecsWithDefaultAndCustomReporters(t, "Performance suite", []Reporter{junitReporter})
 }

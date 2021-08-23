@@ -2,7 +2,6 @@
 
 # Hardhat config that might sneak through
 node_modules/
-hardhat.config.js
 package-lock.json
 package.json
 artifacts/

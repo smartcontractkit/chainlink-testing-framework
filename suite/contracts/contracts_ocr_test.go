@@ -3,9 +3,10 @@ package contracts
 import (
 	"context"
 	"fmt"
-	"github.com/rs/zerolog/log"
 	"math/big"
 	"time"
+
+	"github.com/rs/zerolog/log"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -45,7 +46,7 @@ var _ = Describe("OCR Feed", func() {
 		})
 	})
 
-	It("Deploys an OCR feed", func() {
+	It("Deploys an OCR feed @ocr", func() {
 		var ocrInstance contracts.OffchainAggregator
 
 		By("Funding nodes and deploying OCR contract", func() {
