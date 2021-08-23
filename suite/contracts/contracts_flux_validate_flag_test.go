@@ -96,7 +96,7 @@ var _ = Describe("Flux monitor external validator suite @flux", func() {
 		})
 		By("Setting oracle options", func() {
 			err = fluxInstance.SetOracles(s.Wallets.Default(),
-				contracts.SetOraclesOptions{
+				contracts.FluxAggregatorSetOraclesOptions{
 					AddList:            nodeAddresses,
 					RemoveList:         []common.Address{},
 					AdminList:          nodeAddresses,

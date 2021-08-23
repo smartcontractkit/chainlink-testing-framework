@@ -2,11 +2,11 @@ package environment
 
 import (
 	"fmt"
+	"github.com/rs/zerolog/log"
+	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/config"
 	"net/http"
 	"net/url"
-
-	"github.com/smartcontractkit/integrations-framework/client"
 )
 
 // Environment is the interface that represents a deployed environment, whether locally or on remote machines
@@ -63,6 +63,7 @@ func GetChainlinkClients(env Environment) ([]client.Chainlink, error) {
 
 // ExternalAdapter represents a dummy external adapter within the k8sEnvironment
 type ExternalAdapter interface {
+	TriggerValueChange(i int) (int, error)
 	LocalURL() string
 	ClusterURL() string
 	SetVariable(variable int) error
@@ -96,6 +97,23 @@ func (ex *externalAdapter) SetVariable(variable int) error {
 		return err
 	}
 	return nil
+}
+
+func (ex *externalAdapter) TriggerValueChange(i int) (int, error) {
+	log.Info().Int("Iteration", i).Msg("Triggering new round")
+	if i%2 == 0 {
+		err := ex.SetVariable(5)
+		if err != nil {
+			return 0, err
+		}
+		return 5, nil
+	} else {
+		err := ex.SetVariable(6)
+		if err != nil {
+			return 0, err
+		}
+		return 6, nil
+	}
 }
 
 // GetExternalAdapter will return a deployed external adapter on an environment

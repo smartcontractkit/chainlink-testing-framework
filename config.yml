@@ -46,13 +46,23 @@ networks:
         minimum_confirmations: 1
         gas_estimation_buffer: 100000
         block_gas_limit: 40000000
+    ethereum_geth_performance:
+        name: "Ethereum Geth dev"
+        chain_id: 1337
+        type: evm
+        <<: *private_keys
+        transaction_limit: 9500000
+        transaction_timeout: 5m
+        minimum_confirmations: 1
+        gas_estimation_buffer: 0
+        block_gas_limit: 400000000000000
     ethereum_hardhat:
         name: "Ethereum Hardhat"
         chain_id: 1337
         type: evm
         <<: *private_keys
-        transaction_limit: 9500000 
-        transaction_timeout: 1s
+        transaction_limit: 9500000
+        transaction_timeout: 10s
         minimum_confirmations: 1
         gas_estimation_buffer: 0
     ethereum_ganache:
@@ -97,3 +107,9 @@ kubernetes:
     burst: 50
     # How long to wait for the environment to deploy & be marked as healthy before test errors
     deployment_timeout: 3m
+
+logging:
+    # panic=5, fatal=4, error=3, warn=2, info=1, debug=0, trace=-1
+    level: 0
+prometheus:
+    url: ""
