@@ -1,4 +1,4 @@
-package volume_test
+package performance_test
 
 import (
 	"os"
@@ -15,5 +15,5 @@ func TestContracts(t *testing.T) {
 	RegisterFailHandler(Fail)
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr}).Level(zerolog.InfoLevel)
 	junitReporter := reporters.NewJUnitReporter("junit.xml")
-	RunSpecsWithDefaultAndCustomReporters(t, "Volume suite", []Reporter{junitReporter})
+	RunSpecsWithDefaultAndCustomReporters(t, "Performance suite", []Reporter{junitReporter})
 }

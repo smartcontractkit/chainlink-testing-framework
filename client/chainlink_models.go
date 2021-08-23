@@ -42,8 +42,14 @@ type RunsResponseData struct {
 type RunsAttributesResponse struct {
 	Meta       interface{}   `json:"meta"`
 	Errors     []interface{} `json:"errors"`
+	Inputs     RunInputs     `json:"inputs"`
 	CreatedAt  time.Time     `json:"createdAt"`
 	FinishedAt time.Time     `json:"finishedAt"`
+}
+
+// RunInputs run inputs (value)
+type RunInputs struct {
+	Parse int `json:"parse"`
 }
 
 // RunsMetaResponse runs meta

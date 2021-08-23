@@ -1,4 +1,4 @@
-package tools
+package client
 
 import (
 	"context"
@@ -20,31 +20,29 @@ type ResourcesSummary struct {
 	CPUPercentage float64
 }
 
-type PromChecker struct {
-	API v1.API
-	Url string
+type Prometheus struct {
+	v1.API
 }
 
-func NewPrometheusClient(url string) (*PromChecker, error) {
+func NewPrometheusClient(url string) (*Prometheus, error) {
 	client, err := api.NewClient(api.Config{
 		Address: url,
 	})
 	if err != nil {
 		return nil, err
 	}
-	return &PromChecker{
+	return &Prometheus{
 		API: v1.NewAPI(client),
-		Url: url,
 	}, nil
 }
 
-func (p *PromChecker) printWarns(warns v1.Warnings) {
+func (p *Prometheus) printWarns(warns v1.Warnings) {
 	if len(warns) > 0 {
 		log.Info().Interface("Warnings", warns).Msg("Warnings found when performing prometheus query")
 	}
 }
 
-func (p *PromChecker) validateNotEmptyVec(q string, val model.Value) bool {
+func (p *Prometheus) validateNotEmptyVec(q string, val model.Value) bool {
 	if len(val.(model.Vector)) == 0 {
 		log.Warn().Str("query", q).Msg("empty response for prometheus query")
 		return false
@@ -53,7 +51,7 @@ func (p *PromChecker) validateNotEmptyVec(q string, val model.Value) bool {
 }
 
 // CPUBusyPercentage host CPU busy percentage
-func (p *PromChecker) CPUBusyPercentage() (float64, error) {
+func (p *Prometheus) CPUBusyPercentage() (float64, error) {
 	q := fmt.Sprintf(QueryAllCPUBusyPercentage, "2m")
 	val, warns, err := p.API.Query(context.Background(), q, time.Now())
 	if err != nil {
@@ -68,7 +66,7 @@ func (p *PromChecker) CPUBusyPercentage() (float64, error) {
 }
 
 // MemoryUsage total memory used by interval
-func (p *PromChecker) MemoryUsage() (float64, error) {
+func (p *Prometheus) MemoryUsage() (float64, error) {
 	q := fmt.Sprintf(QueryMemoryUsage, "2m", "2m", "2m", "2m")
 	val, warns, err := p.API.Query(context.Background(), q, time.Now())
 	if err != nil {
@@ -82,7 +80,7 @@ func (p *PromChecker) MemoryUsage() (float64, error) {
 	return float64(scalarVal), nil
 }
 
-func (p *PromChecker) ResourcesSummary() (float64, float64, error) {
+func (p *Prometheus) ResourcesSummary() (float64, float64, error) {
 	cpu, err := p.CPUBusyPercentage()
 	if err != nil {
 		return 0, 0, err

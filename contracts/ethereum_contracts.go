@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/pkg/errors"
 	"math/big"
 	"time"
 
@@ -154,24 +153,31 @@ func (f *EthereumFluxAggregator) RequestNewRound(ctx context.Context, fromWallet
 	return f.client.ProcessTransaction(tx.Hash())
 }
 
-// FilterRoundSubmissions filters rounds submissions, if there isn't enogh submissions found returns and error
-func (f *EthereumFluxAggregator) FilterRoundSubmissions(ctx context.Context, submissionVal *big.Int, roundID int) ([]*SubmissionEvent, error) {
-	events := make([]*SubmissionEvent, 0)
-	iter, err := f.fluxAggregator.FilterSubmissionReceived(&bind.FilterOpts{Context: ctx}, []*big.Int{submissionVal}, []uint32{uint32(roundID)}, nil)
+// WatchSubmissionReceived subscribes to any submissions on a flux feed
+func (f *EthereumFluxAggregator) WatchSubmissionReceived(ctx context.Context, eventChan chan<- *SubmissionEvent) error {
+	ethEventChan := make(chan *ethereum.FluxAggregatorSubmissionReceived)
+	sub, err := f.fluxAggregator.WatchSubmissionReceived(&bind.WatchOpts{}, ethEventChan, nil, nil, nil)
 	if err != nil {
-		return events, err
+		return err
 	}
-	if iter.Event != nil {
-		events = append(events, &SubmissionEvent{iter.Event.Submission, iter.Event.Round, iter.Event.Raw.BlockNumber})
+	defer sub.Unsubscribe()
+
+	for {
+		select {
+		case event := <-ethEventChan:
+			eventChan <- &SubmissionEvent{
+				Contract:    event.Raw.Address,
+				Submission:  event.Submission,
+				Round:       event.Round,
+				BlockNumber: event.Raw.BlockNumber,
+				Oracle:      event.Oracle,
+			}
+		case err := <-sub.Err():
+			return err
+		case <-ctx.Done():
+			return nil
+		}
 	}
-	for iter.Next() {
-		events = append(events, &SubmissionEvent{iter.Event.Submission, iter.Event.Round, iter.Event.Raw.BlockNumber})
-	}
-	if len(events) == 0 {
-		return nil, errors.New(fmt.Sprintf("no events found for contract: %s", f.address.Hex()))
-	}
-	_ = iter.Close()
-	return events, nil
 }
 
 func (f *EthereumFluxAggregator) SetRequesterPermissions(ctx context.Context, fromWallet client.BlockchainWallet, addr common.Address, authorized bool, roundsDelay uint32) error {
@@ -203,11 +209,12 @@ func (f *EthereumFluxAggregator) GetOracles(ctx context.Context) ([]string, erro
 	return oracleAddrs, nil
 }
 
-func (f *EthereumFluxAggregator) LatestRoundID(ctx context.Context) (*big.Int, error) {
+func (f *EthereumFluxAggregator) LatestRoundID(ctx context.Context, blockNumber *big.Int) (*big.Int, error) {
 	opts := &bind.CallOpts{
-		From:    common.HexToAddress(f.callerWallet.Address()),
-		Pending: true,
-		Context: ctx,
+		From:        common.HexToAddress(f.callerWallet.Address()),
+		Pending:     true,
+		BlockNumber: blockNumber,
+		Context:     ctx,
 	}
 	rID, err := f.fluxAggregator.LatestRound(opts)
 	if err != nil {
@@ -329,6 +336,7 @@ type FluxAggregatorRoundConfirmer struct {
 	doneChan     chan struct{}
 	context      context.Context
 	cancel       context.CancelFunc
+	done         bool
 }
 
 // NewFluxAggregatorRoundConfirmer provides a new instance of a FluxAggregatorRoundConfirmer
@@ -348,20 +356,22 @@ func NewFluxAggregatorRoundConfirmer(
 }
 
 // ReceiveBlock will query the latest FluxAggregator round and check to see whether the round has confirmed
-func (f *FluxAggregatorRoundConfirmer) ReceiveBlock(_ *types.Block) error {
-	lr, err := f.fluxInstance.LatestRoundID(context.Background())
+func (f *FluxAggregatorRoundConfirmer) ReceiveBlock(block *types.Block) error {
+	if f.done {
+		return nil
+	}
+	lr, err := f.fluxInstance.LatestRoundID(context.Background(), block.Number())
 	if err != nil {
 		return err
 	}
-	fluxLog := log.Info().
-		Str("Contract Address", f.fluxInstance.Address()).
-		Int64("Current Round", lr.Int64()).
-		Int64("Waiting for Round", f.roundID.Int64())
 	if lr.Cmp(f.roundID) >= 0 {
-		fluxLog.Msg("FluxAggregator round completed")
+		log.Info().
+			Str("Contract Address", f.fluxInstance.Address()).
+			Int64("Current Round", lr.Int64()).
+			Int64("Waiting for Round", f.roundID.Int64()).
+			Uint64("Block Number", block.NumberU64()).Msg("FluxAggregator round completed")
+		f.done = true
 		f.doneChan <- struct{}{}
-	} else {
-		fluxLog.Msg("Waiting for FluxAggregator round")
 	}
 	return nil
 }
