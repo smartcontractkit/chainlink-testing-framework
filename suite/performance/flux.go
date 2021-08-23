@@ -2,9 +2,9 @@ package performance
 
 import (
 	"context"
+	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/onsi/ginkgo"
-	"fmt"
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/client"
@@ -117,7 +117,7 @@ func (f *FluxTest) Run() error {
 		if err := f.adapter.SetVariable(i); err != nil {
 			return err
 		}
-		if err := f.waitForAllContractRounds(big.NewInt(int64(i+1))); err != nil {
+		if err := f.waitForAllContractRounds(big.NewInt(int64(i))); err != nil {
 			return err
 		}
 	}
@@ -196,7 +196,6 @@ func (f *FluxTest) createChainlinkJobs() error {
 	for _, contract := range f.contractInstances {
 		contract := contract
 		g := errgroup.Group{}
-
 		for _, node := range f.chainlinkClients {
 			node := node
 			g.Go(func() error {
@@ -288,6 +287,9 @@ func (f *FluxTest) takeEarliestRunsByAnswer(runs []client.RunsResponseData) []cl
 	seen := make(map[int]bool)
 	for _, data := range runs {
 		answer := data.Attributes.Inputs.Parse
+		if int64(answer) > f.TestOptions.NumberOfRounds {
+			continue
+		}
 		if _, ok := seen[answer]; !ok {
 			deduplicated = append(deduplicated, data)
 		}
@@ -430,6 +432,9 @@ func (f *FluxTest) calculateLatencies(b ginkgo.Benchmarker) error {
 	var latencies []time.Duration
 
 	for roundID, testResults := range f.testResults.GetAll() {
+		if roundID > f.TestOptions.NumberOfRounds {
+			continue
+		}
 		log.Info().Int64("Round ID", roundID).Msg("Calculating latencies for round")
 
 		for contract, contractResults := range testResults {
