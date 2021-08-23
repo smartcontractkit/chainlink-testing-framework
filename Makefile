@@ -21,8 +21,8 @@ test: ## run tests
 	go test -v ./suite/contracts ./client -count 1 -p 1
 
 .PHONY: test
-test_volume: ## run volume tests
-	go test -v ./suite/volume/... -count 1 -p 1 -timeout 100m
+test_performance: ## run performance tests
+	go test -v ./suite/performance/... -count 1 -p 1 -timeout 100m
 
 .PHONY: test_race
 test_refill: ## runs refill suite

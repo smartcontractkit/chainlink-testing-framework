@@ -109,4 +109,4 @@ kubernetes:
     deployment_timeout: 3m
 
 prometheus:
-    url: https://prometheus.qa.stage.cldev.sh
+    url: ""

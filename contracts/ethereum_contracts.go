@@ -154,7 +154,7 @@ func (f *EthereumFluxAggregator) RequestNewRound(ctx context.Context, fromWallet
 }
 
 // WatchSubmissionReceived subscribes to any submissions on a flux feed
-func (f *EthereumFluxAggregator) WatchSubmissionReceived(ctx context.Context, eventChan chan <-*SubmissionEvent) error {
+func (f *EthereumFluxAggregator) WatchSubmissionReceived(ctx context.Context, eventChan chan<- *SubmissionEvent) error {
 	ethEventChan := make(chan *ethereum.FluxAggregatorSubmissionReceived)
 	sub, err := f.fluxAggregator.WatchSubmissionReceived(&bind.WatchOpts{}, ethEventChan, nil, nil, nil)
 	if err != nil {
@@ -364,17 +364,14 @@ func (f *FluxAggregatorRoundConfirmer) ReceiveBlock(block *types.Block) error {
 	if err != nil {
 		return err
 	}
-	fluxLog := log.Info().
-		Str("Contract Address", f.fluxInstance.Address()).
-		Int64("Current Round", lr.Int64()).
-		Int64("Waiting for Round", f.roundID.Int64()).
-		Uint64("Block Number", block.NumberU64())
 	if lr.Cmp(f.roundID) >= 0 {
-		fluxLog.Msg("FluxAggregator round completed")
+		log.Info().
+			Str("Contract Address", f.fluxInstance.Address()).
+			Int64("Current Round", lr.Int64()).
+			Int64("Waiting for Round", f.roundID.Int64()).
+			Uint64("Block Number", block.NumberU64()).Msg("FluxAggregator round completed")
 		f.done = true
 		f.doneChan <- struct{}{}
-	} else {
-		fluxLog.Msg("Waiting for FluxAggregator round")
 	}
 	return nil
 }
