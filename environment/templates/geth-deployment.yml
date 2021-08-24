@@ -152,3 +152,11 @@ spec:
           - --vmdebug
         ports:
         - containerPort: {{ .Values.evm.rpcPort }}
+        resources:
+          requests:
+            memory: {{ .Config.Apps.Geth.Requests.Memory }}
+            cpu: {{ .Config.Apps.Geth.Requests.Cpu }}
+          limits:
+            memory: {{ .Config.Apps.Geth.Limits.Memory }}
+            cpu: {{ .Config.Apps.Geth.Limits.Cpu }}
+
