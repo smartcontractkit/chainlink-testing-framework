@@ -16,7 +16,7 @@ jobs:
     container:
       image: golang:${{ matrix.go-version }}-alpine
     env:
-      KUBECONFIG: ~/.kube/config
+      KUBECONFIG: /tmp/KUBECONFIG
       CGO_ENABLED: 0
     steps:
       - name: Checkout code
@@ -40,9 +40,7 @@ jobs:
          ./aws/install
          echo "Installed aws CLI"
       - name: Prepare KUBECONFIG
-        run: |
-         mkdir ~/.kube
-         echo "${{ secrets.KUBECONFIG }}" >> ~/.kube/config
+        run: echo "${{ secrets.KUBECONFIG }}" >> /tmp/KUBECONFIG
       - name: Install Ginkgo CLI
         run: go install github.com/onsi/ginkgo/ginkgo
       - name: Download Go Vendor Packages
@@ -50,7 +48,7 @@ jobs:
       - name: Run Tests
         run: |
          export PATH=$PATH:$(go env GOPATH)/bin
-         ginkgo -r -p -keepGoing --randomizeAllSpecs --trace -cover --coverprofile=coverage.out ./...
+         ginkgo -r -p -keepGoing --randomizeAllSpecs -cover --coverprofile=coverage.out ./...
       - name: Publish Test Results
         uses: mikepenz/action-junit-report@v2
         if: always()
