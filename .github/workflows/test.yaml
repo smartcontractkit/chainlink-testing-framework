@@ -32,6 +32,11 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           role-duration-seconds: 3600
+      - name: Install AWS CLI
+        run: |
+         curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+         unzip awscliv2.zip
+         sudo ./aws/install
       - name: Prepare KUBECONFIG
         run: echo "${{ secrets.KUBECONFIG }}" >> /tmp/KUBECONFIG
       - name: Install Ginkgo CLI
