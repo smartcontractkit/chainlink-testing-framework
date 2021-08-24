@@ -14,7 +14,7 @@ jobs:
         go-version: [1.16]
     runs-on: [self-hosted, sdlc-ghr-prod]
     container:
-      image: smartcontract/builder:1.0.37
+      image: golang:${{ matrix.go-version }}-alpine
     env:
       KUBECONFIG: /tmp/KUBECONFIG
     steps:
@@ -28,11 +28,12 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           role-duration-seconds: 3600
-      # - name: Install AWS CLI
-      #   run: |
-      #    curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-      #    unzip awscliv2.zip
-      #    sudo ./aws/install
+      - name: Install AWS CLI
+        run: |
+         apk add curl
+         curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+         unzip awscliv2.zip
+         sudo ./aws/install
       - name: Prepare KUBECONFIG
         run: echo "${{ secrets.KUBECONFIG }}" >> /tmp/KUBECONFIG
       - name: Install Ginkgo CLI
