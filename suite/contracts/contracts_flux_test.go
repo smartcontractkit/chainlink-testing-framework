@@ -2,6 +2,7 @@ package contracts
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"strings"
 	"time"
@@ -44,6 +45,7 @@ var _ = Describe("Flux monitor suite @flux", func() {
 
 			s.Client.ParallelTransactions(true)
 		})
+
 		By("Deploying and funding contract", func() {
 			fluxInstance, err = s.Deployer.DeployFluxAggregatorContract(s.Wallets.Default(), contracts.DefaultFluxAggregatorOptions())
 			Expect(err).ShouldNot(HaveOccurred())
@@ -54,6 +56,7 @@ var _ = Describe("Flux monitor suite @flux", func() {
 			err = s.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		By("Funding Chainlink nodes", func() {
 			nodeAddresses, err = actions.ChainlinkNodeAddresses(nodes)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -66,6 +69,7 @@ var _ = Describe("Flux monitor suite @flux", func() {
 			)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		By("Setting oracle options", func() {
 			err = fluxInstance.SetOracles(s.Wallets.Default(),
 				contracts.FluxAggregatorSetOraclesOptions{
@@ -83,14 +87,22 @@ var _ = Describe("Flux monitor suite @flux", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			log.Info().Str("Oracles", strings.Join(oracles, ",")).Msg("Oracles set")
 		})
+
 		By("Creating flux jobs", func() {
+			bta := client.BridgeTypeAttributes{
+				Name: "variable",
+				URL:  fmt.Sprintf("%s/variable", adapter.ClusterURL()),
+			}
 			for _, n := range nodes {
+				err = n.CreateBridge(&bta)
+				Expect(err).ShouldNot(HaveOccurred())
+
 				fluxSpec := &client.FluxMonitorJobSpec{
 					Name:              "flux_monitor",
 					ContractAddress:   fluxInstance.Address(),
 					PollTimerPeriod:   15 * time.Second, // min 15s
 					PollTimerDisabled: false,
-					ObservationSource: client.ObservationSourceSpec(adapter.ClusterURL() + "/variable"),
+					ObservationSource: client.ObservationSourceSpecBridge(bta),
 				}
 				_, err = n.CreateJob(fluxSpec)
 				Expect(err).ShouldNot(HaveOccurred())

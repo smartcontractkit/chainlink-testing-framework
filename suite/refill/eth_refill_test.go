@@ -2,6 +2,7 @@ package refill
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"strings"
 	"time"
@@ -81,15 +82,23 @@ var _ = Describe("FluxAggregator ETH Refill @refill", func() {
 		})
 
 		By("Adding FluxAggregator jobs to nodes", func() {
-			os := &client.PipelineSpec{
-				URL:         adapter.ClusterURL() + "/variable",
-				Method:      "GET",
+			bta := client.BridgeTypeAttributes{
+				Name:        "variable",
+				URL:         fmt.Sprintf("%s/variable", adapter.ClusterURL()),
 				RequestData: "{}",
-				DataPath:    "data,result",
+			}
+
+			os := &client.PipelineSpec{
+				BridgeTypeAttributes: bta,
+				DataPath:             "data,result",
 			}
 			ost, err := os.String()
 			Expect(err).ShouldNot(HaveOccurred())
+
 			for _, n := range nodes {
+				err = n.CreateBridge(&bta)
+				Expect(err).ShouldNot(HaveOccurred())
+
 				fluxSpec := &client.FluxMonitorJobSpec{
 					Name:              "flux_monitor",
 					ContractAddress:   fluxInstance.Address(),

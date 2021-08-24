@@ -3,6 +3,12 @@ package performance
 import (
 	"context"
 	"fmt"
+	"math/big"
+	"sort"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/onsi/ginkgo"
 	"github.com/rs/zerolog/log"
@@ -11,11 +17,6 @@ import (
 	"github.com/smartcontractkit/integrations-framework/contracts"
 	"github.com/smartcontractkit/integrations-framework/environment"
 	"golang.org/x/sync/errgroup"
-	"math/big"
-	"sort"
-	"strings"
-	"sync"
-	"time"
 )
 
 // FluxTestOptions contains the parameters for the performance test to be executed
@@ -232,7 +233,7 @@ func (f *FluxTest) createChainlinkJob(
 		PollTimerPeriod:   f.TestOptions.NodePollTimePeriod,
 		IdleTimerDisabled: true,
 		PollTimerDisabled: false,
-		ObservationSource: client.ObservationSourceSpec(f.adapter.ClusterURL() + "/variable"),
+		ObservationSource: client.ObservationSourceSpecHTTP(fmt.Sprintf("%s/variable", f.adapter.ClusterURL())),
 	})
 	if err != nil {
 		return err
