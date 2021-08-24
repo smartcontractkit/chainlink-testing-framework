@@ -38,7 +38,6 @@ jobs:
          echo "Unzipped aws CLI"
          ./aws/install
          echo "Installed aws CLI"
-         ls /usr/local/bin/aws
       - name: Prepare KUBECONFIG
         run: echo "${{ secrets.KUBECONFIG }}" >> /tmp/KUBECONFIG
       - name: Install Ginkgo CLI
@@ -48,10 +47,11 @@ jobs:
       - name: Run Tests
         run: |
          which aws
-         ls /usr/local/bin/aws
+         ls fork
+         ls fork/exec
          export PATH=$PATH:$(go env GOPATH)/bin
          export CGO_ENABLED=0
-         ginkgo -r -p -keepGoing --randomizeAllSpecs -cover --coverprofile=coverage.out ./...
+         ginkgo -r -p -keepGoing --randomizeAllSpecs --trace -cover --coverprofile=coverage.out ./...
       - name: Publish Test Results
         uses: mikepenz/action-junit-report@v2
         if: always()
