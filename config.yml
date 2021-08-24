@@ -25,11 +25,11 @@ apps:
             cpu: 350m
     geth:
         requests:
-            memory: 1024Mi
-            cpu: 150m
-        limits:
             memory: 1536Mi
-            cpu: 225m
+            cpu: 250m
+        limits:
+            memory: 2048Mi
+            cpu: 375m
     adapter:
         requests:
             memory: 64Mi

@@ -21,14 +21,14 @@ const (
 
 // Config is the overall config for the framework, holding configurations for supported networks
 type Config struct {
-	Logging          *LoggingConfig            `mapstructure:"logging" yaml:"logging"`
+	Logging            *LoggingConfig            `mapstructure:"logging" yaml:"logging"`
 	Network            string                    `mapstructure:"network" yaml:"network"`
 	Networks           map[string]*NetworkConfig `mapstructure:"networks" yaml:"networks"`
 	Retry              *RetryConfig              `mapstructure:"retry" yaml:"retry"`
 	Apps               AppConfig                 `mapstructure:"apps" yaml:"apps"`
 	Kubernetes         KubernetesConfig          `mapstructure:"kubernetes" yaml:"kubernetes"`
 	KeepEnvironments   string                    `mapstructure:"keep_environments" yaml:"keep_environments"`
-	Prometheus       *PrometheusConfig         `mapstructure:"prometheus" yaml:"prometheus"`
+	Prometheus         *PrometheusConfig         `mapstructure:"prometheus" yaml:"prometheus"`
 	DefaultKeyStore    string
 	ConfigFileLocation string
 }
@@ -75,8 +75,8 @@ type KubernetesConfig struct {
 // AppConfig holds all the configuration for the core apps that are deployed for testing
 type AppConfig struct {
 	Chainlink ChainlinkConfig `mapstructure:"chainlink" yaml:"chainlink"`
-	Geth      GethConfig      `mapstructure:"chainlink" yaml:"get"`
-	Adapter   AdapterConfig   `mapstructure:"chainlink" yaml:"adapter"`
+	Geth      GethConfig      `mapstructure:"geth" yaml:"geth"`
+	Adapter   AdapterConfig   `mapstructure:"adapter" yaml:"adapter"`
 }
 
 // ChainlinkConfig holds the configuration for the chainlink nodes to be deployed
