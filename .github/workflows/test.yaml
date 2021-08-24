@@ -37,7 +37,7 @@ jobs:
          echo "Downloaded aws CLI"
          unzip awscliv2.zip
          echo "Unzipped aws CLI"
-         sudo ./aws/install
+         ./aws/install
          echo "Installed aws CLI"
       - name: Prepare KUBECONFIG
         run: echo "${{ secrets.KUBECONFIG }}" >> /tmp/KUBECONFIG
