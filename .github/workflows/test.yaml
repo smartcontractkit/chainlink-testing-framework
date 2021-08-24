@@ -41,7 +41,7 @@ jobs:
          echo "Installed aws CLI"
       - name: Prepare KUBECONFIG
         run: |
-         mkdir ~/.kube/config
+         mkdir ~/.kube
          echo "${{ secrets.KUBECONFIG }}" >> ~/.kube/config
       - name: Install Ginkgo CLI
         run: go install github.com/onsi/ginkgo/ginkgo
