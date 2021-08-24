@@ -31,9 +31,14 @@ jobs:
       - name: Install AWS CLI
         run: |
          apk add curl
+         apk add unzip
+         echo "Added helper tools"
          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+         echo "Downloaded aws CLI"
          unzip awscliv2.zip
+         echo "Unzipped aws CLI"
          sudo ./aws/install
+         echo "Installed aws CLI"
       - name: Prepare KUBECONFIG
         run: echo "${{ secrets.KUBECONFIG }}" >> /tmp/KUBECONFIG
       - name: Install Ginkgo CLI
