@@ -11,7 +11,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Environment functionality", func() {
+var _ = Describe("Environment functionality @unit", func() {
 	var conf *config.Config
 
 	BeforeEach(func() {
@@ -46,5 +46,6 @@ var _ = Describe("Environment functionality", func() {
 	},
 		Entry("1 node cluster", client.NewNetworkFromConfig, NewChainlinkCluster(1), 1),
 		Entry("3 node cluster", client.NewNetworkFromConfig, NewChainlinkCluster(3), 3),
+		Entry("mixed version cluster", client.NewNetworkFromConfig, NewMixedVersionChainlinkCluster(3, 2), 3),
 	)
 })

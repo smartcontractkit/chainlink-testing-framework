@@ -1,6 +1,8 @@
 package contracts_test
 
 import (
+	"github.com/smartcontractkit/integrations-framework/config"
+	"github.com/smartcontractkit/integrations-framework/tools"
 	"os"
 	"testing"
 
@@ -12,8 +14,13 @@ import (
 )
 
 func TestContracts(t *testing.T) {
-	RegisterFailHandler(Fail)
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	RegisterFailHandler(Fail)
+	conf, err := config.NewConfig(config.LocalConfig, tools.ProjectRoot)
+	if err != nil {
+		Fail("failed to load config")
+	}
+	log.Logger = log.Logger.Level(zerolog.Level(conf.Logging.Level))
 	junitReporter := reporters.NewJUnitReporter("junit.xml")
 	RunSpecsWithDefaultAndCustomReporters(t, "Contract Suite", []Reporter{junitReporter})
 }

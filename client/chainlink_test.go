@@ -36,7 +36,7 @@ var spec = `{
   ]
 }`
 
-var _ = Describe("Client", func() {
+var _ = Describe("Chainlink @unit", func() {
 
 	// Mocks the creation, read, delete cycle for any job type
 	It("can Create, Read, and Delete jobs", func() {
@@ -303,6 +303,62 @@ var _ = Describe("Client", func() {
 		receivedKeys, err := c.ReadETHKeys()
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(receivedKeys.Data).Should(ContainElement(ethKeyData))
+	})
+
+	// Mocks the creation, read, delete cycle for Chainlink EIs
+	It("can Create, Read, and Delete external initiators", func() {
+		eia := EIAttributes{
+			Name: "example",
+			URL:  "https://example.com",
+		}
+
+		server := mockedServer(func(rw http.ResponseWriter, req *http.Request) {
+			switch req.Method {
+			case http.MethodPost:
+				Expect(req.URL.Path).Should(Or(Equal("/v2/external_initiators"), Equal("/sessions")))
+				if req.URL.Path == "/sessions" {
+					writeCookie(rw)
+				} else {
+					writeResponse(rw, http.StatusCreated, EIKeyCreate{
+						Data: EIKey{
+							Attributes: eia,
+						},
+					})
+				}
+			case http.MethodGet:
+				Expect("/v2/external_initiators").Should(Equal(req.URL.Path))
+				writeResponse(rw, http.StatusOK, EIKeys{
+					Data: []EIKey{
+						EIKey{
+							Attributes: eia,
+						},
+					},
+				})
+			case http.MethodDelete:
+				Expect("/v2/external_initiators/example").Should(Equal(req.URL.Path))
+				writeResponse(rw, http.StatusNoContent, nil)
+			}
+		})
+		defer server.Close()
+
+		c, err := newDefaultClient(server.URL)
+		Expect(err).ShouldNot(HaveOccurred())
+		c.SetClient(server.Client())
+
+		ei, err := c.CreateEI(&eia)
+		Expect(err).ShouldNot(HaveOccurred())
+
+		Expect(ei.Data.Attributes.Name).Should(Equal(eia.Name))
+		Expect(ei.Data.Attributes.URL).Should(Equal(eia.URL))
+
+		eis, err := c.ReadEIs()
+		Expect(err).ShouldNot(HaveOccurred())
+
+		Expect(eis.Data[0].Attributes.Name).Should(Equal(eia.Name))
+		Expect(eis.Data[0].Attributes.URL).Should(Equal(eia.URL))
+
+		err = c.DeleteEI(eia.Name)
+		Expect(err).ShouldNot(HaveOccurred())
 	})
 
 })

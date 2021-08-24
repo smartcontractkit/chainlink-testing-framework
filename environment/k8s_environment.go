@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/ghodss/yaml"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -15,6 +14,8 @@ import (
 	"sync"
 	"text/template"
 	"time"
+
+	"github.com/ghodss/yaml"
 
 	"github.com/avast/retry-go"
 	"github.com/hashicorp/go-multierror"
@@ -247,7 +248,7 @@ func (env *k8sEnvironment) writeDatabaseContents(pod coreV1.Pod, podFolder strin
 	return nil
 }
 
-// Copy db contents on a pod to a remote CSV file
+// Dumps db contents to a log file
 func (env *k8sEnvironment) dumpDB(pod coreV1.Pod, container coreV1.Container) (string, error) {
 	postRequestBase := env.k8sClient.CoreV1().RESTClient().Post().
 		Namespace(pod.Namespace).Resource("pods").Name(pod.Name).SubResource("exec")
@@ -548,11 +549,21 @@ func (m *K8sManifest) createSecret(values map[string]interface{}) error {
 	return nil
 }
 
+var deploymentMutex sync.Mutex
+
 func (m *K8sManifest) createDeployment(values map[string]interface{}) error {
 	k8sDeployments := m.k8sClient.AppsV1().Deployments(m.namespace.Name)
 
+	if image, ok := m.Values()["image"]; ok {
+		deploymentMutex.Lock()
+		m.config.Apps.Chainlink.Image = image.(string)
+		m.config.Apps.Chainlink.Version = m.Values()["version"].(string)
+	}
 	if err := m.parseDeployment(m.config, m.network, values); err != nil {
 		return err
+	}
+	if _, ok := m.Values()["image"]; ok {
+		deploymentMutex.Unlock()
 	}
 
 	if m.Deployment != nil {
@@ -832,13 +843,22 @@ func (mg *K8sManifestGroup) SetEnvironment(
 	return nil
 }
 
-// Deploy concurrency creates all of the definitions on the k8s cluster
+// Deploy concurrently creates all of the definitions on the k8s cluster
 func (mg *K8sManifestGroup) Deploy(values map[string]interface{}) error {
 	var errGroup error
-
 	wg := mg.waitGroup()
+
+	originalImage := mg.manifests[0].config.Apps.Chainlink.Image
+	originalVersion := mg.manifests[0].config.Apps.Chainlink.Version
+	// Deploy manifests
 	for _, manifest := range mg.manifests {
 		m := manifest
+		if manifestImage, ok := m.values["image"]; ok { // Check if manifest has specified image
+			if manifestImage == "" { // Blank means the default from the config file
+				m.values["image"] = originalImage
+				m.values["version"] = originalVersion
+			}
+		}
 		go func() {
 			defer wg.Done()
 			if err := m.Deploy(values); err != nil {
@@ -846,6 +866,7 @@ func (mg *K8sManifestGroup) Deploy(values map[string]interface{}) error {
 			}
 		}()
 	}
+
 	wg.Wait()
 	return errGroup
 }

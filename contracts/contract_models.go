@@ -29,7 +29,7 @@ type FluxAggregatorData struct {
 	Oracles         []common.Address // Addresses of oracles on the contract
 }
 
-type SetOraclesOptions struct {
+type FluxAggregatorSetOraclesOptions struct {
 	AddList            []common.Address // oracle addresses to add
 	RemoveList         []common.Address // oracle addresses to remove
 	AdminList          []common.Address // oracle addresses to become admin
@@ -38,10 +38,19 @@ type SetOraclesOptions struct {
 	RestartDelayRounds uint32           // rounds to wait after oracles has changed
 }
 
+type SubmissionEvent struct {
+	Contract    common.Address
+	Submission  *big.Int
+	Round       uint32
+	BlockNumber uint64
+	Oracle      common.Address
+}
+
 type FluxAggregator interface {
 	Address() string
 	Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Float) error
-	LatestRound(ctx context.Context) (*big.Int, error)
+	LatestRoundID(ctx context.Context, blockNumber *big.Int) (*big.Int, error)
+	LatestRoundData(ctx context.Context) (RoundData, error)
 	GetContractData(ctxt context.Context) (*FluxAggregatorData, error)
 	UpdateAvailableFunds(ctx context.Context, fromWallet client.BlockchainWallet) error
 	PaymentAmount(ctx context.Context) (*big.Int, error)
@@ -49,9 +58,10 @@ type FluxAggregator interface {
 	WithdrawPayment(ctx context.Context, caller client.BlockchainWallet, from common.Address, to common.Address, amount *big.Int) error
 	WithdrawablePayment(ctx context.Context, addr common.Address) (*big.Int, error)
 	GetOracles(ctx context.Context) ([]string, error)
-	SetOracles(client.BlockchainWallet, SetOraclesOptions) error
+	SetOracles(client.BlockchainWallet, FluxAggregatorSetOraclesOptions) error
 	Description(ctxt context.Context) (string, error)
 	SetRequesterPermissions(ctx context.Context, fromWallet client.BlockchainWallet, addr common.Address, authorized bool, roundsDelay uint32) error
+	WatchSubmissionReceived(ctx context.Context, eventChan chan <-*SubmissionEvent) error
 }
 
 type LinkToken interface {
@@ -143,6 +153,12 @@ type Storage interface {
 type VRF interface {
 	Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Float) error
 	ProofLength(context.Context) (*big.Int, error)
+}
+
+// JobByInstance helper struct to match job + instance ID
+type JobByInstance struct {
+	ID       string
+	Instance string
 }
 
 type MockETHLINKFeed interface {
@@ -254,4 +270,23 @@ type RoundData struct {
 	StartedAt       *big.Int
 	UpdatedAt       *big.Int
 	AnsweredInRound *big.Int
+}
+
+// ReadAccessController is read/write access controller, just named by interface
+type ReadAccessController interface {
+	Address() string
+	AddAccess(fromWallet client.BlockchainWallet, addr string) error
+	DisableAccessCheck(fromWallet client.BlockchainWallet) error
+}
+
+// Flags flags contract interface
+type Flags interface {
+	Address() string
+	GetFlag(ctx context.Context, addr string) (bool, error)
+}
+
+// DeviationFlaggingValidator contract used as an external validator,
+// fox ex. in flux monitor rounds validation
+type DeviationFlaggingValidator interface {
+	Address() string
 }

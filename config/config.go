@@ -21,14 +21,24 @@ const (
 
 // Config is the overall config for the framework, holding configurations for supported networks
 type Config struct {
+	Logging          *LoggingConfig            `mapstructure:"logging" yaml:"logging"`
 	Network            string                    `mapstructure:"network" yaml:"network"`
 	Networks           map[string]*NetworkConfig `mapstructure:"networks" yaml:"networks"`
 	Retry              *RetryConfig              `mapstructure:"retry" yaml:"retry"`
 	Apps               AppConfig                 `mapstructure:"apps" yaml:"apps"`
 	Kubernetes         KubernetesConfig          `mapstructure:"kubernetes" yaml:"kubernetes"`
 	KeepEnvironments   string                    `mapstructure:"keep_environments" yaml:"keep_environments"`
+	Prometheus       *PrometheusConfig         `mapstructure:"prometheus" yaml:"prometheus"`
 	DefaultKeyStore    string
 	ConfigFileLocation string
+}
+
+type PrometheusConfig struct {
+	URL string `mapstructure:"url" yaml:"url"`
+}
+
+type LoggingConfig struct {
+	Level int8 `mapstructure:"level" yaml:"logging"`
 }
 
 // GetNetworkConfig finds a specified network config based on its name
@@ -168,4 +178,8 @@ func (s *SecretStore) Fetch() ([]string, error) {
 type RetryConfig struct {
 	Attempts    uint          `mapstructure:"attempts" yaml:"attempts"`
 	LinearDelay time.Duration `mapstructure:"linear_delay" yaml:"linear_delay"`
+}
+
+type ExplorerMockConfig struct {
+	URL string
 }

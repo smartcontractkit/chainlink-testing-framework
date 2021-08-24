@@ -6,7 +6,10 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/rs/zerolog/log"
+
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/client"
@@ -15,22 +18,29 @@ import (
 	"github.com/smartcontractkit/integrations-framework/tools"
 )
 
-var _ = Describe("OCR Feed", func() {
-	var (
-		suiteSetup     *actions.DefaultSuiteSetup
-		chainlinkNodes []client.Chainlink
-		adapter        environment.ExternalAdapter
-		defaultWallet  client.BlockchainWallet
-	)
+var _ = Describe("OCR Feed @ocr", func() {
 
-	BeforeEach(func() {
+	DescribeTable("Deploys and watches an OCR feed @ocr", func(
+		suiteInit environment.K8sEnvSpecInit,
+	) {
+		var (
+			suiteSetup     *actions.DefaultSuiteSetup
+			chainlinkNodes []client.Chainlink
+			adapter        environment.ExternalAdapter
+			defaultWallet  client.BlockchainWallet
+			ocrInstance    contracts.OffchainAggregator
+			em             *client.ExplorerClient
+		)
+
 		By("Deploying the environment", func() {
 			var err error
 			suiteSetup, err = actions.DefaultLocalSetup(
-				environment.NewChainlinkCluster(5),
+				suiteInit,
 				client.NewNetworkFromConfig,
 				tools.ProjectRoot,
 			)
+			Expect(err).ShouldNot(HaveOccurred())
+			em, err = environment.GetExplorerMockClient(suiteSetup.Env)
 			Expect(err).ShouldNot(HaveOccurred())
 			adapter, err = environment.GetExternalAdapter(suiteSetup.Env)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -39,10 +49,6 @@ var _ = Describe("OCR Feed", func() {
 			defaultWallet = suiteSetup.Wallets.Default()
 			suiteSetup.Client.ParallelTransactions(true)
 		})
-	})
-
-	It("Deploys an OCR feed", func() {
-		var ocrInstance contracts.OffchainAggregator
 
 		By("Funding nodes and deploying OCR contract", func() {
 			err := actions.FundChainlinkNodes(
@@ -86,6 +92,11 @@ var _ = Describe("OCR Feed", func() {
 			_, err = bootstrapNode.CreateJob(bootstrapSpec)
 			Expect(err).ShouldNot(HaveOccurred())
 
+			bta := client.BridgeTypeAttributes{
+				Name: "variable",
+				URL:  fmt.Sprintf("%s/variable", adapter.ClusterURL()),
+			}
+
 			// Send OCR job to other nodes
 			for index := 1; index < len(chainlinkNodes); index++ {
 				nodeP2PIds, err := chainlinkNodes[index].ReadP2PKeys()
@@ -97,13 +108,16 @@ var _ = Describe("OCR Feed", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 				nodeOCRKeyId := nodeOCRKeys.Data[0].ID
 
+				err = chainlinkNodes[index].CreateBridge(&bta)
+				Expect(err).ShouldNot(HaveOccurred())
+
 				ocrSpec := &client.OCRTaskJobSpec{
 					ContractAddress:    ocrInstance.Address(),
 					P2PPeerID:          nodeP2PId,
 					P2PBootstrapPeers:  []client.Chainlink{bootstrapNode},
 					KeyBundleID:        nodeOCRKeyId,
 					TransmitterAddress: nodeTransmitterAddress,
-					ObservationSource:  client.ObservationSourceSpec(fmt.Sprintf("%s/variable", adapter.ClusterURL())),
+					ObservationSource:  client.ObservationSourceSpecBridge(bta),
 				}
 				_, err = chainlinkNodes[index].CreateJob(ocrSpec)
 				Expect(err).ShouldNot(HaveOccurred())
@@ -146,9 +160,26 @@ var _ = Describe("OCR Feed", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(answer.Int64()).Should(Equal(int64(10)), "Latest answer from OCR is not as expected")
 		})
-	})
 
-	AfterEach(func() {
+		By("Checking explorer telemetry", func() {
+			mc, err := em.Count()
+			log.Debug().Interface("Telemetry", mc).Msg("Explorer messages count")
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(mc.Errors).Should(Equal(0))
+			Expect(mc.Unknown).Should(Equal(0))
+			Expect(mc.Broadcast).Should(BeNumerically(">", 1))
+			Expect(mc.DHTAnnounce).Should(BeNumerically(">", 1))
+			Expect(mc.NewEpoch).Should(BeNumerically(">", 1))
+			Expect(mc.ObserveReq).Should(BeNumerically(">", 1))
+			Expect(mc.Received).Should(BeNumerically(">", 1))
+			Expect(mc.ReportReq).Should(BeNumerically(">", 1))
+			Expect(mc.RoundStarted).Should(BeNumerically(">", 1))
+			Expect(mc.Sent).Should(BeNumerically(">", 1))
+		})
+
 		By("Tearing down the environment", suiteSetup.TearDown())
-	})
+	},
+		Entry("all the same version", environment.NewChainlinkCluster(5)),
+		Entry("different versions", environment.NewMixedVersionChainlinkCluster(5, 2)),
+	)
 })

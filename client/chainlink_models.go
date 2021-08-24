@@ -42,8 +42,14 @@ type RunsResponseData struct {
 type RunsAttributesResponse struct {
 	Meta       interface{}   `json:"meta"`
 	Errors     []interface{} `json:"errors"`
+	Inputs     RunInputs     `json:"inputs"`
 	CreatedAt  time.Time     `json:"createdAt"`
 	FinishedAt time.Time     `json:"finishedAt"`
+}
+
+// RunInputs run inputs (value)
+type RunInputs struct {
+	Parse int `json:"parse"`
 }
 
 // RunsMetaResponse runs meta
@@ -63,8 +69,9 @@ type BridgeTypeData struct {
 
 // BridgeTypeAttributes is the model that represents the bridge when read or created on a Chainlink node
 type BridgeTypeAttributes struct {
-	Name string `json:"name"`
-	URL  string `json:"url"`
+	Name        string `json:"name"`
+	URL         string `json:"url"`
+	RequestData string `json:"requestData,omitempty"`
 }
 
 // Session is the form structure used for authenticating
@@ -160,6 +167,32 @@ type ETHKeyAttributes struct {
 	Address string `json:"address"`
 }
 
+// EIAttributes is the model that represents the EI keys when created and read
+type EIAttributes struct {
+	Name              string `json:"name,omitempty"`
+	URL               string `json:"url,omitempty"`
+	IncomingAccessKey string `json:"incomingAccessKey,omitempty"`
+	AccessKey         string `json:"accessKey,omitempty"`
+	Secret            string `json:"incomingSecret,omitempty"`
+	OutgoingToken     string `json:"outgoingToken,omitempty"`
+	OutgoingSecret    string `json:"outgoingSecret,omitempty"`
+}
+
+// EIKeys is the model that represents the EI configs when read
+type EIKeys struct {
+	Data []EIKey `json:"data"`
+}
+
+// EIKeyCreate is the model that represents the EI config when created
+type EIKeyCreate struct {
+	Data EIKey `json:"data"`
+}
+
+// EIKey is the model that represents the EI configs when read
+type EIKey struct {
+	Attributes EIAttributes `json:"attributes"`
+}
+
 // SpecForm is the form used when creating a v2 job spec, containing the TOML of the v2 job
 type SpecForm struct {
 	TOML string `json:"toml"`
@@ -230,10 +263,8 @@ observationSource = """
 
 // PipelineSpec common API call pipeline
 type PipelineSpec struct {
-	URL         string
-	Method      string
-	RequestData string
-	DataPath    string
+	BridgeTypeAttributes BridgeTypeAttributes
+	DataPath             string
 }
 
 func (d *PipelineSpec) Type() string {
@@ -241,9 +272,10 @@ func (d *PipelineSpec) Type() string {
 }
 
 func (d *PipelineSpec) String() (string, error) {
-	sourceString := `fetch    [type=http method={{.Method}} url="{{.URL}}" requestData="{{.RequestData}}"];
-			parse    [type=jsonparse path="{{.DataPath}}"];    
-			fetch -> parse;`
+	sourceString := `
+		fetch [type=bridge name="{{.BridgeTypeAttributes.Name}}" requestData="{{.BridgeTypeAttributes.RequestData}}"];
+		parse [type=jsonparse path="{{.DataPath}}"];
+		fetch -> parse;`
 	return marshallTemplate(d, "API call pipeline template", sourceString)
 }
 
@@ -279,10 +311,8 @@ decode_log->vrf->encode_tx->submit_tx`
 
 // DirectRequestTxPipelineSpec oracle request with tx callback
 type DirectRequestTxPipelineSpec struct {
-	URL         string
-	Method      string
-	RequestData string
-	DataPath    string
+	BridgeTypeAttributes BridgeTypeAttributes
+	DataPath             string
 }
 
 func (d *DirectRequestTxPipelineSpec) Type() string {
@@ -302,9 +332,9 @@ func (d *DirectRequestTxPipelineSpec) String() (string, error) {
                           "_data": $(parse)
                          }>
                        ]
-            fetch    [type=http method={{.Method}} url="{{.URL}}" requestData="{{.RequestData}}"]
-			parse    [type=jsonparse path="{{.DataPath}}"]
-            submit   [type=ethtx to="$(decode_log.requester)" data="$(encode_tx)"]
+			fetch  [type=bridge name="{{.BridgeTypeAttributes.Name}}" requestData="{{.BridgeTypeAttributes.RequestData}}"];
+			parse  [type=jsonparse path="{{.DataPath}}"]
+            submit [type=ethtx to="$(decode_log.requester)" data="$(encode_tx)"]
 			decode_log -> fetch -> parse -> encode_tx -> submit`
 	return marshallTemplate(d, "Direct request pipeline template", sourceString)
 }
@@ -356,13 +386,13 @@ precision         ={{if not .Precision}} 0 {{else}} {{.Precision}} {{end}}
 threshold         ={{if not .Threshold}} 0.5 {{else}} {{.Threshold}} {{end}}
 absoluteThreshold ={{if not .AbsoluteThreshold}} 0.1 {{else}} {{.AbsoluteThreshold}} {{end}}
 
-idleTimerPeriod   ={{if not .IdleTimerPeriod}} "10s" {{else}} "{{.IdleTimerPeriod}}" {{end}}
+idleTimerPeriod   ={{if not .IdleTimerPeriod}} "1ms" {{else}} "{{.IdleTimerPeriod}}" {{end}}
 idleTimerDisabled ={{if not .IdleTimerDisabled}} false {{else}} {{.IdleTimerDisabled}} {{end}}
 
 pollTimerPeriod   ={{if not .PollTimerPeriod}} "1m" {{else}} "{{.PollTimerPeriod}}" {{end}}
 pollTimerDisabled ={{if not .PollTimerDisabled}} false {{else}} {{.PollTimerDisabled}} {{end}}
 
-maxTaskDuration = {{if not .Precision}} "60s" {{else}} {{.Precision}} {{end}}
+maxTaskDuration = {{if not .Precision}} "180s" {{else}} {{.Precision}} {{end}}
 
 observationSource = """
 {{.ObservationSource}}
@@ -559,8 +589,18 @@ observationSource = """
 	return marshallTemplate(w, "Webhook Job", webHookTemplateString)
 }
 
-func ObservationSourceSpec(url string) string {
-	return fmt.Sprintf(`fetch    [type=http method=GET url="%s"];
-parse    [type=jsonparse path="data,result"];    
-fetch -> parse;`, url)
+// ObservationSourceSpecHTTP creates a http GET task spec for json data
+func ObservationSourceSpecHTTP(url string) string {
+	return fmt.Sprintf(`
+		fetch [type=http method=GET url="%s"];
+		parse [type=jsonparse path="data,result"];
+		fetch -> parse;`, url)
+}
+
+// ObservationSourceSpecBridge creates a bridge task spec for json data
+func ObservationSourceSpecBridge(bta BridgeTypeAttributes) string {
+	return fmt.Sprintf(`
+		fetch [type=bridge name="%s" requestData="%s"];
+		parse [type=jsonparse path="data,result"];
+		fetch -> parse;`, bta.Name, bta.RequestData)
 }

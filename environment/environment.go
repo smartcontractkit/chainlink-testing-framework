@@ -2,10 +2,11 @@ package environment
 
 import (
 	"fmt"
+	"github.com/rs/zerolog/log"
+	"github.com/smartcontractkit/integrations-framework/client"
+	"github.com/smartcontractkit/integrations-framework/config"
 	"net/http"
 	"net/url"
-
-	"github.com/smartcontractkit/integrations-framework/client"
 )
 
 // Environment is the interface that represents a deployed environment, whether locally or on remote machines
@@ -23,6 +24,18 @@ type Environment interface {
 type ServiceDetails struct {
 	RemoteURL *url.URL
 	LocalURL  *url.URL
+}
+
+// GetExplorerMockClient will return all instantiated Explorer mock client for a given environment
+func GetExplorerMockClient(env Environment) (*client.ExplorerClient, error) {
+	sd, err := env.GetServiceDetails(ExplorerWSPort)
+	if err != nil {
+		return nil, err
+	}
+	forwardedURL := sd.LocalURL.String()
+	return client.NewExplorerMockClient(&config.ExplorerMockConfig{
+		URL: forwardedURL,
+	}), nil
 }
 
 // GetChainlinkClients will return all instantiated Chainlink clients for a given environment
@@ -50,6 +63,7 @@ func GetChainlinkClients(env Environment) ([]client.Chainlink, error) {
 
 // ExternalAdapter represents a dummy external adapter within the k8sEnvironment
 type ExternalAdapter interface {
+	TriggerValueChange(i int) (int, error)
 	LocalURL() string
 	ClusterURL() string
 	SetVariable(variable int) error
@@ -83,6 +97,23 @@ func (ex *externalAdapter) SetVariable(variable int) error {
 		return err
 	}
 	return nil
+}
+
+func (ex *externalAdapter) TriggerValueChange(i int) (int, error) {
+	log.Info().Int("Iteration", i).Msg("Triggering new round")
+	if i%2 == 0 {
+		err := ex.SetVariable(5)
+		if err != nil {
+			return 0, err
+		}
+		return 5, nil
+	} else {
+		err := ex.SetVariable(6)
+		if err != nil {
+			return 0, err
+		}
+		return 6, nil
+	}
 }
 
 // GetExternalAdapter will return a deployed external adapter on an environment

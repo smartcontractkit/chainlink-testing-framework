@@ -2,6 +2,7 @@ package refill
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"strings"
 	"time"
@@ -17,7 +18,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/tools"
 )
 
-var _ = Describe("FluxAggregator ETH Refill", func() {
+var _ = Describe("FluxAggregator ETH Refill @refill", func() {
 	var (
 		s             *actions.DefaultSuiteSetup
 		adapter       environment.ExternalAdapter
@@ -64,7 +65,7 @@ var _ = Describe("FluxAggregator ETH Refill", func() {
 
 		By("Setting FluxAggregator options", func() {
 			err = fluxInstance.SetOracles(s.Wallets.Default(),
-				contracts.SetOraclesOptions{
+				contracts.FluxAggregatorSetOraclesOptions{
 					AddList:            nodeAddresses,
 					RemoveList:         []common.Address{},
 					AdminList:          nodeAddresses,
@@ -81,15 +82,23 @@ var _ = Describe("FluxAggregator ETH Refill", func() {
 		})
 
 		By("Adding FluxAggregator jobs to nodes", func() {
-			os := &client.PipelineSpec{
-				URL:         adapter.ClusterURL() + "/variable",
-				Method:      "GET",
+			bta := client.BridgeTypeAttributes{
+				Name:        "variable",
+				URL:         fmt.Sprintf("%s/variable", adapter.ClusterURL()),
 				RequestData: "{}",
-				DataPath:    "data,result",
+			}
+
+			os := &client.PipelineSpec{
+				BridgeTypeAttributes: bta,
+				DataPath:             "data,result",
 			}
 			ost, err := os.String()
 			Expect(err).ShouldNot(HaveOccurred())
+
 			for _, n := range nodes {
+				err = n.CreateBridge(&bta)
+				Expect(err).ShouldNot(HaveOccurred())
+
 				fluxSpec := &client.FluxMonitorJobSpec{
 					Name:              "flux_monitor",
 					ContractAddress:   fluxInstance.Address(),

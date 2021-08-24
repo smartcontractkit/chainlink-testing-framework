@@ -3,7 +3,6 @@ package client
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"math/big"
@@ -13,13 +12,11 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-var ErrNotFound = errors.New("unexpected response code, got 404")
-var ErrUnprocessableEntity = errors.New("unexpected response code, got 422")
-
 var OneLINK = big.NewFloat(1e18)
 
 // Chainlink interface that enables interactions with a chainlink node
 type Chainlink interface {
+	URL() string
 	CreateJob(spec JobSpec) (*Job, error)
 	CreateJobRaw(spec string) (*Job, error)
 	ReadJobs() (*ResponseSlice, error)
@@ -48,29 +45,41 @@ type Chainlink interface {
 	ReadVRFKeys() (*VRFKeys, error)
 	PrimaryEthAddress() (string, error)
 
+	CreateEI(eia *EIAttributes) (*EIKeyCreate, error)
+	ReadEIs() (*EIKeys, error)
+	DeleteEI(name string) error
+
 	RemoteIP() string
 	SetSessionCookie() error
 
-	// Used for testing
+	SetPageSize(size int)
+
+	// SetClient is used for testing
 	SetClient(client *http.Client)
 }
 
 type chainlink struct {
-	HttpClient *http.Client
-	Config     *ChainlinkConfig
-	Cookies    []*http.Cookie
+	*BasicHTTPClient
+	Config *ChainlinkConfig
+	pageSize int
 }
 
 // NewChainlink creates a new chainlink model using a provided config
 func NewChainlink(c *ChainlinkConfig, httpClient *http.Client) (Chainlink, error) {
 	cl := &chainlink{
-		Config:     c,
-		HttpClient: httpClient,
+		Config:          c,
+		BasicHTTPClient: NewBasicHTTPClient(httpClient, c.URL),
+		pageSize:   25,
 	}
 	return cl, cl.SetSessionCookie()
 }
 
-// CreateJob creates a Chainlink job based on the provided spec string
+// URL chainlink instance http url
+func (c *chainlink) URL() string {
+	return c.Config.URL
+}
+
+// CreateJobRaw creates a Chainlink job based on the provided spec string
 func (c *chainlink) CreateJobRaw(spec string) (*Job, error) {
 	job := &Job{}
 	log.Info().Str("Node URL", c.Config.URL).Msg("Creating Job")
@@ -134,10 +143,10 @@ func (c *chainlink) ReadSpec(id string) (*Response, error) {
 	return specObj, err
 }
 
-// ReadRunsForJob reads all runs for a job
+// ReadRunsByJob reads all runs for a job
 func (c *chainlink) ReadRunsByJob(jobID string) (*JobRunsResponse, error) {
 	runsObj := &JobRunsResponse{}
-	log.Info().Str("Node URL", c.Config.URL).Str("JobID", jobID).Msg("Reading runs for a job")
+	log.Debug().Str("Node URL", c.Config.URL).Str("JobID", jobID).Msg("Reading runs for a job")
 	_, err := c.do(http.MethodGet, fmt.Sprintf("/v2/jobs/%s/runs", jobID), nil, runsObj, http.StatusOK)
 	return runsObj, err
 }
@@ -253,6 +262,29 @@ func (c *chainlink) PrimaryEthAddress() (string, error) {
 	return ethKeys.Data[0].Attributes.Address, nil
 }
 
+// CreateEI creates an EI on the Chainlink node based on the provided attributes and returns the respective secrets
+func (c *chainlink) CreateEI(eia *EIAttributes) (*EIKeyCreate, error) {
+	ei := EIKeyCreate{}
+	log.Info().Str("Node URL", c.Config.URL).Str("Name", eia.Name).Msg("Creating External Initiator")
+	_, err := c.do(http.MethodPost, "/v2/external_initiators", eia, &ei, http.StatusCreated)
+	return &ei, err
+}
+
+// ReadEIs reads all of the configured EIs from the chainlink node
+func (c *chainlink) ReadEIs() (*EIKeys, error) {
+	ei := EIKeys{}
+	log.Info().Str("Node URL", c.Config.URL).Msg("Reading EI Keys")
+	_, err := c.do(http.MethodGet, "/v2/external_initiators", nil, &ei, http.StatusOK)
+	return &ei, err
+}
+
+// DeleteEI deletes an external initiator in the Chainlink node based on the provided name
+func (c *chainlink) DeleteEI(name string) error {
+	log.Info().Str("Node URL", c.Config.URL).Str("Name", name).Msg("Deleting EI")
+	_, err := c.do(http.MethodDelete, fmt.Sprintf("/v2/external_initiators/%s", name), nil, nil, http.StatusNoContent)
+	return err
+}
+
 // RemoteIP retrieves the inter-cluster IP of the chainlink node, for use with inter-node communications
 func (c *chainlink) RemoteIP() string {
 	return c.Config.RemoteIP
@@ -293,7 +325,7 @@ func (c *chainlink) SetSessionCookie() error {
 	if len(resp.Cookies()) == 0 {
 		return fmt.Errorf("no cookie was returned after getting a session")
 	}
-	c.Cookies = resp.Cookies()
+	c.BasicHTTPClient.Cookies = resp.Cookies()
 
 	sessionFound := false
 	for _, cookie := range resp.Cookies() {
@@ -310,6 +342,11 @@ func (c *chainlink) SetSessionCookie() error {
 // SetClient overrides the http client, used for mocking out the Chainlink server for unit testing
 func (c *chainlink) SetClient(client *http.Client) {
 	c.HttpClient = client
+}
+
+// SetPageSize globally sets the page
+func (c *chainlink) SetPageSize(size int) {
+	c.pageSize = size
 }
 
 func (c *chainlink) doRaw(
@@ -331,6 +368,10 @@ func (c *chainlink) doRaw(
 	for _, cookie := range c.Cookies {
 		req.AddCookie(cookie)
 	}
+
+	q := req.URL.Query()
+	q.Add("size", fmt.Sprint(c.pageSize))
+	req.URL.RawQuery = q.Encode()
 
 	resp, err := client.Do(req)
 	if err != nil {

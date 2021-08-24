@@ -2,6 +2,9 @@ metadata:
   generateName: chainlink-node-
 spec:
   template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: 'true'
     spec:
       volumes:
       - name: node-secrets-volume
@@ -67,6 +70,8 @@ spec:
           value: ./clroot
         - name: SECURE_COOKIES
           value: "false"
+        - name: ETH_MAX_IN_FLIGHT_TRANSACTIONS
+          value: "5000"
         # keeper https://github.com/smartcontractkit/chainlink/wiki/How-to-Run-Keeper-Jobs
         - name: KEEPER_DEFAULT_TRANSACTION_QUEUE_DEPTH
           value: "1"
@@ -78,6 +83,8 @@ spec:
           value: "200000"
         - name: KEEPER_REGISTRY_PERFORM_GAS_OVERHEAD
           value: "150000"
+        - name: EXPLORER_URL
+          value: {{ .Values.explorer.clusterURL }}
         volumeMounts:
         - name: node-secrets-volume
           readonly: false
@@ -119,7 +126,7 @@ spec:
         - name: PGUSER
           value: postgres
           valuefrom: null
-        livenessprobe:
+        livenessProbe:
           exec:
             command:
               - pg_isready
