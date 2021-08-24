@@ -11,17 +11,17 @@ jobs:
   test:
     strategy:
       matrix:
-        go-version: [1.16.x]
+        go-version: [1.16]
     runs-on: [self-hosted, sdlc-ghr-prod]
     container:
-      image: golang:alpine
+      image: golang:${{ matrix.go-version }}-alpine
     env:
       KUBECONFIG: /tmp/KUBECONFIG
     steps:
-      - name: Install Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: ${{ matrix.go-version }}
+      # - name: Install Go
+      #   uses: actions/setup-go@v2
+      #   with:
+      #     go-version: ${{ matrix.go-version }}
       - name: Checkout code
         uses: actions/checkout@v2
       - name: Configure AWS Credentials
@@ -38,14 +38,10 @@ jobs:
         run: go install github.com/onsi/ginkgo/ginkgo
       - name: Download Go Vendor Packages
         run: go mod download
-      - name: Set up GCC
-        uses: egor-tensin/setup-gcc@v1
-        with:
-          version: latest
-          platform: x64
       - name: Run Tests
         run: |
          export PATH=$PATH:$(go env GOPATH)/bin
+         export CGO_ENABLED=0
          ginkgo -r -p -keepGoing --randomizeAllSpecs -cover --coverprofile=coverage.out ./...
       - name: Publish Test Results
         uses: mikepenz/action-junit-report@v2
