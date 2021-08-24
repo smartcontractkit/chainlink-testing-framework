@@ -31,14 +31,14 @@ jobs:
       - name: Install AWS CLI
         run: |
          apk add curl
-         apk add unzip
-         echo "Added helper tools"
+         echo "Added curl"
          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
          echo "Downloaded aws CLI"
          unzip awscliv2.zip
          echo "Unzipped aws CLI"
          ./aws/install
          echo "Installed aws CLI"
+         ls /usr/local/bin/aws
       - name: Prepare KUBECONFIG
         run: echo "${{ secrets.KUBECONFIG }}" >> /tmp/KUBECONFIG
       - name: Install Ginkgo CLI
@@ -47,6 +47,8 @@ jobs:
         run: go mod download
       - name: Run Tests
         run: |
+         which aws
+         ls /usr/local/bin/aws
          export PATH=$PATH:$(go env GOPATH)/bin
          export CGO_ENABLED=0
          ginkgo -r -p -keepGoing --randomizeAllSpecs -cover --coverprofile=coverage.out ./...
