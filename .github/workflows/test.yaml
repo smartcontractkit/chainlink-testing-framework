@@ -17,6 +17,9 @@ jobs:
       image: golang:${{ matrix.go-version }}-alpine
     env:
       KUBECONFIG: /tmp/KUBECONFIG
+      CGO_ENABLED: 0
+      GOARCH: amd64
+      GOOS: linux
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -46,11 +49,7 @@ jobs:
         run: go mod download
       - name: Run Tests
         run: |
-         which aws
-         ls /fork
-         ls /fork/exec
          export PATH=$PATH:$(go env GOPATH)/bin
-         export CGO_ENABLED=0
          ginkgo -r -p -keepGoing --randomizeAllSpecs --trace -cover --coverprofile=coverage.out ./...
       - name: Publish Test Results
         uses: mikepenz/action-junit-report@v2
