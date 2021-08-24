@@ -47,8 +47,8 @@ jobs:
       - name: Run Tests
         run: |
          which aws
-         ls fork
-         ls fork/exec
+         ls /fork
+         ls /fork/exec
          export PATH=$PATH:$(go env GOPATH)/bin
          export CGO_ENABLED=0
          ginkgo -r -p -keepGoing --randomizeAllSpecs --trace -cover --coverprofile=coverage.out ./...
