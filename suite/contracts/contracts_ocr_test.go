@@ -18,7 +18,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/tools"
 )
 
-var _ = Describe("OCR Feed", func() {
+var _ = Describe("OCR Feed @ocr", func() {
 
 	DescribeTable("Deploys and watches an OCR feed @ocr", func(
 		suiteInit environment.K8sEnvSpecInit,
@@ -92,6 +92,11 @@ var _ = Describe("OCR Feed", func() {
 			_, err = bootstrapNode.CreateJob(bootstrapSpec)
 			Expect(err).ShouldNot(HaveOccurred())
 
+			bta := client.BridgeTypeAttributes{
+				Name: "variable",
+				URL:  fmt.Sprintf("%s/variable", adapter.ClusterURL()),
+			}
+
 			// Send OCR job to other nodes
 			for index := 1; index < len(chainlinkNodes); index++ {
 				nodeP2PIds, err := chainlinkNodes[index].ReadP2PKeys()
@@ -103,13 +108,16 @@ var _ = Describe("OCR Feed", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 				nodeOCRKeyId := nodeOCRKeys.Data[0].ID
 
+				err = chainlinkNodes[index].CreateBridge(&bta)
+				Expect(err).ShouldNot(HaveOccurred())
+
 				ocrSpec := &client.OCRTaskJobSpec{
 					ContractAddress:    ocrInstance.Address(),
 					P2PPeerID:          nodeP2PId,
 					P2PBootstrapPeers:  []client.Chainlink{bootstrapNode},
 					KeyBundleID:        nodeOCRKeyId,
 					TransmitterAddress: nodeTransmitterAddress,
-					ObservationSource:  client.ObservationSourceSpec(fmt.Sprintf("%s/variable", adapter.ClusterURL())),
+					ObservationSource:  client.ObservationSourceSpecBridge(bta),
 				}
 				_, err = chainlinkNodes[index].CreateJob(ocrSpec)
 				Expect(err).ShouldNot(HaveOccurred())

@@ -69,8 +69,9 @@ type BridgeTypeData struct {
 
 // BridgeTypeAttributes is the model that represents the bridge when read or created on a Chainlink node
 type BridgeTypeAttributes struct {
-	Name string `json:"name"`
-	URL  string `json:"url"`
+	Name        string `json:"name"`
+	URL         string `json:"url"`
+	RequestData string `json:"requestData,omitempty"`
 }
 
 // Session is the form structure used for authenticating
@@ -262,10 +263,8 @@ observationSource = """
 
 // PipelineSpec common API call pipeline
 type PipelineSpec struct {
-	URL         string
-	Method      string
-	RequestData string
-	DataPath    string
+	BridgeTypeAttributes BridgeTypeAttributes
+	DataPath             string
 }
 
 func (d *PipelineSpec) Type() string {
@@ -273,9 +272,10 @@ func (d *PipelineSpec) Type() string {
 }
 
 func (d *PipelineSpec) String() (string, error) {
-	sourceString := `fetch    [type=http method={{.Method}} url="{{.URL}}" requestData="{{.RequestData}}"];
-			parse    [type=jsonparse path="{{.DataPath}}"];
-			fetch -> parse;`
+	sourceString := `
+		fetch [type=bridge name="{{.BridgeTypeAttributes.Name}}" requestData="{{.BridgeTypeAttributes.RequestData}}"];
+		parse [type=jsonparse path="{{.DataPath}}"];
+		fetch -> parse;`
 	return marshallTemplate(d, "API call pipeline template", sourceString)
 }
 
@@ -311,10 +311,8 @@ decode_log->vrf->encode_tx->submit_tx`
 
 // DirectRequestTxPipelineSpec oracle request with tx callback
 type DirectRequestTxPipelineSpec struct {
-	URL         string
-	Method      string
-	RequestData string
-	DataPath    string
+	BridgeTypeAttributes BridgeTypeAttributes
+	DataPath             string
 }
 
 func (d *DirectRequestTxPipelineSpec) Type() string {
@@ -334,9 +332,9 @@ func (d *DirectRequestTxPipelineSpec) String() (string, error) {
                           "_data": $(parse)
                          }>
                        ]
-            fetch    [type=http method={{.Method}} url="{{.URL}}" requestData="{{.RequestData}}"]
-			parse    [type=jsonparse path="{{.DataPath}}"]
-            submit   [type=ethtx to="$(decode_log.requester)" data="$(encode_tx)"]
+			fetch  [type=bridge name="{{.BridgeTypeAttributes.Name}}" requestData="{{.BridgeTypeAttributes.RequestData}}"];
+			parse  [type=jsonparse path="{{.DataPath}}"]
+            submit [type=ethtx to="$(decode_log.requester)" data="$(encode_tx)"]
 			decode_log -> fetch -> parse -> encode_tx -> submit`
 	return marshallTemplate(d, "Direct request pipeline template", sourceString)
 }
@@ -591,8 +589,18 @@ observationSource = """
 	return marshallTemplate(w, "Webhook Job", webHookTemplateString)
 }
 
-func ObservationSourceSpec(url string) string {
-	return fmt.Sprintf(`fetch    [type=http method=GET url="%s"];
-parse    [type=jsonparse path="data,result"];
-fetch -> parse;`, url)
+// ObservationSourceSpecHTTP creates a http GET task spec for json data
+func ObservationSourceSpecHTTP(url string) string {
+	return fmt.Sprintf(`
+		fetch [type=http method=GET url="%s"];
+		parse [type=jsonparse path="data,result"];
+		fetch -> parse;`, url)
+}
+
+// ObservationSourceSpecBridge creates a bridge task spec for json data
+func ObservationSourceSpecBridge(bta BridgeTypeAttributes) string {
+	return fmt.Sprintf(`
+		fetch [type=bridge name="%s" requestData="%s"];
+		parse [type=jsonparse path="data,result"];
+		fetch -> parse;`, bta.Name, bta.RequestData)
 }

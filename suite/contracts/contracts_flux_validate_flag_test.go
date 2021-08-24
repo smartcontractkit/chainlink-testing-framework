@@ -2,6 +2,7 @@ package contracts
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"strings"
 	"time"
@@ -117,7 +118,7 @@ var _ = Describe("Flux monitor external validator suite @flux", func() {
 					ContractAddress:   fluxInstance.Address(),
 					PollTimerPeriod:   15 * time.Second, // min 15s
 					PollTimerDisabled: false,
-					ObservationSource: client.ObservationSourceSpec(adapter.ClusterURL() + "/variable"),
+					ObservationSource: client.ObservationSourceSpecHTTP(fmt.Sprintf("%s/variable", adapter.ClusterURL())),
 				}
 				_, err = n.CreateJob(fluxSpec)
 				Expect(err).ShouldNot(HaveOccurred())

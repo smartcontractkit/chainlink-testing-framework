@@ -21,14 +21,14 @@ const (
 
 // Config is the overall config for the framework, holding configurations for supported networks
 type Config struct {
-	Logging          *LoggingConfig            `mapstructure:"logging" yaml:"logging"`
+	Logging            *LoggingConfig            `mapstructure:"logging" yaml:"logging"`
 	Network            string                    `mapstructure:"network" yaml:"network"`
 	Networks           map[string]*NetworkConfig `mapstructure:"networks" yaml:"networks"`
 	Retry              *RetryConfig              `mapstructure:"retry" yaml:"retry"`
 	Apps               AppConfig                 `mapstructure:"apps" yaml:"apps"`
 	Kubernetes         KubernetesConfig          `mapstructure:"kubernetes" yaml:"kubernetes"`
 	KeepEnvironments   string                    `mapstructure:"keep_environments" yaml:"keep_environments"`
-	Prometheus       *PrometheusConfig         `mapstructure:"prometheus" yaml:"prometheus"`
+	Prometheus         *PrometheusConfig         `mapstructure:"prometheus" yaml:"prometheus"`
 	DefaultKeyStore    string
 	ConfigFileLocation string
 }
@@ -75,12 +75,36 @@ type KubernetesConfig struct {
 // AppConfig holds all the configuration for the core apps that are deployed for testing
 type AppConfig struct {
 	Chainlink ChainlinkConfig `mapstructure:"chainlink" yaml:"chainlink"`
+	Geth      GethConfig      `mapstructure:"geth" yaml:"geth"`
+	Adapter   AdapterConfig   `mapstructure:"adapter" yaml:"adapter"`
 }
 
 // ChainlinkConfig holds the configuration for the chainlink nodes to be deployed
 type ChainlinkConfig struct {
-	Image   string `mapstructure:"image" yaml:"image"`
-	Version string `mapstructure:"version" yaml:"version"`
+	Image            string          `mapstructure:"image" yaml:"image"`
+	Version          string          `mapstructure:"version" yaml:"version"`
+	NodeRequests     ResourcesConfig `mapstructure:"nodeRequests" yaml:"nodeRequests"`
+	NodeLimits       ResourcesConfig `mapstructure:"nodeLimits" yaml:"nodeLimits"`
+	PostgresRequests ResourcesConfig `mapstructure:"postgresRequests" yaml:"postgresRequests"`
+	PostgresLimits   ResourcesConfig `mapstructure:"postgresLimits" yaml:"postgresLimits"`
+}
+
+// GethConfig holds the configuration for the geth pods to be deployed
+type GethConfig struct {
+	Requests ResourcesConfig `mapstructure:"requests" yaml:"requests"`
+	Limits   ResourcesConfig `mapstructure:"limits" yaml:"limits"`
+}
+
+// AdapterConfig holds the configuration for the adapter pods to be deployed
+type AdapterConfig struct {
+	Requests ResourcesConfig `mapstructure:"requests" yaml:"requests"`
+	Limits   ResourcesConfig `mapstructure:"limits" yaml:"limits"`
+}
+
+// ResourcesConfig hols the resource usage configuration for a pod
+type ResourcesConfig struct {
+	Memory string `mapstructure:"memory" yaml:"memory"`
+	Cpu    string `mapstructure:"cpu" yaml:"cpu"`
 }
 
 // NewConfig creates a new configuration instance via viper from env vars, config file, or a secret store

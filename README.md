@@ -100,5 +100,5 @@ go test ./..
 ### Volume tests
 
 ```sh
-NETWORK="ethereum_geth_volume" make test_performance
+NETWORK="ethereum_geth_performance" make test_performance
 ```
