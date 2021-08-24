@@ -47,6 +47,7 @@ jobs:
         run: go mod download
       - name: Run Tests
         run: |
+         aws --version
          export PATH=$PATH:$(go env GOPATH)/bin
          ginkgo -r -p -keepGoing --randomizeAllSpecs -cover --coverprofile=coverage.out ./...
       - name: Publish Test Results
