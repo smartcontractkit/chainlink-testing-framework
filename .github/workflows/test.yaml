@@ -48,7 +48,7 @@ jobs:
          ls /usr/local/bin/
          /usr/local/bin/aws --version
          export PATH=$PATH:$(go env GOPATH)/bin
-         ginkgo -r -p -keepGoing --randomizeAllSpecs -cover --coverprofile=coverage.out ./...
+         ginkgo -r -p -keepGoing --trace --randomizeAllSpecs -cover --coverprofile=coverage.out ./...
       - name: Publish Test Results
         uses: mikepenz/action-junit-report@v2
         if: always()
