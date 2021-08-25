@@ -62,7 +62,7 @@ func GetChainlinkClients(env Environment) ([]client.Chainlink, error) {
 	return clients, nil
 }
 
-// ExternalAdapter represents a dummy external adapter within the k8sEnvironment
+// ExternalAdapter represents a dummy external adapter within the K8sEnvironment
 type ExternalAdapter interface {
 	TriggerValueChange(i int) (int, error)
 	LocalURL() string
