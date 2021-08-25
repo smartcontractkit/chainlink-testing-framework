@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/smartcontractkit/integrations-framework/chaos"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -79,6 +80,7 @@ type K8sEnvironment struct {
 	// Environment resources
 	config  *config.Config
 	network client.BlockchainNetwork
+	chaos   *chaos.Controller
 }
 
 // NewK8sEnvironment creates and deploys a full ephemeral environment in a k8s cluster. Your current context within
@@ -88,7 +90,7 @@ func NewK8sEnvironment(
 	cfg *config.Config,
 	network client.BlockchainNetwork,
 ) (Environment, error) {
-	k8sConfig, err := k8sConfig()
+	k8sConfig, err := K8sConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -114,6 +116,14 @@ func NewK8sEnvironment(
 	}
 	env.namespace = namespace
 	env.specs = deployables
+	cc, err := chaos.NewController(&chaos.Config{
+		Client:    k8sClient,
+		Namespace: namespace.Name,
+	})
+	if err != nil {
+		return nil, err
+	}
+	env.chaos = cc
 
 	ctx, ctxCancel := context.WithTimeout(context.Background(), env.config.Kubernetes.DeploymentTimeout)
 	defer ctxCancel()
@@ -205,6 +215,31 @@ func (env K8sEnvironment) WriteArtifacts(testLogFolder string) {
 			log.Err(err).Str("Namespace", env.ID()).Str("Pod", pod.Name).Msg("Error writing logs for pod")
 		}
 	}
+}
+
+// ApplyChaos applies chaos experiment in the env namespace
+func (env K8sEnvironment) ApplyChaos(exp chaos.Experimentable) (string, error) {
+	name, err := env.chaos.Run(exp)
+	if err != nil {
+		return name, err
+	}
+	return name, nil
+}
+
+// StopChaos stops experiment by name
+func (env K8sEnvironment) StopChaos(name string) error {
+	if err := env.chaos.Stop(name); err != nil {
+		return err
+	}
+	return nil
+}
+
+// StopAllChaos stops all chaos experiments
+func (env K8sEnvironment) StopAllChaos() error {
+	if err := env.chaos.StopAll(); err != nil {
+		return err
+	}
+	return nil
 }
 
 // TearDown cycles through all the specifications and tears down the deployments. This typically entails cleaning
@@ -955,7 +990,8 @@ func (mg *K8sManifestGroup) waitGroup() *sync.WaitGroup {
 	return &wg
 }
 
-func k8sConfig() (*rest.Config, error) {
+// K8sConfig loads new default k8s config from filesystem
+func K8sConfig() (*rest.Config, error) {
 	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
 	kubeConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, &clientcmd.ConfigOverrides{})
 	return kubeConfig.ClientConfig()
