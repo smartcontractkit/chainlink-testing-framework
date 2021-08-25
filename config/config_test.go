@@ -13,7 +13,6 @@ import (
 const (
 	specifiedConfig     string = "%s/config/test_configs/specified_config"
 	badConfig           string = "%s/config/test_configs/bad_config"
-	noPrivateKeysConfig string = "%s/config/test_configs/no_private_keys"
 )
 
 var _ = Describe("Config unit tests @unit", func() {

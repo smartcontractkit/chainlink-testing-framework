@@ -147,20 +147,6 @@ func (l *LocalStore) Fetch() ([]string, error) {
 	return l.RawKeys, nil
 }
 
-// SecretStore retrieves keys from an encrypted secret storage service TBD
-type SecretStore struct {
-	networkName string
-}
-
-// Fetch private keys from env variables or a secret management system
-func (s *SecretStore) Fetch() ([]string, error) {
-	// TODO: Set up connection with whatever secret store we choose
-	// Connect to secrets service / local encryption setup
-	// Fetch keys based on the networkName
-	// Return them
-	return []string{""}, nil
-}
-
 type RetryConfig struct {
 	Attempts    uint          `mapstructure:"attempts" yaml:"attempts"`
 	LinearDelay time.Duration `mapstructure:"linear_delay" yaml:"linear_delay"`
