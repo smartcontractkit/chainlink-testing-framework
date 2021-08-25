@@ -15,6 +15,7 @@ type Environment interface {
 
 	GetAllServiceDetails(remotePort uint16) ([]*ServiceDetails, error)
 	GetServiceDetails(remotePort uint16) (*ServiceDetails, error)
+	GetPrivateKeyFromSecret(privateKey string) (string, error)
 
 	WriteArtifacts(testLogFolder string)
 	TearDown()
@@ -136,5 +137,31 @@ func NewBlockchainClient(env Environment, network client.BlockchainNetwork) (cli
 	if err == nil {
 		network.SetURL(fmt.Sprintf("ws://%s", sd.LocalURL.Host))
 	}
+
+	network.Config().PrivateKeyStore, err = NewPrivateKeyStoreFromEnv(env, network.Config())
+	if err != nil {
+		return nil, err
+	}
+
 	return client.NewBlockchainClient(network)
+}
+
+// NewPrivateKeyStoreFromEnv returns a keystore where if a key is not 64 characters long it looks for it in the
+// private-keys secret of the default namespace
+func NewPrivateKeyStoreFromEnv(env Environment, network *config.NetworkConfig) (config.PrivateKeyStore, error) {
+	var localKeysAndSecretKeys []string
+
+	for _, key := range network.PrivateKeys {
+		if len(key) != 64 {
+			secretKey, err := env.GetPrivateKeyFromSecret(key)
+			if err != nil {
+				return nil, err
+			}
+			localKeysAndSecretKeys = append(localKeysAndSecretKeys, secretKey)
+		} else {
+			localKeysAndSecretKeys = append(localKeysAndSecretKeys, key)
+		}
+	}
+
+	return &config.LocalStore{RawKeys: localKeysAndSecretKeys}, nil
 }

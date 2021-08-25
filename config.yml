@@ -123,6 +123,17 @@ networks:
         transaction_timeout: 5m
         minimum_confirmations: 1
         gas_estimation_buffer: 10000
+    ethereum_rinkeby:
+        name: "Ethereum Rinkeby"
+        url: "wss://rinkeby-light.eth.linkpool.io/ws"
+        chain_id: 4
+        type: evm
+        private_keys:
+            - rinkeby_private_key_1
+        transaction_limit: 9000000
+        transaction_timeout: 5m
+        minimum_confirmations: 1
+        gas_estimation_buffer: 1000000
 retry:
     attempts: 20
     linear_delay: 1s

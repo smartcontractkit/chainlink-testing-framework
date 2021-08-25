@@ -27,3 +27,7 @@ junit.xml
 
 logs/
 bin/
+
+# ide
+
+*.idea

@@ -108,7 +108,7 @@ type ResourcesConfig struct {
 }
 
 // NewConfig creates a new configuration instance via viper from env vars, config file, or a secret store
-func NewConfig(configType ConfigurationType, configPath string) (*Config, error) {
+func NewConfig(configPath string) (*Config, error) {
 	v := viper.New()
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
@@ -126,9 +126,6 @@ func NewConfig(configType ConfigurationType, configPath string) (*Config, error)
 	}
 	log.Info().Str("File Location", v.ConfigFileUsed()).Msg("Loading config file")
 	err := v.Unmarshal(conf)
-	for _, networkConf := range conf.Networks {
-		networkConf.PrivateKeyStore = NewPrivateKeyStore(configType, networkConf)
-	}
 	return conf, err
 }
 
@@ -137,28 +134,17 @@ type PrivateKeyStore interface {
 	Fetch() ([]string, error)
 }
 
-// NewPrivateKeyStore returns a keystore of a specific type, depending on where it should source its keys from
-func NewPrivateKeyStore(configType ConfigurationType, network *NetworkConfig) PrivateKeyStore {
-	switch configType {
-	case LocalConfig:
-		return &LocalStore{network.PrivateKeys}
-	case SecretConfig:
-		return &SecretStore{network.Name}
-	}
-	return nil
-}
-
 // LocalStore retrieves keys defined in a config.yml file, or from environment variables
 type LocalStore struct {
-	rawKeys []string
+	RawKeys []string
 }
 
 // Fetch private keys from local environment variables or a config file
 func (l *LocalStore) Fetch() ([]string, error) {
-	if l.rawKeys == nil {
+	if l.RawKeys == nil {
 		return nil, errors.New("no keys found, ensure your configuration is properly set")
 	}
-	return l.rawKeys, nil
+	return l.RawKeys, nil
 }
 
 // SecretStore retrieves keys from an encrypted secret storage service TBD

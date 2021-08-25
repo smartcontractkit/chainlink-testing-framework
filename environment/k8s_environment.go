@@ -279,6 +279,14 @@ func (env *k8sEnvironment) dumpDB(pod coreV1.Pod, container coreV1.Container) (s
 	return outBuff.String(), err
 }
 
+func (env *k8sEnvironment) GetPrivateKeyFromSecret(privateKey string) (string, error) {
+	res, err := env.k8sClient.CoreV1().Secrets("default").Get(context.Background(), "private-keys", metaV1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+	return string(res.Data[privateKey]), nil
+}
+
 // Writes logs for each container in a pod
 func writeLogsForPod(podsClient v1.PodInterface, pod coreV1.Pod, podFolder string) error {
 	for _, container := range pod.Spec.Containers {

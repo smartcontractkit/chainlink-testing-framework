@@ -14,7 +14,7 @@ var _ = Describe("Blockchain @unit", func() {
 
 	BeforeEach(func() {
 		var err error
-		conf, err = config.NewConfig(config.LocalConfig, tools.ProjectRoot)
+		conf, err = config.NewConfig(tools.ProjectRoot)
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 
