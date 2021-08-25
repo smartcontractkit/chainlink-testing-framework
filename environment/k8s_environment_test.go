@@ -25,6 +25,7 @@ var _ = Describe("Environment functionality @unit", func() {
 		envInitFunc K8sEnvSpecInit,
 		nodeCount int,
 	) {
+		Skip("Not ready to be run in github")
 		// Setup
 		networkConfig, err := initFunc(conf)
 		Expect(err).ShouldNot(HaveOccurred())

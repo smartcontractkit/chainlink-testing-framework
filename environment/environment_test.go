@@ -19,7 +19,7 @@ const (
 var _ = Describe("Environment unit tests @unit", func() {
 
 	Describe("NewPrivateKeyStoreFromEnv unit tests", func() {
-		FIt("should fetch private keys when they exist", func() {
+		It("should fetch private keys when they exist", func() {
 			conf, err := config.NewConfig(fmt.Sprintf(specifiedConfig, tools.ProjectRoot))
 			Expect(err).ShouldNot(HaveOccurred())
 
@@ -36,7 +36,7 @@ var _ = Describe("Environment unit tests @unit", func() {
 			Expect(privateKeys[0]).Should(Equal("5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a"), "The private key did not get read correctly")
 		})
 
-		FIt("should not fetch private keys when they do not exist", func() {
+		It("should not fetch private keys when they do not exist", func() {
 			conf, err := config.NewConfig(fmt.Sprintf(noPrivateKeysConfig, tools.ProjectRoot))
 			Expect(err).ShouldNot(HaveOccurred())
 
