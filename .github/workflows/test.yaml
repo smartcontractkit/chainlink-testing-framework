@@ -37,7 +37,7 @@ jobs:
          unzip awscliv2.zip 
          rm -R awscliv2.zip 
          ./aws/install
-         /usr/local/bin/aws eks update-kubeconfig --kubeconfig --name main-cluster
+         /usr/local/bin/aws eks update-kubeconfig --kubeconfig $KUBECONFIG --name main-cluster
       - name: Prepare KUBECONFIG
         run: echo "${{ secrets.KUBECONFIG }}" >> /tmp/KUBECONFIG
       - name: Install Ginkgo CLI
