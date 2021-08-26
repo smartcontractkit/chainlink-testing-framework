@@ -14,6 +14,7 @@ import (
 const (
 	specifiedConfig string = "%s/config/test_configs/specified_config"
 	noPrivateKeysConfig string = "%s/config/test_configs/no_private_keys_config"
+	secretKeysConfig string = "%s/config/test_configs/secret_keys_config"
 )
 
 var _ = Describe("Environment unit tests @unit", func() {
@@ -48,6 +49,29 @@ var _ = Describe("Environment unit tests @unit", func() {
 
 			_, err = bcNetwork.Config().PrivateKeyStore.Fetch()
 			Expect(err.Error()).Should(ContainSubstring("no keys found"))
+		})
+
+		It("should fetch secret private keys", func() {
+			Skip("Not ready to be run in github")
+
+			conf, err := config.NewConfig(fmt.Sprintf(secretKeysConfig, tools.ProjectRoot))
+			Expect(err).ShouldNot(HaveOccurred())
+
+			bcNetwork, err := client.NewNetworkFromConfig(conf)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			env, err := environment.NewK8sEnvironment(environment.NewChainlinkCluster(1), conf, bcNetwork)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			bcNetwork.Config().PrivateKeyStore, err = environment.NewPrivateKeyStoreFromEnv(env, bcNetwork.Config())
+			Expect(err).ShouldNot(HaveOccurred())
+
+			privateKeys, err := bcNetwork.Config().PrivateKeyStore.Fetch()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			Expect(len(privateKeys)).Should(Equal(2), "The number of private keys was incorrect")
+			Expect(privateKeys[0]).Should(Equal("ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"), "The private key did not get read correctly")
+			Expect(privateKeys[1]).Should(Equal("59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"), "The private key did not get read correctly")
 		})
 	})
 })
