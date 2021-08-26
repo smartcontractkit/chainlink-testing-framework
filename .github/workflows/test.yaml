@@ -45,7 +45,6 @@ jobs:
         run: go mod download
       - name: Run Tests
         run: |
-         kubectl get svc
          export PATH=$PATH:$(go env GOPATH)/bin
          ginkgo -r -p -keepGoing --trace --randomizeAllSpecs --cover --progress --coverprofile=coverage.out ./...
       - name: Publish Test Results
