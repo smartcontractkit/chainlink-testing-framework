@@ -1,7 +1,10 @@
-package client
+package client_test
 
 import (
+	"fmt"
+	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/config"
+	"github.com/smartcontractkit/integrations-framework/environment"
 	"github.com/smartcontractkit/integrations-framework/tools"
 
 	. "github.com/onsi/ginkgo"
@@ -9,20 +12,28 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+const (
+	fetchConfig     string = "%s/config/test_configs/fetch_config"
+)
+
 var _ = Describe("Blockchain @unit", func() {
 	var conf *config.Config
 
 	BeforeEach(func() {
 		var err error
-		conf, err = config.NewConfig(config.LocalConfig, tools.ProjectRoot)
+		conf, err = config.NewConfig(fmt.Sprintf(fetchConfig, tools.ProjectRoot))
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 
 	DescribeTable("create new wallet configurations", func(
-		initFunc BlockchainNetworkInit,
+		initFunc client.BlockchainNetworkInit,
 	) {
 		networkConfig, err := initFunc(conf)
 		Expect(err).ShouldNot(HaveOccurred())
+
+		networkConfig.Config().PrivateKeyStore, err = environment.NewPrivateKeyStoreFromEnv(environment.K8sEnvironment{}, networkConfig.Config())
+		Expect(err).ShouldNot(HaveOccurred())
+
 		wallets, err := networkConfig.Wallets()
 		Expect(err).ShouldNot(HaveOccurred())
 		rawWallets := wallets.All()
@@ -31,6 +42,6 @@ var _ = Describe("Blockchain @unit", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 		}
 	},
-		Entry("on Ethereum Hardhat", NewNetworkFromConfig),
+		Entry("on Ethereum Hardhat", client.NewNetworkFromConfig),
 	)
 })

@@ -55,6 +55,8 @@ type NetworkConfig struct {
 	URL                  string        `mapstructure:"url" yaml:"url"`
 	ChainID              int64         `mapstructure:"chain_id" yaml:"chain_id"`
 	Type                 string        `mapstructure:"type" yaml:"type"`
+	SecretPrivateKeys    bool          `mapstructure:"secret_private_keys" yaml:"secret_private_keys"`
+	NamespaceForSecret   string        `mapstructure:"namespace_for_secret" yaml:"namespace_for_secret"`
 	PrivateKeys          []string      `mapstructure:"private_keys" yaml:"private_keys"`
 	TransactionLimit     uint64        `mapstructure:"transaction_limit" yaml:"transaction_limit"`
 	Timeout              time.Duration `mapstructure:"transaction_timeout" yaml:"transaction_timeout"`
@@ -108,7 +110,7 @@ type ResourcesConfig struct {
 }
 
 // NewConfig creates a new configuration instance via viper from env vars, config file, or a secret store
-func NewConfig(configType ConfigurationType, configPath string) (*Config, error) {
+func NewConfig(configPath string) (*Config, error) {
 	v := viper.New()
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
@@ -126,9 +128,6 @@ func NewConfig(configType ConfigurationType, configPath string) (*Config, error)
 	}
 	log.Info().Str("File Location", v.ConfigFileUsed()).Msg("Loading config file")
 	err := v.Unmarshal(conf)
-	for _, networkConf := range conf.Networks {
-		networkConf.PrivateKeyStore = NewPrivateKeyStore(configType, networkConf)
-	}
 	return conf, err
 }
 
@@ -137,42 +136,17 @@ type PrivateKeyStore interface {
 	Fetch() ([]string, error)
 }
 
-// NewPrivateKeyStore returns a keystore of a specific type, depending on where it should source its keys from
-func NewPrivateKeyStore(configType ConfigurationType, network *NetworkConfig) PrivateKeyStore {
-	switch configType {
-	case LocalConfig:
-		return &LocalStore{network.PrivateKeys}
-	case SecretConfig:
-		return &SecretStore{network.Name}
-	}
-	return nil
-}
-
 // LocalStore retrieves keys defined in a config.yml file, or from environment variables
 type LocalStore struct {
-	rawKeys []string
+	RawKeys []string
 }
 
 // Fetch private keys from local environment variables or a config file
 func (l *LocalStore) Fetch() ([]string, error) {
-	if l.rawKeys == nil {
+	if l.RawKeys == nil {
 		return nil, errors.New("no keys found, ensure your configuration is properly set")
 	}
-	return l.rawKeys, nil
-}
-
-// SecretStore retrieves keys from an encrypted secret storage service TBD
-type SecretStore struct {
-	networkName string
-}
-
-// Fetch private keys from env variables or a secret management system
-func (s *SecretStore) Fetch() ([]string, error) {
-	// TODO: Set up connection with whatever secret store we choose
-	// Connect to secrets service / local encryption setup
-	// Fetch keys based on the networkName
-	// Return them
-	return []string{""}, nil
+	return l.RawKeys, nil
 }
 
 type RetryConfig struct {

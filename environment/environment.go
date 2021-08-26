@@ -15,6 +15,7 @@ type Environment interface {
 
 	GetAllServiceDetails(remotePort uint16) ([]*ServiceDetails, error)
 	GetServiceDetails(remotePort uint16) (*ServiceDetails, error)
+	GetPrivateKeyFromSecret(namespace string, privateKey string) (string, error)
 
 	WriteArtifacts(testLogFolder string)
 	TearDown()
@@ -61,7 +62,7 @@ func GetChainlinkClients(env Environment) ([]client.Chainlink, error) {
 	return clients, nil
 }
 
-// ExternalAdapter represents a dummy external adapter within the k8sEnvironment
+// ExternalAdapter represents a dummy external adapter within the K8sEnvironment
 type ExternalAdapter interface {
 	TriggerValueChange(i int) (int, error)
 	LocalURL() string
@@ -136,5 +137,30 @@ func NewBlockchainClient(env Environment, network client.BlockchainNetwork) (cli
 	if err == nil {
 		network.SetURL(fmt.Sprintf("ws://%s", sd.LocalURL.Host))
 	}
+
+	network.Config().PrivateKeyStore, err = NewPrivateKeyStoreFromEnv(env, network.Config())
+	if err != nil {
+		return nil, err
+	}
+
 	return client.NewBlockchainClient(network)
+}
+
+// NewPrivateKeyStoreFromEnv returns a keystore looking either in a cluster secret or directly from the config
+func NewPrivateKeyStoreFromEnv(env Environment, network *config.NetworkConfig) (config.PrivateKeyStore, error) {
+	var localKeysAndSecretKeys []string
+
+	if network.SecretPrivateKeys {
+		for _, key := range network.PrivateKeys {
+			secretKey, err := env.GetPrivateKeyFromSecret(network.NamespaceForSecret, key)
+			if err != nil {
+				return nil, err
+			}
+			localKeysAndSecretKeys = append(localKeysAndSecretKeys, secretKey)
+		}
+	} else {
+		localKeysAndSecretKeys = network.PrivateKeys
+	}
+
+	return &config.LocalStore{RawKeys: localKeysAndSecretKeys}, nil
 }
