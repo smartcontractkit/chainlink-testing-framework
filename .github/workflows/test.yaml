@@ -1,34 +1,14 @@
 name: test
-on:
-  push:
-    tags:
-      - v*
-    branches:
-      - master
-      - main
-  pull_request:
+on: [push, pull_request]
 jobs:
   test:
-    strategy:
-      matrix:
-        go-version: [1.16]
     runs-on: [self-hosted, sdlc-ghr-prod]
-    container:
-      image: golang:${{ matrix.go-version }}-bullseye
     env:
       KUBECONFIG: /tmp/KUBECONFIG
       CGO_ENABLED: 0
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-      - name: Install AWS CLI
-        run: |
-         apt-get update
-         apt-get install unzip
-         wget https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -O awscliv2.zip 
-         unzip awscliv2.zip 
-         rm -R awscliv2.zip 
-         ./aws/install
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -38,15 +18,19 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           role-duration-seconds: 3600
       - name: Prepare KUBECONFIG
-        run: echo "${{ secrets.KUBECONFIG }}" >> /tmp/KUBECONFIG
+        run: echo "${{ secrets.KUBECONFIG }}" > /tmp/KUBECONFIG
+      - name: Setup go
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.16
       - name: Install Ginkgo CLI
         run: go install github.com/onsi/ginkgo/ginkgo
       - name: Download Go Vendor Packages
         run: go mod download
       - name: Run Tests
         run: |
-         export PATH=$PATH:$(go env GOPATH)/bin
-         ginkgo -r -p -keepGoing --trace --randomizeAllSpecs --cover --progress --coverprofile=coverage.out ./...
+          export PATH=$PATH:$(go env GOPATH)/bin
+          ginkgo -r -p -keepGoing --trace --randomizeAllSpecs --cover --progress --coverprofile=coverage.out ./...
       - name: Publish Test Results
         uses: mikepenz/action-junit-report@v2
         if: always()
@@ -68,4 +52,3 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           lcov-file: ./coverage.lcov
-
