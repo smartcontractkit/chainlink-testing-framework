@@ -283,10 +283,9 @@ func newChainlinkManifest(chainlinkCluster K8sEnvSpecs, envName string) K8sEnvSp
 	envWithGeth := K8sEnvSpecs{
 		NewGethManifest(),
 		NewExplorerManifest(),
-		1: chainlinkCluster,
 	}
 	envWithGeth = append(envWithGeth, chainlinkCluster...)
-	envNoSimulatedChain := K8sEnvSpecs{}
+	envNoSimulatedChain := K8sEnvSpecs{NewExplorerManifest()}
 	envNoSimulatedChain = append(envNoSimulatedChain, chainlinkCluster...)
 
 	return func(config *config.NetworkConfig) (string, K8sEnvSpecs) {
