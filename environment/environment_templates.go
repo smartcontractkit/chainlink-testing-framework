@@ -283,6 +283,7 @@ func newChainlinkManifest(chainlinkCluster K8sEnvSpecs, envName string) K8sEnvSp
 	envWithGeth := K8sEnvSpecs{
 		NewGethManifest(),
 		NewExplorerManifest(),
+		1: chainlinkCluster,
 	}
 	envWithGeth = append(envWithGeth, chainlinkCluster...)
 	envNoSimulatedChain := K8sEnvSpecs{}

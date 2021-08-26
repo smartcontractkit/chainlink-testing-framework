@@ -21,14 +21,14 @@ const (
 
 // Config is the overall config for the framework, holding configurations for supported networks
 type Config struct {
-	Logging          *LoggingConfig            `mapstructure:"logging" yaml:"logging"`
+	Logging            *LoggingConfig            `mapstructure:"logging" yaml:"logging"`
 	Network            string                    `mapstructure:"network" yaml:"network"`
 	Networks           map[string]*NetworkConfig `mapstructure:"networks" yaml:"networks"`
 	Retry              *RetryConfig              `mapstructure:"retry" yaml:"retry"`
 	Apps               AppConfig                 `mapstructure:"apps" yaml:"apps"`
 	Kubernetes         KubernetesConfig          `mapstructure:"kubernetes" yaml:"kubernetes"`
 	KeepEnvironments   string                    `mapstructure:"keep_environments" yaml:"keep_environments"`
-	Prometheus       *PrometheusConfig         `mapstructure:"prometheus" yaml:"prometheus"`
+	Prometheus         *PrometheusConfig         `mapstructure:"prometheus" yaml:"prometheus"`
 	DefaultKeyStore    string
 	ConfigFileLocation string
 }
@@ -55,6 +55,8 @@ type NetworkConfig struct {
 	URL                  string        `mapstructure:"url" yaml:"url"`
 	ChainID              int64         `mapstructure:"chain_id" yaml:"chain_id"`
 	Type                 string        `mapstructure:"type" yaml:"type"`
+	SecretPrivateKeys    bool          `mapstructure:"secret_private_keys" yaml:"secret_private_keys"`
+	NamespaceForSecret   string        `mapstructure:"namespace_for_secret" yaml:"namespace_for_secret"`
 	PrivateKeys          []string      `mapstructure:"private_keys" yaml:"private_keys"`
 	TransactionLimit     uint64        `mapstructure:"transaction_limit" yaml:"transaction_limit"`
 	Timeout              time.Duration `mapstructure:"transaction_timeout" yaml:"transaction_timeout"`
@@ -75,16 +77,40 @@ type KubernetesConfig struct {
 // AppConfig holds all the configuration for the core apps that are deployed for testing
 type AppConfig struct {
 	Chainlink ChainlinkConfig `mapstructure:"chainlink" yaml:"chainlink"`
+	Geth      GethConfig      `mapstructure:"geth" yaml:"geth"`
+	Adapter   AdapterConfig   `mapstructure:"adapter" yaml:"adapter"`
 }
 
 // ChainlinkConfig holds the configuration for the chainlink nodes to be deployed
 type ChainlinkConfig struct {
-	Image   string `mapstructure:"image" yaml:"image"`
-	Version string `mapstructure:"version" yaml:"version"`
+	Image            string          `mapstructure:"image" yaml:"image"`
+	Version          string          `mapstructure:"version" yaml:"version"`
+	NodeRequests     ResourcesConfig `mapstructure:"nodeRequests" yaml:"nodeRequests"`
+	NodeLimits       ResourcesConfig `mapstructure:"nodeLimits" yaml:"nodeLimits"`
+	PostgresRequests ResourcesConfig `mapstructure:"postgresRequests" yaml:"postgresRequests"`
+	PostgresLimits   ResourcesConfig `mapstructure:"postgresLimits" yaml:"postgresLimits"`
+}
+
+// GethConfig holds the configuration for the geth pods to be deployed
+type GethConfig struct {
+	Requests ResourcesConfig `mapstructure:"requests" yaml:"requests"`
+	Limits   ResourcesConfig `mapstructure:"limits" yaml:"limits"`
+}
+
+// AdapterConfig holds the configuration for the adapter pods to be deployed
+type AdapterConfig struct {
+	Requests ResourcesConfig `mapstructure:"requests" yaml:"requests"`
+	Limits   ResourcesConfig `mapstructure:"limits" yaml:"limits"`
+}
+
+// ResourcesConfig hols the resource usage configuration for a pod
+type ResourcesConfig struct {
+	Memory string `mapstructure:"memory" yaml:"memory"`
+	Cpu    string `mapstructure:"cpu" yaml:"cpu"`
 }
 
 // NewConfig creates a new configuration instance via viper from env vars, config file, or a secret store
-func NewConfig(configType ConfigurationType, configPath string) (*Config, error) {
+func NewConfig(configPath string) (*Config, error) {
 	v := viper.New()
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
@@ -102,9 +128,6 @@ func NewConfig(configType ConfigurationType, configPath string) (*Config, error)
 	}
 	log.Info().Str("File Location", v.ConfigFileUsed()).Msg("Loading config file")
 	err := v.Unmarshal(conf)
-	for _, networkConf := range conf.Networks {
-		networkConf.PrivateKeyStore = NewPrivateKeyStore(configType, networkConf)
-	}
 	return conf, err
 }
 
@@ -113,42 +136,17 @@ type PrivateKeyStore interface {
 	Fetch() ([]string, error)
 }
 
-// NewPrivateKeyStore returns a keystore of a specific type, depending on where it should source its keys from
-func NewPrivateKeyStore(configType ConfigurationType, network *NetworkConfig) PrivateKeyStore {
-	switch configType {
-	case LocalConfig:
-		return &LocalStore{network.PrivateKeys}
-	case SecretConfig:
-		return &SecretStore{network.Name}
-	}
-	return nil
-}
-
 // LocalStore retrieves keys defined in a config.yml file, or from environment variables
 type LocalStore struct {
-	rawKeys []string
+	RawKeys []string
 }
 
 // Fetch private keys from local environment variables or a config file
 func (l *LocalStore) Fetch() ([]string, error) {
-	if l.rawKeys == nil {
+	if l.RawKeys == nil {
 		return nil, errors.New("no keys found, ensure your configuration is properly set")
 	}
-	return l.rawKeys, nil
-}
-
-// SecretStore retrieves keys from an encrypted secret storage service TBD
-type SecretStore struct {
-	networkName string
-}
-
-// Fetch private keys from env variables or a secret management system
-func (s *SecretStore) Fetch() ([]string, error) {
-	// TODO: Set up connection with whatever secret store we choose
-	// Connect to secrets service / local encryption setup
-	// Fetch keys based on the networkName
-	// Return them
-	return []string{""}, nil
+	return l.RawKeys, nil
 }
 
 type RetryConfig struct {

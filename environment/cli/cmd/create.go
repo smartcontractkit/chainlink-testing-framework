@@ -31,7 +31,7 @@ func createRunE(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	cfg, err := config.NewConfig(config.LocalConfig, tools.ProjectRoot)
+	cfg, err := config.NewConfig(tools.ProjectRoot)
 	if err != nil {
 		return err
 	}

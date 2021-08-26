@@ -64,7 +64,7 @@ type K8sEnvResource interface {
 	Teardown() error
 }
 
-type k8sEnvironment struct {
+type K8sEnvironment struct {
 	// K8s Resources
 	k8sClient *kubernetes.Clientset
 	k8sConfig *rest.Config
@@ -96,7 +96,7 @@ func NewK8sEnvironment(
 	if err != nil {
 		return nil, err
 	}
-	env := &k8sEnvironment{
+	env := &K8sEnvironment{
 		k8sClient: k8sClient,
 		k8sConfig: k8sConfig,
 		config:    cfg,
@@ -135,7 +135,7 @@ deploymentLoop:
 }
 
 // ID returns the canonical name of the environment, which in the case of k8s is the namespace
-func (env *k8sEnvironment) ID() string {
+func (env K8sEnvironment) ID() string {
 	if env.namespace != nil {
 		return env.namespace.Name
 	}
@@ -143,7 +143,7 @@ func (env *k8sEnvironment) ID() string {
 }
 
 // GetAllServiceDetails returns all the connectivity details for a deployed service by its remote port within k8s
-func (env *k8sEnvironment) GetAllServiceDetails(remotePort uint16) ([]*ServiceDetails, error) {
+func (env K8sEnvironment) GetAllServiceDetails(remotePort uint16) ([]*ServiceDetails, error) {
 	var serviceDetails []*ServiceDetails
 	var matchedServiceDetails []*ServiceDetails
 
@@ -166,7 +166,7 @@ func (env *k8sEnvironment) GetAllServiceDetails(remotePort uint16) ([]*ServiceDe
 }
 
 // GetServiceDetails returns all the connectivity details for a deployed service by its remote port within k8s
-func (env *k8sEnvironment) GetServiceDetails(remotePort uint16) (*ServiceDetails, error) {
+func (env K8sEnvironment) GetServiceDetails(remotePort uint16) (*ServiceDetails, error) {
 	if serviceDetails, err := env.GetAllServiceDetails(remotePort); err != nil {
 		return nil, err
 	} else {
@@ -176,7 +176,7 @@ func (env *k8sEnvironment) GetServiceDetails(remotePort uint16) (*ServiceDetails
 
 // WriteArtifacts dumps pod logs and DB info within the environment into local log files,
 // used near exclusively on test failure
-func (env *k8sEnvironment) WriteArtifacts(testLogFolder string) {
+func (env K8sEnvironment) WriteArtifacts(testLogFolder string) {
 	// Get logs from K8s pods
 	podsClient := env.k8sClient.CoreV1().Pods(env.namespace.Name)
 	podsList, err := podsClient.List(context.Background(), metaV1.ListOptions{})
@@ -206,7 +206,7 @@ func (env *k8sEnvironment) WriteArtifacts(testLogFolder string) {
 
 // TearDown cycles through all the specifications and tears down the deployments. This typically entails cleaning
 // up port forwarding requests and deleting the namespace that then destroys all definitions.
-func (env *k8sEnvironment) TearDown() {
+func (env K8sEnvironment) TearDown() {
 	for _, spec := range env.specs {
 		if err := spec.Teardown(); err != nil {
 			log.Error().Err(err)
@@ -219,7 +219,7 @@ func (env *k8sEnvironment) TearDown() {
 }
 
 // Collects the contents of DB containers and writes them to local log files
-func (env *k8sEnvironment) writeDatabaseContents(pod coreV1.Pod, podFolder string) error {
+func (env *K8sEnvironment) writeDatabaseContents(pod coreV1.Pod, podFolder string) error {
 	for _, container := range pod.Spec.Containers {
 		if strings.Contains(container.Image, "postgres") { // If there's a postgres image, dump its DB
 			dumpContents, err := env.dumpDB(pod, container)
@@ -246,7 +246,7 @@ func (env *k8sEnvironment) writeDatabaseContents(pod coreV1.Pod, podFolder strin
 }
 
 // Dumps db contents to a log file
-func (env *k8sEnvironment) dumpDB(pod coreV1.Pod, container coreV1.Container) (string, error) {
+func (env *K8sEnvironment) dumpDB(pod coreV1.Pod, container coreV1.Container) (string, error) {
 	postRequestBase := env.k8sClient.CoreV1().RESTClient().Post().
 		Namespace(pod.Namespace).Resource("pods").Name(pod.Name).SubResource("exec")
 	exportDBRequest := postRequestBase.VersionedParams(
@@ -274,6 +274,14 @@ func (env *k8sEnvironment) dumpDB(pod coreV1.Pod, container coreV1.Container) (s
 			errBuff.String())
 	}
 	return outBuff.String(), err
+}
+
+func (env K8sEnvironment) GetPrivateKeyFromSecret(namespace string, privateKey string) (string, error) {
+	res, err := env.k8sClient.CoreV1().Secrets(namespace).Get(context.Background(), "private-keys", metaV1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+	return string(res.Data[privateKey]), nil
 }
 
 // Writes logs for each container in a pod
@@ -310,7 +318,7 @@ func writeLogsForPod(podsClient v1.PodInterface, pod coreV1.Pod, podFolder strin
 	return nil
 }
 
-func (env *k8sEnvironment) deploySpecs(errChan chan<- error) {
+func (env *K8sEnvironment) deploySpecs(errChan chan<- error) {
 	values := map[string]interface{}{}
 	for i := 0; i < len(env.specs); i++ {
 		spec := env.specs[i]
@@ -339,7 +347,7 @@ func (env *k8sEnvironment) deploySpecs(errChan chan<- error) {
 	close(errChan)
 }
 
-func (env *k8sEnvironment) createNamespace(namespace string) (*coreV1.Namespace, error) {
+func (env *K8sEnvironment) createNamespace(namespace string) (*coreV1.Namespace, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 

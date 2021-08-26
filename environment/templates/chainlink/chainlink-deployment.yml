@@ -101,3 +101,17 @@ spec:
             port: {{ .Values.chainlinkCluster.chainlink.webPort }}
           initialDelaySeconds: 2
           periodSeconds: 2
+        resources:
+          requests:
+            memory: {{ .Config.Apps.Chainlink.NodeRequests.Memory }}
+            cpu: {{ .Config.Apps.Chainlink.NodeRequests.Cpu }}
+          limits:
+            memory: {{ .Config.Apps.Chainlink.NodeLimits.Memory }}
+            cpu: {{ .Config.Apps.Chainlink.NodeLimits.Cpu }}
+        resources:
+          requests:
+            memory: {{ .Config.Apps.Chainlink.PostgresRequests.Memory }}
+            cpu: {{ .Config.Apps.Chainlink.PostgresRequests.Cpu }}
+          limits:
+            memory: {{ .Config.Apps.Chainlink.PostgresLimits.Memory }}
+            cpu: {{ .Config.Apps.Chainlink.PostgresLimits.Cpu }}

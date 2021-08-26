@@ -38,7 +38,7 @@ func DefaultLocalSetup(
 	initFunc client.BlockchainNetworkInit,
 	configPath string,
 ) (*DefaultSuiteSetup, error) {
-	conf, err := config.NewConfig(config.LocalConfig, configPath)
+	conf, err := config.NewConfig(configPath)
 	if err != nil {
 		return nil, err
 	}
