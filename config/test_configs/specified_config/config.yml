@@ -1,8 +1,11 @@
 # Just a config for unit testing
+
+network: "test_this_geth"
 keep_environments: Always
+
 private_keys: &private_keys
     private_keys:
-        - abcdefg
+        - 5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a
 networks:
     test_this_geth:
         name: "Tester Ted"

@@ -55,7 +55,7 @@ var _ = Describe("OCR Feed @ocr", func() {
 				chainlinkNodes,
 				suiteSetup.Client,
 				defaultWallet,
-				big.NewFloat(2),
+				big.NewFloat(0.05),
 				big.NewFloat(2),
 			)
 			Expect(err).ShouldNot(HaveOccurred())
