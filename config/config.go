@@ -55,6 +55,8 @@ type NetworkConfig struct {
 	URL                  string        `mapstructure:"url" yaml:"url"`
 	ChainID              int64         `mapstructure:"chain_id" yaml:"chain_id"`
 	Type                 string        `mapstructure:"type" yaml:"type"`
+	SecretPrivateKeys    bool          `mapstructure:"secret_private_keys" yaml:"secret_private_keys"`
+	NamespaceForSecret   string        `mapstructure:"namespace_for_secret" yaml:"namespace_for_secret"`
 	PrivateKeys          []string      `mapstructure:"private_keys" yaml:"private_keys"`
 	TransactionLimit     uint64        `mapstructure:"transaction_limit" yaml:"transaction_limit"`
 	Timeout              time.Duration `mapstructure:"transaction_timeout" yaml:"transaction_timeout"`

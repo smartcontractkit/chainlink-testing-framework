@@ -279,8 +279,8 @@ func (env *K8sEnvironment) dumpDB(pod coreV1.Pod, container coreV1.Container) (s
 	return outBuff.String(), err
 }
 
-func (env K8sEnvironment) GetPrivateKeyFromSecret(privateKey string) (string, error) {
-	res, err := env.k8sClient.CoreV1().Secrets("default").Get(context.Background(), "private-keys", metaV1.GetOptions{})
+func (env K8sEnvironment) GetPrivateKeyFromSecret(namespace string, privateKey string) (string, error) {
+	res, err := env.k8sClient.CoreV1().Secrets(namespace).Get(context.Background(), "private-keys", metaV1.GetOptions{})
 	if err != nil {
 		return "", err
 	}

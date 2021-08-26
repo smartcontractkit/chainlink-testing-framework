@@ -61,11 +61,19 @@ private_keys: &private_keys
         - de9be858da4a475276426320d5e9262ecfc3ba460bfac56360bfa6c4c28b4ee0
         - df57089febbacf7ba0bc227dafbffa9fc08a93fdc68e1e42411a14efcf23656e
 
+secret_private_keys_default: &secret_private_keys_default
+    secret_private_keys: false
+
+namespace_for_secret_default: &namespace_for_secret_default
+    namespace_for_secret: default
+
 networks:
     ethereum_geth:
         name: "Ethereum Geth dev"
         chain_id: 1337
         type: evm
+        <<: *secret_private_keys_default
+        <<: *namespace_for_secret_default
         <<: *private_keys
         transaction_limit: 9500000
         transaction_timeout: 10s
@@ -76,6 +84,8 @@ networks:
         name: "Ethereum Geth dev"
         chain_id: 1337
         type: evm
+        <<: *secret_private_keys_default
+        <<: *namespace_for_secret_default
         <<: *private_keys
         transaction_limit: 9500000
         transaction_timeout: 5m
@@ -86,6 +96,8 @@ networks:
         name: "Ethereum Hardhat"
         chain_id: 1337
         type: evm
+        <<: *secret_private_keys_default
+        <<: *namespace_for_secret_default
         <<: *private_keys
         transaction_limit: 9500000
         transaction_timeout: 10s
@@ -95,6 +107,8 @@ networks:
         name: "Ethereum Ganache"
         chain_id: 1337
         type: evm
+        <<: *secret_private_keys_default
+        <<: *namespace_for_secret_default
         <<: *private_keys
         transaction_limit: 9500000
         transaction_timeout: 1s
@@ -106,6 +120,8 @@ networks:
         url: "wss://127.0.0.1:8545"
         chain_id: 42
         type: evm
+        <<: *secret_private_keys_default
+        <<: *namespace_for_secret_default
         private_keys:
             - aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
         transaction_limit: 1000000 
@@ -117,6 +133,8 @@ networks:
         url: "wss://127.0.0.1:8545"
         chain_id: 5
         type: evm
+        <<: *secret_private_keys_default
+        <<: *namespace_for_secret_default
         private_keys:
             - aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
         transaction_limit: 1000000
@@ -128,6 +146,8 @@ networks:
         url: "wss://rinkeby-light.eth.linkpool.io/ws"
         chain_id: 4
         type: evm
+        secret_private_keys: true
+        <<: *namespace_for_secret_default
         private_keys:
             - rinkeby_private_key_1
         transaction_limit: 9000000
