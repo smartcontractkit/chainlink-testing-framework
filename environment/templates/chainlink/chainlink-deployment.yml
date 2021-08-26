@@ -29,7 +29,7 @@ spec:
           containerPort: {{ .Values.chainlinkCluster.chainlink.p2pPort }}
         env:
         - name: DATABASE_URL
-          value: postgresql://postgres:node@127.0.0.1:5432/chainlink?sslmode=disable
+          value: {{ .Values.postgresNode.postgres.clusterURL }}/chainlink?sslmode=disable
         - name: DATABASE_NAME
           value: chainlink
         - name: ETH_URL
@@ -99,39 +99,5 @@ spec:
           httpGet:
             path: /
             port: {{ .Values.chainlinkCluster.chainlink.webPort }}
-          initialDelaySeconds: 2
-          periodSeconds: 2
-      - name: db
-        image: postgres:11.6
-        ports:
-        - name: postgres
-          containerPort: 5432
-        env:
-        - name: POSTGRES_DB
-          value: chainlink
-          valuefrom: null
-        - name: POSTGRES_PASSWORD
-          value: node
-          valuefrom: null
-        - name: PGPASSWORD
-          value: node
-          valuefrom: null
-        - name: PGUSER
-          value: postgres
-          valuefrom: null
-        livenessProbe:
-          exec:
-            command:
-              - pg_isready
-              - -U
-              - postgres
-          initialDelaySeconds: 60
-          periodSeconds: 60
-        readinessProbe:
-          exec:
-            command:
-              - pg_isready
-              - -U
-              - postgres
           initialDelaySeconds: 2
           periodSeconds: 2

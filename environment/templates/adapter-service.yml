@@ -3,8 +3,8 @@ metadata:
 spec:
   ports:
     - name: access
-      port: {{ .Values.chainlinkCluster.adapter.apiPort }}
-      targetPort: {{ .Values.chainlinkCluster.adapter.apiPort }}
+      port: {{ .Values.adapter.apiPort }}
+      targetPort: {{ .Values.adapter.apiPort }}
   selector:
     app: dummy-adapter
   type: ClusterIP

@@ -37,12 +37,9 @@ import (
 
 const SelectorLabelKey string = "app"
 
-// K8sEnvSpecs represents a series of environment resources to be deployed. The map keys need to be continuous with
-// no gaps. For example:
-// 0: Hardhat
-// 1: Adapter
-// 2: Chainlink cluster
-type K8sEnvSpecs map[int]K8sEnvResource
+// K8sEnvSpecs represents a series of environment resources to be deployed. The resources in the array will be
+// deployed in the order that they are present in the array.
+type K8sEnvSpecs []K8sEnvResource
 
 // K8sEnvSpecInit is the initiator that will return the name of the environment and the specifications to be deployed.
 // The name of the environment returned determines the namespace.
@@ -316,11 +313,7 @@ func writeLogsForPod(podsClient v1.PodInterface, pod coreV1.Pod, podFolder strin
 func (env *k8sEnvironment) deploySpecs(errChan chan<- error) {
 	values := map[string]interface{}{}
 	for i := 0; i < len(env.specs); i++ {
-		spec, ok := env.specs[i]
-		if !ok {
-			errChan <- fmt.Errorf("specifcation %d wasn't found on deploy, make sure the set are in order", i)
-			return
-		}
+		spec := env.specs[i]
 		if err := spec.SetEnvironment(
 			env.k8sClient,
 			env.k8sConfig,
@@ -332,6 +325,7 @@ func (env *k8sEnvironment) deploySpecs(errChan chan<- error) {
 			return
 		}
 		values[spec.ID()] = spec.Values()
+
 		if err := spec.Deploy(values); err != nil {
 			errChan <- err
 			return
