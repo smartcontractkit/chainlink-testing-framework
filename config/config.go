@@ -79,16 +79,21 @@ type AppConfig struct {
 	Chainlink ChainlinkConfig `mapstructure:"chainlink" yaml:"chainlink"`
 	Geth      GethConfig      `mapstructure:"geth" yaml:"geth"`
 	Adapter   AdapterConfig   `mapstructure:"adapter" yaml:"adapter"`
+	Postgres  PostgresConfig  `mapstructure:"postgres" yaml:"postgres"`
 }
 
 // ChainlinkConfig holds the configuration for the chainlink nodes to be deployed
 type ChainlinkConfig struct {
-	Image            string          `mapstructure:"image" yaml:"image"`
-	Version          string          `mapstructure:"version" yaml:"version"`
-	NodeRequests     ResourcesConfig `mapstructure:"nodeRequests" yaml:"nodeRequests"`
-	NodeLimits       ResourcesConfig `mapstructure:"nodeLimits" yaml:"nodeLimits"`
-	PostgresRequests ResourcesConfig `mapstructure:"postgresRequests" yaml:"postgresRequests"`
-	PostgresLimits   ResourcesConfig `mapstructure:"postgresLimits" yaml:"postgresLimits"`
+	Image    string          `mapstructure:"image" yaml:"image"`
+	Version  string          `mapstructure:"version" yaml:"version"`
+	Requests ResourcesConfig `mapstructure:"requests" yaml:"requests"`
+	Limits   ResourcesConfig `mapstructure:"limits" yaml:"limits"`
+}
+
+// PostgresConfig holds the configuration for the postgres pods to be deployed
+type PostgresConfig struct {
+	Requests ResourcesConfig `mapstructure:"requests" yaml:"requests"`
+	Limits   ResourcesConfig `mapstructure:"limits" yaml:"limits"`
 }
 
 // GethConfig holds the configuration for the geth pods to be deployed

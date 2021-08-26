@@ -103,15 +103,8 @@ spec:
           periodSeconds: 2
         resources:
           requests:
-            memory: {{ .Config.Apps.Chainlink.NodeRequests.Memory }}
-            cpu: {{ .Config.Apps.Chainlink.NodeRequests.Cpu }}
+            memory: {{ .Config.Apps.Chainlink.Requests.Memory }}
+            cpu: {{ .Config.Apps.Chainlink.Requests.Cpu }}
           limits:
-            memory: {{ .Config.Apps.Chainlink.NodeLimits.Memory }}
-            cpu: {{ .Config.Apps.Chainlink.NodeLimits.Cpu }}
-        resources:
-          requests:
-            memory: {{ .Config.Apps.Chainlink.PostgresRequests.Memory }}
-            cpu: {{ .Config.Apps.Chainlink.PostgresRequests.Cpu }}
-          limits:
-            memory: {{ .Config.Apps.Chainlink.PostgresLimits.Memory }}
-            cpu: {{ .Config.Apps.Chainlink.PostgresLimits.Cpu }}
+            memory: {{ .Config.Apps.Chainlink.Limits.Memory }}
+            cpu: {{ .Config.Apps.Chainlink.Limits.Cpu }}

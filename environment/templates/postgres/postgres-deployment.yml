@@ -41,3 +41,10 @@ spec:
               - postgres
           initialDelaySeconds: 2
           periodSeconds: 2
+        resources:
+          requests:
+            memory: {{ .Config.Apps.Postgres.Requests.Memory }}
+            cpu: {{ .Config.Apps.Postgres.Requests.Cpu }}
+          limits:
+            memory: {{ .Config.Apps.Postgres.Limits.Memory }}
+            cpu: {{ .Config.Apps.Postgres.Limits.Cpu }}
