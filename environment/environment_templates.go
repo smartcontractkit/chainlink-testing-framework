@@ -196,7 +196,7 @@ func NewChainlinkCluster(nodeCount int) K8sEnvSpecInit {
 		chainlinkGroup.manifests = append(chainlinkGroup.manifests, cManifest)
 	}
 
-	return addDependencyGroup(nodeCount, "tate-chainlink", chainlinkGroup)
+	return addDependencyGroup(nodeCount, "basic-chainlink", chainlinkGroup)
 }
 
 // NewMixedVersionChainlinkCluster mixes the currently latest chainlink version (as defined by the config file) with
