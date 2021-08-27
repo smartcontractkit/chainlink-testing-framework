@@ -20,9 +20,9 @@ spec:
             mountpath: /usr/app/hardhat.config.js
             subpath: hardhat.config.js
         ports:
-        - containerPort: {{ .Values.evm.rpcPort }}
+        - containerPort: {{ .Values.DependencyGroup.evm.rpcPort }}
         readinessProbe:
           httpGet:
             path: /
-            port: {{ .Values.evm.rpcPort }}
+            port: {{ .Values.DependencyGroup.evm.rpcPort }}
           periodSeconds: 2

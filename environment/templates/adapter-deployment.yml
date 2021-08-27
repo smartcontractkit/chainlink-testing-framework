@@ -13,7 +13,7 @@ spec:
         - name: dummy-adapter
           image: kalverra/dummy-external-adapter
           ports:
-            - containerPort: {{ .Values.adapter.apiPort }}
+            - containerPort: {{ .Values.DependencyGroup.adapter.apiPort }}
           readinessProbe:
             httpGet:
               path: /

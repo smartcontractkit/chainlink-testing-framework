@@ -3,6 +3,7 @@ package environment
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -333,7 +334,6 @@ func (env *K8sEnvironment) deploySpecs(errChan chan<- error) {
 			return
 		}
 		values[spec.ID()] = spec.Values()
-
 		if err := spec.Deploy(values); err != nil {
 			errChan <- err
 			return
@@ -853,17 +853,30 @@ func (mg *K8sManifestGroup) Deploy(values map[string]interface{}) error {
 	originalImage := mg.manifests[0].config.Apps.Chainlink.Image
 	originalVersion := mg.manifests[0].config.Apps.Chainlink.Version
 	// Deploy manifests
-	for _, manifest := range mg.manifests {
-		m := manifest
+	for i := 0; i < len(mg.manifests); i++ {
+		m := mg.manifests[i]
 		if manifestImage, ok := m.values["image"]; ok { // Check if manifest has specified image
 			if manifestImage == "" { // Blank means the default from the config file
 				m.values["image"] = originalImage
 				m.values["version"] = originalVersion
 			}
 		}
+
+		// deep copy the values
+		v, _ := json.Marshal(values)
+		var deployValues map[string]interface{}
+		json.Unmarshal(v, &deployValues)
+
+		// move "postgres_"+i to "postgres" in the map
+		if pn, ok := deployValues["DependencyGroup"]; ok {
+			if pg, ok := pn.(map[string]interface{})[fmt.Sprintf("postgres_%d", i)]; ok {
+				deployValues["DependencyGroup"].(map[string]interface{})["postgres"] = pg
+			}
+		}
+
 		go func() {
 			defer wg.Done()
-			if err := m.Deploy(values); err != nil {
+			if err := m.Deploy(deployValues); err != nil {
 				errGroup = multierror.Append(errGroup, err)
 			}
 		}()

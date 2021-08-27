@@ -186,17 +186,17 @@ func NewGanacheManifest() *K8sManifest {
 
 // NewChainlinkCluster is a basic environment that deploys hardhat with a chainlink cluster and an external adapter
 func NewChainlinkCluster(nodeCount int) K8sEnvSpecInit {
-	// 1 adapter per set of nodes
-	manifests := K8sEnvSpecs{NewAdapterManifest()}
+	chainlinkGroup := &K8sManifestGroup{
+		id:        "chainlinkCluster",
+		manifests: []*K8sManifest{},
+	}
 	for i := 0; i < nodeCount; i++ {
-		postgresManifest := indexedGroupManifestHelper(fmt.Sprintf("%d", i), NewPostgresManifest(), "postgresNode", "", "")
-		manifests = append(manifests, postgresManifest)
-
-		chainlinkManifest := indexedGroupManifestHelper(fmt.Sprintf("%d", i), NewChainlinkManifest(), "chainlinkCluster", "", "")
-		manifests = append(manifests, chainlinkManifest)
+		cManifest := NewChainlinkManifest()
+		cManifest.id = fmt.Sprintf("%s-%d", cManifest.id, i)
+		chainlinkGroup.manifests = append(chainlinkGroup.manifests, cManifest)
 	}
 
-	return newChainlinkManifest(manifests, "basic-chainlink")
+	return addDependencyGroup(nodeCount, "tate-chainlink", chainlinkGroup)
 }
 
 // NewMixedVersionChainlinkCluster mixes the currently latest chainlink version (as defined by the config file) with
@@ -208,7 +208,6 @@ func NewMixedVersionChainlinkCluster(nodeCount, pastVersionsCount int) K8sEnvSpe
 			Int("Recommended Minimum Node Count", pastVersionsCount+1).
 			Msg("You're using less than the recommended number of nodes for a mixed version deployment")
 	}
-	manifests := K8sEnvSpecs{NewAdapterManifest()}
 
 	ecrImage := "public.ecr.aws/chainlink/chainlink"
 	mixedImages := []string{""}
@@ -222,33 +221,19 @@ func NewMixedVersionChainlinkCluster(nodeCount, pastVersionsCount int) K8sEnvSpe
 	}
 	mixedVersions := append([]string{""}, retrievedVersions...)
 
+	chainlinkGroup := &K8sManifestGroup{
+		id:        "chainlinkCluster",
+		manifests: []*K8sManifest{},
+	}
 	for i := 0; i < nodeCount; i++ {
-		postgresManifest := indexedGroupManifestHelper(fmt.Sprintf("%d", i), NewPostgresManifest(), "postgresNode", "", "")
-		manifests = append(manifests, postgresManifest)
-
-		chainlinkManifest := indexedGroupManifestHelper(fmt.Sprintf("%d", i), NewChainlinkManifest(), "chainlinkCluster", mixedImages[i%len(mixedImages)], mixedVersions[i%len(mixedVersions)])
-		manifests = append(manifests, chainlinkManifest)
+		cManifest := NewChainlinkManifest()
+		cManifest.id = fmt.Sprintf("%s-%d", cManifest.id, i)
+		cManifest.values["image"] = mixedImages[i%len(mixedImages)]
+		cManifest.values["version"] = mixedVersions[i%len(mixedVersions)]
+		chainlinkGroup.manifests = append(chainlinkGroup.manifests, cManifest)
 	}
 
-	return newChainlinkManifest(manifests, "mixed-version-chainlink")
-}
-
-// indexedGroupManifestHelper helps build out a K8sManifestGroup for images that need multiple deploys in the same
-// namespace with and index added to the identifier to separate the service selectors.
-func indexedGroupManifestHelper(index string, manifest *K8sManifest, id, image, version string) *K8sManifestGroup {
-	manifest.id = fmt.Sprintf("%s-%s", manifest.id, index)
-	if len(image) > 0 {
-		manifest.values["image"] = image
-	}
-	if len(version) > 0 {
-		manifest.values["version"] = version
-	}
-	array := []*K8sManifest{manifest}
-	group := &K8sManifestGroup{
-		id:        id,
-		manifests: array,
-	}
-	return group
+	return addDependencyGroup(nodeCount, "mixed-version-chainlink", chainlinkGroup)
 }
 
 // Queries github for the latest major release versions
@@ -270,34 +255,39 @@ func getMixedVersions(versionCount int) ([]string, error) {
 	return mixedVersions, nil
 }
 
-// Builds possible chainlink manifests
-func newChainlinkManifest(chainlinkCluster K8sEnvSpecs, envName string) K8sEnvSpecInit {
-	envWithHardhat := K8sEnvSpecs{
-		NewHardhatManifest(),
+// addDependencyGroup add everything that has no dependencies but other pods have
+// dependencies on in the first group
+func addDependencyGroup(postgresCount int, envName string, chainlinkGroup *K8sManifestGroup) K8sEnvSpecInit {
+	group := &K8sManifestGroup{
+		id:        "DependencyGroup",
+		manifests: []*K8sManifest{NewAdapterManifest()},
 	}
-	envWithHardhat = append(envWithHardhat, chainlinkCluster...)
-	envWithGanache := K8sEnvSpecs{
-		NewGanacheManifest(),
+	for i := 0; i < postgresCount; i++ {
+		pManifest := NewPostgresManifest()
+		pManifest.id = fmt.Sprintf("%s-%d", pManifest.id, i)
+		group.manifests = append(group.manifests, pManifest)
 	}
-	envWithGanache = append(envWithGanache, chainlinkCluster...)
-	envWithGeth := K8sEnvSpecs{
-		NewGethManifest(),
-		NewExplorerManifest(),
-	}
-	envWithGeth = append(envWithGeth, chainlinkCluster...)
-	envNoSimulatedChain := K8sEnvSpecs{NewExplorerManifest()}
-	envNoSimulatedChain = append(envNoSimulatedChain, chainlinkCluster...)
 
 	return func(config *config.NetworkConfig) (string, K8sEnvSpecs) {
 		switch config.Name {
 		case "Ethereum Geth dev":
-			return envName, envWithGeth
+			group.manifests = append(
+				group.manifests,
+				NewGethManifest(),
+				NewExplorerManifest())
 		case "Ethereum Hardhat":
-			return envName, envWithHardhat
+			group.manifests = append(
+				group.manifests,
+				NewHardhatManifest())
 		case "Ethereum Ganache":
-			return envName, envWithGanache
-		default:
-			return envName, envNoSimulatedChain
+			group.manifests = append(
+				group.manifests,
+				NewGanacheManifest())
+		default: // no simulated chain
+			group.manifests = append(
+				group.manifests,
+				NewExplorerManifest())
 		}
+		return envName, K8sEnvSpecs{group, chainlinkGroup}
 	}
 }
