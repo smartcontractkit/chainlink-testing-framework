@@ -863,9 +863,15 @@ func (mg *K8sManifestGroup) Deploy(values map[string]interface{}) error {
 		}
 
 		// deep copy the values
-		v, _ := json.Marshal(values)
+		v, err := json.Marshal(values)
+		if err != nil {
+			return err
+		}
 		var deployValues map[string]interface{}
-		json.Unmarshal(v, &deployValues)
+		err = json.Unmarshal(v, &deployValues)
+		if err != nil {
+			return err
+		}
 
 		// move "postgres_"+i to "postgres" in the map
 		if pn, ok := deployValues["DependencyGroup"]; ok {
