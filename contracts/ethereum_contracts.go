@@ -628,16 +628,6 @@ func (o *EthereumOffchainAggregator) RequestNewRound(fromWallet client.Blockchai
 	return o.client.ProcessTransaction(tx.Hash())
 }
 
-// Link returns the LINK contract address on the EVM chain
-func (o *EthereumOffchainAggregator) Link(ctxt context.Context) (common.Address, error) {
-	opts := &bind.CallOpts{
-		From:    common.HexToAddress(o.callerWallet.Address()),
-		Pending: true,
-		Context: ctxt,
-	}
-	return o.ocr.LINK(opts)
-}
-
 // GetLatestAnswer returns the latest answer from the OCR contract
 func (o *EthereumOffchainAggregator) GetLatestAnswer(ctxt context.Context) (*big.Int, error) {
 	opts := &bind.CallOpts{
