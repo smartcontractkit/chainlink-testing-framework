@@ -6,7 +6,6 @@ require (
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/ethereum/go-ethereum v1.10.8
 	github.com/ghodss/yaml v1.0.0
-	github.com/golang/protobuf v1.5.2
 	github.com/google/go-cmp v0.5.6 // indirect
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/gorilla/websocket v1.4.2

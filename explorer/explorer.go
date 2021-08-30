@@ -2,11 +2,12 @@ package explorer
 
 import (
 	"encoding/json"
-	"github.com/golang/protobuf/proto"
-	"github.com/gorilla/websocket"
-	"github.com/rs/zerolog/log"
 	"net/http"
 	"sync"
+
+	"github.com/gorilla/websocket"
+	"github.com/rs/zerolog/log"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
