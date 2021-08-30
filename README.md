@@ -67,7 +67,7 @@ in an environment, or a local installation.
 
 When running tests locally, it's advised to use minikube. To spin up a cluster, use:
 
-```
+```sh
 minikube start
 ```
 
@@ -85,7 +85,7 @@ ran with the go CLI.
 
 Run:
 
-```
+```sh
 ginkgo -r
 ```
 
@@ -93,11 +93,12 @@ ginkgo -r
 
 Run:
 
-```
+```sh
 go test ./..
 ```
 
 ### Volume tests
-```
+
+```sh
 NETWORK="ethereum_geth_performance" make test_performance
 ```

@@ -1,10 +1,11 @@
 package main
 
 import (
-	"explorer"
+	"os"
+
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"os"
+	"github.com/smartcontractkit/integrations-framework/explorer"
 )
 
 func main() {
