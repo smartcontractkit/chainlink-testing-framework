@@ -5,6 +5,8 @@ go 1.16
 require (
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/ethereum/go-ethereum v1.10.8
+	github.com/aws/aws-sdk-go v1.27.0 // indirect
+	github.com/ethereum/go-ethereum v1.10.4
 	github.com/ghodss/yaml v1.0.0
 	github.com/google/go-cmp v0.5.6 // indirect
 	github.com/google/go-github v17.0.0+incompatible
