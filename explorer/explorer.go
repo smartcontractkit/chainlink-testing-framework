@@ -142,7 +142,7 @@ func (e *Explorer) tryUnmarshalDHT(bs []byte, foundFlag *bool) {
 	switch {
 	case msg.GetAddrs() != nil:
 		*foundFlag = true
-		log.Debug().Interface("DHT Announce", msg).Send()
+		log.Debug().Interface("DHT Announce", msg.ProtoReflect()).Send()
 		e.Messages.DHTAnnounce = append(e.Messages.DHTAnnounce, &msg)
 	}
 }
