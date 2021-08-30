@@ -73,7 +73,7 @@ kubernetes:
   qps: 50
   burst: 50
   # How long to wait for the environment to deploy & be marked as healthy before test errors
-  deployment_timeout: 3m
+  deployment_timeout: 5m
 
 logging:
   # panic=5, fatal=4, error=3, warn=2, info=1, debug=0, trace=-1
