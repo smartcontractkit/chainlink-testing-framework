@@ -288,6 +288,9 @@ func addDependencyGroup(postgresCount int, envName string, chainlinkGroup *K8sMa
 				group.manifests,
 				NewExplorerManifest())
 		}
-		return envName, K8sEnvSpecs{group, chainlinkGroup}
+		if len(chainlinkGroup.manifests) > 0 {
+			return envName, K8sEnvSpecs{group, chainlinkGroup}
+		}
+		return envName, K8sEnvSpecs{group}
 	}
 }
