@@ -170,3 +170,22 @@ logging:
     level: 0
 prometheus:
     url: ""
+
+contracts:
+    ethereum:
+        executable_path: ./tools/bin/abigen
+        out_path: ./contracts/ethereum
+        sources:
+            local:
+                path: ../chainlink/contracts/artifacts/src
+            external:
+                path: ./external_artifacts
+                region: us-west-2
+                s3_path: contract-artifacts-test-upload
+                repositories:
+                    keeper:
+                        path: keeper/artifacts/contracts
+                        commit: 19ba7cfbe7b7c6ca7621b090e229b4ba1147e2e1
+                    ocr:
+                        path: ocr/artifacts/contract/src
+                        commit: f27c14a905c5735abbb6e0c9699e9d0e3e9b7217

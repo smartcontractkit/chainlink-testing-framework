@@ -12,6 +12,12 @@ The framework is primarilly intended to facillitate testing chainlink features a
 This framework is still very much a work in progress, and will have frequent changes, many of which will probably be
 breaking.
 
+### Setup
+Install CLI
+```
+make install_cli
+```
+
 ## Usage
 
 A simple example on deploying and interaction with a simple contract using this framework and [Ginkgo](https://github.com/onsi/ginkgo)
@@ -101,4 +107,16 @@ go test ./..
 
 ```sh
 NETWORK="ethereum_geth_performance" make test_performance
+```
+
+### Build contracts
+Example of generating go bindings for Ethereum contracts
+```
+ifcli build_contracts -c config.yml
+```
+
+### Create environment
+Example of creating environment with one Chainlink node and Geth dev network
+```
+ifcli create_env -n ethereum_geth -t chainlink -c 1
 ```

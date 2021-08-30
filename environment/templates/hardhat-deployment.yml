@@ -8,17 +8,15 @@ spec:
     spec:
       volumes:
         - name: hh-configmap-volume
-          volumesource:
-            configmap:
-              localobjectreference:
-                name: hardhat-config-map
+          configMap:
+            name: hardhat-config-map
       containers:
       - name: hardhat-network
         image: smartcontract/hardhat-network
-        volumemounts:
+        volumeMounts:
           - name: hh-configmap-volume
-            mountpath: /usr/app/hardhat.config.js
-            subpath: hardhat.config.js
+            mountPath: /usr/app/hardhat.config.js
+            subPath: hardhat.config.js
         ports:
         - containerPort: {{ .Values.evm.rpcPort }}
         readinessProbe:
