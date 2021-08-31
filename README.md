@@ -55,7 +55,7 @@ var _ = Describe("Basic Contract Interactions", func() {
       val, err := storeInstance.Get(context.Background())
       Expect(err).ShouldNot(HaveOccurred())
       Expect(val).To(Equal(testVal))
-     })
+    })
   })
 
   AfterEach(func() {
