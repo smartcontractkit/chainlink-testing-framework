@@ -1,8 +1,15 @@
 name: test
-on: [push, pull_request]
+on:
+  push:
+    tags:
+      - v*
+    branches:
+      - master
+      - main
+  pull_request:
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, sdlc-ghr-prod]
     env:
       KUBECONFIG: /tmp/KUBECONFIG
       CGO_ENABLED: 0
