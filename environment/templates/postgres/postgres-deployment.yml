@@ -1,0 +1,50 @@
+metadata:
+  generateName: postgres-node-
+spec:
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: 'true'
+    spec:
+      containers:
+      - name: db
+        image: postgres:11.6
+        ports:
+        - name: postgres
+          containerPort: 5432
+        env:
+        - name: POSTGRES_DB
+          value: chainlink
+          valuefrom: null
+        - name: POSTGRES_PASSWORD
+          value: node
+          valuefrom: null
+        - name: PGPASSWORD
+          value: node
+          valuefrom: null
+        - name: PGUSER
+          value: postgres
+          valuefrom: null
+        livenessProbe:
+          exec:
+            command:
+              - pg_isready
+              - -U
+              - postgres
+          initialDelaySeconds: 60
+          periodSeconds: 60
+        readinessProbe:
+          exec:
+            command:
+              - pg_isready
+              - -U
+              - postgres
+          initialDelaySeconds: 2
+          periodSeconds: 2
+        resources:
+          requests:
+            memory: {{ .Config.Apps.Postgres.Requests.Memory }}
+            cpu: {{ .Config.Apps.Postgres.Requests.Cpu }}
+          limits:
+            memory: {{ .Config.Apps.Postgres.Limits.Memory }}
+            cpu: {{ .Config.Apps.Postgres.Limits.Cpu }}

@@ -3,6 +3,7 @@ package environment
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -37,12 +38,9 @@ import (
 
 const SelectorLabelKey string = "app"
 
-// K8sEnvSpecs represents a series of environment resources to be deployed. The map keys need to be continuous with
-// no gaps. For example:
-// 0: Hardhat
-// 1: Adapter
-// 2: Chainlink cluster
-type K8sEnvSpecs map[int]K8sEnvResource
+// K8sEnvSpecs represents a series of environment resources to be deployed. The resources in the array will be
+// deployed in the order that they are present in the array.
+type K8sEnvSpecs []K8sEnvResource
 
 // K8sEnvSpecInit is the initiator that will return the name of the environment and the specifications to be deployed.
 // The name of the environment returned determines the namespace.
@@ -324,11 +322,7 @@ func writeLogsForPod(podsClient v1.PodInterface, pod coreV1.Pod, podFolder strin
 func (env *K8sEnvironment) deploySpecs(errChan chan<- error) {
 	values := map[string]interface{}{}
 	for i := 0; i < len(env.specs); i++ {
-		spec, ok := env.specs[i]
-		if !ok {
-			errChan <- fmt.Errorf("specifcation %d wasn't found on deploy, make sure the set are in order", i)
-			return
-		}
+		spec := env.specs[i]
 		if err := spec.SetEnvironment(
 			env.k8sClient,
 			env.k8sConfig,
@@ -859,17 +853,36 @@ func (mg *K8sManifestGroup) Deploy(values map[string]interface{}) error {
 	originalImage := mg.manifests[0].config.Apps.Chainlink.Image
 	originalVersion := mg.manifests[0].config.Apps.Chainlink.Version
 	// Deploy manifests
-	for _, manifest := range mg.manifests {
-		m := manifest
+	for i := 0; i < len(mg.manifests); i++ {
+		m := mg.manifests[i]
 		if manifestImage, ok := m.values["image"]; ok { // Check if manifest has specified image
 			if manifestImage == "" { // Blank means the default from the config file
 				m.values["image"] = originalImage
 				m.values["version"] = originalVersion
 			}
 		}
+
+		// deep copy the values
+		v, err := json.Marshal(values)
+		if err != nil {
+			return err
+		}
+		var deployValues map[string]interface{}
+		err = json.Unmarshal(v, &deployValues)
+		if err != nil {
+			return err
+		}
+
+		// move "postgres_"+i to "postgres" in the map
+		if pn, ok := deployValues["DependencyGroup"]; ok {
+			if pg, ok := pn.(map[string]interface{})[fmt.Sprintf("postgres_%d", i)]; ok {
+				deployValues["DependencyGroup"].(map[string]interface{})["postgres"] = pg
+			}
+		}
+
 		go func() {
 			defer wg.Done()
-			if err := m.Deploy(values); err != nil {
+			if err := m.Deploy(deployValues); err != nil {
 				errGroup = multierror.Append(errGroup, err)
 			}
 		}()
