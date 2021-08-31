@@ -9,8 +9,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-      - name: Setup Go environment
-        uses: actions/setup-go@v2.1.4
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -21,8 +19,8 @@ jobs:
           role-duration-seconds: 3600
       - name: Prepare KUBECONFIG
         run: echo "${{ secrets.KUBECONFIG }}" > /tmp/KUBECONFIG
-      - name: Setup go
-        uses: actions/setup-go@v1
+      - name: Setup Go
+        uses: actions/setup-go@v2.1.4
         with:
           go-version: 1.16
       - name: Install Ginkgo CLI
