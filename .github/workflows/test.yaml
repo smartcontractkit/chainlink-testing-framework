@@ -2,13 +2,15 @@ name: test
 on: [push, pull_request]
 jobs:
   test:
-    runs-on: [self-hosted, sdlc-ghr-prod]
+    runs-on: ubuntu-latest
     env:
       KUBECONFIG: /tmp/KUBECONFIG
       CGO_ENABLED: 0
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+      - name: Setup Go environment
+        uses: actions/setup-go@v2.1.4
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
