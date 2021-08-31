@@ -151,7 +151,7 @@ spec:
           - "*"
           - --vmdebug
         ports:
-        - containerPort: {{ .Values.evm.rpcPort }}
+        - containerPort: {{ .Values.DependencyGroup.evm.rpcPort }}
         resources:
           requests:
             memory: {{ .Config.Apps.Geth.Requests.Memory }}

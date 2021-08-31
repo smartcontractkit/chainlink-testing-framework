@@ -12,7 +12,7 @@ import (
 )
 
 var createCmd = &cobra.Command{
-	Use:   "create",
+	Use:   "create_env",
 	Short: "create an environment",
 	Long:  `Deploy a configurable environment using k8s that can be used for local testing.`,
 	RunE:  createRunE,

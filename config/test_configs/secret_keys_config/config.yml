@@ -11,16 +11,17 @@ apps:
   chainlink:
     image: public.ecr.aws/chainlink/chainlink
     version: 0.10.12
-    nodeRequests:
+    requests:
       memory: 768Mi
       cpu: 300m
-    nodeLimits:
+    limits:
       memory: 1024Mi
       cpu: 450m
-    postgresRequests:
+  postgres:
+    requests:
       memory: 512Mi
       cpu: 200m
-    postgresLimits:
+    limits:
       memory: 1024Mi
       cpu: 350m
   geth:

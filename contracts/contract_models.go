@@ -61,7 +61,7 @@ type FluxAggregator interface {
 	SetOracles(client.BlockchainWallet, FluxAggregatorSetOraclesOptions) error
 	Description(ctxt context.Context) (string, error)
 	SetRequesterPermissions(ctx context.Context, fromWallet client.BlockchainWallet, addr common.Address, authorized bool, roundsDelay uint32) error
-	WatchSubmissionReceived(ctx context.Context, eventChan chan <-*SubmissionEvent) error
+	WatchSubmissionReceived(ctx context.Context, eventChan chan<- *SubmissionEvent) error
 }
 
 type LinkToken interface {
@@ -119,7 +119,6 @@ type OffchainAggregator interface {
 	) error
 	SetPayees(client.BlockchainWallet, []common.Address, []common.Address) error
 	RequestNewRound(fromWallet client.BlockchainWallet) error
-	Link(ctxt context.Context) (common.Address, error)
 	GetLatestAnswer(ctxt context.Context) (*big.Int, error)
 	GetLatestRound(ctxt context.Context) (*RoundData, error)
 }
