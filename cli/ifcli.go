@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/smartcontractkit/integrations-framework/environment/cli/cmd"
+	"github.com/smartcontractkit/integrations-framework/cli/cmd"
 	"os"
 )
 
