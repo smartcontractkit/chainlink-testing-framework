@@ -1,0 +1,10 @@
+metadata:
+  name: chainlink-explorer-db
+spec:
+  ports:
+    - name: "5432"
+      port: 5432
+      targetPort: 5432
+  selector:
+    app: chainlink-explorer-db
+  type: ClusterIP

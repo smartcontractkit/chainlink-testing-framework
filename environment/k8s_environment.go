@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/pkg/errors"
+
+	//"golang.org/x/crypto/ssh/terminal"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -25,6 +28,7 @@ import (
 	appsV1 "k8s.io/api/apps/v1"
 	coreV1 "k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -518,6 +522,83 @@ func (m *K8sManifest) ServiceDetails() ([]*ServiceDetails, error) {
 		})
 	}
 	return serviceDetails, nil
+}
+
+func (m *K8sManifest) GetPodsFullNames(partialName string) ([]string, error){
+	set := labels.Set(m.Service.Spec.Selector)
+	listOptions := metaV1.ListOptions{LabelSelector: set.AsSelector().String()}
+
+	v1Interface := m.k8sClient.CoreV1()
+	pods, err := v1Interface.Pods(m.namespace.Name).List(context.Background(), listOptions)
+
+	if err != nil {
+		return []string{}, err
+	}
+	var filteredPods []string
+
+	for _, pod := range pods.Items {
+		if strings.Contains(pod.Name, partialName) {
+			filteredPods = append(filteredPods, pod.Name)
+		}
+	}
+
+	if len(filteredPods) == 0 {
+		return []string{}, errors.New("There are no pods that contain " + partialName + " in the name")
+	}
+
+	return filteredPods, nil
+}
+
+// ExecuteInPod is similar to kubectl exec
+func (m *K8sManifest) ExecuteInPod(podName string, containerName string, command []string) ([]byte, []byte, error) {
+	set := labels.Set(m.Service.Spec.Selector)
+	listOptions := metaV1.ListOptions{LabelSelector: set.AsSelector().String()}
+
+	v1Interface := m.k8sClient.CoreV1()
+	pods, err := v1Interface.Pods(m.namespace.Name).List(context.Background(), listOptions)
+
+	var filteredPods []string
+
+	for _, pod := range pods.Items {
+		if strings.Contains(pod.Name, podName) {
+			filteredPods = append(filteredPods, pod.Name)
+		}
+	}
+
+	pod, err := v1Interface.Pods(m.namespace.Name).Get(context.Background(), filteredPods[0], metaV1.GetOptions{})
+	if err != nil {
+		return []byte{}, []byte{}, err
+	}
+
+	req := m.k8sClient.CoreV1().RESTClient().Post().
+		Resource("pods").
+		Name(pod.Name).
+		Namespace(pod.Namespace).
+		SubResource("exec")
+	req.VersionedParams(&coreV1.PodExecOptions{
+		Container: "explorer",
+		Command:   command,
+		Stdin:     false,
+		Stdout:    true,
+		Stderr:    true,
+		TTY:       false,
+	}, scheme.ParameterCodec)
+
+	exec, err := remotecommand.NewSPDYExecutor(m.k8sConfig, "POST", req.URL())
+	if err != nil {
+		return []byte{}, []byte{}, err
+	}
+
+	var stdout, stderr bytes.Buffer
+	err = exec.Stream(remotecommand.StreamOptions{
+		Stdin:  nil,
+		Stdout: &stdout,
+		Stderr: &stderr,
+	})
+	if err != nil {
+		return []byte{}, []byte{}, err
+	}
+	return stdout.Bytes(), stderr.Bytes(), nil
 }
 
 // Values returns all the values to be exposed in the definition templates

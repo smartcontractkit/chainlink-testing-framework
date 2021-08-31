@@ -34,18 +34,15 @@ func NewAdapterManifest() *K8sManifest {
 		},
 
 		SetValuesFunc: func(manifest *K8sManifest) error {
-			environmentAdapter := &externalAdapter{}
-			environmentAdapter.clusterURL = fmt.Sprintf(
+			manifest.values["clusterURL"] = fmt.Sprintf(
 				"http://%s:%d",
 				manifest.Service.Spec.ClusterIP,
 				manifest.Service.Spec.Ports[0].Port,
 			)
-			environmentAdapter.localURL = fmt.Sprintf(
+			manifest.values["localURL"] = fmt.Sprintf(
 				"http://127.0.0.1:%d",
 				manifest.ports[0].Local,
 			)
-			manifest.values["clusterURL"] = environmentAdapter.clusterURL
-			manifest.values["localURL"] = environmentAdapter.localURL
 			return nil
 		},
 	}
@@ -100,12 +97,12 @@ func NewGethManifest() *K8sManifest {
 	}
 }
 
-// NewExplorerManifest is the k8s manifest that when used will deploy explorer mock service
-func NewExplorerManifest() *K8sManifest {
+// NewMockExplorerManifest is the k8s manifest that when used will deploy explorer mock service
+func NewMockExplorerManifest() *K8sManifest {
 	return &K8sManifest{
 		id:             "explorer",
-		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/explorer-deployment.yml"),
-		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/explorer-service.yml"),
+		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/mock-explorer-deployment.yml"),
+		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/mock-explorer-service.yml"),
 		SetValuesFunc: func(manifest *K8sManifest) error {
 			manifest.values["clusterURL"] = fmt.Sprintf(
 				"ws://%s:%d",
@@ -113,6 +110,46 @@ func NewExplorerManifest() *K8sManifest {
 				manifest.Service.Spec.Ports[0].Port,
 			)
 			manifest.values["localURL"] = fmt.Sprintf("ws://127.0.0.1:%d", manifest.ports[0].Local)
+			return nil
+		},
+	}
+}
+
+func NewExplorerManifest() *K8sManifest {
+	return &K8sManifest{
+		id:             "explorer",
+		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/explorer-deployment.yml"),
+		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/explorer-service.yml"),
+		SetValuesFunc: func(manifest *K8sManifest) error {
+			manifest.values["clusterURL"] = fmt.Sprintf(
+				"ws://%s:8081",
+				manifest.Service.Spec.ClusterIP,
+			)
+			manifest.values["localURL"] = fmt.Sprintf("https://127.0.0.1:8080")
+			podsFullNames, err := manifest.GetPodsFullNames("explorer")
+			if err != nil {
+				return err
+			}
+			_, _, err = manifest.ExecuteInPod(podsFullNames[0],"explorer", []string{"yarn", "--cwd", "apps/explorer", "admin:seed", "username", "password"})
+			if err != nil {
+				return err
+			}
+			return nil
+		},
+	}
+}
+
+func NewExplorerDbManifest() *K8sManifest {
+	return &K8sManifest{
+		id:             "chainlink-explorer-db",
+		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/explorer-db-deployment.yml"),
+		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/explorer-db-service.yml"),
+		SetValuesFunc: func(manifest *K8sManifest) error {
+			manifest.values["clusterURL"] = fmt.Sprintf(
+				"https://%s:5432",
+				manifest.Service.Spec.ClusterIP,
+			)
+			manifest.values["localURL"] = fmt.Sprintf("https://127.0.0.1:5432")
 			return nil
 		},
 	}
@@ -254,7 +291,7 @@ func newChainlinkManifest(chainlinkCluster *K8sManifestGroup, envName string) K8
 		2: chainlinkCluster,
 	}
 	envNoSimulatedChain := K8sEnvSpecs{
-		0: NewExplorerManifest(),
+		0: NewMockExplorerManifest(),
 		1: chainlinkCluster,
 	}
 

@@ -85,6 +85,10 @@ spec:
           value: "150000"
         - name: EXPLORER_URL
           value: {{ .Values.explorer.clusterURL }}
+        - name: EXPLORER_ACCESS_KEY
+          value: Vx6p8HVOO64rPuOU
+        - name: EXPLORER_SECRET
+          value: 2mvA66fdyRMcMGdwHkdY0Y9MViAwj3OQDcW6EnBjsVQRKmTWx0jmXc3beConQerG
         volumeMounts:
         - name: node-secrets-volume
           readonly: false
