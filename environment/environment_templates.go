@@ -326,7 +326,7 @@ func NewDependencyGroup(chainlinkNodesNr int, config *config.NetworkConfig) (*K8
 	dependencyGroup.manifests = append(dependencyGroup.manifests, NewAdapterManifest())
 	for i := 0; i < chainlinkNodesNr; i++ {
 		pManifest := NewPostgresManifest()
-		//pManifest.id = fmt.Sprintf("%s-%d", pManifest.id, i)
+		pManifest.id = fmt.Sprintf("%s-%d", pManifest.id, i)
 		dependencyGroup.manifests = append(dependencyGroup.manifests, pManifest)
 	}
 

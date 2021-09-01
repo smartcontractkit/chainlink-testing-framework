@@ -4,7 +4,6 @@ import (
 	"fmt"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/environment"
@@ -33,10 +32,6 @@ var _ = Describe("Alerts suite", func() {
 			explorer, err = environment.GetExplorerClient(suiteSetup.Env)
 			Expect(err).ShouldNot(HaveOccurred())
 			fmt.Println(explorer.BaseURL)
-
-			credentials, err := explorer.PostAdminNodes("node_")
-			Expect(err).ShouldNot(HaveOccurred())
-			log.Info().Str("AccessKey", credentials.AccessKey).Msg("AccessKey")
 
 			chainlinkNodes, err = environment.GetChainlinkClients(suiteSetup.Env)
 			Expect(err).ShouldNot(HaveOccurred())

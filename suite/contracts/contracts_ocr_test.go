@@ -18,7 +18,7 @@ import (
 
 var _ = Describe("OCR Feed @ocr", func() {
 
-	FDescribeTable("Deploys and watches an OCR feed @ocr", func(
+	DescribeTable("Deploys and watches an OCR feed @ocr", func(
 		chainlinkGroupsInit environment.K8sChainlinkGroupsInit,
 	) {
 		var (
