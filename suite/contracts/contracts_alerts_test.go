@@ -12,7 +12,7 @@ import (
 	//"math/big"
 )
 
-var _ = Describe("Flux monitor suite @flux", func() {
+var _ = Describe("Alerts suite", func() {
 	var (
 		suiteSetup *actions.DefaultSuiteSetup
 		adapter    environment.ExternalAdapter
@@ -23,16 +23,9 @@ var _ = Describe("Flux monitor suite @flux", func() {
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			//suiteSetup, err = actions.DefaultLocalSetup(
-			//	environment.NewChainlinkCluster(1),
-			//	client.NewNetworkFromConfig,
-			//	tools.ProjectRoot,
-			//)
-
-
 			suiteSetup, err = actions.DefaultLocalSetup(
 				environment.NewChainlinkNodesGroups,
-				4,
+				3,
 				client.NewNetworkFromConfig,
 				tools.ProjectRoot)
 			Expect(err).ShouldNot(HaveOccurred())

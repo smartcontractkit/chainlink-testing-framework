@@ -177,10 +177,16 @@ func NewChainlinkEnvironment(
 	network client.BlockchainNetwork,
 ) (Environment, error) {
 	env, err := NewBasicK8SEnvironment(cfg, network)
+	if err != nil {
+		return nil, err
+	}
 
 	// Deploy dependency group
 
 	dependencyGroup, err := NewDependencyGroup(chainlinkNodesNr, network.Config())
+	if err != nil {
+		return nil, err
+	}
 
 	values := map[string]interface{}{}
 	values[dependencyGroup.ID()] = dependencyGroup.Values()
@@ -205,15 +211,13 @@ func NewChainlinkEnvironment(
 	// Deploy the chainlink nodes group of manifests
 
 	chainlinkGroups, err := chainlinkGroupInit(chainlinkNodesNr, postgresManifests, env)
+	if err != nil {
+		return nil, err
+	}
 
-	for _, group := range chainlinkGroups {
-		valuesCopy := values
-		valuesCopy[group.ID()] = group.Values()
-
-		err = env.deployResourceInRoutine(group, values)
-		if err != nil {
-			return nil, err
-		}
+	err = env.deploySpecsConcurrently(chainlinkGroups, values)
+	if err != nil {
+		return nil, err
 	}
 
 	specs := []K8sEnvResource{dependencyGroup}
@@ -435,6 +439,31 @@ func (env *K8sEnvironment) deploySpecs(errChan chan<- error) {
 		values[spec.ID()] = spec.Values()
 	}
 	close(errChan)
+}
+
+
+func (env *K8sEnvironment) deploySpecsConcurrently(specs K8sEnvSpecs, values map[string]interface{}) error{
+	var errGroup error
+	wg := sync.WaitGroup{}
+	wg.Add(len(specs))
+
+
+	for _, spec := range specs {
+		go func(spec K8sEnvResource, values map[string]interface{}) {
+			defer wg.Done()
+			valuesCopy := make(map[string]interface{})
+			for key, value := range values {
+				valuesCopy[key] = value
+			}
+			valuesCopy[spec.ID()] = spec.Values()
+			if err := env.deployResourceInRoutine(spec, valuesCopy); err != nil {
+				errGroup = multierror.Append(errGroup, err)
+			}
+		}(spec, values)
+	}
+
+	wg.Wait()
+	return errGroup
 }
 
 func (env *K8sEnvironment) deployResourceInRoutine(spec K8sEnvResource, values map[string]interface{}) error {

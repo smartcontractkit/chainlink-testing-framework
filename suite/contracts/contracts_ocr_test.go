@@ -33,7 +33,7 @@ var _ = Describe("OCR Feed @ocr", func() {
 			var err error
 			suiteSetup, err = actions.DefaultLocalSetup(
 				chainlinkGroupsInit,
-				3,
+				5,
 				client.NewNetworkFromConfig,
 				tools.ProjectRoot)
 
