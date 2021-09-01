@@ -25,7 +25,7 @@ var _ = Describe("Environment functionality @unit", func() {
 		envInitFunc K8sEnvSpecInit,
 		nodeCount int,
 	) {
-		Skip("Not ready to be run in github")
+		// Skip("Not ready to be run in github")
 		// Setup
 		networkConfig, err := initFunc(conf)
 		Expect(err).ShouldNot(HaveOccurred())
@@ -45,8 +45,8 @@ var _ = Describe("Environment functionality @unit", func() {
 		}
 		Expect(err).ShouldNot(HaveOccurred())
 	},
-		Entry("1 node cluster", client.NewNetworkFromConfig, NewChainlinkCluster(1), 1),
+		// Entry("1 node cluster", client.NewNetworkFromConfig, NewChainlinkCluster(1), 1),
 		Entry("3 node cluster", client.NewNetworkFromConfig, NewChainlinkCluster(3), 3),
-		Entry("mixed version cluster", client.NewNetworkFromConfig, NewMixedVersionChainlinkCluster(3, 2), 3),
+		// Entry("mixed version cluster", client.NewNetworkFromConfig, NewMixedVersionChainlinkCluster(3, 2), 3),
 	)
 })
