@@ -54,16 +54,16 @@ spec:
               cpu: "2"
           livenessProbe:
             httpGet:
-              path: /metrics
-              port: 9080
-            initialDelaySeconds: 90
-            periodSeconds: 10
+              path: /
+              port: 8080
+            initialDelaySeconds: 50
+            periodSeconds: 5
           readinessProbe:
             httpGet:
-              path: /metrics
-              port: 9080
-            initialDelaySeconds: 90
-            periodSeconds: 10
+              path: /
+              port: 8080
+            initialDelaySeconds: 25
+            periodSeconds: 5
         - name: chainlink-explorer-db
           image: postgres:11.6
           ports:

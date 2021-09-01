@@ -25,10 +25,10 @@ var _ = Describe("Performance tests", func() {
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
 			s, err = actions.DefaultLocalSetup(
-				environment.NewChainlinkCluster(numberOfNodes),
+				environment.NewChainlinkNodesGroups,
+				numberOfNodes,
 				client.NewNetworkFromConfig,
-				tools.ProjectRoot,
-			)
+				tools.ProjectRoot)
 			Expect(err).ShouldNot(HaveOccurred())
 			nodes, err = environment.GetChainlinkClients(s.Env)
 			Expect(err).ShouldNot(HaveOccurred())

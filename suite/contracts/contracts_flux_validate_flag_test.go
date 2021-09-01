@@ -39,10 +39,10 @@ var _ = Describe("Flux monitor external validator suite @flux", func() {
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
 			s, err = actions.DefaultLocalSetup(
-				environment.NewChainlinkCluster(3),
+				environment.NewChainlinkNodesGroups,
+				3,
 				client.NewNetworkFromConfig,
-				tools.ProjectRoot,
-			)
+				tools.ProjectRoot)
 			Expect(err).ShouldNot(HaveOccurred())
 			nodes, err = environment.GetChainlinkClients(s.Env)
 			Expect(err).ShouldNot(HaveOccurred())

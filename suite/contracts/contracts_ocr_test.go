@@ -6,8 +6,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/rs/zerolog/log"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
@@ -20,8 +18,8 @@ import (
 
 var _ = Describe("OCR Feed @ocr", func() {
 
-	DescribeTable("Deploys and watches an OCR feed @ocr", func(
-		suiteInit environment.K8sEnvSpecInit,
+	FDescribeTable("Deploys and watches an OCR feed @ocr", func(
+		chainlinkGroupsInit environment.K8sChainlinkGroupsInit,
 	) {
 		var (
 			suiteSetup     *actions.DefaultSuiteSetup
@@ -29,19 +27,19 @@ var _ = Describe("OCR Feed @ocr", func() {
 			adapter        environment.ExternalAdapter
 			defaultWallet  client.BlockchainWallet
 			ocrInstance    contracts.OffchainAggregator
-			em             *client.ExplorerClient
 		)
 
 		By("Deploying the environment", func() {
 			var err error
 			suiteSetup, err = actions.DefaultLocalSetup(
-				suiteInit,
+				chainlinkGroupsInit,
+				3,
 				client.NewNetworkFromConfig,
-				tools.ProjectRoot,
-			)
+				tools.ProjectRoot)
+
 			Expect(err).ShouldNot(HaveOccurred())
-			em, err = environment.GetExplorerMockClient(suiteSetup.Env)
-			Expect(err).ShouldNot(HaveOccurred())
+			//em, err = environment.GetExplorerMockClient(suiteSetup.Env)
+			//Expect(err).ShouldNot(HaveOccurred())
 			adapter, err = environment.GetExternalAdapter(suiteSetup.Env)
 			Expect(err).ShouldNot(HaveOccurred())
 			chainlinkNodes, err = environment.GetChainlinkClients(suiteSetup.Env)
@@ -161,25 +159,25 @@ var _ = Describe("OCR Feed @ocr", func() {
 			Expect(answer.Int64()).Should(Equal(int64(10)), "Latest answer from OCR is not as expected")
 		})
 
-		By("Checking explorer telemetry", func() {
-			mc, err := em.Count()
-			log.Debug().Interface("Telemetry", mc).Msg("Explorer messages count")
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(mc.Errors).Should(Equal(0))
-			Expect(mc.Unknown).Should(Equal(0))
-			Expect(mc.Broadcast).Should(BeNumerically(">", 1))
-			Expect(mc.DHTAnnounce).Should(BeNumerically(">", 1))
-			Expect(mc.NewEpoch).Should(BeNumerically(">", 1))
-			Expect(mc.ObserveReq).Should(BeNumerically(">", 1))
-			Expect(mc.Received).Should(BeNumerically(">", 1))
-			Expect(mc.ReportReq).Should(BeNumerically(">", 1))
-			Expect(mc.RoundStarted).Should(BeNumerically(">", 1))
-			Expect(mc.Sent).Should(BeNumerically(">", 1))
-		})
+		//By("Checking explorer telemetry", func() {
+		//	mc, err := em.Count()
+		//	log.Debug().Interface("Telemetry", mc).Msg("Explorer messages count")
+		//	Expect(err).ShouldNot(HaveOccurred())
+		//	Expect(mc.Errors).Should(Equal(0))
+		//	Expect(mc.Unknown).Should(Equal(0))
+		//	Expect(mc.Broadcast).Should(BeNumerically(">", 1))
+		//	Expect(mc.DHTAnnounce).Should(BeNumerically(">", 1))
+		//	Expect(mc.NewEpoch).Should(BeNumerically(">", 1))
+		//	Expect(mc.ObserveReq).Should(BeNumerically(">", 1))
+		//	Expect(mc.Received).Should(BeNumerically(">", 1))
+		//	Expect(mc.ReportReq).Should(BeNumerically(">", 1))
+		//	Expect(mc.RoundStarted).Should(BeNumerically(">", 1))
+		//	Expect(mc.Sent).Should(BeNumerically(">", 1))
+		//})
 
 		By("Tearing down the environment", suiteSetup.TearDown())
 	},
-		Entry("all the same version", environment.NewChainlinkCluster(5)),
-		Entry("different versions", environment.NewMixedVersionChainlinkCluster(5, 2)),
+		Entry("all the same version", environment.NewChainlinkNodesGroups),
+		//Entry("different versions", environment.NewMixedVersionChainlinkCluster(5, 2)),
 	)
 })

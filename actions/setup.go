@@ -34,7 +34,8 @@ type DefaultSuiteSetup struct {
 
 // DefaultLocalSetup setup minimum required components for test
 func DefaultLocalSetup(
-	envInitFunc environment.K8sEnvSpecInit,
+	chainlinkGroupInit environment.K8sChainlinkGroupsInit,
+	chainlinkNodesNr int,
 	initFunc client.BlockchainNetworkInit,
 	configPath string,
 ) (*DefaultSuiteSetup, error) {
@@ -46,7 +47,7 @@ func DefaultLocalSetup(
 	if err != nil {
 		return nil, err
 	}
-	env, err := environment.NewK8sEnvironment(envInitFunc, conf, network)
+	env, err := environment.NewChainlinkEnvironment(chainlinkGroupInit, chainlinkNodesNr, conf, network)
 	if err != nil {
 		return nil, err
 	}

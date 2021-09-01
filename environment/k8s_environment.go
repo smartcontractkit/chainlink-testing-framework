@@ -3,7 +3,6 @@ package environment
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/pkg/errors"
 
@@ -49,6 +48,8 @@ type K8sEnvSpecs []K8sEnvResource
 // K8sEnvSpecInit is the initiator that will return the name of the environment and the specifications to be deployed.
 // The name of the environment returned determines the namespace.
 type K8sEnvSpecInit func(*config.NetworkConfig) (string, K8sEnvSpecs)
+
+type K8sChainlinkGroupsInit func(chainlinkNodesNr int, postgresManifests []*K8sManifest, env Environment) (K8sEnvSpecs, error)
 
 // K8sEnvResource is the interface for deploying a given environment resource. Creating an interface for resource
 // deployment allows it to be extended, deploying k8s resources in different ways. For example: K8sManifest deploys
@@ -137,6 +138,91 @@ deploymentLoop:
 		}
 	}
 	return env, err
+}
+
+func NewBasicK8SEnvironment(cfg *config.Config, network client.BlockchainNetwork) (*K8sEnvironment, error) {
+	k8sConfig, err := k8sConfig()
+	if err != nil {
+		return nil, err
+	}
+	k8sConfig.QPS = cfg.Kubernetes.QPS
+	k8sConfig.Burst = cfg.Kubernetes.Burst
+
+	k8sClient, err := kubernetes.NewForConfig(k8sConfig)
+	if err != nil {
+		return nil, err
+	}
+	env := &K8sEnvironment{
+		k8sClient: k8sClient,
+		k8sConfig: k8sConfig,
+		config:    cfg,
+		network:   network,
+	}
+	log.Info().Str("Host", k8sConfig.Host).Msg("Using Kubernetes cluster")
+
+	environmentName := "new-basic-chainlink"
+	namespace, err := env.createNamespace(environmentName)
+	if err != nil {
+		return nil, err
+	}
+	env.namespace = namespace
+
+	return env, nil
+}
+
+func NewChainlinkEnvironment(
+	chainlinkGroupInit K8sChainlinkGroupsInit,
+	chainlinkNodesNr int,
+	cfg *config.Config,
+	network client.BlockchainNetwork,
+) (Environment, error) {
+	env, err := NewBasicK8SEnvironment(cfg, network)
+
+	// Deploy dependency group
+
+	dependencyGroup, err := NewDependencyGroup(chainlinkNodesNr, network.Config())
+
+	values := map[string]interface{}{}
+	values[dependencyGroup.ID()] = dependencyGroup.Values()
+
+	err = env.deployResourceInRoutine(dependencyGroup, values)
+	if err != nil {
+		return nil, err
+	}
+
+	values[dependencyGroup.ID()] = dependencyGroup.Values()
+
+	env.specs = []K8sEnvResource{dependencyGroup}
+
+	var postgresManifests []*K8sManifest
+
+	for _, manifest := range dependencyGroup.manifests {
+		if strings.Contains(manifest.id, "postgres") {
+			postgresManifests = append(postgresManifests, manifest)
+		}
+	}
+
+	// Deploy the chainlink nodes group of manifests
+
+	chainlinkGroups, err := chainlinkGroupInit(chainlinkNodesNr, postgresManifests, env)
+
+	for _, group := range chainlinkGroups {
+		valuesCopy := values
+		valuesCopy[group.ID()] = group.Values()
+
+		err = env.deployResourceInRoutine(group, values)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	specs := []K8sEnvResource{dependencyGroup}
+	for _, group := range chainlinkGroups {
+		specs = append(specs, group)
+	}
+	env.specs = specs
+
+	return env, nil
 }
 
 // ID returns the canonical name of the environment, which in the case of k8s is the namespace
@@ -351,6 +437,57 @@ func (env *K8sEnvironment) deploySpecs(errChan chan<- error) {
 	close(errChan)
 }
 
+func (env *K8sEnvironment) deployResourceInRoutine(spec K8sEnvResource, values map[string]interface{}) error {
+	ctx, ctxCancel := context.WithTimeout(context.Background(), env.config.Kubernetes.DeploymentTimeout)
+	errChan := make(chan error)
+	go env.deployResource(spec, values, errChan)
+	err := waitForDeployment(ctx, errChan)
+	ctxCancel()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (env *K8sEnvironment) deployResource(spec K8sEnvResource, values map[string]interface{}, errChan chan<- error) {
+	if err := spec.SetEnvironment(
+		env.k8sClient,
+		env.k8sConfig,
+		env.config,
+		env.network.Config(),
+		env.namespace,
+	); err != nil {
+		errChan <- err
+		return
+	}
+	if err := spec.Deploy(values); err != nil {
+		errChan <- err
+		return
+	}
+	if err := spec.WaitUntilHealthy(); err != nil {
+		errChan <- err
+		return
+	}
+	close(errChan)
+}
+
+func waitForDeployment(ctx context.Context, errChan chan error) error {
+deploymentLoop:
+	for {
+		select {
+		case err, open := <-errChan:
+			if err != nil {
+				return err
+			} else if !open {
+				break deploymentLoop
+			}
+		case <-ctx.Done():
+			return fmt.Errorf("error while waiting for deployment: %v", ctx.Err())
+		}
+	}
+	return nil
+}
+
 func (env *K8sEnvironment) createNamespace(namespace string) (*coreV1.Namespace, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
@@ -518,7 +655,7 @@ func (m *K8sManifest) ServiceDetails() ([]*ServiceDetails, error) {
 	return serviceDetails, nil
 }
 
-func (m *K8sManifest) GetPodsFullNames(partialName string) ([]string, error){
+func (m *K8sManifest) GetPodsFullNames(partialName string) ([]string, error) {
 	set := labels.Set(m.Service.Spec.Selector)
 	listOptions := metaV1.ListOptions{LabelSelector: set.AsSelector().String()}
 
@@ -943,27 +1080,9 @@ func (mg *K8sManifestGroup) Deploy(values map[string]interface{}) error {
 			}
 		}
 
-		// deep copy the values
-		v, err := json.Marshal(values)
-		if err != nil {
-			return err
-		}
-		var deployValues map[string]interface{}
-		err = json.Unmarshal(v, &deployValues)
-		if err != nil {
-			return err
-		}
-
-		// move "postgres_"+i to "postgres" in the map
-		if pn, ok := deployValues["DependencyGroup"]; ok {
-			if pg, ok := pn.(map[string]interface{})[fmt.Sprintf("postgres_%d", i)]; ok {
-				deployValues["DependencyGroup"].(map[string]interface{})["postgres"] = pg
-			}
-		}
-
 		go func() {
 			defer wg.Done()
-			if err := m.Deploy(deployValues); err != nil {
+			if err := m.Deploy(values); err != nil {
 				errGroup = multierror.Append(errGroup, err)
 			}
 		}()

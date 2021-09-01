@@ -29,7 +29,7 @@ spec:
           containerPort: {{ .Values.chainlinkCluster.chainlink.p2pPort }}
         env:
         - name: DATABASE_URL
-          value: {{ .Values.DependencyGroup.postgres.clusterURL }}/chainlink?sslmode=disable
+          value: {{ .Values.chainlinkCluster.chainlink.postgresURL }}/chainlink?sslmode=disable
         - name: DATABASE_NAME
           value: chainlink
         - name: ETH_URL
@@ -86,9 +86,9 @@ spec:
         - name: EXPLORER_URL
           value: {{ .Values.DependencyGroup.explorer.clusterURL }}
         - name: EXPLORER_ACCESS_KEY
-          value: Vx6p8HVOO64rPuOU
+          value: {{ .Values.chainlinkCluster.chainlink.explorerAccessKey }}
         - name: EXPLORER_SECRET
-          value: 2mvA66fdyRMcMGdwHkdY0Y9MViAwj3OQDcW6EnBjsVQRKmTWx0jmXc3beConQerG
+          value: {{ .Values.chainlinkCluster.chainlink.explorerSecretKey }}
         volumeMounts:
         - name: node-secrets-volume
           readonly: false
@@ -103,8 +103,8 @@ spec:
           httpGet:
             path: /
             port: {{ .Values.chainlinkCluster.chainlink.webPort }}
-          initialDelaySeconds: 2
-          periodSeconds: 2
+          initialDelaySeconds: 30
+          periodSeconds: 5
         resources:
           requests:
             memory: {{ .Config.Apps.Chainlink.Requests.Memory }}

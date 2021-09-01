@@ -27,24 +27,16 @@ type ServiceDetails struct {
 	LocalURL  *url.URL
 }
 
-// GetExplorerMockClient will return all instantiated Explorer mock client for a given environment
-func GetExplorerMockClient(env Environment) (*client.ExplorerClient, error) {
-	sd, err := env.GetServiceDetails(ExplorerWSPort)
+func GetExplorerClient(env Environment) (*client.ExplorerClient, error) {
+	sd, err := env.GetServiceDetails(ExplorerAPIPort)
 	if err != nil {
 		return nil, err
 	}
-	forwardedURL := sd.LocalURL.String()
-	return client.NewExplorerMockClient(&config.ExplorerMockConfig{
-		URL: forwardedURL,
+	return client.NewExplorerClient(&config.ExplorerConfig{
+		URL: sd.LocalURL.String(),
+		AdminUsername: "username",
+		AdminPassword: "password",
 	}), nil
-}
-
-func GetExplorerClient(env Environment) (*client.BasicHTTPClient, error) {
-	sd, err := env.GetServiceDetails(8081)
-	if err != nil {
-		return nil, err
-	}
-	return client.NewBasicHTTPClient(&http.Client{}, sd.LocalURL.String()), nil
 }
 
 // GetChainlinkClients will return all instantiated Chainlink clients for a given environment

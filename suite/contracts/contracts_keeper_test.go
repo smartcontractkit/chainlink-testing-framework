@@ -31,11 +31,10 @@ var _ = Describe("Keeper suite @keeper", func() {
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
 			s, err = actions.DefaultLocalSetup(
-				// need to register at least 5 nodes to perform upkeep
-				environment.NewChainlinkCluster(5),
+				environment.NewChainlinkNodesGroups,
+				5,
 				client.NewNetworkFromConfig,
-				tools.ProjectRoot,
-			)
+				tools.ProjectRoot)
 			Expect(err).ShouldNot(HaveOccurred())
 			nodes, err = environment.GetChainlinkClients(s.Env)
 			Expect(err).ShouldNot(HaveOccurred())
