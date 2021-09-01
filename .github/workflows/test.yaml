@@ -37,7 +37,7 @@ jobs:
       - name: Run Tests
         run: |
           export PATH=$PATH:$(go env GOPATH)/bin
-          ginkgo -r -p -keepGoing --trace --randomizeAllSpecs --cover --progress --coverprofile=coverage.out ./...
+          ginkgo -r -p -keepGoing --trace --randomizeAllSpecs --progress --succinct ./...
       - name: Publish Test Results
         uses: mikepenz/action-junit-report@v2
         if: always()
@@ -50,12 +50,4 @@ jobs:
         with:
           name: test-logs
           path: ./logs
-      - name: Convert coverage to lcov 
-        uses: jandelgado/gcov2lcov-action@v1.0.5
-        if: always()
-      - name: Report code coverage
-        uses: romeovs/lcov-reporter-action@v0.2.21
-        if: always()
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          lcov-file: ./coverage.lcov
+

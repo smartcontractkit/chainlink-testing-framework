@@ -22,6 +22,6 @@ func TestPerformance(t *testing.T) {
 		Fail("failed to load config")
 	}
 	log.Logger = log.Logger.Level(zerolog.Level(conf.Logging.Level))
-	junitReporter := reporters.NewJUnitReporter("../logs/tests-performance.xml")
+	junitReporter := reporters.NewJUnitReporter("../../logs/tests-performance.xml")
 	RunSpecsWithDefaultAndCustomReporters(t, "Performance suite", []Reporter{junitReporter})
 }
