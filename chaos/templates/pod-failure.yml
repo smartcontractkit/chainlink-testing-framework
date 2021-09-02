@@ -1,0 +1,12 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: {{ .Base.Name }}
+  namespace: {{ .Base.Namespace }}
+spec:
+  action: pod-failure
+  mode: one
+  duration: {{ .Duration }}
+  selector:
+    labelSelectors:
+      'app': '{{ .TargetAppLabel }}'

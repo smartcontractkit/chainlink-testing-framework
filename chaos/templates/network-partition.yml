@@ -1,0 +1,18 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: {{ .Base.Name }}
+  namespace: {{ .Base.Namespace }}
+spec:
+  action: partition
+  mode: one
+  selector:
+    labelSelectors:
+      'app': '{{ .AppLabel }}'
+  direction: both
+  target:
+    selector:
+      labelSelectors:
+        'app': '{{ .TargetAppLabel }}'
+    mode: one
+  duration: '{{ .Duration }}'
