@@ -11,7 +11,7 @@ import (
 	//"math/big"
 )
 
-var _ = Describe("Alerts suite", func() {
+var _ = FDescribe("Alerts suite", func() {
 	var (
 		suiteSetup *actions.DefaultSuiteSetup
 		adapter    environment.ExternalAdapter
@@ -22,11 +22,11 @@ var _ = Describe("Alerts suite", func() {
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			suiteSetup, err = actions.DefaultLocalSetup(
-				environment.NewChainlinkNodesGroups,
-				3,
+			suiteSetup, err = actions.DefaultLocalSetup2(
+				environment.NewChainlinkCluster(3),
 				client.NewNetworkFromConfig,
-				tools.ProjectRoot)
+				tools.ProjectRoot,
+			)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			explorer, err = environment.GetExplorerClient(suiteSetup.Env)

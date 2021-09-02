@@ -29,7 +29,7 @@ spec:
           containerPort: {{ .Values.chainlinkCluster.chainlink.p2pPort }}
         env:
         - name: DATABASE_URL
-          value: {{ .Values.chainlinkCluster.chainlink.postgresURL }}/chainlink?sslmode=disable
+          value: {{ .Values.DependencyGroup.postgres.clusterURL }}/chainlink?sslmode=disable
         - name: DATABASE_NAME
           value: chainlink
         - name: ETH_URL
@@ -86,9 +86,9 @@ spec:
         - name: EXPLORER_URL
           value: {{ .Values.DependencyGroup.explorer.clusterURL }}
         - name: EXPLORER_ACCESS_KEY
-          value: {{ .Values.chainlinkCluster.chainlink.explorerAccessKey }}
+          value: {{ next .Values.DependencyGroup.explorer.accessKeys }}
         - name: EXPLORER_SECRET
-          value: {{ .Values.chainlinkCluster.chainlink.explorerSecretKey }}
+          value: {{ next .Values.DependencyGroup.explorer.secretKeys }}
         volumeMounts:
         - name: node-secrets-volume
           readonly: false

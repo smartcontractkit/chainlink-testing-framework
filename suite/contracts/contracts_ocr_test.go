@@ -10,16 +10,16 @@ import (
 var _ = Describe("OCR Feed @ocr", func() {
 
 	DescribeTable("Deploys and watches an OCR feed @ocr", func(
-		envInit environment.K8sChainlinkGroupsInit,
+		envInit environment.K8sEnvSpecInit,
 		numNodes int,
 	) {
 		i := &testcommon.OCRSetupInputs{}
-		testcommon.DeployOCRForEnv(i, envInit, numNodes)
+		testcommon.DeployOCRForEnv(i, envInit)
 		testcommon.SetupOCRTest(i)
 		testcommon.CheckRound(i)
 		By("Tearing down the environment", i.SuiteSetup.TearDown())
 	},
-		Entry("all the same version", environment.NewChainlinkNodesGroups, 5),
-		Entry("different versions", environment.NewMixedVersionChainlinkGroupInit(2), 5),
+		Entry("all the same version", environment.NewChainlinkCluster(5)),
+		//Entry("different versions", environment.NewM(2), 5),
 	)
 })

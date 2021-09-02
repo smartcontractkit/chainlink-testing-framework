@@ -22,11 +22,11 @@ var _ = Describe("Basic Contract Interactions @contract", func() {
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
 			var err error
-			suiteSetup, err = actions.DefaultLocalSetup(
-				environment.NewChainlinkNodesGroups,
-				0,
+			suiteSetup, err = actions.DefaultLocalSetup2(
+				environment.NewChainlinkCluster(0),
 				client.NewNetworkFromConfig,
-				tools.ProjectRoot)
+				tools.ProjectRoot,
+			)
 			Expect(err).ShouldNot(HaveOccurred())
 			defaultWallet = suiteSetup.Wallets.Default()
 		})

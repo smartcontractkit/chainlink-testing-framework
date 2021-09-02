@@ -28,11 +28,11 @@ type RunlogSetupInputs struct {
 
 func SetupRunlogTest(i *RunlogSetupInputs) {
 	By("Deploying the environment", func() {
-		i.S, i.Err = actions.DefaultLocalSetup(
-			environment.NewChainlinkNodesGroups,
-			1,
+		i.S, i.Err = actions.DefaultLocalSetup2(
+			environment.NewChainlinkCluster(1),
 			client.NewNetworkFromConfig,
-			tools.ProjectRoot)
+			tools.ProjectRoot,
+		)
 		Expect(i.Err).ShouldNot(HaveOccurred())
 		i.Adapter, i.Err = environment.GetExternalAdapter(i.S.Env)
 		Expect(i.Err).ShouldNot(HaveOccurred())

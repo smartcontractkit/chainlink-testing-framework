@@ -34,11 +34,11 @@ var _ = Describe("Direct request suite @runlog", func() {
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			s, err = actions.DefaultLocalSetup(
-				environment.NewChainlinkNodesGroups,
-				1,
+			s, err = actions.DefaultLocalSetup2(
+				environment.NewChainlinkCluster(1),
 				client.NewNetworkFromConfig,
-				tools.ProjectRoot)
+				tools.ProjectRoot,
+			)
 			Expect(err).ShouldNot(HaveOccurred())
 			adapter, err = environment.GetExternalAdapter(s.Env)
 			Expect(err).ShouldNot(HaveOccurred())

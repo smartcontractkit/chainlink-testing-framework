@@ -32,10 +32,9 @@ type DefaultSuiteSetup struct {
 	Network  client.BlockchainNetwork
 }
 
-// DefaultLocalSetup setup minimum required components for test
-func DefaultLocalSetup(
-	chainlinkGroupInit environment.K8sChainlinkGroupsInit,
-	chainlinkNodesNr int,
+// DefaultLocalSetup2 setup minimum required components for test
+func DefaultLocalSetup2(
+	envInitFunc environment.K8sEnvSpecInit,
 	initFunc client.BlockchainNetworkInit,
 	configPath string,
 ) (*DefaultSuiteSetup, error) {
@@ -47,7 +46,7 @@ func DefaultLocalSetup(
 	if err != nil {
 		return nil, err
 	}
-	env, err := environment.NewChainlinkEnvironment(chainlinkGroupInit, chainlinkNodesNr, conf, network)
+	env, err := environment.NewK8sEnvironment(envInitFunc, conf, network)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +68,6 @@ func DefaultLocalSetup(
 	}
 	// configure default retry
 	retry.DefaultAttempts = conf.Retry.Attempts
-	// linear waiting
 	retry.DefaultDelayType = func(n uint, err error, config *retry.Config) time.Duration {
 		return conf.Retry.LinearDelay
 	}

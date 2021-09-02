@@ -44,7 +44,8 @@ func createRunE(cmd *cobra.Command, _ []string) error {
 	var env environment.Environment
 	switch envType {
 	case "chainlink":
-		env, err = environment.NewChainlinkEnvironment(environment.NewChainlinkNodesGroups, nodes, cfg, networkConfig)
+		envSpec := environment.NewChainlinkCluster(nodes)
+		env, err = environment.NewK8sEnvironment(envSpec, cfg, networkConfig)
 	default:
 		return fmt.Errorf("invalid environment type '%s' specified", envType)
 	}

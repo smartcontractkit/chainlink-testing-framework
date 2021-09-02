@@ -43,6 +43,19 @@ func GetExplorerClient(env Environment) (*client.ExplorerClient, error) {
 	}), nil
 }
 
+
+func GetExplorerClient2(getServiceDetails func (remotePort uint16) (*ServiceDetails, error)) (*client.ExplorerClient, error) {
+	sd, err := getServiceDetails(ExplorerAPIPort)
+	if err != nil {
+		return nil, err
+	}
+	return client.NewExplorerClient(&config.ExplorerConfig{
+		URL: sd.LocalURL.String(),
+		AdminUsername: "username",
+		AdminPassword: "password",
+	}), nil
+}
+
 // GetChainlinkClients will return all instantiated Chainlink clients for a given environment
 func GetChainlinkClients(env Environment) ([]client.Chainlink, error) {
 	var clients []client.Chainlink

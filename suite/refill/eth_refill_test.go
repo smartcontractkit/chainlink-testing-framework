@@ -31,11 +31,11 @@ var _ = Describe("FluxAggregator ETH Refill @refill", func() {
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			s, err = actions.DefaultLocalSetup(
-				environment.NewChainlinkNodesGroups,
-				3,
+			s, err = actions.DefaultLocalSetup2(
+				environment.NewChainlinkCluster(3),
 				client.NewNetworkFromConfig,
-				tools.ProjectRoot)
+				tools.ProjectRoot,
+			)
 			Expect(err).ShouldNot(HaveOccurred())
 			adapter, err = environment.GetExternalAdapter(s.Env)
 			Expect(err).ShouldNot(HaveOccurred())

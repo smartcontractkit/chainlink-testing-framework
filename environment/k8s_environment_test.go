@@ -22,7 +22,7 @@ var _ = Describe("Environment functionality @unit", func() {
 
 	DescribeTable("basic environment", func(
 		initFunc client.BlockchainNetworkInit,
-		chainlinkGroupsInit K8sChainlinkGroupsInit,
+		envInitFunc K8sEnvSpecInit,
 		nodeCount int,
 	) {
 		Skip("Not ready to be run in github")
@@ -30,7 +30,7 @@ var _ = Describe("Environment functionality @unit", func() {
 		networkConfig, err := initFunc(conf)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		env, err := NewChainlinkEnvironment(chainlinkGroupsInit, nodeCount, conf, networkConfig)
+		env, err := NewK8sEnvironment(envInitFunc, conf, networkConfig)
 		Expect(err).ShouldNot(HaveOccurred())
 		defer env.TearDown()
 
@@ -45,8 +45,8 @@ var _ = Describe("Environment functionality @unit", func() {
 		}
 		Expect(err).ShouldNot(HaveOccurred())
 	},
-		Entry("1 node cluster", client.NewNetworkFromConfig, NewChainlinkNodesGroups, 1),
-		Entry("3 node cluster", client.NewNetworkFromConfig, NewChainlinkNodesGroups, 3),
-		Entry("mixed version cluster", client.NewNetworkFromConfig, NewMixedVersionChainlinkGroupInit(2), 3),
+		Entry("1 node cluster", client.NewNetworkFromConfig, NewChainlinkCluster(1), 1),
+		Entry("3 node cluster", client.NewNetworkFromConfig, NewChainlinkCluster(3), 3),
+		//Entry("mixed version cluster", client.NewNetworkFromConfig, NewMixedVersionChainlinkCluster(3, 2), 3),
 	)
 })

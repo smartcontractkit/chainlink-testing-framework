@@ -22,14 +22,14 @@ type OCRSetupInputs struct {
 	OCRInstance    contracts.OffchainAggregator
 }
 
-func DeployOCRForEnv(i *OCRSetupInputs, chainlinkGroupsInit environment.K8sChainlinkGroupsInit, numNodes int) {
+func DeployOCRForEnv(i *OCRSetupInputs, envInit environment.K8sEnvSpecInit) {
 	By("Deploying the environment", func() {
 		var err error
-		i.SuiteSetup, err = actions.DefaultLocalSetup(
-			chainlinkGroupsInit,
-			numNodes,
+		i.SuiteSetup, err = actions.DefaultLocalSetup2(
+			envInit,
 			client.NewNetworkFromConfig,
-			tools.ProjectRoot)
+			tools.ProjectRoot,
+		)
 		Expect(err).ShouldNot(HaveOccurred())
 		i.Adapter, err = environment.GetExternalAdapter(i.SuiteSetup.Env)
 		Expect(err).ShouldNot(HaveOccurred())

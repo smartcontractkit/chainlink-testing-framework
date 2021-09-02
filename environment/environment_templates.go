@@ -15,11 +15,11 @@ import (
 )
 
 const (
-	AdapterAPIPort     = 6060
-	ChainlinkWebPort   = 6688
-	ChainlinkP2PPort   = 6690
-	EVMRPCPort         = 8545
-	ExplorerAPIPort    = 8080
+	AdapterAPIPort   = 6060
+	ChainlinkWebPort = 6688
+	ChainlinkP2PPort = 6690
+	EVMRPCPort       = 8545
+	ExplorerAPIPort  = 8080
 )
 
 // NewAdapterManifest is the k8s manifest that when used will deploy an external adapter to an environment
@@ -139,6 +139,75 @@ func NewExplorerManifest() *K8sManifest {
 				return err
 			}
 			return nil
+		},
+	}
+}
+
+func NewExplorerManifest2(nodeCount int) *K8sManifest {
+	return &K8sManifest{
+		id:             "explorer",
+		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/explorer-deployment.yml"),
+		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/explorer-service.yml"),
+		SetValuesFunc: func(manifest *K8sManifest) error {
+			manifest.values["clusterURL"] = fmt.Sprintf(
+				"ws://%s:8080",
+				manifest.Service.Spec.ClusterIP,
+			)
+			manifest.values["localURL"] = "https://127.0.0.1:8080"
+			podsFullNames, err := manifest.GetPodsFullNames("explorer")
+			if err != nil {
+				return err
+			}
+			_, _, err = manifest.ExecuteInPod(podsFullNames[0], "explorer", []string{"yarn", "--cwd", "apps/explorer", "admin:seed", "username", "password"})
+			if err != nil {
+				return err
+			}
+
+			accessKeys := TemplateValuesArray{}
+			secretKeys := TemplateValuesArray{}
+
+			explorerClient, err := GetExplorerClient2(manifest.getServiceDetails)
+			if err != nil {
+				return err
+			}
+			for i := 0; i < nodeCount; i++ {
+				credentials, err := explorerClient.PostAdminNodes(fmt.Sprintf("node-%d", i))
+				if err != nil {
+					return err
+				}
+				accessKeys.Values = append(accessKeys.Values, credentials.AccessKey)
+				secretKeys.Values = append(secretKeys.Values, credentials.Secret)
+
+			}
+			manifest.values["accessKeys"] = &accessKeys
+			manifest.values["secretKeys"] = &secretKeys
+
+			return nil
+		},
+	}
+}
+
+// NewChainlinkManifest is the k8s manifest that when used will deploy a chainlink node to an environment
+func NewChainlinkManifest2() *K8sManifest {
+	return &K8sManifest{
+		id:             "chainlink",
+		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/chainlink/chainlink-deployment.yml"),
+		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/chainlink/chainlink-service.yml"),
+
+		values: map[string]interface{}{
+			"webPort": ChainlinkWebPort,
+			"p2pPort": ChainlinkP2PPort,
+		},
+
+		Secret: &coreV1.Secret{
+			ObjectMeta: v1.ObjectMeta{
+				GenerateName: "chainlink-",
+			},
+			Type: "Opaque",
+			Data: map[string][]byte{
+				"apicredentials": []byte("notreal@fakeemail.ch\ntwochains"),
+				"node-password":  []byte("T.tLHkcmwePT/p,]sYuntjwHKAsrhm#4eRs4LuKHwvHejWYAC2JP4M8HimwgmbaZ"),
+			},
 		},
 	}
 }
@@ -322,4 +391,59 @@ func getMixedVersions(versionCount int) ([]string, error) {
 		mixedVersions = append(mixedVersions, strings.TrimLeft(*releases[i].TagName, "v"))
 	}
 	return mixedVersions, nil
+}
+
+// NewChainlinkCluster is a basic environment that deploys hardhat with a chainlink cluster and an external adapter
+func NewChainlinkCluster(nodeCount int) K8sEnvSpecInit {
+	chainlinkGroup := &K8sManifestGroup{
+		id:        "chainlinkCluster",
+		manifests: []*K8sManifest{},
+	}
+	for i := 0; i < nodeCount; i++ {
+		cManifest := NewChainlinkManifest2()
+		cManifest.id = fmt.Sprintf("%s-%d", cManifest.id, i)
+		chainlinkGroup.manifests = append(chainlinkGroup.manifests, cManifest)
+	}
+
+	return addDependencyGroup(nodeCount, "basic-chainlink", chainlinkGroup)
+}
+
+// addDependencyGroup add everything that has no dependencies but other pods have
+// dependencies on in the first group
+func addDependencyGroup(postgresCount int, envName string, chainlinkGroup *K8sManifestGroup) K8sEnvSpecInit {
+	group := &K8sManifestGroup{
+		id:        "DependencyGroup",
+		manifests: []*K8sManifest{NewAdapterManifest()},
+	}
+	for i := 0; i < postgresCount; i++ {
+		pManifest := NewPostgresManifest()
+		pManifest.id = fmt.Sprintf("%s-%d", pManifest.id, i)
+		group.manifests = append(group.manifests, pManifest)
+	}
+
+	return func(config *config.NetworkConfig) (string, K8sEnvSpecs) {
+		switch config.Name {
+		case "Ethereum Geth dev":
+			group.manifests = append(
+				group.manifests,
+				NewGethManifest(),
+				NewExplorerManifest2(postgresCount))
+		case "Ethereum Hardhat":
+			group.manifests = append(
+				group.manifests,
+				NewHardhatManifest())
+		case "Ethereum Ganache":
+			group.manifests = append(
+				group.manifests,
+				NewGanacheManifest())
+		default: // no simulated chain
+			group.manifests = append(
+				group.manifests,
+				NewExplorerManifest())
+		}
+		if len(chainlinkGroup.manifests) > 0 {
+			return envName, K8sEnvSpecs{group, chainlinkGroup}
+		}
+		return envName, K8sEnvSpecs{group}
+	}
 }
