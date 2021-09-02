@@ -60,7 +60,7 @@ var _ = Describe("Environment unit tests @unit", func() {
 			bcNetwork, err := client.NewNetworkFromConfig(conf)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			env, err := environment.NewK8sEnvironment(environment.NewChainlinkCluster(1), conf, bcNetwork)
+			env, err := environment.NewChainlinkEnvironment(environment.NewChainlinkNodesGroups, 1, conf, bcNetwork)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			bcNetwork.Config().PrivateKeyStore, err = environment.NewPrivateKeyStoreFromEnv(env, bcNetwork.Config())

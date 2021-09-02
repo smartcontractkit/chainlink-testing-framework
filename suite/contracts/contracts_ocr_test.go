@@ -18,7 +18,7 @@ import (
 
 var _ = Describe("OCR Feed @ocr", func() {
 
-	DescribeTable("Deploys and watches an OCR feed @ocr", func(
+	FDescribeTable("Deploys and watches an OCR feed @ocr", func(
 		chainlinkGroupsInit environment.K8sChainlinkGroupsInit,
 	) {
 		var (
@@ -178,6 +178,6 @@ var _ = Describe("OCR Feed @ocr", func() {
 		By("Tearing down the environment", suiteSetup.TearDown())
 	},
 		Entry("all the same version", environment.NewChainlinkNodesGroups),
-		//Entry("different versions", environment.NewMixedVersionChainlinkCluster(5, 2)),
+		Entry("different versions", environment.NewMixedVersionChainlinkGroupInit( 2)),
 	)
 })
