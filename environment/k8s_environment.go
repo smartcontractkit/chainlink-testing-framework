@@ -1031,7 +1031,7 @@ func (mg *K8sManifestGroup) Deploy(values map[string]interface{}) error {
 
 		go func() {
 			defer wg.Done()
-			if err := m.Deploy(values); err != nil {
+			if err := m.Deploy(deployValues); err != nil {
 				errGroup = multierror.Append(errGroup, err)
 			}
 		}()
