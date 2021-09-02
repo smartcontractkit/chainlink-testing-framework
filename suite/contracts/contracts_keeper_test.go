@@ -30,7 +30,7 @@ var _ = Describe("Keeper suite @keeper", func() {
 	)
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			s, err = actions.DefaultLocalSetup2(
+			s, err = actions.DefaultLocalSetup(
 				environment.NewChainlinkCluster(5),
 				client.NewNetworkFromConfig,
 				tools.ProjectRoot,

@@ -28,7 +28,7 @@ type RunlogSetupInputs struct {
 
 func SetupRunlogTest(i *RunlogSetupInputs) {
 	By("Deploying the environment", func() {
-		i.S, i.Err = actions.DefaultLocalSetup2(
+		i.S, i.Err = actions.DefaultLocalSetup(
 			environment.NewChainlinkCluster(1),
 			client.NewNetworkFromConfig,
 			tools.ProjectRoot,

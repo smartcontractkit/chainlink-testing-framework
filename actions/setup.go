@@ -32,8 +32,8 @@ type DefaultSuiteSetup struct {
 	Network  client.BlockchainNetwork
 }
 
-// DefaultLocalSetup2 setup minimum required components for test
-func DefaultLocalSetup2(
+// DefaultLocalSetup setup minimum required components for test
+func DefaultLocalSetup(
 	envInitFunc environment.K8sEnvSpecInit,
 	initFunc client.BlockchainNetworkInit,
 	configPath string,

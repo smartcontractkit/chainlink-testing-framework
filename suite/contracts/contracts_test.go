@@ -22,7 +22,7 @@ var _ = Describe("Basic Contract Interactions @contract", func() {
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
 			var err error
-			suiteSetup, err = actions.DefaultLocalSetup2(
+			suiteSetup, err = actions.DefaultLocalSetup(
 				environment.NewChainlinkCluster(0),
 				client.NewNetworkFromConfig,
 				tools.ProjectRoot,
