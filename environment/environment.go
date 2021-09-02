@@ -31,20 +31,7 @@ type ServiceDetails struct {
 	LocalURL  *url.URL
 }
 
-func GetExplorerClient(env Environment) (*client.ExplorerClient, error) {
-	sd, err := env.GetServiceDetails(ExplorerAPIPort)
-	if err != nil {
-		return nil, err
-	}
-	return client.NewExplorerClient(&config.ExplorerConfig{
-		URL: sd.LocalURL.String(),
-		AdminUsername: "username",
-		AdminPassword: "password",
-	}), nil
-}
-
-
-func GetExplorerClient2(getServiceDetails func (remotePort uint16) (*ServiceDetails, error)) (*client.ExplorerClient, error) {
+func GetExplorerClient(getServiceDetails func (remotePort uint16) (*ServiceDetails, error)) (*client.ExplorerClient, error) {
 	sd, err := getServiceDetails(ExplorerAPIPort)
 	if err != nil {
 		return nil, err

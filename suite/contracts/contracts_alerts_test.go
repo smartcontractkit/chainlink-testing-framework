@@ -29,7 +29,7 @@ var _ = FDescribe("Alerts suite", func() {
 			)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			explorer, err = environment.GetExplorerClient(suiteSetup.Env)
+			explorer, err = environment.GetExplorerClient(suiteSetup.Env.GetServiceDetails)
 			Expect(err).ShouldNot(HaveOccurred())
 			fmt.Println(explorer.BaseURL)
 

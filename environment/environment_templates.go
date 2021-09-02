@@ -114,7 +114,7 @@ func NewExplorerManifest(nodeCount int) *K8sManifest {
 			accessKeys := TemplateValuesArray{}
 			secretKeys := TemplateValuesArray{}
 
-			explorerClient, err := GetExplorerClient2(manifest.getServiceDetails)
+			explorerClient, err := GetExplorerClient(manifest.getServiceDetails)
 			if err != nil {
 				return err
 			}
