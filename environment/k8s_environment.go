@@ -867,8 +867,6 @@ type TemplateValuesArray struct {
 	Values []interface{}
 }
 
-var mu sync.Mutex
-
 func (t *TemplateValuesArray) next() (interface{}, error) {
 	if len(t.Values) > 0 {
 		valueToReturn := t.Values[0]
@@ -878,6 +876,8 @@ func (t *TemplateValuesArray) next() (interface{}, error) {
 		return nil, errors.New("No more Values in the array")
 	}
 }
+
+var mu sync.Mutex
 
 func next(array *TemplateValuesArray) (interface{}, error) {
 	mu.Lock()
@@ -1093,20 +1093,6 @@ func (mg *K8sManifestGroup) ServiceDetails() ([]*ServiceDetails, error) {
 // Values["chainlink"].webPort
 // Values["chainlink_0"].webPort
 // Values["chainlink_1"].webPort
-//func (mg *K8sManifestGroup) Values() map[string]interface{} {
-//	values := map[string]interface{}{}
-//	for _, m := range mg.manifests {
-//		id := strings.Split(m.id, "-")
-//		if len(id) > 1 {
-//			values[strings.Join(id, "_")] = m.Values()
-//		}
-//		if _, ok := values[id[0]]; !ok {
-//			values[id[0]] = m.Values()
-//		}
-//	}
-//	return values
-//}
-
 func (mg *K8sManifestGroup) Values() map[string]interface{} {
 	values := map[string]interface{}{}
 

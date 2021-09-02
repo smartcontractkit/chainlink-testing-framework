@@ -48,6 +48,31 @@ func NewAdapterManifest() *K8sManifest {
 	}
 }
 
+// NewChainlinkManifest is the k8s manifest that when used will deploy a chainlink node to an environment
+func NewChainlinkManifest() *K8sManifest {
+	return &K8sManifest{
+		id:             "chainlink",
+		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/chainlink/chainlink-deployment.yml"),
+		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/chainlink/chainlink-service.yml"),
+
+		values: map[string]interface{}{
+			"webPort": ChainlinkWebPort,
+			"p2pPort": ChainlinkP2PPort,
+		},
+
+		Secret: &coreV1.Secret{
+			ObjectMeta: v1.ObjectMeta{
+				GenerateName: "chainlink-",
+			},
+			Type: "Opaque",
+			Data: map[string][]byte{
+				"apicredentials": []byte("notreal@fakeemail.ch\ntwochains"),
+				"node-password":  []byte("T.tLHkcmwePT/p,]sYuntjwHKAsrhm#4eRs4LuKHwvHejWYAC2JP4M8HimwgmbaZ"),
+			},
+		},
+	}
+}
+
 // NewPostgresManifest is the k8s manifest that when used will deploy a postgres db to an environment
 func NewPostgresManifest() *K8sManifest {
 	return &K8sManifest{
@@ -131,31 +156,6 @@ func NewExplorerManifest(nodeCount int) *K8sManifest {
 			manifest.values["secretKeys"] = &secretKeys
 
 			return nil
-		},
-	}
-}
-
-// NewChainlinkManifest is the k8s manifest that when used will deploy a chainlink node to an environment
-func NewChainlinkManifest() *K8sManifest {
-	return &K8sManifest{
-		id:             "chainlink",
-		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/chainlink/chainlink-deployment.yml"),
-		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/chainlink/chainlink-service.yml"),
-
-		values: map[string]interface{}{
-			"webPort": ChainlinkWebPort,
-			"p2pPort": ChainlinkP2PPort,
-		},
-
-		Secret: &coreV1.Secret{
-			ObjectMeta: v1.ObjectMeta{
-				GenerateName: "chainlink-",
-			},
-			Type: "Opaque",
-			Data: map[string][]byte{
-				"apicredentials": []byte("notreal@fakeemail.ch\ntwochains"),
-				"node-password":  []byte("T.tLHkcmwePT/p,]sYuntjwHKAsrhm#4eRs4LuKHwvHejWYAC2JP4M8HimwgmbaZ"),
-			},
 		},
 	}
 }
@@ -280,7 +280,7 @@ func NewChainlinkCluster(nodeCount int) K8sEnvSpecInit {
 
 // addDependencyGroup add everything that has no dependencies but other pods have
 // dependencies on in the first group
-func addDependencyGroup(postgresCount int, envName string, chainlinkGroup *K8sManifestGroup) K8sEnvSpecInit {
+func addDependencyGroup(nodeCount int, envName string, chainlinkGroup *K8sManifestGroup) K8sEnvSpecInit {
 	group := &K8sManifestGroup{
 		id:        "DependencyGroup",
 		manifests: []*K8sManifest{NewAdapterManifest()},
@@ -304,7 +304,7 @@ func addDependencyGroup(postgresCount int, envName string, chainlinkGroup *K8sMa
 			return nil
 		},
 	}
-	for i := 0; i < postgresCount; i++ {
+	for i := 0; i < nodeCount; i++ {
 		pManifest := NewPostgresManifest()
 		pManifest.id = fmt.Sprintf("%s-%d", pManifest.id, i)
 		group.manifests = append(group.manifests, pManifest)
@@ -316,7 +316,7 @@ func addDependencyGroup(postgresCount int, envName string, chainlinkGroup *K8sMa
 			group.manifests = append(
 				group.manifests,
 				NewGethManifest(),
-				NewExplorerManifest(postgresCount))
+				NewExplorerManifest(nodeCount))
 		case "Ethereum Hardhat":
 			group.manifests = append(
 				group.manifests,
@@ -328,7 +328,7 @@ func addDependencyGroup(postgresCount int, envName string, chainlinkGroup *K8sMa
 		default: // no simulated chain
 			group.manifests = append(
 				group.manifests,
-				NewExplorerManifest(postgresCount))
+				NewExplorerManifest(nodeCount))
 		}
 		if len(chainlinkGroup.manifests) > 0 {
 			return envName, K8sEnvSpecs{group, chainlinkGroup}
