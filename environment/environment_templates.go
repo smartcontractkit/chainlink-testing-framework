@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/google/go-github/github"
@@ -188,7 +189,7 @@ func NewGanacheManifest() *K8sManifest {
 func NewChainlinkCluster(nodeCount int) K8sEnvSpecInit {
 	chainlinkGroup := &K8sManifestGroup{
 		id:        "chainlinkCluster",
-		manifests: []*K8sManifest{},
+		manifests: []K8sEnvResource{},
 	}
 	for i := 0; i < nodeCount; i++ {
 		cManifest := NewChainlinkManifest()
@@ -223,7 +224,7 @@ func NewMixedVersionChainlinkCluster(nodeCount, pastVersionsCount int) K8sEnvSpe
 
 	chainlinkGroup := &K8sManifestGroup{
 		id:        "chainlinkCluster",
-		manifests: []*K8sManifest{},
+		manifests: []K8sEnvResource{},
 	}
 	for i := 0; i < nodeCount; i++ {
 		cManifest := NewChainlinkManifest()
@@ -234,6 +235,29 @@ func NewMixedVersionChainlinkCluster(nodeCount, pastVersionsCount int) K8sEnvSpe
 	}
 
 	return addDependencyGroup(nodeCount, "mixed-version-chainlink", chainlinkGroup)
+}
+
+// NewGethReorgHelmChart creates new helm chart for multi-node Geth network
+func NewGethReorgHelmChart() *HelmChart {
+	return &HelmChart{
+		id:          "evm",
+		chartPath:   filepath.Join(tools.ProjectRoot, "environment/charts/geth-reorg"),
+		releaseName: "reorg-1",
+		SetValuesHelmFunc: func(k *HelmChart) error {
+			details, err := k.ServiceDetails()
+			if err != nil {
+				return err
+			}
+			for _, d := range details {
+				if d.RemoteURL.Port() == strconv.Itoa(EVMRPCPort) {
+					k.values["clusterURL"] = strings.Replace(d.RemoteURL.String(), "http", "ws", -1)
+					k.values["localURL"] = strings.Replace(d.LocalURL.String(), "http", "ws", -1)
+				}
+			}
+			k.values["rpcPort"] = EVMRPCPort
+			return nil
+		},
+	}
 }
 
 // Queries github for the latest major release versions
@@ -260,7 +284,7 @@ func getMixedVersions(versionCount int) ([]string, error) {
 func addDependencyGroup(postgresCount int, envName string, chainlinkGroup *K8sManifestGroup) K8sEnvSpecInit {
 	group := &K8sManifestGroup{
 		id:        "DependencyGroup",
-		manifests: []*K8sManifest{NewAdapterManifest()},
+		manifests: []K8sEnvResource{NewAdapterManifest()},
 	}
 	for i := 0; i < postgresCount; i++ {
 		pManifest := NewPostgresManifest()
@@ -270,6 +294,11 @@ func addDependencyGroup(postgresCount int, envName string, chainlinkGroup *K8sMa
 
 	return func(config *config.NetworkConfig) (string, K8sEnvSpecs) {
 		switch config.Name {
+		case "Ethereum Geth reorg":
+			group.manifests = append(
+				group.manifests,
+				NewGethReorgHelmChart(),
+			)
 		case "Ethereum Geth dev":
 			group.manifests = append(
 				group.manifests,

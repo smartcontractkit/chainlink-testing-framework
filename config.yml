@@ -93,6 +93,18 @@ networks:
         minimum_confirmations: 1
         gas_estimation_buffer: 0
         block_gas_limit: 400000000000000
+    ethereum_geth_reorg:
+        name: "Ethereum Geth reorg"
+        chain_id: 1337
+        type: evm
+        <<: *secret_private_keys_default
+        <<: *namespace_for_secret_default
+        <<: *private_keys
+        transaction_limit: 9500000
+        transaction_timeout: 30s
+        minimum_confirmations: 1
+        gas_estimation_buffer: 0
+        block_gas_limit: 400000000000000
     ethereum_hardhat:
         name: "Ethereum Hardhat"
         chain_id: 1337
@@ -156,7 +168,7 @@ networks:
         minimum_confirmations: 1
         gas_estimation_buffer: 1000000
 retry:
-    attempts: 20
+    attempts: 30
     linear_delay: 1s
 
 kubernetes:

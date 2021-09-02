@@ -3,6 +3,7 @@ package environment
 import (
 	"fmt"
 	"github.com/rs/zerolog/log"
+	"github.com/smartcontractkit/integrations-framework/chaos"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/config"
 	"net/http"
@@ -18,6 +19,9 @@ type Environment interface {
 	GetPrivateKeyFromSecret(namespace string, privateKey string) (string, error)
 
 	WriteArtifacts(testLogFolder string)
+	ApplyChaos(exp chaos.Experimentable) (string, error)
+	StopChaos(name string) error
+	StopAllChaos() error
 	TearDown()
 }
 
@@ -135,7 +139,9 @@ func GetExternalAdapter(env Environment) (ExternalAdapter, error) {
 func NewBlockchainClient(env Environment, network client.BlockchainNetwork) (client.BlockchainClient, error) {
 	sd, err := env.GetServiceDetails(EVMRPCPort)
 	if err == nil {
-		network.SetURL(fmt.Sprintf("ws://%s", sd.LocalURL.Host))
+		url := fmt.Sprintf("ws://%s", sd.LocalURL.Host)
+		log.Debug().Str("URL", url).Msg("Selecting network")
+		network.SetURL(url)
 	}
 
 	network.Config().PrivateKeyStore, err = NewPrivateKeyStoreFromEnv(env, network.Config())

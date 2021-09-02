@@ -1,9 +1,8 @@
 package client
 
 import (
-	"bytes"
 	"fmt"
-	"text/template"
+	"github.com/smartcontractkit/integrations-framework/tools"
 	"time"
 )
 
@@ -230,20 +229,6 @@ type JobSpec interface {
 	String() (string, error)
 }
 
-// Helper to marshall templates of job specs
-func marshallTemplate(jobSpec interface{}, name, templateString string) (string, error) {
-	var buf bytes.Buffer
-	tmpl, err := template.New(name).Parse(templateString)
-	if err != nil {
-		return "", err
-	}
-	err = tmpl.Execute(&buf, jobSpec)
-	if err != nil {
-		return "", err
-	}
-	return buf.String(), err
-}
-
 // CronJobSpec represents a cron job spec
 type CronJobSpec struct {
 	Schedule          string `toml:"schedule"`          // CRON job style schedule string
@@ -258,7 +243,7 @@ schedule          = "{{.Schedule}}"
 observationSource = """
 {{.ObservationSource}}
 """`
-	return marshallTemplate(c, "CRON Job", cronJobTemplateString)
+	return tools.MarshallTemplate(c, "CRON Job", cronJobTemplateString)
 }
 
 // PipelineSpec common API call pipeline
@@ -276,7 +261,7 @@ func (d *PipelineSpec) String() (string, error) {
 		fetch [type=bridge name="{{.BridgeTypeAttributes.Name}}" requestData="{{.BridgeTypeAttributes.RequestData}}"];
 		parse [type=jsonparse path="{{.DataPath}}"];
 		fetch -> parse;`
-	return marshallTemplate(d, "API call pipeline template", sourceString)
+	return tools.MarshallTemplate(d, "API call pipeline template", sourceString)
 }
 
 // VRFTxPipelineSpec VRF request with tx callback
@@ -306,7 +291,7 @@ submit_tx  [type=ethtx to="{{.Address}}"
             data="$(encode_tx)"
             txMeta="{\\"requestTxHash\\": $(jobRun.logTxHash),\\"requestID\\": $(decode_log.requestID),\\"jobID\\": $(jobSpec.databaseID)}"]
 decode_log->vrf->encode_tx->submit_tx`
-	return marshallTemplate(d, "VRF pipeline template", sourceString)
+	return tools.MarshallTemplate(d, "VRF pipeline template", sourceString)
 }
 
 // DirectRequestTxPipelineSpec oracle request with tx callback
@@ -336,7 +321,7 @@ func (d *DirectRequestTxPipelineSpec) String() (string, error) {
 			parse  [type=jsonparse path="{{.DataPath}}"]
             submit [type=ethtx to="$(decode_log.requester)" data="$(encode_tx)"]
 			decode_log -> fetch -> parse -> encode_tx -> submit`
-	return marshallTemplate(d, "Direct request pipeline template", sourceString)
+	return tools.MarshallTemplate(d, "Direct request pipeline template", sourceString)
 }
 
 // DirectRequestJobSpec represents a direct request spec
@@ -358,7 +343,7 @@ externalJobID     = "{{.ExternalJobID}}"
 observationSource = """
 {{.ObservationSource}}
 """`
-	return marshallTemplate(d, "Direct Request Job", directRequestTemplateString)
+	return tools.MarshallTemplate(d, "Direct Request Job", directRequestTemplateString)
 }
 
 // FluxMonitorJobSpec represents a flux monitor spec
@@ -397,7 +382,7 @@ maxTaskDuration = {{if not .Precision}} "180s" {{else}} {{.Precision}} {{end}}
 observationSource = """
 {{.ObservationSource}}
 """`
-	return marshallTemplate(f, "Flux Monitor Job", fluxMonitorTemplateString)
+	return tools.MarshallTemplate(f, "Flux Monitor Job", fluxMonitorTemplateString)
 }
 
 // KeeperJobSpec represents a keeper spec
@@ -414,7 +399,7 @@ schemaVersion   = 1
 name            = "{{.Name}}"
 contractAddress = "{{.ContractAddress}}"
 fromAddress     = "{{.FromAddress}}"`
-	return marshallTemplate(k, "Keeper Job", keeperTemplateString)
+	return tools.MarshallTemplate(k, "Keeper Job", keeperTemplateString)
 }
 
 // OCRBootstrapJobSpec represents the spec for bootstrapping an OCR job, given to one node that then must be linked
@@ -451,7 +436,7 @@ p2pBootstrapPeers                      = []
 {{end}}
 isBootstrapPeer                        = {{.IsBootstrapPeer}}
 p2pPeerID                              = "{{.P2PPeerID}}"`
-	return marshallTemplate(o, "OCR Bootstrap Job", ocrTemplateString)
+	return tools.MarshallTemplate(o, "OCR Bootstrap Job", ocrTemplateString)
 }
 
 // OCRTaskJobSpec represents an OCR job that is given to other nodes, meant to communicate with the bootstrap node,
@@ -545,7 +530,7 @@ observationSource                      = """
 {{.ObservationSource}}
 """`
 
-	return marshallTemplate(specWrap, "OCR Job", ocrTemplateString)
+	return tools.MarshallTemplate(specWrap, "OCR Job", ocrTemplateString)
 }
 
 // VRFJobSpec represents a VRF job
@@ -571,7 +556,7 @@ observationSource = """
 {{.ObservationSource}}
 """
 `
-	return marshallTemplate(v, "VRF Job", vrfTemplateString)
+	return tools.MarshallTemplate(v, "VRF Job", vrfTemplateString)
 }
 
 // WebhookJobSpec reprsents a webhook job
@@ -586,7 +571,7 @@ schemaVersion      = 1
 observationSource = """
 {{.ObservationSource}}
 """`
-	return marshallTemplate(w, "Webhook Job", webHookTemplateString)
+	return tools.MarshallTemplate(w, "Webhook Job", webHookTemplateString)
 }
 
 // ObservationSourceSpecHTTP creates a http GET task spec for json data

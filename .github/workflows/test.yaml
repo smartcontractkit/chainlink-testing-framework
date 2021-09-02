@@ -35,6 +35,7 @@ jobs:
       - name: Download Go Vendor Packages
         run: go mod download
       - name: Run Tests
+        # Don't want to run performance every PR and push.
         run: |
           export PATH=$PATH:$(go env GOPATH)/bin
           ginkgo -r -p -keepGoing --trace --randomizeAllSpecs --progress --succinct -skipPackage=./suite/performance ./...
