@@ -62,13 +62,15 @@ func DefaultLocalSetup(
 	if err != nil {
 		return nil, err
 	}
+	if err := contracts.AwaitMining(blockchainClient); err != nil {
+		return nil, err
+	}
 	link, err := contractDeployer.DeployLinkTokenContract(wallets.Default())
 	if err != nil {
 		return nil, err
 	}
 	// configure default retry
 	retry.DefaultAttempts = conf.Retry.Attempts
-	// linear waiting
 	retry.DefaultDelayType = func(n uint, err error, config *retry.Config) time.Duration {
 		return conf.Retry.LinearDelay
 	}

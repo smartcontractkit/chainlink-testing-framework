@@ -1,0 +1,4 @@
+apiVersion: v1
+description: Geth private network for reorg tests
+name: ethereum
+version: 0.0.1
