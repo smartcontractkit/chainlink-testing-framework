@@ -54,6 +54,7 @@ type K8sEnvSpecInit func(*config.NetworkConfig) (string, K8sEnvSpecs)
 // a single manifest, whereas K8sManifestGroup bundles several K8sManifests to be deployed concurrently.
 type K8sEnvResource interface {
 	ID() string
+	GetConfig() *config.Config
 	SetEnvironment(
 		k8sClient *kubernetes.Clientset,
 		k8sConfig *rest.Config,
@@ -65,6 +66,7 @@ type K8sEnvResource interface {
 	Deploy(values map[string]interface{}) error
 	WaitUntilHealthy() error
 	ServiceDetails() ([]*ServiceDetails, error)
+	SetValue(key string, val interface{})
 	Values() map[string]interface{}
 	Teardown() error
 }
@@ -471,6 +473,14 @@ func (m *K8sManifest) ID() string {
 	return m.id
 }
 
+func (m *K8sManifest) SetValue(key string, val interface{}) {
+	m.values[key] = val
+}
+
+func (m *K8sManifest) GetConfig() *config.Config {
+	return m.config
+}
+
 // Deploy will create the definitions for each manifest on the k8s cluster
 func (m *K8sManifest) Deploy(values map[string]interface{}) error {
 	if err := m.createConfigMap(values); err != nil {
@@ -523,7 +533,7 @@ func (m *K8sManifest) WaitUntilHealthy() error {
 	}
 
 	for _, p := range pods.Items {
-		ports, err := m.forwardPodPorts(&p)
+		ports, err := forwardPodPorts(&p, m.k8sConfig, m.namespace.Name, m.stopChannels)
 		if err != nil {
 			return fmt.Errorf("unable to forward ports: %v", err)
 		}
@@ -912,14 +922,14 @@ func (m *K8sManifest) parse(path string, obj interface{}, data interface{}) erro
 	return nil
 }
 
-func (m *K8sManifest) forwardPodPorts(pod *coreV1.Pod) ([]portforward.ForwardedPort, error) {
-	roundTripper, upgrader, err := spdy.RoundTripperFor(m.k8sConfig)
+func forwardPodPorts(pod *coreV1.Pod, k8sConfig *rest.Config, nsName string, stopChans []chan struct{}) ([]portforward.ForwardedPort, error) {
+	roundTripper, upgrader, err := spdy.RoundTripperFor(k8sConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	path := fmt.Sprintf("/api/v1/namespaces/%s/pods/%s/portforward", m.namespace.Name, pod.Name)
-	hostIP := strings.TrimLeft(m.k8sConfig.Host, "htps:/")
+	path := fmt.Sprintf("/api/v1/namespaces/%s/pods/%s/portforward", nsName, pod.Name)
+	hostIP := strings.TrimLeft(k8sConfig.Host, "htps:/")
 	serverURL := url.URL{Scheme: "https", Path: path, Host: hostIP}
 
 	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: roundTripper}, http.MethodPost, &serverURL)
@@ -959,7 +969,8 @@ func (m *K8sManifest) forwardPodPorts(pod *coreV1.Pod) ([]portforward.ForwardedP
 		log.Debug().Str("Pod", pod.Name).Msgf("%s", msg)
 	}
 
-	m.stopChannels = append(m.stopChannels, stopChan)
+	//nolint
+	stopChans = append(stopChans, stopChan)
 
 	return forwarder.GetPorts()
 }
@@ -973,7 +984,7 @@ func (m *K8sManifest) forwardPodPorts(pod *coreV1.Pod) ([]portforward.ForwardedP
 // as Chainlink definition needs to know the cluster IP of the deployment for it to boot.
 type K8sManifestGroup struct {
 	id            string
-	manifests     []*K8sManifest
+	manifests     []K8sEnvResource
 	SetValuesFunc manifestGroupSetValuesFunc
 	values        map[string]interface{}
 }
@@ -981,6 +992,13 @@ type K8sManifestGroup struct {
 // ID returns the identifier of the manifest group
 func (mg *K8sManifestGroup) ID() string {
 	return mg.id
+}
+
+func (mg *K8sManifestGroup) SetValue(key string, val interface{}) {
+}
+
+func (mg *K8sManifestGroup) GetConfig() *config.Config {
+	return nil
 }
 
 // SetEnvironment initiates the k8s cluster and config within all the nested manifests
@@ -1005,15 +1023,15 @@ func (mg *K8sManifestGroup) Deploy(values map[string]interface{}) error {
 	var errGroup error
 	wg := mg.waitGroup()
 
-	originalImage := mg.manifests[0].config.Apps.Chainlink.Image
-	originalVersion := mg.manifests[0].config.Apps.Chainlink.Version
+	originalImage := mg.manifests[0].GetConfig().Apps.Chainlink.Image
+	originalVersion := mg.manifests[0].GetConfig().Apps.Chainlink.Version
 	// Deploy manifests
 	for i := 0; i < len(mg.manifests); i++ {
 		m := mg.manifests[i]
-		if manifestImage, ok := m.values["image"]; ok { // Check if manifest has specified image
+		if manifestImage, ok := m.Values()["image"]; ok { // Check if manifest has specified image
 			if manifestImage == "" { // Blank means the default from the config file
-				m.values["image"] = originalImage
-				m.values["version"] = originalVersion
+				m.SetValue("image", originalImage)
+				m.SetValue("version", originalVersion)
 			}
 		}
 
@@ -1035,9 +1053,9 @@ func (mg *K8sManifestGroup) Deploy(values map[string]interface{}) error {
 func (mg *K8sManifestGroup) WaitUntilHealthy() error {
 	var errGroup error
 
-	idMap := map[string]*K8sManifest{}
+	idMap := map[string]K8sEnvResource{}
 	for _, manifest := range mg.manifests {
-		idMap[manifest.id] = manifest
+		idMap[manifest.ID()] = manifest
 	}
 	wg := sync.WaitGroup{}
 	wg.Add(len(idMap))
@@ -1101,7 +1119,7 @@ func (mg *K8sManifestGroup) Values() map[string]interface{} {
 	}
 
 	for _, m := range mg.manifests {
-		id := strings.Split(m.id, "-")
+		id := strings.Split(m.ID(), "-")
 		if len(id) > 1 {
 			values[strings.Join(id, "_")] = m.Values()
 		}

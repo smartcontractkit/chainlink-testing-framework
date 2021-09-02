@@ -1,0 +1,156 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "ethereum.fullname" . }}-geth-miner-deployment
+  labels:
+    app: {{ template "ethereum.name" . }}-geth-miner-deployment
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.geth.miner.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "ethereum.name" . }}-geth-miner
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "ethereum.name" . }}-geth-miner
+        release: {{ .Release.Name }}
+    spec:
+      containers:
+      - name: geth-miner
+        image: {{ .Values.geth.image.repository }}:{{ .Values.geth.image.tag }}
+        imagePullPolicy: {{ .Values.imagePullPolicy }}
+        command: ["/bin/sh"]
+        args: 
+        - "-c"
+        - "geth --syncmode fast --gcmode archive --fakepow --bootnodes=`cat /root/.ethereum/bootnodes` --mine --miner.threads 1 --miner.gasprice 1 --miner.gastarget 400000000000000 --miner.gaslimit 400000000000000 --miner.noverify --miner.etherbase 0 --networkid=${NETWORK_ID} --password /root/.ethereum/keystore/password.txt --verbosity=5"
+        env:
+        - name: NETWORK_ID
+          valueFrom:
+            configMapKeyRef:
+              name: {{ template "ethereum.fullname" . }}-geth-config
+              key: networkid
+        ports:
+        - name: discovery-udp
+          containerPort: 30303
+          protocol: UDP
+        - name: discovery-tcp
+          containerPort: 30303
+        volumeMounts:
+        - name: data
+          mountPath: /root/.ethereum
+        - name: config
+          mountPath: /root/.ethereum/keystore/key1
+          subPath: key1
+        - name: config
+          mountPath: /root/.ethereum/keystore/key2
+          subPath: key2
+        - name: config
+          mountPath: /root/.ethereum/keystore/key3
+          subPath: key3
+        - name: config
+          mountPath: /root/.ethereum/keystore/key4
+          subPath: key4
+        - name: config
+          mountPath: /root/.ethereum/keystore/key5
+          subPath: key5
+        - name: config
+          mountPath: /root/.ethereum/keystore/key6
+          subPath: key6
+        - name: config
+          mountPath: /root/.ethereum/keystore/key7
+          subPath: key7
+        - name: config
+          mountPath: /root/.ethereum/keystore/key8
+          subPath: key8
+        - name: config
+          mountPath: /root/.ethereum/keystore/key9
+          subPath: key9
+        - name: config
+          mountPath: /root/.ethereum/keystore/key10
+          subPath: key10
+        - name: config
+          mountPath: /root/.ethereum/keystore/key11
+          subPath: key11
+        - name: config
+          mountPath: /root/.ethereum/keystore/key12
+          subPath: key12
+        - name: config
+          mountPath: /root/.ethereum/keystore/key13
+          subPath: key13
+        - name: config
+          mountPath: /root/.ethereum/keystore/key14
+          subPath: key14
+        - name: config
+          mountPath: /root/.ethereum/keystore/key15
+          subPath: key15
+        - name: config
+          mountPath: /root/.ethereum/keystore/key16
+          subPath: key16
+        - name: config
+          mountPath: /root/.ethereum/keystore/key17
+          subPath: key17
+        - name: config
+          mountPath: /root/.ethereum/keystore/key18
+          subPath: key18
+        - name: config
+          mountPath: /root/.ethereum/keystore/key19
+          subPath: key19
+        - name: config
+          mountPath: /root/.ethereum/keystore/key20
+          subPath: key20
+        - name: config
+          mountPath: /root/.ethereum/keystore/password.txt
+          subPath: password.txt
+      initContainers:
+      - name: init-genesis
+        image: {{ .Values.geth.image.repository }}:{{ .Values.geth.image.tag }}
+        imagePullPolicy: {{ .Values.imagePullPolicy }}
+        args:
+        - "init"
+        - "/var/geth/genesis.json"
+        volumeMounts:
+        - name: data
+          mountPath: /root/.ethereum
+        - name: config
+          mountPath: /var/geth
+      - name: get-bootnodes
+        image: {{ .Values.geth.image.repository }}:{{ .Values.geth.image.tag }}
+        imagePullPolicy: {{ .Values.imagePullPolicy }}
+        command: ["/bin/sh"]
+        args:
+        - "-c"
+        - |-
+          apk add --no-cache curl; 
+          CNT=0;
+          echo "retreiving bootnodes from $BOOTNODE_REGISTRAR_SVC"
+          while [ $CNT -le 90 ] 
+          do
+            curl -m 5 -s $BOOTNODE_REGISTRAR_SVC | xargs echo -n >> /geth/bootnodes;
+            if [ -s /geth/bootnodes ] 
+            then
+              cat /geth/bootnodes;
+              exit 0;
+            fi;
+
+            echo "no bootnodes found. retrying $CNT..."; 
+            sleep 2 || break;
+            CNT=$((CNT+1));
+          done;
+          echo "WARNING. unable to find bootnodes. continuing but geth may not be able to find any peers.";
+          exit 0;
+        env:
+        - name: BOOTNODE_REGISTRAR_SVC
+          value: {{ template "ethereum.fullname" . }}-bootnode-registrar-service.{{ .Release.Namespace }}
+        volumeMounts:
+        - name: data
+          mountPath: /geth
+      volumes:
+      - name: data
+        emptyDir: {}
+      - name: config 
+        configMap:
+          name: {{ template "ethereum.fullname" . }}-geth-config

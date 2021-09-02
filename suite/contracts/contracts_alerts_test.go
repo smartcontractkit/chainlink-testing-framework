@@ -11,7 +11,7 @@ import (
 	//"math/big"
 )
 
-var _ = FDescribe("Alerts suite", func() {
+var _ = Describe("Alerts suite", func() {
 	var (
 		suiteSetup *actions.DefaultSuiteSetup
 		adapter    environment.ExternalAdapter

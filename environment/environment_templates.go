@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/rs/zerolog/log"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/google/go-github/github"
@@ -207,6 +208,21 @@ func NewGanacheManifest() *K8sManifest {
 	}
 }
 
+// NewChainlinkCluster is a basic environment that deploys hardhat with a chainlink cluster and an external adapter
+func NewChainlinkCluster(nodeCount int) K8sEnvSpecInit {
+	chainlinkGroup := &K8sManifestGroup{
+		id:        "chainlinkCluster",
+		manifests: []K8sEnvResource{},
+	}
+	for i := 0; i < nodeCount; i++ {
+		cManifest := NewChainlinkManifest()
+		cManifest.id = fmt.Sprintf("%s-%d", cManifest.id, i)
+		chainlinkGroup.manifests = append(chainlinkGroup.manifests, cManifest)
+	}
+
+	return addDependencyGroup(nodeCount, "basic-chainlink", chainlinkGroup)
+}
+
 // NewMixedVersionChainlinkCluster mixes the currently latest chainlink version (as defined by the config file) with
 // a number of past stable versions (defined by pastVersionsCount), ensuring that at least one of each is deployed
 func NewMixedVersionChainlinkCluster(nodeCount, pastVersionsCount int) K8sEnvSpecInit {
@@ -231,7 +247,7 @@ func NewMixedVersionChainlinkCluster(nodeCount, pastVersionsCount int) K8sEnvSpe
 
 	chainlinkGroup := &K8sManifestGroup{
 		id:        "chainlinkCluster",
-		manifests: []*K8sManifest{},
+		manifests: []K8sEnvResource{},
 	}
 	for i := 0; i < nodeCount; i++ {
 		cManifest := NewChainlinkManifest()
@@ -242,6 +258,29 @@ func NewMixedVersionChainlinkCluster(nodeCount, pastVersionsCount int) K8sEnvSpe
 	}
 
 	return addDependencyGroup(nodeCount, "mixed-version-chainlink", chainlinkGroup)
+}
+
+// NewGethReorgHelmChart creates new helm chart for multi-node Geth network
+func NewGethReorgHelmChart() *HelmChart {
+	return &HelmChart{
+		id:          "evm",
+		chartPath:   filepath.Join(tools.ProjectRoot, "environment/charts/geth-reorg"),
+		releaseName: "reorg-1",
+		SetValuesHelmFunc: func(k *HelmChart) error {
+			details, err := k.ServiceDetails()
+			if err != nil {
+				return err
+			}
+			for _, d := range details {
+				if d.RemoteURL.Port() == strconv.Itoa(EVMRPCPort) {
+					k.values["clusterURL"] = strings.Replace(d.RemoteURL.String(), "http", "ws", -1)
+					k.values["localURL"] = strings.Replace(d.LocalURL.String(), "http", "ws", -1)
+				}
+			}
+			k.values["rpcPort"] = EVMRPCPort
+			return nil
+		},
+	}
 }
 
 // Queries github for the latest major release versions
@@ -263,39 +302,19 @@ func getMixedVersions(versionCount int) ([]string, error) {
 	return mixedVersions, nil
 }
 
-// NewChainlinkCluster is a basic environment that deploys hardhat with a chainlink cluster and an external adapter
-func NewChainlinkCluster(nodeCount int) K8sEnvSpecInit {
-	chainlinkGroup := &K8sManifestGroup{
-		id:        "chainlinkCluster",
-		manifests: []*K8sManifest{},
-	}
-	for i := 0; i < nodeCount; i++ {
-		cManifest := NewChainlinkManifest()
-		cManifest.id = fmt.Sprintf("%s-%d", cManifest.id, i)
-		chainlinkGroup.manifests = append(chainlinkGroup.manifests, cManifest)
-	}
-
-	return addDependencyGroup(nodeCount, "basic-chainlink", chainlinkGroup)
-}
-
 // addDependencyGroup add everything that has no dependencies but other pods have
 // dependencies on in the first group
 func addDependencyGroup(nodeCount int, envName string, chainlinkGroup *K8sManifestGroup) K8sEnvSpecInit {
 	group := &K8sManifestGroup{
 		id:        "DependencyGroup",
-		manifests: []*K8sManifest{NewAdapterManifest()},
+		manifests: []K8sEnvResource{NewAdapterManifest()},
 
 		SetValuesFunc: func(mg *K8sManifestGroup) error {
 			postgresURLs := TemplateValuesArray{}
 
 			for _, manifest := range mg.manifests {
-				if strings.Contains(manifest.id, "postgres") {
-					postgresURLs.Values = append(postgresURLs.Values,
-						fmt.Sprintf(
-							"postgresql://postgres:node@%s:%d",
-							manifest.Service.Spec.ClusterIP,
-							manifest.Service.Spec.Ports[0].Port,
-						))
+				if strings.Contains(manifest.ID(), "postgres") {
+					postgresURLs.Values = append(postgresURLs.Values, manifest.Values()["clusterURL"])
 				}
 			}
 
@@ -312,6 +331,11 @@ func addDependencyGroup(nodeCount int, envName string, chainlinkGroup *K8sManife
 
 	return func(config *config.NetworkConfig) (string, K8sEnvSpecs) {
 		switch config.Name {
+		case "Ethereum Geth reorg":
+			group.manifests = append(
+				group.manifests,
+				NewGethReorgHelmChart(),
+			)
 		case "Ethereum Geth dev":
 			group.manifests = append(
 				group.manifests,

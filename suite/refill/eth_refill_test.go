@@ -147,7 +147,7 @@ var _ = Describe("FluxAggregator ETH Refill @refill", func() {
 			err = s.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 
-			fluxRound := contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(3), fluxRoundTimeout)
+			fluxRound := contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(2), fluxRoundTimeout)
 			s.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRound)
 			err = s.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
