@@ -1,0 +1,15 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: DNSChaos
+metadata:
+  name: {{ .Base.Name }}
+  namespace: {{ .Base.Namespace }}
+spec:
+  action: error
+  mode: all
+  patterns:
+    {{range .Patterns}}- {{ . }}
+    {{end}}
+  selector:
+    namespaces:
+      - {{ .Base.Namespace }}
+  duration: {{ .Duration }}

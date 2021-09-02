@@ -3,6 +3,7 @@ package environment
 import (
 	"fmt"
 	"github.com/rs/zerolog/log"
+	"github.com/smartcontractkit/integrations-framework/chaos"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/config"
 	"net/http"
@@ -18,6 +19,9 @@ type Environment interface {
 	GetPrivateKeyFromSecret(namespace string, privateKey string) (string, error)
 
 	WriteArtifacts(testLogFolder string)
+	ApplyChaos(exp chaos.Experimentable) (string, error)
+	StopChaos(name string) error
+	StopAllChaos() error
 	TearDown()
 }
 

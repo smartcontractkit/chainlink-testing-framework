@@ -5,8 +5,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/pkg/errors"
-
 	//"golang.org/x/crypto/ssh/terminal"
+	"github.com/smartcontractkit/integrations-framework/chaos"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -82,10 +82,11 @@ type K8sEnvironment struct {
 	// Environment resources
 	config  *config.Config
 	network client.BlockchainNetwork
+	chaos   *chaos.Controller
 }
 
 func NewBasicK8SEnvironment(cfg *config.Config, network client.BlockchainNetwork) (*K8sEnvironment, error) {
-	k8sConfig, err := k8sConfig()
+	k8sConfig, err := K8sConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -111,8 +112,78 @@ func NewBasicK8SEnvironment(cfg *config.Config, network client.BlockchainNetwork
 	}
 	env.namespace = namespace
 
+	cc, err := chaos.NewController(&chaos.Config{
+		Client:    k8sClient,
+		Namespace: namespace.Name,
+	})
+	if err != nil {
+		return nil, err
+	}
+	env.chaos = cc
+
 	return env, nil
 }
+
+//// NewK8sEnvironment creates and deploys a full ephemeral environment in a k8s cluster. Your current context within
+//// your kube config will always be used.
+//func NewK8sEnvironment(
+//	init K8sEnvSpecInit,
+//	cfg *config.Config,
+//	network client.BlockchainNetwork,
+//) (Environment, error) {
+//	k8sConfig, err := K8sConfig()
+//	if err != nil {
+//		return nil, err
+//	}
+//	k8sConfig.QPS = cfg.Kubernetes.QPS
+//	k8sConfig.Burst = cfg.Kubernetes.Burst
+//	k8sClient, err := kubernetes.NewForConfig(k8sConfig)
+//	if err != nil {
+//		return nil, err
+//	}
+//	env := &K8sEnvironment{
+//		k8sClient: k8sClient,
+//		k8sConfig: k8sConfig,
+//		config:    cfg,
+//		network:   network,
+//	}
+//	log.Info().Str("Host", k8sConfig.Host).Msg("Using Kubernetes cluster")
+//	environmentName, deployables := init(network.Config())
+//	namespace, err := env.createNamespace(environmentName)
+//	if err != nil {
+//		return nil, err
+//	}
+//	env.namespace = namespace
+//	env.specs = deployables
+//	cc, err := chaos.NewController(&chaos.Config{
+//		Client:    k8sClient,
+//		Namespace: namespace.Name,
+//	})
+//	if err != nil {
+//		return nil, err
+//	}
+//	env.chaos = cc
+//
+//	ctx, ctxCancel := context.WithTimeout(context.Background(), env.config.Kubernetes.DeploymentTimeout)
+//	defer ctxCancel()
+//
+//	errChan := make(chan error)
+//	go env.deploySpecs(errChan)
+//deploymentLoop:
+//	for {
+//		select {
+//		case err, open := <-errChan:
+//			if err != nil {
+//				return nil, err
+//			} else if !open {
+//				break deploymentLoop
+//			}
+//		case <-ctx.Done():
+//			return nil, fmt.Errorf("error while waiting for deployment: %v", ctx.Err())
+//		}
+//	}
+//	return env, err
+//}
 
 func NewChainlinkEnvironment(
 	chainlinkGroupInit K8sChainlinkGroupsInit,
@@ -243,6 +314,31 @@ func (env K8sEnvironment) WriteArtifacts(testLogFolder string) {
 	}
 }
 
+// ApplyChaos applies chaos experiment in the env namespace
+func (env K8sEnvironment) ApplyChaos(exp chaos.Experimentable) (string, error) {
+	name, err := env.chaos.Run(exp)
+	if err != nil {
+		return name, err
+	}
+	return name, nil
+}
+
+// StopChaos stops experiment by name
+func (env K8sEnvironment) StopChaos(name string) error {
+	if err := env.chaos.Stop(name); err != nil {
+		return err
+	}
+	return nil
+}
+
+// StopAllChaos stops all chaos experiments
+func (env K8sEnvironment) StopAllChaos() error {
+	if err := env.chaos.StopAll(); err != nil {
+		return err
+	}
+	return nil
+}
+
 // TearDown cycles through all the specifications and tears down the deployments. This typically entails cleaning
 // up port forwarding requests and deleting the namespace that then destroys all definitions.
 func (env K8sEnvironment) TearDown() {
@@ -357,11 +453,10 @@ func writeLogsForPod(podsClient v1.PodInterface, pod coreV1.Pod, podFolder strin
 	return nil
 }
 
-func (env *K8sEnvironment) deploySpecsConcurrently(specs K8sEnvSpecs, values map[string]interface{}) error{
+func (env *K8sEnvironment) deploySpecsConcurrently(specs K8sEnvSpecs, values map[string]interface{}) error {
 	var errGroup error
 	wg := sync.WaitGroup{}
 	wg.Add(len(specs))
-
 
 	for _, spec := range specs {
 		go func(spec K8sEnvResource, values map[string]interface{}) {
@@ -1115,7 +1210,8 @@ func (mg *K8sManifestGroup) waitGroup() *sync.WaitGroup {
 	return &wg
 }
 
-func k8sConfig() (*rest.Config, error) {
+// K8sConfig loads new default k8s config from filesystem
+func K8sConfig() (*rest.Config, error) {
 	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
 	kubeConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, &clientcmd.ConfigOverrides{})
 	return kubeConfig.ClientConfig()
