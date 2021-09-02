@@ -37,7 +37,7 @@ jobs:
       - name: Run Tests
         run: |
           export PATH=$PATH:$(go env GOPATH)/bin
-          ginkgo -r -p -keepGoing --trace --randomizeAllSpecs --progress --succinct ./...
+          ginkgo -r -p -keepGoing --trace --randomizeAllSpecs --progress --succinct -skipPackage=./suite/performance ./...
       - name: Publish Test Results
         uses: mikepenz/action-junit-report@v2
         if: always()
