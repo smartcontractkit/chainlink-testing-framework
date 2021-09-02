@@ -357,35 +357,6 @@ func writeLogsForPod(podsClient v1.PodInterface, pod coreV1.Pod, podFolder strin
 	return nil
 }
 
-func (env *K8sEnvironment) deploySpecs(errChan chan<- error) {
-	values := map[string]interface{}{}
-	for i := 0; i < len(env.specs); i++ {
-		spec := env.specs[i]
-		if err := spec.SetEnvironment(
-			env.k8sClient,
-			env.k8sConfig,
-			env.config,
-			env.network.Config(),
-			env.namespace,
-		); err != nil {
-			errChan <- err
-			return
-		}
-		values[spec.ID()] = spec.Values()
-		if err := spec.Deploy(values); err != nil {
-			errChan <- err
-			return
-		}
-		if err := spec.WaitUntilHealthy(); err != nil {
-			errChan <- err
-			return
-		}
-		values[spec.ID()] = spec.Values()
-	}
-	close(errChan)
-}
-
-
 func (env *K8sEnvironment) deploySpecsConcurrently(specs K8sEnvSpecs, values map[string]interface{}) error{
 	var errGroup error
 	wg := sync.WaitGroup{}
@@ -660,6 +631,9 @@ func (m *K8sManifest) ExecuteInPod(podName string, containerName string, command
 
 	v1Interface := m.k8sClient.CoreV1()
 	pods, err := v1Interface.Pods(m.namespace.Name).List(context.Background(), listOptions)
+	if err != nil {
+		return []byte{}, []byte{}, err
+	}
 
 	var filteredPods []string
 

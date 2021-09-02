@@ -129,7 +129,7 @@ func NewExplorerManifest() *K8sManifest {
 				"ws://%s:8080",
 				manifest.Service.Spec.ClusterIP,
 			)
-			manifest.values["localURL"] = fmt.Sprintf("https://127.0.0.1:8080")
+			manifest.values["localURL"] = "https://127.0.0.1:8080"
 			podsFullNames, err := manifest.GetPodsFullNames("explorer")
 			if err != nil {
 				return err
