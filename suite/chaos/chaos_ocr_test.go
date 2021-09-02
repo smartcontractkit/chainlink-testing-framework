@@ -14,7 +14,6 @@ import (
 var _ = XDescribeTable("OCR chaos tests @chaos-ocr", func(
 	envInit environment.K8sEnvSpecInit,
 	chaosSpec chaos.Experimentable,
-	numNodes int,
 ) {
 	i := &testcommon.OCRSetupInputs{}
 	Context("Runs OCR test with a chaos modifier", func() {

@@ -19,6 +19,6 @@ var _ = Describe("OCR Feed @ocr", func() {
 		By("Tearing down the environment", i.SuiteSetup.TearDown())
 	},
 		Entry("all the same version", environment.NewChainlinkCluster(5)),
-		Entry("different versions", environment.NewMixedVersionChainlinkCluster(2, 5)),
+		Entry("different versions", environment.NewMixedVersionChainlinkCluster(5, 2)),
 	)
 })
