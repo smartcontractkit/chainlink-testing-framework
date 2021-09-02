@@ -284,6 +284,25 @@ func addDependencyGroup(postgresCount int, envName string, chainlinkGroup *K8sMa
 	group := &K8sManifestGroup{
 		id:        "DependencyGroup",
 		manifests: []*K8sManifest{NewAdapterManifest()},
+
+		SetValuesFunc: func(mg *K8sManifestGroup) error {
+			postgresURLs := TemplateValuesArray{}
+
+			for _, manifest := range mg.manifests {
+				if strings.Contains(manifest.id, "postgres") {
+					postgresURLs.Values = append(postgresURLs.Values,
+						fmt.Sprintf(
+							"postgresql://postgres:node@%s:%d",
+							manifest.Service.Spec.ClusterIP,
+							manifest.Service.Spec.Ports[0].Port,
+						))
+				}
+			}
+
+			mg.values["dbURLs"] = &postgresURLs
+
+			return nil
+		},
 	}
 	for i := 0; i < postgresCount; i++ {
 		pManifest := NewPostgresManifest()

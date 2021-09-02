@@ -3,7 +3,6 @@ package environment
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/pkg/errors"
 	//"golang.org/x/crypto/ssh/terminal"
@@ -414,6 +413,7 @@ type k8sTemplateData struct {
 }
 
 type k8sSetValuesFunc func(*K8sManifest) error
+type manifestGroupSetValuesFunc func(group *K8sManifestGroup) error
 
 // K8sManifest represents a manifest of k8s definitions to be deployed. It implements the K8sEnvResource interface
 // to allow the deployment of the definitions into a cluster. It consists of a k8s secret, deployment and service
@@ -439,11 +439,11 @@ type K8sManifest struct {
 	stopChannels []chan struct{}
 
 	// Environment properties
-	k8sClient *kubernetes.Clientset
-	k8sConfig *rest.Config
-	config    *config.Config
-	network   *config.NetworkConfig
-	namespace *coreV1.Namespace
+	k8sClient         *kubernetes.Clientset
+	k8sConfig         *rest.Config
+	config            *config.Config
+	network           *config.NetworkConfig
+	namespace         *coreV1.Namespace
 	getServiceDetails func(remotePort uint16) (*ServiceDetails, error)
 }
 
@@ -867,6 +867,8 @@ type TemplateValuesArray struct {
 	Values []interface{}
 }
 
+var mu sync.Mutex
+
 func (t *TemplateValuesArray) next() (interface{}, error) {
 	if len(t.Values) > 0 {
 		valueToReturn := t.Values[0]
@@ -877,8 +879,10 @@ func (t *TemplateValuesArray) next() (interface{}, error) {
 	}
 }
 
-func next(array *TemplateValuesArray) (interface{}, error){
+func next(array *TemplateValuesArray) (interface{}, error) {
+	mu.Lock()
 	val, err := array.next()
+	mu.Unlock()
 	if err != nil {
 		return nil, err
 	}
@@ -968,8 +972,10 @@ func (m *K8sManifest) forwardPodPorts(pod *coreV1.Pod) ([]portforward.ForwardedP
 // Whereas, Chainlink does depend on a deployed Geth, Hardhat, Ganache on deploy so they cannot be included in the group
 // as Chainlink definition needs to know the cluster IP of the deployment for it to boot.
 type K8sManifestGroup struct {
-	id        string
-	manifests []*K8sManifest
+	id            string
+	manifests     []*K8sManifest
+	SetValuesFunc manifestGroupSetValuesFunc
+	values        map[string]interface{}
 }
 
 // ID returns the identifier of the manifest group
@@ -1011,27 +1017,9 @@ func (mg *K8sManifestGroup) Deploy(values map[string]interface{}) error {
 			}
 		}
 
-		// deep copy the values
-		v, err := json.Marshal(values)
-		if err != nil {
-			return err
-		}
-		var deployValues map[string]interface{}
-		err = json.Unmarshal(v, &deployValues)
-		if err != nil {
-			return err
-		}
-
-		// move "postgres_"+i to "postgres" in the map
-		if pn, ok := deployValues["DependencyGroup"]; ok {
-			if pg, ok := pn.(map[string]interface{})[fmt.Sprintf("postgres_%d", i)]; ok {
-				deployValues["DependencyGroup"].(map[string]interface{})["postgres"] = pg
-			}
-		}
-
 		go func() {
 			defer wg.Done()
-			if err := m.Deploy(deployValues); err != nil {
+			if err := m.Deploy(values); err != nil {
 				errGroup = multierror.Append(errGroup, err)
 			}
 		}()
@@ -1064,7 +1052,25 @@ func (mg *K8sManifestGroup) WaitUntilHealthy() error {
 		}()
 	}
 	wg.Wait()
+
+	if mg.SetValuesFunc != nil {
+		err := mg.setValues()
+		if err != nil {
+			errGroup = multierror.Append(errGroup, err)
+		}
+	}
+
 	return errGroup
+}
+
+func (mg *K8sManifestGroup) setValues() error {
+	if mg.values == nil {
+		mg.values = map[string]interface{}{}
+	}
+	if err := mg.SetValuesFunc(mg); err != nil {
+		return err
+	}
+	return nil
 }
 
 // ServiceDetails will return all the details of the services within a group
@@ -1087,14 +1093,33 @@ func (mg *K8sManifestGroup) ServiceDetails() ([]*ServiceDetails, error) {
 // Values["chainlink"].webPort
 // Values["chainlink_0"].webPort
 // Values["chainlink_1"].webPort
+//func (mg *K8sManifestGroup) Values() map[string]interface{} {
+//	values := map[string]interface{}{}
+//	for _, m := range mg.manifests {
+//		id := strings.Split(m.id, "-")
+//		if len(id) > 1 {
+//			values[strings.Join(id, "_")] = m.Values()
+//		}
+//		if _, ok := values[id[0]]; !ok {
+//			values[id[0]] = m.Values()
+//		}
+//	}
+//	return values
+//}
+
 func (mg *K8sManifestGroup) Values() map[string]interface{} {
 	values := map[string]interface{}{}
+
+	for key, value := range mg.values {
+		values[key] = value
+	}
+
 	for _, m := range mg.manifests {
 		id := strings.Split(m.id, "-")
 		if len(id) > 1 {
 			values[strings.Join(id, "_")] = m.Values()
 		}
-		if _, ok := values[id[0]]; !ok {
+		if _, ok := mg.values[id[0]]; !ok {
 			values[id[0]] = m.Values()
 		}
 	}

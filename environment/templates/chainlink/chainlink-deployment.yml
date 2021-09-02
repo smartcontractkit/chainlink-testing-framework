@@ -29,7 +29,7 @@ spec:
           containerPort: {{ .Values.chainlinkCluster.chainlink.p2pPort }}
         env:
         - name: DATABASE_URL
-          value: {{ .Values.DependencyGroup.postgres.clusterURL }}/chainlink?sslmode=disable
+          value: {{ next .Values.DependencyGroup.dbURLs }}/chainlink?sslmode=disable
         - name: DATABASE_NAME
           value: chainlink
         - name: ETH_URL
