@@ -45,10 +45,6 @@ const SelectorLabelKey string = "app"
 // deployed in the order that they are present in the array.
 type K8sEnvSpecs []K8sEnvResource
 
-// K8sEnvSpecInit is the initiator that will return the name of the environment and the specifications to be deployed.
-// The name of the environment returned determines the namespace.
-type K8sEnvSpecInit func(*config.NetworkConfig) (string, K8sEnvSpecs)
-
 type K8sChainlinkGroupsInit func(chainlinkNodesNr int, postgresManifests []*K8sManifest, env Environment) (K8sEnvSpecs, error)
 
 // K8sEnvResource is the interface for deploying a given environment resource. Creating an interface for resource
@@ -105,7 +101,7 @@ func NewBasicK8SEnvironment(cfg *config.Config, network client.BlockchainNetwork
 	}
 	log.Info().Str("Host", k8sConfig.Host).Msg("Using Kubernetes cluster")
 
-	environmentName := "new-basic-chainlink"
+	environmentName := "basic-chainlink"
 	namespace, err := env.createNamespace(environmentName)
 	if err != nil {
 		return nil, err
@@ -123,67 +119,6 @@ func NewBasicK8SEnvironment(cfg *config.Config, network client.BlockchainNetwork
 
 	return env, nil
 }
-
-//// NewK8sEnvironment creates and deploys a full ephemeral environment in a k8s cluster. Your current context within
-//// your kube config will always be used.
-//func NewK8sEnvironment(
-//	init K8sEnvSpecInit,
-//	cfg *config.Config,
-//	network client.BlockchainNetwork,
-//) (Environment, error) {
-//	k8sConfig, err := K8sConfig()
-//	if err != nil {
-//		return nil, err
-//	}
-//	k8sConfig.QPS = cfg.Kubernetes.QPS
-//	k8sConfig.Burst = cfg.Kubernetes.Burst
-//	k8sClient, err := kubernetes.NewForConfig(k8sConfig)
-//	if err != nil {
-//		return nil, err
-//	}
-//	env := &K8sEnvironment{
-//		k8sClient: k8sClient,
-//		k8sConfig: k8sConfig,
-//		config:    cfg,
-//		network:   network,
-//	}
-//	log.Info().Str("Host", k8sConfig.Host).Msg("Using Kubernetes cluster")
-//	environmentName, deployables := init(network.Config())
-//	namespace, err := env.createNamespace(environmentName)
-//	if err != nil {
-//		return nil, err
-//	}
-//	env.namespace = namespace
-//	env.specs = deployables
-//	cc, err := chaos.NewController(&chaos.Config{
-//		Client:    k8sClient,
-//		Namespace: namespace.Name,
-//	})
-//	if err != nil {
-//		return nil, err
-//	}
-//	env.chaos = cc
-//
-//	ctx, ctxCancel := context.WithTimeout(context.Background(), env.config.Kubernetes.DeploymentTimeout)
-//	defer ctxCancel()
-//
-//	errChan := make(chan error)
-//	go env.deploySpecs(errChan)
-//deploymentLoop:
-//	for {
-//		select {
-//		case err, open := <-errChan:
-//			if err != nil {
-//				return nil, err
-//			} else if !open {
-//				break deploymentLoop
-//			}
-//		case <-ctx.Done():
-//			return nil, fmt.Errorf("error while waiting for deployment: %v", ctx.Err())
-//		}
-//	}
-//	return env, err
-//}
 
 func NewChainlinkEnvironment(
 	chainlinkGroupInit K8sChainlinkGroupsInit,
