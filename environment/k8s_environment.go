@@ -46,8 +46,6 @@ const SelectorLabelKey string = "app"
 // deployed in the order that they are present in the array.
 type K8sEnvSpecs []K8sEnvResource
 
-type K8sChainlinkGroupsInit func(chainlinkNodesNr int, postgresManifests []*K8sManifest, env Environment) (K8sEnvSpecs, error)
-
 // K8sEnvSpecInit is the initiator that will return the name of the environment and the specifications to be deployed.
 // The name of the environment returned determines the namespace.
 type K8sEnvSpecInit func(*config.NetworkConfig) (string, K8sEnvSpecs)
