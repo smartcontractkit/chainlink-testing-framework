@@ -38,7 +38,6 @@ type HelmChart struct {
 	actionConfig      *action.Configuration
 	env               *K8sEnvironment
 	SetValuesHelmFunc SetValuesHelmFunc
-	getServiceDetails func(remotePort uint16) (*ServiceDetails, error)
 	// Deployment properties
 	pods         []PodForwardedInfo
 	values       map[string]interface{}
