@@ -8,16 +8,15 @@ import (
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/environment"
 	"github.com/smartcontractkit/integrations-framework/tools"
-	//"math/big"
 )
 
 var _ = Describe("Alerts suite", func() {
 	var (
-		suiteSetup *actions.DefaultSuiteSetup
-		adapter    environment.ExternalAdapter
+		suiteSetup     *actions.DefaultSuiteSetup
+		adapter        environment.ExternalAdapter
 		chainlinkNodes []client.Chainlink
 		explorer       *client.ExplorerClient
-		err           error
+		err            error
 	)
 
 	BeforeEach(func() {
@@ -29,7 +28,7 @@ var _ = Describe("Alerts suite", func() {
 			)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			explorer, err = environment.GetExplorerClient(suiteSetup.Env.GetServiceDetails)
+			explorer, err = environment.GetExplorerClient(suiteSetup.Env)
 			Expect(err).ShouldNot(HaveOccurred())
 			fmt.Println(explorer.BaseURL)
 

@@ -8,10 +8,7 @@ import (
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/kube"
-	coreV1 "k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/portforward"
 	"net/url"
 	"os"
@@ -38,11 +35,7 @@ type HelmChart struct {
 	chartPath         string
 	releaseName       string
 	actionConfig      *action.Configuration
-	k8sClient         *kubernetes.Clientset
-	config            *config.Config
-	k8sConfig         *rest.Config
-	network           *config.NetworkConfig
-	namespace         *coreV1.Namespace
+	env               *K8sEnvironment
 	SetValuesHelmFunc SetValuesHelmFunc
 	getServiceDetails func(remotePort uint16) (*ServiceDetails, error)
 	// Deployment properties
@@ -72,32 +65,20 @@ func (k *HelmChart) SetValue(key string, val interface{}) {
 }
 
 func (k *HelmChart) GetConfig() *config.Config {
-	return k.config
+	return k.env.config
 }
 
 func (k *HelmChart) Values() map[string]interface{} {
 	return k.values
 }
 
-func (k *HelmChart) SetEnvironment(
-	k8sClient *kubernetes.Clientset,
-	k8sConfig *rest.Config,
-	config *config.Config,
-	network *config.NetworkConfig,
-	namespace *coreV1.Namespace,
-	getServiceDetails func(remotePort uint16) (*ServiceDetails, error),
-) error {
-	k.k8sClient = k8sClient
-	k.k8sConfig = k8sConfig
-	k.config = config
-	k.network = network
-	k.namespace = namespace
-	k.getServiceDetails = getServiceDetails
+func (k *HelmChart) SetEnvironment(environment *K8sEnvironment) error {
+	k.env = environment
 	return nil
 }
 
 func (k *HelmChart) forwardAllPodsPorts() error {
-	k8sPods := k.k8sClient.CoreV1().Pods(k.namespace.Name)
+	k8sPods := k.env.k8sClient.CoreV1().Pods(k.env.namespace.Name)
 	pods, err := k8sPods.List(context.Background(), metaV1.ListOptions{
 		LabelSelector: k.releaseSelector(),
 	})
@@ -105,7 +86,7 @@ func (k *HelmChart) forwardAllPodsPorts() error {
 		return err
 	}
 	for _, p := range pods.Items {
-		ports, err := forwardPodPorts(&p, k.k8sConfig, k.namespace.Name, k.stopChannels)
+		ports, err := forwardPodPorts(&p, k.env.k8sConfig, k.env.namespace.Name, k.stopChannels)
 		if err != nil {
 			return fmt.Errorf("unable to forward ports: %v", err)
 		}
@@ -160,7 +141,7 @@ func (k *HelmChart) ServiceDetails() ([]*ServiceDetails, error) {
 }
 
 func (k *HelmChart) Deploy(_ map[string]interface{}) error {
-	log.Info().Str("Path", k.chartPath).Str("Namespace", k.namespace.Name).Msg("Installing helm chart")
+	log.Info().Str("Path", k.chartPath).Str("Namespace", k.env.namespace.Name).Msg("Installing helm chart")
 	chart, err := loader.Load(k.chartPath)
 	if err != nil {
 		return err
@@ -173,8 +154,8 @@ func (k *HelmChart) Deploy(_ map[string]interface{}) error {
 	k.actionConfig = &action.Configuration{}
 
 	if err := k.actionConfig.Init(
-		kube.GetConfig(filepath.Join(homeDir, DefaultK8sConfigPath), "", k.namespace.Name),
-		k.namespace.Name,
+		kube.GetConfig(filepath.Join(homeDir, DefaultK8sConfigPath), "", k.env.namespace.Name),
+		k.env.namespace.Name,
 		os.Getenv("HELM_DRIVER"),
 		func(format string, v ...interface{}) {
 			log.Debug().Str("LogType", "Helm").Msg(fmt.Sprintf(format, v...))
@@ -183,7 +164,7 @@ func (k *HelmChart) Deploy(_ map[string]interface{}) error {
 	}
 
 	install := action.NewInstall(k.actionConfig)
-	install.Namespace = k.namespace.Name
+	install.Namespace = k.env.namespace.Name
 	install.ReleaseName = k.releaseName
 	install.Timeout = HelmInstallTimeout
 	// blocks until all pods are healthy
@@ -193,7 +174,7 @@ func (k *HelmChart) Deploy(_ map[string]interface{}) error {
 		return err
 	}
 	log.Info().
-		Str("Namespace", k.namespace.Name).
+		Str("Namespace", k.env.namespace.Name).
 		Str("Release", k.releaseName).
 		Str("Chart", k.chartPath).
 		Msg("Succesfully installed helm chart")

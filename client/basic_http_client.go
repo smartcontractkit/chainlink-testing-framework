@@ -17,7 +17,7 @@ type BasicHTTPClient struct {
 	BaseURL    string
 	HttpClient *http.Client
 	Cookies    []*http.Cookie
-	Header http.Header
+	Header     http.Header
 }
 
 // NewBasicHTTPClient returns new basic http client configured with an base URL

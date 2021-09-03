@@ -10,7 +10,7 @@ import (
 	"net/url"
 )
 
-// Environment is the interface that represents a deployed environment, whether locally or on remote machines
+// Environment is the interface that represents a deployed env, whether locally or on remote machines
 type Environment interface {
 	ID() string
 
@@ -31,19 +31,23 @@ type ServiceDetails struct {
 	LocalURL  *url.URL
 }
 
-func GetExplorerClient(getServiceDetails func (remotePort uint16) (*ServiceDetails, error)) (*client.ExplorerClient, error) {
-	sd, err := getServiceDetails(ExplorerAPIPort)
-	if err != nil {
-		return nil, err
-	}
+func NewExplorerClient(localUrl string) (*client.ExplorerClient, error) {
 	return client.NewExplorerClient(&config.ExplorerConfig{
-		URL: sd.LocalURL.String(),
+		URL:           localUrl,
 		AdminUsername: "username",
 		AdminPassword: "password",
 	}), nil
 }
 
-// GetChainlinkClients will return all instantiated Chainlink clients for a given environment
+func GetExplorerClient(env Environment) (*client.ExplorerClient, error) {
+	sd, err := env.GetServiceDetails(ExplorerAPIPort)
+	if err != nil {
+		return nil, err
+	}
+	return NewExplorerClient(sd.LocalURL.String())
+}
+
+// GetChainlinkClients will return all instantiated Chainlink clients for a given env
 func GetChainlinkClients(env Environment) ([]client.Chainlink, error) {
 	var clients []client.Chainlink
 
@@ -121,7 +125,7 @@ func (ex *externalAdapter) TriggerValueChange(i int) (int, error) {
 	}
 }
 
-// GetExternalAdapter will return a deployed external adapter on an environment
+// GetExternalAdapter will return a deployed external adapter on an env
 func GetExternalAdapter(env Environment) (ExternalAdapter, error) {
 	sd, err := env.GetServiceDetails(AdapterAPIPort)
 	if err != nil {
@@ -134,7 +138,7 @@ func GetExternalAdapter(env Environment) (ExternalAdapter, error) {
 }
 
 // NewBlockchainClient will return an instantiated blockchain client and switch the URL depending if there's one
-// deployed into the environment. If there's no deployed blockchain in the environment, the URL from the network
+// deployed into the env. If there's no deployed blockchain in the env, the URL from the network
 // config will be used
 func NewBlockchainClient(env Environment, network client.BlockchainNetwork) (client.BlockchainClient, error) {
 	sd, err := env.GetServiceDetails(EVMRPCPort)

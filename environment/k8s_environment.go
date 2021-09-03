@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/pkg/errors"
-	//"golang.org/x/crypto/ssh/terminal"
 	"github.com/smartcontractkit/integrations-framework/chaos"
 	"io"
 	"io/ioutil"
@@ -41,28 +40,21 @@ import (
 
 const SelectorLabelKey string = "app"
 
-// K8sEnvSpecs represents a series of environment resources to be deployed. The resources in the array will be
+// K8sEnvSpecs represents a series of env resources to be deployed. The resources in the array will be
 // deployed in the order that they are present in the array.
 type K8sEnvSpecs []K8sEnvResource
 
-// K8sEnvSpecInit is the initiator that will return the name of the environment and the specifications to be deployed.
-// The name of the environment returned determines the namespace.
+// K8sEnvSpecInit is the initiator that will return the name of the env and the specifications to be deployed.
+// The name of the env returned determines the namespace.
 type K8sEnvSpecInit func(*config.NetworkConfig) (string, K8sEnvSpecs)
 
-// K8sEnvResource is the interface for deploying a given environment resource. Creating an interface for resource
+// K8sEnvResource is the interface for deploying a given env resource. Creating an interface for resource
 // deployment allows it to be extended, deploying k8s resources in different ways. For example: K8sManifest deploys
 // a single manifest, whereas K8sManifestGroup bundles several K8sManifests to be deployed concurrently.
 type K8sEnvResource interface {
 	ID() string
 	GetConfig() *config.Config
-	SetEnvironment(
-		k8sClient *kubernetes.Clientset,
-		k8sConfig *rest.Config,
-		config *config.Config,
-		network *config.NetworkConfig,
-		namespace *coreV1.Namespace,
-		getServiceDetails func(remotePort uint16) (*ServiceDetails, error),
-	) error
+	SetEnvironment(environment *K8sEnvironment) error
 	Deploy(values map[string]interface{}) error
 	WaitUntilHealthy() error
 	ServiceDetails() ([]*ServiceDetails, error)
@@ -86,7 +78,7 @@ type K8sEnvironment struct {
 	chaos   *chaos.Controller
 }
 
-// NewK8sEnvironment creates and deploys a full ephemeral environment in a k8s cluster. Your current context within
+// NewK8sEnvironment creates and deploys a full ephemeral env in a k8s cluster. Your current context within
 // your kube config will always be used.
 func NewK8sEnvironment(
 	init K8sEnvSpecInit,
@@ -150,7 +142,7 @@ deploymentLoop:
 	return env, err
 }
 
-// ID returns the canonical name of the environment, which in the case of k8s is the namespace
+// ID returns the canonical name of the env, which in the case of k8s is the namespace
 func (env K8sEnvironment) ID() string {
 	if env.namespace != nil {
 		return env.namespace.Name
@@ -190,14 +182,14 @@ func (env K8sEnvironment) GetServiceDetails(remotePort uint16) (*ServiceDetails,
 	}
 }
 
-// WriteArtifacts dumps pod logs and DB info within the environment into local log files,
+// WriteArtifacts dumps pod logs and DB info within the env into local log files,
 // used near exclusively on test failure
 func (env K8sEnvironment) WriteArtifacts(testLogFolder string) {
 	// Get logs from K8s pods
 	podsClient := env.k8sClient.CoreV1().Pods(env.namespace.Name)
 	podsList, err := podsClient.List(context.Background(), metaV1.ListOptions{})
 	if err != nil {
-		log.Err(err).Str("Env Name", env.namespace.Name).Msg("Error retrieving pod list from K8s environment")
+		log.Err(err).Str("Env Name", env.namespace.Name).Msg("Error retrieving pod list from K8s env")
 	}
 
 	// Each Pod gets a folder
@@ -255,7 +247,7 @@ func (env K8sEnvironment) TearDown() {
 	}
 
 	err := env.k8sClient.CoreV1().Namespaces().Delete(context.Background(), env.namespace.Name, metaV1.DeleteOptions{})
-	log.Info().Str("Namespace", env.namespace.Name).Msg("Deleted environment")
+	log.Info().Str("Namespace", env.namespace.Name).Msg("Deleted env")
 	log.Error().Err(err)
 }
 
@@ -363,14 +355,8 @@ func (env *K8sEnvironment) deploySpecs(errChan chan<- error) {
 	values := map[string]interface{}{}
 	for i := 0; i < len(env.specs); i++ {
 		spec := env.specs[i]
-		if err := spec.SetEnvironment(
-			env.k8sClient,
-			env.k8sConfig,
-			env.config,
-			env.network.Config(),
-			env.namespace,
-			env.GetServiceDetails,
-		); err != nil {
+		if err := spec.SetEnvironment(env);
+		err != nil {
 			errChan <- err
 			return
 		}
@@ -440,30 +426,17 @@ type K8sManifest struct {
 	values       map[string]interface{}
 	stopChannels []chan struct{}
 
-	// Environment properties
-	k8sClient         *kubernetes.Clientset
-	k8sConfig         *rest.Config
-	config            *config.Config
-	network           *config.NetworkConfig
-	namespace         *coreV1.Namespace
+	// Environment
 	getServiceDetails func(remotePort uint16) (*ServiceDetails, error)
+
+	env *K8sEnvironment
 }
 
 // SetEnvironment is the K8sEnvResource implementation that sets the current cluster and config to be used on deploy
 func (m *K8sManifest) SetEnvironment(
-	k8sClient *kubernetes.Clientset,
-	k8sConfig *rest.Config,
-	config *config.Config,
-	network *config.NetworkConfig,
-	namespace *coreV1.Namespace,
-	getServiceDetails func(remotePort uint16) (*ServiceDetails, error),
+	environment *K8sEnvironment,
 ) error {
-	m.k8sClient = k8sClient
-	m.k8sConfig = k8sConfig
-	m.config = config
-	m.network = network
-	m.namespace = namespace
-	m.getServiceDetails = getServiceDetails
+	m.env = environment
 	return nil
 }
 
@@ -478,7 +451,7 @@ func (m *K8sManifest) SetValue(key string, val interface{}) {
 }
 
 func (m *K8sManifest) GetConfig() *config.Config {
-	return m.config
+	return m.env.config
 }
 
 // Deploy will create the definitions for each manifest on the k8s cluster
@@ -501,7 +474,7 @@ func (m *K8sManifest) Deploy(values map[string]interface{}) error {
 // WaitUntilHealthy will wait until all pods that are created from a given manifest are healthy. Once healthy, it will
 // then forward all ports that are exposed within the service and callback to set Values.
 func (m *K8sManifest) WaitUntilHealthy() error {
-	k8sPods := m.k8sClient.CoreV1().Pods(m.namespace.Name)
+	k8sPods := m.env.k8sClient.CoreV1().Pods(m.env.namespace.Name)
 
 	// Have a retry mechanism here as if the k8s cluster is under strain, then the pods will not
 	// appear instantly after deployment
@@ -528,12 +501,12 @@ func (m *K8sManifest) WaitUntilHealthy() error {
 		return err
 	}
 
-	if err := waitForHealthyPods(m.k8sClient, m.namespace, pods); err != nil {
+	if err := waitForHealthyPods(m.env.k8sClient, m.env.namespace, pods); err != nil {
 		return err
 	}
 
 	for _, p := range pods.Items {
-		ports, err := forwardPodPorts(&p, m.k8sConfig, m.namespace.Name, m.stopChannels)
+		ports, err := forwardPodPorts(&p, m.env.k8sConfig, m.env.namespace.Name, m.stopChannels)
 		if err != nil {
 			return fmt.Errorf("unable to forward ports: %v", err)
 		}
@@ -571,8 +544,8 @@ func (m *K8sManifest) GetPodsFullNames(partialName string) ([]string, error) {
 	set := labels.Set(m.Service.Spec.Selector)
 	listOptions := metaV1.ListOptions{LabelSelector: set.AsSelector().String()}
 
-	v1Interface := m.k8sClient.CoreV1()
-	pods, err := v1Interface.Pods(m.namespace.Name).List(context.Background(), listOptions)
+	v1Interface := m.env.k8sClient.CoreV1()
+	pods, err := v1Interface.Pods(m.env.namespace.Name).List(context.Background(), listOptions)
 
 	if err != nil {
 		return []string{}, err
@@ -597,8 +570,8 @@ func (m *K8sManifest) ExecuteInPod(podName string, containerName string, command
 	set := labels.Set(m.Service.Spec.Selector)
 	listOptions := metaV1.ListOptions{LabelSelector: set.AsSelector().String()}
 
-	v1Interface := m.k8sClient.CoreV1()
-	pods, err := v1Interface.Pods(m.namespace.Name).List(context.Background(), listOptions)
+	v1Interface := m.env.k8sClient.CoreV1()
+	pods, err := v1Interface.Pods(m.env.namespace.Name).List(context.Background(), listOptions)
 	if err != nil {
 		return []byte{}, []byte{}, err
 	}
@@ -611,12 +584,12 @@ func (m *K8sManifest) ExecuteInPod(podName string, containerName string, command
 		}
 	}
 
-	pod, err := v1Interface.Pods(m.namespace.Name).Get(context.Background(), filteredPods[0], metaV1.GetOptions{})
+	pod, err := v1Interface.Pods(m.env.namespace.Name).Get(context.Background(), filteredPods[0], metaV1.GetOptions{})
 	if err != nil {
 		return []byte{}, []byte{}, err
 	}
 
-	req := m.k8sClient.CoreV1().RESTClient().Post().
+	req := m.env.k8sClient.CoreV1().RESTClient().Post().
 		Resource("pods").
 		Name(pod.Name).
 		Namespace(pod.Namespace).
@@ -630,7 +603,7 @@ func (m *K8sManifest) ExecuteInPod(podName string, containerName string, command
 		TTY:       false,
 	}, scheme.ParameterCodec)
 
-	exec, err := remotecommand.NewSPDYExecutor(m.k8sConfig, "POST", req.URL())
+	exec, err := remotecommand.NewSPDYExecutor(m.env.k8sConfig, "POST", req.URL())
 	if err != nil {
 		return []byte{}, []byte{}, err
 	}
@@ -661,9 +634,9 @@ func (m *K8sManifest) Teardown() error {
 }
 
 func (m *K8sManifest) createSecret(values map[string]interface{}) error {
-	k8sSecrets := m.k8sClient.CoreV1().Secrets(m.namespace.Name)
+	k8sSecrets := m.env.k8sClient.CoreV1().Secrets(m.env.namespace.Name)
 
-	if err := m.parseSecret(m.config, m.network, values); err != nil {
+	if err := m.parseSecret(m.env.config, m.env.network.Config(), values); err != nil {
 		return err
 	}
 
@@ -687,14 +660,14 @@ func (m *K8sManifest) createSecret(values map[string]interface{}) error {
 var deploymentMutex sync.Mutex
 
 func (m *K8sManifest) createDeployment(values map[string]interface{}) error {
-	k8sDeployments := m.k8sClient.AppsV1().Deployments(m.namespace.Name)
+	k8sDeployments := m.env.k8sClient.AppsV1().Deployments(m.env.namespace.Name)
 
 	if image, ok := m.Values()["image"]; ok {
 		deploymentMutex.Lock()
-		m.config.Apps.Chainlink.Image = image.(string)
-		m.config.Apps.Chainlink.Version = m.Values()["version"].(string)
+		m.env.config.Apps.Chainlink.Image = image.(string)
+		m.env.config.Apps.Chainlink.Version = m.Values()["version"].(string)
 	}
-	if err := m.parseDeployment(m.config, m.network, values); err != nil {
+	if err := m.parseDeployment(m.env.config, m.env.network.Config(), values); err != nil {
 		return err
 	}
 	if _, ok := m.Values()["image"]; ok {
@@ -719,9 +692,9 @@ func (m *K8sManifest) createDeployment(values map[string]interface{}) error {
 }
 
 func (m *K8sManifest) createService(values map[string]interface{}) error {
-	k8sServices := m.k8sClient.CoreV1().Services(m.namespace.Name)
+	k8sServices := m.env.k8sClient.CoreV1().Services(m.env.namespace.Name)
 
-	if err := m.parseService(m.config, m.network, values); err != nil {
+	if err := m.parseService(m.env.config, m.env.network.Config(), values); err != nil {
 		return err
 	}
 
@@ -743,8 +716,8 @@ func (m *K8sManifest) createService(values map[string]interface{}) error {
 }
 
 func (m *K8sManifest) createConfigMap(values map[string]interface{}) error {
-	cm := m.k8sClient.CoreV1().ConfigMaps(m.namespace.Name)
-	if err := m.parseConfigMap(m.config, m.network, values); err != nil {
+	cm := m.env.k8sClient.CoreV1().ConfigMaps(m.env.namespace.Name)
+	if err := m.parseConfigMap(m.env.config, m.env.network.Config(), values); err != nil {
 		return err
 	}
 	if m.ConfigMap != nil {
@@ -873,8 +846,13 @@ func (m *K8sManifest) setValues() error {
 	return nil
 }
 
+// TemplateValuesArray is used in the next template go func
+// It's goal is to store an array of objects
+// The only function it has, next, returns the first object from they array,
+// and then removing that object from the array
 type TemplateValuesArray struct {
 	Values []interface{}
+	mu     sync.Mutex
 }
 
 func (t *TemplateValuesArray) next() (interface{}, error) {
@@ -887,12 +865,10 @@ func (t *TemplateValuesArray) next() (interface{}, error) {
 	}
 }
 
-var mu sync.Mutex
-
 func next(array *TemplateValuesArray) (interface{}, error) {
-	mu.Lock()
+	array.mu.Lock()
 	val, err := array.next()
-	mu.Unlock()
+	array.mu.Unlock()
 	if err != nil {
 		return nil, err
 	}
@@ -1002,16 +978,9 @@ func (mg *K8sManifestGroup) GetConfig() *config.Config {
 }
 
 // SetEnvironment initiates the k8s cluster and config within all the nested manifests
-func (mg *K8sManifestGroup) SetEnvironment(
-	k8sClient *kubernetes.Clientset,
-	k8sConfig *rest.Config,
-	config *config.Config,
-	network *config.NetworkConfig,
-	namespace *coreV1.Namespace,
-	getServiceDetails func(remotePort uint16) (*ServiceDetails, error),
-) error {
+func (mg *K8sManifestGroup) SetEnvironment(env *K8sEnvironment) error {
 	for _, m := range mg.manifests {
-		if err := m.SetEnvironment(k8sClient, k8sConfig, config, network, namespace, getServiceDetails); err != nil {
+		if err := m.SetEnvironment(env); err != nil {
 			return err
 		}
 	}

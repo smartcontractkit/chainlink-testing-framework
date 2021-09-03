@@ -132,7 +132,8 @@ func NewExplorerManifest(nodeCount int) *K8sManifest {
 			if err != nil {
 				return err
 			}
-			_, _, err = manifest.ExecuteInPod(podsFullNames[0], "explorer", []string{"yarn", "--cwd", "apps/explorer", "admin:seed", "username", "password"})
+			_, _, err = manifest.ExecuteInPod(podsFullNames[0], "explorer",
+				[]string{"yarn", "--cwd", "apps/explorer", "admin:seed", "username", "password"})
 			if err != nil {
 				return err
 			}
@@ -140,7 +141,7 @@ func NewExplorerManifest(nodeCount int) *K8sManifest {
 			accessKeys := TemplateValuesArray{}
 			secretKeys := TemplateValuesArray{}
 
-			explorerClient, err := GetExplorerClient(manifest.getServiceDetails)
+			explorerClient, err := GetExplorerClient(manifest.env)
 			if err != nil {
 				return err
 			}
@@ -151,7 +152,6 @@ func NewExplorerManifest(nodeCount int) *K8sManifest {
 				}
 				accessKeys.Values = append(accessKeys.Values, credentials.AccessKey)
 				secretKeys.Values = append(secretKeys.Values, credentials.Secret)
-
 			}
 			manifest.values["accessKeys"] = &accessKeys
 			manifest.values["secretKeys"] = &secretKeys
