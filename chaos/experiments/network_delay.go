@@ -7,9 +7,10 @@ import (
 // NetworkDelay stuct containing definitions for a network delay
 type NetworkDelay struct {
 	Base
-	TargetAppLabel string
-	Latency        time.Duration
-	Duration       time.Duration
+	LabelKey   string
+	LabelValue string
+	Latency    time.Duration
+	Duration   time.Duration
 }
 
 // SetBase sets the base

@@ -5,14 +5,14 @@ metadata:
   namespace: {{ .Base.Namespace }}
 spec:
   action: partition
-  mode: one
+  mode: {{ .FromMode }}
   selector:
     labelSelectors:
-      'app': '{{ .AppLabel }}'
+      '{{ .FromLabelKey }}': '{{ .FromLabelValue }}'
   direction: both
   target:
     selector:
       labelSelectors:
-        'app': '{{ .TargetAppLabel }}'
-    mode: one
+        '{{ .ToLabelKey }}': '{{ .ToLabelValue }}'
+    mode: {{ .ToMode }}
   duration: '{{ .Duration }}'

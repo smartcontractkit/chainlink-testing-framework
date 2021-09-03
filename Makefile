@@ -8,7 +8,7 @@ lint: ## run linter
 
 .PHONY: golangci
 golangci: ## install golangci-linter
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b ${BIN_DIR} v1.41.1
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b ${BIN_DIR} v1.42.0
 
 .PHONY: gomod
 gomod: ## install go modules

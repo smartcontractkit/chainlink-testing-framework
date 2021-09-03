@@ -64,8 +64,11 @@ func DefaultLocalSetup(
 	if err != nil {
 		return nil, err
 	}
-	if err := contracts.AwaitMining(blockchainClient); err != nil {
-		return nil, err
+	if network.Config().Name == "Ethereum Geth reorg" {
+		extraData := []byte("tx")
+		if err := contracts.AwaitMining(blockchainClient, extraData); err != nil {
+			return nil, err
+		}
 	}
 	link, err := contractDeployer.DeployLinkTokenContract(wallets.Default())
 	if err != nil {

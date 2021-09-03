@@ -9,4 +9,4 @@ spec:
   duration: {{ .Duration }}
   selector:
     labelSelectors:
-      'app': '{{ .TargetAppLabel }}'
+      '{{ .LabelKey }}': '{{ .LabelValue }}'

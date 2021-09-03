@@ -23,14 +23,16 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// OneGWei represents 1 GWei
-var OneGWei = big.NewInt(1e9)
-
-// OneEth represents 1 Ethereum
-var OneEth = big.NewFloat(1e18)
+var (
+	// OneGWei represents 1 GWei
+	OneGWei = big.NewInt(1e9)
+	// OneEth represents 1 Ethereum
+	OneEth  = big.NewFloat(1e18)
+)
 
 // EthereumClient wraps the client and the BlockChain network to interact with an EVM based Blockchain
 type EthereumClient struct {
+	ID                  string
 	Client              *ethclient.Client
 	Network             BlockchainNetwork
 	BorrowNonces        bool
@@ -38,9 +40,21 @@ type EthereumClient struct {
 	Nonces              map[string]uint64
 	txQueue             chan common.Hash
 	headerSubscriptions map[string]HeaderEventSubscription
+	Headers             map[uint64]*types.Header
+	ReorgedHeaders      map[uint64]*types.Header
 	mutex               *sync.Mutex
 	queueTransactions   bool
 	doneChan            chan struct{}
+}
+
+// GetID gets client ID
+func (e *EthereumClient) GetID() string {
+	return e.ID
+}
+
+// SetID sets client id, useful for multi-node networks
+func (e *EthereumClient) SetID(id string) {
+	e.ID = id
 }
 
 // BlockNumber gets latest block number
@@ -87,6 +101,8 @@ func NewEthereumClient(network BlockchainNetwork) (*EthereumClient, error) {
 		mutex:               &sync.Mutex{},
 		queueTransactions:   false,
 		doneChan:            make(chan struct{}),
+		Headers:             make(map[uint64]*types.Header),
+		ReorgedHeaders:      make(map[uint64]*types.Header),
 	}
 	go ec.newHeadersLoop()
 	return ec, nil
@@ -415,6 +431,7 @@ func (e *EthereumClient) subscribeToNewHeaders() error {
 		case err := <-subscription.Err():
 			return err
 		case header := <-headerChannel:
+			e.recordHeader(header)
 			e.receiveHeader(header)
 		case <-e.doneChan:
 			return nil
@@ -422,10 +439,24 @@ func (e *EthereumClient) subscribeToNewHeaders() error {
 	}
 }
 
+// recordHeader saves header either to first seen headers or to reorged/duplicated
+func (e *EthereumClient) recordHeader(header *types.Header) {
+	hn := header.Number.Uint64()
+	if _, ok := e.Headers[hn]; ok {
+		e.ReorgedHeaders[hn] = header
+		return
+	}
+	e.Headers[hn] = header
+}
+
 func (e *EthereumClient) receiveHeader(header *types.Header) {
+	if header == nil {
+		log.Err(errors.New("header is nil"))
+		return
+	}
 	log.Debug().
 		Str("Network", e.Network.ID()).
-		Str("Block Number", header.Number.String()).
+		Str("Number", header.Number.String()).
 		Msg("Received block header")
 
 	subs := e.GetHeaderSubscriptions()
@@ -527,6 +558,9 @@ func NewTransactionConfirmer(eth *EthereumClient, txHash common.Hash, minConfirm
 // ReceiveBlock the implementation of the HeaderEventSubscription that receives each block and checks
 // tx confirmation
 func (t *TransactionConfirmer) ReceiveBlock(block *types.Block) error {
+	if block == nil {
+		return errors.New("block is nil")
+	}
 	confirmationLog := log.Debug().Str("Network", t.eth.Network.ID()).
 		Str("Block Hash", block.Hash().Hex()).
 		Str("Block Number", block.Number().String()).Str("Tx Hash", t.txHash.Hex()).

@@ -27,6 +27,8 @@ const (
 // BlockchainClient is the interface that wraps a given client implementation for a blockchain, to allow for switching
 // of network types within the test suite
 type BlockchainClient interface {
+	GetID() string
+	SetID(id string)
 	BlockNumber(ctx context.Context) (uint64, error)
 	HeaderTimestampByNumber(ctx context.Context, bn *big.Int) (uint64, error)
 	Get() interface{}
@@ -53,6 +55,7 @@ func NewBlockchainClient(network BlockchainNetwork) (BlockchainClient, error) {
 type BlockchainNetwork interface {
 	GasUsedEstimations
 	ID() string
+	SetID(id string)
 	URL() string
 	Type() string
 	SetURL(string)
@@ -118,6 +121,11 @@ func NewNetworkFromConfigWithDefault(networkID string) BlockchainNetworkInit {
 // ID returns the readable name of the EVM network
 func (e *EthereumNetwork) ID() string {
 	return e.networkID
+}
+
+// SetID changes network ID, useful in case we have multiple node clients
+func (e *EthereumNetwork) SetID(id string) {
+	e.networkID = id
 }
 
 // Type returns the readable type of the EVM network

@@ -23,6 +23,7 @@ const (
 	ChainlinkWebPort = 6688
 	ChainlinkP2PPort = 6690
 	EVMRPCPort       = 8545
+	MinersRPCPort    = 9545
 	ExplorerAPIPort  = 8080
 )
 

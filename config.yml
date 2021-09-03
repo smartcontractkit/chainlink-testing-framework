@@ -101,7 +101,7 @@ networks:
         <<: *namespace_for_secret_default
         <<: *private_keys
         transaction_limit: 9500000
-        transaction_timeout: 30s
+        transaction_timeout: 5m
         minimum_confirmations: 1
         gas_estimation_buffer: 0
         block_gas_limit: 400000000000000
