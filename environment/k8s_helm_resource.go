@@ -49,7 +49,7 @@ func (k *HelmChart) Teardown() error {
 	for _, stopChan := range k.stopChannels {
 		stopChan <- struct{}{}
 	}
-	log.Debug().Str("Release", k.releaseName).Msg("Uninstalling Рelm release")
+	log.Debug().Str("Release", k.releaseName).Msg("Uninstalling Helm release")
 	if _, err := action.NewUninstall(k.actionConfig).Run(k.releaseName); err != nil {
 		return err
 	}
@@ -116,10 +116,6 @@ func (k *HelmChart) WaitUntilHealthy() error {
 	return nil
 }
 
-func (k *HelmChart) releaseSelector() string {
-	return fmt.Sprintf("%s=%s", ReleasePrefix, k.releaseName)
-}
-
 func (k *HelmChart) ServiceDetails() ([]*ServiceDetails, error) {
 	var serviceDetails []*ServiceDetails
 	for _, pod := range k.pods {
@@ -180,4 +176,8 @@ func (k *HelmChart) Deploy(_ map[string]interface{}) error {
 		Str("Chart", k.chartPath).
 		Msg("Succesfully installed helm chart")
 	return nil
+}
+
+func (k *HelmChart) releaseSelector() string {
+	return fmt.Sprintf("%s=%s", ReleasePrefix, k.releaseName)
 }

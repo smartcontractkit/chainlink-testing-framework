@@ -6,8 +6,9 @@ import (
 
 type PodFailure struct {
 	Base
-	TargetAppLabel string
-	Duration       time.Duration
+	LabelKey   string
+	LabelValue string
+	Duration   time.Duration
 }
 
 func (e *PodFailure) SetBase(base Base) {

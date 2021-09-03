@@ -1,4 +1,4 @@
-package contracts_test
+package chaos_test
 
 import (
 	"github.com/smartcontractkit/integrations-framework/config"

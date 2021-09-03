@@ -6,8 +6,12 @@ import (
 
 type NetworkPartition struct {
 	Base
-	AppLabel       string
-	TargetAppLabel string
+	FromMode       string
+	FromLabelKey   string
+	FromLabelValue string
+	ToMode         string
+	ToLabelKey     string
+	ToLabelValue   string
 	Duration       time.Duration
 }
 

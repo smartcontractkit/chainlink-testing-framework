@@ -35,7 +35,7 @@ var _ = Describe("Environment with Helm @helm_deploy", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(sd.RemoteURL).Should(ContainSubstring(strconv.Itoa(EVMRPCPort)))
 			// check that mining is started
-			err = contracts.AwaitMining(bcClient)
+			err = contracts.AwaitMining(bcClient, nil)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		AfterEach(func() {

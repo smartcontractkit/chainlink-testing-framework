@@ -26,4 +26,3 @@ geth:
       secret: ""
   genesis:
     networkId: 1337
-

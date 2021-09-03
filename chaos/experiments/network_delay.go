@@ -6,9 +6,10 @@ import (
 
 type NetworkDelay struct {
 	Base
-	TargetAppLabel string
-	Latency        time.Duration
-	Duration       time.Duration
+	LabelKey   string
+	LabelValue string
+	Latency    time.Duration
+	Duration   time.Duration
 }
 
 func (e *NetworkDelay) SetBase(base Base) {
