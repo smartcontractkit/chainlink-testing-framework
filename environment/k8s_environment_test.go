@@ -20,7 +20,7 @@ var _ = Describe("Environment functionality @unit", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 
-	DescribeTable("basic env", func(
+	DescribeTable("basic environment", func(
 		initFunc client.BlockchainNetworkInit,
 		envInitFunc K8sEnvSpecInit,
 		nodeCount int,

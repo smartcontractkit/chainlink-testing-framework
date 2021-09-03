@@ -118,6 +118,8 @@ func NewGethManifest() *K8sManifest {
 	}
 }
 
+// NewExplorerManifest is the k8s manifest that when used will deploy explorer to an environment
+// and create access keys for a nodeCount number of times
 func NewExplorerManifest(nodeCount int) *K8sManifest {
 	return &K8sManifest{
 		id:             "explorer",
@@ -147,7 +149,7 @@ func NewExplorerManifest(nodeCount int) *K8sManifest {
 			accessKeys := TemplateValuesArray{}
 			secretKeys := TemplateValuesArray{}
 
-			explorerClient, err := GetExplorerClient(manifest.env)
+			explorerClient, err := GetExplorerClientFromEnv(manifest.env)
 			if err != nil {
 				return err
 			}

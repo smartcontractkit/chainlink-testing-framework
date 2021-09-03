@@ -40,15 +40,15 @@ import (
 
 const SelectorLabelKey string = "app"
 
-// K8sEnvSpecs represents a series of env resources to be deployed. The resources in the array will be
+// K8sEnvSpecs represents a series of environment resources to be deployed. The resources in the array will be
 // deployed in the order that they are present in the array.
 type K8sEnvSpecs []K8sEnvResource
 
-// K8sEnvSpecInit is the initiator that will return the name of the env and the specifications to be deployed.
-// The name of the env returned determines the namespace.
+// K8sEnvSpecInit is the initiator that will return the name of the environment and the specifications to be deployed.
+// The name of the environment returned determines the namespace.
 type K8sEnvSpecInit func(*config.NetworkConfig) (string, K8sEnvSpecs)
 
-// K8sEnvResource is the interface for deploying a given env resource. Creating an interface for resource
+// K8sEnvResource is the interface for deploying a given environment resource. Creating an interface for resource
 // deployment allows it to be extended, deploying k8s resources in different ways. For example: K8sManifest deploys
 // a single manifest, whereas K8sManifestGroup bundles several K8sManifests to be deployed concurrently.
 type K8sEnvResource interface {
@@ -78,7 +78,7 @@ type K8sEnvironment struct {
 	chaos   *chaos.Controller
 }
 
-// NewK8sEnvironment creates and deploys a full ephemeral env in a k8s cluster. Your current context within
+// NewK8sEnvironment creates and deploys a full ephemeral environment in a k8s cluster. Your current context within
 // your kube config will always be used.
 func NewK8sEnvironment(
 	init K8sEnvSpecInit,
@@ -142,7 +142,7 @@ deploymentLoop:
 	return env, err
 }
 
-// ID returns the canonical name of the env, which in the case of k8s is the namespace
+// ID returns the canonical name of the environment, which in the case of k8s is the namespace
 func (env K8sEnvironment) ID() string {
 	if env.namespace != nil {
 		return env.namespace.Name
@@ -182,14 +182,14 @@ func (env K8sEnvironment) GetServiceDetails(remotePort uint16) (*ServiceDetails,
 	}
 }
 
-// WriteArtifacts dumps pod logs and DB info within the env into local log files,
+// WriteArtifacts dumps pod logs and DB info within the environment into local log files,
 // used near exclusively on test failure
 func (env K8sEnvironment) WriteArtifacts(testLogFolder string) {
 	// Get logs from K8s pods
 	podsClient := env.k8sClient.CoreV1().Pods(env.namespace.Name)
 	podsList, err := podsClient.List(context.Background(), metaV1.ListOptions{})
 	if err != nil {
-		log.Err(err).Str("Env Name", env.namespace.Name).Msg("Error retrieving pod list from K8s env")
+		log.Err(err).Str("Env Name", env.namespace.Name).Msg("Error retrieving pod list from K8s environment")
 	}
 
 	// Each Pod gets a folder
@@ -212,7 +212,7 @@ func (env K8sEnvironment) WriteArtifacts(testLogFolder string) {
 	}
 }
 
-// ApplyChaos applies chaos experiment in the env namespace
+// ApplyChaos applies chaos experiment in the environment namespace
 func (env K8sEnvironment) ApplyChaos(exp chaos.Experimentable) (string, error) {
 	name, err := env.chaos.Run(exp)
 	if err != nil {
@@ -470,7 +470,7 @@ func (m *K8sManifest) Deploy(values map[string]interface{}) error {
 }
 
 // WaitUntilHealthy will wait until all pods that are created from a given manifest are healthy. Once healthy, it will
-// then forward all ports that are exposed within the service and callback to set Values.
+// then forward all ports that are exposed within the service and callback to set values.
 func (m *K8sManifest) WaitUntilHealthy() error {
 	k8sPods := m.env.k8sClient.CoreV1().Pods(m.env.namespace.Name)
 
@@ -598,7 +598,7 @@ func (m *K8sManifest) ExecuteInPod(podName string, containerName string, command
 	return stdout.Bytes(), stderr.Bytes(), nil
 }
 
-// Values returns all the Values to be exposed in the definition templates
+// Values returns all the values to be exposed in the definition templates
 func (m *K8sManifest) Values() map[string]interface{} {
 	return m.values
 }
@@ -1051,13 +1051,13 @@ func (mg *K8sManifestGroup) ServiceDetails() ([]*ServiceDetails, error) {
 	return serviceDetails, nil
 }
 
-// Values will return all of the defined Values to be exposed in the template definitions.
+// Values will return all of the defined values to be exposed in the template definitions.
 // Due to there possibly being multiple of the same manifest in the group, it will create keys of each manifest id,
 // also keys with each manifest followed by its index. For example:
-// Values["adapter"].apiPort
-// Values["chainlink"].webPort
-// Values["chainlink_0"].webPort
-// Values["chainlink_1"].webPort
+// values["adapter"].apiPort
+// values["chainlink"].webPort
+// values["chainlink_0"].webPort
+// values["chainlink_1"].webPort
 func (mg *K8sManifestGroup) Values() map[string]interface{} {
 	values := map[string]interface{}{}
 

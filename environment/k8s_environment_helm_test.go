@@ -39,7 +39,7 @@ var _ = Describe("Environment with Helm @helm_deploy", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		AfterEach(func() {
-			By("Tearing down the env", func() {
+			By("Tearing down the environment", func() {
 				env.TearDown()
 			})
 		})

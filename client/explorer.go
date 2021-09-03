@@ -6,6 +6,7 @@ import (
 	"net/http"
 )
 
+// ExplorerClient is used to call Explorer API endpoints
 type ExplorerClient struct {
 	*BasicHTTPClient
 	Config *config.ExplorerConfig
@@ -34,10 +35,12 @@ func (em *ExplorerClient) PostAdminNodes(nodeName string) (NodeAccessKeys, error
 	return responseBody, err
 }
 
+// Name is the body of the request
 type Name struct {
 	Name string `json:"name"`
 }
 
+// NodeAccessKeys is the body of the response
 type NodeAccessKeys struct {
 	ID        string `mapstructure:"id" yaml:"id"`
 	AccessKey string `mapstructure:"accesKey" yaml:"accessKey"`
