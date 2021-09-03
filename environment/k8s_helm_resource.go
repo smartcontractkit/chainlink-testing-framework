@@ -27,6 +27,7 @@ type SetValuesHelmFunc func(resource *HelmChart) error
 type PodForwardedInfo struct {
 	PodIP          string
 	ForwardedPorts []portforward.ForwardedPort
+	PodName        string
 }
 
 // HelmChart common helm chart data
@@ -93,6 +94,7 @@ func (k *HelmChart) forwardAllPodsPorts() error {
 		k.pods = append(k.pods, PodForwardedInfo{
 			PodIP:          p.Status.PodIP,
 			ForwardedPorts: ports,
+			PodName:        p.Name,
 		})
 		log.Info().Str("Manifest ID", k.id).Interface("Ports", ports).Msg("Forwarded ports")
 	}

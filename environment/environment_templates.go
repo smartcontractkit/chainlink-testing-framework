@@ -3,6 +3,7 @@ package environment
 import (
 	"context"
 	"fmt"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"path/filepath"
 	"strconv"
@@ -128,11 +129,16 @@ func NewExplorerManifest(nodeCount int) *K8sManifest {
 				manifest.Service.Spec.ClusterIP,
 			)
 			manifest.values["localURL"] = "https://127.0.0.1:8080"
-			podsFullNames, err := manifest.GetPodsFullNames("explorer")
-			if err != nil {
-				return err
+			var podsFullNames []string
+			for _, pod := range manifest.pods {
+				if strings.Contains(pod.PodName, "explorer") {
+					podsFullNames = append(podsFullNames, pod.PodName)
+				}
 			}
-			_, _, err = manifest.ExecuteInPod(podsFullNames[0], "explorer",
+			if len(podsFullNames) == 0 {
+				return errors.New("")
+			}
+			_, _, err := manifest.ExecuteInPod(podsFullNames[0], "explorer",
 				[]string{"yarn", "--cwd", "apps/explorer", "admin:seed", "username", "password"})
 			if err != nil {
 				return err

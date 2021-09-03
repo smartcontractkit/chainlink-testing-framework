@@ -355,8 +355,7 @@ func (env *K8sEnvironment) deploySpecs(errChan chan<- error) {
 	values := map[string]interface{}{}
 	for i := 0; i < len(env.specs); i++ {
 		spec := env.specs[i]
-		if err := spec.SetEnvironment(env);
-		err != nil {
+		if err := spec.SetEnvironment(env); err != nil {
 			errChan <- err
 			return
 		}
@@ -425,10 +424,9 @@ type K8sManifest struct {
 	ports        []portforward.ForwardedPort
 	values       map[string]interface{}
 	stopChannels []chan struct{}
+	pods         []PodForwardedInfo
 
 	// Environment
-	getServiceDetails func(remotePort uint16) (*ServiceDetails, error)
-
 	env *K8sEnvironment
 }
 
@@ -512,6 +510,11 @@ func (m *K8sManifest) WaitUntilHealthy() error {
 		}
 		m.ports = append(m.ports, ports...)
 		log.Info().Str("Manifest ID", m.id).Interface("Ports", ports).Msg("Forwarded ports")
+		m.pods = append(m.pods, PodForwardedInfo{
+			PodIP:          p.Status.PodIP,
+			ForwardedPorts: ports,
+			PodName:        p.Name,
+		})
 	}
 
 	if m.SetValuesFunc != nil {
@@ -538,31 +541,6 @@ func (m *K8sManifest) ServiceDetails() ([]*ServiceDetails, error) {
 		})
 	}
 	return serviceDetails, nil
-}
-
-func (m *K8sManifest) GetPodsFullNames(partialName string) ([]string, error) {
-	set := labels.Set(m.Service.Spec.Selector)
-	listOptions := metaV1.ListOptions{LabelSelector: set.AsSelector().String()}
-
-	v1Interface := m.env.k8sClient.CoreV1()
-	pods, err := v1Interface.Pods(m.env.namespace.Name).List(context.Background(), listOptions)
-
-	if err != nil {
-		return []string{}, err
-	}
-	var filteredPods []string
-
-	for _, pod := range pods.Items {
-		if strings.Contains(pod.Name, partialName) {
-			filteredPods = append(filteredPods, pod.Name)
-		}
-	}
-
-	if len(filteredPods) == 0 {
-		return []string{}, errors.New("There are no pods that contain " + partialName + " in the name")
-	}
-
-	return filteredPods, nil
 }
 
 // ExecuteInPod is similar to kubectl exec
@@ -595,7 +573,7 @@ func (m *K8sManifest) ExecuteInPod(podName string, containerName string, command
 		Namespace(pod.Namespace).
 		SubResource("exec")
 	req.VersionedParams(&coreV1.PodExecOptions{
-		Container: "explorer",
+		Container: containerName,
 		Command:   command,
 		Stdin:     false,
 		Stdout:    true,

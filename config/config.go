@@ -201,7 +201,7 @@ type ExplorerMockConfig struct {
 	URL string
 }
 
-type  ExplorerConfig struct {
+type ExplorerConfig struct {
 	URL string
 	AdminUsername string
 	AdminPassword string
