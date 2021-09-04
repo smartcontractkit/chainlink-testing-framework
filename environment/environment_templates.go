@@ -146,8 +146,7 @@ func NewExplorerManifest(nodeCount int) *K8sManifest {
 				return err
 			}
 
-			accessKeys := TemplateValuesArray{}
-			secretKeys := TemplateValuesArray{}
+			keys := TemplateValuesArray{}
 
 			explorerClient, err := GetExplorerClientFromEnv(manifest.env)
 			if err != nil {
@@ -158,12 +157,9 @@ func NewExplorerManifest(nodeCount int) *K8sManifest {
 				if err != nil {
 					return err
 				}
-				accessKeys.Values = append(accessKeys.Values, credentials.AccessKey)
-				secretKeys.Values = append(secretKeys.Values, credentials.Secret)
+				keys.Values = append(keys.Values, credentials)
 			}
-			manifest.values["accessKeys"] = &accessKeys
-			manifest.values["secretKeys"] = &secretKeys
-
+			manifest.values["keys"] = &keys
 			return nil
 		},
 	}
