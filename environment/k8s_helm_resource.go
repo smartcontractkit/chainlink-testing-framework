@@ -12,6 +12,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/config"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/kube"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/portforward"
@@ -159,6 +160,11 @@ func (k *HelmChart) ServiceDetails() ([]*ServiceDetails, error) {
 func (k *HelmChart) Deploy(_ map[string]interface{}) error {
 	log.Info().Str("Path", k.chartPath).Str("Namespace", k.env.namespace.Name).Msg("Installing Helm chart")
 	chart, err := loader.Load(k.chartPath)
+	if err != nil {
+		return err
+	}
+
+	chart.Values, err = chartutil.CoalesceValues(chart, k.values)
 	if err != nil {
 		return err
 	}
