@@ -17,6 +17,7 @@ type BasicHTTPClient struct {
 	BaseURL    string
 	HttpClient *http.Client
 	Cookies    []*http.Cookie
+	Header     http.Header
 }
 
 // NewBasicHTTPClient returns new basic http client configured with an base URL
@@ -60,6 +61,8 @@ func (em *BasicHTTPClient) doRaw(
 	for _, cookie := range em.Cookies {
 		req.AddCookie(cookie)
 	}
+
+	req.Header = em.Header
 
 	resp, err := client.Do(req)
 	if err != nil {

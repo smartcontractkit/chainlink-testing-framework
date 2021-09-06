@@ -1,10 +1,19 @@
 metadata:
-  name: explorer-mock
+  name: explorer
 spec:
   ports:
-  - name: access
-    port: 4321
-    targetPort: 4321
+    - name: "8080"
+      port: 8080
+      targetPort: 8080
+    - name: "8081"
+      port: 8081
+      targetPort: 8081
+    - name: "9080"
+      port: 9080
+      targetPort: 9080
+    - name: "9081"
+      port: 9081
+      targetPort: 9081
   selector:
-    app: explorer-mock
+    app: explorer
   type: ClusterIP

@@ -3,8 +3,8 @@ package environment
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
+	"github.com/pkg/errors"
 	"github.com/smartcontractkit/integrations-framework/chaos"
 	"io"
 	"io/ioutil"
@@ -27,6 +27,7 @@ import (
 	appsV1 "k8s.io/api/apps/v1"
 	coreV1 "k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -53,13 +54,7 @@ type K8sEnvSpecInit func(*config.NetworkConfig) (string, K8sEnvSpecs)
 type K8sEnvResource interface {
 	ID() string
 	GetConfig() *config.Config
-	SetEnvironment(
-		k8sClient *kubernetes.Clientset,
-		k8sConfig *rest.Config,
-		config *config.Config,
-		network *config.NetworkConfig,
-		namespace *coreV1.Namespace,
-	) error
+	SetEnvironment(environment *K8sEnvironment) error
 	Deploy(values map[string]interface{}) error
 	WaitUntilHealthy() error
 	ServiceDetails() ([]*ServiceDetails, error)
@@ -217,7 +212,7 @@ func (env K8sEnvironment) WriteArtifacts(testLogFolder string) {
 	}
 }
 
-// ApplyChaos applies chaos experiment in the env namespace
+// ApplyChaos applies chaos experiment in the environment namespace
 func (env K8sEnvironment) ApplyChaos(exp chaos.Experimentable) (string, error) {
 	name, err := env.chaos.Run(exp)
 	if err != nil {
@@ -252,7 +247,7 @@ func (env K8sEnvironment) TearDown() {
 	}
 
 	err := env.k8sClient.CoreV1().Namespaces().Delete(context.Background(), env.namespace.Name, metaV1.DeleteOptions{})
-	log.Info().Str("Namespace", env.namespace.Name).Msg("Deleted environment")
+	log.Info().Str("Namespace", env.namespace.Name).Msg("Deleted env")
 	log.Error().Err(err)
 }
 
@@ -360,13 +355,7 @@ func (env *K8sEnvironment) deploySpecs(errChan chan<- error) {
 	values := map[string]interface{}{}
 	for i := 0; i < len(env.specs); i++ {
 		spec := env.specs[i]
-		if err := spec.SetEnvironment(
-			env.k8sClient,
-			env.k8sConfig,
-			env.config,
-			env.network.Config(),
-			env.namespace,
-		); err != nil {
+		if err := spec.SetEnvironment(env); err != nil {
 			errChan <- err
 			return
 		}
@@ -411,6 +400,7 @@ type k8sTemplateData struct {
 }
 
 type k8sSetValuesFunc func(*K8sManifest) error
+type manifestGroupSetValuesFunc func(group *K8sManifestGroup) error
 
 // K8sManifest represents a manifest of k8s definitions to be deployed. It implements the K8sEnvResource interface
 // to allow the deployment of the definitions into a cluster. It consists of a k8s secret, deployment and service
@@ -434,28 +424,17 @@ type K8sManifest struct {
 	ports        []portforward.ForwardedPort
 	values       map[string]interface{}
 	stopChannels []chan struct{}
+	pods         []PodForwardedInfo
 
-	// Environment properties
-	k8sClient *kubernetes.Clientset
-	k8sConfig *rest.Config
-	config    *config.Config
-	network   *config.NetworkConfig
-	namespace *coreV1.Namespace
+	// Environment
+	env *K8sEnvironment
 }
 
 // SetEnvironment is the K8sEnvResource implementation that sets the current cluster and config to be used on deploy
 func (m *K8sManifest) SetEnvironment(
-	k8sClient *kubernetes.Clientset,
-	k8sConfig *rest.Config,
-	config *config.Config,
-	network *config.NetworkConfig,
-	namespace *coreV1.Namespace,
+	environment *K8sEnvironment,
 ) error {
-	m.k8sClient = k8sClient
-	m.k8sConfig = k8sConfig
-	m.config = config
-	m.network = network
-	m.namespace = namespace
+	m.env = environment
 	return nil
 }
 
@@ -470,7 +449,7 @@ func (m *K8sManifest) SetValue(key string, val interface{}) {
 }
 
 func (m *K8sManifest) GetConfig() *config.Config {
-	return m.config
+	return m.env.config
 }
 
 // Deploy will create the definitions for each manifest on the k8s cluster
@@ -493,7 +472,7 @@ func (m *K8sManifest) Deploy(values map[string]interface{}) error {
 // WaitUntilHealthy will wait until all pods that are created from a given manifest are healthy. Once healthy, it will
 // then forward all ports that are exposed within the service and callback to set values.
 func (m *K8sManifest) WaitUntilHealthy() error {
-	k8sPods := m.k8sClient.CoreV1().Pods(m.namespace.Name)
+	k8sPods := m.env.k8sClient.CoreV1().Pods(m.env.namespace.Name)
 
 	// Have a retry mechanism here as if the k8s cluster is under strain, then the pods will not
 	// appear instantly after deployment
@@ -520,17 +499,22 @@ func (m *K8sManifest) WaitUntilHealthy() error {
 		return err
 	}
 
-	if err := waitForHealthyPods(m.k8sClient, m.namespace, pods); err != nil {
+	if err := waitForHealthyPods(m.env.k8sClient, m.env.namespace, pods); err != nil {
 		return err
 	}
 
 	for _, p := range pods.Items {
-		ports, err := forwardPodPorts(&p, m.k8sConfig, m.namespace.Name, m.stopChannels)
+		ports, err := forwardPodPorts(&p, m.env.k8sConfig, m.env.namespace.Name, m.stopChannels)
 		if err != nil {
 			return fmt.Errorf("unable to forward ports: %v", err)
 		}
 		m.ports = append(m.ports, ports...)
 		log.Info().Str("Manifest ID", m.id).Interface("Ports", ports).Msg("Forwarded ports")
+		m.pods = append(m.pods, PodForwardedInfo{
+			PodIP:          p.Status.PodIP,
+			ForwardedPorts: ports,
+			PodName:        p.Name,
+		})
 	}
 
 	if m.SetValuesFunc != nil {
@@ -559,6 +543,61 @@ func (m *K8sManifest) ServiceDetails() ([]*ServiceDetails, error) {
 	return serviceDetails, nil
 }
 
+// ExecuteInPod is similar to kubectl exec
+func (m *K8sManifest) ExecuteInPod(podName string, containerName string, command []string) ([]byte, []byte, error) {
+	set := labels.Set(m.Service.Spec.Selector)
+	listOptions := metaV1.ListOptions{LabelSelector: set.AsSelector().String()}
+
+	v1Interface := m.env.k8sClient.CoreV1()
+	pods, err := v1Interface.Pods(m.env.namespace.Name).List(context.Background(), listOptions)
+	if err != nil {
+		return []byte{}, []byte{}, err
+	}
+
+	var filteredPods []string
+
+	for _, pod := range pods.Items {
+		if strings.Contains(pod.Name, podName) {
+			filteredPods = append(filteredPods, pod.Name)
+		}
+	}
+
+	pod, err := v1Interface.Pods(m.env.namespace.Name).Get(context.Background(), filteredPods[0], metaV1.GetOptions{})
+	if err != nil {
+		return []byte{}, []byte{}, err
+	}
+
+	req := m.env.k8sClient.CoreV1().RESTClient().Post().
+		Resource("pods").
+		Name(pod.Name).
+		Namespace(pod.Namespace).
+		SubResource("exec")
+	req.VersionedParams(&coreV1.PodExecOptions{
+		Container: containerName,
+		Command:   command,
+		Stdin:     false,
+		Stdout:    true,
+		Stderr:    true,
+		TTY:       false,
+	}, scheme.ParameterCodec)
+
+	exec, err := remotecommand.NewSPDYExecutor(m.env.k8sConfig, "POST", req.URL())
+	if err != nil {
+		return []byte{}, []byte{}, err
+	}
+
+	var stdout, stderr bytes.Buffer
+	err = exec.Stream(remotecommand.StreamOptions{
+		Stdin:  nil,
+		Stdout: &stdout,
+		Stderr: &stderr,
+	})
+	if err != nil {
+		return []byte{}, []byte{}, err
+	}
+	return stdout.Bytes(), stderr.Bytes(), nil
+}
+
 // Values returns all the values to be exposed in the definition templates
 func (m *K8sManifest) Values() map[string]interface{} {
 	return m.values
@@ -573,9 +612,9 @@ func (m *K8sManifest) Teardown() error {
 }
 
 func (m *K8sManifest) createSecret(values map[string]interface{}) error {
-	k8sSecrets := m.k8sClient.CoreV1().Secrets(m.namespace.Name)
+	k8sSecrets := m.env.k8sClient.CoreV1().Secrets(m.env.namespace.Name)
 
-	if err := m.parseSecret(m.config, m.network, values); err != nil {
+	if err := m.parseSecret(m.env.config, m.env.network.Config(), values); err != nil {
 		return err
 	}
 
@@ -599,14 +638,14 @@ func (m *K8sManifest) createSecret(values map[string]interface{}) error {
 var deploymentMutex sync.Mutex
 
 func (m *K8sManifest) createDeployment(values map[string]interface{}) error {
-	k8sDeployments := m.k8sClient.AppsV1().Deployments(m.namespace.Name)
+	k8sDeployments := m.env.k8sClient.AppsV1().Deployments(m.env.namespace.Name)
 
 	if image, ok := m.Values()["image"]; ok {
 		deploymentMutex.Lock()
-		m.config.Apps.Chainlink.Image = image.(string)
-		m.config.Apps.Chainlink.Version = m.Values()["version"].(string)
+		m.env.config.Apps.Chainlink.Image = image.(string)
+		m.env.config.Apps.Chainlink.Version = m.Values()["version"].(string)
 	}
-	if err := m.parseDeployment(m.config, m.network, values); err != nil {
+	if err := m.parseDeployment(m.env.config, m.env.network.Config(), values); err != nil {
 		return err
 	}
 	if _, ok := m.Values()["image"]; ok {
@@ -631,9 +670,9 @@ func (m *K8sManifest) createDeployment(values map[string]interface{}) error {
 }
 
 func (m *K8sManifest) createService(values map[string]interface{}) error {
-	k8sServices := m.k8sClient.CoreV1().Services(m.namespace.Name)
+	k8sServices := m.env.k8sClient.CoreV1().Services(m.env.namespace.Name)
 
-	if err := m.parseService(m.config, m.network, values); err != nil {
+	if err := m.parseService(m.env.config, m.env.network.Config(), values); err != nil {
 		return err
 	}
 
@@ -655,8 +694,8 @@ func (m *K8sManifest) createService(values map[string]interface{}) error {
 }
 
 func (m *K8sManifest) createConfigMap(values map[string]interface{}) error {
-	cm := m.k8sClient.CoreV1().ConfigMaps(m.namespace.Name)
-	if err := m.parseConfigMap(m.config, m.network, values); err != nil {
+	cm := m.env.k8sClient.CoreV1().ConfigMaps(m.env.namespace.Name)
+	if err := m.parseConfigMap(m.env.config, m.env.network.Config(), values); err != nil {
 		return err
 	}
 	if m.ConfigMap != nil {
@@ -785,12 +824,44 @@ func (m *K8sManifest) setValues() error {
 	return nil
 }
 
+// TemplateValuesArray is used in the next template go func
+// It's goal is to store an array of objects
+// The only function it has, next, returns the first object from they array,
+// and then removing that object from the array
+type TemplateValuesArray struct {
+	Values []interface{}
+	mu     sync.Mutex
+}
+
+func (t *TemplateValuesArray) next() (interface{}, error) {
+	if len(t.Values) > 0 {
+		valueToReturn := t.Values[0]
+		t.Values = t.Values[1:]
+		return valueToReturn, nil
+	} else {
+		return nil, errors.New("No more Values in the array")
+	}
+}
+
+func next(array *TemplateValuesArray) (interface{}, error) {
+	array.mu.Lock()
+	val, err := array.next()
+	array.mu.Unlock()
+	if err != nil {
+		return nil, err
+	}
+	return val, nil
+}
+
 func (m *K8sManifest) parse(path string, obj interface{}, data interface{}) error {
 	fileBytes, err := ioutil.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("failed to read k8s file: %v", err)
 	}
-	tpl, err := template.New(path).Parse(string(fileBytes))
+
+	var funcs = template.FuncMap{"next": next}
+
+	tpl, err := template.New(path).Funcs(funcs).Parse(string(fileBytes))
 	if err != nil {
 		return fmt.Errorf("failed to read k8s template file %s: %v", path, err)
 	}
@@ -866,8 +937,10 @@ func forwardPodPorts(pod *coreV1.Pod, k8sConfig *rest.Config, nsName string, sto
 // Whereas, Chainlink does depend on a deployed Geth, Hardhat, Ganache on deploy so they cannot be included in the group
 // as Chainlink definition needs to know the cluster IP of the deployment for it to boot.
 type K8sManifestGroup struct {
-	id        string
-	manifests []K8sEnvResource
+	id            string
+	manifests     []K8sEnvResource
+	SetValuesFunc manifestGroupSetValuesFunc
+	values        map[string]interface{}
 }
 
 // ID returns the identifier of the manifest group
@@ -883,15 +956,9 @@ func (mg *K8sManifestGroup) GetConfig() *config.Config {
 }
 
 // SetEnvironment initiates the k8s cluster and config within all the nested manifests
-func (mg *K8sManifestGroup) SetEnvironment(
-	k8sClient *kubernetes.Clientset,
-	k8sConfig *rest.Config,
-	config *config.Config,
-	network *config.NetworkConfig,
-	namespace *coreV1.Namespace,
-) error {
+func (mg *K8sManifestGroup) SetEnvironment(env *K8sEnvironment) error {
 	for _, m := range mg.manifests {
-		if err := m.SetEnvironment(k8sClient, k8sConfig, config, network, namespace); err != nil {
+		if err := m.SetEnvironment(env); err != nil {
 			return err
 		}
 	}
@@ -915,27 +982,9 @@ func (mg *K8sManifestGroup) Deploy(values map[string]interface{}) error {
 			}
 		}
 
-		// deep copy the values
-		v, err := json.Marshal(values)
-		if err != nil {
-			return err
-		}
-		var deployValues map[string]interface{}
-		err = json.Unmarshal(v, &deployValues)
-		if err != nil {
-			return err
-		}
-
-		// move "postgres_"+i to "postgres" in the map
-		if pn, ok := deployValues["DependencyGroup"]; ok {
-			if pg, ok := pn.(map[string]interface{})[fmt.Sprintf("postgres_%d", i)]; ok {
-				deployValues["DependencyGroup"].(map[string]interface{})["postgres"] = pg
-			}
-		}
-
 		go func() {
 			defer wg.Done()
-			if err := m.Deploy(deployValues); err != nil {
+			if err := m.Deploy(values); err != nil {
 				errGroup = multierror.Append(errGroup, err)
 			}
 		}()
@@ -968,7 +1017,25 @@ func (mg *K8sManifestGroup) WaitUntilHealthy() error {
 		}()
 	}
 	wg.Wait()
+
+	if mg.SetValuesFunc != nil {
+		err := mg.setValues()
+		if err != nil {
+			errGroup = multierror.Append(errGroup, err)
+		}
+	}
+
 	return errGroup
+}
+
+func (mg *K8sManifestGroup) setValues() error {
+	if mg.values == nil {
+		mg.values = map[string]interface{}{}
+	}
+	if err := mg.SetValuesFunc(mg); err != nil {
+		return err
+	}
+	return nil
 }
 
 // ServiceDetails will return all the details of the services within a group
@@ -993,12 +1060,17 @@ func (mg *K8sManifestGroup) ServiceDetails() ([]*ServiceDetails, error) {
 // values["chainlink_1"].webPort
 func (mg *K8sManifestGroup) Values() map[string]interface{} {
 	values := map[string]interface{}{}
+
+	for key, value := range mg.values {
+		values[key] = value
+	}
+
 	for _, m := range mg.manifests {
 		id := strings.Split(m.ID(), "-")
 		if len(id) > 1 {
 			values[strings.Join(id, "_")] = m.Values()
 		}
-		if _, ok := values[id[0]]; !ok {
+		if _, ok := mg.values[id[0]]; !ok {
 			values[id[0]] = m.Values()
 		}
 	}

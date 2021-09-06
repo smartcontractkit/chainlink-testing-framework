@@ -3,12 +3,13 @@ package environment
 import (
 	"context"
 	"fmt"
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/google/go-github/github"
-	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/tools"
 	coreV1 "k8s.io/api/core/v1"
@@ -20,7 +21,7 @@ const (
 	ChainlinkWebPort = 6688
 	ChainlinkP2PPort = 6690
 	EVMRPCPort       = 8545
-	ExplorerWSPort   = 4321
+	ExplorerAPIPort  = 8080
 )
 
 // NewAdapterManifest is the k8s manifest that when used will deploy an external adapter to an environment
@@ -35,18 +36,15 @@ func NewAdapterManifest() *K8sManifest {
 		},
 
 		SetValuesFunc: func(manifest *K8sManifest) error {
-			environmentAdapter := &externalAdapter{}
-			environmentAdapter.clusterURL = fmt.Sprintf(
+			manifest.values["clusterURL"] = fmt.Sprintf(
 				"http://%s:%d",
 				manifest.Service.Spec.ClusterIP,
 				manifest.Service.Spec.Ports[0].Port,
 			)
-			environmentAdapter.localURL = fmt.Sprintf(
+			manifest.values["localURL"] = fmt.Sprintf(
 				"http://127.0.0.1:%d",
 				manifest.ports[0].Local,
 			)
-			manifest.values["clusterURL"] = environmentAdapter.clusterURL
-			manifest.values["localURL"] = environmentAdapter.localURL
 			return nil
 		},
 	}
@@ -120,19 +118,48 @@ func NewGethManifest() *K8sManifest {
 	}
 }
 
-// NewExplorerManifest is the k8s manifest that when used will deploy explorer mock service
-func NewExplorerManifest() *K8sManifest {
+// NewExplorerManifest is the k8s manifest that when used will deploy explorer to an environment
+// and create access keys for a nodeCount number of times
+func NewExplorerManifest(nodeCount int) *K8sManifest {
 	return &K8sManifest{
 		id:             "explorer",
 		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/explorer-deployment.yml"),
 		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/explorer-service.yml"),
 		SetValuesFunc: func(manifest *K8sManifest) error {
 			manifest.values["clusterURL"] = fmt.Sprintf(
-				"ws://%s:%d",
+				"ws://%s:8080",
 				manifest.Service.Spec.ClusterIP,
-				manifest.Service.Spec.Ports[0].Port,
 			)
-			manifest.values["localURL"] = fmt.Sprintf("ws://127.0.0.1:%d", manifest.ports[0].Local)
+			manifest.values["localURL"] = "https://127.0.0.1:8080"
+			var podsFullNames []string
+			for _, pod := range manifest.pods {
+				if strings.Contains(pod.PodName, "explorer") {
+					podsFullNames = append(podsFullNames, pod.PodName)
+				}
+			}
+			if len(podsFullNames) == 0 {
+				return errors.New("")
+			}
+			_, _, err := manifest.ExecuteInPod(podsFullNames[0], "explorer",
+				[]string{"yarn", "--cwd", "apps/explorer", "admin:seed", "username", "password"})
+			if err != nil {
+				return err
+			}
+
+			keys := TemplateValuesArray{}
+
+			explorerClient, err := GetExplorerClientFromEnv(manifest.env)
+			if err != nil {
+				return err
+			}
+			for i := 0; i < nodeCount; i++ {
+				credentials, err := explorerClient.PostAdminNodes(fmt.Sprintf("node-%d", i))
+				if err != nil {
+					return err
+				}
+				keys.Values = append(keys.Values, credentials)
+			}
+			manifest.values["keys"] = &keys
 			return nil
 		},
 	}
@@ -281,12 +308,26 @@ func getMixedVersions(versionCount int) ([]string, error) {
 
 // addDependencyGroup add everything that has no dependencies but other pods have
 // dependencies on in the first group
-func addDependencyGroup(postgresCount int, envName string, chainlinkGroup *K8sManifestGroup) K8sEnvSpecInit {
+func addDependencyGroup(nodeCount int, envName string, chainlinkGroup *K8sManifestGroup) K8sEnvSpecInit {
 	group := &K8sManifestGroup{
 		id:        "DependencyGroup",
 		manifests: []K8sEnvResource{NewAdapterManifest()},
+
+		SetValuesFunc: func(mg *K8sManifestGroup) error {
+			postgresURLs := TemplateValuesArray{}
+
+			for _, manifest := range mg.manifests {
+				if strings.Contains(manifest.ID(), "postgres") {
+					postgresURLs.Values = append(postgresURLs.Values, manifest.Values()["clusterURL"])
+				}
+			}
+
+			mg.values["dbURLs"] = &postgresURLs
+
+			return nil
+		},
 	}
-	for i := 0; i < postgresCount; i++ {
+	for i := 0; i < nodeCount; i++ {
 		pManifest := NewPostgresManifest()
 		pManifest.id = fmt.Sprintf("%s-%d", pManifest.id, i)
 		group.manifests = append(group.manifests, pManifest)
@@ -303,7 +344,7 @@ func addDependencyGroup(postgresCount int, envName string, chainlinkGroup *K8sMa
 			group.manifests = append(
 				group.manifests,
 				NewGethManifest(),
-				NewExplorerManifest())
+				NewExplorerManifest(nodeCount))
 		case "Ethereum Hardhat":
 			group.manifests = append(
 				group.manifests,
@@ -315,7 +356,7 @@ func addDependencyGroup(postgresCount int, envName string, chainlinkGroup *K8sMa
 		default: // no simulated chain
 			group.manifests = append(
 				group.manifests,
-				NewExplorerManifest())
+				NewExplorerManifest(nodeCount))
 		}
 		if len(chainlinkGroup.manifests) > 0 {
 			return envName, K8sEnvSpecs{group, chainlinkGroup}

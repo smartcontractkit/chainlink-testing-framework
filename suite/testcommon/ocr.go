@@ -5,7 +5,6 @@ import (
 	"fmt"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
@@ -21,7 +20,6 @@ type OCRSetupInputs struct {
 	Adapter        environment.ExternalAdapter
 	DefaultWallet  client.BlockchainWallet
 	OCRInstance    contracts.OffchainAggregator
-	Em             *client.ExplorerClient
 }
 
 func DeployOCRForEnv(i *OCRSetupInputs, envInit environment.K8sEnvSpecInit) {
@@ -32,8 +30,6 @@ func DeployOCRForEnv(i *OCRSetupInputs, envInit environment.K8sEnvSpecInit) {
 			client.NewNetworkFromConfig,
 			tools.ProjectRoot,
 		)
-		Expect(err).ShouldNot(HaveOccurred())
-		i.Em, err = environment.GetExplorerMockClient(i.SuiteSetup.Env)
 		Expect(err).ShouldNot(HaveOccurred())
 		i.Adapter, err = environment.GetExternalAdapter(i.SuiteSetup.Env)
 		Expect(err).ShouldNot(HaveOccurred())
@@ -159,20 +155,3 @@ func CheckRound(i *OCRSetupInputs) {
 	})
 }
 
-func CheckTelemetry(i *OCRSetupInputs) {
-	By("Checking explorer telemetry", func() {
-		mc, err := i.Em.Count()
-		log.Debug().Interface("Telemetry", mc).Msg("Explorer messages count")
-		Expect(err).ShouldNot(HaveOccurred())
-		Expect(mc.Errors).Should(Equal(0))
-		Expect(mc.Unknown).Should(Equal(0))
-		Expect(mc.Broadcast).Should(BeNumerically(">", 1))
-		Expect(mc.DHTAnnounce).Should(BeNumerically(">", 1))
-		Expect(mc.NewEpoch).Should(BeNumerically(">", 1))
-		Expect(mc.ObserveReq).Should(BeNumerically(">", 1))
-		Expect(mc.Received).Should(BeNumerically(">", 1))
-		Expect(mc.ReportReq).Should(BeNumerically(">", 1))
-		Expect(mc.RoundStarted).Should(BeNumerically(">", 1))
-		Expect(mc.Sent).Should(BeNumerically(">", 1))
-	})
-}

@@ -31,16 +31,22 @@ type ServiceDetails struct {
 	LocalURL  *url.URL
 }
 
-// GetExplorerMockClient will return all instantiated Explorer mock client for a given environment
-func GetExplorerMockClient(env Environment) (*client.ExplorerClient, error) {
-	sd, err := env.GetServiceDetails(ExplorerWSPort)
+// NewExplorerClient creates an ExplorerClient from localUrl
+func NewExplorerClient(localUrl string) (*client.ExplorerClient, error) {
+	return client.NewExplorerClient(&config.ExplorerConfig{
+		URL:           localUrl,
+		AdminUsername: "username",
+		AdminPassword: "password",
+	}), nil
+}
+
+// GetExplorerClientFromEnv returns an ExplorerClient initialized with port from service in k8s
+func GetExplorerClientFromEnv(env Environment) (*client.ExplorerClient, error) {
+	sd, err := env.GetServiceDetails(ExplorerAPIPort)
 	if err != nil {
 		return nil, err
 	}
-	forwardedURL := sd.LocalURL.String()
-	return client.NewExplorerMockClient(&config.ExplorerMockConfig{
-		URL: forwardedURL,
-	}), nil
+	return NewExplorerClient(sd.LocalURL.String())
 }
 
 // GetChainlinkClients will return all instantiated Chainlink clients for a given environment

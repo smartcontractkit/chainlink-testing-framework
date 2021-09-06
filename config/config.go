@@ -197,6 +197,9 @@ type RetryConfig struct {
 	LinearDelay time.Duration `mapstructure:"linear_delay" yaml:"linear_delay"`
 }
 
-type ExplorerMockConfig struct {
+// ExplorerConfig holds config information for ExplorerClient
+type ExplorerConfig struct {
 	URL string
+	AdminUsername string
+	AdminPassword string
 }
