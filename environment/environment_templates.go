@@ -282,8 +282,6 @@ func NewMixedVersionChainlinkCluster(nodeCount, pastVersionsCount int) K8sEnvSpe
 	dependencyGroup := getBasicDependencyGroup()
 	addPostgresDbsToDependencyGroup(dependencyGroup, nodeCount)
 	return addNetworkManifestToDependencyGroup("mixed-version-chainlink", dependencyGroup, chainlinkGroup)
-
-	//return addDependencyGroup(nodeCount, "mixed-version-chainlink", chainlinkGroup)
 }
 
 // NewGethReorgHelmChart creates new helm chart for multi-node Geth network
