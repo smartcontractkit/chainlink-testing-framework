@@ -22,7 +22,7 @@ var _ = Describe("Alerts suite", func() {
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
 			suiteSetup, err = actions.DefaultLocalSetup(
-				environment.NewChainlinkCluster(3),
+				environment.NewChainlinkClusterForAlertsTesting(3),
 				client.NewNetworkFromConfig,
 				tools.ProjectRoot,
 			)
