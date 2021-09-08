@@ -853,13 +853,18 @@ func next(array *TemplateValuesArray) (interface{}, error) {
 	return val, nil
 }
 
+func present(name string, data map[string]interface{}) bool {
+	_, ok := data[name]
+	return ok
+}
+
 func (m *K8sManifest) parse(path string, obj interface{}, data interface{}) error {
 	fileBytes, err := ioutil.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("failed to read k8s file: %v", err)
 	}
 
-	var funcs = template.FuncMap{"next": next}
+	var funcs = template.FuncMap{"next": next, "present": present}
 
 	tpl, err := template.New(path).Funcs(funcs).Parse(string(fileBytes))
 	if err != nil {

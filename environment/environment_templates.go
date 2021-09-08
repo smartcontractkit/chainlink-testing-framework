@@ -224,7 +224,25 @@ func NewChainlinkCluster(nodeCount int) K8sEnvSpecInit {
 		chainlinkGroup.manifests = append(chainlinkGroup.manifests, cManifest)
 	}
 
-	return addDependencyGroup(nodeCount, "basic-chainlink", chainlinkGroup)
+	dependencyGroup := getBasicDependencyGroup()
+	addPostgresDbsToDependencyGroup(dependencyGroup, nodeCount)
+	return addNetworkManifestToDependencyGroup("basic-chainlink", dependencyGroup, chainlinkGroup)
+}
+
+func NewChainlinkClusterForAlertsTesting(nodeCount int) K8sEnvSpecInit {
+	chainlinkGroup := &K8sManifestGroup{
+		id:        "chainlinkCluster",
+		manifests: []K8sEnvResource{},
+	}
+	for i := 0; i < nodeCount; i++ {
+		cManifest := NewChainlinkManifest()
+		cManifest.id = fmt.Sprintf("%s-%d", cManifest.id, i)
+		chainlinkGroup.manifests = append(chainlinkGroup.manifests, cManifest)
+	}
+	dependencyGroup := getBasicDependencyGroup()
+	addPostgresDbsToDependencyGroup(dependencyGroup, nodeCount)
+	addServicesForTestingAlertsToDependencyGroup(dependencyGroup, nodeCount)
+	return addNetworkManifestToDependencyGroup("basic-chainlink", dependencyGroup, chainlinkGroup)
 }
 
 // NewMixedVersionChainlinkCluster mixes the currently latest chainlink version (as defined by the config file) with
@@ -261,7 +279,11 @@ func NewMixedVersionChainlinkCluster(nodeCount, pastVersionsCount int) K8sEnvSpe
 		chainlinkGroup.manifests = append(chainlinkGroup.manifests, cManifest)
 	}
 
-	return addDependencyGroup(nodeCount, "mixed-version-chainlink", chainlinkGroup)
+	dependencyGroup := getBasicDependencyGroup()
+	addPostgresDbsToDependencyGroup(dependencyGroup, nodeCount)
+	return addNetworkManifestToDependencyGroup("mixed-version-chainlink", dependencyGroup, chainlinkGroup)
+
+	//return addDependencyGroup(nodeCount, "mixed-version-chainlink", chainlinkGroup)
 }
 
 // NewGethReorgHelmChart creates new helm chart for multi-node Geth network
@@ -306,9 +328,8 @@ func getMixedVersions(versionCount int) ([]string, error) {
 	return mixedVersions, nil
 }
 
-// addDependencyGroup add everything that has no dependencies but other pods have
-// dependencies on in the first group
-func addDependencyGroup(nodeCount int, envName string, chainlinkGroup *K8sManifestGroup) K8sEnvSpecInit {
+// getBasicDependencyGroup returns a manifest group containing the basic setup for a chainlink deployment
+func getBasicDependencyGroup() *K8sManifestGroup {
 	group := &K8sManifestGroup{
 		id:        "DependencyGroup",
 		manifests: []K8sEnvResource{NewAdapterManifest()},
@@ -327,40 +348,52 @@ func addDependencyGroup(nodeCount int, envName string, chainlinkGroup *K8sManife
 			return nil
 		},
 	}
-	for i := 0; i < nodeCount; i++ {
-		pManifest := NewPostgresManifest()
-		pManifest.id = fmt.Sprintf("%s-%d", pManifest.id, i)
-		group.manifests = append(group.manifests, pManifest)
-	}
+	return group
+}
 
+// addNetworkManifestToDependencyGroup adds the correct network to the dependency group and returns
+// an array of all groups, this should be called as the last function when creating deploys
+func addNetworkManifestToDependencyGroup(envName string, dependencyGroup *K8sManifestGroup, chainlinkGroup *K8sManifestGroup) K8sEnvSpecInit {
 	return func(config *config.NetworkConfig) (string, K8sEnvSpecs) {
 		switch config.Name {
 		case "Ethereum Geth reorg":
-			group.manifests = append(
-				group.manifests,
+			dependencyGroup.manifests = append(
+				dependencyGroup.manifests,
 				NewGethReorgHelmChart(),
 			)
 		case "Ethereum Geth dev":
-			group.manifests = append(
-				group.manifests,
-				NewGethManifest(),
-				NewExplorerManifest(nodeCount))
+			dependencyGroup.manifests = append(
+				dependencyGroup.manifests,
+				NewGethManifest())
 		case "Ethereum Hardhat":
-			group.manifests = append(
-				group.manifests,
+			dependencyGroup.manifests = append(
+				dependencyGroup.manifests,
 				NewHardhatManifest())
 		case "Ethereum Ganache":
-			group.manifests = append(
-				group.manifests,
+			dependencyGroup.manifests = append(
+				dependencyGroup.manifests,
 				NewGanacheManifest())
 		default: // no simulated chain
-			group.manifests = append(
-				group.manifests,
-				NewExplorerManifest(nodeCount))
+			dependencyGroup.manifests = append(
+				dependencyGroup.manifests)
 		}
 		if len(chainlinkGroup.manifests) > 0 {
-			return envName, K8sEnvSpecs{group, chainlinkGroup}
+			return envName, K8sEnvSpecs{dependencyGroup, chainlinkGroup}
 		}
-		return envName, K8sEnvSpecs{group}
+		return envName, K8sEnvSpecs{dependencyGroup}
 	}
+}
+
+// addPostgresDbsToDependencyGroup adds a postgresCount number of postgres dbs to the dependency group
+func addPostgresDbsToDependencyGroup(dependencyGroup *K8sManifestGroup, postgresCount int) {
+	for i := 0; i < postgresCount; i++ {
+		pManifest := NewPostgresManifest()
+		pManifest.id = fmt.Sprintf("%s-%d", pManifest.id, i)
+		dependencyGroup.manifests = append(dependencyGroup.manifests, pManifest)
+	}
+}
+
+// addServicesForTestingAlertsToDependencyGroup adds services necessary for testing alerts to the dependency group
+func addServicesForTestingAlertsToDependencyGroup(dependencyGroup *K8sManifestGroup, nodeCount int) {
+	dependencyGroup.manifests = append(dependencyGroup.manifests, NewExplorerManifest(nodeCount))
 }

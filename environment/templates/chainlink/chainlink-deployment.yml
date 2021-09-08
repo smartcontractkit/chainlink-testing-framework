@@ -83,6 +83,7 @@ spec:
           value: "200000"
         - name: KEEPER_REGISTRY_PERFORM_GAS_OVERHEAD
           value: "150000"
+        {{ if (present "explorer" .Values.DependencyGroup) }}
         - name: EXPLORER_URL
           value: {{ .Values.DependencyGroup.explorer.clusterURL }}
         {{ with $x := next .Values.DependencyGroup.explorer.keys }}
@@ -90,6 +91,7 @@ spec:
           value: {{ $x.AccessKey }}
         - name: EXPLORER_SECRET
           value: {{ $x.Secret }}
+        {{ end }}
         {{ end }}
         volumeMounts:
         - name: node-secrets-volume
