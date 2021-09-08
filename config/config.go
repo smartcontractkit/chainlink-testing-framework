@@ -199,7 +199,7 @@ type RetryConfig struct {
 
 // ExplorerConfig holds config information for ExplorerClient
 type ExplorerConfig struct {
-	URL string
+	URL           string
 	AdminUsername string
 	AdminPassword string
 }
