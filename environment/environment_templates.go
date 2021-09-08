@@ -357,8 +357,7 @@ func addNetworkManifestToDependencyGroup(envName string, dependencyGroup *K8sMan
 		case "Ethereum Geth reorg":
 			dependencyGroup.manifests = append(
 				dependencyGroup.manifests,
-				NewGethReorgHelmChart(),
-			)
+				NewGethReorgHelmChart())
 		case "Ethereum Geth dev":
 			dependencyGroup.manifests = append(
 				dependencyGroup.manifests,
@@ -372,8 +371,6 @@ func addNetworkManifestToDependencyGroup(envName string, dependencyGroup *K8sMan
 				dependencyGroup.manifests,
 				NewGanacheManifest())
 		default: // no simulated chain
-			dependencyGroup.manifests = append(
-				dependencyGroup.manifests)
 		}
 		if len(chainlinkGroup.manifests) > 0 {
 			return envName, K8sEnvSpecs{dependencyGroup, chainlinkGroup}
