@@ -13,6 +13,7 @@ spec:
       containers:
       - name: node
         image: {{ .Config.Apps.Chainlink.Image }}:{{ .Config.Apps.Chainlink.Version }}
+        imagePullPolicy: IfNotPresent
         args:
         - node
         - start
