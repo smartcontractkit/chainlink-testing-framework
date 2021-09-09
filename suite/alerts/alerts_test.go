@@ -1,4 +1,4 @@
-package contracts
+package alerts
 
 import (
 	"fmt"
