@@ -26,7 +26,7 @@ var _ = Describe("Performance tests", func() {
 		By("Deploying the environment", func() {
 			s, err = actions.DefaultLocalSetup(
 				environment.NewChainlinkCluster(numberOfNodes),
-				client.NewNetworkFromConfig,
+				client.NewNetworkFromConfigWithDefault(client.NetworkGethPerformance),
 				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())

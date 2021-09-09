@@ -21,8 +21,8 @@ const (
 
 // Config is the overall config for the framework, holding configurations for supported networks
 type Config struct {
-	Logging            *LoggingConfig            `mapstructure:"logging" yaml:"logging"`
 	Network            string                    `mapstructure:"network" yaml:"network"`
+	Logging            *LoggingConfig            `mapstructure:"logging" yaml:"logging"`
 	Networks           map[string]*NetworkConfig `mapstructure:"networks" yaml:"networks"`
 	Retry              *RetryConfig              `mapstructure:"retry" yaml:"retry"`
 	Apps               AppConfig                 `mapstructure:"apps" yaml:"apps"`
