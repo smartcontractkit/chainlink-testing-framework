@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"github.com/ethereum/go-ethereum/core/types"
 	"math/big"
+	"os"
+	"reflect"
 	"strings"
 
 	"github.com/smartcontractkit/integrations-framework/config"
@@ -15,7 +17,10 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
-const BlockchainTypeEVM = "evm"
+const (
+	BlockchainTypeEVM      = "evm"
+	NetworkGethPerformance = "ethereum_geth_performance"
+)
 
 // BlockchainClient is the interface that wraps a given client implementation for a blockchain, to allow for switching
 // of network types within the test suite
@@ -86,6 +91,26 @@ func NewNetworkFromConfig(conf *config.Config) (BlockchainNetwork, error) {
 		conf.Network,
 		networkConfig.Type,
 	)
+}
+
+// NewNetworkFromConfigWithDefault will return a new network with config but with a customisable default in-case a test
+// needs a different default from the config file default. For example, performance tests usually need a "performance"
+// network with higher gas limits than the vanilla Geth network.
+func NewNetworkFromConfigWithDefault(networkID string) BlockchainNetworkInit {
+	return func(conf *config.Config) (BlockchainNetwork, error) {
+		if conf == nil {
+			return nil, errors.New("nil config was provided")
+		}
+		// Get the "yaml" tag on the config struct to check whether the ENV override has been specified and if so
+		// use the override rather than the default given
+		ct := reflect.TypeOf(*conf)
+		field := ct.Field(0)
+		networkKey := field.Tag.Get("yaml")
+		if len(os.Getenv(strings.ToUpper(networkKey))) == 0 {
+			conf.Network = networkID
+		}
+		return NewNetworkFromConfig(conf)
+	}
 }
 
 // ID returns the readable name of the EVM network
