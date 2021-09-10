@@ -53,7 +53,7 @@ func NewReorgConfirmer(c client.BlockchainClient, env environment.Environment) (
 		blocksChan:          make(chan NodeBlock),
 	}
 	rc.subscribe()
-	rc.aggregateBlocks()
+	go rc.aggregateBlocks()
 	if err := rc.awaitNetworkJoined(); err != nil {
 		return nil, err
 	}
@@ -125,28 +125,26 @@ func (rc *ReorgConfirmer) subscribe() {
 
 // aggregateBlocks aggregates blocks, if hash was already seen adds to reorged blocks
 func (rc *ReorgConfirmer) aggregateBlocks() {
-	go func() {
-		for b := range rc.blocksChan {
-			rc.blocksByNodeMu.Lock()
-			if _, ok := rc.blocksByNode[b.NumberU64()]; !ok {
-				rc.blocksByNode[b.NumberU64()] = make(map[int]NodeBlock)
-			}
-			seenBlock, seen := rc.blocksByNode[b.NumberU64()][b.NodeID]
-			if seen && seenBlock.Hash().Hex() != b.Hash().Hex() && b.NumberU64() >= rc.joinBlockNumber {
-				log.Info().Int("Node", b.NodeID).
-					Uint64("Number", b.NumberU64()).
-					Str("Old hash", seenBlock.Hash().Hex()).
-					Str("New Hash", b.Hash().Hex()).
-					Msg("Block hash was updated")
-				if rc.reorgedBlocksByNode[b.NodeID] == nil {
-					rc.reorgedBlocksByNode[b.NodeID] = make([]*types.Block, 0)
-				}
-				rc.reorgedBlocksByNode[b.NodeID] = append(rc.reorgedBlocksByNode[b.NodeID], b.Block)
-			}
-			rc.blocksByNode[b.NumberU64()][b.NodeID] = b
-			rc.blocksByNodeMu.Unlock()
+	for b := range rc.blocksChan {
+		rc.blocksByNodeMu.Lock()
+		if _, ok := rc.blocksByNode[b.NumberU64()]; !ok {
+			rc.blocksByNode[b.NumberU64()] = make(map[int]NodeBlock)
 		}
-	}()
+		seenBlock, seen := rc.blocksByNode[b.NumberU64()][b.NodeID]
+		if seen && seenBlock.Hash().Hex() != b.Hash().Hex() && b.NumberU64() >= rc.joinBlockNumber {
+			log.Info().Int("Node", b.NodeID).
+				Uint64("Number", b.NumberU64()).
+				Str("Old hash", seenBlock.Hash().Hex()).
+				Str("New Hash", b.Hash().Hex()).
+				Msg("Block hash was updated")
+			if rc.reorgedBlocksByNode[b.NodeID] == nil {
+				rc.reorgedBlocksByNode[b.NodeID] = make([]*types.Block, 0)
+			}
+			rc.reorgedBlocksByNode[b.NodeID] = append(rc.reorgedBlocksByNode[b.NodeID], b.Block)
+		}
+		rc.blocksByNode[b.NumberU64()][b.NodeID] = b
+		rc.blocksByNodeMu.Unlock()
+	}
 }
 
 // isJoinBlock checks that we have a block with all versions from different client and block hashes are equal
