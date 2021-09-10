@@ -2,239 +2,178 @@ package chaos
 
 import (
 	"context"
-	"fmt"
-	"github.com/avast/retry-go"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/chaos/experiments"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/environment"
-	"sort"
 	"sync"
 	"time"
 )
 
-const (
-	NextBlockTimeout    = 180 * time.Second
-	NetworkJoinAttempts = 30
-	NetworkJoinInterval = 5 * time.Second
-	VerifyAttempts      = 20
-	VerifyInterval      = 5 * time.Second
-)
-
-// NodeBlock block received from particular node
-type NodeBlock struct {
-	NodeID int
-	*types.Block
-}
-
 // ReorgConfirmer reorg stats collecting struct
 type ReorgConfirmer struct {
-	env                 environment.Environment
-	c                   client.BlockchainClient
-	joinBlockNumber     uint64
-	blockReceivers      []*AggregatingBlockReceiver
-	blocksByNodeMu      *sync.Mutex
-	reorgedBlocksByNode map[int][]*types.Block
-	blocksByNode        map[uint64]map[int]NodeBlock
-	blocksChan          chan NodeBlock
+	env                      environment.Environment
+	c                        client.BlockchainClient
+	reorgDepth               int
+	blockConsensusThreshold  int
+	numberOfNodes            int
+	currentDivergenceDepth   int
+	currentBlockConsensus    int
+	awaitingNetworkConsensus bool
+	blockHashes              map[int64][]common.Hash
+	chaosExperimentName      string
+	mutex                    sync.Mutex
+
+	ctx      context.Context
+	cancel   context.CancelFunc
+	doneChan chan struct{}
+	done     bool
 }
 
 // NewReorgConfirmer creates a type that can create reorg chaos and confirm reorg has happened
-func NewReorgConfirmer(c client.BlockchainClient, env environment.Environment) (*ReorgConfirmer, error) {
+func NewReorgConfirmer(
+	c client.BlockchainClient,
+	env environment.Environment,
+	reorgDepth int,
+	blockConsensusThreshold int,
+	timeout time.Duration,
+) (*ReorgConfirmer, error) {
+	if len(c.GetClients()) == 1 {
+		return nil, errors.New("Only one node within the blockchain client detected, cannot reorg")
+	}
+	ctx, ctxCancel := context.WithTimeout(context.Background(), timeout)
 	rc := &ReorgConfirmer{
-		env:                 env,
-		c:                   c,
-		blockReceivers:      make([]*AggregatingBlockReceiver, 0),
-		blocksByNodeMu:      &sync.Mutex{},
-		reorgedBlocksByNode: make(map[int][]*types.Block),
-		blocksByNode:        make(map[uint64]map[int]NodeBlock),
-		blocksChan:          make(chan NodeBlock),
+		env:                     env,
+		c:                       c,
+		reorgDepth:              reorgDepth,
+		blockConsensusThreshold: blockConsensusThreshold,
+		numberOfNodes:           len(c.GetClients()),
+		blockHashes:             map[int64][]common.Hash{},
+		mutex:                   sync.Mutex{},
+		ctx:                     ctx,
+		cancel:                  ctxCancel,
 	}
-	rc.subscribe()
-	go rc.aggregateBlocks()
-	if err := rc.awaitNetworkJoined(); err != nil {
-		return nil, err
-	}
-	return rc, nil
+	return rc, rc.forkNetwork()
 }
 
-// Verify verifies that reorg has happened, unsubscribing for blocks
-func (rc *ReorgConfirmer) Verify(nodeID int, depth int) error {
-	defer rc.shutdown()
-	err := retry.Do(func() error {
-		log.Debug().Msg("Verifying reorged blocks")
-		rc.blocksByNodeMu.Lock()
-		defer rc.blocksByNodeMu.Unlock()
-		if len(rc.reorgedBlocksByNode[nodeID]) >= depth {
-			log.Debug().Msg("Reorg verified")
-			return nil
+func (rc *ReorgConfirmer) ReceiveBlock(header *types.Block) error {
+	if header == nil || rc.done {
+		return nil
+	}
+	if rc.awaitingNetworkConsensus {
+		if rc.hasNetworkFormedConsensus(header) {
+			rc.doneChan <- struct{}{}
 		}
-		return fmt.Errorf("no reorg blocks found")
-	}, retry.DelayType(retry.FixedDelay), retry.Attempts(VerifyAttempts), retry.Delay(VerifyInterval))
-	if err != nil {
-		return err
+	} else {
+		if rc.hasNetworkMetReorgDepth(header) {
+			rc.awaitingNetworkConsensus = true
+			if err := rc.joinNetwork(); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
 
-func (rc *ReorgConfirmer) shutdown() {
-	for _, br := range rc.blockReceivers {
-		br.cancel()
+func (rc *ReorgConfirmer) Wait() error {
+	for {
+		select {
+		case <-rc.doneChan:
+			rc.cancel()
+			rc.done = true
+			return nil
+		case <-rc.ctx.Done():
+			return errors.New("timeout waiting for reorg to complete")
+		}
 	}
-	rc.unsubscribe()
 }
 
-func (rc *ReorgConfirmer) Fork(dur time.Duration) error {
-	log.Info().Msg("Forking network")
-	exp, err := rc.env.ApplyChaos(&experiments.NetworkPartition{
+func (rc *ReorgConfirmer) forkNetwork() error {
+	expName, err := rc.env.ApplyChaos(&experiments.NetworkPartition{
 		FromMode:       "one",
 		FromLabelKey:   "app",
 		FromLabelValue: "ethereum-geth-tx",
 		ToMode:         "all",
 		ToLabelKey:     "app",
 		ToLabelValue:   "ethereum-geth-miner",
-		Duration:       dur,
 	})
-	if err != nil {
-		return err
-	}
-	log.Info().Msg("Network forked")
-	time.Sleep(dur)
-	log.Debug().Str("Experiment", exp).Msg("Joining network")
-	return nil
+	rc.chaosExperimentName = expName
+	return err
 }
 
-func (rc *ReorgConfirmer) unsubscribe() {
-	for idx, c := range rc.c.GetClients() {
-		key := fmt.Sprintf("%s_%d", client.BlocksSubPrefix, idx)
-		c.DeleteHeaderEventSubscription(key)
-	}
-	rc.blockReceivers = make([]*AggregatingBlockReceiver, 0)
+func (rc *ReorgConfirmer) joinNetwork() error {
+	return rc.env.StopChaos(rc.chaosExperimentName)
 }
 
-func (rc *ReorgConfirmer) subscribe() {
-	for idx, c := range rc.c.(*client.EthereumClients).Clients {
-		key := fmt.Sprintf("%s_%d", client.BlocksSubPrefix, idx)
-		br := NewAggregatingBlockReceiver(idx, rc.blocksChan)
-		c.AddHeaderEventSubscription(key, br)
-		rc.blockReceivers = append(rc.blockReceivers, br)
-	}
-}
+func (rc *ReorgConfirmer) hasNetworkFormedConsensus(header *types.Block) bool {
+	rc.mutex.Lock()
+	defer rc.mutex.Unlock()
 
-// aggregateBlocks aggregates blocks, if hash was already seen adds to reorged blocks
-func (rc *ReorgConfirmer) aggregateBlocks() {
-	for b := range rc.blocksChan {
-		rc.blocksByNodeMu.Lock()
-		if _, ok := rc.blocksByNode[b.NumberU64()]; !ok {
-			rc.blocksByNode[b.NumberU64()] = make(map[int]NodeBlock)
-		}
-		seenBlock, seen := rc.blocksByNode[b.NumberU64()][b.NodeID]
-		if seen && seenBlock.Hash().Hex() != b.Hash().Hex() && b.NumberU64() >= rc.joinBlockNumber {
-			log.Info().Int("Node", b.NodeID).
-				Uint64("Number", b.NumberU64()).
-				Str("Old hash", seenBlock.Hash().Hex()).
-				Str("New Hash", b.Hash().Hex()).
-				Msg("Block hash was updated")
-			if rc.reorgedBlocksByNode[b.NodeID] == nil {
-				rc.reorgedBlocksByNode[b.NodeID] = make([]*types.Block, 0)
-			}
-			rc.reorgedBlocksByNode[b.NodeID] = append(rc.reorgedBlocksByNode[b.NodeID], b.Block)
-		}
-		rc.blocksByNode[b.NumberU64()][b.NodeID] = b
-		rc.blocksByNodeMu.Unlock()
-	}
-}
+	blockNumber := header.Number().Int64()
+	rc.appendBlockHeader(header)
 
-// isJoinBlock checks that we have a block with all versions from different client and block hashes are equal
-func (rc *ReorgConfirmer) isJoinBlock(m map[int]NodeBlock) bool {
-	values := make([]string, 0)
-	for _, v := range m {
-		values = append(values, v.Hash().Hex())
-	}
-	if len(values) < len(rc.c.GetClients()) {
-		return false
-	}
-	for i := 1; i < len(values); i++ {
-		if values[i] != values[0] {
-			return false
-		}
-	}
-	return true
-}
-
-// awaitNetworkJoined awaits common block seen by all nodes
-func (rc *ReorgConfirmer) awaitNetworkJoined() error {
-	err := retry.Do(func() error {
-		log.Debug().Msg("Checking for a join block")
-		rc.blocksByNodeMu.Lock()
-		defer rc.blocksByNodeMu.Unlock()
-		revBlocks := make([]uint64, 0)
-		for bn := range rc.blocksByNode {
-			revBlocks = append(revBlocks, bn)
-		}
-		sort.Slice(revBlocks, func(i, j int) bool {
-			return revBlocks[i] > revBlocks[j]
-		})
-		for _, bn := range revBlocks {
-			if rc.isJoinBlock(rc.blocksByNode[bn]) {
-				rc.joinBlockNumber = bn
-				log.Info().Uint64("Number", bn).Msg("Join block found")
-				return nil
+	// If we've received the same block number from all nodes, check hashes to ensure they've reformed consensus
+	if len(rc.blockHashes[blockNumber]) == rc.numberOfNodes {
+		firstBlockHash := rc.blockHashes[blockNumber][0]
+		for _, blockHash := range rc.blockHashes[blockNumber][1:] {
+			if blockHash.String() != firstBlockHash.String() {
+				log.Info().
+					Int64("Blocknumber", blockNumber).
+					Msg("Reorg detected for block, awaiting network rejoin")
+				return false
 			}
 		}
-		return fmt.Errorf("network is still joining")
-	}, retry.DelayType(retry.FixedDelay), retry.Attempts(NetworkJoinAttempts), retry.Delay(NetworkJoinInterval))
-	if err != nil {
-		return err
+		rc.currentBlockConsensus++
 	}
-	return nil
+
+	if rc.currentBlockConsensus >= rc.blockConsensusThreshold {
+		log.Info().
+			Msg("Network has reformed consensus and joined, reorg complete")
+		return true
+	}
+	return false
 }
 
-// AggregatingBlockReceiver receives next block, mark it by node id
-type AggregatingBlockReceiver struct {
-	id         int
-	doneChan   chan struct{}
-	done       bool
-	ctx        context.Context
-	cancel     context.CancelFunc
-	blocksChan chan NodeBlock
-}
+func (rc *ReorgConfirmer) hasNetworkMetReorgDepth(header *types.Block) bool {
+	rc.mutex.Lock()
+	defer rc.mutex.Unlock()
 
-// NewAggregatingBlockReceiver generic next block receiver that aggregates blocks per blockchain node
-func NewAggregatingBlockReceiver(id int, blocksChan chan NodeBlock) *AggregatingBlockReceiver {
-	ctx, cancel := context.WithTimeout(context.Background(), NextBlockTimeout)
-	return &AggregatingBlockReceiver{
-		id:         id,
-		done:       false,
-		doneChan:   make(chan struct{}),
-		ctx:        ctx,
-		cancel:     cancel,
-		blocksChan: blocksChan,
-	}
-}
+	blockNumber := header.Number().Int64()
+	rc.appendBlockHeader(header)
 
-func (f *AggregatingBlockReceiver) ReceiveBlock(b *types.Block) error {
-	if b == nil {
-		return nil
-	}
-	select {
-	case f.blocksChan <- NodeBlock{NodeID: f.id, Block: b}:
-	case <-f.ctx.Done():
-		return nil
-	}
-	return nil
-}
-
-func (f *AggregatingBlockReceiver) Wait() error {
-	for {
-		select {
-		case <-f.doneChan:
-			f.cancel()
-			return nil
-		case <-f.ctx.Done():
-			return errors.New("timeout waiting for the next block to confirm")
+	// If we've received the same block number from all nodes, check hashes to verify if a reorg is taking place
+	if len(rc.blockHashes[blockNumber]) == rc.numberOfNodes {
+		firstBlockHash := rc.blockHashes[blockNumber][0]
+		for _, blockHash := range rc.blockHashes[blockNumber][1:] {
+			if blockHash.String() == firstBlockHash.String() {
+				log.Info().
+					Int64("Blocknumber", blockNumber).
+					Msg("Reorg not detected for block")
+				rc.currentDivergenceDepth = 0
+				return false
+			}
 		}
+		rc.currentDivergenceDepth++
+		log.Info().
+			Int64("Blocknumber", blockNumber).
+			Int("Current divergence depth", rc.currentDivergenceDepth).
+			Msg("Block reorg detected")
 	}
+
+	if rc.currentDivergenceDepth >= rc.reorgDepth {
+		log.Info().Int("Reorg Depth", rc.reorgDepth).Msg("Desired reorg depth met, joining the network")
+		return true
+	}
+	return false
+}
+
+func (rc *ReorgConfirmer) appendBlockHeader(header *types.Block) {
+	blockNumber := header.Number().Int64()
+	if _, ok := rc.blockHashes[blockNumber]; !ok {
+		rc.blockHashes[blockNumber] = []common.Hash{}
+	}
+	rc.blockHashes[blockNumber] = append(rc.blockHashes[blockNumber], header.Hash())
 }
