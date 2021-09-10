@@ -42,7 +42,7 @@ func NewReorgConfirmer(
 	timeout time.Duration,
 ) (*ReorgConfirmer, error) {
 	if len(c.GetClients()) == 1 {
-		return nil, errors.New("Only one node within the blockchain client detected, cannot reorg")
+		return nil, errors.New("only one node within the blockchain client detected, cannot reorg")
 	}
 	ctx, ctxCancel := context.WithTimeout(context.Background(), timeout)
 	rc := &ReorgConfirmer{
@@ -64,9 +64,7 @@ func (rc *ReorgConfirmer) ReceiveBlock(header *types.Block) error {
 		return nil
 	}
 	if rc.awaitingNetworkConsensus {
-		if rc.hasNetworkFormedConsensus(header) {
-			rc.doneChan <- struct{}{}
-		}
+		rc.hasNetworkFormedConsensus(header)
 	} else {
 		if rc.hasNetworkMetReorgDepth(header) {
 			rc.awaitingNetworkConsensus = true
@@ -108,7 +106,7 @@ func (rc *ReorgConfirmer) joinNetwork() error {
 	return rc.env.StopChaos(rc.chaosExperimentName)
 }
 
-func (rc *ReorgConfirmer) hasNetworkFormedConsensus(header *types.Block) bool {
+func (rc *ReorgConfirmer) hasNetworkFormedConsensus(header *types.Block) {
 	rc.mutex.Lock()
 	defer rc.mutex.Unlock()
 
@@ -116,25 +114,24 @@ func (rc *ReorgConfirmer) hasNetworkFormedConsensus(header *types.Block) bool {
 	rc.appendBlockHeader(header)
 
 	// If we've received the same block number from all nodes, check hashes to ensure they've reformed consensus
-	if len(rc.blockHashes[blockNumber]) == rc.numberOfNodes {
+	if len(rc.blockHashes[blockNumber]) >= rc.numberOfNodes {
 		firstBlockHash := rc.blockHashes[blockNumber][0]
 		for _, blockHash := range rc.blockHashes[blockNumber][1:] {
 			if blockHash.String() != firstBlockHash.String() {
 				log.Info().
 					Int64("Blocknumber", blockNumber).
 					Msg("Reorg detected for block, awaiting network rejoin")
-				return false
+				return
 			}
 		}
 		rc.currentBlockConsensus++
 	}
 
-	if rc.currentBlockConsensus >= rc.blockConsensusThreshold {
+	if rc.currentBlockConsensus >= rc.blockConsensusThreshold && !rc.done {
 		log.Info().
 			Msg("Network has reformed consensus and joined, reorg complete")
-		return true
+		rc.doneChan <- struct{}{}
 	}
-	return false
 }
 
 func (rc *ReorgConfirmer) hasNetworkMetReorgDepth(header *types.Block) bool {
@@ -145,7 +142,7 @@ func (rc *ReorgConfirmer) hasNetworkMetReorgDepth(header *types.Block) bool {
 	rc.appendBlockHeader(header)
 
 	// If we've received the same block number from all nodes, check hashes to verify if a reorg is taking place
-	if len(rc.blockHashes[blockNumber]) == rc.numberOfNodes {
+	if len(rc.blockHashes[blockNumber]) >= rc.numberOfNodes {
 		firstBlockHash := rc.blockHashes[blockNumber][0]
 		for _, blockHash := range rc.blockHashes[blockNumber][1:] {
 			if blockHash.String() == firstBlockHash.String() {
