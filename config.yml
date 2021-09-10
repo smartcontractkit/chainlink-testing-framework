@@ -96,7 +96,7 @@ networks:
     ethereum_geth_reorg:
         name: "Ethereum Geth reorg"
         chain_id: 1337
-        type: evm
+        type: evm_multi
         <<: *secret_private_keys_default
         <<: *namespace_for_secret_default
         <<: *private_keys

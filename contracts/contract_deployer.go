@@ -56,6 +56,8 @@ func NewContractDeployer(bcClient client.BlockchainClient) (ContractDeployer, er
 	switch clientImpl := bcClient.Get().(type) {
 	case *client.EthereumClient:
 		return NewEthereumContractDeployer(clientImpl), nil
+	case *client.EthereumClients:
+		return NewEthereumContractDeployer(clientImpl.DefaultClient), nil
 	}
 	return nil, errors.New("unknown blockchain client implementation")
 }

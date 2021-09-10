@@ -32,8 +32,8 @@ type RunlogSetupInputs struct {
 	Err           error
 }
 
-// SetupRunlogTest does all the environment setup for a run log type test
-func SetupRunlogTest(i *RunlogSetupInputs) {
+// SetupRunlogEnv does all the environment setup for a run log type test
+func SetupRunlogEnv(i *RunlogSetupInputs) {
 	By("Deploying the environment", func() {
 		i.S, i.Err = actions.DefaultLocalSetup(
 			environment.NewChainlinkCluster(1),
@@ -44,6 +44,10 @@ func SetupRunlogTest(i *RunlogSetupInputs) {
 		i.Adapter, i.Err = environment.GetExternalAdapter(i.S.Env)
 		Expect(i.Err).ShouldNot(HaveOccurred())
 	})
+}
+
+// SetupRunlogTest does all other test preparations for runlog
+func SetupRunlogTest(i *RunlogSetupInputs) {
 	By("Funding Chainlink nodes", func() {
 		i.Nodes, i.Err = environment.GetChainlinkClients(i.S.Env)
 		Expect(i.Err).ShouldNot(HaveOccurred())

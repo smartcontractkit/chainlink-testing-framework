@@ -20,18 +20,21 @@ import (
 
 // Commonly used variables
 const (
-	BlockchainTypeEVM      = "evm"
-	NetworkGethPerformance = "ethereum_geth_performance"
+	BlockchainTypeEVM          = "evm"
+	BlockchainTypeEVMMultinode = "evm_multi"
+	NetworkGethPerformance     = "ethereum_geth_performance"
 )
 
 // BlockchainClient is the interface that wraps a given client implementation for a blockchain, to allow for switching
 // of network types within the test suite
 type BlockchainClient interface {
-	GetID() string
-	SetID(id string)
+	Get() interface{}
+	GetID() int
+	SetID(id int)
+	SetDefaultClient(clientID int) error
+	GetClients() []BlockchainClient
 	BlockNumber(ctx context.Context) (uint64, error)
 	HeaderTimestampByNumber(ctx context.Context, bn *big.Int) (uint64, error)
-	Get() interface{}
 	CalculateTxGas(gasUsedValue *big.Int) (*big.Float, error)
 	Fund(fromWallet BlockchainWallet, toAddress string, nativeAmount, linkAmount *big.Float) error
 	ParallelTransactions(enabled bool)
@@ -47,6 +50,8 @@ func NewBlockchainClient(network BlockchainNetwork) (BlockchainClient, error) {
 	switch network.Type() {
 	case BlockchainTypeEVM:
 		return NewEthereumClient(network)
+	case BlockchainTypeEVMMultinode:
+		return NewEthereumClients(network)
 	}
 	return nil, errors.New("invalid blockchain network ID, not found")
 }
@@ -57,8 +62,10 @@ type BlockchainNetwork interface {
 	ID() string
 	SetID(id string)
 	URL() string
+	URLS() []string
 	Type() string
 	SetURL(string)
+	SetURLS(urls []string)
 	ChainID() *big.Int
 	Wallets() (BlockchainWallets, error)
 	Config() *config.NetworkConfig
@@ -88,7 +95,7 @@ func NewNetworkFromConfig(conf *config.Config) (BlockchainNetwork, error) {
 		return nil, err
 	}
 	switch networkConfig.Type {
-	case BlockchainTypeEVM:
+	case BlockchainTypeEVM, BlockchainTypeEVMMultinode:
 		return newEthereumNetwork(conf.Network, networkConfig)
 	}
 	return nil, fmt.Errorf(
@@ -130,12 +137,21 @@ func (e *EthereumNetwork) SetID(id string) {
 
 // Type returns the readable type of the EVM network
 func (e *EthereumNetwork) Type() string {
-	return BlockchainTypeEVM
+	return e.networkConfig.Type
 }
 
 // URL returns the RPC URL used for connecting to the network
 func (e *EthereumNetwork) URL() string {
 	return e.networkConfig.URL
+}
+
+// URLS returns the RPC URLs used for connecting to the network nodes
+func (e *EthereumNetwork) URLS() []string {
+	return e.networkConfig.URLS
+}
+
+func (e *EthereumNetwork) SetURLS(urls []string) {
+	e.networkConfig.URLS = urls
 }
 
 // SetURL sets the RPC URL, useful for when blockchain URLs might be dynamic

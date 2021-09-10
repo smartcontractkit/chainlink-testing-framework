@@ -94,6 +94,7 @@ type ExternalSource struct {
 type NetworkConfig struct {
 	Name                 string        `mapstructure:"name" yaml:"name"`
 	URL                  string        `mapstructure:"url" yaml:"url"`
+	URLS                 []string      `mapstructure:"urls" yaml:"urls"`
 	ChainID              int64         `mapstructure:"chain_id" yaml:"chain_id"`
 	Type                 string        `mapstructure:"type" yaml:"type"`
 	SecretPrivateKeys    bool          `mapstructure:"secret_private_keys" yaml:"secret_private_keys"`
