@@ -60,12 +60,11 @@ func NewBlockchainClient(network BlockchainNetwork) (BlockchainClient, error) {
 type BlockchainNetwork interface {
 	GasUsedEstimations
 	ID() string
-	SetID(id string)
 	URL() string
-	URLS() []string
+	URLs() []string
 	Type() string
 	SetURL(string)
-	SetURLS(urls []string)
+	SetURLs(urls []string)
 	ChainID() *big.Int
 	Wallets() (BlockchainWallets, error)
 	Config() *config.NetworkConfig
@@ -130,11 +129,6 @@ func (e *EthereumNetwork) ID() string {
 	return e.networkID
 }
 
-// SetID changes network ID, useful in case we have multiple node clients
-func (e *EthereumNetwork) SetID(id string) {
-	e.networkID = id
-}
-
 // Type returns the readable type of the EVM network
 func (e *EthereumNetwork) Type() string {
 	return e.networkConfig.Type
@@ -146,11 +140,11 @@ func (e *EthereumNetwork) URL() string {
 }
 
 // URLS returns the RPC URLs used for connecting to the network nodes
-func (e *EthereumNetwork) URLS() []string {
+func (e *EthereumNetwork) URLs() []string {
 	return e.networkConfig.URLS
 }
 
-func (e *EthereumNetwork) SetURLS(urls []string) {
+func (e *EthereumNetwork) SetURLs(urls []string) {
 	e.networkConfig.URLS = urls
 }
 

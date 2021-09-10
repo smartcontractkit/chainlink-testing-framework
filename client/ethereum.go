@@ -200,7 +200,7 @@ func NewEthereumClient(network BlockchainNetwork) (*EthereumClient, error) {
 // NewEthereumClients returns an instantiated instance of all Ethereum client connected to all nodes
 func NewEthereumClients(network BlockchainNetwork) (*EthereumClients, error) {
 	ecl := &EthereumClients{Clients: make([]*EthereumClient, 0)}
-	for idx, url := range network.URLS() {
+	for idx, url := range network.URLs() {
 		network.SetURL(url)
 		ec, err := NewEthereumClient(network)
 		if err != nil {

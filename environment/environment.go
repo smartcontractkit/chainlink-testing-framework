@@ -182,7 +182,7 @@ func NewBlockchainClients(env Environment, network client.BlockchainNetwork) (cl
 		u := strings.Replace(d.LocalURL.String(), "http", "ws", -1)
 		urls = append(urls, u)
 	}
-	network.SetURLS(urls)
+	network.SetURLs(urls)
 	network.Config().PrivateKeyStore, err = NewPrivateKeyStoreFromEnv(env, network.Config())
 	if err != nil {
 		return nil, err
