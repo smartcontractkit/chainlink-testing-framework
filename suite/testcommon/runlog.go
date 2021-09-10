@@ -30,7 +30,7 @@ type RunlogSetupInputs struct {
 	Err           error
 }
 
-func SetupRunlogTest(i *RunlogSetupInputs) {
+func SetupRunlogEnv(i *RunlogSetupInputs) {
 	By("Deploying the environment", func() {
 		i.S, i.Err = actions.DefaultLocalSetup(
 			environment.NewChainlinkCluster(1),
@@ -41,6 +41,9 @@ func SetupRunlogTest(i *RunlogSetupInputs) {
 		i.Adapter, i.Err = environment.GetExternalAdapter(i.S.Env)
 		Expect(i.Err).ShouldNot(HaveOccurred())
 	})
+}
+
+func SetupRunlogTest(i *RunlogSetupInputs) {
 	By("Funding Chainlink nodes", func() {
 		i.Nodes, i.Err = environment.GetChainlinkClients(i.S.Env)
 		Expect(i.Err).ShouldNot(HaveOccurred())

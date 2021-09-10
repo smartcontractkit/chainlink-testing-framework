@@ -8,6 +8,11 @@ import (
 	"github.com/smartcontractkit/integrations-framework/config"
 	"net/http"
 	"net/url"
+	"strings"
+)
+
+const (
+	OtherMinersRPCPort = 9545
 )
 
 // Environment is the interface that represents a deployed environment, whether locally or on remote machines
@@ -155,6 +160,33 @@ func NewBlockchainClient(env Environment, network client.BlockchainNetwork) (cli
 		return nil, err
 	}
 
+	return client.NewBlockchainClient(network)
+}
+
+// NewBlockchainClients will return an instantiated blockchain client that uses default client to communicate with a node,
+// can switch clients
+func NewBlockchainClients(env Environment, network client.BlockchainNetwork) (client.BlockchainClient, error) {
+	urls := make([]string, 0)
+	primaryClientDetails, err := env.GetServiceDetails(EVMRPCPort)
+	if err != nil {
+		return nil, err
+	}
+	u := strings.Replace(primaryClientDetails.LocalURL.String(), "http", "ws", -1)
+	urls = append(urls, u)
+	sd, err := env.GetAllServiceDetails(OtherMinersRPCPort)
+	if err != nil {
+		return nil, err
+	}
+	for _, d := range sd {
+		log.Debug().Str("Remote", d.RemoteURL.String()).Str("Local", d.LocalURL.String()).Msg("Miners RPCs")
+		u := strings.Replace(d.LocalURL.String(), "http", "ws", -1)
+		urls = append(urls, u)
+	}
+	network.SetURLS(urls)
+	network.Config().PrivateKeyStore, err = NewPrivateKeyStoreFromEnv(env, network.Config())
+	if err != nil {
+		return nil, err
+	}
 	return client.NewBlockchainClient(network)
 }
 
