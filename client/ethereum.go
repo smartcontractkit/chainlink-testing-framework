@@ -88,7 +88,9 @@ func (e *EthereumClients) Fund(fromWallet BlockchainWallet, toAddress string, na
 }
 
 func (e *EthereumClients) ParallelTransactions(enabled bool) {
-	e.DefaultClient.ParallelTransactions(enabled)
+	for _, c := range e.Clients {
+		c.ParallelTransactions(enabled)
+	}
 }
 
 func (e *EthereumClients) Close() error {
@@ -101,18 +103,26 @@ func (e *EthereumClients) Close() error {
 }
 
 func (e *EthereumClients) AddHeaderEventSubscription(key string, subscriber HeaderEventSubscription) {
-	e.DefaultClient.AddHeaderEventSubscription(key, subscriber)
+	for _, c := range e.Clients {
+		c.AddHeaderEventSubscription(key, subscriber)
+	}
 }
 
 func (e *EthereumClients) DeleteHeaderEventSubscription(key string) {
-	e.DefaultClient.DeleteHeaderEventSubscription(key)
+	for _, c := range e.Clients {
+		c.DeleteHeaderEventSubscription(key)
+	}
 }
 
 func (e *EthereumClients) WaitForEvents() error {
-	if err := e.DefaultClient.WaitForEvents(); err != nil {
-		return err
+	g := errgroup.Group{}
+	for _, c := range e.Clients {
+		c := c
+		g.Go(func() error {
+			return c.WaitForEvents()
+		})
 	}
-	return nil
+	return g.Wait()
 }
 
 // EthereumClient wraps the client and the BlockChain network to interact with an EVM based Blockchain

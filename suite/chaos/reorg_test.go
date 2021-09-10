@@ -11,11 +11,18 @@ var _ = Describe("Reorg example test @reorg", func() {
 	i := &testcommon.RunlogSetupInputs{}
 	It("Performs reorg and verifies it", func() {
 		testcommon.SetupRunlogEnv(i)
-		rc, err := NewReorgConfirmer(i.S.Client, i.S.Env)
+
+		reorgConfirmer, err := NewReorgConfirmer(
+			i.S.Client,
+			i.S.Env,
+			5,
+			3,
+			time.Second*120,
+		)
 		Expect(err).ShouldNot(HaveOccurred())
-		err = rc.Fork(120 * time.Second)
-		Expect(err).ShouldNot(HaveOccurred())
-		err = rc.Verify(0, 1)
+		i.S.Client.AddHeaderEventSubscription("reorg", reorgConfirmer)
+
+		err = i.S.Client.WaitForEvents()
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 	AfterEach(func() {
@@ -25,5 +32,4 @@ var _ = Describe("Reorg example test @reorg", func() {
 		})
 		By("Tearing down the environment", i.S.TearDown())
 	})
-},
-)
+})
