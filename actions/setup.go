@@ -16,12 +16,14 @@ import (
 	"github.com/smartcontractkit/integrations-framework/environment"
 )
 
+// Keep Environments options
 const (
 	KeepEnvironmentsNever  = "never"
 	KeepEnvironmentsOnFail = "onfail"
 	KeepEnvironmentsAlways = "always"
 )
 
+// DefaultSuiteSetup holds the data for a default setup
 type DefaultSuiteSetup struct {
 	Config   *config.Config
 	Client   client.BlockchainClient

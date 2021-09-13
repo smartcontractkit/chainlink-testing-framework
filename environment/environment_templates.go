@@ -3,11 +3,12 @@ package environment
 import (
 	"context"
 	"fmt"
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 
 	"github.com/google/go-github/github"
 	"github.com/smartcontractkit/integrations-framework/config"
@@ -16,6 +17,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// Ports for common services
 const (
 	AdapterAPIPort   = 6060
 	ChainlinkWebPort = 6688
@@ -229,6 +231,8 @@ func NewChainlinkCluster(nodeCount int) K8sEnvSpecInit {
 	return addNetworkManifestToDependencyGroup("basic-chainlink", dependencyGroup, chainlinkGroup)
 }
 
+// NewChainlinkClusterForAlertsTesting is a basic environment that deploys a chainlink cluster with dependencies
+// for testing alerts
 func NewChainlinkClusterForAlertsTesting(nodeCount int) K8sEnvSpecInit {
 	chainlinkGroup := &K8sManifestGroup{
 		id:        "chainlinkCluster",

@@ -5,11 +5,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/core/types"
 	"math/big"
 	"os"
 	"reflect"
 	"strings"
+
+	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/smartcontractkit/integrations-framework/config"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
+// Commonly used variables
 const (
 	BlockchainTypeEVM      = "evm"
 	NetworkGethPerformance = "ethereum_geth_performance"

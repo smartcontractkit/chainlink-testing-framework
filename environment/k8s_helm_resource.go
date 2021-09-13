@@ -3,6 +3,11 @@ package environment
 import (
 	"context"
 	"fmt"
+	"net/url"
+	"os"
+	"path/filepath"
+	"time"
+
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/config"
 	"helm.sh/helm/v3/pkg/action"
@@ -10,20 +15,21 @@ import (
 	"helm.sh/helm/v3/pkg/kube"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/portforward"
-	"net/url"
-	"os"
-	"path/filepath"
-	"time"
 )
 
 const (
-	HelmInstallTimeout   = 200 * time.Second
-	ReleasePrefix        = "release"
+	// HelmInstallTimeout timeout for installing a helm chart
+	HelmInstallTimeout = 200 * time.Second
+	// ReleasePrefix the default prefix
+	ReleasePrefix = "release"
+	// DefaultK8sConfigPath the default path for kube
 	DefaultK8sConfigPath = ".kube/config"
 )
 
+// SetValuesHelmFunc interface for setting values in a helm chart
 type SetValuesHelmFunc func(resource *HelmChart) error
 
+// PodForwardedInfo data to port forward the pods
 type PodForwardedInfo struct {
 	PodIP          string
 	ForwardedPorts []portforward.ForwardedPort
@@ -44,34 +50,40 @@ type HelmChart struct {
 	stopChannels []chan struct{}
 }
 
+// Teardown tears down the helm release
 func (k *HelmChart) Teardown() error {
 	// closing forwarded ports
 	for _, stopChan := range k.stopChannels {
 		stopChan <- struct{}{}
 	}
-	log.Debug().Str("Release", k.releaseName).Msg("Uninstalling Рelm release")
+	log.Debug().Str("Release", k.releaseName).Msg("Uninstalling Helm release")
 	if _, err := action.NewUninstall(k.actionConfig).Run(k.releaseName); err != nil {
 		return err
 	}
 	return nil
 }
 
+// ID returns the helm chart id
 func (k *HelmChart) ID() string {
 	return k.id
 }
 
+// SetValue sets the specified value in the chart
 func (k *HelmChart) SetValue(key string, val interface{}) {
 	k.values[key] = val
 }
 
+// GetConfig gets the helms environment config
 func (k *HelmChart) GetConfig() *config.Config {
 	return k.env.config
 }
 
+// Values returns the helm charts values
 func (k *HelmChart) Values() map[string]interface{} {
 	return k.values
 }
 
+// SetEnvironment sets the environment
 func (k *HelmChart) SetEnvironment(environment *K8sEnvironment) error {
 	k.env = environment
 	return nil
@@ -100,6 +112,7 @@ func (k *HelmChart) forwardAllPodsPorts() error {
 	return nil
 }
 
+// WaitUntilHealthy waits until the helm release is healthy
 func (k *HelmChart) WaitUntilHealthy() error {
 	// using helm Wait option before, not need to wait for pods to be deployed there
 	if err := k.forwardAllPodsPorts(); err != nil {
@@ -120,6 +133,7 @@ func (k *HelmChart) releaseSelector() string {
 	return fmt.Sprintf("%s=%s", ReleasePrefix, k.releaseName)
 }
 
+// ServiceDetails gets the details of the released service
 func (k *HelmChart) ServiceDetails() ([]*ServiceDetails, error) {
 	var serviceDetails []*ServiceDetails
 	for _, pod := range k.pods {
@@ -141,6 +155,7 @@ func (k *HelmChart) ServiceDetails() ([]*ServiceDetails, error) {
 	return serviceDetails, nil
 }
 
+// Deploy deploys the helm charts
 func (k *HelmChart) Deploy(_ map[string]interface{}) error {
 	log.Info().Str("Path", k.chartPath).Str("Namespace", k.env.namespace.Name).Msg("Installing helm chart")
 	chart, err := loader.Load(k.chartPath)

@@ -2,10 +2,11 @@ package performance
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/montanaflynn/stats"
 	"github.com/onsi/ginkgo"
 	"github.com/rs/zerolog/log"
-	"time"
 )
 
 // Test is the interface to be implemented for performance tests
@@ -15,6 +16,7 @@ type Test interface {
 	RecordValues(b ginkgo.Benchmarker) error
 }
 
+// TestOptions number of contracts and rounds
 type TestOptions struct {
 	NumberOfContracts int
 	NumberOfRounds    int64

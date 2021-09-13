@@ -12,6 +12,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// OneLINK representation of a single LINK token
 var OneLINK = big.NewFloat(1e18)
 
 // Chainlink interface that enables interactions with a chainlink node
@@ -60,7 +61,7 @@ type Chainlink interface {
 
 type chainlink struct {
 	*BasicHTTPClient
-	Config *ChainlinkConfig
+	Config   *ChainlinkConfig
 	pageSize int
 }
 
@@ -69,7 +70,7 @@ func NewChainlink(c *ChainlinkConfig, httpClient *http.Client) (Chainlink, error
 	cl := &chainlink{
 		Config:          c,
 		BasicHTTPClient: NewBasicHTTPClient(httpClient, c.URL),
-		pageSize:   25,
+		pageSize:        25,
 	}
 	return cl, cl.SetSessionCookie()
 }

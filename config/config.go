@@ -14,6 +14,7 @@ import (
 // ConfigurationType refers to the different ways that configurations can be set
 type ConfigurationType string
 
+// Configs
 const (
 	LocalConfig  ConfigurationType = "local"
 	SecretConfig ConfigurationType = "secret"
@@ -34,10 +35,12 @@ type Config struct {
 	ConfigFileLocation string
 }
 
+// PrometheusConfig for prometheus
 type PrometheusConfig struct {
 	URL string `mapstructure:"url" yaml:"url"`
 }
 
+// LoggingConfig for logging
 type LoggingConfig struct {
 	Level int8 `mapstructure:"level" yaml:"logging"`
 }
@@ -192,6 +195,7 @@ func (l *LocalStore) Fetch() ([]string, error) {
 	return l.RawKeys, nil
 }
 
+// RetryConfig holds config for retry attempts and delays
 type RetryConfig struct {
 	Attempts    uint          `mapstructure:"attempts" yaml:"attempts"`
 	LinearDelay time.Duration `mapstructure:"linear_delay" yaml:"linear_delay"`

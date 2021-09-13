@@ -2,6 +2,9 @@ package testcommon
 
 import (
 	"fmt"
+	"math/big"
+	"strings"
+
 	"github.com/ethereum/go-ethereum/common"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -11,10 +14,9 @@ import (
 	"github.com/smartcontractkit/integrations-framework/contracts"
 	"github.com/smartcontractkit/integrations-framework/environment"
 	"github.com/smartcontractkit/integrations-framework/tools"
-	"math/big"
-	"strings"
 )
 
+// RunlogSetupInputs inputs needed for a runlog test
 type RunlogSetupInputs struct {
 	S             *actions.DefaultSuiteSetup
 	Adapter       environment.ExternalAdapter
@@ -26,6 +28,7 @@ type RunlogSetupInputs struct {
 	Err           error
 }
 
+// SetupRunlogTest does all the environment setup for a run log type test
 func SetupRunlogTest(i *RunlogSetupInputs) {
 	By("Deploying the environment", func() {
 		i.S, i.Err = actions.DefaultLocalSetup(

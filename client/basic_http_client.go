@@ -4,12 +4,16 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/pkg/errors"
 	"io/ioutil"
 	"net/http"
+
+	"github.com/pkg/errors"
 )
 
+// ErrNotFound Error for not found
 var ErrNotFound = errors.New("unexpected response code, got 404")
+
+// ErrUnprocessableEntity Error for and unprocessable entity
 var ErrUnprocessableEntity = errors.New("unexpected response code, got 422")
 
 // BasicHTTPClient handles basic http sending logic and cookie handling

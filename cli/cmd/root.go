@@ -2,10 +2,12 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/spf13/cobra"
 	"os"
+
+	"github.com/spf13/cobra"
 )
 
+// Flag options
 const (
 	FlagType      = "type"
 	FlagNodeCount = "nodeCount"
@@ -34,6 +36,7 @@ func init() {
 		"n", "ethereum_hardhat", "the network to deploy the Chainlink cluster on")
 }
 
+// Execute runs the root command
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, err)
