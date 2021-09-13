@@ -95,6 +95,7 @@ func SetupRunlogTest(i *RunlogSetupInputs) {
 	})
 }
 
+// CallRunlogOracle calls runlog oracle
 func CallRunlogOracle(i *RunlogSetupInputs) {
 	By("Calling oracle contract", func() {
 		jobUUIDReplaces := strings.Replace(i.JobUUID.String(), "-", "", 4)
@@ -114,6 +115,7 @@ func CallRunlogOracle(i *RunlogSetupInputs) {
 	})
 }
 
+// CheckRunlogCompleted checks if oracle send the data on chain
 func CheckRunlogCompleted(i *RunlogSetupInputs) {
 	By("receives API call data on-chain", func() {
 		err := retry.Do(func() error {

@@ -12,6 +12,7 @@ import (
 )
 
 const (
+	// OtherMinersRPCPort default port for any additional blockchain node
 	OtherMinersRPCPort = 9545
 )
 

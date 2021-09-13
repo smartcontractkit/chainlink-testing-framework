@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"github.com/ethereum/go-ethereum/core/types"
 	"math/big"
 	"time"
 
@@ -356,7 +355,7 @@ func NewFluxAggregatorRoundConfirmer(
 }
 
 // ReceiveBlock will query the latest FluxAggregator round and check to see whether the round has confirmed
-func (f *FluxAggregatorRoundConfirmer) ReceiveBlock(block *types.Block) error {
+func (f *FluxAggregatorRoundConfirmer) ReceiveBlock(block client.NodeBlock) error {
 	if f.done {
 		return nil
 	}
@@ -690,7 +689,7 @@ func NewOffchainAggregatorRoundConfirmer(
 }
 
 // ReceiveBlock will query the latest OffchainAggregator round and check to see whether the round has confirmed
-func (o *OffchainAggregatorRoundConfirmer) ReceiveBlock(_ *types.Block) error {
+func (o *OffchainAggregatorRoundConfirmer) ReceiveBlock(_ client.NodeBlock) error {
 	lr, err := o.ocrInstance.GetLatestRound(context.Background())
 	if err != nil {
 		return err

@@ -15,4 +15,3 @@ spec:
       labelSelectors:
         '{{ .ToLabelKey }}': '{{ .ToLabelValue }}'
     mode: {{ .ToMode }}
-  duration: '{{ .Duration }}'

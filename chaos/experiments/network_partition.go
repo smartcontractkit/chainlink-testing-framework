@@ -1,9 +1,5 @@
 package experiments
 
-import (
-	"time"
-)
-
 // NetworkPartition struct with objects for Network Partition testing
 type NetworkPartition struct {
 	Base
@@ -13,7 +9,6 @@ type NetworkPartition struct {
 	ToMode         string
 	ToLabelKey     string
 	ToLabelValue   string
-	Duration       time.Duration
 }
 
 // SetBase sets the base

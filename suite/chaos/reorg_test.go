@@ -16,13 +16,14 @@ var _ = Describe("Reorg example test @reorg", func() {
 			i.S.Client,
 			i.S.Env,
 			5,
-			3,
-			time.Second*120,
+			10,
+			time.Second*600,
 		)
 		Expect(err).ShouldNot(HaveOccurred())
 		i.S.Client.AddHeaderEventSubscription("reorg", reorgConfirmer)
-
 		err = i.S.Client.WaitForEvents()
+		Expect(err).ShouldNot(HaveOccurred())
+		err = reorgConfirmer.Verify()
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 	AfterEach(func() {

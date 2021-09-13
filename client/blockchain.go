@@ -33,6 +33,7 @@ type BlockchainClient interface {
 	SetID(id int)
 	SetDefaultClient(clientID int) error
 	GetClients() []BlockchainClient
+	HeaderHashByNumber(ctx context.Context, bn *big.Int) (string, error)
 	BlockNumber(ctx context.Context) (uint64, error)
 	HeaderTimestampByNumber(ctx context.Context, bn *big.Int) (uint64, error)
 	CalculateTxGas(gasUsedValue *big.Int) (*big.Float, error)
@@ -139,11 +140,12 @@ func (e *EthereumNetwork) URL() string {
 	return e.networkConfig.URL
 }
 
-// URLS returns the RPC URLs used for connecting to the network nodes
+// URLs returns the RPC URLs used for connecting to the network nodes
 func (e *EthereumNetwork) URLs() []string {
 	return e.networkConfig.URLS
 }
 
+// SetURLs sets all nodes URLs
 func (e *EthereumNetwork) SetURLs(urls []string) {
 	e.networkConfig.URLS = urls
 }
@@ -282,9 +284,15 @@ func walletSliceIndexInRange(wallets []BlockchainWallet, i int) error {
 	return nil
 }
 
+// NodeBlock block with a node ID which mined it
+type NodeBlock struct {
+	NodeID int
+	*types.Block
+}
+
 // HeaderEventSubscription is an interface for allowing callbacks when the client receives a new header
 type HeaderEventSubscription interface {
-	ReceiveBlock(header *types.Block) error
+	ReceiveBlock(header NodeBlock) error
 	Wait() error
 }
 
