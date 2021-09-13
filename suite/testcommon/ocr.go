@@ -15,7 +15,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/tools"
 )
 
-// OCRSetupInputss inputs needed for OCR tests
+// OCRSetupInputs inputs needed for OCR tests
 type OCRSetupInputs struct {
 	SuiteSetup     *actions.DefaultSuiteSetup
 	ChainlinkNodes []client.Chainlink
