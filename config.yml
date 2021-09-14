@@ -167,6 +167,19 @@ networks:
         transaction_timeout: 5m
         minimum_confirmations: 1
         gas_estimation_buffer: 1000000
+    arbitrum_testnet:
+        name: "Arbitrum testnet"
+        url: "wss://rinkeby.arbitrum.io/ws"
+        chain_id: 421611
+        type: evm
+        secret_private_keys: true
+        <<: *namespace_for_secret_default
+        private_keys:
+            - arb_testnet_1
+        transaction_limit: 9000000000
+        transaction_timeout: 10s
+        minimum_confirmations: 1
+        gas_estimation_buffer: 1000000
 retry:
     attempts: 30
     linear_delay: 1s
