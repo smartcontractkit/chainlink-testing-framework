@@ -88,7 +88,7 @@ func (c *Controller) Run(exp Experimentable) (string, error) {
 
 // Stop removes experiment's entity
 func (c *Controller) Stop(name string) error {
-	log.Info().Str("ID", name).Msg("Stopping chaos experiment")
+	log.Info().Str("ID", name).Msg("Deleting chaos experiment")
 	exp, ok := c.Requests[name]
 	if !ok {
 		return fmt.Errorf("experiment %s not found", name)

@@ -7,8 +7,9 @@ import (
 // PodFailure struct contains objects for Pod Failure testing
 type PodFailure struct {
 	Base
-	TargetAppLabel string
-	Duration       time.Duration
+	LabelKey   string
+	LabelValue string
+	Duration   time.Duration
 }
 
 // SetBase sets the base

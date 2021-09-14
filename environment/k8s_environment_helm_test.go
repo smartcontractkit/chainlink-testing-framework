@@ -5,7 +5,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/config"
-	"github.com/smartcontractkit/integrations-framework/contracts"
 	"github.com/smartcontractkit/integrations-framework/tools"
 	"strconv"
 )
@@ -28,15 +27,10 @@ var _ = Describe("Environment with Helm @helm_deploy", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			env, err = NewK8sEnvironment(NewChainlinkCluster(1), conf, networkConfig)
 			Expect(err).ShouldNot(HaveOccurred())
-			bcClient, err := NewBlockchainClient(env, networkConfig)
-			Expect(err).ShouldNot(HaveOccurred())
 			// check service details has EVM port
 			sd, err := env.GetServiceDetails(EVMRPCPort)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(sd.RemoteURL).Should(ContainSubstring(strconv.Itoa(EVMRPCPort)))
-			// check that mining is started
-			err = contracts.AwaitMining(bcClient)
-			Expect(err).ShouldNot(HaveOccurred())
 		})
 		AfterEach(func() {
 			By("Tearing down the environment", func() {

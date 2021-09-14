@@ -20,16 +20,22 @@ import (
 
 // Commonly used variables
 const (
-	BlockchainTypeEVM      = "evm"
-	NetworkGethPerformance = "ethereum_geth_performance"
+	BlockchainTypeEVM          = "evm"
+	BlockchainTypeEVMMultinode = "evm_multi"
+	NetworkGethPerformance     = "ethereum_geth_performance"
 )
 
 // BlockchainClient is the interface that wraps a given client implementation for a blockchain, to allow for switching
 // of network types within the test suite
 type BlockchainClient interface {
+	Get() interface{}
+	GetID() int
+	SetID(id int)
+	SetDefaultClient(clientID int) error
+	GetClients() []BlockchainClient
+	HeaderHashByNumber(ctx context.Context, bn *big.Int) (string, error)
 	BlockNumber(ctx context.Context) (uint64, error)
 	HeaderTimestampByNumber(ctx context.Context, bn *big.Int) (uint64, error)
-	Get() interface{}
 	CalculateTxGas(gasUsedValue *big.Int) (*big.Float, error)
 	Fund(fromWallet BlockchainWallet, toAddress string, nativeAmount, linkAmount *big.Float) error
 	ParallelTransactions(enabled bool)
@@ -45,6 +51,8 @@ func NewBlockchainClient(network BlockchainNetwork) (BlockchainClient, error) {
 	switch network.Type() {
 	case BlockchainTypeEVM:
 		return NewEthereumClient(network)
+	case BlockchainTypeEVMMultinode:
+		return NewEthereumClients(network)
 	}
 	return nil, errors.New("invalid blockchain network ID, not found")
 }
@@ -54,8 +62,10 @@ type BlockchainNetwork interface {
 	GasUsedEstimations
 	ID() string
 	URL() string
+	URLs() []string
 	Type() string
 	SetURL(string)
+	SetURLs(urls []string)
 	ChainID() *big.Int
 	Wallets() (BlockchainWallets, error)
 	Config() *config.NetworkConfig
@@ -85,7 +95,7 @@ func NewNetworkFromConfig(conf *config.Config) (BlockchainNetwork, error) {
 		return nil, err
 	}
 	switch networkConfig.Type {
-	case BlockchainTypeEVM:
+	case BlockchainTypeEVM, BlockchainTypeEVMMultinode:
 		return newEthereumNetwork(conf.Network, networkConfig)
 	}
 	return nil, fmt.Errorf(
@@ -122,12 +132,22 @@ func (e *EthereumNetwork) ID() string {
 
 // Type returns the readable type of the EVM network
 func (e *EthereumNetwork) Type() string {
-	return BlockchainTypeEVM
+	return e.networkConfig.Type
 }
 
 // URL returns the RPC URL used for connecting to the network
 func (e *EthereumNetwork) URL() string {
 	return e.networkConfig.URL
+}
+
+// URLs returns the RPC URLs used for connecting to the network nodes
+func (e *EthereumNetwork) URLs() []string {
+	return e.networkConfig.URLS
+}
+
+// SetURLs sets all nodes URLs
+func (e *EthereumNetwork) SetURLs(urls []string) {
+	e.networkConfig.URLS = urls
 }
 
 // SetURL sets the RPC URL, useful for when blockchain URLs might be dynamic
@@ -264,9 +284,15 @@ func walletSliceIndexInRange(wallets []BlockchainWallet, i int) error {
 	return nil
 }
 
+// NodeBlock block with a node ID which mined it
+type NodeBlock struct {
+	NodeID int
+	*types.Block
+}
+
 // HeaderEventSubscription is an interface for allowing callbacks when the client receives a new header
 type HeaderEventSubscription interface {
-	ReceiveBlock(header *types.Block) error
+	ReceiveBlock(header NodeBlock) error
 	Wait() error
 }
 

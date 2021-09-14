@@ -1,4 +1,4 @@
-package contracts
+package chaos
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -31,17 +31,11 @@ var _ = XDescribeTable("OCR chaos tests @chaos-ocr", func(
 		By("Tearing down the environment", i.SuiteSetup.TearDown())
 	})
 },
-	Entry("One node latency",
-		environment.NewChainlinkCluster(5),
-		&experiments.NetworkDelay{
-			TargetAppLabel: "chainlink-0",
-			Latency:        2 * time.Second,
-			Duration:       30 * time.Second,
-		}),
 	Entry("One node pod failure",
 		environment.NewChainlinkCluster(5),
 		&experiments.PodFailure{
-			TargetAppLabel: "chainlink-0",
-			Duration:       10 * time.Second,
+			LabelKey:   "app",
+			LabelValue: "chainlink-0",
+			Duration:   10 * time.Second,
 		}),
 )

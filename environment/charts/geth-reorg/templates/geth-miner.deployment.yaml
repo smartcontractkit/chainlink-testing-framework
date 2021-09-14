@@ -11,13 +11,14 @@ spec:
   replicas: {{ .Values.geth.miner.replicaCount }}
   selector:
     matchLabels:
-      app: {{ template "ethereum.name" . }}-geth-miner
+      app: miner-node
       release: {{ .Release.Name }}
   template:
     metadata:
       labels:
-        app: {{ template "ethereum.name" . }}-geth-miner
+        app: miner-node
         release: {{ .Release.Name }}
+        miner: "0"
     spec:
       containers:
       - name: geth-miner
@@ -26,14 +27,23 @@ spec:
         command: ["/bin/sh"]
         args: 
         - "-c"
-        - "geth --syncmode fast --gcmode archive --fakepow --bootnodes=`cat /root/.ethereum/bootnodes` --mine --miner.threads 1 --miner.gasprice 1 --miner.gastarget 400000000000000 --miner.gaslimit 400000000000000 --miner.noverify --miner.etherbase 0 --networkid=${NETWORK_ID} --password /root/.ethereum/keystore/password.txt --verbosity=5"
+        - "geth --nousb --metrics --nocompaction --syncmode full --gcmode archive --bootnodes=`cat /root/.ethereum/bootnodes` --http --http.corsdomain \"*\" --http.api admin,debug,web3,eth,txpool,personal,miner,net --http.addr 0.0.0.0 --http.port=9544 --ws --ws.origins \"*\" --ws.api admin,debug,web3,eth,txpool,personal,miner,net --ws.addr 0.0.0.0 --ws.port=9545 --mine --miner.extradata \"miner\" --miner.threads 1 --miner.gasprice 1 --miner.gastarget 400000000000000 --miner.gaslimit 400000000000000 --miner.noverify --miner.etherbase 0 --networkid=${NETWORK_ID} --password /root/.ethereum/keystore/password.txt --verbosity=5"
         env:
         - name: NETWORK_ID
           valueFrom:
             configMapKeyRef:
               name: {{ template "ethereum.fullname" . }}-geth-config
               key: networkid
+        resources:
+          requests:
+            cpu: "2"
+          limits:
+            cpu: "3"
         ports:
+        - name: rpc
+          containerPort: 9544
+        - name: ws
+          containerPort: 9545
         - name: discovery-udp
           containerPort: 30303
           protocol: UDP

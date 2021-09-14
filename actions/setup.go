@@ -52,7 +52,13 @@ func DefaultLocalSetup(
 	if err != nil {
 		return nil, err
 	}
-	blockchainClient, err := environment.NewBlockchainClient(env, network)
+	var bcc client.BlockchainClient
+	switch network.Config().Type {
+	case client.BlockchainTypeEVMMultinode:
+		bcc, err = environment.NewBlockchainClients(env, network)
+	case client.BlockchainTypeEVM:
+		bcc, err = environment.NewBlockchainClient(env, network)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -60,11 +66,8 @@ func DefaultLocalSetup(
 	if err != nil {
 		return nil, err
 	}
-	contractDeployer, err := contracts.NewContractDeployer(blockchainClient)
+	contractDeployer, err := contracts.NewContractDeployer(bcc)
 	if err != nil {
-		return nil, err
-	}
-	if err := contracts.AwaitMining(blockchainClient); err != nil {
 		return nil, err
 	}
 	link, err := contractDeployer.DeployLinkTokenContract(wallets.Default())
@@ -78,7 +81,7 @@ func DefaultLocalSetup(
 	}
 	return &DefaultSuiteSetup{
 		Config:   conf,
-		Client:   blockchainClient,
+		Client:   bcc,
 		Wallets:  wallets,
 		Deployer: contractDeployer,
 		Link:     link,

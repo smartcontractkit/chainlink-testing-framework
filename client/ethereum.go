@@ -23,14 +23,125 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// OneGWei represents 1 GWei
-var OneGWei = big.NewInt(1e9)
+var (
+	// OneGWei represents 1 GWei
+	OneGWei = big.NewInt(1e9)
+	// OneEth represents 1 Ethereum
+	OneEth = big.NewFloat(1e18)
+)
 
-// OneEth represents 1 Ethereum
-var OneEth = big.NewFloat(1e18)
+// EthereumClients wraps the client and the BlockChain network to interact with an EVM based Blockchain with multiple nodes
+type EthereumClients struct {
+	DefaultClient *EthereumClient
+	Clients       []*EthereumClient
+}
+
+// GetID gets client ID, node number it's connected to
+func (e *EthereumClients) GetID() int {
+	return e.DefaultClient.ID
+}
+
+// SetDefaultClient sets default client to perform calls to the network
+func (e *EthereumClients) SetDefaultClient(clientID int) error {
+	if clientID > len(e.Clients) {
+		return fmt.Errorf("client for node %d not found", clientID)
+	}
+	e.DefaultClient = e.Clients[clientID]
+	return nil
+}
+
+// GetClients gets clients for all nodes connected
+func (e *EthereumClients) GetClients() []BlockchainClient {
+	cl := make([]BlockchainClient, 0)
+	for _, c := range e.Clients {
+		cl = append(cl, c)
+	}
+	return cl
+}
+
+// SetID sets client ID (node)
+func (e *EthereumClients) SetID(id int) {
+	e.DefaultClient.SetID(id)
+}
+
+// BlockNumber gets block number
+func (e *EthereumClients) BlockNumber(ctx context.Context) (uint64, error) {
+	return e.DefaultClient.BlockNumber(ctx)
+}
+
+// HeaderTimestampByNumber gets header timestamp by number
+func (e *EthereumClients) HeaderTimestampByNumber(ctx context.Context, bn *big.Int) (uint64, error) {
+	return e.DefaultClient.HeaderTimestampByNumber(ctx, bn)
+}
+
+// HeaderHashByNumber gets header hash by block number
+func (e *EthereumClients) HeaderHashByNumber(ctx context.Context, bn *big.Int) (string, error) {
+	return e.DefaultClient.HeaderHashByNumber(ctx, bn)
+}
+
+// Get gets default client as an interface{}
+func (e *EthereumClients) Get() interface{} {
+	return e.DefaultClient
+}
+
+// CalculateTxGas calculates tx gas cost accordingly gas used plus buffer, converts it to big.Float for funding
+func (e *EthereumClients) CalculateTxGas(gasUsedValue *big.Int) (*big.Float, error) {
+	return e.DefaultClient.CalculateTxGas(gasUsedValue)
+}
+
+// Fund funds a specified address with LINK token and or ETH from the given wallet
+func (e *EthereumClients) Fund(fromWallet BlockchainWallet, toAddress string, nativeAmount, linkAmount *big.Float) error {
+	return e.DefaultClient.Fund(fromWallet, toAddress, nativeAmount, linkAmount)
+}
+
+// ParallelTransactions when enabled, sends the transaction without waiting for transaction confirmations. The hashes
+// are then stored within the client and confirmations can be waited on by calling WaitForEvents.
+// When disabled, the minimum confirmations are waited on when the transaction is sent, so parallelisation is disabled.
+func (e *EthereumClients) ParallelTransactions(enabled bool) {
+	for _, c := range e.Clients {
+		c.ParallelTransactions(enabled)
+	}
+}
+
+// Close tears down the all the clients
+func (e *EthereumClients) Close() error {
+	for _, c := range e.Clients {
+		if err := c.Close(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// AddHeaderEventSubscription adds a new header subscriber within the client to receive new headers
+func (e *EthereumClients) AddHeaderEventSubscription(key string, subscriber HeaderEventSubscription) {
+	for _, c := range e.Clients {
+		c.AddHeaderEventSubscription(key, subscriber)
+	}
+}
+
+// DeleteHeaderEventSubscription removes a header subscriber from the map
+func (e *EthereumClients) DeleteHeaderEventSubscription(key string) {
+	for _, c := range e.Clients {
+		c.DeleteHeaderEventSubscription(key)
+	}
+}
+
+// WaitForEvents is a blocking function that waits for all event subscriptions for all clients
+func (e *EthereumClients) WaitForEvents() error {
+	g := errgroup.Group{}
+	for _, c := range e.Clients {
+		c := c
+		g.Go(func() error {
+			return c.WaitForEvents()
+		})
+	}
+	return g.Wait()
+}
 
 // EthereumClient wraps the client and the BlockChain network to interact with an EVM based Blockchain
 type EthereumClient struct {
+	ID                  int
 	Client              *ethclient.Client
 	Network             BlockchainNetwork
 	BorrowNonces        bool
@@ -43,6 +154,26 @@ type EthereumClient struct {
 	doneChan            chan struct{}
 }
 
+// GetID gets client ID, node number it's connected to
+func (e *EthereumClient) GetID() int {
+	return e.ID
+}
+
+// SetDefaultClient not used, only applicable to EthereumClients
+func (e *EthereumClient) SetDefaultClient(_ int) error {
+	return nil
+}
+
+// GetClients not used, only applicable to EthereumClients
+func (e *EthereumClient) GetClients() []BlockchainClient {
+	return []BlockchainClient{e}
+}
+
+// SetID sets client id, useful for multi-node networks
+func (e *EthereumClient) SetID(id int) {
+	e.ID = id
+}
+
 // BlockNumber gets latest block number
 func (e *EthereumClient) BlockNumber(ctx context.Context) (uint64, error) {
 	bn, err := e.Client.BlockNumber(ctx)
@@ -50,6 +181,15 @@ func (e *EthereumClient) BlockNumber(ctx context.Context) (uint64, error) {
 		return 0, err
 	}
 	return bn, nil
+}
+
+// HeaderHashByNumber gets header hash by block number
+func (e *EthereumClient) HeaderHashByNumber(ctx context.Context, bn *big.Int) (string, error) {
+	h, err := e.Client.HeaderByNumber(ctx, bn)
+	if err != nil {
+		return "", err
+	}
+	return h.Hash().String(), nil
 }
 
 // HeaderTimestampByNumber gets header timestamp by number
@@ -90,6 +230,22 @@ func NewEthereumClient(network BlockchainNetwork) (*EthereumClient, error) {
 	}
 	go ec.newHeadersLoop()
 	return ec, nil
+}
+
+// NewEthereumClients returns an instantiated instance of all Ethereum client connected to all nodes
+func NewEthereumClients(network BlockchainNetwork) (*EthereumClients, error) {
+	ecl := &EthereumClients{Clients: make([]*EthereumClient, 0)}
+	for idx, url := range network.URLs() {
+		network.SetURL(url)
+		ec, err := NewEthereumClient(network)
+		if err != nil {
+			return nil, err
+		}
+		ec.SetID(idx)
+		ecl.Clients = append(ecl.Clients, ec)
+	}
+	ecl.DefaultClient = ecl.Clients[0]
+	return ecl, nil
 }
 
 // Close tears down the current open Ethereum client
@@ -349,11 +505,11 @@ func (e *EthereumClient) WaitForEvents() error {
 	queuedEvents := e.GetHeaderSubscriptions()
 	g := errgroup.Group{}
 
-	for events, sub := range queuedEvents {
+	for subName, sub := range queuedEvents {
+		subName := subName
 		sub := sub
-		txHash := events
 		g.Go(func() error {
-			defer e.DeleteHeaderEventSubscription(txHash)
+			defer e.DeleteHeaderEventSubscription(subName)
 			return sub.Wait()
 		})
 	}
@@ -425,7 +581,9 @@ func (e *EthereumClient) subscribeToNewHeaders() error {
 func (e *EthereumClient) receiveHeader(header *types.Header) {
 	log.Debug().
 		Str("Network", e.Network.ID()).
-		Str("Block Number", header.Number.String()).
+		Int("Node", e.ID).
+		Str("Hash", header.Hash().String()).
+		Str("Number", header.Number.String()).
 		Msg("Received block header")
 
 	subs := e.GetHeaderSubscriptions()
@@ -438,7 +596,7 @@ func (e *EthereumClient) receiveHeader(header *types.Header) {
 	for _, sub := range subs {
 		sub := sub
 		g.Go(func() error {
-			return sub.ReceiveBlock(block)
+			return sub.ReceiveBlock(NodeBlock{NodeID: e.ID, Block: block})
 		})
 	}
 	if err := g.Wait(); err != nil {
@@ -526,7 +684,7 @@ func NewTransactionConfirmer(eth *EthereumClient, txHash common.Hash, minConfirm
 
 // ReceiveBlock the implementation of the HeaderEventSubscription that receives each block and checks
 // tx confirmation
-func (t *TransactionConfirmer) ReceiveBlock(block *types.Block) error {
+func (t *TransactionConfirmer) ReceiveBlock(block NodeBlock) error {
 	confirmationLog := log.Debug().Str("Network", t.eth.Network.ID()).
 		Str("Block Hash", block.Hash().Hex()).
 		Str("Block Number", block.Number().String()).Str("Tx Hash", t.txHash.Hex()).
@@ -563,7 +721,7 @@ func (t *TransactionConfirmer) Wait() error {
 type InstantConfirmations struct{}
 
 // ReceiveBlock is a no-op
-func (i *InstantConfirmations) ReceiveBlock(*types.Block) error {
+func (i *InstantConfirmations) ReceiveBlock(block NodeBlock) error {
 	return nil
 }
 

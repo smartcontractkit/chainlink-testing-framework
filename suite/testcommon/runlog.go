@@ -1,13 +1,17 @@
 package testcommon
 
 import (
+	"context"
 	"fmt"
+	"github.com/avast/retry-go"
 	"math/big"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 	uuid "github.com/satori/go.uuid"
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/client"
@@ -28,8 +32,8 @@ type RunlogSetupInputs struct {
 	Err           error
 }
 
-// SetupRunlogTest does all the environment setup for a run log type test
-func SetupRunlogTest(i *RunlogSetupInputs) {
+// SetupRunlogEnv does all the environment setup for a run log type test
+func SetupRunlogEnv(i *RunlogSetupInputs) {
 	By("Deploying the environment", func() {
 		i.S, i.Err = actions.DefaultLocalSetup(
 			environment.NewChainlinkCluster(1),
@@ -40,6 +44,10 @@ func SetupRunlogTest(i *RunlogSetupInputs) {
 		i.Adapter, i.Err = environment.GetExternalAdapter(i.S.Env)
 		Expect(i.Err).ShouldNot(HaveOccurred())
 	})
+}
+
+// SetupRunlogTest does all other test preparations for runlog
+func SetupRunlogTest(i *RunlogSetupInputs) {
 	By("Funding Chainlink nodes", func() {
 		i.Nodes, i.Err = environment.GetChainlinkClients(i.S.Env)
 		Expect(i.Err).ShouldNot(HaveOccurred())
@@ -85,6 +93,10 @@ func SetupRunlogTest(i *RunlogSetupInputs) {
 		})
 		Expect(err).ShouldNot(HaveOccurred())
 	})
+}
+
+// CallRunlogOracle calls runlog oracle
+func CallRunlogOracle(i *RunlogSetupInputs) {
 	By("Calling oracle contract", func() {
 		jobUUIDReplaces := strings.Replace(i.JobUUID.String(), "-", "", 4)
 		Expect(i.Err).ShouldNot(HaveOccurred())
@@ -100,5 +112,26 @@ func SetupRunlogTest(i *RunlogSetupInputs) {
 			big.NewInt(100),
 		)
 		Expect(i.Err).ShouldNot(HaveOccurred())
+	})
+}
+
+// CheckRunlogCompleted checks if oracle send the data on chain
+func CheckRunlogCompleted(i *RunlogSetupInputs) {
+	By("receives API call data on-chain", func() {
+		err := retry.Do(func() error {
+			d, err := i.Consumer.Data(context.Background())
+			if d == nil {
+				return errors.New("no data")
+			}
+			log.Debug().Int64("Data", d.Int64()).Msg("Found on chain")
+			if d.Int64() != 5 {
+				return errors.New("data is not on chain")
+			}
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+		Expect(err).ShouldNot(HaveOccurred())
 	})
 }

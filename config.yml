@@ -96,12 +96,12 @@ networks:
     ethereum_geth_reorg:
         name: "Ethereum Geth reorg"
         chain_id: 1337
-        type: evm
+        type: evm_multi
         <<: *secret_private_keys_default
         <<: *namespace_for_secret_default
         <<: *private_keys
         transaction_limit: 9500000
-        transaction_timeout: 30s
+        transaction_timeout: 5m
         minimum_confirmations: 1
         gas_estimation_buffer: 0
         block_gas_limit: 400000000000000

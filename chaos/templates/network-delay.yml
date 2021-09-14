@@ -9,7 +9,7 @@ spec:
     namespaces:
       - {{ .Base.Namespace }}
     labelSelectors:
-      'app': '{{ .TargetAppLabel }}'
+      '{{ .LabelKey }}': '{{ .LabelValue }}'
   delay:
     latency: '{{ .Latency }}'
   duration: '{{ .Duration }}'
