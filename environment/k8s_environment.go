@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/pkg/errors"
-	"github.com/smartcontractkit/integrations-framework/chaos"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -16,6 +14,9 @@ import (
 	"sync"
 	"text/template"
 	"time"
+
+	"github.com/pkg/errors"
+	"github.com/smartcontractkit/integrations-framework/chaos"
 
 	"github.com/ghodss/yaml"
 
@@ -38,6 +39,7 @@ import (
 	"k8s.io/client-go/transport/spdy"
 )
 
+// SelectorLabelKey used to find pod labels
 const SelectorLabelKey string = "app"
 
 // K8sEnvSpecs represents a series of environment resources to be deployed. The resources in the array will be
@@ -63,6 +65,7 @@ type K8sEnvResource interface {
 	Teardown() error
 }
 
+// K8sEnvironment holds the resources for a Kubernetes deployment and environment
 type K8sEnvironment struct {
 	// K8s Resources
 	k8sClient *kubernetes.Clientset
@@ -309,6 +312,7 @@ func (env *K8sEnvironment) dumpDB(pod coreV1.Pod, container coreV1.Container) (s
 	return outBuff.String(), err
 }
 
+// GetPrivateKeyFromSecret retrieves the private keys if they exist in the secrets namespace provided
 func (env K8sEnvironment) GetPrivateKeyFromSecret(namespace string, privateKey string) (string, error) {
 	res, err := env.k8sClient.CoreV1().Secrets(namespace).Get(context.Background(), "private-keys", metaV1.GetOptions{})
 	if err != nil {
@@ -444,10 +448,12 @@ func (m *K8sManifest) ID() string {
 	return m.id
 }
 
+// SetValue sets the value for the manifest group
 func (m *K8sManifest) SetValue(key string, val interface{}) {
 	m.values[key] = val
 }
 
+// GetConfig gets the config for the manifest group
 func (m *K8sManifest) GetConfig() *config.Config {
 	return m.env.config
 }
@@ -953,9 +959,11 @@ func (mg *K8sManifestGroup) ID() string {
 	return mg.id
 }
 
+// SetValue sets the value for the manifest group
 func (mg *K8sManifestGroup) SetValue(key string, val interface{}) {
 }
 
+// GetConfig gets the config for the manifest group
 func (mg *K8sManifestGroup) GetConfig() *config.Config {
 	return nil
 }

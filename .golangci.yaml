@@ -1,0 +1,18 @@
+run:
+  timeout: 3m
+  skip-dirs:
+    - explorer
+    - contracts/ethereum
+    - contracts
+issues:
+  exclude-use-default: false
+linters-settings:
+  revive:
+    rules:
+      - name: exported
+        severity: error
+      - name: dot-imports
+        disabled: true
+linters:
+  enable:
+    - revive

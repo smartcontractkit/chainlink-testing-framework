@@ -3,10 +3,11 @@ package client
 import (
 	"context"
 	"fmt"
-	"golang.org/x/sync/errgroup"
 	"math/big"
 	"sync"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/pkg/errors"
@@ -22,7 +23,10 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// OneGWei represents 1 GWei
 var OneGWei = big.NewInt(1e9)
+
+// OneEth represents 1 Ethereum
 var OneEth = big.NewFloat(1e18)
 
 // EthereumClient wraps the client and the BlockChain network to interact with an EVM based Blockchain

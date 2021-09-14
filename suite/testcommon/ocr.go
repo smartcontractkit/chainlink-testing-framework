@@ -3,6 +3,9 @@ package testcommon
 import (
 	"context"
 	"fmt"
+	"math/big"
+	"time"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/smartcontractkit/integrations-framework/actions"
@@ -10,10 +13,9 @@ import (
 	"github.com/smartcontractkit/integrations-framework/contracts"
 	"github.com/smartcontractkit/integrations-framework/environment"
 	"github.com/smartcontractkit/integrations-framework/tools"
-	"math/big"
-	"time"
 )
 
+// OCRSetupInputs inputs needed for OCR tests
 type OCRSetupInputs struct {
 	SuiteSetup     *actions.DefaultSuiteSetup
 	ChainlinkNodes []client.Chainlink
@@ -22,6 +24,7 @@ type OCRSetupInputs struct {
 	OCRInstance    contracts.OffchainAggregator
 }
 
+// DeployOCRForEnv deploys the environment
 func DeployOCRForEnv(i *OCRSetupInputs, envInit environment.K8sEnvSpecInit) {
 	By("Deploying the environment", func() {
 		var err error
@@ -40,6 +43,7 @@ func DeployOCRForEnv(i *OCRSetupInputs, envInit environment.K8sEnvSpecInit) {
 	})
 }
 
+// SetupOCRTest setup for an ocr test
 func SetupOCRTest(i *OCRSetupInputs) {
 	By("Funding nodes and deploying OCR contract", func() {
 		err := actions.FundChainlinkNodes(
@@ -116,6 +120,7 @@ func SetupOCRTest(i *OCRSetupInputs) {
 	})
 }
 
+// CheckRound checks the ocr rounds for correctness
 func CheckRound(i *OCRSetupInputs) {
 	By("Checking OCR rounds", func() {
 		roundTimeout := time.Minute * 2
@@ -154,4 +159,3 @@ func CheckRound(i *OCRSetupInputs) {
 		Expect(answer.Int64()).Should(Equal(int64(10)), "Latest answer from OCR is not as expected")
 	})
 }
-

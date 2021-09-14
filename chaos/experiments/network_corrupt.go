@@ -4,6 +4,7 @@ import (
 	"time"
 )
 
+// NetworkCorrupt struct for network corruption
 type NetworkCorrupt struct {
 	Base
 	TargetAppLabel string
@@ -12,14 +13,17 @@ type NetworkCorrupt struct {
 	Duration       time.Duration
 }
 
+// SetBase sets the base
 func (e *NetworkCorrupt) SetBase(base Base) {
 	e.Base = base
 }
 
+// Resource returns the resource
 func (e *NetworkCorrupt) Resource() string {
 	return "networkchaos"
 }
 
+// Filename returns the filename for a network corruption
 func (e *NetworkCorrupt) Filename() string {
-	return "network-delay.yml"
+	return "network-corrupt.yml"
 }

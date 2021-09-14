@@ -2,8 +2,9 @@ package client
 
 import (
 	"fmt"
-	"github.com/smartcontractkit/integrations-framework/tools"
 	"time"
+
+	"github.com/smartcontractkit/integrations-framework/tools"
 )
 
 // ChainlinkConfig represents the variables needed to connect to a Chainlink node
@@ -235,7 +236,10 @@ type CronJobSpec struct {
 	ObservationSource string `toml:"observationSource"` // List of commands for the chainlink node
 }
 
+// Type is cron
 func (c *CronJobSpec) Type() string { return "cron" }
+
+// String representation of the job
 func (c *CronJobSpec) String() (string, error) {
 	cronJobTemplateString := `type     = "cron"
 schemaVersion     = 1
@@ -252,10 +256,12 @@ type PipelineSpec struct {
 	DataPath             string
 }
 
+// Type is common_pipeline
 func (d *PipelineSpec) Type() string {
 	return "common_pipeline"
 }
 
+// String representation of the pipeline
 func (d *PipelineSpec) String() (string, error) {
 	sourceString := `
 		fetch [type=bridge name="{{.BridgeTypeAttributes.Name}}" requestData="{{.BridgeTypeAttributes.RequestData}}"];
@@ -269,10 +275,12 @@ type VRFTxPipelineSpec struct {
 	Address string
 }
 
+// Type returns the type of the pipeline
 func (d *VRFTxPipelineSpec) Type() string {
 	return "vrf_pipeline"
 }
 
+// String representation of the pipeline
 func (d *VRFTxPipelineSpec) String() (string, error) {
 	sourceString := `
 decode_log   [type=ethabidecodelog
@@ -300,10 +308,12 @@ type DirectRequestTxPipelineSpec struct {
 	DataPath             string
 }
 
+// Type returns the type of the pipeline
 func (d *DirectRequestTxPipelineSpec) Type() string {
 	return "directrequest_pipeline"
 }
 
+// String representation of the pipeline
 func (d *DirectRequestTxPipelineSpec) String() (string, error) {
 	sourceString := `
             decode_log   [type=ethabidecodelog
@@ -332,7 +342,10 @@ type DirectRequestJobSpec struct {
 	ObservationSource string `toml:"observationSource"` // List of commands for the chainlink node
 }
 
+// Type returns the type of the pipeline
 func (d *DirectRequestJobSpec) Type() string { return "directrequest" }
+
+// String representation of the pipeline
 func (d *DirectRequestJobSpec) String() (string, error) {
 	directRequestTemplateString := `type     = "directrequest"
 schemaVersion     = 1
@@ -361,7 +374,10 @@ type FluxMonitorJobSpec struct {
 	ObservationSource string        `toml:"observationSource"` // List of commands for the chainlink node
 }
 
+// Type returns the type of the job
 func (f *FluxMonitorJobSpec) Type() string { return "fluxmonitor" }
+
+// String representation of the job
 func (f *FluxMonitorJobSpec) String() (string, error) {
 	fluxMonitorTemplateString := `type              = "fluxmonitor"
 schemaVersion     = 1
@@ -392,7 +408,10 @@ type KeeperJobSpec struct {
 	FromAddress     string `toml:"fromAddress"` // Hex representation of the from address
 }
 
+// Type returns the type of the job
 func (k *KeeperJobSpec) Type() string { return "keeper" }
+
+// String representation of the job
 func (k *KeeperJobSpec) String() (string, error) {
 	keeperTemplateString := `type            = "keeper"
 schemaVersion   = 1
@@ -416,7 +435,10 @@ type OCRBootstrapJobSpec struct {
 	P2PPeerID                string        `toml:"p2pPeerID"`                              // This node's P2P ID
 }
 
+// Type returns the type of the job
 func (o *OCRBootstrapJobSpec) Type() string { return "offchainreporting" }
+
+// String representation of the job
 func (o *OCRBootstrapJobSpec) String() (string, error) {
 	ocrTemplateString := `type = "offchainreporting"
 schemaVersion                          = 1
@@ -457,12 +479,16 @@ type OCRTaskJobSpec struct {
 	ObservationSource        string        `toml:"observationSource"`                      // List of commands for the chainlink node
 }
 
+// P2PData holds the remote ip and the peer id
 type P2PData struct {
 	RemoteIP string
 	PeerID   string
 }
 
+// Type returns the type of the job
 func (o *OCRTaskJobSpec) Type() string { return "offchainreporting" }
+
+// String representation of the job
 func (o *OCRTaskJobSpec) String() (string, error) {
 	// Pre-process P2P data for easier templating
 	peers := []P2PData{}
@@ -543,7 +569,10 @@ type VRFJobSpec struct {
 	ObservationSource  string `toml:"observationSource"` // List of commands for the chainlink node
 }
 
+// Type returns the type of the job
 func (v *VRFJobSpec) Type() string { return "vrf" }
+
+// String representation of the job
 func (v *VRFJobSpec) String() (string, error) {
 	vrfTemplateString := `type = "vrf"
 schemaVersion      = 1
@@ -564,7 +593,10 @@ type WebhookJobSpec struct {
 	ObservationSource string `toml:"observationSource"` // List of commands for the chainlink node
 }
 
+// Type returns the type of the job
 func (w *WebhookJobSpec) Type() string { return "webhook" }
+
+// String representation of the job
 func (w *WebhookJobSpec) String() (string, error) {
 	webHookTemplateString := `type = "webhook"
 schemaVersion      = 1

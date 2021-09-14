@@ -3,23 +3,26 @@ package chaos
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
+	"path/filepath"
+
 	"github.com/ghodss/yaml"
 	"github.com/rs/zerolog/log"
 	uuid "github.com/satori/go.uuid"
 	"github.com/smartcontractkit/integrations-framework/chaos/experiments"
 	"github.com/smartcontractkit/integrations-framework/tools"
-	"io/ioutil"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"path/filepath"
 )
 
 const (
 	// APIBasePath in form of /apis/<spec.group>/<spec.versions.name>, see Chaosmesh CRD 2.0.0
-	APIBasePath   = "/apis/chaos-mesh.org/v1alpha1"
+	APIBasePath = "/apis/chaos-mesh.org/v1alpha1"
+	// TemplatesPath path to the chaos templates
 	TemplatesPath = "chaos/templates"
 )
 
+// Experimentable interface for chaos experiments
 type Experimentable interface {
 	SetBase(base experiments.Base)
 	Filename() string
