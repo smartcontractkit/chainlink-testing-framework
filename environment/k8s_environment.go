@@ -40,7 +40,10 @@ import (
 )
 
 // SelectorLabelKey used to find pod labels
-const SelectorLabelKey string = "app"
+const (
+	SelectorLabelKey          = "app"
+	PrivateNetworksInfoSecret = "private-keys"
+)
 
 // K8sEnvSpecs represents a series of environment resources to be deployed. The resources in the array will be
 // deployed in the order that they are present in the array.
@@ -312,13 +315,13 @@ func (env *K8sEnvironment) dumpDB(pod coreV1.Pod, container coreV1.Container) (s
 	return outBuff.String(), err
 }
 
-// GetPrivateKeyFromSecret retrieves the private keys if they exist in the secrets namespace provided
-func (env K8sEnvironment) GetPrivateKeyFromSecret(namespace string, privateKey string) (string, error) {
-	res, err := env.k8sClient.CoreV1().Secrets(namespace).Get(context.Background(), "private-keys", metaV1.GetOptions{})
+// GetSecretField retrieves field data from k8s secret
+func (env K8sEnvironment) GetSecretField(namespace string, secretName string, fieldName string) (string, error) {
+	res, err := env.k8sClient.CoreV1().Secrets(namespace).Get(context.Background(), secretName, metaV1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
-	return string(res.Data[privateKey]), nil
+	return string(res.Data[fieldName]), nil
 }
 
 // Writes logs for each container in a pod

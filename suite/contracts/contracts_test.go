@@ -2,10 +2,10 @@ package contracts
 
 import (
 	"context"
+	"github.com/smartcontractkit/integrations-framework/contracts"
 	"math/big"
 
 	"github.com/smartcontractkit/integrations-framework/actions"
-	"github.com/smartcontractkit/integrations-framework/contracts"
 	"github.com/smartcontractkit/integrations-framework/environment"
 	"github.com/smartcontractkit/integrations-framework/tools"
 
