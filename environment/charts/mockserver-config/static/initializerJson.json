@@ -1,0 +1,18 @@
+[
+  {
+    "httpRequest": {
+      "path": "/aur"
+    },
+    "httpResponse": {
+      "body": "opel"
+    }
+  },
+  {
+    "httpRequest": {
+      "path": "/astra"
+    },
+    "httpResponse": {
+      "body": "astra"
+    }
+  }
+]

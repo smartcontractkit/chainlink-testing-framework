@@ -168,6 +168,37 @@ func NewExplorerManifest(nodeCount int) *K8sManifest {
 	}
 }
 
+func NewOTPEManifest() *K8sManifest {
+	return &K8sManifest{
+		id:             "otpe",
+		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/otpe-deployment.yml"),
+		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/otpe-service.yml"),
+	}
+}
+
+// NewMockserverConfigHelmChart creates new helm chart for the mockserver configmap
+func NewMockserverConfigHelmChart() *HelmChart {
+	return &HelmChart{
+		id:          "mockserver-config",
+		chartPath:   filepath.Join(tools.ProjectRoot, "environment/charts/mockserver-config"),
+		releaseName: "mockserver-config",
+	}
+}
+
+// NewMockserverHelmChart creates new helm chart for the mockserver
+func NewMockserverHelmChart() *HelmChart {
+	chart := &HelmChart{
+		id:          "mockserver",
+		chartPath:   filepath.Join(tools.ProjectRoot, "environment/charts/mockserver/mockserver-5.11.1.tgz"),
+		releaseName: "mockserver",
+		values: map[string]interface{}{},
+		SetValuesHelmFunc: func(manifest *HelmChart) error {
+			return nil
+		},
+	}
+	return chart
+}
+
 // NewHardhatManifest is the k8s manifest that when used will deploy hardhat to an environment
 func NewHardhatManifest() *K8sManifest {
 	return &K8sManifest{
@@ -252,10 +283,24 @@ func NewChainlinkClusterForAlertsTesting(nodeCount int) K8sEnvSpecInit {
 	}
 
 	dependencyGroup := getBasicDependencyGroup()
-	addServicesForTestingAlertsToDependencyGroup(dependencyGroup, nodeCount)
-	addPostgresDbsToDependencyGroup(dependencyGroup, nodeCount)
-
+	//addServicesForTestingAlertsToDependencyGroup(dependencyGroup, nodeCount)
+	//addPostgresDbsToDependencyGroup(dependencyGroup, nodeCount)
+	//
 	dependencyGroups := []*K8sManifestGroup{kafkaDependecyGroup, dependencyGroup}
+
+	//mockserverConfigDependencyGroup := &K8sManifestGroup{
+	//	id:        "MockserverConfigDependencyGroup",
+	//	manifests: []K8sEnvResource{NewMockserverConfigHelmChart()},
+	//}
+	//
+	//mockserverDependencyGroup := &K8sManifestGroup{
+	//	id:        "MockserverDependencyGroup",
+	//	manifests: []K8sEnvResource{NewMockserverHelmChart()},
+	//}
+	//
+	//dependencyGroups := []*K8sManifestGroup{mockserverConfigDependencyGroup, mockserverDependencyGroup, dependencyGroup}
+
+
 	return addNetworkManifestToDependencyGroup("basic-chainlink", chainlinkGroup, dependencyGroups)
 }
 
