@@ -90,6 +90,74 @@ func DefaultLocalSetup(
 	}, nil
 }
 
+func DefaultLocalSetup3(
+	envName string,
+	initialDeployInitFunc environment.K8sEnvSpecInit,
+	initFunc client.BlockchainNetworkInit,
+	configPath string,
+) (*DefaultSuiteSetup, error) {
+	conf, err := config.NewConfig(configPath)
+	if err != nil {
+		return nil, err
+	}
+	network, err := initFunc(conf)
+	if err != nil {
+		return nil, err
+	}
+
+	env, err := environment.NewK8sEnvironment2(envName, conf, network)
+	if err != nil {
+		return nil, err
+	}
+
+	err = env.DeploySpecs(initialDeployInitFunc)
+	if err != nil {
+		return nil, err
+	}
+
+	// Initialize blockchain client
+	var bcc client.BlockchainClient
+	switch network.Config().Type {
+	case client.BlockchainTypeEVMMultinode:
+		bcc, err = environment.NewBlockchainClients(env, network)
+	case client.BlockchainTypeEVM:
+		bcc, err = environment.NewBlockchainClient(env, network)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	// Initialize wallets
+	wallets, err := network.Wallets()
+	if err != nil {
+		return nil, err
+	}
+
+	contractDeployer, err := contracts.NewContractDeployer(bcc)
+	if err != nil {
+		return nil, err
+	}
+	link, err := contractDeployer.DeployLinkTokenContract(wallets.Default())
+	if err != nil {
+		return nil, err
+	}
+
+	// configure default retry
+	retry.DefaultAttempts = conf.Retry.Attempts
+	retry.DefaultDelayType = func(n uint, err error, config *retry.Config) time.Duration {
+		return conf.Retry.LinearDelay
+	}
+	return &DefaultSuiteSetup{
+		Config:   conf,
+		Client:   bcc,
+		Wallets:  wallets,
+		Deployer: contractDeployer,
+		Link:     link,
+		Env:      env,
+		Network:  network,
+	}, nil
+}
+
 // TearDown checks for test failure, writes logs if there is one, then tears down the test environment, based on the
 // keep_environments config value
 func (s *DefaultSuiteSetup) TearDown() func() {

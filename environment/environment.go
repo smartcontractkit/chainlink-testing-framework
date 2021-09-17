@@ -29,6 +29,8 @@ type Environment interface {
 	StopChaos(name string) error
 	StopAllChaos() error
 	TearDown()
+
+	DeploySpecs(init K8sEnvSpecInit) error
 }
 
 // ServiceDetails contains all of the connectivity properties about a given deployed service
@@ -154,6 +156,8 @@ func NewBlockchainClient(env Environment, network client.BlockchainNetwork) (cli
 		url := fmt.Sprintf("ws://%s", sd.LocalURL.Host)
 		log.Debug().Str("URL", url).Msg("Selecting network")
 		network.SetURL(url)
+	} else {
+		log.Debug().Err(err).Msg("GetServiceDetails error")
 	}
 
 	network.Config().PrivateKeyStore, err = NewPrivateKeyStoreFromEnv(env, network.Config())

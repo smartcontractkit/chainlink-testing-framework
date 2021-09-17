@@ -10,37 +10,48 @@ import (
 	"github.com/smartcontractkit/integrations-framework/environment"
 	"github.com/smartcontractkit/integrations-framework/tools"
 	"math/big"
+	"os"
+	"path/filepath"
 )
 
 var _ = FDescribe("Alerts suite", func() {
 	var (
-		suiteSetup     *actions.DefaultSuiteSetup
-		adapter        environment.ExternalAdapter
+		suiteSetup *actions.DefaultSuiteSetup
+		//adapter        environment.ExternalAdapter
 		chainlinkNodes []client.Chainlink
-		explorer       *client.ExplorerClient
-		err            error
+		//explorer       *client.ExplorerClient
+		err error
 	)
 
-	BeforeEach(func() {
-		By("Deploying the environment", func() {
-			suiteSetup, err = actions.DefaultLocalSetup(
-				environment.NewChainlinkClusterForAlertsTesting(0),
+	Describe("Alerts", func() {
+		It("Test 1", func() {
+			//suiteSetup, err = actions.DefaultLocalSetup(
+			//	environment.NewChainlinkClusterForAlertsTesting(0),
+			//	client.NewNetworkFromConfig,
+			//	tools.ProjectRoot,
+			//)
+			//Expect(err).ShouldNot(HaveOccurred())
+
+			suiteSetup, err = actions.DefaultLocalSetup3(
+				"basic-chainlink",
+				environment.NewChainlinkClusterForAlertsTesting(5),
 				client.NewNetworkFromConfig,
 				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			explorer, err = environment.GetExplorerClientFromEnv(suiteSetup.Env)
-			Expect(err).ShouldNot(HaveOccurred())
-			fmt.Println(explorer.BaseURL)
 
+			//explorer, err = environment.GetExplorerClientFromEnv(suiteSetup.Env)
+			//Expect(err).ShouldNot(HaveOccurred())
+			//fmt.Println(explorer.BaseURL)
+			//
 			chainlinkNodes, err = environment.GetChainlinkClients(suiteSetup.Env)
 			Expect(err).ShouldNot(HaveOccurred())
 			fmt.Println(chainlinkNodes[0].URL())
-
-			adapter, err = environment.GetExternalAdapter(suiteSetup.Env)
-			Expect(err).ShouldNot(HaveOccurred())
-			fmt.Println(adapter.ClusterURL())
+			//
+			//adapter, err = environment.GetExternalAdapter(suiteSetup.Env)
+			//Expect(err).ShouldNot(HaveOccurred())
+			//fmt.Println(adapter.ClusterURL())
 
 			/* ####################################################### */
 			/* ####################################################### */
@@ -71,12 +82,27 @@ var _ = FDescribe("Alerts suite", func() {
 			err = suiteSetup.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 
-			/* Write to initializerJson the stuff needed for  */
-		})
-	})
+			/* Write to initializerJson the stuff needed for otpe */
 
-	Describe("Alerts", func() {
-		It("Test 1", func() {
+			fileName := filepath.Join(tools.ProjectRoot, "environment/charts/mockserver-config/static/initializerJson.json")
+			f, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			body := fmt.Sprintf(`[
+  {
+    "httpRequest": {
+      "path": "/opel"
+    },
+    "httpResponse": {
+      "body": "%s"
+    }
+  }
+]`, OCRInstance.Address())
+			_, err = f.WriteString(body)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			err = f.Close()
+			Expect(err).ShouldNot(HaveOccurred())
 
 		})
 	})

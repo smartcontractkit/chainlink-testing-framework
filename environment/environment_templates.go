@@ -277,29 +277,17 @@ func NewChainlinkClusterForAlertsTesting(nodeCount int) K8sEnvSpecInit {
 		chainlinkGroup.manifests = append(chainlinkGroup.manifests, cManifest)
 	}
 
-	kafkaDependecyGroup := &K8sManifestGroup{
-		id:        "KafkaGroup",
-		manifests: []K8sEnvResource{NewKafkaHelmChart()},
-	}
+	//kafkaDependecyGroup := &K8sManifestGroup{
+	//	id:        "KafkaGroup",
+	//	manifests: []K8sEnvResource{NewKafkaHelmChart()},
+	//}
 
 	dependencyGroup := getBasicDependencyGroup()
 	//addServicesForTestingAlertsToDependencyGroup(dependencyGroup, nodeCount)
-	//addPostgresDbsToDependencyGroup(dependencyGroup, nodeCount)
+	addPostgresDbsToDependencyGroup(dependencyGroup, nodeCount)
 	//
-	dependencyGroups := []*K8sManifestGroup{kafkaDependecyGroup, dependencyGroup}
-
-	//mockserverConfigDependencyGroup := &K8sManifestGroup{
-	//	id:        "MockserverConfigDependencyGroup",
-	//	manifests: []K8sEnvResource{NewMockserverConfigHelmChart()},
-	//}
-	//
-	//mockserverDependencyGroup := &K8sManifestGroup{
-	//	id:        "MockserverDependencyGroup",
-	//	manifests: []K8sEnvResource{NewMockserverHelmChart()},
-	//}
-	//
-	//dependencyGroups := []*K8sManifestGroup{mockserverConfigDependencyGroup, mockserverDependencyGroup, dependencyGroup}
-
+	//dependencyGroups := []*K8sManifestGroup{kafkaDependecyGroup, dependencyGroup}
+	dependencyGroups := []*K8sManifestGroup{dependencyGroup}
 
 	return addNetworkManifestToDependencyGroup("basic-chainlink", chainlinkGroup, dependencyGroups)
 }
@@ -484,4 +472,24 @@ func addPostgresDbsToDependencyGroup(dependencyGroup *K8sManifestGroup, postgres
 // addServicesForTestingAlertsToDependencyGroup adds services necessary for testing alerts to the dependency group
 func addServicesForTestingAlertsToDependencyGroup(dependencyGroup *K8sManifestGroup, nodeCount int) {
 	dependencyGroup.manifests = append(dependencyGroup.manifests, NewExplorerManifest(nodeCount))
+}
+
+func otpeGroup() K8sEnvSpecInit{
+	return func(config *config.NetworkConfig) (string, K8sEnvSpecs) {
+		var specs K8sEnvSpecs
+		mockserverConfigDependencyGroup := &K8sManifestGroup{
+			id:        "MockserverConfigDependencyGroup",
+			manifests: []K8sEnvResource{NewMockserverConfigHelmChart()},
+		}
+
+		mockserverDependencyGroup := &K8sManifestGroup{
+			id:        "MockserverDependencyGroup",
+			manifests: []K8sEnvResource{NewMockserverHelmChart()},
+		}
+
+		specs = append(specs, mockserverConfigDependencyGroup)
+		specs = append(specs, mockserverDependencyGroup)
+
+		return "envName", specs
+	}
 }
