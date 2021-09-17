@@ -25,10 +25,11 @@ type OCRSetupInputs struct {
 }
 
 // DeployOCRForEnv deploys the environment
-func DeployOCRForEnv(i *OCRSetupInputs, envInit environment.K8sEnvSpecInit) {
+func DeployOCRForEnv(i *OCRSetupInputs, envName string, envInit environment.K8sEnvSpecInit) {
 	By("Deploying the environment", func() {
 		var err error
 		i.SuiteSetup, err = actions.DefaultLocalSetup(
+			envName,
 			envInit,
 			client.NewNetworkFromConfig,
 			tools.ProjectRoot,

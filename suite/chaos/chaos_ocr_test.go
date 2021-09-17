@@ -12,12 +12,13 @@ import (
 )
 
 var _ = XDescribeTable("OCR chaos tests @chaos-ocr", func(
+	envName string,
 	envInit environment.K8sEnvSpecInit,
 	chaosSpec chaos.Experimentable,
 ) {
 	i := &testcommon.OCRSetupInputs{}
 	Context("Runs OCR test with a chaos modifier", func() {
-		testcommon.DeployOCRForEnv(i, envInit)
+		testcommon.DeployOCRForEnv(i, envName, envInit)
 		testcommon.SetupOCRTest(i)
 		_, err := i.SuiteSetup.Env.ApplyChaos(chaosSpec)
 		Expect(err).ShouldNot(HaveOccurred())
@@ -32,6 +33,7 @@ var _ = XDescribeTable("OCR chaos tests @chaos-ocr", func(
 	})
 },
 	Entry("One node pod failure",
+		"basic-chainlink",
 		environment.NewChainlinkCluster(5),
 		&experiments.PodFailure{
 			LabelKey:   "app",

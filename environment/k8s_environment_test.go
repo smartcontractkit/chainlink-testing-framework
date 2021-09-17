@@ -30,7 +30,9 @@ var _ = Describe("Environment functionality @unit", func() {
 		networkConfig, err := initFunc(conf)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		env, err := NewK8sEnvironment(envInitFunc, conf, networkConfig)
+		env, err := NewK8sEnvironment("basic-chainlink", conf, networkConfig)
+		Expect(err).ShouldNot(HaveOccurred())
+		err = env.DeploySpecs(envInitFunc)
 		Expect(err).ShouldNot(HaveOccurred())
 		defer env.TearDown()
 

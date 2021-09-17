@@ -1,10 +1,18 @@
 [
   {
     "httpRequest": {
-      "path": "/opel"
+      "path": "/contracts"
     },
     "httpResponse": {
-      "body": "0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e"
+      "body": "{\"contractAddress\":\"0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e\",\"contractVersion\":4,\"path\":\"test\",\"status\":\"live\"}"
+    }
+  },
+  {
+    "httpRequest": {
+      "path": "/nodes"
+    },
+    "httpResponse": {
+      "body": "[{\"id\":\"3791377a0bdd1df67a25fcb6581269d357e23b17fcd9fcdb669091bcab67677a\",\"nodeAddress\":[\"0x22859db134a17255288691bb2eeac516f7c06343\"]},{\"id\":\"c6ada0e70e4e66ee2245c187e6ef7e91fa011c499dbdb623972a8dc4dc12966e\",\"nodeAddress\":[\"0x1bd13eab6d02221ae7ea4bd89a299783fc774560\"]},{\"id\":\"1cc262a6c4efffd1d35059e2e9a03425c55c9b703a045cc45dbe3b83165d0af7\",\"nodeAddress\":[\"0x77edf141a9e8d3ec4ef0d6259492b1341ab3fd80\"]},{\"id\":\"8c4adf175b18e124767eca9103c0d3797203a428b5e3c8add677b7ec3d8fca1b\",\"nodeAddress\":[\"0x3f8ca9986e0ccce82026ab5a3d4e7e6fa7ad20f4\"]},{\"id\":\"0ac6790a2b7e8c80d112c332f41451dab686b52db8e5ac7ed3f3ded6150a25a8\",\"nodeAddress\":[\"0x456714b5836d324b571dc13b6c27cf2c52ce21a2\"]}]"
     }
   }
 ]

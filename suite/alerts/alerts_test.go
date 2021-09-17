@@ -1,6 +1,7 @@
 package alerts
 
 import (
+	"encoding/json"
 	"fmt"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -25,21 +26,13 @@ var _ = FDescribe("Alerts suite", func() {
 
 	Describe("Alerts", func() {
 		It("Test 1", func() {
-			//suiteSetup, err = actions.DefaultLocalSetup(
-			//	environment.NewChainlinkClusterForAlertsTesting(0),
-			//	client.NewNetworkFromConfig,
-			//	tools.ProjectRoot,
-			//)
-			//Expect(err).ShouldNot(HaveOccurred())
-
-			suiteSetup, err = actions.DefaultLocalSetup3(
+			suiteSetup, err = actions.DefaultLocalSetup(
 				"basic-chainlink",
 				environment.NewChainlinkClusterForAlertsTesting(5),
 				client.NewNetworkFromConfig,
 				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
-
 
 			//explorer, err = environment.GetExplorerClientFromEnv(suiteSetup.Env)
 			//Expect(err).ShouldNot(HaveOccurred())
@@ -84,20 +77,74 @@ var _ = FDescribe("Alerts suite", func() {
 
 			/* Write to initializerJson the stuff needed for otpe */
 
+			type httpRequest struct {
+				Path string `json:"path"`
+			}
+
+			type httpResponse struct {
+				Body string `json:"body"`
+			}
+
+			type httpInitializer struct {
+				Request  httpRequest  `json:"httpRequest"`
+				Response httpResponse `json:"httpResponse"`
+			}
+
+			type nodeInfoJSON struct {
+				ID          string `json:"id"`
+				NodeAddress []string `json:"nodeAddress"`
+			}
+
+			type contractInfoJSON struct {
+				ContractAddress string `json:"contractAddress"`
+				ContractVersion int    `json:"contractVersion"`
+				Path            string `json:"path"`
+				Status          string `json:"status"`
+			}
+
+			contractInfo := &contractInfoJSON{
+				ContractVersion: 4,
+				Path:            "test",
+				Status:          "live",
+				ContractAddress: OCRInstance.Address(),
+			}
+
+			contractInfoBytes, err := json.Marshal(contractInfo)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			contractsInitializer := httpInitializer{
+				Request: httpRequest{Path: "/contracts"},
+				Response: httpResponse{Body: string(contractInfoBytes)},
+			}
+
+			var nodesInfo []nodeInfoJSON
+
+			for _, chainlink := range chainlinkNodes {
+				ocrKeys, err := chainlink.ReadOCRKeys()
+				Expect(err).ShouldNot(HaveOccurred())
+				nodeInfo := nodeInfoJSON{
+					NodeAddress: []string{ocrKeys.Data[0].Attributes.OnChainSigningAddress},
+					ID: ocrKeys.Data[0].ID,
+				}
+				nodesInfo = append(nodesInfo, nodeInfo)
+			}
+
+			nodesInfoBytes, err := json.Marshal(nodesInfo)
+			Expect(err).ShouldNot(HaveOccurred())
+			nodesInitializer := httpInitializer{
+				Request: httpRequest{Path: "/nodes"},
+				Response: httpResponse{Body: string(nodesInfoBytes)},
+			}
+			initializers := []httpInitializer{contractsInitializer, nodesInitializer}
+
+			initializersBytes, err := json.Marshal(initializers)
+			Expect(err).ShouldNot(HaveOccurred())
+
 			fileName := filepath.Join(tools.ProjectRoot, "environment/charts/mockserver-config/static/initializerJson.json")
 			f, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			body := fmt.Sprintf(`[
-  {
-    "httpRequest": {
-      "path": "/opel"
-    },
-    "httpResponse": {
-      "body": "%s"
-    }
-  }
-]`, OCRInstance.Address())
+			body := fmt.Sprintf(string(initializersBytes))
 			_, err = f.WriteString(body)
 			Expect(err).ShouldNot(HaveOccurred())
 

@@ -32,6 +32,7 @@ var _ = Describe("FluxAggregator ETH Refill @refill", func() {
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
 			s, err = actions.DefaultLocalSetup(
+				"basic-chainlink",
 				environment.NewChainlinkCluster(3),
 				client.NewNetworkFromConfig,
 				tools.ProjectRoot,

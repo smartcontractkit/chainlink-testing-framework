@@ -27,7 +27,7 @@ var _ = Describe("Environment unit tests @unit", func() {
 			bcNetwork, err := client.NewNetworkFromConfig(conf)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			bcNetwork.Config().PrivateKeyStore, err = environment.NewPrivateKeyStoreFromEnv(environment.K8sEnvironment{}, bcNetwork.Config())
+			bcNetwork.Config().PrivateKeyStore, err = environment.NewPrivateKeyStoreFromEnv(&environment.K8sEnvironment{}, bcNetwork.Config())
 			Expect(err).ShouldNot(HaveOccurred())
 
 			privateKeys, err := bcNetwork.Config().PrivateKeyStore.Fetch()
@@ -44,7 +44,7 @@ var _ = Describe("Environment unit tests @unit", func() {
 			bcNetwork, err := client.NewNetworkFromConfig(conf)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			bcNetwork.Config().PrivateKeyStore, err = environment.NewPrivateKeyStoreFromEnv(environment.K8sEnvironment{}, bcNetwork.Config())
+			bcNetwork.Config().PrivateKeyStore, err = environment.NewPrivateKeyStoreFromEnv(&environment.K8sEnvironment{}, bcNetwork.Config())
 			Expect(err).ShouldNot(HaveOccurred())
 
 			_, err = bcNetwork.Config().PrivateKeyStore.Fetch()
@@ -60,7 +60,10 @@ var _ = Describe("Environment unit tests @unit", func() {
 			bcNetwork, err := client.NewNetworkFromConfig(conf)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			env, err := environment.NewK8sEnvironment(environment.NewChainlinkCluster(1), conf, bcNetwork)
+			env, err := environment.NewK8sEnvironment("basic-chainlink", conf, bcNetwork)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			err = env.DeploySpecs(environment.NewChainlinkCluster(1))
 			Expect(err).ShouldNot(HaveOccurred())
 
 			bcNetwork.Config().PrivateKeyStore, err = environment.NewPrivateKeyStoreFromEnv(env, bcNetwork.Config())

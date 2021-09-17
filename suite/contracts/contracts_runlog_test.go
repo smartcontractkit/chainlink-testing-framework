@@ -35,6 +35,7 @@ var _ = Describe("Direct request suite @runlog", func() {
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
 			s, err = actions.DefaultLocalSetup(
+				"basic-chainlink",
 				environment.NewChainlinkCluster(1),
 				client.NewNetworkFromConfig,
 				tools.ProjectRoot,
