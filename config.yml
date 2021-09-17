@@ -10,7 +10,7 @@ keep_environments: Never # Options: Always, OnFail, Never
 apps:
     chainlink:
         image: public.ecr.aws/chainlink/chainlink
-        version: 0.10.13
+        version: 0.10.14
         requests:
             memory: 768Mi
             cpu: 300m
@@ -62,111 +62,129 @@ private_keys: &private_keys
         - de9be858da4a475276426320d5e9262ecfc3ba460bfac56360bfa6c4c28b4ee0
         - df57089febbacf7ba0bc227dafbffa9fc08a93fdc68e1e42411a14efcf23656e
 
-secret_private_keys_default: &secret_private_keys_default
-    secret_private_keys: false
-
-namespace_for_secret_default: &namespace_for_secret_default
-    namespace_for_secret: default
-
 networks:
-    ethereum_geth:
+    ethereum_geth: &common_ethereum
         name: "Ethereum Geth dev"
         chain_id: 1337
         type: evm
-        <<: *secret_private_keys_default
-        <<: *namespace_for_secret_default
+        secret_private_keys: false
+        namespace_for_secret: default
         <<: *private_keys
         transaction_limit: 9500000
         transaction_timeout: 10s
         minimum_confirmations: 1
         gas_estimation_buffer: 100000
         block_gas_limit: 40000000
-    ethereum_geth_performance:
-        name: "Ethereum Geth dev"
-        chain_id: 1337
-        type: evm
-        <<: *secret_private_keys_default
-        <<: *namespace_for_secret_default
-        <<: *private_keys
-        transaction_limit: 9500000
+    ethereum_geth_performance: &ethereum_geth_performance
+        <<: *common_ethereum
         transaction_timeout: 5m
-        minimum_confirmations: 1
-        gas_estimation_buffer: 0
         block_gas_limit: 400000000000000
     ethereum_geth_reorg:
+        <<: *ethereum_geth_performance
         name: "Ethereum Geth reorg"
-        chain_id: 1337
         type: evm_multi
-        <<: *secret_private_keys_default
-        <<: *namespace_for_secret_default
-        <<: *private_keys
-        transaction_limit: 9500000
-        transaction_timeout: 5m
-        minimum_confirmations: 1
+        transaction_timeout: 10m
         gas_estimation_buffer: 0
-        block_gas_limit: 400000000000000
     ethereum_hardhat:
+        <<: *common_ethereum
         name: "Ethereum Hardhat"
-        chain_id: 1337
-        type: evm
-        <<: *secret_private_keys_default
-        <<: *namespace_for_secret_default
-        <<: *private_keys
-        transaction_limit: 9500000
-        transaction_timeout: 10s
-        minimum_confirmations: 1
         gas_estimation_buffer: 0
     ethereum_ganache:
+        <<: *common_ethereum
         name: "Ethereum Ganache"
-        chain_id: 1337
-        type: evm
-        <<: *secret_private_keys_default
-        <<: *namespace_for_secret_default
-        <<: *private_keys
-        transaction_limit: 9500000
-        transaction_timeout: 1s
         minimum_confirmations: 0
-        gas_estimation_buffer: 0
-        block_gas_limit: 40000000
-    ethereum_kovan:
+    ethereum_kovan: &common_ethereum_testnet
         name: "Ethereum Kovan"
-        url: "wss://127.0.0.1:8545"
         chain_id: 42
         type: evm
-        <<: *secret_private_keys_default
-        <<: *namespace_for_secret_default
+        namespace_for_secret: default
+        secret_private_keys: true
+        private_url: kovan_testnet_url
         private_keys:
-            - aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-        transaction_limit: 1000000 
-        transaction_timeout: 5m
-        minimum_confirmations: 1
-        gas_estimation_buffer: 10000
-    ethereum_goerli:
-        name: "Ethereum Goerli"
-        url: "wss://127.0.0.1:8545"
-        chain_id: 5
-        type: evm
-        <<: *secret_private_keys_default
-        <<: *namespace_for_secret_default
-        private_keys:
-            - aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+            - kovan_testnet_1
+        secret_private_url: true
         transaction_limit: 1000000
         transaction_timeout: 5m
         minimum_confirmations: 1
-        gas_estimation_buffer: 10000
+        gas_estimation_buffer: 1000000
+    ethereum_goerli:
+        <<: *common_ethereum_testnet
+        name: "Ethereum Goerli"
+        chain_id: 5
+        private_url: gorli_private_url
+        private_keys:
+            - gorli_testnet_1
     ethereum_rinkeby:
+        <<: *common_ethereum_testnet
         name: "Ethereum Rinkeby"
-        url: "wss://rinkeby-light.eth.linkpool.io/ws"
+        private_url: rinkeby_private_url
         chain_id: 4
-        type: evm
-        secret_private_keys: true
-        <<: *namespace_for_secret_default
         private_keys:
             - rinkeby_private_key_1
         transaction_limit: 9000000
-        transaction_timeout: 5m
-        minimum_confirmations: 1
-        gas_estimation_buffer: 1000000
+    arbitrum_testnet:
+        <<: *common_ethereum_testnet
+        name: "Arbitrum testnet"
+        chain_id: 421611
+        private_url: arb_testnet_url
+        private_keys:
+            - arb_testnet_1
+        transaction_limit: 9000000000
+        minimum_confirmations: 3
+        transaction_timeout: 1m
+    bsc_testnet:
+        <<: *common_ethereum_testnet
+        name: "BSC testnet"
+        private_url: bsc_testnet_url
+        chain_id: 97
+        private_keys:
+            - bsc_testnet_1
+        transaction_limit: 1000000
+        transaction_timeout: 1m
+    matic_mumbai:
+        <<: *common_ethereum_testnet
+        name: "Matic Mumbai"
+        chain_id: 80001
+        private_url: matic_mumbai_url
+        private_keys:
+            - matic_mumbai_1
+    fantom_testnet:
+        <<: *common_ethereum_testnet
+        name: "Fantom testnet"
+        chain_id: 4002
+        private_url: fantom_testnet_url
+        private_keys:
+            - fantom_testnet_1
+    harmony_testnet:
+        <<: *common_ethereum_testnet
+        name: "Harmony testnet"
+        chain_id: 1666700000
+        private_url: harmony_testnet_url
+        private_keys:
+            - harmony_testnet_1
+        minimum_confirmations: 3
+    avalanche_fuji:
+        <<: *common_ethereum_testnet
+        name: "Avalanche Fuji testnet"
+        chain_id: 43113
+        private_url: avax_fuji_testnet_url
+        private_keys:
+            - avax_fuji_testnet_1
+        transaction_limit: 800000
+    optimism_kovan:
+        <<: *common_ethereum_testnet
+        name: "Optimism Kovan testnet"
+        chain_id: 43113
+        private_url: optimism_kovan_url
+        private_keys:
+            - optimism_kovan_1
+    rsk_testnet:
+        <<: *common_ethereum_testnet
+        name: "RSK testnet"
+        chain_id: 31
+        private_url: rsk_testnet_url
+        private_keys:
+            - rsk_testnet_1
 retry:
     attempts: 30
     linear_delay: 1s
