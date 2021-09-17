@@ -27,7 +27,7 @@
         "type": "uint32"
       },
       {
-        "internalType": "address",
+        "internalType": "contract LinkTokenInterface",
         "name": "_link",
         "type": "address"
       },
@@ -200,6 +200,25 @@
     "inputs": [
       {
         "indexed": true,
+        "internalType": "contract LinkTokenInterface",
+        "name": "_oldLinkToken",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "contract LinkTokenInterface",
+        "name": "_newLinkToken",
+        "type": "address"
+      }
+    ],
+    "name": "LinkTokenSet",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
         "internalType": "uint256",
         "name": "roundId",
         "type": "uint256"
@@ -267,13 +286,13 @@
     "anonymous": false,
     "inputs": [
       {
-        "indexed": false,
+        "indexed": true,
         "internalType": "address",
         "name": "transmitter",
         "type": "address"
       },
       {
-        "indexed": false,
+        "indexed": true,
         "internalType": "address",
         "name": "payee",
         "type": "address"
@@ -283,6 +302,12 @@
         "internalType": "uint256",
         "name": "amount",
         "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "contract LinkTokenInterface",
+        "name": "linkToken",
+        "type": "address"
       }
     ],
     "name": "OraclePaid",
@@ -459,19 +484,6 @@
   },
   {
     "inputs": [],
-    "name": "LINK",
-    "outputs": [
-      {
-        "internalType": "contract LinkTokenInterface",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
     "name": "acceptOwnership",
     "outputs": [],
     "stateMutability": "nonpayable",
@@ -576,6 +588,19 @@
         "internalType": "uint32",
         "name": "linkGweiPerTransmission",
         "type": "uint32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getLinkToken",
+    "outputs": [
+      {
+        "internalType": "contract LinkTokenInterface",
+        "name": "linkToken",
+        "type": "address"
       }
     ],
     "stateMutability": "view",
@@ -958,6 +983,24 @@
       }
     ],
     "name": "setConfig",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "contract LinkTokenInterface",
+        "name": "_linkToken",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_recipient",
+        "type": "address"
+      }
+    ],
+    "name": "setLinkToken",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
