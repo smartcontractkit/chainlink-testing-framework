@@ -193,6 +193,8 @@ func NewMockserverHelmChart() *HelmChart {
 		releaseName: "mockserver",
 		values: map[string]interface{}{},
 		SetValuesHelmFunc: func(manifest *HelmChart) error {
+			manifest.values["contractsURL"] = "http://mockserver:1080/contracts"
+			manifest.values["nodesURL"] = "http://mockserver:1080/nodes"
 			return nil
 		},
 	}
@@ -277,17 +279,17 @@ func NewChainlinkClusterForAlertsTesting(nodeCount int) K8sEnvSpecInit {
 		chainlinkGroup.manifests = append(chainlinkGroup.manifests, cManifest)
 	}
 
-	//kafkaDependecyGroup := &K8sManifestGroup{
-	//	id:        "KafkaGroup",
-	//	manifests: []K8sEnvResource{NewKafkaHelmChart()},
-	//}
+	kafkaDependecyGroup := &K8sManifestGroup{
+		id:        "KafkaGroup",
+		manifests: []K8sEnvResource{NewKafkaHelmChart()},
+	}
 
 	dependencyGroup := getBasicDependencyGroup()
-	//addServicesForTestingAlertsToDependencyGroup(dependencyGroup, nodeCount)
+	addServicesForTestingAlertsToDependencyGroup(dependencyGroup, nodeCount)
 	addPostgresDbsToDependencyGroup(dependencyGroup, nodeCount)
-	//
-	//dependencyGroups := []*K8sManifestGroup{kafkaDependecyGroup, dependencyGroup}
-	dependencyGroups := []*K8sManifestGroup{dependencyGroup}
+
+	dependencyGroups := []*K8sManifestGroup{kafkaDependecyGroup, dependencyGroup}
+	//dependencyGroups := []*K8sManifestGroup{dependencyGroup}
 
 	return addNetworkManifestToDependencyGroup("basic-chainlink", chainlinkGroup, dependencyGroups)
 }
@@ -474,7 +476,7 @@ func addServicesForTestingAlertsToDependencyGroup(dependencyGroup *K8sManifestGr
 	dependencyGroup.manifests = append(dependencyGroup.manifests, NewExplorerManifest(nodeCount))
 }
 
-func otpeGroup() K8sEnvSpecInit{
+func OtpeGroup() K8sEnvSpecInit{
 	return func(config *config.NetworkConfig) (string, K8sEnvSpecs) {
 		var specs K8sEnvSpecs
 		mockserverConfigDependencyGroup := &K8sManifestGroup{

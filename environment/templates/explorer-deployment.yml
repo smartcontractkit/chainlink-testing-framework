@@ -48,6 +48,8 @@ spec:
             #             Kafka settings
             - name: EXPLORER_KAFKA_BROKERS
               value: {{ .Values.KafkaGroup.kafka.clusterURL }}
+#            - name: EXPLORER_KAFKA_SECURITY_PROTOCOL
+#              value: "plaintext"
             - name: EXPLORER_KAFKA_CLIENT_ID
               value: "explorer"
             - name: EXPLORER_KAFKA_TOPIC
@@ -60,7 +62,8 @@ spec:
               value: 300
             - name: EXPLORER_KAFKA_RETRIES
               value: 5
-          image: 'smartcontract/explorer:candidate-0.9.20-archive'
+#          image: 'testing4638/explorer:testing'
+          image: 'candidate-0.9.20-archive'
           volumeMounts:
             - name: kafka-tls
               mountPath: /etc/ssl/certs/kafka-0.keystore.pem

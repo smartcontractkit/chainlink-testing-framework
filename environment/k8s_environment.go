@@ -130,11 +130,17 @@ func NewK8sEnvironment(
 func (env *K8sEnvironment) DeploySpecs(init K8sEnvSpecInit) error {
 	_, resourcesToDeploy := init(env.network.Config())
 
+	specsLen := len(env.specs)
+
+	for _, spec := range resourcesToDeploy {
+		env.specs = append(env.specs, spec)
+	}
+
 	ctx, ctxCancel := context.WithTimeout(context.Background(), env.config.Kubernetes.DeploymentTimeout)
 	defer ctxCancel()
 
 	errChan := make(chan error)
-	go env.deploySpecs(resourcesToDeploy, errChan)
+	go env.deploySpecs(specsLen, errChan)
 
 	var err error = nil
 deploymentLoop:
@@ -149,10 +155,6 @@ deploymentLoop:
 		case <-ctx.Done():
 			return fmt.Errorf("error while waiting for deployment: %v", ctx.Err())
 		}
-	}
-
-	for _, spec := range resourcesToDeploy {
-		env.specs = append(env.specs, spec)
 	}
 
 	return err
@@ -368,9 +370,9 @@ func writeLogsForPod(podsClient v1.PodInterface, pod coreV1.Pod, podFolder strin
 	return nil
 }
 
-func (env *K8sEnvironment) deploySpecs(specs K8sEnvSpecs, errChan chan<- error) {
-	for i := 0; i < len(specs); i++ {
-		spec := specs[i]
+func (env *K8sEnvironment) deploySpecs(startIndex int, errChan chan<- error) {
+	for i := startIndex; i < len(env.specs); i++ {
+		spec := env.specs[i]
 		if err := spec.SetEnvironment(env); err != nil {
 			errChan <- err
 			return

@@ -9,13 +9,14 @@ import (
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
 	"github.com/smartcontractkit/integrations-framework/environment"
+	"github.com/smartcontractkit/integrations-framework/environment/charts/mockserver"
 	"github.com/smartcontractkit/integrations-framework/tools"
 	"math/big"
 	"os"
 	"path/filepath"
 )
 
-var _ = FDescribe("Alerts suite", func() {
+var _ = Describe("Alerts suite", func() {
 	var (
 		suiteSetup *actions.DefaultSuiteSetup
 		//adapter        environment.ExternalAdapter
@@ -77,65 +78,37 @@ var _ = FDescribe("Alerts suite", func() {
 
 			/* Write to initializerJson the stuff needed for otpe */
 
-			type httpRequest struct {
-				Path string `json:"path"`
-			}
-
-			type httpResponse struct {
-				Body string `json:"body"`
-			}
-
-			type httpInitializer struct {
-				Request  httpRequest  `json:"httpRequest"`
-				Response httpResponse `json:"httpResponse"`
-			}
-
-			type nodeInfoJSON struct {
-				ID          string `json:"id"`
-				NodeAddress []string `json:"nodeAddress"`
-			}
-
-			type contractInfoJSON struct {
-				ContractAddress string `json:"contractAddress"`
-				ContractVersion int    `json:"contractVersion"`
-				Path            string `json:"path"`
-				Status          string `json:"status"`
-			}
-
-			contractInfo := &contractInfoJSON{
+			contractInfo := mockserver.ContractInfoJSON{
 				ContractVersion: 4,
 				Path:            "test",
 				Status:          "live",
 				ContractAddress: OCRInstance.Address(),
 			}
 
-			contractInfoBytes, err := json.Marshal(contractInfo)
-			Expect(err).ShouldNot(HaveOccurred())
+			contractsInfo := []mockserver.ContractInfoJSON{contractInfo}
 
-			contractsInitializer := httpInitializer{
-				Request: httpRequest{Path: "/contracts"},
-				Response: httpResponse{Body: string(contractInfoBytes)},
+			contractsInitializer := mockserver.HttpInitializer{
+				Request: mockserver.HttpRequest{Path: "/contracts"},
+				Response: mockserver.HttpResponse{Body: contractsInfo},
 			}
 
-			var nodesInfo []nodeInfoJSON
+			var nodesInfo []mockserver.NodeInfoJSON
 
 			for _, chainlink := range chainlinkNodes {
 				ocrKeys, err := chainlink.ReadOCRKeys()
 				Expect(err).ShouldNot(HaveOccurred())
-				nodeInfo := nodeInfoJSON{
+				nodeInfo := mockserver.NodeInfoJSON{
 					NodeAddress: []string{ocrKeys.Data[0].Attributes.OnChainSigningAddress},
 					ID: ocrKeys.Data[0].ID,
 				}
 				nodesInfo = append(nodesInfo, nodeInfo)
 			}
 
-			nodesInfoBytes, err := json.Marshal(nodesInfo)
-			Expect(err).ShouldNot(HaveOccurred())
-			nodesInitializer := httpInitializer{
-				Request: httpRequest{Path: "/nodes"},
-				Response: httpResponse{Body: string(nodesInfoBytes)},
+			nodesInitializer := mockserver.HttpInitializer{
+				Request: mockserver.HttpRequest{Path: "/nodes"},
+				Response: mockserver.HttpResponse{Body: nodesInfo},
 			}
-			initializers := []httpInitializer{contractsInitializer, nodesInitializer}
+			initializers := []mockserver.HttpInitializer{contractsInitializer, nodesInitializer}
 
 			initializersBytes, err := json.Marshal(initializers)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -151,6 +124,10 @@ var _ = FDescribe("Alerts suite", func() {
 			err = f.Close()
 			Expect(err).ShouldNot(HaveOccurred())
 
+			// Deploy mockserver and otpe
+
+			err = suiteSetup.Env.DeploySpecs(environment.OtpeGroup())
+			Expect(err).ShouldNot(HaveOccurred())
 		})
 	})
 
