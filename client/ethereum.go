@@ -441,6 +441,7 @@ func (e *EthereumClient) DeployContract(
 		Str("Contract Address", contractAddress.Hex()).
 		Str("Contract Name", contractName).
 		Str("From", fromWallet.Address()).
+		Str("Gas Cost", transaction.Cost().String()).
 		Msg("Deployed contract")
 	return &contractAddress, transaction, contractInstance, err
 }

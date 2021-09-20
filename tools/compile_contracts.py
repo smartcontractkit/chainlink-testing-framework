@@ -3,6 +3,7 @@ import subprocess
 import os
 from os import path
 import shutil
+import re
 
 # A proof of concept / convenient script to quickly compile contracts and their go bindings
 
@@ -11,19 +12,19 @@ rootdir = "./artifacts/contracts/ethereum/"
 targetdir = "./contracts/ethereum"
 
 used_contract_names = [
-  "FluxAggregator",
-  "OffchainAggregator",
-  "LinkToken",
-  "Oracle",
   "APIConsumer",
-  "VRF",
-  "VRFCoordinator",
-  "VRFConsumer",
   "BlockhashStore",
   "DeviationFlaggingValidator",
   "Flags",
-  "SimpleWriteAccessController",
+  "FluxAggregator",
+  "LinkToken",
+  "OffchainAggregator",
+  "Oracle",
   "SimpleReadAccessController"
+  "SimpleWriteAccessController",
+  "VRF",
+  "VRFConsumer",
+  "VRFCoordinator",
 ]
 
 print("Locally installing hardhat...")
@@ -39,7 +40,7 @@ solidity: {
         settings: {
             optimizer: {
                 enabled: true,
-                runs: 1000
+                runs: 100
             }
         }
     },
@@ -48,7 +49,7 @@ solidity: {
         settings: {
             optimizer: {
                 enabled: true,
-                runs: 1000
+                runs: 100
             }
         }
     },
@@ -57,7 +58,7 @@ solidity: {
         settings: {
             optimizer: {
                 enabled: true,
-                runs: 1000
+                runs: 100
             }
         }
     },
@@ -66,7 +67,7 @@ solidity: {
             settings: {
                 optimizer: {
                     enabled: true,
-                    runs: 1000
+                    runs: 100
                 }
             }
         },
@@ -75,7 +76,7 @@ solidity: {
         settings: {
             optimizer: {
                 enabled: true,
-                runs: 1000
+                runs: 100
             }
         }
     },
@@ -84,7 +85,7 @@ solidity: {
             settings: {
                 optimizer: {
                     enabled: true,
-                    runs: 1000
+                    runs: 100
                 }
             }
         },
@@ -93,7 +94,7 @@ solidity: {
         settings: {
             optimizer: {
                 enabled: true,
-                runs: 1000
+                runs: 100
             }
         }
     }
@@ -125,8 +126,16 @@ for version in solc_versions:
                 bin_file.close()
 
                 if contract_name in used_contract_names:
+                    go_file_name = targetdir + "/" + contract_name + ".go"
                     subprocess.run("abigen --bin=" + bin_name + " --abi=" + abi_name + " --pkg=" + contract_name + " --out=" +
-                    targetdir + "/" + contract_name + ".go", shell=True, check=True)
+                    go_file_name, shell=True, check=True)
+                    # Replace package name in file, abigen doesn't let you specify differently
+                    with open(go_file_name, 'r+') as f:
+                        text = f.read()
+                        text = re.sub("package " + contract_name, "package ethereum", text)
+                        f.seek(0)
+                        f.write(text)
+                        f.truncate()
             
 print("Cleaning up Hardhat...")
 subprocess.run('npm uninstall --save-dev hardhat', shell=True)
