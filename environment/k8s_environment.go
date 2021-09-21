@@ -83,7 +83,7 @@ type K8sEnvironment struct {
 	allDeploysValues map[string]interface{}
 }
 
-// NewK8sEnvironment creates connects to a k8s cluster. Your current context within
+// NewK8sEnvironment connects to a k8s cluster. Your current context within
 // your kube config will always be used.
 func NewK8sEnvironment(
 	environmentName string,
