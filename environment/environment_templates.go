@@ -191,10 +191,10 @@ func NewMockserverHelmChart() *HelmChart {
 		id:          "mockserver",
 		chartPath:   filepath.Join(tools.ProjectRoot, "environment/charts/mockserver/mockserver-5.11.1.tgz"),
 		releaseName: "mockserver",
-		values: map[string]interface{}{},
+		values:      map[string]interface{}{},
 		SetValuesHelmFunc: func(manifest *HelmChart) error {
-			manifest.values["contractsURL"] = "http://mockserver:1080/contracts"
-			manifest.values["nodesURL"] = "http://mockserver:1080/nodes"
+			manifest.values["contractsURL"] = "http://mockserver:1080/contracts.json"
+			manifest.values["nodesURL"] = "http://mockserver:1080/nodes.json"
 			return nil
 		},
 	}
@@ -369,14 +369,14 @@ func NewKafkaHelmChart() *HelmChart {
 		id:          "kafka",
 		chartPath:   filepath.Join(tools.ProjectRoot, "environment/charts/kafka/kafka-14.1.0.tgz"),
 		releaseName: "kafka",
-		values: map[string]interface{}{},
+		values:      map[string]interface{}{},
 		SetValuesHelmFunc: func(manifest *HelmChart) error {
 			manifest.values["clusterURL"] = "kafka:9092"
 			return nil
 		},
 	}
 
-	for index, element  := range overrideValues{
+	for index, element := range overrideValues {
 		chart.values[index] = element
 	}
 
@@ -476,7 +476,7 @@ func addServicesForTestingAlertsToDependencyGroup(dependencyGroup *K8sManifestGr
 	dependencyGroup.manifests = append(dependencyGroup.manifests, NewExplorerManifest(nodeCount))
 }
 
-func OtpeGroup() K8sEnvSpecInit{
+func OtpeGroup() K8sEnvSpecInit {
 	return func(config *config.NetworkConfig) (string, K8sEnvSpecs) {
 		var specs K8sEnvSpecs
 		mockserverConfigDependencyGroup := &K8sManifestGroup{
@@ -491,6 +491,13 @@ func OtpeGroup() K8sEnvSpecInit{
 
 		specs = append(specs, mockserverConfigDependencyGroup)
 		specs = append(specs, mockserverDependencyGroup)
+
+		otpeDependencyGroup := &K8sManifestGroup{
+			id:        "OTPEDependencyGroup",
+			manifests: []K8sEnvResource{NewOTPEManifest()},
+		}
+
+		specs = append(specs, otpeDependencyGroup)
 
 		return "envName", specs
 	}

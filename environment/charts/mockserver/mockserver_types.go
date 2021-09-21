@@ -13,10 +13,10 @@ type HttpInitializer struct {
 	Response HttpResponse `json:"httpResponse"`
 }
 
-// For OTPE, weiwatchers
+// For OTPE - weiwatchers
 
 type NodeInfoJSON struct {
-	ID          string `json:"id"`
+	ID          string   `json:"id"`
 	NodeAddress []string `json:"nodeAddress"`
 }
 

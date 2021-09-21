@@ -18,24 +18,24 @@ spec:
             - name: KAFKA_BROKERS
               value: {{ .Values.KafkaGroup.kafka.clusterURL }}
             - name: KAFKA_TOPIC
-              value: ocr-telemetry-v0
+              value: "ocr-telemetry-v0"
             - name: KAFKA_CLIENT_ID
-              value: explorer
+              value: "explorer"
             - name: KAFKA_GROUP_ID
-              value: explorer
+              value: "explorer"
             - name: RPC_URL
               value: {{ .Values.DependencyGroup.evm.clusterURL }}
             - name: METRICS_ENDPOINT
               value: ":1337"
             - name: WEIWATCHERS_NODES_URL
-              value: "weiwatchers.com/nodes-mainnet.json"
+              value: {{ .Values.MockserverDependencyGroup.mockserver.nodesURL }}
             - name: WEIWATCHERS_CHAINMONITOR_URL
-              value: "weiwatchers.com/chain-monitor-mainnet.json"
+              value: {{ .Values.MockserverDependencyGroup.mockserver.contractsURL }}
             - name: CHAIN_TYPE
               value: eth
             - name: LOG_LEVEL
               value: debug
-          image: 'localhost:5000/epto'
+          image: '804282218731.dkr.ecr.us-west-2.amazonaws.com/ocr-telemetry-prometheus-exporter:2496ee62ed6c81898ddcc42d40d3be1f9c7ac549'
           ports:
             - containerPort: 1337
           resources:
@@ -45,15 +45,15 @@ spec:
             limits:
               memory: "5000Mi"
               cpu: "1"
-#          livenessProbe:
-#            httpGet:
-#              path: /metrics
-#              port: 1337
-#            initialDelaySeconds: 50
-#            periodSeconds: 5
-#          readinessProbe:
-#            httpGet:
-#              path: /metrics
-#              port: 1337
-#            initialDelaySeconds: 25
-#            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: 1337
+            initialDelaySeconds: 50
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: 1337
+            initialDelaySeconds: 25
+            periodSeconds: 5
