@@ -12,9 +12,9 @@ import (
 
 // Test config files
 const (
-	specifiedConfig string = "%s/config/test_configs/specified_config"
+	specifiedConfig     string = "%s/config/test_configs/specified_config"
 	noPrivateKeysConfig string = "%s/config/test_configs/no_private_keys_config"
-	secretKeysConfig string = "%s/config/test_configs/secret_keys_config"
+	secretKeysConfig    string = "%s/config/test_configs/secret_keys_config"
 )
 
 var _ = Describe("Environment unit tests @unit", func() {

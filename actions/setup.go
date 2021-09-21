@@ -34,6 +34,7 @@ type DefaultSuiteSetup struct {
 	Network  client.BlockchainNetwork
 }
 
+// DefaultLocalSetup setup minimum required components for test
 func DefaultLocalSetup(
 	envName string,
 	initialDeployInitFunc environment.K8sEnvSpecInit,
@@ -76,7 +77,6 @@ func DefaultLocalSetup(
 	if err != nil {
 		return nil, err
 	}
-
 	contractDeployer, err := contracts.NewContractDeployer(bcc)
 	if err != nil {
 		return nil, err
@@ -85,7 +85,6 @@ func DefaultLocalSetup(
 	if err != nil {
 		return nil, err
 	}
-
 	// configure default retry
 	retry.DefaultAttempts = conf.Retry.Attempts
 	retry.DefaultDelayType = func(n uint, err error, config *retry.Config) time.Duration {

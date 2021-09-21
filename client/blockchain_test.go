@@ -31,7 +31,7 @@ var _ = Describe("Blockchain @unit", func() {
 		networkConfig, err := initFunc(conf)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		networkConfig.Config().PrivateKeyStore, err = environment.NewPrivateKeyStoreFromEnv(environment.K8sEnvironment{}, networkConfig.Config())
+		networkConfig.Config().PrivateKeyStore, err = environment.NewPrivateKeyStoreFromEnv(&environment.K8sEnvironment{}, networkConfig.Config())
 		Expect(err).ShouldNot(HaveOccurred())
 
 		wallets, err := networkConfig.Wallets()
