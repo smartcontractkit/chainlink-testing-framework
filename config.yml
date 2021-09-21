@@ -185,6 +185,17 @@ networks:
         private_url: rsk_testnet_url
         private_keys:
             - rsk_testnet_1
+    moonbeam_testnet:
+        name: "Moonbeam testnet"
+        url: "wss://wss.testnet.moonbeam.network"
+        chain_id: 1287
+        type: evm
+        private_keys:
+            - moonbeam_testnet_1
+        transaction_limit: 6100000
+        transaction_timeout: 5m
+        minimum_confirmations: 1
+        gas_estimation_buffer: 1000000
 retry:
     attempts: 30
     linear_delay: 1s
