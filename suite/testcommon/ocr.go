@@ -165,8 +165,7 @@ func CheckRound(i *OCRSetupInputs) {
 	})
 }
 
-// WriteDataForOTPEToInitializerFileForMockserver
-// Write to initializerJson mocked weiwatchers data needed for otpe
+// WriteDataForOTPEToInitializerFileForMockserver Write to initializerJson mocked weiwatchers data needed for otpe
 func WriteDataForOTPEToInitializerFileForMockserver(i *OCRSetupInputs) {
 	contractInfo := mockserver.ContractInfoJSON{
 		ContractVersion: 4,
@@ -207,7 +206,7 @@ func WriteDataForOTPEToInitializerFileForMockserver(i *OCRSetupInputs) {
 	f, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
 	Expect(err).ShouldNot(HaveOccurred())
 
-	body := fmt.Sprintf(string(initializersBytes))
+	body := string(initializersBytes)
 	_, err = f.WriteString(body)
 	Expect(err).ShouldNot(HaveOccurred())
 

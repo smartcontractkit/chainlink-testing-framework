@@ -28,6 +28,7 @@ var _ = Describe("Environment with Helm @helm_deploy", func() {
 			env, err = NewK8sEnvironment("basic-chainlink", conf, networkConfig)
 			Expect(err).ShouldNot(HaveOccurred())
 			err = env.DeploySpecs(NewChainlinkCluster(1))
+			Expect(err).ShouldNot(HaveOccurred())
 			// check service details has EVM port
 			sd, err := env.GetServiceDetails(EVMRPCPort)
 			Expect(err).ShouldNot(HaveOccurred())

@@ -135,9 +135,7 @@ func (env *K8sEnvironment) DeploySpecs(init K8sEnvSpecInit) error {
 
 	specsLen := len(env.specs)
 
-	for _, spec := range resourcesToDeploy {
-		env.specs = append(env.specs, spec)
-	}
+	env.specs = append(env.specs, resourcesToDeploy...)
 
 	ctx, ctxCancel := context.WithTimeout(context.Background(), env.config.Kubernetes.DeploymentTimeout)
 	defer ctxCancel()
