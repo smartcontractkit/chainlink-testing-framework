@@ -208,9 +208,3 @@ contracts:
                     ocr:
                         path: ocr/artifacts/contract/src
                         commit: f27c14a905c5735abbb6e0c9699e9d0e3e9b7217
-
-images:
-    - name: "otpe"
-      image: ""
-      tag:
-    - name
