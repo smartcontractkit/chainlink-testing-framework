@@ -154,10 +154,10 @@ func NewBlockchainClient(env Environment, network client.BlockchainNetwork) (cli
 	sd, err := env.GetServiceDetails(EVMRPCPort)
 	if err == nil {
 		url := fmt.Sprintf("ws://%s", sd.LocalURL.Host)
-		log.Error().Str("URL", url).Msg("Selecting network")
+		log.Debug().Str("URL", url).Msg("Selecting network")
 		network.SetURL(url)
 	} else {
-		log.Debug().Err(err).Msg("GetServiceDetails error")
+		log.Error().Err(err).Msg("GetServiceDetails error")
 	}
 
 	network.Config().PrivateKeyStore, err = NewPrivateKeyStoreFromEnv(env, network.Config())
