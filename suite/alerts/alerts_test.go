@@ -7,9 +7,9 @@ import (
 	"github.com/smartcontractkit/integrations-framework/suite/testcommon"
 )
 
-var _ = FDescribe("Alerts suite", func() {
+var _ = Describe("Alerts suite", func() {
 	Describe("Alerts", func() {
-		It("Test 1", func() {
+		It("Deploys the alerts stack up to OTPE", func() {
 			i := &testcommon.OCRSetupInputs{}
 			testcommon.DeployOCRForEnv(i, "basic-chainlink", environment.NewChainlinkClusterForAlertsTesting(5))
 			testcommon.SetupOCRTest(i)
@@ -20,5 +20,4 @@ var _ = FDescribe("Alerts suite", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 	})
-
 })

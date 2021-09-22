@@ -58,7 +58,7 @@ spec:
               value: 300
             - name: EXPLORER_KAFKA_RETRIES
               value: 5
-          image: 'studentcuza/explorer:choose-security-protocol'
+          image: {{ .Config.Apps.Explorer.Image }}:{{ .Config.Apps.Explorer.Version }}
           ports:
             - containerPort: 8080
             - containerPort: 8081

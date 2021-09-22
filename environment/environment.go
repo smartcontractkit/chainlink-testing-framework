@@ -41,7 +41,7 @@ type ServiceDetails struct {
 
 // NewExplorerClient creates an ExplorerClient from localUrl
 func NewExplorerClient(localUrl string) (*client.ExplorerClient, error) {
-	return client.NewExplorerClient(&config.ExplorerConfig{
+	return client.NewExplorerClient(&client.ExplorerConfig{
 		URL:           localUrl,
 		AdminUsername: "username",
 		AdminPassword: "password",
