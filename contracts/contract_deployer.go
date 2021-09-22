@@ -1,7 +1,9 @@
 package contracts
 
 import (
+	"context"
 	"errors"
+	"github.com/smartcontractkit/integrations-framework/config"
 	"math"
 	"math/big"
 	"time"
@@ -18,6 +20,8 @@ import (
 
 // ContractDeployer is an interface for abstracting the contract deployment methods across network implementations
 type ContractDeployer interface {
+	Balance(fromWallet client.BlockchainWallet) (*big.Float, error)
+	CalculateETHForTXs(fromWallet client.BlockchainWallet, networkConfig *config.NetworkConfig, txs int64) (*big.Float, error)
 	DeployStorageContract(fromWallet client.BlockchainWallet) (Storage, error)
 	DeployAPIConsumer(fromWallet client.BlockchainWallet, linkAddr string) (APIConsumer, error)
 	DeployOracle(fromWallet client.BlockchainWallet, linkAddr string) (Oracle, error)
@@ -284,6 +288,36 @@ func (e *EthereumContractDeployer) DeployOffChainAggregator(
 		callerWallet: fromWallet,
 		address:      address,
 	}, err
+}
+
+// Balance get deployer wallet balance
+func (e *EthereumContractDeployer) Balance(fromWallet client.BlockchainWallet) (*big.Float, error) {
+	balance, err := e.eth.Client.PendingBalanceAt(context.Background(), common.HexToAddress(fromWallet.Address()))
+	if err != nil {
+		return nil, err
+	}
+	bf := new(big.Float).SetInt(balance)
+	return big.NewFloat(1).Quo(bf, client.OneEth), nil
+}
+
+// CalculateETHForTXs calculates required amount of ETH for N transactions based on network suggested gas price and tx gas limit
+func (e *EthereumContractDeployer) CalculateETHForTXs(fromWallet client.BlockchainWallet, networkConfig *config.NetworkConfig, txs int64) (*big.Float, error) {
+	txsLimit := networkConfig.TransactionLimit
+	gasPrice, err := e.eth.Client.SuggestGasPrice(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	gpFloat := big.NewFloat(1).SetInt(gasPrice)
+	oneGWei := big.NewFloat(1).SetInt(client.OneGWei)
+	gpGWei := big.NewFloat(1).Quo(gpFloat, oneGWei)
+	log.Debug().Str("Gas price (GWei)", gpGWei.String()).Msg("Suggested gas price")
+	txl := big.NewFloat(1).SetUint64(txsLimit)
+	oneTx := big.NewFloat(1).Mul(txl, gpFloat)
+	transactions := big.NewFloat(1).SetInt64(txs)
+	totalWei := big.NewFloat(1).Mul(oneTx, transactions)
+	totalETH := big.NewFloat(1).Quo(totalWei, client.OneEth)
+	log.Debug().Str("ETH", totalETH.String()).Int64("TXs", txs).Msg("Calculated required ETH")
+	return totalETH, nil
 }
 
 // DeployStorageContract deploys a vanilla storage contract that is a value store

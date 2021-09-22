@@ -156,17 +156,7 @@ func NewBlockchainClient(env Environment, network client.BlockchainNetwork) (cli
 		url := fmt.Sprintf("ws://%s", sd.LocalURL.Host)
 		log.Debug().Str("URL", url).Msg("Selecting network")
 		network.SetURL(url)
-	} else {
-		log.Error().Err(err).Msg("GetServiceDetails error")
 	}
-	if network.Config().SecretPrivateURL {
-		purl, err := env.GetSecretField(network.Config().NamespaceForSecret, PrivateNetworksInfoSecret, network.Config().PrivateURL)
-		if err != nil {
-			return nil, err
-		}
-		network.SetURL(purl)
-	}
-
 	network.Config().PrivateKeyStore, err = NewPrivateKeyStoreFromEnv(env, network.Config())
 	if err != nil {
 		return nil, err

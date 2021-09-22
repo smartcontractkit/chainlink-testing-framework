@@ -105,14 +105,14 @@ networks:
         type: evm
         namespace_for_secret: default
         secret_private_keys: true
+        secret_private_url: true
         private_url: kovan_testnet_url
         private_keys:
             - kovan_testnet_1
-        secret_private_url: true
-        transaction_limit: 1000000
-        transaction_timeout: 5m
+        transaction_limit: 7667850
+        transaction_timeout: 2m
         minimum_confirmations: 1
-        gas_estimation_buffer: 1000000
+        gas_estimation_buffer: 10000
     ethereum_goerli:
         <<: *common_ethereum_testnet
         name: "Ethereum Goerli"
@@ -136,7 +136,7 @@ networks:
         private_keys:
             - arb_testnet_1
         transaction_limit: 9000000000
-        minimum_confirmations: 3
+        minimum_confirmations: 1
         transaction_timeout: 1m
     bsc_testnet:
         <<: *common_ethereum_testnet
@@ -145,7 +145,7 @@ networks:
         chain_id: 97
         private_keys:
             - bsc_testnet_1
-        transaction_limit: 1000000
+        transaction_limit: 6500000
         transaction_timeout: 1m
     matic_mumbai:
         <<: *common_ethereum_testnet
@@ -176,7 +176,7 @@ networks:
         private_url: avax_fuji_testnet_url
         private_keys:
             - avax_fuji_testnet_1
-        transaction_limit: 800000
+        transaction_limit: 6000000
     optimism_kovan:
         <<: *common_ethereum_testnet
         name: "Optimism Kovan testnet"
@@ -191,8 +191,15 @@ networks:
         private_url: rsk_testnet_url
         private_keys:
             - rsk_testnet_1
+    moonbase_alpha:
+        <<: *common_ethereum_testnet
+        name: "Moonbase alpha"
+        chain_id: 1287
+        private_url: moonbase_alpha_url
+        private_keys:
+            - moonbase_alpha_1
 retry:
-    attempts: 30
+    attempts: 120
     linear_delay: 1s
 
 kubernetes:

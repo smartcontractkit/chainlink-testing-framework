@@ -51,11 +51,13 @@ func DeployOCRForEnv(i *OCRSetupInputs, envName string, envInit environment.K8sE
 // SetupOCRTest setup for an ocr test
 func SetupOCRTest(i *OCRSetupInputs) {
 	By("Funding nodes and deploying OCR contract", func() {
-		err := actions.FundChainlinkNodes(
+		ethAmount, err := i.SuiteSetup.Deployer.CalculateETHForTXs(i.SuiteSetup.Wallets.Default(), i.SuiteSetup.Network.Config(), 2)
+		Expect(err).ShouldNot(HaveOccurred())
+		err = actions.FundChainlinkNodes(
 			i.ChainlinkNodes,
 			i.SuiteSetup.Client,
 			i.DefaultWallet,
-			big.NewFloat(0.05),
+			ethAmount,
 			big.NewFloat(2),
 		)
 		Expect(err).ShouldNot(HaveOccurred())

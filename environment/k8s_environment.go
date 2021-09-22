@@ -114,6 +114,13 @@ func NewK8sEnvironment(
 	}
 	log.Info().Str("Host", k8sConfig.Host).Msg("Using Kubernetes cluster")
 
+	if network.Config().SecretPrivateURL {
+		purl, err := env.GetSecretField(network.Config().NamespaceForSecret, PrivateNetworksInfoSecret, network.Config().PrivateURL)
+		if err != nil {
+			return nil, err
+		}
+		network.SetURL(purl)
+	}
 	namespace, err := env.createNamespace(environmentName)
 	if err != nil {
 		return nil, err

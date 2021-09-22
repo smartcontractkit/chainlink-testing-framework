@@ -126,6 +126,8 @@ spec:
           - --mine
           - --miner.threads
           - 1
+          - --miner.gasprice
+          - 10000000000
           - --miner.gastarget
           - {{ .Network.BlockGasLimit }}
           - --miner.etherbase
