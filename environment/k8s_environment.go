@@ -129,7 +129,7 @@ func NewK8sEnvironment(
 	return env, nil
 }
 
-// DeploySpecs deploys a all the specs in the array
+// DeploySpecs deploys all specs in the provided environment init function
 func (env *K8sEnvironment) DeploySpecs(init K8sEnvSpecInit) error {
 	_, resourcesToDeploy := init(env.network.Config())
 
