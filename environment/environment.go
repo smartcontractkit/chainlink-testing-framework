@@ -29,6 +29,8 @@ type Environment interface {
 	StopChaos(name string) error
 	StopAllChaos() error
 	TearDown()
+
+	DeploySpecs(init K8sEnvSpecInit) error
 }
 
 // ServiceDetails contains all of the connectivity properties about a given deployed service
@@ -39,7 +41,7 @@ type ServiceDetails struct {
 
 // NewExplorerClient creates an ExplorerClient from localUrl
 func NewExplorerClient(localUrl string) (*client.ExplorerClient, error) {
-	return client.NewExplorerClient(&config.ExplorerConfig{
+	return client.NewExplorerClient(&client.ExplorerConfig{
 		URL:           localUrl,
 		AdminUsername: "username",
 		AdminPassword: "password",
@@ -154,6 +156,8 @@ func NewBlockchainClient(env Environment, network client.BlockchainNetwork) (cli
 		url := fmt.Sprintf("ws://%s", sd.LocalURL.Host)
 		log.Debug().Str("URL", url).Msg("Selecting network")
 		network.SetURL(url)
+	} else {
+		log.Error().Err(err).Msg("GetServiceDetails error")
 	}
 	if network.Config().SecretPrivateURL {
 		purl, err := env.GetSecretField(network.Config().NamespaceForSecret, PrivateNetworksInfoSecret, network.Config().PrivateURL)

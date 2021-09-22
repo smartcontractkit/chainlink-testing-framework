@@ -31,6 +31,7 @@ var _ = Describe("Keeper suite @keeper", func() {
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
 			s, err = actions.DefaultLocalSetup(
+				"basic-chainlink",
 				// need to register at least 5 nodes to perform upkeep
 				environment.NewChainlinkCluster(5),
 				client.NewNetworkFromConfig,

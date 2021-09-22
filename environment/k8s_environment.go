@@ -82,12 +82,14 @@ type K8sEnvironment struct {
 	config  *config.Config
 	network client.BlockchainNetwork
 	chaos   *chaos.Controller
+
+	allDeploysValues map[string]interface{}
 }
 
-// NewK8sEnvironment creates and deploys a full ephemeral environment in a k8s cluster. Your current context within
+// NewK8sEnvironment connects to a k8s cluster. Your current context within
 // your kube config will always be used.
 func NewK8sEnvironment(
-	init K8sEnvSpecInit,
+	environmentName string,
 	cfg *config.Config,
 	network client.BlockchainNetwork,
 ) (Environment, error) {
@@ -107,16 +109,17 @@ func NewK8sEnvironment(
 		k8sConfig: k8sConfig,
 		config:    cfg,
 		network:   network,
+		allDeploysValues: map[string]interface{}{},
+		specs: K8sEnvSpecs{},
 	}
 	log.Info().Str("Host", k8sConfig.Host).Msg("Using Kubernetes cluster")
 
-	environmentName, deployables := init(network.Config())
 	namespace, err := env.createNamespace(environmentName)
 	if err != nil {
 		return nil, err
 	}
 	env.namespace = namespace
-	env.specs = deployables
+
 	cc, err := chaos.NewController(&chaos.Config{
 		Client:    k8sClient,
 		Namespace: namespace.Name,
@@ -126,26 +129,39 @@ func NewK8sEnvironment(
 	}
 	env.chaos = cc
 
+	return env, nil
+}
+
+// DeploySpecs deploys all specs in the provided environment init function
+func (env *K8sEnvironment) DeploySpecs(init K8sEnvSpecInit) error {
+	_, resourcesToDeploy := init(env.network.Config())
+
+	specsLen := len(env.specs)
+
+	env.specs = append(env.specs, resourcesToDeploy...)
+
 	ctx, ctxCancel := context.WithTimeout(context.Background(), env.config.Kubernetes.DeploymentTimeout)
 	defer ctxCancel()
 
 	errChan := make(chan error)
-	go env.deploySpecs(errChan)
+	go env.deploySpecs(specsLen, errChan)
 
+	var err error = nil
 deploymentLoop:
 	for {
 		select {
 		case err, open := <-errChan:
 			if err != nil {
-				return nil, err
+				return err
 			} else if !open {
 				break deploymentLoop
 			}
 		case <-ctx.Done():
-			return nil, fmt.Errorf("error while waiting for deployment: %v", ctx.Err())
+			return fmt.Errorf("error while waiting for deployment: %v", ctx.Err())
 		}
 	}
-	return env, err
+
+	return err
 }
 
 // ID returns the canonical name of the environment, which in the case of k8s is the namespace
@@ -358,16 +374,15 @@ func writeLogsForPod(podsClient v1.PodInterface, pod coreV1.Pod, podFolder strin
 	return nil
 }
 
-func (env *K8sEnvironment) deploySpecs(errChan chan<- error) {
-	values := map[string]interface{}{}
-	for i := 0; i < len(env.specs); i++ {
+func (env *K8sEnvironment) deploySpecs(startIndex int, errChan chan<- error) {
+	for i := startIndex; i < len(env.specs); i++ {
 		spec := env.specs[i]
 		if err := spec.SetEnvironment(env); err != nil {
 			errChan <- err
 			return
 		}
-		values[spec.ID()] = spec.Values()
-		if err := spec.Deploy(values); err != nil {
+		env.allDeploysValues[spec.ID()] = spec.Values()
+		if err := spec.Deploy(env.allDeploysValues); err != nil {
 			errChan <- err
 			return
 		}
@@ -375,7 +390,7 @@ func (env *K8sEnvironment) deploySpecs(errChan chan<- error) {
 			errChan <- err
 			return
 		}
-		values[spec.ID()] = spec.Values()
+		env.allDeploysValues[spec.ID()] = spec.Values()
 	}
 	close(errChan)
 }

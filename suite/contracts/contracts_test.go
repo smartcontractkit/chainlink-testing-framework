@@ -24,6 +24,7 @@ var _ = FDescribe("Basic Contract Interactions @contract", func() {
 		By("Deploying the environment", func() {
 			var err error
 			suiteSetup, err = actions.DefaultLocalSetup(
+				"basic-chainlink",
 				environment.NewChainlinkCluster(0),
 				client.NewNetworkFromConfig,
 				tools.ProjectRoot,

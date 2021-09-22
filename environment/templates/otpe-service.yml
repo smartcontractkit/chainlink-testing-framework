@@ -1,0 +1,10 @@
+metadata:
+  name: otpe
+spec:
+  ports:
+    - name: "metrics"
+      port: 1337
+      targetPort: 1337
+  selector:
+    app: otpe
+  type: ClusterIP

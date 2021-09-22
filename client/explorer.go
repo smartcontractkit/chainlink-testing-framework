@@ -2,18 +2,17 @@ package client
 
 import (
 	"github.com/rs/zerolog/log"
-	"github.com/smartcontractkit/integrations-framework/config"
 	"net/http"
 )
 
 // ExplorerClient is used to call Explorer API endpoints
 type ExplorerClient struct {
 	*BasicHTTPClient
-	Config *config.ExplorerConfig
+	Config *ExplorerConfig
 }
 
 // NewExplorerClient creates a new explorer mock client
-func NewExplorerClient(cfg *config.ExplorerConfig) *ExplorerClient {
+func NewExplorerClient(cfg *ExplorerConfig) *ExplorerClient {
 	return &ExplorerClient{
 		Config:          cfg,
 		BasicHTTPClient: NewBasicHTTPClient(&http.Client{}, cfg.URL),
@@ -45,4 +44,11 @@ type NodeAccessKeys struct {
 	ID        string `mapstructure:"id" yaml:"id"`
 	AccessKey string `mapstructure:"accesKey" yaml:"accessKey"`
 	Secret    string `mapstructure:"secret" yaml:"secret"`
+}
+
+// ExplorerConfig holds config information for ExplorerClient
+type ExplorerConfig struct {
+	URL           string
+	AdminUsername string
+	AdminPassword string
 }

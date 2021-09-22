@@ -25,7 +25,9 @@ var _ = Describe("Environment with Helm @helm_deploy", func() {
 			conf.Network = "ethereum_geth_reorg"
 			networkConfig, err := client.NewNetworkFromConfig(conf)
 			Expect(err).ShouldNot(HaveOccurred())
-			env, err = NewK8sEnvironment(NewChainlinkCluster(1), conf, networkConfig)
+			env, err = NewK8sEnvironment("basic-chainlink", conf, networkConfig)
+			Expect(err).ShouldNot(HaveOccurred())
+			err = env.DeploySpecs(NewChainlinkCluster(1))
 			Expect(err).ShouldNot(HaveOccurred())
 			// check service details has EVM port
 			sd, err := env.GetServiceDetails(EVMRPCPort)

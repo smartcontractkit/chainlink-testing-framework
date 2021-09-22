@@ -25,6 +25,7 @@ var _ = Describe("Performance tests", func() {
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
 			s, err = actions.DefaultLocalSetup(
+				"basic-chainlink",
 				environment.NewChainlinkCluster(numberOfNodes),
 				client.NewNetworkFromConfigWithDefault(client.NetworkGethPerformance),
 				tools.ProjectRoot,

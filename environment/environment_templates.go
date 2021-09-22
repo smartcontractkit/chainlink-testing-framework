@@ -168,6 +168,40 @@ func NewExplorerManifest(nodeCount int) *K8sManifest {
 	}
 }
 
+// NewOTPEManifest is the k8s manifest for deploying otpe
+func NewOTPEManifest() *K8sManifest {
+	return &K8sManifest{
+		id:             "otpe",
+		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/otpe-deployment.yml"),
+		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/otpe-service.yml"),
+	}
+}
+
+// NewMockserverConfigHelmChart creates new helm chart for the mockserver configmap
+func NewMockserverConfigHelmChart() *HelmChart {
+	return &HelmChart{
+		id:          "mockserver-config",
+		chartPath:   filepath.Join(tools.ProjectRoot, "environment/charts/mockserver-config"),
+		releaseName: "mockserver-config",
+	}
+}
+
+// NewMockserverHelmChart creates new helm chart for the mockserver
+func NewMockserverHelmChart() *HelmChart {
+	chart := &HelmChart{
+		id:          "mockserver",
+		chartPath:   filepath.Join(tools.ProjectRoot, "environment/charts/mockserver/mockserver-5.11.1.tgz"),
+		releaseName: "mockserver",
+		values:      map[string]interface{}{},
+		SetValuesHelmFunc: func(manifest *HelmChart) error {
+			manifest.values["contractsURL"] = "http://mockserver:1080/contracts.json"
+			manifest.values["nodesURL"] = "http://mockserver:1080/nodes.json"
+			return nil
+		},
+	}
+	return chart
+}
+
 // NewHardhatManifest is the k8s manifest that when used will deploy hardhat to an environment
 func NewHardhatManifest() *K8sManifest {
 	return &K8sManifest{
@@ -254,8 +288,8 @@ func NewChainlinkClusterForAlertsTesting(nodeCount int) K8sEnvSpecInit {
 	dependencyGroup := getBasicDependencyGroup()
 	addServicesForTestingAlertsToDependencyGroup(dependencyGroup, nodeCount)
 	addPostgresDbsToDependencyGroup(dependencyGroup, nodeCount)
-
 	dependencyGroups := []*K8sManifestGroup{kafkaDependecyGroup, dependencyGroup}
+
 	return addNetworkManifestToDependencyGroup("basic-chainlink", chainlinkGroup, dependencyGroups)
 }
 
@@ -334,14 +368,14 @@ func NewKafkaHelmChart() *HelmChart {
 		id:          "kafka",
 		chartPath:   filepath.Join(tools.ProjectRoot, "environment/charts/kafka/kafka-14.1.0.tgz"),
 		releaseName: "kafka",
-		values: map[string]interface{}{},
+		values:      map[string]interface{}{},
 		SetValuesHelmFunc: func(manifest *HelmChart) error {
 			manifest.values["clusterURL"] = "kafka:9092"
 			return nil
 		},
 	}
 
-	for index, element  := range overrideValues{
+	for index, element := range overrideValues {
 		chart.values[index] = element
 	}
 
@@ -439,4 +473,32 @@ func addPostgresDbsToDependencyGroup(dependencyGroup *K8sManifestGroup, postgres
 // addServicesForTestingAlertsToDependencyGroup adds services necessary for testing alerts to the dependency group
 func addServicesForTestingAlertsToDependencyGroup(dependencyGroup *K8sManifestGroup, nodeCount int) {
 	dependencyGroup.manifests = append(dependencyGroup.manifests, NewExplorerManifest(nodeCount))
+}
+
+// OtpeGroup contains manifests for mockserver, mockserver-config, and otpe
+func OtpeGroup() K8sEnvSpecInit {
+	return func(config *config.NetworkConfig) (string, K8sEnvSpecs) {
+		var specs K8sEnvSpecs
+		mockserverConfigDependencyGroup := &K8sManifestGroup{
+			id:        "MockserverConfigDependencyGroup",
+			manifests: []K8sEnvResource{NewMockserverConfigHelmChart()},
+		}
+
+		mockserverDependencyGroup := &K8sManifestGroup{
+			id:        "MockserverDependencyGroup",
+			manifests: []K8sEnvResource{NewMockserverHelmChart()},
+		}
+
+		specs = append(specs, mockserverConfigDependencyGroup)
+		specs = append(specs, mockserverDependencyGroup)
+
+		otpeDependencyGroup := &K8sManifestGroup{
+			id:        "OTPEDependencyGroup",
+			manifests: []K8sEnvResource{NewOTPEManifest()},
+		}
+
+		specs = append(specs, otpeDependencyGroup)
+
+		return "envName", specs
+	}
 }

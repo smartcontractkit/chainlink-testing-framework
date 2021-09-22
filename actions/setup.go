@@ -36,7 +36,8 @@ type DefaultSuiteSetup struct {
 
 // DefaultLocalSetup setup minimum required components for test
 func DefaultLocalSetup(
-	envInitFunc environment.K8sEnvSpecInit,
+	envName string,
+	initialDeployInitFunc environment.K8sEnvSpecInit,
 	initFunc client.BlockchainNetworkInit,
 	configPath string,
 ) (*DefaultSuiteSetup, error) {
@@ -48,10 +49,18 @@ func DefaultLocalSetup(
 	if err != nil {
 		return nil, err
 	}
-	env, err := environment.NewK8sEnvironment(envInitFunc, conf, network)
+
+	env, err := environment.NewK8sEnvironment(envName, conf, network)
 	if err != nil {
 		return nil, err
 	}
+
+	err = env.DeploySpecs(initialDeployInitFunc)
+	if err != nil {
+		return nil, err
+	}
+
+	// Initialize blockchain client
 	var bcc client.BlockchainClient
 	switch network.Config().Type {
 	case client.BlockchainTypeEVMMultinode:
@@ -62,6 +71,8 @@ func DefaultLocalSetup(
 	if err != nil {
 		return nil, err
 	}
+
+	// Initialize wallets
 	wallets, err := network.Wallets()
 	if err != nil {
 		return nil, err

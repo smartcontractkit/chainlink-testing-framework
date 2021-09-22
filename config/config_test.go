@@ -92,7 +92,7 @@ var _ = Describe("Config unit tests @unit", func() {
 		bcNetwork, err := client.NewNetworkFromConfig(conf)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		bcNetwork.Config().PrivateKeyStore, err = environment.NewPrivateKeyStoreFromEnv(environment.K8sEnvironment{}, bcNetwork.Config())
+		bcNetwork.Config().PrivateKeyStore, err = environment.NewPrivateKeyStoreFromEnv(&environment.K8sEnvironment{}, bcNetwork.Config())
 		Expect(err).ShouldNot(HaveOccurred())
 
 		privateKeys, err := bcNetwork.Config().PrivateKeyStore.Fetch()

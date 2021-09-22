@@ -124,6 +124,8 @@ type AppConfig struct {
 	Geth      GethConfig      `mapstructure:"geth" yaml:"geth"`
 	Adapter   AdapterConfig   `mapstructure:"adapter" yaml:"adapter"`
 	Postgres  PostgresConfig  `mapstructure:"postgres" yaml:"postgres"`
+	Otpe      OtpeConfig      `mapstructure:"otpe" yaml:"otpe"`
+	Explorer  ExplorerConfig  `mapstructure:"explorer" yaml:"explorer"`
 }
 
 // ChainlinkConfig holds the configuration for the chainlink nodes to be deployed
@@ -156,6 +158,18 @@ type AdapterConfig struct {
 type ResourcesConfig struct {
 	Memory string `mapstructure:"memory" yaml:"memory"`
 	Cpu    string `mapstructure:"cpu" yaml:"cpu"`
+}
+
+// OtpeConfig holds the configuration for the otpe to be deployed
+type OtpeConfig struct {
+	Image   string `mapstructure:"image" yaml:"image"`
+	Version string `mapstructure:"version" yaml:"version"`
+}
+
+// ExplorerConfig holds the configuration for the explorer to be deployed
+type ExplorerConfig struct {
+	Image   string `mapstructure:"image" yaml:"image"`
+	Version string `mapstructure:"version" yaml:"version"`
 }
 
 // NewConfig creates a new configuration instance via viper from env vars, config file, or a secret store
@@ -202,11 +216,4 @@ func (l *LocalStore) Fetch() ([]string, error) {
 type RetryConfig struct {
 	Attempts    uint          `mapstructure:"attempts" yaml:"attempts"`
 	LinearDelay time.Duration `mapstructure:"linear_delay" yaml:"linear_delay"`
-}
-
-// ExplorerConfig holds config information for ExplorerClient
-type ExplorerConfig struct {
-	URL           string
-	AdminUsername string
-	AdminPassword string
 }

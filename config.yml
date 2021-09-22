@@ -38,6 +38,12 @@ apps:
         limits:
             memory: 96Mi
             cpu: 50m
+    otpe:
+        image: "804282218731.dkr.ecr.us-west-2.amazonaws.com/ocr-telemetry-prometheus-exporter"
+        version: "2496ee62ed6c81898ddcc42d40d3be1f9c7ac549"
+    explorer:
+        image: "studentcuza/explorer"
+        version: "choose-security-protocol"
 
 private_keys: &private_keys
     private_keys:
