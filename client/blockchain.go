@@ -33,11 +33,13 @@ type BlockchainClient interface {
 	SetID(id int)
 	SetDefaultClient(clientID int) error
 	GetClients() []BlockchainClient
+	SuggestGasPrice(ctx context.Context) (*big.Int, error)
 	HeaderHashByNumber(ctx context.Context, bn *big.Int) (string, error)
 	BlockNumber(ctx context.Context) (uint64, error)
 	HeaderTimestampByNumber(ctx context.Context, bn *big.Int) (uint64, error)
 	CalculateTxGas(gasUsedValue *big.Int) (*big.Float, error)
 	Fund(fromWallet BlockchainWallet, toAddress string, nativeAmount, linkAmount *big.Float) error
+	GasStats() *GasStats
 	ParallelTransactions(enabled bool)
 	Close() error
 

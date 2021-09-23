@@ -81,6 +81,11 @@ func DefaultLocalSetup(
 	if err != nil {
 		return nil, err
 	}
+	balance, err := contractDeployer.Balance(wallets.Default())
+	if err != nil {
+		return nil, err
+	}
+	log.Info().Str("Address", wallets.Default().Address()).Str("ETH", balance.String()).Msg("Deployer balance")
 	link, err := contractDeployer.DeployLinkTokenContract(wallets.Default())
 	if err != nil {
 		return nil, err

@@ -41,6 +41,11 @@ func (e *EthereumClients) GetID() int {
 	return e.DefaultClient.ID
 }
 
+// GasStats gets gas stats instance
+func (e *EthereumClients) GasStats() *GasStats {
+	return e.DefaultClient.gasStats
+}
+
 // SetDefaultClient sets default client to perform calls to the network
 func (e *EthereumClients) SetDefaultClient(clientID int) error {
 	if clientID > len(e.Clients) {
@@ -151,6 +156,7 @@ type EthereumClient struct {
 	headerSubscriptions map[string]HeaderEventSubscription
 	mutex               *sync.Mutex
 	queueTransactions   bool
+	gasStats            *GasStats
 	doneChan            chan struct{}
 }
 
@@ -167,6 +173,15 @@ func (e *EthereumClient) SetDefaultClient(_ int) error {
 // GetClients not used, only applicable to EthereumClients
 func (e *EthereumClient) GetClients() []BlockchainClient {
 	return []BlockchainClient{e}
+}
+
+// SuggestGasPrice gets suggested gas price
+func (e *EthereumClient) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
+	gasPrice, err := e.Client.SuggestGasPrice(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return gasPrice, nil
 }
 
 // SetID sets client id, useful for multi-node networks
@@ -228,6 +243,7 @@ func NewEthereumClient(network BlockchainNetwork) (*EthereumClient, error) {
 		queueTransactions:   false,
 		doneChan:            make(chan struct{}),
 	}
+	ec.gasStats = NewGasStats(ec.ID)
 	go ec.newHeadersLoop()
 	return ec, nil
 }
@@ -253,6 +269,15 @@ func (e *EthereumClient) Close() error {
 	e.doneChan <- struct{}{}
 	e.Client.Close()
 	return nil
+}
+
+// SuggestGasPrice gets suggested gas price
+func (e *EthereumClients) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
+	gasPrice, err := e.DefaultClient.SuggestGasPrice(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return gasPrice, nil
 }
 
 // BorrowedNonces allows to handle nonces concurrently without requesting them every time
@@ -303,6 +328,11 @@ func (e *EthereumClient) CalculateTxGas(gasUsed *big.Int) (*big.Float, error) {
 	log.Debug().Int64("TX Gas cost", cost.Int64()).Msg("Estimated tx gas cost with buffer")
 	bf := new(big.Float).SetInt(cost)
 	return big.NewFloat(1).Quo(bf, OneEth), nil
+}
+
+// GasStats gets gas stats instance
+func (e *EthereumClient) GasStats() *GasStats {
+	return e.gasStats
 }
 
 // ParallelTransactions when enabled, sends the transaction without waiting for transaction confirmations. The hashes
@@ -615,6 +645,14 @@ func (e *EthereumClient) isTxConfirmed(txHash common.Hash) (bool, error) {
 		if err != nil {
 			return !isPending, err
 		}
+		e.gasStats.AddClientTXData(TXGasData{
+			TXHash:            txHash.String(),
+			Value:             tx.Value().Uint64(),
+			GasLimit:          tx.Gas(),
+			GasUsed:           receipt.GasUsed,
+			GasPrice:          tx.GasPrice().Uint64(),
+			CumulativeGasUsed: receipt.CumulativeGasUsed,
+		})
 		if receipt.Status == 0 {
 			log.Warn().Str("TX Hash", txHash.Hex()).Msg("Transaction failed and was reverted!")
 			reason, err := e.errorReason(e.Client, tx, receipt)
@@ -686,6 +724,11 @@ func NewTransactionConfirmer(eth *EthereumClient, txHash common.Hash, minConfirm
 // ReceiveBlock the implementation of the HeaderEventSubscription that receives each block and checks
 // tx confirmation
 func (t *TransactionConfirmer) ReceiveBlock(block NodeBlock) error {
+	if block.Block == nil {
+		// strange, but happening on Kovan
+		log.Info().Msg("Received nil block")
+		return nil
+	}
 	confirmationLog := log.Debug().Str("Network", t.eth.Network.ID()).
 		Str("Block Hash", block.Hash().Hex()).
 		Str("Block Number", block.Number().String()).Str("Tx Hash", t.txHash.Hex()).

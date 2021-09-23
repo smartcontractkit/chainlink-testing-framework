@@ -61,11 +61,13 @@ var _ = Describe("Flux monitor suite @flux", func() {
 		By("Funding Chainlink nodes", func() {
 			nodeAddresses, err = actions.ChainlinkNodeAddresses(nodes)
 			Expect(err).ShouldNot(HaveOccurred())
+			ethAmount, err := s.Deployer.CalculateETHForTXs(s.Wallets.Default(), s.Network.Config(), 3)
+			Expect(err).ShouldNot(HaveOccurred())
 			err = actions.FundChainlinkNodes(
 				nodes,
 				s.Client,
 				s.Wallets.Default(),
-				big.NewFloat(2),
+				ethAmount,
 				nil,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -157,6 +159,9 @@ var _ = Describe("Flux monitor suite @flux", func() {
 	})
 
 	AfterEach(func() {
+		By("Printing gas stats", func() {
+			s.Client.GasStats().PrintStats()
+		})
 		By("Tearing down the environment", s.TearDown())
 	})
 })
