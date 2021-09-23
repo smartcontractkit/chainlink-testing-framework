@@ -217,7 +217,7 @@ func DefaultOffChainAggregatorOptions() OffchainOptions {
 		LinkGweiPerObservation:  uint32(500),
 		LinkGweiPerTransmission: uint32(500),
 		MinimumAnswer:           big.NewInt(1),
-		MaximumAnswer:           big.NewInt(5000),
+		MaximumAnswer:           big.NewInt(5000000000),
 		Decimals:                8,
 		Description:             "Test OCR",
 	}
