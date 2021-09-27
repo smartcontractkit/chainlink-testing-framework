@@ -9,7 +9,7 @@ import (
 
 var _ = Describe("Alerts suite", func() {
 	Describe("Alerts", func() {
-		It("Deploys the alerts stack up to OTPE", func() {
+		It("Deploys the alerts stack up to Prometheus", func() {
 			i := &testcommon.OCRSetupInputs{}
 			testcommon.DeployOCRForEnv(i, "basic-chainlink", environment.NewChainlinkClusterForAlertsTesting(5))
 			testcommon.SetupOCRTest(i)
@@ -17,6 +17,9 @@ var _ = Describe("Alerts suite", func() {
 			testcommon.WriteDataForOTPEToInitializerFileForMockserver(i)
 
 			err := i.SuiteSetup.Env.DeploySpecs(environment.OtpeGroup())
+			Expect(err).ShouldNot(HaveOccurred())
+
+			err = i.SuiteSetup.Env.DeploySpecs(environment.PrometheusGroup())
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 	})
