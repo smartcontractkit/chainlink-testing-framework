@@ -531,6 +531,7 @@ func OtpeGroup() K8sEnvSpecInit {
 	}
 }
 
+// PrometheusGroup contains manifests for prometheus
 func PrometheusGroup() K8sEnvSpecInit {
 	return func(config *config.NetworkConfig) (string, K8sEnvSpecs) {
 		var specs K8sEnvSpecs

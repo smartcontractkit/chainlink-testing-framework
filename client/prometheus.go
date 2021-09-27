@@ -104,6 +104,5 @@ func (p *Prometheus) GetAlerts() (v1.AlertsResult, error) {
 	if err != nil {
 		return v1.AlertsResult{}, err
 	}
-
 	return alerts, nil
 }
