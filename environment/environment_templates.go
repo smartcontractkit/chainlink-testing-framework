@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"helm.sh/helm/v3/pkg/chartutil"
+	"io/ioutil"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -174,6 +175,14 @@ func NewOTPEManifest() *K8sManifest {
 		id:             "otpe",
 		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/otpe-deployment.yml"),
 		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/otpe-service.yml"),
+		SetValuesFunc: func(manifest *K8sManifest) error {
+			manifest.values["clusterURL"] = fmt.Sprintf(
+				"%s:%d",
+				manifest.Service.Spec.ClusterIP,
+				manifest.Service.Spec.Ports[0].Port,
+			)
+			return nil
+		},
 	}
 }
 
@@ -200,6 +209,25 @@ func NewMockserverHelmChart() *HelmChart {
 		},
 	}
 	return chart
+}
+
+// NewPrometheusManifest creates new k8s manifest for prometheus
+func NewPrometheusManifest() *K8sManifest {
+	rulesFilePath := filepath.Join(tools.ProjectRoot, "/environment/templates/prometheus/rules/ocr.rules.yml")
+	content, err := ioutil.ReadFile(rulesFilePath)
+	if err != nil {
+		return nil
+	}
+	return &K8sManifest{
+		id:             "prometheus",
+		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/prometheus/prometheus-deployment.yml"),
+		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/prometheus/prometheus-service.yml"),
+		ConfigMapFile:  filepath.Join(tools.ProjectRoot, "/environment/templates/prometheus/prometheus-config-map.yml"),
+
+		values: map[string]interface{}{
+			"ocrRulesYml": string(content),
+		},
+	}
 }
 
 // NewHardhatManifest is the k8s manifest that when used will deploy hardhat to an environment
@@ -500,5 +528,18 @@ func OtpeGroup() K8sEnvSpecInit {
 		specs = append(specs, otpeDependencyGroup)
 
 		return "envName", specs
+	}
+}
+
+// PrometheusGroup contains manifests for prometheus
+func PrometheusGroup() K8sEnvSpecInit {
+	return func(config *config.NetworkConfig) (string, K8sEnvSpecs) {
+		var specs K8sEnvSpecs
+		prometheusDependencyGroup := &K8sManifestGroup{
+			id: "PrometheusDependencyGroup",
+			manifests: []K8sEnvResource{NewPrometheusManifest()},
+		}
+		specs = append(specs, prometheusDependencyGroup)
+		return "", specs
 	}
 }
