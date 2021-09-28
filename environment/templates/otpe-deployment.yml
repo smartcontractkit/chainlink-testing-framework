@@ -24,7 +24,8 @@ spec:
             - name: KAFKA_GROUP_ID
               value: "explorer"
             - name: RPC_URL
-              value: {{ .Values.DependencyGroup.evm.clusterURL }}
+              {{ $networkName := .Config.Network }}
+              value: {{ (index .Values.DependencyGroup $networkName).clusterURL }}
             - name: METRICS_ENDPOINT
               value: ":1337"
             - name: WEIWATCHERS_NODES_URL

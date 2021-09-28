@@ -33,11 +33,12 @@ spec:
           value: {{ next .Values.DependencyGroup.dbURLs }}/chainlink?sslmode=disable
         - name: DATABASE_NAME
           value: chainlink
-          # TODO: Placeholders until CL 1.0.0 is cut, and we can use the new chain configuration options
+          # TODO: Placeholders until CL 1.0.0 is cut, and we can use the new chain configuration options through the API
+          {{ $networkName := .Config.Network }}
         - name: ETH_URL
-          value: {{ .Values.DependencyGroup.evm_0.clusterURL }}
+          value: {{ (index .Values.DependencyGroup $networkName).clusterURL }}
         - name: ETH_CHAIN_ID
-          value: {{ .Values.DependencyGroup.evm_0.ChainID }}
+          value: {{ (index .Networks $networkName).ChainID }}
         - name: ALLOW_ORIGINS
           value: '*'
         - name: CHAINLINK_DEV
