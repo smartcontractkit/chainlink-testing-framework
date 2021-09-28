@@ -97,3 +97,12 @@ func (p *Prometheus) ResourcesSummary() (float64, float64, error) {
 	}
 	return cpu, mem, nil
 }
+
+// GetAlerts returns all firing alerts
+func (p *Prometheus) GetAlerts() (v1.AlertsResult, error) {
+	alerts, err := p.API.Alerts(context.Background())
+	if err != nil {
+		return v1.AlertsResult{}, err
+	}
+	return alerts, nil
+}

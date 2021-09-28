@@ -64,6 +64,10 @@ test_keeper: ## run keeper tests
 test_ocr: ## run ocr tests
 	ginkgo -r --focus=@ocr
 
+.PHONY: test_ocr_soak
+test_ocr_soak: ## run OCR soak test
+	NETWORK="ethereum_geth_performance" ginkgo -r --focus="@soak-ocr"
+
 .PHONY: test_runlog
 test_runlog: ## run runlog tests
 	ginkgo -r --focus=@runlog
