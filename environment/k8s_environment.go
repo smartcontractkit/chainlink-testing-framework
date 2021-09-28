@@ -51,7 +51,7 @@ type K8sEnvSpecs []K8sEnvResource
 
 // K8sEnvSpecInit is the initiator that will return the name of the environment and the specifications to be deployed.
 // The name of the environment returned determines the namespace.
-type K8sEnvSpecInit func(*config.NetworkConfig) (string, K8sEnvSpecs)
+type K8sEnvSpecInit func(...client.BlockchainNetwork) K8sEnvSpecs
 
 // K8sEnvResource is the interface for deploying a given environment resource. Creating an interface for resource
 // deployment allows it to be extended, deploying k8s resources in different ways. For example: K8sManifest deploys
@@ -79,9 +79,9 @@ type K8sEnvironment struct {
 	namespace *coreV1.Namespace
 
 	// Environment resources
-	config  *config.Config
-	network client.BlockchainNetwork
-	chaos   *chaos.Controller
+	config   *config.Config
+	networks []client.BlockchainNetwork
+	chaos    *chaos.Controller
 
 	allDeploysValues map[string]interface{}
 }
@@ -91,7 +91,7 @@ type K8sEnvironment struct {
 func NewK8sEnvironment(
 	environmentName string,
 	cfg *config.Config,
-	network client.BlockchainNetwork,
+	networks ...client.BlockchainNetwork,
 ) (Environment, error) {
 	k8sConfig, err := K8sConfig()
 	if err != nil {
@@ -105,12 +105,12 @@ func NewK8sEnvironment(
 		return nil, err
 	}
 	env := &K8sEnvironment{
-		k8sClient: k8sClient,
-		k8sConfig: k8sConfig,
-		config:    cfg,
-		network:   network,
+		k8sClient:        k8sClient,
+		k8sConfig:        k8sConfig,
+		config:           cfg,
+		networks:         networks,
 		allDeploysValues: map[string]interface{}{},
-		specs: K8sEnvSpecs{},
+		specs:            K8sEnvSpecs{},
 	}
 	log.Info().Str("Host", k8sConfig.Host).Msg("Using Kubernetes cluster")
 
@@ -134,7 +134,7 @@ func NewK8sEnvironment(
 
 // DeploySpecs deploys all specs in the provided environment init function
 func (env *K8sEnvironment) DeploySpecs(init K8sEnvSpecInit) error {
-	_, resourcesToDeploy := init(env.network.Config())
+	resourcesToDeploy := init(env.networks...)
 
 	specsLen := len(env.specs)
 
@@ -416,7 +416,7 @@ func (env *K8sEnvironment) createNamespace(namespace string) (*coreV1.Namespace,
 
 type k8sTemplateData struct {
 	Config   *config.Config
-	Network  *config.NetworkConfig
+	Networks map[string]*config.NetworkConfig
 	Values   map[string]interface{}
 	Manifest *K8sManifest
 }
@@ -637,8 +637,7 @@ func (m *K8sManifest) Teardown() error {
 
 func (m *K8sManifest) createSecret(values map[string]interface{}) error {
 	k8sSecrets := m.env.k8sClient.CoreV1().Secrets(m.env.namespace.Name)
-
-	if err := m.parseSecret(m.env.config, m.env.network.Config(), values); err != nil {
+	if err := m.parseSecret(m.env.config, m.env.networks, values); err != nil {
 		return err
 	}
 
@@ -669,7 +668,7 @@ func (m *K8sManifest) createDeployment(values map[string]interface{}) error {
 		m.env.config.Apps.Chainlink.Image = image.(string)
 		m.env.config.Apps.Chainlink.Version = m.Values()["version"].(string)
 	}
-	if err := m.parseDeployment(m.env.config, m.env.network.Config(), values); err != nil {
+	if err := m.parseDeployment(m.env.config, m.env.networks, values); err != nil {
 		return err
 	}
 	if _, ok := m.Values()["image"]; ok {
@@ -695,8 +694,7 @@ func (m *K8sManifest) createDeployment(values map[string]interface{}) error {
 
 func (m *K8sManifest) createService(values map[string]interface{}) error {
 	k8sServices := m.env.k8sClient.CoreV1().Services(m.env.namespace.Name)
-
-	if err := m.parseService(m.env.config, m.env.network.Config(), values); err != nil {
+	if err := m.parseService(m.env.config, m.env.networks, values); err != nil {
 		return err
 	}
 
@@ -719,7 +717,7 @@ func (m *K8sManifest) createService(values map[string]interface{}) error {
 
 func (m *K8sManifest) createConfigMap(values map[string]interface{}) error {
 	cm := m.env.k8sClient.CoreV1().ConfigMaps(m.env.namespace.Name)
-	if err := m.parseConfigMap(m.env.config, m.env.network.Config(), values); err != nil {
+	if err := m.parseConfigMap(m.env.config, m.env.networks, values); err != nil {
 		return err
 	}
 	if m.ConfigMap != nil {
@@ -737,12 +735,12 @@ func (m *K8sManifest) createConfigMap(values map[string]interface{}) error {
 
 func (m *K8sManifest) parseConfigMap(
 	cfg *config.Config,
-	network *config.NetworkConfig,
+	networks []client.BlockchainNetwork,
 	values map[string]interface{},
 ) error {
 	if len(m.ConfigMapFile) > 0 && m.ConfigMap == nil {
 		m.ConfigMap = &coreV1.ConfigMap{}
-		if err := m.parse(m.ConfigMapFile, m.ConfigMap, m.initTemplateData(cfg, network, values)); err != nil {
+		if err := m.parse(m.ConfigMapFile, m.ConfigMap, m.initTemplateData(cfg, networks, values)); err != nil {
 			return err
 		}
 	}
@@ -751,7 +749,7 @@ func (m *K8sManifest) parseConfigMap(
 
 func (m *K8sManifest) parseSecret(
 	cfg *config.Config,
-	network *config.NetworkConfig,
+	networks []client.BlockchainNetwork,
 	values map[string]interface{},
 ) error {
 	if len(m.SecretFile) > 0 && m.Secret == nil {
@@ -759,7 +757,7 @@ func (m *K8sManifest) parseSecret(
 		if err := m.parse(
 			m.SecretFile,
 			m.Secret,
-			m.initTemplateData(cfg, network, values),
+			m.initTemplateData(cfg, networks, values),
 		); err != nil {
 			return err
 		}
@@ -769,7 +767,7 @@ func (m *K8sManifest) parseSecret(
 
 func (m *K8sManifest) parseDeployment(
 	cfg *config.Config,
-	network *config.NetworkConfig,
+	networks []client.BlockchainNetwork,
 	values map[string]interface{},
 ) error {
 	if len(m.DeploymentFile) > 0 && m.Deployment == nil {
@@ -777,7 +775,7 @@ func (m *K8sManifest) parseDeployment(
 		if err := m.parse(
 			m.DeploymentFile,
 			m.Deployment,
-			m.initTemplateData(cfg, network, values),
+			m.initTemplateData(cfg, networks, values),
 		); err != nil {
 			return err
 		}
@@ -787,7 +785,7 @@ func (m *K8sManifest) parseDeployment(
 
 func (m *K8sManifest) parseService(
 	cfg *config.Config,
-	network *config.NetworkConfig,
+	networks []client.BlockchainNetwork,
 	values map[string]interface{},
 ) error {
 	if len(m.ServiceFile) > 0 && m.Service == nil {
@@ -795,7 +793,7 @@ func (m *K8sManifest) parseService(
 		if err := m.parse(
 			m.ServiceFile,
 			m.Service,
-			m.initTemplateData(cfg, network, values),
+			m.initTemplateData(cfg, networks, values),
 		); err != nil {
 			return err
 		}
@@ -803,14 +801,28 @@ func (m *K8sManifest) parseService(
 	return nil
 }
 
+// buildNetworkConfigMap maps networks by their ID, necessary for dealing with multi-network setups
+func buildNetworkConfigMap(networks []client.BlockchainNetwork) map[string]*config.NetworkConfig {
+	networksMap := make(map[string]*config.NetworkConfig)
+	for _, network := range networks {
+		networkID := network.ID()
+		// Handles geth templating issues for using performance and reorg tests
+		if strings.HasPrefix(networkID, "ethereum_geth") {
+			networkID = "ethereum_geth"
+		}
+		networksMap[networkID] = network.Config()
+	}
+	return networksMap
+}
+
 func (m *K8sManifest) initTemplateData(
 	cfg *config.Config,
-	network *config.NetworkConfig,
+	networks []client.BlockchainNetwork,
 	values map[string]interface{},
 ) k8sTemplateData {
 	return k8sTemplateData{
 		Config:   cfg,
-		Network:  network,
+		Networks: buildNetworkConfigMap(networks),
 		Values:   values,
 		Manifest: m,
 	}

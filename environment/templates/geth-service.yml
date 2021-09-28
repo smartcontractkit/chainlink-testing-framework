@@ -3,8 +3,8 @@ metadata:
 spec:
   ports:
   - name: access
-    port: {{ .Values.DependencyGroup.evm.rpcPort }}
-    targetPort: {{ .Values.DependencyGroup.evm.rpcPort }}
+    port: {{ .Networks.ethereum_geth.RPCPort }}
+    targetPort: {{ .Networks.ethereum_geth.RPCPort }}
   selector:
     app: geth-dev-network
   type: ClusterIP

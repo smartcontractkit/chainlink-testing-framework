@@ -29,6 +29,7 @@ const (
 // of network types within the test suite
 type BlockchainClient interface {
 	Get() interface{}
+	GetName() string
 	GetID() int
 	SetID(id int)
 	SetDefaultClient(clientID int) error
@@ -67,12 +68,16 @@ type BlockchainNetwork interface {
 	SetURL(string)
 	SetURLs(urls []string)
 	ChainID() *big.Int
+	RemotePort() uint16
 	Wallets() (BlockchainWallets, error)
 	Config() *config.NetworkConfig
 }
 
-// BlockchainNetworkInit is a helper function to obtain different blockchain networks
+// BlockchainNetworkInit is a helper function to obtain the network listed in the config file
 type BlockchainNetworkInit func(conf *config.Config) (BlockchainNetwork, error)
+
+// MultiNetworkInit is a helper function to create multiple blockchain networks at once
+type MultiNetworkInit func(conf *config.Config) ([]BlockchainNetwork, error)
 
 // EthereumNetwork is the implementation of BlockchainNetwork for the local ETH dev server
 type EthereumNetwork struct {
@@ -88,7 +93,7 @@ func newEthereumNetwork(ID string, networkConfig *config.NetworkConfig) (Blockch
 	}, nil
 }
 
-// NewNetworkFromConfig prepares settings for a connection to a hardhat blockchain
+// NewNetworkFromConfig prepares settings for a connection the default blockchain specified in the config file
 func NewNetworkFromConfig(conf *config.Config) (BlockchainNetwork, error) {
 	networkConfig, err := conf.GetNetworkConfig(conf.Network)
 	if err != nil {
@@ -103,6 +108,43 @@ func NewNetworkFromConfig(conf *config.Config) (BlockchainNetwork, error) {
 		conf.Network,
 		networkConfig.Type,
 	)
+}
+
+// MultipleNetworks enables launching multiple networks for simultaneous usage in test scenarios
+func MultipleNetworks(networkIDs ...string) MultiNetworkInit {
+	return func(conf *config.Config) ([]BlockchainNetwork, error) {
+		networkTracker := make(map[string]bool)
+		networks := make([]BlockchainNetwork, len(networkIDs))
+		for index, networkID := range networkIDs {
+			// Cannot handle multiple of the same network, throws our templating all out of whack and quickly becomes a
+			// massive headache without an overhaul of how we deal with our templating
+			if _, present := networkTracker[networkID]; present {
+				return nil, fmt.Errorf("Cannot use multiple of the same network, '%s'", networkID)
+			} else {
+				networkTracker[networkID] = true
+			}
+
+			networkConfig, err := conf.GetNetworkConfig(networkID)
+			if err != nil {
+				return nil, err
+			}
+			switch networkConfig.Type {
+			case BlockchainTypeEVM, BlockchainTypeEVMMultinode:
+				network, err := newEthereumNetwork(networkID, networkConfig)
+				if err != nil {
+					return nil, err
+				}
+				networks[index] = network
+			default:
+				return nil, fmt.Errorf(
+					"network %s uses an unspported network type of: %s",
+					networkID,
+					networkConfig.Type,
+				)
+			}
+		}
+		return networks, nil
+	}
 }
 
 // NewNetworkFromConfigWithDefault will return a new network with config but with a customisable default in-case a test
@@ -163,6 +205,11 @@ func (e *EthereumNetwork) ChainID() *big.Int {
 // Config returns the blockchain network configuration
 func (e *EthereumNetwork) Config() *config.NetworkConfig {
 	return e.networkConfig
+}
+
+// RemotePort returns the remote RPC port of the network
+func (e *EthereumNetwork) RemotePort() uint16 {
+	return e.networkConfig.RPCPort
 }
 
 // Wallets returns all the viable wallets used for testing on chain

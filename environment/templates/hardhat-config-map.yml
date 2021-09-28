@@ -10,9 +10,9 @@ data:
         solidity: "0.7.3",
         networks: {
             hardhat: {
-                chainId: 1337,
+                chainId: {{ .Networks.ethereum_hardhat.ChainID }},
                 // x10 of default block gas limit for concurrent deploy
-                blockGasLimit: 12450000000,
+                blockGasLimit: {{ .Networks.ethereum_hardhat.BlockGasLimit }},
                 mining: { // Mines a new block every second
                     interval: 1000
                 }

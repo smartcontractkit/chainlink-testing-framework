@@ -329,7 +329,7 @@ var _ = Describe("Chainlink @unit", func() {
 				Expect("/v2/external_initiators").Should(Equal(req.URL.Path))
 				writeResponse(rw, http.StatusOK, EIKeys{
 					Data: []EIKey{
-						EIKey{
+						{
 							Attributes: eia,
 						},
 					},

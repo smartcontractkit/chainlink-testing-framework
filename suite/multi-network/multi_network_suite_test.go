@@ -1,4 +1,4 @@
-package alerts_test
+package multi_network_test
 
 import (
 	"os"
@@ -14,7 +14,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func TestAlerts(t *testing.T) {
+func TestMultiNetwork(t *testing.T) {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	RegisterFailHandler(Fail)
 	conf, err := config.NewConfig(tools.ProjectRoot)
@@ -22,6 +22,6 @@ func TestAlerts(t *testing.T) {
 		Fail("failed to load config")
 	}
 	log.Logger = log.Logger.Level(zerolog.Level(conf.Logging.Level))
-	junitReporter := reporters.NewJUnitReporter("../../logs/tests-alerts.xml")
-	RunSpecsWithDefaultAndCustomReporters(t, "Alerts Suite", []Reporter{junitReporter})
+	junitReporter := reporters.NewJUnitReporter("../../logs/tests-multi-network.xml")
+	RunSpecsWithDefaultAndCustomReporters(t, "Multi Network Suite", []Reporter{junitReporter})
 }

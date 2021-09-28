@@ -2,13 +2,14 @@ package environment
 
 import (
 	"fmt"
+	"net/http"
+	"net/url"
+	"strings"
+
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/chaos"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/config"
-	"net/http"
-	"net/url"
-	"strings"
 )
 
 const (
@@ -151,7 +152,7 @@ func GetExternalAdapter(env Environment) (ExternalAdapter, error) {
 // deployed into the environment. If there's no deployed blockchain in the environment, the URL from the network
 // config will be used
 func NewBlockchainClient(env Environment, network client.BlockchainNetwork) (client.BlockchainClient, error) {
-	sd, err := env.GetServiceDetails(EVMRPCPort)
+	sd, err := env.GetServiceDetails(network.RemotePort())
 	if err == nil {
 		url := fmt.Sprintf("ws://%s", sd.LocalURL.Host)
 		log.Debug().Str("URL", url).Msg("Selecting network")
@@ -179,7 +180,7 @@ func NewBlockchainClient(env Environment, network client.BlockchainNetwork) (cli
 // can switch clients
 func NewBlockchainClients(env Environment, network client.BlockchainNetwork) (client.BlockchainClient, error) {
 	urls := make([]string, 0)
-	primaryClientDetails, err := env.GetServiceDetails(EVMRPCPort)
+	primaryClientDetails, err := env.GetServiceDetails(network.RemotePort())
 	if err != nil {
 		return nil, err
 	}

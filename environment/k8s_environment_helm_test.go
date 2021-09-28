@@ -1,12 +1,13 @@
 package environment
 
 import (
+	"strconv"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/tools"
-	"strconv"
 )
 
 var _ = Describe("Environment with Helm @helm_deploy", func() {
@@ -30,9 +31,9 @@ var _ = Describe("Environment with Helm @helm_deploy", func() {
 			err = env.DeploySpecs(NewChainlinkCluster(1))
 			Expect(err).ShouldNot(HaveOccurred())
 			// check service details has EVM port
-			sd, err := env.GetServiceDetails(EVMRPCPort)
+			sd, err := env.GetServiceDetails(DefaultEVMRPCPort)
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(sd.RemoteURL).Should(ContainSubstring(strconv.Itoa(EVMRPCPort)))
+			Expect(sd.RemoteURL).Should(ContainSubstring(strconv.Itoa(DefaultEVMRPCPort)))
 		})
 		AfterEach(func() {
 			By("Tearing down the environment", func() {

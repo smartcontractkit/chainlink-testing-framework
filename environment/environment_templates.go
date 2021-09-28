@@ -3,15 +3,16 @@ package environment
 import (
 	"context"
 	"fmt"
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
-	"helm.sh/helm/v3/pkg/chartutil"
 	"path/filepath"
 	"strconv"
 	"strings"
 
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
+	"helm.sh/helm/v3/pkg/chartutil"
+
 	"github.com/google/go-github/github"
-	"github.com/smartcontractkit/integrations-framework/config"
+	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/tools"
 	coreV1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -19,12 +20,15 @@ import (
 
 // Ports for common services
 const (
-	AdapterAPIPort   = 6060
-	ChainlinkWebPort = 6688
-	ChainlinkP2PPort = 6690
-	EVMRPCPort       = 8545
-	MinersRPCPort    = 9545
-	ExplorerAPIPort  = 8080
+	AdapterAPIPort    = 6060
+	ChainlinkWebPort  = 6688
+	ChainlinkP2PPort  = 6690
+	DefaultEVMRPCPort = 8545
+	HardhatRPCPort    = 8545
+	GethRPCPort       = 8546
+	GanacheRPCPort    = 8547
+	MinersRPCPort     = 9545
+	ExplorerAPIPort   = 8080
 )
 
 // NewAdapterManifest is the k8s manifest that when used will deploy an external adapter to an environment
@@ -100,13 +104,13 @@ func NewPostgresManifest() *K8sManifest {
 // NewGethManifest is the k8s manifest that when used will deploy geth to an environment
 func NewGethManifest() *K8sManifest {
 	return &K8sManifest{
-		id:             "evm",
+		id:             "ethereum_geth",
 		DeploymentFile: filepath.Join(tools.ProjectRoot, "environment/templates/geth-deployment.yml"),
 		ServiceFile:    filepath.Join(tools.ProjectRoot, "environment/templates/geth-service.yml"),
 		ConfigMapFile:  filepath.Join(tools.ProjectRoot, "environment/templates/geth-config-map.yml"),
 
 		values: map[string]interface{}{
-			"rpcPort": EVMRPCPort,
+			"rpcPort": GethRPCPort,
 		},
 
 		SetValuesFunc: func(manifest *K8sManifest) error {
@@ -205,13 +209,13 @@ func NewMockserverHelmChart() *HelmChart {
 // NewHardhatManifest is the k8s manifest that when used will deploy hardhat to an environment
 func NewHardhatManifest() *K8sManifest {
 	return &K8sManifest{
-		id:             "evm",
+		id:             "ethereum_hardhat",
 		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/hardhat-deployment.yml"),
 		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/hardhat-service.yml"),
 		ConfigMapFile:  filepath.Join(tools.ProjectRoot, "/environment/templates/hardhat-config-map.yml"),
 
 		values: map[string]interface{}{
-			"rpcPort": EVMRPCPort,
+			"rpcPort": HardhatRPCPort,
 		},
 
 		SetValuesFunc: func(manifest *K8sManifest) error {
@@ -229,12 +233,12 @@ func NewHardhatManifest() *K8sManifest {
 // NewGanacheManifest is the k8s manifest that when used will deploy ganache to an environment
 func NewGanacheManifest() *K8sManifest {
 	return &K8sManifest{
-		id:             "evm",
+		id:             "ethereum_ganache",
 		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/ganache-deployment.yml"),
 		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/ganache-service.yml"),
 
 		values: map[string]interface{}{
-			"rpcPort": EVMRPCPort,
+			"rpcPort": GanacheRPCPort,
 		},
 
 		SetValuesFunc: func(manifest *K8sManifest) error {
@@ -264,7 +268,7 @@ func NewChainlinkCluster(nodeCount int) K8sEnvSpecInit {
 	dependencyGroup := getBasicDependencyGroup()
 	addPostgresDbsToDependencyGroup(dependencyGroup, nodeCount)
 	dependencyGroups := []*K8sManifestGroup{dependencyGroup}
-	return addNetworkManifestToDependencyGroup("basic-chainlink", chainlinkGroup, dependencyGroups)
+	return addNetworkManifestToDependencyGroup(chainlinkGroup, dependencyGroups)
 }
 
 // NewChainlinkClusterForAlertsTesting is a basic environment that deploys a chainlink cluster with dependencies
@@ -290,7 +294,7 @@ func NewChainlinkClusterForAlertsTesting(nodeCount int) K8sEnvSpecInit {
 	addPostgresDbsToDependencyGroup(dependencyGroup, nodeCount)
 	dependencyGroups := []*K8sManifestGroup{kafkaDependecyGroup, dependencyGroup}
 
-	return addNetworkManifestToDependencyGroup("basic-chainlink", chainlinkGroup, dependencyGroups)
+	return addNetworkManifestToDependencyGroup(chainlinkGroup, dependencyGroups)
 }
 
 // NewMixedVersionChainlinkCluster mixes the currently latest chainlink version (as defined by the config file) with
@@ -330,13 +334,13 @@ func NewMixedVersionChainlinkCluster(nodeCount, pastVersionsCount int) K8sEnvSpe
 	dependencyGroup := getBasicDependencyGroup()
 	addPostgresDbsToDependencyGroup(dependencyGroup, nodeCount)
 	dependencyGroups := []*K8sManifestGroup{dependencyGroup}
-	return addNetworkManifestToDependencyGroup("mixed-version-chainlink", chainlinkGroup, dependencyGroups)
+	return addNetworkManifestToDependencyGroup(chainlinkGroup, dependencyGroups)
 }
 
 // NewGethReorgHelmChart creates new helm chart for multi-node Geth network
 func NewGethReorgHelmChart() *HelmChart {
 	return &HelmChart{
-		id:          "evm",
+		id:          "ethereum_geth_reorg",
 		chartPath:   filepath.Join(tools.ProjectRoot, "environment/charts/geth-reorg"),
 		releaseName: "reorg-1",
 		SetValuesHelmFunc: func(k *HelmChart) error {
@@ -345,12 +349,12 @@ func NewGethReorgHelmChart() *HelmChart {
 				return err
 			}
 			for _, d := range details {
-				if d.RemoteURL.Port() == strconv.Itoa(EVMRPCPort) {
+				if d.RemoteURL.Port() == strconv.Itoa(GethRPCPort) {
 					k.values["clusterURL"] = strings.Replace(d.RemoteURL.String(), "http", "ws", -1)
 					k.values["localURL"] = strings.Replace(d.LocalURL.String(), "http", "ws", -1)
 				}
 			}
-			k.values["rpcPort"] = EVMRPCPort
+			k.values["rpcPort"] = GethRPCPort
 			return nil
 		},
 	}
@@ -426,38 +430,41 @@ func getBasicDependencyGroup() *K8sManifestGroup {
 
 // addNetworkManifestToDependencyGroup adds the correct network to the dependency group and returns
 // an array of all groups, this should be called as the last function when creating deploys
-func addNetworkManifestToDependencyGroup(envName string, chainlinkGroup *K8sManifestGroup, dependencyGroups []*K8sManifestGroup) K8sEnvSpecInit {
-	return func(config *config.NetworkConfig) (string, K8sEnvSpecs) {
+func addNetworkManifestToDependencyGroup(chainlinkGroup *K8sManifestGroup, dependencyGroups []*K8sManifestGroup) K8sEnvSpecInit {
+	return func(networks ...client.BlockchainNetwork) K8sEnvSpecs {
 		var specs K8sEnvSpecs
 		indexOfLastElementInDependencyGroups := len(dependencyGroups) - 1
-		switch config.Name {
-		case "Ethereum Geth reorg":
-			dependencyGroups[indexOfLastElementInDependencyGroups].manifests = append(
-				dependencyGroups[indexOfLastElementInDependencyGroups].manifests,
-				NewGethReorgHelmChart())
-		case "Ethereum Geth dev":
-			dependencyGroups[indexOfLastElementInDependencyGroups].manifests = append(
-				dependencyGroups[indexOfLastElementInDependencyGroups].manifests,
-				NewGethManifest())
-		case "Ethereum Hardhat":
-			dependencyGroups[indexOfLastElementInDependencyGroups].manifests = append(
-				dependencyGroups[indexOfLastElementInDependencyGroups].manifests,
-				NewHardhatManifest())
-		case "Ethereum Ganache":
-			dependencyGroups[indexOfLastElementInDependencyGroups].manifests = append(
-				dependencyGroups[indexOfLastElementInDependencyGroups].manifests,
-				NewGanacheManifest())
-		default: // no simulated chain
+		for _, network := range networks {
+			switch network.Config().Name {
+			case "Ethereum Geth reorg":
+				dependencyGroups[indexOfLastElementInDependencyGroups].manifests = append(
+					dependencyGroups[indexOfLastElementInDependencyGroups].manifests,
+					NewGethReorgHelmChart())
+			case "Ethereum Geth dev":
+				dependencyGroups[indexOfLastElementInDependencyGroups].manifests = append(
+					dependencyGroups[indexOfLastElementInDependencyGroups].manifests,
+					NewGethManifest())
+			case "Ethereum Hardhat":
+				dependencyGroups[indexOfLastElementInDependencyGroups].manifests = append(
+					dependencyGroups[indexOfLastElementInDependencyGroups].manifests,
+					NewHardhatManifest())
+			case "Ethereum Ganache":
+				dependencyGroups[indexOfLastElementInDependencyGroups].manifests = append(
+					dependencyGroups[indexOfLastElementInDependencyGroups].manifests,
+					NewGanacheManifest())
+			default: // no simulated chain
+			}
 		}
+
 		for _, group := range dependencyGroups {
 			specs = append(specs, group)
 		}
 
 		if len(chainlinkGroup.manifests) > 0 {
 			specs = append(specs, chainlinkGroup)
-			return envName, specs
+			return specs
 		}
-		return envName, specs
+		return specs
 	}
 }
 
@@ -477,7 +484,7 @@ func addServicesForTestingAlertsToDependencyGroup(dependencyGroup *K8sManifestGr
 
 // OtpeGroup contains manifests for mockserver, mockserver-config, and otpe
 func OtpeGroup() K8sEnvSpecInit {
-	return func(config *config.NetworkConfig) (string, K8sEnvSpecs) {
+	return func(networks ...client.BlockchainNetwork) K8sEnvSpecs {
 		var specs K8sEnvSpecs
 		mockserverConfigDependencyGroup := &K8sManifestGroup{
 			id:        "MockserverConfigDependencyGroup",
@@ -499,6 +506,6 @@ func OtpeGroup() K8sEnvSpecInit {
 
 		specs = append(specs, otpeDependencyGroup)
 
-		return "envName", specs
+		return specs
 	}
 }

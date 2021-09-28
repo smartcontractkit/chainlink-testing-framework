@@ -36,6 +36,11 @@ type EthereumClients struct {
 	Clients       []*EthereumClient
 }
 
+// GetName gets the ID of the chain that the clients are connected to
+func (e *EthereumClients) GetName() string {
+	return e.DefaultClient.GetName()
+}
+
 // GetID gets client ID, node number it's connected to
 func (e *EthereumClients) GetID() int {
 	return e.DefaultClient.ID
@@ -248,6 +253,11 @@ func NewEthereumClients(network BlockchainNetwork) (*EthereumClients, error) {
 	return ecl, nil
 }
 
+// GetName retrieves the ID of the network that the client interacts with
+func (e *EthereumClient) GetName() string {
+	return e.Network.ID()
+}
+
 // Close tears down the current open Ethereum client
 func (e *EthereumClient) Close() error {
 	e.doneChan <- struct{}{}
@@ -442,6 +452,7 @@ func (e *EthereumClient) DeployContract(
 		Str("Contract Name", contractName).
 		Str("From", fromWallet.Address()).
 		Str("Gas Cost", transaction.Cost().String()).
+		Str("Network", e.Network.ID()).
 		Msg("Deployed contract")
 	return &contractAddress, transaction, contractInstance, err
 }

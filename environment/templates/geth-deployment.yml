@@ -122,12 +122,12 @@ spec:
           - 0xdD2FD4581271e230360230F9337D5c0430Bf44C0
           - --unlock
           - 0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199
-          - --networkid={{ .Network.ChainID }}
+          - --networkid={{ .Networks.ethereum_geth.ChainID }}
           - --mine
           - --miner.threads
           - 1
           - --miner.gastarget
-          - {{ .Network.BlockGasLimit }}
+          - {{ .Networks.ethereum_geth.BlockGasLimit }}
           - --miner.etherbase
           - 0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266
           - --rpcapi="admin,debug,web3,eth,txpool,personal,clique,miner,net"
@@ -141,7 +141,7 @@ spec:
           - "*"
           - --ws.addr
           - 0.0.0.0
-          - --ws.port=8545
+          - --ws.port={{ .Networks.ethereum_geth.RPCPort }}
           - --graphql
           - --graphql.corsdomain
           - "*"
@@ -151,7 +151,7 @@ spec:
           - "*"
           - --vmdebug
         ports:
-        - containerPort: {{ .Values.DependencyGroup.evm.rpcPort }}
+        - containerPort: {{ .Networks.ethereum_geth.RPCPort }}
         resources:
           requests:
             memory: {{ .Config.Apps.Geth.Requests.Memory }}

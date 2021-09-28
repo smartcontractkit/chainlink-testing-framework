@@ -16,7 +16,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = FDescribe("Basic Contract Interactions @contract", func() {
+var _ = Describe("Basic Contract Interactions @contract", func() {
 	var suiteSetup *actions.DefaultSuiteSetup
 	var defaultWallet client.BlockchainWallet
 
