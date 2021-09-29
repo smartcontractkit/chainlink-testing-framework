@@ -1,6 +1,9 @@
 package performance
 
 import (
+	"math/big"
+	"time"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/smartcontractkit/integrations-framework/actions"
@@ -8,40 +11,37 @@ import (
 	"github.com/smartcontractkit/integrations-framework/contracts"
 	"github.com/smartcontractkit/integrations-framework/environment"
 	"github.com/smartcontractkit/integrations-framework/tools"
-	"math/big"
-	"time"
 )
 
 var _ = Describe("OCR soak test @soak-ocr", func() {
 	var (
-		s        *actions.DefaultSuiteSetup
-		nodes    []client.Chainlink
-		adapter  environment.ExternalAdapter
-		perfTest Test
-		err      error
+		suiteSetup *actions.DefaultSuiteSetup
+		nodes      []client.Chainlink
+		adapter    environment.ExternalAdapter
+		perfTest   Test
+		err        error
 	)
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			s, err = actions.DefaultLocalSetup(
-				"ocr-soak",
+			suiteSetup, err = actions.DefaultLocalSetup(
 				environment.NewChainlinkCluster(5),
 				client.NewNetworkFromConfig,
 				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
-			adapter, err = environment.GetExternalAdapter(s.Env)
+			adapter, err = environment.GetExternalAdapter(suiteSetup.Env)
 			Expect(err).ShouldNot(HaveOccurred())
-			nodes, err = environment.GetChainlinkClients(s.Env)
+			nodes, err = environment.GetChainlinkClients(suiteSetup.Env)
 			Expect(err).ShouldNot(HaveOccurred())
-			s.Client.ParallelTransactions(true)
+			suiteSetup.Client.ParallelTransactions(true)
 		})
 
 		By("Funding the Chainlink nodes", func() {
 			err := actions.FundChainlinkNodes(
 				nodes,
-				s.Client,
-				s.Wallets.Default(),
+				suiteSetup.Client,
+				suiteSetup.Wallets.Default(),
 				big.NewFloat(10),
 				big.NewFloat(10),
 			)
@@ -59,10 +59,10 @@ var _ = Describe("OCR soak test @soak-ocr", func() {
 					TestDuration: 10 * time.Minute,
 				},
 				contracts.DefaultOffChainAggregatorOptions(),
-				s.Env,
-				s.Client,
-				s.Wallets,
-				s.Deployer,
+				suiteSetup.Env,
+				suiteSetup.Client,
+				suiteSetup.Wallets,
+				suiteSetup.Deployer,
 				adapter,
 			)
 			err = perfTest.Setup()
@@ -78,6 +78,6 @@ var _ = Describe("OCR soak test @soak-ocr", func() {
 	})
 
 	AfterEach(func() {
-		By("Tearing down the environment", s.TearDown())
+		By("Tearing down the environment", suiteSetup.TearDown())
 	})
 })

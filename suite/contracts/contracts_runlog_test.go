@@ -22,7 +22,7 @@ import (
 
 var _ = Describe("Direct request suite @runlog", func() {
 	var (
-		s             *actions.DefaultSuiteSetup
+		suiteSetup    *actions.DefaultSuiteSetup
 		adapter       environment.ExternalAdapter
 		nodes         []client.Chainlink
 		nodeAddresses []common.Address
@@ -34,39 +34,38 @@ var _ = Describe("Direct request suite @runlog", func() {
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			s, err = actions.DefaultLocalSetup(
-				"basic-chainlink",
+			suiteSetup, err = actions.DefaultLocalSetup(
 				environment.NewChainlinkCluster(1),
 				client.NewNetworkFromConfig,
 				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
-			adapter, err = environment.GetExternalAdapter(s.Env)
+			adapter, err = environment.GetExternalAdapter(suiteSetup.Env)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
 		By("Funding Chainlink nodes", func() {
-			nodes, err = environment.GetChainlinkClients(s.Env)
+			nodes, err = environment.GetChainlinkClients(suiteSetup.Env)
 			Expect(err).ShouldNot(HaveOccurred())
 			nodeAddresses, err = actions.ChainlinkNodeAddresses(nodes)
 			Expect(err).ShouldNot(HaveOccurred())
-			ethAmount, err := s.Deployer.CalculateETHForTXs(s.Wallets.Default(), s.Network.Config(), 1)
+			ethAmount, err := suiteSetup.Deployer.CalculateETHForTXs(suiteSetup.Wallets.Default(), suiteSetup.Network.Config(), 1)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = actions.FundChainlinkNodes(nodes, s.Client, s.Wallets.Default(), ethAmount, nil)
+			err = actions.FundChainlinkNodes(nodes, suiteSetup.Client, suiteSetup.Wallets.Default(), ethAmount, nil)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
 		By("Deploying and funding the contracts", func() {
-			oracle, err = s.Deployer.DeployOracle(s.Wallets.Default(), s.Link.Address())
+			oracle, err = suiteSetup.Deployer.DeployOracle(suiteSetup.Wallets.Default(), suiteSetup.Link.Address())
 			Expect(err).ShouldNot(HaveOccurred())
-			consumer, err = s.Deployer.DeployAPIConsumer(s.Wallets.Default(), s.Link.Address())
+			consumer, err = suiteSetup.Deployer.DeployAPIConsumer(suiteSetup.Wallets.Default(), suiteSetup.Link.Address())
 			Expect(err).ShouldNot(HaveOccurred())
-			err = consumer.Fund(s.Wallets.Default(), nil, big.NewFloat(2))
+			err = consumer.Fund(suiteSetup.Wallets.Default(), nil, big.NewFloat(2))
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
 		By("Permitting node to fulfill request", func() {
-			err = oracle.SetFulfillmentPermission(s.Wallets.Default(), nodeAddresses[0].Hex(), true)
+			err = oracle.SetFulfillmentPermission(suiteSetup.Wallets.Default(), nodeAddresses[0].Hex(), true)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
@@ -101,7 +100,7 @@ var _ = Describe("Direct request suite @runlog", func() {
 			var jobID [32]byte
 			copy(jobID[:], jobUUIDReplaces)
 			err = consumer.CreateRequestTo(
-				s.Wallets.Default(),
+				suiteSetup.Wallets.Default(),
 				oracle.Address(),
 				jobID,
 				big.NewInt(1e18),
@@ -135,8 +134,8 @@ var _ = Describe("Direct request suite @runlog", func() {
 
 	AfterEach(func() {
 		By("Calculating gas costs", func() {
-			s.Client.GasStats().PrintStats()
+			suiteSetup.Client.GasStats().PrintStats()
 		})
-		By("Tearing down the environment", s.TearDown())
+		By("Tearing down the environment", suiteSetup.TearDown())
 	})
 })

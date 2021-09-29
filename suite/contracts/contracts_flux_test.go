@@ -21,7 +21,7 @@ import (
 
 var _ = Describe("Flux monitor suite @flux", func() {
 	var (
-		s             *actions.DefaultSuiteSetup
+		suiteSetup    *actions.DefaultSuiteSetup
 		adapter       environment.ExternalAdapter
 		nodes         []client.Chainlink
 		nodeAddresses []common.Address
@@ -32,41 +32,40 @@ var _ = Describe("Flux monitor suite @flux", func() {
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			s, err = actions.DefaultLocalSetup(
-				"basic-chainlink",
+			suiteSetup, err = actions.DefaultLocalSetup(
 				environment.NewChainlinkCluster(3),
 				client.NewNetworkFromConfig,
 				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
-			nodes, err = environment.GetChainlinkClients(s.Env)
+			nodes, err = environment.GetChainlinkClients(suiteSetup.Env)
 			Expect(err).ShouldNot(HaveOccurred())
-			adapter, err = environment.GetExternalAdapter(s.Env)
+			adapter, err = environment.GetExternalAdapter(suiteSetup.Env)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			s.Client.ParallelTransactions(true)
+			suiteSetup.Client.ParallelTransactions(true)
 		})
 
 		By("Deploying and funding contract", func() {
-			fluxInstance, err = s.Deployer.DeployFluxAggregatorContract(s.Wallets.Default(), contracts.DefaultFluxAggregatorOptions())
+			fluxInstance, err = suiteSetup.Deployer.DeployFluxAggregatorContract(suiteSetup.Wallets.Default(), contracts.DefaultFluxAggregatorOptions())
 			Expect(err).ShouldNot(HaveOccurred())
-			err = fluxInstance.Fund(s.Wallets.Default(), nil, big.NewFloat(1))
+			err = fluxInstance.Fund(suiteSetup.Wallets.Default(), nil, big.NewFloat(1))
 			Expect(err).ShouldNot(HaveOccurred())
-			err = fluxInstance.UpdateAvailableFunds(context.Background(), s.Wallets.Default())
+			err = fluxInstance.UpdateAvailableFunds(context.Background(), suiteSetup.Wallets.Default())
 			Expect(err).ShouldNot(HaveOccurred())
-			err = s.Client.WaitForEvents()
+			err = suiteSetup.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
 		By("Funding Chainlink nodes", func() {
 			nodeAddresses, err = actions.ChainlinkNodeAddresses(nodes)
 			Expect(err).ShouldNot(HaveOccurred())
-			ethAmount, err := s.Deployer.CalculateETHForTXs(s.Wallets.Default(), s.Network.Config(), 3)
+			ethAmount, err := suiteSetup.Deployer.CalculateETHForTXs(suiteSetup.Wallets.Default(), suiteSetup.Network.Config(), 3)
 			Expect(err).ShouldNot(HaveOccurred())
 			err = actions.FundChainlinkNodes(
 				nodes,
-				s.Client,
-				s.Wallets.Default(),
+				suiteSetup.Client,
+				suiteSetup.Wallets.Default(),
 				ethAmount,
 				nil,
 			)
@@ -74,7 +73,7 @@ var _ = Describe("Flux monitor suite @flux", func() {
 		})
 
 		By("Setting oracle options", func() {
-			err = fluxInstance.SetOracles(s.Wallets.Default(),
+			err = fluxInstance.SetOracles(suiteSetup.Wallets.Default(),
 				contracts.FluxAggregatorSetOraclesOptions{
 					AddList:            nodeAddresses,
 					RemoveList:         []common.Address{},
@@ -84,7 +83,7 @@ var _ = Describe("Flux monitor suite @flux", func() {
 					RestartDelayRounds: 0,
 				})
 			Expect(err).ShouldNot(HaveOccurred())
-			err = s.Client.WaitForEvents()
+			err = suiteSetup.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 			oracles, err := fluxInstance.GetOracles(context.Background())
 			Expect(err).ShouldNot(HaveOccurred())
@@ -119,8 +118,8 @@ var _ = Describe("Flux monitor suite @flux", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			fluxRound := contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(2), fluxRoundTimeout)
-			s.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRound)
-			err = s.Client.WaitForEvents()
+			suiteSetup.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRound)
+			err = suiteSetup.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 
 			data, err := fluxInstance.GetContractData(context.Background())
@@ -137,8 +136,8 @@ var _ = Describe("Flux monitor suite @flux", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			fluxRound = contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(3), fluxRoundTimeout)
-			s.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRound)
-			err = s.Client.WaitForEvents()
+			suiteSetup.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRound)
+			err = suiteSetup.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 
 			data, err = fluxInstance.GetContractData(context.Background())
@@ -160,8 +159,8 @@ var _ = Describe("Flux monitor suite @flux", func() {
 
 	AfterEach(func() {
 		By("Printing gas stats", func() {
-			s.Client.GasStats().PrintStats()
+			suiteSetup.Client.GasStats().PrintStats()
 		})
-		By("Tearing down the environment", s.TearDown())
+		By("Tearing down the environment", suiteSetup.TearDown())
 	})
 })

@@ -2,6 +2,7 @@ package environment_test
 
 import (
 	"fmt"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/smartcontractkit/integrations-framework/client"
@@ -60,7 +61,7 @@ var _ = Describe("Environment unit tests @unit", func() {
 			bcNetwork, err := client.NewNetworkFromConfig(conf)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			env, err := environment.NewK8sEnvironment("basic-chainlink", conf, bcNetwork)
+			env, err := environment.NewK8sEnvironment(conf, bcNetwork)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			err = env.DeploySpecs(environment.NewChainlinkCluster(1))

@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/smartcontractkit/integrations-framework/environment/charts/mockserver"
 	"math/big"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/smartcontractkit/integrations-framework/environment/charts/mockserver"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -33,7 +34,6 @@ func DeployOCRForEnv(i *OCRSetupInputs, envName string, envInit environment.K8sE
 	By("Deploying the environment", func() {
 		var err error
 		i.SuiteSetup, err = actions.DefaultLocalSetup(
-			envName,
 			envInit,
 			client.NewNetworkFromConfig,
 			tools.ProjectRoot,

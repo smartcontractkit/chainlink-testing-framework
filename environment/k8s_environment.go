@@ -50,7 +50,6 @@ const (
 type K8sEnvSpecs []K8sEnvResource
 
 // K8sEnvSpecInit is the initiator that will return the name of the environment and the specifications to be deployed.
-// The name of the environment returned determines the namespace.
 type K8sEnvSpecInit func(...client.BlockchainNetwork) K8sEnvSpecs
 
 // K8sEnvResource is the interface for deploying a given environment resource. Creating an interface for resource
@@ -89,7 +88,6 @@ type K8sEnvironment struct {
 // NewK8sEnvironment connects to a k8s cluster. Your current context within
 // your kube config will always be used.
 func NewK8sEnvironment(
-	environmentName string,
 	cfg *config.Config,
 	networks ...client.BlockchainNetwork,
 ) (Environment, error) {
@@ -124,7 +122,7 @@ func NewK8sEnvironment(
 		}
 	}
 
-	namespace, err := env.createNamespace(environmentName)
+	namespace, err := env.createNamespace(determineNamespace(networks))
 	if err != nil {
 		return nil, err
 	}
@@ -422,6 +420,25 @@ func (env *K8sEnvironment) createNamespace(namespace string) (*coreV1.Namespace,
 		log.Info().Str("Namespace", createdNamespace.Name).Msg("Created namespace")
 	}
 	return createdNamespace, err
+}
+
+// determineNamespace determines the appropriate namespace name based on the networks deployed
+func determineNamespace(networks []client.BlockchainNetwork) string {
+	name := "chainlink"
+	for _, network := range networks {
+		if strings.Contains(network.ID(), "performance") {
+			name = fmt.Sprintf("%s-%s", name, "performance")
+			break
+		}
+	}
+	if len(networks) == 0 {
+		name = fmt.Sprintf("%s-%s", name, "no-network")
+	} else if len(networks) == 1 {
+		name = fmt.Sprintf("%s-%s", name, "single-network")
+	} else {
+		name = fmt.Sprintf("%s-%s", name, "multi-network")
+	}
+	return name
 }
 
 type k8sTemplateData struct {

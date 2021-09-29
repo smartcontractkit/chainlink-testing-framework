@@ -19,7 +19,7 @@ import (
 
 var _ = Describe("Keeper suite @keeper", func() {
 	var (
-		s                *actions.DefaultSuiteSetup
+		suiteSetup       *actions.DefaultSuiteSetup
 		nodes            []client.Chainlink
 		nodeAddresses    []common.Address
 		nodeAddressesStr = make([]string, 0)
@@ -30,42 +30,41 @@ var _ = Describe("Keeper suite @keeper", func() {
 	)
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			s, err = actions.DefaultLocalSetup(
-				"basic-chainlink",
+			suiteSetup, err = actions.DefaultLocalSetup(
 				// need to register at least 5 nodes to perform upkeep
 				environment.NewChainlinkCluster(5),
 				client.NewNetworkFromConfig,
 				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
-			nodes, err = environment.GetChainlinkClients(s.Env)
+			nodes, err = environment.GetChainlinkClients(suiteSetup.Env)
 			Expect(err).ShouldNot(HaveOccurred())
 			nodeAddresses, err = actions.ChainlinkNodeAddresses(nodes)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			s.Client.ParallelTransactions(true)
+			suiteSetup.Client.ParallelTransactions(true)
 		})
 		By("Funding Chainlink nodes", func() {
-			ethAmount, err := s.Deployer.CalculateETHForTXs(s.Wallets.Default(), s.Network.Config(), 10)
+			ethAmount, err := suiteSetup.Deployer.CalculateETHForTXs(suiteSetup.Wallets.Default(), suiteSetup.Network.Config(), 10)
 			Expect(err).ShouldNot(HaveOccurred())
 			err = actions.FundChainlinkNodes(
 				nodes,
-				s.Client,
-				s.Wallets.Default(),
+				suiteSetup.Client,
+				suiteSetup.Wallets.Default(),
 				ethAmount,
 				big.NewFloat(1),
 			)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("Deploying Keeper contracts", func() {
-			ef, err := s.Deployer.DeployMockETHLINKFeed(s.Wallets.Default(), big.NewInt(2e18))
+			ef, err := suiteSetup.Deployer.DeployMockETHLINKFeed(suiteSetup.Wallets.Default(), big.NewInt(2e18))
 			Expect(err).ShouldNot(HaveOccurred())
-			gf, err := s.Deployer.DeployMockGasFeed(s.Wallets.Default(), big.NewInt(2e11))
+			gf, err := suiteSetup.Deployer.DeployMockGasFeed(suiteSetup.Wallets.Default(), big.NewInt(2e11))
 			Expect(err).ShouldNot(HaveOccurred())
-			registry, err = s.Deployer.DeployKeeperRegistry(
-				s.Wallets.Default(),
+			registry, err = suiteSetup.Deployer.DeployKeeperRegistry(
+				suiteSetup.Wallets.Default(),
 				&contracts.KeeperRegistryOpts{
-					LinkAddr:             s.Link.Address(),
+					LinkAddr:             suiteSetup.Link.Address(),
 					ETHFeedAddr:          ef.Address(),
 					GasFeedAddr:          gf.Address(),
 					PaymentPremiumPPB:    uint32(200000000),
@@ -78,26 +77,26 @@ var _ = Describe("Keeper suite @keeper", func() {
 				},
 			)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = registry.Fund(s.Wallets.Default(), big.NewFloat(0), big.NewFloat(1))
+			err = registry.Fund(suiteSetup.Wallets.Default(), big.NewFloat(0), big.NewFloat(1))
 			Expect(err).ShouldNot(HaveOccurred())
-			consumer, err = s.Deployer.DeployKeeperConsumer(s.Wallets.Default(), big.NewInt(5))
+			consumer, err = suiteSetup.Deployer.DeployKeeperConsumer(suiteSetup.Wallets.Default(), big.NewInt(5))
 			Expect(err).ShouldNot(HaveOccurred())
-			err = consumer.Fund(s.Wallets.Default(), big.NewFloat(0), big.NewFloat(1))
+			err = consumer.Fund(suiteSetup.Wallets.Default(), big.NewFloat(0), big.NewFloat(1))
 			Expect(err).ShouldNot(HaveOccurred())
-			err = s.Client.WaitForEvents()
+			err = suiteSetup.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("Registering upkeep target", func() {
-			registrar, err := s.Deployer.DeployUpkeepRegistrationRequests(
-				s.Wallets.Default(),
-				s.Link.Address(),
+			registrar, err := suiteSetup.Deployer.DeployUpkeepRegistrationRequests(
+				suiteSetup.Wallets.Default(),
+				suiteSetup.Link.Address(),
 				big.NewInt(0),
 			)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = registry.SetRegistrar(s.Wallets.Default(), registrar.Address())
+			err = registry.SetRegistrar(suiteSetup.Wallets.Default(), registrar.Address())
 			Expect(err).ShouldNot(HaveOccurred())
 			err = registrar.SetRegistrarConfig(
-				s.Wallets.Default(),
+				suiteSetup.Wallets.Default(),
 				true,
 				uint32(999),
 				uint16(999),
@@ -110,15 +109,15 @@ var _ = Describe("Keeper suite @keeper", func() {
 				[]byte("0x1234"),
 				consumer.Address(),
 				checkGasLimit,
-				s.Wallets.Default().Address(),
+				suiteSetup.Wallets.Default().Address(),
 				[]byte("0x"),
 				big.NewInt(9e18),
 				0,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = s.Link.TransferAndCall(s.Wallets.Default(), registrar.Address(), big.NewInt(9e18), req)
+			err = suiteSetup.Link.TransferAndCall(suiteSetup.Wallets.Default(), registrar.Address(), big.NewInt(9e18), req)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = s.Client.WaitForEvents()
+			err = suiteSetup.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("Adding Keepers and a job", func() {
@@ -135,7 +134,7 @@ var _ = Describe("Keeper suite @keeper", func() {
 				consumer.Address(),
 				consumer.Address(),
 			}
-			err = registry.SetKeepers(s.Wallets.Default(), nodeAddressesStr, payees)
+			err = registry.SetKeepers(suiteSetup.Wallets.Default(), nodeAddressesStr, payees)
 			Expect(err).ShouldNot(HaveOccurred())
 			_, err = nodes[0].CreateJob(&client.KeeperJobSpec{
 				Name:            "keeper",
@@ -143,7 +142,7 @@ var _ = Describe("Keeper suite @keeper", func() {
 				FromAddress:     na,
 			})
 			Expect(err).ShouldNot(HaveOccurred())
-			err = s.Client.WaitForEvents()
+			err = suiteSetup.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 	})
@@ -165,8 +164,8 @@ var _ = Describe("Keeper suite @keeper", func() {
 	})
 	AfterEach(func() {
 		By("Printing gas stats", func() {
-			s.Client.GasStats().PrintStats()
+			suiteSetup.Client.GasStats().PrintStats()
 		})
-		By("Tearing down the environment", s.TearDown())
+		By("Tearing down the environment", suiteSetup.TearDown())
 	})
 })

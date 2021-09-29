@@ -20,7 +20,7 @@ import (
 var _ = Describe("VRF suite @vrf", func() {
 
 	var (
-		s                  *actions.DefaultSuiteSetup
+		suiteSetup         *actions.DefaultSuiteSetup
 		nodes              []client.Chainlink
 		consumer           contracts.VRFConsumer
 		coordinator        contracts.VRFCoordinator
@@ -30,36 +30,35 @@ var _ = Describe("VRF suite @vrf", func() {
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			s, err = actions.DefaultLocalSetup(
-				"basic-chainlink",
+			suiteSetup, err = actions.DefaultLocalSetup(
 				environment.NewChainlinkCluster(1),
 				client.NewNetworkFromConfig,
 				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
-			nodes, err = environment.GetChainlinkClients(s.Env)
+			nodes, err = environment.GetChainlinkClients(suiteSetup.Env)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			s.Client.ParallelTransactions(true)
+			suiteSetup.Client.ParallelTransactions(true)
 		})
 		By("Funding Chainlink nodes", func() {
-			ethAmount, err := s.Deployer.CalculateETHForTXs(s.Wallets.Default(), s.Network.Config(), 1)
+			ethAmount, err := suiteSetup.Deployer.CalculateETHForTXs(suiteSetup.Wallets.Default(), suiteSetup.Network.Config(), 1)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = actions.FundChainlinkNodes(nodes, s.Client, s.Wallets.Default(), ethAmount, nil)
+			err = actions.FundChainlinkNodes(nodes, suiteSetup.Client, suiteSetup.Wallets.Default(), ethAmount, nil)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("Deploying VRF contracts", func() {
-			bhs, err := s.Deployer.DeployBlockhashStore(s.Wallets.Default())
+			bhs, err := suiteSetup.Deployer.DeployBlockhashStore(suiteSetup.Wallets.Default())
 			Expect(err).ShouldNot(HaveOccurred())
-			coordinator, err = s.Deployer.DeployVRFCoordinator(s.Wallets.Default(), s.Link.Address(), bhs.Address())
+			coordinator, err = suiteSetup.Deployer.DeployVRFCoordinator(suiteSetup.Wallets.Default(), suiteSetup.Link.Address(), bhs.Address())
 			Expect(err).ShouldNot(HaveOccurred())
-			consumer, err = s.Deployer.DeployVRFConsumer(s.Wallets.Default(), s.Link.Address(), coordinator.Address())
+			consumer, err = suiteSetup.Deployer.DeployVRFConsumer(suiteSetup.Wallets.Default(), suiteSetup.Link.Address(), coordinator.Address())
 			Expect(err).ShouldNot(HaveOccurred())
-			err = consumer.Fund(s.Wallets.Default(), big.NewFloat(0), big.NewFloat(2))
+			err = consumer.Fund(suiteSetup.Wallets.Default(), big.NewFloat(0), big.NewFloat(2))
 			Expect(err).ShouldNot(HaveOccurred())
-			_, err = s.Deployer.DeployVRFContract(s.Wallets.Default())
+			_, err = suiteSetup.Deployer.DeployVRFContract(suiteSetup.Wallets.Default())
 			Expect(err).ShouldNot(HaveOccurred())
-			err = s.Client.WaitForEvents()
+			err = suiteSetup.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("Creating jobs and registering proving keys", func() {
@@ -89,7 +88,7 @@ var _ = Describe("VRF suite @vrf", func() {
 				provingKey, err := actions.EncodeOnChainVRFProvingKey(nodeKeys.Data[0])
 				Expect(err).ShouldNot(HaveOccurred())
 				err = coordinator.RegisterProvingKey(
-					s.Wallets.Default(),
+					suiteSetup.Wallets.Default(),
 					big.NewInt(1),
 					oracleAddr,
 					provingKey,
@@ -105,7 +104,7 @@ var _ = Describe("VRF suite @vrf", func() {
 		It("fulfills randomness", func() {
 			requestHash, err := coordinator.HashOfKey(context.Background(), encodedProvingKeys[0])
 			Expect(err).ShouldNot(HaveOccurred())
-			err = consumer.RequestRandomness(s.Wallets.Default(), requestHash, big.NewInt(1))
+			err = consumer.RequestRandomness(suiteSetup.Wallets.Default(), requestHash, big.NewInt(1))
 			Expect(err).ShouldNot(HaveOccurred())
 			err = retry.Do(func() error {
 				out, err := consumer.RandomnessOutput(context.Background())
@@ -123,8 +122,8 @@ var _ = Describe("VRF suite @vrf", func() {
 	})
 	AfterEach(func() {
 		By("Printing gas stats", func() {
-			s.Client.GasStats().PrintStats()
+			suiteSetup.Client.GasStats().PrintStats()
 		})
-		By("Tearing down the environment", s.TearDown())
+		By("Tearing down the environment", suiteSetup.TearDown())
 	})
 })

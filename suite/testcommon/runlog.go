@@ -3,9 +3,10 @@ package testcommon
 import (
 	"context"
 	"fmt"
-	"github.com/avast/retry-go"
 	"math/big"
 	"strings"
+
+	"github.com/avast/retry-go"
 
 	"github.com/ethereum/go-ethereum/common"
 	. "github.com/onsi/ginkgo"
@@ -36,7 +37,6 @@ type RunlogSetupInputs struct {
 func SetupRunlogEnv(i *RunlogSetupInputs) {
 	By("Deploying the environment", func() {
 		i.S, i.Err = actions.DefaultLocalSetup(
-			"basic-chainlink",
 			environment.NewChainlinkCluster(1),
 			client.NewNetworkFromConfig,
 			tools.ProjectRoot,

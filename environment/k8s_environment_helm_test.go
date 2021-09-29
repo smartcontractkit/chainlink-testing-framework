@@ -26,7 +26,7 @@ var _ = Describe("Environment with Helm @helm_deploy", func() {
 			conf.Network = "ethereum_geth_reorg"
 			networkConfig, err := client.NewNetworkFromConfig(conf)
 			Expect(err).ShouldNot(HaveOccurred())
-			env, err = NewK8sEnvironment("basic-chainlink", conf, networkConfig)
+			env, err = NewK8sEnvironment(conf, networkConfig)
 			Expect(err).ShouldNot(HaveOccurred())
 			err = env.DeploySpecs(NewChainlinkCluster(1))
 			Expect(err).ShouldNot(HaveOccurred())

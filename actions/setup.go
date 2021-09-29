@@ -83,7 +83,6 @@ type DefaultSuiteSetup struct {
 
 // DefaultLocalSetup setup minimum required components for test
 func DefaultLocalSetup(
-	envName string,
 	initialDeployInitFunc environment.K8sEnvSpecInit,
 	initFunc client.BlockchainNetworkInit,
 	configPath string,
@@ -97,7 +96,7 @@ func DefaultLocalSetup(
 		return nil, err
 	}
 
-	env, err := environment.NewK8sEnvironment(envName, conf, network)
+	env, err := environment.NewK8sEnvironment(conf, network)
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +167,7 @@ func MultiNetworkSetup(
 		return nil, err
 	}
 
-	env, err := environment.NewK8sEnvironment(envName, conf, networks...)
+	env, err := environment.NewK8sEnvironment(conf, networks...)
 	if err != nil {
 		return nil, err
 	}

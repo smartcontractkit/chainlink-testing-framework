@@ -15,25 +15,24 @@ import (
 
 var _ = Describe("Cronjob suite @cron", func() {
 	var (
-		s       *actions.DefaultSuiteSetup
-		adapter environment.ExternalAdapter
-		nodes   []client.Chainlink
-		job     *client.Job
-		err     error
+		suiteSetup *actions.DefaultSuiteSetup
+		adapter    environment.ExternalAdapter
+		nodes      []client.Chainlink
+		job        *client.Job
+		err        error
 	)
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			s, err = actions.DefaultLocalSetup(
-				"basic-chainlink",
+			suiteSetup, err = actions.DefaultLocalSetup(
 				environment.NewChainlinkCluster(1),
 				client.NewNetworkFromConfig,
 				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
-			nodes, err = environment.GetChainlinkClients(s.Env)
+			nodes, err = environment.GetChainlinkClients(suiteSetup.Env)
 			Expect(err).ShouldNot(HaveOccurred())
-			adapter, err = environment.GetExternalAdapter(s.Env)
+			adapter, err = environment.GetExternalAdapter(suiteSetup.Env)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
@@ -74,6 +73,6 @@ var _ = Describe("Cronjob suite @cron", func() {
 	})
 
 	AfterEach(func() {
-		By("Tearing down the environment", s.TearDown())
+		By("Tearing down the environment", suiteSetup.TearDown())
 	})
 })
