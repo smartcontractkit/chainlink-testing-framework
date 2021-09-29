@@ -19,7 +19,8 @@ import (
 
 var _ = Describe("Keeper suite @keeper", func() {
 	var (
-		suiteSetup       *actions.DefaultSuiteSetup
+		suiteSetup       actions.SuiteSetup
+		networkInfo      actions.NetworkInfo
 		nodes            []client.Chainlink
 		nodeAddresses    []common.Address
 		nodeAddressesStr = make([]string, 0)
@@ -30,41 +31,42 @@ var _ = Describe("Keeper suite @keeper", func() {
 	)
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			suiteSetup, err = actions.DefaultLocalSetup(
+			suiteSetup, err = actions.SingleNetworkSetup(
 				// need to register at least 5 nodes to perform upkeep
 				environment.NewChainlinkCluster(5),
 				client.NewNetworkFromConfig,
 				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
-			nodes, err = environment.GetChainlinkClients(suiteSetup.Env)
+			nodes, err = environment.GetChainlinkClients(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
 			nodeAddresses, err = actions.ChainlinkNodeAddresses(nodes)
 			Expect(err).ShouldNot(HaveOccurred())
+			networkInfo = suiteSetup.DefaultNetwork()
 
-			suiteSetup.Client.ParallelTransactions(true)
+			networkInfo.Client.ParallelTransactions(true)
 		})
 		By("Funding Chainlink nodes", func() {
-			ethAmount, err := suiteSetup.Deployer.CalculateETHForTXs(suiteSetup.Wallets.Default(), suiteSetup.Network.Config(), 10)
+			ethAmount, err := networkInfo.Deployer.CalculateETHForTXs(networkInfo.Wallets.Default(), networkInfo.Network.Config(), 10)
 			Expect(err).ShouldNot(HaveOccurred())
 			err = actions.FundChainlinkNodes(
 				nodes,
-				suiteSetup.Client,
-				suiteSetup.Wallets.Default(),
+				networkInfo.Client,
+				networkInfo.Wallets.Default(),
 				ethAmount,
 				big.NewFloat(1),
 			)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("Deploying Keeper contracts", func() {
-			ef, err := suiteSetup.Deployer.DeployMockETHLINKFeed(suiteSetup.Wallets.Default(), big.NewInt(2e18))
+			ef, err := networkInfo.Deployer.DeployMockETHLINKFeed(networkInfo.Wallets.Default(), big.NewInt(2e18))
 			Expect(err).ShouldNot(HaveOccurred())
-			gf, err := suiteSetup.Deployer.DeployMockGasFeed(suiteSetup.Wallets.Default(), big.NewInt(2e11))
+			gf, err := networkInfo.Deployer.DeployMockGasFeed(networkInfo.Wallets.Default(), big.NewInt(2e11))
 			Expect(err).ShouldNot(HaveOccurred())
-			registry, err = suiteSetup.Deployer.DeployKeeperRegistry(
-				suiteSetup.Wallets.Default(),
+			registry, err = networkInfo.Deployer.DeployKeeperRegistry(
+				networkInfo.Wallets.Default(),
 				&contracts.KeeperRegistryOpts{
-					LinkAddr:             suiteSetup.Link.Address(),
+					LinkAddr:             networkInfo.Link.Address(),
 					ETHFeedAddr:          ef.Address(),
 					GasFeedAddr:          gf.Address(),
 					PaymentPremiumPPB:    uint32(200000000),
@@ -77,26 +79,26 @@ var _ = Describe("Keeper suite @keeper", func() {
 				},
 			)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = registry.Fund(suiteSetup.Wallets.Default(), big.NewFloat(0), big.NewFloat(1))
+			err = registry.Fund(networkInfo.Wallets.Default(), big.NewFloat(0), big.NewFloat(1))
 			Expect(err).ShouldNot(HaveOccurred())
-			consumer, err = suiteSetup.Deployer.DeployKeeperConsumer(suiteSetup.Wallets.Default(), big.NewInt(5))
+			consumer, err = networkInfo.Deployer.DeployKeeperConsumer(networkInfo.Wallets.Default(), big.NewInt(5))
 			Expect(err).ShouldNot(HaveOccurred())
-			err = consumer.Fund(suiteSetup.Wallets.Default(), big.NewFloat(0), big.NewFloat(1))
+			err = consumer.Fund(networkInfo.Wallets.Default(), big.NewFloat(0), big.NewFloat(1))
 			Expect(err).ShouldNot(HaveOccurred())
-			err = suiteSetup.Client.WaitForEvents()
+			err = networkInfo.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("Registering upkeep target", func() {
-			registrar, err := suiteSetup.Deployer.DeployUpkeepRegistrationRequests(
-				suiteSetup.Wallets.Default(),
-				suiteSetup.Link.Address(),
+			registrar, err := networkInfo.Deployer.DeployUpkeepRegistrationRequests(
+				networkInfo.Wallets.Default(),
+				networkInfo.Link.Address(),
 				big.NewInt(0),
 			)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = registry.SetRegistrar(suiteSetup.Wallets.Default(), registrar.Address())
+			err = registry.SetRegistrar(networkInfo.Wallets.Default(), registrar.Address())
 			Expect(err).ShouldNot(HaveOccurred())
 			err = registrar.SetRegistrarConfig(
-				suiteSetup.Wallets.Default(),
+				networkInfo.Wallets.Default(),
 				true,
 				uint32(999),
 				uint16(999),
@@ -109,15 +111,15 @@ var _ = Describe("Keeper suite @keeper", func() {
 				[]byte("0x1234"),
 				consumer.Address(),
 				checkGasLimit,
-				suiteSetup.Wallets.Default().Address(),
+				networkInfo.Wallets.Default().Address(),
 				[]byte("0x"),
 				big.NewInt(9e18),
 				0,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = suiteSetup.Link.TransferAndCall(suiteSetup.Wallets.Default(), registrar.Address(), big.NewInt(9e18), req)
+			err = networkInfo.Link.TransferAndCall(networkInfo.Wallets.Default(), registrar.Address(), big.NewInt(9e18), req)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = suiteSetup.Client.WaitForEvents()
+			err = networkInfo.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("Adding Keepers and a job", func() {
@@ -134,7 +136,7 @@ var _ = Describe("Keeper suite @keeper", func() {
 				consumer.Address(),
 				consumer.Address(),
 			}
-			err = registry.SetKeepers(suiteSetup.Wallets.Default(), nodeAddressesStr, payees)
+			err = registry.SetKeepers(networkInfo.Wallets.Default(), nodeAddressesStr, payees)
 			Expect(err).ShouldNot(HaveOccurred())
 			_, err = nodes[0].CreateJob(&client.KeeperJobSpec{
 				Name:            "keeper",
@@ -142,7 +144,7 @@ var _ = Describe("Keeper suite @keeper", func() {
 				FromAddress:     na,
 			})
 			Expect(err).ShouldNot(HaveOccurred())
-			err = suiteSetup.Client.WaitForEvents()
+			err = networkInfo.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 	})
@@ -164,7 +166,7 @@ var _ = Describe("Keeper suite @keeper", func() {
 	})
 	AfterEach(func() {
 		By("Printing gas stats", func() {
-			suiteSetup.Client.GasStats().PrintStats()
+			networkInfo.Client.GasStats().PrintStats()
 		})
 		By("Tearing down the environment", suiteSetup.TearDown())
 	})

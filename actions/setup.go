@@ -70,23 +70,31 @@ func getNetworkInfo(network client.BlockchainNetwork, env environment.Environmen
 	}, nil
 }
 
-// DefaultSuiteSetup holds the data for a default setup
-type DefaultSuiteSetup struct {
-	Config   *config.Config
-	Client   client.BlockchainClient
-	Wallets  client.BlockchainWallets
-	Deployer contracts.ContractDeployer
-	Link     contracts.LinkToken
-	Env      environment.Environment
-	Network  client.BlockchainNetwork
+// SuiteSetup enables common use cases, and safe handling of different blockchain networks for test scenarios
+type SuiteSetup interface {
+	Config() *config.Config
+	Environment() environment.Environment
+
+	DefaultNetwork() NetworkInfo
+	Network(networkID string) (NetworkInfo, error)
+	Networks(networkID string) ([]NetworkInfo, error)
+
+	TearDown() func()
 }
 
-// DefaultLocalSetup setup minimum required components for test
-func DefaultLocalSetup(
+// SingleNetworkSuiteSetup holds the data for a default setup
+type SingleNetworkSuiteSetup struct {
+	config  *config.Config
+	env     environment.Environment
+	network NetworkInfo
+}
+
+// SingleNetworkSetup setup minimum required components for test
+func SingleNetworkSetup(
 	initialDeployInitFunc environment.K8sEnvSpecInit,
 	initFunc client.BlockchainNetworkInit,
 	configPath string,
-) (*DefaultSuiteSetup, error) {
+) (SuiteSetup, error) {
 	conf, err := config.NewConfig(configPath)
 	if err != nil {
 		return nil, err
@@ -116,32 +124,42 @@ func DefaultLocalSetup(
 		return conf.Retry.LinearDelay
 	}
 
-	return &DefaultSuiteSetup{
-		Config:   conf,
-		Client:   networkInfo.Client,
-		Wallets:  networkInfo.Wallets,
-		Deployer: networkInfo.Deployer,
-		Link:     networkInfo.Link,
-		Env:      env,
-		Network:  network,
+	return &SingleNetworkSuiteSetup{
+		config:  conf,
+		env:     env,
+		network: networkInfo,
 	}, nil
+}
+
+// Config retrieves the general config for the suite
+func (s *SingleNetworkSuiteSetup) Config() *config.Config {
+	return s.config
+}
+
+// Environment retrieves the general environment for the suite
+func (s *SingleNetworkSuiteSetup) Environment() environment.Environment {
+	return s.env
+}
+
+// DefaultNetwork returns the only network in a single network environment
+func (s *SingleNetworkSuiteSetup) DefaultNetwork() NetworkInfo {
+	return s.network
+}
+
+// Network returns the only network in a single network environment
+func (s *SingleNetworkSuiteSetup) Network(networkID string) (NetworkInfo, error) {
+	return s.network, nil
+}
+
+// Networks returns the only network in a single network environment
+func (s *SingleNetworkSuiteSetup) Networks(networkID string) ([]NetworkInfo, error) {
+	return []NetworkInfo{s.network}, nil
 }
 
 // TearDown checks for test failure, writes logs if there is one, then tears down the test environment, based on the
 // keep_environments config value
-func (s *DefaultSuiteSetup) TearDown() func() {
-	return teardown(*s.Config, s.Env, s.Client)
-}
-
-// MultiNetworkSuiteSetup enables friendly usage of multiple networks
-type MultiNetworkSuiteSetup interface {
-	Config() *config.Config
-	Environment() environment.Environment
-	// Network returns the network information for the network with the supplied ID. If there is more than 1 network with
-	// that ID, the first one encountered is returned.
-	Network(networkID string) (NetworkInfo, error)
-
-	TearDown() func()
+func (s *SingleNetworkSuiteSetup) TearDown() func() {
+	return teardown(*s.config, s.env, s.network.Client)
 }
 
 // multiNetworkSuiteSetup holds the data for a multiple network setup
@@ -153,11 +171,10 @@ type multiNetworkSuiteSetup struct {
 
 // MultiNetworkSetup enables testing across multiple networks
 func MultiNetworkSetup(
-	envName string,
 	initialDeployInitFunc environment.K8sEnvSpecInit,
 	multiNetworkInitialization client.MultiNetworkInit,
 	configPath string,
-) (MultiNetworkSuiteSetup, error) {
+) (SuiteSetup, error) {
 	conf, err := config.NewConfig(configPath)
 	if err != nil {
 		return nil, err
@@ -208,6 +225,11 @@ func (s *multiNetworkSuiteSetup) Environment() environment.Environment {
 	return s.env
 }
 
+// DefaultNetwork returns the network information for the first / only network in the suite
+func (s *multiNetworkSuiteSetup) DefaultNetwork() NetworkInfo {
+	return s.networks[0]
+}
+
 // Network returns the network information for the network with the supplied ID. If there is more than 1 network with
 // that ID, the first one encountered is returned.
 func (s *multiNetworkSuiteSetup) Network(networkID string) (NetworkInfo, error) {
@@ -219,6 +241,23 @@ func (s *multiNetworkSuiteSetup) Network(networkID string) (NetworkInfo, error) 
 		}
 	}
 	return NetworkInfo{}, fmt.Errorf("Unable to find any networks with the ID '%s'. All found networks: %v", networkID, networkIDs)
+}
+
+// Networks returns the network information for all the networks with the supplied ID.
+func (s *multiNetworkSuiteSetup) Networks(networkID string) ([]NetworkInfo, error) {
+	networkIDs := make([]string, 0)
+	networks := make([]NetworkInfo, 0)
+	for _, network := range s.networks {
+		networkIDs = append(networkIDs, network.Client.GetName())
+		if network.Client.GetName() == networkID {
+			networks = append(networks, network)
+		}
+	}
+	if len(networks) == 0 {
+		return nil, fmt.Errorf("Unable to find any networks with the ID '%s'. All found networks: %v", networkID, networkIDs)
+	} else {
+		return networks, nil
+	}
 }
 
 // TearDown checks for test failure, writes logs if there is one, then tears down the test environment, based on the

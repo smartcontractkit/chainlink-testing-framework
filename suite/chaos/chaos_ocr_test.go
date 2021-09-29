@@ -20,13 +20,13 @@ var _ = XDescribeTable("OCR chaos tests @chaos-ocr", func(
 	Context("Runs OCR test with a chaos modifier", func() {
 		testcommon.DeployOCRForEnv(i, envInit)
 		testcommon.SetupOCRTest(i)
-		_, err := i.SuiteSetup.Env.ApplyChaos(chaosSpec)
+		_, err := i.SuiteSetup.Environment().ApplyChaos(chaosSpec)
 		Expect(err).ShouldNot(HaveOccurred())
 		testcommon.CheckRound(i)
 	})
 	AfterEach(func() {
 		By("Restoring chaos", func() {
-			err := i.SuiteSetup.Env.StopAllChaos()
+			err := i.SuiteSetup.Environment().StopAllChaos()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("Tearing down the environment", i.SuiteSetup.TearDown())

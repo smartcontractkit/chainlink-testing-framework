@@ -15,7 +15,7 @@ import (
 
 var _ = Describe("Cronjob suite @cron", func() {
 	var (
-		suiteSetup *actions.DefaultSuiteSetup
+		suiteSetup actions.SuiteSetup
 		adapter    environment.ExternalAdapter
 		nodes      []client.Chainlink
 		job        *client.Job
@@ -24,15 +24,15 @@ var _ = Describe("Cronjob suite @cron", func() {
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			suiteSetup, err = actions.DefaultLocalSetup(
+			suiteSetup, err = actions.SingleNetworkSetup(
 				environment.NewChainlinkCluster(1),
 				client.NewNetworkFromConfig,
 				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
-			nodes, err = environment.GetChainlinkClients(suiteSetup.Env)
+			nodes, err = environment.GetChainlinkClients(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
-			adapter, err = environment.GetExternalAdapter(suiteSetup.Env)
+			adapter, err = environment.GetExternalAdapter(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 

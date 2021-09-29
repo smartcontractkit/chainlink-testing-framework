@@ -16,10 +16,10 @@ var _ = Describe("Alerts suite", func() {
 			testcommon.CheckRound(i)
 			testcommon.WriteDataForOTPEToInitializerFileForMockserver(i)
 
-			err := i.SuiteSetup.Env.DeploySpecs(environment.OtpeGroup())
+			err := i.SuiteSetup.Environment().DeploySpecs(environment.OtpeGroup())
 			Expect(err).ShouldNot(HaveOccurred())
 
-			err = i.SuiteSetup.Env.DeploySpecs(environment.PrometheusGroup())
+			err = i.SuiteSetup.Environment().DeploySpecs(environment.PrometheusGroup())
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 	})

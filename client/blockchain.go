@@ -126,24 +126,12 @@ func MultipleNetworks(networkIDs ...string) MultiNetworkInit {
 				networkTracker[networkID] = true
 			}
 
-			networkConfig, err := conf.GetNetworkConfig(networkID)
+			conf.Network = networkID
+			network, err := NewNetworkFromConfig(conf)
 			if err != nil {
 				return nil, err
 			}
-			switch networkConfig.Type {
-			case BlockchainTypeEVM, BlockchainTypeEVMMultinode:
-				network, err := newEthereumNetwork(networkID, networkConfig)
-				if err != nil {
-					return nil, err
-				}
-				networks[index] = network
-			default:
-				return nil, fmt.Errorf(
-					"network %s uses an unspported network type of: %s",
-					networkID,
-					networkConfig.Type,
-				)
-			}
+			networks[index] = network
 		}
 		return networks, nil
 	}

@@ -15,33 +15,35 @@ import (
 
 var _ = Describe("Performance tests", func() {
 	var (
-		suiteSetup *actions.DefaultSuiteSetup
-		nodes      []client.Chainlink
-		perfTest   Test
-		err        error
+		suiteSetup  actions.SuiteSetup
+		networkInfo actions.NetworkInfo
+		nodes       []client.Chainlink
+		perfTest    Test
+		err         error
 	)
 	numberOfRounds := int64(5)
 	numberOfNodes := 5
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			suiteSetup, err = actions.DefaultLocalSetup(
+			suiteSetup, err = actions.SingleNetworkSetup(
 				environment.NewChainlinkCluster(numberOfNodes),
 				client.NewNetworkFromConfigWithDefault(client.NetworkGethPerformance),
 				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
-			nodes, err = environment.GetChainlinkClients(suiteSetup.Env)
+			nodes, err = environment.GetChainlinkClients(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
+			networkInfo = suiteSetup.DefaultNetwork()
 
-			suiteSetup.Client.ParallelTransactions(true)
+			networkInfo.Client.ParallelTransactions(true)
 		})
 
 		By("Funding the Chainlink nodes", func() {
 			err = actions.FundChainlinkNodes(
 				nodes,
-				suiteSetup.Client,
-				suiteSetup.Wallets.Default(),
+				networkInfo.Client,
+				networkInfo.Wallets.Default(),
 				big.NewFloat(2),
 				nil,
 			)
@@ -60,10 +62,10 @@ var _ = Describe("Performance tests", func() {
 					NodePollTimePeriod:  time.Second * 15,
 				},
 				contracts.DefaultFluxAggregatorOptions(),
-				suiteSetup.Env,
-				suiteSetup.Client,
-				suiteSetup.Wallets,
-				suiteSetup.Deployer,
+				suiteSetup.Environment(),
+				networkInfo.Client,
+				networkInfo.Wallets,
+				networkInfo.Deployer,
 				nil,
 			)
 			err = perfTest.Setup()

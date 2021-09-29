@@ -16,7 +16,7 @@ import (
 
 var _ = Describe("Basic Contract Interactions @contract", func() {
 	var (
-		suiteSetup actions.MultiNetworkSuiteSetup
+		suiteSetup actions.SuiteSetup
 
 		firstNetwork       actions.NetworkInfo
 		firstNetworkWallet client.BlockchainWallet
@@ -29,7 +29,6 @@ var _ = Describe("Basic Contract Interactions @contract", func() {
 		By("Deploying the environment", func() {
 			var err error
 			suiteSetup, err = actions.MultiNetworkSetup(
-				"multi-network-chainlink",
 				environment.NewChainlinkCluster(0),
 				client.MultipleNetworks("ethereum_geth", "ethereum_hardhat"),
 				tools.ProjectRoot,

@@ -15,33 +15,36 @@ import (
 
 var _ = Describe("OCR soak test @soak-ocr", func() {
 	var (
-		suiteSetup *actions.DefaultSuiteSetup
-		nodes      []client.Chainlink
-		adapter    environment.ExternalAdapter
-		perfTest   Test
-		err        error
+		suiteSetup  actions.SuiteSetup
+		networkInfo actions.NetworkInfo
+		nodes       []client.Chainlink
+		adapter     environment.ExternalAdapter
+		perfTest    Test
+		err         error
 	)
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			suiteSetup, err = actions.DefaultLocalSetup(
+			suiteSetup, err = actions.SingleNetworkSetup(
 				environment.NewChainlinkCluster(5),
 				client.NewNetworkFromConfig,
 				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
-			adapter, err = environment.GetExternalAdapter(suiteSetup.Env)
+			adapter, err = environment.GetExternalAdapter(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
-			nodes, err = environment.GetChainlinkClients(suiteSetup.Env)
+			nodes, err = environment.GetChainlinkClients(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
-			suiteSetup.Client.ParallelTransactions(true)
+			networkInfo = suiteSetup.DefaultNetwork()
+
+			networkInfo.Client.ParallelTransactions(true)
 		})
 
 		By("Funding the Chainlink nodes", func() {
 			err := actions.FundChainlinkNodes(
 				nodes,
-				suiteSetup.Client,
-				suiteSetup.Wallets.Default(),
+				networkInfo.Client,
+				networkInfo.Wallets.Default(),
 				big.NewFloat(10),
 				big.NewFloat(10),
 			)
@@ -59,10 +62,10 @@ var _ = Describe("OCR soak test @soak-ocr", func() {
 					TestDuration: 10 * time.Minute,
 				},
 				contracts.DefaultOffChainAggregatorOptions(),
-				suiteSetup.Env,
-				suiteSetup.Client,
-				suiteSetup.Wallets,
-				suiteSetup.Deployer,
+				suiteSetup.Environment(),
+				networkInfo.Client,
+				networkInfo.Wallets,
+				networkInfo.Deployer,
 				adapter,
 			)
 			err = perfTest.Setup()

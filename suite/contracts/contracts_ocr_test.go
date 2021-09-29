@@ -17,7 +17,7 @@ var _ = Describe("OCR Feed @ocr", func() {
 		testcommon.SetupOCRTest(i)
 		testcommon.CheckRound(i)
 		By("Printing gas stats", func() {
-			i.SuiteSetup.Client.GasStats().PrintStats()
+			i.SuiteSetup.DefaultNetwork().Client.GasStats().PrintStats()
 		})
 		By("Tearing down the environment", i.SuiteSetup.TearDown())
 	},

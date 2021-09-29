@@ -22,7 +22,8 @@ import (
 
 // OCRSetupInputs inputs needed for OCR tests
 type OCRSetupInputs struct {
-	SuiteSetup     *actions.DefaultSuiteSetup
+	SuiteSetup     actions.SuiteSetup
+	NetworkInfo    actions.NetworkInfo
 	ChainlinkNodes []client.Chainlink
 	Adapter        environment.ExternalAdapter
 	DefaultWallet  client.BlockchainWallet
@@ -33,29 +34,30 @@ type OCRSetupInputs struct {
 func DeployOCRForEnv(i *OCRSetupInputs, envInit environment.K8sEnvSpecInit) {
 	By("Deploying the environment", func() {
 		var err error
-		i.SuiteSetup, err = actions.DefaultLocalSetup(
+		i.SuiteSetup, err = actions.SingleNetworkSetup(
 			envInit,
 			client.NewNetworkFromConfig,
 			tools.ProjectRoot,
 		)
 		Expect(err).ShouldNot(HaveOccurred())
-		i.Adapter, err = environment.GetExternalAdapter(i.SuiteSetup.Env)
+		i.Adapter, err = environment.GetExternalAdapter(i.SuiteSetup.Environment())
 		Expect(err).ShouldNot(HaveOccurred())
-		i.ChainlinkNodes, err = environment.GetChainlinkClients(i.SuiteSetup.Env)
+		i.ChainlinkNodes, err = environment.GetChainlinkClients(i.SuiteSetup.Environment())
 		Expect(err).ShouldNot(HaveOccurred())
-		i.DefaultWallet = i.SuiteSetup.Wallets.Default()
-		i.SuiteSetup.Client.ParallelTransactions(true)
+		i.NetworkInfo = i.SuiteSetup.DefaultNetwork()
+		i.DefaultWallet = i.NetworkInfo.Wallets.Default()
+		i.NetworkInfo.Client.ParallelTransactions(true)
 	})
 }
 
 // SetupOCRTest setup for an ocr test
 func SetupOCRTest(i *OCRSetupInputs) {
 	By("Funding nodes and deploying OCR contract", func() {
-		ethAmount, err := i.SuiteSetup.Deployer.CalculateETHForTXs(i.SuiteSetup.Wallets.Default(), i.SuiteSetup.Network.Config(), 2)
+		ethAmount, err := i.NetworkInfo.Deployer.CalculateETHForTXs(i.NetworkInfo.Wallets.Default(), i.NetworkInfo.Network.Config(), 2)
 		Expect(err).ShouldNot(HaveOccurred())
 		err = actions.FundChainlinkNodes(
 			i.ChainlinkNodes,
-			i.SuiteSetup.Client,
+			i.NetworkInfo.Client,
 			i.DefaultWallet,
 			ethAmount,
 			big.NewFloat(2),
@@ -63,7 +65,7 @@ func SetupOCRTest(i *OCRSetupInputs) {
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// Deploy and config OCR contract
-		deployer, err := contracts.NewContractDeployer(i.SuiteSetup.Client)
+		deployer, err := contracts.NewContractDeployer(i.NetworkInfo.Client)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		i.OCRInstance, err = deployer.DeployOffChainAggregator(i.DefaultWallet, contracts.DefaultOffChainAggregatorOptions())
@@ -76,7 +78,7 @@ func SetupOCRTest(i *OCRSetupInputs) {
 		Expect(err).ShouldNot(HaveOccurred())
 		err = i.OCRInstance.Fund(i.DefaultWallet, nil, big.NewFloat(2))
 		Expect(err).ShouldNot(HaveOccurred())
-		err = i.SuiteSetup.Client.WaitForEvents()
+		err = i.NetworkInfo.Client.WaitForEvents()
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 
@@ -136,13 +138,13 @@ func CheckRound(i *OCRSetupInputs) {
 		Expect(err).ShouldNot(HaveOccurred())
 		err = i.OCRInstance.RequestNewRound(i.DefaultWallet)
 		Expect(err).ShouldNot(HaveOccurred())
-		err = i.SuiteSetup.Client.WaitForEvents()
+		err = i.NetworkInfo.Client.WaitForEvents()
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// Wait for the first round
 		ocrRound := contracts.NewOffchainAggregatorRoundConfirmer(i.OCRInstance, big.NewInt(1), roundTimeout)
-		i.SuiteSetup.Client.AddHeaderEventSubscription(i.OCRInstance.Address(), ocrRound)
-		err = i.SuiteSetup.Client.WaitForEvents()
+		i.NetworkInfo.Client.AddHeaderEventSubscription(i.OCRInstance.Address(), ocrRound)
+		err = i.NetworkInfo.Client.WaitForEvents()
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// Check answer is as expected
@@ -156,8 +158,8 @@ func CheckRound(i *OCRSetupInputs) {
 
 		// Wait for the second round
 		ocrRound = contracts.NewOffchainAggregatorRoundConfirmer(i.OCRInstance, big.NewInt(2), roundTimeout)
-		i.SuiteSetup.Client.AddHeaderEventSubscription(i.OCRInstance.Address(), ocrRound)
-		err = i.SuiteSetup.Client.WaitForEvents()
+		i.NetworkInfo.Client.AddHeaderEventSubscription(i.OCRInstance.Address(), ocrRound)
+		err = i.NetworkInfo.Client.WaitForEvents()
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// Check answer is as expected

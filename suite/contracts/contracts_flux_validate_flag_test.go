@@ -22,7 +22,8 @@ import (
 
 var _ = Describe("Flux monitor external validator suite @validator-flux", func() {
 	var (
-		suiteSetup         *actions.DefaultSuiteSetup
+		suiteSetup         actions.SuiteSetup
+		networkInfo        actions.NetworkInfo
 		adapter            environment.ExternalAdapter
 		nodes              []client.Chainlink
 		rac                contracts.ReadAccessController
@@ -38,25 +39,26 @@ var _ = Describe("Flux monitor external validator suite @validator-flux", func()
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			suiteSetup, err = actions.DefaultLocalSetup(
+			suiteSetup, err = actions.SingleNetworkSetup(
 				environment.NewChainlinkCluster(3),
 				client.NewNetworkFromConfig,
 				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
-			nodes, err = environment.GetChainlinkClients(suiteSetup.Env)
+			nodes, err = environment.GetChainlinkClients(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
-			adapter, err = environment.GetExternalAdapter(suiteSetup.Env)
+			adapter, err = environment.GetExternalAdapter(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
+			networkInfo = suiteSetup.DefaultNetwork()
 
-			suiteSetup.Client.ParallelTransactions(true)
+			networkInfo.Client.ParallelTransactions(true)
 		})
 		By("Deploying access controller, flags, deviation validator", func() {
-			rac, err = suiteSetup.Deployer.DeployReadAccessController(suiteSetup.Wallets.Default())
+			rac, err = networkInfo.Deployer.DeployReadAccessController(networkInfo.Wallets.Default())
 			Expect(err).ShouldNot(HaveOccurred())
-			flags, err = suiteSetup.Deployer.DeployFlags(suiteSetup.Wallets.Default(), rac.Address())
+			flags, err = networkInfo.Deployer.DeployFlags(networkInfo.Wallets.Default(), rac.Address())
 			Expect(err).ShouldNot(HaveOccurred())
-			dfv, err = suiteSetup.Deployer.DeployDeviationFlaggingValidator(suiteSetup.Wallets.Default(), flags.Address(), big.NewInt(0))
+			dfv, err = networkInfo.Deployer.DeployDeviationFlaggingValidator(networkInfo.Wallets.Default(), flags.Address(), big.NewInt(0))
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("Deploying and funding contract", func() {
@@ -69,17 +71,17 @@ var _ = Describe("Flux monitor external validator suite @validator-flux", func()
 				Decimals:      uint8(0),
 				Description:   "Hardhat Flux Aggregator",
 			}
-			fluxInstance, err = suiteSetup.Deployer.DeployFluxAggregatorContract(suiteSetup.Wallets.Default(), fmOpts)
+			fluxInstance, err = networkInfo.Deployer.DeployFluxAggregatorContract(networkInfo.Wallets.Default(), fmOpts)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = fluxInstance.Fund(suiteSetup.Wallets.Default(), nil, big.NewFloat(1))
+			err = fluxInstance.Fund(networkInfo.Wallets.Default(), nil, big.NewFloat(1))
 			Expect(err).ShouldNot(HaveOccurred())
-			err = fluxInstance.UpdateAvailableFunds(context.Background(), suiteSetup.Wallets.Default())
+			err = fluxInstance.UpdateAvailableFunds(context.Background(), networkInfo.Wallets.Default())
 			Expect(err).ShouldNot(HaveOccurred())
-			err = suiteSetup.Client.WaitForEvents()
+			err = networkInfo.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("Setting access to flags contract", func() {
-			err = rac.AddAccess(suiteSetup.Wallets.Default(), dfv.Address())
+			err = rac.AddAccess(networkInfo.Wallets.Default(), dfv.Address())
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("Funding Chainlink nodes", func() {
@@ -87,15 +89,15 @@ var _ = Describe("Flux monitor external validator suite @validator-flux", func()
 			Expect(err).ShouldNot(HaveOccurred())
 			err = actions.FundChainlinkNodes(
 				nodes,
-				suiteSetup.Client,
-				suiteSetup.Wallets.Default(),
+				networkInfo.Client,
+				networkInfo.Wallets.Default(),
 				big.NewFloat(2),
 				nil,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("Setting oracle options", func() {
-			err = fluxInstance.SetOracles(suiteSetup.Wallets.Default(),
+			err = fluxInstance.SetOracles(networkInfo.Wallets.Default(),
 				contracts.FluxAggregatorSetOraclesOptions{
 					AddList:            nodeAddresses,
 					RemoveList:         []common.Address{},
@@ -105,7 +107,7 @@ var _ = Describe("Flux monitor external validator suite @validator-flux", func()
 					RestartDelayRounds: 0,
 				})
 			Expect(err).ShouldNot(HaveOccurred())
-			err = suiteSetup.Client.WaitForEvents()
+			err = networkInfo.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 			oracles, err := fluxInstance.GetOracles(context.Background())
 			Expect(err).ShouldNot(HaveOccurred())
@@ -131,8 +133,8 @@ var _ = Describe("Flux monitor external validator suite @validator-flux", func()
 			err = adapter.SetVariable(1e7)
 			Expect(err).ShouldNot(HaveOccurred())
 			fluxRoundConfirmer = contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(2), fluxRoundTimeout)
-			suiteSetup.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRoundConfirmer)
-			err = suiteSetup.Client.WaitForEvents()
+			networkInfo.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRoundConfirmer)
+			err = networkInfo.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 
 			flagSet, err = flags.GetFlag(context.Background(), fluxInstance.Address())
@@ -142,8 +144,8 @@ var _ = Describe("Flux monitor external validator suite @validator-flux", func()
 			err = adapter.SetVariable(1e8)
 			Expect(err).ShouldNot(HaveOccurred())
 			fluxRoundConfirmer = contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(3), fluxRoundTimeout)
-			suiteSetup.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRoundConfirmer)
-			err = suiteSetup.Client.WaitForEvents()
+			networkInfo.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRoundConfirmer)
+			err = networkInfo.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 
 			flagSet, err = flags.GetFlag(context.Background(), fluxInstance.Address())

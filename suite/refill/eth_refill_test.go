@@ -20,7 +20,8 @@ import (
 
 var _ = Describe("FluxAggregator ETH Refill @refill", func() {
 	var (
-		suiteSetup    *actions.DefaultSuiteSetup
+		suiteSetup    actions.SuiteSetup
+		networkInfo   actions.NetworkInfo
 		adapter       environment.ExternalAdapter
 		nodes         []client.Chainlink
 		nodeAddresses []common.Address
@@ -31,40 +32,41 @@ var _ = Describe("FluxAggregator ETH Refill @refill", func() {
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			suiteSetup, err = actions.DefaultLocalSetup(
+			suiteSetup, err = actions.SingleNetworkSetup(
 				environment.NewChainlinkCluster(3),
 				client.NewNetworkFromConfig,
 				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
-			adapter, err = environment.GetExternalAdapter(suiteSetup.Env)
+			adapter, err = environment.GetExternalAdapter(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
-			nodes, err = environment.GetChainlinkClients(suiteSetup.Env)
+			nodes, err = environment.GetChainlinkClients(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
 			nodeAddresses, err = actions.ChainlinkNodeAddresses(nodes)
 			Expect(err).ShouldNot(HaveOccurred())
+			networkInfo = suiteSetup.DefaultNetwork()
 
-			suiteSetup.Client.ParallelTransactions(true)
+			networkInfo.Client.ParallelTransactions(true)
 		})
 	})
 
 	JustBeforeEach(func() {
 		By("Deploying and funding the contract", func() {
-			fluxInstance, err = suiteSetup.Deployer.DeployFluxAggregatorContract(
-				suiteSetup.Wallets.Default(),
+			fluxInstance, err = networkInfo.Deployer.DeployFluxAggregatorContract(
+				networkInfo.Wallets.Default(),
 				contracts.DefaultFluxAggregatorOptions(),
 			)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = fluxInstance.Fund(suiteSetup.Wallets.Default(), nil, big.NewFloat(1))
+			err = fluxInstance.Fund(networkInfo.Wallets.Default(), nil, big.NewFloat(1))
 			Expect(err).ShouldNot(HaveOccurred())
-			err = fluxInstance.UpdateAvailableFunds(context.Background(), suiteSetup.Wallets.Default())
+			err = fluxInstance.UpdateAvailableFunds(context.Background(), networkInfo.Wallets.Default())
 			Expect(err).ShouldNot(HaveOccurred())
-			err = suiteSetup.Client.WaitForEvents()
+			err = networkInfo.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
 		By("Setting FluxAggregator options", func() {
-			err = fluxInstance.SetOracles(suiteSetup.Wallets.Default(),
+			err = fluxInstance.SetOracles(networkInfo.Wallets.Default(),
 				contracts.FluxAggregatorSetOraclesOptions{
 					AddList:            nodeAddresses,
 					RemoveList:         []common.Address{},
@@ -74,7 +76,7 @@ var _ = Describe("FluxAggregator ETH Refill @refill", func() {
 					RestartDelayRounds: 0,
 				},
 			)
-			err = suiteSetup.Client.WaitForEvents()
+			err = networkInfo.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 			oracles, err := fluxInstance.GetOracles(context.Background())
 			Expect(err).ShouldNot(HaveOccurred())
@@ -112,20 +114,20 @@ var _ = Describe("FluxAggregator ETH Refill @refill", func() {
 		})
 
 		By("Funding ETH for a single round", func() {
-			submissionGasUsed, err := suiteSetup.Network.FluxMonitorSubmissionGasUsed()
+			submissionGasUsed, err := networkInfo.Network.FluxMonitorSubmissionGasUsed()
 			Expect(err).ShouldNot(HaveOccurred())
-			txCost, err := suiteSetup.Client.CalculateTxGas(submissionGasUsed)
+			txCost, err := networkInfo.Client.CalculateTxGas(submissionGasUsed)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = actions.FundChainlinkNodes(nodes, suiteSetup.Client, suiteSetup.Wallets.Default(), txCost, nil)
+			err = actions.FundChainlinkNodes(nodes, networkInfo.Client, networkInfo.Wallets.Default(), txCost, nil)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = suiteSetup.Client.WaitForEvents()
+			err = networkInfo.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 			err = adapter.SetVariable(6)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			fluxRound := contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(1), fluxRoundTimeout)
-			suiteSetup.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRound)
-			err = suiteSetup.Client.WaitForEvents()
+			networkInfo.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRound)
+			err = networkInfo.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
@@ -134,22 +136,22 @@ var _ = Describe("FluxAggregator ETH Refill @refill", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			fluxRound := contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(2), fluxRoundTimeout)
-			suiteSetup.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRound)
-			err = suiteSetup.Client.WaitForEvents()
+			networkInfo.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRound)
+			err = networkInfo.Client.WaitForEvents()
 			Expect(err.Error()).Should(ContainSubstring("timeout waiting for flux round to confirm"))
 		})
 	})
 
 	Describe("with FluxAggregator", func() {
 		It("should refill and await the next round", func() {
-			err = actions.FundChainlinkNodes(nodes, suiteSetup.Client, suiteSetup.Wallets.Default(), big.NewFloat(2), nil)
+			err = actions.FundChainlinkNodes(nodes, networkInfo.Client, networkInfo.Wallets.Default(), big.NewFloat(2), nil)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = suiteSetup.Client.WaitForEvents()
+			err = networkInfo.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 
 			fluxRound := contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(2), fluxRoundTimeout)
-			suiteSetup.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRound)
-			err = suiteSetup.Client.WaitForEvents()
+			networkInfo.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRound)
+			err = networkInfo.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 
 			data, err := fluxInstance.GetContractData(context.Background())

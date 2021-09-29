@@ -20,7 +20,8 @@ import (
 var _ = Describe("VRF suite @vrf", func() {
 
 	var (
-		suiteSetup         *actions.DefaultSuiteSetup
+		suiteSetup         actions.SuiteSetup
+		networkInfo        actions.NetworkInfo
 		nodes              []client.Chainlink
 		consumer           contracts.VRFConsumer
 		coordinator        contracts.VRFCoordinator
@@ -30,35 +31,36 @@ var _ = Describe("VRF suite @vrf", func() {
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			suiteSetup, err = actions.DefaultLocalSetup(
+			suiteSetup, err = actions.SingleNetworkSetup(
 				environment.NewChainlinkCluster(1),
 				client.NewNetworkFromConfig,
 				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
-			nodes, err = environment.GetChainlinkClients(suiteSetup.Env)
+			nodes, err = environment.GetChainlinkClients(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
+			networkInfo = suiteSetup.DefaultNetwork()
 
-			suiteSetup.Client.ParallelTransactions(true)
+			networkInfo.Client.ParallelTransactions(true)
 		})
 		By("Funding Chainlink nodes", func() {
-			ethAmount, err := suiteSetup.Deployer.CalculateETHForTXs(suiteSetup.Wallets.Default(), suiteSetup.Network.Config(), 1)
+			ethAmount, err := networkInfo.Deployer.CalculateETHForTXs(networkInfo.Wallets.Default(), networkInfo.Network.Config(), 1)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = actions.FundChainlinkNodes(nodes, suiteSetup.Client, suiteSetup.Wallets.Default(), ethAmount, nil)
+			err = actions.FundChainlinkNodes(nodes, networkInfo.Client, networkInfo.Wallets.Default(), ethAmount, nil)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("Deploying VRF contracts", func() {
-			bhs, err := suiteSetup.Deployer.DeployBlockhashStore(suiteSetup.Wallets.Default())
+			bhs, err := networkInfo.Deployer.DeployBlockhashStore(networkInfo.Wallets.Default())
 			Expect(err).ShouldNot(HaveOccurred())
-			coordinator, err = suiteSetup.Deployer.DeployVRFCoordinator(suiteSetup.Wallets.Default(), suiteSetup.Link.Address(), bhs.Address())
+			coordinator, err = networkInfo.Deployer.DeployVRFCoordinator(networkInfo.Wallets.Default(), networkInfo.Link.Address(), bhs.Address())
 			Expect(err).ShouldNot(HaveOccurred())
-			consumer, err = suiteSetup.Deployer.DeployVRFConsumer(suiteSetup.Wallets.Default(), suiteSetup.Link.Address(), coordinator.Address())
+			consumer, err = networkInfo.Deployer.DeployVRFConsumer(networkInfo.Wallets.Default(), networkInfo.Link.Address(), coordinator.Address())
 			Expect(err).ShouldNot(HaveOccurred())
-			err = consumer.Fund(suiteSetup.Wallets.Default(), big.NewFloat(0), big.NewFloat(2))
+			err = consumer.Fund(networkInfo.Wallets.Default(), big.NewFloat(0), big.NewFloat(2))
 			Expect(err).ShouldNot(HaveOccurred())
-			_, err = suiteSetup.Deployer.DeployVRFContract(suiteSetup.Wallets.Default())
+			_, err = networkInfo.Deployer.DeployVRFContract(networkInfo.Wallets.Default())
 			Expect(err).ShouldNot(HaveOccurred())
-			err = suiteSetup.Client.WaitForEvents()
+			err = networkInfo.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("Creating jobs and registering proving keys", func() {
@@ -88,7 +90,7 @@ var _ = Describe("VRF suite @vrf", func() {
 				provingKey, err := actions.EncodeOnChainVRFProvingKey(nodeKeys.Data[0])
 				Expect(err).ShouldNot(HaveOccurred())
 				err = coordinator.RegisterProvingKey(
-					suiteSetup.Wallets.Default(),
+					networkInfo.Wallets.Default(),
 					big.NewInt(1),
 					oracleAddr,
 					provingKey,
@@ -104,7 +106,7 @@ var _ = Describe("VRF suite @vrf", func() {
 		It("fulfills randomness", func() {
 			requestHash, err := coordinator.HashOfKey(context.Background(), encodedProvingKeys[0])
 			Expect(err).ShouldNot(HaveOccurred())
-			err = consumer.RequestRandomness(suiteSetup.Wallets.Default(), requestHash, big.NewInt(1))
+			err = consumer.RequestRandomness(networkInfo.Wallets.Default(), requestHash, big.NewInt(1))
 			Expect(err).ShouldNot(HaveOccurred())
 			err = retry.Do(func() error {
 				out, err := consumer.RandomnessOutput(context.Background())
@@ -122,7 +124,7 @@ var _ = Describe("VRF suite @vrf", func() {
 	})
 	AfterEach(func() {
 		By("Printing gas stats", func() {
-			suiteSetup.Client.GasStats().PrintStats()
+			networkInfo.Client.GasStats().PrintStats()
 		})
 		By("Tearing down the environment", suiteSetup.TearDown())
 	})
