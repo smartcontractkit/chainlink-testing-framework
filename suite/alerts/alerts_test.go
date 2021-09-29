@@ -11,7 +11,7 @@ var _ = Describe("Alerts suite", func() {
 	Describe("Alerts", func() {
 		It("Deploys the alerts stack up to Prometheus", func() {
 			i := &testcommon.OCRSetupInputs{}
-			testcommon.DeployOCRForEnv(i, "basic-chainlink", environment.NewChainlinkClusterForAlertsTesting(5))
+			testcommon.DeployOCRForEnv(i, environment.NewChainlinkClusterForAlertsTesting(5))
 			testcommon.SetupOCRTest(i)
 			testcommon.CheckRound(i)
 			testcommon.WriteDataForOTPEToInitializerFileForMockserver(i)

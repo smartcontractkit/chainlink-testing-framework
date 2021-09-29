@@ -1,6 +1,8 @@
 package chaos
 
 import (
+	"time"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
@@ -8,17 +10,15 @@ import (
 	"github.com/smartcontractkit/integrations-framework/chaos/experiments"
 	"github.com/smartcontractkit/integrations-framework/environment"
 	"github.com/smartcontractkit/integrations-framework/suite/testcommon"
-	"time"
 )
 
 var _ = XDescribeTable("OCR chaos tests @chaos-ocr", func(
-	envName string,
 	envInit environment.K8sEnvSpecInit,
 	chaosSpec chaos.Experimentable,
 ) {
 	i := &testcommon.OCRSetupInputs{}
 	Context("Runs OCR test with a chaos modifier", func() {
-		testcommon.DeployOCRForEnv(i, envName, envInit)
+		testcommon.DeployOCRForEnv(i, envInit)
 		testcommon.SetupOCRTest(i)
 		_, err := i.SuiteSetup.Env.ApplyChaos(chaosSpec)
 		Expect(err).ShouldNot(HaveOccurred())
@@ -33,7 +33,6 @@ var _ = XDescribeTable("OCR chaos tests @chaos-ocr", func(
 	})
 },
 	Entry("One node pod failure",
-		"basic-chainlink",
 		environment.NewChainlinkCluster(5),
 		&experiments.PodFailure{
 			LabelKey:   "app",
