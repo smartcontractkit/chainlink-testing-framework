@@ -98,7 +98,7 @@ var _ = Describe("OCR Alerts suite", func() {
 	})
 
 	AfterEach(func() {
-		By("Restoring chaos", func() {
+		By("Stop chaos", func() {
 			err := testSetup.SuiteSetup.Env.StopAllChaos()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
