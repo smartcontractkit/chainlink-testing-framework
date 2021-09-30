@@ -18,6 +18,7 @@ import (
 const (
 	BlockchainTypeEVM          = "evm"
 	BlockchainTypeEVMMultinode = "evm_multi"
+	BlockchainTypeEVMCelo      = "evm_celo"
 	NetworkGethPerformance     = "ethereum_geth_performance"
 )
 
@@ -52,6 +53,8 @@ func NewBlockchainClient(network BlockchainNetwork) (BlockchainClient, error) {
 		return NewEthereumClient(network)
 	case BlockchainTypeEVMMultinode:
 		return NewEthereumClients(network)
+	case BlockchainTypeEVMCelo:
+		return NewCeloClient(network)
 	}
 	return nil, errors.New("invalid blockchain network ID, not found")
 }
@@ -94,8 +97,8 @@ func NewNetworkFromConfig(conf *config.Config, networkID string) (BlockchainNetw
 		return nil, err
 	}
 	switch networkConfig.Type {
-	case BlockchainTypeEVM, BlockchainTypeEVMMultinode:
-		return NewEthereumNetwork(networkID, networkConfig)
+	case BlockchainTypeEVM, BlockchainTypeEVMMultinode, BlockchainTypeEVMCelo:
+		return newEthereumNetwork(networkID, networkConfig)
 	}
 	return nil, fmt.Errorf(
 		"network %s uses an unsupported network type of: %s",
