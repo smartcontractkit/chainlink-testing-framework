@@ -16,7 +16,7 @@ var _ = Describe("OCR Feed @ocr", func() {
 		i := &testcommon.OCRSetupInputs{}
 		testcommon.DeployOCRForEnv(i, envName, envInit)
 		testcommon.SetupOCRTest(i)
-		testcommon.SendOcrJobs(i)
+		testcommon.SendOCRJobs(i)
 		testcommon.CheckRound(i)
 		By("Printing gas stats", func() {
 			i.SuiteSetup.Client.GasStats().PrintStats()

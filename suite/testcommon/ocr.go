@@ -77,8 +77,8 @@ func SetupOCRTest(i *OCRSetupInputs) {
 	})
 }
 
-// SendOcrJobs sends ocr jobs to chainlink nodes
-func SendOcrJobs(i *OCRSetupInputs) {
+// SendOCRJobs sends ocr jobs to chainlink nodes
+func SendOCRJobs(i *OCRSetupInputs) {
 	By("Sending OCR jobs to chainlink nodes", func() {
 		// Initialize bootstrap node
 		bootstrapNode := i.ChainlinkNodes[0]

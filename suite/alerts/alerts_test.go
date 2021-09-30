@@ -65,7 +65,7 @@ var _ = Describe("OCR Alerts suite", func() {
 		})
 
 		It("Shuts down all chainlink nodes after some successful rounds", func() {
-			testcommon.SendOcrJobs(testSetup)
+			testcommon.SendOCRJobs(testSetup)
 			testcommon.CheckRound(testSetup)
 
 			experimentSpecs := make([]chaos.Experimentable, len(testSetup.ChainlinkNodes[1:]))
