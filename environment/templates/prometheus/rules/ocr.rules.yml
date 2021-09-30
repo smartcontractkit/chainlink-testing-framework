@@ -19,7 +19,7 @@
             expr: (rate (sum:ocr_telemetry_ingested_total[1m])) == bool 0
           - alert: Telemetry Down (infra)
             expr: bool:telemetry_down == 1
-            for: 5m
+            for: 1m
             labels:
               severity: critical
               team: infra
@@ -28,7 +28,7 @@
 
           - alert: Telemetry Down (o11y)
             expr: bool:telemetry_down == 1
-            for: 5m
+            for: 1m
             labels:
               severity: critical
               team: monitoring

@@ -20,12 +20,13 @@ import (
 
 // Ports for common services
 const (
-	AdapterAPIPort   = 6060
-	ChainlinkWebPort = 6688
-	ChainlinkP2PPort = 6690
-	EVMRPCPort       = 8545
-	MinersRPCPort    = 9545
-	ExplorerAPIPort  = 8080
+	AdapterAPIPort    = 6060
+	ChainlinkWebPort  = 6688
+	ChainlinkP2PPort  = 6690
+	EVMRPCPort        = 8545
+	MinersRPCPort     = 9545
+	ExplorerAPIPort   = 8080
+	PrometheusAPIPort = 9090
 )
 
 // NewAdapterManifest is the k8s manifest that when used will deploy an external adapter to an environment
@@ -536,7 +537,7 @@ func PrometheusGroup() K8sEnvSpecInit {
 	return func(config *config.NetworkConfig) (string, K8sEnvSpecs) {
 		var specs K8sEnvSpecs
 		prometheusDependencyGroup := &K8sManifestGroup{
-			id: "PrometheusDependencyGroup",
+			id:        "PrometheusDependencyGroup",
 			manifests: []K8sEnvResource{NewPrometheusManifest()},
 		}
 		specs = append(specs, prometheusDependencyGroup)
