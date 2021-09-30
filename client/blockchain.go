@@ -8,8 +8,6 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/core/types"
-
 	"github.com/smartcontractkit/integrations-framework/config"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -301,4 +299,7 @@ type NodeBlock struct {
 type HeaderEventSubscription interface {
 	ReceiveBlock(header NodeBlock) error
 	Wait() error
+// GasUsedEstimations contains some known gas values for contracts for every network
+type GasUsedEstimations interface {
+	FluxMonitorSubmissionGasUsed() (*big.Int, error)
 }
