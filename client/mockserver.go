@@ -36,6 +36,7 @@ func (em *MockserverClient) ClearExpectation(body interface{}) error {
 	return err
 }
 
+// PathSelector represents the json object used to find expectations by path
 type PathSelector struct {
 	Path string `json:"path"`
 }

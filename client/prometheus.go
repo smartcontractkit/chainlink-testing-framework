@@ -107,6 +107,7 @@ func (p *Prometheus) GetAlerts() (v1.AlertsResult, error) {
 	return alerts, nil
 }
 
+// GetQuery returns the result of applying a PromQL query
 func (p *Prometheus) GetQuery(query string) (model.Value, error) {
 	value, _, err := p.API.Query(context.Background(), query, time.Now())
 	if err != nil {
