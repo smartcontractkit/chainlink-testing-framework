@@ -106,3 +106,11 @@ func (p *Prometheus) GetAlerts() (v1.AlertsResult, error) {
 	}
 	return alerts, nil
 }
+
+func (p *Prometheus) GetQuery(query string) (model.Value, error) {
+	value, _, err := p.API.Query(context.Background(), query, time.Now())
+	if err != nil {
+		return nil, err
+	}
+	return value, nil
+}

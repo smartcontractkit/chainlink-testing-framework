@@ -27,6 +27,7 @@ const (
 	MinersRPCPort     = 9545
 	ExplorerAPIPort   = 8080
 	PrometheusAPIPort = 9090
+	MockserverAPIPort = 1080
 )
 
 // NewAdapterManifest is the k8s manifest that when used will deploy an external adapter to an environment
@@ -296,9 +297,9 @@ func NewChainlinkCluster(nodeCount int) K8sEnvSpecInit {
 	return addNetworkManifestToDependencyGroup("basic-chainlink", chainlinkGroup, dependencyGroups)
 }
 
-// NewChainlinkClusterForAlertsTesting is a basic environment that deploys a chainlink cluster with dependencies
-// for testing alerts
-func NewChainlinkClusterForAlertsTesting(nodeCount int) K8sEnvSpecInit {
+// NewChainlinkClusterForObservabilityTesting is a basic environment that deploys a chainlink cluster with dependencies
+// for testing observability
+func NewChainlinkClusterForObservabilityTesting(nodeCount int) K8sEnvSpecInit {
 	chainlinkGroup := &K8sManifestGroup{
 		id:        "chainlinkCluster",
 		manifests: []K8sEnvResource{},
@@ -315,7 +316,7 @@ func NewChainlinkClusterForAlertsTesting(nodeCount int) K8sEnvSpecInit {
 	}
 
 	dependencyGroup := getBasicDependencyGroup()
-	addServicesForTestingAlertsToDependencyGroup(dependencyGroup, nodeCount)
+	addServicesForTestingObservabilityToDependencyGroup(dependencyGroup, nodeCount)
 	addPostgresDbsToDependencyGroup(dependencyGroup, nodeCount)
 	dependencyGroups := []*K8sManifestGroup{kafkaDependecyGroup, dependencyGroup}
 
@@ -499,13 +500,13 @@ func addPostgresDbsToDependencyGroup(dependencyGroup *K8sManifestGroup, postgres
 	}
 }
 
-// addServicesForTestingAlertsToDependencyGroup adds services necessary for testing alerts to the dependency group
-func addServicesForTestingAlertsToDependencyGroup(dependencyGroup *K8sManifestGroup, nodeCount int) {
+// addServicesForTestingObservabilityToDependencyGroup adds services necessary for testing observability to the dependency group
+func addServicesForTestingObservabilityToDependencyGroup(dependencyGroup *K8sManifestGroup, nodeCount int) {
 	dependencyGroup.manifests = append(dependencyGroup.manifests, NewExplorerManifest(nodeCount))
 }
 
-// OtpeGroup contains manifests for mockserver, mockserver-config, and otpe
-func OtpeGroup() K8sEnvSpecInit {
+// MockserverGroup contains manifests for mockserver-config and mockserver
+func MockserverGroup() K8sEnvSpecInit {
 	return func(config *config.NetworkConfig) (string, K8sEnvSpecs) {
 		var specs K8sEnvSpecs
 		mockserverConfigDependencyGroup := &K8sManifestGroup{
@@ -521,6 +522,14 @@ func OtpeGroup() K8sEnvSpecInit {
 		specs = append(specs, mockserverConfigDependencyGroup)
 		specs = append(specs, mockserverDependencyGroup)
 
+		return "envName", specs
+	}
+}
+
+// OtpeGroup contains manifests for otpe
+func OtpeGroup() K8sEnvSpecInit {
+	return func(config *config.NetworkConfig) (string, K8sEnvSpecs) {
+		var specs K8sEnvSpecs
 		otpeDependencyGroup := &K8sManifestGroup{
 			id:        "OTPEDependencyGroup",
 			manifests: []K8sEnvResource{NewOTPEManifest()},
