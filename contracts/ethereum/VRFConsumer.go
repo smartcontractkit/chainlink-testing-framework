@@ -27,10 +27,10 @@ var (
 )
 
 // VRFConsumerABI is the input ABI used to generate the binding from.
-const VRFConsumerABI = "[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_vrfCoordinator\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"_link\",\"type\":\"address\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"randomnessOutput\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"requestId\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"randomness\",\"type\":\"uint256\"}],\"name\":\"rawFulfillRandomness\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"requestId\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_keyHash\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"_fee\",\"type\":\"uint256\"}],\"name\":\"testRequestRandomness\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"requestId\",\"type\":\"bytes32\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]"
+const VRFConsumerABI = "[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_vrfCoordinator\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"_link\",\"type\":\"address\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"currentRoundID\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"prevRandomnessOutput\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"randomnessOutput\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"requestId\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"randomness\",\"type\":\"uint256\"}],\"name\":\"rawFulfillRandomness\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"requestId\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_keyHash\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"_fee\",\"type\":\"uint256\"}],\"name\":\"testRequestRandomness\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"requestId\",\"type\":\"bytes32\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]"
 
 // VRFConsumerBin is the compiled bytecode used for deploying new contracts.
-var VRFConsumerBin = "0x60c060405234801561001057600080fd5b506040516104b33803806104b38339818101604052604081101561003357600080fd5b5080516020909101516001600160601b0319606092831b811660a052911b1660805260805160601c60a05160601c6104316100826000398060e4528061019752508061016852506104316000f3fe608060405234801561001057600080fd5b506004361061004b5760003560e01c80626d6cae146100505780632f47fd861461006a578063866ee7481461007257806394985ddd14610095575b600080fd5b6100586100ba565b60408051918252519081900360200190f35b6100586100c0565b6100586004803603604081101561008857600080fd5b50803590602001356100c6565b6100b8600480360360408110156100ab57600080fd5b50803590602001356100d9565b005b60025481565b60015481565b60006100d28383610164565b9392505050565b336001600160a01b037f00000000000000000000000000000000000000000000000000000000000000001614610156576040805162461bcd60e51b815260206004820152601f60248201527f4f6e6c7920565246436f6f7264696e61746f722063616e2066756c66696c6c00604482015290519081900360640190fd5b6101608282610326565b5050565b60007f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316634000aea07f00000000000000000000000000000000000000000000000000000000000000008486600060405160200180838152602001828152602001925050506040516020818303038152906040526040518463ffffffff1660e01b815260040180846001600160a01b03166001600160a01b0316815260200183815260200180602001828103825283818151815260200191508051906020019080838360005b8381101561024a578181015183820152602001610232565b50505050905090810190601f1680156102775780820380516001836020036101000a031916815260200191505b50945050505050602060405180830381600087803b15801561029857600080fd5b505af11580156102ac573d6000803e3d6000fd5b505050506040513d60208110156102c257600080fd5b50506000838152602081905260408120546102e29085908390309061032e565b60008581526020819052604090205490915061030590600163ffffffff61037516565b60008581526020819052604090205561031e84826103cf565b949350505050565b600155600255565b60408051602080820196909652808201949094526001600160a01b039290921660608401526080808401919091528151808403909101815260a09092019052805191012090565b6000828201838110156100d2576040805162461bcd60e51b815260206004820152601b60248201527f536166654d6174683a206164646974696f6e206f766572666c6f770000000000604482015290519081900360640190fd5b60408051602080820194909452808201929092528051808303820181526060909201905280519101209056fea26469706673582212200efdc6883e84f1727409e1be45ef60ca7bfd91860c3027cba16a6a4f92422ef764736f6c63430006060033"
+var VRFConsumerBin = "0x60c0604052600060015534801561001557600080fd5b506040516104f33803806104f38339818101604052604081101561003857600080fd5b5080516020909101516001600160601b0319606092831b811660a052911b1660805260805160601c60a05160601c61046b6100886000398061011052806101c952508061019a525061046b6000f3fe608060405234801561001057600080fd5b50600436106100615760003560e01c80626d6cae146100665780630d0332bc146100805780632f47fd8614610088578063866ee7481461009057806394985ddd146100b3578063a312c4f2146100d8575b600080fd5b61006e6100e0565b60408051918252519081900360200190f35b61006e6100e6565b61006e6100ec565b61006e600480360360408110156100a657600080fd5b50803590602001356100f2565b6100d6600480360360408110156100c957600080fd5b5080359060200135610105565b005b61006e610190565b60045481565b60025481565b60035481565b60006100fe8383610196565b9392505050565b336001600160a01b037f00000000000000000000000000000000000000000000000000000000000000001614610182576040805162461bcd60e51b815260206004820152601f60248201527f4f6e6c7920565246436f6f7264696e61746f722063616e2066756c66696c6c00604482015290519081900360640190fd5b61018c8282610358565b5050565b60015481565b60007f00000000000000000000000000000000000000000000000000000000000000006001600160a01b0316634000aea07f00000000000000000000000000000000000000000000000000000000000000008486600060405160200180838152602001828152602001925050506040516020818303038152906040526040518463ffffffff1660e01b815260040180846001600160a01b03166001600160a01b0316815260200183815260200180602001828103825283818151815260200191508051906020019080838360005b8381101561027c578181015183820152602001610264565b50505050905090810190601f1680156102a95780820380516001836020036101000a031916815260200191505b50945050505050602060405180830381600087803b1580156102ca57600080fd5b505af11580156102de573d6000803e3d6000fd5b505050506040513d60208110156102f457600080fd5b505060008381526020819052604081205461031490859083903090610368565b60008581526020819052604090205490915061033790600163ffffffff6103af16565b6000858152602081905260409020556103508482610409565b949350505050565b6003556004556001805481019055565b60408051602080820196909652808201949094526001600160a01b039290921660608401526080808401919091528151808403909101815260a09092019052805191012090565b6000828201838110156100fe576040805162461bcd60e51b815260206004820152601b60248201527f536166654d6174683a206164646974696f6e206f766572666c6f770000000000604482015290519081900360640190fd5b60408051602080820194909452808201929092528051808303820181526060909201905280519101209056fea2646970667358221220ae0d1cbc717e1c8e2cc762c4f0f928f13be40034bf9027c7495c92730ce7daf464736f6c63430006060033"
 
 // DeployVRFConsumer deploys a new Ethereum contract, binding an instance of VRFConsumer to it.
 func DeployVRFConsumer(auth *bind.TransactOpts, backend bind.ContractBackend, _vrfCoordinator common.Address, _link common.Address) (common.Address, *types.Transaction, *VRFConsumer, error) {
@@ -186,6 +186,68 @@ func (_VRFConsumer *VRFConsumerTransactorRaw) Transfer(opts *bind.TransactOpts) 
 // Transact invokes the (paid) contract method with params as input values.
 func (_VRFConsumer *VRFConsumerTransactorRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
 	return _VRFConsumer.Contract.contract.Transact(opts, method, params...)
+}
+
+// CurrentRoundID is a free data retrieval call binding the contract method 0xa312c4f2.
+//
+// Solidity: function currentRoundID() view returns(uint256)
+func (_VRFConsumer *VRFConsumerCaller) CurrentRoundID(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _VRFConsumer.contract.Call(opts, &out, "currentRoundID")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// CurrentRoundID is a free data retrieval call binding the contract method 0xa312c4f2.
+//
+// Solidity: function currentRoundID() view returns(uint256)
+func (_VRFConsumer *VRFConsumerSession) CurrentRoundID() (*big.Int, error) {
+	return _VRFConsumer.Contract.CurrentRoundID(&_VRFConsumer.CallOpts)
+}
+
+// CurrentRoundID is a free data retrieval call binding the contract method 0xa312c4f2.
+//
+// Solidity: function currentRoundID() view returns(uint256)
+func (_VRFConsumer *VRFConsumerCallerSession) CurrentRoundID() (*big.Int, error) {
+	return _VRFConsumer.Contract.CurrentRoundID(&_VRFConsumer.CallOpts)
+}
+
+// PrevRandomnessOutput is a free data retrieval call binding the contract method 0x0d0332bc.
+//
+// Solidity: function prevRandomnessOutput() view returns(uint256)
+func (_VRFConsumer *VRFConsumerCaller) PrevRandomnessOutput(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _VRFConsumer.contract.Call(opts, &out, "prevRandomnessOutput")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// PrevRandomnessOutput is a free data retrieval call binding the contract method 0x0d0332bc.
+//
+// Solidity: function prevRandomnessOutput() view returns(uint256)
+func (_VRFConsumer *VRFConsumerSession) PrevRandomnessOutput() (*big.Int, error) {
+	return _VRFConsumer.Contract.PrevRandomnessOutput(&_VRFConsumer.CallOpts)
+}
+
+// PrevRandomnessOutput is a free data retrieval call binding the contract method 0x0d0332bc.
+//
+// Solidity: function prevRandomnessOutput() view returns(uint256)
+func (_VRFConsumer *VRFConsumerCallerSession) PrevRandomnessOutput() (*big.Int, error) {
+	return _VRFConsumer.Contract.PrevRandomnessOutput(&_VRFConsumer.CallOpts)
 }
 
 // RandomnessOutput is a free data retrieval call binding the contract method 0x2f47fd86.
