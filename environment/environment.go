@@ -57,6 +57,27 @@ func GetExplorerClientFromEnv(env Environment) (*client.ExplorerClient, error) {
 	return NewExplorerClient(sd.LocalURL.String())
 }
 
+// GetPrometheusClientFromEnv returns a Prometheus client
+func GetPrometheusClientFromEnv(env Environment) (*client.Prometheus, error) {
+	sd, err := env.GetServiceDetails(PrometheusAPIPort)
+	if err != nil {
+		return nil, err
+	}
+	return client.NewPrometheusClient(sd.LocalURL.String())
+}
+
+// GetMockserverClientFromEnv returns a Mockserver client
+func GetMockserverClientFromEnv(env Environment) (*client.MockserverClient, error) {
+	sd, err := env.GetServiceDetails(MockserverAPIPort)
+	if err != nil {
+		return nil, err
+	}
+	return client.NewMockserverClient(&client.MockserverConfig{
+		LocalURL:   sd.LocalURL.String(),
+		ClusterURL: sd.RemoteURL.String(),
+	}), nil
+}
+
 // GetChainlinkClients will return all instantiated Chainlink clients for a given environment
 func GetChainlinkClients(env Environment) ([]client.Chainlink, error) {
 	var clients []client.Chainlink

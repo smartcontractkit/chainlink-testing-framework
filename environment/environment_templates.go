@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"helm.sh/helm/v3/pkg/chartutil"
+	"io/ioutil"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -19,12 +20,14 @@ import (
 
 // Ports for common services
 const (
-	AdapterAPIPort   = 6060
-	ChainlinkWebPort = 6688
-	ChainlinkP2PPort = 6690
-	EVMRPCPort       = 8545
-	MinersRPCPort    = 9545
-	ExplorerAPIPort  = 8080
+	AdapterAPIPort    = 6060
+	ChainlinkWebPort  = 6688
+	ChainlinkP2PPort  = 6690
+	EVMRPCPort        = 8545
+	MinersRPCPort     = 9545
+	ExplorerAPIPort   = 8080
+	PrometheusAPIPort = 9090
+	MockserverAPIPort = 1080
 )
 
 // NewAdapterManifest is the k8s manifest that when used will deploy an external adapter to an environment
@@ -174,6 +177,14 @@ func NewOTPEManifest() *K8sManifest {
 		id:             "otpe",
 		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/otpe-deployment.yml"),
 		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/otpe-service.yml"),
+		SetValuesFunc: func(manifest *K8sManifest) error {
+			manifest.values["clusterURL"] = fmt.Sprintf(
+				"%s:%d",
+				manifest.Service.Spec.ClusterIP,
+				manifest.Service.Spec.Ports[0].Port,
+			)
+			return nil
+		},
 	}
 }
 
@@ -200,6 +211,25 @@ func NewMockserverHelmChart() *HelmChart {
 		},
 	}
 	return chart
+}
+
+// NewPrometheusManifest creates new k8s manifest for prometheus
+func NewPrometheusManifest() *K8sManifest {
+	rulesFilePath := filepath.Join(tools.ProjectRoot, "/environment/templates/prometheus/rules/ocr.rules.yml")
+	content, err := ioutil.ReadFile(rulesFilePath)
+	if err != nil {
+		return nil
+	}
+	return &K8sManifest{
+		id:             "prometheus",
+		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/prometheus/prometheus-deployment.yml"),
+		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/prometheus/prometheus-service.yml"),
+		ConfigMapFile:  filepath.Join(tools.ProjectRoot, "/environment/templates/prometheus/prometheus-config-map.yml"),
+
+		values: map[string]interface{}{
+			"ocrRulesYml": string(content),
+		},
+	}
 }
 
 // NewHardhatManifest is the k8s manifest that when used will deploy hardhat to an environment
@@ -251,6 +281,16 @@ func NewGanacheManifest() *K8sManifest {
 
 // NewChainlinkCluster is a basic environment that deploys hardhat with a chainlink cluster and an external adapter
 func NewChainlinkCluster(nodeCount int) K8sEnvSpecInit {
+	mockserverConfigDependencyGroup := &K8sManifestGroup{
+		id:        "MockserverConfigDependencyGroup",
+		manifests: []K8sEnvResource{NewMockserverConfigHelmChart()},
+	}
+
+	mockserverDependencyGroup := &K8sManifestGroup{
+		id:        "MockserverDependencyGroup",
+		manifests: []K8sEnvResource{NewMockserverHelmChart()},
+	}
+
 	chainlinkGroup := &K8sManifestGroup{
 		id:        "chainlinkCluster",
 		manifests: []K8sEnvResource{},
@@ -263,13 +303,23 @@ func NewChainlinkCluster(nodeCount int) K8sEnvSpecInit {
 
 	dependencyGroup := getBasicDependencyGroup()
 	addPostgresDbsToDependencyGroup(dependencyGroup, nodeCount)
-	dependencyGroups := []*K8sManifestGroup{dependencyGroup}
+	dependencyGroups := []*K8sManifestGroup{mockserverConfigDependencyGroup, mockserverDependencyGroup, dependencyGroup}
 	return addNetworkManifestToDependencyGroup("basic-chainlink", chainlinkGroup, dependencyGroups)
 }
 
-// NewChainlinkClusterForAlertsTesting is a basic environment that deploys a chainlink cluster with dependencies
-// for testing alerts
-func NewChainlinkClusterForAlertsTesting(nodeCount int) K8sEnvSpecInit {
+// NewChainlinkClusterForObservabilityTesting is a basic environment that deploys a chainlink cluster with dependencies
+// for testing observability
+func NewChainlinkClusterForObservabilityTesting(nodeCount int) K8sEnvSpecInit {
+	mockserverConfigDependencyGroup := &K8sManifestGroup{
+		id:        "MockserverConfigDependencyGroup",
+		manifests: []K8sEnvResource{NewMockserverConfigHelmChart()},
+	}
+
+	mockserverDependencyGroup := &K8sManifestGroup{
+		id:        "MockserverDependencyGroup",
+		manifests: []K8sEnvResource{NewMockserverHelmChart()},
+	}
+
 	chainlinkGroup := &K8sManifestGroup{
 		id:        "chainlinkCluster",
 		manifests: []K8sEnvResource{},
@@ -286,9 +336,9 @@ func NewChainlinkClusterForAlertsTesting(nodeCount int) K8sEnvSpecInit {
 	}
 
 	dependencyGroup := getBasicDependencyGroup()
-	addServicesForTestingAlertsToDependencyGroup(dependencyGroup, nodeCount)
+	dependencyGroup.manifests = append(dependencyGroup.manifests, NewExplorerManifest(nodeCount))
 	addPostgresDbsToDependencyGroup(dependencyGroup, nodeCount)
-	dependencyGroups := []*K8sManifestGroup{kafkaDependecyGroup, dependencyGroup}
+	dependencyGroups := []*K8sManifestGroup{mockserverConfigDependencyGroup, mockserverDependencyGroup, kafkaDependecyGroup, dependencyGroup}
 
 	return addNetworkManifestToDependencyGroup("basic-chainlink", chainlinkGroup, dependencyGroups)
 }
@@ -296,6 +346,16 @@ func NewChainlinkClusterForAlertsTesting(nodeCount int) K8sEnvSpecInit {
 // NewMixedVersionChainlinkCluster mixes the currently latest chainlink version (as defined by the config file) with
 // a number of past stable versions (defined by pastVersionsCount), ensuring that at least one of each is deployed
 func NewMixedVersionChainlinkCluster(nodeCount, pastVersionsCount int) K8sEnvSpecInit {
+	mockserverConfigDependencyGroup := &K8sManifestGroup{
+		id:        "MockserverConfigDependencyGroup",
+		manifests: []K8sEnvResource{NewMockserverConfigHelmChart()},
+	}
+
+	mockserverDependencyGroup := &K8sManifestGroup{
+		id:        "MockserverDependencyGroup",
+		manifests: []K8sEnvResource{NewMockserverHelmChart()},
+	}
+
 	if nodeCount < 3 {
 		log.Warn().
 			Int("Provided Node Count", nodeCount).
@@ -329,7 +389,7 @@ func NewMixedVersionChainlinkCluster(nodeCount, pastVersionsCount int) K8sEnvSpe
 
 	dependencyGroup := getBasicDependencyGroup()
 	addPostgresDbsToDependencyGroup(dependencyGroup, nodeCount)
-	dependencyGroups := []*K8sManifestGroup{dependencyGroup}
+	dependencyGroups := []*K8sManifestGroup{mockserverConfigDependencyGroup, mockserverDependencyGroup, dependencyGroup}
 	return addNetworkManifestToDependencyGroup("mixed-version-chainlink", chainlinkGroup, dependencyGroups)
 }
 
@@ -470,28 +530,10 @@ func addPostgresDbsToDependencyGroup(dependencyGroup *K8sManifestGroup, postgres
 	}
 }
 
-// addServicesForTestingAlertsToDependencyGroup adds services necessary for testing alerts to the dependency group
-func addServicesForTestingAlertsToDependencyGroup(dependencyGroup *K8sManifestGroup, nodeCount int) {
-	dependencyGroup.manifests = append(dependencyGroup.manifests, NewExplorerManifest(nodeCount))
-}
-
-// OtpeGroup contains manifests for mockserver, mockserver-config, and otpe
+// OtpeGroup contains manifests for otpe
 func OtpeGroup() K8sEnvSpecInit {
 	return func(config *config.NetworkConfig) (string, K8sEnvSpecs) {
 		var specs K8sEnvSpecs
-		mockserverConfigDependencyGroup := &K8sManifestGroup{
-			id:        "MockserverConfigDependencyGroup",
-			manifests: []K8sEnvResource{NewMockserverConfigHelmChart()},
-		}
-
-		mockserverDependencyGroup := &K8sManifestGroup{
-			id:        "MockserverDependencyGroup",
-			manifests: []K8sEnvResource{NewMockserverHelmChart()},
-		}
-
-		specs = append(specs, mockserverConfigDependencyGroup)
-		specs = append(specs, mockserverDependencyGroup)
-
 		otpeDependencyGroup := &K8sManifestGroup{
 			id:        "OTPEDependencyGroup",
 			manifests: []K8sEnvResource{NewOTPEManifest()},
@@ -500,5 +542,18 @@ func OtpeGroup() K8sEnvSpecInit {
 		specs = append(specs, otpeDependencyGroup)
 
 		return "envName", specs
+	}
+}
+
+// PrometheusGroup contains manifests for prometheus
+func PrometheusGroup() K8sEnvSpecInit {
+	return func(config *config.NetworkConfig) (string, K8sEnvSpecs) {
+		var specs K8sEnvSpecs
+		prometheusDependencyGroup := &K8sManifestGroup{
+			id:        "PrometheusDependencyGroup",
+			manifests: []K8sEnvResource{NewPrometheusManifest()},
+		}
+		specs = append(specs, prometheusDependencyGroup)
+		return "", specs
 	}
 }

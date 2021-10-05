@@ -2,11 +2,8 @@ package contracts
 
 import (
 	"fmt"
-
-	"github.com/avast/retry-go"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/pkg/errors"
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/environment"
@@ -56,20 +53,17 @@ var _ = Describe("Cronjob suite @cron", func() {
 
 	Describe("with Cron job", func() {
 		It("runs 5 times with no errors", func() {
-			err = retry.Do(func() error {
+			Eventually(func(g Gomega){
 				jobRuns, err := nodes[0].ReadRunsByJob(job.Data.ID)
-				if err != nil {
-					return err
-				}
-				if len(jobRuns.Data) != 5 {
-					return errors.New("not all jobs are completed")
-				}
+				g.Expect(err).ShouldNot(HaveOccurred())
+
+				g.Expect(len(jobRuns.Data)).Should(BeNumerically("==", 5))
+
 				for _, jr := range jobRuns.Data {
-					Expect(jr.Attributes.Errors).Should(Equal([]interface{}{nil}))
+					g.Expect(jr.Attributes.Errors).Should(Equal([]interface{}{nil}))
 				}
-				return nil
-			})
-			Expect(err).ShouldNot(HaveOccurred())
+			}, "2m", "1s").Should(Succeed())
+
 		})
 	})
 

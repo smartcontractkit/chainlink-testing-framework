@@ -1,0 +1,201 @@
+    groups:
+      - name: OTPE
+        interval: 15s
+        rules:
+          - alert: Config Digest Duplicate
+            expr: otpe_config_digest_duplicates_total != 0
+            labels:
+              severity: critical
+              team: incident-response
+            annotations:
+              summary: Something really unexpected happened. Let Lorenz know.
+
+      - name: Telemetry Ingestion
+        interval: 15s
+        rules:
+          - record: sum:ocr_telemetry_ingested_total
+            expr: sum without (contract, oracle) (ocr_telemetry_ingested_total)
+          - record: bool:telemetry_down
+            expr: (rate (sum:ocr_telemetry_ingested_total[1m])) == bool 0
+          - alert: Telemetry Down (infra)
+            expr: bool:telemetry_down == 1
+            for: 1m
+            labels:
+              severity: critical
+              team: infra
+            annotations:
+              summary: OTPE is not receiving any telemetry at all.
+
+          - alert: Telemetry Down (o11y)
+            expr: bool:telemetry_down == 1
+            for: 1m
+            labels:
+              severity: critical
+              team: monitoring
+            annotations:
+              summary: OTPE is not receiving any telemetry at all.
+
+      - name: Contract Configuration
+        interval: 15s
+        rules:
+          - record: bool:contract_oracle_active
+            # use max_over_time to be resistant to exporter restarts/glitches
+            expr: max_over_time(ocr_contract_oracle_active[1m]) > bool 0
+          - record: bool:contract_active
+            expr: sum without(oracle) (bool:contract_oracle_active) > bool 0
+          - record: bool:oracle_active
+            expr: sum without(contract) (bool:contract_oracle_active) > bool 0
+
+      - name: Oracle & Feed
+        interval: 15s
+        rules:
+          - record: bool:oracle_feed_telemetry_down
+            expr: (rate(ocr_telemetry_ingested_total[2m]) == bool 0) * bool:contract_oracle_active
+          - record: bool:oracle_feed_blind
+            # TODO: It would be better to make this based on a rate of a total
+            expr: (max_over_time(ocr_telemetry_message_report_req_observation_included[2m]) == bool 0) * bool:contract_oracle_active
+
+      - name: Oracle
+        interval: 15s
+        rules:
+          - record: bool:oracle_blind
+            expr: min without(contract) (bool:oracle_feed_blind) * bool:oracle_active
+          - record: bool:oracle_blind_except_telemetry_down
+            expr: bool:oracle_blind * ignoring (oracle) group_left() (1 - bool:telemetry_down)
+
+          # Oracle Blind EXCEPT Telemetry Down
+          - alert: No observations from an OCR oracle
+            expr: bool:oracle_blind_except_telemetry_down == 1
+            for: 3m
+            labels:
+              severity: critical
+              team: incident-response
+            annotations:
+              summary: Oracle has made no observations {{ $labels.oracle }}. Perhaps the oracle is down or having data source issues? Reach out to the node op.
+          - record: bool:oracle_telemetry_down
+            expr: min without(contract) (bool:oracle_feed_telemetry_down) * bool:oracle_active
+          - record: bool:oracle_telemetry_down_except_telemetry_down
+            expr: bool:oracle_telemetry_down * ignoring (oracle) group_left() (1 - bool:telemetry_down)
+
+          # Oracle Telemetry Down EXCEPT Telemetry Down
+          - alert: No telemetry from an OCR oracle
+            expr: bool:oracle_telemetry_down_except_telemetry_down == 1
+            for: 20m
+            labels:
+              severity: critical
+              team: incident-response
+            annotations:
+              summary: Not receiving any telemetry for {{ $labels.oracle }}. Perhaps the oracle is down or having issues with the telemetry transport? Reach out to the node op.
+
+      - name: Feed
+        interval: 15s
+        rules:
+          - record: bool:feed_telemetry_down
+            expr: min without(oracle) (bool:oracle_feed_telemetry_down) * bool:contract_active
+          - record: bool:feed_telemetry_down_except_telemetry_down
+            expr: bool:feed_telemetry_down * ignoring (contract) group_left() (1 - bool:telemetry_down)
+
+          # Feed Telemetry Down EXCEPT Telemetry Down
+          - alert: No telemetry on an OCR feed
+            expr: bool:feed_telemetry_down_except_telemetry_down == 1
+            for: 4m
+            labels:
+              severity: critical
+              team: incident-response
+            annotations:
+              summary: Not receiving any telemetry for {{ $labels.contract }}. Are all nodes down or not sending telemetry?
+          - record: bool:feed_stalled
+            expr: (rate(ocr_telemetry_feed_agreed_epoch[5m]) == bool 0) * bool:contract_active
+          - record: bool:feed_stalled_except_telemetry_down
+            expr: bool:feed_stalled * (1 - bool:feed_telemetry_down)
+
+          # Alert if no new round seen after 90 seconds, unless feed fails to report or OTPE is not receving any telememtry at all
+          - alert: Rounds have stopped progressing on an OCR feed
+            expr:
+              (
+                (sum(rate(ocr_telemetry_epoch_round[10m])) by (contract, job, cluster, instance) < 1./90 == bool 0)
+                * bool:contract_active
+                * (1-bool:feed_telemetry_down)
+              ) == 1
+            labels:
+              severity: critical
+              team: incident-response
+            annotations:
+              summary: New rounds are not being created on feed {{ $labels.contract }} at the expected rate. Maybe the feed has stalled. Reach out to node operators to corroborate this. If they are not seeing any runs, escalate and consider failing over to FM if you cannot resolve this quickly.
+
+          # Feed Stalled EXCEPT Feed Telemetry Down
+          - alert: Epochs have stopped progressing on an OCR feed
+            expr: bool:feed_stalled_except_telemetry_down == 1
+            for: 5m
+            labels:
+              severity: critical
+              team: incident-response
+            annotations:
+              summary: New epochs are not being created on feed {{ $labels.contract }} at the expected rate. Maybe the feed has stalled. Reach out to node operators to corroborate this. If they are not seeing any runs, escalate and consider failing over to FM if you cannot resolve this quickly.
+          # This is not particularly actionable, so commenting out for now. We can think about improved versions later.
+          # - record: bool:feed_fast_epochs
+          #   expr: (rate(ocr_telemetry_feed_agreed_epoch[6m]) > bool 3/(ocr_contract_config_r_max * ocr_contract_config_delta_round_seconds)) * bool:contract_active
+          # - alert: Feed Fast Epochs
+          #   expr: bool:feed_fast_epochs == 1
+          #   for: 3m
+          #   labels:
+          #     severity: critical
+          #     slack_channel: ocr-telemetry-beta-group
+          #   annotations:
+          #     summary: Feed is moving through epochs much faster than expected {{ $labels.contract }}. Perhaps a few nodes are down?
+          - record: bool:feed_close_to_reporting_failure
+            expr: (max_over_time(ocr_telemetry_feed_message_report_req_size[2m]) < bool 2*ocr_contract_config_f+1 + 2) * bool:contract_active
+          - record: bool:feed_close_to_reporting_failure_except_feed_telemetry_down
+            expr: bool:feed_close_to_reporting_failure * (1 - bool:feed_telemetry_down)
+
+          # Feed Close To Reporting Failure EXCEPT Feed Telemetry Down
+          - alert: OCR feed close to reporting failure
+            expr: bool:feed_close_to_reporting_failure_except_feed_telemetry_down == 1
+            for: 3m
+            labels:
+              severity: critical
+              team: incident-response
+            annotations:
+              summary: Feed is within two oracles of reporting failure {{ $labels.contract }}. Reach out to node ops that are having issues asap and consider replacing them.
+          - record: bool:feed_reporting_failure
+            expr: (rate(ocr_telemetry_feed_message_report_req_total[4m]) == bool 0) * bool:contract_active
+          - record: bool:feed_reporting_failure_except_feed_telemetry_down
+            expr: bool:feed_reporting_failure * (1 - bool:feed_telemetry_down)
+
+          # Feed Reporting Failure EXCEPT Feed Telemetry Down
+          - alert: OCR feed reporting failure
+            expr: bool:feed_reporting_failure_except_feed_telemetry_down == 1
+            for: 4m
+            labels:
+              severity: critical
+              team: incident-response
+            annotations:
+              summary: Feed is experiencing reporting failure {{ $labels.contract }}! Reach out to node ops to confirm and consider failing over to FluxMonitor.
+
+      - name: Oracle & Feed Except Oracle
+        interval: 15s
+        rules:
+          # Currently not useful due to unreliable telemetry ingestion
+          # - record: bool:oracle_feed_telemetry_down_except_oracle_telemetry_down_except_feed_telemetry_down
+          #   expr: (bool:oracle_feed_telemetry_down * ignoring (contract) group_left() (1 - bool:oracle_telemetry_down)) * ignoring (oracle) group_left() (1 - bool:feed_telemetry_down)
+          # - alert: Oracle & Feed Telemetry Down EXCEPT Oracle Telemetry Down EXCEPT Feed Telemetry Down
+          #   expr: bool:oracle_feed_telemetry_down_except_oracle_telemetry_down_except_feed_telemetry_down == 1
+          #   for: 30m
+          #   labels:
+          #     severity: warning
+          #     slack_channel: ocr-telemetry-beta-group
+          #   annotations:
+          #     summary: Not receiving any telemetry from oracle {{ $labels.oracle }} on feed {{ $labels.contract }}. Reach out to the node op.
+          - record: bool:oracle_feed_blind_except_oracle_blind_except_feed_reporting_failure_except_feed_telemetry_down
+            expr: (bool:oracle_feed_blind * ignoring (contract) group_left() (1 - bool:oracle_blind)) * ignoring (oracle) group_left() (1 - bool:feed_reporting_failure) * ignoring (oracle) group_left() (1 - bool:feed_telemetry_down)
+
+          # Oracle & Feed Blind EXCEPT Oracle Blind EXCEPT Feed Reporting Failure EXCEPT Feed Telemetry Down
+          - alert: Oracle not making observations on an OCR feed
+            expr: bool:oracle_feed_blind_except_oracle_blind_except_feed_reporting_failure_except_feed_telemetry_down == 1
+            for: 10m
+            labels:
+              severity: warning
+              team: incident-response
+            annotations:
+              summary: Oracle {{ $labels.oracle }} is able to make observations, yet I'm not receiving any observations from it on feed {{ $labels.contract }}. Perhaps a data source issue? Reach out to the node op.
+

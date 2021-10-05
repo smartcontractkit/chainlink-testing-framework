@@ -1,4 +1,4 @@
-package alerts_test
+package observability_test
 
 import (
 	"github.com/smartcontractkit/integrations-framework/config"
@@ -13,7 +13,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func TestAlerts(t *testing.T) {
+func TestObservability(t *testing.T) {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	RegisterFailHandler(Fail)
 	conf, err := config.NewConfig(tools.ProjectRoot)
@@ -22,5 +22,5 @@ func TestAlerts(t *testing.T) {
 	}
 	log.Logger = log.Logger.Level(zerolog.Level(conf.Logging.Level))
 	junitReporter := reporters.NewJUnitReporter("junit.xml")
-	RunSpecsWithDefaultAndCustomReporters(t, "Alerts Suite", []Reporter{junitReporter})
+	RunSpecsWithDefaultAndCustomReporters(t, "Observability Suite", []Reporter{junitReporter})
 }
