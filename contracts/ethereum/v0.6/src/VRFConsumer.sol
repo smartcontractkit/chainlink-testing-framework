@@ -5,6 +5,8 @@ import "./VRFConsumerBase.sol";
 
 contract VRFConsumer is VRFConsumerBase {
 
+  uint256 public currentRoundID = 0;
+  uint256 public prevRandomnessOutput;
   uint256 public randomnessOutput;
   bytes32 public requestId;
 
@@ -17,6 +19,7 @@ contract VRFConsumer is VRFConsumerBase {
   {
     randomnessOutput = _randomness;
     requestId = _requestId;
+    currentRoundID += 1;
   }
 
   function testRequestRandomness(bytes32 _keyHash, uint256 _fee)

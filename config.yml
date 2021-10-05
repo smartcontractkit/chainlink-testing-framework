@@ -198,6 +198,13 @@ networks:
         private_url: moonbase_alpha_url
         private_keys:
             - moonbase_alpha_1
+    iotex_testnet:
+        <<: *common_ethereum_testnet
+        name: "IoTeX testnet"
+        chain_id: 4690
+        private_url: iotex_testnet_url
+        private_keys:
+            - iotex_testnet_1
 retry:
     attempts: 120
     linear_delay: 1s
