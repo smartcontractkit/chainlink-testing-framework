@@ -60,6 +60,15 @@ func (e *EthereumAPIConsumer) Address() string {
 	return e.address.Hex()
 }
 
+func (e *EthereumAPIConsumer) RoundID(ctx context.Context) (*big.Int, error) {
+	opts := &bind.CallOpts{
+		From:    common.HexToAddress(e.callerWallet.Address()),
+		Pending: true,
+		Context: ctx,
+	}
+	return e.consumer.RoundID(opts)
+}
+
 func (e *EthereumAPIConsumer) Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Float) error {
 	return e.client.Fund(fromWallet, e.address.Hex(), ethAmount, linkAmount)
 }
@@ -661,6 +670,63 @@ func (o *EthereumOffchainAggregator) GetLatestRound(ctxt context.Context) (*Roun
 		StartedAt:       roundData.StartedAt,
 		UpdatedAt:       roundData.UpdatedAt,
 	}, err
+}
+
+// RunlogRoundConfirmer is a header subscription that awaits for a certain Runlog round to be completed
+type RunlogRoundConfirmer struct {
+	consumer APIConsumer
+	roundID  *big.Int
+	doneChan chan struct{}
+	context  context.Context
+	cancel   context.CancelFunc
+}
+
+// NewRunlogRoundConfirmer provides a new instance of a RunlogRoundConfirmer
+func NewRunlogRoundConfirmer(
+	contract APIConsumer,
+	roundID *big.Int,
+	timeout time.Duration,
+) *RunlogRoundConfirmer {
+	ctx, ctxCancel := context.WithTimeout(context.Background(), timeout)
+	return &RunlogRoundConfirmer{
+		consumer: contract,
+		roundID:  roundID,
+		doneChan: make(chan struct{}),
+		context:  ctx,
+		cancel:   ctxCancel,
+	}
+}
+
+// ReceiveBlock will query the latest Runlog round and check to see whether the round has confirmed
+func (o *RunlogRoundConfirmer) ReceiveBlock(_ client.NodeBlock) error {
+	currentRoundID, err := o.consumer.RoundID(context.Background())
+	if err != nil {
+		return err
+	}
+	ocrLog := log.Info().
+		Str("Contract Address", o.consumer.Address()).
+		Int64("Current Round", currentRoundID.Int64()).
+		Int64("Waiting for Round", o.roundID.Int64())
+	if currentRoundID.Cmp(o.roundID) >= 0 {
+		ocrLog.Msg("Runlog round completed")
+		o.doneChan <- struct{}{}
+	} else {
+		ocrLog.Msg("Waiting for Runlog round")
+	}
+	return nil
+}
+
+// Wait is a blocking function that will wait until the round has confirmed, and timeout if the deadline has passed
+func (o *RunlogRoundConfirmer) Wait() error {
+	for {
+		select {
+		case <-o.doneChan:
+			o.cancel()
+			return nil
+		case <-o.context.Done():
+			return fmt.Errorf("timeout waiting for OCR round to confirm: %d", o.roundID)
+		}
+	}
 }
 
 // OffchainAggregatorRoundConfirmer is a header subscription that awaits for a certain OCR round to be completed
