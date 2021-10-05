@@ -789,6 +789,63 @@ func (o *OffchainAggregatorRoundConfirmer) Wait() error {
 	}
 }
 
+// KeeperConsumerRoundConfirmer is a header subscription that awaits for a round of upkeeps
+type KeeperConsumerRoundConfirmer struct {
+	instance     KeeperConsumer
+	upkeepsValue int
+	doneChan     chan struct{}
+	context      context.Context
+	cancel       context.CancelFunc
+}
+
+// NewKeeperConsumerRoundConfirmer provides a new instance of a KeeperConsumerRoundConfirmer
+func NewKeeperConsumerRoundConfirmer(
+	contract KeeperConsumer,
+	counterValue int,
+	timeout time.Duration,
+) *KeeperConsumerRoundConfirmer {
+	ctx, ctxCancel := context.WithTimeout(context.Background(), timeout)
+	return &KeeperConsumerRoundConfirmer{
+		instance:     contract,
+		upkeepsValue: counterValue,
+		doneChan:     make(chan struct{}),
+		context:      ctx,
+		cancel:       ctxCancel,
+	}
+}
+
+// ReceiveBlock will query the latest Keeper round and check to see whether the round has confirmed
+func (o *KeeperConsumerRoundConfirmer) ReceiveBlock(_ client.NodeBlock) error {
+	upkeeps, err := o.instance.Counter(context.Background())
+	if err != nil {
+		return err
+	}
+	l := log.Info().
+		Str("Contract Address", o.instance.Address()).
+		Int64("Upkeeps", upkeeps.Int64()).
+		Int("Required upkeeps", o.upkeepsValue)
+	if upkeeps.Int64() == int64(o.upkeepsValue) {
+		l.Msg("Upkeep completed")
+		o.doneChan <- struct{}{}
+	} else {
+		l.Msg("Waiting for upkeep round")
+	}
+	return nil
+}
+
+// Wait is a blocking function that will wait until the round has confirmed, and timeout if the deadline has passed
+func (o *KeeperConsumerRoundConfirmer) Wait() error {
+	for {
+		select {
+		case <-o.doneChan:
+			o.cancel()
+			return nil
+		case <-o.context.Done():
+			return fmt.Errorf("timeout waiting for upkeeps to confirm: %d", o.upkeepsValue)
+		}
+	}
+}
+
 // EthereumStorage acts as a conduit for the ethereum version of the storage contract
 type EthereumStorage struct {
 	client       *client.EthereumClient

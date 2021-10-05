@@ -68,6 +68,10 @@ test_ocr: ## run ocr tests
 test_ocr_soak: ## run OCR soak test
 	NETWORK="ethereum_geth_performance" ginkgo -r --focus="@soak-ocr"
 
+.PHONY: test_keeper_soak
+test_keeper_soak: ## run Keeper soak/performance test
+	NETWORK="ethereum_geth_performance" ginkgo -r --focus="@performance-keeper"
+
 .PHONY: test_vrf_soak
 test_vrf_soak: ## run VRF soak test
 	NETWORK="ethereum_geth_performance" ginkgo -r --focus="@soak-vrf"
