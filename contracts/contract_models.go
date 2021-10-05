@@ -258,7 +258,9 @@ type VRFCoordinator interface {
 }
 
 type VRFConsumer interface {
+	Address() string
 	RequestRandomness(fromWallet client.BlockchainWallet, hash [32]byte, fee *big.Int) error
+	CurrentRoundID(ctx context.Context) (*big.Int, error)
 	RandomnessOutput(ctx context.Context) (*big.Int, error)
 	Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Float) error
 }
