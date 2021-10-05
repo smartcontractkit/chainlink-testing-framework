@@ -2,10 +2,8 @@ package contracts
 
 import (
 	"context"
-	"errors"
 	"math/big"
 
-	"github.com/avast/retry-go"
 	"github.com/ethereum/go-ethereum/common"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -149,18 +147,12 @@ var _ = Describe("Keeper suite @keeper", func() {
 	})
 	Describe("with Keeper job", func() {
 		It("performs upkeep of a target contract", func() {
-			err = retry.Do(func() error {
+			Eventually(func(g Gomega){
 				cnt, err := consumer.Counter(context.Background())
-				if err != nil {
-					return err
-				}
-				if cnt.Int64() == 0 {
-					return errors.New("awaiting for upkeep")
-				}
+				g.Expect(err).ShouldNot(HaveOccurred())
+				g.Expect(cnt.Int64()).Should(BeNumerically(">", 0))
 				log.Info().Int64("Upkeep counter", cnt.Int64()).Msg("Upkeeps performed")
-				return nil
-			})
-			Expect(err).ShouldNot(HaveOccurred())
+			}, "2m", "1s").Should(Succeed())
 		})
 	})
 	AfterEach(func() {

@@ -3,14 +3,12 @@ package testcommon
 import (
 	"context"
 	"fmt"
-	"github.com/avast/retry-go"
 	"math/big"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	uuid "github.com/satori/go.uuid"
 	"github.com/smartcontractkit/integrations-framework/actions"
@@ -119,20 +117,12 @@ func CallRunlogOracle(i *RunlogSetupInputs) {
 // CheckRunlogCompleted checks if oracle send the data on chain
 func CheckRunlogCompleted(i *RunlogSetupInputs) {
 	By("receives API call data on-chain", func() {
-		err := retry.Do(func() error {
+		Eventually(func(g Gomega){
 			d, err := i.Consumer.Data(context.Background())
-			if d == nil {
-				return errors.New("no data")
-			}
+			g.Expect(err).ShouldNot(HaveOccurred())
+			g.Expect(d).ShouldNot(BeNil())
 			log.Debug().Int64("Data", d.Int64()).Msg("Found on chain")
-			if d.Int64() != 5 {
-				return errors.New("data is not on chain")
-			}
-			if err != nil {
-				return err
-			}
-			return nil
-		})
-		Expect(err).ShouldNot(HaveOccurred())
+			g.Expect(d.Int64()).Should(BeNumerically("==", 5))
+		}, "2m", "1s").Should(Succeed())
 	})
 }

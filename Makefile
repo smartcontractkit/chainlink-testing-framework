@@ -79,3 +79,7 @@ test_contract: ## run contract tests
 .PHONY: test_vrf
 test_vrf: ## run vrf tests
 	ginkgo -r --focus=@vrf
+
+.PHONY: test_observability
+test_observability: # run observability tests
+	ginkgo -r --focus=@observability

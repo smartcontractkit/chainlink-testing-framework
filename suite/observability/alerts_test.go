@@ -1,4 +1,4 @@
-package alerts
+package observability_test
 
 import (
 	"context"
@@ -11,40 +11,15 @@ import (
 	"github.com/smartcontractkit/integrations-framework/chaos"
 	"github.com/smartcontractkit/integrations-framework/chaos/experiments"
 	"github.com/smartcontractkit/integrations-framework/environment"
-	"github.com/smartcontractkit/integrations-framework/suite/steps"
 	"github.com/smartcontractkit/integrations-framework/suite/testcommon"
 )
 
 var _ = Describe("OCR Alerts suite", func() {
-	var (
-		testSetup *testcommon.OCRSetupInputs
-	)
+	var testSetup *testcommon.OCRSetupInputs
 
 	BeforeEach(func() {
-		By("Deploying the basic environment", func() {
-			testSetup = &testcommon.OCRSetupInputs{}
-			testcommon.DeployOCRForEnv(
-				testSetup,
-				"basic-chainlink",
-				environment.NewChainlinkClusterForAlertsTesting(6),
-			)
-			testcommon.SetupOCRTest(testSetup)
-		})
-
-		By("Creating initializer file for mockserver", func() {
-			steps.WriteDataForOTPEToInitializerFileForMockserver(
-				testSetup.OCRInstance.Address(),
-				testSetup.ChainlinkNodes,
-			)
-		})
-
-		By("Deploying otpe and prometheus", func() {
-			err := testSetup.SuiteSetup.Env.DeploySpecs(environment.OtpeGroup())
-			Expect(err).ShouldNot(HaveOccurred())
-
-			err = testSetup.SuiteSetup.Env.DeploySpecs(environment.PrometheusGroup())
-			Expect(err).ShouldNot(HaveOccurred())
-		})
+		testSetup = &testcommon.OCRSetupInputs{}
+		testcommon.NewOCRSetupInputForObservability(testSetup, 6)
 	})
 
 	Describe("Telemetry Down Alerts", func() {
