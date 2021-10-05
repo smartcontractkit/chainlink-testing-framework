@@ -336,7 +336,7 @@ func NewChainlinkClusterForObservabilityTesting(nodeCount int) K8sEnvSpecInit {
 	}
 
 	dependencyGroup := getBasicDependencyGroup()
-	addServicesForTestingObservabilityToDependencyGroup(dependencyGroup, nodeCount)
+	dependencyGroup.manifests = append(dependencyGroup.manifests, NewExplorerManifest(nodeCount))
 	addPostgresDbsToDependencyGroup(dependencyGroup, nodeCount)
 	dependencyGroups := []*K8sManifestGroup{mockserverConfigDependencyGroup, mockserverDependencyGroup, kafkaDependecyGroup, dependencyGroup}
 
@@ -528,11 +528,6 @@ func addPostgresDbsToDependencyGroup(dependencyGroup *K8sManifestGroup, postgres
 		pManifest.id = fmt.Sprintf("%s-%d", pManifest.id, i)
 		dependencyGroup.manifests = append(dependencyGroup.manifests, pManifest)
 	}
-}
-
-// addServicesForTestingObservabilityToDependencyGroup adds services necessary for testing observability to the dependency group
-func addServicesForTestingObservabilityToDependencyGroup(dependencyGroup *K8sManifestGroup, nodeCount int) {
-	dependencyGroup.manifests = append(dependencyGroup.manifests, NewExplorerManifest(nodeCount))
 }
 
 // OtpeGroup contains manifests for otpe

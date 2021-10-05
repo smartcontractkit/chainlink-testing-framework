@@ -4,10 +4,8 @@ import (
 	"context"
 	"math/big"
 
-	"github.com/avast/retry-go"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	uuid "github.com/satori/go.uuid"
 	"github.com/smartcontractkit/integrations-framework/actions"
@@ -107,18 +105,13 @@ var _ = Describe("VRF suite @vrf", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			err = consumer.RequestRandomness(s.Wallets.Default(), requestHash, big.NewInt(1))
 			Expect(err).ShouldNot(HaveOccurred())
-			err = retry.Do(func() error {
+
+			Eventually(func(g Gomega){
 				out, err := consumer.RandomnessOutput(context.Background())
-				if err != nil {
-					return err
-				}
-				if out.Uint64() == 0 {
-					return errors.New("randomness has not fulfilled yet")
-				}
+				g.Expect(err).ShouldNot(HaveOccurred())
+				g.Expect(out.Uint64()).Should(Not(BeNumerically("==", 0)))
 				log.Debug().Uint64("Output", out.Uint64()).Msg("Randomness fulfilled")
-				return nil
-			})
-			Expect(err).ShouldNot(HaveOccurred())
+			}, "2m", "1s").Should(Succeed())
 		})
 	})
 	AfterEach(func() {
