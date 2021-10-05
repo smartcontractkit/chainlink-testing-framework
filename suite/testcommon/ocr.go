@@ -36,6 +36,7 @@ func DeployOCRForEnv(i *OCRSetupInputs, envName string, envInit environment.K8sE
 			client.NewNetworkFromConfig,
 			tools.ProjectRoot,
 		)
+		Expect(err).ShouldNot(HaveOccurred())
 		i.Mockserver, err = environment.GetMockserverClientFromEnv(i.SuiteSetup.Env)
 		Expect(err).ShouldNot(HaveOccurred())
 
