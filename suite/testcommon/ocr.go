@@ -36,7 +36,9 @@ func DeployOCRForEnv(i *OCRSetupInputs, envName string, envInit environment.K8sE
 			client.NewNetworkFromConfig,
 			tools.ProjectRoot,
 		)
+		i.Mockserver, err = environment.GetMockserverClientFromEnv(i.SuiteSetup.Env)
 		Expect(err).ShouldNot(HaveOccurred())
+
 		i.ChainlinkNodes, err = environment.GetChainlinkClients(i.SuiteSetup.Env)
 		Expect(err).ShouldNot(HaveOccurred())
 		i.DefaultWallet = i.SuiteSetup.Wallets.Default()
@@ -216,13 +218,7 @@ func NewOCRSetupInputForObservability(i *OCRSetupInputs, nodeCount int) {
 	)
 	SetupOCRTest(i)
 
-	err := i.SuiteSetup.Env.DeploySpecs(environment.MockserverGroup())
-	Expect(err).ShouldNot(HaveOccurred())
-
-	i.Mockserver, err = environment.GetMockserverClientFromEnv(i.SuiteSetup.Env)
-	Expect(err).ShouldNot(HaveOccurred())
-
-	err = i.Mockserver.PutExpectations(steps.GetMockserverInitializerDataForOTPE(
+	err := i.Mockserver.PutExpectations(steps.GetMockserverInitializerDataForOTPE(
 		i.OCRInstance.Address(),
 		i.ChainlinkNodes,
 	))

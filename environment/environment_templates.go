@@ -281,6 +281,16 @@ func NewGanacheManifest() *K8sManifest {
 
 // NewChainlinkCluster is a basic environment that deploys hardhat with a chainlink cluster and an external adapter
 func NewChainlinkCluster(nodeCount int) K8sEnvSpecInit {
+	mockserverConfigDependencyGroup := &K8sManifestGroup{
+		id:        "MockserverConfigDependencyGroup",
+		manifests: []K8sEnvResource{NewMockserverConfigHelmChart()},
+	}
+
+	mockserverDependencyGroup := &K8sManifestGroup{
+		id:        "MockserverDependencyGroup",
+		manifests: []K8sEnvResource{NewMockserverHelmChart()},
+	}
+
 	chainlinkGroup := &K8sManifestGroup{
 		id:        "chainlinkCluster",
 		manifests: []K8sEnvResource{},
@@ -293,13 +303,23 @@ func NewChainlinkCluster(nodeCount int) K8sEnvSpecInit {
 
 	dependencyGroup := getBasicDependencyGroup()
 	addPostgresDbsToDependencyGroup(dependencyGroup, nodeCount)
-	dependencyGroups := []*K8sManifestGroup{dependencyGroup}
+	dependencyGroups := []*K8sManifestGroup{mockserverConfigDependencyGroup, mockserverDependencyGroup, dependencyGroup}
 	return addNetworkManifestToDependencyGroup("basic-chainlink", chainlinkGroup, dependencyGroups)
 }
 
 // NewChainlinkClusterForObservabilityTesting is a basic environment that deploys a chainlink cluster with dependencies
 // for testing observability
 func NewChainlinkClusterForObservabilityTesting(nodeCount int) K8sEnvSpecInit {
+	mockserverConfigDependencyGroup := &K8sManifestGroup{
+		id:        "MockserverConfigDependencyGroup",
+		manifests: []K8sEnvResource{NewMockserverConfigHelmChart()},
+	}
+
+	mockserverDependencyGroup := &K8sManifestGroup{
+		id:        "MockserverDependencyGroup",
+		manifests: []K8sEnvResource{NewMockserverHelmChart()},
+	}
+
 	chainlinkGroup := &K8sManifestGroup{
 		id:        "chainlinkCluster",
 		manifests: []K8sEnvResource{},
@@ -318,7 +338,7 @@ func NewChainlinkClusterForObservabilityTesting(nodeCount int) K8sEnvSpecInit {
 	dependencyGroup := getBasicDependencyGroup()
 	addServicesForTestingObservabilityToDependencyGroup(dependencyGroup, nodeCount)
 	addPostgresDbsToDependencyGroup(dependencyGroup, nodeCount)
-	dependencyGroups := []*K8sManifestGroup{kafkaDependecyGroup, dependencyGroup}
+	dependencyGroups := []*K8sManifestGroup{mockserverConfigDependencyGroup, mockserverDependencyGroup, kafkaDependecyGroup, dependencyGroup}
 
 	return addNetworkManifestToDependencyGroup("basic-chainlink", chainlinkGroup, dependencyGroups)
 }
@@ -326,6 +346,16 @@ func NewChainlinkClusterForObservabilityTesting(nodeCount int) K8sEnvSpecInit {
 // NewMixedVersionChainlinkCluster mixes the currently latest chainlink version (as defined by the config file) with
 // a number of past stable versions (defined by pastVersionsCount), ensuring that at least one of each is deployed
 func NewMixedVersionChainlinkCluster(nodeCount, pastVersionsCount int) K8sEnvSpecInit {
+	mockserverConfigDependencyGroup := &K8sManifestGroup{
+		id:        "MockserverConfigDependencyGroup",
+		manifests: []K8sEnvResource{NewMockserverConfigHelmChart()},
+	}
+
+	mockserverDependencyGroup := &K8sManifestGroup{
+		id:        "MockserverDependencyGroup",
+		manifests: []K8sEnvResource{NewMockserverHelmChart()},
+	}
+
 	if nodeCount < 3 {
 		log.Warn().
 			Int("Provided Node Count", nodeCount).
@@ -359,7 +389,7 @@ func NewMixedVersionChainlinkCluster(nodeCount, pastVersionsCount int) K8sEnvSpe
 
 	dependencyGroup := getBasicDependencyGroup()
 	addPostgresDbsToDependencyGroup(dependencyGroup, nodeCount)
-	dependencyGroups := []*K8sManifestGroup{dependencyGroup}
+	dependencyGroups := []*K8sManifestGroup{mockserverConfigDependencyGroup, mockserverDependencyGroup, dependencyGroup}
 	return addNetworkManifestToDependencyGroup("mixed-version-chainlink", chainlinkGroup, dependencyGroups)
 }
 
@@ -503,27 +533,6 @@ func addPostgresDbsToDependencyGroup(dependencyGroup *K8sManifestGroup, postgres
 // addServicesForTestingObservabilityToDependencyGroup adds services necessary for testing observability to the dependency group
 func addServicesForTestingObservabilityToDependencyGroup(dependencyGroup *K8sManifestGroup, nodeCount int) {
 	dependencyGroup.manifests = append(dependencyGroup.manifests, NewExplorerManifest(nodeCount))
-}
-
-// MockserverGroup contains manifests for mockserver-config and mockserver
-func MockserverGroup() K8sEnvSpecInit {
-	return func(config *config.NetworkConfig) (string, K8sEnvSpecs) {
-		var specs K8sEnvSpecs
-		mockserverConfigDependencyGroup := &K8sManifestGroup{
-			id:        "MockserverConfigDependencyGroup",
-			manifests: []K8sEnvResource{NewMockserverConfigHelmChart()},
-		}
-
-		mockserverDependencyGroup := &K8sManifestGroup{
-			id:        "MockserverDependencyGroup",
-			manifests: []K8sEnvResource{NewMockserverHelmChart()},
-		}
-
-		specs = append(specs, mockserverConfigDependencyGroup)
-		specs = append(specs, mockserverDependencyGroup)
-
-		return "envName", specs
-	}
 }
 
 // OtpeGroup contains manifests for otpe
