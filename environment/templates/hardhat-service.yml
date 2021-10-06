@@ -1,10 +1,8 @@
 metadata:
-  name: hardhat-network
+  generateName: hardhat-network-
 spec:
   ports:
   - name: access
-    port: {{ .Networks.ethereum_hardhat.RPCPort }}
-    targetPort: {{ .Networks.ethereum_hardhat.RPCPort }}
-  selector:
-    app: hardhat-network
+    port: {{ (getNetwork "ethereum_hardhat").RPCPort }}
+    targetPort: {{ (getNetwork "ethereum_hardhat").RPCPort }}
   type: ClusterIP

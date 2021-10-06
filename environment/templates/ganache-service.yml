@@ -3,8 +3,8 @@ metadata:
 spec:
   ports:
   - name: access
-    port: {{ .Networks.ethereum_ganache.RPCPort }}
-    targetPort: {{ .Networks.ethereum_ganache.RPCPort }}
+    port: {{ (getNetwork "ethereum_ganache").RPCPort }}
+    targetPort: {{ (getNetwork "ethereum_ganache").RPCPort }}
   selector:
     app: ganache-network
   type: ClusterIP

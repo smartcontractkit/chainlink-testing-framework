@@ -81,7 +81,6 @@ networks:
         minimum_confirmations: 1
         gas_estimation_buffer: 100000
         block_gas_limit: 40000000
-        rpc_port: 8546
     ethereum_geth_performance: &ethereum_geth_performance
         <<: *common_ethereum
         transaction_timeout: 5m
@@ -92,16 +91,10 @@ networks:
         type: evm_multi
         transaction_timeout: 10m
         gas_estimation_buffer: 0
-    ethereum_hardhat:
-        <<: *common_ethereum
-        name: "Ethereum Hardhat"
-        gas_estimation_buffer: 0
-        rpc_port: 8545
     ethereum_ganache:
         <<: *common_ethereum
         name: "Ethereum Ganache"
         minimum_confirmations: 0
-        rpc_port: 8547
     ethereum_kovan: &common_ethereum_testnet
         name: "Ethereum Kovan"
         chain_id: 42

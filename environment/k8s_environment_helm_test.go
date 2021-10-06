@@ -31,9 +31,9 @@ var _ = Describe("Environment with Helm @helm_deploy", func() {
 			err = env.DeploySpecs(NewChainlinkCluster(1))
 			Expect(err).ShouldNot(HaveOccurred())
 			// check service details has EVM port
-			sd, err := env.GetServiceDetails(DefaultEVMRPCPort)
+			sd, err := env.GetServiceDetails(networkConfig.RemotePort())
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(sd.RemoteURL).Should(ContainSubstring(strconv.Itoa(DefaultEVMRPCPort)))
+			Expect(sd.RemoteURL).Should(ContainSubstring(strconv.Itoa(int(networkConfig.RemotePort()))))
 		})
 		AfterEach(func() {
 			By("Tearing down the environment", func() {

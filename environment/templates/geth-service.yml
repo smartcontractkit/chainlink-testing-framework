@@ -1,10 +1,8 @@
 metadata:
-  name: geth-dev-network
+  generateName: geth-network-
 spec:
   ports:
   - name: access
-    port: {{ .Networks.ethereum_geth.RPCPort }}
-    targetPort: {{ .Networks.ethereum_geth.RPCPort }}
-  selector:
-    app: geth-dev-network
+    port: {{ (getNetwork "ethereum_geth").RPCPort }}
+    targetPort: {{ (getNetwork "ethereum_geth").RPCPort }}
   type: ClusterIP

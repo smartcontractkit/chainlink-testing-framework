@@ -33,8 +33,8 @@ type NetworkInfo struct {
 	Network  client.BlockchainNetwork
 }
 
-// getNetworkInfo initializes the network's blockchain client and gathers all test-relevant network information
-func getNetworkInfo(network client.BlockchainNetwork, env environment.Environment) (NetworkInfo, error) {
+// buildNetworkInfo initializes the network's blockchain client and gathers all test-relevant network information
+func buildNetworkInfo(network client.BlockchainNetwork, env environment.Environment) (NetworkInfo, error) {
 	// Initialize blockchain client
 	var bcc client.BlockchainClient
 	var err error
@@ -113,7 +113,7 @@ func SingleNetworkSetup(
 		return nil, err
 	}
 
-	networkInfo, err := getNetworkInfo(network, env)
+	networkInfo, err := buildNetworkInfo(network, env)
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +196,7 @@ func MultiNetworkSetup(
 
 	allNetworks := make([]NetworkInfo, len(networks))
 	for index, network := range networks {
-		networkInfo, err := getNetworkInfo(network, env)
+		networkInfo, err := buildNetworkInfo(network, env)
 		if err != nil {
 			return nil, err
 		}

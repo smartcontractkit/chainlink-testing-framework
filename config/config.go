@@ -3,6 +3,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -50,7 +51,7 @@ func (c *Config) GetNetworkConfig(name string) (*NetworkConfig, error) {
 	if network, ok := c.Networks[name]; ok {
 		return network, nil
 	}
-	return nil, errors.New("no supported network of name " + name + " was found. Ensure that the config for it exists.")
+	return nil, fmt.Errorf("no supported network of name '%s' was found. Ensure that the config for it exists.", name)
 }
 
 // ContractsConfig contracts sources config

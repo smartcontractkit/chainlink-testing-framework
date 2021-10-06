@@ -33,7 +33,7 @@ func init() {
 	createCmd.Flags().StringP(FlagType, "t", "chainlink", "type of environment to deploy")
 	createCmd.Flags().IntP(FlagNodeCount, "c", 3, "number of Chainlink nodes to deploy")
 	createCmd.Flags().StringP(FlagNetwork,
-		"n", "ethereum_hardhat", "the network to deploy the Chainlink cluster on")
+		"n", "ethereum_geth", "the network to deploy the Chainlink cluster on")
 }
 
 // Execute runs the root command

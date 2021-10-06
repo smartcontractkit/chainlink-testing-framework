@@ -45,7 +45,7 @@ func createRunE(cmd *cobra.Command, _ []string) error {
 	switch envType {
 	case "chainlink":
 		envSpec := environment.NewChainlinkCluster(nodes)
-		env, err = environment.NewK8sEnvironment("basic-chainlink", cfg, networkConfig)
+		env, err = environment.NewK8sEnvironment(cfg, networkConfig)
 		if err != nil {
 			return err
 		}

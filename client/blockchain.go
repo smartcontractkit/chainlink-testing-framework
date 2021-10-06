@@ -115,17 +115,8 @@ func NewNetworkFromConfig(conf *config.Config) (BlockchainNetwork, error) {
 // MultipleNetworks enables launching multiple networks for simultaneous usage in test scenarios
 func MultipleNetworks(networkIDs ...string) MultiNetworkInit {
 	return func(conf *config.Config) ([]BlockchainNetwork, error) {
-		networkTracker := make(map[string]bool)
 		networks := make([]BlockchainNetwork, len(networkIDs))
 		for index, networkID := range networkIDs {
-			// Cannot handle multiple of the same network, throws our templating all out of whack and quickly becomes a
-			// massive headache without an overhaul of how we deal with our templating
-			if _, present := networkTracker[networkID]; present {
-				return nil, fmt.Errorf("Cannot use multiple of the same network, '%s'", networkID)
-			} else {
-				networkTracker[networkID] = true
-			}
-
 			conf.Network = networkID
 			network, err := NewNetworkFromConfig(conf)
 			if err != nil {

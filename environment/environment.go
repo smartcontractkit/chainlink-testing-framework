@@ -12,11 +12,6 @@ import (
 	"github.com/smartcontractkit/integrations-framework/config"
 )
 
-const (
-	// OtherMinersRPCPort default port for any additional blockchain node
-	OtherMinersRPCPort = 9545
-)
-
 // Environment is the interface that represents a deployed environment, whether locally or on remote machines
 type Environment interface {
 	ID() string
@@ -176,7 +171,7 @@ func NewBlockchainClients(env Environment, network client.BlockchainNetwork) (cl
 	}
 	u := strings.Replace(primaryClientDetails.LocalURL.String(), "http", "ws", -1)
 	urls = append(urls, u)
-	sd, err := env.GetAllServiceDetails(OtherMinersRPCPort)
+	sd, err := env.GetAllServiceDetails(MinersRPCPort)
 	if err != nil {
 		return nil, err
 	}
