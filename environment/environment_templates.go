@@ -215,6 +215,11 @@ func NewMockserverHelmChart() *HelmChart {
 }
 
 // NewPrometheusManifest creates new k8s manifest for prometheus
+// It receives a map of strings to *os.File which it uses in the following way:
+// The string in the map is the template value that will be used the prometheus-config-map.yml file.
+// The *os.File contains the rules yaml file, before being added to the values map of the K8sManifest.
+// Every line of the file is appended 4 spaces, this is done so after the file is templated to the
+// prometheus-config-map.yml file, the yml will be formatted correctly.
 func NewPrometheusManifest(rules map[string]*os.File) *K8sManifest {
 	vals := map[string]interface{}{}
 	for val, file := range rules {
