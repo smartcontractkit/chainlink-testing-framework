@@ -7,7 +7,10 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/smartcontractkit/integrations-framework/environment"
 	"github.com/smartcontractkit/integrations-framework/suite/testcommon"
+	"github.com/smartcontractkit/integrations-framework/tools"
 	"math/rand"
+	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -16,7 +19,11 @@ var _ = Describe("OTPE metrics suite", func() {
 
 	BeforeEach(func() {
 		testSetup = &testcommon.OCRSetupInputs{}
-		testcommon.NewOCRSetupInputForObservability(testSetup, 6)
+		rulesFilePath := filepath.Join(tools.ProjectRoot, "/environment/templates/prometheus/rules/ocr.rules.yml")
+		file, err := os.Open(rulesFilePath)
+		Expect(err).ShouldNot(HaveOccurred())
+		rules := map[string]*os.File{"ocrRulesYml": file}
+		testcommon.NewOCRSetupInputForObservability(testSetup, 6, rules)
 	})
 
 	It("Computes correctly the median feed price from all nodes in current round", func() {

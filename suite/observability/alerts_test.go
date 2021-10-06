@@ -12,6 +12,9 @@ import (
 	"github.com/smartcontractkit/integrations-framework/chaos/experiments"
 	"github.com/smartcontractkit/integrations-framework/environment"
 	"github.com/smartcontractkit/integrations-framework/suite/testcommon"
+	"github.com/smartcontractkit/integrations-framework/tools"
+	"os"
+	"path/filepath"
 )
 
 var _ = Describe("OCR Alerts suite", func() {
@@ -19,7 +22,11 @@ var _ = Describe("OCR Alerts suite", func() {
 
 	BeforeEach(func() {
 		testSetup = &testcommon.OCRSetupInputs{}
-		testcommon.NewOCRSetupInputForObservability(testSetup, 6)
+		rulesFilePath := filepath.Join(tools.ProjectRoot, "/environment/templates/prometheus/rules/ocr.rules.yml")
+		file, err := os.Open(rulesFilePath)
+		Expect(err).ShouldNot(HaveOccurred())
+		rules := map[string]*os.File{"ocrRulesYml": file}
+		testcommon.NewOCRSetupInputForObservability(testSetup, 6, rules)
 	})
 
 	Describe("Telemetry Down Alerts", func() {

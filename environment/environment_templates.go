@@ -1,12 +1,13 @@
 package environment
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"helm.sh/helm/v3/pkg/chartutil"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -214,21 +215,27 @@ func NewMockserverHelmChart() *HelmChart {
 }
 
 // NewPrometheusManifest creates new k8s manifest for prometheus
-func NewPrometheusManifest() *K8sManifest {
-	rulesFilePath := filepath.Join(tools.ProjectRoot, "/environment/templates/prometheus/rules/ocr.rules.yml")
-	content, err := ioutil.ReadFile(rulesFilePath)
-	if err != nil {
-		return nil
+func NewPrometheusManifest(rules map[string]*os.File) *K8sManifest {
+	vals := map[string]interface{}{}
+	for val, file := range rules {
+		scanner := bufio.NewScanner(file)
+		var txtlines []string
+		for scanner.Scan() {
+			txtlines = append(txtlines, scanner.Text())
+		}
+		for index, line := range txtlines {
+			txtlines[index] = fmt.Sprintf("    %s", line)
+		}
+		vals[val] = strings.Join(txtlines, "\n")
 	}
+
 	return &K8sManifest{
 		id:             "prometheus",
 		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/prometheus/prometheus-deployment.yml"),
 		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/prometheus/prometheus-service.yml"),
 		ConfigMapFile:  filepath.Join(tools.ProjectRoot, "/environment/templates/prometheus/prometheus-config-map.yml"),
 
-		values: map[string]interface{}{
-			"ocrRulesYml": string(content),
-		},
+		values: vals,
 	}
 }
 
@@ -546,12 +553,12 @@ func OtpeGroup() K8sEnvSpecInit {
 }
 
 // PrometheusGroup contains manifests for prometheus
-func PrometheusGroup() K8sEnvSpecInit {
+func PrometheusGroup(rules map[string]*os.File) K8sEnvSpecInit {
 	return func(config *config.NetworkConfig) (string, K8sEnvSpecs) {
 		var specs K8sEnvSpecs
 		prometheusDependencyGroup := &K8sManifestGroup{
 			id:        "PrometheusDependencyGroup",
-			manifests: []K8sEnvResource{NewPrometheusManifest()},
+			manifests: []K8sEnvResource{NewPrometheusManifest(rules)},
 		}
 		specs = append(specs, prometheusDependencyGroup)
 		return "", specs
