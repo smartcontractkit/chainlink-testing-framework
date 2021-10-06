@@ -23,15 +23,15 @@ const (
 
 // Config is the overall config for the framework, holding configurations for supported networks
 type Config struct {
-	Network            string                    `mapstructure:"network" yaml:"network"`
-	Logging            *LoggingConfig            `mapstructure:"logging" yaml:"logging"`
-	Networks           map[string]*NetworkConfig `mapstructure:"networks" yaml:"networks"`
-	Retry              *RetryConfig              `mapstructure:"retry" yaml:"retry"`
-	Apps               AppConfig                 `mapstructure:"apps" yaml:"apps"`
-	Kubernetes         KubernetesConfig          `mapstructure:"kubernetes" yaml:"kubernetes"`
-	KeepEnvironments   string                    `mapstructure:"keep_environments" yaml:"keep_environments"`
-	Prometheus         *PrometheusConfig         `mapstructure:"prometheus" yaml:"prometheus"`
-	Contracts          *ContractsConfig          `mapstructure:"contracts" yaml:"contracts"`
+	Network            string                   `mapstructure:"network" yaml:"network"`
+	Logging            *LoggingConfig           `mapstructure:"logging" yaml:"logging"`
+	Networks           map[string]NetworkConfig `mapstructure:"networks" yaml:"networks"`
+	Retry              *RetryConfig             `mapstructure:"retry" yaml:"retry"`
+	Apps               AppConfig                `mapstructure:"apps" yaml:"apps"`
+	Kubernetes         KubernetesConfig         `mapstructure:"kubernetes" yaml:"kubernetes"`
+	KeepEnvironments   string                   `mapstructure:"keep_environments" yaml:"keep_environments"`
+	Prometheus         *PrometheusConfig        `mapstructure:"prometheus" yaml:"prometheus"`
+	Contracts          *ContractsConfig         `mapstructure:"contracts" yaml:"contracts"`
 	DefaultKeyStore    string
 	ConfigFileLocation string
 }
@@ -47,11 +47,11 @@ type LoggingConfig struct {
 }
 
 // GetNetworkConfig finds a specified network config based on its name
-func (c *Config) GetNetworkConfig(name string) (*NetworkConfig, error) {
+func (c *Config) GetNetworkConfig(name string) (NetworkConfig, error) {
 	if network, ok := c.Networks[name]; ok {
 		return network, nil
 	}
-	return nil, fmt.Errorf("no supported network of name '%s' was found. Ensure that the config for it exists.", name)
+	return NetworkConfig{}, fmt.Errorf("no supported network of name '%s' was found. Ensure that the config for it exists.", name)
 }
 
 // ContractsConfig contracts sources config

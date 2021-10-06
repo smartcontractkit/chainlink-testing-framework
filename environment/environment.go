@@ -150,7 +150,7 @@ func NewBlockchainClient(env Environment, network client.BlockchainNetwork) (cli
 	sd, err := env.GetServiceDetails(network.RemotePort())
 	if err == nil {
 		url := fmt.Sprintf("ws://%s", sd.LocalURL.Host)
-		log.Debug().Str("URL", url).Msg("Selecting network")
+		log.Debug().Str("URL", url).Str("Network", network.ID()).Msg("Selecting network")
 		network.SetURL(url)
 	}
 	network.Config().PrivateKeyStore, err = NewPrivateKeyStoreFromEnv(env, network.Config())

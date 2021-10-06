@@ -36,9 +36,9 @@ type EthereumClients struct {
 	Clients       []*EthereumClient
 }
 
-// GetName gets the ID of the chain that the clients are connected to
-func (e *EthereumClients) GetName() string {
-	return e.DefaultClient.GetName()
+// GetNetworkName gets the ID of the chain that the clients are connected to
+func (e *EthereumClients) GetNetworkName() string {
+	return e.DefaultClient.GetNetworkName()
 }
 
 // GetID gets client ID, node number it's connected to
@@ -269,8 +269,8 @@ func NewEthereumClients(network BlockchainNetwork) (*EthereumClients, error) {
 	return ecl, nil
 }
 
-// GetName retrieves the ID of the network that the client interacts with
-func (e *EthereumClient) GetName() string {
+// GetNetworkName retrieves the ID of the network that the client interacts with
+func (e *EthereumClient) GetNetworkName() string {
 	return e.Network.ID()
 }
 

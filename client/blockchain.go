@@ -29,7 +29,7 @@ const (
 // of network types within the test suite
 type BlockchainClient interface {
 	Get() interface{}
-	GetName() string
+	GetNetworkName() string
 	GetID() int
 	SetID(id int)
 	SetDefaultClient(clientID int) error
@@ -88,10 +88,10 @@ type EthereumNetwork struct {
 }
 
 // NewEthereumNetwork creates a way to interact with any specified EVM blockchain
-func newEthereumNetwork(ID string, networkConfig *config.NetworkConfig) (BlockchainNetwork, error) {
+func newEthereumNetwork(ID string, networkConfig config.NetworkConfig) (BlockchainNetwork, error) {
 	return &EthereumNetwork{
 		networkID:     ID,
-		networkConfig: networkConfig,
+		networkConfig: &networkConfig,
 	}, nil
 }
 

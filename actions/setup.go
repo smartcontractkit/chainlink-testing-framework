@@ -235,8 +235,8 @@ func (s *multiNetworkSuiteSetup) DefaultNetwork() NetworkInfo {
 func (s *multiNetworkSuiteSetup) Network(networkID string) (NetworkInfo, error) {
 	networkIDs := make([]string, 0)
 	for _, network := range s.networks {
-		networkIDs = append(networkIDs, network.Client.GetName())
-		if network.Client.GetName() == networkID {
+		networkIDs = append(networkIDs, network.Client.GetNetworkName())
+		if network.Client.GetNetworkName() == networkID {
 			return network, nil
 		}
 	}
@@ -248,8 +248,8 @@ func (s *multiNetworkSuiteSetup) Networks(networkID string) ([]NetworkInfo, erro
 	networkIDs := make([]string, 0)
 	networks := make([]NetworkInfo, 0)
 	for _, network := range s.networks {
-		networkIDs = append(networkIDs, network.Client.GetName())
-		if network.Client.GetName() == networkID {
+		networkIDs = append(networkIDs, network.Client.GetNetworkName())
+		if network.Client.GetNetworkName() == networkID {
 			networks = append(networks, network)
 		}
 	}
@@ -296,7 +296,7 @@ func teardown(config config.Config, env environment.Environment, clients ...clie
 		for _, client := range clients {
 			if err := client.Close(); err != nil {
 				log.Err(err).
-					Str("Network", client.GetName()).
+					Str("Network", client.GetNetworkName()).
 					Msgf("Error while closing the Blockchain client")
 			}
 		}

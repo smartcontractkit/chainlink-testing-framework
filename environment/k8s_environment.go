@@ -718,10 +718,10 @@ func (tracker *TemplateNetworkTracker) getNetwork(networkName string) (*config.N
 	}
 	if _, valid := tracker.networks[networkName]; valid {
 		if tracker.networkIndices[networkName] < len(tracker.networks[networkName]) {
+			tracker.lastAccessedNetwork = networkName
 			return tracker.networks[networkName][tracker.networkIndices[networkName]], nil
 		} else {
 			err := fmt.Errorf("No more networks of the name '%s'. Only found %d", networkName, len(tracker.networks[networkName]))
-			log.Err(err).Msg("Error trying to get network for template")
 			return nil, err
 		}
 	} else {
