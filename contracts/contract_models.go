@@ -131,6 +131,7 @@ type Oracle interface {
 
 type APIConsumer interface {
 	Address() string
+	RoundID(ctx context.Context) (*big.Int, error)
 	Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Float) error
 	Data(ctx context.Context) (*big.Int, error)
 	CreateRequestTo(
