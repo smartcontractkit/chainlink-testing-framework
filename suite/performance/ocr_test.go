@@ -25,6 +25,7 @@ var _ = Describe("OCR soak test @soak-ocr", func() {
 		By("Deploying the environment", func() {
 			s, err = actions.DefaultLocalSetup(
 				"ocr-soak",
+				environment.PerfTestEnvLabelsMap,
 				environment.NewChainlinkCluster(5),
 				client.NewNetworkFromConfig,
 				tools.ProjectRoot,

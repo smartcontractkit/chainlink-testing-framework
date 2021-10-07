@@ -24,6 +24,7 @@ var _ = Describe("VRF soak test @soak-vrf", func() {
 		By("Deploying the environment", func() {
 			suiteSetup, err = actions.DefaultLocalSetup(
 				"vrf-soak",
+				environment.PerfTestEnvLabelsMap,
 				// more than one node is useless for VRF, because nodes are not cooperating for randomness
 				environment.NewChainlinkCluster(1),
 				client.NewNetworkFromConfig,
@@ -55,7 +56,7 @@ var _ = Describe("VRF soak test @soak-vrf", func() {
 						NumberOfContracts: 30,
 					},
 					RoundTimeout: 60 * time.Second,
-					TestDuration: 3 * time.Minute,
+					TestDuration: 30 * time.Minute,
 				},
 				suiteSetup.Env,
 				suiteSetup.Link,

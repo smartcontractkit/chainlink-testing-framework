@@ -23,6 +23,7 @@ var _ = Describe("Cronjob suite @cron", func() {
 		By("Deploying the environment", func() {
 			s, err = actions.DefaultLocalSetup(
 				"basic-chainlink",
+				nil,
 				environment.NewChainlinkCluster(1),
 				client.NewNetworkFromConfig,
 				tools.ProjectRoot,
@@ -53,7 +54,7 @@ var _ = Describe("Cronjob suite @cron", func() {
 
 	Describe("with Cron job", func() {
 		It("runs 5 times with no errors", func() {
-			Eventually(func(g Gomega){
+			Eventually(func(g Gomega) {
 				jobRuns, err := nodes[0].ReadRunsByJob(job.Data.ID)
 				g.Expect(err).ShouldNot(HaveOccurred())
 

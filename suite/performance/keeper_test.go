@@ -24,6 +24,7 @@ var _ = Describe("Keeper performance test @performance-keeper", func() {
 		By("Deploying the environment", func() {
 			suiteSetup, err = actions.DefaultLocalSetup(
 				"keeper-soak",
+				nil,
 				environment.NewChainlinkCluster(5),
 				client.NewNetworkFromConfig,
 				tools.ProjectRoot,

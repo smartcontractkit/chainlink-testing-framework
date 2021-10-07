@@ -21,6 +21,7 @@ var _ = Describe("Basic Contract Interactions @contract", func() {
 			var err error
 			s, err = actions.DefaultLocalSetup(
 				"basic-chainlink",
+				nil,
 				environment.NewChainlinkCluster(0),
 				client.NewNetworkFromConfig,
 				tools.ProjectRoot,

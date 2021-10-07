@@ -24,6 +24,7 @@ var _ = Describe("Runlog soak test @soak-runlog", func() {
 		By("Deploying the environment", func() {
 			suiteSetup, err = actions.DefaultLocalSetup(
 				"runlog-soak",
+				environment.PerfTestEnvLabelsMap,
 				// no need more than one node for runlog test
 				environment.NewChainlinkCluster(1),
 				client.NewNetworkFromConfig,

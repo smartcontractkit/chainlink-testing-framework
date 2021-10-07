@@ -32,6 +32,7 @@ func DeployOCRForEnv(i *OCRSetupInputs, envName string, envInit environment.K8sE
 		var err error
 		i.SuiteSetup, err = actions.DefaultLocalSetup(
 			envName,
+			nil,
 			envInit,
 			client.NewNetworkFromConfig,
 			tools.ProjectRoot,

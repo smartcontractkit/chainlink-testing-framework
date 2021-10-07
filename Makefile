@@ -95,3 +95,7 @@ test_vrf: ## run vrf tests
 .PHONY: test_observability
 test_observability: # run observability tests
 	ginkgo -r --focus=@observability
+
+.PHONY: test_cleaner
+test_cleaner: ## run cleaner tests
+	ginkgo -r --focus=@cleaner

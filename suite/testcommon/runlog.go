@@ -35,6 +35,7 @@ func SetupRunlogEnv(i *RunlogSetupInputs) {
 	By("Deploying the environment", func() {
 		i.S, i.Err = actions.DefaultLocalSetup(
 			"basic-chainlink",
+			nil,
 			environment.NewChainlinkCluster(1),
 			client.NewNetworkFromConfig,
 			tools.ProjectRoot,
@@ -117,7 +118,7 @@ func CallRunlogOracle(i *RunlogSetupInputs) {
 // CheckRunlogCompleted checks if oracle send the data on chain
 func CheckRunlogCompleted(i *RunlogSetupInputs) {
 	By("receives API call data on-chain", func() {
-		Eventually(func(g Gomega){
+		Eventually(func(g Gomega) {
 			d, err := i.Consumer.Data(context.Background())
 			g.Expect(err).ShouldNot(HaveOccurred())
 			g.Expect(d).ShouldNot(BeNil())

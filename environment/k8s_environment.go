@@ -43,6 +43,27 @@ import (
 const (
 	SelectorLabelKey          = "app"
 	PrivateNetworksInfoSecret = "private-keys"
+
+	// BasicTestNamespaceSelector basic test namespace selector
+	BasicTestNamespaceSelector = "type=test"
+	// NamespaceActivePhaseSelector allows to check if namespace is currently active
+	NamespaceActivePhaseSelector = "status.phase=Active"
+)
+
+var (
+	// BasicTestEnvLabelsMap labels for basic test env,
+	// env will be removed if for some reason test will fail to do so
+	BasicTestEnvLabelsMap = map[string]string{
+		"type":    "test",
+		"policy":  "timeout",
+		"timeout": "20m",
+	}
+	// PerfTestEnvLabelsMap performance test timeout policy labels
+	PerfTestEnvLabelsMap = map[string]string{
+		"type":    "test",
+		"policy":  "timeout",
+		"timeout": "6h",
+	}
 )
 
 // K8sEnvSpecs represents a series of environment resources to be deployed. The resources in the array will be
@@ -90,6 +111,7 @@ type K8sEnvironment struct {
 // your kube config will always be used.
 func NewK8sEnvironment(
 	environmentName string,
+	policyLabels map[string]string,
 	cfg *config.Config,
 	network client.BlockchainNetwork,
 ) (Environment, error) {
@@ -105,12 +127,12 @@ func NewK8sEnvironment(
 		return nil, err
 	}
 	env := &K8sEnvironment{
-		k8sClient: k8sClient,
-		k8sConfig: k8sConfig,
-		config:    cfg,
-		network:   network,
+		k8sClient:        k8sClient,
+		k8sConfig:        k8sConfig,
+		config:           cfg,
+		network:          network,
 		allDeploysValues: map[string]interface{}{},
-		specs: K8sEnvSpecs{},
+		specs:            K8sEnvSpecs{},
 	}
 	log.Info().Str("Host", k8sConfig.Host).Msg("Using Kubernetes cluster")
 
@@ -121,7 +143,10 @@ func NewK8sEnvironment(
 		}
 		network.SetURL(purl)
 	}
-	namespace, err := env.createNamespace(environmentName)
+	if cfg.KeepEnvironments != "Never" {
+		policyLabels = nil
+	}
+	namespace, err := env.createNamespace(environmentName, policyLabels)
 	if err != nil {
 		return nil, err
 	}
@@ -402,15 +427,15 @@ func (env *K8sEnvironment) deploySpecs(startIndex int, errChan chan<- error) {
 	close(errChan)
 }
 
-func (env *K8sEnvironment) createNamespace(namespace string) (*coreV1.Namespace, error) {
+func (env *K8sEnvironment) createNamespace(namespace string, policyLabels map[string]string) (*coreV1.Namespace, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
-
 	createdNamespace, err := env.k8sClient.CoreV1().Namespaces().Create(
 		ctx,
 		&coreV1.Namespace{
 			ObjectMeta: metaV1.ObjectMeta{
 				GenerateName: namespace + "-",
+				Labels:       policyLabels,
 			},
 		},
 		metaV1.CreateOptions{},

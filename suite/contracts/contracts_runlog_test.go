@@ -34,6 +34,7 @@ var _ = Describe("Direct request suite @runlog", func() {
 		By("Deploying the environment", func() {
 			s, err = actions.DefaultLocalSetup(
 				"basic-chainlink",
+				environment.BasicTestEnvLabelsMap,
 				environment.NewChainlinkCluster(1),
 				client.NewNetworkFromConfig,
 				tools.ProjectRoot,
@@ -113,7 +114,7 @@ var _ = Describe("Direct request suite @runlog", func() {
 
 	Describe("with DirectRequest job", func() {
 		It("receives API call data on-chain", func() {
-			Eventually(func(g Gomega){
+			Eventually(func(g Gomega) {
 				d, err := consumer.Data(context.Background())
 				g.Expect(err).ShouldNot(HaveOccurred())
 				g.Expect(d).ShouldNot(BeNil())

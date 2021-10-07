@@ -34,6 +34,7 @@ var _ = Describe("Flux monitor suite @flux", func() {
 		By("Deploying the environment", func() {
 			s, err = actions.DefaultLocalSetup(
 				"basic-chainlink",
+				nil,
 				environment.NewChainlinkCluster(3),
 				client.NewNetworkFromConfig,
 				tools.ProjectRoot,
