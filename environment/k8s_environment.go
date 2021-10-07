@@ -79,10 +79,11 @@ type K8sEnvironment struct {
 	namespace *coreV1.Namespace
 
 	// Environment resources
-	config       *config.Config
-	networksList []client.BlockchainNetwork
-	networksMap  map[string][]*config.NetworkConfig
-	chaos        *chaos.Controller
+	config         *config.Config
+	networksList   []client.BlockchainNetwork
+	networksMap    map[string][]*config.NetworkConfig
+	networkTracker TemplateNetworkTracker
+	chaos          *chaos.Controller
 
 	allDeploysValues map[string]interface{}
 }
@@ -104,18 +105,20 @@ func NewK8sEnvironment(
 	if err != nil {
 		return nil, err
 	}
+	networksMap := buildNetworkConfigMap(networks)
 	env := &K8sEnvironment{
 		k8sClient:        k8sClient,
 		k8sConfig:        k8sConfig,
 		config:           cfg,
 		networksList:     networks,
-		networksMap:      buildNetworkConfigMap(networks),
+		networksMap:      networksMap,
 		allDeploysValues: map[string]interface{}{},
 		specs:            K8sEnvSpecs{},
+		// networkTracker is the solitary network tracker, to persist through multiple, concurrent template parse attempts
+		networkTracker: initializeNetworkTracker(networksMap),
 	}
 	log.Info().Str("Host", k8sConfig.Host).Msg("Using Kubernetes cluster")
 	// Initialize tracking of networks and their indices for templating.
-	initializeNetworkTracker(env.networksMap)
 
 	for _, network := range networks {
 		if network.Config().SecretPrivateURL {
@@ -178,7 +181,7 @@ deploymentLoop:
 }
 
 // ID returns the canonical name of the environment, which in the case of k8s is the namespace
-func (env K8sEnvironment) ID() string {
+func (env *K8sEnvironment) ID() string {
 	if env.namespace != nil {
 		return env.namespace.Name
 	}
@@ -186,7 +189,7 @@ func (env K8sEnvironment) ID() string {
 }
 
 // GetAllServiceDetails returns all the connectivity details for a deployed service by its remote port within k8s
-func (env K8sEnvironment) GetAllServiceDetails(remotePort uint16) ([]*ServiceDetails, error) {
+func (env *K8sEnvironment) GetAllServiceDetails(remotePort uint16) ([]*ServiceDetails, error) {
 	var serviceDetails []*ServiceDetails
 	var matchedServiceDetails []*ServiceDetails
 
@@ -209,7 +212,7 @@ func (env K8sEnvironment) GetAllServiceDetails(remotePort uint16) ([]*ServiceDet
 }
 
 // GetServiceDetails returns all the connectivity details for a deployed service by its remote port within k8s
-func (env K8sEnvironment) GetServiceDetails(remotePort uint16) (*ServiceDetails, error) {
+func (env *K8sEnvironment) GetServiceDetails(remotePort uint16) (*ServiceDetails, error) {
 	if serviceDetails, err := env.GetAllServiceDetails(remotePort); err != nil {
 		return nil, err
 	} else {
@@ -219,7 +222,7 @@ func (env K8sEnvironment) GetServiceDetails(remotePort uint16) (*ServiceDetails,
 
 // WriteArtifacts dumps pod logs and DB info within the environment into local log files,
 // used near exclusively on test failure
-func (env K8sEnvironment) WriteArtifacts(testLogFolder string) {
+func (env *K8sEnvironment) WriteArtifacts(testLogFolder string) {
 	// Get logs from K8s pods
 	podsClient := env.k8sClient.CoreV1().Pods(env.namespace.Name)
 	podsList, err := podsClient.List(context.Background(), metaV1.ListOptions{})
@@ -248,7 +251,7 @@ func (env K8sEnvironment) WriteArtifacts(testLogFolder string) {
 }
 
 // ApplyChaos applies chaos experiment in the environment namespace
-func (env K8sEnvironment) ApplyChaos(exp chaos.Experimentable) (string, error) {
+func (env *K8sEnvironment) ApplyChaos(exp chaos.Experimentable) (string, error) {
 	name, err := env.chaos.Run(exp)
 	if err != nil {
 		return name, err
@@ -257,7 +260,7 @@ func (env K8sEnvironment) ApplyChaos(exp chaos.Experimentable) (string, error) {
 }
 
 // StopChaos stops experiment by name
-func (env K8sEnvironment) StopChaos(name string) error {
+func (env *K8sEnvironment) StopChaos(name string) error {
 	if err := env.chaos.Stop(name); err != nil {
 		return err
 	}
@@ -265,7 +268,7 @@ func (env K8sEnvironment) StopChaos(name string) error {
 }
 
 // StopAllChaos stops all chaos experiments
-func (env K8sEnvironment) StopAllChaos() error {
+func (env *K8sEnvironment) StopAllChaos() error {
 	if err := env.chaos.StopAll(); err != nil {
 		return err
 	}
@@ -274,7 +277,7 @@ func (env K8sEnvironment) StopAllChaos() error {
 
 // TearDown cycles through all the specifications and tears down the deployments. This typically entails cleaning
 // up port forwarding requests and deleting the namespace that then destroys all definitions.
-func (env K8sEnvironment) TearDown() {
+func (env *K8sEnvironment) TearDown() {
 	for _, spec := range env.specs {
 		if err := spec.Teardown(); err != nil {
 			log.Error().Err(err)
@@ -345,7 +348,7 @@ func (env *K8sEnvironment) dumpDB(pod coreV1.Pod, container coreV1.Container) (s
 }
 
 // GetSecretField retrieves field data from k8s secret
-func (env K8sEnvironment) GetSecretField(namespace string, secretName string, fieldName string) (string, error) {
+func (env *K8sEnvironment) GetSecretField(namespace string, secretName string, fieldName string) (string, error) {
 	res, err := env.k8sClient.CoreV1().Secrets(namespace).Get(context.Background(), secretName, metaV1.GetOptions{})
 	if err != nil {
 		return "", err
@@ -447,10 +450,12 @@ func determineNamespace(networks []client.BlockchainNetwork) string {
 }
 
 type k8sTemplateData struct {
-	Config   *config.Config
-	Networks map[string][]*config.NetworkConfig
-	Values   map[string]interface{}
-	Manifest *K8sManifest
+	Config                   *config.Config
+	Networks                 map[string][]*config.NetworkConfig
+	DefaultNetwork           *config.NetworkConfig
+	DefaultNetworkClusterURL string
+	Values                   map[string]interface{}
+	Manifest                 *K8sManifest
 }
 
 type k8sSetValuesFunc func(*K8sManifest) error
@@ -510,8 +515,8 @@ func (m *K8sManifest) GetConfig() *config.Config {
 
 // Deploy will create the definitions for each manifest on the k8s cluster
 func (m *K8sManifest) Deploy(values map[string]interface{}) error {
-	networkTracker.lock()
-	defer networkTracker.unlock()
+	m.env.networkTracker.lock()
+	defer m.env.networkTracker.unlock()
 	if err := m.createConfigMap(values); err != nil {
 		return err
 	}
@@ -674,29 +679,21 @@ func (m *K8sManifest) Teardown() error {
 type TemplateNetworkTracker struct {
 	networkIndices      map[string]int
 	networks            map[string][]*config.NetworkConfig
-	defaultNetwork      *config.NetworkConfig
 	mu                  sync.Mutex
 	lastAccessedNetwork string
 }
 
-// networkTracker is the solitary network tracker, to persist through multiple, concurrent template parse attempts
-var networkTracker TemplateNetworkTracker
-
 // initializeNetworkTracker sets up the network tracker (only if it hasn't been already)
-func initializeNetworkTracker(networks map[string][]*config.NetworkConfig) {
-	if networkTracker.networks != nil {
-		return
+func initializeNetworkTracker(networks map[string][]*config.NetworkConfig) TemplateNetworkTracker {
+	networkIndices := make(map[string]int)
+	for networkID := range networks {
+		networkIndices[networkID] = 0
 	}
-	networkTracker.networks = networks
-	networkTracker.networkIndices = make(map[string]int)
-	for networkID := range networkTracker.networks {
-		networkTracker.networkIndices[networkID] = 0
-	}
-	networkTracker.lastAccessedNetwork = ""
-	for _, networks := range networkTracker.networks {
-		// Return the first network we've got. This is kind of wonky for a lot of reasons.
-		// TODO: avoid this once Chainlink is updated and is ready to hande network management through its API
-		networkTracker.defaultNetwork = networks[0]
+	return TemplateNetworkTracker{
+		networks:            networks,
+		networkIndices:      networkIndices,
+		lastAccessedNetwork: "",
+		mu:                  sync.Mutex{},
 	}
 }
 
@@ -713,17 +710,13 @@ func (tracker *TemplateNetworkTracker) unlock() {
 }
 
 func (tracker *TemplateNetworkTracker) getNetwork(networkName string) (*config.NetworkConfig, error) {
-	if networkName == "default" {
-		return tracker.defaultNetwork, nil
-	}
 	if _, valid := tracker.networks[networkName]; valid {
 		if tracker.networkIndices[networkName] < len(tracker.networks[networkName]) {
 			tracker.lastAccessedNetwork = networkName
 			return tracker.networks[networkName][tracker.networkIndices[networkName]], nil
-		} else {
-			err := fmt.Errorf("No more networks of the name '%s'. Only found %d", networkName, len(tracker.networks[networkName]))
-			return nil, err
 		}
+		err := fmt.Errorf("No more networks of the name '%s'. Only found %d", networkName, len(tracker.networks[networkName]))
+		return nil, err
 	} else {
 		networkNames := []string{}
 		for networkName := range tracker.networks {
@@ -911,7 +904,6 @@ var usedPorts map[uint16]bool = map[uint16]bool{
 func getFreePort() uint16 {
 	min, max := 1001, 9999
 	freePort := rand.Intn(max-min) + min
-	log.Info().Int("Port", freePort).Msg("Generated")
 	for _, used := usedPorts[uint16(freePort)]; used; {
 		rand.Seed(time.Now().UnixNano())
 		freePort = rand.Intn(max-min) + min
@@ -944,11 +936,22 @@ func (m *K8sManifest) initTemplateData(
 	networks map[string][]*config.NetworkConfig,
 	values map[string]interface{},
 ) k8sTemplateData {
+	// TODO: This is horrible in many ways, but I'm loathe to find a nicer way as
+	// It would take a lot of restructuring and a lot more time
+	// It would be thrown away as soon as we deal with chainlink's new way of handling networks
+	depGroupVals := values["DependencyGroup"].(map[string]interface{})
+	networkVals := depGroupVals[fmt.Sprintf("%s_%d", cfg.Network, 0)].(map[string]interface{})
+	defualtNetworkURL := ""
+	if networkVals != nil {
+		defualtNetworkURL = networkVals["clusterURL"].(string)
+	}
 	return k8sTemplateData{
-		Config:   cfg,
-		Networks: networks,
-		Values:   values,
-		Manifest: m,
+		Config:                   cfg,
+		Networks:                 networks,
+		DefaultNetwork:           networks[cfg.Network][0],
+		DefaultNetworkClusterURL: defualtNetworkURL,
+		Values:                   values,
+		Manifest:                 m,
 	}
 }
 
@@ -1036,10 +1039,10 @@ func present(name string, data map[string]interface{}) bool {
 	return ok
 }
 
-// getNetwork retrieves the specified network type, based on the networkTracker
-func getNetwork(networkName string) (*config.NetworkConfig, error) {
-	return networkTracker.getNetwork(networkName)
-}
+// // getNetwork retrieves the specified network type, based on the networkTracker
+// func (m *K8sManifest) getNetwork(networkName string) (*config.NetworkConfig, error) {
+// 	return m.env.networkTracker.getNetwork(networkName)
+// }
 
 func (m *K8sManifest) parse(path string, obj interface{}, data k8sTemplateData) error {
 	fileBytes, err := ioutil.ReadFile(path)
@@ -1047,7 +1050,7 @@ func (m *K8sManifest) parse(path string, obj interface{}, data k8sTemplateData) 
 		return fmt.Errorf("failed to read k8s file: %v", err)
 	}
 
-	var funcs = template.FuncMap{"next": next, "present": present, "getNetwork": getNetwork}
+	var funcs = template.FuncMap{"next": next, "present": present, "getNetwork": m.env.networkTracker.getNetwork}
 
 	tpl, err := template.New(path).Funcs(funcs).Parse(string(fileBytes))
 	if err != nil {

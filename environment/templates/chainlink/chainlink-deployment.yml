@@ -34,11 +34,10 @@ spec:
         - name: DATABASE_NAME
           value: chainlink
           # TODO: Placeholders until CL 1.0.0 is cut, and we can use the new chain configuration options through the API
-          {{ $networkName := .Config.Network }}
         - name: ETH_URL
-          value: {{ (index .Values.DependencyGroup $networkName).clusterURL }}
+          value: {{ .DefaultNetworkClusterURL }}
         - name: ETH_CHAIN_ID
-          value: {{ (index .Networks $networkName).ChainID }}
+          value: {{ .DefaultNetwork.ChainID }}
         - name: ALLOW_ORIGINS
           value: '*'
         - name: CHAINLINK_DEV
