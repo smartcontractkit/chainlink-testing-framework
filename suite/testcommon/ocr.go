@@ -6,6 +6,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/suite/steps"
 	"math/big"
+	"os"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -211,7 +212,7 @@ func SetAdapterResults(i *OCRSetupInputs, results []int) {
 }
 
 // NewOCRSetupInputForObservability deploys and setups env and clients for testing observability
-func NewOCRSetupInputForObservability(i *OCRSetupInputs, nodeCount int) {
+func NewOCRSetupInputForObservability(i *OCRSetupInputs, nodeCount int, rules map[string]*os.File) {
 	DeployOCRForEnv(
 		i,
 		"basic-chainlink",
@@ -228,6 +229,6 @@ func NewOCRSetupInputForObservability(i *OCRSetupInputs, nodeCount int) {
 	err = i.SuiteSetup.Env.DeploySpecs(environment.OtpeGroup())
 	Expect(err).ShouldNot(HaveOccurred())
 
-	err = i.SuiteSetup.Env.DeploySpecs(environment.PrometheusGroup())
+	err = i.SuiteSetup.Env.DeploySpecs(environment.PrometheusGroup(rules))
 	Expect(err).ShouldNot(HaveOccurred())
 }
