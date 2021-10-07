@@ -2,6 +2,7 @@ package performance
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/onsi/ginkgo"
 	"github.com/rs/zerolog/log"
@@ -33,19 +34,16 @@ type ConsumerCoordinatorPair struct {
 // VRFTestOptions contains the parameters for the VRF soak test to be executed
 type VRFTestOptions struct {
 	TestOptions
-	RoundTimeout time.Duration
-	TestDuration time.Duration
 }
 
 // VRFTest is the implementation of Test that will configure and execute soak test
 // of VRF contracts & jobs
 type VRFTest struct {
-	TestOptions     VRFTestOptions
-	ContractOptions contracts.OffchainOptions
-	Environment     environment.Environment
-	Blockchain      client.BlockchainClient
-	Wallets         client.BlockchainWallets
-	Deployer        contracts.ContractDeployer
+	TestOptions VRFTestOptions
+	Environment environment.Environment
+	Blockchain  client.BlockchainClient
+	Wallets     client.BlockchainWallets
+	Deployer    contracts.ContractDeployer
 
 	chainlinkClients  []client.Chainlink
 	nodeAddresses     []common.Address
@@ -55,7 +53,8 @@ type VRFTest struct {
 	contractInstances []ConsumerCoordinatorPair
 	adapter           environment.ExternalAdapter
 
-	jobMap VRFJobMap
+	testResults PerfRequestIDTestResults
+	jobMap      VRFJobMap
 }
 
 // NewVRFTest creates new VRF performance/soak test
@@ -76,14 +75,9 @@ func NewVRFTest(
 		Wallets:     wallets,
 		Deployer:    deployer,
 		adapter:     adapter,
+		testResults: NewPerfRequestIDTestResults(),
 		jobMap:      VRFJobMap{},
 	}
-}
-
-// RecordValues records VRF metrics
-func (f *VRFTest) RecordValues(b ginkgo.Benchmarker) error {
-	// TODO: collect metrics
-	return nil
 }
 
 // Setup setups VRF performance/soak test
@@ -164,12 +158,46 @@ func (f *VRFTest) deployContracts() error {
 
 // waitRoundFulfilled awaits randomness round fulfillment,
 // there is no "round" in VRF by design, it's artificially introduced to have some checkpoint in soak/perf test
-func (f *VRFTest) waitRoundFulfilled(roundID *big.Int) error {
+func (f *VRFTest) waitRoundFulfilled(roundID int) error {
 	for _, p := range f.contractInstances {
-		confirmer := contracts.NewVRFConsumerRoundConfirmer(p.consumer, roundID, f.TestOptions.RoundTimeout)
+		confirmer := contracts.NewVRFConsumerRoundConfirmer(p.consumer, big.NewInt(int64(roundID)), f.TestOptions.RoundTimeout)
 		f.Blockchain.AddHeaderEventSubscription(p.consumer.Address(), confirmer)
 	}
 	return f.Blockchain.WaitForEvents()
+}
+
+func (f *VRFTest) watchPerfEvents() context.CancelFunc {
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		ch := make(chan *contracts.PerfEvent)
+		g := errgroup.Group{}
+		for _, p := range f.contractInstances {
+			p := p
+			g.Go(func() error {
+				if err := p.consumer.WatchPerfEvents(context.Background(), ch); err != nil {
+					return err
+				}
+				return nil
+			})
+		}
+		for {
+			select {
+			case event := <-ch:
+				rqID := common.Bytes2Hex(event.RequestID[:])
+				r := f.testResults.Get(rqID)
+				loc, _ := time.LoadLocation("UTC")
+				r.EndTime = time.Unix(event.BlockTimestamp.Int64(), 0).In(loc)
+				log.Debug().
+					Int64("Round", event.Round.Int64()).
+					Str("RequestID", rqID).
+					Time("EndTime", r.EndTime).
+					Msg("Perf event received")
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+	return cancel
 }
 
 // requestRandomness requests randomness for every consumer for every node (keyHash)
@@ -196,25 +224,134 @@ func (f *VRFTest) Run() error {
 	if err := f.createChainlinkJobs(); err != nil {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), f.TestOptions.TestDuration)
-	defer cancel()
-	i := 1
+	var ctx context.Context
+	var testCtxCancel context.CancelFunc
+	if f.TestOptions.TestDuration.Seconds() > 0 {
+		ctx, testCtxCancel = context.WithTimeout(context.Background(), f.TestOptions.TestDuration)
+	} else {
+		ctx, testCtxCancel = context.WithCancel(context.Background())
+	}
+	defer testCtxCancel()
+	cancelPerfEvents := f.watchPerfEvents()
+	currentRound := 0
 	for {
 		select {
 		case <-ctx.Done():
 			log.Warn().Msg("Test finished")
+			time.Sleep(f.TestOptions.GracefulStopDuration)
+			cancelPerfEvents()
 			return nil
 		default:
-			log.Warn().Int("RoundID", i).Msg("New round")
+			log.Warn().Int("RoundID", currentRound).Msg("New round")
 			if err := f.requestRandomness(); err != nil {
 				return err
 			}
-			if err := f.waitRoundFulfilled(big.NewInt(int64(i))); err != nil {
+			if err := f.waitRoundFulfilled(currentRound + 1); err != nil {
 				return err
 			}
-			i++
+			if f.TestOptions.NumberOfRounds != 0 && currentRound >= f.TestOptions.NumberOfRounds {
+				log.Warn().Msg("Final round is reached")
+				testCtxCancel()
+			}
+			currentRound++
 		}
 	}
+}
+
+// RecordValues will query all of the latencies of the VRFConsumer and match them by RequestID
+func (f *VRFTest) RecordValues(b ginkgo.Benchmarker) error {
+	// can't estimate perf metrics in soak mode
+	if f.TestOptions.NumberOfRounds == 0 {
+		return nil
+	}
+	actions.SetChainlinkAPIPageSize(f.chainlinkClients, f.TestOptions.NumberOfRounds*f.TestOptions.NumberOfContracts)
+	if err := f.setResultStartTimes(); err != nil {
+		return err
+	}
+	return f.calculateLatencies(b)
+}
+
+func (f *VRFTest) calculateLatencies(b ginkgo.Benchmarker) error {
+	var latencies []time.Duration
+	for rqID, testResult := range f.testResults.GetAll() {
+		latency := testResult.EndTime.Sub(testResult.StartTime)
+		log.Debug().
+			Str("RequestID", rqID).
+			Time("StartTime", testResult.StartTime).
+			Time("EndTime", testResult.EndTime).
+			Dur("Duration", latency).
+			Msg("Calculating latencies for request id")
+		if testResult.StartTime.IsZero() {
+			log.Warn().
+				Str("RequestID", rqID).
+				Msg("Start time zero")
+		}
+		if testResult.EndTime.IsZero() {
+			log.Warn().
+				Str("RequestID", rqID).
+				Msg("End time zero")
+		}
+		if latency.Seconds() < 0 {
+			log.Warn().
+				Str("RequestID", rqID).
+				Msg("Latency below zero")
+		} else {
+			latencies = append(latencies, latency)
+		}
+	}
+	if err := recordResults(b, "Request latency", latencies); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (f *VRFTest) setResultStartTimes() error {
+	g := errgroup.Group{}
+	for contract := range f.jobMap {
+		contract := contract
+		g.Go(func() error {
+			return f.setResultStartTimeByContract(contract)
+		})
+	}
+	return g.Wait()
+}
+
+func (f *VRFTest) setResultStartTimeByContract(contract ConsumerCoordinatorPair) error {
+	for _, chainlink := range f.chainlinkClients {
+		chainlink := chainlink
+
+		jobRuns, err := chainlink.ReadRunsByJob(f.jobMap[contract][chainlink].JobID)
+		if err != nil {
+			return err
+		}
+		log.Debug().
+			Str("Node", chainlink.URL()).
+			Int("Runs", len(jobRuns.Data)).
+			Msg("Total runs")
+		for _, jobDecodeData := range jobRuns.Data {
+			var taskRun client.TaskRun
+			for _, tr := range jobDecodeData.Attributes.TaskRuns {
+				if tr.Type == "ethabidecodelog" {
+					taskRun = tr
+				}
+			}
+			var decodeLogTaskRun *client.DecodeLogTaskRun
+			if err := json.Unmarshal([]byte(taskRun.Output), &decodeLogTaskRun); err != nil {
+				return err
+			}
+			rqInts := decodeLogTaskRun.RequestID
+			rqID := common.Bytes2Hex(rqInts)
+			loc, _ := time.LoadLocation("UTC")
+			startTime := jobDecodeData.Attributes.CreatedAt.In(loc)
+			log.Debug().
+				Time("StartTime", startTime).
+				Str("RequestID", rqID).
+				Msg("Request found")
+			d := f.testResults.Get(rqID)
+			d.StartTime = startTime
+		}
+	}
+	return nil
 }
 
 // createChainlinkJobs create and collect VRF jobs for every Chainlink node

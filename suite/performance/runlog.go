@@ -31,9 +31,7 @@ type ConsumerOraclePair struct {
 // RunlogTestOptions contains the parameters for the Runlog soak test to be executed
 type RunlogTestOptions struct {
 	TestOptions
-	RoundTimeout time.Duration
 	AdapterValue int
-	TestDuration time.Duration
 }
 
 // RunlogTest is the implementation of Test that will configure and execute soak test
@@ -51,7 +49,8 @@ type RunlogTest struct {
 	contractInstances []*ConsumerOraclePair
 	adapter           environment.ExternalAdapter
 
-	jobMap RunlogJobMap
+	testResults PerfRequestIDTestResults
+	jobMap      RunlogJobMap
 }
 
 // NewRunlogTest creates new Runlog performance/soak test
@@ -72,13 +71,97 @@ func NewRunlogTest(
 		Wallets:     wallets,
 		Deployer:    deployer,
 		adapter:     adapter,
+		testResults: NewPerfRequestIDTestResults(),
 		jobMap:      RunlogJobMap{},
 	}
 }
 
-// RecordValues records Runlog metrics
+// RecordValues will query all of the latencies of the VRFConsumer and match them by RequestID
 func (f *RunlogTest) RecordValues(b ginkgo.Benchmarker) error {
-	// TODO: collect metrics
+	// can't estimate perf metrics in soak mode
+	if f.TestOptions.NumberOfRounds == 0 {
+		return nil
+	}
+	actions.SetChainlinkAPIPageSize(f.chainlinkClients, f.TestOptions.NumberOfRounds*f.TestOptions.NumberOfContracts)
+	if err := f.setResultStartTimes(); err != nil {
+		return err
+	}
+	return f.calculateLatencies(b)
+}
+
+func (f *RunlogTest) calculateLatencies(b ginkgo.Benchmarker) error {
+	var latencies []time.Duration
+	for rqID, testResult := range f.testResults.GetAll() {
+		latency := testResult.EndTime.Sub(testResult.StartTime)
+		log.Debug().
+			Str("RequestID", rqID).
+			Time("StartTime", testResult.StartTime).
+			Time("EndTime", testResult.EndTime).
+			Dur("Duration", latency).
+			Msg("Calculating latencies for request id")
+		if testResult.StartTime.IsZero() {
+			log.Warn().
+				Str("RequestID", rqID).
+				Msg("Start time zero")
+		}
+		if testResult.EndTime.IsZero() {
+			log.Warn().
+				Str("RequestID", rqID).
+				Msg("End time zero")
+		}
+		if latency.Seconds() < 0 {
+			log.Warn().
+				Str("RequestID", rqID).
+				Msg("Latency below zero")
+		} else {
+			latencies = append(latencies, latency)
+		}
+	}
+	if err := recordResults(b, "Request latency", latencies); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (f *RunlogTest) setResultStartTimes() error {
+	g := errgroup.Group{}
+	for contract := range f.jobMap {
+		contract := contract
+		g.Go(func() error {
+			return f.setResultStartTimeByContract(contract)
+		})
+	}
+	return g.Wait()
+}
+
+func (f *RunlogTest) setResultStartTimeByContract(contract ConsumerOraclePair) error {
+	for _, chainlink := range f.chainlinkClients {
+		chainlink := chainlink
+
+		jobRuns, err := chainlink.ReadRunsByJob(f.jobMap[contract][chainlink])
+		if err != nil {
+			return err
+		}
+		log.Debug().
+			Str("Node", chainlink.URL()).
+			Int("Runs", len(jobRuns.Data)).
+			Msg("Total runs")
+		for _, jobDecodeData := range jobRuns.Data {
+			rqInts, err := actions.ExtractRequestIDFromJobRun(jobDecodeData)
+			if err != nil {
+				return err
+			}
+			rqID := common.Bytes2Hex(rqInts)
+			loc, _ := time.LoadLocation("UTC")
+			startTime := jobDecodeData.Attributes.CreatedAt.In(loc)
+			log.Debug().
+				Time("StartTime", startTime).
+				Str("RequestID", rqID).
+				Msg("Request found")
+			d := f.testResults.Get(rqID)
+			d.StartTime = startTime
+		}
+	}
 	return nil
 }
 
@@ -138,7 +221,6 @@ func (f *RunlogTest) deployContracts() error {
 	for contract := range contractChan {
 		f.contractInstances = append(f.contractInstances, contract)
 	}
-	log.Warn().Int("Pairs", len(f.contractInstances)).Msg("Pairs")
 	return f.Blockchain.WaitForEvents()
 }
 
@@ -172,25 +254,72 @@ func (f *RunlogTest) Run() error {
 	if err := f.createChainlinkJobs(); err != nil {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), f.TestOptions.TestDuration)
-	defer cancel()
-	i := 1
+	var ctx context.Context
+	var testCtxCancel context.CancelFunc
+	if f.TestOptions.TestDuration.Seconds() > 0 {
+		ctx, testCtxCancel = context.WithTimeout(context.Background(), f.TestOptions.TestDuration)
+	} else {
+		ctx, testCtxCancel = context.WithCancel(context.Background())
+	}
+	defer testCtxCancel()
+	cancelPerfEvents := f.watchPerfEvents()
+	currentRound := 0
 	for {
 		select {
 		case <-ctx.Done():
 			log.Warn().Msg("Test finished")
+			time.Sleep(f.TestOptions.GracefulStopDuration)
+			cancelPerfEvents()
 			return nil
 		default:
-			log.Warn().Int("RoundID", i).Msg("New round")
+			log.Warn().Int("RoundID", currentRound).Msg("New round")
 			if err := f.requestData(); err != nil {
 				return err
 			}
-			if err := f.waitRoundEnd(i); err != nil {
+			if err := f.waitRoundEnd(currentRound + 1); err != nil {
 				return err
 			}
-			i++
+			if f.TestOptions.NumberOfRounds != 0 && currentRound >= f.TestOptions.NumberOfRounds {
+				log.Warn().Msg("Final round is reached")
+				testCtxCancel()
+			}
+			currentRound++
 		}
 	}
+}
+
+func (f *RunlogTest) watchPerfEvents() context.CancelFunc {
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		ch := make(chan *contracts.PerfEvent)
+		g := errgroup.Group{}
+		for _, p := range f.contractInstances {
+			p := p
+			g.Go(func() error {
+				if err := p.consumer.WatchPerfEvents(context.Background(), ch); err != nil {
+					return err
+				}
+				return nil
+			})
+		}
+		for {
+			select {
+			case event := <-ch:
+				rqID := common.Bytes2Hex(event.RequestID[:])
+				r := f.testResults.Get(rqID)
+				loc, _ := time.LoadLocation("UTC")
+				r.EndTime = time.Unix(event.BlockTimestamp.Int64(), 0).In(loc)
+				log.Debug().
+					Int64("Round", event.Round.Int64()).
+					Str("RequestID", rqID).
+					Time("EndTime", r.EndTime).
+					Msg("Perf event received")
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+	return cancel
 }
 
 func (f *RunlogTest) waitRoundEnd(roundID int) error {
@@ -226,7 +355,7 @@ func (f *RunlogTest) createChainlinkJobs() error {
 		g.Go(func() error {
 			jobUUID := uuid.NewV4()
 			p.jobUUID = jobUUID.String()
-			_, err := f.chainlinkClients[0].CreateJob(&client.DirectRequestJobSpec{
+			job, err := f.chainlinkClients[0].CreateJob(&client.DirectRequestJobSpec{
 				Name:              "direct_request",
 				ContractAddress:   p.oracle.Address(),
 				ExternalJobID:     jobUUID.String(),
@@ -235,6 +364,7 @@ func (f *RunlogTest) createChainlinkJobs() error {
 			if err != nil {
 				return err
 			}
+			jobsChan <- RunlogJobMap{*p: map[client.Chainlink]string{f.chainlinkClients[0]: job.Data.ID}}
 			return nil
 		})
 	}

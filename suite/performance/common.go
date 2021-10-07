@@ -2,6 +2,8 @@ package performance
 
 import (
 	"fmt"
+	"github.com/smartcontractkit/integrations-framework/client"
+	"sync"
 	"time"
 
 	"github.com/montanaflynn/stats"
@@ -16,10 +18,14 @@ type Test interface {
 	RecordValues(b ginkgo.Benchmarker) error
 }
 
-// TestOptions number of contracts and rounds
+// TestOptions common perf/soak test options
+// either TestDuration can be set or NumberOfRounds, or both
 type TestOptions struct {
-	NumberOfContracts int
-	NumberOfRounds    int64
+	NumberOfContracts    int
+	NumberOfRounds       int
+	RoundTimeout         time.Duration
+	TestDuration         time.Duration
+	GracefulStopDuration time.Duration
 }
 
 // PercentileReport common percentile report
@@ -99,3 +105,90 @@ func recordResults(b ginkgo.Benchmarker, ID string, results []time.Duration) err
 
 	return nil
 }
+
+// Contract is just a basic contract interface
+type Contract interface {
+	Address() string
+}
+
+// PerfJobRunResult contains the start & end time of the round submission to calculate latency
+type PerfJobRunResult struct {
+	StartTime time.Time
+	EndTime   time.Time
+}
+
+// PerfRoundTestResults is a complex map that holds all test data in a map by the round ID, then contract instance and
+// then the Chainlink client
+type PerfRoundTestResults struct {
+	mutex   *sync.Mutex
+	results map[int64]map[Contract]map[client.Chainlink]*PerfJobRunResult
+}
+
+// NewPerfTestResults returns an instance PerfRoundTestResults
+func NewPerfTestResults() PerfRoundTestResults {
+	return PerfRoundTestResults{
+		mutex:   &sync.Mutex{},
+		results: map[int64]map[Contract]map[client.Chainlink]*PerfJobRunResult{},
+	}
+}
+
+// Get a value from the test results map with nil checking to avoid panics
+func (f PerfRoundTestResults) Get(
+	roundID int64,
+	contract Contract,
+	chainlink client.Chainlink,
+) *PerfJobRunResult {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
+	if _, ok := f.results[roundID]; !ok {
+		f.results[roundID] = map[Contract]map[client.Chainlink]*PerfJobRunResult{}
+	}
+	if _, ok := f.results[roundID][contract]; !ok {
+		f.results[roundID][contract] = map[client.Chainlink]*PerfJobRunResult{}
+	}
+	if f.results[roundID][contract][chainlink] == nil {
+		f.results[roundID][contract][chainlink] = &PerfJobRunResult{}
+	}
+	return f.results[roundID][contract][chainlink]
+}
+
+// GetAll returns the full map, not safe for concurrent actions
+func (f PerfRoundTestResults) GetAll() map[int64]map[Contract]map[client.Chainlink]*PerfJobRunResult {
+	return f.results
+}
+
+// PerfRequestIDTestResults is results traced and aggregated by request id, see models.DecodeLogTaskRun
+type PerfRequestIDTestResults struct {
+	mutex   *sync.Mutex
+	results map[string]*PerfJobRunResult
+}
+
+// NewPerfRequestIDTestResults returns an instance NewPerfRequestIDTestResults
+func NewPerfRequestIDTestResults() PerfRequestIDTestResults {
+	return PerfRequestIDTestResults{
+		mutex:   &sync.Mutex{},
+		results: map[string]*PerfJobRunResult{},
+	}
+}
+
+// Get a value from the test results map with nil checking to avoid panics
+func (f PerfRequestIDTestResults) Get(requestID string) *PerfJobRunResult {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
+	if _, ok := f.results[requestID]; !ok {
+		f.results[requestID] = &PerfJobRunResult{}
+	}
+	return f.results[requestID]
+}
+
+// GetAll returns all test results
+func (f PerfRequestIDTestResults) GetAll() map[string]*PerfJobRunResult {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+	return f.results
+}
+
+// ContractsNodesJobsMap common contract to node to job id mapping for perf/soak tests
+type ContractsNodesJobsMap map[Contract]map[client.Chainlink]interface{}

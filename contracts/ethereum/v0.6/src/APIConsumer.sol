@@ -18,9 +18,12 @@ import "./Ownable.sol";
  * local test networks
  */
 contract APIConsumer is ChainlinkClient, Ownable {
-  uint256 public roundID = 0;
+  uint256 public currentRoundID = 0;
   uint256 public data;
   bytes4 public selector;
+
+  event PerfMetricsEvent(uint256 roundID, bytes32 requestId, uint256 timestamp);
+
 
   /**
    * @notice Deploy the contract with a specified address for the LINK
@@ -86,7 +89,8 @@ contract APIConsumer is ChainlinkClient, Ownable {
     public
   {
     data = _data;
-    roundID += 1;
+    currentRoundID += 1;
+    emit PerfMetricsEvent(currentRoundID, _requestId, block.timestamp);
   }
 
   /**

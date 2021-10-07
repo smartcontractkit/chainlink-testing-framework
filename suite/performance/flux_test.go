@@ -13,7 +13,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/tools"
 )
 
-var _ = Describe("Performance tests", func() {
+var _ = Describe("Performance tests @perf-flux", func() {
 	var (
 		suiteSetup  actions.SuiteSetup
 		networkInfo actions.NetworkInfo
@@ -21,7 +21,7 @@ var _ = Describe("Performance tests", func() {
 		perfTest    Test
 		err         error
 	)
-	numberOfRounds := int64(5)
+	numberOfRounds := 5
 	numberOfNodes := 5
 
 	BeforeEach(func() {
@@ -54,7 +54,7 @@ var _ = Describe("Performance tests", func() {
 			perfTest = NewFluxTest(
 				FluxTestOptions{
 					TestOptions: TestOptions{
-						NumberOfContracts: 100,
+						NumberOfContracts: 10,
 						NumberOfRounds:    numberOfRounds,
 					},
 					RequiredSubmissions: numberOfNodes,
