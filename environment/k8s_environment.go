@@ -114,11 +114,9 @@ func NewK8sEnvironment(
 		networksMap:      networksMap,
 		allDeploysValues: map[string]interface{}{},
 		specs:            K8sEnvSpecs{},
-		// networkTracker is the solitary network tracker, to persist through multiple, concurrent template parse attempts
-		networkTracker: initializeNetworkTracker(networksMap),
+		networkTracker:   initializeNetworkTracker(networksMap),
 	}
 	log.Info().Str("Host", k8sConfig.Host).Msg("Using Kubernetes cluster")
-	// Initialize tracking of networks and their indices for templating.
 
 	for _, network := range networks {
 		if network.Config().SecretPrivateURL {
@@ -703,10 +701,10 @@ func (tracker *TemplateNetworkTracker) lock() {
 
 func (tracker *TemplateNetworkTracker) unlock() {
 	defer tracker.mu.Unlock()
-	if tracker.lastAccessedNetwork == "default" {
-		return
+	if tracker.lastAccessedNetwork != "" {
+		tracker.networkIndices[tracker.lastAccessedNetwork] += 1
+		tracker.lastAccessedNetwork = ""
 	}
-	tracker.networkIndices[tracker.lastAccessedNetwork] += 1
 }
 
 func (tracker *TemplateNetworkTracker) getNetwork(networkName string) (*config.NetworkConfig, error) {
@@ -715,7 +713,8 @@ func (tracker *TemplateNetworkTracker) getNetwork(networkName string) (*config.N
 			tracker.lastAccessedNetwork = networkName
 			return tracker.networks[networkName][tracker.networkIndices[networkName]], nil
 		}
-		err := fmt.Errorf("No more networks of the name '%s'. Only found %d", networkName, len(tracker.networks[networkName]))
+		err := fmt.Errorf("No more networks of the name '%s'. Only found %d networks, you're asking for the one at index %d",
+			networkName, len(tracker.networks[networkName]), tracker.networkIndices[networkName])
 		return nil, err
 	} else {
 		networkNames := []string{}
@@ -1038,11 +1037,6 @@ func present(name string, data map[string]interface{}) bool {
 	_, ok := data[name]
 	return ok
 }
-
-// // getNetwork retrieves the specified network type, based on the networkTracker
-// func (m *K8sManifest) getNetwork(networkName string) (*config.NetworkConfig, error) {
-// 	return m.env.networkTracker.getNetwork(networkName)
-// }
 
 func (m *K8sManifest) parse(path string, obj interface{}, data k8sTemplateData) error {
 	fileBytes, err := ioutil.ReadFile(path)
