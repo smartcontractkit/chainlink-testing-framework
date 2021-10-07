@@ -6,7 +6,6 @@ import (
 	"math/big"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -45,7 +44,7 @@ type FluxTest struct {
 	adapter           environment.ExternalAdapter
 	submissionCount   int
 
-	testResults FluxTestResults
+	testResults PerfRoundTestResults
 	jobMap      FluxJobMap
 
 	headerTimestampCache map[uint64]time.Time
@@ -69,7 +68,7 @@ func NewFluxTest(
 		Wallets:              wallets,
 		Deployer:             deployer,
 		Prometheus:           prom,
-		testResults:          NewFluxTestResults(),
+		testResults:          NewPerfTestResults(),
 		jobMap:               FluxJobMap{},
 		headerTimestampCache: map[uint64]time.Time{},
 	}
@@ -114,7 +113,7 @@ func (f *FluxTest) Run() error {
 	if err := f.createChainlinkJobs(); err != nil {
 		return err
 	}
-	for i := 1; int64(i) <= f.TestOptions.NumberOfRounds; i++ {
+	for i := 1; i <= f.TestOptions.NumberOfRounds; i++ {
 		if err := f.adapter.SetVariable(i); err != nil {
 			return err
 		}
@@ -288,7 +287,7 @@ func (f *FluxTest) takeEarliestRunsByAnswer(runs []client.RunsResponseData) []cl
 	seen := make(map[int]bool)
 	for _, data := range runs {
 		answer := data.Attributes.Inputs.Parse
-		if int64(answer) > f.TestOptions.NumberOfRounds {
+		if answer > f.TestOptions.NumberOfRounds {
 			continue
 		}
 		if _, ok := seen[answer]; !ok {
@@ -337,7 +336,7 @@ func (f *FluxTest) watchSubmissions(ctx context.Context, chainlinkMap map[string
 	for {
 		select {
 		case event := <-eventChan:
-			if int64(event.Round) > f.TestOptions.NumberOfRounds {
+			if event.Round > uint32(f.TestOptions.NumberOfRounds) {
 				continue
 			}
 			log.Debug().
@@ -433,7 +432,7 @@ func (f *FluxTest) calculateLatencies(b ginkgo.Benchmarker) error {
 	var latencies []time.Duration
 
 	for roundID, testResults := range f.testResults.GetAll() {
-		if roundID > f.TestOptions.NumberOfRounds {
+		if roundID > int64(f.TestOptions.NumberOfRounds) {
 			continue
 		}
 		log.Info().Int64("Round ID", roundID).Msg("Calculating latencies for round")
@@ -481,53 +480,6 @@ func (f *FluxTest) calculateLatencies(b ginkgo.Benchmarker) error {
 		}
 	}
 	return nil
-}
-
-// FluxTestResult contains the start & end time of the round submission to calculate latency
-type FluxTestResult struct {
-	StartTime time.Time
-	EndTime   time.Time
-}
-
-// FluxTestResults is a complex map that holds all test data in a map by the round ID, then contract instance and
-// then the Chainlink client
-type FluxTestResults struct {
-	mutex   *sync.Mutex
-	results map[int64]map[contracts.FluxAggregator]map[client.Chainlink]*FluxTestResult
-}
-
-// NewFluxTestResults returns an instance FluxTestResults with it fully initialised based on test param
-func NewFluxTestResults() FluxTestResults {
-	return FluxTestResults{
-		mutex:   &sync.Mutex{},
-		results: map[int64]map[contracts.FluxAggregator]map[client.Chainlink]*FluxTestResult{},
-	}
-}
-
-// Get a value from the test results map with nil checking to avoid panics
-func (f FluxTestResults) Get(
-	roundID int64,
-	contract contracts.FluxAggregator,
-	chainlink client.Chainlink,
-) *FluxTestResult {
-	f.mutex.Lock()
-	defer f.mutex.Unlock()
-
-	if _, ok := f.results[roundID]; !ok {
-		f.results[roundID] = map[contracts.FluxAggregator]map[client.Chainlink]*FluxTestResult{}
-	}
-	if _, ok := f.results[roundID][contract]; !ok {
-		f.results[roundID][contract] = map[client.Chainlink]*FluxTestResult{}
-	}
-	if f.results[roundID][contract][chainlink] == nil {
-		f.results[roundID][contract][chainlink] = &FluxTestResult{}
-	}
-	return f.results[roundID][contract][chainlink]
-}
-
-// GetAll returns the full map, not safe for concurrent actions
-func (f FluxTestResults) GetAll() map[int64]map[contracts.FluxAggregator]map[client.Chainlink]*FluxTestResult {
-	return f.results
 }
 
 // FluxJobMap is a custom map type that holds the record of jobs by the contract instance and the chainlink node

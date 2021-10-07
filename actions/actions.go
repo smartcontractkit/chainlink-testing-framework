@@ -1,12 +1,14 @@
 package actions
 
 import (
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/pkg/errors"
-	"github.com/satori/go.uuid"
-	"github.com/smartcontractkit/integrations-framework/client"
+	"encoding/json"
 	"math/big"
 	"strings"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/pkg/errors"
+	uuid "github.com/satori/go.uuid"
+	"github.com/smartcontractkit/integrations-framework/client"
 )
 
 // FundChainlinkNodes will fund all of the Chainlink nodes with a given amount of ETH in wei
@@ -55,6 +57,22 @@ func EncodeOnChainExternalJobID(jobID uuid.UUID) [32]byte {
 	var ji [32]byte
 	copy(ji[:], strings.Replace(jobID.String(), "-", "", 4))
 	return ji
+}
+
+// ExtractRequestIDFromJobRun extracts RequestID from job runs response
+func ExtractRequestIDFromJobRun(jobDecodeData client.RunsResponseData) ([]byte, error) {
+	var taskRun client.TaskRun
+	for _, tr := range jobDecodeData.Attributes.TaskRuns {
+		if tr.Type == "ethabidecodelog" {
+			taskRun = tr
+		}
+	}
+	var decodeLogTaskRun *client.DecodeLogTaskRun
+	if err := json.Unmarshal([]byte(taskRun.Output), &decodeLogTaskRun); err != nil {
+		return nil, err
+	}
+	rqInts := decodeLogTaskRun.RequestID
+	return rqInts, nil
 }
 
 // EncodeOnChainVRFProvingKey encodes uncompressed public VRF key to on-chain representation

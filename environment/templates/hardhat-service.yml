@@ -1,10 +1,8 @@
 metadata:
-  name: hardhat-network
+  generateName: hardhat-network-
 spec:
   ports:
   - name: access
-    port: {{ .Values.DependencyGroup.evm.rpcPort }}
-    targetPort: {{ .Values.DependencyGroup.evm.rpcPort }}
-  selector:
-    app: hardhat-network
+    port: {{ .Network.RPCPort }}
+    targetPort: {{ .Network.RPCPort }}
   type: ClusterIP

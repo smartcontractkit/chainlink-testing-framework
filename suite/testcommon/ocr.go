@@ -3,11 +3,12 @@ package testcommon
 import (
 	"context"
 	"fmt"
-	"github.com/rs/zerolog/log"
-	"github.com/smartcontractkit/integrations-framework/suite/steps"
 	"math/big"
 	"os"
 	"time"
+
+	"github.com/rs/zerolog/log"
+	"github.com/smartcontractkit/integrations-framework/suite/steps"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -20,7 +21,8 @@ import (
 
 // OCRSetupInputs inputs needed for OCR tests
 type OCRSetupInputs struct {
-	SuiteSetup     *actions.DefaultSuiteSetup
+	SuiteSetup     actions.SuiteSetup
+	NetworkInfo    actions.NetworkInfo
 	ChainlinkNodes []client.Chainlink
 	DefaultWallet  client.BlockchainWallet
 	OCRInstance    contracts.OffchainAggregator
@@ -28,34 +30,34 @@ type OCRSetupInputs struct {
 }
 
 // DeployOCRForEnv deploys the environment
-func DeployOCRForEnv(i *OCRSetupInputs, envName string, envInit environment.K8sEnvSpecInit) {
+func DeployOCRForEnv(i *OCRSetupInputs, envInit environment.K8sEnvSpecInit) {
 	By("Deploying the environment", func() {
 		var err error
-		i.SuiteSetup, err = actions.DefaultLocalSetup(
-			envName,
+		i.SuiteSetup, err = actions.SingleNetworkSetup(
 			envInit,
-			client.NewNetworkFromConfig,
+			client.DefaultNetworkFromConfig,
 			tools.ProjectRoot,
 		)
 		Expect(err).ShouldNot(HaveOccurred())
-		i.Mockserver, err = environment.GetMockserverClientFromEnv(i.SuiteSetup.Env)
+		i.Mockserver, err = environment.GetMockserverClientFromEnv(i.SuiteSetup.Environment())
 		Expect(err).ShouldNot(HaveOccurred())
 
-		i.ChainlinkNodes, err = environment.GetChainlinkClients(i.SuiteSetup.Env)
+		i.ChainlinkNodes, err = environment.GetChainlinkClients(i.SuiteSetup.Environment())
 		Expect(err).ShouldNot(HaveOccurred())
-		i.DefaultWallet = i.SuiteSetup.Wallets.Default()
-		i.SuiteSetup.Client.ParallelTransactions(true)
+		i.NetworkInfo = i.SuiteSetup.DefaultNetwork()
+		i.DefaultWallet = i.NetworkInfo.Wallets.Default()
+		i.NetworkInfo.Client.ParallelTransactions(true)
 	})
 }
 
 // SetupOCRTest setup for an ocr test
 func SetupOCRTest(i *OCRSetupInputs) {
 	By("Funding nodes and deploying OCR contract", func() {
-		ethAmount, err := i.SuiteSetup.Deployer.CalculateETHForTXs(i.SuiteSetup.Wallets.Default(), i.SuiteSetup.Network.Config(), 2)
+		ethAmount, err := i.NetworkInfo.Deployer.CalculateETHForTXs(i.NetworkInfo.Wallets.Default(), i.NetworkInfo.Network.Config(), 2)
 		Expect(err).ShouldNot(HaveOccurred())
 		err = actions.FundChainlinkNodes(
 			i.ChainlinkNodes,
-			i.SuiteSetup.Client,
+			i.NetworkInfo.Client,
 			i.DefaultWallet,
 			ethAmount,
 			big.NewFloat(2),
@@ -63,7 +65,7 @@ func SetupOCRTest(i *OCRSetupInputs) {
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// Deploy and config OCR contract
-		deployer, err := contracts.NewContractDeployer(i.SuiteSetup.Client)
+		deployer, err := contracts.NewContractDeployer(i.NetworkInfo.Client)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		i.OCRInstance, err = deployer.DeployOffChainAggregator(i.DefaultWallet, contracts.DefaultOffChainAggregatorOptions())
@@ -76,7 +78,7 @@ func SetupOCRTest(i *OCRSetupInputs) {
 		Expect(err).ShouldNot(HaveOccurred())
 		err = i.OCRInstance.Fund(i.DefaultWallet, nil, big.NewFloat(2))
 		Expect(err).ShouldNot(HaveOccurred())
-		err = i.SuiteSetup.Client.WaitForEvents()
+		err = i.NetworkInfo.Client.WaitForEvents()
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 }
@@ -170,13 +172,13 @@ func StartNewRound(i *OCRSetupInputs, roundNr int64) {
 
 	err := i.OCRInstance.RequestNewRound(i.DefaultWallet)
 	Expect(err).ShouldNot(HaveOccurred())
-	err = i.SuiteSetup.Client.WaitForEvents()
+	err = i.SuiteSetup.DefaultNetwork().Client.WaitForEvents()
 	Expect(err).ShouldNot(HaveOccurred())
 
 	// Wait for the second round
 	ocrRound := contracts.NewOffchainAggregatorRoundConfirmer(i.OCRInstance, big.NewInt(roundNr), roundTimeout)
-	i.SuiteSetup.Client.AddHeaderEventSubscription(i.OCRInstance.Address(), ocrRound)
-	err = i.SuiteSetup.Client.WaitForEvents()
+	i.SuiteSetup.DefaultNetwork().Client.AddHeaderEventSubscription(i.OCRInstance.Address(), ocrRound)
+	err = i.SuiteSetup.DefaultNetwork().Client.WaitForEvents()
 	Expect(err).ShouldNot(HaveOccurred())
 }
 
@@ -215,7 +217,6 @@ func SetAdapterResults(i *OCRSetupInputs, results []int) {
 func NewOCRSetupInputForObservability(i *OCRSetupInputs, nodeCount int, rules map[string]*os.File) {
 	DeployOCRForEnv(
 		i,
-		"basic-chainlink",
 		environment.NewChainlinkClusterForObservabilityTesting(nodeCount),
 	)
 	SetupOCRTest(i)
@@ -226,9 +227,9 @@ func NewOCRSetupInputForObservability(i *OCRSetupInputs, nodeCount int, rules ma
 	))
 	Expect(err).ShouldNot(HaveOccurred())
 
-	err = i.SuiteSetup.Env.DeploySpecs(environment.OtpeGroup())
+	err = i.SuiteSetup.Environment().DeploySpecs(environment.OtpeGroup())
 	Expect(err).ShouldNot(HaveOccurred())
 
-	err = i.SuiteSetup.Env.DeploySpecs(environment.PrometheusGroup(rules))
+	err = i.SuiteSetup.Environment().DeploySpecs(environment.PrometheusGroup(rules))
 	Expect(err).ShouldNot(HaveOccurred())
 }

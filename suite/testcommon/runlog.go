@@ -20,7 +20,8 @@ import (
 
 // RunlogSetupInputs inputs needed for a runlog test
 type RunlogSetupInputs struct {
-	S             *actions.DefaultSuiteSetup
+	SuiteSetup    actions.SuiteSetup
+	NetworkInfo   actions.NetworkInfo
 	Adapter       environment.ExternalAdapter
 	Nodes         []client.Chainlink
 	NodeAddresses []common.Address
@@ -33,38 +34,38 @@ type RunlogSetupInputs struct {
 // SetupRunlogEnv does all the environment setup for a run log type test
 func SetupRunlogEnv(i *RunlogSetupInputs) {
 	By("Deploying the environment", func() {
-		i.S, i.Err = actions.DefaultLocalSetup(
-			"basic-chainlink",
+		i.SuiteSetup, i.Err = actions.SingleNetworkSetup(
 			environment.NewChainlinkCluster(1),
-			client.NewNetworkFromConfig,
+			client.DefaultNetworkFromConfig,
 			tools.ProjectRoot,
 		)
 		Expect(i.Err).ShouldNot(HaveOccurred())
-		i.Adapter, i.Err = environment.GetExternalAdapter(i.S.Env)
+		i.Adapter, i.Err = environment.GetExternalAdapter(i.SuiteSetup.Environment())
 		Expect(i.Err).ShouldNot(HaveOccurred())
+		i.NetworkInfo = i.SuiteSetup.DefaultNetwork()
 	})
 }
 
 // SetupRunlogTest does all other test preparations for runlog
 func SetupRunlogTest(i *RunlogSetupInputs) {
 	By("Funding Chainlink nodes", func() {
-		i.Nodes, i.Err = environment.GetChainlinkClients(i.S.Env)
+		i.Nodes, i.Err = environment.GetChainlinkClients(i.SuiteSetup.Environment())
 		Expect(i.Err).ShouldNot(HaveOccurred())
 		i.NodeAddresses, i.Err = actions.ChainlinkNodeAddresses(i.Nodes)
 		Expect(i.Err).ShouldNot(HaveOccurred())
-		i.Err = actions.FundChainlinkNodes(i.Nodes, i.S.Client, i.S.Wallets.Default(), big.NewFloat(2), nil)
+		i.Err = actions.FundChainlinkNodes(i.Nodes, i.NetworkInfo.Client, i.NetworkInfo.Wallets.Default(), big.NewFloat(2), nil)
 		Expect(i.Err).ShouldNot(HaveOccurred())
 	})
 	By("Deploying and funding the contracts", func() {
-		i.Oracle, i.Err = i.S.Deployer.DeployOracle(i.S.Wallets.Default(), i.S.Link.Address())
+		i.Oracle, i.Err = i.NetworkInfo.Deployer.DeployOracle(i.NetworkInfo.Wallets.Default(), i.NetworkInfo.Link.Address())
 		Expect(i.Err).ShouldNot(HaveOccurred())
-		i.Consumer, i.Err = i.S.Deployer.DeployAPIConsumer(i.S.Wallets.Default(), i.S.Link.Address())
+		i.Consumer, i.Err = i.NetworkInfo.Deployer.DeployAPIConsumer(i.NetworkInfo.Wallets.Default(), i.NetworkInfo.Link.Address())
 		Expect(i.Err).ShouldNot(HaveOccurred())
-		i.Err = i.Consumer.Fund(i.S.Wallets.Default(), nil, big.NewFloat(2))
+		i.Err = i.Consumer.Fund(i.NetworkInfo.Wallets.Default(), nil, big.NewFloat(2))
 		Expect(i.Err).ShouldNot(HaveOccurred())
 	})
 	By("Permitting node to fulfill request", func() {
-		i.Err = i.Oracle.SetFulfillmentPermission(i.S.Wallets.Default(), i.NodeAddresses[0].Hex(), true)
+		i.Err = i.Oracle.SetFulfillmentPermission(i.NetworkInfo.Wallets.Default(), i.NodeAddresses[0].Hex(), true)
 		Expect(i.Err).ShouldNot(HaveOccurred())
 	})
 	By("Creating directrequest job", func() {
@@ -102,7 +103,7 @@ func CallRunlogOracle(i *RunlogSetupInputs) {
 		var jobID [32]byte
 		copy(jobID[:], jobUUIDReplaces)
 		i.Err = i.Consumer.CreateRequestTo(
-			i.S.Wallets.Default(),
+			i.NetworkInfo.Wallets.Default(),
 			i.Oracle.Address(),
 			jobID,
 			big.NewInt(1e18),
@@ -117,7 +118,7 @@ func CallRunlogOracle(i *RunlogSetupInputs) {
 // CheckRunlogCompleted checks if oracle send the data on chain
 func CheckRunlogCompleted(i *RunlogSetupInputs) {
 	By("receives API call data on-chain", func() {
-		Eventually(func(g Gomega){
+		Eventually(func(g Gomega) {
 			d, err := i.Consumer.Data(context.Background())
 			g.Expect(err).ShouldNot(HaveOccurred())
 			g.Expect(d).ShouldNot(BeNil())

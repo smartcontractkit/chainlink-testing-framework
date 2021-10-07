@@ -1,46 +1,48 @@
 package performance
 
 import (
+	"math/big"
+	"time"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/environment"
 	"github.com/smartcontractkit/integrations-framework/tools"
-	"math/big"
-	"time"
 )
 
 var _ = Describe("Keeper performance test @performance-keeper", func() {
 	var (
-		suiteSetup *actions.DefaultSuiteSetup
-		nodes      []client.Chainlink
-		adapter    environment.ExternalAdapter
-		perfTest   Test
-		err        error
+		suiteSetup     actions.SuiteSetup
+		defaultNetwork actions.NetworkInfo
+		nodes          []client.Chainlink
+		adapter        environment.ExternalAdapter
+		perfTest       Test
+		err            error
 	)
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			suiteSetup, err = actions.DefaultLocalSetup(
-				"keeper-soak",
+			suiteSetup, err = actions.SingleNetworkSetup(
 				environment.NewChainlinkCluster(5),
-				client.NewNetworkFromConfig,
+				client.DefaultNetworkFromConfig,
 				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
-			adapter, err = environment.GetExternalAdapter(suiteSetup.Env)
+			defaultNetwork = suiteSetup.DefaultNetwork()
+			adapter, err = environment.GetExternalAdapter(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
-			nodes, err = environment.GetChainlinkClients(suiteSetup.Env)
+			nodes, err = environment.GetChainlinkClients(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
-			suiteSetup.Client.ParallelTransactions(true)
+			defaultNetwork.Client.ParallelTransactions(true)
 		})
 
 		By("Funding the Chainlink nodes", func() {
 			err := actions.FundChainlinkNodes(
 				nodes,
-				suiteSetup.Client,
-				suiteSetup.Wallets.Default(),
+				defaultNetwork.Client,
+				defaultNetwork.Wallets.Default(),
 				big.NewFloat(10),
 				big.NewFloat(10),
 			)
@@ -61,12 +63,12 @@ var _ = Describe("Keeper performance test @performance-keeper", func() {
 					StalenessSeconds:      big.NewInt(90000),
 					GasCeilingMultiplier:  uint16(1),
 				},
-				suiteSetup.Env,
-				suiteSetup.Client,
-				suiteSetup.Wallets,
-				suiteSetup.Deployer,
+				suiteSetup.Environment(),
+				defaultNetwork.Client,
+				defaultNetwork.Wallets,
+				defaultNetwork.Deployer,
 				adapter,
-				suiteSetup.Link,
+				defaultNetwork.Link,
 			)
 			err = perfTest.Setup()
 			Expect(err).ShouldNot(HaveOccurred())

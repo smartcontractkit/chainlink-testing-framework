@@ -7,12 +7,10 @@
 #     - 1: Performance tests
 performance=$1
 
-echo "IMAGE: $APPS_CHAINLINK_IMAGE | TAG: $APPS_CHAINLINK_VERSION"
-
 if [[ $performance == 0 ]]; then
   echo "Running smoke tests"
-  ginkgo -r -p -keepGoing --trace --randomizeAllSpecs -skipPackage=./integration/suite/performance,./integration/suite/chaos ./integration/suite/...
+  ginkgo -r -keepGoing --trace --randomizeAllSpecs --randomizeSuites --progress -nodes=10 -skipPackage=./suite/performance,./suite/chaos ./suite/...
 else
   echo "Running performance and chaos tests"
-  ginkgo -r -p -keepGoing --trace --randomizeAllSpecs ./integration/suite/performance ./integration/suite/chaos
+  ginkgo -r -keepGoing --trace --randomizeAllSpecs --randomizeSuites --progress ./suite/performance ./suite/chaos
 fi

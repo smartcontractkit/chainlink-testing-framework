@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -23,24 +24,77 @@ const (
 	KeepEnvironmentsAlways = "always"
 )
 
-// DefaultSuiteSetup holds the data for a default setup
-type DefaultSuiteSetup struct {
-	Config   *config.Config
+// NetworkInfo helps delineate network information in a multi-network setup
+type NetworkInfo struct {
 	Client   client.BlockchainClient
 	Wallets  client.BlockchainWallets
 	Deployer contracts.ContractDeployer
 	Link     contracts.LinkToken
-	Env      environment.Environment
 	Network  client.BlockchainNetwork
 }
 
-// DefaultLocalSetup setup minimum required components for test
-func DefaultLocalSetup(
-	envName string,
+// buildNetworkInfo initializes the network's blockchain client and gathers all test-relevant network information
+func buildNetworkInfo(network client.BlockchainNetwork, env environment.Environment) (NetworkInfo, error) {
+	// Initialize blockchain client
+	var bcc client.BlockchainClient
+	var err error
+	switch network.Config().Type {
+	case client.BlockchainTypeEVMMultinode:
+		bcc, err = environment.NewBlockchainClients(env, network)
+	case client.BlockchainTypeEVM:
+		bcc, err = environment.NewBlockchainClient(env, network)
+	}
+	if err != nil {
+		return NetworkInfo{}, err
+	}
+
+	// Initialize wallets
+	wallets, err := network.Wallets()
+	if err != nil {
+		return NetworkInfo{}, err
+	}
+	contractDeployer, err := contracts.NewContractDeployer(bcc)
+	if err != nil {
+		return NetworkInfo{}, err
+	}
+	link, err := contractDeployer.DeployLinkTokenContract(wallets.Default())
+	if err != nil {
+		return NetworkInfo{}, err
+	}
+	return NetworkInfo{
+		Client:   bcc,
+		Wallets:  wallets,
+		Deployer: contractDeployer,
+		Link:     link,
+		Network:  network,
+	}, nil
+}
+
+// SuiteSetup enables common use cases, and safe handling of different blockchain networks for test scenarios
+type SuiteSetup interface {
+	Config() *config.Config
+	Environment() environment.Environment
+
+	DefaultNetwork() NetworkInfo
+	Network(index int) (NetworkInfo, error)
+	Networks() []NetworkInfo
+
+	TearDown() func()
+}
+
+// SingleNetworkSuiteSetup holds the data for a default setup
+type SingleNetworkSuiteSetup struct {
+	config  *config.Config
+	env     environment.Environment
+	network NetworkInfo
+}
+
+// SingleNetworkSetup setup minimum required components for test
+func SingleNetworkSetup(
 	initialDeployInitFunc environment.K8sEnvSpecInit,
 	initFunc client.BlockchainNetworkInit,
 	configPath string,
-) (*DefaultSuiteSetup, error) {
+) (SuiteSetup, error) {
 	conf, err := config.NewConfig(configPath)
 	if err != nil {
 		return nil, err
@@ -50,7 +104,87 @@ func DefaultLocalSetup(
 		return nil, err
 	}
 
-	env, err := environment.NewK8sEnvironment(envName, conf, network)
+	env, err := environment.NewK8sEnvironment(conf, network)
+	if err != nil {
+		return nil, err
+	}
+	err = env.DeploySpecs(initialDeployInitFunc)
+	if err != nil {
+		return nil, err
+	}
+
+	networkInfo, err := buildNetworkInfo(network, env)
+	if err != nil {
+		return nil, err
+	}
+
+	// configure default retry
+	retry.DefaultAttempts = conf.Retry.Attempts
+	retry.DefaultDelayType = func(n uint, err error, config *retry.Config) time.Duration {
+		return conf.Retry.LinearDelay
+	}
+
+	return &SingleNetworkSuiteSetup{
+		config:  conf,
+		env:     env,
+		network: networkInfo,
+	}, nil
+}
+
+// Config retrieves the general config for the suite
+func (s *SingleNetworkSuiteSetup) Config() *config.Config {
+	return s.config
+}
+
+// Environment retrieves the general environment for the suite
+func (s *SingleNetworkSuiteSetup) Environment() environment.Environment {
+	return s.env
+}
+
+// DefaultNetwork returns the only network in a single network environment
+func (s *SingleNetworkSuiteSetup) DefaultNetwork() NetworkInfo {
+	return s.network
+}
+
+// Network returns the only network in a single network environment
+func (s *SingleNetworkSuiteSetup) Network(index int) (NetworkInfo, error) {
+	return s.network, nil
+}
+
+// Networks returns the only network in a single network environment
+func (s *SingleNetworkSuiteSetup) Networks() []NetworkInfo {
+	return []NetworkInfo{s.network}
+}
+
+// TearDown checks for test failure, writes logs if there is one, then tears down the test environment, based on the
+// keep_environments config value
+func (s *SingleNetworkSuiteSetup) TearDown() func() {
+	return teardown(*s.config, s.env, s.network.Client)
+}
+
+// multiNetworkSuiteSetup holds the data for a multiple network setup
+type multiNetworkSuiteSetup struct {
+	config   *config.Config
+	env      environment.Environment
+	networks []NetworkInfo
+}
+
+// MultiNetworkSetup enables testing across multiple networks
+func MultiNetworkSetup(
+	initialDeployInitFunc environment.K8sEnvSpecInit,
+	multiNetworkInitialization client.MultiNetworkInit,
+	configPath string,
+) (SuiteSetup, error) {
+	conf, err := config.NewConfig(configPath)
+	if err != nil {
+		return nil, err
+	}
+	networks, err := multiNetworkInitialization(conf)
+	if err != nil {
+		return nil, err
+	}
+
+	env, err := environment.NewK8sEnvironment(conf, networks...)
 	if err != nil {
 		return nil, err
 	}
@@ -60,64 +194,78 @@ func DefaultLocalSetup(
 		return nil, err
 	}
 
-	// Initialize blockchain client
-	var bcc client.BlockchainClient
-	switch network.Config().Type {
-	case client.BlockchainTypeEVMMultinode:
-		bcc, err = environment.NewBlockchainClients(env, network)
-	case client.BlockchainTypeEVM:
-		bcc, err = environment.NewBlockchainClient(env, network)
-	}
-	if err != nil {
-		return nil, err
+	allNetworks := make([]NetworkInfo, len(networks))
+	for index, network := range networks {
+		networkInfo, err := buildNetworkInfo(network, env)
+		if err != nil {
+			return nil, err
+		}
+		allNetworks[index] = networkInfo
 	}
 
-	// Initialize wallets
-	wallets, err := network.Wallets()
-	if err != nil {
-		return nil, err
-	}
-	contractDeployer, err := contracts.NewContractDeployer(bcc)
-	if err != nil {
-		return nil, err
-	}
-	balance, err := contractDeployer.Balance(wallets.Default())
-	if err != nil {
-		return nil, err
-	}
-	log.Info().Str("Address", wallets.Default().Address()).Str("ETH", balance.String()).Msg("Deployer balance")
-	link, err := contractDeployer.DeployLinkTokenContract(wallets.Default())
-	if err != nil {
-		return nil, err
-	}
 	// configure default retry
 	retry.DefaultAttempts = conf.Retry.Attempts
 	retry.DefaultDelayType = func(n uint, err error, config *retry.Config) time.Duration {
 		return conf.Retry.LinearDelay
 	}
-	return &DefaultSuiteSetup{
-		Config:   conf,
-		Client:   bcc,
-		Wallets:  wallets,
-		Deployer: contractDeployer,
-		Link:     link,
-		Env:      env,
-		Network:  network,
+	return &multiNetworkSuiteSetup{
+		config:   conf,
+		env:      env,
+		networks: allNetworks,
 	}, nil
+}
+
+// Config retrieves the general config for the suite
+func (s *multiNetworkSuiteSetup) Config() *config.Config {
+	return s.config
+}
+
+// Environment retrieves the general environment for the suite
+func (s *multiNetworkSuiteSetup) Environment() environment.Environment {
+	return s.env
+}
+
+// DefaultNetwork returns the network information for the first / only network in the suite
+func (s *multiNetworkSuiteSetup) DefaultNetwork() NetworkInfo {
+	return s.networks[0]
+}
+
+// Network returns the network information for the network with the supplied ID. If there is more than 1 network with
+// that ID, the first one encountered is returned.
+func (s *multiNetworkSuiteSetup) Network(index int) (NetworkInfo, error) {
+	if len(s.networks) <= index {
+		return NetworkInfo{}, fmt.Errorf("No network at the index '%d'. Total amount of networks: %v", index, len(s.networks))
+	}
+	return s.networks[index], nil
+}
+
+// Networks returns the network information for all the networks with the supplied ID.
+func (s *multiNetworkSuiteSetup) Networks() []NetworkInfo {
+	return s.networks
 }
 
 // TearDown checks for test failure, writes logs if there is one, then tears down the test environment, based on the
 // keep_environments config value
-func (s *DefaultSuiteSetup) TearDown() func() {
+func (s *multiNetworkSuiteSetup) TearDown() func() {
+	clients := make([]client.BlockchainClient, len(s.networks))
+	for index, network := range s.networks {
+		clients[index] = network.Client
+	}
+	return teardown(*s.config, s.env, clients...)
+}
+
+// TearDown checks for test failure, writes logs if there is one, then tears down the test environment, based on the
+// keep_environments config value
+func teardown(config config.Config, env environment.Environment, clients ...client.BlockchainClient) func() {
 	if ginkgo.CurrentGinkgoTestDescription().Failed { // If a test fails, dump logs
-		logsFolder := filepath.Join(s.Config.ConfigFileLocation, "/logs/")
+		logsFolder := filepath.Join(config.ConfigFileLocation, "/logs/")
 		if _, err := os.Stat(logsFolder); os.IsNotExist(err) {
 			if err = os.Mkdir(logsFolder, 0755); err != nil {
 				log.Err(err).Str("Log Folder", logsFolder).Msg("Error creating logs directory")
 			}
 		}
 		testLogFolder := filepath.Join(logsFolder, strings.Replace(ginkgo.CurrentGinkgoTestDescription().TestText, " ", "-", -1)+
-			"_"+s.Env.ID()+"/")
+			"_"+env.ID()+"/")
 		// Create specific test folder
 		if _, err := os.Stat(testLogFolder); os.IsNotExist(err) {
 			if err = os.Mkdir(testLogFolder, 0755); err != nil {
@@ -125,30 +273,32 @@ func (s *DefaultSuiteSetup) TearDown() func() {
 			}
 		}
 
-		s.Env.WriteArtifacts(testLogFolder)
+		env.WriteArtifacts(testLogFolder)
 		log.Info().Str("Log Folder", testLogFolder).Msg("Wrote environment logs")
 	}
 	return func() {
-		if err := s.Client.Close(); err != nil {
-			log.Error().
-				Str("Network", s.Config.Network).
-				Msgf("Error while closing the Blockchain client: %v", err)
+		for _, client := range clients {
+			if err := client.Close(); err != nil {
+				log.Err(err).
+					Str("Network", client.GetNetworkName()).
+					Msgf("Error while closing the Blockchain client")
+			}
 		}
 
-		switch strings.ToLower(s.Config.KeepEnvironments) {
+		switch strings.ToLower(config.KeepEnvironments) {
 		case KeepEnvironmentsNever:
-			s.Env.TearDown()
+			env.TearDown()
 		case KeepEnvironmentsOnFail:
 			if !ginkgo.CurrentGinkgoTestDescription().Failed {
-				s.Env.TearDown()
+				env.TearDown()
 			} else {
-				log.Info().Str("Namespace", s.Env.ID()).Msg("Kept environment due to test failure")
+				log.Info().Str("Namespace", env.ID()).Msg("Kept environment due to test failure")
 			}
 		case KeepEnvironmentsAlways:
-			log.Info().Str("Namespace", s.Env.ID()).Msg("Kept environment")
+			log.Info().Str("Namespace", env.ID()).Msg("Kept environment")
 			return
 		default:
-			s.Env.TearDown()
+			env.TearDown()
 		}
 	}
 }

@@ -14,6 +14,6 @@ import (
 func TestConfig(t *testing.T) {
 	RegisterFailHandler(Fail)
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
-	junitReporter := reporters.NewJUnitReporter("junit.xml")
+	junitReporter := reporters.NewJUnitReporter("../logs/tests-config.xml")
 	RunSpecsWithDefaultAndCustomReporters(t, "Config Suite", []Reporter{junitReporter})
 }

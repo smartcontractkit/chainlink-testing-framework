@@ -36,6 +36,11 @@ type EthereumClients struct {
 	Clients       []*EthereumClient
 }
 
+// GetNetworkName gets the ID of the chain that the clients are connected to
+func (e *EthereumClients) GetNetworkName() string {
+	return e.DefaultClient.GetNetworkName()
+}
+
 // GetID gets client ID, node number it's connected to
 func (e *EthereumClients) GetID() int {
 	return e.DefaultClient.ID
@@ -226,7 +231,7 @@ type ContractDeployer func(auth *bind.TransactOpts, backend bind.ContractBackend
 
 // NewEthereumClient returns an instantiated instance of the Ethereum client that has connected to the server
 func NewEthereumClient(network BlockchainNetwork) (*EthereumClient, error) {
-	cl, err := ethclient.Dial(network.URL())
+	cl, err := ethclient.Dial(network.LocalURL())
 	if err != nil {
 		return nil, err
 	}
@@ -252,7 +257,7 @@ func NewEthereumClient(network BlockchainNetwork) (*EthereumClient, error) {
 func NewEthereumClients(network BlockchainNetwork) (*EthereumClients, error) {
 	ecl := &EthereumClients{Clients: make([]*EthereumClient, 0)}
 	for idx, url := range network.URLs() {
-		network.SetURL(url)
+		network.SetLocalURL(url)
 		ec, err := NewEthereumClient(network)
 		if err != nil {
 			return nil, err
@@ -262,6 +267,11 @@ func NewEthereumClients(network BlockchainNetwork) (*EthereumClients, error) {
 	}
 	ecl.DefaultClient = ecl.Clients[0]
 	return ecl, nil
+}
+
+// GetNetworkName retrieves the ID of the network that the client interacts with
+func (e *EthereumClient) GetNetworkName() string {
+	return e.Network.ID()
 }
 
 // Close tears down the current open Ethereum client
@@ -316,18 +326,18 @@ func (e *EthereumClient) Get() interface{} {
 
 // CalculateTxGas calculates tx gas cost accordingly gas used plus buffer, converts it to big.Float for funding
 func (e *EthereumClient) CalculateTxGas(gasUsed *big.Int) (*big.Float, error) {
-	gp, err := e.Client.SuggestGasPrice(context.Background())
+	gasPrice, err := e.Client.SuggestGasPrice(context.Background()) // Wei
 	if err != nil {
 		return nil, err
 	}
-	gpWei := gp.Mul(gp, OneGWei)
-	log.Debug().Int64("Gas price", gp.Int64()).Msg("Suggested gas price")
-	buf := big.NewInt(int64(e.Network.Config().GasEstimationBuffer))
-	gasUsedWithBuf := gasUsed.Add(gasUsed, buf)
-	cost := big.NewInt(1).Mul(gpWei, gasUsedWithBuf)
-	log.Debug().Int64("TX Gas cost", cost.Int64()).Msg("Estimated tx gas cost with buffer")
-	bf := new(big.Float).SetInt(cost)
-	return big.NewFloat(1).Quo(bf, OneEth), nil
+	buffer := big.NewInt(0).SetUint64(e.Network.Config().GasEstimationBuffer)
+	gasUsedWithBuffer := gasUsed.Add(gasUsed, buffer)
+	cost := big.NewFloat(0).SetInt(big.NewInt(1).Mul(gasPrice, gasUsedWithBuffer))
+	costInEth := big.NewFloat(0).Quo(cost, OneEth)
+	costInEthFloat, _ := costInEth.Float64()
+
+	log.Debug().Float64("ETH", costInEthFloat).Msg("Estimated tx gas cost with buffer")
+	return costInEth, nil
 }
 
 // GasStats gets gas stats instance
@@ -356,7 +366,7 @@ func (e *EthereumClient) Fund(
 			Str("Token", "ETH").
 			Str("From", fromWallet.Address()).
 			Str("To", toAddress).
-			Str("Amount", eth.String()).
+			Str("Amount", ethAmount.String()).
 			Msg("Funding Address")
 		_, err := e.SendTransaction(fromWallet, ethAddress, eth, nil)
 		if err != nil {
@@ -371,7 +381,7 @@ func (e *EthereumClient) Fund(
 			Str("Token", "LINK").
 			Str("From", fromWallet.Address()).
 			Str("To", toAddress).
-			Str("Amount", link.String()).
+			Str("Amount", linkAmount.String()).
 			Msg("Funding Address")
 		linkAddress := common.HexToAddress(e.Network.Config().LinkTokenAddress)
 		linkInstance, err := ethContracts.NewLinkToken(linkAddress, e.Client)
@@ -472,6 +482,7 @@ func (e *EthereumClient) DeployContract(
 		Str("Contract Name", contractName).
 		Str("From", fromWallet.Address()).
 		Str("Gas Cost", transaction.Cost().String()).
+		Str("Network", e.Network.ID()).
 		Msg("Deployed contract")
 	return &contractAddress, transaction, contractInstance, err
 }

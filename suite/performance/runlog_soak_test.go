@@ -8,64 +8,63 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/client"
-	"github.com/smartcontractkit/integrations-framework/contracts"
 	"github.com/smartcontractkit/integrations-framework/environment"
 	"github.com/smartcontractkit/integrations-framework/tools"
 )
 
-var _ = Describe("OCR soak test @soak-ocr", func() {
+var _ = Describe("Runlog soak test @soak-runlog", func() {
 	var (
-		suiteSetup  actions.SuiteSetup
-		networkInfo actions.NetworkInfo
-		nodes       []client.Chainlink
-		adapter     environment.ExternalAdapter
-		perfTest    Test
-		err         error
+		suiteSetup     actions.SuiteSetup
+		defaultNetwork actions.NetworkInfo
+		nodes          []client.Chainlink
+		adapter        environment.ExternalAdapter
+		perfTest       Test
+		err            error
 	)
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
 			suiteSetup, err = actions.SingleNetworkSetup(
-				environment.NewChainlinkCluster(5),
+				// no need more than one node for runlog test
+				environment.NewChainlinkCluster(1),
 				client.DefaultNetworkFromConfig,
 				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
+			defaultNetwork = suiteSetup.DefaultNetwork()
 			adapter, err = environment.GetExternalAdapter(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
 			nodes, err = environment.GetChainlinkClients(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
-			networkInfo = suiteSetup.DefaultNetwork()
-
-			networkInfo.Client.ParallelTransactions(true)
+			defaultNetwork.Client.ParallelTransactions(true)
 		})
 
 		By("Funding the Chainlink nodes", func() {
 			err := actions.FundChainlinkNodes(
 				nodes,
-				networkInfo.Client,
-				networkInfo.Wallets.Default(),
+				defaultNetwork.Client,
+				defaultNetwork.Wallets.Default(),
 				big.NewFloat(10),
 				big.NewFloat(10),
 			)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
-		By("Setting up the OCR soak test", func() {
-			perfTest = NewOCRTest(
-				OCRTestOptions{
+		By("Setting up the Runlog soak test", func() {
+			perfTest = NewRunlogTest(
+				RunlogTestOptions{
 					TestOptions: TestOptions{
 						NumberOfContracts: 5,
+						RoundTimeout:      180 * time.Second,
+						TestDuration:      1 * time.Minute,
 					},
-					RoundTimeout: 180 * time.Second,
 					AdapterValue: 5,
-					TestDuration: 10 * time.Minute,
 				},
-				contracts.DefaultOffChainAggregatorOptions(),
 				suiteSetup.Environment(),
-				networkInfo.Client,
-				networkInfo.Wallets,
-				networkInfo.Deployer,
+				defaultNetwork.Link,
+				defaultNetwork.Client,
+				defaultNetwork.Wallets,
+				defaultNetwork.Deployer,
 				adapter,
 			)
 			err = perfTest.Setup()
@@ -73,8 +72,8 @@ var _ = Describe("OCR soak test @soak-ocr", func() {
 		})
 	})
 
-	Describe("OCR Soak test", func() {
-		Measure("Measure OCR rounds", func(_ Benchmarker) {
+	Describe("Runlog soak test", func() {
+		Measure("Measure Runlog rounds", func(_ Benchmarker) {
 			err = perfTest.Run()
 			Expect(err).ShouldNot(HaveOccurred())
 		}, 1)
