@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/smartcontractkit/integrations-framework/actions"
-	"github.com/smartcontractkit/integrations-framework/client"
 	"golang.org/x/sync/errgroup"
 	"sync"
+	"github.com/smartcontractkit/integrations-framework/client"
 	"time"
 
 	"github.com/montanaflynn/stats"
