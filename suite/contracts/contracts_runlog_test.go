@@ -39,6 +39,7 @@ var _ = Describe("Direct request suite @runlog", func() {
 				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
+			networkInfo = suiteSetup.DefaultNetwork()
 			adapter, err = environment.GetExternalAdapter(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
 		})
@@ -113,7 +114,7 @@ var _ = Describe("Direct request suite @runlog", func() {
 
 	Describe("with DirectRequest job", func() {
 		It("receives API call data on-chain", func() {
-			Eventually(func(g Gomega){
+			Eventually(func(g Gomega) {
 				d, err := consumer.Data(context.Background())
 				g.Expect(err).ShouldNot(HaveOccurred())
 				g.Expect(d).ShouldNot(BeNil())
