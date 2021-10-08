@@ -21,7 +21,7 @@ var _ = XDescribeTable("OCR chaos tests @chaos-ocr", func(
 		testcommon.DeployOCRForEnv(i, envInit)
 		testcommon.SetupOCRTest(i)
 		testcommon.SendOCRJobs(i)
-		_, err := i.SuiteSetup.Env.ApplyChaos(chaosSpec)
+		_, err := i.SuiteSetup.Environment().ApplyChaos(chaosSpec)
 		Expect(err).ShouldNot(HaveOccurred())
 		testcommon.CheckRound(i)
 	})
