@@ -3,6 +3,6 @@ metadata:
 spec:
   ports:
   - name: access
-    port: {{ (getNetwork "ethereum_hardhat").RPCPort }}
-    targetPort: {{ (getNetwork "ethereum_hardhat").RPCPort }}
+    port: {{ .Network.RPCPort }}
+    targetPort: {{ .Network.RPCPort }}
   type: ClusterIP

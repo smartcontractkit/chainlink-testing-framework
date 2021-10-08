@@ -44,6 +44,7 @@ type HelmChart struct {
 	releaseName       string
 	actionConfig      *action.Configuration
 	env               *K8sEnvironment
+	network           *config.NetworkConfig
 	SetValuesHelmFunc SetValuesHelmFunc
 	// Deployment properties
 	pods         []PodForwardedInfo

@@ -107,7 +107,7 @@ var _ = Describe("VRF suite @vrf", func() {
 			err = consumer.RequestRandomness(networkInfo.Wallets.Default(), requestHash, big.NewInt(1))
 			Expect(err).ShouldNot(HaveOccurred())
 
-			Eventually(func(g Gomega){
+			Eventually(func(g Gomega) {
 				out, err := consumer.RandomnessOutput(context.Background())
 				g.Expect(err).ShouldNot(HaveOccurred())
 				g.Expect(out.Uint64()).Should(Not(BeNumerically("==", 0)))

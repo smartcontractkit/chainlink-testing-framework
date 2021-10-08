@@ -1,8 +1,8 @@
 metadata:
-  generateName: geth-network-
+  name: {{ .Network.Name }}
 spec:
   ports:
   - name: access
-    port: {{ (getNetwork "ethereum_geth").RPCPort }}
-    targetPort: {{ (getNetwork "ethereum_geth").RPCPort }}
+    port: {{ .Network.RPCPort }}
+    targetPort: {{ .Network.RPCPort }}
   type: ClusterIP

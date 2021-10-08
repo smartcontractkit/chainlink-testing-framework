@@ -10,7 +10,7 @@ spec:
       - name: ganache-network
         image: trufflesuite/ganache-cli:v6.12.2
         ports:
-        - containerPort: {{ (getNetwork "ethereum_ganache").RPCPort }}
+        - containerPort: {{ .Network.RPCPort }}
         args:
           - --account="0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80,100000000000000000000"
           - --account="0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d,100000000000000000000"
@@ -33,11 +33,11 @@ spec:
           - --account="0xde9be858da4a475276426320d5e9262ecfc3ba460bfac56360bfa6c4c28b4ee0,100000000000000000000"
           - --account="0xdf57089febbacf7ba0bc227dafbffa9fc08a93fdc68e1e42411a14efcf23656e,100000000000000000000"
           - --hostname='0.0.0.0'
-          - --networkId='{{ (getNetwork "ethereum_ganache").ChainID }}'
+          - --networkId='{{ .Network.ChainID }}'
           - --deterministic
-          - --gasLimit='{{ (getNetwork "ethereum_ganache").BlockGasLimit }}'
-          - --port={{ (getNetwork "ethereum_ganache").RPCPort }}
+          - --gasLimit='{{ .Network.BlockGasLimit }}'
+          - --port={{ .Network.RPCPort }}
         readinessProbe:
           tcpSocket:
-            port: {{ (getNetwork "ethereum_ganache").RPCPort }}
+            port: {{ .Network.RPCPort }}
           periodSeconds: 2

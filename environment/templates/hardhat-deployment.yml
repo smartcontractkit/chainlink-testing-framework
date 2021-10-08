@@ -18,9 +18,9 @@ spec:
             mountPath: /usr/app/hardhat.config.js
             subPath: hardhat.config.js
         ports:
-        - containerPort: {{ (getNetwork "ethereum_hardhat").RPCPort }}
+        - containerPort: {{ .Network.RPCPort }}
         readinessProbe:
           httpGet:
             path: /
-            port: {{ (getNetwork "ethereum_hardhat").RPCPort }}
+            port: {{ .Network.RPCPort }}
           periodSeconds: 2

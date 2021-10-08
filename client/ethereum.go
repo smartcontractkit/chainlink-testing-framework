@@ -231,7 +231,7 @@ type ContractDeployer func(auth *bind.TransactOpts, backend bind.ContractBackend
 
 // NewEthereumClient returns an instantiated instance of the Ethereum client that has connected to the server
 func NewEthereumClient(network BlockchainNetwork) (*EthereumClient, error) {
-	cl, err := ethclient.Dial(network.URL())
+	cl, err := ethclient.Dial(network.LocalURL())
 	if err != nil {
 		return nil, err
 	}
@@ -257,7 +257,7 @@ func NewEthereumClient(network BlockchainNetwork) (*EthereumClient, error) {
 func NewEthereumClients(network BlockchainNetwork) (*EthereumClients, error) {
 	ecl := &EthereumClients{Clients: make([]*EthereumClient, 0)}
 	for idx, url := range network.URLs() {
-		network.SetURL(url)
+		network.SetLocalURL(url)
 		ec, err := NewEthereumClient(network)
 		if err != nil {
 			return nil, err

@@ -64,10 +64,12 @@ func NewBlockchainClient(network BlockchainNetwork) (BlockchainClient, error) {
 type BlockchainNetwork interface {
 	GasUsedEstimations
 	ID() string
-	URL() string
+	ClusterURL() string
+	LocalURL() string
 	URLs() []string
 	Type() string
-	SetURL(string)
+	SetClusterURL(string)
+	SetLocalURL(string)
 	SetURLs(urls []string)
 	ChainID() *big.Int
 	RemotePort() uint16
@@ -158,9 +160,14 @@ func (e *EthereumNetwork) Type() string {
 	return e.networkConfig.Type
 }
 
-// URL returns the RPC URL used for connecting to the network
-func (e *EthereumNetwork) URL() string {
-	return e.networkConfig.URL
+// ClusterURL returns the RPC URL used for connecting to the network within the K8s cluster
+func (e *EthereumNetwork) ClusterURL() string {
+	return e.networkConfig.ClusterURL
+}
+
+// LocalURL returns the RPC URL used for connecting to the network from outside the K8s cluster
+func (e *EthereumNetwork) LocalURL() string {
+	return e.networkConfig.LocalURL
 }
 
 // URLs returns the RPC URLs used for connecting to the network nodes
@@ -173,9 +180,14 @@ func (e *EthereumNetwork) SetURLs(urls []string) {
 	e.networkConfig.URLS = urls
 }
 
-// SetURL sets the RPC URL, useful for when blockchain URLs might be dynamic
-func (e *EthereumNetwork) SetURL(newURL string) {
-	e.networkConfig.URL = newURL
+// SetClusterURL sets the RPC URL used to connect to the chain from within the K8s cluster
+func (e *EthereumNetwork) SetClusterURL(newURL string) {
+	e.networkConfig.ClusterURL = newURL
+}
+
+// SetLocalURL sets the RPC URL used to connect to the chain from outside the K8s cluster
+func (e *EthereumNetwork) SetLocalURL(newURL string) {
+	e.networkConfig.LocalURL = newURL
 }
 
 // ChainID returns the on-chain ID of the network being connected to

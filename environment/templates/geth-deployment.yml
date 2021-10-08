@@ -1,12 +1,12 @@
 metadata:
-  generateName: geth-network-
+  name: {{ .Network.Name }}
 spec:
   template:
     spec:
       volumes:
       - name: configmap-volume
         configMap:
-          name: geth-config-map
+          name: {{ .Network.Name }}
       containers:
       - name: geth-network
         image: ethereum/client-go:v1.10.3
@@ -122,14 +122,14 @@ spec:
           - 0xdD2FD4581271e230360230F9337D5c0430Bf44C0
           - --unlock
           - 0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199
-          - --networkid={{ (getNetwork "ethereum_geth").ChainID }}
+          - --networkid={{ .Network.ChainID }}
           - --mine
           - --miner.threads
           - 1
           - --miner.gasprice
           - 10000000000
           - --miner.gastarget
-          - {{ (getNetwork "ethereum_geth").BlockGasLimit }}
+          - {{ .Network.BlockGasLimit }}
           - --miner.etherbase
           - 0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266
           - --rpcapi="admin,debug,web3,eth,txpool,personal,clique,miner,net"
@@ -143,7 +143,7 @@ spec:
           - "*"
           - --ws.addr
           - 0.0.0.0
-          - --ws.port={{ (getNetwork "ethereum_geth").RPCPort }}
+          - --ws.port={{ .Network.RPCPort }}
           - --graphql
           - --graphql.corsdomain
           - "*"
@@ -153,7 +153,7 @@ spec:
           - "*"
           - --vmdebug
         ports:
-        - containerPort: {{ (getNetwork "ethereum_geth").RPCPort }}
+        - containerPort: {{ .Network.RPCPort }}
         resources:
           requests:
             memory: {{ .Config.Apps.Geth.Requests.Memory }}

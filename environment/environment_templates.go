@@ -15,6 +15,7 @@ import (
 
 	"github.com/google/go-github/github"
 	"github.com/smartcontractkit/integrations-framework/client"
+	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/tools"
 	coreV1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -225,31 +226,45 @@ func NewPrometheusManifest(rules map[string]*os.File) *K8sManifest {
 }
 
 // NewGethManifest is the k8s manifest that when used will deploy geth to an environment
-func NewGethManifest(networkCount int) *K8sManifest {
+func NewGethManifest(networkCount int, network *config.NetworkConfig) *K8sManifest {
+	network.Name = fmt.Sprintf("ethereum-geth-%d", networkCount)
+	network.RPCPort = getFreePort()
 	return &K8sManifest{
-		id:             fmt.Sprintf("ethereum_geth_%d", networkCount),
+		id:             network.Name,
 		DeploymentFile: filepath.Join(tools.ProjectRoot, "environment/templates/geth-deployment.yml"),
 		ServiceFile:    filepath.Join(tools.ProjectRoot, "environment/templates/geth-service.yml"),
 		ConfigMapFile:  filepath.Join(tools.ProjectRoot, "environment/templates/geth-config-map.yml"),
+		Network:        network,
+		values: map[string]interface{}{
+			"rpcPort": network.RPCPort,
+		},
 
 		SetValuesFunc: func(manifest *K8sManifest) error {
-			manifest.values["clusterURL"] = fmt.Sprintf(
+			network.ClusterURL = fmt.Sprintf(
 				"ws://%s:%d",
 				manifest.Service.Spec.ClusterIP,
 				manifest.Service.Spec.Ports[0].Port,
 			)
-			manifest.values["localURL"] = fmt.Sprintf("ws://127.0.0.1:%d", manifest.ports[0].Local)
+			network.LocalURL = fmt.Sprintf("ws://127.0.0.1:%d", manifest.ports[0].Local)
+			manifest.values["clusterURL"] = network.ClusterURL
+			manifest.values["localURL"] = network.LocalURL
 			return nil
 		},
 	}
 }
 
 // NewGethReorgHelmChart creates new helm chart for multi-node Geth network
-func NewGethReorgHelmChart(networkCount int) *HelmChart {
+func NewGethReorgHelmChart(networkCount int, network *config.NetworkConfig) *HelmChart {
+	network.Name = fmt.Sprintf("ethereum-geth-reorg-%d", networkCount)
+	network.RPCPort = getFreePort()
 	return &HelmChart{
-		id:          "ethereum_geth_reorg",
+		id:          network.Name,
 		chartPath:   filepath.Join(tools.ProjectRoot, "environment/charts/geth-reorg"),
 		releaseName: "reorg-1",
+		network:     network,
+		values: map[string]interface{}{
+			"rpcPort": network.RPCPort,
+		},
 		SetValuesHelmFunc: func(k *HelmChart) error {
 			details, err := k.ServiceDetails()
 			if err != nil {
@@ -257,8 +272,8 @@ func NewGethReorgHelmChart(networkCount int) *HelmChart {
 			}
 			for _, d := range details {
 				if d.RemoteURL.Port() == strconv.Itoa(int(GethRPCPort)) {
-					k.values["clusterURL"] = strings.Replace(d.RemoteURL.String(), "http", "ws", -1)
-					k.values["localURL"] = strings.Replace(d.LocalURL.String(), "http", "ws", -1)
+					network.ClusterURL = strings.Replace(d.RemoteURL.String(), "http", "ws", -1)
+					network.LocalURL = strings.Replace(d.LocalURL.String(), "http", "ws", -1)
 				}
 			}
 			k.values["rpcPort"] = getFreePort()
@@ -268,39 +283,55 @@ func NewGethReorgHelmChart(networkCount int) *HelmChart {
 }
 
 // NewHardhatManifest is the k8s manifest that when used will deploy hardhat to an environment
-func NewHardhatManifest(networkCount int) *K8sManifest {
+func NewHardhatManifest(networkCount int, network *config.NetworkConfig) *K8sManifest {
+	network.Name = fmt.Sprintf("ethereum-hardhat-%d", networkCount)
+	network.RPCPort = getFreePort()
 	return &K8sManifest{
-		id:             fmt.Sprintf("ethereum_hardhat_%d", networkCount),
+		id:             network.Name,
 		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/hardhat-deployment.yml"),
 		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/hardhat-service.yml"),
 		ConfigMapFile:  filepath.Join(tools.ProjectRoot, "/environment/templates/hardhat-config-map.yml"),
+		Network:        network,
+		values: map[string]interface{}{
+			"rpcPort": network.RPCPort,
+		},
 
 		SetValuesFunc: func(manifest *K8sManifest) error {
-			manifest.values["clusterURL"] = fmt.Sprintf(
+			network.ClusterURL = fmt.Sprintf(
 				"ws://%s:%d",
 				manifest.Service.Spec.ClusterIP,
 				manifest.Service.Spec.Ports[0].Port,
 			)
-			manifest.values["localURL"] = fmt.Sprintf("ws://127.0.0.1:%d", manifest.ports[0].Local)
+			network.LocalURL = fmt.Sprintf("ws://127.0.0.1:%d", manifest.ports[0].Local)
+			manifest.values["clusterURL"] = network.ClusterURL
+			manifest.values["localURL"] = network.LocalURL
 			return nil
 		},
 	}
 }
 
 // NewGanacheManifest is the k8s manifest that when used will deploy ganache to an environment
-func NewGanacheManifest(networkCount int) *K8sManifest {
+func NewGanacheManifest(networkCount int, network *config.NetworkConfig) *K8sManifest {
+	network.Name = fmt.Sprintf("ethereum-ganache-%d", networkCount)
+	network.RPCPort = getFreePort()
 	return &K8sManifest{
-		id:             fmt.Sprintf("ethereum_ganache_%d", networkCount),
+		id:             network.Name,
 		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/ganache-deployment.yml"),
 		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/ganache-service.yml"),
+		Network:        network,
+		values: map[string]interface{}{
+			"rpcPort": network.RPCPort,
+		},
 
 		SetValuesFunc: func(manifest *K8sManifest) error {
-			manifest.values["clusterURL"] = fmt.Sprintf(
+			network.ClusterURL = fmt.Sprintf(
 				"ws://%s:%d",
 				manifest.Service.Spec.ClusterIP,
 				manifest.Service.Spec.Ports[0].Port,
 			)
-			manifest.values["localURL"] = fmt.Sprintf("ws://127.0.0.1:%d", manifest.ports[0].Local)
+			network.LocalURL = fmt.Sprintf("ws://127.0.0.1:%d", manifest.ports[0].Local)
+			manifest.values["clusterURL"] = network.ClusterURL
+			manifest.values["localURL"] = network.LocalURL
 			return nil
 		},
 	}
@@ -504,22 +535,22 @@ func addNetworkManifestToDependencyGroup(chainlinkGroup *K8sManifestGroup, depen
 			case "Ethereum Geth reorg":
 				dependencyGroups[indexOfLastElementInDependencyGroups].manifests = append(
 					dependencyGroups[indexOfLastElementInDependencyGroups].manifests,
-					NewGethReorgHelmChart(networkCounts["Ethereum Geth"]))
+					NewGethReorgHelmChart(networkCounts["Ethereum Geth"], network.Config()))
 				networkCounts["Ethereum Geth"] += 1
 			case "Ethereum Geth dev":
 				dependencyGroups[indexOfLastElementInDependencyGroups].manifests = append(
 					dependencyGroups[indexOfLastElementInDependencyGroups].manifests,
-					NewGethManifest(networkCounts["Ethereum Geth"]))
+					NewGethManifest(networkCounts["Ethereum Geth"], network.Config()))
 				networkCounts["Ethereum Geth"] += 1
 			case "Ethereum Hardhat":
 				dependencyGroups[indexOfLastElementInDependencyGroups].manifests = append(
 					dependencyGroups[indexOfLastElementInDependencyGroups].manifests,
-					NewHardhatManifest(networkCounts[network.Config().Name]))
+					NewHardhatManifest(networkCounts[network.Config().Name], network.Config()))
 				networkCounts[network.Config().Name] += 1
 			case "Ethereum Ganache":
 				dependencyGroups[indexOfLastElementInDependencyGroups].manifests = append(
 					dependencyGroups[indexOfLastElementInDependencyGroups].manifests,
-					NewGanacheManifest(networkCounts[network.Config().Name]))
+					NewGanacheManifest(networkCounts[network.Config().Name], network.Config()))
 				networkCounts[network.Config().Name] += 1
 			default: // no simulated chain
 			}
