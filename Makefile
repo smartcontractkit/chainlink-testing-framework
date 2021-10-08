@@ -68,6 +68,18 @@ test_ocr: ## run ocr tests
 test_ocr_soak: ## run OCR soak test
 	NETWORK="ethereum_geth_performance" ginkgo -r --focus="@soak-ocr"
 
+.PHONY: test_runlog_soak
+test_runlog_soak: ## run Runlog soak test
+	NETWORK="ethereum_geth_performance" ginkgo -r --focus="@soak-runlog"
+
+.PHONY: test_keeper_soak
+test_keeper_soak: ## run Keeper soak/performance test
+	NETWORK="ethereum_geth_performance" ginkgo -r --focus="@performance-keeper"
+
+.PHONY: test_vrf_soak
+test_vrf_soak: ## run VRF soak test
+	NETWORK="ethereum_geth_performance" ginkgo -r --focus="@soak-vrf"
+
 .PHONY: test_runlog
 test_runlog: ## run runlog tests
 	ginkgo -r --focus=@runlog
@@ -79,3 +91,7 @@ test_contract: ## run contract tests
 .PHONY: test_vrf
 test_vrf: ## run vrf tests
 	ginkgo -r --focus=@vrf
+
+.PHONY: test_observability
+test_observability: # run observability tests
+	ginkgo -r --focus=@observability

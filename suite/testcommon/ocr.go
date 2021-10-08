@@ -2,14 +2,13 @@ package testcommon
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"math/big"
 	"os"
-	"path/filepath"
 	"time"
 
-	"github.com/smartcontractkit/integrations-framework/environment/charts/mockserver"
+	"github.com/rs/zerolog/log"
+	"github.com/smartcontractkit/integrations-framework/suite/steps"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -25,9 +24,9 @@ type OCRSetupInputs struct {
 	SuiteSetup     actions.SuiteSetup
 	NetworkInfo    actions.NetworkInfo
 	ChainlinkNodes []client.Chainlink
-	Adapter        environment.ExternalAdapter
 	DefaultWallet  client.BlockchainWallet
 	OCRInstance    contracts.OffchainAggregator
+	Mockserver     *client.MockserverClient
 }
 
 // DeployOCRForEnv deploys the environment
@@ -40,8 +39,9 @@ func DeployOCRForEnv(i *OCRSetupInputs, envInit environment.K8sEnvSpecInit) {
 			tools.ProjectRoot,
 		)
 		Expect(err).ShouldNot(HaveOccurred())
-		i.Adapter, err = environment.GetExternalAdapter(i.SuiteSetup.Environment())
+		i.Mockserver, err = environment.GetMockserverClientFromEnv(i.SuiteSetup.Environment())
 		Expect(err).ShouldNot(HaveOccurred())
+
 		i.ChainlinkNodes, err = environment.GetChainlinkClients(i.SuiteSetup.Environment())
 		Expect(err).ShouldNot(HaveOccurred())
 		i.NetworkInfo = i.SuiteSetup.DefaultNetwork()
@@ -72,8 +72,8 @@ func SetupOCRTest(i *OCRSetupInputs) {
 		Expect(err).ShouldNot(HaveOccurred())
 		err = i.OCRInstance.SetConfig(
 			i.DefaultWallet,
-			i.ChainlinkNodes,
-			contracts.DefaultOffChainAggregatorConfig(len(i.ChainlinkNodes)),
+			i.ChainlinkNodes[1:],
+			contracts.DefaultOffChainAggregatorConfig(len(i.ChainlinkNodes[1:])),
 		)
 		Expect(err).ShouldNot(HaveOccurred())
 		err = i.OCRInstance.Fund(i.DefaultWallet, nil, big.NewFloat(2))
@@ -81,9 +81,12 @@ func SetupOCRTest(i *OCRSetupInputs) {
 		err = i.NetworkInfo.Client.WaitForEvents()
 		Expect(err).ShouldNot(HaveOccurred())
 	})
+}
 
+// SendOCRJobs bootstraps the first node and to the other nodes sends ocr jobs that
+// read from different adapters
+func SendOCRJobs(i *OCRSetupInputs) {
 	By("Sending OCR jobs to chainlink nodes", func() {
-		// Initialize bootstrap node
 		bootstrapNode := i.ChainlinkNodes[0]
 		bootstrapP2PIds, err := bootstrapNode.ReadP2PKeys()
 		Expect(err).ShouldNot(HaveOccurred())
@@ -96,12 +99,6 @@ func SetupOCRTest(i *OCRSetupInputs) {
 		_, err = bootstrapNode.CreateJob(bootstrapSpec)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		bta := client.BridgeTypeAttributes{
-			Name: "variable",
-			URL:  fmt.Sprintf("%s/variable", i.Adapter.ClusterURL()),
-		}
-
-		// Send OCR job to other nodes
 		for index := 1; index < len(i.ChainlinkNodes); index++ {
 			nodeP2PIds, err := i.ChainlinkNodes[index].ReadP2PKeys()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -111,6 +108,11 @@ func SetupOCRTest(i *OCRSetupInputs) {
 			nodeOCRKeys, err := i.ChainlinkNodes[index].ReadOCRKeys()
 			Expect(err).ShouldNot(HaveOccurred())
 			nodeOCRKeyId := nodeOCRKeys.Data[0].ID
+
+			bta := client.BridgeTypeAttributes{
+				Name: fmt.Sprintf("node_%d", index),
+				URL:  fmt.Sprintf("%s/node_%d", i.Mockserver.Config.ClusterURL, index),
+			}
 
 			err = i.ChainlinkNodes[index].CreateBridge(&bta)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -132,35 +134,30 @@ func SetupOCRTest(i *OCRSetupInputs) {
 // CheckRound checks the ocr rounds for correctness
 func CheckRound(i *OCRSetupInputs) {
 	By("Checking OCR rounds", func() {
-		roundTimeout := time.Minute * 2
-		// Set adapter answer to 5
-		err := i.Adapter.SetVariable(5)
-		Expect(err).ShouldNot(HaveOccurred())
-		err = i.OCRInstance.RequestNewRound(i.DefaultWallet)
-		Expect(err).ShouldNot(HaveOccurred())
-		err = i.NetworkInfo.Client.WaitForEvents()
-		Expect(err).ShouldNot(HaveOccurred())
+		// Set adapters answer to 5
+		var adapterResults []int
+		for index := 1; index < len(i.ChainlinkNodes); index++ {
+			result := 5
+			adapterResults = append(adapterResults, result)
+		}
+		SetAdapterResults(i, adapterResults)
 
-		// Wait for the first round
-		ocrRound := contracts.NewOffchainAggregatorRoundConfirmer(i.OCRInstance, big.NewInt(1), roundTimeout)
-		i.NetworkInfo.Client.AddHeaderEventSubscription(i.OCRInstance.Address(), ocrRound)
-		err = i.NetworkInfo.Client.WaitForEvents()
-		Expect(err).ShouldNot(HaveOccurred())
+		StartNewRound(i, 1)
 
 		// Check answer is as expected
 		answer, err := i.OCRInstance.GetLatestAnswer(context.Background())
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(answer.Int64()).Should(Equal(int64(5)), "Latest answer from OCR is not as expected")
 
-		// Change adapter answer to 10
-		err = i.Adapter.SetVariable(10)
-		Expect(err).ShouldNot(HaveOccurred())
+		// Change adapters answer to 10
+		adapterResults = []int{}
+		for index := 1; index < len(i.ChainlinkNodes); index++ {
+			result := 10
+			adapterResults = append(adapterResults, result)
+		}
+		SetAdapterResults(i, adapterResults)
 
-		// Wait for the second round
-		ocrRound = contracts.NewOffchainAggregatorRoundConfirmer(i.OCRInstance, big.NewInt(2), roundTimeout)
-		i.NetworkInfo.Client.AddHeaderEventSubscription(i.OCRInstance.Address(), ocrRound)
-		err = i.NetworkInfo.Client.WaitForEvents()
-		Expect(err).ShouldNot(HaveOccurred())
+		StartNewRound(i, 2)
 
 		// Check answer is as expected
 		answer, err = i.OCRInstance.GetLatestAnswer(context.Background())
@@ -169,51 +166,70 @@ func CheckRound(i *OCRSetupInputs) {
 	})
 }
 
-// WriteDataForOTPEToInitializerFileForMockserver Write to initializerJson mocked weiwatchers data needed for otpe
-func WriteDataForOTPEToInitializerFileForMockserver(i *OCRSetupInputs) {
-	contractInfo := mockserver.ContractInfoJSON{
-		ContractVersion: 4,
-		Path:            "test",
-		Status:          "live",
-		ContractAddress: i.OCRInstance.Address(),
-	}
+// StartNewRound requests a new round from the ocr contract and waits for confirmation
+func StartNewRound(i *OCRSetupInputs, roundNr int64) {
+	roundTimeout := time.Minute * 2
 
-	contractsInfo := []mockserver.ContractInfoJSON{contractInfo}
+	err := i.OCRInstance.RequestNewRound(i.DefaultWallet)
+	Expect(err).ShouldNot(HaveOccurred())
+	err = i.SuiteSetup.DefaultNetwork().Client.WaitForEvents()
+	Expect(err).ShouldNot(HaveOccurred())
 
-	contractsInitializer := mockserver.HttpInitializer{
-		Request:  mockserver.HttpRequest{Path: "/contracts.json"},
-		Response: mockserver.HttpResponse{Body: contractsInfo},
-	}
+	// Wait for the second round
+	ocrRound := contracts.NewOffchainAggregatorRoundConfirmer(i.OCRInstance, big.NewInt(roundNr), roundTimeout)
+	i.SuiteSetup.DefaultNetwork().Client.AddHeaderEventSubscription(i.OCRInstance.Address(), ocrRound)
+	err = i.SuiteSetup.DefaultNetwork().Client.WaitForEvents()
+	Expect(err).ShouldNot(HaveOccurred())
+}
 
-	var nodesInfo []mockserver.NodeInfoJSON
+// SetAdapterResults sets the mock responses in mockserver that are read by chainlink nodes
+// to simulate different adapters
+func SetAdapterResults(i *OCRSetupInputs, results []int) {
+	Expect(len(results)).Should(BeNumerically("==", len(i.ChainlinkNodes[1:])))
 
-	for _, chainlink := range i.ChainlinkNodes {
-		ocrKeys, err := chainlink.ReadOCRKeys()
+	log.Info().Interface("New Adapter results", results).Msg("Setting new values")
+
+	for index := 1; index < len(i.ChainlinkNodes); index++ {
+		pathSelector := client.PathSelector{Path: fmt.Sprintf("/node_%d", index)}
+		err := i.Mockserver.ClearExpectation(pathSelector)
 		Expect(err).ShouldNot(HaveOccurred())
-		nodeInfo := mockserver.NodeInfoJSON{
-			NodeAddress: []string{ocrKeys.Data[0].Attributes.OnChainSigningAddress},
-			ID:          ocrKeys.Data[0].ID,
+	}
+
+	var initializers []client.HttpInitializer
+	for index := 1; index < len(i.ChainlinkNodes); index++ {
+		adResp := client.AdapterResponse{
+			Id:    "",
+			Data:  client.AdapterResult{Result: results[index-1]},
+			Error: nil,
 		}
-		nodesInfo = append(nodesInfo, nodeInfo)
+		nodesInitializer := client.HttpInitializer{
+			Request:  client.HttpRequest{Path: fmt.Sprintf("/node_%d", index)},
+			Response: client.HttpResponse{Body: adResp},
+		}
+		initializers = append(initializers, nodesInitializer)
 	}
 
-	nodesInitializer := mockserver.HttpInitializer{
-		Request:  mockserver.HttpRequest{Path: "/nodes.json"},
-		Response: mockserver.HttpResponse{Body: nodesInfo},
-	}
-	initializers := []mockserver.HttpInitializer{contractsInitializer, nodesInitializer}
+	err := i.Mockserver.PutExpectations(initializers)
+	Expect(err).ShouldNot(HaveOccurred())
+}
 
-	initializersBytes, err := json.Marshal(initializers)
+// NewOCRSetupInputForObservability deploys and setups env and clients for testing observability
+func NewOCRSetupInputForObservability(i *OCRSetupInputs, nodeCount int, rules map[string]*os.File) {
+	DeployOCRForEnv(
+		i,
+		environment.NewChainlinkClusterForObservabilityTesting(nodeCount),
+	)
+	SetupOCRTest(i)
+
+	err := i.Mockserver.PutExpectations(steps.GetMockserverInitializerDataForOTPE(
+		i.OCRInstance.Address(),
+		i.ChainlinkNodes,
+	))
 	Expect(err).ShouldNot(HaveOccurred())
 
-	fileName := filepath.Join(tools.ProjectRoot, "environment/charts/mockserver-config/static/initializerJson.json")
-	f, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
+	err = i.SuiteSetup.Environment().DeploySpecs(environment.OtpeGroup())
 	Expect(err).ShouldNot(HaveOccurred())
 
-	body := string(initializersBytes)
-	_, err = f.WriteString(body)
-	Expect(err).ShouldNot(HaveOccurred())
-
-	err = f.Close()
+	err = i.SuiteSetup.Environment().DeploySpecs(environment.PrometheusGroup(rules))
 	Expect(err).ShouldNot(HaveOccurred())
 }

@@ -18,6 +18,7 @@ import "./Ownable.sol";
  * local test networks
  */
 contract APIConsumer is ChainlinkClient, Ownable {
+  uint256 public roundID = 0;
   uint256 public data;
   bytes4 public selector;
 
@@ -85,6 +86,7 @@ contract APIConsumer is ChainlinkClient, Ownable {
     public
   {
     data = _data;
+    roundID += 1;
   }
 
   /**
