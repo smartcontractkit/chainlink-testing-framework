@@ -2,7 +2,6 @@ package performance
 
 import (
 	"context"
-	"encoding/json"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/onsi/ginkgo"
 	"github.com/rs/zerolog/log"
@@ -15,9 +14,6 @@ import (
 	"math/big"
 	"time"
 )
-
-// VRFJobMap is a custom map type that holds the record of jobs by the contract instance and the chainlink node
-type VRFJobMap map[ConsumerCoordinatorPair]map[client.Chainlink]VRFProvingData
 
 // VRFProvingData proving key and job ID pair
 type VRFProvingData struct {
