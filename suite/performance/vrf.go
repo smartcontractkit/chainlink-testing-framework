@@ -2,7 +2,6 @@ package performance
 
 import (
 	"context"
-	"encoding/json"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/onsi/ginkgo"
 	"github.com/rs/zerolog/log"
@@ -15,9 +14,6 @@ import (
 	"math/big"
 	"time"
 )
-
-// VRFJobMap is a custom map type that holds the record of jobs by the contract instance and the chainlink node
-type VRFJobMap map[ConsumerCoordinatorPair]map[client.Chainlink]VRFProvingData
 
 // VRFProvingData proving key and job ID pair
 type VRFProvingData struct {
@@ -53,8 +49,8 @@ type VRFTest struct {
 	contractInstances []ConsumerCoordinatorPair
 	adapter           environment.ExternalAdapter
 
-	testResults PerfRequestIDTestResults
-	jobMap      VRFJobMap
+	testResults *PerfRequestIDTestResults
+	jobMap      ContractsNodesJobsMap
 }
 
 // NewVRFTest creates new VRF performance/soak test
@@ -76,7 +72,7 @@ func NewVRFTest(
 		Deployer:    deployer,
 		adapter:     adapter,
 		testResults: NewPerfRequestIDTestResults(),
-		jobMap:      VRFJobMap{},
+		jobMap:      ContractsNodesJobsMap{},
 	}
 }
 
@@ -208,7 +204,7 @@ func (f *VRFTest) requestRandomness() error {
 		for _, provingData := range provingDataByNode {
 			provingData := provingData
 			g.Go(func() error {
-				err := p.consumer.RequestRandomness(f.Wallets.Default(), provingData.ProvingKeyHash, big.NewInt(1))
+				err := p.(ConsumerCoordinatorPair).consumer.RequestRandomness(f.Wallets.Default(), provingData.GetProvingKeyHash(), big.NewInt(1))
 				if err != nil {
 					return err
 				}
@@ -316,11 +312,11 @@ func (f *VRFTest) setResultStartTimes() error {
 	return g.Wait()
 }
 
-func (f *VRFTest) setResultStartTimeByContract(contract ConsumerCoordinatorPair) error {
+func (f *VRFTest) setResultStartTimeByContract(contract interface{}) error {
 	for _, chainlink := range f.chainlinkClients {
 		chainlink := chainlink
 
-		jobRuns, err := chainlink.ReadRunsByJob(f.jobMap[contract][chainlink].JobID)
+		jobRuns, err := chainlink.ReadRunsByJob(f.jobMap[contract][chainlink].GetJobID())
 		if err != nil {
 			return err
 		}
@@ -329,17 +325,10 @@ func (f *VRFTest) setResultStartTimeByContract(contract ConsumerCoordinatorPair)
 			Int("Runs", len(jobRuns.Data)).
 			Msg("Total runs")
 		for _, jobDecodeData := range jobRuns.Data {
-			var taskRun client.TaskRun
-			for _, tr := range jobDecodeData.Attributes.TaskRuns {
-				if tr.Type == "ethabidecodelog" {
-					taskRun = tr
-				}
-			}
-			var decodeLogTaskRun *client.DecodeLogTaskRun
-			if err := json.Unmarshal([]byte(taskRun.Output), &decodeLogTaskRun); err != nil {
+			rqInts, err := actions.ExtractRequestIDFromJobRun(jobDecodeData)
+			if err != nil {
 				return err
 			}
-			rqInts := decodeLogTaskRun.RequestID
 			rqID := common.Bytes2Hex(rqInts)
 			loc, _ := time.LoadLocation("UTC")
 			startTime := jobDecodeData.Attributes.CreatedAt.In(loc)
@@ -356,7 +345,7 @@ func (f *VRFTest) setResultStartTimeByContract(contract ConsumerCoordinatorPair)
 
 // createChainlinkJobs create and collect VRF jobs for every Chainlink node
 func (f *VRFTest) createChainlinkJobs() error {
-	jobsChan := make(chan VRFJobMap, len(f.chainlinkClients)*len(f.contractInstances))
+	jobsChan := make(chan ContractsNodesJobsMap, len(f.chainlinkClients)*len(f.contractInstances))
 	g := errgroup.Group{}
 	for _, p := range f.contractInstances {
 		p := p
@@ -408,7 +397,7 @@ func (f *VRFTest) createChainlinkJobs() error {
 				if err != nil {
 					return err
 				}
-				jobsChan <- VRFJobMap{p: map[client.Chainlink]VRFProvingData{n: {JobID: jobID.Data.ID, ProvingKeyHash: requestHash}}}
+				jobsChan <- ContractsNodesJobsMap{p: map[client.Chainlink]NodeData{n: VRFNodeData{JobID: jobID.Data.ID, ProvingKeyHash: requestHash}}}
 				return nil
 			})
 		}
@@ -417,16 +406,6 @@ func (f *VRFTest) createChainlinkJobs() error {
 		return err
 	}
 	close(jobsChan)
-
-	for jobMap := range jobsChan {
-		for contractAddr, m := range jobMap {
-			if _, ok := f.jobMap[contractAddr]; !ok {
-				f.jobMap[contractAddr] = map[client.Chainlink]VRFProvingData{}
-			}
-			for k, v := range m {
-				f.jobMap[contractAddr][k] = v
-			}
-		}
-	}
+	f.jobMap.FromJobsChan(jobsChan)
 	return nil
 }

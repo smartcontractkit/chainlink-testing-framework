@@ -2,7 +2,10 @@ package performance
 
 import (
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/client"
+	"golang.org/x/sync/errgroup"
 	"sync"
 	"time"
 
@@ -165,30 +168,155 @@ type PerfRequestIDTestResults struct {
 }
 
 // NewPerfRequestIDTestResults returns an instance NewPerfRequestIDTestResults
-func NewPerfRequestIDTestResults() PerfRequestIDTestResults {
-	return PerfRequestIDTestResults{
+func NewPerfRequestIDTestResults() *PerfRequestIDTestResults {
+	return &PerfRequestIDTestResults{
 		mutex:   &sync.Mutex{},
 		results: map[string]*PerfJobRunResult{},
 	}
 }
 
 // Get a value from the test results map with nil checking to avoid panics
-func (f PerfRequestIDTestResults) Get(requestID string) *PerfJobRunResult {
-	f.mutex.Lock()
-	defer f.mutex.Unlock()
+func (r *PerfRequestIDTestResults) Get(requestID string) *PerfJobRunResult {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
 
-	if _, ok := f.results[requestID]; !ok {
-		f.results[requestID] = &PerfJobRunResult{}
+	if _, ok := r.results[requestID]; !ok {
+		r.results[requestID] = &PerfJobRunResult{}
 	}
-	return f.results[requestID]
+	return r.results[requestID]
 }
 
 // GetAll returns all test results
-func (f PerfRequestIDTestResults) GetAll() map[string]*PerfJobRunResult {
-	f.mutex.Lock()
-	defer f.mutex.Unlock()
-	return f.results
+func (r *PerfRequestIDTestResults) GetAll() map[string]*PerfJobRunResult {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	return r.results
+}
+
+func (r *PerfRequestIDTestResults) setResultStartTimes(clients []client.Chainlink, jobMap ContractsNodesJobsMap) error {
+	g := errgroup.Group{}
+	for contract := range jobMap {
+		contract := contract
+		g.Go(func() error {
+			return r.setResultStartTimeByContract(clients, jobMap, contract)
+		})
+	}
+	return g.Wait()
+}
+
+func (r *PerfRequestIDTestResults) setResultStartTimeByContract(clients []client.Chainlink, jobMap ContractsNodesJobsMap, contract interface{}) error {
+	for _, chainlink := range clients {
+		jobRuns, err := chainlink.ReadRunsByJob(jobMap[contract][chainlink].GetJobID())
+		if err != nil {
+			return err
+		}
+		log.Debug().
+			Str("Node", chainlink.URL()).
+			Int("Runs", len(jobRuns.Data)).
+			Msg("Total runs")
+		for _, jobDecodeData := range jobRuns.Data {
+			rqInts, err := actions.ExtractRequestIDFromJobRun(jobDecodeData)
+			if err != nil {
+				return err
+			}
+			rqID := common.Bytes2Hex(rqInts)
+			loc, _ := time.LoadLocation("UTC")
+			startTime := jobDecodeData.Attributes.CreatedAt.In(loc)
+			log.Debug().
+				Time("StartTime", startTime).
+				Str("RequestID", rqID).
+				Msg("Request found")
+			d := r.Get(rqID)
+			d.StartTime = startTime
+		}
+	}
+	return nil
+}
+
+func (r *PerfRequestIDTestResults) calculateLatencies(b ginkgo.Benchmarker) error {
+	var latencies []time.Duration
+	for rqID, testResult := range r.GetAll() {
+		latency := testResult.EndTime.Sub(testResult.StartTime)
+		log.Debug().
+			Str("RequestID", rqID).
+			Time("StartTime", testResult.StartTime).
+			Time("EndTime", testResult.EndTime).
+			Dur("Duration", latency).
+			Msg("Calculating latencies for request id")
+		if testResult.StartTime.IsZero() {
+			log.Warn().
+				Str("RequestID", rqID).
+				Msg("Start time zero")
+		}
+		if testResult.EndTime.IsZero() {
+			log.Warn().
+				Str("RequestID", rqID).
+				Msg("End time zero")
+		}
+		if latency.Seconds() < 0 {
+			log.Warn().
+				Str("RequestID", rqID).
+				Msg("Latency below zero")
+		} else {
+			latencies = append(latencies, latency)
+		}
+	}
+	if err := recordResults(b, "Request latency", latencies); err != nil {
+		return err
+	}
+	return nil
+}
+
+// NodeData common node data
+type NodeData interface {
+	GetJobID() string
+	GetProvingKeyHash() [32]byte
+}
+
+// RunlogNodeData node data required for runlog test
+type RunlogNodeData struct {
+	JobID string
+}
+
+// GetJobID gets internal job id
+func (n RunlogNodeData) GetJobID() string {
+	return n.JobID
+}
+
+// GetProvingKeyHash gets proving key hash for VRF
+func (n RunlogNodeData) GetProvingKeyHash() [32]byte {
+	return [32]byte{}
+}
+
+// VRFNodeData VRF node data
+type VRFNodeData struct {
+	ProvingKeyHash [32]byte
+	JobID          string
+}
+
+// GetJobID gets internal job id
+func (n VRFNodeData) GetJobID() string {
+	return n.JobID
+}
+
+// GetProvingKeyHash gets proving key hash for VRF
+func (n VRFNodeData) GetProvingKeyHash() [32]byte {
+	return n.ProvingKeyHash
 }
 
 // ContractsNodesJobsMap common contract to node to job id mapping for perf/soak tests
-type ContractsNodesJobsMap map[Contract]map[client.Chainlink]interface{}
+type ContractsNodesJobsMap map[interface{}]map[client.Chainlink]NodeData
+
+// FromJobsChan fills ContractsNodesJobsMap from a chan used in parallel deployment
+func (c ContractsNodesJobsMap) FromJobsChan(jobsChan chan ContractsNodesJobsMap) {
+	for jobMap := range jobsChan {
+		for contractAddr, m := range jobMap {
+			if _, ok := c[contractAddr]; !ok {
+				c[contractAddr] = map[client.Chainlink]NodeData{}
+			}
+			for k, v := range m {
+				c[contractAddr][k] = v
+			}
+		}
+	}
+}

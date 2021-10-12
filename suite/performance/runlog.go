@@ -18,9 +18,6 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-// RunlogJobMap is a custom map type that holds the record of jobs by the contract instance and the chainlink node
-type RunlogJobMap map[ConsumerOraclePair]map[client.Chainlink]string
-
 // ConsumerOraclePair consumer and oracle pair
 type ConsumerOraclePair struct {
 	consumer contracts.APIConsumer
@@ -49,8 +46,8 @@ type RunlogTest struct {
 	contractInstances []*ConsumerOraclePair
 	adapter           environment.ExternalAdapter
 
-	testResults PerfRequestIDTestResults
-	jobMap      RunlogJobMap
+	testResults *PerfRequestIDTestResults
+	jobMap      ContractsNodesJobsMap
 }
 
 // NewRunlogTest creates new Runlog performance/soak test
@@ -72,7 +69,7 @@ func NewRunlogTest(
 		Deployer:    deployer,
 		adapter:     adapter,
 		testResults: NewPerfRequestIDTestResults(),
-		jobMap:      RunlogJobMap{},
+		jobMap:      ContractsNodesJobsMap{},
 	}
 }
 
@@ -83,86 +80,10 @@ func (f *RunlogTest) RecordValues(b ginkgo.Benchmarker) error {
 		return nil
 	}
 	actions.SetChainlinkAPIPageSize(f.chainlinkClients, f.TestOptions.NumberOfRounds*f.TestOptions.NumberOfContracts)
-	if err := f.setResultStartTimes(); err != nil {
+	if err := f.testResults.setResultStartTimes(f.chainlinkClients, f.jobMap); err != nil {
 		return err
 	}
-	return f.calculateLatencies(b)
-}
-
-func (f *RunlogTest) calculateLatencies(b ginkgo.Benchmarker) error {
-	var latencies []time.Duration
-	for rqID, testResult := range f.testResults.GetAll() {
-		latency := testResult.EndTime.Sub(testResult.StartTime)
-		log.Debug().
-			Str("RequestID", rqID).
-			Time("StartTime", testResult.StartTime).
-			Time("EndTime", testResult.EndTime).
-			Dur("Duration", latency).
-			Msg("Calculating latencies for request id")
-		if testResult.StartTime.IsZero() {
-			log.Warn().
-				Str("RequestID", rqID).
-				Msg("Start time zero")
-		}
-		if testResult.EndTime.IsZero() {
-			log.Warn().
-				Str("RequestID", rqID).
-				Msg("End time zero")
-		}
-		if latency.Seconds() < 0 {
-			log.Warn().
-				Str("RequestID", rqID).
-				Msg("Latency below zero")
-		} else {
-			latencies = append(latencies, latency)
-		}
-	}
-	if err := recordResults(b, "Request latency", latencies); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (f *RunlogTest) setResultStartTimes() error {
-	g := errgroup.Group{}
-	for contract := range f.jobMap {
-		contract := contract
-		g.Go(func() error {
-			return f.setResultStartTimeByContract(contract)
-		})
-	}
-	return g.Wait()
-}
-
-func (f *RunlogTest) setResultStartTimeByContract(contract ConsumerOraclePair) error {
-	for _, chainlink := range f.chainlinkClients {
-		chainlink := chainlink
-
-		jobRuns, err := chainlink.ReadRunsByJob(f.jobMap[contract][chainlink])
-		if err != nil {
-			return err
-		}
-		log.Debug().
-			Str("Node", chainlink.URL()).
-			Int("Runs", len(jobRuns.Data)).
-			Msg("Total runs")
-		for _, jobDecodeData := range jobRuns.Data {
-			rqInts, err := actions.ExtractRequestIDFromJobRun(jobDecodeData)
-			if err != nil {
-				return err
-			}
-			rqID := common.Bytes2Hex(rqInts)
-			loc, _ := time.LoadLocation("UTC")
-			startTime := jobDecodeData.Attributes.CreatedAt.In(loc)
-			log.Debug().
-				Time("StartTime", startTime).
-				Str("RequestID", rqID).
-				Msg("Request found")
-			d := f.testResults.Get(rqID)
-			d.StartTime = startTime
-		}
-	}
-	return nil
+	return f.testResults.calculateLatencies(b)
 }
 
 // Setup setups Runlog performance/soak test
@@ -331,7 +252,7 @@ func (f *RunlogTest) waitRoundEnd(roundID int) error {
 }
 
 func (f *RunlogTest) createChainlinkJobs() error {
-	jobsChan := make(chan RunlogJobMap, len(f.contractInstances))
+	jobsChan := make(chan ContractsNodesJobsMap, len(f.contractInstances))
 	g := errgroup.Group{}
 
 	bta := client.BridgeTypeAttributes{
@@ -364,7 +285,7 @@ func (f *RunlogTest) createChainlinkJobs() error {
 			if err != nil {
 				return err
 			}
-			jobsChan <- RunlogJobMap{*p: map[client.Chainlink]string{f.chainlinkClients[0]: job.Data.ID}}
+			jobsChan <- ContractsNodesJobsMap{p.consumer: map[client.Chainlink]NodeData{f.chainlinkClients[0]: RunlogNodeData{JobID: job.Data.ID}}}
 			return nil
 		})
 	}
@@ -372,16 +293,6 @@ func (f *RunlogTest) createChainlinkJobs() error {
 		return err
 	}
 	close(jobsChan)
-
-	for jobMap := range jobsChan {
-		for contractAddr, m := range jobMap {
-			if _, ok := f.jobMap[contractAddr]; !ok {
-				f.jobMap[contractAddr] = map[client.Chainlink]string{}
-			}
-			for k, v := range m {
-				f.jobMap[contractAddr][k] = v
-			}
-		}
-	}
+	f.jobMap.FromJobsChan(jobsChan)
 	return nil
 }
