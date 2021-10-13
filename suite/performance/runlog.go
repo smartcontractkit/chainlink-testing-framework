@@ -253,7 +253,7 @@ func (f *RunlogTest) waitRoundEnd(roundID int) error {
 
 func (f *RunlogTest) createChainlinkJobs() error {
 	jobsChan := make(chan ContractsNodesJobsMap, len(f.contractInstances))
-	g := errgroup.Group{}
+	g := NewLimitErrGroup(30)
 
 	bta := client.BridgeTypeAttributes{
 		Name: "five",
@@ -277,7 +277,7 @@ func (f *RunlogTest) createChainlinkJobs() error {
 			jobUUID := uuid.NewV4()
 			p.jobUUID = jobUUID.String()
 			job, err := f.chainlinkClients[0].CreateJob(&client.DirectRequestJobSpec{
-				Name:              "direct_request",
+				Name:              fmt.Sprintf("direct_request_%s", p.jobUUID),
 				ContractAddress:   p.oracle.Address(),
 				ExternalJobID:     jobUUID.String(),
 				ObservationSource: ost,

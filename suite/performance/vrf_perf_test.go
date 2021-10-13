@@ -52,8 +52,8 @@ var _ = Describe("VRF perf test @perf-vrf", func() {
 			perfTest = NewVRFTest(
 				VRFTestOptions{
 					TestOptions: TestOptions{
-						NumberOfContracts:    30,
-						NumberOfRounds:       10,
+						NumberOfContracts:    50,
+						NumberOfRounds:       5,
 						RoundTimeout:         60 * time.Second,
 						GracefulStopDuration: 10 * time.Second,
 					},

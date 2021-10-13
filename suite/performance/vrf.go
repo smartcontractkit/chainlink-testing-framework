@@ -15,12 +15,6 @@ import (
 	"time"
 )
 
-// VRFProvingData proving key and job ID pair
-type VRFProvingData struct {
-	ProvingKeyHash [32]byte
-	JobID          string
-}
-
 // ConsumerCoordinatorPair consumer and coordinator pair
 type ConsumerCoordinatorPair struct {
 	consumer    contracts.VRFConsumer
@@ -261,92 +255,16 @@ func (f *VRFTest) RecordValues(b ginkgo.Benchmarker) error {
 		return nil
 	}
 	actions.SetChainlinkAPIPageSize(f.chainlinkClients, f.TestOptions.NumberOfRounds*f.TestOptions.NumberOfContracts)
-	if err := f.setResultStartTimes(); err != nil {
+	if err := f.testResults.setResultStartTimes(f.chainlinkClients, f.jobMap); err != nil {
 		return err
 	}
-	return f.calculateLatencies(b)
-}
-
-func (f *VRFTest) calculateLatencies(b ginkgo.Benchmarker) error {
-	var latencies []time.Duration
-	for rqID, testResult := range f.testResults.GetAll() {
-		latency := testResult.EndTime.Sub(testResult.StartTime)
-		log.Debug().
-			Str("RequestID", rqID).
-			Time("StartTime", testResult.StartTime).
-			Time("EndTime", testResult.EndTime).
-			Dur("Duration", latency).
-			Msg("Calculating latencies for request id")
-		if testResult.StartTime.IsZero() {
-			log.Warn().
-				Str("RequestID", rqID).
-				Msg("Start time zero")
-		}
-		if testResult.EndTime.IsZero() {
-			log.Warn().
-				Str("RequestID", rqID).
-				Msg("End time zero")
-		}
-		if latency.Seconds() < 0 {
-			log.Warn().
-				Str("RequestID", rqID).
-				Msg("Latency below zero")
-		} else {
-			latencies = append(latencies, latency)
-		}
-	}
-	if err := recordResults(b, "Request latency", latencies); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (f *VRFTest) setResultStartTimes() error {
-	g := errgroup.Group{}
-	for contract := range f.jobMap {
-		contract := contract
-		g.Go(func() error {
-			return f.setResultStartTimeByContract(contract)
-		})
-	}
-	return g.Wait()
-}
-
-func (f *VRFTest) setResultStartTimeByContract(contract interface{}) error {
-	for _, chainlink := range f.chainlinkClients {
-		chainlink := chainlink
-
-		jobRuns, err := chainlink.ReadRunsByJob(f.jobMap[contract][chainlink].GetJobID())
-		if err != nil {
-			return err
-		}
-		log.Debug().
-			Str("Node", chainlink.URL()).
-			Int("Runs", len(jobRuns.Data)).
-			Msg("Total runs")
-		for _, jobDecodeData := range jobRuns.Data {
-			rqInts, err := actions.ExtractRequestIDFromJobRun(jobDecodeData)
-			if err != nil {
-				return err
-			}
-			rqID := common.Bytes2Hex(rqInts)
-			loc, _ := time.LoadLocation("UTC")
-			startTime := jobDecodeData.Attributes.CreatedAt.In(loc)
-			log.Debug().
-				Time("StartTime", startTime).
-				Str("RequestID", rqID).
-				Msg("Request found")
-			d := f.testResults.Get(rqID)
-			d.StartTime = startTime
-		}
-	}
-	return nil
+	return f.testResults.calculateLatencies(b)
 }
 
 // createChainlinkJobs create and collect VRF jobs for every Chainlink node
 func (f *VRFTest) createChainlinkJobs() error {
 	jobsChan := make(chan ContractsNodesJobsMap, len(f.chainlinkClients)*len(f.contractInstances))
-	g := errgroup.Group{}
+	g := NewLimitErrGroup(30)
 	for _, p := range f.contractInstances {
 		p := p
 		for _, n := range f.chainlinkClients {

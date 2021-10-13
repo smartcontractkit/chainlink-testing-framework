@@ -320,3 +320,34 @@ func (c ContractsNodesJobsMap) FromJobsChan(jobsChan chan ContractsNodesJobsMap)
 		}
 	}
 }
+
+// LimitErrGroup implements the errgroup.Group interface, but limits goroutines to a
+// execute at a max throughput.
+type LimitErrGroup struct {
+	ticker *time.Ticker
+	eg     *errgroup.Group
+}
+
+// NewLimitErrGroup initializes and returns a new rate limited errgroup
+func NewLimitErrGroup(rps int) *LimitErrGroup {
+	eg := &errgroup.Group{}
+	r := &LimitErrGroup{
+		ticker: time.NewTicker(time.Second / time.Duration(rps)),
+		eg:     eg,
+	}
+	return r
+}
+
+// Go runs a new job as a goroutine. It will wait until the next available
+// time so that the ratelimit is not exceeded.
+func (e *LimitErrGroup) Go(fn func() error) {
+	<-e.ticker.C
+	go e.eg.Go(fn)
+}
+
+// Wait will wait until all jobs are processed. Once Wait() is called, no more jobs
+// can be added.
+func (e *LimitErrGroup) Wait() error {
+	defer e.ticker.Stop()
+	return e.eg.Wait()
+}

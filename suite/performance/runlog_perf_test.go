@@ -52,7 +52,7 @@ var _ = Describe("Runlog perf test @perf-runlog", func() {
 			perfTest = NewRunlogTest(
 				RunlogTestOptions{
 					TestOptions: TestOptions{
-						NumberOfContracts:    20,
+						NumberOfContracts:    50,
 						NumberOfRounds:       5,
 						RoundTimeout:         180 * time.Second,
 						GracefulStopDuration: 10 * time.Second,
