@@ -43,6 +43,6 @@ var _ = Describe("Blockchain @unit", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 		}
 	},
-		Entry("on Ethereum", client.NewNetworkFromConfig),
+		Entry("on Ethereum", client.DefaultNetworkFromConfig),
 	)
 })

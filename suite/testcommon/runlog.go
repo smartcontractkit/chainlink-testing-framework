@@ -36,7 +36,7 @@ func SetupRunlogEnv(i *RunlogSetupInputs) {
 	By("Deploying the environment", func() {
 		i.SuiteSetup, i.Err = actions.SingleNetworkSetup(
 			environment.NewChainlinkCluster(1),
-			client.NewNetworkFromConfig,
+			client.DefaultNetworkFromConfig,
 			tools.ProjectRoot,
 		)
 		Expect(i.Err).ShouldNot(HaveOccurred())

@@ -23,8 +23,8 @@ var _ = Describe("Environment with Helm @helm_deploy", func() {
 		It("Deploy Geth reorg chart", func() {
 			Skip("Not ready to be run in github")
 
-			conf.Network = "ethereum_geth_reorg"
-			networkConfig, err := client.NewNetworkFromConfig(conf)
+			conf.Networks = []string{"ethereum_geth_reorg"}
+			networkConfig, err := client.DefaultNetworkFromConfig(conf)
 			Expect(err).ShouldNot(HaveOccurred())
 			env, err = NewK8sEnvironment(conf, networkConfig)
 			Expect(err).ShouldNot(HaveOccurred())

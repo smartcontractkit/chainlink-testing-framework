@@ -25,7 +25,7 @@ var _ = Describe("Environment unit tests @unit", func() {
 			conf, err := config.NewConfig(fmt.Sprintf(specifiedConfig, tools.ProjectRoot))
 			Expect(err).ShouldNot(HaveOccurred())
 
-			bcNetwork, err := client.NewNetworkFromConfig(conf)
+			bcNetwork, err := client.DefaultNetworkFromConfig(conf)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			bcNetwork.Config().PrivateKeyStore, err = environment.NewPrivateKeyStoreFromEnv(&environment.K8sEnvironment{}, bcNetwork.Config())
@@ -42,7 +42,7 @@ var _ = Describe("Environment unit tests @unit", func() {
 			conf, err := config.NewConfig(fmt.Sprintf(noPrivateKeysConfig, tools.ProjectRoot))
 			Expect(err).ShouldNot(HaveOccurred())
 
-			bcNetwork, err := client.NewNetworkFromConfig(conf)
+			bcNetwork, err := client.DefaultNetworkFromConfig(conf)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			bcNetwork.Config().PrivateKeyStore, err = environment.NewPrivateKeyStoreFromEnv(&environment.K8sEnvironment{}, bcNetwork.Config())
@@ -58,7 +58,7 @@ var _ = Describe("Environment unit tests @unit", func() {
 			conf, err := config.NewConfig(fmt.Sprintf(secretKeysConfig, tools.ProjectRoot))
 			Expect(err).ShouldNot(HaveOccurred())
 
-			bcNetwork, err := client.NewNetworkFromConfig(conf)
+			bcNetwork, err := client.DefaultNetworkFromConfig(conf)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			env, err := environment.NewK8sEnvironment(conf, bcNetwork)

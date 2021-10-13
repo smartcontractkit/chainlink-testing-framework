@@ -32,7 +32,7 @@ var _ = Describe("Keeper suite @keeper", func() {
 			suiteSetup, err = actions.SingleNetworkSetup(
 				// need to register at least 5 nodes to perform upkeep
 				environment.NewChainlinkCluster(5),
-				client.NewNetworkFromConfig,
+				client.DefaultNetworkFromConfig,
 				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -148,7 +148,7 @@ var _ = Describe("Keeper suite @keeper", func() {
 	})
 	Describe("with Keeper job", func() {
 		It("performs upkeep of a target contract", func() {
-			Eventually(func(g Gomega){
+			Eventually(func(g Gomega) {
 				cnt, err := consumer.Counter(context.Background())
 				g.Expect(err).ShouldNot(HaveOccurred())
 				g.Expect(cnt.Int64()).Should(BeNumerically(">", 0))

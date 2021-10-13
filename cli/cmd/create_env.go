@@ -35,8 +35,8 @@ func createRunE(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	cfg.Network = network
-	networkConfig, err := client.NewNetworkFromConfig(cfg)
+	cfg.Networks = []string{network}
+	networkConfig, err := client.DefaultNetworkFromConfig(cfg)
 	if err != nil {
 		return err
 	}

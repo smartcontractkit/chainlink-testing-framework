@@ -30,14 +30,15 @@ var _ = Describe("Basic Contract Interactions @contract", func() {
 			var err error
 			suiteSetup, err = actions.MultiNetworkSetup(
 				environment.NewChainlinkCluster(0),
-				client.MultipleNetworks("ethereum_geth", "ethereum_geth"),
+				client.DefaultNetworksFromConfig,
 				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
-			deployedNetworks, err := suiteSetup.Networks("ethereum_geth")
+
+			firstNetwork, err = suiteSetup.Network(0)
 			Expect(err).ShouldNot(HaveOccurred())
-			firstNetwork = deployedNetworks[0]
-			secondNetwork = deployedNetworks[1]
+			secondNetwork, err = suiteSetup.Network(1)
+			Expect(err).ShouldNot(HaveOccurred())
 			firstNetworkWallet = firstNetwork.Wallets.Default()
 			secondNetworkWallet = secondNetwork.Wallets.Default()
 		})

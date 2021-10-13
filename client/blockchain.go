@@ -97,37 +97,48 @@ func newEthereumNetwork(ID string, networkConfig config.NetworkConfig) (Blockcha
 	}, nil
 }
 
-// NewNetworkFromConfig prepares settings for a connection the default blockchain specified in the config file
-func NewNetworkFromConfig(conf *config.Config) (BlockchainNetwork, error) {
-	networkConfig, err := conf.GetNetworkConfig(conf.Network)
+// DefaultNetworkFromConfig prepares settings for a connection the default blockchain specified in the config file
+func DefaultNetworkFromConfig(conf *config.Config) (BlockchainNetwork, error) {
+	if len(conf.Networks) <= 0 {
+		return nil, fmt.Errorf("No default network(s) provided in config")
+	}
+	return NewNetworkFromConfig(conf, conf.Networks[0])
+}
+
+// DefaultNetworksFromConfig prepares settings for multiple connections to the default blockchains specified in the config file
+func DefaultNetworksFromConfig(conf *config.Config) ([]BlockchainNetwork, error) {
+	if len(conf.Networks) <= 0 {
+		return nil, fmt.Errorf("No default networks provided in config")
+	} else if len(conf.Networks) == 0 {
+		return nil, fmt.Errorf("Only one network provided in config: '%s'", conf.Networks[0])
+	}
+
+	networks := []BlockchainNetwork{}
+	for _, networkID := range conf.Networks {
+		network, err := NewNetworkFromConfig(conf, networkID)
+		if err != nil {
+			return nil, err
+		}
+		networks = append(networks, network)
+	}
+	return networks, nil
+}
+
+// NewNetworkFromConfig creates a new blockchain network based on the ID
+func NewNetworkFromConfig(conf *config.Config, networkID string) (BlockchainNetwork, error) {
+	networkConfig, err := conf.GetNetworkConfig(networkID)
 	if err != nil {
 		return nil, err
 	}
 	switch networkConfig.Type {
 	case BlockchainTypeEVM, BlockchainTypeEVMMultinode:
-		return newEthereumNetwork(conf.Network, networkConfig)
+		return newEthereumNetwork(networkID, networkConfig)
 	}
 	return nil, fmt.Errorf(
 		"network %s uses an unspported network type of: %s",
-		conf.Network,
+		networkID,
 		networkConfig.Type,
 	)
-}
-
-// MultipleNetworks enables launching multiple networks for simultaneous usage in test scenarios
-func MultipleNetworks(networkIDs ...string) MultiNetworkInit {
-	return func(conf *config.Config) ([]BlockchainNetwork, error) {
-		networks := make([]BlockchainNetwork, len(networkIDs))
-		for index, networkID := range networkIDs {
-			conf.Network = networkID
-			network, err := NewNetworkFromConfig(conf)
-			if err != nil {
-				return nil, err
-			}
-			networks[index] = network
-		}
-		return networks, nil
-	}
 }
 
 // NewNetworkFromConfigWithDefault will return a new network with config but with a customisable default in-case a test
@@ -144,9 +155,9 @@ func NewNetworkFromConfigWithDefault(networkID string) BlockchainNetworkInit {
 		field := ct.Field(0)
 		networkKey := field.Tag.Get("yaml")
 		if len(os.Getenv(strings.ToUpper(networkKey))) == 0 {
-			conf.Network = networkID
+			conf.Networks = []string{networkID}
 		}
-		return NewNetworkFromConfig(conf)
+		return DefaultNetworkFromConfig(conf)
 	}
 }
 

@@ -2,10 +2,11 @@ package config_test
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/environment"
-	"os"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -89,7 +90,7 @@ var _ = Describe("Config unit tests @unit", func() {
 		conf, err := config.NewConfig(fmt.Sprintf(fetchConfig, tools.ProjectRoot))
 		Expect(err).ShouldNot(HaveOccurred())
 
-		bcNetwork, err := client.NewNetworkFromConfig(conf)
+		bcNetwork, err := client.DefaultNetworkFromConfig(conf)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		bcNetwork.Config().PrivateKeyStore, err = environment.NewPrivateKeyStoreFromEnv(&environment.K8sEnvironment{}, bcNetwork.Config())
@@ -100,7 +101,7 @@ var _ = Describe("Config unit tests @unit", func() {
 
 		Expect(privateKeys).Should(ContainElements(
 			"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
-		"59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d",
-		"5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a",))
+			"59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d",
+			"5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a"))
 	})
 })

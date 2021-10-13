@@ -76,8 +76,8 @@ type SuiteSetup interface {
 	Environment() environment.Environment
 
 	DefaultNetwork() NetworkInfo
-	Network(networkID string) (NetworkInfo, error)
-	Networks(networkID string) ([]NetworkInfo, error)
+	Network(index int) (NetworkInfo, error)
+	Networks() []NetworkInfo
 
 	TearDown() func()
 }
@@ -147,13 +147,13 @@ func (s *SingleNetworkSuiteSetup) DefaultNetwork() NetworkInfo {
 }
 
 // Network returns the only network in a single network environment
-func (s *SingleNetworkSuiteSetup) Network(networkID string) (NetworkInfo, error) {
+func (s *SingleNetworkSuiteSetup) Network(index int) (NetworkInfo, error) {
 	return s.network, nil
 }
 
 // Networks returns the only network in a single network environment
-func (s *SingleNetworkSuiteSetup) Networks(networkID string) ([]NetworkInfo, error) {
-	return []NetworkInfo{s.network}, nil
+func (s *SingleNetworkSuiteSetup) Networks() []NetworkInfo {
+	return []NetworkInfo{s.network}
 }
 
 // TearDown checks for test failure, writes logs if there is one, then tears down the test environment, based on the
@@ -232,32 +232,16 @@ func (s *multiNetworkSuiteSetup) DefaultNetwork() NetworkInfo {
 
 // Network returns the network information for the network with the supplied ID. If there is more than 1 network with
 // that ID, the first one encountered is returned.
-func (s *multiNetworkSuiteSetup) Network(networkID string) (NetworkInfo, error) {
-	networkIDs := make([]string, 0)
-	for _, network := range s.networks {
-		networkIDs = append(networkIDs, network.Client.GetNetworkName())
-		if network.Client.GetNetworkName() == networkID {
-			return network, nil
-		}
+func (s *multiNetworkSuiteSetup) Network(index int) (NetworkInfo, error) {
+	if len(s.networks) <= index {
+		return NetworkInfo{}, fmt.Errorf("No network at the index '%d'. Total amount of networks: %v", index, len(s.networks))
 	}
-	return NetworkInfo{}, fmt.Errorf("Unable to find any networks with the ID '%s'. All found networks: %v", networkID, networkIDs)
+	return s.networks[index], nil
 }
 
 // Networks returns the network information for all the networks with the supplied ID.
-func (s *multiNetworkSuiteSetup) Networks(networkID string) ([]NetworkInfo, error) {
-	networkIDs := make([]string, 0)
-	networks := make([]NetworkInfo, 0)
-	for _, network := range s.networks {
-		networkIDs = append(networkIDs, network.Client.GetNetworkName())
-		if network.Client.GetNetworkName() == networkID {
-			networks = append(networks, network)
-		}
-	}
-	if len(networks) == 0 {
-		return nil, fmt.Errorf("Unable to find any networks with the ID '%s'. All found networks: %v", networkID, networkIDs)
-	} else {
-		return networks, nil
-	}
+func (s *multiNetworkSuiteSetup) Networks() []NetworkInfo {
+	return s.networks
 }
 
 // TearDown checks for test failure, writes logs if there is one, then tears down the test environment, based on the

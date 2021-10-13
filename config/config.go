@@ -23,9 +23,9 @@ const (
 
 // Config is the overall config for the framework, holding configurations for supported networks
 type Config struct {
-	Network            string                   `mapstructure:"network" yaml:"network"`
+	Networks           []string                 `mapstructure:"networks" yaml:"networks"`
 	Logging            *LoggingConfig           `mapstructure:"logging" yaml:"logging"`
-	Networks           map[string]NetworkConfig `mapstructure:"networks" yaml:"networks"`
+	NetworkConfigs     map[string]NetworkConfig `mapstructure:"network_configs" yaml:"network_configs"`
 	Retry              *RetryConfig             `mapstructure:"retry" yaml:"retry"`
 	Apps               AppConfig                `mapstructure:"apps" yaml:"apps"`
 	Kubernetes         KubernetesConfig         `mapstructure:"kubernetes" yaml:"kubernetes"`
@@ -48,7 +48,7 @@ type LoggingConfig struct {
 
 // GetNetworkConfig finds a specified network config based on its name
 func (c *Config) GetNetworkConfig(name string) (NetworkConfig, error) {
-	if network, ok := c.Networks[name]; ok {
+	if network, ok := c.NetworkConfigs[name]; ok {
 		return network, nil
 	}
 	return NetworkConfig{}, fmt.Errorf("no supported network of name '%s' was found. Ensure that the config for it exists.", name)
