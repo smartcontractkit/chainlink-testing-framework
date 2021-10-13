@@ -109,7 +109,7 @@ func DefaultNetworkFromConfig(conf *config.Config) (BlockchainNetwork, error) {
 func DefaultNetworksFromConfig(conf *config.Config) ([]BlockchainNetwork, error) {
 	if len(conf.Networks) <= 0 {
 		return nil, fmt.Errorf("No default networks provided in config")
-	} else if len(conf.Networks) == 0 {
+	} else if len(conf.Networks) == 1 {
 		return nil, fmt.Errorf("Only one network provided in config: '%s'", conf.Networks[0])
 	}
 
