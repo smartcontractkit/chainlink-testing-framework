@@ -73,7 +73,7 @@ func NewRunlogTest(
 	}
 }
 
-// RecordValues will query all of the latencies of the VRFConsumer and match them by RequestID
+// RecordValues records Runlog metrics
 func (f *RunlogTest) RecordValues(b ginkgo.Benchmarker) error {
 	// can't estimate perf metrics in soak mode
 	if f.TestOptions.NumberOfRounds == 0 {
@@ -188,12 +188,12 @@ func (f *RunlogTest) Run() error {
 	for {
 		select {
 		case <-ctx.Done():
-			log.Warn().Msg("Test finished")
+			log.Info().Msg("Test finished")
 			time.Sleep(f.TestOptions.GracefulStopDuration)
 			cancelPerfEvents()
 			return nil
 		default:
-			log.Warn().Int("RoundID", currentRound).Msg("New round")
+			log.Info().Int("RoundID", currentRound).Msg("New round")
 			if err := f.requestData(); err != nil {
 				return err
 			}
@@ -201,7 +201,7 @@ func (f *RunlogTest) Run() error {
 				return err
 			}
 			if f.TestOptions.NumberOfRounds != 0 && currentRound >= f.TestOptions.NumberOfRounds {
-				log.Warn().Msg("Final round is reached")
+				log.Info().Msg("Final round is reached")
 				testCtxCancel()
 			}
 			currentRound++

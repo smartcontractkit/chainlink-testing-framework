@@ -277,11 +277,11 @@ func (f *KeeperTest) Run() error {
 	for {
 		select {
 		case <-ctx.Done():
-			log.Warn().Msg("Test finished")
+			log.Info().Msg("Test finished")
 			return nil
 		default:
 			requiredUpkeeps := i * len(f.chainlinkClients)
-			log.Warn().Int("RoundID", i).Int("Required upkeeps", requiredUpkeeps).Msg("New round")
+			log.Info().Int("RoundID", i).Int("Required upkeeps", requiredUpkeeps).Msg("New round")
 			if err := f.waitForUpkeeps(requiredUpkeeps); err != nil {
 				return err
 			}
