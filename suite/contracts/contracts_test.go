@@ -2,6 +2,8 @@ package contracts
 
 import (
 	"context"
+	"math/big"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/smartcontractkit/integrations-framework/actions"
@@ -9,30 +11,32 @@ import (
 	"github.com/smartcontractkit/integrations-framework/contracts"
 	"github.com/smartcontractkit/integrations-framework/environment"
 	"github.com/smartcontractkit/integrations-framework/tools"
-	"math/big"
 )
 
 var _ = Describe("Basic Contract Interactions @contract", func() {
-	var s *actions.DefaultSuiteSetup
-	var defaultWallet client.BlockchainWallet
+	var (
+		suiteSetup    actions.SuiteSetup
+		networkInfo   actions.NetworkInfo
+		defaultWallet client.BlockchainWallet
+	)
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
 			var err error
-			s, err = actions.DefaultLocalSetup(
-				"basic-chainlink",
+			suiteSetup, err = actions.SingleNetworkSetup(
 				environment.NewChainlinkCluster(0),
-				client.NewNetworkFromConfig,
+				client.DefaultNetworkFromConfig,
 				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
-			defaultWallet = s.Wallets.Default()
+			networkInfo = suiteSetup.DefaultNetwork()
+			defaultWallet = networkInfo.Wallets.Default()
 		})
 	})
 
 	It("can deploy all contracts", func() {
 		By("basic interaction with a storage contract", func() {
-			storeInstance, err := s.Deployer.DeployStorageContract(defaultWallet)
+			storeInstance, err := networkInfo.Deployer.DeployStorageContract(defaultWallet)
 			Expect(err).ShouldNot(HaveOccurred())
 			testVal := big.NewInt(5)
 			err = storeInstance.Set(testVal)
@@ -43,31 +47,31 @@ var _ = Describe("Basic Contract Interactions @contract", func() {
 		})
 
 		By("deploying the flux monitor contract", func() {
-			rac, err := s.Deployer.DeployReadAccessController(s.Wallets.Default())
+			rac, err := networkInfo.Deployer.DeployReadAccessController(networkInfo.Wallets.Default())
 			Expect(err).ShouldNot(HaveOccurred())
-			flags, err := s.Deployer.DeployFlags(s.Wallets.Default(), rac.Address())
+			flags, err := networkInfo.Deployer.DeployFlags(networkInfo.Wallets.Default(), rac.Address())
 			Expect(err).ShouldNot(HaveOccurred())
-			_, err = s.Deployer.DeployDeviationFlaggingValidator(s.Wallets.Default(), flags.Address(), big.NewInt(0))
+			_, err = networkInfo.Deployer.DeployDeviationFlaggingValidator(networkInfo.Wallets.Default(), flags.Address(), big.NewInt(0))
 			Expect(err).ShouldNot(HaveOccurred())
 			fluxOptions := contracts.DefaultFluxAggregatorOptions()
-			_, err = s.Deployer.DeployFluxAggregatorContract(defaultWallet, fluxOptions)
+			_, err = networkInfo.Deployer.DeployFluxAggregatorContract(defaultWallet, fluxOptions)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
 		By("deploying the ocr contract", func() {
 			ocrOptions := contracts.DefaultOffChainAggregatorOptions()
-			_, err := s.Deployer.DeployOffChainAggregator(defaultWallet, ocrOptions)
+			_, err := networkInfo.Deployer.DeployOffChainAggregator(defaultWallet, ocrOptions)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("deploying keeper contracts", func() {
-			ef, err := s.Deployer.DeployMockETHLINKFeed(s.Wallets.Default(), big.NewInt(2e18))
+			ef, err := networkInfo.Deployer.DeployMockETHLINKFeed(networkInfo.Wallets.Default(), big.NewInt(2e18))
 			Expect(err).ShouldNot(HaveOccurred())
-			gf, err := s.Deployer.DeployMockGasFeed(s.Wallets.Default(), big.NewInt(2e11))
+			gf, err := networkInfo.Deployer.DeployMockGasFeed(networkInfo.Wallets.Default(), big.NewInt(2e11))
 			Expect(err).ShouldNot(HaveOccurred())
-			_, err = s.Deployer.DeployKeeperRegistry(
-				s.Wallets.Default(),
+			_, err = networkInfo.Deployer.DeployKeeperRegistry(
+				networkInfo.Wallets.Default(),
 				&contracts.KeeperRegistryOpts{
-					LinkAddr:             s.Link.Address(),
+					LinkAddr:             networkInfo.Link.Address(),
 					ETHFeedAddr:          ef.Address(),
 					GasFeedAddr:          gf.Address(),
 					PaymentPremiumPPB:    uint32(200000000),
@@ -80,33 +84,33 @@ var _ = Describe("Basic Contract Interactions @contract", func() {
 				},
 			)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = s.Client.WaitForEvents()
+			err = networkInfo.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("deploying vrf contract", func() {
-			bhs, err := s.Deployer.DeployBlockhashStore(s.Wallets.Default())
+			bhs, err := networkInfo.Deployer.DeployBlockhashStore(networkInfo.Wallets.Default())
 			Expect(err).ShouldNot(HaveOccurred())
-			coordinator, err := s.Deployer.DeployVRFCoordinator(s.Wallets.Default(), s.Link.Address(), bhs.Address())
+			coordinator, err := networkInfo.Deployer.DeployVRFCoordinator(networkInfo.Wallets.Default(), networkInfo.Link.Address(), bhs.Address())
 			Expect(err).ShouldNot(HaveOccurred())
-			_, err = s.Deployer.DeployVRFConsumer(s.Wallets.Default(), s.Link.Address(), coordinator.Address())
+			_, err = networkInfo.Deployer.DeployVRFConsumer(networkInfo.Wallets.Default(), networkInfo.Link.Address(), coordinator.Address())
 			Expect(err).ShouldNot(HaveOccurred())
-			_, err = s.Deployer.DeployVRFContract(s.Wallets.Default())
+			_, err = networkInfo.Deployer.DeployVRFContract(networkInfo.Wallets.Default())
 			Expect(err).ShouldNot(HaveOccurred())
-			err = s.Client.WaitForEvents()
+			err = networkInfo.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("deploying direct request contract", func() {
-			_, err := s.Deployer.DeployOracle(s.Wallets.Default(), s.Link.Address())
+			_, err := networkInfo.Deployer.DeployOracle(networkInfo.Wallets.Default(), networkInfo.Link.Address())
 			Expect(err).ShouldNot(HaveOccurred())
-			_, err = s.Deployer.DeployAPIConsumer(s.Wallets.Default(), s.Link.Address())
+			_, err = networkInfo.Deployer.DeployAPIConsumer(networkInfo.Wallets.Default(), networkInfo.Link.Address())
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 	})
 
 	AfterEach(func() {
 		By("Printing gas stats", func() {
-			s.Client.GasStats().PrintStats()
+			networkInfo.Client.GasStats().PrintStats()
 		})
-		By("Tearing down the environment", s.TearDown())
+		By("Tearing down the environment", suiteSetup.TearDown())
 	})
 })

@@ -33,10 +33,11 @@ spec:
           value: {{ next .Values.DependencyGroup.dbURLs }}/chainlink?sslmode=disable
         - name: DATABASE_NAME
           value: chainlink
+          # TODO: Placeholders until CL 1.0.0 is cut, and we can use the new chain configuration options through the API
         - name: ETH_URL
-          value: {{ if .Values.DependencyGroup.evm.clusterURL }}{{ .Values.DependencyGroup.evm.clusterURL }}{{ else }}{{ .Network.URL }}{{ end }}
+          value: {{ if .Values.DependencyGroup.ethereum_geth_0.clusterURL }}{{ .Values.DependencyGroup.ethereum_geth_0.clusterURL }}{{ else if .Values.DependencyGroup.ethereum_geth_performance_0.clusterURL }}{{ .Values.DependencyGroup.ethereum_geth_performance_0.clusterURL }}{{ else if .Values.DependencyGroup.ethereum_ganache_0.clusterURL }}{{ .Values.DependencyGroup.ethereum_ganache_0.clusterURL }}{{ else if .Values.DependencyGroup.ethereum_hardhat_0.clusterURL }}{{ .Values.DependencyGroup.ethereum_hardhat_0.clusterURL }}{{ end }}
         - name: ETH_CHAIN_ID
-          value: {{ .Network.ChainID }}
+          value: {{ .DefaultNetwork.ChainID }}
         - name: ALLOW_ORIGINS
           value: '*'
         - name: CHAINLINK_DEV

@@ -2,6 +2,7 @@ package client_test
 
 import (
 	"fmt"
+
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/environment"
@@ -13,7 +14,7 @@ import (
 )
 
 const (
-	fetchConfig     string = "%s/config/test_configs/fetch_config"
+	fetchConfig string = "%s/config/test_configs/fetch_config"
 )
 
 var _ = Describe("Blockchain @unit", func() {
@@ -42,6 +43,6 @@ var _ = Describe("Blockchain @unit", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 		}
 	},
-		Entry("on Ethereum Hardhat", client.NewNetworkFromConfig),
+		Entry("on Ethereum", client.DefaultNetworkFromConfig),
 	)
 })

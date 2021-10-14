@@ -29,6 +29,7 @@ const (
 // of network types within the test suite
 type BlockchainClient interface {
 	Get() interface{}
+	GetNetworkName() string
 	GetID() int
 	SetID(id int)
 	SetDefaultClient(clientID int) error
@@ -63,18 +64,24 @@ func NewBlockchainClient(network BlockchainNetwork) (BlockchainClient, error) {
 type BlockchainNetwork interface {
 	GasUsedEstimations
 	ID() string
-	URL() string
+	ClusterURL() string
+	LocalURL() string
 	URLs() []string
 	Type() string
-	SetURL(string)
+	SetClusterURL(string)
+	SetLocalURL(string)
 	SetURLs(urls []string)
 	ChainID() *big.Int
+	RemotePort() uint16
 	Wallets() (BlockchainWallets, error)
 	Config() *config.NetworkConfig
 }
 
-// BlockchainNetworkInit is a helper function to obtain different blockchain networks
+// BlockchainNetworkInit is a helper function to obtain the network listed in the config file
 type BlockchainNetworkInit func(conf *config.Config) (BlockchainNetwork, error)
+
+// MultiNetworkInit is a helper function to create multiple blockchain networks at once
+type MultiNetworkInit func(conf *config.Config) ([]BlockchainNetwork, error)
 
 // EthereumNetwork is the implementation of BlockchainNetwork for the local ETH dev server
 type EthereumNetwork struct {
@@ -83,26 +90,53 @@ type EthereumNetwork struct {
 }
 
 // NewEthereumNetwork creates a way to interact with any specified EVM blockchain
-func newEthereumNetwork(ID string, networkConfig *config.NetworkConfig) (BlockchainNetwork, error) {
+func newEthereumNetwork(ID string, networkConfig config.NetworkConfig) (BlockchainNetwork, error) {
 	return &EthereumNetwork{
 		networkID:     ID,
-		networkConfig: networkConfig,
+		networkConfig: &networkConfig,
 	}, nil
 }
 
-// NewNetworkFromConfig prepares settings for a connection to a hardhat blockchain
-func NewNetworkFromConfig(conf *config.Config) (BlockchainNetwork, error) {
-	networkConfig, err := conf.GetNetworkConfig(conf.Network)
+// DefaultNetworkFromConfig prepares settings for a connection the default blockchain specified in the config file
+func DefaultNetworkFromConfig(conf *config.Config) (BlockchainNetwork, error) {
+	if len(conf.Networks) <= 0 {
+		return nil, fmt.Errorf("No default network(s) provided in config")
+	}
+	return NewNetworkFromConfig(conf, conf.Networks[0])
+}
+
+// DefaultNetworksFromConfig prepares settings for multiple connections to the default blockchains specified in the config file
+func DefaultNetworksFromConfig(conf *config.Config) ([]BlockchainNetwork, error) {
+	if len(conf.Networks) <= 0 {
+		return nil, fmt.Errorf("No default networks provided in config")
+	} else if len(conf.Networks) == 1 {
+		return nil, fmt.Errorf("Only one network provided in config: '%s'", conf.Networks[0])
+	}
+
+	networks := []BlockchainNetwork{}
+	for _, networkID := range conf.Networks {
+		network, err := NewNetworkFromConfig(conf, networkID)
+		if err != nil {
+			return nil, err
+		}
+		networks = append(networks, network)
+	}
+	return networks, nil
+}
+
+// NewNetworkFromConfig creates a new blockchain network based on the ID
+func NewNetworkFromConfig(conf *config.Config, networkID string) (BlockchainNetwork, error) {
+	networkConfig, err := conf.GetNetworkConfig(networkID)
 	if err != nil {
 		return nil, err
 	}
 	switch networkConfig.Type {
 	case BlockchainTypeEVM, BlockchainTypeEVMMultinode:
-		return newEthereumNetwork(conf.Network, networkConfig)
+		return newEthereumNetwork(networkID, networkConfig)
 	}
 	return nil, fmt.Errorf(
 		"network %s uses an unspported network type of: %s",
-		conf.Network,
+		networkID,
 		networkConfig.Type,
 	)
 }
@@ -121,9 +155,9 @@ func NewNetworkFromConfigWithDefault(networkID string) BlockchainNetworkInit {
 		field := ct.Field(0)
 		networkKey := field.Tag.Get("yaml")
 		if len(os.Getenv(strings.ToUpper(networkKey))) == 0 {
-			conf.Network = networkID
+			conf.Networks = []string{networkID}
 		}
-		return NewNetworkFromConfig(conf)
+		return DefaultNetworkFromConfig(conf)
 	}
 }
 
@@ -137,9 +171,14 @@ func (e *EthereumNetwork) Type() string {
 	return e.networkConfig.Type
 }
 
-// URL returns the RPC URL used for connecting to the network
-func (e *EthereumNetwork) URL() string {
-	return e.networkConfig.URL
+// ClusterURL returns the RPC URL used for connecting to the network within the K8s cluster
+func (e *EthereumNetwork) ClusterURL() string {
+	return e.networkConfig.ClusterURL
+}
+
+// LocalURL returns the RPC URL used for connecting to the network from outside the K8s cluster
+func (e *EthereumNetwork) LocalURL() string {
+	return e.networkConfig.LocalURL
 }
 
 // URLs returns the RPC URLs used for connecting to the network nodes
@@ -152,9 +191,14 @@ func (e *EthereumNetwork) SetURLs(urls []string) {
 	e.networkConfig.URLS = urls
 }
 
-// SetURL sets the RPC URL, useful for when blockchain URLs might be dynamic
-func (e *EthereumNetwork) SetURL(newURL string) {
-	e.networkConfig.URL = newURL
+// SetClusterURL sets the RPC URL used to connect to the chain from within the K8s cluster
+func (e *EthereumNetwork) SetClusterURL(newURL string) {
+	e.networkConfig.ClusterURL = newURL
+}
+
+// SetLocalURL sets the RPC URL used to connect to the chain from outside the K8s cluster
+func (e *EthereumNetwork) SetLocalURL(newURL string) {
+	e.networkConfig.LocalURL = newURL
 }
 
 // ChainID returns the on-chain ID of the network being connected to
@@ -165,6 +209,11 @@ func (e *EthereumNetwork) ChainID() *big.Int {
 // Config returns the blockchain network configuration
 func (e *EthereumNetwork) Config() *config.NetworkConfig {
 	return e.networkConfig
+}
+
+// RemotePort returns the remote RPC port of the network
+func (e *EthereumNetwork) RemotePort() uint16 {
+	return e.networkConfig.RPCPort
 }
 
 // Wallets returns all the viable wallets used for testing on chain

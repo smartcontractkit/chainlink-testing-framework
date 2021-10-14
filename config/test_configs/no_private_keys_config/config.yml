@@ -1,11 +1,12 @@
 # Just a config for unit testing
 
-network: "test_this_geth"
+networks: 
+  - "test_this_geth"
 keep_environments: Always
 
 private_keys: &private_keys
   private_keys:
-networks:
+network_configs:
   test_this_geth:
     name: "Tester Ted"
     chain_id: 1337

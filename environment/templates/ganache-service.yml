@@ -3,8 +3,8 @@ metadata:
 spec:
   ports:
   - name: access
-    port: {{ .Values.DependencyGroup.evm.rpcPort }}
-    targetPort: {{ .Values.DependencyGroup.evm.rpcPort }}
+    port: {{ .Network.RPCPort }}
+    targetPort: {{ .Network.RPCPort }}
   selector:
     app: ganache-network
   type: ClusterIP

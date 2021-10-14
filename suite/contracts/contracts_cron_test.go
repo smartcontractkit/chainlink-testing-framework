@@ -2,6 +2,7 @@ package contracts
 
 import (
 	"fmt"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/smartcontractkit/integrations-framework/actions"
@@ -12,25 +13,24 @@ import (
 
 var _ = Describe("Cronjob suite @cron", func() {
 	var (
-		s       *actions.DefaultSuiteSetup
-		adapter environment.ExternalAdapter
-		nodes   []client.Chainlink
-		job     *client.Job
-		err     error
+		suiteSetup actions.SuiteSetup
+		adapter    environment.ExternalAdapter
+		nodes      []client.Chainlink
+		job        *client.Job
+		err        error
 	)
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			s, err = actions.DefaultLocalSetup(
-				"basic-chainlink",
+			suiteSetup, err = actions.SingleNetworkSetup(
 				environment.NewChainlinkCluster(1),
-				client.NewNetworkFromConfig,
+				client.DefaultNetworkFromConfig,
 				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
-			nodes, err = environment.GetChainlinkClients(s.Env)
+			nodes, err = environment.GetChainlinkClients(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
-			adapter, err = environment.GetExternalAdapter(s.Env)
+			adapter, err = environment.GetExternalAdapter(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
@@ -53,7 +53,7 @@ var _ = Describe("Cronjob suite @cron", func() {
 
 	Describe("with Cron job", func() {
 		It("runs 5 times with no errors", func() {
-			Eventually(func(g Gomega){
+			Eventually(func(g Gomega) {
 				jobRuns, err := nodes[0].ReadRunsByJob(job.Data.ID)
 				g.Expect(err).ShouldNot(HaveOccurred())
 
@@ -68,6 +68,6 @@ var _ = Describe("Cronjob suite @cron", func() {
 	})
 
 	AfterEach(func() {
-		By("Tearing down the environment", s.TearDown())
+		By("Tearing down the environment", suiteSetup.TearDown())
 	})
 })

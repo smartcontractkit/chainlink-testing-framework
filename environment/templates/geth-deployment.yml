@@ -1,77 +1,77 @@
 metadata:
-  name: geth-dev-network
+  name: {{ .Network.Name }}
 spec:
   template:
     spec:
       volumes:
-      - name: geth-configmap-volume
+      - name: configmap-volume
         configMap:
-          name: gdmap
+          name: {{ .Network.Name }}
       containers:
       - name: geth-network
         image: ethereum/client-go:v1.10.3
         entrypoint: sh ./root/init.sh
         volumeMounts:
-        - name: geth-configmap-volume
+        - name: configmap-volume
           mountPath: /root/config
-        - name: geth-configmap-volume
+        - name: configmap-volume
           mountPath: /root/.ethereum/devchain/keystore/key1
           subPath: key1
-        - name: geth-configmap-volume
+        - name: configmap-volume
           mountPath: /root/.ethereum/devchain/keystore/key2
           subPath: key2
-        - name: geth-configmap-volume
+        - name: configmap-volume
           mountPath: /root/.ethereum/devchain/keystore/key3
           subPath: key3
-        - name: geth-configmap-volume
+        - name: configmap-volume
           mountPath: /root/.ethereum/devchain/keystore/key4
           subPath: key4
-        - name: geth-configmap-volume
+        - name: configmap-volume
           mountPath: /root/.ethereum/devchain/keystore/key5
           subPath: key5
-        - name: geth-configmap-volume
+        - name: configmap-volume
           mountPath: /root/.ethereum/devchain/keystore/key6
           subPath: key6
-        - name: geth-configmap-volume
+        - name: configmap-volume
           mountPath: /root/.ethereum/devchain/keystore/key7
           subPath: key7
-        - name: geth-configmap-volume
+        - name: configmap-volume
           mountPath: /root/.ethereum/devchain/keystore/key8
           subPath: key8
-        - name: geth-configmap-volume
+        - name: configmap-volume
           mountPath: /root/.ethereum/devchain/keystore/key9
           subPath: key9
-        - name: geth-configmap-volume
+        - name: configmap-volume
           mountPath: /root/.ethereum/devchain/keystore/key10
           subPath: key10
-        - name: geth-configmap-volume
+        - name: configmap-volume
           mountPath: /root/.ethereum/devchain/keystore/key11
           subPath: key11
-        - name: geth-configmap-volume
+        - name: configmap-volume
           mountPath: /root/.ethereum/devchain/keystore/key12
           subPath: key12
-        - name: geth-configmap-volume
+        - name: configmap-volume
           mountPath: /root/.ethereum/devchain/keystore/key13
           subPath: key13
-        - name: geth-configmap-volume
+        - name: configmap-volume
           mountPath: /root/.ethereum/devchain/keystore/key14
           subPath: key14
-        - name: geth-configmap-volume
+        - name: configmap-volume
           mountPath: /root/.ethereum/devchain/keystore/key15
           subPath: key15
-        - name: geth-configmap-volume
+        - name: configmap-volume
           mountPath: /root/.ethereum/devchain/keystore/key16
           subPath: key16
-        - name: geth-configmap-volume
+        - name: configmap-volume
           mountPath: /root/.ethereum/devchain/keystore/key17
           subPath: key17
-        - name: geth-configmap-volume
+        - name: configmap-volume
           mountPath: /root/.ethereum/devchain/keystore/key18
           subPath: key18
-        - name: geth-configmap-volume
+        - name: configmap-volume
           mountPath: /root/.ethereum/devchain/keystore/key19
           subPath: key19
-        - name: geth-configmap-volume
+        - name: configmap-volume
           mountPath: /root/.ethereum/devchain/keystore/key20
           subPath: key20
         args:
@@ -143,7 +143,7 @@ spec:
           - "*"
           - --ws.addr
           - 0.0.0.0
-          - --ws.port=8545
+          - --ws.port={{ .Network.RPCPort }}
           - --graphql
           - --graphql.corsdomain
           - "*"
@@ -153,7 +153,7 @@ spec:
           - "*"
           - --vmdebug
         ports:
-        - containerPort: {{ .Values.DependencyGroup.evm.rpcPort }}
+        - containerPort: {{ .Network.RPCPort }}
         resources:
           requests:
             memory: {{ .Config.Apps.Geth.Requests.Memory }}

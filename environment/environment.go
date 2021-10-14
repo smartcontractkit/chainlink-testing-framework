@@ -2,18 +2,14 @@ package environment
 
 import (
 	"fmt"
+	"net/http"
+	"net/url"
+	"strings"
+
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/chaos"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/config"
-	"net/http"
-	"net/url"
-	"strings"
-)
-
-const (
-	// OtherMinersRPCPort default port for any additional blockchain node
-	OtherMinersRPCPort = 9545
 )
 
 // Environment is the interface that represents a deployed environment, whether locally or on remote machines
@@ -172,11 +168,11 @@ func GetExternalAdapter(env Environment) (ExternalAdapter, error) {
 // deployed into the environment. If there's no deployed blockchain in the environment, the URL from the network
 // config will be used
 func NewBlockchainClient(env Environment, network client.BlockchainNetwork) (client.BlockchainClient, error) {
-	sd, err := env.GetServiceDetails(EVMRPCPort)
+	sd, err := env.GetServiceDetails(network.RemotePort())
 	if err == nil {
 		url := fmt.Sprintf("ws://%s", sd.LocalURL.Host)
-		log.Debug().Str("URL", url).Msg("Selecting network")
-		network.SetURL(url)
+		log.Debug().Str("URL", url).Str("Network", network.ID()).Msg("Selecting network")
+		network.SetLocalURL(url)
 	}
 	network.Config().PrivateKeyStore, err = NewPrivateKeyStoreFromEnv(env, network.Config())
 	if err != nil {
@@ -190,13 +186,13 @@ func NewBlockchainClient(env Environment, network client.BlockchainNetwork) (cli
 // can switch clients
 func NewBlockchainClients(env Environment, network client.BlockchainNetwork) (client.BlockchainClient, error) {
 	urls := make([]string, 0)
-	primaryClientDetails, err := env.GetServiceDetails(EVMRPCPort)
+	primaryClientDetails, err := env.GetServiceDetails(network.RemotePort())
 	if err != nil {
 		return nil, err
 	}
 	u := strings.Replace(primaryClientDetails.LocalURL.String(), "http", "ws", -1)
 	urls = append(urls, u)
-	sd, err := env.GetAllServiceDetails(OtherMinersRPCPort)
+	sd, err := env.GetAllServiceDetails(MinersRPCPort)
 	if err != nil {
 		return nil, err
 	}

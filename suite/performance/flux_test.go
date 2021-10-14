@@ -1,6 +1,9 @@
 package performance
 
 import (
+	"math/big"
+	"time"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/smartcontractkit/integrations-framework/actions"
@@ -8,40 +11,39 @@ import (
 	"github.com/smartcontractkit/integrations-framework/contracts"
 	"github.com/smartcontractkit/integrations-framework/environment"
 	"github.com/smartcontractkit/integrations-framework/tools"
-	"math/big"
-	"time"
 )
 
 var _ = Describe("Performance tests", func() {
 	var (
-		s        *actions.DefaultSuiteSetup
-		nodes    []client.Chainlink
-		perfTest Test
-		err      error
+		suiteSetup  actions.SuiteSetup
+		networkInfo actions.NetworkInfo
+		nodes       []client.Chainlink
+		perfTest    Test
+		err         error
 	)
 	numberOfRounds := int64(5)
 	numberOfNodes := 5
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			s, err = actions.DefaultLocalSetup(
-				"basic-chainlink",
+			suiteSetup, err = actions.SingleNetworkSetup(
 				environment.NewChainlinkCluster(numberOfNodes),
 				client.NewNetworkFromConfigWithDefault(client.NetworkGethPerformance),
 				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
-			nodes, err = environment.GetChainlinkClients(s.Env)
+			nodes, err = environment.GetChainlinkClients(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
+			networkInfo = suiteSetup.DefaultNetwork()
 
-			s.Client.ParallelTransactions(true)
+			networkInfo.Client.ParallelTransactions(true)
 		})
 
 		By("Funding the Chainlink nodes", func() {
 			err = actions.FundChainlinkNodes(
 				nodes,
-				s.Client,
-				s.Wallets.Default(),
+				networkInfo.Client,
+				networkInfo.Wallets.Default(),
 				big.NewFloat(2),
 				nil,
 			)
@@ -60,10 +62,10 @@ var _ = Describe("Performance tests", func() {
 					NodePollTimePeriod:  time.Second * 15,
 				},
 				contracts.DefaultFluxAggregatorOptions(),
-				s.Env,
-				s.Client,
-				s.Wallets,
-				s.Deployer,
+				suiteSetup.Environment(),
+				networkInfo.Client,
+				networkInfo.Wallets,
+				networkInfo.Deployer,
 				nil,
 			)
 			err = perfTest.Setup()
@@ -81,6 +83,6 @@ var _ = Describe("Performance tests", func() {
 	})
 
 	AfterEach(func() {
-		By("Tearing down the environment", s.TearDown())
+		By("Tearing down the environment", suiteSetup.TearDown())
 	})
 })

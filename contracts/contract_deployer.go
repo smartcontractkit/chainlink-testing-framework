@@ -3,10 +3,11 @@ package contracts
 import (
 	"context"
 	"errors"
-	"github.com/smartcontractkit/integrations-framework/config"
 	"math"
 	"math/big"
 	"time"
+
+	"github.com/smartcontractkit/integrations-framework/config"
 
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/client"

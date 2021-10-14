@@ -2,17 +2,15 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: hardhat-config-map
-objectmeta:
-  name: hardhat-config-map
 data:
   hardhat.config.js: |
     module.exports = {
         solidity: "0.7.3",
         networks: {
             hardhat: {
-                chainId: 1337,
+                chainId: {{ .Network.ChainID }},
                 // x10 of default block gas limit for concurrent deploy
-                blockGasLimit: 12450000000,
+                blockGasLimit: {{ .Network.BlockGasLimit }},
                 mining: { // Mines a new block every second
                     interval: 1000
                 }

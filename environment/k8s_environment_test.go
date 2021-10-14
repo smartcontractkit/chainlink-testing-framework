@@ -30,7 +30,7 @@ var _ = Describe("Environment functionality @unit", func() {
 		networkConfig, err := initFunc(conf)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		env, err := NewK8sEnvironment("basic-chainlink", conf, networkConfig)
+		env, err := NewK8sEnvironment(conf, networkConfig)
 		Expect(err).ShouldNot(HaveOccurred())
 		err = env.DeploySpecs(envInitFunc)
 		Expect(err).ShouldNot(HaveOccurred())
@@ -47,8 +47,8 @@ var _ = Describe("Environment functionality @unit", func() {
 		}
 		Expect(err).ShouldNot(HaveOccurred())
 	},
-		Entry("1 node cluster", client.NewNetworkFromConfig, NewChainlinkCluster(1), 1),
-		Entry("3 node cluster", client.NewNetworkFromConfig, NewChainlinkCluster(3), 3),
-		Entry("mixed version cluster", client.NewNetworkFromConfig, NewMixedVersionChainlinkCluster(3, 2), 3),
+		Entry("1 node cluster", client.DefaultNetworkFromConfig, NewChainlinkCluster(1), 1),
+		Entry("3 node cluster", client.DefaultNetworkFromConfig, NewChainlinkCluster(3), 3),
+		Entry("mixed version cluster", client.DefaultNetworkFromConfig, NewMixedVersionChainlinkCluster(3, 2), 3),
 	)
 })

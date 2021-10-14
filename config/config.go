@@ -3,6 +3,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -22,15 +23,15 @@ const (
 
 // Config is the overall config for the framework, holding configurations for supported networks
 type Config struct {
-	Network            string                    `mapstructure:"network" yaml:"network"`
-	Logging            *LoggingConfig            `mapstructure:"logging" yaml:"logging"`
-	Networks           map[string]*NetworkConfig `mapstructure:"networks" yaml:"networks"`
-	Retry              *RetryConfig              `mapstructure:"retry" yaml:"retry"`
-	Apps               AppConfig                 `mapstructure:"apps" yaml:"apps"`
-	Kubernetes         KubernetesConfig          `mapstructure:"kubernetes" yaml:"kubernetes"`
-	KeepEnvironments   string                    `mapstructure:"keep_environments" yaml:"keep_environments"`
-	Prometheus         *PrometheusConfig         `mapstructure:"prometheus" yaml:"prometheus"`
-	Contracts          *ContractsConfig          `mapstructure:"contracts" yaml:"contracts"`
+	Networks           []string                 `mapstructure:"networks" yaml:"networks"`
+	Logging            *LoggingConfig           `mapstructure:"logging" yaml:"logging"`
+	NetworkConfigs     map[string]NetworkConfig `mapstructure:"network_configs" yaml:"network_configs"`
+	Retry              *RetryConfig             `mapstructure:"retry" yaml:"retry"`
+	Apps               AppConfig                `mapstructure:"apps" yaml:"apps"`
+	Kubernetes         KubernetesConfig         `mapstructure:"kubernetes" yaml:"kubernetes"`
+	KeepEnvironments   string                   `mapstructure:"keep_environments" yaml:"keep_environments"`
+	Prometheus         *PrometheusConfig        `mapstructure:"prometheus" yaml:"prometheus"`
+	Contracts          *ContractsConfig         `mapstructure:"contracts" yaml:"contracts"`
 	DefaultKeyStore    string
 	ConfigFileLocation string
 }
@@ -46,11 +47,11 @@ type LoggingConfig struct {
 }
 
 // GetNetworkConfig finds a specified network config based on its name
-func (c *Config) GetNetworkConfig(name string) (*NetworkConfig, error) {
-	if network, ok := c.Networks[name]; ok {
+func (c *Config) GetNetworkConfig(name string) (NetworkConfig, error) {
+	if network, ok := c.NetworkConfigs[name]; ok {
 		return network, nil
 	}
-	return nil, errors.New("no supported network of name " + name + " was found. Ensure that the config for it exists.")
+	return NetworkConfig{}, fmt.Errorf("no supported network of name '%s' was found. Ensure that the config for it exists.", name)
 }
 
 // ContractsConfig contracts sources config
@@ -92,8 +93,9 @@ type ExternalSource struct {
 
 // NetworkConfig holds the basic values that identify a blockchain network and contains private keys on the network
 type NetworkConfig struct {
-	Name                 string        `mapstructure:"name" yaml:"name"`
-	URL                  string        `mapstructure:"url" yaml:"url"`
+	Name                 string `mapstructure:"name" yaml:"name"`
+	ClusterURL           string
+	LocalURL             string
 	URLS                 []string      `mapstructure:"urls" yaml:"urls"`
 	ChainID              int64         `mapstructure:"chain_id" yaml:"chain_id"`
 	Type                 string        `mapstructure:"type" yaml:"type"`
@@ -108,6 +110,7 @@ type NetworkConfig struct {
 	MinimumConfirmations int           `mapstructure:"minimum_confirmations" yaml:"minimum_confirmations"`
 	GasEstimationBuffer  uint64        `mapstructure:"gas_estimation_buffer" yaml:"gas_estimation_buffer"`
 	BlockGasLimit        uint64        `mapstructure:"block_gas_limit" yaml:"block_gas_limit"`
+	RPCPort              uint16        `mapstructure:"rpc_port" yaml:"rpc_port"`
 	PrivateKeyStore      PrivateKeyStore
 }
 
