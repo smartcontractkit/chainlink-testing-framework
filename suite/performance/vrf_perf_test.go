@@ -13,7 +13,7 @@ import (
 
 var _ = Describe("VRF perf test @perf-vrf", func() {
 	var (
-		suiteSetup *actions.DefaultSuiteSetup
+		suiteSetup actions.SuiteSetup
 		nodes      []client.Chainlink
 		adapter    environment.ExternalAdapter
 		perfTest   Test
@@ -22,26 +22,24 @@ var _ = Describe("VRF perf test @perf-vrf", func() {
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			suiteSetup, err = actions.DefaultLocalSetup(
-				"vrf-perf",
-				// more than one node is useless for VRF, because nodes are not cooperating for randomness
+			suiteSetup, err = actions.SingleNetworkSetup(
 				environment.NewChainlinkCluster(1),
-				client.NewNetworkFromConfig,
+				client.NewNetworkFromConfigWithDefault(client.NetworkGethPerformance),
 				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
-			adapter, err = environment.GetExternalAdapter(suiteSetup.Env)
+			adapter, err = environment.GetExternalAdapter(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
-			nodes, err = environment.GetChainlinkClients(suiteSetup.Env)
+			nodes, err = environment.GetChainlinkClients(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
-			suiteSetup.Client.ParallelTransactions(true)
+			suiteSetup.DefaultNetwork().Client.ParallelTransactions(true)
 		})
 
 		By("Funding the Chainlink nodes", func() {
 			err := actions.FundChainlinkNodes(
 				nodes,
-				suiteSetup.Client,
-				suiteSetup.Wallets.Default(),
+				suiteSetup.DefaultNetwork().Client,
+				suiteSetup.DefaultNetwork().Wallets.Default(),
 				big.NewFloat(10),
 				big.NewFloat(10),
 			)
@@ -58,11 +56,11 @@ var _ = Describe("VRF perf test @perf-vrf", func() {
 						GracefulStopDuration: 10 * time.Second,
 					},
 				},
-				suiteSetup.Env,
-				suiteSetup.Link,
-				suiteSetup.Client,
-				suiteSetup.Wallets,
-				suiteSetup.Deployer,
+				suiteSetup.Environment(),
+				suiteSetup.DefaultNetwork().Link,
+				suiteSetup.DefaultNetwork().Client,
+				suiteSetup.DefaultNetwork().Wallets,
+				suiteSetup.DefaultNetwork().Deployer,
 				adapter,
 			)
 			err = perfTest.Setup()
