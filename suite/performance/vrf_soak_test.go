@@ -12,7 +12,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/tools"
 )
 
-var _ = Describe("Runlog soak test @soak-runlog", func() {
+var _ = Describe("VRF soak test @soak-vrf", func() {
 	var (
 		suiteSetup     actions.SuiteSetup
 		defaultNetwork actions.NetworkInfo
@@ -25,7 +25,7 @@ var _ = Describe("Runlog soak test @soak-runlog", func() {
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
 			suiteSetup, err = actions.SingleNetworkSetup(
-				// no need more than one node for runlog test
+				// more than one node is useless for VRF, because nodes are not cooperating for randomness
 				environment.NewChainlinkCluster(1),
 				client.DefaultNetworkFromConfig,
 				tools.ProjectRoot,
@@ -50,15 +50,15 @@ var _ = Describe("Runlog soak test @soak-runlog", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
-		By("Setting up the Runlog soak test", func() {
-			perfTest = NewRunlogTest(
-				RunlogTestOptions{
+		By("Setting up the VRF soak test", func() {
+			perfTest = NewVRFTest(
+				VRFTestOptions{
 					TestOptions: TestOptions{
-						NumberOfContracts: 15,
+						NumberOfContracts:    5,
+						RoundTimeout:         60 * time.Second,
+						TestDuration:         1 * time.Minute,
+						GracefulStopDuration: 10 * time.Second,
 					},
-					RoundTimeout: 180 * time.Second,
-					AdapterValue: 5,
-					TestDuration: 3 * time.Minute,
 				},
 				suiteSetup.Environment(),
 				defaultNetwork.Link,
@@ -72,8 +72,8 @@ var _ = Describe("Runlog soak test @soak-runlog", func() {
 		})
 	})
 
-	Describe("Runlog soak test", func() {
-		Measure("Measure Runlog rounds", func(_ Benchmarker) {
+	Describe("VRF soak test", func() {
+		Measure("Measure VRF request latency", func(b Benchmarker) {
 			err = perfTest.Run()
 			Expect(err).ShouldNot(HaveOccurred())
 		}, 1)

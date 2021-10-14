@@ -57,10 +57,10 @@ spec:
         - name: JSON_CONSOLE
           value: "false"
         - name: LOG_LEVEL
-          value: info
+          value: debug
         - name: MAX_EXPORT_HTML_THREADS
           value: "2"
-        - name: MINIMUM_CONTRACT_PAYMENT
+        - name: MINIMUM_CONTRACT_PAYMENT_LINK_JUELS
           value: "0"
         - name: OCR_TRACE_LOGGING
           value: "true"

@@ -43,8 +43,29 @@ type RunsAttributesResponse struct {
 	Meta       interface{}   `json:"meta"`
 	Errors     []interface{} `json:"errors"`
 	Inputs     RunInputs     `json:"inputs"`
+	TaskRuns   []TaskRun     `json:"taskRuns"`
 	CreatedAt  time.Time     `json:"createdAt"`
 	FinishedAt time.Time     `json:"finishedAt"`
+}
+
+//DecodeLogTaskRun is "ethabidecodelog" task run info,
+// also used for "RequestID" tracing in perf tests
+type DecodeLogTaskRun struct {
+	Fee       int    `json:"fee"`
+	JobID     []int  `json:"jobID"`
+	KeyHash   []int  `json:"keyHash"`
+	RequestID []byte `json:"requestID"`
+	Sender    string `json:"sender"`
+}
+
+//TaskRun is pipeline task run info
+type TaskRun struct {
+	Type       string      `json:"type"`
+	CreatedAt  time.Time   `json:"createdAt"`
+	FinishedAt time.Time   `json:"finishedAt"`
+	Output     string      `json:"output"`
+	Error      interface{} `json:"error"`
+	DotID      string      `json:"dotId"`
 }
 
 // RunInputs run inputs (value)

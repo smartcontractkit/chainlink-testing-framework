@@ -18,9 +18,6 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-// RunlogJobMap is a custom map type that holds the record of jobs by the contract instance and the chainlink node
-type RunlogJobMap map[ConsumerOraclePair]map[client.Chainlink]string
-
 // ConsumerOraclePair consumer and oracle pair
 type ConsumerOraclePair struct {
 	consumer contracts.APIConsumer
@@ -31,9 +28,7 @@ type ConsumerOraclePair struct {
 // RunlogTestOptions contains the parameters for the Runlog soak test to be executed
 type RunlogTestOptions struct {
 	TestOptions
-	RoundTimeout time.Duration
 	AdapterValue int
-	TestDuration time.Duration
 }
 
 // RunlogTest is the implementation of Test that will configure and execute soak test
@@ -51,7 +46,8 @@ type RunlogTest struct {
 	contractInstances []*ConsumerOraclePair
 	adapter           environment.ExternalAdapter
 
-	jobMap RunlogJobMap
+	testResults *PerfRequestIDTestResults
+	jobMap      ContractsNodesJobsMap
 }
 
 // NewRunlogTest creates new Runlog performance/soak test
@@ -72,14 +68,22 @@ func NewRunlogTest(
 		Wallets:     wallets,
 		Deployer:    deployer,
 		adapter:     adapter,
-		jobMap:      RunlogJobMap{},
+		testResults: NewPerfRequestIDTestResults(),
+		jobMap:      ContractsNodesJobsMap{},
 	}
 }
 
 // RecordValues records Runlog metrics
 func (f *RunlogTest) RecordValues(b ginkgo.Benchmarker) error {
-	// TODO: collect metrics
-	return nil
+	// can't estimate perf metrics in soak mode
+	if f.TestOptions.NumberOfRounds == 0 {
+		return nil
+	}
+	actions.SetChainlinkAPIPageSize(f.chainlinkClients, f.TestOptions.NumberOfRounds*f.TestOptions.NumberOfContracts)
+	if err := f.testResults.setResultStartTimes(f.chainlinkClients, f.jobMap); err != nil {
+		return err
+	}
+	return f.testResults.calculateLatencies(b)
 }
 
 // Setup setups Runlog performance/soak test
@@ -138,7 +142,6 @@ func (f *RunlogTest) deployContracts() error {
 	for contract := range contractChan {
 		f.contractInstances = append(f.contractInstances, contract)
 	}
-	log.Warn().Int("Pairs", len(f.contractInstances)).Msg("Pairs")
 	return f.Blockchain.WaitForEvents()
 }
 
@@ -172,25 +175,72 @@ func (f *RunlogTest) Run() error {
 	if err := f.createChainlinkJobs(); err != nil {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), f.TestOptions.TestDuration)
-	defer cancel()
-	i := 1
+	var ctx context.Context
+	var testCtxCancel context.CancelFunc
+	if f.TestOptions.TestDuration.Seconds() > 0 {
+		ctx, testCtxCancel = context.WithTimeout(context.Background(), f.TestOptions.TestDuration)
+	} else {
+		ctx, testCtxCancel = context.WithCancel(context.Background())
+	}
+	defer testCtxCancel()
+	cancelPerfEvents := f.watchPerfEvents()
+	currentRound := 0
 	for {
 		select {
 		case <-ctx.Done():
-			log.Warn().Msg("Test finished")
+			log.Info().Msg("Test finished")
+			time.Sleep(f.TestOptions.GracefulStopDuration)
+			cancelPerfEvents()
 			return nil
 		default:
-			log.Warn().Int("RoundID", i).Msg("New round")
+			log.Info().Int("RoundID", currentRound).Msg("New round")
 			if err := f.requestData(); err != nil {
 				return err
 			}
-			if err := f.waitRoundEnd(i); err != nil {
+			if err := f.waitRoundEnd(currentRound + 1); err != nil {
 				return err
 			}
-			i++
+			if f.TestOptions.NumberOfRounds != 0 && currentRound >= f.TestOptions.NumberOfRounds {
+				log.Info().Msg("Final round is reached")
+				testCtxCancel()
+			}
+			currentRound++
 		}
 	}
+}
+
+func (f *RunlogTest) watchPerfEvents() context.CancelFunc {
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		ch := make(chan *contracts.PerfEvent)
+		g := errgroup.Group{}
+		for _, p := range f.contractInstances {
+			p := p
+			g.Go(func() error {
+				if err := p.consumer.WatchPerfEvents(context.Background(), ch); err != nil {
+					return err
+				}
+				return nil
+			})
+		}
+		for {
+			select {
+			case event := <-ch:
+				rqID := common.Bytes2Hex(event.RequestID[:])
+				r := f.testResults.Get(rqID)
+				loc, _ := time.LoadLocation("UTC")
+				r.EndTime = time.Unix(event.BlockTimestamp.Int64(), 0).In(loc)
+				log.Debug().
+					Int64("Round", event.Round.Int64()).
+					Str("RequestID", rqID).
+					Time("EndTime", r.EndTime).
+					Msg("Perf event received")
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+	return cancel
 }
 
 func (f *RunlogTest) waitRoundEnd(roundID int) error {
@@ -202,8 +252,8 @@ func (f *RunlogTest) waitRoundEnd(roundID int) error {
 }
 
 func (f *RunlogTest) createChainlinkJobs() error {
-	jobsChan := make(chan RunlogJobMap, len(f.contractInstances))
-	g := errgroup.Group{}
+	jobsChan := make(chan ContractsNodesJobsMap, len(f.contractInstances))
+	g := NewLimitErrGroup(30)
 
 	bta := client.BridgeTypeAttributes{
 		Name: "five",
@@ -226,8 +276,8 @@ func (f *RunlogTest) createChainlinkJobs() error {
 		g.Go(func() error {
 			jobUUID := uuid.NewV4()
 			p.jobUUID = jobUUID.String()
-			_, err := f.chainlinkClients[0].CreateJob(&client.DirectRequestJobSpec{
-				Name:              "direct_request",
+			job, err := f.chainlinkClients[0].CreateJob(&client.DirectRequestJobSpec{
+				Name:              fmt.Sprintf("direct_request_%s", p.jobUUID),
 				ContractAddress:   p.oracle.Address(),
 				ExternalJobID:     jobUUID.String(),
 				ObservationSource: ost,
@@ -235,6 +285,7 @@ func (f *RunlogTest) createChainlinkJobs() error {
 			if err != nil {
 				return err
 			}
+			jobsChan <- ContractsNodesJobsMap{p.consumer: map[client.Chainlink]NodeData{f.chainlinkClients[0]: RunlogNodeData{JobID: job.Data.ID}}}
 			return nil
 		})
 	}
@@ -242,16 +293,6 @@ func (f *RunlogTest) createChainlinkJobs() error {
 		return err
 	}
 	close(jobsChan)
-
-	for jobMap := range jobsChan {
-		for contractAddr, m := range jobMap {
-			if _, ok := f.jobMap[contractAddr]; !ok {
-				f.jobMap[contractAddr] = map[client.Chainlink]string{}
-			}
-			for k, v := range m {
-				f.jobMap[contractAddr][k] = v
-			}
-		}
-	}
+	f.jobMap.FromJobsChan(jobsChan)
 	return nil
 }

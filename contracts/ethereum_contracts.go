@@ -66,11 +66,35 @@ func (e *EthereumAPIConsumer) RoundID(ctx context.Context) (*big.Int, error) {
 		Pending: true,
 		Context: ctx,
 	}
-	return e.consumer.RoundID(opts)
+	return e.consumer.CurrentRoundID(opts)
 }
 
 func (e *EthereumAPIConsumer) Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Float) error {
 	return e.client.Fund(fromWallet, e.address.Hex(), ethAmount, linkAmount)
+}
+
+func (e *EthereumAPIConsumer) WatchPerfEvents(ctx context.Context, eventChan chan<- *PerfEvent) error {
+	ethEventChan := make(chan *ethereum.APIConsumerPerfMetricsEvent)
+	sub, err := e.consumer.WatchPerfMetricsEvent(&bind.WatchOpts{}, ethEventChan)
+	if err != nil {
+		return err
+	}
+	defer sub.Unsubscribe()
+	for {
+		select {
+		case event := <-ethEventChan:
+			eventChan <- &PerfEvent{
+				Contract:       e,
+				RequestID:      event.RequestId,
+				Round:          event.RoundID,
+				BlockTimestamp: event.Timestamp,
+			}
+		case err := <-sub.Err():
+			return err
+		case <-ctx.Done():
+			return nil
+		}
+	}
 }
 
 func (e *EthereumAPIConsumer) Data(ctx context.Context) (*big.Int, error) {
@@ -1318,6 +1342,30 @@ func (v *EthereumVRFConsumer) CurrentRoundID(ctx context.Context) (*big.Int, err
 		Context: ctx,
 	}
 	return v.consumer.CurrentRoundID(opts)
+}
+
+func (v *EthereumVRFConsumer) WatchPerfEvents(ctx context.Context, eventChan chan<- *PerfEvent) error {
+	ethEventChan := make(chan *ethereum.VRFConsumerPerfMetricsEvent)
+	sub, err := v.consumer.WatchPerfMetricsEvent(&bind.WatchOpts{}, ethEventChan)
+	if err != nil {
+		return err
+	}
+	defer sub.Unsubscribe()
+	for {
+		select {
+		case event := <-ethEventChan:
+			eventChan <- &PerfEvent{
+				Contract:       v,
+				RequestID:      event.RequestId,
+				Round:          event.RoundID,
+				BlockTimestamp: event.Timestamp,
+			}
+		case err := <-sub.Err():
+			return err
+		case <-ctx.Done():
+			return nil
+		}
+	}
 }
 
 func (v *EthereumVRFConsumer) RandomnessOutput(ctx context.Context) (*big.Int, error) {

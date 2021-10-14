@@ -15,9 +15,6 @@ import (
 	"time"
 )
 
-// VRFJobMap is a custom map type that holds the record of jobs by the contract instance and the chainlink node
-type VRFJobMap map[ConsumerCoordinatorPair]map[client.Chainlink]VRFProvingData
-
 // VRFProvingData proving key and job ID pair
 type VRFProvingData struct {
 	ProvingKeyHash [32]byte
@@ -33,19 +30,16 @@ type ConsumerCoordinatorPair struct {
 // VRFTestOptions contains the parameters for the VRF soak test to be executed
 type VRFTestOptions struct {
 	TestOptions
-	RoundTimeout time.Duration
-	TestDuration time.Duration
 }
 
 // VRFTest is the implementation of Test that will configure and execute soak test
 // of VRF contracts & jobs
 type VRFTest struct {
-	TestOptions     VRFTestOptions
-	ContractOptions contracts.OffchainOptions
-	Environment     environment.Environment
-	Blockchain      client.BlockchainClient
-	Wallets         client.BlockchainWallets
-	Deployer        contracts.ContractDeployer
+	TestOptions VRFTestOptions
+	Environment environment.Environment
+	Blockchain  client.BlockchainClient
+	Wallets     client.BlockchainWallets
+	Deployer    contracts.ContractDeployer
 
 	chainlinkClients  []client.Chainlink
 	nodeAddresses     []common.Address
@@ -55,7 +49,8 @@ type VRFTest struct {
 	contractInstances []ConsumerCoordinatorPair
 	adapter           environment.ExternalAdapter
 
-	jobMap VRFJobMap
+	testResults *PerfRequestIDTestResults
+	jobMap      ContractsNodesJobsMap
 }
 
 // NewVRFTest creates new VRF performance/soak test
@@ -76,14 +71,9 @@ func NewVRFTest(
 		Wallets:     wallets,
 		Deployer:    deployer,
 		adapter:     adapter,
-		jobMap:      VRFJobMap{},
+		testResults: NewPerfRequestIDTestResults(),
+		jobMap:      ContractsNodesJobsMap{},
 	}
-}
-
-// RecordValues records VRF metrics
-func (f *VRFTest) RecordValues(b ginkgo.Benchmarker) error {
-	// TODO: collect metrics
-	return nil
 }
 
 // Setup setups VRF performance/soak test
@@ -164,12 +154,46 @@ func (f *VRFTest) deployContracts() error {
 
 // waitRoundFulfilled awaits randomness round fulfillment,
 // there is no "round" in VRF by design, it's artificially introduced to have some checkpoint in soak/perf test
-func (f *VRFTest) waitRoundFulfilled(roundID *big.Int) error {
+func (f *VRFTest) waitRoundFulfilled(roundID int) error {
 	for _, p := range f.contractInstances {
-		confirmer := contracts.NewVRFConsumerRoundConfirmer(p.consumer, roundID, f.TestOptions.RoundTimeout)
+		confirmer := contracts.NewVRFConsumerRoundConfirmer(p.consumer, big.NewInt(int64(roundID)), f.TestOptions.RoundTimeout)
 		f.Blockchain.AddHeaderEventSubscription(p.consumer.Address(), confirmer)
 	}
 	return f.Blockchain.WaitForEvents()
+}
+
+func (f *VRFTest) watchPerfEvents() context.CancelFunc {
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		ch := make(chan *contracts.PerfEvent)
+		g := errgroup.Group{}
+		for _, p := range f.contractInstances {
+			p := p
+			g.Go(func() error {
+				if err := p.consumer.WatchPerfEvents(context.Background(), ch); err != nil {
+					return err
+				}
+				return nil
+			})
+		}
+		for {
+			select {
+			case event := <-ch:
+				rqID := common.Bytes2Hex(event.RequestID[:])
+				r := f.testResults.Get(rqID)
+				loc, _ := time.LoadLocation("UTC")
+				r.EndTime = time.Unix(event.BlockTimestamp.Int64(), 0).In(loc)
+				log.Debug().
+					Int64("Round", event.Round.Int64()).
+					Str("RequestID", rqID).
+					Time("EndTime", r.EndTime).
+					Msg("Perf event received")
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+	return cancel
 }
 
 // requestRandomness requests randomness for every consumer for every node (keyHash)
@@ -180,7 +204,7 @@ func (f *VRFTest) requestRandomness() error {
 		for _, provingData := range provingDataByNode {
 			provingData := provingData
 			g.Go(func() error {
-				err := p.consumer.RequestRandomness(f.Wallets.Default(), provingData.ProvingKeyHash, big.NewInt(1))
+				err := p.(ConsumerCoordinatorPair).consumer.RequestRandomness(f.Wallets.Default(), provingData.GetProvingKeyHash(), big.NewInt(1))
 				if err != nil {
 					return err
 				}
@@ -196,31 +220,57 @@ func (f *VRFTest) Run() error {
 	if err := f.createChainlinkJobs(); err != nil {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), f.TestOptions.TestDuration)
-	defer cancel()
-	i := 1
+	var ctx context.Context
+	var testCtxCancel context.CancelFunc
+	if f.TestOptions.TestDuration.Seconds() > 0 {
+		ctx, testCtxCancel = context.WithTimeout(context.Background(), f.TestOptions.TestDuration)
+	} else {
+		ctx, testCtxCancel = context.WithCancel(context.Background())
+	}
+	defer testCtxCancel()
+	cancelPerfEvents := f.watchPerfEvents()
+	currentRound := 0
 	for {
 		select {
 		case <-ctx.Done():
-			log.Warn().Msg("Test finished")
+			log.Info().Msg("Test finished")
+			time.Sleep(f.TestOptions.GracefulStopDuration)
+			cancelPerfEvents()
 			return nil
 		default:
-			log.Warn().Int("RoundID", i).Msg("New round")
+			log.Info().Int("RoundID", currentRound).Msg("New round")
 			if err := f.requestRandomness(); err != nil {
 				return err
 			}
-			if err := f.waitRoundFulfilled(big.NewInt(int64(i))); err != nil {
+			if err := f.waitRoundFulfilled(currentRound + 1); err != nil {
 				return err
 			}
-			i++
+			if f.TestOptions.NumberOfRounds != 0 && currentRound >= f.TestOptions.NumberOfRounds {
+				log.Info().Msg("Final round is reached")
+				testCtxCancel()
+			}
+			currentRound++
 		}
 	}
 }
 
+// RecordValues records VRF metrics
+func (f *VRFTest) RecordValues(b ginkgo.Benchmarker) error {
+	// can't estimate perf metrics in soak mode
+	if f.TestOptions.NumberOfRounds == 0 {
+		return nil
+	}
+	actions.SetChainlinkAPIPageSize(f.chainlinkClients, f.TestOptions.NumberOfRounds*f.TestOptions.NumberOfContracts)
+	if err := f.testResults.setResultStartTimes(f.chainlinkClients, f.jobMap); err != nil {
+		return err
+	}
+	return f.testResults.calculateLatencies(b)
+}
+
 // createChainlinkJobs create and collect VRF jobs for every Chainlink node
 func (f *VRFTest) createChainlinkJobs() error {
-	jobsChan := make(chan VRFJobMap, len(f.chainlinkClients)*len(f.contractInstances))
-	g := errgroup.Group{}
+	jobsChan := make(chan ContractsNodesJobsMap, len(f.chainlinkClients)*len(f.contractInstances))
+	g := NewLimitErrGroup(30)
 	for _, p := range f.contractInstances {
 		p := p
 		for _, n := range f.chainlinkClients {
@@ -271,7 +321,7 @@ func (f *VRFTest) createChainlinkJobs() error {
 				if err != nil {
 					return err
 				}
-				jobsChan <- VRFJobMap{p: map[client.Chainlink]VRFProvingData{n: {JobID: jobID.Data.ID, ProvingKeyHash: requestHash}}}
+				jobsChan <- ContractsNodesJobsMap{p: map[client.Chainlink]NodeData{n: VRFNodeData{JobID: jobID.Data.ID, ProvingKeyHash: requestHash}}}
 				return nil
 			})
 		}
@@ -280,16 +330,6 @@ func (f *VRFTest) createChainlinkJobs() error {
 		return err
 	}
 	close(jobsChan)
-
-	for jobMap := range jobsChan {
-		for contractAddr, m := range jobMap {
-			if _, ok := f.jobMap[contractAddr]; !ok {
-				f.jobMap[contractAddr] = map[client.Chainlink]VRFProvingData{}
-			}
-			for k, v := range m {
-				f.jobMap[contractAddr][k] = v
-			}
-		}
-	}
+	f.jobMap.FromJobsChan(jobsChan)
 	return nil
 }
