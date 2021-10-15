@@ -24,8 +24,7 @@ spec:
             - name: KAFKA_GROUP_ID
               value: "explorer"
             - name: RPC_URL
-              {{ $networkName := .Config.Network }}
-              value: {{ (index .Values.DependencyGroup $networkName).clusterURL }}
+              value: {{ if .Values.DependencyGroup.ethereum_geth_0.clusterURL }}{{ .Values.DependencyGroup.ethereum_geth_0.clusterURL }}{{ else if .Values.DependencyGroup.ethereum_geth_performance_0.clusterURL }}{{ .Values.DependencyGroup.ethereum_geth_performance_0.clusterURL }}{{ else if .Values.DependencyGroup.ethereum_ganache_0.clusterURL }}{{ .Values.DependencyGroup.ethereum_ganache_0.clusterURL }}{{ else if .Values.DependencyGroup.ethereum_hardhat_0.clusterURL }}{{ .Values.DependencyGroup.ethereum_hardhat_0.clusterURL }}{{ end }}
             - name: METRICS_ENDPOINT
               value: ":1337"
             - name: WEIWATCHERS_NODES_URL
