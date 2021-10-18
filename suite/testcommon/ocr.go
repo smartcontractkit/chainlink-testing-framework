@@ -68,6 +68,12 @@ func SetupOCRTest(i *OCRSetupInputs) {
 
 		i.OCRInstance, err = deployer.DeployOffChainAggregator(i.DefaultWallet, contracts.DefaultOffChainAggregatorOptions())
 		Expect(err).ShouldNot(HaveOccurred())
+		err = i.OCRInstance.SetPayees(
+			i.DefaultWallet,
+			i.ChainlinkNodes,
+			contracts.DefaultOffChainAggregatorConfig(len(i.ChainlinkNodes)),
+		)
+		Expect(err).ShouldNot(HaveOccurred())
 		err = i.OCRInstance.SetConfig(
 			i.DefaultWallet,
 			i.ChainlinkNodes[1:],
@@ -222,7 +228,7 @@ func NewOCRSetupInputForObservability(i *OCRSetupInputs, nodeCount int, rules ma
 
 	err := i.Mockserver.PutExpectations(steps.GetMockserverInitializerDataForOTPE(
 		i.OCRInstance.Address(),
-		i.ChainlinkNodes,
+		i.ChainlinkNodes[1:],
 	))
 	Expect(err).ShouldNot(HaveOccurred())
 

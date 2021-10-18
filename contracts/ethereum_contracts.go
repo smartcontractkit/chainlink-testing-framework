@@ -576,23 +576,6 @@ func (o *EthereumOffchainAggregator) GetContractData(ctxt context.Context) (*Off
 	}, nil
 }
 
-// SetPayees sets wallets for the contract to pay out to?
-func (o *EthereumOffchainAggregator) SetPayees(
-	fromWallet client.BlockchainWallet,
-	transmitters, payees []common.Address,
-) error {
-	opts, err := o.client.TransactionOpts(fromWallet, *o.address, big.NewInt(0), nil)
-	if err != nil {
-		return err
-	}
-
-	tx, err := o.ocr.SetPayees(opts, transmitters, payees)
-	if err != nil {
-		return err
-	}
-	return o.client.ProcessTransaction(tx.Hash())
-}
-
 // SetConfig sets offchain reporting protocol configuration including participating oracles
 func (o *EthereumOffchainAggregator) SetConfig(
 	fromWallet client.BlockchainWallet,
@@ -601,19 +584,58 @@ func (o *EthereumOffchainAggregator) SetConfig(
 ) error {
 	// Gather necessary addresses and keys from our chainlink nodes to properly configure the OCR contract
 	log.Info().Str("Contract Address", o.address.Hex()).Msg("Configuring OCR Contract")
+	var err error
+	oracleIdentities, err := o.gatherConfigInfoFromOraclesForOCR(chainlinkNodes)
+	if err != nil {
+		return err
+	}
+
+	ocrConfig.OracleIdentities = append(ocrConfig.OracleIdentities, oracleIdentities...)
+
+	signers, transmitters, threshold, encodedConfigVersion, encodedConfig, err := ocrConfigHelper.ContractSetConfigArgs(
+		ocrConfig.DeltaProgress,
+		ocrConfig.DeltaResend,
+		ocrConfig.DeltaRound,
+		ocrConfig.DeltaGrace,
+		ocrConfig.DeltaC,
+		ocrConfig.AlphaPPB,
+		ocrConfig.DeltaStage,
+		ocrConfig.RMax,
+		ocrConfig.S,
+		ocrConfig.OracleIdentities,
+		ocrConfig.F,
+	)
+	if err != nil {
+		return err
+	}
+
+	// Set Config
+	opts, err := o.client.TransactionOpts(fromWallet, *o.address, big.NewInt(0), nil)
+	if err != nil {
+		return err
+	}
+	tx, err := o.ocr.SetConfig(opts, signers, transmitters, threshold, encodedConfigVersion, encodedConfig)
+	if err != nil {
+		return err
+	}
+	return o.client.ProcessTransaction(tx.Hash())
+}
+
+func (o *EthereumOffchainAggregator) gatherConfigInfoFromOraclesForOCR(chainlinkNodes []client.Chainlink) ([]ocrConfigHelper.OracleIdentityExtra, error) {
+	oracleIdentities := []ocrConfigHelper.OracleIdentityExtra{}
 	for _, node := range chainlinkNodes {
 		ocrKeys, err := node.ReadOCRKeys()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		primaryOCRKey := ocrKeys.Data[0]
 		primaryEthKey, err := node.PrimaryEthAddress()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		p2pKeys, err := node.ReadP2PKeys()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		primaryP2PKey := p2pKeys.Data[0]
 
@@ -622,11 +644,11 @@ func (o *EthereumOffchainAggregator) SetConfig(
 		var configPublicKey [32]byte
 		offchainSigningAddress, err := hex.DecodeString(primaryOCRKey.Attributes.OffChainPublicKey)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		decodeConfigKey, err := hex.DecodeString(primaryOCRKey.Attributes.ConfigPublicKey)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		// https://stackoverflow.com/questions/8032170/how-to-assign-string-to-bytes-array
@@ -644,10 +666,26 @@ func (o *EthereumOffchainAggregator) SetConfig(
 			SharedSecretEncryptionPublicKey: ocrTypes.SharedSecretEncryptionPublicKey(configPublicKey),
 		}
 
-		ocrConfig.OracleIdentities = append(ocrConfig.OracleIdentities, oracleIdentityExtra)
+		oracleIdentities = append(oracleIdentities, oracleIdentityExtra)
+	}
+	return oracleIdentities, nil
+}
+
+// SetPayees sets the payees for transmitting addresses
+func (o *EthereumOffchainAggregator) SetPayees(
+	fromWallet client.BlockchainWallet,
+	chainlinkNodes []client.Chainlink,
+	ocrConfig OffChainAggregatorConfig,
+) error {
+	var err error
+	oracleIdentities, err := o.gatherConfigInfoFromOraclesForOCR(chainlinkNodes)
+	if err != nil {
+		return err
 	}
 
-	signers, transmitters, threshold, encodedConfigVersion, encodedConfig, err := ocrConfigHelper.ContractSetConfigArgs(
+	ocrConfig.OracleIdentities = append(ocrConfig.OracleIdentities, oracleIdentities...)
+
+	_, transmitters, _, _, _, err := ocrConfigHelper.ContractSetConfigArgs(
 		ocrConfig.DeltaProgress,
 		ocrConfig.DeltaResend,
 		ocrConfig.DeltaRound,
@@ -670,19 +708,6 @@ func (o *EthereumOffchainAggregator) SetConfig(
 		return err
 	}
 	tx, err := o.ocr.SetPayees(opts, transmitters, transmitters)
-	if err != nil {
-		return err
-	}
-	if err := o.client.ProcessTransaction(tx.Hash()); err != nil {
-		return err
-	}
-
-	// Set Config
-	opts, err = o.client.TransactionOpts(fromWallet, *o.address, big.NewInt(0), nil)
-	if err != nil {
-		return err
-	}
-	tx, err = o.ocr.SetConfig(opts, signers, transmitters, threshold, encodedConfigVersion, encodedConfig)
 	if err != nil {
 		return err
 	}

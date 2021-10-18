@@ -117,7 +117,7 @@ type OffchainAggregator interface {
 		chainlinkNodes []client.Chainlink,
 		ocrConfig OffChainAggregatorConfig,
 	) error
-	SetPayees(client.BlockchainWallet, []common.Address, []common.Address) error
+	SetPayees(client.BlockchainWallet, []client.Chainlink, OffChainAggregatorConfig) error
 	RequestNewRound(fromWallet client.BlockchainWallet) error
 	GetLatestAnswer(ctxt context.Context) (*big.Int, error)
 	GetLatestRound(ctxt context.Context) (*RoundData, error)
