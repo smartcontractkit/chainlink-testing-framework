@@ -1,5 +1,5 @@
 metadata:
-  name: hardhat-network
+  generateName: hardhat-network-
 spec:
   template:
     metadata:
@@ -7,20 +7,20 @@ spec:
         app: hardhat-network
     spec:
       volumes:
-        - name: hh-configmap-volume
+        - name: configmap-volume
           configMap:
             name: hardhat-config-map
       containers:
       - name: hardhat-network
         image: smartcontract/hardhat-network
         volumeMounts:
-          - name: hh-configmap-volume
+          - name: configmap-volume
             mountPath: /usr/app/hardhat.config.js
             subPath: hardhat.config.js
         ports:
-        - containerPort: {{ .Values.DependencyGroup.evm.rpcPort }}
+        - containerPort: {{ .Network.RPCPort }}
         readinessProbe:
           httpGet:
             path: /
-            port: {{ .Values.DependencyGroup.evm.rpcPort }}
+            port: {{ .Network.RPCPort }}
           periodSeconds: 2

@@ -4,7 +4,9 @@
 # KEEP_ENVIRONMENTS=OnFail
 # APPS_CHAINLINK_VERSION=1.0.0
 
-network: "ethereum_geth" # Selected network for test execution
+networks: # Selected network(s) for test execution
+    - "ethereum_geth" 
+    - "ethereum_geth" 
 keep_environments: Never # Options: Always, OnFail, Never
 
 apps:
@@ -68,7 +70,7 @@ private_keys: &private_keys
         - de9be858da4a475276426320d5e9262ecfc3ba460bfac56360bfa6c4c28b4ee0
         - df57089febbacf7ba0bc227dafbffa9fc08a93fdc68e1e42411a14efcf23656e
 
-networks:
+network_configs:
     ethereum_geth: &common_ethereum
         name: "Ethereum Geth dev"
         chain_id: 1337
@@ -90,10 +92,6 @@ networks:
         name: "Ethereum Geth reorg"
         type: evm_multi
         transaction_timeout: 10m
-        gas_estimation_buffer: 0
-    ethereum_hardhat:
-        <<: *common_ethereum
-        name: "Ethereum Hardhat"
         gas_estimation_buffer: 0
     ethereum_ganache:
         <<: *common_ethereum

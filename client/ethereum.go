@@ -36,6 +36,11 @@ type EthereumClients struct {
 	Clients       []*EthereumClient
 }
 
+// GetNetworkName gets the ID of the chain that the clients are connected to
+func (e *EthereumClients) GetNetworkName() string {
+	return e.DefaultClient.GetNetworkName()
+}
+
 // GetID gets client ID, node number it's connected to
 func (e *EthereumClients) GetID() int {
 	return e.DefaultClient.ID
@@ -226,7 +231,7 @@ type ContractDeployer func(auth *bind.TransactOpts, backend bind.ContractBackend
 
 // NewEthereumClient returns an instantiated instance of the Ethereum client that has connected to the server
 func NewEthereumClient(network BlockchainNetwork) (*EthereumClient, error) {
-	cl, err := ethclient.Dial(network.URL())
+	cl, err := ethclient.Dial(network.LocalURL())
 	if err != nil {
 		return nil, err
 	}
@@ -252,7 +257,7 @@ func NewEthereumClient(network BlockchainNetwork) (*EthereumClient, error) {
 func NewEthereumClients(network BlockchainNetwork) (*EthereumClients, error) {
 	ecl := &EthereumClients{Clients: make([]*EthereumClient, 0)}
 	for idx, url := range network.URLs() {
-		network.SetURL(url)
+		network.SetLocalURL(url)
 		ec, err := NewEthereumClient(network)
 		if err != nil {
 			return nil, err
@@ -262,6 +267,11 @@ func NewEthereumClients(network BlockchainNetwork) (*EthereumClients, error) {
 	}
 	ecl.DefaultClient = ecl.Clients[0]
 	return ecl, nil
+}
+
+// GetNetworkName retrieves the ID of the network that the client interacts with
+func (e *EthereumClient) GetNetworkName() string {
+	return e.Network.ID()
 }
 
 // Close tears down the current open Ethereum client
@@ -472,6 +482,7 @@ func (e *EthereumClient) DeployContract(
 		Str("Contract Name", contractName).
 		Str("From", fromWallet.Address()).
 		Str("Gas Cost", transaction.Cost().String()).
+		Str("Network", e.Network.ID()).
 		Msg("Deployed contract")
 	return &contractAddress, transaction, contractInstance, err
 }

@@ -1,47 +1,49 @@
 package performance
 
 import (
+	"math/big"
+	"time"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/environment"
 	"github.com/smartcontractkit/integrations-framework/tools"
-	"math/big"
-	"time"
 )
 
 var _ = Describe("VRF soak test @soak-vrf", func() {
 	var (
-		suiteSetup *actions.DefaultSuiteSetup
-		nodes      []client.Chainlink
-		adapter    environment.ExternalAdapter
-		perfTest   Test
-		err        error
+		suiteSetup     actions.SuiteSetup
+		defaultNetwork actions.NetworkInfo
+		nodes          []client.Chainlink
+		adapter        environment.ExternalAdapter
+		perfTest       Test
+		err            error
 	)
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			suiteSetup, err = actions.DefaultLocalSetup(
-				"vrf-soak",
+			suiteSetup, err = actions.SingleNetworkSetup(
 				// more than one node is useless for VRF, because nodes are not cooperating for randomness
 				environment.NewChainlinkCluster(1),
-				client.NewNetworkFromConfig,
+				client.DefaultNetworkFromConfig,
 				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
-			adapter, err = environment.GetExternalAdapter(suiteSetup.Env)
+			defaultNetwork = suiteSetup.DefaultNetwork()
+			adapter, err = environment.GetExternalAdapter(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
-			nodes, err = environment.GetChainlinkClients(suiteSetup.Env)
+			nodes, err = environment.GetChainlinkClients(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
-			suiteSetup.Client.ParallelTransactions(true)
+			defaultNetwork.Client.ParallelTransactions(true)
 		})
 
 		By("Funding the Chainlink nodes", func() {
 			err := actions.FundChainlinkNodes(
 				nodes,
-				suiteSetup.Client,
-				suiteSetup.Wallets.Default(),
+				defaultNetwork.Client,
+				defaultNetwork.Wallets.Default(),
 				big.NewFloat(10),
 				big.NewFloat(10),
 			)
@@ -52,16 +54,17 @@ var _ = Describe("VRF soak test @soak-vrf", func() {
 			perfTest = NewVRFTest(
 				VRFTestOptions{
 					TestOptions: TestOptions{
-						NumberOfContracts: 30,
+						NumberOfContracts:    5,
+						RoundTimeout:         60 * time.Second,
+						TestDuration:         1 * time.Minute,
+						GracefulStopDuration: 10 * time.Second,
 					},
-					RoundTimeout: 60 * time.Second,
-					TestDuration: 3 * time.Minute,
 				},
-				suiteSetup.Env,
-				suiteSetup.Link,
-				suiteSetup.Client,
-				suiteSetup.Wallets,
-				suiteSetup.Deployer,
+				suiteSetup.Environment(),
+				defaultNetwork.Link,
+				defaultNetwork.Client,
+				defaultNetwork.Wallets,
+				defaultNetwork.Deployer,
 				adapter,
 			)
 			err = perfTest.Setup()
@@ -69,8 +72,8 @@ var _ = Describe("VRF soak test @soak-vrf", func() {
 		})
 	})
 
-	Describe("VRF Soak test", func() {
-		Measure("Measure VRF rounds", func(_ Benchmarker) {
+	Describe("VRF soak test", func() {
+		Measure("Measure VRF request latency", func(b Benchmarker) {
 			err = perfTest.Run()
 			Expect(err).ShouldNot(HaveOccurred())
 		}, 1)

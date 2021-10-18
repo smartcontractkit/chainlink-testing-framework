@@ -35,8 +35,8 @@ func createRunE(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	cfg.Network = network
-	networkConfig, err := client.NewNetworkFromConfig(cfg)
+	cfg.Networks = []string{network}
+	networkConfig, err := client.DefaultNetworkFromConfig(cfg)
 	if err != nil {
 		return err
 	}
@@ -45,7 +45,7 @@ func createRunE(cmd *cobra.Command, _ []string) error {
 	switch envType {
 	case "chainlink":
 		envSpec := environment.NewChainlinkCluster(nodes)
-		env, err = environment.NewK8sEnvironment("basic-chainlink", cfg, networkConfig)
+		env, err = environment.NewK8sEnvironment(cfg, networkConfig)
 		if err != nil {
 			return err
 		}

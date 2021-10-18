@@ -11,9 +11,9 @@ import (
 	"time"
 )
 
-var _ = Describe("Runlog soak test @soak-runlog", func() {
+var _ = Describe("Runlog perf test @perf-runlog", func() {
 	var (
-		suiteSetup *actions.DefaultSuiteSetup
+		suiteSetup actions.SuiteSetup
 		nodes      []client.Chainlink
 		adapter    environment.ExternalAdapter
 		perfTest   Test
@@ -22,26 +22,24 @@ var _ = Describe("Runlog soak test @soak-runlog", func() {
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			suiteSetup, err = actions.DefaultLocalSetup(
-				"runlog-soak",
-				// no need more than one node for runlog test
+			suiteSetup, err = actions.SingleNetworkSetup(
 				environment.NewChainlinkCluster(1),
-				client.NewNetworkFromConfig,
+				client.NewNetworkFromConfigWithDefault(client.NetworkGethPerformance),
 				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
-			adapter, err = environment.GetExternalAdapter(suiteSetup.Env)
+			adapter, err = environment.GetExternalAdapter(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
-			nodes, err = environment.GetChainlinkClients(suiteSetup.Env)
+			nodes, err = environment.GetChainlinkClients(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
-			suiteSetup.Client.ParallelTransactions(true)
+			suiteSetup.DefaultNetwork().Client.ParallelTransactions(true)
 		})
 
 		By("Funding the Chainlink nodes", func() {
 			err := actions.FundChainlinkNodes(
 				nodes,
-				suiteSetup.Client,
-				suiteSetup.Wallets.Default(),
+				suiteSetup.DefaultNetwork().Client,
+				suiteSetup.DefaultNetwork().Wallets.Default(),
 				big.NewFloat(10),
 				big.NewFloat(10),
 			)
@@ -52,17 +50,18 @@ var _ = Describe("Runlog soak test @soak-runlog", func() {
 			perfTest = NewRunlogTest(
 				RunlogTestOptions{
 					TestOptions: TestOptions{
-						NumberOfContracts: 15,
+						NumberOfContracts:    50,
+						NumberOfRounds:       5,
+						RoundTimeout:         180 * time.Second,
+						GracefulStopDuration: 10 * time.Second,
 					},
-					RoundTimeout: 180 * time.Second,
 					AdapterValue: 5,
-					TestDuration: 3 * time.Minute,
 				},
-				suiteSetup.Env,
-				suiteSetup.Link,
-				suiteSetup.Client,
-				suiteSetup.Wallets,
-				suiteSetup.Deployer,
+				suiteSetup.Environment(),
+				suiteSetup.DefaultNetwork().Link,
+				suiteSetup.DefaultNetwork().Client,
+				suiteSetup.DefaultNetwork().Wallets,
+				suiteSetup.DefaultNetwork().Deployer,
 				adapter,
 			)
 			err = perfTest.Setup()
@@ -70,9 +69,11 @@ var _ = Describe("Runlog soak test @soak-runlog", func() {
 		})
 	})
 
-	Describe("Runlog soak test", func() {
-		Measure("Measure Runlog rounds", func(_ Benchmarker) {
+	Describe("Runlog perf test", func() {
+		Measure("Measure Runlog request latency", func(b Benchmarker) {
 			err = perfTest.Run()
+			Expect(err).ShouldNot(HaveOccurred())
+			err = perfTest.RecordValues(b)
 			Expect(err).ShouldNot(HaveOccurred())
 		}, 1)
 	})

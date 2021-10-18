@@ -64,6 +64,10 @@ test_keeper: ## run keeper tests
 test_ocr: ## run ocr tests
 	ginkgo -r --focus=@ocr
 
+.PHONY: test_flux_perf
+test_flux_perf: ## run Flux perf test
+	NETWORK="ethereum_geth_performance" ginkgo -r --focus="@perf-flux"
+
 .PHONY: test_ocr_soak
 test_ocr_soak: ## run OCR soak test
 	NETWORK="ethereum_geth_performance" ginkgo -r --focus="@soak-ocr"
@@ -72,6 +76,10 @@ test_ocr_soak: ## run OCR soak test
 test_runlog_soak: ## run Runlog soak test
 	NETWORK="ethereum_geth_performance" ginkgo -r --focus="@soak-runlog"
 
+.PHONY: test_runlog_perf
+test_runlog_perf: ## run Runlog perf test
+	NETWORK="ethereum_geth_performance" ginkgo -r --focus="@perf-runlog"
+
 .PHONY: test_keeper_soak
 test_keeper_soak: ## run Keeper soak/performance test
 	NETWORK="ethereum_geth_performance" ginkgo -r --focus="@performance-keeper"
@@ -79,6 +87,10 @@ test_keeper_soak: ## run Keeper soak/performance test
 .PHONY: test_vrf_soak
 test_vrf_soak: ## run VRF soak test
 	NETWORK="ethereum_geth_performance" ginkgo -r --focus="@soak-vrf"
+
+.PHONY: test_vrf_perf
+test_vrf_perf: ## run VRF perf test
+	NETWORK="ethereum_geth_performance" ginkgo -r --focus="@perf-vrf"
 
 .PHONY: test_runlog
 test_runlog: ## run runlog tests

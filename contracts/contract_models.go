@@ -143,6 +143,7 @@ type APIConsumer interface {
 		path string,
 		times *big.Int,
 	) error
+	WatchPerfEvents(ctx context.Context, eventChan chan<- *PerfEvent) error
 }
 
 type Storage interface {
@@ -263,6 +264,7 @@ type VRFConsumer interface {
 	RequestRandomness(fromWallet client.BlockchainWallet, hash [32]byte, fee *big.Int) error
 	CurrentRoundID(ctx context.Context) (*big.Int, error)
 	RandomnessOutput(ctx context.Context) (*big.Int, error)
+	WatchPerfEvents(ctx context.Context, eventChan chan<- *PerfEvent) error
 	Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Float) error
 }
 
@@ -291,4 +293,13 @@ type Flags interface {
 // fox ex. in flux monitor rounds validation
 type DeviationFlaggingValidator interface {
 	Address() string
+}
+
+// PerfEvent is used to get some metrics for contracts,
+// it contrains roundID for Keeper/OCR/Flux tests and request id for VRF/Runlog
+type PerfEvent struct {
+	Contract       DeviationFlaggingValidator
+	Round          *big.Int
+	RequestID      [32]byte
+	BlockTimestamp *big.Int
 }

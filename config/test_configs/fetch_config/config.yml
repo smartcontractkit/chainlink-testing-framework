@@ -4,7 +4,8 @@
 # KEEP_ENVIRONMENTS=OnFail
 # APPS_CHAINLINK_VERSION=1.0.0
 
-network: "ethereum_geth" # Selected network for test execution
+networks: # Selected network for test execution
+  - "ethereum_geth" 
 keep_environments: Never # Options: Always, OnFail, Never
 
 apps:
@@ -51,7 +52,7 @@ secret_private_keys_default: &secret_private_keys_default
 namespace_for_secret_default: &namespace_for_secret_default
   namespace_for_secret: default
 
-networks:
+network_configs:
   ethereum_geth:
     name: "Ethereum Geth dev"
     chain_id: 1337
