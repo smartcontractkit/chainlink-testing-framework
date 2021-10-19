@@ -1,0 +1,11 @@
+apiVersion: v1
+data:
+  init.sql: |
+    CREATE DATABASE fcd;
+kind: ConfigMap
+metadata:
+  annotations:
+    use-subpath: "true"
+  labels:
+    app: postgres
+  name: postgres-cm0

@@ -1,0 +1,6 @@
+name: localterra
+description: Local Terra blockchain chart
+version: 0.0.1
+apiVersion: v1
+keywords:
+  - localterra

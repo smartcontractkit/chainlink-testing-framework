@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: postgres
+  name: postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - env:
+            - name: POSTGRES_PASSWORD
+              value: dev
+            - name: POSTGRES_USER
+              value: dev
+          image: postgres:12
+          name: postgres
+          resources: {}
+          volumeMounts:
+            - mountPath: /docker-entrypoint-initdb.d/init.sql
+              name: postgres-cm0
+              subPath: init.sql
+      restartPolicy: Always
+      volumes:
+        - configMap:
+            items:
+              - key: init.sql
+                path: init.sql
+            name: postgres-cm0
+          name: postgres-cm0

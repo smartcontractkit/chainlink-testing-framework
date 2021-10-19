@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: fcd-collector
+    release: {{ .Release.Name }}
+  name: fcd-collector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fcd-collector
+      release: {{ .Release.Name }}
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: fcd-collector
+        release: {{ .Release.Name }}
+    spec:
+      containers:
+        - args:
+            - collector
+          env:
+            - name: BYPASS_URI
+              valueFrom:
+                configMapKeyRef:
+                  key: BYPASS_URI
+                  name: fcd-env
+            - name: CHAIN_ID
+              valueFrom:
+                configMapKeyRef:
+                  key: CHAIN_ID
+                  name: fcd-env
+            - name: LCD_URI
+              valueFrom:
+                configMapKeyRef:
+                  key: LCD_URI
+                  name: fcd-env
+            - name: LEGACY_NETWORK
+              valueFrom:
+                configMapKeyRef:
+                  key: LEGACY_NETWORK
+                  name: fcd-env
+            - name: RPC_URI
+              valueFrom:
+                configMapKeyRef:
+                  key: RPC_URI
+                  name: fcd-env
+            - name: TYPEORM_CONNECTION
+              valueFrom:
+                configMapKeyRef:
+                  key: TYPEORM_CONNECTION
+                  name: fcd-env
+            - name: TYPEORM_DATABASE
+              valueFrom:
+                configMapKeyRef:
+                  key: TYPEORM_DATABASE
+                  name: fcd-env
+            - name: TYPEORM_ENTITIES
+              valueFrom:
+                configMapKeyRef:
+                  key: TYPEORM_ENTITIES
+                  name: fcd-env
+            - name: TYPEORM_HOST
+              valueFrom:
+                configMapKeyRef:
+                  key: TYPEORM_HOST
+                  name: fcd-env
+            - name: TYPEORM_LOGGING
+              valueFrom:
+                configMapKeyRef:
+                  key: TYPEORM_LOGGING
+                  name: fcd-env
+            - name: TYPEORM_PASSWORD
+              valueFrom:
+                configMapKeyRef:
+                  key: TYPEORM_PASSWORD
+                  name: fcd-env
+            - name: TYPEORM_SYNCHRONIZE
+              valueFrom:
+                configMapKeyRef:
+                  key: TYPEORM_SYNCHRONIZE
+                  name: fcd-env
+            - name: TYPEORM_USERNAME
+              valueFrom:
+                configMapKeyRef:
+                  key: TYPEORM_USERNAME
+                  name: fcd-env
+            - name: USE_LOG_FILE
+              valueFrom:
+                configMapKeyRef:
+                  key: USE_LOG_FILE
+                  name: fcd-env
+          image: terramoney/fcd:1.0.0-beta.2
+          name: fcd-collector
+          resources: {}
+          volumeMounts:
+            - mountPath: /app/logs
+              name: fcd-collector-cm0
+      restartPolicy: Always
+      volumes:
+        - name: fcd-collector-cm0
+          emptyDir: {}

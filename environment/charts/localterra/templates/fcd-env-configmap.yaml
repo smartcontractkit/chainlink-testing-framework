@@ -1,0 +1,22 @@
+apiVersion: v1
+data:
+  BYPASS_URI: http://terrad:1317
+  CHAIN_ID: localterra
+  LCD_URI: http://terrad:1317
+  LEGACY_NETWORK: "false"
+  RPC_URI: http://terrad:26657
+  TYPEORM_CONNECTION: postgres
+  TYPEORM_DATABASE: fcd
+  TYPEORM_ENTITIES: src/orm/*Entity.ts
+  TYPEORM_HOST: postgres
+  TYPEORM_LOGGING: "false"
+  TYPEORM_PASSWORD: dev
+  TYPEORM_SYNCHRONIZE: "true"
+  TYPEORM_USERNAME: dev
+  USE_LOG_FILE: "false"
+kind: ConfigMap
+metadata:
+  labels:
+    app: fcd-api-fcd-env
+    release: {{ .Release.Name }}
+  name: fcd-env
