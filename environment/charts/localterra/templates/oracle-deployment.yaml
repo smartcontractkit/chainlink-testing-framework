@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: oracle
+    release: {{ .Release.Name }}
+  name: oracle
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: oracle
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: oracle
+        release: {{ .Release.Name }}
+    spec:
+      containers:
+        - args:
+            - start
+          env:
+            - name: TESTNET_LCD_URL
+              value: http://terrad:1317
+          image: terramoney/pseudo-feeder:bombay
+          name: oracle
+          resources: {}
+      restartPolicy: Always
