@@ -1,4 +1,4 @@
-package multi_network
+package integration
 
 import (
 	"context"

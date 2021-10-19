@@ -2,12 +2,13 @@ package performance
 
 import (
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/smartcontractkit/integrations-framework/actions"
-	"golang.org/x/sync/errgroup"
-	"sync"
 	"github.com/smartcontractkit/integrations-framework/client"
-	"time"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/montanaflynn/stats"
 	"github.com/onsi/ginkgo"
