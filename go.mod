@@ -15,7 +15,7 @@ require (
 	github.com/onsi/gomega v1.16.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.11.0
-	github.com/prometheus/common v0.32.0
+	github.com/prometheus/common v0.32.1
 	github.com/rs/zerolog v1.25.0
 	github.com/satori/go.uuid v1.2.0
 	github.com/smartcontractkit/libocr v0.0.0-20210826183649-d12971936c12
