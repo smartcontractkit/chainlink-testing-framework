@@ -50,6 +50,7 @@ func DeployOCRForEnv(i *OCRSetupInputs, envInit environment.K8sEnvSpecInit) {
 	})
 }
 
+// DeployContracts deploys and funds a certain number of offchain aggregator contracts
 func DeployContracts(i *OCRSetupInputs, nrOfOCRContracts int) {
 	deployer, err := contracts.NewContractDeployer(i.NetworkInfo.Client)
 	Expect(err).ShouldNot(HaveOccurred())
@@ -71,6 +72,7 @@ func DeployContracts(i *OCRSetupInputs, nrOfOCRContracts int) {
 	}
 }
 
+// FundNodes funds all chainlink nodes
 func FundNodes(i *OCRSetupInputs) {
 	ethAmount, err := i.NetworkInfo.Deployer.CalculateETHForTXs(i.NetworkInfo.Wallets.Default(), i.NetworkInfo.Network.Config(), 2)
 	Expect(err).ShouldNot(HaveOccurred())
@@ -197,7 +199,7 @@ func SetAdapterResults(i *OCRSetupInputs, results []int) {
 
 	log.Info().Interface("New Adapter results", results).Msg("Setting new values")
 
-	for OCRInstanceIndex, _ := range i.OCRInstances {
+	for OCRInstanceIndex := range i.OCRInstances {
 		for nodeIndex := 1; nodeIndex < len(i.ChainlinkNodes); nodeIndex++ {
 			pathSelector := client.PathSelector{Path: fmt.Sprintf("/node_%d_contract_%d", nodeIndex, OCRInstanceIndex)}
 			err := i.Mockserver.ClearExpectation(pathSelector)
@@ -207,7 +209,7 @@ func SetAdapterResults(i *OCRSetupInputs, results []int) {
 	}
 	var initializers []client.HttpInitializer
 
-	for OCRInstanceIndex, _ := range i.OCRInstances {
+	for OCRInstanceIndex := range i.OCRInstances {
 		for nodeIndex := 1; nodeIndex < len(i.ChainlinkNodes); nodeIndex++ {
 			adResp := client.AdapterResponse{
 				Id:    "",

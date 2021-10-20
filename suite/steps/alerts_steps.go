@@ -8,7 +8,7 @@ import (
 )
 
 // GetMockserverInitializerDataForOTPE creates mocked weiwatchers data needed for otpe
-func GetMockserverInitializerDataForOTPE(OCRInstances   []contracts.OffchainAggregator, chainlinkNodes []client.Chainlink) interface{} {
+func GetMockserverInitializerDataForOTPE(OCRInstances []contracts.OffchainAggregator, chainlinkNodes []client.Chainlink) interface{} {
 	var contractsInfo []client.ContractInfoJSON
 
 	for index, OCRInstance := range OCRInstances {
