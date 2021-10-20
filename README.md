@@ -13,8 +13,10 @@ This framework is still very much a work in progress, and will have frequent cha
 breaking.
 
 ### Setup
+
 Install CLI
-```
+
+```sh
 make install_cli
 ```
 
@@ -24,20 +26,23 @@ A simple example on deploying and interaction with a simple contract using this 
 
 ```go
 var _ = Describe("Basic Contract Interactions", func() {
-  var suiteSetup *actions.DefaultSuiteSetup
-  var defaultWallet client.BlockchainWallet
+  var (
+    suiteSetup    actions.SuiteSetup
+    networkInfo   actions.NetworkInfo
+    defaultWallet client.BlockchainWallet
+  )
 
   BeforeEach(func() {
     By("Deploying the environment", func() {
-      confFileLocation, err := filepath.Abs("../") // Get the absolute path of the test suite's root directory
-      Expect(err).ShouldNot(HaveOccurred())
-      suiteSetup, err = actions.DefaultLocalSetup(
+      var err error
+      suiteSetup, err = actions.SingleNetworkSetup(
         environment.NewChainlinkCluster(0),
-        client.NewNetworkFromConfig,
-        confFileLocation, // Directory where config.yml is placed
+        client.DefaultNetworkFromConfig,
+        tools.ProjectRoot,
       )
       Expect(err).ShouldNot(HaveOccurred())
-      defaultWallet = suiteSetup.Wallets.Default()
+      networkInfo = suiteSetup.DefaultNetwork()
+      defaultWallet = networkInfo.Wallets.Default()
     })
   })
 
@@ -110,13 +115,17 @@ NETWORK="ethereum_geth_performance" make test_performance
 ```
 
 ### Build contracts
+
 Example of generating go bindings for Ethereum contracts
-```
+
+```sh
 ifcli build_contracts -c config.yml
 ```
 
 ### Create environment
+
 Example of creating environment with one Chainlink node and Geth dev network
-```
+
+```sh
 ifcli create_env -n ethereum_geth -t chainlink -c 1
 ```

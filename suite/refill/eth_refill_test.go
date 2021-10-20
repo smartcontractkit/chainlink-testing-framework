@@ -20,15 +20,15 @@ import (
 
 var _ = Describe("FluxAggregator ETH Refill @refill", func() {
 	var (
-		suiteSetup    actions.SuiteSetup
-		networkInfo   actions.NetworkInfo
-		adapter       environment.ExternalAdapter
-		nodes         []client.Chainlink
-		nodeAddresses []common.Address
-		err           error
-		fluxInstance  contracts.FluxAggregator
+		suiteSetup       actions.SuiteSetup
+		networkInfo      actions.NetworkInfo
+		adapter          environment.ExternalAdapter
+		nodes            []client.Chainlink
+		nodeAddresses    []common.Address
+		err              error
+		fluxInstance     contracts.FluxAggregator
+		fluxRoundTimeout = 35 * time.Second
 	)
-	fluxRoundTimeout := 30 * time.Second
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
@@ -138,6 +138,16 @@ var _ = Describe("FluxAggregator ETH Refill @refill", func() {
 			fluxRound := contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(2), fluxRoundTimeout)
 			networkInfo.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRound)
 			err = networkInfo.Client.WaitForEvents()
+			if err == nil { // Not all has been drained, try another round
+				err = adapter.SetVariable(7)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				fluxRound := contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(3), fluxRoundTimeout)
+				networkInfo.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRound)
+				err = networkInfo.Client.WaitForEvents()
+			}
+			Expect(err).ShouldNot(BeNil(), "Flux rounds are still happening after draining the nodes of ETH, "+
+				"was expecting an error. Nodes likely haven't been fully drained of their ETH")
 			Expect(err.Error()).Should(ContainSubstring("timeout waiting for flux round to confirm"))
 		})
 	})

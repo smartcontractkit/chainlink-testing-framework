@@ -34,8 +34,8 @@ var _ = Describe("Flux monitor external validator suite @validator-flux", func()
 		fluxRoundConfirmer *contracts.FluxAggregatorRoundConfirmer
 		flagSet            bool
 		err                error
+		fluxRoundTimeout   = time.Second * 30
 	)
-	fluxRoundTimeout := time.Second * 30
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
@@ -53,6 +53,7 @@ var _ = Describe("Flux monitor external validator suite @validator-flux", func()
 
 			networkInfo.Client.ParallelTransactions(true)
 		})
+
 		By("Deploying access controller, flags, deviation validator", func() {
 			rac, err = networkInfo.Deployer.DeployReadAccessController(networkInfo.Wallets.Default())
 			Expect(err).ShouldNot(HaveOccurred())
@@ -61,6 +62,7 @@ var _ = Describe("Flux monitor external validator suite @validator-flux", func()
 			dfv, err = networkInfo.Deployer.DeployDeviationFlaggingValidator(networkInfo.Wallets.Default(), flags.Address(), big.NewInt(0))
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		By("Deploying and funding contract", func() {
 			fmOpts := contracts.FluxAggregatorOptions{
 				PaymentAmount: big.NewInt(1),
@@ -80,10 +82,12 @@ var _ = Describe("Flux monitor external validator suite @validator-flux", func()
 			err = networkInfo.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		By("Setting access to flags contract", func() {
 			err = rac.AddAccess(networkInfo.Wallets.Default(), dfv.Address())
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		By("Funding Chainlink nodes", func() {
 			nodeAddresses, err = actions.ChainlinkNodeAddresses(nodes)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -96,6 +100,7 @@ var _ = Describe("Flux monitor external validator suite @validator-flux", func()
 			)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		By("Setting oracle options", func() {
 			err = fluxInstance.SetOracles(networkInfo.Wallets.Default(),
 				contracts.FluxAggregatorSetOraclesOptions{
@@ -113,6 +118,7 @@ var _ = Describe("Flux monitor external validator suite @validator-flux", func()
 			Expect(err).ShouldNot(HaveOccurred())
 			log.Info().Str("Oracles", strings.Join(oracles, ",")).Msg("Oracles set")
 		})
+
 		By("Creating flux jobs", func() {
 			for _, n := range nodes {
 				fluxSpec := &client.FluxMonitorJobSpec{

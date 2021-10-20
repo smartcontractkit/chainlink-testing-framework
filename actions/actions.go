@@ -2,12 +2,13 @@ package actions
 
 import (
 	"encoding/json"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/pkg/errors"
-	"github.com/satori/go.uuid"
-	"github.com/smartcontractkit/integrations-framework/client"
 	"math/big"
 	"strings"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/pkg/errors"
+	uuid "github.com/satori/go.uuid"
+	"github.com/smartcontractkit/integrations-framework/client"
 )
 
 // FundChainlinkNodes will fund all of the Chainlink nodes with a given amount of ETH in wei

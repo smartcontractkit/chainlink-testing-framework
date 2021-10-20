@@ -54,7 +54,6 @@ var _ = Describe("Environment unit tests @unit", func() {
 
 		It("should fetch secret private keys", func() {
 			Skip("Not ready to be run in github")
-
 			conf, err := config.NewConfig(fmt.Sprintf(secretKeysConfig, tools.ProjectRoot))
 			Expect(err).ShouldNot(HaveOccurred())
 

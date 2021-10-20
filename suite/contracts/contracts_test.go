@@ -63,6 +63,7 @@ var _ = Describe("Basic Contract Interactions @contract", func() {
 			_, err := networkInfo.Deployer.DeployOffChainAggregator(defaultWallet, ocrOptions)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		By("deploying keeper contracts", func() {
 			ef, err := networkInfo.Deployer.DeployMockETHLINKFeed(networkInfo.Wallets.Default(), big.NewInt(2e18))
 			Expect(err).ShouldNot(HaveOccurred())
@@ -87,6 +88,7 @@ var _ = Describe("Basic Contract Interactions @contract", func() {
 			err = networkInfo.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		By("deploying vrf contract", func() {
 			bhs, err := networkInfo.Deployer.DeployBlockhashStore(networkInfo.Wallets.Default())
 			Expect(err).ShouldNot(HaveOccurred())
@@ -99,6 +101,7 @@ var _ = Describe("Basic Contract Interactions @contract", func() {
 			err = networkInfo.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		By("deploying direct request contract", func() {
 			_, err := networkInfo.Deployer.DeployOracle(networkInfo.Wallets.Default(), networkInfo.Link.Address())
 			Expect(err).ShouldNot(HaveOccurred())

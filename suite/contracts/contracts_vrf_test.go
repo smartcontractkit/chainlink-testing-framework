@@ -41,12 +41,14 @@ var _ = Describe("VRF suite @vrf", func() {
 
 			networkInfo.Client.ParallelTransactions(true)
 		})
+
 		By("Funding Chainlink nodes", func() {
 			ethAmount, err := networkInfo.Deployer.CalculateETHForTXs(networkInfo.Wallets.Default(), networkInfo.Network.Config(), 1)
 			Expect(err).ShouldNot(HaveOccurred())
 			err = actions.FundChainlinkNodes(nodes, networkInfo.Client, networkInfo.Wallets.Default(), ethAmount, nil)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		By("Deploying VRF contracts", func() {
 			bhs, err := networkInfo.Deployer.DeployBlockhashStore(networkInfo.Wallets.Default())
 			Expect(err).ShouldNot(HaveOccurred())
@@ -61,6 +63,7 @@ var _ = Describe("VRF suite @vrf", func() {
 			err = networkInfo.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		By("Creating jobs and registering proving keys", func() {
 			for _, n := range nodes {
 				nodeKeys, err := n.ReadVRFKeys()
@@ -115,6 +118,7 @@ var _ = Describe("VRF suite @vrf", func() {
 			}, "2m", "1s").Should(Succeed())
 		})
 	})
+
 	AfterEach(func() {
 		By("Printing gas stats", func() {
 			networkInfo.Client.GasStats().PrintStats()

@@ -176,8 +176,17 @@ func (k *HelmChart) Deploy(_ map[string]interface{}) error {
 	}
 	k.actionConfig = &action.Configuration{}
 
+	// TODO: So, this is annoying, and not really all that important, I SHOULD be able to just use our K8sConfig function
+	// and pass that in as our config, but K8s has like 10 different config types, all of which don't talk to each other,
+	// and this wants an interface, instead of the rest config that we use everywhere else. Creating such an interface is
+	// also a huge hassle and... well anyway, if you've got some time to burn to make this more sensical, I hope you like
+	// digging into K8s code with sparse to no docs.
+	kubeConfigPath := filepath.Join(homeDir, DefaultK8sConfigPath)
+	if len(os.Getenv("KUBECONFIG")) > 0 {
+		kubeConfigPath = os.Getenv("KUBECONFIG")
+	}
 	if err := k.actionConfig.Init(
-		kube.GetConfig(filepath.Join(homeDir, DefaultK8sConfigPath), "", k.env.namespace.Name),
+		kube.GetConfig(kubeConfigPath, "", k.env.namespace.Name),
 		k.env.namespace.Name,
 		os.Getenv("HELM_DRIVER"),
 		func(format string, v ...interface{}) {

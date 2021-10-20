@@ -326,18 +326,18 @@ func (e *EthereumClient) Get() interface{} {
 
 // CalculateTxGas calculates tx gas cost accordingly gas used plus buffer, converts it to big.Float for funding
 func (e *EthereumClient) CalculateTxGas(gasUsed *big.Int) (*big.Float, error) {
-	gp, err := e.Client.SuggestGasPrice(context.Background())
+	gasPrice, err := e.Client.SuggestGasPrice(context.Background()) // Wei
 	if err != nil {
 		return nil, err
 	}
-	gpWei := gp.Mul(gp, OneGWei)
-	log.Debug().Int64("Gas price", gp.Int64()).Msg("Suggested gas price")
-	buf := big.NewInt(int64(e.Network.Config().GasEstimationBuffer))
-	gasUsedWithBuf := gasUsed.Add(gasUsed, buf)
-	cost := big.NewInt(1).Mul(gpWei, gasUsedWithBuf)
-	log.Debug().Int64("TX Gas cost", cost.Int64()).Msg("Estimated tx gas cost with buffer")
-	bf := new(big.Float).SetInt(cost)
-	return big.NewFloat(1).Quo(bf, OneEth), nil
+	buffer := big.NewInt(0).SetUint64(e.Network.Config().GasEstimationBuffer)
+	gasUsedWithBuffer := gasUsed.Add(gasUsed, buffer)
+	cost := big.NewFloat(0).SetInt(big.NewInt(1).Mul(gasPrice, gasUsedWithBuffer))
+	costInEth := big.NewFloat(0).Quo(cost, OneEth)
+	costInEthFloat, _ := costInEth.Float64()
+
+	log.Debug().Float64("ETH", costInEthFloat).Msg("Estimated tx gas cost with buffer")
+	return costInEth, nil
 }
 
 // GasStats gets gas stats instance
@@ -366,7 +366,7 @@ func (e *EthereumClient) Fund(
 			Str("Token", "ETH").
 			Str("From", fromWallet.Address()).
 			Str("To", toAddress).
-			Str("Amount", eth.String()).
+			Str("Amount", ethAmount.String()).
 			Msg("Funding Address")
 		_, err := e.SendTransaction(fromWallet, ethAddress, eth, nil)
 		if err != nil {
@@ -381,7 +381,7 @@ func (e *EthereumClient) Fund(
 			Str("Token", "LINK").
 			Str("From", fromWallet.Address()).
 			Str("To", toAddress).
-			Str("Amount", link.String()).
+			Str("Amount", linkAmount.String()).
 			Msg("Funding Address")
 		linkAddress := common.HexToAddress(e.Network.Config().LinkTokenAddress)
 		linkInstance, err := ethContracts.NewLinkToken(linkAddress, e.Client)

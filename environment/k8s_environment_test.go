@@ -12,7 +12,10 @@ import (
 )
 
 var _ = Describe("Environment functionality @unit", func() {
-	var conf *config.Config
+	var (
+		conf *config.Config
+		env  Environment
+	)
 
 	BeforeEach(func() {
 		var err error
@@ -20,17 +23,18 @@ var _ = Describe("Environment functionality @unit", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 
-	DescribeTable("basic environment", func(
+	DescribeTable("single network environments", func(
 		initFunc client.BlockchainNetworkInit,
 		envInitFunc K8sEnvSpecInit,
 		nodeCount int,
 	) {
-		Skip("Not ready to be run in github")
 		// Setup
+		Skip("Not ready to be run in github")
+
 		networkConfig, err := initFunc(conf)
 		Expect(err).ShouldNot(HaveOccurred())
 
-		env, err := NewK8sEnvironment(conf, networkConfig)
+		env, err = NewK8sEnvironment(conf, networkConfig)
 		Expect(err).ShouldNot(HaveOccurred())
 		err = env.DeploySpecs(envInitFunc)
 		Expect(err).ShouldNot(HaveOccurred())
@@ -51,4 +55,10 @@ var _ = Describe("Environment functionality @unit", func() {
 		Entry("3 node cluster", client.DefaultNetworkFromConfig, NewChainlinkCluster(3), 3),
 		Entry("mixed version cluster", client.DefaultNetworkFromConfig, NewMixedVersionChainlinkCluster(3, 2), 3),
 	)
+
+	AfterEach(func() {
+		By("Tearing down the environment", func() {
+			env.TearDown()
+		})
+	})
 })

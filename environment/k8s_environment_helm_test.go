@@ -15,14 +15,15 @@ var _ = Describe("Environment with Helm @helm_deploy", func() {
 
 	Describe("Chart deployments", func() {
 		var env Environment
+
 		BeforeEach(func() {
 			var err error
 			conf, err = config.NewConfig(tools.ProjectRoot)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		It("Deploy Geth reorg chart", func() {
 			Skip("Not ready to be run in github")
-
 			conf.Networks = []string{"ethereum_geth_reorg"}
 			networkConfig, err := client.DefaultNetworkFromConfig(conf)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -35,6 +36,7 @@ var _ = Describe("Environment with Helm @helm_deploy", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(sd.RemoteURL).Should(ContainSubstring(strconv.Itoa(int(networkConfig.RemotePort()))))
 		})
+
 		AfterEach(func() {
 			By("Tearing down the environment", func() {
 				env.TearDown()

@@ -223,10 +223,10 @@ func (e *EthereumNetwork) Wallets() (BlockchainWallets, error) {
 
 // FluxMonitorSubmissionGasUsed Flux Monitor one submission gasUsed value
 func (e *EthereumNetwork) FluxMonitorSubmissionGasUsed() (*big.Int, error) {
-	if e.networkConfig.Name == "Ethereum Geth dev" {
+	if strings.HasPrefix(e.networkConfig.Name, "ethereum-geth") {
 		return big.NewInt(400000), nil
 	}
-	return nil, errors.New("unknown gas used estimation")
+	return nil, fmt.Errorf("gas used estimation unavailable for the network name '%s'", e.networkConfig.Name)
 }
 
 // BlockchainWallets is an interface that when implemented is a representation of a slice of wallets for

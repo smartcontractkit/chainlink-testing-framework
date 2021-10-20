@@ -405,7 +405,7 @@ func (env *K8sEnvironment) deploySpecs(startIndex int, errChan chan<- error) {
 }
 
 func (env *K8sEnvironment) createNamespace(namespace string) (*coreV1.Namespace, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
 	defer cancel()
 
 	createdNamespace, err := env.k8sClient.CoreV1().Namespaces().Create(
@@ -417,9 +417,6 @@ func (env *K8sEnvironment) createNamespace(namespace string) (*coreV1.Namespace,
 		},
 		metaV1.CreateOptions{},
 	)
-	if err == nil {
-		log.Info().Str("Namespace", createdNamespace.Name).Msg("Created namespace")
-	}
 	return createdNamespace, err
 }
 

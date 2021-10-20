@@ -27,6 +27,7 @@ var _ = Describe("Keeper suite @keeper", func() {
 		checkGasLimit    = uint32(2500000)
 		err              error
 	)
+
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
 			suiteSetup, err = actions.SingleNetworkSetup(
@@ -44,6 +45,7 @@ var _ = Describe("Keeper suite @keeper", func() {
 
 			networkInfo.Client.ParallelTransactions(true)
 		})
+
 		By("Funding Chainlink nodes", func() {
 			ethAmount, err := networkInfo.Deployer.CalculateETHForTXs(networkInfo.Wallets.Default(), networkInfo.Network.Config(), 10)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -56,6 +58,7 @@ var _ = Describe("Keeper suite @keeper", func() {
 			)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		By("Deploying Keeper contracts", func() {
 			ef, err := networkInfo.Deployer.DeployMockETHLINKFeed(networkInfo.Wallets.Default(), big.NewInt(2e18))
 			Expect(err).ShouldNot(HaveOccurred())
@@ -86,6 +89,7 @@ var _ = Describe("Keeper suite @keeper", func() {
 			err = networkInfo.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		By("Registering upkeep target", func() {
 			registrar, err := networkInfo.Deployer.DeployUpkeepRegistrationRequests(
 				networkInfo.Wallets.Default(),
@@ -120,6 +124,7 @@ var _ = Describe("Keeper suite @keeper", func() {
 			err = networkInfo.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		By("Adding Keepers and a job", func() {
 			keys, err := nodes[0].ReadETHKeys()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -146,6 +151,7 @@ var _ = Describe("Keeper suite @keeper", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 	})
+
 	Describe("with Keeper job", func() {
 		It("performs upkeep of a target contract", func() {
 			Eventually(func(g Gomega) {
@@ -156,6 +162,7 @@ var _ = Describe("Keeper suite @keeper", func() {
 			}, "2m", "1s").Should(Succeed())
 		})
 	})
+
 	AfterEach(func() {
 		By("Printing gas stats", func() {
 			networkInfo.Client.GasStats().PrintStats()
