@@ -1,20 +1,26 @@
 package steps
 
 import (
+	"fmt"
 	. "github.com/onsi/gomega"
 	"github.com/smartcontractkit/integrations-framework/client"
+	"github.com/smartcontractkit/integrations-framework/contracts"
 )
 
-// GetMockserverInitializerDataForOTPE crates mocked weiwatchers data needed for otpe
-func GetMockserverInitializerDataForOTPE(offChainAggregatorInstanceAddress string, chainlinkNodes []client.Chainlink) interface{} {
-	contractInfo := client.ContractInfoJSON{
-		ContractVersion: 4,
-		Path:            "test",
-		Status:          "live",
-		ContractAddress: offChainAggregatorInstanceAddress,
-	}
+// GetMockserverInitializerDataForOTPE creates mocked weiwatchers data needed for otpe
+func GetMockserverInitializerDataForOTPE(OCRInstances []contracts.OffchainAggregator, chainlinkNodes []client.Chainlink) interface{} {
+	var contractsInfo []client.ContractInfoJSON
 
-	contractsInfo := []client.ContractInfoJSON{contractInfo}
+	for index, OCRInstance := range OCRInstances {
+		contractInfo := client.ContractInfoJSON{
+			ContractVersion: 4,
+			Path:            fmt.Sprintf("contract_%d", index),
+			Status:          "live",
+			ContractAddress: OCRInstance.Address(),
+		}
+
+		contractsInfo = append(contractsInfo, contractInfo)
+	}
 
 	contractsInitializer := client.HttpInitializer{
 		Request:  client.HttpRequest{Path: "/contracts.json"},

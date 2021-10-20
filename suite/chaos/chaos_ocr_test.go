@@ -19,7 +19,8 @@ var _ = XDescribeTable("OCR chaos tests @chaos-ocr", func(
 	i := &testcommon.OCRSetupInputs{}
 	Context("Runs OCR test with a chaos modifier", func() {
 		testcommon.DeployOCRForEnv(i, envInit)
-		testcommon.SetupOCRTest(i)
+		testcommon.FundNodes(i)
+		testcommon.DeployOCRContracts(i, 1)
 		testcommon.SendOCRJobs(i)
 		_, err := i.SuiteSetup.Environment().ApplyChaos(chaosSpec)
 		Expect(err).ShouldNot(HaveOccurred())
