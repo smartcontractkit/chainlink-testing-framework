@@ -611,6 +611,9 @@ observationSource = """
 
 // WebhookJobSpec reprsents a webhook job
 type WebhookJobSpec struct {
+	Name              string `toml:"name"`
+	Initiator         string `toml:"initiator"` // External initiator name
+	InitiatorSpec     string `toml:"initiatorSpec"` // External initiator spec object in stringified form
 	ObservationSource string `toml:"observationSource"` // List of commands for the chainlink node
 }
 
@@ -621,6 +624,10 @@ func (w *WebhookJobSpec) Type() string { return "webhook" }
 func (w *WebhookJobSpec) String() (string, error) {
 	webHookTemplateString := `type = "webhook"
 schemaVersion      = 1
+name               = "{{.Name}}"
+externalInitiators = [
+	{ name = "{{.Initiator}}", spec = "{{.InitiatorSpec}}"}
+]
 observationSource = """
 {{.ObservationSource}}
 """`
