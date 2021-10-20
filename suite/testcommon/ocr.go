@@ -50,8 +50,8 @@ func DeployOCRForEnv(i *OCRSetupInputs, envInit environment.K8sEnvSpecInit) {
 	})
 }
 
-// DeployContracts deploys and funds a certain number of offchain aggregator contracts
-func DeployContracts(i *OCRSetupInputs, nrOfOCRContracts int) {
+// DeployOCRContracts deploys and funds a certain number of offchain aggregator contracts
+func DeployOCRContracts(i *OCRSetupInputs, nrOfOCRContracts int) {
 	deployer, err := contracts.NewContractDeployer(i.NetworkInfo.Client)
 	Expect(err).ShouldNot(HaveOccurred())
 
@@ -235,7 +235,7 @@ func NewOCRSetupInputForObservability(i *OCRSetupInputs, nodeCount int, contract
 		environment.NewChainlinkClusterForObservabilityTesting(nodeCount),
 	)
 	FundNodes(i)
-	DeployContracts(i, contractCount)
+	DeployOCRContracts(i, contractCount)
 
 	err := i.Mockserver.PutExpectations(steps.GetMockserverInitializerDataForOTPE(
 		i.OCRInstances,
