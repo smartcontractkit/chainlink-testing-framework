@@ -12,7 +12,7 @@ import (
 	"github.com/celo-org/celo-blockchain/accounts/abi"
 	"github.com/pkg/errors"
 
-	ethContracts "github.com/smartcontractkit/integrations-framework/contracts/ethereum"
+	celoContracts "github.com/smartcontractkit/integrations-framework/contracts/celo"
 
 	"github.com/celo-org/celo-blockchain"
 	"github.com/celo-org/celo-blockchain/accounts/abi/bind"
@@ -120,7 +120,7 @@ func (e *CeloClients) Close() error {
 }
 
 // AddHeaderEventSubscription adds a new header subscriber within the client to receive new headers
-func (e *CeloClients) AddHeaderEventSubscription(key string, subscriber CeloHeaderEventSubscription) {
+func (e *CeloClients) AddHeaderEventSubscription(key string, subscriber HeaderEventSubscription) {
 	for _, c := range e.Clients {
 		c.AddHeaderEventSubscription(key, subscriber)
 	}
@@ -154,7 +154,7 @@ type CeloClient struct {
 	NonceMu             *sync.Mutex
 	Nonces              map[string]uint64
 	txQueue             chan common.Hash
-	headerSubscriptions map[string]CeloHeaderEventSubscription
+	headerSubscriptions map[string]HeaderEventSubscription
 	mutex               *sync.Mutex
 	queueTransactions   bool
 	gasStats            *GasStats
@@ -217,7 +217,7 @@ func (e *CeloClient) HeaderTimestampByNumber(ctx context.Context, bn *big.Int) (
 	return h.Time, nil
 }
 
-// ContractDeployer acts as a go-between function for general contract deployment
+// CeloContractDeployer acts as a go-between function for general contract deployment
 type CeloContractDeployer func(auth *bind.TransactOpts, backend bind.ContractBackend) (
 	common.Address,
 	*types.Transaction,
@@ -239,7 +239,7 @@ func NewCeloClient(network BlockchainNetwork) (*CeloClient, error) {
 		NonceMu:             &sync.Mutex{},
 		Nonces:              make(map[string]uint64),
 		txQueue:             make(chan common.Hash, 64), // Max buffer of 64 tx
-		headerSubscriptions: map[string]CeloHeaderEventSubscription{},
+		headerSubscriptions: map[string]HeaderEventSubscription{},
 		mutex:               &sync.Mutex{},
 		queueTransactions:   false,
 		doneChan:            make(chan struct{}),
@@ -375,7 +375,7 @@ func (e *CeloClient) Fund(
 			Str("Amount", link.String()).
 			Msg("Funding Address")
 		linkAddress := common.HexToAddress(e.Network.Config().LinkTokenAddress)
-		linkInstance, err := ethContracts.NewLinkToken(linkAddress, e.Client)
+		linkInstance, err := celoContracts.NewLinkToken(linkAddress, e.Client)
 		if err != nil {
 			return err
 		}
@@ -433,7 +433,7 @@ func (e *CeloClient) SendTransaction(
 
 // ProcessTransaction will queue or wait on a transaction depending on whether queue transactions is enabled
 func (e *CeloClient) ProcessTransaction(txHash common.Hash) error {
-	var txConfirmer CeloHeaderEventSubscription
+	var txConfirmer HeaderEventSubscription
 	if e.Network.Config().MinimumConfirmations == 0 {
 		txConfirmer = &CeloInstantConfirmations{}
 	} else {
@@ -549,11 +549,11 @@ func (e *CeloClient) WaitForEvents() error {
 }
 
 // GetHeaderSubscriptions returns a duplicate map of the queued transactions
-func (e *CeloClient) GetHeaderSubscriptions() map[string]CeloHeaderEventSubscription {
+func (e *CeloClient) GetHeaderSubscriptions() map[string]HeaderEventSubscription {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 
-	newMap := map[string]CeloHeaderEventSubscription{}
+	newMap := map[string]HeaderEventSubscription{}
 	for k, v := range e.headerSubscriptions {
 		newMap[k] = v
 	}
@@ -561,7 +561,7 @@ func (e *CeloClient) GetHeaderSubscriptions() map[string]CeloHeaderEventSubscrip
 }
 
 // AddHeaderEventSubscription adds a new header subscriber within the client to receive new headers
-func (e *CeloClient) AddHeaderEventSubscription(key string, subscriber CeloHeaderEventSubscription) {
+func (e *CeloClient) AddHeaderEventSubscription(key string, subscriber HeaderEventSubscription) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 	e.headerSubscriptions[key] = subscriber
@@ -765,23 +765,11 @@ func (t *CeloTransactionConfirmer) Wait() error {
 type CeloInstantConfirmations struct{}
 
 // ReceiveBlock is a no-op
-func (i *CeloInstantConfirmations) ReceiveBlock(block CeloNodeBlock) error {
+func (i *CeloInstantConfirmations) ReceiveBlock(block NodeBlock) error {
 	return nil
 }
 
 // Wait is a no-op
 func (i *CeloInstantConfirmations) Wait() error {
 	return nil
-}
-
-// CeloNodeBlock block with a node ID which mined it
-type CeloNodeBlock struct {
-	NodeID int
-	*types.Block
-}
-
-// CeloHeaderEventSubscription is an interface for allowing callbacks when the client receives a new header
-type CeloHeaderEventSubscription interface {
-	ReceiveBlock(header CeloNodeBlock) error
-	Wait() error
 }
