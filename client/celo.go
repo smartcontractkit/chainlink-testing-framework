@@ -23,6 +23,14 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+type CeloBlock struct {
+	*types.Block
+}
+
+func (e *CeloBlock) GetHash() HashInterface {
+	return e.Hash()
+}
+
 // CeloClients wraps the client and the BlockChain network to interact with an Celo EVM based Blockchain with multiple nodes
 type CeloClients struct {
 	DefaultClient *CeloClient
