@@ -24,6 +24,9 @@ const (
 	KeepEnvironmentsAlways = "always"
 )
 
+// ExternalDeployerFunc external deployer function
+type ExternalDeployerFunc func(c client.BlockchainClient) (contracts.ContractDeployer, error)
+
 // NetworkInfo helps delineate network information in a multi-network setup
 type NetworkInfo struct {
 	Client   client.BlockchainClient
@@ -33,8 +36,8 @@ type NetworkInfo struct {
 	Network  client.BlockchainNetwork
 }
 
-// buildNetworkInfo initializes the network's blockchain client and gathers all test-relevant network information
-func buildNetworkInfo(network client.BlockchainNetwork, env environment.Environment) (NetworkInfo, error) {
+// NewNetworkInfo initializes the network's blockchain client and gathers all test-relevant network information
+func NewNetworkInfo(network client.BlockchainNetwork, extDepFunc ExternalDeployerFunc, env environment.Environment) (NetworkInfo, error) {
 	// Initialize blockchain client
 	var bcc client.BlockchainClient
 	var err error
@@ -42,6 +45,8 @@ func buildNetworkInfo(network client.BlockchainNetwork, env environment.Environm
 	case client.BlockchainTypeEVMMultinode:
 		bcc, err = environment.NewBlockchainClients(env, network)
 	case client.BlockchainTypeEVM:
+		bcc, err = environment.NewBlockchainClient(env, network)
+	case client.BlockchainTypeTerra:
 		bcc, err = environment.NewBlockchainClient(env, network)
 	}
 	if err != nil {
@@ -53,7 +58,13 @@ func buildNetworkInfo(network client.BlockchainNetwork, env environment.Environm
 	if err != nil {
 		return NetworkInfo{}, err
 	}
-	contractDeployer, err := contracts.NewContractDeployer(bcc)
+	// use default deployer for client or provided func
+	var contractDeployer contracts.ContractDeployer
+	if extDepFunc != nil {
+		contractDeployer, err = extDepFunc(bcc)
+	} else {
+		contractDeployer, err = contracts.NewContractDeployer(bcc)
+	}
 	if err != nil {
 		return NetworkInfo{}, err
 	}
@@ -93,6 +104,7 @@ type SingleNetworkSuiteSetup struct {
 func SingleNetworkSetup(
 	initialDeployInitFunc environment.K8sEnvSpecInit,
 	initFunc client.BlockchainNetworkInit,
+	deployerFunc ExternalDeployerFunc,
 	configPath string,
 ) (SuiteSetup, error) {
 	conf, err := config.NewConfig(configPath)
@@ -113,7 +125,7 @@ func SingleNetworkSetup(
 		return nil, err
 	}
 
-	networkInfo, err := buildNetworkInfo(network, env)
+	networkInfo, err := NewNetworkInfo(network, deployerFunc, env)
 	if err != nil {
 		return nil, err
 	}
@@ -173,6 +185,7 @@ type multiNetworkSuiteSetup struct {
 func MultiNetworkSetup(
 	initialDeployInitFunc environment.K8sEnvSpecInit,
 	multiNetworkInitialization client.MultiNetworkInit,
+	deployerFunc ExternalDeployerFunc,
 	configPath string,
 ) (SuiteSetup, error) {
 	conf, err := config.NewConfig(configPath)
@@ -196,7 +209,7 @@ func MultiNetworkSetup(
 
 	allNetworks := make([]NetworkInfo, len(networks))
 	for index, network := range networks {
-		networkInfo, err := buildNetworkInfo(network, env)
+		networkInfo, err := NewNetworkInfo(network, deployerFunc, env)
 		if err != nil {
 			return nil, err
 		}

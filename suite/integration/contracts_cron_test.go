@@ -25,6 +25,7 @@ var _ = Describe("Cronjob suite @cron", func() {
 			suiteSetup, err = actions.SingleNetworkSetup(
 				environment.NewChainlinkCluster(1),
 				client.DefaultNetworkFromConfig,
+				nil,
 				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())

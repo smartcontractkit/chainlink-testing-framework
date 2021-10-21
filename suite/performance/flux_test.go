@@ -29,6 +29,7 @@ var _ = Describe("Performance tests @perf-flux", func() {
 			suiteSetup, err = actions.SingleNetworkSetup(
 				environment.NewChainlinkCluster(numberOfNodes),
 				client.NewNetworkFromConfigWithDefault(client.NetworkGethPerformance),
+				nil,
 				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())

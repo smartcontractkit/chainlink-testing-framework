@@ -42,6 +42,10 @@ spec:
           value: '*'
         - name: CHAINLINK_DEV
           value: "true"
+        - name: ETH_DISABLED
+          value: {{ .Values.chainlinkCluster.chainlink.eth_disabled }}
+        - name: FEATURE_EXTERNAL_INITIATORS
+          value: {{ .Values.chainlinkCluster.chainlink.feature_external_initiators }}
         - name: CHAINLINK_PGPASSWORD
           value: node
         - name: CHAINLINK_PORT

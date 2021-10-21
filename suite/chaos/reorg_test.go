@@ -8,7 +8,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/suite/testcommon"
 )
 
-var _ = Describe("Reorg example test @reorg", func() {
+var _ = XDescribe("Reorg example test @reorg", func() {
 	i := &testcommon.RunlogSetupInputs{}
 	It("Performs reorg and verifies it", func() {
 		testcommon.SetupRunlogEnv(i)

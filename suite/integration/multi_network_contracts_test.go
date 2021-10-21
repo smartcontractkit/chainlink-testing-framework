@@ -31,6 +31,7 @@ var _ = Describe("Basic Contract Interactions @contract", func() {
 			suiteSetup, err = actions.MultiNetworkSetup(
 				environment.NewChainlinkCluster(0),
 				client.DefaultNetworksFromConfig,
+				nil,
 				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())

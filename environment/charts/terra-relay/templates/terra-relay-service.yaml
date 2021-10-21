@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: terra-relay-{{ .Values.idx }}
+    release: {{ .Release.Name }}
+  name: terra-relay-{{ .Values.idx }}
+spec:
+  ports:
+    - name: "26657"
+      port: 26657
+      targetPort: 26657
+  selector:
+    app: terra-relay-{{ .Values.idx }}
+    release: {{ .Release.Name }}

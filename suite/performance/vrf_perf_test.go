@@ -25,6 +25,7 @@ var _ = Describe("VRF perf test @perf-vrf", func() {
 			suiteSetup, err = actions.SingleNetworkSetup(
 				environment.NewChainlinkCluster(1),
 				client.NewNetworkFromConfigWithDefault(client.NetworkGethPerformance),
+				nil,
 				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())

@@ -303,3 +303,23 @@ type PerfEvent struct {
 	RequestID      [32]byte
 	BlockTimestamp *big.Int
 }
+
+// OCRv2 contracts
+
+// OCRv2AccessController access controller
+type OCRv2AccessController interface {
+	Address() string
+	AddAccess(fromWallet client.BlockchainWallet, addr string) error
+	RemoveAccess(fromWallet client.BlockchainWallet, addr string) error
+	HasAccess(to string) (bool, error)
+}
+
+type OCRv2 interface {
+	Address() string
+	SetConfig(fromWallet client.BlockchainWallet) error
+	TransferOwnership(fromWallet client.BlockchainWallet, to string) error
+	SetBilling(fromWallet client.BlockchainWallet, observationPayment uint32, recommendedGasPrice uint32) error
+	GetLatestConfigDetails() (map[string]interface{}, error)
+	GetRoundData(roundID uint32) (map[string]interface{}, error)
+	GetOwedPayment(transmitterAddr string) (map[string]interface{}, error)
+}
