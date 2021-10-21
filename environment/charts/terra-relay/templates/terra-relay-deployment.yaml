@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: terra-relay-{{ .Values.idx }}
+    release: {{ .Release.Name }}
+  name: terra-relay-{{ .Values.idx }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: terra-relay-{{ .Values.idx }}
+      release: {{ .Release.Name }}
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: terra-relay-{{ .Values.idx }}
+        release: {{ .Release.Name }}
+    spec:
+      containers:
+        - env:
+            - name: CHAIN_ID
+              value: localterra
+            - name: ETH_URL
+              value: ws://terrad:26657/websocket
+            - name: ETH_HTTP_URL
+              value: http://terrad:1317
+            - name: CLIENT_NODE_URL
+              value: "http://localhost:6688"
+            - name: DATABASE_URL
+              value: "postgresql://dev:dev@postgres-relay-{{ .Values.idx }}:5432/relay_1?sslmode=disable"
+            - name: KEYSTORE_PASSWORD
+              value: "hello"
+            - name: MOCK_SERVICE
+              value: "false"
+            - name: IC_ACCESSKEY
+              value: "a5261849bea04675a4befbc40966c917"
+            - name: IC_SECRET
+              value: "p5jKxPEsouPDanXqZt8IN8rIBuhmWDS4kF+aNxS2uVKtncwbbbY+5qC7sLZ0x0r7"
+            - name: CI_ACCESSKEY
+              value: "goCbcvQ/v9hjXdgXLmDP/Yn1FYcfwYLma+teuIKCxsvEfXgmOuliO/1/fwUgbDWL"
+            - name: CI_SECRET
+              value: "lqWIoTXbjdxBZizEPFhR9WYBvtvddCmYZbyBBT+hcsbiIBF/990xHQspL7KNYsDa"
+            - name: OCR2_P2P_LISTEN_PORT
+              value: "8090"
+            - name: MNEMONIC
+              value: "six marriage fiscal rebuild worry dust post hobby merge fatigue verb awful dune illegal produce layer machine maple dawn student crouch midnight property distance"
+          image: 323150190480.dkr.ecr.us-west-2.amazonaws.com/terra-ocr:latest
+          name: terra-relay-{{ .Values.idx }}
+          ports:
+            - containerPort: 26657
+          resources: {}
+      restartPolicy: Always

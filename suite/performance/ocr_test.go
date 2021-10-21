@@ -28,6 +28,7 @@ var _ = Describe("OCR soak test @soak-ocr", func() {
 			suiteSetup, err = actions.SingleNetworkSetup(
 				environment.NewChainlinkCluster(5),
 				client.DefaultNetworkFromConfig,
+				nil,
 				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())

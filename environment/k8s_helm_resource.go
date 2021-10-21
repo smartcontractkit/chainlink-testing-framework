@@ -159,7 +159,10 @@ func (k *HelmChart) ServiceDetails() ([]*ServiceDetails, error) {
 
 // Deploy deploys the helm charts
 func (k *HelmChart) Deploy(_ map[string]interface{}) error {
-	log.Info().Str("Path", k.chartPath).Str("Namespace", k.env.namespace.Name).Msg("Installing Helm chart")
+	log.Info().Str("Path", k.chartPath).
+		Str("Release", k.releaseName).
+		Str("Namespace", k.env.namespace.Name).
+		Msg("Installing Helm chart")
 	chart, err := loader.Load(k.chartPath)
 	if err != nil {
 		return err

@@ -27,6 +27,7 @@ var _ = Describe("Keeper performance test @performance-keeper", func() {
 			suiteSetup, err = actions.SingleNetworkSetup(
 				environment.NewChainlinkCluster(5),
 				client.DefaultNetworkFromConfig,
+				nil,
 				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -55,7 +56,7 @@ var _ = Describe("Keeper performance test @performance-keeper", func() {
 					TestOptions: TestOptions{
 						NumberOfContracts: 5,
 					},
-					RoundTimeout:          3 * time.Minute,
+					RoundTimeout:          4 * time.Minute,
 					TestDuration:          10 * time.Minute,
 					BlockCountPerTurn:     big.NewInt(1),
 					PaymentPremiumPPB:     uint32(200000000),

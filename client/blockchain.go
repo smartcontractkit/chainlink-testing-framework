@@ -5,6 +5,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	cosmtypes "github.com/cosmos/cosmos-sdk/crypto/types"
+	"github.com/smartcontractkit/terra.go/key"
 	"math/big"
 	"os"
 	"reflect"
@@ -22,6 +24,8 @@ import (
 const (
 	BlockchainTypeEVM          = "evm"
 	BlockchainTypeEVMMultinode = "evm_multi"
+	BlockchainTypeTerra        = "terra"
+	NetworkTypeTerraLocal      = "terra_local"
 	NetworkGethPerformance     = "ethereum_geth_performance"
 )
 
@@ -56,6 +60,8 @@ func NewBlockchainClient(network BlockchainNetwork) (BlockchainClient, error) {
 		return NewEthereumClient(network)
 	case BlockchainTypeEVMMultinode:
 		return NewEthereumClients(network)
+	case BlockchainTypeTerra:
+		return NewTerraClient(network)
 	}
 	return nil, errors.New("invalid blockchain network ID, not found")
 }
@@ -97,6 +103,84 @@ func newEthereumNetwork(ID string, networkConfig config.NetworkConfig) (Blockcha
 	}, nil
 }
 
+// TerraNetwork is the implementation of BlockchainNetwork for the local Terra dev server
+type TerraNetwork struct {
+	networkID     string
+	networkConfig *config.NetworkConfig
+}
+
+// FluxMonitorSubmissionGasUsed Flux Monitor one submission gasUsed value
+func (t *TerraNetwork) FluxMonitorSubmissionGasUsed() (*big.Int, error) {
+	panic("implement me")
+}
+
+// ID returns the readable name of the EVM network
+func (t *TerraNetwork) ID() string {
+	return t.networkID
+}
+
+// ClusterURL returns the RPC URL used for connecting to the network within the K8s cluster
+func (t *TerraNetwork) ClusterURL() string {
+	return t.networkConfig.ClusterURL
+}
+
+// LocalURL returns the RPC URL used for connecting to the network from outside the K8s cluster
+func (t *TerraNetwork) LocalURL() string {
+	return t.networkConfig.LocalURL
+}
+
+// URLs returns the RPC URLs used for connecting to the network nodes
+func (t TerraNetwork) URLs() []string {
+	panic("implement me")
+}
+
+// Type returns the readable type of the Terra network
+func (t *TerraNetwork) Type() string {
+	return t.networkConfig.Type
+}
+
+// SetClusterURL sets the RPC URL used to connect to the chain from within the K8s cluster
+func (t *TerraNetwork) SetClusterURL(s string) {
+	t.networkConfig.ClusterURL = s
+}
+
+// SetLocalURL sets the RPC URL used to connect to the chain from outside the K8s cluster
+func (t *TerraNetwork) SetLocalURL(s string) {
+	t.networkConfig.LocalURL = s
+}
+
+// SetURLs sets all nodes URLs
+func (t *TerraNetwork) SetURLs(urls []string) {
+	t.networkConfig.URLS = urls
+}
+
+// ChainID returns the on-chain ID of the network being connected to
+func (t *TerraNetwork) ChainID() *big.Int {
+	return big.NewInt(t.networkConfig.ChainID)
+}
+
+// RemotePort returns the remote RPC port of the network
+func (t *TerraNetwork) RemotePort() uint16 {
+	return t.networkConfig.RPCPort
+}
+
+// Wallets returns all the viable wallets used for testing on chain
+func (t *TerraNetwork) Wallets() (BlockchainWallets, error) {
+	return newTerraWallets(t.networkConfig.PrivateKeyStore)
+}
+
+// Config returns the blockchain network configuration
+func (t *TerraNetwork) Config() *config.NetworkConfig {
+	return t.networkConfig
+}
+
+func newTerraNetwork(ID string, networkConfig config.NetworkConfig) (BlockchainNetwork, error) {
+	return &TerraNetwork{
+		networkID:     ID,
+		networkConfig: &networkConfig,
+	}, nil
+}
+
 // DefaultNetworkFromConfig prepares settings for a connection the default blockchain specified in the config file
 func DefaultNetworkFromConfig(conf *config.Config) (BlockchainNetwork, error) {
 	if len(conf.Networks) <= 0 {
@@ -133,6 +217,8 @@ func NewNetworkFromConfig(conf *config.Config, networkID string) (BlockchainNetw
 	switch networkConfig.Type {
 	case BlockchainTypeEVM, BlockchainTypeEVMMultinode:
 		return newEthereumNetwork(networkID, networkConfig)
+	case BlockchainTypeTerra:
+		return newTerraNetwork(networkID, networkConfig)
 	}
 	return nil, fmt.Errorf(
 		"network %s uses an unspported network type of: %s",
@@ -274,6 +360,7 @@ func (w *Wallets) Wallet(i int) (BlockchainWallet, error) {
 // BlockchainWallet when implemented is the interface to allow multiple wallet implementations for each
 // BlockchainNetwork that is supported
 type BlockchainWallet interface {
+	RawPrivateKey() interface{}
 	PrivateKey() string
 	Address() string
 }
@@ -294,6 +381,11 @@ func NewEthereumWallet(pk string) (*EthereumWallet, error) {
 		privateKey: pk,
 		address:    crypto.PubkeyToAddress(privateKey.PublicKey),
 	}, nil
+}
+
+// RawPrivateKey returns raw private key if it has some encoding or in bytes
+func (e *EthereumWallet) RawPrivateKey() interface{} {
+	return e.privateKey
 }
 
 // PrivateKey returns the private key for a given Ethereum wallet
@@ -322,6 +414,67 @@ func newEthereumWallets(pkStore config.PrivateKeyStore) (BlockchainWallets, erro
 		processedWallets = append(processedWallets, wallet)
 	}
 
+	return &Wallets{
+		defaultWallet: 0,
+		wallets:       processedWallets,
+	}, nil
+}
+
+// TerraWallet is the implementation to allow testing with Terra based wallets
+// only first derived key for each mnemonic is used now (rawPrivateKey)
+type TerraWallet struct {
+	mnemonic      string
+	rawPrivateKey key.PrivKey
+	privateKey    string
+	address       cosmtypes.Address
+}
+
+// NewTerraWallet returns the instantiated Terra wallet based on a given mnemonic with 0,0 derivation path
+func NewTerraWallet(mnemonic string) (*TerraWallet, error) {
+	privKeyBz, err := key.DerivePrivKeyBz(mnemonic, key.CreateHDPath(0, 0))
+	if err != nil {
+		return nil, err
+	}
+	privKey, err := key.PrivKeyGen(privKeyBz)
+	if err != nil {
+		return nil, err
+	}
+	return &TerraWallet{
+		mnemonic:      mnemonic,
+		rawPrivateKey: privKey,
+		privateKey:    privKey.String(),
+		address:       privKey.PubKey().Address(),
+	}, nil
+}
+
+// RawPrivateKey returns raw private key if it has some encoding or in bytes
+func (e *TerraWallet) RawPrivateKey() interface{} {
+	return e.rawPrivateKey
+}
+
+// PrivateKey returns the private key for a given Terra wallet
+func (e *TerraWallet) PrivateKey() string {
+	return e.privateKey
+}
+
+// Address returns the Terra address for a given wallet
+func (e *TerraWallet) Address() string {
+	return e.address.String()
+}
+
+func newTerraWallets(pkStore config.PrivateKeyStore) (BlockchainWallets, error) {
+	var processedWallets []BlockchainWallet
+	keys, err := pkStore.Fetch()
+	if err != nil {
+		return nil, err
+	}
+	for _, k := range keys {
+		wallet, err := NewTerraWallet(strings.TrimSpace(k))
+		if err != nil {
+			return &Wallets{}, err
+		}
+		processedWallets = append(processedWallets, wallet)
+	}
 	return &Wallets{
 		defaultWallet: 0,
 		wallets:       processedWallets,

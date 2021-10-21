@@ -1,0 +1,6 @@
+name: terra-relay
+description: Terra relay chart
+version: 0.0.1
+apiVersion: v1
+keywords:
+  - terra-relay

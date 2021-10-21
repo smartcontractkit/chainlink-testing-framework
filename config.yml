@@ -5,8 +5,8 @@
 # APPS_CHAINLINK_VERSION=1.0.0
 
 networks: # Selected network(s) for test execution
-    - "ethereum_geth" 
-    - "ethereum_geth" 
+    - "ethereum_geth"
+    - "ethereum_geth"
 keep_environments: Never # Options: Always, OnFail, Never
 
 apps:
@@ -47,6 +47,14 @@ apps:
         image: "studentcuza/explorer"
         version: "choose-security-protocol"
 
+terra_mnemonics: &terra_mnemonics
+    private_keys:
+        - "notice oak worry limit wrap speak medal online prefer cluster roof addict wrist behave treat actual wasp year salad speed social layer crew genius"
+        - "quality vacuum heart guard buzz spike sight swarm shove special gym robust assume sudden deposit grid alcohol choice devote leader tilt noodle tide penalty"
+        - "symbol force gallery make bulk round subway violin worry mixture penalty kingdom boring survey tool fringe patrol sausage hard admit remember broken alien absorb"
+        - "bounce success option birth apple portion aunt rural episode solution hockey pencil lend session cause hedgehog slender journey system canvas decorate razor catch empty"
+        - "second render cat sing soup reward cluster island bench diet lumber grocery repeat balcony perfect diesel stumble piano distance caught occur example ozone loyal"
+
 private_keys: &private_keys
     private_keys:
         - ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
@@ -71,6 +79,13 @@ private_keys: &private_keys
         - df57089febbacf7ba0bc227dafbffa9fc08a93fdc68e1e42411a14efcf23656e
 
 network_configs:
+    terra_local:
+        name: "LocalTerra"
+        chain_name: "localterra"
+        currency: "uluna"
+        <<: *terra_mnemonics
+        type: terra
+        rpc_port: 1317
     ethereum_geth: &common_ethereum
         name: "Ethereum Geth dev"
         chain_id: 1337

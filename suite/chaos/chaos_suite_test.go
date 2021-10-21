@@ -19,6 +19,7 @@ func TestChaos(t *testing.T) {
 	RegisterFailHandler(Fail)
 	conf, err := config.NewConfig(tools.ProjectRoot)
 	if err != nil {
+		log.Error().Err(err).Msg("Failed to load config")
 		Fail("failed to load config")
 	}
 	log.Logger = log.Logger.Level(zerolog.Level(conf.Logging.Level))
