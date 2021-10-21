@@ -192,11 +192,11 @@ func (e *CeloClient) SetID(id int) {
 
 // BlockNumber gets latest block number
 func (e *CeloClient) BlockNumber(ctx context.Context) (uint64, error) {
-	bn, err := e.Client.BlockNumber(ctx)
+	bn, err := e.Client.BlockByNumber(ctx, nil)
 	if err != nil {
 		return 0, err
 	}
-	return bn, nil
+	return bn.NumberU64(), nil
 }
 
 // HeaderHashByNumber gets header hash by block number
@@ -414,21 +414,26 @@ func (e *CeloClient) SendTransaction(
 		return common.Hash{}, err
 	}
 
-	tx, err := types.SignNewTx(privateKey, types.NewEIP2930Signer(e.Network.ChainID()), &types.LegacyTx{
-		To:       callMsg.To,
-		Value:    callMsg.Value,
-		Data:     callMsg.Data,
-		GasPrice: callMsg.GasPrice,
-		Gas:      callMsg.Gas,
-		Nonce:    nonce,
-	})
+	tx := types.NewTransaction(
+		nonce,
+		*callMsg.To,
+		callMsg.Value,
+		callMsg.Gas,
+		callMsg.GasPrice,
+		callMsg.FeeCurrency,
+		callMsg.GatewayFeeRecipient,
+		callMsg.GatewayFee,
+		callMsg.Data,
+	)
+
+	txSigned, err := types.SignTx(tx, types.NewEIP155Signer(e.Network.ChainID()), privateKey)
 	if err != nil {
 		return common.Hash{}, err
 	}
-	if err := e.Client.SendTransaction(context.Background(), tx); err != nil {
+	if err := e.Client.SendTransaction(context.Background(), txSigned); err != nil {
 		return common.Hash{}, err
 	}
-	return tx.Hash(), e.ProcessTransaction(tx.Hash())
+	return txSigned.Hash(), e.ProcessTransaction(txSigned.Hash())
 }
 
 // ProcessTransaction will queue or wait on a transaction depending on whether queue transactions is enabled
@@ -518,10 +523,7 @@ func (e *CeloClient) TransactionOpts(
 	if err != nil {
 		return nil, fmt.Errorf("invalid private key: %v", err)
 	}
-	opts, err := bind.NewKeyedTransactorWithChainID(privateKey, e.Network.ChainID())
-	if err != nil {
-		return nil, err
-	}
+	opts := bind.NewKeyedTransactor(privateKey)
 	opts.From = callMsg.From
 	opts.Nonce = big.NewInt(int64(nonce))
 	opts.Value = value
@@ -624,11 +626,13 @@ func (e *CeloClient) receiveHeader(header *types.Header) {
 		log.Err(fmt.Errorf("error fetching block by number: %v", err))
 	}
 
+	celoBlock := &CeloBlock{block}
+
 	g := errgroup.Group{}
 	for _, sub := range subs {
 		sub := sub
 		g.Go(func() error {
-			return sub.ReceiveBlock(CeloNodeBlock{NodeID: e.ID, Block: block})
+			return sub.ReceiveBlock(NodeBlock{NodeID: e.ID, BlockInterface: celoBlock})
 		})
 	}
 	if err := g.Wait(); err != nil {
@@ -724,13 +728,13 @@ func NewCeloTransactionConfirmer(eth *CeloClient, txHash common.Hash, minConfirm
 
 // ReceiveBlock the implementation of the HeaderEventSubscription that receives each block and checks
 // tx confirmation
-func (t *CeloTransactionConfirmer) ReceiveBlock(block CeloNodeBlock) error {
-	if block.Block == nil {
+func (t *CeloTransactionConfirmer) ReceiveBlock(block NodeBlock) error {
+	if block.BlockInterface == nil {
 		log.Info().Msg("Received nil block")
 		return nil
 	}
 	confirmationLog := log.Debug().Str("Network", t.eth.Network.ID()).
-		Str("Block Hash", block.Hash().Hex()).
+		Str("Block Hash", block.GetHash().Hex()).
 		Str("Block Number", block.Number().String()).Str("Tx Hash", t.txHash.Hex()).
 		Int("Minimum Confirmations", t.minConfirmations)
 	isConfirmed, err := t.eth.isTxConfirmed(t.txHash)
