@@ -3,14 +3,17 @@ package client
 
 import (
 	"context"
+	"database/sql/driver"
 	"errors"
 	"fmt"
 	"math/big"
+	"math/rand"
+	"os"
+	"reflect"
 	"strings"
 
 	"github.com/smartcontractkit/integrations-framework/config"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
@@ -21,6 +24,24 @@ const (
 	BlockchainTypeEVMCelo      = "evm_celo"
 	NetworkGethPerformance     = "ethereum_geth_performance"
 )
+
+type HashInterface interface {
+	Big() *big.Int
+	Hex() string
+	TerminalString() string
+	String() string
+	Format(s fmt.State, c rune)
+	Generate(rand *rand.Rand, size int) reflect.Value
+	Value() (driver.Value, error)
+}
+
+type AddressInterface interface {
+	Bytes() []byte
+	Hex() string
+	String() string
+	Format(s fmt.State, c rune)
+	Value() (driver.Value, error)
+}
 
 // BlockchainClient is the interface that wraps a given client implementation for a blockchain, to allow for switching
 // of network types within the test suite
@@ -233,7 +254,7 @@ type BlockchainWallet interface {
 // EthereumWallet is the implementation to allow testing with ETH based wallets
 type EthereumWallet struct {
 	privateKey string
-	address    common.Address
+	address    AddressInterface
 }
 
 // NewEthereumWallet returns the instantiated ETH wallet based on a given private key
@@ -292,16 +313,24 @@ func walletSliceIndexInRange(wallets []BlockchainWallet, i int) error {
 	return nil
 }
 
+type BlockInterface interface {
+	GetHash() HashInterface
+	Number() *big.Int
+	NumberU64() uint64
+}
+
 // NodeBlock block with a node ID which mined it
 type NodeBlock struct {
 	NodeID int
-	*types.Block
+	BlockInterface
 }
 
 // HeaderEventSubscription is an interface for allowing callbacks when the client receives a new header
 type HeaderEventSubscription interface {
 	ReceiveBlock(header NodeBlock) error
 	Wait() error
+}
+
 // GasUsedEstimations contains some known gas values for contracts for every network
 type GasUsedEstimations interface {
 	FluxMonitorSubmissionGasUsed() (*big.Int, error)
