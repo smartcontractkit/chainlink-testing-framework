@@ -2,7 +2,6 @@ package chaos
 
 import (
 	"context"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/client"
@@ -51,7 +50,7 @@ type ReorgConfirmer struct {
 	NetworkStep             ReorgStep
 	altBlockNumbers         []int64
 	blocksByNode            map[int]map[int64]client.NodeBlock
-	blockHashes             map[int64][]common.Hash
+	blockHashes             map[int64][]client.HashInterface
 	chaosExperimentName     string
 	mutex                   sync.Mutex
 	ctx                     context.Context
@@ -80,7 +79,7 @@ func NewReorgConfirmer(
 		numberOfNodes:           len(c.GetClients()),
 		doneChan:                make(chan struct{}),
 		altBlockNumbers:         make([]int64, 0),
-		blockHashes:             map[int64][]common.Hash{},
+		blockHashes:             map[int64][]client.HashInterface{},
 		blocksByNode:            map[int]map[int64]client.NodeBlock{},
 		mutex:                   sync.Mutex{},
 		ctx:                     ctx,
@@ -94,7 +93,7 @@ func NewReorgConfirmer(
 func (rc *ReorgConfirmer) ReceiveBlock(blk client.NodeBlock) error {
 	rc.mutex.Lock()
 	defer rc.mutex.Unlock()
-	if blk.Block == nil || rc.done {
+	if blk.BlockInterface == nil || rc.done {
 		return nil
 	}
 	rc.appendBlockHeader(blk)
@@ -131,10 +130,10 @@ func (rc *ReorgConfirmer) Verify() error {
 		}
 		log.Info().
 			Int64("Number", bb.Number().Int64()).
-			Str("Hash before", bb.Hash().String()).
+			Str("Hash before", bb.GetHash().String()).
 			Str("Hash after", h).
 			Msg("Comparing block")
-		if bb.Hash().String() != h {
+		if bb.GetHash().String() != h {
 			rc.currentVerifiedBlocks++
 		}
 	}
@@ -162,7 +161,7 @@ func (rc *ReorgConfirmer) awaitAltBlocks(blk client.NodeBlock) error {
 	if blk.NodeID == 0 && blk.Number().Int64() >= rc.forkBlockNumber && rc.isAltBlock(blk) {
 		log.Info().
 			Int64("Number", blk.Number().Int64()).
-			Str("Hash", blk.Hash().String()).
+			Str("Hash", blk.GetHash().String()).
 			Int("Node", blk.NodeID).
 			Msg("Mined alternative block")
 		rc.altBlockNumbers = append(rc.altBlockNumbers, blk.Number().Int64())
@@ -242,9 +241,9 @@ func (rc *ReorgConfirmer) hasNetworkFormedConsensus(blk client.NodeBlock) bool {
 func (rc *ReorgConfirmer) appendBlockHeader(blk client.NodeBlock) {
 	bn := blk.Number().Int64()
 	if _, ok := rc.blockHashes[bn]; !ok {
-		rc.blockHashes[bn] = []common.Hash{}
+		rc.blockHashes[bn] = []client.HashInterface{}
 	}
-	rc.blockHashes[bn] = append(rc.blockHashes[bn], blk.Hash())
+	rc.blockHashes[bn] = append(rc.blockHashes[bn], blk.GetHash())
 
 	if _, ok := rc.blocksByNode[blk.NodeID]; !ok {
 		rc.blocksByNode[blk.NodeID] = make(map[int64]client.NodeBlock)
