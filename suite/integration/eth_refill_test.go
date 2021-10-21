@@ -1,4 +1,4 @@
-package refill
+package integration
 
 import (
 	"context"

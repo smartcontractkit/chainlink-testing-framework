@@ -1,4 +1,4 @@
-package contracts
+package integration
 
 import (
 	. "github.com/onsi/ginkgo"

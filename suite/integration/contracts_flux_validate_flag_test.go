@@ -1,4 +1,4 @@
-package contracts
+package integration
 
 import (
 	"context"
@@ -7,29 +7,35 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/tools"
 
 	"github.com/ethereum/go-ethereum/common"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
 	"github.com/smartcontractkit/integrations-framework/environment"
 )
 
-var _ = Describe("Flux monitor suite @flux", func() {
+var _ = Describe("Flux monitor external validator suite @validator-flux", func() {
 	var (
-		suiteSetup    actions.SuiteSetup
-		networkInfo   actions.NetworkInfo
-		adapter       environment.ExternalAdapter
-		nodes         []client.Chainlink
-		nodeAddresses []common.Address
-		fluxInstance  contracts.FluxAggregator
-		err           error
+		suiteSetup         actions.SuiteSetup
+		networkInfo        actions.NetworkInfo
+		adapter            environment.ExternalAdapter
+		nodes              []client.Chainlink
+		rac                contracts.ReadAccessController
+		flags              contracts.Flags
+		dfv                contracts.DeviationFlaggingValidator
+		nodeAddresses      []common.Address
+		fluxInstance       contracts.FluxAggregator
+		fluxRoundConfirmer *contracts.FluxAggregatorRoundConfirmer
+		flagSet            bool
+		err                error
+		fluxRoundTimeout   = time.Second * 30
 	)
-	fluxRoundTimeout := time.Minute * 2
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
@@ -48,8 +54,26 @@ var _ = Describe("Flux monitor suite @flux", func() {
 			networkInfo.Client.ParallelTransactions(true)
 		})
 
+		By("Deploying access controller, flags, deviation validator", func() {
+			rac, err = networkInfo.Deployer.DeployReadAccessController(networkInfo.Wallets.Default())
+			Expect(err).ShouldNot(HaveOccurred())
+			flags, err = networkInfo.Deployer.DeployFlags(networkInfo.Wallets.Default(), rac.Address())
+			Expect(err).ShouldNot(HaveOccurred())
+			dfv, err = networkInfo.Deployer.DeployDeviationFlaggingValidator(networkInfo.Wallets.Default(), flags.Address(), big.NewInt(0))
+			Expect(err).ShouldNot(HaveOccurred())
+		})
+
 		By("Deploying and funding contract", func() {
-			fluxInstance, err = networkInfo.Deployer.DeployFluxAggregatorContract(networkInfo.Wallets.Default(), contracts.DefaultFluxAggregatorOptions())
+			fmOpts := contracts.FluxAggregatorOptions{
+				PaymentAmount: big.NewInt(1),
+				Validator:     common.HexToAddress(dfv.Address()),
+				Timeout:       uint32(30),
+				MinSubValue:   big.NewInt(0),
+				MaxSubValue:   big.NewInt(1e18),
+				Decimals:      uint8(0),
+				Description:   "Hardhat Flux Aggregator",
+			}
+			fluxInstance, err = networkInfo.Deployer.DeployFluxAggregatorContract(networkInfo.Wallets.Default(), fmOpts)
 			Expect(err).ShouldNot(HaveOccurred())
 			err = fluxInstance.Fund(networkInfo.Wallets.Default(), nil, big.NewFloat(1))
 			Expect(err).ShouldNot(HaveOccurred())
@@ -59,16 +83,19 @@ var _ = Describe("Flux monitor suite @flux", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
+		By("Setting access to flags contract", func() {
+			err = rac.AddAccess(networkInfo.Wallets.Default(), dfv.Address())
+			Expect(err).ShouldNot(HaveOccurred())
+		})
+
 		By("Funding Chainlink nodes", func() {
 			nodeAddresses, err = actions.ChainlinkNodeAddresses(nodes)
-			Expect(err).ShouldNot(HaveOccurred())
-			ethAmount, err := networkInfo.Deployer.CalculateETHForTXs(networkInfo.Wallets.Default(), networkInfo.Network.Config(), 3)
 			Expect(err).ShouldNot(HaveOccurred())
 			err = actions.FundChainlinkNodes(
 				nodes,
 				networkInfo.Client,
 				networkInfo.Wallets.Default(),
-				ethAmount,
+				big.NewFloat(2),
 				nil,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -93,20 +120,13 @@ var _ = Describe("Flux monitor suite @flux", func() {
 		})
 
 		By("Creating flux jobs", func() {
-			bta := client.BridgeTypeAttributes{
-				Name: "variable",
-				URL:  fmt.Sprintf("%s/variable", adapter.ClusterURL()),
-			}
 			for _, n := range nodes {
-				err = n.CreateBridge(&bta)
-				Expect(err).ShouldNot(HaveOccurred())
-
 				fluxSpec := &client.FluxMonitorJobSpec{
 					Name:              "flux_monitor",
 					ContractAddress:   fluxInstance.Address(),
 					PollTimerPeriod:   15 * time.Second, // min 15s
 					PollTimerDisabled: false,
-					ObservationSource: client.ObservationSourceSpecBridge(bta),
+					ObservationSource: client.ObservationSourceSpecHTTP(fmt.Sprintf("%s/variable", adapter.ClusterURL())),
 				}
 				_, err = n.CreateJob(fluxSpec)
 				Expect(err).ShouldNot(HaveOccurred())
@@ -115,54 +135,33 @@ var _ = Describe("Flux monitor suite @flux", func() {
 	})
 
 	Describe("with Flux job", func() {
-		It("performs two rounds and has withdrawable payments for oracles", func() {
+		It("Sets a flag when value is above threshold", func() {
 			err = adapter.SetVariable(1e7)
 			Expect(err).ShouldNot(HaveOccurred())
-
-			fluxRound := contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(2), fluxRoundTimeout)
-			networkInfo.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRound)
+			fluxRoundConfirmer = contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(2), fluxRoundTimeout)
+			networkInfo.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRoundConfirmer)
 			err = networkInfo.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 
-			data, err := fluxInstance.GetContractData(context.Background())
+			flagSet, err = flags.GetFlag(context.Background(), fluxInstance.Address())
 			Expect(err).ShouldNot(HaveOccurred())
-			log.Info().Interface("data", data).Msg("Round data")
-			Expect(len(data.Oracles)).Should(Equal(3))
-			Expect(data.LatestRoundData.Answer.Int64()).Should(Equal(int64(1e7)))
-			Expect(data.LatestRoundData.RoundId.Int64()).Should(Equal(int64(2)))
-			Expect(data.LatestRoundData.AnsweredInRound.Int64()).Should(Equal(int64(2)))
-			Expect(data.AvailableFunds.Int64()).Should(Equal(int64(999999999999999994)))
-			Expect(data.AllocatedFunds.Int64()).Should(Equal(int64(6)))
+			Expect(flagSet).Should(Equal(false))
 
 			err = adapter.SetVariable(1e8)
 			Expect(err).ShouldNot(HaveOccurred())
-
-			fluxRound = contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(3), fluxRoundTimeout)
-			networkInfo.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRound)
+			fluxRoundConfirmer = contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(3), fluxRoundTimeout)
+			networkInfo.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRoundConfirmer)
 			err = networkInfo.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 
-			data, err = fluxInstance.GetContractData(context.Background())
+			flagSet, err = flags.GetFlag(context.Background(), fluxInstance.Address())
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(len(data.Oracles)).Should(Equal(3))
-			Expect(data.LatestRoundData.Answer.Int64()).Should(Equal(int64(1e8)))
-			Expect(data.LatestRoundData.RoundId.Int64()).Should(Equal(int64(3)))
-			Expect(data.LatestRoundData.AnsweredInRound.Int64()).Should(Equal(int64(3)))
-			Expect(data.AvailableFunds.Int64()).Should(Equal(int64(999999999999999991)))
-			Expect(data.AllocatedFunds.Int64()).Should(Equal(int64(9)))
-			log.Info().Interface("data", data).Msg("Round data")
-
-			for _, oracleAddr := range nodeAddresses {
-				payment, _ := fluxInstance.WithdrawablePayment(context.Background(), oracleAddr)
-				Expect(payment.Int64()).Should(Equal(int64(3)))
-			}
+			log.Debug().Bool("Flag", flagSet).Msg("Deviation flag set")
+			Expect(flagSet).Should(Equal(true))
 		})
 	})
 
 	AfterEach(func() {
-		By("Printing gas stats", func() {
-			networkInfo.Client.GasStats().PrintStats()
-		})
 		By("Tearing down the environment", suiteSetup.TearDown())
 	})
 })
