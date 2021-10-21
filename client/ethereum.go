@@ -30,6 +30,14 @@ var (
 	OneEth = big.NewFloat(1e18)
 )
 
+type EthereumBlock struct {
+	*types.Block
+}
+
+func (e *EthereumBlock) GetHash() HashInterface {
+	return e.Hash()
+}
+
 // EthereumClients wraps the client and the BlockChain network to interact with an EVM based Blockchain with multiple nodes
 type EthereumClients struct {
 	DefaultClient *EthereumClient
@@ -585,6 +593,7 @@ func (e *EthereumClient) subscribeToNewHeaders() error {
 		case err := <-subscription.Err():
 			return err
 		case header := <-headerChannel:
+
 			e.receiveHeader(header)
 		case <-e.doneChan:
 			return nil
@@ -606,11 +615,13 @@ func (e *EthereumClient) receiveHeader(header *types.Header) {
 		log.Err(fmt.Errorf("error fetching block by number: %v", err))
 	}
 
+	ethereumBlock := &EthereumBlock{block}
+
 	g := errgroup.Group{}
 	for _, sub := range subs {
 		sub := sub
 		g.Go(func() error {
-			return sub.ReceiveBlock(NodeBlock{NodeID: e.ID, Block: block})
+			return sub.ReceiveBlock(NodeBlock{NodeID: e.ID, BlockInterface: ethereumBlock})
 		})
 	}
 	if err := g.Wait(); err != nil {
@@ -714,16 +725,14 @@ func NewTransactionConfirmer(eth *EthereumClient, tx *types.Transaction, minConf
 // ReceiveBlock the implementation of the HeaderEventSubscription that receives each block and checks
 // tx confirmation
 func (t *TransactionConfirmer) ReceiveBlock(block NodeBlock) error {
-	if block.Block == nil {
+	if block.BlockInterface == nil {
 		// strange, but happening on Kovan
 		log.Info().Msg("Received nil block")
 		return nil
 	}
 	confirmationLog := log.Debug().Str("Network", t.eth.Network.ID()).
-		Str("Block Hash", block.Hash().Hex()).
-		Str("Block Number", block.Number().String()).
-		Str("Tx Hash", t.tx.Hash().String()).
-		Uint64("Nonce", t.tx.Nonce()).
+		Str("Block Hash", block.GetHash().Hex()).
+		Str("Block Number", block.Number().String()).Str("Tx Hash", t.txHash.Hex()).
 		Int("Minimum Confirmations", t.minConfirmations)
 	isConfirmed, err := t.eth.isTxConfirmed(t.tx.Hash())
 	if err != nil {
@@ -766,16 +775,4 @@ func (i *InstantConfirmations) ReceiveBlock(block NodeBlock) error {
 // Wait is a no-op
 func (i *InstantConfirmations) Wait() error {
 	return nil
-}
-
-// NodeBlock block with a node ID which mined it
-type NodeBlock struct {
-	NodeID int
-	*types.Block
-}
-
-// HeaderEventSubscription is an interface for allowing callbacks when the client receives a new header
-type HeaderEventSubscription interface {
-	ReceiveBlock(header NodeBlock) error
-	Wait() error
 }
