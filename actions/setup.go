@@ -43,6 +43,8 @@ func buildNetworkInfo(network client.BlockchainNetwork, env environment.Environm
 		bcc, err = environment.NewBlockchainClients(env, network)
 	case client.BlockchainTypeEVM:
 		bcc, err = environment.NewBlockchainClient(env, network)
+	case client.BlockchainTypeTerra:
+		bcc, err = environment.NewBlockchainClient(env, network)
 	}
 	if err != nil {
 		return NetworkInfo{}, err

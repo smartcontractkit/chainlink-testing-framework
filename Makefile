@@ -64,6 +64,10 @@ test_keeper: ## run keeper tests
 test_ocr: ## run ocr tests
 	ginkgo -r --focus=@ocr
 
+.PHONY: test_ocr2
+test_ocr2: ## run v2 ocr tests on terra
+	ginkgo -r --focus=@v2ocr
+
 .PHONY: test_flux_perf
 test_flux_perf: ## run Flux perf test
 	NETWORK="ethereum_geth_performance" ginkgo -r --focus="@perf-flux"

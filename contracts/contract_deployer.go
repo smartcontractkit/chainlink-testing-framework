@@ -3,6 +3,10 @@ package contracts
 import (
 	"context"
 	"errors"
+	"github.com/smartcontractkit/integrations-framework/contracts/terra/actypes"
+	"github.com/smartcontractkit/integrations-framework/contracts/terra/cw20types"
+	ocr22 "github.com/smartcontractkit/integrations-framework/contracts/terra/ocr2types"
+	"github.com/smartcontractkit/terra.go/msg"
 	"math"
 	"math/big"
 	"time"
@@ -38,6 +42,13 @@ type ContractDeployer interface {
 		fluxOptions FluxAggregatorOptions,
 	) (FluxAggregator, error)
 	DeployLinkTokenContract(fromWallet client.BlockchainWallet) (LinkToken, error)
+	DeployOCRv2(
+		fromWallet client.BlockchainWallet,
+		paymentControllerAddr string,
+		requesterControllerAddr string,
+		linkTokenAddr string,
+	) (OCRv2, error)
+	DeployOCRv2AccessController(fromWallet client.BlockchainWallet) (OCRv2AccessController, error)
 	DeployOffChainAggregator(
 		fromWallet client.BlockchainWallet,
 		offchainOptions OffchainOptions,
@@ -63,13 +74,191 @@ func NewContractDeployer(bcClient client.BlockchainClient) (ContractDeployer, er
 		return NewEthereumContractDeployer(clientImpl), nil
 	case *client.EthereumClients:
 		return NewEthereumContractDeployer(clientImpl.DefaultClient), nil
+	case *client.TerraLCDClient:
+		return NewTerraContractDeployer(clientImpl), nil
 	}
 	return nil, errors.New("unknown blockchain client implementation")
+}
+
+// TerraContractDeployer provides the implementations for deploying Terra (Cosmos) based contracts
+type TerraContractDeployer struct {
+	client *client.TerraLCDClient
+}
+
+func (t *TerraContractDeployer) Balance(fromWallet client.BlockchainWallet) (*big.Float, error) {
+	panic("implement me")
+}
+
+func (t *TerraContractDeployer) CalculateETHForTXs(fromWallet client.BlockchainWallet, networkConfig *config.NetworkConfig, txs int64) (*big.Float, error) {
+	panic("implement me")
+}
+
+func (t *TerraContractDeployer) DeployStorageContract(fromWallet client.BlockchainWallet) (Storage, error) {
+	panic("implement me")
+}
+
+func (t *TerraContractDeployer) DeployAPIConsumer(fromWallet client.BlockchainWallet, linkAddr string) (APIConsumer, error) {
+	panic("implement me")
+}
+
+func (t *TerraContractDeployer) DeployOracle(fromWallet client.BlockchainWallet, linkAddr string) (Oracle, error) {
+	panic("implement me")
+}
+
+func (t *TerraContractDeployer) DeployReadAccessController(fromWallet client.BlockchainWallet) (ReadAccessController, error) {
+	panic("implement me")
+}
+
+func (t *TerraContractDeployer) DeployFlags(fromWallet client.BlockchainWallet, rac string) (Flags, error) {
+	panic("implement me")
+}
+
+func (t *TerraContractDeployer) DeployDeviationFlaggingValidator(fromWallet client.BlockchainWallet, flags string, flaggingThreshold *big.Int) (DeviationFlaggingValidator, error) {
+	panic("implement me")
+}
+
+func (t *TerraContractDeployer) DeployFluxAggregatorContract(fromWallet client.BlockchainWallet, fluxOptions FluxAggregatorOptions) (FluxAggregator, error) {
+	panic("implement me")
+}
+
+func (t *TerraContractDeployer) DeployOCRv2AccessController(fromWallet client.BlockchainWallet) (OCRv2AccessController, error) {
+	codeID, err := t.client.DeployWASMCode(fromWallet, "artifacts/access_controller.wasm")
+	if err != nil {
+		return nil, err
+	}
+	acAddr, err := t.client.Instantiate(fromWallet, codeID, actypes.InstantiateMsg{})
+	if err != nil {
+		return nil, err
+	}
+	return &TerraWASMAccessController{
+		client:       t.client,
+		callerWallet: fromWallet,
+		address:      acAddr,
+	}, nil
+}
+
+func (t *TerraContractDeployer) DeployOCRv2(
+	fromWallet client.BlockchainWallet,
+	paymentControllerAddr string,
+	requesterControllerAddr string,
+	linkTokenAddr string,
+) (OCRv2, error) {
+	bac, _ := msg.AccAddressFromBech32(paymentControllerAddr)
+	rac, _ := msg.AccAddressFromBech32(requesterControllerAddr)
+	link, _ := msg.AccAddressFromBech32(linkTokenAddr)
+	codeID, err := t.client.DeployWASMCode(fromWallet, "artifacts/ocr2.wasm")
+	if err != nil {
+		return nil, err
+	}
+	ocr2, err := t.client.Instantiate(fromWallet, codeID, ocr22.OCRv2InstantiateMsg{
+		BillingAccessController:   bac,
+		RequesterAccessController: rac,
+		LinkToken:                 link,
+		Decimals:                  8,
+		Description:               "ETH/USD",
+		MinAnswer:                 "1",
+		MaxAnswer:                 "10",
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &TerraWASMOCRv2{
+		client:       t.client,
+		callerWallet: fromWallet,
+		address:      ocr2,
+	}, nil
+}
+
+func (t *TerraContractDeployer) DeployLinkTokenContract(fromWallet client.BlockchainWallet) (LinkToken, error) {
+	codeID, err := t.client.DeployWASMCode(fromWallet, "artifacts/cw20_base.wasm")
+	if err != nil {
+		return nil, err
+	}
+	addr, _ := msg.AccAddressFromHex(fromWallet.Address())
+	linkAddr, err := t.client.Instantiate(fromWallet, codeID, cw20types.InstantiateMsg{
+		Name:     "LinkToken",
+		Symbol:   "LINK",
+		Decimals: 18,
+		InitialBalances: []cw20types.InitialBalanceMsg{
+			{
+				Address: addr,
+				Amount:  "1000000000",
+			},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &TerraWASMLinkToken{
+		client:       t.client,
+		callerWallet: fromWallet,
+		address:      linkAddr,
+	}, nil
+}
+
+func (t *TerraContractDeployer) DeployOffChainAggregator(fromWallet client.BlockchainWallet, offchainOptions OffchainOptions) (OffchainAggregator, error) {
+	panic("implement me")
+}
+
+func (t *TerraContractDeployer) DeployVRFContract(fromWallet client.BlockchainWallet) (VRF, error) {
+	panic("implement me")
+}
+
+func (t *TerraContractDeployer) DeployMockETHLINKFeed(fromWallet client.BlockchainWallet, answer *big.Int) (MockETHLINKFeed, error) {
+	panic("implement me")
+}
+
+func (t *TerraContractDeployer) DeployMockGasFeed(fromWallet client.BlockchainWallet, answer *big.Int) (MockGasFeed, error) {
+	panic("implement me")
+}
+
+func (t *TerraContractDeployer) DeployUpkeepRegistrationRequests(fromWallet client.BlockchainWallet, linkAddr string, minLinkJuels *big.Int) (UpkeepRegistrar, error) {
+	panic("implement me")
+}
+
+func (t *TerraContractDeployer) DeployKeeperRegistry(fromWallet client.BlockchainWallet, opts *KeeperRegistryOpts) (KeeperRegistry, error) {
+	panic("implement me")
+}
+
+func (t *TerraContractDeployer) DeployKeeperConsumer(fromWallet client.BlockchainWallet, updateInterval *big.Int) (KeeperConsumer, error) {
+	panic("implement me")
+}
+
+func (t *TerraContractDeployer) DeployVRFConsumer(fromWallet client.BlockchainWallet, linkAddr string, coordinatorAddr string) (VRFConsumer, error) {
+	panic("implement me")
+}
+
+func (t *TerraContractDeployer) DeployVRFCoordinator(fromWallet client.BlockchainWallet, linkAddr string, bhsAddr string) (VRFCoordinator, error) {
+	panic("implement me")
+}
+
+func (t *TerraContractDeployer) DeployBlockhashStore(fromWallet client.BlockchainWallet) (BlockHashStore, error) {
+	panic("implement me")
+}
+
+// NewTerraContractDeployer returns an instantiated instance of the Terra contract deployer
+func NewTerraContractDeployer(client *client.TerraLCDClient) *TerraContractDeployer {
+	return &TerraContractDeployer{
+		client,
+	}
 }
 
 // EthereumContractDeployer provides the implementations for deploying ETH (EVM) based contracts
 type EthereumContractDeployer struct {
 	eth *client.EthereumClient
+}
+
+func (e *EthereumContractDeployer) DeployOCRv2(
+	fromWallet client.BlockchainWallet,
+	paymentControllerAddr string,
+	requesterControllerAddr string,
+	linkTokenAddr string,
+) (OCRv2, error) {
+	panic("implement me")
+}
+
+func (e *EthereumContractDeployer) DeployOCRv2AccessController(fromWallet client.BlockchainWallet) (OCRv2AccessController, error) {
+	panic("implement me")
 }
 
 // NewEthereumContractDeployer returns an instantiated instance of the ETH contract deployer

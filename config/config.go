@@ -93,7 +93,10 @@ type ExternalSource struct {
 
 // NetworkConfig holds the basic values that identify a blockchain network and contains private keys on the network
 type NetworkConfig struct {
-	Name                 string `mapstructure:"name" yaml:"name"`
+	Name                 string   `mapstructure:"name" yaml:"name"`
+	ChainName            string   `mapstructure:"chain_name" yaml:"chain_name"`
+	Mnemonics            []string `mapstructure:"mnemonic" yaml:"mnemonic"`
+	Currency             string   `mapstructure:"currency" yaml:"currency"`
 	ClusterURL           string
 	LocalURL             string
 	URLS                 []string      `mapstructure:"urls" yaml:"urls"`
