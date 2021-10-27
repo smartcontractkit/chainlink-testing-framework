@@ -69,8 +69,8 @@ func NewExternalCharts(chartConfigs []ChartDeploymentConfig) K8sEnvSpecInit {
 	}
 }
 
-// NewExternalChainlinkCluster is a basic environment that deploys headless Chainlink cluster with a custom helm networks
-func NewExternalChainlinkCluster(nodeCount int, networkDeploymentConfigs []ChartDeploymentConfig) K8sEnvSpecInit {
+// NewChainlinkCustomNetworksCluster is a basic environment that deploys headless Chainlink cluster with a custom helm networks
+func NewChainlinkCustomNetworksCluster(nodeCount int, networkDeploymentConfigs []ChartDeploymentConfig) K8sEnvSpecInit {
 	chainlinkGroup := &K8sManifestGroup{
 		id:        "chainlinkCluster",
 		manifests: []K8sEnvResource{},

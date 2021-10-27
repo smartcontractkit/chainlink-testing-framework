@@ -2,6 +2,7 @@ package actions
 
 import (
 	"errors"
+	"fmt"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/contracts"
@@ -29,9 +30,12 @@ func EVMNetworkFromConfigHook(config *config.Config) (client.BlockchainNetwork, 
 // NetworksFromConfigHook networks from config hook
 func NetworksFromConfigHook(config *config.Config) ([]client.BlockchainNetwork, error) {
 	networks := make([]client.BlockchainNetwork, 0)
+	if len(config.NetworkConfigs) < 2 {
+		return nil, errors.New("at least 2 evm networks are required")
+	}
 	for _, networkName := range config.Networks {
-		if len(config.NetworkConfigs) < 2 {
-			return nil, errors.New("at least 2 evm networks are required")
+		if _, ok := config.NetworkConfigs[networkName]; !ok {
+			return nil, fmt.Errorf("'%s' is not a supported network name. Check the network configs in you config file", networkName)
 		}
 		net, err := client.NewEthereumNetwork(networkName, config.NetworkConfigs[networkName])
 		if err != nil {
