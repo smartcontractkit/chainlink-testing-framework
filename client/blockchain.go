@@ -5,11 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	cosmtypes "github.com/cosmos/cosmos-sdk/crypto/types"
-	"github.com/smartcontractkit/terra.go/key"
 	"math/big"
-	"os"
-	"reflect"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -24,8 +20,6 @@ import (
 const (
 	BlockchainTypeEVM          = "evm"
 	BlockchainTypeEVMMultinode = "evm_multi"
-	BlockchainTypeTerra        = "terra"
-	NetworkTypeTerraLocal      = "terra_local"
 	NetworkGethPerformance     = "ethereum_geth_performance"
 )
 
@@ -60,16 +54,14 @@ func NewBlockchainClient(network BlockchainNetwork) (BlockchainClient, error) {
 		return NewEthereumClient(network)
 	case BlockchainTypeEVMMultinode:
 		return NewEthereumClients(network)
-	case BlockchainTypeTerra:
-		return NewTerraClient(network)
 	}
 	return nil, errors.New("invalid blockchain network ID, not found")
 }
 
 // BlockchainNetwork is the interface that when implemented, defines a new blockchain network that can be tested against
 type BlockchainNetwork interface {
-	GasUsedEstimations
 	ID() string
+	WSEnabled() bool
 	ClusterURL() string
 	LocalURL() string
 	URLs() []string
@@ -83,12 +75,6 @@ type BlockchainNetwork interface {
 	Config() *config.NetworkConfig
 }
 
-// BlockchainNetworkInit is a helper function to obtain the network listed in the config file
-type BlockchainNetworkInit func(conf *config.Config) (BlockchainNetwork, error)
-
-// MultiNetworkInit is a helper function to create multiple blockchain networks at once
-type MultiNetworkInit func(conf *config.Config) ([]BlockchainNetwork, error)
-
 // EthereumNetwork is the implementation of BlockchainNetwork for the local ETH dev server
 type EthereumNetwork struct {
 	networkID     string
@@ -96,116 +82,11 @@ type EthereumNetwork struct {
 }
 
 // NewEthereumNetwork creates a way to interact with any specified EVM blockchain
-func newEthereumNetwork(ID string, networkConfig config.NetworkConfig) (BlockchainNetwork, error) {
+func NewEthereumNetwork(ID string, networkConfig config.NetworkConfig) (BlockchainNetwork, error) {
 	return &EthereumNetwork{
 		networkID:     ID,
 		networkConfig: &networkConfig,
 	}, nil
-}
-
-// TerraNetwork is the implementation of BlockchainNetwork for the local Terra dev server
-type TerraNetwork struct {
-	networkID     string
-	networkConfig *config.NetworkConfig
-}
-
-// FluxMonitorSubmissionGasUsed Flux Monitor one submission gasUsed value
-func (t *TerraNetwork) FluxMonitorSubmissionGasUsed() (*big.Int, error) {
-	panic("implement me")
-}
-
-// ID returns the readable name of the EVM network
-func (t *TerraNetwork) ID() string {
-	return t.networkID
-}
-
-// ClusterURL returns the RPC URL used for connecting to the network within the K8s cluster
-func (t *TerraNetwork) ClusterURL() string {
-	return t.networkConfig.ClusterURL
-}
-
-// LocalURL returns the RPC URL used for connecting to the network from outside the K8s cluster
-func (t *TerraNetwork) LocalURL() string {
-	return t.networkConfig.LocalURL
-}
-
-// URLs returns the RPC URLs used for connecting to the network nodes
-func (t TerraNetwork) URLs() []string {
-	panic("implement me")
-}
-
-// Type returns the readable type of the Terra network
-func (t *TerraNetwork) Type() string {
-	return t.networkConfig.Type
-}
-
-// SetClusterURL sets the RPC URL used to connect to the chain from within the K8s cluster
-func (t *TerraNetwork) SetClusterURL(s string) {
-	t.networkConfig.ClusterURL = s
-}
-
-// SetLocalURL sets the RPC URL used to connect to the chain from outside the K8s cluster
-func (t *TerraNetwork) SetLocalURL(s string) {
-	t.networkConfig.LocalURL = s
-}
-
-// SetURLs sets all nodes URLs
-func (t *TerraNetwork) SetURLs(urls []string) {
-	t.networkConfig.URLS = urls
-}
-
-// ChainID returns the on-chain ID of the network being connected to
-func (t *TerraNetwork) ChainID() *big.Int {
-	return big.NewInt(t.networkConfig.ChainID)
-}
-
-// RemotePort returns the remote RPC port of the network
-func (t *TerraNetwork) RemotePort() uint16 {
-	return t.networkConfig.RPCPort
-}
-
-// Wallets returns all the viable wallets used for testing on chain
-func (t *TerraNetwork) Wallets() (BlockchainWallets, error) {
-	return newTerraWallets(t.networkConfig.PrivateKeyStore)
-}
-
-// Config returns the blockchain network configuration
-func (t *TerraNetwork) Config() *config.NetworkConfig {
-	return t.networkConfig
-}
-
-func newTerraNetwork(ID string, networkConfig config.NetworkConfig) (BlockchainNetwork, error) {
-	return &TerraNetwork{
-		networkID:     ID,
-		networkConfig: &networkConfig,
-	}, nil
-}
-
-// DefaultNetworkFromConfig prepares settings for a connection the default blockchain specified in the config file
-func DefaultNetworkFromConfig(conf *config.Config) (BlockchainNetwork, error) {
-	if len(conf.Networks) <= 0 {
-		return nil, fmt.Errorf("No default network(s) provided in config")
-	}
-	return NewNetworkFromConfig(conf, conf.Networks[0])
-}
-
-// DefaultNetworksFromConfig prepares settings for multiple connections to the default blockchains specified in the config file
-func DefaultNetworksFromConfig(conf *config.Config) ([]BlockchainNetwork, error) {
-	if len(conf.Networks) <= 0 {
-		return nil, fmt.Errorf("No default networks provided in config")
-	} else if len(conf.Networks) == 1 {
-		return nil, fmt.Errorf("Only one network provided in config: '%s'", conf.Networks[0])
-	}
-
-	networks := []BlockchainNetwork{}
-	for _, networkID := range conf.Networks {
-		network, err := NewNetworkFromConfig(conf, networkID)
-		if err != nil {
-			return nil, err
-		}
-		networks = append(networks, network)
-	}
-	return networks, nil
 }
 
 // NewNetworkFromConfig creates a new blockchain network based on the ID
@@ -216,9 +97,7 @@ func NewNetworkFromConfig(conf *config.Config, networkID string) (BlockchainNetw
 	}
 	switch networkConfig.Type {
 	case BlockchainTypeEVM, BlockchainTypeEVMMultinode:
-		return newEthereumNetwork(networkID, networkConfig)
-	case BlockchainTypeTerra:
-		return newTerraNetwork(networkID, networkConfig)
+		return NewEthereumNetwork(networkID, networkConfig)
 	}
 	return nil, fmt.Errorf(
 		"network %s uses an unspported network type of: %s",
@@ -227,29 +106,22 @@ func NewNetworkFromConfig(conf *config.Config, networkID string) (BlockchainNetw
 	)
 }
 
-// NewNetworkFromConfigWithDefault will return a new network with config but with a customisable default in-case a test
-// needs a different default from the config file default. For example, performance tests usually need a "performance"
-// network with higher gas limits than the vanilla Geth network.
-func NewNetworkFromConfigWithDefault(networkID string) BlockchainNetworkInit {
-	return func(conf *config.Config) (BlockchainNetwork, error) {
-		if conf == nil {
-			return nil, errors.New("nil config was provided")
-		}
-		// Get the "yaml" tag on the config struct to check whether the ENV override has been specified and if so
-		// use the override rather than the default given
-		ct := reflect.TypeOf(*conf)
-		field := ct.Field(0)
-		networkKey := field.Tag.Get("yaml")
-		if len(os.Getenv(strings.ToUpper(networkKey))) == 0 {
-			conf.Networks = []string{networkID}
-		}
-		return DefaultNetworkFromConfig(conf)
+// DefaultNetworkFromConfig prepares settings for a connection the default blockchain specified in the config file
+func DefaultNetworkFromConfig(conf *config.Config) (BlockchainNetwork, error) {
+	if len(conf.Networks) <= 0 {
+		return nil, fmt.Errorf("No default network(s) provided in config")
 	}
+	return NewNetworkFromConfig(conf, conf.Networks[0])
 }
 
 // ID returns the readable name of the EVM network
 func (e *EthereumNetwork) ID() string {
 	return e.networkID
+}
+
+// WSEnabled returns true if network support websocket endpoint
+func (e *EthereumNetwork) WSEnabled() bool {
+	return true
 }
 
 // Type returns the readable type of the EVM network
@@ -307,14 +179,6 @@ func (e *EthereumNetwork) Wallets() (BlockchainWallets, error) {
 	return newEthereumWallets(e.networkConfig.PrivateKeyStore)
 }
 
-// FluxMonitorSubmissionGasUsed Flux Monitor one submission gasUsed value
-func (e *EthereumNetwork) FluxMonitorSubmissionGasUsed() (*big.Int, error) {
-	if strings.HasPrefix(e.networkConfig.Name, "ethereum-geth") {
-		return big.NewInt(400000), nil
-	}
-	return nil, fmt.Errorf("gas used estimation unavailable for the network name '%s'", e.networkConfig.Name)
-}
-
 // BlockchainWallets is an interface that when implemented is a representation of a slice of wallets for
 // a specific network
 type BlockchainWallets interface {
@@ -326,35 +190,35 @@ type BlockchainWallets interface {
 
 // Wallets is the default implementation of BlockchainWallets that holds a slice of wallets with the default
 type Wallets struct {
-	defaultWallet int
-	wallets       []BlockchainWallet
+	DefaultWallet int
+	Wallets       []BlockchainWallet
 }
 
 // Default returns the default wallet to be used for a transaction on-chain
 func (w *Wallets) Default() BlockchainWallet {
-	return w.wallets[w.defaultWallet]
+	return w.Wallets[w.DefaultWallet]
 }
 
 // All returns the raw representation of Wallets
 func (w *Wallets) All() []BlockchainWallet {
-	return w.wallets
+	return w.Wallets
 }
 
 // SetDefault changes the default wallet to be used for on-chain transactions
 func (w *Wallets) SetDefault(i int) error {
-	if err := walletSliceIndexInRange(w.wallets, i); err != nil {
+	if err := walletSliceIndexInRange(w.Wallets, i); err != nil {
 		return err
 	}
-	w.defaultWallet = i
+	w.DefaultWallet = i
 	return nil
 }
 
 // Wallet returns a wallet based on a given index in the slice
 func (w *Wallets) Wallet(i int) (BlockchainWallet, error) {
-	if err := walletSliceIndexInRange(w.wallets, i); err != nil {
+	if err := walletSliceIndexInRange(w.Wallets, i); err != nil {
 		return nil, err
 	}
-	return w.wallets[i], nil
+	return w.Wallets[i], nil
 }
 
 // BlockchainWallet when implemented is the interface to allow multiple wallet implementations for each
@@ -415,69 +279,8 @@ func newEthereumWallets(pkStore config.PrivateKeyStore) (BlockchainWallets, erro
 	}
 
 	return &Wallets{
-		defaultWallet: 0,
-		wallets:       processedWallets,
-	}, nil
-}
-
-// TerraWallet is the implementation to allow testing with Terra based wallets
-// only first derived key for each mnemonic is used now (rawPrivateKey)
-type TerraWallet struct {
-	mnemonic      string
-	rawPrivateKey key.PrivKey
-	privateKey    string
-	address       cosmtypes.Address
-}
-
-// NewTerraWallet returns the instantiated Terra wallet based on a given mnemonic with 0,0 derivation path
-func NewTerraWallet(mnemonic string) (*TerraWallet, error) {
-	privKeyBz, err := key.DerivePrivKeyBz(mnemonic, key.CreateHDPath(0, 0))
-	if err != nil {
-		return nil, err
-	}
-	privKey, err := key.PrivKeyGen(privKeyBz)
-	if err != nil {
-		return nil, err
-	}
-	return &TerraWallet{
-		mnemonic:      mnemonic,
-		rawPrivateKey: privKey,
-		privateKey:    privKey.String(),
-		address:       privKey.PubKey().Address(),
-	}, nil
-}
-
-// RawPrivateKey returns raw private key if it has some encoding or in bytes
-func (e *TerraWallet) RawPrivateKey() interface{} {
-	return e.rawPrivateKey
-}
-
-// PrivateKey returns the private key for a given Terra wallet
-func (e *TerraWallet) PrivateKey() string {
-	return e.privateKey
-}
-
-// Address returns the Terra address for a given wallet
-func (e *TerraWallet) Address() string {
-	return e.address.String()
-}
-
-func newTerraWallets(pkStore config.PrivateKeyStore) (BlockchainWallets, error) {
-	var processedWallets []BlockchainWallet
-	keys, err := pkStore.Fetch()
-	if err != nil {
-		return nil, err
-	}
-	for _, k := range keys {
-		wallet, err := NewTerraWallet(strings.TrimSpace(k))
-		if err != nil {
-			return &Wallets{}, err
-		}
-		processedWallets = append(processedWallets, wallet)
-	}
-	return &Wallets{
-		defaultWallet: 0,
-		wallets:       processedWallets,
+		DefaultWallet: 0,
+		Wallets:       processedWallets,
 	}, nil
 }
 
@@ -498,9 +301,4 @@ type NodeBlock struct {
 type HeaderEventSubscription interface {
 	ReceiveBlock(header NodeBlock) error
 	Wait() error
-}
-
-// GasUsedEstimations contains some known gas values for contracts for every network
-type GasUsedEstimations interface {
-	FluxMonitorSubmissionGasUsed() (*big.Int, error)
 }

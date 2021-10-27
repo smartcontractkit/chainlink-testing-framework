@@ -5,6 +5,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/tools"
+	"github.com/smartcontractkit/integrations-framework/types"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
@@ -24,7 +25,7 @@ var _ = Describe("Environment functionality @unit", func() {
 	})
 
 	DescribeTable("single network environments", func(
-		initFunc client.BlockchainNetworkInit,
+		initFunc types.NewNetworkHook,
 		envInitFunc K8sEnvSpecInit,
 		nodeCount int,
 	) {

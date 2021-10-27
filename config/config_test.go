@@ -2,9 +2,9 @@ package config_test
 
 import (
 	"fmt"
+	"github.com/smartcontractkit/integrations-framework/client"
 	"os"
 
-	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/environment"
 

@@ -79,13 +79,6 @@ private_keys: &private_keys
         - df57089febbacf7ba0bc227dafbffa9fc08a93fdc68e1e42411a14efcf23656e
 
 network_configs:
-    terra_local:
-        name: "LocalTerra"
-        chain_name: "localterra"
-        currency: "uluna"
-        <<: *terra_mnemonics
-        type: terra
-        rpc_port: 1317
     ethereum_geth: &common_ethereum
         name: "Ethereum Geth dev"
         chain_id: 1337

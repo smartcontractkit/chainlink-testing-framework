@@ -2,7 +2,6 @@ package integration
 
 import (
 	"fmt"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/smartcontractkit/integrations-framework/actions"
@@ -24,8 +23,9 @@ var _ = Describe("Cronjob suite @cron", func() {
 		By("Deploying the environment", func() {
 			suiteSetup, err = actions.SingleNetworkSetup(
 				environment.NewChainlinkCluster(1),
-				client.DefaultNetworkFromConfig,
-				nil,
+				actions.EVMNetworkFromConfigHook,
+				actions.EthereumDeployerHook,
+				actions.EthereumClientHook,
 				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())

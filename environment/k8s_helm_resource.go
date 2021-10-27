@@ -91,6 +91,11 @@ func (k *HelmChart) SetEnvironment(environment *K8sEnvironment) error {
 	return nil
 }
 
+// Environment gets environment
+func (k *HelmChart) Environment() *K8sEnvironment {
+	return k.env
+}
+
 func (k *HelmChart) forwardAllPodsPorts() error {
 	k8sPods := k.env.k8sClient.CoreV1().Pods(k.env.namespace.Name)
 	pods, err := k8sPods.List(context.Background(), metaV1.ListOptions{

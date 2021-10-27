@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
-	"github.com/smartcontractkit/integrations-framework/tools"
 	"github.com/spf13/viper"
 )
 
@@ -186,7 +185,6 @@ func NewConfig(configPath string) (*Config, error) {
 	v.SetConfigName("config")
 	v.SetConfigType("yml")
 	v.AddConfigPath(configPath)
-	v.AddConfigPath(tools.ProjectRoot)
 
 	if err := v.ReadInConfig(); err != nil {
 		return nil, err

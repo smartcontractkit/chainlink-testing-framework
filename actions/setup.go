@@ -2,6 +2,7 @@ package actions
 
 import (
 	"fmt"
+	"github.com/smartcontractkit/integrations-framework/types"
 	"os"
 	"path/filepath"
 	"strings"
@@ -24,9 +25,6 @@ const (
 	KeepEnvironmentsAlways = "always"
 )
 
-// ExternalDeployerFunc external deployer function
-type ExternalDeployerFunc func(c client.BlockchainClient) (contracts.ContractDeployer, error)
-
 // NetworkInfo helps delineate network information in a multi-network setup
 type NetworkInfo struct {
 	Client   client.BlockchainClient
@@ -37,34 +35,21 @@ type NetworkInfo struct {
 }
 
 // NewNetworkInfo initializes the network's blockchain client and gathers all test-relevant network information
-func NewNetworkInfo(network client.BlockchainNetwork, extDepFunc ExternalDeployerFunc, env environment.Environment) (NetworkInfo, error) {
-	// Initialize blockchain client
-	var bcc client.BlockchainClient
-	var err error
-	switch network.Config().Type {
-	case client.BlockchainTypeEVMMultinode:
-		bcc, err = environment.NewBlockchainClients(env, network)
-	case client.BlockchainTypeEVM:
-		bcc, err = environment.NewBlockchainClient(env, network)
-	case client.BlockchainTypeTerra:
-		bcc, err = environment.NewBlockchainClient(env, network)
-	}
+func NewNetworkInfo(
+	network client.BlockchainNetwork,
+	clientFunc types.NewClientHook,
+	extDepFunc types.NewDeployerHook,
+	env environment.Environment,
+) (NetworkInfo, error) {
+	bcc, err := environment.NewExternalBlockchainClient(clientFunc, env, network)
 	if err != nil {
 		return NetworkInfo{}, err
 	}
-
-	// Initialize wallets
 	wallets, err := network.Wallets()
 	if err != nil {
 		return NetworkInfo{}, err
 	}
-	// use default deployer for client or provided func
-	var contractDeployer contracts.ContractDeployer
-	if extDepFunc != nil {
-		contractDeployer, err = extDepFunc(bcc)
-	} else {
-		contractDeployer, err = contracts.NewContractDeployer(bcc)
-	}
+	contractDeployer, err := extDepFunc(bcc)
 	if err != nil {
 		return NetworkInfo{}, err
 	}
@@ -100,11 +85,12 @@ type SingleNetworkSuiteSetup struct {
 	network NetworkInfo
 }
 
-// SingleNetworkSetup setup minimum required components for test
-func SingleNetworkSetup(
+// ExternalSingleNetworkEnvironmentSetup setup minimum required components for test
+func ExternalSingleNetworkEnvironmentSetup(
 	initialDeployInitFunc environment.K8sEnvSpecInit,
-	initFunc client.BlockchainNetworkInit,
-	deployerFunc ExternalDeployerFunc,
+	initFunc types.NewNetworkHook,
+	deployerFunc types.NewDeployerHook,
+	clientFunc types.NewClientHook,
 	configPath string,
 ) (SuiteSetup, error) {
 	conf, err := config.NewConfig(configPath)
@@ -125,7 +111,7 @@ func SingleNetworkSetup(
 		return nil, err
 	}
 
-	networkInfo, err := NewNetworkInfo(network, deployerFunc, env)
+	networkInfo, err := NewNetworkInfo(network, clientFunc, deployerFunc, env)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +121,92 @@ func SingleNetworkSetup(
 	retry.DefaultDelayType = func(n uint, err error, config *retry.Config) time.Duration {
 		return conf.Retry.LinearDelay
 	}
+	return &SingleNetworkSuiteSetup{
+		config:  conf,
+		env:     env,
+		network: networkInfo,
+	}, nil
+}
 
+// ExternalNetworkSetup setup minimum required components for test using external network deployment
+func ExternalNetworkSetup(
+	initialDeployInitFunc environment.K8sEnvSpecInit,
+	initFunc types.NewNetworkHook,
+	deployerFunc types.NewDeployerHook,
+	clientFunc types.NewClientHook,
+	configPath string,
+) (SuiteSetup, error) {
+	conf, err := config.NewConfig(configPath)
+	if err != nil {
+		return nil, err
+	}
+	network, err := initFunc(conf)
+	if err != nil {
+		return nil, err
+	}
+
+	env, err := environment.NewK8sEnvironment(conf, network)
+	if err != nil {
+		return nil, err
+	}
+	err = env.DeploySpecs(initialDeployInitFunc)
+	if err != nil {
+		return nil, err
+	}
+
+	networkInfo, err := NewNetworkInfo(network, clientFunc, deployerFunc, env)
+	if err != nil {
+		return nil, err
+	}
+
+	// configure default retry
+	retry.DefaultAttempts = conf.Retry.Attempts
+	retry.DefaultDelayType = func(n uint, err error, config *retry.Config) time.Duration {
+		return conf.Retry.LinearDelay
+	}
+	return &SingleNetworkSuiteSetup{
+		config:  conf,
+		env:     env,
+		network: networkInfo,
+	}, nil
+}
+
+// SingleNetworkSetup setup minimum required components for test
+func SingleNetworkSetup(
+	initialDeployInitFunc environment.K8sEnvSpecInit,
+	initFunc types.NewNetworkHook,
+	deployerFunc types.NewDeployerHook,
+	clientFunc types.NewClientHook,
+	configPath string,
+) (SuiteSetup, error) {
+	conf, err := config.NewConfig(configPath)
+	if err != nil {
+		return nil, err
+	}
+	network, err := initFunc(conf)
+	if err != nil {
+		return nil, err
+	}
+
+	env, err := environment.NewK8sEnvironment(conf, network)
+	if err != nil {
+		return nil, err
+	}
+	err = env.DeploySpecs(initialDeployInitFunc)
+	if err != nil {
+		return nil, err
+	}
+
+	networkInfo, err := NewNetworkInfo(network, clientFunc, deployerFunc, env)
+	if err != nil {
+		return nil, err
+	}
+
+	// configure default retry
+	retry.DefaultAttempts = conf.Retry.Attempts
+	retry.DefaultDelayType = func(n uint, err error, config *retry.Config) time.Duration {
+		return conf.Retry.LinearDelay
+	}
 	return &SingleNetworkSuiteSetup{
 		config:  conf,
 		env:     env,
@@ -184,8 +255,9 @@ type multiNetworkSuiteSetup struct {
 // MultiNetworkSetup enables testing across multiple networks
 func MultiNetworkSetup(
 	initialDeployInitFunc environment.K8sEnvSpecInit,
-	multiNetworkInitialization client.MultiNetworkInit,
-	deployerFunc ExternalDeployerFunc,
+	multiNetworkInitialization types.NewMultinetworkHook,
+	deployerFunc types.NewDeployerHook,
+	clientFunc types.NewClientHook,
 	configPath string,
 ) (SuiteSetup, error) {
 	conf, err := config.NewConfig(configPath)
@@ -209,7 +281,7 @@ func MultiNetworkSetup(
 
 	allNetworks := make([]NetworkInfo, len(networks))
 	for index, network := range networks {
-		networkInfo, err := NewNetworkInfo(network, deployerFunc, env)
+		networkInfo, err := NewNetworkInfo(network, clientFunc, deployerFunc, env)
 		if err != nil {
 			return nil, err
 		}

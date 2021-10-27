@@ -11,7 +11,7 @@ spec:
         secret:
           secretName: {{ .Manifest.Secret.ObjectMeta.Name }}
       containers:
-      - name: node
+      - name: node-{{ .Values.chainlinkCluster.chainlink.idx }}
         image: {{ .Config.Apps.Chainlink.Image }}:{{ .Config.Apps.Chainlink.Version }}
         imagePullPolicy: IfNotPresent
         args:

@@ -40,18 +40,57 @@ const (
 	MinersRPCPort     uint16 = 9545
 )
 
-// Terra ports
-const (
-	TerraLCDPort uint16 = 1317
-	TerraFCDPort uint16 = 3060
-)
-
 var (
 	defaultChainlinkAuthMap = map[string][]byte{
 		"apicredentials": []byte("notreal@fakeemail.ch\ntwochains"),
 		"node-password":  []byte("T.tLHkcmwePT/p,]sYuntjwHKAsrhm#4eRs4LuKHwvHejWYAC2JP4M8HimwgmbaZ"),
 	}
 )
+
+// ChartDeploymentConfig chart deployment configs
+type ChartDeploymentConfig struct {
+	Name          string
+	Path          string
+	Values        map[string]interface{}
+	SetValuesFunc SetValuesHelmFunc
+}
+
+// NewExternalCharts create new charts from chart configs
+func NewExternalCharts(chartConfigs []ChartDeploymentConfig) K8sEnvSpecInit {
+	envSpecs := make([]K8sEnvResource, 0)
+	for _, cfg := range chartConfigs {
+		envSpecs = append(envSpecs, &K8sManifestGroup{
+			id:        "ExternalDependencyGroup",
+			manifests: []K8sEnvResource{NewExternalChart(cfg)},
+		})
+	}
+	return func(networks ...client.BlockchainNetwork) K8sEnvSpecs {
+		return envSpecs
+	}
+}
+
+// NewExternalChainlinkCluster is a basic environment that deploys headless Chainlink cluster with a custom helm networks
+func NewExternalChainlinkCluster(nodeCount int, networkDeploymentConfigs []ChartDeploymentConfig) K8sEnvSpecInit {
+	chainlinkGroup := &K8sManifestGroup{
+		id:        "chainlinkCluster",
+		manifests: []K8sEnvResource{},
+	}
+	for i := 0; i < nodeCount; i++ {
+		cManifest := NewHeadlessChainlinkManifest(i)
+		cManifest.id = fmt.Sprintf("%s-%d", cManifest.id, i)
+		chainlinkGroup.manifests = append(chainlinkGroup.manifests, cManifest)
+	}
+	dependencyGroup := getBasicDependencyGroup()
+	addPostgresDbsToDependencyGroup(dependencyGroup, nodeCount)
+	return func(networks ...client.BlockchainNetwork) K8sEnvSpecs {
+		var specs K8sEnvSpecs
+		for _, dc := range networkDeploymentConfigs {
+			specs = append(specs, NewExternalChart(dc))
+		}
+		specs = append(specs, dependencyGroup, chainlinkGroup)
+		return specs
+	}
+}
 
 // NewAdapterManifest is the k8s manifest that when used will deploy an external adapter to an environment
 func NewAdapterManifest() *K8sManifest {
@@ -80,13 +119,14 @@ func NewAdapterManifest() *K8sManifest {
 }
 
 // NewHeadlessChainlinkManifest is the k8s manifest for Chainlink node without network, using only EI to get network data
-func NewHeadlessChainlinkManifest() *K8sManifest {
+func NewHeadlessChainlinkManifest(idx int) *K8sManifest {
 	return &K8sManifest{
 		id:             "chainlink",
 		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/chainlink/chainlink-deployment.yml"),
 		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/chainlink/chainlink-service.yml"),
 
 		values: map[string]interface{}{
+			"idx":                         idx,
 			"webPort":                     ChainlinkWebPort,
 			"p2pPort":                     ChainlinkP2PPort,
 			"eth_disabled":                true,
@@ -104,13 +144,14 @@ func NewHeadlessChainlinkManifest() *K8sManifest {
 }
 
 // NewChainlinkManifest is the k8s manifest that when used will deploy a chainlink node to an environment
-func NewChainlinkManifest() *K8sManifest {
+func NewChainlinkManifest(idx int) *K8sManifest {
 	return &K8sManifest{
 		id:             "chainlink",
 		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/chainlink/chainlink-deployment.yml"),
 		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/chainlink/chainlink-service.yml"),
 
 		values: map[string]interface{}{
+			"idx":                         idx,
 			"webPort":                     ChainlinkWebPort,
 			"p2pPort":                     ChainlinkP2PPort,
 			"eth_disabled":                false,
@@ -268,7 +309,7 @@ func NewPrometheusManifest(rules map[string]*os.File) *K8sManifest {
 // NewGethManifest is the k8s manifest that when used will deploy geth to an environment
 func NewGethManifest(networkCount int, network *config.NetworkConfig) *K8sManifest {
 	network.Name = fmt.Sprintf("ethereum-geth-%d", networkCount)
-	network.RPCPort = getFreePort()
+	network.RPCPort = GetFreePort()
 	return &K8sManifest{
 		id:             network.Name,
 		DeploymentFile: filepath.Join(tools.ProjectRoot, "environment/templates/geth-deployment.yml"),
@@ -293,54 +334,21 @@ func NewGethManifest(networkCount int, network *config.NetworkConfig) *K8sManife
 	}
 }
 
-// NewTerraRelayHelmChart creates new helm chart for Terra network relay
-func NewTerraRelayHelmChart(idx int) *HelmChart {
+// NewExternalChart creates new helm chart
+func NewExternalChart(cfg ChartDeploymentConfig) *HelmChart {
 	return &HelmChart{
-		id:          fmt.Sprintf("terra-relay-%d", idx),
-		chartPath:   filepath.Join(tools.ProjectRoot, "environment/charts/terra-relay"),
-		releaseName: fmt.Sprintf("terra-relay-%d", idx),
-		values: map[string]interface{}{
-			"idx": idx,
-		},
-		SetValuesHelmFunc: func(k *HelmChart) error {
-			return nil
-		},
-	}
-}
-
-// NewLocalTerraHelmChart creates new helm chart for Terra network with Lite/Full chain clients
-func NewLocalTerraHelmChart(networkCount int, network *config.NetworkConfig) *HelmChart {
-	network.Name = fmt.Sprintf("localterra-%d", networkCount)
-	network.RPCPort = getFreePort()
-	return &HelmChart{
-		id:          network.Name,
-		chartPath:   filepath.Join(tools.ProjectRoot, "environment/charts/localterra"),
-		releaseName: "localterra-1",
-		network:     network,
-		values: map[string]interface{}{
-			"rpcPort": network.RPCPort,
-		},
-		SetValuesHelmFunc: func(k *HelmChart) error {
-			details, err := k.ServiceDetails()
-			if err != nil {
-				return err
-			}
-			for _, d := range details {
-				if d.RemoteURL.Port() == strconv.Itoa(int(TerraLCDPort)) {
-					network.ClusterURL = d.RemoteURL.String()
-					network.LocalURL = d.LocalURL.String()
-				}
-			}
-			k.values["rpcPort"] = getFreePort()
-			return nil
-		},
+		id:                fmt.Sprintf("%s-%d", cfg.Name, cfg.Values["idx"]),
+		chartPath:         cfg.Path,
+		releaseName:       fmt.Sprintf("%s-%d", cfg.Name, cfg.Values["idx"]),
+		values:            cfg.Values,
+		SetValuesHelmFunc: cfg.SetValuesFunc,
 	}
 }
 
 // NewGethReorgHelmChart creates new helm chart for multi-node Geth network
 func NewGethReorgHelmChart(networkCount int, network *config.NetworkConfig) *HelmChart {
 	network.Name = fmt.Sprintf("ethereum-geth-reorg-%d", networkCount)
-	network.RPCPort = getFreePort()
+	network.RPCPort = GetFreePort()
 	return &HelmChart{
 		id:          network.Name,
 		chartPath:   filepath.Join(tools.ProjectRoot, "environment/charts/geth-reorg"),
@@ -360,7 +368,7 @@ func NewGethReorgHelmChart(networkCount int, network *config.NetworkConfig) *Hel
 					network.LocalURL = strings.Replace(d.LocalURL.String(), "http", "ws", -1)
 				}
 			}
-			k.values["rpcPort"] = getFreePort()
+			k.values["rpcPort"] = GetFreePort()
 			return nil
 		},
 	}
@@ -369,7 +377,7 @@ func NewGethReorgHelmChart(networkCount int, network *config.NetworkConfig) *Hel
 // NewHardhatManifest is the k8s manifest that when used will deploy hardhat to an environment
 func NewHardhatManifest(networkCount int, network *config.NetworkConfig) *K8sManifest {
 	network.Name = fmt.Sprintf("ethereum-hardhat-%d", networkCount)
-	network.RPCPort = getFreePort()
+	network.RPCPort = GetFreePort()
 	return &K8sManifest{
 		id:             network.Name,
 		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/hardhat-deployment.yml"),
@@ -397,7 +405,7 @@ func NewHardhatManifest(networkCount int, network *config.NetworkConfig) *K8sMan
 // NewGanacheManifest is the k8s manifest that when used will deploy ganache to an environment
 func NewGanacheManifest(networkCount int, network *config.NetworkConfig) *K8sManifest {
 	network.Name = fmt.Sprintf("ethereum-ganache-%d", networkCount)
-	network.RPCPort = getFreePort()
+	network.RPCPort = GetFreePort()
 	return &K8sManifest{
 		id:             network.Name,
 		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/ganache-deployment.yml"),
@@ -421,38 +429,6 @@ func NewGanacheManifest(networkCount int, network *config.NetworkConfig) *K8sMan
 	}
 }
 
-// NewRelays adds new External Initiators (Relays) specs
-func NewRelays(nodeCount int) K8sEnvSpecInit {
-	envSpecs := make([]K8sEnvResource, 0)
-	for i := 0; i < nodeCount; i++ {
-		envSpecs = append(envSpecs, &K8sManifestGroup{
-			id:        "TerraRelayDependencyGroup",
-			manifests: []K8sEnvResource{NewTerraRelayHelmChart(i)},
-		})
-	}
-	return func(networks ...client.BlockchainNetwork) K8sEnvSpecs {
-		return envSpecs
-	}
-}
-
-// NewChainlinkHeadlessCluster is a basic environment that deploys headless Chainlink cluster without direct connection to the network
-func NewChainlinkHeadlessCluster(nodeCount int) K8sEnvSpecInit {
-	chainlinkGroup := &K8sManifestGroup{
-		id:        "chainlinkCluster",
-		manifests: []K8sEnvResource{},
-	}
-	for i := 0; i < nodeCount; i++ {
-		cManifest := NewHeadlessChainlinkManifest()
-		cManifest.id = fmt.Sprintf("%s-%d", cManifest.id, i)
-		chainlinkGroup.manifests = append(chainlinkGroup.manifests, cManifest)
-	}
-
-	dependencyGroup := getBasicDependencyGroup()
-	addPostgresDbsToDependencyGroup(dependencyGroup, nodeCount)
-	dependencyGroups := []*K8sManifestGroup{dependencyGroup}
-	return addNetworkManifestToDependencyGroup(chainlinkGroup, dependencyGroups)
-}
-
 // NewChainlinkCluster is a basic environment that deploys hardhat with a chainlink cluster and an external adapter
 func NewChainlinkCluster(nodeCount int) K8sEnvSpecInit {
 	mockserverConfigDependencyGroup := &K8sManifestGroup{
@@ -470,7 +446,7 @@ func NewChainlinkCluster(nodeCount int) K8sEnvSpecInit {
 		manifests: []K8sEnvResource{},
 	}
 	for i := 0; i < nodeCount; i++ {
-		cManifest := NewChainlinkManifest()
+		cManifest := NewChainlinkManifest(i)
 		cManifest.id = fmt.Sprintf("%s-%d", cManifest.id, i)
 		chainlinkGroup.manifests = append(chainlinkGroup.manifests, cManifest)
 	}
@@ -499,7 +475,7 @@ func NewChainlinkClusterForObservabilityTesting(nodeCount int) K8sEnvSpecInit {
 		manifests: []K8sEnvResource{},
 	}
 	for i := 0; i < nodeCount; i++ {
-		cManifest := NewChainlinkManifest()
+		cManifest := NewChainlinkManifest(i)
 		cManifest.id = fmt.Sprintf("%s-%d", cManifest.id, i)
 		chainlinkGroup.manifests = append(chainlinkGroup.manifests, cManifest)
 	}
@@ -554,7 +530,7 @@ func NewMixedVersionChainlinkCluster(nodeCount, pastVersionsCount int) K8sEnvSpe
 		manifests: []K8sEnvResource{},
 	}
 	for i := 0; i < nodeCount; i++ {
-		cManifest := NewChainlinkManifest()
+		cManifest := NewChainlinkManifest(i)
 		cManifest.id = fmt.Sprintf("%s-%d", cManifest.id, i)
 		cManifest.values["image"] = mixedImages[i%len(mixedImages)]
 		cManifest.values["version"] = mixedVersions[i%len(mixedVersions)]
@@ -645,15 +621,9 @@ func addNetworkManifestToDependencyGroup(chainlinkGroup *K8sManifestGroup, depen
 			"Ethereum Geth":    0,
 			"Ethereum Hardhat": 0,
 			"Ethereum Ganache": 0,
-			"LocalTerra":       0,
 		}
 		for _, network := range networks {
 			switch network.Config().Name {
-			case "LocalTerra":
-				dependencyGroups[indexOfLastElementInDependencyGroups].manifests = append(
-					dependencyGroups[indexOfLastElementInDependencyGroups].manifests,
-					NewLocalTerraHelmChart(networkCounts["LocalTerra"], network.Config()))
-				networkCounts["LocalTerra"] += 1
 			case "Ethereum Geth reorg":
 				dependencyGroups[indexOfLastElementInDependencyGroups].manifests = append(
 					dependencyGroups[indexOfLastElementInDependencyGroups].manifests,

@@ -34,8 +34,9 @@ var _ = Describe("FluxAggregator ETH Refill @refill", func() {
 		By("Deploying the environment", func() {
 			suiteSetup, err = actions.SingleNetworkSetup(
 				environment.NewChainlinkCluster(3),
-				client.DefaultNetworkFromConfig,
-				nil,
+				actions.EVMNetworkFromConfigHook,
+				actions.EthereumDeployerHook,
+				actions.EthereumClientHook,
 				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -115,7 +116,7 @@ var _ = Describe("FluxAggregator ETH Refill @refill", func() {
 		})
 
 		By("Funding ETH for a single round", func() {
-			submissionGasUsed, err := networkInfo.Network.FluxMonitorSubmissionGasUsed()
+			submissionGasUsed := big.NewInt(400000)
 			Expect(err).ShouldNot(HaveOccurred())
 			txCost, err := networkInfo.Client.CalculateTxGas(submissionGasUsed)
 			Expect(err).ShouldNot(HaveOccurred())
