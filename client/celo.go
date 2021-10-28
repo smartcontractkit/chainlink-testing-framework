@@ -18,8 +18,8 @@ import (
 	"github.com/celo-org/celo-blockchain/accounts/abi/bind"
 	"github.com/celo-org/celo-blockchain/common"
 	"github.com/celo-org/celo-blockchain/core/types"
-	"github.com/celo-org/celo-blockchain/crypto"
 	"github.com/celo-org/celo-blockchain/ethclient"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rs/zerolog/log"
 )
 
@@ -227,7 +227,7 @@ type CeloContractDeployer func(auth *bind.TransactOpts, backend bind.ContractBac
 
 // NewCeloClient returns an instantiated instance of the Celo client that has connected to the server
 func NewCeloClient(network BlockchainNetwork) (*CeloClient, error) {
-	cl, err := ethclient.Dial(network.URL())
+	cl, err := ethclient.Dial(network.LocalURL())
 	if err != nil {
 		return nil, err
 	}
@@ -253,7 +253,7 @@ func NewCeloClient(network BlockchainNetwork) (*CeloClient, error) {
 func NewCeloClients(network BlockchainNetwork) (*CeloClients, error) {
 	ecl := &CeloClients{Clients: make([]*CeloClient, 0)}
 	for idx, url := range network.URLs() {
-		network.SetURL(url)
+		network.SetLocalURL(url)
 		ec, err := NewCeloClient(network)
 		if err != nil {
 			return nil, err
@@ -263,6 +263,11 @@ func NewCeloClients(network BlockchainNetwork) (*CeloClients, error) {
 	}
 	ecl.DefaultClient = ecl.Clients[0]
 	return ecl, nil
+}
+
+// GetNetworkName retrieves the ID of the network that the client interacts with
+func (e *CeloClient) GetNetworkName() string {
+	return e.Network.ID()
 }
 
 // Close tears down the current open Celo client
