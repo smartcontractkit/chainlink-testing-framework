@@ -35,7 +35,9 @@ func DeployOCRForEnv(i *OCRSetupInputs, envInit environment.K8sEnvSpecInit) {
 		var err error
 		i.SuiteSetup, err = actions.SingleNetworkSetup(
 			envInit,
-			client.DefaultNetworkFromConfig,
+			actions.EVMNetworkFromConfigHook,
+			actions.EthereumDeployerHook,
+			actions.EthereumClientHook,
 			tools.ProjectRoot,
 		)
 		Expect(err).ShouldNot(HaveOccurred())

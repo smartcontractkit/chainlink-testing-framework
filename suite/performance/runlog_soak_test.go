@@ -27,7 +27,9 @@ var _ = Describe("Runlog soak test @soak-runlog", func() {
 			suiteSetup, err = actions.SingleNetworkSetup(
 				// no need more than one node for runlog test
 				environment.NewChainlinkCluster(1),
-				client.DefaultNetworkFromConfig,
+				actions.EthereumPerfNetworkHook,
+				actions.EthereumDeployerHook,
+				actions.EthereumClientHook,
 				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())

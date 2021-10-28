@@ -7,6 +7,11 @@ import (
 	"github.com/smartcontractkit/integrations-framework/tools"
 )
 
+// EIServiceConfig represents External Initiator service config
+type EIServiceConfig struct {
+	URL string
+}
+
 // ChainlinkConfig represents the variables needed to connect to a Chainlink node
 type ChainlinkConfig struct {
 	URL      string
@@ -612,8 +617,8 @@ observationSource = """
 // WebhookJobSpec reprsents a webhook job
 type WebhookJobSpec struct {
 	Name              string `toml:"name"`
-	Initiator         string `toml:"initiator"` // External initiator name
-	InitiatorSpec     string `toml:"initiatorSpec"` // External initiator spec object in stringified form
+	Initiator         string `toml:"initiator"`         // External initiator name
+	InitiatorSpec     string `toml:"initiatorSpec"`     // External initiator spec object in stringified form
 	ObservationSource string `toml:"observationSource"` // List of commands for the chainlink node
 }
 

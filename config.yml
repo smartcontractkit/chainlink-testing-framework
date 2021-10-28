@@ -5,8 +5,8 @@
 # APPS_CHAINLINK_VERSION=1.0.0
 
 networks: # Selected network(s) for test execution
-    - "ethereum_geth" 
-    - "ethereum_geth" 
+    - "ethereum_geth"
+    - "ethereum_geth"
 keep_environments: Never # Options: Always, OnFail, Never
 
 apps:
@@ -79,7 +79,7 @@ network_configs:
         namespace_for_secret: default
         <<: *private_keys
         transaction_limit: 9500000
-        transaction_timeout: 10s
+        transaction_timeout: 2m
         minimum_confirmations: 1
         gas_estimation_buffer: 100000
         block_gas_limit: 40000000

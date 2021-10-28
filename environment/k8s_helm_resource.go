@@ -91,6 +91,11 @@ func (k *HelmChart) SetEnvironment(environment *K8sEnvironment) error {
 	return nil
 }
 
+// Environment gets environment
+func (k *HelmChart) Environment() *K8sEnvironment {
+	return k.env
+}
+
 func (k *HelmChart) forwardAllPodsPorts() error {
 	k8sPods := k.env.k8sClient.CoreV1().Pods(k.env.namespace.Name)
 	pods, err := k8sPods.List(context.Background(), metaV1.ListOptions{
@@ -159,7 +164,10 @@ func (k *HelmChart) ServiceDetails() ([]*ServiceDetails, error) {
 
 // Deploy deploys the helm charts
 func (k *HelmChart) Deploy(_ map[string]interface{}) error {
-	log.Info().Str("Path", k.chartPath).Str("Namespace", k.env.namespace.Name).Msg("Installing Helm chart")
+	log.Info().Str("Path", k.chartPath).
+		Str("Release", k.releaseName).
+		Str("Namespace", k.env.namespace.Name).
+		Msg("Installing Helm chart")
 	chart, err := loader.Load(k.chartPath)
 	if err != nil {
 		return err
