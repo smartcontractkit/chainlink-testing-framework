@@ -37,7 +37,7 @@ type PodForwardedInfo struct {
 	PodName        string
 }
 
-// HelmChart common helm chart data
+// HelmChart celoextended helm chart data
 type HelmChart struct {
 	id                string
 	chartPath         string

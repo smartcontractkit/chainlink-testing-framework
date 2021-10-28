@@ -35,14 +35,17 @@ type NetworkInfo struct {
 	Network  client.BlockchainNetwork
 }
 
-// NewNetworkInfo initializes the network's blockchain client and gathers all test-relevant network information
-func NewNetworkInfo(
-	network client.BlockchainNetwork,
-	clientFunc hooks.NewClientHook,
-	extDepFunc hooks.NewDeployerHook,
-	env environment.Environment,
-) (NetworkInfo, error) {
-	bcc, err := environment.NewExternalBlockchainClient(clientFunc, env, network)
+// buildNetworkInfo initializes the network's blockchain client and gathers all test-relevant network information
+func buildNetworkInfo(network client.BlockchainNetwork, env environment.Environment) (NetworkInfo, error) {
+	// Initialize blockchain client
+	var bcc client.BlockchainClient
+	var err error
+	switch network.Config().Type {
+	case client.BlockchainTypeEVMCeloMultinode:
+		bcc, err = environment.NewBlockchainClients(env, network)
+	case client.BlockchainTypeEVMCelo:
+		bcc, err = environment.NewBlockchainClient(env, network)
+	}
 	if err != nil {
 		return NetworkInfo{}, err
 	}
@@ -67,7 +70,7 @@ func NewNetworkInfo(
 	}, nil
 }
 
-// SuiteSetup enables common use cases, and safe handling of different blockchain networks for test scenarios
+// SuiteSetup enables celoextended use cases, and safe handling of different blockchain networks for test scenarios
 type SuiteSetup interface {
 	Config() *config.Config
 	Environment() environment.Environment

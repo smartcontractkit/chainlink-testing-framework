@@ -18,8 +18,8 @@ import (
 	"github.com/celo-org/celo-blockchain/accounts/abi/bind"
 	"github.com/celo-org/celo-blockchain/common"
 	"github.com/celo-org/celo-blockchain/core/types"
+	"github.com/celo-org/celo-blockchain/crypto"
 	"github.com/celo-org/celo-blockchain/ethclient"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rs/zerolog/log"
 )
 
@@ -35,6 +35,11 @@ func (e *CeloBlock) GetHash() HashInterface {
 type CeloClients struct {
 	DefaultClient *CeloClient
 	Clients       []*CeloClient
+}
+
+// GetNetworkName gets the ID of the chain that the clients are connected to
+func (e *CeloClients) GetNetworkName() string {
+	return e.DefaultClient.GetNetworkName()
 }
 
 // GetID gets client ID, node number it's connected to

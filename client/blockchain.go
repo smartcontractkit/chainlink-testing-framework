@@ -14,15 +14,20 @@ import (
 
 	"github.com/smartcontractkit/integrations-framework/config"
 
-	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/celo-org/celo-blockchain/crypto"
+)
+
+var (
+	// OneGWei represents 1 GWei
+	OneGWei = big.NewInt(1e9)
+	// OneEth represents 1 Ethereum
+	OneEth = big.NewFloat(1e18)
 )
 
 // Commonly used variables
 const (
-	BlockchainTypeEVM          = "evm"
-	BlockchainTypeEVMMultinode = "evm_multi"
-	BlockchainTypeEVMCelo      = "evm_celo"
-	NetworkGethPerformance     = "ethereum_geth_performance"
+	BlockchainTypeEVMCelo          = "evm_celo"
+	BlockchainTypeEVMCeloMultinode = "evm_celo_multi"
 )
 
 type HashInterface interface {
@@ -70,10 +75,8 @@ type BlockchainClient interface {
 // NewBlockchainClient returns an instantiated network client implementation based on the network configuration given
 func NewBlockchainClient(network BlockchainNetwork) (BlockchainClient, error) {
 	switch network.Type() {
-	case BlockchainTypeEVM:
-		return NewEthereumClient(network)
-	case BlockchainTypeEVMMultinode:
-		return NewEthereumClients(network)
+	case BlockchainTypeEVMCeloMultinode:
+		return NewCeloClients(network)
 	case BlockchainTypeEVMCelo:
 		return NewCeloClient(network)
 	}
@@ -118,7 +121,7 @@ func NewNetworkFromConfig(conf *config.Config, networkID string) (BlockchainNetw
 		return nil, err
 	}
 	switch networkConfig.Type {
-	case BlockchainTypeEVM, BlockchainTypeEVMMultinode, BlockchainTypeEVMCelo:
+	case BlockchainTypeEVMCelo, BlockchainTypeEVMCeloMultinode:
 		return newEthereumNetwork(networkID, networkConfig)
 	}
 	return nil, fmt.Errorf(

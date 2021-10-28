@@ -4,25 +4,23 @@
 package celo
 
 import (
-	"errors"
-	"fmt"
 	"math/big"
-	"reflect"
 	"strings"
 
-	ethereum "github.com/celo-org/celo-blockchain"
+	celo "github.com/celo-org/celo-blockchain"
 	"github.com/celo-org/celo-blockchain/accounts/abi"
 	"github.com/celo-org/celo-blockchain/accounts/abi/bind"
 	"github.com/celo-org/celo-blockchain/common"
 	"github.com/celo-org/celo-blockchain/core/types"
 	"github.com/celo-org/celo-blockchain/event"
+	"github.com/smartcontractkit/integrations-framework/celoextended"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
 var (
 	_ = big.NewInt
 	_ = strings.NewReader
-	_ = ethereum.NotFound
+	_ = celo.NotFound
 	_ = bind.Bind
 	_ = common.Big1
 	_ = types.BloomLookup
@@ -34,96 +32,6 @@ const LinkTokenABI = "[{\"constant\":true,\"inputs\":[],\"name\":\"name\",\"outp
 
 // LinkTokenBin is the compiled bytecode used for deploying new contracts.
 var LinkTokenBin = "0x608060405234801561001057600080fd5b503360009081526001602052604090206b033b2e3c9fd0803ce80000009055610ab48061003e6000396000f3006080604052600436106100b95763ffffffff7c010000000000000000000000000000000000000000000000000000000060003504166306fdde0381146100be578063095ea7b31461014857806318160ddd1461018057806323b872dd146101a7578063313ce567146101d15780634000aea0146101fc578063661884631461026557806370a082311461028957806395d89b41146102aa578063a9059cbb146102bf578063d73dd623146102e3578063dd62ed3e14610307575b600080fd5b3480156100ca57600080fd5b506100d361032e565b6040805160208082528351818301528351919283929083019185019080838360005b8381101561010d5781810151838201526020016100f5565b50505050905090810190601f16801561013a5780820380516001836020036101000a031916815260200191505b509250505060405180910390f35b34801561015457600080fd5b5061016c600160a060020a0360043516602435610365565b604080519115158252519081900360200190f35b34801561018c57600080fd5b506101956103a6565b60408051918252519081900360200190f35b3480156101b357600080fd5b5061016c600160a060020a03600435811690602435166044356103b6565b3480156101dd57600080fd5b506101e66103f9565b6040805160ff9092168252519081900360200190f35b34801561020857600080fd5b50604080516020600460443581810135601f810184900484028501840190955284845261016c948235600160a060020a03169460248035953695946064949201919081908401838280828437509497506103fe9650505050505050565b34801561027157600080fd5b5061016c600160a060020a0360043516602435610438565b34801561029557600080fd5b50610195600160a060020a0360043516610516565b3480156102b657600080fd5b506100d3610531565b3480156102cb57600080fd5b5061016c600160a060020a0360043516602435610568565b3480156102ef57600080fd5b5061016c600160a060020a03600435166024356105a1565b34801561031357600080fd5b50610195600160a060020a0360043581169060243516610628565b60408051808201909152601481527f5465737420436861696e4c696e6b20546f6b656e000000000000000000000000602082015281565b600082600160a060020a038116158015906103895750600160a060020a0381163014155b151561039457600080fd5b61039e8484610653565b949350505050565b6b033b2e3c9fd0803ce800000081565b600082600160a060020a038116158015906103da5750600160a060020a0381163014155b15156103e557600080fd5b6103f08585856106a7565b95945050505050565b601281565b600083600160a060020a038116158015906104225750600160a060020a0381163014155b151561042d57600080fd5b6103f08585856107b3565b336000908152600260209081526040808320600160a060020a03861684529091528120548083111561048d57336000908152600260209081526040808320600160a060020a03881684529091528120556104c2565b61049d818463ffffffff61089816565b336000908152600260209081526040808320600160a060020a03891684529091529020555b336000818152600260209081526040808320600160a060020a038916808552908352928190205481519081529051929392600080516020610a69833981519152929181900390910190a35060019392505050565b600160a060020a031660009081526001602052604090205490565b60408051808201909152600881527f546573744c494e4b000000000000000000000000000000000000000000000000602082015281565b600082600160a060020a0381161580159061058c5750600160a060020a0381163014155b151561059757600080fd5b61039e84846108aa565b336000908152600260209081526040808320600160a060020a03861684529091528120546105d5908363ffffffff61095a16565b336000818152600260209081526040808320600160a060020a038916808552908352928190208590558051948552519193600080516020610a69833981519152929081900390910190a350600192915050565b600160a060020a03918216600090815260026020908152604080832093909416825291909152205490565b336000818152600260209081526040808320600160a060020a03871680855290835281842086905581518681529151939490939092600080516020610a69833981519152928290030190a350600192915050565b600160a060020a038316600081815260026020908152604080832033845282528083205493835260019091528120549091906106e9908463ffffffff61089816565b600160a060020a03808716600090815260016020526040808220939093559086168152205461071e908463ffffffff61095a16565b600160a060020a038516600090815260016020526040902055610747818463ffffffff61089816565b600160a060020a03808716600081815260026020908152604080832033845282529182902094909455805187815290519288169391927fddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef929181900390910190a3506001949350505050565b60006107bf84846108aa565b5083600160a060020a031633600160a060020a03167fe19260aff97b920c7df27010903aeb9c8d2be5d310a2c67824cf3f15396e4c1685856040518083815260200180602001828103825283818151815260200191508051906020019080838360005b8381101561083a578181015183820152602001610822565b50505050905090810190601f1680156108675780820380516001836020036101000a031916815260200191505b50935050505060405180910390a361087e8461096d565b1561088e5761088e848484610975565b5060019392505050565b6000828211156108a457fe5b50900390565b336000908152600160205260408120546108ca908363ffffffff61089816565b3360009081526001602052604080822092909255600160a060020a038516815220546108fc908363ffffffff61095a16565b600160a060020a0384166000818152600160209081526040918290209390935580518581529051919233927fddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef9281900390910190a350600192915050565b8181018281101561096757fe5b92915050565b6000903b1190565b6040517fa4c0ed360000000000000000000000000000000000000000000000000000000081523360048201818152602483018590526060604484019081528451606485015284518794600160a060020a0386169463a4c0ed369490938993899360840190602085019080838360005b838110156109fc5781810151838201526020016109e4565b50505050905090810190601f168015610a295780820380516001836020036101000a031916815260200191505b50945050505050600060405180830381600087803b158015610a4a57600080fd5b505af1158015610a5e573d6000803e3d6000fd5b505050505050505056008c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925a165627a7a72305820ce77a80153a086156b938295c469e2dd272455280c44753840ca59ca9429001c0029"
-
-// ConvertType copy of github.com/ethereum/go-ethereum/accounts/abi method
-func ConvertType(in interface{}, proto interface{}) interface{} {
-	protoType := reflect.TypeOf(proto)
-	if reflect.TypeOf(in).ConvertibleTo(protoType) {
-		return reflect.ValueOf(in).Convert(protoType).Interface()
-	}
-	// Use set as a last ditch effort
-	if err := set(reflect.ValueOf(proto), reflect.ValueOf(in)); err != nil {
-		panic(err)
-	}
-	return proto
-}
-
-func set(dst, src reflect.Value) error {
-	dstType, srcType := dst.Type(), src.Type()
-	switch {
-	case dstType.Kind() == reflect.Interface && dst.Elem().IsValid():
-		return set(dst.Elem(), src)
-	case dstType.Kind() == reflect.Ptr && dstType.Elem() != reflect.TypeOf(big.Int{}):
-		return set(dst.Elem(), src)
-	case srcType.AssignableTo(dstType) && dst.CanSet():
-		dst.Set(src)
-	case dstType.Kind() == reflect.Slice && srcType.Kind() == reflect.Slice && dst.CanSet():
-		return setSlice(dst, src)
-	case dstType.Kind() == reflect.Array:
-		return setArray(dst, src)
-	case dstType.Kind() == reflect.Struct:
-		return setStruct(dst, src)
-	default:
-		return fmt.Errorf("abi: cannot unmarshal %v in to %v", src.Type(), dst.Type())
-	}
-	return nil
-}
-
-// setSlice attempts to assign src to dst when slices are not assignable by default
-// e.g. src: [][]byte -> dst: [][15]byte
-// setSlice ignores if we cannot copy all of src' elements.
-func setSlice(dst, src reflect.Value) error {
-	slice := reflect.MakeSlice(dst.Type(), src.Len(), src.Len())
-	for i := 0; i < src.Len(); i++ {
-		if src.Index(i).Kind() == reflect.Struct {
-			if err := set(slice.Index(i), src.Index(i)); err != nil {
-				return err
-			}
-		} else {
-			// e.g. [][32]uint8 to []common.Hash
-			if err := set(slice.Index(i), src.Index(i)); err != nil {
-				return err
-			}
-		}
-	}
-	if dst.CanSet() {
-		dst.Set(slice)
-		return nil
-	}
-	return errors.New("Cannot set slice, destination not settable")
-}
-
-func setArray(dst, src reflect.Value) error {
-	array := reflect.New(dst.Type()).Elem()
-	min := src.Len()
-	if src.Len() > dst.Len() {
-		min = dst.Len()
-	}
-	for i := 0; i < min; i++ {
-		if err := set(array.Index(i), src.Index(i)); err != nil {
-			return err
-		}
-	}
-	if dst.CanSet() {
-		dst.Set(array)
-		return nil
-	}
-	return errors.New("Cannot set array, destination not settable")
-}
-
-func setStruct(dst, src reflect.Value) error {
-	for i := 0; i < src.NumField(); i++ {
-		srcField := src.Field(i)
-		dstField := dst.Field(i)
-		if !dstField.IsValid() || !srcField.IsValid() {
-			return fmt.Errorf("Could not find src field: %v value: %v in destination", srcField.Type().Name(), srcField)
-		}
-		if err := set(dstField, srcField); err != nil {
-			return err
-		}
-	}
-	return nil
-}
 
 // DeployLinkToken deploys a new Ethereum contract, binding an instance of LinkToken to it.
 func DeployLinkToken(auth *bind.TransactOpts, backend bind.ContractBackend) (common.Address, *types.Transaction, *LinkToken, error) {
@@ -292,7 +200,7 @@ func (_LinkToken *LinkTokenCaller) Allowance(opts *bind.CallOpts, _owner common.
 		return *new(*big.Int), err
 	}
 
-	out0 := *ConvertType(out[0], new(*big.Int)).(**big.Int)
+	out0 := *celoextended.ConvertType(out[0], new(*big.Int)).(**big.Int)
 
 	return out0, err
 
@@ -323,7 +231,7 @@ func (_LinkToken *LinkTokenCaller) BalanceOf(opts *bind.CallOpts, _owner common.
 		return *new(*big.Int), err
 	}
 
-	out0 := *ConvertType(out[0], new(*big.Int)).(**big.Int)
+	out0 := *celoextended.ConvertType(out[0], new(*big.Int)).(**big.Int)
 
 	return out0, err
 
@@ -354,7 +262,7 @@ func (_LinkToken *LinkTokenCaller) Decimals(opts *bind.CallOpts) (uint8, error) 
 		return *new(uint8), err
 	}
 
-	out0 := *ConvertType(out[0], new(uint8)).(*uint8)
+	out0 := *celoextended.ConvertType(out[0], new(uint8)).(*uint8)
 
 	return out0, err
 
@@ -385,7 +293,7 @@ func (_LinkToken *LinkTokenCaller) Name(opts *bind.CallOpts) (string, error) {
 		return *new(string), err
 	}
 
-	out0 := *ConvertType(out[0], new(string)).(*string)
+	out0 := *celoextended.ConvertType(out[0], new(string)).(*string)
 
 	return out0, err
 
@@ -416,7 +324,7 @@ func (_LinkToken *LinkTokenCaller) Symbol(opts *bind.CallOpts) (string, error) {
 		return *new(string), err
 	}
 
-	out0 := *ConvertType(out[0], new(string)).(*string)
+	out0 := *celoextended.ConvertType(out[0], new(string)).(*string)
 
 	return out0, err
 
@@ -447,7 +355,7 @@ func (_LinkToken *LinkTokenCaller) TotalSupply(opts *bind.CallOpts) (*big.Int, e
 		return *new(*big.Int), err
 	}
 
-	out0 := *ConvertType(out[0], new(*big.Int)).(**big.Int)
+	out0 := *celoextended.ConvertType(out[0], new(*big.Int)).(**big.Int)
 
 	return out0, err
 
@@ -600,10 +508,10 @@ type LinkTokenApprovalIterator struct {
 	contract *bind.BoundContract // Generic contract to use for unpacking event data
 	event    string              // Event name to use for unpacking event data
 
-	logs chan types.Log        // Log channel receiving the found contract events
-	sub  ethereum.Subscription // Subscription for errors, completion and termination
-	done bool                  // Whether the subscription completed delivering logs
-	fail error                 // Occurred error to stop iteration
+	logs chan types.Log    // Log channel receiving the found contract events
+	sub  celo.Subscription // Subscription for errors, completion and termination
+	done bool              // Whether the subscription completed delivering logs
+	fail error             // Occurred error to stop iteration
 }
 
 // Next advances the iterator to the subsequent event, returning whether there
@@ -754,10 +662,10 @@ type LinkTokenTransferIterator struct {
 	contract *bind.BoundContract // Generic contract to use for unpacking event data
 	event    string              // Event name to use for unpacking event data
 
-	logs chan types.Log        // Log channel receiving the found contract events
-	sub  ethereum.Subscription // Subscription for errors, completion and termination
-	done bool                  // Whether the subscription completed delivering logs
-	fail error                 // Occurred error to stop iteration
+	logs chan types.Log    // Log channel receiving the found contract events
+	sub  celo.Subscription // Subscription for errors, completion and termination
+	done bool              // Whether the subscription completed delivering logs
+	fail error             // Occurred error to stop iteration
 }
 
 // Next advances the iterator to the subsequent event, returning whether there
@@ -909,10 +817,10 @@ type LinkTokenTransfer0Iterator struct {
 	contract *bind.BoundContract // Generic contract to use for unpacking event data
 	event    string              // Event name to use for unpacking event data
 
-	logs chan types.Log        // Log channel receiving the found contract events
-	sub  ethereum.Subscription // Subscription for errors, completion and termination
-	done bool                  // Whether the subscription completed delivering logs
-	fail error                 // Occurred error to stop iteration
+	logs chan types.Log    // Log channel receiving the found contract events
+	sub  celo.Subscription // Subscription for errors, completion and termination
+	done bool              // Whether the subscription completed delivering logs
+	fail error             // Occurred error to stop iteration
 }
 
 // Next advances the iterator to the subsequent event, returning whether there

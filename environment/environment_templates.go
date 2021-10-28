@@ -21,7 +21,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// Ports for common services
+// Ports for celoextended services
 const (
 	ChainlinkWebPort  uint16 = 6688
 	ChainlinkP2PPort  uint16 = 6690

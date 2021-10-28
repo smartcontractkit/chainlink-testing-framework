@@ -5,7 +5,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/celo-org/celo-blockchain/common"
+	"github.com/smartcontractkit/integrations-framework/actions"
+	"github.com/smartcontractkit/integrations-framework/client"
+	"golang.org/x/sync/errgroup"
+
 	"github.com/montanaflynn/stats"
 	"github.com/onsi/ginkgo"
 	"github.com/rs/zerolog/log"
@@ -21,7 +25,7 @@ type Test interface {
 	RecordValues(b ginkgo.Benchmarker) error
 }
 
-// TestOptions common perf/soak test options
+// TestOptions celoextended perf/soak test options
 // either TestDuration can be set or NumberOfRounds, or both
 type TestOptions struct {
 	NumberOfContracts    int
@@ -31,7 +35,7 @@ type TestOptions struct {
 	GracefulStopDuration time.Duration
 }
 
-// PercentileReport common percentile report
+// PercentileReport celoextended percentile report
 type PercentileReport struct {
 	StdDev float64
 	Max    float64
@@ -267,7 +271,7 @@ func (r *PerfRequestIDTestResults) calculateLatencies(b ginkgo.Benchmarker) erro
 	return nil
 }
 
-// NodeData common node data
+// NodeData celoextended node data
 type NodeData interface {
 	GetJobID() string
 	GetProvingKeyHash() [32]byte
@@ -304,7 +308,7 @@ func (n VRFNodeData) GetProvingKeyHash() [32]byte {
 	return n.ProvingKeyHash
 }
 
-// ContractsNodesJobsMap common contract to node to job id mapping for perf/soak tests
+// ContractsNodesJobsMap celoextended contract to node to job id mapping for perf/soak tests
 type ContractsNodesJobsMap map[interface{}]map[client.Chainlink]NodeData
 
 // FromJobsChan fills ContractsNodesJobsMap from a chan used in parallel deployment
