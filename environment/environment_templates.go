@@ -612,7 +612,7 @@ func getBasicDependencyGroup() *K8sManifestGroup {
 }
 
 // addNetworkManifestToDependencyGroup adds the correct network to the dependency group and returns
-// an array of all groups, this should be called as the last function when creating deploys
+// an array of all groups, this should be called as the last function when creating deployments
 func addNetworkManifestToDependencyGroup(chainlinkGroup *K8sManifestGroup, dependencyGroups []*K8sManifestGroup) K8sEnvSpecInit {
 	return func(networks ...client.BlockchainNetwork) K8sEnvSpecs {
 		var specs K8sEnvSpecs
