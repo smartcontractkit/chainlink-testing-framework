@@ -1,11 +1,11 @@
 package environment
 
 import (
+	"github.com/smartcontractkit/integrations-framework/client"
 	"strconv"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/tools"
 )

@@ -2,19 +2,19 @@ package environment
 
 import (
 	"fmt"
-	"net/http"
-	"net/url"
-	"strings"
-
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/chaos"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/config"
+	"github.com/smartcontractkit/integrations-framework/types"
+	"net/http"
+	"net/url"
 )
 
 // Environment is the interface that represents a deployed environment, whether locally or on remote machines
 type Environment interface {
 	ID() string
+	Networks() []client.BlockchainNetwork
 
 	GetAllServiceDetails(remotePort uint16) ([]*ServiceDetails, error)
 	GetServiceDetails(remotePort uint16) (*ServiceDetails, error)
@@ -164,13 +164,16 @@ func GetExternalAdapter(env Environment) (ExternalAdapter, error) {
 	}, nil
 }
 
-// NewBlockchainClient will return an instantiated blockchain client and switch the URL depending if there's one
-// deployed into the environment. If there's no deployed blockchain in the environment, the URL from the network
-// config will be used
-func NewBlockchainClient(env Environment, network client.BlockchainNetwork) (client.BlockchainClient, error) {
+// NewExternalBlockchainClient connects external client implementation to particular network
+func NewExternalBlockchainClient(clientFunc types.NewClientHook, env Environment, network client.BlockchainNetwork) (client.BlockchainClient, error) {
 	sd, err := env.GetServiceDetails(network.RemotePort())
 	if err == nil {
-		url := fmt.Sprintf("ws://%s", sd.LocalURL.Host)
+		var url string
+		if network.WSEnabled() {
+			url = fmt.Sprintf("ws://%s", sd.LocalURL.Host)
+		} else {
+			url = fmt.Sprintf("http://%s", sd.LocalURL.Host)
+		}
 		log.Debug().Str("URL", url).Str("Network", network.ID()).Msg("Selecting network")
 		network.SetLocalURL(url)
 	}
@@ -179,34 +182,7 @@ func NewBlockchainClient(env Environment, network client.BlockchainNetwork) (cli
 		return nil, err
 	}
 
-	return client.NewBlockchainClient(network)
-}
-
-// NewBlockchainClients will return an instantiated blockchain client that uses default client to communicate with a node,
-// can switch clients
-func NewBlockchainClients(env Environment, network client.BlockchainNetwork) (client.BlockchainClient, error) {
-	urls := make([]string, 0)
-	primaryClientDetails, err := env.GetServiceDetails(network.RemotePort())
-	if err != nil {
-		return nil, err
-	}
-	u := strings.Replace(primaryClientDetails.LocalURL.String(), "http", "ws", -1)
-	urls = append(urls, u)
-	sd, err := env.GetAllServiceDetails(MinersRPCPort)
-	if err != nil {
-		return nil, err
-	}
-	for _, d := range sd {
-		log.Debug().Str("Remote", d.RemoteURL.String()).Str("Local", d.LocalURL.String()).Msg("Miners RPCs")
-		u := strings.Replace(d.LocalURL.String(), "http", "ws", -1)
-		urls = append(urls, u)
-	}
-	network.SetURLs(urls)
-	network.Config().PrivateKeyStore, err = NewPrivateKeyStoreFromEnv(env, network.Config())
-	if err != nil {
-		return nil, err
-	}
-	return client.NewBlockchainClient(network)
+	return clientFunc(network)
 }
 
 // NewPrivateKeyStoreFromEnv returns a keystore looking either in a cluster secret or directly from the config

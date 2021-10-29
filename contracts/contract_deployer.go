@@ -38,6 +38,13 @@ type ContractDeployer interface {
 		fluxOptions FluxAggregatorOptions,
 	) (FluxAggregator, error)
 	DeployLinkTokenContract(fromWallet client.BlockchainWallet) (LinkToken, error)
+	DeployOCRv2(
+		fromWallet client.BlockchainWallet,
+		paymentControllerAddr string,
+		requesterControllerAddr string,
+		linkTokenAddr string,
+	) (OCRv2, error)
+	DeployOCRv2AccessController(fromWallet client.BlockchainWallet) (OCRv2AccessController, error)
 	DeployOffChainAggregator(
 		fromWallet client.BlockchainWallet,
 		offchainOptions OffchainOptions,
@@ -70,6 +77,19 @@ func NewContractDeployer(bcClient client.BlockchainClient) (ContractDeployer, er
 // EthereumContractDeployer provides the implementations for deploying ETH (EVM) based contracts
 type EthereumContractDeployer struct {
 	eth *client.EthereumClient
+}
+
+func (e *EthereumContractDeployer) DeployOCRv2(
+	fromWallet client.BlockchainWallet,
+	paymentControllerAddr string,
+	requesterControllerAddr string,
+	linkTokenAddr string,
+) (OCRv2, error) {
+	panic("implement me")
+}
+
+func (e *EthereumContractDeployer) DeployOCRv2AccessController(fromWallet client.BlockchainWallet) (OCRv2AccessController, error) {
+	panic("implement me")
 }
 
 // NewEthereumContractDeployer returns an instantiated instance of the ETH contract deployer

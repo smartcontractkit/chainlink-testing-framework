@@ -59,6 +59,7 @@ type K8sEnvSpecInit func(...client.BlockchainNetwork) K8sEnvSpecs
 type K8sEnvResource interface {
 	ID() string
 	GetConfig() *config.Config
+	Environment() *K8sEnvironment
 	SetEnvironment(environment *K8sEnvironment) error
 	Deploy(values map[string]interface{}) error
 	WaitUntilHealthy() error
@@ -179,6 +180,11 @@ func (env *K8sEnvironment) ID() string {
 		return env.namespace.Name
 	}
 	return ""
+}
+
+// Networks returns blockchain networks
+func (env *K8sEnvironment) Networks() []client.BlockchainNetwork {
+	return env.networks
 }
 
 // GetAllServiceDetails returns all the connectivity details for a deployed service by its remote port within k8s
@@ -478,6 +484,11 @@ type K8sManifest struct {
 
 	// Environment
 	env *K8sEnvironment
+}
+
+// Environment returns current environment
+func (m *K8sManifest) Environment() *K8sEnvironment {
+	return m.env
 }
 
 // SetEnvironment is the K8sEnvResource implementation that sets the current cluster and config to be used on deploy
@@ -833,8 +844,8 @@ var usedPorts map[uint16]bool = map[uint16]bool{
 	ExplorerAPIPort:  true,
 }
 
-// getFreePort checks for a free remote port that can be used for deployments
-func getFreePort() uint16 {
+// GetFreePort checks for a free remote port that can be used for deployments
+func GetFreePort() uint16 {
 	min, max := 1001, 9999
 	freePort := rand.Intn(max-min) + min
 	for _, used := usedPorts[uint16(freePort)]; used; {
@@ -1029,6 +1040,11 @@ type K8sManifestGroup struct {
 	manifests     []K8sEnvResource
 	SetValuesFunc manifestGroupSetValuesFunc
 	values        map[string]interface{}
+}
+
+// Environment returns current environment
+func (mg *K8sManifestGroup) Environment() *K8sEnvironment {
+	panic("implement me")
 }
 
 // ID returns the identifier of the manifest group

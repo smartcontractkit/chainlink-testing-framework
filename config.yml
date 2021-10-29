@@ -5,8 +5,8 @@
 # APPS_CHAINLINK_VERSION=1.0.0
 
 networks: # Selected network(s) for test execution
-    - "ethereum_geth" 
-    - "ethereum_geth" 
+    - "ethereum_geth"
+    - "ethereum_geth"
 keep_environments: Never # Options: Always, OnFail, Never
 
 apps:

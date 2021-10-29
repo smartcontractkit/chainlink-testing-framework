@@ -27,7 +27,9 @@ var _ = Describe("VRF soak test @soak-vrf", func() {
 			suiteSetup, err = actions.SingleNetworkSetup(
 				// more than one node is useless for VRF, because nodes are not cooperating for randomness
 				environment.NewChainlinkCluster(1),
-				client.DefaultNetworkFromConfig,
+				actions.EthereumPerfNetworkHook,
+				actions.EthereumDeployerHook,
+				actions.EthereumClientHook,
 				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
