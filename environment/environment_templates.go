@@ -644,7 +644,9 @@ func addNetworkManifestToDependencyGroup(chainlinkGroup *K8sManifestGroup, depen
 					dependencyGroups[indexOfLastElementInDependencyGroups].manifests,
 					NewGanacheManifest(networkCounts[network.Config().Name], network.Config()))
 				networkCounts[network.Config().Name] += 1
-			default: // no simulated chain
+			default:
+				network.SetClusterURL(network.URLs()[0])
+				network.SetLocalURL(network.URLs()[0])
 			}
 		}
 

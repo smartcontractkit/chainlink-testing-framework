@@ -193,9 +193,12 @@ network_configs:
         <<: *common_ethereum_testnet
         name: "Moonbase alpha"
         chain_id: 1287
-        private_url: moonbase_alpha_url
+        secret_private_keys: false
+        secret_private_url: false
+        urls:
+            - "wss://wss.testnet.moonbeam.network"
         private_keys:
-            - moonbase_alpha_1
+            - 5adffa49dc0813b728ee2e7a1faaddb31ea5d52a5088cfe4447e8008eb0063e1
     iotex_testnet:
         <<: *common_ethereum_testnet
         name: "IoTeX testnet"
