@@ -35,7 +35,7 @@ spec:
           value: chainlink
           # TODO: Placeholders until CL 1.0.0 is cut, and we can use the new chain configuration options through the API
         - name: ETH_URL
-          value: {{ if .Values.DependencyGroup.ethereum_geth_0.clusterURL }}{{ .Values.DependencyGroup.ethereum_geth_0.clusterURL }}{{ else if .Values.DependencyGroup.ethereum_geth_performance_0.clusterURL }}{{ .Values.DependencyGroup.ethereum_geth_performance_0.clusterURL }}{{ else if .Values.DependencyGroup.ethereum_ganache_0.clusterURL }}{{ .Values.DependencyGroup.ethereum_ganache_0.clusterURL }}{{ else if .Values.DependencyGroup.ethereum_hardhat_0.clusterURL }}{{ .Values.DependencyGroup.ethereum_hardhat_0.clusterURL }}{{ end }}
+          value: {{ .DefaultNetwork.ClusterURL }}
         - name: ETH_CHAIN_ID
           value: {{ .DefaultNetwork.ChainID }}
         - name: ALLOW_ORIGINS
