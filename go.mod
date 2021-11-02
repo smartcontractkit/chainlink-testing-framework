@@ -20,6 +20,7 @@ require (
 	github.com/smartcontractkit/libocr v0.0.0-20210826183649-d12971936c12
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/viper v1.8.1
+	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	helm.sh/helm/v3 v3.7.1
 	k8s.io/api v0.22.3
@@ -43,11 +44,13 @@ require (
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
 	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/VictoriaMetrics/fastcache v1.6.0 // indirect
+	github.com/allegro/bigcache v1.2.1 // indirect
 	github.com/aristanetworks/goarista v0.0.0-20191023202215-f096da5361bb // indirect
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/btcsuite/btcd v0.22.0-beta // indirect
 	github.com/celo-org/celo-bls-go v0.2.4 // indirect
+	github.com/cespare/cp v1.1.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/containerd/cgroups v0.0.0-20200531161412-0dbf7f05ba59 // indirect
 	github.com/containerd/containerd v1.5.8 // indirect
