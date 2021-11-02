@@ -34,10 +34,10 @@ func DeployOCRForEnv(i *OCRSetupInputs, envInit environment.K8sEnvSpecInit, conf
 		var err error
 		i.SuiteSetup, err = SingleNetworkSetup(
 			envInit,
-			hooks.EVMNetworkFromConfigHook,
-			hooks.EthereumDeployerHook,
-			hooks.EthereumClientHook,
-			configPath,
+			actions.EVMNetworkFromConfigHook,
+			actions.EthereumDeployerHook,
+			actions.EthereumClientHook,
+			tools.ProjectRoot,
 		)
 		Expect(err).ShouldNot(HaveOccurred())
 		i.Mockserver, err = environment.GetMockserverClientFromEnv(i.SuiteSetup.Environment())

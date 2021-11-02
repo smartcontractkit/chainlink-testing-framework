@@ -30,11 +30,11 @@ var _ = Describe("Basic Contract Interactions @contract", func() {
 		By("Deploying the environment", func() {
 			var err error
 			suiteSetup, err = actions.MultiNetworkSetup(
-				environment.NewChainlinkCluster(1),
-				hooks.NetworksFromConfigHook,
-				hooks.EthereumDeployerHook,
-				hooks.EthereumClientHook,
-				utils.ProjectRoot,
+				environment.NewChainlinkCluster(0),
+				actions.NetworksFromConfigHook,
+				actions.EthereumDeployerHook,
+				actions.EthereumClientHook,
+				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
 

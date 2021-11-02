@@ -25,10 +25,10 @@ var _ = Describe("Runlog perf test @perf-runlog", func() {
 		By("Deploying the environment", func() {
 			suiteSetup, err = actions.SingleNetworkSetup(
 				environment.NewChainlinkCluster(1),
-				hooks.EthereumPerfNetworkHook,
-				hooks.EthereumDeployerHook,
-				hooks.EthereumClientHook,
-				utils.ProjectRoot,
+				actions.EthereumPerfNetworkHook,
+				actions.EthereumDeployerHook,
+				actions.EthereumClientHook,
+				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
 			nodes, err = environment.GetChainlinkClients(suiteSetup.Environment())

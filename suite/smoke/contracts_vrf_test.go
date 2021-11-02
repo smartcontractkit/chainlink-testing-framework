@@ -33,10 +33,10 @@ var _ = Describe("VRF suite @vrf", func() {
 		By("Deploying the environment", func() {
 			suiteSetup, err = actions.SingleNetworkSetup(
 				environment.NewChainlinkCluster(1),
-				hooks.EVMNetworkFromConfigHook,
-				hooks.EthereumDeployerHook,
-				hooks.EthereumClientHook,
-				utils.ProjectRoot,
+				actions.EVMNetworkFromConfigHook,
+				actions.EthereumDeployerHook,
+				actions.EthereumClientHook,
+				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
 			nodes, err = environment.GetChainlinkClients(suiteSetup.Environment())

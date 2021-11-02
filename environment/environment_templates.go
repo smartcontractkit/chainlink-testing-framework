@@ -92,6 +92,31 @@ func NewChainlinkCustomNetworksCluster(nodeCount int, networkDeploymentConfigs [
 	}
 }
 
+// NewAdapterManifest is the k8s manifest that when used will deploy an external adapter to an environment
+func NewAdapterManifest() *K8sManifest {
+	return &K8sManifest{
+		id:             "chainlink",
+		DeploymentFile: filepath.Join(utils.ProjectRoot, "/environment/templates/chainlink/chainlink-deployment.yml"),
+		ServiceFile:    filepath.Join(utils.ProjectRoot, "/environment/templates/chainlink/chainlink-service.yml"),
+
+		values: map[string]interface{}{
+			"idx":                         idx,
+			"webPort":                     ChainlinkWebPort,
+			"p2pPort":                     ChainlinkP2PPort,
+			"eth_disabled":                true,
+			"feature_external_initiators": true,
+		},
+
+		Secret: &coreV1.Secret{
+			ObjectMeta: v1.ObjectMeta{
+				GenerateName: "chainlink-",
+			},
+			Type: "Opaque",
+			Data: defaultChainlinkAuthMap,
+		},
+	}
+}
+
 // NewHeadlessChainlinkManifest is the k8s manifest for Chainlink node without network, using only EI to get network data
 func NewHeadlessChainlinkManifest(idx int) *K8sManifest {
 	return &K8sManifest{
@@ -121,8 +146,8 @@ func NewHeadlessChainlinkManifest(idx int) *K8sManifest {
 func NewChainlinkManifest(idx int) *K8sManifest {
 	return &K8sManifest{
 		id:             "chainlink",
-		DeploymentFile: filepath.Join(utils.ProjectRoot, "/environment/templates/chainlink/chainlink-deployment.yml"),
-		ServiceFile:    filepath.Join(utils.ProjectRoot, "/environment/templates/chainlink/chainlink-service.yml"),
+		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/chainlink/chainlink-deployment.yml"),
+		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/chainlink/chainlink-service.yml"),
 
 		values: map[string]interface{}{
 			"idx":                         idx,

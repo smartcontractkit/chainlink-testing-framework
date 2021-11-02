@@ -27,10 +27,10 @@ var _ = Describe("Keeper performance test @performance-keeper", func() {
 		By("Deploying the environment", func() {
 			suiteSetup, err = actions.SingleNetworkSetup(
 				environment.NewChainlinkCluster(5),
-				hooks.EthereumPerfNetworkHook,
-				hooks.EthereumDeployerHook,
-				hooks.EthereumClientHook,
-				utils.ProjectRoot,
+				actions.EthereumPerfNetworkHook,
+				actions.EthereumDeployerHook,
+				actions.EthereumClientHook,
+				tools.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
 			defaultNetwork = suiteSetup.DefaultNetwork()

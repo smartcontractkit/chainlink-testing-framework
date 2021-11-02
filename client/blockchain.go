@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"math/big"
 	"math/rand"
-	"os"
 	"reflect"
 	"strings"
 
@@ -122,7 +121,7 @@ func NewNetworkFromConfig(conf *config.Config, networkID string) (BlockchainNetw
 	}
 	switch networkConfig.Type {
 	case BlockchainTypeEVMCelo, BlockchainTypeEVMCeloMultinode:
-		return newEthereumNetwork(networkID, networkConfig)
+		return NewEthereumNetwork(networkID, networkConfig)
 	}
 	return nil, fmt.Errorf(
 		"network %s uses an unsupported network type of: %s",
@@ -332,9 +331,4 @@ type NodeBlock struct {
 type HeaderEventSubscription interface {
 	ReceiveBlock(header NodeBlock) error
 	Wait() error
-}
-
-// GasUsedEstimations contains some known gas values for contracts for every network
-type GasUsedEstimations interface {
-	FluxMonitorSubmissionGasUsed() (*big.Int, error)
 }
