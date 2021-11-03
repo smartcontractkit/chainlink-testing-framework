@@ -1,3 +1,4 @@
+// Package chaos handles the setup necessary to run chaos tests across chainlnk nodes and blockchains
 package chaos
 
 import (
