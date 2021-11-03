@@ -13,12 +13,12 @@ import (
 
 // EthereumDeployerHook deployer hook
 func EthereumDeployerHook(bcClient client.BlockchainClient) (contracts.ContractDeployer, error) {
-	return contracts.NewEthereumContractDeployer(bcClient.Get().(*client.EthereumClient)), nil
+	return contracts.NewEthereumContractDeployer(bcClient.Get().(*client.CeloClient)), nil
 }
 
 // EthereumClientHook client hook
 func EthereumClientHook(network client.BlockchainNetwork) (client.BlockchainClient, error) {
-	return client.NewEthereumClient(network)
+	return client.NewCeloClient(network)
 }
 
 // EVMNetworkFromConfigHook evm network from config hook
