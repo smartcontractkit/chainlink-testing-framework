@@ -1,3 +1,4 @@
+// Package actions enables common chainlink interactions
 package actions
 
 import (
