@@ -169,7 +169,7 @@ require (
 	k8s.io/kube-openapi v0.0.0-20211029090450-ec1f4c89925a // indirect
 	k8s.io/kubectl v0.22.3 // indirect
 	k8s.io/utils v0.0.0-20210930125809-cb0fa318a74b // indirect
-	oras.land/oras-go v0.5.0 // indirect
+	oras.land/oras-go v0.4.0 // indirect
 	sigs.k8s.io/kustomize/api v0.10.0 // indirect
 	sigs.k8s.io/kustomize/kyaml v0.12.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.0 // indirect
