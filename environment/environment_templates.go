@@ -612,7 +612,7 @@ func getBasicDependencyGroup() *K8sManifestGroup {
 }
 
 // addNetworkManifestToDependencyGroup adds the correct network to the dependency group and returns
-// an array of all groups, this should be called as the last function when creating deploys
+// an array of all groups, this should be called as the last function when creating deployments
 func addNetworkManifestToDependencyGroup(chainlinkGroup *K8sManifestGroup, dependencyGroups []*K8sManifestGroup) K8sEnvSpecInit {
 	return func(networks ...client.BlockchainNetwork) K8sEnvSpecs {
 		var specs K8sEnvSpecs
@@ -644,7 +644,9 @@ func addNetworkManifestToDependencyGroup(chainlinkGroup *K8sManifestGroup, depen
 					dependencyGroups[indexOfLastElementInDependencyGroups].manifests,
 					NewGanacheManifest(networkCounts[network.Config().Name], network.Config()))
 				networkCounts[network.Config().Name] += 1
-			default: // no simulated chain
+			default:
+				network.SetClusterURL(network.URLs()[0])
+				network.SetLocalURL(network.URLs()[0])
 			}
 		}
 
