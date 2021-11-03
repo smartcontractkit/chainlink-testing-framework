@@ -40,10 +40,10 @@ spec:
             - containerPort: 1337
           resources:
             requests:
-              memory: "5000Mi"
+              memory: "500Mi"
               cpu: "1"
             limits:
-              memory: "5000Mi"
+              memory: "500Mi"
               cpu: "1"
           livenessProbe:
             httpGet:

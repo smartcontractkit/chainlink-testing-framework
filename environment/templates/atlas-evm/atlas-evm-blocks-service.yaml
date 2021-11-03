@@ -1,0 +1,10 @@
+metadata:
+  name: atlas-evm-blocks
+spec:
+  ports:
+    - name: "9093"
+      port: 9093
+      targetPort: 9090
+  selector:
+    app: atlas-evm-blocks
+  type: ClusterIP

@@ -131,6 +131,7 @@ type AppConfig struct {
 	Postgres  PostgresConfig  `mapstructure:"postgres" yaml:"postgres"`
 	Otpe      OtpeConfig      `mapstructure:"otpe" yaml:"otpe"`
 	Explorer  ExplorerConfig  `mapstructure:"explorer" yaml:"explorer"`
+	AtlasEvm  AtlasEvmConfig  `mapstructure:"atlas-evm" yaml:"atlas-evm"`
 }
 
 // ChainlinkConfig holds the configuration for the chainlink nodes to be deployed
@@ -173,6 +174,12 @@ type OtpeConfig struct {
 
 // ExplorerConfig holds the configuration for the explorer to be deployed
 type ExplorerConfig struct {
+	Image   string `mapstructure:"image" yaml:"image"`
+	Version string `mapstructure:"version" yaml:"version"`
+}
+
+// AtlasEvmConfig holds the configuration for the atlas-evm to be deployed
+type AtlasEvmConfig struct {
 	Image   string `mapstructure:"image" yaml:"image"`
 	Version string `mapstructure:"version" yaml:"version"`
 }

@@ -1,0 +1,45 @@
+metadata:
+  name: cp-schema-registry
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cp-schema-registry
+  template:
+    objectmeta:
+      labels:
+        app: cp-schema-registry
+    spec:
+      containers:
+        - name: cp-schema-registry
+          env:
+            - name: SCHEMA_REGISTRY_DEBUG
+              value: "true"
+            - name: SCHEMA_REGISTRY_HOST_NAME
+              value: cp-schema-registry
+            - name: SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS
+              value: PLAINTEXT://{{ .Values.KafkaGroup.kafka.clusterURL }}
+            - name: SCHEMA_REGISTRY_LISTENERS
+              value: http://0.0.0.0:8081
+          image: confluentinc/cp-schema-registry:6.2.1
+          ports:
+            - containerPort: 8081
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "1"
+            limits:
+              memory: "256Mi"
+              cpu: "1"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8081
+            initialDelaySeconds: 50
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8081
+            initialDelaySeconds: 25
+            periodSeconds: 5

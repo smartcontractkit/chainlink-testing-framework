@@ -1,0 +1,10 @@
+metadata:
+  name: cp-schema-registry
+spec:
+  ports:
+    - name: "8081"
+      port: 8081
+      targetPort: 8081
+  selector:
+    app: cp-schema-registry
+  type: ClusterIP

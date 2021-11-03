@@ -251,3 +251,13 @@ func NewOCRSetupInputForObservability(i *OCRSetupInputs, nodeCount int, contract
 	err = i.SuiteSetup.Environment().DeploySpecs(environment.PrometheusGroup(rules))
 	Expect(err).ShouldNot(HaveOccurred())
 }
+
+// NewOCRSetupInputForAtlas deploys and setups env and clients for testing atlas
+func NewOCRSetupInputForAtlas(i *OCRSetupInputs, nodeCount int, contractCount int) {
+	DeployOCRForEnv(
+		i,
+		environment.NewChainlinkClusterForAtlasTesting(nodeCount),
+	)
+	FundNodes(i)
+	DeployOCRContracts(i, contractCount)
+}
