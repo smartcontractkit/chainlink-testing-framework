@@ -43,8 +43,10 @@ type Chainlink interface {
 	DeleteP2PKey(id int) error
 
 	ReadETHKeys() (*ETHKeys, error)
-	ReadVRFKeys() (*VRFKeys, error)
 	PrimaryEthAddress() (string, error)
+
+	CreateVRFKey() (*VRFKey, error)
+	ReadVRFKeys() (*VRFKeys, error)
 
 	CreateEI(eia *EIAttributes) (*EIKeyCreate, error)
 	ReadEIs() (*EIKeys, error)
@@ -225,6 +227,11 @@ func (c *chainlink) ReadP2PKeys() (*P2PKeys, error) {
 	p2pKeys := &P2PKeys{}
 	log.Info().Str("Node URL", c.Config.URL).Msg("Reading P2P Keys")
 	_, err := c.do(http.MethodGet, "/v2/keys/p2p", nil, p2pKeys, http.StatusOK)
+	if len(p2pKeys.Data) == 0 {
+		err = fmt.Errorf("Found no P2P Keys on the chainlink node. Node URL: %s", c.Config.URL)
+		log.Err(err).Msg("Error getting P2P keys")
+		return nil, err
+	}
 	for index := range p2pKeys.Data {
 		p2pKeys.Data[index].Attributes.PeerID = strings.TrimPrefix(p2pKeys.Data[index].Attributes.PeerID, "p2p_")
 	}
@@ -243,15 +250,29 @@ func (c *chainlink) ReadETHKeys() (*ETHKeys, error) {
 	ethKeys := &ETHKeys{}
 	log.Info().Str("Node URL", c.Config.URL).Msg("Reading ETH Keys")
 	_, err := c.do(http.MethodGet, "/v2/keys/eth", nil, ethKeys, http.StatusOK)
+	if len(ethKeys.Data) == 0 {
+		log.Warn().Str("Node URL", c.Config.URL).Msg("Found no ETH Keys on the node")
+	}
 	return ethKeys, err
 }
 
 // ReadVRFKeys reads all VRF keys from the Chainlink node
 func (c *chainlink) ReadVRFKeys() (*VRFKeys, error) {
-	ethKeys := &VRFKeys{}
+	vrfKeys := &VRFKeys{}
 	log.Info().Str("Node URL", c.Config.URL).Msg("Reading VRF Keys")
-	_, err := c.do(http.MethodGet, "/v2/keys/vrf", nil, ethKeys, http.StatusOK)
-	return ethKeys, err
+	_, err := c.do(http.MethodGet, "/v2/keys/vrf", nil, vrfKeys, http.StatusOK)
+	if len(vrfKeys.Data) == 0 {
+		log.Warn().Str("Node URL", c.Config.URL).Msg("Found no VRF Keys on the node")
+	}
+	return vrfKeys, err
+}
+
+// CreateVRFKey creates a VRF key on the Chainlink node
+func (c *chainlink) CreateVRFKey() (*VRFKey, error) {
+	vrfKey := &VRFKey{}
+	log.Info().Str("Node URL", c.Config.URL).Msg("Creating VRF Key")
+	_, err := c.do(http.MethodPost, "/v2/keys/vrf", nil, vrfKey, http.StatusOK)
+	return vrfKey, err
 }
 
 // PrimaryEthAddress returns the primary ETH address for the chainlink node

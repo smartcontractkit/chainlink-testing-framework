@@ -14,7 +14,10 @@ go_mod:
 install: go_mod golangci
 
 test_smoke:
-	ginkgo -r -p -keepGoing --trace --randomizeAllSpecs --randomizeSuites --progress -skipPackage=./suite/performance,./suite/chaos ./suite/... $(args)
+	ginkgo -r -keepGoing --trace --randomizeAllSpecs --randomizeSuites --progress $(args) ./suite/smoke 
 
 test_performance:
-	ginkgo -r -p -keepGoing --trace --randomizeAllSpecs --randomizeSuites --progress ./suite/performance ./suite/chaos $(args)
+	ginkgo -r -keepGoing --trace --randomizeAllSpecs --randomizeSuites --progress $(args) ./suite/performance 
+
+test_chaos:
+	ginkgo -r -keepGoing --trace --randomizeAllSpecs --randomizeSuites --progress $(args) ./suite/chaos 

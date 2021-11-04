@@ -27,10 +27,8 @@ require (
 )
 
 require (
-	github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/spf13/cobra v1.2.1 // indirect
-	golang.org/x/tools v0.1.7 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 )
 
