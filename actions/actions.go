@@ -3,6 +3,8 @@ package actions
 
 import (
 	"encoding/json"
+	"fmt"
+	"github.com/smartcontractkit/integrations-framework/contracts"
 	"math/big"
 	"strings"
 
@@ -92,4 +94,49 @@ func EncodeOnChainVRFProvingKey(vrfKey client.VRFKey) ([2]*big.Int, error) {
 		return [2]*big.Int{}, errors.New("can not convert VRF key to *big.Int")
 	}
 	return provingKey, nil
+}
+
+// GetMockserverInitializerDataForOTPE creates mocked weiwatchers data needed for otpe
+func GetMockserverInitializerDataForOTPE(
+	OCRInstances []contracts.OffchainAggregator,
+	chainlinkNodes []client.Chainlink,
+) (interface{}, error) {
+	var contractsInfo []client.ContractInfoJSON
+
+	for index, OCRInstance := range OCRInstances {
+		contractInfo := client.ContractInfoJSON{
+			ContractVersion: 4,
+			Path:            fmt.Sprintf("contract_%d", index),
+			Status:          "live",
+			ContractAddress: OCRInstance.Address(),
+		}
+
+		contractsInfo = append(contractsInfo, contractInfo)
+	}
+
+	contractsInitializer := client.HttpInitializer{
+		Request:  client.HttpRequest{Path: "/contracts.json"},
+		Response: client.HttpResponse{Body: contractsInfo},
+	}
+
+	var nodesInfo []client.NodeInfoJSON
+
+	for _, chainlink := range chainlinkNodes {
+		ocrKeys, err := chainlink.ReadOCRKeys()
+		if err != nil {
+			return nil, err
+		}
+		nodeInfo := client.NodeInfoJSON{
+			NodeAddress: []string{ocrKeys.Data[0].Attributes.OnChainSigningAddress},
+			ID:          ocrKeys.Data[0].ID,
+		}
+		nodesInfo = append(nodesInfo, nodeInfo)
+	}
+
+	nodesInitializer := client.HttpInitializer{
+		Request:  client.HttpRequest{Path: "/nodes.json"},
+		Response: client.HttpResponse{Body: nodesInfo},
+	}
+	initializers := []client.HttpInitializer{contractsInitializer, nodesInitializer}
+	return initializers, nil
 }

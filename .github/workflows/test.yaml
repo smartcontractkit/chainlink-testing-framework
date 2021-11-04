@@ -120,7 +120,7 @@ jobs:
       - name: Run Tests
         run: |
           export PATH=$PATH:$(go env GOPATH)/bin
-          ./tools/integration_test.sh 0
+          make test_smoke args="--nodes=15"
       - name: Publish Test Results
         uses: mikepenz/action-junit-report@v2
         if: always()
@@ -180,7 +180,7 @@ jobs:
       - name: Run Tests
         run: |
           export PATH=$PATH:$(go env GOPATH)/bin
-          ./tools/integration_test.sh 1
+          make test_performance args="--nodes=15"
       - name: Publish Test Results
         uses: mikepenz/action-junit-report@v2
         if: always()

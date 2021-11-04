@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"github.com/smartcontractkit/integrations-framework/utils"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -16,7 +17,6 @@ import (
 	"github.com/google/go-github/github"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/config"
-	"github.com/smartcontractkit/integrations-framework/tools"
 	coreV1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -96,8 +96,8 @@ func NewChainlinkCustomNetworksCluster(nodeCount int, networkDeploymentConfigs [
 func NewAdapterManifest() *K8sManifest {
 	return &K8sManifest{
 		id:             "adapter",
-		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/adapter-deployment.yml"),
-		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/adapter-service.yml"),
+		DeploymentFile: filepath.Join(utils.ProjectRoot, "/environment/templates/adapter-deployment.yml"),
+		ServiceFile:    filepath.Join(utils.ProjectRoot, "/environment/templates/adapter-service.yml"),
 
 		values: map[string]interface{}{
 			"apiPort": AdapterAPIPort,
@@ -122,8 +122,8 @@ func NewAdapterManifest() *K8sManifest {
 func NewHeadlessChainlinkManifest(idx int) *K8sManifest {
 	return &K8sManifest{
 		id:             "chainlink",
-		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/chainlink/chainlink-deployment.yml"),
-		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/chainlink/chainlink-service.yml"),
+		DeploymentFile: filepath.Join(utils.ProjectRoot, "/environment/templates/chainlink/chainlink-deployment.yml"),
+		ServiceFile:    filepath.Join(utils.ProjectRoot, "/environment/templates/chainlink/chainlink-service.yml"),
 
 		values: map[string]interface{}{
 			"idx":                         idx,
@@ -147,8 +147,8 @@ func NewHeadlessChainlinkManifest(idx int) *K8sManifest {
 func NewChainlinkManifest(idx int) *K8sManifest {
 	return &K8sManifest{
 		id:             "chainlink",
-		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/chainlink/chainlink-deployment.yml"),
-		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/chainlink/chainlink-service.yml"),
+		DeploymentFile: filepath.Join(utils.ProjectRoot, "/environment/templates/chainlink/chainlink-deployment.yml"),
+		ServiceFile:    filepath.Join(utils.ProjectRoot, "/environment/templates/chainlink/chainlink-service.yml"),
 
 		values: map[string]interface{}{
 			"idx":                         idx,
@@ -172,8 +172,8 @@ func NewChainlinkManifest(idx int) *K8sManifest {
 func NewPostgresManifest() *K8sManifest {
 	return &K8sManifest{
 		id:             "postgres",
-		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/postgres/postgres-deployment.yml"),
-		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/postgres/postgres-service.yml"),
+		DeploymentFile: filepath.Join(utils.ProjectRoot, "/environment/templates/postgres/postgres-deployment.yml"),
+		ServiceFile:    filepath.Join(utils.ProjectRoot, "/environment/templates/postgres/postgres-service.yml"),
 
 		SetValuesFunc: func(manifest *K8sManifest) error {
 			manifest.values["clusterURL"] = fmt.Sprintf(
@@ -192,8 +192,8 @@ func NewPostgresManifest() *K8sManifest {
 func NewExplorerManifest(nodeCount int) *K8sManifest {
 	return &K8sManifest{
 		id:             "explorer",
-		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/explorer-deployment.yml"),
-		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/explorer-service.yml"),
+		DeploymentFile: filepath.Join(utils.ProjectRoot, "/environment/templates/explorer-deployment.yml"),
+		ServiceFile:    filepath.Join(utils.ProjectRoot, "/environment/templates/explorer-service.yml"),
 		SetValuesFunc: func(manifest *K8sManifest) error {
 			manifest.values["clusterURL"] = fmt.Sprintf(
 				"ws://%s:8080",
@@ -238,8 +238,8 @@ func NewExplorerManifest(nodeCount int) *K8sManifest {
 func NewOTPEManifest() *K8sManifest {
 	return &K8sManifest{
 		id:             "otpe",
-		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/otpe-deployment.yml"),
-		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/otpe-service.yml"),
+		DeploymentFile: filepath.Join(utils.ProjectRoot, "/environment/templates/otpe-deployment.yml"),
+		ServiceFile:    filepath.Join(utils.ProjectRoot, "/environment/templates/otpe-service.yml"),
 		SetValuesFunc: func(manifest *K8sManifest) error {
 			manifest.values["clusterURL"] = fmt.Sprintf(
 				"%s:%d",
@@ -255,7 +255,7 @@ func NewOTPEManifest() *K8sManifest {
 func NewMockserverConfigHelmChart() *HelmChart {
 	return &HelmChart{
 		id:          "mockserver-config",
-		chartPath:   filepath.Join(tools.ProjectRoot, "environment/charts/mockserver-config"),
+		chartPath:   filepath.Join(utils.ProjectRoot, "environment/charts/mockserver-config"),
 		releaseName: "mockserver-config",
 	}
 }
@@ -264,7 +264,7 @@ func NewMockserverConfigHelmChart() *HelmChart {
 func NewMockserverHelmChart() *HelmChart {
 	chart := &HelmChart{
 		id:          "mockserver",
-		chartPath:   filepath.Join(tools.ProjectRoot, "environment/charts/mockserver/mockserver-5.11.1.tgz"),
+		chartPath:   filepath.Join(utils.ProjectRoot, "environment/charts/mockserver/mockserver-5.11.1.tgz"),
 		releaseName: "mockserver",
 		values:      map[string]interface{}{},
 		SetValuesHelmFunc: func(manifest *HelmChart) error {
@@ -298,9 +298,9 @@ func NewPrometheusManifest(rules map[string]*os.File) *K8sManifest {
 
 	return &K8sManifest{
 		id:             "prometheus",
-		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/prometheus/prometheus-deployment.yml"),
-		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/prometheus/prometheus-service.yml"),
-		ConfigMapFile:  filepath.Join(tools.ProjectRoot, "/environment/templates/prometheus/prometheus-config-map.yml"),
+		DeploymentFile: filepath.Join(utils.ProjectRoot, "/environment/templates/prometheus/prometheus-deployment.yml"),
+		ServiceFile:    filepath.Join(utils.ProjectRoot, "/environment/templates/prometheus/prometheus-service.yml"),
+		ConfigMapFile:  filepath.Join(utils.ProjectRoot, "/environment/templates/prometheus/prometheus-config-map.yml"),
 
 		values: vals,
 	}
@@ -312,9 +312,9 @@ func NewGethManifest(networkCount int, network *config.NetworkConfig) *K8sManife
 	network.RPCPort = GetFreePort()
 	return &K8sManifest{
 		id:             network.Name,
-		DeploymentFile: filepath.Join(tools.ProjectRoot, "environment/templates/geth-deployment.yml"),
-		ServiceFile:    filepath.Join(tools.ProjectRoot, "environment/templates/geth-service.yml"),
-		ConfigMapFile:  filepath.Join(tools.ProjectRoot, "environment/templates/geth-config-map.yml"),
+		DeploymentFile: filepath.Join(utils.ProjectRoot, "environment/templates/geth-deployment.yml"),
+		ServiceFile:    filepath.Join(utils.ProjectRoot, "environment/templates/geth-service.yml"),
+		ConfigMapFile:  filepath.Join(utils.ProjectRoot, "environment/templates/geth-config-map.yml"),
 		Network:        network,
 		values: map[string]interface{}{
 			"rpcPort": network.RPCPort,
@@ -351,7 +351,7 @@ func NewGethReorgHelmChart(networkCount int, network *config.NetworkConfig) *Hel
 	network.RPCPort = GetFreePort()
 	return &HelmChart{
 		id:          network.Name,
-		chartPath:   filepath.Join(tools.ProjectRoot, "environment/charts/geth-reorg"),
+		chartPath:   filepath.Join(utils.ProjectRoot, "environment/charts/geth-reorg"),
 		releaseName: "reorg-1",
 		network:     network,
 		values: map[string]interface{}{
@@ -380,9 +380,9 @@ func NewHardhatManifest(networkCount int, network *config.NetworkConfig) *K8sMan
 	network.RPCPort = GetFreePort()
 	return &K8sManifest{
 		id:             network.Name,
-		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/hardhat-deployment.yml"),
-		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/hardhat-service.yml"),
-		ConfigMapFile:  filepath.Join(tools.ProjectRoot, "/environment/templates/hardhat-config-map.yml"),
+		DeploymentFile: filepath.Join(utils.ProjectRoot, "/environment/templates/hardhat-deployment.yml"),
+		ServiceFile:    filepath.Join(utils.ProjectRoot, "/environment/templates/hardhat-service.yml"),
+		ConfigMapFile:  filepath.Join(utils.ProjectRoot, "/environment/templates/hardhat-config-map.yml"),
 		Network:        network,
 		values: map[string]interface{}{
 			"rpcPort": network.RPCPort,
@@ -408,8 +408,8 @@ func NewGanacheManifest(networkCount int, network *config.NetworkConfig) *K8sMan
 	network.RPCPort = GetFreePort()
 	return &K8sManifest{
 		id:             network.Name,
-		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/ganache-deployment.yml"),
-		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/ganache-service.yml"),
+		DeploymentFile: filepath.Join(utils.ProjectRoot, "/environment/templates/ganache-deployment.yml"),
+		ServiceFile:    filepath.Join(utils.ProjectRoot, "/environment/templates/ganache-service.yml"),
 		Network:        network,
 		values: map[string]interface{}{
 			"rpcPort": network.RPCPort,
@@ -545,7 +545,7 @@ func NewMixedVersionChainlinkCluster(nodeCount, pastVersionsCount int) K8sEnvSpe
 
 // NewKafkaHelmChart creates new helm chart for kafka
 func NewKafkaHelmChart() *HelmChart {
-	valuesFilePath := filepath.Join(tools.ProjectRoot, "environment/charts/kafka/overrideValues.yaml")
+	valuesFilePath := filepath.Join(utils.ProjectRoot, "environment/charts/kafka/overrideValues.yaml")
 	overrideValues, err := chartutil.ReadValuesFile(valuesFilePath)
 	if err != nil {
 		return nil
@@ -553,7 +553,7 @@ func NewKafkaHelmChart() *HelmChart {
 
 	chart := &HelmChart{
 		id:          "kafka",
-		chartPath:   filepath.Join(tools.ProjectRoot, "environment/charts/kafka/kafka-14.1.0.tgz"),
+		chartPath:   filepath.Join(utils.ProjectRoot, "environment/charts/kafka/kafka-14.1.0.tgz"),
 		releaseName: "kafka",
 		values:      map[string]interface{}{},
 		SetValuesHelmFunc: func(manifest *HelmChart) error {

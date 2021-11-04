@@ -8,7 +8,6 @@ require (
 	github.com/ethereum/go-ethereum v1.10.11
 	github.com/ghodss/yaml v1.0.0
 	github.com/google/go-github v17.0.0+incompatible
-	github.com/gorilla/websocket v1.4.2
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/montanaflynn/stats v0.6.6
 	github.com/onsi/ginkgo v1.16.5
@@ -19,14 +18,20 @@ require (
 	github.com/rs/zerolog v1.26.0
 	github.com/satori/go.uuid v1.2.0
 	github.com/smartcontractkit/libocr v0.0.0-20210826183649-d12971936c12
-	github.com/spf13/cobra v1.2.1
 	github.com/spf13/viper v1.9.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	google.golang.org/protobuf v1.27.1
 	helm.sh/helm/v3 v3.7.1
 	k8s.io/api v0.22.3
 	k8s.io/apimachinery v0.22.3
 	k8s.io/client-go v0.22.3
+)
+
+require (
+	github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0 // indirect
+	github.com/gorilla/websocket v1.4.2 // indirect
+	github.com/spf13/cobra v1.2.1 // indirect
+	golang.org/x/tools v0.1.7 // indirect
+	google.golang.org/protobuf v1.27.1 // indirect
 )
 
 require (
@@ -68,7 +73,6 @@ require (
 	github.com/go-openapi/jsonreference v0.19.6 // indirect
 	github.com/go-openapi/swag v0.19.15 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
-	github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
@@ -150,7 +154,6 @@ require (
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
-	golang.org/x/tools v0.1.7 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20211102202547-e9cf271f7f2c // indirect
 	google.golang.org/grpc v1.42.0 // indirect

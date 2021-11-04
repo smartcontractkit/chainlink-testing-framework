@@ -19,7 +19,7 @@ environment.NewMixedVersionChainlinkCluster(6, 2)
 ```
 
 Once launched, you can interact with the nodes, funding them and creating jobs for the nodes to run. A good example of
-the typical workflow here can be seen in [our flux aggregator test](../suite/integration/contracts_flux_test.go). Below
+the typical workflow here can be seen in [our flux aggregator test](../suite/smoke/contracts_flux_test.go). Below
 is a small portion of it.
 
 ```go
