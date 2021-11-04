@@ -2,12 +2,12 @@ package environment
 
 import (
 	"github.com/smartcontractkit/integrations-framework/client"
+	"github.com/smartcontractkit/integrations-framework/utils"
 	"strconv"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/smartcontractkit/integrations-framework/config"
-	"github.com/smartcontractkit/integrations-framework/tools"
 )
 
 var _ = Describe("Environment with Helm @helm_deploy", func() {
@@ -18,7 +18,7 @@ var _ = Describe("Environment with Helm @helm_deploy", func() {
 
 		BeforeEach(func() {
 			var err error
-			conf, err = config.NewConfig(tools.ProjectRoot)
+			conf, err = config.NewConfig(utils.ProjectRoot)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 

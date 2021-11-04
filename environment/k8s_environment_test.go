@@ -1,15 +1,14 @@
 package environment
 
 import (
-	"github.com/rs/zerolog/log"
-	"github.com/smartcontractkit/integrations-framework/client"
-	"github.com/smartcontractkit/integrations-framework/config"
-	"github.com/smartcontractkit/integrations-framework/tools"
-	"github.com/smartcontractkit/integrations-framework/types"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
+	"github.com/rs/zerolog/log"
+	"github.com/smartcontractkit/integrations-framework/client"
+	"github.com/smartcontractkit/integrations-framework/config"
+	"github.com/smartcontractkit/integrations-framework/hooks"
+	"github.com/smartcontractkit/integrations-framework/utils"
 )
 
 var _ = Describe("Environment functionality @unit", func() {
@@ -20,12 +19,12 @@ var _ = Describe("Environment functionality @unit", func() {
 
 	BeforeEach(func() {
 		var err error
-		conf, err = config.NewConfig(tools.ProjectRoot)
+		conf, err = config.NewConfig(utils.ProjectRoot)
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 
 	DescribeTable("single network environments", func(
-		initFunc types.NewNetworkHook,
+		initFunc hooks.NewNetworkHook,
 		envInitFunc K8sEnvSpecInit,
 		nodeCount int,
 	) {
