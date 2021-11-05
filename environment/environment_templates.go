@@ -433,8 +433,8 @@ func NewGanacheManifest(networkCount int, network *config.NetworkConfig) *K8sMan
 func NewAtlasEvmBlocksManifest() *K8sManifest {
 	return &K8sManifest{
 		id:             "atlas_evm_blocks",
-		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/atlas-evm/atlas-evm-blocks-deployment.yaml"),
-		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/atlas-evm/atlas-evm-blocks-service.yaml"),
+		DeploymentFile: filepath.Join(utils.ProjectRoot, "/environment/templates/atlas-evm/atlas-evm-blocks-deployment.yaml"),
+		ServiceFile:    filepath.Join(utils.ProjectRoot, "/environment/templates/atlas-evm/atlas-evm-blocks-service.yaml"),
 	}
 }
 
@@ -442,8 +442,8 @@ func NewAtlasEvmBlocksManifest() *K8sManifest {
 func NewSchemaRegistryManifest() *K8sManifest {
 	return &K8sManifest{
 		id:             "schema_registry",
-		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/schema-registry/schema-registry-deployment.yaml"),
-		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/schema-registry/schema-registry-service.yaml"),
+		DeploymentFile: filepath.Join(utils.ProjectRoot, "/environment/templates/schema-registry/schema-registry-deployment.yaml"),
+		ServiceFile:    filepath.Join(utils.ProjectRoot, "/environment/templates/schema-registry/schema-registry-service.yaml"),
 		SetValuesFunc: func(manifest *K8sManifest) error {
 			manifest.values["clusterURL"] = fmt.Sprintf(
 				"http://%s:%d",
