@@ -7,7 +7,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/environment"
-	"github.com/smartcontractkit/integrations-framework/tools"
+	"github.com/smartcontractkit/integrations-framework/utils"
 )
 
 // Test config files
@@ -21,7 +21,7 @@ var _ = Describe("Environment unit tests @unit", func() {
 
 	Describe("NewPrivateKeyStoreFromEnv unit tests", func() {
 		It("should fetch private keys when they exist", func() {
-			conf, err := config.NewConfig(fmt.Sprintf(specifiedConfig, tools.ProjectRoot))
+			conf, err := config.NewConfig(fmt.Sprintf(specifiedConfig, utils.ProjectRoot))
 			Expect(err).ShouldNot(HaveOccurred())
 
 			bcNetwork, err := client.DefaultNetworkFromConfig(conf)
@@ -38,7 +38,7 @@ var _ = Describe("Environment unit tests @unit", func() {
 		})
 
 		It("should not fetch private keys when they do not exist", func() {
-			conf, err := config.NewConfig(fmt.Sprintf(noPrivateKeysConfig, tools.ProjectRoot))
+			conf, err := config.NewConfig(fmt.Sprintf(noPrivateKeysConfig, utils.ProjectRoot))
 			Expect(err).ShouldNot(HaveOccurred())
 
 			bcNetwork, err := client.DefaultNetworkFromConfig(conf)
@@ -53,7 +53,7 @@ var _ = Describe("Environment unit tests @unit", func() {
 
 		It("should fetch secret private keys", func() {
 			Skip("Not ready to be run in github")
-			conf, err := config.NewConfig(fmt.Sprintf(secretKeysConfig, tools.ProjectRoot))
+			conf, err := config.NewConfig(fmt.Sprintf(secretKeysConfig, utils.ProjectRoot))
 			Expect(err).ShouldNot(HaveOccurred())
 
 			bcNetwork, err := client.DefaultNetworkFromConfig(conf)

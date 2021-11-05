@@ -26,7 +26,7 @@ spec:
             - name: LOG_LEVEL
               value: debug
             - name: RPC_ENDPOINTS
-              value:  {{ if .Values.DependencyGroup.ethereum_geth_0.clusterURL }}{{ .Values.DependencyGroup.ethereum_geth_0.clusterURL }}{{ else if .Values.DependencyGroup.ethereum_geth_performance_0.clusterURL }}{{ .Values.DependencyGroup.ethereum_geth_performance_0.clusterURL }}{{ else if .Values.DependencyGroup.ethereum_ganache_0.clusterURL }}{{ .Values.DependencyGroup.ethereum_ganache_0.clusterURL }}{{ else if .Values.DependencyGroup.ethereum_hardhat_0.clusterURL }}{{ .Values.DependencyGroup.ethereum_hardhat_0.clusterURL }}{{ end }}
+              value:  {{ .DefaultNetwork.ClusterURL }}
           image: {{ .Config.Apps.AtlasEvm.Image }}:{{ .Config.Apps.AtlasEvm.Version }}
           ports:
             - containerPort: 9090

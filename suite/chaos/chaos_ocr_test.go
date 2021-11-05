@@ -1,30 +1,30 @@
 package chaos
 
 import (
+	"github.com/smartcontractkit/integrations-framework/actions"
+	"github.com/smartcontractkit/integrations-framework/client/chaos"
+	"github.com/smartcontractkit/integrations-framework/client/chaos/experiments"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
-	"github.com/smartcontractkit/integrations-framework/chaos"
-	"github.com/smartcontractkit/integrations-framework/chaos/experiments"
 	"github.com/smartcontractkit/integrations-framework/environment"
-	"github.com/smartcontractkit/integrations-framework/suite/testcommon"
 )
 
 var _ = XDescribeTable("OCR chaos tests @chaos-ocr", func(
 	envInit environment.K8sEnvSpecInit,
 	chaosSpec chaos.Experimentable,
 ) {
-	i := &testcommon.OCRSetupInputs{}
+	i := &actions.OCRSetupInputs{}
 	Context("Runs OCR test with a chaos modifier", func() {
-		testcommon.DeployOCRForEnv(i, envInit)
-		testcommon.FundNodes(i)
-		testcommon.DeployOCRContracts(i, 1)
-		testcommon.SendOCRJobs(i)
+		By("Deploying the environment", actions.DeployOCRForEnv(i, envInit))
+		By("Funding nodes", actions.FundNodes(i))
+		By("Deploying OCR contracts", actions.DeployOCRContracts(i, 1))
+		By("Creating OCR jobs", actions.CreateOCRJobs(i))
 		_, err := i.SuiteSetup.Environment().ApplyChaos(chaosSpec)
 		Expect(err).ShouldNot(HaveOccurred())
-		testcommon.CheckRound(i)
+		actions.CheckRound(i)
 	})
 	AfterEach(func() {
 		By("Restoring chaos", func() {

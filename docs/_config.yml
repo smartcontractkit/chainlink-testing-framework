@@ -1,0 +1,18 @@
+remote_theme: pmarsceill/just-the-docs
+color_scheme: dark
+
+title: Chainlink Integrations Framework
+description: A framework for orchestrating blockchain and Chainlink tests
+logo: https://assets-global.website-files.com/5f6b7190899f41fb70882d08/5f760a499b56c47b8fa74fbb_chainlink-logo.svg
+
+# Aux links for the upper right navigation
+aux_links:
+  "See on GitHub":
+    - "//github.com/smartcontractkit/integrations-framework"
+
+# Makes Aux links open in a new tab. Default is false
+aux_links_new_tab: false
+
+# Footer last edited timestamp
+last_edit_timestamp: true # show or hide edit time - page must have `last_modified_date` defined in the frontmatter
+last_edit_time_format: "%b %e %Y at %I:%M %p" # uses ruby's time format: https://ruby-doc.org/stdlib-2.7.0/libdoc/time/rdoc/Time.html

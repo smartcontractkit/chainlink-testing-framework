@@ -1,5 +1,6 @@
 .DS_Store
 environment/charts/mockserver-config/static/initializerJson.json
+external_artifacts
 
 # Hardhat config that might sneak through
 node_modules/
