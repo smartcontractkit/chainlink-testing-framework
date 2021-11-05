@@ -429,6 +429,35 @@ func NewGanacheManifest(networkCount int, network *config.NetworkConfig) *K8sMan
 	}
 }
 
+// NewAtlasEvmBlocksManifest is the k8s manifest that when used will deploy atlas-evm-blocks to an env
+func NewAtlasEvmBlocksManifest() *K8sManifest {
+	return &K8sManifest{
+		id:             "atlas_evm_blocks",
+		DeploymentFile: filepath.Join(utils.ProjectRoot, "/environment/templates/atlas-evm/atlas-evm-blocks-deployment.yaml"),
+		ServiceFile:    filepath.Join(utils.ProjectRoot, "/environment/templates/atlas-evm/atlas-evm-blocks-service.yaml"),
+	}
+}
+
+// NewSchemaRegistryManifest is the k8s manifest that when used will deploy schema registry to an env
+// Confluent Schema Registry provides a serving layer for your metadata. It provides a RESTful interface for storing
+// and retrieving your Avro®, JSON Schema, and Protobuf schemas. In Atlas it stores the schemas for different
+// components like atlas-evm-blocks, atlas-evm-events etc.
+func NewSchemaRegistryManifest() *K8sManifest {
+	return &K8sManifest{
+		id:             "schema_registry",
+		DeploymentFile: filepath.Join(utils.ProjectRoot, "/environment/templates/schema-registry/schema-registry-deployment.yaml"),
+		ServiceFile:    filepath.Join(utils.ProjectRoot, "/environment/templates/schema-registry/schema-registry-service.yaml"),
+		SetValuesFunc: func(manifest *K8sManifest) error {
+			manifest.values["clusterURL"] = fmt.Sprintf(
+				"http://%s:%d",
+				manifest.Service.Spec.ClusterIP,
+				manifest.Service.Spec.Ports[0].Port,
+			)
+			return nil
+		},
+	}
+}
+
 // NewChainlinkCluster is a basic environment that deploys hardhat with a chainlink cluster and an external adapter
 func NewChainlinkCluster(nodeCount int) K8sEnvSpecInit {
 	mockserverConfigDependencyGroup := &K8sManifestGroup{
@@ -489,6 +518,58 @@ func NewChainlinkClusterForObservabilityTesting(nodeCount int) K8sEnvSpecInit {
 	dependencyGroup.manifests = append(dependencyGroup.manifests, NewExplorerManifest(nodeCount))
 	addPostgresDbsToDependencyGroup(dependencyGroup, nodeCount)
 	dependencyGroups := []*K8sManifestGroup{mockserverConfigDependencyGroup, mockserverDependencyGroup, kafkaDependecyGroup, dependencyGroup}
+
+	return addNetworkManifestToDependencyGroup(chainlinkGroup, dependencyGroups)
+}
+
+// NewChainlinkClusterForAtlasTesting is a basic environment that deploys a chainlink cluster with dependencies
+// for testing Atlas
+func NewChainlinkClusterForAtlasTesting(nodeCount int) K8sEnvSpecInit {
+	mockserverConfigDependencyGroup := &K8sManifestGroup{
+		id:        "MockserverConfigDependencyGroup",
+		manifests: []K8sEnvResource{NewMockserverConfigHelmChart()},
+	}
+
+	mockserverDependencyGroup := &K8sManifestGroup{
+		id:        "MockserverDependencyGroup",
+		manifests: []K8sEnvResource{NewMockserverHelmChart()},
+	}
+
+	chainlinkGroup := &K8sManifestGroup{
+		id:        "chainlinkCluster",
+		manifests: []K8sEnvResource{},
+	}
+	for i := 0; i < nodeCount; i++ {
+		cManifest := NewChainlinkManifest(i)
+		cManifest.id = fmt.Sprintf("%s-%d", cManifest.id, i)
+		chainlinkGroup.manifests = append(chainlinkGroup.manifests, cManifest)
+	}
+
+	kafkaDependecyGroup := &K8sManifestGroup{
+		id:        "KafkaGroup",
+		manifests: []K8sEnvResource{NewKafkaHelmChart()},
+	}
+
+	schemaRegistryDependencyGroup := &K8sManifestGroup{
+		id:        "SchemaRegistryGroup",
+		manifests: []K8sEnvResource{NewSchemaRegistryManifest()},
+	}
+
+	atlasEvmBlocksDependencyGroup := &K8sManifestGroup{
+		id:        "AtlasEvmBlocksGroup",
+		manifests: []K8sEnvResource{NewAtlasEvmBlocksManifest()},
+	}
+
+	dependencyGroup := getBasicDependencyGroup()
+	addPostgresDbsToDependencyGroup(dependencyGroup, nodeCount)
+	dependencyGroups := []*K8sManifestGroup{
+		mockserverConfigDependencyGroup,
+		mockserverDependencyGroup,
+		kafkaDependecyGroup,
+		schemaRegistryDependencyGroup,
+		atlasEvmBlocksDependencyGroup,
+		dependencyGroup,
+	}
 
 	return addNetworkManifestToDependencyGroup(chainlinkGroup, dependencyGroups)
 }
@@ -558,6 +639,7 @@ func NewKafkaHelmChart() *HelmChart {
 		values:      map[string]interface{}{},
 		SetValuesHelmFunc: func(manifest *HelmChart) error {
 			manifest.values["clusterURL"] = "kafka:9092"
+			manifest.values["zookeeperURL"] = "kafka-zookeeper:2181"
 			return nil
 		},
 	}

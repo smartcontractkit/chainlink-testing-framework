@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/client"
@@ -237,12 +238,14 @@ func SetAdapterResults(i *OCRSetupInputs, results []int) {
 
 // NewOCRSetupInputForObservability deploys and setups env and clients for testing observability
 func NewOCRSetupInputForObservability(i *OCRSetupInputs, nodeCount int, contractCount int, rules map[string]*os.File) {
-	DeployOCRForEnv(
-		i,
-		environment.NewChainlinkClusterForObservabilityTesting(nodeCount),
-	)
-	FundNodes(i)
-	DeployOCRContracts(i, contractCount)
+	By("Deploying environment",
+		DeployOCRForEnv(
+			i,
+			environment.NewChainlinkClusterForObservabilityTesting(nodeCount),
+		))
+	By("Funding nodes", FundNodes(i))
+	By("Deploying OCR contracts", DeployOCRContracts(i, contractCount))
+
 
 	expectations, err := GetMockserverInitializerDataForOTPE(
 		i.OCRInstances,
@@ -257,4 +260,15 @@ func NewOCRSetupInputForObservability(i *OCRSetupInputs, nodeCount int, contract
 
 	err = i.SuiteSetup.Environment().DeploySpecs(environment.PrometheusGroup(rules))
 	Expect(err).ShouldNot(HaveOccurred())
+}
+
+// NewOCRSetupInputForAtlas deploys and setups env and clients for testing atlas
+func NewOCRSetupInputForAtlas(i *OCRSetupInputs, nodeCount int, contractCount int) {
+	By("Deploying environment",
+		DeployOCRForEnv(
+			i,
+			environment.NewChainlinkClusterForAtlasTesting(nodeCount),
+		))
+	By("Funding nodes", FundNodes(i))
+	By("Deploying OCR contracts", DeployOCRContracts(i, contractCount))
 }

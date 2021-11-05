@@ -46,6 +46,9 @@ apps:
     explorer:
         image: "studentcuza/explorer"
         version: "choose-security-protocol"
+    atlas-evm:
+        image: "804282218731.dkr.ecr.us-west-2.amazonaws.com/atlas-evm"
+        version: "2931b7e2c13ad08742a9d825c915cc01663de5c0"
 
 private_keys: &private_keys
     private_keys:
