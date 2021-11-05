@@ -1,131 +1,106 @@
 # Chainlink Integration Framework
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/smartcontractkit/integrations-framework)](https://goreportcard.com/report/github.com/smartcontractkit/integrations-framework)
+[![Go Reference](https://pkg.go.dev/badge/github.com/smartcontractkit/integrations-framework.svg)](https://pkg.go.dev/github.com/smartcontractkit/integrations-framework)
 ![Tests](https://github.com/smartcontractkit/integrations-framework/actions/workflows/test.yaml/badge.svg)
 ![Lint](https://github.com/smartcontractkit/integrations-framework/actions/workflows/lint.yaml/badge.svg)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A framework for interacting with chainlink nodes, environments, and other blockchain systems.
-The framework is primarilly intended to facillitate testing chainlink features and stability.
+The Chainlnk Integration Framework is a blockchain development framework written in Go. Its primary purpose is to help
+chainlink developers create extensive integration, e2e, performance, and chaos tests to ensure the stability of the
+chainlink project. It can also be helpful to those who just want to use chainlink oracles in their projects to help
+test their contracts, or even for those that aren't using chainlink.
+
+See the [docs](https://smartcontractkit.github.io/integrations-framework/) or our
+[go reference](https://pkg.go.dev/github.com/smartcontractkit/integrations-framework) page for more detailed info and
+examples. If you just want a quick overview, keep reading.
 
 ## WIP
 
-This framework is still very much a work in progress, and will have frequent changes, many of which will probably be
-breaking.
+As of now, this framework is still very much a work in progress, and will have frequent changes, many of which
+will probably be breaking.
 
-### Setup
+## Setup
 
-Install CLI
-
-```sh
-make install_cli
-```
+In order to use this framework, you must have a connection to an actively running Kubernetes cluster. If you don't have
+one handy, check out [minikube](https://minikube.sigs.k8s.io/docs/start/) which should work fine for smaller tests,
+but will likely need to be allocated more power, or you'll need to use a more powerful cluster in general to run tests
+that require lots of services, like OCR.
 
 ## Usage
 
-A simple example on deploying and interaction with a simple contract using this framework and [Ginkgo](https://github.com/onsi/ginkgo)
+Here's a simple example on deploying and interacting with a basic storage contract using this framework and
+[Ginkgo](https://github.com/onsi/ginkgo), a BDD testing framework we've come to really enjoy. You can use another testing
+framework, including Go's default testing if you prefer otherwise.
 
 ```go
 var _ = Describe("Basic Contract Interactions", func() {
-  var (
+  var ( // Create variables that we're going to be using across test steps
     suiteSetup    actions.SuiteSetup
     networkInfo   actions.NetworkInfo
     defaultWallet client.BlockchainWallet
   )
 
-  BeforeEach(func() {
+  It("Exercises basic smart contract usage", func() {
     By("Deploying the environment", func() {
       var err error
-      suiteSetup, err = actions.SingleNetworkSetup(
-        environment.NewChainlinkCluster(0),
-        client.DefaultNetworkFromConfig,
-        tools.ProjectRoot,
+      // SuiteSetup creates an ephemeral environment for the test, launching a simulated blockchain, an external adapter
+      // and as many chainlink nodes as you would like.
+      suiteSetup, err = actions.SingleNetworkSetup( 
+        environment.NewChainlinkCluster(0), // We're launching this test with 0 chainlnk nodes
+        client.DefaultNetworkFromConfig,    // Using the first network defined in our config file
+        tools.ProjectRoot,                  // The path of our config file.
       )
       Expect(err).ShouldNot(HaveOccurred())
       networkInfo = suiteSetup.DefaultNetwork()
       defaultWallet = networkInfo.Wallets.Default()
     })
-  })
 
-  It("exercises basic contract usage", func() {
-    By("deploying the storage contract", func() {
-      // Deploy storage
+    By("Deploying and using the storage contract", func() {
+      // Deploy a storage contract, all it does is store a value, then regurgitate that value when called for
       storeInstance, err := suiteSetup.Deployer.DeployStorageContract(defaultWallet)
       Expect(err).ShouldNot(HaveOccurred())
 
+      // Value we're going to store
       testVal := big.NewInt(5)
 
-      // Interact with contract
+      // Set the contract value
       err = storeInstance.Set(testVal)
       Expect(err).ShouldNot(HaveOccurred())
+      // Retrieve the value
       val, err := storeInstance.Get(context.Background())
+      // Make sure no errors happened, and the value is what we expect
       Expect(err).ShouldNot(HaveOccurred())
       Expect(val).To(Equal(testVal))
      })
   })
 
   AfterEach(func() {
+    // Tears down the environment, deleting everything that the SuiteSetup launched, and collecting logs if the test failed
     By("Tearing down the environment", suiteSetup.TearDown())
   })
 })
 ```
 
-## Execution Environment
+## Config Values
 
-Ephemeral environments are automatically deployed with Kubernetes. To run tests, you either need a deployed cluster
-in an environment, or a local installation.
+You'll notice in the `SuiteSetup` that we provide a path to the config file, `tools.ProjectRoot`. This links to our default
+config file, `config.yml`. For most cases, this will work out just fine, as you can pass in ENV variables to override those
+config values. Below are some common ones we find ourselves using regularly.
 
-### Locally
+| ENV Var                 | Description                                                 | Default                            |
+|-------------------------|-------------------------------------------------------------|------------------------------------|
+|`NETWORKS`               | Comma seperated list of blockchain networks to run tests on | ethereum_geth,ethereum_geth        |
+|`APPS_CHAINLINK_IMAGE`   | Image location for a valid docker image of a chainlink node | public.ecr.aws/chainlink/chainlink |
+|`APPS_CHAINLINK_VERSION` | Version to be used for the above mentioned image            | 0.10.14                            |
+|`NETWORK_CONFIGS_<NETWORK_NAME>_PRIVATE_KEYS` | Comma seperated list of private keys for the network to use | Varies        |
 
-When running tests locally, it's advised to use minikube. To spin up a cluster, use:
+If you want to provide your own config file instead, you can point `SuiteSetup` to the directory that the config file lives in.
 
-```sh
-minikube start
-```
-
-### Remotely
-
-To run against a remote Kubernetes cluster, ensure your current context is the cluster you want to run against as the
-framework always uses current context.
-
-## Test Execution
-
-This framework advises the use of [Ginkgo](https://github.com/onsi/ginkgo) for test execution, but tests still can be
-ran with the go CLI.
-
-### Ginkgo
-
-Run:
-
-```sh
-ginkgo -r
-```
-
-### Go
-
-Run:
-
-```sh
-go test ./..
-```
-
-### Volume tests
-
-```sh
-NETWORK="ethereum_geth_performance" make test_performance
-```
-
-### Build contracts
-
-Example of generating go bindings for Ethereum contracts
-
-```sh
-ifcli build_contracts -c config.yml
-```
-
-### Create environment
-
-Example of creating environment with one Chainlink node and Geth dev network
-
-```sh
-ifcli create_env -n ethereum_geth -t chainlink -c 1
+```go
+suiteSetup, err = actions.SingleNetworkSetup( 
+  environment.NewChainlinkCluster(0), 
+  client.DefaultNetworkFromConfig,    
+  "../", // Look for a config.yml file in the parent directory of this test file.                 
+)
 ```

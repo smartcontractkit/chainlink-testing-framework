@@ -1,6 +1,8 @@
 package performance
 
 import (
+	"github.com/smartcontractkit/integrations-framework/hooks"
+	"github.com/smartcontractkit/integrations-framework/utils"
 	"math/big"
 	"time"
 
@@ -9,7 +11,6 @@ import (
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/environment"
-	"github.com/smartcontractkit/integrations-framework/tools"
 )
 
 var _ = Describe("VRF soak test @soak-vrf", func() {
@@ -27,10 +28,10 @@ var _ = Describe("VRF soak test @soak-vrf", func() {
 			suiteSetup, err = actions.SingleNetworkSetup(
 				// more than one node is useless for VRF, because nodes are not cooperating for randomness
 				environment.NewChainlinkCluster(1),
-				actions.EthereumPerfNetworkHook,
-				actions.EthereumDeployerHook,
-				actions.EthereumClientHook,
-				tools.ProjectRoot,
+				hooks.EthereumPerfNetworkHook,
+				hooks.EthereumDeployerHook,
+				hooks.EthereumClientHook,
+				utils.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
 			defaultNetwork = suiteSetup.DefaultNetwork()

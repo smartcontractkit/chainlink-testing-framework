@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/smartcontractkit/integrations-framework/client/chaos"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -16,10 +17,8 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/pkg/errors"
-	"github.com/smartcontractkit/integrations-framework/chaos"
-
 	"github.com/ghodss/yaml"
+	"github.com/pkg/errors"
 
 	"github.com/avast/retry-go"
 	"github.com/hashicorp/go-multierror"

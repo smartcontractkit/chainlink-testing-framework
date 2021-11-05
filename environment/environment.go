@@ -3,10 +3,10 @@ package environment
 import (
 	"fmt"
 	"github.com/rs/zerolog/log"
-	"github.com/smartcontractkit/integrations-framework/chaos"
 	"github.com/smartcontractkit/integrations-framework/client"
+	"github.com/smartcontractkit/integrations-framework/client/chaos"
 	"github.com/smartcontractkit/integrations-framework/config"
-	"github.com/smartcontractkit/integrations-framework/types"
+	"github.com/smartcontractkit/integrations-framework/hooks"
 	"net/http"
 	"net/url"
 )
@@ -165,7 +165,7 @@ func GetExternalAdapter(env Environment) (ExternalAdapter, error) {
 }
 
 // NewExternalBlockchainClient connects external client implementation to particular network
-func NewExternalBlockchainClient(clientFunc types.NewClientHook, env Environment, network client.BlockchainNetwork) (client.BlockchainClient, error) {
+func NewExternalBlockchainClient(clientFunc hooks.NewClientHook, env Environment, network client.BlockchainNetwork) (client.BlockchainClient, error) {
 	sd, err := env.GetServiceDetails(network.RemotePort())
 	if err == nil {
 		var url string

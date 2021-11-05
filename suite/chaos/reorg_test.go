@@ -1,17 +1,17 @@
 package chaos
 
 import (
+	"github.com/smartcontractkit/integrations-framework/actions"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/smartcontractkit/integrations-framework/suite/testcommon"
 )
 
 var _ = Describe("Reorg example test @reorg", func() {
-	i := &testcommon.RunlogSetupInputs{}
+	i := &actions.RunlogSetupInputs{}
 	It("Performs reorg and verifies it", func() {
-		testcommon.SetupRunlogEnv(i)
+		By("Deploying the environment", actions.SetupRunlogEnv(i))
 
 		reorgConfirmer, err := NewReorgConfirmer(
 			i.SuiteSetup.DefaultNetwork().Client,
