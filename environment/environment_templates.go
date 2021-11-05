@@ -439,6 +439,9 @@ func NewAtlasEvmBlocksManifest() *K8sManifest {
 }
 
 // NewSchemaRegistryManifest is the k8s manifest that when used will deploy schema registry to an env
+// Confluent Schema Registry provides a serving layer for your metadata. It provides a RESTful interface for storing
+// and retrieving your Avro®, JSON Schema, and Protobuf schemas. In Atlas it stores the schemas for different
+// components like atlas-evm-blocks, atlas-evm-events etc.
 func NewSchemaRegistryManifest() *K8sManifest {
 	return &K8sManifest{
 		id:             "schema_registry",
