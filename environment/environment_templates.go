@@ -455,6 +455,15 @@ func NewSchemaRegistryManifest() *K8sManifest {
 	}
 }
 
+// NewKafkaRestManifest is the k8s manifest that when used will deploy kafka rest to an env
+func NewKafkaRestManifest() *K8sManifest {
+	return &K8sManifest{
+		id:             "kafka_rest",
+		DeploymentFile: filepath.Join(tools.ProjectRoot, "/environment/templates/kafka-rest/kafka-rest-deployment.yaml"),
+		ServiceFile:    filepath.Join(tools.ProjectRoot, "/environment/templates/kafka-rest/kafka-rest-service.yaml"),
+	}
+}
+
 // NewChainlinkCluster is a basic environment that deploys hardhat with a chainlink cluster and an external adapter
 func NewChainlinkCluster(nodeCount int) K8sEnvSpecInit {
 	mockserverConfigDependencyGroup := &K8sManifestGroup{
@@ -552,6 +561,11 @@ func NewChainlinkClusterForAtlasTesting(nodeCount int) K8sEnvSpecInit {
 		manifests: []K8sEnvResource{NewSchemaRegistryManifest()},
 	}
 
+	kafkaRestDependencyGroup := &K8sManifestGroup{
+		id:        "KafkaRestGroup",
+		manifests: []K8sEnvResource{NewKafkaRestManifest()},
+	}
+
 	atlasEvmBlocksDependencyGroup := &K8sManifestGroup{
 		id:        "AtlasEvmBlocksGroup",
 		manifests: []K8sEnvResource{NewAtlasEvmBlocksManifest()},
@@ -564,6 +578,7 @@ func NewChainlinkClusterForAtlasTesting(nodeCount int) K8sEnvSpecInit {
 		mockserverDependencyGroup,
 		kafkaDependecyGroup,
 		schemaRegistryDependencyGroup,
+		kafkaRestDependencyGroup,
 		atlasEvmBlocksDependencyGroup,
 		dependencyGroup,
 	}
