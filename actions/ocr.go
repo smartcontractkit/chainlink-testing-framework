@@ -246,7 +246,6 @@ func NewOCRSetupInputForObservability(i *OCRSetupInputs, nodeCount int, contract
 	By("Funding nodes", FundNodes(i))
 	By("Deploying OCR contracts", DeployOCRContracts(i, contractCount))
 
-
 	expectations, err := GetMockserverInitializerDataForOTPE(
 		i.OCRInstances,
 		i.ChainlinkNodes,
@@ -269,6 +268,26 @@ func NewOCRSetupInputForAtlas(i *OCRSetupInputs, nodeCount int, contractCount in
 			i,
 			environment.NewChainlinkClusterForAtlasTesting(nodeCount),
 		))
+
+	err := i.SuiteSetup.Environment().DeploySpecs(environment.AtlasEvmBlocksGroup())
+	Expect(err).ShouldNot(HaveOccurred())
+
 	By("Funding nodes", FundNodes(i))
+
+	kafkaRestClient, err := environment.GetKafkaRestClientFromEnv(i.SuiteSetup.Environment())
+	Expect(err).ShouldNot(HaveOccurred())
+
+	Eventually(func(g Gomega) []string {
+		topics, err := kafkaRestClient.GetTopics()
+		g.Expect(err).ShouldNot(HaveOccurred())
+		return topics
+	}, "3m", "1s").Should(ContainElements(
+		ContainSubstring("block_headers"),
+		ContainSubstring("transactions"),
+	))
+
+	err = i.SuiteSetup.Environment().DeploySpecs(environment.AtlasEvmEventsAndReceiptsGroup())
+	Expect(err).ShouldNot(HaveOccurred())
+
 	By("Deploying OCR contracts", DeployOCRContracts(i, contractCount))
 }

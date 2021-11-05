@@ -1,0 +1,10 @@
+metadata:
+  name: atlas-evm-events
+spec:
+  ports:
+    - name: "9095"
+      port: 9095
+      targetPort: 9090
+  selector:
+    app: atlas-evm-events
+  type: ClusterIP
