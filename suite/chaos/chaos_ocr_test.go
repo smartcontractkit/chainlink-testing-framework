@@ -18,10 +18,10 @@ var _ = XDescribeTable("OCR chaos tests @chaos-ocr", func(
 ) {
 	i := &actions.OCRSetupInputs{}
 	Context("Runs OCR test with a chaos modifier", func() {
-		actions.DeployOCRForEnv(i, envInit)
-		actions.FundNodes(i)
-		actions.DeployOCRContracts(i, 1)
-		actions.CreateOCRJobs(i)
+		By("Deploying the environment", actions.DeployOCRForEnv(i, envInit))
+		By("Funding nodes", actions.FundNodes(i))
+		By("Deploying OCR contracts", actions.DeployOCRContracts(i, 1))
+		By("Creating OCR jobs", actions.CreateOCRJobs(i))
 		_, err := i.SuiteSetup.Environment().ApplyChaos(chaosSpec)
 		Expect(err).ShouldNot(HaveOccurred())
 		actions.CheckRound(i)
