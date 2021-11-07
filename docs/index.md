@@ -12,10 +12,14 @@ permalink: /
 [![Go Reference](https://pkg.go.dev/badge/github.com/smartcontractkit/integrations-framework.svg)](https://pkg.go.dev/github.com/smartcontractkit/integrations-framework)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-The Chainlnk Integration Framework is a blockchain development and testing framework written in Go. Its primary purpose
-is to help chainlink developers create extensive integration, e2e, performance, and chaos tests to ensure the stability
-of the chainlink project. It can also be helpful to those who just want to use chainlink oracles in their projects to help
-test their contracts, or even for those that aren't using chainlink.
+The Chainlnk Integrations Framework is a blockchain development and testing framework written in Go. While the framework
+is designed primarily with testing Chainlink nodes in mind, there's plenty that nay blockchain dev can use the framework
+for to assist their testing, even if they don't use Chainlink products at all. With this framework, blockchain
+developers can create extensive integration, e2e, performance, and chaos tests.
+
+Are you new to [blockchain development](https://ethereum.org/en/developers/docs/),
+[smart contracts](https://docs.chain.link/docs/beginners-tutorial/),
+or [Chainlink](https://chain.link/)? Learn more by clicking the links!
 
 ## Setup
 
@@ -63,8 +67,9 @@ var _ = Describe("Basic Contract Interactions", func() {
         client.DefaultNetworkFromConfig,    // Using the first network defined in our config file
         tools.ProjectRoot,                  // The path of our config file.
       )
-      Expect(err).ShouldNot(HaveOccurred())
-      networkInfo = suiteSetup.DefaultNetwork()
+      Expect(err).ShouldNot(HaveOccurred()) // Make sure no errors happened
+      // Since we're running tests with a SingleNetworkSetup, the default network is the only network we are using
+      networkInfo = suiteSetup.DefaultNetwork()     
       defaultWallet = networkInfo.Wallets.Default()
     })
 
