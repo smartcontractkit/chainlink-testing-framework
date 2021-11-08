@@ -15,7 +15,15 @@ If you want to run your tests on a different network, you can supply it as an en
 the config file. Supply a comma-seperated list of networks you wish to run on.
 
 ```sh
-NETWORKS=ethereum_kovan,ethereum_kovan
+NETWORKS=ethereum_kovan,ethereum_geth
+```
+
+or change the networks in your config file
+
+```yaml
+networks: # Selected network(s) for test execution
+    - "ethereum_kovan"
+    - "ethereum_geth"
 ```
 
 ## Non-EVM Networks

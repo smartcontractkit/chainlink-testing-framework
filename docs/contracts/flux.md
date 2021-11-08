@@ -7,7 +7,7 @@ parent: Contracts
 
 # Flux Aggregator
 
-[Example Usage](../suite/integration/contracts_flux_test.go)
+[Example Usage](../../suite/smoke/contracts_flux_test.go)
 
 ```go
 type FluxAggregator interface {
