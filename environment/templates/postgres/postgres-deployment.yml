@@ -8,7 +8,7 @@ spec:
     spec:
       containers:
       - name: db
-        image: postgres:11.6
+        image: {{ .Config.Apps.Postgres.Image }}:{{ .Config.Apps.Postgres.Version }}
         ports:
         - name: postgres
           containerPort: 5432

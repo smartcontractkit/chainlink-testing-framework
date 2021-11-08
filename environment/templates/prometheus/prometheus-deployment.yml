@@ -12,7 +12,7 @@ spec:
     spec:
       containers:
         - name: prometheus
-          image: prom/prometheus
+          image: {{ .Config.Apps.Prometheus.Image }}:{{ .Config.Apps.Prometheus.Version }}
           args:
             - "--config.file=/etc/prometheus/prometheus.yml"
             - "--storage.tsdb.path=/prometheus/"
@@ -25,11 +25,11 @@ spec:
               mountPath: /prometheus/
           resources:
             requests:
-              memory: 250m
-              cpu: 0.3
+              memory: {{ .Config.Apps.Prometheus.Requests.Memory }}
+              cpu: {{ .Config.Apps.Prometheus.Requests.Cpu }}
             limits:
-              memory: 400m
-              cpu: 0.7
+              memory: {{ .Config.Apps.Prometheus.Limits.Memory }}
+              cpu: {{ .Config.Apps.Prometheus.Limits.Cpu }}
       volumes:
         - name: prometheus-config-volume
           configMap:

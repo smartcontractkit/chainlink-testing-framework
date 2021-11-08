@@ -40,11 +40,11 @@ spec:
             - containerPort: 1337
           resources:
             requests:
-              memory: 250m
-              cpu: 0.3
+              memory: {{ .Config.Apps.Otpe.Requests.Memory }}
+              cpu: {{ .Config.Apps.Otpe.Requests.Cpu }}
             limits:
-              memory: 400m
-              cpu: 0.7
+              memory: {{ .Config.Apps.Otpe.Limits.Memory }}
+              cpu: {{ .Config.Apps.Otpe.Limits.Cpu }}
           livenessProbe:
             httpGet:
               path: /metrics
