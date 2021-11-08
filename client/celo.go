@@ -12,6 +12,7 @@ import (
 	"github.com/celo-org/celo-blockchain/accounts/abi"
 	"github.com/pkg/errors"
 
+	"github.com/smartcontractkit/integrations-framework/celoextended"
 	celoContracts "github.com/smartcontractkit/integrations-framework/contracts/celo"
 
 	"github.com/celo-org/celo-blockchain"
@@ -533,7 +534,11 @@ func (e *CeloClient) TransactionOpts(
 	if err != nil {
 		return nil, fmt.Errorf("invalid private key: %v", err)
 	}
-	opts := bind.NewKeyedTransactor(privateKey)
+	// TODO koteld: should we use e.Client.ChainID(context.Background()) or e.Network.ChainID() here?
+	opts, err := celoextended.NewKeyedTransactorWithChainID(privateKey, e.Network.ChainID())
+	if err != nil {
+		return nil, err
+	}
 	opts.From = callMsg.From
 	opts.Nonce = big.NewInt(int64(nonce))
 	opts.Value = value

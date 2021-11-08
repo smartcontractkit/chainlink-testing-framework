@@ -1,11 +1,23 @@
 package celoextended
 
 import (
+	"context"
+	"crypto/ecdsa"
 	"errors"
 	"fmt"
+	"github.com/celo-org/celo-blockchain/accounts/abi/bind"
+	"github.com/celo-org/celo-blockchain/common"
+	"github.com/celo-org/celo-blockchain/core/types"
+	"github.com/celo-org/celo-blockchain/crypto"
 	"math/big"
 	"reflect"
 )
+
+// ErrNoChainID is returned whenever the user failed to specify a chain id.
+var ErrNoChainID = errors.New("no chain id specified")
+
+// ErrNotAuthorized is returned when an account is not properly unlocked.
+var ErrNotAuthorized = errors.New("not authorized to sign this account")
 
 // ConvertType copy of github.com/ethereum/go-ethereum/accounts/abi method
 func ConvertType(in interface{}, proto interface{}) interface{} {
@@ -95,4 +107,32 @@ func setStruct(dst, src reflect.Value) error {
 		}
 	}
 	return nil
+}
+
+// NewKeyedTransactorWithChainID is a utility method to easily create a transaction signer
+// from a single private key.
+func NewKeyedTransactorWithChainID(key *ecdsa.PrivateKey, chainID *big.Int) (*bind.TransactOpts, error) {
+	keyAddr := crypto.PubkeyToAddress(key.PublicKey)
+	if chainID == nil {
+		return nil, ErrNoChainID
+	}
+
+	// TODO koteld: is it the proper way to do that? according to SignerFn signature I've found no other way
+	signerWithChainID := types.NewEIP155Signer(chainID)
+
+	return &bind.TransactOpts{
+		From: keyAddr,
+		Signer: func(signer types.Signer, address common.Address, tx *types.Transaction) (*types.Transaction, error) {
+			if address != keyAddr {
+				return nil, ErrNotAuthorized
+			}
+			signer = signerWithChainID
+			signature, err := crypto.Sign(signer.Hash(tx).Bytes(), key)
+			if err != nil {
+				return nil, err
+			}
+			return tx.WithSignature(signer, signature)
+		},
+		Context: context.Background(),
+	}, nil
 }
