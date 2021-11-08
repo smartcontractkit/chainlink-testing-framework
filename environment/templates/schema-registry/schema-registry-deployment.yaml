@@ -26,11 +26,11 @@ spec:
             - containerPort: 8081
           resources:
             requests:
-            memory: {{ .Config.Apps.CpSchemaRegistry.Requests.Memory }}
-            cpu: {{ .Config.Apps.CpSchemaRegistry.Requests.Cpu }}
-          limits:
-            memory: {{ .Config.Apps.CpSchemaRegistry.Limits.Memory }}
-            cpu: {{ .Config.Apps.CpSchemaRegistry.Limits.Cpu }}
+              memory: {{ .Config.Apps.CpSchemaRegistry.Requests.Memory }}
+              cpu: {{ .Config.Apps.CpSchemaRegistry.Requests.Cpu }}
+            limits:
+              memory: {{ .Config.Apps.CpSchemaRegistry.Limits.Memory }}
+              cpu: {{ .Config.Apps.CpSchemaRegistry.Limits.Cpu }}
           livenessProbe:
             httpGet:
               path: /
