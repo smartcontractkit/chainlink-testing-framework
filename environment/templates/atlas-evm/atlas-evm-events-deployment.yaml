@@ -1,19 +1,19 @@
 metadata:
-  name: atlas-evm-blocks
+  name: atlas-evm-events
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: atlas-evm-blocks
+      app: atlas-evm-events
   template:
     objectmeta:
       labels:
-        app: atlas-evm-blocks
+        app: atlas-evm-events
     spec:
       containers:
-        - name: atlas-evm-blocks
+        - name: atlas-evm-events
           args:
-            - blocks
+            - events
           env:
             - name: KAFKA_BROKERS
               value: {{ .Values.KafkaGroup.kafka.clusterURL }}
@@ -33,7 +33,7 @@ spec:
               value: {{ .DefaultNetwork.Name }}
           image: {{ .Config.Apps.AtlasEvm.Image }}:{{ .Config.Apps.AtlasEvm.Version }}
           ports:
-            - containerPort: 9090
+              - containerPort: 9090
           resources:
             requests:
               memory: 200M

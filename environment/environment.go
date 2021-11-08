@@ -74,6 +74,17 @@ func GetMockserverClientFromEnv(env Environment) (*client.MockserverClient, erro
 	}), nil
 }
 
+// GetKafkaRestClientFromEnv returns a KafkaRestClient
+func GetKafkaRestClientFromEnv(env Environment) (*client.KafkaRestClient, error) {
+	sd, err := env.GetServiceDetails(KafkaRestAPIPort)
+	if err != nil {
+		return nil, err
+	}
+	return client.NewKafkaRestClient(&client.KafkaRestConfig{
+		URL: sd.LocalURL.String(),
+	}), nil
+}
+
 // GetChainlinkClients will return all instantiated Chainlink clients for a given environment
 func GetChainlinkClients(env Environment) ([]client.Chainlink, error) {
 	var clients []client.Chainlink

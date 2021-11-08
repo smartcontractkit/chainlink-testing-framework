@@ -89,11 +89,11 @@ spec:
             - containerPort: 5432
           resources:
             requests:
-              memory: "256Mi"
-              cpu: "500m"
+              memory: 250m
+              cpu: 0.5
             limits:
-              memory: "512Mi"
-              cpu: "1024m"
+              memory: 500m
+              cpu: 0.8
           env:
             - name: POSTGRES_DB
               value: explorer_production
