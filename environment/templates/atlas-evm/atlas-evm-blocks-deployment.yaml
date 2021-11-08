@@ -36,8 +36,8 @@ spec:
             - containerPort: 9090
           resources:
             requests:
-              memory: 200M
-              cpu: 0.25
+              memory: {{ .Config.Apps.AtlasEvm.Requests.Memory }}
+              cpu: {{ .Config.Apps.AtlasEvm.Requests.Cpu }}
             limits:
-              memory: 350m
-              cpu: 0.4
+              memory: {{ .Config.Apps.AtlasEvm.Limits.Memory }}
+              cpu: {{ .Config.Apps.AtlasEvm.Limits.Cpu }}

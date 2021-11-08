@@ -125,39 +125,16 @@ type KubernetesConfig struct {
 
 // AppConfig holds all the configuration for the core apps that are deployed for testing
 type AppConfig struct {
-	Chainlink ChainlinkConfig `mapstructure:"chainlink" yaml:"chainlink"`
-	Geth      GethConfig      `mapstructure:"geth" yaml:"geth"`
-	Adapter   AdapterConfig   `mapstructure:"adapter" yaml:"adapter"`
-	Postgres  PostgresConfig  `mapstructure:"postgres" yaml:"postgres"`
-	Otpe      OtpeConfig      `mapstructure:"otpe" yaml:"otpe"`
-	Explorer  ExplorerConfig  `mapstructure:"explorer" yaml:"explorer"`
-	AtlasEvm  AtlasEvmConfig  `mapstructure:"atlas-evm" yaml:"atlas-evm"`
-}
-
-// ChainlinkConfig holds the configuration for the chainlink nodes to be deployed
-type ChainlinkConfig struct {
-	Image    string          `mapstructure:"image" yaml:"image"`
-	Version  string          `mapstructure:"version" yaml:"version"`
-	Requests ResourcesConfig `mapstructure:"requests" yaml:"requests"`
-	Limits   ResourcesConfig `mapstructure:"limits" yaml:"limits"`
-}
-
-// PostgresConfig holds the configuration for the postgres pods to be deployed
-type PostgresConfig struct {
-	Requests ResourcesConfig `mapstructure:"requests" yaml:"requests"`
-	Limits   ResourcesConfig `mapstructure:"limits" yaml:"limits"`
-}
-
-// GethConfig holds the configuration for the geth pods to be deployed
-type GethConfig struct {
-	Requests ResourcesConfig `mapstructure:"requests" yaml:"requests"`
-	Limits   ResourcesConfig `mapstructure:"limits" yaml:"limits"`
-}
-
-// AdapterConfig holds the configuration for the adapter pods to be deployed
-type AdapterConfig struct {
-	Requests ResourcesConfig `mapstructure:"requests" yaml:"requests"`
-	Limits   ResourcesConfig `mapstructure:"limits" yaml:"limits"`
+	Chainlink        StandardConfig `mapstructure:"chainlink" yaml:"chainlink"`
+	Geth             StandardConfig `mapstructure:"geth" yaml:"geth"`
+	Adapter          StandardConfig `mapstructure:"adapter" yaml:"adapter"`
+	Postgres         StandardConfig `mapstructure:"postgres" yaml:"postgres"`
+	Otpe             StandardConfig `mapstructure:"otpe" yaml:"otpe"`
+	Explorer         StandardConfig `mapstructure:"explorer" yaml:"explorer"`
+	AtlasEvm         StandardConfig `mapstructure:"atlas-evm" yaml:"atlas-evm"`
+	CpSchemaRegistry StandardConfig `mapstructure:"cp-schema-registry" yaml:"cp-schema-registry"`
+	Prometheus       StandardConfig `mapstructure:"prometheus" yaml:"prometheus"`
+	KafkaRest        StandardConfig `mapstructure:"kafka-rest" yaml:"kafka-rest"`
 }
 
 // ResourcesConfig hols the resource usage configuration for a pod
@@ -166,22 +143,12 @@ type ResourcesConfig struct {
 	Cpu    string `mapstructure:"cpu" yaml:"cpu"`
 }
 
-// OtpeConfig holds the configuration for the otpe to be deployed
-type OtpeConfig struct {
-	Image   string `mapstructure:"image" yaml:"image"`
-	Version string `mapstructure:"version" yaml:"version"`
-}
-
-// ExplorerConfig holds the configuration for the explorer to be deployed
-type ExplorerConfig struct {
-	Image   string `mapstructure:"image" yaml:"image"`
-	Version string `mapstructure:"version" yaml:"version"`
-}
-
-// AtlasEvmConfig holds the configuration for the atlas-evm to be deployed
-type AtlasEvmConfig struct {
-	Image   string `mapstructure:"image" yaml:"image"`
-	Version string `mapstructure:"version" yaml:"version"`
+// StandardConfig holds the configuration for an app to be deployed
+type StandardConfig struct {
+	Image    string          `mapstructure:"image" yaml:"image"`
+	Version  string          `mapstructure:"version" yaml:"version"`
+	Requests ResourcesConfig `mapstructure:"requests" yaml:"requests"`
+	Limits   ResourcesConfig `mapstructure:"limits" yaml:"limits"`
 }
 
 // NewConfig creates a new configuration instance via viper from env vars, config file, or a secret store
