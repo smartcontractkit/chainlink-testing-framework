@@ -50,56 +50,56 @@ apps:
         image: "804282218731.dkr.ecr.us-west-2.amazonaws.com/ocr-telemetry-prometheus-exporter"
         version: "2496ee62ed6c81898ddcc42d40d3be1f9c7ac549"
         requests:
-            memory: 800m
-            cpu: 1
+            memory: 768Mi
+            cpu: 1000m
         limits:
-            memory: 1.4G
-            cpu: 1.3
+            memory: 1536Mi
+            cpu: 1300m
     explorer:
         image: "studentcuza/explorer"
         version: "choose-security-protocol"
         requests:
-            memory: 800M
-            cpu: 1
+            memory: 768Mi
+            cpu: 1000m
         limits:
-            memory: 1G
-            cpu: 1.5
+            memory: 1024Mi
+            cpu: 1500m
     atlas-evm:
         image: "804282218731.dkr.ecr.us-west-2.amazonaws.com/atlas-evm"
         version: "2931b7e2c13ad08742a9d825c915cc01663de5c0"
         requests:
-            memory: 200M
-            cpu: 0.25
+            memory: 256Mi
+            cpu: 250m
         limits:
-            memory: 350m
-            cpu: 0.4
+            memory: 512Mi
+            cpu: 400m
     kafka-rest:
         image: confluentinc/cp-kafka-rest
         version: 7.0.0
         requests:
-            memory: 150m
-            cpu: 0.25
+            memory: 128Mi
+            cpu: 250m
         limits:
-            memory: 250m
-            cpu: 0.35
+            memory: 256Mi
+            cpu: 350m
     cp-schema-registry:
         image: confluentinc/cp-schema-registry
         version: 6.2.1
         requests:
             memory: 256Mi
-            cpu: 0.5
+            cpu: 500m
         limits:
             memory: 348Mi
-            cpu: 0.7
+            cpu: 700m
     prometheus:
         image: prom/prometheus
         version: latest
         requests:
-            memory: 250m
-            cpu: 0.3
+            memory: 768Mi
+            cpu: 500m
         limits:
-            memory: 400m
-            cpu: 0.7
+            memory: 1024Mi
+            cpu: 850m
 
 private_keys: &private_keys
     private_keys:
