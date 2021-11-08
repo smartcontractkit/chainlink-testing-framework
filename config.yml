@@ -50,11 +50,11 @@ apps:
         image: "804282218731.dkr.ecr.us-west-2.amazonaws.com/ocr-telemetry-prometheus-exporter"
         version: "2496ee62ed6c81898ddcc42d40d3be1f9c7ac549"
         requests:
-            memory: 250m
-            cpu: 0.3
+            memory: 800m
+            cpu: 1
         limits:
-            memory: 400m
-            cpu: 0.7
+            memory: 1.4G
+            cpu: 1.3
     explorer:
         image: "studentcuza/explorer"
         version: "choose-security-protocol"
