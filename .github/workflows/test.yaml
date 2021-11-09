@@ -71,6 +71,7 @@ jobs:
         uses: mikepenz/action-junit-report@v2
         if: always()
         with:
+          name: Unit Test Report
           report_paths: '**/logs/tests-*.xml'
           github_token: ${{ secrets.GITHUB_TOKEN }}
           check_name: Unit Test Results
@@ -132,6 +133,7 @@ jobs:
         uses: mikepenz/action-junit-report@v2
         if: always()
         with:
+          name: Smoke Test Report
           report_paths: '**/logs/tests-*.xml'
           github_token: ${{ secrets.GITHUB_TOKEN }}
           check_name: Smoke Test Results
@@ -255,11 +257,12 @@ jobs:
       - name: Run Tests
         run: |
           export PATH=$PATH:$(go env GOPATH)/bin
-          make test_chaos args="-nodes=5"
+          make test_chaos args="-nodes=15"
       - name: Publish Test Results
         uses: mikepenz/action-junit-report@v2
         if: always()
         with:
+          name: Chaos Test Report
           report_paths: '**/logs/tests-*.xml'
           github_token: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish Artifacts

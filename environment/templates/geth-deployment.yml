@@ -9,7 +9,7 @@ spec:
           name: {{ .Network.Name }}
       containers:
       - name: geth-network
-        image: ethereum/client-go:v1.10.3
+        image: {{ .Config.Apps.Geth.Image }}:{{ .Config.Apps.Geth.Version }}
         entrypoint: sh ./root/init.sh
         volumeMounts:
         - name: configmap-volume

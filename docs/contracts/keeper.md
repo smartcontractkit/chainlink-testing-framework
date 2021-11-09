@@ -7,7 +7,7 @@ parent: Contracts
 
 # Keeper
 
-[Example Usage](../suite/integration/contracts_keeper_test.go)
+[Example Usage](./../suite/smoke/contracts_keeper_test.go)
 
 ```go
 type UpkeepRegistrar interface {

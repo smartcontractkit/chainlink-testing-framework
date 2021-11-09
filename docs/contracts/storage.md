@@ -7,7 +7,7 @@ parent: Contracts
 
 # Storage
 
-[Example Usage](../suite/integration/contracts_test.go)
+[Example Usage](./../suite/smoke/contracts_test.go)
 
 ```go
 type Storage interface {

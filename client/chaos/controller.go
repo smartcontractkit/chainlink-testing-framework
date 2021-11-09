@@ -22,7 +22,7 @@ const (
 	// APIBasePath in form of /apis/<spec.group>/<spec.versions.name>, see Chaosmesh CRD 2.0.0
 	APIBasePath = "/apis/chaos-mesh.org/v1alpha1"
 	// TemplatesPath path to the chaos templates
-	TemplatesPath = "chaos/templates"
+	TemplatesPath = "client/chaos/templates"
 )
 
 // Experimentable interface for chaos experiments

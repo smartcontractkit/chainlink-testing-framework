@@ -1,0 +1,49 @@
+metadata:
+  name: cp-kafka-rest
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cp-kafka-rest
+  template:
+    objectmeta:
+      labels:
+        app: cp-kafka-rest
+    spec:
+      containers:
+        - name: cp-kafka-rest
+          env:
+            - name: KAFKA_REST_DEBUG
+              value: "true"
+            - name: KAFKA_REST_HOST_NAME
+              value: cp-kafka-rest
+            - name: KAFKA_REST_BOOTSTRAP_SERVERS
+              value: PLAINTEXT://{{ .Values.KafkaGroup.kafka.clusterURL }}
+            - name: KAFKA_REST_LISTENERS
+              value: http://0.0.0.0:8082
+            - name: KAFKA_REST_CLIENT_SECURITY_PROTOCOL
+              value: PLAINTEXT
+            - name: KAFKA_REST_SCHEMA_REGISTRY_URL
+              value: {{ .Values.SchemaRegistryGroup.schema_registry.clusterURL }}
+          image: {{ .Config.Apps.KafkaRest.Image }}:{{ .Config.Apps.KafkaRest.Version }}
+          ports:
+            - containerPort: 8082
+          resources:
+            requests:
+              memory: {{ .Config.Apps.KafkaRest.Requests.Memory }}
+              cpu: {{ .Config.Apps.KafkaRest.Requests.Cpu }}
+            limits:
+              memory: {{ .Config.Apps.KafkaRest.Limits.Memory }}
+              cpu: {{ .Config.Apps.KafkaRest.Limits.Cpu }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8082
+            initialDelaySeconds: 50
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8082
+            initialDelaySeconds: 25
+            periodSeconds: 5

@@ -2,9 +2,10 @@ package smoke
 
 import (
 	"context"
+	"math/big"
+
 	"github.com/smartcontractkit/integrations-framework/hooks"
 	"github.com/smartcontractkit/integrations-framework/utils"
-	"math/big"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -69,10 +70,10 @@ var _ = Describe("VRF suite @vrf", func() {
 
 		By("Creating jobs and registering proving keys", func() {
 			for _, n := range nodes {
-				nodeKeys, err := n.ReadVRFKeys()
+				nodeKey, err := n.CreateVRFKey()
 				Expect(err).ShouldNot(HaveOccurred())
-				log.Debug().Interface("Key JSON", nodeKeys).Msg("Created proving key")
-				pubKeyCompressed := nodeKeys.Data[0].ID
+				log.Debug().Interface("Key JSON", nodeKey).Msg("Created proving key")
+				pubKeyCompressed := nodeKey.Data.ID
 				jobUUID := uuid.NewV4()
 				os := &client.VRFTxPipelineSpec{
 					Address: coordinator.Address(),
@@ -91,7 +92,7 @@ var _ = Describe("VRF suite @vrf", func() {
 
 				oracleAddr, err := n.PrimaryEthAddress()
 				Expect(err).ShouldNot(HaveOccurred())
-				provingKey, err := actions.EncodeOnChainVRFProvingKey(nodeKeys.Data[0])
+				provingKey, err := actions.EncodeOnChainVRFProvingKey(*nodeKey)
 				Expect(err).ShouldNot(HaveOccurred())
 				err = coordinator.RegisterProvingKey(
 					networkInfo.Wallets.Default(),

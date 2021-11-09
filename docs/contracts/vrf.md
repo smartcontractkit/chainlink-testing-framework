@@ -7,7 +7,7 @@ parent: Contracts
 
 # VRF
 
-[Example Usage](../suite/integration/contracts_vrf_test.go)
+[Example Usage](./../suite/smoke/contracts_vrf_test.go)
 
 ```go
 type VRF interface {
