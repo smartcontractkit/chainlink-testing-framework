@@ -16,7 +16,6 @@ var _ = Describe("Runlog perf test @perf-runlog", func() {
 	var (
 		suiteSetup actions.SuiteSetup
 		nodes      []client.Chainlink
-		adapter    environment.ExternalAdapter
 		perfTest   Test
 		err        error
 	)
@@ -30,8 +29,6 @@ var _ = Describe("Runlog perf test @perf-runlog", func() {
 				hooks.EthereumClientHook,
 				utils.ProjectRoot,
 			)
-			Expect(err).ShouldNot(HaveOccurred())
-			adapter, err = environment.GetExternalAdapter(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
 			nodes, err = environment.GetChainlinkClients(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
@@ -65,7 +62,6 @@ var _ = Describe("Runlog perf test @perf-runlog", func() {
 				suiteSetup.DefaultNetwork().Client,
 				suiteSetup.DefaultNetwork().Wallets,
 				suiteSetup.DefaultNetwork().Deployer,
-				adapter,
 			)
 			err = perfTest.Setup()
 			Expect(err).ShouldNot(HaveOccurred())
