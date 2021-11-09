@@ -114,10 +114,6 @@ func (f *FluxTest) Run() error {
 		return err
 	}
 	for i := 1; i <= f.TestOptions.NumberOfRounds; i++ {
-		pathSelector := client.PathSelector{Path: "/variable"}
-		if err := f.mockserver.ClearExpectation(pathSelector); err != nil {
-			return err
-		}
 		if err := f.mockserver.SetVariable(i); err != nil {
 			return err
 		}
