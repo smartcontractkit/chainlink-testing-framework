@@ -140,7 +140,7 @@ var _ = Describe("Flux monitor external validator suite @validator-flux", func()
 	})
 
 	Describe("with Flux job", func() {
-		FIt("Sets a flag when value is above threshold", func() {
+		It("Sets a flag when value is above threshold", func() {
 			err = mockserver.SetVariable(1e7)
 			Expect(err).ShouldNot(HaveOccurred())
 
