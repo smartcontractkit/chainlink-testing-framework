@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Chainlink Nodes
-nav_order: 4
+nav_order: 5
 has_children: false
 ---
 
@@ -35,10 +35,10 @@ var (
 
 By("Deploying the environment", func() {
   suiteSetup, err = actions.SingleNetworkSetup(
-    environment.NewMixedVersionChainlinkCluster(6, 2),
-    actions.EVMNetworkFromConfigHook,   // Default, uses the first network defined in our config file
-    actions.EthereumDeployerHook,       // Default, creates a contract deployer for our network
-    actions.EthereumClientHook,         // Default, establishes client connection to our network
+    environment.NewMixedVersionChainlinkCluster(6, 2), // Use a mix of different chainlink versions
+    actions.EVMNetworkFromConfigHook,                  // Default, uses the first network defined in our config file
+    actions.EthereumDeployerHook,                      // Default, creates a contract deployer for our network
+    actions.EthereumClientHook,                        // Default, establishes client connection to our network
     tools.ProjectRoot,
   )
   Expect(err).ShouldNot(HaveOccurred())

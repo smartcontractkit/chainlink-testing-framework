@@ -7,7 +7,7 @@ parent: Contracts
 
 # OCR
 
-[Example Usage](../suite/integration/contracts_ocr_test.go)
+[Example Usage](./../suite/smoke/contracts_ocr_test.go)
 
 ```go
 type OffchainAggregator interface {
