@@ -23,7 +23,7 @@ var _ = Describe("FluxAggregator ETH Refill @refill", func() {
 	var (
 		suiteSetup       actions.SuiteSetup
 		networkInfo      actions.NetworkInfo
-		adapter          environment.ExternalAdapter
+		mockserver         *client.MockserverClient
 		nodes            []client.Chainlink
 		nodeAddresses    []common.Address
 		err              error
@@ -41,7 +41,7 @@ var _ = Describe("FluxAggregator ETH Refill @refill", func() {
 				utils.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
-			adapter, err = environment.GetExternalAdapter(suiteSetup.Environment())
+			mockserver, err = environment.GetMockserverClientFromEnv(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
 			nodes, err = environment.GetChainlinkClients(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
@@ -89,7 +89,7 @@ var _ = Describe("FluxAggregator ETH Refill @refill", func() {
 		By("Adding FluxAggregator jobs to nodes", func() {
 			bta := client.BridgeTypeAttributes{
 				Name:        "variable",
-				URL:         fmt.Sprintf("%s/variable", adapter.ClusterURL()),
+				URL:         fmt.Sprintf("%s/variable", mockserver.Config.ClusterURL),
 				RequestData: "{}",
 			}
 
@@ -125,7 +125,7 @@ var _ = Describe("FluxAggregator ETH Refill @refill", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			err = networkInfo.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
-			err = adapter.SetVariable(6)
+			err = mockserver.SetVariable(6)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			fluxRound := contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(1), fluxRoundTimeout)
@@ -135,14 +135,14 @@ var _ = Describe("FluxAggregator ETH Refill @refill", func() {
 		})
 
 		By("Draining ETH on the nodes", func() {
-			err = adapter.SetVariable(5)
+			err = mockserver.SetVariable(5)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			fluxRound := contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(2), fluxRoundTimeout)
 			networkInfo.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRound)
 			err = networkInfo.Client.WaitForEvents()
 			if err == nil { // Not all has been drained, try another round
-				err = adapter.SetVariable(7)
+				err = mockserver.SetVariable(7)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				fluxRound := contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(3), fluxRoundTimeout)

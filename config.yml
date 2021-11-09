@@ -37,15 +37,6 @@ apps:
         limits:
             memory: 2048Mi
             cpu: 375m
-    adapter:
-        image: kalverra/dummy-external-adapter
-        version: latest
-        requests:
-            memory: 64Mi
-            cpu: 25m
-        limits:
-            memory: 96Mi
-            cpu: 50m
     otpe:
         image: "804282218731.dkr.ecr.us-west-2.amazonaws.com/ocr-telemetry-prometheus-exporter"
         version: "2496ee62ed6c81898ddcc42d40d3be1f9c7ac549"

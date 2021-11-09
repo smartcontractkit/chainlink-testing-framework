@@ -23,7 +23,6 @@ import (
 
 // Ports for common services
 const (
-	AdapterAPIPort    uint16 = 6060
 	ChainlinkWebPort  uint16 = 6688
 	ChainlinkP2PPort  uint16 = 6690
 	ExplorerAPIPort   uint16 = 8080
@@ -90,32 +89,6 @@ func NewChainlinkCustomNetworksCluster(nodeCount int, networkDeploymentConfigs [
 		}
 		specs = append(specs, dependencyGroup, chainlinkGroup)
 		return specs
-	}
-}
-
-// NewAdapterManifest is the k8s manifest that when used will deploy an external adapter to an environment
-func NewAdapterManifest() *K8sManifest {
-	return &K8sManifest{
-		id:             "adapter",
-		DeploymentFile: filepath.Join(utils.ProjectRoot, "/environment/templates/adapter-deployment.yml"),
-		ServiceFile:    filepath.Join(utils.ProjectRoot, "/environment/templates/adapter-service.yml"),
-
-		values: map[string]interface{}{
-			"apiPort": AdapterAPIPort,
-		},
-
-		SetValuesFunc: func(manifest *K8sManifest) error {
-			manifest.values["clusterURL"] = fmt.Sprintf(
-				"http://%s:%d",
-				manifest.Service.Spec.ClusterIP,
-				manifest.Service.Spec.Ports[0].Port,
-			)
-			manifest.values["localURL"] = fmt.Sprintf(
-				"http://127.0.0.1:%d",
-				manifest.ports[0].Local,
-			)
-			return nil
-		},
 	}
 }
 
@@ -703,7 +676,7 @@ func getMixedVersions(versionCount int) ([]string, error) {
 func getBasicDependencyGroup() *K8sManifestGroup {
 	group := &K8sManifestGroup{
 		id:        "DependencyGroup",
-		manifests: []K8sEnvResource{NewAdapterManifest()},
+		manifests: []K8sEnvResource{},
 
 		SetValuesFunc: func(mg *K8sManifestGroup) error {
 			postgresURLs := TemplateValuesArray{}
