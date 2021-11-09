@@ -73,6 +73,7 @@ jobs:
         with:
           report_paths: '**/logs/tests-*.xml'
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          check_name: Unit Test Results
       - name: Publish Artifacts
         if: failure()
         uses: actions/upload-artifact@v1
@@ -133,6 +134,7 @@ jobs:
         with:
           report_paths: '**/logs/tests-*.xml'
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          check_name: Smoke Test Results
       - name: Publish Artifacts
         if: failure()
         uses: actions/upload-artifact@v1
@@ -196,6 +198,7 @@ jobs:
         with:
           report_paths: '**/logs/tests-*.xml'
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          check_name: Performance Test Results
       - name: Publish Artifacts
         if: failure()
         uses: actions/upload-artifact@v1
