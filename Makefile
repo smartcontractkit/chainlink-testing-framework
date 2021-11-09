@@ -13,6 +13,9 @@ go_mod:
 
 install: go_mod golangci
 
+test_unit:
+	ginkgo -r -keepGoing --trace --randomizeAllSpecs --randomizeSuites --progress -covermode=count -coverprofile=unit-test-coverage.out -nodes=10 ./client ./config ./environment 
+
 test_smoke:
 	ginkgo -r -keepGoing --trace --randomizeAllSpecs --randomizeSuites --progress $(args) ./suite/smoke 
 

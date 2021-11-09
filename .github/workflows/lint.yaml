@@ -1,4 +1,4 @@
-name: Linting
+name: Linting and Static Analysis
 on:
   push:
     tags:
@@ -7,11 +7,47 @@ on:
       - master
       - main
   pull_request:
+  schedule:
+    - cron: '23 19 * * 4'
 jobs:
   golangci:
-    name: lint
+    name: Linting
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - name: Check out Code
+        uses: actions/checkout@v2
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
+
+  vulnerabilities-check:  
+    name: Check for Vulnerabilities
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out Code
+      uses: actions/checkout@v2
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.17
+    - name: Write Go List
+      run: go list -json -deps ./... > go.list
+    - name: Nancy
+      uses: sonatype-nexus-community/nancy-github-action@main
+  
+  codeQL:
+    name: CodeQL Checks
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v1
+        with:
+          languages: go
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v1
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v1
+        
