@@ -116,11 +116,16 @@ type VRFKeyAttributes struct {
 	DeletedAt    interface{} `json:"deletedAt"`
 }
 
-// VRFKey is the model that represents the created VRF key when read
-type VRFKey struct {
+// VRFKeyData is the model that represents the created VRF key's data when read
+type VRFKeyData struct {
 	Type       string           `json:"type"`
 	ID         string           `json:"id"`
 	Attributes VRFKeyAttributes `json:"attributes"`
+}
+
+// VRFKey is the model that represents the created VRF key when read
+type VRFKey struct {
+	Data VRFKeyData `json:"data"`
 }
 
 // VRFKeys is the model that represents the created VRF keys when read

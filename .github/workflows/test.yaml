@@ -54,7 +54,9 @@ jobs:
         if: steps.cache-packages.outputs.cache-hit != 'true'
         run: go mod download
       - name: Install Ginkgo CLI
-        run: go install github.com/onsi/ginkgo/ginkgo
+        run: |
+          go get github.com/onsi/ginkgo/ginkgo@v1.16.5
+          go install github.com/onsi/ginkgo/ginkgo
       - name: Run Tests
         run: |
           export PATH=$PATH:$(go env GOPATH)/bin
@@ -68,6 +70,7 @@ jobs:
         uses: mikepenz/action-junit-report@v2
         if: always()
         with:
+          name: Unit Test Report
           report_paths: '**/logs/tests-*.xml'
           github_token: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish Artifacts
@@ -116,15 +119,18 @@ jobs:
         if: steps.cache-packages.outputs.cache-hit != 'true'
         run: go mod download
       - name: Install Ginkgo CLI
-        run: go install github.com/onsi/ginkgo/ginkgo
+        run: |
+          go get github.com/onsi/ginkgo/ginkgo@v1.16.5
+          go install github.com/onsi/ginkgo/ginkgo
       - name: Run Tests
         run: |
           export PATH=$PATH:$(go env GOPATH)/bin
-          make test_smoke args="--nodes=15"
+          make test_smoke args="-nodes=15"
       - name: Publish Test Results
         uses: mikepenz/action-junit-report@v2
         if: always()
         with:
+          name: Smoke Test Report
           report_paths: '**/logs/tests-*.xml'
           github_token: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish Artifacts
@@ -176,15 +182,18 @@ jobs:
         if: steps.cache-packages.outputs.cache-hit != 'true'
         run: go mod download
       - name: Install Ginkgo CLI
-        run: go install github.com/onsi/ginkgo/ginkgo
+        run: |
+          go get github.com/onsi/ginkgo/ginkgo@v1.16.5
+          go install github.com/onsi/ginkgo/ginkgo
       - name: Run Tests
         run: |
           export PATH=$PATH:$(go env GOPATH)/bin
-          make test_performance args="--nodes=15"
+          make test_performance args="-nodes=15"
       - name: Publish Test Results
         uses: mikepenz/action-junit-report@v2
         if: always()
         with:
+          name: Performance Test Report
           report_paths: '**/logs/tests-*.xml'
           github_token: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish Artifacts
@@ -193,3 +202,64 @@ jobs:
         with:
           name: test-logs
           path: ./logs
+
+  # Chaos tests not stable enough for CI yet
+  # chaos:
+  #   # Only run performance tests on significant PRs / merges to main
+  #   if: startsWith(github.ref, 'v') || contains(github.ref, 'main') || contains(github.ref, 'develop')
+  #   needs: unit
+  #   runs-on: ubuntu-latest
+  #   env:
+  #     CGO_ENABLED: 1
+  #     NETWORK: ethereum_geth_performance
+  #   steps:
+  #     - name: Checkout the repo
+  #       uses: actions/checkout@v2
+  #     - name: Setup Go
+  #       uses: actions/setup-go@v1
+  #       with:
+  #         go-version: 1.17
+  #     - name: Configure AWS Credentials
+  #       uses: aws-actions/configure-aws-credentials@v1
+  #       with:
+  #         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  #         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  #         aws-region: ${{ secrets.AWS_REGION }}
+  #         role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+  #         role-duration-seconds: 3600
+  #     - name: Set Kubernetes Context
+  #       uses: azure/k8s-set-context@v1
+  #       with:
+  #         method: kubeconfig
+  #         kubeconfig: ${{ secrets.KUBECONFIG }}
+  #     - name: Cache Vendor Packages
+  #       uses: actions/cache@v2
+  #       id: cache-packages
+  #       with:
+  #         path: |
+  #           ~/.cache/go-build
+  #           ~/go/pkg/mod
+  #         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+  #         restore-keys: |
+  #           ${{ runner.os }}-go-
+  #     - name: Download Go Vendor Packages
+  #       if: steps.cache-packages.outputs.cache-hit != 'true'
+  #       run: go mod download
+  #     - name: Install Ginkgo CLI
+  #       run: go install github.com/onsi/ginkgo/ginkgo
+  #     - name: Run Tests
+  #       run: |
+  #         export PATH=$PATH:$(go env GOPATH)/bin
+  #         make test_chaos args="-nodes=15"
+  #     - name: Publish Test Results
+  #       uses: mikepenz/action-junit-report@v2
+  #       if: always()
+  #       with:
+  #         report_paths: '**/logs/tests-*.xml'
+  #         github_token: ${{ secrets.GITHUB_TOKEN }}
+  #     - name: Publish Artifacts
+  #       if: failure()
+  #       uses: actions/upload-artifact@v1
+  #       with:
+  #         name: test-logs
+  #         path: ./logs

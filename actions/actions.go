@@ -4,9 +4,10 @@ package actions
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/smartcontractkit/integrations-framework/contracts"
 	"math/big"
 	"strings"
+
+	"github.com/smartcontractkit/integrations-framework/contracts"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
@@ -80,7 +81,7 @@ func ExtractRequestIDFromJobRun(jobDecodeData client.RunsResponseData) ([]byte, 
 
 // EncodeOnChainVRFProvingKey encodes uncompressed public VRF key to on-chain representation
 func EncodeOnChainVRFProvingKey(vrfKey client.VRFKey) ([2]*big.Int, error) {
-	uncompressed := vrfKey.Attributes.Uncompressed
+	uncompressed := vrfKey.Data.Attributes.Uncompressed
 	provingKey := [2]*big.Int{}
 	var set1 bool
 	var set2 bool
