@@ -7,6 +7,8 @@ on:
       - master
       - main
   pull_request:
+  schedule:
+    - cron: '23 19 * * 4'
 jobs:
   golangci:
     name: Linting
