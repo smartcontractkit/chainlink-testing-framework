@@ -11,7 +11,7 @@ spec:
     spec:
       containers:
         - name: dummy-adapter
-          image: kalverra/dummy-external-adapter
+          image: {{ .Config.Apps.Adapter.Image }}:{{ .Config.Apps.Adapter.Version }}
           ports:
             - containerPort: {{ .Values.DependencyGroup.adapter.apiPort }}
           readinessProbe:

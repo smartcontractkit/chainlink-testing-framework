@@ -66,11 +66,11 @@ spec:
             - containerPort: 9081
           resources:
             requests:
-              memory: "1Gi"
-              cpu: "2"
+              memory: {{ .Config.Apps.Explorer.Requests.Memory }}
+              cpu: {{ .Config.Apps.Explorer.Requests.Cpu }}
             limits:
-              memory: "1Gi"
-              cpu: "2"
+              memory: {{ .Config.Apps.Explorer.Limits.Memory }}
+              cpu: {{ .Config.Apps.Explorer.Limits.Cpu }}
           livenessProbe:
             httpGet:
               path: /

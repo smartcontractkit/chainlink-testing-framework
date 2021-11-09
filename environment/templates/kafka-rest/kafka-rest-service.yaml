@@ -1,0 +1,10 @@
+metadata:
+  name: cp-kafka-rest
+spec:
+  ports:
+    - name: "8082"
+      port: 8082
+      targetPort: 8082
+  selector:
+    app: cp-kafka-rest
+  type: ClusterIP

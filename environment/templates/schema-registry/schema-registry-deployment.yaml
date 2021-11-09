@@ -21,16 +21,16 @@ spec:
               value: PLAINTEXT://{{ .Values.KafkaGroup.kafka.clusterURL }}
             - name: SCHEMA_REGISTRY_LISTENERS
               value: http://0.0.0.0:8081
-          image: confluentinc/cp-schema-registry:6.2.1
+          image: {{ .Config.Apps.CpSchemaRegistry.Image }}:{{ .Config.Apps.CpSchemaRegistry.Version }}
           ports:
             - containerPort: 8081
           resources:
             requests:
-              memory: "256Mi"
-              cpu: "1"
+              memory: {{ .Config.Apps.CpSchemaRegistry.Requests.Memory }}
+              cpu: {{ .Config.Apps.CpSchemaRegistry.Requests.Cpu }}
             limits:
-              memory: "256Mi"
-              cpu: "1"
+              memory: {{ .Config.Apps.CpSchemaRegistry.Limits.Memory }}
+              cpu: {{ .Config.Apps.CpSchemaRegistry.Limits.Cpu }}
           livenessProbe:
             httpGet:
               path: /

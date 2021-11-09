@@ -29,6 +29,7 @@ const (
 	ExplorerAPIPort   uint16 = 8080
 	PrometheusAPIPort uint16 = 9090
 	MockserverAPIPort uint16 = 1080
+	KafkaRestAPIPort  uint16 = 8082
 )
 
 // Ethereum ports
@@ -438,6 +439,24 @@ func NewAtlasEvmBlocksManifest() *K8sManifest {
 	}
 }
 
+// NewAtlasEvmEventsManifest is the k8s manifest that when used will deploy atlas-evm-events to an env
+func NewAtlasEvmEventsManifest() *K8sManifest {
+	return &K8sManifest{
+		id:             "atlas_evm_events",
+		DeploymentFile: filepath.Join(utils.ProjectRoot, "/environment/templates/atlas-evm/atlas-evm-events-deployment.yaml"),
+		ServiceFile:    filepath.Join(utils.ProjectRoot, "/environment/templates/atlas-evm/atlas-evm-events-service.yaml"),
+	}
+}
+
+// NewAtlasEvmReceiptsManifest is the k8s manifest that when used will deploy atlas-evm-receipts to an env
+func NewAtlasEvmReceiptsManifest() *K8sManifest {
+	return &K8sManifest{
+		id:             "atlas_evm_receipts",
+		DeploymentFile: filepath.Join(utils.ProjectRoot, "/environment/templates/atlas-evm/atlas-evm-receipts-deployment.yaml"),
+		ServiceFile:    filepath.Join(utils.ProjectRoot, "/environment/templates/atlas-evm/atlas-evm-receipts-service.yaml"),
+	}
+}
+
 // NewSchemaRegistryManifest is the k8s manifest that when used will deploy schema registry to an env
 // Confluent Schema Registry provides a serving layer for your metadata. It provides a RESTful interface for storing
 // and retrieving your Avro®, JSON Schema, and Protobuf schemas. In Atlas it stores the schemas for different
@@ -455,6 +474,16 @@ func NewSchemaRegistryManifest() *K8sManifest {
 			)
 			return nil
 		},
+	}
+}
+
+// NewKafkaRestManifest is the k8s manifest that when used will deploy kafka rest to an env
+// this is used to retrieve kafka info through REST
+func NewKafkaRestManifest() *K8sManifest {
+	return &K8sManifest{
+		id:             "kafka_rest",
+		DeploymentFile: filepath.Join(utils.ProjectRoot, "/environment/templates/kafka-rest/kafka-rest-deployment.yaml"),
+		ServiceFile:    filepath.Join(utils.ProjectRoot, "/environment/templates/kafka-rest/kafka-rest-service.yaml"),
 	}
 }
 
@@ -555,9 +584,9 @@ func NewChainlinkClusterForAtlasTesting(nodeCount int) K8sEnvSpecInit {
 		manifests: []K8sEnvResource{NewSchemaRegistryManifest()},
 	}
 
-	atlasEvmBlocksDependencyGroup := &K8sManifestGroup{
-		id:        "AtlasEvmBlocksGroup",
-		manifests: []K8sEnvResource{NewAtlasEvmBlocksManifest()},
+	kafkaRestDependencyGroup := &K8sManifestGroup{
+		id:        "KafkaRestGroup",
+		manifests: []K8sEnvResource{NewKafkaRestManifest()},
 	}
 
 	dependencyGroup := getBasicDependencyGroup()
@@ -567,7 +596,7 @@ func NewChainlinkClusterForAtlasTesting(nodeCount int) K8sEnvSpecInit {
 		mockserverDependencyGroup,
 		kafkaDependecyGroup,
 		schemaRegistryDependencyGroup,
-		atlasEvmBlocksDependencyGroup,
+		kafkaRestDependencyGroup,
 		dependencyGroup,
 	}
 
@@ -761,9 +790,7 @@ func OtpeGroup() K8sEnvSpecInit {
 			id:        "OTPEDependencyGroup",
 			manifests: []K8sEnvResource{NewOTPEManifest()},
 		}
-
 		specs = append(specs, otpeDependencyGroup)
-
 		return specs
 	}
 }
@@ -777,6 +804,34 @@ func PrometheusGroup(rules map[string]*os.File) K8sEnvSpecInit {
 			manifests: []K8sEnvResource{NewPrometheusManifest(rules)},
 		}
 		specs = append(specs, prometheusDependencyGroup)
+		return specs
+	}
+}
+
+// AtlasEvmBlocksGroup contains manifests for atlas-evm-blocks
+func AtlasEvmBlocksGroup() K8sEnvSpecInit {
+	return func(networks ...client.BlockchainNetwork) K8sEnvSpecs {
+		var specs K8sEnvSpecs
+		atlasEvmBlocksDependencyGroup := &K8sManifestGroup{
+			id:        "AtlasEvmBlocksGroup",
+			manifests: []K8sEnvResource{NewAtlasEvmBlocksManifest()},
+		}
+		specs = append(specs, atlasEvmBlocksDependencyGroup)
+		return specs
+	}
+}
+
+// AtlasEvmEventsAndReceiptsGroup contains manifests for atlas-evm-events and atlas-evm-receipts
+func AtlasEvmEventsAndReceiptsGroup() K8sEnvSpecInit {
+	return func(networks ...client.BlockchainNetwork) K8sEnvSpecs {
+		var specs K8sEnvSpecs
+
+		atlasEvmEventsAndReceiptsDependencyGroup := &K8sManifestGroup{
+			id:        "AtlasEvmEventsAndReceiptsGroup",
+			manifests: []K8sEnvResource{NewAtlasEvmEventsManifest(), NewAtlasEvmReceiptsManifest()},
+		}
+
+		specs = append(specs, atlasEvmEventsAndReceiptsDependencyGroup)
 		return specs
 	}
 }
