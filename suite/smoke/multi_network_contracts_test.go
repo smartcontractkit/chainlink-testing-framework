@@ -29,7 +29,7 @@ var _ = Describe("Basic Contract Interactions @contract", func() {
 		By("Deploying the environment", func() {
 			var err error
 			suiteSetup, err = actions.MultiNetworkSetup(
-				environment.NewChainlinkCluster(0),
+				environment.NewChainlinkCluster(1),
 				hooks.NetworksFromConfigHook,
 				hooks.EthereumDeployerHook,
 				hooks.EthereumClientHook,
@@ -75,6 +75,6 @@ var _ = Describe("Basic Contract Interactions @contract", func() {
 	})
 
 	AfterEach(func() {
-		By("Tearing down the environment", suiteSetup.TearDown())
+		//By("Tearing down the environment", suiteSetup.TearDown())
 	})
 })
