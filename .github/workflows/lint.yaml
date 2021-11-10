@@ -1,12 +1,9 @@
 name: Linting and Static Analysis
 on:
   push:
-    tags:
-      - v*
-    branches:
-      - master
-      - main
+    branches: [main]
   pull_request:
+    branches: [main]
   schedule:
     - cron: '23 19 * * 4'
 jobs:
