@@ -29,7 +29,7 @@ var _ = Describe("Basic Contract Interactions @contract", func() {
 		By("Deploying the environment", func() {
 			var err error
 			suiteSetup, err = actions.MultiNetworkSetup(
-				environment.NewChainlinkCluster(1),
+				environment.NewChainlinkCluster(0),
 				hooks.NetworksFromConfigHook,
 				hooks.EthereumDeployerHook,
 				hooks.EthereumClientHook,

@@ -462,11 +462,6 @@ func NewKafkaRestManifest() *K8sManifest {
 
 // NewChainlinkCluster is a basic environment that deploys hardhat with a chainlink cluster and an external adapter
 func NewChainlinkCluster(nodeCount int) K8sEnvSpecInit {
-	mockserverConfigDependencyGroup := &K8sManifestGroup{
-		id:        "MockserverConfigDependencyGroup",
-		manifests: []K8sEnvResource{NewMockserverConfigHelmChart()},
-	}
-
 	mockserverDependencyGroup := &K8sManifestGroup{
 		id:        "MockserverDependencyGroup",
 		manifests: []K8sEnvResource{NewMockserverHelmChart()},
@@ -484,18 +479,13 @@ func NewChainlinkCluster(nodeCount int) K8sEnvSpecInit {
 
 	dependencyGroup := getBasicDependencyGroup()
 	addPostgresDbsToDependencyGroup(dependencyGroup, nodeCount)
-	dependencyGroups := []*K8sManifestGroup{mockserverConfigDependencyGroup, mockserverDependencyGroup, dependencyGroup}
+	dependencyGroups := []*K8sManifestGroup{mockserverDependencyGroup, dependencyGroup}
 	return addNetworkManifestToDependencyGroup(chainlinkGroup, dependencyGroups)
 }
 
 // NewChainlinkClusterForObservabilityTesting is a basic environment that deploys a chainlink cluster with dependencies
 // for testing observability
 func NewChainlinkClusterForObservabilityTesting(nodeCount int) K8sEnvSpecInit {
-	mockserverConfigDependencyGroup := &K8sManifestGroup{
-		id:        "MockserverConfigDependencyGroup",
-		manifests: []K8sEnvResource{NewMockserverConfigHelmChart()},
-	}
-
 	mockserverDependencyGroup := &K8sManifestGroup{
 		id:        "MockserverDependencyGroup",
 		manifests: []K8sEnvResource{NewMockserverHelmChart()},
@@ -517,9 +507,9 @@ func NewChainlinkClusterForObservabilityTesting(nodeCount int) K8sEnvSpecInit {
 	}
 
 	dependencyGroup := getBasicDependencyGroup()
-	dependencyGroup.manifests = append(dependencyGroup.manifests, NewExplorerManifest(nodeCount))
 	addPostgresDbsToDependencyGroup(dependencyGroup, nodeCount)
-	dependencyGroups := []*K8sManifestGroup{mockserverConfigDependencyGroup, mockserverDependencyGroup, kafkaDependecyGroup, dependencyGroup}
+	dependencyGroup.manifests = append(dependencyGroup.manifests, NewExplorerManifest(nodeCount))
+	dependencyGroups := []*K8sManifestGroup{mockserverDependencyGroup, kafkaDependecyGroup, dependencyGroup}
 
 	return addNetworkManifestToDependencyGroup(chainlinkGroup, dependencyGroups)
 }
@@ -527,11 +517,6 @@ func NewChainlinkClusterForObservabilityTesting(nodeCount int) K8sEnvSpecInit {
 // NewChainlinkClusterForAtlasTesting is a basic environment that deploys a chainlink cluster with dependencies
 // for testing Atlas
 func NewChainlinkClusterForAtlasTesting(nodeCount int) K8sEnvSpecInit {
-	mockserverConfigDependencyGroup := &K8sManifestGroup{
-		id:        "MockserverConfigDependencyGroup",
-		manifests: []K8sEnvResource{NewMockserverConfigHelmChart()},
-	}
-
 	mockserverDependencyGroup := &K8sManifestGroup{
 		id:        "MockserverDependencyGroup",
 		manifests: []K8sEnvResource{NewMockserverHelmChart()},
@@ -565,7 +550,6 @@ func NewChainlinkClusterForAtlasTesting(nodeCount int) K8sEnvSpecInit {
 	dependencyGroup := getBasicDependencyGroup()
 	addPostgresDbsToDependencyGroup(dependencyGroup, nodeCount)
 	dependencyGroups := []*K8sManifestGroup{
-		mockserverConfigDependencyGroup,
 		mockserverDependencyGroup,
 		kafkaDependecyGroup,
 		schemaRegistryDependencyGroup,
@@ -579,11 +563,6 @@ func NewChainlinkClusterForAtlasTesting(nodeCount int) K8sEnvSpecInit {
 // NewMixedVersionChainlinkCluster mixes the currently latest chainlink version (as defined by the config file) with
 // a number of past stable versions (defined by pastVersionsCount), ensuring that at least one of each is deployed
 func NewMixedVersionChainlinkCluster(nodeCount, pastVersionsCount int) K8sEnvSpecInit {
-	mockserverConfigDependencyGroup := &K8sManifestGroup{
-		id:        "MockserverConfigDependencyGroup",
-		manifests: []K8sEnvResource{NewMockserverConfigHelmChart()},
-	}
-
 	mockserverDependencyGroup := &K8sManifestGroup{
 		id:        "MockserverDependencyGroup",
 		manifests: []K8sEnvResource{NewMockserverHelmChart()},
@@ -622,7 +601,7 @@ func NewMixedVersionChainlinkCluster(nodeCount, pastVersionsCount int) K8sEnvSpe
 
 	dependencyGroup := getBasicDependencyGroup()
 	addPostgresDbsToDependencyGroup(dependencyGroup, nodeCount)
-	dependencyGroups := []*K8sManifestGroup{mockserverConfigDependencyGroup, mockserverDependencyGroup, dependencyGroup}
+	dependencyGroups := []*K8sManifestGroup{mockserverDependencyGroup, dependencyGroup}
 	return addNetworkManifestToDependencyGroup(chainlinkGroup, dependencyGroups)
 }
 
@@ -676,7 +655,7 @@ func getMixedVersions(versionCount int) ([]string, error) {
 func getBasicDependencyGroup() *K8sManifestGroup {
 	group := &K8sManifestGroup{
 		id:        "DependencyGroup",
-		manifests: []K8sEnvResource{},
+		manifests: []K8sEnvResource{NewMockserverConfigHelmChart()},
 
 		SetValuesFunc: func(mg *K8sManifestGroup) error {
 			postgresURLs := TemplateValuesArray{}
