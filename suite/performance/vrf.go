@@ -121,7 +121,7 @@ func (f *VRFTest) deployCommonContracts() error {
 	return f.Blockchain.WaitForEvents()
 }
 
-// deployContracts deploys celoextended contracts and required amount of VRF consumers
+// deployContracts deploys common contracts and required amount of VRF consumers
 func (f *VRFTest) deployContracts() error {
 	if err := f.deployCommonContracts(); err != nil {
 		return err

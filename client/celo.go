@@ -459,10 +459,10 @@ func (e *CeloClient) ProcessTransaction(txHash common.Hash) error {
 	e.AddHeaderEventSubscription(txHash.String(), txConfirmer)
 
 	if !e.queueTransactions {
+		defer e.DeleteHeaderEventSubscription(txHash.String())
 		if err := txConfirmer.Wait(); err != nil {
 			return err
 		}
-		e.DeleteHeaderEventSubscription(txHash.String())
 	}
 	return nil
 }

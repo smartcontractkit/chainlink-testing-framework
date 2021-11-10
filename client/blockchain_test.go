@@ -2,15 +2,15 @@ package client_test
 
 import (
 	"fmt"
-	"github.com/smartcontractkit/integrations-framework/client"
-	"github.com/smartcontractkit/integrations-framework/config"
-	"github.com/smartcontractkit/integrations-framework/environment"
-	"github.com/smartcontractkit/integrations-framework/tools"
-	"github.com/smartcontractkit/integrations-framework/types"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
+
+	"github.com/smartcontractkit/integrations-framework/client"
+	"github.com/smartcontractkit/integrations-framework/config"
+	"github.com/smartcontractkit/integrations-framework/environment"
+	"github.com/smartcontractkit/integrations-framework/hooks"
+	"github.com/smartcontractkit/integrations-framework/utils"
 )
 
 const (
@@ -27,7 +27,7 @@ var _ = Describe("Blockchain @unit", func() {
 	})
 
 	DescribeTable("create new wallet configurations", func(
-		initFunc types.NewNetworkHook,
+		initFunc hooks.NewNetworkHook,
 	) {
 		networkConfig, err := initFunc(conf)
 		Expect(err).ShouldNot(HaveOccurred())

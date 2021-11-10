@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/smartcontractkit/integrations-framework/client/chaos"
 	"io"
 	"io/ioutil"
 	"math/rand"

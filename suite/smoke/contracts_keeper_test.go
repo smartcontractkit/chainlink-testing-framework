@@ -2,6 +2,8 @@ package smoke
 
 import (
 	"context"
+	"github.com/smartcontractkit/integrations-framework/hooks"
+	"github.com/smartcontractkit/integrations-framework/utils"
 	"math/big"
 
 	"github.com/smartcontractkit/integrations-framework/hooks"
@@ -35,10 +37,10 @@ var _ = Describe("Keeper suite @keeper", func() {
 			suiteSetup, err = actions.SingleNetworkSetup(
 				// need to register at least 5 nodes to perform upkeep
 				environment.NewChainlinkCluster(5),
-				actions.EVMNetworkFromConfigHook,
-				actions.EthereumDeployerHook,
-				actions.EthereumClientHook,
-				tools.ProjectRoot,
+				hooks.EVMNetworkFromConfigHook,
+				hooks.EthereumDeployerHook,
+				hooks.EthereumClientHook,
+				utils.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
 			nodes, err = environment.GetChainlinkClients(suiteSetup.Environment())

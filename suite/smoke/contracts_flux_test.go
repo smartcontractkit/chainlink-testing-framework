@@ -3,6 +3,8 @@ package smoke
 import (
 	"context"
 	"fmt"
+	"github.com/smartcontractkit/integrations-framework/hooks"
+	"github.com/smartcontractkit/integrations-framework/utils"
 	"math/big"
 	"strings"
 	"time"
@@ -36,10 +38,10 @@ var _ = Describe("Flux monitor suite @flux", func() {
 		By("Deploying the environment", func() {
 			suiteSetup, err = actions.SingleNetworkSetup(
 				environment.NewChainlinkCluster(3),
-				actions.EVMNetworkFromConfigHook,
-				actions.EthereumDeployerHook,
-				actions.EthereumClientHook,
-				tools.ProjectRoot,
+				hooks.EVMNetworkFromConfigHook,
+				hooks.EthereumDeployerHook,
+				hooks.EthereumClientHook,
+				utils.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
 			nodes, err = environment.GetChainlinkClients(suiteSetup.Environment())

@@ -29,10 +29,10 @@ var _ = Describe("Performance tests @perf-flux", func() {
 		By("Deploying the environment", func() {
 			suiteSetup, err = actions.SingleNetworkSetup(
 				environment.NewChainlinkCluster(numberOfNodes),
-				actions.EthereumPerfNetworkHook,
-				actions.EthereumDeployerHook,
-				actions.EthereumClientHook,
-				tools.ProjectRoot,
+				hooks.EthereumPerfNetworkHook,
+				hooks.EthereumDeployerHook,
+				hooks.EthereumClientHook,
+				utils.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
 			nodes, err = environment.GetChainlinkClients(suiteSetup.Environment())

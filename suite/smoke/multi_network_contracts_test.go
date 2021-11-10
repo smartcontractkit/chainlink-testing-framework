@@ -2,10 +2,9 @@ package smoke
 
 import (
 	"context"
-	"math/big"
-
 	"github.com/smartcontractkit/integrations-framework/hooks"
 	"github.com/smartcontractkit/integrations-framework/utils"
+	"math/big"
 
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/client"
@@ -31,10 +30,10 @@ var _ = Describe("Basic Contract Interactions @contract", func() {
 			var err error
 			suiteSetup, err = actions.MultiNetworkSetup(
 				environment.NewChainlinkCluster(0),
-				actions.NetworksFromConfigHook,
-				actions.EthereumDeployerHook,
-				actions.EthereumClientHook,
-				tools.ProjectRoot,
+				hooks.NetworksFromConfigHook,
+				hooks.EthereumDeployerHook,
+				hooks.EthereumClientHook,
+				utils.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
 

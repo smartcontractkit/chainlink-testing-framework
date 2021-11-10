@@ -26,7 +26,7 @@ var _ = Describe("Environment functionality @unit", func() {
 	})
 
 	DescribeTable("single network environments", func(
-		initFunc types.NewNetworkHook,
+		initFunc hooks.NewNetworkHook,
 		envInitFunc K8sEnvSpecInit,
 		nodeCount int,
 	) {

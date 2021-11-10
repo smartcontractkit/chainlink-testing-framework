@@ -70,6 +70,7 @@ jobs:
         uses: mikepenz/action-junit-report@v2
         if: always()
         with:
+          name: Unit Test Report
           report_paths: '**/logs/tests-*.xml'
           github_token: ${{ secrets.GITHUB_TOKEN }}
           check_name: Unit Test Results
@@ -131,6 +132,7 @@ jobs:
         uses: mikepenz/action-junit-report@v2
         if: always()
         with:
+          name: Smoke Test Report
           report_paths: '**/logs/tests-*.xml'
           github_token: ${{ secrets.GITHUB_TOKEN }}
           check_name: Smoke Test Results
@@ -262,6 +264,7 @@ jobs:
           check_name: Chaos Test Report
           report_paths: '**/logs/tests-*.xml'
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          check_name: Performance Test Results
       - name: Publish Artifacts
         if: failure()
         uses: actions/upload-artifact@v2.2.4

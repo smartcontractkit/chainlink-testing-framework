@@ -17,7 +17,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/contracts"
 	"github.com/smartcontractkit/integrations-framework/environment"
-	"github.com/smartcontractkit/integrations-framework/types"
+	"github.com/smartcontractkit/integrations-framework/hooks"
 )
 
 // Keep Environments options
@@ -39,8 +39,8 @@ type NetworkInfo struct {
 // NewNetworkInfo initializes the network's blockchain client and gathers all test-relevant network information
 func NewNetworkInfo(
 	network client.BlockchainNetwork,
-	clientFunc types.NewClientHook,
-	extDepFunc types.NewDeployerHook,
+	clientFunc hooks.NewClientHook,
+	extDepFunc hooks.NewDeployerHook,
 	env environment.Environment,
 ) (NetworkInfo, error) {
 	bcc, err := environment.NewExternalBlockchainClient(clientFunc, env, network)
@@ -90,9 +90,9 @@ type SingleNetworkSuiteSetup struct {
 // SingleNetworkSetup setup minimum required components for test
 func SingleNetworkSetup(
 	initialDeployInitFunc environment.K8sEnvSpecInit,
-	initFunc types.NewNetworkHook,
-	deployerFunc types.NewDeployerHook,
-	clientFunc types.NewClientHook,
+	initFunc hooks.NewNetworkHook,
+	deployerFunc hooks.NewDeployerHook,
+	clientFunc hooks.NewClientHook,
 	configPath string,
 ) (SuiteSetup, error) {
 	conf, err := config.NewConfig(configPath)
@@ -171,9 +171,9 @@ type multiNetworkSuiteSetup struct {
 // MultiNetworkSetup enables testing across multiple networks
 func MultiNetworkSetup(
 	initialDeployInitFunc environment.K8sEnvSpecInit,
-	multiNetworkInitialization types.NewMultinetworkHook,
-	deployerFunc types.NewDeployerHook,
-	clientFunc types.NewClientHook,
+	multiNetworkInitialization hooks.NewMultinetworkHook,
+	deployerFunc hooks.NewDeployerHook,
+	clientFunc hooks.NewClientHook,
 	configPath string,
 ) (SuiteSetup, error) {
 	conf, err := config.NewConfig(configPath)

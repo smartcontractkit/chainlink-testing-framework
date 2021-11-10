@@ -1,6 +1,8 @@
 package performance
 
 import (
+	"github.com/smartcontractkit/integrations-framework/hooks"
+	"github.com/smartcontractkit/integrations-framework/utils"
 	"math/big"
 	"time"
 
@@ -28,10 +30,10 @@ var _ = FDescribe("OCR soak test @soak-ocr", func() {
 		By("Deploying the environment", func() {
 			suiteSetup, err = actions.SingleNetworkSetup(
 				environment.NewChainlinkCluster(5),
-				actions.EthereumPerfNetworkHook,
-				actions.EthereumDeployerHook,
-				actions.EthereumClientHook,
-				tools.ProjectRoot,
+				hooks.EthereumPerfNetworkHook,
+				hooks.EthereumDeployerHook,
+				hooks.EthereumClientHook,
+				utils.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
 			nodes, err = environment.GetChainlinkClients(suiteSetup.Environment())

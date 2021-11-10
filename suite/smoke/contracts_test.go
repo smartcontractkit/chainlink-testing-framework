@@ -2,6 +2,8 @@ package smoke
 
 import (
 	"context"
+	"github.com/smartcontractkit/integrations-framework/hooks"
+	"github.com/smartcontractkit/integrations-framework/utils"
 	"math/big"
 
 	"github.com/smartcontractkit/integrations-framework/hooks"
@@ -27,10 +29,10 @@ var _ = Describe("Basic Contract Interactions @contract", func() {
 			var err error
 			suiteSetup, err = actions.SingleNetworkSetup(
 				environment.NewChainlinkCluster(0),
-				actions.EVMNetworkFromConfigHook,
-				actions.EthereumDeployerHook,
-				actions.EthereumClientHook,
-				tools.ProjectRoot,
+				hooks.EVMNetworkFromConfigHook,
+				hooks.EthereumDeployerHook,
+				hooks.EthereumClientHook,
+				utils.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
 			networkInfo = suiteSetup.DefaultNetwork()

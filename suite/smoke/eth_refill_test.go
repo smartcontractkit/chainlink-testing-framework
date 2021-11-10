@@ -1,8 +1,10 @@
-package integration
+package smoke
 
 import (
 	"context"
 	"fmt"
+	"github.com/smartcontractkit/integrations-framework/hooks"
+	"github.com/smartcontractkit/integrations-framework/utils"
 	"math/big"
 	"strings"
 	"time"
@@ -15,7 +17,6 @@ import (
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
 	"github.com/smartcontractkit/integrations-framework/environment"
-	"github.com/smartcontractkit/integrations-framework/tools"
 )
 
 var _ = Describe("FluxAggregator ETH Refill @refill", func() {
@@ -34,10 +35,10 @@ var _ = Describe("FluxAggregator ETH Refill @refill", func() {
 		By("Deploying the environment", func() {
 			suiteSetup, err = actions.SingleNetworkSetup(
 				environment.NewChainlinkCluster(3),
-				actions.EVMNetworkFromConfigHook,
-				actions.EthereumDeployerHook,
-				actions.EthereumClientHook,
-				tools.ProjectRoot,
+				hooks.EVMNetworkFromConfigHook,
+				hooks.EthereumDeployerHook,
+				hooks.EthereumClientHook,
+				utils.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
 			adapter, err = environment.GetExternalAdapter(suiteSetup.Environment())
