@@ -41,7 +41,7 @@ type FluxTest struct {
 	chainlinkClients  []client.Chainlink
 	nodeAddresses     []common.Address
 	contractInstances []contracts.FluxAggregator
-	adapter           environment.ExternalAdapter
+	mockserver        *client.MockserverClient
 	submissionCount   int
 
 	testResults PerfRoundTestResults
@@ -84,13 +84,13 @@ func (f *FluxTest) Setup() error {
 	if err != nil {
 		return err
 	}
-	adapter, err := environment.GetExternalAdapter(f.Environment)
+	mockserver, err := environment.GetMockserverClientFromEnv(f.Environment)
 	if err != nil {
 		return err
 	}
 	f.chainlinkClients = chainlinkClients
 	f.nodeAddresses = nodeAddresses
-	f.adapter = adapter
+	f.mockserver = mockserver
 
 	return f.deployContracts()
 }
@@ -114,7 +114,7 @@ func (f *FluxTest) Run() error {
 		return err
 	}
 	for i := 1; i <= f.TestOptions.NumberOfRounds; i++ {
-		if err := f.adapter.SetVariable(i); err != nil {
+		if err := f.mockserver.SetVariable(i); err != nil {
 			return err
 		}
 		if err := f.waitForAllContractRounds(big.NewInt(int64(i))); err != nil {
@@ -232,7 +232,7 @@ func (f *FluxTest) createChainlinkJob(
 		PollTimerPeriod:   f.TestOptions.NodePollTimePeriod,
 		IdleTimerDisabled: true,
 		PollTimerDisabled: false,
-		ObservationSource: client.ObservationSourceSpecHTTP(fmt.Sprintf("%s/variable", f.adapter.ClusterURL())),
+		ObservationSource: client.ObservationSourceSpecHTTP(fmt.Sprintf("%s/variable", f.mockserver.Config.ClusterURL)),
 	})
 	if err != nil {
 		return err

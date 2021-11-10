@@ -48,7 +48,6 @@ type VRFTest struct {
 	vrf               contracts.VRF
 	blockHashStore    contracts.BlockHashStore
 	contractInstances []ConsumerCoordinatorPair
-	adapter           environment.ExternalAdapter
 
 	testResults *PerfRequestIDTestResults
 	jobMap      ContractsNodesJobsMap
@@ -62,7 +61,6 @@ func NewVRFTest(
 	blockchain client.BlockchainClient,
 	wallets client.BlockchainWallets,
 	deployer contracts.ContractDeployer,
-	adapter environment.ExternalAdapter,
 ) Test {
 	return &VRFTest{
 		TestOptions: testOptions,
@@ -71,7 +69,6 @@ func NewVRFTest(
 		Blockchain:  blockchain,
 		Wallets:     wallets,
 		Deployer:    deployer,
-		adapter:     adapter,
 		testResults: NewPerfRequestIDTestResults(),
 		jobMap:      ContractsNodesJobsMap{},
 	}
@@ -87,13 +84,8 @@ func (f *VRFTest) Setup() error {
 	if err != nil {
 		return err
 	}
-	adapter, err := environment.GetExternalAdapter(f.Environment)
-	if err != nil {
-		return err
-	}
 	f.chainlinkClients = chainlinkClients
 	f.nodeAddresses = nodeAddresses
-	f.adapter = adapter
 	return f.deployContracts()
 }
 

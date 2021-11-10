@@ -40,7 +40,7 @@ type OCRTest struct {
 	chainlinkClients  []client.Chainlink
 	nodeAddresses     []common.Address
 	contractInstances []contracts.OffchainAggregator
-	adapter           environment.ExternalAdapter
+	mockserver        *client.MockserverClient
 
 	jobMap OCRJobMap
 }
@@ -53,7 +53,6 @@ func NewOCRTest(
 	blockchain client.BlockchainClient,
 	wallets client.BlockchainWallets,
 	deployer contracts.ContractDeployer,
-	adapter environment.ExternalAdapter,
 ) Test {
 	return &OCRTest{
 		TestOptions:     testOptions,
@@ -62,7 +61,6 @@ func NewOCRTest(
 		Blockchain:      blockchain,
 		Wallets:         wallets,
 		Deployer:        deployer,
-		adapter:         adapter,
 		jobMap:          OCRJobMap{},
 	}
 }
@@ -83,13 +81,13 @@ func (f *OCRTest) Setup() error {
 	if err != nil {
 		return err
 	}
-	adapter, err := environment.GetExternalAdapter(f.Environment)
+	mockserver, err := environment.GetMockserverClientFromEnv(f.Environment)
 	if err != nil {
 		return err
 	}
 	f.chainlinkClients = chainlinkClients
 	f.nodeAddresses = nodeAddresses
-	f.adapter = adapter
+	f.mockserver = mockserver
 	return f.deployContracts()
 }
 
@@ -143,7 +141,7 @@ func (f *OCRTest) changeAdapterValue(roundID int) (int, error) {
 	} else {
 		val = f.TestOptions.AdapterValue
 	}
-	if err := f.adapter.SetVariable(val); err != nil {
+	if err := f.mockserver.SetVariable(val); err != nil {
 		return 0, err
 	}
 	return val, nil
@@ -217,7 +215,7 @@ func (f *OCRTest) createChainlinkJobs() error {
 	for _, n := range f.chainlinkClients {
 		bta := client.BridgeTypeAttributes{
 			Name: "variable",
-			URL:  fmt.Sprintf("%s/variable", f.adapter.ClusterURL()),
+			URL:  fmt.Sprintf("%s/variable", f.mockserver.Config.ClusterURL),
 		}
 		bridgeAttrs = append(bridgeAttrs, bta)
 		if err := n.CreateBridge(&bta); err != nil {

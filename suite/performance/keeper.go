@@ -50,7 +50,7 @@ type KeeperTest struct {
 	chainlinkClients  []client.Chainlink
 	nodeAddresses     []common.Address
 	contractInstances []contracts.KeeperConsumer
-	adapter           environment.ExternalAdapter
+	mockserver        *client.MockserverClient
 
 	jobMap KeeperJobMap
 }
@@ -62,7 +62,6 @@ func NewKeeperTest(
 	blockchain client.BlockchainClient,
 	wallets client.BlockchainWallets,
 	deployer contracts.ContractDeployer,
-	adapter environment.ExternalAdapter,
 	link contracts.LinkToken,
 ) Test {
 	return &KeeperTest{
@@ -71,7 +70,6 @@ func NewKeeperTest(
 		Blockchain:  blockchain,
 		Wallets:     wallets,
 		Deployer:    deployer,
-		adapter:     adapter,
 		jobMap:      KeeperJobMap{},
 		Link:        link,
 	}
@@ -93,13 +91,13 @@ func (f *KeeperTest) Setup() error {
 	if err != nil {
 		return err
 	}
-	adapter, err := environment.GetExternalAdapter(f.Environment)
+	mockserver, err := environment.GetMockserverClientFromEnv(f.Environment)
 	if err != nil {
 		return err
 	}
 	f.chainlinkClients = chainlinkClients
 	f.nodeAddresses = nodeAddresses
-	f.adapter = adapter
+	f.mockserver = mockserver
 	if err := f.deployMockFeeds(); err != nil {
 		return err
 	}

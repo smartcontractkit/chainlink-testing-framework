@@ -23,7 +23,7 @@ var _ = Describe("Direct request suite @runlog", func() {
 	var (
 		suiteSetup    actions.SuiteSetup
 		networkInfo   actions.NetworkInfo
-		adapter       environment.ExternalAdapter
+		mockserver    *client.MockserverClient
 		nodes         []client.Chainlink
 		nodeAddresses []common.Address
 		oracle        contracts.Oracle
@@ -43,7 +43,7 @@ var _ = Describe("Direct request suite @runlog", func() {
 			)
 			Expect(err).ShouldNot(HaveOccurred())
 			networkInfo = suiteSetup.DefaultNetwork()
-			adapter, err = environment.GetExternalAdapter(suiteSetup.Environment())
+			mockserver, err = environment.GetMockserverClientFromEnv(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
@@ -73,11 +73,14 @@ var _ = Describe("Direct request suite @runlog", func() {
 		})
 
 		By("Creating directrequest job", func() {
+			err = mockserver.SetVariable(5)
+			Expect(err).ShouldNot(HaveOccurred())
+
 			jobUUID = uuid.NewV4()
 
 			bta := client.BridgeTypeAttributes{
 				Name: "five",
-				URL:  fmt.Sprintf("%s/five", adapter.ClusterURL()),
+				URL:  fmt.Sprintf("%s/variable", mockserver.Config.ClusterURL),
 			}
 			err = nodes[0].CreateBridge(&bta)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -107,7 +110,7 @@ var _ = Describe("Direct request suite @runlog", func() {
 				oracle.Address(),
 				jobID,
 				big.NewInt(1e18),
-				fmt.Sprintf("%s/five", adapter.ClusterURL()),
+				fmt.Sprintf("%s/variable", mockserver.Config.ClusterURL),
 				"data,result",
 				big.NewInt(100),
 			)

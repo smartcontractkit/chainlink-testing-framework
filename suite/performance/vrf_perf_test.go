@@ -16,7 +16,6 @@ var _ = Describe("VRF perf test @perf-vrf", func() {
 	var (
 		suiteSetup actions.SuiteSetup
 		nodes      []client.Chainlink
-		adapter    environment.ExternalAdapter
 		perfTest   Test
 		err        error
 	)
@@ -30,8 +29,6 @@ var _ = Describe("VRF perf test @perf-vrf", func() {
 				hooks.EthereumClientHook,
 				utils.ProjectRoot,
 			)
-			Expect(err).ShouldNot(HaveOccurred())
-			adapter, err = environment.GetExternalAdapter(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
 			nodes, err = environment.GetChainlinkClients(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
@@ -64,7 +61,6 @@ var _ = Describe("VRF perf test @perf-vrf", func() {
 				suiteSetup.DefaultNetwork().Client,
 				suiteSetup.DefaultNetwork().Wallets,
 				suiteSetup.DefaultNetwork().Deployer,
-				adapter,
 			)
 			err = perfTest.Setup()
 			Expect(err).ShouldNot(HaveOccurred())
