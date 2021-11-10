@@ -13,7 +13,6 @@ import (
 	"github.com/celo-org/celo-blockchain/common"
 	"github.com/celo-org/celo-blockchain/core/types"
 	"github.com/celo-org/celo-blockchain/event"
-	"github.com/smartcontractkit/integrations-framework/celoextended"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -200,7 +199,7 @@ func (_VRFConsumer *VRFConsumerCaller) CurrentRoundID(opts *bind.CallOpts) (*big
 		return *new(*big.Int), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new(*big.Int)).(**big.Int)
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
 
 	return out0, err
 
@@ -231,7 +230,7 @@ func (_VRFConsumer *VRFConsumerCaller) PrevRandomnessOutput(opts *bind.CallOpts)
 		return *new(*big.Int), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new(*big.Int)).(**big.Int)
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
 
 	return out0, err
 
@@ -262,7 +261,7 @@ func (_VRFConsumer *VRFConsumerCaller) RandomnessOutput(opts *bind.CallOpts) (*b
 		return *new(*big.Int), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new(*big.Int)).(**big.Int)
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
 
 	return out0, err
 
@@ -293,7 +292,7 @@ func (_VRFConsumer *VRFConsumerCaller) RequestId(opts *bind.CallOpts) ([32]byte,
 		return *new([32]byte), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new([32]byte)).(*[32]byte)
+	out0 := *abi.ConvertType(out[0], new([32]byte)).(*[32]byte)
 
 	return out0, err
 

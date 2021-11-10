@@ -4,7 +4,6 @@
 package celo
 
 import (
-	"github.com/smartcontractkit/integrations-framework/celoextended"
 	"math/big"
 	"strings"
 
@@ -200,7 +199,7 @@ func (_BlockhashStore *BlockhashStoreCaller) GetBlockhash(opts *bind.CallOpts, n
 		return *new([32]byte), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new([32]byte)).(*[32]byte)
+	out0 := *abi.ConvertType(out[0], new([32]byte)).(*[32]byte)
 
 	return out0, err
 

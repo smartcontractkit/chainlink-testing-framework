@@ -13,7 +13,6 @@ import (
 	"github.com/celo-org/celo-blockchain/common"
 	"github.com/celo-org/celo-blockchain/core/types"
 	"github.com/celo-org/celo-blockchain/event"
-	"github.com/smartcontractkit/integrations-framework/celoextended"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -200,7 +199,7 @@ func (_DeviationFlaggingValidator *DeviationFlaggingValidatorCaller) THRESHOLDMU
 		return *new(uint32), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new(uint32)).(*uint32)
+	out0 := *abi.ConvertType(out[0], new(uint32)).(*uint32)
 
 	return out0, err
 
@@ -231,7 +230,7 @@ func (_DeviationFlaggingValidator *DeviationFlaggingValidatorCaller) FlaggingThr
 		return *new(uint32), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new(uint32)).(*uint32)
+	out0 := *abi.ConvertType(out[0], new(uint32)).(*uint32)
 
 	return out0, err
 
@@ -262,7 +261,7 @@ func (_DeviationFlaggingValidator *DeviationFlaggingValidatorCaller) Flags(opts 
 		return *new(common.Address), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new(common.Address)).(*common.Address)
+	out0 := *abi.ConvertType(out[0], new(common.Address)).(*common.Address)
 
 	return out0, err
 
@@ -293,7 +292,7 @@ func (_DeviationFlaggingValidator *DeviationFlaggingValidatorCaller) IsValid(opt
 		return *new(bool), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new(bool)).(*bool)
+	out0 := *abi.ConvertType(out[0], new(bool)).(*bool)
 
 	return out0, err
 
@@ -324,7 +323,7 @@ func (_DeviationFlaggingValidator *DeviationFlaggingValidatorCaller) Owner(opts 
 		return *new(common.Address), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new(common.Address)).(*common.Address)
+	out0 := *abi.ConvertType(out[0], new(common.Address)).(*common.Address)
 
 	return out0, err
 

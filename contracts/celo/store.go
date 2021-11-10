@@ -13,7 +13,6 @@ import (
 	"github.com/celo-org/celo-blockchain/common"
 	"github.com/celo-org/celo-blockchain/core/types"
 	"github.com/celo-org/celo-blockchain/event"
-	"github.com/smartcontractkit/integrations-framework/celoextended"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -200,7 +199,7 @@ func (_Store *StoreCaller) Get(opts *bind.CallOpts) (*big.Int, error) {
 		return *new(*big.Int), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new(*big.Int)).(**big.Int)
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
 
 	return out0, err
 

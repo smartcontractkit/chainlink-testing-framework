@@ -13,7 +13,6 @@ import (
 	"github.com/celo-org/celo-blockchain/common"
 	"github.com/celo-org/celo-blockchain/core/types"
 	"github.com/celo-org/celo-blockchain/event"
-	"github.com/smartcontractkit/integrations-framework/celoextended"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -200,7 +199,7 @@ func (_MockGASAggregator *MockGASAggregatorCaller) Answer(opts *bind.CallOpts) (
 		return *new(*big.Int), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new(*big.Int)).(**big.Int)
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
 
 	return out0, err
 
@@ -231,7 +230,7 @@ func (_MockGASAggregator *MockGASAggregatorCaller) Decimals(opts *bind.CallOpts)
 		return *new(uint8), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new(uint8)).(*uint8)
+	out0 := *abi.ConvertType(out[0], new(uint8)).(*uint8)
 
 	return out0, err
 
@@ -262,7 +261,7 @@ func (_MockGASAggregator *MockGASAggregatorCaller) Description(opts *bind.CallOp
 		return *new(string), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new(string)).(*string)
+	out0 := *abi.ConvertType(out[0], new(string)).(*string)
 
 	return out0, err
 
@@ -306,11 +305,11 @@ func (_MockGASAggregator *MockGASAggregatorCaller) GetRoundData(opts *bind.CallO
 		return *outstruct, err
 	}
 
-	outstruct.RoundId = *celoextended.ConvertType(out[0], new(*big.Int)).(**big.Int)
-	outstruct.Answer = *celoextended.ConvertType(out[1], new(*big.Int)).(**big.Int)
-	outstruct.StartedAt = *celoextended.ConvertType(out[2], new(*big.Int)).(**big.Int)
-	outstruct.UpdatedAt = *celoextended.ConvertType(out[3], new(*big.Int)).(**big.Int)
-	outstruct.AnsweredInRound = *celoextended.ConvertType(out[4], new(*big.Int)).(**big.Int)
+	outstruct.RoundId = *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+	outstruct.Answer = *abi.ConvertType(out[1], new(*big.Int)).(**big.Int)
+	outstruct.StartedAt = *abi.ConvertType(out[2], new(*big.Int)).(**big.Int)
+	outstruct.UpdatedAt = *abi.ConvertType(out[3], new(*big.Int)).(**big.Int)
+	outstruct.AnsweredInRound = *abi.ConvertType(out[4], new(*big.Int)).(**big.Int)
 
 	return *outstruct, err
 
@@ -366,11 +365,11 @@ func (_MockGASAggregator *MockGASAggregatorCaller) LatestRoundData(opts *bind.Ca
 		return *outstruct, err
 	}
 
-	outstruct.RoundId = *celoextended.ConvertType(out[0], new(*big.Int)).(**big.Int)
-	outstruct.Answer = *celoextended.ConvertType(out[1], new(*big.Int)).(**big.Int)
-	outstruct.StartedAt = *celoextended.ConvertType(out[2], new(*big.Int)).(**big.Int)
-	outstruct.UpdatedAt = *celoextended.ConvertType(out[3], new(*big.Int)).(**big.Int)
-	outstruct.AnsweredInRound = *celoextended.ConvertType(out[4], new(*big.Int)).(**big.Int)
+	outstruct.RoundId = *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+	outstruct.Answer = *abi.ConvertType(out[1], new(*big.Int)).(**big.Int)
+	outstruct.StartedAt = *abi.ConvertType(out[2], new(*big.Int)).(**big.Int)
+	outstruct.UpdatedAt = *abi.ConvertType(out[3], new(*big.Int)).(**big.Int)
+	outstruct.AnsweredInRound = *abi.ConvertType(out[4], new(*big.Int)).(**big.Int)
 
 	return *outstruct, err
 
@@ -413,7 +412,7 @@ func (_MockGASAggregator *MockGASAggregatorCaller) Version(opts *bind.CallOpts) 
 		return *new(*big.Int), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new(*big.Int)).(**big.Int)
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
 
 	return out0, err
 

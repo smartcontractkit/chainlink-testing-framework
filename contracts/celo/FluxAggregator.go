@@ -13,7 +13,6 @@ import (
 	"github.com/celo-org/celo-blockchain/common"
 	"github.com/celo-org/celo-blockchain/core/types"
 	"github.com/celo-org/celo-blockchain/event"
-	"github.com/smartcontractkit/integrations-framework/celoextended"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -200,7 +199,7 @@ func (_FluxAggregator *FluxAggregatorCaller) AllocatedFunds(opts *bind.CallOpts)
 		return *new(*big.Int), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new(*big.Int)).(**big.Int)
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
 
 	return out0, err
 
@@ -231,7 +230,7 @@ func (_FluxAggregator *FluxAggregatorCaller) AvailableFunds(opts *bind.CallOpts)
 		return *new(*big.Int), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new(*big.Int)).(**big.Int)
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
 
 	return out0, err
 
@@ -262,7 +261,7 @@ func (_FluxAggregator *FluxAggregatorCaller) Decimals(opts *bind.CallOpts) (uint
 		return *new(uint8), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new(uint8)).(*uint8)
+	out0 := *abi.ConvertType(out[0], new(uint8)).(*uint8)
 
 	return out0, err
 
@@ -293,7 +292,7 @@ func (_FluxAggregator *FluxAggregatorCaller) Description(opts *bind.CallOpts) (s
 		return *new(string), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new(string)).(*string)
+	out0 := *abi.ConvertType(out[0], new(string)).(*string)
 
 	return out0, err
 
@@ -324,7 +323,7 @@ func (_FluxAggregator *FluxAggregatorCaller) GetAdmin(opts *bind.CallOpts, _orac
 		return *new(common.Address), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new(common.Address)).(*common.Address)
+	out0 := *abi.ConvertType(out[0], new(common.Address)).(*common.Address)
 
 	return out0, err
 
@@ -355,7 +354,7 @@ func (_FluxAggregator *FluxAggregatorCaller) GetAnswer(opts *bind.CallOpts, _rou
 		return *new(*big.Int), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new(*big.Int)).(**big.Int)
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
 
 	return out0, err
 
@@ -386,7 +385,7 @@ func (_FluxAggregator *FluxAggregatorCaller) GetOracles(opts *bind.CallOpts) ([]
 		return *new([]common.Address), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new([]common.Address)).(*[]common.Address)
+	out0 := *abi.ConvertType(out[0], new([]common.Address)).(*[]common.Address)
 
 	return out0, err
 
@@ -430,11 +429,11 @@ func (_FluxAggregator *FluxAggregatorCaller) GetRoundData(opts *bind.CallOpts, _
 		return *outstruct, err
 	}
 
-	outstruct.RoundId = *celoextended.ConvertType(out[0], new(*big.Int)).(**big.Int)
-	outstruct.Answer = *celoextended.ConvertType(out[1], new(*big.Int)).(**big.Int)
-	outstruct.StartedAt = *celoextended.ConvertType(out[2], new(*big.Int)).(**big.Int)
-	outstruct.UpdatedAt = *celoextended.ConvertType(out[3], new(*big.Int)).(**big.Int)
-	outstruct.AnsweredInRound = *celoextended.ConvertType(out[4], new(*big.Int)).(**big.Int)
+	outstruct.RoundId = *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+	outstruct.Answer = *abi.ConvertType(out[1], new(*big.Int)).(**big.Int)
+	outstruct.StartedAt = *abi.ConvertType(out[2], new(*big.Int)).(**big.Int)
+	outstruct.UpdatedAt = *abi.ConvertType(out[3], new(*big.Int)).(**big.Int)
+	outstruct.AnsweredInRound = *abi.ConvertType(out[4], new(*big.Int)).(**big.Int)
 
 	return *outstruct, err
 
@@ -477,7 +476,7 @@ func (_FluxAggregator *FluxAggregatorCaller) GetTimestamp(opts *bind.CallOpts, _
 		return *new(*big.Int), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new(*big.Int)).(**big.Int)
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
 
 	return out0, err
 
@@ -508,7 +507,7 @@ func (_FluxAggregator *FluxAggregatorCaller) LatestAnswer(opts *bind.CallOpts) (
 		return *new(*big.Int), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new(*big.Int)).(**big.Int)
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
 
 	return out0, err
 
@@ -539,7 +538,7 @@ func (_FluxAggregator *FluxAggregatorCaller) LatestRound(opts *bind.CallOpts) (*
 		return *new(*big.Int), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new(*big.Int)).(**big.Int)
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
 
 	return out0, err
 
@@ -583,11 +582,11 @@ func (_FluxAggregator *FluxAggregatorCaller) LatestRoundData(opts *bind.CallOpts
 		return *outstruct, err
 	}
 
-	outstruct.RoundId = *celoextended.ConvertType(out[0], new(*big.Int)).(**big.Int)
-	outstruct.Answer = *celoextended.ConvertType(out[1], new(*big.Int)).(**big.Int)
-	outstruct.StartedAt = *celoextended.ConvertType(out[2], new(*big.Int)).(**big.Int)
-	outstruct.UpdatedAt = *celoextended.ConvertType(out[3], new(*big.Int)).(**big.Int)
-	outstruct.AnsweredInRound = *celoextended.ConvertType(out[4], new(*big.Int)).(**big.Int)
+	outstruct.RoundId = *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+	outstruct.Answer = *abi.ConvertType(out[1], new(*big.Int)).(**big.Int)
+	outstruct.StartedAt = *abi.ConvertType(out[2], new(*big.Int)).(**big.Int)
+	outstruct.UpdatedAt = *abi.ConvertType(out[3], new(*big.Int)).(**big.Int)
+	outstruct.AnsweredInRound = *abi.ConvertType(out[4], new(*big.Int)).(**big.Int)
 
 	return *outstruct, err
 
@@ -630,7 +629,7 @@ func (_FluxAggregator *FluxAggregatorCaller) LatestTimestamp(opts *bind.CallOpts
 		return *new(*big.Int), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new(*big.Int)).(**big.Int)
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
 
 	return out0, err
 
@@ -661,7 +660,7 @@ func (_FluxAggregator *FluxAggregatorCaller) LinkToken(opts *bind.CallOpts) (com
 		return *new(common.Address), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new(common.Address)).(*common.Address)
+	out0 := *abi.ConvertType(out[0], new(common.Address)).(*common.Address)
 
 	return out0, err
 
@@ -692,7 +691,7 @@ func (_FluxAggregator *FluxAggregatorCaller) MaxSubmissionCount(opts *bind.CallO
 		return *new(uint32), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new(uint32)).(*uint32)
+	out0 := *abi.ConvertType(out[0], new(uint32)).(*uint32)
 
 	return out0, err
 
@@ -723,7 +722,7 @@ func (_FluxAggregator *FluxAggregatorCaller) MaxSubmissionValue(opts *bind.CallO
 		return *new(*big.Int), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new(*big.Int)).(**big.Int)
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
 
 	return out0, err
 
@@ -754,7 +753,7 @@ func (_FluxAggregator *FluxAggregatorCaller) MinSubmissionCount(opts *bind.CallO
 		return *new(uint32), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new(uint32)).(*uint32)
+	out0 := *abi.ConvertType(out[0], new(uint32)).(*uint32)
 
 	return out0, err
 
@@ -785,7 +784,7 @@ func (_FluxAggregator *FluxAggregatorCaller) MinSubmissionValue(opts *bind.CallO
 		return *new(*big.Int), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new(*big.Int)).(**big.Int)
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
 
 	return out0, err
 
@@ -816,7 +815,7 @@ func (_FluxAggregator *FluxAggregatorCaller) OracleCount(opts *bind.CallOpts) (u
 		return *new(uint8), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new(uint8)).(*uint8)
+	out0 := *abi.ConvertType(out[0], new(uint8)).(*uint8)
 
 	return out0, err
 
@@ -866,14 +865,14 @@ func (_FluxAggregator *FluxAggregatorCaller) OracleRoundState(opts *bind.CallOpt
 		return *outstruct, err
 	}
 
-	outstruct.EligibleToSubmit = *celoextended.ConvertType(out[0], new(bool)).(*bool)
-	outstruct.RoundId = *celoextended.ConvertType(out[1], new(uint32)).(*uint32)
-	outstruct.LatestSubmission = *celoextended.ConvertType(out[2], new(*big.Int)).(**big.Int)
-	outstruct.StartedAt = *celoextended.ConvertType(out[3], new(uint64)).(*uint64)
-	outstruct.Timeout = *celoextended.ConvertType(out[4], new(uint64)).(*uint64)
-	outstruct.AvailableFunds = *celoextended.ConvertType(out[5], new(*big.Int)).(**big.Int)
-	outstruct.OracleCount = *celoextended.ConvertType(out[6], new(uint8)).(*uint8)
-	outstruct.PaymentAmount = *celoextended.ConvertType(out[7], new(*big.Int)).(**big.Int)
+	outstruct.EligibleToSubmit = *abi.ConvertType(out[0], new(bool)).(*bool)
+	outstruct.RoundId = *abi.ConvertType(out[1], new(uint32)).(*uint32)
+	outstruct.LatestSubmission = *abi.ConvertType(out[2], new(*big.Int)).(**big.Int)
+	outstruct.StartedAt = *abi.ConvertType(out[3], new(uint64)).(*uint64)
+	outstruct.Timeout = *abi.ConvertType(out[4], new(uint64)).(*uint64)
+	outstruct.AvailableFunds = *abi.ConvertType(out[5], new(*big.Int)).(**big.Int)
+	outstruct.OracleCount = *abi.ConvertType(out[6], new(uint8)).(*uint8)
+	outstruct.PaymentAmount = *abi.ConvertType(out[7], new(*big.Int)).(**big.Int)
 
 	return *outstruct, err
 
@@ -922,7 +921,7 @@ func (_FluxAggregator *FluxAggregatorCaller) Owner(opts *bind.CallOpts) (common.
 		return *new(common.Address), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new(common.Address)).(*common.Address)
+	out0 := *abi.ConvertType(out[0], new(common.Address)).(*common.Address)
 
 	return out0, err
 
@@ -953,7 +952,7 @@ func (_FluxAggregator *FluxAggregatorCaller) PaymentAmount(opts *bind.CallOpts) 
 		return *new(*big.Int), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new(*big.Int)).(**big.Int)
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
 
 	return out0, err
 
@@ -984,7 +983,7 @@ func (_FluxAggregator *FluxAggregatorCaller) RestartDelay(opts *bind.CallOpts) (
 		return *new(uint32), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new(uint32)).(*uint32)
+	out0 := *abi.ConvertType(out[0], new(uint32)).(*uint32)
 
 	return out0, err
 
@@ -1015,7 +1014,7 @@ func (_FluxAggregator *FluxAggregatorCaller) Timeout(opts *bind.CallOpts) (uint3
 		return *new(uint32), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new(uint32)).(*uint32)
+	out0 := *abi.ConvertType(out[0], new(uint32)).(*uint32)
 
 	return out0, err
 
@@ -1046,7 +1045,7 @@ func (_FluxAggregator *FluxAggregatorCaller) Validator(opts *bind.CallOpts) (com
 		return *new(common.Address), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new(common.Address)).(*common.Address)
+	out0 := *abi.ConvertType(out[0], new(common.Address)).(*common.Address)
 
 	return out0, err
 
@@ -1077,7 +1076,7 @@ func (_FluxAggregator *FluxAggregatorCaller) Version(opts *bind.CallOpts) (*big.
 		return *new(*big.Int), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new(*big.Int)).(**big.Int)
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
 
 	return out0, err
 
@@ -1108,7 +1107,7 @@ func (_FluxAggregator *FluxAggregatorCaller) WithdrawablePayment(opts *bind.Call
 		return *new(*big.Int), err
 	}
 
-	out0 := *celoextended.ConvertType(out[0], new(*big.Int)).(**big.Int)
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
 
 	return out0, err
 

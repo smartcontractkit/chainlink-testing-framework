@@ -281,7 +281,7 @@ observationSource = """
 	return marshallTemplate(c, "CRON Job", cronJobTemplateString)
 }
 
-// PipelineSpec celoextended API call pipeline
+// PipelineSpec common API call pipeline
 type PipelineSpec struct {
 	BridgeTypeAttributes BridgeTypeAttributes
 	DataPath             string

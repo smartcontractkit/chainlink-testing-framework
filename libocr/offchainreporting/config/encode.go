@@ -9,7 +9,6 @@ import (
 	"github.com/celo-org/celo-blockchain/accounts/abi"
 	"github.com/celo-org/celo-blockchain/common"
 	"github.com/pkg/errors"
-	"github.com/smartcontractkit/integrations-framework/celoextended"
 	"github.com/smartcontractkit/integrations-framework/libocr/offchainreporting/types"
 )
 
@@ -88,10 +87,10 @@ func decodeContractSetConfigEncodedComponents(
 		)
 	}
 	var vals []interface{}
-	if err = encoding.Unpack(vals, b); err != nil {
+	if vals, err = encoding.Unpack(b); err != nil {
 		return o, errors.Wrapf(err, "could not deserialize setConfig binary blob")
 	}
-	setConfig := celoextended.ConvertType(vals[0], &setConfigSerializationTypes{}).(*setConfigSerializationTypes)
+	setConfig := abi.ConvertType(vals[0], &setConfigSerializationTypes{}).(*setConfigSerializationTypes)
 	return setConfig.golangRepresentation(), nil
 }
 

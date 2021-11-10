@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/aws/aws-sdk-go v1.41.19
-	github.com/celo-org/celo-blockchain v1.4.1
+	github.com/celo-org/celo-blockchain v0.0.0-20211102213517-1557fe681d7d
 	github.com/ethereum/go-ethereum v1.10.12
 	github.com/ghodss/yaml v1.0.0
 	github.com/google/go-github v17.0.0+incompatible
