@@ -506,10 +506,26 @@ func NewChainlinkClusterForObservabilityTesting(nodeCount int) K8sEnvSpecInit {
 		manifests: []K8sEnvResource{NewKafkaHelmChart()},
 	}
 
+	schemaRegistryDependencyGroup := &K8sManifestGroup{
+		id:        "SchemaRegistryGroup",
+		manifests: []K8sEnvResource{NewSchemaRegistryManifest()},
+	}
+
+	kafkaRestDependencyGroup := &K8sManifestGroup{
+		id:        "KafkaRestGroup",
+		manifests: []K8sEnvResource{NewKafkaRestManifest()},
+	}
+
 	dependencyGroup := getBasicDependencyGroup()
 	addPostgresDbsToDependencyGroup(dependencyGroup, nodeCount)
 	dependencyGroup.manifests = append(dependencyGroup.manifests, NewExplorerManifest(nodeCount))
-	dependencyGroups := []*K8sManifestGroup{mockserverDependencyGroup, kafkaDependecyGroup, dependencyGroup}
+	dependencyGroups := []*K8sManifestGroup{
+		mockserverDependencyGroup,
+		kafkaDependecyGroup,
+		schemaRegistryDependencyGroup,
+		kafkaRestDependencyGroup,
+		dependencyGroup,
+	}
 
 	return addNetworkManifestToDependencyGroup(chainlinkGroup, dependencyGroups)
 }
@@ -740,7 +756,12 @@ func OtpeGroup() K8sEnvSpecInit {
 		var specs K8sEnvSpecs
 		otpeDependencyGroup := &K8sManifestGroup{
 			id:        "OTPEDependencyGroup",
-			manifests: []K8sEnvResource{NewOTPEManifest()},
+			manifests: []K8sEnvResource{},
+		}
+		for i := 0; i < 2; i++ {
+			otpeManifest := NewOTPEManifest()
+			otpeManifest.id = fmt.Sprintf("%s_%d", otpeManifest.id, i+1)
+			otpeDependencyGroup.manifests = append(otpeDependencyGroup.manifests, otpeManifest)
 		}
 		specs = append(specs, otpeDependencyGroup)
 		return specs

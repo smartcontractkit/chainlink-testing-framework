@@ -34,3 +34,8 @@ provisioning:
     requests:
       cpu: 0.3
       memory: 256Mi
+  topics:
+    - name: ocr-telemetry-v0
+      partitions: 2
+    - name: ocr-telemetry-v0-json
+      partitions: 2
