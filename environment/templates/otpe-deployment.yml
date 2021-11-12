@@ -1,14 +1,10 @@
 metadata:
-  name: otpe
+  generateName: otpe-
 spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: otpe
   template:
-    objectmeta:
-      labels:
-        app: otpe
+    metadata:
+      annotations:
+        prometheus.io/scrape: 'true'
     spec:
       containers:
         - name: otpe
