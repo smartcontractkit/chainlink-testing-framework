@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"github.com/smartcontractkit/integrations-framework/config"
 	"math/big"
 	"sync"
 	"time"
@@ -11,8 +12,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/pkg/errors"
-
-	ethContracts "github.com/smartcontractkit/integrations-framework/contracts/ethereum"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -36,6 +35,22 @@ type EthereumClients struct {
 	Clients       []*EthereumClient
 }
 
+func (e *EthereumClients) LoadWallets(cfg interface{}) error {
+	pkStrings := cfg.(config.ETHNetwork).PrivateKeys
+	wallets := make([]*EthereumWallet, 0)
+	for _, pks := range pkStrings {
+		w, err := NewEthereumWallet(pks)
+		if err != nil {
+			return err
+		}
+		wallets = append(wallets, w)
+	}
+	for _, c := range e.Clients {
+		c.Wallets = wallets
+	}
+	return nil
+}
+
 // GetNetworkName gets the ID of the chain that the clients are connected to
 func (e *EthereumClients) GetNetworkName() string {
 	return e.DefaultClient.GetNetworkName()
@@ -51,8 +66,8 @@ func (e *EthereumClients) GasStats() *GasStats {
 	return e.DefaultClient.gasStats
 }
 
-// SetDefaultClient sets default client to perform calls to the network
-func (e *EthereumClients) SetDefaultClient(clientID int) error {
+// SwitchClient sets default client to perform calls to the network
+func (e *EthereumClients) SwitchNode(clientID int) error {
 	if clientID > len(e.Clients) {
 		return fmt.Errorf("client for node %d not found", clientID)
 	}
@@ -153,7 +168,9 @@ func (e *EthereumClients) WaitForEvents() error {
 type EthereumClient struct {
 	ID                  int
 	Client              *ethclient.Client
-	Network             BlockchainNetwork
+	NetworkConfig       *config.ETHNetwork
+	Wallets             []*EthereumWallet
+	DefaultWallet       *EthereumWallet
 	BorrowNonces        bool
 	NonceMu             *sync.Mutex
 	Nonces              map[string]uint64
@@ -170,8 +187,24 @@ func (e *EthereumClient) GetID() int {
 	return e.ID
 }
 
-// SetDefaultClient not used, only applicable to EthereumClients
-func (e *EthereumClient) SetDefaultClient(_ int) error {
+func (e *EthereumClient) LoadWallets(cfg interface{}) error {
+	pkStrings := cfg.(*config.ETHNetwork).PrivateKeys
+	for _, pks := range pkStrings {
+		w, err := NewEthereumWallet(pks)
+		if err != nil {
+			return err
+		}
+		e.Wallets = append(e.Wallets, w)
+	}
+	if len(e.Wallets) == 0 {
+		return fmt.Errorf("no private keys found to load wallets")
+	}
+	e.DefaultWallet = e.Wallets[0]
+	return nil
+}
+
+// SwitchNode not used, only applicable to EthereumClients
+func (e *EthereumClient) SwitchNode(_ int) error {
 	return nil
 }
 
@@ -230,17 +263,23 @@ type ContractDeployer func(auth *bind.TransactOpts, backend bind.ContractBackend
 )
 
 // NewEthereumClient returns an instantiated instance of the Ethereum client that has connected to the server
-func NewEthereumClient(network BlockchainNetwork) (*EthereumClient, error) {
-	cl, err := ethclient.Dial(network.LocalURL())
+func NewEthereumClient(networkSettings *config.ETHNetwork) (*EthereumClient, error) {
+	log.Info().
+		Str("ID", networkSettings.ID).
+		Str("URL", networkSettings.URL).
+		Interface("Settings", networkSettings).
+		Msg("Connecting client")
+	cl, err := ethclient.Dial(networkSettings.URL)
 	if err != nil {
 		return nil, err
 	}
 
 	ec := &EthereumClient{
-		Network:             network,
+		NetworkConfig:       networkSettings,
 		Client:              cl,
 		BorrowNonces:        true,
 		NonceMu:             &sync.Mutex{},
+		Wallets:             make([]*EthereumWallet, 0),
 		Nonces:              make(map[string]uint64),
 		txQueue:             make(chan common.Hash, 64), // Max buffer of 64 tx
 		headerSubscriptions: map[string]HeaderEventSubscription{},
@@ -248,17 +287,23 @@ func NewEthereumClient(network BlockchainNetwork) (*EthereumClient, error) {
 		queueTransactions:   false,
 		doneChan:            make(chan struct{}),
 	}
+	if err := ec.LoadWallets(networkSettings); err != nil {
+		return nil, err
+	}
 	ec.gasStats = NewGasStats(ec.ID)
 	go ec.newHeadersLoop()
 	return ec, nil
 }
 
-// NewEthereumClients returns an instantiated instance of all Ethereum client connected to all nodes
-func NewEthereumClients(network BlockchainNetwork) (*EthereumClients, error) {
+// NewEthereumMultiNodeClient returns an instantiated instance of all Ethereum client connected to all nodes
+func NewEthereumMultiNodeClient(networkSettings *config.ETHNetwork) (*EthereumClients, error) {
+	log.Info().
+		Interface("URLs", networkSettings.URLs).
+		Msg("Connecting multi-node client")
 	ecl := &EthereumClients{Clients: make([]*EthereumClient, 0)}
-	for idx, url := range network.URLs() {
-		network.SetLocalURL(url)
-		ec, err := NewEthereumClient(network)
+	for idx, url := range networkSettings.URLs {
+		networkSettings.URL = url
+		ec, err := NewEthereumClient(networkSettings)
 		if err != nil {
 			return nil, err
 		}
@@ -271,7 +316,7 @@ func NewEthereumClients(network BlockchainNetwork) (*EthereumClients, error) {
 
 // GetNetworkName retrieves the ID of the network that the client interacts with
 func (e *EthereumClient) GetNetworkName() string {
-	return e.Network.ID()
+	return e.NetworkConfig.ID
 }
 
 // Close tears down the current open Ethereum client
@@ -330,7 +375,7 @@ func (e *EthereumClient) CalculateTxGas(gasUsed *big.Int) (*big.Float, error) {
 	if err != nil {
 		return nil, err
 	}
-	buffer := big.NewInt(0).SetUint64(e.Network.Config().GasEstimationBuffer)
+	buffer := big.NewInt(0).SetUint64(e.NetworkConfig.GasEstimationBuffer)
 	gasUsedWithBuffer := gasUsed.Add(gasUsed, buffer)
 	cost := big.NewFloat(0).SetInt(big.NewInt(1).Mul(gasPrice, gasUsedWithBuffer))
 	costInEth := big.NewFloat(0).Quo(cost, OneEth)
@@ -352,52 +397,53 @@ func (e *EthereumClient) ParallelTransactions(enabled bool) {
 	e.queueTransactions = enabled
 }
 
+// TODO: decouple link token
 // Fund funds a specified address with LINK token and or ETH from the given wallet
 func (e *EthereumClient) Fund(
 	fromWallet BlockchainWallet,
 	toAddress string,
 	ethAmount, linkAmount *big.Float,
 ) error {
-	ethAddress := common.HexToAddress(toAddress)
-	// Send ETH if not 0
-	if ethAmount != nil && big.NewFloat(0).Cmp(ethAmount) != 0 {
-		eth := big.NewFloat(1).Mul(OneEth, ethAmount)
-		log.Info().
-			Str("Token", "ETH").
-			Str("From", fromWallet.Address()).
-			Str("To", toAddress).
-			Str("Amount", ethAmount.String()).
-			Msg("Funding Address")
-		_, err := e.SendTransaction(fromWallet, ethAddress, eth, nil)
-		if err != nil {
-			return err
-		}
-	}
-
-	// Send LINK if not 0
-	if linkAmount != nil && big.NewFloat(0).Cmp(linkAmount) != 0 {
-		link := big.NewFloat(1).Mul(OneLINK, linkAmount)
-		log.Info().
-			Str("Token", "LINK").
-			Str("From", fromWallet.Address()).
-			Str("To", toAddress).
-			Str("Amount", linkAmount.String()).
-			Msg("Funding Address")
-		linkAddress := common.HexToAddress(e.Network.Config().LinkTokenAddress)
-		linkInstance, err := ethContracts.NewLinkToken(linkAddress, e.Client)
-		if err != nil {
-			return err
-		}
-		opts, err := e.TransactionOpts(fromWallet, ethAddress, nil, nil)
-		if err != nil {
-			return err
-		}
-		linkInt, _ := link.Int(nil)
-		_, err = linkInstance.Transfer(opts, ethAddress, linkInt)
-		if err != nil {
-			return err
-		}
-	}
+	//ethAddress := common.HexToAddress(toAddress)
+	//// Send ETH if not 0
+	//if ethAmount != nil && big.NewFloat(0).Cmp(ethAmount) != 0 {
+	//	eth := big.NewFloat(1).Mul(OneEth, ethAmount)
+	//	log.Info().
+	//		Str("Token", "ETH").
+	//		Str("From", fromWallet.Address()).
+	//		Str("To", toAddress).
+	//		Str("Amount", ethAmount.String()).
+	//		Msg("Funding Address")
+	//	_, err := e.SendTransaction(fromWallet, ethAddress, eth, nil)
+	//	if err != nil {
+	//		return err
+	//	}
+	//}
+	//
+	//// Send LINK if not 0
+	//if linkAmount != nil && big.NewFloat(0).Cmp(linkAmount) != 0 {
+	//	link := big.NewFloat(1).Mul(OneLINK, linkAmount)
+	//	log.Info().
+	//		Str("Token", "LINK").
+	//		Str("From", fromWallet.Address()).
+	//		Str("To", toAddress).
+	//		Str("Amount", linkAmount.String()).
+	//		Msg("Funding Address")
+	//	linkAddress := common.HexToAddress(e.NetworkConfig.Config().LinkTokenAddress)
+	//	linkInstance, err := ethContracts.NewLinkToken(linkAddress, e.Client)
+	//	if err != nil {
+	//		return err
+	//	}
+	//	opts, err := e.TransactionOpts(fromWallet, ethAddress, nil, nil)
+	//	if err != nil {
+	//		return err
+	//	}
+	//	linkInt, _ := link.Int(nil)
+	//	_, err = linkInstance.Transfer(opts, ethAddress, linkInt)
+	//	if err != nil {
+	//		return err
+	//	}
+	//}
 	return nil
 }
 
@@ -423,7 +469,7 @@ func (e *EthereumClient) SendTransaction(
 		return common.Hash{}, err
 	}
 
-	tx, err := types.SignNewTx(privateKey, types.NewEIP2930Signer(e.Network.ChainID()), &types.LegacyTx{
+	tx, err := types.SignNewTx(privateKey, types.NewEIP2930Signer(big.NewInt(e.NetworkConfig.ChainID)), &types.LegacyTx{
 		To:       callMsg.To,
 		Value:    callMsg.Value,
 		Data:     callMsg.Data,
@@ -443,10 +489,10 @@ func (e *EthereumClient) SendTransaction(
 // ProcessTransaction will queue or wait on a transaction depending on whether queue transactions is enabled
 func (e *EthereumClient) ProcessTransaction(txHash common.Hash) error {
 	var txConfirmer HeaderEventSubscription
-	if e.Network.Config().MinimumConfirmations == 0 {
+	if e.NetworkConfig.MinimumConfirmations == 0 {
 		txConfirmer = &InstantConfirmations{}
 	} else {
-		txConfirmer = NewTransactionConfirmer(e, txHash, e.Network.Config().MinimumConfirmations)
+		txConfirmer = NewTransactionConfirmer(e, txHash, e.NetworkConfig.MinimumConfirmations)
 	}
 
 	e.AddHeaderEventSubscription(txHash.String(), txConfirmer)
@@ -462,11 +508,10 @@ func (e *EthereumClient) ProcessTransaction(txHash common.Hash) error {
 
 // DeployContract acts as a general contract deployment tool to an ethereum chain
 func (e *EthereumClient) DeployContract(
-	fromWallet BlockchainWallet,
 	contractName string,
 	deployer ContractDeployer,
 ) (*common.Address, *types.Transaction, interface{}, error) {
-	opts, err := e.TransactionOpts(fromWallet, common.Address{}, big.NewInt(0), nil)
+	opts, err := e.TransactionOpts(e.DefaultWallet, common.Address{}, big.NewInt(0), nil)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -480,9 +525,9 @@ func (e *EthereumClient) DeployContract(
 	log.Info().
 		Str("Contract Address", contractAddress.Hex()).
 		Str("Contract Name", contractName).
-		Str("From", fromWallet.Address()).
+		Str("From", e.DefaultWallet.Address()).
 		Str("Gas Cost", transaction.Cost().String()).
-		Str("Network", e.Network.ID()).
+		Str("NetworkConfig", e.NetworkConfig.ID).
 		Msg("Deployed contract")
 	return &contractAddress, transaction, contractInstance, err
 }
@@ -505,7 +550,7 @@ func (e *EthereumClient) TransactionCallMessage(
 		Value:    value,
 		Data:     data,
 	}
-	msg.Gas = e.Network.Config().TransactionLimit + e.Network.Config().GasEstimationBuffer
+	msg.Gas = e.NetworkConfig.TransactionLimit + e.NetworkConfig.GasEstimationBuffer
 	return &msg, nil
 }
 
@@ -528,7 +573,7 @@ func (e *EthereumClient) TransactionOpts(
 	if err != nil {
 		return nil, fmt.Errorf("invalid private key: %v", err)
 	}
-	opts, err := bind.NewKeyedTransactorWithChainID(privateKey, e.Network.ChainID())
+	opts, err := bind.NewKeyedTransactorWithChainID(privateKey, big.NewInt(e.NetworkConfig.ChainID))
 	if err != nil {
 		return nil, err
 	}
@@ -588,14 +633,14 @@ func (e *EthereumClient) newHeadersLoop() {
 	for {
 		if err := e.subscribeToNewHeaders(); err != nil {
 			log.Error().
-				Str("Network", e.Network.ID()).
+				Str("NetworkConfig", e.NetworkConfig.ID).
 				Msgf("Error while subscribing to headers: %v", err.Error())
 			time.Sleep(time.Second)
 			continue
 		}
 		break
 	}
-	log.Debug().Str("Network", e.Network.ID()).Msg("Stopped subscribing to new headers")
+	log.Debug().Str("NetworkConfig", e.NetworkConfig.ID).Msg("Stopped subscribing to new headers")
 }
 
 func (e *EthereumClient) subscribeToNewHeaders() error {
@@ -606,7 +651,7 @@ func (e *EthereumClient) subscribeToNewHeaders() error {
 	}
 	defer subscription.Unsubscribe()
 
-	log.Info().Str("Network", e.Network.ID()).Msg("Subscribed to new block headers")
+	log.Info().Str("NetworkConfig", e.NetworkConfig.ID).Msg("Subscribed to new block headers")
 
 	for {
 		select {
@@ -622,7 +667,7 @@ func (e *EthereumClient) subscribeToNewHeaders() error {
 
 func (e *EthereumClient) receiveHeader(header *types.Header) {
 	log.Debug().
-		Str("Network", e.Network.ID()).
+		Str("NetworkConfig", e.NetworkConfig.ID).
 		Int("Node", e.ID).
 		Str("Hash", header.Hash().String()).
 		Str("Number", header.Number.String()).
@@ -719,7 +764,7 @@ type TransactionConfirmer struct {
 // NewTransactionConfirmer returns a new instance of the transaction confirmer that waits for on-chain minimum
 // confirmations
 func NewTransactionConfirmer(eth *EthereumClient, txHash common.Hash, minConfirmations int) *TransactionConfirmer {
-	ctx, ctxCancel := context.WithTimeout(context.Background(), eth.Network.Config().Timeout)
+	ctx, ctxCancel := context.WithTimeout(context.Background(), eth.NetworkConfig.Timeout)
 	tc := &TransactionConfirmer{
 		minConfirmations: minConfirmations,
 		confirmations:    0,
@@ -740,7 +785,7 @@ func (t *TransactionConfirmer) ReceiveBlock(block NodeBlock) error {
 		log.Info().Msg("Received nil block")
 		return nil
 	}
-	confirmationLog := log.Debug().Str("Network", t.eth.Network.ID()).
+	confirmationLog := log.Debug().Str("NetworkConfig", t.eth.NetworkConfig.ID).
 		Str("Block Hash", block.Hash().Hex()).
 		Str("Block Number", block.Number().String()).Str("Tx Hash", t.txHash.Hex()).
 		Int("Minimum Confirmations", t.minConfirmations)

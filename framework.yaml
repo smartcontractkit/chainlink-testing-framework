@@ -1,0 +1,8 @@
+# Retains default and configurable name-values for the integration framework
+#
+# All configuration can be set at runtime with environment variables, for example:
+# KEEP_ENVIRONMENTS=OnFail
+keep_environments: Never # Options: Always, OnFail, Never
+logging:
+    # panic=5, fatal=4, error=3, warn=2, info=1, debug=0, trace=-1
+    level: 0

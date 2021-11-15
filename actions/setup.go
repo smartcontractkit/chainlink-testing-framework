@@ -2,16 +2,13 @@ package actions
 
 import (
 	"fmt"
+	"github.com/onsi/ginkgo"
+	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/hooks"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
-	"github.com/onsi/ginkgo"
-	"github.com/rs/zerolog/log"
-
-	"github.com/avast/retry-go"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/contracts"
@@ -37,7 +34,7 @@ type NetworkInfo struct {
 // NewNetworkInfo initializes the network's blockchain client and gathers all test-relevant network information
 func NewNetworkInfo(
 	network client.BlockchainNetwork,
-	clientFunc hooks.NewClientHook,
+	clientFunc hooks.ClientImplFunc,
 	extDepFunc hooks.NewDeployerHook,
 	env environment.Environment,
 ) (NetworkInfo, error) {
@@ -68,7 +65,7 @@ func NewNetworkInfo(
 
 // SuiteSetup enables common use cases, and safe handling of different blockchain networks for test scenarios
 type SuiteSetup interface {
-	Config() *config.Config
+	Config() *config.NetworksConfig
 	Environment() environment.Environment
 
 	DefaultNetwork() NetworkInfo
@@ -80,7 +77,7 @@ type SuiteSetup interface {
 
 // SingleNetworkSuiteSetup holds the data for a default setup
 type SingleNetworkSuiteSetup struct {
-	config  *config.Config
+	config  *config.NetworksConfig
 	env     environment.Environment
 	network NetworkInfo
 }
@@ -90,10 +87,10 @@ func SingleNetworkSetup(
 	initialDeployInitFunc environment.K8sEnvSpecInit,
 	initFunc hooks.NewNetworkHook,
 	deployerFunc hooks.NewDeployerHook,
-	clientFunc hooks.NewClientHook,
+	clientFunc hooks.ClientImplFunc,
 	configPath string,
 ) (SuiteSetup, error) {
-	conf, err := config.NewConfig(configPath)
+	conf, err := config.LoadNetworksConfig(configPath)
 	if err != nil {
 		return nil, err
 	}
@@ -116,11 +113,6 @@ func SingleNetworkSetup(
 		return nil, err
 	}
 
-	// configure default retry
-	retry.DefaultAttempts = conf.Retry.Attempts
-	retry.DefaultDelayType = func(n uint, err error, config *retry.Config) time.Duration {
-		return conf.Retry.LinearDelay
-	}
 	return &SingleNetworkSuiteSetup{
 		config:  conf,
 		env:     env,
@@ -129,7 +121,7 @@ func SingleNetworkSetup(
 }
 
 // Config retrieves the general config for the suite
-func (s *SingleNetworkSuiteSetup) Config() *config.Config {
+func (s *SingleNetworkSuiteSetup) Config() *config.NetworksConfig {
 	return s.config
 }
 
@@ -161,7 +153,7 @@ func (s *SingleNetworkSuiteSetup) TearDown() func() {
 
 // multiNetworkSuiteSetup holds the data for a multiple network setup
 type multiNetworkSuiteSetup struct {
-	config   *config.Config
+	config   *config.NetworksConfig
 	env      environment.Environment
 	networks []NetworkInfo
 }
@@ -171,10 +163,10 @@ func MultiNetworkSetup(
 	initialDeployInitFunc environment.K8sEnvSpecInit,
 	multiNetworkInitialization hooks.NewMultinetworkHook,
 	deployerFunc hooks.NewDeployerHook,
-	clientFunc hooks.NewClientHook,
+	clientFunc hooks.ClientImplFunc,
 	configPath string,
 ) (SuiteSetup, error) {
-	conf, err := config.NewConfig(configPath)
+	conf, err := config.LoadNetworksConfig(configPath)
 	if err != nil {
 		return nil, err
 	}
@@ -202,11 +194,6 @@ func MultiNetworkSetup(
 		allNetworks[index] = networkInfo
 	}
 
-	// configure default retry
-	retry.DefaultAttempts = conf.Retry.Attempts
-	retry.DefaultDelayType = func(n uint, err error, config *retry.Config) time.Duration {
-		return conf.Retry.LinearDelay
-	}
 	return &multiNetworkSuiteSetup{
 		config:   conf,
 		env:      env,
@@ -215,7 +202,7 @@ func MultiNetworkSetup(
 }
 
 // Config retrieves the general config for the suite
-func (s *multiNetworkSuiteSetup) Config() *config.Config {
+func (s *multiNetworkSuiteSetup) Config() *config.NetworksConfig {
 	return s.config
 }
 
@@ -255,7 +242,7 @@ func (s *multiNetworkSuiteSetup) TearDown() func() {
 
 // TearDown checks for test failure, writes logs if there is one, then tears down the test environment, based on the
 // keep_environments config value
-func teardown(config config.Config, env environment.Environment, clients ...client.BlockchainClient) func() {
+func teardown(config config.NetworksConfig, env environment.Environment, clients ...client.BlockchainClient) func() {
 	if ginkgo.CurrentGinkgoTestDescription().Failed { // If a test fails, dump logs
 		logsFolder := filepath.Join(config.ConfigFileLocation, "/logs/")
 		if _, err := os.Stat(logsFolder); os.IsNotExist(err) {
@@ -279,7 +266,7 @@ func teardown(config config.Config, env environment.Environment, clients ...clie
 		for _, client := range clients {
 			if err := client.Close(); err != nil {
 				log.Err(err).
-					Str("Network", client.GetNetworkName()).
+					Str("NetworkConfig", client.GetNetworkName()).
 					Msgf("Error while closing the Blockchain client")
 			}
 		}

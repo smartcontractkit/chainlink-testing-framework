@@ -11,20 +11,20 @@ import (
 )
 
 var _ = Describe("Environment with Helm @helm_deploy", func() {
-	var conf *config.Config
+	var conf *config.NetworksConfig
 
 	Describe("Chart deployments", func() {
 		var env Environment
 
 		BeforeEach(func() {
 			var err error
-			conf, err = config.NewConfig(utils.ProjectRoot)
+			conf, err = config.LoadNetworksConfig(utils.ProjectRoot)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
 		It("Deploy Geth reorg chart", func() {
 			Skip("Not ready to be run in github")
-			conf.Networks = []string{"ethereum_geth_reorg"}
+			conf.SelectedNetworks = []string{"ethereum_geth_reorg"}
 			networkConfig, err := client.DefaultNetworkFromConfig(conf)
 			Expect(err).ShouldNot(HaveOccurred())
 			env, err = NewK8sEnvironment(conf, networkConfig)

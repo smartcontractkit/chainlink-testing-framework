@@ -76,7 +76,7 @@ func (k *HelmChart) SetValue(key string, val interface{}) {
 }
 
 // GetConfig gets the helms environment config
-func (k *HelmChart) GetConfig() *config.Config {
+func (k *HelmChart) GetConfig() *config.NetworksConfig {
 	return k.env.config
 }
 

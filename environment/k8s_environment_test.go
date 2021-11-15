@@ -13,13 +13,13 @@ import (
 
 var _ = Describe("Environment functionality @unit", func() {
 	var (
-		conf *config.Config
+		conf *config.NetworksConfig
 		env  Environment
 	)
 
 	BeforeEach(func() {
 		var err error
-		conf, err = config.NewConfig(utils.ProjectRoot)
+		conf, err = config.LoadNetworksConfig(utils.ProjectRoot)
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 

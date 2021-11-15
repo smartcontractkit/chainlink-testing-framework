@@ -20,23 +20,23 @@ const (
 	fetchConfig     string = "%s/config/test_configs/fetch_config"
 )
 
-var _ = Describe("Config unit tests @unit", func() {
+var _ = Describe("NetworksConfig unit tests @unit", func() {
 
 	Describe("Verify order of importance for environment variables and config files", func() {
 		It("should load the default config file", func() {
-			conf, err := config.NewConfig(utils.ProjectRoot)
+			conf, err := config.LoadNetworksConfig(utils.ProjectRoot)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(conf.KeepEnvironments).Should(Equal("Never"), "We either changed the default value in the config or it did not load correctly")
 		})
 
 		It("should load a specified file", func() {
-			conf, err := config.NewConfig(fmt.Sprintf(specifiedConfig, utils.ProjectRoot))
+			conf, err := config.LoadNetworksConfig(fmt.Sprintf(specifiedConfig, utils.ProjectRoot))
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(conf.KeepEnvironments).Should(Equal("Always"), "We did not load the correct config file")
 		})
 
 		It("should fail to load a bad file", func() {
-			_, err := config.NewConfig(fmt.Sprintf(badConfig, utils.ProjectRoot))
+			_, err := config.LoadNetworksConfig(fmt.Sprintf(badConfig, utils.ProjectRoot))
 			Expect(err).Should(HaveOccurred())
 			Expect(err.Error()).Should(ContainSubstring("line 1: cannot unmarshal"))
 		})
@@ -44,7 +44,7 @@ var _ = Describe("Config unit tests @unit", func() {
 		It("should overwrite default values with ENV variables", func() {
 			err := os.Setenv("KEEP_ENVIRONMENTS", "OnFail")
 			Expect(err).ShouldNot(HaveOccurred())
-			conf, err := config.NewConfig(utils.ProjectRoot)
+			conf, err := config.LoadNetworksConfig(utils.ProjectRoot)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(conf.KeepEnvironments).Should(Equal("OnFail"), "The environment variable should have been used to change the config value")
 		})
@@ -52,14 +52,14 @@ var _ = Describe("Config unit tests @unit", func() {
 		It("should overwrite specified file values with ENV variables", func() {
 			err := os.Setenv("KEEP_ENVIRONMENTS", "OnFail")
 			Expect(err).ShouldNot(HaveOccurred())
-			conf, err := config.NewConfig(fmt.Sprintf(specifiedConfig, utils.ProjectRoot))
+			conf, err := config.LoadNetworksConfig(fmt.Sprintf(specifiedConfig, utils.ProjectRoot))
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(conf.KeepEnvironments).Should(Equal("OnFail"), "The environment variable should have been used to change the config value")
 
 		})
 
-		It("should load the config if we specify a Secret Config type", func() {
-			conf, err := config.NewConfig(utils.ProjectRoot)
+		It("should load the config if we specify a Secret NetworksConfig type", func() {
+			conf, err := config.LoadNetworksConfig(utils.ProjectRoot)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(conf.KeepEnvironments).Should(Equal("Never"), "We either changed the default value in the config or it did not load correctly")
 		})
@@ -71,7 +71,7 @@ var _ = Describe("Config unit tests @unit", func() {
 	})
 
 	It("should get the network config with a valid name", func() {
-		conf, err := config.NewConfig(fmt.Sprintf(specifiedConfig, utils.ProjectRoot))
+		conf, err := config.LoadNetworksConfig(fmt.Sprintf(specifiedConfig, utils.ProjectRoot))
 		Expect(err).ShouldNot(HaveOccurred())
 		network, err := conf.GetNetworkConfig("test_this_geth")
 		Expect(err).ShouldNot(HaveOccurred())
@@ -79,7 +79,7 @@ var _ = Describe("Config unit tests @unit", func() {
 	})
 
 	It("should not get the network config with an invalid name", func() {
-		conf, err := config.NewConfig(fmt.Sprintf(specifiedConfig, utils.ProjectRoot))
+		conf, err := config.LoadNetworksConfig(fmt.Sprintf(specifiedConfig, utils.ProjectRoot))
 		Expect(err).ShouldNot(HaveOccurred())
 		_, err = conf.GetNetworkConfig("bad_name")
 		Expect(err).Should(HaveOccurred())
@@ -87,7 +87,7 @@ var _ = Describe("Config unit tests @unit", func() {
 	})
 
 	It("should fetch LocalStore raw keys", func() {
-		conf, err := config.NewConfig(fmt.Sprintf(fetchConfig, utils.ProjectRoot))
+		conf, err := config.LoadNetworksConfig(fmt.Sprintf(fetchConfig, utils.ProjectRoot))
 		Expect(err).ShouldNot(HaveOccurred())
 
 		bcNetwork, err := client.DefaultNetworkFromConfig(conf)

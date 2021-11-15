@@ -494,10 +494,31 @@ func (f *VRFConsumerRoundConfirmer) Wait() error {
 
 // EthereumLinkToken represents a LinkToken address
 type EthereumLinkToken struct {
-	client       *client.EthereumClient
-	linkToken    *ethereum.LinkToken
-	callerWallet client.BlockchainWallet
-	address      common.Address
+	client   *client.EthereumClient
+	instance *ethereum.LinkToken
+	address  common.Address
+}
+
+func (l *EthereumLinkToken) Deploy() (LinkToken, error) {
+	opts, err := l.client.TransactionOpts(l.client.DefaultWallet, common.Address{}, big.NewInt(0), nil)
+	if err != nil {
+		return nil, err
+	}
+	contractAddress, tx, contractInstance, err := ethereum.DeployLinkToken(opts, l.client.Client)
+	if err != nil {
+		return nil, err
+	}
+	if err := l.client.ProcessTransaction(tx.Hash()); err != nil {
+		return nil, err
+	}
+	log.Info().
+		Str("Contract Address", contractAddress.Hex()).
+		Str("Contract Name", "Link Token").
+		Str("From", l.client.DefaultWallet.Address()).
+		Str("Gas Cost", tx.Cost().String()).
+		Str("NetworkConfig", l.client.NetworkConfig.ID).
+		Msg("Deployed contract")
+	return &EthereumLinkToken{client: l.client, instance: contractInstance, address: contractAddress}, nil
 }
 
 // Fund the LINK Token contract with ETH to distribute the token
@@ -507,11 +528,11 @@ func (l *EthereumLinkToken) Fund(fromWallet client.BlockchainWallet, ethAmount *
 
 func (l *EthereumLinkToken) BalanceOf(ctx context.Context, addr common.Address) (*big.Int, error) {
 	opts := &bind.CallOpts{
-		From:    common.HexToAddress(l.callerWallet.Address()),
+		From:    common.HexToAddress(l.client.DefaultWallet.Address()),
 		Pending: true,
 		Context: ctx,
 	}
-	balance, err := l.linkToken.BalanceOf(opts, addr)
+	balance, err := l.instance.BalanceOf(opts, addr)
 	if err != nil {
 		return nil, err
 	}
@@ -521,11 +542,11 @@ func (l *EthereumLinkToken) BalanceOf(ctx context.Context, addr common.Address) 
 // Name returns the name of the link token
 func (l *EthereumLinkToken) Name(ctxt context.Context) (string, error) {
 	opts := &bind.CallOpts{
-		From:    common.HexToAddress(l.callerWallet.Address()),
+		From:    common.HexToAddress(l.client.DefaultWallet.Address()),
 		Pending: true,
 		Context: ctxt,
 	}
-	return l.linkToken.Name(opts)
+	return l.instance.Name(opts)
 }
 
 func (l *EthereumLinkToken) Address() string {
@@ -537,7 +558,7 @@ func (l *EthereumLinkToken) Approve(fromWallet client.BlockchainWallet, to strin
 	if err != nil {
 		return err
 	}
-	tx, err := l.linkToken.Approve(opts, common.HexToAddress(to), amount)
+	tx, err := l.instance.Approve(opts, common.HexToAddress(to), amount)
 	if err != nil {
 		return err
 	}
@@ -549,7 +570,7 @@ func (l *EthereumLinkToken) Transfer(fromWallet client.BlockchainWallet, to stri
 	if err != nil {
 		return err
 	}
-	tx, err := l.linkToken.Transfer(opts, common.HexToAddress(to), amount)
+	tx, err := l.instance.Transfer(opts, common.HexToAddress(to), amount)
 	if err != nil {
 		return err
 	}
@@ -561,7 +582,7 @@ func (l *EthereumLinkToken) TransferAndCall(fromWallet client.BlockchainWallet, 
 	if err != nil {
 		return err
 	}
-	tx, err := l.linkToken.TransferAndCall(opts, common.HexToAddress(to), amount, data)
+	tx, err := l.instance.TransferAndCall(opts, common.HexToAddress(to), amount, data)
 	if err != nil {
 		return err
 	}

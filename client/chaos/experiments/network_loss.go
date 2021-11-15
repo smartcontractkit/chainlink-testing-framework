@@ -2,7 +2,7 @@ package experiments
 
 import "time"
 
-// NetworkLoss struct with objects for Network Loss testing
+// NetworkLoss struct with objects for NetworkConfig Loss testing
 type NetworkLoss struct {
 	Base
 	TargetAppLabel string

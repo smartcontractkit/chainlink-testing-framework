@@ -18,11 +18,11 @@ const (
 )
 
 var _ = Describe("Blockchain @unit", func() {
-	var conf *config.Config
+	var conf *config.NetworksConfig
 
 	BeforeEach(func() {
 		var err error
-		conf, err = config.NewConfig(fmt.Sprintf(fetchConfig, utils.ProjectRoot))
+		conf, err = config.LoadNetworksConfig(fmt.Sprintf(fetchConfig, utils.ProjectRoot))
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 

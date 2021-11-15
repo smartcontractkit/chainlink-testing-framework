@@ -7,8 +7,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/smartcontractkit/integrations-framework/config"
-
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts/ethereum"
@@ -21,46 +19,37 @@ import (
 
 // ContractDeployer is an interface for abstracting the contract deployment methods across network implementations
 type ContractDeployer interface {
-	Balance(fromWallet client.BlockchainWallet) (*big.Float, error)
-	CalculateETHForTXs(fromWallet client.BlockchainWallet, networkConfig *config.NetworkConfig, txs int64) (*big.Float, error)
-	DeployStorageContract(fromWallet client.BlockchainWallet) (Storage, error)
-	DeployAPIConsumer(fromWallet client.BlockchainWallet, linkAddr string) (APIConsumer, error)
-	DeployOracle(fromWallet client.BlockchainWallet, linkAddr string) (Oracle, error)
-	DeployReadAccessController(fromWallet client.BlockchainWallet) (ReadAccessController, error)
-	DeployFlags(fromWallet client.BlockchainWallet, rac string) (Flags, error)
+	Balance() (*big.Float, error)
+	//CalculateETHForTXs(fromWallet client.BlockchainWallet, networkConfig *config.NetworkConfig, txs int64) (*big.Float, error)
+	DeployStorageContract() (Storage, error)
+	DeployAPIConsumer(linkAddr string) (APIConsumer, error)
+	DeployOracle(linkAddr string) (Oracle, error)
+	DeployReadAccessController() (ReadAccessController, error)
+	DeployFlags(rac string) (Flags, error)
 	DeployDeviationFlaggingValidator(
-		fromWallet client.BlockchainWallet,
 		flags string,
 		flaggingThreshold *big.Int,
 	) (DeviationFlaggingValidator, error)
-	DeployFluxAggregatorContract(
-		fromWallet client.BlockchainWallet,
-		fluxOptions FluxAggregatorOptions,
-	) (FluxAggregator, error)
-	DeployLinkTokenContract(fromWallet client.BlockchainWallet) (LinkToken, error)
+	DeployFluxAggregatorContract(linkAddr string, fluxOptions FluxAggregatorOptions) (FluxAggregator, error)
+	DeployLinkTokenContract() (LinkToken, error)
 	DeployOCRv2(
-		fromWallet client.BlockchainWallet,
 		paymentControllerAddr string,
 		requesterControllerAddr string,
 		linkTokenAddr string,
 	) (OCRv2, error)
-	DeployOCRv2AccessController(fromWallet client.BlockchainWallet) (OCRv2AccessController, error)
-	DeployOffChainAggregator(
-		fromWallet client.BlockchainWallet,
-		offchainOptions OffchainOptions,
-	) (OffchainAggregator, error)
-	DeployVRFContract(fromWallet client.BlockchainWallet) (VRF, error)
-	DeployMockETHLINKFeed(fromWallet client.BlockchainWallet, answer *big.Int) (MockETHLINKFeed, error)
-	DeployMockGasFeed(fromWallet client.BlockchainWallet, answer *big.Int) (MockGasFeed, error)
-	DeployUpkeepRegistrationRequests(fromWallet client.BlockchainWallet, linkAddr string, minLinkJuels *big.Int) (UpkeepRegistrar, error)
+	DeployOCRv2AccessController() (OCRv2AccessController, error)
+	DeployOffChainAggregator(linkAddr string, offchainOptions OffchainOptions) (OffchainAggregator, error)
+	DeployVRFContract() (VRF, error)
+	DeployMockETHLINKFeed(answer *big.Int) (MockETHLINKFeed, error)
+	DeployMockGasFeed(answer *big.Int) (MockGasFeed, error)
+	DeployUpkeepRegistrationRequests(linkAddr string, minLinkJuels *big.Int) (UpkeepRegistrar, error)
 	DeployKeeperRegistry(
-		fromWallet client.BlockchainWallet,
 		opts *KeeperRegistryOpts,
 	) (KeeperRegistry, error)
-	DeployKeeperConsumer(fromWallet client.BlockchainWallet, updateInterval *big.Int) (KeeperConsumer, error)
-	DeployVRFConsumer(fromWallet client.BlockchainWallet, linkAddr string, coordinatorAddr string) (VRFConsumer, error)
-	DeployVRFCoordinator(fromWallet client.BlockchainWallet, linkAddr string, bhsAddr string) (VRFCoordinator, error)
-	DeployBlockhashStore(fromWallet client.BlockchainWallet) (BlockHashStore, error)
+	DeployKeeperConsumer(updateInterval *big.Int) (KeeperConsumer, error)
+	DeployVRFConsumer(linkAddr string, coordinatorAddr string) (VRFConsumer, error)
+	DeployVRFCoordinator(linkAddr string, bhsAddr string) (VRFCoordinator, error)
+	DeployBlockhashStore() (BlockHashStore, error)
 }
 
 // NewContractDeployer returns an instance of a contract deployer based on the client type
@@ -68,8 +57,6 @@ func NewContractDeployer(bcClient client.BlockchainClient) (ContractDeployer, er
 	switch clientImpl := bcClient.Get().(type) {
 	case *client.EthereumClient:
 		return NewEthereumContractDeployer(clientImpl), nil
-	case *client.EthereumClients:
-		return NewEthereumContractDeployer(clientImpl.DefaultClient), nil
 	}
 	return nil, errors.New("unknown blockchain client implementation")
 }
@@ -80,7 +67,6 @@ type EthereumContractDeployer struct {
 }
 
 func (e *EthereumContractDeployer) DeployOCRv2(
-	fromWallet client.BlockchainWallet,
 	paymentControllerAddr string,
 	requesterControllerAddr string,
 	linkTokenAddr string,
@@ -88,7 +74,7 @@ func (e *EthereumContractDeployer) DeployOCRv2(
 	panic("implement me")
 }
 
-func (e *EthereumContractDeployer) DeployOCRv2AccessController(fromWallet client.BlockchainWallet) (OCRv2AccessController, error) {
+func (e *EthereumContractDeployer) DeployOCRv2AccessController() (OCRv2AccessController, error) {
 	panic("implement me")
 }
 
@@ -112,10 +98,8 @@ func DefaultFluxAggregatorOptions() FluxAggregatorOptions {
 }
 
 // DeployReadAccessController deploys read/write access controller contract
-func (e *EthereumContractDeployer) DeployReadAccessController(
-	fromWallet client.BlockchainWallet,
-) (ReadAccessController, error) {
-	address, _, instance, err := e.eth.DeployContract(fromWallet, "Read Access Controller", func(
+func (e *EthereumContractDeployer) DeployReadAccessController() (ReadAccessController, error) {
+	address, _, instance, err := e.eth.DeployContract("Read Access Controller", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -125,19 +109,17 @@ func (e *EthereumContractDeployer) DeployReadAccessController(
 		return nil, err
 	}
 	return &EthereumReadAccessController{
-		client:       e.eth,
-		rac:          instance.(*ethereum.SimpleReadAccessController),
-		callerWallet: fromWallet,
-		address:      address,
+		client:  e.eth,
+		rac:     instance.(*ethereum.SimpleReadAccessController),
+		address: address,
 	}, nil
 }
 
 // DeployFlags deploys flags contract
 func (e *EthereumContractDeployer) DeployFlags(
-	fromWallet client.BlockchainWallet,
 	rac string,
 ) (Flags, error) {
-	address, _, instance, err := e.eth.DeployContract(fromWallet, "Flags", func(
+	address, _, instance, err := e.eth.DeployContract("Flags", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -148,20 +130,18 @@ func (e *EthereumContractDeployer) DeployFlags(
 		return nil, err
 	}
 	return &EthereumFlags{
-		client:       e.eth,
-		flags:        instance.(*ethereum.Flags),
-		callerWallet: fromWallet,
-		address:      address,
+		client:  e.eth,
+		flags:   instance.(*ethereum.Flags),
+		address: address,
 	}, nil
 }
 
 // DeployDeviationFlaggingValidator deploys deviation flagging validator contract
 func (e *EthereumContractDeployer) DeployDeviationFlaggingValidator(
-	fromWallet client.BlockchainWallet,
 	flags string,
 	flaggingThreshold *big.Int,
 ) (DeviationFlaggingValidator, error) {
-	address, _, instance, err := e.eth.DeployContract(fromWallet, "Deviation flagging validator", func(
+	address, _, instance, err := e.eth.DeployContract("Deviation flagging validator", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -172,26 +152,25 @@ func (e *EthereumContractDeployer) DeployDeviationFlaggingValidator(
 		return nil, err
 	}
 	return &EthereumDeviationFlaggingValidator{
-		client:       e.eth,
-		dfv:          instance.(*ethereum.DeviationFlaggingValidator),
-		callerWallet: fromWallet,
-		address:      address,
+		client:  e.eth,
+		dfv:     instance.(*ethereum.DeviationFlaggingValidator),
+		address: address,
 	}, nil
 }
 
 // DeployFluxAggregatorContract deploys the Flux Aggregator Contract on an EVM chain
 func (e *EthereumContractDeployer) DeployFluxAggregatorContract(
-	fromWallet client.BlockchainWallet,
+	linkAddr string,
 	fluxOptions FluxAggregatorOptions,
 ) (FluxAggregator, error) {
-	address, _, instance, err := e.eth.DeployContract(fromWallet, "Flux Aggregator", func(
+	address, _, instance, err := e.eth.DeployContract("Flux Aggregator", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
-		linkAddress := common.HexToAddress(e.eth.Network.Config().LinkTokenAddress)
+		la := common.HexToAddress(linkAddr)
 		return ethereum.DeployFluxAggregator(auth,
 			backend,
-			linkAddress,
+			la,
 			fluxOptions.PaymentAmount,
 			fluxOptions.Timeout,
 			fluxOptions.Validator,
@@ -206,14 +185,13 @@ func (e *EthereumContractDeployer) DeployFluxAggregatorContract(
 	return &EthereumFluxAggregator{
 		client:         e.eth,
 		fluxAggregator: instance.(*ethereum.FluxAggregator),
-		callerWallet:   fromWallet,
 		address:        address,
 	}, nil
 }
 
 // DeployLinkTokenContract deploys a Link Token contract to an EVM chain
-func (e *EthereumContractDeployer) DeployLinkTokenContract(fromWallet client.BlockchainWallet) (LinkToken, error) {
-	linkTokenAddress, _, instance, err := e.eth.DeployContract(fromWallet, "LINK Token", func(
+func (e *EthereumContractDeployer) DeployLinkTokenContract() (LinkToken, error) {
+	linkTokenAddress, _, instance, err := e.eth.DeployContract("LINK Token", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -222,14 +200,13 @@ func (e *EthereumContractDeployer) DeployLinkTokenContract(fromWallet client.Blo
 	if err != nil {
 		return nil, err
 	}
-	// Set config address
-	e.eth.Network.Config().LinkTokenAddress = linkTokenAddress.Hex()
+	//Set config address
+	//e.eth.NetworkConfig.Config().LinkTokenAddress = linkTokenAddress.Hex()
 
 	return &EthereumLinkToken{
-		client:       e.eth,
-		linkToken:    instance.(*ethereum.LinkToken),
-		callerWallet: fromWallet,
-		address:      *linkTokenAddress,
+		client:   e.eth,
+		instance: instance.(*ethereum.LinkToken),
+		address:  *linkTokenAddress,
 	}, err
 }
 
@@ -277,14 +254,14 @@ func DefaultOffChainAggregatorConfig(numberNodes int) OffChainAggregatorConfig {
 
 // DeployOffChainAggregator deploys the offchain aggregation contract to the EVM chain
 func (e *EthereumContractDeployer) DeployOffChainAggregator(
-	fromWallet client.BlockchainWallet,
+	linkAddr string,
 	offchainOptions OffchainOptions,
 ) (OffchainAggregator, error) {
-	address, _, instance, err := e.eth.DeployContract(fromWallet, "OffChain Aggregator", func(
+	address, _, instance, err := e.eth.DeployContract("OffChain Aggregator", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
-		linkAddress := common.HexToAddress(e.eth.Network.Config().LinkTokenAddress)
+		la := common.HexToAddress(linkAddr)
 		return ethereum.DeployOffchainAggregator(auth,
 			backend,
 			offchainOptions.MaximumGasPrice,
@@ -292,7 +269,7 @@ func (e *EthereumContractDeployer) DeployOffChainAggregator(
 			offchainOptions.MicroLinkPerEth,
 			offchainOptions.LinkGweiPerObservation,
 			offchainOptions.LinkGweiPerTransmission,
-			linkAddress,
+			la,
 			offchainOptions.MinimumAnswer,
 			offchainOptions.MaximumAnswer,
 			offchainOptions.BillingAccessController,
@@ -304,16 +281,15 @@ func (e *EthereumContractDeployer) DeployOffChainAggregator(
 		return nil, err
 	}
 	return &EthereumOffchainAggregator{
-		client:       e.eth,
-		ocr:          instance.(*ethereum.OffchainAggregator),
-		callerWallet: fromWallet,
-		address:      address,
+		client:  e.eth,
+		ocr:     instance.(*ethereum.OffchainAggregator),
+		address: address,
 	}, err
 }
 
 // Balance get deployer wallet balance
-func (e *EthereumContractDeployer) Balance(fromWallet client.BlockchainWallet) (*big.Float, error) {
-	balance, err := e.eth.Client.PendingBalanceAt(context.Background(), common.HexToAddress(fromWallet.Address()))
+func (e *EthereumContractDeployer) Balance() (*big.Float, error) {
+	balance, err := e.eth.Client.PendingBalanceAt(context.Background(), common.HexToAddress(e.eth.DefaultWallet.Address()))
 	if err != nil {
 		return nil, err
 	}
@@ -321,29 +297,29 @@ func (e *EthereumContractDeployer) Balance(fromWallet client.BlockchainWallet) (
 	return big.NewFloat(1).Quo(bf, client.OneEth), nil
 }
 
-// CalculateETHForTXs calculates required amount of ETH for N transactions based on network suggested gas price and tx gas limit
-func (e *EthereumContractDeployer) CalculateETHForTXs(fromWallet client.BlockchainWallet, networkConfig *config.NetworkConfig, txs int64) (*big.Float, error) {
-	txsLimit := networkConfig.TransactionLimit
-	gasPrice, err := e.eth.Client.SuggestGasPrice(context.Background())
-	if err != nil {
-		return nil, err
-	}
-	gpFloat := big.NewFloat(1).SetInt(gasPrice)
-	oneGWei := big.NewFloat(1).SetInt(client.OneGWei)
-	gpGWei := big.NewFloat(1).Quo(gpFloat, oneGWei)
-	log.Debug().Str("Gas price (GWei)", gpGWei.String()).Msg("Suggested gas price")
-	txl := big.NewFloat(1).SetUint64(txsLimit)
-	oneTx := big.NewFloat(1).Mul(txl, gpFloat)
-	transactions := big.NewFloat(1).SetInt64(txs)
-	totalWei := big.NewFloat(1).Mul(oneTx, transactions)
-	totalETH := big.NewFloat(1).Quo(totalWei, client.OneEth)
-	log.Debug().Str("ETH", totalETH.String()).Int64("TXs", txs).Msg("Calculated required ETH")
-	return totalETH, nil
-}
+//// CalculateETHForTXs calculates required amount of ETH for N transactions based on network suggested gas price and tx gas limit
+//func (e *EthereumContractDeployer) CalculateETHForTXs(fromWallet client.BlockchainWallet, networkConfig *config.NetworkConfig, txs int64) (*big.Float, error) {
+//	txsLimit := networkConfig.TransactionLimit
+//	gasPrice, err := e.eth.Client.SuggestGasPrice(context.Background())
+//	if err != nil {
+//		return nil, err
+//	}
+//	gpFloat := big.NewFloat(1).SetInt(gasPrice)
+//	oneGWei := big.NewFloat(1).SetInt(client.OneGWei)
+//	gpGWei := big.NewFloat(1).Quo(gpFloat, oneGWei)
+//	log.Debug().Str("Gas price (GWei)", gpGWei.String()).Msg("Suggested gas price")
+//	txl := big.NewFloat(1).SetUint64(txsLimit)
+//	oneTx := big.NewFloat(1).Mul(txl, gpFloat)
+//	transactions := big.NewFloat(1).SetInt64(txs)
+//	totalWei := big.NewFloat(1).Mul(oneTx, transactions)
+//	totalETH := big.NewFloat(1).Quo(totalWei, client.OneEth)
+//	log.Debug().Str("ETH", totalETH.String()).Int64("TXs", txs).Msg("Calculated required ETH")
+//	return totalETH, nil
+//}
 
 // DeployStorageContract deploys a vanilla storage contract that is a value store
-func (e *EthereumContractDeployer) DeployStorageContract(fromWallet client.BlockchainWallet) (Storage, error) {
-	_, _, instance, err := e.eth.DeployContract(fromWallet, "Storage", func(
+func (e *EthereumContractDeployer) DeployStorageContract() (Storage, error) {
+	_, _, instance, err := e.eth.DeployContract("Storage", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -353,15 +329,14 @@ func (e *EthereumContractDeployer) DeployStorageContract(fromWallet client.Block
 		return nil, err
 	}
 	return &EthereumStorage{
-		client:       e.eth,
-		store:        instance.(*ethereum.Store),
-		callerWallet: fromWallet,
+		client: e.eth,
+		store:  instance.(*ethereum.Store),
 	}, err
 }
 
 // DeployAPIConsumer deploys api consumer for oracle
-func (e *EthereumContractDeployer) DeployAPIConsumer(fromWallet client.BlockchainWallet, linkAddr string) (APIConsumer, error) {
-	addr, _, instance, err := e.eth.DeployContract(fromWallet, "APIConsumer", func(
+func (e *EthereumContractDeployer) DeployAPIConsumer(linkAddr string) (APIConsumer, error) {
+	addr, _, instance, err := e.eth.DeployContract("APIConsumer", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -371,16 +346,15 @@ func (e *EthereumContractDeployer) DeployAPIConsumer(fromWallet client.Blockchai
 		return nil, err
 	}
 	return &EthereumAPIConsumer{
-		address:      addr,
-		client:       e.eth,
-		consumer:     instance.(*ethereum.APIConsumer),
-		callerWallet: fromWallet,
+		address:  addr,
+		client:   e.eth,
+		consumer: instance.(*ethereum.APIConsumer),
 	}, err
 }
 
 // DeployOracle deploys oracle for consumer test
-func (e *EthereumContractDeployer) DeployOracle(fromWallet client.BlockchainWallet, linkAddr string) (Oracle, error) {
-	addr, _, instance, err := e.eth.DeployContract(fromWallet, "Oracle", func(
+func (e *EthereumContractDeployer) DeployOracle(linkAddr string) (Oracle, error) {
+	addr, _, instance, err := e.eth.DeployContract("Oracle", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -390,16 +364,15 @@ func (e *EthereumContractDeployer) DeployOracle(fromWallet client.BlockchainWall
 		return nil, err
 	}
 	return &EthereumOracle{
-		address:      addr,
-		client:       e.eth,
-		oracle:       instance.(*ethereum.Oracle),
-		callerWallet: fromWallet,
+		address: addr,
+		client:  e.eth,
+		oracle:  instance.(*ethereum.Oracle),
 	}, err
 }
 
 // DeployVRFContract deploy VRF contract
-func (e *EthereumContractDeployer) DeployVRFContract(fromWallet client.BlockchainWallet) (VRF, error) {
-	address, _, instance, err := e.eth.DeployContract(fromWallet, "VRF", func(
+func (e *EthereumContractDeployer) DeployVRFContract() (VRF, error) {
+	address, _, instance, err := e.eth.DeployContract("VRF", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -409,15 +382,14 @@ func (e *EthereumContractDeployer) DeployVRFContract(fromWallet client.Blockchai
 		return nil, err
 	}
 	return &EthereumVRF{
-		client:       e.eth,
-		vrf:          instance.(*ethereum.VRF),
-		callerWallet: fromWallet,
-		address:      address,
+		client:  e.eth,
+		vrf:     instance.(*ethereum.VRF),
+		address: address,
 	}, err
 }
 
-func (e *EthereumContractDeployer) DeployMockETHLINKFeed(fromWallet client.BlockchainWallet, answer *big.Int) (MockETHLINKFeed, error) {
-	address, _, instance, err := e.eth.DeployContract(fromWallet, "MockETHLINKFeed", func(
+func (e *EthereumContractDeployer) DeployMockETHLINKFeed(answer *big.Int) (MockETHLINKFeed, error) {
+	address, _, instance, err := e.eth.DeployContract("MockETHLINKFeed", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -427,15 +399,14 @@ func (e *EthereumContractDeployer) DeployMockETHLINKFeed(fromWallet client.Block
 		return nil, err
 	}
 	return &EthereumMockETHLINKFeed{
-		client:       e.eth,
-		feed:         instance.(*ethereum.MockETHLINKAggregator),
-		callerWallet: fromWallet,
-		address:      address,
+		client:  e.eth,
+		feed:    instance.(*ethereum.MockETHLINKAggregator),
+		address: address,
 	}, err
 }
 
-func (e *EthereumContractDeployer) DeployMockGasFeed(fromWallet client.BlockchainWallet, answer *big.Int) (MockGasFeed, error) {
-	address, _, instance, err := e.eth.DeployContract(fromWallet, "MockGasFeed", func(
+func (e *EthereumContractDeployer) DeployMockGasFeed(answer *big.Int) (MockGasFeed, error) {
+	address, _, instance, err := e.eth.DeployContract("MockGasFeed", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -445,15 +416,14 @@ func (e *EthereumContractDeployer) DeployMockGasFeed(fromWallet client.Blockchai
 		return nil, err
 	}
 	return &EthereumMockGASFeed{
-		client:       e.eth,
-		feed:         instance.(*ethereum.MockGASAggregator),
-		callerWallet: fromWallet,
-		address:      address,
+		client:  e.eth,
+		feed:    instance.(*ethereum.MockGASAggregator),
+		address: address,
 	}, err
 }
 
-func (e *EthereumContractDeployer) DeployUpkeepRegistrationRequests(fromWallet client.BlockchainWallet, linkAddr string, minLinkJuels *big.Int) (UpkeepRegistrar, error) {
-	address, _, instance, err := e.eth.DeployContract(fromWallet, "UpkeepRegistrationRequests", func(
+func (e *EthereumContractDeployer) DeployUpkeepRegistrationRequests(linkAddr string, minLinkJuels *big.Int) (UpkeepRegistrar, error) {
+	address, _, instance, err := e.eth.DeployContract("UpkeepRegistrationRequests", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -463,18 +433,16 @@ func (e *EthereumContractDeployer) DeployUpkeepRegistrationRequests(fromWallet c
 		return nil, err
 	}
 	return &EthereumUpkeepRegistrationRequests{
-		client:       e.eth,
-		registrar:    instance.(*ethereum.UpkeepRegistrationRequests),
-		callerWallet: fromWallet,
-		address:      address,
+		client:    e.eth,
+		registrar: instance.(*ethereum.UpkeepRegistrationRequests),
+		address:   address,
 	}, err
 }
 
 func (e *EthereumContractDeployer) DeployKeeperRegistry(
-	fromWallet client.BlockchainWallet,
 	opts *KeeperRegistryOpts,
 ) (KeeperRegistry, error) {
-	address, _, instance, err := e.eth.DeployContract(fromWallet, "KeeperRegistry", func(
+	address, _, instance, err := e.eth.DeployContract("KeeperRegistry", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -497,15 +465,14 @@ func (e *EthereumContractDeployer) DeployKeeperRegistry(
 		return nil, err
 	}
 	return &EthereumKeeperRegistry{
-		client:       e.eth,
-		registry:     instance.(*ethereum.KeeperRegistry),
-		callerWallet: fromWallet,
-		address:      address,
+		client:   e.eth,
+		registry: instance.(*ethereum.KeeperRegistry),
+		address:  address,
 	}, err
 }
 
-func (e *EthereumContractDeployer) DeployKeeperConsumer(fromWallet client.BlockchainWallet, updateInterval *big.Int) (KeeperConsumer, error) {
-	address, _, instance, err := e.eth.DeployContract(fromWallet, "KeeperConsumer", func(
+func (e *EthereumContractDeployer) DeployKeeperConsumer(updateInterval *big.Int) (KeeperConsumer, error) {
+	address, _, instance, err := e.eth.DeployContract("KeeperConsumer", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -515,16 +482,15 @@ func (e *EthereumContractDeployer) DeployKeeperConsumer(fromWallet client.Blockc
 		return nil, err
 	}
 	return &EthereumKeeperConsumer{
-		client:       e.eth,
-		consumer:     instance.(*ethereum.KeeperConsumer),
-		callerWallet: fromWallet,
-		address:      address,
+		client:   e.eth,
+		consumer: instance.(*ethereum.KeeperConsumer),
+		address:  address,
 	}, err
 }
 
 // DeployBlockhashStore deploys blockhash store used with VRF contract
-func (e *EthereumContractDeployer) DeployBlockhashStore(fromWallet client.BlockchainWallet) (BlockHashStore, error) {
-	address, _, instance, err := e.eth.DeployContract(fromWallet, "BlockhashStore", func(
+func (e *EthereumContractDeployer) DeployBlockhashStore() (BlockHashStore, error) {
+	address, _, instance, err := e.eth.DeployContract("BlockhashStore", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -536,14 +502,13 @@ func (e *EthereumContractDeployer) DeployBlockhashStore(fromWallet client.Blockc
 	return &EthereumBlockhashStore{
 		client:         e.eth,
 		blockHashStore: instance.(*ethereum.BlockhashStore),
-		callerWallet:   fromWallet,
 		address:        address,
 	}, err
 }
 
 // DeployVRFCoordinator deploys VRF coordinator contract
-func (e *EthereumContractDeployer) DeployVRFCoordinator(fromWallet client.BlockchainWallet, linkAddr string, bhsAddr string) (VRFCoordinator, error) {
-	address, _, instance, err := e.eth.DeployContract(fromWallet, "VRFCoordinator", func(
+func (e *EthereumContractDeployer) DeployVRFCoordinator(linkAddr string, bhsAddr string) (VRFCoordinator, error) {
+	address, _, instance, err := e.eth.DeployContract("VRFCoordinator", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -553,16 +518,15 @@ func (e *EthereumContractDeployer) DeployVRFCoordinator(fromWallet client.Blockc
 		return nil, err
 	}
 	return &EthereumVRFCoordinator{
-		client:       e.eth,
-		coordinator:  instance.(*ethereum.VRFCoordinator),
-		callerWallet: fromWallet,
-		address:      address,
+		client:      e.eth,
+		coordinator: instance.(*ethereum.VRFCoordinator),
+		address:     address,
 	}, err
 }
 
 // DeployVRFConsumer deploys VRF consumer contract
-func (e *EthereumContractDeployer) DeployVRFConsumer(fromWallet client.BlockchainWallet, linkAddr string, coordinatorAddr string) (VRFConsumer, error) {
-	address, _, instance, err := e.eth.DeployContract(fromWallet, "VRFConsumer", func(
+func (e *EthereumContractDeployer) DeployVRFConsumer(linkAddr string, coordinatorAddr string) (VRFConsumer, error) {
+	address, _, instance, err := e.eth.DeployContract("VRFConsumer", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -572,9 +536,8 @@ func (e *EthereumContractDeployer) DeployVRFConsumer(fromWallet client.Blockchai
 		return nil, err
 	}
 	return &EthereumVRFConsumer{
-		client:       e.eth,
-		consumer:     instance.(*ethereum.VRFConsumer),
-		callerWallet: fromWallet,
-		address:      address,
+		client:   e.eth,
+		consumer: instance.(*ethereum.VRFConsumer),
+		address:  address,
 	}, err
 }

@@ -20,7 +20,6 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 
-	"github.com/avast/retry-go"
 	"github.com/hashicorp/go-multierror"
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/client"
@@ -57,7 +56,7 @@ type K8sEnvSpecInit func(...client.BlockchainNetwork) K8sEnvSpecs
 // a single manifest, whereas K8sManifestGroup bundles several K8sManifests to be deployed concurrently.
 type K8sEnvResource interface {
 	ID() string
-	GetConfig() *config.Config
+	GetConfig() *config.NetworksConfig
 	Environment() *K8sEnvironment
 	SetEnvironment(environment *K8sEnvironment) error
 	Deploy(values map[string]interface{}) error
@@ -79,7 +78,7 @@ type K8sEnvironment struct {
 	namespace *coreV1.Namespace
 
 	// Environment resources
-	config   *config.Config
+	config   *config.NetworksConfig
 	networks []client.BlockchainNetwork
 	chaos    *chaos.Controller
 
@@ -89,7 +88,7 @@ type K8sEnvironment struct {
 // NewK8sEnvironment connects to a k8s cluster. Your current context within
 // your kube config will always be used.
 func NewK8sEnvironment(
-	cfg *config.Config,
+	cfg *config.NetworksConfig,
 	networks ...client.BlockchainNetwork,
 ) (Environment, error) {
 	k8sConfig, err := K8sConfig()
@@ -445,7 +444,7 @@ func determineNamespace(networks []client.BlockchainNetwork) string {
 }
 
 type k8sTemplateData struct {
-	Config  *config.Config
+	Config  *config.NetworksConfig
 	Network *config.NetworkConfig
 	// TODO: Remove this on introduction of chainlink 1.0 chain management
 	DefaultNetwork *config.NetworkConfig
@@ -510,7 +509,7 @@ func (m *K8sManifest) SetValue(key string, val interface{}) {
 }
 
 // GetConfig gets the config for the manifest group
-func (m *K8sManifest) GetConfig() *config.Config {
+func (m *K8sManifest) GetConfig() *config.NetworksConfig {
 	return m.env.config
 }
 
@@ -534,54 +533,6 @@ func (m *K8sManifest) Deploy(values map[string]interface{}) error {
 // WaitUntilHealthy will wait until all pods that are created from a given manifest are healthy. Once healthy, it will
 // then forward all ports that are exposed within the service and callback to set values.
 func (m *K8sManifest) WaitUntilHealthy() error {
-	k8sPods := m.env.k8sClient.CoreV1().Pods(m.env.namespace.Name)
-
-	// Have a retry mechanism here as if the k8s cluster is under strain, then the pods will not
-	// appear instantly after deployment
-	var pods *coreV1.PodList
-	err := retry.Do(
-		func() error {
-			labelSelector := fmt.Sprintf("%s=%s", SelectorLabelKey, m.id)
-			localPods, localErr := k8sPods.List(context.Background(), metaV1.ListOptions{
-				LabelSelector: labelSelector,
-			})
-
-			if localErr != nil {
-				return fmt.Errorf("unable to fetch pods after deployment: %v", localErr)
-			} else if len(localPods.Items) == 0 {
-				return fmt.Errorf("no pods returned for manifest %s after deploying", m.id)
-			}
-			pods = localPods
-
-			return nil
-		},
-		retry.Delay(time.Millisecond*500),
-	)
-	if err != nil {
-		return err
-	}
-
-	if err := waitForHealthyPods(m.env.k8sClient, m.env.namespace, pods); err != nil {
-		return err
-	}
-
-	for _, p := range pods.Items {
-		ports, err := forwardPodPorts(&p, m.env.k8sConfig, m.env.namespace.Name, m.stopChannels)
-		if err != nil {
-			return fmt.Errorf("unable to forward ports: %v", err)
-		}
-		m.ports = append(m.ports, ports...)
-		log.Info().Str("Manifest ID", m.id).Interface("Ports", ports).Msg("Forwarded ports")
-		m.pods = append(m.pods, PodForwardedInfo{
-			PodIP:          p.Status.PodIP,
-			ForwardedPorts: ports,
-			PodName:        p.Name,
-		})
-	}
-
-	if m.SetValuesFunc != nil {
-		return m.setValues()
-	}
 	return nil
 }
 
@@ -772,7 +723,7 @@ func (m *K8sManifest) createConfigMap(values map[string]interface{}) error {
 }
 
 func (m *K8sManifest) parseConfigMap(
-	cfg *config.Config,
+	cfg *config.NetworksConfig,
 	values map[string]interface{},
 ) error {
 	if len(m.ConfigMapFile) > 0 && m.ConfigMap == nil {
@@ -785,7 +736,7 @@ func (m *K8sManifest) parseConfigMap(
 }
 
 func (m *K8sManifest) parseSecret(
-	cfg *config.Config,
+	cfg *config.NetworksConfig,
 	values map[string]interface{},
 ) error {
 	if len(m.SecretFile) > 0 && m.Secret == nil {
@@ -802,7 +753,7 @@ func (m *K8sManifest) parseSecret(
 }
 
 func (m *K8sManifest) parseDeployment(
-	cfg *config.Config,
+	cfg *config.NetworksConfig,
 	values map[string]interface{},
 ) error {
 	if len(m.DeploymentFile) > 0 && m.Deployment == nil {
@@ -819,7 +770,7 @@ func (m *K8sManifest) parseDeployment(
 }
 
 func (m *K8sManifest) parseService(
-	cfg *config.Config,
+	cfg *config.NetworksConfig,
 	values map[string]interface{},
 ) error {
 	if len(m.ServiceFile) > 0 && m.Service == nil {
@@ -855,7 +806,7 @@ func GetFreePort() uint16 {
 }
 
 func (m *K8sManifest) initTemplateData(
-	cfg *config.Config,
+	cfg *config.NetworksConfig,
 	values map[string]interface{},
 ) k8sTemplateData {
 	return k8sTemplateData{
@@ -1031,7 +982,7 @@ func forwardPodPorts(pod *coreV1.Pod, k8sConfig *rest.Config, nsName string, sto
 // For example: a Chainlink node doesn't depend on other Chainlink nodes on deploy and an adapter doesn't depend on
 // Chainlink nodes on deploy, only later on within the test lifecycle which means they can be included within a single
 // group.
-// Whereas, Chainlink does depend on a deployed Geth, Hardhat, Ganache on deploy so they cannot be included in the group
+// Whereas, Chainlink does depend on a deployed Geth, on deploy so they cannot be included in the group
 // as Chainlink definition needs to know the cluster IP of the deployment for it to boot.
 type K8sManifestGroup struct {
 	id            string
@@ -1055,7 +1006,7 @@ func (mg *K8sManifestGroup) SetValue(key string, val interface{}) {
 }
 
 // GetConfig gets the config for the manifest group
-func (mg *K8sManifestGroup) GetConfig() *config.Config {
+func (mg *K8sManifestGroup) GetConfig() *config.NetworksConfig {
 	return nil
 }
 

@@ -14,14 +14,11 @@ import (
 // NewDeployerHook external deployer function
 type NewDeployerHook func(c client.BlockchainClient) (contracts.ContractDeployer, error)
 
-// NewClientHook external client function
-type NewClientHook func(network client.BlockchainNetwork) (client.BlockchainClient, error)
-
 // NewNetworkHook is a helper function to obtain the network listed in the config file
-type NewNetworkHook func(conf *config.Config) (client.BlockchainNetwork, error)
+type NewNetworkHook func(conf *config.NetworksConfig) (client.BlockchainNetwork, error)
 
 // NewMultinetworkHook is a helper function to create multiple blockchain networks at once
-type NewMultinetworkHook func(conf *config.Config) ([]client.BlockchainNetwork, error)
+type NewMultinetworkHook func(conf *config.NetworksConfig) ([]client.BlockchainNetwork, error)
 
 // EthereumDeployerHook deployer hook
 func EthereumDeployerHook(bcClient client.BlockchainClient) (contracts.ContractDeployer, error) {
@@ -34,22 +31,22 @@ func EthereumClientHook(network client.BlockchainNetwork) (client.BlockchainClie
 }
 
 // EVMNetworkFromConfigHook evm network from config hook
-func EVMNetworkFromConfigHook(config *config.Config) (client.BlockchainNetwork, error) {
-	firstNetwork := config.Networks[0]
-	return client.NewEthereumNetwork(firstNetwork, config.NetworkConfigs[firstNetwork])
+func EVMNetworkFromConfigHook(config *config.NetworksConfig) (client.BlockchainNetwork, error) {
+	firstNetwork := config.SelectedNetworks[0]
+	return client.NewEthereumNetwork(firstNetwork, config.NetworkSettings[firstNetwork])
 }
 
 // NetworksFromConfigHook networks from config hook
-func NetworksFromConfigHook(config *config.Config) ([]client.BlockchainNetwork, error) {
+func NetworksFromConfigHook(config *config.NetworksConfig) ([]client.BlockchainNetwork, error) {
 	networks := make([]client.BlockchainNetwork, 0)
-	if len(config.NetworkConfigs) < 2 {
+	if len(config.NetworkSettings) < 2 {
 		return nil, errors.New("at least 2 evm networks are required")
 	}
-	for _, networkName := range config.Networks {
-		if _, ok := config.NetworkConfigs[networkName]; !ok {
+	for _, networkName := range config.SelectedNetworks {
+		if _, ok := config.NetworkSettings[networkName]; !ok {
 			return nil, fmt.Errorf("'%s' is not a supported network name. Check the network configs in you config file", networkName)
 		}
-		net, err := client.NewEthereumNetwork(networkName, config.NetworkConfigs[networkName])
+		net, err := client.NewEthereumNetwork(networkName, config.NetworkSettings[networkName])
 		if err != nil {
 			return nil, err
 		}
@@ -59,6 +56,6 @@ func NetworksFromConfigHook(config *config.Config) ([]client.BlockchainNetwork, 
 }
 
 // EthereumPerfNetworkHook perf network func
-func EthereumPerfNetworkHook(config *config.Config) (client.BlockchainNetwork, error) {
-	return client.NewEthereumNetwork("ethereum_geth_performance", config.NetworkConfigs["ethereum_geth_performance"])
+func EthereumPerfNetworkHook(config *config.NetworksConfig) (client.BlockchainNetwork, error) {
+	return client.NewEthereumNetwork("ethereum_geth_performance", config.NetworkSettings["ethereum_geth_performance"])
 }

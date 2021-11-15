@@ -1,97 +1,3 @@
-# Retains default and configurable name-values for the integration framework
-#
-# All configuration can be set at runtime with environment variables, for example:
-# KEEP_ENVIRONMENTS=OnFail
-# APPS_CHAINLINK_VERSION=1.0.0
-
-networks: # Selected network(s) for test execution
-    - "ethereum_geth"
-    - "ethereum_geth"
-keep_environments: Never # Options: Always, OnFail, Never
-
-apps:
-    chainlink:
-        image: public.ecr.aws/chainlink/chainlink
-        version: 0.10.14
-        requests:
-            memory: 768Mi
-            cpu: 300m
-        limits:
-            memory: 1024Mi
-            cpu: 450m
-    postgres:
-        image: postgres
-        version: 11.6
-        requests:
-            memory: 512Mi
-            cpu: 200m
-        limits:
-            memory: 1024Mi
-            cpu: 350m
-    geth:
-        image: ethereum/client-go
-        version: v1.10.3
-        requests:
-            memory: 1536Mi
-            cpu: 250m
-        limits:
-            memory: 2048Mi
-            cpu: 375m
-    otpe:
-        image: "804282218731.dkr.ecr.us-west-2.amazonaws.com/ocr-telemetry-prometheus-exporter"
-        version: "2496ee62ed6c81898ddcc42d40d3be1f9c7ac549"
-        requests:
-            memory: 768Mi
-            cpu: 1000m
-        limits:
-            memory: 1536Mi
-            cpu: 1300m
-    explorer:
-        image: "studentcuza/explorer"
-        version: "choose-security-protocol"
-        requests:
-            memory: 768Mi
-            cpu: 1000m
-        limits:
-            memory: 1024Mi
-            cpu: 1500m
-    atlas-evm:
-        image: "804282218731.dkr.ecr.us-west-2.amazonaws.com/atlas-evm"
-        version: "2931b7e2c13ad08742a9d825c915cc01663de5c0"
-        requests:
-            memory: 256Mi
-            cpu: 250m
-        limits:
-            memory: 512Mi
-            cpu: 400m
-    kafka-rest:
-        image: confluentinc/cp-kafka-rest
-        version: 7.0.0
-        requests:
-            memory: 128Mi
-            cpu: 250m
-        limits:
-            memory: 256Mi
-            cpu: 350m
-    cp-schema-registry:
-        image: confluentinc/cp-schema-registry
-        version: 6.2.1
-        requests:
-            memory: 256Mi
-            cpu: 500m
-        limits:
-            memory: 348Mi
-            cpu: 700m
-    prometheus:
-        image: prom/prometheus
-        version: latest
-        requests:
-            memory: 768Mi
-            cpu: 500m
-        limits:
-            memory: 1024Mi
-            cpu: 850m
-
 private_keys: &private_keys
     private_keys:
         - ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
@@ -115,11 +21,14 @@ private_keys: &private_keys
         - de9be858da4a475276426320d5e9262ecfc3ba460bfac56360bfa6c4c28b4ee0
         - df57089febbacf7ba0bc227dafbffa9fc08a93fdc68e1e42411a14efcf23656e
 
-network_configs:
-    ethereum_geth: &common_ethereum
+selected_networks: # Selected network(s) for test execution
+    - "geth"
+
+networks:
+    geth: &common_ethereum
         name: "Ethereum Geth dev"
         chain_id: 1337
-        type: evm
+        type: eth_multinode
         secret_private_keys: false
         namespace_for_secret: default
         <<: *private_keys
@@ -132,20 +41,16 @@ network_configs:
         <<: *common_ethereum
         transaction_timeout: 5m
         block_gas_limit: 400000000000000
-    ethereum_geth_reorg:
+    geth-reorg:
         <<: *ethereum_geth_performance
         name: "Ethereum Geth reorg"
-        type: evm_multi
+        type: eth_multinode
         transaction_timeout: 10m
         gas_estimation_buffer: 0
-    ethereum_ganache:
-        <<: *common_ethereum
-        name: "Ethereum Ganache"
-        minimum_confirmations: 0
     ethereum_kovan: &common_ethereum_testnet
         name: "Ethereum Kovan"
         chain_id: 42
-        type: evm
+        type: ethereum_compatible
         namespace_for_secret: default
         secret_private_keys: true
         secret_private_url: true
@@ -248,38 +153,9 @@ network_configs:
         private_url: iotex_testnet_url
         private_keys:
             - iotex_testnet_1
-retry:
-    attempts: 120
-    linear_delay: 1s
-
-kubernetes:
-    # Increase k8s default throttling variables to avoid test slowdown
-    qps: 50
-    burst: 50
-    # How long to wait for the environment to deploy & be marked as healthy before test errors
-    deployment_timeout: 5m
-
-logging:
-    # panic=5, fatal=4, error=3, warn=2, info=1, debug=0, trace=-1
-    level: 0
-prometheus:
-    url: ""
-
-contracts:
-    ethereum:
-        executable_path: ./tools/bin/abigen
-        out_path: ./contracts/ethereum
-        sources:
-            local:
-                path: ../chainlink/contracts/artifacts/src
-            external:
-                path: ./external_artifacts
-                region: us-west-2
-                s3_path: contract-artifacts-test-upload
-                repositories:
-                    keeper:
-                        path: keeper/artifacts/contracts
-                        commit: 19ba7cfbe7b7c6ca7621b090e229b4ba1147e2e1
-                    ocr:
-                        path: ocr/artifacts/contract/src
-                        commit: f27c14a905c5735abbb6e0c9699e9d0e3e9b7217
+    terra:
+        <<: *ethereum_geth_performance
+        name: "localterra"
+        type: eth_multinode
+        transaction_timeout: 10m
+        gas_estimation_buffer: 0

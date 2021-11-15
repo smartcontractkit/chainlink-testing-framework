@@ -1,0 +1,94 @@
+charts_info:
+  chainlink:
+    path: /Users/f4hrenh9it/go/src/helmenv/charts/chainlink
+    pods_info:
+      chainlink-node_0_chainlink-db:
+        forwarder_pid: 83197
+        local_port:
+          postgres: 49925
+        pod_ip: 10.13.111.206
+        pod_name: chainlink-node-57c987c5c5-fmqml
+        ports:
+          postgres: 5432
+      chainlink-node_0_node:
+        forwarder_pid: 83198
+        local_port:
+          access: 43615
+          p2p: 45544
+        pod_ip: 10.13.111.206
+        pod_name: chainlink-node-57c987c5c5-fmqml
+        ports:
+          access: 6688
+          p2p: 8090
+      chainlink-node_1_chainlink-db:
+        forwarder_pid: 83199
+        local_port:
+          postgres: 34064
+        pod_ip: 10.13.27.139
+        pod_name: chainlink-node-57c987c5c5-lk8xx
+        ports:
+          postgres: 5432
+      chainlink-node_1_node:
+        forwarder_pid: 83200
+        local_port:
+          access: 26638
+          p2p: 45990
+        pod_ip: 10.13.27.139
+        pod_name: chainlink-node-57c987c5c5-lk8xx
+        ports:
+          access: 6688
+          p2p: 8090
+      chainlink-node_2_chainlink-db:
+        forwarder_pid: 83201
+        local_port:
+          postgres: 34125
+        pod_ip: 10.13.50.220
+        pod_name: chainlink-node-57c987c5c5-r8l25
+        ports:
+          postgres: 5432
+      chainlink-node_2_node:
+        forwarder_pid: 83202
+        local_port:
+          access: 36926
+          p2p: 31696
+        pod_ip: 10.13.50.220
+        pod_name: chainlink-node-57c987c5c5-r8l25
+        ports:
+          access: 6688
+          p2p: 8090
+    release_name: chainlink
+    values:
+      replicas: 3
+  geth:
+    path: /Users/f4hrenh9it/go/src/helmenv/charts/geth
+    pods_info:
+      geth_0_geth-network:
+        forwarder_pid: 83203
+        local_port:
+          http-rpc: 27915
+          ws-rpc: 41754
+        pod_ip: 10.13.85.62
+        pod_name: geth-b96d7dfb6-z247n
+        ports:
+          http-rpc: 8544
+          ws-rpc: 8546
+    release_name: geth
+    values: null
+deployed: true
+kube_ctl_process_name: /usr/local/bin/kubectl
+name: chainlink-cluster
+namespace_name: chainlink-cluster-k4clt
+persistent: true
+persistent_connection: true
+preset:
+  filename: /Users/f4hrenh9it/go/src/integrations-framework/preset/chainlink-cluster
+  name: chainlink-env
+  type: chainlink-cluster
+  values:
+    chainlink:
+      replicas: 3
+urls:
+  chainlink:
+  - http://localhost:43615
+  geth:
+  - ws://localhost:41754

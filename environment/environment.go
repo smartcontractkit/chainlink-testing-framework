@@ -109,7 +109,7 @@ func GetChainlinkClients(env Environment) ([]client.Chainlink, error) {
 }
 
 // NewExternalBlockchainClient connects external client implementation to particular network
-func NewExternalBlockchainClient(clientFunc hooks.NewClientHook, env Environment, network client.BlockchainNetwork) (client.BlockchainClient, error) {
+func NewExternalBlockchainClient(clientFunc hooks.ClientImplFunc, env Environment, network client.BlockchainNetwork) (client.BlockchainClient, error) {
 	sd, err := env.GetServiceDetails(network.RemotePort())
 	if err == nil {
 		var url string
@@ -118,7 +118,7 @@ func NewExternalBlockchainClient(clientFunc hooks.NewClientHook, env Environment
 		} else {
 			url = fmt.Sprintf("http://%s", sd.LocalURL.Host)
 		}
-		log.Debug().Str("URL", url).Str("Network", network.ID()).Msg("Selecting network")
+		log.Debug().Str("URL", url).Str("NetworkConfig", network.ID()).Msg("Selecting network")
 		network.SetLocalURL(url)
 	}
 	network.Config().PrivateKeyStore, err = NewPrivateKeyStoreFromEnv(env, network.Config())

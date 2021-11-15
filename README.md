@@ -101,6 +101,6 @@ If you want to provide your own config file instead, you can point `SuiteSetup` 
 suiteSetup, err = actions.SingleNetworkSetup( 
   environment.NewChainlinkCluster(0), 
   client.DefaultNetworkFromConfig,    
-  "../", // Look for a config.yml file in the parent directory of this test file.                 
+  "../", // Look for a networks.yaml file in the parent directory of this test file.                 
 )
 ```

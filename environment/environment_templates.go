@@ -33,11 +33,8 @@ const (
 
 // Ethereum ports
 const (
-	DefaultEVMRPCPort uint16 = 8545
-	HardhatRPCPort    uint16 = 8545
-	GethRPCPort       uint16 = 8546
-	GanacheRPCPort    uint16 = 8547
-	MinersRPCPort     uint16 = 9545
+	GethRPCPort   uint16 = 8546
+	MinersRPCPort uint16 = 9545
 )
 
 var (
@@ -348,61 +345,6 @@ func NewGethReorgHelmChart(networkCount int, network *config.NetworkConfig) *Hel
 	}
 }
 
-// NewHardhatManifest is the k8s manifest that when used will deploy hardhat to an environment
-func NewHardhatManifest(networkCount int, network *config.NetworkConfig) *K8sManifest {
-	network.Name = fmt.Sprintf("ethereum-hardhat-%d", networkCount)
-	network.RPCPort = GetFreePort()
-	return &K8sManifest{
-		id:             network.Name,
-		DeploymentFile: filepath.Join(utils.ProjectRoot, "/environment/templates/hardhat-deployment.yml"),
-		ServiceFile:    filepath.Join(utils.ProjectRoot, "/environment/templates/hardhat-service.yml"),
-		ConfigMapFile:  filepath.Join(utils.ProjectRoot, "/environment/templates/hardhat-config-map.yml"),
-		Network:        network,
-		values: map[string]interface{}{
-			"rpcPort": network.RPCPort,
-		},
-
-		SetValuesFunc: func(manifest *K8sManifest) error {
-			network.ClusterURL = fmt.Sprintf(
-				"ws://%s:%d",
-				manifest.Service.Spec.ClusterIP,
-				manifest.Service.Spec.Ports[0].Port,
-			)
-			network.LocalURL = fmt.Sprintf("ws://127.0.0.1:%d", manifest.ports[0].Local)
-			manifest.values["clusterURL"] = network.ClusterURL
-			manifest.values["localURL"] = network.LocalURL
-			return nil
-		},
-	}
-}
-
-// NewGanacheManifest is the k8s manifest that when used will deploy ganache to an environment
-func NewGanacheManifest(networkCount int, network *config.NetworkConfig) *K8sManifest {
-	network.Name = fmt.Sprintf("ethereum-ganache-%d", networkCount)
-	network.RPCPort = GetFreePort()
-	return &K8sManifest{
-		id:             network.Name,
-		DeploymentFile: filepath.Join(utils.ProjectRoot, "/environment/templates/ganache-deployment.yml"),
-		ServiceFile:    filepath.Join(utils.ProjectRoot, "/environment/templates/ganache-service.yml"),
-		Network:        network,
-		values: map[string]interface{}{
-			"rpcPort": network.RPCPort,
-		},
-
-		SetValuesFunc: func(manifest *K8sManifest) error {
-			network.ClusterURL = fmt.Sprintf(
-				"ws://%s:%d",
-				manifest.Service.Spec.ClusterIP,
-				manifest.Service.Spec.Ports[0].Port,
-			)
-			network.LocalURL = fmt.Sprintf("ws://127.0.0.1:%d", manifest.ports[0].Local)
-			manifest.values["clusterURL"] = network.ClusterURL
-			manifest.values["localURL"] = network.LocalURL
-			return nil
-		},
-	}
-}
-
 // NewAtlasEvmBlocksManifest is the k8s manifest that when used will deploy atlas-evm-blocks to an env
 func NewAtlasEvmBlocksManifest() *K8sManifest {
 	return &K8sManifest{
@@ -460,7 +402,7 @@ func NewKafkaRestManifest() *K8sManifest {
 	}
 }
 
-// NewChainlinkCluster is a basic environment that deploys hardhat with a chainlink cluster and an external adapter
+// NewChainlinkCluster is a basic environment that deploys geth with a chainlink cluster and an external adapter
 func NewChainlinkCluster(nodeCount int) K8sEnvSpecInit {
 	mockserverDependencyGroup := &K8sManifestGroup{
 		id:        "MockserverDependencyGroup",
@@ -697,9 +639,7 @@ func addNetworkManifestToDependencyGroup(chainlinkGroup *K8sManifestGroup, depen
 		var specs K8sEnvSpecs
 		indexOfLastElementInDependencyGroups := len(dependencyGroups) - 1
 		networkCounts := map[string]int{
-			"Ethereum Geth":    0,
-			"Ethereum Hardhat": 0,
-			"Ethereum Ganache": 0,
+			"Ethereum Geth": 0,
 		}
 		for _, network := range networks {
 			switch network.Config().Name {
@@ -713,16 +653,6 @@ func addNetworkManifestToDependencyGroup(chainlinkGroup *K8sManifestGroup, depen
 					dependencyGroups[indexOfLastElementInDependencyGroups].manifests,
 					NewGethManifest(networkCounts["Ethereum Geth"], network.Config()))
 				networkCounts["Ethereum Geth"] += 1
-			case "Ethereum Hardhat":
-				dependencyGroups[indexOfLastElementInDependencyGroups].manifests = append(
-					dependencyGroups[indexOfLastElementInDependencyGroups].manifests,
-					NewHardhatManifest(networkCounts[network.Config().Name], network.Config()))
-				networkCounts[network.Config().Name] += 1
-			case "Ethereum Ganache":
-				dependencyGroups[indexOfLastElementInDependencyGroups].manifests = append(
-					dependencyGroups[indexOfLastElementInDependencyGroups].manifests,
-					NewGanacheManifest(networkCounts[network.Config().Name], network.Config()))
-				networkCounts[network.Config().Name] += 1
 			default:
 				network.SetClusterURL(network.URLs()[0])
 				network.SetLocalURL(network.URLs()[0])
