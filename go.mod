@@ -5,14 +5,14 @@ go 1.17
 require (
 	github.com/ethereum/go-ethereum v1.10.12
 	github.com/ghodss/yaml v1.0.0
-	github.com/onsi/ginkgo v1.16.6-0.20211109190959-0ae4ac0eba95
+	github.com/onsi/ginkgo v1.16.6-0.20211115182015-aec53805973a
 	github.com/onsi/gomega v1.17.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.11.0
 	github.com/prometheus/common v0.32.1
 	github.com/rs/zerolog v1.26.0
 	github.com/satori/go.uuid v1.2.0
-	github.com/smartcontractkit/helmenv v0.0.4
+	github.com/smartcontractkit/helmenv v0.0.5
 	github.com/smartcontractkit/libocr v0.0.0-20210826183649-d12971936c12
 	github.com/spf13/viper v1.9.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c

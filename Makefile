@@ -14,13 +14,13 @@ go_mod:
 install: go_mod golangci
 
 test_unit:
-	ginkgo -r -keepGoing --trace --randomizeAllSpecs --randomizeSuites --progress -covermode=count -coverprofile=unit-test-coverage.out -nodes=10 ./client ./config ./environment 
+	ginkgo -r --keep-going --trace --randomize-all --randomize-suites --progress -covermode=count -coverprofile=unit-test-coverage.out -nodes=10 ./client ./config ./environment 
 
 test_smoke:
-	ginkgo -r -keepGoing --trace --randomizeAllSpecs --randomizeSuites --progress $(args) ./suite/smoke 
+	ginkgo -r --keep-going --trace --randomize-all --randomize-suites --progress $(args) ./suite/smoke 
 
 test_performance:
-	ginkgo -r -keepGoing --trace --randomizeAllSpecs --randomizeSuites --progress $(args) ./suite/performance 
+	ginkgo -r --keep-going --trace --randomize-all --randomize-suites --progress $(args) ./suite/performance 
 
 test_chaos:
-	ginkgo -r -keepGoing --trace --randomizeAllSpecs --randomizeSuites --progress $(args) ./suite/chaos 
+	ginkgo -r --keep-going --trace --randomize-all --randomize-suites --progress $(args) ./suite/chaos 
