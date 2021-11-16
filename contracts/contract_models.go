@@ -48,29 +48,29 @@ type SubmissionEvent struct {
 
 type FluxAggregator interface {
 	Address() string
-	Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Float) error
+	Fund(ethAmount *big.Float) error
 	LatestRoundID(ctx context.Context, blockNumber *big.Int) (*big.Int, error)
 	LatestRoundData(ctx context.Context) (RoundData, error)
 	GetContractData(ctxt context.Context) (*FluxAggregatorData, error)
-	UpdateAvailableFunds(ctx context.Context, fromWallet client.BlockchainWallet) error
+	UpdateAvailableFunds() error
 	PaymentAmount(ctx context.Context) (*big.Int, error)
-	RequestNewRound(ctx context.Context, fromWallet client.BlockchainWallet) error
-	WithdrawPayment(ctx context.Context, caller client.BlockchainWallet, from common.Address, to common.Address, amount *big.Int) error
+	RequestNewRound(ctx context.Context) error
+	WithdrawPayment(ctx context.Context, from common.Address, to common.Address, amount *big.Int) error
 	WithdrawablePayment(ctx context.Context, addr common.Address) (*big.Int, error)
 	GetOracles(ctx context.Context) ([]string, error)
-	SetOracles(client.BlockchainWallet, FluxAggregatorSetOraclesOptions) error
+	SetOracles(opts FluxAggregatorSetOraclesOptions) error
 	Description(ctxt context.Context) (string, error)
-	SetRequesterPermissions(ctx context.Context, fromWallet client.BlockchainWallet, addr common.Address, authorized bool, roundsDelay uint32) error
+	SetRequesterPermissions(ctx context.Context, addr common.Address, authorized bool, roundsDelay uint32) error
 	WatchSubmissionReceived(ctx context.Context, eventChan chan<- *SubmissionEvent) error
 }
 
 type LinkToken interface {
 	Address() string
-	Approve(fromWallet client.BlockchainWallet, to string, amount *big.Int) error
-	Transfer(fromWallet client.BlockchainWallet, to string, amount *big.Int) error
+	Approve(to string, amount *big.Int) error
+	Transfer(to string, amount *big.Int) error
 	BalanceOf(ctx context.Context, addr common.Address) (*big.Int, error)
-	TransferAndCall(fromWallet client.BlockchainWallet, to string, amount *big.Int, data []byte) error
-	Fund(fromWallet client.BlockchainWallet, ethAmount *big.Float) error
+	TransferAndCall(to string, amount *big.Int, data []byte) error
+	Fund(ethAmount *big.Float) error
 	Name(context.Context) (string, error)
 }
 
@@ -110,32 +110,27 @@ type OffchainAggregatorData struct {
 
 type OffchainAggregator interface {
 	Address() string
-	Fund(fromWallet client.BlockchainWallet, nativeAmount, linkAmount *big.Float) error
+	Fund(nativeAmount *big.Float) error
 	GetContractData(ctxt context.Context) (*OffchainAggregatorData, error)
-	SetConfig(
-		fromWallet client.BlockchainWallet,
-		chainlinkNodes []client.Chainlink,
-		ocrConfig OffChainAggregatorConfig,
-	) error
-	SetPayees(client.BlockchainWallet, []common.Address, []common.Address) error
-	RequestNewRound(fromWallet client.BlockchainWallet) error
+	SetConfig(chainlinkNodes []client.Chainlink, ocrConfig OffChainAggregatorConfig) error
+	SetPayees([]common.Address, []common.Address) error
+	RequestNewRound() error
 	GetLatestAnswer(ctxt context.Context) (*big.Int, error)
 	GetLatestRound(ctxt context.Context) (*RoundData, error)
 }
 
 type Oracle interface {
 	Address() string
-	Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Float) error
-	SetFulfillmentPermission(fromWallet client.BlockchainWallet, address string, allowed bool) error
+	Fund(ethAmount *big.Float) error
+	SetFulfillmentPermission(address string, allowed bool) error
 }
 
 type APIConsumer interface {
 	Address() string
 	RoundID(ctx context.Context) (*big.Int, error)
-	Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Float) error
+	Fund(ethAmount *big.Float) error
 	Data(ctx context.Context) (*big.Int, error)
 	CreateRequestTo(
-		fromWallet client.BlockchainWallet,
 		oracleAddr string,
 		jobID [32]byte,
 		payment *big.Int,
@@ -152,7 +147,7 @@ type Storage interface {
 }
 
 type VRF interface {
-	Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Float) error
+	Fund(ethAmount *big.Float) error
 	ProofLength(context.Context) (*big.Int, error)
 }
 
@@ -173,7 +168,6 @@ type MockGasFeed interface {
 type UpkeepRegistrar interface {
 	Address() string
 	SetRegistrarConfig(
-		fromWallet client.BlockchainWallet,
 		autoRegister bool,
 		windowSizeBlocks uint32,
 		allowedPerWindow uint16,
@@ -190,24 +184,24 @@ type UpkeepRegistrar interface {
 		amount *big.Int,
 		source uint8,
 	) ([]byte, error)
-	Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Float) error
+	Fund(ethAmount *big.Float) error
 }
 
 type KeeperRegistry interface {
 	Address() string
-	Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Float) error
-	SetRegistrar(fromWallet client.BlockchainWallet, registrarAddr string) error
-	AddUpkeepFunds(fromWallet client.BlockchainWallet, id *big.Int, amount *big.Int) error
+	Fund(ethAmount *big.Float) error
+	SetRegistrar(registrarAddr string) error
+	AddUpkeepFunds(id *big.Int, amount *big.Int) error
 	GetUpkeepInfo(ctx context.Context, id *big.Int) (*UpkeepInfo, error)
 	GetKeeperInfo(ctx context.Context, keeperAddr string) (*KeeperInfo, error)
-	SetKeepers(fromWallet client.BlockchainWallet, keepers []string, payees []string) error
+	SetKeepers(keepers []string, payees []string) error
 	GetKeeperList(ctx context.Context) ([]string, error)
-	RegisterUpkeep(fromWallet client.BlockchainWallet, target string, gasLimit uint32, admin string, checkData []byte) error
+	RegisterUpkeep(target string, gasLimit uint32, admin string, checkData []byte) error
 }
 
 type KeeperConsumer interface {
 	Address() string
-	Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Float) error
+	Fund(ethAmount *big.Float) error
 	Counter(ctx context.Context) (*big.Int, error)
 }
 
@@ -249,7 +243,6 @@ type BlockHashStore interface {
 
 type VRFCoordinator interface {
 	RegisterProvingKey(
-		fromWallet client.BlockchainWallet,
 		fee *big.Int,
 		oracleAddr string,
 		publicProvingKey [2]*big.Int,
@@ -261,11 +254,11 @@ type VRFCoordinator interface {
 
 type VRFConsumer interface {
 	Address() string
-	RequestRandomness(fromWallet client.BlockchainWallet, hash [32]byte, fee *big.Int) error
+	RequestRandomness(hash [32]byte, fee *big.Int) error
 	CurrentRoundID(ctx context.Context) (*big.Int, error)
 	RandomnessOutput(ctx context.Context) (*big.Int, error)
 	WatchPerfEvents(ctx context.Context, eventChan chan<- *PerfEvent) error
-	Fund(fromWallet client.BlockchainWallet, ethAmount, linkAmount *big.Float) error
+	Fund(ethAmount *big.Float) error
 }
 
 type RoundData struct {
@@ -279,8 +272,8 @@ type RoundData struct {
 // ReadAccessController is read/write access controller, just named by interface
 type ReadAccessController interface {
 	Address() string
-	AddAccess(fromWallet client.BlockchainWallet, addr string) error
-	DisableAccessCheck(fromWallet client.BlockchainWallet) error
+	AddAccess(addr string) error
+	DisableAccessCheck() error
 }
 
 // Flags flags contract interface
@@ -309,16 +302,16 @@ type PerfEvent struct {
 // OCRv2AccessController access controller
 type OCRv2AccessController interface {
 	Address() string
-	AddAccess(fromWallet client.BlockchainWallet, addr string) error
-	RemoveAccess(fromWallet client.BlockchainWallet, addr string) error
+	AddAccess(addr string) error
+	RemoveAccess(addr string) error
 	HasAccess(to string) (bool, error)
 }
 
 type OCRv2 interface {
 	Address() string
-	SetConfig(fromWallet client.BlockchainWallet) error
-	TransferOwnership(fromWallet client.BlockchainWallet, to string) error
-	SetBilling(fromWallet client.BlockchainWallet, observationPayment uint32, recommendedGasPrice uint32) error
+	SetConfig() error
+	TransferOwnership(to string) error
+	SetBilling(observationPayment uint32, recommendedGasPrice uint32) error
 	GetLatestConfigDetails() (map[string]interface{}, error)
 	GetRoundData(roundID uint32) (map[string]interface{}, error)
 	GetOwedPayment(transmitterAddr string) (map[string]interface{}, error)

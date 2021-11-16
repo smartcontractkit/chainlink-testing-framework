@@ -19,16 +19,14 @@ import (
 func FundChainlinkNodes(
 	nodes []client.Chainlink,
 	blockchain client.BlockchainClient,
-	fromWallet client.BlockchainWallet,
-	nativeAmount,
-	linkAmount *big.Float,
+	amount *big.Float,
 ) error {
 	for _, cl := range nodes {
 		toAddress, err := cl.PrimaryEthAddress()
 		if err != nil {
 			return err
 		}
-		err = blockchain.Fund(fromWallet, toAddress, nativeAmount, linkAmount)
+		err = blockchain.Fund(toAddress, amount)
 		if err != nil {
 			return err
 		}

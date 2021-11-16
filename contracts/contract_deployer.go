@@ -20,7 +20,6 @@ import (
 // ContractDeployer is an interface for abstracting the contract deployment methods across network implementations
 type ContractDeployer interface {
 	Balance() (*big.Float, error)
-	//CalculateETHForTXs(fromWallet client.BlockchainWallet, networkConfig *config.NetworkConfig, txs int64) (*big.Float, error)
 	DeployStorageContract() (Storage, error)
 	DeployAPIConsumer(linkAddr string) (APIConsumer, error)
 	DeployOracle(linkAddr string) (Oracle, error)
@@ -43,9 +42,7 @@ type ContractDeployer interface {
 	DeployMockETHLINKFeed(answer *big.Int) (MockETHLINKFeed, error)
 	DeployMockGasFeed(answer *big.Int) (MockGasFeed, error)
 	DeployUpkeepRegistrationRequests(linkAddr string, minLinkJuels *big.Int) (UpkeepRegistrar, error)
-	DeployKeeperRegistry(
-		opts *KeeperRegistryOpts,
-	) (KeeperRegistry, error)
+	DeployKeeperRegistry(opts *KeeperRegistryOpts) (KeeperRegistry, error)
 	DeployKeeperConsumer(updateInterval *big.Int) (KeeperConsumer, error)
 	DeployVRFConsumer(linkAddr string, coordinatorAddr string) (VRFConsumer, error)
 	DeployVRFCoordinator(linkAddr string, bhsAddr string) (VRFCoordinator, error)
@@ -297,8 +294,9 @@ func (e *EthereumContractDeployer) Balance() (*big.Float, error) {
 	return big.NewFloat(1).Quo(bf, client.OneEth), nil
 }
 
-//// CalculateETHForTXs calculates required amount of ETH for N transactions based on network suggested gas price and tx gas limit
-//func (e *EthereumContractDeployer) CalculateETHForTXs(fromWallet client.BlockchainWallet, networkConfig *config.NetworkConfig, txs int64) (*big.Float, error) {
+//
+//// CalculateTXSCost calculates required amount of ETH for N transactions based on network suggested gas price and tx gas limit
+//func (e *EthereumContractDeployer) CalculateTXSCost(fromWallet client.BlockchainWallet, networkConfig *config.NetworkConfig, txs int64) (*big.Float, error) {
 //	txsLimit := networkConfig.TransactionLimit
 //	gasPrice, err := e.eth.Client.SuggestGasPrice(context.Background())
 //	if err != nil {

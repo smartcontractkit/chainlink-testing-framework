@@ -10,6 +10,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/utils"
 	"gopkg.in/yaml.v2"
 	"math/big"
+	"net/http"
 	"path/filepath"
 
 	"github.com/smartcontractkit/integrations-framework/config"
@@ -31,18 +32,20 @@ type ExternalClientImplFunc func(networkName string, networkConfig map[string]in
 // BlockchainClient can be connected to a single or multiple nodes,
 type BlockchainClient interface {
 	LoadWallets(ns interface{}) error
+	SetWallet(num int) error
+
+	CalculateTXSCost(txs int64) (*big.Float, error)
+	CalculateTxGas(gasUsedValue *big.Int) (*big.Float, error)
+
 	Get() interface{}
 	GetNetworkName() string
-	GetID() int
-	SetID(id int)
 	SwitchNode(node int) error
 	GetClients() []BlockchainClient
 	SuggestGasPrice(ctx context.Context) (*big.Int, error)
 	HeaderHashByNumber(ctx context.Context, bn *big.Int) (string, error)
 	BlockNumber(ctx context.Context) (uint64, error)
 	HeaderTimestampByNumber(ctx context.Context, bn *big.Int) (uint64, error)
-	CalculateTxGas(gasUsedValue *big.Int) (*big.Float, error)
-	Fund(fromWallet BlockchainWallet, toAddress string, nativeAmount, linkAmount *big.Float) error
+	Fund(toAddress string, amount *big.Float) error
 	GasStats() *GasStats
 	ParallelTransactions(enabled bool)
 	Close() error
@@ -60,6 +63,17 @@ type Networks struct {
 	Default BlockchainClient
 }
 
+// Teardown teardown all clients
+func (b *Networks) Teardown() error {
+	for _, c := range b.clients {
+		if err := c.Close(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// SetDefault chooses default client
 func (b *Networks) SetDefault(name string) error {
 	if _, ok := b.clients[name]; !ok {
 		return fmt.Errorf("no client found for network %s", name)
@@ -67,11 +81,22 @@ func (b *Networks) SetDefault(name string) error {
 	return nil
 }
 
+// Get gets blockchain network (client) by name
 func (b *Networks) Get(name string) (BlockchainClient, error) {
 	c, ok := b.clients[name]
 	if !ok {
 		return nil, fmt.Errorf("no client found for network %s", name)
 	}
+	return c, nil
+}
+
+// NewMockServerClientFromEnv creates new mockserver from env
+func NewMockServerClientFromEnv(e *environment.Environment) (*MockserverClient, error) {
+	urls := e.Config.NetworksURLs["mockserver"]
+	c := NewMockserverClient(&MockserverConfig{
+		LocalURL:   urls["local"][0],
+		ClusterURL: urls["cluster"][0],
+	})
 	return c, nil
 }
 
@@ -104,7 +129,7 @@ func NewNetworks(env *environment.Environment, extClients map[string]ExternalCli
 				if _, ok := env.Config.NetworksURLs[networkName]; !ok {
 					return nil, fmt.Errorf("network %s is not found in environment URLs", networkName)
 				}
-				cfg.URLs = env.Config.NetworksURLs[networkName]
+				cfg.URLs = env.Config.NetworksURLs[networkName]["local"]
 			}
 			cfg.ID = networkName
 			ec, err := NewEthereumMultiNodeClient(cfg)
@@ -137,6 +162,26 @@ func NewNetworks(env *environment.Environment, extClients map[string]ExternalCli
 		clients: clients,
 		Default: defaultClient,
 	}, nil
+}
+
+// NewChainlinkClients creates new chainlink clients
+func NewChainlinkClients(e *environment.Environment) ([]Chainlink, error) {
+	clients := make([]Chainlink, 0)
+	if _, ok := e.Config.NetworksURLs["chainlink"]; !ok {
+		return nil, fmt.Errorf("no chainlink urls found in environment preset")
+	}
+	for _, url := range e.Config.NetworksURLs["chainlink"]["local"] {
+		c, err := NewChainlink(&ChainlinkConfig{
+			URL:      url,
+			Email:    "notreal@fakeemail.ch",
+			Password: "twochains",
+		}, http.DefaultClient)
+		clients = append(clients, c)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return clients, nil
 }
 
 // NodeBlock block with a node ID which mined it

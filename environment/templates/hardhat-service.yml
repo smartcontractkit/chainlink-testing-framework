@@ -1,8 +1,0 @@
-metadata:
-  generateName: hardhat-network-
-spec:
-  ports:
-  - name: access
-    port: {{ .Network.RPCPort }}
-    targetPort: {{ .Network.RPCPort }}
-  type: ClusterIP

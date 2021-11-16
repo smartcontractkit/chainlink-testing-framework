@@ -1,9 +1,0 @@
-name: chainlink-reorg-evm
-persistent: true
-persistent_connection: false
-preset:
-  name: chainlink-reorg
-  type: chainlink-reorg
-  values:
-    chainlink:
-      replicas: 1

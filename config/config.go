@@ -20,6 +20,7 @@ const (
 	SecretConfig ConfigurationType = "secret"
 )
 
+// FrameworkConfig common framework config
 type FrameworkConfig struct {
 	KeepEnvironments string         `mapstructure:"keep_environments" yaml:"keep_environments"`
 	Logging          *LoggingConfig `mapstructure:"logging" yaml:"logging"`
