@@ -25,7 +25,7 @@ var _ = Describe("Flux monitor external validator suite @validator-flux", func()
 	var (
 		suiteSetup         actions.SuiteSetup
 		networkInfo        actions.NetworkInfo
-		adapter            environment.ExternalAdapter
+		mockserver         *client.MockserverClient
 		nodes              []client.Chainlink
 		rac                contracts.ReadAccessController
 		flags              contracts.Flags
@@ -50,7 +50,7 @@ var _ = Describe("Flux monitor external validator suite @validator-flux", func()
 			Expect(err).ShouldNot(HaveOccurred())
 			nodes, err = environment.GetChainlinkClients(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
-			adapter, err = environment.GetExternalAdapter(suiteSetup.Environment())
+			mockserver, err = environment.GetMockserverClientFromEnv(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
 			networkInfo = suiteSetup.DefaultNetwork()
 
@@ -122,6 +122,9 @@ var _ = Describe("Flux monitor external validator suite @validator-flux", func()
 			log.Info().Str("Oracles", strings.Join(oracles, ",")).Msg("Oracles set")
 		})
 
+		err = mockserver.SetVariable(0)
+		Expect(err).ShouldNot(HaveOccurred())
+
 		By("Creating flux jobs", func() {
 			for _, n := range nodes {
 				fluxSpec := &client.FluxMonitorJobSpec{
@@ -129,7 +132,7 @@ var _ = Describe("Flux monitor external validator suite @validator-flux", func()
 					ContractAddress:   fluxInstance.Address(),
 					PollTimerPeriod:   15 * time.Second, // min 15s
 					PollTimerDisabled: false,
-					ObservationSource: client.ObservationSourceSpecHTTP(fmt.Sprintf("%s/variable", adapter.ClusterURL())),
+					ObservationSource: client.ObservationSourceSpecHTTP(fmt.Sprintf("%s/variable", mockserver.Config.ClusterURL)),
 				}
 				_, err = n.CreateJob(fluxSpec)
 				Expect(err).ShouldNot(HaveOccurred())
@@ -139,8 +142,9 @@ var _ = Describe("Flux monitor external validator suite @validator-flux", func()
 
 	Describe("with Flux job", func() {
 		It("Sets a flag when value is above threshold", func() {
-			err = adapter.SetVariable(1e7)
+			err = mockserver.SetVariable(1e7)
 			Expect(err).ShouldNot(HaveOccurred())
+
 			fluxRoundConfirmer = contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(2), fluxRoundTimeout)
 			networkInfo.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRoundConfirmer)
 			err = networkInfo.Client.WaitForEvents()
@@ -150,7 +154,7 @@ var _ = Describe("Flux monitor external validator suite @validator-flux", func()
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(flagSet).Should(Equal(false))
 
-			err = adapter.SetVariable(1e8)
+			err = mockserver.SetVariable(1e8)
 			Expect(err).ShouldNot(HaveOccurred())
 			fluxRoundConfirmer = contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(3), fluxRoundTimeout)
 			networkInfo.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRoundConfirmer)

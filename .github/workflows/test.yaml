@@ -76,7 +76,7 @@ jobs:
           check_name: Unit Test Results
       - name: Publish Artifacts
         if: failure()
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v2.2.4
         with:
           name: test-logs
           path: ./logs
@@ -140,7 +140,7 @@ jobs:
           check_name: Smoke Test Results
       - name: Publish Artifacts
         if: failure()
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v2.2.4
         with:
           name: test-logs
           path: ./logs
@@ -204,7 +204,7 @@ jobs:
           check_name: Performance Test Results
       - name: Publish Artifacts
         if: failure()
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v2.2.4
         with:
           name: test-logs
           path: ./logs
@@ -268,7 +268,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish Artifacts
         if: failure()
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v2.2.4
         with:
           name: test-logs
           path: ./logs

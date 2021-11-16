@@ -127,7 +127,6 @@ type KubernetesConfig struct {
 type AppConfig struct {
 	Chainlink        StandardConfig `mapstructure:"chainlink" yaml:"chainlink"`
 	Geth             StandardConfig `mapstructure:"geth" yaml:"geth"`
-	Adapter          StandardConfig `mapstructure:"adapter" yaml:"adapter"`
 	Postgres         StandardConfig `mapstructure:"postgres" yaml:"postgres"`
 	Otpe             StandardConfig `mapstructure:"otpe" yaml:"otpe"`
 	Explorer         StandardConfig `mapstructure:"explorer" yaml:"explorer"`

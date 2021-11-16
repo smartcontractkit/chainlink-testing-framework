@@ -20,7 +20,7 @@ data:
         - targets: ['localhost:9090']
       - job_name: 'otpe'
         static_configs:
-        - targets: ['{{ .Values.OTPEDependencyGroup.otpe.clusterURL }}']
+        - targets: ['{{ .Values.OTPEDependencyGroup.otpe_1.clusterURL }}','{{ .Values.OTPEDependencyGroup.otpe_2.clusterURL }}']
 
   ocr.rules.yml: |
 {{ .Values.PrometheusDependencyGroup.prometheus.ocrRulesYml }}

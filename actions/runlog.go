@@ -15,7 +15,6 @@ import (
 type RunlogSetupInputs struct {
 	SuiteSetup  SuiteSetup
 	NetworkInfo NetworkInfo
-	Adapter     environment.ExternalAdapter
 	Nodes         []client.Chainlink
 	NodeAddresses []common.Address
 	Oracle        contracts.Oracle
@@ -34,8 +33,6 @@ func SetupRunlogEnv(i *RunlogSetupInputs) func() {
 			hooks.EthereumClientHook,
 			utils.ProjectRoot,
 		)
-		Expect(i.Err).ShouldNot(HaveOccurred())
-		i.Adapter, i.Err = environment.GetExternalAdapter(i.SuiteSetup.Environment())
 		Expect(i.Err).ShouldNot(HaveOccurred())
 		i.NetworkInfo = i.SuiteSetup.DefaultNetwork()
 	}

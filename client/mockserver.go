@@ -36,6 +36,27 @@ func (em *MockserverClient) ClearExpectation(body interface{}) error {
 	return err
 }
 
+// SetVariable sets an int for /variable
+func (em *MockserverClient) SetVariable(v int) error {
+	pathSelector := PathSelector{Path: "/variable"}
+	if err := em.ClearExpectation(pathSelector); err != nil {
+		return err
+	}
+	initializer := HttpInitializer{
+		Request: HttpRequest{Path: "/variable"},
+		Response: HttpResponse{Body: AdapterResponse{
+			Id:    "",
+			Data:  AdapterResult{Result: v},
+			Error: nil,
+		}},
+	}
+	initializers := []HttpInitializer{initializer}
+	if err := em.PutExpectations(initializers); err != nil {
+		return err
+	}
+	return nil
+}
+
 // PathSelector represents the json object used to find expectations by path
 type PathSelector struct {
 	Path string `json:"path"`

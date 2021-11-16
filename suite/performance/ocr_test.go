@@ -19,7 +19,6 @@ var _ = Describe("OCR soak test @soak-ocr", func() {
 		suiteSetup  actions.SuiteSetup
 		networkInfo actions.NetworkInfo
 		nodes       []client.Chainlink
-		adapter     environment.ExternalAdapter
 		perfTest    Test
 		err         error
 	)
@@ -33,8 +32,6 @@ var _ = Describe("OCR soak test @soak-ocr", func() {
 				hooks.EthereumClientHook,
 				utils.ProjectRoot,
 			)
-			Expect(err).ShouldNot(HaveOccurred())
-			adapter, err = environment.GetExternalAdapter(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
 			nodes, err = environment.GetChainlinkClients(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
@@ -69,7 +66,6 @@ var _ = Describe("OCR soak test @soak-ocr", func() {
 				networkInfo.Client,
 				networkInfo.Wallets,
 				networkInfo.Deployer,
-				adapter,
 			)
 			err = perfTest.Setup()
 			Expect(err).ShouldNot(HaveOccurred())

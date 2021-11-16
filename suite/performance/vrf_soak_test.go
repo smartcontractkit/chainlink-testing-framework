@@ -18,7 +18,6 @@ var _ = Describe("VRF soak test @soak-vrf", func() {
 		suiteSetup     actions.SuiteSetup
 		defaultNetwork actions.NetworkInfo
 		nodes          []client.Chainlink
-		adapter        environment.ExternalAdapter
 		perfTest       Test
 		err            error
 	)
@@ -35,8 +34,6 @@ var _ = Describe("VRF soak test @soak-vrf", func() {
 			)
 			Expect(err).ShouldNot(HaveOccurred())
 			defaultNetwork = suiteSetup.DefaultNetwork()
-			adapter, err = environment.GetExternalAdapter(suiteSetup.Environment())
-			Expect(err).ShouldNot(HaveOccurred())
 			nodes, err = environment.GetChainlinkClients(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
 			defaultNetwork.Client.ParallelTransactions(true)
@@ -68,7 +65,6 @@ var _ = Describe("VRF soak test @soak-vrf", func() {
 				defaultNetwork.Client,
 				defaultNetwork.Wallets,
 				defaultNetwork.Deployer,
-				adapter,
 			)
 			err = perfTest.Setup()
 			Expect(err).ShouldNot(HaveOccurred())

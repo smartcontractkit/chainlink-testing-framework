@@ -44,7 +44,7 @@ type RunlogTest struct {
 	chainlinkClients  []client.Chainlink
 	nodeAddresses     []common.Address
 	contractInstances []*ConsumerOraclePair
-	adapter           environment.ExternalAdapter
+	mockserver        *client.MockserverClient
 
 	testResults *PerfRequestIDTestResults
 	jobMap      ContractsNodesJobsMap
@@ -58,7 +58,6 @@ func NewRunlogTest(
 	blockchain client.BlockchainClient,
 	wallets client.BlockchainWallets,
 	deployer contracts.ContractDeployer,
-	adapter environment.ExternalAdapter,
 ) Test {
 	return &RunlogTest{
 		TestOptions: testOptions,
@@ -67,7 +66,6 @@ func NewRunlogTest(
 		Blockchain:  blockchain,
 		Wallets:     wallets,
 		Deployer:    deployer,
-		adapter:     adapter,
 		testResults: NewPerfRequestIDTestResults(),
 		jobMap:      ContractsNodesJobsMap{},
 	}
@@ -96,13 +94,16 @@ func (f *RunlogTest) Setup() error {
 	if err != nil {
 		return err
 	}
-	adapter, err := environment.GetExternalAdapter(f.Environment)
+	mockserver, err := environment.GetMockserverClientFromEnv(f.Environment)
 	if err != nil {
 		return err
 	}
 	f.chainlinkClients = chainlinkClients
 	f.nodeAddresses = nodeAddresses
-	f.adapter = adapter
+	f.mockserver = mockserver
+	if err := f.mockserver.SetVariable(5); err != nil {
+		return err
+	}
 	return f.deployContracts()
 }
 
@@ -158,7 +159,7 @@ func (f *RunlogTest) requestData() error {
 				p.oracle.Address(),
 				jobID,
 				big.NewInt(1e18),
-				fmt.Sprintf("%s/five", f.adapter.ClusterURL()),
+				fmt.Sprintf("%s/variable", f.mockserver.Config.ClusterURL),
 				"data,result",
 				big.NewInt(100),
 			); err != nil {
@@ -257,7 +258,7 @@ func (f *RunlogTest) createChainlinkJobs() error {
 
 	bta := client.BridgeTypeAttributes{
 		Name: "five",
-		URL:  fmt.Sprintf("%s/five", f.adapter.ClusterURL()),
+		URL:  fmt.Sprintf("%s/variable", f.mockserver.Config.ClusterURL),
 	}
 	if err := f.chainlinkClients[0].CreateBridge(&bta); err != nil {
 		return err

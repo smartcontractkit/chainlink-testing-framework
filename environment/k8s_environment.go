@@ -837,7 +837,6 @@ func (m *K8sManifest) parseService(
 }
 
 var usedPorts map[uint16]bool = map[uint16]bool{
-	AdapterAPIPort:   true,
 	ChainlinkWebPort: true,
 	ChainlinkP2PPort: true,
 	MinersRPCPort:    true,

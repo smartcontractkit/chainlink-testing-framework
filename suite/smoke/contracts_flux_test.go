@@ -24,7 +24,7 @@ var _ = Describe("Flux monitor suite @flux", func() {
 	var (
 		suiteSetup    actions.SuiteSetup
 		networkInfo   actions.NetworkInfo
-		adapter       environment.ExternalAdapter
+		mockserver    *client.MockserverClient
 		nodes         []client.Chainlink
 		nodeAddresses []common.Address
 		fluxInstance  contracts.FluxAggregator
@@ -44,7 +44,7 @@ var _ = Describe("Flux monitor suite @flux", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			nodes, err = environment.GetChainlinkClients(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
-			adapter, err = environment.GetExternalAdapter(suiteSetup.Environment())
+			mockserver, err = environment.GetMockserverClientFromEnv(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
 			networkInfo = suiteSetup.DefaultNetwork()
 
@@ -99,9 +99,12 @@ var _ = Describe("Flux monitor suite @flux", func() {
 		})
 
 		By("Creating flux jobs", func() {
+			err = mockserver.SetVariable(0)
+			Expect(err).ShouldNot(HaveOccurred())
+
 			bta := client.BridgeTypeAttributes{
 				Name: "variable",
-				URL:  fmt.Sprintf("%s/variable", adapter.ClusterURL()),
+				URL:  fmt.Sprintf("%s/variable", mockserver.Config.ClusterURL),
 			}
 			for _, n := range nodes {
 				err = n.CreateBridge(&bta)
@@ -122,7 +125,7 @@ var _ = Describe("Flux monitor suite @flux", func() {
 
 	Describe("with Flux job", func() {
 		It("performs two rounds and has withdrawable payments for oracles", func() {
-			err = adapter.SetVariable(1e7)
+			err = mockserver.SetVariable(1e7)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			// Error here with flux round expecting round 2? Might just need 2 rounds?
@@ -141,7 +144,7 @@ var _ = Describe("Flux monitor suite @flux", func() {
 			Expect(data.AvailableFunds.Int64()).Should(Equal(int64(999999999999999994)))
 			Expect(data.AllocatedFunds.Int64()).Should(Equal(int64(6)))
 
-			err = adapter.SetVariable(1e8)
+			err = mockserver.SetVariable(1e8)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			fluxRound = contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(3), fluxRoundTimeout)

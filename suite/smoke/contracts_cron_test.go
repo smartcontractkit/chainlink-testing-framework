@@ -14,9 +14,9 @@ import (
 var _ = Describe("Cronjob suite @cron", func() {
 	var (
 		suiteSetup actions.SuiteSetup
-		adapter    environment.ExternalAdapter
 		nodes      []client.Chainlink
 		job        *client.Job
+		mockserver *client.MockserverClient
 		err        error
 	)
 
@@ -32,14 +32,17 @@ var _ = Describe("Cronjob suite @cron", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			nodes, err = environment.GetChainlinkClients(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
-			adapter, err = environment.GetExternalAdapter(suiteSetup.Environment())
+			mockserver, err = environment.GetMockserverClientFromEnv(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
 		By("Adding cron job to a node", func() {
+			err = mockserver.SetVariable(5)
+			Expect(err).ShouldNot(HaveOccurred())
+
 			bta := client.BridgeTypeAttributes{
-				Name:        "five",
-				URL:         fmt.Sprintf("%s/five", adapter.ClusterURL()),
+				Name:        "variable",
+				URL:         fmt.Sprintf("%s/variable", mockserver.Config.ClusterURL),
 				RequestData: "{}",
 			}
 			err = nodes[0].CreateBridge(&bta)
