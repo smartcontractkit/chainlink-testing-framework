@@ -250,7 +250,7 @@ type BlockHashStore interface {
 type VRFCoordinator interface {
 	RegisterProvingKey(
 		fromWallet client.BlockchainWallet,
-		fee *big.Int,
+		minimumFee *big.Int,
 		oracleAddr string,
 		publicProvingKey [2]*big.Int,
 		jobID [32]byte,

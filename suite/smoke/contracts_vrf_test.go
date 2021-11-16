@@ -17,7 +17,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/environment"
 )
 
-var _ = Describe("VRF suite @vrf", func() {
+var _ = FDescribe("VRF suite @vrf", func() {
 
 	var (
 		suiteSetup         actions.SuiteSetup
@@ -60,6 +60,9 @@ var _ = Describe("VRF suite @vrf", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			consumer, err = networkInfo.Deployer.DeployVRFConsumer(networkInfo.Wallets.Default(), networkInfo.Link.Address(), coordinator.Address())
 			Expect(err).ShouldNot(HaveOccurred())
+			err = networkInfo.Client.WaitForEvents()
+			Expect(err).ShouldNot(HaveOccurred())
+
 			err = consumer.Fund(networkInfo.Wallets.Default(), big.NewFloat(0), big.NewFloat(2))
 			Expect(err).ShouldNot(HaveOccurred())
 			_, err = networkInfo.Deployer.DeployVRFContract(networkInfo.Wallets.Default())
@@ -104,6 +107,8 @@ var _ = Describe("VRF suite @vrf", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 				encodedProvingKeys = append(encodedProvingKeys, provingKey)
 			}
+			err = networkInfo.Client.WaitForEvents()
+			Expect(err).ShouldNot(HaveOccurred())
 		})
 	})
 
@@ -111,7 +116,7 @@ var _ = Describe("VRF suite @vrf", func() {
 		It("fulfills randomness", func() {
 			requestHash, err := coordinator.HashOfKey(context.Background(), encodedProvingKeys[0])
 			Expect(err).ShouldNot(HaveOccurred())
-			err = consumer.RequestRandomness(networkInfo.Wallets.Default(), requestHash, big.NewInt(1))
+			err = consumer.RequestRandomness(networkInfo.Wallets.Default(), requestHash, big.NewInt(2))
 			Expect(err).ShouldNot(HaveOccurred())
 
 			Eventually(func(g Gomega) {

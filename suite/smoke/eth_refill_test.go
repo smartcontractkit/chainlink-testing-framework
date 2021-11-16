@@ -3,11 +3,12 @@ package smoke
 import (
 	"context"
 	"fmt"
-	"github.com/smartcontractkit/integrations-framework/hooks"
-	"github.com/smartcontractkit/integrations-framework/utils"
 	"math/big"
 	"strings"
 	"time"
+
+	"github.com/smartcontractkit/integrations-framework/hooks"
+	"github.com/smartcontractkit/integrations-framework/utils"
 
 	"github.com/ethereum/go-ethereum/common"
 	. "github.com/onsi/ginkgo"
@@ -23,7 +24,7 @@ var _ = Describe("FluxAggregator ETH Refill @refill", func() {
 	var (
 		suiteSetup       actions.SuiteSetup
 		networkInfo      actions.NetworkInfo
-		mockserver         *client.MockserverClient
+		mockserver       *client.MockserverClient
 		nodes            []client.Chainlink
 		nodeAddresses    []common.Address
 		err              error
@@ -61,6 +62,8 @@ var _ = Describe("FluxAggregator ETH Refill @refill", func() {
 			)
 			Expect(err).ShouldNot(HaveOccurred())
 			err = fluxInstance.Fund(networkInfo.Wallets.Default(), nil, big.NewFloat(1))
+			Expect(err).ShouldNot(HaveOccurred())
+			err = networkInfo.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 			err = fluxInstance.UpdateAvailableFunds(context.Background(), networkInfo.Wallets.Default())
 			Expect(err).ShouldNot(HaveOccurred())
@@ -117,9 +120,7 @@ var _ = Describe("FluxAggregator ETH Refill @refill", func() {
 		})
 
 		By("Funding ETH for a single round", func() {
-			submissionGasUsed := big.NewInt(400000)
-			Expect(err).ShouldNot(HaveOccurred())
-			txCost, err := networkInfo.Client.CalculateTxGas(submissionGasUsed)
+			txCost, err := networkInfo.Deployer.CalculateETHForChainlinkOperations(1)
 			Expect(err).ShouldNot(HaveOccurred())
 			err = actions.FundChainlinkNodes(nodes, networkInfo.Client, networkInfo.Wallets.Default(), txCost, nil)
 			Expect(err).ShouldNot(HaveOccurred())

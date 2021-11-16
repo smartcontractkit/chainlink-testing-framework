@@ -352,7 +352,7 @@ func (e *EthereumClient) ParallelTransactions(enabled bool) {
 	e.queueTransactions = enabled
 }
 
-// Fund funds a specified address with LINK token and or ETH from the given wallet
+// Fund funds a specified address with LINK token and or ETH from the given wallet.
 func (e *EthereumClient) Fund(
 	fromWallet BlockchainWallet,
 	toAddress string,
@@ -465,7 +465,6 @@ func (e *EthereumClient) ProcessTransaction(txHash common.Hash) error {
 func (e *EthereumClient) DeployContract(
 	fromWallet BlockchainWallet,
 	contractName string,
-	contractData []byte,
 	deployer ContractDeployer,
 ) (*common.Address, *types.Transaction, interface{}, error) {
 	opts, err := e.TransactionOpts(fromWallet)
