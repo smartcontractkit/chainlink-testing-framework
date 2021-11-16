@@ -397,7 +397,7 @@ func (e *EthereumClient) Fund(
 		if err != nil {
 			return err
 		}
-		return e.ProcessTransaction(tx.Hash())
+		return e.ProcessTransaction(tx)
 	}
 	return nil
 }
@@ -438,25 +438,23 @@ func (e *EthereumClient) SendTransaction(
 	if err := e.Client.SendTransaction(context.Background(), tx); err != nil {
 		return common.Hash{}, err
 	}
-	return tx.Hash(), e.ProcessTransaction(tx.Hash())
+	return tx.Hash(), e.ProcessTransaction(tx)
 }
 
-// ProcessTransaction will queue or wait on a transaction depending on whether queue transactions is enabled
-func (e *EthereumClient) ProcessTransaction(txHash common.Hash) error {
+// ProcessTransaction will queue or wait on a transaction depending on whether parallel transactions are enabled
+func (e *EthereumClient) ProcessTransaction(tx *types.Transaction) error {
 	var txConfirmer HeaderEventSubscription
 	if e.Network.Config().MinimumConfirmations == 0 {
 		txConfirmer = &InstantConfirmations{}
 	} else {
-		txConfirmer = NewTransactionConfirmer(e, txHash, e.Network.Config().MinimumConfirmations)
+		txConfirmer = NewTransactionConfirmer(e, tx, e.Network.Config().MinimumConfirmations)
 	}
 
-	e.AddHeaderEventSubscription(txHash.String(), txConfirmer)
+	e.AddHeaderEventSubscription(tx.Hash().String(), txConfirmer)
 
-	if !e.queueTransactions {
-		defer e.DeleteHeaderEventSubscription(txHash.String())
-		if err := txConfirmer.Wait(); err != nil {
-			return err
-		}
+	if !e.queueTransactions { // No parallel transactions
+		defer e.DeleteHeaderEventSubscription(tx.Hash().String())
+		return txConfirmer.Wait()
 	}
 	return nil
 }
@@ -475,7 +473,7 @@ func (e *EthereumClient) DeployContract(
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	if err := e.ProcessTransaction(transaction.Hash()); err != nil {
+	if err := e.ProcessTransaction(transaction); err != nil {
 		return nil, nil, nil, err
 	}
 	totalGasCostWeiFloat := big.NewFloat(1).SetInt(transaction.Cost())
@@ -614,7 +612,7 @@ func (e *EthereumClient) receiveHeader(header *types.Header) {
 		})
 	}
 	if err := g.Wait(); err != nil {
-		log.Err(fmt.Errorf("error on sending block to recivers: %v", err))
+		log.Err(fmt.Errorf("error on sending block to receivers: %v", err))
 	}
 }
 
@@ -641,6 +639,8 @@ func (e *EthereumClient) isTxConfirmed(txHash common.Hash) (bool, error) {
 			if err != nil {
 				log.Warn().Str("TX Hash", txHash.Hex()).
 					Str("To", tx.To().Hex()).
+					Str("Hint", "We often see this with parallel transactions ending up with out-of-order nonces").
+					Uint64("Nonce", tx.Nonce()).
 					Msg("Transaction failed and was reverted! Unable to retrieve reason!")
 				return false, err
 			}
@@ -687,7 +687,7 @@ type TransactionConfirmer struct {
 	minConfirmations int
 	confirmations    int
 	eth              *EthereumClient
-	txHash           common.Hash
+	tx               *types.Transaction
 	doneChan         chan struct{}
 	context          context.Context
 	cancel           context.CancelFunc
@@ -695,13 +695,13 @@ type TransactionConfirmer struct {
 
 // NewTransactionConfirmer returns a new instance of the transaction confirmer that waits for on-chain minimum
 // confirmations
-func NewTransactionConfirmer(eth *EthereumClient, txHash common.Hash, minConfirmations int) *TransactionConfirmer {
+func NewTransactionConfirmer(eth *EthereumClient, tx *types.Transaction, minConfirmations int) *TransactionConfirmer {
 	ctx, ctxCancel := context.WithTimeout(context.Background(), eth.Network.Config().Timeout)
 	tc := &TransactionConfirmer{
 		minConfirmations: minConfirmations,
 		confirmations:    0,
 		eth:              eth,
-		txHash:           txHash,
+		tx:               tx,
 		doneChan:         make(chan struct{}, 1),
 		context:          ctx,
 		cancel:           ctxCancel,
@@ -719,19 +719,23 @@ func (t *TransactionConfirmer) ReceiveBlock(block NodeBlock) error {
 	}
 	confirmationLog := log.Debug().Str("Network", t.eth.Network.ID()).
 		Str("Block Hash", block.Hash().Hex()).
-		Str("Block Number", block.Number().String()).Str("Tx Hash", t.txHash.Hex()).
+		Str("Block Number", block.Number().String()).
+		Str("Tx Hash", t.tx.Hash().String()).
+		Uint64("Nonce", t.tx.Nonce()).
 		Int("Minimum Confirmations", t.minConfirmations)
-	isConfirmed, err := t.eth.isTxConfirmed(t.txHash)
+	isConfirmed, err := t.eth.isTxConfirmed(t.tx.Hash())
 	if err != nil {
 		return err
 	} else if isConfirmed {
 		t.confirmations++
 	}
 	if t.confirmations == t.minConfirmations {
-		confirmationLog.Int("Current Confirmations", t.confirmations).Msg("Transaction confirmations met")
+		confirmationLog.Int("Current Confirmations", t.confirmations).
+			Msg("Transaction confirmations met")
 		t.doneChan <- struct{}{}
 	} else if t.confirmations <= t.minConfirmations {
-		confirmationLog.Int("Current Confirmations", t.confirmations).Msg("Waiting on minimum confirmations")
+		confirmationLog.Int("Current Confirmations", t.confirmations).
+			Msg("Waiting on minimum confirmations")
 	}
 	return nil
 }
@@ -744,7 +748,7 @@ func (t *TransactionConfirmer) Wait() error {
 			t.cancel()
 			return nil
 		case <-t.context.Done():
-			return fmt.Errorf("timeout waiting for transaction to confirm: %s", t.txHash.String())
+			return fmt.Errorf("timeout waiting for transaction to confirm: %s", t.tx.Hash().String())
 		}
 	}
 }

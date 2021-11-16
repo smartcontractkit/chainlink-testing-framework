@@ -21,7 +21,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/environment"
 )
 
-var _ = Describe("Flux monitor external validator suite @validator-flux", func() {
+var _ = FDescribe("Flux monitor external validator suite @validator-flux", func() {
 	var (
 		suiteSetup         actions.SuiteSetup
 		networkInfo        actions.NetworkInfo
@@ -54,7 +54,7 @@ var _ = Describe("Flux monitor external validator suite @validator-flux", func()
 			Expect(err).ShouldNot(HaveOccurred())
 			networkInfo = suiteSetup.DefaultNetwork()
 
-			networkInfo.Client.ParallelTransactions(true)
+			// networkInfo.Client.ParallelTransactions(true)
 		})
 
 		By("Deploying access controller, flags, deviation validator", func() {
@@ -74,7 +74,7 @@ var _ = Describe("Flux monitor external validator suite @validator-flux", func()
 				MinSubValue:   big.NewInt(0),
 				MaxSubValue:   big.NewInt(1e18),
 				Decimals:      uint8(0),
-				Description:   "Hardhat Flux Aggregator",
+				Description:   "Test Flux Aggregator",
 			}
 			fluxInstance, err = networkInfo.Deployer.DeployFluxAggregatorContract(networkInfo.Wallets.Default(), fmOpts)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -145,7 +145,7 @@ var _ = Describe("Flux monitor external validator suite @validator-flux", func()
 			err = mockserver.SetVariable(1e7)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			fluxRoundConfirmer = contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(2), fluxRoundTimeout)
+			fluxRoundConfirmer = contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(1), fluxRoundTimeout)
 			networkInfo.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRoundConfirmer)
 			err = networkInfo.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -156,7 +156,7 @@ var _ = Describe("Flux monitor external validator suite @validator-flux", func()
 
 			err = mockserver.SetVariable(1e8)
 			Expect(err).ShouldNot(HaveOccurred())
-			fluxRoundConfirmer = contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(3), fluxRoundTimeout)
+			fluxRoundConfirmer = contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(2), fluxRoundTimeout)
 			networkInfo.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRoundConfirmer)
 			err = networkInfo.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())

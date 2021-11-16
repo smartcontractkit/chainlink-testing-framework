@@ -100,7 +100,7 @@ func NewNetworkFromConfig(conf *config.Config, networkID string) (BlockchainNetw
 		return NewEthereumNetwork(networkID, networkConfig)
 	}
 	return nil, fmt.Errorf(
-		"network %s uses an unspported network type of: %s",
+		"network %s uses an unsupported network type of: %s",
 		networkID,
 		networkConfig.Type,
 	)

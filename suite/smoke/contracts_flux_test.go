@@ -20,7 +20,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/environment"
 )
 
-var _ = Describe("Flux monitor suite @flux", func() {
+var _ = FDescribe("Flux monitor suite @flux", func() {
 	var (
 		suiteSetup    actions.SuiteSetup
 		networkInfo   actions.NetworkInfo
@@ -48,7 +48,7 @@ var _ = Describe("Flux monitor suite @flux", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			networkInfo = suiteSetup.DefaultNetwork()
 
-			networkInfo.Client.ParallelTransactions(true)
+			// networkInfo.Client.ParallelTransactions(true)
 		})
 
 		By("Deploying and funding contract", func() {
@@ -129,7 +129,7 @@ var _ = Describe("Flux monitor suite @flux", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			// Error here with flux round expecting round 2? Might just need 2 rounds?
-			fluxRound := contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(2), fluxRoundTimeout)
+			fluxRound := contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(1), fluxRoundTimeout)
 			networkInfo.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRound)
 			err = networkInfo.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -147,7 +147,7 @@ var _ = Describe("Flux monitor suite @flux", func() {
 			err = mockserver.SetVariable(1e8)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			fluxRound = contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(3), fluxRoundTimeout)
+			fluxRound = contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(2), fluxRoundTimeout)
 			networkInfo.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRound)
 			err = networkInfo.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())

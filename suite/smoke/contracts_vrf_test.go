@@ -17,7 +17,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/environment"
 )
 
-var _ = FDescribe("VRF suite @vrf", func() {
+var _ = Describe("VRF suite @vrf", func() {
 
 	var (
 		suiteSetup         actions.SuiteSetup
@@ -43,7 +43,7 @@ var _ = FDescribe("VRF suite @vrf", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			networkInfo = suiteSetup.DefaultNetwork()
 
-			networkInfo.Client.ParallelTransactions(true)
+			// networkInfo.Client.ParallelTransactions(true)
 		})
 
 		By("Funding Chainlink nodes", func() {

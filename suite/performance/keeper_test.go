@@ -1,10 +1,11 @@
 package performance
 
 import (
-	"github.com/smartcontractkit/integrations-framework/hooks"
-	"github.com/smartcontractkit/integrations-framework/utils"
 	"math/big"
 	"time"
+
+	"github.com/smartcontractkit/integrations-framework/hooks"
+	"github.com/smartcontractkit/integrations-framework/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -35,7 +36,7 @@ var _ = Describe("Keeper performance test @performance-keeper", func() {
 			defaultNetwork = suiteSetup.DefaultNetwork()
 			nodes, err = environment.GetChainlinkClients(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
-			defaultNetwork.Client.ParallelTransactions(true)
+			// defaultNetwork.Client.ParallelTransactions(true)
 		})
 
 		By("Funding the Chainlink nodes", func() {

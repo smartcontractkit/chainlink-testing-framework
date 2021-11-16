@@ -1,6 +1,9 @@
 package performance
 
 import (
+	"math/big"
+	"time"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/smartcontractkit/integrations-framework/actions"
@@ -8,8 +11,6 @@ import (
 	"github.com/smartcontractkit/integrations-framework/environment"
 	"github.com/smartcontractkit/integrations-framework/hooks"
 	"github.com/smartcontractkit/integrations-framework/utils"
-	"math/big"
-	"time"
 )
 
 var _ = Describe("Runlog perf test @perf-runlog", func() {
@@ -32,7 +33,7 @@ var _ = Describe("Runlog perf test @perf-runlog", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			nodes, err = environment.GetChainlinkClients(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
-			suiteSetup.DefaultNetwork().Client.ParallelTransactions(true)
+			// suiteSetup.DefaultNetwork().Client.ParallelTransactions(true)
 		})
 
 		By("Funding the Chainlink nodes", func() {

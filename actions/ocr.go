@@ -47,7 +47,7 @@ func DeployOCRForEnv(i *OCRSetupInputs, envInit environment.K8sEnvSpecInit, conf
 		Expect(err).ShouldNot(HaveOccurred())
 		i.NetworkInfo = i.SuiteSetup.DefaultNetwork()
 		i.DefaultWallet = i.NetworkInfo.Wallets.Default()
-		i.NetworkInfo.Client.ParallelTransactions(true)
+		// i.NetworkInfo.Client.ParallelTransactions(true)
 	}
 }
 
@@ -158,6 +158,8 @@ func CheckRound(i *OCRSetupInputs) func() {
 		for _, OCRInstance := range i.OCRInstances {
 			answer, err := OCRInstance.GetLatestAnswer(context.Background())
 			Expect(err).ShouldNot(HaveOccurred())
+			err = i.NetworkInfo.Client.WaitForEvents()
+			Expect(err).ShouldNot(HaveOccurred())
 			Expect(answer.Int64()).Should(Equal(int64(5)), "Latest answer from OCR is not as expected")
 		}
 
@@ -174,6 +176,8 @@ func CheckRound(i *OCRSetupInputs) func() {
 		// Check answer is as expected
 		for _, OCRInstance := range i.OCRInstances {
 			answer, err := OCRInstance.GetLatestAnswer(context.Background())
+			Expect(err).ShouldNot(HaveOccurred())
+			err = i.NetworkInfo.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(answer.Int64()).Should(Equal(int64(10)), "Latest answer from OCR is not as expected")
 		}

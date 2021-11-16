@@ -50,7 +50,7 @@ var _ = Describe("FluxAggregator ETH Refill @refill", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			networkInfo = suiteSetup.DefaultNetwork()
 
-			networkInfo.Client.ParallelTransactions(true)
+			// networkInfo.Client.ParallelTransactions(true)
 		})
 	})
 
