@@ -1,10 +1,12 @@
 package chaos
 
 import (
+	"time"
+
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/client/chaos"
 	"github.com/smartcontractkit/integrations-framework/client/chaos/experiments"
-	"time"
+	"github.com/smartcontractkit/integrations-framework/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
@@ -18,7 +20,7 @@ var _ = XDescribeTable("OCR chaos tests @chaos-ocr", func(
 ) {
 	i := &actions.OCRSetupInputs{}
 	Context("Runs OCR test with a chaos modifier", func() {
-		By("Deploying the environment", actions.DeployOCRForEnv(i, envInit))
+		By("Deploying the environment", actions.DeployOCRForEnv(i, envInit, utils.ProjectRoot))
 		By("Funding nodes", actions.FundNodes(i))
 		By("Deploying OCR contracts", actions.DeployOCRContracts(i, 1))
 		By("Creating OCR jobs", actions.CreateOCRJobs(i))

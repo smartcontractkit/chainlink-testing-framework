@@ -25,7 +25,7 @@ import (
 
 var (
 	// OneGWei represents 1 GWei
-	OneGWei = big.NewInt(1e9)
+	OneGWei = big.NewFloat(1e9)
 	// OneEth represents 1 Ethereum
 	OneEth = big.NewFloat(1e18)
 )
@@ -361,14 +361,14 @@ func (e *EthereumClient) Fund(
 	ethAddress := common.HexToAddress(toAddress)
 	// Send ETH if not 0
 	if ethAmount != nil && big.NewFloat(0).Cmp(ethAmount) != 0 {
-		eth := big.NewFloat(1).Mul(OneEth, ethAmount)
+		weiValue := big.NewFloat(1).Mul(OneEth, ethAmount) // Convert ETH -> Wei
 		log.Info().
 			Str("Token", "ETH").
 			Str("From", fromWallet.Address()).
 			Str("To", toAddress).
 			Str("Amount", ethAmount.String()).
 			Msg("Funding Address")
-		_, err := e.SendTransaction(fromWallet, ethAddress, eth, nil)
+		_, err := e.SendTransaction(fromWallet, ethAddress, weiValue)
 		if err != nil {
 			return err
 		}
@@ -388,32 +388,28 @@ func (e *EthereumClient) Fund(
 		if err != nil {
 			return err
 		}
-		opts, err := e.TransactionOpts(fromWallet, ethAddress, nil, nil)
+		opts, err := e.TransactionOpts(fromWallet)
 		if err != nil {
 			return err
 		}
 		linkInt, _ := link.Int(nil)
-		_, err = linkInstance.Transfer(opts, ethAddress, linkInt)
+		tx, err := linkInstance.Transfer(opts, ethAddress, linkInt)
 		if err != nil {
 			return err
 		}
+		return e.ProcessTransaction(tx.Hash())
 	}
 	return nil
 }
 
-// SendTransaction sends a specified amount of WEI from a selected wallet to an address, and blocks until the
+// SendTransaction sends a specified amount of ETH from a selected wallet to an address, and blocks until the
 // transaction completes
 func (e *EthereumClient) SendTransaction(
 	from BlockchainWallet,
 	to common.Address,
 	value *big.Float,
-	data []byte,
 ) (common.Hash, error) {
-	intVal, _ := value.Int(nil)
-	callMsg, err := e.TransactionCallMessage(from, to, intVal, data)
-	if err != nil {
-		return common.Hash{}, err
-	}
+	weiValue, _ := value.Int(nil)
 	privateKey, err := crypto.HexToECDSA(from.PrivateKey())
 	if err != nil {
 		return common.Hash{}, fmt.Errorf("invalid private key: %v", err)
@@ -422,13 +418,18 @@ func (e *EthereumClient) SendTransaction(
 	if err != nil {
 		return common.Hash{}, err
 	}
+	suggestedGasPrice, err := e.Client.SuggestGasPrice(context.Background())
+	if err != nil {
+		return common.Hash{}, err
+	}
 
+	// TODO: Update from LegacyTx to DynamicFeeTx
 	tx, err := types.SignNewTx(privateKey, types.NewEIP2930Signer(e.Network.ChainID()), &types.LegacyTx{
-		To:       callMsg.To,
-		Value:    callMsg.Value,
-		Data:     callMsg.Data,
-		GasPrice: callMsg.GasPrice,
-		Gas:      callMsg.Gas,
+		To:       &to,
+		Value:    weiValue,
+		Data:     nil,
+		Gas:      21000,
+		GasPrice: suggestedGasPrice,
 		Nonce:    nonce,
 	})
 	if err != nil {
@@ -464,9 +465,10 @@ func (e *EthereumClient) ProcessTransaction(txHash common.Hash) error {
 func (e *EthereumClient) DeployContract(
 	fromWallet BlockchainWallet,
 	contractName string,
+	contractData []byte,
 	deployer ContractDeployer,
 ) (*common.Address, *types.Transaction, interface{}, error) {
-	opts, err := e.TransactionOpts(fromWallet, common.Address{}, big.NewInt(0), nil)
+	opts, err := e.TransactionOpts(fromWallet)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -477,49 +479,23 @@ func (e *EthereumClient) DeployContract(
 	if err := e.ProcessTransaction(transaction.Hash()); err != nil {
 		return nil, nil, nil, err
 	}
+	totalGasCostWeiFloat := big.NewFloat(1).SetInt(transaction.Cost())
+	totalGasCostGwei := big.NewFloat(1).Quo(totalGasCostWeiFloat, OneGWei)
+
 	log.Info().
 		Str("Contract Address", contractAddress.Hex()).
 		Str("Contract Name", contractName).
 		Str("From", fromWallet.Address()).
-		Str("Gas Cost", transaction.Cost().String()).
+		Str("Total Gas Cost (GWei)", totalGasCostGwei.String()).
 		Str("Network", e.Network.ID()).
 		Msg("Deployed contract")
 	return &contractAddress, transaction, contractInstance, err
 }
 
-// TransactionCallMessage returns a filled Ethereum CallMsg object with suggest gas price and limit
-func (e *EthereumClient) TransactionCallMessage(
-	from BlockchainWallet,
-	to common.Address,
-	value *big.Int,
-	data []byte,
-) (*ethereum.CallMsg, error) {
-	gasPrice, err := e.Client.SuggestGasPrice(context.Background())
-	if err != nil {
-		return nil, err
-	}
-	msg := ethereum.CallMsg{
-		From:     common.HexToAddress(from.Address()),
-		To:       &to,
-		GasPrice: gasPrice,
-		Value:    value,
-		Data:     data,
-	}
-	msg.Gas = e.Network.Config().TransactionLimit + e.Network.Config().GasEstimationBuffer
-	return &msg, nil
-}
-
-// TransactionOpts return the base binding transaction options to create a new valid tx for contract deployment
-func (e *EthereumClient) TransactionOpts(
-	from BlockchainWallet,
-	to common.Address,
-	value *big.Int,
-	data []byte,
-) (*bind.TransactOpts, error) {
-	callMsg, err := e.TransactionCallMessage(from, to, value, data)
-	if err != nil {
-		return nil, err
-	}
+// TransactionOpts returns the base Tx options for 'transactions' that interact with a smart contract. Since most
+// contract interactions in this framework are designed to happen through abigen calls, it's intentionally quite bare.
+// abigen will handle gas estimation for us on the backend.
+func (e *EthereumClient) TransactionOpts(from BlockchainWallet) (*bind.TransactOpts, error) {
 	nonce, err := e.GetNonce(context.Background(), common.HexToAddress(from.Address()))
 	if err != nil {
 		return nil, err
@@ -532,11 +508,8 @@ func (e *EthereumClient) TransactionOpts(
 	if err != nil {
 		return nil, err
 	}
-	opts.From = callMsg.From
+	opts.From = common.HexToAddress(from.Address())
 	opts.Nonce = big.NewInt(int64(nonce))
-	opts.Value = value
-	opts.GasPrice = callMsg.GasPrice
-	opts.GasLimit = callMsg.Gas
 	opts.Context = context.Background()
 
 	return opts, nil
@@ -664,13 +637,18 @@ func (e *EthereumClient) isTxConfirmed(txHash common.Hash) (bool, error) {
 			GasPrice:          tx.GasPrice().Uint64(),
 			CumulativeGasUsed: receipt.CumulativeGasUsed,
 		})
-		if receipt.Status == 0 {
-			log.Warn().Str("TX Hash", txHash.Hex()).Msg("Transaction failed and was reverted!")
+		if receipt.Status == 0 { // 0 indicates failure, 1 indicates success
 			reason, err := e.errorReason(e.Client, tx, receipt)
 			if err != nil {
+				log.Warn().Str("TX Hash", txHash.Hex()).
+					Str("To", tx.To().Hex()).
+					Msg("Transaction failed and was reverted! Unable to retrieve reason!")
 				return false, err
 			}
-			log.Debug().Str("Revert reason", reason).Send()
+			log.Warn().Str("TX Hash", txHash.Hex()).
+				Str("To", tx.To().Hex()).
+				Str("Revert reason", reason).
+				Msg("Transaction failed and was reverted!")
 		}
 	}
 	return !isPending, err

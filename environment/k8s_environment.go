@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/smartcontractkit/integrations-framework/client/chaos"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -16,6 +15,8 @@ import (
 	"sync"
 	"text/template"
 	"time"
+
+	"github.com/smartcontractkit/integrations-framework/client/chaos"
 
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"

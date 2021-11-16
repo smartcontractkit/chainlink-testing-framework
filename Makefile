@@ -17,7 +17,7 @@ test_unit:
 	ginkgo -r -keepGoing --trace --randomizeAllSpecs --randomizeSuites --progress -covermode=count -coverprofile=unit-test-coverage.out -nodes=10 ./client ./config ./environment 
 
 test_smoke:
-	ginkgo -r -keepGoing --trace --randomizeAllSpecs --randomizeSuites --progress $(args) ./suite/smoke 
+	ginkgo -v -r -keepGoing --trace --randomizeAllSpecs --randomizeSuites --progress $(args) ./suite/smoke 
 
 test_performance:
 	ginkgo -r -keepGoing --trace --randomizeAllSpecs --randomizeSuites --progress $(args) ./suite/performance 

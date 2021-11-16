@@ -2,9 +2,10 @@ package smoke
 
 import (
 	"context"
+	"math/big"
+
 	"github.com/smartcontractkit/integrations-framework/hooks"
 	"github.com/smartcontractkit/integrations-framework/utils"
-	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	. "github.com/onsi/ginkgo"
@@ -50,7 +51,7 @@ var _ = Describe("Keeper suite @keeper", func() {
 		})
 
 		By("Funding Chainlink nodes", func() {
-			ethAmount, err := networkInfo.Deployer.CalculateETHForTXs(networkInfo.Wallets.Default(), networkInfo.Network.Config(), 10)
+			ethAmount, err := networkInfo.Deployer.CalculateETHForChainlinkOperations(10)
 			Expect(err).ShouldNot(HaveOccurred())
 			err = actions.FundChainlinkNodes(
 				nodes,

@@ -132,7 +132,7 @@ spec:
           - {{ .Network.BlockGasLimit }}
           - --miner.etherbase
           - 0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266
-          - --rpcapi="admin,debug,web3,eth,txpool,personal,clique,miner,net"
+          # - --rpcapi="admin,debug,web3,eth,txpool,personal,clique,miner,net"
           - --ipcdisable
           - --http
           - --http.addr

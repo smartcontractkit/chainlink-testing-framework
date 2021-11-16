@@ -3,11 +3,12 @@ package smoke
 import (
 	"context"
 	"fmt"
-	"github.com/smartcontractkit/integrations-framework/hooks"
-	"github.com/smartcontractkit/integrations-framework/utils"
 	"math/big"
 	"strings"
 	"time"
+
+	"github.com/smartcontractkit/integrations-framework/hooks"
+	"github.com/smartcontractkit/integrations-framework/utils"
 
 	"github.com/ethereum/go-ethereum/common"
 	. "github.com/onsi/ginkgo"
@@ -51,9 +52,12 @@ var _ = Describe("Flux monitor suite @flux", func() {
 		})
 
 		By("Deploying and funding contract", func() {
-			fluxInstance, err = networkInfo.Deployer.DeployFluxAggregatorContract(networkInfo.Wallets.Default(), contracts.DefaultFluxAggregatorOptions())
+			fluxInstance, err = networkInfo.Deployer.DeployFluxAggregatorContract(networkInfo.Wallets.Default(),
+				contracts.DefaultFluxAggregatorOptions())
 			Expect(err).ShouldNot(HaveOccurred())
 			err = fluxInstance.Fund(networkInfo.Wallets.Default(), nil, big.NewFloat(1))
+			Expect(err).ShouldNot(HaveOccurred())
+			err = networkInfo.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 			err = fluxInstance.UpdateAvailableFunds(context.Background(), networkInfo.Wallets.Default())
 			Expect(err).ShouldNot(HaveOccurred())
@@ -64,7 +68,7 @@ var _ = Describe("Flux monitor suite @flux", func() {
 		By("Funding Chainlink nodes", func() {
 			nodeAddresses, err = actions.ChainlinkNodeAddresses(nodes)
 			Expect(err).ShouldNot(HaveOccurred())
-			ethAmount, err := networkInfo.Deployer.CalculateETHForTXs(networkInfo.Wallets.Default(), networkInfo.Network.Config(), 3)
+			ethAmount, err := networkInfo.Deployer.CalculateETHForChainlinkOperations(3)
 			Expect(err).ShouldNot(HaveOccurred())
 			err = actions.FundChainlinkNodes(
 				nodes,
@@ -121,6 +125,7 @@ var _ = Describe("Flux monitor suite @flux", func() {
 			err = adapter.SetVariable(1e7)
 			Expect(err).ShouldNot(HaveOccurred())
 
+			// Error here with flux round expecting round 2? Might just need 2 rounds?
 			fluxRound := contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(2), fluxRoundTimeout)
 			networkInfo.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRound)
 			err = networkInfo.Client.WaitForEvents()

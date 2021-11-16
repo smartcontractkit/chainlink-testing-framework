@@ -106,7 +106,7 @@ type NetworkConfig struct {
 	NamespaceForSecret   string        `mapstructure:"namespace_for_secret" yaml:"namespace_for_secret"`
 	PrivateKeys          []string      `mapstructure:"private_keys" yaml:"private_keys"`
 	PrivateURL           string        `mapstructure:"private_url" yaml:"private_url"`
-	TransactionLimit     uint64        `mapstructure:"transaction_limit" yaml:"transaction_limit"`
+	ChainlinkGasLimit    uint64        `mapstructure:"chainlink_gas_limit" yaml:"chainlink_gas_limit"`
 	Timeout              time.Duration `mapstructure:"transaction_timeout" yaml:"transaction_timeout"`
 	LinkTokenAddress     string        `mapstructure:"link_token_address" yaml:"link_token_address"`
 	MinimumConfirmations int           `mapstructure:"minimum_confirmations" yaml:"minimum_confirmations"`

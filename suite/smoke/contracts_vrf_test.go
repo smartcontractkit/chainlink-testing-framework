@@ -47,7 +47,7 @@ var _ = Describe("VRF suite @vrf", func() {
 		})
 
 		By("Funding Chainlink nodes", func() {
-			ethAmount, err := networkInfo.Deployer.CalculateETHForTXs(networkInfo.Wallets.Default(), networkInfo.Network.Config(), 1)
+			ethAmount, err := networkInfo.Deployer.CalculateETHForChainlinkOperations(1)
 			Expect(err).ShouldNot(HaveOccurred())
 			err = actions.FundChainlinkNodes(nodes, networkInfo.Client, networkInfo.Wallets.Default(), ethAmount, nil)
 			Expect(err).ShouldNot(HaveOccurred())

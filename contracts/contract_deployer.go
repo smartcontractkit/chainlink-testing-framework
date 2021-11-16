@@ -7,8 +7,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/smartcontractkit/integrations-framework/config"
-
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts/ethereum"
@@ -22,7 +20,7 @@ import (
 // ContractDeployer is an interface for abstracting the contract deployment methods across network implementations
 type ContractDeployer interface {
 	Balance(fromWallet client.BlockchainWallet) (*big.Float, error)
-	CalculateETHForTXs(fromWallet client.BlockchainWallet, networkConfig *config.NetworkConfig, txs int64) (*big.Float, error)
+	CalculateETHForChainlinkOperations(numberOfOperations int) (*big.Float, error)
 	DeployStorageContract(fromWallet client.BlockchainWallet) (Storage, error)
 	DeployAPIConsumer(fromWallet client.BlockchainWallet, linkAddr string) (APIConsumer, error)
 	DeployOracle(fromWallet client.BlockchainWallet, linkAddr string) (Oracle, error)
@@ -115,12 +113,13 @@ func DefaultFluxAggregatorOptions() FluxAggregatorOptions {
 func (e *EthereumContractDeployer) DeployReadAccessController(
 	fromWallet client.BlockchainWallet,
 ) (ReadAccessController, error) {
-	address, _, instance, err := e.eth.DeployContract(fromWallet, "Read Access Controller", func(
-		auth *bind.TransactOpts,
-		backend bind.ContractBackend,
-	) (common.Address, *types.Transaction, interface{}, error) {
-		return ethereum.DeploySimpleReadAccessController(auth, backend)
-	})
+	address, _, instance, err := e.eth.DeployContract(
+		fromWallet,
+		"Read Access Controller",
+		common.FromHex(ethereum.SimpleReadAccessControllerBin),
+		func(auth *bind.TransactOpts, backend bind.ContractBackend) (common.Address, *types.Transaction, interface{}, error) {
+			return ethereum.DeploySimpleReadAccessController(auth, backend)
+		})
 	if err != nil {
 		return nil, err
 	}
@@ -137,13 +136,17 @@ func (e *EthereumContractDeployer) DeployFlags(
 	fromWallet client.BlockchainWallet,
 	rac string,
 ) (Flags, error) {
-	address, _, instance, err := e.eth.DeployContract(fromWallet, "Flags", func(
-		auth *bind.TransactOpts,
-		backend bind.ContractBackend,
-	) (common.Address, *types.Transaction, interface{}, error) {
-		racAddr := common.HexToAddress(rac)
-		return ethereum.DeployFlags(auth, backend, racAddr)
-	})
+	address, _, instance, err := e.eth.DeployContract(
+		fromWallet,
+		"Flags",
+		common.FromHex(ethereum.FlagsBin),
+		func(
+			auth *bind.TransactOpts,
+			backend bind.ContractBackend,
+		) (common.Address, *types.Transaction, interface{}, error) {
+			racAddr := common.HexToAddress(rac)
+			return ethereum.DeployFlags(auth, backend, racAddr)
+		})
 	if err != nil {
 		return nil, err
 	}
@@ -161,13 +164,17 @@ func (e *EthereumContractDeployer) DeployDeviationFlaggingValidator(
 	flags string,
 	flaggingThreshold *big.Int,
 ) (DeviationFlaggingValidator, error) {
-	address, _, instance, err := e.eth.DeployContract(fromWallet, "Deviation flagging validator", func(
-		auth *bind.TransactOpts,
-		backend bind.ContractBackend,
-	) (common.Address, *types.Transaction, interface{}, error) {
-		flagAddr := common.HexToAddress(flags)
-		return ethereum.DeployDeviationFlaggingValidator(auth, backend, flagAddr, flaggingThreshold)
-	})
+	address, _, instance, err := e.eth.DeployContract(
+		fromWallet,
+		"Deviation flagging validator",
+		common.FromHex(ethereum.DeviationFlaggingValidatorBin),
+		func(
+			auth *bind.TransactOpts,
+			backend bind.ContractBackend,
+		) (common.Address, *types.Transaction, interface{}, error) {
+			flagAddr := common.HexToAddress(flags)
+			return ethereum.DeployDeviationFlaggingValidator(auth, backend, flagAddr, flaggingThreshold)
+		})
 	if err != nil {
 		return nil, err
 	}
@@ -184,22 +191,26 @@ func (e *EthereumContractDeployer) DeployFluxAggregatorContract(
 	fromWallet client.BlockchainWallet,
 	fluxOptions FluxAggregatorOptions,
 ) (FluxAggregator, error) {
-	address, _, instance, err := e.eth.DeployContract(fromWallet, "Flux Aggregator", func(
-		auth *bind.TransactOpts,
-		backend bind.ContractBackend,
-	) (common.Address, *types.Transaction, interface{}, error) {
-		linkAddress := common.HexToAddress(e.eth.Network.Config().LinkTokenAddress)
-		return ethereum.DeployFluxAggregator(auth,
-			backend,
-			linkAddress,
-			fluxOptions.PaymentAmount,
-			fluxOptions.Timeout,
-			fluxOptions.Validator,
-			fluxOptions.MinSubValue,
-			fluxOptions.MaxSubValue,
-			fluxOptions.Decimals,
-			fluxOptions.Description)
-	})
+	address, _, instance, err := e.eth.DeployContract(
+		fromWallet,
+		"Flux Aggregator",
+		common.FromHex(ethereum.FluxAggregatorBin),
+		func(
+			auth *bind.TransactOpts,
+			backend bind.ContractBackend,
+		) (common.Address, *types.Transaction, interface{}, error) {
+			linkAddress := common.HexToAddress(e.eth.Network.Config().LinkTokenAddress)
+			return ethereum.DeployFluxAggregator(auth,
+				backend,
+				linkAddress,
+				fluxOptions.PaymentAmount,
+				fluxOptions.Timeout,
+				fluxOptions.Validator,
+				fluxOptions.MinSubValue,
+				fluxOptions.MaxSubValue,
+				fluxOptions.Decimals,
+				fluxOptions.Description)
+		})
 	if err != nil {
 		return nil, err
 	}
@@ -213,12 +224,16 @@ func (e *EthereumContractDeployer) DeployFluxAggregatorContract(
 
 // DeployLinkTokenContract deploys a Link Token contract to an EVM chain
 func (e *EthereumContractDeployer) DeployLinkTokenContract(fromWallet client.BlockchainWallet) (LinkToken, error) {
-	linkTokenAddress, _, instance, err := e.eth.DeployContract(fromWallet, "LINK Token", func(
-		auth *bind.TransactOpts,
-		backend bind.ContractBackend,
-	) (common.Address, *types.Transaction, interface{}, error) {
-		return ethereum.DeployLinkToken(auth, backend)
-	})
+	linkTokenAddress, _, instance, err := e.eth.DeployContract(
+		fromWallet,
+		"LINK Token",
+		common.FromHex(ethereum.LinkTokenBin),
+		func(
+			auth *bind.TransactOpts,
+			backend bind.ContractBackend,
+		) (common.Address, *types.Transaction, interface{}, error) {
+			return ethereum.DeployLinkToken(auth, backend)
+		})
 	if err != nil {
 		return nil, err
 	}
@@ -280,26 +295,30 @@ func (e *EthereumContractDeployer) DeployOffChainAggregator(
 	fromWallet client.BlockchainWallet,
 	offchainOptions OffchainOptions,
 ) (OffchainAggregator, error) {
-	address, _, instance, err := e.eth.DeployContract(fromWallet, "OffChain Aggregator", func(
-		auth *bind.TransactOpts,
-		backend bind.ContractBackend,
-	) (common.Address, *types.Transaction, interface{}, error) {
-		linkAddress := common.HexToAddress(e.eth.Network.Config().LinkTokenAddress)
-		return ethereum.DeployOffchainAggregator(auth,
-			backend,
-			offchainOptions.MaximumGasPrice,
-			offchainOptions.ReasonableGasPrice,
-			offchainOptions.MicroLinkPerEth,
-			offchainOptions.LinkGweiPerObservation,
-			offchainOptions.LinkGweiPerTransmission,
-			linkAddress,
-			offchainOptions.MinimumAnswer,
-			offchainOptions.MaximumAnswer,
-			offchainOptions.BillingAccessController,
-			offchainOptions.RequesterAccessController,
-			offchainOptions.Decimals,
-			offchainOptions.Description)
-	})
+	address, _, instance, err := e.eth.DeployContract(
+		fromWallet,
+		"OffChain Aggregator",
+		common.FromHex(ethereum.OffchainAggregatorBin),
+		func(
+			auth *bind.TransactOpts,
+			backend bind.ContractBackend,
+		) (common.Address, *types.Transaction, interface{}, error) {
+			linkAddress := common.HexToAddress(e.eth.Network.Config().LinkTokenAddress)
+			return ethereum.DeployOffchainAggregator(auth,
+				backend,
+				offchainOptions.MaximumGasPrice,
+				offchainOptions.ReasonableGasPrice,
+				offchainOptions.MicroLinkPerEth,
+				offchainOptions.LinkGweiPerObservation,
+				offchainOptions.LinkGweiPerTransmission,
+				linkAddress,
+				offchainOptions.MinimumAnswer,
+				offchainOptions.MaximumAnswer,
+				offchainOptions.BillingAccessController,
+				offchainOptions.RequesterAccessController,
+				offchainOptions.Decimals,
+				offchainOptions.Description)
+		})
 	if err != nil {
 		return nil, err
 	}
@@ -321,29 +340,42 @@ func (e *EthereumContractDeployer) Balance(fromWallet client.BlockchainWallet) (
 	return big.NewFloat(1).Quo(bf, client.OneEth), nil
 }
 
-// CalculateETHForTXs calculates required amount of ETH for N transactions based on network suggested gas price and tx gas limit
-func (e *EthereumContractDeployer) CalculateETHForTXs(fromWallet client.BlockchainWallet, networkConfig *config.NetworkConfig, txs int64) (*big.Float, error) {
-	txsLimit := networkConfig.TransactionLimit
-	gasPrice, err := e.eth.Client.SuggestGasPrice(context.Background())
+// CalculateETHForChainlinkOperations calculates required amount of ETH for amountOfOperations Chainlink operations
+// based on the network's suggested gas price and the chainlink gas limit. This is fairly imperfect and should be used
+// as only a rough, upper-end estimate instead of an exact calculation.
+// See https://ethereum.org/en/developers/docs/gas/#post-london for info on how gas calculation works
+func (e *EthereumContractDeployer) CalculateETHForChainlinkOperations(amountOfOperations int) (*big.Float, error) {
+	bigAmountOfOperations := big.NewInt(int64(amountOfOperations))
+	gasPriceInWei, err := e.eth.Client.SuggestGasPrice(context.Background())
 	if err != nil {
 		return nil, err
 	}
-	gpFloat := big.NewFloat(1).SetInt(gasPrice)
-	oneGWei := big.NewFloat(1).SetInt(client.OneGWei)
-	gpGWei := big.NewFloat(1).Quo(gpFloat, oneGWei)
-	log.Debug().Str("Gas price (GWei)", gpGWei.String()).Msg("Suggested gas price")
-	txl := big.NewFloat(1).SetUint64(txsLimit)
-	oneTx := big.NewFloat(1).Mul(txl, gpFloat)
-	transactions := big.NewFloat(1).SetInt64(txs)
-	totalWei := big.NewFloat(1).Mul(oneTx, transactions)
-	totalETH := big.NewFloat(1).Quo(totalWei, client.OneEth)
-	log.Debug().Str("ETH", totalETH.String()).Int64("TXs", txs).Msg("Calculated required ETH")
-	return totalETH, nil
+
+	// https://ethereum.stackexchange.com/questions/19665/how-to-calculate-transaction-fee
+	// total gas limit = chainlink gas limit + gas limit buffer
+	gasLimit := e.eth.Network.Config().GasEstimationBuffer + e.eth.Network.Config().ChainlinkGasLimit
+	// gas cost for TX = total gas limit * estimated gas price
+	gasCostPerOperationWei := big.NewInt(1).Mul(big.NewInt(1).SetUint64(gasLimit), gasPriceInWei)
+	gasCostPerOperationWeiFloat := big.NewFloat(1).SetInt(gasCostPerOperationWei)
+	gasCostPerOperationETH := big.NewFloat(1).Quo(gasCostPerOperationWeiFloat, client.OneEth)
+	// total Wei needed for all TXs = total value for TX * number of TXs
+	totalWeiForAllOperations := big.NewInt(1).Mul(gasCostPerOperationWei, bigAmountOfOperations)
+	totalWeiForAllOperationsFloat := big.NewFloat(1).SetInt(totalWeiForAllOperations)
+	totalEthForAllOperations := big.NewFloat(1).Quo(totalWeiForAllOperationsFloat, client.OneEth)
+
+	log.Debug().
+		Int("Number of Operations", amountOfOperations).
+		Uint64("Gas Limit per Operation", gasLimit).
+		Str("Value per Operation (ETH)", gasCostPerOperationETH.String()).
+		Str("Total (ETH)", totalEthForAllOperations.String()).
+		Msg("Calculated ETH for Chainlink Operations")
+
+	return totalEthForAllOperations, nil
 }
 
 // DeployStorageContract deploys a vanilla storage contract that is a value store
 func (e *EthereumContractDeployer) DeployStorageContract(fromWallet client.BlockchainWallet) (Storage, error) {
-	_, _, instance, err := e.eth.DeployContract(fromWallet, "Storage", func(
+	_, _, instance, err := e.eth.DeployContract(fromWallet, "Storage", common.FromHex(ethereum.StoreBin), func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -361,7 +393,7 @@ func (e *EthereumContractDeployer) DeployStorageContract(fromWallet client.Block
 
 // DeployAPIConsumer deploys api consumer for oracle
 func (e *EthereumContractDeployer) DeployAPIConsumer(fromWallet client.BlockchainWallet, linkAddr string) (APIConsumer, error) {
-	addr, _, instance, err := e.eth.DeployContract(fromWallet, "APIConsumer", func(
+	addr, _, instance, err := e.eth.DeployContract(fromWallet, "APIConsumer", common.FromHex(ethereum.APIConsumerBin), func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -380,7 +412,7 @@ func (e *EthereumContractDeployer) DeployAPIConsumer(fromWallet client.Blockchai
 
 // DeployOracle deploys oracle for consumer test
 func (e *EthereumContractDeployer) DeployOracle(fromWallet client.BlockchainWallet, linkAddr string) (Oracle, error) {
-	addr, _, instance, err := e.eth.DeployContract(fromWallet, "Oracle", func(
+	addr, _, instance, err := e.eth.DeployContract(fromWallet, "Oracle", common.FromHex(ethereum.OracleBin), func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -399,7 +431,7 @@ func (e *EthereumContractDeployer) DeployOracle(fromWallet client.BlockchainWall
 
 // DeployVRFContract deploy VRF contract
 func (e *EthereumContractDeployer) DeployVRFContract(fromWallet client.BlockchainWallet) (VRF, error) {
-	address, _, instance, err := e.eth.DeployContract(fromWallet, "VRF", func(
+	address, _, instance, err := e.eth.DeployContract(fromWallet, "VRF", common.FromHex(ethereum.VRFBin), func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -417,12 +449,16 @@ func (e *EthereumContractDeployer) DeployVRFContract(fromWallet client.Blockchai
 }
 
 func (e *EthereumContractDeployer) DeployMockETHLINKFeed(fromWallet client.BlockchainWallet, answer *big.Int) (MockETHLINKFeed, error) {
-	address, _, instance, err := e.eth.DeployContract(fromWallet, "MockETHLINKFeed", func(
-		auth *bind.TransactOpts,
-		backend bind.ContractBackend,
-	) (common.Address, *types.Transaction, interface{}, error) {
-		return ethereum.DeployMockETHLINKAggregator(auth, backend, answer)
-	})
+	address, _, instance, err := e.eth.DeployContract(
+		fromWallet,
+		"MockETHLINKFeed",
+		common.FromHex(ethereum.MockETHLINKAggregatorBin),
+		func(
+			auth *bind.TransactOpts,
+			backend bind.ContractBackend,
+		) (common.Address, *types.Transaction, interface{}, error) {
+			return ethereum.DeployMockETHLINKAggregator(auth, backend, answer)
+		})
 	if err != nil {
 		return nil, err
 	}
@@ -435,12 +471,16 @@ func (e *EthereumContractDeployer) DeployMockETHLINKFeed(fromWallet client.Block
 }
 
 func (e *EthereumContractDeployer) DeployMockGasFeed(fromWallet client.BlockchainWallet, answer *big.Int) (MockGasFeed, error) {
-	address, _, instance, err := e.eth.DeployContract(fromWallet, "MockGasFeed", func(
-		auth *bind.TransactOpts,
-		backend bind.ContractBackend,
-	) (common.Address, *types.Transaction, interface{}, error) {
-		return ethereum.DeployMockGASAggregator(auth, backend, answer)
-	})
+	address, _, instance, err := e.eth.DeployContract(
+		fromWallet,
+		"MockGasFeed",
+		common.FromHex(ethereum.MockGASAggregatorBin),
+		func(
+			auth *bind.TransactOpts,
+			backend bind.ContractBackend,
+		) (common.Address, *types.Transaction, interface{}, error) {
+			return ethereum.DeployMockGASAggregator(auth, backend, answer)
+		})
 	if err != nil {
 		return nil, err
 	}
@@ -453,12 +493,16 @@ func (e *EthereumContractDeployer) DeployMockGasFeed(fromWallet client.Blockchai
 }
 
 func (e *EthereumContractDeployer) DeployUpkeepRegistrationRequests(fromWallet client.BlockchainWallet, linkAddr string, minLinkJuels *big.Int) (UpkeepRegistrar, error) {
-	address, _, instance, err := e.eth.DeployContract(fromWallet, "UpkeepRegistrationRequests", func(
-		auth *bind.TransactOpts,
-		backend bind.ContractBackend,
-	) (common.Address, *types.Transaction, interface{}, error) {
-		return ethereum.DeployUpkeepRegistrationRequests(auth, backend, common.HexToAddress(linkAddr), minLinkJuels)
-	})
+	address, _, instance, err := e.eth.DeployContract(
+		fromWallet,
+		"UpkeepRegistrationRequests",
+		common.FromHex(ethereum.UpkeepRegistrationRequestsBin),
+		func(
+			auth *bind.TransactOpts,
+			backend bind.ContractBackend,
+		) (common.Address, *types.Transaction, interface{}, error) {
+			return ethereum.DeployUpkeepRegistrationRequests(auth, backend, common.HexToAddress(linkAddr), minLinkJuels)
+		})
 	if err != nil {
 		return nil, err
 	}
@@ -474,25 +518,29 @@ func (e *EthereumContractDeployer) DeployKeeperRegistry(
 	fromWallet client.BlockchainWallet,
 	opts *KeeperRegistryOpts,
 ) (KeeperRegistry, error) {
-	address, _, instance, err := e.eth.DeployContract(fromWallet, "KeeperRegistry", func(
-		auth *bind.TransactOpts,
-		backend bind.ContractBackend,
-	) (common.Address, *types.Transaction, interface{}, error) {
-		return ethereum.DeployKeeperRegistry(
-			auth,
-			backend,
-			common.HexToAddress(opts.LinkAddr),
-			common.HexToAddress(opts.ETHFeedAddr),
-			common.HexToAddress(opts.GasFeedAddr),
-			opts.PaymentPremiumPPB,
-			opts.BlockCountPerTurn,
-			opts.CheckGasLimit,
-			opts.StalenessSeconds,
-			opts.GasCeilingMultiplier,
-			opts.FallbackGasPrice,
-			opts.FallbackLinkPrice,
-		)
-	})
+	address, _, instance, err := e.eth.DeployContract(
+		fromWallet,
+		"KeeperRegistry",
+		common.FromHex(ethereum.KeeperRegistryBin),
+		func(
+			auth *bind.TransactOpts,
+			backend bind.ContractBackend,
+		) (common.Address, *types.Transaction, interface{}, error) {
+			return ethereum.DeployKeeperRegistry(
+				auth,
+				backend,
+				common.HexToAddress(opts.LinkAddr),
+				common.HexToAddress(opts.ETHFeedAddr),
+				common.HexToAddress(opts.GasFeedAddr),
+				opts.PaymentPremiumPPB,
+				opts.BlockCountPerTurn,
+				opts.CheckGasLimit,
+				opts.StalenessSeconds,
+				opts.GasCeilingMultiplier,
+				opts.FallbackGasPrice,
+				opts.FallbackLinkPrice,
+			)
+		})
 	if err != nil {
 		return nil, err
 	}
@@ -505,12 +553,16 @@ func (e *EthereumContractDeployer) DeployKeeperRegistry(
 }
 
 func (e *EthereumContractDeployer) DeployKeeperConsumer(fromWallet client.BlockchainWallet, updateInterval *big.Int) (KeeperConsumer, error) {
-	address, _, instance, err := e.eth.DeployContract(fromWallet, "KeeperConsumer", func(
-		auth *bind.TransactOpts,
-		backend bind.ContractBackend,
-	) (common.Address, *types.Transaction, interface{}, error) {
-		return ethereum.DeployKeeperConsumer(auth, backend, updateInterval)
-	})
+	address, _, instance, err := e.eth.DeployContract(
+		fromWallet,
+		"KeeperConsumer",
+		common.FromHex(ethereum.KeeperConsumerBin),
+		func(
+			auth *bind.TransactOpts,
+			backend bind.ContractBackend,
+		) (common.Address, *types.Transaction, interface{}, error) {
+			return ethereum.DeployKeeperConsumer(auth, backend, updateInterval)
+		})
 	if err != nil {
 		return nil, err
 	}
@@ -524,12 +576,16 @@ func (e *EthereumContractDeployer) DeployKeeperConsumer(fromWallet client.Blockc
 
 // DeployBlockhashStore deploys blockhash store used with VRF contract
 func (e *EthereumContractDeployer) DeployBlockhashStore(fromWallet client.BlockchainWallet) (BlockHashStore, error) {
-	address, _, instance, err := e.eth.DeployContract(fromWallet, "BlockhashStore", func(
-		auth *bind.TransactOpts,
-		backend bind.ContractBackend,
-	) (common.Address, *types.Transaction, interface{}, error) {
-		return ethereum.DeployBlockhashStore(auth, backend)
-	})
+	address, _, instance, err := e.eth.DeployContract(
+		fromWallet,
+		"BlockhashStore",
+		common.FromHex(ethereum.BlockhashStoreBin),
+		func(
+			auth *bind.TransactOpts,
+			backend bind.ContractBackend,
+		) (common.Address, *types.Transaction, interface{}, error) {
+			return ethereum.DeployBlockhashStore(auth, backend)
+		})
 	if err != nil {
 		return nil, err
 	}
@@ -543,12 +599,16 @@ func (e *EthereumContractDeployer) DeployBlockhashStore(fromWallet client.Blockc
 
 // DeployVRFCoordinator deploys VRF coordinator contract
 func (e *EthereumContractDeployer) DeployVRFCoordinator(fromWallet client.BlockchainWallet, linkAddr string, bhsAddr string) (VRFCoordinator, error) {
-	address, _, instance, err := e.eth.DeployContract(fromWallet, "VRFCoordinator", func(
-		auth *bind.TransactOpts,
-		backend bind.ContractBackend,
-	) (common.Address, *types.Transaction, interface{}, error) {
-		return ethereum.DeployVRFCoordinator(auth, backend, common.HexToAddress(linkAddr), common.HexToAddress(bhsAddr))
-	})
+	address, _, instance, err := e.eth.DeployContract(
+		fromWallet,
+		"VRFCoordinator",
+		common.FromHex(ethereum.VRFCoordinatorBin),
+		func(
+			auth *bind.TransactOpts,
+			backend bind.ContractBackend,
+		) (common.Address, *types.Transaction, interface{}, error) {
+			return ethereum.DeployVRFCoordinator(auth, backend, common.HexToAddress(linkAddr), common.HexToAddress(bhsAddr))
+		})
 	if err != nil {
 		return nil, err
 	}
@@ -562,12 +622,16 @@ func (e *EthereumContractDeployer) DeployVRFCoordinator(fromWallet client.Blockc
 
 // DeployVRFConsumer deploys VRF consumer contract
 func (e *EthereumContractDeployer) DeployVRFConsumer(fromWallet client.BlockchainWallet, linkAddr string, coordinatorAddr string) (VRFConsumer, error) {
-	address, _, instance, err := e.eth.DeployContract(fromWallet, "VRFConsumer", func(
-		auth *bind.TransactOpts,
-		backend bind.ContractBackend,
-	) (common.Address, *types.Transaction, interface{}, error) {
-		return ethereum.DeployVRFConsumer(auth, backend, common.HexToAddress(coordinatorAddr), common.HexToAddress(linkAddr))
-	})
+	address, _, instance, err := e.eth.DeployContract(
+		fromWallet,
+		"VRFConsumer",
+		common.FromHex(ethereum.VRFConsumerBin),
+		func(
+			auth *bind.TransactOpts,
+			backend bind.ContractBackend,
+		) (common.Address, *types.Transaction, interface{}, error) {
+			return ethereum.DeployVRFConsumer(auth, backend, common.HexToAddress(coordinatorAddr), common.HexToAddress(linkAddr))
+		})
 	if err != nil {
 		return nil, err
 	}

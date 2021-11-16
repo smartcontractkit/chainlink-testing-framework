@@ -38,6 +38,8 @@ spec:
           value: {{ .DefaultNetwork.ClusterURL }}
         - name: ETH_CHAIN_ID
           value: {{ .DefaultNetwork.ChainID }}
+        - name: ETH_GAS_LIMIT_DEFAULT
+          value: {{ .DefaultNetwork.ChainlinkGasLimit }}
         - name: ALLOW_ORIGINS
           value: '*'
         - name: CHAINLINK_DEV

@@ -3,10 +3,11 @@ package smoke
 import (
 	"context"
 	"fmt"
-	"github.com/smartcontractkit/integrations-framework/hooks"
-	"github.com/smartcontractkit/integrations-framework/utils"
 	"math/big"
 	"strings"
+
+	"github.com/smartcontractkit/integrations-framework/hooks"
+	"github.com/smartcontractkit/integrations-framework/utils"
 
 	"github.com/ethereum/go-ethereum/common"
 	. "github.com/onsi/ginkgo"
@@ -52,7 +53,7 @@ var _ = Describe("Direct request suite @runlog", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			nodeAddresses, err = actions.ChainlinkNodeAddresses(nodes)
 			Expect(err).ShouldNot(HaveOccurred())
-			ethAmount, err := networkInfo.Deployer.CalculateETHForTXs(networkInfo.Wallets.Default(), networkInfo.Network.Config(), 1)
+			ethAmount, err := networkInfo.Deployer.CalculateETHForChainlinkOperations(1)
 			Expect(err).ShouldNot(HaveOccurred())
 			err = actions.FundChainlinkNodes(nodes, networkInfo.Client, networkInfo.Wallets.Default(), ethAmount, nil)
 			Expect(err).ShouldNot(HaveOccurred())

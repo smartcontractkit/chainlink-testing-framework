@@ -37,7 +37,7 @@ func (e *EthereumOracle) Fund(fromWallet client.BlockchainWallet, ethAmount, lin
 
 // SetFulfillmentPermission sets fulfillment permission for particular address
 func (e *EthereumOracle) SetFulfillmentPermission(fromWallet client.BlockchainWallet, address string, allowed bool) error {
-	opts, err := e.client.TransactionOpts(fromWallet, *e.address, big.NewInt(0), nil)
+	opts, err := e.client.TransactionOpts(fromWallet)
 	if err != nil {
 		return err
 	}
@@ -120,7 +120,7 @@ func (e *EthereumAPIConsumer) CreateRequestTo(
 	path string,
 	times *big.Int,
 ) error {
-	opts, err := e.client.TransactionOpts(fromWallet, *e.address, big.NewInt(0), nil)
+	opts, err := e.client.TransactionOpts(fromWallet)
 	if err != nil {
 		return err
 	}
@@ -149,7 +149,7 @@ func (f *EthereumFluxAggregator) Fund(fromWallet client.BlockchainWallet, ethAmo
 }
 
 func (f *EthereumFluxAggregator) UpdateAvailableFunds(ctx context.Context, fromWallet client.BlockchainWallet) error {
-	opts, err := f.client.TransactionOpts(fromWallet, *f.address, big.NewInt(0), nil)
+	opts, err := f.client.TransactionOpts(fromWallet)
 	if err != nil {
 		return err
 	}
@@ -174,7 +174,7 @@ func (f *EthereumFluxAggregator) PaymentAmount(ctx context.Context) (*big.Int, e
 }
 
 func (f *EthereumFluxAggregator) RequestNewRound(ctx context.Context, fromWallet client.BlockchainWallet) error {
-	opts, err := f.client.TransactionOpts(fromWallet, *f.address, big.NewInt(0), nil)
+	opts, err := f.client.TransactionOpts(fromWallet)
 	if err != nil {
 		return err
 	}
@@ -213,7 +213,7 @@ func (f *EthereumFluxAggregator) WatchSubmissionReceived(ctx context.Context, ev
 }
 
 func (f *EthereumFluxAggregator) SetRequesterPermissions(ctx context.Context, fromWallet client.BlockchainWallet, addr common.Address, authorized bool, roundsDelay uint32) error {
-	opts, err := f.client.TransactionOpts(fromWallet, *f.address, big.NewInt(0), nil)
+	opts, err := f.client.TransactionOpts(fromWallet)
 	if err != nil {
 		return err
 	}
@@ -261,7 +261,7 @@ func (f *EthereumFluxAggregator) WithdrawPayment(
 	from common.Address,
 	to common.Address,
 	amount *big.Int) error {
-	opts, err := f.client.TransactionOpts(caller, *f.address, big.NewInt(0), nil)
+	opts, err := f.client.TransactionOpts(caller)
 	if err != nil {
 		return err
 	}
@@ -339,7 +339,7 @@ func (f *EthereumFluxAggregator) GetContractData(ctx context.Context) (*FluxAggr
 func (f *EthereumFluxAggregator) SetOracles(
 	fromWallet client.BlockchainWallet,
 	o FluxAggregatorSetOraclesOptions) error {
-	opts, err := f.client.TransactionOpts(fromWallet, *f.address, big.NewInt(0), nil)
+	opts, err := f.client.TransactionOpts(fromWallet)
 	if err != nil {
 		return err
 	}
@@ -533,7 +533,7 @@ func (l *EthereumLinkToken) Address() string {
 }
 
 func (l *EthereumLinkToken) Approve(fromWallet client.BlockchainWallet, to string, amount *big.Int) error {
-	opts, err := l.client.TransactionOpts(fromWallet, l.address, big.NewInt(0), nil)
+	opts, err := l.client.TransactionOpts(fromWallet)
 	if err != nil {
 		return err
 	}
@@ -545,7 +545,7 @@ func (l *EthereumLinkToken) Approve(fromWallet client.BlockchainWallet, to strin
 }
 
 func (l *EthereumLinkToken) Transfer(fromWallet client.BlockchainWallet, to string, amount *big.Int) error {
-	opts, err := l.client.TransactionOpts(fromWallet, l.address, big.NewInt(0), nil)
+	opts, err := l.client.TransactionOpts(fromWallet)
 	if err != nil {
 		return err
 	}
@@ -557,7 +557,7 @@ func (l *EthereumLinkToken) Transfer(fromWallet client.BlockchainWallet, to stri
 }
 
 func (l *EthereumLinkToken) TransferAndCall(fromWallet client.BlockchainWallet, to string, amount *big.Int, data []byte) error {
-	opts, err := l.client.TransactionOpts(fromWallet, l.address, big.NewInt(0), nil)
+	opts, err := l.client.TransactionOpts(fromWallet)
 	if err != nil {
 		return err
 	}
@@ -605,7 +605,7 @@ func (o *EthereumOffchainAggregator) SetPayees(
 	fromWallet client.BlockchainWallet,
 	transmitters, payees []common.Address,
 ) error {
-	opts, err := o.client.TransactionOpts(fromWallet, *o.address, big.NewInt(0), nil)
+	opts, err := o.client.TransactionOpts(fromWallet)
 	if err != nil {
 		return err
 	}
@@ -689,7 +689,7 @@ func (o *EthereumOffchainAggregator) SetConfig(
 	}
 
 	// Set Payees
-	opts, err := o.client.TransactionOpts(fromWallet, *o.address, big.NewInt(0), nil)
+	opts, err := o.client.TransactionOpts(fromWallet)
 	if err != nil {
 		return err
 	}
@@ -702,7 +702,7 @@ func (o *EthereumOffchainAggregator) SetConfig(
 	}
 
 	// Set Config
-	opts, err = o.client.TransactionOpts(fromWallet, *o.address, big.NewInt(0), nil)
+	opts, err = o.client.TransactionOpts(fromWallet)
 	if err != nil {
 		return err
 	}
@@ -715,7 +715,7 @@ func (o *EthereumOffchainAggregator) SetConfig(
 
 // RequestNewRound requests the OCR contract to create a new round
 func (o *EthereumOffchainAggregator) RequestNewRound(fromWallet client.BlockchainWallet) error {
-	opts, err := o.client.TransactionOpts(fromWallet, *o.address, big.NewInt(0), nil)
+	opts, err := o.client.TransactionOpts(fromWallet)
 	if err != nil {
 		return err
 	}
@@ -945,7 +945,7 @@ type EthereumStorage struct {
 
 // Set sets a value in the storage contract
 func (e *EthereumStorage) Set(value *big.Int) error {
-	opts, err := e.client.TransactionOpts(e.callerWallet, common.Address{}, big.NewInt(0), nil)
+	opts, err := e.client.TransactionOpts(e.callerWallet)
 	if err != nil {
 		return err
 	}
@@ -1031,7 +1031,7 @@ func (v *EthereumKeeperRegistry) Fund(fromWallet client.BlockchainWallet, ethAmo
 }
 
 func (v *EthereumKeeperRegistry) SetRegistrar(fromWallet client.BlockchainWallet, registrarAddr string) error {
-	opts, err := v.client.TransactionOpts(fromWallet, *v.address, big.NewInt(0), nil)
+	opts, err := v.client.TransactionOpts(fromWallet)
 	if err != nil {
 		return err
 	}
@@ -1044,7 +1044,7 @@ func (v *EthereumKeeperRegistry) SetRegistrar(fromWallet client.BlockchainWallet
 
 // AddUpkeepFunds adds link for particular upkeep id
 func (v *EthereumKeeperRegistry) AddUpkeepFunds(fromWallet client.BlockchainWallet, id *big.Int, amount *big.Int) error {
-	opts, err := v.client.TransactionOpts(fromWallet, *v.address, big.NewInt(0), nil)
+	opts, err := v.client.TransactionOpts(fromWallet)
 	if err != nil {
 		return err
 	}
@@ -1098,7 +1098,7 @@ func (v *EthereumKeeperRegistry) GetKeeperInfo(ctx context.Context, keeperAddr s
 }
 
 func (v *EthereumKeeperRegistry) SetKeepers(fromWallet client.BlockchainWallet, keepers []string, payees []string) error {
-	opts, err := v.client.TransactionOpts(fromWallet, *v.address, big.NewInt(0), nil)
+	opts, err := v.client.TransactionOpts(fromWallet)
 	if err != nil {
 		return err
 	}
@@ -1122,7 +1122,7 @@ func (v *EthereumKeeperRegistry) SetKeepers(fromWallet client.BlockchainWallet, 
 
 // RegisterUpkeep registers contract to perform upkeep
 func (v *EthereumKeeperRegistry) RegisterUpkeep(fromWallet client.BlockchainWallet, target string, gasLimit uint32, admin string, checkData []byte) error {
-	opts, err := v.client.TransactionOpts(fromWallet, *v.address, big.NewInt(0), nil)
+	opts, err := v.client.TransactionOpts(fromWallet)
 	if err != nil {
 		return err
 	}
@@ -1204,7 +1204,7 @@ func (v *EthereumUpkeepRegistrationRequests) SetRegistrarConfig(
 	registryAddr string,
 	minLinkJuels *big.Int,
 ) error {
-	opts, err := v.client.TransactionOpts(fromWallet, *v.address, big.NewInt(0), nil)
+	opts, err := v.client.TransactionOpts(fromWallet)
 	if err != nil {
 		return err
 	}
@@ -1295,7 +1295,7 @@ func (v *EthereumVRFCoordinator) RegisterProvingKey(
 	publicProvingKey [2]*big.Int,
 	jobID [32]byte,
 ) error {
-	opts, err := v.client.TransactionOpts(fromWallet, *v.address, big.NewInt(0), nil)
+	opts, err := v.client.TransactionOpts(fromWallet)
 	if err != nil {
 		return err
 	}
@@ -1323,7 +1323,7 @@ func (v *EthereumVRFConsumer) Fund(fromWallet client.BlockchainWallet, ethAmount
 }
 
 func (v *EthereumVRFConsumer) RequestRandomness(fromWallet client.BlockchainWallet, hash [32]byte, fee *big.Int) error {
-	opts, err := v.client.TransactionOpts(fromWallet, *v.address, big.NewInt(0), nil)
+	opts, err := v.client.TransactionOpts(fromWallet)
 	if err != nil {
 		return err
 	}
@@ -1391,7 +1391,7 @@ type EthereumReadAccessController struct {
 
 // AddAccess grants access to particular address to raise a flag
 func (e *EthereumReadAccessController) AddAccess(fromWallet client.BlockchainWallet, addr string) error {
-	opts, err := e.client.TransactionOpts(fromWallet, *e.address, big.NewInt(0), nil)
+	opts, err := e.client.TransactionOpts(fromWallet)
 	if err != nil {
 		return err
 	}
@@ -1405,7 +1405,7 @@ func (e *EthereumReadAccessController) AddAccess(fromWallet client.BlockchainWal
 
 // DisableAccessCheck disables all access checks
 func (e *EthereumReadAccessController) DisableAccessCheck(fromWallet client.BlockchainWallet) error {
-	opts, err := e.client.TransactionOpts(fromWallet, *e.address, big.NewInt(0), nil)
+	opts, err := e.client.TransactionOpts(fromWallet)
 	if err != nil {
 		return err
 	}

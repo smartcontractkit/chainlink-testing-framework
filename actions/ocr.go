@@ -3,11 +3,12 @@ package actions
 import (
 	"context"
 	"fmt"
-	"github.com/smartcontractkit/integrations-framework/hooks"
-	"github.com/smartcontractkit/integrations-framework/utils"
 	"math/big"
 	"os"
 	"time"
+
+	"github.com/smartcontractkit/integrations-framework/hooks"
+	"github.com/smartcontractkit/integrations-framework/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -28,7 +29,7 @@ type OCRSetupInputs struct {
 }
 
 // DeployOCRForEnv deploys the environment
-func DeployOCRForEnv(i *OCRSetupInputs, envInit environment.K8sEnvSpecInit) func() {
+func DeployOCRForEnv(i *OCRSetupInputs, envInit environment.K8sEnvSpecInit, configLocation string) func() {
 	return func() {
 		var err error
 		i.SuiteSetup, err = SingleNetworkSetup(
@@ -36,7 +37,7 @@ func DeployOCRForEnv(i *OCRSetupInputs, envInit environment.K8sEnvSpecInit) func
 			hooks.EVMNetworkFromConfigHook,
 			hooks.EthereumDeployerHook,
 			hooks.EthereumClientHook,
-			utils.ProjectRoot,
+			configLocation,
 		)
 		Expect(err).ShouldNot(HaveOccurred())
 		i.Mockserver, err = environment.GetMockserverClientFromEnv(i.SuiteSetup.Environment())
@@ -77,11 +78,7 @@ func DeployOCRContracts(i *OCRSetupInputs, nrOfOCRContracts int) func() {
 // FundNodes funds all chainlink nodes
 func FundNodes(i *OCRSetupInputs) func() {
 	return func() {
-		ethAmount, err := i.NetworkInfo.Deployer.CalculateETHForTXs(
-			i.NetworkInfo.Wallets.Default(),
-			i.NetworkInfo.Network.Config(),
-			2,
-		)
+		ethAmount, err := i.NetworkInfo.Deployer.CalculateETHForChainlinkOperations(2)
 		Expect(err).ShouldNot(HaveOccurred())
 		err = FundChainlinkNodes(
 			i.ChainlinkNodes,
@@ -242,6 +239,7 @@ func NewOCRSetupInputForObservability(i *OCRSetupInputs, nodeCount int, contract
 		DeployOCRForEnv(
 			i,
 			environment.NewChainlinkClusterForObservabilityTesting(nodeCount),
+			utils.ProjectRoot,
 		))
 	By("Funding nodes", FundNodes(i))
 	By("Deploying OCR contracts", DeployOCRContracts(i, contractCount))
@@ -267,6 +265,7 @@ func NewOCRSetupInputForAtlas(i *OCRSetupInputs, nodeCount int, contractCount in
 		DeployOCRForEnv(
 			i,
 			environment.NewChainlinkClusterForAtlasTesting(nodeCount),
+			utils.ProjectRoot,
 		))
 
 	err := i.SuiteSetup.Environment().DeploySpecs(environment.AtlasEvmBlocksGroup())
