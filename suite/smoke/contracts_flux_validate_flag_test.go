@@ -21,7 +21,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/environment"
 )
 
-var _ = FDescribe("Flux monitor external validator suite @validator-flux", func() {
+var _ = Describe("Flux monitor external validator suite @validator-flux", func() {
 	var (
 		suiteSetup         actions.SuiteSetup
 		networkInfo        actions.NetworkInfo
@@ -132,6 +132,7 @@ var _ = FDescribe("Flux monitor external validator suite @validator-flux", func(
 					ContractAddress:   fluxInstance.Address(),
 					PollTimerPeriod:   15 * time.Second, // min 15s
 					PollTimerDisabled: false,
+					IdleTimerPeriod:   30 * time.Second,
 					ObservationSource: client.ObservationSourceSpecHTTP(fmt.Sprintf("%s/variable", mockserver.Config.ClusterURL)),
 				}
 				_, err = n.CreateJob(fluxSpec)
@@ -145,7 +146,7 @@ var _ = FDescribe("Flux monitor external validator suite @validator-flux", func(
 			err = mockserver.SetVariable(1e7)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			fluxRoundConfirmer = contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(1), fluxRoundTimeout)
+			fluxRoundConfirmer = contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(2), fluxRoundTimeout)
 			networkInfo.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRoundConfirmer)
 			err = networkInfo.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -156,7 +157,7 @@ var _ = FDescribe("Flux monitor external validator suite @validator-flux", func(
 
 			err = mockserver.SetVariable(1e8)
 			Expect(err).ShouldNot(HaveOccurred())
-			fluxRoundConfirmer = contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(2), fluxRoundTimeout)
+			fluxRoundConfirmer = contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(3), fluxRoundTimeout)
 			networkInfo.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRoundConfirmer)
 			err = networkInfo.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
