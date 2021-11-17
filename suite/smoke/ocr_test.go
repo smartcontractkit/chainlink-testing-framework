@@ -25,6 +25,7 @@ var _ = XDescribe("OCR Feed @ocr", func() {
 		ocr             contracts.OffchainAggregator
 		ocrRoundTimeout = 2 * time.Minute
 		cls             []client.Chainlink
+		adapterPath     string
 		mockserver      *client.MockserverClient
 		e               *environment.Environment
 	)
@@ -64,8 +65,6 @@ var _ = XDescribe("OCR Feed @ocr", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			err = lt.Transfer(ocr.Address(), big.NewInt(2e18))
 			Expect(err).ShouldNot(HaveOccurred())
-			//err = OCRInstance.Fund(i.DefaultWallet, nil, big.NewFloat(2))
-			//Expect(err).ShouldNot(HaveOccurred())
 			err = nets.Default.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
@@ -83,6 +82,10 @@ var _ = XDescribe("OCR Feed @ocr", func() {
 			_, err = bootstrapNode.CreateJob(bootstrapSpec)
 			Expect(err).ShouldNot(HaveOccurred())
 
+			uuid := uuid.NewV4().String()
+			adapterPath = fmt.Sprintf("/variable_%s", uuid)
+			adapterURL := fmt.Sprintf("%s%s", mockserver.Config.ClusterURL, adapterPath)
+
 			for nodeIndex := 1; nodeIndex < len(cls); nodeIndex++ {
 				nodeP2PIds, err := cls[nodeIndex].ReadP2PKeys()
 				Expect(err).ShouldNot(HaveOccurred())
@@ -93,10 +96,9 @@ var _ = XDescribe("OCR Feed @ocr", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 				nodeOCRKeyId := nodeOCRKeys.Data[0].ID
 
-				uuid := uuid.NewV4().String()
 				bta := client.BridgeTypeAttributes{
-					Name: fmt.Sprintf("node_%d_contract_%s", nodeIndex, uuid),
-					URL:  fmt.Sprintf("%s/node_%d_contract_%s", mockserver.Config.ClusterURL, nodeIndex, uuid),
+					Name: fmt.Sprintf("variable_%s", uuid),
+					URL:  adapterURL,
 				}
 
 				err = cls[nodeIndex].CreateBridge(&bta)
@@ -118,13 +120,12 @@ var _ = XDescribe("OCR Feed @ocr", func() {
 
 	Describe("with OCR job", func() {
 		It("performs two rounds", func() {
-			err = mockserver.SetVariable(5)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			err = ocr.RequestNewRound()
-			Expect(err).ShouldNot(HaveOccurred())
 			ocrRound := contracts.NewOffchainAggregatorRoundConfirmer(ocr, big.NewInt(1), ocrRoundTimeout)
 			nets.Default.AddHeaderEventSubscription(ocr.Address(), ocrRound)
+			err = mockserver.SetValuePath(adapterPath, 5)
+			Expect(err).ShouldNot(HaveOccurred())
+			err = ocr.RequestNewRound()
+			Expect(err).ShouldNot(HaveOccurred())
 			err = nets.Default.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 
@@ -132,7 +133,7 @@ var _ = XDescribe("OCR Feed @ocr", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(answer.Int64()).Should(Equal(int64(5)), "latest answer from OCR is not as expected")
 
-			err = mockserver.SetVariable(10)
+			err = mockserver.SetValuePath(adapterPath, 10)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			err = ocr.RequestNewRound()

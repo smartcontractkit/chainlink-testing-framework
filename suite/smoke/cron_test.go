@@ -23,7 +23,7 @@ var _ = Describe("Cronjob suite @cron", func() {
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			e, err = environment.NewEnvironmentFromPreset(filepath.Join(utils.PresetRoot, "chainlink-cluster-6"))
+			e, err = environment.NewEnvironmentFromPreset(filepath.Join(utils.PresetRoot, "chainlink-cluster-3"))
 			Expect(err).ShouldNot(HaveOccurred())
 			err = e.Connect()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -35,7 +35,7 @@ var _ = Describe("Cronjob suite @cron", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("Adding cron job to a node", func() {
-			err = mockserver.SetVariable(5)
+			err = mockserver.SetValuePath("/variable", 5)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			bta := client.BridgeTypeAttributes{

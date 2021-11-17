@@ -61,7 +61,6 @@ func (e *EthereumAPIConsumer) Address() string {
 func (e *EthereumAPIConsumer) RoundID(ctx context.Context) (*big.Int, error) {
 	opts := &bind.CallOpts{
 		From:    common.HexToAddress(e.client.DefaultWallet.Address()),
-		Pending: true,
 		Context: ctx,
 	}
 	return e.consumer.CurrentRoundID(opts)
@@ -98,7 +97,6 @@ func (e *EthereumAPIConsumer) WatchPerfEvents(ctx context.Context, eventChan cha
 func (e *EthereumAPIConsumer) Data(ctx context.Context) (*big.Int, error) {
 	opts := &bind.CallOpts{
 		From:    common.HexToAddress(e.client.DefaultWallet.Address()),
-		Pending: true,
 		Context: ctx,
 	}
 	data, err := e.consumer.Data(opts)
@@ -159,7 +157,6 @@ func (f *EthereumFluxAggregator) UpdateAvailableFunds() error {
 func (f *EthereumFluxAggregator) PaymentAmount(ctx context.Context) (*big.Int, error) {
 	opts := &bind.CallOpts{
 		From:    common.HexToAddress(f.client.DefaultWallet.Address()),
-		Pending: true,
 		Context: ctx,
 	}
 	payment, err := f.fluxAggregator.PaymentAmount(opts)
@@ -223,7 +220,6 @@ func (f *EthereumFluxAggregator) SetRequesterPermissions(ctx context.Context, ad
 func (f *EthereumFluxAggregator) GetOracles(ctx context.Context) ([]string, error) {
 	opts := &bind.CallOpts{
 		From:    common.HexToAddress(f.client.DefaultWallet.Address()),
-		Pending: true,
 		Context: ctx,
 	}
 	addresses, err := f.fluxAggregator.GetOracles(opts)
@@ -237,12 +233,10 @@ func (f *EthereumFluxAggregator) GetOracles(ctx context.Context) ([]string, erro
 	return oracleAddrs, nil
 }
 
-func (f *EthereumFluxAggregator) LatestRoundID(ctx context.Context, blockNumber *big.Int) (*big.Int, error) {
+func (f *EthereumFluxAggregator) LatestRoundID(ctx context.Context) (*big.Int, error) {
 	opts := &bind.CallOpts{
-		From:        common.HexToAddress(f.client.DefaultWallet.Address()),
-		Pending:     true,
-		BlockNumber: blockNumber,
-		Context:     ctx,
+		From:    common.HexToAddress(f.client.DefaultWallet.Address()),
+		Context: ctx,
 	}
 	rID, err := f.fluxAggregator.LatestRound(opts)
 	if err != nil {
@@ -270,7 +264,6 @@ func (f *EthereumFluxAggregator) WithdrawPayment(
 func (f *EthereumFluxAggregator) WithdrawablePayment(ctx context.Context, addr common.Address) (*big.Int, error) {
 	opts := &bind.CallOpts{
 		From:    common.HexToAddress(f.client.DefaultWallet.Address()),
-		Pending: true,
 		Context: ctx,
 	}
 	balance, err := f.fluxAggregator.WithdrawablePayment(opts, addr)
@@ -283,7 +276,6 @@ func (f *EthereumFluxAggregator) WithdrawablePayment(ctx context.Context, addr c
 func (f *EthereumFluxAggregator) LatestRoundData(ctx context.Context) (RoundData, error) {
 	opts := &bind.CallOpts{
 		From:    common.HexToAddress(f.client.DefaultWallet.Address()),
-		Pending: true,
 		Context: ctx,
 	}
 	lr, err := f.fluxAggregator.LatestRoundData(opts)
@@ -297,7 +289,6 @@ func (f *EthereumFluxAggregator) LatestRoundData(ctx context.Context) (RoundData
 func (f *EthereumFluxAggregator) GetContractData(ctx context.Context) (*FluxAggregatorData, error) {
 	opts := &bind.CallOpts{
 		From:    common.HexToAddress(f.client.DefaultWallet.Address()),
-		Pending: true,
 		Context: ctx,
 	}
 
@@ -348,7 +339,6 @@ func (f *EthereumFluxAggregator) SetOracles(o FluxAggregatorSetOraclesOptions) e
 func (f *EthereumFluxAggregator) Description(ctxt context.Context) (string, error) {
 	opts := &bind.CallOpts{
 		From:    common.HexToAddress(f.client.DefaultWallet.Address()),
-		Pending: true,
 		Context: ctxt,
 	}
 	return f.fluxAggregator.Description(opts)
@@ -382,10 +372,13 @@ func NewFluxAggregatorRoundConfirmer(
 
 // ReceiveBlock will query the latest FluxAggregator round and check to see whether the round has confirmed
 func (f *FluxAggregatorRoundConfirmer) ReceiveBlock(block client.NodeBlock) error {
+	if block.Block == nil {
+		return nil
+	}
 	if f.done {
 		return nil
 	}
-	lr, err := f.fluxInstance.LatestRoundID(context.Background(), block.Number())
+	lr, err := f.fluxInstance.LatestRoundID(context.Background())
 	if err != nil {
 		return err
 	}
@@ -522,7 +515,6 @@ func (l *EthereumLinkToken) Fund(ethAmount *big.Float) error {
 func (l *EthereumLinkToken) BalanceOf(ctx context.Context, addr common.Address) (*big.Int, error) {
 	opts := &bind.CallOpts{
 		From:    common.HexToAddress(l.client.DefaultWallet.Address()),
-		Pending: true,
 		Context: ctx,
 	}
 	balance, err := l.instance.BalanceOf(opts, addr)
@@ -536,7 +528,6 @@ func (l *EthereumLinkToken) BalanceOf(ctx context.Context, addr common.Address) 
 func (l *EthereumLinkToken) Name(ctxt context.Context) (string, error) {
 	opts := &bind.CallOpts{
 		From:    common.HexToAddress(l.client.DefaultWallet.Address()),
-		Pending: true,
 		Context: ctxt,
 	}
 	return l.instance.Name(opts)
@@ -603,7 +594,6 @@ func (o *EthereumOffchainAggregator) Fund(ethAmount *big.Float) error {
 func (o *EthereumOffchainAggregator) GetContractData(ctxt context.Context) (*OffchainAggregatorData, error) {
 	opts := &bind.CallOpts{
 		From:    common.HexToAddress(o.client.DefaultWallet.Address()),
-		Pending: true,
 		Context: ctxt,
 	}
 
@@ -748,7 +738,6 @@ func (o *EthereumOffchainAggregator) RequestNewRound() error {
 func (o *EthereumOffchainAggregator) GetLatestAnswer(ctxt context.Context) (*big.Int, error) {
 	opts := &bind.CallOpts{
 		From:    common.HexToAddress(o.client.DefaultWallet.Address()),
-		Pending: true,
 		Context: ctxt,
 	}
 	return o.ocr.LatestAnswer(opts)
@@ -762,7 +751,6 @@ func (o *EthereumOffchainAggregator) Address() string {
 func (o *EthereumOffchainAggregator) GetLatestRound(ctxt context.Context) (*RoundData, error) {
 	opts := &bind.CallOpts{
 		From:    common.HexToAddress(o.client.DefaultWallet.Address()),
-		Pending: true,
 		Context: ctxt,
 	}
 
@@ -976,7 +964,6 @@ func (e *EthereumStorage) Set(value *big.Int) error {
 func (e *EthereumStorage) Get(ctxt context.Context) (*big.Int, error) {
 	opts := &bind.CallOpts{
 		From:    common.HexToAddress(e.client.DefaultWallet.Address()),
-		Pending: true,
 		Context: ctxt,
 	}
 	return e.store.Get(opts)
@@ -998,7 +985,6 @@ func (v *EthereumVRF) Fund(ethAmount *big.Float) error {
 func (v *EthereumVRF) ProofLength(ctxt context.Context) (*big.Int, error) {
 	opts := &bind.CallOpts{
 		From:    common.HexToAddress(v.client.DefaultWallet.Address()),
-		Pending: true,
 		Context: ctxt,
 	}
 	return v.vrf.PROOFLENGTH(opts)
@@ -1073,7 +1059,6 @@ func (v *EthereumKeeperRegistry) AddUpkeepFunds(id *big.Int, amount *big.Int) er
 func (v *EthereumKeeperRegistry) GetUpkeepInfo(ctx context.Context, id *big.Int) (*UpkeepInfo, error) {
 	opts := &bind.CallOpts{
 		From:    common.HexToAddress(v.client.DefaultWallet.Address()),
-		Pending: true,
 		Context: ctx,
 	}
 	uk, err := v.registry.GetUpkeep(opts, id)
@@ -1094,7 +1079,6 @@ func (v *EthereumKeeperRegistry) GetUpkeepInfo(ctx context.Context, id *big.Int)
 func (v *EthereumKeeperRegistry) GetKeeperInfo(ctx context.Context, keeperAddr string) (*KeeperInfo, error) {
 	opts := &bind.CallOpts{
 		From:    common.HexToAddress(v.client.DefaultWallet.Address()),
-		Pending: true,
 		Context: ctx,
 	}
 	info, err := v.registry.GetKeeperInfo(opts, common.HexToAddress(keeperAddr))
@@ -1151,7 +1135,6 @@ func (v *EthereumKeeperRegistry) RegisterUpkeep(target string, gasLimit uint32, 
 func (v *EthereumKeeperRegistry) GetKeeperList(ctx context.Context) ([]string, error) {
 	opts := &bind.CallOpts{
 		From:    common.HexToAddress(v.client.DefaultWallet.Address()),
-		Pending: true,
 		Context: ctx,
 	}
 	list, err := v.registry.GetKeeperList(opts)
@@ -1183,7 +1166,6 @@ func (v *EthereumKeeperConsumer) Fund(ethAmount *big.Float) error {
 func (v *EthereumKeeperConsumer) Counter(ctx context.Context) (*big.Int, error) {
 	opts := &bind.CallOpts{
 		From:    common.HexToAddress(v.client.DefaultWallet.Address()),
-		Pending: true,
 		Context: ctx,
 	}
 	cnt, err := v.consumer.Counter(opts)
@@ -1284,7 +1266,6 @@ func (v *EthereumVRFCoordinator) Address() string {
 func (v *EthereumVRFCoordinator) HashOfKey(ctx context.Context, pubKey [2]*big.Int) ([32]byte, error) {
 	opts := &bind.CallOpts{
 		From:    common.HexToAddress(v.client.DefaultWallet.Address()),
-		Pending: true,
 		Context: ctx,
 	}
 	hash, err := v.coordinator.HashOfKey(opts, pubKey)
@@ -1342,7 +1323,6 @@ func (v *EthereumVRFConsumer) RequestRandomness(hash [32]byte, fee *big.Int) err
 func (v *EthereumVRFConsumer) CurrentRoundID(ctx context.Context) (*big.Int, error) {
 	opts := &bind.CallOpts{
 		From:    common.HexToAddress(v.client.DefaultWallet.Address()),
-		Pending: true,
 		Context: ctx,
 	}
 	return v.consumer.CurrentRoundID(opts)
@@ -1375,7 +1355,6 @@ func (v *EthereumVRFConsumer) WatchPerfEvents(ctx context.Context, eventChan cha
 func (v *EthereumVRFConsumer) RandomnessOutput(ctx context.Context) (*big.Int, error) {
 	opts := &bind.CallOpts{
 		From:    common.HexToAddress(v.client.DefaultWallet.Address()),
-		Pending: true,
 		Context: ctx,
 	}
 	out, err := v.consumer.RandomnessOutput(opts)
@@ -1438,7 +1417,6 @@ func (e *EthereumFlags) Address() string {
 func (e *EthereumFlags) GetFlag(ctx context.Context, addr string) (bool, error) {
 	opts := &bind.CallOpts{
 		From:    common.HexToAddress(e.client.DefaultWallet.Address()),
-		Pending: true,
 		Context: ctx,
 	}
 	flag, err := e.flags.GetFlag(opts, common.HexToAddress(addr))

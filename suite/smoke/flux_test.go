@@ -30,7 +30,9 @@ var _ = Describe("Flux monitor suite @flux", func() {
 		cls              []client.Chainlink
 		mockserver       *client.MockserverClient
 		nodeAddresses    []common.Address
-		fluxRoundTimeout = 3 * time.Minute
+		adapterPath      string
+		adapterUUID      string
+		fluxRoundTimeout = 2 * time.Minute
 		e                *environment.Environment
 	)
 	BeforeEach(func() {
@@ -52,6 +54,12 @@ var _ = Describe("Flux monitor suite @flux", func() {
 			mockserver, err = client.NewMockServerClientFromEnv(e)
 			Expect(err).ShouldNot(HaveOccurred())
 			nets.Default.ParallelTransactions(true)
+		})
+		By("Setting initial adapter value", func() {
+			adapterUUID = uuid.NewV4().String()
+			adapterPath = fmt.Sprintf("/variable-%s", adapterUUID)
+			err = mockserver.SetValuePath(adapterPath, 1e5)
+			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("Deploying and funding contract", func() {
 			lt, err = cd.DeployLinkTokenContract()
@@ -87,22 +95,22 @@ var _ = Describe("Flux monitor suite @flux", func() {
 			log.Info().Str("Oracles", strings.Join(oracles, ",")).Msg("Oracles set")
 		})
 		By("Creating flux jobs", func() {
-			err = mockserver.SetVariable(0)
-			Expect(err).ShouldNot(HaveOccurred())
-
+			adapterFullURL := fmt.Sprintf("%s%s", mockserver.Config.ClusterURL, adapterPath)
 			bta := client.BridgeTypeAttributes{
-				Name: fmt.Sprintf("variable-%s", uuid.NewV4().String()),
-				URL:  fmt.Sprintf("%s/variable", mockserver.Config.ClusterURL),
+				Name: fmt.Sprintf("variable-%s", adapterUUID),
+				URL:  adapterFullURL,
 			}
 			for _, n := range cls {
 				err = n.CreateBridge(&bta)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				fluxSpec := &client.FluxMonitorJobSpec{
-					Name:              "flux_monitor",
+					Name:              fmt.Sprintf("flux-monitor-%s", adapterUUID),
 					ContractAddress:   fluxInstance.Address(),
+					Threshold:         0,
+					AbsoluteThreshold: 0,
 					PollTimerPeriod:   15 * time.Second, // min 15s
-					PollTimerDisabled: false,
+					IdleTimerDisabled: true,
 					ObservationSource: client.ObservationSourceSpecBridge(bta),
 				}
 				_, err = n.CreateJob(fluxSpec)
@@ -112,45 +120,38 @@ var _ = Describe("Flux monitor suite @flux", func() {
 	})
 	Describe("with Flux job", func() {
 		It("performs two rounds and has withdrawable payments for oracles", func() {
-			err = mockserver.SetVariable(1e7)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			fluxRound := contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(2), fluxRoundTimeout)
+			// initial value set is performed before jobs creation
+			fluxRound := contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(1), fluxRoundTimeout)
 			nets.Default.AddHeaderEventSubscription(fluxInstance.Address(), fluxRound)
 			err = nets.Default.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
-
 			data, err := fluxInstance.GetContractData(context.Background())
 			Expect(err).ShouldNot(HaveOccurred())
-			log.Info().Interface("data", data).Msg("Round data")
-			Expect(len(data.Oracles)).Should(Equal(3))
-			Expect(data.LatestRoundData.Answer.Int64()).Should(Equal(int64(1e7)))
+			log.Info().Interface("Data", data).Msg("Round data")
+			Expect(data.LatestRoundData.Answer.Int64()).Should(Equal(int64(1e5)))
+			Expect(data.LatestRoundData.RoundId.Int64()).Should(Equal(int64(1)))
+			Expect(data.LatestRoundData.AnsweredInRound.Int64()).Should(Equal(int64(1)))
+			Expect(data.AvailableFunds.Int64()).Should(Equal(int64(999999999999999997)))
+			Expect(data.AllocatedFunds.Int64()).Should(Equal(int64(3)))
+
+			fluxRound = contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(2), fluxRoundTimeout)
+			nets.Default.AddHeaderEventSubscription(fluxInstance.Address(), fluxRound)
+			err = mockserver.SetValuePath(adapterPath, 1e10)
+			Expect(err).ShouldNot(HaveOccurred())
+			err = nets.Default.WaitForEvents()
+			Expect(err).ShouldNot(HaveOccurred())
+			data, err = fluxInstance.GetContractData(context.Background())
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(data.LatestRoundData.Answer.Int64()).Should(Equal(int64(1e10)))
 			Expect(data.LatestRoundData.RoundId.Int64()).Should(Equal(int64(2)))
 			Expect(data.LatestRoundData.AnsweredInRound.Int64()).Should(Equal(int64(2)))
 			Expect(data.AvailableFunds.Int64()).Should(Equal(int64(999999999999999994)))
 			Expect(data.AllocatedFunds.Int64()).Should(Equal(int64(6)))
-
-			err = mockserver.SetVariable(1e8)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			fluxRound = contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(3), fluxRoundTimeout)
-			nets.Default.AddHeaderEventSubscription(fluxInstance.Address(), fluxRound)
-			err = nets.Default.WaitForEvents()
-			Expect(err).ShouldNot(HaveOccurred())
-
-			data, err = fluxInstance.GetContractData(context.Background())
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(len(data.Oracles)).Should(Equal(3))
-			Expect(data.LatestRoundData.Answer.Int64()).Should(Equal(int64(1e8)))
-			Expect(data.LatestRoundData.RoundId.Int64()).Should(Equal(int64(3)))
-			Expect(data.LatestRoundData.AnsweredInRound.Int64()).Should(Equal(int64(3)))
-			Expect(data.AvailableFunds.Int64()).Should(Equal(int64(999999999999999991)))
-			Expect(data.AllocatedFunds.Int64()).Should(Equal(int64(9)))
 			log.Info().Interface("data", data).Msg("Round data")
 
 			for _, oracleAddr := range nodeAddresses {
 				payment, _ := fluxInstance.WithdrawablePayment(context.Background(), oracleAddr)
-				Expect(payment.Int64()).Should(Equal(int64(3)))
+				Expect(payment.Int64()).Should(Equal(int64(2)))
 			}
 		})
 	})

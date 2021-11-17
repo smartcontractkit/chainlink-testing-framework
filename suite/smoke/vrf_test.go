@@ -108,7 +108,7 @@ var _ = Describe("VRF suite @vrf", func() {
 	})
 
 	Describe("with VRF job", func() {
-		It("fulfills randomness", func() {
+		It("randomness is fulfilled", func() {
 			requestHash, err := coordinator.HashOfKey(context.Background(), encodedProvingKeys[0])
 			Expect(err).ShouldNot(HaveOccurred())
 			err = consumer.RequestRandomness(requestHash, big.NewInt(1))

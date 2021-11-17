@@ -65,7 +65,7 @@ var _ = Describe("Direct request suite @runlog", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("Creating directrequest job", func() {
-			err = mockserver.SetVariable(5)
+			err = mockserver.SetValuePath("/variable", 5)
 			Expect(err).ShouldNot(HaveOccurred())
 
 			jobUUID = uuid.NewV4()

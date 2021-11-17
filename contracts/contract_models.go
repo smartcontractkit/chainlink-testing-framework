@@ -49,7 +49,7 @@ type SubmissionEvent struct {
 type FluxAggregator interface {
 	Address() string
 	Fund(ethAmount *big.Float) error
-	LatestRoundID(ctx context.Context, blockNumber *big.Int) (*big.Int, error)
+	LatestRoundID(ctx context.Context) (*big.Int, error)
 	LatestRoundData(ctx context.Context) (RoundData, error)
 	GetContractData(ctxt context.Context) (*FluxAggregatorData, error)
 	UpdateAvailableFunds() error

@@ -36,14 +36,14 @@ func (em *MockserverClient) ClearExpectation(body interface{}) error {
 	return err
 }
 
-// SetVariable sets an int for /variable
-func (em *MockserverClient) SetVariable(v int) error {
-	pathSelector := PathSelector{Path: "/variable"}
+// SetValuePath sets an int for a path
+func (em *MockserverClient) SetValuePath(path string, v int) error {
+	pathSelector := PathSelector{Path: path}
 	if err := em.ClearExpectation(pathSelector); err != nil {
 		return err
 	}
 	initializer := HttpInitializer{
-		Request: HttpRequest{Path: "/variable"},
+		Request: HttpRequest{Path: path},
 		Response: HttpResponse{Body: AdapterResponse{
 			Id:    "",
 			Data:  AdapterResult{Result: v},
