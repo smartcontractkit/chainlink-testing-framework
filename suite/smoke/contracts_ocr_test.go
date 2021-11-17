@@ -5,6 +5,7 @@ import (
 	. "github.com/onsi/ginkgo/extensions/table"
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/environment"
+	"github.com/smartcontractkit/integrations-framework/utils"
 )
 
 var _ = Describe("OCR Feed @ocr", func() {
@@ -14,7 +15,7 @@ var _ = Describe("OCR Feed @ocr", func() {
 		envInit environment.K8sEnvSpecInit,
 	) {
 		i = &actions.OCRSetupInputs{}
-		By("Deploying environment", actions.DeployOCRForEnv(i, envInit))
+		By("Deploying environment", actions.DeployOCRForEnv(i, envInit, utils.ProjectRoot))
 		By("Funding nodes", actions.FundNodes(i))
 		By("Deploying OCR contracts", actions.DeployOCRContracts(i, 1))
 		By("Creating OCR jobs", actions.CreateOCRJobs(i))
