@@ -123,7 +123,7 @@ network_configs:
         secret_private_keys: false
         namespace_for_secret: default
         <<: *private_keys
-        chainlink_gas_limit: 500000
+        chainlink_gas_limit: 5000000
         transaction_timeout: 2m
         minimum_confirmations: 1
         gas_estimation_buffer: 500

@@ -275,13 +275,18 @@ func (c *chainlink) CreateVRFKey() (*VRFKey, error) {
 	return vrfKey, err
 }
 
+var primaryEthAddress string = ""
+
 // PrimaryEthAddress returns the primary ETH address for the chainlink node
 func (c *chainlink) PrimaryEthAddress() (string, error) {
-	ethKeys, err := c.ReadETHKeys()
-	if err != nil {
-		return "", err
+	if primaryEthAddress == "" {
+		ethKeys, err := c.ReadETHKeys()
+		if err != nil {
+			return "", err
+		}
+		primaryEthAddress = ethKeys.Data[0].Attributes.Address
 	}
-	return ethKeys.Data[0].Attributes.Address, nil
+	return primaryEthAddress, nil
 }
 
 // CreateEI creates an EI on the Chainlink node based on the provided attributes and returns the respective secrets

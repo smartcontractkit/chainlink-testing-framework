@@ -424,7 +424,7 @@ idleTimerDisabled ={{if not .IdleTimerDisabled}} false {{else}} {{.IdleTimerDisa
 pollTimerPeriod   ={{if not .PollTimerPeriod}} "1m" {{else}} "{{.PollTimerPeriod}}" {{end}}
 pollTimerDisabled ={{if not .PollTimerDisabled}} false {{else}} {{.PollTimerDisabled}} {{end}}
 
-maxTaskDuration = {{if not .Precision}} "180s" {{else}} {{.Precision}} {{end}}
+maxTaskDuration = {{if not .MaxTaskDuration}} "180s" {{else}} {{.MaxTaskDuration}} {{end}}
 
 observationSource = """
 {{.ObservationSource}}

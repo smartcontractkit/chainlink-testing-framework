@@ -20,7 +20,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/environment"
 )
 
-var _ = Describe("Flux monitor suite @flux", func() {
+var _ = FDescribe("Flux monitor suite @flux", func() {
 	var (
 		suiteSetup       actions.SuiteSetup
 		networkInfo      actions.NetworkInfo
@@ -66,10 +66,7 @@ var _ = Describe("Flux monitor suite @flux", func() {
 		})
 
 		By("Funding Chainlink nodes", func() {
-			nodeAddresses, err = actions.ChainlinkNodeAddresses(nodes)
-			Expect(err).ShouldNot(HaveOccurred())
-			ethAmount, err := networkInfo.Deployer.CalculateETHForChainlinkOperations(5)
-			Expect(err).ShouldNot(HaveOccurred())
+			ethAmount := big.NewFloat(1)
 			err = actions.FundChainlinkNodes(
 				nodes,
 				networkInfo.Client,
@@ -81,6 +78,8 @@ var _ = Describe("Flux monitor suite @flux", func() {
 		})
 
 		By("Setting oracle options", func() {
+			nodeAddresses, err = actions.ChainlinkNodeAddresses(nodes)
+			Expect(err).ShouldNot(HaveOccurred())
 			err = fluxInstance.SetOracles(networkInfo.Wallets.Default(),
 				contracts.FluxAggregatorSetOraclesOptions{
 					AddList:            nodeAddresses,
@@ -129,7 +128,7 @@ var _ = Describe("Flux monitor suite @flux", func() {
 			err = mockserver.SetVariable(1e7)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			fluxRound := contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(2), fluxRoundTimeout)
+			fluxRound := contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(1), fluxRoundTimeout)
 			networkInfo.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRound)
 			err = networkInfo.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -147,7 +146,7 @@ var _ = Describe("Flux monitor suite @flux", func() {
 			err = mockserver.SetVariable(1e8)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			fluxRound = contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(3), fluxRoundTimeout)
+			fluxRound = contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(2), fluxRoundTimeout)
 			networkInfo.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRound)
 			err = networkInfo.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
