@@ -397,7 +397,7 @@ func (e *EthereumClient) Fund(
 		if err != nil {
 			return err
 		}
-		return e.ProcessTransaction(tx)
+		return e.ProcessTransaction(tx) // TODO: LINK Transactions are either moving too slowly, or have multiple parts to them that breaks when trying to make them parallel
 	}
 	return nil
 }
@@ -414,24 +414,25 @@ func (e *EthereumClient) SendTransaction(
 	if err != nil {
 		return common.Hash{}, fmt.Errorf("invalid private key: %v", err)
 	}
-	nonce, err := e.GetNonce(context.Background(), common.HexToAddress(from.Address()))
+	suggestedGasPrice, err := e.Client.SuggestGasPrice(context.Background())
 	if err != nil {
 		return common.Hash{}, err
 	}
-	suggestedGasPrice, err := e.Client.SuggestGasPrice(context.Background())
+	nonce, err := e.GetNonce(context.Background(), common.HexToAddress(from.Address()))
 	if err != nil {
 		return common.Hash{}, err
 	}
 
 	// TODO: Update from LegacyTx to DynamicFeeTx
-	tx, err := types.SignNewTx(privateKey, types.NewEIP2930Signer(e.Network.ChainID()), &types.LegacyTx{
-		To:       &to,
-		Value:    weiValue,
-		Data:     nil,
-		Gas:      21000,
-		GasPrice: suggestedGasPrice,
-		Nonce:    nonce,
-	})
+	tx, err := types.SignNewTx(privateKey, types.NewEIP2930Signer(e.Network.ChainID()),
+		&types.LegacyTx{
+			To:       &to,
+			Value:    weiValue,
+			Data:     nil,
+			Gas:      21000,
+			GasPrice: suggestedGasPrice,
+			Nonce:    nonce,
+		})
 	if err != nil {
 		return common.Hash{}, err
 	}
@@ -452,7 +453,7 @@ func (e *EthereumClient) ProcessTransaction(tx *types.Transaction) error {
 
 	e.AddHeaderEventSubscription(tx.Hash().String(), txConfirmer)
 
-	if !e.queueTransactions { // No parallel transactions
+	if !e.queueTransactions || tx.Value().Cmp(big.NewInt(0)) == 0 { // For sequential transactions and contract calls
 		defer e.DeleteHeaderEventSubscription(tx.Hash().String())
 		return txConfirmer.Wait()
 	}
@@ -493,10 +494,6 @@ func (e *EthereumClient) DeployContract(
 // contract interactions in this framework are designed to happen through abigen calls, it's intentionally quite bare.
 // abigen will handle gas estimation for us on the backend.
 func (e *EthereumClient) TransactionOpts(from BlockchainWallet) (*bind.TransactOpts, error) {
-	nonce, err := e.GetNonce(context.Background(), common.HexToAddress(from.Address()))
-	if err != nil {
-		return nil, err
-	}
 	privateKey, err := crypto.HexToECDSA(from.PrivateKey())
 	if err != nil {
 		return nil, fmt.Errorf("invalid private key: %v", err)
@@ -506,8 +503,13 @@ func (e *EthereumClient) TransactionOpts(from BlockchainWallet) (*bind.TransactO
 		return nil, err
 	}
 	opts.From = common.HexToAddress(from.Address())
-	opts.Nonce = big.NewInt(int64(nonce))
 	opts.Context = context.Background()
+
+	nonce, err := e.GetNonce(context.Background(), common.HexToAddress(from.Address()))
+	if err != nil {
+		return nil, err
+	}
+	opts.Nonce = big.NewInt(int64(nonce))
 
 	return opts, nil
 }

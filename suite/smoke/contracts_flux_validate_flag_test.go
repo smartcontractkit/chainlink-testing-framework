@@ -54,7 +54,7 @@ var _ = Describe("Flux monitor external validator suite @validator-flux", func()
 			Expect(err).ShouldNot(HaveOccurred())
 			networkInfo = suiteSetup.DefaultNetwork()
 
-			// networkInfo.Client.ParallelTransactions(true)
+			networkInfo.Client.ParallelTransactions(true)
 		})
 
 		By("Deploying access controller, flags, deviation validator", func() {
@@ -132,7 +132,7 @@ var _ = Describe("Flux monitor external validator suite @validator-flux", func()
 					ContractAddress:   fluxInstance.Address(),
 					PollTimerPeriod:   15 * time.Second, // min 15s
 					PollTimerDisabled: false,
-					IdleTimerPeriod:   30 * time.Second,
+					IdleTimerPeriod:   20 * time.Second,
 					ObservationSource: client.ObservationSourceSpecHTTP(fmt.Sprintf("%s/variable", mockserver.Config.ClusterURL)),
 				}
 				_, err = n.CreateJob(fluxSpec)

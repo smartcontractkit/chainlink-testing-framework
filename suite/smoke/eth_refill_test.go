@@ -50,7 +50,7 @@ var _ = Describe("FluxAggregator ETH Refill @refill", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			networkInfo = suiteSetup.DefaultNetwork()
 
-			// networkInfo.Client.ParallelTransactions(true)
+			networkInfo.Client.ParallelTransactions(true)
 		})
 	})
 
@@ -112,6 +112,7 @@ var _ = Describe("FluxAggregator ETH Refill @refill", func() {
 					ContractAddress:   fluxInstance.Address(),
 					PollTimerPeriod:   15 * time.Second, // min 15s
 					PollTimerDisabled: false,
+					IdleTimerPeriod:   20 * time.Second,
 					ObservationSource: ost,
 				}
 				_, err := n.CreateJob(fluxSpec)
@@ -142,14 +143,7 @@ var _ = Describe("FluxAggregator ETH Refill @refill", func() {
 			fluxRound := contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(2), fluxRoundTimeout)
 			networkInfo.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRound)
 			err = networkInfo.Client.WaitForEvents()
-			if err == nil { // Not all has been drained, try another round
-				err = mockserver.SetVariable(7)
-				Expect(err).ShouldNot(HaveOccurred())
 
-				fluxRound := contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(3), fluxRoundTimeout)
-				networkInfo.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRound)
-				err = networkInfo.Client.WaitForEvents()
-			}
 			Expect(err).ShouldNot(BeNil(), "Flux rounds are still happening after draining the nodes of ETH, "+
 				"was expecting an error. Nodes likely haven't been fully drained of their ETH")
 			Expect(err.Error()).Should(ContainSubstring("timeout waiting for flux round to confirm"))

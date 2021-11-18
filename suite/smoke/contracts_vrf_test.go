@@ -43,7 +43,7 @@ var _ = Describe("VRF suite @vrf", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			networkInfo = suiteSetup.DefaultNetwork()
 
-			// networkInfo.Client.ParallelTransactions(true)
+			networkInfo.Client.ParallelTransactions(true)
 		})
 
 		By("Funding Chainlink nodes", func() {

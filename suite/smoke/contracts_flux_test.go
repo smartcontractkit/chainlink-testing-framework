@@ -22,15 +22,15 @@ import (
 
 var _ = Describe("Flux monitor suite @flux", func() {
 	var (
-		suiteSetup    actions.SuiteSetup
-		networkInfo   actions.NetworkInfo
-		mockserver    *client.MockserverClient
-		nodes         []client.Chainlink
-		nodeAddresses []common.Address
-		fluxInstance  contracts.FluxAggregator
-		err           error
+		suiteSetup       actions.SuiteSetup
+		networkInfo      actions.NetworkInfo
+		mockserver       *client.MockserverClient
+		nodes            []client.Chainlink
+		nodeAddresses    []common.Address
+		fluxInstance     contracts.FluxAggregator
+		err              error
+		fluxRoundTimeout = time.Minute * 2
 	)
-	fluxRoundTimeout := time.Minute * 2
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
@@ -48,7 +48,7 @@ var _ = Describe("Flux monitor suite @flux", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			networkInfo = suiteSetup.DefaultNetwork()
 
-			// networkInfo.Client.ParallelTransactions(true)
+			networkInfo.Client.ParallelTransactions(true)
 		})
 
 		By("Deploying and funding contract", func() {
@@ -115,7 +115,7 @@ var _ = Describe("Flux monitor suite @flux", func() {
 					ContractAddress:   fluxInstance.Address(),
 					PollTimerPeriod:   15 * time.Second, // min 15s
 					PollTimerDisabled: false,
-					IdleTimerPeriod:   30 * time.Second,
+					IdleTimerPeriod:   20 * time.Second,
 					ObservationSource: client.ObservationSourceSpecBridge(bta),
 				}
 				_, err = n.CreateJob(fluxSpec)
