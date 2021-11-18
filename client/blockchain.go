@@ -3,14 +3,15 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/helmenv/environment"
 	"github.com/smartcontractkit/integrations-framework/utils"
 	"gopkg.in/yaml.v2"
 	"math/big"
 	"net/http"
+	"net/url"
 	"path/filepath"
 
 	"github.com/smartcontractkit/integrations-framework/config"
@@ -22,10 +23,17 @@ const (
 	NetworkGethPerformance = "ethereum_geth_performance"
 )
 
-// ExternalClientImplFunc external client implementation function
+// NewBlockchainClientFn external client implementation function
 // networkName must match a key in "networks" in networks.yaml config
 // networkConfig is just an arbitrary config you provide in "networks" for your key
-type ExternalClientImplFunc func(networkName string, networkConfig map[string]interface{}, e *environment.Environment) (BlockchainClient, error)
+type NewBlockchainClientFn func(
+	networkName string,
+	networkConfig map[string]interface{},
+	urls []*url.URL,
+) (BlockchainClient, error)
+
+// BlockchainClientURLFn are used to be able to return a list of URLs from the environment to connect
+type BlockchainClientURLFn func(e *environment.Environment) ([]*url.URL, error)
 
 // BlockchainClient is the interface that wraps a given client implementation for a blockchain, to allow for switching
 // of network types within the test suite
@@ -59,11 +67,11 @@ type BlockchainClient interface {
 // if there is only one client it is chosen as Default
 // if there is multiple you just get clients you need in test
 type Networks struct {
-	clients map[string]BlockchainClient
+	clients []BlockchainClient
 	Default BlockchainClient
 }
 
-// Teardown teardown all clients
+// Teardown all clients
 func (b *Networks) Teardown() error {
 	for _, c := range b.clients {
 		if err := c.Close(); err != nil {
@@ -74,83 +82,99 @@ func (b *Networks) Teardown() error {
 }
 
 // SetDefault chooses default client
-func (b *Networks) SetDefault(name string) error {
-	if _, ok := b.clients[name]; !ok {
-		return fmt.Errorf("no client found for network %s", name)
+func (b *Networks) SetDefault(index int) error {
+	if len(b.clients) >= index {
+		return fmt.Errorf("index of %d is out of bounds", index)
 	}
+	b.Default = b.clients[index]
 	return nil
 }
 
 // Get gets blockchain network (client) by name
-func (b *Networks) Get(name string) (BlockchainClient, error) {
-	c, ok := b.clients[name]
-	if !ok {
-		return nil, fmt.Errorf("no client found for network %s", name)
+func (b *Networks) Get(index int) (BlockchainClient, error) {
+	if len(b.clients) >= index {
+		return nil, fmt.Errorf("index of %d is out of bounds", index)
 	}
-	return c, nil
+	return b.clients[index], nil
 }
 
 // NewMockServerClientFromEnv creates new mockserver from env
 func NewMockServerClientFromEnv(e *environment.Environment) (*MockserverClient, error) {
-	urls := e.Config.NetworksURLs["mockserver"]
+	localURL, err := e.Config.Charts.Connections("mockserver").LocalHTTPURL("serviceport")
+	if err != nil {
+		return nil, err
+	}
+	remoteURL, err := e.Config.Charts.Connections("mockserver").RemoteHTTPURL("serviceport")
+	if err != nil {
+		return nil, err
+	}
 	c := NewMockserverClient(&MockserverConfig{
-		LocalURL:   urls["local"][0],
-		ClusterURL: urls["cluster"][0],
+		LocalURL:   localURL.String(),
+		ClusterURL: remoteURL.String(),
 	})
 	return c, nil
 }
 
-// NewNetworks trying to create blockchain networks using "selected_networks" from networks config
-// each network may have only one client instance, some clients can connect to multiple nodes but should implement
-// BlockchainClient interface
-// If there is no implementation found it will be created from ExternalClientImplFunc
-// If network is deployed in the current environment URL got overridden from env
-// If network is external (deployed somewhere else) we just use url from config
-func NewNetworks(env *environment.Environment, extClients map[string]ExternalClientImplFunc) (*Networks, error) {
+// NetworkRegistry holds all the registered network types that can be initialised, allowing
+// external libraries to register alternative network types to use
+type NetworkRegistry struct {
+	registeredNetworks map[string]registeredNetwork
+}
+
+type registeredNetwork struct {
+	newBlockchainClientFn NewBlockchainClientFn
+	blockchainClientURLFn BlockchainClientURLFn
+}
+
+// NewNetworkRegistry returns an instance of the network registry with the default supported networks registered
+func NewNetworkRegistry() *NetworkRegistry {
+	return &NetworkRegistry{
+		registeredNetworks: map[string]registeredNetwork{
+			ETHNetworkType: {
+				newBlockchainClientFn: NewEthereumMultiNodeClient,
+				blockchainClientURLFn: EthereumMultiNodeURLs,
+			},
+		},
+	}
+}
+
+// RegisterNetwork registers a new type of network within the registry
+func (n *NetworkRegistry) RegisterNetwork(networkType string, fn NewBlockchainClientFn, urlFn BlockchainClientURLFn) {
+	n.registeredNetworks[networkType] = registeredNetwork{
+		newBlockchainClientFn: fn,
+		blockchainClientURLFn: urlFn,
+	}
+}
+
+// GetNetworks returns a networks object with all the BlockchainClient(s) initialised
+func (n *NetworkRegistry) GetNetworks(env *environment.Environment) (*Networks, error) {
 	nc, err := config.LoadNetworksConfig(filepath.Join(utils.ProjectRoot, "networks.yaml"))
 	if err != nil {
 		return nil, err
 	}
-	clients := map[string]BlockchainClient{}
+	var clients []BlockchainClient
 	for _, networkName := range nc.SelectedNetworks {
-		ns := nc.NetworkSettings[networkName].(map[string]interface{})
-		networkType := ns["type"].(string)
-		switch networkType {
-		case ETHNetworkType:
-			d, err := yaml.Marshal(ns)
-			if err != nil {
-				return nil, err
-			}
-			var cfg *config.ETHNetwork
-			if err := yaml.Unmarshal(d, &cfg); err != nil {
-				return nil, err
-			}
-			if !cfg.External {
-				if _, ok := env.Config.NetworksURLs[networkName]; !ok {
-					return nil, fmt.Errorf("network %s is not found in environment URLs", networkName)
-				}
-				cfg.URLs = env.Config.NetworksURLs[networkName]["local"]
-			}
-			cfg.ID = networkName
-			ec, err := NewEthereumMultiNodeClient(cfg)
-			if err != nil {
-				return nil, err
-			}
-			clients[networkName] = ec
-		default:
-			log.Info().
-				Str("Name", networkName).
-				Msg("Creating client using external implementation")
-			f, ok := extClients[networkName]
-			if !ok {
-				return nil, fmt.Errorf("client implementation for network %s is not provided, client func is nil", networkName)
-			}
-			ec, err := f(networkName, ns, env)
-			if err != nil {
-				return nil, err
-			}
-			clients[networkName] = ec
+		networkSettings, ok := nc.NetworkSettings[networkName]
+		if !ok {
+			return nil, fmt.Errorf("network with the name of '%s' doesn't exist in the network config", networkName)
 		}
+		networkType, ok := networkSettings["type"]
+		if !ok {
+			return nil, fmt.Errorf("network config for '%s' doesn't define a 'type'", networkName)
+		}
+		initFn, ok := n.registeredNetworks[fmt.Sprint(networkType)]
+		if !ok {
+			return nil, fmt.Errorf("network '%s' of type '%s' hasn't been registered", networkName, networkType)
+		}
+		urls, err := initFn.blockchainClientURLFn(env)
+		if err != nil {
+			return nil, err
+		}
+		client, err := initFn.newBlockchainClientFn(networkName, networkSettings, urls)
+		if err != nil {
+			return nil, err
+		}
+		clients = append(clients, client)
 	}
 	var defaultClient BlockchainClient
 	if len(clients) == 1 {
@@ -166,13 +190,15 @@ func NewNetworks(env *environment.Environment, extClients map[string]ExternalCli
 
 // NewChainlinkClients creates new chainlink clients
 func NewChainlinkClients(e *environment.Environment) ([]Chainlink, error) {
-	clients := make([]Chainlink, 0)
-	if _, ok := e.Config.NetworksURLs["chainlink"]; !ok {
-		return nil, fmt.Errorf("no chainlink urls found in environment preset")
+	var clients []Chainlink
+
+	urls, err := e.Config.Charts.Connections("chainlink").LocalHTTPURLs("access")
+	if err != nil {
+		return nil, err
 	}
-	for _, url := range e.Config.NetworksURLs["chainlink"]["local"] {
+	for _, chainlinkURL := range urls {
 		c, err := NewChainlink(&ChainlinkConfig{
-			URL:      url,
+			URL:      chainlinkURL.String(),
 			Email:    "notreal@fakeemail.ch",
 			Password: "twochains",
 		}, http.DefaultClient)
@@ -194,4 +220,15 @@ type NodeBlock struct {
 type HeaderEventSubscription interface {
 	ReceiveBlock(header NodeBlock) error
 	Wait() error
+}
+
+func UnmarshalNetworkConfig(config map[string]interface{}, obj interface{}) error {
+	b, err := json.Marshal(config)
+	if err != nil {
+		return err
+	}
+	if err := yaml.Unmarshal(b, obj); err != nil {
+		return err
+	}
+	return nil
 }

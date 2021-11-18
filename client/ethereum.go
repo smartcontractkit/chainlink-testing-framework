@@ -3,8 +3,10 @@ package client
 import (
 	"context"
 	"fmt"
+	"github.com/smartcontractkit/helmenv/environment"
 	"github.com/smartcontractkit/integrations-framework/config"
 	"math/big"
+	"net/url"
 	"sync"
 	"time"
 
@@ -331,13 +333,25 @@ func NewEthereumClient(networkSettings *config.ETHNetwork) (*EthereumClient, err
 }
 
 // NewEthereumMultiNodeClient returns an instantiated instance of all Ethereum client connected to all nodes
-func NewEthereumMultiNodeClient(networkSettings *config.ETHNetwork) (*EthereumMultinodeClient, error) {
+func NewEthereumMultiNodeClient(_ string,
+	networkConfig map[string]interface{},
+	urls []*url.URL,
+) (BlockchainClient, error) {
+	networkSettings := &config.ETHNetwork{}
+	err := UnmarshalNetworkConfig(networkConfig, networkSettings)
+	if err != nil {
+		return nil, err
+	}
 	log.Info().
 		Interface("URLs", networkSettings.URLs).
 		Msg("Connecting multi-node client")
-	ecl := &EthereumMultinodeClient{Clients: make([]*EthereumClient, 0)}
-	for idx, url := range networkSettings.URLs {
-		networkSettings.URL = url
+
+	ecl := &EthereumMultinodeClient{}
+	for _, envURL := range urls {
+		networkSettings.URLs = append(networkSettings.URLs, envURL.String())
+	}
+	for idx, networkURL := range networkSettings.URLs {
+		networkSettings.URL = networkURL
 		ec, err := NewEthereumClient(networkSettings)
 		if err != nil {
 			return nil, err
@@ -347,6 +361,11 @@ func NewEthereumMultiNodeClient(networkSettings *config.ETHNetwork) (*EthereumMu
 	}
 	ecl.DefaultClient = ecl.Clients[0]
 	return ecl, nil
+}
+
+// EthereumMultiNodeURLs returns the websocket URLs for a deployed Ethereum multi-node setup
+func EthereumMultiNodeURLs(e *environment.Environment) ([]*url.URL, error) {
+	return e.Config.Charts.Connections("geth").LocalWSURLs("ws-rpc")
 }
 
 // GetNetworkName retrieves the ID of the network that the client interacts with

@@ -6,10 +6,9 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	uuid "github.com/satori/go.uuid"
 	"github.com/smartcontractkit/helmenv/environment"
+	"github.com/smartcontractkit/helmenv/tools"
 	"github.com/smartcontractkit/integrations-framework/actions"
-	"github.com/smartcontractkit/integrations-framework/utils"
 	"math/big"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -37,13 +36,18 @@ var _ = Describe("Flux monitor suite @flux", func() {
 	)
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			e, err = environment.NewEnvironmentFromPreset(filepath.Join(utils.PresetRoot, "chainlink-cluster-3"))
+			e, err = environment.NewEnvironmentFromPreset(
+				&environment.Config{},
+				environment.NewChainlinkPreset(environment.ChainlinkReplicas(3, nil)),
+				tools.ChartsRoot,
+			)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = e.Connect()
+			err = e.ConnectAll()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("Getting the clients", func() {
-			nets, err = client.NewNetworks(e, nil)
+			networkRegistry := client.NewNetworkRegistry()
+			nets, err = networkRegistry.GetNetworks(e)
 			Expect(err).ShouldNot(HaveOccurred())
 			cd, err = contracts.NewContractDeployer(nets.Default)
 			Expect(err).ShouldNot(HaveOccurred())

@@ -7,12 +7,11 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/helmenv/environment"
+	"github.com/smartcontractkit/helmenv/tools"
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
-	"github.com/smartcontractkit/integrations-framework/utils"
 	"math/big"
-	"path/filepath"
 )
 
 var _ = Describe("Keeper suite @keeper", func() {
@@ -31,13 +30,18 @@ var _ = Describe("Keeper suite @keeper", func() {
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			e, err = environment.NewEnvironmentFromPreset(filepath.Join(utils.PresetRoot, "chainlink-cluster-6"))
+			e, err = environment.NewEnvironmentFromPreset(
+				&environment.Config{},
+				environment.NewChainlinkPreset(environment.ChainlinkReplicas(6, nil)),
+				tools.ChartsRoot,
+			)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = e.Connect()
+			err = e.ConnectAll()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("Getting the clients", func() {
-			nets, err = client.NewNetworks(e, nil)
+			networkRegistry := client.NewNetworkRegistry()
+			nets, err = networkRegistry.GetNetworks(e)
 			Expect(err).ShouldNot(HaveOccurred())
 			cd, err = contracts.NewContractDeployer(nets.Default)
 			Expect(err).ShouldNot(HaveOccurred())

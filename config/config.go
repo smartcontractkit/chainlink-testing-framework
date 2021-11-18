@@ -28,8 +28,8 @@ type FrameworkConfig struct {
 
 // NetworksConfig is network configurations
 type NetworksConfig struct {
-	SelectedNetworks   []string               `mapstructure:"selected_networks" yaml:"selected_networks"`
-	NetworkSettings    map[string]interface{} `mapstructure:"networks" yaml:"networks"`
+	SelectedNetworks   []string                          `mapstructure:"selected_networks" yaml:"selected_networks"`
+	NetworkSettings    map[string]map[string]interface{} `mapstructure:"networks" yaml:"networks"`
 	DefaultKeyStore    string
 	ConfigFileLocation string
 }

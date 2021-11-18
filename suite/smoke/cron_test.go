@@ -6,10 +6,9 @@ import (
 	. "github.com/onsi/gomega"
 	uuid "github.com/satori/go.uuid"
 	"github.com/smartcontractkit/helmenv/environment"
+	"github.com/smartcontractkit/helmenv/tools"
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/client"
-	"github.com/smartcontractkit/integrations-framework/utils"
-	"path/filepath"
 )
 
 var _ = Describe("Cronjob suite @cron", func() {
@@ -23,9 +22,13 @@ var _ = Describe("Cronjob suite @cron", func() {
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			e, err = environment.NewEnvironmentFromPreset(filepath.Join(utils.PresetRoot, "chainlink-cluster-3"))
+			e, err = environment.NewEnvironmentFromPreset(
+				&environment.Config{},
+				environment.NewChainlinkPreset(nil),
+				tools.ChartsRoot,
+			)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = e.Connect()
+			err = e.ConnectAll()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("Getting the clients", func() {
