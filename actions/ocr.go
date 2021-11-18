@@ -29,7 +29,7 @@ type OCRSetupInputs struct {
 }
 
 // DeployOCRForEnv deploys the environment
-func DeployOCRForEnv(i *OCRSetupInputs, envInit environment.K8sEnvSpecInit, configLocation string) func() {
+func DeployOCRForEnv(i *OCRSetupInputs, envInit environment.K8sEnvSpecInit, configPath string) func() {
 	return func() {
 		var err error
 		i.SuiteSetup, err = SingleNetworkSetup(
@@ -37,7 +37,7 @@ func DeployOCRForEnv(i *OCRSetupInputs, envInit environment.K8sEnvSpecInit, conf
 			hooks.EVMNetworkFromConfigHook,
 			hooks.EthereumDeployerHook,
 			hooks.EthereumClientHook,
-			configLocation,
+			configPath,
 		)
 		Expect(err).ShouldNot(HaveOccurred())
 		i.Mockserver, err = environment.GetMockserverClientFromEnv(i.SuiteSetup.Environment())
