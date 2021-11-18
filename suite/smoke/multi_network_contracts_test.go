@@ -2,9 +2,10 @@ package smoke
 
 import (
 	"context"
+	"math/big"
+
 	"github.com/smartcontractkit/integrations-framework/hooks"
 	"github.com/smartcontractkit/integrations-framework/utils"
-	"math/big"
 
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/client"

@@ -47,7 +47,8 @@ func DeployOCRForEnv(i *OCRSetupInputs, envInit environment.K8sEnvSpecInit, conf
 		Expect(err).ShouldNot(HaveOccurred())
 		i.NetworkInfo = i.SuiteSetup.DefaultNetwork()
 		i.DefaultWallet = i.NetworkInfo.Wallets.Default()
-		// i.NetworkInfo.Client.ParallelTransactions(true)
+
+		i.NetworkInfo.Client.ParallelTransactions(true)
 	}
 }
 
