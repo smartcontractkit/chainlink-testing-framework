@@ -3,19 +3,16 @@ package smoke
 import (
 	"context"
 	"fmt"
-	"github.com/smartcontractkit/helmenv/environment"
-	"math/big"
-	"path/filepath"
-
-	"github.com/smartcontractkit/integrations-framework/utils"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog/log"
 	uuid "github.com/satori/go.uuid"
+	"github.com/smartcontractkit/helmenv/environment"
+	"github.com/smartcontractkit/helmenv/tools"
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
+	"math/big"
 )
 
 var _ = Describe("VRF suite @vrf", func() {
@@ -32,13 +29,17 @@ var _ = Describe("VRF suite @vrf", func() {
 	)
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			e, err = environment.NewEnvironmentFromPreset(filepath.Join(utils.PresetRoot, "chainlink-cluster-3"))
+			e, err = environment.DeployOrLoadEnvironment(
+				environment.NewChainlinkConfig(nil),
+				tools.ChartsRoot,
+			)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = e.Connect()
+			err = e.ConnectAll()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("Getting the clients", func() {
-			nets, err = client.NewNetworks(e, nil)
+			networkRegistry := client.NewNetworkRegistry()
+			nets, err = networkRegistry.GetNetworks(e)
 			Expect(err).ShouldNot(HaveOccurred())
 			cd, err = contracts.NewContractDeployer(nets.Default)
 			Expect(err).ShouldNot(HaveOccurred())

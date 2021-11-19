@@ -24,12 +24,13 @@ const (
 type FrameworkConfig struct {
 	KeepEnvironments string         `mapstructure:"keep_environments" yaml:"keep_environments"`
 	Logging          *LoggingConfig `mapstructure:"logging" yaml:"logging"`
+	EnvironmentFile  string         `mapstructure:"environment_file" yaml:"environment_file"`
 }
 
 // NetworksConfig is network configurations
 type NetworksConfig struct {
-	SelectedNetworks   []string               `mapstructure:"selected_networks" yaml:"selected_networks"`
-	NetworkSettings    map[string]interface{} `mapstructure:"networks" yaml:"networks"`
+	SelectedNetworks   []string                          `mapstructure:"selected_networks" yaml:"selected_networks"`
+	NetworkSettings    map[string]map[string]interface{} `mapstructure:"networks" yaml:"networks"`
 	DefaultKeyStore    string
 	ConfigFileLocation string
 }

@@ -8,12 +8,11 @@ import (
 	"github.com/rs/zerolog/log"
 	uuid "github.com/satori/go.uuid"
 	"github.com/smartcontractkit/helmenv/environment"
+	"github.com/smartcontractkit/helmenv/tools"
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
-	"github.com/smartcontractkit/integrations-framework/utils"
 	"math/big"
-	"path/filepath"
 	"strings"
 )
 
@@ -31,13 +30,17 @@ var _ = Describe("Direct request suite @runlog", func() {
 	)
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			e, err = environment.NewEnvironmentFromPreset(filepath.Join(utils.PresetRoot, "chainlink-cluster-3"))
+			e, err = environment.DeployOrLoadEnvironment(
+				environment.NewChainlinkConfig(environment.ChainlinkReplicas(3, nil)),
+				tools.ChartsRoot,
+			)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = e.Connect()
+			err = e.ConnectAll()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
-		By("Connecting clients", func() {
-			nets, err = client.NewNetworks(e, nil)
+		By("Getting the clients", func() {
+			networkRegistry := client.NewNetworkRegistry()
+			nets, err = networkRegistry.GetNetworks(e)
 			Expect(err).ShouldNot(HaveOccurred())
 			cd, err = contracts.NewContractDeployer(nets.Default)
 			Expect(err).ShouldNot(HaveOccurred())

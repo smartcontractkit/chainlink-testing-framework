@@ -12,7 +12,7 @@ require (
 	github.com/prometheus/common v0.32.1
 	github.com/rs/zerolog v1.26.0
 	github.com/satori/go.uuid v1.2.0
-	github.com/smartcontractkit/helmenv v0.0.12
+	github.com/smartcontractkit/helmenv v1.0.0
 	github.com/smartcontractkit/libocr v0.0.0-20210826183649-d12971936c12
 	github.com/spf13/viper v1.9.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
@@ -20,6 +20,7 @@ require (
 )
 
 require (
+	github.com/kelseyhightower/envconfig v1.4.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	helm.sh/helm/v3 v3.7.1 // indirect
 	k8s.io/api v0.22.3 // indirect
