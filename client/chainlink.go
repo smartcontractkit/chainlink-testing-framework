@@ -63,8 +63,9 @@ type Chainlink interface {
 
 type chainlink struct {
 	*BasicHTTPClient
-	Config   *ChainlinkConfig
-	pageSize int
+	Config            *ChainlinkConfig
+	pageSize          int
+	primaryEthAddress string
 }
 
 // NewChainlink creates a new chainlink model using a provided config
@@ -275,18 +276,16 @@ func (c *chainlink) CreateVRFKey() (*VRFKey, error) {
 	return vrfKey, err
 }
 
-var primaryEthAddress string = ""
-
 // PrimaryEthAddress returns the primary ETH address for the chainlink node
 func (c *chainlink) PrimaryEthAddress() (string, error) {
-	if primaryEthAddress == "" {
+	if c.primaryEthAddress == "" {
 		ethKeys, err := c.ReadETHKeys()
 		if err != nil {
 			return "", err
 		}
-		primaryEthAddress = ethKeys.Data[0].Attributes.Address
+		c.primaryEthAddress = ethKeys.Data[0].Attributes.Address
 	}
-	return primaryEthAddress, nil
+	return c.primaryEthAddress, nil
 }
 
 // CreateEI creates an EI on the Chainlink node based on the provided attributes and returns the respective secrets

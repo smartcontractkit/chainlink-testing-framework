@@ -80,6 +80,8 @@ var _ = FDescribe("Flux monitor suite @flux", func() {
 		By("Setting oracle options", func() {
 			nodeAddresses, err = actions.ChainlinkNodeAddresses(nodes)
 			Expect(err).ShouldNot(HaveOccurred())
+			log.Info().Interface("Addresses", nodeAddresses).Msg("NODE ADDRESSSES")
+
 			err = fluxInstance.SetOracles(networkInfo.Wallets.Default(),
 				contracts.FluxAggregatorSetOraclesOptions{
 					AddList:            nodeAddresses,
@@ -128,7 +130,7 @@ var _ = FDescribe("Flux monitor suite @flux", func() {
 			err = mockserver.SetVariable(1e7)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			fluxRound := contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(1), fluxRoundTimeout)
+			fluxRound := contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(2), fluxRoundTimeout)
 			networkInfo.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRound)
 			err = networkInfo.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -146,7 +148,7 @@ var _ = FDescribe("Flux monitor suite @flux", func() {
 			err = mockserver.SetVariable(1e8)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			fluxRound = contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(2), fluxRoundTimeout)
+			fluxRound = contracts.NewFluxAggregatorRoundConfirmer(fluxInstance, big.NewInt(3), fluxRoundTimeout)
 			networkInfo.Client.AddHeaderEventSubscription(fluxInstance.Address(), fluxRound)
 			err = networkInfo.Client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
