@@ -20,7 +20,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/environment"
 )
 
-var _ = FDescribe("Flux monitor suite @flux", func() {
+var _ = Describe("Flux monitor suite @flux", func() {
 	var (
 		suiteSetup       actions.SuiteSetup
 		networkInfo      actions.NetworkInfo
