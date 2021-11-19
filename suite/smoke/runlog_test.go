@@ -30,9 +30,8 @@ var _ = Describe("Direct request suite @runlog", func() {
 	)
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			e, err = environment.NewEnvironmentFromPreset(
-				&environment.Config{},
-				environment.NewChainlinkPreset(environment.ChainlinkReplicas(3, nil)),
+			e, err = environment.DeployOrLoadEnvironment(
+				environment.NewChainlinkConfig(environment.ChainlinkReplicas(3, nil)),
 				tools.ChartsRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())

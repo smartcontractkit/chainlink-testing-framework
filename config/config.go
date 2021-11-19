@@ -24,6 +24,7 @@ const (
 type FrameworkConfig struct {
 	KeepEnvironments string         `mapstructure:"keep_environments" yaml:"keep_environments"`
 	Logging          *LoggingConfig `mapstructure:"logging" yaml:"logging"`
+	EnvironmentFile  string         `mapstructure:"environment_file" yaml:"environment_file"`
 }
 
 // NetworksConfig is network configurations

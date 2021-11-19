@@ -22,9 +22,8 @@ var _ = Describe("Cronjob suite @cron", func() {
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			e, err = environment.NewEnvironmentFromPreset(
-				&environment.Config{},
-				environment.NewChainlinkPreset(nil),
+			e, err = environment.DeployOrLoadEnvironment(
+				environment.NewChainlinkConfig(nil),
 				tools.ChartsRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())

@@ -30,9 +30,8 @@ var _ = Describe("Keeper suite @keeper", func() {
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			e, err = environment.NewEnvironmentFromPreset(
-				&environment.Config{},
-				environment.NewChainlinkPreset(environment.ChainlinkReplicas(6, nil)),
+			e, err = environment.DeployOrLoadEnvironment(
+				environment.NewChainlinkConfig(environment.ChainlinkReplicas(6, nil)),
 				tools.ChartsRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())

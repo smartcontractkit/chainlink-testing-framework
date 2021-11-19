@@ -1037,6 +1037,8 @@ github.com/karalabe/usb v0.0.0-20211005121534-4c5740d64559/go.mod h1:Od972xHfMJo
 github.com/karrick/godirwalk v1.10.12/go.mod h1:RoGL9dQei4vP9ilrpETWE8CLOZ1kiN0LhBygSwrAsHA=
 github.com/karrick/godirwalk v1.15.8 h1:7+rWAZPn9zuRxaIqqT8Ohs2Q2Ac0msBqwRdxNCr2VVs=
 github.com/karrick/godirwalk v1.15.8/go.mod h1:j4mkqPuvaLI8mp1DroR3P6ad7cyYd4c1qeJ3RV7ULlk=
+github.com/kelseyhightower/envconfig v1.4.0 h1:Im6hONhd3pLkfDFsbRgu68RDNkGF1r3dvMUtDTo2cv8=
+github.com/kelseyhightower/envconfig v1.4.0/go.mod h1:cccZRl6mQpaq41TPp5QxidR+Sa3axMbJDNb//FQX6Gg=
 github.com/kilic/bls12-381 v0.0.0-20201226121925-69dacb279461/go.mod h1:vDTTHJONJ6G+P2R74EhnyotQDTliQDnFEwhdmfzw1ig=
 github.com/kisielk/errcheck v1.1.0/go.mod h1:EZBBE59ingxPouuu3KfxchcWSUPOHkagtvWXihfKN4Q=
 github.com/kisielk/errcheck v1.2.0/go.mod h1:/BMXB+zMLi60iA8Vv6Ksmxu/1UDYcXs4uQLJ+jE2L00=
@@ -1740,14 +1742,8 @@ github.com/sirupsen/logrus v1.8.1 h1:dJKuHgqk1NNQlqoA6BTlM1Wf9DOH3NBjQyu0h9+AZZE
 github.com/sirupsen/logrus v1.8.1/go.mod h1:yWOB1SBYBC5VeMP7gHvWumXLIWorT60ONWic61uBYv0=
 github.com/smartcontractkit/chainlink v0.8.10-0.20200825114219-81dd2fc95bac/go.mod h1:j7qIYHGCN4QqMXdO8g8A9dmUT5vKFmkxPSbjAIfrfNU=
 github.com/smartcontractkit/chainlink v0.9.5-0.20201207211610-6c7fee37d5b7/go.mod h1:kmdLJbVZRCnBLiL6gG+U+1+0ofT3bB48DOF8tjQvcoI=
-github.com/smartcontractkit/helmenv v0.0.12 h1:dgE/SFfmMrcOcd2MNQTvm94dF6yFWWGfU7ZXT12X2MU=
-github.com/smartcontractkit/helmenv v0.0.12/go.mod h1:aAXMJOEAaDVI8Tqxm4Suiz+/p4YnGP5r17ORuUQ5838=
-github.com/smartcontractkit/helmenv v0.0.13-rc0 h1:eFoj1XdC1JDgD/BXdoWL6xpYSoran+RL+H/XlpP1AdI=
-github.com/smartcontractkit/helmenv v0.0.13-rc0/go.mod h1:aAXMJOEAaDVI8Tqxm4Suiz+/p4YnGP5r17ORuUQ5838=
-github.com/smartcontractkit/helmenv v0.0.13-rc1 h1:PpXAgXvYLi5lbR7O++kEGN+YH0geRTPcev/AqDOmUcE=
-github.com/smartcontractkit/helmenv v0.0.13-rc1/go.mod h1:aAXMJOEAaDVI8Tqxm4Suiz+/p4YnGP5r17ORuUQ5838=
-github.com/smartcontractkit/helmenv v0.0.13-rc2 h1:mrREeYZY/OldrHcF8HrzmtUOg4uRhzy3bVLD55FBWaA=
-github.com/smartcontractkit/helmenv v0.0.13-rc2/go.mod h1:aAXMJOEAaDVI8Tqxm4Suiz+/p4YnGP5r17ORuUQ5838=
+github.com/smartcontractkit/helmenv v0.0.13-rc4 h1:cwXaNlDfbIuhGYMRSVO033Af5dd9WkNNExCMPgPRteA=
+github.com/smartcontractkit/helmenv v0.0.13-rc4/go.mod h1:GBHcgt3y9qN97aB6601/PP2nyV2wOQz8uhP1tFBiTd8=
 github.com/smartcontractkit/libocr v0.0.0-20201203233047-5d9b24f0cbb5/go.mod h1:bfdSuLnBWCkafDvPGsQ1V6nrXhg046gh227MKi4zkpc=
 github.com/smartcontractkit/libocr v0.0.0-20210826183649-d12971936c12 h1:3yXjCJgj91ZRRqq4cV++y2EkKefEJpiWxhvnI14rclw=
 github.com/smartcontractkit/libocr v0.0.0-20210826183649-d12971936c12/go.mod h1:AQktwBooI+Y/8NWdvIzU+EgGoLzpe3mo+o+jluMonTw=

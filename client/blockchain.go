@@ -100,11 +100,11 @@ func (b *Networks) Get(index int) (BlockchainClient, error) {
 
 // NewMockServerClientFromEnv creates new mockserver from env
 func NewMockServerClientFromEnv(e *environment.Environment) (*MockserverClient, error) {
-	localURL, err := e.Config.Charts.Connections("mockserver").LocalHTTPURL("serviceport")
+	localURL, err := e.Charts.Connections("mockserver").LocalURLByPort("serviceport", environment.HTTP)
 	if err != nil {
 		return nil, err
 	}
-	remoteURL, err := e.Config.Charts.Connections("mockserver").RemoteHTTPURL("serviceport")
+	remoteURL, err := e.Config.Charts.Connections("mockserver").RemoteURLByPort("serviceport", environment.HTTP)
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +192,7 @@ func (n *NetworkRegistry) GetNetworks(env *environment.Environment) (*Networks, 
 func NewChainlinkClients(e *environment.Environment) ([]Chainlink, error) {
 	var clients []Chainlink
 
-	urls, err := e.Config.Charts.Connections("chainlink").LocalHTTPURLs("access")
+	urls, err := e.Charts.Connections("chainlink").LocalURLsByPort("access", environment.HTTP)
 	if err != nil {
 		return nil, err
 	}

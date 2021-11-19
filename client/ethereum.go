@@ -365,7 +365,7 @@ func NewEthereumMultiNodeClient(_ string,
 
 // EthereumMultiNodeURLs returns the websocket URLs for a deployed Ethereum multi-node setup
 func EthereumMultiNodeURLs(e *environment.Environment) ([]*url.URL, error) {
-	return e.Config.Charts.Connections("geth").LocalWSURLs("ws-rpc")
+	return e.Charts.Connections("geth").LocalURLsByPort("ws-rpc", environment.WS)
 }
 
 // GetNetworkName retrieves the ID of the network that the client interacts with
