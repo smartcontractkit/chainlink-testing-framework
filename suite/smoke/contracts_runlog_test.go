@@ -20,7 +20,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/environment"
 )
 
-var _ = FDescribe("Direct request suite @runlog", func() {
+var _ = Describe("Direct request suite @runlog", func() {
 	var (
 		suiteSetup    actions.SuiteSetup
 		networkInfo   actions.NetworkInfo
