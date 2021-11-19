@@ -222,6 +222,7 @@ type HeaderEventSubscription interface {
 	Wait() error
 }
 
+// UnmarshalNetworkConfig is a generic function to unmarshall a yaml map into a given object
 func UnmarshalNetworkConfig(config map[string]interface{}, obj interface{}) error {
 	b, err := json.Marshal(config)
 	if err != nil {
