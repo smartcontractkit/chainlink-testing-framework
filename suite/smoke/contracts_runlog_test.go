@@ -20,7 +20,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/environment"
 )
 
-var _ = Describe("Direct request suite @runlog", func() {
+var _ = FDescribe("Direct request suite @runlog", func() {
 	var (
 		suiteSetup    actions.SuiteSetup
 		networkInfo   actions.NetworkInfo
@@ -53,8 +53,7 @@ var _ = Describe("Direct request suite @runlog", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			nodeAddresses, err = actions.ChainlinkNodeAddresses(nodes)
 			Expect(err).ShouldNot(HaveOccurred())
-			ethAmount, err := networkInfo.Deployer.CalculateETHForChainlinkOperations(1)
-			Expect(err).ShouldNot(HaveOccurred())
+			ethAmount := big.NewFloat(.1)
 			err = actions.FundChainlinkNodes(nodes, networkInfo.Client, networkInfo.Wallets.Default(), ethAmount, nil)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
