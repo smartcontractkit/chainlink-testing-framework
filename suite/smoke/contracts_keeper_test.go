@@ -130,9 +130,8 @@ var _ = Describe("Keeper suite @keeper", func() {
 		})
 
 		By("Adding Keepers and a job", func() {
-			keys, err := nodes[0].ReadETHKeys()
+			nodeAddress, err := nodes[0].PrimaryEthAddress()
 			Expect(err).ShouldNot(HaveOccurred())
-			na := keys.Data[0].Attributes.Address
 			for _, cla := range nodeAddresses {
 				nodeAddressesStr = append(nodeAddressesStr, cla.Hex())
 			}
@@ -148,7 +147,7 @@ var _ = Describe("Keeper suite @keeper", func() {
 			_, err = nodes[0].CreateJob(&client.KeeperJobSpec{
 				Name:            "keeper",
 				ContractAddress: registry.Address(),
-				FromAddress:     na,
+				FromAddress:     nodeAddress,
 			})
 			Expect(err).ShouldNot(HaveOccurred())
 			err = networkInfo.Client.WaitForEvents()
@@ -168,9 +167,6 @@ var _ = Describe("Keeper suite @keeper", func() {
 	})
 
 	AfterEach(func() {
-		By("Printing gas stats", func() {
-			networkInfo.Client.GasStats().PrintStats()
-		})
 		By("Tearing down the environment", suiteSetup.TearDown())
 	})
 })
