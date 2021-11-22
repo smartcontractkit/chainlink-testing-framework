@@ -64,7 +64,7 @@ jobs:
       - name: Code Coverage
         uses: codecov/codecov-action@v2
         with:
-          files: ./unit-test-coverage.out
+          files: ./logs/unit-test-coverage.out
           name: codecov-umbrella 
       - name: Publish Unit Test Results
         uses: mikepenz/action-junit-report@v2
