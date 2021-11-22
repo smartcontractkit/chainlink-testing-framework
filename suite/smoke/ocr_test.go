@@ -3,7 +3,10 @@ package smoke
 import (
 	"context"
 	"fmt"
-	. "github.com/onsi/ginkgo"
+	"math/big"
+	"time"
+
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	uuid "github.com/satori/go.uuid"
 	"github.com/smartcontractkit/helmenv/environment"
@@ -11,8 +14,6 @@ import (
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
-	"math/big"
-	"time"
 )
 
 var _ = XDescribe("OCR Feed @ocr", func() {
@@ -38,6 +39,7 @@ var _ = XDescribe("OCR Feed @ocr", func() {
 			err = e.ConnectAll()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		By("Getting the clients", func() {
 			networkRegistry := client.NewNetworkRegistry()
 			nets, err = networkRegistry.GetNetworks(e)
@@ -50,12 +52,14 @@ var _ = XDescribe("OCR Feed @ocr", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			nets.Default.ParallelTransactions(true)
 		})
+
 		By("Funding Chainlink nodes", func() {
-			txCost, err := nets.Default.CalculateTXSCost(200)
+			txCost, err := nets.Default.EstimateCostForChainlinkOperations(200)
 			Expect(err).ShouldNot(HaveOccurred())
 			err = actions.FundChainlinkNodes(cls, nets.Default, txCost)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		By("Deploying OCR contracts", func() {
 			lt, err = cd.DeployLinkTokenContract()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -71,6 +75,7 @@ var _ = XDescribe("OCR Feed @ocr", func() {
 			err = nets.Default.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		By("Creating OCR jobs", func() {
 			bootstrapNode := cls[0]
 			bootstrapP2PIds, err := bootstrapNode.ReadP2PKeys()

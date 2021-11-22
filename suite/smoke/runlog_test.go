@@ -3,7 +3,10 @@ package smoke
 import (
 	"context"
 	"fmt"
-	. "github.com/onsi/ginkgo"
+	"math/big"
+	"strings"
+
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog/log"
 	uuid "github.com/satori/go.uuid"
@@ -12,8 +15,6 @@ import (
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
-	"math/big"
-	"strings"
 )
 
 var _ = Describe("Direct request suite @runlog", func() {
@@ -50,7 +51,7 @@ var _ = Describe("Direct request suite @runlog", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 		By("Funding Chainlink nodes", func() {
-			ethAmount, err := nets.Default.CalculateTXSCost(1)
+			ethAmount, err := nets.Default.EstimateCostForChainlinkOperations(1)
 			Expect(err).ShouldNot(HaveOccurred())
 			err = actions.FundChainlinkNodes(cls, nets.Default, ethAmount)
 			Expect(err).ShouldNot(HaveOccurred())

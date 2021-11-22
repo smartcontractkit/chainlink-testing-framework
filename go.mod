@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/ethereum/go-ethereum v1.10.12
 	github.com/ghodss/yaml v1.0.0
-	github.com/onsi/ginkgo v1.16.6-0.20211115182015-aec53805973a
+	github.com/onsi/ginkgo/v2 v2.0.0-rc2
 	github.com/onsi/gomega v1.17.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.11.0
@@ -20,7 +20,14 @@ require (
 )
 
 require (
+	github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0 // indirect
+	github.com/google/pprof v0.0.0-20210720184732-4bb14d4b1be1 // indirect
+	golang.org/x/tools v0.1.7 // indirect
+)
+
+require (
 	github.com/kelseyhightower/envconfig v1.4.0 // indirect
+	// indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	helm.sh/helm/v3 v3.7.1 // indirect
 	k8s.io/api v0.22.3 // indirect

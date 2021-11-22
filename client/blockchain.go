@@ -5,14 +5,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/smartcontractkit/helmenv/environment"
-	"github.com/smartcontractkit/integrations-framework/utils"
-	"gopkg.in/yaml.v2"
 	"math/big"
 	"net/http"
 	"net/url"
 	"path/filepath"
+
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/smartcontractkit/helmenv/environment"
+	"github.com/smartcontractkit/integrations-framework/utils"
+	"gopkg.in/yaml.v2"
 
 	"github.com/smartcontractkit/integrations-framework/config"
 )
@@ -42,14 +43,12 @@ type BlockchainClient interface {
 	LoadWallets(ns interface{}) error
 	SetWallet(num int) error
 
-	CalculateTXSCost(txs int64) (*big.Float, error)
-	CalculateTxGas(gasUsedValue *big.Int) (*big.Float, error)
+	EstimateCostForChainlinkOperations(amountOfOperations int) (*big.Float, error)
 
 	Get() interface{}
 	GetNetworkName() string
 	SwitchNode(node int) error
 	GetClients() []BlockchainClient
-	SuggestGasPrice(ctx context.Context) (*big.Int, error)
 	HeaderHashByNumber(ctx context.Context, bn *big.Int) (string, error)
 	BlockNumber(ctx context.Context) (uint64, error)
 	HeaderTimestampByNumber(ctx context.Context, bn *big.Int) (uint64, error)
@@ -146,7 +145,7 @@ func (n *NetworkRegistry) RegisterNetwork(networkType string, fn NewBlockchainCl
 	}
 }
 
-// GetNetworks returns a networks object with all the BlockchainClient(s) initialised
+// GetNetworks returns a networks object with all the BlockchainClient(s) initialized
 func (n *NetworkRegistry) GetNetworks(env *environment.Environment) (*Networks, error) {
 	nc, err := config.LoadNetworksConfig(filepath.Join(utils.ProjectRoot, "networks.yaml"))
 	if err != nil {

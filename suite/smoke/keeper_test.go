@@ -2,8 +2,10 @@ package smoke
 
 import (
 	"context"
+	"math/big"
+
 	"github.com/ethereum/go-ethereum/common"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/helmenv/environment"
@@ -11,7 +13,6 @@ import (
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
-	"math/big"
 )
 
 var _ = Describe("Keeper suite @keeper", func() {
@@ -38,6 +39,7 @@ var _ = Describe("Keeper suite @keeper", func() {
 			err = e.ConnectAll()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		By("Getting the clients", func() {
 			networkRegistry := client.NewNetworkRegistry()
 			nets, err = networkRegistry.GetNetworks(e)
@@ -50,12 +52,14 @@ var _ = Describe("Keeper suite @keeper", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			nets.Default.ParallelTransactions(true)
 		})
+
 		By("Funding Chainlink nodes", func() {
-			txCost, err := nets.Default.CalculateTXSCost(10)
+			txCost, err := nets.Default.EstimateCostForChainlinkOperations(10)
 			Expect(err).ShouldNot(HaveOccurred())
 			err = actions.FundChainlinkNodes(cls, nets.Default, txCost)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		By("Deploying Keeper contracts", func() {
 			lt, err = cd.DeployLinkTokenContract()
 			Expect(err).ShouldNot(HaveOccurred())
