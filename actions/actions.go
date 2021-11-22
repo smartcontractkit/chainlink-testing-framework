@@ -4,8 +4,13 @@ package actions
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/onsi/ginkgo"
+	"github.com/smartcontractkit/helmenv/environment"
+	"github.com/smartcontractkit/integrations-framework/utils"
 	"math/big"
+	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/smartcontractkit/integrations-framework/contracts"
 
@@ -15,20 +20,23 @@ import (
 	"github.com/smartcontractkit/integrations-framework/client"
 )
 
+const (
+	// DefaultArtifactsDir default artifacts dir
+	DefaultArtifactsDir = "logs"
+)
+
 // FundChainlinkNodes will fund all of the Chainlink nodes with a given amount of ETH in wei
 func FundChainlinkNodes(
 	nodes []client.Chainlink,
 	blockchain client.BlockchainClient,
-	fromWallet client.BlockchainWallet,
-	nativeAmount,
-	linkAmount *big.Float,
+	amount *big.Float,
 ) error {
 	for _, cl := range nodes {
 		toAddress, err := cl.PrimaryEthAddress()
 		if err != nil {
 			return err
 		}
-		err = blockchain.Fund(fromWallet, toAddress, nativeAmount, linkAmount)
+		err = blockchain.Fund(toAddress, amount)
 		if err != nil {
 			return err
 		}
@@ -140,4 +148,27 @@ func GetMockserverInitializerDataForOTPE(
 	}
 	initializers := []client.HttpInitializer{contractsInitializer, nodesInitializer}
 	return initializers, nil
+}
+
+// TeardownSuite tears down networks/clients and environment
+func TeardownSuite(env *environment.Environment, nets *client.Networks) error {
+	if ginkgo.CurrentSpecReport().Failed() {
+		testFilename := strings.Split(ginkgo.CurrentSpecReport().FileName(), ".")[0]
+		_, testName := filepath.Split(testFilename)
+		logsPath := filepath.Join(utils.ProjectRoot, DefaultArtifactsDir, fmt.Sprintf("%s-%d", testName, time.Now().Unix()))
+		if err := env.Artifacts.DumpTestResult(logsPath, "chainlink"); err != nil {
+			return err
+		}
+	}
+	if nets != nil {
+		if err := nets.Teardown(); err != nil {
+			return err
+		}
+	}
+	if !env.Config.Persistent {
+		if err := env.Teardown(); err != nil {
+			return err
+		}
+	}
+	return nil
 }

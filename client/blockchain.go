@@ -3,41 +3,57 @@ package client
 
 import (
 	"context"
-	"errors"
+	"encoding/json"
 	"fmt"
-	"math/big"
-	"strings"
-
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/smartcontractkit/helmenv/environment"
+	"github.com/smartcontractkit/integrations-framework/utils"
+	"gopkg.in/yaml.v2"
+	"math/big"
+	"net/http"
+	"net/url"
+	"path/filepath"
 
 	"github.com/smartcontractkit/integrations-framework/config"
-
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 )
 
-// Commonly used variables
+// Commonly used blockchain network types
 const (
-	BlockchainTypeEVM          = "evm"
-	BlockchainTypeEVMMultinode = "evm_multi"
-	NetworkGethPerformance     = "ethereum_geth_performance"
+	ETHNetworkType         = "eth_multinode"
+	NetworkGethPerformance = "ethereum_geth_performance"
 )
+
+// NewBlockchainClientFn external client implementation function
+// networkName must match a key in "networks" in networks.yaml config
+// networkConfig is just an arbitrary config you provide in "networks" for your key
+type NewBlockchainClientFn func(
+	networkName string,
+	networkConfig map[string]interface{},
+	urls []*url.URL,
+) (BlockchainClient, error)
+
+// BlockchainClientURLFn are used to be able to return a list of URLs from the environment to connect
+type BlockchainClientURLFn func(e *environment.Environment) ([]*url.URL, error)
 
 // BlockchainClient is the interface that wraps a given client implementation for a blockchain, to allow for switching
 // of network types within the test suite
+// BlockchainClient can be connected to a single or multiple nodes,
 type BlockchainClient interface {
+	LoadWallets(ns interface{}) error
+	SetWallet(num int) error
+
+	CalculateTXSCost(txs int64) (*big.Float, error)
+	CalculateTxGas(gasUsedValue *big.Int) (*big.Float, error)
+
 	Get() interface{}
 	GetNetworkName() string
-	GetID() int
-	SetID(id int)
-	SetDefaultClient(clientID int) error
+	SwitchNode(node int) error
 	GetClients() []BlockchainClient
 	SuggestGasPrice(ctx context.Context) (*big.Int, error)
 	HeaderHashByNumber(ctx context.Context, bn *big.Int) (string, error)
 	BlockNumber(ctx context.Context) (uint64, error)
 	HeaderTimestampByNumber(ctx context.Context, bn *big.Int) (uint64, error)
-	CalculateTxGas(gasUsedValue *big.Int) (*big.Float, error)
-	Fund(fromWallet BlockchainWallet, toAddress string, nativeAmount, linkAmount *big.Float) error
+	Fund(toAddress string, amount *big.Float) error
 	GasStats() *GasStats
 	ParallelTransactions(enabled bool)
 	Close() error
@@ -47,248 +63,151 @@ type BlockchainClient interface {
 	WaitForEvents() error
 }
 
-// NewBlockchainClient returns an instantiated network client implementation based on the network configuration given
-func NewBlockchainClient(network BlockchainNetwork) (BlockchainClient, error) {
-	switch network.Type() {
-	case BlockchainTypeEVM:
-		return NewEthereumClient(network)
-	case BlockchainTypeEVMMultinode:
-		return NewEthereumClients(network)
-	}
-	return nil, errors.New("invalid blockchain network ID, not found")
+// Networks is a thin wrapper that just selects client connected to some network
+// if there is only one client it is chosen as Default
+// if there is multiple you just get clients you need in test
+type Networks struct {
+	clients []BlockchainClient
+	Default BlockchainClient
 }
 
-// BlockchainNetwork is the interface that when implemented, defines a new blockchain network that can be tested against
-type BlockchainNetwork interface {
-	ID() string
-	WSEnabled() bool
-	ClusterURL() string
-	LocalURL() string
-	URLs() []string
-	Type() string
-	SetClusterURL(string)
-	SetLocalURL(string)
-	SetURLs(urls []string)
-	ChainID() *big.Int
-	RemotePort() uint16
-	Wallets() (BlockchainWallets, error)
-	Config() *config.NetworkConfig
-}
-
-// EthereumNetwork is the implementation of BlockchainNetwork for the local ETH dev server
-type EthereumNetwork struct {
-	networkID     string
-	networkConfig *config.NetworkConfig
-}
-
-// NewEthereumNetwork creates a way to interact with any specified EVM blockchain
-func NewEthereumNetwork(ID string, networkConfig config.NetworkConfig) (BlockchainNetwork, error) {
-	return &EthereumNetwork{
-		networkID:     ID,
-		networkConfig: &networkConfig,
-	}, nil
-}
-
-// NewNetworkFromConfig creates a new blockchain network based on the ID
-func NewNetworkFromConfig(conf *config.Config, networkID string) (BlockchainNetwork, error) {
-	networkConfig, err := conf.GetNetworkConfig(networkID)
-	if err != nil {
-		return nil, err
-	}
-	switch networkConfig.Type {
-	case BlockchainTypeEVM, BlockchainTypeEVMMultinode:
-		return NewEthereumNetwork(networkID, networkConfig)
-	}
-	return nil, fmt.Errorf(
-		"network %s uses an unspported network type of: %s",
-		networkID,
-		networkConfig.Type,
-	)
-}
-
-// DefaultNetworkFromConfig prepares settings for a connection the default blockchain specified in the config file
-func DefaultNetworkFromConfig(conf *config.Config) (BlockchainNetwork, error) {
-	if len(conf.Networks) <= 0 {
-		return nil, fmt.Errorf("No default network(s) provided in config")
-	}
-	return NewNetworkFromConfig(conf, conf.Networks[0])
-}
-
-// ID returns the readable name of the EVM network
-func (e *EthereumNetwork) ID() string {
-	return e.networkID
-}
-
-// WSEnabled returns true if network support websocket endpoint
-func (e *EthereumNetwork) WSEnabled() bool {
-	return true
-}
-
-// Type returns the readable type of the EVM network
-func (e *EthereumNetwork) Type() string {
-	return e.networkConfig.Type
-}
-
-// ClusterURL returns the RPC URL used for connecting to the network within the K8s cluster
-func (e *EthereumNetwork) ClusterURL() string {
-	return e.networkConfig.ClusterURL
-}
-
-// LocalURL returns the RPC URL used for connecting to the network from outside the K8s cluster
-func (e *EthereumNetwork) LocalURL() string {
-	return e.networkConfig.LocalURL
-}
-
-// URLs returns the RPC URLs used for connecting to the network nodes
-func (e *EthereumNetwork) URLs() []string {
-	return e.networkConfig.URLS
-}
-
-// SetURLs sets all nodes URLs
-func (e *EthereumNetwork) SetURLs(urls []string) {
-	e.networkConfig.URLS = urls
-}
-
-// SetClusterURL sets the RPC URL used to connect to the chain from within the K8s cluster
-func (e *EthereumNetwork) SetClusterURL(newURL string) {
-	e.networkConfig.ClusterURL = newURL
-}
-
-// SetLocalURL sets the RPC URL used to connect to the chain from outside the K8s cluster
-func (e *EthereumNetwork) SetLocalURL(newURL string) {
-	e.networkConfig.LocalURL = newURL
-}
-
-// ChainID returns the on-chain ID of the network being connected to
-func (e *EthereumNetwork) ChainID() *big.Int {
-	return big.NewInt(e.networkConfig.ChainID)
-}
-
-// Config returns the blockchain network configuration
-func (e *EthereumNetwork) Config() *config.NetworkConfig {
-	return e.networkConfig
-}
-
-// RemotePort returns the remote RPC port of the network
-func (e *EthereumNetwork) RemotePort() uint16 {
-	return e.networkConfig.RPCPort
-}
-
-// Wallets returns all the viable wallets used for testing on chain
-func (e *EthereumNetwork) Wallets() (BlockchainWallets, error) {
-	return newEthereumWallets(e.networkConfig.PrivateKeyStore)
-}
-
-// BlockchainWallets is an interface that when implemented is a representation of a slice of wallets for
-// a specific network
-type BlockchainWallets interface {
-	Default() BlockchainWallet
-	All() []BlockchainWallet
-	SetDefault(i int) error
-	Wallet(i int) (BlockchainWallet, error)
-}
-
-// Wallets is the default implementation of BlockchainWallets that holds a slice of wallets with the default
-type Wallets struct {
-	DefaultWallet int
-	Wallets       []BlockchainWallet
-}
-
-// Default returns the default wallet to be used for a transaction on-chain
-func (w *Wallets) Default() BlockchainWallet {
-	return w.Wallets[w.DefaultWallet]
-}
-
-// All returns the raw representation of Wallets
-func (w *Wallets) All() []BlockchainWallet {
-	return w.Wallets
-}
-
-// SetDefault changes the default wallet to be used for on-chain transactions
-func (w *Wallets) SetDefault(i int) error {
-	if err := walletSliceIndexInRange(w.Wallets, i); err != nil {
-		return err
-	}
-	w.DefaultWallet = i
-	return nil
-}
-
-// Wallet returns a wallet based on a given index in the slice
-func (w *Wallets) Wallet(i int) (BlockchainWallet, error) {
-	if err := walletSliceIndexInRange(w.Wallets, i); err != nil {
-		return nil, err
-	}
-	return w.Wallets[i], nil
-}
-
-// BlockchainWallet when implemented is the interface to allow multiple wallet implementations for each
-// BlockchainNetwork that is supported
-type BlockchainWallet interface {
-	RawPrivateKey() interface{}
-	PrivateKey() string
-	Address() string
-}
-
-// EthereumWallet is the implementation to allow testing with ETH based wallets
-type EthereumWallet struct {
-	privateKey string
-	address    common.Address
-}
-
-// NewEthereumWallet returns the instantiated ETH wallet based on a given private key
-func NewEthereumWallet(pk string) (*EthereumWallet, error) {
-	privateKey, err := crypto.HexToECDSA(pk)
-	if err != nil {
-		return nil, fmt.Errorf("invalid private key: %v", err)
-	}
-	return &EthereumWallet{
-		privateKey: pk,
-		address:    crypto.PubkeyToAddress(privateKey.PublicKey),
-	}, nil
-}
-
-// RawPrivateKey returns raw private key if it has some encoding or in bytes
-func (e *EthereumWallet) RawPrivateKey() interface{} {
-	return e.privateKey
-}
-
-// PrivateKey returns the private key for a given Ethereum wallet
-func (e *EthereumWallet) PrivateKey() string {
-	return e.privateKey
-}
-
-// Address returns the ETH address for a given wallet
-func (e *EthereumWallet) Address() string {
-	return e.address.String()
-}
-
-func newEthereumWallets(pkStore config.PrivateKeyStore) (BlockchainWallets, error) {
-	// Check private keystore value, create wallets from such
-	var processedWallets []BlockchainWallet
-	keys, err := pkStore.Fetch()
-	if err != nil {
-		return nil, err
-	}
-
-	for _, key := range keys {
-		wallet, err := NewEthereumWallet(strings.TrimSpace(key))
-		if err != nil {
-			return &Wallets{}, err
+// Teardown all clients
+func (b *Networks) Teardown() error {
+	for _, c := range b.clients {
+		if err := c.Close(); err != nil {
+			return err
 		}
-		processedWallets = append(processedWallets, wallet)
 	}
+	return nil
+}
 
-	return &Wallets{
-		DefaultWallet: 0,
-		Wallets:       processedWallets,
+// SetDefault chooses default client
+func (b *Networks) SetDefault(index int) error {
+	if len(b.clients) >= index {
+		return fmt.Errorf("index of %d is out of bounds", index)
+	}
+	b.Default = b.clients[index]
+	return nil
+}
+
+// Get gets blockchain network (client) by name
+func (b *Networks) Get(index int) (BlockchainClient, error) {
+	if len(b.clients) >= index {
+		return nil, fmt.Errorf("index of %d is out of bounds", index)
+	}
+	return b.clients[index], nil
+}
+
+// NewMockServerClientFromEnv creates new mockserver from env
+func NewMockServerClientFromEnv(e *environment.Environment) (*MockserverClient, error) {
+	localURL, err := e.Charts.Connections("mockserver").LocalURLByPort("serviceport", environment.HTTP)
+	if err != nil {
+		return nil, err
+	}
+	remoteURL, err := e.Config.Charts.Connections("mockserver").RemoteURLByPort("serviceport", environment.HTTP)
+	if err != nil {
+		return nil, err
+	}
+	c := NewMockserverClient(&MockserverConfig{
+		LocalURL:   localURL.String(),
+		ClusterURL: remoteURL.String(),
+	})
+	return c, nil
+}
+
+// NetworkRegistry holds all the registered network types that can be initialised, allowing
+// external libraries to register alternative network types to use
+type NetworkRegistry struct {
+	registeredNetworks map[string]registeredNetwork
+}
+
+type registeredNetwork struct {
+	newBlockchainClientFn NewBlockchainClientFn
+	blockchainClientURLFn BlockchainClientURLFn
+}
+
+// NewNetworkRegistry returns an instance of the network registry with the default supported networks registered
+func NewNetworkRegistry() *NetworkRegistry {
+	return &NetworkRegistry{
+		registeredNetworks: map[string]registeredNetwork{
+			ETHNetworkType: {
+				newBlockchainClientFn: NewEthereumMultiNodeClient,
+				blockchainClientURLFn: EthereumMultiNodeURLs,
+			},
+		},
+	}
+}
+
+// RegisterNetwork registers a new type of network within the registry
+func (n *NetworkRegistry) RegisterNetwork(networkType string, fn NewBlockchainClientFn, urlFn BlockchainClientURLFn) {
+	n.registeredNetworks[networkType] = registeredNetwork{
+		newBlockchainClientFn: fn,
+		blockchainClientURLFn: urlFn,
+	}
+}
+
+// GetNetworks returns a networks object with all the BlockchainClient(s) initialised
+func (n *NetworkRegistry) GetNetworks(env *environment.Environment) (*Networks, error) {
+	nc, err := config.LoadNetworksConfig(filepath.Join(utils.ProjectRoot, "networks.yaml"))
+	if err != nil {
+		return nil, err
+	}
+	var clients []BlockchainClient
+	for _, networkName := range nc.SelectedNetworks {
+		networkSettings, ok := nc.NetworkSettings[networkName]
+		if !ok {
+			return nil, fmt.Errorf("network with the name of '%s' doesn't exist in the network config", networkName)
+		}
+		networkType, ok := networkSettings["type"]
+		if !ok {
+			return nil, fmt.Errorf("network config for '%s' doesn't define a 'type'", networkName)
+		}
+		initFn, ok := n.registeredNetworks[fmt.Sprint(networkType)]
+		if !ok {
+			return nil, fmt.Errorf("network '%s' of type '%s' hasn't been registered", networkName, networkType)
+		}
+		urls, err := initFn.blockchainClientURLFn(env)
+		if err != nil {
+			return nil, err
+		}
+		client, err := initFn.newBlockchainClientFn(networkName, networkSettings, urls)
+		if err != nil {
+			return nil, err
+		}
+		clients = append(clients, client)
+	}
+	var defaultClient BlockchainClient
+	if len(clients) == 1 {
+		for _, c := range clients {
+			defaultClient = c
+		}
+	}
+	return &Networks{
+		clients: clients,
+		Default: defaultClient,
 	}, nil
 }
 
-func walletSliceIndexInRange(wallets []BlockchainWallet, i int) error {
-	if i > len(wallets)-1 {
-		return fmt.Errorf("invalid index in list of wallets")
+// NewChainlinkClients creates new chainlink clients
+func NewChainlinkClients(e *environment.Environment) ([]Chainlink, error) {
+	var clients []Chainlink
+
+	urls, err := e.Charts.Connections("chainlink").LocalURLsByPort("access", environment.HTTP)
+	if err != nil {
+		return nil, err
 	}
-	return nil
+	for _, chainlinkURL := range urls {
+		c, err := NewChainlink(&ChainlinkConfig{
+			URL:      chainlinkURL.String(),
+			Email:    "notreal@fakeemail.ch",
+			Password: "twochains",
+		}, http.DefaultClient)
+		clients = append(clients, c)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return clients, nil
 }
 
 // NodeBlock block with a node ID which mined it
@@ -301,4 +220,16 @@ type NodeBlock struct {
 type HeaderEventSubscription interface {
 	ReceiveBlock(header NodeBlock) error
 	Wait() error
+}
+
+// UnmarshalNetworkConfig is a generic function to unmarshall a yaml map into a given object
+func UnmarshalNetworkConfig(config map[string]interface{}, obj interface{}) error {
+	b, err := json.Marshal(config)
+	if err != nil {
+		return err
+	}
+	if err := yaml.Unmarshal(b, obj); err != nil {
+		return err
+	}
+	return nil
 }

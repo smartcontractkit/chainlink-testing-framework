@@ -1,6 +1,6 @@
 package experiments
 
-// NetworkPartition struct with objects for Network Partition testing
+// NetworkPartition struct with objects for NetworkConfig Partition testing
 type NetworkPartition struct {
 	Base
 	FromMode       string
