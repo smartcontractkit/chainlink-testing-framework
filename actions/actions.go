@@ -165,11 +165,6 @@ func TeardownSuite(env *environment.Environment, nets *client.Networks) error {
 			return err
 		}
 	}
-	if !env.Config.PersistentConnection {
-		if err := env.Disconnect(); err != nil {
-			return err
-		}
-	}
 	if !env.Config.Persistent {
 		if err := env.Teardown(); err != nil {
 			return err
