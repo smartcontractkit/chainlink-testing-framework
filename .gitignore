@@ -31,5 +31,5 @@ logs/
 bin/
 
 # ide
-
+.vscode/
 *.idea
