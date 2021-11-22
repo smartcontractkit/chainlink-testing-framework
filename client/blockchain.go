@@ -114,7 +114,7 @@ func NewMockServerClientFromEnv(e *environment.Environment) (*MockserverClient, 
 	return c, nil
 }
 
-// NetworkRegistry holds all the registered network types that can be initialised, allowing
+// NetworkRegistry holds all the registered network types that can be initialized, allowing
 // external libraries to register alternative network types to use
 type NetworkRegistry struct {
 	registeredNetworks map[string]registeredNetwork
@@ -221,7 +221,7 @@ type HeaderEventSubscription interface {
 	Wait() error
 }
 
-// UnmarshalNetworkConfig is a generic function to unmarshall a yaml map into a given object
+// UnmarshalNetworkConfig is a generic function to unmarshal a yaml map into a given object
 func UnmarshalNetworkConfig(config map[string]interface{}, obj interface{}) error {
 	b, err := json.Marshal(config)
 	if err != nil {

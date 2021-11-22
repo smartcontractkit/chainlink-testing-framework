@@ -660,7 +660,7 @@ func (e *EthereumClient) receiveHeader(header *types.Header) {
 		})
 	}
 	if err := g.Wait(); err != nil {
-		log.Err(fmt.Errorf("error on sending block to recivers: %v", err))
+		log.Err(fmt.Errorf("error on sending block to receivers: %v", err))
 	}
 }
 
@@ -800,7 +800,7 @@ func (t *TransactionConfirmer) Wait() error {
 	}
 }
 
-// InstantConfirmations is a no-op confirmer as all transactions are instantly mined so no confs are needed
+// InstantConfirmations is a no-op confirmer as all transactions are instantly mined so no confirmations are needed
 type InstantConfirmations struct{}
 
 // ReceiveBlock is a no-op

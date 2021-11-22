@@ -31,12 +31,14 @@ var _ = Describe("Cronjob suite @cron", func() {
 			err = e.ConnectAll()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		By("Getting the clients", func() {
 			cls, err = client.NewChainlinkClients(e)
 			Expect(err).ShouldNot(HaveOccurred())
 			mockserver, err = client.NewMockServerClientFromEnv(e)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		By("Adding cron job to a node", func() {
 			err = mockserver.SetValuePath("/variable", 5)
 			Expect(err).ShouldNot(HaveOccurred())
