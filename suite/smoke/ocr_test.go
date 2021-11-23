@@ -16,7 +16,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/contracts"
 )
 
-var _ = XDescribe("OCR Feed @ocr", func() {
+var _ = FDescribe("OCR Feed @ocr", func() {
 	var (
 		err             error
 		nets            *client.Networks

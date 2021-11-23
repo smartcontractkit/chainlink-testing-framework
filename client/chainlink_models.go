@@ -461,7 +461,6 @@ type OCRBootstrapJobSpec struct {
 	TrackerPollInterval      time.Duration `toml:"contractConfigTrackerPollInterval"`      // Optional
 	TrackerSubscribeInterval time.Duration `toml:"contractConfigTrackerSubscribeInterval"` // Optional
 	ContractAddress          string        `toml:"contractAddress"`                        // Address of the OCR contract
-	P2PBootstrapPeers        []string      `toml:"p2pBootstrapPeers"`                      // Typically empty for our suite
 	IsBootstrapPeer          bool          `toml:"isBootstrapPeer"`                        // Typically true
 	P2PPeerID                string        `toml:"p2pPeerID"`                              // This node's P2P ID
 }
@@ -478,15 +477,7 @@ contractConfigConfirmations            ={{if not .ContractConfirmations}} 3 {{el
 contractConfigTrackerPollInterval      ={{if not .TrackerPollInterval}} "1m" {{else}} {{.TrackerPollInterval}} {{end}}
 contractConfigTrackerSubscribeInterval ={{if not .TrackerSubscribeInterval}} "2m" {{else}} {{.TrackerSubscribeInterval}} {{end}}
 contractAddress                        = "{{.ContractAddress}}"
-{{if .P2PBootstrapPeers}}
-p2pBootstrapPeers                      = [
-  {{range $peer := .P2PBootstrapPeers}}
-  "/dns4/chainlink-node-bootstrap/tcp/6690/p2p/{{$peer}}",
-  {{end}}
-]
-{{else}}
 p2pBootstrapPeers                      = []
-{{end}}
 isBootstrapPeer                        = {{.IsBootstrapPeer}}
 p2pPeerID                              = "{{.P2PPeerID}}"`
 	return marshallTemplate(o, "OCR Bootstrap Job", ocrTemplateString)
@@ -562,6 +553,7 @@ func (o *OCRTaskJobSpec) String() (string, error) {
 		TransmitterAddress:       o.TransmitterAddress,
 		ObservationSource:        o.ObservationSource,
 	}
+	// Results in /dns4//tcp/6690/p2p/12D3KooWAuC9xXBnadsYJpqzZZoB4rMRWqRGpxCrr2mjS7zCoAdN\
 	ocrTemplateString := `type = "offchainreporting"
 schemaVersion                          = 1
 blockchainTimeout                      ={{if not .BlockChainTimeout}} "20s" {{else}} {{.BlockChainTimeout}} {{end}}

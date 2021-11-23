@@ -191,15 +191,20 @@ func (n *NetworkRegistry) GetNetworks(env *environment.Environment) (*Networks, 
 func NewChainlinkClients(e *environment.Environment) ([]Chainlink, error) {
 	var clients []Chainlink
 
-	urls, err := e.Charts.Connections("chainlink").LocalURLsByPort("access", environment.HTTP)
+	localURLs, err := e.Charts.Connections("chainlink").LocalURLsByPort("access", environment.HTTP)
 	if err != nil {
 		return nil, err
 	}
-	for _, chainlinkURL := range urls {
+	remoteURLs, err := e.Charts.Connections("chainlink").RemoteURLsByPort("access", environment.HTTP)
+	if err != nil {
+		return nil, err
+	}
+	for urlIndex, localURL := range localURLs {
 		c, err := NewChainlink(&ChainlinkConfig{
-			URL:      chainlinkURL.String(),
+			URL:      localURL.String(),
 			Email:    "notreal@fakeemail.ch",
 			Password: "twochains",
+			RemoteIP: remoteURLs[urlIndex].Hostname(),
 		}, http.DefaultClient)
 		clients = append(clients, c)
 		if err != nil {
