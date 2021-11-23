@@ -14,13 +14,17 @@ go_mod:
 install: go_mod golangci
 
 test_unit:
-	ginkgo -r -output-dir ./logs --junit-report=tests-unit-report.xml --keep-going --trace --randomize-all --randomize-suites --progress -cover -covermode=count -coverProfile=unit-test-coverage.out -nodes=10 ./client ./config ./environment 
+	mkdir -p ./logs
+	ginkgo -r -output-dir ./logs --junit-report=tests-unit-report.xml --keep-going --trace --randomize-all --randomize-suites --progress -cover -covermode=count -coverprofile=unit-test-coverage.out -nodes=10 ./client ./config ./environment 
 
 test_smoke:
+	mkdir -p ./logs
 	ginkgo -v -r -output-dir ./logs --junit-report=tests-smoke-report.xml --keep-going --trace --randomize-all --randomize-suites --progress $(args) ./suite/smoke 
 
 test_performance:
+	mkdir -p ./logs
 	NETWORKS=ethereum_geth_performance,ethereum_geth_performance ginkgo -r -output-dir ./logs --junit-report=tests-performance-report.xml --keep-going --trace --randomize-all --randomize-suites --progress $(args) ./suite/performance 
 
 test_chaos:
+	mkdir -p ./logs
 	NETWORKS=ethereum_geth_performance,ethereum_geth_performance ginkgo -r -output-dir ./logs --junit-report=tests-chaos-report.xml --keep-going --trace --randomize-all --randomize-suites --progress $(args) ./suite/chaos 
