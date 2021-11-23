@@ -44,9 +44,7 @@ jobs:
         if: steps.cache-packages.outputs.cache-hit != 'true'
         run: go mod download
       - name: Install Ginkgo CLI
-        run: |
-          go get github.com/onsi/ginkgo/ginkgo@ver2
-          go install github.com/onsi/ginkgo/ginkgo
+        run: go install github.com/onsi/ginkgo/v2/ginkgo
       - name: Run Tests
         run: |
           export PATH=$PATH:$(go env GOPATH)/bin
@@ -61,7 +59,7 @@ jobs:
         if: always()
         with:
           check_name: Unit Test Report
-          report_paths: '**/tests-unit-report.xml'
+          report_paths: './tests-unit-report.xml'
           github_token: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish Artifacts
         if: failure()
@@ -109,9 +107,7 @@ jobs:
         if: steps.cache-packages.outputs.cache-hit != 'true'
         run: go mod download
       - name: Install Ginkgo CLI
-        run: |
-          go get github.com/onsi/ginkgo/ginkgo@ver2
-          go install github.com/onsi/ginkgo/ginkgo
+        run: go install github.com/onsi/ginkgo/v2/ginkgo
       - name: Run Tests
         run: |
           export PATH=$PATH:$(go env GOPATH)/bin
@@ -120,7 +116,7 @@ jobs:
         uses: mikepenz/action-junit-report@v2
         if: always()
         with:
-          report_paths: '**/tests-smoke-report.xml'
+          report_paths: './tests-smoke-report.xml'
           github_token: ${{ secrets.GITHUB_TOKEN }}
           check_name: Smoke Test Results
       - name: Publish Artifacts
@@ -172,9 +168,7 @@ jobs:
         if: steps.cache-packages.outputs.cache-hit != 'true'
         run: go mod download
       - name: Install Ginkgo CLI
-        run: |
-          go get github.com/onsi/ginkgo/ginkgo@ver2
-          go install github.com/onsi/ginkgo/ginkgo
+        run: go install github.com/onsi/ginkgo/v2/ginkgo
       - name: Run Tests
         run: |
           export PATH=$PATH:$(go env GOPATH)/bin
@@ -183,7 +177,7 @@ jobs:
         uses: mikepenz/action-junit-report@v2
         if: always()
         with:
-          report_paths: '**/tests-performance-report.xml'
+          report_paths: './tests-performance-report.xml'
           github_token: ${{ secrets.GITHUB_TOKEN }}
           check_name: Performance Test Results
       - name: Publish Artifacts
@@ -235,9 +229,7 @@ jobs:
         if: steps.cache-packages.outputs.cache-hit != 'true'
         run: go mod download
       - name: Install Ginkgo CLI
-        run: |
-          go get github.com/onsi/ginkgo/ginkgo@ver2
-          go install github.com/onsi/ginkgo/ginkgo
+        run: go install github.com/onsi/ginkgo/v2/ginkgo
       - name: Run Tests
         run: |
           export PATH=$PATH:$(go env GOPATH)/bin
@@ -247,7 +239,7 @@ jobs:
         if: always()
         with:
           check_name: Chaos Test Report
-          report_paths: '**/tests-chaos-report.xml'
+          report_paths: './tests-chaos-report.xml'
           github_token: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish Artifacts
         if: failure()
