@@ -33,7 +33,6 @@ jobs:
   
   codeQL:
     name: CodeQL Checks
-    if: startsWith(github.ref, 'v') || contains(github.ref, 'main') || contains(github.ref, 'develop')
     runs-on: ubuntu-latest
     permissions:
       security-events: write

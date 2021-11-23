@@ -14,7 +14,7 @@ go_mod:
 install: go_mod golangci
 
 test_unit:
-	ginkgo -r -output-dir ./logs --junit-report=tests-unit-report.xml --keep-going --trace --randomize-all --randomize-suites --progress -cover -covermode=count -cover-profile=unit-test-coverage.out -nodes=10 ./client ./config ./environment 
+	ginkgo -r -output-dir ./logs --junit-report=tests-unit-report.xml --keep-going --trace --randomize-all --randomize-suites --progress -cover -covermode=count -coverProfile=unit-test-coverage.out -nodes=10 ./client ./config ./environment 
 
 test_smoke:
 	ginkgo -v -r -output-dir ./logs --junit-report=tests-smoke-report.xml --keep-going --trace --randomize-all --randomize-suites --progress $(args) ./suite/smoke 
