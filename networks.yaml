@@ -32,10 +32,10 @@ networks:
         secret_private_keys: false
         namespace_for_secret: default
         <<: *private_keys
-        transaction_limit: 9500000
+        chainlink_transaction_limit: 500000
         transaction_timeout: 2m
         minimum_confirmations: 1
-        gas_estimation_buffer: 100000
+        gas_estimation_buffer: 10000
         block_gas_limit: 40000000
     ethereum_geth_performance: &ethereum_geth_performance
         <<: *common_ethereum
@@ -57,7 +57,7 @@ networks:
         private_url: kovan_testnet_url
         private_keys:
             - kovan_testnet_1
-        transaction_limit: 7667850
+        chainlink_transaction_limit: 7667850
         transaction_timeout: 2m
         minimum_confirmations: 1
         gas_estimation_buffer: 10000
@@ -75,7 +75,7 @@ networks:
         chain_id: 4
         private_keys:
             - rinkeby_private_key_1
-        transaction_limit: 9000000
+        chainlink_transaction_limit: 9000000
     arbitrum_testnet:
         <<: *common_ethereum_testnet
         name: "Arbitrum testnet"
@@ -83,7 +83,7 @@ networks:
         private_url: arb_testnet_url
         private_keys:
             - arb_testnet_1
-        transaction_limit: 9000000000
+        chainlink_transaction_limit: 9000000000
         minimum_confirmations: 1
         transaction_timeout: 1m
     bsc_testnet:
@@ -93,7 +93,7 @@ networks:
         chain_id: 97
         private_keys:
             - bsc_testnet_1
-        transaction_limit: 6500000
+        chainlink_transaction_limit: 6500000
         transaction_timeout: 1m
     matic_mumbai:
         <<: *common_ethereum_testnet
@@ -124,7 +124,7 @@ networks:
         private_url: avax_fuji_testnet_url
         private_keys:
             - avax_fuji_testnet_1
-        transaction_limit: 6000000
+        chainlink_transaction_limit: 6000000
     optimism_kovan:
         <<: *common_ethereum_testnet
         name: "Optimism Kovan testnet"

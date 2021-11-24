@@ -3,16 +3,17 @@ package smoke
 import (
 	"context"
 	"fmt"
+	"math/big"
+	"strings"
+	"time"
+
 	"github.com/ethereum/go-ethereum/common"
 	uuid "github.com/satori/go.uuid"
 	"github.com/smartcontractkit/helmenv/environment"
 	"github.com/smartcontractkit/helmenv/tools"
 	"github.com/smartcontractkit/integrations-framework/actions"
-	"math/big"
-	"strings"
-	"time"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/client"
@@ -44,6 +45,7 @@ var _ = Describe("Flux monitor suite @flux", func() {
 			err = e.ConnectAll()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		By("Getting the clients", func() {
 			networkRegistry := client.NewNetworkRegistry()
 			nets, err = networkRegistry.GetNetworks(e)
@@ -58,12 +60,14 @@ var _ = Describe("Flux monitor suite @flux", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			nets.Default.ParallelTransactions(true)
 		})
+
 		By("Setting initial adapter value", func() {
 			adapterUUID = uuid.NewV4().String()
 			adapterPath = fmt.Sprintf("/variable-%s", adapterUUID)
 			err = mockserver.SetValuePath(adapterPath, 1e5)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		By("Deploying and funding contract", func() {
 			lt, err = cd.DeployLinkTokenContract()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -76,10 +80,12 @@ var _ = Describe("Flux monitor suite @flux", func() {
 			err = nets.Default.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		By("Funding Chainlink nodes", func() {
 			err = actions.FundChainlinkNodes(cls, nets.Default, big.NewFloat(1))
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		By("Setting oracle options", func() {
 			err = fluxInstance.SetOracles(
 				contracts.FluxAggregatorSetOraclesOptions{
@@ -97,6 +103,7 @@ var _ = Describe("Flux monitor suite @flux", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			log.Info().Str("Oracles", strings.Join(oracles, ",")).Msg("Oracles set")
 		})
+
 		By("Creating flux jobs", func() {
 			adapterFullURL := fmt.Sprintf("%s%s", mockserver.Config.ClusterURL, adapterPath)
 			bta := client.BridgeTypeAttributes{
@@ -121,6 +128,7 @@ var _ = Describe("Flux monitor suite @flux", func() {
 			}
 		})
 	})
+
 	Describe("with Flux job", func() {
 		It("performs two rounds and has withdrawable payments for oracles", func() {
 			// initial value set is performed before jobs creation

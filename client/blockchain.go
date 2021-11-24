@@ -5,14 +5,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/smartcontractkit/helmenv/environment"
-	"github.com/smartcontractkit/integrations-framework/utils"
-	"gopkg.in/yaml.v2"
 	"math/big"
 	"net/http"
 	"net/url"
 	"path/filepath"
+
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/smartcontractkit/helmenv/environment"
+	"github.com/smartcontractkit/integrations-framework/utils"
+	"gopkg.in/yaml.v2"
 
 	"github.com/smartcontractkit/integrations-framework/config"
 )
@@ -42,14 +43,12 @@ type BlockchainClient interface {
 	LoadWallets(ns interface{}) error
 	SetWallet(num int) error
 
-	CalculateTXSCost(txs int64) (*big.Float, error)
-	CalculateTxGas(gasUsedValue *big.Int) (*big.Float, error)
+	EstimateCostForChainlinkOperations(amountOfOperations int) (*big.Float, error)
 
 	Get() interface{}
 	GetNetworkName() string
 	SwitchNode(node int) error
 	GetClients() []BlockchainClient
-	SuggestGasPrice(ctx context.Context) (*big.Int, error)
 	HeaderHashByNumber(ctx context.Context, bn *big.Int) (string, error)
 	BlockNumber(ctx context.Context) (uint64, error)
 	HeaderTimestampByNumber(ctx context.Context, bn *big.Int) (uint64, error)
@@ -115,7 +114,7 @@ func NewMockServerClientFromEnv(e *environment.Environment) (*MockserverClient, 
 	return c, nil
 }
 
-// NetworkRegistry holds all the registered network types that can be initialised, allowing
+// NetworkRegistry holds all the registered network types that can be initialized, allowing
 // external libraries to register alternative network types to use
 type NetworkRegistry struct {
 	registeredNetworks map[string]registeredNetwork
@@ -146,7 +145,7 @@ func (n *NetworkRegistry) RegisterNetwork(networkType string, fn NewBlockchainCl
 	}
 }
 
-// GetNetworks returns a networks object with all the BlockchainClient(s) initialised
+// GetNetworks returns a networks object with all the BlockchainClient(s) initialized
 func (n *NetworkRegistry) GetNetworks(env *environment.Environment) (*Networks, error) {
 	nc, err := config.LoadNetworksConfig(filepath.Join(utils.ProjectRoot, "networks.yaml"))
 	if err != nil {
@@ -190,21 +189,33 @@ func (n *NetworkRegistry) GetNetworks(env *environment.Environment) (*Networks, 
 
 // NewChainlinkClients creates new chainlink clients
 func NewChainlinkClients(e *environment.Environment) ([]Chainlink, error) {
+	return NewChainlinkClientsByCharts(e, []string{"chainlink"})
+}
+
+// NewChainlinkClientsByCharts creates new chainlink clients by charts
+func NewChainlinkClientsByCharts(e *environment.Environment, charts []string) ([]Chainlink, error) {
 	var clients []Chainlink
 
-	urls, err := e.Charts.Connections("chainlink").LocalURLsByPort("access", environment.HTTP)
-	if err != nil {
-		return nil, err
-	}
-	for _, chainlinkURL := range urls {
-		c, err := NewChainlink(&ChainlinkConfig{
-			URL:      chainlinkURL.String(),
-			Email:    "notreal@fakeemail.ch",
-			Password: "twochains",
-		}, http.DefaultClient)
-		clients = append(clients, c)
+	for _, chart := range charts {
+		localURLs, err := e.Charts.Connections(chart).LocalURLsByPort("access", environment.HTTP)
 		if err != nil {
 			return nil, err
+		}
+		remoteURLs, err := e.Charts.Connections(chart).RemoteURLsByPort("access", environment.HTTP)
+		if err != nil {
+			return nil, err
+		}
+		for urlIndex, localURL := range localURLs {
+			c, err := NewChainlink(&ChainlinkConfig{
+				URL:      localURL.String(),
+				Email:    "notreal@fakeemail.ch",
+				Password: "twochains",
+				RemoteIP: remoteURLs[urlIndex].Hostname(),
+			}, http.DefaultClient)
+			clients = append(clients, c)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 	return clients, nil
@@ -222,7 +233,7 @@ type HeaderEventSubscription interface {
 	Wait() error
 }
 
-// UnmarshalNetworkConfig is a generic function to unmarshall a yaml map into a given object
+// UnmarshalNetworkConfig is a generic function to unmarshal a yaml map into a given object
 func UnmarshalNetworkConfig(config map[string]interface{}, obj interface{}) error {
 	b, err := json.Marshal(config)
 	if err != nil {

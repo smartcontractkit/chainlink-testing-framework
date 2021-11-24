@@ -3,7 +3,9 @@ package smoke
 import (
 	"context"
 	"fmt"
-	. "github.com/onsi/ginkgo"
+	"math/big"
+
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog/log"
 	uuid "github.com/satori/go.uuid"
@@ -12,7 +14,6 @@ import (
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
-	"math/big"
 )
 
 var _ = Describe("VRF suite @vrf", func() {
@@ -37,6 +38,7 @@ var _ = Describe("VRF suite @vrf", func() {
 			err = e.ConnectAll()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		By("Getting the clients", func() {
 			networkRegistry := client.NewNetworkRegistry()
 			nets, err = networkRegistry.GetNetworks(e)
@@ -47,12 +49,14 @@ var _ = Describe("VRF suite @vrf", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			nets.Default.ParallelTransactions(true)
 		})
+
 		By("Funding Chainlink nodes", func() {
-			txCost, err := nets.Default.CalculateTXSCost(1)
+			txCost, err := nets.Default.EstimateCostForChainlinkOperations(1)
 			Expect(err).ShouldNot(HaveOccurred())
 			err = actions.FundChainlinkNodes(cls, nets.Default, txCost)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		By("Deploying VRF contracts", func() {
 			lt, err = cd.DeployLinkTokenContract()
 			Expect(err).ShouldNot(HaveOccurred())

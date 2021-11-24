@@ -10,16 +10,6 @@ on:
 jobs:
   unit:
     runs-on: ubuntu-latest
-    services:
-      hardhat:
-        image: smartcontract/hardhat-network
-        ports:
-          - 8545:8545
-        options: >-
-          --health-cmd "curl -X POST --data '{"jsonrpc":"2.0","method":"net_listening","params":[],"id":31337}' http://localhost:8545"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     steps:
       - name: Checkout the Repo
         uses: actions/checkout@v2
@@ -55,8 +45,10 @@ jobs:
         run: go mod download
       - name: Install Ginkgo CLI
         run: |
-          go get github.com/onsi/ginkgo/ginkgo@ver2
-          go install github.com/onsi/ginkgo/ginkgo
+          go get github.com/onsi/ginkgo/v2/ginkgo/generators@v2.0.0-rc2
+          go get github.com/onsi/ginkgo/v2/ginkgo/internal@v2.0.0-rc2
+          go get github.com/onsi/ginkgo/v2/ginkgo/labels@v2.0.0-rc2
+          go install github.com/onsi/ginkgo/v2/ginkgo
       - name: Run Tests
         run: |
           export PATH=$PATH:$(go env GOPATH)/bin
@@ -70,10 +62,9 @@ jobs:
         uses: mikepenz/action-junit-report@v2
         if: always()
         with:
-          name: Unit Test Report
-          report_paths: '**/logs/tests-*.xml'
+          check_name: Unit Test Report
+          report_paths: './tests-unit-report.xml'
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          check_name: Unit Test Results
       - name: Publish Artifacts
         if: failure()
         uses: actions/upload-artifact@v2.2.4
@@ -121,8 +112,10 @@ jobs:
         run: go mod download
       - name: Install Ginkgo CLI
         run: |
-          go get github.com/onsi/ginkgo/ginkgo@ver2
-          go install github.com/onsi/ginkgo/ginkgo
+          go get github.com/onsi/ginkgo/v2/ginkgo/generators@v2.0.0-rc2
+          go get github.com/onsi/ginkgo/v2/ginkgo/internal@v2.0.0-rc2
+          go get github.com/onsi/ginkgo/v2/ginkgo/labels@v2.0.0-rc2
+          go install github.com/onsi/ginkgo/v2/ginkgo
       - name: Run Tests
         run: |
           export PATH=$PATH:$(go env GOPATH)/bin
@@ -131,8 +124,7 @@ jobs:
         uses: mikepenz/action-junit-report@v2
         if: always()
         with:
-          name: Smoke Test Report
-          report_paths: '**/logs/tests-*.xml'
+          report_paths: './tests-smoke-report.xml'
           github_token: ${{ secrets.GITHUB_TOKEN }}
           check_name: Smoke Test Results
       - name: Publish Artifacts
@@ -185,8 +177,10 @@ jobs:
         run: go mod download
       - name: Install Ginkgo CLI
         run: |
-          go get github.com/onsi/ginkgo/ginkgo@ver2
-          go install github.com/onsi/ginkgo/ginkgo
+          go get github.com/onsi/ginkgo/v2/ginkgo/generators@v2.0.0-rc2
+          go get github.com/onsi/ginkgo/v2/ginkgo/internal@v2.0.0-rc2
+          go get github.com/onsi/ginkgo/v2/ginkgo/labels@v2.0.0-rc2
+          go install github.com/onsi/ginkgo/v2/ginkgo
       - name: Run Tests
         run: |
           export PATH=$PATH:$(go env GOPATH)/bin
@@ -195,7 +189,7 @@ jobs:
         uses: mikepenz/action-junit-report@v2
         if: always()
         with:
-          report_paths: '**/logs/tests-*.xml'
+          report_paths: './tests-performance-report.xml'
           github_token: ${{ secrets.GITHUB_TOKEN }}
           check_name: Performance Test Results
       - name: Publish Artifacts
@@ -248,8 +242,10 @@ jobs:
         run: go mod download
       - name: Install Ginkgo CLI
         run: |
-          go get github.com/onsi/ginkgo/ginkgo@ver2
-          go install github.com/onsi/ginkgo/ginkgo
+          go get github.com/onsi/ginkgo/v2/ginkgo/generators@v2.0.0-rc2
+          go get github.com/onsi/ginkgo/v2/ginkgo/internal@v2.0.0-rc2
+          go get github.com/onsi/ginkgo/v2/ginkgo/labels@v2.0.0-rc2
+          go install github.com/onsi/ginkgo/v2/ginkgo
       - name: Run Tests
         run: |
           export PATH=$PATH:$(go env GOPATH)/bin
@@ -258,8 +254,8 @@ jobs:
         uses: mikepenz/action-junit-report@v2
         if: always()
         with:
-          name: Chaos Test Report
-          report_paths: '**/logs/tests-*.xml'
+          check_name: Chaos Test Report
+          report_paths: './tests-chaos-report.xml'
           github_token: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish Artifacts
         if: failure()

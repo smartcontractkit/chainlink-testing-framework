@@ -4,13 +4,14 @@ package actions
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/onsi/ginkgo"
-	"github.com/smartcontractkit/helmenv/environment"
-	"github.com/smartcontractkit/integrations-framework/utils"
 	"math/big"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/onsi/ginkgo/v2"
+	"github.com/smartcontractkit/helmenv/environment"
+	"github.com/smartcontractkit/integrations-framework/utils"
 
 	"github.com/smartcontractkit/integrations-framework/contracts"
 
@@ -25,7 +26,7 @@ const (
 	DefaultArtifactsDir = "logs"
 )
 
-// FundChainlinkNodes will fund all of the Chainlink nodes with a given amount of ETH in wei
+// FundChainlinkNodes will fund all of the provided Chainlink nodes with a set amount of ETH
 func FundChainlinkNodes(
 	nodes []client.Chainlink,
 	blockchain client.BlockchainClient,

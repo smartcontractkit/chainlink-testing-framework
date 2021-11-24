@@ -3,12 +3,13 @@ package client
 import (
 	"context"
 	"fmt"
-	"github.com/smartcontractkit/helmenv/environment"
-	"github.com/smartcontractkit/integrations-framework/config"
 	"math/big"
 	"net/url"
 	"sync"
 	"time"
+
+	"github.com/smartcontractkit/helmenv/environment"
+	"github.com/smartcontractkit/integrations-framework/config"
 
 	"golang.org/x/sync/errgroup"
 
@@ -26,7 +27,7 @@ import (
 
 var (
 	// OneGWei represents 1 GWei
-	OneGWei = big.NewInt(1e9)
+	OneGWei = big.NewFloat(1e9)
 	// OneEth represents 1 Ethereum
 	OneEth = big.NewFloat(1e18)
 )
@@ -37,9 +38,9 @@ type EthereumMultinodeClient struct {
 	Clients       []*EthereumClient
 }
 
-// CalculateTXSCost calculates TXs cost as a dirty estimation based on transactionLimit for that network
-func (e *EthereumMultinodeClient) CalculateTXSCost(txs int64) (*big.Float, error) {
-	return e.DefaultClient.CalculateTXSCost(txs)
+// EstimateCostForChainlinkOperations calculates TXs cost as a dirty estimation based on transactionLimit for that network
+func (e *EthereumMultinodeClient) EstimateCostForChainlinkOperations(amountOfOperations int) (*big.Float, error) {
+	return e.DefaultClient.EstimateCostForChainlinkOperations(amountOfOperations)
 }
 
 // LoadWallets loads wallets from config
@@ -121,11 +122,6 @@ func (e *EthereumMultinodeClient) Get() interface{} {
 	return e.DefaultClient
 }
 
-// CalculateTxGas calculates tx gas cost accordingly gas used plus buffer, converts it to big.Float for funding
-func (e *EthereumMultinodeClient) CalculateTxGas(gasUsedValue *big.Int) (*big.Float, error) {
-	return e.DefaultClient.CalculateTxGas(gasUsedValue)
-}
-
 // Fund funds a specified address with LINK token and or ETH from the given wallet
 func (e *EthereumMultinodeClient) Fund(toAddress string, nativeAmount *big.Float) error {
 	return e.DefaultClient.Fund(toAddress, nativeAmount)
@@ -194,24 +190,37 @@ type EthereumClient struct {
 	doneChan            chan struct{}
 }
 
-// CalculateTXSCost calculates TXs cost as a dirty estimation based on transactionLimit for that network
-func (e *EthereumClient) CalculateTXSCost(txs int64) (*big.Float, error) {
-	txsLimit := e.NetworkConfig.TransactionLimit
-	gasPrice, err := e.SuggestGasPrice(context.Background())
+// EstimateCostForChainlinkOperations calculates required amount of ETH for amountOfOperations Chainlink operations
+// based on the network's suggested gas price and the chainlink gas limit. This is fairly imperfect and should be used
+// as only a rough, upper-end estimate instead of an exact calculation.
+// See https://ethereum.org/en/developers/docs/gas/#post-london for info on how gas calculation works
+func (e *EthereumClient) EstimateCostForChainlinkOperations(amountOfOperations int) (*big.Float, error) {
+	bigAmountOfOperations := big.NewInt(int64(amountOfOperations))
+	gasPriceInWei, err := e.Client.SuggestGasPrice(context.Background())
 	if err != nil {
 		return nil, err
 	}
-	gpFloat := big.NewFloat(1).SetInt(gasPrice)
-	oneGWei := big.NewFloat(1).SetInt(OneGWei)
-	gpGWei := big.NewFloat(1).Quo(gpFloat, oneGWei)
-	log.Debug().Str("Gas price (GWei)", gpGWei.String()).Msg("Suggested gas price")
-	txl := big.NewFloat(1).SetUint64(txsLimit)
-	oneTx := big.NewFloat(1).Mul(txl, gpFloat)
-	transactions := big.NewFloat(1).SetInt64(txs)
-	totalWei := big.NewFloat(1).Mul(oneTx, transactions)
-	totalETH := big.NewFloat(1).Quo(totalWei, OneEth)
-	log.Debug().Str("ETH", totalETH.String()).Int64("TXs", txs).Msg("Calculated required ETH")
-	return totalETH, nil
+
+	// https://ethereum.stackexchange.com/questions/19665/how-to-calculate-transaction-fee
+	// total gas limit = chainlink gas limit + gas limit buffer
+	gasLimit := e.NetworkConfig.GasEstimationBuffer + e.NetworkConfig.ChainlinkTransactionLimit
+	// gas cost for TX = total gas limit * estimated gas price
+	gasCostPerOperationWei := big.NewInt(1).Mul(big.NewInt(1).SetUint64(gasLimit), gasPriceInWei)
+	gasCostPerOperationWeiFloat := big.NewFloat(1).SetInt(gasCostPerOperationWei)
+	gasCostPerOperationETH := big.NewFloat(1).Quo(gasCostPerOperationWeiFloat, OneEth)
+	// total Wei needed for all TXs = total value for TX * number of TXs
+	totalWeiForAllOperations := big.NewInt(1).Mul(gasCostPerOperationWei, bigAmountOfOperations)
+	totalWeiForAllOperationsFloat := big.NewFloat(1).SetInt(totalWeiForAllOperations)
+	totalEthForAllOperations := big.NewFloat(1).Quo(totalWeiForAllOperationsFloat, OneEth)
+
+	log.Debug().
+		Int("Number of Operations", amountOfOperations).
+		Uint64("Gas Limit per Operation", gasLimit).
+		Str("Value per Operation (ETH)", gasCostPerOperationETH.String()).
+		Str("Total (ETH)", totalEthForAllOperations.String()).
+		Msg("Calculated ETH for Chainlink Operations")
+
+	return totalEthForAllOperations, nil
 }
 
 // LoadWallets loads wallets from config
@@ -248,15 +257,6 @@ func (e *EthereumClient) SwitchNode(_ int) error {
 // GetClients not used, only applicable to EthereumMultinodeClient
 func (e *EthereumClient) GetClients() []BlockchainClient {
 	return []BlockchainClient{e}
-}
-
-// SuggestGasPrice gets suggested gas price
-func (e *EthereumClient) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
-	gasPrice, err := e.Client.SuggestGasPrice(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return gasPrice, nil
 }
 
 // SetID sets client id, useful for multi-node networks
@@ -333,7 +333,8 @@ func NewEthereumClient(networkSettings *config.ETHNetwork) (*EthereumClient, err
 }
 
 // NewEthereumMultiNodeClient returns an instantiated instance of all Ethereum client connected to all nodes
-func NewEthereumMultiNodeClient(_ string,
+func NewEthereumMultiNodeClient(
+	_ string,
 	networkConfig map[string]interface{},
 	urls []*url.URL,
 ) (BlockchainClient, error) {
@@ -380,15 +381,6 @@ func (e *EthereumClient) Close() error {
 	return nil
 }
 
-// SuggestGasPrice gets suggested gas price
-func (e *EthereumMultinodeClient) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
-	gasPrice, err := e.DefaultClient.SuggestGasPrice(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return gasPrice, nil
-}
-
 // BorrowedNonces allows to handle nonces concurrently without requesting them every time
 func (e *EthereumClient) BorrowedNonces(n bool) {
 	e.BorrowNonces = n
@@ -423,22 +415,6 @@ func (e *EthereumClient) Get() interface{} {
 	return e
 }
 
-// CalculateTxGas calculates tx gas cost accordingly gas used plus buffer, converts it to big.Float for funding
-func (e *EthereumClient) CalculateTxGas(gasUsed *big.Int) (*big.Float, error) {
-	gasPrice, err := e.Client.SuggestGasPrice(context.Background()) // Wei
-	if err != nil {
-		return nil, err
-	}
-	buffer := big.NewInt(0).SetUint64(e.NetworkConfig.GasEstimationBuffer)
-	gasUsedWithBuffer := gasUsed.Add(gasUsed, buffer)
-	cost := big.NewFloat(0).SetInt(big.NewInt(1).Mul(gasPrice, gasUsedWithBuffer))
-	costInEth := big.NewFloat(0).Quo(cost, OneEth)
-	costInEthFloat, _ := costInEth.Float64()
-
-	log.Debug().Float64("ETH", costInEthFloat).Msg("Estimated tx gas cost with buffer")
-	return costInEth, nil
-}
-
 // GasStats gets gas stats instance
 func (e *EthereumClient) GasStats() *GasStats {
 	return e.gasStats
@@ -458,14 +434,14 @@ func (e *EthereumClient) Fund(
 ) error {
 	ethAddress := common.HexToAddress(toAddress)
 	if amount != nil && big.NewFloat(0).Cmp(amount) != 0 {
-		eth := big.NewFloat(1).Mul(OneEth, amount)
+		wei := big.NewFloat(1).Mul(OneEth, amount)
 		log.Info().
 			Str("Token", "ETH").
 			Str("From", e.DefaultWallet.Address()).
 			Str("To", toAddress).
 			Str("Amount", amount.String()).
 			Msg("Funding Address")
-		_, err := e.SendTransaction(e.DefaultWallet, ethAddress, eth, nil)
+		_, err := e.SendTransaction(e.DefaultWallet, ethAddress, wei)
 		if err != nil {
 			return err
 		}
@@ -473,61 +449,59 @@ func (e *EthereumClient) Fund(
 	return nil
 }
 
-// SendTransaction sends a specified amount of WEI from a selected wallet to an address, and blocks until the
-// transaction completes
+// SendTransaction sends a specified amount of ETH from a selected wallet to an address
 func (e *EthereumClient) SendTransaction(
 	from *EthereumWallet,
 	to common.Address,
 	value *big.Float,
-	data []byte,
 ) (common.Hash, error) {
-	intVal, _ := value.Int(nil)
-	callMsg, err := e.TransactionCallMessage(from, to, intVal, data)
-	if err != nil {
-		return common.Hash{}, err
-	}
+	weiValue, _ := value.Int(nil)
 	privateKey, err := crypto.HexToECDSA(from.PrivateKey())
 	if err != nil {
 		return common.Hash{}, fmt.Errorf("invalid private key: %v", err)
+	}
+	suggestedGasPrice, err := e.Client.SuggestGasPrice(context.Background())
+	if err != nil {
+		return common.Hash{}, err
 	}
 	nonce, err := e.GetNonce(context.Background(), common.HexToAddress(from.Address()))
 	if err != nil {
 		return common.Hash{}, err
 	}
 
-	tx, err := types.SignNewTx(privateKey, types.NewEIP2930Signer(big.NewInt(e.NetworkConfig.ChainID)), &types.LegacyTx{
-		To:       callMsg.To,
-		Value:    callMsg.Value,
-		Data:     callMsg.Data,
-		GasPrice: callMsg.GasPrice,
-		Gas:      callMsg.Gas,
-		Nonce:    nonce,
-	})
+	// TODO: Update from LegacyTx to DynamicFeeTx
+	tx, err := types.SignNewTx(privateKey, types.NewEIP2930Signer(big.NewInt(e.NetworkConfig.ChainID)),
+		&types.LegacyTx{
+			To:       &to,
+			Value:    weiValue,
+			Data:     nil,
+			Gas:      21000,
+			GasPrice: suggestedGasPrice,
+			Nonce:    nonce,
+		})
 	if err != nil {
 		return common.Hash{}, err
 	}
 	if err := e.Client.SendTransaction(context.Background(), tx); err != nil {
 		return common.Hash{}, err
 	}
-	return tx.Hash(), e.ProcessTransaction(tx.Hash())
+	return tx.Hash(), e.ProcessTransaction(tx)
 }
 
-// ProcessTransaction will queue or wait on a transaction depending on whether queue transactions is enabled
-func (e *EthereumClient) ProcessTransaction(txHash common.Hash) error {
+// ProcessTransaction will queue or wait on a transaction depending on whether parallel transactions are enabled
+func (e *EthereumClient) ProcessTransaction(tx *types.Transaction) error {
 	var txConfirmer HeaderEventSubscription
 	if e.NetworkConfig.MinimumConfirmations == 0 {
 		txConfirmer = &InstantConfirmations{}
 	} else {
-		txConfirmer = NewTransactionConfirmer(e, txHash, e.NetworkConfig.MinimumConfirmations)
+		txConfirmer = NewTransactionConfirmer(e, tx, e.NetworkConfig.MinimumConfirmations)
 	}
 
-	e.AddHeaderEventSubscription(txHash.String(), txConfirmer)
+	e.AddHeaderEventSubscription(tx.Hash().String(), txConfirmer)
 
-	if !e.queueTransactions {
-		defer e.DeleteHeaderEventSubscription(txHash.String())
-		if err := txConfirmer.Wait(); err != nil {
-			return err
-		}
+	if !e.queueTransactions || tx.Value().Cmp(big.NewInt(0)) == 0 { // For sequential transactions and contract calls
+		defer e.DeleteHeaderEventSubscription(tx.Hash().String())
+		return txConfirmer.Wait()
 	}
 	return nil
 }
@@ -537,7 +511,7 @@ func (e *EthereumClient) DeployContract(
 	contractName string,
 	deployer ContractDeployer,
 ) (*common.Address, *types.Transaction, interface{}, error) {
-	opts, err := e.TransactionOpts(e.DefaultWallet, common.Address{}, big.NewInt(0), nil)
+	opts, err := e.TransactionOpts(e.DefaultWallet)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -545,56 +519,26 @@ func (e *EthereumClient) DeployContract(
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	if err := e.ProcessTransaction(transaction.Hash()); err != nil {
+	if err := e.ProcessTransaction(transaction); err != nil {
 		return nil, nil, nil, err
 	}
+	totalGasCostWeiFloat := big.NewFloat(1).SetInt(transaction.Cost())
+	totalGasCostGwei := big.NewFloat(1).Quo(totalGasCostWeiFloat, OneGWei)
+
 	log.Info().
 		Str("Contract Address", contractAddress.Hex()).
 		Str("Contract Name", contractName).
 		Str("From", e.DefaultWallet.Address()).
-		Str("Gas Cost", transaction.Cost().String()).
-		Str("NetworkConfig", e.NetworkConfig.ID).
+		Str("Total Gas Cost (GWei)", totalGasCostGwei.String()).
+		Str("Network", e.NetworkConfig.ID).
 		Msg("Deployed contract")
 	return &contractAddress, transaction, contractInstance, err
 }
 
-// TransactionCallMessage returns a filled Ethereum CallMsg object with suggest gas price and limit
-func (e *EthereumClient) TransactionCallMessage(
-	from *EthereumWallet,
-	to common.Address,
-	value *big.Int,
-	data []byte,
-) (*ethereum.CallMsg, error) {
-	gasPrice, err := e.Client.SuggestGasPrice(context.Background())
-	if err != nil {
-		return nil, err
-	}
-	msg := ethereum.CallMsg{
-		From:     common.HexToAddress(from.Address()),
-		To:       &to,
-		GasPrice: gasPrice,
-		Value:    value,
-		Data:     data,
-	}
-	msg.Gas = e.NetworkConfig.TransactionLimit + e.NetworkConfig.GasEstimationBuffer
-	return &msg, nil
-}
-
-// TransactionOpts return the base binding transaction options to create a new valid tx for contract deployment
-func (e *EthereumClient) TransactionOpts(
-	from *EthereumWallet,
-	to common.Address,
-	value *big.Int,
-	data []byte,
-) (*bind.TransactOpts, error) {
-	callMsg, err := e.TransactionCallMessage(from, to, value, data)
-	if err != nil {
-		return nil, err
-	}
-	nonce, err := e.GetNonce(context.Background(), common.HexToAddress(from.Address()))
-	if err != nil {
-		return nil, err
-	}
+// TransactionOpts returns the base Tx options for 'transactions' that interact with a smart contract. Since most
+// contract interactions in this framework are designed to happen through abigen calls, it's intentionally quite bare.
+// abigen will handle gas estimation for us on the backend.
+func (e *EthereumClient) TransactionOpts(from *EthereumWallet) (*bind.TransactOpts, error) {
 	privateKey, err := crypto.HexToECDSA(from.PrivateKey())
 	if err != nil {
 		return nil, fmt.Errorf("invalid private key: %v", err)
@@ -603,12 +547,14 @@ func (e *EthereumClient) TransactionOpts(
 	if err != nil {
 		return nil, err
 	}
-	opts.From = callMsg.From
-	opts.Nonce = big.NewInt(int64(nonce))
-	opts.Value = value
-	opts.GasPrice = callMsg.GasPrice
-	opts.GasLimit = callMsg.Gas
+	opts.From = common.HexToAddress(from.Address())
 	opts.Context = context.Background()
+
+	nonce, err := e.GetNonce(context.Background(), common.HexToAddress(from.Address()))
+	if err != nil {
+		return nil, err
+	}
+	opts.Nonce = big.NewInt(int64(nonce))
 
 	return opts, nil
 }
@@ -714,7 +660,7 @@ func (e *EthereumClient) receiveHeader(header *types.Header) {
 		})
 	}
 	if err := g.Wait(); err != nil {
-		log.Err(fmt.Errorf("error on sending block to recivers: %v", err))
+		log.Err(fmt.Errorf("error on sending block to receivers: %v", err))
 	}
 }
 
@@ -736,13 +682,19 @@ func (e *EthereumClient) isTxConfirmed(txHash common.Hash) (bool, error) {
 			GasPrice:          tx.GasPrice().Uint64(),
 			CumulativeGasUsed: receipt.CumulativeGasUsed,
 		})
-		if receipt.Status == 0 {
-			log.Warn().Str("TX Hash", txHash.Hex()).Msg("Transaction failed and was reverted!")
+		if receipt.Status == 0 { // 0 indicates failure, 1 indicates success
 			reason, err := e.errorReason(e.Client, tx, receipt)
 			if err != nil {
+				log.Warn().Str("TX Hash", txHash.Hex()).
+					Str("To", tx.To().Hex()).
+					Uint64("Nonce", tx.Nonce()).
+					Msg("Transaction failed and was reverted! Unable to retrieve reason!")
 				return false, err
 			}
-			log.Debug().Str("Revert reason", reason).Send()
+			log.Warn().Str("TX Hash", txHash.Hex()).
+				Str("To", tx.To().Hex()).
+				Str("Revert reason", reason).
+				Msg("Transaction failed and was reverted!")
 		}
 	}
 	return !isPending, err
@@ -782,7 +734,7 @@ type TransactionConfirmer struct {
 	minConfirmations int
 	confirmations    int
 	eth              *EthereumClient
-	txHash           common.Hash
+	tx               *types.Transaction
 	doneChan         chan struct{}
 	context          context.Context
 	cancel           context.CancelFunc
@@ -790,13 +742,13 @@ type TransactionConfirmer struct {
 
 // NewTransactionConfirmer returns a new instance of the transaction confirmer that waits for on-chain minimum
 // confirmations
-func NewTransactionConfirmer(eth *EthereumClient, txHash common.Hash, minConfirmations int) *TransactionConfirmer {
+func NewTransactionConfirmer(eth *EthereumClient, tx *types.Transaction, minConfirmations int) *TransactionConfirmer {
 	ctx, ctxCancel := context.WithTimeout(context.Background(), eth.NetworkConfig.Timeout)
 	tc := &TransactionConfirmer{
 		minConfirmations: minConfirmations,
 		confirmations:    0,
 		eth:              eth,
-		txHash:           txHash,
+		tx:               tx,
 		doneChan:         make(chan struct{}, 1),
 		context:          ctx,
 		cancel:           ctxCancel,
@@ -812,21 +764,25 @@ func (t *TransactionConfirmer) ReceiveBlock(block NodeBlock) error {
 		log.Info().Msg("Received nil block")
 		return nil
 	}
-	confirmationLog := log.Debug().Str("NetworkConfig", t.eth.NetworkConfig.ID).
+	confirmationLog := log.Debug().Str("Network", t.eth.NetworkConfig.ID).
 		Str("Block Hash", block.Hash().Hex()).
-		Str("Block Number", block.Number().String()).Str("Tx Hash", t.txHash.Hex()).
+		Str("Block Number", block.Number().String()).
+		Str("Tx Hash", t.tx.Hash().String()).
+		Uint64("Nonce", t.tx.Nonce()).
 		Int("Minimum Confirmations", t.minConfirmations)
-	isConfirmed, err := t.eth.isTxConfirmed(t.txHash)
+	isConfirmed, err := t.eth.isTxConfirmed(t.tx.Hash())
 	if err != nil {
 		return err
 	} else if isConfirmed {
 		t.confirmations++
 	}
 	if t.confirmations == t.minConfirmations {
-		confirmationLog.Int("Current Confirmations", t.confirmations).Msg("Transaction confirmations met")
+		confirmationLog.Int("Current Confirmations", t.confirmations).
+			Msg("Transaction confirmations met")
 		t.doneChan <- struct{}{}
 	} else if t.confirmations <= t.minConfirmations {
-		confirmationLog.Int("Current Confirmations", t.confirmations).Msg("Waiting on minimum confirmations")
+		confirmationLog.Int("Current Confirmations", t.confirmations).
+			Msg("Waiting on minimum confirmations")
 	}
 	return nil
 }
@@ -839,12 +795,12 @@ func (t *TransactionConfirmer) Wait() error {
 			t.cancel()
 			return nil
 		case <-t.context.Done():
-			return fmt.Errorf("timeout waiting for transaction to confirm: %s", t.txHash.String())
+			return fmt.Errorf("timeout waiting for transaction to confirm: %s", t.tx.Hash())
 		}
 	}
 }
 
-// InstantConfirmations is a no-op confirmer as all transactions are instantly mined so no confs are needed
+// InstantConfirmations is a no-op confirmer as all transactions are instantly mined so no confirmations are needed
 type InstantConfirmations struct{}
 
 // ReceiveBlock is a no-op

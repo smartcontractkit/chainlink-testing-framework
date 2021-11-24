@@ -6,7 +6,7 @@
 ![Lint](https://github.com/smartcontractkit/integrations-framework/actions/workflows/lint.yaml/badge.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-The Chainlnk Integration Framework is a blockchain development framework written in Go. Its primary purpose is to help
+The Chainlink Integration Framework is a blockchain development framework written in Go. Its primary purpose is to help
 chainlink developers create extensive integration, e2e, performance, and chaos tests to ensure the stability of the
 chainlink project. It can also be helpful to those who just want to use chainlink oracles in their projects to help
 test their contracts, or even for those that aren't using chainlink.
@@ -17,8 +17,9 @@ examples. If you just want a quick overview, keep reading.
 
 ## WIP
 
-As of now, this framework is still very much a work in progress, and will have frequent changes, many of which
-will probably be breaking.
+As of now, this framework is still very much a work in progress, and will have frequent changes, many of which will probably be breaking.
+
+**As of Monday, November 22, 2021, there has been a massive overhaul of how the framework works. Namely use of the [helmenv](https://github.com/smartcontractkit/helmenv) library**
 
 ## Setup
 
@@ -33,74 +34,12 @@ Here's a simple example on deploying and interacting with a basic storage contra
 [Ginkgo](https://github.com/onsi/ginkgo), a BDD testing framework we've come to really enjoy. You can use another testing
 framework, including Go's default testing if you prefer otherwise.
 
-```go
-var _ = Describe("Basic Contract Interactions", func() {
-  var ( // Create variables that we're going to be using across test steps
-    suiteSetup    actions.SuiteSetup
-    networkInfo   actions.NetworkInfo
-    defaultWallet client.BlockchainWallet
-  )
+See our [suite/smoke](suite/smoke) directory for quite a few examples of the framework's usage.
 
-  It("Exercises basic smart contract usage", func() {
-    By("Deploying the environment", func() {
-      var err error
-      // SuiteSetup creates an ephemeral environment for the test, launching a simulated blockchain, an external adapter
-      // and as many chainlink nodes as you would like.
-      suiteSetup, err = actions.SingleNetworkSetup( 
-        environment.NewChainlinkCluster(0), // We're launching this test with 0 chainlnk nodes
-        client.DefaultNetworkFromConfig,    // Using the first network defined in our config file
-        tools.ProjectRoot,                  // The path of our config file.
-      )
-      Expect(err).ShouldNot(HaveOccurred())
-      networkInfo = suiteSetup.DefaultNetwork()
-      defaultWallet = networkInfo.Wallets.Default()
-    })
+## Chainlink Values
 
-    By("Deploying and using the storage contract", func() {
-      // Deploy a storage contract, all it does is store a value, then regurgitate that value when called for
-      storeInstance, err := suiteSetup.Deployer.DeployStorageContract(defaultWallet)
-      Expect(err).ShouldNot(HaveOccurred())
+If you would like to change the Chainlink values that are used for environments, you can use JSON to squash them. Have a look over at our [helmenv](https://github.com/smartcontractkit/helmenv/tree/v1.0.5/charts/chainlink) chainlink charts to get a grasp of how things are structured. We'll be writing more on this later, but for now, you can squash values by providing a `CHARTS` environment variable.
 
-      // Value we're going to store
-      testVal := big.NewInt(5)
-
-      // Set the contract value
-      err = storeInstance.Set(testVal)
-      Expect(err).ShouldNot(HaveOccurred())
-      // Retrieve the value
-      val, err := storeInstance.Get(context.Background())
-      // Make sure no errors happened, and the value is what we expect
-      Expect(err).ShouldNot(HaveOccurred())
-      Expect(val).To(Equal(testVal))
-     })
-  })
-
-  AfterEach(func() {
-    // Tears down the environment, deleting everything that the SuiteSetup launched, and collecting logs if the test failed
-    By("Tearing down the environment", suiteSetup.TearDown())
-  })
-})
-```
-
-## Config Values
-
-You'll notice in the `SuiteSetup` that we provide a path to the config file, `tools.ProjectRoot`. This links to our default
-config file, `config.yml`. For most cases, this will work out just fine, as you can pass in ENV variables to override those
-config values. Below are some common ones we find ourselves using regularly.
-
-| ENV Var                 | Description                                                 | Default                            |
-|-------------------------|-------------------------------------------------------------|------------------------------------|
-|`NETWORKS`               | Comma seperated list of blockchain networks to run tests on | ethereum_geth,ethereum_geth        |
-|`APPS_CHAINLINK_IMAGE`   | Image location for a valid docker image of a chainlink node | public.ecr.aws/chainlink/chainlink |
-|`APPS_CHAINLINK_VERSION` | Version to be used for the above mentioned image            | 0.10.14                            |
-|`NETWORK_CONFIGS_<NETWORK_NAME>_PRIVATE_KEYS` | Comma seperated list of private keys for the network to use | Varies        |
-
-If you want to provide your own config file instead, you can point `SuiteSetup` to the directory that the config file lives in.
-
-```go
-suiteSetup, err = actions.SingleNetworkSetup( 
-  environment.NewChainlinkCluster(0), 
-  client.DefaultNetworkFromConfig,    
-  "../", // Look for a networks.yaml file in the parent directory of this test file.                 
-)
+```sh
+CHARTS='{"chainlink": {"values": {"chainlink": {"image": {"version": "<version>"}}}}}' make test_smoke args="-nodes=5"
 ```
