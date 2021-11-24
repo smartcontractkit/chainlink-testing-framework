@@ -49,14 +49,17 @@ var _ = Describe("OCR Feed @ocr", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			err = ocrSetup.StartNewRound(1)
+			Expect(err).ShouldNot(HaveOccurred())
 
 			answer, err := ocrSetup.OCRInstances[0].GetLatestAnswer(context.Background())
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(answer.Int64()).Should(Equal(int64(5)), "latest answer from OCR is not as expected")
 
 			err = ocrSetup.SetAdapterResults([]int{10, 10, 10, 10, 10})
+			Expect(err).ShouldNot(HaveOccurred())
 
 			err = ocrSetup.StartNewRound(2)
+			Expect(err).ShouldNot(HaveOccurred())
 
 			answer, err = ocrSetup.OCRInstances[0].GetLatestAnswer(context.Background())
 			Expect(err).ShouldNot(HaveOccurred())
