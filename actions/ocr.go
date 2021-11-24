@@ -46,20 +46,6 @@ func DeployOCRContracts(
 			err = networks.Default.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())
 		}
-
-		//for _, ocrInstance := range ocrInstances {
-		//	ocrInstance, err = contractDeployer.DeployOffChainAggregator(linkTokenContract.Address(), contracts.DefaultOffChainAggregatorOptions())
-		//	Expect(err).ShouldNot(HaveOccurred())
-		//	err = ocrInstance.SetConfig(
-		//		chainlinkNodes[1:],
-		//		contracts.DefaultOffChainAggregatorConfig(len(chainlinkNodes[1:])),
-		//	)
-		//	Expect(err).ShouldNot(HaveOccurred())
-		//	err = linkTokenContract.Transfer(ocrInstance.Address(), big.NewInt(2e18))
-		//	Expect(err).ShouldNot(HaveOccurred())
-		//	err = networks.Default.WaitForEvents()
-		//	Expect(err).ShouldNot(HaveOccurred())
-		//}
 	}
 }
 
