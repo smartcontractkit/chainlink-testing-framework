@@ -11,34 +11,32 @@ import (
 	"time"
 )
 
+// OCRSetup contains the components needed for testing OCR
 type OCRSetup struct {
-	Networks        *client.Networks
-	cd              contracts.ContractDeployer
-	lt              contracts.LinkToken
-	ocr             contracts.OffchainAggregator
-	ocrRoundTimeout time.Duration
-	cls             []client.Chainlink
-	adapterPath     string
-	Mockserver      *client.MockserverClient
-	e               *environment.Environment
-	OCRInstances    []contracts.OffchainAggregator
+	Networks          *client.Networks
+	ContractDeployer  contracts.ContractDeployer
+	LinkTokenContract contracts.LinkToken
+	ChainlinkNodes    []client.Chainlink
+	Mockserver        *client.MockserverClient
+	Env               *environment.Environment
+	OCRInstances      []contracts.OffchainAggregator
 }
 
 // NewOCRSetup returns a freshly created setup for OCR tests
 func NewOCRSetup(e *environment.Environment, chainlinkCharts []string) (*OCRSetup, error) {
 	o := &OCRSetup{}
-	o.e = e
+	o.Env = e
 	networkRegistry := client.NewNetworkRegistry()
 	var err error
 	o.Networks, err = networkRegistry.GetNetworks(e)
 	if err != nil {
 		return nil, err
 	}
-	o.cd, err = contracts.NewContractDeployer(o.Networks.Default)
+	o.ContractDeployer, err = contracts.NewContractDeployer(o.Networks.Default)
 	if err != nil {
 		return nil, err
 	}
-	o.cls, err = client.NewChainlinkClients2(e, chainlinkCharts)
+	o.ChainlinkNodes, err = client.NewChainlinkClients2(e, chainlinkCharts)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +54,7 @@ func (o *OCRSetup) FundNodes() error {
 	if err != nil {
 		return err
 	}
-	err = FundChainlinkNodes(o.cls, o.Networks.Default, txCost)
+	err = FundChainlinkNodes(o.ChainlinkNodes, o.Networks.Default, txCost)
 	if err != nil {
 		return err
 	}
@@ -66,24 +64,24 @@ func (o *OCRSetup) FundNodes() error {
 // DeployOCRContracts deploys and funds a certain number of offchain aggregator contracts
 func (o *OCRSetup) DeployOCRContracts(nrOfOCRContracts int) error {
 	var err error
-	o.lt, err = o.cd.DeployLinkTokenContract()
+	o.LinkTokenContract, err = o.ContractDeployer.DeployLinkTokenContract()
 	if err != nil {
 		return err
 	}
 
 	for nr := 0; nr < nrOfOCRContracts; nr++ {
-		OCRInstance, err := o.cd.DeployOffChainAggregator(o.lt.Address(), contracts.DefaultOffChainAggregatorOptions())
+		OCRInstance, err := o.ContractDeployer.DeployOffChainAggregator(o.LinkTokenContract.Address(), contracts.DefaultOffChainAggregatorOptions())
 		if err != nil {
 			return err
 		}
 		err = OCRInstance.SetConfig(
-			o.cls[1:],
-			contracts.DefaultOffChainAggregatorConfig(len(o.cls[1:])),
+			o.ChainlinkNodes[1:],
+			contracts.DefaultOffChainAggregatorConfig(len(o.ChainlinkNodes[1:])),
 		)
 		if err != nil {
 			return err
 		}
-		err = o.lt.Transfer(OCRInstance.Address(), big.NewInt(2e18))
+		err = o.LinkTokenContract.Transfer(OCRInstance.Address(), big.NewInt(2e18))
 		if err != nil {
 			return err
 		}
@@ -100,7 +98,7 @@ func (o *OCRSetup) DeployOCRContracts(nrOfOCRContracts int) error {
 // read from different adapters
 func (o *OCRSetup) CreateOCRJobs() error {
 	for OCRInstanceIndex, OCRInstance := range o.OCRInstances {
-		bootstrapNode := o.cls[0]
+		bootstrapNode := o.ChainlinkNodes[0]
 		bootstrapP2PIds, err := bootstrapNode.ReadP2PKeys()
 		if err != nil {
 			return err
@@ -117,17 +115,17 @@ func (o *OCRSetup) CreateOCRJobs() error {
 			return err
 		}
 
-		for nodeIndex := 1; nodeIndex < len(o.cls); nodeIndex++ {
-			nodeP2PIds, err := o.cls[nodeIndex].ReadP2PKeys()
+		for nodeIndex := 1; nodeIndex < len(o.ChainlinkNodes); nodeIndex++ {
+			nodeP2PIds, err := o.ChainlinkNodes[nodeIndex].ReadP2PKeys()
 			if err != nil {
 				return err
 			}
 			nodeP2PId := nodeP2PIds.Data[0].Attributes.PeerID
-			nodeTransmitterAddress, err := o.cls[nodeIndex].PrimaryEthAddress()
+			nodeTransmitterAddress, err := o.ChainlinkNodes[nodeIndex].PrimaryEthAddress()
 			if err != nil {
 				return err
 			}
-			nodeOCRKeys, err := o.cls[nodeIndex].ReadOCRKeys()
+			nodeOCRKeys, err := o.ChainlinkNodes[nodeIndex].ReadOCRKeys()
 			if err != nil {
 				return err
 			}
@@ -138,7 +136,7 @@ func (o *OCRSetup) CreateOCRJobs() error {
 				URL:  fmt.Sprintf("%s/node_%d_contract_%d", o.Mockserver.Config.ClusterURL, nodeIndex, OCRInstanceIndex),
 			}
 
-			err = o.cls[nodeIndex].CreateBridge(&bta)
+			err = o.ChainlinkNodes[nodeIndex].CreateBridge(&bta)
 			if err != nil {
 				return err
 			}
@@ -151,7 +149,7 @@ func (o *OCRSetup) CreateOCRJobs() error {
 				TransmitterAddress: nodeTransmitterAddress,
 				ObservationSource:  client.ObservationSourceSpecBridge(bta),
 			}
-			_, err = o.cls[nodeIndex].CreateJob(ocrSpec)
+			_, err = o.ChainlinkNodes[nodeIndex].CreateJob(ocrSpec)
 			if err != nil {
 				return err
 			}
@@ -181,12 +179,12 @@ func (o *OCRSetup) StartNewRound(roundNr int64) error {
 // SetAdapterResults sets the mock responses in mockserver that are read by chainlink nodes
 // to simulate different adapters
 func (o *OCRSetup) SetAdapterResults(results []int) error {
-	if len(results) != len(o.cls[1:]) {
+	if len(results) != len(o.ChainlinkNodes[1:]) {
 		return errors.New("Number of results should equal number of nodes")
 	}
 
 	for OCRInstanceIndex := range o.OCRInstances {
-		for nodeIndex := 1; nodeIndex < len(o.cls); nodeIndex++ {
+		for nodeIndex := 1; nodeIndex < len(o.ChainlinkNodes); nodeIndex++ {
 			path := fmt.Sprintf("/node_%d_contract_%d", nodeIndex, OCRInstanceIndex)
 			pathSelector := client.PathSelector{Path: path}
 			err := o.Mockserver.ClearExpectation(pathSelector)
