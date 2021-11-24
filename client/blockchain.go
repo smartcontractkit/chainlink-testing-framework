@@ -210,6 +210,31 @@ func NewChainlinkClients(e *environment.Environment) ([]Chainlink, error) {
 	return clients, nil
 }
 
+// NewChainlinkClients2 creates new chainlink clients
+func NewChainlinkClients2(e *environment.Environment, charts []string) ([]Chainlink, error) {
+	var clients []Chainlink
+
+	for _, chart := range charts {
+		urls, err := e.Charts.Connections(chart).LocalURLsByPort("access", environment.HTTP)
+		if err != nil {
+			return nil, err
+		}
+		for _, chainlinkURL := range urls {
+			c, err := NewChainlink(&ChainlinkConfig{
+				URL:      chainlinkURL.String(),
+				Email:    "notreal@fakeemail.ch",
+				Password: "twochains",
+			}, http.DefaultClient)
+			clients = append(clients, c)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return clients, nil
+}
+
 // NodeBlock block with a node ID which mined it
 type NodeBlock struct {
 	NodeID int
