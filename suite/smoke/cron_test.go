@@ -33,7 +33,7 @@ var _ = Describe("Cronjob suite @cron", func() {
 		})
 
 		By("Getting the clients", func() {
-			cls, err = client.NewChainlinkClients(e)
+			cls, err = client.NewChainlinkClients(e, []string{"chainlink"})
 			Expect(err).ShouldNot(HaveOccurred())
 			mockserver, err = client.NewMockServerClientFromEnv(e)
 			Expect(err).ShouldNot(HaveOccurred())

@@ -188,27 +188,29 @@ func (n *NetworkRegistry) GetNetworks(env *environment.Environment) (*Networks, 
 }
 
 // NewChainlinkClients creates new chainlink clients
-func NewChainlinkClients(e *environment.Environment) ([]Chainlink, error) {
+func NewChainlinkClients(e *environment.Environment, charts []string) ([]Chainlink, error) {
 	var clients []Chainlink
 
-	localURLs, err := e.Charts.Connections("chainlink").LocalURLsByPort("access", environment.HTTP)
-	if err != nil {
-		return nil, err
-	}
-	remoteURLs, err := e.Charts.Connections("chainlink").RemoteURLsByPort("access", environment.HTTP)
-	if err != nil {
-		return nil, err
-	}
-	for urlIndex, localURL := range localURLs {
-		c, err := NewChainlink(&ChainlinkConfig{
-			URL:      localURL.String(),
-			Email:    "notreal@fakeemail.ch",
-			Password: "twochains",
-			RemoteIP: remoteURLs[urlIndex].Hostname(),
-		}, http.DefaultClient)
-		clients = append(clients, c)
+	for _, chart := range charts {
+		localURLs, err := e.Charts.Connections(chart).LocalURLsByPort("access", environment.HTTP)
 		if err != nil {
 			return nil, err
+		}
+		remoteURLs, err := e.Charts.Connections(chart).RemoteURLsByPort("access", environment.HTTP)
+		if err != nil {
+			return nil, err
+		}
+		for urlIndex, localURL := range localURLs {
+			c, err := NewChainlink(&ChainlinkConfig{
+				URL:      localURL.String(),
+				Email:    "notreal@fakeemail.ch",
+				Password: "twochains",
+				RemoteIP: remoteURLs[urlIndex].Hostname(),
+			}, http.DefaultClient)
+			clients = append(clients, c)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 	return clients, nil
