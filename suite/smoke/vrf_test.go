@@ -45,7 +45,7 @@ var _ = Describe("VRF suite @vrf", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			cd, err = contracts.NewContractDeployer(nets.Default)
 			Expect(err).ShouldNot(HaveOccurred())
-			cls, err = client.NewChainlinkClients(e, []string{"chainlink"})
+			cls, err = client.NewChainlinkClients(e)
 			Expect(err).ShouldNot(HaveOccurred())
 			nets.Default.ParallelTransactions(true)
 		})

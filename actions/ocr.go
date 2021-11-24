@@ -2,201 +2,160 @@ package actions
 
 import (
 	"fmt"
-	"github.com/pkg/errors"
+	. "github.com/onsi/gomega"
 	uuid "github.com/satori/go.uuid"
-	"github.com/smartcontractkit/helmenv/environment"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
 	"math/big"
 	"time"
 )
 
-// OCRSetup contains the components needed for testing OCR
-type OCRSetup struct {
-	Networks          *client.Networks
-	ContractDeployer  contracts.ContractDeployer
-	LinkTokenContract contracts.LinkToken
-	ChainlinkNodes    []client.Chainlink
-	Mockserver        *client.MockserverClient
-	Env               *environment.Environment
-	OCRInstances      []contracts.OffchainAggregator
-}
-
-// NewOCRSetup returns a freshly created setup for OCR tests
-func NewOCRSetup(e *environment.Environment, chainlinkCharts []string) (*OCRSetup, error) {
-	o := &OCRSetup{}
-	o.Env = e
-	networkRegistry := client.NewNetworkRegistry()
-	var err error
-	o.Networks, err = networkRegistry.GetNetworks(e)
-	if err != nil {
-		return nil, err
-	}
-	o.ContractDeployer, err = contracts.NewContractDeployer(o.Networks.Default)
-	if err != nil {
-		return nil, err
-	}
-	o.ChainlinkNodes, err = client.NewChainlinkClients(e, chainlinkCharts)
-	if err != nil {
-		return nil, err
-	}
-	o.Mockserver, err = client.NewMockServerClientFromEnv(e)
-	if err != nil {
-		return nil, err
-	}
-	o.Networks.Default.ParallelTransactions(true)
-	return o, nil
-}
-
 // FundNodes funds all chainlink nodes
-func (o *OCRSetup) FundNodes() error {
-	txCost, err := o.Networks.Default.EstimateCostForChainlinkOperations(200)
-	if err != nil {
-		return err
+func FundNodes(networks *client.Networks, chainlinkNodes []client.Chainlink) func() {
+	return func() {
+		txCost, err := networks.Default.EstimateCostForChainlinkOperations(200)
+		Expect(err).ShouldNot(HaveOccurred())
+		err = FundChainlinkNodes(chainlinkNodes, networks.Default, txCost)
+		Expect(err).ShouldNot(HaveOccurred())
 	}
-	err = FundChainlinkNodes(o.ChainlinkNodes, o.Networks.Default, txCost)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 // DeployOCRContracts deploys and funds a certain number of offchain aggregator contracts
-func (o *OCRSetup) DeployOCRContracts(nrOfOCRContracts int) error {
-	var err error
-	o.LinkTokenContract, err = o.ContractDeployer.DeployLinkTokenContract()
-	if err != nil {
-		return err
-	}
+func DeployOCRContracts(
+	ocrInstances []contracts.OffchainAggregator,
+	linkTokenContract contracts.LinkToken,
+	contractDeployer contracts.ContractDeployer,
+	chainlinkNodes []client.Chainlink,
+	networks *client.Networks,
+) func() {
+	return func() {
+		var err error
+		linkTokenContract, err = contractDeployer.DeployLinkTokenContract()
+		Expect(err).ShouldNot(HaveOccurred())
 
-	for nr := 0; nr < nrOfOCRContracts; nr++ {
-		OCRInstance, err := o.ContractDeployer.DeployOffChainAggregator(o.LinkTokenContract.Address(), contracts.DefaultOffChainAggregatorOptions())
-		if err != nil {
-			return err
+		for i := 0; i < len(ocrInstances); i++ {
+			ocrInstances[i], err = contractDeployer.DeployOffChainAggregator(linkTokenContract.Address(), contracts.DefaultOffChainAggregatorOptions())
+			Expect(err).ShouldNot(HaveOccurred())
+			err = ocrInstances[i].SetConfig(
+				chainlinkNodes[1:],
+				contracts.DefaultOffChainAggregatorConfig(len(chainlinkNodes[1:])),
+			)
+			Expect(err).ShouldNot(HaveOccurred())
+			err = linkTokenContract.Transfer(ocrInstances[i].Address(), big.NewInt(2e18))
+			Expect(err).ShouldNot(HaveOccurred())
+			err = networks.Default.WaitForEvents()
+			Expect(err).ShouldNot(HaveOccurred())
 		}
-		err = OCRInstance.SetConfig(
-			o.ChainlinkNodes[1:],
-			contracts.DefaultOffChainAggregatorConfig(len(o.ChainlinkNodes[1:])),
-		)
-		if err != nil {
-			return err
-		}
-		err = o.LinkTokenContract.Transfer(OCRInstance.Address(), big.NewInt(2e18))
-		if err != nil {
-			return err
-		}
-		err = o.Networks.Default.WaitForEvents()
-		if err != nil {
-			return err
-		}
-		o.OCRInstances = append(o.OCRInstances, OCRInstance)
+
+		//for _, ocrInstance := range ocrInstances {
+		//	ocrInstance, err = contractDeployer.DeployOffChainAggregator(linkTokenContract.Address(), contracts.DefaultOffChainAggregatorOptions())
+		//	Expect(err).ShouldNot(HaveOccurred())
+		//	err = ocrInstance.SetConfig(
+		//		chainlinkNodes[1:],
+		//		contracts.DefaultOffChainAggregatorConfig(len(chainlinkNodes[1:])),
+		//	)
+		//	Expect(err).ShouldNot(HaveOccurred())
+		//	err = linkTokenContract.Transfer(ocrInstance.Address(), big.NewInt(2e18))
+		//	Expect(err).ShouldNot(HaveOccurred())
+		//	err = networks.Default.WaitForEvents()
+		//	Expect(err).ShouldNot(HaveOccurred())
+		//}
 	}
-	return nil
 }
 
 // CreateOCRJobs bootstraps the first node and to the other nodes sends ocr jobs that
-// read from different adapters
-func (o *OCRSetup) CreateOCRJobs() error {
-	for OCRInstanceIndex, OCRInstance := range o.OCRInstances {
-		bootstrapNode := o.ChainlinkNodes[0]
-		bootstrapP2PIds, err := bootstrapNode.ReadP2PKeys()
-		if err != nil {
-			return err
-		}
-		bootstrapP2PId := bootstrapP2PIds.Data[0].Attributes.PeerID
-		bootstrapSpec := &client.OCRBootstrapJobSpec{
-			Name:            fmt.Sprintf("bootstrap-%s", uuid.NewV4().String()),
-			ContractAddress: OCRInstance.Address(),
-			P2PPeerID:       bootstrapP2PId,
-			IsBootstrapPeer: true,
-		}
-		_, err = bootstrapNode.CreateJob(bootstrapSpec)
-		if err != nil {
-			return err
-		}
+// read from different adapters, to be used in combination with SetAdapterResponses
+func CreateOCRJobs(
+	ocrInstances []contracts.OffchainAggregator,
+	chainlinkNodes []client.Chainlink,
+	mockserver *client.MockserverClient,
+) func() {
+	return func() {
+		for i := 0; i < len(ocrInstances); i++ {
+			bootstrapNode := chainlinkNodes[0]
+			bootstrapP2PIds, err := bootstrapNode.ReadP2PKeys()
+			Expect(err).ShouldNot(HaveOccurred())
+			bootstrapP2PId := bootstrapP2PIds.Data[0].Attributes.PeerID
+			bootstrapSpec := &client.OCRBootstrapJobSpec{
+				Name:            fmt.Sprintf("bootstrap-%s", uuid.NewV4().String()),
+				ContractAddress: ocrInstances[i].Address(),
+				P2PPeerID:       bootstrapP2PId,
+				IsBootstrapPeer: true,
+			}
+			_, err = bootstrapNode.CreateJob(bootstrapSpec)
+			Expect(err).ShouldNot(HaveOccurred())
 
-		for nodeIndex := 1; nodeIndex < len(o.ChainlinkNodes); nodeIndex++ {
-			nodeP2PIds, err := o.ChainlinkNodes[nodeIndex].ReadP2PKeys()
-			if err != nil {
-				return err
-			}
-			nodeP2PId := nodeP2PIds.Data[0].Attributes.PeerID
-			nodeTransmitterAddress, err := o.ChainlinkNodes[nodeIndex].PrimaryEthAddress()
-			if err != nil {
-				return err
-			}
-			nodeOCRKeys, err := o.ChainlinkNodes[nodeIndex].ReadOCRKeys()
-			if err != nil {
-				return err
-			}
-			nodeOCRKeyId := nodeOCRKeys.Data[0].ID
+			for nodeIndex := 1; nodeIndex < len(chainlinkNodes); nodeIndex++ {
+				nodeP2PIds, err := chainlinkNodes[nodeIndex].ReadP2PKeys()
+				Expect(err).ShouldNot(HaveOccurred())
+				nodeP2PId := nodeP2PIds.Data[0].Attributes.PeerID
+				nodeTransmitterAddress, err := chainlinkNodes[nodeIndex].PrimaryEthAddress()
+				Expect(err).ShouldNot(HaveOccurred())
+				nodeOCRKeys, err := chainlinkNodes[nodeIndex].ReadOCRKeys()
+				Expect(err).ShouldNot(HaveOccurred())
+				nodeOCRKeyId := nodeOCRKeys.Data[0].ID
 
-			bta := client.BridgeTypeAttributes{
-				Name: fmt.Sprintf("node_%d_contract_%d", nodeIndex, OCRInstanceIndex),
-				URL:  fmt.Sprintf("%s/node_%d_contract_%d", o.Mockserver.Config.ClusterURL, nodeIndex, OCRInstanceIndex),
-			}
+				bta := client.BridgeTypeAttributes{
+					Name: fmt.Sprintf("node_%d_contract_%d", nodeIndex, i),
+					URL:  fmt.Sprintf("%s/node_%d_contract_%d", mockserver.Config.ClusterURL, nodeIndex, i),
+				}
 
-			err = o.ChainlinkNodes[nodeIndex].CreateBridge(&bta)
-			if err != nil {
-				return err
-			}
+				err = chainlinkNodes[nodeIndex].CreateBridge(&bta)
+				Expect(err).ShouldNot(HaveOccurred())
 
-			ocrSpec := &client.OCRTaskJobSpec{
-				ContractAddress:    OCRInstance.Address(),
-				P2PPeerID:          nodeP2PId,
-				P2PBootstrapPeers:  []client.Chainlink{bootstrapNode},
-				KeyBundleID:        nodeOCRKeyId,
-				TransmitterAddress: nodeTransmitterAddress,
-				ObservationSource:  client.ObservationSourceSpecBridge(bta),
-			}
-			_, err = o.ChainlinkNodes[nodeIndex].CreateJob(ocrSpec)
-			if err != nil {
-				return err
+				ocrSpec := &client.OCRTaskJobSpec{
+					ContractAddress:    ocrInstances[i].Address(),
+					P2PPeerID:          nodeP2PId,
+					P2PBootstrapPeers:  []client.Chainlink{bootstrapNode},
+					KeyBundleID:        nodeOCRKeyId,
+					TransmitterAddress: nodeTransmitterAddress,
+					ObservationSource:  client.ObservationSourceSpecBridge(bta),
+				}
+				_, err = chainlinkNodes[nodeIndex].CreateJob(ocrSpec)
+				Expect(err).ShouldNot(HaveOccurred())
 			}
 		}
 	}
-	return nil
+}
+
+// SetAdapterResponses sets the mock responses in mockserver that are read by chainlink nodes
+// to simulate different adapters, to be used in combination with CreateOCRJobs
+func SetAdapterResponses(
+	results []int,
+	ocrInstances []contracts.OffchainAggregator,
+	chainlinkNodes []client.Chainlink,
+	mockserver *client.MockserverClient,
+) func() {
+	return func() {
+		Expect(len(results)).Should(BeNumerically("==", len(chainlinkNodes[1:])))
+		for OCRInstanceIndex := range ocrInstances {
+			for nodeIndex := 1; nodeIndex < len(chainlinkNodes); nodeIndex++ {
+				path := fmt.Sprintf("/node_%d_contract_%d", nodeIndex, OCRInstanceIndex)
+				pathSelector := client.PathSelector{Path: path}
+				err := mockserver.ClearExpectation(pathSelector)
+				Expect(err).ShouldNot(HaveOccurred())
+				err = mockserver.SetValuePath(path, results[nodeIndex-1])
+				Expect(err).ShouldNot(HaveOccurred())
+			}
+		}
+	}
 }
 
 // StartNewRound requests a new round from the ocr contract and waits for confirmation
-func (o *OCRSetup) StartNewRound(roundNr int64) error {
-	roundTimeout := time.Minute * 2
-	for _, OCRInstance := range o.OCRInstances {
-		err := OCRInstance.RequestNewRound()
-		if err != nil {
-			return err
-		}
-		ocrRound := contracts.NewOffchainAggregatorRoundConfirmer(OCRInstance, big.NewInt(roundNr), roundTimeout)
-		o.Networks.Default.AddHeaderEventSubscription(OCRInstance.Address(), ocrRound)
-		err = o.Networks.Default.WaitForEvents()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// SetAdapterResults sets the mock responses in mockserver that are read by chainlink nodes
-// to simulate different adapters
-func (o *OCRSetup) SetAdapterResults(results []int) error {
-	if len(results) != len(o.ChainlinkNodes[1:]) {
-		return errors.New("Number of results should equal number of nodes")
-	}
-
-	for OCRInstanceIndex := range o.OCRInstances {
-		for nodeIndex := 1; nodeIndex < len(o.ChainlinkNodes); nodeIndex++ {
-			path := fmt.Sprintf("/node_%d_contract_%d", nodeIndex, OCRInstanceIndex)
-			pathSelector := client.PathSelector{Path: path}
-			err := o.Mockserver.ClearExpectation(pathSelector)
-			if err != nil {
-				return err
-			}
-			err = o.Mockserver.SetValuePath(path, results[nodeIndex-1])
-			if err != nil {
-				return err
-			}
+func StartNewRound(
+	roundNr int64,
+	ocrInstances []contracts.OffchainAggregator,
+	networks *client.Networks,
+) func() {
+	return func() {
+		roundTimeout := time.Minute * 2
+		for i := 0; i < len(ocrInstances); i++ {
+			err := ocrInstances[i].RequestNewRound()
+			Expect(err).ShouldNot(HaveOccurred())
+			ocrRound := contracts.NewOffchainAggregatorRoundConfirmer(ocrInstances[i], big.NewInt(roundNr), roundTimeout)
+			networks.Default.AddHeaderEventSubscription(ocrInstances[i].Address(), ocrRound)
+			err = networks.Default.WaitForEvents()
+			Expect(err).ShouldNot(HaveOccurred())
 		}
 	}
-
-	return nil
 }

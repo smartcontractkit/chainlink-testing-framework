@@ -45,7 +45,7 @@ var _ = Describe("Direct request suite @runlog", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			cd, err = contracts.NewContractDeployer(nets.Default)
 			Expect(err).ShouldNot(HaveOccurred())
-			cls, err = client.NewChainlinkClients(e, []string{"chainlink"})
+			cls, err = client.NewChainlinkClients(e)
 			Expect(err).ShouldNot(HaveOccurred())
 			mockserver, err = client.NewMockServerClientFromEnv(e)
 			Expect(err).ShouldNot(HaveOccurred())
