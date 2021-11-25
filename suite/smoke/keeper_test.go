@@ -13,6 +13,8 @@ import (
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
+	"github.com/smartcontractkit/integrations-framework/utils"
+	"path/filepath"
 )
 
 var _ = Describe("Keeper suite @keeper", func() {
@@ -42,7 +44,7 @@ var _ = Describe("Keeper suite @keeper", func() {
 
 		By("Getting the clients", func() {
 			networkRegistry := client.NewNetworkRegistry()
-			nets, err = networkRegistry.GetNetworks(e)
+			nets, err = networkRegistry.GetNetworks(filepath.Join(utils.ProjectRoot, "networks.yaml"), e)
 			Expect(err).ShouldNot(HaveOccurred())
 			cd, err = contracts.NewContractDeployer(nets.Default)
 			Expect(err).ShouldNot(HaveOccurred())

@@ -9,6 +9,8 @@ import (
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
+	"github.com/smartcontractkit/integrations-framework/utils"
+	"path/filepath"
 )
 
 var _ = Describe("OCR Feed @ocr", func() {
@@ -35,7 +37,7 @@ var _ = Describe("OCR Feed @ocr", func() {
 		By("Getting the clients", func() {
 			networkRegistry := client.NewNetworkRegistry()
 			var err error
-			networks, err = networkRegistry.GetNetworks(env)
+			networks, err = networkRegistry.GetNetworks(filepath.Join(utils.ProjectRoot, "networks.yaml"), env)
 			Expect(err).ShouldNot(HaveOccurred())
 			contractDeployer, err = contracts.NewContractDeployer(networks.Default)
 			Expect(err).ShouldNot(HaveOccurred())

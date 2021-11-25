@@ -8,16 +8,17 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+	"github.com/rs/zerolog/log"
 	uuid "github.com/satori/go.uuid"
 	"github.com/smartcontractkit/helmenv/environment"
 	"github.com/smartcontractkit/helmenv/tools"
 	"github.com/smartcontractkit/integrations-framework/actions"
-
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
+	"github.com/smartcontractkit/integrations-framework/utils"
+	"path/filepath"
 )
 
 var _ = Describe("Flux monitor suite @flux", func() {
@@ -48,7 +49,7 @@ var _ = Describe("Flux monitor suite @flux", func() {
 
 		By("Getting the clients", func() {
 			networkRegistry := client.NewNetworkRegistry()
-			nets, err = networkRegistry.GetNetworks(e)
+			nets, err = networkRegistry.GetNetworks(filepath.Join(utils.ProjectRoot, "networks.yaml"), e)
 			Expect(err).ShouldNot(HaveOccurred())
 			cd, err = contracts.NewContractDeployer(nets.Default)
 			Expect(err).ShouldNot(HaveOccurred())

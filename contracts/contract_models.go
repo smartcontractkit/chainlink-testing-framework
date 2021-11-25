@@ -302,9 +302,14 @@ type PerfEvent struct {
 // OCRv2AccessController access controller
 type OCRv2AccessController interface {
 	Address() string
+	PrivateKey() string
 	AddAccess(addr string) error
 	RemoveAccess(addr string) error
 	HasAccess(to string) (bool, error)
+}
+
+type OCRv2DeviationFlaggingValidator interface {
+	Address() string
 }
 
 type OCRv2 interface {

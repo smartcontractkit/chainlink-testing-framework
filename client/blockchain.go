@@ -5,17 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/smartcontractkit/helmenv/environment"
+	"github.com/smartcontractkit/integrations-framework/config"
+	"gopkg.in/yaml.v2"
 	"math/big"
 	"net/http"
 	"net/url"
-	"path/filepath"
-
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/smartcontractkit/helmenv/environment"
-	"github.com/smartcontractkit/integrations-framework/utils"
-	"gopkg.in/yaml.v2"
-
-	"github.com/smartcontractkit/integrations-framework/config"
 )
 
 // Commonly used blockchain network types
@@ -145,9 +141,9 @@ func (n *NetworkRegistry) RegisterNetwork(networkType string, fn NewBlockchainCl
 	}
 }
 
-// GetNetworks returns a networks object with all the BlockchainClient(s) initialized
-func (n *NetworkRegistry) GetNetworks(env *environment.Environment) (*Networks, error) {
-	nc, err := config.LoadNetworksConfig(filepath.Join(utils.ProjectRoot, "networks.yaml"))
+// GetNetworks returns a networks object with all the BlockchainClient(s) initialised
+func (n *NetworkRegistry) GetNetworks(netConfYamlPath string, env *environment.Environment) (*Networks, error) {
+	nc, err := config.LoadNetworksConfig(netConfYamlPath)
 	if err != nil {
 		return nil, err
 	}
