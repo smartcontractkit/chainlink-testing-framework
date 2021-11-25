@@ -3,6 +3,11 @@ package config
 
 import (
 	"errors"
+	"fmt"
+	"github.com/imdario/mergo"
+	"github.com/kelseyhightower/envconfig"
+	"gopkg.in/yaml.v3"
+	"os"
 	"path"
 	"strings"
 	"time"
@@ -27,10 +32,32 @@ type FrameworkConfig struct {
 	EnvironmentFile  string         `mapstructure:"environment_file" yaml:"environment_file"`
 }
 
+// NetworkSettings is a map that holds configuration for each individual network
+type NetworkSettings map[string]map[string]interface{}
+
+// Decode is used by envconfig to initialise the custom Charts type with populated values
+// This function will take a JSON object representing charts, and unmarshal it into the existing object to "merge" the
+// two
+func (n NetworkSettings) Decode(value string) error {
+	// Support the use of files for unmarshaling charts JSON
+	if _, err := os.Stat(value); err == nil {
+		b, err := os.ReadFile(value)
+		if err != nil {
+			return err
+		}
+		value = string(b)
+	}
+	networkSettings := NetworkSettings{}
+	if err := yaml.Unmarshal([]byte(value), &networkSettings); err != nil {
+		return fmt.Errorf("failed to unmarshal YAML, either a file path specific doesn't exist, or the YAML is invalid: %v", err)
+	}
+	return mergo.Merge(&n, networkSettings, mergo.WithOverride)
+}
+
 // NetworksConfig is network configurations
 type NetworksConfig struct {
-	SelectedNetworks   []string                          `mapstructure:"selected_networks" yaml:"selected_networks"`
-	NetworkSettings    map[string]map[string]interface{} `mapstructure:"networks" yaml:"networks"`
+	SelectedNetworks   []string        `mapstructure:"selected_networks" yaml:"selected_networks" envconfig:"selected_networks"`
+	NetworkSettings    NetworkSettings `mapstructure:"networks" yaml:"networks" envconfig:"network_settings"`
 	DefaultKeyStore    string
 	ConfigFileLocation string
 }
@@ -112,6 +139,11 @@ func LoadNetworksConfig(cfgPath string) (*NetworksConfig, error) {
 	}
 	var cfg *NetworksConfig
 	err := v.Unmarshal(&cfg)
+
+	// Allow the networks config to be overridden when this codebase is imported as a library
+	if err := envconfig.Process("", cfg); err != nil {
+		return nil, err
+	}
 	return cfg, err
 }
 
