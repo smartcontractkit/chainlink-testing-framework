@@ -5,6 +5,7 @@ go 1.17
 require (
 	github.com/ethereum/go-ethereum v1.10.12
 	github.com/ghodss/yaml v1.0.0
+	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/onsi/ginkgo/v2 v2.0.0-rc2
 	github.com/onsi/gomega v1.17.0
 	github.com/pkg/errors v0.9.1
@@ -21,7 +22,6 @@ require (
 
 require (
 	github.com/cavaliercoder/grab v2.0.0+incompatible // indirect
-	github.com/kelseyhightower/envconfig v1.4.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	helm.sh/helm/v3 v3.7.1 // indirect
 	k8s.io/api v0.22.3 // indirect
@@ -84,7 +84,7 @@ require (
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/huandu/xstrings v1.3.2 // indirect
-	github.com/imdario/mergo v0.3.12 // indirect
+	github.com/imdario/mergo v0.3.12
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jmoiron/sqlx v1.3.4 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
@@ -154,7 +154,7 @@ require (
 	gopkg.in/ini.v1 v1.63.2 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	gopkg.in/yaml.v2 v2.4.0
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
+	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 	k8s.io/apiextensions-apiserver v0.22.3 // indirect
 	k8s.io/apiserver v0.22.3 // indirect
 	k8s.io/cli-runtime v0.22.3 // indirect
