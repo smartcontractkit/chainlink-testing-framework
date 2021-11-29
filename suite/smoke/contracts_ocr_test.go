@@ -1,8 +1,11 @@
 package smoke
 
 import (
+	"math/big"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
+	. "github.com/onsi/gomega"
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/environment"
 	"github.com/smartcontractkit/integrations-framework/utils"
@@ -16,7 +19,17 @@ var _ = Describe("OCR Feed @ocr", func() {
 	) {
 		i = &actions.OCRSetupInputs{}
 		By("Deploying environment", actions.DeployOCRForEnv(i, envInit, utils.ProjectRoot))
-		By("Funding nodes", actions.FundNodes(i))
+		By("Funding nodes", func() {
+			err := actions.FundChainlinkNodes(
+				i.ChainlinkNodes,
+				i.NetworkInfo.Client,
+				i.DefaultWallet,
+				big.NewFloat(2),
+				big.NewFloat(2),
+			)
+			Expect(err).ShouldNot(HaveOccurred())
+
+		})
 		By("Deploying OCR contracts", actions.DeployOCRContracts(i, 1))
 		By("Creating OCR jobs", actions.CreateOCRJobs(i))
 		By("Checking OCR rounds", actions.CheckRound(i))
