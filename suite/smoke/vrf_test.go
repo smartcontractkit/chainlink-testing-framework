@@ -16,7 +16,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/contracts"
 )
 
-var _ = Describe("VRF suite @vrf", func() {
+var _ = FDescribe("VRF suite @vrf", func() {
 	var (
 		err                error
 		nets               *client.Networks
