@@ -502,7 +502,7 @@ func (l *EthereumLinkToken) Deploy() (LinkToken, error) {
 		Str("Contract Name", "Link Token").
 		Str("From", l.client.DefaultWallet.Address()).
 		Str("Gas Cost", tx.Cost().String()).
-		Str("NetworkConfig", l.client.NetworkConfig.ID).
+		Str("NetworkName", l.client.NetworkConfig.Name).
 		Msg("Deployed contract")
 	return &EthereumLinkToken{client: l.client, instance: contractInstance, address: contractAddress}, nil
 }
