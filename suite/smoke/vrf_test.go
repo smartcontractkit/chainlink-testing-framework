@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -14,6 +15,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
+	"github.com/smartcontractkit/integrations-framework/utils"
 )
 
 var _ = Describe("VRF suite @vrf", func() {
@@ -27,6 +29,7 @@ var _ = Describe("VRF suite @vrf", func() {
 		lt                 contracts.LinkToken
 		cls                []client.Chainlink
 		e                  *environment.Environment
+		job                *client.Job
 	)
 
 	BeforeEach(func() {
@@ -52,7 +55,7 @@ var _ = Describe("VRF suite @vrf", func() {
 		})
 
 		By("Funding Chainlink nodes", func() {
-			txCost, err := nets.Default.EstimateCostForChainlinkOperations(4)
+			txCost, err := nets.Default.EstimateCostForChainlinkOperations(1)
 			Expect(err).ShouldNot(HaveOccurred())
 			err = actions.FundChainlinkNodes(cls, nets.Default, txCost)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -87,7 +90,7 @@ var _ = Describe("VRF suite @vrf", func() {
 				}
 				ost, err := os.String()
 				Expect(err).ShouldNot(HaveOccurred())
-				_, err = n.CreateJob(&client.VRFJobSpec{
+				job, err = n.CreateJob(&client.VRFJobSpec{
 					Name:               fmt.Sprintf("vrf-%s", jobUUID),
 					CoordinatorAddress: coordinator.Address(),
 					PublicKey:          pubKeyCompressed,
@@ -120,12 +123,25 @@ var _ = Describe("VRF suite @vrf", func() {
 			err = consumer.RequestRandomness(requestHash, big.NewInt(1))
 			Expect(err).ShouldNot(HaveOccurred())
 
+			timeout := time.Minute * 2
+
 			Eventually(func(g Gomega) {
+				jobRuns, err := cls[0].ReadRunsByJob(job.Data.ID)
+				g.Expect(err).ShouldNot(HaveOccurred())
+
 				out, err := consumer.RandomnessOutput(context.Background())
 				g.Expect(err).ShouldNot(HaveOccurred())
-				g.Expect(out.Uint64()).Should(Not(BeNumerically("==", 0)))
+				// Checks that the job has actually run
+				g.Expect(len(jobRuns.Data)).Should(BeNumerically(">=", 1),
+					fmt.Sprintf("Expected the VRF job to run once or more after %s", timeout))
+
+				// TODO: This is an imperfect check, given it's a random number, it CAN be 0, but chances are unlikely.
+				// So we're just checking that the answer has changed to something other than the default (0)
+				// There's a better formula to ensure that VRF response is as expected, detailed under Technical Walkthrough.
+				// https://blog.chain.link/chainlink-vrf-on-chain-verifiable-randomness/
+				g.Expect(out.Uint64()).Should(Not(BeNumerically("==", 0)), "Expected the VRF job give an answer other than 0")
 				log.Debug().Uint64("Output", out.Uint64()).Msg("Randomness fulfilled")
-			}, "2m", "1s").Should(Succeed())
+			}, timeout, "1s").Should(Succeed())
 		})
 	})
 
@@ -134,7 +150,7 @@ var _ = Describe("VRF suite @vrf", func() {
 			nets.Default.GasStats().PrintStats()
 		})
 		By("Tearing down the environment", func() {
-			err = actions.TeardownSuite(e, nets)
+			err = actions.TeardownSuite(e, nets, utils.ProjectRoot)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 	})
