@@ -610,14 +610,22 @@ func (o *EthereumOffchainAggregator) GetContractData(ctxt context.Context) (*Off
 
 // SetPayees sets wallets for the contract to pay out to?
 func (o *EthereumOffchainAggregator) SetPayees(
-	transmitters, payees []common.Address,
+	transmitters, payees []string,
 ) error {
 	opts, err := o.client.TransactionOpts(o.client.DefaultWallet)
 	if err != nil {
 		return err
 	}
+	transmittersAddr := make([]common.Address, 0)
+	for _, tr := range transmitters {
+		transmittersAddr = append(transmittersAddr, common.HexToAddress(tr))
+	}
+	payeesAddr := make([]common.Address, 0)
+	for _, p := range payees {
+		transmittersAddr = append(transmittersAddr, common.HexToAddress(p))
+	}
 
-	tx, err := o.ocr.SetPayees(opts, transmitters, payees)
+	tx, err := o.ocr.SetPayees(opts, transmittersAddr, payeesAddr)
 	if err != nil {
 		return err
 	}
