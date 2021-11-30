@@ -37,6 +37,7 @@ type ContractDeployer interface {
 		linkTokenAddr string,
 	) (OCRv2, error)
 	DeployOCRv2AccessController() (OCRv2AccessController, error)
+	DeployOCRv2DeviationFlaggingValidator(billingAC string) (OCRv2DeviationFlaggingValidator, error)
 	DeployOffChainAggregator(linkAddr string, offchainOptions OffchainOptions) (OffchainAggregator, error)
 	DeployVRFContract() (VRF, error)
 	DeployMockETHLINKFeed(answer *big.Int) (MockETHLINKFeed, error)
@@ -61,6 +62,10 @@ func NewContractDeployer(bcClient client.BlockchainClient) (ContractDeployer, er
 // EthereumContractDeployer provides the implementations for deploying ETH (EVM) based contracts
 type EthereumContractDeployer struct {
 	eth *client.EthereumClient
+}
+
+func (e *EthereumContractDeployer) DeployOCRv2DeviationFlaggingValidator(billingAC string) (OCRv2DeviationFlaggingValidator, error) {
+	panic("implement me")
 }
 
 func (e *EthereumContractDeployer) DeployOCRv2(
