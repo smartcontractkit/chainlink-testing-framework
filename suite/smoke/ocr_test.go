@@ -2,6 +2,7 @@ package smoke
 
 import (
 	"context"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/smartcontractkit/helmenv/environment"
@@ -9,6 +10,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
+	"github.com/smartcontractkit/integrations-framework/utils"
 )
 
 var _ = Describe("OCR Feed @ocr", func() {
@@ -79,7 +81,7 @@ var _ = Describe("OCR Feed @ocr", func() {
 			networks.Default.GasStats().PrintStats()
 		})
 		By("Tearing down the environment", func() {
-			err = actions.TeardownSuite(env, networks)
+			err = actions.TeardownSuite(env, networks, utils.ProjectRoot)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 	})

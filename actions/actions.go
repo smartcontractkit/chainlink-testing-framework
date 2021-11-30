@@ -11,7 +11,6 @@ import (
 
 	"github.com/onsi/ginkgo/v2"
 	"github.com/smartcontractkit/helmenv/environment"
-	"github.com/smartcontractkit/integrations-framework/utils"
 
 	"github.com/smartcontractkit/integrations-framework/contracts"
 
@@ -151,12 +150,13 @@ func GetMockserverInitializerDataForOTPE(
 	return initializers, nil
 }
 
-// TeardownSuite tears down networks/clients and environment
-func TeardownSuite(env *environment.Environment, nets *client.Networks) error {
+// TeardownSuite tears down networks/clients and environment and creates a logs folder for failed tests in the
+// specified path
+func TeardownSuite(env *environment.Environment, nets *client.Networks, logsFolderPath string) error {
 	if ginkgo.CurrentSpecReport().Failed() {
 		testFilename := strings.Split(ginkgo.CurrentSpecReport().FileName(), ".")[0]
 		_, testName := filepath.Split(testFilename)
-		logsPath := filepath.Join(utils.ProjectRoot, DefaultArtifactsDir, fmt.Sprintf("%s-%d", testName, time.Now().Unix()))
+		logsPath := filepath.Join(logsFolderPath, DefaultArtifactsDir, fmt.Sprintf("%s-%d", testName, time.Now().Unix()))
 		if err := env.Artifacts.DumpTestResult(logsPath, "chainlink"); err != nil {
 			return err
 		}
