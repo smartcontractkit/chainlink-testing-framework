@@ -28,6 +28,7 @@ var _ = Describe("VRF suite @vrf", func() {
 		cls                []client.Chainlink
 		e                  *environment.Environment
 	)
+
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
 			e, err = environment.DeployOrLoadEnvironment(
@@ -51,7 +52,7 @@ var _ = Describe("VRF suite @vrf", func() {
 		})
 
 		By("Funding Chainlink nodes", func() {
-			txCost, err := nets.Default.EstimateCostForChainlinkOperations(1)
+			txCost, err := nets.Default.EstimateCostForChainlinkOperations(4)
 			Expect(err).ShouldNot(HaveOccurred())
 			err = actions.FundChainlinkNodes(cls, nets.Default, txCost)
 			Expect(err).ShouldNot(HaveOccurred())

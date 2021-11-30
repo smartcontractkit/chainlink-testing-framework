@@ -605,14 +605,14 @@ func (e *EthereumClient) newHeadersLoop() {
 	for {
 		if err := e.subscribeToNewHeaders(); err != nil {
 			log.Error().
-				Str("NetworkConfig", e.NetworkConfig.ID).
+				Str("NetworkName", e.NetworkConfig.Name).
 				Msgf("Error while subscribing to headers: %v", err.Error())
 			time.Sleep(time.Second)
 			continue
 		}
 		break
 	}
-	log.Debug().Str("NetworkConfig", e.NetworkConfig.ID).Msg("Stopped subscribing to new headers")
+	log.Debug().Str("NetworkName", e.NetworkConfig.Name).Msg("Stopped subscribing to new headers")
 }
 
 func (e *EthereumClient) subscribeToNewHeaders() error {
@@ -640,7 +640,7 @@ func (e *EthereumClient) subscribeToNewHeaders() error {
 
 func (e *EthereumClient) receiveHeader(header *types.Header) {
 	log.Debug().
-		Str("NetworkConfig", e.NetworkConfig.ID).
+		Str("NetworkName", e.NetworkConfig.Name).
 		Int("Node", e.ID).
 		Str("Hash", header.Hash().String()).
 		Str("Number", header.Number.String()).

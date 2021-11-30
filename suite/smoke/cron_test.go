@@ -60,12 +60,12 @@ var _ = Describe("Cronjob suite @cron", func() {
 	})
 
 	Describe("with Cron job", func() {
-		It("runs 5 times with no errors", func() {
+		It("runs 5 or more times with no errors", func() {
 			Eventually(func(g Gomega) {
 				jobRuns, err := cls[0].ReadRunsByJob(job.Data.ID)
 				g.Expect(err).ShouldNot(HaveOccurred())
 
-				g.Expect(len(jobRuns.Data)).Should(BeNumerically("==", 5))
+				g.Expect(len(jobRuns.Data)).Should(BeNumerically(">=", 5))
 
 				for _, jr := range jobRuns.Data {
 					g.Expect(jr.Attributes.Errors).Should(Equal([]interface{}{nil}))
