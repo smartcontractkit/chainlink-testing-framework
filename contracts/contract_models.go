@@ -70,7 +70,6 @@ type LinkToken interface {
 	Transfer(to string, amount *big.Int) error
 	BalanceOf(ctx context.Context, addr common.Address) (*big.Int, error)
 	TransferAndCall(to string, amount *big.Int, data []byte) error
-	Fund(ethAmount *big.Float) error
 	Name(context.Context) (string, error)
 }
 
@@ -113,7 +112,7 @@ type OffchainAggregator interface {
 	Fund(nativeAmount *big.Float) error
 	GetContractData(ctxt context.Context) (*OffchainAggregatorData, error)
 	SetConfig(chainlinkNodes []client.Chainlink, ocrConfig OffChainAggregatorConfig) error
-	SetPayees([]common.Address, []common.Address) error
+	SetPayees([]string, []string) error
 	RequestNewRound() error
 	GetLatestAnswer(ctxt context.Context) (*big.Int, error)
 	GetLatestRound(ctxt context.Context) (*RoundData, error)
@@ -307,11 +306,23 @@ type OCRv2AccessController interface {
 	HasAccess(to string) (bool, error)
 }
 
+// OCRv2DeviationFlaggingValidator OCR deviation flagging validator
+type OCRv2DeviationFlaggingValidator interface {
+	Address() string
+}
+
+// OCRv2 main offchain reporting v2 instance
 type OCRv2 interface {
 	Address() string
-	SetConfig() error
+	GetContractData(ctx context.Context) (*OffchainAggregatorData, error)
+	AuthorityAddr(string) (string, error)
 	TransferOwnership(to string) error
-	SetBilling(observationPayment uint32, recommendedGasPrice uint32) error
+
+	SetValidatorConfig(flaggingThreshold uint32, validator OCRv2DeviationFlaggingValidator) error
+	SetBilling(price uint32, controller OCRv2AccessController) error
+	SetConfig(chainlinkNodes []client.Chainlink, ocrConfig OffChainAggregatorConfig) error
+
+	RequestNewRound() error
 	GetLatestConfigDetails() (map[string]interface{}, error)
 	GetRoundData(roundID uint32) (map[string]interface{}, error)
 	GetOwedPayment(transmitterAddr string) (map[string]interface{}, error)
