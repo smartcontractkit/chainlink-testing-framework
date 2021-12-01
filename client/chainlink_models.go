@@ -434,9 +434,12 @@ observationSource = """
 
 // KeeperJobSpec represents a keeper spec
 type KeeperJobSpec struct {
-	Name            string `toml:"name"`
-	ContractAddress string `toml:"contractAddress"`
-	FromAddress     string `toml:"fromAddress"` // Hex representation of the from address
+	Name                     string `toml:"name"`
+	ContractAddress          string `toml:"contractAddress"`
+	FromAddress              string `toml:"fromAddress"` // Hex representation of the from address
+	ExternalJobID            string `toml:"externalJobID"`
+	MinIncomingConfirmations int    `toml:"minIncomingConfirmations"`
+	ObservationSource        string `toml:"observationSource"`
 }
 
 // Type returns the type of the job
@@ -444,11 +447,17 @@ func (k *KeeperJobSpec) Type() string { return "keeper" }
 
 // String representation of the job
 func (k *KeeperJobSpec) String() (string, error) {
-	keeperTemplateString := `type            = "keeper"
-schemaVersion   = 1
-name            = "{{.Name}}"
-contractAddress = "{{.ContractAddress}}"
-fromAddress     = "{{.FromAddress}}"`
+	keeperTemplateString := `
+type                     = "keeper"
+schemaVersion            = 2
+name                     = "{{.Name}}"
+contractAddress          = "{{.ContractAddress}}"
+fromAddress              = "{{.FromAddress}}"
+externalJobID            = "{{.ExternalJobID}}"
+minIncomingConfirmations = {{.MinIncomingConfirmations}}
+observationSource        = """
+{{.ObservationSource}}
+"""`
 	return marshallTemplate(k, "Keeper Job", keeperTemplateString)
 }
 
@@ -650,6 +659,33 @@ func ObservationSourceSpecBridge(bta BridgeTypeAttributes) string {
 		fetch [type=bridge name="%s" requestData="%s"];
 		parse [type=jsonparse path="data,result"];
 		fetch -> parse;`, bta.Name, bta.RequestData)
+}
+
+// ObservationSourceKeeperDefault is a basic keeper default that checks and performs upkeep of the contract address
+func ObservationSourceKeeperDefault() string {
+	return `encode_check_upkeep_tx   [type=ethabiencode abi="checkUpkeep(uint256 id, address from)"
+                          data="{\\"id\\":$(jobSpec.upkeepID),\\"from\\":$(jobSpec.fromAddress)}"]
+check_upkeep_tx          [type=ethcall
+                          failEarly=true
+                          gas="$(jobSpec.checkUpkeepGasLimit)"
+                          gasPrice="$(jobSpec.gasPrice)"
+                          gasTipCap="$(jobSpec.gasTipCap)"
+                          gasFeeCap="$(jobSpec.gasFeeCap)"
+                          extractRevertReason=true
+                          contract="$(jobSpec.contractAddress)"
+                          data="$(encode_check_upkeep_tx)"]
+decode_check_upkeep_tx   [type=ethabidecode
+                          abi="bytes memory performData, uint256 maxLinkPayment, uint256 gasLimit, uint256 adjustedGasWei, uint256 linkEth"]
+encode_perform_upkeep_tx [type=ethabiencode
+                          abi="performUpkeep(uint256 id, bytes calldata performData)"
+                          data="{\\"id\\": $(jobSpec.upkeepID),\\"performData\\":$(decode_check_upkeep_tx.performData)}"]
+perform_upkeep_tx        [type=ethtx
+                          gasLimit="$(jobSpec.performUpkeepGasLimit)"
+                          minConfirmations=0
+                          to="$(jobSpec.contractAddress)"
+                          data="$(encode_perform_upkeep_tx)"
+                          txMeta="{\\"jobID\\":$(jobSpec.jobID)}"]
+encode_check_upkeep_tx -> check_upkeep_tx -> decode_check_upkeep_tx -> encode_perform_upkeep_tx -> perform_upkeep_tx`
 }
 
 // marshallTemplate Helper to marshall templates
