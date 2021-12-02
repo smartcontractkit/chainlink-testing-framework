@@ -96,10 +96,6 @@ func (f *OCRTest) deployContract(c chan<- contracts.OffchainAggregator) error {
 	if err != nil {
 		return err
 	}
-	err = ocrInstance.Fund(f.Wallets.Default(), big.NewFloat(0), big.NewFloat(1))
-	if err != nil {
-		return err
-	}
 	if err = ocrInstance.SetConfig(
 		f.Wallets.Default(),
 		f.chainlinkClients,
