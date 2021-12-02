@@ -107,9 +107,6 @@ func (f *OCRTest) deployContract(c chan<- contracts.OffchainAggregator) error {
 	); err != nil {
 		return err
 	}
-	if err = ocrInstance.Fund(f.Wallets.Default(), nil, big.NewFloat(2)); err != nil {
-		return err
-	}
 	c <- ocrInstance
 	return nil
 }
@@ -130,6 +127,16 @@ func (f *OCRTest) deployContracts() error {
 	for contract := range contractChan {
 		f.contractInstances = append(f.contractInstances, contract)
 	}
+	err := f.Blockchain.WaitForEvents()
+	if err != nil {
+		return err
+	}
+	for _, contract := range f.contractInstances {
+		if err = contract.Fund(f.Wallets.Default(), nil, big.NewFloat(2)); err != nil {
+			return err
+		}
+	}
+
 	return f.Blockchain.WaitForEvents()
 }
 

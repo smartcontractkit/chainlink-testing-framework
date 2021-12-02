@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+  <testsuites tests="6" disabled="5" errors="0" failures="1" time="0.006689115">
+      <testsuite name="Integration" package="/Users/adamhamrick/Projects/integrations-framework/suite/smoke" tests="6" disabled="0" skipped="5" errors="0" failures="1" time="0.006689115" timestamp="2021-12-02T11:14:57">
+          <properties>
+              <property name="SuiteSucceeded" value="false"></property>
+              <property name="SuiteHasProgrammaticFocus" value="true"></property>
+              <property name="SpecialSuiteFailureReason" value=""></property>
+              <property name="SuiteLabels" value="[]"></property>
+              <property name="RandomSeed" value="1638461686"></property>
+              <property name="RandomizeAllSpecs" value="true"></property>
+              <property name="LabelFilter" value=""></property>
+              <property name="FocusStrings" value=""></property>
+              <property name="SkipStrings" value=""></property>
+              <property name="FocusFiles" value=""></property>
+              <property name="SkipFiles" value=""></property>
+              <property name="FailOnPending" value="false"></property>
+              <property name="FailFast" value="false"></property>
+              <property name="FlakeAttempts" value="0"></property>
+              <property name="EmitSpecProgress" value="true"></property>
+              <property name="DryRun" value="false"></property>
+              <property name="ParallelTotal" value="1"></property>
+              <property name="OutputInterceptorMode" value=""></property>
+          </properties>
+          <testcase name="[It] Cronjob suite @cron with Cron job runs 5 or more times with no errors" classname="Integration" status="skipped" time="0">
+              <skipped message="skipped"></skipped>
+          </testcase>
+          <testcase name="[It] Keeper suite @keeper with Keeper job performs upkeep of a target contract" classname="Integration" status="failed" time="0.000464033">
+              <failure message="Unexpected error:&#xA;    &lt;*envconfig.ParseError | 0xc0003fc140&gt;: {&#xA;        KeyName: &#34;CHARTS&#34;,&#xA;        FieldName: &#34;Charts&#34;,&#xA;        TypeName: &#34;environment.Charts&#34;,&#xA;        Value: &#34;./config/charts.json&#34;,&#xA;        Err: &lt;*errors.errorString | 0xc000616310&gt;{&#xA;            s: &#34;failed to unmarshal JSON, either a file path specific doesn&#39;t exist, or the JSON is invalid: invalid character &#39;.&#39; looking for beginning of value&#34;,&#xA;        },&#xA;    }&#xA;    envconfig.Process: assigning CHARTS to Charts: converting &#39;./config/charts.json&#39; to type environment.Charts. details: failed to unmarshal JSON, either a file path specific doesn&#39;t exist, or the JSON is invalid: invalid character &#39;.&#39; looking for beginning of value&#xA;occurred" type="failed">/Users/adamhamrick/Projects/integrations-framework/suite/smoke/keeper_test.go:41&#xA;github.com/smartcontractkit/integrations-framework/suite/smoke.glob..func3.1.1()&#xA;&#x9;/Users/adamhamrick/Projects/integrations-framework/suite/smoke/keeper_test.go:41 +0x309&#xA;github.com/smartcontractkit/integrations-framework/suite/smoke.glob..func3.1()&#xA;&#x9;/Users/adamhamrick/Projects/integrations-framework/suite/smoke/keeper_test.go:36 +0xeb</failure>
+              <system-out>&#xA;Report Entries:&#xA;By Step&#xA;/Users/adamhamrick/Projects/integrations-framework/suite/smoke/keeper_test.go:36&#xA;2021-12-02T11:14:57.94441-05:00&#xA;&amp;{Text:Deploying the environment Duration:0s}&#xA;--&#xA;By Step&#xA;/Users/adamhamrick/Projects/integrations-framework/suite/smoke/keeper_test.go:176&#xA;2021-12-02T11:14:57.944732-05:00&#xA;&amp;{Text:Printing gas stats Duration:0s}&#xA;</system-out>
+              <system-err>[BeforeEach] Keeper suite @keeper&#xA;  /Users/adamhamrick/Projects/integrations-framework/suite/smoke/keeper_test.go:35&#xA;�[1mSTEP:�[0m Deploying the environment �[38;5;243m12/02/21 11:14:57.944�[0m&#xA;[AfterEach] Keeper suite @keeper&#xA;  /Users/adamhamrick/Projects/integrations-framework/suite/smoke/keeper_test.go:175&#xA;�[1mSTEP:�[0m Printing gas stats �[38;5;243m12/02/21 11:14:57.944�[0m&#xA;</system-err>
+          </testcase>
+          <testcase name="[It] OCR Feed @ocr with OCR job performs two rounds" classname="Integration" status="skipped" time="0">
+              <skipped message="skipped"></skipped>
+          </testcase>
+          <testcase name="[It] Flux monitor suite @flux with Flux job performs two rounds and has withdrawable payments for oracles" classname="Integration" status="skipped" time="0">
+              <skipped message="skipped"></skipped>
+          </testcase>
+          <testcase name="[It] VRF suite @vrf with VRF job randomness is fulfilled" classname="Integration" status="skipped" time="0">
+              <skipped message="skipped"></skipped>
+          </testcase>
+          <testcase name="[It] Direct request suite @runlog with DirectRequest job receives API call data on-chain" classname="Integration" status="skipped" time="0">
+              <skipped message="skipped"></skipped>
+          </testcase>
+      </testsuite>
+  </testsuites>
