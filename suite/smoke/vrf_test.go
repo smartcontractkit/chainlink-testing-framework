@@ -91,12 +91,12 @@ var _ = Describe("VRF suite @vrf", func() {
 				ost, err := os.String()
 				Expect(err).ShouldNot(HaveOccurred())
 				job, err = n.CreateJob(&client.VRFJobSpec{
-					Name:               fmt.Sprintf("vrf-%s", jobUUID),
-					CoordinatorAddress: coordinator.Address(),
-					PublicKey:          pubKeyCompressed,
-					Confirmations:      1,
-					ExternalJobID:      jobUUID.String(),
-					ObservationSource:  ost,
+					Name:                     fmt.Sprintf("vrf-%s", jobUUID),
+					CoordinatorAddress:       coordinator.Address(),
+					MinIncomingConfirmations: 1,
+					PublicKey:                pubKeyCompressed,
+					ExternalJobID:            jobUUID.String(),
+					ObservationSource:        ost,
 				})
 				Expect(err).ShouldNot(HaveOccurred())
 

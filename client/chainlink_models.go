@@ -593,12 +593,12 @@ observationSource                      = """
 
 // VRFJobSpec represents a VRF job
 type VRFJobSpec struct {
-	Name               string `toml:"name"`
-	CoordinatorAddress string `toml:"coordinatorAddress"` // Address of the VRF Coordinator contract
-	PublicKey          string `toml:"publicKey"`          // Public key of the proving key
-	Confirmations      int    `toml:"confirmations"`      // Number of block confirmations to wait for
-	ExternalJobID      string `toml:"externalJobID"`
-	ObservationSource  string `toml:"observationSource"` // List of commands for the chainlink node
+	Name                     string `toml:"name"`
+	CoordinatorAddress       string `toml:"coordinatorAddress"` // Address of the VRF Coordinator contract
+	PublicKey                string `toml:"publicKey"`          // Public key of the proving key
+	ExternalJobID            string `toml:"externalJobID"`
+	ObservationSource        string `toml:"observationSource"` // List of commands for the chainlink node
+	MinIncomingConfirmations int    `toml:"minIncomingConfirmations"`
 }
 
 // Type returns the type of the job
@@ -606,13 +606,14 @@ func (v *VRFJobSpec) Type() string { return "vrf" }
 
 // String representation of the job
 func (v *VRFJobSpec) String() (string, error) {
-	vrfTemplateString := `type = "vrf"
-schemaVersion      = 1
-name               = "{{.Name}}"
-coordinatorAddress = "{{.CoordinatorAddress}}"
-publicKey          = "{{.PublicKey}}"
-confirmations      = {{.Confirmations}}
-externalJobID     = "{{.ExternalJobID}}"
+	vrfTemplateString := `
+type                     = "vrf"
+schemaVersion            = 1
+name                     = "{{.Name}}"
+coordinatorAddress       = "{{.CoordinatorAddress}}"
+minIncomingConfirmations = {{.MinIncomingConfirmations}}
+publicKey                = "{{.PublicKey}}"
+externalJobID            = "{{.ExternalJobID}}"
 observationSource = """
 {{.ObservationSource}}
 """
@@ -663,7 +664,8 @@ func ObservationSourceSpecBridge(bta BridgeTypeAttributes) string {
 
 // ObservationSourceKeeperDefault is a basic keeper default that checks and performs upkeep of the contract address
 func ObservationSourceKeeperDefault() string {
-	return `encode_check_upkeep_tx   [type=ethabiencode abi="checkUpkeep(uint256 id, address from)"
+	return `
+encode_check_upkeep_tx   [type=ethabiencode abi="checkUpkeep(uint256 id, address from)"
                           data="{\\"id\\":$(jobSpec.upkeepID),\\"from\\":$(jobSpec.fromAddress)}"]
 check_upkeep_tx          [type=ethcall
                           failEarly=true
