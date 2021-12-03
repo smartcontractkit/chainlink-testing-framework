@@ -74,6 +74,11 @@ func (e *EthereumMultinodeClient) GetNetworkName() string {
 	return e.DefaultClient.GetNetworkName()
 }
 
+// GetChainID retrieves the ChainID of the network that the client interacts with
+func (e *EthereumMultinodeClient) GetChainID() int64 {
+	return e.DefaultClient.GetChainID()
+}
+
 // GasStats gets gas stats instance
 func (e *EthereumMultinodeClient) GasStats() *GasStats {
 	return e.DefaultClient.gasStats
@@ -372,6 +377,11 @@ func EthereumMultiNodeURLs(e *environment.Environment) ([]*url.URL, error) {
 // GetNetworkName retrieves the ID of the network that the client interacts with
 func (e *EthereumClient) GetNetworkName() string {
 	return e.NetworkConfig.ID
+}
+
+// GetChainID retrieves the ChainID of the network that the client interacts with
+func (e *EthereumClient) GetChainID() int64 {
+	return e.NetworkConfig.ChainID
 }
 
 // Close tears down the current open Ethereum client
