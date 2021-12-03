@@ -18,7 +18,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/utils"
 )
 
-var _ = Describe("Keeper suite @keeper", func() {
+var _ = FDescribe("Keeper suite @keeper", func() {
 	var (
 		err           error
 		nets          *client.Networks
@@ -147,7 +147,7 @@ var _ = Describe("Keeper suite @keeper", func() {
 			err = registry.SetKeepers(nodeAddressesStr, payees)
 			Expect(err).ShouldNot(HaveOccurred())
 			jobUUID := uuid.NewV4()
-			_, err = cls[0].CreateJob(&client.KeeperJobSpec{
+			_, err = cls[0].CreateJob(&client.KeeperV2JobSpec{
 				Name:                     fmt.Sprintf("keeper-%s", jobUUID.String()),
 				ContractAddress:          registry.Address(),
 				FromAddress:              na,

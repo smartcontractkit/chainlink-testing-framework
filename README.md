@@ -43,3 +43,5 @@ If you would like to change the Chainlink values that are used for environments,
 ```sh
 CHARTS='{"chainlink": {"values": {"chainlink": {"image": {"version": "<version>"}}}}}' make test_smoke args="-nodes=5"
 ```
+
+You can also use a file name, head over to the [./config](./config/README.md) directory to see how.
