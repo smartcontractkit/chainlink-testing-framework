@@ -18,7 +18,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/utils"
 )
 
-var _ = FDescribe("Keeper suite @keeper", func() {
+var _ = Describe("Keeper suite @keeper", func() {
 	var (
 		err           error
 		nets          *client.Networks
