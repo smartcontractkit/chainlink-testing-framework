@@ -4,13 +4,14 @@ package config
 import (
 	"errors"
 	"fmt"
-	"github.com/imdario/mergo"
-	"github.com/kelseyhightower/envconfig"
-	"gopkg.in/yaml.v3"
 	"os"
 	"path"
 	"strings"
 	"time"
+
+	"github.com/imdario/mergo"
+	"github.com/kelseyhightower/envconfig"
+	"gopkg.in/yaml.v3"
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
@@ -30,6 +31,10 @@ type FrameworkConfig struct {
 	KeepEnvironments string         `mapstructure:"keep_environments" yaml:"keep_environments"`
 	Logging          *LoggingConfig `mapstructure:"logging" yaml:"logging"`
 	EnvironmentFile  string         `mapstructure:"environment_file" yaml:"environment_file"`
+	ChainlinkImage   string         `mapstructure:"chainlink_image" yaml:"chainlink_image"`
+	ChainlinkVersion string         `mapstructure:"chainlink_version" yaml:"chainlink_version"`
+	GethImage        string         `mapstructure:"geth_image" yaml:"geth_image"`
+	GethVersion      string         `mapstructure:"geth_version" yaml:"geth_version"`
 }
 
 // NetworkSettings is a map that holds configuration for each individual network
