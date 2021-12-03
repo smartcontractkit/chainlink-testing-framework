@@ -47,6 +47,7 @@ type BlockchainClient interface {
 
 	Get() interface{}
 	GetNetworkName() string
+	GetChainID() int64
 	SwitchNode(node int) error
 	GetClients() []BlockchainClient
 	HeaderHashByNumber(ctx context.Context, bn *big.Int) (string, error)
