@@ -633,12 +633,15 @@ p2pPeerID                              = "{{.P2PPeerID}}"
 keyBundleID                            = "{{.OCRKeyBundleID}}"
 monitoringEndpoint                     ={{if not .MonitoringEndpoint}} "chain.link:4321" {{else}} "{{.MonitoringEndpoint}}" {{end}}
 transmitterAddress                     = "{{.TransmitterID}}"
+{{if .IsBootstrapPeer}}
+{{else}}
 observationSource                      = """
 {{.ObservationSource}}
 """
 juelsPerFeeCoinSource                  = """
 {{.JuelsPerFeeCoinSource}}
-"""`
+"""
+{{end}}`
 
 	return marshallTemplate(o, "OCR2 Job", ocr2TemplateString)
 }
