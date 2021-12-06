@@ -258,7 +258,8 @@ func DefaultOffChainAggregatorOptions() OffchainOptions {
 	}
 }
 
-// DefaultOffChainAggregatorConfig returns some base defaults for configuring an OCR contract
+// DefaultOffChainAggregatorConfig returns some base defaults for configuring an OCR contract on a very fast simulated
+// geth network
 func DefaultOffChainAggregatorConfig(numberNodes int) OffChainAggregatorConfig {
 	s := []int{}
 	for i := 0; i < numberNodes; i++ {
@@ -277,6 +278,34 @@ func DefaultOffChainAggregatorConfig(numberNodes int) OffChainAggregatorConfig {
 		DeltaStage:       time.Second * 10,
 		DeltaResend:      time.Second * 10,
 		DeltaRound:       time.Second * 20,
+		RMax:             4,
+		S:                s,
+		N:                numberNodes,
+		F:                int(math.Max(1, float64(numberNodes/3-1))),
+		OracleIdentities: []ocrConfigHelper.OracleIdentityExtra{},
+	}
+}
+
+// OptimismOffChainAggregatorConfig returns some base defaults for configuring an OCR contract on Optimism chain
+// I suspect most of the tuning left to try is in here.
+func OptimismOffChainAggregatorConfig(numberNodes int) OffChainAggregatorConfig {
+	s := []int{}
+	for i := 0; i < numberNodes; i++ {
+		s = append(s, 1)
+	}
+	if numberNodes <= 3 {
+		log.Warn().
+			Int("Number Chainlink Nodes", numberNodes).
+			Msg("You likely need more chainlink nodes to properly configure OCR, try 5 or more.")
+	}
+	return OffChainAggregatorConfig{
+		AlphaPPB:         1,
+		DeltaC:           time.Minute * 90,
+		DeltaGrace:       time.Second * 10,
+		DeltaProgress:    time.Second * 300,
+		DeltaStage:       time.Second * 100,
+		DeltaResend:      time.Second * 100,
+		DeltaRound:       time.Second * 200,
 		RMax:             4,
 		S:                s,
 		N:                numberNodes,

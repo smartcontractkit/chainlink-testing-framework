@@ -428,21 +428,22 @@ func (env *K8sEnvironment) createNamespace(namespace string) (*coreV1.Namespace,
 
 // determineNamespace determines the appropriate namespace name based on the networks deployed
 func determineNamespace(networks []client.BlockchainNetwork) string {
-	name := "chainlink"
-	for _, network := range networks {
-		if strings.Contains(network.ID(), "performance") {
-			name = fmt.Sprintf("%s-%s", name, "performance")
-			break
-		}
-	}
-	if len(networks) == 0 {
-		name = fmt.Sprintf("%s-%s", name, "no-network")
-	} else if len(networks) == 1 {
-		name = fmt.Sprintf("%s-%s", name, "single-network")
-	} else {
-		name = fmt.Sprintf("%s-%s", name, "multi-network")
-	}
-	return name
+	// name := "chainlink"
+	// for _, network := range networks {
+	// 	if strings.Contains(network.ID(), "performance") {
+	// 		name = fmt.Sprintf("%s-%s", name, "performance")
+	// 		break
+	// 	}
+	// }
+	// if len(networks) == 0 {
+	// 	name = fmt.Sprintf("%s-%s", name, "no-network")
+	// } else if len(networks) == 1 {
+	// 	name = fmt.Sprintf("%s-%s", name, "single-network")
+	// } else {
+	// 	name = fmt.Sprintf("%s-%s", name, "multi-network")
+	// }
+	// Quick kludge for naming the namespace for optimism soak testing
+	return "optimism-7-day-soak-test"
 }
 
 type k8sTemplateData struct {
