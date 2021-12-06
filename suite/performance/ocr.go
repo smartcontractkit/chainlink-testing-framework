@@ -91,45 +91,36 @@ func (f *OCRTest) Setup() error {
 	return f.deployContracts()
 }
 
-func (f *OCRTest) deployContract(c chan<- contracts.OffchainAggregator) error {
+func (f *OCRTest) deployContract() (contracts.OffchainAggregator, error) {
 	ocrInstance, err := f.Deployer.DeployOffChainAggregator(f.Wallets.Default(), f.ContractOptions)
 	if err != nil {
-		return err
-	}
-	err = ocrInstance.Fund(f.Wallets.Default(), big.NewFloat(0), big.NewFloat(1))
-	if err != nil {
-		return err
+		return nil, err
 	}
 	if err = ocrInstance.SetConfig(
 		f.Wallets.Default(),
 		f.chainlinkClients,
 		contracts.DefaultOffChainAggregatorConfig(len(f.chainlinkClients)),
 	); err != nil {
-		return err
+		return nil, err
 	}
-	if err = ocrInstance.Fund(f.Wallets.Default(), nil, big.NewFloat(2)); err != nil {
-		return err
-	}
-	c <- ocrInstance
-	return nil
+	return ocrInstance, nil
 }
 
 func (f *OCRTest) deployContracts() error {
-	contractChan := make(chan contracts.OffchainAggregator, f.TestOptions.NumberOfContracts)
-	g := errgroup.Group{}
-
 	for i := 0; i < f.TestOptions.NumberOfContracts; i++ {
-		g.Go(func() error {
-			return f.deployContract(contractChan)
-		})
+		contractInstance, err := f.deployContract()
+		if err != nil {
+			return err
+		}
+		f.contractInstances = append(f.contractInstances, contractInstance)
 	}
-	if err := g.Wait(); err != nil {
-		return err
+
+	for _, contract := range f.contractInstances {
+		if err := contract.Fund(f.Wallets.Default(), nil, big.NewFloat(2)); err != nil {
+			return err
+		}
 	}
-	close(contractChan)
-	for contract := range contractChan {
-		f.contractInstances = append(f.contractInstances, contract)
-	}
+
 	return f.Blockchain.WaitForEvents()
 }
 

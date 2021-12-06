@@ -698,6 +698,7 @@ func (o *EthereumOffchainAggregator) SetConfig(
 	if err != nil {
 		return err
 	}
+	log.Info().Str("Contract Address", o.Address()).Uint64("Tx Nonce", tx.Nonce()).Msg("Setting Payees")
 	if err := o.client.ProcessTransaction(tx); err != nil {
 		return err
 	}
@@ -711,6 +712,7 @@ func (o *EthereumOffchainAggregator) SetConfig(
 	if err != nil {
 		return err
 	}
+	log.Info().Str("Contract Address", o.Address()).Uint64("Tx Nonce", tx.Nonce()).Msg("Setting Config")
 	return o.client.ProcessTransaction(tx)
 }
 
