@@ -321,7 +321,7 @@ type OCRv2 interface {
 
 	SetValidatorConfig(flaggingThreshold uint32, validatorAddr string) error
 	SetBilling(price uint32, controllerAddr string) error
-	SetConfig(chainlinkNodes []client.Chainlink, ocrConfig OffChainAggregatorConfig) error
+	SetOracles(chainlinkNodes []client.Chainlink, f int) error
 
 	RequestNewRound() error
 	GetLatestConfigDetails() (map[string]interface{}, error)
