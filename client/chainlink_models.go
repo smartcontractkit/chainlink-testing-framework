@@ -156,6 +156,31 @@ type OCRKeyAttributes struct {
 	OnChainSigningAddress string `json:"onChainSigningAddress"`
 }
 
+// OCR2Keys is the model that represents the created OCR2 keys when read
+type OCR2Keys struct {
+	Data []OCR2KeyData `json:"data"`
+}
+
+// OCR2Key is the model that represents the created OCR2 keys when read
+type OCR2Key struct {
+	Data OCR2KeyData `json:"data"`
+}
+
+// OCR2KeyData is the model that represents the created OCR2 keys when read
+type OCR2KeyData struct {
+	Type       string            `json:"type"`
+	Attributes OCR2KeyAttributes `json:"attributes"`
+	ID         string            `json:"id"`
+}
+
+// OCR2KeyAttributes is the model that represents the created OCR2 keys when read
+type OCR2KeyAttributes struct {
+	ChainType             string `json:"chainType"`
+	ConfigPublicKey       string `json:"configPublicKey"`
+	OffChainPublicKey     string `json:"offChainPublicKey"`
+	OnChainSigningAddress string `json:"onChainSigningAddress"`
+}
+
 // P2PKeys is the model that represents the created P2P keys when read
 type P2PKeys struct {
 	Data []P2PKeyData `json:"data"`
@@ -196,6 +221,28 @@ type ETHKeyData struct {
 // ETHKeyAttributes is the model that represents the created ETH keys when read
 type ETHKeyAttributes struct {
 	Address string `json:"address"`
+}
+
+// TxKeys is the model that represents the created keys when read
+type TxKeys struct {
+	Data []TxKeyData `json:"data"`
+}
+
+// TxKey is the model that represents the created keys when read
+type TxKey struct {
+	Data TxKeyData `json:"data"`
+}
+
+// TxKeyData is the model that represents the created keys when read
+type TxKeyData struct {
+	Type       string          `json:"type"`
+	ID         string          `json:"id"`
+	Attributes TxKeyAttributes `json:"attributes"`
+}
+
+// TxKeyAttributes is the model that represents the created keys when read
+type TxKeyAttributes struct {
+	PublicKey string `json:"publicKey"`
 }
 
 // EIAttributes is the model that represents the EI keys when created and read
