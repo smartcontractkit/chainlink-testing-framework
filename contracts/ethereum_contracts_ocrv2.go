@@ -27,7 +27,7 @@ func (e *EthereumOCRv2) GetContractData(ctx context.Context) (*OffchainAggregato
 	panic("implement me")
 }
 
-func (e *EthereumOCRv2) SetConfig(chainlinkNodes []client.Chainlink, ocrConfig OffChainAggregatorConfig) error {
+func (e *EthereumOCRv2) SetOracles(chainlinkNodes []client.Chainlink, f int) error {
 	panic("implement me")
 }
 
