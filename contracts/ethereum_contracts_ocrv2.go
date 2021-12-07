@@ -7,6 +7,10 @@ import (
 
 type EthereumOCRv2 struct{}
 
+func (e *EthereumOCRv2) SetOffChainConfig() error {
+	panic("implement me")
+}
+
 func (e *EthereumOCRv2) DumpState() error {
 	panic("implement me")
 }
