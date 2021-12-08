@@ -144,12 +144,17 @@ func (f *OCRTest) changeAdapterValue(roundID int) (int, error) {
 
 // Run runs OCR performance/soak test
 func (f *OCRTest) Run() error {
+	i := 1
+	_, err := f.changeAdapterValue(i)
+	if err != nil {
+		return err
+	}
 	if err := f.createChainlinkJobs(); err != nil {
 		return err
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), f.TestOptions.TestDuration)
 	defer cancel()
-	i := 1
+
 	for {
 		select {
 		case <-ctx.Done():
