@@ -38,11 +38,8 @@ func (em *MockserverClient) ClearExpectation(body interface{}) error {
 
 // SetVariable sets an int for /variable
 func (em *MockserverClient) SetVariable(v int) error {
-	pathSelector := PathSelector{Path: "/variable"}
-	if err := em.ClearExpectation(pathSelector); err != nil {
-		return err
-	}
 	initializer := HttpInitializer{
+		Id:      "variable_expectation_id",
 		Request: HttpRequest{Path: "/variable"},
 		Response: HttpResponse{Body: AdapterResponse{
 			Id:    "",
@@ -74,6 +71,7 @@ type HttpResponse struct {
 
 // HttpInitializer represents an element of the initializer array used in the mockserver initializer
 type HttpInitializer struct {
+	Id       string       `json:"id"`
 	Request  HttpRequest  `json:"httpRequest"`
 	Response HttpResponse `json:"httpResponse"`
 }

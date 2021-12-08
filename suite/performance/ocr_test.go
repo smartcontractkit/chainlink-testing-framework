@@ -15,7 +15,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/environment"
 )
 
-var _ = Describe("OCR soak test @soak-ocr", func() {
+var _ = FDescribe("OCR soak test @soak-ocr", func() {
 	var (
 		suiteSetup  actions.SuiteSetup
 		networkInfo actions.NetworkInfo
@@ -27,8 +27,8 @@ var _ = Describe("OCR soak test @soak-ocr", func() {
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
 			suiteSetup, err = actions.SingleNetworkSetup(
-				environment.NewChainlinkCluster(5),
-				hooks.EthereumPerfNetworkHook,
+				environment.NewChainlinkCluster(4),
+				hooks.EVMNetworkFromConfigHook,
 				hooks.EthereumDeployerHook,
 				hooks.EthereumClientHook,
 				utils.ProjectRoot,
@@ -38,7 +38,7 @@ var _ = Describe("OCR soak test @soak-ocr", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			networkInfo = suiteSetup.DefaultNetwork()
 
-			networkInfo.Client.ParallelTransactions(true)
+			// networkInfo.Client.ParallelTransactions(true)
 		})
 
 		By("Funding the Chainlink nodes", func() {
@@ -46,7 +46,7 @@ var _ = Describe("OCR soak test @soak-ocr", func() {
 				nodes,
 				networkInfo.Client,
 				networkInfo.Wallets.Default(),
-				big.NewFloat(10),
+				big.NewFloat(0.01),
 				big.NewFloat(10),
 			)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -56,11 +56,11 @@ var _ = Describe("OCR soak test @soak-ocr", func() {
 			perfTest = NewOCRTest(
 				OCRTestOptions{
 					TestOptions: TestOptions{
-						NumberOfContracts: 5,
+						NumberOfContracts: 4,
 					},
-					RoundTimeout: 180 * time.Second,
+					RoundTimeout: 65 * time.Minute,
 					AdapterValue: 5,
-					TestDuration: 10 * time.Minute,
+					TestDuration: 168 * time.Hour,
 				},
 				contracts.DefaultOffChainAggregatorOptions(),
 				suiteSetup.Environment(),
@@ -74,10 +74,10 @@ var _ = Describe("OCR soak test @soak-ocr", func() {
 	})
 
 	Describe("OCR Soak test", func() {
-		Measure("Measure OCR rounds", func(_ Benchmarker) {
+		It("Watch OCR rounds", func() {
 			err = perfTest.Run()
 			Expect(err).ShouldNot(HaveOccurred())
-		}, 1)
+		})
 	})
 
 	AfterEach(func() {

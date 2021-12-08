@@ -99,7 +99,8 @@ func (f *OCRTest) deployContract() (contracts.OffchainAggregator, error) {
 	if err = ocrInstance.SetConfig(
 		f.Wallets.Default(),
 		f.chainlinkClients,
-		contracts.DefaultOffChainAggregatorConfig(len(f.chainlinkClients)),
+		// Uses the Optimism config for optimism soak
+		contracts.OptimismOffChainAggregatorConfig(len(f.chainlinkClients)),
 	); err != nil {
 		return nil, err
 	}
@@ -140,12 +141,17 @@ func (f *OCRTest) changeAdapterValue(roundID int) (int, error) {
 
 // Run runs OCR performance/soak test
 func (f *OCRTest) Run() error {
+	i := 1
+	_, err := f.changeAdapterValue(i)
+	if err != nil {
+		return err
+	}
 	if err := f.createChainlinkJobs(); err != nil {
 		return err
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), f.TestOptions.TestDuration)
 	defer cancel()
-	i := 1
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -157,6 +163,7 @@ func (f *OCRTest) Run() error {
 			if err != nil {
 				return err
 			}
+			log.Info().Int("Value", val).Msg("Changed Adapter Value")
 			if err := f.waitRoundEnd(i); err != nil {
 				return err
 			}
