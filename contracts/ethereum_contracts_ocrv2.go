@@ -7,7 +7,7 @@ import (
 
 type EthereumOCRv2 struct{}
 
-func (e *EthereumOCRv2) SetOffChainConfig() error {
+func (e *EthereumOCRv2) SetOffChainConfig(_ OffChainAggregatorV2Config) error {
 	panic("implement me")
 }
 
