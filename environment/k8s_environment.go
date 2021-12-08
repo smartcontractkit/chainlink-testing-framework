@@ -443,7 +443,7 @@ func determineNamespace(networks []client.BlockchainNetwork) string {
 	// 	name = fmt.Sprintf("%s-%s", name, "multi-network")
 	// }
 	// Quick kludge for naming the namespace for optimism soak testing
-	return "optimism-7-day-soak-test"
+	return "optimism-7-day-soak-test-proper-config"
 }
 
 type k8sTemplateData struct {

@@ -20,7 +20,7 @@ test_smoke:
 	ginkgo -v -r -keepGoing --trace --randomizeAllSpecs --randomizeSuites --progress $(args) ./suite/smoke 
 
 test_performance:
-	NETWORKS=ethereum_geth_performance,ethereum_geth_performance ginkgo -r -keepGoing --trace --randomizeAllSpecs --randomizeSuites --progress $(args) ./suite/performance 
+	ginkgo -r -timeout=200h -keepGoing --trace --randomizeAllSpecs --randomizeSuites --progress $(args) ./suite/performance 
 
 test_chaos:
 	NETWORKS=ethereum_geth_performance,ethereum_geth_performance ginkgo -r -keepGoing --trace --randomizeAllSpecs --randomizeSuites --progress $(args) ./suite/chaos 
