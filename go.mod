@@ -14,7 +14,7 @@ require (
 	github.com/rs/zerolog v1.26.0
 	github.com/satori/go.uuid v1.2.0
 	github.com/smartcontractkit/helmenv v1.0.16
-	github.com/smartcontractkit/libocr v0.0.0-20210826183649-d12971936c12
+	github.com/smartcontractkit/libocr v0.0.0-20211202172717-e8b0536a572e
 	github.com/spf13/viper v1.9.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	k8s.io/client-go v0.22.3
