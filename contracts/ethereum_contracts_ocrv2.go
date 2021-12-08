@@ -2,12 +2,11 @@ package contracts
 
 import (
 	"context"
-	"github.com/smartcontractkit/integrations-framework/client"
 )
 
 type EthereumOCRv2 struct{}
 
-func (e *EthereumOCRv2) SetOffChainConfig() error {
+func (e *EthereumOCRv2) SetOffChainConfig(_ OffChainAggregatorV2Config) error {
 	panic("implement me")
 }
 
@@ -31,7 +30,7 @@ func (e *EthereumOCRv2) GetContractData(ctx context.Context) (*OffchainAggregato
 	panic("implement me")
 }
 
-func (e *EthereumOCRv2) SetOracles(chainlinkNodes []client.Chainlink, f int) error {
+func (e *EthereumOCRv2) SetOracles(cocParams OffChainAggregatorV2Config) error {
 	panic("implement me")
 }
 
