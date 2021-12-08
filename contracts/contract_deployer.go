@@ -294,10 +294,10 @@ func OptimismOffChainAggregatorConfig(numberNodes int) OffChainAggregatorConfig 
 	for i := 0; i < numberNodes-1; i++ {
 		s = append(s, 2)
 	}
-	if numberNodes <= 4 {
+	if numberNodes < 4 {
 		log.Warn().
 			Int("Number Chainlink Nodes", numberNodes).
-			Msg("You likely need more chainlink nodes to properly configure OCR, try 5 or more.")
+			Msg("You likely need more chainlink nodes to properly configure OCR, try 5 or more total (one for bootstrap).")
 	}
 	return OffChainAggregatorConfig{
 		AlphaPPB:         1,
