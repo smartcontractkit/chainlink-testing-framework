@@ -10,6 +10,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	ocrConfigHelper "github.com/smartcontractkit/libocr/offchainreporting/confighelper"
+	ocrConfigHelper2 "github.com/smartcontractkit/libocr/offchainreporting2/confighelper"
 )
 
 type FluxAggregatorOptions struct {
@@ -101,6 +102,25 @@ type OffChainAggregatorConfig struct {
 	F                int           // The allowed number of "bad" oracles
 	N                int           // The number of oracles
 	OracleIdentities []ocrConfigHelper.OracleIdentityExtra
+}
+
+type OffChainAggregatorV2Config struct {
+	DeltaProgress                           time.Duration
+	DeltaResend                             time.Duration
+	DeltaRound                              time.Duration
+	DeltaGrace                              time.Duration
+	DeltaStage                              time.Duration
+	RMax                                    uint8
+	S                                       []int
+	Oracles                                 []ocrConfigHelper2.OracleIdentityExtra
+	ReportingPluginConfig                   []byte
+	MaxDurationQuery                        time.Duration
+	MaxDurationObservation                  time.Duration
+	MaxDurationReport                       time.Duration
+	MaxDurationShouldAcceptFinalizedReport  time.Duration
+	MaxDurationShouldTransmitAcceptedReport time.Duration
+	F                                       int
+	OnchainConfig                           []byte
 }
 
 type OffchainAggregatorData struct {
@@ -321,8 +341,8 @@ type OCRv2 interface {
 
 	SetValidatorConfig(flaggingThreshold uint32, validatorAddr string) error
 	SetBilling(price uint32, controllerAddr string) error
-	SetOracles(chainlinkNodes []client.Chainlink, f int) error
-	SetOffChainConfig() error
+	SetOracles(ocParams OffChainAggregatorV2Config) error
+	SetOffChainConfig(ocParams OffChainAggregatorV2Config) error
 
 	RequestNewRound() error
 	GetLatestConfigDetails() (map[string]interface{}, error)
