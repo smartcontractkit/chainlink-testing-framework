@@ -224,7 +224,7 @@ func (b *EthereumContractBuilder) GenerateBindings(targets []*ContractTarget) er
 	return nil
 }
 
-// commonBindPackage replaces individual pkg name with celoextended name for convenience
+// commonBindPackage replaces individual pkg name with common name for convenience
 func commonBindPackage(filepath string, pkg string) error {
 	read, err := ioutil.ReadFile(filepath)
 	if err != nil {

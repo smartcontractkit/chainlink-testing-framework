@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/smartcontractkit/integrations-framework/client/chaos"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -17,8 +16,6 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/smartcontractkit/integrations-framework/client/chaos"
-
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 
@@ -26,6 +23,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/client"
+	"github.com/smartcontractkit/integrations-framework/client/chaos"
 	"github.com/smartcontractkit/integrations-framework/config"
 	appsV1 "k8s.io/api/apps/v1"
 	coreV1 "k8s.io/api/core/v1"

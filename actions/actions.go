@@ -7,11 +7,11 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/smartcontractkit/integrations-framework/contracts"
 	"github.com/celo-org/celo-blockchain/common"
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
 	"github.com/smartcontractkit/integrations-framework/client"
+	"github.com/smartcontractkit/integrations-framework/contracts"
 )
 
 // FundChainlinkNodes will fund all of the provided Chainlink nodes with a set amount of ETH and LINK

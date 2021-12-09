@@ -2,12 +2,7 @@ package smoke
 
 import (
 	"context"
-	"github.com/smartcontractkit/integrations-framework/hooks"
-	"github.com/smartcontractkit/integrations-framework/utils"
 	"math/big"
-
-	"github.com/smartcontractkit/integrations-framework/hooks"
-	"github.com/smartcontractkit/integrations-framework/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -15,6 +10,8 @@ import (
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
 	"github.com/smartcontractkit/integrations-framework/environment"
+	"github.com/smartcontractkit/integrations-framework/hooks"
+	"github.com/smartcontractkit/integrations-framework/utils"
 )
 
 var _ = Describe("Basic Contract Interactions @contract", func() {
@@ -28,7 +25,7 @@ var _ = Describe("Basic Contract Interactions @contract", func() {
 		By("Deploying the environment", func() {
 			var err error
 			suiteSetup, err = actions.SingleNetworkSetup(
-				environment.NewChainlinkCluster(0),
+				environment.NewChainlinkCluster(1),
 				hooks.EVMNetworkFromConfigHook,
 				hooks.EthereumDeployerHook,
 				hooks.EthereumClientHook,

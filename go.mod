@@ -5,8 +5,7 @@ go 1.17
 require (
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/aws/aws-sdk-go v1.41.19
-	github.com/celo-org/celo-blockchain v0.0.0-20211102213517-1557fe681d7d
-	github.com/celo-org/celo-blockchain v1.4.1
+	github.com/celo-org/celo-blockchain v0.0.0-20211207011603-8830ed5d90d8
 	github.com/ghodss/yaml v1.0.0
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/hashicorp/go-multierror v1.1.1
@@ -18,8 +17,6 @@ require (
 	github.com/prometheus/common v0.32.1
 	github.com/rs/zerolog v1.26.0
 	github.com/satori/go.uuid v1.2.0
-	github.com/smartcontractkit/libocr v0.0.0-20210826183649-d12971936c12
-	github.com/spf13/cobra v1.2.1
 	github.com/spf13/viper v1.9.0
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
@@ -27,7 +24,15 @@ require (
 	k8s.io/api v0.22.3
 	k8s.io/apimachinery v0.22.3
 	k8s.io/client-go v0.22.3
-	google.golang.org/protobuf v1.27.1
+)
+
+require (
+	github.com/garyburd/redigo v1.6.0 // indirect
+	github.com/go-kit/kit v0.10.0 // indirect
+	github.com/gomodule/redigo v2.0.0+incompatible // indirect
+	github.com/holiman/bloomfilter/v2 v2.0.3 // indirect
+	github.com/spf13/cobra v1.2.1 // indirect
+	google.golang.org/protobuf v1.27.1 // indirect
 )
 
 require (
@@ -46,20 +51,16 @@ require (
 	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/VictoriaMetrics/fastcache v1.6.0 // indirect
 	github.com/allegro/bigcache v1.2.1 // indirect
-	github.com/aristanetworks/goarista v0.0.0-20191023202215-f096da5361bb // indirect
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/btcsuite/btcd v0.22.0-beta // indirect
 	github.com/celo-org/celo-bls-go v0.2.4 // indirect
 	github.com/cespare/cp v1.1.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
-	github.com/containerd/cgroups v0.0.0-20200531161412-0dbf7f05ba59 // indirect
 	github.com/containerd/containerd v1.5.8 // indirect
-	github.com/containerd/continuity v0.1.0 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/deckarep/golang-set v1.7.1 // indirect
-	github.com/deislabs/oras v0.11.1 // indirect
 	github.com/docker/cli v20.10.10+incompatible // indirect
 	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/docker/docker v20.10.10+incompatible // indirect
@@ -70,7 +71,6 @@ require (
 	github.com/evanphx/json-patch v5.6.0+incompatible // indirect
 	github.com/exponent-io/jsonpath v0.0.0-20210407135951-1de76d718b3f // indirect
 	github.com/fatih/color v1.10.0 // indirect
-	github.com/fjl/memsize v0.0.0-20190710130421-bcb5799ab5e5 // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/go-errors/errors v1.4.1 // indirect
 	github.com/go-logr/logr v1.2.0 // indirect
@@ -137,15 +137,11 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.2 // indirect
-	github.com/opencontainers/runc v1.0.2 // indirect
-	github.com/pborman/uuid v1.2.0 // indirect
 	github.com/pelletier/go-toml v1.9.4 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
-	github.com/peterh/liner v1.1.1-0.20190123174540-a2c9a5303de7 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
-	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/prometheus/tsdb v0.10.0 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rjeczalik/notify v0.9.2 // indirect
@@ -156,11 +152,8 @@ require (
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/spf13/afero v1.6.0 // indirect
 	github.com/spf13/cast v1.4.1 // indirect
-	github.com/spf13/cobra v1.2.1 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/steakknife/bloomfilter v0.0.0-20180922174646-6819c0d2a570 // indirect
-	github.com/steakknife/hamming v0.0.0-20180906055917-c99c65617cd3 // indirect
 	github.com/stretchr/testify v1.7.0 // indirect
 	github.com/subosito/gotenv v1.2.0 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7 // indirect
@@ -180,7 +173,6 @@ require (
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20211104193956-4c6863e31247 // indirect
 	google.golang.org/grpc v1.42.0 // indirect
-	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/gorp.v1 v1.7.2 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.63.2 // indirect

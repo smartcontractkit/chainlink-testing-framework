@@ -37,7 +37,6 @@ type OCRTest struct {
 	Wallets         client.BlockchainWallets
 	Deployer        contracts.ContractDeployer
 
-	bootstrapClient   client.Chainlink
 	chainlinkClients  []client.Chainlink
 	nodeAddresses     []common.Address
 	contractInstances []contracts.OffchainAggregator
@@ -86,9 +85,7 @@ func (f *OCRTest) Setup() error {
 	if err != nil {
 		return err
 	}
-	mockserver.SetVariable(f.TestOptions.AdapterValue)
-	f.bootstrapClient = chainlinkClients[0]
-	f.chainlinkClients = chainlinkClients[1:]
+	f.chainlinkClients = chainlinkClients
 	f.nodeAddresses = nodeAddresses
 	f.mockserver = mockserver
 	return f.deployContracts()
@@ -210,8 +207,7 @@ func (f *OCRTest) checkAllRounds(val int) error {
 }
 
 func (f *OCRTest) createChainlinkJobs() error {
-	// len(f.chainlinkClients) + 1 for the bootstrap node job
-	jobsChan := make(chan OCRJobMap, (len(f.chainlinkClients)+1)*len(f.contractInstances))
+	jobsChan := make(chan OCRJobMap, len(f.chainlinkClients)*len(f.contractInstances))
 
 	bridgeAttrs := make([]client.BridgeTypeAttributes, 0)
 	for _, n := range f.chainlinkClients {
@@ -256,7 +252,8 @@ func (f *OCRTest) createChainlinkJobsPerContract(
 	jobsChan chan<- OCRJobMap,
 ) error {
 	// Initialize bootstrap node
-	bootstrapP2PIds, err := f.bootstrapClient.ReadP2PKeys()
+	bootstrapNode := f.chainlinkClients[0]
+	bootstrapP2PIds, err := bootstrapNode.ReadP2PKeys()
 	if err != nil {
 		return err
 	}
@@ -266,17 +263,17 @@ func (f *OCRTest) createChainlinkJobsPerContract(
 		P2PPeerID:       bootstrapP2PId,
 		IsBootstrapPeer: true,
 	}
-	bootstrapJob, err := f.bootstrapClient.CreateJob(bootstrapSpec)
+	bootstrapJob, err := bootstrapNode.CreateJob(bootstrapSpec)
 	if err != nil {
 		return err
 	}
 
-	jobsChan <- OCRJobMap{contract: map[client.Chainlink]string{f.bootstrapClient: bootstrapJob.Data.ID}}
+	jobsChan <- OCRJobMap{contract: map[client.Chainlink]string{bootstrapNode: bootstrapJob.Data.ID}}
 
 	// Send OCR job to other nodes
 	g := errgroup.Group{}
-	for nodeIndex := range f.chainlinkClients {
-		index := nodeIndex
+	for index := 1; index < len(f.chainlinkClients); index++ {
+		index := index
 		g.Go(func() error {
 			nodeP2PIds, err := f.chainlinkClients[index].ReadP2PKeys()
 			if err != nil {
@@ -296,7 +293,7 @@ func (f *OCRTest) createChainlinkJobsPerContract(
 			ocrSpec := &client.OCRTaskJobSpec{
 				ContractAddress:    contract.Address(),
 				P2PPeerID:          nodeP2PId,
-				P2PBootstrapPeers:  []client.Chainlink{f.bootstrapClient},
+				P2PBootstrapPeers:  []client.Chainlink{bootstrapNode},
 				KeyBundleID:        nodeOCRKeyId,
 				TransmitterAddress: nodeTransmitterAddress,
 				ObservationSource:  client.ObservationSourceSpecBridge(bridgesAttrs[index]),

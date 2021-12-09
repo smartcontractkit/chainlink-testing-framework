@@ -4,18 +4,14 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/smartcontractkit/integrations-framework/hooks"
-	"github.com/smartcontractkit/integrations-framework/utils"
-
-	"github.com/smartcontractkit/integrations-framework/hooks"
-	"github.com/smartcontractkit/integrations-framework/utils"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
 	"github.com/smartcontractkit/integrations-framework/environment"
+	"github.com/smartcontractkit/integrations-framework/hooks"
+	"github.com/smartcontractkit/integrations-framework/utils"
 )
 
 var _ = FDescribe("OCR soak test @soak-ocr", func() {
@@ -30,8 +26,7 @@ var _ = FDescribe("OCR soak test @soak-ocr", func() {
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
 			suiteSetup, err = actions.SingleNetworkSetup(
-				environment.NewChainlinkCluster(5),
-				// hooks.EthereumPerfNetworkHook,
+				environment.NewChainlinkCluster(4),
 				hooks.EVMNetworkFromConfigHook,
 				hooks.EthereumDeployerHook,
 				hooks.EthereumClientHook,
@@ -42,7 +37,7 @@ var _ = FDescribe("OCR soak test @soak-ocr", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			networkInfo = suiteSetup.DefaultNetwork()
 
-			networkInfo.Client.ParallelTransactions(true)
+			// networkInfo.Client.ParallelTransactions(true)
 		})
 
 		By("Funding the Chainlink nodes", func() {
@@ -50,7 +45,7 @@ var _ = FDescribe("OCR soak test @soak-ocr", func() {
 				nodes,
 				networkInfo.Client,
 				networkInfo.Wallets.Default(),
-				big.NewFloat(5),
+				big.NewFloat(0.01),
 				big.NewFloat(10),
 			)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -64,7 +59,7 @@ var _ = FDescribe("OCR soak test @soak-ocr", func() {
 					},
 					RoundTimeout: 65 * time.Minute,
 					AdapterValue: 5,
-					TestDuration: 1 * time.Hour,
+					TestDuration: 168 * time.Hour,
 				},
 				contracts.DefaultOffChainAggregatorOptions(),
 				suiteSetup.Environment(),

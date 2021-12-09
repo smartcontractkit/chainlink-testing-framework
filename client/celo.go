@@ -197,11 +197,11 @@ func (e *CeloClient) SetID(id int) {
 
 // BlockNumber gets latest block number
 func (e *CeloClient) BlockNumber(ctx context.Context) (uint64, error) {
-	bn, err := e.Client.BlockByNumber(ctx, nil)
+	bn, err := e.Client.BlockNumber(ctx)
 	if err != nil {
 		return 0, err
 	}
-	return bn.NumberU64(), nil
+	return bn, nil
 }
 
 // HeaderHashByNumber gets header hash by block number
@@ -327,18 +327,18 @@ func (e *CeloClient) Get() interface{} {
 
 // CalculateTxGas calculates tx gas cost accordingly gas used plus buffer, converts it to big.Float for funding
 func (e *CeloClient) CalculateTxGas(gasUsed *big.Int) (*big.Float, error) {
-	gp, err := e.Client.SuggestGasPrice(context.Background())
+	gasPrice, err := e.Client.SuggestGasPrice(context.Background()) // Wei
 	if err != nil {
 		return nil, err
 	}
-	gpWei := gp.Mul(gp, OneGWei)
-	log.Debug().Int64("Gas price", gp.Int64()).Msg("Suggested gas price")
-	buf := big.NewInt(int64(e.Network.Config().GasEstimationBuffer))
-	gasUsedWithBuf := gasUsed.Add(gasUsed, buf)
-	cost := big.NewInt(1).Mul(gpWei, gasUsedWithBuf)
-	log.Debug().Int64("TX Gas cost", cost.Int64()).Msg("Estimated tx gas cost with buffer")
-	bf := new(big.Float).SetInt(cost)
-	return big.NewFloat(1).Quo(bf, OneEth), nil
+	buffer := big.NewInt(0).SetUint64(e.Network.Config().GasEstimationBuffer)
+	gasUsedWithBuffer := gasUsed.Add(gasUsed, buffer)
+	cost := big.NewFloat(0).SetInt(big.NewInt(1).Mul(gasPrice, gasUsedWithBuffer))
+	costInEth := big.NewFloat(0).Quo(cost, OneEth)
+	costInEthFloat, _ := costInEth.Float64()
+
+	log.Debug().Float64("Tx Gas Cost", costInEthFloat).Msg("Estimated tx gas cost with buffer")
+	return costInEth, nil
 }
 
 // GasStats gets gas stats instance
@@ -362,14 +362,14 @@ func (e *CeloClient) Fund(
 	ethAddress := common.HexToAddress(toAddress)
 	// Send ETH if not 0
 	if ethAmount != nil && big.NewFloat(0).Cmp(ethAmount) != 0 {
-		eth := big.NewFloat(1).Mul(OneEth, ethAmount)
+		weiValue := big.NewFloat(1).Mul(OneEth, ethAmount) // Convert ETH -> Wei
 		log.Info().
 			Str("Token", "ETH").
 			Str("From", fromWallet.Address()).
 			Str("To", toAddress).
-			Str("Amount", eth.String()).
+			Str("Amount", ethAmount.String()).
 			Msg("Funding Address")
-		_, err := e.SendTransaction(fromWallet, ethAddress, eth, nil)
+		_, err := e.SendTransaction(fromWallet, ethAddress, weiValue)
 		if err != nil {
 			return err
 		}
@@ -382,22 +382,23 @@ func (e *CeloClient) Fund(
 			Str("Token", "LINK").
 			Str("From", fromWallet.Address()).
 			Str("To", toAddress).
-			Str("Amount", link.String()).
+			Str("Amount", linkAmount.String()).
 			Msg("Funding Address")
 		linkAddress := common.HexToAddress(e.Network.Config().LinkTokenAddress)
 		linkInstance, err := celoContracts.NewLinkToken(linkAddress, e.Client)
 		if err != nil {
 			return err
 		}
-		opts, err := e.TransactionOpts(fromWallet, ethAddress, nil, nil)
+		opts, err := e.TransactionOpts(fromWallet)
 		if err != nil {
 			return err
 		}
 		linkInt, _ := link.Int(nil)
-		_, err = linkInstance.Transfer(opts, ethAddress, linkInt)
+		tx, err := linkInstance.Transfer(opts, ethAddress, linkInt)
 		if err != nil {
 			return err
 		}
+		return e.ProcessTransaction(tx) // TODO: LINK Transactions are either moving too slowly, or have multiple parts to them that breaks when trying to make them parallel
 	}
 	return nil
 }
@@ -408,60 +409,54 @@ func (e *CeloClient) SendTransaction(
 	from BlockchainWallet,
 	to common.Address,
 	value *big.Float,
-	data []byte,
 ) (common.Hash, error) {
-	intVal, _ := value.Int(nil)
-	callMsg, err := e.TransactionCallMessage(from, to, intVal, data)
-	if err != nil {
-		return common.Hash{}, err
-	}
+	weiValue, _ := value.Int(nil)
 	privateKey, err := crypto.HexToECDSA(from.PrivateKey())
 	if err != nil {
 		return common.Hash{}, fmt.Errorf("invalid private key: %v", err)
+	}
+	suggestedGasPrice, err := e.Client.SuggestGasPrice(context.Background())
+	if err != nil {
+		return common.Hash{}, err
 	}
 	nonce, err := e.GetNonce(context.Background(), common.HexToAddress(from.Address()))
 	if err != nil {
 		return common.Hash{}, err
 	}
 
-	tx := types.NewTransaction(
-		nonce,
-		*callMsg.To,
-		callMsg.Value,
-		callMsg.Gas,
-		callMsg.GasPrice,
-		callMsg.FeeCurrency,
-		callMsg.GatewayFeeRecipient,
-		callMsg.GatewayFee,
-		callMsg.Data,
-	)
-
-	txSigned, err := types.SignTx(tx, types.NewEIP155Signer(e.Network.ChainID()), privateKey)
+	// TODO: Update from LegacyTx to DynamicFeeTx
+	tx, err := types.SignNewTx(privateKey, types.NewEIP2930Signer(e.Network.ChainID()),
+		&types.LegacyTx{
+			To:       &to,
+			Value:    weiValue,
+			Data:     nil,
+			Gas:      21000,
+			GasPrice: suggestedGasPrice,
+			Nonce:    nonce,
+		})
 	if err != nil {
 		return common.Hash{}, err
 	}
-	if err := e.Client.SendTransaction(context.Background(), txSigned); err != nil {
+	if err := e.Client.SendTransaction(context.Background(), tx); err != nil {
 		return common.Hash{}, err
 	}
-	return txSigned.Hash(), e.ProcessTransaction(txSigned.Hash())
+	return tx.Hash(), e.ProcessTransaction(tx)
 }
 
 // ProcessTransaction will queue or wait on a transaction depending on whether queue transactions is enabled
-func (e *CeloClient) ProcessTransaction(txHash common.Hash) error {
+func (e *CeloClient) ProcessTransaction(tx *types.Transaction) error {
 	var txConfirmer HeaderEventSubscription
 	if e.Network.Config().MinimumConfirmations == 0 {
 		txConfirmer = &CeloInstantConfirmations{}
 	} else {
-		txConfirmer = NewCeloTransactionConfirmer(e, txHash, e.Network.Config().MinimumConfirmations)
+		txConfirmer = NewCeloTransactionConfirmer(e, tx, e.Network.Config().MinimumConfirmations)
 	}
 
-	e.AddHeaderEventSubscription(txHash.String(), txConfirmer)
+	e.AddHeaderEventSubscription(tx.Hash().String(), txConfirmer)
 
-	if !e.queueTransactions {
-		defer e.DeleteHeaderEventSubscription(txHash.String())
-		if err := txConfirmer.Wait(); err != nil {
-			return err
-		}
+	if !e.queueTransactions || tx.Value().Cmp(big.NewInt(0)) == 0 { // For sequential transactions and contract calls
+		defer e.DeleteHeaderEventSubscription(tx.Hash().String())
+		return txConfirmer.Wait()
 	}
 	return nil
 }
@@ -472,7 +467,7 @@ func (e *CeloClient) DeployContract(
 	contractName string,
 	deployer CeloContractDeployer,
 ) (*common.Address, *types.Transaction, interface{}, error) {
-	opts, err := e.TransactionOpts(fromWallet, common.Address{}, big.NewInt(0), nil)
+	opts, err := e.TransactionOpts(fromWallet)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -480,70 +475,42 @@ func (e *CeloClient) DeployContract(
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	if err := e.ProcessTransaction(transaction.Hash()); err != nil {
+	if err := e.ProcessTransaction(transaction); err != nil {
 		return nil, nil, nil, err
 	}
+	totalGasCostWeiFloat := big.NewFloat(1).SetInt(transaction.Cost())
+	totalGasCostGwei := big.NewFloat(1).Quo(totalGasCostWeiFloat, OneGWei)
+
 	log.Info().
 		Str("Contract Address", contractAddress.Hex()).
 		Str("Contract Name", contractName).
 		Str("From", fromWallet.Address()).
-		Str("Gas Cost", transaction.Cost().String()).
+		Str("Total Gas Cost (GWei)", totalGasCostGwei.String()).
+		Str("Network", e.Network.ID()).
 		Msg("Deployed contract")
 	return &contractAddress, transaction, contractInstance, err
 }
 
-// TransactionCallMessage returns a filled Celo CallMsg object with suggest gas price and limit
-func (e *CeloClient) TransactionCallMessage(
-	from BlockchainWallet,
-	to common.Address,
-	value *big.Int,
-	data []byte,
-) (*celo.CallMsg, error) {
-	gasPrice, err := e.Client.SuggestGasPrice(context.Background())
-	if err != nil {
-		return nil, err
-	}
-	msg := celo.CallMsg{
-		From:     common.HexToAddress(from.Address()),
-		To:       &to,
-		GasPrice: gasPrice,
-		Value:    value,
-		Data:     data,
-	}
-	msg.Gas = e.Network.Config().TransactionLimit + e.Network.Config().GasEstimationBuffer
-	return &msg, nil
-}
-
-// TransactionOpts return the base binding transaction options to create a new valid tx for contract deployment
-func (e *CeloClient) TransactionOpts(
-	from BlockchainWallet,
-	to common.Address,
-	value *big.Int,
-	data []byte,
-) (*bind.TransactOpts, error) {
-	callMsg, err := e.TransactionCallMessage(from, to, value, data)
-	if err != nil {
-		return nil, err
-	}
-	nonce, err := e.GetNonce(context.Background(), common.HexToAddress(from.Address()))
-	if err != nil {
-		return nil, err
-	}
+// TransactionOpts returns the base Tx options for 'transactions' that interact with a smart contract. Since most
+// contract interactions in this framework are designed to happen through abigen calls, it's intentionally quite bare.
+// abigen will handle gas estimation for us on the backend.
+func (e *CeloClient) TransactionOpts(from BlockchainWallet) (*bind.TransactOpts, error) {
 	privateKey, err := crypto.HexToECDSA(from.PrivateKey())
 	if err != nil {
 		return nil, fmt.Errorf("invalid private key: %v", err)
 	}
-	// TODO koteld: should we use e.Client.ChainID(context.Background()) or e.Network.ChainID() here?
 	opts, err := bind.NewKeyedTransactorWithChainID(privateKey, e.Network.ChainID())
 	if err != nil {
 		return nil, err
 	}
-	opts.From = callMsg.From
-	opts.Nonce = big.NewInt(int64(nonce))
-	opts.Value = value
-	opts.GasPrice = callMsg.GasPrice
-	opts.GasLimit = callMsg.Gas
+	opts.From = common.HexToAddress(from.Address())
 	opts.Context = context.Background()
+
+	nonce, err := e.GetNonce(context.Background(), common.HexToAddress(from.Address()))
+	if err != nil {
+		return nil, err
+	}
+	opts.Nonce = big.NewInt(int64(nonce))
 
 	return opts, nil
 }
@@ -650,7 +617,7 @@ func (e *CeloClient) receiveHeader(header *types.Header) {
 		})
 	}
 	if err := g.Wait(); err != nil {
-		log.Err(fmt.Errorf("error on sending block to recivers: %v", err))
+		log.Err(fmt.Errorf("error on sending block to receivers: %v", err))
 	}
 }
 
@@ -672,13 +639,20 @@ func (e *CeloClient) isTxConfirmed(txHash common.Hash) (bool, error) {
 			GasPrice:          tx.GasPrice().Uint64(),
 			CumulativeGasUsed: receipt.CumulativeGasUsed,
 		})
-		if receipt.Status == 0 {
-			log.Warn().Str("TX Hash", txHash.Hex()).Msg("Transaction failed and was reverted!")
+		if receipt.Status == 0 { // 0 indicates failure, 1 indicates success
 			reason, err := e.errorReason(e.Client, tx, receipt)
 			if err != nil {
+				log.Warn().Str("TX Hash", txHash.Hex()).
+					Str("To", tx.To().Hex()).
+					Str("Hint", "We often see this with parallel transactions ending up with out-of-order nonces").
+					Uint64("Nonce", tx.Nonce()).
+					Msg("Transaction failed and was reverted! Unable to retrieve reason!")
 				return false, err
 			}
-			log.Debug().Str("Revert reason", reason).Send()
+			log.Warn().Str("TX Hash", txHash.Hex()).
+				Str("To", tx.To().Hex()).
+				Str("Revert reason", reason).
+				Msg("Transaction failed and was reverted!")
 		}
 	}
 	return !isPending, err
@@ -694,7 +668,7 @@ func (e *CeloClient) errorReason(
 	if err != nil {
 		return "", err
 	}
-	msg, err := tx.AsMessage(types.NewEIP155Signer(chID))
+	msg, err := tx.AsMessage(types.NewEIP155Signer(chID), nil)
 	if err != nil {
 		return "", err
 	}
@@ -718,7 +692,7 @@ type CeloTransactionConfirmer struct {
 	minConfirmations int
 	confirmations    int
 	eth              *CeloClient
-	txHash           common.Hash
+	tx               *types.Transaction
 	doneChan         chan struct{}
 	context          context.Context
 	cancel           context.CancelFunc
@@ -726,13 +700,13 @@ type CeloTransactionConfirmer struct {
 
 // NewCeloTransactionConfirmer returns a new instance of the transaction confirmer that waits for on-chain minimum
 // confirmations
-func NewCeloTransactionConfirmer(eth *CeloClient, txHash common.Hash, minConfirmations int) *CeloTransactionConfirmer {
+func NewCeloTransactionConfirmer(eth *CeloClient, tx *types.Transaction, minConfirmations int) *CeloTransactionConfirmer {
 	ctx, ctxCancel := context.WithTimeout(context.Background(), eth.Network.Config().Timeout)
 	tc := &CeloTransactionConfirmer{
 		minConfirmations: minConfirmations,
 		confirmations:    0,
 		eth:              eth,
-		txHash:           txHash,
+		tx:               tx,
 		doneChan:         make(chan struct{}, 1),
 		context:          ctx,
 		cancel:           ctxCancel,
@@ -749,9 +723,11 @@ func (t *CeloTransactionConfirmer) ReceiveBlock(block NodeBlock) error {
 	}
 	confirmationLog := log.Debug().Str("Network", t.eth.Network.ID()).
 		Str("Block Hash", block.GetHash().Hex()).
-		Str("Block Number", block.Number().String()).Str("Tx Hash", t.txHash.Hex()).
+		Str("Block Number", block.Number().String()).
+		Str("Tx Hash", t.tx.Hash().String()).
+		Uint64("Nonce", t.tx.Nonce()).
 		Int("Minimum Confirmations", t.minConfirmations)
-	isConfirmed, err := t.eth.isTxConfirmed(t.txHash)
+	isConfirmed, err := t.eth.isTxConfirmed(t.tx.Hash())
 	if err != nil {
 		return err
 	} else if isConfirmed {
@@ -774,7 +750,7 @@ func (t *CeloTransactionConfirmer) Wait() error {
 			t.cancel()
 			return nil
 		case <-t.context.Done():
-			return fmt.Errorf("timeout waiting for transaction to confirm: %s", t.txHash.String())
+			return fmt.Errorf("timeout waiting for transaction to confirm: %s", t.tx.Hash().String())
 		}
 	}
 }

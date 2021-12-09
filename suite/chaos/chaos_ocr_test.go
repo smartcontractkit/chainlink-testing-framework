@@ -1,9 +1,6 @@
 package chaos
 
 import (
-	"github.com/smartcontractkit/integrations-framework/actions"
-	"github.com/smartcontractkit/integrations-framework/client/chaos"
-	"github.com/smartcontractkit/integrations-framework/client/chaos/experiments"
 	"time"
 
 	"github.com/smartcontractkit/integrations-framework/actions"

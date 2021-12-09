@@ -7,8 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/smartcontractkit/integrations-framework/hooks"
-
 	"github.com/onsi/ginkgo"
 	"github.com/rs/zerolog/log"
 

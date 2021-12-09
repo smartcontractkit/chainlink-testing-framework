@@ -2,12 +2,7 @@ package smoke
 
 import (
 	"context"
-	"github.com/smartcontractkit/integrations-framework/hooks"
-	"github.com/smartcontractkit/integrations-framework/utils"
 	"math/big"
-
-	"github.com/smartcontractkit/integrations-framework/hooks"
-	"github.com/smartcontractkit/integrations-framework/utils"
 
 	"github.com/celo-org/celo-blockchain/common"
 	. "github.com/onsi/ginkgo"
@@ -17,6 +12,8 @@ import (
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
 	"github.com/smartcontractkit/integrations-framework/environment"
+	"github.com/smartcontractkit/integrations-framework/hooks"
+	"github.com/smartcontractkit/integrations-framework/utils"
 )
 
 var _ = Describe("Keeper suite @keeper", func() {

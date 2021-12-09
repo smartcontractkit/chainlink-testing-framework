@@ -1,19 +1,16 @@
 package performance
 
 import (
-	"github.com/smartcontractkit/integrations-framework/hooks"
-	"github.com/smartcontractkit/integrations-framework/utils"
 	"math/big"
 	"time"
-
-	"github.com/smartcontractkit/integrations-framework/hooks"
-	"github.com/smartcontractkit/integrations-framework/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/environment"
+	"github.com/smartcontractkit/integrations-framework/hooks"
+	"github.com/smartcontractkit/integrations-framework/utils"
 )
 
 var _ = Describe("Keeper performance test @performance-keeper", func() {

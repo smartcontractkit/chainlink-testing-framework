@@ -18,7 +18,7 @@ import (
 
 var (
 	// OneGWei represents 1 GWei
-	OneGWei = big.NewInt(1e9)
+	OneGWei = big.NewFloat(1e9)
 	// OneEth represents 1 Ethereum
 	OneEth = big.NewFloat(1e18)
 )

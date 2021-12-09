@@ -3,8 +3,6 @@ package actions
 import (
 	"context"
 	"fmt"
-	"github.com/smartcontractkit/integrations-framework/hooks"
-	"github.com/smartcontractkit/integrations-framework/utils"
 	"math/big"
 	"os"
 	"time"
@@ -31,7 +29,7 @@ type OCRSetupInputs struct {
 }
 
 // DeployOCRForEnv deploys the environment
-func DeployOCRForEnv(i *OCRSetupInputs, envInit environment.K8sEnvSpecInit) func() {
+func DeployOCRForEnv(i *OCRSetupInputs, envInit environment.K8sEnvSpecInit, configPath string) func() {
 	return func() {
 		var err error
 		i.SuiteSetup, err = SingleNetworkSetup(
@@ -39,7 +37,7 @@ func DeployOCRForEnv(i *OCRSetupInputs, envInit environment.K8sEnvSpecInit) func
 			hooks.EVMNetworkFromConfigHook,
 			hooks.EthereumDeployerHook,
 			hooks.EthereumClientHook,
-			utils.ProjectRoot,
+			configPath,
 		)
 		Expect(err).ShouldNot(HaveOccurred())
 		i.Mockserver, err = environment.GetMockserverClientFromEnv(i.SuiteSetup.Environment())

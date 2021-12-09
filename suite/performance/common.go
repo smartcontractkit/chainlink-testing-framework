@@ -6,9 +6,6 @@ import (
 	"time"
 
 	"github.com/celo-org/celo-blockchain/common"
-	"github.com/smartcontractkit/integrations-framework/actions"
-	"github.com/smartcontractkit/integrations-framework/client"
-	"golang.org/x/sync/errgroup"
 
 	"github.com/montanaflynn/stats"
 	"github.com/onsi/ginkgo"

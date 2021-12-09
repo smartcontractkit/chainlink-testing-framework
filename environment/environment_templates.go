@@ -21,7 +21,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// Ports for celoextended services
+// Ports for common services
 const (
 	ChainlinkWebPort  uint16 = 6688
 	ChainlinkP2PPort  uint16 = 6690
@@ -89,31 +89,6 @@ func NewChainlinkCustomNetworksCluster(nodeCount int, networkDeploymentConfigs [
 		}
 		specs = append(specs, dependencyGroup, chainlinkGroup)
 		return specs
-	}
-}
-
-// NewAdapterManifest is the k8s manifest that when used will deploy an external adapter to an environment
-func NewAdapterManifest() *K8sManifest {
-	return &K8sManifest{
-		id:             "chainlink",
-		DeploymentFile: filepath.Join(utils.ProjectRoot, "/environment/templates/chainlink/chainlink-deployment.yml"),
-		ServiceFile:    filepath.Join(utils.ProjectRoot, "/environment/templates/chainlink/chainlink-service.yml"),
-
-		values: map[string]interface{}{
-			"idx":                         idx,
-			"webPort":                     ChainlinkWebPort,
-			"p2pPort":                     ChainlinkP2PPort,
-			"eth_disabled":                true,
-			"feature_external_initiators": true,
-		},
-
-		Secret: &coreV1.Secret{
-			ObjectMeta: v1.ObjectMeta{
-				GenerateName: "chainlink-",
-			},
-			Type: "Opaque",
-			Data: defaultChainlinkAuthMap,
-		},
 	}
 }
 
@@ -591,58 +566,6 @@ func NewChainlinkClusterForAtlasTesting(nodeCount int) K8sEnvSpecInit {
 	dependencyGroup := getBasicDependencyGroup()
 	addPostgresDbsToDependencyGroup(dependencyGroup, nodeCount)
 	dependencyGroups := []*K8sManifestGroup{
-		mockserverDependencyGroup,
-		kafkaDependecyGroup,
-		schemaRegistryDependencyGroup,
-		kafkaRestDependencyGroup,
-		dependencyGroup,
-	}
-
-	return addNetworkManifestToDependencyGroup(chainlinkGroup, dependencyGroups)
-}
-
-// NewChainlinkClusterForAtlasTesting is a basic environment that deploys a chainlink cluster with dependencies
-// for testing Atlas
-func NewChainlinkClusterForAtlasTesting(nodeCount int) K8sEnvSpecInit {
-	mockserverConfigDependencyGroup := &K8sManifestGroup{
-		id:        "MockserverConfigDependencyGroup",
-		manifests: []K8sEnvResource{NewMockserverConfigHelmChart()},
-	}
-
-	mockserverDependencyGroup := &K8sManifestGroup{
-		id:        "MockserverDependencyGroup",
-		manifests: []K8sEnvResource{NewMockserverHelmChart()},
-	}
-
-	chainlinkGroup := &K8sManifestGroup{
-		id:        "chainlinkCluster",
-		manifests: []K8sEnvResource{},
-	}
-	for i := 0; i < nodeCount; i++ {
-		cManifest := NewChainlinkManifest(i)
-		cManifest.id = fmt.Sprintf("%s-%d", cManifest.id, i)
-		chainlinkGroup.manifests = append(chainlinkGroup.manifests, cManifest)
-	}
-
-	kafkaDependecyGroup := &K8sManifestGroup{
-		id:        "KafkaGroup",
-		manifests: []K8sEnvResource{NewKafkaHelmChart()},
-	}
-
-	schemaRegistryDependencyGroup := &K8sManifestGroup{
-		id:        "SchemaRegistryGroup",
-		manifests: []K8sEnvResource{NewSchemaRegistryManifest()},
-	}
-
-	kafkaRestDependencyGroup := &K8sManifestGroup{
-		id:        "KafkaRestGroup",
-		manifests: []K8sEnvResource{NewKafkaRestManifest()},
-	}
-
-	dependencyGroup := getBasicDependencyGroup()
-	addPostgresDbsToDependencyGroup(dependencyGroup, nodeCount)
-	dependencyGroups := []*K8sManifestGroup{
-		mockserverConfigDependencyGroup,
 		mockserverDependencyGroup,
 		kafkaDependecyGroup,
 		schemaRegistryDependencyGroup,

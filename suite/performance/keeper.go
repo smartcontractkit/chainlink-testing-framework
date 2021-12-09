@@ -40,7 +40,7 @@ type KeeperTest struct {
 	Blockchain  client.BlockchainClient
 	Wallets     client.BlockchainWallets
 	Deployer    contracts.ContractDeployer
-	// celoextended contracts
+	// common contracts
 	Link      contracts.LinkToken
 	GasFeed   contracts.MockGasFeed
 	LinkFeed  contracts.MockETHLINKFeed
