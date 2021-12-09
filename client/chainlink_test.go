@@ -221,6 +221,55 @@ var _ = Describe("Chainlink @unit", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 
+	// Mocks the creation, read, delete cycle for OCR keys
+	It("can Create, Read, and Delete OCR2 keys", func() {
+		for _, chain := range []string{"evm", "solana"} {
+			ocrKeyData := OCR2KeyData{
+				ID: "1",
+				Attributes: OCR2KeyAttributes{
+					ChainType:             chain,
+					ConfigPublicKey:       "someNon3sens3",
+					OffChainPublicKey:     "mor3Non3sens3",
+					OnChainSigningAddress: "thisActuallyMak3sS3ns3",
+				},
+			}
+			server := mockedServer(func(rw http.ResponseWriter, req *http.Request) {
+				switch req.Method {
+				case http.MethodPost:
+					Expect(req.URL.Path).Should(Or(Equal(fmt.Sprintf("/v2/keys/ocr2/%s", chain)), Equal("/sessions")))
+					if req.URL.Path == "/sessions" {
+						writeCookie(rw)
+					} else {
+						writeResponse(rw, http.StatusOK, OCR2Key{ocrKeyData})
+					}
+				case http.MethodGet:
+					Expect("/v2/keys/ocr2").Should(Equal(req.URL.Path))
+					writeResponse(rw, http.StatusOK, OCR2Keys{
+						Data: []OCR2KeyData{ocrKeyData},
+					})
+				case http.MethodDelete:
+					Expect("/v2/keys/ocr2/1").Should(Equal(req.URL.Path))
+					writeResponse(rw, http.StatusOK, nil)
+				}
+			})
+			defer server.Close()
+
+			c, err := newDefaultClient(server.URL)
+			Expect(err).ShouldNot(HaveOccurred())
+			c.SetClient(server.Client())
+
+			receivedKey, err := c.CreateOCR2Key(chain)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			keys, err := c.ReadOCR2Keys()
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(keys.Data).Should(ContainElement(receivedKey.Data))
+
+			err = c.DeleteOCR2Key("1")
+			Expect(err).ShouldNot(HaveOccurred())
+		}
+	})
+
 	// Mocks the creation, read, delete cycle for P2P keys
 	It("can Create, Read, and Delete P2P keys", func() {
 		p2pKeyData := P2PKeyData{
@@ -303,6 +352,55 @@ var _ = Describe("Chainlink @unit", func() {
 		receivedKeys, err := c.ReadETHKeys()
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(receivedKeys.Data).Should(ContainElement(ethKeyData))
+	})
+
+	// Mocks the creation, read, delete cycle for Tx keys
+	It("can Create, Read, and Delete Tx keys", func() {
+		for _, chain := range []string{"solana"} {
+			txKeyData := TxKeyData{
+				Type: "encryptedKeyPlacholder",
+				ID:   "someTestKeyID",
+				Attributes: TxKeyAttributes{
+					PublicKey: "aRandomTestPublicKeyForArbitraryChain",
+				},
+			}
+
+			server := mockedServer(func(rw http.ResponseWriter, req *http.Request) {
+				endpoint := fmt.Sprintf("/v2/keys/%s", chain)
+				switch req.Method {
+				case http.MethodPost:
+					Expect(req.URL.Path).Should(Or(Equal(endpoint), Equal("/sessions")))
+					if req.URL.Path == "/sessions" {
+						writeCookie(rw)
+					} else {
+						writeResponse(rw, http.StatusOK, TxKey{txKeyData})
+					}
+				case http.MethodGet:
+					Expect(endpoint).Should(Equal(req.URL.Path))
+					writeResponse(rw, http.StatusOK, TxKeys{
+						Data: []TxKeyData{txKeyData},
+					})
+				case http.MethodDelete:
+					Expect(endpoint + "/1").Should(Equal(req.URL.Path))
+					writeResponse(rw, http.StatusOK, nil)
+				}
+			})
+			defer server.Close()
+
+			c, err := newDefaultClient(server.URL)
+			Expect(err).ShouldNot(HaveOccurred())
+			c.SetClient(server.Client())
+
+			receivedKey, err := c.CreateTxKey(chain)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			keys, err := c.ReadTxKeys(chain)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(keys.Data).Should(ContainElement(receivedKey.Data))
+
+			err = c.DeleteTxKey(chain, "1")
+			Expect(err).ShouldNot(HaveOccurred())
+		}
 	})
 
 	// Mocks the creation, read, delete cycle for Chainlink EIs

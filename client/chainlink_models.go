@@ -156,6 +156,31 @@ type OCRKeyAttributes struct {
 	OnChainSigningAddress string `json:"onChainSigningAddress"`
 }
 
+// OCR2Keys is the model that represents the created OCR2 keys when read
+type OCR2Keys struct {
+	Data []OCR2KeyData `json:"data"`
+}
+
+// OCR2Key is the model that represents the created OCR2 keys when read
+type OCR2Key struct {
+	Data OCR2KeyData `json:"data"`
+}
+
+// OCR2KeyData is the model that represents the created OCR2 keys when read
+type OCR2KeyData struct {
+	Type       string            `json:"type"`
+	Attributes OCR2KeyAttributes `json:"attributes"`
+	ID         string            `json:"id"`
+}
+
+// OCR2KeyAttributes is the model that represents the created OCR2 keys when read
+type OCR2KeyAttributes struct {
+	ChainType             string `json:"chainType"`
+	ConfigPublicKey       string `json:"configPublicKey"`
+	OffChainPublicKey     string `json:"offChainPublicKey"`
+	OnChainSigningAddress string `json:"onChainSigningAddress"`
+}
+
 // P2PKeys is the model that represents the created P2P keys when read
 type P2PKeys struct {
 	Data []P2PKeyData `json:"data"`
@@ -196,6 +221,28 @@ type ETHKeyData struct {
 // ETHKeyAttributes is the model that represents the created ETH keys when read
 type ETHKeyAttributes struct {
 	Address string `json:"address"`
+}
+
+// TxKeys is the model that represents the created keys when read
+type TxKeys struct {
+	Data []TxKeyData `json:"data"`
+}
+
+// TxKey is the model that represents the created keys when read
+type TxKey struct {
+	Data TxKeyData `json:"data"`
+}
+
+// TxKeyData is the model that represents the created keys when read
+type TxKeyData struct {
+	Type       string          `json:"type"`
+	ID         string          `json:"id"`
+	Attributes TxKeyAttributes `json:"attributes"`
+}
+
+// TxKeyAttributes is the model that represents the created keys when read
+type TxKeyAttributes struct {
+	PublicKey string `json:"publicKey"`
 }
 
 // EIAttributes is the model that represents the EI keys when created and read
@@ -610,6 +657,70 @@ observationSource                      = """
 """`
 
 	return marshallTemplate(specWrap, "OCR Job", ocrTemplateString)
+}
+
+// OCR2TaskJobSpec represents an OCR2 job that is given to other nodes, meant to communicate with the bootstrap node,
+// and provide their answers
+type OCR2TaskJobSpec struct {
+	Name                     string        `toml:"name"`
+	ContractID               string        `toml:"contractID"`                             // Address of the OCR contract/account(s)
+	Relay                    string        `toml:"relay"`                                  // Name of blockchain relay to use
+	RelayConfig              string        `toml:"relayConfig"`                            // Relay spec object in stringified form
+	P2PPeerID                string        `toml:"p2pPeerID"`                              // This node's P2P ID
+	P2PBootstrapPeers        []P2PData     `toml:"p2pBootstrapPeers"`                      // P2P ID of the bootstrap node
+	IsBootstrapPeer          bool          `toml:"isBootstrapPeer"`                        // Typically false
+	OCRKeyBundleID           string        `toml:"ocrKeyBundleID"`                         // ID of this node's OCR key bundle
+	MonitoringEndpoint       string        `toml:"monitoringEndpoint"`                     // Typically "chain.link:4321"
+	TransmitterID            string        `toml:"transmitterID"`                          // ID of address this node will use to transmit
+	BlockChainTimeout        time.Duration `toml:"blockchainTimeout"`                      // Optional
+	TrackerSubscribeInterval time.Duration `toml:"contractConfigTrackerSubscribeInterval"` // Optional
+	TrackerPollInterval      time.Duration `toml:"contractConfigTrackerPollInterval"`      // Optional
+	ContractConfirmations    int           `toml:"contractConfigConfirmations"`            // Optional
+	ObservationSource        string        `toml:"observationSource"`                      // List of commands for the chainlink node
+	JuelsPerFeeCoinSource    string        `toml:"juelsPerFeeCoinSource"`                  // List of commands to fetch JuelsPerFeeCoin value (used to calculate ocr payments)
+}
+
+// Type returns the type of the job
+func (o *OCR2TaskJobSpec) Type() string { return "offchainreporting2" }
+
+// String representation of the job
+func (o *OCR2TaskJobSpec) String() (string, error) {
+	// Results in /dns4//tcp/6690/p2p/12D3KooWAuC9xXBnadsYJpqzZZoB4rMRWqRGpxCrr2mjS7zCoAdN\
+	ocr2TemplateString := `type = "offchainreporting2"
+schemaVersion                          = 1
+blockchainTimeout                      ={{if not .BlockChainTimeout}} "20s" {{else}} {{.BlockChainTimeout}} {{end}}
+contractConfigConfirmations            ={{if not .ContractConfirmations}} 3 {{else}} {{.ContractConfirmations}} {{end}}
+contractConfigTrackerPollInterval      ={{if not .TrackerPollInterval}} "1m" {{else}} {{.TrackerPollInterval}} {{end}}
+contractConfigTrackerSubscribeInterval ={{if not .TrackerSubscribeInterval}} "2m" {{else}} {{.TrackerSubscribeInterval}} {{end}}
+name 																	 = "{{.Name}}"
+relay																	 = "{{.Relay}}"
+relayConfig														 = "{{.RelayConfig}}"
+contractID		                         = "{{.ContractID}}"
+{{if .P2PBootstrapPeers}}
+p2pBootstrapPeers                      = [
+  {{range $peer := .P2PBootstrapPeers}}
+  "{{$peer.PeerID}}@{{$peer.RemoteIP}}",
+  {{end}}
+]
+{{else}}
+p2pBootstrapPeers                      = []
+{{end}}
+isBootstrapPeer                        = {{.IsBootstrapPeer}}
+p2pPeerID                              = "{{.P2PPeerID}}"
+keyBundleID                            = "{{.OCRKeyBundleID}}"
+monitoringEndpoint                     ={{if not .MonitoringEndpoint}} "chain.link:4321" {{else}} "{{.MonitoringEndpoint}}" {{end}}
+transmitterAddress                     = "{{.TransmitterID}}"
+{{if .IsBootstrapPeer}}
+{{else}}
+observationSource                      = """
+{{.ObservationSource}}
+"""
+juelsPerFeeCoinSource                  = """
+{{.JuelsPerFeeCoinSource}}
+"""
+{{end}}`
+
+	return marshallTemplate(o, "OCR2 Job", ocr2TemplateString)
 }
 
 // VRFJobSpec represents a VRF job

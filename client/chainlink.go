@@ -38,12 +38,20 @@ type Chainlink interface {
 	ReadOCRKeys() (*OCRKeys, error)
 	DeleteOCRKey(id string) error
 
+	CreateOCR2Key(chain string) (*OCR2Key, error)
+	ReadOCR2Keys() (*OCR2Keys, error)
+	DeleteOCR2Key(id string) error
+
 	CreateP2PKey() (*P2PKey, error)
 	ReadP2PKeys() (*P2PKeys, error)
 	DeleteP2PKey(id int) error
 
 	ReadETHKeys() (*ETHKeys, error)
 	PrimaryEthAddress() (string, error)
+
+	CreateTxKey(chain string) (*TxKey, error)
+	ReadTxKeys(chain string) (*TxKeys, error)
+	DeleteTxKey(chain, id string) error
 
 	CreateVRFKey() (*VRFKey, error)
 	ReadVRFKeys() (*VRFKeys, error)
@@ -215,6 +223,29 @@ func (c *chainlink) DeleteOCRKey(id string) error {
 	return err
 }
 
+// CreateOCR2Key creates an OCR2Key on the Chainlink node
+func (c *chainlink) CreateOCR2Key(chain string) (*OCR2Key, error) {
+	ocr2Key := &OCR2Key{}
+	log.Info().Str("Node URL", c.Config.URL).Msg("Creating OCR2 Key")
+	_, err := c.do(http.MethodPost, fmt.Sprintf("/v2/keys/ocr2/%s", chain), nil, ocr2Key, http.StatusOK)
+	return ocr2Key, err
+}
+
+// ReadOCR2Keys reads all OCR2Keys from the Chainlink node
+func (c *chainlink) ReadOCR2Keys() (*OCR2Keys, error) {
+	ocr2Keys := &OCR2Keys{}
+	log.Info().Str("Node URL", c.Config.URL).Msg("Reading OCR2 Keys")
+	_, err := c.do(http.MethodGet, "/v2/keys/ocr2", nil, ocr2Keys, http.StatusOK)
+	return ocr2Keys, err
+}
+
+// DeleteOCR2Key deletes an OCR2Key based on the provided ID
+func (c *chainlink) DeleteOCR2Key(id string) error {
+	log.Info().Str("Node URL", c.Config.URL).Str("ID", id).Msg("Deleting OCR2 Key")
+	_, err := c.do(http.MethodDelete, fmt.Sprintf("/v2/keys/ocr2/%s", id), nil, nil, http.StatusOK)
+	return err
+}
+
 // CreateP2PKey creates an P2PKey on the Chainlink node
 func (c *chainlink) CreateP2PKey() (*P2PKey, error) {
 	p2pKey := &P2PKey{}
@@ -255,6 +286,29 @@ func (c *chainlink) ReadETHKeys() (*ETHKeys, error) {
 		log.Warn().Str("Node URL", c.Config.URL).Msg("Found no ETH Keys on the node")
 	}
 	return ethKeys, err
+}
+
+// CreateOCR2Key creates an OCR2Key on the Chainlink node
+func (c *chainlink) CreateTxKey(chain string) (*TxKey, error) {
+	txKey := &TxKey{}
+	log.Info().Str("Node URL", c.Config.URL).Msg("Creating Tx Key")
+	_, err := c.do(http.MethodPost, fmt.Sprintf("/v2/keys/%s", chain), nil, txKey, http.StatusOK)
+	return txKey, err
+}
+
+// ReadOCR2Keys reads all OCR2Keys from the Chainlink node
+func (c *chainlink) ReadTxKeys(chain string) (*TxKeys, error) {
+	txKeys := &TxKeys{}
+	log.Info().Str("Node URL", c.Config.URL).Msg("Reading Tx Keys")
+	_, err := c.do(http.MethodGet, fmt.Sprintf("/v2/keys/%s", chain), nil, txKeys, http.StatusOK)
+	return txKeys, err
+}
+
+// DeleteOCR2Key deletes an OCR2Key based on the provided ID
+func (c *chainlink) DeleteTxKey(chain string, id string) error {
+	log.Info().Str("Node URL", c.Config.URL).Str("ID", id).Msg("Deleting Tx Key")
+	_, err := c.do(http.MethodDelete, fmt.Sprintf("/v2/keys/%s/%s", chain, id), nil, nil, http.StatusOK)
+	return err
 }
 
 // ReadVRFKeys reads all VRF keys from the Chainlink node
