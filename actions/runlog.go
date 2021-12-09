@@ -1,7 +1,7 @@
 package actions
 
 import (
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/celo-org/celo-blockchain/common"
 	. "github.com/onsi/gomega"
 	uuid "github.com/satori/go.uuid"
 	"github.com/smartcontractkit/integrations-framework/client"
@@ -13,8 +13,8 @@ import (
 
 // RunlogSetupInputs inputs needed for a runlog test
 type RunlogSetupInputs struct {
-	SuiteSetup  SuiteSetup
-	NetworkInfo NetworkInfo
+	SuiteSetup    SuiteSetup
+	NetworkInfo   NetworkInfo
 	Nodes         []client.Chainlink
 	NodeAddresses []common.Address
 	Oracle        contracts.Oracle

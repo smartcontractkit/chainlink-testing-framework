@@ -9,17 +9,17 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/celo-org/celo-blockchain/accounts/abi"
 	"github.com/pkg/errors"
 
-	ethContracts "github.com/smartcontractkit/integrations-framework/contracts/ethereum"
+	celoContracts "github.com/smartcontractkit/integrations-framework/contracts/celo"
 
-	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/celo-org/celo-blockchain"
+	"github.com/celo-org/celo-blockchain/accounts/abi/bind"
+	"github.com/celo-org/celo-blockchain/common"
+	"github.com/celo-org/celo-blockchain/core/types"
+	"github.com/celo-org/celo-blockchain/crypto"
+	"github.com/celo-org/celo-blockchain/ethclient"
 	"github.com/rs/zerolog/log"
 )
 
@@ -392,7 +392,7 @@ func (e *EthereumClient) Fund(
 			Str("Amount", linkAmount.String()).
 			Msg("Funding Address")
 		linkAddress := common.HexToAddress(e.Network.Config().LinkTokenAddress)
-		linkInstance, err := ethContracts.NewLinkToken(linkAddress, e.Client)
+		linkInstance, err := celoContracts.NewLinkToken(linkAddress, e.Client)
 		if err != nil {
 			return err
 		}
