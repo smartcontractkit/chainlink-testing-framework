@@ -662,22 +662,22 @@ observationSource                      = """
 // OCR2TaskJobSpec represents an OCR2 job that is given to other nodes, meant to communicate with the bootstrap node,
 // and provide their answers
 type OCR2TaskJobSpec struct {
-	Name                     string        `toml:"name"`
-	ContractID               string        `toml:"contractID"`                             // Address of the OCR contract/account(s)
-	Relay                    string        `toml:"relay"`                                  // Name of blockchain relay to use
-	RelayConfig              string        `toml:"relayConfig"`                            // Relay spec object in stringified form
-	P2PPeerID                string        `toml:"p2pPeerID"`                              // This node's P2P ID
-	P2PBootstrapPeers        []P2PData     `toml:"p2pBootstrapPeers"`                      // P2P ID of the bootstrap node
-	IsBootstrapPeer          bool          `toml:"isBootstrapPeer"`                        // Typically false
-	OCRKeyBundleID           string        `toml:"ocrKeyBundleID"`                         // ID of this node's OCR key bundle
-	MonitoringEndpoint       string        `toml:"monitoringEndpoint"`                     // Typically "chain.link:4321"
-	TransmitterID            string        `toml:"transmitterID"`                          // ID of address this node will use to transmit
-	BlockChainTimeout        time.Duration `toml:"blockchainTimeout"`                      // Optional
-	TrackerSubscribeInterval time.Duration `toml:"contractConfigTrackerSubscribeInterval"` // Optional
-	TrackerPollInterval      time.Duration `toml:"contractConfigTrackerPollInterval"`      // Optional
-	ContractConfirmations    int           `toml:"contractConfigConfirmations"`            // Optional
-	ObservationSource        string        `toml:"observationSource"`                      // List of commands for the chainlink node
-	JuelsPerFeeCoinSource    string        `toml:"juelsPerFeeCoinSource"`                  // List of commands to fetch JuelsPerFeeCoin value (used to calculate ocr payments)
+	Name                     string            `toml:"name"`
+	ContractID               string            `toml:"contractID"`                             // Address of the OCR contract/account(s)
+	Relay                    string            `toml:"relay"`                                  // Name of blockchain relay to use
+	RelayConfig              map[string]string `toml:"relayConfig"`                            // Relay spec object in stringified form
+	P2PPeerID                string            `toml:"p2pPeerID"`                              // This node's P2P ID
+	P2PBootstrapPeers        []P2PData         `toml:"p2pBootstrapPeers"`                      // P2P ID of the bootstrap node
+	IsBootstrapPeer          bool              `toml:"isBootstrapPeer"`                        // Typically false
+	OCRKeyBundleID           string            `toml:"ocrKeyBundleID"`                         // ID of this node's OCR key bundle
+	MonitoringEndpoint       string            `toml:"monitoringEndpoint"`                     // Typically "chain.link:4321"
+	TransmitterID            string            `toml:"transmitterID"`                          // ID of address this node will use to transmit
+	BlockChainTimeout        time.Duration     `toml:"blockchainTimeout"`                      // Optional
+	TrackerSubscribeInterval time.Duration     `toml:"contractConfigTrackerSubscribeInterval"` // Optional
+	TrackerPollInterval      time.Duration     `toml:"contractConfigTrackerPollInterval"`      // Optional
+	ContractConfirmations    int               `toml:"contractConfigConfirmations"`            // Optional
+	ObservationSource        string            `toml:"observationSource"`                      // List of commands for the chainlink node
+	JuelsPerFeeCoinSource    string            `toml:"juelsPerFeeCoinSource"`                  // List of commands to fetch JuelsPerFeeCoin value (used to calculate ocr payments)
 }
 
 // Type returns the type of the job
@@ -694,7 +694,6 @@ contractConfigTrackerPollInterval      ={{if not .TrackerPollInterval}} "1m" {{e
 contractConfigTrackerSubscribeInterval ={{if not .TrackerSubscribeInterval}} "2m" {{else}} {{.TrackerSubscribeInterval}} {{end}}
 name 																	 = "{{.Name}}"
 relay																	 = "{{.Relay}}"
-relayConfig														 = "{{.RelayConfig}}"
 contractID		                         = "{{.ContractID}}"
 {{if .P2PBootstrapPeers}}
 p2pBootstrapPeers                      = [
@@ -718,6 +717,11 @@ observationSource                      = """
 juelsPerFeeCoinSource                  = """
 {{.JuelsPerFeeCoinSource}}
 """
+{{end}}
+
+[relayConfig]
+{{range $key, $value := .RelayConfig}}
+{{$key}} = "{{$value}}"
 {{end}}`
 
 	return marshallTemplate(o, "OCR2 Job", ocr2TemplateString)
