@@ -707,9 +707,9 @@ p2pBootstrapPeers                      = []
 {{end}}
 isBootstrapPeer                        = {{.IsBootstrapPeer}}
 p2pPeerID                              = "{{.P2PPeerID}}"
-keyBundleID                            = "{{.OCRKeyBundleID}}"
+ocrKeyBundleID                         = "{{.OCRKeyBundleID}}"
 monitoringEndpoint                     ={{if not .MonitoringEndpoint}} "chain.link:4321" {{else}} "{{.MonitoringEndpoint}}" {{end}}
-transmitterAddress                     = "{{.TransmitterID}}"
+transmitterID                     		 = "{{.TransmitterID}}"
 {{if .IsBootstrapPeer}}
 {{else}}
 observationSource                      = """
