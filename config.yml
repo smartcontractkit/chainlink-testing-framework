@@ -5,9 +5,8 @@
 # APPS_CHAINLINK_VERSION=1.0.0
 
 networks: # Selected network(s) for test execution
-  - "ethereum_geth"
-  - "ethereum_geth"
-keep_environments: Never # Options: Always, OnFail, Never
+  - "alfajores_celo_test"
+keep_environments: Always # Options: Always, OnFail, Never
 
 apps:
   chainlink:
@@ -248,14 +247,20 @@ network_configs:
     private_url: iotex_testnet_url
     private_keys:
       - iotex_testnet_1
-  alfajores_celo:
-    <<: *common_ethereum_testnet
-    name: "Alfajores celo"
+  alfajores_celo_test:
+    name: "Celo testnet"
     chain_id: 44787
     type: evm_celo
-    private_url: alfajores_celo_url
+    secret_private_keys: false
+    secret_private_url: false
+    urls:
+      - wss://alfajores-forno.celo-testnet.org/ws
     private_keys:
-      - alfajores_celo_1
+      - celo_testnet_1
+    transaction_limit: 7667850
+    transaction_timeout: 5m
+    minimum_confirmations: 1
+    gas_estimation_buffer: 10000
 retry:
   attempts: 120
   linear_delay: 1s

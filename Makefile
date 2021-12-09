@@ -14,13 +14,13 @@ go_mod:
 install: go_mod golangci
 
 test_unit:
-	ginkgo -r -keepGoing --trace --randomizeAllSpecs --randomizeSuites --progress -covermode=count -coverprofile=unit-test-coverage.out -nodes=10 ./client ./config ./environment 
+	NETWORKS=alfajores_celo ginkgo -r -keepGoing --trace --randomizeAllSpecs --randomizeSuites --progress -covermode=count -coverprofile=unit-test-coverage.out -nodes=10 ./client ./config ./environment 
 
 test_smoke:
-	ginkgo -v -r -keepGoing --trace --randomizeAllSpecs --randomizeSuites --progress $(args) ./suite/smoke 
+	NETWORKS=alfajores_celo ginkgo -v -r -keepGoing --trace --randomizeAllSpecs --randomizeSuites --progress $(args) ./suite/smoke 
 
 test_performance:
-	ginkgo -r -timeout=200h -keepGoing --trace --randomizeAllSpecs --randomizeSuites --progress $(args) ./suite/performance 
+	NETWORKS=alfajores_celo ginkgo -r -timeout=200h -keepGoing --trace --randomizeAllSpecs --randomizeSuites --progress $(args) ./suite/performance 
 
 test_chaos:
-	NETWORKS=ethereum_geth_performance,ethereum_geth_performance ginkgo -r -keepGoing --trace --randomizeAllSpecs --randomizeSuites --progress $(args) ./suite/chaos 
+	NETWORKS=alfajores_celo ginkgo -r -keepGoing --trace --randomizeAllSpecs --randomizeSuites --progress $(args) ./suite/chaos 

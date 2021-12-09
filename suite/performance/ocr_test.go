@@ -50,7 +50,7 @@ var _ = FDescribe("OCR soak test @soak-ocr", func() {
 				nodes,
 				networkInfo.Client,
 				networkInfo.Wallets.Default(),
-				big.NewFloat(0.01),
+				big.NewFloat(5),
 				big.NewFloat(10),
 			)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -64,7 +64,7 @@ var _ = FDescribe("OCR soak test @soak-ocr", func() {
 					},
 					RoundTimeout: 65 * time.Minute,
 					AdapterValue: 5,
-					TestDuration: 168 * time.Hour,
+					TestDuration: 1 * time.Hour,
 				},
 				contracts.DefaultOffChainAggregatorOptions(),
 				suiteSetup.Environment(),
