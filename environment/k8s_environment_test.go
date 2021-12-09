@@ -9,8 +9,6 @@ import (
 	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/hooks"
 	"github.com/smartcontractkit/integrations-framework/utils"
-		"github.com/smartcontractkit/integrations-framework/tools"
-	"github.com/smartcontractkit/integrations-framework/types"
 )
 
 var _ = Describe("Environment functionality @unit", func() {

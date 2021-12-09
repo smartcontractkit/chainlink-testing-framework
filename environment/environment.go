@@ -2,14 +2,14 @@ package environment
 
 import (
 	"fmt"
+	"net/http"
+	"net/url"
+
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/client/chaos"
 	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/hooks"
-	"github.com/smartcontractkit/integrations-framework/types"
-	"net/http"
-	"net/url"
 )
 
 // Environment is the interface that represents a deployed environment, whether locally or on remote machines
