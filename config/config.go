@@ -128,6 +128,7 @@ func LoadFrameworkConfig(cfgPath string) (*FrameworkConfig, error) {
 	}
 	var cfg *FrameworkConfig
 	err := v.Unmarshal(&cfg)
+	cfg.setCharts()
 	return cfg, err
 }
 
@@ -168,4 +169,47 @@ func (l *LocalStore) Fetch() ([]string, error) {
 		return nil, errors.New("no keys found, ensure your configuration is properly set")
 	}
 	return l.RawKeys, nil
+}
+
+var gethChart = `
+"geth":{
+	"values":{
+		 "geth":{
+				"image":{
+					 "image":"%s",
+					 "version":"%s"
+				}
+		 }
+	}
+}`
+var chainlinkChart = `
+"chainlink":{
+	"values":{
+		 "chainlink":{
+				"image":{
+					 "image":"%s",
+					 "version":"%s"
+				}
+		 }
+	}
+}`
+
+// setCharts finds out if the user has specified chainlink or geth images to use for the test, and sets the CHARTS
+// env var appropriately
+func (cfg *FrameworkConfig) setCharts() {
+	if cfg.GethImage != "" || cfg.ChainlinkImage != "" {
+		marshalledGethChart := ""
+		marshalledChainlinkChart := ""
+		if cfg.GethImage != "" {
+			marshalledGethChart = fmt.Sprintf(gethChart, cfg.GethImage, cfg.GethVersion)
+		}
+		if cfg.ChainlinkImage != "" {
+			marshalledChainlinkChart = fmt.Sprintf(chainlinkChart, cfg.ChainlinkImage, cfg.ChainlinkVersion)
+		}
+		if cfg.GethImage != "" && cfg.ChainlinkImage != "" { // If both, add a comma after geth
+			marshalledGethChart += ","
+		}
+		combined := fmt.Sprintf("{%s%s}", marshalledGethChart, marshalledChainlinkChart)
+		os.Setenv("CHARTS", combined)
+	}
 }

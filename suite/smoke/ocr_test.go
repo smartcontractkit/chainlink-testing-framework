@@ -2,6 +2,7 @@ package smoke
 
 import (
 	"context"
+	"math/big"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -13,7 +14,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/utils"
 )
 
-var _ = Describe("OCR Feed @ocr", func() {
+var _ = FDescribe("OCR Feed @ocr", func() {
 	var (
 		err               error
 		env               *environment.Environment
@@ -22,8 +23,9 @@ var _ = Describe("OCR Feed @ocr", func() {
 		linkTokenContract contracts.LinkToken
 		chainlinkNodes    []client.Chainlink
 		mockserver        *client.MockserverClient
+		ocrInstances      []contracts.OffchainAggregator
 	)
-	ocrInstances := make([]contracts.OffchainAggregator, 1)
+
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
 			env, err = environment.DeployOrLoadEnvironment(
@@ -34,29 +36,41 @@ var _ = Describe("OCR Feed @ocr", func() {
 			err = env.ConnectAll()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
-		By("Getting the clients", func() {
+
+		By("Connecting to launched resources", func() {
+			// Load Networks
 			networkRegistry := client.NewNetworkRegistry()
 			var err error
 			networks, err = networkRegistry.GetNetworks(env)
 			Expect(err).ShouldNot(HaveOccurred())
 			contractDeployer, err = contracts.NewContractDeployer(networks.Default)
 			Expect(err).ShouldNot(HaveOccurred())
-			chainlinkNodes, err = client.NewChainlinkClients(env)
+
+			chainlinkNodes, err = client.ConnectChainlinkNodes(env)
 			Expect(err).ShouldNot(HaveOccurred())
-			mockserver, err = client.NewMockServerClientFromEnv(env)
+			mockserver, err = client.ConnectMockServer(env)
 			Expect(err).ShouldNot(HaveOccurred())
+
 			networks.Default.ParallelTransactions(true)
 			Expect(err).ShouldNot(HaveOccurred())
+
 			linkTokenContract, err = contractDeployer.DeployLinkTokenContract()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
-		By("Funding Chainlink nodes", actions.FundNodes(networks, chainlinkNodes))
-		By("Deploying OCR contracts",
-			actions.DeployOCRContracts(ocrInstances, linkTokenContract, contractDeployer, chainlinkNodes, networks))
+
+		By("Funding Chainlink nodes", func() {
+			err = actions.FundChainlinkNodes(chainlinkNodes, networks.Default, big.NewFloat(.01))
+			Expect(err).ShouldNot(HaveOccurred())
+		})
+
+		By("Deploying OCR contracts", func() {
+			ocrInstances = actions.DeployOCRContracts(1, linkTokenContract, contractDeployer, chainlinkNodes, networks)
+		})
+
 		By("Creating OCR jobs", actions.CreateOCRJobs(ocrInstances, chainlinkNodes, mockserver))
 	})
 
-	Describe("with OCR job", func() {
+	Describe("With a single OCR contract", func() {
 		It("performs two rounds", func() {
 			By("setting adapter responses",
 				actions.SetAdapterResponses([]int{5, 5, 5, 5, 5}, ocrInstances, chainlinkNodes, mockserver))

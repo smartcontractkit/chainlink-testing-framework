@@ -2,51 +2,43 @@ package actions
 
 import (
 	"fmt"
+	"math/big"
+	"time"
+
 	. "github.com/onsi/gomega"
 	uuid "github.com/satori/go.uuid"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
-	"math/big"
-	"time"
 )
-
-// FundNodes funds all chainlink nodes
-func FundNodes(networks *client.Networks, chainlinkNodes []client.Chainlink) func() {
-	return func() {
-		txCost, err := networks.Default.EstimateCostForChainlinkOperations(200)
-		Expect(err).ShouldNot(HaveOccurred())
-		err = FundChainlinkNodes(chainlinkNodes, networks.Default, txCost)
-		Expect(err).ShouldNot(HaveOccurred())
-	}
-}
 
 // DeployOCRContracts deploys and funds a certain number of offchain aggregator contracts
 func DeployOCRContracts(
-	ocrInstances []contracts.OffchainAggregator,
+	numberOfContracts int,
 	linkTokenContract contracts.LinkToken,
 	contractDeployer contracts.ContractDeployer,
 	chainlinkNodes []client.Chainlink,
 	networks *client.Networks,
-) func() {
-	return func() {
-		var err error
-		linkTokenContract, err = contractDeployer.DeployLinkTokenContract()
+) []contracts.OffchainAggregator {
+	ocrInstances := []contracts.OffchainAggregator{}
+	for i := 0; i < numberOfContracts; i++ {
+		ocrInstance, err := contractDeployer.DeployOffChainAggregator(
+			linkTokenContract.Address(),
+			contracts.DefaultOffChainAggregatorOptions(),
+		)
 		Expect(err).ShouldNot(HaveOccurred())
-
-		for i := 0; i < len(ocrInstances); i++ {
-			ocrInstances[i], err = contractDeployer.DeployOffChainAggregator(linkTokenContract.Address(), contracts.DefaultOffChainAggregatorOptions())
-			Expect(err).ShouldNot(HaveOccurred())
-			err = ocrInstances[i].SetConfig(
-				chainlinkNodes[1:],
-				contracts.DefaultOffChainAggregatorConfig(len(chainlinkNodes[1:])),
-			)
-			Expect(err).ShouldNot(HaveOccurred())
-			err = linkTokenContract.Transfer(ocrInstances[i].Address(), big.NewInt(2e18))
-			Expect(err).ShouldNot(HaveOccurred())
-			err = networks.Default.WaitForEvents()
-			Expect(err).ShouldNot(HaveOccurred())
-		}
+		// Exclude the first node, which will be used as a bootstrapper
+		err = ocrInstance.SetConfig(
+			chainlinkNodes[1:],
+			contracts.DefaultOffChainAggregatorConfig(len(chainlinkNodes[1:])),
+		)
+		ocrInstances = append(ocrInstances, ocrInstance)
+		Expect(err).ShouldNot(HaveOccurred())
+		err = linkTokenContract.Transfer(ocrInstance.Address(), big.NewInt(2e18))
+		Expect(err).ShouldNot(HaveOccurred())
+		err = networks.Default.WaitForEvents()
+		Expect(err).ShouldNot(HaveOccurred())
 	}
+	return ocrInstances
 }
 
 // CreateOCRJobs bootstraps the first node and to the other nodes sends ocr jobs that
@@ -117,10 +109,7 @@ func SetAdapterResponses(
 		for OCRInstanceIndex := range ocrInstances {
 			for nodeIndex := 1; nodeIndex < len(chainlinkNodes); nodeIndex++ {
 				path := fmt.Sprintf("/node_%d_contract_%d", nodeIndex, OCRInstanceIndex)
-				pathSelector := client.PathSelector{Path: path}
-				err := mockserver.ClearExpectation(pathSelector)
-				Expect(err).ShouldNot(HaveOccurred())
-				err = mockserver.SetValuePath(path, results[nodeIndex-1])
+				err := mockserver.SetValuePath(path, results[nodeIndex-1])
 				Expect(err).ShouldNot(HaveOccurred())
 			}
 		}

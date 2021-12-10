@@ -18,7 +18,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/utils"
 )
 
-var _ = FDescribe("Keeper suite @keeper", func() {
+var _ = Describe("Keeper suite @keeper", func() {
 	var (
 		err           error
 		nets          *client.Networks
@@ -43,13 +43,13 @@ var _ = FDescribe("Keeper suite @keeper", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
-		By("Getting the clients", func() {
+		By("Connecting to launched resources", func() {
 			networkRegistry := client.NewNetworkRegistry()
 			nets, err = networkRegistry.GetNetworks(e)
 			Expect(err).ShouldNot(HaveOccurred())
 			cd, err = contracts.NewContractDeployer(nets.Default)
 			Expect(err).ShouldNot(HaveOccurred())
-			cls, err = client.NewChainlinkClients(e)
+			cls, err = client.ConnectChainlinkNodes(e)
 			Expect(err).ShouldNot(HaveOccurred())
 			nodeAddresses, err = actions.ChainlinkNodeAddresses(cls)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -57,7 +57,7 @@ var _ = FDescribe("Keeper suite @keeper", func() {
 		})
 
 		By("Funding Chainlink nodes", func() {
-			txCost, err := nets.Default.EstimateCostForChainlinkOperations(1000)
+			txCost, err := nets.Default.EstimateCostForChainlinkOperations(10)
 			Expect(err).ShouldNot(HaveOccurred())
 			err = actions.FundChainlinkNodes(cls, nets.Default, txCost)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -166,7 +166,7 @@ var _ = FDescribe("Keeper suite @keeper", func() {
 			Eventually(func(g Gomega) {
 				cnt, err := consumer.Counter(context.Background())
 				g.Expect(err).ShouldNot(HaveOccurred())
-				g.Expect(cnt.Int64()).Should(BeNumerically(">", 0))
+				g.Expect(cnt.Int64()).Should(BeNumerically(">", int64(0)))
 				log.Info().Int64("Upkeep counter", cnt.Int64()).Msg("Upkeeps performed")
 			}, "2m", "1s").Should(Succeed())
 		})
