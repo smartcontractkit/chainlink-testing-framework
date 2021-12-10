@@ -113,9 +113,10 @@ func NewEthereumNetwork(ID string, networkConfig config.NetworkConfig) (Blockcha
 	}, nil
 }
 
-// NewNetworkFromConfig creates a new blockchain network based on the ID
-func NewNetworkFromConfig(conf *config.Config, networkID string) (BlockchainNetwork, error) {
-	networkConfig, err := conf.GetNetworkConfig(networkID)
+
+// ConnectMockServer creates a connection to a deployed mockserver in the environment
+func ConnectMockServer(e *environment.Environment) (*MockserverClient, error) {
+	localURL, err := e.Charts.Connections("mockserver").LocalURLByPort("serviceport", environment.HTTP)
 	if err != nil {
 		return nil, err
 	}
@@ -271,15 +272,15 @@ func NewEthereumWallet(pk string) (*EthereumWallet, error) {
 	}, nil
 }
 
-// RawPrivateKey returns raw private key if it has some encoding or in bytes
-func (e *EthereumWallet) RawPrivateKey() interface{} {
-	return e.privateKey
+
+// ConnectChainlinkNodes creates new chainlink clients
+func ConnectChainlinkNodes(e *environment.Environment) ([]Chainlink, error) {
+	return ConnectChainlinkNodesByCharts(e, []string{"chainlink"})
 }
 
-// PrivateKey returns the private key for a given Ethereum wallet
-func (e *EthereumWallet) PrivateKey() string {
-	return e.privateKey
-}
+// ConnectChainlinkNodesByCharts creates new chainlink clients by charts
+func ConnectChainlinkNodesByCharts(e *environment.Environment, charts []string) ([]Chainlink, error) {
+	var clients []Chainlink
 
 // Address returns the ETH address for a given wallet
 func (e *EthereumWallet) Address() string {

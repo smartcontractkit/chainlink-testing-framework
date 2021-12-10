@@ -32,7 +32,12 @@ var _ = Describe("Cronjob suite @cron", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			nodes, err = environment.GetChainlinkClients(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
-			mockserver, err = environment.GetMockserverClientFromEnv(suiteSetup.Environment())
+		})
+
+		By("Connecting to launched resources", func() {
+			cls, err = client.ConnectChainlinkNodes(e)
+			Expect(err).ShouldNot(HaveOccurred())
+			mockserver, err = client.ConnectMockServer(e)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
