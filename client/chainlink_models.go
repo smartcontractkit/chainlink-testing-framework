@@ -175,10 +175,10 @@ type OCR2KeyData struct {
 
 // OCR2KeyAttributes is the model that represents the created OCR2 keys when read
 type OCR2KeyAttributes struct {
-	ChainType             string `json:"chainType"`
-	ConfigPublicKey       string `json:"configPublicKey"`
-	OffChainPublicKey     string `json:"offChainPublicKey"`
-	OnChainSigningAddress string `json:"onChainSigningAddress"`
+	ChainType         string `json:"chainType"`
+	ConfigPublicKey   string `json:"configPublicKey"`
+	OffChainPublicKey string `json:"offChainPublicKey"`
+	OnChainPublicKey  string `json:"onchainPublicKey"`
 }
 
 // P2PKeys is the model that represents the created P2P keys when read

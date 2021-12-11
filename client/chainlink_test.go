@@ -227,10 +227,10 @@ var _ = Describe("Chainlink @unit", func() {
 			ocrKeyData := OCR2KeyData{
 				ID: "1",
 				Attributes: OCR2KeyAttributes{
-					ChainType:             chain,
-					ConfigPublicKey:       "someNon3sens3",
-					OffChainPublicKey:     "mor3Non3sens3",
-					OnChainSigningAddress: "thisActuallyMak3sS3ns3",
+					ChainType:         chain,
+					ConfigPublicKey:   "someNon3sens3",
+					OffChainPublicKey: "mor3Non3sens3",
+					OnChainPublicKey:  "thisActuallyMak3sS3ns3",
 				},
 			}
 			server := mockedServer(func(rw http.ResponseWriter, req *http.Request) {
