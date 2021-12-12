@@ -340,7 +340,7 @@ type OCRv2 interface {
 	TransferOwnership(to string) error
 
 	SetValidatorConfig(flaggingThreshold uint32, validatorAddr string) error
-	SetBilling(price uint32, controllerAddr string) error
+	SetBilling(op uint32, tp uint32, controllerAddr string) error
 	SetOracles(ocParams OffChainAggregatorV2Config) error
 	SetOffChainConfig(ocParams OffChainAggregatorV2Config) error
 
