@@ -22,7 +22,7 @@ func (e *EthereumOCRv2) SetValidatorConfig(flaggingThreshold uint32, validatorAd
 	panic("implement me")
 }
 
-func (e *EthereumOCRv2) SetBilling(price uint32, controllerAddr string) error {
+func (e *EthereumOCRv2) SetBilling(op uint32, tp uint32, controllerAddr string) error {
 	panic("implement me")
 }
 
