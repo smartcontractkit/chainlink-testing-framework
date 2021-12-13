@@ -240,8 +240,5 @@ func UnmarshalNetworkConfig(config map[string]interface{}, obj interface{}) erro
 	if err != nil {
 		return err
 	}
-	if err := yaml.Unmarshal(b, obj); err != nil {
-		return err
-	}
-	return nil
+	return yaml.Unmarshal(b, obj)
 }
