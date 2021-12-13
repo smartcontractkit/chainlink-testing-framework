@@ -87,8 +87,8 @@ spec:
           value: "5s"
         - name: KEEPER_MINIMUM_REQUIRED_CONFIRMATIONS
           value: "1"
-        - name: KEEPER_MINIMUM_REQUIRED_CONFIRMATIONS
-          value: "200000"
+#        - name: KEEPER_MINIMUM_REQUIRED_CONFIRMATIONS
+#          value: "200000"
         - name: KEEPER_REGISTRY_PERFORM_GAS_OVERHEAD
           value: "150000"
         {{ if (present "explorer" .Values.DependencyGroup) }}

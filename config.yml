@@ -10,7 +10,7 @@ keep_environments: Always # Options: Always, OnFail, Never
 
 apps:
   chainlink:
-    image: chainlink
+    image: celo-chainlink
     version: latest
     requests:
       memory: 768Mi
