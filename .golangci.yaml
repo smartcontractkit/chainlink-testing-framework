@@ -25,8 +25,6 @@ linters-settings:
     rules:
       - name: exported
         severity: error
-      - name: dot-imports
-        disabled: true
       - name: blank-imports
       - name: context-as-argument
       - name: context-keys-type

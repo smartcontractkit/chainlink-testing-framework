@@ -1,5 +1,6 @@
 package smoke
 
+//revive:disable:dot-imports
 import (
 	"fmt"
 
