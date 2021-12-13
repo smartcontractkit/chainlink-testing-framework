@@ -20,9 +20,6 @@ linters:
 linters-settings:
   exhaustive:
     default-signifies-exhaustive: true
-  govet:
-    # report about shadowed variables
-    check-shadowing: true
   revive:
     confidence: 0.8
     rules:
