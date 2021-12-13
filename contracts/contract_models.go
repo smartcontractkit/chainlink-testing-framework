@@ -334,6 +334,7 @@ type OCRv2DeviationFlaggingValidator interface {
 // OCRv2 main offchain reporting v2 instance
 type OCRv2 interface {
 	Address() string
+	TransmissionsAddr() string
 	DumpState() error
 	GetContractData(ctx context.Context) (*OffchainAggregatorData, error)
 	AuthorityAddr(string) (string, error)

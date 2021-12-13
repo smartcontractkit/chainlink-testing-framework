@@ -42,6 +42,10 @@ func (e *EthereumOCRv2) Address() string {
 	panic("implement me")
 }
 
+func (e *EthereumOCRv2) TransmissionsAddr() string {
+	panic("implement me")
+}
+
 func (e *EthereumOCRv2) TransferOwnership(to string) error {
 	panic("implement me")
 }
