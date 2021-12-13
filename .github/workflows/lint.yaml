@@ -30,5 +30,3 @@ jobs:
       run: go list -json -deps ./... > go.list
     - name: Nancy
       uses: sonatype-nexus-community/nancy-github-action@main
-  
-        

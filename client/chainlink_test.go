@@ -1,5 +1,6 @@
 package client
 
+//revive:disable:defer
 import (
 	"encoding/json"
 	"fmt"
