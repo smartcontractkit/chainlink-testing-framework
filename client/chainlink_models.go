@@ -578,10 +578,11 @@ type OCRTaskJobSpec struct {
 	ObservationSource        string        `toml:"observationSource"`                      // List of commands for the chainlink node
 }
 
-// P2PData holds the remote ip and the peer id
+// P2PData holds the remote ip and the peer id and port
 type P2PData struct {
-	RemoteIP string
-	PeerID   string
+	RemoteIP   string
+	RemotePort string
+	PeerID     string
 }
 
 // Type returns the type of the job
@@ -685,20 +686,19 @@ func (o *OCR2TaskJobSpec) Type() string { return "offchainreporting2" }
 
 // String representation of the job
 func (o *OCR2TaskJobSpec) String() (string, error) {
-	// Results in /dns4//tcp/6690/p2p/12D3KooWAuC9xXBnadsYJpqzZZoB4rMRWqRGpxCrr2mjS7zCoAdN\
 	ocr2TemplateString := `type = "offchainreporting2"
 schemaVersion                          = 1
-blockchainTimeout                      ={{if not .BlockChainTimeout}} "20s" {{else}} {{.BlockChainTimeout}} {{end}}
+blockchainTimeout                      ={{if not .BlockChainTimeout}} "20s" {{else}} "{{.BlockChainTimeout}}" {{end}}
 contractConfigConfirmations            ={{if not .ContractConfirmations}} 3 {{else}} {{.ContractConfirmations}} {{end}}
-contractConfigTrackerPollInterval      ={{if not .TrackerPollInterval}} "1m" {{else}} {{.TrackerPollInterval}} {{end}}
-contractConfigTrackerSubscribeInterval ={{if not .TrackerSubscribeInterval}} "2m" {{else}} {{.TrackerSubscribeInterval}} {{end}}
+contractConfigTrackerPollInterval      ={{if not .TrackerPollInterval}} "1m" {{else}} "{{.TrackerPollInterval}}" {{end}}
+contractConfigTrackerSubscribeInterval ={{if not .TrackerSubscribeInterval}} "2m" {{else}} "{{.TrackerSubscribeInterval}}" {{end}}
 name 																	 = "{{.Name}}"
 relay																	 = "{{.Relay}}"
 contractID		                         = "{{.ContractID}}"
 {{if .P2PBootstrapPeers}}
 p2pBootstrapPeers                      = [
   {{range $peer := .P2PBootstrapPeers}}
-  "{{$peer.PeerID}}@{{$peer.RemoteIP}}",
+  "{{$peer.PeerID}}@{{$peer.RemoteIP}}:{{if $peer.RemotePort}}{{$peer.RemotePort}}{{else}}6690{{end}}",
   {{end}}
 ]
 {{else}}
