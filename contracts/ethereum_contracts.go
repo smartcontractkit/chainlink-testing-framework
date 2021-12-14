@@ -512,12 +512,12 @@ func (l *EthereumLinkToken) Fund(ethAmount *big.Float) error {
 	return l.client.Fund(l.address.Hex(), ethAmount)
 }
 
-func (l *EthereumLinkToken) BalanceOf(ctx context.Context, addr common.Address) (*big.Int, error) {
+func (l *EthereumLinkToken) BalanceOf(ctx context.Context, addr string) (*big.Int, error) {
 	opts := &bind.CallOpts{
 		From:    common.HexToAddress(l.client.DefaultWallet.Address()),
 		Context: ctx,
 	}
-	balance, err := l.instance.BalanceOf(opts, addr)
+	balance, err := l.instance.BalanceOf(opts, common.HexToAddress(addr))
 	if err != nil {
 		return nil, err
 	}
