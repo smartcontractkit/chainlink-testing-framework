@@ -3,7 +3,6 @@ package smoke
 //revive:disable:dot-imports
 import (
 	"context"
-	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -147,7 +146,7 @@ var _ = Describe("Keeper suite @keeper", func() {
 			err = registry.SetKeepers(nodeAddressesStr, payees)
 			Expect(err).ShouldNot(HaveOccurred())
 			_, err = primaryNode.CreateJob(&client.KeeperV2JobSpec{
-				Name:                     fmt.Sprintf("keeper-test-job"),
+				Name:                     "keeper-test-job",
 				ContractAddress:          registry.Address(),
 				FromAddress:              primaryNodeAddress,
 				MinIncomingConfirmations: 1,
