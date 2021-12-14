@@ -3,27 +3,33 @@ module github.com/smartcontractkit/integrations-framework
 go 1.17
 
 require (
-	github.com/avast/retry-go v3.0.0+incompatible
-	github.com/aws/aws-sdk-go v1.41.19
 	github.com/celo-org/celo-blockchain v0.0.0-20211207011603-8830ed5d90d8
 	github.com/ghodss/yaml v1.0.0
-	github.com/google/go-github v17.0.0+incompatible
-	github.com/hashicorp/go-multierror v1.1.1
-	github.com/montanaflynn/stats v0.6.6
-	github.com/onsi/ginkgo v1.16.5
+	github.com/kelseyhightower/envconfig v1.4.0
+	github.com/onsi/ginkgo/v2 v2.0.0-rc2
 	github.com/onsi/gomega v1.17.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.11.0
 	github.com/prometheus/common v0.32.1
 	github.com/rs/zerolog v1.26.0
 	github.com/satori/go.uuid v1.2.0
+	github.com/smartcontractkit/helmenv v1.0.17
 	github.com/spf13/viper v1.9.0
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	helm.sh/helm/v3 v3.7.1
-	k8s.io/api v0.22.3
-	k8s.io/apimachinery v0.22.3
 	k8s.io/client-go v0.22.3
+)
+
+require (
+	github.com/cavaliercoder/grab v2.0.0+incompatible // indirect
+	github.com/chai2010/gettext-go v0.0.0-20160711120539-c6fed771bfd5 // indirect
+	github.com/fatih/camelcase v1.0.0 // indirect
+	github.com/fvbommel/sortorder v1.0.1 // indirect
+	github.com/lithammer/dedent v1.1.0 // indirect
+	github.com/sirupsen/logrus v1.8.1 // indirect
+	helm.sh/helm/v3 v3.7.1 // indirect
+	k8s.io/api v0.22.3 // indirect
+	k8s.io/apimachinery v0.22.3 // indirect
 )
 
 require (
@@ -85,7 +91,6 @@ require (
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/btree v1.0.1 // indirect
 	github.com/google/go-cmp v0.5.6 // indirect
-	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/google/uuid v1.3.0 // indirect
@@ -96,17 +101,12 @@ require (
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/gosuri/uitable v0.0.4 // indirect
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79 // indirect
-	github.com/hashicorp/errwrap v1.1.0 // indirect
-	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/hdevalence/ed25519consensus v0.0.0-20201207055737-7fde80a9d5ff // indirect
 	github.com/holiman/uint256 v1.2.0 // indirect
 	github.com/huandu/xstrings v1.3.2 // indirect
-	github.com/huin/goupnp v1.0.2 // indirect
-	github.com/imdario/mergo v0.3.12 // indirect
+	github.com/imdario/mergo v0.3.12
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
-	github.com/jackpal/go-nat-pmp v1.0.2 // indirect
-	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/jmoiron/sqlx v1.3.4 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
@@ -149,12 +149,11 @@ require (
 	github.com/russross/blackfriday v1.6.0 // indirect
 	github.com/shirou/gopsutil v3.21.10+incompatible // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
-	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/spf13/afero v1.6.0 // indirect
 	github.com/spf13/cast v1.4.1 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/stretchr/testify v1.7.0 // indirect
+	github.com/stretchr/testify v1.7.0
 	github.com/subosito/gotenv v1.2.0 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7 // indirect
 	github.com/tklauser/go-sysconf v0.3.9 // indirect
@@ -177,9 +176,8 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.63.2 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
-	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
+	gopkg.in/yaml.v2 v2.4.0
+	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 	k8s.io/apiextensions-apiserver v0.22.3 // indirect
 	k8s.io/apiserver v0.22.3 // indirect
 	k8s.io/cli-runtime v0.22.3 // indirect

@@ -14,13 +14,13 @@ go_mod:
 install: go_mod golangci
 
 test_unit:
-	NETWORKS=alfajores_celo ginkgo -r -keepGoing --trace --randomizeAllSpecs --randomizeSuites --progress -covermode=count -coverprofile=unit-test-coverage.out -nodes=10 ./client ./config ./environment 
+	ginkgo -r --junit-report=tests-unit-report.xml --keep-going --trace --randomize-all --randomize-suites --progress -cover -covermode=count -coverprofile=unit-test-coverage.out -nodes=10 ./client ./config ./environment
 
 test_smoke:
-	NETWORKS=alfajores_celo ginkgo -v -r -keepGoing --trace --randomizeAllSpecs --randomizeSuites --progress $(args) ./suite/smoke 
+	ginkgo -v -r --junit-report=tests-smoke-report.xml --keep-going --trace --randomize-all --randomize-suites --progress $(args) ./suite/smoke
 
 test_performance:
-	NETWORKS=alfajores_celo ginkgo -r -timeout=200h -keepGoing --trace --randomizeAllSpecs --randomizeSuites --progress $(args) ./suite/performance 
+	ginkgo -r -timeout=200h --junit-report=tests-performance-report.xml --keep-going --trace --randomize-all --randomize-suites --progress $(args) ./suite/performance
 
 test_chaos:
-	NETWORKS=alfajores_celo ginkgo -r -keepGoing --trace --randomizeAllSpecs --randomizeSuites --progress $(args) ./suite/chaos 
+	ginkgo -r --junit-report=tests-chaos-report.xml --keep-going --trace --randomize-all --randomize-suites --progress $(args) ./suite/chaos

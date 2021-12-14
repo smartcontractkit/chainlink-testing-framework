@@ -5,29 +5,41 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"path/filepath"
 	"strings"
+	"time"
+
+	"github.com/onsi/ginkgo/v2"
+	"github.com/smartcontractkit/helmenv/environment"
+
+	"github.com/rs/zerolog/log"
+	"github.com/smartcontractkit/integrations-framework/config"
+	"github.com/smartcontractkit/integrations-framework/contracts"
+	"github.com/smartcontractkit/integrations-framework/utils"
 
 	"github.com/celo-org/celo-blockchain/common"
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
 	"github.com/smartcontractkit/integrations-framework/client"
-	"github.com/smartcontractkit/integrations-framework/contracts"
 )
 
-// FundChainlinkNodes will fund all of the provided Chainlink nodes with a set amount of ETH and LINK
+const (
+	// DefaultArtifactsDir default artifacts dir
+	DefaultArtifactsDir = "logs"
+)
+
+// FundChainlinkNodes will fund all of the provided Chainlink nodes with a set amount of ETH
 func FundChainlinkNodes(
 	nodes []client.Chainlink,
 	blockchain client.BlockchainClient,
-	fromWallet client.BlockchainWallet,
-	nativeAmount,
-	linkAmount *big.Float,
+	amount *big.Float,
 ) error {
 	for _, cl := range nodes {
 		toAddress, err := cl.PrimaryEthAddress()
 		if err != nil {
 			return err
 		}
-		err = blockchain.Fund(fromWallet, toAddress, nativeAmount, linkAmount)
+		err = blockchain.Fund(toAddress, amount)
 		if err != nil {
 			return err
 		}
@@ -139,4 +151,48 @@ func GetMockserverInitializerDataForOTPE(
 	}
 	initializers := []client.HttpInitializer{contractsInitializer, nodesInitializer}
 	return initializers, nil
+}
+
+// TeardownSuite tears down networks/clients and environment and creates a logs folder for failed tests in the
+// specified path
+func TeardownSuite(env *environment.Environment, nets *client.Networks, logsFolderPath string) error {
+	fConf, err := config.LoadFrameworkConfig(filepath.Join(utils.ProjectRoot, "framework.yaml"))
+	if err != nil {
+		log.Fatal().
+			Str("Path", utils.ProjectRoot).
+			Msg("Failed to load config")
+		return err
+	}
+	if ginkgo.CurrentSpecReport().Failed() {
+		testFilename := strings.Split(ginkgo.CurrentSpecReport().FileName(), ".")[0]
+		_, testName := filepath.Split(testFilename)
+		logsPath := filepath.Join(logsFolderPath, DefaultArtifactsDir, fmt.Sprintf("%s-%d", testName, time.Now().Unix()))
+		if err := env.Artifacts.DumpTestResult(logsPath, "chainlink"); err != nil {
+			return err
+		}
+	}
+	if nets != nil {
+		if err := nets.Teardown(); err != nil {
+			return err
+		}
+	}
+	switch strings.ToUpper(fConf.KeepEnvironments) {
+	case "ALWAYS":
+		env.Persistent = true
+	case "ONFAIL":
+		if ginkgo.CurrentSpecReport().Failed() {
+			env.Persistent = true
+		}
+	case "NEVER":
+		env.Persistent = false
+	default:
+		log.Warn().Str("Invalid Keep Value", fConf.KeepEnvironments).
+			Msg("Invalid 'keep_environments' value, see the 'framework.yaml' file")
+	}
+	if !env.Config.Persistent {
+		if err := env.Teardown(); err != nil {
+			return err
+		}
+	}
+	return nil
 }

@@ -5,11 +5,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/smartcontractkit/integrations-framework/client/chaos/experiments"
-	"github.com/smartcontractkit/integrations-framework/utils"
 	"io/ioutil"
 	"path/filepath"
 	"text/template"
+
+	"github.com/smartcontractkit/integrations-framework/client/chaos/experiments"
+	"github.com/smartcontractkit/integrations-framework/utils"
 
 	"github.com/ghodss/yaml"
 	"github.com/rs/zerolog/log"

@@ -1,8 +1,9 @@
 package client
 
 import (
-	"github.com/rs/zerolog/log"
 	"net/http"
+
+	"github.com/rs/zerolog/log"
 )
 
 // ExplorerClient is used to call Explorer API endpoints
@@ -42,7 +43,7 @@ type Name struct {
 // NodeAccessKeys is the body of the response
 type NodeAccessKeys struct {
 	ID        string `mapstructure:"id" yaml:"id"`
-	AccessKey string `mapstructure:"accesKey" yaml:"accessKey"`
+	AccessKey string `mapstructure:"accessKey" yaml:"accessKey"`
 	Secret    string `mapstructure:"secret" yaml:"secret"`
 }
 

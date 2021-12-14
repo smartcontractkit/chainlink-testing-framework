@@ -1,9 +1,11 @@
 package utils
 
+//revive:disable:dot-imports
 import (
 	"os"
+	"path/filepath"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	"github.com/rs/zerolog"
@@ -16,10 +18,12 @@ func GinkgoSuite() {
 	RegisterFailHandler(Fail)
 
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
-	conf, err := config.NewConfig(ProjectRoot)
+	fConf, err := config.LoadFrameworkConfig(filepath.Join(ProjectRoot, "framework.yaml"))
 	if err != nil {
-		log.Panic().Msgf("Failed to load config with project root: %s", ProjectRoot)
+		log.Fatal().
+			Str("Path", ProjectRoot).
+			Msg("Failed to load config")
 		return
 	}
-	log.Logger = log.Logger.Level(zerolog.Level(conf.Logging.Level))
+	log.Logger = log.Logger.Level(zerolog.Level(fConf.Logging.Level))
 }

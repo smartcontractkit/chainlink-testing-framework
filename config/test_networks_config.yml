@@ -1,0 +1,24 @@
+private_keys: &private_keys
+    private_keys:
+        - testPrivateKey
+
+selected_networks: # Selected network(s) for test execution
+    - "huxtable"
+
+networks:
+    huxtable: &common_ethereum
+        name: "Ethereum Geth dev"
+        chain_id: 420
+        type: eth_multinode
+        secret_private_keys: false
+        namespace_for_secret: default
+        <<: *private_keys
+        chainlink_transaction_limit: 500000
+        transaction_timeout: 2m
+        minimum_confirmations: 1
+        gas_estimation_buffer: 10000
+        block_gas_limit: 40000000
+    west: 
+        <<: *common_ethereum
+        transaction_timeout: 5m
+        block_gas_limit: 400000000000000

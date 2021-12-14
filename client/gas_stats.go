@@ -73,7 +73,7 @@ func (g *GasStats) totalCost() float64 {
 
 // PrintStats prints gas stats and total TXs cost
 func (g *GasStats) PrintStats() {
-	log.Info().Msg("----------------- Gas Stats for Test -----------------")
+	log.Info().Msg("---------- Start Gas Stats ----------")
 	log.Info().Int("Node", g.NodeID).Uint64("Gas (GWei)", g.maxGasUsage()).Msg("Max gas used")
 	for _, tx := range g.ClientTXs {
 		log.Info().
@@ -88,5 +88,5 @@ func (g *GasStats) PrintStats() {
 	log.Info().
 		Float64("ETH", g.totalCost()).
 		Msg("Total TXs cost")
-	log.Info().Msg("------------------------ End -------------------------")
+	log.Info().Msg("---------------- End ---------------")
 }

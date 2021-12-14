@@ -4,15 +4,17 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"net/url"
 	"sync"
 	"time"
+
+	"github.com/smartcontractkit/helmenv/environment"
+	"github.com/smartcontractkit/integrations-framework/config"
 
 	"golang.org/x/sync/errgroup"
 
 	"github.com/celo-org/celo-blockchain/accounts/abi"
 	"github.com/pkg/errors"
-
-	celoContracts "github.com/smartcontractkit/integrations-framework/contracts/celo"
 
 	"github.com/celo-org/celo-blockchain"
 	"github.com/celo-org/celo-blockchain/accounts/abi/bind"
@@ -23,37 +25,67 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type CeloBlock struct {
-	*types.Block
-}
+var (
+	// OneGWei represents 1 GWei
+	OneGWei = big.NewFloat(1e9)
+	// OneEth represents 1 Ethereum
+	OneEth = big.NewFloat(1e18)
+)
 
-func (e *CeloBlock) GetHash() HashInterface {
-	return e.Hash()
-}
-
-// CeloClients wraps the client and the BlockChain network to interact with an Celo EVM based Blockchain with multiple nodes
-type CeloClients struct {
+// EthereumMultinodeClient wraps the client and the BlockChain network to interact with an EVM based Blockchain with multiple nodes
+type EthereumMultinodeClient struct {
 	DefaultClient *CeloClient
 	Clients       []*CeloClient
 }
 
+// EstimateCostForChainlinkOperations calculates TXs cost as a dirty estimation based on transactionLimit for that network
+func (e *EthereumMultinodeClient) EstimateCostForChainlinkOperations(amountOfOperations int) (*big.Float, error) {
+	return e.DefaultClient.EstimateCostForChainlinkOperations(amountOfOperations)
+}
+
+// LoadWallets loads wallets from config
+func (e *EthereumMultinodeClient) LoadWallets(cfg interface{}) error {
+	pkStrings := cfg.(config.ETHNetwork).PrivateKeys
+	wallets := make([]*EthereumWallet, 0)
+	for _, pks := range pkStrings {
+		w, err := NewEthereumWallet(pks)
+		if err != nil {
+			return err
+		}
+		wallets = append(wallets, w)
+	}
+	for _, c := range e.Clients {
+		c.Wallets = wallets
+	}
+	return nil
+}
+
+// SetWallet sets default wallet
+func (e *EthereumMultinodeClient) SetWallet(num int) error {
+	if num > len(e.DefaultClient.Wallets) {
+		return fmt.Errorf("no wallet #%d found for default client", num)
+	}
+	e.DefaultClient.DefaultWallet = e.DefaultClient.Wallets[num]
+	return nil
+}
+
 // GetNetworkName gets the ID of the chain that the clients are connected to
-func (e *CeloClients) GetNetworkName() string {
+func (e *EthereumMultinodeClient) GetNetworkName() string {
 	return e.DefaultClient.GetNetworkName()
 }
 
-// GetID gets client ID, node number it's connected to
-func (e *CeloClients) GetID() int {
-	return e.DefaultClient.ID
+// GetChainID retrieves the ChainID of the network that the client interacts with
+func (e *EthereumMultinodeClient) GetChainID() int64 {
+	return e.DefaultClient.GetChainID()
 }
 
 // GasStats gets gas stats instance
-func (e *CeloClients) GasStats() *GasStats {
+func (e *EthereumMultinodeClient) GasStats() *GasStats {
 	return e.DefaultClient.gasStats
 }
 
-// SetDefaultClient sets default client to perform calls to the network
-func (e *CeloClients) SetDefaultClient(clientID int) error {
+// SwitchNode sets default client to perform calls to the network
+func (e *EthereumMultinodeClient) SwitchNode(clientID int) error {
 	if clientID > len(e.Clients) {
 		return fmt.Errorf("client for node %d not found", clientID)
 	}
@@ -62,7 +94,7 @@ func (e *CeloClients) SetDefaultClient(clientID int) error {
 }
 
 // GetClients gets clients for all nodes connected
-func (e *CeloClients) GetClients() []BlockchainClient {
+func (e *EthereumMultinodeClient) GetClients() []BlockchainClient {
 	cl := make([]BlockchainClient, 0)
 	for _, c := range e.Clients {
 		cl = append(cl, c)
@@ -71,51 +103,46 @@ func (e *CeloClients) GetClients() []BlockchainClient {
 }
 
 // SetID sets client ID (node)
-func (e *CeloClients) SetID(id int) {
+func (e *EthereumMultinodeClient) SetID(id int) {
 	e.DefaultClient.SetID(id)
 }
 
 // BlockNumber gets block number
-func (e *CeloClients) BlockNumber(ctx context.Context) (uint64, error) {
+func (e *EthereumMultinodeClient) BlockNumber(ctx context.Context) (uint64, error) {
 	return e.DefaultClient.BlockNumber(ctx)
 }
 
 // HeaderTimestampByNumber gets header timestamp by number
-func (e *CeloClients) HeaderTimestampByNumber(ctx context.Context, bn *big.Int) (uint64, error) {
+func (e *EthereumMultinodeClient) HeaderTimestampByNumber(ctx context.Context, bn *big.Int) (uint64, error) {
 	return e.DefaultClient.HeaderTimestampByNumber(ctx, bn)
 }
 
 // HeaderHashByNumber gets header hash by block number
-func (e *CeloClients) HeaderHashByNumber(ctx context.Context, bn *big.Int) (string, error) {
+func (e *EthereumMultinodeClient) HeaderHashByNumber(ctx context.Context, bn *big.Int) (string, error) {
 	return e.DefaultClient.HeaderHashByNumber(ctx, bn)
 }
 
 // Get gets default client as an interface{}
-func (e *CeloClients) Get() interface{} {
+func (e *EthereumMultinodeClient) Get() interface{} {
 	return e.DefaultClient
 }
 
-// CalculateTxGas calculates tx gas cost accordingly gas used plus buffer, converts it to big.Float for funding
-func (e *CeloClients) CalculateTxGas(gasUsedValue *big.Int) (*big.Float, error) {
-	return e.DefaultClient.CalculateTxGas(gasUsedValue)
-}
-
 // Fund funds a specified address with LINK token and or ETH from the given wallet
-func (e *CeloClients) Fund(fromWallet BlockchainWallet, toAddress string, nativeAmount, linkAmount *big.Float) error {
-	return e.DefaultClient.Fund(fromWallet, toAddress, nativeAmount, linkAmount)
+func (e *EthereumMultinodeClient) Fund(toAddress string, nativeAmount *big.Float) error {
+	return e.DefaultClient.Fund(toAddress, nativeAmount)
 }
 
 // ParallelTransactions when enabled, sends the transaction without waiting for transaction confirmations. The hashes
 // are then stored within the client and confirmations can be waited on by calling WaitForEvents.
 // When disabled, the minimum confirmations are waited on when the transaction is sent, so parallelisation is disabled.
-func (e *CeloClients) ParallelTransactions(enabled bool) {
+func (e *EthereumMultinodeClient) ParallelTransactions(enabled bool) {
 	for _, c := range e.Clients {
 		c.ParallelTransactions(enabled)
 	}
 }
 
 // Close tears down the all the clients
-func (e *CeloClients) Close() error {
+func (e *EthereumMultinodeClient) Close() error {
 	for _, c := range e.Clients {
 		if err := c.Close(); err != nil {
 			return err
@@ -125,21 +152,21 @@ func (e *CeloClients) Close() error {
 }
 
 // AddHeaderEventSubscription adds a new header subscriber within the client to receive new headers
-func (e *CeloClients) AddHeaderEventSubscription(key string, subscriber HeaderEventSubscription) {
+func (e *EthereumMultinodeClient) AddHeaderEventSubscription(key string, subscriber HeaderEventSubscription) {
 	for _, c := range e.Clients {
 		c.AddHeaderEventSubscription(key, subscriber)
 	}
 }
 
 // DeleteHeaderEventSubscription removes a header subscriber from the map
-func (e *CeloClients) DeleteHeaderEventSubscription(key string) {
+func (e *EthereumMultinodeClient) DeleteHeaderEventSubscription(key string) {
 	for _, c := range e.Clients {
 		c.DeleteHeaderEventSubscription(key)
 	}
 }
 
 // WaitForEvents is a blocking function that waits for all event subscriptions for all clients
-func (e *CeloClients) WaitForEvents() error {
+func (e *EthereumMultinodeClient) WaitForEvents() error {
 	g := errgroup.Group{}
 	for _, c := range e.Clients {
 		c := c
@@ -154,7 +181,9 @@ func (e *CeloClients) WaitForEvents() error {
 type CeloClient struct {
 	ID                  int
 	Client              *ethclient.Client
-	Network             BlockchainNetwork
+	NetworkConfig       *config.ETHNetwork
+	Wallets             []*EthereumWallet
+	DefaultWallet       *EthereumWallet
 	BorrowNonces        bool
 	NonceMu             *sync.Mutex
 	Nonces              map[string]uint64
@@ -166,28 +195,73 @@ type CeloClient struct {
 	doneChan            chan struct{}
 }
 
-// GetID gets client ID, node number it's connected to
-func (e *CeloClient) GetID() int {
-	return e.ID
-}
-
-// SetDefaultClient not used, only applicable to CeloClients
-func (e *CeloClient) SetDefaultClient(_ int) error {
-	return nil
-}
-
-// GetClients not used, only applicable to CeloClients
-func (e *CeloClient) GetClients() []BlockchainClient {
-	return []BlockchainClient{e}
-}
-
-// SuggestGasPrice gets suggested gas price
-func (e *CeloClient) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
-	gasPrice, err := e.Client.SuggestGasPrice(ctx)
+// EstimateCostForChainlinkOperations calculates required amount of ETH for amountOfOperations Chainlink operations
+// based on the network's suggested gas price and the chainlink gas limit. This is fairly imperfect and should be used
+// as only a rough, upper-end estimate instead of an exact calculation.
+// See https://ethereum.org/en/developers/docs/gas/#post-london for info on how gas calculation works
+func (e *CeloClient) EstimateCostForChainlinkOperations(amountOfOperations int) (*big.Float, error) {
+	bigAmountOfOperations := big.NewInt(int64(amountOfOperations))
+	gasPriceInWei, err := e.Client.SuggestGasPrice(context.Background())
 	if err != nil {
 		return nil, err
 	}
-	return gasPrice, nil
+
+	// https://ethereum.stackexchange.com/questions/19665/how-to-calculate-transaction-fee
+	// total gas limit = chainlink gas limit + gas limit buffer
+	gasLimit := e.NetworkConfig.GasEstimationBuffer + e.NetworkConfig.ChainlinkTransactionLimit
+	// gas cost for TX = total gas limit * estimated gas price
+	gasCostPerOperationWei := big.NewInt(1).Mul(big.NewInt(1).SetUint64(gasLimit), gasPriceInWei)
+	gasCostPerOperationWeiFloat := big.NewFloat(1).SetInt(gasCostPerOperationWei)
+	gasCostPerOperationETH := big.NewFloat(1).Quo(gasCostPerOperationWeiFloat, OneEth)
+	// total Wei needed for all TXs = total value for TX * number of TXs
+	totalWeiForAllOperations := big.NewInt(1).Mul(gasCostPerOperationWei, bigAmountOfOperations)
+	totalWeiForAllOperationsFloat := big.NewFloat(1).SetInt(totalWeiForAllOperations)
+	totalEthForAllOperations := big.NewFloat(1).Quo(totalWeiForAllOperationsFloat, OneEth)
+
+	log.Debug().
+		Int("Number of Operations", amountOfOperations).
+		Uint64("Gas Limit per Operation", gasLimit).
+		Str("Value per Operation (ETH)", gasCostPerOperationETH.String()).
+		Str("Total (ETH)", totalEthForAllOperations.String()).
+		Msg("Calculated ETH for Chainlink Operations")
+
+	return totalEthForAllOperations, nil
+}
+
+// LoadWallets loads wallets from config
+func (e *EthereumClient) LoadWallets(cfg interface{}) error {
+	pkStrings := cfg.(*config.ETHNetwork).PrivateKeys
+	for _, pks := range pkStrings {
+		w, err := NewEthereumWallet(pks)
+		if err != nil {
+			return err
+		}
+		e.Wallets = append(e.Wallets, w)
+	}
+	if len(e.Wallets) == 0 {
+		return fmt.Errorf("no private keys found to load wallets")
+	}
+	e.DefaultWallet = e.Wallets[0]
+	return nil
+}
+
+// SetWallet sets default wallet
+func (e *CeloClient) SetWallet(num int) error {
+	if num > len(e.Wallets) {
+		return fmt.Errorf("no wallet #%d found for default client", num)
+	}
+	e.DefaultWallet = e.Wallets[num]
+	return nil
+}
+
+// SwitchNode not used, only applicable to EthereumMultinodeClient
+func (e *CeloClient) SwitchNode(_ int) error {
+	return nil
+}
+
+// GetClients not used, only applicable to EthereumMultinodeClient
+func (e *EthereumClient) GetClients() []BlockchainClient {
+	return []BlockchainClient{e}
 }
 
 // SetID sets client id, useful for multi-node networks
@@ -222,26 +296,32 @@ func (e *CeloClient) HeaderTimestampByNumber(ctx context.Context, bn *big.Int) (
 	return h.Time, nil
 }
 
-// CeloContractDeployer acts as a go-between function for general contract deployment
-type CeloContractDeployer func(auth *bind.TransactOpts, backend bind.ContractBackend) (
+// ContractDeployer acts as a go-between function for general contract deployment
+type ContractDeployer func(auth *bind.TransactOpts, backend bind.ContractBackend) (
 	common.Address,
 	*types.Transaction,
 	interface{},
 	error,
 )
 
-// NewCeloClient returns an instantiated instance of the Celo client that has connected to the server
-func NewCeloClient(network BlockchainNetwork) (*CeloClient, error) {
-	cl, err := ethclient.Dial(network.LocalURL())
+// NewEthereumClient returns an instantiated instance of the Celo client that has connected to the server
+func NewCeloClient(networkSettings *config.ETHNetwork) (*CeloClient, error) {
+	log.Info().
+		Str("ID", networkSettings.ID).
+		Str("URL", networkSettings.URL).
+		Interface("Settings", networkSettings).
+		Msg("Connecting client")
+	cl, err := ethclient.Dial(networkSettings.URL)
 	if err != nil {
 		return nil, err
 	}
 
 	ec := &CeloClient{
-		Network:             network,
+		NetworkConfig:       networkSettings,
 		Client:              cl,
 		BorrowNonces:        true,
 		NonceMu:             &sync.Mutex{},
+		Wallets:             make([]*EthereumWallet, 0),
 		Nonces:              make(map[string]uint64),
 		txQueue:             make(chan common.Hash, 64), // Max buffer of 64 tx
 		headerSubscriptions: map[string]HeaderEventSubscription{},
@@ -249,17 +329,36 @@ func NewCeloClient(network BlockchainNetwork) (*CeloClient, error) {
 		queueTransactions:   false,
 		doneChan:            make(chan struct{}),
 	}
+	if err := ec.LoadWallets(networkSettings); err != nil {
+		return nil, err
+	}
 	ec.gasStats = NewGasStats(ec.ID)
 	go ec.newHeadersLoop()
 	return ec, nil
 }
 
-// NewCeloClients returns an instantiated instance of all Celo client connected to all nodes
-func NewCeloClients(network BlockchainNetwork) (*CeloClients, error) {
-	ecl := &CeloClients{Clients: make([]*CeloClient, 0)}
-	for idx, url := range network.URLs() {
-		network.SetLocalURL(url)
-		ec, err := NewCeloClient(network)
+// NewEthereumMultiNodeClient returns an instantiated instance of all Ethereum client connected to all nodes
+func NewEthereumMultiNodeClient(
+	_ string,
+	networkConfig map[string]interface{},
+	urls []*url.URL,
+) (BlockchainClient, error) {
+	networkSettings := &config.ETHNetwork{}
+	err := UnmarshalNetworkConfig(networkConfig, networkSettings)
+	if err != nil {
+		return nil, err
+	}
+	log.Info().
+		Interface("URLs", networkSettings.URLs).
+		Msg("Connecting multi-node client")
+
+	ecl := &EthereumMultinodeClient{}
+	for _, envURL := range urls {
+		networkSettings.URLs = append(networkSettings.URLs, envURL.String())
+	}
+	for idx, networkURL := range networkSettings.URLs {
+		networkSettings.URL = networkURL
+		ec, err := NewEthereumClient(networkSettings)
 		if err != nil {
 			return nil, err
 		}
@@ -270,9 +369,19 @@ func NewCeloClients(network BlockchainNetwork) (*CeloClients, error) {
 	return ecl, nil
 }
 
+// EthereumMultiNodeURLs returns the websocket URLs for a deployed Ethereum multi-node setup
+func EthereumMultiNodeURLs(e *environment.Environment) ([]*url.URL, error) {
+	return e.Charts.Connections("geth").LocalURLsByPort("ws-rpc", environment.WS)
+}
+
 // GetNetworkName retrieves the ID of the network that the client interacts with
 func (e *CeloClient) GetNetworkName() string {
-	return e.Network.ID()
+	return e.NetworkConfig.ID
+}
+
+// GetChainID retrieves the ChainID of the network that the client interacts with
+func (e *CeloClient) GetChainID() int64 {
+	return e.NetworkConfig.ChainID
 }
 
 // Close tears down the current open Celo client
@@ -280,15 +389,6 @@ func (e *CeloClient) Close() error {
 	e.doneChan <- struct{}{}
 	e.Client.Close()
 	return nil
-}
-
-// SuggestGasPrice gets suggested gas price
-func (e *CeloClients) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
-	gasPrice, err := e.DefaultClient.SuggestGasPrice(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return gasPrice, nil
 }
 
 // BorrowedNonces allows to handle nonces concurrently without requesting them every time
@@ -309,7 +409,7 @@ func (e *CeloClient) GetNonce(ctx context.Context, addr common.Address) (uint64,
 			e.Nonces[addr.Hex()] = lastNonce
 			return lastNonce, nil
 		}
-		e.Nonces[addr.Hex()] += 1
+		e.Nonces[addr.Hex()]++
 		return e.Nonces[addr.Hex()], nil
 	}
 	lastNonce, err := e.Client.PendingNonceAt(ctx, addr)
@@ -325,22 +425,6 @@ func (e *CeloClient) Get() interface{} {
 	return e
 }
 
-// CalculateTxGas calculates tx gas cost accordingly gas used plus buffer, converts it to big.Float for funding
-func (e *CeloClient) CalculateTxGas(gasUsed *big.Int) (*big.Float, error) {
-	gasPrice, err := e.Client.SuggestGasPrice(context.Background()) // Wei
-	if err != nil {
-		return nil, err
-	}
-	buffer := big.NewInt(0).SetUint64(e.Network.Config().GasEstimationBuffer)
-	gasUsedWithBuffer := gasUsed.Add(gasUsed, buffer)
-	cost := big.NewFloat(0).SetInt(big.NewInt(1).Mul(gasPrice, gasUsedWithBuffer))
-	costInEth := big.NewFloat(0).Quo(cost, OneEth)
-	costInEthFloat, _ := costInEth.Float64()
-
-	log.Debug().Float64("Tx Gas Cost", costInEthFloat).Msg("Estimated tx gas cost with buffer")
-	return costInEth, nil
-}
-
 // GasStats gets gas stats instance
 func (e *CeloClient) GasStats() *GasStats {
 	return e.gasStats
@@ -353,60 +437,31 @@ func (e *CeloClient) ParallelTransactions(enabled bool) {
 	e.queueTransactions = enabled
 }
 
-// Fund funds a specified address with LINK token and or ETH from the given wallet
+// Fund sends some ETH to an address
 func (e *CeloClient) Fund(
-	fromWallet BlockchainWallet,
 	toAddress string,
-	ethAmount, linkAmount *big.Float,
+	amount *big.Float,
 ) error {
 	ethAddress := common.HexToAddress(toAddress)
-	// Send ETH if not 0
-	if ethAmount != nil && big.NewFloat(0).Cmp(ethAmount) != 0 {
-		weiValue := big.NewFloat(1).Mul(OneEth, ethAmount) // Convert ETH -> Wei
+	if amount != nil && big.NewFloat(0).Cmp(amount) != 0 {
+		wei := big.NewFloat(1).Mul(OneEth, amount)
 		log.Info().
 			Str("Token", "ETH").
-			Str("From", fromWallet.Address()).
+			Str("From", e.DefaultWallet.Address()).
 			Str("To", toAddress).
-			Str("Amount", ethAmount.String()).
+			Str("Amount", amount.String()).
 			Msg("Funding Address")
-		_, err := e.SendTransaction(fromWallet, ethAddress, weiValue)
+		_, err := e.SendTransaction(e.DefaultWallet, ethAddress, wei)
 		if err != nil {
 			return err
 		}
-	}
-
-	// Send LINK if not 0
-	if linkAmount != nil && big.NewFloat(0).Cmp(linkAmount) != 0 {
-		link := big.NewFloat(1).Mul(OneLINK, linkAmount)
-		log.Info().
-			Str("Token", "LINK").
-			Str("From", fromWallet.Address()).
-			Str("To", toAddress).
-			Str("Amount", linkAmount.String()).
-			Msg("Funding Address")
-		linkAddress := common.HexToAddress(e.Network.Config().LinkTokenAddress)
-		linkInstance, err := celoContracts.NewLinkToken(linkAddress, e.Client)
-		if err != nil {
-			return err
-		}
-		opts, err := e.TransactionOpts(fromWallet)
-		if err != nil {
-			return err
-		}
-		linkInt, _ := link.Int(nil)
-		tx, err := linkInstance.Transfer(opts, ethAddress, linkInt)
-		if err != nil {
-			return err
-		}
-		return e.ProcessTransaction(tx) // TODO: LINK Transactions are either moving too slowly, or have multiple parts to them that breaks when trying to make them parallel
 	}
 	return nil
 }
 
-// SendTransaction sends a specified amount of WEI from a selected wallet to an address, and blocks until the
-// transaction completes
+// SendTransaction sends a specified amount of ETH from a selected wallet to an address
 func (e *CeloClient) SendTransaction(
-	from BlockchainWallet,
+	from *EthereumWallet,
 	to common.Address,
 	value *big.Float,
 ) (common.Hash, error) {
@@ -425,7 +480,7 @@ func (e *CeloClient) SendTransaction(
 	}
 
 	// TODO: Update from LegacyTx to DynamicFeeTx
-	tx, err := types.SignNewTx(privateKey, types.NewEIP2930Signer(e.Network.ChainID()),
+	tx, err := types.SignNewTx(privateKey, types.NewEIP2930Signer(big.NewInt(e.NetworkConfig.ChainID)),
 		&types.LegacyTx{
 			To:       &to,
 			Value:    weiValue,
@@ -443,13 +498,13 @@ func (e *CeloClient) SendTransaction(
 	return tx.Hash(), e.ProcessTransaction(tx)
 }
 
-// ProcessTransaction will queue or wait on a transaction depending on whether queue transactions is enabled
-func (e *CeloClient) ProcessTransaction(tx *types.Transaction) error {
+// ProcessTransaction will queue or wait on a transaction depending on whether parallel transactions are enabled
+func (e *EthereumClient) ProcessTransaction(tx *types.Transaction) error {
 	var txConfirmer HeaderEventSubscription
-	if e.Network.Config().MinimumConfirmations == 0 {
-		txConfirmer = &CeloInstantConfirmations{}
+	if e.NetworkConfig.MinimumConfirmations == 0 {
+		txConfirmer = &InstantConfirmations{}
 	} else {
-		txConfirmer = NewCeloTransactionConfirmer(e, tx, e.Network.Config().MinimumConfirmations)
+		txConfirmer = NewTransactionConfirmer(e, tx, e.NetworkConfig.MinimumConfirmations)
 	}
 
 	e.AddHeaderEventSubscription(tx.Hash().String(), txConfirmer)
@@ -461,13 +516,12 @@ func (e *CeloClient) ProcessTransaction(tx *types.Transaction) error {
 	return nil
 }
 
-// DeployContract acts as a general contract deployment tool to an Celo chain
+// DeployContract acts as a general contract deployment tool to an ethereum chain
 func (e *CeloClient) DeployContract(
-	fromWallet BlockchainWallet,
 	contractName string,
-	deployer CeloContractDeployer,
+	deployer ContractDeployer,
 ) (*common.Address, *types.Transaction, interface{}, error) {
-	opts, err := e.TransactionOpts(fromWallet)
+	opts, err := e.TransactionOpts(e.DefaultWallet)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -484,9 +538,9 @@ func (e *CeloClient) DeployContract(
 	log.Info().
 		Str("Contract Address", contractAddress.Hex()).
 		Str("Contract Name", contractName).
-		Str("From", fromWallet.Address()).
+		Str("From", e.DefaultWallet.Address()).
 		Str("Total Gas Cost (GWei)", totalGasCostGwei.String()).
-		Str("Network", e.Network.ID()).
+		Str("Network", e.NetworkConfig.ID).
 		Msg("Deployed contract")
 	return &contractAddress, transaction, contractInstance, err
 }
@@ -494,12 +548,12 @@ func (e *CeloClient) DeployContract(
 // TransactionOpts returns the base Tx options for 'transactions' that interact with a smart contract. Since most
 // contract interactions in this framework are designed to happen through abigen calls, it's intentionally quite bare.
 // abigen will handle gas estimation for us on the backend.
-func (e *CeloClient) TransactionOpts(from BlockchainWallet) (*bind.TransactOpts, error) {
+func (e *CeloClient) TransactionOpts(from *EthereumWallet) (*bind.TransactOpts, error) {
 	privateKey, err := crypto.HexToECDSA(from.PrivateKey())
 	if err != nil {
 		return nil, fmt.Errorf("invalid private key: %v", err)
 	}
-	opts, err := bind.NewKeyedTransactorWithChainID(privateKey, e.Network.ChainID())
+	opts, err := bind.NewKeyedTransactorWithChainID(privateKey, big.NewInt(e.NetworkConfig.ChainID))
 	if err != nil {
 		return nil, err
 	}
@@ -561,14 +615,14 @@ func (e *CeloClient) newHeadersLoop() {
 	for {
 		if err := e.subscribeToNewHeaders(); err != nil {
 			log.Error().
-				Str("Network", e.Network.ID()).
+				Str("NetworkName", e.NetworkConfig.Name).
 				Msgf("Error while subscribing to headers: %v", err.Error())
 			time.Sleep(time.Second)
 			continue
 		}
 		break
 	}
-	log.Debug().Str("Network", e.Network.ID()).Msg("Stopped subscribing to new headers")
+	log.Debug().Str("NetworkName", e.NetworkConfig.Name).Msg("Stopped subscribing to new headers")
 }
 
 func (e *CeloClient) subscribeToNewHeaders() error {
@@ -579,7 +633,7 @@ func (e *CeloClient) subscribeToNewHeaders() error {
 	}
 	defer subscription.Unsubscribe()
 
-	log.Info().Str("Network", e.Network.ID()).Msg("Subscribed to new block headers")
+	log.Info().Str("Network", e.NetworkConfig.Name).Msg("Subscribed to new block headers")
 
 	for {
 		select {
@@ -588,6 +642,7 @@ func (e *CeloClient) subscribeToNewHeaders() error {
 		case header := <-headerChannel:
 			e.receiveHeader(header)
 		case <-e.doneChan:
+			log.Debug().Str("Network", e.NetworkConfig.Name).Msg("Subscription cancelled")
 			return nil
 		}
 	}
@@ -595,7 +650,7 @@ func (e *CeloClient) subscribeToNewHeaders() error {
 
 func (e *CeloClient) receiveHeader(header *types.Header) {
 	log.Debug().
-		Str("Network", e.Network.ID()).
+		Str("NetworkName", e.NetworkConfig.Name).
 		Int("Node", e.ID).
 		Str("Hash", header.Hash().String()).
 		Str("Number", header.Number.String()).
@@ -607,17 +662,15 @@ func (e *CeloClient) receiveHeader(header *types.Header) {
 		log.Err(fmt.Errorf("error fetching block by number: %v", err))
 	}
 
-	celoBlock := &CeloBlock{block}
-
 	g := errgroup.Group{}
 	for _, sub := range subs {
 		sub := sub
 		g.Go(func() error {
-			return sub.ReceiveBlock(NodeBlock{NodeID: e.ID, BlockInterface: celoBlock})
+			return sub.ReceiveBlock(NodeBlock{NodeID: e.ID, Block: block})
 		})
 	}
 	if err := g.Wait(); err != nil {
-		log.Err(fmt.Errorf("error on sending block to receivers: %v", err))
+		log.Err(fmt.Errorf("error on sending block to recivers: %v", err))
 	}
 }
 
@@ -644,7 +697,6 @@ func (e *CeloClient) isTxConfirmed(txHash common.Hash) (bool, error) {
 			if err != nil {
 				log.Warn().Str("TX Hash", txHash.Hex()).
 					Str("To", tx.To().Hex()).
-					Str("Hint", "We often see this with parallel transactions ending up with out-of-order nonces").
 					Uint64("Nonce", tx.Nonce()).
 					Msg("Transaction failed and was reverted! Unable to retrieve reason!")
 				return false, err
@@ -687,8 +739,8 @@ func (e *CeloClient) errorReason(
 	return abi.UnpackRevert(res)
 }
 
-// CeloTransactionConfirmer is an implementation of HeaderEventSubscription that checks whether tx are confirmed
-type CeloTransactionConfirmer struct {
+// TransactionConfirmer is an implementation of HeaderEventSubscription that checks whether tx are confirmed
+type TransactionConfirmer struct {
 	minConfirmations int
 	confirmations    int
 	eth              *CeloClient
@@ -698,11 +750,11 @@ type CeloTransactionConfirmer struct {
 	cancel           context.CancelFunc
 }
 
-// NewCeloTransactionConfirmer returns a new instance of the transaction confirmer that waits for on-chain minimum
+// NewTransactionConfirmer returns a new instance of the transaction confirmer that waits for on-chain minimum
 // confirmations
-func NewCeloTransactionConfirmer(eth *CeloClient, tx *types.Transaction, minConfirmations int) *CeloTransactionConfirmer {
-	ctx, ctxCancel := context.WithTimeout(context.Background(), eth.Network.Config().Timeout)
-	tc := &CeloTransactionConfirmer{
+func NewTransactionConfirmer(eth *CeloClient, tx *types.Transaction, minConfirmations int) *TransactionConfirmer {
+	ctx, ctxCancel := context.WithTimeout(context.Background(), eth.NetworkConfig.Timeout)
+	tc := &TransactionConfirmer{
 		minConfirmations: minConfirmations,
 		confirmations:    0,
 		eth:              eth,
@@ -716,13 +768,14 @@ func NewCeloTransactionConfirmer(eth *CeloClient, tx *types.Transaction, minConf
 
 // ReceiveBlock the implementation of the HeaderEventSubscription that receives each block and checks
 // tx confirmation
-func (t *CeloTransactionConfirmer) ReceiveBlock(block NodeBlock) error {
-	if block.BlockInterface == nil {
+func (t *TransactionConfirmer) ReceiveBlock(block NodeBlock) error {
+	if block.Block == nil {
+		// strange, but happening on Kovan
 		log.Info().Msg("Received nil block")
 		return nil
 	}
-	confirmationLog := log.Debug().Str("Network", t.eth.Network.ID()).
-		Str("Block Hash", block.GetHash().Hex()).
+	confirmationLog := log.Debug().Str("Network", t.eth.NetworkConfig.ID).
+		Str("Block Hash", block.Hash().Hex()).
 		Str("Block Number", block.Number().String()).
 		Str("Tx Hash", t.tx.Hash().String()).
 		Uint64("Nonce", t.tx.Nonce()).
@@ -734,36 +787,38 @@ func (t *CeloTransactionConfirmer) ReceiveBlock(block NodeBlock) error {
 		t.confirmations++
 	}
 	if t.confirmations == t.minConfirmations {
-		confirmationLog.Int("Current Confirmations", t.confirmations).Msg("Transaction confirmations met")
+		confirmationLog.Int("Current Confirmations", t.confirmations).
+			Msg("Transaction confirmations met")
 		t.doneChan <- struct{}{}
 	} else if t.confirmations <= t.minConfirmations {
-		confirmationLog.Int("Current Confirmations", t.confirmations).Msg("Waiting on minimum confirmations")
+		confirmationLog.Int("Current Confirmations", t.confirmations).
+			Msg("Waiting on minimum confirmations")
 	}
 	return nil
 }
 
 // Wait is a blocking function that waits until the transaction is complete
-func (t *CeloTransactionConfirmer) Wait() error {
+func (t *TransactionConfirmer) Wait() error {
 	for {
 		select {
 		case <-t.doneChan:
 			t.cancel()
 			return nil
 		case <-t.context.Done():
-			return fmt.Errorf("timeout waiting for transaction to confirm: %s", t.tx.Hash().String())
+			return fmt.Errorf("timeout waiting for transaction to confirm: %s", t.tx.Hash())
 		}
 	}
 }
 
-// CeloInstantConfirmations is a no-op confirmer as all transactions are instantly mined so no confs are needed
-type CeloInstantConfirmations struct{}
+// InstantConfirmations is a no-op confirmer as all transactions are instantly mined so no confirmations are needed
+type InstantConfirmations struct{}
 
 // ReceiveBlock is a no-op
-func (i *CeloInstantConfirmations) ReceiveBlock(block NodeBlock) error {
+func (i *InstantConfirmations) ReceiveBlock(block NodeBlock) error {
 	return nil
 }
 
 // Wait is a no-op
-func (i *CeloInstantConfirmations) Wait() error {
+func (i *InstantConfirmations) Wait() error {
 	return nil
 }

@@ -1,10 +1,12 @@
 package smoke_test
 
+//revive:disable:dot-imports
 import (
-	"github.com/smartcontractkit/integrations-framework/utils"
 	"testing"
 
-	. "github.com/onsi/ginkgo"
+	"github.com/smartcontractkit/integrations-framework/utils"
+
+	. "github.com/onsi/ginkgo/v2"
 )
 
 func Test_Suite(t *testing.T) {

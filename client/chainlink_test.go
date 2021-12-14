@@ -1,5 +1,6 @@
 package client
 
+//revive:disable:defer
 import (
 	"encoding/json"
 	"fmt"
@@ -7,7 +8,7 @@ import (
 	"net/http/httptest"
 	"time"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 

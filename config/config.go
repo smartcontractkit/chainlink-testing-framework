@@ -4,8 +4,14 @@ package config
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path"
 	"strings"
 	"time"
+
+	"github.com/imdario/mergo"
+	"github.com/kelseyhightower/envconfig"
+	"gopkg.in/yaml.v3"
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
@@ -20,24 +26,45 @@ const (
 	SecretConfig ConfigurationType = "secret"
 )
 
-// Config is the overall config for the framework, holding configurations for supported networks
-type Config struct {
-	Networks           []string                 `mapstructure:"networks" yaml:"networks"`
-	Logging            *LoggingConfig           `mapstructure:"logging" yaml:"logging"`
-	NetworkConfigs     map[string]NetworkConfig `mapstructure:"network_configs" yaml:"network_configs"`
-	Retry              *RetryConfig             `mapstructure:"retry" yaml:"retry"`
-	Apps               AppConfig                `mapstructure:"apps" yaml:"apps"`
-	Kubernetes         KubernetesConfig         `mapstructure:"kubernetes" yaml:"kubernetes"`
-	KeepEnvironments   string                   `mapstructure:"keep_environments" yaml:"keep_environments"`
-	Prometheus         *PrometheusConfig        `mapstructure:"prometheus" yaml:"prometheus"`
-	Contracts          *ContractsConfig         `mapstructure:"contracts" yaml:"contracts"`
-	DefaultKeyStore    string
-	ConfigFileLocation string
+// FrameworkConfig common framework config
+type FrameworkConfig struct {
+	KeepEnvironments string         `mapstructure:"keep_environments" yaml:"keep_environments"`
+	Logging          *LoggingConfig `mapstructure:"logging" yaml:"logging"`
+	EnvironmentFile  string         `mapstructure:"environment_file" yaml:"environment_file"`
+	ChainlinkImage   string         `mapstructure:"chainlink_image" yaml:"chainlink_image"`
+	ChainlinkVersion string         `mapstructure:"chainlink_version" yaml:"chainlink_version"`
+	GethImage        string         `mapstructure:"geth_image" yaml:"geth_image"`
+	GethVersion      string         `mapstructure:"geth_version" yaml:"geth_version"`
 }
 
-// PrometheusConfig for prometheus
-type PrometheusConfig struct {
-	URL string `mapstructure:"url" yaml:"url"`
+// NetworkSettings is a map that holds configuration for each individual network
+type NetworkSettings map[string]map[string]interface{}
+
+// Decode is used by envconfig to initialise the custom Charts type with populated values
+// This function will take a JSON object representing charts, and unmarshal it into the existing object to "merge" the
+// two
+func (n NetworkSettings) Decode(value string) error {
+	// Support the use of files for unmarshaling charts JSON
+	if _, err := os.Stat(value); err == nil {
+		b, err := os.ReadFile(value)
+		if err != nil {
+			return err
+		}
+		value = string(b)
+	}
+	networkSettings := NetworkSettings{}
+	if err := yaml.Unmarshal([]byte(value), &networkSettings); err != nil {
+		return fmt.Errorf("failed to unmarshal YAML, either a file path specific doesn't exist, or the YAML is invalid: %v", err)
+	}
+	return mergo.Merge(&n, networkSettings, mergo.WithOverride)
+}
+
+// NetworksConfig is network configurations
+type NetworksConfig struct {
+	SelectedNetworks   []string        `mapstructure:"selected_networks" yaml:"selected_networks" envconfig:"selected_networks"`
+	NetworkSettings    NetworkSettings `mapstructure:"networks" yaml:"networks" envconfig:"network_settings"`
+	DefaultKeyStore    string
+	ConfigFileLocation string
 }
 
 // LoggingConfig for logging
@@ -45,130 +72,85 @@ type LoggingConfig struct {
 	Level int8 `mapstructure:"level" yaml:"logging"`
 }
 
-// GetNetworkConfig finds a specified network config based on its name
-func (c *Config) GetNetworkConfig(name string) (NetworkConfig, error) {
-	if network, ok := c.NetworkConfigs[name]; ok {
-		return network, nil
-	}
-	return NetworkConfig{}, fmt.Errorf("no supported network of name '%s' was found. Ensure that the config for it exists.", name)
+// ETHNetwork data to configure fully ETH compatible network
+type ETHNetwork struct {
+	External                  bool          `mapstructure:"external" yaml:"external"`
+	Name                      string        `mapstructure:"name" yaml:"name"`
+	ID                        string        `mapstructure:"id" yaml:"id"`
+	ChainID                   int64         `mapstructure:"chain_id" yaml:"chain_id"`
+	URL                       string        `mapstructure:"url" yaml:"url"`
+	URLs                      []string      `mapstructure:"urls" yaml:"urls"`
+	Type                      string        `mapstructure:"type" yaml:"type"`
+	PrivateKeys               []string      `mapstructure:"private_keys" yaml:"private_keys"`
+	ChainlinkTransactionLimit uint64        `mapstructure:"chainlink_transaction_limit" yaml:"chainlink_transaction_limit"`
+	Timeout                   time.Duration `mapstructure:"transaction_timeout" yaml:"transaction_timeout"`
+	MinimumConfirmations      int           `mapstructure:"minimum_confirmations" yaml:"minimum_confirmations"`
+	GasEstimationBuffer       uint64        `mapstructure:"gas_estimation_buffer" yaml:"gas_estimation_buffer"`
+	BlockGasLimit             uint64        `mapstructure:"block_gas_limit" yaml:"block_gas_limit"`
 }
 
-// ContractsConfig contracts sources config
-type ContractsConfig struct {
-	Ethereum EthereumSources `mapstructure:"ethereum" yaml:"ethereum"`
+// TerraNetwork data to configure Terra network
+type TerraNetwork struct {
+	Name                      string        `mapstructure:"name" yaml:"name"`
+	ChainName                 string        `mapstructure:"chain_name" yaml:"chain_name"`
+	Mnemonics                 []string      `mapstructure:"mnemonic" yaml:"mnemonic"`
+	Currency                  string        `mapstructure:"currency" yaml:"currency"`
+	Type                      string        `mapstructure:"type" yaml:"type"`
+	ChainlinkTransactionLimit uint64        `mapstructure:"chainlink_transaction_limit" yaml:"chainlink_transaction_limit"`
+	Timeout                   time.Duration `mapstructure:"transaction_timeout" yaml:"transaction_timeout"`
+	MinimumConfirmations      int           `mapstructure:"minimum_confirmations" yaml:"minimum_confirmations"`
 }
 
-// EthereumSources sources to generate bindings to ethereum contracts
-type EthereumSources struct {
-	ExecutablePath string     `mapstructure:"executable_path" yaml:"executable_path"`
-	OutPath        string     `mapstructure:"out_path" yaml:"out_path"`
-	Sources        SourcesMap `mapstructure:"sources" yaml:"sources"`
-}
-
-// SourcesMap describes different sources types, local or remote s3 (external)
-type SourcesMap struct {
-	Local    LocalSource     `mapstructure:"local" yaml:"local"`
-	External ExternalSources `mapstructure:"external" yaml:"external"`
-}
-
-// ExternalSources are sources downloaded from remote
-type ExternalSources struct {
-	RootPath     string                    `mapstructure:"path" yaml:"path"`
-	Region       string                    `mapstructure:"region" yaml:"region"`
-	S3URL        string                    `mapstructure:"s3_path" yaml:"s3_path"`
-	Repositories map[string]ExternalSource `mapstructure:"repositories" yaml:"repositories"`
-}
-
-// LocalSource local contracts artifacts directory
-type LocalSource struct {
-	Path string `mapstructure:"path" yaml:"path"`
-}
-
-// ExternalSource remote contracts artifacts source directory
-type ExternalSource struct {
-	Path   string `mapstructure:"path" yaml:"path"`
-	Commit string `mapstructure:"commit" yaml:"commit"`
-}
-
-// NetworkConfig holds the basic values that identify a blockchain network and contains private keys on the network
-type NetworkConfig struct {
-	Name                 string   `mapstructure:"name" yaml:"name"`
-	ChainName            string   `mapstructure:"chain_name" yaml:"chain_name"`
-	Mnemonics            []string `mapstructure:"mnemonic" yaml:"mnemonic"`
-	Currency             string   `mapstructure:"currency" yaml:"currency"`
-	ClusterURL           string
-	LocalURL             string
-	URLS                 []string      `mapstructure:"urls" yaml:"urls"`
-	ChainID              int64         `mapstructure:"chain_id" yaml:"chain_id"`
-	Type                 string        `mapstructure:"type" yaml:"type"`
-	SecretPrivateKeys    bool          `mapstructure:"secret_private_keys" yaml:"secret_private_keys"`
-	SecretPrivateURL     bool          `mapstructure:"secret_private_url" yaml:"secret_private_url"`
-	NamespaceForSecret   string        `mapstructure:"namespace_for_secret" yaml:"namespace_for_secret"`
-	PrivateKeys          []string      `mapstructure:"private_keys" yaml:"private_keys"`
-	PrivateURL           string        `mapstructure:"private_url" yaml:"private_url"`
-	ChainlinkGasLimit    uint64        `mapstructure:"chainlink_gas_limit" yaml:"chainlink_gas_limit"`
-	Timeout              time.Duration `mapstructure:"transaction_timeout" yaml:"transaction_timeout"`
-	LinkTokenAddress     string        `mapstructure:"link_token_address" yaml:"link_token_address"`
-	MinimumConfirmations int           `mapstructure:"minimum_confirmations" yaml:"minimum_confirmations"`
-	GasEstimationBuffer  uint64        `mapstructure:"gas_estimation_buffer" yaml:"gas_estimation_buffer"`
-	BlockGasLimit        uint64        `mapstructure:"block_gas_limit" yaml:"block_gas_limit"`
-	RPCPort              uint16        `mapstructure:"rpc_port" yaml:"rpc_port"`
-	PrivateKeyStore      PrivateKeyStore
-}
-
-// KubernetesConfig holds the configuration for how the framework interacts with the k8s cluster
-type KubernetesConfig struct {
-	QPS               float32       `mapstructure:"qps" yaml:"qps"`
-	Burst             int           `mapstructure:"burst" yaml:"burst"`
-	DeploymentTimeout time.Duration `mapstructure:"deployment_timeout" yaml:"deployment_timeout"`
-}
-
-// AppConfig holds all the configuration for the core apps that are deployed for testing
-type AppConfig struct {
-	Chainlink        StandardConfig `mapstructure:"chainlink" yaml:"chainlink"`
-	Geth             StandardConfig `mapstructure:"geth" yaml:"geth"`
-	Postgres         StandardConfig `mapstructure:"postgres" yaml:"postgres"`
-	Otpe             StandardConfig `mapstructure:"otpe" yaml:"otpe"`
-	Explorer         StandardConfig `mapstructure:"explorer" yaml:"explorer"`
-	AtlasEvm         StandardConfig `mapstructure:"atlas-evm" yaml:"atlas-evm"`
-	CpSchemaRegistry StandardConfig `mapstructure:"cp-schema-registry" yaml:"cp-schema-registry"`
-	Prometheus       StandardConfig `mapstructure:"prometheus" yaml:"prometheus"`
-	KafkaRest        StandardConfig `mapstructure:"kafka-rest" yaml:"kafka-rest"`
-}
-
-// ResourcesConfig hols the resource usage configuration for a pod
-type ResourcesConfig struct {
-	Memory string `mapstructure:"memory" yaml:"memory"`
-	Cpu    string `mapstructure:"cpu" yaml:"cpu"`
-}
-
-// StandardConfig holds the configuration for an app to be deployed
-type StandardConfig struct {
-	Image    string          `mapstructure:"image" yaml:"image"`
-	Version  string          `mapstructure:"version" yaml:"version"`
-	Requests ResourcesConfig `mapstructure:"requests" yaml:"requests"`
-	Limits   ResourcesConfig `mapstructure:"limits" yaml:"limits"`
-}
-
-// NewConfig creates a new configuration instance via viper from env vars, config file, or a secret store
-func NewConfig(configPath string) (*Config, error) {
+func defaultViper(dir string, file string) *viper.Viper {
 	v := viper.New()
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
-	v.SetConfigName("config")
-	v.SetConfigType("yml")
-	v.AddConfigPath(configPath)
+	v.SetConfigName(file)
+	if dir == "" {
+		v.AddConfigPath(".")
+	} else {
+		v.AddConfigPath(dir)
+	}
+	v.SetConfigType("yaml")
+	return v
+}
 
+// LoadFrameworkConfig loads framework config
+func LoadFrameworkConfig(cfgPath string) (*FrameworkConfig, error) {
+	dir, file := path.Split(cfgPath)
+	log.Info().
+		Str("Dir", dir).
+		Str("File", file).
+		Msg("Loading config file")
+	v := defaultViper(dir, file)
 	if err := v.ReadInConfig(); err != nil {
 		return nil, err
 	}
+	var cfg *FrameworkConfig
+	err := v.Unmarshal(&cfg)
+	cfg.setCharts()
+	return cfg, err
+}
 
-	conf := &Config{
-		ConfigFileLocation: strings.TrimRight(v.ConfigFileUsed(), "config.yml"),
+// LoadNetworksConfig loads networks config
+func LoadNetworksConfig(cfgPath string) (*NetworksConfig, error) {
+	dir, file := path.Split(cfgPath)
+	log.Info().
+		Str("Dir", dir).
+		Str("File", file).
+		Msg("Loading config file")
+	v := defaultViper(dir, file)
+	if err := v.ReadInConfig(); err != nil {
+		return nil, err
 	}
-	log.Info().Str("File Location", v.ConfigFileUsed()).Msg("Loading config file")
-	err := v.Unmarshal(conf)
-	return conf, err
+	var cfg *NetworksConfig
+	err := v.Unmarshal(&cfg)
+
+	// Allow the networks config to be overridden when this codebase is imported as a library
+	if err := envconfig.Process("", cfg); err != nil {
+		return nil, err
+	}
+	return cfg, err
 }
 
 // PrivateKeyStore enables access, through a variety of methods, to private keys for use in blockchain networks
@@ -176,7 +158,7 @@ type PrivateKeyStore interface {
 	Fetch() ([]string, error)
 }
 
-// LocalStore retrieves keys defined in a config.yml file, or from environment variables
+// LocalStore retrieves keys defined in a networks.yaml file, or from environment variables
 type LocalStore struct {
 	RawKeys []string
 }
@@ -189,8 +171,45 @@ func (l *LocalStore) Fetch() ([]string, error) {
 	return l.RawKeys, nil
 }
 
-// RetryConfig holds config for retry attempts and delays
-type RetryConfig struct {
-	Attempts    uint          `mapstructure:"attempts" yaml:"attempts"`
-	LinearDelay time.Duration `mapstructure:"linear_delay" yaml:"linear_delay"`
+var gethChart = `
+"geth":{
+	"values":{
+		 "geth":{
+				"image":{
+					 "image":"%s",
+					 "version":"%s"
+				}
+		 }
+	}
+}`
+var chainlinkChart = `
+"chainlink":{
+	"values":{
+		 "chainlink":{
+				"image":{
+					 "image":"%s",
+					 "version":"%s"
+				}
+		 }
+	}
+}`
+
+// setCharts finds out if the user has specified chainlink or geth images to use for the test, and sets the CHARTS
+// env var appropriately
+func (cfg *FrameworkConfig) setCharts() {
+	if cfg.GethImage != "" || cfg.ChainlinkImage != "" {
+		marshalledGethChart := ""
+		marshalledChainlinkChart := ""
+		if cfg.GethImage != "" {
+			marshalledGethChart = fmt.Sprintf(gethChart, cfg.GethImage, cfg.GethVersion)
+		}
+		if cfg.ChainlinkImage != "" {
+			marshalledChainlinkChart = fmt.Sprintf(chainlinkChart, cfg.ChainlinkImage, cfg.ChainlinkVersion)
+		}
+		if cfg.GethImage != "" && cfg.ChainlinkImage != "" { // If both, add a comma after geth
+			marshalledGethChart += ","
+		}
+		combined := fmt.Sprintf("{%s%s}", marshalledGethChart, marshalledChainlinkChart)
+		os.Setenv("CHARTS", combined)
+	}
 }

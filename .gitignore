@@ -26,7 +26,7 @@ artifacts/
 
 # JUnit Test Reports
 junit.xml
-
+tests-*.xml
 logs/
 bin/
 

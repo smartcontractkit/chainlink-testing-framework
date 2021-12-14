@@ -1,8 +1,0 @@
-metadata:
-  name: {{ .Network.Name }}
-spec:
-  ports:
-  - name: access
-    port: {{ .Network.RPCPort }}
-    targetPort: {{ .Network.RPCPort }}
-  type: ClusterIP
