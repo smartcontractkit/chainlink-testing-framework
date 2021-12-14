@@ -4,8 +4,6 @@ package config
 import (
 	"errors"
 	"fmt"
-	"os"
-	"path"
 	"strings"
 	"time"
 
@@ -157,41 +155,10 @@ func NewConfig(configPath string) (*Config, error) {
 	v := viper.New()
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
-	v.SetConfigName(file)
-	if dir == "" {
-		v.AddConfigPath(".")
-	} else {
-		v.AddConfigPath(dir)
-	}
-	v.SetConfigType("yaml")
-	return v
-}
+	v.SetConfigName("config")
+	v.SetConfigType("yml")
+	v.AddConfigPath(configPath)
 
-// LoadFrameworkConfig loads framework config
-func LoadFrameworkConfig(cfgPath string) (*FrameworkConfig, error) {
-	dir, file := path.Split(cfgPath)
-	log.Info().
-		Str("Dir", dir).
-		Str("File", file).
-		Msg("Loading config file")
-	v := defaultViper(dir, file)
-	if err := v.ReadInConfig(); err != nil {
-		return nil, err
-	}
-	var cfg *FrameworkConfig
-	err := v.Unmarshal(&cfg)
-	cfg.setCharts()
-	return cfg, err
-}
-
-// LoadNetworksConfig loads networks config
-func LoadNetworksConfig(cfgPath string) (*NetworksConfig, error) {
-	dir, file := path.Split(cfgPath)
-	log.Info().
-		Str("Dir", dir).
-		Str("File", file).
-		Msg("Loading config file")
-	v := defaultViper(dir, file)
 	if err := v.ReadInConfig(); err != nil {
 		return nil, err
 	}
@@ -222,45 +189,8 @@ func (l *LocalStore) Fetch() ([]string, error) {
 	return l.RawKeys, nil
 }
 
-var gethChart = `
-"geth":{
-	"values":{
-		 "geth":{
-				"image":{
-					 "image":"%s",
-					 "version":"%s"
-				}
-		 }
-	}
-}`
-var chainlinkChart = `
-"chainlink":{
-	"values":{
-		 "chainlink":{
-				"image":{
-					 "image":"%s",
-					 "version":"%s"
-				}
-		 }
-	}
-}`
-
-// setCharts finds out if the user has specified chainlink or geth images to use for the test, and sets the CHARTS
-// env var appropriately
-func (cfg *FrameworkConfig) setCharts() {
-	if cfg.GethImage != "" || cfg.ChainlinkImage != "" {
-		marshalledGethChart := ""
-		marshalledChainlinkChart := ""
-		if cfg.GethImage != "" {
-			marshalledGethChart = fmt.Sprintf(gethChart, cfg.GethImage, cfg.GethVersion)
-		}
-		if cfg.ChainlinkImage != "" {
-			marshalledChainlinkChart = fmt.Sprintf(chainlinkChart, cfg.ChainlinkImage, cfg.ChainlinkVersion)
-		}
-		if cfg.GethImage != "" && cfg.ChainlinkImage != "" { // If both, add a comma after geth
-			marshalledGethChart += ","
-		}
-		combined := fmt.Sprintf("{%s%s}", marshalledGethChart, marshalledChainlinkChart)
-		os.Setenv("CHARTS", combined)
-	}
+// RetryConfig holds config for retry attempts and delays
+type RetryConfig struct {
+	Attempts    uint          `mapstructure:"attempts" yaml:"attempts"`
+	LinearDelay time.Duration `mapstructure:"linear_delay" yaml:"linear_delay"`
 }

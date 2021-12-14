@@ -42,19 +42,8 @@ var _ = Describe("Direct request suite @runlog", func() {
 				utils.ProjectRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = e.ConnectAll()
-			Expect(err).ShouldNot(HaveOccurred())
-		})
-
-		By("Connecting to launched resources", func() {
-			networkRegistry := client.NewNetworkRegistry()
-			nets, err = networkRegistry.GetNetworks(e)
-			Expect(err).ShouldNot(HaveOccurred())
-			cd, err = contracts.NewContractDeployer(nets.Default)
-			Expect(err).ShouldNot(HaveOccurred())
-			cls, err = client.ConnectChainlinkNodes(e)
-			Expect(err).ShouldNot(HaveOccurred())
-			mockserver, err = client.ConnectMockServer(e)
+			networkInfo = suiteSetup.DefaultNetwork()
+			mockserver, err = environment.GetMockserverClientFromEnv(suiteSetup.Environment())
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
@@ -63,10 +52,8 @@ var _ = Describe("Direct request suite @runlog", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			nodeAddresses, err = actions.ChainlinkNodeAddresses(nodes)
 			Expect(err).ShouldNot(HaveOccurred())
-		})
-
-		By("Deploying contracts", func() {
-			lt, err := cd.DeployLinkTokenContract()
+			ethAmount := big.NewFloat(.1)
+			err = actions.FundChainlinkNodes(nodes, networkInfo.Client, networkInfo.Wallets.Default(), ethAmount, nil)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 

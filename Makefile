@@ -20,7 +20,7 @@ test_smoke:
 	NETWORKS=alfajores_celo ginkgo -v -r -keepGoing --trace --randomizeAllSpecs --randomizeSuites --progress $(args) ./suite/smoke 
 
 test_performance:
-	ginkgo -r -timeout=200h --junit-report=tests-performance-report.xml --keep-going --trace --randomize-all --randomize-suites --progress $(args) ./suite/performance 
+	NETWORKS=alfajores_celo ginkgo -r -timeout=200h -keepGoing --trace --randomizeAllSpecs --randomizeSuites --progress $(args) ./suite/performance 
 
 test_chaos:
-	ginkgo -r --junit-report=tests-chaos-report.xml --keep-going --trace --randomize-all --randomize-suites --progress $(args) ./suite/chaos 
+	NETWORKS=alfajores_celo ginkgo -r -keepGoing --trace --randomizeAllSpecs --randomizeSuites --progress $(args) ./suite/chaos 
