@@ -4,6 +4,7 @@ package actions
 import (
 	"fmt"
 	"math/big"
+	"strings"
 	"time"
 
 	. "github.com/onsi/gomega"
@@ -11,6 +12,9 @@ import (
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
 )
+
+// This actions file often returns functions, rather than just values. These are used as common test helpers, and are
+// handy to have returning as functions so that Ginkgo can use them in an aesthetically pleasing way.
 
 // DeployOCRContracts deploys and funds a certain number of offchain aggregator contracts
 func DeployOCRContracts(
@@ -50,14 +54,14 @@ func CreateOCRJobs(
 	mockserver *client.MockserverClient,
 ) func() {
 	return func() {
-		for i := 0; i < len(ocrInstances); i++ {
+		for _, ocrInstance := range ocrInstances {
 			bootstrapNode := chainlinkNodes[0]
 			bootstrapP2PIds, err := bootstrapNode.ReadP2PKeys()
 			Expect(err).ShouldNot(HaveOccurred())
 			bootstrapP2PId := bootstrapP2PIds.Data[0].Attributes.PeerID
 			bootstrapSpec := &client.OCRBootstrapJobSpec{
 				Name:            fmt.Sprintf("bootstrap-%s", uuid.NewV4().String()),
-				ContractAddress: ocrInstances[i].Address(),
+				ContractAddress: ocrInstance.Address(),
 				P2PPeerID:       bootstrapP2PId,
 				IsBootstrapPeer: true,
 			}
@@ -74,16 +78,21 @@ func CreateOCRJobs(
 				Expect(err).ShouldNot(HaveOccurred())
 				nodeOCRKeyId := nodeOCRKeys.Data[0].ID
 
+				nodeContractPairID := buildNodeContractPairID(chainlinkNodes[nodeIndex], ocrInstance)
+				Expect(err).ShouldNot(HaveOccurred())
 				bta := client.BridgeTypeAttributes{
-					Name: fmt.Sprintf("node_%d_contract_%d", nodeIndex, i),
-					URL:  fmt.Sprintf("%s/node_%d_contract_%d", mockserver.Config.ClusterURL, nodeIndex, i),
+					Name: nodeContractPairID,
+					URL:  fmt.Sprintf("%s/%s", mockserver.Config.ClusterURL, nodeContractPairID),
 				}
+
+				// This sets a default value for all node and ocr instances in order to avoid 404 issues
+				SetAllAdapterResponses(0, ocrInstances, chainlinkNodes, mockserver)
 
 				err = chainlinkNodes[nodeIndex].CreateBridge(&bta)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				ocrSpec := &client.OCRTaskJobSpec{
-					ContractAddress:    ocrInstances[i].Address(),
+					ContractAddress:    ocrInstance.Address(),
 					P2PPeerID:          nodeP2PId,
 					P2PBootstrapPeers:  []client.Chainlink{bootstrapNode},
 					KeyBundleID:        nodeOCRKeyId,
@@ -97,21 +106,33 @@ func CreateOCRJobs(
 	}
 }
 
-// SetAdapterResponses sets the mock responses in mockserver that are read by chainlink nodes
-// to simulate different adapters, to be used in combination with CreateOCRJobs
-func SetAdapterResponses(
-	results []int,
+// SetAdapterResponse sets a single adapter response that correlates with an ocr contract and a chainlink node
+func SetAdapterResponse(
+	response int,
+	ocrInstance contracts.OffchainAggregator,
+	chainlinkNode client.Chainlink,
+	mockserver *client.MockserverClient,
+) func() {
+	return func() {
+		nodeContractPairID := buildNodeContractPairID(chainlinkNode, ocrInstance)
+		path := fmt.Sprintf("/%s", nodeContractPairID)
+		err := mockserver.SetValuePath(path, response)
+		Expect(err).ShouldNot(HaveOccurred())
+	}
+}
+
+// SetAllAdapterResponses sets the mock responses in mockserver that are read by chainlink nodes
+// to simulate different adapters. This sets all adapter responses for each node and contract to the same response
+func SetAllAdapterResponses(
+	response int,
 	ocrInstances []contracts.OffchainAggregator,
 	chainlinkNodes []client.Chainlink,
 	mockserver *client.MockserverClient,
 ) func() {
 	return func() {
-		Expect(len(results)).Should(BeNumerically("==", len(chainlinkNodes[1:])))
-		for OCRInstanceIndex := range ocrInstances {
-			for nodeIndex := 1; nodeIndex < len(chainlinkNodes); nodeIndex++ {
-				path := fmt.Sprintf("/node_%d_contract_%d", nodeIndex, OCRInstanceIndex)
-				err := mockserver.SetValuePath(path, results[nodeIndex-1])
-				Expect(err).ShouldNot(HaveOccurred())
+		for _, ocrInstance := range ocrInstances {
+			for _, node := range chainlinkNodes {
+				SetAdapterResponse(response, ocrInstance, node, mockserver)()
 			}
 		}
 	}
@@ -134,4 +155,14 @@ func StartNewRound(
 			Expect(err).ShouldNot(HaveOccurred())
 		}
 	}
+}
+
+func buildNodeContractPairID(node client.Chainlink, ocrInstance contracts.OffchainAggregator) string {
+	Expect(node).ShouldNot(BeNil())
+	Expect(ocrInstance).ShouldNot(BeNil())
+	nodeAddress, err := node.PrimaryEthAddress()
+	Expect(err).ShouldNot(HaveOccurred())
+	shortNodeAddr := nodeAddress[2:12]
+	shortOCRAddr := ocrInstance.Address()[2:12]
+	return strings.ToLower(fmt.Sprintf("node_%s_contract_%s", shortNodeAddr, shortOCRAddr))
 }

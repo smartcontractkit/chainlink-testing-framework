@@ -163,20 +163,7 @@ func TeardownSuite(env *environment.Environment, nets *client.Networks, logsFold
 			Msg("Failed to load config")
 		return err
 	}
-	switch strings.ToUpper(fConf.KeepEnvironments) {
-	case "ALWAYS":
-		env.Persistent = true
-	case "ONFAIL":
-	case "NEVER":
-		env.Persistent = false
-	default:
-		log.Warn().Str("Invalid Keep Value", fConf.KeepEnvironments).
-			Msg("Invalid 'keep_environments' value, see the 'framework.yaml' file")
-	}
 	if ginkgo.CurrentSpecReport().Failed() {
-		if strings.ToUpper(fConf.KeepEnvironments) == "ONFAIL" {
-			env.Persistent = true
-		}
 		testFilename := strings.Split(ginkgo.CurrentSpecReport().FileName(), ".")[0]
 		_, testName := filepath.Split(testFilename)
 		logsPath := filepath.Join(logsFolderPath, DefaultArtifactsDir, fmt.Sprintf("%s-%d", testName, time.Now().Unix()))
@@ -188,6 +175,19 @@ func TeardownSuite(env *environment.Environment, nets *client.Networks, logsFold
 		if err := nets.Teardown(); err != nil {
 			return err
 		}
+	}
+	switch strings.ToUpper(fConf.KeepEnvironments) {
+	case "ALWAYS":
+		env.Persistent = true
+	case "ONFAIL":
+		if ginkgo.CurrentSpecReport().Failed() {
+			env.Persistent = true
+		}
+	case "NEVER":
+		env.Persistent = false
+	default:
+		log.Warn().Str("Invalid Keep Value", fConf.KeepEnvironments).
+			Msg("Invalid 'keep_environments' value, see the 'framework.yaml' file")
 	}
 	if !env.Config.Persistent {
 		if err := env.Teardown(); err != nil {
