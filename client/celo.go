@@ -229,7 +229,7 @@ func (e *CeloClient) EstimateCostForChainlinkOperations(amountOfOperations int) 
 }
 
 // LoadWallets loads wallets from config
-func (e *EthereumClient) LoadWallets(cfg interface{}) error {
+func (e *CeloClient) LoadWallets(cfg interface{}) error {
 	pkStrings := cfg.(*config.ETHNetwork).PrivateKeys
 	for _, pks := range pkStrings {
 		w, err := NewEthereumWallet(pks)
@@ -260,7 +260,7 @@ func (e *CeloClient) SwitchNode(_ int) error {
 }
 
 // GetClients not used, only applicable to EthereumMultinodeClient
-func (e *EthereumClient) GetClients() []BlockchainClient {
+func (e *CeloClient) GetClients() []BlockchainClient {
 	return []BlockchainClient{e}
 }
 
@@ -304,7 +304,7 @@ type ContractDeployer func(auth *bind.TransactOpts, backend bind.ContractBackend
 	error,
 )
 
-// NewEthereumClient returns an instantiated instance of the Celo client that has connected to the server
+// NewCeloClient returns an instantiated instance of the Celo client that has connected to the server
 func NewCeloClient(networkSettings *config.ETHNetwork) (*CeloClient, error) {
 	log.Info().
 		Str("ID", networkSettings.ID).
@@ -358,7 +358,7 @@ func NewEthereumMultiNodeClient(
 	}
 	for idx, networkURL := range networkSettings.URLs {
 		networkSettings.URL = networkURL
-		ec, err := NewEthereumClient(networkSettings)
+		ec, err := NewCeloClient(networkSettings)
 		if err != nil {
 			return nil, err
 		}
@@ -499,7 +499,7 @@ func (e *CeloClient) SendTransaction(
 }
 
 // ProcessTransaction will queue or wait on a transaction depending on whether parallel transactions are enabled
-func (e *EthereumClient) ProcessTransaction(tx *types.Transaction) error {
+func (e *CeloClient) ProcessTransaction(tx *types.Transaction) error {
 	var txConfirmer HeaderEventSubscription
 	if e.NetworkConfig.MinimumConfirmations == 0 {
 		txConfirmer = &InstantConfirmations{}

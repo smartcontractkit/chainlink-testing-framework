@@ -3,8 +3,8 @@ package client
 import (
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/celo-org/celo-blockchain/common"
+	"github.com/celo-org/celo-blockchain/crypto"
 )
 
 // EthereumWallet is the implementation to allow testing with ETH based wallets

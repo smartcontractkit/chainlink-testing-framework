@@ -33,10 +33,11 @@ require (
 )
 
 require (
-	github.com/garyburd/redigo v1.6.0 // indirect
 	github.com/go-kit/kit v0.10.0 // indirect
-	github.com/gomodule/redigo v2.0.0+incompatible // indirect
+	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d // indirect
 	github.com/holiman/bloomfilter/v2 v2.0.3 // indirect
+	github.com/huin/goupnp v1.0.2 // indirect
+	github.com/jackpal/go-nat-pmp v1.0.2-0.20160603034137-1fa385a6f458 // indirect
 	github.com/spf13/cobra v1.2.1 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 )
@@ -133,7 +134,6 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/monochromegane/go-gitignore v0.0.0-20200626010858-205db1a8cc00 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
-	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.2 // indirect
