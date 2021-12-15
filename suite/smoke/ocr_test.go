@@ -66,6 +66,11 @@ var _ = FDescribe("OCR Feed @ocr", func() {
 
 		By("Deploying OCR contracts", func() {
 			ocrInstances = actions.DeployOCRContracts(1, linkTokenContract, contractDeployer, chainlinkNodes, networks)
+			// Sending OCR jobs and start running them happens a lot more quickly
+			// than the process of deploying OCR contracts
+			// Hotfix
+			err = networks.Default.WaitForEvents()
+			Expect(err).ShouldNot(HaveOccurred())
 		})
 
 		By("Creating OCR jobs", actions.CreateOCRJobs(ocrInstances, chainlinkNodes, mockserver))
