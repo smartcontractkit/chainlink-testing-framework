@@ -177,7 +177,7 @@ type OCR2KeyData struct {
 type OCR2KeyAttributes struct {
 	ChainType         string `json:"chainType"`
 	ConfigPublicKey   string `json:"configPublicKey"`
-	OffChainPublicKey string `json:"offChainPublicKey"`
+	OffChainPublicKey string `json:"offchainPublicKey"`
 	OnChainPublicKey  string `json:"onchainPublicKey"`
 }
 
