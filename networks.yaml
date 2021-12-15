@@ -162,14 +162,14 @@ networks:
     alfajores_celo_test:
         name: "Celo testnet"
         chain_id: 44787
-        type: ethereum_compatible
+        type: eth_multinode
         secret_private_keys: false
         secret_private_url: false
         urls:
             - wss://alfajores-forno.celo-testnet.org/ws
         private_keys:
             - celo_testnet_1
-        transaction_limit: 7667850
+        chainlink_transaction_limit: 7667850
         transaction_timeout: 5m
         minimum_confirmations: 1
         gas_estimation_buffer: 10000
