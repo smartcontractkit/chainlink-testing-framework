@@ -432,29 +432,8 @@ observationSource = """
 	return marshallTemplate(f, "Flux Monitor Job", fluxMonitorTemplateString)
 }
 
-// KeeperV1JobSpec represents a V2 keeper spec
-type KeeperV1JobSpec struct {
-	Name            string `toml:"name"`
-	ContractAddress string `toml:"contractAddress"`
-	FromAddress     string `toml:"fromAddress"` // Hex representation of the from address
-}
-
-// Type returns the type of the job
-func (k *KeeperV1JobSpec) Type() string { return "keeper" }
-
-// String representation of the job
-func (k *KeeperV1JobSpec) String() (string, error) {
-	keeperTemplateString := `
-type            = "keeper"
-schemaVersion   = 1
-name            = "{{.Name}}"
-contractAddress = "{{.ContractAddress}}"
-fromAddress     = "{{.FromAddress}}"`
-	return marshallTemplate(k, "Keeper V1 Job", keeperTemplateString)
-}
-
-// KeeperV2JobSpec represents a V2 keeper spec
-type KeeperV2JobSpec struct {
+// KeeperJobSpec represents a V2 keeper spec
+type KeeperJobSpec struct {
 	Name                     string `toml:"name"`
 	ContractAddress          string `toml:"contractAddress"`
 	FromAddress              string `toml:"fromAddress"` // Hex representation of the from address
@@ -463,13 +442,13 @@ type KeeperV2JobSpec struct {
 }
 
 // Type returns the type of the job
-func (k *KeeperV2JobSpec) Type() string { return "keeper" }
+func (k *KeeperJobSpec) Type() string { return "keeper" }
 
 // String representation of the job
-func (k *KeeperV2JobSpec) String() (string, error) {
+func (k *KeeperJobSpec) String() (string, error) {
 	keeperTemplateString := `
 type                     = "keeper"
-schemaVersion            = 2
+schemaVersion            = 3
 name                     = "{{.Name}}"
 contractAddress          = "{{.ContractAddress}}"
 fromAddress              = "{{.FromAddress}}"
@@ -478,7 +457,7 @@ minIncomingConfirmations = {{.MinIncomingConfirmations}}
 observationSource        = """
 {{.ObservationSource}}
 """`
-	return marshallTemplate(k, "Keeper V2 Job", keeperTemplateString)
+	return marshallTemplate(k, "Keeper Job", keeperTemplateString)
 }
 
 // OCRBootstrapJobSpec represents the spec for bootstrapping an OCR job, given to one node that then must be linked

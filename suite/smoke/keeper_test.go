@@ -145,7 +145,7 @@ var _ = Describe("Keeper suite @keeper", func() {
 			}
 			err = registry.SetKeepers(nodeAddressesStr, payees)
 			Expect(err).ShouldNot(HaveOccurred())
-			_, err = primaryNode.CreateJob(&client.KeeperV2JobSpec{
+			_, err = primaryNode.CreateJob(&client.KeeperJobSpec{
 				Name:                     "keeper-test-job",
 				ContractAddress:          registry.Address(),
 				FromAddress:              primaryNodeAddress,
