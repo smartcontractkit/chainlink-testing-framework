@@ -330,6 +330,7 @@ type OCRv2AccessController interface {
 // OCRv2DeviationFlaggingValidator OCR deviation flagging validator
 type OCRv2DeviationFlaggingValidator interface {
 	Address() string
+	ProgramAddress() string
 }
 
 // OCRv2 main offchain reporting v2 instance
