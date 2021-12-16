@@ -4,6 +4,16 @@ import (
 	"context"
 )
 
+type EthereumOCRv2DeviationFlaggingValidator struct{}
+
+func (e *EthereumOCRv2DeviationFlaggingValidator) Address() string {
+	panic("implement me")
+}
+
+func (e *EthereumOCRv2DeviationFlaggingValidator) ProgramAddress() string {
+	panic("implement me")
+}
+
 type EthereumOCRv2 struct{}
 
 func (e *EthereumOCRv2) ProgramAddress() string {
