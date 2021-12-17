@@ -37,7 +37,8 @@ type ContractDeployer interface {
 		linkTokenAddr string,
 	) (OCRv2, error)
 	DeployOCRv2AccessController() (OCRv2AccessController, error)
-	DeployOCRv2DeviationFlaggingValidator(billingAC string) (OCRv2DeviationFlaggingValidator, error)
+	DeployOCRv2Store(billingAC string) (OCRv2Store, error)
+	DeployOCRv2Proxy(addr string) (OCRv2Proxy, error)
 	DeployOffChainAggregator(linkAddr string, offchainOptions OffchainOptions) (OffchainAggregator, error)
 	DeployVRFContract() (VRF, error)
 	DeployMockETHLINKFeed(answer *big.Int) (MockETHLINKFeed, error)
@@ -64,7 +65,11 @@ type EthereumContractDeployer struct {
 	eth *client.EthereumClient
 }
 
-func (e *EthereumContractDeployer) DeployOCRv2DeviationFlaggingValidator(billingAC string) (OCRv2DeviationFlaggingValidator, error) {
+func (e *EthereumContractDeployer) DeployOCRv2Proxy(addr string) (OCRv2Proxy, error) {
+	panic("implement me")
+}
+
+func (e *EthereumContractDeployer) DeployOCRv2Store(billingAC string) (OCRv2Store, error) {
 	panic("implement me")
 }
 
