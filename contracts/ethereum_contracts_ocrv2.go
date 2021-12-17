@@ -4,13 +4,33 @@ import (
 	"context"
 )
 
-type EthereumOCRv2DeviationFlaggingValidator struct{}
+type EthereumOCRv2Store struct{}
 
-func (e *EthereumOCRv2DeviationFlaggingValidator) Address() string {
+func (e *EthereumOCRv2Store) TransmissionsAddress() string {
 	panic("implement me")
 }
 
-func (e *EthereumOCRv2DeviationFlaggingValidator) ProgramAddress() string {
+func (e *EthereumOCRv2Store) GetLatestRoundData() (uint64, error) {
+	panic("implement me")
+}
+
+func (e *EthereumOCRv2Store) SetWriter(writerAuthority string) error {
+	panic("implement me")
+}
+
+func (e *EthereumOCRv2Store) CreateFeed(granylarity int, liveLength int) error {
+	panic("implement me")
+}
+
+func (e *EthereumOCRv2Store) SetValidatorConfig(flaggingThreshold uint32) error {
+	panic("implement me")
+}
+
+func (e *EthereumOCRv2Store) Address() string {
+	panic("implement me")
+}
+
+func (e *EthereumOCRv2Store) ProgramAddress() string {
 	panic("implement me")
 }
 
@@ -29,10 +49,6 @@ func (e *EthereumOCRv2) DumpState() error {
 }
 
 func (e *EthereumOCRv2) AuthorityAddr(s string) (string, error) {
-	panic("implement me")
-}
-
-func (e *EthereumOCRv2) SetValidatorConfig(flaggingThreshold uint32, validatorAddr string) error {
 	panic("implement me")
 }
 
@@ -56,19 +72,11 @@ func (e *EthereumOCRv2) Address() string {
 	panic("implement me")
 }
 
-func (e *EthereumOCRv2) TransmissionsAddr() string {
-	panic("implement me")
-}
-
 func (e *EthereumOCRv2) TransferOwnership(to string) error {
 	panic("implement me")
 }
 
 func (e *EthereumOCRv2) GetLatestConfigDetails() (map[string]interface{}, error) {
-	panic("implement me")
-}
-
-func (e *EthereumOCRv2) GetRoundData(roundID uint32) (map[string]interface{}, error) {
 	panic("implement me")
 }
 
