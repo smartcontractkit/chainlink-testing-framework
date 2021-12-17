@@ -327,29 +327,38 @@ type OCRv2AccessController interface {
 	HasAccess(to string) (bool, error)
 }
 
-// OCRv2DeviationFlaggingValidator OCR deviation flagging validator
-type OCRv2DeviationFlaggingValidator interface {
+// OCRv2Store OCR feed store
+type OCRv2Store interface {
 	Address() string
+	TransmissionsAddress() string
 	ProgramAddress() string
+	SetValidatorConfig(flaggingThreshold uint32) error
+	SetWriter(writerAuthority string) error
+	CreateFeed(granylarity int, liveLength int) error
+	GetLatestRoundData() (uint64, error)
 }
 
 // OCRv2 main offchain reporting v2 instance
 type OCRv2 interface {
 	ProgramAddress() string
 	Address() string
-	TransmissionsAddr() string
 	DumpState() error
 	GetContractData(ctx context.Context) (*OffchainAggregatorData, error)
 	AuthorityAddr(string) (string, error)
 	TransferOwnership(to string) error
 
-	SetValidatorConfig(flaggingThreshold uint32, validatorAddr string) error
 	SetBilling(op uint32, tp uint32, controllerAddr string) error
 	SetOracles(ocParams OffChainAggregatorV2Config) error
 	SetOffChainConfig(ocParams OffChainAggregatorV2Config) error
 
 	RequestNewRound() error
 	GetLatestConfigDetails() (map[string]interface{}, error)
-	GetRoundData(roundID uint32) (map[string]interface{}, error)
 	GetOwedPayment(transmitterAddr string) (map[string]interface{}, error)
+}
+
+type OCRv2Proxy interface {
+	Address() string
+	ProposeContract(addr string) error
+	ConfirmContract(addr string) error
+	TransferOwnership(addr string) error
 }
