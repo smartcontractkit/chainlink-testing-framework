@@ -349,6 +349,6 @@ type OCRv2 interface {
 
 	RequestNewRound() error
 	GetLatestConfigDetails() (map[string]interface{}, error)
-	GetRoundData(roundID uint32) (map[string]interface{}, error)
+	GetLatestRoundData() (uint64, error)
 	GetOwedPayment(transmitterAddr string) (map[string]interface{}, error)
 }

@@ -68,7 +68,7 @@ func (e *EthereumOCRv2) GetLatestConfigDetails() (map[string]interface{}, error)
 	panic("implement me")
 }
 
-func (e *EthereumOCRv2) GetRoundData(roundID uint32) (map[string]interface{}, error) {
+func (e *EthereumOCRv2) GetLatestRoundData() (uint64, error) {
 	panic("implement me")
 }
 
