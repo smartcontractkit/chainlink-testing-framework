@@ -33,7 +33,9 @@ func NewBasicHTTPClient(c *http.Client, baseURL string) *BasicHTTPClient {
 	}
 }
 
-func (em *BasicHTTPClient) do(
+// Do executes a method on an endpoint with an optional body
+// and checks that an expected status code is returned
+func (em *BasicHTTPClient) Do(
 	method,
 	endpoint string,
 	body interface{},
