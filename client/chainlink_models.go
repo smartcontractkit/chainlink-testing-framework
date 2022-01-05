@@ -777,7 +777,7 @@ func ObservationSourceSpecBridge(bta BridgeTypeAttributes) string {
 }
 
 // ObservationSourceKeeperDefault is a basic keeper default that checks and performs upkeep of the contract address
-func ObservationSourceKeeperDefault(contractAddress, fromAddress string) string {
+func ObservationSourceKeeperDefault() string {
 	return `encode_check_upkeep_tx   [type=ethabiencode
                           abi="checkUpkeep(uint256 id, address from)"
                           data="{\\"id\\":$(jobSpec.upkeepID),\\"from\\":$(jobSpec.fromAddress)}"]

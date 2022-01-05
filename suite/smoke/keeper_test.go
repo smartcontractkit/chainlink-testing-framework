@@ -17,7 +17,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/utils"
 )
 
-var _ = Describe("Keeper suite @keeper", func() {
+var _ = FDescribe("Keeper suite @keeper", func() {
 	var (
 		err              error
 		networks         *client.Networks
@@ -150,7 +150,7 @@ var _ = Describe("Keeper suite @keeper", func() {
 				ContractAddress:          registry.Address(),
 				FromAddress:              primaryNodeAddress,
 				MinIncomingConfirmations: 1,
-				ObservationSource:        client.ObservationSourceKeeperDefault(registry.Address(), primaryNodeAddress),
+				ObservationSource:        client.ObservationSourceKeeperDefault(),
 			})
 			Expect(err).ShouldNot(HaveOccurred())
 			err = networks.Default.WaitForEvents()
