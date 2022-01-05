@@ -1,5 +1,6 @@
 package smoke
 
+//revive:disable:dot-imports
 import (
 	"fmt"
 
@@ -33,10 +34,10 @@ var _ = Describe("Cronjob suite @cron", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
-		By("Getting the clients", func() {
-			cls, err = client.NewChainlinkClients(e)
+		By("Connecting to launched resources", func() {
+			cls, err = client.ConnectChainlinkNodes(e)
 			Expect(err).ShouldNot(HaveOccurred())
-			mockserver, err = client.NewMockServerClientFromEnv(e)
+			mockserver, err = client.ConnectMockServer(e)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 

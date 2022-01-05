@@ -1,7 +1,9 @@
 package smoke
 
+//revive:disable:dot-imports
 import (
 	"context"
+	"math/big"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -22,8 +24,9 @@ var _ = Describe("OCR Feed @ocr", func() {
 		linkTokenContract contracts.LinkToken
 		chainlinkNodes    []client.Chainlink
 		mockserver        *client.MockserverClient
+		ocrInstances      []contracts.OffchainAggregator
 	)
-	ocrInstances := make([]contracts.OffchainAggregator, 1)
+
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
 			env, err = environment.DeployOrLoadEnvironment(
@@ -34,40 +37,52 @@ var _ = Describe("OCR Feed @ocr", func() {
 			err = env.ConnectAll()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
-		By("Getting the clients", func() {
+
+		By("Connecting to launched resources", func() {
+			// Load Networks
 			networkRegistry := client.NewNetworkRegistry()
 			var err error
 			networks, err = networkRegistry.GetNetworks(env)
 			Expect(err).ShouldNot(HaveOccurred())
 			contractDeployer, err = contracts.NewContractDeployer(networks.Default)
 			Expect(err).ShouldNot(HaveOccurred())
-			chainlinkNodes, err = client.NewChainlinkClients(env)
+
+			chainlinkNodes, err = client.ConnectChainlinkNodes(env)
 			Expect(err).ShouldNot(HaveOccurred())
-			mockserver, err = client.NewMockServerClientFromEnv(env)
+			mockserver, err = client.ConnectMockServer(env)
 			Expect(err).ShouldNot(HaveOccurred())
+
 			networks.Default.ParallelTransactions(true)
 			Expect(err).ShouldNot(HaveOccurred())
+
 			linkTokenContract, err = contractDeployer.DeployLinkTokenContract()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
-		By("Funding Chainlink nodes", actions.FundNodes(networks, chainlinkNodes))
-		By("Deploying OCR contracts",
-			actions.DeployOCRContracts(ocrInstances, linkTokenContract, contractDeployer, chainlinkNodes, networks))
+
+		By("Funding Chainlink nodes", func() {
+			err = actions.FundChainlinkNodes(chainlinkNodes, networks.Default, big.NewFloat(.01))
+			Expect(err).ShouldNot(HaveOccurred())
+		})
+
+		By("Deploying OCR contracts", func() {
+			ocrInstances = actions.DeployOCRContracts(1, linkTokenContract, contractDeployer, chainlinkNodes, networks)
+			err = networks.Default.WaitForEvents()
+			Expect(err).ShouldNot(HaveOccurred())
+		})
+
 		By("Creating OCR jobs", actions.CreateOCRJobs(ocrInstances, chainlinkNodes, mockserver))
 	})
 
-	Describe("with OCR job", func() {
+	Describe("With a single OCR contract", func() {
 		It("performs two rounds", func() {
-			By("setting adapter responses",
-				actions.SetAdapterResponses([]int{5, 5, 5, 5, 5}, ocrInstances, chainlinkNodes, mockserver))
+			By("setting adapter responses", actions.SetAllAdapterResponses(5, ocrInstances, chainlinkNodes, mockserver))
 			By("starting new round", actions.StartNewRound(1, ocrInstances, networks))
 
 			answer, err := ocrInstances[0].GetLatestAnswer(context.Background())
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(answer.Int64()).Should(Equal(int64(5)), "latest answer from OCR is not as expected")
 
-			By("setting adapter responses",
-				actions.SetAdapterResponses([]int{10, 10, 10, 10, 10}, ocrInstances, chainlinkNodes, mockserver))
+			By("setting adapter responses", actions.SetAllAdapterResponses(10, ocrInstances, chainlinkNodes, mockserver))
 			By("starting new round", actions.StartNewRound(2, ocrInstances, networks))
 
 			answer, err = ocrInstances[0].GetLatestAnswer(context.Background())

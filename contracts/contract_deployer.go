@@ -3,7 +3,7 @@ package contracts
 import (
 	"context"
 	"errors"
-	"math"
+	"fmt"
 	"math/big"
 	"time"
 
@@ -210,13 +210,13 @@ func (e *EthereumContractDeployer) DeployLinkTokenContract() (LinkToken, error) 
 // DefaultOffChainAggregatorOptions returns some base defaults for deploying an OCR contract
 func DefaultOffChainAggregatorOptions() OffchainOptions {
 	return OffchainOptions{
-		MaximumGasPrice:         uint32(500000000),
-		ReasonableGasPrice:      uint32(28000),
+		MaximumGasPrice:         uint32(3000),
+		ReasonableGasPrice:      uint32(10),
 		MicroLinkPerEth:         uint32(500),
 		LinkGweiPerObservation:  uint32(500),
 		LinkGweiPerTransmission: uint32(500),
 		MinimumAnswer:           big.NewInt(1),
-		MaximumAnswer:           big.NewInt(5000000000),
+		MaximumAnswer:           big.NewInt(50000000000000000),
 		Decimals:                8,
 		Description:             "Test OCR",
 	}
@@ -224,27 +224,28 @@ func DefaultOffChainAggregatorOptions() OffchainOptions {
 
 // DefaultOffChainAggregatorConfig returns some base defaults for configuring an OCR contract
 func DefaultOffChainAggregatorConfig(numberNodes int) OffChainAggregatorConfig {
-	s := []int{}
-	for i := 0; i < numberNodes; i++ {
-		s = append(s, 1)
-	}
-	if numberNodes <= 3 {
-		log.Warn().
+	if numberNodes <= 4 {
+		log.Err(fmt.Errorf("Insufficient number of nodes (%d) supplied for OCR, need at least 5", numberNodes)).
 			Int("Number Chainlink Nodes", numberNodes).
 			Msg("You likely need more chainlink nodes to properly configure OCR, try 5 or more.")
 	}
+	s := []int{1}
+	// First node's stage already inputted as a 1 in line above, so numberNodes-1.
+	for i := 0; i < numberNodes-1; i++ {
+		s = append(s, 2)
+	}
 	return OffChainAggregatorConfig{
 		AlphaPPB:         1,
-		DeltaC:           time.Minute * 10,
-		DeltaGrace:       time.Second,
-		DeltaProgress:    time.Second * 30,
-		DeltaStage:       time.Second * 10,
-		DeltaResend:      time.Second * 10,
-		DeltaRound:       time.Second * 20,
-		RMax:             4,
+		DeltaC:           time.Minute * 60,
+		DeltaGrace:       time.Second * 12,
+		DeltaProgress:    time.Second * 35,
+		DeltaStage:       time.Second * 60,
+		DeltaResend:      time.Second * 17,
+		DeltaRound:       time.Second * 30,
+		RMax:             6,
 		S:                s,
 		N:                numberNodes,
-		F:                int(math.Max(1, float64(numberNodes/3-1))),
+		F:                1,
 		OracleIdentities: []ocrConfigHelper.OracleIdentityExtra{},
 	}
 }

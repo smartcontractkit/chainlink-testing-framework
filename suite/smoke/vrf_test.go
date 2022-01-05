@@ -1,5 +1,6 @@
 package smoke
 
+//revive:disable:dot-imports
 import (
 	"context"
 	"fmt"
@@ -43,13 +44,13 @@ var _ = Describe("VRF suite @vrf", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
-		By("Getting the clients", func() {
+		By("Connecting to launched resources", func() {
 			networkRegistry := client.NewNetworkRegistry()
 			nets, err = networkRegistry.GetNetworks(e)
 			Expect(err).ShouldNot(HaveOccurred())
 			cd, err = contracts.NewContractDeployer(nets.Default)
 			Expect(err).ShouldNot(HaveOccurred())
-			cls, err = client.NewChainlinkClients(e)
+			cls, err = client.ConnectChainlinkNodes(e)
 			Expect(err).ShouldNot(HaveOccurred())
 			nets.Default.ParallelTransactions(true)
 		})

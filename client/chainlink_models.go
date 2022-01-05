@@ -479,54 +479,32 @@ observationSource = """
 	return marshallTemplate(f, "Flux Monitor Job", fluxMonitorTemplateString)
 }
 
-// KeeperV1JobSpec represents a V2 keeper spec
-type KeeperV1JobSpec struct {
-	Name            string `toml:"name"`
-	ContractAddress string `toml:"contractAddress"`
-	FromAddress     string `toml:"fromAddress"` // Hex representation of the from address
-}
-
-// Type returns the type of the job
-func (k *KeeperV1JobSpec) Type() string { return "keeper" }
-
-// String representation of the job
-func (k *KeeperV1JobSpec) String() (string, error) {
-	keeperTemplateString := `
-type            = "keeper"
-schemaVersion   = 1
-name            = "{{.Name}}"
-contractAddress = "{{.ContractAddress}}"
-fromAddress     = "{{.FromAddress}}"`
-	return marshallTemplate(k, "Keeper V1 Job", keeperTemplateString)
-}
-
-// KeeperV2JobSpec represents a V2 keeper spec
-type KeeperV2JobSpec struct {
+// KeeperJobSpec represents a V2 keeper spec
+type KeeperJobSpec struct {
 	Name                     string `toml:"name"`
 	ContractAddress          string `toml:"contractAddress"`
 	FromAddress              string `toml:"fromAddress"` // Hex representation of the from address
-	ExternalJobID            string `toml:"externalJobID"`
 	MinIncomingConfirmations int    `toml:"minIncomingConfirmations"`
 	ObservationSource        string `toml:"observationSource"`
 }
 
 // Type returns the type of the job
-func (k *KeeperV2JobSpec) Type() string { return "keeper" }
+func (k *KeeperJobSpec) Type() string { return "keeper" }
 
 // String representation of the job
-func (k *KeeperV2JobSpec) String() (string, error) {
+func (k *KeeperJobSpec) String() (string, error) {
 	keeperTemplateString := `
 type                     = "keeper"
-schemaVersion            = 2
+schemaVersion            = 3
 name                     = "{{.Name}}"
 contractAddress          = "{{.ContractAddress}}"
 fromAddress              = "{{.FromAddress}}"
-externalJobID            = "{{.ExternalJobID}}"
 minIncomingConfirmations = {{.MinIncomingConfirmations}}
+
 observationSource        = """
 {{.ObservationSource}}
 """`
-	return marshallTemplate(k, "Keeper V2 Job", keeperTemplateString)
+	return marshallTemplate(k, "Keeper Job", keeperTemplateString)
 }
 
 // OCRBootstrapJobSpec represents the spec for bootstrapping an OCR job, given to one node that then must be linked
@@ -799,18 +777,18 @@ func ObservationSourceSpecBridge(bta BridgeTypeAttributes) string {
 }
 
 // ObservationSourceKeeperDefault is a basic keeper default that checks and performs upkeep of the contract address
-func ObservationSourceKeeperDefault() string {
-	return `
-encode_check_upkeep_tx   [type=ethabiencode abi="checkUpkeep(uint256 id, address from)"
+func ObservationSourceKeeperDefault(contractAddress, fromAddress string) string {
+	return `encode_check_upkeep_tx   [type=ethabiencode
+                          abi="checkUpkeep(uint256 id, address from)"
                           data="{\\"id\\":$(jobSpec.upkeepID),\\"from\\":$(jobSpec.fromAddress)}"]
 check_upkeep_tx          [type=ethcall
                           failEarly=true
+                          extractRevertReason=true
+                          contract="$(jobSpec.contractAddress)"
                           gas="$(jobSpec.checkUpkeepGasLimit)"
                           gasPrice="$(jobSpec.gasPrice)"
                           gasTipCap="$(jobSpec.gasTipCap)"
                           gasFeeCap="$(jobSpec.gasFeeCap)"
-                          extractRevertReason=true
-                          contract="$(jobSpec.contractAddress)"
                           data="$(encode_check_upkeep_tx)"]
 decode_check_upkeep_tx   [type=ethabidecode
                           abi="bytes memory performData, uint256 maxLinkPayment, uint256 gasLimit, uint256 adjustedGasWei, uint256 linkEth"]
@@ -818,10 +796,10 @@ encode_perform_upkeep_tx [type=ethabiencode
                           abi="performUpkeep(uint256 id, bytes calldata performData)"
                           data="{\\"id\\": $(jobSpec.upkeepID),\\"performData\\":$(decode_check_upkeep_tx.performData)}"]
 perform_upkeep_tx        [type=ethtx
-                          gasLimit="$(jobSpec.performUpkeepGasLimit)"
                           minConfirmations=0
                           to="$(jobSpec.contractAddress)"
                           data="$(encode_perform_upkeep_tx)"
+                          gasLimit="$(jobSpec.performUpkeepGasLimit)"
                           txMeta="{\\"jobID\\":$(jobSpec.jobID)}"]
 encode_check_upkeep_tx -> check_upkeep_tx -> decode_check_upkeep_tx -> encode_perform_upkeep_tx -> perform_upkeep_tx`
 }

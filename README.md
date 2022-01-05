@@ -38,10 +38,16 @@ See our [suite/smoke](suite/smoke) directory for quite a few examples of the fra
 
 ## Chainlink Values
 
-If you would like to change the Chainlink values that are used for environments, you can use JSON to squash them. Have a look over at our [helmenv](https://github.com/smartcontractkit/helmenv/tree/v1.0.5/charts/chainlink) chainlink charts to get a grasp of how things are structured. We'll be writing more on this later, but for now, you can squash values by providing a `CHARTS` environment variable.
+If you would like to change the Chainlink values that are used for environments, you can use the `framework.yaml` file,
+or set environment variables that are all caps versions of the values found in the config file.
 
-```sh
-CHARTS='{"chainlink": {"values": {"chainlink": {"image": {"version": "<version>"}}}}}' make test_smoke args="-nodes=5"
+```yaml
+# Specify the image and version of the chainlink image you want to run tests against. Leave blank for default.
+chainlink_image: 
+chainlink_version: 
+
+# Specify the image and version of the simulated geth image you want to run tests against. Leave blank for default.
+# Has no effect when running tests on networks other than the simulated geth instances.
+geth_image: 
+geth_version: 
 ```
-
-You can also use a file name, head over to the [./config](./config/README.md) directory to see how.

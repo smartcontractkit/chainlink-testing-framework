@@ -1,5 +1,6 @@
 package smoke
 
+//revive:disable:dot-imports
 import (
 	"context"
 	"fmt"
@@ -40,23 +41,26 @@ var _ = Describe("Direct request suite @runlog", func() {
 			err = e.ConnectAll()
 			Expect(err).ShouldNot(HaveOccurred())
 		})
-		By("Getting the clients", func() {
+
+		By("Connecting to launched resources", func() {
 			networkRegistry := client.NewNetworkRegistry()
 			nets, err = networkRegistry.GetNetworks(e)
 			Expect(err).ShouldNot(HaveOccurred())
 			cd, err = contracts.NewContractDeployer(nets.Default)
 			Expect(err).ShouldNot(HaveOccurred())
-			cls, err = client.NewChainlinkClients(e)
+			cls, err = client.ConnectChainlinkNodes(e)
 			Expect(err).ShouldNot(HaveOccurred())
-			mockserver, err = client.NewMockServerClientFromEnv(e)
+			mockserver, err = client.ConnectMockServer(e)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		By("Funding Chainlink nodes", func() {
 			ethAmount, err := nets.Default.EstimateCostForChainlinkOperations(1)
 			Expect(err).ShouldNot(HaveOccurred())
 			err = actions.FundChainlinkNodes(cls, nets.Default, ethAmount)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		By("Deploying contracts", func() {
 			lt, err := cd.DeployLinkTokenContract()
 			Expect(err).ShouldNot(HaveOccurred())
@@ -69,6 +73,7 @@ var _ = Describe("Direct request suite @runlog", func() {
 			err = lt.Transfer(consumer.Address(), big.NewInt(2e18))
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		By("Creating directrequest job", func() {
 			err = mockserver.SetValuePath("/variable", 5)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -97,6 +102,7 @@ var _ = Describe("Direct request suite @runlog", func() {
 			})
 			Expect(err).ShouldNot(HaveOccurred())
 		})
+
 		By("Calling oracle contract", func() {
 			jobUUIDReplaces := strings.Replace(jobUUID.String(), "-", "", 4)
 			var jobID [32]byte
@@ -112,6 +118,7 @@ var _ = Describe("Direct request suite @runlog", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 	})
+
 	Describe("with DirectRequest job", func() {
 		It("receives API call data on-chain", func() {
 			Eventually(func(g Gomega) {
@@ -123,6 +130,7 @@ var _ = Describe("Direct request suite @runlog", func() {
 			}, "2m", "1s").Should(Succeed())
 		})
 	})
+
 	AfterEach(func() {
 		By("Tearing down the environment", func() {
 			nets.Default.GasStats().PrintStats()

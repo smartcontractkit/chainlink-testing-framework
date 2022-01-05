@@ -1,7 +1,9 @@
 package client
 
 import (
+	"fmt"
 	"net/http"
+	"strings"
 )
 
 // MockserverClient mockserver client
@@ -24,25 +26,11 @@ func NewMockserverClient(cfg *MockserverConfig) *MockserverClient {
 	}
 }
 
-// PutExpectations sets the expectations (i.e. mocked responses)
-func (em *MockserverClient) PutExpectations(body interface{}) error {
-	_, err := em.Do(http.MethodPut, "/expectation", &body, nil, http.StatusCreated)
-	return err
-}
-
-// ClearExpectation clears expectations
-func (em *MockserverClient) ClearExpectation(body interface{}) error {
-	_, err := em.Do(http.MethodPut, "/clear", &body, nil, http.StatusOK)
-	return err
-}
-
 // SetValuePath sets an int for a path
 func (em *MockserverClient) SetValuePath(path string, v int) error {
-	pathSelector := PathSelector{Path: path}
-	if err := em.ClearExpectation(pathSelector); err != nil {
-		return err
-	}
+	sanitizedPath := strings.ReplaceAll(path, "/", "_")
 	initializer := HttpInitializer{
+		Id:      fmt.Sprintf("%s_mock_id", sanitizedPath),
 		Request: HttpRequest{Path: path},
 		Response: HttpResponse{Body: AdapterResponse{
 			Id:    "",
@@ -51,10 +39,8 @@ func (em *MockserverClient) SetValuePath(path string, v int) error {
 		}},
 	}
 	initializers := []HttpInitializer{initializer}
-	if err := em.PutExpectations(initializers); err != nil {
-		return err
-	}
-	return nil
+	_, err := em.Do(http.MethodPut, "/expectation", &initializers, nil, http.StatusCreated)
+	return err
 }
 
 // PathSelector represents the json object used to find expectations by path
@@ -74,6 +60,7 @@ type HttpResponse struct {
 
 // HttpInitializer represents an element of the initializer array used in the mockserver initializer
 type HttpInitializer struct {
+	Id       string       `json:"id"`
 	Request  HttpRequest  `json:"httpRequest"`
 	Response HttpResponse `json:"httpResponse"`
 }
