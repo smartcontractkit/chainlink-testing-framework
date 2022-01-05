@@ -31,7 +31,7 @@ func (em *ExplorerClient) PostAdminNodes(nodeName string) (NodeAccessKeys, error
 	requestBody := &Name{Name: nodeName}
 	responseBody := NodeAccessKeys{}
 	log.Info().Str("Explorer URL", em.Config.URL).Msg("Creating node credentials")
-	_, err := em.do(http.MethodPost, "/api/v1/admin/nodes", &requestBody, &responseBody, http.StatusCreated)
+	_, err := em.Do(http.MethodPost, "/api/v1/admin/nodes", &requestBody, &responseBody, http.StatusCreated)
 	return responseBody, err
 }
 

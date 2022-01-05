@@ -39,7 +39,7 @@ func (em *MockserverClient) SetValuePath(path string, v int) error {
 		}},
 	}
 	initializers := []HttpInitializer{initializer}
-	_, err := em.do(http.MethodPut, "/expectation", &initializers, nil, http.StatusCreated)
+	_, err := em.Do(http.MethodPut, "/expectation", &initializers, nil, http.StatusCreated)
 	return err
 }
 
