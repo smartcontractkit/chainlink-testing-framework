@@ -362,3 +362,18 @@ type OCRv2Proxy interface {
 	ConfirmContract(addr string) error
 	TransferOwnership(addr string) error
 }
+
+type OCRv2ValidatorProxy interface {
+	Address() string
+	ProposeContract(addr string) error
+	ConfirmContract(addr string) error
+	TransferOwnership(addr string) error
+}
+
+type OCRv2Flags interface {
+	Address() string
+}
+
+type OCRv2Validator interface {
+	Address() string
+}
