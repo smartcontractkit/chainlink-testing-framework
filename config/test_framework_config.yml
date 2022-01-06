@@ -10,6 +10,9 @@ logging:
 # Specify the image and version of the chainlink image you want to run tests against. Leave blank for default.
 chainlink_image: testChainlinkImage
 chainlink_version: testChainlinkVersion
+chainlink_env_values:
+    test_string_val: someString
+    test_int_val: 420
 
 # Specify the image and version of the simulated geth image you want to run tests against. Leave blank for default.
 # Has no effect when running tests on networks other than the simulated geth instances.
