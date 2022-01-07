@@ -333,7 +333,7 @@ type OCRv2Store interface {
 	ProgramAddress() string
 	SetValidatorConfig(flaggingThreshold uint32) error
 	SetWriter(writerAuthority string) error
-	CreateFeed(granylarity int, liveLength int) error
+	CreateFeed(desc string, decimals uint8, granularity int, liveLength int) error
 	GetLatestRoundData() (uint64, error)
 }
 
