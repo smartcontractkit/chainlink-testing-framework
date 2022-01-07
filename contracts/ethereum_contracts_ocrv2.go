@@ -10,7 +10,7 @@ func (e *EthereumOCRv2Store) TransmissionsAddress() string {
 	panic("implement me")
 }
 
-func (e *EthereumOCRv2Store) GetLatestRoundData() (uint64, error) {
+func (e *EthereumOCRv2Store) GetLatestRoundData() (uint64, uint64, uint64, error) {
 	panic("implement me")
 }
 
@@ -18,7 +18,7 @@ func (e *EthereumOCRv2Store) SetWriter(writerAuthority string) error {
 	panic("implement me")
 }
 
-func (e *EthereumOCRv2Store) CreateFeed(granylarity int, liveLength int) error {
+func (e *EthereumOCRv2Store) CreateFeed(desc string, decimals uint8, granylarity int, liveLength int) error {
 	panic("implement me")
 }
 
