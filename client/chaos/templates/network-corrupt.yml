@@ -5,10 +5,10 @@ metadata:
   namespace: {{ .Base.Namespace }}
 spec:
   action: corrupt
-  mode: one
+  mode: {{ .Mode }}
   selector:
     labelSelectors:
-      'app': '{{ .TargetAppLabel }}'
+      '{{ .LabelKey }}': '{{ .LabelValue }}'
   corrupt:
     corrupt: "{{ .Corrupt }}"
     correlation: "{{ .Correlation }}"

@@ -3,8 +3,10 @@ package experiments
 // ContainerKill struct for continer kill testing
 type ContainerKill struct {
 	Base
-	TargetAppLabel string
-	Container      string
+	Mode       string
+	LabelKey   string
+	LabelValue string
+	Container  string
 }
 
 // SetBase sets the base

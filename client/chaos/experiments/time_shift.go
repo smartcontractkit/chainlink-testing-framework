@@ -2,12 +2,14 @@ package experiments
 
 import "time"
 
-// TimeShift stuct to contain info needed for TimeShift testing
+// TimeShift struct to contain info needed for TimeShift testing
 type TimeShift struct {
 	Base
-	TargetAppLabel string
-	TimeOffset     time.Duration
-	Duration       time.Duration
+	Mode       string
+	LabelKey   string
+	LabelValue string
+	TimeOffset time.Duration
+	Duration   time.Duration
 }
 
 // SetBase sets the base

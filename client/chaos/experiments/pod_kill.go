@@ -3,7 +3,9 @@ package experiments
 // PodKill struct for pod kill testing
 type PodKill struct {
 	Base
-	TargetAppLabel string
+	Mode       string
+	LabelKey   string
+	LabelValue string
 }
 
 // SetBase sets the base

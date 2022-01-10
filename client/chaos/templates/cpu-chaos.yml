@@ -4,10 +4,10 @@ metadata:
   name: {{ .Base.Name }}
   namespace: {{ .Base.Namespace }}
 spec:
-  mode: one
+  mode: {{ .Mode }}
   selector:
     labelSelectors:
-      'app': '{{ .TargetAppLabel }}'
+      '{{ .LabelKey }}': '{{ .LabelValue }}'
   stressors:
     cpu:
       workers: {{ .Workers }}

@@ -5,10 +5,10 @@ metadata:
   namespace: {{ .Base.Namespace }}
 spec:
   action: loss
-  mode: one
+  mode: {{ .Mode }}
   selector:
     labelSelectors:
-      'app': '{{ .TargetAppLabel }}'
+      '{{ .LabelKey }}': '{{ .LabelValue }}'
   loss:
     loss: '{{ .Loss }}'
     correlation: '{{ .Correlation }}'

@@ -5,7 +5,7 @@ metadata:
   namespace: {{ .Base.Namespace }}
 spec:
   action: pod-kill
-  mode: one
+  mode: {{ .Mode }}
   selector:
     labelSelectors:
-      'app': '{{ .TargetAppLabel }}'
+      '{{ .LabelKey }}': '{{ .LabelValue }}'

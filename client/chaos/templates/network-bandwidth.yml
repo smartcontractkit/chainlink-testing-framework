@@ -5,10 +5,10 @@ metadata:
   namespace: {{ .Base.Namespace }}
 spec:
   action: bandwidth
-  mode: one
+  mode: {{ .Mode }}
   selector:
     labelSelectors:
-      'app': '{{ .TargetAppLabel }}'
+      '{{ .LabelKey }}': '{{ .LabelValue }}'
   bandwidth:
     rate: {{ .Rate }}
     limit: {{ .Limit }}

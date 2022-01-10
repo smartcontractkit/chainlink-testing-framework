@@ -5,10 +5,12 @@ import "time"
 // NetworkDuplicate struct contains objects for NetworkConfig Duplication testing
 type NetworkDuplicate struct {
 	Base
-	TargetAppLabel string
-	Duplicate      int
-	Correlation    int
-	Duration       time.Duration
+	Mode        string
+	LabelKey    string
+	LabelValue  string
+	Duplicate   int
+	Correlation int
+	Duration    time.Duration
 }
 
 // SetBase sets the base

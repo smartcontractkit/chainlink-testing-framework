@@ -5,12 +5,14 @@ import "time"
 // IOFault struct contains objects for IO Fault testing
 type IOFault struct {
 	Base
-	TargetAppLabel string
-	VolumePath     string
-	Path           string
-	Errno          int
-	Percent        int
-	Duration       time.Duration
+	Mode       string
+	LabelKey   string
+	LabelValue string
+	VolumePath string
+	Path       string
+	Errno      int
+	Percent    int
+	Duration   time.Duration
 }
 
 // SetBase sets the base

@@ -5,9 +5,9 @@ metadata:
   namespace: {{ .Base.Namespace }}
 spec:
   action: container-kill
-  mode: one
+  mode: {{ .Mode }}
   selector:
     labelSelectors:
-      'app': '{{ .TargetAppLabel }}'
+      '{{ .LabelKey }}': '{{ .LabelValue }}'
   containerNames:
     - {{ .Container }}

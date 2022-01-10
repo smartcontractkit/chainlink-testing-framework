@@ -7,6 +7,7 @@ import (
 // NetworkDelay stuct containing definitions for a network delay
 type NetworkDelay struct {
 	Base
+	Mode       string
 	LabelKey   string
 	LabelValue string
 	Latency    time.Duration

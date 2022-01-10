@@ -4,7 +4,7 @@ metadata:
   name: {{ .Base.Name }}
 spec:
   action: delay
-  mode: one
+  mode: {{ .Mode }}
   selector:
     namespaces:
       - {{ .Base.Namespace }}

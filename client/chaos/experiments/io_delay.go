@@ -5,12 +5,14 @@ import "time"
 // IODelay struct contains objects for IODelay testing
 type IODelay struct {
 	Base
-	TargetAppLabel string
-	VolumePath     string
-	Path           string
-	Delay          time.Duration
-	Percent        int
-	Duration       time.Duration
+	Mode       string
+	LabelKey   string
+	LabelValue string
+	VolumePath string
+	Path       string
+	Delay      time.Duration
+	Percent    int
+	Duration   time.Duration
 }
 
 // SetBase sets the base

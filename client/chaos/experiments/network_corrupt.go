@@ -7,10 +7,12 @@ import (
 // NetworkCorrupt struct for network corruption
 type NetworkCorrupt struct {
 	Base
-	TargetAppLabel string
-	Corrupt        int
-	Correlation    int
-	Duration       time.Duration
+	Mode        string
+	LabelKey    string
+	LabelValue  string
+	Corrupt     int
+	Correlation int
+	Duration    time.Duration
 }
 
 // SetBase sets the base
