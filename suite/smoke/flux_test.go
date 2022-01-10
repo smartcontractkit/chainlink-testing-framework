@@ -112,9 +112,9 @@ var _ = Describe("Flux monitor suite @flux", func() {
 				Name: fmt.Sprintf("variable-%s", adapterUUID),
 				URL:  adapterFullURL,
 			}
-			for _, n := range cls {
+			for i, n := range cls {
 				err = n.CreateBridge(&bta)
-				Expect(err).ShouldNot(HaveOccurred(), "Creating bridge shouldn't fail")  //TODO - Add index
+				Expect(err).ShouldNot(HaveOccurred(), "Creating bridge shouldn't fail for node %d", i+1)
 
 				fluxSpec := &client.FluxMonitorJobSpec{
 					Name:              fmt.Sprintf("flux-monitor-%s", adapterUUID),
@@ -126,7 +126,7 @@ var _ = Describe("Flux monitor suite @flux", func() {
 					ObservationSource: client.ObservationSourceSpecBridge(bta),
 				}
 				_, err = n.CreateJob(fluxSpec)
-				Expect(err).ShouldNot(HaveOccurred(), "Creating flux job shouldn't fail") //TODO - Add index
+				Expect(err).ShouldNot(HaveOccurred(), "Creating flux job shouldn't fail for node %d", i+1)
 			}
 		})
 	})

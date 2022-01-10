@@ -70,12 +70,12 @@ func CreateOCRJobs(
 
 			for nodeIndex := 1; nodeIndex < len(chainlinkNodes); nodeIndex++ {
 				nodeP2PIds, err := chainlinkNodes[nodeIndex].ReadP2PKeys()
-				Expect(err).ShouldNot(HaveOccurred(), "Shouldn't fail reading P2P keys from OCR node %d", nodeIndex)
+				Expect(err).ShouldNot(HaveOccurred(), "Shouldn't fail reading P2P keys from OCR node %d", nodeIndex+1)
 				nodeP2PId := nodeP2PIds.Data[0].Attributes.PeerID
 				nodeTransmitterAddress, err := chainlinkNodes[nodeIndex].PrimaryEthAddress()
-				Expect(err).ShouldNot(HaveOccurred(), "Shouldn't fail getting primary ETH address from OCR node %d", nodeIndex)
+				Expect(err).ShouldNot(HaveOccurred(), "Shouldn't fail getting primary ETH address from OCR node %d", nodeIndex+1)
 				nodeOCRKeys, err := chainlinkNodes[nodeIndex].ReadOCRKeys()
-				Expect(err).ShouldNot(HaveOccurred(), "Shouldn't fail getting OCR keys from OCR node %d", nodeIndex)
+				Expect(err).ShouldNot(HaveOccurred(), "Shouldn't fail getting OCR keys from OCR node %d", nodeIndex+1)
 				nodeOCRKeyId := nodeOCRKeys.Data[0].ID
 
 				nodeContractPairID := buildNodeContractPairID(chainlinkNodes[nodeIndex], ocrInstance)
@@ -89,7 +89,7 @@ func CreateOCRJobs(
 				SetAllAdapterResponses(0, ocrInstances, chainlinkNodes, mockserver)
 
 				err = chainlinkNodes[nodeIndex].CreateBridge(&bta)
-				Expect(err).ShouldNot(HaveOccurred(), "Shouldn't fail creating bridge in OCR node %d", nodeIndex)
+				Expect(err).ShouldNot(HaveOccurred(), "Shouldn't fail creating bridge in OCR node %d", nodeIndex+1)
 
 				ocrSpec := &client.OCRTaskJobSpec{
 					ContractAddress:    ocrInstance.Address(),
@@ -100,7 +100,7 @@ func CreateOCRJobs(
 					ObservationSource:  client.ObservationSourceSpecBridge(bta),
 				}
 				_, err = chainlinkNodes[nodeIndex].CreateJob(ocrSpec)
-				Expect(err).ShouldNot(HaveOccurred(), "Shouldn't fail creating OCR Task job on OCR node %d", nodeIndex)
+				Expect(err).ShouldNot(HaveOccurred(), "Shouldn't fail creating OCR Task job on OCR node %d", nodeIndex+1)
 			}
 		}
 	}
