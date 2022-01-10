@@ -1,8 +1,7 @@
-pragma solidity 0.7.6;
+pragma solidity ^0.7.0;
 
 import "./KeeperCompatibleInterface.sol";
 import "./KeeperBase.sol";
-
 
 contract KeeperConsumer is KeeperCompatibleInterface, KeeperBase {
     uint public counter;

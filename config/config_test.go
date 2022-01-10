@@ -56,11 +56,18 @@ func TestChartCreation(t *testing.T) {
 	}`
 	chart, err := emptyConfig.CreateChartOverrrides()
 	require.NoError(t, err)
-	require.JSONEq(t, emptyChartString, chart, "Expected an empty config to produce an empty string for chart overrides")
+	require.JSONEq(t, emptyChartString, chart, "Expected an empty config to produce an empty object for chart overrides")
 
 	gethOnlyConfig := config.FrameworkConfig{
 		GethImage:   "testGethImage",
 		GethVersion: "testGethVersion",
+		GethArgs: []interface{}{
+			"some",
+			"args",
+			15,
+			"--address",
+			"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+		},
 	}
 	gethOnlyChartString := `{
 		"geth":{
@@ -69,7 +76,14 @@ func TestChartCreation(t *testing.T) {
 					"image":{
 						"image":"testGethImage",
 						"version":"testGethVersion"
-					}
+					},
+					"args":[
+						"some",
+						"args",
+						15,
+						"--address",
+						"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
+					]
 				}
 			}
 		},
@@ -112,9 +126,9 @@ func TestChartCreation(t *testing.T) {
 	require.NoError(t, err)
 	require.JSONEq(t, chainlinkOnlyChartString, chart, "Expected a config with only chainlink image and version")
 
-	chainlinkOnlyConfig.ChainlinkEnvValues = map[string]interface{}{
+	chainlinkOnlyConfig.ChainlinkEnvValues = map[string]string{
 		"test_string_val": "someString",
-		"test_int_val":    420,
+		"test_int_val":    "420",
 	}
 	chainlinkOnlyChartString = `{
 		"geth": {
@@ -134,7 +148,7 @@ func TestChartCreation(t *testing.T) {
 				},
 				"env": {
 					"test_string_val": "someString",
-					"test_int_val": 420
+					"test_int_val": "420"
 				}
 			}
 		}

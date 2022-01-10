@@ -2,21 +2,21 @@
 #
 # All configuration can be set at runtime with environment variables, for example:
 # KEEP_ENVIRONMENTS=OnFail
-keep_environments: Always # Options: Always, OnFail, Never
+keep_environments: Never # Options: Always, OnFail, Never
 logging:
     # panic=5, fatal=4, error=3, warn=2, info=1, debug=0, trace=-1
     level: 0
 
 # Specify the image and version of the chainlink image you want to run tests against. Leave blank for default.
 chainlink_image: public.ecr.aws/z0b1w9r9/chainlink
-chainlink_version: candidate-1.1.0-rc3.b1bdf96e495d8ebcac482e0fc8faa8d485e2ee1d
+chainlink_version: candidate-1.1.0-rc4.f65486d91e5cade4f368a65d1c4fae9630b22445
 chainlink_env_values:
-    EVM_EIP1559_DYNAMIC_FEES: false
 
 # Specify the image and version of the simulated geth image you want to run tests against. Leave blank for default.
 # Has no effect when running tests on networks other than the simulated geth instances.
-geth_image: ethereum/client-go
-geth_version: v1.10.15
+geth_image:
+geth_version: 
+geth_args:
 
 # Setting an environment file allows for persistent, not ephemeral environments on test execution
 #

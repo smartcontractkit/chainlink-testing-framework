@@ -74,6 +74,11 @@ func (e *EthereumMultinodeClient) GetNetworkName() string {
 	return e.DefaultClient.GetNetworkName()
 }
 
+// GetNetworkType retrieves the type of network this is running on
+func (e *EthereumMultinodeClient) GetNetworkType() string {
+	return e.DefaultClient.GetNetworkType()
+}
+
 // GetChainID retrieves the ChainID of the network that the client interacts with
 func (e *EthereumMultinodeClient) GetChainID() int64 {
 	return e.DefaultClient.GetChainID()
@@ -370,13 +375,23 @@ func NewEthereumMultiNodeClient(
 }
 
 // EthereumMultiNodeURLs returns the websocket URLs for a deployed Ethereum multi-node setup
-func EthereumMultiNodeURLs(e *environment.Environment) ([]*url.URL, error) {
+func SimulatedEthereumURLs(e *environment.Environment) ([]*url.URL, error) {
 	return e.Charts.Connections("geth").LocalURLsByPort("ws-rpc", environment.WS)
+}
+
+// LiveEthTestnetURLs indicates that there are no urls to fetch, except from the network config
+func LiveEthTestnetURLs(e *environment.Environment) ([]*url.URL, error) {
+	return []*url.URL{}, nil
 }
 
 // GetNetworkName retrieves the ID of the network that the client interacts with
 func (e *EthereumClient) GetNetworkName() string {
 	return e.NetworkConfig.ID
+}
+
+// GetNetworkType retrieves the type of network this is running on
+func (e *EthereumClient) GetNetworkType() string {
+	return e.NetworkConfig.Type
 }
 
 // GetChainID retrieves the ChainID of the network that the client interacts with

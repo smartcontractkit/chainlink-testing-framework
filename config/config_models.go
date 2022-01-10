@@ -4,14 +4,15 @@ import "time"
 
 // FrameworkConfig common framework config
 type FrameworkConfig struct {
-	KeepEnvironments   string                 `mapstructure:"keep_environments" yaml:"keep_environments"`
-	Logging            *LoggingConfig         `mapstructure:"logging" yaml:"logging"`
-	EnvironmentFile    string                 `mapstructure:"environment_file" yaml:"environment_file"`
-	ChainlinkImage     string                 `mapstructure:"chainlink_image" yaml:"chainlink_image"`
-	ChainlinkVersion   string                 `mapstructure:"chainlink_version" yaml:"chainlink_version"`
-	ChainlinkEnvValues map[string]interface{} `mapstructure:"chainlink_env_values" yaml:"chainlink_env_values"`
-	GethImage          string                 `mapstructure:"geth_image" yaml:"geth_image"`
-	GethVersion        string                 `mapstructure:"geth_version" yaml:"geth_version"`
+	KeepEnvironments   string            `mapstructure:"keep_environments" yaml:"keep_environments"`
+	Logging            *LoggingConfig    `mapstructure:"logging" yaml:"logging"`
+	EnvironmentFile    string            `mapstructure:"environment_file" yaml:"environment_file"`
+	ChainlinkImage     string            `mapstructure:"chainlink_image" yaml:"chainlink_image"`
+	ChainlinkVersion   string            `mapstructure:"chainlink_version" yaml:"chainlink_version"`
+	ChainlinkEnvValues map[string]string `mapstructure:"chainlink_env_values" yaml:"chainlink_env_values"`
+	GethImage          string            `mapstructure:"geth_image" yaml:"geth_image"`
+	GethVersion        string            `mapstructure:"geth_version" yaml:"geth_version"`
+	GethArgs           []interface{}     `mapstructure:"geth_args" yaml:"geth_args"`
 }
 
 // ETHNetwork data to configure fully ETH compatible network
@@ -73,7 +74,8 @@ type GethValuesWrapper struct {
 }
 
 type GethValues struct {
-	Image GethImage `json:"image,omitempty"`
+	Image GethImage     `json:"image,omitempty"`
+	Args  []interface{} `json:"args,omitempty"`
 }
 
 type GethImage struct {
@@ -88,8 +90,8 @@ type ChainlinkChart struct {
 
 // ChainlinkValuesWrapper Chainlink values wrapper
 type ChainlinkValuesWrapper struct {
-	ChainlinkVals        ChainlinkValues        `json:"chainlink,omitempty"`
-	EnvironmentVariables map[string]interface{} `json:"env,omitempty" yaml:"chainlink_env_values"`
+	ChainlinkVals        ChainlinkValues   `json:"chainlink,omitempty"`
+	EnvironmentVariables map[string]string `json:"env,omitempty" yaml:"chainlink_env_values"`
 }
 
 type ChainlinkValues struct {

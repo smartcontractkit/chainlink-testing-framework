@@ -43,11 +43,13 @@ or set environment variables that are all caps versions of the values found in t
 
 ```yaml
 # Specify the image and version of the chainlink image you want to run tests against. Leave blank for default.
-chainlink_image: 
-chainlink_version: 
+chainlink_image:      # Image of chainlink node
+chainlink_version:    # Version of the image on the chainlink node
+chainlink_env_values: # Environment values to pass onto the chainlink nodes
 
 # Specify the image and version of the simulated geth image you want to run tests against. Leave blank for default.
 # Has no effect when running tests on networks other than the simulated geth instances.
-geth_image: 
-geth_version: 
+geth_image:   # Image of the simulated geth to use
+geth_version: # Version of the geth image
+geth_args:    # List of CLI arguments to pass to simulated geth image
 ```

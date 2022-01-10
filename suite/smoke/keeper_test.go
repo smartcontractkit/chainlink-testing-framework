@@ -17,7 +17,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/utils"
 )
 
-var _ = FDescribe("Keeper suite @keeper", func() {
+var _ = Describe("Keeper suite @keeper", func() {
 	var (
 		err              error
 		networks         *client.Networks
@@ -60,6 +60,10 @@ var _ = FDescribe("Keeper suite @keeper", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			err = actions.FundChainlinkNodes(chainlinkNodes, networks.Default, txCost)
 			Expect(err).ShouldNot(HaveOccurred())
+			// Edge case where simulated networks need some funds at the 0x0 address in order for keeper reads to work
+			if networks.Default.GetNetworkType() == "eth_simulated" {
+				actions.FundAddresses(networks.Default, big.NewFloat(1), "0x0")
+			}
 		})
 
 		By("Deploying Keeper contracts", func() {
