@@ -39,50 +39,50 @@ var _ = Describe("VRF suite @vrf", func() {
 				environment.NewChainlinkConfig(nil),
 				tools.ChartsRoot,
 			)
-			Expect(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred(), "Environment deployment shouldn't fail")
 			err = e.ConnectAll()
-			Expect(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred(), "Connecting to all nodes shouldn't fail")
 		})
 
 		By("Connecting to launched resources", func() {
 			networkRegistry := client.NewNetworkRegistry()
 			nets, err = networkRegistry.GetNetworks(e)
-			Expect(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred(), "Connecting to blockchain nodes shouldn't fail")
 			cd, err = contracts.NewContractDeployer(nets.Default)
-			Expect(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred(), "Deploying contracts shouldn't fail")
 			cls, err = client.ConnectChainlinkNodes(e)
-			Expect(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred(), "Connecting to chainlink nodes shouldn't fail")
 			nets.Default.ParallelTransactions(true)
 		})
 
 		By("Funding Chainlink nodes", func() {
 			txCost, err := nets.Default.EstimateCostForChainlinkOperations(1)
-			Expect(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred(), "Estimating cost for Chainlink Operations shouldn't fail")
 			err = actions.FundChainlinkNodes(cls, nets.Default, txCost)
-			Expect(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred(), "Funding chainlink nodes with ETH shouldn't fail")
 		})
 
 		By("Deploying VRF contracts", func() {
 			lt, err = cd.DeployLinkTokenContract()
-			Expect(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred(), "Deploying Link Token Contract shouldn't fail")
 			bhs, err := cd.DeployBlockhashStore()
-			Expect(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred(), "Deploying Blockhash store shouldn't fail")
 			coordinator, err = cd.DeployVRFCoordinator(lt.Address(), bhs.Address())
-			Expect(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred(), "Deploying VRF coordinator shouldn't fail")
 			consumer, err = cd.DeployVRFConsumer(lt.Address(), coordinator.Address())
-			Expect(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred(), "Deploying VRF consumer contract shouldn't fail")
 			err = lt.Transfer(consumer.Address(), big.NewInt(2e18))
-			Expect(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred(), "Funding consumer contract shouldn't fail")
 			_, err = cd.DeployVRFContract()
-			Expect(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred(), "Deploying VRF contract shouldn't fail")
 			err = nets.Default.WaitForEvents()
-			Expect(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred(), "Waiting for event subscriptions in nodes shouldn't fail")
 		})
 
 		By("Creating jobs and registering proving keys", func() {
 			for _, n := range cls {
 				nodeKey, err := n.CreateVRFKey()
-				Expect(err).ShouldNot(HaveOccurred())
+				Expect(err).ShouldNot(HaveOccurred(), "Creating VRF key shouldn't fail")
 				log.Debug().Interface("Key JSON", nodeKey).Msg("Created proving key")
 				pubKeyCompressed := nodeKey.Data.ID
 				jobUUID := uuid.NewV4()
@@ -90,7 +90,7 @@ var _ = Describe("VRF suite @vrf", func() {
 					Address: coordinator.Address(),
 				}
 				ost, err := os.String()
-				Expect(err).ShouldNot(HaveOccurred())
+				Expect(err).ShouldNot(HaveOccurred(), "Building observation source spec shouldn't fail")
 				job, err = n.CreateJob(&client.VRFJobSpec{
 					Name:                     fmt.Sprintf("vrf-%s", jobUUID),
 					CoordinatorAddress:       coordinator.Address(),
@@ -99,19 +99,19 @@ var _ = Describe("VRF suite @vrf", func() {
 					ExternalJobID:            jobUUID.String(),
 					ObservationSource:        ost,
 				})
-				Expect(err).ShouldNot(HaveOccurred())
+				Expect(err).ShouldNot(HaveOccurred(), "Creating VRF Job shouldn't fail")
 
 				oracleAddr, err := n.PrimaryEthAddress()
-				Expect(err).ShouldNot(HaveOccurred())
+				Expect(err).ShouldNot(HaveOccurred(), "Getting primary ETH address of chainlink node shouldn't fail")
 				provingKey, err := actions.EncodeOnChainVRFProvingKey(*nodeKey)
-				Expect(err).ShouldNot(HaveOccurred())
+				Expect(err).ShouldNot(HaveOccurred(), "Encoding on-chain VRF Proving key shouldn't fail")
 				err = coordinator.RegisterProvingKey(
 					big.NewInt(1),
 					oracleAddr,
 					provingKey,
 					actions.EncodeOnChainExternalJobID(jobUUID),
 				)
-				Expect(err).ShouldNot(HaveOccurred())
+				Expect(err).ShouldNot(HaveOccurred(), "Registering the on-chain VRF Proving key shouldn't fail")
 				encodedProvingKeys = append(encodedProvingKeys, provingKey)
 			}
 		})
@@ -120,18 +120,18 @@ var _ = Describe("VRF suite @vrf", func() {
 	Describe("with VRF job", func() {
 		It("randomness is fulfilled", func() {
 			requestHash, err := coordinator.HashOfKey(context.Background(), encodedProvingKeys[0])
-			Expect(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred(), "Getting Hash of encoded proving keys shouldn't fail")
 			err = consumer.RequestRandomness(requestHash, big.NewInt(1))
-			Expect(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred(), "Requesting randomness shouldn't fail")
 
 			timeout := time.Minute * 2
 
 			Eventually(func(g Gomega) {
 				jobRuns, err := cls[0].ReadRunsByJob(job.Data.ID)
-				g.Expect(err).ShouldNot(HaveOccurred())
+				g.Expect(err).ShouldNot(HaveOccurred(), "Job execution shouldn't fail")
 
 				out, err := consumer.RandomnessOutput(context.Background())
-				g.Expect(err).ShouldNot(HaveOccurred())
+				g.Expect(err).ShouldNot(HaveOccurred(), "Getting the randomness output of the consumer shouldn't fail")
 				// Checks that the job has actually run
 				g.Expect(len(jobRuns.Data)).Should(BeNumerically(">=", 1),
 					fmt.Sprintf("Expected the VRF job to run once or more after %s", timeout))
@@ -152,7 +152,7 @@ var _ = Describe("VRF suite @vrf", func() {
 		})
 		By("Tearing down the environment", func() {
 			err = actions.TeardownSuite(e, nets, utils.ProjectRoot)
-			Expect(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred(), "Environment teardown shouldn't fail")
 		})
 	})
 })
