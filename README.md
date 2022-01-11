@@ -51,5 +51,9 @@ chainlink_env_values: # Environment values to pass onto the chainlink nodes
 # Has no effect when running tests on networks other than the simulated geth instances.
 geth_image:   # Image of the simulated geth to use
 geth_version: # Version of the geth image
-geth_args:    # List of CLI arguments to pass to simulated geth image
+geth_args:    # List of CLI arguments to pass to simulated geth image. WARNING
 ```
+
+### WARNING
+
+Values passed into `geth_args` will fully REPLACE all existing defaults we use in our launch. This enables freedom from defaults, but you should most definitely look at all the [current defaults](https://github.com/smartcontractkit/helmenv/blob/master/charts/geth/values.yaml#L16) we usually use and replace them as necessary.

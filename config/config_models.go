@@ -70,12 +70,12 @@ type GethChart struct {
 
 // GethValuesWrapper geth values wrapper
 type GethValuesWrapper struct {
-	GethVals GethValues `json:"geth,omitempty"`
+	GethVals GethValues    `json:"geth,omitempty"`
+	Args     []interface{} `json:"args,omitempty"`
 }
 
 type GethValues struct {
-	Image GethImage     `json:"image,omitempty"`
-	Args  []interface{} `json:"args,omitempty"`
+	Image GethImage `json:"image,omitempty"`
 }
 
 type GethImage struct {

@@ -150,8 +150,8 @@ func (cfg *FrameworkConfig) CreateChartOverrrides() (string, error) {
 						Image:   cfg.GethImage,
 						Version: cfg.GethVersion,
 					},
-					Args: cfg.GethArgs,
 				},
+				Args: cfg.GethArgs,
 			},
 		},
 	}
