@@ -30,7 +30,7 @@ func DeployOCRContracts(
 			linkTokenContract.Address(),
 			contracts.DefaultOffChainAggregatorOptions(),
 		)
-		Expect(err).ShouldNot(HaveOccurred())
+		Expect(err).ShouldNot(HaveOccurred(), "Deploying OCR instance %d shouldn't fail", i+1)
 		// Exclude the first node, which will be used as a bootstrapper
 		err = ocrInstance.SetConfig(
 			chainlinkNodes[1:],
@@ -39,9 +39,9 @@ func DeployOCRContracts(
 		ocrInstances = append(ocrInstances, ocrInstance)
 		Expect(err).ShouldNot(HaveOccurred())
 		err = linkTokenContract.Transfer(ocrInstance.Address(), big.NewInt(2e18))
-		Expect(err).ShouldNot(HaveOccurred())
+		Expect(err).ShouldNot(HaveOccurred(), "Transfering LINK token to OCR instance %d shouldn't fail", i+1)
 		err = networks.Default.WaitForEvents()
-		Expect(err).ShouldNot(HaveOccurred())
+		Expect(err).ShouldNot(HaveOccurred(), "Waiting for Event subscriptions of OCR instance %d shouldn't fail", i+1)
 	}
 	return ocrInstances
 }
@@ -57,7 +57,7 @@ func CreateOCRJobs(
 		for _, ocrInstance := range ocrInstances {
 			bootstrapNode := chainlinkNodes[0]
 			bootstrapP2PIds, err := bootstrapNode.ReadP2PKeys()
-			Expect(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred(), "Shouldn't fail reading P2P keys from bootstrap node")
 			bootstrapP2PId := bootstrapP2PIds.Data[0].Attributes.PeerID
 			bootstrapSpec := &client.OCRBootstrapJobSpec{
 				Name:            fmt.Sprintf("bootstrap-%s", uuid.NewV4().String()),
@@ -66,16 +66,16 @@ func CreateOCRJobs(
 				IsBootstrapPeer: true,
 			}
 			_, err = bootstrapNode.CreateJob(bootstrapSpec)
-			Expect(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred(), "Shouldn't fail creating bootstrap job on bootstrap node")
 
 			for nodeIndex := 1; nodeIndex < len(chainlinkNodes); nodeIndex++ {
 				nodeP2PIds, err := chainlinkNodes[nodeIndex].ReadP2PKeys()
-				Expect(err).ShouldNot(HaveOccurred())
+				Expect(err).ShouldNot(HaveOccurred(), "Shouldn't fail reading P2P keys from OCR node %d", nodeIndex+1)
 				nodeP2PId := nodeP2PIds.Data[0].Attributes.PeerID
 				nodeTransmitterAddress, err := chainlinkNodes[nodeIndex].PrimaryEthAddress()
-				Expect(err).ShouldNot(HaveOccurred())
+				Expect(err).ShouldNot(HaveOccurred(), "Shouldn't fail getting primary ETH address from OCR node %d", nodeIndex+1)
 				nodeOCRKeys, err := chainlinkNodes[nodeIndex].ReadOCRKeys()
-				Expect(err).ShouldNot(HaveOccurred())
+				Expect(err).ShouldNot(HaveOccurred(), "Shouldn't fail getting OCR keys from OCR node %d", nodeIndex+1)
 				nodeOCRKeyId := nodeOCRKeys.Data[0].ID
 
 				nodeContractPairID := buildNodeContractPairID(chainlinkNodes[nodeIndex], ocrInstance)
@@ -89,7 +89,7 @@ func CreateOCRJobs(
 				SetAllAdapterResponses(0, ocrInstances, chainlinkNodes, mockserver)
 
 				err = chainlinkNodes[nodeIndex].CreateBridge(&bta)
-				Expect(err).ShouldNot(HaveOccurred())
+				Expect(err).ShouldNot(HaveOccurred(), "Shouldn't fail creating bridge in OCR node %d", nodeIndex+1)
 
 				ocrSpec := &client.OCRTaskJobSpec{
 					ContractAddress:    ocrInstance.Address(),
@@ -100,7 +100,7 @@ func CreateOCRJobs(
 					ObservationSource:  client.ObservationSourceSpecBridge(bta),
 				}
 				_, err = chainlinkNodes[nodeIndex].CreateJob(ocrSpec)
-				Expect(err).ShouldNot(HaveOccurred())
+				Expect(err).ShouldNot(HaveOccurred(), "Shouldn't fail creating OCR Task job on OCR node %d", nodeIndex+1)
 			}
 		}
 	}
@@ -117,7 +117,7 @@ func SetAdapterResponse(
 		nodeContractPairID := buildNodeContractPairID(chainlinkNode, ocrInstance)
 		path := fmt.Sprintf("/%s", nodeContractPairID)
 		err := mockserver.SetValuePath(path, response)
-		Expect(err).ShouldNot(HaveOccurred())
+		Expect(err).ShouldNot(HaveOccurred(), "Setting mockserver value path shouldn't fail")
 	}
 }
 
@@ -148,11 +148,11 @@ func StartNewRound(
 		roundTimeout := time.Minute * 2
 		for i := 0; i < len(ocrInstances); i++ {
 			err := ocrInstances[i].RequestNewRound()
-			Expect(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred(), "Requesting new round in OCR instance %d shouldn't fail", i+1)
 			ocrRound := contracts.NewOffchainAggregatorRoundConfirmer(ocrInstances[i], big.NewInt(roundNr), roundTimeout)
 			networks.Default.AddHeaderEventSubscription(ocrInstances[i].Address(), ocrRound)
 			err = networks.Default.WaitForEvents()
-			Expect(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred(), "Waiting for Event subscriptions of OCR instance %d shouldn't fail", i+1)
 		}
 	}
 }
@@ -161,7 +161,7 @@ func buildNodeContractPairID(node client.Chainlink, ocrInstance contracts.Offcha
 	Expect(node).ShouldNot(BeNil())
 	Expect(ocrInstance).ShouldNot(BeNil())
 	nodeAddress, err := node.PrimaryEthAddress()
-	Expect(err).ShouldNot(HaveOccurred())
+	Expect(err).ShouldNot(HaveOccurred(), "Getting chainlink node's primary ETH address shouldn't fail")
 	shortNodeAddr := nodeAddress[2:12]
 	shortOCRAddr := ocrInstance.Address()[2:12]
 	return strings.ToLower(fmt.Sprintf("node_%s_contract_%s", shortNodeAddr, shortOCRAddr))
