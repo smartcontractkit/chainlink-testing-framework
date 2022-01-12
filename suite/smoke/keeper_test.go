@@ -59,16 +59,12 @@ var _ = Describe("Keeper suite @keeper", func() {
 			txCost, err := networks.Default.EstimateCostForChainlinkOperations(10)
 			Expect(err).ShouldNot(HaveOccurred(), "Estimating cost for Chainlink Operations shouldn't fail")
 			err = actions.FundChainlinkNodes(chainlinkNodes, networks.Default, txCost)
-<<<<<<< HEAD
-			Expect(err).ShouldNot(HaveOccurred())
+			Expect(err).ShouldNot(HaveOccurred(), "Funding Chainlink nodes shouldn't fail")
 			// Edge case where simulated networks need some funds at the 0x0 address in order for keeper reads to work
 			if networks.Default.GetNetworkType() == "eth_simulated" {
 				err = actions.FundAddresses(networks.Default, big.NewFloat(1), "0x0")
 				Expect(err).ShouldNot(HaveOccurred())
 			}
-=======
-			Expect(err).ShouldNot(HaveOccurred(), "Funding chainlink nodes with ETH shouldn't fail")
->>>>>>> c71534ae7b7d6b66984039e54ce43af30560e0fd
 		})
 
 		By("Deploying Keeper contracts", func() {
