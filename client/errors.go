@@ -1,17 +1,165 @@
 package client
 
 import (
+	"context"
+	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
+	"math/big"
+	"path/filepath"
 	"regexp"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/pkg/errors"
+	"github.com/smartcontractkit/integrations-framework/config"
+	"github.com/smartcontractkit/integrations-framework/utils"
 )
 
 // fatal means this transaction can never be accepted even with a different nonce or higher gas price
 type SendError struct {
 	fatal bool
 	err   error
+}
+
+func NewNetworkConfig() config.ETHNetwork {
+	nc, _ := config.LoadNetworksConfig(filepath.Join(utils.ProjectRoot, "networks.yaml"))
+	settings := nc.NetworkSettings[nc.SelectedNetworks[0]]
+	url := settings["private_url"]
+	private_keys := settings["private_keys"].([]interface{})
+	var key1, key2 string
+	key1 = private_keys[0].(string)
+	if len(private_keys) > 1 {
+		key2 = private_keys[1].(string)
+	} else {
+		genKey2, err := crypto.GenerateKey()
+		if err != nil {
+			fmt.Print(err)
+		}
+		key2 = string(crypto.FromECDSA(genKey2))
+	}
+	network := config.ETHNetwork{
+		ChainID: int64(settings["chain_id"].(int)),
+		URL:     url.(string), //8545",
+		Name:    settings["name"].(string),
+		PrivateKeys: []string{
+			key1, key2,
+		},
+	}
+	return network
+}
+
+// SendTransaction sends a specified amount of ETH from a selected wallet to an address
+func (e *EthereumClient) SendTransactionWithNonce(
+	from *EthereumWallet,
+	to common.Address,
+	value *big.Float,
+	nonce uint64,
+) (common.Hash, error) {
+	weiValue, _ := value.Int(nil)
+	privateKey, err := crypto.HexToECDSA(from.PrivateKey())
+	if err != nil {
+		return common.Hash{}, fmt.Errorf("invalid private key: %v", err)
+	}
+	suggestedGasPrice, err := e.Client.SuggestGasPrice(context.Background())
+	if err != nil {
+		return common.Hash{}, err
+	}
+	if err != nil {
+		return common.Hash{}, err
+	}
+
+	// TODO: Update from LegacyTx to DynamicFeeTx
+	tx, err := types.SignNewTx(privateKey, types.NewEIP2930Signer(big.NewInt(e.NetworkConfig.ChainID)),
+		&types.LegacyTx{
+			To:       &to,
+			Value:    weiValue,
+			Data:     nil,
+			Gas:      21000,
+			GasPrice: suggestedGasPrice,
+			Nonce:    nonce,
+		})
+	if err != nil {
+		return common.Hash{}, err
+	}
+	if err := e.Client.SendTransaction(context.Background(), tx); err != nil {
+		return common.Hash{}, err
+	}
+	return tx.Hash(), e.ProcessTransaction(tx)
+}
+
+type TxConfig struct {
+	Tx         *types.Transaction
+	PrivateKey *ecdsa.PrivateKey
+	GasPrice   *big.Int
+	Nonce      uint64
+	Gas        uint64
+	ChainID    int64
+}
+
+// SendTransaction sends a specified amount of ETH from a selected wallet to an address
+func (e *EthereumClient) SendTransactionWithConfig(
+	from *EthereumWallet,
+	to common.Address,
+	value *big.Float,
+	txConfig *TxConfig,
+) (common.Hash, error) {
+	var (
+		err               error
+		privateKey        *ecdsa.PrivateKey  = txConfig.PrivateKey
+		nonce             uint64             = txConfig.Nonce
+		suggestedGasPrice *big.Int           = txConfig.GasPrice
+		Gas               uint64             = txConfig.Gas
+		tx                *types.Transaction = txConfig.Tx
+		ChainID           int64              = txConfig.ChainID
+	)
+	weiValue, _ := value.Int(nil)
+	//overide validation when txConfig contains from privateKey
+	if privateKey == nil {
+		privateKey, err = crypto.HexToECDSA(from.PrivateKey())
+		if err != nil {
+			return common.Hash{}, fmt.Errorf("invalid private key: %v", err)
+		}
+	}
+	if suggestedGasPrice == nil {
+		suggestedGasPrice, err = e.Client.SuggestGasPrice(context.Background())
+		if err != nil {
+			return common.Hash{}, err
+		}
+	}
+	if Gas == 0 {
+		Gas = 21000
+	}
+	if nonce == 0 {
+		nonce, err = e.GetNonce(context.Background(), common.HexToAddress(from.Address()))
+		if err != nil {
+			return common.Hash{}, err
+		}
+	}
+	if ChainID == 0 {
+		ChainID = e.NetworkConfig.ChainID
+	}
+	if tx == nil {
+		var err error
+		// TODO: Update from LegacyTx to DynamicFeeTx
+		tx, err = types.SignNewTx(privateKey, types.NewEIP2930Signer(big.NewInt(ChainID)),
+			&types.LegacyTx{
+				To:       &to,
+				Value:    weiValue,
+				Data:     nil,
+				Gas:      Gas,
+				GasPrice: suggestedGasPrice,
+				Nonce:    nonce,
+			})
+		if err != nil {
+			return common.Hash{}, err
+		}
+	}
+	if err := e.Client.SendTransaction(context.Background(), tx); err != nil {
+		return common.Hash{}, err
+	}
+	return tx.Hash(), e.ProcessTransaction(tx)
 }
 
 func (s *SendError) Error() string {
