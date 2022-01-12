@@ -49,10 +49,7 @@ var _ = Describe("Json RPC compatibility @json_rpc", func() {
 	jsonFile, err := os.Open(filepath.Join(utils.ProjectRoot, "openrpc.json"))
 	Expect(err).ShouldNot(HaveOccurred())
 	defer func(jsonFile *os.File) {
-		err := jsonFile.Close()
-		if err != nil {
-
-		}
+		_ = jsonFile.Close()
 	}(jsonFile)
 
 	byteValue, _ := ioutil.ReadAll(jsonFile)
