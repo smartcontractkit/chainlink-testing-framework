@@ -4,17 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/smartcontractkit/integrations-framework/config"
-	"github.com/xeipuuv/gojsonschema"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
+	"github.com/ethereum/go-ethereum/rpc"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
-	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/utils"
+	"github.com/xeipuuv/gojsonschema"
 )
 
 type Result struct {
