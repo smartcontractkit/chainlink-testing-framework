@@ -98,8 +98,8 @@ func (b *Networks) Get(index int) (BlockchainClient, error) {
 	return b.clients[index], nil
 }
 
-// NewMockServerClientFromEnv creates new mockserver from env
-func NewMockServerClientFromEnv(e *environment.Environment) (*MockserverClient, error) {
+// ConnectMockServer creates a connection to a deployed mockserver in the environment
+func ConnectMockServer(e *environment.Environment) (*MockserverClient, error) {
 	localURL, err := e.Charts.Connections("mockserver").LocalURLByPort("serviceport", environment.HTTP)
 	if err != nil {
 		return nil, err
@@ -188,13 +188,13 @@ func (n *NetworkRegistry) GetNetworks(env *environment.Environment) (*Networks, 
 	}, nil
 }
 
-// NewChainlinkClients creates new chainlink clients
-func NewChainlinkClients(e *environment.Environment) ([]Chainlink, error) {
-	return NewChainlinkClientsByCharts(e, []string{"chainlink"})
+// ConnectChainlinkNodes creates new chainlink clients
+func ConnectChainlinkNodes(e *environment.Environment) ([]Chainlink, error) {
+	return ConnectChainlinkNodesByCharts(e, []string{"chainlink"})
 }
 
-// NewChainlinkClientsByCharts creates new chainlink clients by charts
-func NewChainlinkClientsByCharts(e *environment.Environment, charts []string) ([]Chainlink, error) {
+// ConnectChainlinkNodesByCharts creates new chainlink clients by charts
+func ConnectChainlinkNodesByCharts(e *environment.Environment, charts []string) ([]Chainlink, error) {
 	var clients []Chainlink
 
 	for _, chart := range charts {
@@ -240,8 +240,5 @@ func UnmarshalNetworkConfig(config map[string]interface{}, obj interface{}) erro
 	if err != nil {
 		return err
 	}
-	if err := yaml.Unmarshal(b, obj); err != nil {
-		return err
-	}
-	return nil
+	return yaml.Unmarshal(b, obj)
 }

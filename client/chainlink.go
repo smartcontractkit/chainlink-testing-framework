@@ -94,7 +94,7 @@ func (c *chainlink) URL() string {
 // CreateJobRaw creates a Chainlink job based on the provided spec string
 func (c *chainlink) CreateJobRaw(spec string) (*Job, error) {
 	job := &Job{}
-	log.Info().Str("Node URL", c.Config.URL).Msg("Creating Job")
+	log.Info().Str("Node URL", c.Config.URL).Str("Job Body", spec).Msg("Creating Job")
 	_, err := c.do(http.MethodPost, "/v2/jobs", &JobForm{
 		TOML: spec,
 	}, &job, http.StatusOK)
@@ -108,7 +108,7 @@ func (c *chainlink) CreateJob(spec JobSpec) (*Job, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Info().Str("Node URL", c.Config.URL).Msg("Creating Job")
+	log.Info().Str("Node URL", c.Config.URL).Str("Type", spec.Type()).Msg("Creating Job")
 	_, err = c.do(http.MethodPost, "/v2/jobs", &JobForm{
 		TOML: specString,
 	}, &job, http.StatusOK)

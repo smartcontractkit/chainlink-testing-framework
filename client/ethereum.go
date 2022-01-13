@@ -409,7 +409,7 @@ func (e *EthereumClient) GetNonce(ctx context.Context, addr common.Address) (uin
 			e.Nonces[addr.Hex()] = lastNonce
 			return lastNonce, nil
 		}
-		e.Nonces[addr.Hex()] += 1
+		e.Nonces[addr.Hex()]++
 		return e.Nonces[addr.Hex()], nil
 	}
 	lastNonce, err := e.Client.PendingNonceAt(ctx, addr)
