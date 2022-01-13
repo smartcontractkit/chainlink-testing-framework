@@ -28,7 +28,7 @@ networks:
     geth: &common_ethereum
         name: "Ethereum Geth dev"
         chain_id: 1337
-        type: eth_multinode
+        type: eth_simulated
         secret_private_keys: false
         namespace_for_secret: default
         <<: *private_keys
@@ -44,23 +44,24 @@ networks:
     geth-reorg:
         <<: *ethereum_geth_performance
         name: "Ethereum Geth reorg"
-        type: eth_multinode
+        type: eth_simulated
         transaction_timeout: 10m
         gas_estimation_buffer: 0
     ethereum_kovan: &common_ethereum_testnet
         name: "Ethereum Kovan"
         chain_id: 42
-        type: ethereum_compatible
+        type: eth_testnet
         namespace_for_secret: default
-        secret_private_keys: true
-        secret_private_url: true
+        secret_private_keys: false
+        secret_private_url: false
         private_url: kovan_testnet_url
         private_keys:
             - kovan_testnet_1
-        chainlink_transaction_limit: 7667850
+        chainlink_transaction_limit: 500000
         transaction_timeout: 2m
         minimum_confirmations: 1
         gas_estimation_buffer: 10000
+        block_gas_limit: 40000000
     ethereum_goerli:
         <<: *common_ethereum_testnet
         name: "Ethereum Goerli"

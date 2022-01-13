@@ -20,7 +20,8 @@ import (
 
 // Commonly used blockchain network types
 const (
-	ETHNetworkType         = "eth_multinode"
+	SimulatedEthNetwork    = "eth_simulated"
+	LiveEthTestNetwork     = "eth_testnet"
 	NetworkGethPerformance = "ethereum_geth_performance"
 )
 
@@ -47,6 +48,7 @@ type BlockchainClient interface {
 
 	Get() interface{}
 	GetNetworkName() string
+	GetNetworkType() string
 	GetChainID() int64
 	SwitchNode(node int) error
 	GetClients() []BlockchainClient
@@ -130,9 +132,13 @@ type registeredNetwork struct {
 func NewNetworkRegistry() *NetworkRegistry {
 	return &NetworkRegistry{
 		registeredNetworks: map[string]registeredNetwork{
-			ETHNetworkType: {
+			SimulatedEthNetwork: {
 				newBlockchainClientFn: NewEthereumMultiNodeClient,
-				blockchainClientURLFn: EthereumMultiNodeURLs,
+				blockchainClientURLFn: SimulatedEthereumURLs,
+			},
+			LiveEthTestNetwork: {
+				newBlockchainClientFn: NewEthereumMultiNodeClient,
+				blockchainClientURLFn: LiveEthTestnetURLs,
 			},
 		},
 	}

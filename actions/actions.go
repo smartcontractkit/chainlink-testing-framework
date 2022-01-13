@@ -28,7 +28,7 @@ const (
 	DefaultArtifactsDir = "logs"
 )
 
-// FundChainlinkNodes will fund all of the provided Chainlink nodes with a set amount of ETH
+// FundChainlinkNodes will fund all of the provided Chainlink nodes with a set amount of native currency
 func FundChainlinkNodes(
 	nodes []client.Chainlink,
 	blockchain client.BlockchainClient,
@@ -41,6 +41,16 @@ func FundChainlinkNodes(
 		}
 		err = blockchain.Fund(toAddress, amount)
 		if err != nil {
+			return err
+		}
+	}
+	return blockchain.WaitForEvents()
+}
+
+// FundAddresses will fund a list of addresses with an amount of native currency
+func FundAddresses(blockchain client.BlockchainClient, amount *big.Float, addresses ...string) error {
+	for _, address := range addresses {
+		if err := blockchain.Fund(address, amount); err != nil {
 			return err
 		}
 	}
