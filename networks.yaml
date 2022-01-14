@@ -173,3 +173,17 @@ networks:
         transaction_timeout: 5m
         minimum_confirmations: 1
         gas_estimation_buffer: 10000
+    private_celo_test:
+        name: "Private Celo testnet"
+        chain_id: 15
+        type: eth_multinode
+        secret_private_keys: false
+        secret_private_url: false
+        urls:
+            - ws://127.0.0.1:8546
+        private_keys:
+            - 79d9dbd15e44d89e7d15581e202e85e0cabd206a196dbb2fa78d8f7b9551726d
+        chainlink_transaction_limit: 7667850
+        transaction_timeout: 5m
+        minimum_confirmations: 1
+        gas_estimation_buffer: 10000

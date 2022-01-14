@@ -29,21 +29,21 @@ var _ = FDescribe("OCR Feed @ocr", func() {
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-
 			chainlinkValues := map[string]interface{}{}
 			chainlinkValues["env"] = map[string]string{
 				"eth_url":      "wss://alfajores-forno.celo-testnet.org/ws",
 				"eth_chain_id": "44787",
 			}
-			chainlinkValues["chainlink"] = map[string]map[string]string{
+			chainlinkValues["chainlink"] = map[string]map[string]interface{}{
 				"image": {
-					"image":   "celo-image",
+					"image":   "celo-chainlink",
 					"version": "latest",
 				},
 			}
 
 			env, err = environment.DeployOrLoadEnvironment(
-				environment.NewChainlinkConfig(environment.ChainlinkReplicas(6, nil)),
+				//environment.NewChainlinkConfig(environment.ChainlinkReplicas(6, nil)),
+				environment.NewChainlinkConfig(chainlinkValues),
 				tools.ChartsRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred())
