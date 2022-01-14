@@ -271,6 +271,24 @@ type EIKey struct {
 	Attributes EIAttributes `json:"attributes"`
 }
 
+// TerraNodeAttributes is the model that represents the terra node when created
+type TerraNodeAttributes struct {
+	Name          string `json:"name"`
+	TerraChainID  string `json:"terraChainId"`
+	TendermintURL string `json:"tendermintURL" db:"tendermint_url"`
+	FCDURL        string `json:"fcdURL" db:"fcd_url"`
+}
+
+// TerraNodeAttributes is the model that represents the terra node when created
+type TerraNode struct {
+	Attributes TerraNodeAttributes `json:"attributes"`
+}
+
+// TerraNodeCreate is the model that represents the terra node when created
+type TerraNodeCreate struct {
+	Data TerraNode `json:"data"`
+}
+
 // SpecForm is the form used when creating a v2 job spec, containing the TOML of the v2 job
 type SpecForm struct {
 	TOML string `json:"toml"`
