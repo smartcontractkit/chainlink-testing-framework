@@ -15,7 +15,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/contracts"
-	"github.com/smartcontractkit/integrations-framework/utils"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
@@ -25,7 +24,7 @@ import (
 
 const (
 	// DefaultArtifactsDir default artifacts dir
-	DefaultArtifactsDir = "logs"
+	DefaultArtifactsDir string = "logs"
 )
 
 // FundChainlinkNodes will fund all of the provided Chainlink nodes with a set amount of native currency
@@ -166,17 +165,10 @@ func GetMockserverInitializerDataForOTPE(
 // TeardownSuite tears down networks/clients and environment and creates a logs folder for failed tests in the
 // specified path
 func TeardownSuite(env *environment.Environment, nets *client.Networks, logsFolderPath string) error {
-	fConf, err := config.LoadFrameworkConfig(filepath.Join(utils.ProjectRoot, "framework.yaml"))
-	if err != nil {
-		log.Fatal().
-			Str("Path", utils.ProjectRoot).
-			Msg("Failed to load config")
-		return err
-	}
 	if ginkgo.CurrentSpecReport().Failed() {
 		testFilename := strings.Split(ginkgo.CurrentSpecReport().FileName(), ".")[0]
 		_, testName := filepath.Split(testFilename)
-		logsPath := filepath.Join(logsFolderPath, DefaultArtifactsDir, fmt.Sprintf("%s-%d", testName, time.Now().Unix()))
+		logsPath := filepath.Join(config.ProjectConfigDirectory, DefaultArtifactsDir, fmt.Sprintf("%s-%d", testName, time.Now().Unix()))
 		if err := env.Artifacts.DumpTestResult(logsPath, "chainlink"); err != nil {
 			return err
 		}
@@ -186,7 +178,7 @@ func TeardownSuite(env *environment.Environment, nets *client.Networks, logsFold
 			return err
 		}
 	}
-	switch strings.ToUpper(fConf.KeepEnvironments) {
+	switch strings.ToUpper(config.ProjectFrameworkSettings.KeepEnvironments) {
 	case "ALWAYS":
 		env.Persistent = true
 	case "ONFAIL":
@@ -196,7 +188,7 @@ func TeardownSuite(env *environment.Environment, nets *client.Networks, logsFold
 	case "NEVER":
 		env.Persistent = false
 	default:
-		log.Warn().Str("Invalid Keep Value", fConf.KeepEnvironments).
+		log.Warn().Str("Invalid Keep Value", config.ProjectFrameworkSettings.KeepEnvironments).
 			Msg("Invalid 'keep_environments' value, see the 'framework.yaml' file")
 	}
 	if !env.Config.Persistent {
