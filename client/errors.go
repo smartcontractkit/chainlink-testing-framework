@@ -107,12 +107,12 @@ func (e *EthereumClient) SendTransactionWithConfig(
 ) (common.Hash, error) {
 	var (
 		err               error
-		privateKey        *ecdsa.PrivateKey  = txConfig.PrivateKey
-		nonce             uint64             = txConfig.Nonce
-		suggestedGasPrice *big.Int           = txConfig.GasPrice
-		Gas               uint64             = txConfig.Gas
-		tx                *types.Transaction = txConfig.Tx
-		ChainID           int64              = txConfig.ChainID
+		privateKey        = txConfig.PrivateKey
+		nonce             = txConfig.Nonce
+		suggestedGasPrice = txConfig.GasPrice
+		Gas               = txConfig.Gas
+		tx                = txConfig.Tx
+		ChainID           = txConfig.ChainID
 	)
 	weiValue, _ := value.Int(nil)
 	//overide validation when txConfig contains from privateKey
@@ -201,12 +201,12 @@ const (
 	SenderNotEOA
 )
 
-type ClientErrors = map[int]*regexp.Regexp
+type Errors = map[int]*regexp.Regexp
 
 // Parity
 // See: https://github.com/openethereum/openethereum/blob/master/rpc/src/v1/helpers/errors.rs#L420
 var parFatal = regexp.MustCompile(`^Transaction gas is too low. There is not enough gas to cover minimal cost of the transaction|^Transaction cost exceeds current gas limit. Limit:|^Invalid signature|Recipient is banned in local queue.|Supplied gas is beyond limit|Sender is banned in local queue|Code is banned in local queue|Transaction is not permitted|Transaction is too big, see chain specification for the limit|^Invalid RLP data`)
-var parity = ClientErrors{
+var parity = Errors{
 	NonceTooLow:                       regexp.MustCompile("^Transaction nonce is too low. Try incrementing the nonce."),
 	ReplacementTransactionUnderpriced: regexp.MustCompile("^Transaction gas price .+is too low. There is another transaction with same nonce in the queue"),
 	LimitReached:                      regexp.MustCompile("There are too many transactions in the queue. Your transaction was dropped due to limit. Try increasing the fee."),
@@ -219,7 +219,7 @@ var parity = ClientErrors{
 // Geth
 // See: https://github.com/ethereum/go-ethereum/blob/b9df7ecdc3d3685180ceb29665bab59e9f614da5/core/tx_pool.go#L516
 var gethFatal = regexp.MustCompile(`(: |^)(exceeds block gas limit|invalid sender|negative value|oversized data|gas uint64 overflow|intrinsic gas too low|nonce too high|txpool is full)$`)
-var geth = ClientErrors{
+var geth = Errors{
 	NonceTooLow:                       regexp.MustCompile(`(: |^)nonce too low$`),
 	ReplacementTransactionUnderpriced: regexp.MustCompile(`(: |^)replacement transaction underpriced$`),
 	TransactionAlreadyInMempool:       regexp.MustCompile(`(: |^)(?i)(known transaction|already known)`),
@@ -239,7 +239,7 @@ var geth = ClientErrors{
 // Arbitrum
 // https://github.com/OffchainLabs/arbitrum/blob/cac30586bc10ecc1ae73e93de517c90984677fdb/packages/arb-evm/evm/result.go#L158
 var arbitrumFatal = regexp.MustCompile(`(: |^)(invalid message format|forbidden sender address|execution reverted: error code)$`)
-var arbitrum = ClientErrors{
+var arbitrum = Errors{
 	// TODO: Arbitrum returns this in case of low or high nonce. Update this when Arbitrum fix it
 	// https://app.shortcut.com/chainlinklabs/story/16801/add-full-support-for-incorrect-nonce-on-arbitrum
 	NonceTooLow: regexp.MustCompile(`(: |^)invalid transaction nonce$`),
@@ -249,22 +249,22 @@ var arbitrum = ClientErrors{
 	Fatal:                 arbitrumFatal,
 }
 
-var optimism = ClientErrors{
+var optimism = Errors{
 	FeeTooLow:  regexp.MustCompile(`(: |^)fee too low: \d+, use at least tx.gasLimit = \d+ and tx.gasPrice = \d+$`),
 	FeeTooHigh: regexp.MustCompile(`(: |^)fee too high: \d+, use less than \d+ \* [0-9\.]+$`),
 }
 
 // Substrate (Moonriver)
-var substrate = ClientErrors{
+var substrate = Errors{
 	NonceTooLow:                 regexp.MustCompile(`(: |^)Pool\(Stale\)$`),
 	TransactionAlreadyInMempool: regexp.MustCompile(`(: |^)Pool\(AlreadyImported\)$`),
 }
 
-var avalanche = ClientErrors{
+var avalanche = Errors{
 	NonceTooLow: regexp.MustCompile(`(: |^)nonce too low: address 0x[0-9a-fA-F]{40} current nonce \([\d]+\) > tx nonce \([\d]+\)$`),
 }
 
-var clients = []ClientErrors{parity, geth, arbitrum, optimism, substrate, avalanche}
+var clients = []Errors{parity, geth, arbitrum, optimism, substrate, avalanche}
 
 func (s *SendError) is(errorType int) bool {
 	if s == nil || s.err == nil {
