@@ -1,9 +1,9 @@
-pragma solidity 0.7.6;
+pragma solidity ^0.7.0;
 
 import "./KeeperCompatibleInterface.sol";
+import "./KeeperBase.sol";
 
-
-contract KeeperConsumer is KeeperCompatibleInterface {
+contract KeeperConsumer is KeeperCompatibleInterface, KeeperBase {
     uint public counter;
     uint public immutable interval;
     uint public lastTimeStamp;
@@ -15,7 +15,12 @@ contract KeeperConsumer is KeeperCompatibleInterface {
         counter = 0;
     }
 
-    function checkUpkeep(bytes calldata checkData) external override returns (bool upkeepNeeded, bytes memory performData) {
+    function checkUpkeep(bytes calldata checkData) 
+    external 
+    override 
+    view
+    cannotExecute
+    returns (bool upkeepNeeded, bytes memory performData) {
         return (true, checkData);
     }
 
