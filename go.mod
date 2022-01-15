@@ -36,7 +36,6 @@ require (
 	github.com/fvbommel/sortorder v1.0.1 // indirect
 	github.com/kr/pretty v0.2.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
-	github.com/lithammer/dedent v1.1.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	helm.sh/helm/v3 v3.7.2 // indirect
 	k8s.io/api v0.23.1 // indirect
