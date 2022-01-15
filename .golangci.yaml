@@ -1,18 +1,60 @@
 run:
+  concurrency: 4
   timeout: 3m
   skip-dirs:
-    - explorer
     - contracts/ethereum
-    - contracts
-issues:
-  exclude-use-default: false
+linters:
+  enable:
+    - exhaustive
+    - exportloopref
+    - revive
+    - goimports
+    - gosec
+    - rowserrcheck
+  disable:
+    # These are all considered deprecated: https://github.com/golangci/golangci-lint/issues/1841
+    - deadcode
+    - structcheck
+    - unused
+    - varcheck
 linters-settings:
+  exhaustive:
+    default-signifies-exhaustive: true
   revive:
+    confidence: 0.8
     rules:
       - name: exported
         severity: error
+      - name: blank-imports
+      - name: context-as-argument
+      - name: context-keys-type
       - name: dot-imports
-        disabled: true
-linters:
-  enable:
-    - revive
+      - name: error-return
+      - name: error-strings
+      - name: error-naming
+      - name: if-return
+      - name: increment-decrement
+      - name: var-declaration
+      - name: package-comments
+      - name: range
+      - name: receiver-naming
+      - name: time-naming
+      - name: indent-error-flow
+      - name: errorf
+      - name: empty-block
+      - name: superfluous-else
+      - name: unreachable-code
+      - name: redefines-builtin-id
+      - name: waitgroup-by-value
+      - name: unconditional-recursion
+      - name: struct-tag
+      - name: string-of-int
+      - name: range-val-in-closure
+      - name: modifies-value-receiver
+      - name: modifies-parameter
+      - name: identical-branches
+      - name: get-return
+      - name: defer
+      - name: constant-logical-expr
+      - name: bool-literal-in-expr
+      - name: atomic

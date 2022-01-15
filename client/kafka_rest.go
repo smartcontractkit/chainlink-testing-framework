@@ -24,6 +24,6 @@ func NewKafkaRestClient(cfg *KafkaRestConfig) *KafkaRestClient {
 // GetTopics Get a list of Kafka topics.
 func (krc *KafkaRestClient) GetTopics() ([]string, error) {
 	responseBody := []string{}
-	_, err := krc.do(http.MethodGet, "/topics", nil, &responseBody, http.StatusOK)
+	_, err := krc.Do(http.MethodGet, "/topics", nil, &responseBody, http.StatusOK)
 	return responseBody, err
 }

@@ -1049,10 +1049,7 @@ func (v *EthereumKeeperRegistry) AddUpkeepFunds(id *big.Int, amount *big.Int) er
 	if err != nil {
 		return err
 	}
-	if err := v.client.ProcessTransaction(tx); err != nil {
-		return err
-	}
-	return nil
+	return v.client.ProcessTransaction(tx)
 }
 
 // GetUpkeepInfo gets upkeep info
@@ -1109,10 +1106,7 @@ func (v *EthereumKeeperRegistry) SetKeepers(keepers []string, payees []string) e
 	if err != nil {
 		return err
 	}
-	if err := v.client.ProcessTransaction(tx); err != nil {
-		return err
-	}
-	return nil
+	return v.client.ProcessTransaction(tx)
 }
 
 // RegisterUpkeep registers contract to perform upkeep
@@ -1125,10 +1119,7 @@ func (v *EthereumKeeperRegistry) RegisterUpkeep(target string, gasLimit uint32, 
 	if err != nil {
 		return err
 	}
-	if err := v.client.ProcessTransaction(tx); err != nil {
-		return err
-	}
-	return nil
+	return v.client.ProcessTransaction(tx)
 }
 
 // GetKeeperList get list of all registered keeper addresses

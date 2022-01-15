@@ -2,12 +2,12 @@
 package config
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path"
 	"strings"
-	"time"
 
 	"github.com/imdario/mergo"
 	"github.com/kelseyhightower/envconfig"
@@ -25,17 +25,6 @@ const (
 	LocalConfig  ConfigurationType = "local"
 	SecretConfig ConfigurationType = "secret"
 )
-
-// FrameworkConfig common framework config
-type FrameworkConfig struct {
-	KeepEnvironments string         `mapstructure:"keep_environments" yaml:"keep_environments"`
-	Logging          *LoggingConfig `mapstructure:"logging" yaml:"logging"`
-	EnvironmentFile  string         `mapstructure:"environment_file" yaml:"environment_file"`
-	ChainlinkImage   string         `mapstructure:"chainlink_image" yaml:"chainlink_image"`
-	ChainlinkVersion string         `mapstructure:"chainlink_version" yaml:"chainlink_version"`
-	GethImage        string         `mapstructure:"geth_image" yaml:"geth_image"`
-	GethVersion      string         `mapstructure:"geth_version" yaml:"geth_version"`
-}
 
 // NetworkSettings is a map that holds configuration for each individual network
 type NetworkSettings map[string]map[string]interface{}
@@ -57,48 +46,6 @@ func (n NetworkSettings) Decode(value string) error {
 		return fmt.Errorf("failed to unmarshal YAML, either a file path specific doesn't exist, or the YAML is invalid: %v", err)
 	}
 	return mergo.Merge(&n, networkSettings, mergo.WithOverride)
-}
-
-// NetworksConfig is network configurations
-type NetworksConfig struct {
-	SelectedNetworks   []string        `mapstructure:"selected_networks" yaml:"selected_networks" envconfig:"selected_networks"`
-	NetworkSettings    NetworkSettings `mapstructure:"networks" yaml:"networks" envconfig:"network_settings"`
-	DefaultKeyStore    string
-	ConfigFileLocation string
-}
-
-// LoggingConfig for logging
-type LoggingConfig struct {
-	Level int8 `mapstructure:"level" yaml:"logging"`
-}
-
-// ETHNetwork data to configure fully ETH compatible network
-type ETHNetwork struct {
-	External                  bool          `mapstructure:"external" yaml:"external"`
-	Name                      string        `mapstructure:"name" yaml:"name"`
-	ID                        string        `mapstructure:"id" yaml:"id"`
-	ChainID                   int64         `mapstructure:"chain_id" yaml:"chain_id"`
-	URL                       string        `mapstructure:"url" yaml:"url"`
-	URLs                      []string      `mapstructure:"urls" yaml:"urls"`
-	Type                      string        `mapstructure:"type" yaml:"type"`
-	PrivateKeys               []string      `mapstructure:"private_keys" yaml:"private_keys"`
-	ChainlinkTransactionLimit uint64        `mapstructure:"chainlink_transaction_limit" yaml:"chainlink_transaction_limit"`
-	Timeout                   time.Duration `mapstructure:"transaction_timeout" yaml:"transaction_timeout"`
-	MinimumConfirmations      int           `mapstructure:"minimum_confirmations" yaml:"minimum_confirmations"`
-	GasEstimationBuffer       uint64        `mapstructure:"gas_estimation_buffer" yaml:"gas_estimation_buffer"`
-	BlockGasLimit             uint64        `mapstructure:"block_gas_limit" yaml:"block_gas_limit"`
-}
-
-// TerraNetwork data to configure Terra network
-type TerraNetwork struct {
-	Name                      string        `mapstructure:"name" yaml:"name"`
-	ChainName                 string        `mapstructure:"chain_name" yaml:"chain_name"`
-	Mnemonics                 []string      `mapstructure:"mnemonic" yaml:"mnemonic"`
-	Currency                  string        `mapstructure:"currency" yaml:"currency"`
-	Type                      string        `mapstructure:"type" yaml:"type"`
-	ChainlinkTransactionLimit uint64        `mapstructure:"chainlink_transaction_limit" yaml:"chainlink_transaction_limit"`
-	Timeout                   time.Duration `mapstructure:"transaction_timeout" yaml:"transaction_timeout"`
-	MinimumConfirmations      int           `mapstructure:"minimum_confirmations" yaml:"minimum_confirmations"`
 }
 
 func defaultViper(dir string, file string) *viper.Viper {
@@ -128,6 +75,16 @@ func LoadFrameworkConfig(cfgPath string) (*FrameworkConfig, error) {
 	}
 	var cfg *FrameworkConfig
 	err := v.Unmarshal(&cfg)
+	if err != nil {
+		return nil, err
+	}
+	chartOverrides, err := cfg.CreateChartOverrrides()
+	if err != nil {
+		return nil, err
+	}
+	if chartOverrides != "" {
+		os.Setenv("CHARTS", chartOverrides)
+	}
 	return cfg, err
 }
 
@@ -168,4 +125,36 @@ func (l *LocalStore) Fetch() ([]string, error) {
 		return nil, errors.New("no keys found, ensure your configuration is properly set")
 	}
 	return l.RawKeys, nil
+}
+
+// CreateCharts checks the framework config to see if the user has supplied any values to override the default helm
+// chart values. It returns a JSON block that can be set to the `CHARTS` environment variable that the helmenv library
+// will read from. This will merge the override values with the default values for the appropriate charts.
+func (cfg *FrameworkConfig) CreateChartOverrrides() (string, error) {
+	chartOverrides := ChartOverrides{
+		ChainlinkChartOverrride: ChainlinkChart{
+			Values: ChainlinkValuesWrapper{
+				ChainlinkVals: ChainlinkValues{
+					Image: ChainlinkImage{
+						Image:   cfg.ChainlinkImage,
+						Version: cfg.ChainlinkVersion,
+					},
+				},
+				EnvironmentVariables: cfg.ChainlinkEnvValues,
+			},
+		},
+		GethChartOverride: GethChart{
+			Values: GethValuesWrapper{
+				GethVals: GethValues{
+					Image: GethImage{
+						Image:   cfg.GethImage,
+						Version: cfg.GethVersion,
+					},
+				},
+				Args: cfg.GethArgs,
+			},
+		},
+	}
+	jsonChartOverrides, err := json.Marshal(chartOverrides)
+	return string(jsonChartOverrides), err
 }

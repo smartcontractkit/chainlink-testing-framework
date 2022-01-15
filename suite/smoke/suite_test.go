@@ -1,5 +1,6 @@
 package smoke_test
 
+//revive:disable:dot-imports
 import (
 	"testing"
 
