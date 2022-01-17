@@ -3,7 +3,6 @@ module github.com/smartcontractkit/integrations-framework
 go 1.17
 
 require (
-	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869
 	github.com/ethereum/go-ethereum v1.10.15
 	github.com/ghodss/yaml v1.0.0
 	github.com/kelseyhightower/envconfig v1.4.0
@@ -34,8 +33,6 @@ require (
 	github.com/fatih/camelcase v1.0.0 // indirect
 	github.com/form3tech-oss/jwt-go v3.2.3+incompatible // indirect
 	github.com/fvbommel/sortorder v1.0.1 // indirect
-	github.com/kr/pretty v0.2.1 // indirect
-	github.com/kr/text v0.2.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	helm.sh/helm/v3 v3.7.2 // indirect
 	k8s.io/api v0.23.1 // indirect

@@ -6,11 +6,11 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/bmizerany/assert"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/smartcontractkit/integrations-framework/client"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_Eth_Client_Errors(t *testing.T) {
