@@ -60,6 +60,8 @@ type Chainlink interface {
 	ReadEIs() (*EIKeys, error)
 	DeleteEI(name string) error
 
+	CreateTerraNode(node *TerraNodeAttributes) (*TerraNodeCreate, error)
+
 	RemoteIP() string
 	SetSessionCookie() error
 
@@ -365,6 +367,13 @@ func (c *chainlink) DeleteEI(name string) error {
 	return err
 }
 
+func (c *chainlink) CreateTerraNode(node *TerraNodeAttributes) (*TerraNodeCreate, error) {
+	response := TerraNodeCreate{}
+	log.Info().Str("Node URL", c.Config.URL).Str("Name", node.Name).Msg("Creating Terra Node")
+	_, err := c.do(http.MethodPost, "/v2/nodes/terra", node, &response, http.StatusOK)
+	return &response, err
+}
+
 // RemoteIP retrieves the inter-cluster IP of the chainlink node, for use with inter-node communications
 func (c *chainlink) RemoteIP() string {
 	return c.Config.RemoteIP
@@ -473,8 +482,9 @@ func (c *chainlink) doRaw(
 		return resp, ErrUnprocessableEntity
 	} else if resp.StatusCode != expectedStatusCode {
 		return resp, fmt.Errorf(
-			"unexpected response code, got %d, expected 200\nURL: %s\nresponse received: %s",
+			"unexpected response code, got %d, expected %d\nURL: %s\nresponse received: %s",
 			resp.StatusCode,
+			expectedStatusCode,
 			c.Config.URL,
 			string(b),
 		)
