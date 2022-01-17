@@ -108,13 +108,6 @@ func Test_Eth_Client_Errors(t *testing.T) {
 		assert.Equal(t, sendError.IsTransactionAlreadyInMempool(), true)
 		assert.Equal(t, hash.String(), ZERO_ADDRESS)
 	})
-
-	t.Run("nonce has max value", func(t *testing.T) {
-
-	})
-	t.Run("gas limit reached", func(t *testing.T) {
-
-	})
 	//To reproduce "invalid sender error" ---
 	//Sender function in core/types/transaction_signing.go compares the NetworkID with state NetworkId
 	//changing ChainId from the the network gives this error
@@ -137,7 +130,7 @@ func Test_Eth_Client_Errors(t *testing.T) {
 		assert.Equal(t, sendError.Fatal(), true)
 		assert.Equal(t, hash1.String(), ZERO_ADDRESS)
 	})
-	t.Run("transaction underpriced", func(t *testing.T) {
+	t.Run("tx fee exceeds the configured cap", func(t *testing.T) {
 		ec, err := client.NewEthereumClient(&networkInfo)
 		if err != nil {
 			t.Error(err)
@@ -148,50 +141,111 @@ func Test_Eth_Client_Errors(t *testing.T) {
 		ecdsaKey, _ := crypto.HexToECDSA(account1.PrivateKey())
 		value, _ := amount.Mul(amount, client.OneEth).Int(nil)
 		suggestedGasPrice, _ := ec.Client.SuggestGasPrice(context.Background())
-		nonce, err := ec.GetNonce(context.Background(), common.HexToAddress(account1.Address()))
-		fmt.Printf("Nonce Error %v:\n", err)
-		fmt.Printf("Nonce : %v\n", nonce)
+		gasTip, _ := ec.Client.SuggestGasTipCap(context.Background())
+		nonce, _ := ec.GetNonce(context.Background(), common.HexToAddress(account1.Address()))
 		to := common.HexToAddress(account2.Address())
 		tx, _ := types.SignNewTx(ecdsaKey, types.NewEIP2930Signer(big.NewInt(networkInfo.ChainID)),
 			&types.LegacyTx{
 				To:       &to,
 				Value:    value,
 				Data:     nil,
-				Gas:      21000,
+				Gas:      gasTip.Mul(gasTip, big.NewInt(3)).Uint64(), // 21000,
 				GasPrice: suggestedGasPrice,
 				Nonce:    nonce,
 			})
-		fmt.Printf("Tx value %v\n", tx)
-		// hash1, err := ec.SendTransactionWithConfig(
-		// 	account2, common.HexToAddress(account1.Address()),
-		// 	amount.Mul(amount, client.OneEth),
-		// 	&client.TxConfig{
-		// 		Tx: tx,
-		// 	})
-		// fmt.Printf("### Error String : %v\n", err)
-		// tx2, _ := types.SignNewTx(ecdsaKey, types.NewEIP2930Signer(big.NewInt(networkInfo.ChainID)),
-		// 	&types.LegacyTx{
-		// 		To:       &to,
-		// 		Value:    value,
-		// 		Data:     nil,
-		// 		Gas:      21000,
-		// 		GasPrice: big.NewInt(1),
-		// 		Nonce:    nonce,
-		// 	})
-		// hash2, err := ec.SendTransactionWithConfig(
-		// 	account2, common.HexToAddress(account1.Address()),
-		// 	amount.Mul(amount, client.OneEth),
-		// 	&client.TxConfig{
-		// 		Tx: tx2,
-		// 	})
-		// fmt.Print(hash2)
-		// fmt.Print(nonce, nonce)
-		// fmt.Printf("### Error String : %v\n", err)
-		// sendError := client.NewSendError(err)
-		// assert.Equal(t, sendError.Fatal(), true)
-		// assert.Equal(t, hash1.String(), ZERO_ADDRESS)
+		hash1, err := ec.SendTransactionWithConfig(
+			account2, common.HexToAddress(account1.Address()),
+			amount.Mul(amount, client.OneEth),
+			&client.TxConfig{
+				Tx: tx,
+			})
+		sendError := client.NewSendError(err)
+		fmt.Printf("### Error String : %v\n", err.Error())
+		assert.Equal(t, sendError.IsTooExpensive(), true)
+		assert.Equal(t, hash1.String(), ZERO_ADDRESS)
+	})
+	t.Run("intrinsic gas too low", func(t *testing.T) {
+		ec, err := client.NewEthereumClient(&networkInfo)
+		if err != nil {
+			t.Error(err)
+		}
+		account1 := ec.DefaultWallet
+		account2 := ec.Wallets[1]
+		amount := big.NewFloat(11)
+		ecdsaKey, _ := crypto.HexToECDSA(account1.PrivateKey())
+		value, _ := amount.Mul(amount, client.OneEth).Int(nil)
+		suggestedGasPrice, _ := ec.Client.SuggestGasPrice(context.Background())
+		gasTip, _ := ec.Client.SuggestGasTipCap(context.Background())
+		gas := uint64(10)
+		assert.Less(t, gas, gasTip.Uint64())
+		nonce, _ := ec.GetNonce(context.Background(), common.HexToAddress(account1.Address()))
+		to := common.HexToAddress(account2.Address())
+		tx, _ := types.SignNewTx(ecdsaKey, types.NewEIP2930Signer(big.NewInt(networkInfo.ChainID)),
+			&types.LegacyTx{
+				To:       &to,
+				Value:    value,
+				Data:     nil,
+				Gas:      gas,
+				GasPrice: suggestedGasPrice,
+				Nonce:    nonce,
+			})
+		hash1, err := ec.SendTransactionWithConfig(
+			account2, common.HexToAddress(account1.Address()),
+			amount.Mul(amount, client.OneEth),
+			&client.TxConfig{
+				Tx: tx,
+			})
+		sendError := client.NewSendError(err)
+		fmt.Printf("### Error String : %v\n", err.Error())
+		assert.Equal(t, sendError.Fatal(), true)
+		assert.Equal(t, hash1.String(), ZERO_ADDRESS)
+	})
+	t.Run("exceeds block gas limit", func(t *testing.T) {
+		ec, err := client.NewEthereumClient(&networkInfo)
+		if err != nil {
+			t.Error(err)
+		}
+		account1 := ec.DefaultWallet
+		account2 := ec.Wallets[1]
+		amount := big.NewFloat(11)
+		ecdsaKey, _ := crypto.HexToECDSA(account1.PrivateKey())
+		value, _ := amount.Mul(amount, client.OneEth).Int(nil)
+		suggestedGasPrice, _ := ec.Client.SuggestGasPrice(context.Background())
+		gasTip, _ := ec.Client.SuggestGasTipCap(context.Background())
+		//Gas close to GasTipCap
+		gas := gasTip.Div(gasTip, big.NewInt(10)).Uint64()
+		nonce, _ := ec.GetNonce(context.Background(), common.HexToAddress(account1.Address()))
+		to := common.HexToAddress(account2.Address())
+		tx, _ := types.SignNewTx(ecdsaKey, types.NewEIP2930Signer(big.NewInt(networkInfo.ChainID)),
+			&types.LegacyTx{
+				To:       &to,
+				Value:    value,
+				Data:     nil,
+				Gas:      gas,
+				GasPrice: suggestedGasPrice,
+				Nonce:    nonce,
+			})
+		hash1, err := ec.SendTransactionWithConfig(
+			account2, common.HexToAddress(account1.Address()),
+			amount.Mul(amount, client.OneEth),
+			&client.TxConfig{
+				Tx: tx,
+			})
+		sendError := client.NewSendError(err)
+		fmt.Printf("### Error String : %v\n", err.Error())
+		assert.Equal(t, sendError.Fatal(), true)
+		assert.Equal(t, hash1.String(), ZERO_ADDRESS)
 	})
 
+	t.Run("nonce has max value", func(t *testing.T) {
+
+	})
+	t.Run("gas limit reached", func(t *testing.T) {
+
+	})
+	t.Run("transaction underpriced", func(t *testing.T) {
+		
+	})
 }
 
 func Int64(float *big.Float) {
