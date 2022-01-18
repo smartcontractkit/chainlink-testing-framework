@@ -57,8 +57,9 @@ var _ = Describe("Json RPC compatibility @json_rpc", func() {
 
 	methods = openrpcSchema.Methods
 
+	// Ethereum mainnet example data
 	rpcMethodCalls = RPCMethodCalls{
-		"eth_getBlockByNumber": []interface{}{"0x000000"},
+		"eth_getBlockByNumber": []interface{}{"0x333333", false}, // here should be block number with transactions
 		"eth_chainId":          []interface{}{},
 		"eth_gasPrice":         []interface{}{},
 		"eth_getBalance":       []interface{}{"0x0000000000000000000000000000000000000000"},
@@ -95,7 +96,7 @@ var _ = Describe("Json RPC compatibility @json_rpc", func() {
 			for chainId, rpcClients := range rpcClientsByChain {
 				fmt.Printf("Starting tests for chain ID %d\n", chainId)
 				for rpcMethod, rpcMethodParameters := range rpcMethodCalls {
-					fmt.Printf("\n\nMethod: %s", rpcMethod)
+					fmt.Printf("\nMethod: %s\n", rpcMethod)
 					var method Method
 					for _, value := range methods {
 						if value.Name == rpcMethod {
@@ -113,8 +114,8 @@ var _ = Describe("Json RPC compatibility @json_rpc", func() {
 						}
 						fmt.Printf("RPC call %s result: %v\n", rpcMethod, rpcCallResult)
 
-						if schemaLoader == nil {
-							fmt.Printf("Schema loader is empty, nothing to validate")
+						if schemaLoader.JsonSource() == nil {
+							fmt.Printf("Schema loader is empty, nothing to validate\n")
 							break
 						}
 
