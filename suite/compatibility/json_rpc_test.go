@@ -46,7 +46,7 @@ var _ = Describe("Json RPC compatibility @json_rpc", func() {
 	)
 	rpcClientsByChain := make(map[int][]*rpc.Client)
 
-	jsonFile, err := os.Open(filepath.Join(utils.ProjectRoot, "openrpc.json"))
+	jsonFile, err := os.Open(filepath.Join(utils.TestSuiteRoot, "compatibility", "openrpc.json"))
 	Expect(err).ShouldNot(HaveOccurred())
 	defer func(jsonFile *os.File) {
 		_ = jsonFile.Close()
