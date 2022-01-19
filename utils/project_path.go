@@ -15,4 +15,6 @@ var (
 	ContractsDir = filepath.Join(ProjectRoot, "contracts")
 	// EthereumContractsDir path to our ethereum contracts
 	EthereumContractsDir = filepath.Join(ContractsDir, "ethereum")
+	// TestSuiteRoot root folder for test suite
+	TestSuiteRoot = filepath.Join(ProjectRoot, "suite")
 )
