@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/utils"
 	"github.com/xeipuuv/gojsonschema"
@@ -65,9 +66,8 @@ var _ = Describe("Json RPC compatibility @json_rpc", func() {
 		"eth_getBalance":       []interface{}{"0x0000000000000000000000000000000000000000"},
 		"eth_getCode":          []interface{}{"0x0000000000000000000000000000000000000000"},
 		"eth_getLogs": []interface{}{map[string]interface{}{
-			"fromBlock": "0x000000",
-			"toBlock":   "0x000010",
-			"address":   "0x0000000000000000000000000000000000000000",
+			"fromBlock": "0x444444",
+			"toBlock":   "0x444444",
 		}},
 	}
 
@@ -94,9 +94,15 @@ var _ = Describe("Json RPC compatibility @json_rpc", func() {
 	Describe("Test GET RPC methods and validate results", func() {
 		It("OCR test GET Methods", func() {
 			for chainId, rpcClients := range rpcClientsByChain {
-				fmt.Printf("Starting tests for chain ID %d\n", chainId)
+				log.Info().
+					Int("ChainID", chainId).
+					Msg("Starting JSON RPC compatibility test")
+
 				for rpcMethod, rpcMethodParameters := range rpcMethodCalls {
-					fmt.Printf("\nMethod: %s\n", rpcMethod)
+					log.Info().
+						Int("ChainID", chainId).
+						Str("Method", rpcMethod).
+						Msg("Testing RPC method call")
 					var method Method
 					for _, value := range methods {
 						if value.Name == rpcMethod {
@@ -109,28 +115,47 @@ var _ = Describe("Json RPC compatibility @json_rpc", func() {
 						var rpcCallResult interface{}
 						err := rpcClient.CallContext(context.Background(), &rpcCallResult, rpcMethod, rpcMethodParameters...)
 						if err != nil {
-							fmt.Printf("Error during %s RPC call: %s\n", rpcMethod, err.Error())
+							log.Error().
+								Int("ChainID", chainId).
+								Str("Method", rpcMethod).
+								Msgf("Error while calling RPC method: %s", err.Error())
 							break
 						}
-						fmt.Printf("RPC call %s result: %v\n", rpcMethod, rpcCallResult)
+						log.Info().
+							Int("ChainID", chainId).
+							Str("Method", rpcMethod).
+							Msgf("RPC call result: %v", rpcCallResult)
 
 						if schemaLoader.JsonSource() == nil {
-							fmt.Printf("Schema loader is empty, nothing to validate\n")
+							log.Info().
+								Int("ChainID", chainId).
+								Str("Method", rpcMethod).
+								Msg("Schema loader is empty, nothing to validate")
 							break
 						}
 
 						validationResult, err := gojsonschema.Validate(schemaLoader, gojsonschema.NewGoLoader(rpcCallResult))
 						if err != nil {
-							fmt.Printf("Error during %s validation: %s\n", rpcMethod, err.Error())
+							log.Error().
+								Int("ChainID", chainId).
+								Str("Method", rpcMethod).
+								Msgf("Error during RPC call result schema validation: %s", err.Error())
 							break
 						}
 
 						if validationResult.Valid() {
-							fmt.Printf("Method result schema is valid\n")
+							log.Info().
+								Int("ChainID", chainId).
+								Str("Method", rpcMethod).
+								Msg("RPC call result schema is valid")
 						} else {
-							fmt.Printf("Method result schema is not valid. See errors :\n")
+							log.Error().
+								Int("ChainID", chainId).
+								Str("Method", rpcMethod).
+								Msg("RPC call result schema is not valid. See errors:")
 							for _, desc := range validationResult.Errors() {
-								fmt.Printf("- %s\n", desc)
+								log.Error().
+									Msgf("- %s", desc)
 							}
 						}
 					}
