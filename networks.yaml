@@ -22,7 +22,7 @@ private_keys: &private_keys
         - df57089febbacf7ba0bc227dafbffa9fc08a93fdc68e1e42411a14efcf23656e
 
 selected_networks: # Selected network(s) for test execution
-    - "geth_private"
+    - "geth_priv_node"
 
 networks:
     geth: &common_ethereum
@@ -47,6 +47,22 @@ networks:
         private_keys: 
             - 5d1c6970b0f395386ea86ebf51a1f34869742835014410aa8cc665225780c9a3
             - d2f51487d715dd92894812b42a90eb6e17ddb4ce93adcb3fd97270d2c07fa8b6
+        chainlink_transaction_limit: 500000
+        transaction_timeout: 2m
+        minimum_confirmations: 1
+        gas_estimation_buffer: 10000
+        block_gas_limit: 40000000
+    geth_priv_node:
+        name: "Ethereum Geth dev"
+        chain_id: 2020
+        type: eth_multinode
+        secret_private_keys: false
+        namespace_for_secret: default
+        private_url: http://127.0.0.1:8545
+        private_keys:
+            - f0047fbb381c4256bdcef06dd32acceae3741ce7e597b8770dfdeae4677c7398
+            - 4565ed98a7dd05d0f02b1cb3bd8bec65678316cec6be3e56754ac2640d7259c3
+            - 9885a5f28c10ebb608fc6f7b46ba4d1c9552d26edd43e05f4aa4bcacb8cc8d3c
         chainlink_transaction_limit: 500000
         transaction_timeout: 2m
         minimum_confirmations: 1

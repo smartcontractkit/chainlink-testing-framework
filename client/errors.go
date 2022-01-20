@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"math/big"
 	"path/filepath"
 	"regexp"
@@ -17,21 +18,71 @@ import (
 	"github.com/smartcontractkit/integrations-framework/utils"
 )
 
+// SendError
 // fatal means this transaction can never be accepted even with a different nonce or higher gas price
 type SendError struct {
 	fatal bool
 	err   error
 }
 
+type TxConfig struct {
+	Tx         *types.Transaction
+	PrivateKey *ecdsa.PrivateKey
+	GasPrice   *big.Int
+	Nonce      uint64
+	Gas        uint64
+	ChainID    int64
+}
+
+type DynamicTxConfig struct {
+	Tx         	*types.Transaction
+	PrivateKey 	*ecdsa.PrivateKey
+	GasLimit   	uint64
+	GasTipCap 	*big.Int
+	GasFeeCap 	*big.Int
+	Nonce      	uint64
+	ChainID    	*big.Int
+}
+
+type LegacyTxConfig struct {
+	Tx         	*types.Transaction
+	PrivateKey 	*ecdsa.PrivateKey
+	GasLimit   	uint64
+	GasPrice	*big.Int
+	Nonce      	uint64
+	ChainID    	*big.Int
+}
+
+func (tx LegacyTxConfig) NewTransaction(client *ethclient.Client, to string, amount *big.Int) (*types.Transaction, error) {
+	toAddress := common.HexToAddress(to)
+
+	transaction := &types.LegacyTx{
+		Nonce: tx.Nonce,
+		Gas: tx.GasLimit,
+		GasPrice: tx.GasPrice,
+		Value: amount,
+		To: &toAddress,
+	}
+
+	signedTx := types.MustSignNewTx(tx.PrivateKey, types.LatestSignerForChainID(tx.ChainID), transaction)
+
+	err := client.SendTransaction(context.Background(), signedTx)
+	if err != nil {
+		return nil, err
+	}
+
+	return signedTx, nil
+}
+
 func NewNetworkConfig() config.ETHNetwork {
 	nc, _ := config.LoadNetworksConfig(filepath.Join(utils.ProjectRoot, "networks.yaml"))
 	settings := nc.NetworkSettings[nc.SelectedNetworks[0]]
 	url := settings["private_url"]
-	private_keys := settings["private_keys"].([]interface{})
+	privateKeys := settings["private_keys"].([]interface{})
 	var key1, key2 string
-	key1 = private_keys[0].(string)
-	if len(private_keys) > 1 {
-		key2 = private_keys[1].(string)
+	key1 = privateKeys[0].(string)
+	if len(privateKeys) > 1 {
+		key2 = privateKeys[1].(string)
 	} else {
 		genKey2, err := crypto.GenerateKey()
 		if err != nil {
@@ -50,7 +101,7 @@ func NewNetworkConfig() config.ETHNetwork {
 	return network
 }
 
-// SendTransaction sends a specified amount of ETH from a selected wallet to an address
+// SendTransactionWithNonce sends a specified amount of ETH from a selected wallet to an address
 func (e *EthereumClient) SendTransactionWithNonce(
 	from *EthereumWallet,
 	to common.Address,
@@ -89,16 +140,8 @@ func (e *EthereumClient) SendTransactionWithNonce(
 	return tx.Hash(), e.ProcessTransaction(tx)
 }
 
-type TxConfig struct {
-	Tx         *types.Transaction
-	PrivateKey *ecdsa.PrivateKey
-	GasPrice   *big.Int
-	Nonce      uint64
-	Gas        uint64
-	ChainID    int64
-}
 
-// SendTransaction sends a specified amount of ETH from a selected wallet to an address
+// SendTransactionWithConfig sends a specified amount of ETH from a selected wallet to an address
 func (e *EthereumClient) SendTransactionWithConfig(
 	from *EthereumWallet,
 	to common.Address,
@@ -115,7 +158,7 @@ func (e *EthereumClient) SendTransactionWithConfig(
 		ChainID           = txConfig.ChainID
 	)
 	weiValue, _ := value.Int(nil)
-	//overide validation when txConfig contains from privateKey
+	//override validation when txConfig contains from privateKey
 	if privateKey == nil {
 		privateKey, err = crypto.HexToECDSA(from.PrivateKey())
 		if err != nil {
@@ -167,7 +210,7 @@ func (s *SendError) Error() string {
 }
 
 // Fatal indicates whether the error should be considered fatal or not
-// Fatal errors mean that no matter how many times the send is retried, no node
+// Fatal errors mean that no matter how many times the transaction is retried, no node
 // will ever accept it
 func (s *SendError) Fatal() bool {
 	return s != nil && s.fatal

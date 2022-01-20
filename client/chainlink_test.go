@@ -14,7 +14,7 @@ import (
 
 var spec = `{
   "initiators": [
-    {
+    {	
       "type": "runlog"
     }
   ],
