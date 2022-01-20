@@ -253,6 +253,7 @@ func Test_Eth_Client_Errors(t *testing.T) {
 	//t.Run("transaction underpriced", func(t *testing.T) {
 	//
 	//})
+
 }
 
 func Int64(float *big.Float) {
