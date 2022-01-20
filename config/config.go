@@ -74,6 +74,7 @@ type LoggingConfig struct {
 
 // ETHNetwork data to configure fully ETH compatible network
 type ETHNetwork struct {
+	ContractsDeployed         bool          `mapstructure:"contracts_deployed" yaml:"contracts_deployed"`
 	External                  bool          `mapstructure:"external" yaml:"external"`
 	Name                      string        `mapstructure:"name" yaml:"name"`
 	ID                        string        `mapstructure:"id" yaml:"id"`
@@ -91,6 +92,7 @@ type ETHNetwork struct {
 
 // TerraNetwork data to configure Terra network
 type TerraNetwork struct {
+	ContractsDeployed         bool          `mapstructure:"contracts_deployed" yaml:"contracts_deployed"`
 	Name                      string        `mapstructure:"name" yaml:"name"`
 	ChainName                 string        `mapstructure:"chain_name" yaml:"chain_name"`
 	Mnemonics                 []string      `mapstructure:"mnemonic" yaml:"mnemonic"`
