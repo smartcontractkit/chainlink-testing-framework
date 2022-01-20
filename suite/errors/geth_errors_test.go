@@ -47,7 +47,7 @@ var _ = Describe("Geth Errors @get_errors", func() {
 			acc2Bal.Div(bal2, OneEth)
 		})
 	})
-	Describe("insufficient funds for transfer", func() {
+	Describe("Error Scenario Designs", func() {
 		It("insufficient funds for transfer", func() {
 			amount := big.NewFloat(11)
 			amountFloat, _ := amount.Float64()
