@@ -22,7 +22,7 @@ private_keys: &private_keys
         - df57089febbacf7ba0bc227dafbffa9fc08a93fdc68e1e42411a14efcf23656e
 
 selected_networks: # Selected network(s) for test execution
-    - "geth_private"
+    - "geth"
 
 networks:
     geth: &common_ethereum
@@ -32,20 +32,6 @@ networks:
         secret_private_keys: false
         namespace_for_secret: default
         <<: *private_keys
-        chainlink_transaction_limit: 500000
-        transaction_timeout: 2m
-        minimum_confirmations: 1
-        gas_estimation_buffer: 10000
-        block_gas_limit: 40000000
-    geth_private:
-        name: "Ethereum Geth dev"
-        chain_id: 4224
-        type: eth_multinode
-        secret_private_keys: false
-        namespace_for_secret: default
-        private_url: http://127.0.0.1:8584
-        private_keys: 
-            - geth_private_key
         chainlink_transaction_limit: 500000
         transaction_timeout: 2m
         minimum_confirmations: 1
