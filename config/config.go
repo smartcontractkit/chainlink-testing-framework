@@ -7,10 +7,12 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/imdario/mergo"
 	"github.com/kelseyhightower/envconfig"
+	"github.com/smartcontractkit/helmenv/tools"
 	"gopkg.in/yaml.v3"
 
 	"github.com/rs/zerolog/log"
@@ -28,6 +30,10 @@ const (
 
 // NetworkSettings is a map that holds configuration for each individual network
 type NetworkSettings map[string]map[string]interface{}
+
+var ProjectFrameworkSettings *FrameworkConfig
+var ProjectNetworkSettings *NetworksConfig
+var ProjectConfigDirectory string
 
 // Decode is used by envconfig to initialise the custom Charts type with populated values
 // This function will take a JSON object representing charts, and unmarshal it into the existing object to "merge" the
@@ -53,28 +59,35 @@ func defaultViper(dir string, file string) *viper.Viper {
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
 	v.SetConfigName(file)
-	if dir == "" {
-		v.AddConfigPath(".")
-	} else {
-		v.AddConfigPath(dir)
-	}
 	v.SetConfigType("yaml")
+
+	v.AddConfigPath(dir)
+	v.AddConfigPath(".")
+	v.AddConfigPath(tools.ProjectRoot) // Default
 	return v
 }
 
 // LoadFrameworkConfig loads framework config
 func LoadFrameworkConfig(cfgPath string) (*FrameworkConfig, error) {
 	dir, file := path.Split(cfgPath)
-	log.Info().
-		Str("Dir", dir).
-		Str("File", file).
-		Msg("Loading config file")
 	v := defaultViper(dir, file)
 	if err := v.ReadInConfig(); err != nil {
 		return nil, err
 	}
+	usedDirPath, _ := path.Split(v.ConfigFileUsed())
+	log.Info().
+		Str("File", v.ConfigFileUsed()).
+		Str("Directory Used", usedDirPath).
+		Str("Hint", "If this is an unexpected file or path, it's likely that the provided one was unable to resolve and so a default was used").
+		Msg("Loaded framework config file")
+	var err error
+	ProjectConfigDirectory, err = filepath.Abs(usedDirPath)
+	if err != nil {
+		return nil, err
+	}
+
 	var cfg *FrameworkConfig
-	err := v.Unmarshal(&cfg)
+	err = v.Unmarshal(&cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -85,20 +98,20 @@ func LoadFrameworkConfig(cfgPath string) (*FrameworkConfig, error) {
 	if chartOverrides != "" {
 		os.Setenv("CHARTS", chartOverrides)
 	}
-	return cfg, err
+	ProjectFrameworkSettings = cfg
+	return ProjectFrameworkSettings, err
 }
 
 // LoadNetworksConfig loads networks config
 func LoadNetworksConfig(cfgPath string) (*NetworksConfig, error) {
 	dir, file := path.Split(cfgPath)
-	log.Info().
-		Str("Dir", dir).
-		Str("File", file).
-		Msg("Loading config file")
 	v := defaultViper(dir, file)
 	if err := v.ReadInConfig(); err != nil {
 		return nil, err
 	}
+	log.Info().
+		Str("File", v.ConfigFileUsed()).
+		Msg("Loaded networks config file")
 	var cfg *NetworksConfig
 	err := v.Unmarshal(&cfg)
 
@@ -106,7 +119,8 @@ func LoadNetworksConfig(cfgPath string) (*NetworksConfig, error) {
 	if err := envconfig.Process("", cfg); err != nil {
 		return nil, err
 	}
-	return cfg, err
+	ProjectNetworkSettings = cfg
+	return ProjectNetworkSettings, err
 }
 
 // PrivateKeyStore enables access, through a variety of methods, to private keys for use in blockchain networks
