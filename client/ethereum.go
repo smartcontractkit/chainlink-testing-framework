@@ -38,6 +38,10 @@ type EthereumMultinodeClient struct {
 	Clients       []*EthereumClient
 }
 
+func (e *EthereumMultinodeClient) ContractsDeployed() bool {
+	return e.DefaultClient.ContractsDeployed()
+}
+
 // EstimateCostForChainlinkOperations calculates TXs cost as a dirty estimation based on transactionLimit for that network
 func (e *EthereumMultinodeClient) EstimateCostForChainlinkOperations(amountOfOperations int) (*big.Float, error) {
 	return e.DefaultClient.EstimateCostForChainlinkOperations(amountOfOperations)
@@ -198,6 +202,10 @@ type EthereumClient struct {
 	queueTransactions   bool
 	gasStats            *GasStats
 	doneChan            chan struct{}
+}
+
+func (e *EthereumClient) ContractsDeployed() bool {
+	return e.NetworkConfig.ContractsDeployed
 }
 
 // EstimateCostForChainlinkOperations calculates required amount of ETH for amountOfOperations Chainlink operations
