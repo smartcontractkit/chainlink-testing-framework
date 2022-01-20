@@ -39,6 +39,7 @@ type BlockchainClientURLFn func(e *environment.Environment) ([]*url.URL, error)
 // of network types within the test suite
 // BlockchainClient can be connected to a single or multiple nodes,
 type BlockchainClient interface {
+	ContractsDeployed() bool
 	LoadWallets(ns interface{}) error
 	SetWallet(num int) error
 
