@@ -24,7 +24,7 @@ func DeployOCRContracts(
 	chainlinkNodes []client.Chainlink,
 	networks *client.Networks,
 ) []contracts.OffchainAggregator {
-	ocrInstances := []contracts.OffchainAggregator{}
+	var ocrInstances []contracts.OffchainAggregator
 	for i := 0; i < numberOfContracts; i++ {
 		ocrInstance, err := contractDeployer.DeployOffChainAggregator(
 			linkTokenContract.Address(),
