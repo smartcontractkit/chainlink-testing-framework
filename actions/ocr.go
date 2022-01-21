@@ -24,7 +24,7 @@ func DeployOCRContracts(
 	chainlinkNodes []client.Chainlink,
 	networks *client.Networks,
 ) []contracts.OffchainAggregator {
-	ocrInstances := []contracts.OffchainAggregator{}
+	var ocrInstances []contracts.OffchainAggregator
 	for i := 0; i < numberOfContracts; i++ {
 		ocrInstance, err := contractDeployer.DeployOffChainAggregator(
 			linkTokenContract.Address(),
@@ -78,7 +78,7 @@ func CreateOCRJobs(
 				Expect(err).ShouldNot(HaveOccurred(), "Shouldn't fail getting OCR keys from OCR node %d", nodeIndex+1)
 				nodeOCRKeyId := nodeOCRKeys.Data[0].ID
 
-				nodeContractPairID := buildNodeContractPairID(chainlinkNodes[nodeIndex], ocrInstance)
+				nodeContractPairID := BuildNodeContractPairID(chainlinkNodes[nodeIndex], ocrInstance)
 				Expect(err).ShouldNot(HaveOccurred())
 				bta := client.BridgeTypeAttributes{
 					Name: nodeContractPairID,
@@ -86,7 +86,7 @@ func CreateOCRJobs(
 				}
 
 				// This sets a default value for all node and ocr instances in order to avoid 404 issues
-				SetAllAdapterResponses(0, ocrInstances, chainlinkNodes, mockserver)
+				SetAllAdapterResponsesToTheSameValue(0, ocrInstances, chainlinkNodes, mockserver)
 
 				err = chainlinkNodes[nodeIndex].CreateBridge(&bta)
 				Expect(err).ShouldNot(HaveOccurred(), "Shouldn't fail creating bridge in OCR node %d", nodeIndex+1)
@@ -114,16 +114,16 @@ func SetAdapterResponse(
 	mockserver *client.MockserverClient,
 ) func() {
 	return func() {
-		nodeContractPairID := buildNodeContractPairID(chainlinkNode, ocrInstance)
+		nodeContractPairID := BuildNodeContractPairID(chainlinkNode, ocrInstance)
 		path := fmt.Sprintf("/%s", nodeContractPairID)
 		err := mockserver.SetValuePath(path, response)
 		Expect(err).ShouldNot(HaveOccurred(), "Setting mockserver value path shouldn't fail")
 	}
 }
 
-// SetAllAdapterResponses sets the mock responses in mockserver that are read by chainlink nodes
+// SetAllAdapterResponsesToTheSameValue sets the mock responses in mockserver that are read by chainlink nodes
 // to simulate different adapters. This sets all adapter responses for each node and contract to the same response
-func SetAllAdapterResponses(
+func SetAllAdapterResponsesToTheSameValue(
 	response int,
 	ocrInstances []contracts.OffchainAggregator,
 	chainlinkNodes []client.Chainlink,
@@ -133,6 +133,24 @@ func SetAllAdapterResponses(
 		for _, ocrInstance := range ocrInstances {
 			for _, node := range chainlinkNodes {
 				SetAdapterResponse(response, ocrInstance, node, mockserver)()
+			}
+		}
+	}
+}
+
+// SetAllAdapterResponsesToDifferentValues sets the mock responses in mockserver that are read by chainlink nodes
+// to simulate different adapters. This sets all adapter responses for each node and contract to different responses
+func SetAllAdapterResponsesToDifferentValues(
+	responses []int,
+	ocrInstances []contracts.OffchainAggregator,
+	chainlinkNodes []client.Chainlink,
+	mockserver *client.MockserverClient,
+) func() {
+	return func() {
+		Expect(len(responses)).Should(BeNumerically("==", len(chainlinkNodes[1:])))
+		for _, ocrInstance := range ocrInstances {
+			for nodeIndex := 1; nodeIndex < len(chainlinkNodes); nodeIndex++ {
+				SetAdapterResponse(responses[nodeIndex-1], ocrInstance, chainlinkNodes[nodeIndex], mockserver)()
 			}
 		}
 	}
@@ -157,7 +175,7 @@ func StartNewRound(
 	}
 }
 
-func buildNodeContractPairID(node client.Chainlink, ocrInstance contracts.OffchainAggregator) string {
+func BuildNodeContractPairID(node client.Chainlink, ocrInstance contracts.OffchainAggregator) string {
 	Expect(node).ShouldNot(BeNil())
 	Expect(ocrInstance).ShouldNot(BeNil())
 	nodeAddress, err := node.PrimaryEthAddress()
