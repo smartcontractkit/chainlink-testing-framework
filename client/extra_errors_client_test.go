@@ -3,6 +3,8 @@ package client_test
 import (
 	"context"
 	"crypto/ecdsa"
+	"fmt"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	. "github.com/onsi/ginkgo/v2"
@@ -13,8 +15,9 @@ import (
 
 var _ = FDescribe("ExtraErrorsClient", func() {
 	networkInfo := client.NewNetworkConfig()
+	toAddress := "0x62d7da380541bad6c50a90e932eb098e0fb26cf5"
 
-	It("transaction is underpriced", func() {
+	XIt("transaction is underpriced", func() {
 		ethClient, err := ethclient.Dial(networkInfo.URL)
 		Expect(err).ShouldNot(HaveOccurred(),"cannot connect to client")
 
@@ -46,7 +49,6 @@ var _ = FDescribe("ExtraErrorsClient", func() {
 			GasPrice: gasPrice,
 		}
 
-		toAddress := "0x62d7da380541bad6c50a90e932eb098e0fb26cf5"
 		gasLimit = uint64(21000)
 		errors := make(chan error)
 
@@ -99,5 +101,22 @@ var _ = FDescribe("ExtraErrorsClient", func() {
 				Expect(sendError.IsReplacementUnderpriced()).To(Equal(true))
 			}
 		}
+	})
+
+	FIt("nonce has max value", func() {
+		ethClient, err := client.NewEthereumClient(&networkInfo)
+		Expect(err).ShouldNot(HaveOccurred(),"cannot connect to client")
+
+		account := ethClient.DefaultWallet
+
+		var nonce uint64 = 1<<128 - 1
+		to := common.HexToAddress(account.Address())
+		value := big.NewFloat(100000)
+
+
+		txHash, err := ethClient.SendTransactionWithNonce(account, to, value, nonce)
+
+		fmt.Println(txHash)
+		fmt.Println(err)
 	})
 })
