@@ -52,12 +52,12 @@ var _ = Describe("Geth Errors @get_errors", func() {
 			amount := big.NewFloat(11)
 			amountFloat, _ := amount.Float64()
 			if float64(acc2Bal.Int64()) > amountFloat {
-				It("Transfer account 1 balance to account 2", func() {
-					_, err = ec.SendTransaction(
-						account2, common.HexToAddress(account1.Address()),
-						big.NewFloat(float64(acc2Bal.Int64())))
-					Expect(err).ShouldNot(HaveOccurred(), "Unable to reduce balance 2 balance to 0")
-				})
+				// It("Transfer account 1 balance to account 2", func() {
+				_, err = ec.SendTransaction(
+					account2, common.HexToAddress(account1.Address()),
+					big.NewFloat(float64(acc2Bal.Int64())))
+				Expect(err).ShouldNot(HaveOccurred(), "Unable to reduce balance 2 balance to 0")
+				// })
 			}
 			to := common.HexToAddress(account1.Address())
 			_, err = ec.SendTransaction(
@@ -183,7 +183,7 @@ var _ = Describe("Geth Errors @get_errors", func() {
 					GasPrice: suggestedGasPrice,
 					Nonce:    nonce,
 				})
-			_, err := ec.SendTransactionWithConfig(
+			_, err = ec.SendTransactionWithConfig(
 				account2, common.HexToAddress(account1.Address()),
 				amount.Mul(amount, client.OneEth),
 				&client.TxConfig{
