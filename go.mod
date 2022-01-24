@@ -4,7 +4,6 @@ go 1.17
 
 require (
 	github.com/ethereum/go-ethereum v1.10.11
-	gopkg.in/guregu/null.v4 v4.0.0
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/onsi/ginkgo/v2 v2.0.0
 	github.com/onsi/gomega v1.17.0
@@ -13,10 +12,11 @@ require (
 	github.com/prometheus/common v0.32.1
 	github.com/rs/zerolog v1.26.1
 	github.com/satori/go.uuid v1.2.0
-	github.com/smartcontractkit/helmenv v1.0.25
-	github.com/smartcontractkit/libocr v0.0.0-20210826183649-d12971936c12
+	github.com/smartcontractkit/helmenv v1.0.27
+	github.com/smartcontractkit/libocr v0.0.0-20220121130134-5d2b1d5f424b
 	github.com/spf13/viper v1.10.1
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
+	gopkg.in/guregu/null.v4 v4.0.0
 )
 
 require (
@@ -33,7 +33,10 @@ require (
 	github.com/form3tech-oss/jwt-go v3.2.3+incompatible // indirect
 	github.com/fvbommel/sortorder v1.0.1 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
+	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
+	go.uber.org/atomic v1.7.0 // indirect
+	go.uber.org/multierr v1.6.0 // indirect
 	helm.sh/helm/v3 v3.7.2 // indirect
 	k8s.io/api v0.23.1 // indirect
 	k8s.io/apimachinery v0.23.1 // indirect

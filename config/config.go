@@ -54,50 +54,6 @@ func (n NetworkSettings) Decode(value string) error {
 	return mergo.Merge(&n, networkSettings, mergo.WithOverride)
 }
 
-// NetworksConfig is network configurations
-type NetworksConfig struct {
-	SelectedNetworks   []string        `mapstructure:"selected_networks" yaml:"selected_networks" envconfig:"selected_networks"`
-	NetworkSettings    NetworkSettings `mapstructure:"networks" yaml:"networks" envconfig:"network_settings"`
-	DefaultKeyStore    string
-	ConfigFileLocation string
-}
-
-// LoggingConfig for logging
-type LoggingConfig struct {
-	Level int8 `mapstructure:"level" yaml:"logging"`
-}
-
-// ETHNetwork data to configure fully ETH compatible network
-type ETHNetwork struct {
-	ContractsDeployed         bool          `mapstructure:"contracts_deployed" yaml:"contracts_deployed"`
-	External                  bool          `mapstructure:"external" yaml:"external"`
-	Name                      string        `mapstructure:"name" yaml:"name"`
-	ID                        string        `mapstructure:"id" yaml:"id"`
-	ChainID                   int64         `mapstructure:"chain_id" yaml:"chain_id"`
-	URL                       string        `mapstructure:"url" yaml:"url"`
-	URLs                      []string      `mapstructure:"urls" yaml:"urls"`
-	Type                      string        `mapstructure:"type" yaml:"type"`
-	PrivateKeys               []string      `mapstructure:"private_keys" yaml:"private_keys"`
-	ChainlinkTransactionLimit uint64        `mapstructure:"chainlink_transaction_limit" yaml:"chainlink_transaction_limit"`
-	Timeout                   time.Duration `mapstructure:"transaction_timeout" yaml:"transaction_timeout"`
-	MinimumConfirmations      int           `mapstructure:"minimum_confirmations" yaml:"minimum_confirmations"`
-	GasEstimationBuffer       uint64        `mapstructure:"gas_estimation_buffer" yaml:"gas_estimation_buffer"`
-	BlockGasLimit             uint64        `mapstructure:"block_gas_limit" yaml:"block_gas_limit"`
-}
-
-// TerraNetwork data to configure Terra network
-type TerraNetwork struct {
-	ContractsDeployed         bool          `mapstructure:"contracts_deployed" yaml:"contracts_deployed"`
-	Name                      string        `mapstructure:"name" yaml:"name"`
-	ChainName                 string        `mapstructure:"chain_name" yaml:"chain_name"`
-	Mnemonics                 []string      `mapstructure:"mnemonic" yaml:"mnemonic"`
-	Currency                  string        `mapstructure:"currency" yaml:"currency"`
-	Type                      string        `mapstructure:"type" yaml:"type"`
-	ChainlinkTransactionLimit uint64        `mapstructure:"chainlink_transaction_limit" yaml:"chainlink_transaction_limit"`
-	Timeout                   time.Duration `mapstructure:"transaction_timeout" yaml:"transaction_timeout"`
-	MinimumConfirmations      int           `mapstructure:"minimum_confirmations" yaml:"minimum_confirmations"`
-}
-
 func defaultViper(dir string, file string) *viper.Viper {
 	v := viper.New()
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
@@ -185,7 +141,7 @@ func (l *LocalStore) Fetch() ([]string, error) {
 	return l.RawKeys, nil
 }
 
-// CreateCharts checks the framework config to see if the user has supplied any values to override the default helm
+// CreateChartOverrrides checks the framework config to see if the user has supplied any values to override the default helm
 // chart values. It returns a JSON block that can be set to the `CHARTS` environment variable that the helmenv library
 // will read from. This will merge the override values with the default values for the appropriate charts.
 func (cfg *FrameworkConfig) CreateChartOverrrides() (string, error) {
