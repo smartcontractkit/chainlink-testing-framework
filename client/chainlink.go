@@ -60,6 +60,7 @@ type Chainlink interface {
 	ReadEIs() (*EIKeys, error)
 	DeleteEI(name string) error
 
+	CreateTerraChain(node *TerraChainAttributes) (*TerraChainCreate, error)
 	CreateTerraNode(node *TerraNodeAttributes) (*TerraNodeCreate, error)
 
 	RemoteIP() string
@@ -367,6 +368,15 @@ func (c *chainlink) DeleteEI(name string) error {
 	return err
 }
 
+// CreateTerraChain creates a terra chain
+func (c *chainlink) CreateTerraChain(chain *TerraChainAttributes) (*TerraChainCreate, error) {
+	response := TerraChainCreate{}
+	log.Info().Str("Node URL", c.Config.URL).Str("Chain ID", chain.ChainID).Msg("Creating Terra Chain")
+	_, err := c.do(http.MethodPost, "/v2/chains/terra", chain, &response, http.StatusCreated)
+	return &response, err
+}
+
+// CreateTerraNode creates a terra node
 func (c *chainlink) CreateTerraNode(node *TerraNodeAttributes) (*TerraNodeCreate, error) {
 	response := TerraNodeCreate{}
 	log.Info().Str("Node URL", c.Config.URL).Str("Name", node.Name).Msg("Creating Terra Node")
