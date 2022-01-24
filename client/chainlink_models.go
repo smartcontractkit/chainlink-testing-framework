@@ -12,6 +12,14 @@ type EIServiceConfig struct {
 	URL string
 }
 
+type CreateTerraChainRequest struct {
+	ID string `json:"chainID"`
+}
+
+type CreateTerraChainResponse struct {
+	Enabled bool `json:"enabled"`
+}
+
 // ChainlinkConfig represents the variables needed to connect to a Chainlink node
 type ChainlinkConfig struct {
 	URL      string

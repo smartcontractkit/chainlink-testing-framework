@@ -18,6 +18,7 @@ var OneLINK = big.NewFloat(1e18)
 // Chainlink interface that enables interactions with a chainlink node
 type Chainlink interface {
 	URL() string
+	CreateTerraChain(spec *CreateTerraChainRequest) (*CreateTerraChainResponse, error)
 	CreateJob(spec JobSpec) (*Job, error)
 	CreateJobRaw(spec string) (*Job, error)
 	ReadJobs() (*ResponseSlice, error)
@@ -86,6 +87,15 @@ func NewChainlink(c *ChainlinkConfig, httpClient *http.Client) (Chainlink, error
 		pageSize:        25,
 	}
 	return cl, cl.SetSessionCookie()
+}
+
+func (c *chainlink) CreateTerraChain(spec *CreateTerraChainRequest) (*CreateTerraChainResponse, error) {
+	resp := &CreateTerraChainResponse{}
+	log.Info().Str("Node URL", c.Config.URL).Interface("Chain spec", spec).Msg("Creating Chain")
+	if _, err := c.do(http.MethodPost, "/v2/chains/terra", &spec, &resp, http.StatusCreated); err != nil {
+		return nil, err
+	}
+	return resp, nil
 }
 
 // URL chainlink instance http url
