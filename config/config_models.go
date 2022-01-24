@@ -60,8 +60,8 @@ type LoggingConfig struct {
 
 // ChartOverrides enables building json styled chart overrides for the deployed chart values and environment variables
 type ChartOverrides struct {
-	GethChartOverride       GethChart      `json:"geth,omitempty"`
-	ChainlinkChartOverrride ChainlinkChart `json:"chainlink,omitempty"`
+	GethChartOverride       *GethChart      `json:"geth,omitempty"`
+	ChainlinkChartOverrride *ChainlinkChart `json:"chainlink,omitempty"`
 }
 
 // GethChart holds the overall geth chart values
@@ -71,32 +71,32 @@ type GethChart struct {
 
 // GethValuesWrapper geth values wrapper
 type GethValuesWrapper struct {
-	GethVals GethValues    `json:"geth,omitempty"`
+	GethVals *GethValues   `json:"geth,omitempty"`
 	Args     []interface{} `json:"args,omitempty"`
 }
 
 type GethValues struct {
-	Image GethImage `json:"image,omitempty"`
+	Image *GethImage `json:"image,omitempty"`
 }
 
 type GethImage struct {
 	Image   string `json:"image,omitempty" yaml:"geth_image"`
-	Version string `json:"version,omitempty" yaml:"get_version"`
+	Version string `json:"version,omitempty" yaml:"geth_version"`
 }
 
 // ChainlinkChart holds the overall geth chart values
 type ChainlinkChart struct {
-	Values ChainlinkValuesWrapper `json:"values,omitempty"`
+	Values *ChainlinkValuesWrapper `json:"values,omitempty"`
 }
 
 // ChainlinkValuesWrapper Chainlink values wrapper
 type ChainlinkValuesWrapper struct {
-	ChainlinkVals        ChainlinkValues   `json:"chainlink,omitempty"`
+	ChainlinkVals        *ChainlinkValues  `json:"chainlink,omitempty"`
 	EnvironmentVariables map[string]string `json:"env,omitempty" yaml:"chainlink_env_values"`
 }
 
 type ChainlinkValues struct {
-	Image ChainlinkImage `json:"image,omitempty"`
+	Image *ChainlinkImage `json:"image,omitempty"`
 }
 
 type ChainlinkImage struct {

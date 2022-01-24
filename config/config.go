@@ -91,14 +91,13 @@ func LoadFrameworkConfig(cfgPath string) (*FrameworkConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	// TODO: do more testing on overrides with non-evm networks or remove them
-	//chartOverrides, err := cfg.CreateChartOverrrides()
-	//if err != nil {
-	//	return nil, err
-	//}
-	//if chartOverrides != "" {
-	//	os.Setenv("CHARTS", chartOverrides)
-	//}
+	chartOverrides, err := cfg.CreateChartOverrrides()
+	if err != nil {
+		return nil, err
+	}
+	if chartOverrides != "" {
+		os.Setenv("CHARTS", chartOverrides)
+	}
 	ProjectFrameworkSettings = cfg
 	return ProjectFrameworkSettings, err
 }
@@ -146,30 +145,36 @@ func (l *LocalStore) Fetch() ([]string, error) {
 // chart values. It returns a JSON block that can be set to the `CHARTS` environment variable that the helmenv library
 // will read from. This will merge the override values with the default values for the appropriate charts.
 func (cfg *FrameworkConfig) CreateChartOverrrides() (string, error) {
-	chartOverrides := ChartOverrides{
-		ChainlinkChartOverrride: ChainlinkChart{
-			Values: ChainlinkValuesWrapper{
-				ChainlinkVals: ChainlinkValues{
-					Image: ChainlinkImage{
+	chartOverrides := ChartOverrides{}
+	// If there's no chainlink values to pass in, don't
+	if cfg.ChainlinkImage != "" || cfg.ChainlinkVersion != "" || len(cfg.ChainlinkEnvValues) != 0 {
+		chartOverrides.ChainlinkChartOverrride = &ChainlinkChart{
+			Values: &ChainlinkValuesWrapper{
+				ChainlinkVals: &ChainlinkValues{
+					Image: &ChainlinkImage{
 						Image:   cfg.ChainlinkImage,
 						Version: cfg.ChainlinkVersion,
 					},
 				},
 				EnvironmentVariables: cfg.ChainlinkEnvValues,
 			},
-		},
-		GethChartOverride: GethChart{
+		}
+	}
+	// If there's no geth values to pass in, don't bother with an empty struct
+	if cfg.GethImage != "" || cfg.GethVersion != "" || len(cfg.GethArgs) != 0 {
+		chartOverrides.GethChartOverride = &GethChart{
 			Values: GethValuesWrapper{
-				GethVals: GethValues{
-					Image: GethImage{
+				GethVals: &GethValues{
+					Image: &GethImage{
 						Image:   cfg.GethImage,
 						Version: cfg.GethVersion,
 					},
 				},
 				Args: cfg.GethArgs,
 			},
-		},
+		}
 	}
+
 	jsonChartOverrides, err := json.Marshal(chartOverrides)
 	return string(jsonChartOverrides), err
 }

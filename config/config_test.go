@@ -1,6 +1,7 @@
 package config_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/smartcontractkit/integrations-framework/config"
@@ -38,23 +39,9 @@ func TestChartCreation(t *testing.T) {
 	t.Parallel()
 
 	emptyConfig := config.FrameworkConfig{}
-	emptyChartString := `{
-		"geth": {
-			"values": {
-				"geth": {
-					"image": {}
-				}
-			}
-		},
-		"chainlink": {
-			"values": {
-				"chainlink": {
-					"image": {}
-				}
-			}
-		}
-	}`
+	emptyChartString := `{}`
 	chart, err := emptyConfig.CreateChartOverrrides()
+	fmt.Println(chart)
 	require.NoError(t, err)
 	require.JSONEq(t, emptyChartString, chart, "Expected an empty config to produce an empty object for chart overrides")
 
@@ -86,13 +73,6 @@ func TestChartCreation(t *testing.T) {
 					"0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
 				]
 			}
-		},
-		"chainlink": {
-			"values": {
-				"chainlink": {
-					"image": {}
-				}
-			}
 		}
 	}`
 	chart, err = gethOnlyConfig.CreateChartOverrrides()
@@ -104,13 +84,6 @@ func TestChartCreation(t *testing.T) {
 		ChainlinkVersion: "testChainlinkVersion",
 	}
 	chainlinkOnlyChartString := `{
-		"geth": {
-			"values": {
-				"geth": {
-					"image": {}
-				}
-			}
-		},
 		"chainlink":{
 			"values":{
 				"chainlink":{
@@ -131,13 +104,6 @@ func TestChartCreation(t *testing.T) {
 		"test_int_val":    "420",
 	}
 	chainlinkOnlyChartString = `{
-		"geth": {
-			"values": {
-				"geth": {
-					"image": {}
-				}
-			}
-		},
 		"chainlink":{
 			"values":{
 				"chainlink":{
