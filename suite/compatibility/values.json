@@ -1,0 +1,19 @@
+{
+  "networks": [
+    {
+      "chain_id": 1,
+      "parameters" : {
+        "eth_getBalance": "0x0000000000000000000000000000000000000000",
+        "eth_getBlockByNumber": "0x333333",
+        "eth_getCode": "0x0000000000000000000000000000000000000000",
+        "eth_getLogs": {
+          "fromBlock": "0x444444",
+          "toBlock": "0x444444"
+        },
+        "eth_getTransactionByHash": "0x3de12049735a74842d68690ecf883bb745136352a5915c2b5e1fcbd88e5aa1da",
+        "eth_getTransactionCount": ["0x700eab95ba4aa1e35a98505d41d57ac60aeb49d5", "0xD6C21C"],
+        "eth_getTransactionReceipt": "0x7dfc05227dd7fc88d44d1328c77d9c53873b5117ed093796aa31779b587209b2"
+      }
+    }
+  ]
+}
