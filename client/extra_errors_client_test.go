@@ -3,8 +3,6 @@ package client_test
 import (
 	"context"
 	"crypto/ecdsa"
-	"fmt"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	. "github.com/onsi/ginkgo/v2"
@@ -17,7 +15,7 @@ var _ = FDescribe("ExtraErrorsClient", func() {
 	networkInfo := client.NewNetworkConfig()
 	toAddress := "0x62d7da380541bad6c50a90e932eb098e0fb26cf5"
 
-	XIt("transaction is underpriced", func() {
+	It("transaction is underpriced", func() {
 		ethClient, err := ethclient.Dial(networkInfo.URL)
 		Expect(err).ShouldNot(HaveOccurred(),"cannot connect to client")
 
@@ -103,20 +101,63 @@ var _ = FDescribe("ExtraErrorsClient", func() {
 		}
 	})
 
-	FIt("nonce has max value", func() {
-		ethClient, err := client.NewEthereumClient(&networkInfo)
+	//FIt("nonce has max value", func() {
+	//	ethClient, err := client.NewEthereumClient(&networkInfo)
+	//	Expect(err).ShouldNot(HaveOccurred(),"cannot connect to client")
+	//
+	//	account := ethClient.DefaultWallet
+	//
+	//	var nonce uint64 = 1<<128 - 1
+	//	to := common.HexToAddress(account.Address())
+	//	value := big.NewFloat(100000)
+	//
+	//
+	//	_, err = ethClient.SendTransactionWithNonce(account, to, value, nonce)
+	//
+	//	fmt.Println("Error is: ", err)
+	//})
+
+	It("exceeds block gas limit", func() {
+
+		ethClient, err := ethclient.Dial(networkInfo.URL)
 		Expect(err).ShouldNot(HaveOccurred(),"cannot connect to client")
 
-		account := ethClient.DefaultWallet
+		privateKey , err := crypto.HexToECDSA(networkInfo.PrivateKeys[0])
+		Expect(err).ShouldNot(HaveOccurred(),"cannot connect to client: ", err)
 
-		var nonce uint64 = 1<<128 - 1
-		to := common.HexToAddress(account.Address())
-		value := big.NewFloat(100000)
+		publicKey := privateKey.Public()
+		publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
+		Expect(ok).To(Equal(true),"error casting public key to ECDSA: ", err)
+
+		accountAPubAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
+
+		chainID, err := ethClient.NetworkID(context.Background())
+		Expect(err).ShouldNot(HaveOccurred(),"could not determine Network ID: ", err)
+
+		nonce, err := ethClient.PendingNonceAt(context.Background(), accountAPubAddress)
+		Expect(err).ShouldNot(HaveOccurred(),"error retrieving account nonce: ", err)
+
+		gasPrice, err := ethClient.SuggestGasPrice(context.Background())
+		Expect(err).ShouldNot(HaveOccurred(),"error getting latest gas price: ", err)
+
+		block, err := ethClient.BlockByNumber(context.Background(),nil)
+		Expect(err).ShouldNot(HaveOccurred(),"cannot get block")
 
 
-		txHash, err := ethClient.SendTransactionWithNonce(account, to, value, nonce)
+		blockGasLimit := block.GasLimit()
 
-		fmt.Println(txHash)
-		fmt.Println(err)
+		tx := client.LegacyTxConfig{
+			PrivateKey: privateKey,
+			Nonce: nonce,
+			ChainID: chainID,
+			GasLimit: blockGasLimit * 2,
+			GasPrice: gasPrice,
+		}
+
+		_, err = tx.NewTransaction(ethClient, toAddress, big.NewInt(1000000000000))
+
+		sendError := client.NewSendError(err)
+
+		Expect(sendError.Fatal()).To(Equal(true))
 	})
 })
