@@ -460,7 +460,35 @@ var _ = Describe("Chainlink @unit", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 
-	// Mocks the creation, read, delete cycle for nodes
+	// Mocks the creation, read cycle for chains
+	It("can create chains", func() {
+		attrs := TerraChainAttributes{
+			ChainID: "chainid",
+		}
+		server := mockedServer(func(rw http.ResponseWriter, req *http.Request) {
+			endpoint := "/v2/chains/terra"
+			switch req.Method {
+			case http.MethodPost:
+				Expect(req.URL.Path).Should(Or(Equal(endpoint), Equal("/sessions")))
+				if req.URL.Path == "/sessions" {
+					writeCookie(rw)
+				} else {
+					writeResponse(rw, http.StatusCreated, TerraChainCreate{TerraChain{attrs}})
+				}
+			}
+		})
+		defer server.Close()
+
+		c, err := newDefaultClient(server.URL)
+		Expect(err).ShouldNot(HaveOccurred())
+		c.SetClient(server.Client())
+
+		resp, err := c.CreateTerraChain(&attrs)
+		Expect(err).ShouldNot(HaveOccurred())
+		Expect(resp.Data.Attributes.ChainID).Should(Equal(attrs.ChainID))
+	})
+
+	// Mocks the creation, read cycle for nodes
 	It("can create nodes", func() {
 		attrs := TerraNodeAttributes{
 			Name:          "name",

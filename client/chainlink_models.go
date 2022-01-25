@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"text/template"
 	"time"
+
+	"gopkg.in/guregu/null.v4"
 )
 
 // EIServiceConfig represents External Initiator service config
@@ -271,7 +273,32 @@ type EIKey struct {
 	Attributes EIAttributes `json:"attributes"`
 }
 
-// TerraNodeAttributes is the model that represents the terra node when created
+type TerraChainConfig struct {
+	BlockRate             null.String
+	BlocksUntilTxTimeout  null.Int
+	ConfirmPollPeriod     null.String
+	FallbackGasPriceULuna null.String
+	GasLimitMultiplier    null.Float
+	MaxMsgsPerBatch       null.Int
+}
+
+// TerraChainAttributes is the model that represents the terra chain
+type TerraChainAttributes struct {
+	ChainID string           `json:"chainID"`
+	Config  TerraChainConfig `json:"config"`
+}
+
+// TerraChainAttributes is the model that represents the terra chain when read
+type TerraChain struct {
+	Attributes TerraChainAttributes `json:"attributes"`
+}
+
+// TerraChainCreate is the model that represents the terra chain when created
+type TerraChainCreate struct {
+	Data TerraChain `json:"data"`
+}
+
+// TerraNodeAttributes is the model that represents the terra noded
 type TerraNodeAttributes struct {
 	Name          string `json:"name"`
 	TerraChainID  string `json:"terraChainId"`
@@ -279,7 +306,7 @@ type TerraNodeAttributes struct {
 	FCDURL        string `json:"fcdURL" db:"fcd_url"`
 }
 
-// TerraNodeAttributes is the model that represents the terra node when created
+// TerraNodeAttributes is the model that represents the terra node when read
 type TerraNode struct {
 	Attributes TerraNodeAttributes `json:"attributes"`
 }

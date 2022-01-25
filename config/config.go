@@ -145,30 +145,36 @@ func (l *LocalStore) Fetch() ([]string, error) {
 // chart values. It returns a JSON block that can be set to the `CHARTS` environment variable that the helmenv library
 // will read from. This will merge the override values with the default values for the appropriate charts.
 func (cfg *FrameworkConfig) CreateChartOverrrides() (string, error) {
-	chartOverrides := ChartOverrides{
-		ChainlinkChartOverrride: ChainlinkChart{
-			Values: ChainlinkValuesWrapper{
-				ChainlinkVals: ChainlinkValues{
-					Image: ChainlinkImage{
+	chartOverrides := ChartOverrides{}
+	// Don't marshall chainlink if there's no chainlink values provided
+	if cfg.ChainlinkImage != "" || cfg.ChainlinkVersion != "" || len(cfg.ChainlinkEnvValues) != 0 {
+		chartOverrides.ChainlinkChartOverrride = &ChainlinkChart{
+			Values: &ChainlinkValuesWrapper{
+				ChainlinkVals: &ChainlinkValues{
+					Image: &ChainlinkImage{
 						Image:   cfg.ChainlinkImage,
 						Version: cfg.ChainlinkVersion,
 					},
 				},
 				EnvironmentVariables: cfg.ChainlinkEnvValues,
 			},
-		},
-		GethChartOverride: GethChart{
-			Values: GethValuesWrapper{
-				GethVals: GethValues{
-					Image: GethImage{
+		}
+	}
+	// Don't marshall geth if there's no geth values provided
+	if cfg.GethImage != "" || cfg.GethVersion != "" || len(cfg.GethArgs) != 0 {
+		chartOverrides.GethChartOverride = &GethChart{
+			Values: &GethValuesWrapper{
+				GethVals: &GethValues{
+					Image: &GethImage{
 						Image:   cfg.GethImage,
 						Version: cfg.GethVersion,
 					},
 				},
 				Args: cfg.GethArgs,
 			},
-		},
+		}
 	}
+
 	jsonChartOverrides, err := json.Marshal(chartOverrides)
 	return string(jsonChartOverrides), err
 }
