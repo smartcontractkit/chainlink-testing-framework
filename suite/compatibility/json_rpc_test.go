@@ -147,9 +147,11 @@ var _ = Describe("JSON RPC compatibility @json_rpc", func() {
 				Equal(ok)
 
 				chainId := networkSettings["chain_id"].(int)
-				urls := networkSettings["urls"].([]interface{})
+				urls := networkSettings["urls"]
 
-				for _, url := range urls {
+				Expect(urls).ShouldNot(BeNil(), "Web socket urls should be set")
+
+				for _, url := range urls.([]interface{}) {
 					rpcClient, err := rpc.Dial(fmt.Sprintf("%v", url))
 					Expect(err).ShouldNot(HaveOccurred())
 
