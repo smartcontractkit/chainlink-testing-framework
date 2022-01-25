@@ -10,6 +10,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	ocrConfigHelper "github.com/smartcontractkit/libocr/offchainreporting/confighelper"
+	ocrConfigHelper2 "github.com/smartcontractkit/libocr/offchainreporting2/confighelper"
 )
 
 type FluxAggregatorOptions struct {
@@ -68,9 +69,8 @@ type LinkToken interface {
 	Address() string
 	Approve(to string, amount *big.Int) error
 	Transfer(to string, amount *big.Int) error
-	BalanceOf(ctx context.Context, addr common.Address) (*big.Int, error)
+	BalanceOf(ctx context.Context, addr string) (*big.Int, error)
 	TransferAndCall(to string, amount *big.Int, data []byte) error
-	Fund(ethAmount *big.Float) error
 	Name(context.Context) (string, error)
 }
 
@@ -104,6 +104,25 @@ type OffChainAggregatorConfig struct {
 	OracleIdentities []ocrConfigHelper.OracleIdentityExtra
 }
 
+type OffChainAggregatorV2Config struct {
+	DeltaProgress                           time.Duration
+	DeltaResend                             time.Duration
+	DeltaRound                              time.Duration
+	DeltaGrace                              time.Duration
+	DeltaStage                              time.Duration
+	RMax                                    uint8
+	S                                       []int
+	Oracles                                 []ocrConfigHelper2.OracleIdentityExtra
+	ReportingPluginConfig                   []byte
+	MaxDurationQuery                        time.Duration
+	MaxDurationObservation                  time.Duration
+	MaxDurationReport                       time.Duration
+	MaxDurationShouldAcceptFinalizedReport  time.Duration
+	MaxDurationShouldTransmitAcceptedReport time.Duration
+	F                                       int
+	OnchainConfig                           []byte
+}
+
 type OffchainAggregatorData struct {
 	LatestRoundData RoundData // Data about the latest round
 }
@@ -113,7 +132,7 @@ type OffchainAggregator interface {
 	Fund(nativeAmount *big.Float) error
 	GetContractData(ctxt context.Context) (*OffchainAggregatorData, error)
 	SetConfig(chainlinkNodes []client.Chainlink, ocrConfig OffChainAggregatorConfig) error
-	SetPayees([]common.Address, []common.Address) error
+	SetPayees([]string, []string) error
 	RequestNewRound() error
 	GetLatestAnswer(ctxt context.Context) (*big.Int, error)
 	GetLatestRound(ctxt context.Context) (*RoundData, error)
@@ -308,12 +327,53 @@ type OCRv2AccessController interface {
 	HasAccess(to string) (bool, error)
 }
 
-type OCRv2 interface {
+// OCRv2Store OCR feed store
+type OCRv2Store interface {
 	Address() string
-	SetConfig() error
+	TransmissionsAddress() string
+	ProgramAddress() string
+	SetValidatorConfig(flaggingThreshold uint32) error
+	SetWriter(writerAuthority string) error
+	CreateFeed(desc string, decimals uint8, granularity int, liveLength int) error
+	GetLatestRoundData() (uint64, uint64, uint64, error)
+}
+
+// OCRv2 main offchain reporting v2 instance
+type OCRv2 interface {
+	ProgramAddress() string
+	Address() string
+	DumpState() error
+	GetContractData(ctx context.Context) (*OffchainAggregatorData, error)
+	AuthorityAddr(string) (string, error)
 	TransferOwnership(to string) error
-	SetBilling(observationPayment uint32, recommendedGasPrice uint32) error
+
+	SetBilling(op uint32, tp uint32, controllerAddr string) error
+	SetOracles(ocParams OffChainAggregatorV2Config) error
+	SetOffChainConfig(ocParams OffChainAggregatorV2Config) error
+
+	RequestNewRound() error
 	GetLatestConfigDetails() (map[string]interface{}, error)
-	GetRoundData(roundID uint32) (map[string]interface{}, error)
 	GetOwedPayment(transmitterAddr string) (map[string]interface{}, error)
+}
+
+type OCRv2Proxy interface {
+	Address() string
+	ProposeContract(addr string) error
+	ConfirmContract(addr string) error
+	TransferOwnership(addr string) error
+}
+
+type OCRv2ValidatorProxy interface {
+	Address() string
+	ProposeContract(addr string) error
+	ConfirmContract(addr string) error
+	TransferOwnership(addr string) error
+}
+
+type OCRv2Flags interface {
+	Address() string
+}
+
+type OCRv2Validator interface {
+	Address() string
 }

@@ -141,7 +141,7 @@ func (l *LocalStore) Fetch() ([]string, error) {
 	return l.RawKeys, nil
 }
 
-// CreateCharts checks the framework config to see if the user has supplied any values to override the default helm
+// CreateChartOverrrides checks the framework config to see if the user has supplied any values to override the default helm
 // chart values. It returns a JSON block that can be set to the `CHARTS` environment variable that the helmenv library
 // will read from. This will merge the override values with the default values for the appropriate charts.
 func (cfg *FrameworkConfig) CreateChartOverrrides() (string, error) {
