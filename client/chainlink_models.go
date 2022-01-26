@@ -205,6 +205,29 @@ type P2PKeyAttributes struct {
 	PublicKey string `json:"publicKey"`
 }
 
+// CSAKeys is the model that represents the created CSA keys when read
+type CSAKeys struct {
+	Data []CSAKeyData `json:"data"`
+}
+
+// CSAKey is the model that represents the created CSA key when created
+type CSAKey struct {
+	Data CSAKeyData `json:"data"`
+}
+
+// CSAKeyData is the model that represents the created CSA key when read
+type CSAKeyData struct {
+	Type string `json:"type"`
+	ID string `json:"id"`
+	Attributes CSAKeyAttributes `json:"attributes"`
+}
+
+// CSAKeyAttributes is the model that represents the attributes of a CSA Key
+type CSAKeyAttributes struct {
+	PublicKey string `json:"publicKey"`
+	Version string `json:"version"`
+}
+
 // ETHKeys is the model that represents the created ETH keys when read
 type ETHKeys struct {
 	Data []ETHKeyData `json:"data"`
@@ -288,7 +311,7 @@ type TerraChainAttributes struct {
 	Config  TerraChainConfig `json:"config"`
 }
 
-// TerraChainAttributes is the model that represents the terra chain when read
+// TerraChain is the model that represents the terra chain when read
 type TerraChain struct {
 	Attributes TerraChainAttributes `json:"attributes"`
 }
@@ -306,7 +329,7 @@ type TerraNodeAttributes struct {
 	FCDURL        string `json:"fcdURL" db:"fcd_url"`
 }
 
-// TerraNodeAttributes is the model that represents the terra node when read
+// TerraNode is the model that represents the terra node when read
 type TerraNode struct {
 	Attributes TerraNodeAttributes `json:"attributes"`
 }
