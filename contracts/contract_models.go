@@ -343,6 +343,7 @@ type OCRv2 interface {
 	ProgramAddress() string
 	Address() string
 	DumpState() error
+	GetLatestRoundData() (uint64, uint64, uint64, error)
 	GetContractData(ctx context.Context) (*OffchainAggregatorData, error)
 	AuthorityAddr(string) (string, error)
 	TransferOwnership(to string) error

@@ -36,6 +36,10 @@ func (e *EthereumOCRv2Store) ProgramAddress() string {
 
 type EthereumOCRv2 struct{}
 
+func (e *EthereumOCRv2) GetLatestRoundData() (uint64, uint64, uint64, error) {
+	panic("implement me")
+}
+
 func (e *EthereumOCRv2) ProgramAddress() string {
 	panic("implement me")
 }
