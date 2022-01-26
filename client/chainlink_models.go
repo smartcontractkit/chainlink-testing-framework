@@ -217,15 +217,15 @@ type CSAKey struct {
 
 // CSAKeyData is the model that represents the created CSA key when read
 type CSAKeyData struct {
-	Type string `json:"type"`
-	ID string `json:"id"`
+	Type       string           `json:"type"`
+	ID         string           `json:"id"`
 	Attributes CSAKeyAttributes `json:"attributes"`
 }
 
 // CSAKeyAttributes is the model that represents the attributes of a CSA Key
 type CSAKeyAttributes struct {
 	PublicKey string `json:"publicKey"`
-	Version int `json:"version"`
+	Version   int    `json:"version"`
 }
 
 // ETHKeys is the model that represents the created ETH keys when read
