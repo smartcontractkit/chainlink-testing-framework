@@ -45,7 +45,7 @@ networks:
         namespace_for_secret: default
         private_url: http://127.0.0.1:8584
         private_keys: 
-            - geth_private_key
+            - private_key
         chainlink_transaction_limit: 500000
         transaction_timeout: 2m
         minimum_confirmations: 1

@@ -460,6 +460,39 @@ var _ = Describe("Chainlink @unit", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 
+	// Mocks the creation, read, delete cycle for nodes
+	It("can create nodes", func() {
+		attrs := TerraNodeAttributes{
+			Name:          "name",
+			TerraChainID:  "chainid",
+			TendermintURL: "http://tendermint.com",
+			FCDURL:        "http://fcd.com",
+		}
+		server := mockedServer(func(rw http.ResponseWriter, req *http.Request) {
+			endpoint := "/v2/nodes/terra"
+			switch req.Method {
+			case http.MethodPost:
+				Expect(req.URL.Path).Should(Or(Equal(endpoint), Equal("/sessions")))
+				if req.URL.Path == "/sessions" {
+					writeCookie(rw)
+				} else {
+					writeResponse(rw, http.StatusOK, TerraNodeCreate{TerraNode{attrs}})
+				}
+			}
+		})
+		defer server.Close()
+
+		c, err := newDefaultClient(server.URL)
+		Expect(err).ShouldNot(HaveOccurred())
+		c.SetClient(server.Client())
+
+		resp, err := c.CreateTerraNode(&attrs)
+		Expect(err).ShouldNot(HaveOccurred())
+		Expect(resp.Data.Attributes.Name).Should(Equal(attrs.Name))
+		Expect(resp.Data.Attributes.TerraChainID).Should(Equal(attrs.TerraChainID))
+		Expect(resp.Data.Attributes.TendermintURL).Should(Equal(attrs.TendermintURL))
+		Expect(resp.Data.Attributes.FCDURL).Should(Equal(attrs.FCDURL))
+	})
 })
 
 func newDefaultClient(url string) (Chainlink, error) {
