@@ -2,15 +2,17 @@
 package config
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/imdario/mergo"
 	"github.com/kelseyhightower/envconfig"
+	"github.com/smartcontractkit/helmenv/tools"
 	"gopkg.in/yaml.v3"
 
 	"github.com/rs/zerolog/log"
@@ -26,19 +28,12 @@ const (
 	SecretConfig ConfigurationType = "secret"
 )
 
-// FrameworkConfig common framework config
-type FrameworkConfig struct {
-	KeepEnvironments string         `mapstructure:"keep_environments" yaml:"keep_environments"`
-	Logging          *LoggingConfig `mapstructure:"logging" yaml:"logging"`
-	EnvironmentFile  string         `mapstructure:"environment_file" yaml:"environment_file"`
-	ChainlinkImage   string         `mapstructure:"chainlink_image" yaml:"chainlink_image"`
-	ChainlinkVersion string         `mapstructure:"chainlink_version" yaml:"chainlink_version"`
-	GethImage        string         `mapstructure:"geth_image" yaml:"geth_image"`
-	GethVersion      string         `mapstructure:"geth_version" yaml:"geth_version"`
-}
-
 // NetworkSettings is a map that holds configuration for each individual network
 type NetworkSettings map[string]map[string]interface{}
+
+var ProjectFrameworkSettings *FrameworkConfig
+var ProjectNetworkSettings *NetworksConfig
+var ProjectConfigDirectory string
 
 // Decode is used by envconfig to initialise the custom Charts type with populated values
 // This function will take a JSON object representing charts, and unmarshal it into the existing object to "merge" the
@@ -59,90 +54,64 @@ func (n NetworkSettings) Decode(value string) error {
 	return mergo.Merge(&n, networkSettings, mergo.WithOverride)
 }
 
-// NetworksConfig is network configurations
-type NetworksConfig struct {
-	SelectedNetworks   []string        `mapstructure:"selected_networks" yaml:"selected_networks" envconfig:"selected_networks"`
-	NetworkSettings    NetworkSettings `mapstructure:"networks" yaml:"networks" envconfig:"network_settings"`
-	DefaultKeyStore    string
-	ConfigFileLocation string
-}
-
-// LoggingConfig for logging
-type LoggingConfig struct {
-	Level int8 `mapstructure:"level" yaml:"logging"`
-}
-
-// ETHNetwork data to configure fully ETH compatible network
-type ETHNetwork struct {
-	External                  bool          `mapstructure:"external" yaml:"external"`
-	Name                      string        `mapstructure:"name" yaml:"name"`
-	ID                        string        `mapstructure:"id" yaml:"id"`
-	ChainID                   int64         `mapstructure:"chain_id" yaml:"chain_id"`
-	URL                       string        `mapstructure:"url" yaml:"url"`
-	URLs                      []string      `mapstructure:"urls" yaml:"urls"`
-	Type                      string        `mapstructure:"type" yaml:"type"`
-	PrivateKeys               []string      `mapstructure:"private_keys" yaml:"private_keys"`
-	ChainlinkTransactionLimit uint64        `mapstructure:"chainlink_transaction_limit" yaml:"chainlink_transaction_limit"`
-	Timeout                   time.Duration `mapstructure:"transaction_timeout" yaml:"transaction_timeout"`
-	MinimumConfirmations      int           `mapstructure:"minimum_confirmations" yaml:"minimum_confirmations"`
-	GasEstimationBuffer       uint64        `mapstructure:"gas_estimation_buffer" yaml:"gas_estimation_buffer"`
-	BlockGasLimit             uint64        `mapstructure:"block_gas_limit" yaml:"block_gas_limit"`
-}
-
-// TerraNetwork data to configure Terra network
-type TerraNetwork struct {
-	Name                      string        `mapstructure:"name" yaml:"name"`
-	ChainName                 string        `mapstructure:"chain_name" yaml:"chain_name"`
-	Mnemonics                 []string      `mapstructure:"mnemonic" yaml:"mnemonic"`
-	Currency                  string        `mapstructure:"currency" yaml:"currency"`
-	Type                      string        `mapstructure:"type" yaml:"type"`
-	ChainlinkTransactionLimit uint64        `mapstructure:"chainlink_transaction_limit" yaml:"chainlink_transaction_limit"`
-	Timeout                   time.Duration `mapstructure:"transaction_timeout" yaml:"transaction_timeout"`
-	MinimumConfirmations      int           `mapstructure:"minimum_confirmations" yaml:"minimum_confirmations"`
-}
-
 func defaultViper(dir string, file string) *viper.Viper {
 	v := viper.New()
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
 	v.SetConfigName(file)
-	if dir == "" {
-		v.AddConfigPath(".")
-	} else {
-		v.AddConfigPath(dir)
-	}
 	v.SetConfigType("yaml")
+
+	v.AddConfigPath(dir)
+	v.AddConfigPath(".")
+	v.AddConfigPath(tools.ProjectRoot) // Default
 	return v
 }
 
 // LoadFrameworkConfig loads framework config
 func LoadFrameworkConfig(cfgPath string) (*FrameworkConfig, error) {
 	dir, file := path.Split(cfgPath)
-	log.Info().
-		Str("Dir", dir).
-		Str("File", file).
-		Msg("Loading config file")
 	v := defaultViper(dir, file)
 	if err := v.ReadInConfig(); err != nil {
 		return nil, err
 	}
+	usedDirPath, _ := path.Split(v.ConfigFileUsed())
+	log.Info().
+		Str("File", v.ConfigFileUsed()).
+		Str("Directory Used", usedDirPath).
+		Str("Hint", "If this is an unexpected file or path, it's likely that the provided one was unable to resolve and so a default was used").
+		Msg("Loaded framework config file")
+	var err error
+	ProjectConfigDirectory, err = filepath.Abs(usedDirPath)
+	if err != nil {
+		return nil, err
+	}
+
 	var cfg *FrameworkConfig
-	err := v.Unmarshal(&cfg)
-	cfg.setCharts()
-	return cfg, err
+	err = v.Unmarshal(&cfg)
+	if err != nil {
+		return nil, err
+	}
+	chartOverrides, err := cfg.CreateChartOverrrides()
+	if err != nil {
+		return nil, err
+	}
+	if chartOverrides != "" {
+		os.Setenv("CHARTS", chartOverrides)
+	}
+	ProjectFrameworkSettings = cfg
+	return ProjectFrameworkSettings, err
 }
 
 // LoadNetworksConfig loads networks config
 func LoadNetworksConfig(cfgPath string) (*NetworksConfig, error) {
 	dir, file := path.Split(cfgPath)
-	log.Info().
-		Str("Dir", dir).
-		Str("File", file).
-		Msg("Loading config file")
 	v := defaultViper(dir, file)
 	if err := v.ReadInConfig(); err != nil {
 		return nil, err
 	}
+	log.Info().
+		Str("File", v.ConfigFileUsed()).
+		Msg("Loaded networks config file")
 	var cfg *NetworksConfig
 	err := v.Unmarshal(&cfg)
 
@@ -150,7 +119,8 @@ func LoadNetworksConfig(cfgPath string) (*NetworksConfig, error) {
 	if err := envconfig.Process("", cfg); err != nil {
 		return nil, err
 	}
-	return cfg, err
+	ProjectNetworkSettings = cfg
+	return ProjectNetworkSettings, err
 }
 
 // PrivateKeyStore enables access, through a variety of methods, to private keys for use in blockchain networks
@@ -171,45 +141,34 @@ func (l *LocalStore) Fetch() ([]string, error) {
 	return l.RawKeys, nil
 }
 
-var gethChart = `
-"geth":{
-	"values":{
-		 "geth":{
-				"image":{
-					 "image":"%s",
-					 "version":"%s"
-				}
-		 }
+// CreateCharts checks the framework config to see if the user has supplied any values to override the default helm
+// chart values. It returns a JSON block that can be set to the `CHARTS` environment variable that the helmenv library
+// will read from. This will merge the override values with the default values for the appropriate charts.
+func (cfg *FrameworkConfig) CreateChartOverrrides() (string, error) {
+	chartOverrides := ChartOverrides{
+		ChainlinkChartOverrride: ChainlinkChart{
+			Values: ChainlinkValuesWrapper{
+				ChainlinkVals: ChainlinkValues{
+					Image: ChainlinkImage{
+						Image:   cfg.ChainlinkImage,
+						Version: cfg.ChainlinkVersion,
+					},
+				},
+				EnvironmentVariables: cfg.ChainlinkEnvValues,
+			},
+		},
+		GethChartOverride: GethChart{
+			Values: GethValuesWrapper{
+				GethVals: GethValues{
+					Image: GethImage{
+						Image:   cfg.GethImage,
+						Version: cfg.GethVersion,
+					},
+				},
+				Args: cfg.GethArgs,
+			},
+		},
 	}
-}`
-var chainlinkChart = `
-"chainlink":{
-	"values":{
-		 "chainlink":{
-				"image":{
-					 "image":"%s",
-					 "version":"%s"
-				}
-		 }
-	}
-}`
-
-// setCharts finds out if the user has specified chainlink or geth images to use for the test, and sets the CHARTS
-// env var appropriately
-func (cfg *FrameworkConfig) setCharts() {
-	if cfg.GethImage != "" || cfg.ChainlinkImage != "" {
-		marshalledGethChart := ""
-		marshalledChainlinkChart := ""
-		if cfg.GethImage != "" {
-			marshalledGethChart = fmt.Sprintf(gethChart, cfg.GethImage, cfg.GethVersion)
-		}
-		if cfg.ChainlinkImage != "" {
-			marshalledChainlinkChart = fmt.Sprintf(chainlinkChart, cfg.ChainlinkImage, cfg.ChainlinkVersion)
-		}
-		if cfg.GethImage != "" && cfg.ChainlinkImage != "" { // If both, add a comma after geth
-			marshalledGethChart += ","
-		}
-		combined := fmt.Sprintf("{%s%s}", marshalledGethChart, marshalledChainlinkChart)
-		os.Setenv("CHARTS", combined)
-	}
+	jsonChartOverrides, err := json.Marshal(chartOverrides)
+	return string(jsonChartOverrides), err
 }

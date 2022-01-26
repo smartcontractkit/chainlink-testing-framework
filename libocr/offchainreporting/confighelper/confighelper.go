@@ -10,7 +10,7 @@ import (
 
 	"github.com/celo-org/celo-blockchain/common"
 	"github.com/smartcontractkit/integrations-framework/libocr/gethwrappers/offchainaggregator"
-	"github.com/smartcontractkit/integrations-framework/libocr/offchainreporting/config"
+	"github.com/smartcontractkit/integrations-framework/libocr/offchainreporting/internal/config"
 	"github.com/smartcontractkit/integrations-framework/libocr/offchainreporting/types"
 )
 

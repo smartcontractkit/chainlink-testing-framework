@@ -211,6 +211,7 @@ type KeeperRegistryOpts struct {
 	ETHFeedAddr          string
 	GasFeedAddr          string
 	PaymentPremiumPPB    uint32
+	FlatFeeMicroLINK     uint32
 	BlockCountPerTurn    *big.Int
 	CheckGasLimit        uint32
 	StalenessSeconds     *big.Int

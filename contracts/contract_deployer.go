@@ -431,6 +431,7 @@ func (e *EthereumContractDeployer) DeployKeeperRegistry(
 			common.HexToAddress(opts.ETHFeedAddr),
 			common.HexToAddress(opts.GasFeedAddr),
 			opts.PaymentPremiumPPB,
+			opts.FlatFeeMicroLINK,
 			opts.BlockCountPerTurn,
 			opts.CheckGasLimit,
 			opts.StalenessSeconds,

@@ -17,12 +17,12 @@ type LocalConfig struct {
 	// configuration change. This value doesn't need to be very high (in
 	// particular, it does not need to protect against malicious re-orgs).
 	// Since configuration changes create some overhead, and mini-reorgs
-	// are fairly celoextended, recommended values are between two and ten.
+	// are fairly common, recommended values are between two and ten.
 	//
 	// Malicious re-orgs are not any more of concern here than they are in
 	// blockchain applications in general: Since nodes check the contract for the
 	// latest config every ContractConfigTrackerPollInterval.Seconds(), they will
-	// come to a celoextended view of the current config within any interval longer than
+	// come to a common view of the current config within any interval longer than
 	// that, as long as the latest setConfig transaction in the longest chain is
 	// stable. They will thus be able to continue reporting after the poll
 	// interval, unless an adversary is able to repeatedly re-org the transaction

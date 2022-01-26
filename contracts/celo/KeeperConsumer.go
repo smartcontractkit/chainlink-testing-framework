@@ -4,6 +4,7 @@
 package celo
 
 import (
+	"errors"
 	"math/big"
 	"strings"
 
@@ -17,6 +18,7 @@ import (
 
 // Reference imports to suppress errors if they are not otherwise used.
 var (
+	_ = errors.New
 	_ = big.NewInt
 	_ = strings.NewReader
 	_ = celo.NotFound
@@ -26,20 +28,31 @@ var (
 	_ = event.NewSubscription
 )
 
+// KeeperConsumerMetaData contains all meta data concerning the KeeperConsumer contract.
+var KeeperConsumerMetaData = &bind.MetaData{
+	ABI: "[{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"updateInterval\",\"type\":\"uint256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"checkData\",\"type\":\"bytes\"}],\"name\":\"checkUpkeep\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"upkeepNeeded\",\"type\":\"bool\"},{\"internalType\":\"bytes\",\"name\":\"performData\",\"type\":\"bytes\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"counter\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"interval\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"lastTimeStamp\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"performData\",\"type\":\"bytes\"}],\"name\":\"performUpkeep\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
+	Bin: "0x60a060405234801561001057600080fd5b506040516103583803806103588339818101604052602081101561003357600080fd5b505160805242600155600080556080516102fe61005a6000398061025452506102fe6000f3fe608060405234801561001057600080fd5b50600436106100575760003560e01c80633f3b3b271461005c5780634585e33b1461007657806361bc221a146100e65780636e04ff0d146100ee578063947a36fb146101dd575b600080fd5b6100646101e5565b60408051918252519081900360200190f35b6100e46004803603602081101561008c57600080fd5b810190602081018135600160201b8111156100a657600080fd5b8201836020820111156100b857600080fd5b803590602001918460018302840111600160201b831117156100d957600080fd5b5090925090506101eb565b005b6100646101f8565b61015c6004803603602081101561010457600080fd5b810190602081018135600160201b81111561011e57600080fd5b82018360208201111561013057600080fd5b803590602001918460018302840111600160201b8311171561015157600080fd5b5090925090506101fe565b60405180831515815260200180602001828103825283818151815260200191508051906020019080838360005b838110156101a1578181015183820152602001610189565b50505050905090810190601f1680156101ce5780820380516001836020036101000a031916815260200191505b50935050505060405180910390f35b610064610252565b60015481565b5050600080546001019055565b60005481565b6000606061020a610276565b6001848481818080601f016020809104026020016040519081016040528093929190818152602001838380828437600092019190915250959a92995091975050505050505050565b7f000000000000000000000000000000000000000000000000000000000000000081565b32156102c6576040805162461bcd60e51b815260206004820152601a6024820152791bdb9b1e48199bdc881cda5b5d5b185d195908189858dad95b9960321b604482015290519081900360640190fd5b56fea2646970667358221220c0e089efa59b00d8b131c6b0456904c0ef8f5646c27f81de540a4cc400cff70c64736f6c63430007060033",
+}
+
 // KeeperConsumerABI is the input ABI used to generate the binding from.
-const KeeperConsumerABI = "[{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"updateInterval\",\"type\":\"uint256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"checkData\",\"type\":\"bytes\"}],\"name\":\"checkUpkeep\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"upkeepNeeded\",\"type\":\"bool\"},{\"internalType\":\"bytes\",\"name\":\"performData\",\"type\":\"bytes\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"counter\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"interval\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"lastTimeStamp\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"performData\",\"type\":\"bytes\"}],\"name\":\"performUpkeep\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]"
+// Deprecated: Use KeeperConsumerMetaData.ABI instead.
+var KeeperConsumerABI = KeeperConsumerMetaData.ABI
 
 // KeeperConsumerBin is the compiled bytecode used for deploying new contracts.
-var KeeperConsumerBin = "0x60a060405234801561001057600080fd5b506040516102e93803806102e98339818101604052602081101561003357600080fd5b5051608052426001556000805560805161028f61005a60003980610260525061028f6000f3fe608060405234801561001057600080fd5b50600436106100675760003560e01c806361bc221a1161005057806361bc221a146100f85780636e04ff0d14610100578063947a36fb146101f157610067565b80633f3b3b271461006c5780634585e33b14610086575b600080fd5b6100746101f9565b60408051918252519081900360200190f35b6100f66004803603602081101561009c57600080fd5b8101906020810181356401000000008111156100b757600080fd5b8201836020820111156100c957600080fd5b803590602001918460018302840111640100000000831117156100eb57600080fd5b5090925090506101ff565b005b61007461020c565b6101706004803603602081101561011657600080fd5b81019060208101813564010000000081111561013157600080fd5b82018360208201111561014357600080fd5b8035906020019184600183028401116401000000008311171561016557600080fd5b509092509050610212565b60405180831515815260200180602001828103825283818151815260200191508051906020019080838360005b838110156101b557818101518382015260200161019d565b50505050905090810190601f1680156101e25780820380516001836020036101000a031916815260200191505b50935050505060405180910390f35b61007461025e565b60015481565b5050600080546001019055565b60005481565b600060606001848481818080601f016020809104026020016040519081016040528093929190818152602001838380828437600092019190915250959a92995091975050505050505050565b7f00000000000000000000000000000000000000000000000000000000000000008156fea164736f6c6343000706000a"
+// Deprecated: Use KeeperConsumerMetaData.Bin instead.
+var KeeperConsumerBin = KeeperConsumerMetaData.Bin
 
 // DeployKeeperConsumer deploys a new Ethereum contract, binding an instance of KeeperConsumer to it.
 func DeployKeeperConsumer(auth *bind.TransactOpts, backend bind.ContractBackend, updateInterval *big.Int) (common.Address, *types.Transaction, *KeeperConsumer, error) {
-	parsed, err := abi.JSON(strings.NewReader(KeeperConsumerABI))
+	parsed, err := KeeperConsumerMetaData.GetAbi()
 	if err != nil {
 		return common.Address{}, nil, nil, err
 	}
+	if parsed == nil {
+		return common.Address{}, nil, nil, errors.New("GetABI returned nil")
+	}
 
-	address, tx, contract, err := bind.DeployContract(auth, parsed, common.FromHex(KeeperConsumerBin), backend, updateInterval)
+	address, tx, contract, err := bind.DeployContract(auth, *parsed, common.FromHex(KeeperConsumerBin), backend, updateInterval)
 	if err != nil {
 		return common.Address{}, nil, nil, err
 	}
@@ -188,6 +201,51 @@ func (_KeeperConsumer *KeeperConsumerTransactorRaw) Transact(opts *bind.Transact
 	return _KeeperConsumer.Contract.contract.Transact(opts, method, params...)
 }
 
+// CheckUpkeep is a free data retrieval call binding the contract method 0x6e04ff0d.
+//
+// Solidity: function checkUpkeep(bytes checkData) view returns(bool upkeepNeeded, bytes performData)
+func (_KeeperConsumer *KeeperConsumerCaller) CheckUpkeep(opts *bind.CallOpts, checkData []byte) (struct {
+	UpkeepNeeded bool
+	PerformData  []byte
+}, error) {
+	var out []interface{}
+	err := _KeeperConsumer.contract.Call(opts, &out, "checkUpkeep", checkData)
+
+	outstruct := new(struct {
+		UpkeepNeeded bool
+		PerformData  []byte
+	})
+	if err != nil {
+		return *outstruct, err
+	}
+
+	outstruct.UpkeepNeeded = *abi.ConvertType(out[0], new(bool)).(*bool)
+	outstruct.PerformData = *abi.ConvertType(out[1], new([]byte)).(*[]byte)
+
+	return *outstruct, err
+
+}
+
+// CheckUpkeep is a free data retrieval call binding the contract method 0x6e04ff0d.
+//
+// Solidity: function checkUpkeep(bytes checkData) view returns(bool upkeepNeeded, bytes performData)
+func (_KeeperConsumer *KeeperConsumerSession) CheckUpkeep(checkData []byte) (struct {
+	UpkeepNeeded bool
+	PerformData  []byte
+}, error) {
+	return _KeeperConsumer.Contract.CheckUpkeep(&_KeeperConsumer.CallOpts, checkData)
+}
+
+// CheckUpkeep is a free data retrieval call binding the contract method 0x6e04ff0d.
+//
+// Solidity: function checkUpkeep(bytes checkData) view returns(bool upkeepNeeded, bytes performData)
+func (_KeeperConsumer *KeeperConsumerCallerSession) CheckUpkeep(checkData []byte) (struct {
+	UpkeepNeeded bool
+	PerformData  []byte
+}, error) {
+	return _KeeperConsumer.Contract.CheckUpkeep(&_KeeperConsumer.CallOpts, checkData)
+}
+
 // Counter is a free data retrieval call binding the contract method 0x61bc221a.
 //
 // Solidity: function counter() view returns(uint256)
@@ -279,27 +337,6 @@ func (_KeeperConsumer *KeeperConsumerSession) LastTimeStamp() (*big.Int, error) 
 // Solidity: function lastTimeStamp() view returns(uint256)
 func (_KeeperConsumer *KeeperConsumerCallerSession) LastTimeStamp() (*big.Int, error) {
 	return _KeeperConsumer.Contract.LastTimeStamp(&_KeeperConsumer.CallOpts)
-}
-
-// CheckUpkeep is a paid mutator transaction binding the contract method 0x6e04ff0d.
-//
-// Solidity: function checkUpkeep(bytes checkData) returns(bool upkeepNeeded, bytes performData)
-func (_KeeperConsumer *KeeperConsumerTransactor) CheckUpkeep(opts *bind.TransactOpts, checkData []byte) (*types.Transaction, error) {
-	return _KeeperConsumer.contract.Transact(opts, "checkUpkeep", checkData)
-}
-
-// CheckUpkeep is a paid mutator transaction binding the contract method 0x6e04ff0d.
-//
-// Solidity: function checkUpkeep(bytes checkData) returns(bool upkeepNeeded, bytes performData)
-func (_KeeperConsumer *KeeperConsumerSession) CheckUpkeep(checkData []byte) (*types.Transaction, error) {
-	return _KeeperConsumer.Contract.CheckUpkeep(&_KeeperConsumer.TransactOpts, checkData)
-}
-
-// CheckUpkeep is a paid mutator transaction binding the contract method 0x6e04ff0d.
-//
-// Solidity: function checkUpkeep(bytes checkData) returns(bool upkeepNeeded, bytes performData)
-func (_KeeperConsumer *KeeperConsumerTransactorSession) CheckUpkeep(checkData []byte) (*types.Transaction, error) {
-	return _KeeperConsumer.Contract.CheckUpkeep(&_KeeperConsumer.TransactOpts, checkData)
 }
 
 // PerformUpkeep is a paid mutator transaction binding the contract method 0x4585e33b.

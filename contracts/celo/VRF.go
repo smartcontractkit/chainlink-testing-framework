@@ -4,6 +4,7 @@
 package celo
 
 import (
+	"errors"
 	"math/big"
 	"strings"
 
@@ -17,6 +18,7 @@ import (
 
 // Reference imports to suppress errors if they are not otherwise used.
 var (
+	_ = errors.New
 	_ = big.NewInt
 	_ = strings.NewReader
 	_ = celo.NotFound
@@ -26,20 +28,31 @@ var (
 	_ = event.NewSubscription
 )
 
+// VRFMetaData contains all meta data concerning the VRF contract.
+var VRFMetaData = &bind.MetaData{
+	ABI: "[{\"inputs\":[],\"name\":\"PROOF_LENGTH\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]",
+	Bin: "0x6080604052348015600f57600080fd5b5060818061001e6000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c8063e911439c14602d575b600080fd5b60336045565b60408051918252519081900360200190f35b6101a08156fea2646970667358221220d7d5d9f7ffbf295b86242b21dfcf424f98e0381aa448778fac3606867b2c731064736f6c63430006060033",
+}
+
 // VRFABI is the input ABI used to generate the binding from.
-const VRFABI = "[{\"inputs\":[],\"name\":\"PROOF_LENGTH\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]"
+// Deprecated: Use VRFMetaData.ABI instead.
+var VRFABI = VRFMetaData.ABI
 
 // VRFBin is the compiled bytecode used for deploying new contracts.
-var VRFBin = "0x6080604052348015600f57600080fd5b5060818061001e6000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c8063e911439c14602d575b600080fd5b60336045565b60408051918252519081900360200190f35b6101a08156fea26469706673582212201a7fabb15ed434d18ceb8dfd372082aab959f04e07d5b64a1598ed2085a1afc964736f6c63430006060033"
+// Deprecated: Use VRFMetaData.Bin instead.
+var VRFBin = VRFMetaData.Bin
 
 // DeployVRF deploys a new Ethereum contract, binding an instance of VRF to it.
 func DeployVRF(auth *bind.TransactOpts, backend bind.ContractBackend) (common.Address, *types.Transaction, *VRF, error) {
-	parsed, err := abi.JSON(strings.NewReader(VRFABI))
+	parsed, err := VRFMetaData.GetAbi()
 	if err != nil {
 		return common.Address{}, nil, nil, err
 	}
+	if parsed == nil {
+		return common.Address{}, nil, nil, errors.New("GetABI returned nil")
+	}
 
-	address, tx, contract, err := bind.DeployContract(auth, parsed, common.FromHex(VRFBin), backend)
+	address, tx, contract, err := bind.DeployContract(auth, *parsed, common.FromHex(VRFBin), backend)
 	if err != nil {
 		return common.Address{}, nil, nil, err
 	}

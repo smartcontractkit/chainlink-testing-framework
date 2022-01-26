@@ -4,6 +4,7 @@
 package celo
 
 import (
+	"errors"
 	"math/big"
 	"strings"
 
@@ -17,6 +18,7 @@ import (
 
 // Reference imports to suppress errors if they are not otherwise used.
 var (
+	_ = errors.New
 	_ = big.NewInt
 	_ = strings.NewReader
 	_ = celo.NotFound
@@ -26,20 +28,31 @@ var (
 	_ = event.NewSubscription
 )
 
+// MockETHLINKAggregatorMetaData contains all meta data concerning the MockETHLINKAggregator contract.
+var MockETHLINKAggregatorMetaData = &bind.MetaData{
+	ABI: "[{\"inputs\":[{\"internalType\":\"int256\",\"name\":\"_answer\",\"type\":\"int256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"answer\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"decimals\",\"outputs\":[{\"internalType\":\"uint8\",\"name\":\"\",\"type\":\"uint8\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"description\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint80\",\"name\":\"_roundId\",\"type\":\"uint80\"}],\"name\":\"getRoundData\",\"outputs\":[{\"internalType\":\"uint80\",\"name\":\"roundId\",\"type\":\"uint80\"},{\"internalType\":\"int256\",\"name\":\"answer\",\"type\":\"int256\"},{\"internalType\":\"uint256\",\"name\":\"startedAt\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"updatedAt\",\"type\":\"uint256\"},{\"internalType\":\"uint80\",\"name\":\"answeredInRound\",\"type\":\"uint80\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"latestRoundData\",\"outputs\":[{\"internalType\":\"uint80\",\"name\":\"roundId\",\"type\":\"uint80\"},{\"internalType\":\"int256\",\"name\":\"answer\",\"type\":\"int256\"},{\"internalType\":\"uint256\",\"name\":\"startedAt\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"updatedAt\",\"type\":\"uint256\"},{\"internalType\":\"uint80\",\"name\":\"answeredInRound\",\"type\":\"uint80\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"version\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]",
+	Bin: "0x608060405234801561001057600080fd5b5060405161029b38038061029b83398101604081905261002f91610037565b60005561004f565b600060208284031215610048578081fd5b5051919050565b61023d8061005e6000396000f3fe608060405234801561001057600080fd5b50600436106100625760003560e01c8063313ce5671461006757806354fd4d50146100855780637284e4161461009a57806385bb7d69146100af5780639a6fc8f5146100b7578063feaf968c146100db575b600080fd5b61006f6100e3565b60405161007c91906101f9565b60405180910390f35b61008d6100e8565b60405161007c919061016d565b6100a26100ed565b60405161007c9190610176565b61008d61011c565b6100ca6100c536600461013f565b610122565b60405161007c9594939291906101c9565b6100ca610131565b601290565b600190565b60408051808201909152601581527426b7b1b5a2aa242624a725a0b3b3b932b3b0ba37b960591b602082015290565b60005481565b50600190600090429081908490565b600160004280839091929394565b600060208284031215610150578081fd5b81356001600160501b0381168114610166578182fd5b9392505050565b90815260200190565b6000602080835283518082850152825b818110156101a257858101830151858201604001528201610186565b818111156101b35783604083870101525b50601f01601f1916929092016040019392505050565b6001600160501b039586168152602081019490945260408401929092526060830152909116608082015260a00190565b60ff9190911681526020019056fea2646970667358221220e4375e11a7b9b314351af2ff4c1bab434dfe9d9a7b0df30c01f6ad11242a9b8a64736f6c63430008000033",
+}
+
 // MockETHLINKAggregatorABI is the input ABI used to generate the binding from.
-const MockETHLINKAggregatorABI = "[{\"inputs\":[{\"internalType\":\"int256\",\"name\":\"_answer\",\"type\":\"int256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"answer\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"decimals\",\"outputs\":[{\"internalType\":\"uint8\",\"name\":\"\",\"type\":\"uint8\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"description\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint80\",\"name\":\"_roundId\",\"type\":\"uint80\"}],\"name\":\"getRoundData\",\"outputs\":[{\"internalType\":\"uint80\",\"name\":\"roundId\",\"type\":\"uint80\"},{\"internalType\":\"int256\",\"name\":\"answer\",\"type\":\"int256\"},{\"internalType\":\"uint256\",\"name\":\"startedAt\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"updatedAt\",\"type\":\"uint256\"},{\"internalType\":\"uint80\",\"name\":\"answeredInRound\",\"type\":\"uint80\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"latestRoundData\",\"outputs\":[{\"internalType\":\"uint80\",\"name\":\"roundId\",\"type\":\"uint80\"},{\"internalType\":\"int256\",\"name\":\"answer\",\"type\":\"int256\"},{\"internalType\":\"uint256\",\"name\":\"startedAt\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"updatedAt\",\"type\":\"uint256\"},{\"internalType\":\"uint80\",\"name\":\"answeredInRound\",\"type\":\"uint80\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"version\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]"
+// Deprecated: Use MockETHLINKAggregatorMetaData.ABI instead.
+var MockETHLINKAggregatorABI = MockETHLINKAggregatorMetaData.ABI
 
 // MockETHLINKAggregatorBin is the compiled bytecode used for deploying new contracts.
-var MockETHLINKAggregatorBin = "0x608060405234801561001057600080fd5b506040516102673803806102678339818101604052602081101561003357600080fd5b5051600055610220806100476000396000f3fe608060405234801561001057600080fd5b50600436106100725760003560e01c806385bb7d691161005057806385bb7d691461012c5780639a6fc8f514610134578063feaf968c146101a757610072565b8063313ce5671461007757806354fd4d50146100955780637284e416146100af575b600080fd5b61007f6101af565b6040805160ff9092168252519081900360200190f35b61009d6101b4565b60408051918252519081900360200190f35b6100b76101b9565b6040805160208082528351818301528351919283929083019185019080838360005b838110156100f15781810151838201526020016100d9565b50505050905090810190601f16801561011e5780820380516001836020036101000a031916815260200191505b509250505060405180910390f35b61009d6101f0565b61015d6004803603602081101561014a57600080fd5b503569ffffffffffffffffffff166101f6565b604051808669ffffffffffffffffffff1681526020018581526020018481526020018381526020018269ffffffffffffffffffff1681526020019550505050505060405180910390f35b61015d610205565b601290565b600190565b60408051808201909152601581527f4d6f636b4554484c494e4b41676772656761746f720000000000000000000000602082015290565b60005481565b50600190600090429081908490565b60016000428083909192939456fea164736f6c6343000706000a"
+// Deprecated: Use MockETHLINKAggregatorMetaData.Bin instead.
+var MockETHLINKAggregatorBin = MockETHLINKAggregatorMetaData.Bin
 
 // DeployMockETHLINKAggregator deploys a new Ethereum contract, binding an instance of MockETHLINKAggregator to it.
 func DeployMockETHLINKAggregator(auth *bind.TransactOpts, backend bind.ContractBackend, _answer *big.Int) (common.Address, *types.Transaction, *MockETHLINKAggregator, error) {
-	parsed, err := abi.JSON(strings.NewReader(MockETHLINKAggregatorABI))
+	parsed, err := MockETHLINKAggregatorMetaData.GetAbi()
 	if err != nil {
 		return common.Address{}, nil, nil, err
 	}
+	if parsed == nil {
+		return common.Address{}, nil, nil, errors.New("GetABI returned nil")
+	}
 
-	address, tx, contract, err := bind.DeployContract(auth, parsed, common.FromHex(MockETHLINKAggregatorBin), backend, _answer)
+	address, tx, contract, err := bind.DeployContract(auth, *parsed, common.FromHex(MockETHLINKAggregatorBin), backend, _answer)
 	if err != nil {
 		return common.Address{}, nil, nil, err
 	}

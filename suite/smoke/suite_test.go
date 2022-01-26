@@ -10,6 +10,6 @@ import (
 )
 
 func Test_Suite(t *testing.T) {
-	utils.GinkgoSuite()
+	utils.GinkgoSuite(utils.ProjectRoot)
 	RunSpecs(t, "Integration")
 }
