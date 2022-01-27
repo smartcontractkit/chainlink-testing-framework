@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/ethereum/go-ethereum v1.10.11
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/onsi/ginkgo/v2 v2.1.0
+	github.com/onsi/ginkgo/v2 v2.0.0
 	github.com/onsi/gomega v1.17.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.12.0
