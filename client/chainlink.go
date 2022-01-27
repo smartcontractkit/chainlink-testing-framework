@@ -56,6 +56,9 @@ type Chainlink interface {
 	CreateVRFKey() (*VRFKey, error)
 	ReadVRFKeys() (*VRFKeys, error)
 
+	CreateCSAKey() (*CSAKey, error)
+	ReadCSAKeys() (*CSAKeys, error)
+
 	CreateEI(eia *EIAttributes) (*EIKeyCreate, error)
 	ReadEIs() (*EIKeys, error)
 	DeleteEI(name string) error
@@ -331,6 +334,25 @@ func (c *chainlink) CreateVRFKey() (*VRFKey, error) {
 	log.Info().Str("Node URL", c.Config.URL).Msg("Creating VRF Key")
 	_, err := c.do(http.MethodPost, "/v2/keys/vrf", nil, vrfKey, http.StatusOK)
 	return vrfKey, err
+}
+
+// CreateCSAKey creates a CSA key on the Chainlink node, only 1 CSA key per noe
+func (c *chainlink) CreateCSAKey() (*CSAKey, error) {
+	csaKey := &CSAKey{}
+	log.Info().Str("Node URL", c.Config.URL).Msg("Creating CSA Key")
+	_, err := c.do(http.MethodPost, "/v2/keys/csa", nil, csaKey, http.StatusOK)
+	return csaKey, err
+}
+
+// ReadCSAKeys reads CSA keys from the Chainlink node
+func (c *chainlink) ReadCSAKeys() (*CSAKeys, error) {
+	csaKeys := &CSAKeys{}
+	log.Info().Str("Node URL", c.Config.URL).Msg("Reading CSA Keys")
+	_, err := c.do(http.MethodGet, "/v2/keys/csa", nil, csaKeys, http.StatusOK)
+	if len(csaKeys.Data) == 0 {
+		log.Warn().Str("Node URL", c.Config.URL).Msg("Found no CSA Keys on the node")
+	}
+	return csaKeys, err
 }
 
 // PrimaryEthAddress returns the primary ETH address for the chainlink node
