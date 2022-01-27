@@ -31,17 +31,6 @@ type ContractDeployer interface {
 	) (DeviationFlaggingValidator, error)
 	DeployFluxAggregatorContract(linkAddr string, fluxOptions FluxAggregatorOptions) (FluxAggregator, error)
 	DeployLinkTokenContract() (LinkToken, error)
-	DeployOCRv2(
-		paymentControllerAddr string,
-		requesterControllerAddr string,
-		linkTokenAddr string,
-	) (OCRv2, error)
-	DeployOCRv2AccessController() (OCRv2AccessController, error)
-	DeployOCRv2Store(billingAC string) (OCRv2Store, error)
-	DeployOCRv2Proxy(addr string) (OCRv2Proxy, error)
-	DeployOCRv2ValidatorProxy(addr string) (OCRv2Proxy, error)
-	DeployOCRv2Flags(lowAccessController string, raiseAccessController string) (OCRv2Flags, error)
-	DeployOCRv2Validator(threshold uint32, flags string) (OCRv2Flags, error)
 	DeployOffChainAggregator(linkAddr string, offchainOptions OffchainOptions) (OffchainAggregator, error)
 	DeployVRFContract() (VRF, error)
 	DeployMockETHLINKFeed(answer *big.Int) (MockETHLINKFeed, error)
@@ -66,38 +55,6 @@ func NewContractDeployer(bcClient client.BlockchainClient) (ContractDeployer, er
 // EthereumContractDeployer provides the implementations for deploying ETH (EVM) based contracts
 type EthereumContractDeployer struct {
 	eth *client.EthereumClient
-}
-
-func (e *EthereumContractDeployer) DeployOCRv2Flags(lowAccessController string, raiseAccessController string) (OCRv2Flags, error) {
-	panic("implement me")
-}
-
-func (e *EthereumContractDeployer) DeployOCRv2Validator(threshold uint32, flags string) (OCRv2Flags, error) {
-	panic("implement me")
-}
-
-func (e *EthereumContractDeployer) DeployOCRv2ValidatorProxy(addr string) (OCRv2Proxy, error) {
-	panic("implement me")
-}
-
-func (e *EthereumContractDeployer) DeployOCRv2Proxy(addr string) (OCRv2Proxy, error) {
-	panic("implement me")
-}
-
-func (e *EthereumContractDeployer) DeployOCRv2Store(billingAC string) (OCRv2Store, error) {
-	panic("implement me")
-}
-
-func (e *EthereumContractDeployer) DeployOCRv2(
-	paymentControllerAddr string,
-	requesterControllerAddr string,
-	linkTokenAddr string,
-) (OCRv2, error) {
-	panic("implement me")
-}
-
-func (e *EthereumContractDeployer) DeployOCRv2AccessController() (OCRv2AccessController, error) {
-	panic("implement me")
 }
 
 // NewEthereumContractDeployer returns an instantiated instance of the ETH contract deployer
