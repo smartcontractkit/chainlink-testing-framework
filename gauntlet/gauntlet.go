@@ -20,6 +20,7 @@ type Gauntlet struct {
 	NetworkConfig map[string]string
 }
 
+// GetOsVersion get the os version for the gauntlet yarn package
 func GetOsVersion() string {
 	log.Debug().Str("OS", runtime.GOOS).Msg("Runtime OS:")
 	version := "linux"
@@ -109,6 +110,24 @@ func (g *Gauntlet) ExecCommandWithRetries(args, errHandling []string, retryCount
 	return output, err
 }
 
+// WriteNetworkConfigMap write a network config file for gauntlet testing.
+func (g *Gauntlet) WriteNetworkConfigMap() error {
+	file := fmt.Sprintf("networks/.env.%s", g.Network)
+	f, err := os.OpenFile(file, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	for k, v := range g.NetworkConfig {
+		log.Debug().Str(k, v).Msg("Gauntlet .env config value:")
+		_, err = f.WriteString(fmt.Sprintf("\n%s=%s", k, v))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // checkForErrors Loops through provided err slice to see if the error exists in the output.
 func checkForErrors(errHandling []string, line string) error {
 	for _, e := range errHandling {
@@ -136,22 +155,4 @@ func printArgs(args []string) {
 
 	}
 	log.Info().Str("Command", out).Msg("Gauntlet")
-}
-
-// WriteNetworkConfigMap write a network config file for gauntlet testing.
-func (g *Gauntlet) WriteNetworkConfigMap() error {
-	file := fmt.Sprintf("networks/.env.%s", g.Network)
-	f, err := os.OpenFile(file, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	for k, v := range g.NetworkConfig {
-		log.Debug().Str(k, v).Msg("Gauntlet .env config value:")
-		_, err = f.WriteString(fmt.Sprintf("\n%s=%s", k, v))
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
