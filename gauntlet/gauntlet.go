@@ -14,6 +14,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// Gauntlet contains helpful data to run gauntlet commands
 type Gauntlet struct {
 	exec          string
 	Network       string
@@ -45,10 +46,12 @@ func NewGauntlet(binPath string) (*Gauntlet, error) {
 	return g, nil
 }
 
+// Flag returns a string formatted in the expected gauntlet's flag form
 func (g *Gauntlet) Flag(flag, value string) string {
 	return fmt.Sprintf("--%s=%s", flag, value)
 }
 
+// GenerateRandomNetwork Creates and sets a random network prepended with test
 func (g *Gauntlet) GenerateRandomNetwork() {
 	r := uuid.NewString()[0:8]
 	t := time.Now().UnixMilli()
@@ -67,6 +70,7 @@ func (g *Gauntlet) ExecCommand(args, errHandling []string) (string, error) {
 
 	cmd := exec.Command(g.exec, updatedArgs...) // #nosec G204
 	stdout, _ := cmd.StdoutPipe()
+	stderr, _ := cmd.StderrPipe()
 	if err := cmd.Start(); err != nil {
 		return output, err
 	}
@@ -75,6 +79,14 @@ func (g *Gauntlet) ExecCommand(args, errHandling []string) (string, error) {
 	line, err := reader.ReadString('\n')
 	for err == nil {
 		log.Info().Str("stdout", line).Msg("Gauntlet")
+		output = fmt.Sprintf("%s%s", output, line)
+		line, err = reader.ReadString('\n')
+	}
+
+	reader = bufio.NewReader(stderr)
+	line, err = reader.ReadString('\n')
+	for err == nil {
+		log.Info().Str("stderr", line).Msg("Gauntlet")
 		output = fmt.Sprintf("%s%s", output, line)
 		line, err = reader.ReadString('\n')
 	}
@@ -139,8 +151,9 @@ func checkForErrors(errHandling []string, line string) error {
 	return nil
 }
 
+// insertArg inserts an argument into the args slice
 func insertArg(args []string, index int, valueToInsert string) []string {
-	if len(args) == index { // nil or empty slice or after last element
+	if len(args) == index || len(args) == 0 { // nil or empty slice or after last element
 		return append(args, valueToInsert)
 	}
 	args = append(args[:index+1], args[index:]...) // index < len(a)
@@ -148,6 +161,7 @@ func insertArg(args []string, index int, valueToInsert string) []string {
 	return args
 }
 
+// printArgs prints all the gauntlet args being used in a call to gauntlet
 func printArgs(args []string) {
 	out := "gauntlet"
 	for _, arg := range args {
