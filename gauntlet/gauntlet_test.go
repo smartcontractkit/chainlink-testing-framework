@@ -10,7 +10,7 @@ import (
 )
 
 var _ = Describe("Gauntlet @unit", func() {
-	ls := "/bin/ls"
+	var ls string = "/bin/ls"
 	BeforeEach(func() {
 		if gauntlet.GetOsVersion() == "linux" {
 			ls = fmt.Sprintf("/usr%s", ls)
