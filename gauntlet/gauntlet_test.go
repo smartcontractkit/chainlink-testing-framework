@@ -18,7 +18,7 @@ var _ = Describe("Gauntlet @unit", func() {
 		Expect(g.Network).Should(ContainSubstring("test"), "The network did not contain test")
 	})
 	It("should return a properly formatted flag", func() {
-		g, err := gauntlet.NewGauntlet("/usr/bin/env")
+		g, err := gauntlet.NewGauntlet("/usr/ls")
 		Expect(err).ShouldNot(HaveOccurred(), "Could not get a new gauntlet struct")
 		Expect(g.Flag("flag", "value")).To(Equal("--flag=value"))
 	})
