@@ -1,8 +1,6 @@
 package gauntlet_test
 
 import (
-	"fmt"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -10,10 +8,10 @@ import (
 )
 
 var _ = Describe("Gauntlet @unit", func() {
-	var ls string = "/bin/ls"
+	var ls string = "/usr/bin/ls"
 	BeforeEach(func() {
-		if gauntlet.GetOsVersion() == "linux" {
-			ls = fmt.Sprintf("/usr%s", ls)
+		if gauntlet.GetOsVersion() == "macos" {
+			ls = "/bin/ls"
 		}
 	})
 	It("should fail to find the executable", func() {
