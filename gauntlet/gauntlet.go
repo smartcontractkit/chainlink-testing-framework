@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/avast/retry-go"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 )
@@ -108,16 +109,14 @@ func (g *Gauntlet) ExecCommand(args, errHandling []string) (string, error) {
 func (g *Gauntlet) ExecCommandWithRetries(args, errHandling []string, retryCount int) (string, error) {
 	var output string
 	var err error
-	for i := 0; i < retryCount; i++ {
-		log.Debug().Msg(fmt.Sprintf("Gauntlet Command Attempt: %v", i+1))
-		output, err = g.ExecCommand(args, errHandling)
-		if err != nil {
-			log.Warn().Str("Gauntlet Error", err.Error()).Msg("Failed Gauntlet Command Attempt")
-			time.Sleep(time.Second * 5)
-			continue
-		}
-		break
-	}
+	err = retry.Do(
+		func() error {
+			output, err = g.ExecCommand(args, errHandling)
+			return err
+		},
+		retry.Delay(time.Second*5),
+		retry.Attempts(uint(retryCount)),
+	)
 
 	return output, err
 }
