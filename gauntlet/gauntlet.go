@@ -32,15 +32,15 @@ func GetOsVersion() string {
 }
 
 // NewGauntlet Sets up a gauntlet struct and checks if the executable exists.
-func NewGauntlet(binPath string) (*Gauntlet, error) {
-	log.Debug().Str("PATH", binPath).Msg("BinPath")
+func NewGauntlet(execPath string) (*Gauntlet, error) {
+	log.Debug().Str("PATH", execPath).Msg("Executable Path")
 	os.Setenv("SKIP_PROMPTS", "true")
-	_, err := exec.Command(binPath).Output()
+	_, err := exec.Command(execPath).Output()
 	if err != nil {
 		return &Gauntlet{}, errors.New("gauntlet installation check failed")
 	}
 	g := &Gauntlet{
-		exec: binPath,
+		exec: execPath,
 	}
 	g.GenerateRandomNetwork()
 	return g, nil
