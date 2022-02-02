@@ -7,7 +7,9 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"time"
 
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -94,6 +96,32 @@ func getRPCMethods(parameters Parameters) RPCMethods {
 			getStringValue(getStringByIndex(parameters.GetTransactionCount, 1), "0x444444"),
 		},
 		"eth_getTransactionReceipt": []interface{}{getStringValue(parameters.GetTransactionReceipt, "0xbb3a336e3f823ec18197f1e13ee875700f08f03e2cab75f0d0b118dabb44cba0")},
+	}
+}
+
+func Subscription(rpcClient *rpc.Client, chainId int) (block *types.Header, error error) {
+	headerChannel := make(chan *types.Header)
+	subscription, err := rpcClient.EthSubscribe(context.Background(), headerChannel, "newHeads")
+
+	defer subscription.Unsubscribe()
+
+	if err != nil {
+		log.Error().
+			Int("ChainID", chainId).
+			Msgf("Could not subscribe to new block headers: %s", err.Error())
+	}
+
+	log.Info().
+		Int("ChainID", chainId).
+		Msg("Subscribed to new block headers")
+
+	select {
+	case err := <-subscription.Err():
+		return nil, err
+	case header := <-headerChannel:
+		return header, nil
+	case <-time.After(120 * time.Second):
+		return nil, fmt.Errorf("timed out waiting for block header")
 	}
 }
 
@@ -234,6 +262,30 @@ var _ = Describe("JSON RPC compatibility @json_rpc", func() {
 							}
 						}
 					}
+				}
+			}
+		})
+	})
+
+	Describe("Test JSON RPC subscription and validate results", func() {
+		It("Subscribe to block headers", func() {
+			for chainId, rpcClients := range rpcClientsByChain {
+				log.Info().
+					Int("ChainID", chainId).
+					Msg("Starting block header subscription compatibility test")
+
+				for _, rpcClient := range rpcClients {
+					header, err := Subscription(rpcClient, chainId)
+					if err != nil {
+						log.Error().
+							Int("ChainID", chainId).
+							Msgf("Error occurred while processing subscription: %s", err.Error())
+						continue
+					}
+
+					log.Info().
+						Int("ChainID", chainId).
+						Msgf("New block header successfully received: block number %v, hash %v", header.Number, header.Hash())
 				}
 			}
 		})
