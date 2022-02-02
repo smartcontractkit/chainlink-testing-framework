@@ -115,6 +115,7 @@ func (g *Gauntlet) ExecCommandWithRetries(args, errHandling []string, retryCount
 			return err
 		},
 		retry.Delay(time.Second*5),
+		retry.MaxDelay(time.Second*5),
 		retry.Attempts(uint(retryCount)),
 	)
 
