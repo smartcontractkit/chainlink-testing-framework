@@ -14,7 +14,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog/log"
-	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/utils"
 	"github.com/xeipuuv/gojsonschema"
 )
@@ -57,11 +56,15 @@ type Parameters struct {
 }
 
 type NetworkParameters struct {
+	Name       string     `json:"name"`
+	Network    string     `json:"network"`
 	ChainID    int        `json:"chain_id"`
+	Urls       []string   `json:"urls"`
 	Parameters Parameters `json:"parameters"`
 }
 
 type NetworksParameters struct {
+	SelectedNetworks   []string            `json:"selected_networks"`
 	NetworksParameters []NetworkParameters `json:"networks"`
 }
 
@@ -128,12 +131,13 @@ func Subscription(rpcClient *rpc.Client, chainId int) (block *types.Header, erro
 var _ = Describe("JSON RPC compatibility @json_rpc", func() {
 	var (
 		networksParameters NetworksParameters
+		selectedNetworks   []string
 		openrpcSchema      OpenRPCStruct
 		methods            []Method
 	)
 
-	rpcClientsByChain := make(map[int][]*rpc.Client)
-	rpcMethodsByChain := make(map[int]Parameters)
+	rpcClientsByNetwork := make(map[string][]*rpc.Client)
+	parametersByNetwork := make(map[string]NetworkParameters)
 
 	// read openrpc JSON schema
 	openrpcJSON, err := os.Open(filepath.Join(utils.TestSuiteRoot, "compatibility", "openrpc.json"))
@@ -159,47 +163,45 @@ var _ = Describe("JSON RPC compatibility @json_rpc", func() {
 	err = json.Unmarshal(rpcMethodsParametersJSONBytes, &networksParameters)
 	Expect(err).ShouldNot(HaveOccurred())
 
+	selectedNetworks = networksParameters.SelectedNetworks
 	for _, networkParameters := range networksParameters.NetworksParameters {
-		rpcMethodsByChain[networkParameters.ChainID] = networkParameters.Parameters
+		parametersByNetwork[networkParameters.Name] = networkParameters
 	}
 
 	BeforeEach(func() {
 		By("Getting RPC clients", func() {
-			nc, err := config.LoadNetworksConfig(filepath.Join(utils.ProjectRoot, "networks.yaml"))
-			Expect(err).ShouldNot(HaveOccurred())
-
-			for _, networkName := range nc.SelectedNetworks {
+			for _, networkName := range selectedNetworks {
 				var rpcClients []*rpc.Client
 
-				networkSettings, ok := nc.NetworkSettings[networkName]
-				Equal(ok)
+				urls := parametersByNetwork[networkName].Urls
+				Expect(urls).ShouldNot(BeNil(), "Network web socket urls should be set: %v", networkName)
 
-				chainId := networkSettings["chain_id"].(int)
-				urls := networkSettings["urls"]
-
-				Expect(urls).ShouldNot(BeNil(), "Web socket urls should be set")
-
-				for _, url := range urls.([]interface{}) {
+				for _, url := range urls {
 					rpcClient, err := rpc.Dial(fmt.Sprintf("%v", url))
 					Expect(err).ShouldNot(HaveOccurred())
 
 					rpcClients = append(rpcClients, rpcClient)
 				}
 
-				rpcClientsByChain[chainId] = rpcClients
+				rpcClientsByNetwork[networkName] = rpcClients
 			}
 		})
 	})
 
 	Describe("Test JSON RPC GET-methods and validate results", func() {
 		It("OCR test GET Methods", func() {
-			for chainId, rpcClients := range rpcClientsByChain {
+			for networkName, rpcClients := range rpcClientsByNetwork {
+				network := parametersByNetwork[networkName].Network
+				chainId := parametersByNetwork[networkName].ChainID
+
 				log.Info().
+					Str("Network", network).
 					Int("ChainID", chainId).
 					Msg("Starting JSON RPC compatibility test")
 
-				for rpcMethod, rpcMethodParameters := range getRPCMethods(rpcMethodsByChain[chainId]) {
+				for rpcMethod, rpcMethodParameters := range getRPCMethods(parametersByNetwork[networkName].Parameters) {
 					log.Info().
+						Str("Network", network).
 						Int("ChainID", chainId).
 						Str("Method", rpcMethod).
 						Msg("Testing RPC method call")
@@ -218,6 +220,7 @@ var _ = Describe("JSON RPC compatibility @json_rpc", func() {
 						err := rpcClient.CallContext(context.Background(), &rpcCallResult, rpcMethod, rpcMethodParameters...)
 						if err != nil {
 							log.Error().
+								Str("Network", network).
 								Int("ChainID", chainId).
 								Str("Method", rpcMethod).
 								Msgf("Error while calling RPC method: %s", err.Error())
@@ -225,12 +228,14 @@ var _ = Describe("JSON RPC compatibility @json_rpc", func() {
 						}
 
 						log.Info().
+							Str("Network", network).
 							Int("ChainID", chainId).
 							Str("Method", rpcMethod).
 							Msgf("RPC call result: %v", rpcCallResult)
 
 						if schemaLoader.JsonSource() == nil {
 							log.Info().
+								Str("Network", network).
 								Int("ChainID", chainId).
 								Str("Method", rpcMethod).
 								Msg("Schema loader is empty, nothing to validate")
@@ -240,6 +245,7 @@ var _ = Describe("JSON RPC compatibility @json_rpc", func() {
 						validationResult, err := gojsonschema.Validate(schemaLoader, gojsonschema.NewGoLoader(rpcCallResult))
 						if err != nil {
 							log.Error().
+								Str("Network", network).
 								Int("ChainID", chainId).
 								Str("Method", rpcMethod).
 								Msgf("Error during RPC call result schema validation: %s", err.Error())
@@ -248,11 +254,13 @@ var _ = Describe("JSON RPC compatibility @json_rpc", func() {
 
 						if validationResult.Valid() {
 							log.Info().
+								Str("Network", network).
 								Int("ChainID", chainId).
 								Str("Method", rpcMethod).
 								Msg("RPC call result schema is valid")
 						} else {
 							log.Error().
+								Str("Network", network).
 								Int("ChainID", chainId).
 								Str("Method", rpcMethod).
 								Msg("RPC call result schema is not valid. See errors:")
@@ -267,10 +275,14 @@ var _ = Describe("JSON RPC compatibility @json_rpc", func() {
 		})
 	})
 
-	Describe("Test JSON RPC subscription and validate results", func() {
+	Describe("Test JSON RPC subscription", func() {
 		It("Subscribe to block headers", func() {
-			for chainId, rpcClients := range rpcClientsByChain {
+			for networkName, rpcClients := range rpcClientsByNetwork {
+				network := parametersByNetwork[networkName].Network
+				chainId := parametersByNetwork[networkName].ChainID
+
 				log.Info().
+					Str("Network", network).
 					Int("ChainID", chainId).
 					Msg("Starting block header subscription compatibility test")
 
@@ -278,12 +290,14 @@ var _ = Describe("JSON RPC compatibility @json_rpc", func() {
 					header, err := Subscription(rpcClient, chainId)
 					if err != nil {
 						log.Error().
+							Str("Network", network).
 							Int("ChainID", chainId).
 							Msgf("Error occurred while processing subscription: %s", err.Error())
 						continue
 					}
 
 					log.Info().
+						Str("Network", network).
 						Int("ChainID", chainId).
 						Msgf("New block header successfully received: block number %v, hash %v", header.Number, header.Hash())
 				}
