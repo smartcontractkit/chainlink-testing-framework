@@ -8,8 +8,8 @@ logging:
     level: 0
 
 # Specify the image and version of the chainlink image you want to run tests against. Leave blank for default.
-chainlink_image: 
-chainlink_version: 
+chainlink_image: public.ecr.aws/chainlink/chainlink
+chainlink_version: 1.1.0
 chainlink_env_values:
 
 # Specify the image and version of the simulated geth image you want to run tests against. Leave blank for default.

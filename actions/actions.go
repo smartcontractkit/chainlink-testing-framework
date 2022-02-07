@@ -164,8 +164,8 @@ func GetMockserverInitializerDataForOTPE(
 
 // TeardownSuite tears down networks/clients and environment and creates a logs folder for failed tests in the
 // specified path
-func TeardownSuite(env *environment.Environment, nets *client.Networks, logsFolderPath string) error {
-	if ginkgo.CurrentSpecReport().Failed() {
+func TeardownSuite(env *environment.Environment, nets *client.Networks, logsFolderPath string, alwaysPrintLogs bool) error {
+	if ginkgo.CurrentSpecReport().Failed() || alwaysPrintLogs {
 		testFilename := strings.Split(ginkgo.CurrentSpecReport().FileName(), ".")[0]
 		_, testName := filepath.Split(testFilename)
 		logsPath := filepath.Join(config.ProjectConfigDirectory, DefaultArtifactsDir, fmt.Sprintf("%s-%d", testName, time.Now().Unix()))

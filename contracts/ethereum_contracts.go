@@ -2,9 +2,13 @@ package contracts
 
 import (
 	"context"
+	"encoding/csv"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"math"
 	"math/big"
+	"sync"
 	"time"
 
 	"strings"
@@ -948,6 +952,161 @@ func (o *KeeperConsumerRoundConfirmer) Wait() error {
 	}
 }
 
+// KeeperConsumerPerformanceRoundConfirmer is a header subscription that awaits for a round of upkeeps
+type KeeperConsumerPerformanceRoundConfirmer struct {
+	instance      KeeperConsumerPerformance
+	contractIndex int
+	doneChan      chan bool
+	context       context.Context
+	cancel        context.CancelFunc
+
+	blockCadence                int64 // How many blocks before an upkeep should happen
+	blockRange                  int64 // How many blocks to watch upkeeps for
+	blocksSinceSubscription     int64 // How many blocks have passed since subscribing
+	expectedUpkeepCount         int64 // The count of upkeeps expected next iteration
+	blocksSinceSuccessfulUpkeep int64 // How many blocks have come in since the last successful upkeep
+	largestMissedUpkeep         int   // The largest miss between expected block cadence and actual block time to upkeep
+	totalSuccessfulUpkeeps      int64
+
+	reportWriter *csv.Writer // File to write report into
+	reportMutex  *sync.Mutex // Mutex to protect report file
+}
+
+// NewKeeperConsumerPerformanceRoundConfirmer provides a new instance of a KeeperConsumerPerformanceRoundConfirmer
+// Used to track and log performance test results for keepers
+func NewKeeperConsumerPerformanceRoundConfirmer(
+	contract KeeperConsumerPerformance,
+	expectedBlockCadence int64, // Expected to upkeep every 5/10/20 blocks, for example
+	blockRange int64,
+	contractIndex int,
+	reportWriter *csv.Writer,
+	reportMutex *sync.Mutex,
+) *KeeperConsumerPerformanceRoundConfirmer {
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	return &KeeperConsumerPerformanceRoundConfirmer{
+		instance:                    contract,
+		contractIndex:               contractIndex,
+		doneChan:                    make(chan bool),
+		context:                     ctx,
+		cancel:                      cancelFunc,
+		blockCadence:                expectedBlockCadence,
+		blockRange:                  blockRange,
+		blocksSinceSubscription:     0,
+		blocksSinceSuccessfulUpkeep: 0,
+		expectedUpkeepCount:         2, // Upkeep usually starts at 1
+		largestMissedUpkeep:         0,
+		totalSuccessfulUpkeeps:      0,
+		reportWriter:                reportWriter,
+		reportMutex:                 reportMutex,
+	}
+}
+
+// ReceiveBlock will query the latest Keeper round and check to see whether the round has confirmed
+func (o *KeeperConsumerPerformanceRoundConfirmer) ReceiveBlock(receivedBlock client.NodeBlock) error {
+	// Increment block counters
+	o.blocksSinceSubscription++
+	o.blocksSinceSuccessfulUpkeep++
+	upkeepCount, err := o.instance.GetUpkeepCount(context.Background())
+	if err != nil {
+		return err
+	}
+
+	isEligible, err := o.instance.CheckEligible(context.Background())
+	if err != nil {
+		return err
+	}
+	if isEligible {
+		log.Info().Int("Contract Index", o.contractIndex).
+			Str("Contract Address", o.instance.Address()).
+			Int64("Upkeeps Performed", upkeepCount.Int64()).
+			Msg("Upkeep Now Eligible")
+	}
+	if upkeepCount.Int64() == o.expectedUpkeepCount { // Upkeep was successful
+		if o.blocksSinceSuccessfulUpkeep < o.blockCadence { // If there's an early upkeep, that's weird
+			log.Error().Int("Contract Index", o.contractIndex).
+				Str("Contract Address", o.instance.Address()).
+				Int64("Upkeeps Performed", upkeepCount.Int64()).
+				Int64("Expected Cadence", o.blockCadence).
+				Int64("Actual Cadence", o.blocksSinceSuccessfulUpkeep).
+				Err(errors.New("Found an early Upkeep"))
+			return fmt.Errorf("Found an early Upkeep on contract %s", o.instance.Address())
+		} else if o.blocksSinceSuccessfulUpkeep == o.blockCadence { // Perfectly timed upkeep
+			log.Info().Int("Contract Index", o.contractIndex).
+				Str("Contract Address", o.instance.Address()).
+				Int64("Upkeeps Performed", upkeepCount.Int64()).
+				Int64("Expected Cadence", o.blockCadence).
+				Int64("Actual Cadence", o.blocksSinceSuccessfulUpkeep).
+				Msg("Successful Upkeep on Expected Cadence")
+			o.totalSuccessfulUpkeeps++
+		} else { // Late upkeep
+			log.Warn().Int("Contract Index", o.contractIndex).
+				Str("Contract Address", o.instance.Address()).
+				Int64("Upkeeps Performed", upkeepCount.Int64()).
+				Int64("Expected Cadence", o.blockCadence).
+				Int64("Actual Cadence", o.blocksSinceSuccessfulUpkeep).
+				Msg("Upkeep Completed Late")
+			o.largestMissedUpkeep = int(math.Max(float64(o.largestMissedUpkeep), float64(o.blocksSinceSuccessfulUpkeep-o.blockCadence)))
+		}
+		// Update upkeep tracking values
+		o.blocksSinceSuccessfulUpkeep = 0
+		o.expectedUpkeepCount++
+	}
+
+	if o.blocksSinceSubscription > o.blockRange {
+		if o.blocksSinceSuccessfulUpkeep > o.blockCadence {
+			log.Warn().Int("Contract Index", o.contractIndex).
+				Str("Contract Address", o.instance.Address()).
+				Int64("Upkeeps Performed", upkeepCount.Int64()).
+				Int64("Expected Cadence", o.blockCadence).
+				Int64("Expected Upkeep Count", o.expectedUpkeepCount).
+				Int64("Blocks Waiting", o.blocksSinceSuccessfulUpkeep).
+				Int64("Total Blocks Watched", o.blocksSinceSubscription).
+				Msg("Finished Watching for Upkeeps While Waiting on a Late Upkeep")
+			o.largestMissedUpkeep = int(math.Max(float64(o.largestMissedUpkeep), float64(o.blocksSinceSuccessfulUpkeep-o.blockCadence)))
+		} else {
+			log.Info().Int("Contract Index", o.contractIndex).
+				Str("Contract Address", o.instance.Address()).
+				Int64("Upkeeps Performed", upkeepCount.Int64()).
+				Int64("Total Blocks Watched", o.blocksSinceSubscription).
+				Msg("Finished Watching for Upkeeps")
+		}
+		o.doneChan <- true
+		return nil
+	}
+	return nil
+}
+
+// Wait is a blocking function that will wait until the round has confirmed, and timeout if the deadline has passed
+func (o *KeeperConsumerPerformanceRoundConfirmer) Wait() error {
+	for {
+		select {
+		case <-o.doneChan:
+			o.cancel()
+			err := o.logDetails()
+			return err
+		case <-o.context.Done():
+			return fmt.Errorf("timeout waiting for expected upkeep count to confirm: %d", o.expectedUpkeepCount)
+		}
+	}
+}
+
+func (o *KeeperConsumerPerformanceRoundConfirmer) logDetails() error {
+	o.reportMutex.Lock()
+	defer o.reportMutex.Unlock()
+
+	expectedUpkeeps := o.blockRange / o.blockCadence
+	report := []string{
+		fmt.Sprint(o.contractIndex),
+		o.instance.Address(),
+		fmt.Sprint(expectedUpkeeps),
+		fmt.Sprint(o.totalSuccessfulUpkeeps),
+		fmt.Sprint(expectedUpkeeps - o.totalSuccessfulUpkeeps),
+		fmt.Sprint(o.largestMissedUpkeep),
+		fmt.Sprint(float64(o.totalSuccessfulUpkeeps) / float64(expectedUpkeeps)),
+	}
+	return o.reportWriter.Write(report)
+}
+
 // EthereumStorage acts as a conduit for the ethereum version of the storage contract
 type EthereumStorage struct {
 	client *client.EthereumClient
@@ -1172,6 +1331,40 @@ func (v *EthereumKeeperConsumer) Counter(ctx context.Context) (*big.Int, error) 
 		return nil, err
 	}
 	return cnt, nil
+}
+
+// EthereumKeeperConsumerPerformance represents a more complicated keeper consumer contract, one intended only for
+// performance tests.
+type EthereumKeeperConsumerPerformance struct {
+	client   *client.EthereumClient
+	consumer *ethereum.KeeperConsumerPerformance
+	address  *common.Address
+}
+
+func (v *EthereumKeeperConsumerPerformance) Address() string {
+	return v.address.Hex()
+}
+
+func (v *EthereumKeeperConsumerPerformance) Fund(ethAmount *big.Float) error {
+	return v.client.Fund(v.address.Hex(), ethAmount)
+}
+
+func (v *EthereumKeeperConsumerPerformance) CheckEligible(ctx context.Context) (bool, error) {
+	opts := &bind.CallOpts{
+		From:    common.HexToAddress(v.client.DefaultWallet.Address()),
+		Context: ctx,
+	}
+	eligible, err := v.consumer.CheckEligible(opts)
+	return eligible, err
+}
+
+func (v *EthereumKeeperConsumerPerformance) GetUpkeepCount(ctx context.Context) (*big.Int, error) {
+	opts := &bind.CallOpts{
+		From:    common.HexToAddress(v.client.DefaultWallet.Address()),
+		Context: ctx,
+	}
+	eligible, err := v.consumer.GetCountPerforms(opts)
+	return eligible, err
 }
 
 // EthereumUpkeepRegistrationRequests keeper contract to register upkeeps
