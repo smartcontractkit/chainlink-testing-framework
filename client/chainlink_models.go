@@ -697,7 +697,7 @@ p2pBootstrapPeers                      = []
 isBootstrapPeer                        = {{.IsBootstrapPeer}}
 p2pPeerID                              = "{{.P2PPeerID}}"
 keyBundleID                            = "{{.KeyBundleID}}"
-monitoringEndpoint                     ={{if not .MonitoringEndpoint}} "chain.link:4321" {{else}} "{{.MonitoringEndpoint}}" {{end}}
+{{ if .MonitoringEndpoint }} monitoringEndpoint                     = "{{ .MonitoringEndpoint }}" {{ end }}
 transmitterAddress                     = "{{.TransmitterAddress}}"
 observationSource                      = """
 {{.ObservationSource}}
@@ -753,8 +753,8 @@ p2pBootstrapPeers                      = []
 isBootstrapPeer                        = {{.IsBootstrapPeer}}
 p2pPeerID                              = "{{.P2PPeerID}}"
 ocrKeyBundleID                         = "{{.OCRKeyBundleID}}"
-monitoringEndpoint                     ={{if not .MonitoringEndpoint}} "chain.link:4321" {{else}} "{{.MonitoringEndpoint}}" {{end}}
-transmitterID                     		 = "{{.TransmitterID}}"
+{{ if .MonitoringEndpoint }} monitoringEndpoint                     = "{{ .MonitoringEndpoint }}" {{ end }}
+transmitterID                          = "{{.TransmitterID}}"
 {{if .IsBootstrapPeer}}
 {{else}}
 observationSource                      = """
