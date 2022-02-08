@@ -38,7 +38,7 @@ type ContractDeployer interface {
 	DeployUpkeepRegistrationRequests(linkAddr string, minLinkJuels *big.Int) (UpkeepRegistrar, error)
 	DeployKeeperRegistry(opts *KeeperRegistryOpts) (KeeperRegistry, error)
 	DeployKeeperConsumer(updateInterval *big.Int) (KeeperConsumer, error)
-	DeployKeeperConsumerPerformance(testBlockRange, averageCadence *big.Int) (KeeperConsumerPerformance, error)
+	DeployKeeperConsumerPerformance(testBlockRange, blockCadence *big.Int) (KeeperConsumerPerformance, error)
 	DeployVRFConsumer(linkAddr string, coordinatorAddr string) (VRFConsumer, error)
 	DeployVRFCoordinator(linkAddr string, bhsAddr string) (VRFCoordinator, error)
 	DeployBlockhashStore() (BlockHashStore, error)

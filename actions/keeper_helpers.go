@@ -22,7 +22,7 @@ import (
 func DeployKeeperConsumerPerformanceContracts(
 	numberOfContracts int,
 	testBlockRange *big.Int,
-	averageCadence *big.Int,
+	blockCadence *big.Int,
 	linkTokenContract contracts.LinkToken,
 	contractDeployer contracts.ContractDeployer,
 	chainlinkNodes []client.Chainlink,
@@ -75,7 +75,7 @@ func DeployKeeperConsumerPerformanceContracts(
 		// Deploy consumer
 		keeperConsumerInstance, err := contractDeployer.DeployKeeperConsumerPerformance(
 			testBlockRange,
-			averageCadence,
+			blockCadence,
 		)
 		Expect(err).ShouldNot(HaveOccurred(), "Deploying KeeperConsumerPerformance instance %d shouldn't fail", i+1)
 		keeperConsumerInstances = append(keeperConsumerInstances, keeperConsumerInstance)
@@ -101,7 +101,7 @@ func DeployKeeperConsumerPerformanceContracts(
 	err = networks.Default.WaitForEvents()
 	Expect(err).ShouldNot(HaveOccurred(), "Failed while waiting for all KeeperConsumerPerformance contracts to deploy")
 
-	// Send keeper jobs to the keeper registry
+	// Send keeper jobs to registry and chainlink nodes
 	primaryNode := chainlinkNodes[0]
 	primaryNodeAddress, err := primaryNode.PrimaryEthAddress()
 	Expect(err).ShouldNot(HaveOccurred(), "Reading ETH Keys from Chainlink Client shouldn't fail")
@@ -114,14 +114,19 @@ func DeployKeeperConsumerPerformanceContracts(
 	}
 	err = registry.SetKeepers(nodeAddressesStr, payees)
 	Expect(err).ShouldNot(HaveOccurred(), "Setting keepers in the registry shouldn't fail")
-	_, err = primaryNode.CreateJob(&client.KeeperJobSpec{
-		Name:                     "keeper-test-job",
-		ContractAddress:          registry.Address(),
-		FromAddress:              primaryNodeAddress,
-		MinIncomingConfirmations: 1,
-		ObservationSource:        client.ObservationSourceKeeperDefault(),
-	})
-	Expect(err).ShouldNot(HaveOccurred(), "Creating KeeperV2 Job shouldn't fail")
+	for _, chainlinkNode := range chainlinkNodes {
+		chainlinkNodeAddress, err := chainlinkNode.PrimaryEthAddress()
+		Expect(err).ShouldNot(HaveOccurred(), "Error retrieving chainlink node address")
+		_, err = chainlinkNode.CreateJob(&client.KeeperJobSpec{
+			Name:                     fmt.Sprintf("keeper-test-%s", registry.Address()),
+			ContractAddress:          registry.Address(),
+			FromAddress:              chainlinkNodeAddress,
+			MinIncomingConfirmations: 1,
+			ObservationSource:        client.ObservationSourceKeeperDefault(),
+		})
+		Expect(err).ShouldNot(HaveOccurred(), "Creating KeeperV2 Job shouldn't fail")
+	}
+
 	err = networks.Default.WaitForEvents()
 	Expect(err).ShouldNot(HaveOccurred(), "Waiting for event subscriptions in nodes shouldn't fail")
 

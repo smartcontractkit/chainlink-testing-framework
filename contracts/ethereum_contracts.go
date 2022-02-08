@@ -993,7 +993,7 @@ func NewKeeperConsumerPerformanceRoundConfirmer(
 		blockRange:                  blockRange,
 		blocksSinceSubscription:     0,
 		blocksSinceSuccessfulUpkeep: 0,
-		expectedUpkeepCount:         2, // Upkeep usually starts at 1
+		expectedUpkeepCount:         1, // Upkeep usually starts at 1
 		largestMissedUpkeep:         0,
 		totalSuccessfulUpkeeps:      0,
 		reportWriter:                reportWriter,
@@ -1102,7 +1102,7 @@ func (o *KeeperConsumerPerformanceRoundConfirmer) logDetails() error {
 		fmt.Sprint(o.totalSuccessfulUpkeeps),
 		fmt.Sprint(expectedUpkeeps - o.totalSuccessfulUpkeeps),
 		fmt.Sprint(o.largestMissedUpkeep),
-		fmt.Sprint(float64(o.totalSuccessfulUpkeeps) / float64(expectedUpkeeps)),
+		fmt.Sprintf("%.2f%%", (float64(o.totalSuccessfulUpkeeps) / float64(expectedUpkeeps) * 100)),
 	}
 	return o.reportWriter.Write(report)
 }

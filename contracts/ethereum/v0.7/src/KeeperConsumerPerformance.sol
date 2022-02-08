@@ -32,7 +32,7 @@ contract KeeperConsumerPerformance {
     if (initialCall == 0) {
       initialCall = blockNum;
     }
-    nextEligible = (blockNum + rand() % (averageEligibilityCadence * 2)) + 1;
+    nextEligible = blockNum + averageEligibilityCadence; // Switched this from a rand check to more predictable behavior 
     count++;
   }
 
