@@ -3,6 +3,7 @@ package client
 import (
 	"bytes"
 	"fmt"
+	"math/big"
 	"text/template"
 	"time"
 
@@ -268,6 +269,44 @@ type TxKeyData struct {
 // TxKeyAttributes is the model that represents the created keys when read
 type TxKeyAttributes struct {
 	PublicKey string `json:"publicKey"`
+}
+
+type TransactionsData struct {
+	Data TransactionData      `json:"data"`
+	Meta TransactionsMetaData `json:"meta"`
+}
+
+type TransactionData struct {
+	Type       string                `json:"type"`
+	ID         string                `json:"id"`
+	Attributes TransactionAttributes `json:"attributes"`
+}
+
+type TransactionAttributes struct {
+	State    string  `json:"state"`
+	Data     string  `json:"data"`
+	From     string  `json:"from"`
+	To       string  `json:"to"`
+	Value    big.Int `json:"value"`
+	ChainID  int     `json:"evmChainID"`
+	GasLimit big.Int `json:"gasLimit"`
+	GasPrice big.Int `json:"gasPrice"`
+	Hash     string  `json:"hash"`
+	RawHex   string  `json:"rawHex"`
+	Nonce    big.Int `json:"nonce"`
+	SentAt   big.Int `json:"sentAt"`
+}
+
+type TransactionsMetaData struct {
+	Count int `json:"count"`
+}
+
+type SendEtherRequest struct {
+	DestinationAddress string `json:"address"`
+	FromAddress        string `json:"from"`
+	Amount             string `json:"amount"`
+	EVMChainID         int    `json:"evmChainID,omitempty"`
+	AllowHigherAmounts bool   `json:"allowHigherAmounts"`
 }
 
 // EIAttributes is the model that represents the EI keys when created and read

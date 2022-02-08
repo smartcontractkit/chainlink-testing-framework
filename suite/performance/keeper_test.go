@@ -27,8 +27,8 @@ var _ = Describe("Keeper performance suite @performance-keeper", func() {
 		chainlinkNodes          []client.Chainlink
 		env                     *environment.Environment
 		keeperConsumerContracts []contracts.KeeperConsumerPerformance
-		keeperBlockCadence      int64 = 10
-		keeperBlockRange        int64 = 200
+		keeperBlockCadence      int64 = 1
+		keeperBlockRange        int64 = 10
 	)
 
 	BeforeEach(func() {

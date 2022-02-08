@@ -4,6 +4,7 @@ package client
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"time"
@@ -402,6 +403,72 @@ var _ = Describe("Chainlink @unit", func() {
 			err = c.DeleteTxKey(chain, "1")
 			Expect(err).ShouldNot(HaveOccurred())
 		}
+	})
+
+	// Mocks the reading transactions and attempted transactions
+	It("can read Transactions and Transaction Attempts from the chainlink node", func() {
+		mockTxData := TransactionsData{
+			Data: TransactionData{
+				Type:       "confirmed",
+				ID:         "1",
+				Attributes: TransactionAttributes{},
+			},
+			Meta: TransactionsMetaData{Count: 1},
+		}
+
+		server := mockedServer(func(rw http.ResponseWriter, req *http.Request) {
+			actualEndpoint := "/v2/transactions"
+			attemptsEndpoint := "/v2/tx_attempts"
+			switch req.Method {
+			case http.MethodGet:
+				Expect(req.URL.Path).Should(Or(Equal(actualEndpoint), Equal(attemptsEndpoint), Equal("/sessions")))
+				if req.URL.Path == "/sessions" {
+					writeCookie(rw)
+				} else {
+					writeResponse(rw, http.StatusOK, mockTxData)
+				}
+			default:
+				Fail("Unsupported request method")
+			}
+		})
+		defer server.Close()
+
+		c, err := newDefaultClient(server.URL)
+		Expect(err).ShouldNot(HaveOccurred())
+		c.SetClient(server.Client())
+
+		txAttempts, err := c.ReadTransactionAttempts()
+		Expect(err).ShouldNot(HaveOccurred())
+		Expect(txAttempts).Should(ContainElement(txAttempts.Data))
+		Expect(txAttempts).Should(ContainElement(txAttempts.Meta))
+
+		actualTxs, err := c.ReadTransactions()
+		Expect(err).ShouldNot(HaveOccurred())
+		Expect(actualTxs).Should(ContainElement(actualTxs.Data))
+		Expect(actualTxs).Should(ContainElement(actualTxs.Meta))
+	})
+
+	// Mocks the reading transactions and attempted transactions
+	It("can send ETH transactions", func() {
+		server := mockedServer(func(rw http.ResponseWriter, req *http.Request) {
+			switch req.Method {
+			case http.MethodGet:
+				Expect(req.URL.Path).Should(Equal("/sessions"))
+				writeCookie(rw)
+			case http.MethodPost:
+				writeResponse(rw, http.StatusOK, nil)
+			default:
+				Fail("Unsupported request method")
+			}
+		})
+		defer server.Close()
+
+		c, err := newDefaultClient(server.URL)
+		Expect(err).ShouldNot(HaveOccurred())
+		c.SetClient(server.Client())
+
+		_, err = c.SendNativeToken(big.NewInt(1), "0x123", "0x420")
+		Expect(err).ShouldNot(HaveOccurred())
 	})
 
 	// Mocks the creation, read cycle for CSA keys

@@ -44,7 +44,7 @@ contract KeeperConsumerPerformance {
     return initialCall == 0 ||
       (
         block.number - initialCall < testRange &&
-        block.number > nextEligible
+        block.number >= nextEligible
       );
   }
 
@@ -60,9 +60,5 @@ contract KeeperConsumerPerformance {
   function setSpread(uint _newTestRange, uint _newAverageEligibilityCadence) external {
     testRange = _newTestRange;
     averageEligibilityCadence = _newAverageEligibilityCadence;
-  }
-
-  function rand() private view returns (uint256) {
-    return uint256(keccak256(abi.encode(blockhash(block.number - 1), address(this))));
   }
 }

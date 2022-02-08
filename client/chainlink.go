@@ -53,6 +53,10 @@ type Chainlink interface {
 	ReadTxKeys(chain string) (*TxKeys, error)
 	DeleteTxKey(chain, id string) error
 
+	ReadTransactionAttempts() (*TransactionsData, error)
+	ReadTransactions() (*TransactionsData, error)
+	SendNativeToken(amount *big.Int, fromAddress, toAddress string) (interface{}, error)
+
 	CreateVRFKey() (*VRFKey, error)
 	ReadVRFKeys() (*VRFKeys, error)
 
@@ -315,6 +319,41 @@ func (c *chainlink) DeleteTxKey(chain string, id string) error {
 	log.Info().Str("Node URL", c.Config.URL).Str("ID", id).Msg("Deleting Tx Key")
 	_, err := c.do(http.MethodDelete, fmt.Sprintf("/v2/keys/%s/%s", chain, id), nil, nil, http.StatusOK)
 	return err
+}
+
+// ReadTransactionAttempts reads all transaction attempts on the chainlink node
+func (c *chainlink) ReadTransactionAttempts() (*TransactionsData, error) {
+	txsData := &TransactionsData{}
+	log.Info().Str("Node URL", c.Config.URL).Msg("Reading Transaction Attempts")
+	_, err := c.do(http.MethodGet, "/v2/tx_attempts", nil, txsData, http.StatusOK)
+	return txsData, err
+}
+
+// ReadTransactions reads all transactions made by the chainlink node
+func (c *chainlink) ReadTransactions() (*TransactionsData, error) {
+	txsData := &TransactionsData{}
+	log.Info().Str("Node URL", c.Config.URL).Msg("Reading Transactions")
+	_, err := c.do(http.MethodGet, "/v2/transactions", nil, txsData, http.StatusOK)
+	return txsData, err
+}
+
+// SendNativeToken sends native token (ETH usually) of a specified amount from one of its addresses to the target address
+func (c *chainlink) SendNativeToken(amount *big.Int, fromAddress, toAddress string) (interface{}, error) {
+	request := SendEtherRequest{
+		DestinationAddress: toAddress,
+		FromAddress:        fromAddress,
+		Amount:             amount.String(),
+		AllowHigherAmounts: true,
+	}
+	var ret interface{}
+	log.Info().
+		Str("Node URL", c.Config.URL).
+		Str("From", fromAddress).
+		Str("To", toAddress).
+		Int64("Amount", amount.Int64()).
+		Msg("Sending Native Token")
+	_, err := c.do(http.MethodPost, "/v2/transfers", request, ret, http.StatusOK)
+	return ret, err
 }
 
 // ReadVRFKeys reads all VRF keys from the Chainlink node
