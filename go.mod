@@ -12,7 +12,7 @@ require (
 	github.com/prometheus/common v0.32.1
 	github.com/rs/zerolog v1.26.1
 	github.com/satori/go.uuid v1.2.0
-	github.com/smartcontractkit/helmenv v1.0.33
+	github.com/smartcontractkit/helmenv v1.0.35
 	github.com/smartcontractkit/libocr v0.0.0-20220121130134-5d2b1d5f424b
 	github.com/spf13/viper v1.10.1
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
@@ -101,13 +101,13 @@ require (
 	github.com/huandu/xstrings v1.3.2 // indirect
 	github.com/imdario/mergo v0.3.12
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
-	github.com/jmoiron/sqlx v1.3.4 // indirect
+	github.com/jmoiron/sqlx v1.3.4
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
 	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 // indirect
 	github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 // indirect
-	github.com/lib/pq v1.10.4 // indirect
+	github.com/lib/pq v1.10.4
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
 	github.com/magiconair/properties v1.8.5 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
