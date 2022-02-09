@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -123,8 +124,8 @@ func (g *Gauntlet) ExecCommandWithRetries(args, errHandling []string, retryCount
 }
 
 // WriteNetworkConfigMap write a network config file for gauntlet testing.
-func (g *Gauntlet) WriteNetworkConfigMap() error {
-	file := fmt.Sprintf("networks/.env.%s", g.Network)
+func (g *Gauntlet) WriteNetworkConfigMap(networkDirPath string) error {
+	file := filepath.Join(networkDirPath, fmt.Sprintf(".env.%s", g.Network))
 	f, err := os.OpenFile(file, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
