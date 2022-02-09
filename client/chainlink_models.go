@@ -20,6 +20,7 @@ type ChainlinkConfig struct {
 	Email    string
 	Password string
 	RemoteIP string
+	PG       *PostgresConfig
 }
 
 // ResponseSlice is the generic model that can be used for all Chainlink API responses that are an slice

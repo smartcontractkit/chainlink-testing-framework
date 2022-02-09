@@ -208,12 +208,23 @@ func ConnectChainlinkNodesByCharts(e *environment.Environment, charts []string) 
 		if err != nil {
 			return nil, err
 		}
+		pgUrls, err := e.Charts.Connections(chart).LocalURLsByPort("postgres", environment.HTTP)
+		if err != nil {
+			return nil, err
+		}
 		for urlIndex, localURL := range localURLs {
 			c, err := NewChainlink(&ChainlinkConfig{
 				URL:      localURL.String(),
 				Email:    "notreal@fakeemail.ch",
 				Password: "twochains",
 				RemoteIP: remoteURLs[urlIndex].Hostname(),
+				PG: &PostgresConfig{
+					Host:     "localhost",
+					Port:     pgUrls[urlIndex].Port(),
+					User:     "postgres",
+					Password: "node",
+					DBName:   "chainlink",
+				},
 			}, http.DefaultClient)
 			clients = append(clients, c)
 			if err != nil {

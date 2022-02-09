@@ -73,6 +73,8 @@ type Chainlink interface {
 
 	// SetClient is used for testing
 	SetClient(client *http.Client)
+
+	DB() *PostgresConnector
 }
 
 type chainlink struct {
@@ -80,6 +82,11 @@ type chainlink struct {
 	Config            *ChainlinkConfig
 	pageSize          int
 	primaryEthAddress string
+	pgConn            *PostgresConnector
+}
+
+func (c *chainlink) DB() *PostgresConnector {
+	return c.pgConn
 }
 
 // NewChainlink creates a new chainlink model using a provided config
@@ -88,6 +95,19 @@ func NewChainlink(c *ChainlinkConfig, httpClient *http.Client) (Chainlink, error
 		Config:          c,
 		BasicHTTPClient: NewBasicHTTPClient(httpClient, c.URL),
 		pageSize:        25,
+	}
+	if c.PG != nil {
+		pg, err := NewPostgresConnector(&PostgresConfig{
+			Host:     c.PG.Host,
+			Port:     c.PG.Port,
+			User:     c.PG.User,
+			Password: c.PG.Password,
+			DBName:   c.PG.DBName,
+		})
+		if err != nil {
+			return nil, err
+		}
+		cl.pgConn = pg
 	}
 	return cl, cl.SetSessionCookie()
 }
