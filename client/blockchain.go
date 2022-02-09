@@ -195,6 +195,35 @@ func ConnectChainlinkNodes(e *environment.Environment) ([]Chainlink, error) {
 	return ConnectChainlinkNodesByCharts(e, []string{"chainlink"})
 }
 
+func ConnectChainlinkDBs(e *environment.Environment) ([]*PostgresConnector, error) {
+	return ConnectChainlinkDBByCharts(e, []string{"chainlink"})
+}
+
+// ConnectChainlinkDBByCharts creates new chainlink DBs clients by charts
+func ConnectChainlinkDBByCharts(e *environment.Environment, charts []string) ([]*PostgresConnector, error) {
+	var dbs []*PostgresConnector
+	for _, chart := range charts {
+		pgUrls, err := e.Charts.Connections(chart).LocalURLsByPort("postgres", environment.HTTP)
+		if err != nil {
+			return nil, err
+		}
+		for _, u := range pgUrls {
+			c, err := NewPostgresConnector(&PostgresConfig{
+				Host:     "localhost",
+				Port:     u.Port(),
+				User:     "postgres",
+				Password: "node",
+				DBName:   "chainlink",
+			})
+			dbs = append(dbs, c)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	return dbs, nil
+}
+
 // ConnectChainlinkNodesByCharts creates new chainlink clients by charts
 func ConnectChainlinkNodesByCharts(e *environment.Environment, charts []string) ([]Chainlink, error) {
 	var clients []Chainlink
