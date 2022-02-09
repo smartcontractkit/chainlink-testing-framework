@@ -407,28 +407,44 @@ var _ = Describe("Chainlink @unit", func() {
 
 	// Mocks the reading transactions and attempted transactions
 	It("can read Transactions and Transaction Attempts from the chainlink node", func() {
-		mockTxData := TransactionsData{
-			Data: TransactionData{
-				Type:       "confirmed",
-				ID:         "1",
-				Attributes: TransactionAttributes{},
-			},
-			Meta: TransactionsMetaData{Count: 1},
+		mockTxString := `{
+	"data": [
+		{
+			"type": "transactions",
+			"id": "0xd694f4a84b3aa8f1fae2443c2444760306eed5d575a7eb22eb64101511a3a5c0",
+			"attributes": {
+				"state": "confirmed",
+				"data": "0x0",
+				"from": "0x0",
+				"gasLimit": "2650000",
+				"gasPrice": "10000001603",
+				"hash": "0xd694f4a84b3aa8f1fae2443c2444760306eed5d575a7eb22eb64101511a3a5c0",
+				"rawHex": "0x0",
+				"nonce": "1",
+				"sentAt": "199",
+				"to": "0x610178da211fef7d417bc0e6fed39f05609ad788",
+				"value": "0.000000000000000000",
+				"evmChainID": "1337"
+			}
 		}
-
+	],
+	"meta": {
+		"count": 14
+	}
+}`
+		mockTxData := TransactionsData{}
+		err := json.Unmarshal([]byte(mockTxString), &mockTxData)
+		Expect(err).ShouldNot(HaveOccurred())
 		server := mockedServer(func(rw http.ResponseWriter, req *http.Request) {
 			actualEndpoint := "/v2/transactions"
 			attemptsEndpoint := "/v2/tx_attempts"
 			switch req.Method {
 			case http.MethodGet:
-				Expect(req.URL.Path).Should(Or(Equal(actualEndpoint), Equal(attemptsEndpoint), Equal("/sessions")))
-				if req.URL.Path == "/sessions" {
-					writeCookie(rw)
-				} else {
-					writeResponse(rw, http.StatusOK, mockTxData)
-				}
-			default:
-				Fail("Unsupported request method")
+				Expect(req.URL.Path).Should(Or(Equal(actualEndpoint), Equal(attemptsEndpoint)))
+				writeResponse(rw, http.StatusOK, mockTxData)
+			case http.MethodPost:
+				Expect(req.URL.Path).Should(Equal("/sessions"))
+				writeCookie(rw)
 			}
 		})
 		defer server.Close()
@@ -437,28 +453,23 @@ var _ = Describe("Chainlink @unit", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		c.SetClient(server.Client())
 
-		txAttempts, err := c.ReadTransactionAttempts()
+		_, err = c.ReadTransactionAttempts()
 		Expect(err).ShouldNot(HaveOccurred())
-		Expect(txAttempts).Should(ContainElement(txAttempts.Data))
-		Expect(txAttempts).Should(ContainElement(txAttempts.Meta))
 
-		actualTxs, err := c.ReadTransactions()
+		_, err = c.ReadTransactions()
 		Expect(err).ShouldNot(HaveOccurred())
-		Expect(actualTxs).Should(ContainElement(actualTxs.Data))
-		Expect(actualTxs).Should(ContainElement(actualTxs.Meta))
 	})
 
 	// Mocks the reading transactions and attempted transactions
 	It("can send ETH transactions", func() {
 		server := mockedServer(func(rw http.ResponseWriter, req *http.Request) {
 			switch req.Method {
-			case http.MethodGet:
-				Expect(req.URL.Path).Should(Equal("/sessions"))
-				writeCookie(rw)
 			case http.MethodPost:
-				writeResponse(rw, http.StatusOK, nil)
-			default:
-				Fail("Unsupported request method")
+				if req.URL.Path == "/sessions" {
+					writeCookie(rw)
+				} else {
+					writeResponse(rw, http.StatusOK, nil)
+				}
 			}
 		})
 		defer server.Close()

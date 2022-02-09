@@ -3,7 +3,6 @@ package client
 import (
 	"bytes"
 	"fmt"
-	"math/big"
 	"text/template"
 	"time"
 
@@ -272,7 +271,7 @@ type TxKeyAttributes struct {
 }
 
 type TransactionsData struct {
-	Data TransactionData      `json:"data"`
+	Data []TransactionData    `json:"data"`
 	Meta TransactionsMetaData `json:"meta"`
 }
 
@@ -283,18 +282,18 @@ type TransactionData struct {
 }
 
 type TransactionAttributes struct {
-	State    string  `json:"state"`
-	Data     string  `json:"data"`
-	From     string  `json:"from"`
-	To       string  `json:"to"`
-	Value    big.Int `json:"value"`
-	ChainID  int     `json:"evmChainID"`
-	GasLimit big.Int `json:"gasLimit"`
-	GasPrice big.Int `json:"gasPrice"`
-	Hash     string  `json:"hash"`
-	RawHex   string  `json:"rawHex"`
-	Nonce    big.Int `json:"nonce"`
-	SentAt   big.Int `json:"sentAt"`
+	State    string `json:"state"`
+	Data     string `json:"data"`
+	From     string `json:"from"`
+	To       string `json:"to"`
+	Value    string `json:"value"`
+	ChainID  string `json:"evmChainID"`
+	GasLimit string `json:"gasLimit"`
+	GasPrice string `json:"gasPrice"`
+	Hash     string `json:"hash"`
+	RawHex   string `json:"rawHex"`
+	Nonce    string `json:"nonce"`
+	SentAt   string `json:"sentAt"`
 }
 
 type TransactionsMetaData struct {

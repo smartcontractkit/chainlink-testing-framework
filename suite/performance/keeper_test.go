@@ -2,11 +2,7 @@ package performance
 
 //revive:disable:dot-imports
 import (
-	"encoding/csv"
-	"fmt"
 	"math/big"
-	"os"
-	"sync"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -15,20 +11,19 @@ import (
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
+	"github.com/smartcontractkit/integrations-framework/testsetups"
 	"github.com/smartcontractkit/integrations-framework/utils"
 )
 
 var _ = Describe("Keeper performance suite @performance-keeper", func() {
 	var (
-		err                     error
-		networks                *client.Networks
-		contractDeployer        contracts.ContractDeployer
-		linkToken               contracts.LinkToken
-		chainlinkNodes          []client.Chainlink
-		env                     *environment.Environment
-		keeperConsumerContracts []contracts.KeeperConsumerPerformance
-		keeperBlockCadence      int64 = 1
-		keeperBlockRange        int64 = 10
+		err                 error
+		networks            *client.Networks
+		contractDeployer    contracts.ContractDeployer
+		linkToken           contracts.LinkToken
+		chainlinkNodes      []client.Chainlink
+		env                 *environment.Environment
+		keeperBlockTimeTest *testsetups.KeeperBlockTimeTest
 	)
 
 	BeforeEach(func() {
@@ -65,56 +60,27 @@ var _ = Describe("Keeper performance suite @performance-keeper", func() {
 			}
 		})
 
-		By("Deploying Keeper contracts", func() {
+		By("Setup the Keeper test", func() {
 			linkToken, err = contractDeployer.DeployLinkTokenContract()
 			Expect(err).ShouldNot(HaveOccurred(), "Deploying Link Token Contract shouldn't fail")
-			keeperConsumerContracts = actions.DeployKeeperConsumerPerformanceContracts(
-				5,
-				big.NewInt(keeperBlockRange),
-				big.NewInt(keeperBlockCadence),
-				linkToken,
-				contractDeployer,
-				chainlinkNodes,
-				networks,
+			keeperBlockTimeTest = testsetups.NewKeeperBlockTimeTest(
+				testsetups.KeeperBlockTimeTestInputs{
+					NumberOfContracts: 10,
+					BlockRange:        100,
+					BlockInterval:     20,
+					ContractDeployer:  contractDeployer,
+					ChainlinkNodes:    chainlinkNodes,
+					Networks:          networks,
+					LinkTokenContract: linkToken,
+				},
 			)
+			keeperBlockTimeTest.Setup()
 		})
 	})
 
 	Describe("Watching the keeper contracts to ensure they reply in time", func() {
 		It("Watches for Upkeep counts", func() {
-			// Create report file
-			reportFile, err := os.Create(fmt.Sprintf("keeper_performance_report_%d_%d.csv", keeperBlockCadence, keeperBlockRange))
-			Expect(err).ShouldNot(HaveOccurred(), "Error creating keeper test report file")
-			reportWriter := csv.NewWriter(reportFile)
-			reportWriter.Write([]string{
-				"Contract Index",
-				"Contract Address",
-				"Total Expected Upkeeps",
-				"Total Successful Upkeeps",
-				"Total Missed Upkeeps",
-				"Largest Missed Upkeep",
-				"Percent Successful",
-			})
-			reportWriter.Flush()
-			var reportMutex sync.Mutex
-
-			for index, keeperConsumer := range keeperConsumerContracts {
-				networks.Default.AddHeaderEventSubscription(fmt.Sprintf("Keeper Tracker %d", index),
-					contracts.NewKeeperConsumerPerformanceRoundConfirmer(
-						keeperConsumer,
-						keeperBlockCadence,
-						keeperBlockRange,
-						index,
-						reportWriter,
-						&reportMutex,
-					),
-				)
-			}
-			err = networks.Default.WaitForEvents()
-			Expect(err).ShouldNot(HaveOccurred(), "Error waiting for keeper subscriptions")
-			reportWriter.Flush()
-			err = reportFile.Close()
-			Expect(err).ShouldNot(HaveOccurred(), "Error closing report file")
+			keeperBlockTimeTest.Run()
 		})
 	})
 
@@ -123,7 +89,7 @@ var _ = Describe("Keeper performance suite @performance-keeper", func() {
 			networks.Default.GasStats().PrintStats()
 		})
 		By("Tearing down the environment", func() {
-			err = actions.TeardownSuite(env, networks, utils.ProjectRoot, true)
+			err = actions.TeardownSuite(env, networks, utils.ProjectRoot, &keeperBlockTimeTest.TestReporter)
 			Expect(err).ShouldNot(HaveOccurred(), "Environment teardown shouldn't fail")
 		})
 	})
