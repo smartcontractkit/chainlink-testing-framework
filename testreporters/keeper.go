@@ -36,7 +36,7 @@ func (k *KeeperBlockTimeTestReporter) WriteReport(folderPath string) error {
 	defer keeperReportFile.Close()
 
 	keeperReportWriter := csv.NewWriter(keeperReportFile)
-	keeperReportWriter.Write([]string{
+	err = keeperReportWriter.Write([]string{
 		"Contract Index",
 		"Contract Address",
 		"Total Expected Upkeeps",
@@ -46,9 +46,12 @@ func (k *KeeperBlockTimeTestReporter) WriteReport(folderPath string) error {
 		"Largest Missed Upkeep",
 		"Percent Successful",
 	})
+	if err != nil {
+		return err
+	}
 	for contractIndex, report := range k.Reports {
 		avg, max := int64AvgMax(report.AllMissedUpkeeps)
-		keeperReportWriter.Write([]string{
+		err = keeperReportWriter.Write([]string{
 			fmt.Sprint(contractIndex),
 			report.ContractAddress,
 			fmt.Sprint(report.TotalExpectedUpkeeps),
@@ -58,6 +61,9 @@ func (k *KeeperBlockTimeTestReporter) WriteReport(folderPath string) error {
 			fmt.Sprint(max),
 			fmt.Sprintf("%.2f%%", (float64(report.TotalSuccessfulUpkeeps)/float64(report.TotalExpectedUpkeeps))*100),
 		})
+		if err != nil {
+			return err
+		}
 	}
 	keeperReportWriter.Flush()
 
