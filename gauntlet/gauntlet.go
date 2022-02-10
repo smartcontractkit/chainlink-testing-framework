@@ -55,8 +55,7 @@ func (g *Gauntlet) GenerateRandomNetwork() {
 func (g *Gauntlet) ExecCommand(args, errHandling []string) (string, error) {
 	output := ""
 	// append gauntlet and network to args since it is always needed
-	updatedArgs := args
-	updatedArgs = append([]string{"gauntlet"}, args...)
+	updatedArgs := append([]string{"gauntlet"}, args...)
 	updatedArgs = insertArg(updatedArgs, 2, g.Flag("network", g.Network))
 	printArgs(updatedArgs)
 
@@ -144,7 +143,7 @@ func checkForErrors(errHandling []string, line string) error {
 
 // insertArg inserts an argument into the args slice
 func insertArg(args []string, index int, valueToInsert string) []string {
-	if len(args) <= index || len(args) == 0 { // nil or empty slice or after last element
+	if len(args) <= index { // nil or empty slice or after last element
 		return append(args, valueToInsert)
 	}
 	args = append(args[:index+1], args[index:]...) // index < len(a)
