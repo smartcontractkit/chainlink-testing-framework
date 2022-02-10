@@ -56,7 +56,8 @@ func (g *Gauntlet) ExecCommand(args, errHandling []string) (string, error) {
 	output := ""
 	// append gauntlet and network to args since it is always needed
 	updatedArgs := args
-	updatedArgs = append([]string{"gauntlet", g.Flag("network", g.Network)}, args...)
+	updatedArgs = append([]string{"gauntlet"}, args...)
+	updatedArgs = insertArg(updatedArgs, 2, g.Flag("network", g.Network))
 	printArgs(updatedArgs)
 
 	cmd := exec.Command(g.exec, updatedArgs...) // #nosec G204
@@ -139,6 +140,16 @@ func checkForErrors(errHandling []string, line string) error {
 		}
 	}
 	return nil
+}
+
+// insertArg inserts an argument into the args slice
+func insertArg(args []string, index int, valueToInsert string) []string {
+	if len(args) <= index || len(args) == 0 { // nil or empty slice or after last element
+		return append(args, valueToInsert)
+	}
+	args = append(args[:index+1], args[index:]...) // index < len(a)
+	args[index] = valueToInsert
+	return args
 }
 
 // printArgs prints all the gauntlet args being used in a call to gauntlet
