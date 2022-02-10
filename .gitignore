@@ -33,3 +33,6 @@ bin/
 # ide
 .vscode/
 *.idea
+
+# gauntlet test output
+gauntlet/yarn.lock
