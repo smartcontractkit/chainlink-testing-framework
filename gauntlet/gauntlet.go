@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 
@@ -23,26 +22,16 @@ type Gauntlet struct {
 	NetworkConfig map[string]string
 }
 
-// GetOsVersion get the os version for the gauntlet yarn package
-func GetOsVersion() string {
-	log.Debug().Str("OS", runtime.GOOS).Msg("Runtime OS:")
-	version := "linux"
-	if runtime.GOOS == "darwin" {
-		version = "macos"
-	}
-	return version
-}
-
-// NewGauntlet Sets up a gauntlet struct and checks if the executable exists.
-func NewGauntlet(execPath string) (*Gauntlet, error) {
-	log.Debug().Str("PATH", execPath).Msg("Executable Path")
-	os.Setenv("SKIP_PROMPTS", "true")
-	_, err := exec.Command(execPath).Output()
+// NewGauntlet Sets up a gauntlet struct and checks if the yarn executable exists.
+func NewGauntlet() (*Gauntlet, error) {
+	yarn, err := exec.LookPath("yarn")
 	if err != nil {
-		return &Gauntlet{}, errors.New("gauntlet installation check failed")
+		return &Gauntlet{}, errors.New("'yarn' is not installed")
 	}
+	log.Debug().Str("PATH", yarn).Msg("Executable Path")
+	os.Setenv("SKIP_PROMPTS", "true")
 	g := &Gauntlet{
-		exec: execPath,
+		exec: yarn,
 	}
 	g.GenerateRandomNetwork()
 	return g, nil
@@ -65,12 +54,12 @@ func (g *Gauntlet) GenerateRandomNetwork() {
 //  It will also check for any errors you specify in the output via the errHandling slice.
 func (g *Gauntlet) ExecCommand(args, errHandling []string) (string, error) {
 	output := ""
-	// append network to args since it is always needed
+	// append gauntlet and network to args since it is always needed
 	updatedArgs := args
-	updatedArgs = insertArg(updatedArgs, 1, g.Flag("network", g.Network))
+	updatedArgs = append([]string{"gauntlet", g.Flag("network", g.Network)}, args...)
 	printArgs(updatedArgs)
 
-	cmd := exec.Command(g.exec, updatedArgs...) // #nosec G204
+	cmd := exec.Command(g.exec, args...) // #nosec G204
 	stdout, _ := cmd.StdoutPipe()
 	stderr, _ := cmd.StderrPipe()
 	if err := cmd.Start(); err != nil {
@@ -150,16 +139,6 @@ func checkForErrors(errHandling []string, line string) error {
 		}
 	}
 	return nil
-}
-
-// insertArg inserts an argument into the args slice
-func insertArg(args []string, index int, valueToInsert string) []string {
-	if len(args) == index || len(args) == 0 { // nil or empty slice or after last element
-		return append(args, valueToInsert)
-	}
-	args = append(args[:index+1], args[index:]...) // index < len(a)
-	args[index] = valueToInsert
-	return args
 }
 
 // printArgs prints all the gauntlet args being used in a call to gauntlet
