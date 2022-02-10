@@ -59,7 +59,7 @@ func (g *Gauntlet) ExecCommand(args, errHandling []string) (string, error) {
 	updatedArgs = append([]string{"gauntlet", g.Flag("network", g.Network)}, args...)
 	printArgs(updatedArgs)
 
-	cmd := exec.Command(g.exec, args...) // #nosec G204
+	cmd := exec.Command(g.exec, updatedArgs...) // #nosec G204
 	stdout, _ := cmd.StdoutPipe()
 	stderr, _ := cmd.StderrPipe()
 	if err := cmd.Start(); err != nil {
@@ -143,7 +143,7 @@ func checkForErrors(errHandling []string, line string) error {
 
 // printArgs prints all the gauntlet args being used in a call to gauntlet
 func printArgs(args []string) {
-	out := "gauntlet"
+	out := "yarn"
 	for _, arg := range args {
 		out = fmt.Sprintf("%s %s", out, arg)
 
