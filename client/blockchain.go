@@ -42,6 +42,7 @@ type BlockchainClient interface {
 	ContractsDeployed() bool
 	LoadWallets(ns interface{}) error
 	SetWallet(num int) error
+	GetDefaultWallet() *EthereumWallet
 
 	EstimateCostForChainlinkOperations(amountOfOperations int) (*big.Float, error)
 

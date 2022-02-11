@@ -15,6 +15,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/contracts"
+	"github.com/smartcontractkit/integrations-framework/testreporters"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
@@ -163,14 +164,25 @@ func GetMockserverInitializerDataForOTPE(
 }
 
 // TeardownSuite tears down networks/clients and environment and creates a logs folder for failed tests in the
-// specified path
-func TeardownSuite(env *environment.Environment, nets *client.Networks, logsFolderPath string) error {
-	if ginkgo.CurrentSpecReport().Failed() {
+// specified path. Can also accept a testsetup (if one was used) to log results
+func TeardownSuite(
+	env *environment.Environment,
+	nets *client.Networks,
+	logsFolderPath string,
+	optionalTestReporter testreporters.TestReporter, // Optionally pass in a test reporter to log further metrics
+) error {
+	if ginkgo.CurrentSpecReport().Failed() || optionalTestReporter != nil {
 		testFilename := strings.Split(ginkgo.CurrentSpecReport().FileName(), ".")[0]
 		_, testName := filepath.Split(testFilename)
 		logsPath := filepath.Join(config.ProjectConfigDirectory, DefaultArtifactsDir, fmt.Sprintf("%s-%d", testName, time.Now().Unix()))
 		if err := env.Artifacts.DumpTestResult(logsPath, "chainlink"); err != nil {
 			return err
+		}
+		if optionalTestReporter != nil {
+			err := optionalTestReporter.WriteReport(logsPath)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	if nets != nil {

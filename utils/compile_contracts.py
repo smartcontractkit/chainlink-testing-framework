@@ -20,6 +20,7 @@ used_contract_names = [
   "Flags",
   "FluxAggregator",
   "KeeperConsumer",
+  "KeeperConsumerPerformance",
   "KeeperRegistry",
   "LinkToken",
   "MockETHLINKAggregator",

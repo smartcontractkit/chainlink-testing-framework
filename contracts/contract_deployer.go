@@ -38,6 +38,7 @@ type ContractDeployer interface {
 	DeployUpkeepRegistrationRequests(linkAddr string, minLinkJuels *big.Int) (UpkeepRegistrar, error)
 	DeployKeeperRegistry(opts *KeeperRegistryOpts) (KeeperRegistry, error)
 	DeployKeeperConsumer(updateInterval *big.Int) (KeeperConsumer, error)
+	DeployKeeperConsumerPerformance(testBlockRange, blockCadence *big.Int) (KeeperConsumerPerformance, error)
 	DeployVRFConsumer(linkAddr string, coordinatorAddr string) (VRFConsumer, error)
 	DeployVRFCoordinator(linkAddr string, bhsAddr string) (VRFCoordinator, error)
 	DeployBlockhashStore() (BlockHashStore, error)
@@ -445,6 +446,23 @@ func (e *EthereumContractDeployer) DeployKeeperConsumer(updateInterval *big.Int)
 	return &EthereumKeeperConsumer{
 		client:   e.eth,
 		consumer: instance.(*ethereum.KeeperConsumer),
+		address:  address,
+	}, err
+}
+
+func (e *EthereumContractDeployer) DeployKeeperConsumerPerformance(testBlockRange, averageCadence *big.Int) (KeeperConsumerPerformance, error) {
+	address, _, instance, err := e.eth.DeployContract("KeeperConsumerPerformance", func(
+		auth *bind.TransactOpts,
+		backend bind.ContractBackend,
+	) (common.Address, *types.Transaction, interface{}, error) {
+		return ethereum.DeployKeeperConsumerPerformance(auth, backend, testBlockRange, averageCadence)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &EthereumKeeperConsumerPerformance{
+		client:   e.eth,
+		consumer: instance.(*ethereum.KeeperConsumerPerformance),
 		address:  address,
 	}, err
 }

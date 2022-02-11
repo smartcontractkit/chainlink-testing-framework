@@ -224,6 +224,15 @@ type KeeperConsumer interface {
 	Counter(ctx context.Context) (*big.Int, error)
 }
 
+// KeeperConsumerPerformance is a keeper consumer contract that is more complicated than the typical consumer,
+// it's intended to only be used for performance tests.
+type KeeperConsumerPerformance interface {
+	Address() string
+	Fund(ethAmount *big.Float) error
+	CheckEligible(ctx context.Context) (bool, error)
+	GetUpkeepCount(ctx context.Context) (*big.Int, error)
+}
+
 // KeeperRegistryOpts opts to deploy keeper registry
 type KeeperRegistryOpts struct {
 	LinkAddr             string

@@ -73,6 +73,11 @@ func (e *EthereumMultinodeClient) SetWallet(num int) error {
 	return nil
 }
 
+// DefaultWallet returns the default wallet for the network
+func (e *EthereumMultinodeClient) GetDefaultWallet() *EthereumWallet {
+	return e.DefaultClient.DefaultWallet
+}
+
 // GetNetworkName gets the ID of the chain that the clients are connected to
 func (e *EthereumMultinodeClient) GetNetworkName() string {
 	return e.DefaultClient.GetNetworkName()
@@ -390,6 +395,11 @@ func SimulatedEthereumURLs(e *environment.Environment) ([]*url.URL, error) {
 // LiveEthTestnetURLs indicates that there are no urls to fetch, except from the network config
 func LiveEthTestnetURLs(e *environment.Environment) ([]*url.URL, error) {
 	return []*url.URL{}, nil
+}
+
+// DefaultWallet returns the default wallet for the network
+func (e *EthereumClient) GetDefaultWallet() *EthereumWallet {
+	return e.DefaultWallet
 }
 
 // GetNetworkName retrieves the ID of the network that the client interacts with

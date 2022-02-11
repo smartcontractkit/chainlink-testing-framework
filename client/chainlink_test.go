@@ -4,6 +4,7 @@ package client
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"time"
@@ -402,6 +403,83 @@ var _ = Describe("Chainlink @unit", func() {
 			err = c.DeleteTxKey(chain, "1")
 			Expect(err).ShouldNot(HaveOccurred())
 		}
+	})
+
+	// Mocks the reading transactions and attempted transactions
+	It("can read Transactions and Transaction Attempts from the chainlink node", func() {
+		mockTxString := `{
+	"data": [
+		{
+			"type": "transactions",
+			"id": "0xd694f4a84b3aa8f1fae2443c2444760306eed5d575a7eb22eb64101511a3a5c0",
+			"attributes": {
+				"state": "confirmed",
+				"data": "0x0",
+				"from": "0x0",
+				"gasLimit": "2650000",
+				"gasPrice": "10000001603",
+				"hash": "0xd694f4a84b3aa8f1fae2443c2444760306eed5d575a7eb22eb64101511a3a5c0",
+				"rawHex": "0x0",
+				"nonce": "1",
+				"sentAt": "199",
+				"to": "0x610178da211fef7d417bc0e6fed39f05609ad788",
+				"value": "0.000000000000000000",
+				"evmChainID": "1337"
+			}
+		}
+	],
+	"meta": {
+		"count": 14
+	}
+}`
+		mockTxData := TransactionsData{}
+		err := json.Unmarshal([]byte(mockTxString), &mockTxData)
+		Expect(err).ShouldNot(HaveOccurred())
+		server := mockedServer(func(rw http.ResponseWriter, req *http.Request) {
+			actualEndpoint := "/v2/transactions"
+			attemptsEndpoint := "/v2/tx_attempts"
+			switch req.Method {
+			case http.MethodGet:
+				Expect(req.URL.Path).Should(Or(Equal(actualEndpoint), Equal(attemptsEndpoint)))
+				writeResponse(rw, http.StatusOK, mockTxData)
+			case http.MethodPost:
+				Expect(req.URL.Path).Should(Equal("/sessions"))
+				writeCookie(rw)
+			}
+		})
+		defer server.Close()
+
+		c, err := newDefaultClient(server.URL)
+		Expect(err).ShouldNot(HaveOccurred())
+		c.SetClient(server.Client())
+
+		_, err = c.ReadTransactionAttempts()
+		Expect(err).ShouldNot(HaveOccurred())
+
+		_, err = c.ReadTransactions()
+		Expect(err).ShouldNot(HaveOccurred())
+	})
+
+	// Mocks the reading transactions and attempted transactions
+	It("can send ETH transactions", func() {
+		server := mockedServer(func(rw http.ResponseWriter, req *http.Request) {
+			switch req.Method {
+			case http.MethodPost:
+				if req.URL.Path == "/sessions" {
+					writeCookie(rw)
+				} else {
+					writeResponse(rw, http.StatusOK, nil)
+				}
+			}
+		})
+		defer server.Close()
+
+		c, err := newDefaultClient(server.URL)
+		Expect(err).ShouldNot(HaveOccurred())
+		c.SetClient(server.Client())
+
+		_, err = c.SendNativeToken(big.NewInt(1), "0x123", "0x420")
+		Expect(err).ShouldNot(HaveOccurred())
 	})
 
 	// Mocks the creation, read cycle for CSA keys
