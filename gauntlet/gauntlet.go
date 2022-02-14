@@ -91,8 +91,11 @@ func (g *Gauntlet) ExecCommand(args, errHandling []string) (string, error) {
 		return output, err
 	}
 
-	log.Debug().Msg("Gauntlet command was successful!")
-	return output, nil
+	// catch any exit codes
+	err = cmd.Wait()
+
+	log.Debug().Msg("Gauntlet command Completed")
+	return output, err
 }
 
 // ExecCommandWithRetries Some commands are safe to retry and in ci this can be even more so needed.
