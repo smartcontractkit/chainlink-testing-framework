@@ -34,7 +34,7 @@ var _ = Describe("Keeper suite @keeper", func() {
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
 			env, err = environment.DeployOrLoadEnvironment(
-				environment.NewChainlinkConfig(environment.ChainlinkReplicas(6, nil)),
+				environment.NewChainlinkConfig(environment.ChainlinkReplicas(2, nil)),
 				tools.ChartsRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred(), "Environment deployment shouldn't fail")
@@ -133,31 +133,26 @@ var _ = Describe("Keeper suite @keeper", func() {
 		})
 
 		By("Adding Keepers and a job", func() {
-			primaryNode := chainlinkNodes[0]
-			primaryNodeAddress, err := primaryNode.PrimaryEthAddress()
-			Expect(err).ShouldNot(HaveOccurred(), "Reading ETH Keys from Chainlink Client shouldn't fail")
-			nodeAddressesStr := make([]string, 0)
+			nodeAddressesStr, payees := make([]string, 0), make([]string, 0)
 			for _, cla := range nodeAddresses {
 				nodeAddressesStr = append(nodeAddressesStr, cla.Hex())
-			}
-			payees := []string{
-				consumer.Address(),
-				consumer.Address(),
-				consumer.Address(),
-				consumer.Address(),
-				consumer.Address(),
-				consumer.Address(),
+				payees = append(payees, consumer.Address())
 			}
 			err = registry.SetKeepers(nodeAddressesStr, payees)
 			Expect(err).ShouldNot(HaveOccurred(), "Setting keepers in the registry shouldn't fail")
-			_, err = primaryNode.CreateJob(&client.KeeperJobSpec{
-				Name:                     "keeper-test-job",
-				ContractAddress:          registry.Address(),
-				FromAddress:              primaryNodeAddress,
-				MinIncomingConfirmations: 1,
-				ObservationSource:        client.ObservationSourceKeeperDefault(),
-			})
-			Expect(err).ShouldNot(HaveOccurred(), "Creating KeeperV2 Job shouldn't fail")
+			for _, node := range chainlinkNodes {
+				nodeAddress, err := node.PrimaryEthAddress()
+				Expect(err).ShouldNot(HaveOccurred())
+				_, err = node.CreateJob(&client.KeeperJobSpec{
+					Name:                     "keeper-test-job",
+					ContractAddress:          registry.Address(),
+					FromAddress:              nodeAddress,
+					MinIncomingConfirmations: 1,
+					ObservationSource:        client.ObservationSourceKeeperDefault(),
+				})
+				Expect(err).ShouldNot(HaveOccurred(), "Creating KeeperV2 Job shouldn't fail")
+			}
+
 			err = networks.Default.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred(), "Waiting for event subscriptions in nodes shouldn't fail")
 		})
@@ -179,7 +174,7 @@ var _ = Describe("Keeper suite @keeper", func() {
 			networks.Default.GasStats().PrintStats()
 		})
 		By("Tearing down the environment", func() {
-			err = actions.TeardownSuite(env, networks, utils.ProjectRoot, nil)
+			err = actions.TeardownSuite(env, networks, utils.ProjectRoot, chainlinkNodes, nil)
 			Expect(err).ShouldNot(HaveOccurred(), "Environment teardown shouldn't fail")
 		})
 	})

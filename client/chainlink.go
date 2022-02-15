@@ -298,7 +298,7 @@ func (c *chainlink) ReadETHKeys() (*ETHKeys, error) {
 	return ethKeys, err
 }
 
-// CreateOCR2Key creates an OCR2Key on the Chainlink node
+// CreateTxKey creates a tx key on the Chainlink node
 func (c *chainlink) CreateTxKey(chain string) (*TxKey, error) {
 	txKey := &TxKey{}
 	log.Info().Str("Node URL", c.Config.URL).Msg("Creating Tx Key")
@@ -306,7 +306,7 @@ func (c *chainlink) CreateTxKey(chain string) (*TxKey, error) {
 	return txKey, err
 }
 
-// ReadOCR2Keys reads all OCR2Keys from the Chainlink node
+// ReadTxKeys reads all tx keys from the Chainlink node
 func (c *chainlink) ReadTxKeys(chain string) (*TxKeys, error) {
 	txKeys := &TxKeys{}
 	log.Info().Str("Node URL", c.Config.URL).Msg("Reading Tx Keys")
@@ -314,7 +314,7 @@ func (c *chainlink) ReadTxKeys(chain string) (*TxKeys, error) {
 	return txKeys, err
 }
 
-// DeleteOCR2Key deletes an OCR2Key based on the provided ID
+// DeleteTxKey deletes an tx key based on the provided ID
 func (c *chainlink) DeleteTxKey(chain string, id string) error {
 	log.Info().Str("Node URL", c.Config.URL).Str("ID", id).Msg("Deleting Tx Key")
 	_, err := c.do(http.MethodDelete, fmt.Sprintf("/v2/keys/%s/%s", chain, id), nil, nil, http.StatusOK)

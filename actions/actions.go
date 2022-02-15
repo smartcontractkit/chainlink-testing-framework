@@ -164,13 +164,15 @@ func GetMockserverInitializerDataForOTPE(
 }
 
 // TeardownSuite tears down networks/clients and environment and creates a logs folder for failed tests in the
-// specified path. Can also accept a testsetup (if one was used) to log results
+// specified path. Can also accept a testreporter (if one was used) to log further results
 func TeardownSuite(
 	env *environment.Environment,
 	nets *client.Networks,
 	logsFolderPath string,
+	chainlinkNodes []client.Chainlink,
 	optionalTestReporter testreporters.TestReporter, // Optionally pass in a test reporter to log further metrics
 ) error {
+	returnedFundsError := returnFunds(chainlinkNodes, nets)
 	if ginkgo.CurrentSpecReport().Failed() || optionalTestReporter != nil {
 		testFilename := strings.Split(ginkgo.CurrentSpecReport().FileName(), ".")[0]
 		_, testName := filepath.Split(testFilename)
@@ -208,5 +210,38 @@ func TeardownSuite(
 			return err
 		}
 	}
+	return nil
+}
+
+// Returns all the funds from the chainlink nodes to the networks default address
+func returnFunds(chainlinkNodes []client.Chainlink, networks *client.Networks) error {
+	for _, network := range networks.AllNetworks() {
+		gasCost, err := network.EstimateTransactionGasCost()
+		if err != nil {
+			return err
+		}
+
+		// Send the
+		for _, node := range chainlinkNodes {
+			keys, err := node.ReadETHKeys()
+			if err != nil {
+				return err
+			}
+			for _, key := range keys.Data {
+				nodeBalanceString := key.Attributes.ETHBalance
+				if nodeBalanceString != "0" {
+					nodeBalance, _ := big.NewInt(0).SetString(nodeBalanceString, 10)
+					thing, err := node.SendNativeToken(nodeBalance, key.Attributes.Address, targetAddress)
+					if err != nil {
+						return err
+					}
+					if thing != nil {
+						log.Info().Interface("Send Transaction Response", thing).Msg("CHECK HEREE")
+					}
+				}
+			}
+		}
+	}
+
 	return nil
 }

@@ -89,7 +89,7 @@ var _ = Describe("Keeper performance suite @performance-keeper", func() {
 			networks.Default.GasStats().PrintStats()
 		})
 		By("Tearing down the environment", func() {
-			err = actions.TeardownSuite(env, networks, utils.ProjectRoot, &keeperBlockTimeTest.TestReporter)
+			err = actions.TeardownSuite(env, networks, utils.ProjectRoot, chainlinkNodes, &keeperBlockTimeTest.TestReporter)
 			Expect(err).ShouldNot(HaveOccurred(), "Environment teardown shouldn't fail")
 		})
 	})

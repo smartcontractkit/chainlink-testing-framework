@@ -45,6 +45,7 @@ type BlockchainClient interface {
 	GetDefaultWallet() *EthereumWallet
 
 	EstimateCostForChainlinkOperations(amountOfOperations int) (*big.Float, error)
+	EstimateTransactionGasCost() (*big.Int, error)
 
 	Get() interface{}
 	GetNetworkName() string
@@ -98,6 +99,11 @@ func (b *Networks) Get(index int) (BlockchainClient, error) {
 		return nil, fmt.Errorf("index of %d is out of bounds", index)
 	}
 	return b.clients[index], nil
+}
+
+// AllNetworks returns all the network clients
+func (b *Networks) AllNetworks() []BlockchainClient {
+	return b.clients
 }
 
 // ConnectMockServer creates a connection to a deployed mockserver in the environment
