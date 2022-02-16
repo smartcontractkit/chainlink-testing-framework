@@ -234,7 +234,7 @@ func returnFunds(chainlinkNodes []client.Chainlink, networks *client.Networks) e
 	for _, network := range networks.AllNetworks() {
 		if network.GetNetworkType() == client.SimulatedEthNetwork {
 			log.Info().Str("Network Name", network.GetNetworkName()).Msg("Network is a `eth_simulated` network. Skipping fund return.")
-			continue
+			// continue
 		}
 		addressMap, err := sendFunds(chainlinkNodes, network)
 		if err != nil {
@@ -272,8 +272,9 @@ func sendFunds(chainlinkNodes []client.Chainlink, network client.BlockchainClien
 						return err
 					}
 
-					// TODO: Imperfect gas calculation buffer, working with core team on a better solution
-					gasCost = gasCost.Add(gasCost, big.NewInt(1000000000000))
+					// TODO: Imperfect gas calculation buffer of 50 Gwei. Seems to be the result of differences in chainlink
+					// gas handling. Working with core team on a better solution
+					gasCost = gasCost.Add(gasCost, big.NewInt(50000000000))
 					nodeBalance, _ := big.NewInt(0).SetString(nodeBalanceString, 10)
 					transferAmount := nodeBalance.Sub(nodeBalance, gasCost)
 					_, err = node.SendNativeToken(transferAmount, primaryEthKeyData.Attributes.Address, network.GetDefaultWallet().Address())
