@@ -5,7 +5,6 @@ import (
 	"context"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/common"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog/log"
@@ -27,7 +26,6 @@ var _ = Describe("Keeper suite @keeper", func() {
 		checkGasLimit    = uint32(2500000)
 		linkToken        contracts.LinkToken
 		chainlinkNodes   []client.Chainlink
-		nodeAddresses    []common.Address
 		env              *environment.Environment
 	)
 
@@ -50,8 +48,6 @@ var _ = Describe("Keeper suite @keeper", func() {
 			Expect(err).ShouldNot(HaveOccurred(), "Deploying contracts shouldn't fail")
 			chainlinkNodes, err = client.ConnectChainlinkNodes(env)
 			Expect(err).ShouldNot(HaveOccurred(), "Connecting to chainlink nodes shouldn't fail")
-			nodeAddresses, err = actions.ChainlinkNodeAddresses(chainlinkNodes)
-			Expect(err).ShouldNot(HaveOccurred(), "Retreiving on-chain wallet addresses for chainlink nodes shouldn't fail")
 			networks.Default.ParallelTransactions(true)
 		})
 
@@ -133,6 +129,8 @@ var _ = Describe("Keeper suite @keeper", func() {
 		})
 
 		By("Adding Keepers and a job", func() {
+			nodeAddresses, err := actions.ChainlinkNodeAddresses(chainlinkNodes)
+			Expect(err).ShouldNot(HaveOccurred(), "Retreiving on-chain wallet addresses for chainlink nodes shouldn't fail")
 			nodeAddressesStr, payees := make([]string, 0), make([]string, 0)
 			for _, cla := range nodeAddresses {
 				nodeAddressesStr = append(nodeAddressesStr, cla.Hex())

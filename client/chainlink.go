@@ -47,6 +47,7 @@ type Chainlink interface {
 	DeleteP2PKey(id int) error
 
 	ReadETHKeys() (*ETHKeys, error)
+	ReadPrimaryETHKey() (*ETHKeyData, error)
 	PrimaryEthAddress() (string, error)
 
 	CreateTxKey(chain string) (*TxKey, error)
@@ -55,7 +56,7 @@ type Chainlink interface {
 
 	ReadTransactionAttempts() (*TransactionsData, error)
 	ReadTransactions() (*TransactionsData, error)
-	SendNativeToken(amount *big.Int, fromAddress, toAddress string) (interface{}, error)
+	SendNativeToken(amount *big.Int, fromAddress, toAddress string) (TransactionData, error)
 
 	CreateVRFKey() (*VRFKey, error)
 	ReadVRFKeys() (*VRFKeys, error)
@@ -298,6 +299,27 @@ func (c *chainlink) ReadETHKeys() (*ETHKeys, error) {
 	return ethKeys, err
 }
 
+// ReadPrimaryETHKey reads updated information about the chainlink's primary ETH key
+func (c *chainlink) ReadPrimaryETHKey() (*ETHKeyData, error) {
+	ethKeys, err := c.ReadETHKeys()
+	if err != nil {
+		return nil, err
+	}
+	return &ethKeys.Data[0], nil
+}
+
+// PrimaryEthAddress returns the primary ETH address for the chainlink node
+func (c *chainlink) PrimaryEthAddress() (string, error) {
+	if c.primaryEthAddress == "" {
+		ethKeys, err := c.ReadETHKeys()
+		if err != nil {
+			return "", err
+		}
+		c.primaryEthAddress = ethKeys.Data[0].Attributes.Address
+	}
+	return c.primaryEthAddress, nil
+}
+
 // CreateTxKey creates a tx key on the Chainlink node
 func (c *chainlink) CreateTxKey(chain string) (*TxKey, error) {
 	txKey := &TxKey{}
@@ -338,22 +360,23 @@ func (c *chainlink) ReadTransactions() (*TransactionsData, error) {
 }
 
 // SendNativeToken sends native token (ETH usually) of a specified amount from one of its addresses to the target address
-func (c *chainlink) SendNativeToken(amount *big.Int, fromAddress, toAddress string) (interface{}, error) {
+// WARNING: The txdata object that chainlink sends back is almost always blank.
+func (c *chainlink) SendNativeToken(amount *big.Int, fromAddress, toAddress string) (TransactionData, error) {
 	request := SendEtherRequest{
 		DestinationAddress: toAddress,
 		FromAddress:        fromAddress,
 		Amount:             amount.String(),
 		AllowHigherAmounts: true,
 	}
-	var ret interface{}
+	txData := SingleTransactionDataWrapper{}
+	_, err := c.do(http.MethodPost, "/v2/transfers", request, txData, http.StatusOK)
 	log.Info().
 		Str("Node URL", c.Config.URL).
 		Str("From", fromAddress).
 		Str("To", toAddress).
-		Int64("Amount", amount.Int64()).
+		Str("Amount", amount.String()).
 		Msg("Sending Native Token")
-	_, err := c.do(http.MethodPost, "/v2/transfers", request, ret, http.StatusOK)
-	return ret, err
+	return txData.Data, err
 }
 
 // ReadVRFKeys reads all VRF keys from the Chainlink node
@@ -392,18 +415,6 @@ func (c *chainlink) ReadCSAKeys() (*CSAKeys, error) {
 		log.Warn().Str("Node URL", c.Config.URL).Msg("Found no CSA Keys on the node")
 	}
 	return csaKeys, err
-}
-
-// PrimaryEthAddress returns the primary ETH address for the chainlink node
-func (c *chainlink) PrimaryEthAddress() (string, error) {
-	if c.primaryEthAddress == "" {
-		ethKeys, err := c.ReadETHKeys()
-		if err != nil {
-			return "", err
-		}
-		c.primaryEthAddress = ethKeys.Data[0].Attributes.Address
-	}
-	return c.primaryEthAddress, nil
 }
 
 // CreateEI creates an EI on the Chainlink node based on the provided attributes and returns the respective secrets

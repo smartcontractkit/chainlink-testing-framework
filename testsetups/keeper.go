@@ -94,8 +94,6 @@ func (k *KeeperBlockTimeTest) Setup() {
 		Expect(err).ShouldNot(HaveOccurred(), "Deploying KeeperConsumerPerformance instance %d shouldn't fail", i+1)
 		k.keeperConsumerContracts = append(k.keeperConsumerContracts, keeperConsumerInstance)
 		Expect(err).ShouldNot(HaveOccurred())
-		// err = k.linkTokenContract.Transfer(keeperConsumerInstance.Address(), big.NewInt(1e18))
-		// Expect(err).ShouldNot(HaveOccurred(), "Transfering LINK token to KeeperConsumerPerformance instance %d shouldn't fail", i+1)
 
 		// Register Consumer to registrar
 		req, err := registrar.EncodeRegisterRequest(

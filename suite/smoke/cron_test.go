@@ -79,7 +79,10 @@ var _ = Describe("Cronjob suite @cron", func() {
 
 	AfterEach(func() {
 		By("Tearing down the environment", func() {
-			err = actions.TeardownSuite(e, nil, utils.ProjectRoot, []client.Chainlink{chainlinkNode}, nil)
+			networkRegistry := client.NewNetworkRegistry()
+			networks, err := networkRegistry.GetNetworks(e)
+			Expect(err).ShouldNot(HaveOccurred(), "Connecting to blockchain nodes shouldn't fail")
+			err = actions.TeardownSuite(e, networks, utils.ProjectRoot, []client.Chainlink{chainlinkNode}, nil)
 			Expect(err).ShouldNot(HaveOccurred(), "Environment teardown shouldn't fail")
 		})
 	})

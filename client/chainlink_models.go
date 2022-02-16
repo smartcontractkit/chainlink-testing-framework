@@ -277,6 +277,10 @@ type TransactionsData struct {
 	Meta TransactionsMetaData `json:"meta"`
 }
 
+type SingleTransactionDataWrapper struct {
+	Data TransactionData `json:"data"`
+}
+
 type TransactionData struct {
 	Type       string                `json:"type"`
 	ID         string                `json:"id"`

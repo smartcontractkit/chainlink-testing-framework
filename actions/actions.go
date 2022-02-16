@@ -9,8 +9,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/avast/retry-go"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/smartcontractkit/helmenv/environment"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/integrations-framework/config"
@@ -172,8 +174,9 @@ func TeardownSuite(
 	chainlinkNodes []client.Chainlink,
 	optionalTestReporter testreporters.TestReporter, // Optionally pass in a test reporter to log further metrics
 ) error {
-	returnedFundsError := returnFunds(chainlinkNodes, nets)
-	if ginkgo.CurrentSpecReport().Failed() || optionalTestReporter != nil {
+	if ginkgo.CurrentSpecReport().Failed() ||
+		optionalTestReporter != nil ||
+		config.ProjectFrameworkSettings.Logging.WritePodLogs == "Always" {
 		testFilename := strings.Split(ginkgo.CurrentSpecReport().FileName(), ".")[0]
 		_, testName := filepath.Split(testFilename)
 		logsPath := filepath.Join(config.ProjectConfigDirectory, DefaultArtifactsDir, fmt.Sprintf("%s-%d", testName, time.Now().Unix()))
@@ -185,11 +188,6 @@ func TeardownSuite(
 			if err != nil {
 				return err
 			}
-		}
-	}
-	if nets != nil {
-		if err := nets.Teardown(); err != nil {
-			return err
 		}
 	}
 	switch strings.ToUpper(config.ProjectFrameworkSettings.KeepEnvironments) {
@@ -205,6 +203,20 @@ func TeardownSuite(
 		log.Warn().Str("Invalid Keep Value", config.ProjectFrameworkSettings.KeepEnvironments).
 			Msg("Invalid 'keep_environments' value, see the 'framework.yaml' file")
 	}
+
+	if err := returnFunds(chainlinkNodes, nets); err != nil {
+		log.Error().Err(err).Str("Namespace", env.Namespace).
+			Msg("Error attempting to return funds from chainlink nodes to network's default wallet. " +
+				"Environment is left running so you can try manually!")
+		env.Persistent = true
+	} else {
+		log.Info().Msg("Successfully returned funds from chainlink nodes to default network wallets")
+	}
+	if nets != nil {
+		if err := nets.Teardown(); err != nil {
+			return err
+		}
+	}
 	if !env.Config.Persistent {
 		if err := env.Teardown(); err != nil {
 			return err
@@ -215,33 +227,119 @@ func TeardownSuite(
 
 // Returns all the funds from the chainlink nodes to the networks default address
 func returnFunds(chainlinkNodes []client.Chainlink, networks *client.Networks) error {
+	if networks == nil {
+		log.Warn().Msg("No network connections found, unable to return funds from chainlink nodes.")
+	}
+	log.Info().Msg("Attempting to return Chainlink node funds to default network wallets")
 	for _, network := range networks.AllNetworks() {
-		gasCost, err := network.EstimateTransactionGasCost()
+		if network.GetNetworkType() == client.SimulatedEthNetwork {
+			log.Info().Str("Network Name", network.GetNetworkName()).Msg("Network is a `eth_simulated` network. Skipping fund return.")
+			continue
+		}
+		addressMap, err := sendFunds(chainlinkNodes, network)
 		if err != nil {
 			return err
 		}
 
-		// Send the
-		for _, node := range chainlinkNodes {
-			keys, err := node.ReadETHKeys()
-			if err != nil {
-				return err
-			}
-			for _, key := range keys.Data {
-				nodeBalanceString := key.Attributes.ETHBalance
-				if nodeBalanceString != "0" {
-					nodeBalance, _ := big.NewInt(0).SetString(nodeBalanceString, 10)
-					thing, err := node.SendNativeToken(nodeBalance, key.Attributes.Address, targetAddress)
-					if err != nil {
-						return err
-					}
-					if thing != nil {
-						log.Info().Interface("Send Transaction Response", thing).Msg("CHECK HEREE")
-					}
-				}
-			}
+		err = checkFunds(chainlinkNodes, addressMap, strings.ToLower(network.GetDefaultWallet().Address()))
+		if err != nil {
+			return err
 		}
 	}
 
 	return nil
+}
+
+// Requests that all the chainlink nodes send their funds back to the network's default wallet
+// This is surprisingly tricky, and fairly annoying due to Go's lack of syntactic sugar and how chainlink nodes handle txs
+func sendFunds(chainlinkNodes []client.Chainlink, network client.BlockchainClient) (map[int]string, error) {
+	chainlinkTransactionAddresses := make(map[int]string)
+	sendFundsErrGroup := new(errgroup.Group)
+	for ni, n := range chainlinkNodes {
+		nodeIndex := ni // https://golang.org/doc/faq#closures_and_goroutines
+		node := n
+		// Send async request to each chainlink node to send a transaction back to the network default wallet
+		sendFundsErrGroup.Go(
+			func() error {
+				primaryEthKeyData, err := node.ReadPrimaryETHKey()
+				if err != nil {
+					return err
+				}
+				nodeBalanceString := primaryEthKeyData.Attributes.ETHBalance
+				if nodeBalanceString != "0" { // If key has a non-zero balance, attempt to transfer it back
+					gasCost, err := network.EstimateTransactionGasCost()
+					if err != nil {
+						return err
+					}
+
+					// TODO: Imperfect gas calculation buffer, working with core team on a better solution
+					gasCost = gasCost.Add(gasCost, big.NewInt(1000000000000))
+					nodeBalance, _ := big.NewInt(0).SetString(nodeBalanceString, 10)
+					transferAmount := nodeBalance.Sub(nodeBalance, gasCost)
+					_, err = node.SendNativeToken(transferAmount, primaryEthKeyData.Attributes.Address, network.GetDefaultWallet().Address())
+					if err != nil {
+						return err
+					}
+					// Add the address to our map to check for later (hashes aren't returned, sadly)
+					chainlinkTransactionAddresses[nodeIndex] = strings.ToLower(primaryEthKeyData.Attributes.Address)
+				}
+				return nil
+			},
+		)
+
+	}
+	return chainlinkTransactionAddresses, sendFundsErrGroup.Wait()
+}
+
+// checks that the funds made it from the chainlink node to the network address
+// this turns out to be tricky to do, given how chainlink handles pending transactions, thus the complexity
+func checkFunds(chainlinkNodes []client.Chainlink, sentFromAddressesMap map[int]string, toAddress string) error {
+	err := retry.Do( // Might take some time for txs to confirm, check up on the nodes a few times
+		func() error {
+			log.Debug().Msg("Attempting to confirm chainlink nodes transferred back funds")
+			transactionErrGroup := new(errgroup.Group)
+			for nodeIndex, n := range chainlinkNodes {
+				node := n // https://golang.org/doc/faq#closures_and_goroutines
+				sentFromAddress := sentFromAddressesMap[nodeIndex]
+				// Async check on all the nodes if their transactions are confirmed
+				transactionErrGroup.Go(func() error {
+					return confirmTransaction(node, sentFromAddress, toAddress, transactionErrGroup)
+				})
+			}
+
+			return transactionErrGroup.Wait()
+		},
+		retry.Delay(time.Second*5),
+		retry.MaxDelay(time.Second*5),
+		retry.Attempts(20),
+	)
+
+	return err
+}
+
+// helper to confirm that the latest attempted transaction on the chainlink node with the expected from and to addresses
+// has been confirmed
+func confirmTransaction(
+	chainlinkNode client.Chainlink,
+	fromAddress string,
+	toAddress string,
+	transactionErrGroup *errgroup.Group,
+) error {
+	transactionAttempts, err := chainlinkNode.ReadTransactionAttempts()
+	if err != nil {
+		return err
+	}
+	log.Debug().Str("From", fromAddress).
+		Str("To", toAddress).
+		Msg("Attempting to confirm node returned funds")
+	// Loop through all transactions on the node
+	for _, tx := range transactionAttempts.Data {
+		if tx.Attributes.From == fromAddress && strings.ToLower(tx.Attributes.To) == toAddress {
+			if tx.Attributes.State == "confirmed" {
+				return nil
+			}
+			return fmt.Errorf("Expected transaction to be confirmed. From: %s To: %s State: %s", fromAddress, toAddress, tx.Attributes.State)
+		}
+	}
+	return fmt.Errorf("Did not find expected transaction on node. From: %s To: %s", fromAddress, toAddress)
 }
