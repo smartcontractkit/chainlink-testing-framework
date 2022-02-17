@@ -234,7 +234,7 @@ func returnFunds(chainlinkNodes []client.Chainlink, networks *client.Networks) e
 	for _, network := range networks.AllNetworks() {
 		if network.GetNetworkType() == client.SimulatedEthNetwork {
 			log.Info().Str("Network Name", network.GetNetworkName()).Msg("Network is a `eth_simulated` network. Skipping fund return.")
-			// continue
+			continue
 		}
 		addressMap, err := sendFunds(chainlinkNodes, network)
 		if err != nil {
