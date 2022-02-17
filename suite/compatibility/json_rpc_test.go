@@ -128,17 +128,17 @@ func Subscription(rpcClient *rpc.Client, chainId int) (block *types.Header, erro
 	}
 }
 
-var _ = Describe("JSON RPC compatibility @json_rpc", func() {
-	var (
-		networksParameters NetworksParameters
-		selectedNetworks   []string
-		openrpcSchema      OpenRPCStruct
-		methods            []Method
-	)
+var (
+	networksParameters NetworksParameters
+	selectedNetworks   []string
+	openrpcSchema      OpenRPCStruct
+	methods            []Method
+)
 
-	rpcClientsByNetwork := make(map[string][]*rpc.Client)
-	parametersByNetwork := make(map[string]NetworkParameters)
+var rpcClientsByNetwork = make(map[string][]*rpc.Client)
+var parametersByNetwork = make(map[string]NetworkParameters)
 
+var _ = BeforeSuite(func() {
 	// read openrpc JSON schema
 	openrpcJSON, err := os.Open(filepath.Join(utils.TestSuiteRoot, "compatibility", "openrpc.json"))
 	Expect(err).ShouldNot(HaveOccurred())
@@ -167,7 +167,9 @@ var _ = Describe("JSON RPC compatibility @json_rpc", func() {
 	for _, networkParameters := range networksParameters.NetworksParameters {
 		parametersByNetwork[networkParameters.Name] = networkParameters
 	}
+})
 
+var _ = Describe("JSON RPC compatibility @json_rpc", func() {
 	BeforeEach(func() {
 		By("Getting RPC clients", func() {
 			for _, networkName := range selectedNetworks {
