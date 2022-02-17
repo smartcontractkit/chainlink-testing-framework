@@ -229,12 +229,6 @@ var _ = Describe("JSON RPC compatibility @json_rpc", func() {
 							break
 						}
 
-						log.Info().
-							Str("Network", network).
-							Int("ChainID", chainId).
-							Str("Method", rpcMethod).
-							Msgf("RPC call result: %v", rpcCallResult)
-
 						if schemaLoader.JsonSource() == nil {
 							log.Info().
 								Str("Network", network).
@@ -251,6 +245,11 @@ var _ = Describe("JSON RPC compatibility @json_rpc", func() {
 								Int("ChainID", chainId).
 								Str("Method", rpcMethod).
 								Msgf("Error during RPC call result schema validation: %s", err.Error())
+							log.Info().
+								Str("Network", network).
+								Int("ChainID", chainId).
+								Str("Method", rpcMethod).
+								Msgf("RPC call result: %v", rpcCallResult)
 							break
 						}
 
