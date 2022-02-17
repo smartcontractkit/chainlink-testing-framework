@@ -85,9 +85,9 @@ func getStringValue(value string, fallback string) string {
 func getRPCMethods(parameters Parameters) RPCMethods {
 	return RPCMethods{
 		"eth_chainId":          []interface{}{},
-		"eth_getBalance":       []interface{}{getStringValue(parameters.GetBalance, "0x0000000000000000000000000000000000000000")},
+		"eth_getBalance":       []interface{}{getStringValue(parameters.GetBalance, "0x0000000000000000000000000000000000000000"), "latest"},
 		"eth_getBlockByNumber": []interface{}{getStringValue(parameters.GetBlockByNumber, "0x333333"), false},
-		"eth_getCode":          []interface{}{getStringValue(parameters.GetCode, "0x0000000000000000000000000000000000000000")},
+		"eth_getCode":          []interface{}{getStringValue(parameters.GetCode, "0x0000000000000000000000000000000000000000"), "latest"},
 		"eth_getLogs": []interface{}{map[string]interface{}{
 			"fromBlock": getStringValue(parameters.GetLogs.FromBlock, "0x444444"),
 			"toBlock":   getStringValue(parameters.GetLogs.ToBlock, "0x444444"),
