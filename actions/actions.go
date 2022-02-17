@@ -301,11 +301,15 @@ func checkFunds(chainlinkNodes []client.Chainlink, sentFromAddressesMap map[int]
 			transactionErrGroup := new(errgroup.Group)
 			for nodeIndex, n := range chainlinkNodes {
 				node := n // https://golang.org/doc/faq#closures_and_goroutines
-				sentFromAddress := sentFromAddressesMap[nodeIndex]
+				sentFromAddress, nodeHasFunds := sentFromAddressesMap[nodeIndex]
 				// Async check on all the nodes if their transactions are confirmed
-				transactionErrGroup.Go(func() error {
-					return confirmTransaction(node, sentFromAddress, toAddress, transactionErrGroup)
-				})
+				if nodeHasFunds { // Only if the node had funds to begin with
+					transactionErrGroup.Go(func() error {
+						return confirmTransaction(node, sentFromAddress, toAddress, transactionErrGroup)
+					})
+				} else {
+					log.Debug().Int("Node Number", nodeIndex).Msg("Chainlink node had no funds to return")
+				}
 			}
 
 			return transactionErrGroup.Wait()
