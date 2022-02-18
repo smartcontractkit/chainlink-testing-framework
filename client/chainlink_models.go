@@ -758,7 +758,6 @@ type OCR2TaskJobSpec struct {
 	MonitoringEndpoint       string            `toml:"monitoringEndpoint"`                     // Typically "chain.link:4321"
 	TransmitterID            string            `toml:"transmitterID"`                          // ID of address this node will use to transmit
 	BlockChainTimeout        time.Duration     `toml:"blockchainTimeout"`                      // Optional
-	TrackerSubscribeInterval time.Duration     `toml:"contractConfigTrackerSubscribeInterval"` // Optional
 	TrackerPollInterval      time.Duration     `toml:"contractConfigTrackerPollInterval"`      // Optional
 	ContractConfirmations    int               `toml:"contractConfigConfirmations"`            // Optional
 	ObservationSource        string            `toml:"observationSource"`                      // List of commands for the chainlink node
@@ -775,7 +774,6 @@ schemaVersion                          = 1
 blockchainTimeout                      ={{if not .BlockChainTimeout}} "20s" {{else}} "{{.BlockChainTimeout}}" {{end}}
 contractConfigConfirmations            ={{if not .ContractConfirmations}} 3 {{else}} {{.ContractConfirmations}} {{end}}
 contractConfigTrackerPollInterval      ={{if not .TrackerPollInterval}} "1m" {{else}} "{{.TrackerPollInterval}}" {{end}}
-contractConfigTrackerSubscribeInterval ={{if not .TrackerSubscribeInterval}} "2m" {{else}} "{{.TrackerSubscribeInterval}}" {{end}}
 name 																	 = "{{.Name}}"
 relay																	 = "{{.Relay}}"
 contractID		                         = "{{.ContractID}}"
