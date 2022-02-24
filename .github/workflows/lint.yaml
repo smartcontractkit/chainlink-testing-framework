@@ -14,7 +14,7 @@ jobs:
       - name: Check out Code
         uses: actions/checkout@v2
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v2
+        uses: golangci/golangci-lint-action@v3
 
   vulnerabilities-check:  
     name: Check for Vulnerabilities
