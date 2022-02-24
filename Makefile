@@ -19,6 +19,9 @@ compile_contracts:
 test_unit:
 	ginkgo -r --junit-report=tests-unit-report.xml --keep-going --trace --randomize-all --randomize-suites --progress -cover -covermode=count -coverprofile=unit-test-coverage.out -nodes=10 ./client ./config ./gauntlet
 
+test_soak:
+	go test -v ./suite/soak/soak_runner_test.go
+
 test_smoke:
 	ginkgo -v -r --junit-report=tests-smoke-report.xml --keep-going --trace --randomize-all --randomize-suites --progress $(args) ./suite/smoke 
 
@@ -27,3 +30,7 @@ test_performance:
 
 test_chaos:
 	ginkgo -r --junit-report=tests-chaos-report.xml --keep-going --trace --randomize-all --randomize-suites --progress $(args) ./suite/chaos 
+
+soak_docker:
+	docker build -t kalverra/soak-runner -f soak.runner.Dockerfile .
+	docker push kalverra/soak-runner:latest

@@ -1,3 +1,4 @@
+// Package utils contains miscellaneous and commonly used operations through the project
 package utils
 
 //revive:disable:dot-imports

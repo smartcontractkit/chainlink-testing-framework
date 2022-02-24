@@ -1,4 +1,4 @@
-// package testreporters holds all the tools necessary to report on tests that are run utilizing the testsetups package
+// Package testreporters holds all the tools necessary to report on tests that are run utilizing the testsetups package
 package testreporters
 
 // TestReporter

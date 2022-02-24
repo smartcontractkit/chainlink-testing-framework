@@ -1,3 +1,4 @@
+// Package gauntlet enables the framework to interface with the chainlink gauntlet project
 package gauntlet
 
 import (
