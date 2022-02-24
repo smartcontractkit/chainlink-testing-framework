@@ -751,6 +751,7 @@ type OCR2TaskJobSpec struct {
 	JobType                  string            `toml:"type"`
 	ContractID               string            `toml:"contractID"`                             // Address of the OCR contract/account(s)
 	Relay                    string            `toml:"relay"`                                  // Name of blockchain relay to use
+	PluginType               string            `toml:"pluginType"`                             // Type of report plugin to use
 	RelayConfig              map[string]string `toml:"relayConfig"`                            // Relay spec object in stringified form
 	P2PPeerID                string            `toml:"p2pPeerID"`                              // This node's P2P ID
 	P2PBootstrapPeers        []P2PData         `toml:"p2pBootstrapPeers"`                      // P2P ID of the bootstrap node
@@ -789,13 +790,15 @@ p2pBootstrapPeers                      = [
 p2pBootstrapPeers                      = []
 {{end}}
 p2pPeerID                              = "{{.P2PPeerID}}"
-ocrKeyBundleID                         = "{{.OCRKeyBundleID}}"
 monitoringEndpoint                     ={{if not .MonitoringEndpoint}} "chain.link:4321" {{else}} "{{.MonitoringEndpoint}}" {{end}}
-transmitterID                     		 = "{{.TransmitterID}}"
 {{if eq .JobType "offchainreporting2" }}
+pluginType                             = "{{ .PluginType }}"
+ocrKeyBundleID                         = "{{.OCRKeyBundleID}}"
+transmitterID                     		 = "{{.TransmitterID}}"
 observationSource                      = """
 {{.ObservationSource}}
 """
+[pluginConfig]
 juelsPerFeeCoinSource                  = """
 {{.JuelsPerFeeCoinSource}}
 """
