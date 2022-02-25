@@ -4,12 +4,12 @@ package soak_test
 import (
 	"testing"
 
-	"github.com/smartcontractkit/integrations-framework/utils"
+	"github.com/smartcontractkit/integrations-framework/actions"
 
 	. "github.com/onsi/ginkgo/v2"
 )
 
 func Test_Suite(t *testing.T) {
-	utils.GinkgoSuite(utils.ProjectRoot)
+	actions.GinkgoSuite(".")
 	RunSpecs(t, "Soak")
 }
