@@ -37,6 +37,20 @@ networks:
         minimum_confirmations: 1
         gas_estimation_buffer: 10000
         block_gas_limit: 40000000
+    geth_private:
+        name: "Ethereum Geth dev"
+        chain_id: 4224
+        type: eth_multinode
+        secret_private_keys: false
+        namespace_for_secret: default
+        private_url: http://127.0.0.1:8584
+        private_keys: 
+            - private_key
+        chainlink_transaction_limit: 500000
+        transaction_timeout: 2m
+        minimum_confirmations: 1
+        gas_estimation_buffer: 10000
+        block_gas_limit: 40000000
     ethereum_geth_performance: &ethereum_geth_performance
         <<: *common_ethereum
         transaction_timeout: 5m
