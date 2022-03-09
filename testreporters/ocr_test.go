@@ -1,8 +1,6 @@
 package testreporters_test
 
 import (
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
@@ -36,8 +34,4 @@ func TestSoakReport(t *testing.T) {
 	// Cleanup
 	err = os.RemoveAll("./logs")
 	require.NoError(t, err)
-}
-
-func mockedServer(handlerFunc http.HandlerFunc) *httptest.Server {
-	return httptest.NewServer(handlerFunc)
 }
