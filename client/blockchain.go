@@ -180,10 +180,8 @@ func (n *NetworkRegistry) GetNetworks(env *environment.Environment) (*Networks, 
 		clients = append(clients, client)
 	}
 	var defaultClient BlockchainClient
-	if len(clients) == 1 {
-		for _, c := range clients {
-			defaultClient = c
-		}
+	if len(clients) >= 1 {
+		defaultClient = clients[0]
 	}
 	return &Networks{
 		clients: clients,
