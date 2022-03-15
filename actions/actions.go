@@ -96,6 +96,26 @@ func FundChainlinkNodes(
 	return blockchain.WaitForEvents()
 }
 
+// FundChainlinkNodes will fund all of the provided Chainlink nodes with a set amount of native currency
+func FundChainlinkNodesLink(
+	nodes []client.Chainlink,
+	blockchain client.BlockchainClient,
+	linkToken contracts.LinkToken,
+	linkAmount *big.Int,
+) error {
+	for _, cl := range nodes {
+		toAddress, err := cl.PrimaryEthAddress()
+		if err != nil {
+			return err
+		}
+		linkToken.Transfer(toAddress, linkAmount)
+		if err != nil {
+			return err
+		}
+	}
+	return blockchain.WaitForEvents()
+}
+
 // FundAddresses will fund a list of addresses with an amount of native currency
 func FundAddresses(blockchain client.BlockchainClient, amount *big.Float, addresses ...string) error {
 	for _, address := range addresses {

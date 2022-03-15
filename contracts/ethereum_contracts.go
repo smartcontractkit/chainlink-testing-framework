@@ -544,6 +544,12 @@ func (l *EthereumLinkToken) Approve(to string, amount *big.Int) error {
 	if err != nil {
 		return err
 	}
+	log.Info().
+		Str("From", l.client.DefaultWallet.Address()).
+		Str("To", to).
+		Str("Amount", amount.String()).
+		Uint64("Nonce", opts.Nonce.Uint64()).
+		Msg("Approving LINK Transfer")
 	tx, err := l.instance.Approve(opts, common.HexToAddress(to), amount)
 	if err != nil {
 		return err
@@ -552,15 +558,16 @@ func (l *EthereumLinkToken) Approve(to string, amount *big.Int) error {
 }
 
 func (l *EthereumLinkToken) Transfer(to string, amount *big.Int) error {
-	log.Info().
-		Str("From", l.client.DefaultWallet.Address()).
-		Str("To", to).
-		Str("Amount", amount.String()).
-		Msg("Transferring LINK")
 	opts, err := l.client.TransactionOpts(l.client.DefaultWallet)
 	if err != nil {
 		return err
 	}
+	log.Info().
+		Str("From", l.client.DefaultWallet.Address()).
+		Str("To", to).
+		Str("Amount", amount.String()).
+		Uint64("Nonce", opts.Nonce.Uint64()).
+		Msg("Transferring LINK")
 	tx, err := l.instance.Transfer(opts, common.HexToAddress(to), amount)
 	if err != nil {
 		return err
@@ -573,6 +580,12 @@ func (l *EthereumLinkToken) TransferAndCall(to string, amount *big.Int, data []b
 	if err != nil {
 		return err
 	}
+	log.Info().
+		Str("From", l.client.DefaultWallet.Address()).
+		Str("To", to).
+		Str("Amount", amount.String()).
+		Uint64("Nonce", opts.Nonce.Uint64()).
+		Msg("Transferring and Calling LINK")
 	tx, err := l.instance.TransferAndCall(opts, common.HexToAddress(to), amount, data)
 	if err != nil {
 		return err
@@ -976,7 +989,7 @@ type KeeperConsumerPerformanceRoundConfirmer struct {
 	allMissedUpkeeps            []int64 // Tracks the amount of blocks missed in each missed upkeep
 	totalSuccessfulUpkeeps      int64
 
-	metricsReporter *testreporters.KeeperBlockTimeTestReporter // File to write report into
+	metricsReporter *testreporters.KeeperBlockTimeTestReporter // Testreporter to track results
 }
 
 // NewKeeperConsumerPerformanceRoundConfirmer provides a new instance of a KeeperConsumerPerformanceRoundConfirmer
@@ -997,7 +1010,7 @@ func NewKeeperConsumerPerformanceRoundConfirmer(
 		blockRange:                  blockRange,
 		blocksSinceSubscription:     0,
 		blocksSinceSuccessfulUpkeep: 0,
-		expectedUpkeepCount:         1, // Upkeep usually starts at 1
+		expectedUpkeepCount:         1,
 		allMissedUpkeeps:            []int64{},
 		totalSuccessfulUpkeeps:      0,
 		metricsReporter:             metricsReporter,
@@ -1024,7 +1037,7 @@ func (o *KeeperConsumerPerformanceRoundConfirmer) ReceiveBlock(receivedBlock cli
 			Int64("Upkeeps Performed", upkeepCount.Int64()).
 			Msg("Upkeep Now Eligible")
 	}
-	if upkeepCount.Int64() == o.expectedUpkeepCount { // Upkeep was successful
+	if upkeepCount.Int64() >= o.expectedUpkeepCount { // Upkeep was successful
 		if o.blocksSinceSuccessfulUpkeep < o.blockCadence { // If there's an early upkeep, that's weird
 			log.Error().
 				Str("Contract Address", o.instance.Address()).

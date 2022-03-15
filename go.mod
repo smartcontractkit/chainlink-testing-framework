@@ -20,6 +20,8 @@ require (
 	k8s.io/apimachinery v0.23.4
 )
 
+replace github.com/smartcontractkit/helmenv => /Users/adamhamrick/Projects/helmenv
+
 require (
 	cloud.google.com/go v0.99.0 // indirect
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect

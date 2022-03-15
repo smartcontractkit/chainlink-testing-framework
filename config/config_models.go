@@ -13,7 +13,6 @@ type FrameworkConfig struct {
 	GethImage          string            `mapstructure:"geth_image" yaml:"geth_image"`
 	GethVersion        string            `mapstructure:"geth_version" yaml:"geth_version"`
 	GethArgs           []interface{}     `mapstructure:"geth_args" yaml:"geth_args"`
-	RemoteSlackWebhook string            `mapstructure:"remote_slack_webhook" yaml:"remote_slack_webhook"`
 }
 
 // ETHNetwork data to configure fully ETH compatible network
@@ -111,10 +110,9 @@ type ChainlinkImage struct {
 
 // RemoteRunnerConfig reads the config file for remote test runs
 type RemoteRunnerConfig struct {
-	TestRegex       string `mapstructure:"test_regex" yaml:"test_regex"`
-	TestDirectory   string `mapstructure:"test_directory" yaml:"test_directory"`
-	SlackWebhookURL string `mapstructure:"slack_webhook_url" yaml:"slack_webhook_url"`
-	SlackAPIKey     string `mapstructure:"slack_api_key" yaml:"slack_api_key"`
-	SlackChannel    string `mapstructure:"slack_channel" yaml:"slack_channel"`
-	SlackUserID     string `mapstructure:"slack_user_id" yaml:"slack_user_id"`
+	TestRegex     string `mapstructure:"test_regex" yaml:"test_regex"`
+	TestDirectory string `mapstructure:"test_directory" yaml:"test_directory"`
+	SlackAPIKey   string `mapstructure:"slack_api_key" yaml:"slack_api_key"`
+	SlackChannel  string `mapstructure:"slack_channel" yaml:"slack_channel"`
+	SlackUserID   string `mapstructure:"slack_user_id" yaml:"slack_user_id"`
 }

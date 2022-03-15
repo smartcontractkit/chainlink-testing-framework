@@ -209,12 +209,11 @@ func ReadWriteRemoteRunnerConfig() (*RemoteRunnerConfig, error) {
 // Prompts the user to create a remote runner config file
 func writeRemoteRunnerConfig(configLocation string) error {
 	conf := &RemoteRunnerConfig{
-		TestRegex:       "@soak-ocr",
-		TestDirectory:   filepath.Join(utils.ProjectRoot, "./suite/soak/tests"),
-		SlackWebhookURL: "https://hooks.slack.com/services/XXX",
-		SlackAPIKey:     "abcdefg",
-		SlackChannel:    "#team-a",
-		SlackUserID:     "U01xxxxx",
+		TestRegex:     "@soak-ocr",
+		TestDirectory: filepath.Join(utils.ProjectRoot, "./suite/soak/tests"),
+		SlackAPIKey:   "abcdefg",
+		SlackChannel:  "#team-a",
+		SlackUserID:   "U01xxxxx",
 	}
 	confBytes, err := yaml.Marshal(&conf)
 	if err != nil {

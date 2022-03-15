@@ -38,10 +38,6 @@ func DeployOCRContracts(
 		)
 		ocrInstances = append(ocrInstances, ocrInstance)
 		Expect(err).ShouldNot(HaveOccurred())
-		err = linkTokenContract.Transfer(ocrInstance.Address(), big.NewInt(2e18))
-		Expect(err).ShouldNot(HaveOccurred(), "Transfering LINK token to OCR instance %d shouldn't fail", i+1)
-		err = networks.Default.WaitForEvents()
-		Expect(err).ShouldNot(HaveOccurred(), "Waiting for Event subscriptions of OCR instance %d shouldn't fail", i+1)
 	}
 	return ocrInstances
 }

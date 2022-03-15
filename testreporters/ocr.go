@@ -71,45 +71,41 @@ func (o *OCRSoakTestReporter) SendSlackNotification(slackClient *slack.Client) e
 	if slackClient == nil {
 		slackClient = slack.New(slackAPIKey)
 	}
-	if slackWebhook == "" ||
-		slackWebhook == "https://hooks.slack.com/services/XXX" ||
-		slackWebhook == "https://hooks.slack.com/services/" {
-		return fmt.Errorf("Unable to send slack notification, Webhook not set '%s'", slackWebhook)
-	}
 
 	testFailed := ginkgo.CurrentSpecReport().Failed()
 	headerText := ":white_check_mark: OCR Soak Test PASSED :white_check_mark:"
-	webhookBlocks := []slack.Block{}
+	messageBlocks := []slack.Block{}
 	if testFailed {
 		headerText = ":x: OCR Soak Test FAILED :x:"
 	}
-	webhookBlocks = append(webhookBlocks,
+	messageBlocks = append(messageBlocks,
 		slack.NewHeaderBlock(slack.NewTextBlockObject("plain_text", headerText, true, false)))
-	webhookBlocks = append(webhookBlocks,
+	messageBlocks = append(messageBlocks,
 		slack.NewContextBlock("context_block", slack.NewTextBlockObject("plain_text", o.namespace, false, false)))
-	webhookBlocks = append(webhookBlocks, slack.NewDividerBlock())
-	webhookBlocks = append(webhookBlocks, slack.NewSectionBlock(slack.NewTextBlockObject("mrkdwn",
+	messageBlocks = append(messageBlocks, slack.NewDividerBlock())
+	messageBlocks = append(messageBlocks, slack.NewSectionBlock(slack.NewTextBlockObject("mrkdwn",
 		fmt.Sprintf("Test ran for %s\nSummary CSV created on _remote-test-runner_ at _%s_\nNotifying <@%s>",
 			ginkgo.CurrentSpecReport().RunTime.Truncate(time.Second), o.csvLocation, slackUserID), false, true), nil, nil))
 	if testFailed {
-		webhookBlocks = append(webhookBlocks,
+		messageBlocks = append(messageBlocks,
 			slack.NewHeaderBlock(slack.NewTextBlockObject("plain_text", headerText, true, false)))
-		webhookBlocks = append(webhookBlocks, slack.NewDividerBlock())
-		webhookBlocks = append(webhookBlocks,
-			slack.NewTextBlockObject("plain_text", ginkgo.CurrentSpecReport().FailureMessage(), false, false))
+		messageBlocks = append(messageBlocks, slack.NewDividerBlock())
+		messageBlocks = append(messageBlocks, slack.NewSectionBlock(
+			slack.NewTextBlockObject("plain_text", ginkgo.CurrentSpecReport().FailureMessage(), false, false), nil, nil))
 	}
-	wrappedMessage := &slack.WebhookMessage{Blocks: &slack.Blocks{BlockSet: webhookBlocks}}
-	if err := sendSlackWebhook(wrappedMessage); err != nil {
-		log.Error().Err(err).Msg("Error sending webhook")
+	ts, err := sendSlackMessage(slackClient, slack.MsgOptionBlocks(messageBlocks...))
+	if err != nil {
+		return err
 	}
 
 	return uploadSlackFile(slackClient, slack.FileUploadParameters{
-		Title:          fmt.Sprintf("OCR Soak Test Report %s", o.namespace),
-		Filetype:       "csv",
-		Filename:       fmt.Sprintf("ocr_soak_%s.csv", o.namespace),
-		File:           o.csvLocation,
-		InitialComment: fmt.Sprintf("OCR Soak Test Report %s. Notifying <@%s>", o.namespace, slackUserID),
-		Channels:       []string{slackChannel},
+		Title:           fmt.Sprintf("OCR Soak Test Report %s", o.namespace),
+		Filetype:        "csv",
+		Filename:        fmt.Sprintf("ocr_soak_%s.csv", o.namespace),
+		File:            o.csvLocation,
+		InitialComment:  fmt.Sprintf("OCR Soak Test Report %s.", o.namespace),
+		Channels:        []string{slackChannel},
+		ThreadTimestamp: ts,
 	})
 }
 

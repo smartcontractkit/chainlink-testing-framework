@@ -19,9 +19,9 @@ import (
 
 // OCRSoakTest defines a typical OCR soak test
 type OCRSoakTest struct {
-	Inputs *OCRSoakTestInputs
+	Inputs       *OCRSoakTestInputs
+	TestReporter testreporters.OCRSoakTestReporter
 
-	TestReporter   testreporters.OCRSoakTestReporter
 	ocrInstances   []contracts.OffchainAggregator
 	chainlinkNodes []client.Chainlink
 	mockServer     *client.MockserverClient

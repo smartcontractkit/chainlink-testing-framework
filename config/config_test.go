@@ -142,6 +142,5 @@ func TestRemoteRunnerConfig(t *testing.T) {
 	remoteConfig, err := config.ReadWriteRemoteRunnerConfig()
 	require.NoError(t, err)
 	require.Equal(t, "@soak-ocr", remoteConfig.TestRegex)
-	require.Equal(t, "https://hooks.slack.com/services/XXX", remoteConfig.SlackWebhookURL)
 	require.Equal(t, "abcdefg", remoteConfig.SlackAPIKey)
 }
