@@ -85,7 +85,7 @@ func (b *Networks) Teardown() error {
 
 // SetDefault chooses default client
 func (b *Networks) SetDefault(index int) error {
-	if len(b.clients) >= index {
+	if index > len(b.clients) {
 		return fmt.Errorf("index of %d is out of bounds", index)
 	}
 	b.Default = b.clients[index]
@@ -94,7 +94,7 @@ func (b *Networks) SetDefault(index int) error {
 
 // Get gets blockchain network (client) by name
 func (b *Networks) Get(index int) (BlockchainClient, error) {
-	if len(b.clients) >= index {
+	if index > len(b.clients) {
 		return nil, fmt.Errorf("index of %d is out of bounds", index)
 	}
 	return b.clients[index], nil
