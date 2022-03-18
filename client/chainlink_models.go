@@ -377,6 +377,49 @@ type TerraNodeCreate struct {
 	Data TerraNode `json:"data"`
 }
 
+type SolanaChainConfig struct {
+	BlockRate           null.String
+	ConfirmPollPeriod   null.String
+	OCR2CachePollPeriod null.String
+	OCR2CacheTTL        null.String
+	TxTimeout           null.String
+	SkipPreflight       null.Bool
+	Commitment          null.String
+}
+
+// SolanaChainAttributes is the model that represents the solana chain
+type SolanaChainAttributes struct {
+	ChainID string            `json:"chainID"`
+	Config  SolanaChainConfig `json:"config"`
+}
+
+// SolanaChain is the model that represents the solana chain when read
+type SolanaChain struct {
+	Attributes SolanaChainAttributes `json:"attributes"`
+}
+
+// SolanaChainCreate is the model that represents the solana chain when created
+type SolanaChainCreate struct {
+	Data SolanaChain `json:"data"`
+}
+
+// SolanaNodeAttributes is the model that represents the solana noded
+type SolanaNodeAttributes struct {
+	Name          string `json:"name"`
+	SolanaChainID string `json:"solanaChainId" db:"solana_chain_id"`
+	SolanaURL     string `json:"solanaURL" db:"solana_url"`
+}
+
+// SolanaNode is the model that represents the solana node when read
+type SolanaNode struct {
+	Attributes SolanaNodeAttributes `json:"attributes"`
+}
+
+// SolanaNodeCreate is the model that represents the solana node when created
+type SolanaNodeCreate struct {
+	Data SolanaNode `json:"data"`
+}
+
 // SpecForm is the form used when creating a v2 job spec, containing the TOML of the v2 job
 type SpecForm struct {
 	TOML string `json:"toml"`
