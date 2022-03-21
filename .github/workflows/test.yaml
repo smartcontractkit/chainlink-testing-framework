@@ -24,9 +24,10 @@ jobs:
           path: |
             ~/.cache/go-build
             ~/go/pkg/mod
-          key: ${{ runner.os }}-go1-${{ hashFiles('**/go.sum') }}
+            ~/go/bin
+          key: ${{ runner.os }}-go2-${{ hashFiles('**/go.sum') }}
           restore-keys: |
-            ${{ runner.os }}-go1-
+            ${{ runner.os }}-go2-
       - name: Download Go Vendor Packages and Ginkgo
         if: steps.cache-packages.outputs.cache-hit != 'true'
         run: make install_ci
