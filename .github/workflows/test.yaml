@@ -46,7 +46,7 @@ jobs:
           files: ./unit-test-coverage.out
           name: codecov-umbrella 
       - name: Publish Unit Test Results
-        uses: mikepenz/action-junit-report@v2
+        uses: mikepenz/action-junit-report@v3.0.1
         if: always()
         with:
           check_name: Unit Test Report
