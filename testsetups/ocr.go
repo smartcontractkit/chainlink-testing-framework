@@ -176,10 +176,9 @@ func (t *OCRSoakTest) checkLatestRound(expectedValue, roundNumber int) {
 		roundAnswerGroup.Add(1)
 		ocrInstance := ocrInstance
 		go func() {
-			defer func() {
-				GinkgoRecover() // This doesn't seem to work properly (ginkgo still panics without recovery). Possible Ginkgo bug?
-				roundAnswerGroup.Done()
-			}()
+			defer GinkgoRecover() // This doesn't seem to work properly (ginkgo still panics without recovery). Possible Ginkgo bug?
+			defer roundAnswerGroup.Done()
+
 			answer, err := ocrInstance.GetLatestAnswer(context.Background())
 			Expect(err).ShouldNot(HaveOccurred(), "Error retrieving latest answer from the OCR contract at %s", ocrInstance.Address())
 			log.Info().
