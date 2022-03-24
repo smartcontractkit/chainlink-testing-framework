@@ -36,7 +36,7 @@ var _ = Describe("VRF suite @vrf", func() {
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
 			e, err = environment.DeployOrLoadEnvironment(
-				environment.NewChainlinkConfig(nil),
+				environment.NewChainlinkConfig(nil, "chainlink-vrf"),
 				tools.ChartsRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred(), "Environment deployment shouldn't fail")
