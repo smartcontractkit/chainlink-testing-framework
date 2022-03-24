@@ -30,14 +30,13 @@ type KeeperBlockTimeTest struct {
 
 // KeeperBlockTimeTestInputs are all the required inputs for a Keeper Block Time Test
 type KeeperBlockTimeTestInputs struct {
-	NumberOfContracts        int                     // Number of upkeep contracts
-	KeeperContractSettings   *KeeperContractSettings // Settings of each keeper contract
-	Timeout                  time.Duration           // Timeout for the test
-	BlockRange               int64                   // How many blocks to run the test for
-	BlockInterval            int64                   // Interval of blocks that upkeeps are expected to be performed
-	ChainlinkNodeFunding     *big.Float              // Amount of ETH to fund each chainlink node with
-	ChainlinkNodeLinkFunding *big.Int                // Amount of LINK to fund each chainlink node with
-	CheckGasLimit            uint32                  // Max amount of gas that checkUpkeep uses for off-chain computation
+	NumberOfContracts      int                     // Number of upkeep contracts
+	KeeperContractSettings *KeeperContractSettings // Settings of each keeper contract
+	Timeout                time.Duration           // Timeout for the test
+	BlockRange             int64                   // How many blocks to run the test for
+	BlockInterval          int64                   // Interval of blocks that upkeeps are expected to be performed
+	ChainlinkNodeFunding   *big.Float              // Amount of ETH to fund each chainlink node with
+	CheckGasLimit          uint32                  // Max amount of gas that checkUpkeep uses for off-chain computation
 }
 
 // KeeperContractSettings represents the fine tuning settings for each upkeep contract
