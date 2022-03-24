@@ -43,10 +43,9 @@ var _ = Describe("Keeper performance suite @block-time-keeper", func() {
 						FallbackGasPrice:     big.NewInt(2e11),
 						FallbackLinkPrice:    big.NewInt(2e18),
 					},
-					BlockRange:               100,
-					BlockInterval:            20,
-					ChainlinkNodeFunding:     big.NewFloat(.01),
-					ChainlinkNodeLinkFunding: big.NewInt(5e18),
+					BlockRange:           100,
+					BlockInterval:        20,
+					ChainlinkNodeFunding: big.NewFloat(.001),
 				},
 			)
 			keeperBlockTimeTest.Setup(env)
