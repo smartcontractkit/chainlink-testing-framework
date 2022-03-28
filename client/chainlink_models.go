@@ -347,6 +347,7 @@ type TerraChainConfig struct {
 type TerraChainAttributes struct {
 	ChainID string           `json:"chainID"`
 	Config  TerraChainConfig `json:"config"`
+	FCDURL  string           `json:"fcdURL" db:"fcd_url"`
 }
 
 // TerraChain is the model that represents the terra chain when read
@@ -364,7 +365,6 @@ type TerraNodeAttributes struct {
 	Name          string `json:"name"`
 	TerraChainID  string `json:"terraChainId"`
 	TendermintURL string `json:"tendermintURL" db:"tendermint_url"`
-	FCDURL        string `json:"fcdURL" db:"fcd_url"`
 }
 
 // TerraNode is the model that represents the terra node when read
