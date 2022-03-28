@@ -43,7 +43,7 @@ var _ = Describe("Keeper suite @keeper", func() {
 		})
 
 		By("Connecting to launched resources", func() {
-			networkRegistry := client.NewNetworkRegistry()
+			networkRegistry := client.NewDefaultNetworkRegistry()
 			networks, err = networkRegistry.GetNetworks(env)
 			Expect(err).ShouldNot(HaveOccurred(), "Connecting to blockchain nodes shouldn't fail")
 			contractDeployer, err = contracts.NewContractDeployer(networks.Default)

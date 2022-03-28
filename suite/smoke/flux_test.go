@@ -49,7 +49,7 @@ var _ = Describe("Flux monitor suite @flux", func() {
 		})
 
 		By("Connecting to launched resources", func() {
-			networkRegistry := client.NewNetworkRegistry()
+			networkRegistry := client.NewDefaultNetworkRegistry()
 			nets, err = networkRegistry.GetNetworks(e)
 			Expect(err).ShouldNot(HaveOccurred(), "Connecting to blockchain nodes shouldn't fail")
 			cd, err = contracts.NewContractDeployer(nets.Default)

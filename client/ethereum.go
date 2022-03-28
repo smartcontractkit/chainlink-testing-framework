@@ -387,9 +387,14 @@ func NewEthereumMultiNodeClient(
 	return ecl, nil
 }
 
-// EthereumMultiNodeURLs returns the websocket URLs for a deployed Ethereum multi-node setup
+// SimulatedEthereumURLs returns the websocket URLs for a simulated geth network
 func SimulatedEthereumURLs(e *environment.Environment) ([]*url.URL, error) {
 	return e.Charts.Connections("geth").LocalURLsByPort("ws-rpc", environment.WS)
+}
+
+// SimulatedEthereumURLs returns the websocket URLs for a simulated geth network
+func SimulatedSoakEthereumURLs(e *environment.Environment) ([]*url.URL, error) {
+	return e.Charts.Connections("geth").RemoteURLsByPort("ws-rpc", environment.WS)
 }
 
 // LiveEthTestnetURLs indicates that there are no urls to fetch, except from the network config

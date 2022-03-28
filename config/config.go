@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -12,7 +13,7 @@ import (
 
 	"github.com/imdario/mergo"
 	"github.com/kelseyhightower/envconfig"
-	"github.com/smartcontractkit/helmenv/tools"
+	"github.com/smartcontractkit/integrations-framework/utils"
 	"gopkg.in/yaml.v3"
 
 	"github.com/rs/zerolog/log"
@@ -63,7 +64,7 @@ func defaultViper(dir string, file string) *viper.Viper {
 
 	v.AddConfigPath(dir)
 	v.AddConfigPath(".")
-	v.AddConfigPath(tools.ProjectRoot) // Default
+	v.AddConfigPath(utils.ProjectRoot) // Default
 	return v
 }
 
@@ -97,6 +98,7 @@ func LoadFrameworkConfig(cfgPath string) (*FrameworkConfig, error) {
 	}
 	if chartOverrides != "" {
 		os.Setenv("CHARTS", chartOverrides)
+		log.Debug().Str("Overrides", chartOverrides).Msg("Chart Overrides Set")
 	}
 	ProjectFrameworkSettings = cfg
 	return ProjectFrameworkSettings, err
@@ -177,4 +179,65 @@ func (cfg *FrameworkConfig) CreateChartOverrrides() (string, error) {
 
 	jsonChartOverrides, err := json.Marshal(chartOverrides)
 	return string(jsonChartOverrides), err
+}
+
+// ReadWriteRemoteRunnerConfig looks for an already existing remote config to read from, or asks the user to build one
+func ReadWriteRemoteRunnerConfig() (*RemoteRunnerConfig, error) {
+	var config *RemoteRunnerConfig
+	var err error
+	configLocation := utils.RemoteRunnerConfigLocation
+	// If no config already there, write an example one
+	if _, err := os.Stat(configLocation); errors.Is(err, os.ErrNotExist) {
+		log.Info().Str("Config Location", configLocation).Msg("Did not find config file, writing one")
+		if err = writeRemoteRunnerConfig(configLocation); err != nil {
+			return nil, err
+		}
+		log.Warn().Str("File", configLocation).Msg("Wrote an example config file for remote tests. Set proper values and re-run.")
+		return nil, fmt.Errorf("Wrote an example config file at %s. Please fill in values and log back in", configLocation)
+	} else if err != nil {
+		return nil, err
+	}
+	if config == nil {
+		config, err = readRemoteRunnerConfig(configLocation)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return config, nil
+}
+
+// Prompts the user to create a remote runner config file
+func writeRemoteRunnerConfig(configLocation string) error {
+	conf := &RemoteRunnerConfig{
+		TestRegex:       "@soak-ocr",
+		TestDirectory:   filepath.Join(utils.ProjectRoot, "./suite/soak/tests"),
+		SlackWebhookURL: "https://hooks.slack.com/services/XXX",
+		SlackAPIKey:     "abcdefg",
+		SlackChannel:    "#team-a",
+		SlackUserID:     "U01xxxxx",
+	}
+	confBytes, err := yaml.Marshal(&conf)
+	if err != nil {
+		return err
+	}
+	if err := ioutil.WriteFile(configLocation, confBytes, 0600); err != nil {
+		return err
+	}
+	log.Info().
+		Str("File", configLocation).
+		Msg("Wrote some default config settings, change them in the config file then run the test again")
+	return nil
+}
+
+// Reads in the runner config
+func readRemoteRunnerConfig(configLocation string) (*RemoteRunnerConfig, error) {
+	var config *RemoteRunnerConfig
+	remoteViper := viper.New()
+	remoteViper.SetConfigFile(configLocation)
+	if err := remoteViper.ReadInConfig(); err != nil {
+		return nil, err
+	}
+	err := remoteViper.Unmarshal(&config)
+	log.Info().Str("File", configLocation).Msg("Read Remote Runner Config")
+	return config, err
 }
