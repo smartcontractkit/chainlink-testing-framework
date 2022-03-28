@@ -17,7 +17,7 @@ require (
 	github.com/spf13/viper v1.10.1
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	gopkg.in/guregu/null.v4 v4.0.0
-	k8s.io/apimachinery v0.23.4
+	k8s.io/apimachinery v0.23.5
 )
 
 require (
