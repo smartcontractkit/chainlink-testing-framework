@@ -754,12 +754,13 @@ observationSource                      = """
 // and provide their answers
 type OCR2TaskJobSpec struct {
 	Name                     string            `toml:"name"`
+	JobType                  string            `toml:"type"`
 	ContractID               string            `toml:"contractID"`                             // Address of the OCR contract/account(s)
 	Relay                    string            `toml:"relay"`                                  // Name of blockchain relay to use
+	PluginType               string            `toml:"pluginType"`                             // Type of report plugin to use
 	RelayConfig              map[string]string `toml:"relayConfig"`                            // Relay spec object in stringified form
 	P2PPeerID                string            `toml:"p2pPeerID"`                              // This node's P2P ID
 	P2PBootstrapPeers        []P2PData         `toml:"p2pBootstrapPeers"`                      // P2P ID of the bootstrap node
-	IsBootstrapPeer          bool              `toml:"isBootstrapPeer"`                        // Typically false
 	OCRKeyBundleID           string            `toml:"ocrKeyBundleID"`                         // ID of this node's OCR key bundle
 	MonitoringEndpoint       string            `toml:"monitoringEndpoint"`                     // Typically "chain.link:4321"
 	TransmitterID            string            `toml:"transmitterID"`                          // ID of address this node will use to transmit
@@ -772,11 +773,11 @@ type OCR2TaskJobSpec struct {
 }
 
 // Type returns the type of the job
-func (o *OCR2TaskJobSpec) Type() string { return "offchainreporting2" }
+func (o *OCR2TaskJobSpec) Type() string { return o.JobType }
 
 // String representation of the job
 func (o *OCR2TaskJobSpec) String() (string, error) {
-	ocr2TemplateString := `type = "offchainreporting2"
+	ocr2TemplateString := `type = "{{ .JobType }}"
 schemaVersion                          = 1
 blockchainTimeout                      ={{if not .BlockChainTimeout}} "20s" {{else}} "{{.BlockChainTimeout}}" {{end}}
 contractConfigConfirmations            ={{if not .ContractConfirmations}} 3 {{else}} {{.ContractConfirmations}} {{end}}
@@ -794,16 +795,16 @@ p2pBootstrapPeers                      = [
 {{else}}
 p2pBootstrapPeers                      = []
 {{end}}
-isBootstrapPeer                        = {{.IsBootstrapPeer}}
 p2pPeerID                              = "{{.P2PPeerID}}"
-ocrKeyBundleID                         = "{{.OCRKeyBundleID}}"
 monitoringEndpoint                     ={{if not .MonitoringEndpoint}} "chain.link:4321" {{else}} "{{.MonitoringEndpoint}}" {{end}}
+{{if eq .JobType "offchainreporting2" }}
+pluginType                             = "{{ .PluginType }}"
+ocrKeyBundleID                         = "{{.OCRKeyBundleID}}"
 transmitterID                     		 = "{{.TransmitterID}}"
-{{if .IsBootstrapPeer}}
-{{else}}
 observationSource                      = """
 {{.ObservationSource}}
 """
+[pluginConfig]
 juelsPerFeeCoinSource                  = """
 {{.JuelsPerFeeCoinSource}}
 """
@@ -915,7 +916,7 @@ perform_upkeep_tx        [type=ethtx
                           evmChainID="$(jobSpec.evmChainID)"
                           data="$(encode_perform_upkeep_tx)"
                           gasLimit="$(jobSpec.performUpkeepGasLimit)"
-                          txMeta="{\\"jobID\\":$(jobSpec.jobID)}"]
+                          txMeta="{\\"jobID\\":$(jobSpec.jobID),\\"upkeepID\\":$(jobSpec.upkeepID)}"]
 encode_check_upkeep_tx -> check_upkeep_tx -> decode_check_upkeep_tx -> encode_perform_upkeep_tx -> perform_upkeep_tx`
 }
 
