@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 )
 
 // MockserverClient mockserver client
@@ -20,6 +22,7 @@ type MockserverConfig struct {
 
 // NewMockserverClient returns a mockserver client
 func NewMockserverClient(cfg *MockserverConfig) *MockserverClient {
+	log.Debug().Str("Local URL", cfg.LocalURL).Str("Remote URL", cfg.ClusterURL).Msg("Connected to MockServer")
 	return &MockserverClient{
 		Config:          cfg,
 		BasicHTTPClient: NewBasicHTTPClient(&http.Client{}, cfg.LocalURL),
@@ -41,6 +44,10 @@ func (em *MockserverClient) ClearExpectation(body interface{}) error {
 // SetValuePath sets an int for a path
 func (em *MockserverClient) SetValuePath(path string, v int) error {
 	sanitizedPath := strings.ReplaceAll(path, "/", "_")
+	log.Debug().Str("ID", fmt.Sprintf("%s_mock_id", sanitizedPath)).
+		Str("Path", path).
+		Int("Value", v).
+		Msg("Setting Mock Server Path")
 	initializer := HttpInitializer{
 		Id:      fmt.Sprintf("%s_mock_id", sanitizedPath),
 		Request: HttpRequest{Path: path},

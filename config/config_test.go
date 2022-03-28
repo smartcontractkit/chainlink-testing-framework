@@ -1,9 +1,12 @@
 package config_test
 
 import (
+	"errors"
+	"os"
 	"testing"
 
 	"github.com/smartcontractkit/integrations-framework/config"
+	"github.com/smartcontractkit/integrations-framework/utils"
 	"github.com/stretchr/testify/require"
 )
 
@@ -120,4 +123,25 @@ func TestChartCreation(t *testing.T) {
 	chart, err = chainlinkOnlyConfig.CreateChartOverrrides()
 	require.NoError(t, err)
 	require.JSONEq(t, chainlinkOnlyChartString, chart, "Expected a config with chainlink image, version, and env vars")
+}
+
+func TestRemoteRunnerConfig(t *testing.T) {
+	t.Parallel()
+
+	// Check if the config file already exists, if so, delete it
+	if _, err := os.Stat(utils.RemoteRunnerConfigLocation); err == nil {
+		err := os.Remove(utils.RemoteRunnerConfigLocation)
+		require.NoError(t, err)
+	} else if !errors.Is(err, os.ErrNotExist) {
+		require.NoError(t, err)
+	}
+	_, err := config.ReadWriteRemoteRunnerConfig()
+	require.Error(t, err, "Wrote an example config file at %s. Please fill in values and log back in", utils.RemoteRunnerConfigLocation)
+	require.FileExists(t, utils.RemoteRunnerConfigLocation)
+
+	remoteConfig, err := config.ReadWriteRemoteRunnerConfig()
+	require.NoError(t, err)
+	require.Equal(t, "@soak-ocr", remoteConfig.TestRegex)
+	require.Equal(t, "https://hooks.slack.com/services/XXX", remoteConfig.SlackWebhookURL)
+	require.Equal(t, "abcdefg", remoteConfig.SlackAPIKey)
 }
