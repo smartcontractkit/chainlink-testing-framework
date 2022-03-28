@@ -36,3 +36,10 @@ bin/
 
 # gauntlet test output
 gauntlet/yarn.lock
+
+# docs 
+_site
+.sass-cache
+.jekyll-cache
+.jekyll-metadata
+vendor
