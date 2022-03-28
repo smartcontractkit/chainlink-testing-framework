@@ -51,9 +51,16 @@ func (g *Gauntlet) GenerateRandomNetwork() {
 	log.Debug().Str("Network", g.Network).Msg("Generated Network Name")
 }
 
+type ExecCommandOptions struct {
+	ErrHandling       []string
+	CheckErrorsInRead bool
+	RetryCount        int
+	RetryDelay        time.Duration
+}
+
 // ExecCommand Executes a gauntlet command with the provided arguements.
 //  It will also check for any errors you specify in the output via the errHandling slice.
-func (g *Gauntlet) ExecCommand(args, errHandling []string) (string, error) {
+func (g *Gauntlet) ExecCommand(args []string, options ExecCommandOptions) (string, error) {
 	output := ""
 	// append gauntlet and network to args since it is always needed
 	updatedArgs := append([]string{"gauntlet"}, args...)
@@ -72,6 +79,12 @@ func (g *Gauntlet) ExecCommand(args, errHandling []string) (string, error) {
 	for err == nil {
 		log.Info().Str("stdout", line).Msg("Gauntlet")
 		output = fmt.Sprintf("%s%s", output, line)
+		if options.CheckErrorsInRead {
+			rerr := checkForErrors(options.ErrHandling, output)
+			if rerr != nil {
+				return output, rerr
+			}
+		}
 		line, err = reader.ReadString('\n')
 	}
 
@@ -80,10 +93,16 @@ func (g *Gauntlet) ExecCommand(args, errHandling []string) (string, error) {
 	for err == nil {
 		log.Info().Str("stderr", line).Msg("Gauntlet")
 		output = fmt.Sprintf("%s%s", output, line)
+		if options.CheckErrorsInRead {
+			rerr := checkForErrors(options.ErrHandling, output)
+			if rerr != nil {
+				return output, rerr
+			}
+		}
 		line, err = reader.ReadString('\n')
 	}
 
-	rerr := checkForErrors(errHandling, output)
+	rerr := checkForErrors(options.ErrHandling, output)
 	if rerr != nil {
 		return output, rerr
 	}
@@ -100,17 +119,21 @@ func (g *Gauntlet) ExecCommand(args, errHandling []string) (string, error) {
 }
 
 // ExecCommandWithRetries Some commands are safe to retry and in ci this can be even more so needed.
-func (g *Gauntlet) ExecCommandWithRetries(args, errHandling []string, retryCount int) (string, error) {
+func (g *Gauntlet) ExecCommandWithRetries(args []string, options ExecCommandOptions) (string, error) {
 	var output string
 	var err error
+	if options.RetryDelay == 0 {
+		// default to 5 seconds
+		options.RetryDelay = time.Second * 5
+	}
 	err = retry.Do(
 		func() error {
-			output, err = g.ExecCommand(args, errHandling)
+			output, err = g.ExecCommand(args, options)
 			return err
 		},
-		retry.Delay(time.Second*5),
-		retry.MaxDelay(time.Second*5),
-		retry.Attempts(uint(retryCount)),
+		retry.Delay(options.RetryDelay),
+		retry.MaxDelay(options.RetryDelay),
+		retry.Attempts(uint(options.RetryCount)),
 	)
 
 	return output, err
