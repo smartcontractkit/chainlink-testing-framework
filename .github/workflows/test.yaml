@@ -24,18 +24,13 @@ jobs:
           path: |
             ~/.cache/go-build
             ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+            ~/go/bin
+          key: ${{ runner.os }}-go2-${{ hashFiles('**/go.sum') }}
           restore-keys: |
-            ${{ runner.os }}-go-
-      - name: Download Go Vendor Packages
+            ${{ runner.os }}-go2-
+      - name: Download Go Vendor Packages and Ginkgo
         if: steps.cache-packages.outputs.cache-hit != 'true'
-        run: go mod download
-      - name: Install Ginkgo CLI
-        run: |
-          go get github.com/onsi/ginkgo/v2/ginkgo/generators@v2.1.2
-          go get github.com/onsi/ginkgo/v2/ginkgo/internal@v2.1.2
-          go get github.com/onsi/ginkgo/v2/ginkgo/labels@v2.1.2
-          go install github.com/onsi/ginkgo/v2/ginkgo
+        run: make install_ci
       - name: Run Tests
         run: |
           export PATH=$PATH:$(go env GOPATH)/bin
