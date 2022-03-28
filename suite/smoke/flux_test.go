@@ -40,7 +40,7 @@ var _ = Describe("Flux monitor suite @flux", func() {
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
 			e, err = environment.DeployOrLoadEnvironment(
-				environment.NewChainlinkConfig(environment.ChainlinkReplicas(3, nil)),
+				environment.NewChainlinkConfig(environment.ChainlinkReplicas(3, nil), "chainlink-flux"),
 				tools.ChartsRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred(), "Environment deployment shouldn't fail")

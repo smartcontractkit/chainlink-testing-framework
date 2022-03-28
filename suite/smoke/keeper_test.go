@@ -34,7 +34,7 @@ var _ = Describe("Keeper suite @keeper", func() {
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
 			env, err = environment.DeployOrLoadEnvironment(
-				environment.NewChainlinkConfig(environment.ChainlinkReplicas(6, nil)),
+				environment.NewChainlinkConfig(environment.ChainlinkReplicas(6, nil), "chainlink-keeper"),
 				tools.ChartsRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred(), "Environment deployment shouldn't fail")
