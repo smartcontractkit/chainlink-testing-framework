@@ -38,7 +38,7 @@ var _ = Describe("Keeper performance suite @performance-keeper", func() {
 		})
 
 		By("Connecting to launched resources", func() {
-			networkRegistry := client.NewNetworkRegistry()
+			networkRegistry := client.NewDefaultNetworkRegistry()
 			networks, err = networkRegistry.GetNetworks(env)
 			Expect(err).ShouldNot(HaveOccurred(), "Connecting to blockchain nodes shouldn't fail")
 			contractDeployer, err = contracts.NewContractDeployer(networks.Default)
@@ -65,9 +65,9 @@ var _ = Describe("Keeper performance suite @performance-keeper", func() {
 			Expect(err).ShouldNot(HaveOccurred(), "Deploying Link Token Contract shouldn't fail")
 			keeperBlockTimeTest = testsetups.NewKeeperBlockTimeTest(
 				testsetups.KeeperBlockTimeTestInputs{
-					NumberOfContracts: 10,
-					BlockRange:        100,
-					BlockInterval:     20,
+					NumberOfContracts: 20,
+					BlockRange:        1000,
+					BlockInterval:     50,
 					ContractDeployer:  contractDeployer,
 					ChainlinkNodes:    chainlinkNodes,
 					Networks:          networks,
