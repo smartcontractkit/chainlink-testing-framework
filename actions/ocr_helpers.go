@@ -156,7 +156,7 @@ func SetAllAdapterResponsesToDifferentValues(
 	}
 }
 
-// StartNewRound requests a new round from the ocr contract and waits for confirmation
+// StartNewRound requests a new round from the ocr contracts and waits for confirmation
 func StartNewRound(
 	roundNr int64,
 	ocrInstances []contracts.OffchainAggregator,
@@ -167,7 +167,7 @@ func StartNewRound(
 		for i := 0; i < len(ocrInstances); i++ {
 			err := ocrInstances[i].RequestNewRound()
 			Expect(err).ShouldNot(HaveOccurred(), "Requesting new round in OCR instance %d shouldn't fail", i+1)
-			ocrRound := contracts.NewOffchainAggregatorRoundConfirmer(ocrInstances[i], big.NewInt(roundNr), roundTimeout)
+			ocrRound := contracts.NewOffchainAggregatorRoundConfirmer(ocrInstances[i], big.NewInt(roundNr), roundTimeout, nil)
 			networks.Default.AddHeaderEventSubscription(ocrInstances[i].Address(), ocrRound)
 			err = networks.Default.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred(), "Waiting for Event subscriptions of OCR instance %d shouldn't fail", i+1)

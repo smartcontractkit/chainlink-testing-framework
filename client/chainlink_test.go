@@ -634,7 +634,6 @@ var _ = Describe("Chainlink @unit", func() {
 			Name:          "name",
 			TerraChainID:  "chainid",
 			TendermintURL: "http://tendermint.com",
-			FCDURL:        "http://fcd.com",
 		}
 		solAttr := SolanaNodeAttributes{
 			Name:          "name",
@@ -677,7 +676,6 @@ var _ = Describe("Chainlink @unit", func() {
 		Expect(resTerra.Data.Attributes.Name).Should(Equal(terraAttr.Name))
 		Expect(resTerra.Data.Attributes.TerraChainID).Should(Equal(terraAttr.TerraChainID))
 		Expect(resTerra.Data.Attributes.TendermintURL).Should(Equal(terraAttr.TendermintURL))
-		Expect(resTerra.Data.Attributes.FCDURL).Should(Equal(terraAttr.FCDURL))
 
 		resSol, err := c.CreateSolanaNode(&solAttr)
 		Expect(err).ShouldNot(HaveOccurred())

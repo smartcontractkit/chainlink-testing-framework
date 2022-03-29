@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/rs/zerolog/log"
+	"github.com/slack-go/slack"
 	"github.com/smartcontractkit/integrations-framework/client"
 )
 
@@ -18,6 +19,7 @@ type KeeperBlockTimeTestReporter struct {
 	Reports                        []KeeperBlockTimeTestReport `json:"reports"`
 	ReportMutex                    sync.Mutex
 	AttemptedChainlinkTransactions []*client.TransactionsData `json:"attemptedChainlinkTransactions"`
+	namespace                      string
 }
 
 // KeeperBlockTimeTestReport holds a report information for a single Upkeep Consumer contract
@@ -28,8 +30,12 @@ type KeeperBlockTimeTestReport struct {
 	AllMissedUpkeeps       []int64 `json:"allMissedUpkeeps"` // List of each time an upkeep was missed, represented by how many blocks it was missed by
 }
 
-func (k *KeeperBlockTimeTestReporter) WriteReport(folderPath string) error {
-	keeperReportFile, err := os.Create(filepath.Join(folderPath, "block_time_report.csv"))
+func (k *KeeperBlockTimeTestReporter) SetNamespace(namespace string) {
+	k.namespace = namespace
+}
+
+func (k *KeeperBlockTimeTestReporter) WriteReport(folderLocation string) error {
+	keeperReportFile, err := os.Create(filepath.Join(folderLocation, "./block_time_report.csv"))
 	if err != nil {
 		return err
 	}
@@ -71,13 +77,18 @@ func (k *KeeperBlockTimeTestReporter) WriteReport(folderPath string) error {
 	if err != nil {
 		return err
 	}
-	err = os.WriteFile(filepath.Join(folderPath, "attempted_transactions_report.json"), txs, 0600)
+	err = os.WriteFile(filepath.Join(folderLocation, "./attempted_transactions_report.json"), txs, 0600)
 	if err != nil {
 		return err
 	}
 
-	log.Info().Str("Report Location", folderPath).Msg("Successfully wrote report on Keeper Block Timing")
+	log.Info().Msg("Successfully wrote report on Keeper Block Timing")
 	return nil
+}
+
+// SendNotification TODO: Implement
+func (k *KeeperBlockTimeTestReporter) SendSlackNotification(slackClient *slack.Client) error {
+	panic("Implement me!")
 }
 
 // int64AvgMax helper calculates the avg and the max values in a list
