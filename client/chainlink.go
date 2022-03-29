@@ -70,6 +70,9 @@ type Chainlink interface {
 	CreateTerraChain(node *TerraChainAttributes) (*TerraChainCreate, error)
 	CreateTerraNode(node *TerraNodeAttributes) (*TerraNodeCreate, error)
 
+	CreateSolanaChain(node *SolanaChainAttributes) (*SolanaChainCreate, error)
+	CreateSolanaNode(node *SolanaNodeAttributes) (*SolanaNodeCreate, error)
+
 	RemoteIP() string
 	SetSessionCookie() error
 
@@ -442,6 +445,22 @@ func (c *chainlink) CreateTerraNode(node *TerraNodeAttributes) (*TerraNodeCreate
 	response := TerraNodeCreate{}
 	log.Info().Str("Node URL", c.Config.URL).Str("Name", node.Name).Msg("Creating Terra Node")
 	_, err := c.do(http.MethodPost, "/v2/nodes/terra", node, &response, http.StatusOK)
+	return &response, err
+}
+
+// CreateSolana creates a solana chain
+func (c *chainlink) CreateSolanaChain(chain *SolanaChainAttributes) (*SolanaChainCreate, error) {
+	response := SolanaChainCreate{}
+	log.Info().Str("Node URL", c.Config.URL).Str("Chain ID", chain.ChainID).Msg("Creating Solana Chain")
+	_, err := c.do(http.MethodPost, "/v2/chains/solana", chain, &response, http.StatusCreated)
+	return &response, err
+}
+
+// CreateSolanaNode creates a solana node
+func (c *chainlink) CreateSolanaNode(node *SolanaNodeAttributes) (*SolanaNodeCreate, error) {
+	response := SolanaNodeCreate{}
+	log.Info().Str("Node URL", c.Config.URL).Str("Name", node.Name).Msg("Creating Solana Node")
+	_, err := c.do(http.MethodPost, "/v2/nodes/solana", node, &response, http.StatusOK)
 	return &response, err
 }
 
