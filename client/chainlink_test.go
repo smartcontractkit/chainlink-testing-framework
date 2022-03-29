@@ -613,7 +613,6 @@ var _ = Describe("Chainlink @unit", func() {
 			Name:          "name",
 			TerraChainID:  "chainid",
 			TendermintURL: "http://tendermint.com",
-			FCDURL:        "http://fcd.com",
 		}
 		server := mockedServer(func(rw http.ResponseWriter, req *http.Request) {
 			endpoint := "/v2/nodes/terra"
@@ -638,7 +637,6 @@ var _ = Describe("Chainlink @unit", func() {
 		Expect(resp.Data.Attributes.Name).Should(Equal(attrs.Name))
 		Expect(resp.Data.Attributes.TerraChainID).Should(Equal(attrs.TerraChainID))
 		Expect(resp.Data.Attributes.TendermintURL).Should(Equal(attrs.TendermintURL))
-		Expect(resp.Data.Attributes.FCDURL).Should(Equal(attrs.FCDURL))
 	})
 })
 
