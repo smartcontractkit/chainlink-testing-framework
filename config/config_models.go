@@ -4,15 +4,16 @@ import "time"
 
 // FrameworkConfig common framework config
 type FrameworkConfig struct {
-	KeepEnvironments   string            `mapstructure:"keep_environments" yaml:"keep_environments"`
-	Logging            *LoggingConfig    `mapstructure:"logging" yaml:"logging"`
-	EnvironmentFile    string            `mapstructure:"environment_file" yaml:"environment_file"`
-	ChainlinkImage     string            `mapstructure:"chainlink_image" yaml:"chainlink_image"`
-	ChainlinkVersion   string            `mapstructure:"chainlink_version" yaml:"chainlink_version"`
-	ChainlinkEnvValues map[string]string `mapstructure:"chainlink_env_values" yaml:"chainlink_env_values"`
-	GethImage          string            `mapstructure:"geth_image" yaml:"geth_image"`
-	GethVersion        string            `mapstructure:"geth_version" yaml:"geth_version"`
-	GethArgs           []interface{}     `mapstructure:"geth_args" yaml:"geth_args"`
+	KeepEnvironments string         `mapstructure:"keep_environments" yaml:"keep_environments"`
+	Logging          *LoggingConfig `mapstructure:"logging" yaml:"logging"`
+	EnvironmentFile  string         `mapstructure:"environment_file" yaml:"environment_file"`
+	ChainlinkImage   string         `mapstructure:"chainlink_image" yaml:"chainlink_image"`
+	ChainlinkVersion string         `mapstructure:"chainlink_version" yaml:"chainlink_version"`
+	// ChainlinkEnvValues uses interface{} as the value because it's needed for proper helmchart merges
+	ChainlinkEnvValues map[string]interface{} `mapstructure:"chainlink_env_values" yaml:"chainlink_env_values"`
+	GethImage          string                 `mapstructure:"geth_image" yaml:"geth_image"`
+	GethVersion        string                 `mapstructure:"geth_version" yaml:"geth_version"`
+	GethArgs           []interface{}          `mapstructure:"geth_args" yaml:"geth_args"`
 }
 
 // ETHNetwork data to configure fully ETH compatible network

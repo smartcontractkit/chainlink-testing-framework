@@ -23,7 +23,11 @@ func TestSoak(t *testing.T) {
 	exePath, remoteConfig := buildGoTests(t)
 
 	env, err := environment.DeployLongTestEnvironment(
-		environment.NewChainlinkConfig(environment.ChainlinkReplicas(6, nil), "chainlink-soak-keeper"),
+		environment.NewChainlinkConfig(
+			environment.ChainlinkReplicas(6, config.ChainlinkVals()),
+			config.ProjectNetworkSettings.SelectedNetworks,
+			"chainlink-soak",
+		),
 		tools.ChartsRoot,
 		remoteConfig.TestRegex,                             // Name of the test to run
 		remoteConfig.SlackAPIKey,                           // API key to use to upload artifacts to slack

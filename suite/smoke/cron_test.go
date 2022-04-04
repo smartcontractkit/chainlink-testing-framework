@@ -11,10 +11,11 @@ import (
 	"github.com/smartcontractkit/helmenv/tools"
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/client"
+	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/utils"
 )
 
-var _ = Describe("Cronjob suite @cron", func() {
+var _ = FDescribe("Cronjob suite @cron", func() {
 	var (
 		err        error
 		job        *client.Job
@@ -26,7 +27,7 @@ var _ = Describe("Cronjob suite @cron", func() {
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
 			e, err = environment.DeployOrLoadEnvironment(
-				environment.NewChainlinkConfig(nil, ""),
+				environment.NewChainlinkConfig(config.ChainlinkVals(), config.ProjectNetworkSettings.SelectedNetworks, "chainlink-cron"),
 				tools.ChartsRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred(), "Environment deployment shouldn't fail")

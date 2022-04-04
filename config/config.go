@@ -2,7 +2,6 @@
 package config
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -35,6 +34,23 @@ type NetworkSettings map[string]map[string]interface{}
 var ProjectFrameworkSettings *FrameworkConfig
 var ProjectNetworkSettings *NetworksConfig
 var ProjectConfigDirectory string
+
+// ChainlinkVals formats Chainlink values set in the framework config to be passed to Chainlink deployments
+func ChainlinkVals() map[string]interface{} {
+	values := map[string]interface{}{}
+	if len(ProjectFrameworkSettings.ChainlinkEnvValues) > 0 {
+		values["env"] = ProjectFrameworkSettings.ChainlinkEnvValues
+	}
+	if ProjectFrameworkSettings.ChainlinkImage != "" {
+		values["chainlink"] = map[string]interface{}{
+			"image": map[string]interface{}{
+				"image":   ProjectFrameworkSettings.ChainlinkImage,
+				"version": ProjectFrameworkSettings.ChainlinkVersion,
+			},
+		}
+	}
+	return values
+}
 
 // Decode is used by envconfig to initialise the custom Charts type with populated values
 // This function will take a JSON object representing charts, and unmarshal it into the existing object to "merge" the
@@ -92,14 +108,6 @@ func LoadFrameworkConfig(cfgPath string) (*FrameworkConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	chartOverrides, err := cfg.CreateChartOverrrides()
-	if err != nil {
-		return nil, err
-	}
-	if chartOverrides != "" {
-		os.Setenv("CHARTS", chartOverrides)
-		log.Debug().Str("Overrides", chartOverrides).Msg("Chart Overrides Set")
-	}
 	ProjectFrameworkSettings = cfg
 	return ProjectFrameworkSettings, err
 }
@@ -143,44 +151,6 @@ func (l *LocalStore) Fetch() ([]string, error) {
 	return l.RawKeys, nil
 }
 
-// CreateChartOverrrides checks the framework config to see if the user has supplied any values to override the default helm
-// chart values. It returns a JSON block that can be set to the `CHARTS` environment variable that the helmenv library
-// will read from. This will merge the override values with the default values for the appropriate charts.
-func (cfg *FrameworkConfig) CreateChartOverrrides() (string, error) {
-	chartOverrides := ChartOverrides{}
-	// Don't marshall chainlink if there's no chainlink values provided
-	if cfg.ChainlinkImage != "" || cfg.ChainlinkVersion != "" || len(cfg.ChainlinkEnvValues) != 0 {
-		chartOverrides.ChainlinkChartOverrride = &ChainlinkChart{
-			Values: &ChainlinkValuesWrapper{
-				ChainlinkVals: &ChainlinkValues{
-					Image: &ChainlinkImage{
-						Image:   cfg.ChainlinkImage,
-						Version: cfg.ChainlinkVersion,
-					},
-				},
-				EnvironmentVariables: cfg.ChainlinkEnvValues,
-			},
-		}
-	}
-	// Don't marshall geth if there's no geth values provided
-	if cfg.GethImage != "" || cfg.GethVersion != "" || len(cfg.GethArgs) != 0 {
-		chartOverrides.GethChartOverride = &GethChart{
-			Values: &GethValuesWrapper{
-				GethVals: &GethValues{
-					Image: &GethImage{
-						Image:   cfg.GethImage,
-						Version: cfg.GethVersion,
-					},
-				},
-				Args: cfg.GethArgs,
-			},
-		}
-	}
-
-	jsonChartOverrides, err := json.Marshal(chartOverrides)
-	return string(jsonChartOverrides), err
-}
-
 // ReadWriteRemoteRunnerConfig looks for an already existing remote config to read from, or asks the user to build one
 func ReadWriteRemoteRunnerConfig() (*RemoteRunnerConfig, error) {
 	var config *RemoteRunnerConfig
@@ -212,7 +182,7 @@ func writeRemoteRunnerConfig(configLocation string) error {
 		TestRegex:     "@soak-ocr",
 		TestDirectory: filepath.Join(utils.ProjectRoot, "./suite/soak/tests"),
 		SlackAPIKey:   "abcdefg",
-		SlackChannel:  "#team-a",
+		SlackChannel:  "C01xxxxx",
 		SlackUserID:   "U01xxxxx",
 	}
 	confBytes, err := yaml.Marshal(&conf)

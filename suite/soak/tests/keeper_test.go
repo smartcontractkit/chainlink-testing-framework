@@ -33,7 +33,7 @@ var _ = Describe("Keeper performance suite @block-time-keeper", func() {
 		By("Setup the Keeper test", func() {
 			keeperBlockTimeTest = testsetups.NewKeeperBlockTimeTest(
 				testsetups.KeeperBlockTimeTestInputs{
-					NumberOfContracts: 101,
+					NumberOfContracts: 501,
 					KeeperContractSettings: &testsetups.KeeperContractSettings{
 						PaymentPremiumPPB:    uint32(200000000),
 						BlockCountPerTurn:    big.NewInt(3),

@@ -13,6 +13,7 @@ import (
 	"github.com/smartcontractkit/helmenv/environment"
 	"github.com/smartcontractkit/helmenv/tools"
 	"github.com/smartcontractkit/integrations-framework/actions"
+	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/utils"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -40,7 +41,11 @@ var _ = Describe("Flux monitor suite @flux", func() {
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
 			e, err = environment.DeployOrLoadEnvironment(
-				environment.NewChainlinkConfig(environment.ChainlinkReplicas(3, nil), ""),
+				environment.NewChainlinkConfig(
+					environment.ChainlinkReplicas(3, config.ChainlinkVals()),
+					config.ProjectNetworkSettings.SelectedNetworks,
+					"chainlink-flux",
+				),
 				tools.ChartsRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred(), "Environment deployment shouldn't fail")
