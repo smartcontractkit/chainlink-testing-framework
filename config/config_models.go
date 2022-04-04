@@ -11,9 +11,6 @@ type FrameworkConfig struct {
 	ChainlinkVersion string         `mapstructure:"chainlink_version" yaml:"chainlink_version"`
 	// ChainlinkEnvValues uses interface{} as the value because it's needed for proper helmchart merges
 	ChainlinkEnvValues map[string]interface{} `mapstructure:"chainlink_env_values" yaml:"chainlink_env_values"`
-	GethImage          string                 `mapstructure:"geth_image" yaml:"geth_image"`
-	GethVersion        string                 `mapstructure:"geth_version" yaml:"geth_version"`
-	GethArgs           []interface{}          `mapstructure:"geth_args" yaml:"geth_args"`
 }
 
 // ETHNetwork data to configure fully ETH compatible network
@@ -56,7 +53,8 @@ type NetworksConfig struct {
 
 // LoggingConfig for logging
 type LoggingConfig struct {
-	Level int8 `mapstructure:"level" yaml:"logging"`
+	WritePodLogs string `mapstructure:"write_pod_logs" yaml:"write_pod_logs"`
+	Level        int8   `mapstructure:"level" yaml:"level"`
 }
 
 // ChartOverrides enables building json styled chart overrides for the deployed chart values and environment variables

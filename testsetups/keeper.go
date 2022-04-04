@@ -23,9 +23,12 @@ type KeeperBlockTimeTest struct {
 	TestReporter testreporters.KeeperBlockTimeTestReporter
 
 	keeperConsumerContracts []contracts.KeeperConsumerPerformance
-	chainlinkNodes          []client.Chainlink
 	mockServer              *client.MockserverClient
-	defaultNetwork          client.BlockchainClient
+
+	env            *environment.Environment
+	chainlinkNodes []client.Chainlink
+	networks       *client.Networks
+	defaultNetwork client.BlockchainClient
 }
 
 // KeeperBlockTimeTestInputs are all the required inputs for a Keeper Block Time Test
@@ -60,13 +63,15 @@ func NewKeeperBlockTimeTest(inputs KeeperBlockTimeTestInputs) *KeeperBlockTimeTe
 // Setup prepares contracts for the test
 func (k *KeeperBlockTimeTest) Setup(env *environment.Environment) {
 	k.ensureInputValues()
+	k.env = env
 	inputs := k.Inputs
+	var err error
 
 	// Connect to networks and prepare for contract deployment
 	networkRegistry := client.NewSoakNetworkRegistry()
-	networks, err := networkRegistry.GetNetworks(env)
+	k.networks, err = networkRegistry.GetNetworks(k.env)
 	Expect(err).ShouldNot(HaveOccurred(), "Connecting to blockchain nodes shouldn't fail")
-	k.defaultNetwork = networks.Default
+	k.defaultNetwork = k.networks.Default
 	contractDeployer, err := contracts.NewContractDeployer(k.defaultNetwork)
 	Expect(err).ShouldNot(HaveOccurred(), "Building a new contract deployer shouldn't fail")
 	k.chainlinkNodes, err = client.ConnectChainlinkNodesSoak(env)
@@ -242,6 +247,11 @@ func (k *KeeperBlockTimeTest) Run() {
 		Expect(err).ShouldNot(HaveOccurred(), "Error retrieving transaction data from chainlink node")
 		k.TestReporter.AttemptedChainlinkTransactions = append(k.TestReporter.AttemptedChainlinkTransactions, txData)
 	}
+}
+
+// Networks returns the networks that the test is running on
+func (k *KeeperBlockTimeTest) TearDownVals() (*environment.Environment, *client.Networks, []client.Chainlink, testreporters.TestReporter) {
+	return k.env, k.networks, k.chainlinkNodes, &k.TestReporter
 }
 
 // ensureValues ensures that all values needed to run the test are present

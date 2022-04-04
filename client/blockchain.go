@@ -45,6 +45,7 @@ type BlockchainClient interface {
 	GetDefaultWallet() *EthereumWallet
 
 	EstimateCostForChainlinkOperations(amountOfOperations int) (*big.Float, error)
+	EstimateTransactionGasCost() (*big.Int, error)
 
 	Get() interface{}
 	GetNetworkName() string
@@ -85,7 +86,7 @@ func (b *Networks) Teardown() error {
 
 // SetDefault chooses default client
 func (b *Networks) SetDefault(index int) error {
-	if len(b.clients) >= index {
+	if index > len(b.clients) {
 		return fmt.Errorf("index of %d is out of bounds", index)
 	}
 	b.Default = b.clients[index]
@@ -94,10 +95,15 @@ func (b *Networks) SetDefault(index int) error {
 
 // Get gets blockchain network (client) by name
 func (b *Networks) Get(index int) (BlockchainClient, error) {
-	if len(b.clients) >= index {
+	if index > len(b.clients) {
 		return nil, fmt.Errorf("index of %d is out of bounds", index)
 	}
 	return b.clients[index], nil
+}
+
+// AllNetworks returns all the network clients
+func (b *Networks) AllNetworks() []BlockchainClient {
+	return b.clients
 }
 
 // ConnectMockServer creates a connection to a deployed mockserver in the environment
@@ -209,10 +215,8 @@ func (n *NetworkRegistry) GetNetworks(env *environment.Environment) (*Networks, 
 		clients = append(clients, client)
 	}
 	var defaultClient BlockchainClient
-	if len(clients) == 1 {
-		for _, c := range clients {
-			defaultClient = c
-		}
+	if len(clients) >= 1 {
+		defaultClient = clients[0]
 	}
 	return &Networks{
 		clients: clients,

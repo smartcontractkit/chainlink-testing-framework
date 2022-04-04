@@ -245,7 +245,9 @@ type ETHKeyData struct {
 
 // ETHKeyAttributes is the model that represents the created ETH keys when read
 type ETHKeyAttributes struct {
-	Address string `json:"address"`
+	Address    string `json:"address"`
+	ETHBalance string `json:"ethBalance"`
+	ChainID    string `json:"evmChainID"`
 }
 
 // TxKeys is the model that represents the created keys when read
@@ -273,6 +275,10 @@ type TxKeyAttributes struct {
 type TransactionsData struct {
 	Data []TransactionData    `json:"data"`
 	Meta TransactionsMetaData `json:"meta"`
+}
+
+type SingleTransactionDataWrapper struct {
+	Data TransactionData `json:"data"`
 }
 
 type TransactionData struct {
@@ -347,6 +353,7 @@ type TerraChainConfig struct {
 type TerraChainAttributes struct {
 	ChainID string           `json:"chainID"`
 	Config  TerraChainConfig `json:"config"`
+	FCDURL  string           `json:"fcdURL" db:"fcd_url"`
 }
 
 // TerraChain is the model that represents the terra chain when read
@@ -364,7 +371,6 @@ type TerraNodeAttributes struct {
 	Name          string `json:"name"`
 	TerraChainID  string `json:"terraChainId"`
 	TendermintURL string `json:"tendermintURL" db:"tendermint_url"`
-	FCDURL        string `json:"fcdURL" db:"fcd_url"`
 }
 
 // TerraNode is the model that represents the terra node when read
@@ -375,6 +381,49 @@ type TerraNode struct {
 // TerraNodeCreate is the model that represents the terra node when created
 type TerraNodeCreate struct {
 	Data TerraNode `json:"data"`
+}
+
+type SolanaChainConfig struct {
+	BlockRate           null.String
+	ConfirmPollPeriod   null.String
+	OCR2CachePollPeriod null.String
+	OCR2CacheTTL        null.String
+	TxTimeout           null.String
+	SkipPreflight       null.Bool
+	Commitment          null.String
+}
+
+// SolanaChainAttributes is the model that represents the solana chain
+type SolanaChainAttributes struct {
+	ChainID string            `json:"chainID"`
+	Config  SolanaChainConfig `json:"config"`
+}
+
+// SolanaChain is the model that represents the solana chain when read
+type SolanaChain struct {
+	Attributes SolanaChainAttributes `json:"attributes"`
+}
+
+// SolanaChainCreate is the model that represents the solana chain when created
+type SolanaChainCreate struct {
+	Data SolanaChain `json:"data"`
+}
+
+// SolanaNodeAttributes is the model that represents the solana noded
+type SolanaNodeAttributes struct {
+	Name          string `json:"name"`
+	SolanaChainID string `json:"solanaChainId" db:"solana_chain_id"`
+	SolanaURL     string `json:"solanaURL" db:"solana_url"`
+}
+
+// SolanaNode is the model that represents the solana node when read
+type SolanaNode struct {
+	Attributes SolanaNodeAttributes `json:"attributes"`
+}
+
+// SolanaNodeCreate is the model that represents the solana node when created
+type SolanaNodeCreate struct {
+	Data SolanaNode `json:"data"`
 }
 
 // SpecForm is the form used when creating a v2 job spec, containing the TOML of the v2 job
@@ -748,12 +797,13 @@ observationSource                      = """
 // and provide their answers
 type OCR2TaskJobSpec struct {
 	Name                     string            `toml:"name"`
+	JobType                  string            `toml:"type"`
 	ContractID               string            `toml:"contractID"`                             // Address of the OCR contract/account(s)
 	Relay                    string            `toml:"relay"`                                  // Name of blockchain relay to use
+	PluginType               string            `toml:"pluginType"`                             // Type of report plugin to use
 	RelayConfig              map[string]string `toml:"relayConfig"`                            // Relay spec object in stringified form
 	P2PPeerID                string            `toml:"p2pPeerID"`                              // This node's P2P ID
 	P2PBootstrapPeers        []P2PData         `toml:"p2pBootstrapPeers"`                      // P2P ID of the bootstrap node
-	IsBootstrapPeer          bool              `toml:"isBootstrapPeer"`                        // Typically false
 	OCRKeyBundleID           string            `toml:"ocrKeyBundleID"`                         // ID of this node's OCR key bundle
 	MonitoringEndpoint       string            `toml:"monitoringEndpoint"`                     // Typically "chain.link:4321"
 	TransmitterID            string            `toml:"transmitterID"`                          // ID of address this node will use to transmit
@@ -766,11 +816,11 @@ type OCR2TaskJobSpec struct {
 }
 
 // Type returns the type of the job
-func (o *OCR2TaskJobSpec) Type() string { return "offchainreporting2" }
+func (o *OCR2TaskJobSpec) Type() string { return o.JobType }
 
 // String representation of the job
 func (o *OCR2TaskJobSpec) String() (string, error) {
-	ocr2TemplateString := `type = "offchainreporting2"
+	ocr2TemplateString := `type = "{{ .JobType }}"
 schemaVersion                          = 1
 blockchainTimeout                      ={{if not .BlockChainTimeout}} "20s" {{else}} "{{.BlockChainTimeout}}" {{end}}
 contractConfigConfirmations            ={{if not .ContractConfirmations}} 3 {{else}} {{.ContractConfirmations}} {{end}}
@@ -788,16 +838,16 @@ p2pBootstrapPeers                      = [
 {{else}}
 p2pBootstrapPeers                      = []
 {{end}}
-isBootstrapPeer                        = {{.IsBootstrapPeer}}
 p2pPeerID                              = "{{.P2PPeerID}}"
-ocrKeyBundleID                         = "{{.OCRKeyBundleID}}"
 monitoringEndpoint                     ={{if not .MonitoringEndpoint}} "chain.link:4321" {{else}} "{{.MonitoringEndpoint}}" {{end}}
+{{if eq .JobType "offchainreporting2" }}
+pluginType                             = "{{ .PluginType }}"
+ocrKeyBundleID                         = "{{.OCRKeyBundleID}}"
 transmitterID                     		 = "{{.TransmitterID}}"
-{{if .IsBootstrapPeer}}
-{{else}}
 observationSource                      = """
 {{.ObservationSource}}
 """
+[pluginConfig]
 juelsPerFeeCoinSource                  = """
 {{.JuelsPerFeeCoinSource}}
 """
@@ -909,7 +959,7 @@ perform_upkeep_tx        [type=ethtx
                           evmChainID="$(jobSpec.evmChainID)"
                           data="$(encode_perform_upkeep_tx)"
                           gasLimit="$(jobSpec.performUpkeepGasLimit)"
-                          txMeta="{\\"jobID\\":$(jobSpec.jobID)}"]
+                          txMeta="{\\"jobID\\":$(jobSpec.jobID),\\"upkeepID\\":$(jobSpec.upkeepID)}"]
 encode_check_upkeep_tx -> check_upkeep_tx -> decode_check_upkeep_tx -> encode_perform_upkeep_tx -> perform_upkeep_tx`
 }
 

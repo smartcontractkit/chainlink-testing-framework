@@ -18,8 +18,6 @@ func TestFrameworkConfig(t *testing.T) {
 
 	require.Equal(t, "testChainlinkImage", cfg.ChainlinkImage)
 	require.Equal(t, "testChainlinkVersion", cfg.ChainlinkVersion)
-	require.Equal(t, "testGethImage", cfg.GethImage)
-	require.Equal(t, "testGethVersion", cfg.GethVersion)
 
 	testEnvVals := map[string]string{
 		"test_string_val": "someString",

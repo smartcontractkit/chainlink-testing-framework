@@ -46,3 +46,8 @@ remote_runner_config.yaml
 
 # Common report file format
 *.csv
+
+# docs
+docs/_site/
+docs/.sass-cache/
+docs/Gemfile.lock

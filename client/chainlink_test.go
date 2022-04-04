@@ -3,6 +3,7 @@ package client
 //revive:disable:defer
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"net/http"
@@ -435,6 +436,7 @@ var _ = Describe("Chainlink @unit", func() {
 		mockTxData := TransactionsData{}
 		err := json.Unmarshal([]byte(mockTxString), &mockTxData)
 		Expect(err).ShouldNot(HaveOccurred())
+
 		server := mockedServer(func(rw http.ResponseWriter, req *http.Request) {
 			actualEndpoint := "/v2/transactions"
 			attemptsEndpoint := "/v2/tx_attempts"
@@ -462,13 +464,35 @@ var _ = Describe("Chainlink @unit", func() {
 
 	// Mocks the reading transactions and attempted transactions
 	It("can send ETH transactions", func() {
+		mockTxString := `{"data": {
+			"type": "transactions",
+			"id": "",
+			"attributes": {
+				"state": "in_progress",
+				"data": "",
+				"from": "",
+				"gasLimit": "21000",
+				"gasPrice": "",
+				"hash": "",
+				"rawHex": "",
+				"nonce": "1",
+				"sentAt": "199",
+				"to": "0x610178da211fef7d417bc0e6fed39f05609ad788",
+				"value": "0.000000000000000000",
+				"evmChainID": "1337"
+			}
+		}}`
+		mockTxData := SingleTransactionDataWrapper{}
+		err := json.Unmarshal([]byte(mockTxString), &mockTxData)
+		Expect(err).ShouldNot(HaveOccurred())
+
 		server := mockedServer(func(rw http.ResponseWriter, req *http.Request) {
 			switch req.Method {
 			case http.MethodPost:
 				if req.URL.Path == "/sessions" {
 					writeCookie(rw)
 				} else {
-					writeResponse(rw, http.StatusOK, nil)
+					writeResponse(rw, http.StatusOK, mockTxData)
 				}
 			}
 		})
@@ -581,18 +605,34 @@ var _ = Describe("Chainlink @unit", func() {
 
 	// Mocks the creation, read cycle for chains
 	It("can create chains", func() {
-		attrs := TerraChainAttributes{
-			ChainID: "chainid",
+		terraAttr := TerraChainAttributes{
+			ChainID: "chainId",
 		}
+		solAttr := SolanaChainAttributes{
+			ChainID: "chainId",
+		}
+
 		server := mockedServer(func(rw http.ResponseWriter, req *http.Request) {
-			endpoint := "/v2/chains/terra"
 			switch req.Method {
 			case http.MethodPost:
-				Expect(req.URL.Path).Should(Or(Equal(endpoint), Equal("/sessions")))
-				if req.URL.Path == "/sessions" {
+				switch req.URL.Path {
+				case "/sessions":
 					writeCookie(rw)
-				} else {
-					writeResponse(rw, http.StatusCreated, TerraChainCreate{TerraChain{attrs}})
+				case "/v2/chains/terra":
+					writeResponse(rw, http.StatusCreated, TerraChainCreate{
+						Data: TerraChain{
+							Attributes: terraAttr,
+						},
+					})
+				case "/v2/chains/solana":
+					writeResponse(rw, http.StatusCreated, SolanaChainCreate{
+						Data: SolanaChain{
+							Attributes: solAttr,
+						},
+					})
+				default:
+					// error if unknown path
+					Expect(errors.New("unknown path")).ShouldNot(HaveOccurred())
 				}
 			}
 		})
@@ -602,28 +642,49 @@ var _ = Describe("Chainlink @unit", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		c.SetClient(server.Client())
 
-		resp, err := c.CreateTerraChain(&attrs)
+		resTerra, err := c.CreateTerraChain(&terraAttr)
 		Expect(err).ShouldNot(HaveOccurred())
-		Expect(resp.Data.Attributes.ChainID).Should(Equal(attrs.ChainID))
+		Expect(resTerra.Data.Attributes.ChainID).Should(Equal(terraAttr.ChainID))
+
+		resSol, err := c.CreateSolanaChain(&solAttr)
+		Expect(err).ShouldNot(HaveOccurred())
+		Expect(resSol.Data.Attributes.ChainID).Should(Equal(solAttr.ChainID))
 	})
 
 	// Mocks the creation, read cycle for nodes
 	It("can create nodes", func() {
-		attrs := TerraNodeAttributes{
+		terraAttr := TerraNodeAttributes{
 			Name:          "name",
 			TerraChainID:  "chainid",
 			TendermintURL: "http://tendermint.com",
-			FCDURL:        "http://fcd.com",
 		}
+		solAttr := SolanaNodeAttributes{
+			Name:          "name",
+			SolanaChainID: "chainid",
+			SolanaURL:     "http://solana.com",
+		}
+
 		server := mockedServer(func(rw http.ResponseWriter, req *http.Request) {
-			endpoint := "/v2/nodes/terra"
 			switch req.Method {
 			case http.MethodPost:
-				Expect(req.URL.Path).Should(Or(Equal(endpoint), Equal("/sessions")))
-				if req.URL.Path == "/sessions" {
+				switch req.URL.Path {
+				case "/sessions":
 					writeCookie(rw)
-				} else {
-					writeResponse(rw, http.StatusOK, TerraNodeCreate{TerraNode{attrs}})
+				case "/v2/nodes/terra":
+					writeResponse(rw, http.StatusOK, TerraNodeCreate{
+						Data: TerraNode{
+							Attributes: terraAttr,
+						},
+					})
+				case "/v2/nodes/solana":
+					writeResponse(rw, http.StatusOK, SolanaNodeCreate{
+						Data: SolanaNode{
+							Attributes: solAttr,
+						},
+					})
+				default:
+					// error if unknown path
+					Expect(errors.New("unknown path")).ShouldNot(HaveOccurred())
 				}
 			}
 		})
@@ -633,12 +694,17 @@ var _ = Describe("Chainlink @unit", func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		c.SetClient(server.Client())
 
-		resp, err := c.CreateTerraNode(&attrs)
+		resTerra, err := c.CreateTerraNode(&terraAttr)
 		Expect(err).ShouldNot(HaveOccurred())
-		Expect(resp.Data.Attributes.Name).Should(Equal(attrs.Name))
-		Expect(resp.Data.Attributes.TerraChainID).Should(Equal(attrs.TerraChainID))
-		Expect(resp.Data.Attributes.TendermintURL).Should(Equal(attrs.TendermintURL))
-		Expect(resp.Data.Attributes.FCDURL).Should(Equal(attrs.FCDURL))
+		Expect(resTerra.Data.Attributes.Name).Should(Equal(terraAttr.Name))
+		Expect(resTerra.Data.Attributes.TerraChainID).Should(Equal(terraAttr.TerraChainID))
+		Expect(resTerra.Data.Attributes.TendermintURL).Should(Equal(terraAttr.TendermintURL))
+
+		resSol, err := c.CreateSolanaNode(&solAttr)
+		Expect(err).ShouldNot(HaveOccurred())
+		Expect(resSol.Data.Attributes.Name).Should(Equal(solAttr.Name))
+		Expect(resSol.Data.Attributes.SolanaChainID).Should(Equal(solAttr.SolanaChainID))
+		Expect(resSol.Data.Attributes.SolanaURL).Should(Equal(solAttr.SolanaURL))
 	})
 })
 

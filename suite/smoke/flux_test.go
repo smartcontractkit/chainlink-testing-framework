@@ -30,7 +30,7 @@ var _ = Describe("Flux monitor suite @flux", func() {
 		cd               contracts.ContractDeployer
 		lt               contracts.LinkToken
 		fluxInstance     contracts.FluxAggregator
-		cls              []client.Chainlink
+		chainlinkNodes   []client.Chainlink
 		mockserver       *client.MockserverClient
 		nodeAddresses    []common.Address
 		adapterPath      string
@@ -59,9 +59,9 @@ var _ = Describe("Flux monitor suite @flux", func() {
 			Expect(err).ShouldNot(HaveOccurred(), "Connecting to blockchain nodes shouldn't fail")
 			cd, err = contracts.NewContractDeployer(nets.Default)
 			Expect(err).ShouldNot(HaveOccurred(), "Deploying contracts shouldn't fail")
-			cls, err = client.ConnectChainlinkNodes(e)
+			chainlinkNodes, err = client.ConnectChainlinkNodes(e)
 			Expect(err).ShouldNot(HaveOccurred(), "Connecting to chainlink nodes shouldn't fail")
-			nodeAddresses, err = actions.ChainlinkNodeAddresses(cls)
+			nodeAddresses, err = actions.ChainlinkNodeAddresses(chainlinkNodes)
 			Expect(err).ShouldNot(HaveOccurred(), "Retreiving on-chain wallet addresses for chainlink nodes shouldn't fail")
 			mockserver, err = client.ConnectMockServer(e)
 			Expect(err).ShouldNot(HaveOccurred(), "Creating mock server client shouldn't fail")
@@ -89,7 +89,7 @@ var _ = Describe("Flux monitor suite @flux", func() {
 		})
 
 		By("Funding Chainlink nodes", func() {
-			err = actions.FundChainlinkNodes(cls, nets.Default, big.NewFloat(1))
+			err = actions.FundChainlinkNodes(chainlinkNodes, nets.Default, big.NewFloat(1))
 			Expect(err).ShouldNot(HaveOccurred(), "Funding chainlink nodes with ETH shouldn't fail")
 		})
 
@@ -117,7 +117,7 @@ var _ = Describe("Flux monitor suite @flux", func() {
 				Name: fmt.Sprintf("variable-%s", adapterUUID),
 				URL:  adapterFullURL,
 			}
-			for i, n := range cls {
+			for i, n := range chainlinkNodes {
 				err = n.CreateBridge(&bta)
 				Expect(err).ShouldNot(HaveOccurred(), "Creating bridge shouldn't fail for node %d", i+1)
 
@@ -179,7 +179,7 @@ var _ = Describe("Flux monitor suite @flux", func() {
 			nets.Default.GasStats().PrintStats()
 		})
 		By("Tearing down the environment", func() {
-			err = actions.TeardownSuite(e, nets, utils.ProjectRoot, nil)
+			err = actions.TeardownSuite(e, nets, utils.ProjectRoot, chainlinkNodes, nil)
 			Expect(err).ShouldNot(HaveOccurred(), "Environment teardown shouldn't fail")
 		})
 	})

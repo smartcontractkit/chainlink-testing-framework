@@ -50,7 +50,7 @@ var _ = Describe("OCR Soak Test @soak-ocr", func() {
 	})
 
 	AfterEach(func() {
-		if err = actions.TeardownRemoteSuite(env, &ocrSoakTest.TestReporter); err != nil {
+		if err = actions.TeardownRemoteSuite(ocrSoakTest.TearDownVals()); err != nil {
 			log.Error().Err(err).Msg("Error when tearing down remote suite")
 		}
 		log.Info().Msg("Soak Test Concluded")
