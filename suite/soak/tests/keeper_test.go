@@ -60,8 +60,7 @@ var _ = Describe("Keeper performance suite @block-time-keeper", func() {
 
 	AfterEach(func() {
 		By("Tearing down the environment", func() {
-			err = actions.TeardownRemoteSuite(env, &keeperBlockTimeTest.TestReporter)
-			if err != nil {
+			if err := actions.TeardownRemoteSuite(keeperBlockTimeTest.TearDownVals()); err != nil {
 				log.Error().Err(err).Msg("Error tearing down environment")
 			}
 		})
