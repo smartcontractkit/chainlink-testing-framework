@@ -5,7 +5,6 @@ import (
 	"context"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/common"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog/log"
@@ -27,7 +26,6 @@ var _ = Describe("Keeper suite @keeper", func() {
 		checkGasLimit    = uint32(2500000)
 		linkToken        contracts.LinkToken
 		chainlinkNodes   []client.Chainlink
-		nodeAddresses    []common.Address
 		env              *environment.Environment
 	)
 
@@ -50,8 +48,6 @@ var _ = Describe("Keeper suite @keeper", func() {
 			Expect(err).ShouldNot(HaveOccurred(), "Deploying contracts shouldn't fail")
 			chainlinkNodes, err = client.ConnectChainlinkNodes(env)
 			Expect(err).ShouldNot(HaveOccurred(), "Connecting to chainlink nodes shouldn't fail")
-			nodeAddresses, err = actions.ChainlinkNodeAddresses(chainlinkNodes)
-			Expect(err).ShouldNot(HaveOccurred(), "Retreiving on-chain wallet addresses for chainlink nodes shouldn't fail")
 			networks.Default.ParallelTransactions(true)
 		})
 
@@ -133,31 +129,28 @@ var _ = Describe("Keeper suite @keeper", func() {
 		})
 
 		By("Adding Keepers and a job", func() {
-			primaryNode := chainlinkNodes[0]
-			primaryNodeAddress, err := primaryNode.PrimaryEthAddress()
-			Expect(err).ShouldNot(HaveOccurred(), "Reading ETH Keys from Chainlink Client shouldn't fail")
-			nodeAddressesStr := make([]string, 0)
+			nodeAddresses, err := actions.ChainlinkNodeAddresses(chainlinkNodes)
+			Expect(err).ShouldNot(HaveOccurred(), "Retreiving on-chain wallet addresses for chainlink nodes shouldn't fail")
+			nodeAddressesStr, payees := make([]string, 0), make([]string, 0)
 			for _, cla := range nodeAddresses {
 				nodeAddressesStr = append(nodeAddressesStr, cla.Hex())
-			}
-			payees := []string{
-				consumer.Address(),
-				consumer.Address(),
-				consumer.Address(),
-				consumer.Address(),
-				consumer.Address(),
-				consumer.Address(),
+				payees = append(payees, consumer.Address())
 			}
 			err = registry.SetKeepers(nodeAddressesStr, payees)
 			Expect(err).ShouldNot(HaveOccurred(), "Setting keepers in the registry shouldn't fail")
-			_, err = primaryNode.CreateJob(&client.KeeperJobSpec{
-				Name:                     "keeper-test-job",
-				ContractAddress:          registry.Address(),
-				FromAddress:              primaryNodeAddress,
-				MinIncomingConfirmations: 1,
-				ObservationSource:        client.ObservationSourceKeeperDefault(),
-			})
-			Expect(err).ShouldNot(HaveOccurred(), "Creating KeeperV2 Job shouldn't fail")
+			for _, node := range chainlinkNodes {
+				nodeAddress, err := node.PrimaryEthAddress()
+				Expect(err).ShouldNot(HaveOccurred())
+				_, err = node.CreateJob(&client.KeeperJobSpec{
+					Name:                     "keeper-test-job",
+					ContractAddress:          registry.Address(),
+					FromAddress:              nodeAddress,
+					MinIncomingConfirmations: 1,
+					ObservationSource:        client.ObservationSourceKeeperDefault(),
+				})
+				Expect(err).ShouldNot(HaveOccurred(), "Creating KeeperV2 Job shouldn't fail")
+			}
+
 			err = networks.Default.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred(), "Waiting for event subscriptions in nodes shouldn't fail")
 		})
@@ -179,7 +172,7 @@ var _ = Describe("Keeper suite @keeper", func() {
 			networks.Default.GasStats().PrintStats()
 		})
 		By("Tearing down the environment", func() {
-			err = actions.TeardownSuite(env, networks, utils.ProjectRoot, nil)
+			err = actions.TeardownSuite(env, networks, utils.ProjectRoot, chainlinkNodes, nil)
 			Expect(err).ShouldNot(HaveOccurred(), "Environment teardown shouldn't fail")
 		})
 	})

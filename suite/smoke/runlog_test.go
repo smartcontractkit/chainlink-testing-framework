@@ -21,15 +21,15 @@ import (
 
 var _ = Describe("Direct request suite @runlog", func() {
 	var (
-		err        error
-		nets       *client.Networks
-		cd         contracts.ContractDeployer
-		cls        []client.Chainlink
-		oracle     contracts.Oracle
-		consumer   contracts.APIConsumer
-		jobUUID    uuid.UUID
-		mockserver *client.MockserverClient
-		e          *environment.Environment
+		err            error
+		nets           *client.Networks
+		cd             contracts.ContractDeployer
+		chainlinkNodes []client.Chainlink
+		oracle         contracts.Oracle
+		consumer       contracts.APIConsumer
+		jobUUID        uuid.UUID
+		mockserver     *client.MockserverClient
+		e              *environment.Environment
 	)
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
@@ -48,7 +48,7 @@ var _ = Describe("Direct request suite @runlog", func() {
 			Expect(err).ShouldNot(HaveOccurred(), "Connecting to blockchain nodes shouldn't fail")
 			cd, err = contracts.NewContractDeployer(nets.Default)
 			Expect(err).ShouldNot(HaveOccurred(), "Deploying contracts shouldn't fail")
-			cls, err = client.ConnectChainlinkNodes(e)
+			chainlinkNodes, err = client.ConnectChainlinkNodes(e)
 			Expect(err).ShouldNot(HaveOccurred(), "Connecting to chainlink nodes shouldn't fail")
 			mockserver, err = client.ConnectMockServer(e)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -57,7 +57,7 @@ var _ = Describe("Direct request suite @runlog", func() {
 		By("Funding Chainlink nodes", func() {
 			ethAmount, err := nets.Default.EstimateCostForChainlinkOperations(1)
 			Expect(err).ShouldNot(HaveOccurred(), "Estimating cost for Chainlink Operations shouldn't fail")
-			err = actions.FundChainlinkNodes(cls, nets.Default, ethAmount)
+			err = actions.FundChainlinkNodes(chainlinkNodes, nets.Default, ethAmount)
 			Expect(err).ShouldNot(HaveOccurred(), "Funding chainlink nodes with ETH shouldn't fail")
 		})
 
@@ -84,7 +84,7 @@ var _ = Describe("Direct request suite @runlog", func() {
 				Name: fmt.Sprintf("five-%s", jobUUID.String()),
 				URL:  fmt.Sprintf("%s/variable", mockserver.Config.ClusterURL),
 			}
-			err = cls[0].CreateBridge(&bta)
+			err = chainlinkNodes[0].CreateBridge(&bta)
 			Expect(err).ShouldNot(HaveOccurred(), "Creating bridge shouldn't fail")
 
 			os := &client.DirectRequestTxPipelineSpec{
@@ -94,7 +94,7 @@ var _ = Describe("Direct request suite @runlog", func() {
 			ost, err := os.String()
 			Expect(err).ShouldNot(HaveOccurred(), "Building observation source spec shouldn't fail")
 
-			_, err = cls[0].CreateJob(&client.DirectRequestJobSpec{
+			_, err = chainlinkNodes[0].CreateJob(&client.DirectRequestJobSpec{
 				Name:              "direct_request",
 				ContractAddress:   oracle.Address(),
 				ExternalJobID:     jobUUID.String(),
@@ -134,7 +134,7 @@ var _ = Describe("Direct request suite @runlog", func() {
 	AfterEach(func() {
 		By("Tearing down the environment", func() {
 			nets.Default.GasStats().PrintStats()
-			err = actions.TeardownSuite(e, nets, utils.ProjectRoot, nil)
+			err = actions.TeardownSuite(e, nets, utils.ProjectRoot, chainlinkNodes, nil)
 			Expect(err).ShouldNot(HaveOccurred(), "Environment teardown shouldn't fail")
 		})
 	})

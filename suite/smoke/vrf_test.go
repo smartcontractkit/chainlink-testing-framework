@@ -28,7 +28,7 @@ var _ = Describe("VRF suite @vrf", func() {
 		coordinator        contracts.VRFCoordinator
 		encodedProvingKeys = make([][2]*big.Int, 0)
 		lt                 contracts.LinkToken
-		cls                []client.Chainlink
+		chainlinkNodes     []client.Chainlink
 		e                  *environment.Environment
 		job                *client.Job
 	)
@@ -50,7 +50,7 @@ var _ = Describe("VRF suite @vrf", func() {
 			Expect(err).ShouldNot(HaveOccurred(), "Connecting to blockchain nodes shouldn't fail")
 			cd, err = contracts.NewContractDeployer(nets.Default)
 			Expect(err).ShouldNot(HaveOccurred(), "Deploying contracts shouldn't fail")
-			cls, err = client.ConnectChainlinkNodes(e)
+			chainlinkNodes, err = client.ConnectChainlinkNodes(e)
 			Expect(err).ShouldNot(HaveOccurred(), "Connecting to chainlink nodes shouldn't fail")
 			nets.Default.ParallelTransactions(true)
 		})
@@ -58,7 +58,7 @@ var _ = Describe("VRF suite @vrf", func() {
 		By("Funding Chainlink nodes", func() {
 			txCost, err := nets.Default.EstimateCostForChainlinkOperations(1)
 			Expect(err).ShouldNot(HaveOccurred(), "Estimating cost for Chainlink Operations shouldn't fail")
-			err = actions.FundChainlinkNodes(cls, nets.Default, txCost)
+			err = actions.FundChainlinkNodes(chainlinkNodes, nets.Default, txCost)
 			Expect(err).ShouldNot(HaveOccurred(), "Funding chainlink nodes with ETH shouldn't fail")
 		})
 
@@ -80,7 +80,7 @@ var _ = Describe("VRF suite @vrf", func() {
 		})
 
 		By("Creating jobs and registering proving keys", func() {
-			for _, n := range cls {
+			for _, n := range chainlinkNodes {
 				nodeKey, err := n.CreateVRFKey()
 				Expect(err).ShouldNot(HaveOccurred(), "Creating VRF key shouldn't fail")
 				log.Debug().Interface("Key JSON", nodeKey).Msg("Created proving key")
@@ -127,7 +127,7 @@ var _ = Describe("VRF suite @vrf", func() {
 			timeout := time.Minute * 2
 
 			Eventually(func(g Gomega) {
-				jobRuns, err := cls[0].ReadRunsByJob(job.Data.ID)
+				jobRuns, err := chainlinkNodes[0].ReadRunsByJob(job.Data.ID)
 				g.Expect(err).ShouldNot(HaveOccurred(), "Job execution shouldn't fail")
 
 				out, err := consumer.RandomnessOutput(context.Background())
@@ -151,7 +151,7 @@ var _ = Describe("VRF suite @vrf", func() {
 			nets.Default.GasStats().PrintStats()
 		})
 		By("Tearing down the environment", func() {
-			err = actions.TeardownSuite(e, nets, utils.ProjectRoot, nil)
+			err = actions.TeardownSuite(e, nets, utils.ProjectRoot, chainlinkNodes, nil)
 			Expect(err).ShouldNot(HaveOccurred(), "Environment teardown shouldn't fail")
 		})
 	})

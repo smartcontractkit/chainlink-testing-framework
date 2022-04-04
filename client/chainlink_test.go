@@ -436,6 +436,7 @@ var _ = Describe("Chainlink @unit", func() {
 		mockTxData := TransactionsData{}
 		err := json.Unmarshal([]byte(mockTxString), &mockTxData)
 		Expect(err).ShouldNot(HaveOccurred())
+
 		server := mockedServer(func(rw http.ResponseWriter, req *http.Request) {
 			actualEndpoint := "/v2/transactions"
 			attemptsEndpoint := "/v2/tx_attempts"
@@ -463,13 +464,35 @@ var _ = Describe("Chainlink @unit", func() {
 
 	// Mocks the reading transactions and attempted transactions
 	It("can send ETH transactions", func() {
+		mockTxString := `{"data": {
+			"type": "transactions",
+			"id": "",
+			"attributes": {
+				"state": "in_progress",
+				"data": "",
+				"from": "",
+				"gasLimit": "21000",
+				"gasPrice": "",
+				"hash": "",
+				"rawHex": "",
+				"nonce": "1",
+				"sentAt": "199",
+				"to": "0x610178da211fef7d417bc0e6fed39f05609ad788",
+				"value": "0.000000000000000000",
+				"evmChainID": "1337"
+			}
+		}}`
+		mockTxData := SingleTransactionDataWrapper{}
+		err := json.Unmarshal([]byte(mockTxString), &mockTxData)
+		Expect(err).ShouldNot(HaveOccurred())
+
 		server := mockedServer(func(rw http.ResponseWriter, req *http.Request) {
 			switch req.Method {
 			case http.MethodPost:
 				if req.URL.Path == "/sessions" {
 					writeCookie(rw)
 				} else {
-					writeResponse(rw, http.StatusOK, nil)
+					writeResponse(rw, http.StatusOK, mockTxData)
 				}
 			}
 		})

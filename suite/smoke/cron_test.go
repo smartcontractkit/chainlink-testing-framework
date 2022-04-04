@@ -16,11 +16,11 @@ import (
 
 var _ = Describe("Cronjob suite @cron", func() {
 	var (
-		err        error
-		job        *client.Job
-		cls        []client.Chainlink
-		mockserver *client.MockserverClient
-		e          *environment.Environment
+		err           error
+		job           *client.Job
+		chainlinkNode client.Chainlink
+		mockserver    *client.MockserverClient
+		e             *environment.Environment
 	)
 
 	BeforeEach(func() {
@@ -35,10 +35,11 @@ var _ = Describe("Cronjob suite @cron", func() {
 		})
 
 		By("Connecting to launched resources", func() {
-			cls, err = client.ConnectChainlinkNodes(e)
+			cls, err := client.ConnectChainlinkNodes(e)
 			Expect(err).ShouldNot(HaveOccurred(), "Connecting to chainlink nodes shouldn't fail")
 			mockserver, err = client.ConnectMockServer(e)
 			Expect(err).ShouldNot(HaveOccurred(), "Creating mockserver client shouldn't fail")
+			chainlinkNode = cls[0]
 		})
 
 		By("Adding cron job to a node", func() {
@@ -50,10 +51,10 @@ var _ = Describe("Cronjob suite @cron", func() {
 				URL:         fmt.Sprintf("%s/variable", mockserver.Config.ClusterURL),
 				RequestData: "{}",
 			}
-			err = cls[0].CreateBridge(&bta)
+			err = chainlinkNode.CreateBridge(&bta)
 			Expect(err).ShouldNot(HaveOccurred(), "Creating bridge in chainlink node shouldn't fail")
 
-			job, err = cls[0].CreateJob(&client.CronJobSpec{
+			job, err = chainlinkNode.CreateJob(&client.CronJobSpec{
 				Schedule:          "CRON_TZ=UTC * * * * * *",
 				ObservationSource: client.ObservationSourceSpecBridge(bta),
 			})
@@ -64,7 +65,7 @@ var _ = Describe("Cronjob suite @cron", func() {
 	Describe("with Cron job", func() {
 		It("runs 5 or more times with no errors", func() {
 			Eventually(func(g Gomega) {
-				jobRuns, err := cls[0].ReadRunsByJob(job.Data.ID)
+				jobRuns, err := chainlinkNode.ReadRunsByJob(job.Data.ID)
 				g.Expect(err).ShouldNot(HaveOccurred(), "Reading Job run data shouldn't fail")
 
 				g.Expect(len(jobRuns.Data)).Should(BeNumerically(">=", 5), "Expected number of job runs to be greater than 5, but got %d", len(jobRuns.Data))
@@ -78,7 +79,10 @@ var _ = Describe("Cronjob suite @cron", func() {
 
 	AfterEach(func() {
 		By("Tearing down the environment", func() {
-			err = actions.TeardownSuite(e, nil, utils.ProjectRoot, nil)
+			networkRegistry := client.NewDefaultNetworkRegistry()
+			networks, err := networkRegistry.GetNetworks(e)
+			Expect(err).ShouldNot(HaveOccurred(), "Connecting to blockchain nodes shouldn't fail")
+			err = actions.TeardownSuite(e, networks, utils.ProjectRoot, []client.Chainlink{chainlinkNode}, nil)
 			Expect(err).ShouldNot(HaveOccurred(), "Environment teardown shouldn't fail")
 		})
 	})

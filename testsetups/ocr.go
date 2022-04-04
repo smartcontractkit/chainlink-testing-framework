@@ -22,10 +22,13 @@ import (
 type OCRSoakTest struct {
 	Inputs *OCRSoakTestInputs
 
-	TestReporter   testreporters.OCRSoakTestReporter
-	ocrInstances   []contracts.OffchainAggregator
+	TestReporter testreporters.OCRSoakTestReporter
+	ocrInstances []contracts.OffchainAggregator
+	mockServer   *client.MockserverClient
+
+	env            *environment.Environment
 	chainlinkNodes []client.Chainlink
-	mockServer     *client.MockserverClient
+	networks       *client.Networks
 	defaultNetwork client.BlockchainClient
 }
 
@@ -58,9 +61,9 @@ func (t *OCRSoakTest) Setup(env *environment.Environment) {
 
 	// Make connections to soak test resources
 	networkRegistry := client.NewSoakNetworkRegistry()
-	networks, err := networkRegistry.GetNetworks(env)
+	t.networks, err = networkRegistry.GetNetworks(env)
 	Expect(err).ShouldNot(HaveOccurred(), "Connecting to blockchain nodes shouldn't fail")
-	t.defaultNetwork = networks.Default
+	t.defaultNetwork = t.networks.Default
 	contractDeployer, err := contracts.NewContractDeployer(t.defaultNetwork)
 	Expect(err).ShouldNot(HaveOccurred(), "Deploying contracts shouldn't fail")
 	t.chainlinkNodes, err = client.ConnectChainlinkNodesSoak(env)
@@ -83,7 +86,7 @@ func (t *OCRSoakTest) Setup(env *environment.Environment) {
 		linkTokenContract,
 		contractDeployer,
 		t.chainlinkNodes,
-		networks,
+		t.networks,
 	)
 	err = t.defaultNetwork.WaitForEvents()
 	Expect(err).ShouldNot(HaveOccurred())
@@ -125,6 +128,11 @@ func (t *OCRSoakTest) Run() {
 			roundNumber++
 		}
 	}
+}
+
+// Networks returns the networks that the test is running on
+func (t *OCRSoakTest) TearDownVals() (*environment.Environment, *client.Networks, []client.Chainlink, testreporters.TestReporter) {
+	return t.env, t.networks, t.chainlinkNodes, &t.TestReporter
 }
 
 // ensureValues ensures that all values needed to run the test are present

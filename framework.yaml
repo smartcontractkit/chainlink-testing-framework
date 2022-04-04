@@ -4,12 +4,13 @@
 # KEEP_ENVIRONMENTS=OnFail
 keep_environments: Never # Options: Always, OnFail, Never
 logging:
+    write_pod_logs: OnFail # Options: Always, OnFail
     # panic=5, fatal=4, error=3, warn=2, info=1, debug=0, trace=-1
     level: 0
 
 # Specify the image and version of the chainlink image you want to run tests against. Leave blank for default.
 chainlink_image: public.ecr.aws/chainlink/chainlink
-chainlink_version: 1.1.0
+chainlink_version: 1.1.1
 chainlink_env_values:
 
 # Specify the image and version of the simulated geth image you want to run tests against. Leave blank for default.

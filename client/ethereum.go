@@ -42,6 +42,10 @@ func (e *EthereumMultinodeClient) ContractsDeployed() bool {
 	return e.DefaultClient.ContractsDeployed()
 }
 
+func (e *EthereumMultinodeClient) EstimateTransactionGasCost() (*big.Int, error) {
+	return e.DefaultClient.EstimateTransactionGasCost()
+}
+
 // EstimateCostForChainlinkOperations calculates TXs cost as a dirty estimation based on transactionLimit for that network
 func (e *EthereumMultinodeClient) EstimateCostForChainlinkOperations(amountOfOperations int) (*big.Float, error) {
 	return e.DefaultClient.EstimateCostForChainlinkOperations(amountOfOperations)
@@ -211,6 +215,15 @@ type EthereumClient struct {
 
 func (e *EthereumClient) ContractsDeployed() bool {
 	return e.NetworkConfig.ContractsDeployed
+}
+
+// EstimateTransactionGasCost estimates the current total gas cost for a simple transaction
+func (e *EthereumClient) EstimateTransactionGasCost() (*big.Int, error) {
+	gasPrice, err := e.Client.SuggestGasPrice(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	return gasPrice.Mul(gasPrice, big.NewInt(21000)), err
 }
 
 // EstimateCostForChainlinkOperations calculates required amount of ETH for amountOfOperations Chainlink operations

@@ -56,7 +56,8 @@ type NetworksConfig struct {
 
 // LoggingConfig for logging
 type LoggingConfig struct {
-	Level int8 `mapstructure:"level" yaml:"logging"`
+	WritePodLogs string `mapstructure:"write_pod_logs" yaml:"write_pod_logs"`
+	Level        int8   `mapstructure:"level" yaml:"level"`
 }
 
 // ChartOverrides enables building json styled chart overrides for the deployed chart values and environment variables

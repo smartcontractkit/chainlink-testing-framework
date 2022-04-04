@@ -245,7 +245,9 @@ type ETHKeyData struct {
 
 // ETHKeyAttributes is the model that represents the created ETH keys when read
 type ETHKeyAttributes struct {
-	Address string `json:"address"`
+	Address    string `json:"address"`
+	ETHBalance string `json:"ethBalance"`
+	ChainID    string `json:"evmChainID"`
 }
 
 // TxKeys is the model that represents the created keys when read
@@ -273,6 +275,10 @@ type TxKeyAttributes struct {
 type TransactionsData struct {
 	Data []TransactionData    `json:"data"`
 	Meta TransactionsMetaData `json:"meta"`
+}
+
+type SingleTransactionDataWrapper struct {
+	Data TransactionData `json:"data"`
 }
 
 type TransactionData struct {
