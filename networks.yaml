@@ -22,7 +22,7 @@ private_keys: &private_keys
         - df57089febbacf7ba0bc227dafbffa9fc08a93fdc68e1e42411a14efcf23656e
 
 selected_networks: # Selected network(s) for test execution
-    - "geth_performance"
+    - "geth"
 
 networks:
     geth: &common_ethereum
@@ -41,9 +41,12 @@ networks:
         <<: *common_ethereum
         name: "Ethereum Geth Performance"
         transaction_timeout: 5m
-        block_gas_limit: 400000000000000
+        block_gas_limit: 30000000000
     geth_realistic:
-
+        <<: *common_ethereum
+        name: "Ethereum Geth Realistic"
+        transaction_timeout: 5m
+        block_gas_limit: 15000000000
     geth_reorg:
         <<: *geth_performance
         name: "Ethereum Geth reorg"

@@ -25,8 +25,8 @@ func TestSoak(t *testing.T) {
 	env, err := environment.DeployLongTestEnvironment(
 		environment.NewChainlinkConfig(
 			environment.ChainlinkReplicas(6, config.ChainlinkVals()),
-			config.ProjectNetworkSettings.SelectedNetworks,
 			"chainlink-soak",
+			config.GethNetworks()...,
 		),
 		tools.ChartsRoot,
 		remoteConfig.TestRegex,                             // Name of the test to run

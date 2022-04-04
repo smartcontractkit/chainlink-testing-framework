@@ -43,8 +43,8 @@ var _ = Describe("Flux monitor suite @flux", func() {
 			e, err = environment.DeployOrLoadEnvironment(
 				environment.NewChainlinkConfig(
 					environment.ChainlinkReplicas(3, config.ChainlinkVals()),
-					config.ProjectNetworkSettings.SelectedNetworks,
 					"chainlink-flux",
+					config.GethNetworks()...,
 				),
 				tools.ChartsRoot,
 			)

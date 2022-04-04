@@ -12,6 +12,7 @@ import (
 
 	"github.com/imdario/mergo"
 	"github.com/kelseyhightower/envconfig"
+	"github.com/smartcontractkit/helmenv/environment"
 	"github.com/smartcontractkit/integrations-framework/utils"
 	"gopkg.in/yaml.v3"
 
@@ -26,6 +27,10 @@ type ConfigurationType string
 const (
 	LocalConfig  ConfigurationType = "local"
 	SecretConfig ConfigurationType = "secret"
+
+	DefaultGeth     string = "geth"
+	PerformanceGeth string = "geth_performance"
+	RealisticGeth   string = "geth_realistic"
 )
 
 // NetworkSettings is a map that holds configuration for each individual network
@@ -37,6 +42,10 @@ var ProjectConfigDirectory string
 
 // ChainlinkVals formats Chainlink values set in the framework config to be passed to Chainlink deployments
 func ChainlinkVals() map[string]interface{} {
+	if ProjectFrameworkSettings == nil {
+		log.Error().Msg("ProjectFrameworkSettings not set!")
+		return nil
+	}
 	values := map[string]interface{}{}
 	if len(ProjectFrameworkSettings.ChainlinkEnvValues) > 0 {
 		values["env"] = ProjectFrameworkSettings.ChainlinkEnvValues
@@ -52,7 +61,27 @@ func ChainlinkVals() map[string]interface{} {
 	return values
 }
 
-// Decode is used by envconfig to initialise the custom Charts type with populated values
+// GethNetworks builds the proper geth network settings to use based on the selected_networks config
+func GethNetworks() []environment.GethDeployments {
+	if ProjectNetworkSettings == nil {
+		log.Error().Msg("ProjectNetworkSettings not set!")
+		return nil
+	}
+	var gethNetworks []environment.GethDeployments
+	for _, network := range ProjectNetworkSettings.SelectedNetworks {
+		switch network {
+		case DefaultGeth:
+			gethNetworks = append(gethNetworks, environment.DefaultGeth)
+		case PerformanceGeth:
+			gethNetworks = append(gethNetworks, environment.PerformanceGeth)
+		case RealisticGeth:
+			gethNetworks = append(gethNetworks, environment.RealisticGeth)
+		}
+	}
+	return gethNetworks
+}
+
+// Decode is used by envconfig to initialize the custom Charts type with populated values
 // This function will take a JSON object representing charts, and unmarshal it into the existing object to "merge" the
 // two
 func (n NetworkSettings) Decode(value string) error {

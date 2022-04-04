@@ -15,7 +15,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/utils"
 )
 
-var _ = FDescribe("Cronjob suite @cron", func() {
+var _ = Describe("Cronjob suite @cron", func() {
 	var (
 		err        error
 		job        *client.Job
@@ -27,7 +27,11 @@ var _ = FDescribe("Cronjob suite @cron", func() {
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
 			e, err = environment.DeployOrLoadEnvironment(
-				environment.NewChainlinkConfig(config.ChainlinkVals(), config.ProjectNetworkSettings.SelectedNetworks, "chainlink-cron"),
+				environment.NewChainlinkConfig(
+					config.ChainlinkVals(),
+					"chainlink-cron",
+					config.GethNetworks()...,
+				),
 				tools.ChartsRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred(), "Environment deployment shouldn't fail")
