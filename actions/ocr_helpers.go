@@ -31,6 +31,8 @@ func DeployOCRContracts(
 			contracts.DefaultOffChainAggregatorOptions(),
 		)
 		Expect(err).ShouldNot(HaveOccurred(), "Deploying OCR instance %d shouldn't fail", i+1)
+		err = networks.Default.WaitForEvents()
+		Expect(err).ShouldNot(HaveOccurred(), "Error waiting for OCR contract deployments")
 		// Exclude the first node, which will be used as a bootstrapper
 		err = ocrInstance.SetConfig(
 			chainlinkNodes[1:],
