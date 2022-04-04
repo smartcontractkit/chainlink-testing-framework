@@ -1,3 +1,4 @@
+// Package testsetups compresses common test setups and more complicated setups like performance and chaos tests.
 package testsetups
 
 //revive:disable:dot-imports
