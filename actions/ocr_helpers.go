@@ -24,6 +24,7 @@ func DeployOCRContracts(
 	chainlinkNodes []client.Chainlink,
 	networks *client.Networks,
 ) []contracts.OffchainAggregator {
+	// Deploy contracts
 	var ocrInstances []contracts.OffchainAggregator
 	for i := 0; i < numberOfContracts; i++ {
 		ocrInstance, err := contractDeployer.DeployOffChainAggregator(
@@ -31,16 +32,37 @@ func DeployOCRContracts(
 			contracts.DefaultOffChainAggregatorOptions(),
 		)
 		Expect(err).ShouldNot(HaveOccurred(), "Deploying OCR instance %d shouldn't fail", i+1)
-		err = networks.Default.WaitForEvents()
-		Expect(err).ShouldNot(HaveOccurred(), "Error waiting for OCR contract deployments")
+		ocrInstances = append(ocrInstances, ocrInstance)
+	}
+	err := networks.Default.WaitForEvents()
+	Expect(err).ShouldNot(HaveOccurred(), "Error waiting for OCR contract deployments")
+
+	// Gather transmitter and address payees
+	var transmitters, payees []string
+	for _, node := range chainlinkNodes[1:] {
+		addr, err := node.PrimaryEthAddress()
+		Expect(err).ShouldNot(HaveOccurred(), "Error getting node's primary ETH address")
+		transmitters = append(transmitters, addr)
+		payees = append(payees, networks.Default.GetDefaultWallet().Address())
+	}
+
+	for _, ocrInstance := range ocrInstances {
+		err = ocrInstance.SetPayees(transmitters, payees)
+		Expect(err).ShouldNot(HaveOccurred(), "Error setting OCR payees")
+	}
+	err = networks.Default.WaitForEvents()
+	Expect(err).ShouldNot(HaveOccurred(), "Error waiting for OCR contracts to set payees and transmitters")
+
+	for _, ocrInstance := range ocrInstances {
 		// Exclude the first node, which will be used as a bootstrapper
 		err = ocrInstance.SetConfig(
 			chainlinkNodes[1:],
 			contracts.DefaultOffChainAggregatorConfig(len(chainlinkNodes[1:])),
 		)
-		ocrInstances = append(ocrInstances, ocrInstance)
 		Expect(err).ShouldNot(HaveOccurred())
 	}
+	err = networks.Default.WaitForEvents()
+	Expect(err).ShouldNot(HaveOccurred(), "Error waiting for OCR contracts to set config")
 	return ocrInstances
 }
 

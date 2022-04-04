@@ -631,14 +631,19 @@ func (o *EthereumOffchainAggregator) SetPayees(
 	if err != nil {
 		return err
 	}
-	transmittersAddr := make([]common.Address, 0)
+	var transmittersAddr, payeesAddr []common.Address
 	for _, tr := range transmitters {
 		transmittersAddr = append(transmittersAddr, common.HexToAddress(tr))
 	}
-	payeesAddr := make([]common.Address, 0)
 	for _, p := range payees {
-		transmittersAddr = append(transmittersAddr, common.HexToAddress(p))
+		payeesAddr = append(payeesAddr, common.HexToAddress(p))
 	}
+
+	log.Debug().
+		Str("Transmitters", fmt.Sprintf("%v", transmitters)).
+		Str("Payees", fmt.Sprintf("%v", payees)).
+		Str("OCR Address", o.Address()).
+		Msg("Setting OCR Payees")
 
 	tx, err := o.ocr.SetPayees(opts, transmittersAddr, payeesAddr)
 	if err != nil {

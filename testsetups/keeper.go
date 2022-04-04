@@ -74,7 +74,7 @@ func (k *KeeperBlockTimeTest) Setup(env *environment.Environment) {
 	k.defaultNetwork = k.networks.Default
 	contractDeployer, err := contracts.NewContractDeployer(k.defaultNetwork)
 	Expect(err).ShouldNot(HaveOccurred(), "Building a new contract deployer shouldn't fail")
-	k.chainlinkNodes, err = client.ConnectChainlinkNodesSoak(env)
+	k.chainlinkNodes, err = client.ConnectChainlinkNodesSoak(k.env)
 	Expect(err).ShouldNot(HaveOccurred(), "Connecting to chainlink nodes shouldn't fail")
 	k.defaultNetwork.ParallelTransactions(true)
 
