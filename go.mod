@@ -12,15 +12,13 @@ require (
 	github.com/prometheus/common v0.32.1
 	github.com/rs/zerolog v1.26.1
 	github.com/satori/go.uuid v1.2.0
-	github.com/smartcontractkit/helmenv v1.0.49
+	github.com/smartcontractkit/helmenv v1.0.52
 	github.com/smartcontractkit/libocr v0.0.0-20220121130134-5d2b1d5f424b
 	github.com/spf13/viper v1.10.1
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	gopkg.in/guregu/null.v4 v4.0.0
 	k8s.io/apimachinery v0.23.5
 )
-
-replace github.com/smartcontractkit/helmenv => /Users/adamhamrick/Projects/helmenv
 
 require (
 	cloud.google.com/go v0.99.0 // indirect
