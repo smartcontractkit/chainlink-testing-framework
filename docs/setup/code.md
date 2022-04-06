@@ -16,7 +16,11 @@ import "github.com/smartcontractkit/helmenv/environment"
 // Deploy a testing environment, and receive it as the `env` variable. This is used to connect to resources.
 env, err := environment.DeployOrLoadEnvironment( 
   // Define what sort of environment you would like to deploy. More on this below
-  environment.NewChainlinkConfig(environment.ChainlinkReplicas(1, nil), "chainlink-test-setup"),
+  environment.NewChainlinkConfig(
+    environment.ChainlinkReplicas(3, config.ChainlinkVals()),
+    "namespace-prefix",
+    config.GethNetworks()...,
+  ),
   // Path to the helm charts you want to use (tools.ChartsRoot will work fine for 99% of cases)
   tools.ChartsRoot,
 )
@@ -32,15 +36,16 @@ networks, err := networkRegistry.GetNetworks(env)
 defaultNetwork := networks.Default
 ```
 
-Most of the setup code will be the same for all your tests, except for this line.
+Most of the setup code will be the same for all your tests. Here's a more detailed explanation as to what some of the deployment code is doing to launch a few common test resources.
 
 ```go
-environment.NewChainlinkConfig(  // Launches common resources needed for Chainlink tests
-  environment.ChainlinkReplicas( // Indicate you want some Chainlink nodes
-    1,                           // Launch 1 Chainlink node. Increase this number for more nodes
-    nil,                         // Values to pass to the Chainlink node (nil for the majority of cases)
-  ), 
-  "chainlink-prefix"             // Kubernetes namespace prefix to use for this test setup. Will launch as 'chainlink-prefix-abcdf'
+env, err := environment.DeployOrLoadEnvironment( // Use helmenv to deploy a new environment
+  environment.NewChainlinkConfig( // Indicate you want a standard EVM Chainlink testing environment
+    environment.ChainlinkReplicas(3, config.ChainlinkVals()), // How many Chainlink nodes to launch, and what values to provide them
+    "namespace-prefix", // The prefix of the namespace that will be created in Kubernetes
+    config.GethNetworks()..., // All the settings of the simulated Geth networks that will be launched
+  ),
+  tools.ChartsRoot, // Default 
 )
 ```
 
@@ -48,6 +53,7 @@ These common resources consist of
 
 * A simulated Geth instance
 * A basic mock server that serves as a mock adapter for Chainlink nodes
+* A specified number of chainlink nodes
 
 ## Test Tear Down
 
