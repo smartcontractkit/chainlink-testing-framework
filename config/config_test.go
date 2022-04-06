@@ -19,9 +19,9 @@ func TestFrameworkConfig(t *testing.T) {
 	require.Equal(t, "testChainlinkImage", cfg.ChainlinkImage)
 	require.Equal(t, "testChainlinkVersion", cfg.ChainlinkVersion)
 
-	testEnvVals := map[string]string{
+	testEnvVals := map[string]interface{}{
 		"test_string_val": "someString",
-		"test_int_val":    "420",
+		"test_int_val":    420,
 	}
 	require.Equal(t, testEnvVals, cfg.ChainlinkEnvValues)
 }
@@ -74,7 +74,7 @@ func TestChainlinkValues(t *testing.T) {
 				"version": "version",
 			},
 		},
-		"env": map[string]string{
+		"env": map[string]interface{}{
 			"env": "value",
 		},
 	}, loadedVals)

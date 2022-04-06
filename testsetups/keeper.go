@@ -164,7 +164,8 @@ func (k *KeeperBlockTimeTest) Setup(env *environment.Environment) {
 			Int("Out Of", inputs.NumberOfContracts).
 			Msg("Deployed Keeper Performance Contract")
 		if contractCount+1%100 == 0 { // For large amounts of contract deployments, space things out some
-			k.defaultNetwork.WaitForEvents()
+			err = k.defaultNetwork.WaitForEvents()
+			Expect(err).ShouldNot(HaveOccurred(), "Failed to wait for KeeperConsumerPerformance deployments")
 		}
 	}
 	err = k.defaultNetwork.WaitForEvents()
@@ -192,7 +193,8 @@ func (k *KeeperBlockTimeTest) Setup(env *environment.Environment) {
 			Int("Out Of", inputs.NumberOfContracts).
 			Msg("Registered Keeper Performance Contract")
 		if (contractCount+1)%100 == 0 { // For large amounts of contract deployments, space things out some
-			k.defaultNetwork.WaitForEvents()
+			err = k.defaultNetwork.WaitForEvents()
+			Expect(err).ShouldNot(HaveOccurred(), "Failed to wait after registering upkeep consumers")
 		}
 	}
 	err = k.defaultNetwork.WaitForEvents()

@@ -110,7 +110,7 @@ func FundChainlinkNodesLink(
 		if err != nil {
 			return err
 		}
-		linkToken.Transfer(toAddress, linkAmount)
+		err = linkToken.Transfer(toAddress, linkAmount)
 		if err != nil {
 			return err
 		}

@@ -26,7 +26,7 @@ log.Info().Str("Namespace", env.Namespace).Msg("Connected to Soak Environment")
 // Run test logic
 
 // Teardown remote suite
-iif err := actions.TeardownRemoteSuite(keeperBlockTimeTest.TearDownVals()); err != nil {
+if err := actions.TeardownRemoteSuite(keeperBlockTimeTest.TearDownVals()); err != nil {
   log.Error().Err(err).Msg("Error tearing down environment")
 }
 log.Info().Msg("Soak Test Concluded")
