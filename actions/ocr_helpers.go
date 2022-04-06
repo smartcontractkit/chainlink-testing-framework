@@ -46,6 +46,7 @@ func DeployOCRContracts(
 		payees = append(payees, networks.Default.GetDefaultWallet().Address())
 	}
 
+	// Set Payees
 	for _, ocrInstance := range ocrInstances {
 		err = ocrInstance.SetPayees(transmitters, payees)
 		Expect(err).ShouldNot(HaveOccurred(), "Error setting OCR payees")
@@ -53,6 +54,7 @@ func DeployOCRContracts(
 	err = networks.Default.WaitForEvents()
 	Expect(err).ShouldNot(HaveOccurred(), "Error waiting for OCR contracts to set payees and transmitters")
 
+	// Set Config
 	for _, ocrInstance := range ocrInstances {
 		// Exclude the first node, which will be used as a bootstrapper
 		err = ocrInstance.SetConfig(

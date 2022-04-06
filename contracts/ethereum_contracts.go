@@ -639,7 +639,7 @@ func (o *EthereumOffchainAggregator) SetPayees(
 		payeesAddr = append(payeesAddr, common.HexToAddress(p))
 	}
 
-	log.Debug().
+	log.Info().
 		Str("Transmitters", fmt.Sprintf("%v", transmitters)).
 		Str("Payees", fmt.Sprintf("%v", payees)).
 		Str("OCR Address", o.Address()).
@@ -652,7 +652,7 @@ func (o *EthereumOffchainAggregator) SetPayees(
 	return o.client.ProcessTransaction(tx)
 }
 
-// SetConfig sets offchain reporting protocol configuration including participating oracles
+// SetConfig sets the payees and the offchain reporting protocol configuration
 func (o *EthereumOffchainAggregator) SetConfig(
 	chainlinkNodes []client.Chainlink,
 	ocrConfig OffChainAggregatorConfig,
@@ -722,25 +722,12 @@ func (o *EthereumOffchainAggregator) SetConfig(
 		return err
 	}
 
-	// Set Payees
+	// Set Config
 	opts, err := o.client.TransactionOpts(o.client.DefaultWallet)
 	if err != nil {
 		return err
 	}
-	tx, err := o.ocr.SetPayees(opts, transmitters, transmitters)
-	if err != nil {
-		return err
-	}
-	if err := o.client.ProcessTransaction(tx); err != nil {
-		return err
-	}
-
-	// Set Config
-	opts, err = o.client.TransactionOpts(o.client.DefaultWallet)
-	if err != nil {
-		return err
-	}
-	tx, err = o.ocr.SetConfig(opts, signers, transmitters, threshold, encodedConfigVersion, encodedConfig)
+	tx, err := o.ocr.SetConfig(opts, signers, transmitters, threshold, encodedConfigVersion, encodedConfig)
 	if err != nil {
 		return err
 	}
@@ -1037,7 +1024,7 @@ func (o *KeeperConsumerPerformanceRoundConfirmer) ReceiveBlock(receivedBlock cli
 		return err
 	}
 	if isEligible {
-		log.Info().
+		log.Debug().
 			Str("Contract Address", o.instance.Address()).
 			Int64("Upkeeps Performed", upkeepCount.Int64()).
 			Msg("Upkeep Now Eligible")

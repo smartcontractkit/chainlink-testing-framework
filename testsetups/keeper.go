@@ -38,8 +38,9 @@ type KeeperBlockTimeTestInputs struct {
 	Timeout                time.Duration           // Timeout for the test
 	BlockRange             int64                   // How many blocks to run the test for
 	BlockInterval          int64                   // Interval of blocks that upkeeps are expected to be performed
+	CheckGasToBurn         int64                   // How much gas should be burned on checkUpkeep() calls
+	PerformGasToBurn       int64                   // How much gas should be burned on performUpkeep() calls
 	ChainlinkNodeFunding   *big.Float              // Amount of ETH to fund each chainlink node with
-	CheckGasLimit          uint32                  // Max amount of gas that checkUpkeep uses for off-chain computation
 }
 
 // KeeperContractSettings represents the fine tuning settings for each upkeep contract
@@ -51,6 +52,7 @@ type KeeperContractSettings struct {
 	GasCeilingMultiplier uint16   // multiplier to apply to the fast gas feed price when calculating the payment ceiling for keepers
 	FallbackGasPrice     *big.Int // gas price used if the gas price feed is stale
 	FallbackLinkPrice    *big.Int // LINK price used if the LINK price feed is stale
+
 }
 
 // NewKeeperBlockTimeTest prepares a new keeper block time test to be run
@@ -151,6 +153,8 @@ func (k *KeeperBlockTimeTest) Setup(env *environment.Environment) {
 		keeperConsumerInstance, err := contractDeployer.DeployKeeperConsumerPerformance(
 			big.NewInt(inputs.BlockRange),
 			big.NewInt(inputs.BlockInterval),
+			big.NewInt(inputs.CheckGasToBurn),
+			big.NewInt(inputs.PerformGasToBurn),
 		)
 		Expect(err).ShouldNot(HaveOccurred(), "Deploying KeeperConsumerPerformance instance %d shouldn't fail", contractCount+1)
 		k.keeperConsumerContracts = append(k.keeperConsumerContracts, keeperConsumerInstance)
@@ -267,6 +271,10 @@ func (k *KeeperBlockTimeTest) ensureInputValues() {
 	Expect(k.Inputs.ChainlinkNodeFunding).ShouldNot(BeNil(), "You need to set a funding amount for chainlink nodes")
 	clFunds, _ := k.Inputs.ChainlinkNodeFunding.Float64()
 	Expect(clFunds).Should(BeNumerically(">=", 0), "Expecting Chainlink node funding to be more than 0 ETH")
+	Expect(inputs.CheckGasToBurn).Should(BeNumerically(">", 0), "You need to set an expected amount of gas to burn on checkUpkeep()")
+	Expect(inputs.KeeperContractSettings.CheckGasLimit).Should(BeNumerically(">=", inputs.CheckGasToBurn),
+		"CheckGasLimit should be >= CheckGasToBurn")
+	Expect(inputs.PerformGasToBurn).Should(BeNumerically(">", 0), "You need to set an expected amount of gas to burn on performUpkeep()")
 }
 
 // chainlinkNodeAddresses will return all the on-chain wallet addresses for a set of Chainlink nodes

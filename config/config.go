@@ -62,12 +62,12 @@ func ChainlinkVals() map[string]interface{} {
 }
 
 // GethNetworks builds the proper geth network settings to use based on the selected_networks config
-func GethNetworks() []environment.GethDeployments {
+func GethNetworks() []environment.SimulatedNetwork {
 	if ProjectNetworkSettings == nil {
 		log.Error().Msg("ProjectNetworkSettings not set!")
 		return nil
 	}
-	var gethNetworks []environment.GethDeployments
+	var gethNetworks []environment.SimulatedNetwork
 	for _, network := range ProjectNetworkSettings.SelectedNetworks {
 		switch network {
 		case DefaultGeth:

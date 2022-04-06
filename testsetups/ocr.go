@@ -57,6 +57,7 @@ func NewOCRSoakTest(inputs *OCRSoakTestInputs) *OCRSoakTest {
 // Setup sets up the test environment, deploying contracts and funding chainlink nodes
 func (t *OCRSoakTest) Setup(env *environment.Environment) {
 	t.ensureInputValues()
+	t.env = env
 	var err error
 
 	// Make connections to soak test resources

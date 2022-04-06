@@ -33,7 +33,7 @@ var _ = Describe("Keeper performance suite @block-time-keeper", func() {
 		By("Setup the Keeper test", func() {
 			keeperBlockTimeTest = testsetups.NewKeeperBlockTimeTest(
 				testsetups.KeeperBlockTimeTestInputs{
-					NumberOfContracts: 501,
+					NumberOfContracts: 1000,
 					KeeperContractSettings: &testsetups.KeeperContractSettings{
 						PaymentPremiumPPB:    uint32(200000000),
 						BlockCountPerTurn:    big.NewInt(3),
@@ -43,9 +43,11 @@ var _ = Describe("Keeper performance suite @block-time-keeper", func() {
 						FallbackGasPrice:     big.NewInt(2e11),
 						FallbackLinkPrice:    big.NewInt(2e18),
 					},
-					BlockRange:           100,
-					BlockInterval:        20,
-					ChainlinkNodeFunding: big.NewFloat(.001),
+					CheckGasToBurn:       2400000,
+					PerformGasToBurn:     2400000,
+					BlockRange:           10000,
+					BlockInterval:        500,
+					ChainlinkNodeFunding: big.NewFloat(10000),
 				},
 			)
 			keeperBlockTimeTest.Setup(env)
