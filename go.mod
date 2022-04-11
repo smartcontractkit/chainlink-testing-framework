@@ -3,7 +3,7 @@ module github.com/smartcontractkit/integrations-framework
 go 1.17
 
 require (
-	github.com/ethereum/go-ethereum v1.10.17
+	github.com/ethereum/go-ethereum v1.10.16
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/onsi/ginkgo/v2 v2.1.3
 	github.com/onsi/gomega v1.19.0
@@ -12,7 +12,7 @@ require (
 	github.com/prometheus/common v0.32.1
 	github.com/rs/zerolog v1.26.1
 	github.com/satori/go.uuid v1.2.0
-	github.com/smartcontractkit/helmenv v1.0.52
+	github.com/smartcontractkit/helmenv v1.0.54
 	github.com/smartcontractkit/libocr v0.0.0-20220121130134-5d2b1d5f424b
 	github.com/spf13/viper v1.10.1
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
@@ -28,10 +28,9 @@ require (
 	github.com/Azure/go-autorest/autorest/date v0.3.0 // indirect
 	github.com/Azure/go-autorest/logger v0.2.1 // indirect
 	github.com/Azure/go-autorest/tracing v0.6.0 // indirect
-	github.com/btcsuite/btcd/btcec/v2 v2.1.2 // indirect
+	github.com/btcsuite/btcd v0.22.0-beta // indirect
 	github.com/cavaliercoder/grab v2.0.0+incompatible // indirect
 	github.com/chai2010/gettext-go v0.0.0-20160711120539-c6fed771bfd5 // indirect
-	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
 	github.com/fatih/camelcase v1.0.0 // indirect
 	github.com/fvbommel/sortorder v1.0.1 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
