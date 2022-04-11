@@ -1024,7 +1024,7 @@ func (o *KeeperConsumerPerformanceRoundConfirmer) ReceiveBlock(receivedBlock cli
 		return err
 	}
 	if isEligible {
-		log.Debug().
+		log.Trace().
 			Str("Contract Address", o.instance.Address()).
 			Int64("Upkeeps Performed", upkeepCount.Int64()).
 			Msg("Upkeep Now Eligible")

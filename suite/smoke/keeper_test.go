@@ -24,7 +24,6 @@ var _ = Describe("Keeper suite @keeper", func() {
 		contractDeployer contracts.ContractDeployer
 		registry         contracts.KeeperRegistry
 		consumer         contracts.KeeperConsumer
-		checkGasLimit    = uint32(2500000)
 		linkToken        contracts.LinkToken
 		chainlinkNodes   []client.Chainlink
 		env              *environment.Environment
@@ -68,96 +67,24 @@ var _ = Describe("Keeper suite @keeper", func() {
 			}
 		})
 
-		By("Deploying Keeper contracts", func() {
+		By("Deploy Keeper Contracts", func() {
 			linkToken, err = contractDeployer.DeployLinkTokenContract()
 			Expect(err).ShouldNot(HaveOccurred(), "Deploying Link Token Contract shouldn't fail")
-			ef, err := contractDeployer.DeployMockETHLINKFeed(big.NewInt(2e18))
-			Expect(err).ShouldNot(HaveOccurred(), "Deploying mock ETH-Link feed shouldn't fail")
-			gf, err := contractDeployer.DeployMockGasFeed(big.NewInt(2e11))
-			Expect(err).ShouldNot(HaveOccurred(), "Deploying mock gas feed shouldn't fail")
-			registry, err = contractDeployer.DeployKeeperRegistry(
-				&contracts.KeeperRegistryOpts{
-					LinkAddr:             linkToken.Address(),
-					ETHFeedAddr:          ef.Address(),
-					GasFeedAddr:          gf.Address(),
-					PaymentPremiumPPB:    uint32(200000000),
-					BlockCountPerTurn:    big.NewInt(3),
-					CheckGasLimit:        checkGasLimit,
-					StalenessSeconds:     big.NewInt(90000),
-					GasCeilingMultiplier: uint16(1),
-					FallbackGasPrice:     big.NewInt(2e11),
-					FallbackLinkPrice:    big.NewInt(2e18),
-				},
+
+			r, consumers := actions.DeployKeeperContracts(
+				1,
+				linkToken,
+				contractDeployer,
+				chainlinkNodes,
+				networks,
 			)
-			Expect(err).ShouldNot(HaveOccurred(), "Deploying keeper registry shouldn't fail")
-			err = linkToken.Transfer(registry.Address(), big.NewInt(1e18))
-			Expect(err).ShouldNot(HaveOccurred(), "Funding keeper registry contract shouldn't fail")
-			consumer, err = contractDeployer.DeployKeeperConsumer(big.NewInt(5))
-			Expect(err).ShouldNot(HaveOccurred(), "Deploying keeper consumer shouldn't fail")
-			err = linkToken.Transfer(consumer.Address(), big.NewInt(1e18))
-			Expect(err).ShouldNot(HaveOccurred(), "Funding keeper consumer contract shouldn't fail")
-			err = networks.Default.WaitForEvents()
-			Expect(err).ShouldNot(HaveOccurred(), "Waiting for event subscriptions in nodes shouldn't fail")
+			consumer = consumers[0]
+			registry = r
 		})
 
-		By("Registering upkeep target", func() {
-			registrar, err := contractDeployer.DeployUpkeepRegistrationRequests(
-				linkToken.Address(),
-				big.NewInt(0),
-			)
-			Expect(err).ShouldNot(HaveOccurred(), "Deploying UpkeepRegistrationRequests contract shouldn't fail")
-			err = registry.SetRegistrar(registrar.Address())
-			Expect(err).ShouldNot(HaveOccurred(), "Registering the registrar address on the registry shouldn't fail")
-			err = registrar.SetRegistrarConfig(
-				true,
-				uint32(999),
-				uint16(999),
-				registry.Address(),
-				big.NewInt(0),
-			)
-			Expect(err).ShouldNot(HaveOccurred(), "Setting the registrar configuration shouldn't fail")
-			req, err := registrar.EncodeRegisterRequest(
-				"upkeep_1",
-				[]byte("0x1234"),
-				consumer.Address(),
-				checkGasLimit,
-				consumer.Address(),
-				[]byte("0x"),
-				big.NewInt(9e18),
-				0,
-			)
-			Expect(err).ShouldNot(HaveOccurred(), "Encoding the register request shouldn't fail")
-			err = linkToken.TransferAndCall(registrar.Address(), big.NewInt(9e18), req)
-			Expect(err).ShouldNot(HaveOccurred(), "Funding registrar with LINK shouldn't fail")
-			err = networks.Default.WaitForEvents()
-			Expect(err).ShouldNot(HaveOccurred(), "Waiting for event subscriptions in nodes shouldn't fail")
-		})
-
-		By("Adding Keepers and a job", func() {
-			nodeAddresses, err := actions.ChainlinkNodeAddresses(chainlinkNodes)
-			Expect(err).ShouldNot(HaveOccurred(), "Retreiving on-chain wallet addresses for chainlink nodes shouldn't fail")
-			nodeAddressesStr, payees := make([]string, 0), make([]string, 0)
-			for _, cla := range nodeAddresses {
-				nodeAddressesStr = append(nodeAddressesStr, cla.Hex())
-				payees = append(payees, consumer.Address())
-			}
-			err = registry.SetKeepers(nodeAddressesStr, payees)
-			Expect(err).ShouldNot(HaveOccurred(), "Setting keepers in the registry shouldn't fail")
-			for _, node := range chainlinkNodes {
-				nodeAddress, err := node.PrimaryEthAddress()
-				Expect(err).ShouldNot(HaveOccurred())
-				_, err = node.CreateJob(&client.KeeperJobSpec{
-					Name:                     "keeper-test-job",
-					ContractAddress:          registry.Address(),
-					FromAddress:              nodeAddress,
-					MinIncomingConfirmations: 1,
-					ObservationSource:        client.ObservationSourceKeeperDefault(),
-				})
-				Expect(err).ShouldNot(HaveOccurred(), "Creating KeeperV2 Job shouldn't fail")
-			}
-
-			err = networks.Default.WaitForEvents()
-			Expect(err).ShouldNot(HaveOccurred(), "Waiting for event subscriptions in nodes shouldn't fail")
+		By("Register Keeper Jobs", func() {
+			actions.CreateKeeperJobs(chainlinkNodes, registry)
+			networks.Default.WaitForEvents()
 		})
 	})
 

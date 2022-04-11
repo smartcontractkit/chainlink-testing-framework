@@ -10,6 +10,7 @@ import (
 	"github.com/smartcontractkit/helmenv/environment"
 	"github.com/smartcontractkit/helmenv/tools"
 	"github.com/smartcontractkit/integrations-framework/actions"
+	"github.com/smartcontractkit/integrations-framework/contracts"
 	"github.com/smartcontractkit/integrations-framework/testsetups"
 )
 
@@ -33,8 +34,8 @@ var _ = Describe("Keeper performance suite @block-time-keeper", func() {
 		By("Setup the Keeper test", func() {
 			keeperBlockTimeTest = testsetups.NewKeeperBlockTimeTest(
 				testsetups.KeeperBlockTimeTestInputs{
-					NumberOfContracts: 1000,
-					KeeperContractSettings: &testsetups.KeeperContractSettings{
+					NumberOfContracts: 50,
+					KeeperContractSettings: &contracts.KeeperContractSettings{
 						PaymentPremiumPPB:    uint32(200000000),
 						BlockCountPerTurn:    big.NewInt(3),
 						CheckGasLimit:        uint32(2500000),
@@ -45,9 +46,9 @@ var _ = Describe("Keeper performance suite @block-time-keeper", func() {
 					},
 					CheckGasToBurn:       2400000,
 					PerformGasToBurn:     2400000,
-					BlockRange:           10000,
-					BlockInterval:        500,
-					ChainlinkNodeFunding: big.NewFloat(10000),
+					BlockRange:           2000,
+					BlockInterval:        200,
+					ChainlinkNodeFunding: big.NewFloat(1000),
 				},
 			)
 			keeperBlockTimeTest.Setup(env)
