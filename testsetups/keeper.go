@@ -146,7 +146,7 @@ func (k *KeeperBlockTimeTest) ensureInputValues() {
 	} else if inputs.BlockRange <= 0 {
 		Expect(inputs.Timeout).Should(BeNumerically(">=", 1), "If no `testBlockRange` is provided a `timeout` is required")
 	}
-	Expect(inputs.KeeperRegistrySettings).ShouldNot(BeNil(), "You need to set KeeperContractSettings")
+	Expect(inputs.KeeperRegistrySettings).ShouldNot(BeNil(), "You need to set KeeperRegistrySettings")
 	Expect(k.Inputs.ChainlinkNodeFunding).ShouldNot(BeNil(), "You need to set a funding amount for chainlink nodes")
 	clFunds, _ := k.Inputs.ChainlinkNodeFunding.Float64()
 	Expect(clFunds).Should(BeNumerically(">=", 0), "Expecting Chainlink node funding to be more than 0 ETH")

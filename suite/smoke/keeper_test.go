@@ -84,7 +84,8 @@ var _ = Describe("Keeper suite @keeper", func() {
 
 		By("Register Keeper Jobs", func() {
 			actions.CreateKeeperJobs(chainlinkNodes, registry)
-			networks.Default.WaitForEvents()
+			err = networks.Default.WaitForEvents()
+			Expect(err).ShouldNot(HaveOccurred(), "Error creating keeper jobs")
 		})
 	})
 
