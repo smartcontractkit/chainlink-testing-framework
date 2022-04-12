@@ -248,6 +248,17 @@ type KeeperRegistryOpts struct {
 	FallbackLinkPrice    *big.Int
 }
 
+// KeeperRegistrySettings represents the fine tuning settings for each upkeep contract
+type KeeperRegistrySettings struct {
+	PaymentPremiumPPB    uint32   // payment premium rate oracles receive on top of being reimbursed for gas, measured in parts per billion
+	BlockCountPerTurn    *big.Int // number of blocks each oracle has during their turn to perform upkeep before it will be the next keeper's turn to submit
+	CheckGasLimit        uint32   // gas limit when checking for upkeep
+	StalenessSeconds     *big.Int // number of seconds that is allowed for feed data to be stale before switching to the fallback pricing
+	GasCeilingMultiplier uint16   // multiplier to apply to the fast gas feed price when calculating the payment ceiling for keepers
+	FallbackGasPrice     *big.Int // gas price used if the gas price feed is stale
+	FallbackLinkPrice    *big.Int // LINK price used if the LINK price feed is stale
+}
+
 // KeeperInfo keeper status and balance info
 type KeeperInfo struct {
 	Payee   string

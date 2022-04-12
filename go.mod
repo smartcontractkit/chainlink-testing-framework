@@ -12,7 +12,7 @@ require (
 	github.com/prometheus/common v0.32.1
 	github.com/rs/zerolog v1.26.1
 	github.com/satori/go.uuid v1.2.0
-	github.com/smartcontractkit/helmenv v1.0.43
+	github.com/smartcontractkit/helmenv v1.0.57
 	github.com/smartcontractkit/libocr v0.0.0-20220121130134-5d2b1d5f424b
 	github.com/spf13/viper v1.10.1
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
@@ -28,19 +28,20 @@ require (
 	github.com/Azure/go-autorest/autorest/date v0.3.0 // indirect
 	github.com/Azure/go-autorest/logger v0.2.1 // indirect
 	github.com/Azure/go-autorest/tracing v0.6.0 // indirect
+	github.com/btcsuite/btcd v0.22.0-beta // indirect
 	github.com/cavaliercoder/grab v2.0.0+incompatible // indirect
 	github.com/chai2010/gettext-go v0.0.0-20160711120539-c6fed771bfd5 // indirect
 	github.com/fatih/camelcase v1.0.0 // indirect
 	github.com/fvbommel/sortorder v1.0.1 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
-	github.com/golang-jwt/jwt/v4 v4.0.0 // indirect
+	github.com/golang-jwt/jwt/v4 v4.3.0 // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
-	helm.sh/helm/v3 v3.8.0 // indirect
-	k8s.io/api v0.23.4 // indirect
-	k8s.io/client-go v0.23.4 // indirect
+	helm.sh/helm/v3 v3.8.1 // indirect
+	k8s.io/api v0.23.5 // indirect
+	k8s.io/client-go v0.23.5 // indirect
 	sigs.k8s.io/json v0.0.0-20211020170558-c049b76a60c6 // indirect
 )
 
@@ -58,7 +59,6 @@ require (
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d // indirect
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/btcsuite/btcd v0.22.0-beta // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/containerd/containerd v1.5.10 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.3 // indirect
@@ -171,13 +171,13 @@ require (
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
-	k8s.io/apiextensions-apiserver v0.23.1 // indirect
-	k8s.io/apiserver v0.23.1 // indirect
-	k8s.io/cli-runtime v0.23.4 // indirect
-	k8s.io/component-base v0.23.4 // indirect
+	k8s.io/apiextensions-apiserver v0.23.4 // indirect
+	k8s.io/apiserver v0.23.4 // indirect
+	k8s.io/cli-runtime v0.23.5 // indirect
+	k8s.io/component-base v0.23.5 // indirect
 	k8s.io/klog/v2 v2.30.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20211115234752-e816edb12b65 // indirect
-	k8s.io/kubectl v0.23.4 // indirect
+	k8s.io/kubectl v0.23.5 // indirect
 	k8s.io/utils v0.0.0-20211116205334-6203023598ed // indirect
 	// HELM Requires this old oras version, ticket to update https://github.com/helm/helm/issues/10263
 	oras.land/oras-go v1.1.0 // indirect

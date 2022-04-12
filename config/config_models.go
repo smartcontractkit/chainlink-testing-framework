@@ -4,16 +4,13 @@ import "time"
 
 // FrameworkConfig common framework config
 type FrameworkConfig struct {
-	KeepEnvironments   string            `mapstructure:"keep_environments" yaml:"keep_environments"`
-	Logging            *LoggingConfig    `mapstructure:"logging" yaml:"logging"`
-	EnvironmentFile    string            `mapstructure:"environment_file" yaml:"environment_file"`
-	ChainlinkImage     string            `mapstructure:"chainlink_image" yaml:"chainlink_image"`
-	ChainlinkVersion   string            `mapstructure:"chainlink_version" yaml:"chainlink_version"`
-	ChainlinkEnvValues map[string]string `mapstructure:"chainlink_env_values" yaml:"chainlink_env_values"`
-	GethImage          string            `mapstructure:"geth_image" yaml:"geth_image"`
-	GethVersion        string            `mapstructure:"geth_version" yaml:"geth_version"`
-	GethArgs           []interface{}     `mapstructure:"geth_args" yaml:"geth_args"`
-	RemoteSlackWebhook string            `mapstructure:"remote_slack_webhook" yaml:"remote_slack_webhook"`
+	KeepEnvironments string         `mapstructure:"keep_environments" yaml:"keep_environments"`
+	Logging          *LoggingConfig `mapstructure:"logging" yaml:"logging"`
+	EnvironmentFile  string         `mapstructure:"environment_file" yaml:"environment_file"`
+	ChainlinkImage   string         `mapstructure:"chainlink_image" yaml:"chainlink_image"`
+	ChainlinkVersion string         `mapstructure:"chainlink_version" yaml:"chainlink_version"`
+	// ChainlinkEnvValues uses interface{} as the value because it's needed for proper helmchart merges
+	ChainlinkEnvValues map[string]interface{} `mapstructure:"chainlink_env_values" yaml:"chainlink_env_values"`
 }
 
 // ETHNetwork data to configure fully ETH compatible network
@@ -112,10 +109,9 @@ type ChainlinkImage struct {
 
 // RemoteRunnerConfig reads the config file for remote test runs
 type RemoteRunnerConfig struct {
-	TestRegex       string `mapstructure:"test_regex" yaml:"test_regex"`
-	TestDirectory   string `mapstructure:"test_directory" yaml:"test_directory"`
-	SlackWebhookURL string `mapstructure:"slack_webhook_url" yaml:"slack_webhook_url"`
-	SlackAPIKey     string `mapstructure:"slack_api_key" yaml:"slack_api_key"`
-	SlackChannel    string `mapstructure:"slack_channel" yaml:"slack_channel"`
-	SlackUserID     string `mapstructure:"slack_user_id" yaml:"slack_user_id"`
+	TestRegex     string `mapstructure:"test_regex" yaml:"test_regex"`
+	TestDirectory string `mapstructure:"test_directory" yaml:"test_directory"`
+	SlackAPIKey   string `mapstructure:"slack_api_key" yaml:"slack_api_key"`
+	SlackChannel  string `mapstructure:"slack_channel" yaml:"slack_channel"`
+	SlackUserID   string `mapstructure:"slack_user_id" yaml:"slack_user_id"`
 }

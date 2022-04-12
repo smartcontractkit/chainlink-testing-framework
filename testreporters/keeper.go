@@ -8,18 +8,23 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
+	"github.com/onsi/ginkgo/v2"
 	"github.com/rs/zerolog/log"
 	"github.com/slack-go/slack"
 	"github.com/smartcontractkit/integrations-framework/client"
 )
 
-// KeeperBlockTimeTestReporter enables reporting
+// KeeperBlockTimeTestReporter enables reporting on the keeper block time test
 type KeeperBlockTimeTestReporter struct {
 	Reports                        []KeeperBlockTimeTestReport `json:"reports"`
 	ReportMutex                    sync.Mutex
 	AttemptedChainlinkTransactions []*client.TransactionsData `json:"attemptedChainlinkTransactions"`
-	namespace                      string
+
+	namespace                 string
+	keeperReportFile          string
+	attemptedTransactionsFile string
 }
 
 // KeeperBlockTimeTestReport holds a report information for a single Upkeep Consumer contract
@@ -35,7 +40,9 @@ func (k *KeeperBlockTimeTestReporter) SetNamespace(namespace string) {
 }
 
 func (k *KeeperBlockTimeTestReporter) WriteReport(folderLocation string) error {
-	keeperReportFile, err := os.Create(filepath.Join(folderLocation, "./block_time_report.csv"))
+	k.keeperReportFile = filepath.Join(folderLocation, "./block_time_report.csv")
+	k.attemptedTransactionsFile = filepath.Join(folderLocation, "./attempted_transactions_report.json")
+	keeperReportFile, err := os.Create(k.keeperReportFile)
 	if err != nil {
 		return err
 	}
@@ -55,6 +62,7 @@ func (k *KeeperBlockTimeTestReporter) WriteReport(folderLocation string) error {
 	if err != nil {
 		return err
 	}
+	var totalExpected, totalSuccessful, totalMissed, worstMiss int64
 	for contractIndex, report := range k.Reports {
 		avg, max := int64AvgMax(report.AllMissedUpkeeps)
 		err = keeperReportWriter.Write([]string{
@@ -67,9 +75,32 @@ func (k *KeeperBlockTimeTestReporter) WriteReport(folderLocation string) error {
 			fmt.Sprint(max),
 			fmt.Sprintf("%.2f%%", (float64(report.TotalSuccessfulUpkeeps)/float64(report.TotalExpectedUpkeeps))*100),
 		})
+		totalExpected += report.TotalExpectedUpkeeps
+		totalSuccessful += report.TotalSuccessfulUpkeeps
+		totalMissed += int64(len(report.AllMissedUpkeeps))
+		worstMiss = int64(math.Max(float64(max), float64(worstMiss)))
 		if err != nil {
 			return err
 		}
+	}
+	keeperReportWriter.Flush()
+
+	err = keeperReportWriter.Write([]string{"Full Test Summary"})
+	if err != nil {
+		return err
+	}
+	err = keeperReportWriter.Write([]string{"Total Expected", "Total Successful", "Total Missed", "Worst Miss", "Total Percent"})
+	if err != nil {
+		return err
+	}
+	err = keeperReportWriter.Write([]string{
+		fmt.Sprint(totalExpected),
+		fmt.Sprint(totalSuccessful),
+		fmt.Sprint(totalMissed),
+		fmt.Sprint(worstMiss),
+		fmt.Sprintf("%.2f%%", (float64(totalSuccessful)/float64(totalExpected))*100)})
+	if err != nil {
+		return err
 	}
 	keeperReportWriter.Flush()
 
@@ -77,7 +108,7 @@ func (k *KeeperBlockTimeTestReporter) WriteReport(folderLocation string) error {
 	if err != nil {
 		return err
 	}
-	err = os.WriteFile(filepath.Join(folderLocation, "./attempted_transactions_report.json"), txs, 0600)
+	err = os.WriteFile(k.attemptedTransactionsFile, txs, 0600)
 	if err != nil {
 		return err
 	}
@@ -86,9 +117,58 @@ func (k *KeeperBlockTimeTestReporter) WriteReport(folderLocation string) error {
 	return nil
 }
 
-// SendNotification TODO: Implement
+// SendSlackNotification sends a slack notification on the results of the test
 func (k *KeeperBlockTimeTestReporter) SendSlackNotification(slackClient *slack.Client) error {
-	panic("Implement me!")
+	if slackClient == nil {
+		slackClient = slack.New(slackAPIKey)
+	}
+
+	testFailed := ginkgo.CurrentSpecReport().Failed()
+	headerText := ":white_check_mark: Keeper Block Time Test PASSED :white_check_mark:"
+	notificationBlocks := []slack.Block{}
+	if testFailed {
+		headerText = ":x: Keeper Block Time Test FAILED :x:"
+	}
+	notificationBlocks = append(notificationBlocks,
+		slack.NewHeaderBlock(slack.NewTextBlockObject("plain_text", headerText, true, false)))
+	notificationBlocks = append(notificationBlocks,
+		slack.NewContextBlock("context_block", slack.NewTextBlockObject("plain_text", k.namespace, false, false)))
+	notificationBlocks = append(notificationBlocks, slack.NewDividerBlock())
+	notificationBlocks = append(notificationBlocks, slack.NewSectionBlock(slack.NewTextBlockObject("mrkdwn",
+		fmt.Sprintf("Test ran for %s\nSummary CSV created on _remote-test-runner_ at _%s_\nNotifying <@%s>",
+			ginkgo.CurrentSpecReport().RunTime.Truncate(time.Second), k.keeperReportFile, slackUserID), false, true), nil, nil))
+	if testFailed {
+		notificationBlocks = append(notificationBlocks,
+			slack.NewHeaderBlock(slack.NewTextBlockObject("plain_text", "Error Trace", true, false)))
+		notificationBlocks = append(notificationBlocks, slack.NewDividerBlock())
+		notificationBlocks = append(notificationBlocks, slack.NewSectionBlock(
+			slack.NewTextBlockObject("plain_text", ginkgo.CurrentSpecReport().FailureMessage(), false, false), nil, nil))
+	}
+	ts, err := sendSlackMessage(slackClient, slack.MsgOptionBlocks(notificationBlocks...))
+	if err != nil {
+		return err
+	}
+
+	if err := uploadSlackFile(slackClient, slack.FileUploadParameters{
+		Title:           fmt.Sprintf("Keeper Block Time Test Report %s", k.namespace),
+		Filetype:        "csv",
+		Filename:        fmt.Sprintf("keeper_block_time_%s.csv", k.namespace),
+		File:            k.keeperReportFile,
+		InitialComment:  fmt.Sprintf("Keeper Block Time Test Report %s", k.namespace),
+		Channels:        []string{slackChannel},
+		ThreadTimestamp: ts,
+	}); err != nil {
+		return err
+	}
+	return uploadSlackFile(slackClient, slack.FileUploadParameters{
+		Title:           fmt.Sprintf("Keeper Block Time Attempted Chainlink Txs %s", k.namespace),
+		Filetype:        "json",
+		Filename:        fmt.Sprintf("attempted_cl_txs_%s.json", k.namespace),
+		File:            k.attemptedTransactionsFile,
+		InitialComment:  fmt.Sprintf("Keeper Block Time Attempted Txs %s", k.namespace),
+		Channels:        []string{slackChannel},
+		ThreadTimestamp: ts,
+	})
 }
 
 // int64AvgMax helper calculates the avg and the max values in a list

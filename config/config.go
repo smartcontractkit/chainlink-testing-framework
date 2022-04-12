@@ -2,7 +2,6 @@
 package config
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/imdario/mergo"
 	"github.com/kelseyhightower/envconfig"
+	"github.com/smartcontractkit/helmenv/environment"
 	"github.com/smartcontractkit/integrations-framework/utils"
 	"gopkg.in/yaml.v3"
 
@@ -27,6 +27,10 @@ type ConfigurationType string
 const (
 	LocalConfig  ConfigurationType = "local"
 	SecretConfig ConfigurationType = "secret"
+
+	DefaultGeth     string = "geth"
+	PerformanceGeth string = "geth_performance"
+	RealisticGeth   string = "geth_realistic"
 )
 
 // NetworkSettings is a map that holds configuration for each individual network
@@ -36,7 +40,48 @@ var ProjectFrameworkSettings *FrameworkConfig
 var ProjectNetworkSettings *NetworksConfig
 var ProjectConfigDirectory string
 
-// Decode is used by envconfig to initialise the custom Charts type with populated values
+// ChainlinkVals formats Chainlink values set in the framework config to be passed to Chainlink deployments
+func ChainlinkVals() map[string]interface{} {
+	if ProjectFrameworkSettings == nil {
+		log.Error().Msg("ProjectFrameworkSettings not set!")
+		return nil
+	}
+	values := map[string]interface{}{}
+	if len(ProjectFrameworkSettings.ChainlinkEnvValues) > 0 {
+		values["env"] = ProjectFrameworkSettings.ChainlinkEnvValues
+	}
+	if ProjectFrameworkSettings.ChainlinkImage != "" {
+		values["chainlink"] = map[string]interface{}{
+			"image": map[string]interface{}{
+				"image":   ProjectFrameworkSettings.ChainlinkImage,
+				"version": ProjectFrameworkSettings.ChainlinkVersion,
+			},
+		}
+	}
+	return values
+}
+
+// GethNetworks builds the proper geth network settings to use based on the selected_networks config
+func GethNetworks() []environment.SimulatedNetwork {
+	if ProjectNetworkSettings == nil {
+		log.Error().Msg("ProjectNetworkSettings not set!")
+		return nil
+	}
+	var gethNetworks []environment.SimulatedNetwork
+	for _, network := range ProjectNetworkSettings.SelectedNetworks {
+		switch network {
+		case DefaultGeth:
+			gethNetworks = append(gethNetworks, environment.DefaultGeth)
+		case PerformanceGeth:
+			gethNetworks = append(gethNetworks, environment.PerformanceGeth)
+		case RealisticGeth:
+			gethNetworks = append(gethNetworks, environment.RealisticGeth)
+		}
+	}
+	return gethNetworks
+}
+
+// Decode is used by envconfig to initialize the custom Charts type with populated values
 // This function will take a JSON object representing charts, and unmarshal it into the existing object to "merge" the
 // two
 func (n NetworkSettings) Decode(value string) error {
@@ -92,14 +137,6 @@ func LoadFrameworkConfig(cfgPath string) (*FrameworkConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	chartOverrides, err := cfg.CreateChartOverrrides()
-	if err != nil {
-		return nil, err
-	}
-	if chartOverrides != "" {
-		os.Setenv("CHARTS", chartOverrides)
-		log.Debug().Str("Overrides", chartOverrides).Msg("Chart Overrides Set")
-	}
 	ProjectFrameworkSettings = cfg
 	return ProjectFrameworkSettings, err
 }
@@ -143,44 +180,6 @@ func (l *LocalStore) Fetch() ([]string, error) {
 	return l.RawKeys, nil
 }
 
-// CreateChartOverrrides checks the framework config to see if the user has supplied any values to override the default helm
-// chart values. It returns a JSON block that can be set to the `CHARTS` environment variable that the helmenv library
-// will read from. This will merge the override values with the default values for the appropriate charts.
-func (cfg *FrameworkConfig) CreateChartOverrrides() (string, error) {
-	chartOverrides := ChartOverrides{}
-	// Don't marshall chainlink if there's no chainlink values provided
-	if cfg.ChainlinkImage != "" || cfg.ChainlinkVersion != "" || len(cfg.ChainlinkEnvValues) != 0 {
-		chartOverrides.ChainlinkChartOverrride = &ChainlinkChart{
-			Values: &ChainlinkValuesWrapper{
-				ChainlinkVals: &ChainlinkValues{
-					Image: &ChainlinkImage{
-						Image:   cfg.ChainlinkImage,
-						Version: cfg.ChainlinkVersion,
-					},
-				},
-				EnvironmentVariables: cfg.ChainlinkEnvValues,
-			},
-		}
-	}
-	// Don't marshall geth if there's no geth values provided
-	if cfg.GethImage != "" || cfg.GethVersion != "" || len(cfg.GethArgs) != 0 {
-		chartOverrides.GethChartOverride = &GethChart{
-			Values: &GethValuesWrapper{
-				GethVals: &GethValues{
-					Image: &GethImage{
-						Image:   cfg.GethImage,
-						Version: cfg.GethVersion,
-					},
-				},
-				Args: cfg.GethArgs,
-			},
-		}
-	}
-
-	jsonChartOverrides, err := json.Marshal(chartOverrides)
-	return string(jsonChartOverrides), err
-}
-
 // ReadWriteRemoteRunnerConfig looks for an already existing remote config to read from, or asks the user to build one
 func ReadWriteRemoteRunnerConfig() (*RemoteRunnerConfig, error) {
 	var config *RemoteRunnerConfig
@@ -209,12 +208,11 @@ func ReadWriteRemoteRunnerConfig() (*RemoteRunnerConfig, error) {
 // Prompts the user to create a remote runner config file
 func writeRemoteRunnerConfig(configLocation string) error {
 	conf := &RemoteRunnerConfig{
-		TestRegex:       "@soak-ocr",
-		TestDirectory:   filepath.Join(utils.ProjectRoot, "./suite/soak/tests"),
-		SlackWebhookURL: "https://hooks.slack.com/services/XXX",
-		SlackAPIKey:     "abcdefg",
-		SlackChannel:    "#team-a",
-		SlackUserID:     "U01xxxxx",
+		TestRegex:     "@soak-ocr",
+		TestDirectory: filepath.Join(utils.ProjectRoot, "./suite/soak/tests"),
+		SlackAPIKey:   "abcdefg",
+		SlackChannel:  "C01xxxxx",
+		SlackUserID:   "U01xxxxx",
 	}
 	confBytes, err := yaml.Marshal(&conf)
 	if err != nil {

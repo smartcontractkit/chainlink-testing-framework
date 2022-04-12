@@ -27,14 +27,8 @@ logging:
 
 # Specify the image and version of the Chainlink image you want to run tests against. Leave blank for default.
 chainlink_image: public.ecr.aws/chainlink/chainlink
-chainlink_version: 1.1.0
+chainlink_version: 1.2.1
 chainlink_env_values:
-
-# Specify the image and version of the simulated geth image you want to run tests against. Leave blank for default.
-# Has no effect when running tests on networks other than the simulated geth instances.
-geth_image:
-geth_version: 
-geth_args:
 
 # Setting an environment file allows for persistent, not ephemeral environments on test execution
 #
@@ -96,4 +90,63 @@ geth:                                 # Network identifier
   minimum_confirmations: 1            # How many blocks to wait for transaction to be confirmed
   gas_estimation_buffer: 10000        # How much gas to bump transaction an contract creations by (added to auto-estimations)
   block_gas_limit: 40000000           # How much gas each block of the network should be using
+```
+
+There are a couple values available for launching simulated Geth instances. If you choose them in your `selected_networks` list, they will launch with the following properties:
+
+### `geth`
+
+The default geth instance, small footprint with fast block times.
+
+```yaml
+resources:
+  requests:
+    cpu: .2
+    memory: 1000Mi
+
+config_args:
+  "--dev.period": "1"
+  "--miner.threads": "1"
+  "--miner.gasprice": "10000000000"
+  "--miner.gastarget": "80000000000"
+```
+
+### `geth_performance`
+
+Used for performance tests, launching a powerful geth instance with large blocks and fast block times.
+
+```yaml
+resources:
+  requests:
+    cpu: 4
+    memory: 4096Mi
+  limits:
+    cpu: 4
+    memory: 4096Mi
+
+config_args:
+  "--dev.period": "1"
+  "--miner.threads": "4"
+  "--miner.gasprice": "10000000000"
+  "--miner.gastarget": "30000000000"
+```
+
+### `geth_realistic`
+
+Launches a powerful geth instance that tries to simulate Ethereum mainnet as close as possible.
+
+```yaml
+resources:
+  requests:
+    cpu: 4
+    memory: 4096Mi
+  limits:
+    cpu: 4
+    memory: 4096Mi
+
+config_args:
+  "--dev.period": "14"
+  "--miner.threads": "4"
+  "--miner.gasprice": "10000000000"
+  "--miner.gastarget": "15000000000"
 ```

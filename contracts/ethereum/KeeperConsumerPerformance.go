@@ -30,8 +30,8 @@ var (
 
 // KeeperConsumerPerformanceMetaData contains all meta data concerning the KeeperConsumerPerformance contract.
 var KeeperConsumerPerformanceMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_testRange\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_averageEligibilityCadence\",\"type\":\"uint256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"eligible\",\"type\":\"bool\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"initialCall\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"nextEligible\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"blockNumber\",\"type\":\"uint256\"}],\"name\":\"PerformingUpkeep\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"averageEligibilityCadence\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"checkEligible\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"name\":\"checkUpkeep\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"},{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getCountPerforms\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"initialCall\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"nextEligible\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"name\":\"performUpkeep\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"reset\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_newTestRange\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_newAverageEligibilityCadence\",\"type\":\"uint256\"}],\"name\":\"setSpread\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"testRange\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]",
-	Bin: "0x6080604052600080556000600155600060045534801561001e57600080fd5b5060405161042d38038061042d8339818101604052604081101561004157600080fd5b5080516020909101516002919091556003556103cb806100626000396000f3fe608060405234801561001057600080fd5b506004361061008e5760003560e01c80634585e33b14610093578063523d9b8a146101035780636250a13a1461011d5780636e04ff0d146101255780637f407edf14610214578063926f086e14610237578063a9a4c57c1461023f578063c228a98e14610247578063d826f88f14610263578063e303666f1461026b575b600080fd5b610101600480360360208110156100a957600080fd5b810190602081018135600160201b8111156100c357600080fd5b8201836020820111156100d557600080fd5b803590602001918460018302840111600160201b831117156100f657600080fd5b509092509050610273565b005b61010b610307565b60408051918252519081900360200190f35b61010b61030d565b6101936004803603602081101561013b57600080fd5b810190602081018135600160201b81111561015557600080fd5b82018360208201111561016757600080fd5b803590602001918460018302840111600160201b8311171561018857600080fd5b509092509050610313565b60405180831515815260200180602001828103825283818151815260200191508051906020019080838360005b838110156101d85781810151838201526020016101c0565b50505050905090810190601f1680156102055780820380516001836020036101000a031916815260200191505b50935050505060405180910390f35b6101016004803603604081101561022a57600080fd5b508035906020013561033a565b61010b610345565b61010b61034b565b61024f610351565b604080519115158252519081900360200190f35b610101610360565b61010b61036a565b600061027d610370565b60005460015460408051841515815232602082015280820193909352606083019190915243608083018190529051929350917fbd6b6608a51477954e8b498c633bda87e5cd555e06ead50486398d9e3b9cebc09181900360a00190a1816102e357600080fd5b6000546102f05760008190555b600354016001908155600480549091019055505050565b60015481565b60025481565b6000606061031f610370565b60405180602001604052806000815250915091509250929050565b600291909155600355565b60005481565b60035481565b600061035b610370565b905090565b6000808055600455565b60045490565b60008054158061035b5750600254600054430310801561035b5750506001544310159056fea2646970667358221220ea467b763c458ff66dc749aed84e7e57b50539bb5ff0c6b6cb57c2d353915fcc64736f6c63430007060033",
+	ABI: "[{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_testRange\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_averageEligibilityCadence\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_checkGasToBurn\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_performGasToBurn\",\"type\":\"uint256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"eligible\",\"type\":\"bool\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"initialCall\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"nextEligible\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"blockNumber\",\"type\":\"uint256\"}],\"name\":\"PerformingUpkeep\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"averageEligibilityCadence\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"checkEligible\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"checkGasToBurn\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"name\":\"checkUpkeep\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"},{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"count\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"name\":\"dummyMap\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getCountPerforms\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"initialCall\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"nextEligible\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"performGasToBurn\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"name\":\"performUpkeep\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"reset\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"}],\"name\":\"setCheckGasToBurn\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"}],\"name\":\"setPerformGasToBurn\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_newTestRange\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_newAverageEligibilityCadence\",\"type\":\"uint256\"}],\"name\":\"setSpread\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"testRange\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]",
+	Bin: "0x6080604052600080556000600155600060075534801561001e57600080fd5b506040516105f03803806105f08339818101604052608081101561004157600080fd5b5080516020820151604083015160609093015160029290925560035560049190915560055561057b806100756000396000f3fe608060405234801561001057600080fd5b50600436106100e05760003560e01c80637145f11b116100875780637145f11b146102b05780637f407edf146102e1578063926f086e14610304578063a9a4c57c1461030c578063b30566b414610314578063c228a98e1461031c578063d826f88f14610324578063e303666f1461032c576100e0565b806306661abd146100e557806313bda75b146100ff5780632555d2cf1461011e5780632ff3617d1461013b5780634585e33b14610143578063523d9b8a146101b15780636250a13a146101b95780636e04ff0d146101c1575b600080fd5b6100ed610334565b60408051918252519081900360200190f35b61011c6004803603602081101561011557600080fd5b503561033a565b005b61011c6004803603602081101561013457600080fd5b503561033f565b6100ed610344565b61011c6004803603602081101561015957600080fd5b810190602081018135600160201b81111561017357600080fd5b82018360208201111561018557600080fd5b803590602001918460018302840111600160201b831117156101a657600080fd5b50909250905061034a565b6100ed610425565b6100ed61042b565b61022f600480360360208110156101d757600080fd5b810190602081018135600160201b8111156101f157600080fd5b82018360208201111561020357600080fd5b803590602001918460018302840111600160201b8311171561022457600080fd5b509092509050610431565b60405180831515815260200180602001828103825283818151815260200191508051906020019080838360005b8381101561027457818101518382015260200161025c565b50505050905090810190601f1680156102a15780820380516001836020036101000a031916815260200191505b50935050505060405180910390f35b6102cd600480360360208110156102c657600080fd5b503561049f565b604080519115158252519081900360200190f35b61011c600480360360408110156102f757600080fd5b50803590602001356104b4565b6100ed6104bf565b6100ed6104c5565b6100ed6104cb565b6102cd6104d1565b61011c6104e0565b6100ed6104ea565b60075481565b600455565b600555565b60045481565b60005a905060006103596104f0565b60005460015460408051841515815232602082015280820193909352606083019190915243608083018190529051929350917fbd6b6608a51477954e8b498c633bda87e5cd555e06ead50486398d9e3b9cebc09181900360a00190a1816103bf57600080fd5b6000546103cc5760008190555b6003546002026103da610514565b816103e157fe5b068101600190810181556007805490910190555b6005545a8403101561041e5743406000908152600660205260409020805460ff191690556103f5565b5050505050565b60015481565b60025481565b6000606060005a905060005b6004545a8303101561046d578080156104665750434060009081526006602052604090205460ff165b905061043d565b6104756104f0565b60408051921515602080850191909152815180850390910181529281019052969095509350505050565b60066020526000908152604090205460ff1681565b600291909155600355565b60005481565b60035481565b60055481565b60006104db6104f0565b905090565b6000808055600755565b60075490565b6000805415806104db575060025460005443031080156104db575050600154431190565b604080516000194301406020808301919091523082840152825180830384018152606090920190925280519101209056fea2646970667358221220e233009b46ad9b01fb692930a06d8a04abee3578625455b4761ede5e8ae7489e64736f6c63430007060033",
 }
 
 // KeeperConsumerPerformanceABI is the input ABI used to generate the binding from.
@@ -43,7 +43,7 @@ var KeeperConsumerPerformanceABI = KeeperConsumerPerformanceMetaData.ABI
 var KeeperConsumerPerformanceBin = KeeperConsumerPerformanceMetaData.Bin
 
 // DeployKeeperConsumerPerformance deploys a new Ethereum contract, binding an instance of KeeperConsumerPerformance to it.
-func DeployKeeperConsumerPerformance(auth *bind.TransactOpts, backend bind.ContractBackend, _testRange *big.Int, _averageEligibilityCadence *big.Int) (common.Address, *types.Transaction, *KeeperConsumerPerformance, error) {
+func DeployKeeperConsumerPerformance(auth *bind.TransactOpts, backend bind.ContractBackend, _testRange *big.Int, _averageEligibilityCadence *big.Int, _checkGasToBurn *big.Int, _performGasToBurn *big.Int) (common.Address, *types.Transaction, *KeeperConsumerPerformance, error) {
 	parsed, err := KeeperConsumerPerformanceMetaData.GetAbi()
 	if err != nil {
 		return common.Address{}, nil, nil, err
@@ -52,7 +52,7 @@ func DeployKeeperConsumerPerformance(auth *bind.TransactOpts, backend bind.Contr
 		return common.Address{}, nil, nil, errors.New("GetABI returned nil")
 	}
 
-	address, tx, contract, err := bind.DeployContract(auth, *parsed, common.FromHex(KeeperConsumerPerformanceBin), backend, _testRange, _averageEligibilityCadence)
+	address, tx, contract, err := bind.DeployContract(auth, *parsed, common.FromHex(KeeperConsumerPerformanceBin), backend, _testRange, _averageEligibilityCadence, _checkGasToBurn, _performGasToBurn)
 	if err != nil {
 		return common.Address{}, nil, nil, err
 	}
@@ -263,6 +263,131 @@ func (_KeeperConsumerPerformance *KeeperConsumerPerformanceCallerSession) CheckE
 	return _KeeperConsumerPerformance.Contract.CheckEligible(&_KeeperConsumerPerformance.CallOpts)
 }
 
+// CheckGasToBurn is a free data retrieval call binding the contract method 0x2ff3617d.
+//
+// Solidity: function checkGasToBurn() view returns(uint256)
+func (_KeeperConsumerPerformance *KeeperConsumerPerformanceCaller) CheckGasToBurn(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _KeeperConsumerPerformance.contract.Call(opts, &out, "checkGasToBurn")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// CheckGasToBurn is a free data retrieval call binding the contract method 0x2ff3617d.
+//
+// Solidity: function checkGasToBurn() view returns(uint256)
+func (_KeeperConsumerPerformance *KeeperConsumerPerformanceSession) CheckGasToBurn() (*big.Int, error) {
+	return _KeeperConsumerPerformance.Contract.CheckGasToBurn(&_KeeperConsumerPerformance.CallOpts)
+}
+
+// CheckGasToBurn is a free data retrieval call binding the contract method 0x2ff3617d.
+//
+// Solidity: function checkGasToBurn() view returns(uint256)
+func (_KeeperConsumerPerformance *KeeperConsumerPerformanceCallerSession) CheckGasToBurn() (*big.Int, error) {
+	return _KeeperConsumerPerformance.Contract.CheckGasToBurn(&_KeeperConsumerPerformance.CallOpts)
+}
+
+// CheckUpkeep is a free data retrieval call binding the contract method 0x6e04ff0d.
+//
+// Solidity: function checkUpkeep(bytes data) view returns(bool, bytes)
+func (_KeeperConsumerPerformance *KeeperConsumerPerformanceCaller) CheckUpkeep(opts *bind.CallOpts, data []byte) (bool, []byte, error) {
+	var out []interface{}
+	err := _KeeperConsumerPerformance.contract.Call(opts, &out, "checkUpkeep", data)
+
+	if err != nil {
+		return *new(bool), *new([]byte), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(bool)).(*bool)
+	out1 := *abi.ConvertType(out[1], new([]byte)).(*[]byte)
+
+	return out0, out1, err
+
+}
+
+// CheckUpkeep is a free data retrieval call binding the contract method 0x6e04ff0d.
+//
+// Solidity: function checkUpkeep(bytes data) view returns(bool, bytes)
+func (_KeeperConsumerPerformance *KeeperConsumerPerformanceSession) CheckUpkeep(data []byte) (bool, []byte, error) {
+	return _KeeperConsumerPerformance.Contract.CheckUpkeep(&_KeeperConsumerPerformance.CallOpts, data)
+}
+
+// CheckUpkeep is a free data retrieval call binding the contract method 0x6e04ff0d.
+//
+// Solidity: function checkUpkeep(bytes data) view returns(bool, bytes)
+func (_KeeperConsumerPerformance *KeeperConsumerPerformanceCallerSession) CheckUpkeep(data []byte) (bool, []byte, error) {
+	return _KeeperConsumerPerformance.Contract.CheckUpkeep(&_KeeperConsumerPerformance.CallOpts, data)
+}
+
+// Count is a free data retrieval call binding the contract method 0x06661abd.
+//
+// Solidity: function count() view returns(uint256)
+func (_KeeperConsumerPerformance *KeeperConsumerPerformanceCaller) Count(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _KeeperConsumerPerformance.contract.Call(opts, &out, "count")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// Count is a free data retrieval call binding the contract method 0x06661abd.
+//
+// Solidity: function count() view returns(uint256)
+func (_KeeperConsumerPerformance *KeeperConsumerPerformanceSession) Count() (*big.Int, error) {
+	return _KeeperConsumerPerformance.Contract.Count(&_KeeperConsumerPerformance.CallOpts)
+}
+
+// Count is a free data retrieval call binding the contract method 0x06661abd.
+//
+// Solidity: function count() view returns(uint256)
+func (_KeeperConsumerPerformance *KeeperConsumerPerformanceCallerSession) Count() (*big.Int, error) {
+	return _KeeperConsumerPerformance.Contract.Count(&_KeeperConsumerPerformance.CallOpts)
+}
+
+// DummyMap is a free data retrieval call binding the contract method 0x7145f11b.
+//
+// Solidity: function dummyMap(bytes32 ) view returns(bool)
+func (_KeeperConsumerPerformance *KeeperConsumerPerformanceCaller) DummyMap(opts *bind.CallOpts, arg0 [32]byte) (bool, error) {
+	var out []interface{}
+	err := _KeeperConsumerPerformance.contract.Call(opts, &out, "dummyMap", arg0)
+
+	if err != nil {
+		return *new(bool), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(bool)).(*bool)
+
+	return out0, err
+
+}
+
+// DummyMap is a free data retrieval call binding the contract method 0x7145f11b.
+//
+// Solidity: function dummyMap(bytes32 ) view returns(bool)
+func (_KeeperConsumerPerformance *KeeperConsumerPerformanceSession) DummyMap(arg0 [32]byte) (bool, error) {
+	return _KeeperConsumerPerformance.Contract.DummyMap(&_KeeperConsumerPerformance.CallOpts, arg0)
+}
+
+// DummyMap is a free data retrieval call binding the contract method 0x7145f11b.
+//
+// Solidity: function dummyMap(bytes32 ) view returns(bool)
+func (_KeeperConsumerPerformance *KeeperConsumerPerformanceCallerSession) DummyMap(arg0 [32]byte) (bool, error) {
+	return _KeeperConsumerPerformance.Contract.DummyMap(&_KeeperConsumerPerformance.CallOpts, arg0)
+}
+
 // GetCountPerforms is a free data retrieval call binding the contract method 0xe303666f.
 //
 // Solidity: function getCountPerforms() view returns(uint256)
@@ -356,6 +481,37 @@ func (_KeeperConsumerPerformance *KeeperConsumerPerformanceCallerSession) NextEl
 	return _KeeperConsumerPerformance.Contract.NextEligible(&_KeeperConsumerPerformance.CallOpts)
 }
 
+// PerformGasToBurn is a free data retrieval call binding the contract method 0xb30566b4.
+//
+// Solidity: function performGasToBurn() view returns(uint256)
+func (_KeeperConsumerPerformance *KeeperConsumerPerformanceCaller) PerformGasToBurn(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _KeeperConsumerPerformance.contract.Call(opts, &out, "performGasToBurn")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// PerformGasToBurn is a free data retrieval call binding the contract method 0xb30566b4.
+//
+// Solidity: function performGasToBurn() view returns(uint256)
+func (_KeeperConsumerPerformance *KeeperConsumerPerformanceSession) PerformGasToBurn() (*big.Int, error) {
+	return _KeeperConsumerPerformance.Contract.PerformGasToBurn(&_KeeperConsumerPerformance.CallOpts)
+}
+
+// PerformGasToBurn is a free data retrieval call binding the contract method 0xb30566b4.
+//
+// Solidity: function performGasToBurn() view returns(uint256)
+func (_KeeperConsumerPerformance *KeeperConsumerPerformanceCallerSession) PerformGasToBurn() (*big.Int, error) {
+	return _KeeperConsumerPerformance.Contract.PerformGasToBurn(&_KeeperConsumerPerformance.CallOpts)
+}
+
 // TestRange is a free data retrieval call binding the contract method 0x6250a13a.
 //
 // Solidity: function testRange() view returns(uint256)
@@ -385,27 +541,6 @@ func (_KeeperConsumerPerformance *KeeperConsumerPerformanceSession) TestRange() 
 // Solidity: function testRange() view returns(uint256)
 func (_KeeperConsumerPerformance *KeeperConsumerPerformanceCallerSession) TestRange() (*big.Int, error) {
 	return _KeeperConsumerPerformance.Contract.TestRange(&_KeeperConsumerPerformance.CallOpts)
-}
-
-// CheckUpkeep is a paid mutator transaction binding the contract method 0x6e04ff0d.
-//
-// Solidity: function checkUpkeep(bytes data) returns(bool, bytes)
-func (_KeeperConsumerPerformance *KeeperConsumerPerformanceTransactor) CheckUpkeep(opts *bind.TransactOpts, data []byte) (*types.Transaction, error) {
-	return _KeeperConsumerPerformance.contract.Transact(opts, "checkUpkeep", data)
-}
-
-// CheckUpkeep is a paid mutator transaction binding the contract method 0x6e04ff0d.
-//
-// Solidity: function checkUpkeep(bytes data) returns(bool, bytes)
-func (_KeeperConsumerPerformance *KeeperConsumerPerformanceSession) CheckUpkeep(data []byte) (*types.Transaction, error) {
-	return _KeeperConsumerPerformance.Contract.CheckUpkeep(&_KeeperConsumerPerformance.TransactOpts, data)
-}
-
-// CheckUpkeep is a paid mutator transaction binding the contract method 0x6e04ff0d.
-//
-// Solidity: function checkUpkeep(bytes data) returns(bool, bytes)
-func (_KeeperConsumerPerformance *KeeperConsumerPerformanceTransactorSession) CheckUpkeep(data []byte) (*types.Transaction, error) {
-	return _KeeperConsumerPerformance.Contract.CheckUpkeep(&_KeeperConsumerPerformance.TransactOpts, data)
 }
 
 // PerformUpkeep is a paid mutator transaction binding the contract method 0x4585e33b.
@@ -448,6 +583,48 @@ func (_KeeperConsumerPerformance *KeeperConsumerPerformanceSession) Reset() (*ty
 // Solidity: function reset() returns()
 func (_KeeperConsumerPerformance *KeeperConsumerPerformanceTransactorSession) Reset() (*types.Transaction, error) {
 	return _KeeperConsumerPerformance.Contract.Reset(&_KeeperConsumerPerformance.TransactOpts)
+}
+
+// SetCheckGasToBurn is a paid mutator transaction binding the contract method 0x13bda75b.
+//
+// Solidity: function setCheckGasToBurn(uint256 value) returns()
+func (_KeeperConsumerPerformance *KeeperConsumerPerformanceTransactor) SetCheckGasToBurn(opts *bind.TransactOpts, value *big.Int) (*types.Transaction, error) {
+	return _KeeperConsumerPerformance.contract.Transact(opts, "setCheckGasToBurn", value)
+}
+
+// SetCheckGasToBurn is a paid mutator transaction binding the contract method 0x13bda75b.
+//
+// Solidity: function setCheckGasToBurn(uint256 value) returns()
+func (_KeeperConsumerPerformance *KeeperConsumerPerformanceSession) SetCheckGasToBurn(value *big.Int) (*types.Transaction, error) {
+	return _KeeperConsumerPerformance.Contract.SetCheckGasToBurn(&_KeeperConsumerPerformance.TransactOpts, value)
+}
+
+// SetCheckGasToBurn is a paid mutator transaction binding the contract method 0x13bda75b.
+//
+// Solidity: function setCheckGasToBurn(uint256 value) returns()
+func (_KeeperConsumerPerformance *KeeperConsumerPerformanceTransactorSession) SetCheckGasToBurn(value *big.Int) (*types.Transaction, error) {
+	return _KeeperConsumerPerformance.Contract.SetCheckGasToBurn(&_KeeperConsumerPerformance.TransactOpts, value)
+}
+
+// SetPerformGasToBurn is a paid mutator transaction binding the contract method 0x2555d2cf.
+//
+// Solidity: function setPerformGasToBurn(uint256 value) returns()
+func (_KeeperConsumerPerformance *KeeperConsumerPerformanceTransactor) SetPerformGasToBurn(opts *bind.TransactOpts, value *big.Int) (*types.Transaction, error) {
+	return _KeeperConsumerPerformance.contract.Transact(opts, "setPerformGasToBurn", value)
+}
+
+// SetPerformGasToBurn is a paid mutator transaction binding the contract method 0x2555d2cf.
+//
+// Solidity: function setPerformGasToBurn(uint256 value) returns()
+func (_KeeperConsumerPerformance *KeeperConsumerPerformanceSession) SetPerformGasToBurn(value *big.Int) (*types.Transaction, error) {
+	return _KeeperConsumerPerformance.Contract.SetPerformGasToBurn(&_KeeperConsumerPerformance.TransactOpts, value)
+}
+
+// SetPerformGasToBurn is a paid mutator transaction binding the contract method 0x2555d2cf.
+//
+// Solidity: function setPerformGasToBurn(uint256 value) returns()
+func (_KeeperConsumerPerformance *KeeperConsumerPerformanceTransactorSession) SetPerformGasToBurn(value *big.Int) (*types.Transaction, error) {
+	return _KeeperConsumerPerformance.Contract.SetPerformGasToBurn(&_KeeperConsumerPerformance.TransactOpts, value)
 }
 
 // SetSpread is a paid mutator transaction binding the contract method 0x7f407edf.

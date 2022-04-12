@@ -15,6 +15,7 @@ import (
 	"github.com/smartcontractkit/helmenv/tools"
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/client"
+	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/contracts"
 	"github.com/smartcontractkit/integrations-framework/utils"
 )
@@ -36,7 +37,11 @@ var _ = Describe("VRF suite @vrf", func() {
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
 			e, err = environment.DeployOrLoadEnvironment(
-				environment.NewChainlinkConfig(nil, "chainlink-vrf"),
+				environment.NewChainlinkConfig(
+					config.ChainlinkVals(),
+					"chainlink-vrf",
+					config.GethNetworks()...,
+				),
 				tools.ChartsRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred(), "Environment deployment shouldn't fail")

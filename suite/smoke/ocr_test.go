@@ -11,6 +11,7 @@ import (
 	"github.com/smartcontractkit/helmenv/tools"
 	"github.com/smartcontractkit/integrations-framework/actions"
 	"github.com/smartcontractkit/integrations-framework/client"
+	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/contracts"
 	"github.com/smartcontractkit/integrations-framework/utils"
 )
@@ -30,7 +31,11 @@ var _ = Describe("OCR Feed @ocr", func() {
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
 			env, err = environment.DeployOrLoadEnvironment(
-				environment.NewChainlinkConfig(environment.ChainlinkReplicas(6, nil), "chainlink-ocr"),
+				environment.NewChainlinkConfig(
+					environment.ChainlinkReplicas(6, config.ChainlinkVals()),
+					"chainlink-ocr",
+					config.GethNetworks()...,
+				),
 				tools.ChartsRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred(), "Environment deployment shouldn't fail")

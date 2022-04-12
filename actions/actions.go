@@ -32,6 +32,9 @@ import (
 const (
 	// DefaultArtifactsDir default artifacts dir
 	DefaultArtifactsDir string = "logs"
+	// After how many contract actions to wait before starting any more
+	// Example: When deploying 1000 contracts, stop every contractDeploymentInterval have been deployed to wait before continuing
+	contractDeploymentInterval int = 500
 )
 
 // GinkgoSuite provides the default setup for running a Ginkgo test suite
@@ -91,6 +94,26 @@ func FundChainlinkNodes(
 			return err
 		}
 		err = blockchain.Fund(toAddress, amount)
+		if err != nil {
+			return err
+		}
+	}
+	return blockchain.WaitForEvents()
+}
+
+// FundChainlinkNodes will fund all of the provided Chainlink nodes with a set amount of native currency
+func FundChainlinkNodesLink(
+	nodes []client.Chainlink,
+	blockchain client.BlockchainClient,
+	linkToken contracts.LinkToken,
+	linkAmount *big.Int,
+) error {
+	for _, cl := range nodes {
+		toAddress, err := cl.PrimaryEthAddress()
+		if err != nil {
+			return err
+		}
+		err = linkToken.Transfer(toAddress, linkAmount)
 		if err != nil {
 			return err
 		}

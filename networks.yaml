@@ -26,7 +26,7 @@ selected_networks: # Selected network(s) for test execution
 
 networks:
     geth: &common_ethereum
-        name: "Ethereum Geth dev"
+        name: "Ethereum Geth Standard"
         chain_id: 1337
         type: eth_simulated
         secret_private_keys: false
@@ -37,12 +37,18 @@ networks:
         minimum_confirmations: 1
         gas_estimation_buffer: 10000
         block_gas_limit: 40000000
-    ethereum_geth_performance: &ethereum_geth_performance
+    geth_performance: &geth_performance
         <<: *common_ethereum
+        name: "Ethereum Geth Performance"
         transaction_timeout: 5m
-        block_gas_limit: 400000000000000
-    geth-reorg:
-        <<: *ethereum_geth_performance
+        block_gas_limit: 30000000000
+    geth_realistic:
+        <<: *common_ethereum
+        name: "Ethereum Geth Realistic"
+        transaction_timeout: 5m
+        block_gas_limit: 15000000000
+    geth_reorg:
+        <<: *geth_performance
         name: "Ethereum Geth reorg"
         type: eth_simulated
         transaction_timeout: 10m
@@ -155,7 +161,7 @@ networks:
         private_keys:
             - iotex_testnet_1
     terra:
-        <<: *ethereum_geth_performance
+        <<: *geth_performance
         name: "localterra"
         type: eth_multinode
         transaction_timeout: 10m

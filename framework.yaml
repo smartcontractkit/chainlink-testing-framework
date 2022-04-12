@@ -10,14 +10,8 @@ logging:
 
 # Specify the image and version of the chainlink image you want to run tests against. Leave blank for default.
 chainlink_image: public.ecr.aws/chainlink/chainlink
-chainlink_version: 1.1.1
+chainlink_version: 1.2.1
 chainlink_env_values:
-
-# Specify the image and version of the simulated geth image you want to run tests against. Leave blank for default.
-# Has no effect when running tests on networks other than the simulated geth instances.
-geth_image:
-geth_version: 
-geth_args:
 
 # Setting an environment file allows for persistent, not ephemeral environments on test execution
 #
