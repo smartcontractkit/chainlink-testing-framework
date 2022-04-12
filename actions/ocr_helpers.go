@@ -33,7 +33,7 @@ func DeployOCRContracts(
 		)
 		Expect(err).ShouldNot(HaveOccurred(), "Deploying OCR instance %d shouldn't fail", contractCount+1)
 		ocrInstances = append(ocrInstances, ocrInstance)
-		if (contractCount+1)%100 == 0 { // For large amounts of contract deployments, space things out some
+		if (contractCount+1)%contractDeploymentInterval == 0 { // For large amounts of contract deployments, space things out some
 			err = networks.Default.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred(), "Failed to wait for OCR Contract deployments")
 		}
@@ -54,7 +54,7 @@ func DeployOCRContracts(
 	for contractCount, ocrInstance := range ocrInstances {
 		err = ocrInstance.SetPayees(transmitters, payees)
 		Expect(err).ShouldNot(HaveOccurred(), "Error setting OCR payees")
-		if (contractCount+1)%100 == 0 { // For large amounts of contract deployments, space things out some
+		if (contractCount+1)%contractDeploymentInterval == 0 { // For large amounts of contract deployments, space things out some
 			err = networks.Default.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred(), "Failed to wait for setting OCR payees")
 		}
@@ -70,7 +70,7 @@ func DeployOCRContracts(
 			contracts.DefaultOffChainAggregatorConfig(len(chainlinkNodes[1:])),
 		)
 		Expect(err).ShouldNot(HaveOccurred())
-		if (contractCount+1)%100 == 0 { // For large amounts of contract deployments, space things out some
+		if (contractCount+1)%contractDeploymentInterval == 0 { // For large amounts of contract deployments, space things out some
 			err = networks.Default.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred(), "Failed to wait for setting OCR config")
 		}
