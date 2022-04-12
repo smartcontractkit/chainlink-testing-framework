@@ -24,7 +24,7 @@ jobs:
         uses: unsplash/comment-on-pr@b5610c6125a7197eaec80072ea35ef53e1fc6035 
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: "steps.changedfiles.outputs.files_updated == '' && steps.changedfiles.outputs.files_created != ''"
+        if: "contains(steps.changedfiles.outputs.files_updated, 'docs') != true && contains(steps.changedfiles.outputs.files_created, 'docs') != true"
         with:
           msg: "I see that you haven't updated any `docs/` files. Will this PR change or add functionality that should be documented?"
           check_for_duplicate_msg: true
