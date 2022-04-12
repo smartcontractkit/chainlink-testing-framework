@@ -16,7 +16,7 @@ jobs:
     steps:
       - name: Check for changed files
         id: changedfiles
-        uses: umani/changed-files@1d252c611c64289d35243fc37ece7323ea5e93e1 # Version 3.3.0
+        uses: umani/changed-files@v3.3.0 # Version 3.3.0
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           pattern: '^docs/.*$'
@@ -24,7 +24,7 @@ jobs:
         uses: unsplash/comment-on-pr@b5610c6125a7197eaec80072ea35ef53e1fc6035 
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: steps.changedfiles.outputs.files_updated == "" && steps.changedfiles.outputs.files_created != ""
+        if: "steps.changedfiles.outputs.files_updated == '' && steps.changedfiles.outputs.files_created != ''"
         with:
           msg: "I see that you haven't updated any `docs/` files. Will this PR change or add functionality that should be documented?"
           check_for_duplicate_msg: true
