@@ -263,11 +263,13 @@ func TeardownSuite(
 			Msg("Invalid 'keep_environments' value, see the 'framework.yaml' file")
 	}
 
-	if err := returnFunds(chainlinkNodes, nets); err != nil {
-		log.Error().Err(err).Str("Namespace", env.Namespace).
-			Msg("Error attempting to return funds from chainlink nodes to network's default wallet. " +
-				"Environment is left running so you can try manually!")
-		env.Persistent = true
+	if nets != nil && chainlinkNodes != nil && len(chainlinkNodes) > 0 {
+		if err := returnFunds(chainlinkNodes, nets); err != nil {
+			log.Error().Err(err).Str("Namespace", env.Namespace).
+				Msg("Error attempting to return funds from chainlink nodes to network's default wallet. " +
+					"Environment is left running so you can try manually!")
+			env.Persistent = true
+		}
 	} else {
 		log.Info().Msg("Successfully returned funds from chainlink nodes to default network wallets")
 	}
