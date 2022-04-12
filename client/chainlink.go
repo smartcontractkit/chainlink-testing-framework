@@ -308,6 +308,9 @@ func (c *chainlink) ReadPrimaryETHKey() (*ETHKeyData, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(ethKeys.Data) == 0 {
+		return nil, fmt.Errorf("Error retrieving primary eth key on node %s: No ETH keys present", c.URL())
+	}
 	return &ethKeys.Data[0], nil
 }
 

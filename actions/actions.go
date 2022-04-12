@@ -263,11 +263,13 @@ func TeardownSuite(
 			Msg("Invalid 'keep_environments' value, see the 'framework.yaml' file")
 	}
 
-	if err := returnFunds(chainlinkNodes, nets); err != nil {
-		log.Error().Err(err).Str("Namespace", env.Namespace).
-			Msg("Error attempting to return funds from chainlink nodes to network's default wallet. " +
-				"Environment is left running so you can try manually!")
-		env.Persistent = true
+	if nets != nil && chainlinkNodes != nil && len(chainlinkNodes) > 0 {
+		if err := returnFunds(chainlinkNodes, nets); err != nil {
+			log.Error().Err(err).Str("Namespace", env.Namespace).
+				Msg("Error attempting to return funds from chainlink nodes to network's default wallet. " +
+					"Environment is left running so you can try manually!")
+			env.Persistent = true
+		}
 	} else {
 		log.Info().Msg("Successfully returned funds from chainlink nodes to default network wallets")
 	}
@@ -375,8 +377,14 @@ func sendFunds(chainlinkNodes []client.Chainlink, network client.BlockchainClien
 			func() error {
 				primaryEthKeyData, err := node.ReadPrimaryETHKey()
 				if err != nil {
+					// TODO: Support non-EVM chain fund returns
+					if strings.Contains(err.Error(), "No ETH keys present") {
+						log.Warn().Msg("Not returning any funds. Only support ETH chains for fund returns at the moment")
+						return nil
+					}
 					return err
 				}
+
 				nodeBalanceString := primaryEthKeyData.Attributes.ETHBalance
 				if nodeBalanceString != "0" { // If key has a non-zero balance, attempt to transfer it back
 					gasCost, err := network.EstimateTransactionGasCost()
