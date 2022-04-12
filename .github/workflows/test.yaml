@@ -36,7 +36,7 @@ jobs:
           export PATH=$PATH:$(go env GOPATH)/bin
           make test_unit
       - name: Code Coverage
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
         with:
           files: ./unit-test-coverage.out
           name: codecov-umbrella 
