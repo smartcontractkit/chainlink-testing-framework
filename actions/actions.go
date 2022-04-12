@@ -375,8 +375,13 @@ func sendFunds(chainlinkNodes []client.Chainlink, network client.BlockchainClien
 			func() error {
 				primaryEthKeyData, err := node.ReadPrimaryETHKey()
 				if err != nil {
+					if strings.Contains(err.Error(), "No ETH keys present") {
+						log.Warn().Msg("Not returning any funds. Only support ETH chains for fund returns at the moment")
+						return nil
+					}
 					return err
 				}
+
 				nodeBalanceString := primaryEthKeyData.Attributes.ETHBalance
 				if nodeBalanceString != "0" { // If key has a non-zero balance, attempt to transfer it back
 					gasCost, err := network.EstimateTransactionGasCost()
