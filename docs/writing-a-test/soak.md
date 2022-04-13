@@ -58,7 +58,10 @@ The Slack Bot will need to have the following:
 
 * Permission for [files:write](https://api.slack.com/scopes/files:write)
 * Permission for [chat:write](https://api.slack.com/scopes/chat:write)
-* The bot must be invited into the channel you want it to notify in: `/invite @botname` HINT: If you get the error `not_in_channel` this is likely what you need to set up.
+
+<div class="note note-yellow">
+The bot must be invited into the channel you want it to notify: `/invite @botname`. If you get the error `not_in_channel` this is likely what you need to set up.
+</div>
 
 ## After the Test
 

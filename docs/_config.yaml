@@ -25,3 +25,5 @@ exclude:
   - vendor/
   - README.md
   - Gemfile
+
+search_enabled: true
