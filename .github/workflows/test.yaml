@@ -13,7 +13,7 @@ jobs:
     steps:
       - name: Checkout the Repo
         uses: actions/checkout@v3
-      - uses: smartcontractkit/tool-versions-to-env-action@v1.0.6
+      - uses: smartcontractkit/tool-versions-to-env-action@v1.0.7
         id: go-version
       - run: echo ${{ steps.go-version.outputs.golang_version }}
       - name: Install Go ${{ steps.go-version.outputs.golang_version }}
