@@ -1,4 +1,4 @@
-name: "Release a tag"
+name: "Release a Tag"
 on:
   pull_request:
     branches: [main]
@@ -19,7 +19,9 @@ jobs:
           go-version: ${{ steps.go-version.outputs.golang_version }}
       - name: Download Go Vendor Packages and Ginkgo
         if: steps.cache-packages.outputs.cache-hit != 'true'
-        run: make install_ci
+        run: | 
+          make install_ci
+          export PATH=$PATH:$(go env GOPATH)/bin
       - name: Generate the artifacts
         uses: skx/github-action-build@master
         with:
