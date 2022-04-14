@@ -29,22 +29,27 @@ You can add note `<divs>` with some borders to make text standout as warnings, a
 ![note example](./note-example.png)
 
 ```html
+<!-- Use for general info or tips -->
 <div class="note note-blue">
 This is a note!
 </div>
 
+<!-- Use for light warnings -->
 <div class="note note-yellow">
 This is a note!
 </div>
 
+<!-- Use for happy news (like recent updates: "you used to need to do 3 things, but now it's 1") -->
 <div class="note note-green">
 This is a note!
 </div>
 
+<!-- Use for acknowledged shortcomings and possible feature updates (this is a bit laborious, but we're working on this fix) -->
 <div class="note note-purple">
 This is a note!
 </div>
 
+<!-- Use for warnings, or possible pitfalls  -->
 <div class="note note-red">
 This is a note!
 </div>
