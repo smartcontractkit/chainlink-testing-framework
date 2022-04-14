@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -593,6 +594,12 @@ func (e *EthereumClient) DeployContract(
 	}
 	gasPriceBuffer := big.NewInt(0).SetUint64(e.NetworkConfig.GasEstimationBuffer)
 	opts.GasTipCap = suggestedTipCap.Add(gasPriceBuffer, suggestedTipCap)
+
+	// Kludge for Klatyn implementation
+	if strings.Contains(strings.ToLower(e.NetworkConfig.ID), "klaytn") {
+		opts.GasTipCap = opts.GasPrice
+	}
+
 	contractAddress, transaction, contractInstance, err := deployer(opts, e.Client)
 	if err != nil {
 		return nil, nil, nil, err
