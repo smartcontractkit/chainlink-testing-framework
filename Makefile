@@ -19,10 +19,7 @@ else
 endif
 
 lint:
-	${BIN_DIR}/golangci-lint --color=always run ./... -v
-
-golangci:
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b ${BIN_DIR} v1.42.0
+	golangci-lint --color=always run ./... -v
 
 go_mod:
 	go mod download
@@ -41,10 +38,15 @@ ifeq ($(OSFLAG),$(OSX))
 	asdf plugin-add nodejs https://github.com/asdf-vm/asdf-nodejs.git || true
 	asdf plugin-add golang https://github.com/kennyp/asdf-golang.git || true
 	asdf plugin-add ginkgo https://github.com/jimmidyson/asdf-ginkgo.git || true
+	asdf plugin add k3d https://github.com/spencergilbert/asdf-k3d.git || true
+	asdf plugin add act https://github.com/grimoh/asdf-act.git || true
+	asdf plugin add golangci-lint https://github.com/hypnoglow/asdf-golangci-lint.git || true
+	asdf plugin add actionlint || true
+	asdf plugin add shellcheck || true
 	asdf install
 endif
 
-install: go_mod golangci install_tools
+install: go_mod install_tools
 
 install_ci: go_mod install_tools
 
