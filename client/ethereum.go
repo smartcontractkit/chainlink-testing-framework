@@ -526,7 +526,16 @@ func (e *EthereumClient) SendTransaction(
 	if err != nil {
 		return common.Hash{}, err
 	}
+
+	// https://docs.klaytn.com/klaytn/design/transaction-fees#unit-price
 	gasPriceBuffer := big.NewInt(0).SetUint64(e.NetworkConfig.GasEstimationBuffer)
+	if strings.Contains(strings.ToLower(e.NetworkConfig.ID), "klaytn") ||
+		strings.Contains(strings.ToLower(e.NetworkConfig.Name), "klaytn") {
+		log.Warn().
+			Str("Network ID", e.NetworkConfig.ID).
+			Msg("Not bumping gas price while running on a Klaytn network.")
+		gasPriceBuffer = big.NewInt(0)
+	}
 	suggestedGasPrice.Add(suggestedGasPrice, gasPriceBuffer)
 
 	nonce, err := e.GetNonce(context.Background(), common.HexToAddress(from.Address()))
@@ -595,22 +604,27 @@ func (e *EthereumClient) DeployContract(
 	gasPriceBuffer := big.NewInt(0).SetUint64(e.NetworkConfig.GasEstimationBuffer)
 	opts.GasTipCap = suggestedTipCap.Add(gasPriceBuffer, suggestedTipCap)
 
-	// Kludge for Klatyn implementation
-	if strings.Contains(strings.ToLower(e.NetworkConfig.ID), "klaytn") {
-		opts.GasTipCap = opts.GasPrice
-	}
-
-	contractAddress, transaction, contractInstance, err := deployer(opts, e.Client)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	if e.NetworkConfig.GasEstimationBuffer > 0 {
+	// https://docs.klaytn.com/klaytn/design/transaction-fees#unit-price
+	if strings.Contains(strings.ToLower(e.NetworkConfig.ID), "klaytn") ||
+		strings.Contains(strings.ToLower(e.NetworkConfig.Name), "klaytn") {
+		log.Warn().
+			Str("Network ID", e.NetworkConfig.ID).
+			Msg("Setting GasTipCap = nil for a special case of running on a Klaytn network." +
+				"This should make Klaytn correctly set it.")
+		opts.GasTipCap = nil
+	} else if e.NetworkConfig.GasEstimationBuffer > 0 {
 		log.Debug().
 			Uint64("Suggested Gas Tip Cap", big.NewInt(0).Sub(suggestedTipCap, gasPriceBuffer).Uint64()).
 			Uint64("Bumped Gas Price", suggestedTipCap.Uint64()).
 			Str("Contract Name", contractName).
 			Msg("Bumping Suggested Gas Price")
 	}
+
+	contractAddress, transaction, contractInstance, err := deployer(opts, e.Client)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
 	if err := e.ProcessTransaction(transaction); err != nil {
 		return nil, nil, nil, err
 	}
