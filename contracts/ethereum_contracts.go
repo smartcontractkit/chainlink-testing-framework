@@ -869,12 +869,26 @@ func NewOffchainAggregatorRoundConfirmer(
 	}
 }
 
+func IsClosed(ch <-chan struct{}) bool {
+	select {
+	case <-ch:
+		return true
+	default:
+	}
+
+	return false
+}
+
 // ReceiveBlock will query the latest OffchainAggregator round and check to see whether the round has confirmed
 func (o *OffchainAggregatorRoundConfirmer) ReceiveBlock(_ client.NodeBlock) error {
 	lr, err := o.ocrInstance.GetLatestRound(context.Background())
 	if err != nil {
 		return err
 	}
+	if IsClosed(o.doneChan) {
+		return nil
+	}
+
 	o.blocksSinceAnswer++
 	currRound := lr.RoundId
 	ocrLog := log.Info().
@@ -902,6 +916,7 @@ func (o *OffchainAggregatorRoundConfirmer) Wait() error {
 		select {
 		case <-o.doneChan:
 			o.cancel()
+			close(o.doneChan)
 			return nil
 		case <-o.context.Done():
 			return fmt.Errorf("timeout waiting for OCR round to confirm: %d", o.roundID)
