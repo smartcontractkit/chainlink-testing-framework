@@ -26,7 +26,7 @@ Custom CSS can be found and added to in the [custom.scss](./_sass/custom/custom.
 
 You can add note `<divs>` with some borders to make text standout as warnings, asides, or general info you'd like to draw extra attention to.
 
-![note example](./note-example.png)
+![note example](./_static/images/note-example.png)
 
 ```html
 <!-- Use for general info or tips -->
@@ -44,7 +44,7 @@ This is a note!
 This is a note!
 </div>
 
-<!-- Use for acknowledged shortcomings and possible feature updates (this is a bit laborious, but we're working on this fix) -->
+<!-- Use for acknowledged shortcomings and possible feature updates (e.x.: this is a bit laborious, but we're working on a fix) -->
 <div class="note note-purple">
 This is a note!
 </div>

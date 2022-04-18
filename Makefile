@@ -25,6 +25,7 @@ golangci:
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b ${BIN_DIR} v1.42.0
 
 go_mod:
+	go mod tidy
 	go mod download
 
 install_tools:
