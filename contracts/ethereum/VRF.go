@@ -30,8 +30,8 @@ var (
 
 // VRFMetaData contains all meta data concerning the VRF contract.
 var VRFMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[],\"name\":\"PROOF_LENGTH\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]",
-	Bin: "0x6080604052348015600f57600080fd5b5060818061001e6000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c8063e911439c14602d575b600080fd5b60336045565b60408051918252519081900360200190f35b6101a08156fea2646970667358221220d7d5d9f7ffbf295b86242b21dfcf424f98e0381aa448778fac3606867b2c731064736f6c63430006060033",
+	ABI: "[]",
+	Bin: "0x6080604052348015600f57600080fd5b50603f80601d6000396000f3fe6080604052600080fdfea2646970667358221220b17ff687889757e595cb1db5d6d6ebeaa12afccecf0bc3fb338677a2b1744ff964736f6c634300080d0033",
 }
 
 // VRFABI is the input ABI used to generate the binding from.
@@ -199,35 +199,4 @@ func (_VRF *VRFTransactorRaw) Transfer(opts *bind.TransactOpts) (*types.Transact
 // Transact invokes the (paid) contract method with params as input values.
 func (_VRF *VRFTransactorRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
 	return _VRF.Contract.contract.Transact(opts, method, params...)
-}
-
-// PROOFLENGTH is a free data retrieval call binding the contract method 0xe911439c.
-//
-// Solidity: function PROOF_LENGTH() view returns(uint256)
-func (_VRF *VRFCaller) PROOFLENGTH(opts *bind.CallOpts) (*big.Int, error) {
-	var out []interface{}
-	err := _VRF.contract.Call(opts, &out, "PROOF_LENGTH")
-
-	if err != nil {
-		return *new(*big.Int), err
-	}
-
-	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
-
-	return out0, err
-
-}
-
-// PROOFLENGTH is a free data retrieval call binding the contract method 0xe911439c.
-//
-// Solidity: function PROOF_LENGTH() view returns(uint256)
-func (_VRF *VRFSession) PROOFLENGTH() (*big.Int, error) {
-	return _VRF.Contract.PROOFLENGTH(&_VRF.CallOpts)
-}
-
-// PROOFLENGTH is a free data retrieval call binding the contract method 0xe911439c.
-//
-// Solidity: function PROOF_LENGTH() view returns(uint256)
-func (_VRF *VRFCallerSession) PROOFLENGTH() (*big.Int, error) {
-	return _VRF.Contract.PROOFLENGTH(&_VRF.CallOpts)
 }
