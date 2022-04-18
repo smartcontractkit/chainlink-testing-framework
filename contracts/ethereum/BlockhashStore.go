@@ -30,12 +30,34 @@ var (
 
 // BlockhashStoreMetaData contains all meta data concerning the BlockhashStore contract.
 var BlockhashStoreMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"n\",\"type\":\"uint256\"}],\"name\":\"getBlockhash\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"n\",\"type\":\"uint256\"}],\"name\":\"store\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"n\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"header\",\"type\":\"bytes\"}],\"name\":\"storeVerifyHeader\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
+	ABI: "[{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"n\",\"type\":\"uint256\"}],\"name\":\"getBlockhash\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"n\",\"type\":\"uint256\"}],\"name\":\"store\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"storeEarliest\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"n\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"header\",\"type\":\"bytes\"}],\"name\":\"storeVerifyHeader\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
+	Bin: "0x608060405234801561001057600080fd5b506102e0806100206000396000f3fe608060405234801561001057600080fd5b506004361061004c5760003560e01c80636057361d1461005157806383b6d6b714610070578063e9413d3814610078578063fadff0e1146100a7575b600080fd5b61006e6004803603602081101561006757600080fd5b5035610152565b005b61006e6101ae565b6100956004803603602081101561008e57600080fd5b50356101bd565b60408051918252519081900360200190f35b61006e600480360360408110156100bd57600080fd5b81359190810190604081016020820135600160201b8111156100de57600080fd5b8201836020820111156100f057600080fd5b803590602001918460018302840111600160201b8311171561011157600080fd5b91908080601f016020809104026020016040519081016040528093929190818152602001838380828437600092019190915250929550610224945050505050565b80408061019c576040805162461bcd60e51b8152602060048201526013602482015272189b1bd8dada185cda0a1b8a4819985a5b1959606a1b604482015290519081900360640190fd5b60009182526020829052604090912055565b6101bb6101004303610152565b565b6000818152602081905260408120548061021e576040805162461bcd60e51b815260206004820152601c60248201527f626c6f636b68617368206e6f7420666f756e6420696e2073746f726500000000604482015290519081900360640190fd5b92915050565b60008083600101815260200190815260200160002054818051906020012014610294576040805162461bcd60e51b815260206004820152601c60248201527f6865616465722068617320756e6b6e6f776e20626c6f636b6861736800000000604482015290519081900360640190fd5b602401516000918252602082905260409091205556fea2646970667358221220eb9f06d3c2357d51e1006d5b541cb3c45442fd8a3d3c58beedeb0c21361f0cdd64736f6c63430006060033",
 }
 
 // BlockhashStoreABI is the input ABI used to generate the binding from.
 // Deprecated: Use BlockhashStoreMetaData.ABI instead.
 var BlockhashStoreABI = BlockhashStoreMetaData.ABI
+
+// BlockhashStoreBin is the compiled bytecode used for deploying new contracts.
+// Deprecated: Use BlockhashStoreMetaData.Bin instead.
+var BlockhashStoreBin = BlockhashStoreMetaData.Bin
+
+// DeployBlockhashStore deploys a new Ethereum contract, binding an instance of BlockhashStore to it.
+func DeployBlockhashStore(auth *bind.TransactOpts, backend bind.ContractBackend) (common.Address, *types.Transaction, *BlockhashStore, error) {
+	parsed, err := BlockhashStoreMetaData.GetAbi()
+	if err != nil {
+		return common.Address{}, nil, nil, err
+	}
+	if parsed == nil {
+		return common.Address{}, nil, nil, errors.New("GetABI returned nil")
+	}
+
+	address, tx, contract, err := bind.DeployContract(auth, *parsed, common.FromHex(BlockhashStoreBin), backend)
+	if err != nil {
+		return common.Address{}, nil, nil, err
+	}
+	return address, tx, &BlockhashStore{BlockhashStoreCaller: BlockhashStoreCaller{contract: contract}, BlockhashStoreTransactor: BlockhashStoreTransactor{contract: contract}, BlockhashStoreFilterer: BlockhashStoreFilterer{contract: contract}}, nil
+}
 
 // BlockhashStore is an auto generated Go binding around an Ethereum contract.
 type BlockhashStore struct {
@@ -229,6 +251,27 @@ func (_BlockhashStore *BlockhashStoreSession) Store(n *big.Int) (*types.Transact
 // Solidity: function store(uint256 n) returns()
 func (_BlockhashStore *BlockhashStoreTransactorSession) Store(n *big.Int) (*types.Transaction, error) {
 	return _BlockhashStore.Contract.Store(&_BlockhashStore.TransactOpts, n)
+}
+
+// StoreEarliest is a paid mutator transaction binding the contract method 0x83b6d6b7.
+//
+// Solidity: function storeEarliest() returns()
+func (_BlockhashStore *BlockhashStoreTransactor) StoreEarliest(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _BlockhashStore.contract.Transact(opts, "storeEarliest")
+}
+
+// StoreEarliest is a paid mutator transaction binding the contract method 0x83b6d6b7.
+//
+// Solidity: function storeEarliest() returns()
+func (_BlockhashStore *BlockhashStoreSession) StoreEarliest() (*types.Transaction, error) {
+	return _BlockhashStore.Contract.StoreEarliest(&_BlockhashStore.TransactOpts)
+}
+
+// StoreEarliest is a paid mutator transaction binding the contract method 0x83b6d6b7.
+//
+// Solidity: function storeEarliest() returns()
+func (_BlockhashStore *BlockhashStoreTransactorSession) StoreEarliest() (*types.Transaction, error) {
+	return _BlockhashStore.Contract.StoreEarliest(&_BlockhashStore.TransactOpts)
 }
 
 // StoreVerifyHeader is a paid mutator transaction binding the contract method 0xfadff0e1.

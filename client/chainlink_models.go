@@ -503,6 +503,43 @@ func (d *PipelineSpec) String() (string, error) {
 	return marshallTemplate(d, "API call pipeline template", sourceString)
 }
 
+// VRFV2TxPipelineSpec VRFv2 request with tx callback
+type VRFV2TxPipelineSpec struct {
+	Address string
+}
+
+// Type returns the type of the pipeline
+func (d *VRFV2TxPipelineSpec) Type() string {
+	return "vrf_pipeline_v2"
+}
+
+// String representation of the pipeline
+func (d *VRFV2TxPipelineSpec) String() (string, error) {
+	sourceString := `
+decode_log   [type=ethabidecodelog
+             abi="RandomWordsRequested(bytes32 indexed keyHash,uint256 requestId,uint256 preSeed,uint64 indexed subId,uint16 minimumRequestConfirmations,uint32 callbackGasLimit,uint32 numWords,address indexed sender)"
+             data="$(jobRun.logData)"
+             topics="$(jobRun.logTopics)"]
+vrf          [type=vrfv2
+             publicKey="$(jobSpec.publicKey)"
+             requestBlockHash="$(jobRun.logBlockHash)"
+             requestBlockNumber="$(jobRun.logBlockNumber)"
+             topics="$(jobRun.logTopics)"]
+estimate_gas [type=estimategaslimit
+             to="{{ .Address }}"
+             multiplier="1.1"
+             data="$(vrf.output)"]
+simulate [type=ethcall
+          to="{{ .Address }}"
+          gas="$(estimate_gas)"
+          gasPrice="$(jobSpec.maxGasPrice)"
+          extractRevertReason=true
+          contract="{{ .Address }}"
+          data="$(vrf.output)"]
+decode_log->vrf->estimate_gas->simulate`
+	return marshallTemplate(d, "VRFV2 pipeline template", sourceString)
+}
+
 // VRFTxPipelineSpec VRF request with tx callback
 type VRFTxPipelineSpec struct {
 	Address string
@@ -863,12 +900,15 @@ juelsPerFeeCoinSource                  = """
 
 // VRFJobSpec represents a VRF job
 type VRFJobSpec struct {
-	Name                     string `toml:"name"`
-	CoordinatorAddress       string `toml:"coordinatorAddress"` // Address of the VRF Coordinator contract
-	PublicKey                string `toml:"publicKey"`          // Public key of the proving key
-	ExternalJobID            string `toml:"externalJobID"`
-	ObservationSource        string `toml:"observationSource"` // List of commands for the chainlink node
-	MinIncomingConfirmations int    `toml:"minIncomingConfirmations"`
+	Name                     string        `toml:"name"`
+	CoordinatorAddress       string        `toml:"coordinatorAddress"` // Address of the VRF Coordinator contract
+	PublicKey                string        `toml:"publicKey"`          // Public key of the proving key
+	ExternalJobID            string        `toml:"externalJobID"`
+	ObservationSource        string        `toml:"observationSource"` // List of commands for the chainlink node
+	MinIncomingConfirmations int           `toml:"minIncomingConfirmations"`
+	BatchFulfillmentEnabled  bool          `toml:"batchFulfillmentEnabled"`
+	BackOffInitialDelay      time.Duration `toml:"backOffInitialDelay"`
+	BackOffMaxDelay          time.Duration `toml:"backOffMaxDelay"`
 }
 
 // Type returns the type of the job
@@ -884,6 +924,9 @@ coordinatorAddress       = "{{.CoordinatorAddress}}"
 minIncomingConfirmations = {{.MinIncomingConfirmations}}
 publicKey                = "{{.PublicKey}}"
 externalJobID            = "{{.ExternalJobID}}"
+batchFulfillmentEnabled = "{{.BatchFulfillmentEnabled}}"
+backoffInitialDelay     = "{{.BackOffInitialDelay}}"
+backoffMaxDelay         = "{{.BackOffMaxDelay}}"
 observationSource = """
 {{.ObservationSource}}
 """
