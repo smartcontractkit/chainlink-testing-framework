@@ -129,7 +129,7 @@ for version in solc_versions:
 
                 if contract_name in used_contract_names:
                     go_file_name = targetdir + "/" + contract_name + ".go"
-                    subprocess.run("./tools/bin/abigen --bin=" + bin_name + " --abi=" + abi_name + " --pkg=" + contract_name + " --out=" +
+                    subprocess.run("abigen --bin=" + bin_name + " --abi=" + abi_name + " --pkg=" + contract_name + " --out=" +
                     go_file_name, shell=True, check=True)
                     # Replace package name in file, abigen doesn't let you specify differently
                     with open(go_file_name, 'r+') as f:
