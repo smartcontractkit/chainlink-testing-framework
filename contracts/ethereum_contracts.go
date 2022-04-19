@@ -871,6 +871,10 @@ func NewOffchainAggregatorRoundConfirmer(
 
 // ReceiveBlock will query the latest OffchainAggregator round and check to see whether the round has confirmed
 func (o *OffchainAggregatorRoundConfirmer) ReceiveBlock(_ client.NodeBlock) error {
+	if channelClosed(o.doneChan) {
+		return nil
+	}
+
 	lr, err := o.ocrInstance.GetLatestRound(context.Background())
 	if err != nil {
 		return err
@@ -902,6 +906,7 @@ func (o *OffchainAggregatorRoundConfirmer) Wait() error {
 		select {
 		case <-o.doneChan:
 			o.cancel()
+			close(o.doneChan)
 			return nil
 		case <-o.context.Done():
 			return fmt.Errorf("timeout waiting for OCR round to confirm: %d", o.roundID)
@@ -1630,4 +1635,14 @@ type EthereumDeviationFlaggingValidator struct {
 
 func (e *EthereumDeviationFlaggingValidator) Address() string {
 	return e.address.Hex()
+}
+
+func channelClosed(ch <-chan struct{}) bool {
+	select {
+	case <-ch:
+		return true
+	default:
+	}
+
+	return false
 }
