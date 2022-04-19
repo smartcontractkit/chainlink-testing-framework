@@ -907,6 +907,7 @@ type VRFV2JobSpec struct {
 	ObservationSource        string        `toml:"observationSource"` // List of commands for the chainlink node
 	MinIncomingConfirmations int           `toml:"minIncomingConfirmations"`
 	FromAddress              string        `toml:"fromAddress"`
+	EVMChainID               string        `toml:"evmChainID"`
 	BatchFulfillmentEnabled  bool          `toml:"batchFulfillmentEnabled"`
 	BackOffInitialDelay      time.Duration `toml:"backOffInitialDelay"`
 	BackOffMaxDelay          time.Duration `toml:"backOffMaxDelay"`
@@ -923,6 +924,7 @@ schemaVersion            = 1
 name                     = "{{.Name}}"
 coordinatorAddress       = "{{.CoordinatorAddress}}"
 fromAddress              = "{{.FromAddress}}"
+evmChainID               = "{{.EVMChainID}}"
 minIncomingConfirmations = {{.MinIncomingConfirmations}}
 publicKey                = "{{.PublicKey}}"
 externalJobID            = "{{.ExternalJobID}}"

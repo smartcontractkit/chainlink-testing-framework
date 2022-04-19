@@ -1582,6 +1582,18 @@ func (v *EthereumVRFConsumerV2) CreateFundedSubscription(funds *big.Int) error {
 	return v.client.ProcessTransaction(tx)
 }
 
+func (v *EthereumVRFConsumerV2) TopUpSubscriptionFunds(funds *big.Int) error {
+	opts, err := v.client.TransactionOpts(v.client.DefaultWallet)
+	if err != nil {
+		return err
+	}
+	tx, err := v.consumer.TopUpSubscription(opts, funds)
+	if err != nil {
+		return err
+	}
+	return v.client.ProcessTransaction(tx)
+}
+
 func (v *EthereumVRFConsumerV2) Address() string {
 	return v.address.Hex()
 }
@@ -1614,6 +1626,21 @@ func (v *EthereumVRFConsumerV2) RandomnessOutput(ctx context.Context, arg0 *big.
 		From:    common.HexToAddress(v.client.DefaultWallet.Address()),
 		Context: ctx,
 	}, arg0)
+}
+
+func (v *EthereumVRFConsumerV2) GetAllRandomWords(ctx context.Context, num int) ([]*big.Int, error) {
+	words := make([]*big.Int, 0)
+	for i := 0; i < num; i++ {
+		word, err := v.consumer.SRandomWords(&bind.CallOpts{
+			From:    common.HexToAddress(v.client.DefaultWallet.Address()),
+			Context: ctx,
+		}, big.NewInt(int64(i)))
+		if err != nil {
+			return nil, err
+		}
+		words = append(words, word)
+	}
+	return words, nil
 }
 
 // EthereumVRFConsumer represents VRF consumer contract
