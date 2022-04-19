@@ -1163,7 +1163,7 @@ func (v *EthereumVRF) ProofLength(ctxt context.Context) (*big.Int, error) {
 // EthereumMockETHLINKFeed represents mocked ETH/LINK feed contract
 type EthereumMockETHLINKFeed struct {
 	client  *client.EthereumClient
-	feed    *ethereum.MockETHLINKAggregator
+	feed    *ethereum.MockV3AggregatorContract
 	address *common.Address
 }
 

@@ -361,14 +361,14 @@ func (e *EthereumContractDeployer) DeployMockETHLINKFeed(answer *big.Int) (MockE
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
-		return ethereum.DeployMockETHLINKAggregator(auth, backend, answer)
+		return ethereum.DeployMockV3AggregatorContract(auth, backend, 18, answer)
 	})
 	if err != nil {
 		return nil, err
 	}
 	return &EthereumMockETHLINKFeed{
 		client:  e.eth,
-		feed:    instance.(*ethereum.MockETHLINKAggregator),
+		feed:    instance.(*ethereum.MockV3AggregatorContract),
 		address: address,
 	}, err
 }
