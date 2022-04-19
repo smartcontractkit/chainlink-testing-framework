@@ -22,6 +22,7 @@ lint:
 	golangci-lint --color=always run ./... -v
 
 go_mod:
+	go mod tidy
 	go mod download
 
 install_tools:
@@ -67,3 +68,27 @@ test_performance:
 
 test_chaos:
 	ginkgo -r --junit-report=tests-chaos-report.xml --keep-going --trace --randomize-all --randomize-suites --progress $(args) ./suite/chaos 
+
+compile_soak:
+	ginkgo build ./suite/soak/ -o ./soak.test
+
+compile_smoke:
+	ginkgo build ./suite/smoke/ -o ./smoke.test
+
+compile_soak_all:
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 ginkgo build ./suite/soak/ -o ./linux_amd64_soak.test
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 ginkgo build ./suite/soak/ -o ./linux_arm64_soak.test
+
+	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 ginkgo build ./suite/soak/ -o ./darwin_amd64_soak.test
+	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 ginkgo build ./suite/soak/ -o ./darwin_arm64_soak.test
+
+	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 ginkgo build ./suite/soak/ -o ./windows_amd64_soak.test
+
+compile_smoke_all:
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 ginkgo build ./suite/smoke/ -o ./linux_amd64_smoke.test
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 ginkgo build ./suite/smoke/ -o ./linux_arm64_smoke.test
+
+	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 ginkgo build ./suite/smoke/ -o ./darwin_amd64_smoke.test
+	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 ginkgo build ./suite/smoke/ -o ./darwin_arm64_smoke.test
+
+	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 ginkgo build ./suite/smoke/ -o ./windows_amd64_smoke.test

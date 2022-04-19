@@ -1,0 +1,31 @@
+.note {
+  border-left-style: solid;
+  padding: 0.4rem 0.4rem 0.4rem 1rem;
+  border-top: 1px solid rgb(81, 81, 81);
+  border-bottom: 1px solid rgb(81, 81, 81);
+  border-right: 1px solid rgb(81, 81, 81);
+  border-radius: 0.25em;
+  border-left-width: 0.5em;
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+.note-blue {
+  border-left-color: #2869e6;
+}
+
+.note-yellow {
+  border-left-color: #f7d12e;
+}
+
+.note-green {
+  border-left-color: #009c7b;
+}
+
+.note-purple {
+  border-left-color: #5e41d0;
+}
+
+.note-red {
+  border-left-color: #e94c4c;
+}
