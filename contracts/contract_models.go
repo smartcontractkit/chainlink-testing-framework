@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/integrations-framework/client"
+	"github.com/smartcontractkit/integrations-framework/contracts/ethereum"
 
 	"github.com/ethereum/go-ethereum/common"
 	ocrConfigHelper "github.com/smartcontractkit/libocr/offchainreporting/confighelper"
@@ -178,6 +179,7 @@ type JobByInstance struct {
 
 type MockETHLINKFeed interface {
 	Address() string
+	LatestRoundData() (*big.Int, error)
 }
 
 type MockGasFeed interface {
@@ -292,12 +294,40 @@ type VRFCoordinator interface {
 	Address() string
 }
 
+type VRFCoordinatorV2 interface {
+	SetConfig(
+		minimumRequestConfirmations uint16,
+		maxGasLimit uint32,
+		stalenessSeconds uint32,
+		gasAfterPaymentCalculation uint32,
+		fallbackWeiPerUnitLink *big.Int, feeConfig ethereum.VRFCoordinatorV2FeeConfig,
+	) error
+	RegisterProvingKey(
+		oracleAddr string,
+		publicProvingKey [2]*big.Int,
+	) error
+	HashOfKey(ctx context.Context, pubKey [2]*big.Int) ([32]byte, error)
+	Address() string
+}
+
 type VRFConsumer interface {
 	Address() string
 	RequestRandomness(hash [32]byte, fee *big.Int) error
 	CurrentRoundID(ctx context.Context) (*big.Int, error)
 	RandomnessOutput(ctx context.Context) (*big.Int, error)
 	WatchPerfEvents(ctx context.Context, eventChan chan<- *PerfEvent) error
+	Fund(ethAmount *big.Float) error
+}
+
+type VRFConsumerV2 interface {
+	Address() string
+	CurrentSubscription() (uint64, error)
+	CreateFundedSubscription(funds *big.Int) error
+	TopUpSubscriptionFunds(funds *big.Int) error
+	RequestRandomness(hash [32]byte, subID uint64, confs uint16, gasLimit uint32, numWords uint32) error
+	RandomnessOutput(ctx context.Context, arg0 *big.Int) (*big.Int, error)
+	GetAllRandomWords(ctx context.Context, num int) ([]*big.Int, error)
+	GasAvailable() (*big.Int, error)
 	Fund(ethAmount *big.Float) error
 }
 

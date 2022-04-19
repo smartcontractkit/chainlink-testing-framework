@@ -1163,12 +1163,23 @@ func (v *EthereumVRF) ProofLength(ctxt context.Context) (*big.Int, error) {
 // EthereumMockETHLINKFeed represents mocked ETH/LINK feed contract
 type EthereumMockETHLINKFeed struct {
 	client  *client.EthereumClient
-	feed    *ethereum.MockETHLINKAggregator
+	feed    *ethereum.MockV3AggregatorContract
 	address *common.Address
 }
 
 func (v *EthereumMockETHLINKFeed) Address() string {
 	return v.address.Hex()
+}
+
+func (v *EthereumMockETHLINKFeed) LatestRoundData() (*big.Int, error) {
+	data, err := v.feed.LatestRoundData(&bind.CallOpts{
+		From:    common.HexToAddress(v.client.DefaultWallet.Address()),
+		Context: context.Background(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return data.Answer, nil
 }
 
 // EthereumMockGASFeed represents mocked Gas feed contract
@@ -1447,6 +1458,64 @@ func (v *EthereumBlockhashStore) Address() string {
 	return v.address.Hex()
 }
 
+// EthereumVRFCoordinatorV2 represents VRFV2 coordinator contract
+type EthereumVRFCoordinatorV2 struct {
+	address     *common.Address
+	client      *client.EthereumClient
+	coordinator *ethereum.VRFCoordinatorV2
+}
+
+func (v *EthereumVRFCoordinatorV2) Address() string {
+	return v.address.Hex()
+}
+
+func (v *EthereumVRFCoordinatorV2) HashOfKey(ctx context.Context, pubKey [2]*big.Int) ([32]byte, error) {
+	opts := &bind.CallOpts{
+		From:    common.HexToAddress(v.client.DefaultWallet.Address()),
+		Context: ctx,
+	}
+	hash, err := v.coordinator.HashOfKey(opts, pubKey)
+	if err != nil {
+		return [32]byte{}, err
+	}
+	return hash, nil
+}
+
+func (v *EthereumVRFCoordinatorV2) SetConfig(minimumRequestConfirmations uint16, maxGasLimit uint32, stalenessSeconds uint32, gasAfterPaymentCalculation uint32, fallbackWeiPerUnitLink *big.Int, feeConfig ethereum.VRFCoordinatorV2FeeConfig) error {
+	opts, err := v.client.TransactionOpts(v.client.DefaultWallet)
+	if err != nil {
+		return err
+	}
+	tx, err := v.coordinator.SetConfig(
+		opts,
+		minimumRequestConfirmations,
+		maxGasLimit,
+		stalenessSeconds,
+		gasAfterPaymentCalculation,
+		fallbackWeiPerUnitLink,
+		feeConfig,
+	)
+	if err != nil {
+		return err
+	}
+	return v.client.ProcessTransaction(tx)
+}
+
+func (v *EthereumVRFCoordinatorV2) RegisterProvingKey(
+	oracleAddr string,
+	publicProvingKey [2]*big.Int,
+) error {
+	opts, err := v.client.TransactionOpts(v.client.DefaultWallet)
+	if err != nil {
+		return err
+	}
+	tx, err := v.coordinator.RegisterProvingKey(opts, common.HexToAddress(oracleAddr), publicProvingKey)
+	if err != nil {
+		return err
+	}
+	return v.client.ProcessTransaction(tx)
+}
+
 // EthereumVRFCoordinator represents VRF coordinator contract
 type EthereumVRFCoordinator struct {
 	address     *common.Address
@@ -1458,6 +1527,7 @@ func (v *EthereumVRFCoordinator) Address() string {
 	return v.address.Hex()
 }
 
+// HashOfKey get a hash of proving key to use it as a request ID part for VRF
 func (v *EthereumVRFCoordinator) HashOfKey(ctx context.Context, pubKey [2]*big.Int) ([32]byte, error) {
 	opts := &bind.CallOpts{
 		From:    common.HexToAddress(v.client.DefaultWallet.Address()),
@@ -1470,6 +1540,7 @@ func (v *EthereumVRFCoordinator) HashOfKey(ctx context.Context, pubKey [2]*big.I
 	return hash, nil
 }
 
+// RegisterProvingKey register VRF proving key
 func (v *EthereumVRFCoordinator) RegisterProvingKey(
 	fee *big.Int,
 	oracleAddr string,
@@ -1487,6 +1558,100 @@ func (v *EthereumVRFCoordinator) RegisterProvingKey(
 	return v.client.ProcessTransaction(tx)
 }
 
+// EthereumVRFConsumerV2 represents VRFv2 consumer contract
+type EthereumVRFConsumerV2 struct {
+	address  *common.Address
+	client   *client.EthereumClient
+	consumer *ethereum.VRFConsumerV2
+}
+
+// CurrentSubscription get current VRFv2 subscription
+func (v *EthereumVRFConsumerV2) CurrentSubscription() (uint64, error) {
+	return v.consumer.SSubId(&bind.CallOpts{
+		From:    common.HexToAddress(v.client.DefaultWallet.Address()),
+		Context: context.Background(),
+	})
+}
+
+// CreateFundedSubscription create funded subscription for VRFv2 randomness
+func (v *EthereumVRFConsumerV2) CreateFundedSubscription(funds *big.Int) error {
+	opts, err := v.client.TransactionOpts(v.client.DefaultWallet)
+	if err != nil {
+		return err
+	}
+	tx, err := v.consumer.TestCreateSubscriptionAndFund(opts, funds)
+	if err != nil {
+		return err
+	}
+	return v.client.ProcessTransaction(tx)
+}
+
+// TopUpSubscriptionFunds add funds to a VRFv2 subscription
+func (v *EthereumVRFConsumerV2) TopUpSubscriptionFunds(funds *big.Int) error {
+	opts, err := v.client.TransactionOpts(v.client.DefaultWallet)
+	if err != nil {
+		return err
+	}
+	tx, err := v.consumer.TopUpSubscription(opts, funds)
+	if err != nil {
+		return err
+	}
+	return v.client.ProcessTransaction(tx)
+}
+
+func (v *EthereumVRFConsumerV2) Address() string {
+	return v.address.Hex()
+}
+
+// GasAvailable get available gas after randomness fulfilled
+func (v *EthereumVRFConsumerV2) GasAvailable() (*big.Int, error) {
+	return v.consumer.SGasAvailable(&bind.CallOpts{
+		From:    common.HexToAddress(v.client.DefaultWallet.Address()),
+		Context: context.Background(),
+	})
+}
+
+func (v *EthereumVRFConsumerV2) Fund(ethAmount *big.Float) error {
+	return v.client.Fund(v.address.Hex(), ethAmount)
+}
+
+// RequestRandomness request VRFv2 random words
+func (v *EthereumVRFConsumerV2) RequestRandomness(hash [32]byte, subID uint64, confs uint16, gasLimit uint32, numWords uint32) error {
+	opts, err := v.client.TransactionOpts(v.client.DefaultWallet)
+	if err != nil {
+		return err
+	}
+	tx, err := v.consumer.TestRequestRandomness(opts, hash, subID, confs, gasLimit, numWords)
+	if err != nil {
+		return err
+	}
+	return v.client.ProcessTransaction(tx)
+}
+
+// RandomnessOutput get VRFv2 randomness output (word)
+func (v *EthereumVRFConsumerV2) RandomnessOutput(ctx context.Context, arg0 *big.Int) (*big.Int, error) {
+	return v.consumer.SRandomWords(&bind.CallOpts{
+		From:    common.HexToAddress(v.client.DefaultWallet.Address()),
+		Context: ctx,
+	}, arg0)
+}
+
+// GetAllRandomWords get all VRFv2 randomness output words
+func (v *EthereumVRFConsumerV2) GetAllRandomWords(ctx context.Context, num int) ([]*big.Int, error) {
+	words := make([]*big.Int, 0)
+	for i := 0; i < num; i++ {
+		word, err := v.consumer.SRandomWords(&bind.CallOpts{
+			From:    common.HexToAddress(v.client.DefaultWallet.Address()),
+			Context: ctx,
+		}, big.NewInt(int64(i)))
+		if err != nil {
+			return nil, err
+		}
+		words = append(words, word)
+	}
+	return words, nil
+}
+
 // EthereumVRFConsumer represents VRF consumer contract
 type EthereumVRFConsumer struct {
 	address  *common.Address
@@ -1502,6 +1667,7 @@ func (v *EthereumVRFConsumer) Fund(ethAmount *big.Float) error {
 	return v.client.Fund(v.address.Hex(), ethAmount)
 }
 
+// RequestRandomness requests VRF randomness
 func (v *EthereumVRFConsumer) RequestRandomness(hash [32]byte, fee *big.Int) error {
 	opts, err := v.client.TransactionOpts(v.client.DefaultWallet)
 	if err != nil {
@@ -1547,6 +1713,7 @@ func (v *EthereumVRFConsumer) WatchPerfEvents(ctx context.Context, eventChan cha
 	}
 }
 
+// RandomnessOutput get VRF randomness output
 func (v *EthereumVRFConsumer) RandomnessOutput(ctx context.Context) (*big.Int, error) {
 	opts := &bind.CallOpts{
 		From:    common.HexToAddress(v.client.DefaultWallet.Address()),
