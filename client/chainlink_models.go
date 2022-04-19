@@ -55,7 +55,7 @@ type RunsAttributesResponse struct {
 	FinishedAt time.Time     `json:"finishedAt"`
 }
 
-//DecodeLogTaskRun is "ethabidecodelog" task run info,
+// DecodeLogTaskRun is "ethabidecodelog" task run info,
 // also used for "RequestID" tracing in perf tests
 type DecodeLogTaskRun struct {
 	Fee       int    `json:"fee"`
@@ -65,7 +65,7 @@ type DecodeLogTaskRun struct {
 	Sender    string `json:"sender"`
 }
 
-//TaskRun is pipeline task run info
+// TaskRun is pipeline task run info
 type TaskRun struct {
 	Type       string      `json:"type"`
 	CreatedAt  time.Time   `json:"createdAt"`
@@ -958,7 +958,7 @@ perform_upkeep_tx        [type=ethtx
                           from="[$(jobSpec.fromAddress)]"
                           evmChainID="$(jobSpec.evmChainID)"
                           data="$(encode_perform_upkeep_tx)"
-                          txMeta="{\\"jobID\\":$(jobSpec.jobID)}"]
+                          txMeta="{\\"jobID\\":$(jobSpec.jobID),\\"upkeepID\\":$(jobSpec.upkeepID)}"]
 encode_check_upkeep_tx -> check_upkeep_tx -> decode_check_upkeep_tx -> encode_perform_upkeep_tx -> perform_upkeep_tx`
 }
 
