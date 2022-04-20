@@ -73,7 +73,7 @@ func (k *KeeperBlockTimeTest) Setup(env *environment.Environment) {
 	err = actions.FundChainlinkNodes(k.chainlinkNodes, k.defaultNetwork, k.Inputs.ChainlinkNodeFunding)
 	Expect(err).ShouldNot(HaveOccurred(), "Funding Chainlink nodes shouldn't fail")
 	// Edge case where simulated networks need some funds at the 0x0 address in order for keeper reads to work
-	if k.defaultNetwork.GetNetworkType() == "eth_simulated" {
+	if k.defaultNetwork.GetNetworkType() == client.SimulatedEthNetwork {
 		err = actions.FundAddresses(k.defaultNetwork, big.NewFloat(1), "0x0")
 		Expect(err).ShouldNot(HaveOccurred())
 	}

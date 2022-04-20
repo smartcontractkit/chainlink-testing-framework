@@ -61,7 +61,7 @@ var _ = Describe("Keeper suite @keeper", func() {
 			err = actions.FundChainlinkNodes(chainlinkNodes, networks.Default, txCost)
 			Expect(err).ShouldNot(HaveOccurred(), "Funding Chainlink nodes shouldn't fail")
 			// Edge case where simulated networks need some funds at the 0x0 address in order for keeper reads to work
-			if networks.Default.GetNetworkType() == "eth_simulated" {
+			if networks.Default.GetNetworkType() == client.SimulatedEthNetwork {
 				err = actions.FundAddresses(networks.Default, big.NewFloat(1), "0x0")
 				Expect(err).ShouldNot(HaveOccurred())
 			}
