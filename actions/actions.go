@@ -98,6 +98,12 @@ func FundChainlinkNodes(
 			return err
 		}
 	}
+	// required in Geth when you need to call "simulate" transactions from nodes
+	if blockchain.GetNetworkType() == client.SimulatedEthNetwork {
+		if err := blockchain.Fund("0x0", big.NewFloat(10)); err != nil {
+			return err
+		}
+	}
 	return blockchain.WaitForEvents()
 }
 
