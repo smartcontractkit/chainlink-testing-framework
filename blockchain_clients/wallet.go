@@ -1,4 +1,4 @@
-package client
+package blockchainclient
 
 import (
 	"fmt"

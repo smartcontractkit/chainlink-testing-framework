@@ -1,5 +1,5 @@
-// Package client handles connections between chainlink nodes and different blockchain networks
-package client
+// Package blockchainclient handles connections to various blockchains
+package blockchainclient
 
 import (
 	"context"

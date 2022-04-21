@@ -1,3 +1,4 @@
+// Package client enables interaction with APIs of test components like the mockserver and Chainlink nodes
 package client
 
 import (
