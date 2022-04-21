@@ -361,7 +361,7 @@ func (e *EthereumContractDeployer) DeployMockETHLINKFeed(answer *big.Int) (MockE
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
-		return ethereum.DeployMockV3AggregatorContract(auth, backend, 18, answer)
+		return ethereum.DeployMockV3Aggregator(auth, backend, 18, answer)
 	})
 	if err != nil {
 		return nil, err
