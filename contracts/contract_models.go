@@ -180,6 +180,7 @@ type JobByInstance struct {
 type MockETHLINKFeed interface {
 	Address() string
 	LatestRoundData() (*big.Int, error)
+	UpdateAnswer(*big.Int) error
 }
 
 type MockGasFeed interface {

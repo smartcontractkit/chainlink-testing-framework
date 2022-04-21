@@ -1182,6 +1182,18 @@ func (v *EthereumMockETHLINKFeed) LatestRoundData() (*big.Int, error) {
 	return data.Answer, nil
 }
 
+func (v *EthereumMockETHLINKFeed) UpdateAnswer(answer *big.Int) error {
+	opts, err := v.client.TransactionOpts(v.client.DefaultWallet)
+	if err != nil {
+		return err
+	}
+	tx, err := v.feed.UpdateAnswer(opts, answer)
+	if err != nil {
+		return err
+	}
+	return v.client.ProcessTransaction(tx)
+}
+
 // EthereumMockGASFeed represents mocked Gas feed contract
 type EthereumMockGASFeed struct {
 	client  *client.EthereumClient
