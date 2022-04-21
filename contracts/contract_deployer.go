@@ -368,7 +368,7 @@ func (e *EthereumContractDeployer) DeployMockETHLINKFeed(answer *big.Int) (MockE
 	}
 	return &EthereumMockETHLINKFeed{
 		client:  e.eth,
-		feed:    instance.(*ethereum.MockV3AggregatorContract),
+		feed:    instance.(*ethereum.MockV3Aggregator),
 		address: address,
 	}, err
 }
