@@ -1,16 +1,16 @@
-package blockchainclient
+package blockchain
 
 import (
 	"context"
 	"fmt"
 	"math/big"
 	"net/url"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/smartcontractkit/helmenv/environment"
 	"github.com/smartcontractkit/integrations-framework/config"
+	"github.com/smartcontractkit/integrations-framework/utils"
 
 	"golang.org/x/sync/errgroup"
 
@@ -24,13 +24,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/rs/zerolog/log"
-)
-
-var (
-	// OneGWei represents 1 GWei
-	OneGWei = big.NewFloat(1e9)
-	// OneEth represents 1 Ethereum
-	OneEth = big.NewFloat(1e18)
 )
 
 // EthereumMultinodeClient wraps the client and the BlockChain network to interact with an EVM based Blockchain with multiple nodes
@@ -94,7 +87,7 @@ func (e *EthereumMultinodeClient) GetNetworkType() string {
 }
 
 // GetChainID retrieves the ChainID of the network that the client interacts with
-func (e *EthereumMultinodeClient) GetChainID() int64 {
+func (e *EthereumMultinodeClient) GetChainID() *big.Int {
 	return e.DefaultClient.GetChainID()
 }
 
@@ -113,8 +106,8 @@ func (e *EthereumMultinodeClient) SwitchNode(clientID int) error {
 }
 
 // GetClients gets clients for all nodes connected
-func (e *EthereumMultinodeClient) GetClients() []BlockchainClient {
-	cl := make([]BlockchainClient, 0)
+func (e *EthereumMultinodeClient) GetClients() []Client {
+	cl := make([]Client, 0)
 	for _, c := range e.Clients {
 		cl = append(cl, c)
 	}
@@ -243,12 +236,10 @@ func (e *EthereumClient) EstimateCostForChainlinkOperations(amountOfOperations i
 	gasLimit := e.NetworkConfig.GasEstimationBuffer + e.NetworkConfig.ChainlinkTransactionLimit
 	// gas cost for TX = total gas limit * estimated gas price
 	gasCostPerOperationWei := big.NewInt(1).Mul(big.NewInt(1).SetUint64(gasLimit), gasPriceInWei)
-	gasCostPerOperationWeiFloat := big.NewFloat(1).SetInt(gasCostPerOperationWei)
-	gasCostPerOperationETH := big.NewFloat(1).Quo(gasCostPerOperationWeiFloat, OneEth)
+	gasCostPerOperationETH := utils.WeiToEther(gasCostPerOperationWei)
 	// total Wei needed for all TXs = total value for TX * number of TXs
 	totalWeiForAllOperations := big.NewInt(1).Mul(gasCostPerOperationWei, bigAmountOfOperations)
-	totalWeiForAllOperationsFloat := big.NewFloat(1).SetInt(totalWeiForAllOperations)
-	totalEthForAllOperations := big.NewFloat(1).Quo(totalWeiForAllOperationsFloat, OneEth)
+	totalEthForAllOperations := utils.WeiToEther(totalWeiForAllOperations)
 
 	log.Debug().
 		Int("Number of Operations", amountOfOperations).
@@ -292,8 +283,8 @@ func (e *EthereumClient) SwitchNode(_ int) error {
 }
 
 // GetClients not used, only applicable to EthereumMultinodeClient
-func (e *EthereumClient) GetClients() []BlockchainClient {
-	return []BlockchainClient{e}
+func (e *EthereumClient) GetClients() []Client {
+	return []Client{e}
 }
 
 // SetID sets client id, useful for multi-node networks
@@ -339,7 +330,7 @@ type ContractDeployer func(auth *bind.TransactOpts, backend bind.ContractBackend
 // NewEthereumClient returns an instantiated instance of the Ethereum client that has connected to the server
 func NewEthereumClient(networkSettings *config.ETHNetwork) (*EthereumClient, error) {
 	log.Info().
-		Str("ID", networkSettings.ID).
+		Str("Name", networkSettings.Name).
 		Str("URL", networkSettings.URL).
 		Interface("Settings", networkSettings).
 		Msg("Connecting client")
@@ -374,7 +365,7 @@ func NewEthereumMultiNodeClient(
 	_ string,
 	networkConfig map[string]interface{},
 	urls []*url.URL,
-) (BlockchainClient, error) {
+) (Client, error) {
 	networkSettings := &config.ETHNetwork{}
 	err := UnmarshalNetworkConfig(networkConfig, networkSettings)
 	if err != nil {
@@ -423,7 +414,7 @@ func (e *EthereumClient) GetDefaultWallet() *EthereumWallet {
 
 // GetNetworkName retrieves the ID of the network that the client interacts with
 func (e *EthereumClient) GetNetworkName() string {
-	return e.NetworkConfig.ID
+	return e.NetworkConfig.Name
 }
 
 // GetNetworkType retrieves the type of network this is running on
@@ -432,8 +423,8 @@ func (e *EthereumClient) GetNetworkType() string {
 }
 
 // GetChainID retrieves the ChainID of the network that the client interacts with
-func (e *EthereumClient) GetChainID() int64 {
-	return e.NetworkConfig.ChainID
+func (e *EthereumClient) GetChainID() *big.Int {
+	return big.NewInt(e.NetworkConfig.ChainID)
 }
 
 // Close tears down the current open Ethereum client
@@ -496,14 +487,13 @@ func (e *EthereumClient) Fund(
 ) error {
 	ethAddress := common.HexToAddress(toAddress)
 	if amount != nil && big.NewFloat(0).Cmp(amount) != 0 {
-		wei := big.NewFloat(1).Mul(OneEth, amount)
 		log.Info().
 			Str("Token", "ETH").
 			Str("From", e.DefaultWallet.Address()).
 			Str("To", toAddress).
 			Str("Amount", amount.String()).
 			Msg("Funding Address")
-		_, err := e.SendTransaction(e.DefaultWallet, ethAddress, wei)
+		_, err := e.SendTransaction(e.DefaultWallet, ethAddress, amount)
 		if err != nil {
 			return err
 		}
@@ -517,26 +507,18 @@ func (e *EthereumClient) SendTransaction(
 	to common.Address,
 	value *big.Float,
 ) (common.Hash, error) {
-	weiValue, _ := value.Int(nil)
 	privateKey, err := crypto.HexToECDSA(from.PrivateKey())
 	if err != nil {
 		return common.Hash{}, fmt.Errorf("invalid private key: %v", err)
 	}
-	suggestedGasPrice, err := e.Client.SuggestGasPrice(context.Background())
+	suggestedGasTipCap, err := e.Client.SuggestGasTipCap(context.Background())
 	if err != nil {
 		return common.Hash{}, err
 	}
 
-	// https://docs.klaytn.com/klaytn/design/transaction-fees#unit-price
+	// Bump Tip Cap
 	gasPriceBuffer := big.NewInt(0).SetUint64(e.NetworkConfig.GasEstimationBuffer)
-	if strings.Contains(strings.ToLower(e.NetworkConfig.ID), "klaytn") ||
-		strings.Contains(strings.ToLower(e.NetworkConfig.Name), "klaytn") {
-		log.Warn().
-			Str("Network ID", e.NetworkConfig.ID).
-			Msg("Not bumping gas price while running on a Klaytn network.")
-		gasPriceBuffer = big.NewInt(0)
-	}
-	suggestedGasPrice.Add(suggestedGasPrice, gasPriceBuffer)
+	suggestedGasTipCap.Add(suggestedGasTipCap, gasPriceBuffer)
 
 	nonce, err := e.GetNonce(context.Background(), common.HexToAddress(from.Address()))
 	if err != nil {
@@ -544,24 +526,17 @@ func (e *EthereumClient) SendTransaction(
 	}
 
 	// TODO: Update from LegacyTx to DynamicFeeTx
-	tx, err := types.SignNewTx(privateKey, types.NewEIP2930Signer(big.NewInt(e.NetworkConfig.ChainID)),
-		&types.LegacyTx{
-			To:       &to,
-			Value:    weiValue,
-			Data:     nil,
-			Gas:      21000,
-			GasPrice: suggestedGasPrice,
-			Nonce:    nonce,
-		})
+	tx, err := types.SignNewTx(privateKey, types.LatestSignerForChainID(e.GetChainID()), &types.DynamicFeeTx{
+		ChainID:   e.GetChainID(),
+		Nonce:     nonce,
+		To:        &to,
+		Value:     utils.EtherToWei(value),
+		GasTipCap: suggestedGasTipCap,
+		Gas:       2200,
+	})
+
 	if err != nil {
 		return common.Hash{}, err
-	}
-	if e.NetworkConfig.GasEstimationBuffer > 0 {
-		log.Debug().
-			Uint64("Suggested Gas Price Wei", big.NewInt(0).Sub(suggestedGasPrice, gasPriceBuffer).Uint64()).
-			Uint64("Bumped Gas Price Wei", suggestedGasPrice.Uint64()).
-			Str("TX Hash", tx.Hash().Hex()).
-			Msg("Bumping Suggested Gas Price")
 	}
 	if err := e.Client.SendTransaction(context.Background(), tx); err != nil {
 		return common.Hash{}, err
@@ -604,15 +579,7 @@ func (e *EthereumClient) DeployContract(
 	gasPriceBuffer := big.NewInt(0).SetUint64(e.NetworkConfig.GasEstimationBuffer)
 	opts.GasTipCap = suggestedTipCap.Add(gasPriceBuffer, suggestedTipCap)
 
-	// https://docs.klaytn.com/klaytn/design/transaction-fees#unit-price
-	if strings.Contains(strings.ToLower(e.NetworkConfig.ID), "klaytn") ||
-		strings.Contains(strings.ToLower(e.NetworkConfig.Name), "klaytn") {
-		log.Warn().
-			Str("Network ID", e.NetworkConfig.ID).
-			Msg("Setting GasTipCap = nil for a special case of running on a Klaytn network." +
-				"This should make Klaytn correctly set it.")
-		opts.GasTipCap = nil
-	} else if e.NetworkConfig.GasEstimationBuffer > 0 {
+	if e.NetworkConfig.GasEstimationBuffer > 0 {
 		log.Debug().
 			Uint64("Suggested Gas Tip Cap", big.NewInt(0).Sub(suggestedTipCap, gasPriceBuffer).Uint64()).
 			Uint64("Bumped Gas Price", suggestedTipCap.Uint64()).
@@ -628,15 +595,13 @@ func (e *EthereumClient) DeployContract(
 	if err := e.ProcessTransaction(transaction); err != nil {
 		return nil, nil, nil, err
 	}
-	totalGasCostWeiFloat := big.NewFloat(1).SetInt(transaction.Cost())
-	totalGasCostGwei := big.NewFloat(1).Quo(totalGasCostWeiFloat, OneGWei)
 
 	log.Info().
 		Str("Contract Address", contractAddress.Hex()).
 		Str("Contract Name", contractName).
 		Str("From", e.DefaultWallet.Address()).
-		Str("Total Gas Cost (GWei)", totalGasCostGwei.String()).
-		Str("Network", e.NetworkConfig.ID).
+		Str("Total Gas Cost (ETH)", utils.WeiToEther(transaction.Cost()).String()).
+		Str("Network Name", e.NetworkConfig.Name).
 		Msg("Deployed contract")
 	return &contractAddress, transaction, contractInstance, err
 }
@@ -872,7 +837,7 @@ func (t *TransactionConfirmer) ReceiveBlock(block NodeBlock) error {
 		log.Info().Msg("Received nil block")
 		return nil
 	}
-	confirmationLog := log.Debug().Str("Network", t.eth.NetworkConfig.ID).
+	confirmationLog := log.Debug().Str("Network Name", t.eth.NetworkConfig.Name).
 		Str("Block Hash", block.Hash().Hex()).
 		Str("Block Number", block.Number().String()).
 		Str("Tx Hash", t.tx.Hash().String()).

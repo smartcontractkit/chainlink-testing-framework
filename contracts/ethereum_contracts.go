@@ -14,6 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/rs/zerolog/log"
+	"github.com/smartcontractkit/integrations-framework/blockchain"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts/ethereum"
 	"github.com/smartcontractkit/integrations-framework/testreporters"
@@ -24,7 +25,7 @@ import (
 // EthereumOracle oracle for "directrequest" job tests
 type EthereumOracle struct {
 	address *common.Address
-	client  *client.EthereumClient
+	client  *blockchain.EthereumClient
 	oracle  *ethereum.Oracle
 }
 
@@ -52,7 +53,7 @@ func (e *EthereumOracle) SetFulfillmentPermission(address string, allowed bool) 
 // EthereumAPIConsumer API consumer for job type "directrequest" tests
 type EthereumAPIConsumer struct {
 	address  *common.Address
-	client   *client.EthereumClient
+	client   *blockchain.EthereumClient
 	consumer *ethereum.APIConsumer
 }
 
@@ -130,7 +131,7 @@ func (e *EthereumAPIConsumer) CreateRequestTo(
 
 // EthereumFluxAggregator represents the basic flux aggregation contract
 type EthereumFluxAggregator struct {
-	client         *client.EthereumClient
+	client         *blockchain.EthereumClient
 	fluxAggregator *ethereum.FluxAggregator
 	address        *common.Address
 }
@@ -373,7 +374,7 @@ func NewFluxAggregatorRoundConfirmer(
 }
 
 // ReceiveBlock will query the latest FluxAggregator round and check to see whether the round has confirmed
-func (f *FluxAggregatorRoundConfirmer) ReceiveBlock(block client.NodeBlock) error {
+func (f *FluxAggregatorRoundConfirmer) ReceiveBlock(block blockchain.NodeBlock) error {
 	if block.Block == nil {
 		return nil
 	}
@@ -439,7 +440,7 @@ func NewVRFConsumerRoundConfirmer(
 }
 
 // ReceiveBlock will query the latest VRFConsumer round and check to see whether the round has confirmed
-func (f *VRFConsumerRoundConfirmer) ReceiveBlock(block client.NodeBlock) error {
+func (f *VRFConsumerRoundConfirmer) ReceiveBlock(block blockchain.NodeBlock) error {
 	if f.done {
 		return nil
 	}
@@ -482,7 +483,7 @@ func (f *VRFConsumerRoundConfirmer) Wait() error {
 
 // EthereumLinkToken represents a LinkToken address
 type EthereumLinkToken struct {
-	client   *client.EthereumClient
+	client   *blockchain.EthereumClient
 	instance *ethereum.LinkToken
 	address  common.Address
 }
@@ -595,7 +596,7 @@ func (l *EthereumLinkToken) TransferAndCall(to string, amount *big.Int, data []b
 
 // EthereumOffchainAggregator represents the offchain aggregation contract
 type EthereumOffchainAggregator struct {
-	client  *client.EthereumClient
+	client  *blockchain.EthereumClient
 	ocr     *ethereum.OffchainAggregator
 	address *common.Address
 }
@@ -809,7 +810,7 @@ func NewRunlogRoundConfirmer(
 }
 
 // ReceiveBlock will query the latest Runlog round and check to see whether the round has confirmed
-func (o *RunlogRoundConfirmer) ReceiveBlock(_ client.NodeBlock) error {
+func (o *RunlogRoundConfirmer) ReceiveBlock(_ blockchain.NodeBlock) error {
 	currentRoundID, err := o.consumer.RoundID(context.Background())
 	if err != nil {
 		return err
@@ -870,7 +871,7 @@ func NewOffchainAggregatorRoundConfirmer(
 }
 
 // ReceiveBlock will query the latest OffchainAggregator round and check to see whether the round has confirmed
-func (o *OffchainAggregatorRoundConfirmer) ReceiveBlock(_ client.NodeBlock) error {
+func (o *OffchainAggregatorRoundConfirmer) ReceiveBlock(_ blockchain.NodeBlock) error {
 	if channelClosed(o.doneChan) {
 		return nil
 	}
@@ -940,7 +941,7 @@ func NewKeeperConsumerRoundConfirmer(
 }
 
 // ReceiveBlock will query the latest Keeper round and check to see whether the round has confirmed
-func (o *KeeperConsumerRoundConfirmer) ReceiveBlock(_ client.NodeBlock) error {
+func (o *KeeperConsumerRoundConfirmer) ReceiveBlock(_ blockchain.NodeBlock) error {
 	upkeeps, err := o.instance.Counter(context.Background())
 	if err != nil {
 		return err
@@ -1015,7 +1016,7 @@ func NewKeeperConsumerPerformanceRoundConfirmer(
 }
 
 // ReceiveBlock will query the latest Keeper round and check to see whether the round has confirmed
-func (o *KeeperConsumerPerformanceRoundConfirmer) ReceiveBlock(receivedBlock client.NodeBlock) error {
+func (o *KeeperConsumerPerformanceRoundConfirmer) ReceiveBlock(receivedBlock blockchain.NodeBlock) error {
 	// Increment block counters
 	o.blocksSinceSubscription++
 	o.blocksSinceSuccessfulUpkeep++
@@ -1117,7 +1118,7 @@ func (o *KeeperConsumerPerformanceRoundConfirmer) logDetails() {
 
 // EthereumStorage acts as a conduit for the ethereum version of the storage contract
 type EthereumStorage struct {
-	client *client.EthereumClient
+	client *blockchain.EthereumClient
 	store  *ethereum.Store
 }
 
@@ -1146,7 +1147,7 @@ func (e *EthereumStorage) Get(ctxt context.Context) (*big.Int, error) {
 
 // EthereumVRF represents a VRF contract
 type EthereumVRF struct {
-	client  *client.EthereumClient
+	client  *blockchain.EthereumClient
 	vrf     *ethereum.VRF
 	address *common.Address
 }
@@ -1167,7 +1168,7 @@ func (v *EthereumVRF) ProofLength(ctxt context.Context) (*big.Int, error) {
 
 // EthereumMockETHLINKFeed represents mocked ETH/LINK feed contract
 type EthereumMockETHLINKFeed struct {
-	client  *client.EthereumClient
+	client  *blockchain.EthereumClient
 	feed    *ethereum.MockV3AggregatorContract
 	address *common.Address
 }
@@ -1189,7 +1190,7 @@ func (v *EthereumMockETHLINKFeed) LatestRoundData() (*big.Int, error) {
 
 // EthereumMockGASFeed represents mocked Gas feed contract
 type EthereumMockGASFeed struct {
-	client  *client.EthereumClient
+	client  *blockchain.EthereumClient
 	feed    *ethereum.MockGASAggregator
 	address *common.Address
 }
@@ -1200,7 +1201,7 @@ func (v *EthereumMockGASFeed) Address() string {
 
 // EthereumKeeperRegistry represents keeper registry contract
 type EthereumKeeperRegistry struct {
-	client   *client.EthereumClient
+	client   *blockchain.EthereumClient
 	registry *ethereum.KeeperRegistry
 	address  *common.Address
 }
@@ -1327,7 +1328,7 @@ func (v *EthereumKeeperRegistry) GetKeeperList(ctx context.Context) ([]string, e
 
 // EthereumKeeperConsumer represents keeper consumer (upkeep) contract
 type EthereumKeeperConsumer struct {
-	client   *client.EthereumClient
+	client   *blockchain.EthereumClient
 	consumer *ethereum.KeeperConsumer
 	address  *common.Address
 }
@@ -1355,7 +1356,7 @@ func (v *EthereumKeeperConsumer) Counter(ctx context.Context) (*big.Int, error) 
 // EthereumKeeperConsumerPerformance represents a more complicated keeper consumer contract, one intended only for
 // performance tests.
 type EthereumKeeperConsumerPerformance struct {
-	client   *client.EthereumClient
+	client   *blockchain.EthereumClient
 	consumer *ethereum.KeeperConsumerPerformance
 	address  *common.Address
 }
@@ -1388,7 +1389,7 @@ func (v *EthereumKeeperConsumerPerformance) GetUpkeepCount(ctx context.Context) 
 
 // EthereumUpkeepRegistrationRequests keeper contract to register upkeeps
 type EthereumUpkeepRegistrationRequests struct {
-	client    *client.EthereumClient
+	client    *blockchain.EthereumClient
 	registrar *ethereum.UpkeepRegistrationRequests
 	address   *common.Address
 }
@@ -1455,7 +1456,7 @@ func (v *EthereumUpkeepRegistrationRequests) EncodeRegisterRequest(
 // EthereumBlockhashStore represents a blockhash store for VRF contract
 type EthereumBlockhashStore struct {
 	address        *common.Address
-	client         *client.EthereumClient
+	client         *blockchain.EthereumClient
 	blockHashStore *ethereum.BlockhashStore
 }
 
@@ -1466,7 +1467,7 @@ func (v *EthereumBlockhashStore) Address() string {
 // EthereumVRFCoordinatorV2 represents VRFV2 coordinator contract
 type EthereumVRFCoordinatorV2 struct {
 	address     *common.Address
-	client      *client.EthereumClient
+	client      *blockchain.EthereumClient
 	coordinator *ethereum.VRFCoordinatorV2
 }
 
@@ -1524,7 +1525,7 @@ func (v *EthereumVRFCoordinatorV2) RegisterProvingKey(
 // EthereumVRFCoordinator represents VRF coordinator contract
 type EthereumVRFCoordinator struct {
 	address     *common.Address
-	client      *client.EthereumClient
+	client      *blockchain.EthereumClient
 	coordinator *ethereum.VRFCoordinator
 }
 
@@ -1566,7 +1567,7 @@ func (v *EthereumVRFCoordinator) RegisterProvingKey(
 // EthereumVRFConsumerV2 represents VRFv2 consumer contract
 type EthereumVRFConsumerV2 struct {
 	address  *common.Address
-	client   *client.EthereumClient
+	client   *blockchain.EthereumClient
 	consumer *ethereum.VRFConsumerV2
 }
 
@@ -1660,7 +1661,7 @@ func (v *EthereumVRFConsumerV2) GetAllRandomWords(ctx context.Context, num int) 
 // EthereumVRFConsumer represents VRF consumer contract
 type EthereumVRFConsumer struct {
 	address  *common.Address
-	client   *client.EthereumClient
+	client   *blockchain.EthereumClient
 	consumer *ethereum.VRFConsumer
 }
 
@@ -1733,7 +1734,7 @@ func (v *EthereumVRFConsumer) RandomnessOutput(ctx context.Context) (*big.Int, e
 
 // EthereumReadAccessController represents read access controller contract
 type EthereumReadAccessController struct {
-	client  *client.EthereumClient
+	client  *blockchain.EthereumClient
 	rac     *ethereum.SimpleReadAccessController
 	address *common.Address
 }
@@ -1771,7 +1772,7 @@ func (e *EthereumReadAccessController) Address() string {
 
 // EthereumFlags represents flags contract
 type EthereumFlags struct {
-	client  *client.EthereumClient
+	client  *blockchain.EthereumClient
 	flags   *ethereum.Flags
 	address *common.Address
 }
@@ -1795,7 +1796,7 @@ func (e *EthereumFlags) GetFlag(ctx context.Context, addr string) (bool, error) 
 
 // EthereumDeviationFlaggingValidator represents deviation flagging validator contract
 type EthereumDeviationFlaggingValidator struct {
-	client  *client.EthereumClient
+	client  *blockchain.EthereumClient
 	dfv     *ethereum.DeviationFlaggingValidator
 	address *common.Address
 }

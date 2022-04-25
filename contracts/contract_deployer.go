@@ -1,14 +1,13 @@
 package contracts
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"math/big"
 	"time"
 
 	"github.com/rs/zerolog/log"
-	"github.com/smartcontractkit/integrations-framework/client"
+	"github.com/smartcontractkit/integrations-framework/blockchain"
 	"github.com/smartcontractkit/integrations-framework/contracts/ethereum"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -19,7 +18,6 @@ import (
 
 // ContractDeployer is an interface for abstracting the contract deployment methods across network implementations
 type ContractDeployer interface {
-	Balance() (*big.Float, error)
 	DeployStorageContract() (Storage, error)
 	DeployAPIConsumer(linkAddr string) (APIConsumer, error)
 	DeployOracle(linkAddr string) (Oracle, error)
@@ -52,9 +50,9 @@ type ContractDeployer interface {
 }
 
 // NewContractDeployer returns an instance of a contract deployer based on the client type
-func NewContractDeployer(bcClient client.BlockchainClient) (ContractDeployer, error) {
+func NewContractDeployer(bcClient blockchain.Client) (ContractDeployer, error) {
 	switch clientImpl := bcClient.Get().(type) {
-	case *client.EthereumClient:
+	case *blockchain.EthereumClient:
 		return NewEthereumContractDeployer(clientImpl), nil
 	}
 	return nil, errors.New("unknown blockchain client implementation")
@@ -62,11 +60,11 @@ func NewContractDeployer(bcClient client.BlockchainClient) (ContractDeployer, er
 
 // EthereumContractDeployer provides the implementations for deploying ETH (EVM) based contracts
 type EthereumContractDeployer struct {
-	eth *client.EthereumClient
+	eth *blockchain.EthereumClient
 }
 
 // NewEthereumContractDeployer returns an instantiated instance of the ETH contract deployer
-func NewEthereumContractDeployer(ethClient *client.EthereumClient) *EthereumContractDeployer {
+func NewEthereumContractDeployer(ethClient *blockchain.EthereumClient) *EthereumContractDeployer {
 	return &EthereumContractDeployer{
 		eth: ethClient,
 	}
@@ -273,16 +271,6 @@ func (e *EthereumContractDeployer) DeployOffChainAggregator(
 		ocr:     instance.(*ethereum.OffchainAggregator),
 		address: address,
 	}, err
-}
-
-// Balance get deployer wallet balance
-func (e *EthereumContractDeployer) Balance() (*big.Float, error) {
-	balance, err := e.eth.Client.PendingBalanceAt(context.Background(), common.HexToAddress(e.eth.DefaultWallet.Address()))
-	if err != nil {
-		return nil, err
-	}
-	bf := new(big.Float).SetInt(balance)
-	return big.NewFloat(1).Quo(bf, client.OneEth), nil
 }
 
 // DeployStorageContract deploys a vanilla storage contract that is a value store

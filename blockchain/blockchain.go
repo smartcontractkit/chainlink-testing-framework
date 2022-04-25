@@ -1,12 +1,11 @@
-// Package blockchainclient handles connections to various blockchains
-package blockchainclient
+// Package blockchain handles connections to various blockchains
+package blockchain
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
 	"math/big"
-	"net/http"
 	"net/url"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -18,9 +17,9 @@ import (
 
 // Commonly used blockchain network types
 const (
-	SimulatedEthNetwork    = "eth_simulated"
-	LiveEthTestNetwork     = "eth_testnet"
-	NetworkGethPerformance = "ethereum_geth_performance"
+	SimulatedEthNetwork   = "eth_simulated"
+	LiveEthTestNetwork    = "eth_testnet"
+	LiveKlaytnTestNetwork = "klaytn_testnet"
 )
 
 // NewBlockchainClientFn external client implementation function
@@ -30,15 +29,15 @@ type NewBlockchainClientFn func(
 	networkName string,
 	networkConfig map[string]interface{},
 	urls []*url.URL,
-) (BlockchainClient, error)
+) (Client, error)
 
-// BlockchainClientURLFn are used to be able to return a list of URLs from the environment to connect
-type BlockchainClientURLFn func(e *environment.Environment) ([]*url.URL, error)
+// ClientURLFn are used to be able to return a list of URLs from the environment to connect
+type ClientURLFn func(e *environment.Environment) ([]*url.URL, error)
 
-// BlockchainClient is the interface that wraps a given client implementation for a blockchain, to allow for switching
+// Client is the interface that wraps a given client implementation for a blockchain, to allow for switching
 // of network types within the test suite
-// BlockchainClient can be connected to a single or multiple nodes,
-type BlockchainClient interface {
+// Client can be connected to a single or multiple nodes,
+type Client interface {
 	ContractsDeployed() bool
 	LoadWallets(ns interface{}) error
 	SetWallet(num int) error
@@ -50,9 +49,9 @@ type BlockchainClient interface {
 	Get() interface{}
 	GetNetworkName() string
 	GetNetworkType() string
-	GetChainID() int64
+	GetChainID() *big.Int
 	SwitchNode(node int) error
-	GetClients() []BlockchainClient
+	GetClients() []Client
 	HeaderHashByNumber(ctx context.Context, bn *big.Int) (string, error)
 	BlockNumber(ctx context.Context) (uint64, error)
 	HeaderTimestampByNumber(ctx context.Context, bn *big.Int) (uint64, error)
@@ -70,8 +69,8 @@ type BlockchainClient interface {
 // if there is only one client it is chosen as Default
 // if there is multiple you just get clients you need in test
 type Networks struct {
-	clients []BlockchainClient
-	Default BlockchainClient
+	clients []Client
+	Default Client
 }
 
 // Teardown all clients
@@ -94,7 +93,7 @@ func (b *Networks) SetDefault(index int) error {
 }
 
 // Get gets blockchain network (client) by name
-func (b *Networks) Get(index int) (BlockchainClient, error) {
+func (b *Networks) Get(index int) (Client, error) {
 	if index > len(b.clients) {
 		return nil, fmt.Errorf("index of %d is out of bounds", index)
 	}
@@ -102,38 +101,8 @@ func (b *Networks) Get(index int) (BlockchainClient, error) {
 }
 
 // AllNetworks returns all the network clients
-func (b *Networks) AllNetworks() []BlockchainClient {
+func (b *Networks) AllNetworks() []Client {
 	return b.clients
-}
-
-// ConnectMockServer creates a connection to a deployed mockserver in the environment
-func ConnectMockServer(e *environment.Environment) (*MockserverClient, error) {
-	localURL, err := e.Charts.Connections("mockserver").LocalURLByPort("serviceport", environment.HTTP)
-	if err != nil {
-		return nil, err
-	}
-	remoteURL, err := e.Config.Charts.Connections("mockserver").RemoteURLByPort("serviceport", environment.HTTP)
-	if err != nil {
-		return nil, err
-	}
-	c := NewMockserverClient(&MockserverConfig{
-		LocalURL:   localURL.String(),
-		ClusterURL: remoteURL.String(),
-	})
-	return c, nil
-}
-
-// ConnectMockServerSoak creates a connection to a deployed mockserver, assuming runner is in a soak test runner
-func ConnectMockServerSoak(e *environment.Environment) (*MockserverClient, error) {
-	remoteURL, err := e.Config.Charts.Connections("mockserver").RemoteURLByPort("serviceport", environment.HTTP)
-	if err != nil {
-		return nil, err
-	}
-	c := NewMockserverClient(&MockserverConfig{
-		LocalURL:   remoteURL.String(),
-		ClusterURL: remoteURL.String(),
-	})
-	return c, nil
 }
 
 // NetworkRegistry holds all the registered network types that can be initialized, allowing
@@ -144,7 +113,7 @@ type NetworkRegistry struct {
 
 type registeredNetwork struct {
 	newBlockchainClientFn NewBlockchainClientFn
-	blockchainClientURLFn BlockchainClientURLFn
+	blockchainClientURLFn ClientURLFn
 }
 
 // NewDefaultNetworkRegistry returns an instance of the network registry with the default supported networks registered
@@ -157,6 +126,10 @@ func NewDefaultNetworkRegistry() *NetworkRegistry {
 			},
 			LiveEthTestNetwork: {
 				newBlockchainClientFn: NewEthereumMultiNodeClient,
+				blockchainClientURLFn: LiveEthTestnetURLs,
+			},
+			LiveKlaytnTestNetwork: {
+				newBlockchainClientFn: NewKlaytnMultiNodeClient,
 				blockchainClientURLFn: LiveEthTestnetURLs,
 			},
 		},
@@ -175,12 +148,16 @@ func NewSoakNetworkRegistry() *NetworkRegistry {
 				newBlockchainClientFn: NewEthereumMultiNodeClient,
 				blockchainClientURLFn: LiveEthTestnetURLs,
 			},
+			LiveKlaytnTestNetwork: {
+				newBlockchainClientFn: NewKlaytnMultiNodeClient,
+				blockchainClientURLFn: LiveEthTestnetURLs,
+			},
 		},
 	}
 }
 
 // RegisterNetwork registers a new type of network within the registry
-func (n *NetworkRegistry) RegisterNetwork(networkType string, fn NewBlockchainClientFn, urlFn BlockchainClientURLFn) {
+func (n *NetworkRegistry) RegisterNetwork(networkType string, fn NewBlockchainClientFn, urlFn ClientURLFn) {
 	n.registeredNetworks[networkType] = registeredNetwork{
 		newBlockchainClientFn: fn,
 		blockchainClientURLFn: urlFn,
@@ -190,7 +167,7 @@ func (n *NetworkRegistry) RegisterNetwork(networkType string, fn NewBlockchainCl
 // GetNetworks returns a networks object with all the BlockchainClient(s) initialized
 func (n *NetworkRegistry) GetNetworks(env *environment.Environment) (*Networks, error) {
 	nc := config.ProjectNetworkSettings
-	var clients []BlockchainClient
+	var clients []Client
 	for _, networkName := range nc.SelectedNetworks {
 		networkSettings, ok := nc.NetworkSettings[networkName]
 		if !ok {
@@ -214,7 +191,7 @@ func (n *NetworkRegistry) GetNetworks(env *environment.Environment) (*Networks, 
 		}
 		clients = append(clients, client)
 	}
-	var defaultClient BlockchainClient
+	var defaultClient Client
 	if len(clients) >= 1 {
 		defaultClient = clients[0]
 	}
@@ -222,92 +199,6 @@ func (n *NetworkRegistry) GetNetworks(env *environment.Environment) (*Networks, 
 		clients: clients,
 		Default: defaultClient,
 	}, nil
-}
-
-// ConnectChainlinkNodes creates new chainlink clients
-func ConnectChainlinkNodes(e *environment.Environment) ([]Chainlink, error) {
-	return ConnectChainlinkNodesByCharts(e, []string{"chainlink"})
-}
-
-func ConnectChainlinkDBs(e *environment.Environment) ([]*PostgresConnector, error) {
-	return ConnectChainlinkDBByCharts(e, []string{"chainlink"})
-}
-
-// ConnectChainlinkDBByCharts creates new chainlink DBs clients by charts
-func ConnectChainlinkDBByCharts(e *environment.Environment, charts []string) ([]*PostgresConnector, error) {
-	var dbs []*PostgresConnector
-	for _, chart := range charts {
-		pgUrls, err := e.Charts.Connections(chart).LocalURLsByPort("postgres", environment.HTTP)
-		if err != nil {
-			return nil, err
-		}
-		for _, u := range pgUrls {
-			c, err := NewPostgresConnector(&PostgresConfig{
-				Host:     "localhost",
-				Port:     u.Port(),
-				User:     "postgres",
-				Password: "node",
-				DBName:   "chainlink",
-			})
-			dbs = append(dbs, c)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-	return dbs, nil
-}
-
-// ConnectChainlinkNodesByCharts creates new chainlink clients by charts
-func ConnectChainlinkNodesByCharts(e *environment.Environment, charts []string) ([]Chainlink, error) {
-	var clients []Chainlink
-
-	for _, chart := range charts {
-		localURLs, err := e.Charts.Connections(chart).LocalURLsByPort("access", environment.HTTP)
-		if err != nil {
-			return nil, err
-		}
-		remoteURLs, err := e.Charts.Connections(chart).RemoteURLsByPort("access", environment.HTTP)
-		if err != nil {
-			return nil, err
-		}
-		for urlIndex, localURL := range localURLs {
-			c, err := NewChainlink(&ChainlinkConfig{
-				URL:      localURL.String(),
-				Email:    "notreal@fakeemail.ch",
-				Password: "twochains",
-				RemoteIP: remoteURLs[urlIndex].Hostname(),
-			}, http.DefaultClient)
-			clients = append(clients, c)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-	return clients, nil
-}
-
-// ConnectChainlinkNodesSoak assumes that the tests are being run from an internal soak test runner
-func ConnectChainlinkNodesSoak(e *environment.Environment) ([]Chainlink, error) {
-	var clients []Chainlink
-
-	remoteURLs, err := e.Charts.Connections("chainlink").RemoteURLsByPort("access", environment.HTTP)
-	if err != nil {
-		return nil, err
-	}
-	for urlIndex, localURL := range remoteURLs {
-		c, err := NewChainlink(&ChainlinkConfig{
-			URL:      localURL.String(),
-			Email:    "notreal@fakeemail.ch",
-			Password: "twochains",
-			RemoteIP: remoteURLs[urlIndex].Hostname(),
-		}, http.DefaultClient)
-		clients = append(clients, c)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return clients, nil
 }
 
 // NodeBlock block with a node ID which mined it

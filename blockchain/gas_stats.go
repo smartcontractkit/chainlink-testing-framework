@@ -1,4 +1,4 @@
-package blockchainclient
+package blockchain
 
 import (
 	"sort"
