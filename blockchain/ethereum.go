@@ -524,6 +524,12 @@ func (e *EthereumClient) SendTransaction(
 	if err != nil {
 		return common.Hash{}, err
 	}
+	latestBlock, err := e.Client.BlockByNumber(context.Background(), nil)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	baseFeeMult := big.NewInt(1).Mul(latestBlock.BaseFee(), big.NewInt(2))
+	gasFeeCap := baseFeeMult.Add(baseFeeMult, suggestedGasTipCap)
 
 	// TODO: Update from LegacyTx to DynamicFeeTx
 	tx, err := types.SignNewTx(privateKey, types.LatestSignerForChainID(e.GetChainID()), &types.DynamicFeeTx{
@@ -532,7 +538,8 @@ func (e *EthereumClient) SendTransaction(
 		To:        &to,
 		Value:     utils.EtherToWei(value),
 		GasTipCap: suggestedGasTipCap,
-		Gas:       2200,
+		GasFeeCap: gasFeeCap,
+		Gas:       22000,
 	})
 
 	if err != nil {
