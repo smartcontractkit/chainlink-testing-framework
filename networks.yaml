@@ -22,7 +22,7 @@ private_keys: &private_keys
         - df57089febbacf7ba0bc227dafbffa9fc08a93fdc68e1e42411a14efcf23656e
 
 selected_networks: # Selected network(s) for test execution
-    - "geth"
+    - "klaytn_testnet"
 
 networks:
     geth: &common_ethereum
@@ -180,8 +180,8 @@ networks:
         <<: *common_ethereum_testnet
         name: "Klaytn testnet"
         type: "klaytn_testnet"
-        chain_id: 4690
+        chain_id: 1001
         urls:
             - wss://url.here
         private_keys:
-            - iotex_testnet_1
+            - klaytn_key

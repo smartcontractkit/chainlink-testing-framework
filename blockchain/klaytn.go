@@ -24,6 +24,7 @@ type KlaytnClient struct {
 // NewKlaytnClient returns an instantiated instance of the Klaytn client that has connected to the server
 func NewKlaytnClient(networkSettings *config.ETHNetwork) (*KlaytnClient, error) {
 	client, err := NewEthereumClient(networkSettings)
+	log.Info().Str("Network Name", client.GetNetworkName()).Msg("Using custom Klaytn client")
 	return &KlaytnClient{client}, err
 }
 
@@ -94,10 +95,8 @@ func (k *KlaytnClient) DeployContract(
 	log.Warn().
 		Str("Network Name", k.NetworkConfig.Name).
 		Msg("Setting GasTipCap = SuggestedGasPrice for Klaytn network")
-	opts.GasTipCap, err = k.Client.SuggestGasPrice(context.Background())
-	if err != nil {
-		return nil, nil, nil, err
-	}
+	opts.GasTipCap = nil
+	opts.GasPrice = nil
 
 	contractAddress, transaction, contractInstance, err := deployer(opts, k.Client)
 	if err != nil {
