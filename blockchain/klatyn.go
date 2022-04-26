@@ -49,7 +49,7 @@ func (k *KlaytnClient) SendTransaction(
 		return common.Hash{}, err
 	}
 	// Don't bump gas for Klaytn
-	gasTipCap, err := k.Client.SuggestGasTipCap(context.Background())
+	gasPrice, err := k.Client.SuggestGasPrice(context.Background())
 	if err != nil {
 		return common.Hash{}, err
 	}
@@ -57,12 +57,13 @@ func (k *KlaytnClient) SendTransaction(
 	if err != nil {
 		return common.Hash{}, err
 	}
+	// https://docs.klaytn.com/klaytn/design/transaction-fees#gas
 	tx, err := types.SignNewTx(privateKey, types.LatestSignerForChainID(k.GetChainID()), &types.DynamicFeeTx{
 		ChainID:   k.GetChainID(),
 		Nonce:     nonce,
 		To:        &to,
 		Value:     utils.EtherToWei(value),
-		GasTipCap: gasTipCap,
+		GasTipCap: gasPrice,
 		Gas:       22000,
 	})
 	if err != nil {
@@ -71,7 +72,7 @@ func (k *KlaytnClient) SendTransaction(
 
 	log.Warn().
 		Str("Network Name", k.NetworkConfig.Name).
-		Msg("Not bumping gas price while running on a Klaytn network.")
+		Msg("Setting GasTipCap = SuggestedGasPrice for Klaytn network")
 	if err := k.Client.SendTransaction(context.Background(), tx); err != nil {
 		return common.Hash{}, err
 	}
@@ -88,12 +89,15 @@ func (k *KlaytnClient) DeployContract(
 		return nil, nil, nil, err
 	}
 
+	// Don't bump gas for Klaytn
 	// https://docs.klaytn.com/klaytn/design/transaction-fees#unit-price
 	log.Warn().
 		Str("Network Name", k.NetworkConfig.Name).
-		Msg("Setting GasTipCap = nil for a special case of running on a Klaytn network." +
-			"This should make Klaytn correctly set it.")
-	opts.GasTipCap = nil
+		Msg("Setting GasTipCap = SuggestedGasPrice for Klaytn network")
+	opts.GasTipCap, err = k.Client.SuggestGasPrice(context.Background())
+	if err != nil {
+		return nil, nil, nil, err
+	}
 
 	contractAddress, transaction, contractInstance, err := deployer(opts, k.Client)
 	if err != nil {
