@@ -16,9 +16,7 @@ type FrameworkConfig struct {
 // ETHNetwork data to configure fully ETH compatible network
 type ETHNetwork struct {
 	ContractsDeployed         bool          `mapstructure:"contracts_deployed" yaml:"contracts_deployed"`
-	External                  bool          `mapstructure:"external" yaml:"external"`
 	Name                      string        `mapstructure:"name" yaml:"name"`
-	ID                        string        `mapstructure:"id" yaml:"id"`
 	ChainID                   int64         `mapstructure:"chain_id" yaml:"chain_id"`
 	URL                       string        `mapstructure:"url" yaml:"url"`
 	URLs                      []string      `mapstructure:"urls" yaml:"urls"`

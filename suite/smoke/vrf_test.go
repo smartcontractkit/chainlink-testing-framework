@@ -14,6 +14,7 @@ import (
 	"github.com/smartcontractkit/helmenv/environment"
 	"github.com/smartcontractkit/helmenv/tools"
 	"github.com/smartcontractkit/integrations-framework/actions"
+	"github.com/smartcontractkit/integrations-framework/blockchain"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/contracts"
@@ -23,7 +24,7 @@ import (
 var _ = Describe("VRF suite @vrf", func() {
 	var (
 		err                error
-		nets               *client.Networks
+		nets               *blockchain.Networks
 		cd                 contracts.ContractDeployer
 		consumer           contracts.VRFConsumer
 		coordinator        contracts.VRFCoordinator
@@ -50,7 +51,7 @@ var _ = Describe("VRF suite @vrf", func() {
 		})
 
 		By("Connecting to launched resources", func() {
-			networkRegistry := client.NewDefaultNetworkRegistry()
+			networkRegistry := blockchain.NewDefaultNetworkRegistry()
 			nets, err = networkRegistry.GetNetworks(e)
 			Expect(err).ShouldNot(HaveOccurred(), "Connecting to blockchain nodes shouldn't fail")
 			cd, err = contracts.NewContractDeployer(nets.Default)
@@ -76,6 +77,9 @@ var _ = Describe("VRF suite @vrf", func() {
 			Expect(err).ShouldNot(HaveOccurred(), "Deploying VRF coordinator shouldn't fail")
 			consumer, err = cd.DeployVRFConsumer(lt.Address(), coordinator.Address())
 			Expect(err).ShouldNot(HaveOccurred(), "Deploying VRF consumer contract shouldn't fail")
+			err = nets.Default.WaitForEvents()
+			Expect(err).ShouldNot(HaveOccurred(), "Failed to wait for VRF setup contracts to deploy")
+
 			err = lt.Transfer(consumer.Address(), big.NewInt(2e18))
 			Expect(err).ShouldNot(HaveOccurred(), "Funding consumer contract shouldn't fail")
 			_, err = cd.DeployVRFContract()

@@ -10,6 +10,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/helmenv/environment"
 	"github.com/smartcontractkit/integrations-framework/actions"
+	"github.com/smartcontractkit/integrations-framework/blockchain"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
 	"github.com/smartcontractkit/integrations-framework/testreporters"
@@ -27,8 +28,8 @@ type KeeperBlockTimeTest struct {
 
 	env            *environment.Environment
 	chainlinkNodes []client.Chainlink
-	networks       *client.Networks
-	defaultNetwork client.BlockchainClient
+	networks       *blockchain.Networks
+	defaultNetwork blockchain.EVMClient
 }
 
 // KeeperBlockTimeTestInputs are all the required inputs for a Keeper Block Time Test
@@ -59,7 +60,7 @@ func (k *KeeperBlockTimeTest) Setup(env *environment.Environment) {
 	var err error
 
 	// Connect to networks and prepare for contract deployment
-	networkRegistry := client.NewSoakNetworkRegistry()
+	networkRegistry := blockchain.NewSoakNetworkRegistry()
 	k.networks, err = networkRegistry.GetNetworks(k.env)
 	Expect(err).ShouldNot(HaveOccurred(), "Connecting to blockchain nodes shouldn't fail")
 	k.defaultNetwork = k.networks.Default
@@ -128,7 +129,7 @@ func (k *KeeperBlockTimeTest) Run() {
 }
 
 // Networks returns the networks that the test is running on
-func (k *KeeperBlockTimeTest) TearDownVals() (*environment.Environment, *client.Networks, []client.Chainlink, testreporters.TestReporter) {
+func (k *KeeperBlockTimeTest) TearDownVals() (*environment.Environment, *blockchain.Networks, []client.Chainlink, testreporters.TestReporter) {
 	return k.env, k.networks, k.chainlinkNodes, &k.TestReporter
 }
 

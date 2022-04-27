@@ -1,3 +1,3 @@
 # Client
 
-Contains code to interact with different blockchains, as well as chainlink nodes.
+Contains code to interact with Chainlink nodes, and other HTTP services.

@@ -49,7 +49,7 @@ networks:
         block_gas_limit: 15000000000
     geth_reorg:
         <<: *geth_performance
-        name: "Ethereum Geth reorg"
+        name: "Ethereum Geth Re-org"
         type: eth_simulated
         transaction_timeout: 10m
         gas_estimation_buffer: 0
@@ -57,10 +57,8 @@ networks:
         name: "Ethereum Kovan"
         chain_id: 42
         type: eth_testnet
-        namespace_for_secret: default
-        secret_private_keys: false
-        secret_private_url: false
-        private_url: kovan_testnet_url
+        urls:
+            - wss://url.here
         private_keys:
             - kovan_testnet_1
         chainlink_transaction_limit: 500000
@@ -72,13 +70,15 @@ networks:
         <<: *common_ethereum_testnet
         name: "Ethereum Goerli"
         chain_id: 5
-        private_url: gorli_private_url
+        urls:
+            - wss://url.here
         private_keys:
             - gorli_testnet_1
     ethereum_rinkeby:
         <<: *common_ethereum_testnet
         name: "Ethereum Rinkeby"
-        private_url: rinkeby_private_url
+        urls:
+            - wss://url.here
         chain_id: 4
         private_keys:
             - rinkeby_private_key_1
@@ -87,7 +87,8 @@ networks:
         <<: *common_ethereum_testnet
         name: "Arbitrum testnet"
         chain_id: 421611
-        private_url: arb_testnet_url
+        urls:
+            - wss://url.here
         private_keys:
             - arb_testnet_1
         chainlink_transaction_limit: 9000000000
@@ -96,7 +97,8 @@ networks:
     bsc_testnet:
         <<: *common_ethereum_testnet
         name: "BSC testnet"
-        private_url: bsc_testnet_url
+        urls:
+            - wss://url.here
         chain_id: 97
         private_keys:
             - bsc_testnet_1
@@ -106,21 +108,24 @@ networks:
         <<: *common_ethereum_testnet
         name: "Matic Mumbai"
         chain_id: 80001
-        private_url: matic_mumbai_url
+        urls:
+            - wss://url.here
         private_keys:
             - matic_mumbai_1
     fantom_testnet:
         <<: *common_ethereum_testnet
         name: "Fantom testnet"
         chain_id: 4002
-        private_url: fantom_testnet_url
+        urls:
+            - wss://url.here
         private_keys:
             - fantom_testnet_1
     harmony_testnet:
         <<: *common_ethereum_testnet
         name: "Harmony testnet"
         chain_id: 1666700000
-        private_url: harmony_testnet_url
+        urls:
+            - wss://url.here
         private_keys:
             - harmony_testnet_1
         minimum_confirmations: 3
@@ -128,7 +133,8 @@ networks:
         <<: *common_ethereum_testnet
         name: "Avalanche Fuji testnet"
         chain_id: 43113
-        private_url: avax_fuji_testnet_url
+        urls:
+            - wss://url.here
         private_keys:
             - avax_fuji_testnet_1
         chainlink_transaction_limit: 6000000
@@ -136,28 +142,32 @@ networks:
         <<: *common_ethereum_testnet
         name: "Optimism Kovan testnet"
         chain_id: 43113
-        private_url: optimism_kovan_url
+        urls:
+            - wss://url.here
         private_keys:
             - optimism_kovan_1
     rsk_testnet:
         <<: *common_ethereum_testnet
         name: "RSK testnet"
         chain_id: 31
-        private_url: rsk_testnet_url
+        urls:
+            - wss://url.here
         private_keys:
             - rsk_testnet_1
     moonbase_alpha:
         <<: *common_ethereum_testnet
         name: "Moonbase alpha"
         chain_id: 1287
-        private_url: moonbase_alpha_url
+        urls:
+            - wss://url.here
         private_keys:
             - moonbase_alpha_1
     iotex_testnet:
         <<: *common_ethereum_testnet
         name: "IoTeX testnet"
         chain_id: 4690
-        private_url: iotex_testnet_url
+        urls:
+            - wss://url.here
         private_keys:
             - iotex_testnet_1
     terra:
@@ -166,3 +176,12 @@ networks:
         type: eth_multinode
         transaction_timeout: 10m
         gas_estimation_buffer: 0
+    klaytn_testnet:
+        <<: *common_ethereum_testnet
+        name: "Klaytn testnet"
+        type: "klaytn_testnet"
+        chain_id: 1001
+        urls:
+            - wss://url.here
+        private_keys:
+            - klaytn_key

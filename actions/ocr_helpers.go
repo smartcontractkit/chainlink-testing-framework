@@ -9,6 +9,7 @@ import (
 
 	. "github.com/onsi/gomega"
 	uuid "github.com/satori/go.uuid"
+	"github.com/smartcontractkit/integrations-framework/blockchain"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
 )
@@ -22,7 +23,7 @@ func DeployOCRContracts(
 	linkTokenContract contracts.LinkToken,
 	contractDeployer contracts.ContractDeployer,
 	chainlinkNodes []client.Chainlink,
-	networks *client.Networks,
+	networks *blockchain.Networks,
 ) []contracts.OffchainAggregator {
 	// Deploy contracts
 	var ocrInstances []contracts.OffchainAggregator
@@ -194,7 +195,7 @@ func SetAllAdapterResponsesToDifferentValues(
 func StartNewRound(
 	roundNr int64,
 	ocrInstances []contracts.OffchainAggregator,
-	networks *client.Networks,
+	networks *blockchain.Networks,
 ) func() {
 	return func() {
 		roundTimeout := time.Minute * 2

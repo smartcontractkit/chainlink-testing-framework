@@ -1,3 +1,4 @@
+// Package client enables interaction with APIs of test components like the mockserver and Chainlink nodes
 package client
 
 import (
@@ -10,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/rs/zerolog/log"
+	"github.com/smartcontractkit/helmenv/environment"
 )
 
 // OneLINK representation of a single LINK token
@@ -621,4 +623,90 @@ func (c *chainlink) do(
 		return nil, err
 	}
 	return c.doRaw(method, endpoint, b, obj, expectedStatusCode)
+}
+
+// ConnectChainlinkNodes creates new chainlink clients
+func ConnectChainlinkNodes(e *environment.Environment) ([]Chainlink, error) {
+	return ConnectChainlinkNodesByCharts(e, []string{"chainlink"})
+}
+
+func ConnectChainlinkDBs(e *environment.Environment) ([]*PostgresConnector, error) {
+	return ConnectChainlinkDBByCharts(e, []string{"chainlink"})
+}
+
+// ConnectChainlinkDBByCharts creates new chainlink DBs clients by charts
+func ConnectChainlinkDBByCharts(e *environment.Environment, charts []string) ([]*PostgresConnector, error) {
+	var dbs []*PostgresConnector
+	for _, chart := range charts {
+		pgUrls, err := e.Charts.Connections(chart).LocalURLsByPort("postgres", environment.HTTP)
+		if err != nil {
+			return nil, err
+		}
+		for _, u := range pgUrls {
+			c, err := NewPostgresConnector(&PostgresConfig{
+				Host:     "localhost",
+				Port:     u.Port(),
+				User:     "postgres",
+				Password: "node",
+				DBName:   "chainlink",
+			})
+			dbs = append(dbs, c)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	return dbs, nil
+}
+
+// ConnectChainlinkNodesByCharts creates new chainlink clients by charts
+func ConnectChainlinkNodesByCharts(e *environment.Environment, charts []string) ([]Chainlink, error) {
+	var clients []Chainlink
+
+	for _, chart := range charts {
+		localURLs, err := e.Charts.Connections(chart).LocalURLsByPort("access", environment.HTTP)
+		if err != nil {
+			return nil, err
+		}
+		remoteURLs, err := e.Charts.Connections(chart).RemoteURLsByPort("access", environment.HTTP)
+		if err != nil {
+			return nil, err
+		}
+		for urlIndex, localURL := range localURLs {
+			c, err := NewChainlink(&ChainlinkConfig{
+				URL:      localURL.String(),
+				Email:    "notreal@fakeemail.ch",
+				Password: "twochains",
+				RemoteIP: remoteURLs[urlIndex].Hostname(),
+			}, http.DefaultClient)
+			clients = append(clients, c)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	return clients, nil
+}
+
+// ConnectChainlinkNodesSoak assumes that the tests are being run from an internal soak test runner
+func ConnectChainlinkNodesSoak(e *environment.Environment) ([]Chainlink, error) {
+	var clients []Chainlink
+
+	remoteURLs, err := e.Charts.Connections("chainlink").RemoteURLsByPort("access", environment.HTTP)
+	if err != nil {
+		return nil, err
+	}
+	for urlIndex, localURL := range remoteURLs {
+		c, err := NewChainlink(&ChainlinkConfig{
+			URL:      localURL.String(),
+			Email:    "notreal@fakeemail.ch",
+			Password: "twochains",
+			RemoteIP: remoteURLs[urlIndex].Hostname(),
+		}, http.DefaultClient)
+		clients = append(clients, c)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return clients, nil
 }

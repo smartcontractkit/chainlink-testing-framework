@@ -11,7 +11,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/helmenv/chaos/experiments"
 	"github.com/smartcontractkit/helmenv/environment"
-	"github.com/smartcontractkit/integrations-framework/client"
+	"github.com/smartcontractkit/integrations-framework/blockchain"
 	"go.uber.org/atomic"
 )
 
@@ -32,7 +32,7 @@ const (
 type ReorgConfig struct {
 	FromPodLabel            string
 	ToPodLabel              string
-	Network                 client.BlockchainClient
+	Network                 blockchain.EVMClient
 	Env                     *environment.Environment
 	BlockConsensusThreshold int
 	Timeout                 time.Duration
@@ -49,7 +49,7 @@ type ReorgController struct {
 	currentVerifiedBlocks int
 	networkStep           *atomic.Int64
 	altBlockNumbers       []int64
-	blocksByNode          map[int]map[int64]client.NodeBlock
+	blocksByNode          map[int]map[int64]blockchain.NodeBlock
 	blockHashes           map[int64][]common.Hash
 	chaosExperimentName   string
 	initConsensusReady    chan struct{}
@@ -73,7 +73,7 @@ func NewReorgController(cfg *ReorgConfig) (*ReorgController, error) {
 		doneChan:           make(chan struct{}, 100),
 		altBlockNumbers:    make([]int64, 0),
 		blockHashes:        map[int64][]common.Hash{},
-		blocksByNode:       map[int]map[int64]client.NodeBlock{},
+		blocksByNode:       map[int]map[int64]blockchain.NodeBlock{},
 		initConsensusReady: make(chan struct{}, 100),
 		depthReached:       make(chan struct{}, 100),
 		mutex:              sync.Mutex{},
@@ -101,7 +101,7 @@ func (rc *ReorgController) WaitDepthReached() error {
 
 // ReceiveBlock receives block marked by node that mined it,
 // forks the network and record all alternative block numbers on node 0
-func (rc *ReorgController) ReceiveBlock(blk client.NodeBlock) error {
+func (rc *ReorgController) ReceiveBlock(blk blockchain.NodeBlock) error {
 	rc.mutex.Lock()
 	defer rc.mutex.Unlock()
 	if blk.Block == nil {
@@ -156,7 +156,7 @@ func (rc *ReorgController) VerifyReorgComplete() error {
 	return nil
 }
 
-func (rc *ReorgController) isAltBlock(blk client.NodeBlock) bool {
+func (rc *ReorgController) isAltBlock(blk blockchain.NodeBlock) bool {
 	blockNumber := blk.Number().Int64()
 	// If we've received the same block number from all nodes, check hashes there are some different versions
 	if len(rc.blockHashes[blockNumber]) >= rc.numberOfNodes {
@@ -170,7 +170,7 @@ func (rc *ReorgController) isAltBlock(blk client.NodeBlock) bool {
 	return false
 }
 
-func (rc *ReorgController) compareBlocks(blk client.NodeBlock) error {
+func (rc *ReorgController) compareBlocks(blk blockchain.NodeBlock) error {
 	if blk.NodeID == 0 && blk.Number().Int64() >= rc.forkBlockNumber && rc.isAltBlock(blk) {
 		rc.altBlockNumbers = append(rc.altBlockNumbers, blk.Number().Int64())
 		rc.currentAltBlocks++
@@ -203,7 +203,7 @@ func (rc *ReorgController) Wait() error {
 }
 
 // forkNetwork stomp the network between target reorged node and the rest
-func (rc *ReorgController) forkNetwork(blk client.NodeBlock) error {
+func (rc *ReorgController) forkNetwork(blk blockchain.NodeBlock) error {
 	rc.forkBlockNumber = blk.Number().Int64()
 	log.Debug().
 		Int64("Number", rc.forkBlockNumber).
@@ -228,7 +228,7 @@ func (rc *ReorgController) joinNetwork() error {
 }
 
 // hasNetworkFormedConsensus waits for network to have N blocks with the same hashes
-func (rc *ReorgController) hasNetworkFormedConsensus(blk client.NodeBlock) bool {
+func (rc *ReorgController) hasNetworkFormedConsensus(blk blockchain.NodeBlock) bool {
 	blockNumber := blk.Number().Int64()
 	// If we've received the same block number from all nodes, check hashes to ensure they've reformed consensus
 	if len(rc.blockHashes[blockNumber]) >= rc.numberOfNodes {
@@ -252,7 +252,7 @@ func (rc *ReorgController) hasNetworkFormedConsensus(blk client.NodeBlock) bool 
 	return false
 }
 
-func (rc *ReorgController) appendBlockHeader(blk client.NodeBlock) {
+func (rc *ReorgController) appendBlockHeader(blk blockchain.NodeBlock) {
 	bn := blk.Number().Int64()
 	if _, ok := rc.blockHashes[bn]; !ok {
 		rc.blockHashes[bn] = []common.Hash{}
@@ -260,7 +260,7 @@ func (rc *ReorgController) appendBlockHeader(blk client.NodeBlock) {
 	rc.blockHashes[bn] = append(rc.blockHashes[bn], blk.Hash())
 
 	if _, ok := rc.blocksByNode[blk.NodeID]; !ok {
-		rc.blocksByNode[blk.NodeID] = make(map[int64]client.NodeBlock)
+		rc.blocksByNode[blk.NodeID] = make(map[int64]blockchain.NodeBlock)
 	}
 	rc.blocksByNode[blk.NodeID][bn] = blk
 }

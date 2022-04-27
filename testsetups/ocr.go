@@ -13,6 +13,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/helmenv/environment"
 	"github.com/smartcontractkit/integrations-framework/actions"
+	"github.com/smartcontractkit/integrations-framework/blockchain"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
 	"github.com/smartcontractkit/integrations-framework/testreporters"
@@ -28,8 +29,8 @@ type OCRSoakTest struct {
 
 	env            *environment.Environment
 	chainlinkNodes []client.Chainlink
-	networks       *client.Networks
-	defaultNetwork client.BlockchainClient
+	networks       *blockchain.Networks
+	defaultNetwork blockchain.EVMClient
 }
 
 // OCRSoakTestInputs define required inputs to run an OCR soak test
@@ -61,7 +62,7 @@ func (t *OCRSoakTest) Setup(env *environment.Environment) {
 	var err error
 
 	// Make connections to soak test resources
-	networkRegistry := client.NewSoakNetworkRegistry()
+	networkRegistry := blockchain.NewSoakNetworkRegistry()
 	t.networks, err = networkRegistry.GetNetworks(env)
 	Expect(err).ShouldNot(HaveOccurred(), "Connecting to blockchain nodes shouldn't fail")
 	t.defaultNetwork = t.networks.Default
@@ -132,7 +133,7 @@ func (t *OCRSoakTest) Run() {
 }
 
 // Networks returns the networks that the test is running on
-func (t *OCRSoakTest) TearDownVals() (*environment.Environment, *client.Networks, []client.Chainlink, testreporters.TestReporter) {
+func (t *OCRSoakTest) TearDownVals() (*environment.Environment, *blockchain.Networks, []client.Chainlink, testreporters.TestReporter) {
 	return t.env, t.networks, t.chainlinkNodes, &t.TestReporter
 }
 

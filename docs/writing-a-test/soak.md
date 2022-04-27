@@ -49,7 +49,7 @@ Modify these values that make sense for the tests you want to run. Once the valu
 The rest of the `remote_runner_config.yaml` file holds various Slack bot params to notify you when the test finishes.
 
 ```yaml
-slack_api_key: abcdefg # A Slack API key to upload test results with. This API Key needs to have `file:write` permissions
+slack_api_key: abcdefg # A Slack API key to upload test results with. This should be the `Bot User OAuth Token` 
 slack_channel: C01xxxxx # The Slack Channel ID (open your Slack channel details and copy the ID there)
 slack_user_id: U01xxxxx # Your Slack member ID https://zapier.com/help/doc/common-problems-slack
 ```

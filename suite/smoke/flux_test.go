@@ -13,6 +13,7 @@ import (
 	"github.com/smartcontractkit/helmenv/environment"
 	"github.com/smartcontractkit/helmenv/tools"
 	"github.com/smartcontractkit/integrations-framework/actions"
+	"github.com/smartcontractkit/integrations-framework/blockchain"
 	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/utils"
 
@@ -26,8 +27,8 @@ import (
 var _ = Describe("Flux monitor suite @flux", func() {
 	var (
 		err              error
-		nets             *client.Networks
-		defaultNetwork   client.BlockchainClient
+		nets             *blockchain.Networks
+		defaultNetwork   blockchain.EVMClient
 		cd               contracts.ContractDeployer
 		lt               contracts.LinkToken
 		fluxInstance     contracts.FluxAggregator
@@ -55,7 +56,7 @@ var _ = Describe("Flux monitor suite @flux", func() {
 		})
 
 		By("Connecting to launched resources", func() {
-			networkRegistry := client.NewDefaultNetworkRegistry()
+			networkRegistry := blockchain.NewDefaultNetworkRegistry()
 			nets, err = networkRegistry.GetNetworks(env)
 			Expect(err).ShouldNot(HaveOccurred(), "Connecting to blockchain nodes shouldn't fail")
 			defaultNetwork = nets.Default

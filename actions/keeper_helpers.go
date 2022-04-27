@@ -7,6 +7,7 @@ import (
 
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog/log"
+	"github.com/smartcontractkit/integrations-framework/blockchain"
 	"github.com/smartcontractkit/integrations-framework/client"
 	"github.com/smartcontractkit/integrations-framework/contracts"
 )
@@ -17,7 +18,7 @@ func DeployKeeperContracts(
 	linkToken contracts.LinkToken,
 	contractDeployer contracts.ContractDeployer,
 	chainlinkNodes []client.Chainlink,
-	networks *client.Networks,
+	networks *blockchain.Networks,
 ) (contracts.KeeperRegistry, []contracts.KeeperConsumer) {
 	defaultNetwork := networks.Default
 	keeperConsumerContracts := make([]contracts.KeeperConsumer, 0)
@@ -98,7 +99,7 @@ func DeployPerformanceKeeperContracts(
 	linkToken contracts.LinkToken,
 	contractDeployer contracts.ContractDeployer,
 	chainlinkNodes []client.Chainlink,
-	networks *client.Networks,
+	networks *blockchain.Networks,
 	keeperContractSettings *contracts.KeeperRegistrySettings,
 	blockRange, // How many blocks to run the test for
 	blockInterval, // Interval of blocks that upkeeps are expected to be performed
@@ -207,7 +208,7 @@ func prepKeeperDeployments(
 	numberOfContracts int,
 	linkToken contracts.LinkToken,
 	contractDeployer contracts.ContractDeployer,
-	defaultNetwork client.BlockchainClient,
+	defaultNetwork blockchain.EVMClient,
 	keeperContractSettings *contracts.KeeperRegistrySettings,
 ) (contracts.KeeperRegistry, contracts.UpkeepRegistrar) {
 	// Deploy Preliminary contracts (Registry, Registrar, and mock feeds)

@@ -20,6 +20,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"github.com/smartcontractkit/integrations-framework/blockchain"
 	"github.com/smartcontractkit/integrations-framework/config"
 	"github.com/smartcontractkit/integrations-framework/contracts"
 	"github.com/smartcontractkit/integrations-framework/testreporters"
@@ -85,7 +86,7 @@ func LoadConfigs(frameworkConfigFileLocation string) {
 // FundChainlinkNodes will fund all of the provided Chainlink nodes with a set amount of native currency
 func FundChainlinkNodes(
 	nodes []client.Chainlink,
-	blockchain client.BlockchainClient,
+	client blockchain.EVMClient,
 	amount *big.Float,
 ) error {
 	for _, cl := range nodes {
@@ -93,24 +94,24 @@ func FundChainlinkNodes(
 		if err != nil {
 			return err
 		}
-		err = blockchain.Fund(toAddress, amount)
+		err = client.Fund(toAddress, amount)
 		if err != nil {
 			return err
 		}
 	}
 	// required in Geth when you need to call "simulate" transactions from nodes
-	if blockchain.GetNetworkType() == client.SimulatedEthNetwork {
-		if err := blockchain.Fund("0x0", big.NewFloat(10)); err != nil {
+	if client.GetNetworkType() == blockchain.SimulatedEthNetwork {
+		if err := client.Fund("0x0", big.NewFloat(10)); err != nil {
 			return err
 		}
 	}
-	return blockchain.WaitForEvents()
+	return client.WaitForEvents()
 }
 
 // FundChainlinkNodes will fund all of the provided Chainlink nodes with a set amount of native currency
 func FundChainlinkNodesLink(
 	nodes []client.Chainlink,
-	blockchain client.BlockchainClient,
+	blockchain blockchain.EVMClient,
 	linkToken contracts.LinkToken,
 	linkAmount *big.Int,
 ) error {
@@ -128,7 +129,7 @@ func FundChainlinkNodesLink(
 }
 
 // FundAddresses will fund a list of addresses with an amount of native currency
-func FundAddresses(blockchain client.BlockchainClient, amount *big.Float, addresses ...string) error {
+func FundAddresses(blockchain blockchain.EVMClient, amount *big.Float, addresses ...string) error {
 	for _, address := range addresses {
 		if err := blockchain.Fund(address, amount); err != nil {
 			return err
@@ -247,7 +248,7 @@ func GetMockserverInitializerDataForOTPE(
 // specified path. Can also accept a testreporter (if one was used) to log further results
 func TeardownSuite(
 	env *environment.Environment,
-	nets *client.Networks,
+	nets *blockchain.Networks,
 	logsFolderPath string,
 	chainlinkNodes []client.Chainlink,
 	optionalTestReporter testreporters.TestReporter, // Optionally pass in a test reporter to log further metrics
@@ -296,7 +297,7 @@ func TeardownSuite(
 // soak tests
 func TeardownRemoteSuite(
 	env *environment.Environment,
-	nets *client.Networks,
+	nets *blockchain.Networks,
 	chainlinkNodes []client.Chainlink,
 	optionalTestReporter testreporters.TestReporter, // Optionally pass in a test reporter to log further metrics
 ) error {
@@ -345,13 +346,13 @@ func writeTeardownLogs(env *environment.Environment, optionalTestReporter testre
 }
 
 // Returns all the funds from the chainlink nodes to the networks default address
-func returnFunds(chainlinkNodes []client.Chainlink, networks *client.Networks) error {
+func returnFunds(chainlinkNodes []client.Chainlink, networks *blockchain.Networks) error {
 	if networks == nil {
 		log.Warn().Msg("No network connections found, unable to return funds from chainlink nodes.")
 	}
 	log.Info().Msg("Attempting to return Chainlink node funds to default network wallets")
 	for _, network := range networks.AllNetworks() {
-		if network.GetNetworkType() == client.SimulatedEthNetwork {
+		if network.GetNetworkType() == blockchain.SimulatedEthNetwork {
 			log.Info().Str("Network Name", network.GetNetworkName()).
 				Msg("Network is a `eth_simulated` network. Skipping fund return.")
 			continue
@@ -372,7 +373,7 @@ func returnFunds(chainlinkNodes []client.Chainlink, networks *client.Networks) e
 
 // Requests that all the chainlink nodes send their funds back to the network's default wallet
 // This is surprisingly tricky, and fairly annoying due to Go's lack of syntactic sugar and how chainlink nodes handle txs
-func sendFunds(chainlinkNodes []client.Chainlink, network client.BlockchainClient) (map[int]string, error) {
+func sendFunds(chainlinkNodes []client.Chainlink, network blockchain.EVMClient) (map[int]string, error) {
 	chainlinkTransactionAddresses := make(map[int]string)
 	sendFundsErrGroup := new(errgroup.Group)
 	for ni, n := range chainlinkNodes {

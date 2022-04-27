@@ -1,9 +1,9 @@
-package client_test
+package blockchain_test
 
 import (
 	"testing"
 
-	"github.com/smartcontractkit/integrations-framework/client"
+	"github.com/smartcontractkit/integrations-framework/blockchain"
 	"github.com/stretchr/testify/require"
 )
 
@@ -14,7 +14,7 @@ var key = "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
 var address = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
 
 func TestWallet(t *testing.T) {
-	wallet, err := client.NewEthereumWallet(key)
+	wallet, err := blockchain.NewEthereumWallet(key)
 	require.NoError(t, err)
 
 	require.Equal(t, address, wallet.Address(), "Address of key '%s' not as expected", key)

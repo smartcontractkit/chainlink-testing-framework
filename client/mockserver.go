@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/rs/zerolog/log"
+	"github.com/smartcontractkit/helmenv/environment"
 )
 
 // MockserverClient mockserver client
@@ -18,6 +19,36 @@ type MockserverClient struct {
 type MockserverConfig struct {
 	LocalURL   string
 	ClusterURL string
+}
+
+// ConnectMockServer creates a connection to a deployed mockserver in the environment
+func ConnectMockServer(e *environment.Environment) (*MockserverClient, error) {
+	localURL, err := e.Charts.Connections("mockserver").LocalURLByPort("serviceport", environment.HTTP)
+	if err != nil {
+		return nil, err
+	}
+	remoteURL, err := e.Config.Charts.Connections("mockserver").RemoteURLByPort("serviceport", environment.HTTP)
+	if err != nil {
+		return nil, err
+	}
+	c := NewMockserverClient(&MockserverConfig{
+		LocalURL:   localURL.String(),
+		ClusterURL: remoteURL.String(),
+	})
+	return c, nil
+}
+
+// ConnectMockServerSoak creates a connection to a deployed mockserver, assuming runner is in a soak test runner
+func ConnectMockServerSoak(e *environment.Environment) (*MockserverClient, error) {
+	remoteURL, err := e.Config.Charts.Connections("mockserver").RemoteURLByPort("serviceport", environment.HTTP)
+	if err != nil {
+		return nil, err
+	}
+	c := NewMockserverClient(&MockserverConfig{
+		LocalURL:   remoteURL.String(),
+		ClusterURL: remoteURL.String(),
+	})
+	return c, nil
 }
 
 // NewMockserverClient returns a mockserver client
