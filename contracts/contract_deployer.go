@@ -50,7 +50,7 @@ type ContractDeployer interface {
 }
 
 // NewContractDeployer returns an instance of a contract deployer based on the client type
-func NewContractDeployer(bcClient blockchain.Client) (ContractDeployer, error) {
+func NewContractDeployer(bcClient blockchain.EVMClient) (ContractDeployer, error) {
 	switch clientImpl := bcClient.Get().(type) {
 	case *blockchain.EthereumClient:
 		return NewEthereumContractDeployer(clientImpl), nil
@@ -62,7 +62,7 @@ func NewContractDeployer(bcClient blockchain.Client) (ContractDeployer, error) {
 
 // EthereumContractDeployer provides the implementations for deploying ETH (EVM) based contracts
 type EthereumContractDeployer struct {
-	client blockchain.Client
+	client blockchain.EVMClient
 }
 
 type KlaytnContractDeployer struct {
@@ -70,7 +70,7 @@ type KlaytnContractDeployer struct {
 }
 
 // NewEthereumContractDeployer returns an instantiated instance of the ETH contract deployer
-func NewEthereumContractDeployer(ethClient blockchain.Client) *EthereumContractDeployer {
+func NewEthereumContractDeployer(ethClient blockchain.EVMClient) *EthereumContractDeployer {
 	return &EthereumContractDeployer{
 		client: ethClient,
 	}

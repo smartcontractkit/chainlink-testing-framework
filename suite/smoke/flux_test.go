@@ -28,7 +28,7 @@ var _ = Describe("Flux monitor suite @flux", func() {
 	var (
 		err              error
 		nets             *blockchain.Networks
-		defaultNetwork   blockchain.Client
+		defaultNetwork   blockchain.EVMClient
 		cd               contracts.ContractDeployer
 		lt               contracts.LinkToken
 		fluxInstance     contracts.FluxAggregator

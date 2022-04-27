@@ -42,7 +42,7 @@ type EthereumClient struct {
 }
 
 // NewEthereumClient returns an instantiated instance of the Ethereum client that has connected to the server
-func NewEthereumClient(networkSettings *config.ETHNetwork) (Client, error) {
+func NewEthereumClient(networkSettings *config.ETHNetwork) (EVMClient, error) {
 	log.Info().
 		Str("Name", networkSettings.Name).
 		Str("URL", networkSettings.URL).
@@ -112,8 +112,8 @@ func (e *EthereumClient) GetChainID() *big.Int {
 }
 
 // GetClients not used, only applicable to EthereumMultinodeClient
-func (e *EthereumClient) GetClients() []Client {
-	return []Client{e}
+func (e *EthereumClient) GetClients() []EVMClient {
+	return []EVMClient{e}
 }
 
 // DefaultWallet returns the default wallet for the network
@@ -469,8 +469,8 @@ func (e *EthereumClient) WaitForEvents() error {
 
 // EthereumMultinodeClient wraps the client and the BlockChain network to interact with an EVM based Blockchain with multiple nodes
 type EthereumMultinodeClient struct {
-	DefaultClient Client
-	Clients       []Client
+	DefaultClient EVMClient
+	Clients       []EVMClient
 }
 
 // NewEthereumMultiNodeClient returns an instantiated instance of all Ethereum client connected to all nodes
@@ -478,7 +478,7 @@ func NewEthereumMultiNodeClient(
 	_ string,
 	networkConfig map[string]interface{},
 	urls []*url.URL,
-) (Client, error) {
+) (EVMClient, error) {
 	networkSettings := &config.ETHNetwork{}
 	err := UnmarshalNetworkConfig(networkConfig, networkSettings)
 	if err != nil {
@@ -526,8 +526,8 @@ func (e *EthereumMultinodeClient) GetChainID() *big.Int {
 }
 
 // GetClients gets clients for all nodes connected
-func (e *EthereumMultinodeClient) GetClients() []Client {
-	cl := make([]Client, 0)
+func (e *EthereumMultinodeClient) GetClients() []EVMClient {
+	cl := make([]EVMClient, 0)
 	for _, c := range e.Clients {
 		cl = append(cl, c)
 	}

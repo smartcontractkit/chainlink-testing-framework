@@ -32,7 +32,7 @@ const (
 type ReorgConfig struct {
 	FromPodLabel            string
 	ToPodLabel              string
-	Network                 blockchain.Client
+	Network                 blockchain.EVMClient
 	Env                     *environment.Environment
 	BlockConsensusThreshold int
 	Timeout                 time.Duration

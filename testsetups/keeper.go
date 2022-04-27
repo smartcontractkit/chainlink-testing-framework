@@ -29,7 +29,7 @@ type KeeperBlockTimeTest struct {
 	env            *environment.Environment
 	chainlinkNodes []client.Chainlink
 	networks       *blockchain.Networks
-	defaultNetwork blockchain.Client
+	defaultNetwork blockchain.EVMClient
 }
 
 // KeeperBlockTimeTestInputs are all the required inputs for a Keeper Block Time Test

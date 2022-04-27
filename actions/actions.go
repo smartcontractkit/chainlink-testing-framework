@@ -86,7 +86,7 @@ func LoadConfigs(frameworkConfigFileLocation string) {
 // FundChainlinkNodes will fund all of the provided Chainlink nodes with a set amount of native currency
 func FundChainlinkNodes(
 	nodes []client.Chainlink,
-	client blockchain.Client,
+	client blockchain.EVMClient,
 	amount *big.Float,
 ) error {
 	for _, cl := range nodes {
@@ -111,7 +111,7 @@ func FundChainlinkNodes(
 // FundChainlinkNodes will fund all of the provided Chainlink nodes with a set amount of native currency
 func FundChainlinkNodesLink(
 	nodes []client.Chainlink,
-	blockchain blockchain.Client,
+	blockchain blockchain.EVMClient,
 	linkToken contracts.LinkToken,
 	linkAmount *big.Int,
 ) error {
@@ -129,7 +129,7 @@ func FundChainlinkNodesLink(
 }
 
 // FundAddresses will fund a list of addresses with an amount of native currency
-func FundAddresses(blockchain blockchain.Client, amount *big.Float, addresses ...string) error {
+func FundAddresses(blockchain blockchain.EVMClient, amount *big.Float, addresses ...string) error {
 	for _, address := range addresses {
 		if err := blockchain.Fund(address, amount); err != nil {
 			return err
@@ -373,7 +373,7 @@ func returnFunds(chainlinkNodes []client.Chainlink, networks *blockchain.Network
 
 // Requests that all the chainlink nodes send their funds back to the network's default wallet
 // This is surprisingly tricky, and fairly annoying due to Go's lack of syntactic sugar and how chainlink nodes handle txs
-func sendFunds(chainlinkNodes []client.Chainlink, network blockchain.Client) (map[int]string, error) {
+func sendFunds(chainlinkNodes []client.Chainlink, network blockchain.EVMClient) (map[int]string, error) {
 	chainlinkTransactionAddresses := make(map[int]string)
 	sendFundsErrGroup := new(errgroup.Group)
 	for ni, n := range chainlinkNodes {

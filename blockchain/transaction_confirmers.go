@@ -18,7 +18,7 @@ import (
 type TransactionConfirmer struct {
 	minConfirmations int
 	confirmations    int
-	client           Client
+	client           EVMClient
 	tx               *types.Transaction
 	doneChan         chan struct{}
 	context          context.Context
@@ -28,7 +28,7 @@ type TransactionConfirmer struct {
 
 // NewTransactionConfirmer returns a new instance of the transaction confirmer that waits for on-chain minimum
 // confirmations
-func NewTransactionConfirmer(client Client, tx *types.Transaction, minConfirmations int) *TransactionConfirmer {
+func NewTransactionConfirmer(client EVMClient, tx *types.Transaction, minConfirmations int) *TransactionConfirmer {
 	ctx, ctxCancel := context.WithTimeout(context.Background(), client.GetNetworkConfig().Timeout)
 	tc := &TransactionConfirmer{
 		minConfirmations: minConfirmations,

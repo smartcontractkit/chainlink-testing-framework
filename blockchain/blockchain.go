@@ -27,25 +27,25 @@ const (
 // NewBlockchainClientFn external client implementation function
 // networkName must match a key in "networks" in networks.yaml config
 // networkConfig is just an arbitrary config you provide in "networks" for your key
-type NewBlockchainClientFn func(
+type NewEVMClientFn func(
 	networkName string,
 	networkConfig map[string]interface{},
 	urls []*url.URL,
-) (Client, error)
+) (EVMClient, error)
 
 // ClientURLFn are used to be able to return a list of URLs from the environment to connect
 type ClientURLFn func(e *environment.Environment) ([]*url.URL, error)
 
-// Client is the interface that wraps a given client implementation for a blockchain, to allow for switching
+// EVMClient is the interface that wraps a given client implementation for a blockchain, to allow for switching
 // of network types within the test suite
-// Client can be connected to a single or multiple nodes,
-type Client interface {
+// EVMClient can be connected to a single or multiple nodes,
+type EVMClient interface {
 	// Getters
 	Get() interface{}
 	GetNetworkName() string
 	GetNetworkType() string
 	GetChainID() *big.Int
-	GetClients() []Client
+	GetClients() []EVMClient
 	GetDefaultWallet() *EthereumWallet
 	GetWallets() []*EthereumWallet
 	GetNetworkConfig() *config.ETHNetwork
@@ -87,8 +87,8 @@ type Client interface {
 // if there is only one client it is chosen as Default
 // if there is multiple you just get clients you need in test
 type Networks struct {
-	clients []Client
-	Default Client
+	clients []EVMClient
+	Default EVMClient
 }
 
 // Teardown all clients
@@ -111,7 +111,7 @@ func (b *Networks) SetDefault(index int) error {
 }
 
 // Get gets blockchain network (client) by name
-func (b *Networks) Get(index int) (Client, error) {
+func (b *Networks) Get(index int) (EVMClient, error) {
 	if index > len(b.clients) {
 		return nil, fmt.Errorf("index of %d is out of bounds", index)
 	}
@@ -119,7 +119,7 @@ func (b *Networks) Get(index int) (Client, error) {
 }
 
 // AllNetworks returns all the network clients
-func (b *Networks) AllNetworks() []Client {
+func (b *Networks) AllNetworks() []EVMClient {
 	return b.clients
 }
 
@@ -130,7 +130,7 @@ type NetworkRegistry struct {
 }
 
 type registeredNetwork struct {
-	newBlockchainClientFn NewBlockchainClientFn
+	newBlockchainClientFn NewEVMClientFn
 	blockchainClientURLFn ClientURLFn
 }
 
@@ -175,7 +175,7 @@ func NewSoakNetworkRegistry() *NetworkRegistry {
 }
 
 // RegisterNetwork registers a new type of network within the registry
-func (n *NetworkRegistry) RegisterNetwork(networkType string, fn NewBlockchainClientFn, urlFn ClientURLFn) {
+func (n *NetworkRegistry) RegisterNetwork(networkType string, fn NewEVMClientFn, urlFn ClientURLFn) {
 	n.registeredNetworks[networkType] = registeredNetwork{
 		newBlockchainClientFn: fn,
 		blockchainClientURLFn: urlFn,
@@ -185,7 +185,7 @@ func (n *NetworkRegistry) RegisterNetwork(networkType string, fn NewBlockchainCl
 // GetNetworks returns a networks object with all the BlockchainClient(s) initialized
 func (n *NetworkRegistry) GetNetworks(env *environment.Environment) (*Networks, error) {
 	nc := config.ProjectNetworkSettings
-	var clients []Client
+	var clients []EVMClient
 	for _, networkName := range nc.SelectedNetworks {
 		networkSettings, ok := nc.NetworkSettings[networkName]
 		if !ok {
@@ -209,7 +209,7 @@ func (n *NetworkRegistry) GetNetworks(env *environment.Environment) (*Networks, 
 		}
 		clients = append(clients, client)
 	}
-	var defaultClient Client
+	var defaultClient EVMClient
 	if len(clients) >= 1 {
 		defaultClient = clients[0]
 	}

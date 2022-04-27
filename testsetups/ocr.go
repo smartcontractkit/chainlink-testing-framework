@@ -30,7 +30,7 @@ type OCRSoakTest struct {
 	env            *environment.Environment
 	chainlinkNodes []client.Chainlink
 	networks       *blockchain.Networks
-	defaultNetwork blockchain.Client
+	defaultNetwork blockchain.EVMClient
 }
 
 // OCRSoakTestInputs define required inputs to run an OCR soak test

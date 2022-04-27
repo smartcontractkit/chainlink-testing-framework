@@ -208,7 +208,7 @@ func prepKeeperDeployments(
 	numberOfContracts int,
 	linkToken contracts.LinkToken,
 	contractDeployer contracts.ContractDeployer,
-	defaultNetwork blockchain.Client,
+	defaultNetwork blockchain.EVMClient,
 	keeperContractSettings *contracts.KeeperRegistrySettings,
 ) (contracts.KeeperRegistry, contracts.UpkeepRegistrar) {
 	// Deploy Preliminary contracts (Registry, Registrar, and mock feeds)

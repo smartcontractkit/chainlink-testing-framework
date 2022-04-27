@@ -24,7 +24,7 @@ type KlaytnClient struct {
 }
 
 // NewKlaytnClient returns an instantiated instance of the Klaytn client that has connected to the server
-func NewKlaytnClient(networkSettings *config.ETHNetwork) (Client, error) {
+func NewKlaytnClient(networkSettings *config.ETHNetwork) (EVMClient, error) {
 	client, err := NewEthereumClient(networkSettings)
 	log.Info().Str("Network Name", client.GetNetworkName()).Msg("Using custom Klaytn client")
 	return &KlaytnClient{client.(*EthereumClient)}, err
@@ -35,7 +35,7 @@ func NewKlaytnMultiNodeClient(
 	_ string,
 	networkConfig map[string]interface{},
 	urls []*url.URL,
-) (Client, error) {
+) (EVMClient, error) {
 	networkSettings := &config.ETHNetwork{}
 	err := UnmarshalNetworkConfig(networkConfig, networkSettings)
 	if err != nil {
