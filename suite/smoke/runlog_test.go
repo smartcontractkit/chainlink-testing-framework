@@ -74,7 +74,7 @@ var _ = Describe("Direct request suite @runlog", func() {
 			Expect(err).ShouldNot(HaveOccurred(), "Deploying Oracle Contract shouldn't fail")
 			consumer, err = cd.DeployAPIConsumer(lt.Address())
 			Expect(err).ShouldNot(HaveOccurred(), "Deploying Consumer Contract shouldn't fail")
-			err = nets.Default.SetWallet(0)
+			err = nets.Default.SetDefaultWallet(0)
 			Expect(err).ShouldNot(HaveOccurred(), "Setting default wallet shouldn't fail")
 			err = lt.Transfer(consumer.Address(), big.NewInt(2e18))
 			Expect(err).ShouldNot(HaveOccurred(), "Transferring %d to consumer contract shouldn't fail", big.NewInt(2e18))

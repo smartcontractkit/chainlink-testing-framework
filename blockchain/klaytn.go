@@ -14,7 +14,7 @@ import (
 )
 
 type KlaytnMultinodeClient struct {
-	Client
+	*EthereumMultinodeClient
 }
 
 type KlaytnClient struct {
@@ -22,10 +22,10 @@ type KlaytnClient struct {
 }
 
 // NewKlaytnClient returns an instantiated instance of the Klaytn client that has connected to the server
-func NewKlaytnClient(networkSettings *config.ETHNetwork) (*KlaytnClient, error) {
+func NewKlaytnClient(networkSettings *config.ETHNetwork) (Client, error) {
 	client, err := NewEthereumClient(networkSettings)
 	log.Info().Str("Network Name", client.GetNetworkName()).Msg("Using custom Klaytn client")
-	return &KlaytnClient{client}, err
+	return &KlaytnClient{client.(*EthereumClient)}, err
 }
 
 // NewKlaytnMultiNodeClient returns an instantiated instance of all Klaytn clients connected to all nodes
@@ -34,50 +34,79 @@ func NewKlaytnMultiNodeClient(
 	networkConfig map[string]interface{},
 	urls []*url.URL,
 ) (Client, error) {
-	client, err := NewEthereumMultiNodeClient("", networkConfig, urls)
-	return &KlaytnMultinodeClient{client}, err
+	networkSettings := &config.ETHNetwork{}
+	err := UnmarshalNetworkConfig(networkConfig, networkSettings)
+	if err != nil {
+		return nil, err
+	}
+	log.Info().
+		Interface("URLs", networkSettings.URLs).
+		Msg("Connecting multi-node client")
+
+	multiNodeClient := &EthereumMultinodeClient{}
+	for _, envURL := range urls {
+		networkSettings.URLs = append(networkSettings.URLs, envURL.String())
+	}
+	for idx, networkURL := range networkSettings.URLs {
+		networkSettings.URL = networkURL
+		ec, err := NewKlaytnClient(networkSettings)
+		if err != nil {
+			return nil, err
+		}
+		ec.SetID(idx)
+		multiNodeClient.Clients = append(multiNodeClient.Clients, ec)
+	}
+	multiNodeClient.DefaultClient = multiNodeClient.Clients[0]
+	return &KlaytnMultinodeClient{multiNodeClient}, nil
 }
 
-// SendTransaction override for Klaytn's gas specifications
+// Fund overrides ethereum's fund to account for Klaytn's gas specifications
 // https://docs.klaytn.com/klaytn/design/transaction-fees#unit-price
-func (k *KlaytnClient) SendTransaction(
-	from *EthereumWallet,
-	to common.Address,
-	value *big.Float,
-) (common.Hash, error) {
-	privateKey, err := crypto.HexToECDSA(from.PrivateKey())
+func (k *KlaytnClient) Fund(
+	toAddress string,
+	amount *big.Float,
+) error {
+	privateKey, err := crypto.HexToECDSA(k.DefaultWallet.PrivateKey())
+	to := common.HexToAddress(toAddress)
 	if err != nil {
-		return common.Hash{}, err
+		return err
 	}
 	// Don't bump gas for Klaytn
 	gasPrice, err := k.Client.SuggestGasPrice(context.Background())
 	if err != nil {
-		return common.Hash{}, err
+		return err
 	}
-	nonce, err := k.GetNonce(context.Background(), from.address)
+	nonce, err := k.GetNonce(context.Background(), k.DefaultWallet.address)
 	if err != nil {
-		return common.Hash{}, err
+		return err
 	}
+	log.Warn().
+		Str("Network Name", k.NetworkConfig.Name).
+		Msg("Setting GasTipCap = SuggestedGasPrice for Klaytn network")
 	// https://docs.klaytn.com/klaytn/design/transaction-fees#gas
 	tx, err := types.SignNewTx(privateKey, types.LatestSignerForChainID(k.GetChainID()), &types.DynamicFeeTx{
 		ChainID:   k.GetChainID(),
 		Nonce:     nonce,
 		To:        &to,
-		Value:     utils.EtherToWei(value),
+		Value:     utils.EtherToWei(amount),
 		GasTipCap: gasPrice,
+		GasFeeCap: gasPrice,
 		Gas:       22000,
 	})
 	if err != nil {
-		return common.Hash{}, err
+		return err
 	}
 
-	log.Warn().
-		Str("Network Name", k.NetworkConfig.Name).
-		Msg("Setting GasTipCap = SuggestedGasPrice for Klaytn network")
+	log.Info().
+		Str("Token", "KLAY").
+		Str("From", k.DefaultWallet.Address()).
+		Str("To", toAddress).
+		Str("Amount", amount.String()).
+		Msg("Funding Address")
 	if err := k.Client.SendTransaction(context.Background(), tx); err != nil {
-		return common.Hash{}, err
+		return err
 	}
-	return tx.Hash(), k.ProcessTransaction(tx)
+	return k.ProcessTransaction(tx)
 }
 
 // DeployContract acts as a general contract deployment tool to an ethereum chain

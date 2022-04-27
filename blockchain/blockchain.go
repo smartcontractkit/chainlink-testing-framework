@@ -8,6 +8,8 @@ import (
 	"math/big"
 	"net/url"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/smartcontractkit/helmenv/environment"
 	"gopkg.in/yaml.v2"
@@ -38,28 +40,44 @@ type ClientURLFn func(e *environment.Environment) ([]*url.URL, error)
 // of network types within the test suite
 // Client can be connected to a single or multiple nodes,
 type Client interface {
-	ContractsDeployed() bool
-	LoadWallets(ns interface{}) error
-	SetWallet(num int) error
-	GetDefaultWallet() *EthereumWallet
-
-	EstimateCostForChainlinkOperations(amountOfOperations int) (*big.Float, error)
-	EstimateTransactionGasCost() (*big.Int, error)
-
+	// Getters
 	Get() interface{}
 	GetNetworkName() string
 	GetNetworkType() string
 	GetChainID() *big.Int
-	SwitchNode(node int) error
 	GetClients() []Client
+	GetDefaultWallet() *EthereumWallet
+	GetWallets() []*EthereumWallet
+	GetNetworkConfig() *config.ETHNetwork
+
+	// Setters
+	SetID(id int)
+	SetDefaultWallet(num int) error
+	SetWallets([]*EthereumWallet)
+	LoadWallets(ns interface{}) error
+	SwitchNode(node int) error
+
+	// On-chain Operations
 	HeaderHashByNumber(ctx context.Context, bn *big.Int) (string, error)
-	BlockNumber(ctx context.Context) (uint64, error)
 	HeaderTimestampByNumber(ctx context.Context, bn *big.Int) (uint64, error)
+	LatestBlockNumber(ctx context.Context) (uint64, error)
 	Fund(toAddress string, amount *big.Float) error
-	GasStats() *GasStats
+	DeployContract(
+		contractName string,
+		deployer ContractDeployer,
+	) (*common.Address, *types.Transaction, interface{}, error)
+	TransactionOpts(from *EthereumWallet) (*bind.TransactOpts, error)
+	ProcessTransaction(tx *types.Transaction) error
+	IsTxConfirmed(txHash common.Hash) (bool, error)
 	ParallelTransactions(enabled bool)
 	Close() error
 
+	// Gas Operations
+	EstimateCostForChainlinkOperations(amountOfOperations int) (*big.Float, error)
+	EstimateTransactionGasCost() (*big.Int, error)
+	GasStats() *GasStats
+
+	// Event Subscriptions
 	AddHeaderEventSubscription(key string, subscriber HeaderEventSubscription)
 	DeleteHeaderEventSubscription(key string)
 	WaitForEvents() error
@@ -221,3 +239,11 @@ func UnmarshalNetworkConfig(config map[string]interface{}, obj interface{}) erro
 	}
 	return yaml.Unmarshal(b, obj)
 }
+
+// ContractDeployer acts as a go-between function for general contract deployment
+type ContractDeployer func(auth *bind.TransactOpts, backend bind.ContractBackend) (
+	common.Address,
+	*types.Transaction,
+	interface{},
+	error,
+)

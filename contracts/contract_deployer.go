@@ -54,19 +54,25 @@ func NewContractDeployer(bcClient blockchain.Client) (ContractDeployer, error) {
 	switch clientImpl := bcClient.Get().(type) {
 	case *blockchain.EthereumClient:
 		return NewEthereumContractDeployer(clientImpl), nil
+	case *blockchain.KlaytnClient:
+		return &KlaytnContractDeployer{NewEthereumContractDeployer(clientImpl)}, nil
 	}
 	return nil, errors.New("unknown blockchain client implementation")
 }
 
 // EthereumContractDeployer provides the implementations for deploying ETH (EVM) based contracts
 type EthereumContractDeployer struct {
-	eth *blockchain.EthereumClient
+	client blockchain.Client
+}
+
+type KlaytnContractDeployer struct {
+	*EthereumContractDeployer
 }
 
 // NewEthereumContractDeployer returns an instantiated instance of the ETH contract deployer
-func NewEthereumContractDeployer(ethClient *blockchain.EthereumClient) *EthereumContractDeployer {
+func NewEthereumContractDeployer(ethClient blockchain.Client) *EthereumContractDeployer {
 	return &EthereumContractDeployer{
-		eth: ethClient,
+		client: ethClient,
 	}
 }
 
@@ -84,7 +90,7 @@ func DefaultFluxAggregatorOptions() FluxAggregatorOptions {
 
 // DeployReadAccessController deploys read/write access controller contract
 func (e *EthereumContractDeployer) DeployReadAccessController() (ReadAccessController, error) {
-	address, _, instance, err := e.eth.DeployContract("Read Access Controller", func(
+	address, _, instance, err := e.client.DeployContract("Read Access Controller", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -94,7 +100,7 @@ func (e *EthereumContractDeployer) DeployReadAccessController() (ReadAccessContr
 		return nil, err
 	}
 	return &EthereumReadAccessController{
-		client:  e.eth,
+		client:  e.client,
 		rac:     instance.(*ethereum.SimpleReadAccessController),
 		address: address,
 	}, nil
@@ -104,7 +110,7 @@ func (e *EthereumContractDeployer) DeployReadAccessController() (ReadAccessContr
 func (e *EthereumContractDeployer) DeployFlags(
 	rac string,
 ) (Flags, error) {
-	address, _, instance, err := e.eth.DeployContract("Flags", func(
+	address, _, instance, err := e.client.DeployContract("Flags", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -115,7 +121,7 @@ func (e *EthereumContractDeployer) DeployFlags(
 		return nil, err
 	}
 	return &EthereumFlags{
-		client:  e.eth,
+		client:  e.client,
 		flags:   instance.(*ethereum.Flags),
 		address: address,
 	}, nil
@@ -126,7 +132,7 @@ func (e *EthereumContractDeployer) DeployDeviationFlaggingValidator(
 	flags string,
 	flaggingThreshold *big.Int,
 ) (DeviationFlaggingValidator, error) {
-	address, _, instance, err := e.eth.DeployContract("Deviation flagging validator", func(
+	address, _, instance, err := e.client.DeployContract("Deviation flagging validator", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -137,7 +143,7 @@ func (e *EthereumContractDeployer) DeployDeviationFlaggingValidator(
 		return nil, err
 	}
 	return &EthereumDeviationFlaggingValidator{
-		client:  e.eth,
+		client:  e.client,
 		dfv:     instance.(*ethereum.DeviationFlaggingValidator),
 		address: address,
 	}, nil
@@ -148,7 +154,7 @@ func (e *EthereumContractDeployer) DeployFluxAggregatorContract(
 	linkAddr string,
 	fluxOptions FluxAggregatorOptions,
 ) (FluxAggregator, error) {
-	address, _, instance, err := e.eth.DeployContract("Flux Aggregator", func(
+	address, _, instance, err := e.client.DeployContract("Flux Aggregator", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -168,7 +174,7 @@ func (e *EthereumContractDeployer) DeployFluxAggregatorContract(
 		return nil, err
 	}
 	return &EthereumFluxAggregator{
-		client:         e.eth,
+		client:         e.client,
 		fluxAggregator: instance.(*ethereum.FluxAggregator),
 		address:        address,
 	}, nil
@@ -176,7 +182,7 @@ func (e *EthereumContractDeployer) DeployFluxAggregatorContract(
 
 // DeployLinkTokenContract deploys a Link Token contract to an EVM chain
 func (e *EthereumContractDeployer) DeployLinkTokenContract() (LinkToken, error) {
-	linkTokenAddress, _, instance, err := e.eth.DeployContract("LINK Token", func(
+	linkTokenAddress, _, instance, err := e.client.DeployContract("LINK Token", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -185,11 +191,9 @@ func (e *EthereumContractDeployer) DeployLinkTokenContract() (LinkToken, error) 
 	if err != nil {
 		return nil, err
 	}
-	//Set config address
-	//e.eth.NetworkConfig.Config().LinkTokenAddress = linkTokenAddress.Hex()
 
 	return &EthereumLinkToken{
-		client:   e.eth,
+		client:   e.client,
 		instance: instance.(*ethereum.LinkToken),
 		address:  *linkTokenAddress,
 	}, err
@@ -243,7 +247,7 @@ func (e *EthereumContractDeployer) DeployOffChainAggregator(
 	linkAddr string,
 	offchainOptions OffchainOptions,
 ) (OffchainAggregator, error) {
-	address, _, instance, err := e.eth.DeployContract("OffChain Aggregator", func(
+	address, _, instance, err := e.client.DeployContract("OffChain Aggregator", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -267,7 +271,7 @@ func (e *EthereumContractDeployer) DeployOffChainAggregator(
 		return nil, err
 	}
 	return &EthereumOffchainAggregator{
-		client:  e.eth,
+		client:  e.client,
 		ocr:     instance.(*ethereum.OffchainAggregator),
 		address: address,
 	}, err
@@ -275,7 +279,7 @@ func (e *EthereumContractDeployer) DeployOffChainAggregator(
 
 // DeployStorageContract deploys a vanilla storage contract that is a value store
 func (e *EthereumContractDeployer) DeployStorageContract() (Storage, error) {
-	_, _, instance, err := e.eth.DeployContract("Storage", func(
+	_, _, instance, err := e.client.DeployContract("Storage", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -285,14 +289,14 @@ func (e *EthereumContractDeployer) DeployStorageContract() (Storage, error) {
 		return nil, err
 	}
 	return &EthereumStorage{
-		client: e.eth,
+		client: e.client,
 		store:  instance.(*ethereum.Store),
 	}, err
 }
 
 // DeployAPIConsumer deploys api consumer for oracle
 func (e *EthereumContractDeployer) DeployAPIConsumer(linkAddr string) (APIConsumer, error) {
-	addr, _, instance, err := e.eth.DeployContract("APIConsumer", func(
+	addr, _, instance, err := e.client.DeployContract("APIConsumer", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -303,14 +307,14 @@ func (e *EthereumContractDeployer) DeployAPIConsumer(linkAddr string) (APIConsum
 	}
 	return &EthereumAPIConsumer{
 		address:  addr,
-		client:   e.eth,
+		client:   e.client,
 		consumer: instance.(*ethereum.APIConsumer),
 	}, err
 }
 
 // DeployOracle deploys oracle for consumer test
 func (e *EthereumContractDeployer) DeployOracle(linkAddr string) (Oracle, error) {
-	addr, _, instance, err := e.eth.DeployContract("Oracle", func(
+	addr, _, instance, err := e.client.DeployContract("Oracle", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -321,14 +325,14 @@ func (e *EthereumContractDeployer) DeployOracle(linkAddr string) (Oracle, error)
 	}
 	return &EthereumOracle{
 		address: addr,
-		client:  e.eth,
+		client:  e.client,
 		oracle:  instance.(*ethereum.Oracle),
 	}, err
 }
 
 // DeployVRFContract deploy VRF contract
 func (e *EthereumContractDeployer) DeployVRFContract() (VRF, error) {
-	address, _, instance, err := e.eth.DeployContract("VRF", func(
+	address, _, instance, err := e.client.DeployContract("VRF", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -338,14 +342,14 @@ func (e *EthereumContractDeployer) DeployVRFContract() (VRF, error) {
 		return nil, err
 	}
 	return &EthereumVRF{
-		client:  e.eth,
+		client:  e.client,
 		vrf:     instance.(*ethereum.VRF),
 		address: address,
 	}, err
 }
 
 func (e *EthereumContractDeployer) DeployMockETHLINKFeed(answer *big.Int) (MockETHLINKFeed, error) {
-	address, _, instance, err := e.eth.DeployContract("MockETHLINKAggregator", func(
+	address, _, instance, err := e.client.DeployContract("MockETHLINKAggregator", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -355,14 +359,14 @@ func (e *EthereumContractDeployer) DeployMockETHLINKFeed(answer *big.Int) (MockE
 		return nil, err
 	}
 	return &EthereumMockETHLINKFeed{
-		client:  e.eth,
+		client:  e.client,
 		feed:    instance.(*ethereum.MockV3AggregatorContract),
 		address: address,
 	}, err
 }
 
 func (e *EthereumContractDeployer) DeployMockGasFeed(answer *big.Int) (MockGasFeed, error) {
-	address, _, instance, err := e.eth.DeployContract("MockGasFeed", func(
+	address, _, instance, err := e.client.DeployContract("MockGasFeed", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -372,14 +376,14 @@ func (e *EthereumContractDeployer) DeployMockGasFeed(answer *big.Int) (MockGasFe
 		return nil, err
 	}
 	return &EthereumMockGASFeed{
-		client:  e.eth,
+		client:  e.client,
 		feed:    instance.(*ethereum.MockGASAggregator),
 		address: address,
 	}, err
 }
 
 func (e *EthereumContractDeployer) DeployUpkeepRegistrationRequests(linkAddr string, minLinkJuels *big.Int) (UpkeepRegistrar, error) {
-	address, _, instance, err := e.eth.DeployContract("UpkeepRegistrationRequests", func(
+	address, _, instance, err := e.client.DeployContract("UpkeepRegistrationRequests", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -389,7 +393,7 @@ func (e *EthereumContractDeployer) DeployUpkeepRegistrationRequests(linkAddr str
 		return nil, err
 	}
 	return &EthereumUpkeepRegistrationRequests{
-		client:    e.eth,
+		client:    e.client,
 		registrar: instance.(*ethereum.UpkeepRegistrationRequests),
 		address:   address,
 	}, err
@@ -398,7 +402,7 @@ func (e *EthereumContractDeployer) DeployUpkeepRegistrationRequests(linkAddr str
 func (e *EthereumContractDeployer) DeployKeeperRegistry(
 	opts *KeeperRegistryOpts,
 ) (KeeperRegistry, error) {
-	address, _, instance, err := e.eth.DeployContract("KeeperRegistry", func(
+	address, _, instance, err := e.client.DeployContract("KeeperRegistry", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -422,14 +426,14 @@ func (e *EthereumContractDeployer) DeployKeeperRegistry(
 		return nil, err
 	}
 	return &EthereumKeeperRegistry{
-		client:   e.eth,
+		client:   e.client,
 		registry: instance.(*ethereum.KeeperRegistry),
 		address:  address,
 	}, err
 }
 
 func (e *EthereumContractDeployer) DeployKeeperConsumer(updateInterval *big.Int) (KeeperConsumer, error) {
-	address, _, instance, err := e.eth.DeployContract("KeeperConsumer", func(
+	address, _, instance, err := e.client.DeployContract("KeeperConsumer", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -439,7 +443,7 @@ func (e *EthereumContractDeployer) DeployKeeperConsumer(updateInterval *big.Int)
 		return nil, err
 	}
 	return &EthereumKeeperConsumer{
-		client:   e.eth,
+		client:   e.client,
 		consumer: instance.(*ethereum.KeeperConsumer),
 		address:  address,
 	}, err
@@ -451,7 +455,7 @@ func (e *EthereumContractDeployer) DeployKeeperConsumerPerformance(
 	checkGasToBurn,
 	performGasToBurn *big.Int,
 ) (KeeperConsumerPerformance, error) {
-	address, _, instance, err := e.eth.DeployContract("KeeperConsumerPerformance", func(
+	address, _, instance, err := e.client.DeployContract("KeeperConsumerPerformance", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -468,7 +472,7 @@ func (e *EthereumContractDeployer) DeployKeeperConsumerPerformance(
 		return nil, err
 	}
 	return &EthereumKeeperConsumerPerformance{
-		client:   e.eth,
+		client:   e.client,
 		consumer: instance.(*ethereum.KeeperConsumerPerformance),
 		address:  address,
 	}, err
@@ -476,7 +480,7 @@ func (e *EthereumContractDeployer) DeployKeeperConsumerPerformance(
 
 // DeployBlockhashStore deploys blockhash store used with VRF contract
 func (e *EthereumContractDeployer) DeployBlockhashStore() (BlockHashStore, error) {
-	address, _, instance, err := e.eth.DeployContract("BlockhashStore", func(
+	address, _, instance, err := e.client.DeployContract("BlockhashStore", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -486,7 +490,7 @@ func (e *EthereumContractDeployer) DeployBlockhashStore() (BlockHashStore, error
 		return nil, err
 	}
 	return &EthereumBlockhashStore{
-		client:         e.eth,
+		client:         e.client,
 		blockHashStore: instance.(*ethereum.BlockhashStore),
 		address:        address,
 	}, err
@@ -494,7 +498,7 @@ func (e *EthereumContractDeployer) DeployBlockhashStore() (BlockHashStore, error
 
 // DeployVRFCoordinatorV2 deploys VRFV2 coordinator contract
 func (e *EthereumContractDeployer) DeployVRFCoordinatorV2(linkAddr string, bhsAddr string, linkEthFeedAddr string) (VRFCoordinatorV2, error) {
-	address, _, instance, err := e.eth.DeployContract("VRFCoordinatorV2", func(
+	address, _, instance, err := e.client.DeployContract("VRFCoordinatorV2", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -504,7 +508,7 @@ func (e *EthereumContractDeployer) DeployVRFCoordinatorV2(linkAddr string, bhsAd
 		return nil, err
 	}
 	return &EthereumVRFCoordinatorV2{
-		client:      e.eth,
+		client:      e.client,
 		coordinator: instance.(*ethereum.VRFCoordinatorV2),
 		address:     address,
 	}, err
@@ -512,7 +516,7 @@ func (e *EthereumContractDeployer) DeployVRFCoordinatorV2(linkAddr string, bhsAd
 
 // DeployVRFCoordinator deploys VRF coordinator contract
 func (e *EthereumContractDeployer) DeployVRFCoordinator(linkAddr string, bhsAddr string) (VRFCoordinator, error) {
-	address, _, instance, err := e.eth.DeployContract("VRFCoordinator", func(
+	address, _, instance, err := e.client.DeployContract("VRFCoordinator", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -522,7 +526,7 @@ func (e *EthereumContractDeployer) DeployVRFCoordinator(linkAddr string, bhsAddr
 		return nil, err
 	}
 	return &EthereumVRFCoordinator{
-		client:      e.eth,
+		client:      e.client,
 		coordinator: instance.(*ethereum.VRFCoordinator),
 		address:     address,
 	}, err
@@ -530,7 +534,7 @@ func (e *EthereumContractDeployer) DeployVRFCoordinator(linkAddr string, bhsAddr
 
 // DeployVRFConsumer deploys VRF consumer contract
 func (e *EthereumContractDeployer) DeployVRFConsumer(linkAddr string, coordinatorAddr string) (VRFConsumer, error) {
-	address, _, instance, err := e.eth.DeployContract("VRFConsumer", func(
+	address, _, instance, err := e.client.DeployContract("VRFConsumer", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -540,7 +544,7 @@ func (e *EthereumContractDeployer) DeployVRFConsumer(linkAddr string, coordinato
 		return nil, err
 	}
 	return &EthereumVRFConsumer{
-		client:   e.eth,
+		client:   e.client,
 		consumer: instance.(*ethereum.VRFConsumer),
 		address:  address,
 	}, err
@@ -548,7 +552,7 @@ func (e *EthereumContractDeployer) DeployVRFConsumer(linkAddr string, coordinato
 
 // DeployVRFConsumerV2 deploys VRFv@ consumer contract
 func (e *EthereumContractDeployer) DeployVRFConsumerV2(linkAddr string, coordinatorAddr string) (VRFConsumerV2, error) {
-	address, _, instance, err := e.eth.DeployContract("VRFConsumerV2", func(
+	address, _, instance, err := e.client.DeployContract("VRFConsumerV2", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
@@ -558,7 +562,7 @@ func (e *EthereumContractDeployer) DeployVRFConsumerV2(linkAddr string, coordina
 		return nil, err
 	}
 	return &EthereumVRFConsumerV2{
-		client:   e.eth,
+		client:   e.client,
 		consumer: instance.(*ethereum.VRFConsumerV2),
 		address:  address,
 	}, err
