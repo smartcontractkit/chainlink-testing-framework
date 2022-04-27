@@ -13,6 +13,8 @@ import (
 	"github.com/smartcontractkit/integrations-framework/utils"
 )
 
+// Handles specific issues with the Klaytn EVM chain: https://docs.klaytn.com/
+
 // KlaytnMultinodeClient represents a multi-node, EVM compatible client for the Klaytn network
 type KlaytnMultinodeClient struct {
 	*EthereumMultinodeClient

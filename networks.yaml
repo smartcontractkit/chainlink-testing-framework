@@ -22,7 +22,7 @@ private_keys: &private_keys
         - df57089febbacf7ba0bc227dafbffa9fc08a93fdc68e1e42411a14efcf23656e
 
 selected_networks: # Selected network(s) for test execution
-    - "geth"
+    - "metis_testnet"
 
 networks:
     geth: &common_ethereum
@@ -185,3 +185,12 @@ networks:
             - wss://url.here
         private_keys:
             - klaytn_key
+    metis_testnet:
+        <<: *common_ethereum_testnet
+        name: "Metis testnet"
+        type: "metis_testnet"
+        chain_id: 588
+        urls:
+            - wss://stardust-ws.metis.io/
+        private_keys:
+            - metis_key
