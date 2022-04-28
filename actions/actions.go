@@ -90,13 +90,15 @@ func FundChainlinkNodes(
 	amount *big.Float,
 ) error {
 	for _, cl := range nodes {
-		toAddress, err := cl.PrimaryEthAddress()
+		ethKeys, err := cl.ReadETHKeys()
 		if err != nil {
 			return err
 		}
-		err = client.Fund(toAddress, amount)
-		if err != nil {
-			return err
+		for _, k := range ethKeys.Data {
+			err = client.Fund(k.Attributes.Address, amount)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	// required in Geth when you need to call "simulate" transactions from nodes
