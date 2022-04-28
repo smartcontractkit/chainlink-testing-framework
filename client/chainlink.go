@@ -50,7 +50,7 @@ type Chainlink interface {
 	ReadPrimaryETHKey() (*ETHKeyData, error)
 	PrimaryEthAddress() (string, error)
 
-	CreateTxKey(chain string) (*TxKey, error)
+	CreateTxKey(chain string, chainID int) (*TxKey, error)
 	ReadTxKeys(chain string) (*TxKeys, error)
 	DeleteTxKey(chain, id string) error
 
@@ -67,6 +67,10 @@ type Chainlink interface {
 	CreateEI(eia *EIAttributes) (*EIKeyCreate, error)
 	ReadEIs() (*EIKeys, error)
 	DeleteEI(name string) error
+
+	CreateEVMChain(chain CreateEVMChainRequest) error
+	UpdateEVMChain(chain UpdateEVMChainRequest) error
+	CreateEVMNode(node NewEVMNode) error
 
 	CreateTerraChain(node *TerraChainAttributes) (*TerraChainCreate, error)
 	CreateTerraNode(node *TerraNodeAttributes) (*TerraNodeCreate, error)
@@ -327,10 +331,10 @@ func (c *chainlink) PrimaryEthAddress() (string, error) {
 }
 
 // CreateTxKey creates a tx key on the Chainlink node
-func (c *chainlink) CreateTxKey(chain string) (*TxKey, error) {
+func (c *chainlink) CreateTxKey(chain string, chainID int) (*TxKey, error) {
 	txKey := &TxKey{}
 	log.Info().Str("Node URL", c.Config.URL).Msg("Creating Tx Key")
-	_, err := c.do(http.MethodPost, fmt.Sprintf("/v2/keys/%s", chain), nil, txKey, http.StatusOK)
+	_, err := c.do(http.MethodPost, fmt.Sprintf("/v2/keys/%s?evmChainID=%d", chain, chainID), nil, txKey, http.StatusCreated)
 	return txKey, err
 }
 
@@ -452,6 +456,27 @@ func (c *chainlink) CreateTerraChain(chain *TerraChainAttributes) (*TerraChainCr
 	log.Info().Str("Node URL", c.Config.URL).Str("Chain ID", chain.ChainID).Msg("Creating Terra Chain")
 	_, err := c.do(http.MethodPost, "/v2/chains/terra", chain, &response, http.StatusCreated)
 	return &response, err
+}
+
+// CreateEVMChain creates an EVM chain
+func (c *chainlink) CreateEVMChain(chain CreateEVMChainRequest) error {
+	log.Info().Str("Node URL", c.Config.URL).Str("Chain ID", chain.ID.String()).Msg("Creating EVM Chain")
+	_, err := c.do(http.MethodPost, "/v2/chains/evm", chain, nil, http.StatusCreated)
+	return err
+}
+
+// CreateEVMChain creates an EVM chain
+func (c *chainlink) UpdateEVMChain(chain UpdateEVMChainRequest) error {
+	log.Info().Str("Node URL", c.Config.URL).Str("Chain ID", chain.ID).Msg("Updating EVM Chain")
+	_, err := c.do(http.MethodPatch, fmt.Sprintf("/v2/chains/evm/%s", chain.ID), chain, nil, http.StatusOK)
+	return err
+}
+
+// CreateEVMNode creates a terra node
+func (c *chainlink) CreateEVMNode(node NewEVMNode) error {
+	log.Info().Str("Node URL", c.Config.URL).Str("Name", node.Name).Interface("Body", node).Msg("Creating EVM Node")
+	_, err := c.do(http.MethodPost, "/v2/nodes/evm", node, nil, http.StatusOK)
+	return err
 }
 
 // CreateTerraNode creates a terra node

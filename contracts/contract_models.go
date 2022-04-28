@@ -366,3 +366,60 @@ type PerfEvent struct {
 	RequestID      [32]byte
 	BlockTimestamp *big.Int
 }
+
+// CCIP contracts
+
+type NativeTokenPool interface {
+	Address() string
+	LockOrBurn(depositorAddr string, amount *big.Int) error
+	SetOnRamp(addr string, perms bool) error
+	SetOffRamp(addr string, perms bool) error
+}
+
+type AFN interface {
+	Address() string
+	VoteGood() error
+}
+
+type OnRamp interface {
+	Address() string
+	WatchEvents()
+	SendXChainMessage(srcLinkAddr string, destNetworkID *big.Int, receiver string, executor string) error
+}
+
+type OnRampRouter interface {
+	Address() string
+	IsChainSupported(chain *big.Int) (bool, error)
+	SetOnRamp(onRampAddr string, chainID *big.Int) error
+	SendXChainMessage(srcLinkAddr string, destNetworkID *big.Int, receiver string, executor string) error
+}
+
+type OffRamp interface {
+	Address() string
+	SetRouter(addr string) error
+	WatchEvents()
+	SetConfig([]ocrConfigHelper2.OracleIdentityExtra) error
+}
+
+type OffRampRouter interface {
+	Address() string
+}
+
+type SimpleMessageReceiver interface {
+	Address() string
+}
+
+type ReceiverDapp interface {
+	Address() string
+}
+
+type MessageExecutor interface {
+	Address() string
+	SetConfig([]ocrConfigHelper2.OracleIdentityExtra) error
+}
+
+type SenderDapp interface {
+	Address() string
+	DestinationChainID() (*big.Int, error)
+	SendMsg(destAddr string, tokens []string, amount []*big.Int, executor string) error
+}
