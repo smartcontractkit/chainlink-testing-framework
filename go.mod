@@ -12,12 +12,41 @@ require (
 	github.com/prometheus/common v0.33.0
 	github.com/rs/zerolog v1.26.1
 	github.com/satori/go.uuid v1.2.0
+	github.com/smartcontractkit/chainlink v0.9.5-0.20201207211610-6c7fee37d5b7
 	github.com/smartcontractkit/helmenv v1.0.67
 	github.com/smartcontractkit/libocr v0.0.0-20220121130134-5d2b1d5f424b
 	github.com/spf13/viper v1.10.1
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	gopkg.in/guregu/null.v4 v4.0.0
 	k8s.io/apimachinery v0.23.5
+)
+
+require (
+	github.com/araddon/dateparse v0.0.0-20190622164848-0fb0a474d195 // indirect
+	github.com/fxamacker/cbor/v2 v2.2.0 // indirect
+	github.com/ipfs/go-cid v0.0.7 // indirect
+	github.com/jpillora/backoff v1.0.0 // indirect
+	github.com/libp2p/go-buffer-pool v0.0.2 // indirect
+	github.com/libp2p/go-libp2p-core v0.8.5 // indirect
+	github.com/libp2p/go-openssl v0.0.7 // indirect
+	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1 // indirect
+	github.com/minio/sha256-simd v0.1.1 // indirect
+	github.com/multiformats/go-base32 v0.0.3 // indirect
+	github.com/multiformats/go-base36 v0.1.0 // indirect
+	github.com/multiformats/go-multiaddr v0.3.1 // indirect
+	github.com/multiformats/go-multibase v0.0.3 // indirect
+	github.com/multiformats/go-multihash v0.0.14 // indirect
+	github.com/multiformats/go-varint v0.0.6 // indirect
+	github.com/robfig/cron/v3 v3.0.1 // indirect
+	github.com/spacemonkeygo/spacelog v0.0.0-20180420211403-2296661a0572 // indirect
+	github.com/spaolacci/murmur3 v1.1.0 // indirect
+	github.com/tevino/abool v0.0.0-20170917061928-9b9efcf221b5 // indirect
+	github.com/tidwall/gjson v1.6.3 // indirect
+	github.com/tidwall/match v1.0.1 // indirect
+	github.com/tidwall/pretty v1.0.2 // indirect
+	github.com/tidwall/sjson v1.1.2 // indirect
+	github.com/x448/float16 v0.8.4 // indirect
+	go.uber.org/zap v1.19.0 // indirect
 )
 
 require (
@@ -147,7 +176,7 @@ require (
 	go.starlark.net v0.0.0-20211013185944-b0039bd2cfe3 // indirect
 	go.uber.org/atomic v1.9.0
 	go.uber.org/multierr v1.6.0 // indirect
-	golang.org/x/crypto v0.0.0-20211215165025-cf75a172585e // indirect
+	golang.org/x/crypto v0.0.0-20211215165025-cf75a172585e
 	golang.org/x/net v0.0.0-20220225172249-27dd8689420f // indirect
 	golang.org/x/oauth2 v0.0.0-20220223155221-ee480838109b // indirect
 	golang.org/x/sys v0.0.0-20220114195835-da31bd327af9 // indirect
