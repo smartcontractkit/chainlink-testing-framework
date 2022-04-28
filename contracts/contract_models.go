@@ -366,3 +366,39 @@ type PerfEvent struct {
 	RequestID      [32]byte
 	BlockTimestamp *big.Int
 }
+
+// CCIP contracts
+
+type NativeTokenPool interface {
+	Address() string
+	SetOnRamp(addr string, perms bool) error
+	SetOffRamp(addr string, perms bool) error
+}
+
+type AFN interface {
+	Address() string
+}
+
+type OnRamp interface {
+	Address() string
+}
+
+type OffRamp interface {
+	Address() string
+}
+
+type SimpleMessageReceiver interface {
+	Address() string
+}
+
+type ReceiverDapp interface {
+	Address() string
+}
+
+type MessageExecutor interface {
+	Address() string
+}
+
+type SenderDapp interface {
+	Address() string
+}

@@ -49,6 +49,33 @@ type ContractDeployer interface {
 	DeployVRFCoordinator(linkAddr string, bhsAddr string) (VRFCoordinator, error)
 	DeployVRFCoordinatorV2(linkAddr string, bhsAddr string, linkEthFeedAddr string) (VRFCoordinatorV2, error)
 	DeployBlockhashStore() (BlockHashStore, error)
+	DeployNativeTokenPool(
+		token string,
+		lockRate *big.Int,
+		lockCapacity *big.Int,
+		releaseRate *big.Int,
+		releaseCapacity *big.Int,
+	) (NativeTokenPool, error)
+	DeployAFN(participants []string) (AFN, error)
+	DeployOnRamp(
+		destChainIDs []*big.Int,
+		tokens []string,
+		poolAddresses []string,
+		feedAddresses []string,
+		afnAddress string,
+	) (OnRamp, error)
+	DeployOffRamp(
+		sourceChainID *big.Int,
+		destChainIDs []*big.Int,
+		tokens []string,
+		poolAddresses []string,
+		feedAddresses []string,
+		afnAddress string,
+	) (OffRamp, error)
+	DeploySimpleMessageReceiver() (SimpleMessageReceiver, error)
+	DeployReceiverDapp(offRampAddr string, tokenAddr string) (ReceiverDapp, error)
+	DeployMessageExecutor(offRampAddr string, fee bool) (MessageExecutor, error)
+	DeploySenderDapp(onRampRouter string, destChainID *big.Int, destReceiverAddr string) (SenderDapp, error)
 }
 
 // NewContractDeployer returns an instance of a contract deployer based on the client type
@@ -63,6 +90,34 @@ func NewContractDeployer(bcClient client.BlockchainClient) (ContractDeployer, er
 // EthereumContractDeployer provides the implementations for deploying ETH (EVM) based contracts
 type EthereumContractDeployer struct {
 	eth *client.EthereumClient
+}
+
+func (e *EthereumContractDeployer) DeploySenderDapp(onRampRouter string, destChainID *big.Int, destReceiverAddr string) (SenderDapp, error) {
+	return nil, nil
+}
+
+func (e *EthereumContractDeployer) DeploySimpleMessageReceiver() (SimpleMessageReceiver, error) {
+	return nil, nil
+}
+
+func (e *EthereumContractDeployer) DeployReceiverDapp(offRampAddr string, tokenAddr string) (ReceiverDapp, error) {
+	return nil, nil
+}
+
+func (e *EthereumContractDeployer) DeployMessageExecutor(offRampAddr string, fee bool) (MessageExecutor, error) {
+	return nil, nil
+}
+
+func (e *EthereumContractDeployer) DeployOffRamp(sourceChainID *big.Int, destChainIDs []*big.Int, tokens []string, poolAddresses []string, feedAddresses []string, afnAddress string) (OffRamp, error) {
+	return nil, nil
+}
+
+func (e *EthereumContractDeployer) DeployAFN(participants []string) (AFN, error) {
+	return nil, nil
+}
+
+func (e *EthereumContractDeployer) DeployOnRamp(destChainIDs []*big.Int, tokens []string, poolAddresses []string, feedAddresses []string, afnAddress string) (OnRamp, error) {
+	return nil, nil
 }
 
 // NewEthereumContractDeployer returns an instantiated instance of the ETH contract deployer
@@ -82,6 +137,16 @@ func DefaultFluxAggregatorOptions() FluxAggregatorOptions {
 		Decimals:      uint8(0),
 		Description:   "Test Flux Aggregator",
 	}
+}
+
+func (e *EthereumContractDeployer) DeployNativeTokenPool(
+	token string,
+	lockRate *big.Int,
+	lockCapacity *big.Int,
+	releaseRate *big.Int,
+	releaseCapacity *big.Int,
+) (NativeTokenPool, error) {
+	return nil, nil
 }
 
 // DeployReadAccessController deploys read/write access controller contract

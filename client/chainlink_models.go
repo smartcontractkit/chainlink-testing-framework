@@ -6,6 +6,9 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/smartcontractkit/chainlink/core/assets"
+	"github.com/smartcontractkit/chainlink/core/store/models"
+	"github.com/smartcontractkit/chainlink/core/utils"
 	"gopkg.in/guregu/null.v4"
 )
 
@@ -338,6 +341,72 @@ type EIKeyCreate struct {
 // EIKey is the model that represents the EI configs when read
 type EIKey struct {
 	Attributes EIAttributes `json:"attributes"`
+}
+
+// UpdateEVMChainRequest is a JSONAPI request for updating an EVM chain.
+type UpdateEVMChainRequest struct {
+	ID      string   `json:"chainID"`
+	Config  ChainCfg `json:"config"`
+	Enabled bool     `json:"enabled"`
+}
+
+// CreateEVMChainRequest is a JSONAPI request for creating an EVM chain.
+type CreateEVMChainRequest struct {
+	ID     utils.Big `json:"chainID"`
+	Config ChainCfg  `json:"config"`
+}
+
+type ChainCfg struct {
+	BlockHistoryEstimatorBlockDelay                null.Int
+	BlockHistoryEstimatorBlockHistorySize          null.Int
+	BlockHistoryEstimatorEIP1559FeeCapBufferBlocks null.Int
+	ChainType                                      null.String
+	EthTxReaperThreshold                           *models.Duration
+	EthTxResendAfterThreshold                      *models.Duration
+	EvmEIP1559DynamicFees                          null.Bool
+	EvmFinalityDepth                               null.Int
+	EvmGasBumpPercent                              null.Int
+	EvmGasBumpTxDepth                              null.Int
+	EvmGasBumpWei                                  *utils.Big
+	EvmGasFeeCapDefault                            *utils.Big
+	EvmGasLimitDefault                             null.Int
+	EvmGasLimitMultiplier                          null.Float
+	EvmGasPriceDefault                             *utils.Big
+	EvmGasTipCapDefault                            *utils.Big
+	EvmGasTipCapMinimum                            *utils.Big
+	EvmHeadTrackerHistoryDepth                     null.Int
+	EvmHeadTrackerMaxBufferSize                    null.Int
+	EvmHeadTrackerSamplingInterval                 *models.Duration
+	EvmLogBackfillBatchSize                        null.Int
+	EvmLogPollInterval                             *models.Duration
+	EvmMaxGasPriceWei                              *utils.Big
+	EvmNonceAutoSync                               null.Bool
+	EvmUseForwarders                               null.Bool
+	EvmRPCDefaultBatchSize                         null.Int
+	FlagsContractAddress                           null.String
+	GasEstimatorMode                               null.String
+	KeySpecific                                    map[string]ChainCfg
+	LinkContractAddress                            null.String
+	MinIncomingConfirmations                       null.Int
+	MinRequiredOutgoingConfirmations               null.Int
+	MinimumContractPayment                         *assets.Link
+	OCRObservationTimeout                          *models.Duration
+	NodeNoNewHeadsThreshold                        *models.Duration
+}
+
+// EVMNodeAttributes is the model that represents the EVM nodes
+type EVMNodeAttributes struct {
+	Name       string `json:"name"`
+	EVMChainID string `json:"evmChainId"`
+	EVMURL     string `json:"evm_url" db:"evm_url"`
+}
+
+type NewEVMNode struct {
+	Name       string      `json:"name"`
+	EVMChainID utils.Big   `json:"evmChainId"`
+	WSURL      null.String `json:"wsURL" db:"ws_url"`
+	HTTPURL    null.String `json:"httpURL" db:"http_url"`
+	SendOnly   bool        `json:"sendOnly"`
 }
 
 type TerraChainConfig struct {
