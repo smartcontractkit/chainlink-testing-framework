@@ -51,7 +51,7 @@ type Chainlink interface {
 	ReadETHKeys() (*ETHKeys, error)
 	ReadPrimaryETHKey() (*ETHKeyData, error)
 	PrimaryEthAddress() (string, error)
-	UpdateEthKeyMaxGasPriceGWei(keyId string, gwei int) (*ETHKeys, error)
+	UpdateEthKeyMaxGasPriceGWei(keyId string, gwei int) (*ETHKey, error)
 
 	CreateTxKey(chain string) (*TxKey, error)
 	ReadTxKeys(chain string) (*TxKeys, error)
@@ -305,11 +305,12 @@ func (c *chainlink) ReadETHKeys() (*ETHKeys, error) {
 	return ethKeys, err
 }
 
-func (c *chainlink) UpdateEthKeyMaxGasPriceGWei(keyId string, gWei int) (*ETHKeys, error) {
-	ethKeys := &ETHKeys{}
+// UpdateEthKeyMaxGasPriceGWei updates the maxGasPriceGWei for an eth key
+func (c *chainlink) UpdateEthKeyMaxGasPriceGWei(keyId string, gWei int) (*ETHKey, error) {
+	ethKey := &ETHKey{}
 	log.Info().Str("Node URL", c.Config.URL).Str("ID", keyId).Int("maxGasPriceGWei", gWei).Msg("Update maxGasPriceGWei for eth key")
-	_, err := c.do(http.MethodPut, fmt.Sprintf("/v2/keys/eth/%s?maxGasPriceGWei=%d", keyId, gWei), nil, ethKeys, http.StatusOK)
-	return ethKeys, err
+	_, err := c.do(http.MethodPut, fmt.Sprintf("/v2/keys/eth/%s?maxGasPriceGWei=%d", keyId, gWei), nil, ethKey, http.StatusOK)
+	return ethKey, err
 }
 
 // ReadPrimaryETHKey reads updated information about the chainlink's primary ETH key

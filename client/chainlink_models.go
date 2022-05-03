@@ -238,6 +238,7 @@ type ETHKey struct {
 	Data ETHKeyData `json:"data"`
 }
 
+
 // ETHKeyData is the model that represents the created ETH keys when read
 type ETHKeyData struct {
 	Attributes ETHKeyAttributes `json:"attributes"`
