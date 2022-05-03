@@ -996,9 +996,6 @@ blockhashStoreAddress    = "{{.BlockhashStoreAddress}}"
 pollPeriod               = "{{.PollPeriod}}"
 runTimeout               = "{{.RunTimeout}}"
 evmChainID               = "{{.EVMChainID}}"
-observationSource = """
-{{.ObservationSource}}
-"""
 `
 	return marshallTemplate(b, "BlockhashStore Job", vrfTemplateString)
 }
