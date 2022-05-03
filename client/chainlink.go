@@ -51,6 +51,7 @@ type Chainlink interface {
 	ReadETHKeys() (*ETHKeys, error)
 	ReadPrimaryETHKey() (*ETHKeyData, error)
 	PrimaryEthAddress() (string, error)
+	UpdateEthKeyMaxGasPriceGWei(keyId string, gwei int) (*ETHKeys, error)
 
 	CreateTxKey(chain string) (*TxKey, error)
 	ReadTxKeys(chain string) (*TxKeys, error)
@@ -301,6 +302,13 @@ func (c *chainlink) ReadETHKeys() (*ETHKeys, error) {
 	if len(ethKeys.Data) == 0 {
 		log.Warn().Str("Node URL", c.Config.URL).Msg("Found no ETH Keys on the node")
 	}
+	return ethKeys, err
+}
+
+func (c *chainlink) UpdateEthKeyMaxGasPriceGWei(keyId string, gWei int) (*ETHKeys, error) {
+	ethKeys := &ETHKeys{}
+	log.Info().Str("Node URL", c.Config.URL).Str("ID", keyId).Int("maxGasPriceGWei", gWei).Msg("Update maxGasPriceGWei for eth key")
+	_, err := c.do(http.MethodPut, fmt.Sprintf("/v2/keys/eth/%s?maxGasPriceGWei=%d", keyId, gWei), nil, ethKeys, http.StatusOK)
 	return ethKeys, err
 }
 
