@@ -10,7 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
-	"github.com/smartcontractkit/integrations-framework/config"
+	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"golang.org/x/sync/errgroup"
 )
 

@@ -3,7 +3,7 @@ package blockchain_test
 import (
 	"testing"
 
-	"github.com/smartcontractkit/integrations-framework/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/stretchr/testify/require"
 )
 

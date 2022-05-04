@@ -13,7 +13,7 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"github.com/rs/zerolog/log"
 	"github.com/slack-go/slack"
-	"github.com/smartcontractkit/integrations-framework/client"
+	"github.com/smartcontractkit/chainlink-testing-framework/client"
 )
 
 // KeeperBlockTimeTestReporter enables reporting on the keeper block time test

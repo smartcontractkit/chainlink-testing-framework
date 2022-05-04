@@ -12,8 +12,8 @@ import (
 
 	"github.com/imdario/mergo"
 	"github.com/kelseyhightower/envconfig"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 	"github.com/smartcontractkit/helmenv/environment"
-	"github.com/smartcontractkit/integrations-framework/utils"
 	"gopkg.in/yaml.v3"
 
 	"github.com/rs/zerolog/log"

@@ -6,8 +6,8 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/smartcontractkit/integrations-framework/client"
-	"github.com/smartcontractkit/integrations-framework/contracts/ethereum"
+	"github.com/smartcontractkit/chainlink-testing-framework/client"
+	"github.com/smartcontractkit/chainlink-testing-framework/contracts/ethereum"
 
 	"github.com/ethereum/go-ethereum/common"
 	ocrConfigHelper "github.com/smartcontractkit/libocr/offchainreporting/confighelper"

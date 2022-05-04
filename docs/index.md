@@ -1,20 +1,20 @@
 ---
 layout: default
-title: Integrations Framework
+title: Chainlink Testing Framework
 nav_order: 1
 description: "A general blockchain integration testing framework geared towards Chainlink projects"
 permalink: /
 ---
 
-# Chainlink Integrations Framework
+# Chainlink Testing Framework
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/smartcontractkit/integrations-framework)](https://goreportcard.com/report/github.com/smartcontractkit/integrations-framework)
-[![Go Reference](https://pkg.go.dev/badge/github.com/smartcontractkit/integrations-framework.svg)](https://pkg.go.dev/github.com/smartcontractkit/integrations-framework)
-![Tests](https://github.com/smartcontractkit/integrations-framework/actions/workflows/test.yaml/badge.svg)
-![Lint](https://github.com/smartcontractkit/integrations-framework/actions/workflows/lint.yaml/badge.svg)
+[![Go Report Card](https://goreportcard.com/badge/github.com/smartcontractkit/chainlink-testing-framework)](https://goreportcard.com/report/github.com/smartcontractkit/chainlink-testing-framework)
+[![Go Reference](https://pkg.go.dev/badge/github.com/smartcontractkit/chainlink-testing-framework.svg)](https://pkg.go.dev/github.com/smartcontractkit/chainlink-testing-framework)
+![Tests](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/test.yaml/badge.svg)
+![Lint](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/lint.yaml/badge.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-The Chainlink Integrations Framework is a blockchain development and testing framework written in [Go](https://go.dev/). While the framework is designed primarily with testing Chainlink nodes in mind, it's not at all limited to that function. With this framework, blockchain developers can create extensive integration, e2e, performance, and chaos tests for almost anything!
+The Chainlink Testing Framework is a blockchain development and testing framework written in [Go](https://go.dev/). While the framework is designed primarily with testing Chainlink nodes in mind, it's not at all limited to that function. With this framework, blockchain developers can create extensive integration, e2e, performance, and chaos tests for almost anything!
 
 Are you new to [blockchain development](https://ethereum.org/en/developers/docs/), [smart contracts](https://docs.chain.link/docs/beginners-tutorial/), or [Chainlink](https://chain.link/)? Learn more by clicking the links!
 

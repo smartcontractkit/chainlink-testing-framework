@@ -8,10 +8,10 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog/log"
+	"github.com/smartcontractkit/chainlink-testing-framework/actions"
+	"github.com/smartcontractkit/chainlink-testing-framework/testsetups"
 	"github.com/smartcontractkit/helmenv/environment"
 	"github.com/smartcontractkit/helmenv/tools"
-	"github.com/smartcontractkit/integrations-framework/actions"
-	"github.com/smartcontractkit/integrations-framework/testsetups"
 )
 
 var _ = Describe("OCR Soak Test @soak-ocr", func() {
@@ -33,10 +33,12 @@ var _ = Describe("OCR Soak Test @soak-ocr", func() {
 
 		By("Setting up Soak Test", func() {
 			ocrSoakTest = testsetups.NewOCRSoakTest(&testsetups.OCRSoakTestInputs{
-				TestDuration:         time.Hour * 4,
-				NumberOfContracts:    4,
-				ChainlinkNodeFunding: big.NewFloat(.5),
-				RoundTimeout:         time.Minute * 1,
+				TestDuration:         time.Hour * 168,
+				NumberOfContracts:    2,
+				ChainlinkNodeFunding: big.NewFloat(10),
+				ExpectedRoundTime:    time.Minute,
+				RoundTimeout:         time.Minute * 10,
+				TimeBetweenRounds:    time.Minute * 10,
 				StartingAdapterValue: 5,
 			})
 			ocrSoakTest.Setup(env)
