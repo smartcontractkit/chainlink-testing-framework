@@ -4,7 +4,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	gauntlet "github.com/smartcontractkit/integrations-framework/gauntlet"
+	gauntlet "github.com/smartcontractkit/chainlink-testing-framework/gauntlet"
 )
 
 var _ = Describe("Gauntlet @unit", func() {

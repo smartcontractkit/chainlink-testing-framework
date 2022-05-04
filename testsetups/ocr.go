@@ -4,6 +4,7 @@ package testsetups
 //revive:disable:dot-imports
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"sync"
 	"time"
@@ -11,12 +12,12 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog/log"
+	"github.com/smartcontractkit/chainlink-testing-framework/actions"
+	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/client"
+	"github.com/smartcontractkit/chainlink-testing-framework/contracts"
+	"github.com/smartcontractkit/chainlink-testing-framework/testreporters"
 	"github.com/smartcontractkit/helmenv/environment"
-	"github.com/smartcontractkit/integrations-framework/actions"
-	"github.com/smartcontractkit/integrations-framework/blockchain"
-	"github.com/smartcontractkit/integrations-framework/client"
-	"github.com/smartcontractkit/integrations-framework/contracts"
-	"github.com/smartcontractkit/integrations-framework/testreporters"
 )
 
 // OCRSoakTest defines a typical OCR soak test
@@ -38,7 +39,9 @@ type OCRSoakTestInputs struct {
 	TestDuration         time.Duration // How long to run the test for (assuming things pass)
 	NumberOfContracts    int           // Number of OCR contracts to launch
 	ChainlinkNodeFunding *big.Float    // Amount of ETH to fund each chainlink node with
-	RoundTimeout         time.Duration // How long to wait for a round to update before timing out
+	RoundTimeout         time.Duration // How long to wait for a round to update before failing the test
+	ExpectedRoundTime    time.Duration // How long each round is expected to take
+	TimeBetweenRounds    time.Duration // How long to wait after a completed round to start a new one, set 0 for instant
 	StartingAdapterValue int
 }
 
@@ -50,7 +53,8 @@ func NewOCRSoakTest(inputs *OCRSoakTestInputs) *OCRSoakTest {
 	return &OCRSoakTest{
 		Inputs: inputs,
 		TestReporter: testreporters.OCRSoakTestReporter{
-			Reports: make(map[string]*testreporters.OCRSoakTestReport),
+			Reports:           make(map[string]*testreporters.OCRSoakTestReport),
+			ExpectedRoundTime: inputs.ExpectedRoundTime,
 		},
 	}
 }
@@ -73,15 +77,14 @@ func (t *OCRSoakTest) Setup(env *environment.Environment) {
 	t.mockServer, err = client.ConnectMockServerSoak(env)
 	Expect(err).ShouldNot(HaveOccurred(), "Creating mockserver clients shouldn't fail")
 	t.defaultNetwork.ParallelTransactions(true)
-	Expect(err).ShouldNot(HaveOccurred())
 
 	// Deploy LINK
 	linkTokenContract, err := contractDeployer.DeployLinkTokenContract()
 	Expect(err).ShouldNot(HaveOccurred(), "Deploying Link Token Contract shouldn't fail")
 
-	// Fund Chainlink nodes
-	err = actions.FundChainlinkNodes(t.chainlinkNodes, t.defaultNetwork, t.Inputs.ChainlinkNodeFunding)
-	Expect(err).ShouldNot(HaveOccurred())
+	// Fund Chainlink nodes, excluding the bootstrap node
+	err = actions.FundChainlinkNodes(t.chainlinkNodes[1:], t.defaultNetwork, t.Inputs.ChainlinkNodeFunding)
+	Expect(err).ShouldNot(HaveOccurred(), "Error funding Chainlink nodes")
 
 	t.ocrInstances = actions.DeployOCRContracts(
 		t.Inputs.NumberOfContracts,
@@ -91,10 +94,11 @@ func (t *OCRSoakTest) Setup(env *environment.Environment) {
 		t.networks,
 	)
 	err = t.defaultNetwork.WaitForEvents()
-	Expect(err).ShouldNot(HaveOccurred())
+	Expect(err).ShouldNot(HaveOccurred(), "Error waiting for OCR contracts to be deployed")
 	for _, ocrInstance := range t.ocrInstances {
 		t.TestReporter.Reports[ocrInstance.Address()] = &testreporters.OCRSoakTestReport{
-			ContractAddress: ocrInstance.Address(),
+			ContractAddress:   ocrInstance.Address(),
+			ExpectedRoundtime: t.Inputs.ExpectedRoundTime,
 		}
 	}
 }
@@ -128,6 +132,11 @@ func (t *OCRSoakTest) Run() {
 			t.waitForRoundToComplete(roundNumber)
 			t.checkLatestRound(adapterValue, roundNumber)
 			roundNumber++
+			if t.Inputs.TimeBetweenRounds > 0 {
+				log.Info().Str("Time", fmt.Sprint(t.Inputs.TimeBetweenRounds)).Msg("Waiting between OCR Rounds")
+				time.Sleep(t.Inputs.TimeBetweenRounds)
+			}
+
 		}
 	}
 }
@@ -143,7 +152,10 @@ func (t *OCRSoakTest) ensureInputValues() {
 	Expect(inputs.NumberOfContracts).Should(BeNumerically(">=", 1), "Expecting at least 1 OCR contract")
 	Expect(inputs.ChainlinkNodeFunding.Float64()).Should(BeNumerically(">", 0), "Expecting non-zero chainlink node funding amount")
 	Expect(inputs.TestDuration).Should(BeNumerically(">=", time.Minute*1), "Expected test duration to be more than a minute")
-	Expect(inputs.RoundTimeout).Should(BeNumerically(">=", time.Second*15), "Expected test duration to be more than 15 seconds")
+	Expect(inputs.ExpectedRoundTime).Should(BeNumerically(">=", time.Second*1), "Expected ExpectedRoundTime to be greater than 1 second")
+	Expect(inputs.RoundTimeout).Should(BeNumerically(">=", inputs.ExpectedRoundTime), "Expected RoundTimeout to be greater than ExpectedRoundTime")
+	Expect(inputs.TimeBetweenRounds).ShouldNot(BeNil(), "You forgot to set TimeBetweenRounds")
+	Expect(inputs.TimeBetweenRounds).Should(BeNumerically("<", time.Hour), "TimeBetweenRounds must be less than 1 hour")
 }
 
 // changes the mock adapter value for OCR instances to retrieve answers from

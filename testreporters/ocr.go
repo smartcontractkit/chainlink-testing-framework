@@ -13,14 +13,17 @@ import (
 )
 
 type OCRSoakTestReporter struct {
-	Reports     map[string]*OCRSoakTestReport // contractAddress: Report
-	namespace   string
-	csvLocation string
+	Reports           map[string]*OCRSoakTestReport // contractAddress: Report
+	ExpectedRoundTime time.Duration
+	namespace         string
+	csvLocation       string
 }
 
 type OCRSoakTestReport struct {
-	ContractAddress string
-	TotalRounds     uint
+	ContractAddress          string
+	TotalRounds              uint
+	ExpectedRoundtime        time.Duration
+	LongerThanExpectedRounds []*LongerThanExpectedRound
 
 	averageRoundTime  time.Duration
 	LongestRoundTime  time.Duration
@@ -30,7 +33,14 @@ type OCRSoakTestReport struct {
 	averageRoundBlocks  uint
 	LongestRoundBlocks  uint
 	ShortestRoundBlocks uint
-	totalBlockLengths   uint
+	totalBlockLength    uint
+}
+
+type LongerThanExpectedRound struct {
+	RoundID     uint
+	RoundTime   time.Duration
+	BlockLength uint
+	Timestamp   time.Time
 }
 
 // SetNamespace sets the namespace of the report for clean reports
@@ -41,8 +51,13 @@ func (o *OCRSoakTestReporter) SetNamespace(namespace string) {
 // WriteReport writes OCR Soak test report to logs
 func (o *OCRSoakTestReporter) WriteReport(folderLocation string) error {
 	for _, report := range o.Reports {
-		report.averageRoundBlocks = report.totalBlockLengths / report.TotalRounds
-		report.averageRoundTime = time.Duration(report.totalRoundTimes.Nanoseconds() / int64(report.TotalRounds))
+		report.averageRoundBlocks = report.totalBlockLength / report.TotalRounds
+		report.averageRoundTime = time.Duration(report.totalRoundTimes.Nanoseconds() / int64(report.TotalRounds)).Round(time.Second)
+
+		report.averageRoundTime = report.averageRoundTime.Round(time.Second)
+		report.LongestRoundTime = report.LongestRoundTime.Round(time.Second)
+		report.ShortestRoundTime = report.ShortestRoundTime.Round(time.Second)
+		report.totalRoundTimes = report.totalRoundTimes.Round(time.Second)
 	}
 	if err := o.writeCSV(folderLocation); err != nil {
 		return err
@@ -57,6 +72,7 @@ func (o *OCRSoakTestReporter) WriteReport(folderLocation string) error {
 			Str("Average Round Time", fmt.Sprint(report.averageRoundTime)).
 			Str("Longest Round Time", fmt.Sprint(report.LongestRoundTime)).
 			Str("Shortest Round Time", fmt.Sprint(report.ShortestRoundTime)).
+			Str("Total Rounds Outside of Expected Time", fmt.Sprint(report.ExpectedRoundtime)).
 			Uint("Average Round Blocks", report.averageRoundBlocks).
 			Uint("Longest Round Blocks", report.LongestRoundBlocks).
 			Uint("Shortest Round Blocks", report.ShortestRoundBlocks).
@@ -120,7 +136,16 @@ func (o *OCRSoakTestReport) UpdateReport(roundTime time.Duration, blockLength ui
 	}
 	o.TotalRounds++
 	o.totalRoundTimes += roundTime
-	o.totalBlockLengths += blockLength
+	o.totalBlockLength += blockLength
+
+	if roundTime > o.ExpectedRoundtime {
+		o.LongerThanExpectedRounds = append(o.LongerThanExpectedRounds, &LongerThanExpectedRound{
+			RoundID:     o.TotalRounds,
+			RoundTime:   roundTime,
+			BlockLength: blockLength,
+			Timestamp:   time.Now(),
+		})
+	}
 	if roundTime >= o.LongestRoundTime {
 		o.LongestRoundTime = roundTime
 	}
@@ -147,8 +172,8 @@ func (o *OCRSoakTestReporter) writeCSV(folderLocation string) error {
 	defer ocrReportFile.Close()
 
 	ocrReportWriter := csv.NewWriter(ocrReportFile)
+
 	err = ocrReportWriter.Write([]string{
-		"Contract Index",
 		"Contract Address",
 		"Total Rounds Processed",
 		"Average Round Time",
@@ -161,9 +186,8 @@ func (o *OCRSoakTestReporter) writeCSV(folderLocation string) error {
 	if err != nil {
 		return err
 	}
-	for contractIndex, report := range o.Reports {
+	for _, report := range o.Reports {
 		err = ocrReportWriter.Write([]string{
-			fmt.Sprint(contractIndex),
 			report.ContractAddress,
 			fmt.Sprint(report.TotalRounds),
 			fmt.Sprint(report.averageRoundTime),
@@ -177,6 +201,43 @@ func (o *OCRSoakTestReporter) writeCSV(folderLocation string) error {
 			return err
 		}
 	}
+
+	err = ocrReportWriter.Write([]string{})
+	if err != nil {
+		return err
+	}
+
+	err = ocrReportWriter.Write([]string{fmt.Sprintf("Rounds That Took Longer Than %s", o.ExpectedRoundTime)})
+	if err != nil {
+		return err
+	}
+
+	err = ocrReportWriter.Write([]string{
+		"Contract Address",
+		"Timestamp",
+		"Round ID",
+		"Round Time",
+		"Block Length",
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, report := range o.Reports {
+		for _, longerThanExpected := range report.LongerThanExpectedRounds {
+			err = ocrReportWriter.Write([]string{
+				report.ContractAddress,
+				fmt.Sprint(longerThanExpected.Timestamp),
+				fmt.Sprint(longerThanExpected.RoundID),
+				longerThanExpected.RoundTime.String(),
+				fmt.Sprint(longerThanExpected.BlockLength),
+			})
+			if err != nil {
+				return err
+			}
+		}
+	}
+
 	ocrReportWriter.Flush()
 
 	log.Info().Str("Location", reportLocation).Msg("Wrote CSV file")

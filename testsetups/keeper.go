@@ -8,12 +8,12 @@ import (
 
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog/log"
+	"github.com/smartcontractkit/chainlink-testing-framework/actions"
+	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/client"
+	"github.com/smartcontractkit/chainlink-testing-framework/contracts"
+	"github.com/smartcontractkit/chainlink-testing-framework/testreporters"
 	"github.com/smartcontractkit/helmenv/environment"
-	"github.com/smartcontractkit/integrations-framework/actions"
-	"github.com/smartcontractkit/integrations-framework/blockchain"
-	"github.com/smartcontractkit/integrations-framework/client"
-	"github.com/smartcontractkit/integrations-framework/contracts"
-	"github.com/smartcontractkit/integrations-framework/testreporters"
 )
 
 // KeeperBlockTimeTest builds a test to check that chainlink nodes are able to upkeep a specified amount of Upkeep
