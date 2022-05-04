@@ -968,6 +968,38 @@ observationSource = """
 	return marshallTemplate(v, "VRF Job", vrfTemplateString)
 }
 
+// BlockhashStoreJobSpec represents a blockhashstore job
+type BlockhashStoreJobSpec struct {
+	Name                  string `toml:"name"`
+	CoordinatorV2Address  string `toml:"coordinatorV2Address"` // Address of the VRF Coordinator contract
+	WaitBlocks            int    `toml:"waitBlocks"`
+	LookbackBlocks        int    `toml:"lookbackBlocks"`
+	BlockhashStoreAddress string `toml:"blockhashStoreAddress"`
+	PollPeriod            string `toml:"pollPeriod"`
+	RunTimeout            string `toml:"runTimeout"`
+	EVMChainID            string `toml:"evmChainID"`
+}
+
+// Type returns the type of the job
+func (b *BlockhashStoreJobSpec) Type() string { return "blockhashstore" }
+
+// String representation of the job
+func (b *BlockhashStoreJobSpec) String() (string, error) {
+	vrfTemplateString := `
+type                     = "blockhashstore"
+schemaVersion            = 1
+name                     = "{{.Name}}"
+coordinatorV2Address     = "{{.CoordinatorV2Address}}"
+waitBlocks               = {{.WaitBlocks}}
+lookbackBlocks           = {{.LookbackBlocks}}
+blockhashStoreAddress    = "{{.BlockhashStoreAddress}}"
+pollPeriod               = "{{.PollPeriod}}"
+runTimeout               = "{{.RunTimeout}}"
+evmChainID               = "{{.EVMChainID}}"
+`
+	return marshallTemplate(b, "BlockhashStore Job", vrfTemplateString)
+}
+
 // WebhookJobSpec reprsents a webhook job
 type WebhookJobSpec struct {
 	Name              string `toml:"name"`
