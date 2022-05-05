@@ -17,7 +17,7 @@ import (
 	"github.com/smartcontractkit/integrations-framework/testreporters"
 )
 
-// VRFV2SoakTest defines a typical OCR soak test
+// VRFV2SoakTest defines a typical VRFV2 soak test
 type VRFV2SoakTest struct {
 	Inputs *VRFV2SoakTestInputs
 
@@ -25,34 +25,38 @@ type VRFV2SoakTest struct {
 	mockServer   *client.MockserverClient
 
 	env            *environment.Environment
-	consumer       contracts.VRFConsumerV2
-	coordinator    contracts.VRFCoordinatorV2
-	chainlinkNodes []client.Chainlink
-	jobInfo        []VRFV2SoakTestJobInfo
+	Consumer       contracts.VRFConsumerV2
+	Coordinator    contracts.VRFCoordinatorV2
+	ChainlinkNodes []client.Chainlink
+	JobInfo        []VRFV2SoakTestJobInfo
 	networks       *blockchain.Networks
 	defaultNetwork blockchain.EVMClient
+
+	NumberRequestsToValidate int
+	NumberRequestsValidated  int
 }
 
+// VRFV2SoakTestJobInfo defines a jobs into and proving key info
 type VRFV2SoakTestJobInfo struct {
-	job            *client.Job
-	provingKey     [2]*big.Int
-	provingKeyHash [32]byte
+	Job            *client.Job
+	ProvingKey     [2]*big.Int
+	ProvingKeyHash [32]byte
 }
 
-// OCRSoakTestInputs define required inputs to run an OCR soak test
+// VRFV2SoakTestTestFunc function type for the request and validation you want done on each iteration
+type VRFV2SoakTestTestFunc func(t *VRFV2SoakTest, requestNumber int)
+
+// VRFV2SoakTestInputs define required inputs to run a vrfv2 soak test
 type VRFV2SoakTestInputs struct {
-	TestDuration            time.Duration // How long to run the test for (assuming things pass)
-	RequestsPerSecondWanted int           // Number of requests for randomness per minute
-	ChainlinkNodeFunding    *big.Float    // Amount of ETH to fund each chainlink node with
-	RoundTimeout            time.Duration // How long to wait for a round to update before timing out
+	TestDuration         time.Duration // How long to run the test for (assuming things pass)
+	ChainlinkNodeFunding *big.Float    // Amount of ETH to fund each chainlink node with
+
+	RequestsPerSecond  int                   // Number of requests for randomness per minute
+	ReadEveryNRequests int                   // Check the randomness output every n number of requests
+	TestFunc           VRFV2SoakTestTestFunc // The function that makes the request and validations wanted
 }
 
-type requestedRandomnessData struct {
-	jobInfo       VRFV2SoakTestJobInfo
-	requestNumber int
-}
-
-// NewOCRSoakTest creates a new OCR soak test to setup and run
+// NewVRFV2SoakTest creates a new vrfv2 soak test to setup and run
 func NewVRFV2SoakTest(inputs *VRFV2SoakTestInputs) *VRFV2SoakTest {
 	return &VRFV2SoakTest{
 		Inputs: inputs,
@@ -75,7 +79,7 @@ func (t *VRFV2SoakTest) Setup(env *environment.Environment) {
 	t.defaultNetwork = t.networks.Default
 	contractDeployer, err := contracts.NewContractDeployer(t.defaultNetwork)
 	Expect(err).ShouldNot(HaveOccurred(), "Deploying contracts shouldn't fail")
-	t.chainlinkNodes, err = client.ConnectChainlinkNodesSoak(env)
+	t.ChainlinkNodes, err = client.ConnectChainlinkNodesSoak(env)
 	Expect(err).ShouldNot(HaveOccurred(), "Connecting to chainlink nodes shouldn't fail")
 	t.mockServer, err = client.ConnectMockServerSoak(env)
 	Expect(err).ShouldNot(HaveOccurred(), "Creating mockserver clients shouldn't fail")
@@ -87,116 +91,95 @@ func (t *VRFV2SoakTest) Setup(env *environment.Environment) {
 	Expect(err).ShouldNot(HaveOccurred(), "Deploying Link Token Contract shouldn't fail")
 
 	// Fund Chainlink nodes
-	err = actions.FundChainlinkNodes(t.chainlinkNodes, t.defaultNetwork, t.Inputs.ChainlinkNodeFunding)
+	err = actions.FundChainlinkNodes(t.ChainlinkNodes, t.defaultNetwork, t.Inputs.ChainlinkNodeFunding)
 	Expect(err).ShouldNot(HaveOccurred())
 
-	t.coordinator, t.consumer = actions.DeployVrfv2Contracts(linkTokenContract, contractDeployer, t.networks)
-	jobs, provingKeys := actions.CreateVrfV2Jobs(t.chainlinkNodes, t.coordinator)
+	t.Coordinator, t.Consumer = actions.DeployVrfv2Contracts(linkTokenContract, contractDeployer, t.networks)
+	jobs, provingKeys := actions.CreateVrfV2Jobs(t.ChainlinkNodes, t.Coordinator)
 	Expect(len(jobs)).Should(Equal(len(provingKeys)), "Should have a set of keys for each job")
 
 	// Create proving key hash here so we aren't calculating it in the test run itself.
 	for i, pk := range provingKeys {
-		keyHash, err := t.coordinator.HashOfKey(context.Background(), pk)
+		keyHash, err := t.Coordinator.HashOfKey(context.Background(), pk)
 		Expect(err).ShouldNot(HaveOccurred(), "Should be able to create a keyHash from the proving keys")
 		ji := VRFV2SoakTestJobInfo{
-			job:            jobs[i],
-			provingKey:     provingKeys[i],
-			provingKeyHash: keyHash,
+			Job:            jobs[i],
+			ProvingKey:     provingKeys[i],
+			ProvingKeyHash: keyHash,
 		}
-		t.jobInfo = append(t.jobInfo, ji)
+		t.JobInfo = append(t.JobInfo, ji)
 	}
 
 	err = t.defaultNetwork.WaitForEvents()
 	Expect(err).ShouldNot(HaveOccurred())
 }
 
-// Run starts the OCR soak test
+// Run starts the VRFV2 soak test
 func (t *VRFV2SoakTest) Run() {
-	// durationBetweenRequests := (time.Second / time.Duration(t.Inputs.RequestsPerSecondWanted)).Milliseconds()
-	requestedRandomnessChannel := make(chan requestedRandomnessData)
-	timeout := time.Minute * 2
-	go readRandomness(requestedRandomnessChannel, timeout, t.chainlinkNodes)
-
 	log.Info().
 		Str("Test Duration", t.Inputs.TestDuration.Truncate(time.Second).String()).
-		Str("Round Timeout", t.Inputs.RoundTimeout.String()).
-		Int("Max number of requests per second wanted", t.Inputs.RequestsPerSecondWanted).
-		Msg("Starting OCR Soak Test")
+		Int("Max number of requests per second wanted", t.Inputs.RequestsPerSecond).
+		Msg("Starting VRFV2 Soak Test")
 
 	testContext, testCancel := context.WithTimeout(context.Background(), t.Inputs.TestDuration)
 	defer testCancel()
+
+	t.NumberRequestsToValidate = 0
+	t.NumberRequestsValidated = 0
 
 	// Test Loop
 	requestNumber := 1
 	stop := false
 	startTime := time.Now()
-	// nextRequestTime := startTime.UnixMilli()
-	ticker := time.NewTicker(time.Second / time.Duration(t.Inputs.RequestsPerSecondWanted))
+	ticker := time.NewTicker(time.Second / time.Duration(t.Inputs.RequestsPerSecond))
 	for {
 		select {
 		case <-testContext.Done():
+			// stop making requests
 			stop = true
 			ticker.Stop()
 			break
 		case <-ticker.C:
-			log.Info().Int("Request Number", requestNumber).Msg("Making a request")
-			go requestRandomness(t.coordinator, t.consumer, t.jobInfo[0], requestNumber, requestedRandomnessChannel)
+			go requestAndValidate(t, requestNumber)
 			requestNumber++
 		}
 
 		if stop {
-			break
+			if t.NumberRequestsToValidate == t.NumberRequestsValidated {
+				// stop the test loop entirely
+				break
+			} else {
+				sleepTime := time.Duration(5)
+				time.Sleep(time.Second * time.Duration(sleepTime))
+				log.Info().Int64("Sleeping for ", int64(sleepTime)).Msg("Waiting for test \"Eventually\" statements to complete")
+			}
 		}
 	}
 	log.Info().Int("Requests", requestNumber).Msg("Total Completed Requests")
 	log.Info().Str("Run Time", time.Since(startTime).String()).Msg("Finished VRFV2 Soak Test")
 }
 
-func requestRandomness(
-	coordinator contracts.VRFCoordinatorV2,
-	consumer contracts.VRFConsumerV2,
-	jobInfo VRFV2SoakTestJobInfo,
+func requestAndValidate(
+	t *VRFV2SoakTest,
 	requestNumber int,
-	ch chan requestedRandomnessData,
 ) {
-	words := uint32(10)
-	err := consumer.RequestRandomness(jobInfo.provingKeyHash, 1, 1, 300000, words)
-	Expect(err).ShouldNot(HaveOccurred())
-	data := requestedRandomnessData{
-		jobInfo:       jobInfo,
-		requestNumber: requestNumber,
-	}
-	ch <- data
-}
-
-func readRandomness(ch chan requestedRandomnessData, timeout time.Duration, cls []client.Chainlink) {
-	for data := range ch {
-		Eventually(func(g Gomega) {
-			jobRuns, err := cls[0].ReadRunsByJob(data.jobInfo.job.Data.ID)
-			g.Expect(err).ShouldNot(HaveOccurred())
-			g.Expect(len(jobRuns.Data)).Should(BeNumerically(">=", data.requestNumber))
-			// if data.requestNumber%10 == 0 {
-			// 	randomness, err := consumer.GetAllRandomWords(context.Background(), int(words))
-			// 	g.Expect(err).ShouldNot(HaveOccurred())
-			// 	for _, w := range randomness {
-			// 		log.Debug().Uint64("Output", w.Uint64()).Msg("Randomness fulfilled")
-			// 		g.Expect(w.Uint64()).Should(Not(BeNumerically("==", 0)), "Expected the VRF job give an answer other than 0")
-			// 	}
-			// }
-		}, timeout, "1s").Should(Succeed())
-	}
+	// defer GinkgoRecover()
+	log.Info().Int("Request Number", requestNumber).Msg("Making a Request")
+	t.Inputs.TestFunc(t, requestNumber)
+	t.NumberRequestsToValidate++
 }
 
 // Networks returns the networks that the test is running on
 func (t *VRFV2SoakTest) TearDownVals() (*environment.Environment, *blockchain.Networks, []client.Chainlink, testreporters.TestReporter) {
-	return t.env, t.networks, t.chainlinkNodes, &t.TestReporter
+	return t.env, t.networks, t.ChainlinkNodes, &t.TestReporter
 }
 
 // ensureValues ensures that all values needed to run the test are present
 func (t *VRFV2SoakTest) ensureInputValues() {
 	inputs := t.Inputs
-	Expect(inputs.RequestsPerSecondWanted).Should(BeNumerically(">=", 1), "Expecting at least 1 request per second")
+	Expect(inputs.RequestsPerSecond).Should(BeNumerically(">=", 1), "Expecting at least 1 request per second")
 	Expect(inputs.ChainlinkNodeFunding.Float64()).Should(BeNumerically(">", 0), "Expecting non-zero chainlink node funding amount")
 	Expect(inputs.TestDuration).Should(BeNumerically(">=", time.Minute*1), "Expected test duration to be more than a minute")
-	Expect(inputs.RoundTimeout).Should(BeNumerically(">=", time.Second*15), "Expected test duration to be more than 15 seconds")
+	Expect(inputs.ReadEveryNRequests).Should(BeNumerically(">", 0), "Expected the test to read requests for verification at some point")
+	Expect(inputs.TestFunc).ShouldNot(BeNil(), "Expected to have a test to run")
 }

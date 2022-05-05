@@ -19,8 +19,6 @@ func DeployVrfv2Contracts(
 	networks *blockchain.Networks,
 ) (contracts.VRFCoordinatorV2, contracts.VRFConsumerV2) {
 	linkEthFeedResponse := big.NewInt(1e18)
-	// lt, err = contractDeployer.DeployLinkTokenContract()
-	// Expect(err).ShouldNot(HaveOccurred())
 	bhs, err := contractDeployer.DeployBlockhashStore()
 	Expect(err).ShouldNot(HaveOccurred())
 	mf, err := contractDeployer.DeployMockETHLINKFeed(linkEthFeedResponse)
