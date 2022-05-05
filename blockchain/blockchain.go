@@ -14,7 +14,7 @@ import (
 	"github.com/smartcontractkit/helmenv/environment"
 	"gopkg.in/yaml.v2"
 
-	"github.com/smartcontractkit/integrations-framework/config"
+	"github.com/smartcontractkit/chainlink-testing-framework/config"
 )
 
 // Commonly used blockchain network types

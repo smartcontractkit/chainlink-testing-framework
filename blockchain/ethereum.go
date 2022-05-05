@@ -9,9 +9,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/config"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 	"github.com/smartcontractkit/helmenv/environment"
-	"github.com/smartcontractkit/integrations-framework/config"
-	"github.com/smartcontractkit/integrations-framework/utils"
 
 	"golang.org/x/sync/errgroup"
 

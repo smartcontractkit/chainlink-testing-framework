@@ -20,14 +20,14 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/smartcontractkit/integrations-framework/blockchain"
-	"github.com/smartcontractkit/integrations-framework/config"
-	"github.com/smartcontractkit/integrations-framework/contracts"
-	"github.com/smartcontractkit/integrations-framework/testreporters"
+	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/config"
+	"github.com/smartcontractkit/chainlink-testing-framework/contracts"
+	"github.com/smartcontractkit/chainlink-testing-framework/testreporters"
 
 	"github.com/ethereum/go-ethereum/common"
 	uuid "github.com/satori/go.uuid"
-	"github.com/smartcontractkit/integrations-framework/client"
+	"github.com/smartcontractkit/chainlink-testing-framework/client"
 )
 
 const (
@@ -303,7 +303,7 @@ func TeardownRemoteSuite(
 ) error {
 	err := writeTeardownLogs(env, optionalTestReporter)
 	if err != nil {
-		return err
+		log.Err(err).Msg("Error writing logs for soak tests. Working on improving and fixing this.")
 	}
 	err = returnFunds(chainlinkNodes, nets)
 	if err != nil {
@@ -350,6 +350,11 @@ func returnFunds(chainlinkNodes []client.Chainlink, networks *blockchain.Network
 	if networks == nil {
 		log.Warn().Msg("No network connections found, unable to return funds from chainlink nodes.")
 	}
+	for _, node := range chainlinkNodes {
+		if err := node.SetSessionCookie(); err != nil {
+			return err
+		}
+	}
 	log.Info().Msg("Attempting to return Chainlink node funds to default network wallets")
 	for _, network := range networks.AllNetworks() {
 		if network.GetNetworkType() == blockchain.SimulatedEthNetwork {
@@ -386,7 +391,7 @@ func sendFunds(chainlinkNodes []client.Chainlink, network blockchain.EVMClient) 
 				if err != nil {
 					// TODO: Support non-EVM chain fund returns
 					if strings.Contains(err.Error(), "No ETH keys present") {
-						log.Warn().Msg("Not returning any funds. Only support ETH chains for fund returns at the moment")
+						log.Warn().Msg("Not returning any funds. Only support EVM chains for fund returns at the moment")
 						return nil
 					}
 					return err
@@ -422,17 +427,24 @@ func sendFunds(chainlinkNodes []client.Chainlink, network blockchain.EVMClient) 
 // checks that the funds made it from the chainlink node to the network address
 // this turns out to be tricky to do, given how chainlink handles pending transactions, thus the complexity
 func checkFunds(chainlinkNodes []client.Chainlink, sentFromAddressesMap map[int]string, toAddress string) error {
+	successfulConfirmations := make(map[int]bool)
 	err := retry.Do( // Might take some time for txs to confirm, check up on the nodes a few times
 		func() error {
 			log.Debug().Msg("Attempting to confirm chainlink nodes transferred back funds")
 			transactionErrGroup := new(errgroup.Group)
-			for nodeIndex, n := range chainlinkNodes {
+			for i, n := range chainlinkNodes {
+				nodeIndex := i
 				node := n // https://golang.org/doc/faq#closures_and_goroutines
 				sentFromAddress, nodeHasFunds := sentFromAddressesMap[nodeIndex]
+				successfulConfirmation := successfulConfirmations[nodeIndex]
 				// Async check on all the nodes if their transactions are confirmed
-				if nodeHasFunds { // Only if the node had funds to begin with
+				if nodeHasFunds && !successfulConfirmation { // Only if node has funds and hasn't already sent them
 					transactionErrGroup.Go(func() error {
-						return confirmTransaction(node, sentFromAddress, toAddress, transactionErrGroup)
+						err := confirmTransaction(node, sentFromAddress, toAddress, transactionErrGroup)
+						if err == nil {
+							successfulConfirmations[nodeIndex] = true
+						}
+						return err
 					})
 				} else {
 					log.Debug().Int("Node Number", nodeIndex).Msg("Chainlink node had no funds to return")

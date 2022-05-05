@@ -4,8 +4,8 @@ package smoke_test
 import (
 	"testing"
 
-	"github.com/smartcontractkit/integrations-framework/actions"
-	"github.com/smartcontractkit/integrations-framework/utils"
+	"github.com/smartcontractkit/chainlink-testing-framework/actions"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 
 	. "github.com/onsi/ginkgo/v2"
 )

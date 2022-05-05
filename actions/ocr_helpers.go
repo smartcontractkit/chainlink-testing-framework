@@ -9,9 +9,9 @@ import (
 
 	. "github.com/onsi/gomega"
 	uuid "github.com/satori/go.uuid"
-	"github.com/smartcontractkit/integrations-framework/blockchain"
-	"github.com/smartcontractkit/integrations-framework/client"
-	"github.com/smartcontractkit/integrations-framework/contracts"
+	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/client"
+	"github.com/smartcontractkit/chainlink-testing-framework/contracts"
 )
 
 // This actions file often returns functions, rather than just values. These are used as common test helpers, and are
@@ -210,6 +210,7 @@ func StartNewRound(
 	}
 }
 
+// BuildNodeContractPairID builds a UUID based on a related pair of a Chainlink node and OCR contract
 func BuildNodeContractPairID(node client.Chainlink, ocrInstance contracts.OffchainAggregator) string {
 	Expect(node).ShouldNot(BeNil())
 	Expect(ocrInstance).ShouldNot(BeNil())

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/smartcontractkit/integrations-framework/testreporters"
+	"github.com/smartcontractkit/chainlink-testing-framework/testreporters"
 	"github.com/stretchr/testify/require"
 )
 

@@ -7,9 +7,9 @@ import (
 
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog/log"
-	"github.com/smartcontractkit/integrations-framework/blockchain"
-	"github.com/smartcontractkit/integrations-framework/client"
-	"github.com/smartcontractkit/integrations-framework/contracts"
+	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/client"
+	"github.com/smartcontractkit/chainlink-testing-framework/contracts"
 )
 
 // DeployKeeperContracts deploys a number of basic keeper contracts with an update interval of 5
