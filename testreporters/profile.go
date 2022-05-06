@@ -28,7 +28,9 @@ func (c *ChainlinkProfileTestReporter) WriteReport(folderLocation string) error 
 		result := res
 		profFiles.Go(func() error {
 			filePath := filepath.Join(folderLocation, fmt.Sprintf("chainlink-node-%d-profiles", result.NodeIndex))
-			mkdirIfNotExists(filePath)
+			if err := mkdirIfNotExists(filePath); err != nil {
+				return err
+			}
 			for _, rep := range result.Reports {
 				report := rep
 				reportFile, err := os.Create(filepath.Join(filePath, report.Type))
