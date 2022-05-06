@@ -541,14 +541,12 @@ func (c *chainlink) Profile(profileTime time.Duration, profileFunction func(Chai
 		// The profile function returns with the profile results after the profile time frame has concluded
 		// e.g. a profile API call of 5 seconds will start profiling, wait for 5 seconds, then send back results
 		profileErrorGroup.Go(func() error {
-			log.Warn().Str("Type", profileReport.Type).Msg("PROFILING")
 			uri := fmt.Sprintf("/v2/debug/pprof/%s?seconds=%d", profileReport.Type, profileSeconds)
 			profileExecutedGroup.Done()
 			rawBytes, err := c.doRawBytes(http.MethodGet, uri, nil, nil, http.StatusOK)
 			if err != nil {
 				return err
 			}
-			log.Warn().Str("Type", profileReport.Type).Msg("DONE PROFILING")
 			profileReport.Data = rawBytes
 			return nil
 		})
