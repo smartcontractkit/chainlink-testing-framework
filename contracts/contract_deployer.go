@@ -457,6 +457,23 @@ func (e *EthereumContractDeployer) DeployKeeperConsumer(updateInterval *big.Int)
 	}, err
 }
 
+func (e *EthereumContractDeployer) DeployUpkeepCounter(testRange *big.Int, interval *big.Int) (UpkeepCounter, error) {
+	address, _, instance, err := e.client.DeployContract("UpkeepCounter", func(
+		auth *bind.TransactOpts,
+		backend bind.ContractBackend,
+	) (common.Address, *types.Transaction, interface{}, error) {
+		return ethereum.DeployUpkeepCounter(auth, backend, testRange, interval)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &EthereumUpkeepCounter{
+		client:   e.client,
+		consumer: instance.(*ethereum.UpkeepCounter),
+		address:  address,
+	}, err
+}
+
 func (e *EthereumContractDeployer) DeployKeeperConsumerPerformance(
 	testBlockRange,
 	averageCadence,
