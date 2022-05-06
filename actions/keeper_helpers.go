@@ -305,3 +305,34 @@ func DeployKeeperConsumersPerformance(
 
 	return upkeeps
 }
+
+func DeployUpkeepCounters(
+	contractDeployer contracts.ContractDeployer,
+	networks *blockchain.Networks,
+	numberOfContracts int,
+	testRange *big.Int,
+	interval *big.Int,
+) []contracts.UpkeepCounter {
+	upkeepCounters := make([]contracts.UpkeepCounter, 0)
+
+	for contractCount := 0; contractCount < numberOfContracts; contractCount++ {
+		// Deploy consumer
+		upkeepCounter, err := contractDeployer.DeployUpkeepCounter(testRange, interval)
+		Expect(err).ShouldNot(HaveOccurred(), "Deploying KeeperConsumer instance %d shouldn't fail", contractCount+1)
+		upkeepCounters = append(upkeepCounters, upkeepCounter)
+		log.Debug().
+			Str("Contract Address", upkeepCounter.Address()).
+			Int("Number", contractCount+1).
+			Int("Out Of", numberOfContracts).
+			Msg("Deployed Keeper Consumer Contract")
+		if (contractCount+1)%contractDeploymentInterval == 0 { // For large amounts of contract deployments, space things out some
+			err = networks.Default.WaitForEvents()
+			Expect(err).ShouldNot(HaveOccurred(), "Failed to wait for KeeperConsumer deployments")
+		}
+	}
+	err := networks.Default.WaitForEvents()
+	Expect(err).ShouldNot(HaveOccurred(), "Failed waiting for to deploy all keeper consumer contracts")
+	log.Info().Msg("Successfully deployed all Keeper Consumer Contracts")
+
+	return upkeepCounters
+}
