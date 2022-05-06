@@ -233,6 +233,13 @@ type UpkeepCounter interface {
 	SetSpread(testRange *big.Int, interval *big.Int) error
 }
 
+type UpkeepPerformCounterRestrictive interface {
+	Address() string
+	Fund(ethAmount *big.Float) error
+	Counter(ctx context.Context) (*big.Int, error)
+	SetSpread(testRange *big.Int, interval *big.Int) error
+}
+
 // KeeperConsumerPerformance is a keeper consumer contract that is more complicated than the typical consumer,
 // it's intended to only be used for performance tests.
 type KeeperConsumerPerformance interface {
