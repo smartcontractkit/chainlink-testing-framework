@@ -9,9 +9,11 @@ import (
 	"math/big"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/helmenv/environment"
+	"golang.org/x/sync/errgroup"
 )
 
 // OneLINK representation of a single LINK token
@@ -81,6 +83,8 @@ type Chainlink interface {
 	SetSessionCookie() error
 
 	SetPageSize(size int)
+
+	Profile(profileTime time.Duration, profileFunction func(Chainlink)) (*ChainlinkProfileResults, error)
 
 	// SetClient is used for testing
 	SetClient(client *http.Client)
@@ -543,9 +547,50 @@ func (c *chainlink) SetSessionCookie() error {
 	return nil
 }
 
-// SetClient overrides the http client, used for mocking out the Chainlink server for unit testing
-func (c *chainlink) SetClient(client *http.Client) {
-	c.HttpClient = client
+// Profile runs the provided function once to gauge roughly how long it takes. It will then trigger a time-blocked
+// profiling session on the Chainlink node and run the functions again.
+func (c *chainlink) Profile(profileTime time.Duration, profileFunction func(Chainlink)) (*ChainlinkProfileResults, error) {
+	profileSeconds := int(profileTime.Seconds())
+	profileResults := NewBlankChainlinkProfileResults()
+	profileErrorGroup := new(errgroup.Group)
+	log.Info().Int("Seconds to Profile", profileSeconds).Str("Node URL", c.Config.URL).Msg("Starting Node PPROF session")
+	for _, rep := range profileResults.Reports {
+		profileReport := rep
+		// The profile function returns with the profile results after the profile time frame has concluded
+		// e.g. a profile API call of 5 seconds will start profiling, wait for 5 seconds, then send back results
+		profileErrorGroup.Go(func() error {
+			log.Warn().Str("Type", profileReport.Type).Msg("PROFILING")
+			uri := fmt.Sprintf("/v2/debug/pprof/%s?seconds=%d", profileReport.Type, profileSeconds)
+			rawBytes, err := c.doRawBytes(http.MethodGet, uri, nil, http.StatusOK)
+			if err != nil {
+				return err
+			}
+			log.Warn().Str("Type", profileReport.Type).Msg("DONE PROFILING")
+			profileReport.Data = rawBytes
+			return nil
+		})
+	}
+
+	funcStart := time.Now()
+	// Feed this chainlink node into the profiling function
+	profileFunction(c)
+	actualRunTime := time.Since(funcStart)
+	actualSeconds := int(actualRunTime.Seconds())
+
+	if actualSeconds > profileSeconds {
+		log.Warn().
+			Int("Actual Seconds", actualSeconds).
+			Int("Profile Seconds", profileSeconds).
+			Msg("Your profile function took longer than expected to run, increase profileTime")
+	} else if actualSeconds < profileSeconds && actualSeconds > 0 {
+		log.Warn().
+			Int("Actual Seconds", actualSeconds).
+			Int("Profile Seconds", profileSeconds).
+			Msg("Your profile function took shorter than expected to run, you can decrease profileTime")
+	}
+	profileResults.ActualRunSeconds = actualSeconds
+	profileResults.ScheduledProfileSeconds = profileSeconds
+	return profileResults, profileErrorGroup.Wait() // Wait for all the results of the profiled function to come in
 }
 
 // SetPageSize globally sets the page
@@ -553,7 +598,12 @@ func (c *chainlink) SetPageSize(size int) {
 	c.pageSize = size
 }
 
-func (c *chainlink) doRaw(
+// SetClient overrides the http client, used for mocking out the Chainlink server for unit testing
+func (c *chainlink) SetClient(client *http.Client) {
+	c.HttpClient = client
+}
+
+func (c *chainlink) doRawBase(
 	method,
 	endpoint string,
 	body []byte, obj interface{},
@@ -604,14 +654,43 @@ func (c *chainlink) doRaw(
 			string(b),
 		)
 	}
+	return resp, err
+}
 
-	if obj == nil {
+func (c *chainlink) doRawBytes(
+	method,
+	endpoint string,
+	body []byte,
+	expectedStatusCode int,
+) ([]byte, error) {
+	resp, err := c.doRawBase(method, endpoint, body, nil, expectedStatusCode)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	b, err := ioutil.ReadAll(resp.Body)
+	return b, err
+}
+
+func (c *chainlink) doRaw(
+	method,
+	endpoint string,
+	body []byte, obj interface{},
+	expectedStatusCode int,
+) (*http.Response, error) {
+	resp, err := c.doRawBase(method, endpoint, body, obj, expectedStatusCode)
+	if obj == nil || err != nil {
+		return resp, err
+	}
+
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
 		return resp, err
 	}
 	err = json.Unmarshal(b, &obj)
 	if err != nil {
 		return nil, fmt.Errorf(
-			"error while unmarshaling response: %v\nURL: %s\nresponse received: %s",
+			"error while unmarshaling response to JSON: %v\nURL: %s\nresponse received: %s",
 			err,
 			c.Config.URL,
 			string(b),
