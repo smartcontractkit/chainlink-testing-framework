@@ -527,8 +527,8 @@ func (c *chainlink) SetSessionCookie() error {
 	return nil
 }
 
-// Profile runs the provided function once to gauge roughly how long it takes. It will then trigger a time-blocked
-// profiling session on the Chainlink node and run the functions again.
+// Profile starts a profile session on the Chainlink node for a pre-determined length, then runs the provided function
+// to profile it.
 func (c *chainlink) Profile(profileTime time.Duration, profileFunction func(Chainlink)) (*ChainlinkProfileResults, error) {
 	profileSeconds := int(profileTime.Seconds())
 	profileResults := NewBlankChainlinkProfileResults()
