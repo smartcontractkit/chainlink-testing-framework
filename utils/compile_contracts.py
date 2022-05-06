@@ -8,33 +8,13 @@ import re
 # A proof of concept / convenient script to quickly compile contracts and their go bindings
 # Can be run from the Makefile with make compile_contracts
 
-solc_versions = ["v0.4", "v0.6", "v0.7", "v0.8"]
+solc_versions = ["v0.7"]
 rootdir = "./artifacts/contracts/ethereum/"
 targetdir = "./contracts/ethereum"
 
 # The names of the contracts that we're actually compiling to use.
 used_contract_names = [
-  "APIConsumer",
-  "BlockhashStore",
-  "DeviationFlaggingValidator",
-  "Flags",
-  "FluxAggregator",
-  "KeeperConsumer",
-  "KeeperConsumerPerformance",
-  "KeeperRegistry",
-  "LinkToken",
-  "MockETHLINKAggregator",
-  "MockGASAggregator",
-  "OffchainAggregator",
-  "Oracle",
-  "SimpleReadAccessController"
-  "SimpleWriteAccessController",
-  "UpkeepRegistrationRequests",
-  "VRF",
-  "VRFConsumer",
-  "VRFCoordinator",
-  "VRFConsumerV2",
-  "VRFCoordinatorV2"
+  "KeeperConsumer"
 ]
 
 print("Locally installing hardhat...")
@@ -92,6 +72,15 @@ solidity: {
     },
     {
         version: "0.4.24",
+        settings: {
+            optimizer: {
+                enabled: true,
+                runs: 50
+            }
+        }
+    },
+    {
+        version: "0.7.0",
         settings: {
             optimizer: {
                 enabled: true,

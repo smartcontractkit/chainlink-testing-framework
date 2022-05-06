@@ -18,16 +18,15 @@ contract KeeperConsumer is KeeperCompatibleInterface, KeeperBase {
 
     function checkUpkeep(bytes calldata checkData) 
     external 
-    override 
-    view
+    override
     cannotExecute
     returns (bool upkeepNeeded, bytes memory performData) {
         if (array[counter]%2==0) {
             return (true, checkData);
         }else{
+            counter = 0;
             return (false, checkData);
         }
-//        return (true, checkData);
     }
 
     function performUpkeep(bytes calldata performData) external override {
