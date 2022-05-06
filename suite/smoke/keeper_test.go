@@ -66,11 +66,17 @@ var _ = Describe("Keeper suite @keeper", func() {
 			linkToken, err = contractDeployer.DeployLinkTokenContract()
 			Expect(err).ShouldNot(HaveOccurred(), "Deploying Link Token Contract shouldn't fail")
 
+			//r, consumers := actions.DeployKeeperContracts(
+			//	1,
+			//	linkToken,
+			//	contractDeployer,
+			//	chainlinkNodes,
+			//	networks,
+			//)
 			r, consumers := actions.DeployKeeperContracts(
 				1,
 				linkToken,
 				contractDeployer,
-				chainlinkNodes,
 				networks,
 			)
 			consumer = consumers[0]
@@ -85,7 +91,7 @@ var _ = Describe("Keeper suite @keeper", func() {
 	})
 
 	Describe("with Keeper job", func() {
-		It("performs upkeep of a target contract", func() {
+		FIt("performs upkeep of a target contract", func() {
 			Eventually(func(g Gomega) {
 				cnt, err := consumer.Counter(context.Background())
 				g.Expect(err).ShouldNot(HaveOccurred(), "Calling consumer's Counter shouldn't fail")

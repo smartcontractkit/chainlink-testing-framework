@@ -261,6 +261,15 @@ type KeeperRegistrySettings struct {
 	FallbackLinkPrice    *big.Int // LINK price used if the LINK price feed is stale
 }
 
+// KeeperRegistrarSettings represents settings for registrar contract
+type KeeperRegistrarSettings struct {
+	AutoRegister bool
+	WindowSizeBlocks uint32
+	AllowedPerWindow uint16
+	RegistryAddr string
+	MinLinkJuels *big.Int
+}
+
 // KeeperInfo keeper status and balance info
 type KeeperInfo struct {
 	Payee   string
