@@ -1304,6 +1304,44 @@ func (v *EthereumKeeperRegistry) GetKeeperList(ctx context.Context) ([]string, e
 	return addrs, nil
 }
 
+// EthereumUpkeepCounter represents keeper consumer (upkeep) counter contract
+type EthereumUpkeepCounter struct {
+	client   blockchain.EVMClient
+	consumer *ethereum.UpkeepCounter
+	address  *common.Address
+}
+
+func (v *EthereumUpkeepCounter) Address() string {
+	return v.address.Hex()
+}
+
+func (v *EthereumUpkeepCounter) Fund(ethAmount *big.Float) error {
+	return v.client.Fund(v.address.Hex(), ethAmount)
+}
+func (v *EthereumUpkeepCounter) Counter(ctx context.Context) (*big.Int, error) {
+	opts := &bind.CallOpts{
+		From:    common.HexToAddress(v.client.GetDefaultWallet().Address()),
+		Context: ctx,
+	}
+	cnt, err := v.consumer.Counter(opts)
+	if err != nil {
+		return nil, err
+	}
+	return cnt, nil
+}
+
+func (v *EthereumUpkeepCounter) SetSpread(testRange *big.Int, interval *big.Int) error {
+	opts, err := v.client.TransactionOpts(v.client.GetDefaultWallet())
+	if err != nil {
+		return err
+	}
+	tx, err := v.consumer.SetSpread(opts, testRange, interval)
+	if err != nil {
+		return err
+	}
+	return v.client.ProcessTransaction(tx)
+}
+
 // EthereumKeeperConsumer represents keeper consumer (upkeep) contract
 type EthereumKeeperConsumer struct {
 	client   blockchain.EVMClient
