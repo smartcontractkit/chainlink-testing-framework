@@ -18,7 +18,7 @@ import (
 	"github.com/smartcontractkit/helmenv/tools"
 )
 
-var _ = Describe("VRF suite @vrf", func() {
+var _ = Describe("Profiling suite @profile", func() {
 	var (
 		err             error
 		nets            *blockchain.Networks
@@ -67,10 +67,9 @@ var _ = Describe("VRF suite @vrf", func() {
 			}
 
 			profileTest = testsetups.NewChainlinkProfileTest(testsetups.ChainlinkProfileTestInputs{
-				ProfileFunction:       profileFunction,
-				ProfileDuration:       time.Second,
-				ProfileFolderLocation: "../../logs",
-				ChainlinkNodes:        chainlinkNodes,
+				ProfileFunction: profileFunction,
+				ProfileDuration: time.Second,
+				ChainlinkNodes:  chainlinkNodes,
 			})
 			profileTest.Setup(testEnvironment)
 		})
@@ -87,7 +86,7 @@ var _ = Describe("VRF suite @vrf", func() {
 
 	AfterEach(func() {
 		By("Tearing down the environment", func() {
-			err = actions.TeardownSuite(testEnvironment, nets, utils.ProjectRoot, chainlinkNodes, nil)
+			err = actions.TeardownSuite(testEnvironment, nets, utils.ProjectRoot, chainlinkNodes, &profileTest.TestReporter)
 			Expect(err).ShouldNot(HaveOccurred(), "Environment teardown shouldn't fail")
 		})
 	})

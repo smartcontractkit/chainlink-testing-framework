@@ -2,7 +2,6 @@ package testsetups
 
 //revive:disable:dot-imports
 import (
-	"path/filepath"
 	"time"
 
 	. "github.com/onsi/gomega"
@@ -26,10 +25,9 @@ type ChainlinkProfileTest struct {
 
 // KeeperBlockTimeTestInputs are all the required inputs for a Keeper Block Time Test
 type ChainlinkProfileTestInputs struct {
-	ProfileFunction       func(client.Chainlink)
-	ProfileDuration       time.Duration
-	ProfileFolderLocation string
-	ChainlinkNodes        []client.Chainlink
+	ProfileFunction func(client.Chainlink)
+	ProfileDuration time.Duration
+	ChainlinkNodes  []client.Chainlink
 }
 
 // NewKeeperBlockTimeTest prepares a new keeper block time test to be run
@@ -73,10 +71,6 @@ func (c *ChainlinkProfileTest) TearDownVals() (*environment.Environment, *blockc
 func (c *ChainlinkProfileTest) ensureInputValues() {
 	Expect(c.Inputs.ProfileFunction).ShouldNot(BeNil(), "Forgot to provide a function to profile")
 	Expect(c.Inputs.ProfileDuration.Seconds()).Should(BeNumerically(">=", 1), "Time to profile should be at least 1 second")
-	var err error
-	c.Inputs.ProfileFolderLocation, err = filepath.Abs(c.Inputs.ProfileFolderLocation)
-	Expect(err).ShouldNot(HaveOccurred(), "Error marshalling file path '%s' to absolute path", c.Inputs.ProfileFolderLocation)
-	Expect(c.Inputs.ProfileFolderLocation).Should(BeADirectory(), "Provided folder location %s is not a valid directory", c.Inputs.ProfileFolderLocation)
 	Expect(c.Inputs.ChainlinkNodes).ShouldNot(BeNil(), "Chainlink nodes you want to profile should be provided")
 	Expect(len(c.Inputs.ChainlinkNodes)).Should(BeNumerically(">", 0), "No Chainlink nodes provided to profile")
 }
