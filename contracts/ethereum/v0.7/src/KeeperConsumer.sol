@@ -7,6 +7,7 @@ contract KeeperConsumer is KeeperCompatibleInterface, KeeperBase {
     uint public counter;
     uint public immutable interval;
     uint public lastTimeStamp;
+    uint[] array = [2,4,5];
 
 
     constructor(uint updateInterval) public {
@@ -21,7 +22,12 @@ contract KeeperConsumer is KeeperCompatibleInterface, KeeperBase {
     view
     cannotExecute
     returns (bool upkeepNeeded, bytes memory performData) {
-        return (true, checkData);
+        if (array[counter]%2==0) {
+            return (true, checkData);
+        }else{
+            return (false, checkData);
+        }
+//        return (true, checkData);
     }
 
     function performUpkeep(bytes calldata performData) external override {
