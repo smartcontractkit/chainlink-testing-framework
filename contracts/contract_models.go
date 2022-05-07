@@ -277,11 +277,11 @@ type KeeperRegistrySettings struct {
 
 // KeeperRegistrarSettings represents settings for registrar contract
 type KeeperRegistrarSettings struct {
-	AutoRegister bool
+	AutoRegister     bool
 	WindowSizeBlocks uint32
 	AllowedPerWindow uint16
-	RegistryAddr string
-	MinLinkJuels *big.Int
+	RegistryAddr     string
+	MinLinkJuels     *big.Int
 }
 
 // KeeperInfo keeper status and balance info
