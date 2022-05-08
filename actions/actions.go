@@ -33,9 +33,9 @@ import (
 const (
 	// DefaultArtifactsDir default artifacts dir
 	DefaultArtifactsDir string = "logs"
-	// After how many contract actions to wait before starting any more
-	// Example: When deploying 1000 contracts, stop every contractDeploymentInterval have been deployed to wait before continuing
-	contractDeploymentInterval int = 500
+	// ContractDeploymentInterval After how many contract actions to wait before starting any more
+	// Example: When deploying 1000 contracts, stop every ContractDeploymentInterval have been deployed to wait before continuing
+	ContractDeploymentInterval int = 500
 )
 
 // GinkgoSuite provides the default setup for running a Ginkgo test suite

@@ -229,7 +229,7 @@ func RegisterUpkeepContracts(
 			Int("Number", contractCount+1).
 			Int("Out Of", numberOfContracts).
 			Msg("Registered Keeper Consumer Contract")
-		if (contractCount+1)%contractDeploymentInterval == 0 { // For large amounts of contract deployments, space things out some
+		if (contractCount+1)%ContractDeploymentInterval == 0 { // For large amounts of contract deployments, space things out some
 			err = networks.Default.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred(), "Failed to wait after registering upkeep consumers")
 		}
@@ -256,7 +256,7 @@ func DeployKeeperConsumers(
 			Int("Number", contractCount+1).
 			Int("Out Of", numberOfContracts).
 			Msg("Deployed Keeper Consumer Contract")
-		if (contractCount+1)%contractDeploymentInterval == 0 { // For large amounts of contract deployments, space things out some
+		if (contractCount+1)%ContractDeploymentInterval == 0 { // For large amounts of contract deployments, space things out some
 			err = networks.Default.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred(), "Failed to wait for KeeperConsumer deployments")
 		}
@@ -294,7 +294,7 @@ func DeployKeeperConsumersPerformance(
 			Int("Number", contractCount+1).
 			Int("Out Of", numberOfContracts).
 			Msg("Deployed Keeper Performance Contract")
-		if (contractCount+1)%contractDeploymentInterval == 0 { // For large amounts of contract deployments, space things out some
+		if (contractCount+1)%ContractDeploymentInterval == 0 { // For large amounts of contract deployments, space things out some
 			err = networks.Default.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred(), "Failed to wait for KeeperConsumerPerformance deployments")
 		}
@@ -325,7 +325,7 @@ func DeployUpkeepCounters(
 			Int("Number", contractCount+1).
 			Int("Out Of", numberOfContracts).
 			Msg("Deployed Keeper Consumer Contract")
-		if (contractCount+1)%contractDeploymentInterval == 0 { // For large amounts of contract deployments, space things out some
+		if (contractCount+1)%ContractDeploymentInterval == 0 { // For large amounts of contract deployments, space things out some
 			err = networks.Default.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred(), "Failed to wait for KeeperConsumer deployments")
 		}
@@ -356,7 +356,7 @@ func DeployUpkeepPerformCounterRestrictive(
 			Int("Number", contractCount+1).
 			Int("Out Of", numberOfContracts).
 			Msg("Deployed Keeper Consumer Contract")
-		if (contractCount+1)%contractDeploymentInterval == 0 { // For large amounts of contract deployments, space things out some
+		if (contractCount+1)%ContractDeploymentInterval == 0 { // For large amounts of contract deployments, space things out some
 			err = networks.Default.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred(), "Failed to wait for KeeperConsumer deployments")
 		}
