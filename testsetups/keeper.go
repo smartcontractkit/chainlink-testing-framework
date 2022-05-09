@@ -82,7 +82,6 @@ func (k *KeeperBlockTimeTest) Setup(env *environment.Environment) {
 		inputs.NumberOfContracts,
 		linkToken,
 		contractDeployer,
-		k.chainlinkNodes,
 		k.networks,
 		k.Inputs.KeeperRegistrySettings,
 		inputs.BlockRange,
