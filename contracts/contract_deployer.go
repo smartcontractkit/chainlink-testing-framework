@@ -42,6 +42,8 @@ type ContractDeployer interface {
 		checkGasToBurn,
 		performGasToBurn *big.Int,
 	) (KeeperConsumerPerformance, error)
+	DeployUpkeepCounter(testRange *big.Int, interval *big.Int) (UpkeepCounter, error)
+	DeployUpkeepPerformCounterRestrictive(testRange *big.Int, averageEligibilityCadence *big.Int) (UpkeepPerformCounterRestrictive, error)
 	DeployVRFConsumer(linkAddr string, coordinatorAddr string) (VRFConsumer, error)
 	DeployVRFConsumerV2(linkAddr string, coordinatorAddr string) (VRFConsumerV2, error)
 	DeployVRFCoordinator(linkAddr string, bhsAddr string) (VRFCoordinator, error)
@@ -453,6 +455,40 @@ func (e *EthereumContractDeployer) DeployKeeperConsumer(updateInterval *big.Int)
 	return &EthereumKeeperConsumer{
 		client:   e.client,
 		consumer: instance.(*ethereum.KeeperConsumer),
+		address:  address,
+	}, err
+}
+
+func (e *EthereumContractDeployer) DeployUpkeepCounter(testRange *big.Int, interval *big.Int) (UpkeepCounter, error) {
+	address, _, instance, err := e.client.DeployContract("UpkeepCounter", func(
+		auth *bind.TransactOpts,
+		backend bind.ContractBackend,
+	) (common.Address, *types.Transaction, interface{}, error) {
+		return ethereum.DeployUpkeepCounter(auth, backend, testRange, interval)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &EthereumUpkeepCounter{
+		client:   e.client,
+		consumer: instance.(*ethereum.UpkeepCounter),
+		address:  address,
+	}, err
+}
+
+func (e *EthereumContractDeployer) DeployUpkeepPerformCounterRestrictive(testRange *big.Int, averageEligibilityCadence *big.Int) (UpkeepPerformCounterRestrictive, error) {
+	address, _, instance, err := e.client.DeployContract("UpkeepPerformCounterRestrictive", func(
+		auth *bind.TransactOpts,
+		backend bind.ContractBackend,
+	) (common.Address, *types.Transaction, interface{}, error) {
+		return ethereum.DeployUpkeepPerformCounterRestrictive(auth, backend, testRange, averageEligibilityCadence)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &EthereumUpkeepPerformCounterRestrictive{
+		client:   e.client,
+		consumer: instance.(*ethereum.UpkeepPerformCounterRestrictive),
 		address:  address,
 	}, err
 }

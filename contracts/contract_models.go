@@ -226,6 +226,20 @@ type KeeperConsumer interface {
 	Counter(ctx context.Context) (*big.Int, error)
 }
 
+type UpkeepCounter interface {
+	Address() string
+	Fund(ethAmount *big.Float) error
+	Counter(ctx context.Context) (*big.Int, error)
+	SetSpread(testRange *big.Int, interval *big.Int) error
+}
+
+type UpkeepPerformCounterRestrictive interface {
+	Address() string
+	Fund(ethAmount *big.Float) error
+	Counter(ctx context.Context) (*big.Int, error)
+	SetSpread(testRange *big.Int, interval *big.Int) error
+}
+
 // KeeperConsumerPerformance is a keeper consumer contract that is more complicated than the typical consumer,
 // it's intended to only be used for performance tests.
 type KeeperConsumerPerformance interface {
@@ -259,6 +273,15 @@ type KeeperRegistrySettings struct {
 	GasCeilingMultiplier uint16   // multiplier to apply to the fast gas feed price when calculating the payment ceiling for keepers
 	FallbackGasPrice     *big.Int // gas price used if the gas price feed is stale
 	FallbackLinkPrice    *big.Int // LINK price used if the LINK price feed is stale
+}
+
+// KeeperRegistrarSettings represents settings for registrar contract
+type KeeperRegistrarSettings struct {
+	AutoRegister     bool
+	WindowSizeBlocks uint32
+	AllowedPerWindow uint16
+	RegistryAddr     string
+	MinLinkJuels     *big.Int
 }
 
 // KeeperInfo keeper status and balance info
