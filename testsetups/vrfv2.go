@@ -7,14 +7,15 @@ import (
 	"math/big"
 	"time"
 
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog/log"
+	"github.com/smartcontractkit/chainlink-testing-framework/actions"
+	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/client"
+	"github.com/smartcontractkit/chainlink-testing-framework/contracts"
+	"github.com/smartcontractkit/chainlink-testing-framework/testreporters"
 	"github.com/smartcontractkit/helmenv/environment"
-	"github.com/smartcontractkit/integrations-framework/actions"
-	"github.com/smartcontractkit/integrations-framework/blockchain"
-	"github.com/smartcontractkit/integrations-framework/client"
-	"github.com/smartcontractkit/integrations-framework/contracts"
-	"github.com/smartcontractkit/integrations-framework/testreporters"
 )
 
 // VRFV2SoakTest defines a typical VRFV2 soak test
@@ -32,8 +33,10 @@ type VRFV2SoakTest struct {
 	networks       *blockchain.Networks
 	defaultNetwork blockchain.EVMClient
 
-	NumberRequestsToValidate int
-	NumberRequestsValidated  int
+	NumberRequests int
+
+	ErrorOccurred error
+	ErrorCount    int
 }
 
 // VRFV2SoakTestJobInfo defines a jobs into and proving key info
@@ -44,12 +47,13 @@ type VRFV2SoakTestJobInfo struct {
 }
 
 // VRFV2SoakTestTestFunc function type for the request and validation you want done on each iteration
-type VRFV2SoakTestTestFunc func(t *VRFV2SoakTest, requestNumber int)
+type VRFV2SoakTestTestFunc func(t *VRFV2SoakTest, requestNumber int) error
 
 // VRFV2SoakTestInputs define required inputs to run a vrfv2 soak test
 type VRFV2SoakTestInputs struct {
 	TestDuration         time.Duration // How long to run the test for (assuming things pass)
 	ChainlinkNodeFunding *big.Float    // Amount of ETH to fund each chainlink node with
+	StopTestOnError      bool
 
 	RequestsPerSecond  int                   // Number of requests for randomness per minute
 	ReadEveryNRequests int                   // Check the randomness output every n number of requests
@@ -121,52 +125,57 @@ func (t *VRFV2SoakTest) Run() {
 		Int("Max number of requests per second wanted", t.Inputs.RequestsPerSecond).
 		Msg("Starting VRFV2 Soak Test")
 
+	// set the requests to only run for a certain amount of time
 	testContext, testCancel := context.WithTimeout(context.Background(), t.Inputs.TestDuration)
 	defer testCancel()
 
-	t.NumberRequestsToValidate = 0
-	t.NumberRequestsValidated = 0
+	t.NumberRequests = 0
 
-	// Test Loop
-	requestNumber := 1
+	// variables dealing with how often to tick and how to stop the ticker
 	stop := false
 	startTime := time.Now()
 	ticker := time.NewTicker(time.Second / time.Duration(t.Inputs.RequestsPerSecond))
+
 	for {
+		// start the loop by checking to see if any of the TestFunc responses have returned an error
+		if t.Inputs.StopTestOnError {
+			Expect(t.ErrorOccurred).ShouldNot(HaveOccurred())
+		}
+
 		select {
 		case <-testContext.Done():
 			// stop making requests
 			stop = true
 			ticker.Stop()
-			break
+			break // breaks the select block
 		case <-ticker.C:
-			go requestAndValidate(t, requestNumber)
-			requestNumber++
+			// make the next request
+			t.NumberRequests++
+			go requestAndValidate(t, t.NumberRequests)
 		}
 
 		if stop {
-			if t.NumberRequestsToValidate == t.NumberRequestsValidated {
-				// stop the test loop entirely
-				break
-			} else {
-				sleepTime := time.Duration(5)
-				time.Sleep(time.Second * time.Duration(sleepTime))
-				log.Info().Int64("Sleeping for ", int64(sleepTime)).Msg("Waiting for test \"Eventually\" statements to complete")
-			}
+			break // breaks the for loop and stops the test
 		}
 	}
-	log.Info().Int("Requests", requestNumber).Msg("Total Completed Requests")
-	log.Info().Str("Run Time", time.Since(startTime).String()).Msg("Finished VRFV2 Soak Test")
+	log.Info().Int("Requests", t.NumberRequests).Msg("Total Completed Requests")
+	log.Info().Str("Run Time", time.Since(startTime).String()).Msg("Finished VRFV2 Soak Test Requests")
+	Expect(t.ErrorCount).To(BeNumerically("==", 0), "We had a number of errors")
 }
 
-func requestAndValidate(
-	t *VRFV2SoakTest,
-	requestNumber int,
-) {
-	// defer GinkgoRecover()
+func requestAndValidate(t *VRFV2SoakTest, requestNumber int) {
+	defer GinkgoRecover()
+	// Errors in go routines cause some weird behavior with how ginkgo returns the error
+	// We are having the TestFunc return any errors it sees so we can then propogate them in
+	//  the main thread and get proper ginkgo behavior on test failures
 	log.Info().Int("Request Number", requestNumber).Msg("Making a Request")
-	t.Inputs.TestFunc(t, requestNumber)
-	t.NumberRequestsToValidate++
+	err := t.Inputs.TestFunc(t, requestNumber)
+	// only set the error to be checked if err is not nil so we avoid race conditions with passing requests
+	if err != nil {
+		t.ErrorOccurred = err
+		log.Error().Err(err).Msg("Error Occurred during test")
+		t.ErrorCount++
+	}
 }
 
 // Networks returns the networks that the test is running on
