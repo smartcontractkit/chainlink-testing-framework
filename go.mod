@@ -2,8 +2,6 @@ module github.com/smartcontractkit/chainlink-testing-framework
 
 go 1.18
 
-replace github.com/smartcontractkit/helmenv => /Users/adamhamrick/Projects/helmenv
-
 require (
 	github.com/ethereum/go-ethereum v1.10.16
 	github.com/julienschmidt/httprouter v1.3.0
