@@ -13,10 +13,12 @@ import (
 )
 
 type OCRSoakTestReporter struct {
-	Reports           map[string]*OCRSoakTestReport // contractAddress: Report
-	ExpectedRoundTime time.Duration
-	namespace         string
-	csvLocation       string
+	Reports            map[string]*OCRSoakTestReport // contractAddress: Report
+	ExpectedRoundTime  time.Duration
+	UnexpectedShutdown bool
+
+	namespace   string
+	csvLocation string
 }
 
 type OCRSoakTestReport struct {
@@ -93,6 +95,8 @@ func (o *OCRSoakTestReporter) SendSlackNotification(slackClient *slack.Client) e
 	messageBlocks := []slack.Block{}
 	if testFailed {
 		headerText = ":x: OCR Soak Test FAILED :x:"
+	} else if o.UnexpectedShutdown {
+		headerText = ":warning: OCR Soak Test was Unexpectedly Shut Down :warning:"
 	}
 	messageBlocks = append(messageBlocks,
 		slack.NewHeaderBlock(slack.NewTextBlockObject("plain_text", headerText, true, false)))

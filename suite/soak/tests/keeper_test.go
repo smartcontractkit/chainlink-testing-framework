@@ -48,7 +48,7 @@ var _ = Describe("Keeper performance suite @block-time-keeper", func() {
 					PerformGasToBurn:     2400000,
 					BlockRange:           2000,
 					BlockInterval:        200,
-					ChainlinkNodeFunding: big.NewFloat(1000),
+					ChainlinkNodeFunding: big.NewFloat(10),
 				},
 			)
 			keeperBlockTimeTest.Setup(env)

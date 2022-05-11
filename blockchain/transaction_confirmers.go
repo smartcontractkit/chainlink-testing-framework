@@ -3,6 +3,7 @@ package blockchain
 import (
 	"context"
 	"fmt"
+	"math/big"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -161,11 +162,19 @@ func (e *EthereumClient) subscribeToNewHeaders() error {
 
 // receiveHeader
 func (e *EthereumClient) receiveHeader(header *types.Header) {
+	suggestedPrice, err := e.Client.SuggestGasPrice(context.Background())
+	if err != nil {
+		suggestedPrice = big.NewInt(0)
+		log.Err(err).
+			Str("Block Hash", header.Hash().String()).
+			Msg("Error retrieving Suggested Gas Price for new block header")
+	}
 	log.Debug().
 		Str("NetworkName", e.NetworkConfig.Name).
 		Int("Node", e.ID).
 		Str("Hash", header.Hash().String()).
 		Str("Number", header.Number.String()).
+		Str("Gas Price", suggestedPrice.String()).
 		Msg("Received block header")
 
 	subs := e.GetHeaderSubscriptions()
