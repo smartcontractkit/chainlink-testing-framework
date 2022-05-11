@@ -503,6 +503,43 @@ func (d *PipelineSpec) String() (string, error) {
 	return marshallTemplate(d, "API call pipeline template", sourceString)
 }
 
+// VRFV2TxPipelineSpec VRFv2 request with tx callback
+type VRFV2TxPipelineSpec struct {
+	Address string
+}
+
+// Type returns the type of the pipeline
+func (d *VRFV2TxPipelineSpec) Type() string {
+	return "vrf_pipeline_v2"
+}
+
+// String representation of the pipeline
+func (d *VRFV2TxPipelineSpec) String() (string, error) {
+	sourceString := `
+decode_log   [type=ethabidecodelog
+             abi="RandomWordsRequested(bytes32 indexed keyHash,uint256 requestId,uint256 preSeed,uint64 indexed subId,uint16 minimumRequestConfirmations,uint32 callbackGasLimit,uint32 numWords,address indexed sender)"
+             data="$(jobRun.logData)"
+             topics="$(jobRun.logTopics)"]
+vrf          [type=vrfv2
+             publicKey="$(jobSpec.publicKey)"
+             requestBlockHash="$(jobRun.logBlockHash)"
+             requestBlockNumber="$(jobRun.logBlockNumber)"
+             topics="$(jobRun.logTopics)"]
+estimate_gas [type=estimategaslimit
+             to="{{ .Address }}"
+             multiplier="1.1"
+             data="$(vrf.output)"]
+simulate [type=ethcall
+          to="{{ .Address }}"
+          gas="$(estimate_gas)"
+          gasPrice="$(jobSpec.maxGasPrice)"
+          extractRevertReason=true
+          contract="{{ .Address }}"
+          data="$(vrf.output)"]
+decode_log->vrf->estimate_gas->simulate`
+	return marshallTemplate(d, "VRFV2 pipeline template", sourceString)
+}
+
 // VRFTxPipelineSpec VRF request with tx callback
 type VRFTxPipelineSpec struct {
 	Address string
@@ -861,6 +898,46 @@ juelsPerFeeCoinSource                  = """
 	return marshallTemplate(o, "OCR2 Job", ocr2TemplateString)
 }
 
+// VRFV2JobSpec represents a VRFV2 job
+type VRFV2JobSpec struct {
+	Name                     string        `toml:"name"`
+	CoordinatorAddress       string        `toml:"coordinatorAddress"` // Address of the VRF Coordinator contract
+	PublicKey                string        `toml:"publicKey"`          // Public key of the proving key
+	ExternalJobID            string        `toml:"externalJobID"`
+	ObservationSource        string        `toml:"observationSource"` // List of commands for the chainlink node
+	MinIncomingConfirmations int           `toml:"minIncomingConfirmations"`
+	FromAddress              string        `toml:"fromAddress"`
+	EVMChainID               string        `toml:"evmChainID"`
+	BatchFulfillmentEnabled  bool          `toml:"batchFulfillmentEnabled"`
+	BackOffInitialDelay      time.Duration `toml:"backOffInitialDelay"`
+	BackOffMaxDelay          time.Duration `toml:"backOffMaxDelay"`
+}
+
+// Type returns the type of the job
+func (v *VRFV2JobSpec) Type() string { return "vrf" }
+
+// String representation of the job
+func (v *VRFV2JobSpec) String() (string, error) {
+	vrfTemplateString := `
+type                     = "vrf"
+schemaVersion            = 1
+name                     = "{{.Name}}"
+coordinatorAddress       = "{{.CoordinatorAddress}}"
+fromAddress              = "{{.FromAddress}}"
+evmChainID               = "{{.EVMChainID}}"
+minIncomingConfirmations = {{.MinIncomingConfirmations}}
+publicKey                = "{{.PublicKey}}"
+externalJobID            = "{{.ExternalJobID}}"
+batchFulfillmentEnabled = "{{.BatchFulfillmentEnabled}}"
+backoffInitialDelay     = "{{.BackOffInitialDelay}}"
+backoffMaxDelay         = "{{.BackOffMaxDelay}}"
+observationSource = """
+{{.ObservationSource}}
+"""
+`
+	return marshallTemplate(v, "VRFV2 Job", vrfTemplateString)
+}
+
 // VRFJobSpec represents a VRF job
 type VRFJobSpec struct {
 	Name                     string `toml:"name"`
@@ -889,6 +966,38 @@ observationSource = """
 """
 `
 	return marshallTemplate(v, "VRF Job", vrfTemplateString)
+}
+
+// BlockhashStoreJobSpec represents a blockhashstore job
+type BlockhashStoreJobSpec struct {
+	Name                  string `toml:"name"`
+	CoordinatorV2Address  string `toml:"coordinatorV2Address"` // Address of the VRF Coordinator contract
+	WaitBlocks            int    `toml:"waitBlocks"`
+	LookbackBlocks        int    `toml:"lookbackBlocks"`
+	BlockhashStoreAddress string `toml:"blockhashStoreAddress"`
+	PollPeriod            string `toml:"pollPeriod"`
+	RunTimeout            string `toml:"runTimeout"`
+	EVMChainID            string `toml:"evmChainID"`
+}
+
+// Type returns the type of the job
+func (b *BlockhashStoreJobSpec) Type() string { return "blockhashstore" }
+
+// String representation of the job
+func (b *BlockhashStoreJobSpec) String() (string, error) {
+	vrfTemplateString := `
+type                     = "blockhashstore"
+schemaVersion            = 1
+name                     = "{{.Name}}"
+coordinatorV2Address     = "{{.CoordinatorV2Address}}"
+waitBlocks               = {{.WaitBlocks}}
+lookbackBlocks           = {{.LookbackBlocks}}
+blockhashStoreAddress    = "{{.BlockhashStoreAddress}}"
+pollPeriod               = "{{.PollPeriod}}"
+runTimeout               = "{{.RunTimeout}}"
+evmChainID               = "{{.EVMChainID}}"
+`
+	return marshallTemplate(b, "BlockhashStore Job", vrfTemplateString)
 }
 
 // WebhookJobSpec reprsents a webhook job
@@ -938,40 +1047,28 @@ func ObservationSourceKeeperDefault() string {
                           data="{\\"id\\":$(jobSpec.upkeepID),\\"from\\":$(jobSpec.fromAddress)}"]
 check_upkeep_tx          [type=ethcall
                           failEarly=true
-                          extractRevertReason=true
-                          evmChainID="$(jobSpec.evmChainID)"
-                          contract="$(jobSpec.contractAddress)"
                           gas="$(jobSpec.checkUpkeepGasLimit)"
                           gasPrice="$(jobSpec.gasPrice)"
                           gasTipCap="$(jobSpec.gasTipCap)"
                           gasFeeCap="$(jobSpec.gasFeeCap)"
+                          extractRevertReason=true
+													evmChainID="$(jobSpec.evmChainID)"
+                          contract="$(jobSpec.contractAddress)"
                           data="$(encode_check_upkeep_tx)"]
 decode_check_upkeep_tx   [type=ethabidecode
                           abi="bytes memory performData, uint256 maxLinkPayment, uint256 gasLimit, uint256 adjustedGasWei, uint256 linkEth"]
 encode_perform_upkeep_tx [type=ethabiencode
                           abi="performUpkeep(uint256 id, bytes calldata performData)"
                           data="{\\"id\\": $(jobSpec.upkeepID),\\"performData\\":$(decode_check_upkeep_tx.performData)}"]
-simulate_perform_upkeep_tx  [type=ethcall
-                          extractRevertReason=true
-                          evmChainID="$(jobSpec.evmChainID)"
-                          contract="$(jobSpec.contractAddress)"
-                          from="$(jobSpec.fromAddress)"
-                          gas="$(jobSpec.performUpkeepGasLimit)"
-                          data="$(encode_perform_upkeep_tx)"]
-decode_check_perform_tx  [type=ethabidecode
-                          abi="bool success"]
-check_success            [type=conditional
-                          failEarly=true
-                          data="$(decode_check_perform_tx.success)"]
 perform_upkeep_tx        [type=ethtx
+                          gasLimit="$(jobSpec.performUpkeepGasLimit)"
                           minConfirmations=0
                           to="$(jobSpec.contractAddress)"
                           from="[$(jobSpec.fromAddress)]"
                           evmChainID="$(jobSpec.evmChainID)"
                           data="$(encode_perform_upkeep_tx)"
-                          gasLimit="$(jobSpec.performUpkeepGasLimit)"
                           txMeta="{\\"jobID\\":$(jobSpec.jobID),\\"upkeepID\\":$(jobSpec.prettyID)}"]
-encode_check_upkeep_tx -> check_upkeep_tx -> decode_check_upkeep_tx -> encode_perform_upkeep_tx -> simulate_perform_upkeep_tx -> decode_check_perform_tx -> check_success -> perform_upkeep_tx`
+encode_check_upkeep_tx -> check_upkeep_tx -> decode_check_upkeep_tx -> encode_perform_upkeep_tx -> perform_upkeep_tx`
 }
 
 // marshallTemplate Helper to marshall templates
