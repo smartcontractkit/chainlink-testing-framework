@@ -528,9 +528,7 @@ func (e *EthereumMultinodeClient) GetChainID() *big.Int {
 // GetClients gets clients for all nodes connected
 func (e *EthereumMultinodeClient) GetClients() []EVMClient {
 	cl := make([]EVMClient, 0)
-	for _, c := range e.Clients {
-		cl = append(cl, c)
-	}
+	cl = append(cl, e.Clients...)
 	return cl
 }
 
