@@ -10,10 +10,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog/log"
-	"github.com/smartcontractkit/chainlink-testing-framework/actions"
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/client"
-	"github.com/smartcontractkit/chainlink-testing-framework/contracts"
 	"github.com/smartcontractkit/chainlink-testing-framework/testreporters"
 	"github.com/smartcontractkit/helmenv/environment"
 )
@@ -26,24 +24,14 @@ type VRFV2SoakTest struct {
 	mockServer   *client.MockserverClient
 
 	env            *environment.Environment
-	Consumer       contracts.VRFConsumerV2
-	Coordinator    contracts.VRFCoordinatorV2
 	ChainlinkNodes []client.Chainlink
-	JobInfo        []VRFV2SoakTestJobInfo
-	networks       *blockchain.Networks
-	defaultNetwork blockchain.EVMClient
+	Networks       *blockchain.Networks
+	DefaultNetwork blockchain.EVMClient
 
 	NumberRequests int
 
 	ErrorOccurred error
 	ErrorCount    int
-}
-
-// VRFV2SoakTestJobInfo defines a jobs into and proving key info
-type VRFV2SoakTestJobInfo struct {
-	Job            *client.Job
-	ProvingKey     [2]*big.Int
-	ProvingKeyHash [32]byte
 }
 
 // VRFV2SoakTestTestFunc function type for the request and validation you want done on each iteration
@@ -70,51 +58,34 @@ func NewVRFV2SoakTest(inputs *VRFV2SoakTestInputs) *VRFV2SoakTest {
 	}
 }
 
-// Setup sets up the test environment, deploying contracts and funding chainlink nodes
-func (t *VRFV2SoakTest) Setup(env *environment.Environment) {
+// Setup sets up the test environment
+func (t *VRFV2SoakTest) Setup(env *environment.Environment, isLocal bool) {
 	t.ensureInputValues()
 	t.env = env
 	var err error
+	var networkRegistry *blockchain.NetworkRegistry
 
 	// Make connections to soak test resources
-	networkRegistry := blockchain.NewSoakNetworkRegistry()
-	t.networks, err = networkRegistry.GetNetworks(env)
-	Expect(err).ShouldNot(HaveOccurred(), "Connecting to blockchain nodes shouldn't fail")
-	t.defaultNetwork = t.networks.Default
-	contractDeployer, err := contracts.NewContractDeployer(t.defaultNetwork)
-	Expect(err).ShouldNot(HaveOccurred(), "Deploying contracts shouldn't fail")
-	t.ChainlinkNodes, err = client.ConnectChainlinkNodesSoak(env)
-	Expect(err).ShouldNot(HaveOccurred(), "Connecting to chainlink nodes shouldn't fail")
-	t.mockServer, err = client.ConnectMockServerSoak(env)
-	Expect(err).ShouldNot(HaveOccurred(), "Creating mockserver clients shouldn't fail")
-	t.defaultNetwork.ParallelTransactions(true)
-	Expect(err).ShouldNot(HaveOccurred())
-
-	// Deploy LINK
-	linkTokenContract, err := contractDeployer.DeployLinkTokenContract()
-	Expect(err).ShouldNot(HaveOccurred(), "Deploying Link Token Contract shouldn't fail")
-
-	// Fund Chainlink nodes
-	err = actions.FundChainlinkNodes(t.ChainlinkNodes, t.defaultNetwork, t.Inputs.ChainlinkNodeFunding)
-	Expect(err).ShouldNot(HaveOccurred())
-
-	t.Coordinator, t.Consumer = actions.DeployVrfv2Contracts(linkTokenContract, contractDeployer, t.networks)
-	jobs, provingKeys := actions.CreateVrfV2Jobs(t.ChainlinkNodes, t.Coordinator)
-	Expect(len(jobs)).Should(Equal(len(provingKeys)), "Should have a set of keys for each job")
-
-	// Create proving key hash here so we aren't calculating it in the test run itself.
-	for i, pk := range provingKeys {
-		keyHash, err := t.Coordinator.HashOfKey(context.Background(), pk)
-		Expect(err).ShouldNot(HaveOccurred(), "Should be able to create a keyHash from the proving keys")
-		ji := VRFV2SoakTestJobInfo{
-			Job:            jobs[i],
-			ProvingKey:     provingKeys[i],
-			ProvingKeyHash: keyHash,
-		}
-		t.JobInfo = append(t.JobInfo, ji)
+	if isLocal {
+		err = env.ConnectAll()
+		Expect(err).ShouldNot(HaveOccurred())
+		networkRegistry = blockchain.NewDefaultNetworkRegistry()
+		t.ChainlinkNodes, err = client.ConnectChainlinkNodes(env)
+		Expect(err).ShouldNot(HaveOccurred(), "Connecting to chainlink nodes shouldn't fail")
+		t.mockServer, err = client.ConnectMockServer(env)
+		Expect(err).ShouldNot(HaveOccurred(), "Creating mockserver clients shouldn't fail")
+	} else {
+		networkRegistry = blockchain.NewSoakNetworkRegistry()
+		t.ChainlinkNodes, err = client.ConnectChainlinkNodesSoak(env)
+		Expect(err).ShouldNot(HaveOccurred(), "Connecting to chainlink nodes shouldn't fail")
+		t.mockServer, err = client.ConnectMockServerSoak(env)
+		Expect(err).ShouldNot(HaveOccurred(), "Creating mockserver clients shouldn't fail")
 	}
 
-	err = t.defaultNetwork.WaitForEvents()
+	t.Networks, err = networkRegistry.GetNetworks(env)
+	Expect(err).ShouldNot(HaveOccurred(), "Connecting to blockchain nodes shouldn't fail")
+	t.DefaultNetwork = t.Networks.Default
+	t.DefaultNetwork.ParallelTransactions(true)
 	Expect(err).ShouldNot(HaveOccurred())
 }
 
@@ -165,7 +136,7 @@ func (t *VRFV2SoakTest) Run() {
 
 func requestAndValidate(t *VRFV2SoakTest, requestNumber int) {
 	defer GinkgoRecover()
-	// Errors in go routines cause some weird behavior with how ginkgo returns the error
+	// Errors in goroutines cause some weird behavior with how ginkgo returns the error
 	// We are having the TestFunc return any errors it sees so we can then propogate them in
 	//  the main thread and get proper ginkgo behavior on test failures
 	log.Info().Int("Request Number", requestNumber).Msg("Making a Request")
@@ -180,7 +151,7 @@ func requestAndValidate(t *VRFV2SoakTest, requestNumber int) {
 
 // Networks returns the networks that the test is running on
 func (t *VRFV2SoakTest) TearDownVals() (*environment.Environment, *blockchain.Networks, []client.Chainlink, testreporters.TestReporter) {
-	return t.env, t.networks, t.ChainlinkNodes, &t.TestReporter
+	return t.env, t.Networks, t.ChainlinkNodes, &t.TestReporter
 }
 
 // ensureValues ensures that all values needed to run the test are present
