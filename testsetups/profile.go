@@ -12,8 +12,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-// KeeperBlockTimeTest builds a test to check that chainlink nodes are able to upkeep a specified amount of Upkeep
-// contracts within a certain block time
+// ChainlinkProfileTest runs a piece of code on Chainlink nodes with PPROF enabled, then downloads the PPROF results
 type ChainlinkProfileTest struct {
 	Inputs       ChainlinkProfileTestInputs
 	TestReporter testreporters.ChainlinkProfileTestReporter
@@ -23,14 +22,14 @@ type ChainlinkProfileTest struct {
 	defaultNetwork blockchain.EVMClient
 }
 
-// KeeperBlockTimeTestInputs are all the required inputs for a Keeper Block Time Test
+// ChainlinkProfileTestInputs are the inputs necessary to run a profiling tests
 type ChainlinkProfileTestInputs struct {
 	ProfileFunction func(client.Chainlink)
 	ProfileDuration time.Duration
 	ChainlinkNodes  []client.Chainlink
 }
 
-// NewKeeperBlockTimeTest prepares a new keeper block time test to be run
+// NewChainlinkProfileTest prepares a new keeper Chainlink profiling test to be run
 func NewChainlinkProfileTest(inputs ChainlinkProfileTestInputs) *ChainlinkProfileTest {
 	return &ChainlinkProfileTest{
 		Inputs: inputs,
@@ -43,7 +42,7 @@ func (c *ChainlinkProfileTest) Setup(env *environment.Environment) {
 	c.env = env
 }
 
-// Run runs the keeper block time test
+// Run runs the profiling test
 func (c *ChainlinkProfileTest) Run() {
 	profileGroup := new(errgroup.Group)
 	for ni, cl := range c.Inputs.ChainlinkNodes {
