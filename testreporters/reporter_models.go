@@ -2,10 +2,10 @@
 package testreporters
 
 import (
-	"errors"
 	"fmt"
 	"os"
 
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/slack-go/slack"
 )
@@ -77,4 +77,14 @@ func sendSlackMessage(slackClient *slack.Client, msgOptions ...slack.MsgOption) 
 	msgOptions = append(msgOptions, slack.MsgOptionAsUser(true))
 	_, timeStamp, err := slackClient.PostMessage(slackChannel, msgOptions...)
 	return timeStamp, err
+}
+
+// creates a directory if it doesn't already exist
+func mkdirIfNotExists(dirName string) error {
+	if _, err := os.Stat(dirName); os.IsNotExist(err) {
+		if err = os.MkdirAll(dirName, os.ModePerm); err != nil {
+			return errors.Wrapf(err, "failed to create directory: %s", dirName)
+		}
+	}
+	return nil
 }
