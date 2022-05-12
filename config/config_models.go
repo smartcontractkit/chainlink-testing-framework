@@ -1,58 +1,106 @@
 package config
 
-import "time"
+import (
+	"io/ioutil"
+	"path/filepath"
+	"time"
+
+	"github.com/kelseyhightower/envconfig"
+	"github.com/rs/zerolog/log"
+	"gopkg.in/yaml.v2"
+)
+
+// Config general framework config
+type Config struct {
+	FrameworkConfig    *FrameworkConfig    `envconfig:"FRAMEWORK_CONFIG_FILE" default:"../framework.yaml"`
+	NetworksConfig     *NetworksConfig     `envconfig:"NETWORKS_CONFIG_FILE" default:"../networks.yaml"`
+	RemoteRunnerConfig *RemoteRunnerConfig `evconfig:"REMOTE_RUNNER_CONFIG"`
+}
 
 // FrameworkConfig common framework config
 type FrameworkConfig struct {
-	KeepEnvironments string         `mapstructure:"keep_environments" yaml:"keep_environments"`
-	Logging          *LoggingConfig `mapstructure:"logging" yaml:"logging"`
-	EnvironmentFile  string         `mapstructure:"environment_file" yaml:"environment_file"`
-	ChainlinkImage   string         `mapstructure:"chainlink_image" yaml:"chainlink_image"`
-	ChainlinkVersion string         `mapstructure:"chainlink_version" yaml:"chainlink_version"`
+	KeepEnvironments string         `envconfig:"KEEP_ENVIRONMENTS" yaml:"keep_environments"`
+	Logging          *LoggingConfig `envconfig:"LOGGING" yaml:"logging"`
+	EnvironmentFile  string         `envconfig:"ENVIRONMENT_FILE" yaml:"environment_file"`
+	ChainlinkImage   string         `yaml:"chainlink_image" envconfig:"CHAINLINK_IMAGE"`
+	ChainlinkVersion string         `yaml:"chainlink_version" envconfig:"CHAINLINK_VERSION"`
 	// ChainlinkEnvValues uses interface{} as the value because it's needed for proper helmchart merges
-	ChainlinkEnvValues map[string]interface{} `mapstructure:"chainlink_env_values" yaml:"chainlink_env_values"`
+	ChainlinkEnvValues map[string]interface{} `envconfig:"CHAINLINK_ENV_VALUES" yaml:"chainlink_env_values"`
+}
+
+func (m *FrameworkConfig) Decode(path string) error {
+	// Marshal YAML first, then "envconfig" tags of that struct got marshalled
+	if err := unmarshalYAML(path, &m); err != nil {
+		return err
+	}
+	return envconfig.Process("", m)
 }
 
 // ETHNetwork data to configure fully ETH compatible network
 type ETHNetwork struct {
-	ContractsDeployed         bool          `mapstructure:"contracts_deployed" yaml:"contracts_deployed"`
-	Name                      string        `mapstructure:"name" yaml:"name"`
-	ChainID                   int64         `mapstructure:"chain_id" yaml:"chain_id"`
-	URL                       string        `mapstructure:"url" yaml:"url"`
-	URLs                      []string      `mapstructure:"urls" yaml:"urls"`
-	Type                      string        `mapstructure:"type" yaml:"type"`
-	PrivateKeys               []string      `mapstructure:"private_keys" yaml:"private_keys"`
-	ChainlinkTransactionLimit uint64        `mapstructure:"chainlink_transaction_limit" yaml:"chainlink_transaction_limit"`
-	Timeout                   time.Duration `mapstructure:"transaction_timeout" yaml:"transaction_timeout"`
-	MinimumConfirmations      int           `mapstructure:"minimum_confirmations" yaml:"minimum_confirmations"`
-	GasEstimationBuffer       uint64        `mapstructure:"gas_estimation_buffer" yaml:"gas_estimation_buffer"`
-	BlockGasLimit             uint64        `mapstructure:"block_gas_limit" yaml:"block_gas_limit"`
+	ContractsDeployed         bool          `envconfig:"contracts_deployed" yaml:"contracts_deployed"`
+	Name                      string        `envconfig:"name" yaml:"name"`
+	ChainID                   int64         `envconfig:"chain_id" yaml:"chain_id"`
+	URL                       string        `envconfig:"url" yaml:"url"`
+	URLs                      []string      `envconfig:"urls" yaml:"urls"`
+	Type                      string        `envconfig:"type" yaml:"type"`
+	PrivateKeys               []string      `envconfig:"private_keys" yaml:"private_keys"`
+	ChainlinkTransactionLimit uint64        `envconfig:"chainlink_transaction_limit" yaml:"chainlink_transaction_limit"`
+	Timeout                   time.Duration `envconfig:"transaction_timeout" yaml:"transaction_timeout"`
+	MinimumConfirmations      int           `envconfig:"minimum_confirmations" yaml:"minimum_confirmations"`
+	GasEstimationBuffer       uint64        `envconfig:"gas_estimation_buffer" yaml:"gas_estimation_buffer"`
+	BlockGasLimit             uint64        `envconfig:"block_gas_limit" yaml:"block_gas_limit"`
 }
 
 // TerraNetwork data to configure Terra network
 type TerraNetwork struct {
-	Name                      string        `mapstructure:"name" yaml:"name"`
-	ChainName                 string        `mapstructure:"chain_name" yaml:"chain_name"`
-	Mnemonics                 []string      `mapstructure:"mnemonic" yaml:"mnemonic"`
-	Currency                  string        `mapstructure:"currency" yaml:"currency"`
-	Type                      string        `mapstructure:"type" yaml:"type"`
-	ChainlinkTransactionLimit uint64        `mapstructure:"chainlink_transaction_limit" yaml:"chainlink_transaction_limit"`
-	Timeout                   time.Duration `mapstructure:"transaction_timeout" yaml:"transaction_timeout"`
-	MinimumConfirmations      int           `mapstructure:"minimum_confirmations" yaml:"minimum_confirmations"`
+	Name                      string        `envconfig:"name" yaml:"name"`
+	ChainName                 string        `envconfig:"chain_name" yaml:"chain_name"`
+	Mnemonics                 []string      `envconfig:"mnemonic" yaml:"mnemonic"`
+	Currency                  string        `envconfig:"currency" yaml:"currency"`
+	Type                      string        `envconfig:"type" yaml:"type"`
+	ChainlinkTransactionLimit uint64        `envconfig:"chainlink_transaction_limit" yaml:"chainlink_transaction_limit"`
+	Timeout                   time.Duration `envconfig:"transaction_timeout" yaml:"transaction_timeout"`
+	MinimumConfirmations      int           `envconfig:"minimum_confirmations" yaml:"minimum_confirmations"`
 }
 
 // NetworksConfig is network configurations
 type NetworksConfig struct {
-	SelectedNetworks   []string        `mapstructure:"selected_networks" yaml:"selected_networks" envconfig:"selected_networks"`
-	NetworkSettings    NetworkSettings `mapstructure:"networks" yaml:"networks" envconfig:"network_settings"`
+	SelectedNetworks   []string        `envconfig:"SELECTED_NETWORKS" yaml:"selected_networks"`
+	NetworkSettings    NetworkSettings `envconfig:"NETWORKS" yaml:"networks"`
 	DefaultKeyStore    string
 	ConfigFileLocation string
 }
 
+func (m *NetworksConfig) Decode(path string) error {
+	// Marshal YAML first, then "envconfig" tags of that struct got marshalled
+	if err := unmarshalYAML(path, &m); err != nil {
+		return err
+	}
+	return envconfig.Process("", m)
+}
+
+// RemoteRunnerConfig reads the config file for remote test runs
+type RemoteRunnerConfig struct {
+	TestRegex     string `envconfig:"TEST_REGEX" yaml:"test_regex"`
+	TestDirectory string `envconfig:"TEST_DIRECTORY" yaml:"test_directory"`
+	SlackAPIKey   string `envconfig:"SLACK_API_KEY" yaml:"slack_api_key"`
+	SlackChannel  string `envconfig:"SLACK_CHANNEL" yaml:"slack_channel"`
+	SlackUserID   string `envconfig:"SLACK_USER_ID" yaml:"slack_user_id"`
+}
+
+func (m *RemoteRunnerConfig) Decode(path string) error {
+	// Marshal YAML first, then "envconfig" tags of that struct got marshalled
+	if err := unmarshalYAML(path, &m); err != nil {
+		return err
+	}
+	return envconfig.Process("", m)
+}
+
 // LoggingConfig for logging
 type LoggingConfig struct {
-	WritePodLogs string `mapstructure:"write_pod_logs" yaml:"write_pod_logs"`
-	Level        int8   `mapstructure:"level" yaml:"level"`
+	WritePodLogs string `envconfig:"WRITE_POD_LOGS" yaml:"write_pod_logs"`
+	Level        int8   `envconfig:"LEVEL" yaml:"level"`
 }
 
 // ChartOverrides enables building json styled chart overrides for the deployed chart values and environment variables
@@ -105,11 +153,15 @@ type ChainlinkImage struct {
 	Version string `json:"version,omitempty" yaml:"chainlink_version"`
 }
 
-// RemoteRunnerConfig reads the config file for remote test runs
-type RemoteRunnerConfig struct {
-	TestRegex     string `mapstructure:"test_regex" yaml:"test_regex"`
-	TestDirectory string `mapstructure:"test_directory" yaml:"test_directory"`
-	SlackAPIKey   string `mapstructure:"slack_api_key" yaml:"slack_api_key"`
-	SlackChannel  string `mapstructure:"slack_channel" yaml:"slack_channel"`
-	SlackUserID   string `mapstructure:"slack_user_id" yaml:"slack_user_id"`
+func unmarshalYAML(path string, to interface{}) error {
+	ap, err := filepath.Abs(path)
+	if err != nil {
+		return err
+	}
+	log.Info().Str("Path", ap).Msg("Decoding config")
+	f, err := ioutil.ReadFile(ap)
+	if err != nil {
+		return err
+	}
+	return yaml.Unmarshal(f, to)
 }

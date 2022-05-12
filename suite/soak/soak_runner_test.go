@@ -7,19 +7,29 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-testing-framework/actions"
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 	"github.com/smartcontractkit/helmenv/environment"
-	"github.com/smartcontractkit/helmenv/tools"
 	"github.com/stretchr/testify/require"
 )
 
-func TestSoak(t *testing.T) {
-	actions.LoadConfigs(utils.ProjectRoot)
+func init() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+}
+
+func TestSoak(t *testing.T) {
+	actions.LoadConfigs()
+	config.ProjectConfig.RemoteRunnerConfig = &config.RemoteRunnerConfig{
+		TestRegex:     "@soak-ocr",
+		TestDirectory: filepath.Join(utils.ProjectRoot, "./suite/soak/tests"),
+		SlackAPIKey:   "abcdefg",
+		SlackChannel:  "C01xxxxx",
+		SlackUserID:   "U01xxxxx",
+	}
 	exePath, remoteConfig := buildGoTests(t)
 
 	env, err := environment.DeployLongTestEnvironment(
@@ -28,13 +38,12 @@ func TestSoak(t *testing.T) {
 			"chainlink-soak",
 			config.GethNetworks()...,
 		),
-		tools.ChartsRoot,
-		remoteConfig.TestRegex,                             // Name of the test to run
-		remoteConfig.SlackAPIKey,                           // API key to use to upload artifacts to slack
-		remoteConfig.SlackChannel,                          // Slack Channel to upload test artifacts to
-		remoteConfig.SlackUserID,                           // Slack user to notify on completion
-		filepath.Join(utils.ProjectRoot, "framework.yaml"), // Path of the framework config
-		filepath.Join(utils.ProjectRoot, "networks.yaml"),  // Path to the networks config
+		remoteConfig.TestRegex,                           // Name of the test to run
+		remoteConfig.SlackAPIKey,                         // API key to use to upload artifacts to slack
+		remoteConfig.SlackChannel,                        // Slack Channel to upload test artifacts to
+		remoteConfig.SlackUserID,                         // Slack user to notify on completion
+		filepath.Join(utils.SuiteRoot, "framework.yaml"), // Path of the framework config
+		filepath.Join(utils.SuiteRoot, "networks.yaml"),  // Path to the networks config
 		exePath, // Path to the executable test file
 	)
 	require.NoError(t, err)
@@ -47,13 +56,12 @@ func TestSoak(t *testing.T) {
 // Builds the go tests to run, and returns a path to it, along with remote config options
 func buildGoTests(t *testing.T) (string, *config.RemoteRunnerConfig) {
 	exePath := filepath.Join(utils.ProjectRoot, "remote.test")
-	remoteConfig, err := config.ReadWriteRemoteRunnerConfig()
-	require.NoError(t, err)
-	compileCmd := exec.Command("go", "test", "-c", remoteConfig.TestDirectory, "-o", exePath) // #nosec G204
+	compileCmd := exec.Command("go", "test", "-c", config.ProjectConfig.RemoteRunnerConfig.TestDirectory, "-o", exePath) // #nosec G204
 	compileCmd.Env = os.Environ()
 	compileCmd.Env = append(compileCmd.Env, "CGO_ENABLED=0", "GOOS=linux", "GOARCH=amd64")
 
-	log.Info().Str("Test Directory", remoteConfig.TestDirectory).Msg("Compiling tests")
+	spew.Dump(config.ProjectConfig.RemoteRunnerConfig)
+	log.Info().Str("Test Directory", config.ProjectConfig.RemoteRunnerConfig.TestDirectory).Msg("Compiling tests")
 	compileOut, err := compileCmd.Output()
 	log.Debug().
 		Str("Output", string(compileOut)).
@@ -63,5 +71,5 @@ func buildGoTests(t *testing.T) (string, *config.RemoteRunnerConfig) {
 
 	_, err = os.Stat(exePath)
 	require.NoError(t, err, "Expected '%s' to exist", exePath)
-	return exePath, remoteConfig
+	return exePath, config.ProjectConfig.RemoteRunnerConfig
 }
