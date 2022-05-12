@@ -418,7 +418,7 @@ func (c *chainlink) CreateVRFKey() (*VRFKey, error) {
 }
 
 // ExportVRFKey exports a vrf key by key id
-func (c* chainlink) ExportVRFKey(keyId string) (*VRFExportKey, error) {
+func (c *chainlink) ExportVRFKey(keyId string) (*VRFExportKey, error) {
 	vrfExportKey := &VRFExportKey{}
 	log.Info().Str("Node URL", c.Config.URL).Str("ID", keyId).Msg("Exporting VRF Key")
 	_, err := c.do(http.MethodPost, fmt.Sprintf("/v2/keys/vrf/export/%s", keyId), nil, vrfExportKey, http.StatusOK)
@@ -429,7 +429,7 @@ func (c* chainlink) ExportVRFKey(keyId string) (*VRFExportKey, error) {
 func (c *chainlink) ImportVRFKey(vrfExportKey *VRFExportKey) (*VRFKey, error) {
 	vrfKey := &VRFKey{}
 	log.Info().Str("Node URL", c.Config.URL).Str("ID", vrfExportKey.VrfKey.Address).Msg("Importing VRF Key")
-	_, err := c.do(http.MethodPost,"/v2/keys/vrf/import", vrfExportKey, vrfKey, http.StatusOK)
+	_, err := c.do(http.MethodPost, "/v2/keys/vrf/import", vrfExportKey, vrfKey, http.StatusOK)
 	return vrfKey, err
 }
 
