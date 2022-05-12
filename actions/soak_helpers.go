@@ -40,9 +40,9 @@ func TestSoak(projectRoot, networksConfigPath string, t *testing.T, envConfig *e
 }
 
 // Builds the go tests to run, and returns a path to it, along with remote config options
-func buildGoTests(t *testing.T) (string, *config.RemoteRunnerConfig) {
+func buildGoTests(prjectRoot string, t *testing.T) (string, *config.RemoteRunnerConfig) {
 	exePath := filepath.Join(utils.ProjectRoot, "remote.test")
-	remoteConfig, err := config.ReadWriteRemoteRunnerConfig()
+	remoteConfig, err := config.ReadWriteRemoteRunnerConfig(projectRoot)
 	require.NoError(t, err)
 	compileCmd := exec.Command("go", "test", "-c", remoteConfig.TestDirectory, "-o", exePath) // #nosec G204
 	compileCmd.Env = os.Environ()

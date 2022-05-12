@@ -4,7 +4,6 @@ package config
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -181,61 +180,33 @@ func (l *LocalStore) Fetch() ([]string, error) {
 }
 
 // ReadWriteRemoteRunnerConfig looks for an already existing remote config to read from, or asks the user to build one
-func ReadWriteRemoteRunnerConfig() (*RemoteRunnerConfig, error) {
-	var config *RemoteRunnerConfig
-	var err error
-	configLocation := utils.RemoteRunnerConfigLocation
-	// If no config already there, write an example one
-	if _, err := os.Stat(configLocation); errors.Is(err, os.ErrNotExist) {
-		log.Info().Str("Config Location", configLocation).Msg("Did not find config file, writing one")
-		if err = writeRemoteRunnerConfig(configLocation); err != nil {
-			return nil, err
-		}
-		log.Warn().Str("File", configLocation).Msg("Wrote an example config file for remote tests. Set proper values and re-run.")
-		return nil, fmt.Errorf("Wrote an example config file at %s. Please fill in values and log back in", configLocation)
-	} else if err != nil {
-		return nil, err
-	}
-	if config == nil {
-		config, err = readRemoteRunnerConfig(configLocation)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return config, nil
-}
-
-// Prompts the user to create a remote runner config file
-func writeRemoteRunnerConfig(configLocation string) error {
-	conf := &RemoteRunnerConfig{
-		TestRegex:     "@soak-ocr",
-		TestDirectory: filepath.Join(utils.ProjectRoot, "./suite/soak/tests"),
-		SlackAPIKey:   "abcdefg",
-		SlackChannel:  "C01xxxxx",
-		SlackUserID:   "U01xxxxx",
-	}
-	confBytes, err := yaml.Marshal(&conf)
-	if err != nil {
-		return err
-	}
-	if err := ioutil.WriteFile(configLocation, confBytes, 0600); err != nil {
-		return err
-	}
-	log.Info().
-		Str("File", configLocation).
-		Msg("Wrote some default config settings, change them in the config file then run the test again")
-	return nil
+func ReadWriteRemoteRunnerConfig(configFileLocation string) (*RemoteRunnerConfig, error) {
+	config, err := readRemoteRunnerConfig(configFileLocation)
+	return config, err
 }
 
 // Reads in the runner config
 func readRemoteRunnerConfig(configLocation string) (*RemoteRunnerConfig, error) {
 	var config *RemoteRunnerConfig
+	absoluteConfigFileLocation, err := filepath.Abs(configLocation)
+	if err != nil {
+		log.Fatal().
+			Str("Path", configLocation).
+			Msg("Unable to resolve path to an absolute path")
+		return nil, err
+	}
+
+	remoteRunnerConfig := filepath.Join(absoluteConfigFileLocation, "remote_runner_config.yaml")
+	if os.Getenv("REMOTE_RUNNER_CONFIG_FILE") != "" {
+		remoteRunnerConfig = os.Getenv("REMOTE_RUNNER_CONFIG_FILE")
+	}
+
 	remoteViper := viper.New()
-	remoteViper.SetConfigFile(configLocation)
+	remoteViper.SetConfigFile(remoteRunnerConfig)
 	if err := remoteViper.ReadInConfig(); err != nil {
 		return nil, err
 	}
-	err := remoteViper.Unmarshal(&config)
-	log.Info().Str("File", configLocation).Msg("Read Remote Runner Config")
+	err = remoteViper.Unmarshal(&config)
+	log.Info().Str("File", remoteRunnerConfig).Msg("Read Remote Runner Config")
 	return config, err
 }
