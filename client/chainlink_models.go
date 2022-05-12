@@ -108,6 +108,31 @@ type Session struct {
 	Password string `json:"password"`
 }
 
+// VRFExportKey is the model that represents the exported VRF key
+type VRFExportKey struct {
+	PublicKey string `json:"PublicKey"`
+	VrfKey    struct {
+		Address string `json:"address"`
+		Crypto  struct {
+			Cipher       string `json:"cipher"`
+			Ciphertext   string `json:"ciphertext"`
+			Cipherparams struct {
+				Iv string `json:"iv"`
+			} `json:"cipherparams"`
+			Kdf       string `json:"kdf"`
+			Kdfparams struct {
+				Dklen int    `json:"dklen"`
+				N     int    `json:"n"`
+				P     int    `json:"p"`
+				R     int    `json:"r"`
+				Salt  string `json:"salt"`
+			} `json:"kdfparams"`
+			Mac string `json:"mac"`
+		} `json:"crypto"`
+		Version int `json:"version"`
+	} `json:"vrf_key"`
+}
+
 // VRFKeyAttributes is the model that represents the created VRF key attributes when read
 type VRFKeyAttributes struct {
 	Compressed   string      `json:"compressed"`
