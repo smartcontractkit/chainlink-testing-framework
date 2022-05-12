@@ -187,10 +187,10 @@ networks:
             - klaytn_key
     metis_testnet:
         <<: *common_ethereum_testnet
-        name: "Metis testnet"
+        name: "Metis mainnet"
         type: "metis_testnet"
         chain_id: 588
         urls:
-            - wss://stardust-ws.metis.io/
+            - wss://stardust-ws.metis.io
         private_keys:
             - metis_key

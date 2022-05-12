@@ -119,24 +119,31 @@ func (t *OCRSoakTest) Run() {
 	testContext, testCancel := context.WithTimeout(context.Background(), t.Inputs.TestDuration)
 	defer testCancel()
 
+	stopTestChannel := make(chan struct{}, 1)
+	StartRemoteControlServer("OCR Soak Test", stopTestChannel)
+
 	// Test Loop
 	roundNumber := 1
+	newRoundTrigger, cancelFunc := context.WithTimeout(context.Background(), 0)
 	for {
 		select {
-		case <-testContext.Done():
-			log.Info().Msg("Soak Test Complete")
+		case <-stopTestChannel:
+			cancelFunc()
+			t.TestReporter.UnexpectedShutdown = true
+			log.Warn().Msg("Received shut down signal. Soak test stopping early")
 			return
-		default:
+		case <-testContext.Done():
+			cancelFunc()
+			log.Info().Msg("Soak test complete")
+			return
+		case <-newRoundTrigger.Done():
 			log.Info().Int("Round Number", roundNumber).Msg("Starting new Round")
 			adapterValue := t.changeAdapterValue(roundNumber)
 			t.waitForRoundToComplete(roundNumber)
 			t.checkLatestRound(adapterValue, roundNumber)
 			roundNumber++
-			if t.Inputs.TimeBetweenRounds > 0 {
-				log.Info().Str("Time", fmt.Sprint(t.Inputs.TimeBetweenRounds)).Msg("Waiting between OCR Rounds")
-				time.Sleep(t.Inputs.TimeBetweenRounds)
-			}
-
+			log.Info().Str("Time", fmt.Sprint(t.Inputs.TimeBetweenRounds)).Msg("Waiting between OCR Rounds")
+			newRoundTrigger, cancelFunc = context.WithTimeout(context.Background(), t.Inputs.TimeBetweenRounds)
 		}
 	}
 }

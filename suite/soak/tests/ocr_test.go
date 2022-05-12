@@ -38,7 +38,7 @@ var _ = Describe("OCR Soak Test @soak-ocr", func() {
 				ChainlinkNodeFunding: big.NewFloat(10),
 				ExpectedRoundTime:    time.Minute,
 				RoundTimeout:         time.Minute * 10,
-				TimeBetweenRounds:    time.Minute * 10,
+				TimeBetweenRounds:    time.Minute * 1,
 				StartingAdapterValue: 5,
 			})
 			ocrSoakTest.Setup(env)
