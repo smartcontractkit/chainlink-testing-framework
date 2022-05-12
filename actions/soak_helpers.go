@@ -19,7 +19,7 @@ import (
 func TestSoak(projectRoot, networksConfigPath string, t *testing.T, envConfig *environment.Config) {
 	LoadConfigs(projectRoot)
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
-	exePath, remoteConfig := buildGoTests(t)
+	exePath, remoteConfig := buildGoTests(projectRoot, t)
 
 	env, err := environment.DeployLongTestEnvironment(
 		envConfig,
@@ -40,7 +40,7 @@ func TestSoak(projectRoot, networksConfigPath string, t *testing.T, envConfig *e
 }
 
 // Builds the go tests to run, and returns a path to it, along with remote config options
-func buildGoTests(prjectRoot string, t *testing.T) (string, *config.RemoteRunnerConfig) {
+func buildGoTests(projectRoot string, t *testing.T) (string, *config.RemoteRunnerConfig) {
 	exePath := filepath.Join(utils.ProjectRoot, "remote.test")
 	remoteConfig, err := config.ReadWriteRemoteRunnerConfig(projectRoot)
 	require.NoError(t, err)
