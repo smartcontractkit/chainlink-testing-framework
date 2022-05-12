@@ -63,6 +63,8 @@ type Chainlink interface {
 
 	CreateVRFKey() (*VRFKey, error)
 	ReadVRFKeys() (*VRFKeys, error)
+	ExportVRFKey(keyId string) (*VRFExportKey, error)
+	ImportVRFKey(vrfExportKey *VRFExportKey) (*VRFKey, error)
 
 	CreateCSAKey() (*CSAKey, error)
 	ReadCSAKeys() (*CSAKeys, error)
@@ -412,6 +414,22 @@ func (c *chainlink) CreateVRFKey() (*VRFKey, error) {
 	vrfKey := &VRFKey{}
 	log.Info().Str("Node URL", c.Config.URL).Msg("Creating VRF Key")
 	_, err := c.do(http.MethodPost, "/v2/keys/vrf", nil, vrfKey, http.StatusOK)
+	return vrfKey, err
+}
+
+// ExportVRFKey exports a vrf key by key id
+func (c *chainlink) ExportVRFKey(keyId string) (*VRFExportKey, error) {
+	vrfExportKey := &VRFExportKey{}
+	log.Info().Str("Node URL", c.Config.URL).Str("ID", keyId).Msg("Exporting VRF Key")
+	_, err := c.do(http.MethodPost, fmt.Sprintf("/v2/keys/vrf/export/%s", keyId), nil, vrfExportKey, http.StatusOK)
+	return vrfExportKey, err
+}
+
+// ImportVRFKey import vrf key
+func (c *chainlink) ImportVRFKey(vrfExportKey *VRFExportKey) (*VRFKey, error) {
+	vrfKey := &VRFKey{}
+	log.Info().Str("Node URL", c.Config.URL).Str("ID", vrfExportKey.VrfKey.Address).Msg("Importing VRF Key")
+	_, err := c.do(http.MethodPost, "/v2/keys/vrf/import", vrfExportKey, vrfKey, http.StatusOK)
 	return vrfKey, err
 }
 
