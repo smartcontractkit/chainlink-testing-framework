@@ -41,11 +41,11 @@ gauntlet/yarn.lock
 suite/soak/*.json
 suite/soak/*.yaml
 
-# File generated when looking to run remote tests
-remote_runner_config.yaml
-
 # Common report file format
 *.csv
+
+# File generated when looking to run remote tests
+remote_runner_config.yaml
 
 # docs
 docs/_site/

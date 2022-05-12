@@ -193,7 +193,7 @@ func (n *NetworkRegistry) RegisterNetwork(networkType string, fn NewEVMClientFn,
 
 // GetNetworks returns a networks object with all the BlockchainClient(s) initialized
 func (n *NetworkRegistry) GetNetworks(env *environment.Environment) (*Networks, error) {
-	nc := config.ProjectNetworkSettings
+	nc := config.ProjectConfig.NetworksConfig
 	var clients []EVMClient
 	for _, networkName := range nc.SelectedNetworks {
 		networkSettings, ok := nc.NetworkSettings[networkName]

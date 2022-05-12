@@ -10,6 +10,8 @@ var (
 	_, b, _, _ = runtime.Caller(0)
 	// ProjectRoot Root folder of this project
 	ProjectRoot = filepath.Join(filepath.Dir(b), "/..")
+	// SuiteRoot test suite root
+	SuiteRoot = filepath.Join(ProjectRoot, "suite")
 	// PresetRoot root folder for environments preset
 	PresetRoot = filepath.Join(ProjectRoot, "preset")
 	// ContractsDir path to our contracts
@@ -17,5 +19,5 @@ var (
 	// EthereumContractsDir path to our ethereum contracts
 	EthereumContractsDir = filepath.Join(ContractsDir, "ethereum")
 	// RemoteRunnerConfigLocation is the path to the remote runner config
-	RemoteRunnerConfigLocation = filepath.Join(ProjectRoot, "remote_runner_config.yaml")
+	RemoteRunnerConfigLocation = filepath.Join(SuiteRoot, "remote_runner_config.yaml")
 )
