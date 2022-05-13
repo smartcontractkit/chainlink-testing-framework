@@ -1287,6 +1287,19 @@ func (v *EthereumKeeperRegistry) RegisterUpkeep(target string, gasLimit uint32, 
 	return v.client.ProcessTransaction(tx)
 }
 
+// CancelUpkeep cancels the given upkeep ID
+func (v *EthereumKeeperRegistry) CancelUpkeep(id *big.Int) error {
+	opts, err := v.client.TransactionOpts(v.client.GetDefaultWallet())
+	if err != nil {
+		return err
+	}
+	tx, err := v.registry.CancelUpkeep(opts, id)
+	if err != nil {
+		return err
+	}
+	return v.client.ProcessTransaction(tx)
+}
+
 // GetKeeperList get list of all registered keeper addresses
 func (v *EthereumKeeperRegistry) GetKeeperList(ctx context.Context) ([]string, error) {
 	opts := &bind.CallOpts{
