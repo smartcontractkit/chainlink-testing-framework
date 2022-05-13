@@ -15,7 +15,6 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/testsetups"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 	"github.com/smartcontractkit/helmenv/environment"
-	"github.com/smartcontractkit/helmenv/tools"
 )
 
 var _ = Describe("Profiling suite @profile", func() {
@@ -36,7 +35,6 @@ var _ = Describe("Profiling suite @profile", func() {
 					"chainlink-profiling",
 					config.GethNetworks()...,
 				),
-				tools.ChartsRoot,
 			)
 			Expect(err).ShouldNot(HaveOccurred(), "Environment deployment shouldn't fail")
 			err = testEnvironment.ConnectAll()

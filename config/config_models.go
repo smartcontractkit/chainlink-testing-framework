@@ -7,6 +7,7 @@ import (
 
 	"github.com/kelseyhightower/envconfig"
 	"github.com/rs/zerolog/log"
+	"github.com/smartcontractkit/helmenv/environment"
 	"gopkg.in/yaml.v2"
 )
 
@@ -14,14 +15,14 @@ import (
 type Config struct {
 	FrameworkConfig    *FrameworkConfig    `envconfig:"FRAMEWORK_CONFIG_FILE" default:"../framework.yaml"`
 	NetworksConfig     *NetworksConfig     `envconfig:"NETWORKS_CONFIG_FILE" default:"../networks.yaml"`
-	RemoteRunnerConfig *RemoteRunnerConfig `evconfig:"REMOTE_RUNNER_CONFIG"`
+	RemoteRunnerConfig *RemoteRunnerConfig `envconfig:"REMOTE_RUNNER_CONFIG_FILE"`
+	EnvironmentConfig  *environment.Config `envconfig:"ENVIRONMENT_CONFIG_FILE"`
 }
 
 // FrameworkConfig common framework config
 type FrameworkConfig struct {
 	KeepEnvironments string         `envconfig:"KEEP_ENVIRONMENTS" yaml:"keep_environments"`
 	Logging          *LoggingConfig `envconfig:"LOGGING" yaml:"logging"`
-	EnvironmentFile  string         `envconfig:"ENVIRONMENT_FILE" yaml:"environment_file"`
 	ChainlinkImage   string         `yaml:"chainlink_image" envconfig:"CHAINLINK_IMAGE"`
 	ChainlinkVersion string         `yaml:"chainlink_version" envconfig:"CHAINLINK_VERSION"`
 	// ChainlinkEnvValues uses interface{} as the value because it's needed for proper helmchart merges
@@ -91,9 +92,9 @@ type RemoteRunnerConfig struct {
 
 func (m *RemoteRunnerConfig) Decode(path string) error {
 	// Marshal YAML first, then "envconfig" tags of that struct got marshalled
-	if err := unmarshalYAML(path, &m); err != nil {
-		return err
-	}
+	//if err := unmarshalYAML(path, &m); err != nil {
+	//	return err
+	//}
 	return envconfig.Process("", m)
 }
 

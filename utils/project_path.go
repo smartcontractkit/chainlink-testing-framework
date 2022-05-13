@@ -12,6 +12,8 @@ var (
 	ProjectRoot = filepath.Join(filepath.Dir(b), "/..")
 	// SuiteRoot test suite root
 	SuiteRoot = filepath.Join(ProjectRoot, "suite")
+	// SoakRoot test suite soak root
+	SoakRoot = filepath.Join(SuiteRoot, "soak")
 	// PresetRoot root folder for environments preset
 	PresetRoot = filepath.Join(ProjectRoot, "preset")
 	// ContractsDir path to our contracts

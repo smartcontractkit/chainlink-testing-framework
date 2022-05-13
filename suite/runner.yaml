@@ -1,0 +1,7 @@
+# any ginkgo tag to run, you can find them in Describe string in tests
+# you can use that file to start the tests locally or override vars from env:
+# TEST_REGEX="@soak-ocr" SLACK_API_KEY="" SLACK_CHANNEL="" SLACK_USER_ID="" REMOTE_RUNNER_CONFIG_FILE="../runner.yaml"
+test_regex: '@soak-ocr'
+slack_api_key:
+slack_channel:
+slack_user_id:
