@@ -25,7 +25,7 @@ func TestSoak(t *testing.T) {
 	env, err := environment.DeployLongTestEnvironment(
 		environment.NewChainlinkConfig(
 			environment.ChainlinkReplicas(6, config.ChainlinkVals()),
-			"chainlink-soak",
+			"metis-mainnet-soak",
 			config.GethNetworks()...,
 		),
 		tools.ChartsRoot,

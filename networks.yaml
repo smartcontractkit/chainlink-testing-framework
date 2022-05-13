@@ -187,7 +187,7 @@ networks:
             - klaytn_key
     metis_testnet:
         <<: *common_ethereum_testnet
-        name: "Metis mainnet"
+        name: "Metis testnet"
         type: "metis_testnet"
         chain_id: 588
         urls:

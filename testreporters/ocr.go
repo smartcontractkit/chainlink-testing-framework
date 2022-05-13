@@ -74,7 +74,6 @@ func (o *OCRSoakTestReporter) WriteReport(folderLocation string) error {
 			Str("Average Round Time", fmt.Sprint(report.averageRoundTime)).
 			Str("Longest Round Time", fmt.Sprint(report.LongestRoundTime)).
 			Str("Shortest Round Time", fmt.Sprint(report.ShortestRoundTime)).
-			Str("Total Rounds Outside of Expected Time", fmt.Sprint(report.ExpectedRoundtime)).
 			Uint("Average Round Blocks", report.averageRoundBlocks).
 			Uint("Longest Round Blocks", report.LongestRoundBlocks).
 			Uint("Shortest Round Blocks", report.ShortestRoundBlocks).

@@ -814,7 +814,7 @@ func (o *RunlogRoundConfirmer) Wait() error {
 			o.cancel()
 			return nil
 		case <-o.context.Done():
-			return fmt.Errorf("timeout waiting for OCR round to confirm: %d", o.roundID)
+			return fmt.Errorf("timeout waiting for runlog round to confirm: %d", o.roundID)
 		}
 	}
 }
