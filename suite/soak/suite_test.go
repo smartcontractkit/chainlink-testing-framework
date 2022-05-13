@@ -1,4 +1,4 @@
-package soak_test
+package soak_runner_test
 
 //revive:disable:dot-imports
 import (

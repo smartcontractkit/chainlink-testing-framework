@@ -1,4 +1,4 @@
-package soak
+package soak_runner
 
 //revive:disable:dot-imports
 import (
@@ -36,7 +36,7 @@ var _ = Describe("OCR Soak Test @soak-ocr", func() {
 				ChainlinkNodeFunding: big.NewFloat(10),
 				ExpectedRoundTime:    time.Minute,
 				RoundTimeout:         time.Minute * 10,
-				TimeBetweenRounds:    time.Minute * 1,
+				TimeBetweenRounds:    50 * time.Millisecond,
 				StartingAdapterValue: 5,
 			})
 			ocrSoakTest.Setup(env)

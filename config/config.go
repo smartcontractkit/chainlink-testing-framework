@@ -98,7 +98,6 @@ func LoadFromEnv() error {
 	if err := envconfig.Process("", &ProjectConfig); err != nil {
 		return err
 	}
-	//spew.Dump(cfg)
 	log.Logger = log.Logger.Level(zerolog.Level(ProjectConfig.FrameworkConfig.Logging.Level))
 	return nil
 }
