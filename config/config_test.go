@@ -81,23 +81,3 @@ func TestChainlinkValues(t *testing.T) {
 		},
 	}, loadedVals)
 }
-
-//func TestRemoteRunnerConfig(t *testing.T) {
-//	t.Parallel()
-//
-//	// Check if the config file already exists, if so, delete it
-//	if _, err := os.Stat(utils.RemoteRunnerConfigLocation); err == nil {
-//		err := os.Remove(utils.RemoteRunnerConfigLocation)
-//		require.NoError(t, err)
-//	} else if !errors.Is(err, os.ErrNotExist) {
-//		require.NoError(t, err)
-//	}
-//	_, err := config.ReadWriteRemoteRunnerConfig()
-//	require.Error(t, err, "Wrote an example config file at %s. Please fill in values and log back in", utils.RemoteRunnerConfigLocation)
-//	require.FileExists(t, utils.RemoteRunnerConfigLocation)
-//
-//	remoteConfig, err := config.ReadWriteRemoteRunnerConfig()
-//	require.NoError(t, err)
-//	require.Equal(t, "@soak-ocr", remoteConfig.TestRegex)
-//	require.Equal(t, "abcdefg", remoteConfig.SlackAPIKey)
-//}

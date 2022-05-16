@@ -22,7 +22,7 @@ var _ = Describe("OCR Soak Setup @setup-soak", func() {
 		env, err := environment.DeployRemoteRunnerEnvironment(
 			environment.NewChainlinkConfig(
 				environment.ChainlinkReplicas(6, config.ChainlinkVals()),
-				"zchainlink-soak",
+				"chainlink-soak",
 				config.GethNetworks()...,
 			),
 			"@soak-ocr", // Name of the test to run
