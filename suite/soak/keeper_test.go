@@ -1,4 +1,4 @@
-package soak
+package soak_runner
 
 //revive:disable:dot-imports
 import (
@@ -11,7 +11,6 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/contracts"
 	"github.com/smartcontractkit/chainlink-testing-framework/testsetups"
 	"github.com/smartcontractkit/helmenv/environment"
-	"github.com/smartcontractkit/helmenv/tools"
 )
 
 var _ = Describe("Keeper performance suite @block-time-keeper", func() {
@@ -24,7 +23,6 @@ var _ = Describe("Keeper performance suite @block-time-keeper", func() {
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
 			env, err = environment.DeployOrLoadEnvironmentFromConfigFile(
-				tools.ChartsRoot,
 				"/root/test-env.json", // Default location for the soak-test-runner container
 			)
 			Expect(err).ShouldNot(HaveOccurred(), "Environment deployment shouldn't fail")
