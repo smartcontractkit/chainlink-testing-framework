@@ -1,4 +1,4 @@
-package soak_runner
+package soak
 
 //revive:disable:dot-imports
 import (
@@ -13,7 +13,7 @@ import (
 	"github.com/smartcontractkit/helmenv/environment"
 )
 
-var _ = Describe("Keeper performance suite @block-time-keeper", func() {
+var _ = Describe("Keeper block time soak test @soak-keeper-block-time", func() {
 	var (
 		err                 error
 		env                 *environment.Environment
