@@ -1,4 +1,4 @@
-package soak_test
+package soak_runner_test
 
 //revive:disable:dot-imports
 import (
@@ -10,6 +10,6 @@ import (
 )
 
 func Test_Suite(t *testing.T) {
-	actions.GinkgoSuite(".")
+	actions.GinkgoSuite()
 	RunSpecs(t, "Soak")
 }

@@ -1,49 +1,51 @@
 package config_test
 
 import (
-	"errors"
 	"os"
 	"testing"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
-	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 	"github.com/stretchr/testify/require"
 )
 
-func TestFrameworkConfig(t *testing.T) {
-	t.Parallel()
+func setEnvVars(t *testing.T) {
+	err := os.Setenv("FRAMEWORK_CONFIG_FILE", "./test_framework_config.yml")
+	require.NoError(t, err)
+	err = os.Setenv("NETWORKS_CONFIG_FILE", "./test_networks_config.yml")
+	require.NoError(t, err)
+}
 
-	cfg, err := config.LoadFrameworkConfig("./test_framework_config.yml")
+func TestFrameworkConfig(t *testing.T) {
+	setEnvVars(t)
+	err := config.LoadFromEnv()
 	require.NoError(t, err)
 
-	require.Equal(t, "testChainlinkImage", cfg.ChainlinkImage)
-	require.Equal(t, "testChainlinkVersion", cfg.ChainlinkVersion)
+	require.Equal(t, "testChainlinkImage", config.ProjectConfig.FrameworkConfig.ChainlinkImage)
+	require.Equal(t, "testChainlinkVersion", config.ProjectConfig.FrameworkConfig.ChainlinkVersion)
 
 	testEnvVals := map[string]interface{}{
 		"test_string_val": "someString",
 		"test_int_val":    420,
 	}
-	require.Equal(t, testEnvVals, cfg.ChainlinkEnvValues)
+	require.Equal(t, testEnvVals, config.ProjectConfig.FrameworkConfig.ChainlinkEnvValues)
 }
 
 func TestNetworkConfig(t *testing.T) {
-	t.Parallel()
-
-	cfg, err := config.LoadNetworksConfig("./test_networks_config.yml")
+	setEnvVars(t)
+	err := config.LoadFromEnv()
 	require.NoError(t, err)
-
-	require.Equal(t, "huxtable", cfg.SelectedNetworks[0])
+	require.Equal(t, "huxtable", config.ProjectConfig.NetworksConfig.SelectedNetworks[0])
 }
 
 func TestChainlinkValues(t *testing.T) {
 	t.Parallel()
 
-	config.ProjectFrameworkSettings = &config.FrameworkConfig{}
+	config.ProjectConfig.FrameworkConfig = &config.FrameworkConfig{}
 	loadedVals := config.ChainlinkVals()
 
 	require.Equal(t, map[string]interface{}{}, loadedVals)
 
-	config.ProjectFrameworkSettings = &config.FrameworkConfig{
+	config.ProjectConfig.FrameworkConfig = &config.FrameworkConfig{
 		ChainlinkImage:   "image",
 		ChainlinkVersion: "version",
 	}
@@ -58,7 +60,7 @@ func TestChainlinkValues(t *testing.T) {
 		},
 	}, loadedVals)
 
-	config.ProjectFrameworkSettings = &config.FrameworkConfig{
+	config.ProjectConfig.FrameworkConfig = &config.FrameworkConfig{
 		ChainlinkImage:   "image",
 		ChainlinkVersion: "version",
 		ChainlinkEnvValues: map[string]interface{}{
@@ -78,24 +80,4 @@ func TestChainlinkValues(t *testing.T) {
 			"env": "value",
 		},
 	}, loadedVals)
-}
-
-func TestRemoteRunnerConfig(t *testing.T) {
-	t.Parallel()
-
-	// Check if the config file already exists, if so, delete it
-	if _, err := os.Stat(utils.RemoteRunnerConfigLocation); err == nil {
-		err := os.Remove(utils.RemoteRunnerConfigLocation)
-		require.NoError(t, err)
-	} else if !errors.Is(err, os.ErrNotExist) {
-		require.NoError(t, err)
-	}
-	_, err := config.ReadWriteRemoteRunnerConfig()
-	require.Error(t, err, "Wrote an example config file at %s. Please fill in values and log back in", utils.RemoteRunnerConfigLocation)
-	require.FileExists(t, utils.RemoteRunnerConfigLocation)
-
-	remoteConfig, err := config.ReadWriteRemoteRunnerConfig()
-	require.NoError(t, err)
-	require.Equal(t, "@soak-ocr", remoteConfig.TestRegex)
-	require.Equal(t, "abcdefg", remoteConfig.SlackAPIKey)
 }
