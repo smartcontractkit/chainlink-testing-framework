@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-	"time"
 
 	"github.com/onsi/ginkgo/v2"
 	"github.com/rs/zerolog/log"
@@ -125,26 +124,11 @@ func (k *KeeperBlockTimeTestReporter) SendSlackNotification(slackClient *slack.C
 
 	testFailed := ginkgo.CurrentSpecReport().Failed()
 	headerText := ":white_check_mark: Keeper Block Time Test PASSED :white_check_mark:"
-	notificationBlocks := []slack.Block{}
 	if testFailed {
 		headerText = ":x: Keeper Block Time Test FAILED :x:"
 	}
-	notificationBlocks = append(notificationBlocks,
-		slack.NewHeaderBlock(slack.NewTextBlockObject("plain_text", headerText, true, false)))
-	notificationBlocks = append(notificationBlocks,
-		slack.NewContextBlock("context_block", slack.NewTextBlockObject("plain_text", k.namespace, false, false)))
-	notificationBlocks = append(notificationBlocks, slack.NewDividerBlock())
-	notificationBlocks = append(notificationBlocks, slack.NewSectionBlock(slack.NewTextBlockObject("mrkdwn",
-		fmt.Sprintf("Test ran for %s\nSummary CSV created on _remote-test-runner_ at _%s_\nNotifying <@%s>",
-			ginkgo.CurrentSpecReport().RunTime.Truncate(time.Second), k.keeperReportFile, slackUserID), false, true), nil, nil))
-	if testFailed {
-		notificationBlocks = append(notificationBlocks,
-			slack.NewHeaderBlock(slack.NewTextBlockObject("plain_text", "Error Trace", true, false)))
-		notificationBlocks = append(notificationBlocks, slack.NewDividerBlock())
-		notificationBlocks = append(notificationBlocks, slack.NewSectionBlock(
-			slack.NewTextBlockObject("plain_text", ginkgo.CurrentSpecReport().FailureMessage(), false, false), nil, nil))
-	}
-	ts, err := sendSlackMessage(slackClient, slack.MsgOptionBlocks(notificationBlocks...))
+	messageBlocks := commonSlackNotificationBlocks(slackClient, headerText, k.namespace, k.keeperReportFile, slackUserID, testFailed)
+	ts, err := sendSlackMessage(slackClient, slack.MsgOptionBlocks(messageBlocks...))
 	if err != nil {
 		return err
 	}

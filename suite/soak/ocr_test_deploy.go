@@ -32,6 +32,7 @@ var _ = Describe("OCR Soak Setup @setup-soak", func() {
 			filepath.Join(utils.SuiteRoot, "framework.yaml"),     // Path of the framework config
 			filepath.Join(utils.SuiteRoot, "networks.yaml"),      // Path to the networks config
 			exePath, // Path to the executable test file
+			nil,
 		)
 		Expect(err).ShouldNot(HaveOccurred())
 		log.Info().Str("Namespace", env.Namespace).

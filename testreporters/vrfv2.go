@@ -12,20 +12,15 @@ import (
 	"github.com/slack-go/slack"
 )
 
-type OCRSoakTestReporter struct {
-	Reports            map[string]*OCRSoakTestReport // contractAddress: Report
-	ExpectedRoundTime  time.Duration
-	UnexpectedShutdown bool
-
+type VRFV2SoakTestReporter struct {
+	Reports     map[string]*VRFV2SoakTestReport // contractAddress: Report
 	namespace   string
 	csvLocation string
 }
 
-type OCRSoakTestReport struct {
-	ContractAddress          string
-	TotalRounds              uint
-	ExpectedRoundtime        time.Duration
-	LongerThanExpectedRounds []*LongerThanExpectedRound
+type VRFV2SoakTestReport struct {
+	ContractAddress string
+	TotalRounds     uint
 
 	averageRoundTime  time.Duration
 	LongestRoundTime  time.Duration
@@ -35,37 +30,25 @@ type OCRSoakTestReport struct {
 	averageRoundBlocks  uint
 	LongestRoundBlocks  uint
 	ShortestRoundBlocks uint
-	totalBlockLength    uint
-}
-
-type LongerThanExpectedRound struct {
-	RoundID     uint
-	RoundTime   time.Duration
-	BlockLength uint
-	Timestamp   time.Time
+	totalBlockLengths   uint
 }
 
 // SetNamespace sets the namespace of the report for clean reports
-func (o *OCRSoakTestReporter) SetNamespace(namespace string) {
+func (o *VRFV2SoakTestReporter) SetNamespace(namespace string) {
 	o.namespace = namespace
 }
 
 // WriteReport writes OCR Soak test report to logs
-func (o *OCRSoakTestReporter) WriteReport(folderLocation string) error {
+func (o *VRFV2SoakTestReporter) WriteReport(folderLocation string) error {
 	for _, report := range o.Reports {
-		report.averageRoundBlocks = report.totalBlockLength / report.TotalRounds
-		report.averageRoundTime = time.Duration(report.totalRoundTimes.Nanoseconds() / int64(report.TotalRounds)).Round(time.Second)
-
-		report.averageRoundTime = report.averageRoundTime.Round(time.Second)
-		report.LongestRoundTime = report.LongestRoundTime.Round(time.Second)
-		report.ShortestRoundTime = report.ShortestRoundTime.Round(time.Second)
-		report.totalRoundTimes = report.totalRoundTimes.Round(time.Second)
+		report.averageRoundBlocks = report.totalBlockLengths / report.TotalRounds
+		report.averageRoundTime = time.Duration(report.totalRoundTimes.Nanoseconds() / int64(report.TotalRounds))
 	}
 	if err := o.writeCSV(folderLocation); err != nil {
 		return err
 	}
 
-	log.Info().Msg("OCR Soak Test Report")
+	log.Info().Msg("VRFV2 Soak Test Report")
 	log.Info().Msg("--------------------")
 	for contractAddress, report := range o.Reports {
 		log.Info().
@@ -74,7 +57,6 @@ func (o *OCRSoakTestReporter) WriteReport(folderLocation string) error {
 			Str("Average Round Time", fmt.Sprint(report.averageRoundTime)).
 			Str("Longest Round Time", fmt.Sprint(report.LongestRoundTime)).
 			Str("Shortest Round Time", fmt.Sprint(report.ShortestRoundTime)).
-			Str("Total Rounds Outside of Expected Time", fmt.Sprint(report.ExpectedRoundtime)).
 			Uint("Average Round Blocks", report.averageRoundBlocks).
 			Uint("Longest Round Blocks", report.LongestRoundBlocks).
 			Uint("Shortest Round Blocks", report.ShortestRoundBlocks).
@@ -85,15 +67,15 @@ func (o *OCRSoakTestReporter) WriteReport(folderLocation string) error {
 }
 
 // SendNotification sends a slack message to a slack webhook and uploads test artifacts
-func (o *OCRSoakTestReporter) SendSlackNotification(slackClient *slack.Client) error {
+func (o *VRFV2SoakTestReporter) SendSlackNotification(slackClient *slack.Client) error {
 	if slackClient == nil {
 		slackClient = slack.New(slackAPIKey)
 	}
 
 	testFailed := ginkgo.CurrentSpecReport().Failed()
-	headerText := ":white_check_mark: OCR Soak Test PASSED :white_check_mark:"
+	headerText := ":white_check_mark: VRFV2 Soak Test PASSED :white_check_mark:"
 	if testFailed {
-		headerText = ":x: OCR Soak Test FAILED :x:"
+		headerText = ":x: VRFV2 Soak Test FAILED :x:"
 	} else if o.UnexpectedShutdown {
 		headerText = ":warning: OCR Soak Test was Unexpectedly Shut Down :warning:"
 	}
@@ -112,10 +94,11 @@ func (o *OCRSoakTestReporter) SendSlackNotification(slackClient *slack.Client) e
 		Channels:        []string{slackChannel},
 		ThreadTimestamp: ts,
 	})
+	return nil
 }
 
 // UpdateReport updates the report based on the latest info
-func (o *OCRSoakTestReport) UpdateReport(roundTime time.Duration, blockLength uint) {
+func (o *VRFV2SoakTestReport) UpdateReport(roundTime time.Duration, blockLength uint) {
 	// Updates min values from default 0
 	if o.ShortestRoundBlocks == 0 {
 		o.ShortestRoundBlocks = blockLength
@@ -125,16 +108,7 @@ func (o *OCRSoakTestReport) UpdateReport(roundTime time.Duration, blockLength ui
 	}
 	o.TotalRounds++
 	o.totalRoundTimes += roundTime
-	o.totalBlockLength += blockLength
-
-	if roundTime > o.ExpectedRoundtime {
-		o.LongerThanExpectedRounds = append(o.LongerThanExpectedRounds, &LongerThanExpectedRound{
-			RoundID:     o.TotalRounds,
-			RoundTime:   roundTime,
-			BlockLength: blockLength,
-			Timestamp:   time.Now(),
-		})
-	}
+	o.totalBlockLengths += blockLength
 	if roundTime >= o.LongestRoundTime {
 		o.LongestRoundTime = roundTime
 	}
@@ -150,9 +124,9 @@ func (o *OCRSoakTestReport) UpdateReport(roundTime time.Duration, blockLength ui
 }
 
 // writes a CSV report on the test runner
-func (o *OCRSoakTestReporter) writeCSV(folderLocation string) error {
-	reportLocation := filepath.Join(folderLocation, "./ocr_soak_report.csv")
-	log.Debug().Str("Location", reportLocation).Msg("Writing OCR report")
+func (o *VRFV2SoakTestReporter) writeCSV(folderLocation string) error {
+	reportLocation := filepath.Join(folderLocation, "./vrfv2_soak_report.csv")
+	log.Debug().Str("Location", reportLocation).Msg("Writing VRFV2 report")
 	o.csvLocation = reportLocation
 	ocrReportFile, err := os.Create(reportLocation)
 	if err != nil {
@@ -161,8 +135,8 @@ func (o *OCRSoakTestReporter) writeCSV(folderLocation string) error {
 	defer ocrReportFile.Close()
 
 	ocrReportWriter := csv.NewWriter(ocrReportFile)
-
 	err = ocrReportWriter.Write([]string{
+		"Contract Index",
 		"Contract Address",
 		"Total Rounds Processed",
 		"Average Round Time",
@@ -175,8 +149,9 @@ func (o *OCRSoakTestReporter) writeCSV(folderLocation string) error {
 	if err != nil {
 		return err
 	}
-	for _, report := range o.Reports {
+	for contractIndex, report := range o.Reports {
 		err = ocrReportWriter.Write([]string{
+			fmt.Sprint(contractIndex),
 			report.ContractAddress,
 			fmt.Sprint(report.TotalRounds),
 			fmt.Sprint(report.averageRoundTime),
@@ -190,43 +165,6 @@ func (o *OCRSoakTestReporter) writeCSV(folderLocation string) error {
 			return err
 		}
 	}
-
-	err = ocrReportWriter.Write([]string{})
-	if err != nil {
-		return err
-	}
-
-	err = ocrReportWriter.Write([]string{fmt.Sprintf("Rounds That Took Longer Than %s", o.ExpectedRoundTime)})
-	if err != nil {
-		return err
-	}
-
-	err = ocrReportWriter.Write([]string{
-		"Contract Address",
-		"Timestamp",
-		"Round ID",
-		"Round Time",
-		"Block Length",
-	})
-	if err != nil {
-		return err
-	}
-
-	for _, report := range o.Reports {
-		for _, longerThanExpected := range report.LongerThanExpectedRounds {
-			err = ocrReportWriter.Write([]string{
-				report.ContractAddress,
-				fmt.Sprint(longerThanExpected.Timestamp),
-				fmt.Sprint(longerThanExpected.RoundID),
-				longerThanExpected.RoundTime.String(),
-				fmt.Sprint(longerThanExpected.BlockLength),
-			})
-			if err != nil {
-				return err
-			}
-		}
-	}
-
 	ocrReportWriter.Flush()
 
 	log.Info().Str("Location", reportLocation).Msg("Wrote CSV file")
