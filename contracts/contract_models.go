@@ -218,6 +218,7 @@ type KeeperRegistry interface {
 	SetKeepers(keepers []string, payees []string) error
 	GetKeeperList(ctx context.Context) ([]string, error)
 	RegisterUpkeep(target string, gasLimit uint32, admin string, checkData []byte) error
+	CancelUpkeep(id *big.Int) error
 }
 
 type KeeperConsumer interface {
