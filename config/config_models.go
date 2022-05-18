@@ -92,6 +92,10 @@ type RemoteRunnerConfig struct {
 }
 
 func (m *RemoteRunnerConfig) Decode(path string) error {
+	// Marshal YAML first, then "envconfig" tags of that struct got marshalled
+	if err := unmarshalYAML(path, &m); err != nil {
+		return err
+	}
 	return envconfig.Process("", m)
 }
 
