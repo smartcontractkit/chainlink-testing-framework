@@ -34,6 +34,7 @@ var _ = Describe("Keeper block time soak test @soak-keeper-block-time", func() {
 				testsetups.KeeperBlockTimeTestInputs{
 					NumberOfContracts: 50,
 					KeeperRegistrySettings: &contracts.KeeperRegistrySettings{
+						RegistryVersion:      contracts.RegistryVersion_1_1,
 						PaymentPremiumPPB:    uint32(200000000),
 						BlockCountPerTurn:    big.NewInt(3),
 						CheckGasLimit:        uint32(2500000),

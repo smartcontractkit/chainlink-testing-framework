@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	. "github.com/onsi/gomega"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/client"
@@ -41,9 +42,10 @@ func CreateKeeperJobs(chainlinkNodes []client.Chainlink, keeperRegistry contract
 	}
 }
 
-// DeployKeeperContracts deploys a number of basic keeper contracts with an update interval of 5
+// DeployKeeperContracts deploys keeper registry and a number of basic upkeep contracts with an update interval of 5
 func DeployKeeperContracts(
-	numberOfContracts int,
+	registryVersion contracts.RegistryVersion,
+	numberOfUpkeeps int,
 	linkToken contracts.LinkToken,
 	contractDeployer contracts.ContractDeployer,
 	networks *blockchain.Networks,
@@ -56,6 +58,7 @@ func DeployKeeperContracts(
 	Expect(err).ShouldNot(HaveOccurred(), "Failed waiting for mock feeds to deploy")
 
 	registrySettings := contracts.KeeperRegistrySettings{
+		RegistryVersion:      registryVersion,
 		PaymentPremiumPPB:    uint32(200000000),
 		BlockCountPerTurn:    big.NewInt(3),
 		CheckGasLimit:        uint32(2500000),
@@ -67,24 +70,24 @@ func DeployKeeperContracts(
 	registry := DeployKeeperRegistry(&registrySettings, linkToken, contractDeployer, networks, ef, gf)
 
 	// Fund the registry with 1 LINK * amount of KeeperConsumerPerformance contracts
-	err = linkToken.Transfer(registry.Address(), big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(int64(numberOfContracts))))
+	err = linkToken.Transfer(registry.Address(), big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(int64(numberOfUpkeeps))))
 	Expect(err).ShouldNot(HaveOccurred(), "Funding keeper registry contract shouldn't fail")
 
 	registrarSettings := contracts.KeeperRegistrarSettings{
 		AutoRegister:     true,
 		WindowSizeBlocks: uint32(6000000),
-		AllowedPerWindow: uint16(numberOfContracts),
+		AllowedPerWindow: uint16(numberOfUpkeeps),
 		RegistryAddr:     registry.Address(),
 		MinLinkJuels:     big.NewInt(0),
 	}
 	registrar := DeployKeeperRegistrar(linkToken, registrarSettings, contractDeployer, networks, registry)
 
-	upkeeps := DeployKeeperConsumers(contractDeployer, networks, numberOfContracts)
+	upkeeps := DeployKeeperConsumers(contractDeployer, networks, numberOfUpkeeps)
 	upkeepsAddresses := []string{}
 	for _, upkeep := range upkeeps {
 		upkeepsAddresses = append(upkeepsAddresses, upkeep.Address())
 	}
-	RegisterUpkeepContracts(linkToken, big.NewInt(9e18), networks, &registrySettings, registrar, numberOfContracts, upkeepsAddresses)
+	RegisterUpkeepContracts(linkToken, big.NewInt(9e18), networks, &registrySettings, registrar, numberOfUpkeeps, upkeepsAddresses)
 
 	return registry, upkeeps
 }
@@ -145,20 +148,42 @@ func DeployKeeperRegistry(
 	mockGasFeed contracts.MockGasFeed,
 ) contracts.KeeperRegistry {
 	var err error
-	registry, err := contractDeployer.DeployKeeperRegistry(
-		&contracts.KeeperRegistryOpts{
-			LinkAddr:             linkToken.Address(),
-			ETHFeedAddr:          mockLinkEthFeed.Address(),
-			GasFeedAddr:          mockGasFeed.Address(),
-			PaymentPremiumPPB:    registrySettings.PaymentPremiumPPB,
-			BlockCountPerTurn:    registrySettings.BlockCountPerTurn,
-			CheckGasLimit:        registrySettings.CheckGasLimit,
-			StalenessSeconds:     registrySettings.StalenessSeconds,
-			GasCeilingMultiplier: registrySettings.GasCeilingMultiplier,
-			FallbackGasPrice:     registrySettings.FallbackGasPrice,
-			FallbackLinkPrice:    registrySettings.FallbackLinkPrice,
-		},
-	)
+	var registry contracts.KeeperRegistry
+	switch registrySettings.RegistryVersion {
+	case contracts.RegistryVersion_1_0, contracts.RegistryVersion_1_1:
+		registry, err = contractDeployer.DeployKeeperRegistry(
+			&contracts.KeeperRegistryOpts{
+				LinkAddr:             linkToken.Address(),
+				ETHFeedAddr:          mockLinkEthFeed.Address(),
+				GasFeedAddr:          mockGasFeed.Address(),
+				PaymentPremiumPPB:    registrySettings.PaymentPremiumPPB,
+				BlockCountPerTurn:    registrySettings.BlockCountPerTurn,
+				CheckGasLimit:        registrySettings.CheckGasLimit,
+				StalenessSeconds:     registrySettings.StalenessSeconds,
+				GasCeilingMultiplier: registrySettings.GasCeilingMultiplier,
+				FallbackGasPrice:     registrySettings.FallbackGasPrice,
+				FallbackLinkPrice:    registrySettings.FallbackLinkPrice,
+			},
+		)
+	case contracts.RegistryVersion_1_2:
+		registry, err = contractDeployer.DeployKeeperRegistry(
+			&contracts.KeeperRegistryOpts{
+				LinkAddr:             linkToken.Address(),
+				ETHFeedAddr:          mockLinkEthFeed.Address(),
+				GasFeedAddr:          mockGasFeed.Address(),
+				PaymentPremiumPPB:    registrySettings.PaymentPremiumPPB,
+				BlockCountPerTurn:    registrySettings.BlockCountPerTurn,
+				CheckGasLimit:        registrySettings.CheckGasLimit,
+				StalenessSeconds:     registrySettings.StalenessSeconds,
+				GasCeilingMultiplier: registrySettings.GasCeilingMultiplier,
+				FallbackGasPrice:     registrySettings.FallbackGasPrice,
+				FallbackLinkPrice:    registrySettings.FallbackLinkPrice,
+			},
+		)
+	default:
+		err = errors.Errorf("Keeper registry version %d is not supported", registrySettings.RegistryVersion)
+	}
+
 	Expect(err).ShouldNot(HaveOccurred(), "Deploying keeper registry shouldn't fail")
 	err = networks.Default.WaitForEvents()
 	Expect(err).ShouldNot(HaveOccurred(), "Failed waiting for keeper registry to deploy")

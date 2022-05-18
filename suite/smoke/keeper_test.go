@@ -65,6 +65,7 @@ var _ = Describe("Keeper suite @keeper", func() {
 			Expect(err).ShouldNot(HaveOccurred(), "Deploying Link Token Contract shouldn't fail")
 
 			r, consumers := actions.DeployKeeperContracts(
+				contracts.RegistryVersion_1_1,
 				1,
 				linkToken,
 				contractDeployer,

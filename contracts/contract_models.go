@@ -208,6 +208,14 @@ type UpkeepRegistrar interface {
 	Fund(ethAmount *big.Float) error
 }
 
+type RegistryVersion int32
+
+const (
+	RegistryVersion_1_0 RegistryVersion = iota
+	RegistryVersion_1_1
+	RegistryVersion_1_2
+)
+
 type KeeperRegistry interface {
 	Address() string
 	Fund(ethAmount *big.Float) error
@@ -267,6 +275,7 @@ type KeeperRegistryOpts struct {
 
 // KeeperRegistrySettings represents the fine tuning settings for each upkeep contract
 type KeeperRegistrySettings struct {
+	RegistryVersion      RegistryVersion
 	PaymentPremiumPPB    uint32   // payment premium rate oracles receive on top of being reimbursed for gas, measured in parts per billion
 	BlockCountPerTurn    *big.Int // number of blocks each oracle has during their turn to perform upkeep before it will be the next keeper's turn to submit
 	CheckGasLimit        uint32   // gas limit when checking for upkeep
