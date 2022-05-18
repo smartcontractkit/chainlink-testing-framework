@@ -17,9 +17,10 @@ import (
 )
 
 // Builds the go tests to run, and returns a path to it, along with remote config options
-func BuildGoTests() string {
-	exePath := filepath.Join(utils.ProjectRoot, "remote.test")
-	compileCmd := exec.Command("go", "test", "-c", utils.SoakRoot, "-o", exePath) // #nosec G204
+func BuildGoTests(projectRootPath, soakRootPath string) string {
+	// exePath := filepath.Join(utils.ProjectRoot, "remote.test")
+	exePath := filepath.Join(projectRootPath, "remote.test")
+	compileCmd := exec.Command("go", "test", "-c", soakRootPath, "-o", exePath) // #nosec G204
 	compileCmd.Env = os.Environ()
 	compileCmd.Env = append(compileCmd.Env, "CGO_ENABLED=0", "GOOS=linux", "GOARCH=amd64")
 
@@ -38,7 +39,7 @@ func BuildGoTests() string {
 
 func RunSoakTest(testTag, namespacePrefix string, chainlinkReplicas int) {
 	actions.LoadConfigs()
-	exePath := BuildGoTests()
+	exePath := BuildGoTests(utils.ProjectRoot, utils.SoakRoot)
 
 	env, err := environment.DeployRemoteRunnerEnvironment(
 		environment.NewChainlinkConfig(
