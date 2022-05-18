@@ -76,8 +76,6 @@ func (o *VRFV2SoakTestReporter) SendSlackNotification(slackClient *slack.Client)
 	headerText := ":white_check_mark: VRFV2 Soak Test PASSED :white_check_mark:"
 	if testFailed {
 		headerText = ":x: VRFV2 Soak Test FAILED :x:"
-	} else if o.UnexpectedShutdown {
-		headerText = ":warning: OCR Soak Test was Unexpectedly Shut Down :warning:"
 	}
 	messageBlocks := commonSlackNotificationBlocks(slackClient, headerText, o.namespace, o.csvLocation, slackUserID, testFailed)
 	ts, err := sendSlackMessage(slackClient, slack.MsgOptionBlocks(messageBlocks...))
@@ -86,15 +84,14 @@ func (o *VRFV2SoakTestReporter) SendSlackNotification(slackClient *slack.Client)
 	}
 
 	return uploadSlackFile(slackClient, slack.FileUploadParameters{
-		Title:           fmt.Sprintf("OCR Soak Test Report %s", o.namespace),
+		Title:           fmt.Sprintf("VRFV2 Soak Test Report %s", o.namespace),
 		Filetype:        "csv",
-		Filename:        fmt.Sprintf("ocr_soak_%s.csv", o.namespace),
+		Filename:        fmt.Sprintf("vrfv2_soak_%s.csv", o.namespace),
 		File:            o.csvLocation,
-		InitialComment:  fmt.Sprintf("OCR Soak Test Report %s.", o.namespace),
+		InitialComment:  fmt.Sprintf("VRFV2 Soak Test Report %s.", o.namespace),
 		Channels:        []string{slackChannel},
 		ThreadTimestamp: ts,
 	})
-	return nil
 }
 
 // UpdateReport updates the report based on the latest info
