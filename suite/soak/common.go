@@ -36,7 +36,7 @@ func buildGoTests() string {
 	return exePath
 }
 
-func runSoakTest(testTag, namespacePrefix string, chainlinkReplicas int) {
+func runSoakTest(testTag, namespacePrefix string, chainlinkReplicas int, customEnvVars []string) {
 	actions.LoadConfigs()
 	exePath := buildGoTests()
 
@@ -52,7 +52,8 @@ func runSoakTest(testTag, namespacePrefix string, chainlinkReplicas int) {
 		config.ProjectConfig.RemoteRunnerConfig.SlackUserID,  // Slack user to notify on completion
 		filepath.Join(utils.SuiteRoot, "framework.yaml"),     // Path of the framework config
 		filepath.Join(utils.SuiteRoot, "networks.yaml"),      // Path to the networks config
-		exePath, // Path to the executable test file
+		exePath,       // Path to the executable test file
+		customEnvVars, // custom environment variables needed for the test, use nil if none are needed
 	)
 	Expect(err).ShouldNot(HaveOccurred())
 	log.Info().Str("Namespace", env.Namespace).
