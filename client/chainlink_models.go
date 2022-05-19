@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"text/template"
 	"time"
-	
+
 	"gopkg.in/guregu/null.v4"
 )
 
