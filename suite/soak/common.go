@@ -6,18 +6,18 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-
-	. "github.com/onsi/gomega"
+	"testing"
 
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-testing-framework/actions"
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 	"github.com/smartcontractkit/helmenv/environment"
+	"github.com/stretchr/testify/require"
 )
 
 // Builds the go tests to run, and returns a path to it, along with remote config options
-func buildGoTests() string {
+func buildGoTests(t *testing.T) string {
 	exePath := filepath.Join(utils.ProjectRoot, "remote.test")
 	compileCmd := exec.Command("go", "test", "-c", utils.SoakRoot, "-o", exePath) // #nosec G204
 	compileCmd.Env = os.Environ()
@@ -29,16 +29,17 @@ func buildGoTests() string {
 		Str("Output", string(compileOut)).
 		Str("Command", compileCmd.String()).
 		Msg("Ran command")
-	Expect(err).ShouldNot(HaveOccurred(), fmt.Sprintf("Env: %s\nCommand: %s\nCommand Output: %s", compileCmd.Env, compileCmd.String(), compileOut))
+	require.NoError(t, err, fmt.Sprintf("Env: %s\nCommand: %s\nCommand Output: %s", compileCmd.Env, compileCmd.String(), compileOut))
 
 	_, err = os.Stat(exePath)
-	Expect(err).ShouldNot(HaveOccurred(), fmt.Sprintf("Expected '%s' to exist", exePath))
+	require.NoError(t, err, fmt.Sprintf("Expected '%s' to exist", exePath))
 	return exePath
 }
 
-func runSoakTest(testTag, namespacePrefix string, chainlinkReplicas int) {
+// runs a soak test based on the tag, launching as many chainlink nodes as necessary
+func runSoakTest(t *testing.T, testTag, namespacePrefix string, chainlinkReplicas int) {
 	actions.LoadConfigs()
-	exePath := buildGoTests()
+	exePath := buildGoTests(t)
 
 	env, err := environment.DeployRemoteRunnerEnvironment(
 		environment.NewChainlinkConfig(
@@ -54,7 +55,7 @@ func runSoakTest(testTag, namespacePrefix string, chainlinkReplicas int) {
 		filepath.Join(utils.SuiteRoot, "networks.yaml"),      // Path to the networks config
 		exePath, // Path to the executable test file
 	)
-	Expect(err).ShouldNot(HaveOccurred())
+	require.NoError(t, err, "Error launching soak test environment")
 	log.Info().Str("Namespace", env.Namespace).
 		Str("Environment File", fmt.Sprintf("%s.%s", env.Namespace, "yaml")).
 		Msg("Soak Test Successfully Launched. Save the environment file to collect logs when test is done.")
