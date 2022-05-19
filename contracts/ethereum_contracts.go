@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strconv"
 	"time"
 
 	"strings"
@@ -1284,6 +1285,24 @@ func (v *EthereumKeeperRegistry) RegisterUpkeep(target string, gasLimit uint32, 
 	if err != nil {
 		return err
 	}
+	return v.client.ProcessTransaction(tx)
+}
+
+// CancelUpkeep cancels the given upkeep ID
+func (v *EthereumKeeperRegistry) CancelUpkeep(id *big.Int) error {
+	opts, err := v.client.TransactionOpts(v.client.GetDefaultWallet())
+	if err != nil {
+		return err
+	}
+	tx, err := v.registry.CancelUpkeep(opts, id)
+	if err != nil {
+		return err
+	}
+	log.Info().
+		Str("Upkeep ID", strconv.FormatInt(id.Int64(), 10)).
+		Str("From", v.client.GetDefaultWallet().Address()).
+		Str("TX Hash", tx.Hash().String()).
+		Msg("Cancel Upkeep tx")
 	return v.client.ProcessTransaction(tx)
 }
 

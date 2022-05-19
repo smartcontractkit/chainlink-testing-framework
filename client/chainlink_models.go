@@ -738,7 +738,6 @@ type KeeperJobSpec struct {
 	ContractAddress          string `toml:"contractAddress"`
 	FromAddress              string `toml:"fromAddress"` // Hex representation of the from address
 	MinIncomingConfirmations int    `toml:"minIncomingConfirmations"`
-	ObservationSource        string `toml:"observationSource"`
 }
 
 // Type returns the type of the job
@@ -753,10 +752,7 @@ name                     = "{{.Name}}"
 contractAddress          = "{{.ContractAddress}}"
 fromAddress              = "{{.FromAddress}}"
 minIncomingConfirmations = {{.MinIncomingConfirmations}}
-
-observationSource        = """
-{{.ObservationSource}}
-"""`
+`
 	return marshallTemplate(k, "Keeper Job", keeperTemplateString)
 }
 
