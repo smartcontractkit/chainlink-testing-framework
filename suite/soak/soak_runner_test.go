@@ -28,12 +28,12 @@ func TestKeeperSoak(t *testing.T) {
 // BuildGoTests builds the go tests to run, and returns a path to it, along with remote config options
 func BuildGoTests(t *testing.T, executablePath, testsPath string) string {
 	exePath := filepath.Join(executablePath, "remote.test")
-	compileCmd := exec.Command("go", "test", "-c", testsPath, "-o", exePath) // #nosec G204
+	compileCmd := exec.Command("go", "test", "-ldflags=-s -w", "-c", testsPath, "-o", exePath) // #nosec G204
 	compileCmd.Env = os.Environ()
 	compileCmd.Env = append(compileCmd.Env, "CGO_ENABLED=0", "GOOS=linux", "GOARCH=amd64")
 
 	log.Info().Str("Test Directory", testsPath).Msg("Compiling tests")
-	compileOut, err := compileCmd.Output()
+	compileOut, err := compileCmd.CombinedOutput()
 	log.Debug().
 		Str("Output", string(compileOut)).
 		Str("Command", compileCmd.String()).
@@ -44,8 +44,6 @@ func BuildGoTests(t *testing.T, executablePath, testsPath string) string {
 	require.NoError(t, err, fmt.Sprintf("Expected '%s' to exist", exePath))
 	return exePath
 }
-
-// O.G. 74812772 bytes : 71.3 MB
 
 // runs a soak test based on the tag, launching as many chainlink nodes as necessary
 func runSoakTest(t *testing.T, testTag, namespacePrefix string, chainlinkReplicas int, customEnvVars []string) {

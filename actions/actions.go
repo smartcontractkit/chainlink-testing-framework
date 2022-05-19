@@ -43,7 +43,7 @@ func GinkgoSuite() {
 	gomega.RegisterFailHandler(ginkgo.Fail)
 }
 
-// GinkgoSoakSuite provides the default setup for running a Ginkgo test suite
+// GinkgoRemoteSuite provides the default setup for running tests from a remote test runner
 func GinkgoRemoteSuite() {
 	LoadRemoteConfigs()
 	gomega.RegisterFailHandler(ginkgo.Fail)
