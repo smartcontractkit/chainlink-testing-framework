@@ -92,27 +92,12 @@ func (o *OCRSoakTestReporter) SendSlackNotification(slackClient *slack.Client) e
 
 	testFailed := ginkgo.CurrentSpecReport().Failed()
 	headerText := ":white_check_mark: OCR Soak Test PASSED :white_check_mark:"
-	messageBlocks := []slack.Block{}
 	if testFailed {
 		headerText = ":x: OCR Soak Test FAILED :x:"
 	} else if o.UnexpectedShutdown {
 		headerText = ":warning: OCR Soak Test was Unexpectedly Shut Down :warning:"
 	}
-	messageBlocks = append(messageBlocks,
-		slack.NewHeaderBlock(slack.NewTextBlockObject("plain_text", headerText, true, false)))
-	messageBlocks = append(messageBlocks,
-		slack.NewContextBlock("context_block", slack.NewTextBlockObject("plain_text", o.namespace, false, false)))
-	messageBlocks = append(messageBlocks, slack.NewDividerBlock())
-	messageBlocks = append(messageBlocks, slack.NewSectionBlock(slack.NewTextBlockObject("mrkdwn",
-		fmt.Sprintf("Test ran for %s\nSummary CSV created on _remote-test-runner_ at _%s_\nNotifying <@%s>",
-			ginkgo.CurrentSpecReport().RunTime.Truncate(time.Second), o.csvLocation, slackUserID), false, true), nil, nil))
-	if testFailed {
-		messageBlocks = append(messageBlocks,
-			slack.NewHeaderBlock(slack.NewTextBlockObject("plain_text", headerText, true, false)))
-		messageBlocks = append(messageBlocks, slack.NewDividerBlock())
-		messageBlocks = append(messageBlocks, slack.NewSectionBlock(
-			slack.NewTextBlockObject("plain_text", ginkgo.CurrentSpecReport().FailureMessage(), false, false), nil, nil))
-	}
+	messageBlocks := commonSlackNotificationBlocks(slackClient, headerText, o.namespace, o.csvLocation, slackUserID, testFailed)
 	ts, err := sendSlackMessage(slackClient, slack.MsgOptionBlocks(messageBlocks...))
 	if err != nil {
 		return err
