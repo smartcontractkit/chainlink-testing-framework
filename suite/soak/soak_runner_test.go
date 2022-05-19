@@ -51,20 +51,22 @@ func runSoakTest(t *testing.T, testTag, namespacePrefix string, chainlinkReplica
 	soakTestsPath := filepath.Join(utils.SoakRoot, "tests")
 	exePath := BuildGoTests(t, utils.ProjectRoot, soakTestsPath)
 
+	runnerHelmValues := environment.CommonRemoteRunnerValues(
+		testTag, // Name of the test to run
+		config.ProjectConfig.RemoteRunnerConfig.SlackAPIKey,  // API key to use to upload artifacts to slack
+		config.ProjectConfig.RemoteRunnerConfig.SlackChannel, // Slack Channel to upload test artifacts to
+		config.ProjectConfig.RemoteRunnerConfig.SlackUserID,  // Slack user to notify on completion
+	)
 	env, err := environment.DeployRemoteRunnerEnvironment(
 		environment.NewChainlinkConfig(
 			environment.ChainlinkReplicas(chainlinkReplicas, config.ChainlinkVals()),
 			namespacePrefix,
 			config.GethNetworks()...,
 		),
-		testTag, // Name of the test to run
-		config.ProjectConfig.RemoteRunnerConfig.SlackAPIKey,  // API key to use to upload artifacts to slack
-		config.ProjectConfig.RemoteRunnerConfig.SlackChannel, // Slack Channel to upload test artifacts to
-		config.ProjectConfig.RemoteRunnerConfig.SlackUserID,  // Slack user to notify on completion
-		filepath.Join(utils.SuiteRoot, "framework.yaml"),     // Path of the framework config
-		filepath.Join(utils.SuiteRoot, "networks.yaml"),      // Path to the networks config
-		exePath,       // Path to the executable test file
-		customEnvVars, // custom environment variables needed for the test, use nil if none are needed
+		filepath.Join(utils.SuiteRoot, "framework.yaml"), // Path of the framework config
+		filepath.Join(utils.SuiteRoot, "networks.yaml"),  // Path to the networks config
+		exePath, // Path to the executable test file
+		runnerHelmValues,
 	)
 	require.NoError(t, err, "Error launching soak test environment")
 	log.Info().Str("Namespace", env.Namespace).
