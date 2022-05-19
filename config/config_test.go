@@ -13,6 +13,8 @@ func setEnvVars(t *testing.T) {
 	require.NoError(t, err)
 	err = os.Setenv("NETWORKS_CONFIG_FILE", "./test_networks_config.yml")
 	require.NoError(t, err)
+	err = os.Setenv("REMOTE_RUNNER_CONFIG_FILE", "./test_remote_runner_config.yml")
+	require.NoError(t, err)
 }
 
 func TestFrameworkConfig(t *testing.T) {
