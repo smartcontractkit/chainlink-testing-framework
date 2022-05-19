@@ -5,13 +5,16 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/common"
 	. "github.com/onsi/gomega"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/client"
 	"github.com/smartcontractkit/chainlink-testing-framework/contracts"
+	"github.com/smartcontractkit/chainlink-testing-framework/contracts/ethereum"
 )
+
+var ZeroAddress = common.Address{}
 
 func CreateKeeperJobs(chainlinkNodes []client.Chainlink, keeperRegistry contracts.KeeperRegistry) {
 	// Send keeper jobs to registry and chainlink nodes
@@ -44,7 +47,8 @@ func CreateKeeperJobs(chainlinkNodes []client.Chainlink, keeperRegistry contract
 
 // DeployKeeperContracts deploys keeper registry and a number of basic upkeep contracts with an update interval of 5
 func DeployKeeperContracts(
-	registryVersion contracts.RegistryVersion,
+	registryVersion ethereum.KeeperRegistryVersion,
+	registrySettings contracts.KeeperRegistrySettings,
 	numberOfUpkeeps int,
 	linkToken contracts.LinkToken,
 	contractDeployer contracts.ContractDeployer,
@@ -57,17 +61,17 @@ func DeployKeeperContracts(
 	err = networks.Default.WaitForEvents()
 	Expect(err).ShouldNot(HaveOccurred(), "Failed waiting for mock feeds to deploy")
 
-	registrySettings := contracts.KeeperRegistrySettings{
-		RegistryVersion:      registryVersion,
-		PaymentPremiumPPB:    uint32(200000000),
-		BlockCountPerTurn:    big.NewInt(3),
-		CheckGasLimit:        uint32(2500000),
-		StalenessSeconds:     big.NewInt(90000),
-		GasCeilingMultiplier: uint16(1),
-		FallbackGasPrice:     big.NewInt(2e11),
-		FallbackLinkPrice:    big.NewInt(2e18),
-	}
-	registry := DeployKeeperRegistry(&registrySettings, linkToken, contractDeployer, networks, ef, gf)
+	registry := DeployKeeperRegistry(contractDeployer, networks,
+		&contracts.KeeperRegistryOpts{
+			RegistryVersion: registryVersion,
+			LinkAddr:        linkToken.Address(),
+			ETHFeedAddr:     ef.Address(),
+			GasFeedAddr:     gf.Address(),
+			TranscoderAddr:  ZeroAddress.Hex(),
+			RegistrarAddr:   ZeroAddress.Hex(),
+			Settings:        registrySettings,
+		},
+	)
 
 	// Fund the registry with 1 LINK * amount of KeeperConsumerPerformance contracts
 	err = linkToken.Transfer(registry.Address(), big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(int64(numberOfUpkeeps))))
@@ -87,13 +91,14 @@ func DeployKeeperContracts(
 	for _, upkeep := range upkeeps {
 		upkeepsAddresses = append(upkeepsAddresses, upkeep.Address())
 	}
-	RegisterUpkeepContracts(linkToken, big.NewInt(9e18), networks, &registrySettings, registrar, numberOfUpkeeps, upkeepsAddresses)
+	RegisterUpkeepContracts(linkToken, big.NewInt(9e18), networks, uint32(2500000), registrar, numberOfUpkeeps, upkeepsAddresses)
 
 	return registry, upkeeps
 }
 
 // DeployPerformanceKeeperContracts deploys a set amount of keeper performance contracts registered to a single registry
 func DeployPerformanceKeeperContracts(
+	registryVersion ethereum.KeeperRegistryVersion,
 	numberOfContracts int,
 	linkToken contracts.LinkToken,
 	contractDeployer contracts.ContractDeployer,
@@ -111,7 +116,17 @@ func DeployPerformanceKeeperContracts(
 	err = networks.Default.WaitForEvents()
 	Expect(err).ShouldNot(HaveOccurred(), "Failed waiting for mock feeds to deploy")
 
-	registry := DeployKeeperRegistry(registrySettings, linkToken, contractDeployer, networks, ef, gf)
+	registry := DeployKeeperRegistry(contractDeployer, networks,
+		&contracts.KeeperRegistryOpts{
+			RegistryVersion: registryVersion,
+			LinkAddr:        linkToken.Address(),
+			ETHFeedAddr:     ef.Address(),
+			GasFeedAddr:     gf.Address(),
+			TranscoderAddr:  ZeroAddress.Hex(),
+			RegistrarAddr:   ZeroAddress.Hex(),
+			Settings:        *registrySettings,
+		},
+	)
 
 	// Fund the registry with 1 LINK * amount of KeeperConsumerPerformance contracts
 	err = linkToken.Transfer(registry.Address(), big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(int64(numberOfContracts))))
@@ -134,56 +149,19 @@ func DeployPerformanceKeeperContracts(
 	}
 	linkFunds := big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(blockRange/blockInterval))
 
-	RegisterUpkeepContracts(linkToken, linkFunds, networks, registrySettings, registrar, numberOfContracts, upkeepsAddresses)
+	RegisterUpkeepContracts(linkToken, linkFunds, networks, uint32(2500000), registrar, numberOfContracts, upkeepsAddresses)
 
 	return registry, upkeeps
 }
 
 func DeployKeeperRegistry(
-	registrySettings *contracts.KeeperRegistrySettings,
-	linkToken contracts.LinkToken,
 	contractDeployer contracts.ContractDeployer,
 	networks *blockchain.Networks,
-	mockLinkEthFeed contracts.MockETHLINKFeed,
-	mockGasFeed contracts.MockGasFeed,
+	registryOpts *contracts.KeeperRegistryOpts,
 ) contracts.KeeperRegistry {
-	var err error
-	var registry contracts.KeeperRegistry
-	switch registrySettings.RegistryVersion {
-	case contracts.RegistryVersion_1_0, contracts.RegistryVersion_1_1:
-		registry, err = contractDeployer.DeployKeeperRegistry1_1(
-			&contracts.KeeperRegistryOpts{
-				LinkAddr:             linkToken.Address(),
-				ETHFeedAddr:          mockLinkEthFeed.Address(),
-				GasFeedAddr:          mockGasFeed.Address(),
-				PaymentPremiumPPB:    registrySettings.PaymentPremiumPPB,
-				BlockCountPerTurn:    registrySettings.BlockCountPerTurn,
-				CheckGasLimit:        registrySettings.CheckGasLimit,
-				StalenessSeconds:     registrySettings.StalenessSeconds,
-				GasCeilingMultiplier: registrySettings.GasCeilingMultiplier,
-				FallbackGasPrice:     registrySettings.FallbackGasPrice,
-				FallbackLinkPrice:    registrySettings.FallbackLinkPrice,
-			},
-		)
-	case contracts.RegistryVersion_1_2:
-		registry, err = contractDeployer.DeployKeeperRegistry1_1(
-			&contracts.KeeperRegistryOpts{
-				LinkAddr:             linkToken.Address(),
-				ETHFeedAddr:          mockLinkEthFeed.Address(),
-				GasFeedAddr:          mockGasFeed.Address(),
-				PaymentPremiumPPB:    registrySettings.PaymentPremiumPPB,
-				BlockCountPerTurn:    registrySettings.BlockCountPerTurn,
-				CheckGasLimit:        registrySettings.CheckGasLimit,
-				StalenessSeconds:     registrySettings.StalenessSeconds,
-				GasCeilingMultiplier: registrySettings.GasCeilingMultiplier,
-				FallbackGasPrice:     registrySettings.FallbackGasPrice,
-				FallbackLinkPrice:    registrySettings.FallbackLinkPrice,
-			},
-		)
-	default:
-		err = errors.Errorf("Keeper registry version %d is not supported", registrySettings.RegistryVersion)
-	}
-
+	registry, err := contractDeployer.DeployKeeperRegistry(
+		registryOpts,
+	)
 	Expect(err).ShouldNot(HaveOccurred(), "Deploying keeper registry shouldn't fail")
 	err = networks.Default.WaitForEvents()
 	Expect(err).ShouldNot(HaveOccurred(), "Failed waiting for keeper registry to deploy")
@@ -230,7 +208,7 @@ func RegisterUpkeepContracts(
 	linkToken contracts.LinkToken,
 	linkFunds *big.Int,
 	networks *blockchain.Networks,
-	registrySettings *contracts.KeeperRegistrySettings,
+	checkGasLimit uint32,
 	registrar contracts.UpkeepRegistrar,
 	numberOfContracts int,
 	upkeepAdresses []string,
@@ -240,7 +218,7 @@ func RegisterUpkeepContracts(
 			fmt.Sprintf("upkeep_%d", contractCount+1),
 			[]byte("0x1234"),
 			upkeepAddress,
-			registrySettings.CheckGasLimit,
+			checkGasLimit,
 			upkeepAddress,
 			[]byte("0x"),
 			linkFunds,
