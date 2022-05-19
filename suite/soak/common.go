@@ -17,7 +17,7 @@ import (
 )
 
 // Builds the go tests to run, and returns a path to it, along with remote config options
-func buildGoTests(t *testing.T) string {
+func BuildGoTests(t *testing.T) string {
 	exePath := filepath.Join(utils.ProjectRoot, "remote.test")
 	compileCmd := exec.Command("go", "test", "-c", utils.SoakRoot, "-o", exePath) // #nosec G204
 	compileCmd.Env = os.Environ()
@@ -29,7 +29,7 @@ func buildGoTests(t *testing.T) string {
 		Str("Output", string(compileOut)).
 		Str("Command", compileCmd.String()).
 		Msg("Ran command")
-	require.NoError(t, err, fmt.Sprintf("Env: %s\nCommand: %s\nCommand Output: %s", compileCmd.Env, compileCmd.String(), compileOut))
+	require.NoError(t, err, fmt.Sprintf("Env: %s\nCommand: %s\nCommand Output: %s", compileCmd.Env, compileCmd.String(), string(compileOut)))
 
 	_, err = os.Stat(exePath)
 	require.NoError(t, err, fmt.Sprintf("Expected '%s' to exist", exePath))
@@ -37,9 +37,9 @@ func buildGoTests(t *testing.T) string {
 }
 
 // runs a soak test based on the tag, launching as many chainlink nodes as necessary
-func runSoakTest(t *testing.T, testTag, namespacePrefix string, chainlinkReplicas int) {
+func RunSoakTest(t *testing.T, testTag, namespacePrefix string, chainlinkReplicas int, customEnvVars []string) {
 	actions.LoadConfigs()
-	exePath := buildGoTests(t)
+	exePath := BuildGoTests(t)
 
 	env, err := environment.DeployRemoteRunnerEnvironment(
 		environment.NewChainlinkConfig(
