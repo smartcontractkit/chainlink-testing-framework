@@ -57,8 +57,11 @@ compile_contracts:
 test_unit:
 	ginkgo -r --junit-report=tests-unit-report.xml --keep-going --trace --randomize-all --randomize-suites --progress -cover -covermode=count -coverprofile=unit-test-coverage.out -nodes=10 ./client ./config ./gauntlet ./testreporters
 
-test_soak:
-	go test -v -count=1 ./suite/soak/soak_runner_test.go
+test_soak_ocr:
+	go test -v -timeout 10m -run ^TestOCRSoak$  ./suite/soak
+
+test_soak_keeper:
+	go test -v -timeout 10m -run ^TestKeeperSoak$  ./suite/soak
 
 test_smoke:
 	ginkgo -v -r --junit-report=tests-smoke-report.xml --keep-going --trace --randomize-all --randomize-suites --progress $(args) ./suite/smoke 
