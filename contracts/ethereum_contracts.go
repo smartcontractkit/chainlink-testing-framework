@@ -1181,7 +1181,7 @@ func (v *EthereumMockGASFeed) Address() string {
 // EthereumKeeperRegistry represents keeper registry contract
 type EthereumKeeperRegistry struct {
 	client   blockchain.EVMClient
-	registry *ethereum.KeeperRegistry
+	registry *ethereum.KeeperRegistry11
 	address  *common.Address
 }
 

@@ -34,7 +34,7 @@ type ContractDeployer interface {
 	DeployMockETHLINKFeed(answer *big.Int) (MockETHLINKFeed, error)
 	DeployMockGasFeed(answer *big.Int) (MockGasFeed, error)
 	DeployUpkeepRegistrationRequests(linkAddr string, minLinkJuels *big.Int) (UpkeepRegistrar, error)
-	DeployKeeperRegistry(opts *KeeperRegistryOpts) (KeeperRegistry, error)
+	DeployKeeperRegistry1_1(opts *KeeperRegistryOpts) (KeeperRegistry, error)
 	DeployKeeperConsumer(updateInterval *big.Int) (KeeperConsumer, error)
 	DeployKeeperConsumerPerformance(
 		testBlockRange,
@@ -409,14 +409,14 @@ func (e *EthereumContractDeployer) DeployUpkeepRegistrationRequests(linkAddr str
 	}, err
 }
 
-func (e *EthereumContractDeployer) DeployKeeperRegistry(
+func (e *EthereumContractDeployer) DeployKeeperRegistry1_1(
 	opts *KeeperRegistryOpts,
 ) (KeeperRegistry, error) {
 	address, _, instance, err := e.client.DeployContract("KeeperRegistry", func(
 		auth *bind.TransactOpts,
 		backend bind.ContractBackend,
 	) (common.Address, *types.Transaction, interface{}, error) {
-		return ethereum.DeployKeeperRegistry(
+		return ethereum.DeployKeeperRegistry11(
 			auth,
 			backend,
 			common.HexToAddress(opts.LinkAddr),
@@ -437,7 +437,7 @@ func (e *EthereumContractDeployer) DeployKeeperRegistry(
 	}
 	return &EthereumKeeperRegistry{
 		client:   e.client,
-		registry: instance.(*ethereum.KeeperRegistry),
+		registry: instance.(*ethereum.KeeperRegistry11),
 		address:  address,
 	}, err
 }

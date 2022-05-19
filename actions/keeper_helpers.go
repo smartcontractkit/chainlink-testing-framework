@@ -151,7 +151,7 @@ func DeployKeeperRegistry(
 	var registry contracts.KeeperRegistry
 	switch registrySettings.RegistryVersion {
 	case contracts.RegistryVersion_1_0, contracts.RegistryVersion_1_1:
-		registry, err = contractDeployer.DeployKeeperRegistry(
+		registry, err = contractDeployer.DeployKeeperRegistry1_1(
 			&contracts.KeeperRegistryOpts{
 				LinkAddr:             linkToken.Address(),
 				ETHFeedAddr:          mockLinkEthFeed.Address(),
@@ -166,7 +166,7 @@ func DeployKeeperRegistry(
 			},
 		)
 	case contracts.RegistryVersion_1_2:
-		registry, err = contractDeployer.DeployKeeperRegistry(
+		registry, err = contractDeployer.DeployKeeperRegistry1_1(
 			&contracts.KeeperRegistryOpts{
 				LinkAddr:             linkToken.Address(),
 				ETHFeedAddr:          mockLinkEthFeed.Address(),

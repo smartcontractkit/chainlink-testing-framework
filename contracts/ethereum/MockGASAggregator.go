@@ -4,6 +4,7 @@
 package ethereum
 
 import (
+	"errors"
 	"math/big"
 	"strings"
 
@@ -17,6 +18,7 @@ import (
 
 // Reference imports to suppress errors if they are not otherwise used.
 var (
+	_ = errors.New
 	_ = big.NewInt
 	_ = strings.NewReader
 	_ = ethereum.NotFound
@@ -26,20 +28,31 @@ var (
 	_ = event.NewSubscription
 )
 
+// MockGASAggregatorMetaData contains all meta data concerning the MockGASAggregator contract.
+var MockGASAggregatorMetaData = &bind.MetaData{
+	ABI: "[{\"inputs\":[{\"internalType\":\"int256\",\"name\":\"_answer\",\"type\":\"int256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"answer\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"decimals\",\"outputs\":[{\"internalType\":\"uint8\",\"name\":\"\",\"type\":\"uint8\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"description\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint80\",\"name\":\"_roundId\",\"type\":\"uint80\"}],\"name\":\"getRoundData\",\"outputs\":[{\"internalType\":\"uint80\",\"name\":\"roundId\",\"type\":\"uint80\"},{\"internalType\":\"int256\",\"name\":\"answer\",\"type\":\"int256\"},{\"internalType\":\"uint256\",\"name\":\"startedAt\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"updatedAt\",\"type\":\"uint256\"},{\"internalType\":\"uint80\",\"name\":\"answeredInRound\",\"type\":\"uint80\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"latestRoundData\",\"outputs\":[{\"internalType\":\"uint80\",\"name\":\"roundId\",\"type\":\"uint80\"},{\"internalType\":\"int256\",\"name\":\"answer\",\"type\":\"int256\"},{\"internalType\":\"uint256\",\"name\":\"startedAt\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"updatedAt\",\"type\":\"uint256\"},{\"internalType\":\"uint80\",\"name\":\"answeredInRound\",\"type\":\"uint80\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"version\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]",
+	Bin: "0x608060405234801561001057600080fd5b5060405161023f38038061023f83398101604081905261002f91610037565b600055610050565b60006020828403121561004957600080fd5b5051919050565b6101e08061005f6000396000f3fe608060405234801561001057600080fd5b50600436106100625760003560e01c8063313ce5671461006757806354fd4d501461007b5780637284e4161461008c57806385bb7d69146100bf5780639a6fc8f5146100c8578063feaf968c14610119575b600080fd5b604051601281526020015b60405180910390f35b60015b604051908152602001610072565b604080518082018252601181527026b7b1b5a3a0a9a0b3b3b932b3b0ba37b960791b602082015290516100729190610125565b61007e60005481565b6100e56100d636600461017a565b50600190600090429081908490565b604080516001600160501b03968716815260208101959095528401929092526060830152909116608082015260a001610072565b600160004280836100e5565b600060208083528351808285015260005b8181101561015257858101830151858201604001528201610136565b81811115610164576000604083870101525b50601f01601f1916929092016040019392505050565b60006020828403121561018c57600080fd5b81356001600160501b03811681146101a357600080fd5b939250505056fea2646970667358221220e451ec97d9a66d0b6a4e4f735ce12fcfb0da6a707613c0ccaa0395c2ba51872964736f6c634300080d0033",
+}
+
 // MockGASAggregatorABI is the input ABI used to generate the binding from.
-const MockGASAggregatorABI = "[{\"inputs\":[{\"internalType\":\"int256\",\"name\":\"_answer\",\"type\":\"int256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"answer\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"decimals\",\"outputs\":[{\"internalType\":\"uint8\",\"name\":\"\",\"type\":\"uint8\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"description\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint80\",\"name\":\"_roundId\",\"type\":\"uint80\"}],\"name\":\"getRoundData\",\"outputs\":[{\"internalType\":\"uint80\",\"name\":\"roundId\",\"type\":\"uint80\"},{\"internalType\":\"int256\",\"name\":\"answer\",\"type\":\"int256\"},{\"internalType\":\"uint256\",\"name\":\"startedAt\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"updatedAt\",\"type\":\"uint256\"},{\"internalType\":\"uint80\",\"name\":\"answeredInRound\",\"type\":\"uint80\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"latestRoundData\",\"outputs\":[{\"internalType\":\"uint80\",\"name\":\"roundId\",\"type\":\"uint80\"},{\"internalType\":\"int256\",\"name\":\"answer\",\"type\":\"int256\"},{\"internalType\":\"uint256\",\"name\":\"startedAt\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"updatedAt\",\"type\":\"uint256\"},{\"internalType\":\"uint80\",\"name\":\"answeredInRound\",\"type\":\"uint80\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"version\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]"
+// Deprecated: Use MockGASAggregatorMetaData.ABI instead.
+var MockGASAggregatorABI = MockGASAggregatorMetaData.ABI
 
 // MockGASAggregatorBin is the compiled bytecode used for deploying new contracts.
-var MockGASAggregatorBin = "0x608060405234801561001057600080fd5b5060405161023f38038061023f83398101604081905261002f91610037565b600055610050565b60006020828403121561004957600080fd5b5051919050565b6101e08061005f6000396000f3fe608060405234801561001057600080fd5b50600436106100625760003560e01c8063313ce5671461006757806354fd4d501461007b5780637284e4161461008c57806385bb7d69146100bf5780639a6fc8f5146100c8578063feaf968c14610119575b600080fd5b604051601281526020015b60405180910390f35b60015b604051908152602001610072565b604080518082018252601181527026b7b1b5a3a0a9a0b3b3b932b3b0ba37b960791b602082015290516100729190610125565b61007e60005481565b6100e56100d636600461017a565b50600190600090429081908490565b604080516001600160501b03968716815260208101959095528401929092526060830152909116608082015260a001610072565b600160004280836100e5565b600060208083528351808285015260005b8181101561015257858101830151858201604001528201610136565b81811115610164576000604083870101525b50601f01601f1916929092016040019392505050565b60006020828403121561018c57600080fd5b81356001600160501b03811681146101a357600080fd5b939250505056fea2646970667358221220e451ec97d9a66d0b6a4e4f735ce12fcfb0da6a707613c0ccaa0395c2ba51872964736f6c634300080d0033"
+// Deprecated: Use MockGASAggregatorMetaData.Bin instead.
+var MockGASAggregatorBin = MockGASAggregatorMetaData.Bin
 
 // DeployMockGASAggregator deploys a new Ethereum contract, binding an instance of MockGASAggregator to it.
 func DeployMockGASAggregator(auth *bind.TransactOpts, backend bind.ContractBackend, _answer *big.Int) (common.Address, *types.Transaction, *MockGASAggregator, error) {
-	parsed, err := abi.JSON(strings.NewReader(MockGASAggregatorABI))
+	parsed, err := MockGASAggregatorMetaData.GetAbi()
 	if err != nil {
 		return common.Address{}, nil, nil, err
 	}
+	if parsed == nil {
+		return common.Address{}, nil, nil, errors.New("GetABI returned nil")
+	}
 
-	address, tx, contract, err := bind.DeployContract(auth, parsed, common.FromHex(MockGASAggregatorBin), backend, _answer)
+	address, tx, contract, err := bind.DeployContract(auth, *parsed, common.FromHex(MockGASAggregatorBin), backend, _answer)
 	if err != nil {
 		return common.Address{}, nil, nil, err
 	}
