@@ -17,8 +17,7 @@ import (
 )
 
 // Builds the go tests to run, and returns a path to it, along with remote config options
-func BuildGoTests(projectRootPath, soakRootPath string) string {
-	// exePath := filepath.Join(utils.ProjectRoot, "remote.test")
+func BuildGoTests(t *testing.T, projectRootPath, soakRootPath string) string {
 	exePath := filepath.Join(projectRootPath, "remote.test")
 	compileCmd := exec.Command("go", "test", "-c", soakRootPath, "-o", exePath) // #nosec G204
 	compileCmd.Env = os.Environ()
