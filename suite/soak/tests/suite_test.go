@@ -9,6 +9,6 @@ import (
 )
 
 func Test_Suite(t *testing.T) {
-	actions.GinkgoSuite()
+	actions.GinkgoRemoteSuite()
 	RunSpecs(t, "Soak")
 }

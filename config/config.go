@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/imdario/mergo"
 	"github.com/kelseyhightower/envconfig"
@@ -93,6 +94,7 @@ func (n NetworkSettings) Decode(value string) error {
 	return mergo.Merge(&n, networkSettings, mergo.WithOverride)
 }
 
+// LoadFromEnv loads all config files and environment variables
 func LoadFromEnv() error {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	if err := envconfig.Process("", &ProjectConfig); err != nil {
@@ -100,6 +102,16 @@ func LoadFromEnv() error {
 	}
 	log.Logger = log.Logger.Level(zerolog.Level(ProjectConfig.FrameworkConfig.Logging.Level))
 	return nil
+}
+
+// LoadRemoteEnv loads environment variables when running on remote test runner
+func LoadRemoteEnv() error {
+	err := LoadFromEnv()
+	if strings.Contains(err.Error(), "envconfig.Process: assigning REMOTE_RUNNER_CONFIG_FILE to RemoteRunnerConfig") {
+		// a remote runner no longer needs the remote config file
+		return nil
+	}
+	return err
 }
 
 // PrivateKeyStore enables access, through a variety of methods, to private keys for use in blockchain networks
