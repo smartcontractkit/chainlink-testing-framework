@@ -1,4 +1,4 @@
-package soak
+package soak_runner
 
 //revive:disable:dot-imports
 import (
@@ -19,11 +19,12 @@ import (
 // Builds the go tests to run, and returns a path to it, along with remote config options
 func buildGoTests(t *testing.T) string {
 	exePath := filepath.Join(utils.ProjectRoot, "remote.test")
-	compileCmd := exec.Command("go", "test", "-c", utils.SoakRoot, "-o", exePath) // #nosec G204
+	soakTestsPath := filepath.Join(utils.SoakRoot, "tests")
+	compileCmd := exec.Command("go", "test", "-c", soakTestsPath, "-o", exePath) // #nosec G204
 	compileCmd.Env = os.Environ()
 	compileCmd.Env = append(compileCmd.Env, "CGO_ENABLED=0", "GOOS=linux", "GOARCH=amd64")
 
-	log.Info().Str("Test Directory", utils.SuiteRoot).Msg("Compiling tests")
+	log.Info().Str("Test Directory", soakTestsPath).Msg("Compiling tests")
 	compileOut, err := compileCmd.Output()
 	log.Debug().
 		Str("Output", string(compileOut)).

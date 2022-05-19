@@ -1,4 +1,4 @@
-package soak
+package soak_runner
 
 import (
 	"testing"
