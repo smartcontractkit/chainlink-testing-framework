@@ -6,14 +6,14 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-
-	. "github.com/onsi/gomega"
+	"testing"
 
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-testing-framework/actions"
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 	"github.com/smartcontractkit/helmenv/environment"
+	"github.com/stretchr/testify/require"
 )
 
 // Builds the go tests to run, and returns a path to it, along with remote config options
@@ -24,22 +24,23 @@ func BuildGoTests(projectRootPath, soakRootPath string) string {
 	compileCmd.Env = os.Environ()
 	compileCmd.Env = append(compileCmd.Env, "CGO_ENABLED=0", "GOOS=linux", "GOARCH=amd64")
 
-	log.Info().Str("Test Directory", utils.SuiteRoot).Msg("Compiling tests")
+	log.Info().Str("Test Directory", soakRootPath).Msg("Compiling tests")
 	compileOut, err := compileCmd.Output()
 	log.Debug().
 		Str("Output", string(compileOut)).
 		Str("Command", compileCmd.String()).
 		Msg("Ran command")
-	Expect(err).ShouldNot(HaveOccurred(), fmt.Sprintf("Env: %s\nCommand: %s\nCommand Output: %s", compileCmd.Env, compileCmd.String(), compileOut))
+	require.NoError(t, err, fmt.Sprintf("Env: %s\nCommand: %s\nCommand Output: %s", compileCmd.Env, compileCmd.String(), string(compileOut)))
 
 	_, err = os.Stat(exePath)
-	Expect(err).ShouldNot(HaveOccurred(), fmt.Sprintf("Expected '%s' to exist", exePath))
+	require.NoError(t, err, fmt.Sprintf("Expected '%s' to exist", exePath))
 	return exePath
 }
 
-func RunSoakTest(testTag, namespacePrefix string, chainlinkReplicas int) {
+// runs a soak test based on the tag, launching as many chainlink nodes as necessary
+func runSoakTest(t *testing.T, testTag, namespacePrefix string, chainlinkReplicas int, customEnvVars []string) {
 	actions.LoadConfigs()
-	exePath := BuildGoTests(utils.ProjectRoot, utils.SoakRoot)
+	exePath := BuildGoTests(t, utils.ProjectRoot, utils.SoakRoot)
 
 	env, err := environment.DeployRemoteRunnerEnvironment(
 		environment.NewChainlinkConfig(
@@ -53,10 +54,10 @@ func RunSoakTest(testTag, namespacePrefix string, chainlinkReplicas int) {
 		config.ProjectConfig.RemoteRunnerConfig.SlackUserID,  // Slack user to notify on completion
 		filepath.Join(utils.SuiteRoot, "framework.yaml"),     // Path of the framework config
 		filepath.Join(utils.SuiteRoot, "networks.yaml"),      // Path to the networks config
-		exePath, // Path to the executable test file
-		nil,
+		exePath,       // Path to the executable test file
+		customEnvVars, // custom environment variables needed for the test, use nil if none are needed
 	)
-	Expect(err).ShouldNot(HaveOccurred())
+	require.NoError(t, err, "Error launching soak test environment")
 	log.Info().Str("Namespace", env.Namespace).
 		Str("Environment File", fmt.Sprintf("%s.%s", env.Namespace, "yaml")).
 		Msg("Soak Test Successfully Launched. Save the environment file to collect logs when test is done.")
