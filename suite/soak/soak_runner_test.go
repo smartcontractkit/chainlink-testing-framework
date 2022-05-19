@@ -5,9 +5,9 @@ import (
 )
 
 func TestOCRSoak(t *testing.T) {
-	runSoakTest(t, "@soak-ocr", "chainlink-soak-ocr", 6)
+	runSoakTest(t, "@soak-ocr", "chainlink-soak-ocr", 6, nil)
 }
 
 func TestKeeperSoak(t *testing.T) {
-	runSoakTest(t, "@soak-keeper-block-time", "chainlink-soak-keeper", 6)
+	runSoakTest(t, "@soak-keeper-block-time", "chainlink-soak-keeper", 6, nil)
 }

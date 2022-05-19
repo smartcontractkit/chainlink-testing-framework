@@ -17,19 +17,19 @@ import (
 )
 
 // Builds the go tests to run, and returns a path to it, along with remote config options
-func buildGoTests(t *testing.T) string {
-	exePath := filepath.Join(utils.ProjectRoot, "remote.test")
-	compileCmd := exec.Command("go", "test", "-c", utils.SoakRoot, "-o", exePath) // #nosec G204
+func BuildGoTests(t *testing.T, projectRootPath, soakRootPath string) string {
+	exePath := filepath.Join(projectRootPath, "remote.test")
+	compileCmd := exec.Command("go", "test", "-c", soakRootPath, "-o", exePath) // #nosec G204
 	compileCmd.Env = os.Environ()
 	compileCmd.Env = append(compileCmd.Env, "CGO_ENABLED=0", "GOOS=linux", "GOARCH=amd64")
 
-	log.Info().Str("Test Directory", utils.SuiteRoot).Msg("Compiling tests")
+	log.Info().Str("Test Directory", soakRootPath).Msg("Compiling tests")
 	compileOut, err := compileCmd.Output()
 	log.Debug().
 		Str("Output", string(compileOut)).
 		Str("Command", compileCmd.String()).
 		Msg("Ran command")
-	require.NoError(t, err, fmt.Sprintf("Env: %s\nCommand: %s\nCommand Output: %s", compileCmd.Env, compileCmd.String(), compileOut))
+	require.NoError(t, err, fmt.Sprintf("Env: %s\nCommand: %s\nCommand Output: %s", compileCmd.Env, compileCmd.String(), string(compileOut)))
 
 	_, err = os.Stat(exePath)
 	require.NoError(t, err, fmt.Sprintf("Expected '%s' to exist", exePath))
@@ -37,9 +37,9 @@ func buildGoTests(t *testing.T) string {
 }
 
 // runs a soak test based on the tag, launching as many chainlink nodes as necessary
-func runSoakTest(t *testing.T, testTag, namespacePrefix string, chainlinkReplicas int) {
+func runSoakTest(t *testing.T, testTag, namespacePrefix string, chainlinkReplicas int, customEnvVars []string) {
 	actions.LoadConfigs()
-	exePath := buildGoTests(t)
+	exePath := BuildGoTests(t, utils.ProjectRoot, utils.SoakRoot)
 
 	env, err := environment.DeployRemoteRunnerEnvironment(
 		environment.NewChainlinkConfig(
@@ -53,7 +53,8 @@ func runSoakTest(t *testing.T, testTag, namespacePrefix string, chainlinkReplica
 		config.ProjectConfig.RemoteRunnerConfig.SlackUserID,  // Slack user to notify on completion
 		filepath.Join(utils.SuiteRoot, "framework.yaml"),     // Path of the framework config
 		filepath.Join(utils.SuiteRoot, "networks.yaml"),      // Path to the networks config
-		exePath, // Path to the executable test file
+		exePath,       // Path to the executable test file
+		customEnvVars, // custom environment variables needed for the test, use nil if none are needed
 	)
 	require.NoError(t, err, "Error launching soak test environment")
 	log.Info().Str("Namespace", env.Namespace).
