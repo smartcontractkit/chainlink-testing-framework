@@ -21,14 +21,17 @@ used_contract_names = [
   "FluxAggregator",
   "KeeperConsumer",
   "KeeperConsumerPerformance",
+  "KeeperRegistry1_1",
   "KeeperRegistry",
   "LinkToken",
   "MockETHLINKAggregator",
   "MockGASAggregator",
   "OffchainAggregator",
   "Oracle",
-  "SimpleReadAccessController"
+  "SimpleReadAccessController",
   "SimpleWriteAccessController",
+  "UpkeepCounter",
+  "UpkeepPerformCounterRestrictive",
   "UpkeepRegistrationRequests",
   "VRF",
   "VRFConsumer",
@@ -111,7 +114,7 @@ for version in solc_versions:
     for subdir, dirs, files in os.walk(rootdir + version):
         for f in files:
             if ".dbg." not in f:
-                print(f)
+                print(version, f)
                 compile_contract = open(subdir + "/" + f, "r")
                 data = json.load(compile_contract)
                 contract_name = data["contractName"]

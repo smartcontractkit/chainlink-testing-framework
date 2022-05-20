@@ -412,34 +412,79 @@ func (e *EthereumContractDeployer) DeployUpkeepRegistrationRequests(linkAddr str
 func (e *EthereumContractDeployer) DeployKeeperRegistry(
 	opts *KeeperRegistryOpts,
 ) (KeeperRegistry, error) {
-	address, _, instance, err := e.client.DeployContract("KeeperRegistry", func(
-		auth *bind.TransactOpts,
-		backend bind.ContractBackend,
-	) (common.Address, *types.Transaction, interface{}, error) {
-		return ethereum.DeployKeeperRegistry(
-			auth,
-			backend,
-			common.HexToAddress(opts.LinkAddr),
-			common.HexToAddress(opts.ETHFeedAddr),
-			common.HexToAddress(opts.GasFeedAddr),
-			opts.PaymentPremiumPPB,
-			opts.FlatFeeMicroLINK,
-			opts.BlockCountPerTurn,
-			opts.CheckGasLimit,
-			opts.StalenessSeconds,
-			opts.GasCeilingMultiplier,
-			opts.FallbackGasPrice,
-			opts.FallbackLinkPrice,
-		)
-	})
-	if err != nil {
-		return nil, err
+	switch opts.RegistryVersion {
+	case ethereum.RegistryVersion_1_0, ethereum.RegistryVersion_1_1:
+		address, _, instance, err := e.client.DeployContract("KeeperRegistry1_1", func(
+			auth *bind.TransactOpts,
+			backend bind.ContractBackend,
+		) (common.Address, *types.Transaction, interface{}, error) {
+			return ethereum.DeployKeeperRegistry11(
+				auth,
+				backend,
+				common.HexToAddress(opts.LinkAddr),
+				common.HexToAddress(opts.ETHFeedAddr),
+				common.HexToAddress(opts.GasFeedAddr),
+				opts.Settings.PaymentPremiumPPB,
+				opts.Settings.FlatFeeMicroLINK,
+				opts.Settings.BlockCountPerTurn,
+				opts.Settings.CheckGasLimit,
+				opts.Settings.StalenessSeconds,
+				opts.Settings.GasCeilingMultiplier,
+				opts.Settings.FallbackGasPrice,
+				opts.Settings.FallbackLinkPrice,
+			)
+		})
+		if err != nil {
+			return nil, err
+		}
+		return &EthereumKeeperRegistry{
+			client:      e.client,
+			version:     ethereum.RegistryVersion_1_1,
+			registry1_1: instance.(*ethereum.KeeperRegistry11),
+			registry1_2: nil,
+			address:     address,
+		}, err
+	case ethereum.RegistryVersion_1_2:
+		address, _, instance, err := e.client.DeployContract("KeeperRegistry", func(
+			auth *bind.TransactOpts,
+			backend bind.ContractBackend,
+		) (common.Address, *types.Transaction, interface{}, error) {
+			return ethereum.DeployKeeperRegistry(
+				auth,
+				backend,
+				common.HexToAddress(opts.LinkAddr),
+				common.HexToAddress(opts.ETHFeedAddr),
+				common.HexToAddress(opts.GasFeedAddr),
+				ethereum.Config{
+					PaymentPremiumPPB:    opts.Settings.PaymentPremiumPPB,
+					FlatFeeMicroLink:     opts.Settings.FlatFeeMicroLINK,
+					BlockCountPerTurn:    opts.Settings.BlockCountPerTurn,
+					CheckGasLimit:        opts.Settings.CheckGasLimit,
+					StalenessSeconds:     opts.Settings.StalenessSeconds,
+					GasCeilingMultiplier: opts.Settings.GasCeilingMultiplier,
+					MinUpkeepSpend:       opts.Settings.MinUpkeepSpend,
+					MaxPerformGas:        opts.Settings.MaxPerformGas,
+					FallbackGasPrice:     opts.Settings.FallbackGasPrice,
+					FallbackLinkPrice:    opts.Settings.FallbackLinkPrice,
+					Transcoder:           common.HexToAddress(opts.TranscoderAddr),
+					Registrar:            common.HexToAddress(opts.RegistrarAddr),
+				},
+			)
+		})
+		if err != nil {
+			return nil, err
+		}
+		return &EthereumKeeperRegistry{
+			client:      e.client,
+			version:     ethereum.RegistryVersion_1_2,
+			registry1_1: nil,
+			registry1_2: instance.(*ethereum.KeeperRegistry),
+			address:     address,
+		}, err
+
+	default:
+		return nil, fmt.Errorf("keeper registry version %d is not supported", opts.RegistryVersion)
 	}
-	return &EthereumKeeperRegistry{
-		client:   e.client,
-		registry: instance.(*ethereum.KeeperRegistry),
-		address:  address,
-	}, err
 }
 
 func (e *EthereumContractDeployer) DeployKeeperConsumer(updateInterval *big.Int) (KeeperConsumer, error) {
