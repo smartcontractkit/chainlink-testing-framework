@@ -27,8 +27,8 @@ artifacts/
 # JUnit Test Reports
 junit.xml
 tests-*.xml
-logs/
-bin/
+/logs/
+/bin/
 
 # ide
 .vscode/

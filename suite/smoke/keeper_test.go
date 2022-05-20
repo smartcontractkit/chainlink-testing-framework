@@ -3,6 +3,7 @@ package smoke
 //revive:disable:dot-imports
 import (
 	"context"
+	"math/big"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -12,6 +13,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/client"
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/contracts"
+	"github.com/smartcontractkit/chainlink-testing-framework/contracts/ethereum"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 	"github.com/smartcontractkit/helmenv/environment"
 )
@@ -65,6 +67,19 @@ var _ = Describe("Keeper suite @keeper", func() {
 			Expect(err).ShouldNot(HaveOccurred(), "Deploying Link Token Contract shouldn't fail")
 
 			r, consumers := actions.DeployKeeperContracts(
+				ethereum.RegistryVersion_1_1,
+				contracts.KeeperRegistrySettings{
+					PaymentPremiumPPB:    uint32(200000000),
+					FlatFeeMicroLINK:     uint32(0),
+					BlockCountPerTurn:    big.NewInt(3),
+					CheckGasLimit:        uint32(2500000),
+					StalenessSeconds:     big.NewInt(90000),
+					GasCeilingMultiplier: uint16(1),
+					MinUpkeepSpend:       big.NewInt(0),
+					MaxPerformGas:        uint32(5000000),
+					FallbackGasPrice:     big.NewInt(2e11),
+					FallbackLinkPrice:    big.NewInt(2e18),
+				},
 				1,
 				linkToken,
 				contractDeployer,
