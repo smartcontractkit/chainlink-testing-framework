@@ -43,12 +43,25 @@ func GinkgoSuite() {
 	gomega.RegisterFailHandler(ginkgo.Fail)
 }
 
+// GinkgoRemoteSuite provides the default setup for running tests from a remote test runner
+func GinkgoRemoteSuite() {
+	LoadRemoteConfigs()
+	gomega.RegisterFailHandler(ginkgo.Fail)
+}
+
 // LoadConfigs load all config files, with overrides in order:
 // 1. `default` tag fields on config.Config struct
 // 2. Decode function calls on major config structs, see config.Config
 // 3. `envconfig` tags on previously decoded major configs, see Decode functions in config package
 func LoadConfigs() {
 	if err := config.LoadFromEnv(); err != nil {
+		log.Fatal().Err(err).Msg("failed to load config file")
+	}
+}
+
+// LoadRemoteConfigs loads configs for tests running on a remote test runner
+func LoadRemoteConfigs() {
+	if err := config.LoadRemoteEnv(); err != nil {
 		log.Fatal().Err(err).Msg("failed to load config file")
 	}
 }

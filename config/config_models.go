@@ -15,7 +15,7 @@ import (
 type Config struct {
 	FrameworkConfig    *FrameworkConfig    `envconfig:"FRAMEWORK_CONFIG_FILE" default:"../framework.yaml"`
 	NetworksConfig     *NetworksConfig     `envconfig:"NETWORKS_CONFIG_FILE" default:"../networks.yaml"`
-	RemoteRunnerConfig *RemoteRunnerConfig `envconfig:"REMOTE_RUNNER_CONFIG_FILE"`
+	RemoteRunnerConfig *RemoteRunnerConfig `envconfig:"REMOTE_RUNNER_CONFIG_FILE" required:"false" default:"../remote_runner_config.yaml"`
 	EnvironmentConfig  *environment.Config `envconfig:"ENVIRONMENT_CONFIG_FILE"`
 }
 
@@ -83,18 +83,19 @@ func (m *NetworksConfig) Decode(path string) error {
 
 // RemoteRunnerConfig reads the config file for remote test runs
 type RemoteRunnerConfig struct {
-	TestRegex     string `envconfig:"TEST_REGEX" yaml:"test_regex"`
-	TestDirectory string `envconfig:"TEST_DIRECTORY" yaml:"test_directory"`
-	SlackAPIKey   string `envconfig:"SLACK_API_KEY" yaml:"slack_api_key"`
-	SlackChannel  string `envconfig:"SLACK_CHANNEL" yaml:"slack_channel"`
-	SlackUserID   string `envconfig:"SLACK_USER_ID" yaml:"slack_user_id"`
+	TestRegex     string   `envconfig:"TEST_REGEX" yaml:"test_regex"`
+	TestDirectory string   `envconfig:"TEST_DIRECTORY" yaml:"test_directory"`
+	SlackAPIKey   string   `envconfig:"SLACK_API_KEY" yaml:"slack_api_key"`
+	SlackChannel  string   `envconfig:"SLACK_CHANNEL" yaml:"slack_channel"`
+	SlackUserID   string   `envconfig:"SLACK_USER_ID" yaml:"slack_user_id"`
+	CustomEnvVars []string `envconfig:"CUSTOM_ENV_VARS" yaml:"custom_env_vars"`
 }
 
 func (m *RemoteRunnerConfig) Decode(path string) error {
 	// Marshal YAML first, then "envconfig" tags of that struct got marshalled
-	//if err := unmarshalYAML(path, &m); err != nil {
-	//	return err
-	//}
+	if err := unmarshalYAML(path, &m); err != nil {
+		return err
+	}
 	return envconfig.Process("", m)
 }
 

@@ -31,12 +31,12 @@ var _ = Describe("OCR Soak Test @soak-ocr", func() {
 
 		By("Setting up Soak Test", func() {
 			ocrSoakTest = testsetups.NewOCRSoakTest(&testsetups.OCRSoakTestInputs{
-				TestDuration:         time.Hour * 168,
-				NumberOfContracts:    2,
-				ChainlinkNodeFunding: big.NewFloat(10),
+				TestDuration:         time.Hour * 1,
+				NumberOfContracts:    4,
+				ChainlinkNodeFunding: big.NewFloat(1),
 				ExpectedRoundTime:    time.Minute,
 				RoundTimeout:         time.Minute * 10,
-				TimeBetweenRounds:    50 * time.Millisecond,
+				TimeBetweenRounds:    time.Minute,
 				StartingAdapterValue: 5,
 			})
 			ocrSoakTest.Setup(env)
