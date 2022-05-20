@@ -42,7 +42,7 @@ type VRFV2SoakTestInputs struct {
 	ChainlinkNodeFunding *big.Float    // Amount of ETH to fund each chainlink node with
 	StopTestOnError      bool
 
-	RequestsPerSecond  int                   // Number of requests for randomness per minute
+	RequestsPerMinute  int                   // Number of requests for randomness per minute
 	ReadEveryNRequests int                   // Check the randomness output every n number of requests
 	TestFunc           VRFV2SoakTestTestFunc // The function that makes the request and validations wanted
 }
@@ -92,7 +92,7 @@ func (t *VRFV2SoakTest) Setup(env *environment.Environment, isLocal bool) {
 func (t *VRFV2SoakTest) Run() {
 	log.Info().
 		Str("Test Duration", t.Inputs.TestDuration.Truncate(time.Second).String()).
-		Int("Max number of requests per second wanted", t.Inputs.RequestsPerSecond).
+		Int("Max number of requests per second wanted", t.Inputs.RequestsPerMinute).
 		Msg("Starting VRFV2 Soak Test")
 
 	// set the requests to only run for a certain amount of time
@@ -104,7 +104,7 @@ func (t *VRFV2SoakTest) Run() {
 	// variables dealing with how often to tick and how to stop the ticker
 	stop := false
 	startTime := time.Now()
-	ticker := time.NewTicker(time.Second / time.Duration(t.Inputs.RequestsPerSecond))
+	ticker := time.NewTicker(time.Minute / time.Duration(t.Inputs.RequestsPerMinute))
 
 	for {
 		// start the loop by checking to see if any of the TestFunc responses have returned an error
@@ -156,7 +156,7 @@ func (t *VRFV2SoakTest) TearDownVals() (*environment.Environment, *blockchain.Ne
 // ensureValues ensures that all values needed to run the test are present
 func (t *VRFV2SoakTest) ensureInputValues() {
 	inputs := t.Inputs
-	Expect(inputs.RequestsPerSecond).Should(BeNumerically(">=", 1), "Expecting at least 1 request per second")
+	Expect(inputs.RequestsPerMinute).Should(BeNumerically(">=", 1), "Expecting at least 1 request per minute")
 	Expect(inputs.ChainlinkNodeFunding.Float64()).Should(BeNumerically(">", 0), "Expecting non-zero chainlink node funding amount")
 	Expect(inputs.TestDuration).Should(BeNumerically(">=", time.Minute*1), "Expected test duration to be more than a minute")
 	Expect(inputs.ReadEveryNRequests).Should(BeNumerically(">", 0), "Expected the test to read requests for verification at some point")
