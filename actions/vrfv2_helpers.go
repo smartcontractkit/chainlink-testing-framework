@@ -17,7 +17,7 @@ func DeployVrfv2Contracts(
 	contractDeployer contracts.ContractDeployer,
 	networks *blockchain.Networks,
 	linkEthFeedAddress string,
-) (contracts.VRFCoordinatorV2, contracts.VRFConsumerV2) {
+) (contracts.VRFCoordinatorV2, contracts.VRFConsumerV2, contracts.BlockHashStore) {
 	bhs, err := contractDeployer.DeployBlockhashStore()
 	Expect(err).ShouldNot(HaveOccurred())
 	coordinator, err := contractDeployer.DeployVRFCoordinatorV2(linkTokenContract.Address(), bhs.Address(), linkEthFeedAddress)
@@ -27,7 +27,7 @@ func DeployVrfv2Contracts(
 	err = networks.Default.WaitForEvents()
 	Expect(err).ShouldNot(HaveOccurred())
 
-	return coordinator, consumer
+	return coordinator, consumer, bhs
 }
 
 func CreateVrfV2Jobs(
