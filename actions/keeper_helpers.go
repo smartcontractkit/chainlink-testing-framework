@@ -39,7 +39,6 @@ func CreateKeeperJobs(chainlinkNodes []client.Chainlink, keeperRegistry contract
 			ContractAddress:          keeperRegistry.Address(),
 			FromAddress:              chainlinkNodeAddress,
 			MinIncomingConfirmations: 1,
-			ObservationSource:        client.ObservationSourceKeeperDefault(),
 		})
 		Expect(err).ShouldNot(HaveOccurred(), "Creating KeeperV2 Job shouldn't fail")
 	}
