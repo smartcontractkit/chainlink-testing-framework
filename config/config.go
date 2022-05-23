@@ -10,7 +10,6 @@ import (
 	"github.com/imdario/mergo"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/rs/zerolog"
-	"github.com/smartcontractkit/helmenv/environment"
 	"gopkg.in/yaml.v3"
 
 	"github.com/rs/zerolog/log"
@@ -55,25 +54,25 @@ func ChainlinkVals() map[string]interface{} {
 	return values
 }
 
-// GethNetworks builds the proper geth network settings to use based on the selected_networks config
-func GethNetworks() []environment.SimulatedNetwork {
-	if ProjectConfig.NetworksConfig == nil {
-		log.Error().Msg("ProjectNetworkSettings not set!")
-		return nil
-	}
-	var gethNetworks []environment.SimulatedNetwork
-	for _, network := range ProjectConfig.NetworksConfig.SelectedNetworks {
-		switch network {
-		case DefaultGeth:
-			gethNetworks = append(gethNetworks, environment.DefaultGeth)
-		case PerformanceGeth:
-			gethNetworks = append(gethNetworks, environment.PerformanceGeth)
-		case RealisticGeth:
-			gethNetworks = append(gethNetworks, environment.RealisticGeth)
-		}
-	}
-	return gethNetworks
-}
+//// GethNetworks builds the proper geth network settings to use based on the selected_networks config
+//func GethNetworks() []environment.SimulatedNetwork {
+//	if ProjectConfig.NetworksConfig == nil {
+//		log.Error().Msg("ProjectNetworkSettings not set!")
+//		return nil
+//	}
+//	var gethNetworks []environment.SimulatedNetwork
+//	for _, network := range ProjectConfig.NetworksConfig.SelectedNetworks {
+//		switch network {
+//		case DefaultGeth:
+//			gethNetworks = append(gethNetworks, environment.DefaultGeth)
+//		case PerformanceGeth:
+//			gethNetworks = append(gethNetworks, environment.PerformanceGeth)
+//		case RealisticGeth:
+//			gethNetworks = append(gethNetworks, environment.RealisticGeth)
+//		}
+//	}
+//	return gethNetworks
+//}
 
 // Decode is used by envconfig to initialize the custom Charts type with populated values
 // This function will take a JSON object representing charts, and unmarshal it into the existing object to "merge" the

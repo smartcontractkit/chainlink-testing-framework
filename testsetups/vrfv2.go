@@ -9,10 +9,10 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog/log"
+	"github.com/smartcontractkit/chainlink-env/environment"
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/client"
 	"github.com/smartcontractkit/chainlink-testing-framework/testreporters"
-	"github.com/smartcontractkit/helmenv/environment"
 )
 
 // VRFV2SoakTest defines a typical VRFV2 soak test
@@ -57,7 +57,7 @@ func NewVRFV2SoakTest(inputs *VRFV2SoakTestInputs) *VRFV2SoakTest {
 }
 
 // Setup sets up the test environment
-func (t *VRFV2SoakTest) Setup(env *environment.Environment, charts []string, isLocal bool) {
+func (t *VRFV2SoakTest) Setup(env *environment.Environment, isLocal bool) {
 	t.ensureInputValues()
 	t.env = env
 	var err error
@@ -65,16 +65,14 @@ func (t *VRFV2SoakTest) Setup(env *environment.Environment, charts []string, isL
 
 	// Make connections to soak test resources
 	if isLocal {
-		err = env.ConnectAll()
-		Expect(err).ShouldNot(HaveOccurred())
 		networkRegistry = blockchain.NewDefaultNetworkRegistry()
-		t.ChainlinkNodes, err = client.ConnectChainlinkNodesByCharts(env, charts)
+		t.ChainlinkNodes, err = client.ConnectChainlinkNodes(env)
 		Expect(err).ShouldNot(HaveOccurred(), "Connecting to chainlink nodes shouldn't fail")
 		t.mockServer, err = client.ConnectMockServer(env)
 		Expect(err).ShouldNot(HaveOccurred(), "Creating mockserver clients shouldn't fail")
 	} else {
 		networkRegistry = blockchain.NewSoakNetworkRegistry()
-		t.ChainlinkNodes, err = client.ConnectChainlinkNodesSoakByCharts(env, charts)
+		t.ChainlinkNodes, err = client.ConnectChainlinkNodesSoak(env)
 		Expect(err).ShouldNot(HaveOccurred(), "Connecting to chainlink nodes shouldn't fail")
 		t.mockServer, err = client.ConnectMockServerSoak(env)
 		Expect(err).ShouldNot(HaveOccurred(), "Creating mockserver clients shouldn't fail")
