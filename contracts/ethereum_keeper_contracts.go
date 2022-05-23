@@ -53,6 +53,7 @@ type KeeperRegistry interface {
 	GetKeeperList(ctx context.Context) ([]string, error)
 	RegisterUpkeep(target string, gasLimit uint32, admin string, checkData []byte) error
 	CancelUpkeep(id *big.Int) error
+	ParseUpkeepIdFromRegisteredLog(log *types.Log) (*big.Int, error)
 }
 
 type KeeperConsumer interface {
@@ -396,6 +397,25 @@ func (v *EthereumKeeperRegistry) GetKeeperList(ctx context.Context) ([]string, e
 		addrs = append(addrs, ca.Hex())
 	}
 	return addrs, nil
+}
+
+// Parses the upkeep ID from an 'UpkeepRegistered' log, returns error on any other log
+func (v *EthereumKeeperRegistry) ParseUpkeepIdFromRegisteredLog(log *types.Log) (*big.Int, error) {
+	switch v.version {
+	case ethereum.RegistryVersion_1_0, ethereum.RegistryVersion_1_1:
+		parsedLog, err := v.registry1_1.ParseUpkeepRegistered(*log)
+		if err != nil {
+			return nil, err
+		}
+		return parsedLog.Id, nil
+	case ethereum.RegistryVersion_1_2:
+		parsedLog, err := v.registry1_2.ParseUpkeepRegistered(*log)
+		if err != nil {
+			return nil, err
+		}
+		return parsedLog.Id, nil
+	}
+	return nil, fmt.Errorf("keeper registry version %d is not supported", v.version)
 }
 
 // KeeperConsumerRoundConfirmer is a header subscription that awaits for a round of upkeeps
