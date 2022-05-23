@@ -660,17 +660,18 @@ func (d *DirectRequestTxPipelineSpec) String() (string, error) {
                        ]
 			fetch  [type=bridge name="{{.BridgeTypeAttributes.Name}}" requestData="{{.BridgeTypeAttributes.RequestData}}"];
 			parse  [type=jsonparse path="{{.DataPath}}"]
-            submit [type=ethtx to="$(decode_log.requester)" data="$(encode_tx)"]
+            submit [type=ethtx to="$(decode_log.requester)" data="$(encode_tx)" failOnRevert=true]
 			decode_log -> fetch -> parse -> encode_tx -> submit`
 	return marshallTemplate(d, "Direct request pipeline template", sourceString)
 }
 
 // DirectRequestJobSpec represents a direct request spec
 type DirectRequestJobSpec struct {
-	Name              string `toml:"name"`
-	ContractAddress   string `toml:"contractAddress"`
-	ExternalJobID     string `toml:"externalJobID"`
-	ObservationSource string `toml:"observationSource"` // List of commands for the chainlink node
+	Name                     string `toml:"name"`
+	ContractAddress          string `toml:"contractAddress"`
+	ExternalJobID            string `toml:"externalJobID"`
+	MinIncomingConfirmations string `toml:"minIncomingConfirmations"`
+	ObservationSource        string `toml:"observationSource"` // List of commands for the chainlink node
 }
 
 // Type returns the type of the pipeline
@@ -681,9 +682,10 @@ func (d *DirectRequestJobSpec) String() (string, error) {
 	directRequestTemplateString := `type     = "directrequest"
 schemaVersion     = 1
 name              = "{{.Name}}"
-maxTaskDuration   = "60s"
+maxTaskDuration   = "99999s"
 contractAddress   = "{{.ContractAddress}}"
 externalJobID     = "{{.ExternalJobID}}"
+minIncomingConfirmations = {{.MinIncomingConfirmations}}
 observationSource = """
 {{.ObservationSource}}
 """`

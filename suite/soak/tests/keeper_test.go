@@ -4,13 +4,19 @@ package soak
 import (
 	"math/big"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/actions"
+
+	"github.com/smartcontractkit/chainlink-env/pkg/helm/chainlink"
+	"github.com/smartcontractkit/chainlink-env/pkg/helm/ethereum"
+	"github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver"
+	mockservercfg "github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver-cfg"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog/log"
-	"github.com/smartcontractkit/chainlink-testing-framework/actions"
+	"github.com/smartcontractkit/chainlink-env/environment"
 	"github.com/smartcontractkit/chainlink-testing-framework/contracts"
 	"github.com/smartcontractkit/chainlink-testing-framework/testsetups"
-	"github.com/smartcontractkit/helmenv/environment"
 )
 
 var _ = Describe("Keeper block time soak test @soak-keeper-block-time", func() {
@@ -22,11 +28,15 @@ var _ = Describe("Keeper block time soak test @soak-keeper-block-time", func() {
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			env, err = environment.DeployOrLoadEnvironmentFromConfigFile(
-				"/root/test-env.json", // Default location for the soak-test-runner container
-			)
-			Expect(err).ShouldNot(HaveOccurred(), "Environment deployment shouldn't fail")
-			log.Info().Str("Namespace", env.Namespace).Msg("Connected to Soak Environment")
+			env = environment.New(&environment.Config{InsideK8s: true})
+			err = env.
+				AddHelm(mockservercfg.New(nil)).
+				AddHelm(mockserver.New(nil)).
+				AddHelm(ethereum.New(nil)).
+				AddHelm(chainlink.New(0, nil)).
+				Run()
+			Expect(err).ShouldNot(HaveOccurred())
+			log.Info().Str("Namespace", env.Cfg.Namespace).Msg("Connected to Soak Environment")
 		})
 
 		By("Setup the Keeper test", func() {
@@ -47,8 +57,8 @@ var _ = Describe("Keeper block time soak test @soak-keeper-block-time", func() {
 					},
 					CheckGasToBurn:       2400000,
 					PerformGasToBurn:     2400000,
-					BlockRange:           2000,
-					BlockInterval:        200,
+					BlockRange:           300,
+					BlockInterval:        50,
 					ChainlinkNodeFunding: big.NewFloat(10),
 				},
 			)

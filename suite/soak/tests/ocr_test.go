@@ -5,12 +5,17 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/smartcontractkit/chainlink-env/pkg/helm/chainlink"
+	"github.com/smartcontractkit/chainlink-env/pkg/helm/ethereum"
+	"github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver"
+	mockservercfg "github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver-cfg"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog/log"
+	"github.com/smartcontractkit/chainlink-env/environment"
 	"github.com/smartcontractkit/chainlink-testing-framework/actions"
 	"github.com/smartcontractkit/chainlink-testing-framework/testsetups"
-	"github.com/smartcontractkit/helmenv/environment"
 )
 
 var _ = Describe("OCR Soak Test @soak-ocr", func() {
@@ -22,11 +27,15 @@ var _ = Describe("OCR Soak Test @soak-ocr", func() {
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			env, err = environment.DeployOrLoadEnvironmentFromConfigFile(
-				"/root/test-env.json", // Default location for the soak-test-runner container
-			)
-			Expect(err).ShouldNot(HaveOccurred(), "Failed to connect to running soak environment")
-			log.Info().Str("Namespace", env.Namespace).Msg("Connected to Soak Environment")
+			env = environment.New(&environment.Config{InsideK8s: true})
+			err = env.
+				AddHelm(mockservercfg.New(nil)).
+				AddHelm(mockserver.New(nil)).
+				AddHelm(ethereum.New(nil)).
+				AddHelm(chainlink.New(0, nil)).
+				Run()
+			Expect(err).ShouldNot(HaveOccurred())
+			log.Info().Str("Namespace", env.Cfg.Namespace).Msg("Connected to Soak Environment")
 		})
 
 		By("Setting up Soak Test", func() {
