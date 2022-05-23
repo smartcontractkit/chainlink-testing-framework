@@ -5,25 +5,31 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
+	"time"
 
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+	"github.com/smartcontractkit/chainlink-env/environment"
+	"github.com/smartcontractkit/chainlink-env/pkg"
+	"github.com/smartcontractkit/chainlink-env/pkg/helm/chainlink"
+	"github.com/smartcontractkit/chainlink-env/pkg/helm/ethereum"
+	"github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver"
+	mockservercfg "github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver-cfg"
+	"github.com/smartcontractkit/chainlink-env/pkg/helm/remotetestrunner"
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils"
-	"github.com/smartcontractkit/helmenv/environment"
 )
 
 // Soak Test helpers
 
 // BuildGoTests builds the go tests to run, and returns a path to it, along with remote config options
-func BuildGoTests(executablePath, testsPath string) (string, error) {
-	LoadConfigs()
+func BuildGoTests(testTargetDir, finalTestDestination string) (string, string, error) {
 	dockerfilePath := filepath.Join(utils.SoakRoot, "Dockerfile.compiler")
-	testTargetDir := filepath.Join(utils.ProjectRoot, "generated_test_dir")
-	finalTestDestination := filepath.Join(utils.ProjectRoot, "remote.test")
 	// Clean up old test files if they're around
 	if _, err := os.Stat(finalTestDestination); err == nil {
 		if err = os.Remove(finalTestDestination); err != nil {
-			return "", nil
+			return "", "", nil
 		}
 	}
 
@@ -39,55 +45,69 @@ func BuildGoTests(executablePath, testsPath string) (string, error) {
 		Str("Command", dockerBuildCmd.String()).
 		Msg("Ran command")
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	err = os.Rename(filepath.Join(testTargetDir, "remote.test"), finalTestDestination)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	err = os.Remove(testTargetDir)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	_, err = os.Stat(finalTestDestination)
+	fileInfo, err := os.Stat(finalTestDestination)
 	if err != nil {
-		return "", fmt.Errorf("Expected '%s' to exist, %w", finalTestDestination, err)
+		return "", "", fmt.Errorf("expected '%s' to exist, %w", finalTestDestination, err)
 	}
-	return finalTestDestination, nil
+	return finalTestDestination, strconv.Itoa(int(fileInfo.Size())), nil
 }
 
-// runs a soak test based on the tag, launching as many chainlink nodes as necessary
-func RunSoakTest(testTag, namespacePrefix string, chainlinkReplicas int) error {
-	soakTestsPath := filepath.Join(utils.SoakRoot, "tests")
-	exePath, err := BuildGoTests(utils.ProjectRoot, soakTestsPath)
+// RunSoakTest runs a soak test based on the tag, launching as many chainlink nodes as necessary
+func RunSoakTest(testTargetDir, finalTestDestination, testTag, namespacePrefix string, chainlinkReplicas int) error {
+	LoadConfigs()
+	_, fileSize, err := BuildGoTests(testTargetDir, finalTestDestination)
 	if err != nil {
 		return err
 	}
-
-	runnerHelmValues := environment.CommonRemoteRunnerValues(
-		testTag, // Name of the test to run
-		config.ProjectConfig.RemoteRunnerConfig.SlackAPIKey,  // API key to use to upload artifacts to slack
-		config.ProjectConfig.RemoteRunnerConfig.SlackChannel, // Slack Channel to upload test artifacts to
-		config.ProjectConfig.RemoteRunnerConfig.SlackUserID,  // Slack user to notify on completion
-	)
-	env, err := environment.DeployRemoteRunnerEnvironment(
-		environment.NewChainlinkConfig(
-			environment.ChainlinkReplicas(chainlinkReplicas, config.ChainlinkVals()),
-			namespacePrefix,
-			config.GethNetworks()...,
-		),
-		filepath.Join(utils.SuiteRoot, "framework.yaml"), // Path of the framework config
-		filepath.Join(utils.SuiteRoot, "networks.yaml"),  // Path to the networks config
-		exePath, // Path to the executable test file
-		runnerHelmValues,
-	)
+	env := environment.New(&environment.Config{
+		TTL:       168 * time.Hour,
+		Labels:    []string{fmt.Sprintf("envType=%s", pkg.EnvTypeEVM5RemoteRunner)},
+		Namespace: namespacePrefix,
+	})
+	err = env.
+		AddHelm(mockservercfg.New(nil)).
+		AddHelm(mockserver.New(nil)).
+		AddHelm(remotetestrunner.New(map[string]interface{}{
+			"remote_test_runner": map[string]interface{}{
+				"test_name":      testTag,
+				"env_namespace":  env.Cfg.Namespace,
+				"slack_api":      config.ProjectConfig.RemoteRunnerConfig.SlackAPIKey,
+				"slack_channel":  config.ProjectConfig.RemoteRunnerConfig.SlackChannel,
+				"slack_user_id":  config.ProjectConfig.RemoteRunnerConfig.SlackUserID,
+				"test_file_size": fileSize,
+				"access_port":    8080,
+			},
+		})).
+		AddHelm(ethereum.New(nil)).
+		AddHelm(chainlink.New(0, map[string]interface{}{
+			"replicas": chainlinkReplicas,
+		})).
+		Run()
 	if err != nil {
-		return fmt.Errorf("Error launching soak test environment %w", err)
+		return err
 	}
-	log.Info().Str("Namespace", env.Namespace).
-		Str("Environment File", fmt.Sprintf("%s.%s", env.Namespace, "yaml")).
+	_, _, errOut, err := env.Client.CopyToPod(
+		env.Cfg.Namespace,
+		filepath.Join(utils.ProjectRoot, "remote.test"),
+		fmt.Sprintf("%s/%s:/root/remote.test", env.Cfg.Namespace, "remote-test-runner"),
+		"remote-test-runner")
+	if err != nil {
+		return errors.Wrap(err, errOut.String())
+	}
+	log.Info().Str("Namespace", env.Cfg.Namespace).
+		Str("Environment File", fmt.Sprintf("%s.%s", env.Cfg.Namespace, "yaml")).
 		Msg("Soak Test Successfully Launched. Save the environment file to collect logs when test is done.")
 	return nil
 }

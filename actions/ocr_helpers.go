@@ -23,7 +23,7 @@ func DeployOCRContracts(
 	linkTokenContract contracts.LinkToken,
 	contractDeployer contracts.ContractDeployer,
 	chainlinkNodes []client.Chainlink,
-	networks *blockchain.Networks,
+	client blockchain.EVMClient,
 ) []contracts.OffchainAggregator {
 	// Deploy contracts
 	var ocrInstances []contracts.OffchainAggregator
@@ -35,11 +35,11 @@ func DeployOCRContracts(
 		Expect(err).ShouldNot(HaveOccurred(), "Deploying OCR instance %d shouldn't fail", contractCount+1)
 		ocrInstances = append(ocrInstances, ocrInstance)
 		if (contractCount+1)%ContractDeploymentInterval == 0 { // For large amounts of contract deployments, space things out some
-			err = networks.Default.WaitForEvents()
+			err = client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred(), "Failed to wait for OCR Contract deployments")
 		}
 	}
-	err := networks.Default.WaitForEvents()
+	err := client.WaitForEvents()
 	Expect(err).ShouldNot(HaveOccurred(), "Error waiting for OCR contract deployments")
 
 	// Gather transmitter and address payees
@@ -48,7 +48,7 @@ func DeployOCRContracts(
 		addr, err := node.PrimaryEthAddress()
 		Expect(err).ShouldNot(HaveOccurred(), "Error getting node's primary ETH address")
 		transmitters = append(transmitters, addr)
-		payees = append(payees, networks.Default.GetDefaultWallet().Address())
+		payees = append(payees, client.GetDefaultWallet().Address())
 	}
 
 	// Set Payees
@@ -56,11 +56,11 @@ func DeployOCRContracts(
 		err = ocrInstance.SetPayees(transmitters, payees)
 		Expect(err).ShouldNot(HaveOccurred(), "Error setting OCR payees")
 		if (contractCount+1)%ContractDeploymentInterval == 0 { // For large amounts of contract deployments, space things out some
-			err = networks.Default.WaitForEvents()
+			err = client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred(), "Failed to wait for setting OCR payees")
 		}
 	}
-	err = networks.Default.WaitForEvents()
+	err = client.WaitForEvents()
 	Expect(err).ShouldNot(HaveOccurred(), "Error waiting for OCR contracts to set payees and transmitters")
 
 	// Set Config
@@ -72,11 +72,11 @@ func DeployOCRContracts(
 		)
 		Expect(err).ShouldNot(HaveOccurred())
 		if (contractCount+1)%ContractDeploymentInterval == 0 { // For large amounts of contract deployments, space things out some
-			err = networks.Default.WaitForEvents()
+			err = client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred(), "Failed to wait for setting OCR config")
 		}
 	}
-	err = networks.Default.WaitForEvents()
+	err = client.WaitForEvents()
 	Expect(err).ShouldNot(HaveOccurred(), "Error waiting for OCR contracts to set config")
 	return ocrInstances
 }
@@ -195,7 +195,7 @@ func SetAllAdapterResponsesToDifferentValues(
 func StartNewRound(
 	roundNr int64,
 	ocrInstances []contracts.OffchainAggregator,
-	networks *blockchain.Networks,
+	client blockchain.EVMClient,
 ) func() {
 	return func() {
 		roundTimeout := time.Minute * 2
@@ -203,8 +203,8 @@ func StartNewRound(
 			err := ocrInstances[i].RequestNewRound()
 			Expect(err).ShouldNot(HaveOccurred(), "Requesting new round in OCR instance %d shouldn't fail", i+1)
 			ocrRound := contracts.NewOffchainAggregatorRoundConfirmer(ocrInstances[i], big.NewInt(roundNr), roundTimeout, nil)
-			networks.Default.AddHeaderEventSubscription(ocrInstances[i].Address(), ocrRound)
-			err = networks.Default.WaitForEvents()
+			client.AddHeaderEventSubscription(ocrInstances[i].Address(), ocrRound)
+			err = client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred(), "Waiting for Event subscriptions of OCR instance %d shouldn't fail", i+1)
 		}
 	}

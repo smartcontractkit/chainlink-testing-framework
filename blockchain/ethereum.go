@@ -5,13 +5,13 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"net/url"
 	"sync"
 	"time"
 
+	"github.com/smartcontractkit/chainlink-env/environment"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils"
-	"github.com/smartcontractkit/helmenv/environment"
 
 	"golang.org/x/sync/errgroup"
 
@@ -487,36 +487,32 @@ type EthereumMultinodeClient struct {
 	Clients       []EVMClient
 }
 
-// NewEthereumMultiNodeClient returns an instantiated instance of all Ethereum client connected to all nodes
-func NewEthereumMultiNodeClient(
-	_ string,
-	networkConfig map[string]interface{},
-	urls []*url.URL,
-) (EVMClient, error) {
-	networkSettings := &config.ETHNetwork{}
-	err := UnmarshalNetworkConfig(networkConfig, networkSettings)
-	if err != nil {
-		return nil, err
-	}
-	log.Info().
-		Interface("URLs", networkSettings.URLs).
-		Msg("Connecting multi-node client")
-
-	ecl := &EthereumMultinodeClient{}
-	for _, envURL := range urls {
-		networkSettings.URLs = append(networkSettings.URLs, envURL.String())
-	}
-	for idx, networkURL := range networkSettings.URLs {
-		networkSettings.URL = networkURL
-		ec, err := NewEthereumClient(networkSettings)
-		if err != nil {
-			return nil, err
+func NewEthereumMultiNodeClientSetup(networkSettings *config.ETHNetwork) func(*environment.Environment) (EVMClient, error) {
+	return func(env *environment.Environment) (EVMClient, error) {
+		ecl := &EthereumMultinodeClient{}
+		networkSettings.URLs = append(networkSettings.URLs, env.URLs["geth"]...)
+		for idx, networkURL := range networkSettings.URLs {
+			networkSettings.URL = networkURL
+			ec, err := NewEthereumClient(networkSettings)
+			if err != nil {
+				return nil, err
+			}
+			ec.SetID(idx)
+			ecl.Clients = append(ecl.Clients, ec)
 		}
-		ec.SetID(idx)
-		ecl.Clients = append(ecl.Clients, ec)
+		ecl.DefaultClient = ecl.Clients[0]
+		log.Info().
+			Interface("URLs", networkSettings.URLs).
+			Msg("Connected multi-node client")
+
+		// required in Geth when you need to call "simulate" transactions from nodes
+		if ecl.GetNetworkType() == SimulatedEthNetwork {
+			if err := ecl.Fund("0x0", big.NewFloat(1000)); err != nil {
+				return nil, err
+			}
+		}
+		return ecl, nil
 	}
-	ecl.DefaultClient = ecl.Clients[0]
-	return ecl, nil
 }
 
 // Get gets default client as an interface{}
@@ -551,12 +547,12 @@ func (e *EthereumMultinodeClient) GetDefaultWallet() *EthereumWallet {
 	return e.DefaultClient.GetDefaultWallet()
 }
 
-// GetDefaultWallet returns the default wallet for the network
+// GetWallets returns the default wallet for the network
 func (e *EthereumMultinodeClient) GetWallets() []*EthereumWallet {
 	return e.DefaultClient.GetWallets()
 }
 
-// GetDefaultWallet returns the default wallet for the network
+// GetNetworkConfig return the network config
 func (e *EthereumMultinodeClient) GetNetworkConfig() *config.ETHNetwork {
 	return e.DefaultClient.GetNetworkConfig()
 }
@@ -713,21 +709,6 @@ func (e *EthereumMultinodeClient) WaitForEvents() error {
 		})
 	}
 	return g.Wait()
-}
-
-// SimulatedEthereumURLs returns the websocket URLs for a simulated geth network
-func SimulatedEthereumURLs(e *environment.Environment) ([]*url.URL, error) {
-	return e.Charts.Connections("geth").LocalURLsByPort("ws-rpc", environment.WS)
-}
-
-// SimulatedEthereumURLs returns the websocket URLs for a simulated geth network
-func SimulatedSoakEthereumURLs(e *environment.Environment) ([]*url.URL, error) {
-	return e.Charts.Connections("geth").RemoteURLsByPort("ws-rpc", environment.WS)
-}
-
-// LiveEthTestnetURLs indicates that there are no urls to fetch, except from the network config
-func LiveEthTestnetURLs(e *environment.Environment) ([]*url.URL, error) {
-	return []*url.URL{}, nil
 }
 
 // BorrowedNonces allows to handle nonces concurrently without requesting them every time
