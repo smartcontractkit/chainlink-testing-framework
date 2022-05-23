@@ -10,50 +10,19 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/client"
 	"github.com/smartcontractkit/chainlink-testing-framework/contracts"
-	"github.com/smartcontractkit/chainlink-testing-framework/contracts/ethereum"
 )
 
 func DeployVrfv2Contracts(
 	linkTokenContract contracts.LinkToken,
 	contractDeployer contracts.ContractDeployer,
 	networks *blockchain.Networks,
+	linkEthFeedAddress string,
 ) (contracts.VRFCoordinatorV2, contracts.VRFConsumerV2) {
-	linkEthFeedResponse := big.NewInt(1e18)
 	bhs, err := contractDeployer.DeployBlockhashStore()
 	Expect(err).ShouldNot(HaveOccurred())
-	mf, err := contractDeployer.DeployMockETHLINKFeed(linkEthFeedResponse)
-	Expect(err).ShouldNot(HaveOccurred())
-	coordinator, err := contractDeployer.DeployVRFCoordinatorV2(linkTokenContract.Address(), bhs.Address(), mf.Address())
+	coordinator, err := contractDeployer.DeployVRFCoordinatorV2(linkTokenContract.Address(), bhs.Address(), linkEthFeedAddress)
 	Expect(err).ShouldNot(HaveOccurred())
 	consumer, err := contractDeployer.DeployVRFConsumerV2(linkTokenContract.Address(), coordinator.Address())
-	Expect(err).ShouldNot(HaveOccurred())
-	err = networks.Default.WaitForEvents()
-	Expect(err).ShouldNot(HaveOccurred())
-
-	err = linkTokenContract.Transfer(consumer.Address(), big.NewInt(0).Mul(big.NewInt(1e4), big.NewInt(1e18)))
-	Expect(err).ShouldNot(HaveOccurred())
-	err = coordinator.SetConfig(
-		1,
-		2.5e6,
-		86400,
-		33825,
-		linkEthFeedResponse,
-		ethereum.VRFCoordinatorV2FeeConfig{
-			FulfillmentFlatFeeLinkPPMTier1: 1,
-			FulfillmentFlatFeeLinkPPMTier2: 1,
-			FulfillmentFlatFeeLinkPPMTier3: 1,
-			FulfillmentFlatFeeLinkPPMTier4: 1,
-			FulfillmentFlatFeeLinkPPMTier5: 1,
-			ReqsForTier2:                   big.NewInt(10),
-			ReqsForTier3:                   big.NewInt(20),
-			ReqsForTier4:                   big.NewInt(30),
-			ReqsForTier5:                   big.NewInt(40)},
-	)
-	Expect(err).ShouldNot(HaveOccurred())
-	err = networks.Default.WaitForEvents()
-	Expect(err).ShouldNot(HaveOccurred())
-
-	err = consumer.CreateFundedSubscription(big.NewInt(0).Mul(big.NewInt(30), big.NewInt(1e18)))
 	Expect(err).ShouldNot(HaveOccurred())
 	err = networks.Default.WaitForEvents()
 	Expect(err).ShouldNot(HaveOccurred())
