@@ -59,6 +59,7 @@ type EVMClient interface {
 	SwitchNode(node int) error
 
 	// On-chain Operations
+	BalanceAt(ctx context.Context, address common.Address) (*big.Int, error)
 	HeaderHashByNumber(ctx context.Context, bn *big.Int) (string, error)
 	HeaderTimestampByNumber(ctx context.Context, bn *big.Int) (uint64, error)
 	LatestBlockNumber(ctx context.Context) (uint64, error)
