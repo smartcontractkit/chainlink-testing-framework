@@ -42,9 +42,8 @@ type VRFV2SoakTestInputs struct {
 	ChainlinkNodeFunding *big.Float    // Amount of ETH to fund each chainlink node with
 	StopTestOnError      bool
 
-	RequestsPerMinute  int                   // Number of requests for randomness per minute
-	ReadEveryNRequests int                   // Check the randomness output every n number of requests
-	TestFunc           VRFV2SoakTestTestFunc // The function that makes the request and validations wanted
+	RequestsPerMinute int                   // Number of requests for randomness per minute
+	TestFunc          VRFV2SoakTestTestFunc // The function that makes the request and validations wanted
 }
 
 // NewVRFV2SoakTest creates a new vrfv2 soak test to setup and run
@@ -159,6 +158,5 @@ func (t *VRFV2SoakTest) ensureInputValues() {
 	Expect(inputs.RequestsPerMinute).Should(BeNumerically(">=", 1), "Expecting at least 1 request per minute")
 	Expect(inputs.ChainlinkNodeFunding.Float64()).Should(BeNumerically(">", 0), "Expecting non-zero chainlink node funding amount")
 	Expect(inputs.TestDuration).Should(BeNumerically(">=", time.Minute*1), "Expected test duration to be more than a minute")
-	Expect(inputs.ReadEveryNRequests).Should(BeNumerically(">", 0), "Expected the test to read requests for verification at some point")
 	Expect(inputs.TestFunc).ShouldNot(BeNil(), "Expected to have a test to run")
 }
