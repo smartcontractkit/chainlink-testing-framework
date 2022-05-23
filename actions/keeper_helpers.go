@@ -259,6 +259,10 @@ func RegisterUpkeepContracts(
 			}
 		}
 		Expect(upkeepId).ShouldNot(BeNil(), "Upkeep ID should be found after registration")
+		log.Debug().
+			Str("TxHash", txHash.String()).
+			Str("Upkeep ID", upkeepId.String()).
+			Msg("Found upkeepId in tx hash")
 		upkeepIds = append(upkeepIds, upkeepId)
 	}
 	log.Info().Msg("Successfully registered all Keeper Consumer Contracts")
