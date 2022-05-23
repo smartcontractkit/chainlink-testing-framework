@@ -249,7 +249,7 @@ func RegisterUpkeepContracts(
 	for _, txHash := range registrationTxHashes {
 		receipt, err := networks.Default.GetTxReceipt(txHash)
 		Expect(err).ShouldNot(HaveOccurred(), "Registration tx should be completed")
-		var upkeepId *big.Int = nil
+		var upkeepId *big.Int
 		for _, rawLog := range receipt.Logs {
 			parsedUpkeepId, err := registry.ParseUpkeepIdFromRegisteredLog(rawLog)
 			if err == nil {
