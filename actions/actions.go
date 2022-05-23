@@ -13,7 +13,7 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	"github.com/pkg/errors"
-	"github.com/smartcontractkit/helmenv/environment"
+	"github.com/smartcontractkit/chainlink-env/environment"
 	"golang.org/x/sync/errgroup"
 	kubeerrors "k8s.io/apimachinery/pkg/api/errors"
 
@@ -239,26 +239,12 @@ func TeardownSuite(
 	if err := writeTeardownLogs(env, optionalTestReporter); err != nil {
 		return errors.Wrap(err, "Error dumping environment logs, leaving environment running for manual retrieval")
 	}
-	switch strings.ToUpper(config.ProjectConfig.FrameworkConfig.KeepEnvironments) {
-	case "ALWAYS":
-		env.Persistent = true
-	case "ONFAIL":
-		if ginkgo.CurrentSpecReport().Failed() {
-			env.Persistent = true
-		}
-	case "NEVER":
-		env.Persistent = false
-	default:
-		log.Warn().Str("Invalid Keep Value", config.ProjectConfig.FrameworkConfig.KeepEnvironments).
-			Msg("Invalid 'keep_environments' value, see the 'framework.yaml' file")
-	}
 
 	if nets != nil && chainlinkNodes != nil && len(chainlinkNodes) > 0 {
 		if err := returnFunds(chainlinkNodes, nets); err != nil {
-			log.Error().Err(err).Str("Namespace", env.Namespace).
+			log.Error().Err(err).Str("Namespace", env.Cfg.Namespace).
 				Msg("Error attempting to return funds from chainlink nodes to network's default wallet. " +
 					"Environment is left running so you can try manually!")
-			env.Persistent = true
 		}
 	} else {
 		log.Info().Msg("Successfully returned funds from chainlink nodes to default network wallets")
@@ -268,10 +254,18 @@ func TeardownSuite(
 			return err
 		}
 	}
-	if !env.Config.Persistent {
-		if err := env.Teardown(); err != nil {
-			return err
+
+	switch strings.ToUpper(config.ProjectConfig.FrameworkConfig.KeepEnvironments) {
+	case "ALWAYS":
+	case "ONFAIL":
+		if ginkgo.CurrentSpecReport().Failed() {
+			return env.Shutdown()
 		}
+	case "NEVER":
+		return env.Shutdown()
+	default:
+		log.Warn().Str("Invalid Keep Value", config.ProjectConfig.FrameworkConfig.KeepEnvironments).
+			Msg("Invalid 'keep_environments' value, see the 'framework.yaml' file")
 	}
 	return nil
 }
@@ -290,7 +284,7 @@ func TeardownRemoteSuite(
 	}
 	err = returnFunds(chainlinkNodes, nets)
 	if err != nil {
-		log.Error().Err(err).Str("Namespace", env.Namespace).
+		log.Error().Err(err).Str("Namespace", env.Cfg.Namespace).
 			Msg("Error attempting to return funds from chainlink nodes to network's default wallet. " +
 				"Environment is left running so you can try manually!")
 	}
@@ -314,7 +308,7 @@ func writeTeardownLogs(env *environment.Environment, optionalTestReporter testre
 		}
 		if optionalTestReporter != nil {
 			log.Info().Msg("Writing Test Report")
-			optionalTestReporter.SetNamespace(env.Namespace)
+			optionalTestReporter.SetNamespace(env.Cfg.Namespace)
 			err := optionalTestReporter.WriteReport(logsPath)
 			if err != nil {
 				return err

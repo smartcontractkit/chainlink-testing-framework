@@ -9,9 +9,9 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+	"github.com/smartcontractkit/chainlink-env/chaos"
+	"github.com/smartcontractkit/chainlink-env/environment"
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
-	"github.com/smartcontractkit/helmenv/chaos/experiments"
-	"github.com/smartcontractkit/helmenv/environment"
 	"go.uber.org/atomic"
 )
 
@@ -209,14 +209,12 @@ func (rc *ReorgController) forkNetwork(blk blockchain.NodeBlock) error {
 		Int64("Number", rc.forkBlockNumber).
 		Str("Network", rc.cfg.Network.GetNetworkName()).
 		Msg("Forking network")
-	expName, err := rc.cfg.Env.ApplyChaosExperiment(&experiments.NetworkPartition{
-		FromMode:       "all",
-		FromLabelKey:   "app",
-		FromLabelValue: rc.cfg.FromPodLabel,
-		ToMode:         "all",
-		ToLabelKey:     "app",
-		ToLabelValue:   rc.cfg.ToPodLabel,
-	})
+	expName, err := rc.cfg.Env.Chaos.Run(
+		chaos.NewNetworkPartitionExperiment(
+			rc.cfg.Env.Cfg.Namespace,
+			"geth-reorg-ethereum-geth",
+			"geth-reorg-ethereum-miner-node",
+		))
 	rc.chaosExperimentName = expName
 	rc.networkStep.Store(CheckBlocks)
 	return err
@@ -224,7 +222,7 @@ func (rc *ReorgController) forkNetwork(blk blockchain.NodeBlock) error {
 
 // joinNetwork restores network connectivity between nodes
 func (rc *ReorgController) joinNetwork() error {
-	return rc.cfg.Env.StopChaosExperiment(rc.chaosExperimentName)
+	return rc.cfg.Env.Chaos.Stop(rc.chaosExperimentName)
 }
 
 // hasNetworkFormedConsensus waits for network to have N blocks with the same hashes

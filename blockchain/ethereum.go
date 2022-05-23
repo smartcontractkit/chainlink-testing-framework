@@ -5,13 +5,16 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"net/url"
 	"sync"
 	"time"
 
+	"github.com/smartcontractkit/chainlink-env/pkg/helm/geth"
+
+	"github.com/smartcontractkit/chainlink-env/client"
+	"github.com/smartcontractkit/chainlink-env/environment"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils"
-	"github.com/smartcontractkit/helmenv/environment"
 
 	"golang.org/x/sync/errgroup"
 
@@ -491,7 +494,7 @@ type EthereumMultinodeClient struct {
 func NewEthereumMultiNodeClient(
 	_ string,
 	networkConfig map[string]interface{},
-	urls []*url.URL,
+	urls []string,
 ) (EVMClient, error) {
 	networkSettings := &config.ETHNetwork{}
 	err := UnmarshalNetworkConfig(networkConfig, networkSettings)
@@ -503,9 +506,7 @@ func NewEthereumMultiNodeClient(
 		Msg("Connecting multi-node client")
 
 	ecl := &EthereumMultinodeClient{}
-	for _, envURL := range urls {
-		networkSettings.URLs = append(networkSettings.URLs, envURL.String())
-	}
+	networkSettings.URLs = append(networkSettings.URLs, urls...)
 	for idx, networkURL := range networkSettings.URLs {
 		networkSettings.URL = networkURL
 		ec, err := NewEthereumClient(networkSettings)
@@ -716,18 +717,23 @@ func (e *EthereumMultinodeClient) WaitForEvents() error {
 }
 
 // SimulatedEthereumURLs returns the websocket URLs for a simulated geth network
-func SimulatedEthereumURLs(e *environment.Environment) ([]*url.URL, error) {
-	return e.Charts.Connections("geth").LocalURLsByPort("ws-rpc", environment.WS)
+func SimulatedEthereumURLs(e *environment.Environment) ([]string, error) {
+	log.Warn().Interface("URLs", e.URLs).Send()
+	return []string{e.URLs[geth.URLsKey][0]}, nil
 }
 
-// SimulatedEthereumURLs returns the websocket URLs for a simulated geth network
-func SimulatedSoakEthereumURLs(e *environment.Environment) ([]*url.URL, error) {
-	return e.Charts.Connections("geth").RemoteURLsByPort("ws-rpc", environment.WS)
+// SimulatedSoakEthereumURLs returns the websocket URLs for a simulated geth network
+func SimulatedSoakEthereumURLs(e *environment.Environment) ([]string, error) {
+	u, err := e.Fwd.FindPort("geth:0", "geth-network", "ws-rpc").As(client.RemoteConnection, client.WS)
+	if err != nil {
+		return nil, err
+	}
+	return []string{u}, nil
 }
 
 // LiveEthTestnetURLs indicates that there are no urls to fetch, except from the network config
-func LiveEthTestnetURLs(e *environment.Environment) ([]*url.URL, error) {
-	return []*url.URL{}, nil
+func LiveEthTestnetURLs(e *environment.Environment) ([]string, error) {
+	return []string{}, nil
 }
 
 // BorrowedNonces allows to handle nonces concurrently without requesting them every time

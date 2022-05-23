@@ -4,11 +4,12 @@ package testsetups
 import (
 	"time"
 
+	"github.com/smartcontractkit/chainlink-env/environment"
+
 	. "github.com/onsi/gomega"
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/client"
 	"github.com/smartcontractkit/chainlink-testing-framework/testreporters"
-	"github.com/smartcontractkit/helmenv/environment"
 	"golang.org/x/sync/errgroup"
 )
 

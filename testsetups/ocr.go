@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/smartcontractkit/chainlink-env/environment"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog/log"
@@ -17,7 +19,6 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/client"
 	"github.com/smartcontractkit/chainlink-testing-framework/contracts"
 	"github.com/smartcontractkit/chainlink-testing-framework/testreporters"
-	"github.com/smartcontractkit/helmenv/environment"
 )
 
 // OCRSoakTest defines a typical OCR soak test
