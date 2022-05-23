@@ -6,12 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
-	"net/url"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/smartcontractkit/helmenv/environment"
+	"github.com/smartcontractkit/chainlink-env/environment"
 	"gopkg.in/yaml.v2"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
@@ -31,11 +30,11 @@ const (
 type NewEVMClientFn func(
 	networkName string,
 	networkConfig map[string]interface{},
-	urls []*url.URL,
+	urls []string,
 ) (EVMClient, error)
 
 // ClientURLFn are used to be able to return a list of URLs from the environment to connect
-type ClientURLFn func(e *environment.Environment) ([]*url.URL, error)
+type ClientURLFn func(e *environment.Environment) ([]string, error)
 
 // EVMClient is the interface that wraps a given client implementation for a blockchain, to allow for switching
 // of network types within the test suite

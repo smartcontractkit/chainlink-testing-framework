@@ -3,7 +3,6 @@ package blockchain
 import (
 	"context"
 	"math/big"
-	"net/url"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -36,7 +35,7 @@ func NewKlaytnClient(networkSettings *config.ETHNetwork) (EVMClient, error) {
 func NewKlaytnMultiNodeClient(
 	_ string,
 	networkConfig map[string]interface{},
-	urls []*url.URL,
+	urls []string,
 ) (EVMClient, error) {
 	networkSettings := &config.ETHNetwork{}
 	err := UnmarshalNetworkConfig(networkConfig, networkSettings)
@@ -48,9 +47,7 @@ func NewKlaytnMultiNodeClient(
 		Msg("Connecting multi-node client")
 
 	multiNodeClient := &EthereumMultinodeClient{}
-	for _, envURL := range urls {
-		networkSettings.URLs = append(networkSettings.URLs, envURL.String())
-	}
+	networkSettings.URLs = append(networkSettings.URLs, urls...)
 	for idx, networkURL := range networkSettings.URLs {
 		networkSettings.URL = networkURL
 		ec, err := NewKlaytnClient(networkSettings)

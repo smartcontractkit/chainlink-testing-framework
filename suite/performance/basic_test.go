@@ -5,53 +5,55 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/smartcontractkit/chainlink-env/environment"
+	"github.com/smartcontractkit/chainlink-env/pkg/helm/chainlink"
+	"github.com/smartcontractkit/chainlink-env/pkg/helm/geth"
+	"github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver"
+	mockservercfg "github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver-cfg"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	uuid "github.com/satori/go.uuid"
 	"github.com/smartcontractkit/chainlink-testing-framework/actions"
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/client"
-	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/testsetups"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils"
-	"github.com/smartcontractkit/helmenv/environment"
 )
 
 var _ = Describe("Profiling suite @profile", func() {
 	var (
-		err             error
-		nets            *blockchain.Networks
-		chainlinkNodes  []client.Chainlink
-		mockserver      *client.MockserverClient
-		testEnvironment *environment.Environment
-		profileTest     *testsetups.ChainlinkProfileTest
+		err            error
+		nets           *blockchain.Networks
+		chainlinkNodes []client.Chainlink
+		ms             *client.MockserverClient
+		e              *environment.Environment
+		profileTest    *testsetups.ChainlinkProfileTest
 	)
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			testEnvironment, err = environment.DeployOrLoadEnvironment(
-				environment.NewChainlinkConfig(
-					config.ChainlinkVals(),
-					"chainlink-profiling",
-					config.GethNetworks()...,
-				),
-			)
-			Expect(err).ShouldNot(HaveOccurred(), "Environment deployment shouldn't fail")
-			err = testEnvironment.ConnectAll()
+			e = environment.New(nil)
+			err := e.
+				AddHelm(mockservercfg.New(nil)).
+				AddHelm(mockserver.New(nil)).
+				AddHelm(geth.New(nil)).
+				AddHelm(chainlink.New(nil)).
+				Run()
 			Expect(err).ShouldNot(HaveOccurred(), "Connecting to all nodes shouldn't fail")
 		})
 
 		By("Setting up the test", func() {
-			chainlinkNodes, err = client.ConnectChainlinkNodes(testEnvironment)
+			chainlinkNodes, err = client.ConnectChainlinkNodes(e)
 			Expect(err).ShouldNot(HaveOccurred(), "Connecting to chainlink nodes shouldn't fail")
-			mockserver, err = client.ConnectMockServer(testEnvironment)
+			ms, err = client.ConnectMockServer(e)
 			Expect(err).ShouldNot(HaveOccurred(), "Creating mockserver clients shouldn't fail")
 
 			profileFunction := func(chainlinkNode client.Chainlink) {
 				defer GinkgoRecover()
 				bta := client.BridgeTypeAttributes{
 					Name:        fmt.Sprintf("variable-%s", uuid.NewV4().String()),
-					URL:         fmt.Sprintf("%s/variable", mockserver.Config.ClusterURL),
+					URL:         fmt.Sprintf("%s/variable", ms.Config.ClusterURL),
 					RequestData: "{}",
 				}
 				err = chainlinkNode.CreateBridge(&bta)
@@ -69,13 +71,13 @@ var _ = Describe("Profiling suite @profile", func() {
 				ProfileDuration: time.Second,
 				ChainlinkNodes:  chainlinkNodes,
 			})
-			profileTest.Setup(testEnvironment)
+			profileTest.Setup(e)
 		})
 	})
 
 	Describe("checking Chainlink node's PPROF", func() {
 		It("queries PPROF on node", func() {
-			err = mockserver.SetValuePath("/variable", 5)
+			err = ms.SetValuePath("/variable", 5)
 			Expect(err).ShouldNot(HaveOccurred(), "Setting value path in mockserver shouldn't fail")
 
 			profileTest.Run()
@@ -84,7 +86,7 @@ var _ = Describe("Profiling suite @profile", func() {
 
 	AfterEach(func() {
 		By("Tearing down the environment", func() {
-			err = actions.TeardownSuite(testEnvironment, nets, utils.ProjectRoot, chainlinkNodes, &profileTest.TestReporter)
+			err = actions.TeardownSuite(e, nets, utils.ProjectRoot, chainlinkNodes, &profileTest.TestReporter)
 			Expect(err).ShouldNot(HaveOccurred(), "Environment teardown shouldn't fail")
 		})
 	})

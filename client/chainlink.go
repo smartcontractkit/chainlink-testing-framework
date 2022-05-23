@@ -8,12 +8,15 @@ import (
 	"io/ioutil"
 	"math/big"
 	"net/http"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
 
+	chainlink2 "github.com/smartcontractkit/chainlink-env/pkg/helm/chainlink"
+
 	"github.com/rs/zerolog/log"
-	"github.com/smartcontractkit/helmenv/environment"
+	"github.com/smartcontractkit/chainlink-env/environment"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -700,62 +703,56 @@ func (c *chainlink) do(
 
 // ConnectChainlinkNodes creates new chainlink clients
 func ConnectChainlinkNodes(e *environment.Environment) ([]Chainlink, error) {
-	return ConnectChainlinkNodesByCharts(e, []string{"chainlink"})
+	return ConnectChainlinkClientsFromEnv(e)
 }
 
 func ConnectChainlinkDBs(e *environment.Environment) ([]*PostgresConnector, error) {
-	return ConnectChainlinkDBByCharts(e, []string{"chainlink"})
+	return ConnectChainlinkDBByCharts(e)
 }
 
 // ConnectChainlinkDBByCharts creates new chainlink DBs clients by charts
-func ConnectChainlinkDBByCharts(e *environment.Environment, charts []string) ([]*PostgresConnector, error) {
+func ConnectChainlinkDBByCharts(e *environment.Environment) ([]*PostgresConnector, error) {
 	var dbs []*PostgresConnector
-	for _, chart := range charts {
-		pgUrls, err := e.Charts.Connections(chart).LocalURLsByPort("postgres", environment.HTTP)
+	dbURLs := e.URLs[chainlink2.DBsLocalURLsKey]
+	for _, u := range dbURLs {
+		sp := strings.Split(u, ":")
+		c, err := NewPostgresConnector(&PostgresConfig{
+			Host:     "localhost",
+			Port:     sp[len(sp)-1],
+			User:     "postgres",
+			Password: "node",
+			DBName:   "chainlink",
+		})
+		dbs = append(dbs, c)
 		if err != nil {
 			return nil, err
-		}
-		for _, u := range pgUrls {
-			c, err := NewPostgresConnector(&PostgresConfig{
-				Host:     "localhost",
-				Port:     u.Port(),
-				User:     "postgres",
-				Password: "node",
-				DBName:   "chainlink",
-			})
-			dbs = append(dbs, c)
-			if err != nil {
-				return nil, err
-			}
 		}
 	}
 	return dbs, nil
 }
 
-// ConnectChainlinkNodesByCharts creates new chainlink clients by charts
-func ConnectChainlinkNodesByCharts(e *environment.Environment, charts []string) ([]Chainlink, error) {
+func parseHostname(s string) string {
+	r := regexp.MustCompile(`://(?P<Host>.*):`)
+	return r.FindStringSubmatch(s)[1]
+}
+
+// ConnectChainlinkClientsFromEnv creates new chainlink clients by charts
+func ConnectChainlinkClientsFromEnv(e *environment.Environment) ([]Chainlink, error) {
 	var clients []Chainlink
 
-	for _, chart := range charts {
-		localURLs, err := e.Charts.Connections(chart).LocalURLsByPort("access", environment.HTTP)
+	localURLs := e.URLs[chainlink2.NodesLocalURLsKey]
+	internalURLs := e.URLs[chainlink2.NodesInternalURLsKey]
+	for i, localURL := range localURLs {
+		internalHost := parseHostname(internalURLs[i])
+		c, err := NewChainlink(&ChainlinkConfig{
+			URL:      localURL,
+			Email:    "notreal@fakeemail.ch",
+			Password: "twochains",
+			RemoteIP: internalHost,
+		}, http.DefaultClient)
+		clients = append(clients, c)
 		if err != nil {
 			return nil, err
-		}
-		remoteURLs, err := e.Charts.Connections(chart).RemoteURLsByPort("access", environment.HTTP)
-		if err != nil {
-			return nil, err
-		}
-		for urlIndex, localURL := range localURLs {
-			c, err := NewChainlink(&ChainlinkConfig{
-				URL:      localURL.String(),
-				Email:    "notreal@fakeemail.ch",
-				Password: "twochains",
-				RemoteIP: remoteURLs[urlIndex].Hostname(),
-			}, http.DefaultClient)
-			clients = append(clients, c)
-			if err != nil {
-				return nil, err
-			}
 		}
 	}
 	return clients, nil
@@ -763,29 +760,20 @@ func ConnectChainlinkNodesByCharts(e *environment.Environment, charts []string) 
 
 // ConnectChainlinkNodesSoak assumes that the tests are being run from an internal soak test runner
 func ConnectChainlinkNodesSoak(e *environment.Environment) ([]Chainlink, error) {
-	return ConnectChainlinkNodesSoakByCharts(e, []string{"chainlink"})
-}
-
-// ConnectChainlinkNodesSoakByCharts assumes that the tests are being run from an internal soak test runner
-func ConnectChainlinkNodesSoakByCharts(e *environment.Environment, charts []string) ([]Chainlink, error) {
 	var clients []Chainlink
 
-	for _, chart := range charts {
-		remoteURLs, err := e.Charts.Connections(chart).RemoteURLsByPort("access", environment.HTTP)
+	internalURLs := e.URLs[chainlink2.NodesInternalURLsKey]
+	for i, url := range internalURLs {
+		internalHost := parseHostname(internalURLs[i])
+		c, err := NewChainlink(&ChainlinkConfig{
+			URL:      url,
+			Email:    "notreal@fakeemail.ch",
+			Password: "twochains",
+			RemoteIP: internalHost,
+		}, http.DefaultClient)
+		clients = append(clients, c)
 		if err != nil {
 			return nil, err
-		}
-		for _, remoteURL := range remoteURLs {
-			c, err := NewChainlink(&ChainlinkConfig{
-				URL:      remoteURL.String(),
-				Email:    "notreal@fakeemail.ch",
-				Password: "twochains",
-				RemoteIP: remoteURL.Hostname(),
-			}, http.DefaultClient)
-			clients = append(clients, c)
-			if err != nil {
-				return nil, err
-			}
 		}
 	}
 	return clients, nil

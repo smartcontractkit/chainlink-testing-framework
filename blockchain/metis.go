@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"net/url"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -33,11 +32,11 @@ func NewMetisClient(networkSettings *config.ETHNetwork) (EVMClient, error) {
 	return &MetisClient{client.(*EthereumClient)}, err
 }
 
-// NewMetisMultinodeClient returns an instantiated instance of all Metis clients connected to all nodes
+// NewMetisMultiNodeClient returns an instantiated instance of all Metis clients connected to all nodes
 func NewMetisMultiNodeClient(
 	_ string,
 	networkConfig map[string]interface{},
-	urls []*url.URL,
+	urls []string,
 ) (EVMClient, error) {
 	networkSettings := &config.ETHNetwork{}
 	err := UnmarshalNetworkConfig(networkConfig, networkSettings)
@@ -49,9 +48,7 @@ func NewMetisMultiNodeClient(
 		Msg("Connecting multi-node client")
 
 	multiNodeClient := &EthereumMultinodeClient{}
-	for _, envURL := range urls {
-		networkSettings.URLs = append(networkSettings.URLs, envURL.String())
-	}
+	networkSettings.URLs = append(networkSettings.URLs, urls...)
 	for idx, networkURL := range networkSettings.URLs {
 		networkSettings.URL = networkURL
 		ec, err := NewMetisClient(networkSettings)
