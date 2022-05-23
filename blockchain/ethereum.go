@@ -167,6 +167,11 @@ func (e *EthereumClient) LoadWallets(cfg interface{}) error {
 	return nil
 }
 
+// BalanceAt returns the ETH balance of the specified address
+func (e *EthereumClient) BalanceAt(ctx context.Context, address common.Address) (*big.Int, error) {
+	return e.Client.BalanceAt(ctx, address, nil)
+}
+
 // SwitchNode not used, only applicable to EthereumMultinodeClient
 func (e *EthereumClient) SwitchNode(_ int) error {
 	return nil
@@ -577,6 +582,11 @@ func (e *EthereumMultinodeClient) LoadWallets(cfg interface{}) error {
 		c.SetWallets(wallets)
 	}
 	return nil
+}
+
+// BalanceAt returns the ETH balance of the specified address
+func (e *EthereumMultinodeClient) BalanceAt(ctx context.Context, address common.Address) (*big.Int, error) {
+	return e.DefaultClient.BalanceAt(ctx, address)
 }
 
 // SwitchNode sets default client to perform calls to the network
