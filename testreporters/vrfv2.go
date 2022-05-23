@@ -38,7 +38,7 @@ func (o *VRFV2SoakTestReporter) SetNamespace(namespace string) {
 	o.namespace = namespace
 }
 
-// WriteReport writes OCR Soak test report to logs
+// WriteReport writes VRFV2 Soak test report to logs
 func (o *VRFV2SoakTestReporter) WriteReport(folderLocation string) error {
 	for _, report := range o.Reports {
 		report.averageRoundBlocks = report.totalBlockLengths / report.TotalRounds
@@ -125,14 +125,14 @@ func (o *VRFV2SoakTestReporter) writeCSV(folderLocation string) error {
 	reportLocation := filepath.Join(folderLocation, "./vrfv2_soak_report.csv")
 	log.Debug().Str("Location", reportLocation).Msg("Writing VRFV2 report")
 	o.csvLocation = reportLocation
-	ocrReportFile, err := os.Create(reportLocation)
+	vrfv2ReportFile, err := os.Create(reportLocation)
 	if err != nil {
 		return err
 	}
-	defer ocrReportFile.Close()
+	defer vrfv2ReportFile.Close()
 
-	ocrReportWriter := csv.NewWriter(ocrReportFile)
-	err = ocrReportWriter.Write([]string{
+	vrfv2ReportWriter := csv.NewWriter(vrfv2ReportFile)
+	err = vrfv2ReportWriter.Write([]string{
 		"Contract Index",
 		"Contract Address",
 		"Total Rounds Processed",
@@ -147,7 +147,7 @@ func (o *VRFV2SoakTestReporter) writeCSV(folderLocation string) error {
 		return err
 	}
 	for contractIndex, report := range o.Reports {
-		err = ocrReportWriter.Write([]string{
+		err = vrfv2ReportWriter.Write([]string{
 			fmt.Sprint(contractIndex),
 			report.ContractAddress,
 			fmt.Sprint(report.TotalRounds),
@@ -162,7 +162,7 @@ func (o *VRFV2SoakTestReporter) writeCSV(folderLocation string) error {
 			return err
 		}
 	}
-	ocrReportWriter.Flush()
+	vrfv2ReportWriter.Flush()
 
 	log.Info().Str("Location", reportLocation).Msg("Wrote CSV file")
 	return nil
