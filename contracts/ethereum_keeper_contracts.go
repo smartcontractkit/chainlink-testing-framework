@@ -354,7 +354,7 @@ func (v *EthereumKeeperRegistry) CancelUpkeep(id *big.Int) error {
 			return err
 		}
 	case ethereum.RegistryVersion_1_2:
-		tx, err = v.registry1_1.CancelUpkeep(opts, id)
+		tx, err = v.registry1_2.CancelUpkeep(opts, id)
 		if err != nil {
 			return err
 		}
