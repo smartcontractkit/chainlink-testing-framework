@@ -1,5 +1,6 @@
 package actions
 
+//revive:disable:dot-imports
 import (
 	"fmt"
 	"math/big"
