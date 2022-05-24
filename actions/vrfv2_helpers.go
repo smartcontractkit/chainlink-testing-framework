@@ -36,6 +36,7 @@ type Vrfv2EncodedProvingKey [2]*big.Int
 func CreateVrfV2Jobs(
 	chainlinkNodes []client.Chainlink,
 	coordinator contracts.VRFCoordinatorV2,
+	networks *blockchain.Networks,
 ) ([]*client.Job, []Vrfv2EncodedProvingKey) {
 	jobs := make([]*client.Job, 0)
 	encodedProvingKeys := make([]Vrfv2EncodedProvingKey, 0)
@@ -56,7 +57,7 @@ func CreateVrfV2Jobs(
 			Name:                     fmt.Sprintf("vrf-%s", jobUUID),
 			CoordinatorAddress:       coordinator.Address(),
 			FromAddress:              oracleAddr,
-			EVMChainID:               "1337",
+			EVMChainID:               networks.Default.GetChainID().String(),
 			MinIncomingConfirmations: 1,
 			PublicKey:                pubKeyCompressed,
 			ExternalJobID:            jobUUID.String(),
@@ -74,7 +75,8 @@ func CreateVrfV2Jobs(
 func Vrfv2RegisterProvingKey(
 	vrfKey *client.VRFKey,
 	oracleAddress string,
-	coordinator contracts.VRFCoordinatorV2) Vrfv2EncodedProvingKey {
+	coordinator contracts.VRFCoordinatorV2,
+) Vrfv2EncodedProvingKey {
 	provingKey, err := EncodeOnChainVRFProvingKey(*vrfKey)
 	Expect(err).ShouldNot(HaveOccurred())
 	err = coordinator.RegisterProvingKey(
