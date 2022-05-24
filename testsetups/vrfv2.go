@@ -98,7 +98,7 @@ func (t *VRFV2SoakTest) Setup(env *environment.Environment, isLocal bool) {
 func (t *VRFV2SoakTest) Run() {
 	log.Info().
 		Str("Test Duration", t.Inputs.TestDuration.Truncate(time.Second).String()).
-		Int("Max number of requests per second wanted", t.Inputs.RequestsPerMinute).
+		Int("Max number of requests per minute wanted", t.Inputs.RequestsPerMinute).
 		Msg("Starting VRFV2 Soak Test")
 
 	// set the requests to only run for a certain amount of time
