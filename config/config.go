@@ -107,14 +107,10 @@ func LoadFromEnv() error {
 // LoadRemoteEnv loads environment variables when running on remote test runner
 func LoadRemoteEnv() error {
 	err := LoadFromEnv()
-	log.Info().Interface("error", err).Msg("Here is the error")
-	log.Info().Str("Error", err.Error()).Msg("Here is the error as a string")
 	if strings.Contains(err.Error(), "envconfig.Process: assigning REMOTE_RUNNER_CONFIG_FILE to RemoteRunnerConfig") {
 		// a remote runner no longer needs the remote config file
-		log.Info().Str("h", "h").Msg("made it inside the contains")
 		return nil
 	}
-	log.Info().Str("h", "h").Msg("did not contains the error")
 	return err
 }
 
