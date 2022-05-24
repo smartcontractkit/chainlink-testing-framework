@@ -382,6 +382,15 @@ func (e *EthereumClient) IsTxConfirmed(txHash common.Hash) (bool, error) {
 	return !isPending, err
 }
 
+// GetTxReceipt returns the receipt of the transaction if available, error otherwise
+func (e *EthereumClient) GetTxReceipt(txHash common.Hash) (*types.Receipt, error) {
+	receipt, err := e.Client.TransactionReceipt(context.Background(), txHash)
+	if err != nil {
+		return nil, err
+	}
+	return receipt, nil
+}
+
 // ParallelTransactions when enabled, sends the transaction without waiting for transaction confirmations. The hashes
 // are then stored within the client and confirmations can be waited on by calling WaitForEvents.
 // When disabled, the minimum confirmations are waited on when the transaction is sent, so parallelisation is disabled.
@@ -640,6 +649,11 @@ func (e *EthereumMultinodeClient) ProcessTransaction(tx *types.Transaction) erro
 // IsTxConfirmed returns the default client's transaction confirmations
 func (e *EthereumMultinodeClient) IsTxConfirmed(txHash common.Hash) (bool, error) {
 	return e.DefaultClient.IsTxConfirmed(txHash)
+}
+
+// GetTxReceipt returns the receipt of the transaction if available, error otherwise
+func (e *EthereumMultinodeClient) GetTxReceipt(txHash common.Hash) (*types.Receipt, error) {
+	return e.DefaultClient.GetTxReceipt(txHash)
 }
 
 // ParallelTransactions when enabled, sends the transaction without waiting for transaction confirmations. The hashes

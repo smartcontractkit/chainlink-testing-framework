@@ -9,6 +9,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/client"
@@ -550,22 +551,23 @@ func (l *EthereumLinkToken) Transfer(to string, amount *big.Int) error {
 	return l.client.ProcessTransaction(tx)
 }
 
-func (l *EthereumLinkToken) TransferAndCall(to string, amount *big.Int, data []byte) error {
+func (l *EthereumLinkToken) TransferAndCall(to string, amount *big.Int, data []byte) (*types.Transaction, error) {
 	opts, err := l.client.TransactionOpts(l.client.GetDefaultWallet())
 	if err != nil {
-		return err
+		return nil, err
+	}
+	tx, err := l.instance.TransferAndCall(opts, common.HexToAddress(to), amount, data)
+	if err != nil {
+		return nil, err
 	}
 	log.Info().
 		Str("From", l.client.GetDefaultWallet().Address()).
 		Str("To", to).
 		Str("Amount", amount.String()).
 		Uint64("Nonce", opts.Nonce.Uint64()).
+		Str("TxHash", tx.Hash().String()).
 		Msg("Transferring and Calling LINK")
-	tx, err := l.instance.TransferAndCall(opts, common.HexToAddress(to), amount, data)
-	if err != nil {
-		return err
-	}
-	return l.client.ProcessTransaction(tx)
+	return tx, l.client.ProcessTransaction(tx)
 }
 
 // EthereumOffchainAggregator represents the offchain aggregation contract

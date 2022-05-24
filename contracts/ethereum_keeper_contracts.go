@@ -45,6 +45,7 @@ type UpkeepRegistrar interface {
 type KeeperRegistry interface {
 	Address() string
 	Fund(ethAmount *big.Float) error
+	SetConfig(config KeeperRegistrySettings) error
 	SetRegistrar(registrarAddr string) error
 	AddUpkeepFunds(id *big.Int, amount *big.Int) error
 	GetUpkeepInfo(ctx context.Context, id *big.Int) (*UpkeepInfo, error)
@@ -53,6 +54,7 @@ type KeeperRegistry interface {
 	GetKeeperList(ctx context.Context) ([]string, error)
 	RegisterUpkeep(target string, gasLimit uint32, admin string, checkData []byte) error
 	CancelUpkeep(id *big.Int) error
+	ParseUpkeepIdFromRegisteredLog(log *types.Log) (*big.Int, error)
 }
 
 type KeeperConsumer interface {
@@ -151,6 +153,62 @@ func (v *EthereumKeeperRegistry) Address() string {
 
 func (v *EthereumKeeperRegistry) Fund(ethAmount *big.Float) error {
 	return v.client.Fund(v.address.Hex(), ethAmount)
+}
+
+func (v *EthereumKeeperRegistry) SetConfig(config KeeperRegistrySettings) error {
+	txOpts, err := v.client.TransactionOpts(v.client.GetDefaultWallet())
+	if err != nil {
+		return err
+	}
+	callOpts := bind.CallOpts{
+		From:    common.HexToAddress(v.client.GetDefaultWallet().Address()),
+		Context: nil,
+	}
+	switch v.version {
+	case ethereum.RegistryVersion_1_0, ethereum.RegistryVersion_1_1:
+		tx, err := v.registry1_1.SetConfig(
+			txOpts,
+			config.PaymentPremiumPPB,
+			config.FlatFeeMicroLINK,
+			config.BlockCountPerTurn,
+			config.CheckGasLimit,
+			config.StalenessSeconds,
+			config.GasCeilingMultiplier,
+			config.FallbackGasPrice,
+			config.FallbackLinkPrice,
+		)
+		if err != nil {
+			return err
+		}
+		return v.client.ProcessTransaction(tx)
+	case ethereum.RegistryVersion_1_2:
+		state, err := v.registry1_2.GetState(&callOpts)
+		if err != nil {
+			return err
+		}
+
+		tx, err := v.registry1_2.SetConfig(txOpts, ethereum.Config{
+			PaymentPremiumPPB:    config.PaymentPremiumPPB,
+			FlatFeeMicroLink:     config.FlatFeeMicroLINK,
+			BlockCountPerTurn:    config.BlockCountPerTurn,
+			CheckGasLimit:        config.CheckGasLimit,
+			StalenessSeconds:     config.StalenessSeconds,
+			GasCeilingMultiplier: config.GasCeilingMultiplier,
+			MinUpkeepSpend:       config.MinUpkeepSpend,
+			MaxPerformGas:        config.MaxPerformGas,
+			FallbackGasPrice:     config.FallbackGasPrice,
+			FallbackLinkPrice:    config.FallbackLinkPrice,
+			// Keep the transcoder and registrar same. They have separate setters
+			Transcoder: state.Config.Transcoder,
+			Registrar:  state.Config.Registrar,
+		})
+		if err != nil {
+			return err
+		}
+		return v.client.ProcessTransaction(tx)
+	}
+
+	return fmt.Errorf("keeper registry version %d is not supported", v.version)
 }
 
 func (v *EthereumKeeperRegistry) SetRegistrar(registrarAddr string) error {
@@ -396,6 +454,25 @@ func (v *EthereumKeeperRegistry) GetKeeperList(ctx context.Context) ([]string, e
 		addrs = append(addrs, ca.Hex())
 	}
 	return addrs, nil
+}
+
+// Parses the upkeep ID from an 'UpkeepRegistered' log, returns error on any other log
+func (v *EthereumKeeperRegistry) ParseUpkeepIdFromRegisteredLog(log *types.Log) (*big.Int, error) {
+	switch v.version {
+	case ethereum.RegistryVersion_1_0, ethereum.RegistryVersion_1_1:
+		parsedLog, err := v.registry1_1.ParseUpkeepRegistered(*log)
+		if err != nil {
+			return nil, err
+		}
+		return parsedLog.Id, nil
+	case ethereum.RegistryVersion_1_2:
+		parsedLog, err := v.registry1_2.ParseUpkeepRegistered(*log)
+		if err != nil {
+			return nil, err
+		}
+		return parsedLog.Id, nil
+	}
+	return nil, fmt.Errorf("keeper registry version %d is not supported", v.version)
 }
 
 // KeeperConsumerRoundConfirmer is a header subscription that awaits for a round of upkeeps

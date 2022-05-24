@@ -52,7 +52,7 @@ func DeployKeeperContracts(
 	linkToken contracts.LinkToken,
 	contractDeployer contracts.ContractDeployer,
 	networks *blockchain.Networks,
-) (contracts.KeeperRegistry, []contracts.KeeperConsumer) {
+) (contracts.KeeperRegistry, []contracts.KeeperConsumer, []*big.Int) {
 	ef, err := contractDeployer.DeployMockETHLINKFeed(big.NewInt(2e18))
 	Expect(err).ShouldNot(HaveOccurred(), "Deploying mock ETH-Link feed shouldn't fail")
 	gf, err := contractDeployer.DeployMockGasFeed(big.NewInt(2e11))
@@ -90,9 +90,9 @@ func DeployKeeperContracts(
 	for _, upkeep := range upkeeps {
 		upkeepsAddresses = append(upkeepsAddresses, upkeep.Address())
 	}
-	RegisterUpkeepContracts(linkToken, big.NewInt(9e18), networks, uint32(2500000), registrar, numberOfUpkeeps, upkeepsAddresses)
+	upkeepIds := RegisterUpkeepContracts(linkToken, big.NewInt(9e18), networks, uint32(2500000), registry, registrar, numberOfUpkeeps, upkeepsAddresses)
 
-	return registry, upkeeps
+	return registry, upkeeps, upkeepIds
 }
 
 // DeployPerformanceKeeperContracts deploys a set amount of keeper performance contracts registered to a single registry
@@ -148,7 +148,7 @@ func DeployPerformanceKeeperContracts(
 	}
 	linkFunds := big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(blockRange/blockInterval))
 
-	RegisterUpkeepContracts(linkToken, linkFunds, networks, uint32(2500000), registrar, numberOfContracts, upkeepsAddresses)
+	RegisterUpkeepContracts(linkToken, linkFunds, networks, uint32(2500000), registry, registrar, numberOfContracts, upkeepsAddresses)
 
 	return registry, upkeeps
 }
@@ -208,10 +208,13 @@ func RegisterUpkeepContracts(
 	linkFunds *big.Int,
 	networks *blockchain.Networks,
 	checkGasLimit uint32,
+	registry contracts.KeeperRegistry,
 	registrar contracts.UpkeepRegistrar,
 	numberOfContracts int,
 	upkeepAdresses []string,
-) {
+) []*big.Int {
+	registrationTxHashes := make([]common.Hash, 0)
+	upkeepIds := make([]*big.Int, 0)
 	for contractCount, upkeepAddress := range upkeepAdresses {
 		req, err := registrar.EncodeRegisterRequest(
 			fmt.Sprintf("upkeep_%d", contractCount+1),
@@ -224,13 +227,15 @@ func RegisterUpkeepContracts(
 			0,
 		)
 		Expect(err).ShouldNot(HaveOccurred(), "Encoding the register request shouldn't fail")
-		err = linkToken.TransferAndCall(registrar.Address(), linkFunds, req)
+		tx, err := linkToken.TransferAndCall(registrar.Address(), linkFunds, req)
 		Expect(err).ShouldNot(HaveOccurred(), "Error registering the upkeep consumer to the registrar")
 		log.Debug().
 			Str("Contract Address", upkeepAddress).
 			Int("Number", contractCount+1).
 			Int("Out Of", numberOfContracts).
+			Str("TxHash", tx.Hash().String()).
 			Msg("Registered Keeper Consumer Contract")
+		registrationTxHashes = append(registrationTxHashes, tx.Hash())
 		if (contractCount+1)%ContractDeploymentInterval == 0 { // For large amounts of contract deployments, space things out some
 			err = networks.Default.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred(), "Failed to wait after registering upkeep consumers")
@@ -238,7 +243,28 @@ func RegisterUpkeepContracts(
 	}
 	err := networks.Default.WaitForEvents()
 	Expect(err).ShouldNot(HaveOccurred(), "Failed while waiting for all consumer contracts to be registered to registrar")
+
+	// Fetch the upkeep IDs
+	for _, txHash := range registrationTxHashes {
+		receipt, err := networks.Default.GetTxReceipt(txHash)
+		Expect(err).ShouldNot(HaveOccurred(), "Registration tx should be completed")
+		var upkeepId *big.Int
+		for _, rawLog := range receipt.Logs {
+			parsedUpkeepId, err := registry.ParseUpkeepIdFromRegisteredLog(rawLog)
+			if err == nil {
+				upkeepId = parsedUpkeepId
+				break
+			}
+		}
+		Expect(upkeepId).ShouldNot(BeNil(), "Upkeep ID should be found after registration")
+		log.Debug().
+			Str("TxHash", txHash.String()).
+			Str("Upkeep ID", upkeepId.String()).
+			Msg("Found upkeepId in tx hash")
+		upkeepIds = append(upkeepIds, upkeepId)
+	}
 	log.Info().Msg("Successfully registered all Keeper Consumer Contracts")
+	return upkeepIds
 }
 
 func DeployKeeperConsumers(
