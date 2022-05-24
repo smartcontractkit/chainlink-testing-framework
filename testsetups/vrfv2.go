@@ -27,7 +27,7 @@ type VRFV2SoakTest struct {
 	Networks       *blockchain.Networks
 	DefaultNetwork blockchain.EVMClient
 
-	NumberRequests int
+	NumberOfRequests int
 
 	ErrorOccurred error
 	ErrorCount    int
@@ -40,7 +40,7 @@ type VRFV2SoakTestTestFunc func(t *VRFV2SoakTest, requestNumber int) error
 type VRFV2SoakTestInputs struct {
 	TestDuration         time.Duration // How long to run the test for (assuming things pass)
 	ChainlinkNodeFunding *big.Float    // Amount of ETH to fund each chainlink node with
-	StopTestOnError      bool
+	StopTestOnError      bool          // Do we want the test to stop after any error or just continue on
 
 	RequestsPerMinute int                   // Number of requests for randomness per minute
 	TestFunc          VRFV2SoakTestTestFunc // The function that makes the request and validations wanted
@@ -105,7 +105,7 @@ func (t *VRFV2SoakTest) Run() {
 	testContext, testCancel := context.WithTimeout(context.Background(), t.Inputs.TestDuration)
 	defer testCancel()
 
-	t.NumberRequests = 0
+	t.NumberOfRequests = 0
 
 	// variables dealing with how often to tick and how to stop the ticker
 	stop := false
@@ -126,15 +126,15 @@ func (t *VRFV2SoakTest) Run() {
 			break // breaks the select block
 		case <-ticker.C:
 			// make the next request
-			t.NumberRequests++
-			go requestAndValidate(t, t.NumberRequests)
+			t.NumberOfRequests++
+			go requestAndValidate(t, t.NumberOfRequests)
 		}
 
 		if stop {
 			break // breaks the for loop and stops the test
 		}
 	}
-	log.Info().Int("Requests", t.NumberRequests).Msg("Total Completed Requests")
+	log.Info().Int("Requests", t.NumberOfRequests).Msg("Total Completed Requests")
 	log.Info().Str("Run Time", time.Since(startTime).String()).Msg("Finished VRFV2 Soak Test Requests")
 	Expect(t.ErrorCount).To(BeNumerically("==", 0), "We had a number of errors")
 }
