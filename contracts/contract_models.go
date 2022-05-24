@@ -10,6 +10,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/contracts/ethereum"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	ocrConfigHelper "github.com/smartcontractkit/libocr/offchainreporting/confighelper"
 	ocrConfigHelper2 "github.com/smartcontractkit/libocr/offchainreporting2/confighelper"
 )
@@ -71,7 +72,7 @@ type LinkToken interface {
 	Approve(to string, amount *big.Int) error
 	Transfer(to string, amount *big.Int) error
 	BalanceOf(ctx context.Context, addr string) (*big.Int, error)
-	TransferAndCall(to string, amount *big.Int, data []byte) error
+	TransferAndCall(to string, amount *big.Int, data []byte) (*types.Transaction, error)
 	Name(context.Context) (string, error)
 }
 

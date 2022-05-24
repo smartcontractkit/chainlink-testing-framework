@@ -167,6 +167,11 @@ func (e *EthereumClient) LoadWallets(cfg interface{}) error {
 	return nil
 }
 
+// BalanceAt returns the ETH balance of the specified address
+func (e *EthereumClient) BalanceAt(ctx context.Context, address common.Address) (*big.Int, error) {
+	return e.Client.BalanceAt(ctx, address, nil)
+}
+
 // SwitchNode not used, only applicable to EthereumMultinodeClient
 func (e *EthereumClient) SwitchNode(_ int) error {
 	return nil
@@ -377,6 +382,15 @@ func (e *EthereumClient) IsTxConfirmed(txHash common.Hash) (bool, error) {
 	return !isPending, err
 }
 
+// GetTxReceipt returns the receipt of the transaction if available, error otherwise
+func (e *EthereumClient) GetTxReceipt(txHash common.Hash) (*types.Receipt, error) {
+	receipt, err := e.Client.TransactionReceipt(context.Background(), txHash)
+	if err != nil {
+		return nil, err
+	}
+	return receipt, nil
+}
+
 // ParallelTransactions when enabled, sends the transaction without waiting for transaction confirmations. The hashes
 // are then stored within the client and confirmations can be waited on by calling WaitForEvents.
 // When disabled, the minimum confirmations are waited on when the transaction is sent, so parallelisation is disabled.
@@ -579,6 +593,11 @@ func (e *EthereumMultinodeClient) LoadWallets(cfg interface{}) error {
 	return nil
 }
 
+// BalanceAt returns the ETH balance of the specified address
+func (e *EthereumMultinodeClient) BalanceAt(ctx context.Context, address common.Address) (*big.Int, error) {
+	return e.DefaultClient.BalanceAt(ctx, address)
+}
+
 // SwitchNode sets default client to perform calls to the network
 func (e *EthereumMultinodeClient) SwitchNode(clientID int) error {
 	if clientID > len(e.Clients) {
@@ -630,6 +649,11 @@ func (e *EthereumMultinodeClient) ProcessTransaction(tx *types.Transaction) erro
 // IsTxConfirmed returns the default client's transaction confirmations
 func (e *EthereumMultinodeClient) IsTxConfirmed(txHash common.Hash) (bool, error) {
 	return e.DefaultClient.IsTxConfirmed(txHash)
+}
+
+// GetTxReceipt returns the receipt of the transaction if available, error otherwise
+func (e *EthereumMultinodeClient) GetTxReceipt(txHash common.Hash) (*types.Receipt, error) {
+	return e.DefaultClient.GetTxReceipt(txHash)
 }
 
 // ParallelTransactions when enabled, sends the transaction without waiting for transaction confirmations. The hashes

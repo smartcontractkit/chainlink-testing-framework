@@ -59,6 +59,7 @@ type EVMClient interface {
 	SwitchNode(node int) error
 
 	// On-chain Operations
+	BalanceAt(ctx context.Context, address common.Address) (*big.Int, error)
 	HeaderHashByNumber(ctx context.Context, bn *big.Int) (string, error)
 	HeaderTimestampByNumber(ctx context.Context, bn *big.Int) (uint64, error)
 	LatestBlockNumber(ctx context.Context) (uint64, error)
@@ -70,6 +71,7 @@ type EVMClient interface {
 	TransactionOpts(from *EthereumWallet) (*bind.TransactOpts, error)
 	ProcessTransaction(tx *types.Transaction) error
 	IsTxConfirmed(txHash common.Hash) (bool, error)
+	GetTxReceipt(txHash common.Hash) (*types.Receipt, error)
 	ParallelTransactions(enabled bool)
 	Close() error
 
