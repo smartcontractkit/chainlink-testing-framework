@@ -31,12 +31,14 @@ func DeployVrfv2Contracts(
 	return coordinator, consumer, bhs
 }
 
+type Vrfv2EncodedProvingKey [2]*big.Int
+
 func CreateVrfV2Jobs(
 	chainlinkNodes []client.Chainlink,
 	coordinator contracts.VRFCoordinatorV2,
-) ([]*client.Job, [][2]*big.Int) {
+) ([]*client.Job, []Vrfv2EncodedProvingKey) {
 	jobs := make([]*client.Job, 0)
-	encodedProvingKeys := make([][2]*big.Int, 0)
+	encodedProvingKeys := make([]Vrfv2EncodedProvingKey, 0)
 	for _, n := range chainlinkNodes {
 		vrfKey, err := n.CreateVRFKey()
 		Expect(err).ShouldNot(HaveOccurred())
@@ -72,7 +74,7 @@ func CreateVrfV2Jobs(
 func Vrfv2RegisterProvingKey(
 	vrfKey *client.VRFKey,
 	oracleAddress string,
-	coordinator contracts.VRFCoordinatorV2) [2]*big.Int {
+	coordinator contracts.VRFCoordinatorV2) Vrfv2EncodedProvingKey {
 	provingKey, err := EncodeOnChainVRFProvingKey(*vrfKey)
 	Expect(err).ShouldNot(HaveOccurred())
 	err = coordinator.RegisterProvingKey(
