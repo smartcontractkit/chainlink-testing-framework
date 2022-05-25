@@ -187,3 +187,5 @@ require (
 // If that happens to get released in a 3.X.X version, we can add a constraint to our go.mod
 // for it. If its in 4.X.X, then we need all our transitive deps to upgrade to it.
 replace github.com/dgrijalva/jwt-go => github.com/form3tech-oss/jwt-go v3.2.1+incompatible
+
+replace github.com/btcsuite/btcd => github.com/btcsuite/btcd v0.22.1
