@@ -13,7 +13,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/contracts"
 )
 
-func DeployVrfv2Contracts(
+func DeployVRFV2Contracts(
 	linkTokenContract contracts.LinkToken,
 	contractDeployer contracts.ContractDeployer,
 	networks *blockchain.Networks,
@@ -31,15 +31,15 @@ func DeployVrfv2Contracts(
 	return coordinator, consumer, bhs
 }
 
-type Vrfv2EncodedProvingKey [2]*big.Int
+type VRFV2EncodedProvingKey [2]*big.Int
 
-func CreateVrfV2Jobs(
+func CreateVRFV2Jobs(
 	chainlinkNodes []client.Chainlink,
 	coordinator contracts.VRFCoordinatorV2,
 	networks *blockchain.Networks,
-) ([]*client.Job, []Vrfv2EncodedProvingKey) {
+) ([]*client.Job, []VRFV2EncodedProvingKey) {
 	jobs := make([]*client.Job, 0)
-	encodedProvingKeys := make([]Vrfv2EncodedProvingKey, 0)
+	encodedProvingKeys := make([]VRFV2EncodedProvingKey, 0)
 	for _, n := range chainlinkNodes {
 		vrfKey, err := n.CreateVRFKey()
 		Expect(err).ShouldNot(HaveOccurred())
@@ -66,17 +66,17 @@ func CreateVrfV2Jobs(
 		})
 		Expect(err).ShouldNot(HaveOccurred())
 		jobs = append(jobs, job)
-		provingKey := Vrfv2RegisterProvingKey(vrfKey, oracleAddr, coordinator)
+		provingKey := VRFV2RegisterProvingKey(vrfKey, oracleAddr, coordinator)
 		encodedProvingKeys = append(encodedProvingKeys, provingKey)
 	}
 	return jobs, encodedProvingKeys
 }
 
-func Vrfv2RegisterProvingKey(
+func VRFV2RegisterProvingKey(
 	vrfKey *client.VRFKey,
 	oracleAddress string,
 	coordinator contracts.VRFCoordinatorV2,
-) Vrfv2EncodedProvingKey {
+) VRFV2EncodedProvingKey {
 	provingKey, err := EncodeOnChainVRFProvingKey(*vrfKey)
 	Expect(err).ShouldNot(HaveOccurred())
 	err = coordinator.RegisterProvingKey(
