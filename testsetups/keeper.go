@@ -79,9 +79,10 @@ func (k *KeeperBlockTimeTest) Setup(env *environment.Environment) {
 	err = k.defaultNetwork.WaitForEvents()
 	Expect(err).ShouldNot(HaveOccurred(), "Failed waiting for LINK Contract deployment")
 
-	k.keeperRegistry, k.keeperConsumerContracts = actions.DeployPerformanceKeeperContracts(
+	k.keeperRegistry, k.keeperConsumerContracts, _ = actions.DeployPerformanceKeeperContracts(
 		ethereum.RegistryVersion_1_1,
 		inputs.NumberOfContracts,
+		uint32(2500000), //upkeepGasLimit
 		linkToken,
 		contractDeployer,
 		k.networks,

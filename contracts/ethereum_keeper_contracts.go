@@ -54,6 +54,7 @@ type KeeperRegistry interface {
 	GetKeeperList(ctx context.Context) ([]string, error)
 	RegisterUpkeep(target string, gasLimit uint32, admin string, checkData []byte) error
 	CancelUpkeep(id *big.Int) error
+	SetUpkeepGasLimit(id *big.Int, gas uint32) error
 	ParseUpkeepIdFromRegisteredLog(log *types.Log) (*big.Int, error)
 }
 
@@ -84,6 +85,8 @@ type KeeperConsumerPerformance interface {
 	Fund(ethAmount *big.Float) error
 	CheckEligible(ctx context.Context) (bool, error)
 	GetUpkeepCount(ctx context.Context) (*big.Int, error)
+	SetCheckGasToBurn(ctx context.Context, gas *big.Int) error
+	SetPerformGasToBurn(ctx context.Context, gas *big.Int) error
 }
 
 // KeeperRegistryOpts opts to deploy keeper registry version
@@ -423,6 +426,26 @@ func (v *EthereumKeeperRegistry) CancelUpkeep(id *big.Int) error {
 		Str("From", v.client.GetDefaultWallet().Address()).
 		Str("TX Hash", tx.Hash().String()).
 		Msg("Cancel Upkeep tx")
+	return v.client.ProcessTransaction(tx)
+}
+
+// SetUpkeepGasLimit sets the perform gas limit for a given upkeep ID
+func (v *EthereumKeeperRegistry) SetUpkeepGasLimit(id *big.Int, gas uint32) error {
+	opts, err := v.client.TransactionOpts(v.client.GetDefaultWallet())
+	if err != nil {
+		return err
+	}
+	var tx *types.Transaction
+
+	switch v.version {
+	case ethereum.RegistryVersion_1_2:
+		tx, err = v.registry1_2.SetUpkeepGasLimit(opts, id, gas)
+		if err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("keeper registry version %d is not supported for SetUpkeepGasLimit", v.version)
+	}
 	return v.client.ProcessTransaction(tx)
 }
 
@@ -808,6 +831,30 @@ func (v *EthereumKeeperConsumerPerformance) GetUpkeepCount(ctx context.Context) 
 	}
 	eligible, err := v.consumer.GetCountPerforms(opts)
 	return eligible, err
+}
+
+func (v *EthereumKeeperConsumerPerformance) SetCheckGasToBurn(ctx context.Context, gas *big.Int) error {
+	opts, err := v.client.TransactionOpts(v.client.GetDefaultWallet())
+	if err != nil {
+		return err
+	}
+	tx, err := v.consumer.SetCheckGasToBurn(opts, gas)
+	if err != nil {
+		return err
+	}
+	return v.client.ProcessTransaction(tx)
+}
+
+func (v *EthereumKeeperConsumerPerformance) SetPerformGasToBurn(ctx context.Context, gas *big.Int) error {
+	opts, err := v.client.TransactionOpts(v.client.GetDefaultWallet())
+	if err != nil {
+		return err
+	}
+	tx, err := v.consumer.SetPerformGasToBurn(opts, gas)
+	if err != nil {
+		return err
+	}
+	return v.client.ProcessTransaction(tx)
 }
 
 // EthereumUpkeepRegistrationRequests keeper contract to register upkeeps
