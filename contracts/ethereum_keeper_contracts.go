@@ -84,6 +84,8 @@ type KeeperConsumerPerformance interface {
 	Fund(ethAmount *big.Float) error
 	CheckEligible(ctx context.Context) (bool, error)
 	GetUpkeepCount(ctx context.Context) (*big.Int, error)
+	SetCheckGasToBurn(ctx context.Context, gas *big.Int) error
+	SetPerformGasToBurn(ctx context.Context, gas *big.Int) error
 }
 
 // KeeperRegistryOpts opts to deploy keeper registry version
@@ -808,6 +810,30 @@ func (v *EthereumKeeperConsumerPerformance) GetUpkeepCount(ctx context.Context) 
 	}
 	eligible, err := v.consumer.GetCountPerforms(opts)
 	return eligible, err
+}
+
+func (v *EthereumKeeperConsumerPerformance) SetCheckGasToBurn(ctx context.Context, gas *big.Int) error {
+	opts, err := v.client.TransactionOpts(v.client.GetDefaultWallet())
+	if err != nil {
+		return err
+	}
+	tx, err := v.consumer.SetCheckGasToBurn(opts, gas)
+	if err != nil {
+		return err
+	}
+	return v.client.ProcessTransaction(tx)
+}
+
+func (v *EthereumKeeperConsumerPerformance) SetPerformGasToBurn(ctx context.Context, gas *big.Int) error {
+	opts, err := v.client.TransactionOpts(v.client.GetDefaultWallet())
+	if err != nil {
+		return err
+	}
+	tx, err := v.consumer.SetPerformGasToBurn(opts, gas)
+	if err != nil {
+		return err
+	}
+	return v.client.ProcessTransaction(tx)
 }
 
 // EthereumUpkeepRegistrationRequests keeper contract to register upkeeps
