@@ -49,6 +49,7 @@ func DeployKeeperContracts(
 	registryVersion ethereum.KeeperRegistryVersion,
 	registrySettings contracts.KeeperRegistrySettings,
 	numberOfUpkeeps int,
+	upkeepGasLimit uint32,
 	linkToken contracts.LinkToken,
 	contractDeployer contracts.ContractDeployer,
 	networks *blockchain.Networks,
@@ -90,7 +91,7 @@ func DeployKeeperContracts(
 	for _, upkeep := range upkeeps {
 		upkeepsAddresses = append(upkeepsAddresses, upkeep.Address())
 	}
-	upkeepIds := RegisterUpkeepContracts(linkToken, big.NewInt(9e18), networks, uint32(2500000), registry, registrar, numberOfUpkeeps, upkeepsAddresses)
+	upkeepIds := RegisterUpkeepContracts(linkToken, big.NewInt(9e18), networks, upkeepGasLimit, registry, registrar, numberOfUpkeeps, upkeepsAddresses)
 
 	return registry, upkeeps, upkeepIds
 }
@@ -99,6 +100,7 @@ func DeployKeeperContracts(
 func DeployPerformanceKeeperContracts(
 	registryVersion ethereum.KeeperRegistryVersion,
 	numberOfContracts int,
+	upkeepGasLimit uint32,
 	linkToken contracts.LinkToken,
 	contractDeployer contracts.ContractDeployer,
 	networks *blockchain.Networks,
@@ -148,7 +150,7 @@ func DeployPerformanceKeeperContracts(
 	}
 	linkFunds := big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(blockRange/blockInterval))
 
-	upkeepIds := RegisterUpkeepContracts(linkToken, linkFunds, networks, uint32(2500000), registry, registrar, numberOfContracts, upkeepsAddresses)
+	upkeepIds := RegisterUpkeepContracts(linkToken, linkFunds, networks, upkeepGasLimit, registry, registrar, numberOfContracts, upkeepsAddresses)
 
 	return registry, upkeeps, upkeepIds
 }
@@ -207,7 +209,7 @@ func RegisterUpkeepContracts(
 	linkToken contracts.LinkToken,
 	linkFunds *big.Int,
 	networks *blockchain.Networks,
-	checkGasLimit uint32,
+	upkeepGasLimit uint32,
 	registry contracts.KeeperRegistry,
 	registrar contracts.UpkeepRegistrar,
 	numberOfContracts int,
@@ -220,7 +222,7 @@ func RegisterUpkeepContracts(
 			fmt.Sprintf("upkeep_%d", contractCount+1),
 			[]byte("0x1234"),
 			upkeepAddress,
-			checkGasLimit,
+			upkeepGasLimit,
 			upkeepAddress,
 			[]byte("0x"),
 			linkFunds,

@@ -82,6 +82,7 @@ func (k *KeeperBlockTimeTest) Setup(env *environment.Environment) {
 	k.keeperRegistry, k.keeperConsumerContracts, _ = actions.DeployPerformanceKeeperContracts(
 		ethereum.RegistryVersion_1_1,
 		inputs.NumberOfContracts,
+		uint32(2500000), //upkeepGasLimit
 		linkToken,
 		contractDeployer,
 		k.networks,
