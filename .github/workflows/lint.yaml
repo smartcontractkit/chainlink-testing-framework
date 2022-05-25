@@ -34,7 +34,7 @@ jobs:
     - name: Write Go List
       run: go list -json -deps ./... > go.list
     - name: Nancy
-      uses: sonatype-nexus-community/nancy-github-action@main
+      uses: sonatype-nexus-community/nancy-github-action@v1.0.2
   
   actionlint:
     name: Validate github action workflows
