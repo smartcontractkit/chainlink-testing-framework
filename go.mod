@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/avast/retry-go v3.0.0+incompatible
-	github.com/ethereum/go-ethereum v1.10.16
+	github.com/ethereum/go-ethereum v1.10.18
 	github.com/google/uuid v1.3.0
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/kelseyhightower/envconfig v1.4.0
@@ -28,6 +28,8 @@ require (
 )
 
 require (
+	github.com/btcsuite/btcd/btcec/v2 v2.2.0 // indirect
+	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/mitchellh/mapstructure v1.4.3 // indirect
 	golang.org/x/xerrors v0.0.0-20220411194840-2f41105eb62f // indirect
@@ -53,7 +55,6 @@ require (
 	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/btcsuite/btcd v0.22.0-beta // indirect
 	github.com/cavaliercoder/grab v2.0.0+incompatible // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/chai2010/gettext-go v0.0.0-20160711120539-c6fed771bfd5 // indirect
@@ -161,7 +162,7 @@ require (
 	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
-	helm.sh/helm/v3 v3.9.0-rc.1 // indirect
+	helm.sh/helm/v3 v3.9.0 // indirect
 	k8s.io/api v0.24.0 // indirect
 	k8s.io/apiextensions-apiserver v0.24.0 // indirect
 	k8s.io/apiserver v0.24.0 // indirect
@@ -186,3 +187,7 @@ require (
 // If that happens to get released in a 3.X.X version, we can add a constraint to our go.mod
 // for it. If its in 4.X.X, then we need all our transitive deps to upgrade to it.
 replace github.com/dgrijalva/jwt-go => github.com/form3tech-oss/jwt-go v3.2.1+incompatible
+
+// Fix go mod tidy issue for ambiguous imports from go-ethereum
+// See https://github.com/ugorji/go/issues/279
+replace github.com/btcsuite/btcd => github.com/btcsuite/btcd v0.22.1
