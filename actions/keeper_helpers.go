@@ -223,7 +223,7 @@ func RegisterUpkeepContracts(
 			[]byte("0x1234"),
 			upkeepAddress,
 			upkeepGasLimit,
-			upkeepAddress,
+			networks.Default.GetDefaultWallet().Address(), // upkeep Admin
 			[]byte("0x"),
 			linkFunds,
 			0,
