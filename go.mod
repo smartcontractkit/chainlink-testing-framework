@@ -17,7 +17,7 @@ require (
 	github.com/rs/zerolog v1.26.1
 	github.com/satori/go.uuid v1.2.0
 	github.com/slack-go/slack v0.10.3
-	github.com/smartcontractkit/helmenv v1.2.2
+	github.com/smartcontractkit/helmenv v1.2.3
 	github.com/smartcontractkit/libocr v0.0.0-20220121130134-5d2b1d5f424b
 	go.uber.org/atomic v1.9.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
