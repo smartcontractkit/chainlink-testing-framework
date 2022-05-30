@@ -895,9 +895,8 @@ type OCR2TaskJobSpec struct {
 	ContractID               string            `toml:"contractID"`                             // Address of the OCR contract/account(s)
 	Relay                    string            `toml:"relay"`                                  // Name of blockchain relay to use
 	PluginType               string            `toml:"pluginType"`                             // Type of report plugin to use
-	PluginConfig             map[string]string `toml:"pluginConfig"`                           // Config of report plugin to use
 	RelayConfig              map[string]string `toml:"relayConfig"`                            // Relay spec object in stringified form
-	P2PV2Bootstrappers        []P2PData         `toml:"p2pv2Bootstrappers"`                      // P2P ID of the bootstrap node
+	P2PV2Bootstrappers       []P2PData         `toml:"p2pv2Bootstrappers"`                     // P2P ID of the bootstrap node
 	OCRKeyBundleID           string            `toml:"ocrKeyBundleID"`                         // ID of this node's OCR key bundle
 	MonitoringEndpoint       string            `toml:"monitoringEndpoint"`                     // Typically "chain.link:4321"
 	TransmitterID            string            `toml:"transmitterID"`                          // ID of address this node will use to transmit
@@ -906,6 +905,7 @@ type OCR2TaskJobSpec struct {
 	TrackerPollInterval      time.Duration     `toml:"contractConfigTrackerPollInterval"`      // Optional
 	ContractConfirmations    int               `toml:"contractConfigConfirmations"`            // Optional
 	ObservationSource        string            `toml:"observationSource"`                      // List of commands for the chainlink node
+	JuelsPerFeeCoinSource    string            `toml:"juelsPerFeeCoinSource"`                  // List of commands to fetch JuelsPerFeeCoin value (used to calculate ocr payments)
 }
 
 // Type returns the type of the job
@@ -940,10 +940,9 @@ observationSource                      = """
 {{.ObservationSource}}
 """
 [pluginConfig]
-{{range $key, $value := .PluginConfig}}
-{{$key}} = "{{$value}}"
-{{end}}
-
+juelsPerFeeCoinSource                  = """
+{{.JuelsPerFeeCoinSource}}
+"""
 {{end}}
 
 [relayConfig]
