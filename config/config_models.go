@@ -1,10 +1,13 @@
 package config
 
 import (
+	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"time"
 
+	"github.com/imdario/mergo"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/helmenv/environment"
@@ -37,20 +40,67 @@ func (m *FrameworkConfig) Decode(path string) error {
 	return envconfig.Process("", m)
 }
 
-// ETHNetwork data to configure fully ETH compatible network
-type ETHNetwork struct {
-	ContractsDeployed         bool          `envconfig:"contracts_deployed" yaml:"contracts_deployed"`
+// NetworksConfig holds all network configurations
+type NetworksConfig struct {
+	SelectedNetworks   []string            `envconfig:"SELECTED_NETWORKS" yaml:"selected_networks"`
+	EVMNetworkSettings *EVMNetworkSettings `envconfig:"EVM_NETWORKS" yaml:"evm_networks"`
+	DefaultKeyStore    string
+	ConfigFileLocation string
+}
+
+func (m *NetworksConfig) Decode(path string) error {
+	// Marshal YAML first, then "envconfig" tags of that struct got marshalled
+	if err := unmarshalYAML(path, &m); err != nil {
+		return err
+	}
+	return envconfig.Process("", m)
+}
+
+// EVMNetwork data to configure fully ETH compatible network
+type EVMNetwork struct {
 	Name                      string        `envconfig:"name" yaml:"name"`
 	ChainID                   int64         `envconfig:"chain_id" yaml:"chain_id"`
-	URL                       string        `envconfig:"url" yaml:"url"`
-	URLs                      []string      `envconfig:"urls" yaml:"urls"`
+	URLs                      []*EVMUrls    `envconfig:"urls" yaml:"urls"`
 	Type                      string        `envconfig:"type" yaml:"type"`
 	PrivateKeys               []string      `envconfig:"private_keys" yaml:"private_keys"`
 	ChainlinkTransactionLimit uint64        `envconfig:"chainlink_transaction_limit" yaml:"chainlink_transaction_limit"`
 	Timeout                   time.Duration `envconfig:"transaction_timeout" yaml:"transaction_timeout"`
 	MinimumConfirmations      int           `envconfig:"minimum_confirmations" yaml:"minimum_confirmations"`
 	GasEstimationBuffer       uint64        `envconfig:"gas_estimation_buffer" yaml:"gas_estimation_buffer"`
-	BlockGasLimit             uint64        `envconfig:"block_gas_limit" yaml:"block_gas_limit"`
+	ContractsDeployed         bool          `envconfig:"contracts_deployed" yaml:"contracts_deployed"`
+}
+
+type EVMUrls struct {
+	WebSocket string `envconfig:"ws_url" yaml:"ws_url"`
+	HTTP      string `envconfig:"http_url" yaml:"http_url"`
+}
+
+// EVMNetworkSettings holds settings for all EVM networks
+type EVMNetworkSettings map[string]EVMNetwork
+
+// GetNetworkSettings pulls network settings for an EVM network name. Returns false if network isn't found
+func (e *EVMNetworkSettings) GetNetworkSettings(networkName string) (*EVMNetwork, bool) {
+	network, exists := (*e)[networkName]
+	return &network, exists
+}
+
+// Decode is used by envconfig to initialize the custom Charts type with populated values
+// This function will take a JSON object representing charts, and unmarshal it into the existing object to "merge" the
+// two
+func (e *EVMNetworkSettings) Decode(value string) error {
+	// Support the use of files for unmarshaling charts JSON
+	if _, err := os.Stat(value); err == nil {
+		b, err := os.ReadFile(value)
+		if err != nil {
+			return err
+		}
+		value = string(b)
+	}
+	networkSettings := EVMNetworkSettings{}
+	if err := yaml.Unmarshal([]byte(value), &networkSettings); err != nil {
+		return fmt.Errorf("failed to unmarshal YAML, either a file path specific doesn't exist, or the YAML is invalid: %v", err)
+	}
+	return mergo.Merge(&e, networkSettings, mergo.WithOverride)
 }
 
 // TerraNetwork data to configure Terra network
@@ -63,22 +113,6 @@ type TerraNetwork struct {
 	ChainlinkTransactionLimit uint64        `envconfig:"chainlink_transaction_limit" yaml:"chainlink_transaction_limit"`
 	Timeout                   time.Duration `envconfig:"transaction_timeout" yaml:"transaction_timeout"`
 	MinimumConfirmations      int           `envconfig:"minimum_confirmations" yaml:"minimum_confirmations"`
-}
-
-// NetworksConfig is network configurations
-type NetworksConfig struct {
-	SelectedNetworks   []string        `envconfig:"SELECTED_NETWORKS" yaml:"selected_networks"`
-	NetworkSettings    NetworkSettings `envconfig:"NETWORKS" yaml:"networks"`
-	DefaultKeyStore    string
-	ConfigFileLocation string
-}
-
-func (m *NetworksConfig) Decode(path string) error {
-	// Marshal YAML first, then "envconfig" tags of that struct got marshalled
-	if err := unmarshalYAML(path, &m); err != nil {
-		return err
-	}
-	return envconfig.Process("", m)
 }
 
 // RemoteRunnerConfig reads the config file for remote test runs

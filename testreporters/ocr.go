@@ -24,7 +24,7 @@ type OCRSoakTestReporter struct {
 type OCRSoakTestReport struct {
 	ContractAddress          string
 	TotalRounds              uint
-	ExpectedRoundtime        time.Duration
+	ExpectedRoundTime        time.Duration
 	LongerThanExpectedRounds []*LongerThanExpectedRound
 
 	averageRoundTime  time.Duration
@@ -74,7 +74,7 @@ func (o *OCRSoakTestReporter) WriteReport(folderLocation string) error {
 			Str("Average Round Time", fmt.Sprint(report.averageRoundTime)).
 			Str("Longest Round Time", fmt.Sprint(report.LongestRoundTime)).
 			Str("Shortest Round Time", fmt.Sprint(report.ShortestRoundTime)).
-			Str("Total Rounds Outside of Expected Time", fmt.Sprint(report.ExpectedRoundtime)).
+			Str("Total Rounds Outside of Expected Time", fmt.Sprint(report.ExpectedRoundTime)).
 			Uint("Average Round Blocks", report.averageRoundBlocks).
 			Uint("Longest Round Blocks", report.LongestRoundBlocks).
 			Uint("Shortest Round Blocks", report.ShortestRoundBlocks).
@@ -127,7 +127,7 @@ func (o *OCRSoakTestReport) UpdateReport(roundTime time.Duration, blockLength ui
 	o.totalRoundTimes += roundTime
 	o.totalBlockLength += blockLength
 
-	if roundTime > o.ExpectedRoundtime {
+	if roundTime > o.ExpectedRoundTime {
 		o.LongerThanExpectedRounds = append(o.LongerThanExpectedRounds, &LongerThanExpectedRound{
 			RoundID:     o.TotalRounds,
 			RoundTime:   roundTime,

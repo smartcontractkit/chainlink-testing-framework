@@ -401,6 +401,50 @@ type EIKey struct {
 	Attributes EIAttributes `json:"attributes"`
 }
 
+// EVMChainConfig holds all config values for an EVM chain
+type EVMChainConfig struct {
+	ChainType                null.String
+	EvmEIP1559DynamicFees    null.Bool
+	GasEstimatorMode         null.String
+	MinIncomingConfirmations null.Int
+	MinimumContractPayment   null.String
+}
+
+// EVMChain is the model that represents the EVM chain when read
+type EVMChain struct {
+	Attributes EVMChainAttributes `json:"attributes"`
+}
+
+// EVMChainCreate is the model that represents the EVM chain when created
+type EVMChainCreate struct {
+	Data EVMChain `json:"data"`
+}
+
+// EVMChainAttributes is the model that represents an EVM chain
+type EVMChainAttributes struct {
+	ChainID string         `json:"chainID"`
+	Config  EVMChainConfig `json:"config"`
+}
+
+// EVMNodeAttributes is the model that represents the EVM node
+type EVMNodeAttributes struct {
+	Name    string `json:"name"`
+	ChainID string `json:"evmChainID"`
+	HTTP    string `json:"httpURL"`
+	WS      string `json:"wsURL"`
+}
+
+// EVMNode is the model that represents an EVM node when read
+type EVMNode struct {
+	Attributes EVMNodeAttributes `json:"attributes"`
+}
+
+// EVMNodeCreate is the model that represents an EVM node when created
+type EVMNodeCreate struct {
+	Data EVMNode `json:"data"`
+}
+
+// TerraChainConfig holds all config values for a Terra chain
 type TerraChainConfig struct {
 	BlockRate             null.String
 	BlocksUntilTxTimeout  null.Int

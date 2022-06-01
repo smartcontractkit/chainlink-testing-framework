@@ -26,7 +26,7 @@ import (
 var _ = Describe("Flux monitor suite @flux", func() {
 	var (
 		err              error
-		nets             *blockchain.Networks
+		networks         *blockchain.Networks
 		defaultNetwork   blockchain.EVMClient
 		cd               contracts.ContractDeployer
 		lt               contracts.LinkToken
@@ -49,25 +49,11 @@ var _ = Describe("Flux monitor suite @flux", func() {
 				),
 			)
 			Expect(err).ShouldNot(HaveOccurred(), "Environment deployment shouldn't fail")
-			err = env.ConnectAll()
-			Expect(err).ShouldNot(HaveOccurred(), "Connecting to all nodes shouldn't fail")
-		})
-
-		By("Connecting to launched resources", func() {
-			networkRegistry := blockchain.NewDefaultNetworkRegistry()
-			nets, err = networkRegistry.GetNetworks(env)
-			Expect(err).ShouldNot(HaveOccurred(), "Connecting to blockchain nodes shouldn't fail")
-			defaultNetwork = nets.Default
-
-			cd, err = contracts.NewContractDeployer(defaultNetwork)
-			Expect(err).ShouldNot(HaveOccurred(), "Deploying contracts shouldn't fail")
-			chainlinkNodes, err = client.ConnectChainlinkNodes(env)
-			Expect(err).ShouldNot(HaveOccurred(), "Connecting to chainlink nodes shouldn't fail")
+			networks, chainlinkNodes, mockserver, err = actions.ConnectTestEnvironment(env)
+			Expect(err).ShouldNot(HaveOccurred(), "Connecting to test environment shouldn't fail")
+			defaultNetwork = networks.Default
 			nodeAddresses, err = actions.ChainlinkNodeAddresses(chainlinkNodes)
 			Expect(err).ShouldNot(HaveOccurred(), "Retreiving on-chain wallet addresses for chainlink nodes shouldn't fail")
-			mockserver, err = client.ConnectMockServer(env)
-			Expect(err).ShouldNot(HaveOccurred(), "Creating mock server client shouldn't fail")
-
 			defaultNetwork.ParallelTransactions(true)
 		})
 
@@ -79,6 +65,9 @@ var _ = Describe("Flux monitor suite @flux", func() {
 		})
 
 		By("Deploying and funding contract", func() {
+			cd, err = contracts.NewContractDeployer(defaultNetwork)
+			Expect(err).ShouldNot(HaveOccurred(), "Failed to create contract deployer")
+
 			lt, err = cd.DeployLinkTokenContract()
 			Expect(err).ShouldNot(HaveOccurred(), "Deploying Link Token Contract shouldn't fail")
 			fluxInstance, err = cd.DeployFluxAggregatorContract(lt.Address(), contracts.DefaultFluxAggregatorOptions())
@@ -186,7 +175,7 @@ var _ = Describe("Flux monitor suite @flux", func() {
 			defaultNetwork.GasStats().PrintStats()
 		})
 		By("Tearing down the environment", func() {
-			err = actions.TeardownSuite(env, nets, utils.ProjectRoot, chainlinkNodes, nil)
+			err = actions.TeardownSuite(env, networks, utils.ProjectRoot, chainlinkNodes, nil)
 			Expect(err).ShouldNot(HaveOccurred(), "Environment teardown shouldn't fail")
 		})
 	})

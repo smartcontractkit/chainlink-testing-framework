@@ -17,11 +17,13 @@ import (
 
 var _ = Describe("Cronjob suite @cron", func() {
 	var (
-		err           error
-		job           *client.Job
-		chainlinkNode client.Chainlink
-		mockserver    *client.MockserverClient
-		e             *environment.Environment
+		err            error
+		job            *client.Job
+		chainlinkNodes []client.Chainlink
+		chainlinkNode  client.Chainlink
+		networks       *blockchain.Networks
+		mockserver     *client.MockserverClient
+		e              *environment.Environment
 	)
 
 	BeforeEach(func() {
@@ -34,16 +36,11 @@ var _ = Describe("Cronjob suite @cron", func() {
 				),
 			)
 			Expect(err).ShouldNot(HaveOccurred(), "Environment deployment shouldn't fail")
-			err = e.ConnectAll()
-			Expect(err).ShouldNot(HaveOccurred(), "Connecting to all nodes shouldn't fail")
-		})
-
-		By("Connecting to launched resources", func() {
-			cls, err := client.ConnectChainlinkNodes(e)
-			Expect(err).ShouldNot(HaveOccurred(), "Connecting to chainlink nodes shouldn't fail")
-			mockserver, err = client.ConnectMockServer(e)
-			Expect(err).ShouldNot(HaveOccurred(), "Creating mockserver client shouldn't fail")
-			chainlinkNode = cls[0]
+			networks, chainlinkNodes, mockserver, err = actions.ConnectTestEnvironment(e)
+			Expect(err).ShouldNot(HaveOccurred(), "Connecting to test environment shouldn't fail")
+			chainlinkNode = chainlinkNodes[0]
+			networks.Default.ParallelTransactions(true)
+			Expect(err).ShouldNot(HaveOccurred())
 		})
 
 		By("Adding cron job to a node", func() {
@@ -83,10 +80,7 @@ var _ = Describe("Cronjob suite @cron", func() {
 
 	AfterEach(func() {
 		By("Tearing down the environment", func() {
-			networkRegistry := blockchain.NewDefaultNetworkRegistry()
-			networks, err := networkRegistry.GetNetworks(e)
-			Expect(err).ShouldNot(HaveOccurred(), "Connecting to blockchain nodes shouldn't fail")
-			err = actions.TeardownSuite(e, networks, utils.ProjectRoot, []client.Chainlink{chainlinkNode}, nil)
+			err = actions.TeardownSuite(e, networks, utils.ProjectRoot, chainlinkNodes, nil)
 			Expect(err).ShouldNot(HaveOccurred(), "Environment teardown shouldn't fail")
 		})
 	})

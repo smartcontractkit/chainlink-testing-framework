@@ -24,7 +24,7 @@ type TransactionConfirmer struct {
 	doneChan         chan struct{}
 	context          context.Context
 	cancel           context.CancelFunc
-	networkConfig    *config.ETHNetwork
+	networkConfig    *config.EVMNetwork
 }
 
 // NewTransactionConfirmer returns a new instance of the transaction confirmer that waits for on-chain minimum

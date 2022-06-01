@@ -23,7 +23,7 @@ import (
 var _ = Describe("VRF suite @vrf", func() {
 	var (
 		err                error
-		nets               *blockchain.Networks
+		networks           *blockchain.Networks
 		cd                 contracts.ContractDeployer
 		consumer           contracts.VRFConsumer
 		coordinator        contracts.VRFCoordinator
@@ -44,29 +44,22 @@ var _ = Describe("VRF suite @vrf", func() {
 				),
 			)
 			Expect(err).ShouldNot(HaveOccurred(), "Environment deployment shouldn't fail")
-			err = e.ConnectAll()
-			Expect(err).ShouldNot(HaveOccurred(), "Connecting to all nodes shouldn't fail")
-		})
-
-		By("Connecting to launched resources", func() {
-			networkRegistry := blockchain.NewDefaultNetworkRegistry()
-			nets, err = networkRegistry.GetNetworks(e)
-			Expect(err).ShouldNot(HaveOccurred(), "Connecting to blockchain nodes shouldn't fail")
-			cd, err = contracts.NewContractDeployer(nets.Default)
-			Expect(err).ShouldNot(HaveOccurred(), "Deploying contracts shouldn't fail")
-			chainlinkNodes, err = client.ConnectChainlinkNodes(e)
-			Expect(err).ShouldNot(HaveOccurred(), "Connecting to chainlink nodes shouldn't fail")
-			nets.Default.ParallelTransactions(true)
+			networks, chainlinkNodes, _, err = actions.ConnectTestEnvironment(e)
+			Expect(err).ShouldNot(HaveOccurred(), "Connecting to test environment shouldn't fail")
+			networks.Default.ParallelTransactions(true)
 		})
 
 		By("Funding Chainlink nodes", func() {
-			txCost, err := nets.Default.EstimateCostForChainlinkOperations(1)
+			txCost, err := networks.Default.EstimateCostForChainlinkOperations(1)
 			Expect(err).ShouldNot(HaveOccurred(), "Estimating cost for Chainlink Operations shouldn't fail")
-			err = actions.FundChainlinkNodes(chainlinkNodes, nets.Default, txCost)
+			err = actions.FundChainlinkNodes(chainlinkNodes, networks.Default, txCost)
 			Expect(err).ShouldNot(HaveOccurred(), "Funding chainlink nodes with ETH shouldn't fail")
 		})
 
 		By("Deploying VRF contracts", func() {
+			cd, err = contracts.NewContractDeployer(networks.Default)
+			Expect(err).ShouldNot(HaveOccurred(), "Deploying contracts shouldn't fail")
+
 			lt, err = cd.DeployLinkTokenContract()
 			Expect(err).ShouldNot(HaveOccurred(), "Deploying Link Token Contract shouldn't fail")
 			bhs, err := cd.DeployBlockhashStore()
@@ -75,14 +68,14 @@ var _ = Describe("VRF suite @vrf", func() {
 			Expect(err).ShouldNot(HaveOccurred(), "Deploying VRF coordinator shouldn't fail")
 			consumer, err = cd.DeployVRFConsumer(lt.Address(), coordinator.Address())
 			Expect(err).ShouldNot(HaveOccurred(), "Deploying VRF consumer contract shouldn't fail")
-			err = nets.Default.WaitForEvents()
+			err = networks.Default.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred(), "Failed to wait for VRF setup contracts to deploy")
 
 			err = lt.Transfer(consumer.Address(), big.NewInt(2e18))
 			Expect(err).ShouldNot(HaveOccurred(), "Funding consumer contract shouldn't fail")
 			_, err = cd.DeployVRFContract()
 			Expect(err).ShouldNot(HaveOccurred(), "Deploying VRF contract shouldn't fail")
-			err = nets.Default.WaitForEvents()
+			err = networks.Default.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred(), "Waiting for event subscriptions in nodes shouldn't fail")
 		})
 
@@ -155,10 +148,10 @@ var _ = Describe("VRF suite @vrf", func() {
 
 	AfterEach(func() {
 		By("Printing gas stats", func() {
-			nets.Default.GasStats().PrintStats()
+			networks.Default.GasStats().PrintStats()
 		})
 		By("Tearing down the environment", func() {
-			err = actions.TeardownSuite(e, nets, utils.ProjectRoot, chainlinkNodes, nil)
+			err = actions.TeardownSuite(e, networks, utils.ProjectRoot, chainlinkNodes, nil)
 			Expect(err).ShouldNot(HaveOccurred(), "Environment teardown shouldn't fail")
 		})
 	})

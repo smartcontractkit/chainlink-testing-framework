@@ -40,18 +40,8 @@ var _ = Describe("Keeper suite @keeper", func() {
 				),
 			)
 			Expect(err).ShouldNot(HaveOccurred(), "Environment deployment shouldn't fail")
-			err = env.ConnectAll()
-			Expect(err).ShouldNot(HaveOccurred(), "Connecting to all nodes shouldn't fail")
-		})
-
-		By("Connecting to launched resources", func() {
-			networkRegistry := blockchain.NewDefaultNetworkRegistry()
-			networks, err = networkRegistry.GetNetworks(env)
-			Expect(err).ShouldNot(HaveOccurred(), "Connecting to blockchain nodes shouldn't fail")
-			contractDeployer, err = contracts.NewContractDeployer(networks.Default)
-			Expect(err).ShouldNot(HaveOccurred(), "Deploying contracts shouldn't fail")
-			chainlinkNodes, err = client.ConnectChainlinkNodes(env)
-			Expect(err).ShouldNot(HaveOccurred(), "Connecting to chainlink nodes shouldn't fail")
+			networks, chainlinkNodes, _, err = actions.ConnectTestEnvironment(env)
+			Expect(err).ShouldNot(HaveOccurred(), "Connecting to test environment shouldn't fail")
 			networks.Default.ParallelTransactions(true)
 		})
 
@@ -63,6 +53,9 @@ var _ = Describe("Keeper suite @keeper", func() {
 		})
 
 		By("Deploy Keeper Contracts", func() {
+			contractDeployer, err = contracts.NewContractDeployer(networks.Default)
+			Expect(err).ShouldNot(HaveOccurred(), "Deploying contracts shouldn't fail")
+
 			linkToken, err = contractDeployer.DeployLinkTokenContract()
 			Expect(err).ShouldNot(HaveOccurred(), "Deploying Link Token Contract shouldn't fail")
 

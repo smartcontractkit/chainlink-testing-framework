@@ -83,7 +83,7 @@ func FundChainlinkNodes(
 		}
 	}
 	// required in Geth when you need to call "simulate" transactions from nodes
-	if client.GetNetworkType() == blockchain.SimulatedEthNetwork {
+	if client.GetChainID() == big.NewInt(1337) {
 		if err := client.Fund("0x0", big.NewFloat(1000)); err != nil {
 			return err
 		}
@@ -227,6 +227,51 @@ func GetMockserverInitializerDataForOTPE(
 	return initializers, nil
 }
 
+// ConnectTestEnvironment connects to all common test environment elements
+func ConnectTestEnvironment(
+	testEnv *environment.Environment,
+) (*blockchain.Networks, []client.Chainlink, *client.MockserverClient, error) {
+	err := testEnv.ConnectAll()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	networks, err := blockchain.ConnectNetworks(testEnv)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	mockserver, err := client.ConnectMockServer(testEnv)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	chainlinkNodes, err := client.ConnectChainlinkNodes(testEnv)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	networkRegisterGroup := new(errgroup.Group)
+	for _, network := range networks.EVMNetworks() {
+		for _, c := range chainlinkNodes {
+			chainlinkNode := c
+			networkRegisterGroup.Go(func() error {
+				defer ginkgo.GinkgoRecover()
+				_, err := chainlinkNode.CreateEVMChain(network.GetEVMChainAttributes())
+				if err != nil &&
+					!strings.Contains(err.Error(), "failed to dial ethclient: failed to dial pool: no available nodes for chain") {
+					return err
+				}
+				_, err = chainlinkNode.CreateEVMNode(network.GetEVMNodeAttributes())
+				if err != nil {
+					return err
+				}
+
+				_, err = chainlinkNode.CreateETHKey()
+				return err
+			})
+		}
+	}
+	return networks, chainlinkNodes, mockserver, networkRegisterGroup.Wait()
+}
+
 // TeardownSuite tears down networks/clients and environment and creates a logs folder for failed tests in the
 // specified path. Can also accept a testreporter (if one was used) to log further results
 func TeardownSuite(
@@ -339,10 +384,10 @@ func returnFunds(chainlinkNodes []client.Chainlink, networks *blockchain.Network
 		}
 	}
 	log.Info().Msg("Attempting to return Chainlink node funds to default network wallets")
-	for _, network := range networks.AllNetworks() {
-		if network.GetNetworkType() == blockchain.SimulatedEthNetwork {
+	for _, network := range networks.EVMNetworks() {
+		if network.GetChainID().Cmp(big.NewInt(1337)) == 0 {
 			log.Info().Str("Network Name", network.GetNetworkName()).
-				Msg("Network is a `eth_simulated` network. Skipping fund return.")
+				Msg(fmt.Sprintf("Network with chain id '%d' is a simulated network. Skipping fund return.", 1337))
 			continue
 		}
 		addressMap, err := sendFunds(chainlinkNodes, network)

@@ -24,61 +24,59 @@ private_keys: &private_keys
 selected_networks: # Selected network(s) for test execution
     - "geth"
 
-networks:
+evm_networks:
     geth: &common_ethereum
         name: "Ethereum Geth Standard"
         chain_id: 1337
-        type: eth_simulated
-        secret_private_keys: false
-        namespace_for_secret: default
         <<: *private_keys
         chainlink_transaction_limit: 500000
         transaction_timeout: 2m
         minimum_confirmations: 1
         gas_estimation_buffer: 10000
-        block_gas_limit: 40000000
+        contracts_deployed: false
     geth_performance: &geth_performance
         <<: *common_ethereum
         name: "Ethereum Geth Performance"
         transaction_timeout: 5m
-        block_gas_limit: 30000000000
     geth_realistic:
         <<: *common_ethereum
         name: "Ethereum Geth Realistic"
         transaction_timeout: 5m
-        block_gas_limit: 15000000000
     geth_reorg:
         <<: *geth_performance
         name: "Ethereum Geth Re-org"
-        type: eth_simulated
         transaction_timeout: 10m
         gas_estimation_buffer: 0
+
     ethereum_kovan: &common_ethereum_testnet
         name: "Ethereum Kovan"
         chain_id: 42
         type: eth_testnet
         urls:
-            - wss://url.here
+            - ws_url: wss://url.here
+              http_url: http://url.here
         private_keys:
             - kovan_testnet_1
         chainlink_transaction_limit: 500000
         transaction_timeout: 2m
         minimum_confirmations: 1
         gas_estimation_buffer: 10000
-        block_gas_limit: 40000000
+        contracts_deployed: false
     ethereum_goerli:
         <<: *common_ethereum_testnet
         name: "Ethereum Goerli"
         chain_id: 5
         urls:
-            - wss://url.here
+            - ws_url: wss://url.here
+              http_url: http://url.here
         private_keys:
             - gorli_testnet_1
     ethereum_rinkeby:
         <<: *common_ethereum_testnet
         name: "Ethereum Rinkeby"
         urls:
-            - wss://url.here
+            - ws_url: wss://url.here
+              http_url: http://url.here
         chain_id: 4
         private_keys:
             - rinkeby_private_key_1
@@ -88,7 +86,8 @@ networks:
         name: "Arbitrum testnet"
         chain_id: 421611
         urls:
-            - wss://url.here
+            - ws_url: wss://url.here
+              http_url: http://url.here
         private_keys:
             - arb_testnet_1
         chainlink_transaction_limit: 9000000000
@@ -98,7 +97,8 @@ networks:
         <<: *common_ethereum_testnet
         name: "BSC testnet"
         urls:
-            - wss://url.here
+            - ws_url: wss://url.here
+              http_url: http://url.here
         chain_id: 97
         private_keys:
             - bsc_testnet_1
@@ -109,7 +109,8 @@ networks:
         name: "Matic Mumbai"
         chain_id: 80001
         urls:
-            - wss://url.here
+            - ws_url: wss://url.here
+              http_url: http://url.here
         private_keys:
             - matic_mumbai_1
     fantom_testnet:
@@ -117,7 +118,8 @@ networks:
         name: "Fantom testnet"
         chain_id: 4002
         urls:
-            - wss://url.here
+            - ws_url: wss://url.here
+              http_url: http://url.here
         private_keys:
             - fantom_testnet_1
     harmony_testnet:
@@ -125,7 +127,8 @@ networks:
         name: "Harmony testnet"
         chain_id: 1666700000
         urls:
-            - wss://url.here
+            - ws_url: wss://url.here
+              http_url: http://url.here
         private_keys:
             - harmony_testnet_1
         minimum_confirmations: 3
@@ -134,7 +137,8 @@ networks:
         name: "Avalanche Fuji testnet"
         chain_id: 43113
         urls:
-            - wss://url.here
+            - ws_url: wss://url.here
+              http_url: http://url.here
         private_keys:
             - avax_fuji_testnet_1
         chainlink_transaction_limit: 6000000
@@ -143,7 +147,8 @@ networks:
         name: "Optimism Kovan testnet"
         chain_id: 43113
         urls:
-            - wss://url.here
+            - ws_url: wss://url.here
+              http_url: http://url.here
         private_keys:
             - optimism_kovan_1
     rsk_testnet:
@@ -151,7 +156,8 @@ networks:
         name: "RSK testnet"
         chain_id: 31
         urls:
-            - wss://url.here
+            - ws_url: wss://url.here
+              http_url: http://url.here
         private_keys:
             - rsk_testnet_1
     moonbase_alpha:
@@ -159,7 +165,8 @@ networks:
         name: "Moonbase alpha"
         chain_id: 1287
         urls:
-            - wss://url.here
+            - ws_url: wss://url.here
+              http_url: http://url.here
         private_keys:
             - moonbase_alpha_1
     iotex_testnet:
@@ -167,30 +174,31 @@ networks:
         name: "IoTeX testnet"
         chain_id: 4690
         urls:
-            - wss://url.here
+            - ws_url: wss://url.here
+              http_url: http://url.here
         private_keys:
             - iotex_testnet_1
-    terra:
-        <<: *geth_performance
-        name: "localterra"
-        type: eth_multinode
-        transaction_timeout: 10m
-        gas_estimation_buffer: 0
     klaytn_testnet:
         <<: *common_ethereum_testnet
         name: "Klaytn testnet"
-        type: "klaytn_testnet"
         chain_id: 1001
         urls:
-            - wss://url.here
+            - ws_url: wss://url.here
+              http_url: http://url.here
         private_keys:
             - klaytn_key
     metis_testnet:
         <<: *common_ethereum_testnet
         name: "Metis mainnet"
-        type: "metis_testnet"
         chain_id: 588
         urls:
-            - wss://stardust-ws.metis.io
+            - ws_url: wss://url.here
+              http_url: http://url.here
         private_keys:
             - metis_key
+
+terra_networks:
+    local_terra:
+    name: "localterra"
+    transaction_timeout: 10m
+    gas_estimation_buffer: 0

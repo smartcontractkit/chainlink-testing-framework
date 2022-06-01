@@ -61,14 +61,11 @@ func (k *KeeperBlockTimeTest) Setup(env *environment.Environment) {
 	var err error
 
 	// Connect to networks and prepare for contract deployment
-	networkRegistry := blockchain.NewSoakNetworkRegistry()
-	k.networks, err = networkRegistry.GetNetworks(k.env)
-	Expect(err).ShouldNot(HaveOccurred(), "Connecting to blockchain nodes shouldn't fail")
+	k.networks, k.chainlinkNodes, k.mockServer, err = actions.ConnectTestEnvironment(env)
+	Expect(err).ShouldNot(HaveOccurred(), "Error connecting to test environment")
 	k.defaultNetwork = k.networks.Default
 	contractDeployer, err := contracts.NewContractDeployer(k.defaultNetwork)
 	Expect(err).ShouldNot(HaveOccurred(), "Building a new contract deployer shouldn't fail")
-	k.chainlinkNodes, err = client.ConnectChainlinkNodesSoak(k.env)
-	Expect(err).ShouldNot(HaveOccurred(), "Connecting to chainlink nodes shouldn't fail")
 	k.defaultNetwork.ParallelTransactions(true)
 
 	// Fund chainlink nodes

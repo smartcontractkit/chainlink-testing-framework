@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/client"
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 	"github.com/smartcontractkit/helmenv/environment"
@@ -27,7 +28,7 @@ import (
 type EthereumClient struct {
 	ID                  int
 	Client              *ethclient.Client
-	NetworkConfig       *config.ETHNetwork
+	NetworkConfig       *config.EVMNetwork
 	Wallets             []*EthereumWallet
 	DefaultWallet       *EthereumWallet
 	BorrowNonces        bool
@@ -39,16 +40,26 @@ type EthereumClient struct {
 	queueTransactions   bool
 	gasStats            *GasStats
 	doneChan            chan struct{}
+	evmNodeAttributes   *client.EVMNodeAttributes
+	evmChainAttributes  *client.EVMChainAttributes
 }
 
 // NewEthereumClient returns an instantiated instance of the Ethereum client that has connected to the server
-func NewEthereumClient(networkSettings *config.ETHNetwork) (EVMClient, error) {
+func NewEthereumClient(networkSettings *config.EVMNetwork, urls *config.EVMUrls) (EVMClient, error) {
+	if urls.WebSocket == "" {
+		return nil, fmt.Errorf("No websocket URL provided for '%s'", networkSettings.Name)
+	}
+	if urls.HTTP == "" {
+		log.Warn().Str("Network", networkSettings.Name).Msg("No http URL provided, using a dummy one")
+		urls.HTTP = "http://dummyurl.com"
+	}
 	log.Info().
 		Str("Name", networkSettings.Name).
-		Str("URL", networkSettings.URL).
+		Str("WS URL", urls.WebSocket).
+		Str("HTTP URL", urls.HTTP).
 		Interface("Settings", networkSettings).
 		Msg("Connecting client")
-	cl, err := ethclient.Dial(networkSettings.URL)
+	cl, err := ethclient.Dial(urls.WebSocket)
 	if err != nil {
 		return nil, err
 	}
@@ -65,6 +76,12 @@ func NewEthereumClient(networkSettings *config.ETHNetwork) (EVMClient, error) {
 		mutex:               &sync.Mutex{},
 		queueTransactions:   false,
 		doneChan:            make(chan struct{}),
+		evmNodeAttributes: &client.EVMNodeAttributes{
+			Name:    networkSettings.Name,
+			ChainID: fmt.Sprint(networkSettings.ChainID),
+			WS:      urls.WebSocket,
+			HTTP:    urls.HTTP,
+		},
 	}
 	if err := ec.LoadWallets(networkSettings); err != nil {
 		return nil, err
@@ -101,11 +118,6 @@ func (e *EthereumClient) GetNetworkName() string {
 	return e.NetworkConfig.Name
 }
 
-// GetNetworkType retrieves the type of network this is running on
-func (e *EthereumClient) GetNetworkType() string {
-	return e.NetworkConfig.Type
-}
-
 // GetChainID retrieves the ChainID of the network that the client interacts with
 func (e *EthereumClient) GetChainID() *big.Int {
 	return big.NewInt(e.NetworkConfig.ChainID)
@@ -126,9 +138,22 @@ func (e *EthereumClient) GetWallets() []*EthereumWallet {
 	return e.Wallets
 }
 
-// DefaultWallet returns the default wallet for the network
-func (e *EthereumClient) GetNetworkConfig() *config.ETHNetwork {
+// GetNetworkConfig returns the EVM network's settings
+func (e *EthereumClient) GetNetworkConfig() *config.EVMNetwork {
 	return e.NetworkConfig
+}
+
+func (e *EthereumClient) GetEVMNodeAttributes() *client.EVMNodeAttributes {
+	return e.evmNodeAttributes
+}
+
+func (e *EthereumClient) GetEVMChainAttributes() *client.EVMChainAttributes {
+	if e.evmChainAttributes != nil {
+		return e.evmChainAttributes
+	}
+	return &client.EVMChainAttributes{
+		ChainID: fmt.Sprint(e.NetworkConfig.ChainID),
+	}
 }
 
 // SetID sets client id, only used for multi-node networks
@@ -150,9 +175,13 @@ func (e *EthereumClient) SetWallets(wallets []*EthereumWallet) {
 	e.Wallets = wallets
 }
 
+func (e *EthereumClient) SetEVMChainAttributes(attrs *client.EVMChainAttributes) {
+	e.evmChainAttributes = attrs
+}
+
 // LoadWallets loads wallets from config
 func (e *EthereumClient) LoadWallets(cfg interface{}) error {
-	pkStrings := cfg.(*config.ETHNetwork).PrivateKeys
+	pkStrings := cfg.(*config.EVMNetwork).PrivateKeys
 	for _, pks := range pkStrings {
 		w, err := NewEthereumWallet(pks)
 		if err != nil {
@@ -478,36 +507,69 @@ type EthereumMultinodeClient struct {
 	Clients       []EVMClient
 }
 
+// SimulatedEthereumURLs returns the websocket URLs for a simulated geth network
+func simulatedEthereumURLs(e *environment.Environment) ([]*config.EVMUrls, error) {
+	var websocketConnections, httpConnections []*url.URL
+	localWebSockets, err := e.Charts.Connections("geth").LocalURLsByPort("ws-rpc", environment.WS)
+	if err == nil { // Found locally forwarded ports, find http counterparts and return
+		websocketConnections = localWebSockets
+		httpConnections, err = e.Charts.Connections("geth").LocalURLsByPort("http-rpc", environment.HTTP)
+		if err != nil {
+			return nil, fmt.Errorf("Error finding local HTTP urls")
+		}
+	} else { // Didn't find locally forwarded ports, look for remote ones
+		websocketConnections, err = e.Charts.Connections("geth").LocalURLsByPort("http-rpc", environment.HTTP)
+		if err != nil {
+			return nil, fmt.Errorf("Error finding remote WS urls")
+		}
+		httpConnections, err = e.Charts.Connections("geth").LocalURLsByPort("http-rpc", environment.HTTP)
+		if err != nil {
+			return nil, fmt.Errorf("Error finding remote HTTP urls")
+		}
+	}
+
+	if len(websocketConnections) != len(httpConnections) {
+		return nil, fmt.Errorf("websocket connection count '%d' does not match http connection count '%d'",
+			len(websocketConnections), len(httpConnections))
+	}
+	connectionURLs := make([]*config.EVMUrls, 0)
+	for index := range websocketConnections {
+		connectionURLs = append(connectionURLs, &config.EVMUrls{
+			WebSocket: websocketConnections[index].String(),
+			HTTP:      httpConnections[index].String(),
+		})
+	}
+
+	return connectionURLs, nil
+}
+
 // NewEthereumMultiNodeClient returns an instantiated instance of all Ethereum client connected to all nodes
 func NewEthereumMultiNodeClient(
-	_ string,
-	networkConfig map[string]interface{},
-	urls []*url.URL,
+	networkConfig *config.EVMNetwork,
+	testEnvironment *environment.Environment,
 ) (EVMClient, error) {
-	networkSettings := &config.ETHNetwork{}
-	err := UnmarshalNetworkConfig(networkConfig, networkSettings)
-	if err != nil {
-		return nil, err
-	}
 	log.Info().
-		Interface("URLs", networkSettings.URLs).
+		Interface("URLs", networkConfig.URLs).
 		Msg("Connecting multi-node client")
 
-	ecl := &EthereumMultinodeClient{}
-	for _, envURL := range urls {
-		networkSettings.URLs = append(networkSettings.URLs, envURL.String())
+	multiNodeClient := &EthereumMultinodeClient{}
+	if len(networkConfig.URLs) == 0 {
+		simURLs, err := simulatedEthereumURLs(testEnvironment)
+		if err != nil {
+			return nil, err
+		}
+		networkConfig.URLs = simURLs
 	}
-	for idx, networkURL := range networkSettings.URLs {
-		networkSettings.URL = networkURL
-		ec, err := NewEthereumClient(networkSettings)
+	for idx, networkURLs := range networkConfig.URLs {
+		ec, err := NewEthereumClient(networkConfig, networkURLs)
 		if err != nil {
 			return nil, err
 		}
 		ec.SetID(idx)
-		ecl.Clients = append(ecl.Clients, ec)
+		multiNodeClient.Clients = append(multiNodeClient.Clients, ec)
 	}
-	ecl.DefaultClient = ecl.Clients[0]
-	return ecl, nil
+	multiNodeClient.DefaultClient = multiNodeClient.Clients[0]
+	return multiNodeClient, nil
 }
 
 // Get gets default client as an interface{}
@@ -518,11 +580,6 @@ func (e *EthereumMultinodeClient) Get() interface{} {
 // GetNetworkName gets the ID of the chain that the clients are connected to
 func (e *EthereumMultinodeClient) GetNetworkName() string {
 	return e.DefaultClient.GetNetworkName()
-}
-
-// GetNetworkType retrieves the type of network this is running on
-func (e *EthereumMultinodeClient) GetNetworkType() string {
-	return e.DefaultClient.GetNetworkType()
 }
 
 // GetChainID retrieves the ChainID of the network that the client interacts with
@@ -548,8 +605,18 @@ func (e *EthereumMultinodeClient) GetWallets() []*EthereumWallet {
 }
 
 // GetDefaultWallet returns the default wallet for the network
-func (e *EthereumMultinodeClient) GetNetworkConfig() *config.ETHNetwork {
+func (e *EthereumMultinodeClient) GetNetworkConfig() *config.EVMNetwork {
 	return e.DefaultClient.GetNetworkConfig()
+}
+
+// GetEVMNodeAttributes gets EVM node attributes used by Chainlink nodes to connect
+func (e *EthereumMultinodeClient) GetEVMNodeAttributes() *client.EVMNodeAttributes {
+	return e.DefaultClient.GetEVMNodeAttributes()
+}
+
+// GetEVMChainAttributes returns the specific chain attributes Chainlink uses to optimize its processes
+func (e *EthereumMultinodeClient) GetEVMChainAttributes() *client.EVMChainAttributes {
+	return e.DefaultClient.GetEVMChainAttributes()
 }
 
 // SetID sets client ID in a multi-node environment
@@ -567,9 +634,14 @@ func (e *EthereumMultinodeClient) SetWallets(wallets []*EthereumWallet) {
 	e.DefaultClient.SetWallets(wallets)
 }
 
+// SetEVMChainAttributes sets chain attributes based on known chain information
+func (e *EthereumMultinodeClient) SetEVMChainAttributes(attrs *client.EVMChainAttributes) {
+	e.DefaultClient.SetEVMChainAttributes(attrs)
+}
+
 // LoadWallets loads wallets using private keys provided in the config
 func (e *EthereumMultinodeClient) LoadWallets(cfg interface{}) error {
-	pkStrings := cfg.(config.ETHNetwork).PrivateKeys
+	pkStrings := cfg.(config.EVMNetwork).PrivateKeys
 	wallets := make([]*EthereumWallet, 0)
 	for _, pks := range pkStrings {
 		w, err := NewEthereumWallet(pks)
@@ -699,21 +771,6 @@ func (e *EthereumMultinodeClient) WaitForEvents() error {
 		})
 	}
 	return g.Wait()
-}
-
-// SimulatedEthereumURLs returns the websocket URLs for a simulated geth network
-func SimulatedEthereumURLs(e *environment.Environment) ([]*url.URL, error) {
-	return e.Charts.Connections("geth").LocalURLsByPort("ws-rpc", environment.WS)
-}
-
-// SimulatedEthereumURLs returns the websocket URLs for a simulated geth network
-func SimulatedSoakEthereumURLs(e *environment.Environment) ([]*url.URL, error) {
-	return e.Charts.Connections("geth").RemoteURLsByPort("ws-rpc", environment.WS)
-}
-
-// LiveEthTestnetURLs indicates that there are no urls to fetch, except from the network config
-func LiveEthTestnetURLs(e *environment.Environment) ([]*url.URL, error) {
-	return []*url.URL{}, nil
 }
 
 // BorrowedNonces allows to handle nonces concurrently without requesting them every time

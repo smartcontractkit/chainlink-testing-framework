@@ -16,7 +16,7 @@ import (
 	"github.com/smartcontractkit/helmenv/environment"
 )
 
-var _ = Describe("OCR Feed @ocr", func() {
+var _ = FDescribe("OCR Feed @ocr", func() {
 	var (
 		err               error
 		env               *environment.Environment
@@ -38,29 +38,9 @@ var _ = Describe("OCR Feed @ocr", func() {
 				),
 			)
 			Expect(err).ShouldNot(HaveOccurred(), "Environment deployment shouldn't fail")
-			err = env.ConnectAll()
-			Expect(err).ShouldNot(HaveOccurred(), "Connecting to all nodes shouldn't fail")
-		})
-
-		By("Connecting to launched resources", func() {
-			// Load Networks
-			networkRegistry := blockchain.NewDefaultNetworkRegistry()
-			var err error
-			networks, err = networkRegistry.GetNetworks(env)
-			Expect(err).ShouldNot(HaveOccurred(), "Connecting to blockchain nodes shouldn't fail")
-			contractDeployer, err = contracts.NewContractDeployer(networks.Default)
-			Expect(err).ShouldNot(HaveOccurred(), "Deploying contracts shouldn't fail")
-
-			chainlinkNodes, err = client.ConnectChainlinkNodes(env)
-			Expect(err).ShouldNot(HaveOccurred(), "Connecting to chainlink nodes shouldn't fail")
-			mockserver, err = client.ConnectMockServer(env)
-			Expect(err).ShouldNot(HaveOccurred(), "Creating mockserver clients shouldn't fail")
-
+			networks, chainlinkNodes, mockserver, err = actions.ConnectTestEnvironment(env)
+			Expect(err).ShouldNot(HaveOccurred(), "Connecting to test environment shouldn't fail")
 			networks.Default.ParallelTransactions(true)
-			Expect(err).ShouldNot(HaveOccurred())
-
-			linkTokenContract, err = contractDeployer.DeployLinkTokenContract()
-			Expect(err).ShouldNot(HaveOccurred(), "Deploying Link Token Contract shouldn't fail")
 		})
 
 		By("Funding Chainlink nodes", func() {
@@ -69,6 +49,14 @@ var _ = Describe("OCR Feed @ocr", func() {
 		})
 
 		By("Deploying OCR contracts", func() {
+			contractDeployer, err = contracts.NewContractDeployer(networks.Default)
+			Expect(err).ShouldNot(HaveOccurred(), "Deploying contracts shouldn't fail")
+
+			linkTokenContract, err = contractDeployer.DeployLinkTokenContract()
+			Expect(err).ShouldNot(HaveOccurred(), "Deploying Link Token Contract shouldn't fail")
+			err = networks.Default.WaitForEvents()
+			Expect(err).ShouldNot(HaveOccurred())
+
 			ocrInstances = actions.DeployOCRContracts(1, linkTokenContract, contractDeployer, chainlinkNodes, networks)
 			err = networks.Default.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred())

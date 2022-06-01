@@ -52,6 +52,7 @@ type Chainlink interface {
 	DeleteP2PKey(id int) error
 
 	ReadETHKeys() (*ETHKeys, error)
+	CreateETHKey() (*ETHKeys, error)
 	ReadPrimaryETHKey() (*ETHKeyData, error)
 	PrimaryEthAddress() (string, error)
 	UpdateEthKeyMaxGasPriceGWei(keyId string, gwei int) (*ETHKey, error)
@@ -75,6 +76,9 @@ type Chainlink interface {
 	CreateEI(eia *EIAttributes) (*EIKeyCreate, error)
 	ReadEIs() (*EIKeys, error)
 	DeleteEI(name string) error
+
+	CreateEVMChain(node *EVMChainAttributes) (*EVMChainCreate, error)
+	CreateEVMNode(node *EVMNodeAttributes) (*EVMNodeCreate, error)
 
 	CreateTerraChain(node *TerraChainAttributes) (*TerraChainCreate, error)
 	CreateTerraNode(node *TerraNodeAttributes) (*TerraNodeCreate, error)
@@ -301,6 +305,14 @@ func (c *chainlink) ReadETHKeys() (*ETHKeys, error) {
 	return ethKeys, err
 }
 
+// ReadETHKeys reads all ETH keys from the Chainlink node
+func (c *chainlink) CreateETHKey() (*ETHKeys, error) {
+	ethKeys := &ETHKeys{}
+	log.Info().Str("Node URL", c.Config.URL).Msg("Creating ETH Key")
+	err := c.do(http.MethodPost, "/v2/keys/eth", nil, ethKeys, http.StatusOK)
+	return ethKeys, err
+}
+
 // UpdateEthKeyMaxGasPriceGWei updates the maxGasPriceGWei for an eth key
 func (c *chainlink) UpdateEthKeyMaxGasPriceGWei(keyId string, gWei int) (*ETHKey, error) {
 	ethKey := &ETHKey{}
@@ -461,6 +473,20 @@ func (c *chainlink) ReadEIs() (*EIKeys, error) {
 func (c *chainlink) DeleteEI(name string) error {
 	log.Info().Str("Node URL", c.Config.URL).Str("Name", name).Msg("Deleting EI")
 	return c.do(http.MethodDelete, fmt.Sprintf("/v2/external_initiators/%s", name), nil, nil, http.StatusNoContent)
+}
+
+// CreateEVMChain registers an EVM chain on the Chainlink node
+func (c *chainlink) CreateEVMChain(chain *EVMChainAttributes) (*EVMChainCreate, error) {
+	response := EVMChainCreate{}
+	log.Info().Str("Node URL", c.Config.URL).Str("Chain ID", chain.ChainID).Msg("Creating EVM Chain")
+	return &response, c.do(http.MethodPost, "/v2/chains/evm", chain, &response, http.StatusCreated)
+}
+
+// CreateEVMNode registers an EVM node on the Chainlink node
+func (c *chainlink) CreateEVMNode(node *EVMNodeAttributes) (*EVMNodeCreate, error) {
+	response := EVMNodeCreate{}
+	log.Info().Str("Node URL", c.Config.URL).Str("Name", node.Name).Msg("Creating EVM Node")
+	return &response, c.do(http.MethodPost, "/v2/nodes/evm", node, &response, http.StatusOK)
 }
 
 // CreateTerraChain creates a terra chain

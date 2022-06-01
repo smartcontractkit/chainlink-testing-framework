@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"net/url"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -12,6 +11,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils"
+	"github.com/smartcontractkit/helmenv/environment"
 )
 
 // Handles specific issues with the Metis EVM chain: https://docs.metis.io/
@@ -27,34 +27,31 @@ type MetisClient struct {
 }
 
 // NewMetisClient returns an instantiated instance of the Metis client that has connected to the server
-func NewMetisClient(networkSettings *config.ETHNetwork) (EVMClient, error) {
-	client, err := NewEthereumClient(networkSettings)
+func NewMetisClient(networkSettings *config.EVMNetwork, urls *config.EVMUrls) (EVMClient, error) {
+	client, err := NewEthereumClient(networkSettings, urls)
 	log.Info().Str("Network Name", client.GetNetworkName()).Msg("Using custom Metis client")
 	return &MetisClient{client.(*EthereumClient)}, err
 }
 
 // NewMetisMultinodeClient returns an instantiated instance of all Metis clients connected to all nodes
 func NewMetisMultiNodeClient(
-	_ string,
-	networkConfig map[string]interface{},
-	urls []*url.URL,
+	networkConfig *config.EVMNetwork,
+	testEnvironment *environment.Environment,
 ) (EVMClient, error) {
-	networkSettings := &config.ETHNetwork{}
-	err := UnmarshalNetworkConfig(networkConfig, networkSettings)
-	if err != nil {
-		return nil, err
-	}
 	log.Info().
-		Interface("URLs", networkSettings.URLs).
+		Interface("URLs", networkConfig.URLs).
 		Msg("Connecting multi-node client")
 
 	multiNodeClient := &EthereumMultinodeClient{}
-	for _, envURL := range urls {
-		networkSettings.URLs = append(networkSettings.URLs, envURL.String())
+	if len(networkConfig.URLs) == 0 {
+		simURLs, err := simulatedEthereumURLs(testEnvironment)
+		if err != nil {
+			return nil, err
+		}
+		networkConfig.URLs = simURLs
 	}
-	for idx, networkURL := range networkSettings.URLs {
-		networkSettings.URL = networkURL
-		ec, err := NewMetisClient(networkSettings)
+	for idx, networkURLs := range networkConfig.URLs {
+		ec, err := NewMetisClient(networkConfig, networkURLs)
 		if err != nil {
 			return nil, err
 		}

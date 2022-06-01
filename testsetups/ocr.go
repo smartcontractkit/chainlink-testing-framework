@@ -66,16 +66,12 @@ func (t *OCRSoakTest) Setup(env *environment.Environment) {
 	var err error
 
 	// Make connections to soak test resources
-	networkRegistry := blockchain.NewSoakNetworkRegistry()
-	t.networks, err = networkRegistry.GetNetworks(env)
-	Expect(err).ShouldNot(HaveOccurred(), "Connecting to blockchain nodes shouldn't fail")
+	t.networks, t.chainlinkNodes, t.mockServer, err = actions.ConnectTestEnvironment(env)
+	Expect(err).ShouldNot(HaveOccurred(), "Error connecting to test environment")
 	t.defaultNetwork = t.networks.Default
+
 	contractDeployer, err := contracts.NewContractDeployer(t.defaultNetwork)
 	Expect(err).ShouldNot(HaveOccurred(), "Deploying contracts shouldn't fail")
-	t.chainlinkNodes, err = client.ConnectChainlinkNodesSoak(env)
-	Expect(err).ShouldNot(HaveOccurred(), "Connecting to chainlink nodes shouldn't fail")
-	t.mockServer, err = client.ConnectMockServerSoak(env)
-	Expect(err).ShouldNot(HaveOccurred(), "Creating mockserver clients shouldn't fail")
 	t.defaultNetwork.ParallelTransactions(true)
 
 	// Deploy LINK
@@ -98,7 +94,7 @@ func (t *OCRSoakTest) Setup(env *environment.Environment) {
 	for _, ocrInstance := range t.ocrInstances {
 		t.TestReporter.Reports[ocrInstance.Address()] = &testreporters.OCRSoakTestReport{
 			ContractAddress:   ocrInstance.Address(),
-			ExpectedRoundtime: t.Inputs.ExpectedRoundTime,
+			ExpectedRoundTime: t.Inputs.ExpectedRoundTime,
 		}
 	}
 }

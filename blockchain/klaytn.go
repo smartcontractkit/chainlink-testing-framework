@@ -3,7 +3,6 @@ package blockchain
 import (
 	"context"
 	"math/big"
-	"net/url"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -11,6 +10,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils"
+	"github.com/smartcontractkit/helmenv/environment"
 )
 
 // Handles specific issues with the Klaytn EVM chain: https://docs.klaytn.com/
@@ -26,34 +26,31 @@ type KlaytnClient struct {
 }
 
 // NewKlaytnClient returns an instantiated instance of the Klaytn client that has connected to the server
-func NewKlaytnClient(networkSettings *config.ETHNetwork) (EVMClient, error) {
-	client, err := NewEthereumClient(networkSettings)
+func NewKlaytnClient(networkSettings *config.EVMNetwork, urls *config.EVMUrls) (EVMClient, error) {
+	client, err := NewEthereumClient(networkSettings, urls)
 	log.Info().Str("Network Name", client.GetNetworkName()).Msg("Using custom Klaytn client")
 	return &KlaytnClient{client.(*EthereumClient)}, err
 }
 
 // NewKlaytnMultiNodeClient returns an instantiated instance of all Klaytn clients connected to all nodes
 func NewKlaytnMultiNodeClient(
-	_ string,
-	networkConfig map[string]interface{},
-	urls []*url.URL,
+	networkConfig *config.EVMNetwork,
+	testEnvironment *environment.Environment,
 ) (EVMClient, error) {
-	networkSettings := &config.ETHNetwork{}
-	err := UnmarshalNetworkConfig(networkConfig, networkSettings)
-	if err != nil {
-		return nil, err
-	}
 	log.Info().
-		Interface("URLs", networkSettings.URLs).
+		Interface("URLs", networkConfig.URLs).
 		Msg("Connecting multi-node client")
 
 	multiNodeClient := &EthereumMultinodeClient{}
-	for _, envURL := range urls {
-		networkSettings.URLs = append(networkSettings.URLs, envURL.String())
+	if len(networkConfig.URLs) == 0 {
+		simURLs, err := simulatedEthereumURLs(testEnvironment)
+		if err != nil {
+			return nil, err
+		}
+		networkConfig.URLs = simURLs
 	}
-	for idx, networkURL := range networkSettings.URLs {
-		networkSettings.URL = networkURL
-		ec, err := NewKlaytnClient(networkSettings)
+	for idx, networkURLs := range networkConfig.URLs {
+		ec, err := NewKlaytnClient(networkConfig, networkURLs)
 		if err != nil {
 			return nil, err
 		}
