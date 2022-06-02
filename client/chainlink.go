@@ -763,22 +763,29 @@ func ConnectChainlinkNodesByCharts(e *environment.Environment, charts []string) 
 
 // ConnectChainlinkNodesSoak assumes that the tests are being run from an internal soak test runner
 func ConnectChainlinkNodesSoak(e *environment.Environment) ([]Chainlink, error) {
+	return ConnectChainlinkNodesSoakByCharts(e, []string{"chainlink"})
+}
+
+// ConnectChainlinkNodesSoakByCharts assumes that the tests are being run from an internal soak test runner
+func ConnectChainlinkNodesSoakByCharts(e *environment.Environment, charts []string) ([]Chainlink, error) {
 	var clients []Chainlink
 
-	remoteURLs, err := e.Charts.Connections("chainlink").RemoteURLsByPort("access", environment.HTTP)
-	if err != nil {
-		return nil, err
-	}
-	for urlIndex, localURL := range remoteURLs {
-		c, err := NewChainlink(&ChainlinkConfig{
-			URL:      localURL.String(),
-			Email:    "notreal@fakeemail.ch",
-			Password: "twochains",
-			RemoteIP: remoteURLs[urlIndex].Hostname(),
-		}, http.DefaultClient)
-		clients = append(clients, c)
+	for _, chart := range charts {
+		remoteURLs, err := e.Charts.Connections(chart).RemoteURLsByPort("access", environment.HTTP)
 		if err != nil {
 			return nil, err
+		}
+		for _, remoteURL := range remoteURLs {
+			c, err := NewChainlink(&ChainlinkConfig{
+				URL:      remoteURL.String(),
+				Email:    "notreal@fakeemail.ch",
+				Password: "twochains",
+				RemoteIP: remoteURL.Hostname(),
+			}, http.DefaultClient)
+			clients = append(clients, c)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 	return clients, nil
