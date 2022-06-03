@@ -7,27 +7,21 @@ parent: Setup
 
 # Test Setup Code
 
-Now that we've got our config and Kubernetes sorted, we can write a bit of code that will deploy an environment for our test to run. To deploy our simulated geth, mock-server, and Chainlink instances, we rely on another chainlink library, [helmenv](https://github.com/smartcontractkit/helmenv/). This library handles deploying everything our test needs to the Kubernetes cluster.
+Now that we've got our config and Kubernetes sorted, we can write a bit of code that will deploy an environment for our test to run. To deploy our simulated geth, mock-server, and Chainlink instances, we rely on another chainlink library, [chainlink-env](https://github.com/smartcontractkit/chainlink-env/). This library handles deploying everything our test needs to the Kubernetes cluster.
 
 ```go
-// We use the helmenv library to make and handle deployed resources
-import "github.com/smartcontractkit/helmenv/environment"
+// We use the chainlink-env library to make and handle deployed resources
+import "github.com/smartcontractkit/chainlink-env/environment"
 
 // Deploy a testing environment, and receive it as the `env` variable. This is used to connect to resources.
-env, err := environment.DeployOrLoadEnvironment( 
-  // Define what sort of environment you would like to deploy. More on this below
-  environment.NewChainlinkConfig(
-    environment.ChainlinkReplicas(3, config.ChainlinkVals()),
-    "namespace-prefix",
-    config.GethNetworks()...,
-  ),
-  // Path to the helm charts you want to use (tools.ChartsRoot will work fine for 99% of cases)
-  tools.ChartsRoot,
-)
-// Omitting error checking for brevity
-
-// Connect to all the deployed resources to use later in the test
-err = env.ConnectAll()
+e = environment.New(nil)
+err := e.
+    AddHelm(mockservercfg.New(nil)).
+    AddHelm(mockserver.New(nil)).
+    AddHelm(geth.New(nil)).
+    AddHelm(chainlink.New(nil)).
+    Run()
+Expect(err).ShouldNot(HaveOccurred(), "Environment deployment shouldn't fail")
 // Connect to all networks specified in the networks.yaml file
 networkRegistry := client.NewDefaultNetworkRegistry()
 // Retrieve these networks
@@ -39,14 +33,26 @@ defaultNetwork := networks.Default
 Most of the setup code will be the same for all your tests. Here's a more detailed explanation as to what some of the deployment code is doing to launch a few common test resources.
 
 ```go
-env, err := environment.DeployOrLoadEnvironment( // Use helmenv to deploy a new environment
-  environment.NewChainlinkConfig( // Indicate you want a standard EVM Chainlink testing environment
-    environment.ChainlinkReplicas(3, config.ChainlinkVals()), // How many Chainlink nodes to launch, and what values to provide them
-    "namespace-prefix", // The prefix of the namespace that will be created in Kubernetes
-    config.GethNetworks()..., // All the settings of the simulated Geth networks that will be launched
-  ),
-  tools.ChartsRoot, // Default 
-)
+e := environment.New(&environment.Config{
+    Labels: []string{fmt.Sprintf("envType=%s", pkg.EnvTypeEVM5)}, // set more additional labels
+})
+err := e.
+    AddHelm(mockservercfg.New(nil)). // add more Helm charts, all charts got merged in a manifest and deployed with kubectl when you call Run()
+    AddHelm(mockserver.New(nil)).
+    Run()
+Expect(err).ShouldNot(HaveOccurred(), "Environment deployment shouldn't fail")
+// do some other stuff with deployed charts if you need to interact with deployed services
+err = e.
+    AddChart(blockscout.New(&blockscout.Props{})). // you can also add cdk8s charts if you like Go code
+    AddHelm(geth.New(nil)).
+    AddHelm(chainlink.New(nil)).
+    Run()
+// Connect to all networks specified in the networks.yaml file
+networkRegistry := client.NewDefaultNetworkRegistry()
+// Retrieve these networks
+networks, err := networkRegistry.GetNetworks(env)
+// Get the default network (the first one in your listed selected_networks)
+defaultNetwork := networks.Default
 ```
 
 These common resources consist of

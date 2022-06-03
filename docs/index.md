@@ -22,7 +22,7 @@ Here you'll find some guidelines on writing blockchain tests using this framewor
 
 Some notable packages we use include:
 
-* [helmenv](https://github.com/smartcontractkit/helmenv)
+* [chainlink-env](https://github.com/smartcontractkit/chainlink-env)
 * [zerolog](https://github.com/rs/zerolog)
 * [Ginkgo and Gomega](https://github.com/onsi/ginkgo)
 * [Kubernetes](https://github.com/kubernetes/kubernetes)

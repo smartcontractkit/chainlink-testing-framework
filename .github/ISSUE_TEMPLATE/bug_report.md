@@ -14,7 +14,7 @@ A clear and concise description of what the bug is.
 
 * OS: 
 * Integrations Framework Version: 
-* Helmenv Version: 
+* chainlink-env Version: 
 
 **To Reproduce**
 Steps to reproduce the behavior:
