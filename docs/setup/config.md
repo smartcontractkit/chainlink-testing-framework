@@ -29,12 +29,6 @@ logging:
 chainlink_image: public.ecr.aws/chainlink/chainlink
 chainlink_version: 1.2.1
 chainlink_env_values:
-
-# Setting an environment file allows for persistent, not ephemeral environments on test execution
-#
-# For example, if an environment is created with helmenv CLI, then the YAML file outputted on creation can be
-# referenced for use of that environment during all the tests
-environment_file:
 ```
 
 ## `networks.yaml`
