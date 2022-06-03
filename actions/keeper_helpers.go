@@ -22,7 +22,7 @@ func CreateKeeperJobs(chainlinkNodes []client.Chainlink, keeperRegistry contract
 	primaryNodeAddress, err := primaryNode.PrimaryEthAddress()
 	Expect(err).ShouldNot(HaveOccurred(), "Reading ETH Keys from Chainlink Client shouldn't fail")
 	nodeAddresses, err := ChainlinkNodeAddresses(chainlinkNodes)
-	Expect(err).ShouldNot(HaveOccurred(), "Retreiving on-chain wallet addresses for chainlink nodes shouldn't fail")
+	Expect(err).ShouldNot(HaveOccurred(), "Retrieving on-chain wallet addresses for chainlink nodes shouldn't fail")
 	nodeAddressesStr, payees := make([]string, 0), make([]string, 0)
 	for _, cla := range nodeAddresses {
 		nodeAddressesStr = append(nodeAddressesStr, cla.Hex())
@@ -44,7 +44,8 @@ func CreateKeeperJobs(chainlinkNodes []client.Chainlink, keeperRegistry contract
 	}
 }
 
-// DeployKeeperContracts deploys keeper registry and a number of basic upkeep contracts with an update interval of 5
+// DeployKeeperContracts deploys keeper registry and a number of basic upkeep contracts with an update interval of 5.
+// It returns the freshly deployed registry, registrar, consumers and the IDs of the upkeeps.
 func DeployKeeperContracts(
 	registryVersion ethereum.KeeperRegistryVersion,
 	registrySettings contracts.KeeperRegistrySettings,
@@ -80,7 +81,7 @@ func DeployKeeperContracts(
 	registrarSettings := contracts.KeeperRegistrarSettings{
 		AutoRegister:     true,
 		WindowSizeBlocks: uint32(6000000),
-		AllowedPerWindow: uint16(numberOfUpkeeps),
+		AllowedPerWindow: 1000, // we might need to register new upkeeps later on in the tests, so it's good to have a buffer
 		RegistryAddr:     registry.Address(),
 		MinLinkJuels:     big.NewInt(0),
 	}
@@ -105,8 +106,8 @@ func DeployPerformanceKeeperContracts(
 	contractDeployer contracts.ContractDeployer,
 	networks *blockchain.Networks,
 	registrySettings *contracts.KeeperRegistrySettings,
-	blockRange,     // How many blocks to run the test for
-	blockInterval,  // Interval of blocks that upkeeps are expected to be performed
+	blockRange, // How many blocks to run the test for
+	blockInterval, // Interval of blocks that upkeeps are expected to be performed
 	checkGasToBurn, // How much gas should be burned on checkUpkeep() calls
 	performGasToBurn int64, // How much gas should be burned on performUpkeep() calls
 ) (contracts.KeeperRegistry, contracts.UpkeepRegistrar, []contracts.KeeperConsumerPerformance, []*big.Int) {
@@ -213,11 +214,11 @@ func RegisterUpkeepContracts(
 	registry contracts.KeeperRegistry,
 	registrar contracts.UpkeepRegistrar,
 	numberOfContracts int,
-	upkeepAdresses []string,
+	upkeepAddresses []string,
 ) []*big.Int {
 	registrationTxHashes := make([]common.Hash, 0)
 	upkeepIds := make([]*big.Int, 0)
-	for contractCount, upkeepAddress := range upkeepAdresses {
+	for contractCount, upkeepAddress := range upkeepAddresses {
 		req, err := registrar.EncodeRegisterRequest(
 			fmt.Sprintf("upkeep_%d", contractCount+1),
 			[]byte("0x1234"),
@@ -302,8 +303,8 @@ func DeployKeeperConsumersPerformance(
 	contractDeployer contracts.ContractDeployer,
 	networks *blockchain.Networks,
 	numberOfContracts int,
-	blockRange,     // How many blocks to run the test for
-	blockInterval,  // Interval of blocks that upkeeps are expected to be performed
+	blockRange, // How many blocks to run the test for
+	blockInterval, // Interval of blocks that upkeeps are expected to be performed
 	checkGasToBurn, // How much gas should be burned on checkUpkeep() calls
 	performGasToBurn int64, // How much gas should be burned on performUpkeep() calls
 ) []contracts.KeeperConsumerPerformance {
@@ -399,8 +400,8 @@ func DeployUpkeepPerformCounterRestrictive(
 }
 
 // RegisterNewUpkeeps registers the given amount of new upkeeps, using the registry and registrar
-// which are passed as parameters. It returns the newly deployed contracts (consumers), as well
-// as their upkeep IDs.
+// which are passed as parameters.
+// It returns the newly deployed contracts (consumers), as well as their upkeep IDs.
 func RegisterNewUpkeeps(
 	contractDeployer contracts.ContractDeployer,
 	networks *blockchain.Networks,
@@ -410,11 +411,6 @@ func RegisterNewUpkeeps(
 	upkeepGasLimit uint32,
 	numberOfNewUpkeeps int,
 ) ([]contracts.KeeperConsumer, []*big.Int) {
-	// Fund the registry with 1 LINK * amount of how many new upkeeps we want to register now
-	err := linkToken.Transfer(registry.Address(), big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(int64(1))))
-	Expect(err).ShouldNot(HaveOccurred(), "Funding keeper registry contract shouldn't fail")
-
-	// Deploy the new contracts
 	newlyDeployedUpkeeps := DeployKeeperConsumers(contractDeployer, networks, numberOfNewUpkeeps)
 
 	var addressesOfNewUpkeeps []string
