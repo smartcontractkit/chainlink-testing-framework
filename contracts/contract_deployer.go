@@ -18,7 +18,6 @@ import (
 
 // ContractDeployer is an interface for abstracting the contract deployment methods across network implementations
 type ContractDeployer interface {
-	DeployStorageContract() (Storage, error)
 	DeployAPIConsumer(linkAddr string) (APIConsumer, error)
 	DeployOracle(linkAddr string) (Oracle, error)
 	DeployReadAccessController() (ReadAccessController, error)
@@ -284,23 +283,6 @@ func (e *EthereumContractDeployer) DeployOffChainAggregator(
 		client:  e.client,
 		ocr:     instance.(*ethereum.OffchainAggregator),
 		address: address,
-	}, err
-}
-
-// DeployStorageContract deploys a vanilla storage contract that is a value store
-func (e *EthereumContractDeployer) DeployStorageContract() (Storage, error) {
-	_, _, instance, err := e.client.DeployContract("Storage", func(
-		auth *bind.TransactOpts,
-		backend bind.ContractBackend,
-	) (common.Address, *types.Transaction, interface{}, error) {
-		return ethereum.DeployStore(auth, backend)
-	})
-	if err != nil {
-		return nil, err
-	}
-	return &EthereumStorage{
-		client: e.client,
-		store:  instance.(*ethereum.Store),
 	}, err
 }
 

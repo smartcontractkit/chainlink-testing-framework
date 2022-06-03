@@ -194,3 +194,11 @@ networks:
             - wss://stardust-ws.metis.io
         private_keys:
             - metis_key
+    ethereum_kiln:
+        <<: *common_ethereum_testnet
+        name: 'Ethereum Kiln'
+        chain_id: 1337802
+        urls: 
+            - ws://3.80.145.74/ws
+        private_keys:
+            - 6d13257cb1bd8eaa873b500499963147a4f7e15aed046cdb0990be49214328ba
