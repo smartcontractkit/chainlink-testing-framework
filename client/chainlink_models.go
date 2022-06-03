@@ -896,8 +896,7 @@ type OCR2TaskJobSpec struct {
 	Relay                    string            `toml:"relay"`                                  // Name of blockchain relay to use
 	PluginType               string            `toml:"pluginType"`                             // Type of report plugin to use
 	RelayConfig              map[string]string `toml:"relayConfig"`                            // Relay spec object in stringified form
-	P2PPeerID                string            `toml:"p2pPeerID"`                              // This node's P2P ID
-	P2PBootstrapPeers        []P2PData         `toml:"p2pBootstrapPeers"`                      // P2P ID of the bootstrap node
+	P2PV2Bootstrappers       []P2PData         `toml:"p2pv2Bootstrappers"`                     // P2P ID of the bootstrap node
 	OCRKeyBundleID           string            `toml:"ocrKeyBundleID"`                         // ID of this node's OCR key bundle
 	MonitoringEndpoint       string            `toml:"monitoringEndpoint"`                     // Typically "chain.link:4321"
 	TransmitterID            string            `toml:"transmitterID"`                          // ID of address this node will use to transmit
@@ -923,16 +922,15 @@ contractConfigTrackerSubscribeInterval ={{if not .TrackerSubscribeInterval}} "2m
 name 																	 = "{{.Name}}"
 relay																	 = "{{.Relay}}"
 contractID		                         = "{{.ContractID}}"
-{{if .P2PBootstrapPeers}}
-p2pBootstrapPeers                      = [
-  {{range $peer := .P2PBootstrapPeers}}
+{{if .P2PV2Bootstrappers}}
+p2pv2Bootstrappers                      = [
+  {{range $peer := .P2PV2Bootstrappers}}
   "{{$peer.PeerID}}@{{$peer.RemoteIP}}:{{if $peer.RemotePort}}{{$peer.RemotePort}}{{else}}6690{{end}}",
   {{end}}
 ]
 {{else}}
-p2pBootstrapPeers                      = []
+p2pv2Bootstrappers                      = []
 {{end}}
-p2pPeerID                              = "{{.P2PPeerID}}"
 monitoringEndpoint                     ={{if not .MonitoringEndpoint}} "chain.link:4321" {{else}} "{{.MonitoringEndpoint}}" {{end}}
 {{if eq .JobType "offchainreporting2" }}
 pluginType                             = "{{ .PluginType }}"
