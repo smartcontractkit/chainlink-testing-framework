@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
+	"github.com/smartcontractkit/chainlink-testing-framework/contracts"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 	"github.com/smartcontractkit/helmenv/environment"
 
@@ -260,47 +261,9 @@ func (e *EthereumClient) Fund(
 	return e.ProcessTransaction(tx)
 }
 
-// DeployContract acts as a general contract deployment tool to an ethereum chain
-func (e *EthereumClient) DeployContract(
-	contractName string,
-	deployer ContractDeployer,
-) (*common.Address, *types.Transaction, interface{}, error) {
-	opts, err := e.TransactionOpts(e.DefaultWallet)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	suggestedTipCap, err := e.Client.SuggestGasTipCap(context.Background())
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	gasPriceBuffer := big.NewInt(0).SetUint64(e.NetworkConfig.GasEstimationBuffer)
-	opts.GasTipCap = suggestedTipCap.Add(gasPriceBuffer, suggestedTipCap)
+// ContractDeployer returns a contract deployer to deploy pre-set contracts on the EVM chain
+func (e *EthereumClient) ContractDeployer() *contracts.ContractDeployer {
 
-	if e.NetworkConfig.GasEstimationBuffer > 0 {
-		log.Debug().
-			Uint64("Suggested Gas Tip Cap", big.NewInt(0).Sub(suggestedTipCap, gasPriceBuffer).Uint64()).
-			Uint64("Bumped Gas Tip Cap", suggestedTipCap.Uint64()).
-			Str("Contract Name", contractName).
-			Msg("Bumping Suggested Gas Price")
-	}
-
-	contractAddress, transaction, contractInstance, err := deployer(opts, e.Client)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	if err := e.ProcessTransaction(transaction); err != nil {
-		return nil, nil, nil, err
-	}
-
-	log.Info().
-		Str("Contract Address", contractAddress.Hex()).
-		Str("Contract Name", contractName).
-		Str("From", e.DefaultWallet.Address()).
-		Str("Total Gas Cost (ETH)", utils.WeiToEther(transaction.Cost()).String()).
-		Str("Network Name", e.NetworkConfig.Name).
-		Msg("Deployed contract")
-	return &contractAddress, transaction, contractInstance, err
 }
 
 // TransactionOpts returns the base Tx options for 'transactions' that interact with a smart contract. Since most
@@ -627,12 +590,9 @@ func (e *EthereumMultinodeClient) Fund(toAddress string, nativeAmount *big.Float
 	return e.DefaultClient.Fund(toAddress, nativeAmount)
 }
 
-// Fund funds a specified address with LINK token and or ETH from the given wallet
-func (e *EthereumMultinodeClient) DeployContract(
-	contractName string,
-	deployer ContractDeployer,
-) (*common.Address, *types.Transaction, interface{}, error) {
-	return e.DefaultClient.DeployContract(contractName, deployer)
+// ContractDeployer returns the contract deployer for the default network
+func (e *EthereumMultinodeClient) ContractDeployer() *contracts.ContractDeployer {
+	return e.DefaultClient.ContractDeployer()
 }
 
 // TransactionOpts returns the base Tx options for 'transactions' that interact with a smart contract. Since most

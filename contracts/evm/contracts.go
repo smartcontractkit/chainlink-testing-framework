@@ -13,7 +13,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/client"
-	"github.com/smartcontractkit/chainlink-testing-framework/contracts/ethereum"
+	"github.com/smartcontractkit/chainlink-testing-framework/contracts"
 	"github.com/smartcontractkit/chainlink-testing-framework/testreporters"
 	ocrConfigHelper "github.com/smartcontractkit/libocr/offchainreporting/confighelper"
 	ocrTypes "github.com/smartcontractkit/libocr/offchainreporting/types"
@@ -23,7 +23,7 @@ import (
 type EthereumOracle struct {
 	address *common.Address
 	client  blockchain.EVMClient
-	oracle  *ethereum.Oracle
+	oracle  *contracts.Oracle
 }
 
 func (e *EthereumOracle) Address() string {
@@ -51,7 +51,7 @@ func (e *EthereumOracle) SetFulfillmentPermission(address string, allowed bool) 
 type EthereumAPIConsumer struct {
 	address  *common.Address
 	client   blockchain.EVMClient
-	consumer *ethereum.APIConsumer
+	consumer *contracts.APIConsumer
 }
 
 func (e *EthereumAPIConsumer) Address() string {
@@ -70,8 +70,8 @@ func (e *EthereumAPIConsumer) Fund(ethAmount *big.Float) error {
 	return e.client.Fund(e.address.Hex(), ethAmount)
 }
 
-func (e *EthereumAPIConsumer) WatchPerfEvents(ctx context.Context, eventChan chan<- *PerfEvent) error {
-	ethEventChan := make(chan *ethereum.APIConsumerPerfMetricsEvent)
+func (e *EthereumAPIConsumer) WatchPerfEvents(ctx context.Context, eventChan chan<- *contracts.PerfEvent) error {
+	ethEventChan := make(chan *contracts.APIConsumerPerfMetricsEvent)
 	sub, err := e.consumer.WatchPerfMetricsEvent(&bind.WatchOpts{}, ethEventChan)
 	if err != nil {
 		return err
@@ -80,7 +80,7 @@ func (e *EthereumAPIConsumer) WatchPerfEvents(ctx context.Context, eventChan cha
 	for {
 		select {
 		case event := <-ethEventChan:
-			eventChan <- &PerfEvent{
+			eventChan <- &contracts.PerfEvent{
 				Contract:       e,
 				RequestID:      event.RequestId,
 				Round:          event.RoundID,
@@ -128,7 +128,7 @@ func (e *EthereumAPIConsumer) CreateRequestTo(
 
 // VRFConsumerRoundConfirmer is a header subscription that awaits for a certain VRF round to be completed
 type VRFConsumerRoundConfirmer struct {
-	consumer VRFConsumer
+	consumer contracts.VRFConsumer
 	roundID  *big.Int
 	doneChan chan struct{}
 	context  context.Context
@@ -138,7 +138,7 @@ type VRFConsumerRoundConfirmer struct {
 
 // NewVRFConsumerRoundConfirmer provides a new instance of a NewVRFConsumerRoundConfirmer
 func NewVRFConsumerRoundConfirmer(
-	contract VRFConsumer,
+	contract contracts.VRFConsumer,
 	roundID *big.Int,
 	timeout time.Duration,
 ) *VRFConsumerRoundConfirmer {
@@ -197,7 +197,7 @@ func (f *VRFConsumerRoundConfirmer) Wait() error {
 // EthereumLinkToken represents a LinkToken address
 type EthereumLinkToken struct {
 	client   blockchain.EVMClient
-	instance *ethereum.LinkToken
+	instance *contracts.LinkToken
 	address  common.Address
 }
 
@@ -289,7 +289,7 @@ func (l *EthereumLinkToken) TransferAndCall(to string, amount *big.Int, data []b
 // EthereumOffchainAggregator represents the offchain aggregation contract
 type EthereumOffchainAggregator struct {
 	client  blockchain.EVMClient
-	ocr     *ethereum.OffchainAggregator
+	ocr     *contracts.OffchainAggregator
 	address *common.Address
 }
 
@@ -299,7 +299,7 @@ func (o *EthereumOffchainAggregator) Fund(ethAmount *big.Float) error {
 }
 
 // GetContractData retrieves basic data for the offchain aggregator contract
-func (o *EthereumOffchainAggregator) GetContractData(ctxt context.Context) (*OffchainAggregatorData, error) {
+func (o *EthereumOffchainAggregator) GetContractData(ctxt context.Context) (*contracts.OffchainAggregatorData, error) {
 	opts := &bind.CallOpts{
 		From:    common.HexToAddress(o.client.GetDefaultWallet().Address()),
 		Context: ctxt,
@@ -307,11 +307,11 @@ func (o *EthereumOffchainAggregator) GetContractData(ctxt context.Context) (*Off
 
 	lr, err := o.ocr.LatestRoundData(opts)
 	if err != nil {
-		return &OffchainAggregatorData{}, err
+		return &contracts.OffchainAggregatorData{}, err
 	}
-	latestRound := RoundData(lr)
+	latestRound := contracts.RoundData(lr)
 
-	return &OffchainAggregatorData{
+	return &contracts.OffchainAggregatorData{
 		LatestRoundData: latestRound,
 	}, nil
 }
@@ -348,7 +348,7 @@ func (o *EthereumOffchainAggregator) SetPayees(
 // SetConfig sets the payees and the offchain reporting protocol configuration
 func (o *EthereumOffchainAggregator) SetConfig(
 	chainlinkNodes []client.Chainlink,
-	ocrConfig OffChainAggregatorConfig,
+	ocrConfig contracts.OffChainAggregatorConfig,
 ) error {
 	// Gather necessary addresses and keys from our chainlink nodes to properly configure the OCR contract
 	log.Info().Str("Contract Address", o.address.Hex()).Msg("Configuring OCR Contract")
@@ -456,7 +456,7 @@ func (o *EthereumOffchainAggregator) Address() string {
 }
 
 // GetLatestRound returns data from the latest round
-func (o *EthereumOffchainAggregator) GetLatestRound(ctxt context.Context) (*RoundData, error) {
+func (o *EthereumOffchainAggregator) GetLatestRound(ctxt context.Context) (*contracts.RoundData, error) {
 	opts := &bind.CallOpts{
 		From:    common.HexToAddress(o.client.GetDefaultWallet().Address()),
 		Context: ctxt,
@@ -467,7 +467,7 @@ func (o *EthereumOffchainAggregator) GetLatestRound(ctxt context.Context) (*Roun
 		return nil, err
 	}
 
-	return &RoundData{
+	return &contracts.RoundData{
 		RoundId:         roundData.RoundId,
 		Answer:          roundData.Answer,
 		AnsweredInRound: roundData.AnsweredInRound,
@@ -478,7 +478,7 @@ func (o *EthereumOffchainAggregator) GetLatestRound(ctxt context.Context) (*Roun
 
 // RunlogRoundConfirmer is a header subscription that awaits for a certain Runlog round to be completed
 type RunlogRoundConfirmer struct {
-	consumer APIConsumer
+	consumer contracts.APIConsumer
 	roundID  *big.Int
 	doneChan chan struct{}
 	context  context.Context
@@ -487,7 +487,7 @@ type RunlogRoundConfirmer struct {
 
 // NewRunlogRoundConfirmer provides a new instance of a RunlogRoundConfirmer
 func NewRunlogRoundConfirmer(
-	contract APIConsumer,
+	contract contracts.APIConsumer,
 	roundID *big.Int,
 	timeout time.Duration,
 ) *RunlogRoundConfirmer {
@@ -535,7 +535,7 @@ func (o *RunlogRoundConfirmer) Wait() error {
 
 // OffchainAggregatorRoundConfirmer is a header subscription that awaits for a certain OCR round to be completed
 type OffchainAggregatorRoundConfirmer struct {
-	ocrInstance        OffchainAggregator
+	ocrInstance        contracts.OffchainAggregator
 	roundID            *big.Int
 	doneChan           chan struct{}
 	context            context.Context
@@ -546,7 +546,7 @@ type OffchainAggregatorRoundConfirmer struct {
 
 // NewOffchainAggregatorRoundConfirmer provides a new instance of a OffchainAggregatorRoundConfirmer
 func NewOffchainAggregatorRoundConfirmer(
-	contract OffchainAggregator,
+	contract contracts.OffchainAggregator,
 	roundID *big.Int,
 	timeout time.Duration,
 	optionalTestReport *testreporters.OCRSoakTestReport,
@@ -610,7 +610,7 @@ func (o *OffchainAggregatorRoundConfirmer) Wait() error {
 // EthereumStorage acts as a conduit for the ethereum version of the storage contract
 type EthereumStorage struct {
 	client blockchain.EVMClient
-	store  *ethereum.Store
+	store  *contracts.Store
 }
 
 // Set sets a value in the storage contract
@@ -639,7 +639,7 @@ func (e *EthereumStorage) Get(ctxt context.Context) (*big.Int, error) {
 // EthereumVRF represents a VRF contract
 type EthereumVRF struct {
 	client  blockchain.EVMClient
-	vrf     *ethereum.VRF
+	vrf     *contracts.VRF
 	address *common.Address
 }
 
@@ -660,7 +660,7 @@ func (v *EthereumVRF) ProofLength(ctxt context.Context) (*big.Int, error) {
 // EthereumMockETHLINKFeed represents mocked ETH/LINK feed contract
 type EthereumMockETHLINKFeed struct {
 	client  blockchain.EVMClient
-	feed    *ethereum.MockV3AggregatorContract
+	feed    *contracts.MockV3AggregatorContract
 	address *common.Address
 }
 
@@ -682,7 +682,7 @@ func (v *EthereumMockETHLINKFeed) LatestRoundData() (*big.Int, error) {
 // EthereumMockGASFeed represents mocked Gas feed contract
 type EthereumMockGASFeed struct {
 	client  blockchain.EVMClient
-	feed    *ethereum.MockGASAggregator
+	feed    *contracts.MockGASAggregator
 	address *common.Address
 }
 
@@ -694,7 +694,7 @@ func (v *EthereumMockGASFeed) Address() string {
 type EthereumBlockhashStore struct {
 	address        *common.Address
 	client         blockchain.EVMClient
-	blockHashStore *ethereum.BlockhashStore
+	blockHashStore *contracts.BlockhashStore
 }
 
 func (v *EthereumBlockhashStore) Address() string {
@@ -705,7 +705,7 @@ func (v *EthereumBlockhashStore) Address() string {
 type EthereumVRFCoordinatorV2 struct {
 	address     *common.Address
 	client      blockchain.EVMClient
-	coordinator *ethereum.VRFCoordinatorV2
+	coordinator *contracts.VRFCoordinatorV2
 }
 
 func (v *EthereumVRFCoordinatorV2) Address() string {
@@ -724,7 +724,7 @@ func (v *EthereumVRFCoordinatorV2) HashOfKey(ctx context.Context, pubKey [2]*big
 	return hash, nil
 }
 
-func (v *EthereumVRFCoordinatorV2) SetConfig(minimumRequestConfirmations uint16, maxGasLimit uint32, stalenessSeconds uint32, gasAfterPaymentCalculation uint32, fallbackWeiPerUnitLink *big.Int, feeConfig ethereum.VRFCoordinatorV2FeeConfig) error {
+func (v *EthereumVRFCoordinatorV2) SetConfig(minimumRequestConfirmations uint16, maxGasLimit uint32, stalenessSeconds uint32, gasAfterPaymentCalculation uint32, fallbackWeiPerUnitLink *big.Int, feeConfig contracts.VRFCoordinatorV2FeeConfig) error {
 	opts, err := v.client.TransactionOpts(v.client.GetDefaultWallet())
 	if err != nil {
 		return err
@@ -763,7 +763,7 @@ func (v *EthereumVRFCoordinatorV2) RegisterProvingKey(
 type EthereumVRFCoordinator struct {
 	address     *common.Address
 	client      blockchain.EVMClient
-	coordinator *ethereum.VRFCoordinator
+	coordinator *contracts.VRFCoordinator
 }
 
 func (v *EthereumVRFCoordinator) Address() string {
@@ -805,7 +805,7 @@ func (v *EthereumVRFCoordinator) RegisterProvingKey(
 type EthereumVRFConsumerV2 struct {
 	address  *common.Address
 	client   blockchain.EVMClient
-	consumer *ethereum.VRFConsumerV2
+	consumer *contracts.VRFConsumerV2
 }
 
 // CurrentSubscription get current VRFv2 subscription
@@ -899,7 +899,7 @@ func (v *EthereumVRFConsumerV2) GetAllRandomWords(ctx context.Context, num int) 
 type EthereumVRFConsumer struct {
 	address  *common.Address
 	client   blockchain.EVMClient
-	consumer *ethereum.VRFConsumer
+	consumer *contracts.VRFConsumer
 }
 
 func (v *EthereumVRFConsumer) Address() string {
@@ -932,8 +932,8 @@ func (v *EthereumVRFConsumer) CurrentRoundID(ctx context.Context) (*big.Int, err
 	return v.consumer.CurrentRoundID(opts)
 }
 
-func (v *EthereumVRFConsumer) WatchPerfEvents(ctx context.Context, eventChan chan<- *PerfEvent) error {
-	ethEventChan := make(chan *ethereum.VRFConsumerPerfMetricsEvent)
+func (v *EthereumVRFConsumer) WatchPerfEvents(ctx context.Context, eventChan chan<- *contracts.PerfEvent) error {
+	ethEventChan := make(chan *contracts.VRFConsumerPerfMetricsEvent)
 	sub, err := v.consumer.WatchPerfMetricsEvent(&bind.WatchOpts{}, ethEventChan)
 	if err != nil {
 		return err
@@ -942,7 +942,7 @@ func (v *EthereumVRFConsumer) WatchPerfEvents(ctx context.Context, eventChan cha
 	for {
 		select {
 		case event := <-ethEventChan:
-			eventChan <- &PerfEvent{
+			eventChan <- &contracts.PerfEvent{
 				Contract:       v,
 				RequestID:      event.RequestId,
 				Round:          event.RoundID,
@@ -972,7 +972,7 @@ func (v *EthereumVRFConsumer) RandomnessOutput(ctx context.Context) (*big.Int, e
 // EthereumReadAccessController represents read access controller contract
 type EthereumReadAccessController struct {
 	client  blockchain.EVMClient
-	rac     *ethereum.SimpleReadAccessController
+	rac     *contracts.SimpleReadAccessController
 	address *common.Address
 }
 
@@ -1010,7 +1010,7 @@ func (e *EthereumReadAccessController) Address() string {
 // EthereumFlags represents flags contract
 type EthereumFlags struct {
 	client  blockchain.EVMClient
-	flags   *ethereum.Flags
+	flags   *contracts.Flags
 	address *common.Address
 }
 
@@ -1034,7 +1034,7 @@ func (e *EthereumFlags) GetFlag(ctx context.Context, addr string) (bool, error) 
 // EthereumDeviationFlaggingValidator represents deviation flagging validator contract
 type EthereumDeviationFlaggingValidator struct {
 	client  blockchain.EVMClient
-	dfv     *ethereum.DeviationFlaggingValidator
+	dfv     *contracts.DeviationFlaggingValidator
 	address *common.Address
 }
 

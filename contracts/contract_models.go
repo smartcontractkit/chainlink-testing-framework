@@ -12,14 +12,6 @@ type AbigenLog interface {
 	Topic() common.Hash
 }
 
-type KeeperRegistryVersion int32
-
-const (
-	RegistryVersion_1_0 KeeperRegistryVersion = iota
-	RegistryVersion_1_1
-	RegistryVersion_1_2
-)
-
 type RoundData struct {
 	RoundId         *big.Int
 	Answer          *big.Int
@@ -36,6 +28,12 @@ type SubmissionEvent struct {
 	Oracle      common.Address
 }
 
+// DeviationFlaggingValidator contract used as an external validator,
+// fox ex. in flux monitor rounds validation
+type DeviationFlaggingValidator interface {
+	Address() string
+}
+
 // PerfEvent is used to get some metrics for contracts,
 // it contrains roundID for Keeper/OCR/Flux tests and request id for VRF/Runlog
 type PerfEvent struct {
@@ -43,12 +41,6 @@ type PerfEvent struct {
 	Round          *big.Int
 	RequestID      [32]byte
 	BlockTimestamp *big.Int
-}
-
-// DeviationFlaggingValidator contract used as an external validator,
-// fox ex. in flux monitor rounds validation
-type DeviationFlaggingValidator interface {
-	Address() string
 }
 
 type Oracle interface {

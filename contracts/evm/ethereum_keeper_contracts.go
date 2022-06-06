@@ -17,7 +17,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/contracts"
-	"github.com/smartcontractkit/chainlink-testing-framework/contracts/ethereum"
 	"github.com/smartcontractkit/chainlink-testing-framework/testreporters"
 )
 
@@ -38,7 +37,7 @@ func (v *EthereumKeeperRegistry) Fund(ethAmount *big.Float) error {
 	return v.client.Fund(v.address.Hex(), ethAmount)
 }
 
-func (v *EthereumKeeperRegistry) SetConfig(config KeeperRegistrySettings) error {
+func (v *EthereumKeeperRegistry) SetConfig(config contracts.KeeperRegistrySettings) error {
 	txOpts, err := v.client.TransactionOpts(v.client.GetDefaultWallet())
 	if err != nil {
 		return err
@@ -48,7 +47,7 @@ func (v *EthereumKeeperRegistry) SetConfig(config KeeperRegistrySettings) error 
 		Context: nil,
 	}
 	switch v.version {
-	case ethereum.RegistryVersion_1_0, ethereum.RegistryVersion_1_1:
+	case contracts.RegistryVersion_1_0, contracts.RegistryVersion_1_1:
 		tx, err := v.registry1_1.SetConfig(
 			txOpts,
 			config.PaymentPremiumPPB,
@@ -64,13 +63,13 @@ func (v *EthereumKeeperRegistry) SetConfig(config KeeperRegistrySettings) error 
 			return err
 		}
 		return v.client.ProcessTransaction(tx)
-	case ethereum.RegistryVersion_1_2:
+	case contracts.RegistryVersion_1_2:
 		state, err := v.registry1_2.GetState(&callOpts)
 		if err != nil {
 			return err
 		}
 
-		tx, err := v.registry1_2.SetConfig(txOpts, ethereum.Config{
+		tx, err := v.registry1_2.SetConfig(txOpts, contracts.Config{
 			PaymentPremiumPPB:    config.PaymentPremiumPPB,
 			FlatFeeMicroLink:     config.FlatFeeMicroLINK,
 			BlockCountPerTurn:    config.BlockCountPerTurn,
@@ -105,13 +104,13 @@ func (v *EthereumKeeperRegistry) SetRegistrar(registrarAddr string) error {
 	}
 
 	switch v.version {
-	case ethereum.RegistryVersion_1_0, ethereum.RegistryVersion_1_1:
+	case contracts.RegistryVersion_1_0, contracts.RegistryVersion_1_1:
 		tx, err := v.registry1_1.SetRegistrar(txOpts, common.HexToAddress(registrarAddr))
 		if err != nil {
 			return err
 		}
 		return v.client.ProcessTransaction(tx)
-	case ethereum.RegistryVersion_1_2:
+	case contracts.RegistryVersion_1_2:
 		state, err := v.registry1_2.GetState(&callOpts)
 		if err != nil {
 			return err
@@ -137,9 +136,9 @@ func (v *EthereumKeeperRegistry) AddUpkeepFunds(id *big.Int, amount *big.Int) er
 	var tx *types.Transaction
 
 	switch v.version {
-	case ethereum.RegistryVersion_1_0, ethereum.RegistryVersion_1_1:
+	case contracts.RegistryVersion_1_0, contracts.RegistryVersion_1_1:
 		tx, err = v.registry1_1.AddFunds(opts, id, amount)
-	case ethereum.RegistryVersion_1_2:
+	case contracts.RegistryVersion_1_2:
 		tx, err = v.registry1_2.AddFunds(opts, id, amount)
 	}
 
@@ -150,19 +149,19 @@ func (v *EthereumKeeperRegistry) AddUpkeepFunds(id *big.Int, amount *big.Int) er
 }
 
 // GetUpkeepInfo gets upkeep info
-func (v *EthereumKeeperRegistry) GetUpkeepInfo(ctx context.Context, id *big.Int) (*UpkeepInfo, error) {
+func (v *EthereumKeeperRegistry) GetUpkeepInfo(ctx context.Context, id *big.Int) (*contracts.UpkeepInfo, error) {
 	opts := &bind.CallOpts{
 		From:    common.HexToAddress(v.client.GetDefaultWallet().Address()),
 		Context: ctx,
 	}
 
 	switch v.version {
-	case ethereum.RegistryVersion_1_0, ethereum.RegistryVersion_1_1:
+	case contracts.RegistryVersion_1_0, contracts.RegistryVersion_1_1:
 		uk, err := v.registry1_1.GetUpkeep(opts, id)
 		if err != nil {
 			return nil, err
 		}
-		return &UpkeepInfo{
+		return &contracts.UpkeepInfo{
 			Target:              uk.Target.Hex(),
 			ExecuteGas:          uk.ExecuteGas,
 			CheckData:           uk.CheckData,
@@ -171,12 +170,12 @@ func (v *EthereumKeeperRegistry) GetUpkeepInfo(ctx context.Context, id *big.Int)
 			Admin:               uk.Admin.Hex(),
 			MaxValidBlocknumber: uk.MaxValidBlocknumber,
 		}, nil
-	case ethereum.RegistryVersion_1_2:
+	case contracts.RegistryVersion_1_2:
 		uk, err := v.registry1_2.GetUpkeep(opts, id)
 		if err != nil {
 			return nil, err
 		}
-		return &UpkeepInfo{
+		return &contracts.UpkeepInfo{
 			Target:              uk.Target.Hex(),
 			ExecuteGas:          uk.ExecuteGas,
 			CheckData:           uk.CheckData,
@@ -190,7 +189,7 @@ func (v *EthereumKeeperRegistry) GetUpkeepInfo(ctx context.Context, id *big.Int)
 	return nil, fmt.Errorf("keeper registry version %d is not supported", v.version)
 }
 
-func (v *EthereumKeeperRegistry) GetKeeperInfo(ctx context.Context, keeperAddr string) (*KeeperInfo, error) {
+func (v *EthereumKeeperRegistry) GetKeeperInfo(ctx context.Context, keeperAddr string) (*contracts.KeeperInfo, error) {
 	opts := &bind.CallOpts{
 		From:    common.HexToAddress(v.client.GetDefaultWallet().Address()),
 		Context: ctx,
@@ -203,16 +202,16 @@ func (v *EthereumKeeperRegistry) GetKeeperInfo(ctx context.Context, keeperAddr s
 	var err error
 
 	switch v.version {
-	case ethereum.RegistryVersion_1_0, ethereum.RegistryVersion_1_1:
+	case contracts.RegistryVersion_1_0, contracts.RegistryVersion_1_1:
 		info, err = v.registry1_1.GetKeeperInfo(opts, common.HexToAddress(keeperAddr))
-	case ethereum.RegistryVersion_1_2:
+	case contracts.RegistryVersion_1_2:
 		info, err = v.registry1_2.GetKeeperInfo(opts, common.HexToAddress(keeperAddr))
 	}
 
 	if err != nil {
 		return nil, err
 	}
-	return &KeeperInfo{
+	return &contracts.KeeperInfo{
 		Payee:   info.Payee.Hex(),
 		Active:  info.Active,
 		Balance: info.Balance,
@@ -235,9 +234,9 @@ func (v *EthereumKeeperRegistry) SetKeepers(keepers []string, payees []string) e
 	var tx *types.Transaction
 
 	switch v.version {
-	case ethereum.RegistryVersion_1_0, ethereum.RegistryVersion_1_1:
+	case contracts.RegistryVersion_1_0, contracts.RegistryVersion_1_1:
 		tx, err = v.registry1_1.SetKeepers(opts, keepersAddresses, payeesAddresses)
-	case ethereum.RegistryVersion_1_2:
+	case contracts.RegistryVersion_1_2:
 		tx, err = v.registry1_2.SetKeepers(opts, keepersAddresses, payeesAddresses)
 	}
 
@@ -256,7 +255,7 @@ func (v *EthereumKeeperRegistry) RegisterUpkeep(target string, gasLimit uint32, 
 	var tx *types.Transaction
 
 	switch v.version {
-	case ethereum.RegistryVersion_1_0, ethereum.RegistryVersion_1_1:
+	case contracts.RegistryVersion_1_0, contracts.RegistryVersion_1_1:
 		tx, err = v.registry1_1.RegisterUpkeep(
 			opts,
 			common.HexToAddress(target),
@@ -264,7 +263,7 @@ func (v *EthereumKeeperRegistry) RegisterUpkeep(target string, gasLimit uint32, 
 			common.HexToAddress(admin),
 			checkData,
 		)
-	case ethereum.RegistryVersion_1_2:
+	case contracts.RegistryVersion_1_2:
 		tx, err = v.registry1_2.RegisterUpkeep(
 			opts,
 			common.HexToAddress(target),
@@ -289,12 +288,12 @@ func (v *EthereumKeeperRegistry) CancelUpkeep(id *big.Int) error {
 	var tx *types.Transaction
 
 	switch v.version {
-	case ethereum.RegistryVersion_1_0, ethereum.RegistryVersion_1_1:
+	case contracts.RegistryVersion_1_0, contracts.RegistryVersion_1_1:
 		tx, err = v.registry1_1.CancelUpkeep(opts, id)
 		if err != nil {
 			return err
 		}
-	case ethereum.RegistryVersion_1_2:
+	case contracts.RegistryVersion_1_2:
 		tx, err = v.registry1_2.CancelUpkeep(opts, id)
 		if err != nil {
 			return err
@@ -318,7 +317,7 @@ func (v *EthereumKeeperRegistry) SetUpkeepGasLimit(id *big.Int, gas uint32) erro
 	var tx *types.Transaction
 
 	switch v.version {
-	case ethereum.RegistryVersion_1_2:
+	case contracts.RegistryVersion_1_2:
 		tx, err = v.registry1_2.SetUpkeepGasLimit(opts, id, gas)
 		if err != nil {
 			return err
@@ -339,9 +338,9 @@ func (v *EthereumKeeperRegistry) GetKeeperList(ctx context.Context) ([]string, e
 	var err error
 
 	switch v.version {
-	case ethereum.RegistryVersion_1_0, ethereum.RegistryVersion_1_1:
+	case contracts.RegistryVersion_1_0, contracts.RegistryVersion_1_1:
 		list, err = v.registry1_1.GetKeeperList(opts)
-	case ethereum.RegistryVersion_1_2:
+	case contracts.RegistryVersion_1_2:
 		state, err := v.registry1_2.GetState(opts)
 		if err != nil {
 			return []string{}, err
@@ -362,13 +361,13 @@ func (v *EthereumKeeperRegistry) GetKeeperList(ctx context.Context) ([]string, e
 // Parses the upkeep ID from an 'UpkeepRegistered' log, returns error on any other log
 func (v *EthereumKeeperRegistry) ParseUpkeepIdFromRegisteredLog(log *types.Log) (*big.Int, error) {
 	switch v.version {
-	case ethereum.RegistryVersion_1_0, ethereum.RegistryVersion_1_1:
+	case contracts.RegistryVersion_1_0, contracts.RegistryVersion_1_1:
 		parsedLog, err := v.registry1_1.ParseUpkeepRegistered(*log)
 		if err != nil {
 			return nil, err
 		}
 		return parsedLog.Id, nil
-	case ethereum.RegistryVersion_1_2:
+	case contracts.RegistryVersion_1_2:
 		parsedLog, err := v.registry1_2.ParseUpkeepRegistered(*log)
 		if err != nil {
 			return nil, err
@@ -380,7 +379,7 @@ func (v *EthereumKeeperRegistry) ParseUpkeepIdFromRegisteredLog(log *types.Log) 
 
 // KeeperConsumerRoundConfirmer is a header subscription that awaits for a round of upkeeps
 type KeeperConsumerRoundConfirmer struct {
-	instance     KeeperConsumer
+	instance     contracts.KeeperConsumer
 	upkeepsValue int
 	doneChan     chan struct{}
 	context      context.Context
@@ -389,7 +388,7 @@ type KeeperConsumerRoundConfirmer struct {
 
 // NewKeeperConsumerRoundConfirmer provides a new instance of a KeeperConsumerRoundConfirmer
 func NewKeeperConsumerRoundConfirmer(
-	contract KeeperConsumer,
+	contract contracts.KeeperConsumer,
 	counterValue int,
 	timeout time.Duration,
 ) *KeeperConsumerRoundConfirmer {
@@ -437,7 +436,7 @@ func (o *KeeperConsumerRoundConfirmer) Wait() error {
 
 // KeeperConsumerPerformanceRoundConfirmer is a header subscription that awaits for a round of upkeeps
 type KeeperConsumerPerformanceRoundConfirmer struct {
-	instance KeeperConsumerPerformance
+	instance contracts.KeeperConsumerPerformance
 	doneChan chan bool
 	context  context.Context
 	cancel   context.CancelFunc
@@ -456,7 +455,7 @@ type KeeperConsumerPerformanceRoundConfirmer struct {
 // NewKeeperConsumerPerformanceRoundConfirmer provides a new instance of a KeeperConsumerPerformanceRoundConfirmer
 // Used to track and log performance test results for keepers
 func NewKeeperConsumerPerformanceRoundConfirmer(
-	contract KeeperConsumerPerformance,
+	contract contracts.KeeperConsumerPerformance,
 	expectedBlockCadence int64, // Expected to upkeep every 5/10/20 blocks, for example
 	blockRange int64,
 	metricsReporter *testreporters.KeeperBlockTimeTestReporter,
@@ -582,7 +581,7 @@ func (o *KeeperConsumerPerformanceRoundConfirmer) logDetails() {
 // EthereumUpkeepCounter represents keeper consumer (upkeep) counter contract
 type EthereumUpkeepCounter struct {
 	client   blockchain.EVMClient
-	consumer *ethereum.UpkeepCounter
+	consumer *contracts.UpkeepCounter
 	address  *common.Address
 }
 
@@ -620,7 +619,7 @@ func (v *EthereumUpkeepCounter) SetSpread(testRange *big.Int, interval *big.Int)
 // EthereumUpkeepPerformCounterRestrictive represents keeper consumer (upkeep) counter contract
 type EthereumUpkeepPerformCounterRestrictive struct {
 	client   blockchain.EVMClient
-	consumer *ethereum.UpkeepPerformCounterRestrictive
+	consumer *contracts.UpkeepPerformCounterRestrictive
 	address  *common.Address
 }
 
@@ -655,7 +654,7 @@ func (v *EthereumUpkeepPerformCounterRestrictive) SetSpread(testRange *big.Int, 
 // EthereumKeeperConsumer represents keeper consumer (upkeep) contract
 type EthereumKeeperConsumer struct {
 	client   blockchain.EVMClient
-	consumer *ethereum.KeeperConsumer
+	consumer *contracts.KeeperConsumer
 	address  *common.Address
 }
 
@@ -683,7 +682,7 @@ func (v *EthereumKeeperConsumer) Counter(ctx context.Context) (*big.Int, error) 
 // performance tests.
 type EthereumKeeperConsumerPerformance struct {
 	client   blockchain.EVMClient
-	consumer *ethereum.KeeperConsumerPerformance
+	consumer *contracts.KeeperConsumerPerformance
 	address  *common.Address
 }
 
@@ -740,7 +739,7 @@ func (v *EthereumKeeperConsumerPerformance) SetPerformGasToBurn(ctx context.Cont
 // EthereumUpkeepRegistrationRequests keeper contract to register upkeeps
 type EthereumUpkeepRegistrationRequests struct {
 	client    blockchain.EVMClient
-	registrar *ethereum.UpkeepRegistrationRequests
+	registrar *contracts.UpkeepRegistrationRequests
 	address   *common.Address
 }
 
@@ -782,7 +781,7 @@ func (v *EthereumUpkeepRegistrationRequests) EncodeRegisterRequest(
 	amount *big.Int,
 	source uint8,
 ) ([]byte, error) {
-	registryABI, err := abi.JSON(strings.NewReader(ethereum.UpkeepRegistrationRequestsABI))
+	registryABI, err := abi.JSON(strings.NewReader(contracts.UpkeepRegistrationRequestsABI))
 	if err != nil {
 		return nil, err
 	}

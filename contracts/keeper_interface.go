@@ -7,6 +7,14 @@ import (
 	"github.com/smartcontractkit/chainlink/core/chains/evm/types"
 )
 
+type KeeperRegistryVersion int32
+
+const (
+	RegistryVersion_1_0 KeeperRegistryVersion = iota
+	RegistryVersion_1_1
+	RegistryVersion_1_2
+)
+
 type UpkeepRegistrar interface {
 	Address() string
 	SetRegistrarConfig(

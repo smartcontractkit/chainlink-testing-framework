@@ -11,13 +11,12 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/contracts"
-	"github.com/smartcontractkit/chainlink-testing-framework/contracts/ethereum"
 )
 
 // EthereumFluxAggregator represents the basic flux aggregation contract
 type EthereumFluxAggregator struct {
 	client         blockchain.EVMClient
-	fluxAggregator *ethereum.FluxAggregator
+	fluxAggregator *contracts.FluxAggregator
 	address        *common.Address
 }
 
@@ -67,8 +66,8 @@ func (f *EthereumFluxAggregator) RequestNewRound(ctx context.Context) error {
 }
 
 // WatchSubmissionReceived subscribes to any submissions on a flux feed
-func (f *EthereumFluxAggregator) WatchSubmissionReceived(ctx context.Context, eventChan chan<- *SubmissionEvent) error {
-	ethEventChan := make(chan *ethereum.FluxAggregatorSubmissionReceived)
+func (f *EthereumFluxAggregator) WatchSubmissionReceived(ctx context.Context, eventChan chan<- *contracts.SubmissionEvent) error {
+	ethEventChan := make(chan *contracts.FluxAggregatorSubmissionReceived)
 	sub, err := f.fluxAggregator.WatchSubmissionReceived(&bind.WatchOpts{}, ethEventChan, nil, nil, nil)
 	if err != nil {
 		return err
@@ -78,7 +77,7 @@ func (f *EthereumFluxAggregator) WatchSubmissionReceived(ctx context.Context, ev
 	for {
 		select {
 		case event := <-ethEventChan:
-			eventChan <- &SubmissionEvent{
+			eventChan <- &contracts.SubmissionEvent{
 				Contract:    event.Raw.Address,
 				Submission:  event.Submission,
 				Round:       event.Round,
@@ -161,14 +160,14 @@ func (f *EthereumFluxAggregator) WithdrawablePayment(ctx context.Context, addr c
 	return balance, nil
 }
 
-func (f *EthereumFluxAggregator) LatestRoundData(ctx context.Context) (RoundData, error) {
+func (f *EthereumFluxAggregator) LatestRoundData(ctx context.Context) (contracts.RoundData, error) {
 	opts := &bind.CallOpts{
 		From:    common.HexToAddress(f.client.GetDefaultWallet().Address()),
 		Context: ctx,
 	}
 	lr, err := f.fluxAggregator.LatestRoundData(opts)
 	if err != nil {
-		return RoundData{}, err
+		return contracts.RoundData{}, err
 	}
 	return lr, nil
 }
@@ -194,7 +193,7 @@ func (f *EthereumFluxAggregator) GetContractData(ctx context.Context) (*contract
 	if err != nil {
 		return &contracts.FluxAggregatorData{}, err
 	}
-	latestRound := RoundData(lr)
+	latestRound := contracts.RoundData(lr)
 
 	oracles, err := f.fluxAggregator.GetOracles(opts)
 	if err != nil {
@@ -210,7 +209,7 @@ func (f *EthereumFluxAggregator) GetContractData(ctx context.Context) (*contract
 }
 
 // SetOracles allows the ability to add and/or remove oracles from the contract, and to set admins
-func (f *EthereumFluxAggregator) SetOracles(o FluxAggregatorSetOraclesOptions) error {
+func (f *EthereumFluxAggregator) SetOracles(o contracts.FluxAggregatorSetOraclesOptions) error {
 	opts, err := f.client.TransactionOpts(f.client.GetDefaultWallet())
 	if err != nil {
 		return err
@@ -234,7 +233,7 @@ func (f *EthereumFluxAggregator) Description(ctxt context.Context) (string, erro
 
 // FluxAggregatorRoundConfirmer is a header subscription that awaits for a certain flux round to be completed
 type FluxAggregatorRoundConfirmer struct {
-	fluxInstance FluxAggregator
+	fluxInstance contracts.FluxAggregator
 	roundID      *big.Int
 	doneChan     chan struct{}
 	context      context.Context
@@ -244,7 +243,7 @@ type FluxAggregatorRoundConfirmer struct {
 
 // NewFluxAggregatorRoundConfirmer provides a new instance of a FluxAggregatorRoundConfirmer
 func NewFluxAggregatorRoundConfirmer(
-	contract FluxAggregator,
+	contract contracts.FluxAggregator,
 	roundID *big.Int,
 	timeout time.Duration,
 ) *FluxAggregatorRoundConfirmer {

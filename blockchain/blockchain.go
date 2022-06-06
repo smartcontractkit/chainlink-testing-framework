@@ -15,6 +15,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
+	"github.com/smartcontractkit/chainlink-testing-framework/contracts"
 )
 
 // Commonly used blockchain network types
@@ -64,10 +65,7 @@ type EVMClient interface {
 	HeaderTimestampByNumber(ctx context.Context, bn *big.Int) (uint64, error)
 	LatestBlockNumber(ctx context.Context) (uint64, error)
 	Fund(toAddress string, amount *big.Float) error
-	DeployContract(
-		contractName string,
-		deployer ContractDeployer,
-	) (*common.Address, *types.Transaction, interface{}, error)
+	ContractDeployer() *contracts.ContractDeployer
 	TransactionOpts(from *EthereumWallet) (*bind.TransactOpts, error)
 	ProcessTransaction(tx *types.Transaction) error
 	IsTxConfirmed(txHash common.Hash) (bool, error)

@@ -1,0 +1,14 @@
+2022-06-06 15:24:43 5.11.1 INFO created expectation file watcher for
+
+  /config/initializerJson.json
+ 
+2022-06-06 15:24:43 5.11.1 INFO loading JSON initialization file:
+
+  /config/initializerJson.json
+ 
+2022-06-06 15:24:44 5.11.1 INFO logger level is INFO, change using:
+ - 'ConfigurationProperties.logLevel(String level)' in Java code,
+ - '-logLevel' command line argument,
+ - 'mockserver.logLevel' JVM system property or,
+ - 'mockserver.logLevel' property value in 'mockserver.properties' 
+2022-06-06 15:24:44 5.11.1 INFO 1080 started on port: 1080 

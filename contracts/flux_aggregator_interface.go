@@ -35,6 +35,18 @@ type FluxAggregatorOptions struct {
 	Description   string         // A short description of what is being reported
 }
 
+// DefaultFluxAggregatorOptions produces some basic defaults for a flux aggregator contract
+func DefaultFluxAggregatorOptions() FluxAggregatorOptions {
+	return FluxAggregatorOptions{
+		PaymentAmount: big.NewInt(1),
+		Timeout:       uint32(30),
+		MinSubValue:   big.NewInt(0),
+		MaxSubValue:   big.NewInt(1000000000000),
+		Decimals:      uint8(0),
+		Description:   "Test Flux Aggregator",
+	}
+}
+
 type FluxAggregatorData struct {
 	AllocatedFunds  *big.Int         // The amount of payment yet to be withdrawn by oracles
 	AvailableFunds  *big.Int         // The amount of future funding available to oracles

@@ -3,8 +3,6 @@ package contracts
 import (
 	"context"
 	"math/big"
-
-	"github.com/smartcontractkit/chainlink-testing-framework/contracts/ethereum"
 )
 
 type VRFCoordinatorV2 interface {
@@ -14,7 +12,7 @@ type VRFCoordinatorV2 interface {
 		stalenessSeconds uint32,
 		gasAfterPaymentCalculation uint32,
 		fallbackWeiPerUnitLink *big.Int,
-		feeConfig ethereum.VRFCoordinatorV2FeeConfig,
+		feeConfig VRFCoordinatorV2FeeConfig,
 	) error
 	RegisterProvingKey(
 		oracleAddr string,
