@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/chainlink-env/pkg/helm/chainlink"
-	"github.com/smartcontractkit/chainlink-env/pkg/helm/geth"
+	"github.com/smartcontractkit/chainlink-env/pkg/helm/ethereum"
 	"github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver"
 	mockservercfg "github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver-cfg"
 
@@ -34,7 +34,7 @@ var _ = Describe("Keeper block time soak test @soak-keeper-block-time", func() {
 			err = env.
 				AddHelm(mockservercfg.New(nil)).
 				AddHelm(mockserver.New(nil)).
-				AddHelm(geth.New(nil)).
+				AddHelm(ethereum.New(nil)).
 				AddHelm(chainlink.New(nil)).
 				Run()
 			Expect(err).ShouldNot(HaveOccurred())

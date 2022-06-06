@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/chainlink-env/pkg/helm/chainlink"
-	"github.com/smartcontractkit/chainlink-env/pkg/helm/geth"
+	"github.com/smartcontractkit/chainlink-env/pkg/helm/ethereum"
 	"github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver"
 	mockservercfg "github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver-cfg"
 
@@ -28,12 +28,12 @@ var _ = Describe("OCR Soak Test @soak-ocr", func() {
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
 			env = environment.New(
-				&environment.Config{InsideK8s: true, TTL: 12 * time.Hour},
+				&environment.Config{InsideK8s: true, TTL: 24 * 7 * time.Hour},
 			)
 			err = env.
 				AddHelm(mockservercfg.New(nil)).
 				AddHelm(mockserver.New(nil)).
-				AddHelm(geth.New(nil)).
+				AddHelm(ethereum.New(nil)).
 				AddHelm(chainlink.New(nil)).
 				Run()
 			Expect(err).ShouldNot(HaveOccurred())

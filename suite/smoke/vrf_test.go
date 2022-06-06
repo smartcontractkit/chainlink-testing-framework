@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/chainlink-env/pkg/helm/chainlink"
-	"github.com/smartcontractkit/chainlink-env/pkg/helm/geth"
+	"github.com/smartcontractkit/chainlink-env/pkg/helm/ethereum"
 	"github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver"
 	mockservercfg "github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver-cfg"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils"
@@ -44,7 +44,7 @@ var _ = Describe("VRF suite @vrf", func() {
 			err := e.
 				AddHelm(mockservercfg.New(nil)).
 				AddHelm(mockserver.New(nil)).
-				AddHelm(geth.New(nil)).
+				AddHelm(ethereum.New(nil)).
 				AddHelm(chainlink.New(nil)).
 				Run()
 			Expect(err).ShouldNot(HaveOccurred(), "Environment deployment shouldn't fail")
