@@ -7,7 +7,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-env/environment"
 	"github.com/smartcontractkit/chainlink-env/pkg/helm/chainlink"
-	"github.com/smartcontractkit/chainlink-env/pkg/helm/geth"
+	"github.com/smartcontractkit/chainlink-env/pkg/helm/ethereum"
 	"github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver"
 	mockservercfg "github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver-cfg"
 
@@ -37,7 +37,7 @@ var _ = Describe("Profiling suite @profile", func() {
 			err := e.
 				AddHelm(mockservercfg.New(nil)).
 				AddHelm(mockserver.New(nil)).
-				AddHelm(geth.New(nil)).
+				AddHelm(ethereum.New(nil)).
 				AddHelm(chainlink.New(nil)).
 				Run()
 			Expect(err).ShouldNot(HaveOccurred(), "Connecting to all nodes shouldn't fail")

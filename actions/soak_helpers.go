@@ -12,7 +12,7 @@ import (
 	"github.com/smartcontractkit/chainlink-env/environment"
 	"github.com/smartcontractkit/chainlink-env/pkg"
 	"github.com/smartcontractkit/chainlink-env/pkg/helm/chainlink"
-	"github.com/smartcontractkit/chainlink-env/pkg/helm/geth"
+	"github.com/smartcontractkit/chainlink-env/pkg/helm/ethereum"
 	"github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver"
 	mockservercfg "github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver-cfg"
 	"github.com/smartcontractkit/chainlink-env/pkg/helm/remotetestrunner"
@@ -71,7 +71,7 @@ func RunSoakTest(testTag, namespacePrefix string, chainlinkReplicas int) error {
 				"access_port":    8080,
 			},
 		})).
-		AddHelm(geth.New(nil)).
+		AddHelm(ethereum.New(nil)).
 		AddHelm(chainlink.New(map[string]interface{}{
 			"replicas": chainlinkReplicas,
 		})).
