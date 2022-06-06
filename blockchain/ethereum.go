@@ -8,8 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/smartcontractkit/chainlink-env/pkg/helm/geth"
-
 	"github.com/smartcontractkit/chainlink-env/client"
 	"github.com/smartcontractkit/chainlink-env/environment"
 
@@ -719,7 +717,7 @@ func (e *EthereumMultinodeClient) WaitForEvents() error {
 // SimulatedEthereumURLs returns the websocket URLs for a simulated geth network
 func SimulatedEthereumURLs(e *environment.Environment) ([]string, error) {
 	log.Warn().Interface("URLs", e.URLs).Send()
-	return []string{e.URLs[geth.URLsKey][0]}, nil
+	return []string{e.URLs["geth"][0]}, nil
 }
 
 // SimulatedSoakEthereumURLs returns the websocket URLs for a simulated geth network
