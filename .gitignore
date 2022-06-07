@@ -51,3 +51,6 @@ docs/.sass-cache/
 docs/Gemfile.lock
 
 dist/
+
+remote_runner_config.yaml
+logs/
