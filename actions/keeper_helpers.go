@@ -22,7 +22,7 @@ func CreateKeeperJobs(chainlinkNodes []client.Chainlink, keeperRegistry contract
 	primaryNodeAddress, err := primaryNode.PrimaryEthAddress()
 	Expect(err).ShouldNot(HaveOccurred(), "Reading ETH Keys from Chainlink Client shouldn't fail")
 	nodeAddresses, err := ChainlinkNodeAddresses(chainlinkNodes)
-	Expect(err).ShouldNot(HaveOccurred(), "Retreiving on-chain wallet addresses for chainlink nodes shouldn't fail")
+	Expect(err).ShouldNot(HaveOccurred(), "Retrieving on-chain wallet addresses for chainlink nodes shouldn't fail")
 	nodeAddressesStr, payees := make([]string, 0), make([]string, 0)
 	for _, cla := range nodeAddresses {
 		nodeAddressesStr = append(nodeAddressesStr, cla.Hex())
@@ -44,7 +44,8 @@ func CreateKeeperJobs(chainlinkNodes []client.Chainlink, keeperRegistry contract
 	}
 }
 
-// DeployKeeperContracts deploys keeper registry and a number of basic upkeep contracts with an update interval of 5
+// DeployKeeperContracts deploys keeper registry and a number of basic upkeep contracts with an update interval of 5.
+// It returns the freshly deployed registry, registrar, consumers and the IDs of the upkeeps.
 func DeployKeeperContracts(
 	registryVersion ethereum.KeeperRegistryVersion,
 	registrySettings contracts.KeeperRegistrySettings,
@@ -53,7 +54,7 @@ func DeployKeeperContracts(
 	linkToken contracts.LinkToken,
 	contractDeployer contracts.ContractDeployer,
 	networks *blockchain.Networks,
-) (contracts.KeeperRegistry, []contracts.KeeperConsumer, []*big.Int) {
+) (contracts.KeeperRegistry, contracts.UpkeepRegistrar, []contracts.KeeperConsumer, []*big.Int) {
 	ef, err := contractDeployer.DeployMockETHLINKFeed(big.NewInt(2e18))
 	Expect(err).ShouldNot(HaveOccurred(), "Deploying mock ETH-Link feed shouldn't fail")
 	gf, err := contractDeployer.DeployMockGasFeed(big.NewInt(2e11))
@@ -80,20 +81,20 @@ func DeployKeeperContracts(
 	registrarSettings := contracts.KeeperRegistrarSettings{
 		AutoRegister:     true,
 		WindowSizeBlocks: uint32(6000000),
-		AllowedPerWindow: uint16(numberOfUpkeeps),
+		AllowedPerWindow: 1000, // we might need to register new upkeeps later on in the tests, so it's good to have a buffer
 		RegistryAddr:     registry.Address(),
 		MinLinkJuels:     big.NewInt(0),
 	}
 	registrar := DeployKeeperRegistrar(linkToken, registrarSettings, contractDeployer, networks, registry)
 
 	upkeeps := DeployKeeperConsumers(contractDeployer, networks, numberOfUpkeeps)
-	upkeepsAddresses := []string{}
+	var upkeepsAddresses []string
 	for _, upkeep := range upkeeps {
 		upkeepsAddresses = append(upkeepsAddresses, upkeep.Address())
 	}
 	upkeepIds := RegisterUpkeepContracts(linkToken, big.NewInt(9e18), networks, upkeepGasLimit, registry, registrar, numberOfUpkeeps, upkeepsAddresses)
 
-	return registry, upkeeps, upkeepIds
+	return registry, registrar, upkeeps, upkeepIds
 }
 
 // DeployPerformanceKeeperContracts deploys a set amount of keeper performance contracts registered to a single registry
@@ -109,7 +110,7 @@ func DeployPerformanceKeeperContracts(
 	blockInterval, // Interval of blocks that upkeeps are expected to be performed
 	checkGasToBurn, // How much gas should be burned on checkUpkeep() calls
 	performGasToBurn int64, // How much gas should be burned on performUpkeep() calls
-) (contracts.KeeperRegistry, []contracts.KeeperConsumerPerformance, []*big.Int) {
+) (contracts.KeeperRegistry, contracts.UpkeepRegistrar, []contracts.KeeperConsumerPerformance, []*big.Int) {
 	ef, err := contractDeployer.DeployMockETHLINKFeed(big.NewInt(2e18))
 	Expect(err).ShouldNot(HaveOccurred(), "Deploying mock ETH-Link feed shouldn't fail")
 	gf, err := contractDeployer.DeployMockGasFeed(big.NewInt(2e11))
@@ -144,7 +145,7 @@ func DeployPerformanceKeeperContracts(
 
 	upkeeps := DeployKeeperConsumersPerformance(contractDeployer, networks, numberOfContracts, blockRange, blockInterval, checkGasToBurn, performGasToBurn)
 
-	upkeepsAddresses := []string{}
+	var upkeepsAddresses []string
 	for _, upkeep := range upkeeps {
 		upkeepsAddresses = append(upkeepsAddresses, upkeep.Address())
 	}
@@ -152,7 +153,7 @@ func DeployPerformanceKeeperContracts(
 
 	upkeepIds := RegisterUpkeepContracts(linkToken, linkFunds, networks, upkeepGasLimit, registry, registrar, numberOfContracts, upkeepsAddresses)
 
-	return registry, upkeeps, upkeepIds
+	return registry, registrar, upkeeps, upkeepIds
 }
 
 func DeployKeeperRegistry(
@@ -213,11 +214,11 @@ func RegisterUpkeepContracts(
 	registry contracts.KeeperRegistry,
 	registrar contracts.UpkeepRegistrar,
 	numberOfContracts int,
-	upkeepAdresses []string,
+	upkeepAddresses []string,
 ) []*big.Int {
 	registrationTxHashes := make([]common.Hash, 0)
 	upkeepIds := make([]*big.Int, 0)
-	for contractCount, upkeepAddress := range upkeepAdresses {
+	for contractCount, upkeepAddress := range upkeepAddresses {
 		req, err := registrar.EncodeRegisterRequest(
 			fmt.Sprintf("upkeep_%d", contractCount+1),
 			[]byte("0x1234"),
@@ -396,4 +397,29 @@ func DeployUpkeepPerformCounterRestrictive(
 	log.Info().Msg("Successfully deployed all Keeper Consumer Contracts")
 
 	return upkeepCounters
+}
+
+// RegisterNewUpkeeps registers the given amount of new upkeeps, using the registry and registrar
+// which are passed as parameters.
+// It returns the newly deployed contracts (consumers), as well as their upkeep IDs.
+func RegisterNewUpkeeps(
+	contractDeployer contracts.ContractDeployer,
+	networks *blockchain.Networks,
+	linkToken contracts.LinkToken,
+	registry contracts.KeeperRegistry,
+	registrar contracts.UpkeepRegistrar,
+	upkeepGasLimit uint32,
+	numberOfNewUpkeeps int,
+) ([]contracts.KeeperConsumer, []*big.Int) {
+	newlyDeployedUpkeeps := DeployKeeperConsumers(contractDeployer, networks, numberOfNewUpkeeps)
+
+	var addressesOfNewUpkeeps []string
+	for _, upkeep := range newlyDeployedUpkeeps {
+		addressesOfNewUpkeeps = append(addressesOfNewUpkeeps, upkeep.Address())
+	}
+
+	newUpkeepIDs := RegisterUpkeepContracts(linkToken, big.NewInt(9e18), networks, upkeepGasLimit,
+		registry, registrar, numberOfNewUpkeeps, addressesOfNewUpkeeps)
+
+	return newlyDeployedUpkeeps, newUpkeepIDs
 }
