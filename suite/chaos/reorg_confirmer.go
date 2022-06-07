@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/smartcontractkit/chainlink-env/pkg/helm/reorg"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -53,7 +55,9 @@ type ReorgController struct {
 	blockHashes           map[int64][]common.Hash
 	chaosExperimentName   string
 	initConsensusReady    chan struct{}
+	reorgStarted          chan struct{}
 	depthReached          chan struct{}
+	once                  *sync.Once
 	mutex                 sync.Mutex
 	ctx                   context.Context
 	cancel                context.CancelFunc
@@ -75,7 +79,9 @@ func NewReorgController(cfg *ReorgConfig) (*ReorgController, error) {
 		blockHashes:        map[int64][]common.Hash{},
 		blocksByNode:       map[int]map[int64]blockchain.NodeBlock{},
 		initConsensusReady: make(chan struct{}, 100),
+		reorgStarted:       make(chan struct{}, 100),
 		depthReached:       make(chan struct{}, 100),
+		once:               &sync.Once{},
 		mutex:              sync.Mutex{},
 		ctx:                ctx,
 		cancel:             ctxCancel,
@@ -97,6 +103,11 @@ func (rc *ReorgController) WaitDepthReached() error {
 	<-rc.depthReached
 	rc.networkStep.Store(Consensus)
 	return rc.cfg.Network.WaitForEvents()
+}
+
+// WaitReorgStarted waits until first alternative block is present
+func (rc *ReorgController) WaitReorgStarted() {
+	<-rc.reorgStarted
 }
 
 // ReceiveBlock receives block marked by node that mined it,
@@ -172,6 +183,10 @@ func (rc *ReorgController) isAltBlock(blk blockchain.NodeBlock) bool {
 
 func (rc *ReorgController) compareBlocks(blk blockchain.NodeBlock) error {
 	if blk.NodeID == 0 && blk.Number().Int64() >= rc.forkBlockNumber && rc.isAltBlock(blk) {
+		rc.once.Do(func() {
+			log.Warn().Int64("Number", blk.Number().Int64()).Msg("Reorg started")
+			rc.reorgStarted <- struct{}{}
+		})
 		rc.altBlockNumbers = append(rc.altBlockNumbers, blk.Number().Int64())
 		rc.currentAltBlocks++
 		log.Info().
@@ -212,8 +227,8 @@ func (rc *ReorgController) forkNetwork(blk blockchain.NodeBlock) error {
 	expName, err := rc.cfg.Env.Chaos.Run(
 		chaos.NewNetworkPartitionExperiment(
 			rc.cfg.Env.Cfg.Namespace,
-			"geth-reorg-ethereum-geth",
-			"geth-reorg-ethereum-miner-node",
+			reorg.TXNodesAppLabel,
+			reorg.MinerNodesAppLabel,
 		))
 	rc.chaosExperimentName = expName
 	rc.networkStep.Store(CheckBlocks)
