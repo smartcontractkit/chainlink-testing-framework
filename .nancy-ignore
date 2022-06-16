@@ -1,1 +1,4 @@
 CVE-2018-1714 # old helm issue that has all the tickets closed so not much we can do about it
+CVE-2022-23328 # Geth is able to be used for DoS attacks on different nodes. Not something we particularly care about for our tests.
+sonatype-2021-0076 # More weird geth vulnerabilities we don't care about.
+CVE-2022-31030  # This is associated to the dependency 'containerd' and also warns of a DoS attack.g

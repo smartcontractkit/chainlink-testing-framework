@@ -747,7 +747,7 @@ func (k *KeeperJobSpec) Type() string { return "keeper" }
 func (k *KeeperJobSpec) String() (string, error) {
 	keeperTemplateString := `
 type                     = "keeper"
-schemaVersion            = 3
+schemaVersion            = 1
 name                     = "{{.Name}}"
 contractAddress          = "{{.ContractAddress}}"
 fromAddress              = "{{.FromAddress}}"
