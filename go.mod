@@ -17,7 +17,7 @@ require (
 	github.com/rs/zerolog v1.26.1
 	github.com/satori/go.uuid v1.2.0
 	github.com/slack-go/slack v0.10.3
-	github.com/smartcontractkit/chainlink-env v0.2.8
+	github.com/smartcontractkit/chainlink-env v0.2.9
 	github.com/smartcontractkit/libocr v0.0.0-20220121130134-5d2b1d5f424b
 	go.uber.org/atomic v1.9.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
@@ -135,3 +135,5 @@ replace github.com/dgrijalva/jwt-go => github.com/form3tech-oss/jwt-go v3.2.1+in
 // Fix go mod tidy issue for ambiguous imports from go-ethereum
 // See https://github.com/ugorji/go/issues/279
 replace github.com/btcsuite/btcd => github.com/btcsuite/btcd v0.22.1
+
+// replace github.com/smartcontractkit/chainlink-env v0.2.9 => /Users/f4hrenh9it/GolandProjects/chainlink-env
