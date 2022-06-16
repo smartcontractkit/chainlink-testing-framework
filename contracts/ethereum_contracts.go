@@ -1179,6 +1179,20 @@ func (v *EthereumVRFConsumerV2) GetAllRandomWords(ctx context.Context, num int) 
 	return words, nil
 }
 
+// LoadFromAddress loads a new EthereumVRFConsumerV2 with a specified address
+func (v *EthereumVRFConsumerV2) LoadFromAddress(address string, client blockchain.EVMClient) (*EthereumVRFConsumerV2, error) {
+	a := common.HexToAddress(address)
+	consumer, err := ethereum.NewVRFConsumerV2(a, client.(*blockchain.EthereumClient).Client)
+	if err != nil {
+		return nil, err
+	}
+	return &EthereumVRFConsumerV2{
+		client:   client,
+		consumer: consumer,
+		address:  &a,
+	}, nil
+}
+
 // EthereumVRFConsumer represents VRF consumer contract
 type EthereumVRFConsumer struct {
 	address  *common.Address
