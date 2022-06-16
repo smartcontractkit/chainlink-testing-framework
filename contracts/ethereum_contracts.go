@@ -570,7 +570,7 @@ func (l *EthereumLinkToken) TransferAndCall(to string, amount *big.Int, data []b
 	return tx, l.client.ProcessTransaction(tx)
 }
 
-// LoadWithAddress load an EthereumLinkToken with a specific address
+// LoadWithAddress loads an EthereumLinkToken with a specific address
 func (l *EthereumLinkToken) LoadWithAddress(address string, client blockchain.EVMClient) error {
 	instance, err := ethereum.NewLinkToken(l.address, client.(*blockchain.EthereumClient).Client)
 	if err != nil {
