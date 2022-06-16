@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -54,6 +55,7 @@ func RunSoakTest(testTag, namespacePrefix string, chainlinkReplicas int) error {
 		return err
 	}
 	env := environment.New(&environment.Config{
+		TTL:       168 * time.Hour,
 		Labels:    []string{fmt.Sprintf("envType=%s", pkg.EnvTypeEVM5RemoteRunner)},
 		Namespace: namespacePrefix,
 	})

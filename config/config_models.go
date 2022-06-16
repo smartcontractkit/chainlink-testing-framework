@@ -24,7 +24,7 @@ type FrameworkConfig struct {
 	KeepEnvironments string         `envconfig:"KEEP_ENVIRONMENTS" yaml:"keep_environments"`
 	Logging          *LoggingConfig `envconfig:"LOGGING" yaml:"logging"`
 	ChainlinkImage   string         `yaml:"chainlink_image" envconfig:"CHAINLINK_IMAGE"`
-	ChainlinkVersion string         `yaml:"chainlink_version" envconfig:"CHAINLINK_VERSION"`
+	ChainlinkVersion string         `yaml:"chainlink_tag" envconfig:"CHAINLINK_TAG"`
 	// ChainlinkEnvValues uses interface{} as the value because it's needed for proper helmchart merges
 	ChainlinkEnvValues map[string]interface{} `envconfig:"CHAINLINK_ENV_VALUES" yaml:"chainlink_env_values"`
 }
@@ -152,7 +152,7 @@ type ChainlinkValues struct {
 // ChainlinkImage defines chainlink image and version
 type ChainlinkImage struct {
 	Image   string `json:"image,omitempty" yaml:"chainlink_image"`
-	Version string `json:"version,omitempty" yaml:"chainlink_version"`
+	Version string `json:"version,omitempty" yaml:"chainlink_tag"`
 }
 
 func unmarshalYAML(path string, to interface{}) error {
