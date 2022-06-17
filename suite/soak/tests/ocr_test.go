@@ -27,9 +27,7 @@ var _ = Describe("OCR Soak Test @soak-ocr", func() {
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			env = environment.New(
-				&environment.Config{InsideK8s: true, TTL: 24 * 7 * time.Hour},
-			)
+			env = environment.New(&environment.Config{InsideK8s: true})
 			err = env.
 				AddHelm(mockservercfg.New(nil)).
 				AddHelm(mockserver.New(nil)).

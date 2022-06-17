@@ -67,15 +67,14 @@ func (t *OCRSoakTest) Setup(env *environment.Environment) {
 	var err error
 
 	// Make connections to soak test resources
-	networkRegistry := blockchain.NewSoakNetworkRegistry()
-	t.networks, err = networkRegistry.GetNetworks(env)
+	t.networks, err = blockchain.NewDefaultNetworkRegistry().ConnectEnvironment(env)
 	Expect(err).ShouldNot(HaveOccurred(), "Connecting to blockchain nodes shouldn't fail")
 	t.defaultNetwork = t.networks.Default
 	contractDeployer, err := contracts.NewContractDeployer(t.defaultNetwork)
 	Expect(err).ShouldNot(HaveOccurred(), "Deploying contracts shouldn't fail")
-	t.chainlinkNodes, err = client.ConnectChainlinkNodesSoak(env)
+	t.chainlinkNodes, err = client.ConnectChainlinkNodes(env)
 	Expect(err).ShouldNot(HaveOccurred(), "Connecting to chainlink nodes shouldn't fail")
-	t.mockServer, err = client.ConnectMockServerSoak(env)
+	t.mockServer, err = client.ConnectMockServer(env)
 	Expect(err).ShouldNot(HaveOccurred(), "Creating mockserver clients shouldn't fail")
 	t.defaultNetwork.ParallelTransactions(true)
 

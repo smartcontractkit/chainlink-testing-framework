@@ -24,17 +24,14 @@ const (
 	LiveMetisTestNetwork  = "metis_testnet"
 )
 
-// NewBlockchainClientFn external client implementation function
+// NewEVMClientFn external client implementation function
 // networkName must match a key in "networks" in networks.yaml config
 // networkConfig is just an arbitrary config you provide in "networks" for your key
 type NewEVMClientFn func(
 	networkName string,
 	networkConfig map[string]interface{},
-	urls []string,
+	env *environment.Environment,
 ) (EVMClient, error)
-
-// ClientURLFn are used to be able to return a list of URLs from the environment to connect
-type ClientURLFn func(e *environment.Environment) ([]string, error)
 
 // EVMClient is the interface that wraps a given client implementation for a blockchain, to allow for switching
 // of network types within the test suite
@@ -128,72 +125,28 @@ func (b *Networks) AllNetworks() []EVMClient {
 // NetworkRegistry holds all the registered network types that can be initialized, allowing
 // external libraries to register alternative network types to use
 type NetworkRegistry struct {
-	registeredNetworks map[string]registeredNetwork
-}
-
-type registeredNetwork struct {
-	newBlockchainClientFn NewEVMClientFn
-	blockchainClientURLFn ClientURLFn
+	registeredNetworks map[string]NewEVMClientFn
 }
 
 // NewDefaultNetworkRegistry returns an instance of the network registry with the default supported networks registered
 func NewDefaultNetworkRegistry() *NetworkRegistry {
 	return &NetworkRegistry{
-		registeredNetworks: map[string]registeredNetwork{
-			SimulatedEthNetwork: {
-				newBlockchainClientFn: NewEthereumMultiNodeClient,
-				blockchainClientURLFn: SimulatedEthereumURLs,
-			},
-			LiveEthTestNetwork: {
-				newBlockchainClientFn: NewEthereumMultiNodeClient,
-				blockchainClientURLFn: LiveEthTestnetURLs,
-			},
-			LiveKlaytnTestNetwork: {
-				newBlockchainClientFn: NewKlaytnMultiNodeClient,
-				blockchainClientURLFn: LiveEthTestnetURLs,
-			},
-			LiveMetisTestNetwork: {
-				newBlockchainClientFn: NewMetisMultiNodeClient,
-				blockchainClientURLFn: LiveEthTestnetURLs,
-			},
-		},
-	}
-}
-
-// NewSoakNetworkRegistry retrieves a network registry for use in soak tests
-func NewSoakNetworkRegistry() *NetworkRegistry {
-	return &NetworkRegistry{
-		registeredNetworks: map[string]registeredNetwork{
-			SimulatedEthNetwork: {
-				newBlockchainClientFn: NewEthereumMultiNodeClient,
-				blockchainClientURLFn: SimulatedSoakEthereumURLs,
-			},
-			LiveEthTestNetwork: {
-				newBlockchainClientFn: NewEthereumMultiNodeClient,
-				blockchainClientURLFn: LiveEthTestnetURLs,
-			},
-			LiveKlaytnTestNetwork: {
-				newBlockchainClientFn: NewKlaytnMultiNodeClient,
-				blockchainClientURLFn: LiveEthTestnetURLs,
-			},
-			LiveMetisTestNetwork: {
-				newBlockchainClientFn: NewMetisMultiNodeClient,
-				blockchainClientURLFn: LiveEthTestnetURLs,
-			},
+		registeredNetworks: map[string]NewEVMClientFn{
+			SimulatedEthNetwork:   NewEthereumMultiNodeClient,
+			LiveEthTestNetwork:    NewEthereumMultiNodeClient,
+			LiveKlaytnTestNetwork: NewKlaytnMultiNodeClient,
+			LiveMetisTestNetwork:  NewMetisMultiNodeClient,
 		},
 	}
 }
 
 // RegisterNetwork registers a new type of network within the registry
-func (n *NetworkRegistry) RegisterNetwork(networkType string, fn NewEVMClientFn, urlFn ClientURLFn) {
-	n.registeredNetworks[networkType] = registeredNetwork{
-		newBlockchainClientFn: fn,
-		blockchainClientURLFn: urlFn,
-	}
+func (n *NetworkRegistry) RegisterNetwork(networkType string, fn NewEVMClientFn) {
+	n.registeredNetworks[networkType] = fn
 }
 
-// GetNetworks returns a networks object with all the BlockchainClient(s) initialized
-func (n *NetworkRegistry) GetNetworks(env *environment.Environment) (*Networks, error) {
+// ConnectEnvironment returns a networks object with all the BlockchainClient(s) initialized from environment
+func (n *NetworkRegistry) ConnectEnvironment(env *environment.Environment) (*Networks, error) {
 	nc := config.ProjectConfig.NetworksConfig
 	var clients []EVMClient
 	for _, networkName := range nc.SelectedNetworks {
@@ -209,11 +162,7 @@ func (n *NetworkRegistry) GetNetworks(env *environment.Environment) (*Networks, 
 		if !ok {
 			return nil, fmt.Errorf("network '%s' of type '%s' hasn't been registered", networkName, networkType)
 		}
-		urls, err := initFn.blockchainClientURLFn(env)
-		if err != nil {
-			return nil, err
-		}
-		client, err := initFn.newBlockchainClientFn(networkName, networkSettings, urls)
+		client, err := initFn(networkName, networkSettings, env)
 		if err != nil {
 			return nil, err
 		}
@@ -241,8 +190,8 @@ type HeaderEventSubscription interface {
 	Wait() error
 }
 
-// UnmarshalNetworkConfig is a generic function to unmarshal a yaml map into a given object
-func UnmarshalNetworkConfig(config map[string]interface{}, obj interface{}) error {
+// UnmarshalYAML is a generic function to unmarshal a yaml map into a given object
+func UnmarshalYAML(config map[string]interface{}, obj interface{}) error {
 	b, err := json.Marshal(config)
 	if err != nil {
 		return err
