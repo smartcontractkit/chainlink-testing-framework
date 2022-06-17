@@ -4,13 +4,11 @@ package smoke
 import (
 	"context"
 	"fmt"
+	"github.com/smartcontractkit/chainlink-env/pkg/helm/ethereum"
 	"math/big"
 	"time"
 
-	"github.com/smartcontractkit/chainlink-env/pkg/cdk8s/blockscout"
 	"github.com/smartcontractkit/chainlink-env/pkg/helm/chainlink"
-	"github.com/smartcontractkit/chainlink-env/pkg/helm/reorg"
-
 	"github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver"
 	mockservercfg "github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver-cfg"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils"
@@ -42,37 +40,13 @@ var _ = Describe("VRF suite @vrf", func() {
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			e = environment.New(nil)
-			err := e.
+			e = environment.New(nil).
 				AddHelm(mockservercfg.New(nil)).
 				AddHelm(mockserver.New(nil)).
-				AddChart(blockscout.New(&blockscout.Props{
-					WsURL:   "ws://geth-ethereum-geth:8546",
-					HttpURL: "http://geth-ethereum-geth:8544",
-				})).
-				AddHelm(reorg.New(&reorg.Props{
-					NetworkName: "geth",
-					NetworkType: "geth-reorg",
-					Values: map[string]interface{}{
-						"geth": map[string]interface{}{
-							"genesis": map[string]interface{}{
-								"networkId": "1337",
-							},
-						},
-					},
-				})).
-				Run()
-			Expect(err).ShouldNot(HaveOccurred(), "Environment deployment shouldn't fail")
-			time.Sleep(2 * time.Minute)
-			err = e.AddHelm(chainlink.New(map[string]interface{}{
-				"env": map[string]interface{}{
-					"eth_url":            "ws://geth-ethereum-geth:8546",
-					"eth_http_url":       "http://geth-ethereum-geth:8544",
-					"eth_chain_id":       "1337",
-					"ETH_FINALITY_DEPTH": "1",
-				},
-			})).Run()
-			Expect(err).ShouldNot(HaveOccurred(), "Environment deployment shouldn't fail")
+				AddHelm(ethereum.New(nil)).
+				AddHelm(chainlink.New(nil))
+			err = e.Run()
+			Expect(err).ShouldNot(HaveOccurred())
 		})
 
 		By("Connecting to launched resources", func() {
@@ -175,7 +149,6 @@ var _ = Describe("VRF suite @vrf", func() {
 				g.Expect(out.Uint64()).Should(Not(BeNumerically("==", 0)), "Expected the VRF job give an answer other than 0")
 				log.Debug().Uint64("Output", out.Uint64()).Msg("Randomness fulfilled")
 			}, timeout, "1s").Should(Succeed())
-			Fail("success, but I need logs")
 		})
 	})
 
