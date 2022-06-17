@@ -24,8 +24,7 @@ import (
 // Soak Test helpers
 
 // BuildGoTests builds the go tests to run, and returns a path to it, along with remote config options
-func BuildGoTests(testsPath string) (string, string, error) {
-	exePath := filepath.Join(utils.ProjectRoot, "remote.test")
+func BuildGoTests(testsPath, exePath string) (string, string, error) {
 	compileCmd := exec.Command("go", "test", "-ldflags=-s -w", "-c", testsPath, "-o", exePath) // #nosec G204
 	compileCmd.Env = os.Environ()
 	compileCmd.Env = append(compileCmd.Env, "CGO_ENABLED=0", "GOOS=linux", "GOARCH=amd64")
@@ -48,9 +47,9 @@ func BuildGoTests(testsPath string) (string, string, error) {
 }
 
 // RunSoakTest runs a soak test based on the tag, launching as many chainlink nodes as necessary
-func RunSoakTest(testTag, namespacePrefix string, chainlinkReplicas int) error {
+func RunSoakTest(testDirPath, exePath, testTag, namespacePrefix string, chainlinkReplicas int) error {
 	LoadConfigs()
-	_, fileSize, err := BuildGoTests(filepath.Join(utils.SoakRoot, "tests"))
+	_, fileSize, err := BuildGoTests(testDirPath, exePath)
 	if err != nil {
 		return err
 	}
