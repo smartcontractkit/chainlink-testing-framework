@@ -52,5 +52,5 @@ docs/Gemfile.lock
 
 dist/
 
-remote_runner_config.yaml
+**/remote_runner_config.yaml
 logs/
