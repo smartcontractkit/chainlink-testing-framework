@@ -738,6 +738,7 @@ type KeeperJobSpec struct {
 	ContractAddress          string `toml:"contractAddress"`
 	FromAddress              string `toml:"fromAddress"` // Hex representation of the from address
 	MinIncomingConfirmations int    `toml:"minIncomingConfirmations"`
+	EvmChainId               int    `toml:"evmChainID"`
 }
 
 // Type returns the type of the job
@@ -747,11 +748,12 @@ func (k *KeeperJobSpec) Type() string { return "keeper" }
 func (k *KeeperJobSpec) String() (string, error) {
 	keeperTemplateString := `
 type                     = "keeper"
-schemaVersion            = 1
+schemaVersion            = 3
 name                     = "{{.Name}}"
 contractAddress          = "{{.ContractAddress}}"
 fromAddress              = "{{.FromAddress}}"
 minIncomingConfirmations = {{.MinIncomingConfirmations}}
+evmChainId               = {{.EvmChainId}}
 `
 	return marshallTemplate(k, "Keeper Job", keeperTemplateString)
 }
