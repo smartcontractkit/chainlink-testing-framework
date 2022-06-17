@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/smartcontractkit/chainlink-env/client"
 	"github.com/smartcontractkit/chainlink-env/environment"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
@@ -489,13 +488,9 @@ type EthereumMultinodeClient struct {
 }
 
 // NewEthereumMultiNodeClient returns an instantiated instance of all Ethereum client connected to all nodes
-func NewEthereumMultiNodeClient(
-	_ string,
-	networkConfig map[string]interface{},
-	urls []string,
-) (EVMClient, error) {
+func NewEthereumMultiNodeClient(name string, networkConfig map[string]interface{}, env *environment.Environment) (EVMClient, error) {
 	networkSettings := &config.ETHNetwork{}
-	err := UnmarshalNetworkConfig(networkConfig, networkSettings)
+	err := UnmarshalYAML(networkConfig, networkSettings)
 	if err != nil {
 		return nil, err
 	}
@@ -504,7 +499,7 @@ func NewEthereumMultiNodeClient(
 		Msg("Connecting multi-node client")
 
 	ecl := &EthereumMultinodeClient{}
-	networkSettings.URLs = append(networkSettings.URLs, urls...)
+	networkSettings.URLs = append(networkSettings.URLs, env.URLs["geth"]...)
 	for idx, networkURL := range networkSettings.URLs {
 		networkSettings.URL = networkURL
 		ec, err := NewEthereumClient(networkSettings)
@@ -550,12 +545,12 @@ func (e *EthereumMultinodeClient) GetDefaultWallet() *EthereumWallet {
 	return e.DefaultClient.GetDefaultWallet()
 }
 
-// GetDefaultWallet returns the default wallet for the network
+// GetWallets returns the default wallet for the network
 func (e *EthereumMultinodeClient) GetWallets() []*EthereumWallet {
 	return e.DefaultClient.GetWallets()
 }
 
-// GetDefaultWallet returns the default wallet for the network
+// GetNetworkConfig return the network config
 func (e *EthereumMultinodeClient) GetNetworkConfig() *config.ETHNetwork {
 	return e.DefaultClient.GetNetworkConfig()
 }
@@ -712,25 +707,6 @@ func (e *EthereumMultinodeClient) WaitForEvents() error {
 		})
 	}
 	return g.Wait()
-}
-
-// SimulatedEthereumURLs returns the websocket URLs for a simulated geth network
-func SimulatedEthereumURLs(e *environment.Environment) ([]string, error) {
-	return e.URLs["geth"], nil
-}
-
-// SimulatedSoakEthereumURLs returns the websocket URLs for a simulated geth network
-func SimulatedSoakEthereumURLs(e *environment.Environment) ([]string, error) {
-	u, err := e.Fwd.FindPort("geth:0", "geth-network", "ws-rpc").As(client.RemoteConnection, client.WS)
-	if err != nil {
-		return nil, err
-	}
-	return []string{u}, nil
-}
-
-// LiveEthTestnetURLs indicates that there are no urls to fetch, except from the network config
-func LiveEthTestnetURLs(e *environment.Environment) ([]string, error) {
-	return []string{}, nil
 }
 
 // BorrowedNonces allows to handle nonces concurrently without requesting them every time

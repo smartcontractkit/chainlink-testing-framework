@@ -706,12 +706,8 @@ func ConnectChainlinkNodes(e *environment.Environment) ([]Chainlink, error) {
 	return ConnectChainlinkClientsFromEnv(e)
 }
 
+// ConnectChainlinkDBs creates new chainlink DBs clients
 func ConnectChainlinkDBs(e *environment.Environment) ([]*PostgresConnector, error) {
-	return ConnectChainlinkDBByCharts(e)
-}
-
-// ConnectChainlinkDBByCharts creates new chainlink DBs clients by charts
-func ConnectChainlinkDBByCharts(e *environment.Environment) ([]*PostgresConnector, error) {
 	var dbs []*PostgresConnector
 	dbURLs := e.URLs[chainlink2.DBsLocalURLsKey]
 	for _, u := range dbURLs {
@@ -746,27 +742,6 @@ func ConnectChainlinkClientsFromEnv(e *environment.Environment) ([]Chainlink, er
 		internalHost := parseHostname(internalURLs[i])
 		c, err := NewChainlink(&ChainlinkConfig{
 			URL:      localURL,
-			Email:    "notreal@fakeemail.ch",
-			Password: "twochains",
-			RemoteIP: internalHost,
-		}, http.DefaultClient)
-		clients = append(clients, c)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return clients, nil
-}
-
-// ConnectChainlinkNodesSoak assumes that the tests are being run from an internal soak test runner
-func ConnectChainlinkNodesSoak(e *environment.Environment) ([]Chainlink, error) {
-	var clients []Chainlink
-
-	internalURLs := e.URLs[chainlink2.NodesInternalURLsKey]
-	for i, url := range internalURLs {
-		internalHost := parseHostname(internalURLs[i])
-		c, err := NewChainlink(&ChainlinkConfig{
-			URL:      url,
 			Email:    "notreal@fakeemail.ch",
 			Password: "twochains",
 			RemoteIP: internalHost,

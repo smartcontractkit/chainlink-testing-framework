@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/smartcontractkit/chainlink-env/environment"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -33,13 +35,9 @@ func NewMetisClient(networkSettings *config.ETHNetwork) (EVMClient, error) {
 }
 
 // NewMetisMultiNodeClient returns an instantiated instance of all Metis clients connected to all nodes
-func NewMetisMultiNodeClient(
-	_ string,
-	networkConfig map[string]interface{},
-	urls []string,
-) (EVMClient, error) {
+func NewMetisMultiNodeClient(name string, networkConfig map[string]interface{}, env *environment.Environment) (EVMClient, error) {
 	networkSettings := &config.ETHNetwork{}
-	err := UnmarshalNetworkConfig(networkConfig, networkSettings)
+	err := UnmarshalYAML(networkConfig, networkSettings)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +46,7 @@ func NewMetisMultiNodeClient(
 		Msg("Connecting multi-node client")
 
 	multiNodeClient := &EthereumMultinodeClient{}
-	networkSettings.URLs = append(networkSettings.URLs, urls...)
+	networkSettings.URLs = append(networkSettings.URLs, env.URLs["geth"]...)
 	for idx, networkURL := range networkSettings.URLs {
 		networkSettings.URL = networkURL
 		ec, err := NewMetisClient(networkSettings)

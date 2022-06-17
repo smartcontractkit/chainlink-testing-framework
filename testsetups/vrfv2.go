@@ -61,25 +61,15 @@ func (t *VRFV2SoakTest) Setup(env *environment.Environment, isLocal bool) {
 	t.ensureInputValues()
 	t.env = env
 	var err error
-	var networkRegistry *blockchain.NetworkRegistry
 
 	// Make connections to soak test resources
-	if isLocal {
-		networkRegistry = blockchain.NewDefaultNetworkRegistry()
-		t.ChainlinkNodes, err = client.ConnectChainlinkNodes(env)
-		Expect(err).ShouldNot(HaveOccurred(), "Connecting to chainlink nodes shouldn't fail")
-		t.mockServer, err = client.ConnectMockServer(env)
-		Expect(err).ShouldNot(HaveOccurred(), "Creating mockserver clients shouldn't fail")
-	} else {
-		networkRegistry = blockchain.NewSoakNetworkRegistry()
-		t.ChainlinkNodes, err = client.ConnectChainlinkNodesSoak(env)
-		Expect(err).ShouldNot(HaveOccurred(), "Connecting to chainlink nodes shouldn't fail")
-		t.mockServer, err = client.ConnectMockServerSoak(env)
-		Expect(err).ShouldNot(HaveOccurred(), "Creating mockserver clients shouldn't fail")
-	}
-
-	t.Networks, err = networkRegistry.GetNetworks(env)
+	t.Networks, err = blockchain.NewDefaultNetworkRegistry().ConnectEnvironment(env)
 	Expect(err).ShouldNot(HaveOccurred(), "Connecting to blockchain nodes shouldn't fail")
+	t.ChainlinkNodes, err = client.ConnectChainlinkNodes(env)
+	Expect(err).ShouldNot(HaveOccurred(), "Connecting to chainlink nodes shouldn't fail")
+	t.mockServer, err = client.ConnectMockServer(env)
+	Expect(err).ShouldNot(HaveOccurred(), "Creating mockserver clients shouldn't fail")
+
 	t.DefaultNetwork = t.Networks.Default
 	t.DefaultNetwork.ParallelTransactions(true)
 	Expect(err).ShouldNot(HaveOccurred())

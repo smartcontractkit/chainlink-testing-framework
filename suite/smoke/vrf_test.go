@@ -4,9 +4,10 @@ package smoke
 import (
 	"context"
 	"fmt"
-	"github.com/smartcontractkit/chainlink-env/pkg/helm/ethereum"
 	"math/big"
 	"time"
+
+	"github.com/smartcontractkit/chainlink-env/pkg/helm/ethereum"
 
 	"github.com/smartcontractkit/chainlink-env/pkg/helm/chainlink"
 	"github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver"
@@ -50,8 +51,7 @@ var _ = Describe("VRF suite @vrf", func() {
 		})
 
 		By("Connecting to launched resources", func() {
-			networkRegistry := blockchain.NewDefaultNetworkRegistry()
-			nets, err = networkRegistry.GetNetworks(e)
+			nets, err = blockchain.NewDefaultNetworkRegistry().ConnectEnvironment(e)
 			Expect(err).ShouldNot(HaveOccurred(), "Connecting to blockchain nodes shouldn't fail")
 			cd, err = contracts.NewContractDeployer(nets.Default)
 			Expect(err).ShouldNot(HaveOccurred(), "Deploying contracts shouldn't fail")

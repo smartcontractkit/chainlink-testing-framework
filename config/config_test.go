@@ -22,14 +22,8 @@ func TestFrameworkConfig(t *testing.T) {
 	err := config.LoadFromEnv()
 	require.NoError(t, err)
 
-	require.Equal(t, "testChainlinkImage", config.ProjectConfig.FrameworkConfig.ChainlinkImage)
-	require.Equal(t, "testChainlinkVersion", config.ProjectConfig.FrameworkConfig.ChainlinkVersion)
-
-	testEnvVals := map[string]interface{}{
-		"test_string_val": "someString",
-		"test_int_val":    420,
-	}
-	require.Equal(t, testEnvVals, config.ProjectConfig.FrameworkConfig.ChainlinkEnvValues)
+	require.Equal(t, "Never", config.ProjectConfig.FrameworkConfig.KeepEnvironments)
+	require.Equal(t, int8(5), config.ProjectConfig.FrameworkConfig.Logging.Level)
 }
 
 func TestNetworkConfig(t *testing.T) {

@@ -3,7 +3,6 @@ package soak
 //revive:disable:dot-imports
 import (
 	"math/big"
-	"time"
 
 	"github.com/smartcontractkit/chainlink-env/pkg/helm/chainlink"
 	"github.com/smartcontractkit/chainlink-env/pkg/helm/ethereum"
@@ -28,9 +27,7 @@ var _ = Describe("Keeper block time soak test @soak-keeper-block-time", func() {
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			env = environment.New(
-				&environment.Config{InsideK8s: true, TTL: 12 * time.Hour},
-			)
+			env = environment.New(&environment.Config{InsideK8s: true})
 			err = env.
 				AddHelm(mockservercfg.New(nil)).
 				AddHelm(mockserver.New(nil)).

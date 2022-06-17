@@ -32,15 +32,6 @@ func ConnectMockServer(e *environment.Environment) (*MockserverClient, error) {
 	return c, nil
 }
 
-// ConnectMockServerSoak creates a connection to a deployed mockserver, assuming runner is in a soak test runner
-func ConnectMockServerSoak(e *environment.Environment) (*MockserverClient, error) {
-	c := NewMockserverClient(&MockserverConfig{
-		LocalURL:   e.URLs[mockserver.URLsKey][1],
-		ClusterURL: e.URLs[mockserver.URLsKey][1],
-	})
-	return c, nil
-}
-
 // NewMockserverClient returns a mockserver client
 func NewMockserverClient(cfg *MockserverConfig) *MockserverClient {
 	log.Debug().Str("Local URL", cfg.LocalURL).Str("Remote URL", cfg.ClusterURL).Msg("Connected to MockServer")
