@@ -89,6 +89,17 @@ type KeeperConsumerPerformance interface {
 	SetPerformGasToBurn(ctx context.Context, gas *big.Int) error
 }
 
+// KeeperConsumerBenchmark is a keeper consumer contract that is more complicated than the typical consumer,
+// it's intended to only be used for performance tests.
+type KeeperConsumerBenchmark interface {
+	Address() string
+	Fund(ethAmount *big.Float) error
+	CheckEligible(ctx context.Context) (bool, error)
+	GetUpkeepCount(ctx context.Context) (*big.Int, error)
+	SetCheckGasToBurn(ctx context.Context, gas *big.Int) error
+	SetPerformGasToBurn(ctx context.Context, gas *big.Int) error
+}
+
 // KeeperRegistryOpts opts to deploy keeper registry version
 type KeeperRegistryOpts struct {
 	RegistryVersion ethereum.KeeperRegistryVersion
@@ -846,6 +857,64 @@ func (v *EthereumKeeperConsumerPerformance) SetCheckGasToBurn(ctx context.Contex
 }
 
 func (v *EthereumKeeperConsumerPerformance) SetPerformGasToBurn(ctx context.Context, gas *big.Int) error {
+	opts, err := v.client.TransactionOpts(v.client.GetDefaultWallet())
+	if err != nil {
+		return err
+	}
+	tx, err := v.consumer.SetPerformGasToBurn(opts, gas)
+	if err != nil {
+		return err
+	}
+	return v.client.ProcessTransaction(tx)
+}
+
+// EthereumKeeperConsumerBenchmark represents a more complicated keeper consumer contract, one intended only for
+// Benchmark tests.
+type EthereumKeeperConsumerBenchmark struct {
+	client   blockchain.EVMClient
+	consumer *ethereum.KeeperConsumerBenchmark
+	address  *common.Address
+}
+
+func (v *EthereumKeeperConsumerBenchmark) Address() string {
+	return v.address.Hex()
+}
+
+func (v *EthereumKeeperConsumerBenchmark) Fund(ethAmount *big.Float) error {
+	return v.client.Fund(v.address.Hex(), ethAmount)
+}
+
+func (v *EthereumKeeperConsumerBenchmark) CheckEligible(ctx context.Context) (bool, error) {
+	opts := &bind.CallOpts{
+		From:    common.HexToAddress(v.client.GetDefaultWallet().Address()),
+		Context: ctx,
+	}
+	eligible, err := v.consumer.CheckEligible(opts)
+	return eligible, err
+}
+
+func (v *EthereumKeeperConsumerBenchmark) GetUpkeepCount(ctx context.Context) (*big.Int, error) {
+	opts := &bind.CallOpts{
+		From:    common.HexToAddress(v.client.GetDefaultWallet().Address()),
+		Context: ctx,
+	}
+	eligible, err := v.consumer.GetCountPerforms(opts)
+	return eligible, err
+}
+
+func (v *EthereumKeeperConsumerBenchmark) SetCheckGasToBurn(ctx context.Context, gas *big.Int) error {
+	opts, err := v.client.TransactionOpts(v.client.GetDefaultWallet())
+	if err != nil {
+		return err
+	}
+	tx, err := v.consumer.SetCheckGasToBurn(opts, gas)
+	if err != nil {
+		return err
+	}
+	return v.client.ProcessTransaction(tx)
+}
+
+func (v *EthereumKeeperConsumerBenchmark) SetPerformGasToBurn(ctx context.Context, gas *big.Int) error {
 	opts, err := v.client.TransactionOpts(v.client.GetDefaultWallet())
 	if err != nil {
 		return err

@@ -22,4 +22,6 @@ var (
 	EthereumContractsDir = filepath.Join(ContractsDir, "ethereum")
 	// RemoteRunnerConfigLocation is the path to the remote runner config
 	RemoteRunnerConfigLocation = filepath.Join(SuiteRoot, "remote_runner_config.yaml")
+	// Benchmark test suite soak root
+	BenchmarkRoot = filepath.Join(SuiteRoot, "benchmark")
 )

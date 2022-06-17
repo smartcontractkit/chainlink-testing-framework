@@ -156,6 +156,65 @@ func DeployPerformanceKeeperContracts(
 	return registry, registrar, upkeeps, upkeepIds
 }
 
+// DeployBenchmarkKeeperContracts deploys a set amount of keeper Benchmark contracts registered to a single registry
+func DeployBenchmarkKeeperContracts(
+	registryVersion ethereum.KeeperRegistryVersion,
+	numberOfContracts int,
+	upkeepGasLimit uint32,
+	linkToken contracts.LinkToken,
+	contractDeployer contracts.ContractDeployer,
+	networks *blockchain.Networks,
+	registrySettings *contracts.KeeperRegistrySettings,
+	blockRange, // How many blocks to run the test for
+	blockInterval, // Interval of blocks that upkeeps are expected to be performed
+	checkGasToBurn, // How much gas should be burned on checkUpkeep() calls
+	performGasToBurn int64, // How much gas should be burned on performUpkeep() calls
+) (contracts.KeeperRegistry, []contracts.KeeperConsumerBenchmark, []*big.Int) {
+	ef, err := contractDeployer.DeployMockETHLINKFeed(big.NewInt(2e18))
+	Expect(err).ShouldNot(HaveOccurred(), "Deploying mock ETH-Link feed shouldn't fail")
+	gf, err := contractDeployer.DeployMockGasFeed(big.NewInt(2e11))
+	Expect(err).ShouldNot(HaveOccurred(), "Deploying mock gas feed shouldn't fail")
+	err = networks.Default.WaitForEvents()
+	Expect(err).ShouldNot(HaveOccurred(), "Failed waiting for mock feeds to deploy")
+
+	registry := DeployKeeperRegistry(contractDeployer, networks,
+		&contracts.KeeperRegistryOpts{
+			RegistryVersion: registryVersion,
+			LinkAddr:        linkToken.Address(),
+			ETHFeedAddr:     ef.Address(),
+			GasFeedAddr:     gf.Address(),
+			TranscoderAddr:  ZeroAddress.Hex(),
+			RegistrarAddr:   ZeroAddress.Hex(),
+			Settings:        *registrySettings,
+		},
+	)
+
+	// Fund the registry with 1 LINK * amount of KeeperConsumerBenchmark contracts
+	err = linkToken.Transfer(registry.Address(), big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(int64(numberOfContracts))))
+	Expect(err).ShouldNot(HaveOccurred(), "Funding keeper registry contract shouldn't fail")
+
+	registrarSettings := contracts.KeeperRegistrarSettings{
+		AutoRegister:     true,
+		WindowSizeBlocks: uint32(6000000),
+		AllowedPerWindow: uint16(numberOfContracts),
+		RegistryAddr:     registry.Address(),
+		MinLinkJuels:     big.NewInt(0),
+	}
+	registrar := DeployKeeperRegistrar(linkToken, registrarSettings, contractDeployer, networks, registry)
+
+	upkeeps := DeployKeeperConsumersBenchmark(contractDeployer, networks, numberOfContracts, blockRange, blockInterval, checkGasToBurn, performGasToBurn)
+
+	upkeepsAddresses := []string{}
+	for _, upkeep := range upkeeps {
+		upkeepsAddresses = append(upkeepsAddresses, upkeep.Address())
+	}
+	linkFunds := big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(blockRange/blockInterval))
+
+	upkeepIds := RegisterUpkeepContracts(linkToken, linkFunds, networks, upkeepGasLimit, registry, registrar, numberOfContracts, upkeepsAddresses)
+
+	return registry, upkeeps, upkeepIds
+}
+
 func DeployKeeperRegistry(
 	contractDeployer contracts.ContractDeployer,
 	networks *blockchain.Networks,
@@ -328,6 +387,44 @@ func DeployKeeperConsumersPerformance(
 		if (contractCount+1)%ContractDeploymentInterval == 0 { // For large amounts of contract deployments, space things out some
 			err = networks.Default.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred(), "Failed to wait for KeeperConsumerPerformance deployments")
+		}
+	}
+	err := networks.Default.WaitForEvents()
+	Expect(err).ShouldNot(HaveOccurred(), "Failed waiting for to deploy all keeper consumer contracts")
+	log.Info().Msg("Successfully deployed all Keeper Consumer Contracts")
+
+	return upkeeps
+}
+
+func DeployKeeperConsumersBenchmark(
+	contractDeployer contracts.ContractDeployer,
+	networks *blockchain.Networks,
+	numberOfContracts int,
+	blockRange, // How many blocks to run the test for
+	blockInterval, // Interval of blocks that upkeeps are expected to be performed
+	checkGasToBurn, // How much gas should be burned on checkUpkeep() calls
+	performGasToBurn int64, // How much gas should be burned on performUpkeep() calls
+) []contracts.KeeperConsumerBenchmark {
+	upkeeps := make([]contracts.KeeperConsumerBenchmark, 0)
+
+	for contractCount := 0; contractCount < numberOfContracts; contractCount++ {
+		// Deploy consumer
+		keeperConsumerInstance, err := contractDeployer.DeployKeeperConsumerBenchmark(
+			big.NewInt(blockRange),
+			big.NewInt(blockInterval),
+			big.NewInt(checkGasToBurn),
+			big.NewInt(performGasToBurn),
+		)
+		Expect(err).ShouldNot(HaveOccurred(), "Deploying KeeperConsumerBenchmark instance %d shouldn't fail", contractCount+1)
+		upkeeps = append(upkeeps, keeperConsumerInstance)
+		log.Debug().
+			Str("Contract Address", keeperConsumerInstance.Address()).
+			Int("Number", contractCount+1).
+			Int("Out Of", numberOfContracts).
+			Msg("Deployed Keeper Benchmark Contract")
+		if (contractCount+1)%ContractDeploymentInterval == 0 { // For large amounts of contract deployments, space things out some
+			err = networks.Default.WaitForEvents()
+			Expect(err).ShouldNot(HaveOccurred(), "Failed to wait for KeeperConsumerBenchmark deployments")
 		}
 	}
 	err := networks.Default.WaitForEvents()
