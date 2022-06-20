@@ -25,7 +25,7 @@ require (
 	gopkg.in/guregu/null.v4 v4.0.0
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.0
-	k8s.io/apimachinery v0.24.1
+	k8s.io/apimachinery v0.24.2
 )
 
 require (
