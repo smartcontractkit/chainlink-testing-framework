@@ -33,20 +33,22 @@ var _ = Describe("Keeper benchmark suite @benchmark-keeper", func() {
 		By("Setup the Keeper test", func() {
 			keeperBenchmarkTest = testsetups.NewKeeperBenchmarkTest(
 				testsetups.KeeperBenchmarkTestInputs{
-					NumberOfContracts: 2,
+					NumberOfContracts: 500,
 					KeeperRegistrySettings: &contracts.KeeperRegistrySettings{
 						PaymentPremiumPPB:    uint32(200000000),
 						BlockCountPerTurn:    big.NewInt(100),
-						CheckGasLimit:        uint32(2500000),
+						CheckGasLimit:        uint32(2000000),
 						StalenessSeconds:     big.NewInt(90000),
-						GasCeilingMultiplier: uint16(1),
+						GasCeilingMultiplier: uint16(2),
+						MaxPerformGas:        uint32(5000000),
+						MinUpkeepSpend:       big.NewInt(0),
 						FallbackGasPrice:     big.NewInt(2e11),
 						FallbackLinkPrice:    big.NewInt(2e18),
 					},
-					CheckGasToBurn:       2400000,
-					PerformGasToBurn:     2400000,
-					BlockRange:           1800,
-					BlockInterval:        125,
+					CheckGasToBurn:       1000000,
+					PerformGasToBurn:     150000,
+					BlockRange:           3600,
+					BlockInterval:        20,
 					ChainlinkNodeFunding: big.NewFloat(1000),
 				},
 			)

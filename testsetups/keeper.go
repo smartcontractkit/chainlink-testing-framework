@@ -217,9 +217,9 @@ func (k *KeeperBenchmarkTest) Setup(env *environment.Environment) {
 	Expect(err).ShouldNot(HaveOccurred(), "Failed waiting for LINK Contract deployment")
 
 	k.keeperRegistry, k.keeperConsumerContracts, _ = actions.DeployBenchmarkKeeperContracts(
-		ethereum.RegistryVersion_1_1,
+		ethereum.RegistryVersion_1_2,
 		inputs.NumberOfContracts,
-		uint32(2500000), //upkeepGasLimit
+		uint32(500000), //upkeepGasLimit
 		linkToken,
 		contractDeployer,
 		k.networks,

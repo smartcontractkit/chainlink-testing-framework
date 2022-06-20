@@ -27,11 +27,13 @@ func RunBenchmarkTest(testTag, namespacePrefix string, chainlinkReplicas int) er
 		config.ProjectConfig.RemoteRunnerConfig.SlackChannel, // Slack Channel to upload test artifacts to
 		config.ProjectConfig.RemoteRunnerConfig.SlackUserID,  // Slack user to notify on completion
 	)
+	// Turn on buddy turn taking algo
+	config.ProjectConfig.FrameworkConfig.ChainlinkEnvValues["KEEPER_TURN_FLAG_ENABLED"] = "true"
 	env, err := environment.DeployRemoteRunnerEnvironment(
 		environment.NewChainlinkConfig(
 			environment.ChainlinkReplicas(chainlinkReplicas, config.ChainlinkVals()),
 			namespacePrefix,
-			config.GethNetworks()...,
+			environment.PerformanceGeth,
 		),
 		filepath.Join(utils.SuiteRoot, "framework.yaml"), // Path of the framework config
 		filepath.Join(utils.SuiteRoot, "networks.yaml"),  // Path to the networks config
