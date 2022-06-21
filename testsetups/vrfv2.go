@@ -46,13 +46,6 @@ type VRFV2SoakTestInputs struct {
 	TestFunc          VRFV2SoakTestTestFunc // The function that makes the request and validations wanted
 }
 
-// VRFV2SoakTestJobInfo defines a jobs into and proving key info
-type VRFV2SoakTestJobInfo struct {
-	Job            *client.Job
-	ProvingKey     [2]*big.Int
-	ProvingKeyHash [32]byte
-}
-
 // NewVRFV2SoakTest creates a new vrfv2 soak test to setup and run
 func NewVRFV2SoakTest(inputs *VRFV2SoakTestInputs) *VRFV2SoakTest {
 	return &VRFV2SoakTest{
