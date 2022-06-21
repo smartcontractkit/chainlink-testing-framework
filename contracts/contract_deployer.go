@@ -34,6 +34,7 @@ type ContractDeployer interface {
 	DeployMockETHLINKFeed(answer *big.Int) (MockETHLINKFeed, error)
 	DeployMockGasFeed(answer *big.Int) (MockGasFeed, error)
 	DeployUpkeepRegistrationRequests(linkAddr string, minLinkJuels *big.Int) (UpkeepRegistrar, error)
+	DeployRegistrar(linkAddr string, minLinkJuels *big.Int) (UpkeepRegistrar, error)
 	DeployKeeperRegistry(opts *KeeperRegistryOpts) (KeeperRegistry, error)
 	DeployKeeperConsumer(updateInterval *big.Int) (KeeperConsumer, error)
 	DeployKeeperConsumerPerformance(
@@ -407,6 +408,10 @@ func (e *EthereumContractDeployer) DeployUpkeepRegistrationRequests(linkAddr str
 		registrar: instance.(*ethereum.UpkeepRegistrationRequests),
 		address:   address,
 	}, err
+}
+
+func (e *EthereumContractDeployer) DeployRegistrar(linnkAddr string, minLinkJuels *big.Int) (UpkeepRegistrar, error) {
+
 }
 
 func (e *EthereumContractDeployer) DeployKeeperRegistry(
