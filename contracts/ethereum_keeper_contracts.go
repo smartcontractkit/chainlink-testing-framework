@@ -56,6 +56,7 @@ type KeeperRegistry interface {
 	CancelUpkeep(id *big.Int) error
 	SetUpkeepGasLimit(id *big.Int, gas uint32) error
 	ParseUpkeepIdFromRegisteredLog(log *types.Log) (*big.Int, error)
+	Pause() error
 }
 
 type KeeperConsumer interface {
@@ -205,6 +206,32 @@ func (v *EthereumKeeperRegistry) SetConfig(config KeeperRegistrySettings) error 
 			Transcoder: state.Config.Transcoder,
 			Registrar:  state.Config.Registrar,
 		})
+		if err != nil {
+			return err
+		}
+		return v.client.ProcessTransaction(tx)
+	}
+
+	return fmt.Errorf("keeper registry version %d is not supported", v.version)
+}
+
+func (v *EthereumKeeperRegistry) Pause() error {
+	txOpts, err := v.client.TransactionOpts(v.client.GetDefaultWallet())
+	if err != nil {
+		return err
+	}
+
+	var tx *types.Transaction
+
+	switch v.version {
+	case ethereum.RegistryVersion_1_0, ethereum.RegistryVersion_1_1:
+		tx, err = v.registry1_1.Pause(txOpts)
+		if err != nil {
+			return err
+		}
+		return v.client.ProcessTransaction(tx)
+	case ethereum.RegistryVersion_1_2:
+		tx, err = v.registry1_2.Pause(txOpts)
 		if err != nil {
 			return err
 		}
