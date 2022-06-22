@@ -218,6 +218,12 @@ func (n *NetworkRegistry) GetNetworks(env *environment.Environment) (*Networks, 
 		if err != nil {
 			return nil, err
 		}
+		// required in Geth when you need to call "simulate" transactions from nodes
+		if client.GetNetworkType() == SimulatedEthNetwork {
+			if err := client.Fund("0x0", big.NewFloat(1000)); err != nil {
+				return nil, err
+			}
+		}
 		clients = append(clients, client)
 	}
 	var defaultClient EVMClient
