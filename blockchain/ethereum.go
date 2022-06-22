@@ -212,40 +212,34 @@ func (e *EthereumClient) Fund(
 	privateKey, err := crypto.HexToECDSA(e.DefaultWallet.PrivateKey())
 	to := common.HexToAddress(toAddress)
 	if err != nil {
-		return fmt.Errorf("invalid private key: %v", err)
+		return err
 	}
-	//suggestedGasTipCap, err := e.Client.SuggestGasTipCap(context.Background())
-	//if err != nil {
-	//	return err
-	//}
-
-	// Bump Tip Cap
-	gasPriceBuffer := big.NewInt(0).SetUint64(e.NetworkConfig.GasEstimationBuffer)
-	//suggestedGasTipCap.Add(suggestedGasTipCap, gasPriceBuffer)
-
-	nonce, err := e.GetNonce(context.Background(), common.HexToAddress(e.DefaultWallet.Address()))
+	// Don't bump gas for Klaytn
+	gasPrice, err := e.Client.SuggestGasPrice(context.Background())
 	if err != nil {
 		return err
 	}
-	latestBlock, err := e.Client.BlockByNumber(context.Background(), nil)
+	nonce, err := e.GetNonce(context.Background(), e.DefaultWallet.address)
 	if err != nil {
 		return err
 	}
-	baseFeeMult := big.NewInt(1).Mul(latestBlock.BaseFee(), big.NewInt(2))
-	//gasFeeCap := baseFeeMult.Add(baseFeeMult, suggestedGasTipCap)
-
+	log.Warn().
+		Str("Network Name", e.NetworkConfig.Name).
+		Msg("Setting GasTipCap = SuggestedGasPrice for Klaytn network")
+	// https://docs.klaytn.com/klaytn/design/transaction-fees#gas
 	tx, err := types.SignNewTx(privateKey, types.LatestSignerForChainID(e.GetChainID()), &types.DynamicFeeTx{
 		ChainID:   e.GetChainID(),
 		Nonce:     nonce,
 		To:        &to,
 		Value:     utils.EtherToWei(amount),
-		GasTipCap: gasPriceBuffer,
-		GasFeeCap: baseFeeMult,
+		GasTipCap: gasPrice,
+		GasFeeCap: gasPrice,
 		Gas:       22000,
 	})
 	if err != nil {
 		return err
 	}
+
 
 	log.Info().
 		Str("Token", "ETH").
