@@ -107,6 +107,7 @@ func DeployPerformanceKeeperContracts(
 	contractDeployer contracts.ContractDeployer,
 	networks *blockchain.Networks,
 	registrySettings *contracts.KeeperRegistrySettings,
+	linkFundsForEachUpkeep *big.Int,
 	blockRange, // How many blocks to run the test for
 	blockInterval, // Interval of blocks that upkeeps are expected to be performed
 	checkGasToBurn, // How much gas should be burned on checkUpkeep() calls
@@ -150,9 +151,8 @@ func DeployPerformanceKeeperContracts(
 	for _, upkeep := range upkeeps {
 		upkeepsAddresses = append(upkeepsAddresses, upkeep.Address())
 	}
-	linkFunds := big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(blockRange/blockInterval))
 
-	upkeepIds := RegisterUpkeepContracts(linkToken, linkFunds, networks, upkeepGasLimit, registry, registrar, numberOfContracts, upkeepsAddresses)
+	upkeepIds := RegisterUpkeepContracts(linkToken, linkFundsForEachUpkeep, networks, upkeepGasLimit, registry, registrar, numberOfContracts, upkeepsAddresses)
 
 	return registry, registrar, upkeeps, upkeepIds
 }

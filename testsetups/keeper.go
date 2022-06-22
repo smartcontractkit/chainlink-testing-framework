@@ -87,6 +87,7 @@ func (k *KeeperBlockTimeTest) Setup(env *environment.Environment) {
 		contractDeployer,
 		k.networks,
 		k.Inputs.KeeperRegistrySettings,
+		big.NewInt(9e18),
 		inputs.BlockRange,
 		inputs.BlockInterval,
 		inputs.CheckGasToBurn,
