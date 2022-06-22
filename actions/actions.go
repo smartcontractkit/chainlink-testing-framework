@@ -231,17 +231,17 @@ func GetMockserverInitializerDataForOTPE(
 // specified path. Can also accept a testreporter (if one was used) to log further results
 func TeardownSuite(
 	env *environment.Environment,
-	nets *blockchain.Networks,
 	logsFolderPath string,
 	chainlinkNodes []client.Chainlink,
 	optionalTestReporter testreporters.TestReporter, // Optionally pass in a test reporter to log further metrics
+	clients ...blockchain.EVMClient,
 ) error {
 	if err := writeTeardownLogs(env, optionalTestReporter); err != nil {
 		return errors.Wrap(err, "Error dumping environment logs, leaving environment running for manual retrieval")
 	}
 
-	if nets != nil && chainlinkNodes != nil && len(chainlinkNodes) > 0 {
-		if err := returnFunds(chainlinkNodes, nets); err != nil {
+	if clients != nil && chainlinkNodes != nil && len(chainlinkNodes) > 0 {
+		if err := returnFunds(chainlinkNodes, clients); err != nil {
 			log.Error().Err(err).Str("Namespace", env.Cfg.Namespace).
 				Msg("Error attempting to return funds from chainlink nodes to network's default wallet. " +
 					"Environment is left running so you can try manually!")
@@ -249,9 +249,9 @@ func TeardownSuite(
 	} else {
 		log.Info().Msg("Successfully returned funds from chainlink nodes to default network wallets")
 	}
-	if nets != nil {
-		if err := nets.Teardown(); err != nil {
-			return err
+	if clients != nil {
+		for _, c := range clients {
+			c.Close()
 		}
 	}
 
@@ -274,9 +274,9 @@ func TeardownSuite(
 // soak tests
 func TeardownRemoteSuite(
 	env *environment.Environment,
-	nets *blockchain.Networks,
 	chainlinkNodes []client.Chainlink,
 	optionalTestReporter testreporters.TestReporter, // Optionally pass in a test reporter to log further metrics
+	nets ...blockchain.EVMClient,
 ) error {
 	err := writeTeardownLogs(env, optionalTestReporter)
 	if err != nil {
@@ -323,7 +323,7 @@ func writeTeardownLogs(env *environment.Environment, optionalTestReporter testre
 }
 
 // Returns all the funds from the chainlink nodes to the networks default address
-func returnFunds(chainlinkNodes []client.Chainlink, networks *blockchain.Networks) error {
+func returnFunds(chainlinkNodes []client.Chainlink, networks []blockchain.EVMClient) error {
 	if networks == nil {
 		log.Warn().Msg("No network connections found, unable to return funds from chainlink nodes.")
 	}
@@ -333,7 +333,7 @@ func returnFunds(chainlinkNodes []client.Chainlink, networks *blockchain.Network
 		}
 	}
 	log.Info().Msg("Attempting to return Chainlink node funds to default network wallets")
-	for _, network := range networks.AllNetworks() {
+	for _, network := range networks {
 		if network.GetNetworkType() == blockchain.SimulatedEthNetwork {
 			log.Info().Str("Network Name", network.GetNetworkName()).
 				Msg("Network is a `eth_simulated` network. Skipping fund return.")

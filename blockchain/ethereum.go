@@ -487,30 +487,25 @@ type EthereumMultinodeClient struct {
 	Clients       []EVMClient
 }
 
-// NewEthereumMultiNodeClient returns an instantiated instance of all Ethereum client connected to all nodes
-func NewEthereumMultiNodeClient(name string, networkConfig map[string]interface{}, env *environment.Environment) (EVMClient, error) {
-	networkSettings := &config.ETHNetwork{}
-	err := UnmarshalYAML(networkConfig, networkSettings)
-	if err != nil {
-		return nil, err
-	}
-	log.Info().
-		Interface("URLs", networkSettings.URLs).
-		Msg("Connecting multi-node client")
-
-	ecl := &EthereumMultinodeClient{}
-	networkSettings.URLs = append(networkSettings.URLs, env.URLs["geth"]...)
-	for idx, networkURL := range networkSettings.URLs {
-		networkSettings.URL = networkURL
-		ec, err := NewEthereumClient(networkSettings)
-		if err != nil {
-			return nil, err
+func NewEthereumMultiNodeClientSetup(networkSettings *config.ETHNetwork) func(*environment.Environment) (EVMClient, error) {
+	return func(env *environment.Environment) (EVMClient, error) {
+		ecl := &EthereumMultinodeClient{}
+		networkSettings.URLs = append(networkSettings.URLs, env.URLs["geth"]...)
+		for idx, networkURL := range networkSettings.URLs {
+			networkSettings.URL = networkURL
+			ec, err := NewEthereumClient(networkSettings)
+			if err != nil {
+				return nil, err
+			}
+			ec.SetID(idx)
+			ecl.Clients = append(ecl.Clients, ec)
 		}
-		ec.SetID(idx)
-		ecl.Clients = append(ecl.Clients, ec)
+		ecl.DefaultClient = ecl.Clients[0]
+		log.Info().
+			Interface("URLs", networkSettings.URLs).
+			Msg("Connected multi-node client")
+		return ecl, nil
 	}
-	ecl.DefaultClient = ecl.Clients[0]
-	return ecl, nil
 }
 
 // Get gets default client as an interface{}

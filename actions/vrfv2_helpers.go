@@ -16,7 +16,7 @@ import (
 func DeployVRFV2Contracts(
 	linkTokenContract contracts.LinkToken,
 	contractDeployer contracts.ContractDeployer,
-	networks *blockchain.Networks,
+	client blockchain.EVMClient,
 	linkEthFeedAddress string,
 ) (contracts.VRFCoordinatorV2, contracts.VRFConsumerV2, contracts.BlockHashStore) {
 	bhs, err := contractDeployer.DeployBlockhashStore()
@@ -25,7 +25,7 @@ func DeployVRFV2Contracts(
 	Expect(err).ShouldNot(HaveOccurred())
 	consumer, err := contractDeployer.DeployVRFConsumerV2(linkTokenContract.Address(), coordinator.Address())
 	Expect(err).ShouldNot(HaveOccurred())
-	err = networks.Default.WaitForEvents()
+	err = client.WaitForEvents()
 	Expect(err).ShouldNot(HaveOccurred())
 
 	return coordinator, consumer, bhs
@@ -36,7 +36,7 @@ type VRFV2EncodedProvingKey [2]*big.Int
 func CreateVRFV2Jobs(
 	chainlinkNodes []client.Chainlink,
 	coordinator contracts.VRFCoordinatorV2,
-	networks *blockchain.Networks,
+	c blockchain.EVMClient,
 ) ([]*client.Job, []VRFV2EncodedProvingKey) {
 	jobs := make([]*client.Job, 0)
 	encodedProvingKeys := make([]VRFV2EncodedProvingKey, 0)
@@ -57,7 +57,7 @@ func CreateVRFV2Jobs(
 			Name:                     fmt.Sprintf("vrf-%s", jobUUID),
 			CoordinatorAddress:       coordinator.Address(),
 			FromAddress:              oracleAddr,
-			EVMChainID:               networks.Default.GetChainID().String(),
+			EVMChainID:               c.GetChainID().String(),
 			MinIncomingConfirmations: 1,
 			PublicKey:                pubKeyCompressed,
 			ExternalJobID:            jobUUID.String(),
