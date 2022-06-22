@@ -54,6 +54,7 @@ func DeployKeeperContracts(
 	linkToken contracts.LinkToken,
 	contractDeployer contracts.ContractDeployer,
 	networks *blockchain.Networks,
+	linkFundsForEachUpkeep *big.Int,
 ) (contracts.KeeperRegistry, contracts.UpkeepRegistrar, []contracts.KeeperConsumer, []*big.Int) {
 	ef, err := contractDeployer.DeployMockETHLINKFeed(big.NewInt(2e18))
 	Expect(err).ShouldNot(HaveOccurred(), "Deploying mock ETH-Link feed shouldn't fail")
@@ -92,7 +93,7 @@ func DeployKeeperContracts(
 	for _, upkeep := range upkeeps {
 		upkeepsAddresses = append(upkeepsAddresses, upkeep.Address())
 	}
-	upkeepIds := RegisterUpkeepContracts(linkToken, big.NewInt(9e18), networks, upkeepGasLimit, registry, registrar, numberOfUpkeeps, upkeepsAddresses)
+	upkeepIds := RegisterUpkeepContracts(linkToken, linkFundsForEachUpkeep, networks, upkeepGasLimit, registry, registrar, numberOfUpkeeps, upkeepsAddresses)
 
 	return registry, registrar, upkeeps, upkeepIds
 }
@@ -106,8 +107,8 @@ func DeployPerformanceKeeperContracts(
 	contractDeployer contracts.ContractDeployer,
 	networks *blockchain.Networks,
 	registrySettings *contracts.KeeperRegistrySettings,
-	blockRange, // How many blocks to run the test for
-	blockInterval, // Interval of blocks that upkeeps are expected to be performed
+	blockRange,     // How many blocks to run the test for
+	blockInterval,  // Interval of blocks that upkeeps are expected to be performed
 	checkGasToBurn, // How much gas should be burned on checkUpkeep() calls
 	performGasToBurn int64, // How much gas should be burned on performUpkeep() calls
 ) (contracts.KeeperRegistry, contracts.UpkeepRegistrar, []contracts.KeeperConsumerPerformance, []*big.Int) {
@@ -303,8 +304,8 @@ func DeployKeeperConsumersPerformance(
 	contractDeployer contracts.ContractDeployer,
 	networks *blockchain.Networks,
 	numberOfContracts int,
-	blockRange, // How many blocks to run the test for
-	blockInterval, // Interval of blocks that upkeeps are expected to be performed
+	blockRange,     // How many blocks to run the test for
+	blockInterval,  // Interval of blocks that upkeeps are expected to be performed
 	checkGasToBurn, // How much gas should be burned on checkUpkeep() calls
 	performGasToBurn int64, // How much gas should be burned on performUpkeep() calls
 ) []contracts.KeeperConsumerPerformance {
