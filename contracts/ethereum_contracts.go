@@ -572,13 +572,13 @@ func (l *EthereumLinkToken) TransferAndCall(to string, amount *big.Int, data []b
 
 // LoadExistingLinkToken loads an EthereumLinkToken with a specific address
 func (l *EthereumLinkToken) LoadExistingLinkToken(address string, client blockchain.EVMClient) error {
+	l.address = common.HexToAddress(address)
 	instance, err := ethereum.NewLinkToken(l.address, client.(*blockchain.EthereumClient).Client)
 	if err != nil {
 		return err
 	}
 	l.client = client
 	l.instance = instance
-	l.address = common.HexToAddress(address)
 	return nil
 }
 
