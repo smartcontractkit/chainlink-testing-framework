@@ -14,7 +14,6 @@ import (
 // Config general framework config
 type Config struct {
 	FrameworkConfig    *FrameworkConfig    `envconfig:"FRAMEWORK_CONFIG_FILE" default:"../framework.yaml"`
-	NetworksConfig     *NetworksConfig     `envconfig:"NETWORKS_CONFIG_FILE" default:"../networks.yaml"`
 	RemoteRunnerConfig *RemoteRunnerConfig `envconfig:"REMOTE_RUNNER_CONFIG_FILE" required:"false" default:"../remote_runner_config.yaml"`
 	EnvironmentConfig  *environment.Config `envconfig:"ENVIRONMENT_CONFIG_FILE"`
 }
@@ -63,22 +62,6 @@ type TerraNetwork struct {
 	ChainlinkTransactionLimit uint64        `envconfig:"chainlink_transaction_limit" yaml:"chainlink_transaction_limit"`
 	Timeout                   time.Duration `envconfig:"transaction_timeout" yaml:"transaction_timeout"`
 	MinimumConfirmations      int           `envconfig:"minimum_confirmations" yaml:"minimum_confirmations"`
-}
-
-// NetworksConfig is network configurations
-type NetworksConfig struct {
-	SelectedNetworks   []string        `envconfig:"SELECTED_NETWORKS" yaml:"selected_networks"`
-	NetworkSettings    NetworkSettings `envconfig:"NETWORKS" yaml:"networks"`
-	DefaultKeyStore    string
-	ConfigFileLocation string
-}
-
-func (m *NetworksConfig) Decode(path string) error {
-	// Marshal YAML first, then "envconfig" tags of that struct got marshalled
-	if err := unmarshalYAML(path, &m); err != nil {
-		return err
-	}
-	return envconfig.Process("", m)
 }
 
 // RemoteRunnerConfig reads the config file for remote test runs

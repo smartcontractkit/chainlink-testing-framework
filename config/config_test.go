@@ -26,13 +26,6 @@ func TestFrameworkConfig(t *testing.T) {
 	require.Equal(t, int8(5), config.ProjectConfig.FrameworkConfig.Logging.Level)
 }
 
-func TestNetworkConfig(t *testing.T) {
-	setEnvVars(t)
-	err := config.LoadFromEnv()
-	require.NoError(t, err)
-	require.Equal(t, "huxtable", config.ProjectConfig.NetworksConfig.SelectedNetworks[0])
-}
-
 func TestChainlinkValues(t *testing.T) {
 	t.Parallel()
 

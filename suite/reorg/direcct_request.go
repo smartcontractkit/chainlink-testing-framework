@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/testsetups"
+
 	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -32,7 +34,7 @@ import (
 var _ = Describe("Direct request suite @direct-request", func() {
 	var (
 		err            error
-		nets           *blockchain.Networks
+		c              blockchain.EVMClient
 		cd             contracts.ContractDeployer
 		chainlinkNodes []client.Chainlink
 		oracle         contracts.Oracle
@@ -86,9 +88,9 @@ var _ = Describe("Direct request suite @direct-request", func() {
 		})
 
 		By("Connecting to launched resources", func() {
-			nets, err = blockchain.NewDefaultNetworkRegistry().ConnectEnvironment(e)
+			c, err = blockchain.NewEthereumMultiNodeClientSetup(testsetups.DefaultGethSettings)(e)
 			Expect(err).ShouldNot(HaveOccurred(), "Connecting to blockchain nodes shouldn't fail")
-			cd, err = contracts.NewContractDeployer(nets.Default)
+			cd, err = contracts.NewContractDeployer(c)
 			Expect(err).ShouldNot(HaveOccurred(), "Deploying contracts shouldn't fail")
 			chainlinkNodes, err = client.ConnectChainlinkNodes(e)
 			Expect(err).ShouldNot(HaveOccurred(), "Connecting to chainlink nodes shouldn't fail")
@@ -97,7 +99,7 @@ var _ = Describe("Direct request suite @direct-request", func() {
 		})
 
 		By("Funding Chainlink nodes", func() {
-			err = actions.FundChainlinkNodes(chainlinkNodes, nets.Default, big.NewFloat(10))
+			err = actions.FundChainlinkNodes(chainlinkNodes, c, big.NewFloat(10))
 			Expect(err).ShouldNot(HaveOccurred(), "Funding chainlink nodes with ETH shouldn't fail")
 		})
 
@@ -108,7 +110,7 @@ var _ = Describe("Direct request suite @direct-request", func() {
 			Expect(err).ShouldNot(HaveOccurred(), "Deploying Oracle Contract shouldn't fail")
 			consumer, err = cd.DeployAPIConsumer(lt.Address())
 			Expect(err).ShouldNot(HaveOccurred(), "Deploying Consumer Contract shouldn't fail")
-			err = nets.Default.SetDefaultWallet(0)
+			err = c.SetDefaultWallet(0)
 			Expect(err).ShouldNot(HaveOccurred(), "Setting default wallet shouldn't fail")
 			err = lt.Transfer(consumer.Address(), big.NewInt(2e18))
 			Expect(err).ShouldNot(HaveOccurred(), "Transferring %d to consumer contract shouldn't fail", big.NewInt(2e18))
@@ -149,7 +151,7 @@ var _ = Describe("Direct request suite @direct-request", func() {
 				&chaos.ReorgConfig{
 					FromPodLabel:            reorg.TXNodesAppLabel,
 					ToPodLabel:              reorg.MinerNodesAppLabel,
-					Network:                 nets.Default,
+					Network:                 c,
 					Env:                     e,
 					BlockConsensusThreshold: 3,
 					Timeout:                 1800 * time.Second,
@@ -197,8 +199,8 @@ var _ = Describe("Direct request suite @direct-request", func() {
 
 	AfterEach(func() {
 		By("Tearing down the environment", func() {
-			nets.Default.GasStats().PrintStats()
-			err = actions.TeardownSuite(e, nets, utils.ProjectRoot, chainlinkNodes, nil)
+			c.GasStats().PrintStats()
+			err = actions.TeardownSuite(e, utils.ProjectRoot, chainlinkNodes, nil, c)
 			Expect(err).ShouldNot(HaveOccurred(), "Environment teardown shouldn't fail")
 		})
 	})

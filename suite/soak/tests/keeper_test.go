@@ -2,8 +2,9 @@ package soak
 
 //revive:disable:dot-imports
 import (
-	"github.com/smartcontractkit/chainlink-testing-framework/actions"
 	"math/big"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/actions"
 
 	"github.com/smartcontractkit/chainlink-env/pkg/helm/chainlink"
 	"github.com/smartcontractkit/chainlink-env/pkg/helm/ethereum"
