@@ -18,9 +18,8 @@ type ChainlinkProfileTest struct {
 	Inputs       ChainlinkProfileTestInputs
 	TestReporter testreporters.ChainlinkProfileTestReporter
 
-	env            *environment.Environment
-	networks       *blockchain.Networks
-	defaultNetwork blockchain.EVMClient
+	env *environment.Environment
+	c   blockchain.EVMClient
 }
 
 // ChainlinkProfileTestInputs are the inputs necessary to run a profiling tests
@@ -63,8 +62,8 @@ func (c *ChainlinkProfileTest) Run() {
 }
 
 // Networks returns the networks that the test is running on
-func (c *ChainlinkProfileTest) TearDownVals() (*environment.Environment, *blockchain.Networks, []client.Chainlink, testreporters.TestReporter) {
-	return c.env, c.networks, c.Inputs.ChainlinkNodes, &c.TestReporter
+func (c *ChainlinkProfileTest) TearDownVals() (*environment.Environment, []client.Chainlink, testreporters.TestReporter, blockchain.EVMClient) {
+	return c.env, c.Inputs.ChainlinkNodes, &c.TestReporter, c.c
 }
 
 // ensureValues ensures that all values needed to run the test are present

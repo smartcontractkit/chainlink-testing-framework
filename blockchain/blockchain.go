@@ -4,13 +4,11 @@ package blockchain
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/smartcontractkit/chainlink-env/environment"
 	"gopkg.in/yaml.v2"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
@@ -18,20 +16,8 @@ import (
 
 // Commonly used blockchain network types
 const (
-	SimulatedEthNetwork   = "eth_simulated"
-	LiveEthTestNetwork    = "eth_testnet"
-	LiveKlaytnTestNetwork = "klaytn_testnet"
-	LiveMetisTestNetwork  = "metis_testnet"
+	SimulatedEthNetwork = "eth_simulated"
 )
-
-// NewEVMClientFn external client implementation function
-// networkName must match a key in "networks" in networks.yaml config
-// networkConfig is just an arbitrary config you provide in "networks" for your key
-type NewEVMClientFn func(
-	networkName string,
-	networkConfig map[string]interface{},
-	env *environment.Environment,
-) (EVMClient, error)
 
 // EVMClient is the interface that wraps a given client implementation for a blockchain, to allow for switching
 // of network types within the test suite
@@ -80,108 +66,6 @@ type EVMClient interface {
 	AddHeaderEventSubscription(key string, subscriber HeaderEventSubscription)
 	DeleteHeaderEventSubscription(key string)
 	WaitForEvents() error
-}
-
-// Networks is a thin wrapper that just selects client connected to some network
-// if there is only one client it is chosen as Default
-// if there is multiple you just get clients you need in test
-type Networks struct {
-	clients []EVMClient
-	Default EVMClient
-}
-
-// Teardown all clients
-func (b *Networks) Teardown() error {
-	for _, c := range b.clients {
-		if err := c.Close(); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// SetDefault chooses default client
-func (b *Networks) SetDefault(index int) error {
-	if index > len(b.clients) {
-		return fmt.Errorf("index of %d is out of bounds", index)
-	}
-	b.Default = b.clients[index]
-	return nil
-}
-
-// Get gets blockchain network (client) by name
-func (b *Networks) Get(index int) (EVMClient, error) {
-	if index > len(b.clients) {
-		return nil, fmt.Errorf("index of %d is out of bounds", index)
-	}
-	return b.clients[index], nil
-}
-
-// AllNetworks returns all the network clients
-func (b *Networks) AllNetworks() []EVMClient {
-	return b.clients
-}
-
-// NetworkRegistry holds all the registered network types that can be initialized, allowing
-// external libraries to register alternative network types to use
-type NetworkRegistry struct {
-	registeredNetworks map[string]NewEVMClientFn
-}
-
-// NewDefaultNetworkRegistry returns an instance of the network registry with the default supported networks registered
-func NewDefaultNetworkRegistry() *NetworkRegistry {
-	return &NetworkRegistry{
-		registeredNetworks: map[string]NewEVMClientFn{
-			SimulatedEthNetwork:   NewEthereumMultiNodeClient,
-			LiveEthTestNetwork:    NewEthereumMultiNodeClient,
-			LiveKlaytnTestNetwork: NewKlaytnMultiNodeClient,
-			LiveMetisTestNetwork:  NewMetisMultiNodeClient,
-		},
-	}
-}
-
-// RegisterNetwork registers a new type of network within the registry
-func (n *NetworkRegistry) RegisterNetwork(networkType string, fn NewEVMClientFn) {
-	n.registeredNetworks[networkType] = fn
-}
-
-// ConnectEnvironment returns a networks object with all the BlockchainClient(s) initialized from environment
-func (n *NetworkRegistry) ConnectEnvironment(env *environment.Environment) (*Networks, error) {
-	nc := config.ProjectConfig.NetworksConfig
-	var clients []EVMClient
-	for _, networkName := range nc.SelectedNetworks {
-		networkSettings, ok := nc.NetworkSettings[networkName]
-		if !ok {
-			return nil, fmt.Errorf("network with the name of '%s' doesn't exist in the network config", networkName)
-		}
-		networkType, ok := networkSettings["type"]
-		if !ok {
-			return nil, fmt.Errorf("network config for '%s' doesn't define a 'type'", networkName)
-		}
-		initFn, ok := n.registeredNetworks[fmt.Sprint(networkType)]
-		if !ok {
-			return nil, fmt.Errorf("network '%s' of type '%s' hasn't been registered", networkName, networkType)
-		}
-		client, err := initFn(networkName, networkSettings, env)
-		if err != nil {
-			return nil, err
-		}
-		// required in Geth when you need to call "simulate" transactions from nodes
-		if client.GetNetworkType() == SimulatedEthNetwork {
-			if err := client.Fund("0x0", big.NewFloat(1000)); err != nil {
-				return nil, err
-			}
-		}
-		clients = append(clients, client)
-	}
-	var defaultClient EVMClient
-	if len(clients) >= 1 {
-		defaultClient = clients[0]
-	}
-	return &Networks{
-		clients: clients,
-		Default: defaultClient,
-	}, nil
 }
 
 // NodeBlock block with a node ID which mined it

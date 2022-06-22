@@ -2,6 +2,7 @@ package soak
 
 //revive:disable:dot-imports
 import (
+	"github.com/smartcontractkit/chainlink-testing-framework/actions"
 	"math/big"
 
 	"github.com/smartcontractkit/chainlink-env/pkg/helm/chainlink"
@@ -13,7 +14,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-env/environment"
-	"github.com/smartcontractkit/chainlink-testing-framework/actions"
 	"github.com/smartcontractkit/chainlink-testing-framework/contracts"
 	"github.com/smartcontractkit/chainlink-testing-framework/testsetups"
 )
@@ -56,8 +56,8 @@ var _ = Describe("Keeper block time soak test @soak-keeper-block-time", func() {
 					},
 					CheckGasToBurn:       2400000,
 					PerformGasToBurn:     2400000,
-					BlockRange:           2000,
-					BlockInterval:        200,
+					BlockRange:           300,
+					BlockInterval:        50,
 					ChainlinkNodeFunding: big.NewFloat(10),
 				},
 			)
