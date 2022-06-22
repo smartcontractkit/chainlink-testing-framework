@@ -269,12 +269,12 @@ func (e *EthereumClient) DeployContract(
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	suggestedTipCap, err := e.Client.SuggestGasTipCap(context.Background())
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	gasPriceBuffer := big.NewInt(0).SetUint64(e.NetworkConfig.GasEstimationBuffer)
-	opts.GasTipCap = suggestedTipCap.Add(gasPriceBuffer, suggestedTipCap)
+	//suggestedTipCap, err := e.Client.SuggestGasTipCap(context.Background())
+	//if err != nil {
+	//	return nil, nil, nil, err
+	//}
+	//gasPriceBuffer := big.NewInt(0).SetUint64(e.NetworkConfig.GasEstimationBuffer)
+	//opts.GasTipCap = suggestedTipCap.Add(gasPriceBuffer, suggestedTipCap)
 	opts.GasPrice, err = e.Client.SuggestGasPrice(context.Background())
 	if err != nil {
 		return nil, nil, nil, err
@@ -282,8 +282,8 @@ func (e *EthereumClient) DeployContract(
 
 	if e.NetworkConfig.GasEstimationBuffer > 0 {
 		log.Debug().
-			Uint64("Suggested Gas Tip Cap", big.NewInt(0).Sub(suggestedTipCap, gasPriceBuffer).Uint64()).
-			Uint64("Bumped Gas Tip Cap", suggestedTipCap.Uint64()).
+			//Uint64("Suggested Gas Tip Cap", big.NewInt(0).Sub(suggestedTipCap, gasPriceBuffer).Uint64()).
+			//Uint64("Bumped Gas Tip Cap", suggestedTipCap.Uint64()).
 			Str("Contract Name", contractName).
 			Msg("Bumping Suggested Gas Price")
 	}
