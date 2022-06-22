@@ -214,31 +214,33 @@ func (e *EthereumClient) Fund(
 	if err != nil {
 		return fmt.Errorf("invalid private key: %v", err)
 	}
-	//suggestedGasTipCap, err := e.Client.SuggestGasTipCap(context.Background())
-	//if err != nil {
-	//	return err
-	//}
+	suggestedGasTipCap, err := e.Client.SuggestGasTipCap(context.Background())
+	if err != nil {
+		return err
+	}
 
 	// Bump Tip Cap
-	//gasPriceBuffer := big.NewInt(0).SetUint64(e.NetworkConfig.GasEstimationBuffer)
-	//suggestedGasTipCap.Add(suggestedGasTipCap, gasPriceBuffer)
+	gasPriceBuffer := big.NewInt(0).SetUint64(e.NetworkConfig.GasEstimationBuffer)
+	suggestedGasTipCap.Add(suggestedGasTipCap, gasPriceBuffer)
 
 	nonce, err := e.GetNonce(context.Background(), common.HexToAddress(e.DefaultWallet.Address()))
 	if err != nil {
 		return err
 	}
-	//latestBlock, err := e.Client.BlockByNumber(context.Background(), nil)
-	//if err != nil {
-	//	return err
-	//}
-	//baseFeeMult := big.NewInt(1).Mul(latestBlock.BaseFee(), big.NewInt(2))
-	//gasFeeCap := baseFeeMult.Add(baseFeeMult, suggestedGasTipCap)
+	latestBlock, err := e.Client.BlockByNumber(context.Background(), nil)
+	if err != nil {
+		return err
+	}
+	baseFeeMult := big.NewInt(1).Mul(latestBlock.BaseFee(), big.NewInt(2))
+	gasFeeCap := baseFeeMult.Add(baseFeeMult, suggestedGasTipCap)
 
 	tx, err := types.SignNewTx(privateKey, types.LatestSignerForChainID(e.GetChainID()), &types.DynamicFeeTx{
 		ChainID:   e.GetChainID(),
 		Nonce:     nonce,
 		To:        &to,
 		Value:     utils.EtherToWei(amount),
+		//GasTipCap: suggestedGasTipCap,
+		GasFeeCap: gasFeeCap,
 		Gas:       22000,
 	})
 	if err != nil {
