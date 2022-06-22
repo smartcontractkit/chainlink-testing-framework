@@ -275,6 +275,10 @@ func (e *EthereumClient) DeployContract(
 	}
 	gasPriceBuffer := big.NewInt(0).SetUint64(e.NetworkConfig.GasEstimationBuffer)
 	opts.GasTipCap = suggestedTipCap.Add(gasPriceBuffer, suggestedTipCap)
+	opts.GasPrice, err = e.Client.SuggestGasPrice(context.Background())
+	if err != nil {
+		return nil, nil, nil, err
+	}
 
 	if e.NetworkConfig.GasEstimationBuffer > 0 {
 		log.Debug().
