@@ -107,8 +107,8 @@ func DeployPerformanceKeeperContracts(
 	contractDeployer contracts.ContractDeployer,
 	networks *blockchain.Networks,
 	registrySettings *contracts.KeeperRegistrySettings,
-	blockRange,     // How many blocks to run the test for
-	blockInterval,  // Interval of blocks that upkeeps are expected to be performed
+	blockRange, // How many blocks to run the test for
+	blockInterval, // Interval of blocks that upkeeps are expected to be performed
 	checkGasToBurn, // How much gas should be burned on checkUpkeep() calls
 	performGasToBurn int64, // How much gas should be burned on performUpkeep() calls
 ) (contracts.KeeperRegistry, contracts.UpkeepRegistrar, []contracts.KeeperConsumerPerformance, []*big.Int) {
@@ -304,8 +304,8 @@ func DeployKeeperConsumersPerformance(
 	contractDeployer contracts.ContractDeployer,
 	networks *blockchain.Networks,
 	numberOfContracts int,
-	blockRange,     // How many blocks to run the test for
-	blockInterval,  // Interval of blocks that upkeeps are expected to be performed
+	blockRange, // How many blocks to run the test for
+	blockInterval, // Interval of blocks that upkeeps are expected to be performed
 	checkGasToBurn, // How much gas should be burned on checkUpkeep() calls
 	performGasToBurn int64, // How much gas should be burned on performUpkeep() calls
 ) []contracts.KeeperConsumerPerformance {
