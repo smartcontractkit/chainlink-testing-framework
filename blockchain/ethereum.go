@@ -239,8 +239,6 @@ func (e *EthereumClient) Fund(
 		Nonce:     nonce,
 		To:        &to,
 		Value:     utils.EtherToWei(amount),
-		//GasTipCap: suggestedGasTipCap,
-		//GasFeeCap: gasFeeCap,
 		Gas:       22000,
 	})
 	if err != nil {
