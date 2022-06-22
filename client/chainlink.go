@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	chainlink2 "github.com/smartcontractkit/chainlink-env/pkg/helm/chainlink"
+	chainlinkChart "github.com/smartcontractkit/chainlink-env/pkg/helm/chainlink"
 
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-env/environment"
@@ -703,13 +703,29 @@ func (c *chainlink) do(
 
 // ConnectChainlinkNodes creates new chainlink clients
 func ConnectChainlinkNodes(e *environment.Environment) ([]Chainlink, error) {
-	return ConnectChainlinkClientsFromEnv(e)
+	var clients []Chainlink
+	localURLs := e.URLs[chainlinkChart.NodesLocalURLsKey]
+	internalURLs := e.URLs[chainlinkChart.NodesInternalURLsKey]
+	for i, localURL := range localURLs {
+		internalHost := parseHostname(internalURLs[i])
+		c, err := NewChainlink(&ChainlinkConfig{
+			URL:      localURL,
+			Email:    "notreal@fakeemail.ch",
+			Password: "twochains",
+			RemoteIP: internalHost,
+		}, http.DefaultClient)
+		clients = append(clients, c)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return clients, nil
 }
 
 // ConnectChainlinkDBs creates new chainlink DBs clients
 func ConnectChainlinkDBs(e *environment.Environment) ([]*PostgresConnector, error) {
 	var dbs []*PostgresConnector
-	dbURLs := e.URLs[chainlink2.DBsLocalURLsKey]
+	dbURLs := e.URLs[chainlinkChart.DBsLocalURLsKey]
 	for _, u := range dbURLs {
 		sp := strings.Split(u, ":")
 		c, err := NewPostgresConnector(&PostgresConfig{
@@ -730,26 +746,4 @@ func ConnectChainlinkDBs(e *environment.Environment) ([]*PostgresConnector, erro
 func parseHostname(s string) string {
 	r := regexp.MustCompile(`://(?P<Host>.*):`)
 	return r.FindStringSubmatch(s)[1]
-}
-
-// ConnectChainlinkClientsFromEnv creates new chainlink clients by charts
-func ConnectChainlinkClientsFromEnv(e *environment.Environment) ([]Chainlink, error) {
-	var clients []Chainlink
-
-	localURLs := e.URLs[chainlink2.NodesLocalURLsKey]
-	internalURLs := e.URLs[chainlink2.NodesInternalURLsKey]
-	for i, localURL := range localURLs {
-		internalHost := parseHostname(internalURLs[i])
-		c, err := NewChainlink(&ChainlinkConfig{
-			URL:      localURL,
-			Email:    "notreal@fakeemail.ch",
-			Password: "twochains",
-			RemoteIP: internalHost,
-		}, http.DefaultClient)
-		clients = append(clients, c)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return clients, nil
 }
