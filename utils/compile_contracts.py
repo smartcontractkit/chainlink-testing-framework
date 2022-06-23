@@ -33,6 +33,7 @@ used_contract_names = [
   "SimpleWriteAccessController",
   "UpkeepCounter",
   "UpkeepPerformCounterRestrictive",
+  "UpkeepTranscoder"
   "VRF",
   "VRFConsumer",
   "VRFCoordinator",
