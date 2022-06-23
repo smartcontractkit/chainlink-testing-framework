@@ -13,35 +13,31 @@ rootdir = "./artifacts/contracts/ethereum/"
 targetdir = "./contracts/ethereum"
 
 # The names of the contracts that we're actually compiling to use.
-# used_contract_names = [
-#   "APIConsumer",
-#   "BlockhashStore",
-#   "DeviationFlaggingValidator",
-#   "Flags",
-#   "FluxAggregator",
-#   "KeeperConsumer",
-#   "KeeperConsumerPerformance",
-#   "KeeperRegistry1_1",
-#   "KeeperRegistry",
-#   "LinkToken",
-#   "MockETHLINKAggregator",
-#   "MockGASAggregator",
-#   "OffchainAggregator",
-#   "Oracle",
-#   "SimpleReadAccessController",
-#   "SimpleWriteAccessController",
-#   "UpkeepCounter",
-#   "UpkeepPerformCounterRestrictive",
-#   "UpkeepRegistrationRequests",
-#   "VRF",
-#   "VRFConsumer",
-#   "VRFCoordinator",
-#   "VRFConsumerV2",
-#   "VRFCoordinatorV2"
-# ]
-
 used_contract_names = [
-  "KeeperRegistrar"
+  "APIConsumer",
+  "BlockhashStore",
+  "DeviationFlaggingValidator",
+  "Flags",
+  "FluxAggregator",
+  "KeeperConsumer",
+  "KeeperConsumerPerformance",
+  "KeeperRegistrar",
+  "KeeperRegistry1_1",
+  "KeeperRegistry",
+  "LinkToken",
+  "MockETHLINKAggregator",
+  "MockGASAggregator",
+  "OffchainAggregator",
+  "Oracle",
+  "SimpleReadAccessController",
+  "SimpleWriteAccessController",
+  "UpkeepCounter",
+  "UpkeepPerformCounterRestrictive",
+  "VRF",
+  "VRFConsumer",
+  "VRFCoordinator",
+  "VRFConsumerV2",
+  "VRFCoordinatorV2"
 ]
 
 print("Locally installing hardhat...")
