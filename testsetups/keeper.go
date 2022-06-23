@@ -158,7 +158,7 @@ func (k *KeeperBlockTimeTest) ensureInputValues() {
 // contracts within a certain block time
 type KeeperBenchmarkTest struct {
 	Inputs       KeeperBenchmarkTestInputs
-	TestReporter testreporters.KeeperBlockTimeTestReporter
+	TestReporter testreporters.KeeperBenchmarkTestReporter
 
 	keeperRegistry          contracts.KeeperRegistry
 	keeperConsumerContracts []contracts.KeeperConsumerBenchmark
@@ -242,7 +242,7 @@ func (k *KeeperBenchmarkTest) Run() {
 
 	for index, keeperConsumer := range k.keeperConsumerContracts {
 		k.defaultNetwork.AddHeaderEventSubscription(fmt.Sprintf("Keeper Tracker %d", index),
-			contracts.NewKeeperConsumerPerformanceRoundConfirmer(
+			contracts.NewKeeperConsumerBenchmarkRoundConfirmer(
 				keeperConsumer,
 				k.Inputs.BlockInterval,
 				k.Inputs.BlockRange,
