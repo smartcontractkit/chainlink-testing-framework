@@ -15,22 +15,48 @@ import (
 // Soak Test helpers
 
 // BuildGoTests builds the go tests to run, and returns a path to it, along with remote config options
-func BuildGoTests(executablePath, testsPath string) (string, error) {
+//  Note: currentProjectRootPath and currentSoakTestRootPath are not interchangeable with utils.ProjectRoot and utils.SoakRoot
+//  when running in outside repositories. Keep an eye on when you need paths leading to this go package vs the current running project.
+func BuildGoTests(currentProjectRootPath, currentSoakTestRootPath, testsPath string) (string, error) {
 	LoadConfigs()
 	dockerfilePath := filepath.Join(utils.SoakRoot, "Dockerfile.compiler")
-	testTargetDir := filepath.Join(utils.ProjectRoot, "generated_test_dir")
-	finalTestDestination := filepath.Join(utils.ProjectRoot, "remote.test")
+	testTargetDir := filepath.Join(currentProjectRootPath, "generated_test_dir")
+	finalTestDestination := filepath.Join(currentProjectRootPath, "remote.test")
 	// Clean up old test files if they're around
 	if _, err := os.Stat(finalTestDestination); err == nil {
 		if err = os.Remove(finalTestDestination); err != nil {
-			return "", nil
+			return "", err
 		}
 	}
 
+	// Get the relative paths to directories needed by docker
+	relativeTestDirectoryToRootPath, err := filepath.Rel(currentProjectRootPath, testsPath)
+	if err != nil {
+		return "", err
+	}
+	log.Info().Str("path", relativeTestDirectoryToRootPath).Msg("docker build arg testDirectory")
+	relativeProjectRootPathToRunningTest, err := filepath.Rel(currentSoakTestRootPath, currentProjectRootPath)
+
+	if err != nil {
+		return "", err
+	}
+	log.Info().Str("path", relativeProjectRootPathToRunningTest).Msg("docker build arg projectRootPath")
+
 	// TODO: Docker has a Go API, but it was oddly complicated and not at all documented, and kept failing.
 	// So for now, we're doing the tried and true method of plain commands.
-	dockerBuildCmd := exec.Command("docker", "build", "-t", "test-compiler", "-f",
-		dockerfilePath, "--output", testTargetDir, utils.ProjectRoot) // #nosec G204
+	dockerBuildCmd := exec.Command("docker",
+		"build",
+		"-t",
+		"test-compiler",
+		"--build-arg",
+		fmt.Sprintf("testDirectory=./%s", relativeTestDirectoryToRootPath),
+		"--build-arg",
+		fmt.Sprintf("projectRootPath=./%s", relativeProjectRootPathToRunningTest),
+		"-f",
+		dockerfilePath,
+		"--output",
+		testTargetDir,
+		currentProjectRootPath) // #nosec G204
 	dockerBuildCmd.Env = os.Environ()
 	log.Info().Str("Docker File", dockerfilePath).Msg("Compiling tests")
 	compileOut, err := dockerBuildCmd.CombinedOutput()
@@ -58,10 +84,12 @@ func BuildGoTests(executablePath, testsPath string) (string, error) {
 	return finalTestDestination, nil
 }
 
-// runs a soak test based on the tag, launching as many chainlink nodes as necessary
+// RunSoakTest runs a soak test based on the tag, launching as many chainlink nodes as necessary
+//  Note: This function will only work for tests running from this repository since paths in utils
+//  only point to this package/repository structure. Tests in outside repositories will need their own run function
 func RunSoakTest(testTag, namespacePrefix string, chainlinkReplicas int) error {
 	soakTestsPath := filepath.Join(utils.SoakRoot, "tests")
-	exePath, err := BuildGoTests(utils.ProjectRoot, soakTestsPath)
+	exePath, err := BuildGoTests(utils.ProjectRoot, utils.SoakRoot, soakTestsPath)
 	if err != nil {
 		return err
 	}
