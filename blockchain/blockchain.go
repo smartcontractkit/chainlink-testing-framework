@@ -19,10 +19,12 @@ import (
 
 // Commonly used blockchain network types
 const (
-	SimulatedEthNetwork   = "eth_simulated"
-	LiveEthTestNetwork    = "eth_testnet"
-	LiveKlaytnTestNetwork = "klaytn_testnet"
-	LiveMetisTestNetwork  = "metis_testnet"
+	SimulatedEthNetwork     = "eth_simulated"
+	LiveEthTestNetwork      = "eth_testnet"
+	LiveKlaytnTestNetwork   = "klaytn_testnet"
+	LiveMetisTestNetwork    = "metis_testnet"
+	LiveArbitrumTestNetwork = "arbitrum_testnet"
+	LiveOptimismTestNetwork = "optimism_testnet"
 )
 
 // NewBlockchainClientFn external client implementation function
@@ -157,6 +159,14 @@ func NewDefaultNetworkRegistry() *NetworkRegistry {
 				newBlockchainClientFn: NewMetisMultiNodeClient,
 				blockchainClientURLFn: LiveEthTestnetURLs,
 			},
+			LiveArbitrumTestNetwork: {
+				newBlockchainClientFn: NewArbitrumMultiNodeClient,
+				blockchainClientURLFn: LiveEthTestnetURLs,
+			},
+			LiveOptimismTestNetwork: {
+				newBlockchainClientFn: NewOptimismMultiNodeClient,
+				blockchainClientURLFn: LiveEthTestnetURLs,
+			},
 		},
 	}
 }
@@ -179,6 +189,14 @@ func NewSoakNetworkRegistry() *NetworkRegistry {
 			},
 			LiveMetisTestNetwork: {
 				newBlockchainClientFn: NewMetisMultiNodeClient,
+				blockchainClientURLFn: LiveEthTestnetURLs,
+			},
+			LiveArbitrumTestNetwork: {
+				newBlockchainClientFn: NewArbitrumMultiNodeClient,
+				blockchainClientURLFn: LiveEthTestnetURLs,
+			},
+			LiveOptimismTestNetwork: {
+				newBlockchainClientFn: NewOptimismMultiNodeClient,
 				blockchainClientURLFn: LiveEthTestnetURLs,
 			},
 		},

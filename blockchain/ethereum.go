@@ -212,34 +212,40 @@ func (e *EthereumClient) Fund(
 	privateKey, err := crypto.HexToECDSA(e.DefaultWallet.PrivateKey())
 	to := common.HexToAddress(toAddress)
 	if err != nil {
-		return err
+		return fmt.Errorf("invalid private key: %v", err)
 	}
-	// Don't bump gas for Klaytn
-	gasPrice, err := e.Client.SuggestGasPrice(context.Background())
+	suggestedGasTipCap, err := e.Client.SuggestGasTipCap(context.Background())
 	if err != nil {
 		return err
 	}
-	nonce, err := e.GetNonce(context.Background(), e.DefaultWallet.address)
+
+	// Bump Tip Cap
+	gasPriceBuffer := big.NewInt(0).SetUint64(e.NetworkConfig.GasEstimationBuffer)
+	suggestedGasTipCap.Add(suggestedGasTipCap, gasPriceBuffer)
+
+	nonce, err := e.GetNonce(context.Background(), common.HexToAddress(e.DefaultWallet.Address()))
 	if err != nil {
 		return err
 	}
-	log.Warn().
-		Str("Network Name", e.NetworkConfig.Name).
-		Msg("Setting GasTipCap = SuggestedGasPrice for Klaytn network")
-	// https://docs.klaytn.com/klaytn/design/transaction-fees#gas
+	latestBlock, err := e.Client.BlockByNumber(context.Background(), nil)
+	if err != nil {
+		return err
+	}
+	baseFeeMult := big.NewInt(1).Mul(latestBlock.BaseFee(), big.NewInt(2))
+	gasFeeCap := baseFeeMult.Add(baseFeeMult, suggestedGasTipCap)
+
 	tx, err := types.SignNewTx(privateKey, types.LatestSignerForChainID(e.GetChainID()), &types.DynamicFeeTx{
 		ChainID:   e.GetChainID(),
 		Nonce:     nonce,
 		To:        &to,
 		Value:     utils.EtherToWei(amount),
-		GasTipCap: gasPrice,
-		GasFeeCap: gasPrice,
+		GasTipCap: suggestedGasTipCap,
+		GasFeeCap: gasFeeCap,
 		Gas:       22000,
 	})
 	if err != nil {
 		return err
 	}
-
 
 	log.Info().
 		Str("Token", "ETH").
@@ -250,7 +256,6 @@ func (e *EthereumClient) Fund(
 	if err := e.Client.SendTransaction(context.Background(), tx); err != nil {
 		return err
 	}
-
 	return e.ProcessTransaction(tx)
 }
 
@@ -263,21 +268,17 @@ func (e *EthereumClient) DeployContract(
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	//suggestedTipCap, err := e.Client.SuggestGasTipCap(context.Background())
-	//if err != nil {
-	//	return nil, nil, nil, err
-	//}
-	//gasPriceBuffer := big.NewInt(0).SetUint64(e.NetworkConfig.GasEstimationBuffer)
-	//opts.GasTipCap = suggestedTipCap.Add(gasPriceBuffer, suggestedTipCap)
-	opts.GasPrice, err = e.Client.SuggestGasPrice(context.Background())
+	suggestedTipCap, err := e.Client.SuggestGasTipCap(context.Background())
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	gasPriceBuffer := big.NewInt(0).SetUint64(e.NetworkConfig.GasEstimationBuffer)
+	opts.GasTipCap = suggestedTipCap.Add(gasPriceBuffer, suggestedTipCap)
 
 	if e.NetworkConfig.GasEstimationBuffer > 0 {
 		log.Debug().
-			//Uint64("Suggested Gas Tip Cap", big.NewInt(0).Sub(suggestedTipCap, gasPriceBuffer).Uint64()).
-			//Uint64("Bumped Gas Tip Cap", suggestedTipCap.Uint64()).
+			Uint64("Suggested Gas Tip Cap", big.NewInt(0).Sub(suggestedTipCap, gasPriceBuffer).Uint64()).
+			Uint64("Bumped Gas Tip Cap", suggestedTipCap.Uint64()).
 			Str("Contract Name", contractName).
 			Msg("Bumping Suggested Gas Price")
 	}
