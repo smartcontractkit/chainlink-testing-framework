@@ -413,9 +413,9 @@ func (e *EthereumContractDeployer) DeployKeeperRegistrar(linkAddr string, minLin
 	}
 
 	return &EthereumKeeperRegistrar{
-		client: 	e.client,
-		registrar: 	instance.(*ethereum.KeeperRegistrar),
-		address: 	address,
+		client:    e.client,
+		registrar: instance.(*ethereum.KeeperRegistrar),
+		address:   address,
 	}, err
 }
 

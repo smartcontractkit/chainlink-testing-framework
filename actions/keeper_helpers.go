@@ -3,6 +3,7 @@ package actions
 //revive:disable:dot-imports
 import (
 	"fmt"
+	"math"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -80,9 +81,8 @@ func DeployKeeperContracts(
 	Expect(err).ShouldNot(HaveOccurred(), "Funding keeper registry contract shouldn't fail")
 
 	registrarSettings := contracts.KeeperRegistrarSettings{
-		//TODO: check this again
 		AutoApproveConfigType: 2,
-		AutoApproveMaxAllowed: 80,
+		AutoApproveMaxAllowed: math.MaxUint16,
 		RegistryAddr:     registry.Address(),
 		MinLinkJuels:     big.NewInt(0),
 	}
@@ -137,9 +137,8 @@ func DeployPerformanceKeeperContracts(
 	Expect(err).ShouldNot(HaveOccurred(), "Funding keeper registry contract shouldn't fail")
 
 	registrarSettings := contracts.KeeperRegistrarSettings{
-		// TODO: check this as well
 		AutoApproveConfigType: 2,
-		AutoApproveMaxAllowed: 8,
+		AutoApproveMaxAllowed: math.MaxUint16,
 		RegistryAddr:     registry.Address(),
 		MinLinkJuels:     big.NewInt(0),
 	}
