@@ -91,7 +91,7 @@ func (m *ArbitrumClient) Fund(toAddress string, amount *big.Float) error {
 		To:       &to,
 		Value:    utils.EtherToWei(amount),
 		GasPrice: suggestedGasPrice,
-		Gas:      100000,
+		Gas:      456512,
 	})
 	if err != nil {
 		return err
