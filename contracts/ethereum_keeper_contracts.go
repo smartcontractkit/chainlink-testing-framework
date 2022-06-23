@@ -144,8 +144,8 @@ type KeeperRegistrySettings struct {
 type KeeperRegistrarSettings struct {
 	AutoApproveConfigType uint8
 	AutoApproveMaxAllowed uint16
-	RegistryAddr     string
-	MinLinkJuels     *big.Int
+	RegistryAddr          string
+	MinLinkJuels          *big.Int
 }
 
 // KeeperInfo keeper status and balance info
