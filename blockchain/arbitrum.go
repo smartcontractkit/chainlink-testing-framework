@@ -119,18 +119,16 @@ func (m *ArbitrumClient) DeployContract(
 	if err != nil {
 		return nil, nil, nil, err
 	}
-
-	// Metis uses legacy transactions and gas estimations, is behind London fork as of 04/27/2022
-	suggestedGasPrice, err := m.Client.SuggestGasPrice(context.Background())
+	opts.GasPrice, err = m.Client.SuggestGasPrice(context.Background())
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	// Bump gas price
-	gasPriceBuffer := big.NewInt(0).SetUint64(m.NetworkConfig.GasEstimationBuffer)
-	suggestedGasPrice.Add(suggestedGasPrice, gasPriceBuffer)
-
-	opts.GasPrice = suggestedGasPrice
+	if m.NetworkConfig.GasEstimationBuffer > 0 {
+		log.Debug().
+			Str("Contract Name", contractName).
+			Msg("Bumping Suggested Gas Price")
+	}
 
 	contractAddress, transaction, contractInstance, err := deployer(opts, m.Client)
 	if err != nil {
