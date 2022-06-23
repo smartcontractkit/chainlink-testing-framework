@@ -504,6 +504,13 @@ func NewEthereumMultiNodeClientSetup(networkSettings *config.ETHNetwork) func(*e
 		log.Info().
 			Interface("URLs", networkSettings.URLs).
 			Msg("Connected multi-node client")
+
+		// required in Geth when you need to call "simulate" transactions from nodes
+		if ecl.GetNetworkType() == SimulatedEthNetwork {
+			if err := ecl.Fund("0x0", big.NewFloat(1000)); err != nil {
+				return nil, err
+			}
+		}
 		return ecl, nil
 	}
 }
