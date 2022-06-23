@@ -12,12 +12,11 @@ import (
 	"github.com/smartcontractkit/helmenv/environment"
 )
 
-// Soak Test helpers
-
-// BuildGoTests builds the go tests to run, and returns a path to it, along with remote config options
+// BuildGoTestsDocker builds the go tests to run using docker, and returns a path to the test executable, along with
+// remote config options. This version usually takes longer to run, but eliminates issues with cross-compilation.
 //  Note: currentProjectRootPath and currentSoakTestRootPath are not interchangeable with utils.ProjectRoot and utils.SoakRoot
 //  when running in outside repositories. Keep an eye on when you need paths leading to this go package vs the current running project.
-func BuildGoTests(currentProjectRootPath, currentSoakTestRootPath, testsPath string) (string, error) {
+func BuildGoTestsDocker(currentProjectRootPath, currentSoakTestRootPath, testsPath string) (string, error) {
 	LoadConfigs()
 	dockerfilePath := filepath.Join(utils.SoakRoot, "Dockerfile.compiler")
 	testTargetDir := filepath.Join(currentProjectRootPath, "generated_test_dir")
@@ -84,12 +83,48 @@ func BuildGoTests(currentProjectRootPath, currentSoakTestRootPath, testsPath str
 	return finalTestDestination, nil
 }
 
+// BuildGoTests builds the go tests using native go cross-compilation to run, and returns a path to the test executable
+// along with remote config options. If you run into compilation issues using this function, utilize the BuildGoTestsDocker
+// function.
+//  Note: currentProjectRootPath and currentSoakTestRootPath are not interchangeable with utils.ProjectRoot and utils.SoakRoot
+//  when running in outside repositories. Keep an eye on when you need paths leading to this go package vs the current running project.
+func BuildGoTests(executablePath, testsPath string) (string, error) {
+	LoadConfigs()
+	exePath := filepath.Join(executablePath, "remote.test")
+	compileCmd := exec.Command("go", "test", "-ldflags=-s -w", "-c", testsPath, "-o", exePath) // #nosec G204
+	compileCmd.Env = os.Environ()
+	compileCmd.Env = append(compileCmd.Env, "CGO_ENABLED=0", "GOOS=linux", "GOARCH=amd64")
+
+	log.Info().Str("Test Directory", testsPath).Msg("Compiling tests")
+	compileOut, err := compileCmd.CombinedOutput()
+	log.Debug().
+		Str("Output", string(compileOut)).
+		Str("Command", compileCmd.String()).
+		Msg("Ran command")
+	if err != nil {
+		return "", fmt.Errorf("Env: %s\nCommand: %s\nCommand Output: %s, %w", compileCmd.Env, compileCmd.String(), string(compileOut), err)
+	}
+
+	_, err = os.Stat(exePath)
+	if err != nil {
+		return "", fmt.Errorf("Expected '%s' to exist, %w", exePath, err)
+	}
+	return exePath, nil
+}
+
 // RunSoakTest runs a soak test based on the tag, launching as many chainlink nodes as necessary
 //  Note: This function will only work for tests running from this repository since paths in utils
 //  only point to this package/repository structure. Tests in outside repositories will need their own run function
-func RunSoakTest(testTag, namespacePrefix string, chainlinkReplicas int) error {
+func RunSoakTest(testTag, namespacePrefix string, chainlinkReplicas int, dockerCompile bool) error {
 	soakTestsPath := filepath.Join(utils.SoakRoot, "tests")
-	exePath, err := BuildGoTests(utils.ProjectRoot, utils.SoakRoot, soakTestsPath)
+	var exePath string
+	var err error
+	if dockerCompile {
+		exePath, err = BuildGoTestsDocker(utils.ProjectRoot, utils.SoakRoot, soakTestsPath)
+	} else {
+		exePath, err = BuildGoTests(utils.ProjectRoot, soakTestsPath)
+	}
+
 	if err != nil {
 		return err
 	}
