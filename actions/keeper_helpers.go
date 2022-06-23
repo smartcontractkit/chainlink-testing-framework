@@ -180,7 +180,7 @@ func DeployKeeperRegistrar(
 ) contracts.KeeperRegistrar {
 	registrar, err := contractDeployer.DeployKeeperRegistrar(linkToken.Address(), big.NewInt(0), registrarSettings, registry)
 
-	Expect(err).ShouldNot(HaveOccurred(), "Deploying UpkeepRegistrationRequests contract shouldn't fail")
+	Expect(err).ShouldNot(HaveOccurred(), "Deploying KeeperRegistrar contract shouldn't fail")
 	err = networks.Default.WaitForEvents()
 	Expect(err).ShouldNot(HaveOccurred(), "Failed waiting for registrar to deploy")
 	err = registry.SetRegistrar(registrar.Address())

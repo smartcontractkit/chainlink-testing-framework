@@ -20,28 +20,6 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/testreporters"
 )
 
-type UpkeepRegistrar interface {
-	Address() string
-	SetRegistrarConfig(
-		autoRegister bool,
-		windowSizeBlocks uint32,
-		allowedPerWindow uint16,
-		registryAddr string,
-		minLinkJuels *big.Int,
-	) error
-	EncodeRegisterRequest(
-		name string,
-		email []byte,
-		upkeepAddr string,
-		gasLimit uint32,
-		adminAddr string,
-		checkData []byte,
-		amount *big.Int,
-		source uint8,
-	) ([]byte, error)
-	Fund(ethAmount *big.Float) error
-}
-
 type KeeperRegistrar interface {
 	Address() string
 
