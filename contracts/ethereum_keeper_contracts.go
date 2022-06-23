@@ -23,13 +23,6 @@ import (
 type KeeperRegistrar interface {
 	Address() string
 
-	SetRegistrarConfig(
-		autoApproveConfigType uint8,
-		autoApproveMaxAllowed uint16,
-		registryAddr string,
-		minLinkJuels *big.Int,
-	) error
-
 	EncodeRegisterRequest(
 		name string,
 		email []byte,
@@ -900,24 +893,6 @@ func (v *EthereumKeeperRegistrar) Address() string {
 
 func (v *EthereumKeeperRegistrar) Fund(ethAmount *big.Float) error {
 	return v.client.Fund(v.address.Hex(), ethAmount)
-}
-
-// SetRegistrarConfig sets registrar config, allowing auto register or pending requests for manual registration
-func (v *EthereumKeeperRegistrar) SetRegistrarConfig(
-	autoApproveConfigType uint8,
-	autoApproveMaxAllowed uint16,
-	registryAddr string,
-	minLinkJuels *big.Int,
-) error {
-	opts, err := v.client.TransactionOpts(v.client.GetDefaultWallet())
-	if err != nil {
-		return err
-	}
-	tx, err := v.registrar.SetRegistrationConfig(opts, autoApproveConfigType, autoApproveMaxAllowed, common.HexToAddress(registryAddr), minLinkJuels)
-	if err != nil {
-		return err
-	}
-	return v.client.ProcessTransaction(tx)
 }
 
 // EncodeRegisterRequest encodes register request to call it through link token TransferAndCall
