@@ -139,8 +139,8 @@ func DeployPerformanceKeeperContracts(
 	registrarSettings := contracts.KeeperRegistrarSettings{
 		AutoApproveConfigType: 2,
 		AutoApproveMaxAllowed: math.MaxUint16,
-		RegistryAddr:     registry.Address(),
-		MinLinkJuels:     big.NewInt(0),
+		RegistryAddr:          registry.Address(),
+		MinLinkJuels:          big.NewInt(0),
 	}
 	registrar := DeployKeeperRegistrar(linkToken, registrarSettings, contractDeployer, networks, registry)
 

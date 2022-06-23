@@ -911,9 +911,9 @@ func (v *EthereumKeeperConsumerPerformance) SetPerformGasToBurn(ctx context.Cont
 // EthereumKeeperRegistrar corresponds to the registrar which is used to send requests to the registry when
 // registering new upkeeps.
 type EthereumKeeperRegistrar struct {
-	client blockchain.EVMClient
+	client    blockchain.EVMClient
 	registrar *ethereum.KeeperRegistrar
-	address *common.Address
+	address   *common.Address
 }
 
 func (v *EthereumKeeperRegistrar) Address() string {
