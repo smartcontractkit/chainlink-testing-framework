@@ -33,7 +33,6 @@ type ContractDeployer interface {
 	DeployVRFContract() (VRF, error)
 	DeployMockETHLINKFeed(answer *big.Int) (MockETHLINKFeed, error)
 	DeployMockGasFeed(answer *big.Int) (MockGasFeed, error)
-	DeployUpkeepRegistrationRequests(linkAddr string, minLinkJuels *big.Int) (UpkeepRegistrar, error)
 	DeployKeeperRegistrar(
 		linkAddr string,
 		minLinkJuels *big.Int,
@@ -395,23 +394,6 @@ func (e *EthereumContractDeployer) DeployMockGasFeed(answer *big.Int) (MockGasFe
 		client:  e.client,
 		feed:    instance.(*ethereum.MockGASAggregator),
 		address: address,
-	}, err
-}
-
-func (e *EthereumContractDeployer) DeployUpkeepRegistrationRequests(linkAddr string, minLinkJuels *big.Int) (UpkeepRegistrar, error) {
-	address, _, instance, err := e.client.DeployContract("UpkeepRegistrationRequests", func(
-		auth *bind.TransactOpts,
-		backend bind.ContractBackend,
-	) (common.Address, *types.Transaction, interface{}, error) {
-		return ethereum.DeployUpkeepRegistrationRequests(auth, backend, common.HexToAddress(linkAddr), minLinkJuels)
-	})
-	if err != nil {
-		return nil, err
-	}
-	return &EthereumUpkeepRegistrationRequests{
-		client:    e.client,
-		registrar: instance.(*ethereum.UpkeepRegistrationRequests),
-		address:   address,
 	}, err
 }
 

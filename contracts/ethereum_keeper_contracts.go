@@ -908,74 +908,8 @@ func (v *EthereumKeeperConsumerPerformance) SetPerformGasToBurn(ctx context.Cont
 	return v.client.ProcessTransaction(tx)
 }
 
-// EthereumUpkeepRegistrationRequests keeper contract to register upkeeps
-type EthereumUpkeepRegistrationRequests struct {
-	client    blockchain.EVMClient
-	registrar *ethereum.UpkeepRegistrationRequests
-	address   *common.Address
-}
-
-func (v *EthereumUpkeepRegistrationRequests) Address() string {
-	return v.address.Hex()
-}
-
-// SetRegistrarConfig sets registrar config, allowing auto register or pending requests for manual registration
-func (v *EthereumUpkeepRegistrationRequests) SetRegistrarConfig(
-	autoRegister bool,
-	windowSizeBlocks uint32,
-	allowedPerWindow uint16,
-	registryAddr string,
-	minLinkJuels *big.Int,
-) error {
-	opts, err := v.client.TransactionOpts(v.client.GetDefaultWallet())
-	if err != nil {
-		return err
-	}
-	tx, err := v.registrar.SetRegistrationConfig(opts, autoRegister, windowSizeBlocks, allowedPerWindow, common.HexToAddress(registryAddr), minLinkJuels)
-	if err != nil {
-		return err
-	}
-	return v.client.ProcessTransaction(tx)
-}
-
-func (v *EthereumUpkeepRegistrationRequests) Fund(ethAmount *big.Float) error {
-	return v.client.Fund(v.address.Hex(), ethAmount)
-}
-
-// EncodeRegisterRequest encodes register request to call it through link token TransferAndCall
-func (v *EthereumUpkeepRegistrationRequests) EncodeRegisterRequest(
-	name string,
-	email []byte,
-	upkeepAddr string,
-	gasLimit uint32,
-	adminAddr string,
-	checkData []byte,
-	amount *big.Int,
-	source uint8,
-) ([]byte, error) {
-	registryABI, err := abi.JSON(strings.NewReader(ethereum.UpkeepRegistrationRequestsABI))
-	if err != nil {
-		return nil, err
-	}
-	req, err := registryABI.Pack(
-		"register",
-		name,
-		email,
-		common.HexToAddress(upkeepAddr),
-		gasLimit,
-		common.HexToAddress(adminAddr),
-		checkData,
-		amount,
-		source,
-	)
-	if err != nil {
-		return nil, err
-	}
-	return req, nil
-}
-
-// ----------------------------------------------------------------------------------------------------------------
-
+// EthereumKeeperRegistrar corresponds to the registrar which is used to send requests to the registry when
+// registering new upkeeps.
 type EthereumKeeperRegistrar struct {
 	client blockchain.EVMClient
 	registrar *ethereum.KeeperRegistrar
@@ -1034,7 +968,7 @@ func (v *EthereumKeeperRegistrar) EncodeRegisterRequest(
 		checkData,
 		amount,
 		source,
-		senderAddr,
+		common.HexToAddress(senderAddr),
 	)
 	if err != nil {
 		return nil, err

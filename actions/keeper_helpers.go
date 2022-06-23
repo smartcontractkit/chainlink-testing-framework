@@ -224,7 +224,7 @@ func RegisterUpkeepContracts(
 			[]byte("0x"),
 			linkFunds,
 			0,
-			networks.Default.GetDefaultWallet().Address(), // upkeep Admin
+			networks.Default.GetDefaultWallet().Address(),
 		)
 		Expect(err).ShouldNot(HaveOccurred(), "Encoding the register request shouldn't fail")
 		tx, err := linkToken.TransferAndCall(registrar.Address(), linkFunds, req)
