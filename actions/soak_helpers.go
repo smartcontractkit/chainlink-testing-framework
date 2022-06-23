@@ -89,6 +89,7 @@ func BuildGoTestsDocker(currentProjectRootPath, currentSoakTestRootPath, testsPa
 //  Note: currentProjectRootPath and currentSoakTestRootPath are not interchangeable with utils.ProjectRoot and utils.SoakRoot
 //  when running in outside repositories. Keep an eye on when you need paths leading to this go package vs the current running project.
 func BuildGoTests(executablePath, testsPath string) (string, error) {
+	LoadConfigs()
 	exePath := filepath.Join(executablePath, "remote.test")
 	compileCmd := exec.Command("go", "test", "-ldflags=-s -w", "-c", testsPath, "-o", exePath) // #nosec G204
 	compileCmd.Env = os.Environ()
