@@ -100,14 +100,6 @@ func RunSoakTest(testTargetDir, finalTestDestination, testTag, namespacePrefix s
 	}
 	_, _, errOut, err := env.Client.CopyToPod(
 		env.Cfg.Namespace,
-		filepath.Join(utils.SuiteRoot, "framework.yaml"),
-		fmt.Sprintf("%s/%s:/root/framework.yaml", env.Cfg.Namespace, "remote-test-runner"),
-		"remote-test-runner")
-	if err != nil {
-		return errors.Wrap(err, errOut.String())
-	}
-	_, _, errOut, err = env.Client.CopyToPod(
-		env.Cfg.Namespace,
 		filepath.Join(utils.ProjectRoot, "remote.test"),
 		fmt.Sprintf("%s/%s:/root/remote.test", env.Cfg.Namespace, "remote-test-runner"),
 		"remote-test-runner")

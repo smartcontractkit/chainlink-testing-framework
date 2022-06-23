@@ -5,9 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 
 	"github.com/avast/retry-go"
 	"github.com/onsi/ginkgo/v2"
@@ -39,13 +42,14 @@ var ContractDeploymentInterval = 500
 
 // GinkgoSuite provides the default setup for running a Ginkgo test suite
 func GinkgoSuite() {
-	LoadConfigs()
+	logging.Init()
 	gomega.RegisterFailHandler(ginkgo.Fail)
 }
 
 // GinkgoRemoteSuite provides the default setup for running tests from a remote test runner
 func GinkgoRemoteSuite() {
 	LoadRemoteConfigs()
+	logging.Init()
 	gomega.RegisterFailHandler(ginkgo.Fail)
 }
 
@@ -250,7 +254,12 @@ func TeardownSuite(
 		}
 	}
 
-	switch strings.ToUpper(config.ProjectConfig.FrameworkConfig.KeepEnvironments) {
+	keepEnvs := os.Getenv("KEEP_ENVIRONMENTS")
+	if keepEnvs == "" {
+		keepEnvs = "NEVER"
+	}
+
+	switch strings.ToUpper(keepEnvs) {
 	case "ALWAYS":
 	case "ONFAIL":
 		if ginkgo.CurrentSpecReport().Failed() {
@@ -259,7 +268,7 @@ func TeardownSuite(
 	case "NEVER":
 		return env.Shutdown()
 	default:
-		log.Warn().Str("Invalid Keep Value", config.ProjectConfig.FrameworkConfig.KeepEnvironments).
+		log.Warn().Str("Invalid Keep Value", keepEnvs).
 			Msg("Invalid 'keep_environments' value, see the 'framework.yaml' file")
 	}
 	return nil

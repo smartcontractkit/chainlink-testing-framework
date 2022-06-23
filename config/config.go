@@ -3,58 +3,24 @@ package config
 
 import (
 	"errors"
-	"os"
 	"strings"
 
 	"github.com/kelseyhightower/envconfig"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 )
 
 // ConfigurationType refers to the different ways that configurations can be set
 type ConfigurationType string
 
-// Configs
 const (
 	LocalConfig ConfigurationType = "local"
-
-	DefaultGeth     string = "geth"
-	PerformanceGeth string = "geth_performance"
-	RealisticGeth   string = "geth_realistic"
 )
 
 var ProjectConfig Config
 var ProjectConfigDirectory string
 
-// ChainlinkVals formats Chainlink values set in the framework config to be passed to Chainlink deployments
-func ChainlinkVals() map[string]interface{} {
-	if ProjectConfig.FrameworkConfig == nil {
-		log.Error().Msg("ProjectFrameworkSettings not set!")
-		return nil
-	}
-	values := map[string]interface{}{}
-	if len(ProjectConfig.FrameworkConfig.ChainlinkEnvValues) > 0 {
-		values["env"] = ProjectConfig.FrameworkConfig.ChainlinkEnvValues
-	}
-	if ProjectConfig.FrameworkConfig.ChainlinkImage != "" {
-		values["chainlink"] = map[string]interface{}{
-			"image": map[string]interface{}{
-				"image":   ProjectConfig.FrameworkConfig.ChainlinkImage,
-				"version": ProjectConfig.FrameworkConfig.ChainlinkVersion,
-			},
-		}
-	}
-	return values
-}
-
 // LoadFromEnv loads all config files and environment variables
 func LoadFromEnv() error {
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
-	if err := envconfig.Process("", &ProjectConfig); err != nil {
-		return err
-	}
-	log.Logger = log.Logger.Level(zerolog.Level(ProjectConfig.FrameworkConfig.Logging.Level))
-	return nil
+	return envconfig.Process("", &ProjectConfig)
 }
 
 // LoadRemoteEnv loads environment variables when running on remote test runner
