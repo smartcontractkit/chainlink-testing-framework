@@ -178,7 +178,7 @@ func DeployKeeperRegistrar(
 	networks *blockchain.Networks,
 	registry contracts.KeeperRegistry,
 ) contracts.KeeperRegistrar {
-	registrar, err := contractDeployer.DeployKeeperRegistrar(linkToken.Address(), big.NewInt(0), registrarSettings, registry)
+	registrar, err := contractDeployer.DeployKeeperRegistrar(linkToken.Address(), registrarSettings)
 
 	Expect(err).ShouldNot(HaveOccurred(), "Deploying KeeperRegistrar contract shouldn't fail")
 	err = networks.Default.WaitForEvents()
@@ -187,16 +187,6 @@ func DeployKeeperRegistrar(
 	Expect(err).ShouldNot(HaveOccurred(), "Registering the registrar address on the registry shouldn't fail")
 	err = networks.Default.WaitForEvents()
 	Expect(err).ShouldNot(HaveOccurred(), "Failed waiting for registry to set registrar")
-
-	err = registrar.SetRegistrarConfig(
-		registrarSettings.AutoApproveConfigType,
-		registrarSettings.AutoApproveMaxAllowed,
-		registrarSettings.RegistryAddr,
-		registrarSettings.MinLinkJuels,
-	)
-	Expect(err).ShouldNot(HaveOccurred(), "Setting the registrar configuration shouldn't fail")
-	err = networks.Default.WaitForEvents()
-	Expect(err).ShouldNot(HaveOccurred(), "Failed waiting for registrar and supporting contract deployments")
 
 	return registrar
 }
