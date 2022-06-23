@@ -42,6 +42,31 @@ type UpkeepRegistrar interface {
 	Fund(ethAmount *big.Float) error
 }
 
+type KeeperRegistrar interface {
+	Address() string
+
+	SetRegistrarConfig(
+		autoApproveConfigType uint8,
+		autoApproveMaxAllowed uint16,
+		registryAddr string,
+		minLinkJuels *big.Int,
+	) error
+
+	EncodeRegisterRequest(
+		name string,
+		email []byte,
+		upkeepAddr string,
+		gasLimit uint32,
+		adminAddr string,
+		checkData []byte,
+		amount *big.Int,
+		source uint8,
+		senderAddr string,
+	) ([]byte, error)
+
+	Fund(ethAmount *big.Float) error
+}
+
 type KeeperRegistry interface {
 	Address() string
 	Fund(ethAmount *big.Float) error
@@ -116,9 +141,8 @@ type KeeperRegistrySettings struct {
 
 // KeeperRegistrarSettings represents settings for registrar contract
 type KeeperRegistrarSettings struct {
-	AutoRegister     bool
-	WindowSizeBlocks uint32
-	AllowedPerWindow uint16
+	AutoApproveConfigType uint8
+	AutoApproveMaxAllowed uint16
 	RegistryAddr     string
 	MinLinkJuels     *big.Int
 }
@@ -916,6 +940,74 @@ func (v *EthereumUpkeepRegistrationRequests) EncodeRegisterRequest(
 		checkData,
 		amount,
 		source,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return req, nil
+}
+
+// ----------------------------------------------------------------------------------------------------------------
+
+type EthereumKeeperRegistrar struct {
+	client blockchain.EVMClient
+	registrar *ethereum.KeeperRegistrar
+	address *common.Address
+}
+
+func (v *EthereumKeeperRegistrar) Address() string {
+	return v.address.Hex()
+}
+
+func (v *EthereumKeeperRegistrar) Fund(ethAmount *big.Float) error {
+	return v.client.Fund(v.address.Hex(), ethAmount)
+}
+
+// SetRegistrarConfig sets registrar config, allowing auto register or pending requests for manual registration
+func (v *EthereumKeeperRegistrar) SetRegistrarConfig(
+	autoApproveConfigType uint8,
+	autoApproveMaxAllowed uint16,
+	registryAddr string,
+	minLinkJuels *big.Int,
+) error {
+	opts, err := v.client.TransactionOpts(v.client.GetDefaultWallet())
+	if err != nil {
+		return err
+	}
+	tx, err := v.registrar.SetRegistrationConfig(opts, autoApproveConfigType, autoApproveMaxAllowed, common.HexToAddress(registryAddr), minLinkJuels)
+	if err != nil {
+		return err
+	}
+	return v.client.ProcessTransaction(tx)
+}
+
+// EncodeRegisterRequest encodes register request to call it through link token TransferAndCall
+func (v *EthereumKeeperRegistrar) EncodeRegisterRequest(
+	name string,
+	email []byte,
+	upkeepAddr string,
+	gasLimit uint32,
+	adminAddr string,
+	checkData []byte,
+	amount *big.Int,
+	source uint8,
+	senderAddr string,
+) ([]byte, error) {
+	registryABI, err := abi.JSON(strings.NewReader(ethereum.KeeperRegistrarMetaData.ABI))
+	if err != nil {
+		return nil, err
+	}
+	req, err := registryABI.Pack(
+		"register",
+		name,
+		email,
+		common.HexToAddress(upkeepAddr),
+		gasLimit,
+		common.HexToAddress(adminAddr),
+		checkData,
+		amount,
+		source,
+		senderAddr,
 	)
 	if err != nil {
 		return nil, err

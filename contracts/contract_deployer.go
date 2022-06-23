@@ -34,7 +34,12 @@ type ContractDeployer interface {
 	DeployMockETHLINKFeed(answer *big.Int) (MockETHLINKFeed, error)
 	DeployMockGasFeed(answer *big.Int) (MockGasFeed, error)
 	DeployUpkeepRegistrationRequests(linkAddr string, minLinkJuels *big.Int) (UpkeepRegistrar, error)
-	DeployRegistrar(linkAddr string, minLinkJuels *big.Int) (UpkeepRegistrar, error)
+	DeployKeeperRegistrar(
+		linkAddr string,
+		minLinkJuels *big.Int,
+		registrarSettings KeeperRegistrarSettings,
+		registry KeeperRegistry,
+	) (KeeperRegistrar, error)
 	DeployKeeperRegistry(opts *KeeperRegistryOpts) (KeeperRegistry, error)
 	DeployKeeperConsumer(updateInterval *big.Int) (KeeperConsumer, error)
 	DeployKeeperConsumerPerformance(
@@ -410,8 +415,26 @@ func (e *EthereumContractDeployer) DeployUpkeepRegistrationRequests(linkAddr str
 	}, err
 }
 
-func (e *EthereumContractDeployer) DeployRegistrar(linnkAddr string, minLinkJuels *big.Int) (UpkeepRegistrar, error) {
+func (e *EthereumContractDeployer) DeployKeeperRegistrar(linkAddr string, minLinkJuels *big.Int,
+	registrarSettings KeeperRegistrarSettings, registry KeeperRegistry) (KeeperRegistrar, error) {
 
+	address, _, instance, err := e.client.DeployContract("KeeperRegistrar", func(
+		opts *bind.TransactOpts,
+		backend bind.ContractBackend,
+	) (common.Address, *types.Transaction, interface{}, error) {
+		return ethereum.DeployKeeperRegistrar(opts, backend, common.HexToAddress(linkAddr), registrarSettings.AutoApproveConfigType,
+			registrarSettings.AutoApproveMaxAllowed, common.HexToAddress(registry.Address()), minLinkJuels)
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &EthereumKeeperRegistrar{
+		client: 	e.client,
+		registrar: 	instance.(*ethereum.KeeperRegistrar),
+		address: 	address,
+	}, err
 }
 
 func (e *EthereumContractDeployer) DeployKeeperRegistry(

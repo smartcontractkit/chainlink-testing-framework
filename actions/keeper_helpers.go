@@ -54,7 +54,7 @@ func DeployKeeperContracts(
 	linkToken contracts.LinkToken,
 	contractDeployer contracts.ContractDeployer,
 	networks *blockchain.Networks,
-) (contracts.KeeperRegistry, contracts.UpkeepRegistrar, []contracts.KeeperConsumer, []*big.Int) {
+) (contracts.KeeperRegistry, contracts.KeeperRegistrar, []contracts.KeeperConsumer, []*big.Int) {
 	ef, err := contractDeployer.DeployMockETHLINKFeed(big.NewInt(2e18))
 	Expect(err).ShouldNot(HaveOccurred(), "Deploying mock ETH-Link feed shouldn't fail")
 	gf, err := contractDeployer.DeployMockGasFeed(big.NewInt(2e11))
@@ -79,9 +79,9 @@ func DeployKeeperContracts(
 	Expect(err).ShouldNot(HaveOccurred(), "Funding keeper registry contract shouldn't fail")
 
 	registrarSettings := contracts.KeeperRegistrarSettings{
-		AutoRegister:     true,
-		WindowSizeBlocks: uint32(6000000),
-		AllowedPerWindow: 1000, // we might need to register new upkeeps later on in the tests, so it's good to have a buffer
+		//TODO: check this again
+		AutoApproveConfigType: 2,
+		AutoApproveMaxAllowed: 80,
 		RegistryAddr:     registry.Address(),
 		MinLinkJuels:     big.NewInt(0),
 	}
@@ -110,7 +110,7 @@ func DeployPerformanceKeeperContracts(
 	blockInterval,  // Interval of blocks that upkeeps are expected to be performed
 	checkGasToBurn, // How much gas should be burned on checkUpkeep() calls
 	performGasToBurn int64, // How much gas should be burned on performUpkeep() calls
-) (contracts.KeeperRegistry, contracts.UpkeepRegistrar, []contracts.KeeperConsumerPerformance, []*big.Int) {
+) (contracts.KeeperRegistry, contracts.KeeperRegistrar, []contracts.KeeperConsumerPerformance, []*big.Int) {
 	ef, err := contractDeployer.DeployMockETHLINKFeed(big.NewInt(2e18))
 	Expect(err).ShouldNot(HaveOccurred(), "Deploying mock ETH-Link feed shouldn't fail")
 	gf, err := contractDeployer.DeployMockGasFeed(big.NewInt(2e11))
@@ -135,9 +135,9 @@ func DeployPerformanceKeeperContracts(
 	Expect(err).ShouldNot(HaveOccurred(), "Funding keeper registry contract shouldn't fail")
 
 	registrarSettings := contracts.KeeperRegistrarSettings{
-		AutoRegister:     true,
-		WindowSizeBlocks: uint32(6000000),
-		AllowedPerWindow: uint16(numberOfContracts),
+		// TODO: check this as well
+		AutoApproveConfigType: 2,
+		AutoApproveMaxAllowed: 8,
 		RegistryAddr:     registry.Address(),
 		MinLinkJuels:     big.NewInt(0),
 	}
@@ -177,13 +177,9 @@ func DeployKeeperRegistrar(
 	contractDeployer contracts.ContractDeployer,
 	networks *blockchain.Networks,
 	registry contracts.KeeperRegistry,
-) contracts.UpkeepRegistrar {
-	// Deploy and configure the UpkeepRegistrar
-	var err error
-	registrar, err := contractDeployer.DeployUpkeepRegistrationRequests(
-		linkToken.Address(),
-		big.NewInt(0),
-	)
+) contracts.KeeperRegistrar {
+	registrar, err := contractDeployer.DeployKeeperRegistrar(linkToken.Address(), big.NewInt(0), registrarSettings, registry)
+
 	Expect(err).ShouldNot(HaveOccurred(), "Deploying UpkeepRegistrationRequests contract shouldn't fail")
 	err = networks.Default.WaitForEvents()
 	Expect(err).ShouldNot(HaveOccurred(), "Failed waiting for registrar to deploy")
@@ -193,9 +189,8 @@ func DeployKeeperRegistrar(
 	Expect(err).ShouldNot(HaveOccurred(), "Failed waiting for registry to set registrar")
 
 	err = registrar.SetRegistrarConfig(
-		registrarSettings.AutoRegister,
-		registrarSettings.WindowSizeBlocks,
-		registrarSettings.AllowedPerWindow,
+		registrarSettings.AutoApproveConfigType,
+		registrarSettings.AutoApproveMaxAllowed,
 		registrarSettings.RegistryAddr,
 		registrarSettings.MinLinkJuels,
 	)
@@ -212,7 +207,7 @@ func RegisterUpkeepContracts(
 	networks *blockchain.Networks,
 	upkeepGasLimit uint32,
 	registry contracts.KeeperRegistry,
-	registrar contracts.UpkeepRegistrar,
+	registrar contracts.KeeperRegistrar,
 	numberOfContracts int,
 	upkeepAddresses []string,
 ) []*big.Int {
@@ -228,6 +223,7 @@ func RegisterUpkeepContracts(
 			[]byte("0x"),
 			linkFunds,
 			0,
+			networks.Default.GetDefaultWallet().Address(), // upkeep Admin
 		)
 		Expect(err).ShouldNot(HaveOccurred(), "Encoding the register request shouldn't fail")
 		tx, err := linkToken.TransferAndCall(registrar.Address(), linkFunds, req)
@@ -407,7 +403,7 @@ func RegisterNewUpkeeps(
 	networks *blockchain.Networks,
 	linkToken contracts.LinkToken,
 	registry contracts.KeeperRegistry,
-	registrar contracts.UpkeepRegistrar,
+	registrar contracts.KeeperRegistrar,
 	upkeepGasLimit uint32,
 	numberOfNewUpkeeps int,
 ) ([]contracts.KeeperConsumer, []*big.Int) {
