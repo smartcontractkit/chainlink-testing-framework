@@ -15,7 +15,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/client"
 )
 
-// KeeperBenchmarkTestReporter enables reporting on the keeper block time test
+// KeeperBenchmarkTestReporter enables reporting on the keeper benchmark test
 type KeeperBenchmarkTestReporter struct {
 	Reports                        []KeeperBenchmarkTestReport `json:"reports"`
 	ReportMutex                    sync.Mutex
@@ -39,7 +39,7 @@ func (k *KeeperBenchmarkTestReporter) SetNamespace(namespace string) {
 }
 
 func (k *KeeperBenchmarkTestReporter) WriteReport(folderLocation string) error {
-	k.keeperReportFile = filepath.Join(folderLocation, "./block_time_report.csv")
+	k.keeperReportFile = filepath.Join(folderLocation, "./benchmark_report.csv")
 	k.attemptedTransactionsFile = filepath.Join(folderLocation, "./attempted_transactions_report.json")
 	keeperReportFile, err := os.Create(k.keeperReportFile)
 	if err != nil {
@@ -112,7 +112,7 @@ func (k *KeeperBenchmarkTestReporter) WriteReport(folderLocation string) error {
 		return err
 	}
 
-	log.Info().Msg("Successfully wrote report on Keeper Block Timing")
+	log.Info().Msg("Successfully wrote report on Keeper Benchmark")
 	return nil
 }
 
@@ -138,7 +138,7 @@ func (k *KeeperBenchmarkTestReporter) SendSlackNotification(slackClient *slack.C
 		Filetype:        "csv",
 		Filename:        fmt.Sprintf("keeper_benchmark_%s.csv", k.namespace),
 		File:            k.keeperReportFile,
-		InitialComment:  fmt.Sprintf("Keeper Block Time Test Report %s", k.namespace),
+		InitialComment:  fmt.Sprintf("Keeper Benchmark Test Report %s", k.namespace),
 		Channels:        []string{slackChannel},
 		ThreadTimestamp: ts,
 	}); err != nil {
