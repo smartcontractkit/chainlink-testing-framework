@@ -300,8 +300,8 @@ func DeployKeeperConsumersPerformance(
 	contractDeployer contracts.ContractDeployer,
 	networks *blockchain.Networks,
 	numberOfContracts int,
-	blockRange,     // How many blocks to run the test for
-	blockInterval,  // Interval of blocks that upkeeps are expected to be performed
+	blockRange, // How many blocks to run the test for
+	blockInterval, // Interval of blocks that upkeeps are expected to be performed
 	checkGasToBurn, // How much gas should be burned on checkUpkeep() calls
 	performGasToBurn int64, // How much gas should be burned on performUpkeep() calls
 ) []contracts.KeeperConsumerPerformance {
