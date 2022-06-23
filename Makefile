@@ -61,7 +61,7 @@ test_soak_ocr:
 	go test -count=1 -v -timeout 10m -run ^TestOCRSoak$$ ./suite/soak
 
 test_soak_keeper:
-	go test -count=1 -v -timeout 10m -run '^TestKeeperSoak$$  ./suite/soak
+	go test -count=1 -v -timeout 10m -run ^TestKeeperSoak$$  ./suite/soak
 
 test_smoke:
 	ginkgo -v -r --junit-report=tests-smoke-report.xml --keep-going --trace --randomize-all --randomize-suites --progress $(args) ./suite/smoke 
