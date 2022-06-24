@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"net/url"
+
+	"github.com/smartcontractkit/chainlink-env/environment"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -33,36 +34,25 @@ func NewMetisClient(networkSettings *config.ETHNetwork) (EVMClient, error) {
 	return &MetisClient{client.(*EthereumClient)}, err
 }
 
-// NewMetisMultinodeClient returns an instantiated instance of all Metis clients connected to all nodes
-func NewMetisMultiNodeClient(
-	_ string,
-	networkConfig map[string]interface{},
-	urls []*url.URL,
-) (EVMClient, error) {
-	networkSettings := &config.ETHNetwork{}
-	err := UnmarshalNetworkConfig(networkConfig, networkSettings)
-	if err != nil {
-		return nil, err
-	}
-	log.Info().
-		Interface("URLs", networkSettings.URLs).
-		Msg("Connecting multi-node client")
-
-	multiNodeClient := &EthereumMultinodeClient{}
-	for _, envURL := range urls {
-		networkSettings.URLs = append(networkSettings.URLs, envURL.String())
-	}
-	for idx, networkURL := range networkSettings.URLs {
-		networkSettings.URL = networkURL
-		ec, err := NewMetisClient(networkSettings)
-		if err != nil {
-			return nil, err
+func NewMetisMultiNodeClientSetup(networkSettings *config.ETHNetwork) func(*environment.Environment) (EVMClient, error) {
+	return func(e *environment.Environment) (EVMClient, error) {
+		multiNodeClient := &EthereumMultinodeClient{}
+		networkSettings.URLs = append(networkSettings.URLs, e.URLs["geth"]...)
+		for idx, networkURL := range networkSettings.URLs {
+			networkSettings.URL = networkURL
+			ec, err := NewMetisClient(networkSettings)
+			if err != nil {
+				return nil, err
+			}
+			ec.SetID(idx)
+			multiNodeClient.Clients = append(multiNodeClient.Clients, ec)
 		}
-		ec.SetID(idx)
-		multiNodeClient.Clients = append(multiNodeClient.Clients, ec)
+		multiNodeClient.DefaultClient = multiNodeClient.Clients[0]
+		log.Info().
+			Interface("URLs", networkSettings.URLs).
+			Msg("Connecting multi-node client")
+		return &MetisMultinodeClient{multiNodeClient}, nil
 	}
-	multiNodeClient.DefaultClient = multiNodeClient.Clients[0]
-	return &MetisMultinodeClient{multiNodeClient}, nil
 }
 
 // Fund sends some ETH to an address using the default wallet

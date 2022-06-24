@@ -9,10 +9,10 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog/log"
+	"github.com/smartcontractkit/chainlink-env/environment"
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/client"
 	"github.com/smartcontractkit/chainlink-testing-framework/testreporters"
-	"github.com/smartcontractkit/helmenv/environment"
 )
 
 // VRFV2SoakTest defines a typical VRFV2 soak test
@@ -24,7 +24,7 @@ type VRFV2SoakTest struct {
 
 	env            *environment.Environment
 	ChainlinkNodes []client.Chainlink
-	Networks       *blockchain.Networks
+	c              blockchain.EVMClient
 	DefaultNetwork blockchain.EVMClient
 
 	NumberOfRequests int
@@ -57,33 +57,20 @@ func NewVRFV2SoakTest(inputs *VRFV2SoakTestInputs) *VRFV2SoakTest {
 }
 
 // Setup sets up the test environment
-func (t *VRFV2SoakTest) Setup(env *environment.Environment, charts []string, isLocal bool) {
+func (t *VRFV2SoakTest) Setup(env *environment.Environment, isLocal bool) {
 	t.ensureInputValues()
 	t.env = env
 	var err error
-	var networkRegistry *blockchain.NetworkRegistry
 
 	// Make connections to soak test resources
-	if isLocal {
-		err = env.ConnectAll()
-		Expect(err).ShouldNot(HaveOccurred())
-		networkRegistry = blockchain.NewDefaultNetworkRegistry()
-		t.ChainlinkNodes, err = client.ConnectChainlinkNodesByCharts(env, charts)
-		Expect(err).ShouldNot(HaveOccurred(), "Connecting to chainlink nodes shouldn't fail")
-		t.mockServer, err = client.ConnectMockServer(env)
-		Expect(err).ShouldNot(HaveOccurred(), "Creating mockserver clients shouldn't fail")
-	} else {
-		networkRegistry = blockchain.NewSoakNetworkRegistry()
-		t.ChainlinkNodes, err = client.ConnectChainlinkNodesSoakByCharts(env, charts)
-		Expect(err).ShouldNot(HaveOccurred(), "Connecting to chainlink nodes shouldn't fail")
-		t.mockServer, err = client.ConnectMockServerSoak(env)
-		Expect(err).ShouldNot(HaveOccurred(), "Creating mockserver clients shouldn't fail")
-	}
-
-	t.Networks, err = networkRegistry.GetNetworks(env)
+	t.c, err = blockchain.NewEthereumMultiNodeClientSetup(DefaultGethSettings)(env)
 	Expect(err).ShouldNot(HaveOccurred(), "Connecting to blockchain nodes shouldn't fail")
-	t.DefaultNetwork = t.Networks.Default
-	t.DefaultNetwork.ParallelTransactions(true)
+	t.ChainlinkNodes, err = client.ConnectChainlinkNodes(env)
+	Expect(err).ShouldNot(HaveOccurred(), "Connecting to chainlink nodes shouldn't fail")
+	t.mockServer, err = client.ConnectMockServer(env)
+	Expect(err).ShouldNot(HaveOccurred(), "Creating mockserver clients shouldn't fail")
+
+	t.c.ParallelTransactions(true)
 	Expect(err).ShouldNot(HaveOccurred())
 }
 
@@ -148,8 +135,8 @@ func requestAndValidate(t *VRFV2SoakTest, requestNumber int) {
 }
 
 // Networks returns the networks that the test is running on
-func (t *VRFV2SoakTest) TearDownVals() (*environment.Environment, *blockchain.Networks, []client.Chainlink, testreporters.TestReporter) {
-	return t.env, t.Networks, t.ChainlinkNodes, &t.TestReporter
+func (t *VRFV2SoakTest) TearDownVals() (*environment.Environment, []client.Chainlink, testreporters.TestReporter, blockchain.EVMClient) {
+	return t.env, t.ChainlinkNodes, &t.TestReporter, t.c
 }
 
 // ensureValues ensures that all values needed to run the test are present
