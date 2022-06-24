@@ -91,7 +91,7 @@ func (m *OptimismClient) Fund(toAddress string, amount *big.Float) error {
 		To:       &to,
 		Value:    utils.EtherToWei(amount),
 		GasPrice: suggestedGasPrice,
-		Gas:      22000,
+		Gas:      21000,
 	})
 	if err != nil {
 		return err
