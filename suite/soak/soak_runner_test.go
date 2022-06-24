@@ -8,11 +8,21 @@ import (
 )
 
 func TestOCRSoak(t *testing.T) {
-	err := actions.RunSoakTest("@soak-ocr", "chainlink-soak-ocr", 6)
+	err := actions.RunSoakTest("@soak-ocr", "chainlink-soak-ocr", 6, false)
 	require.NoError(t, err, "Failed to run the test")
 }
 
 func TestKeeperSoak(t *testing.T) {
-	err := actions.RunSoakTest("@soak-keeper-block-time", "chainlink-soak-keeper", 6)
+	err := actions.RunSoakTest("@soak-keeper-block-time", "chainlink-soak-keeper", 6, false)
+	require.NoError(t, err, "Failed to run the test")
+}
+
+func TestOCRSoakDockerCompile(t *testing.T) {
+	err := actions.RunSoakTest("@soak-ocr", "chainlink-soak-ocr", 6, true)
+	require.NoError(t, err, "Failed to run the test")
+}
+
+func TestKeeperSoakDockerCompile(t *testing.T) {
+	err := actions.RunSoakTest("@soak-keeper-block-time", "chainlink-soak-keeper", 6, true)
 	require.NoError(t, err, "Failed to run the test")
 }
