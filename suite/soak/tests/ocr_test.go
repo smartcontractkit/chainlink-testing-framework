@@ -32,7 +32,7 @@ var _ = Describe("OCR Soak Test @soak-ocr", func() {
 				AddHelm(mockservercfg.New(nil)).
 				AddHelm(mockserver.New(nil)).
 				AddHelm(ethereum.New(nil)).
-				AddHelm(chainlink.New(nil)).
+				AddHelm(chainlink.New(0, nil)).
 				Run()
 			Expect(err).ShouldNot(HaveOccurred())
 			log.Info().Str("Namespace", env.Cfg.Namespace).Msg("Connected to Soak Environment")
