@@ -256,7 +256,6 @@ func (e *EthereumClient) Fund(
 	if err := e.Client.SendTransaction(context.Background(), tx); err != nil {
 		return err
 	}
-
 	return e.ProcessTransaction(tx)
 }
 
