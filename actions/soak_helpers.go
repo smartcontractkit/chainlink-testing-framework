@@ -91,7 +91,7 @@ func RunSoakTest(testTargetDir, finalTestDestination, testTag, namespacePrefix s
 			},
 		})).
 		AddHelm(ethereum.New(nil)).
-		AddHelm(chainlink.New(map[string]interface{}{
+		AddHelm(chainlink.New(0, map[string]interface{}{
 			"replicas": chainlinkReplicas,
 		})).
 		Run()
