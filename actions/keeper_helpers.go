@@ -93,7 +93,7 @@ func DeployKeeperContracts(
 	for _, upkeep := range upkeeps {
 		upkeepsAddresses = append(upkeepsAddresses, upkeep.Address())
 	}
-	upkeepIds := RegisterUpkeepContracts(linkToken, linkFundsForEachUpkeep, big.NewInt(9e18), client, upkeepGasLimit, registry, registrar, numberOfUpkeeps, upkeepsAddresses)
+	upkeepIds := RegisterUpkeepContracts(linkToken, linkFundsForEachUpkeep, client, upkeepGasLimit, registry, registrar, numberOfUpkeeps, upkeepsAddresses)
 
 	return registry, registrar, upkeeps, upkeepIds
 }
