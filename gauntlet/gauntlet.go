@@ -187,3 +187,11 @@ func printArgs(args []string) {
 	}
 	log.Info().Str("Command", out).Msg("Gauntlet")
 }
+
+// fetchContractAddr takes in the contract deployment gauntlet output and returns the address of the deployed contract
+func fetchContractAddr(gauntletOutput string) string {
+	searchStr := "with address "
+	contractAddress := gauntletOutput[strings.Index(gauntletOutput, searchStr)+len(searchStr) : strings.Index(gauntletOutput[strings.Index(gauntletOutput, searchStr)+len(searchStr):], "\n")+strings.Index(gauntletOutput, searchStr)+len(searchStr)]
+
+	return contractAddress
+}
