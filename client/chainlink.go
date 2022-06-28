@@ -711,7 +711,7 @@ func ConnectChainlinkNodes(e *environment.Environment) ([]Chainlink, error) {
 		c, err := NewChainlink(&ChainlinkConfig{
 			URL:      localURL,
 			Email:    "notreal@fakeemail.ch",
-			Password: "twochains",
+			Password: "fj293fbBnlQ!f9vNs",
 			RemoteIP: internalHost,
 		}, http.DefaultClient)
 		clients = append(clients, c)
