@@ -4,13 +4,12 @@
 FROM --platform=linux/amd64 golang AS compiler
 ENV CGO_ENABLED=1 GOOS=linux GOARCH=amd64
 ARG testDirectory=./suite/soak/tests
-ARG projectRootPath=../..
 
 WORKDIR /app
-COPY ${projectRootPath}/go.mod .
-COPY ${projectRootPath}/go.sum .
-RUN go version && go mod download
-COPY ${projectRootPath}/. .
+COPY ../../go.mod .
+COPY ../../go.sum .
+RUN go mod download
+COPY ../../. .
 
 RUN go test -c -ldflags="-s -w -extldflags=-static" -o ./remote.test ${testDirectory}
 

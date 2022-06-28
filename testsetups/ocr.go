@@ -15,13 +15,13 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog/log"
+	"github.com/smartcontractkit/chainlink-env/environment"
 	"github.com/smartcontractkit/chainlink-testing-framework/actions"
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/client"
 	"github.com/smartcontractkit/chainlink-testing-framework/contracts"
 	"github.com/smartcontractkit/chainlink-testing-framework/contracts/ethereum"
 	"github.com/smartcontractkit/chainlink-testing-framework/testreporters"
-	"github.com/smartcontractkit/helmenv/environment"
 )
 
 // OCRSoakTest defines a typical OCR soak test
@@ -35,8 +35,7 @@ type OCRSoakTest struct {
 
 	env            *environment.Environment
 	chainlinkNodes []client.Chainlink
-	networks       *blockchain.Networks
-	defaultNetwork blockchain.EVMClient
+	c              blockchain.EVMClient
 }
 
 // OCRSoakTestInputs define required inputs to run an OCR soak test
@@ -72,24 +71,22 @@ func (t *OCRSoakTest) Setup(env *environment.Environment) {
 	var err error
 
 	// Make connections to soak test resources
-	networkRegistry := blockchain.NewSoakNetworkRegistry()
-	t.networks, err = networkRegistry.GetNetworks(env)
+	t.c, err = blockchain.NewEthereumMultiNodeClientSetup(DefaultGethSettings)(env)
 	Expect(err).ShouldNot(HaveOccurred(), "Connecting to blockchain nodes shouldn't fail")
-	t.defaultNetwork = t.networks.Default
-	contractDeployer, err := contracts.NewContractDeployer(t.defaultNetwork)
+	contractDeployer, err := contracts.NewContractDeployer(t.c)
 	Expect(err).ShouldNot(HaveOccurred(), "Deploying contracts shouldn't fail")
-	t.chainlinkNodes, err = client.ConnectChainlinkNodesSoak(env)
+	t.chainlinkNodes, err = client.ConnectChainlinkNodes(env)
 	Expect(err).ShouldNot(HaveOccurred(), "Connecting to chainlink nodes shouldn't fail")
-	t.mockServer, err = client.ConnectMockServerSoak(env)
+	t.mockServer, err = client.ConnectMockServer(env)
 	Expect(err).ShouldNot(HaveOccurred(), "Creating mockserver clients shouldn't fail")
-	t.defaultNetwork.ParallelTransactions(true)
+	t.c.ParallelTransactions(true)
 
 	// Deploy LINK
 	linkTokenContract, err := contractDeployer.DeployLinkTokenContract()
 	Expect(err).ShouldNot(HaveOccurred(), "Deploying Link Token Contract shouldn't fail")
 
 	// Fund Chainlink nodes, excluding the bootstrap node
-	err = actions.FundChainlinkNodes(t.chainlinkNodes[1:], t.defaultNetwork, t.Inputs.ChainlinkNodeFunding)
+	err = actions.FundChainlinkNodes(t.chainlinkNodes[1:], t.c, t.Inputs.ChainlinkNodeFunding)
 	Expect(err).ShouldNot(HaveOccurred(), "Error funding Chainlink nodes")
 
 	t.ocrInstances = actions.DeployOCRContracts(
@@ -97,9 +94,9 @@ func (t *OCRSoakTest) Setup(env *environment.Environment) {
 		linkTokenContract,
 		contractDeployer,
 		t.chainlinkNodes,
-		t.networks,
+		t.c,
 	)
-	err = t.defaultNetwork.WaitForEvents()
+	err = t.c.WaitForEvents()
 	Expect(err).ShouldNot(HaveOccurred(), "Error waiting for OCR contracts to be deployed")
 	for _, ocrInstance := range t.ocrInstances {
 		t.TestReporter.Reports[ocrInstance.Address()] = &testreporters.OCRSoakTestReport{
@@ -160,8 +157,8 @@ func (t *OCRSoakTest) Run() {
 }
 
 // Networks returns the networks that the test is running on
-func (t *OCRSoakTest) TearDownVals() (*environment.Environment, *blockchain.Networks, []client.Chainlink, testreporters.TestReporter) {
-	return t.env, t.networks, t.chainlinkNodes, &t.TestReporter
+func (t *OCRSoakTest) TearDownVals() (*environment.Environment, []client.Chainlink, testreporters.TestReporter, blockchain.EVMClient) {
+	return t.env, t.chainlinkNodes, &t.TestReporter, t.c
 }
 
 // ensureValues ensures that all values needed to run the test are present
@@ -203,9 +200,9 @@ func (t *OCRSoakTest) waitForRoundToComplete(roundNumber int) {
 			t.Inputs.RoundTimeout,
 			report,
 		)
-		t.defaultNetwork.AddHeaderEventSubscription(ocrInstance.Address(), ocrRound)
+		t.c.AddHeaderEventSubscription(ocrInstance.Address(), ocrRound)
 	}
-	err := t.defaultNetwork.WaitForEvents()
+	err := t.c.WaitForEvents()
 	Expect(err).ShouldNot(HaveOccurred(), "Error while waiting for OCR round number %d to complete", roundNumber)
 }
 
@@ -254,11 +251,12 @@ func (t *OCRSoakTest) subscribeToAnswerUpdatedEvent(ctx context.Context) {
 		query.Addresses = append(query.Addresses, common.HexToAddress(t.ocrInstances[i].Address()))
 	}
 	eventLogs := make(chan types.Log)
-	sub, err := t.networks.Default.SubscribeFilterLogs(context.Background(), query, eventLogs)
+	sub, err := t.c.SubscribeFilterLogs(context.Background(), query, eventLogs)
 	if err != nil {
 		Expect(err).ShouldNot(HaveOccurred(), "Subscribing to contract event log in OCR instance shouldn't fail")
 	}
-	go func(ocr contracts.OffchainAggregator) {
+	ocr := t.ocrInstances[0]
+	go func() {
 		//defer GinkgoRecover()
 
 		for {
@@ -304,7 +302,7 @@ func (t *OCRSoakTest) subscribeToAnswerUpdatedEvent(ctx context.Context) {
 				continue
 			}
 		}
-	}(t.ocrInstances[i])
+	}()
 }
 
 // wrapper around latest answer stats so we can check the answer outside of a go routine

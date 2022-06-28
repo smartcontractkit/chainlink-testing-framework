@@ -5,8 +5,10 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver"
+
 	"github.com/rs/zerolog/log"
-	"github.com/smartcontractkit/helmenv/environment"
+	"github.com/smartcontractkit/chainlink-env/environment"
 )
 
 // MockserverClient mockserver client
@@ -23,30 +25,9 @@ type MockserverConfig struct {
 
 // ConnectMockServer creates a connection to a deployed mockserver in the environment
 func ConnectMockServer(e *environment.Environment) (*MockserverClient, error) {
-	localURL, err := e.Charts.Connections("mockserver").LocalURLByPort("serviceport", environment.HTTP)
-	if err != nil {
-		return nil, err
-	}
-	remoteURL, err := e.Config.Charts.Connections("mockserver").RemoteURLByPort("serviceport", environment.HTTP)
-	if err != nil {
-		return nil, err
-	}
 	c := NewMockserverClient(&MockserverConfig{
-		LocalURL:   localURL.String(),
-		ClusterURL: remoteURL.String(),
-	})
-	return c, nil
-}
-
-// ConnectMockServerSoak creates a connection to a deployed mockserver, assuming runner is in a soak test runner
-func ConnectMockServerSoak(e *environment.Environment) (*MockserverClient, error) {
-	remoteURL, err := e.Config.Charts.Connections("mockserver").RemoteURLByPort("serviceport", environment.HTTP)
-	if err != nil {
-		return nil, err
-	}
-	c := NewMockserverClient(&MockserverConfig{
-		LocalURL:   remoteURL.String(),
-		ClusterURL: remoteURL.String(),
+		LocalURL:   e.URLs[mockserver.URLsKey][0],
+		ClusterURL: e.URLs[mockserver.URLsKey][1],
 	})
 	return c, nil
 }
