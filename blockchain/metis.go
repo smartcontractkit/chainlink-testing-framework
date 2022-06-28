@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"net/url"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -150,4 +151,9 @@ func (m *MetisClient) DeployContract(
 		Str("Network Name", m.NetworkConfig.Name).
 		Msg("Deployed contract")
 	return &contractAddress, transaction, contractInstance, err
+}
+
+// SubscribeFilterLogs subscribes to the results of a streaming filter query.
+func (m *MetisClient) SubscribeFilterLogs(ctx context.Context, q ethereum.FilterQuery, ch chan<- types.Log) (ethereum.Subscription, error) {
+	return m.Client.SubscribeFilterLogs(ctx, q, ch)
 }

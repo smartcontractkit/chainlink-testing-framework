@@ -138,6 +138,7 @@ type OffchainAggregator interface {
 	RequestNewRound() error
 	GetLatestAnswer(ctxt context.Context) (*big.Int, error)
 	GetLatestRound(ctxt context.Context) (*RoundData, error)
+	ParseEventAnswerUpdated(log types.Log) (*ethereum.OffchainAggregatorAnswerUpdated, error)
 }
 
 type Oracle interface {
