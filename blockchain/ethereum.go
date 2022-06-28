@@ -490,7 +490,7 @@ type EthereumMultinodeClient struct {
 func NewEthereumMultiNodeClientSetup(networkSettings *config.ETHNetwork) func(*environment.Environment) (EVMClient, error) {
 	return func(env *environment.Environment) (EVMClient, error) {
 		ecl := &EthereumMultinodeClient{}
-		networkSettings.URLs = append(networkSettings.URLs, env.URLs["geth"]...)
+		networkSettings.URLs = env.URLs["geth"]
 		for idx, networkURL := range networkSettings.URLs {
 			networkSettings.URL = networkURL
 			ec, err := NewEthereumClient(networkSettings)
