@@ -6,7 +6,6 @@ import (
 
 	"github.com/smartcontractkit/chainlink-env/environment"
 
-	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -139,9 +138,4 @@ func (k *KlaytnClient) DeployContract(
 		Str("Network Name", k.NetworkConfig.Name).
 		Msg("Deployed contract")
 	return &contractAddress, transaction, contractInstance, err
-}
-
-// SubscribeFilterLogs subscribes to the results of a streaming filter query.
-func (k *KlaytnClient) SubscribeFilterLogs(ctx context.Context, q ethereum.FilterQuery, ch chan<- types.Log) (ethereum.Subscription, error) {
-	return k.Client.SubscribeFilterLogs(ctx, q, ch)
 }
