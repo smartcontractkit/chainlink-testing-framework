@@ -14,6 +14,7 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -480,6 +481,11 @@ func (e *EthereumClient) WaitForEvents() error {
 	return g.Wait()
 }
 
+// SubscribeFilterLogs subscribes to the results of a streaming filter query.
+func (e *EthereumClient) SubscribeFilterLogs(ctx context.Context, q ethereum.FilterQuery, ch chan<- types.Log) (ethereum.Subscription, error) {
+	return e.Client.SubscribeFilterLogs(ctx, q, ch)
+}
+
 // EthereumMultinodeClient wraps the client and the BlockChain network to interact with an EVM based Blockchain with multiple nodes
 type EthereumMultinodeClient struct {
 	DefaultClient EVMClient
@@ -690,6 +696,11 @@ func (e *EthereumMultinodeClient) AddHeaderEventSubscription(key string, subscri
 	for _, c := range e.Clients {
 		c.AddHeaderEventSubscription(key, subscriber)
 	}
+}
+
+// SubscribeFilterLogs subscribes to the results of a streaming filter query.
+func (e *EthereumMultinodeClient) SubscribeFilterLogs(ctx context.Context, q ethereum.FilterQuery, logs chan<- types.Log) (ethereum.Subscription, error) {
+	return e.DefaultClient.SubscribeFilterLogs(ctx, q, logs)
 }
 
 // DeleteHeaderEventSubscription removes a header subscriber from the map

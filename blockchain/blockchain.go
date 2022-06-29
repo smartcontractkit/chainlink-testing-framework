@@ -5,6 +5,7 @@ import (
 	"context"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -57,6 +58,7 @@ type EVMClient interface {
 	AddHeaderEventSubscription(key string, subscriber HeaderEventSubscription)
 	DeleteHeaderEventSubscription(key string)
 	WaitForEvents() error
+	SubscribeFilterLogs(ctx context.Context, q ethereum.FilterQuery, ch chan<- types.Log) (ethereum.Subscription, error)
 }
 
 // NodeBlock block with a node ID which mined it
