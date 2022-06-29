@@ -262,7 +262,6 @@ func (t *OCRSoakTest) subscribeToAnswerUpdatedEvent(ctx context.Context) {
 			select {
 			case err := <-sub.Err():
 				Expect(err).ShouldNot(HaveOccurred(), "Retrieving event subscription log in OCR instances shouldn't fail")
-				continue
 			case vLog := <-eventLogs:
 				// the first topic is the hashed event signature
 				eventDetails, err := contractABI.EventByID(vLog.Topics[0])
@@ -285,9 +284,9 @@ func (t *OCRSoakTest) subscribeToAnswerUpdatedEvent(ctx context.Context) {
 						Msg("Contract event AnswerUpdated")
 					exp := t.roundResponseData
 					roundData, ok := exp[addr]
-					Expect(ok).Should(BeTrue(), "Event retrived for unknown address %s", addr)
+					Expect(ok).Should(BeTrue(), "Event retrieved for unknown address %s", addr)
 					expAnswer, ok := roundData[roundId]
-					Expect(ok).Should(BeTrue(), "Event retrived for unknown round %s", addr)
+					Expect(ok).Should(BeTrue(), "Event retrieved for unknown round %s", addr)
 					Expect(currAns).Should(
 						BeNumerically("==", expAnswer),
 						"Received incorrect answer in AnswerUpdated event for OCR round number %d from the OCR contract at %s", answer.Current, answer.Raw.Address,
@@ -295,7 +294,6 @@ func (t *OCRSoakTest) subscribeToAnswerUpdatedEvent(ctx context.Context) {
 				} else {
 					log.Debug().Str("Event Name", eventDetails.Name).Msg("contract event published")
 				}
-				continue
 			}
 		}
 	}()
