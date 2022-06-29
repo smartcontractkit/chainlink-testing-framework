@@ -238,7 +238,7 @@ func (t *OCRSoakTest) checkLatestRound(expectedValue, roundNumber int) {
 	}
 }
 
-// checkCurrentResponseFromAnswerUpdatedEvent subscribes to the event log for AnswerUpdated event and
+// subscribeToAnswerUpdatedEvent subscribes to the event log for AnswerUpdated event and
 // verifies if the answer is matching with the expected value
 func (t *OCRSoakTest) subscribeToAnswerUpdatedEvent(ctx context.Context) {
 	contractABI, err := ethereum.OffchainAggregatorMetaData.GetAbi()
@@ -267,14 +267,8 @@ func (t *OCRSoakTest) subscribeToAnswerUpdatedEvent(ctx context.Context) {
 				// the first topic is the hashed event signature
 				eventDetails, err := contractABI.EventByID(vLog.Topics[0])
 				Expect(err).ShouldNot(HaveOccurred(), "Getting event details for OCR instances shouldn't fail")
-				// The following is a generic details of any event received.
-				/*parsedEvent, err := contractABI.Unpack(eventDetails.Name, vLog.Data)
-				Expect(err).ShouldNot(HaveOccurred(), "Parsing event details for OCR instances shouldn't fail")
-				log.Info().Interface(eventDetails.Name, parsedEvent).Msg("Event")
-				*/
-
 				// whenever there is an event for AnswerUpdated verify if the corresponding answer is matching with
-				// adapter response
+				// adapter response, otherwise just log the event name
 				if eventDetails.Name == "AnswerUpdated" {
 					answer, err := ocr.ParseEventAnswerUpdated(vLog)
 					Expect(err).ShouldNot(
@@ -298,6 +292,8 @@ func (t *OCRSoakTest) subscribeToAnswerUpdatedEvent(ctx context.Context) {
 						BeNumerically("==", expAnswer),
 						"Received incorrect answer in AnswerUpdated event for OCR round number %d from the OCR contract at %s", answer.Current, answer.Raw.Address,
 					)
+				} else {
+					log.Debug().Str("Event Name", eventDetails.Name).Msg("contract event published")
 				}
 				continue
 			}
