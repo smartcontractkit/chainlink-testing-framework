@@ -3,20 +3,11 @@ package blockchain
 
 import (
 	"context"
-	"encoding/json"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"gopkg.in/yaml.v2"
-
-	"github.com/smartcontractkit/chainlink-testing-framework/config"
-)
-
-// Commonly used blockchain network types
-const (
-	SimulatedEthNetwork = "eth_simulated"
 )
 
 // EVMClient is the interface that wraps a given client implementation for a blockchain, to allow for switching
@@ -26,12 +17,12 @@ type EVMClient interface {
 	// Getters
 	Get() interface{}
 	GetNetworkName() string
-	GetNetworkType() string
+	NetworkSimulated() bool
 	GetChainID() *big.Int
 	GetClients() []EVMClient
 	GetDefaultWallet() *EthereumWallet
 	GetWallets() []*EthereumWallet
-	GetNetworkConfig() *config.ETHNetwork
+	GetNetworkConfig() *EVMNetwork
 
 	// Setters
 	SetID(id int)
@@ -78,15 +69,6 @@ type NodeBlock struct {
 type HeaderEventSubscription interface {
 	ReceiveBlock(header NodeBlock) error
 	Wait() error
-}
-
-// UnmarshalYAML is a generic function to unmarshal a yaml map into a given object
-func UnmarshalYAML(config map[string]interface{}, obj interface{}) error {
-	b, err := json.Marshal(config)
-	if err != nil {
-		return err
-	}
-	return yaml.Unmarshal(b, obj)
 }
 
 // ContractDeployer acts as a go-between function for general contract deployment

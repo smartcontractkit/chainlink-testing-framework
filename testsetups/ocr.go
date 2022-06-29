@@ -26,22 +26,23 @@ type OCRSoakTest struct {
 	Inputs *OCRSoakTestInputs
 
 	TestReporter testreporters.OCRSoakTestReporter
-	ocrInstances []contracts.OffchainAggregator
-	mockServer   *client.MockserverClient
 
+	ocrInstances   []contracts.OffchainAggregator
+	mockServer     *client.MockserverClient
 	env            *environment.Environment
 	chainlinkNodes []client.Chainlink
-	c              blockchain.EVMClient
+	chainClient    blockchain.EVMClient
 }
 
 // OCRSoakTestInputs define required inputs to run an OCR soak test
 type OCRSoakTestInputs struct {
-	TestDuration         time.Duration // How long to run the test for (assuming things pass)
-	NumberOfContracts    int           // Number of OCR contracts to launch
-	ChainlinkNodeFunding *big.Float    // Amount of ETH to fund each chainlink node with
-	RoundTimeout         time.Duration // How long to wait for a round to update before failing the test
-	ExpectedRoundTime    time.Duration // How long each round is expected to take
-	TimeBetweenRounds    time.Duration // How long to wait after a completed round to start a new one, set 0 for instant
+	BlockchainClient     blockchain.EVMClient // Client for the test to connect to the blockchain with
+	TestDuration         time.Duration        // How long to run the test for (assuming things pass)
+	NumberOfContracts    int                  // Number of OCR contracts to launch
+	ChainlinkNodeFunding *big.Float           // Amount of ETH to fund each chainlink node with
+	RoundTimeout         time.Duration        // How long to wait for a round to update before failing the test
+	ExpectedRoundTime    time.Duration        // How long each round is expected to take
+	TimeBetweenRounds    time.Duration        // How long to wait after a completed round to start a new one, set 0 for instant
 	StartingAdapterValue int
 }
 
@@ -66,22 +67,20 @@ func (t *OCRSoakTest) Setup(env *environment.Environment) {
 	var err error
 
 	// Make connections to soak test resources
-	t.c, err = blockchain.NewEthereumMultiNodeClientSetup(DefaultGethSettings)(env)
-	Expect(err).ShouldNot(HaveOccurred(), "Connecting to blockchain nodes shouldn't fail")
-	contractDeployer, err := contracts.NewContractDeployer(t.c)
+	contractDeployer, err := contracts.NewContractDeployer(t.chainClient)
 	Expect(err).ShouldNot(HaveOccurred(), "Deploying contracts shouldn't fail")
 	t.chainlinkNodes, err = client.ConnectChainlinkNodes(env)
 	Expect(err).ShouldNot(HaveOccurred(), "Connecting to chainlink nodes shouldn't fail")
 	t.mockServer, err = client.ConnectMockServer(env)
 	Expect(err).ShouldNot(HaveOccurred(), "Creating mockserver clients shouldn't fail")
-	t.c.ParallelTransactions(true)
+	t.chainClient.ParallelTransactions(true)
 
 	// Deploy LINK
 	linkTokenContract, err := contractDeployer.DeployLinkTokenContract()
 	Expect(err).ShouldNot(HaveOccurred(), "Deploying Link Token Contract shouldn't fail")
 
 	// Fund Chainlink nodes, excluding the bootstrap node
-	err = actions.FundChainlinkNodes(t.chainlinkNodes[1:], t.c, t.Inputs.ChainlinkNodeFunding)
+	err = actions.FundChainlinkNodes(t.chainlinkNodes[1:], t.chainClient, t.Inputs.ChainlinkNodeFunding)
 	Expect(err).ShouldNot(HaveOccurred(), "Error funding Chainlink nodes")
 
 	t.ocrInstances = actions.DeployOCRContracts(
@@ -89,9 +88,9 @@ func (t *OCRSoakTest) Setup(env *environment.Environment) {
 		linkTokenContract,
 		contractDeployer,
 		t.chainlinkNodes,
-		t.c,
+		t.chainClient,
 	)
-	err = t.c.WaitForEvents()
+	err = t.chainClient.WaitForEvents()
 	Expect(err).ShouldNot(HaveOccurred(), "Error waiting for OCR contracts to be deployed")
 	for _, ocrInstance := range t.ocrInstances {
 		t.TestReporter.Reports[ocrInstance.Address()] = &testreporters.OCRSoakTestReport{
@@ -148,12 +147,14 @@ func (t *OCRSoakTest) Run() {
 
 // Networks returns the networks that the test is running on
 func (t *OCRSoakTest) TearDownVals() (*environment.Environment, []client.Chainlink, testreporters.TestReporter, blockchain.EVMClient) {
-	return t.env, t.chainlinkNodes, &t.TestReporter, t.c
+	return t.env, t.chainlinkNodes, &t.TestReporter, t.chainClient
 }
 
 // ensureValues ensures that all values needed to run the test are present
 func (t *OCRSoakTest) ensureInputValues() {
 	inputs := t.Inputs
+	Expect(inputs.BlockchainClient).ShouldNot(BeNil(), "Need a valid blockchain client to use for the test")
+	t.chainClient = inputs.BlockchainClient
 	Expect(inputs.NumberOfContracts).Should(BeNumerically(">=", 1), "Expecting at least 1 OCR contract")
 	Expect(inputs.ChainlinkNodeFunding.Float64()).Should(BeNumerically(">", 0), "Expecting non-zero chainlink node funding amount")
 	Expect(inputs.TestDuration).Should(BeNumerically(">=", time.Minute*1), "Expected test duration to be more than a minute")
@@ -190,9 +191,9 @@ func (t *OCRSoakTest) waitForRoundToComplete(roundNumber int) {
 			t.Inputs.RoundTimeout,
 			report,
 		)
-		t.c.AddHeaderEventSubscription(ocrInstance.Address(), ocrRound)
+		t.chainClient.AddHeaderEventSubscription(ocrInstance.Address(), ocrRound)
 	}
-	err := t.c.WaitForEvents()
+	err := t.chainClient.WaitForEvents()
 	Expect(err).ShouldNot(HaveOccurred(), "Error while waiting for OCR round number %d to complete", roundNumber)
 }
 

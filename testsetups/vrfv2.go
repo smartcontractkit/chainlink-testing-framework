@@ -22,10 +22,10 @@ type VRFV2SoakTest struct {
 	TestReporter testreporters.VRFV2SoakTestReporter
 	mockServer   *client.MockserverClient
 
-	env            *environment.Environment
-	ChainlinkNodes []client.Chainlink
-	c              blockchain.EVMClient
-	DefaultNetwork blockchain.EVMClient
+	testEnvironment *environment.Environment
+	ChainlinkNodes  []client.Chainlink
+	chainClient     blockchain.EVMClient
+	DefaultNetwork  blockchain.EVMClient
 
 	NumberOfRequests int
 
@@ -38,9 +38,10 @@ type VRFV2SoakTestTestFunc func(t *VRFV2SoakTest, requestNumber int) error
 
 // VRFV2SoakTestInputs define required inputs to run a vrfv2 soak test
 type VRFV2SoakTestInputs struct {
-	TestDuration         time.Duration // How long to run the test for (assuming things pass)
-	ChainlinkNodeFunding *big.Float    // Amount of ETH to fund each chainlink node with
-	StopTestOnError      bool          // Do we want the test to stop after any error or just continue on
+	BlockchainClient     blockchain.EVMClient // Client for the test to connect to the blockchain with
+	TestDuration         time.Duration        // How long to run the test for (assuming things pass)
+	ChainlinkNodeFunding *big.Float           // Amount of ETH to fund each chainlink node with
+	StopTestOnError      bool                 // Do we want the test to stop after any error or just continue on
 
 	RequestsPerMinute int                   // Number of requests for randomness per minute
 	TestFunc          VRFV2SoakTestTestFunc // The function that makes the request and validations wanted
@@ -59,18 +60,16 @@ func NewVRFV2SoakTest(inputs *VRFV2SoakTestInputs) *VRFV2SoakTest {
 // Setup sets up the test environment
 func (t *VRFV2SoakTest) Setup(env *environment.Environment, isLocal bool) {
 	t.ensureInputValues()
-	t.env = env
+	t.testEnvironment = env
 	var err error
 
 	// Make connections to soak test resources
-	t.c, err = blockchain.NewEthereumMultiNodeClientSetup(DefaultGethSettings)(env)
-	Expect(err).ShouldNot(HaveOccurred(), "Connecting to blockchain nodes shouldn't fail")
 	t.ChainlinkNodes, err = client.ConnectChainlinkNodes(env)
 	Expect(err).ShouldNot(HaveOccurred(), "Connecting to chainlink nodes shouldn't fail")
 	t.mockServer, err = client.ConnectMockServer(env)
 	Expect(err).ShouldNot(HaveOccurred(), "Creating mockserver clients shouldn't fail")
 
-	t.c.ParallelTransactions(true)
+	t.chainClient.ParallelTransactions(true)
 	Expect(err).ShouldNot(HaveOccurred())
 }
 
@@ -136,12 +135,14 @@ func requestAndValidate(t *VRFV2SoakTest, requestNumber int) {
 
 // Networks returns the networks that the test is running on
 func (t *VRFV2SoakTest) TearDownVals() (*environment.Environment, []client.Chainlink, testreporters.TestReporter, blockchain.EVMClient) {
-	return t.env, t.ChainlinkNodes, &t.TestReporter, t.c
+	return t.testEnvironment, t.ChainlinkNodes, &t.TestReporter, t.chainClient
 }
 
 // ensureValues ensures that all values needed to run the test are present
 func (t *VRFV2SoakTest) ensureInputValues() {
 	inputs := t.Inputs
+	Expect(inputs.BlockchainClient).ShouldNot(BeNil(), "Need a valid blockchain client to use for the test")
+	t.chainClient = inputs.BlockchainClient
 	Expect(inputs.RequestsPerMinute).Should(BeNumerically(">=", 1), "Expecting at least 1 request per minute")
 	Expect(inputs.ChainlinkNodeFunding.Float64()).Should(BeNumerically(">", 0), "Expecting non-zero chainlink node funding amount")
 	Expect(inputs.TestDuration).Should(BeNumerically(">=", time.Minute*1), "Expected test duration to be more than a minute")
