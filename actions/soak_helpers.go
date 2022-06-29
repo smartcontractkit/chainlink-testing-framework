@@ -5,25 +5,17 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"testing"
-	"time"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-env/environment"
-	"github.com/smartcontractkit/chainlink-env/pkg"
-	"github.com/smartcontractkit/chainlink-env/pkg/helm/chainlink"
-	"github.com/smartcontractkit/chainlink-env/pkg/helm/ethereum"
-	"github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver"
-	mockservercfg "github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver-cfg"
-	"github.com/smartcontractkit/chainlink-env/pkg/helm/remotetestrunner"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
-	"github.com/stretchr/testify/require"
 )
 
-// Soak Test helpers
-
-// BuildGoTests builds the go tests to run, and returns a path to it, along with remote config options
+// BuildGoTests builds the go tests using native go cross-compilation to run, and returns a path to the test executable
+// along with its size in bytes.
+//  Note: currentProjectRootPath and currentSoakTestRootPath are not interchangeable with utils.ProjectRoot and utils.SoakRoot
+//  when running in outside repositories. Keep an eye on when you need paths leading to this go package vs the current running project.
 func BuildGoTests(executablePath, testsPath, projectRootPath string) (string, int64, error) {
 	logging.Init()
 	absExecutablePath, err := filepath.Abs(executablePath)
@@ -67,35 +59,6 @@ func BuildGoTests(executablePath, testsPath, projectRootPath string) (string, in
 	return exeFile, exeFileInfo.Size(), nil
 }
 
-// RunSoakTest runs a soak test based on the tag, launching as many chainlink nodes as necessary
-func RunSoakTest(t *testing.T, testTag, namespacePrefix string, chainlinkValues map[string]interface{}) {
-	logging.Init()
-
-	exeFile, exeFileSize, err := BuildGoTests("./", "./tests", "../")
-	require.NoError(t, err, "Error building go tests")
-	env := environment.New(&environment.Config{
-		TTL:             999 * time.Hour,
-		Labels:          []string{fmt.Sprintf("envType=%s", pkg.EnvTypeEVM5RemoteRunner), "testType=soak"},
-		NamespacePrefix: namespacePrefix,
-	})
-	err = env.
-		AddHelm(mockservercfg.New(nil)).
-		AddHelm(mockserver.New(nil)).
-		AddHelm(remotetestrunner.New(map[string]interface{}{
-			"remote_test_runner": map[string]interface{}{
-				"test_name":      testTag,
-				"env_namespace":  env.Cfg.Namespace,
-				"test_file_size": fmt.Sprint(exeFileSize),
-			},
-		})).
-		AddHelm(ethereum.New(nil)).
-		AddHelm(chainlink.New(0, chainlinkValues)).
-		Run()
-	require.NoError(t, err, "Error launching test environment")
-	err = TriggerRemoteTest(exeFile, env)
-	require.NoError(t, err, "Error activating remote test")
-}
-
 // TriggerRemoteTest copies the executable to the remote-test-runner and starts the run
 func TriggerRemoteTest(exePath string, testEnvironment *environment.Environment) error {
 	logging.Init()
@@ -111,3 +74,78 @@ func TriggerRemoteTest(exePath string, testEnvironment *environment.Environment)
 	log.Info().Str("Namespace", testEnvironment.Cfg.Namespace).Msg("Remote Test Triggered on 'remote-test-runner'")
 	return nil
 }
+
+/** This gets complicated with recent refactoring. Seeing how it's a niche use case, we'll remove it for now.
+BuildGoTestsWithDocker builds the go tests to run using docker, and returns a path to the test executable, along with
+remote config options. This version usually takes longer to run, but eliminates issues with cross-compilation.
+ Note: executablePath and projectRootPath are not interchangeable with utils.ProjectRoot and utils.SoakRoot
+ when running in outside repositories. Keep an eye on when you need paths leading to this go package vs the current running project.
+func BuildGoTestsWithDocker(executablePath, testsPath, projectRootPath string) (fs.FileInfo, error) {
+	dockerfilePath, err := filepath.Abs("./Dockerfile.compiler")
+	if err != nil {
+		return nil, err
+	}
+	testTargetDir := filepath.Join(executablePath, "generated_test_dir")
+	finalTestDestination := filepath.Join(executablePath, "remote.test")
+	// Clean up old test files if they're around
+	if _, err := os.Stat(finalTestDestination); err == nil {
+		if err = os.Remove(finalTestDestination); err != nil {
+			return nil, err
+		}
+	}
+
+	// Get the relative paths to directories needed by docker
+	relativeTestDirectoryToRootPath, err := filepath.Rel(executablePath, testsPath)
+	if err != nil {
+		return nil, err
+	}
+	log.Info().Str("path", relativeTestDirectoryToRootPath).Msg("docker build arg testDirectory")
+	relativeProjectRootPathToRunningTest, err := filepath.Rel(projectRootPath, executablePath)
+
+	if err != nil {
+		return nil, err
+	}
+	log.Info().Str("path", relativeProjectRootPathToRunningTest).Msg("docker build arg projectRootPath")
+
+	// TODO: Docker has a Go API, but it was oddly complicated and not at all documented, and kept failing.
+	// So for now, we're doing the tried and true method of plain commands.
+	dockerBuildCmd := exec.Command("docker",
+		"build",
+		"-t",
+		"test-compiler",
+		"--build-arg",
+		fmt.Sprintf("testDirectory=./%s", relativeTestDirectoryToRootPath),
+		"--build-arg",
+		fmt.Sprintf("projectRootPath=./%s", relativeProjectRootPathToRunningTest),
+		"-f",
+		dockerfilePath,
+		"--output",
+		testTargetDir,
+		executablePath) // #nosec G204
+	dockerBuildCmd.Env = os.Environ()
+	log.Info().Str("Docker File", dockerfilePath).Msg("Compiling tests using Docker")
+	compileOut, err := dockerBuildCmd.CombinedOutput()
+	log.Debug().
+		Str("Output", string(compileOut)).
+		Str("Command", dockerBuildCmd.String()).
+		Msg("Ran command")
+	if err != nil {
+		return nil, err
+	}
+
+	err = os.Rename(filepath.Join(testTargetDir, "remote.test"), finalTestDestination)
+	if err != nil {
+		return nil, err
+	}
+	err = os.Remove(testTargetDir)
+	if err != nil {
+		return nil, err
+	}
+
+	exeFileInfo, err := os.Stat(finalTestDestination)
+	if err != nil {
+		return nil, fmt.Errorf("Expected '%s' to exist, %w", finalTestDestination, err)
+	}
+	return exeFileInfo, nil
+}
+**/
