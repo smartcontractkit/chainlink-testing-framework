@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	a "github.com/smartcontractkit/chainlink-env/pkg/alias"
 	"github.com/smartcontractkit/chainlink-env/pkg/helm/reorg"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -225,10 +226,12 @@ func (rc *ReorgController) forkNetwork(blk blockchain.NodeBlock) error {
 		Str("Network", rc.cfg.Network.GetNetworkName()).
 		Msg("Forking network")
 	expName, err := rc.cfg.Env.Chaos.Run(
-		chaos.NewNetworkPartitionExperiment(
+		chaos.NewNetworkPartition(
 			rc.cfg.Env.Cfg.Namespace,
-			reorg.TXNodesAppLabel,
-			reorg.MinerNodesAppLabel,
+			&chaos.Props{
+				FromLabels: &map[string]*string{"app": a.Str(reorg.TXNodesAppLabel)},
+				ToLabels:   &map[string]*string{"app": a.Str(reorg.MinerNodesAppLabel)},
+			},
 		))
 	rc.chaosExperimentName = expName
 	rc.networkStep.Store(CheckBlocks)

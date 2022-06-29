@@ -206,14 +206,13 @@ func TeardownSuite(
 	logsFolderPath string,
 	chainlinkNodes []client.Chainlink,
 	optionalTestReporter testreporters.TestReporter, // Optionally pass in a test reporter to log further metrics
-	clients ...blockchain.EVMClient,
+	c blockchain.EVMClient,
 ) error {
 	if err := writeTeardownLogs(env, optionalTestReporter); err != nil {
 		return errors.Wrap(err, "Error dumping environment logs, leaving environment running for manual retrieval")
 	}
-
-	if clients != nil && chainlinkNodes != nil && len(chainlinkNodes) > 0 {
-		if err := returnFunds(chainlinkNodes, clients); err != nil {
+	if c != nil && chainlinkNodes != nil && len(chainlinkNodes) > 0 {
+		if err := returnFunds(chainlinkNodes, c); err != nil {
 			log.Error().Err(err).Str("Namespace", env.Cfg.Namespace).
 				Msg("Error attempting to return funds from chainlink nodes to network's default wallet. " +
 					"Environment is left running so you can try manually!")
@@ -222,10 +221,8 @@ func TeardownSuite(
 		log.Info().Msg("Successfully returned funds from chainlink nodes to default network wallets")
 	}
 	// nolint
-	if clients != nil {
-		for _, c := range clients {
-			c.Close()
-		}
+	if c != nil {
+		c.Close()
 	}
 
 	keepEnvs := os.Getenv("KEEP_ENVIRONMENTS")
@@ -254,13 +251,13 @@ func TeardownRemoteSuite(
 	env *environment.Environment,
 	chainlinkNodes []client.Chainlink,
 	optionalTestReporter testreporters.TestReporter, // Optionally pass in a test reporter to log further metrics
-	nets ...blockchain.EVMClient,
+	client blockchain.EVMClient,
 ) error {
 	var err error
 	if err = sendReport(env, "./", optionalTestReporter); err != nil {
 		log.Warn().Err(err).Msg("Error writing test report")
 	}
-	if err = returnFunds(chainlinkNodes, nets); err != nil {
+	if err = returnFunds(chainlinkNodes, client); err != nil {
 		log.Error().Err(err).Str("Namespace", env.Cfg.Namespace).
 			Msg("Error attempting to return funds from chainlink nodes to network's default wallet. " +
 				"Environment is left running so you can try manually!")
@@ -308,9 +305,9 @@ func sendReport(env *environment.Environment, logsPath string, optionalTestRepor
 }
 
 // Returns all the funds from the chainlink nodes to the networks default address
-func returnFunds(chainlinkNodes []client.Chainlink, clients []blockchain.EVMClient) error {
-	if clients == nil {
-		log.Warn().Msg("No blockchain clients found, unable to return funds from chainlink nodes.")
+func returnFunds(chainlinkNodes []client.Chainlink, client blockchain.EVMClient) error {
+	if client == nil {
+		log.Warn().Msg("No blockchain client found, unable to return funds from chainlink nodes.")
 	}
 	for _, node := range chainlinkNodes {
 		if err := node.SetSessionCookie(); err != nil {
@@ -318,24 +315,26 @@ func returnFunds(chainlinkNodes []client.Chainlink, clients []blockchain.EVMClie
 		}
 	}
 	log.Info().Msg("Attempting to return Chainlink node funds to default network wallets")
-	for _, network := range clients {
-		if network.NetworkSimulated() {
-			log.Info().Str("Network Name", network.GetNetworkName()).
-				Msg("Network is a simulated network. Skipping fund return.")
-			continue
-		}
-		addressMap, err := sendFunds(chainlinkNodes, network)
-		if err != nil {
-			return err
-		}
-
-		err = checkFunds(chainlinkNodes, addressMap, strings.ToLower(network.GetDefaultWallet().Address()))
-		if err != nil {
-			return err
-		}
+	if client.NetworkSimulated() {
+		log.Info().Str("Network Name", client.GetNetworkName()).
+			Msg("Network is a simulated network. Skipping fund return.")
+		return nil
 	}
 
-	return nil
+	addressMap, err := sendFunds(chainlinkNodes, client)
+	if err != nil {
+		return err
+	}
+
+	err = checkFunds(chainlinkNodes, addressMap, strings.ToLower(client.GetDefaultWallet().Address()))
+	if err != nil {
+		return err
+	}
+	addressMap, err = sendFunds(chainlinkNodes, client)
+	if err != nil {
+		return err
+	}
+	return checkFunds(chainlinkNodes, addressMap, strings.ToLower(client.GetDefaultWallet().Address()))
 }
 
 // Requests that all the chainlink nodes send their funds back to the network's default wallet
