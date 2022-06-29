@@ -267,10 +267,12 @@ func (t *OCRSoakTest) subscribeToAnswerUpdatedEvent(ctx context.Context) {
 				// the first topic is the hashed event signature
 				eventDetails, err := contractABI.EventByID(vLog.Topics[0])
 				Expect(err).ShouldNot(HaveOccurred(), "Getting event details for OCR instances shouldn't fail")
+				// The following is a generic details of any event received.
 				/*parsedEvent, err := contractABI.Unpack(eventDetails.Name, vLog.Data)
 				Expect(err).ShouldNot(HaveOccurred(), "Parsing event details for OCR instances shouldn't fail")
 				log.Info().Interface(eventDetails.Name, parsedEvent).Msg("Event")
 				*/
+
 				// whenever there is an event for AnswerUpdated verify if the corresponding answer is matching with
 				// adapter response
 				if eventDetails.Name == "AnswerUpdated" {
@@ -286,7 +288,6 @@ func (t *OCRSoakTest) subscribeToAnswerUpdatedEvent(ctx context.Context) {
 						Int64("Current Round", roundId).
 						Int64("Updated At", answer.UpdatedAt.Int64()).
 						Str("Contract Address", addr).
-						Interface("expected", t.roundResponseData).
 						Msg("Contract event AnswerUpdated")
 					exp := t.roundResponseData
 					roundData, ok := exp[addr]
