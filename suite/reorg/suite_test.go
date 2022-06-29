@@ -1,4 +1,4 @@
-package performance_test
+package reorg_test
 
 //revive:disable:dot-imports
 import (
@@ -10,5 +10,5 @@ import (
 
 func Test_Suite(t *testing.T) {
 	actions.GinkgoSuite()
-	RunSpecs(t, "Profiling")
+	RunSpecs(t, "Reorg")
 }

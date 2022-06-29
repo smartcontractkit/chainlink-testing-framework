@@ -3,7 +3,8 @@ package blockchain
 import (
 	"context"
 	"math/big"
-	"net/url"
+
+	"github.com/smartcontractkit/chainlink-env/environment"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -32,36 +33,25 @@ func NewKlaytnClient(networkSettings *config.ETHNetwork) (EVMClient, error) {
 	return &KlaytnClient{client.(*EthereumClient)}, err
 }
 
-// NewKlaytnMultiNodeClient returns an instantiated instance of all Klaytn clients connected to all nodes
-func NewKlaytnMultiNodeClient(
-	_ string,
-	networkConfig map[string]interface{},
-	urls []*url.URL,
-) (EVMClient, error) {
-	networkSettings := &config.ETHNetwork{}
-	err := UnmarshalNetworkConfig(networkConfig, networkSettings)
-	if err != nil {
-		return nil, err
-	}
-	log.Info().
-		Interface("URLs", networkSettings.URLs).
-		Msg("Connecting multi-node client")
-
-	multiNodeClient := &EthereumMultinodeClient{}
-	for _, envURL := range urls {
-		networkSettings.URLs = append(networkSettings.URLs, envURL.String())
-	}
-	for idx, networkURL := range networkSettings.URLs {
-		networkSettings.URL = networkURL
-		ec, err := NewKlaytnClient(networkSettings)
-		if err != nil {
-			return nil, err
+func NewKlaytnMultiNodeClientSetup(networkSettings *config.ETHNetwork) func(*environment.Environment) (EVMClient, error) {
+	return func(e *environment.Environment) (EVMClient, error) {
+		multiNodeClient := &EthereumMultinodeClient{}
+		networkSettings.URLs = append(networkSettings.URLs, e.URLs["geth"]...)
+		for idx, networkURL := range networkSettings.URLs {
+			networkSettings.URL = networkURL
+			ec, err := NewKlaytnClient(networkSettings)
+			if err != nil {
+				return nil, err
+			}
+			ec.SetID(idx)
+			multiNodeClient.Clients = append(multiNodeClient.Clients, ec)
 		}
-		ec.SetID(idx)
-		multiNodeClient.Clients = append(multiNodeClient.Clients, ec)
+		multiNodeClient.DefaultClient = multiNodeClient.Clients[0]
+		log.Info().
+			Interface("URLs", networkSettings.URLs).
+			Msg("Connected multi-node client")
+		return &KlaytnMultinodeClient{multiNodeClient}, nil
 	}
-	multiNodeClient.DefaultClient = multiNodeClient.Clients[0]
-	return &KlaytnMultinodeClient{multiNodeClient}, nil
 }
 
 // Fund overrides ethereum's fund to account for Klaytn's gas specifications
