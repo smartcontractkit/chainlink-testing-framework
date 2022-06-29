@@ -281,7 +281,6 @@ func (v *EthereumKeeperRegistry) SetMigrationPermissions(peerAddress common.Addr
 	return v.client.ProcessTransaction(tx)
 }
 
-
 func (v *EthereumKeeperRegistry) SetRegistrar(registrarAddr string) error {
 	txOpts, err := v.client.TransactionOpts(v.client.GetDefaultWallet())
 	if err != nil {
