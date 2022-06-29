@@ -11,7 +11,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
-	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -24,7 +23,7 @@ type TransactionConfirmer struct {
 	doneChan         chan struct{}
 	context          context.Context
 	cancel           context.CancelFunc
-	networkConfig    *config.ETHNetwork
+	networkConfig    *EVMNetwork
 }
 
 // NewTransactionConfirmer returns a new instance of the transaction confirmer that waits for on-chain minimum

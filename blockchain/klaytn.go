@@ -10,7 +10,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rs/zerolog/log"
-	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 )
 
@@ -27,16 +26,16 @@ type KlaytnClient struct {
 }
 
 // NewKlaytnClient returns an instantiated instance of the Klaytn client that has connected to the server
-func NewKlaytnClient(networkSettings *config.ETHNetwork) (EVMClient, error) {
+func NewKlaytnClient(networkSettings *EVMNetwork) (EVMClient, error) {
 	client, err := NewEthereumClient(networkSettings)
 	log.Info().Str("Network Name", client.GetNetworkName()).Msg("Using custom Klaytn client")
 	return &KlaytnClient{client.(*EthereumClient)}, err
 }
 
-func NewKlaytnMultiNodeClientSetup(networkSettings *config.ETHNetwork) func(*environment.Environment) (EVMClient, error) {
-	return func(e *environment.Environment) (EVMClient, error) {
+func NewKlaytnMultiNodeClientSetup(networkSettings *EVMNetwork) func(*environment.Environment) (EVMClient, error) {
+	return func(env *environment.Environment) (EVMClient, error) {
 		multiNodeClient := &EthereumMultinodeClient{}
-		networkSettings.URLs = append(networkSettings.URLs, e.URLs["geth"]...)
+		networkSettings.URLs = append(networkSettings.URLs, env.URLs[networkSettings.Name]...)
 		for idx, networkURL := range networkSettings.URLs {
 			networkSettings.URL = networkURL
 			ec, err := NewKlaytnClient(networkSettings)
