@@ -772,6 +772,11 @@ func (o *EthereumOffchainAggregator) GetLatestRound(ctxt context.Context) (*Roun
 	}, err
 }
 
+// ParseEventAnswerUpdated parses the log for event AnswerUpdated
+func (o *EthereumOffchainAggregator) ParseEventAnswerUpdated(eventLog types.Log) (*ethereum.OffchainAggregatorAnswerUpdated, error) {
+	return o.ocr.ParseAnswerUpdated(eventLog)
+}
+
 // RunlogRoundConfirmer is a header subscription that awaits for a certain Runlog round to be completed
 type RunlogRoundConfirmer struct {
 	consumer APIConsumer
