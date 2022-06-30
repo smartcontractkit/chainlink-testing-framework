@@ -6,6 +6,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/smartcontractkit/chainlink-env/environment"
+
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-testing-framework/actions"
@@ -14,7 +16,6 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/contracts"
 	"github.com/smartcontractkit/chainlink-testing-framework/contracts/ethereum"
 	"github.com/smartcontractkit/chainlink-testing-framework/testreporters"
-	"github.com/smartcontractkit/helmenv/environment"
 )
 
 // KeeperBlockTimeTest builds a test to check that chainlink nodes are able to upkeep a specified amount of Upkeep
@@ -29,12 +30,12 @@ type KeeperBlockTimeTest struct {
 
 	env            *environment.Environment
 	chainlinkNodes []client.Chainlink
-	networks       *blockchain.Networks
-	defaultNetwork blockchain.EVMClient
+	chainClient    blockchain.EVMClient
 }
 
 // KeeperBlockTimeTestInputs are all the required inputs for a Keeper Block Time Test
 type KeeperBlockTimeTestInputs struct {
+	BlockchainClient       blockchain.EVMClient              // Client for the test to connect to the blockchain with
 	NumberOfContracts      int                               // Number of upkeep contracts
 	KeeperRegistrySettings *contracts.KeeperRegistrySettings // Settings of each keeper contract
 	Timeout                time.Duration                     // Timeout for the test
@@ -61,22 +62,18 @@ func (k *KeeperBlockTimeTest) Setup(env *environment.Environment) {
 	var err error
 
 	// Connect to networks and prepare for contract deployment
-	networkRegistry := blockchain.NewSoakNetworkRegistry()
-	k.networks, err = networkRegistry.GetNetworks(k.env)
-	Expect(err).ShouldNot(HaveOccurred(), "Connecting to blockchain nodes shouldn't fail")
-	k.defaultNetwork = k.networks.Default
-	contractDeployer, err := contracts.NewContractDeployer(k.defaultNetwork)
+	contractDeployer, err := contracts.NewContractDeployer(k.chainClient)
 	Expect(err).ShouldNot(HaveOccurred(), "Building a new contract deployer shouldn't fail")
-	k.chainlinkNodes, err = client.ConnectChainlinkNodesSoak(k.env)
+	k.chainlinkNodes, err = client.ConnectChainlinkNodes(k.env)
 	Expect(err).ShouldNot(HaveOccurred(), "Connecting to chainlink nodes shouldn't fail")
-	k.defaultNetwork.ParallelTransactions(true)
+	k.chainClient.ParallelTransactions(true)
 
 	// Fund chainlink nodes
-	err = actions.FundChainlinkNodes(k.chainlinkNodes, k.defaultNetwork, k.Inputs.ChainlinkNodeFunding)
+	err = actions.FundChainlinkNodes(k.chainlinkNodes, k.chainClient, k.Inputs.ChainlinkNodeFunding)
 	Expect(err).ShouldNot(HaveOccurred(), "Funding Chainlink nodes shouldn't fail")
 	linkToken, err := contractDeployer.DeployLinkTokenContract()
 	Expect(err).ShouldNot(HaveOccurred(), "Deploying Link Token Contract shouldn't fail")
-	err = k.defaultNetwork.WaitForEvents()
+	err = k.chainClient.WaitForEvents()
 	Expect(err).ShouldNot(HaveOccurred(), "Failed waiting for LINK Contract deployment")
 
 	k.keeperRegistry, _, k.keeperConsumerContracts, _ = actions.DeployPerformanceKeeperContracts(
@@ -85,8 +82,9 @@ func (k *KeeperBlockTimeTest) Setup(env *environment.Environment) {
 		uint32(2500000), //upkeepGasLimit
 		linkToken,
 		contractDeployer,
-		k.networks,
+		k.chainClient,
 		k.Inputs.KeeperRegistrySettings,
+		big.NewInt(9e18),
 		inputs.BlockRange,
 		inputs.BlockInterval,
 		inputs.CheckGasToBurn,
@@ -104,7 +102,7 @@ func (k *KeeperBlockTimeTest) Run() {
 	startTime := time.Now()
 
 	for index, keeperConsumer := range k.keeperConsumerContracts {
-		k.defaultNetwork.AddHeaderEventSubscription(fmt.Sprintf("Keeper Tracker %d", index),
+		k.chainClient.AddHeaderEventSubscription(fmt.Sprintf("Keeper Tracker %d", index),
 			contracts.NewKeeperConsumerPerformanceRoundConfirmer(
 				keeperConsumer,
 				k.Inputs.BlockInterval,
@@ -115,10 +113,10 @@ func (k *KeeperBlockTimeTest) Run() {
 	}
 	defer func() { // Cleanup the subscriptions
 		for index := range k.keeperConsumerContracts {
-			k.defaultNetwork.DeleteHeaderEventSubscription(fmt.Sprintf("Keeper Tracker %d", index))
+			k.chainClient.DeleteHeaderEventSubscription(fmt.Sprintf("Keeper Tracker %d", index))
 		}
 	}()
-	err := k.defaultNetwork.WaitForEvents()
+	err := k.chainClient.WaitForEvents()
 	Expect(err).ShouldNot(HaveOccurred(), "Error waiting for keeper subscriptions")
 
 	for _, chainlinkNode := range k.chainlinkNodes {
@@ -131,13 +129,15 @@ func (k *KeeperBlockTimeTest) Run() {
 }
 
 // Networks returns the networks that the test is running on
-func (k *KeeperBlockTimeTest) TearDownVals() (*environment.Environment, *blockchain.Networks, []client.Chainlink, testreporters.TestReporter) {
-	return k.env, k.networks, k.chainlinkNodes, &k.TestReporter
+func (k *KeeperBlockTimeTest) TearDownVals() (*environment.Environment, []client.Chainlink, testreporters.TestReporter, blockchain.EVMClient) {
+	return k.env, k.chainlinkNodes, &k.TestReporter, k.chainClient
 }
 
 // ensureValues ensures that all values needed to run the test are present
 func (k *KeeperBlockTimeTest) ensureInputValues() {
 	inputs := k.Inputs
+	Expect(inputs.BlockchainClient).ShouldNot(BeNil(), "Need a valid blockchain client to use for the test")
+	k.chainClient = inputs.BlockchainClient
 	Expect(inputs.NumberOfContracts).Should(BeNumerically(">=", 1), "Expecting at least 1 keeper contracts")
 	if inputs.Timeout == 0 {
 		Expect(inputs.BlockRange).Should(BeNumerically(">", 0), "If no `timeout` is provided, a `testBlockRange` is required")

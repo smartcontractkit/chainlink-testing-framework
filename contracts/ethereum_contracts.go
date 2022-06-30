@@ -570,6 +570,18 @@ func (l *EthereumLinkToken) TransferAndCall(to string, amount *big.Int, data []b
 	return tx, l.client.ProcessTransaction(tx)
 }
 
+// LoadExistingLinkToken loads an EthereumLinkToken with a specific address
+func (l *EthereumLinkToken) LoadExistingLinkToken(address string, client blockchain.EVMClient) error {
+	l.address = common.HexToAddress(address)
+	instance, err := ethereum.NewLinkToken(l.address, client.(*blockchain.EthereumClient).Client)
+	if err != nil {
+		return err
+	}
+	l.client = client
+	l.instance = instance
+	return nil
+}
+
 // EthereumOffchainAggregator represents the offchain aggregation contract
 type EthereumOffchainAggregator struct {
 	client  blockchain.EVMClient
@@ -758,6 +770,11 @@ func (o *EthereumOffchainAggregator) GetLatestRound(ctxt context.Context) (*Roun
 		StartedAt:       roundData.StartedAt,
 		UpdatedAt:       roundData.UpdatedAt,
 	}, err
+}
+
+// ParseEventAnswerUpdated parses the log for event AnswerUpdated
+func (o *EthereumOffchainAggregator) ParseEventAnswerUpdated(eventLog types.Log) (*ethereum.OffchainAggregatorAnswerUpdated, error) {
+	return o.ocr.ParseAnswerUpdated(eventLog)
 }
 
 // RunlogRoundConfirmer is a header subscription that awaits for a certain Runlog round to be completed
@@ -1177,6 +1194,19 @@ func (v *EthereumVRFConsumerV2) GetAllRandomWords(ctx context.Context, num int) 
 		words = append(words, word)
 	}
 	return words, nil
+}
+
+// LoadExistingConsumer loads an EthereumVRFConsumerV2 with a specified address
+func (v *EthereumVRFConsumerV2) LoadExistingConsumer(address string, client blockchain.EVMClient) error {
+	a := common.HexToAddress(address)
+	consumer, err := ethereum.NewVRFConsumerV2(a, client.(*blockchain.EthereumClient).Client)
+	if err != nil {
+		return err
+	}
+	v.client = client
+	v.consumer = consumer
+	v.address = &a
+	return nil
 }
 
 // EthereumVRFConsumer represents VRF consumer contract

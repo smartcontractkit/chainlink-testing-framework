@@ -2,6 +2,7 @@ package actions
 
 //revive:disable:dot-imports
 import (
+	"context"
 	"fmt"
 	"math/big"
 
@@ -13,10 +14,20 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/contracts"
 )
 
+type VRFV2EncodedProvingKey [2]*big.Int
+
+// VRFV2JobInfo defines a jobs into and proving key info
+type VRFV2JobInfo struct {
+	Job            *client.Job
+	VRFKey         *client.VRFKey
+	ProvingKey     VRFV2EncodedProvingKey
+	ProvingKeyHash [32]byte
+}
+
 func DeployVRFV2Contracts(
 	linkTokenContract contracts.LinkToken,
 	contractDeployer contracts.ContractDeployer,
-	networks *blockchain.Networks,
+	c blockchain.EVMClient,
 	linkEthFeedAddress string,
 ) (contracts.VRFCoordinatorV2, contracts.VRFConsumerV2, contracts.BlockHashStore) {
 	bhs, err := contractDeployer.DeployBlockhashStore()
@@ -25,21 +36,19 @@ func DeployVRFV2Contracts(
 	Expect(err).ShouldNot(HaveOccurred())
 	consumer, err := contractDeployer.DeployVRFConsumerV2(linkTokenContract.Address(), coordinator.Address())
 	Expect(err).ShouldNot(HaveOccurred())
-	err = networks.Default.WaitForEvents()
+	err = c.WaitForEvents()
 	Expect(err).ShouldNot(HaveOccurred())
 
 	return coordinator, consumer, bhs
 }
 
-type VRFV2EncodedProvingKey [2]*big.Int
-
 func CreateVRFV2Jobs(
 	chainlinkNodes []client.Chainlink,
 	coordinator contracts.VRFCoordinatorV2,
-	networks *blockchain.Networks,
-) ([]*client.Job, []VRFV2EncodedProvingKey) {
-	jobs := make([]*client.Job, 0)
-	encodedProvingKeys := make([]VRFV2EncodedProvingKey, 0)
+	c blockchain.EVMClient,
+	minIncomingConfirmations int,
+) []VRFV2JobInfo {
+	jobInfo := make([]VRFV2JobInfo, 0)
 	for _, n := range chainlinkNodes {
 		vrfKey, err := n.CreateVRFKey()
 		Expect(err).ShouldNot(HaveOccurred())
@@ -57,19 +66,26 @@ func CreateVRFV2Jobs(
 			Name:                     fmt.Sprintf("vrf-%s", jobUUID),
 			CoordinatorAddress:       coordinator.Address(),
 			FromAddress:              oracleAddr,
-			EVMChainID:               networks.Default.GetChainID().String(),
-			MinIncomingConfirmations: 1,
+			EVMChainID:               c.GetChainID().String(),
+			MinIncomingConfirmations: minIncomingConfirmations,
 			PublicKey:                pubKeyCompressed,
 			ExternalJobID:            jobUUID.String(),
 			ObservationSource:        ost,
 			BatchFulfillmentEnabled:  false,
 		})
 		Expect(err).ShouldNot(HaveOccurred())
-		jobs = append(jobs, job)
 		provingKey := VRFV2RegisterProvingKey(vrfKey, oracleAddr, coordinator)
-		encodedProvingKeys = append(encodedProvingKeys, provingKey)
+		keyHash, err := coordinator.HashOfKey(context.Background(), provingKey)
+		Expect(err).ShouldNot(HaveOccurred(), "Should be able to create a keyHash from the proving key")
+		ji := VRFV2JobInfo{
+			Job:            job,
+			VRFKey:         vrfKey,
+			ProvingKey:     provingKey,
+			ProvingKeyHash: keyHash,
+		}
+		jobInfo = append(jobInfo, ji)
 	}
-	return jobs, encodedProvingKeys
+	return jobInfo
 }
 
 func VRFV2RegisterProvingKey(

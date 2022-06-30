@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -13,19 +14,19 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	"github.com/pkg/errors"
-	"github.com/smartcontractkit/helmenv/environment"
+	"github.com/rs/zerolog/log"
+	"github.com/smartcontractkit/chainlink-env/environment"
 	"golang.org/x/sync/errgroup"
 	kubeerrors "k8s.io/apimachinery/pkg/api/errors"
 
-	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
-	"github.com/smartcontractkit/chainlink-testing-framework/config"
+	"github.com/smartcontractkit/chainlink-testing-framework/client"
 	"github.com/smartcontractkit/chainlink-testing-framework/contracts"
+	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/testreporters"
 
 	"github.com/ethereum/go-ethereum/common"
 	uuid "github.com/satori/go.uuid"
-	"github.com/smartcontractkit/chainlink-testing-framework/client"
 )
 
 const (
@@ -39,31 +40,8 @@ var ContractDeploymentInterval = 500
 
 // GinkgoSuite provides the default setup for running a Ginkgo test suite
 func GinkgoSuite() {
-	LoadConfigs()
+	logging.Init()
 	gomega.RegisterFailHandler(ginkgo.Fail)
-}
-
-// GinkgoRemoteSuite provides the default setup for running tests from a remote test runner
-func GinkgoRemoteSuite() {
-	LoadRemoteConfigs()
-	gomega.RegisterFailHandler(ginkgo.Fail)
-}
-
-// LoadConfigs load all config files, with overrides in order:
-// 1. `default` tag fields on config.Config struct
-// 2. Decode function calls on major config structs, see config.Config
-// 3. `envconfig` tags on previously decoded major configs, see Decode functions in config package
-func LoadConfigs() {
-	if err := config.LoadFromEnv(); err != nil {
-		log.Fatal().Err(err).Msg("failed to load config file")
-	}
-}
-
-// LoadRemoteConfigs loads configs for tests running on a remote test runner
-func LoadRemoteConfigs() {
-	if err := config.LoadRemoteEnv(); err != nil {
-		log.Fatal().Err(err).Msg("failed to load config file")
-	}
 }
 
 // FundChainlinkNodes will fund all of the provided Chainlink nodes with a set amount of native currency
@@ -79,12 +57,6 @@ func FundChainlinkNodes(
 		}
 		err = client.Fund(toAddress, amount)
 		if err != nil {
-			return err
-		}
-	}
-	// required in Geth when you need to call "simulate" transactions from nodes
-	if client.GetNetworkType() == blockchain.SimulatedEthNetwork {
-		if err := client.Fund("0x0", big.NewFloat(1000)); err != nil {
 			return err
 		}
 	}
@@ -231,47 +203,44 @@ func GetMockserverInitializerDataForOTPE(
 // specified path. Can also accept a testreporter (if one was used) to log further results
 func TeardownSuite(
 	env *environment.Environment,
-	nets *blockchain.Networks,
 	logsFolderPath string,
 	chainlinkNodes []client.Chainlink,
 	optionalTestReporter testreporters.TestReporter, // Optionally pass in a test reporter to log further metrics
+	c blockchain.EVMClient,
 ) error {
 	if err := writeTeardownLogs(env, optionalTestReporter); err != nil {
 		return errors.Wrap(err, "Error dumping environment logs, leaving environment running for manual retrieval")
 	}
-	switch strings.ToUpper(config.ProjectConfig.FrameworkConfig.KeepEnvironments) {
-	case "ALWAYS":
-		env.Persistent = true
-	case "ONFAIL":
-		if ginkgo.CurrentSpecReport().Failed() {
-			env.Persistent = true
-		}
-	case "NEVER":
-		env.Persistent = false
-	default:
-		log.Warn().Str("Invalid Keep Value", config.ProjectConfig.FrameworkConfig.KeepEnvironments).
-			Msg("Invalid 'keep_environments' value, see the 'framework.yaml' file")
-	}
-
-	if nets != nil && chainlinkNodes != nil && len(chainlinkNodes) > 0 {
-		if err := returnFunds(chainlinkNodes, nets); err != nil {
-			log.Error().Err(err).Str("Namespace", env.Namespace).
+	if c != nil && chainlinkNodes != nil && len(chainlinkNodes) > 0 {
+		if err := returnFunds(chainlinkNodes, c); err != nil {
+			log.Error().Err(err).Str("Namespace", env.Cfg.Namespace).
 				Msg("Error attempting to return funds from chainlink nodes to network's default wallet. " +
 					"Environment is left running so you can try manually!")
-			env.Persistent = true
 		}
 	} else {
 		log.Info().Msg("Successfully returned funds from chainlink nodes to default network wallets")
 	}
-	if nets != nil {
-		if err := nets.Teardown(); err != nil {
-			return err
-		}
+	// nolint
+	if c != nil {
+		c.Close()
 	}
-	if !env.Config.Persistent {
-		if err := env.Teardown(); err != nil {
-			return err
+
+	keepEnvs := os.Getenv("KEEP_ENVIRONMENTS")
+	if keepEnvs == "" {
+		keepEnvs = "NEVER"
+	}
+
+	switch strings.ToUpper(keepEnvs) {
+	case "ALWAYS":
+	case "ONFAIL":
+		if ginkgo.CurrentSpecReport().Failed() {
+			return env.Shutdown()
 		}
+	case "NEVER":
+		return env.Shutdown()
+	default:
+		log.Warn().Str("Invalid Keep Value", keepEnvs).
+			Msg("Invalid 'keep_environments' value, see the 'framework.yaml' file")
 	}
 	return nil
 }
@@ -280,17 +249,16 @@ func TeardownSuite(
 // soak tests
 func TeardownRemoteSuite(
 	env *environment.Environment,
-	nets *blockchain.Networks,
 	chainlinkNodes []client.Chainlink,
 	optionalTestReporter testreporters.TestReporter, // Optionally pass in a test reporter to log further metrics
+	client blockchain.EVMClient,
 ) error {
-	err := writeTeardownLogs(env, optionalTestReporter)
-	if err != nil {
-		log.Err(err).Msg("Error writing logs for soak tests. Working on improving and fixing this.")
+	var err error
+	if err = sendReport(env, "./", optionalTestReporter); err != nil {
+		log.Warn().Err(err).Msg("Error writing test report")
 	}
-	err = returnFunds(chainlinkNodes, nets)
-	if err != nil {
-		log.Error().Err(err).Str("Namespace", env.Namespace).
+	if err = returnFunds(chainlinkNodes, client); err != nil {
+		log.Error().Err(err).Str("Namespace", env.Cfg.Namespace).
 			Msg("Error attempting to return funds from chainlink nodes to network's default wallet. " +
 				"Environment is left running so you can try manually!")
 	}
@@ -303,7 +271,7 @@ func writeTeardownLogs(env *environment.Environment, optionalTestReporter testre
 	if ginkgo.CurrentSpecReport().Failed() || optionalTestReporter != nil {
 		testFilename := strings.Split(ginkgo.CurrentSpecReport().FileName(), ".")[0]
 		_, testName := filepath.Split(testFilename)
-		logsPath := filepath.Join(config.ProjectConfigDirectory, DefaultArtifactsDir, fmt.Sprintf("%s-%d", testName, time.Now().Unix()))
+		logsPath := filepath.Join(DefaultArtifactsDir, fmt.Sprintf("%s-%d", testName, time.Now().Unix()))
 		if err := env.Artifacts.DumpTestResult(logsPath, "chainlink"); err != nil {
 			log.Warn().Err(err).Msg("Error trying to collect pod logs")
 			if kubeerrors.IsForbidden(err) {
@@ -312,26 +280,34 @@ func writeTeardownLogs(env *environment.Environment, optionalTestReporter testre
 				return err
 			}
 		}
-		if optionalTestReporter != nil {
-			log.Info().Msg("Writing Test Report")
-			optionalTestReporter.SetNamespace(env.Namespace)
-			err := optionalTestReporter.WriteReport(logsPath)
-			if err != nil {
-				return err
-			}
-			err = optionalTestReporter.SendSlackNotification(nil)
-			if err != nil {
-				return err
-			}
+		if err := sendReport(env, logsPath, optionalTestReporter); err != nil {
+			log.Warn().Err(err).Msg("Error writing test report")
+		}
+	}
+	return nil
+}
+
+// if provided, writes a test report and sends a Slack notification
+func sendReport(env *environment.Environment, logsPath string, optionalTestReporter testreporters.TestReporter) error {
+	if optionalTestReporter != nil {
+		log.Info().Msg("Writing Test Report")
+		optionalTestReporter.SetNamespace(env.Cfg.Namespace)
+		err := optionalTestReporter.WriteReport(logsPath)
+		if err != nil {
+			return err
+		}
+		err = optionalTestReporter.SendSlackNotification(nil)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
 }
 
 // Returns all the funds from the chainlink nodes to the networks default address
-func returnFunds(chainlinkNodes []client.Chainlink, networks *blockchain.Networks) error {
-	if networks == nil {
-		log.Warn().Msg("No network connections found, unable to return funds from chainlink nodes.")
+func returnFunds(chainlinkNodes []client.Chainlink, client blockchain.EVMClient) error {
+	if client == nil {
+		log.Warn().Msg("No blockchain client found, unable to return funds from chainlink nodes.")
 	}
 	for _, node := range chainlinkNodes {
 		if err := node.SetSessionCookie(); err != nil {
@@ -339,24 +315,26 @@ func returnFunds(chainlinkNodes []client.Chainlink, networks *blockchain.Network
 		}
 	}
 	log.Info().Msg("Attempting to return Chainlink node funds to default network wallets")
-	for _, network := range networks.AllNetworks() {
-		if network.GetNetworkType() == blockchain.SimulatedEthNetwork {
-			log.Info().Str("Network Name", network.GetNetworkName()).
-				Msg("Network is a `eth_simulated` network. Skipping fund return.")
-			continue
-		}
-		addressMap, err := sendFunds(chainlinkNodes, network)
-		if err != nil {
-			return err
-		}
-
-		err = checkFunds(chainlinkNodes, addressMap, strings.ToLower(network.GetDefaultWallet().Address()))
-		if err != nil {
-			return err
-		}
+	if client.NetworkSimulated() {
+		log.Info().Str("Network Name", client.GetNetworkName()).
+			Msg("Network is a simulated network. Skipping fund return.")
+		return nil
 	}
 
-	return nil
+	addressMap, err := sendFunds(chainlinkNodes, client)
+	if err != nil {
+		return err
+	}
+
+	err = checkFunds(chainlinkNodes, addressMap, strings.ToLower(client.GetDefaultWallet().Address()))
+	if err != nil {
+		return err
+	}
+	addressMap, err = sendFunds(chainlinkNodes, client)
+	if err != nil {
+		return err
+	}
+	return checkFunds(chainlinkNodes, addressMap, strings.ToLower(client.GetDefaultWallet().Address()))
 }
 
 // Requests that all the chainlink nodes send their funds back to the network's default wallet

@@ -20,15 +20,9 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/testreporters"
 )
 
-type UpkeepRegistrar interface {
+type KeeperRegistrar interface {
 	Address() string
-	SetRegistrarConfig(
-		autoRegister bool,
-		windowSizeBlocks uint32,
-		allowedPerWindow uint16,
-		registryAddr string,
-		minLinkJuels *big.Int,
-	) error
+
 	EncodeRegisterRequest(
 		name string,
 		email []byte,
@@ -38,7 +32,9 @@ type UpkeepRegistrar interface {
 		checkData []byte,
 		amount *big.Int,
 		source uint8,
+		senderAddr string,
 	) ([]byte, error)
+
 	Fund(ethAmount *big.Float) error
 }
 
@@ -56,6 +52,7 @@ type KeeperRegistry interface {
 	CancelUpkeep(id *big.Int) error
 	SetUpkeepGasLimit(id *big.Int, gas uint32) error
 	ParseUpkeepIdFromRegisteredLog(log *types.Log) (*big.Int, error)
+	Pause() error
 }
 
 type KeeperConsumer interface {
@@ -127,11 +124,10 @@ type KeeperRegistrySettings struct {
 
 // KeeperRegistrarSettings represents settings for registrar contract
 type KeeperRegistrarSettings struct {
-	AutoRegister     bool
-	WindowSizeBlocks uint32
-	AllowedPerWindow uint16
-	RegistryAddr     string
-	MinLinkJuels     *big.Int
+	AutoApproveConfigType uint8
+	AutoApproveMaxAllowed uint16
+	RegistryAddr          string
+	MinLinkJuels          *big.Int
 }
 
 // KeeperInfo keeper status and balance info
@@ -216,6 +212,32 @@ func (v *EthereumKeeperRegistry) SetConfig(config KeeperRegistrySettings) error 
 			Transcoder: state.Config.Transcoder,
 			Registrar:  state.Config.Registrar,
 		})
+		if err != nil {
+			return err
+		}
+		return v.client.ProcessTransaction(tx)
+	}
+
+	return fmt.Errorf("keeper registry version %d is not supported", v.version)
+}
+
+func (v *EthereumKeeperRegistry) Pause() error {
+	txOpts, err := v.client.TransactionOpts(v.client.GetDefaultWallet())
+	if err != nil {
+		return err
+	}
+
+	var tx *types.Transaction
+
+	switch v.version {
+	case ethereum.RegistryVersion_1_0, ethereum.RegistryVersion_1_1:
+		tx, err = v.registry1_1.Pause(txOpts)
+		if err != nil {
+			return err
+		}
+		return v.client.ProcessTransaction(tx)
+	case ethereum.RegistryVersion_1_2:
+		tx, err = v.registry1_2.Pause(txOpts)
 		if err != nil {
 			return err
 		}
@@ -1070,42 +1092,24 @@ func (v *EthereumKeeperConsumerBenchmark) SetPerformGasToBurn(ctx context.Contex
 	return v.client.ProcessTransaction(tx)
 }
 
-// EthereumUpkeepRegistrationRequests keeper contract to register upkeeps
-type EthereumUpkeepRegistrationRequests struct {
+// EthereumKeeperRegistrar corresponds to the registrar which is used to send requests to the registry when
+// registering new upkeeps.
+type EthereumKeeperRegistrar struct {
 	client    blockchain.EVMClient
-	registrar *ethereum.UpkeepRegistrationRequests
+	registrar *ethereum.KeeperRegistrar
 	address   *common.Address
 }
 
-func (v *EthereumUpkeepRegistrationRequests) Address() string {
+func (v *EthereumKeeperRegistrar) Address() string {
 	return v.address.Hex()
 }
 
-// SetRegistrarConfig sets registrar config, allowing auto register or pending requests for manual registration
-func (v *EthereumUpkeepRegistrationRequests) SetRegistrarConfig(
-	autoRegister bool,
-	windowSizeBlocks uint32,
-	allowedPerWindow uint16,
-	registryAddr string,
-	minLinkJuels *big.Int,
-) error {
-	opts, err := v.client.TransactionOpts(v.client.GetDefaultWallet())
-	if err != nil {
-		return err
-	}
-	tx, err := v.registrar.SetRegistrationConfig(opts, autoRegister, windowSizeBlocks, allowedPerWindow, common.HexToAddress(registryAddr), minLinkJuels)
-	if err != nil {
-		return err
-	}
-	return v.client.ProcessTransaction(tx)
-}
-
-func (v *EthereumUpkeepRegistrationRequests) Fund(ethAmount *big.Float) error {
+func (v *EthereumKeeperRegistrar) Fund(ethAmount *big.Float) error {
 	return v.client.Fund(v.address.Hex(), ethAmount)
 }
 
 // EncodeRegisterRequest encodes register request to call it through link token TransferAndCall
-func (v *EthereumUpkeepRegistrationRequests) EncodeRegisterRequest(
+func (v *EthereumKeeperRegistrar) EncodeRegisterRequest(
 	name string,
 	email []byte,
 	upkeepAddr string,
@@ -1114,8 +1118,9 @@ func (v *EthereumUpkeepRegistrationRequests) EncodeRegisterRequest(
 	checkData []byte,
 	amount *big.Int,
 	source uint8,
+	senderAddr string,
 ) ([]byte, error) {
-	registryABI, err := abi.JSON(strings.NewReader(ethereum.UpkeepRegistrationRequestsABI))
+	registryABI, err := abi.JSON(strings.NewReader(ethereum.KeeperRegistrarMetaData.ABI))
 	if err != nil {
 		return nil, err
 	}
@@ -1129,6 +1134,7 @@ func (v *EthereumUpkeepRegistrationRequests) EncodeRegisterRequest(
 		checkData,
 		amount,
 		source,
+		common.HexToAddress(senderAddr),
 	)
 	if err != nil {
 		return nil, err
