@@ -10,11 +10,11 @@ import (
 
 	"github.com/smartcontractkit/chainlink-env/environment"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 
 	"golang.org/x/sync/errgroup"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -27,7 +27,7 @@ import (
 type EthereumClient struct {
 	ID                  int
 	Client              *ethclient.Client
-	NetworkConfig       *config.ETHNetwork
+	NetworkConfig       *EVMNetwork
 	Wallets             []*EthereumWallet
 	DefaultWallet       *EthereumWallet
 	BorrowNonces        bool
@@ -42,7 +42,7 @@ type EthereumClient struct {
 }
 
 // NewEthereumClient returns an instantiated instance of the Ethereum client that has connected to the server
-func NewEthereumClient(networkSettings *config.ETHNetwork) (EVMClient, error) {
+func NewEthereumClient(networkSettings *EVMNetwork) (EVMClient, error) {
 	log.Info().
 		Str("Name", networkSettings.Name).
 		Str("URL", networkSettings.URL).
@@ -101,9 +101,9 @@ func (e *EthereumClient) GetNetworkName() string {
 	return e.NetworkConfig.Name
 }
 
-// GetNetworkType retrieves the type of network this is running on
-func (e *EthereumClient) GetNetworkType() string {
-	return e.NetworkConfig.Type
+// NetworkSimulated returns true if the network is a simulated geth instance, false otherwise
+func (e *EthereumClient) NetworkSimulated() bool {
+	return e.NetworkConfig.Simulated
 }
 
 // GetChainID retrieves the ChainID of the network that the client interacts with
@@ -127,7 +127,7 @@ func (e *EthereumClient) GetWallets() []*EthereumWallet {
 }
 
 // DefaultWallet returns the default wallet for the network
-func (e *EthereumClient) GetNetworkConfig() *config.ETHNetwork {
+func (e *EthereumClient) GetNetworkConfig() *EVMNetwork {
 	return e.NetworkConfig
 }
 
@@ -152,7 +152,7 @@ func (e *EthereumClient) SetWallets(wallets []*EthereumWallet) {
 
 // LoadWallets loads wallets from config
 func (e *EthereumClient) LoadWallets(cfg interface{}) error {
-	pkStrings := cfg.(*config.ETHNetwork).PrivateKeys
+	pkStrings := cfg.(*EVMNetwork).PrivateKeys
 	for _, pks := range pkStrings {
 		w, err := NewEthereumWallet(pks)
 		if err != nil {
@@ -481,16 +481,22 @@ func (e *EthereumClient) WaitForEvents() error {
 	return g.Wait()
 }
 
+// SubscribeFilterLogs subscribes to the results of a streaming filter query.
+func (e *EthereumClient) SubscribeFilterLogs(ctx context.Context, q ethereum.FilterQuery, ch chan<- types.Log) (ethereum.Subscription, error) {
+	return e.Client.SubscribeFilterLogs(ctx, q, ch)
+}
+
 // EthereumMultinodeClient wraps the client and the BlockChain network to interact with an EVM based Blockchain with multiple nodes
 type EthereumMultinodeClient struct {
 	DefaultClient EVMClient
 	Clients       []EVMClient
 }
 
-func NewEthereumMultiNodeClientSetup(networkSettings *config.ETHNetwork) func(*environment.Environment) (EVMClient, error) {
+func NewEthereumMultiNodeClientSetup(networkSettings *EVMNetwork) func(*environment.Environment) (EVMClient, error) {
 	return func(env *environment.Environment) (EVMClient, error) {
 		ecl := &EthereumMultinodeClient{}
-		networkSettings.URLs = env.URLs["geth"]
+		networkSettings.URLs = append(networkSettings.URLs, env.URLs[networkSettings.Name]...)
+
 		for idx, networkURL := range networkSettings.URLs {
 			networkSettings.URL = networkURL
 			ec, err := NewEthereumClient(networkSettings)
@@ -506,7 +512,7 @@ func NewEthereumMultiNodeClientSetup(networkSettings *config.ETHNetwork) func(*e
 			Msg("Connected multi-node client")
 
 		// required in Geth when you need to call "simulate" transactions from nodes
-		if ecl.GetNetworkType() == SimulatedEthNetwork {
+		if ecl.NetworkSimulated() {
 			if err := ecl.Fund("0x0", big.NewFloat(1000)); err != nil {
 				return nil, err
 			}
@@ -526,8 +532,8 @@ func (e *EthereumMultinodeClient) GetNetworkName() string {
 }
 
 // GetNetworkType retrieves the type of network this is running on
-func (e *EthereumMultinodeClient) GetNetworkType() string {
-	return e.DefaultClient.GetNetworkType()
+func (e *EthereumMultinodeClient) NetworkSimulated() bool {
+	return e.DefaultClient.NetworkSimulated()
 }
 
 // GetChainID retrieves the ChainID of the network that the client interacts with
@@ -553,7 +559,7 @@ func (e *EthereumMultinodeClient) GetWallets() []*EthereumWallet {
 }
 
 // GetNetworkConfig return the network config
-func (e *EthereumMultinodeClient) GetNetworkConfig() *config.ETHNetwork {
+func (e *EthereumMultinodeClient) GetNetworkConfig() *EVMNetwork {
 	return e.DefaultClient.GetNetworkConfig()
 }
 
@@ -574,7 +580,7 @@ func (e *EthereumMultinodeClient) SetWallets(wallets []*EthereumWallet) {
 
 // LoadWallets loads wallets using private keys provided in the config
 func (e *EthereumMultinodeClient) LoadWallets(cfg interface{}) error {
-	pkStrings := cfg.(config.ETHNetwork).PrivateKeys
+	pkStrings := cfg.(EVMNetwork).PrivateKeys
 	wallets := make([]*EthereumWallet, 0)
 	for _, pks := range pkStrings {
 		w, err := NewEthereumWallet(pks)
@@ -690,6 +696,11 @@ func (e *EthereumMultinodeClient) AddHeaderEventSubscription(key string, subscri
 	for _, c := range e.Clients {
 		c.AddHeaderEventSubscription(key, subscriber)
 	}
+}
+
+// SubscribeFilterLogs subscribes to the results of a streaming filter query.
+func (e *EthereumMultinodeClient) SubscribeFilterLogs(ctx context.Context, q ethereum.FilterQuery, logs chan<- types.Log) (ethereum.Subscription, error) {
+	return e.DefaultClient.SubscribeFilterLogs(ctx, q, logs)
 }
 
 // DeleteHeaderEventSubscription removes a header subscriber from the map

@@ -45,12 +45,13 @@ jobs:
           files: ./unit-test-coverage.out
           name: codecov-umbrella 
       - name: Publish Unit Test Results
-        uses: mikepenz/action-junit-report@v3.0.3
+        uses: EnricoMi/publish-unit-test-result-action@v1
         if: always()
         with:
-          check_name: Unit Test Report
-          report_paths: './tests-unit-report.xml'
+          files: ./tests-unit-report.xml
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          check_name: Unit Test Report
+          comment_mode: create new
       - name: Publish Artifacts
         if: failure()
         uses: actions/upload-artifact@v3

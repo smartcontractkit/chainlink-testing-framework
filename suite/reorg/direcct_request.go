@@ -9,8 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/testsetups"
-
 	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -25,7 +23,6 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/actions"
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/client"
-	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/contracts"
 	"github.com/smartcontractkit/chainlink-testing-framework/suite/chaos"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils"
@@ -88,7 +85,7 @@ var _ = Describe("Direct request suite @direct-request", func() {
 		})
 
 		By("Connecting to launched resources", func() {
-			c, err = blockchain.NewEthereumMultiNodeClientSetup(testsetups.DefaultGethSettings)(e)
+			c, err = blockchain.NewEthereumMultiNodeClientSetup(blockchain.SimulatedEVMNetwork)(e)
 			Expect(err).ShouldNot(HaveOccurred(), "Connecting to blockchain nodes shouldn't fail")
 			cd, err = contracts.NewContractDeployer(c)
 			Expect(err).ShouldNot(HaveOccurred(), "Deploying contracts shouldn't fail")
@@ -191,7 +188,7 @@ var _ = Describe("Direct request suite @direct-request", func() {
 
 			testFilename := strings.Split(ginkgo.CurrentSpecReport().FileName(), ".")[0]
 			_, testName := filepath.Split(testFilename)
-			logsPath := filepath.Join(config.ProjectConfigDirectory, "logs", fmt.Sprintf("%s-%d", testName, time.Now().Unix()))
+			logsPath := filepath.Join("logs", fmt.Sprintf("%s-%d", testName, time.Now().Unix()))
 			err = e.Artifacts.DumpTestResult(logsPath, "chainlink")
 			Expect(err).ShouldNot(HaveOccurred())
 		})
