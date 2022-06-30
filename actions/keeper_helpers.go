@@ -163,7 +163,7 @@ func DeployBenchmarkKeeperContracts(
 	upkeepGasLimit uint32,
 	linkToken contracts.LinkToken,
 	contractDeployer contracts.ContractDeployer,
-	networks *blockchain.Networks,
+	client blockchain.EVMClient,
 	registrySettings *contracts.KeeperRegistrySettings,
 	blockRange, // How many blocks to run the test for
 	blockInterval, // Interval of blocks that upkeeps are expected to be performed
@@ -174,10 +174,10 @@ func DeployBenchmarkKeeperContracts(
 	Expect(err).ShouldNot(HaveOccurred(), "Deploying mock ETH-Link feed shouldn't fail")
 	gf, err := contractDeployer.DeployMockGasFeed(big.NewInt(2e11))
 	Expect(err).ShouldNot(HaveOccurred(), "Deploying mock gas feed shouldn't fail")
-	err = networks.Default.WaitForEvents()
+	err = client.WaitForEvents()
 	Expect(err).ShouldNot(HaveOccurred(), "Failed waiting for mock feeds to deploy")
 
-	registry := DeployKeeperRegistry(contractDeployer, networks,
+	registry := DeployKeeperRegistry(contractDeployer, client,
 		&contracts.KeeperRegistryOpts{
 			RegistryVersion: registryVersion,
 			LinkAddr:        linkToken.Address(),
@@ -194,15 +194,14 @@ func DeployBenchmarkKeeperContracts(
 	Expect(err).ShouldNot(HaveOccurred(), "Funding keeper registry contract shouldn't fail")
 
 	registrarSettings := contracts.KeeperRegistrarSettings{
-		AutoRegister:     true,
-		WindowSizeBlocks: uint32(6000000),
-		AllowedPerWindow: uint16(numberOfContracts),
-		RegistryAddr:     registry.Address(),
-		MinLinkJuels:     big.NewInt(0),
+		AutoApproveConfigType: 2,
+		AutoApproveMaxAllowed: math.MaxUint16,
+		RegistryAddr:          registry.Address(),
+		MinLinkJuels:          big.NewInt(0),
 	}
-	registrar := DeployKeeperRegistrar(linkToken, registrarSettings, contractDeployer, networks, registry)
+	registrar := DeployKeeperRegistrar(linkToken, registrarSettings, contractDeployer, client, registry)
 
-	upkeeps := DeployKeeperConsumersBenchmark(contractDeployer, networks, numberOfContracts, blockRange, blockInterval, checkGasToBurn, performGasToBurn)
+	upkeeps := DeployKeeperConsumersBenchmark(contractDeployer, client, numberOfContracts, blockRange, blockInterval, checkGasToBurn, performGasToBurn)
 
 	upkeepsAddresses := []string{}
 	for _, upkeep := range upkeeps {
@@ -210,7 +209,7 @@ func DeployBenchmarkKeeperContracts(
 	}
 	linkFunds := big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(blockRange/blockInterval))
 
-	upkeepIds := RegisterUpkeepContracts(linkToken, linkFunds, networks, upkeepGasLimit, registry, registrar, numberOfContracts, upkeepsAddresses)
+	upkeepIds := RegisterUpkeepContracts(linkToken, linkFunds, client, upkeepGasLimit, registry, registrar, numberOfContracts, upkeepsAddresses)
 
 	return registry, upkeeps, upkeepIds
 }
@@ -384,7 +383,7 @@ func DeployKeeperConsumersPerformance(
 
 func DeployKeeperConsumersBenchmark(
 	contractDeployer contracts.ContractDeployer,
-	networks *blockchain.Networks,
+	client blockchain.EVMClient,
 	numberOfContracts int,
 	blockRange, // How many blocks to run the test for
 	blockInterval, // Interval of blocks that upkeeps are expected to be performed
@@ -409,11 +408,11 @@ func DeployKeeperConsumersBenchmark(
 			Int("Out Of", numberOfContracts).
 			Msg("Deployed Keeper Benchmark Contract")
 		if (contractCount+1)%ContractDeploymentInterval == 0 { // For large amounts of contract deployments, space things out some
-			err = networks.Default.WaitForEvents()
+			err = client.WaitForEvents()
 			Expect(err).ShouldNot(HaveOccurred(), "Failed to wait for KeeperConsumerBenchmark deployments")
 		}
 	}
-	err := networks.Default.WaitForEvents()
+	err := client.WaitForEvents()
 	Expect(err).ShouldNot(HaveOccurred(), "Failed waiting for to deploy all keeper consumer contracts")
 	log.Info().Msg("Successfully deployed all Keeper Consumer Contracts")
 

@@ -4,38 +4,56 @@ package benchmark
 import (
 	"math/big"
 
+	"github.com/smartcontractkit/chainlink-env/environment"
+	"github.com/smartcontractkit/chainlink-env/pkg/helm/chainlink"
+	"github.com/smartcontractkit/chainlink-env/pkg/helm/ethereum"
+	"github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver"
+	mockservercfg "github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver-cfg"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/actions"
+	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/contracts"
+	"github.com/smartcontractkit/chainlink-testing-framework/testsetups"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/rs/zerolog/log"
-	"github.com/smartcontractkit/chainlink-testing-framework/actions"
-	"github.com/smartcontractkit/chainlink-testing-framework/contracts"
-	"github.com/smartcontractkit/chainlink-testing-framework/testsetups"
-	"github.com/smartcontractkit/helmenv/environment"
-	// "github.com/smartcontractkit/helmenv/tools"
 )
 
 var _ = Describe("Keeper benchmark suite @benchmark-keeper", func() {
 	var (
 		err                 error
-		env                 *environment.Environment
+		testEnvironment     *environment.Environment
 		keeperBenchmarkTest *testsetups.KeeperBenchmarkTest
+		benchmarkNetwork    *blockchain.EVMNetwork
 	)
 
 	BeforeEach(func() {
 		By("Deploying the environment", func() {
-			env, err = environment.DeployOrLoadEnvironmentFromConfigFile(
-				"/root/test-env.json", // Default location for the soak-test-runner container
-			)
-			Expect(err).ShouldNot(HaveOccurred(), "Environment deployment shouldn't fail")
-			log.Info().Str("Namespace", env.Namespace).Msg("Connected to Soak Environment")
+			benchmarkNetwork = blockchain.LoadNetworkFromEnvironment()
+			testEnvironment = environment.New(&environment.Config{InsideK8s: true})
+			err = testEnvironment.
+				AddHelm(mockservercfg.New(nil)).
+				AddHelm(mockserver.New(nil)).
+				AddHelm(ethereum.New(&ethereum.Props{
+					NetworkName: benchmarkNetwork.Name,
+					Simulated:   benchmarkNetwork.Simulated,
+				})).
+				AddHelm(chainlink.New(0, nil)).
+				Run()
+			Expect(err).ShouldNot(HaveOccurred())
+			log.Info().Str("Namespace", testEnvironment.Cfg.Namespace).Msg("Connected to Keepers Benchmark Environment")
 		})
 
 		By("Setup the Keeper test", func() {
+			chainClient, err := blockchain.NewEthereumMultiNodeClientSetup(blockchain.SimulatedEVMNetwork)(testEnvironment)
+			Expect(err).ShouldNot(HaveOccurred(), "Connecting to blockchain nodes shouldn't fail")
 			keeperBenchmarkTest = testsetups.NewKeeperBenchmarkTest(
 				testsetups.KeeperBenchmarkTestInputs{
+					BlockchainClient:  chainClient,
 					NumberOfContracts: 500,
 					KeeperRegistrySettings: &contracts.KeeperRegistrySettings{
-						PaymentPremiumPPB:    uint32(200000000),
+						PaymentPremiumPPB:    uint32(0),
 						BlockCountPerTurn:    big.NewInt(100),
 						CheckGasLimit:        uint32(2000000),
 						StalenessSeconds:     big.NewInt(90000),
@@ -45,14 +63,15 @@ var _ = Describe("Keeper benchmark suite @benchmark-keeper", func() {
 						FallbackGasPrice:     big.NewInt(2e11),
 						FallbackLinkPrice:    big.NewInt(2e18),
 					},
-					CheckGasToBurn:       1000000,
+					CheckGasToBurn:       100000,
 					PerformGasToBurn:     150000,
-					BlockRange:           3600,
+					BlockRange:           1000, // TODO- Update to 3600
 					BlockInterval:        20,
 					ChainlinkNodeFunding: big.NewFloat(1000),
+					UpkeepGasLimit:       500000,
 				},
 			)
-			keeperBenchmarkTest.Setup(env)
+			keeperBenchmarkTest.Setup(testEnvironment)
 		})
 	})
 

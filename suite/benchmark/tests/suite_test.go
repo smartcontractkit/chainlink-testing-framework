@@ -9,6 +9,6 @@ import (
 )
 
 func Test_Suite(t *testing.T) {
-	actions.GinkgoRemoteSuite()
+	actions.GinkgoSuite()
 	RunSpecs(t, "Benchmark")
 }
