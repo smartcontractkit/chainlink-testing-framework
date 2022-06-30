@@ -83,8 +83,10 @@ func (e *EVMNetwork) ToMap() map[string]interface{} {
 // ChainlinkValuesMap is a convenience function that marshalls the Chain ID and Chain URL into Chainlink Env var
 // viable map
 func (e *EVMNetwork) ChainlinkValuesMap() map[string]interface{} {
-	return map[string]interface{}{
-		"eth_url":      e.URLs[0],
-		"eth_chain_id": fmt.Sprint(e.ChainID),
+	valueMap := map[string]interface{}{}
+	if !e.Simulated {
+		valueMap["eth_url"] = e.URLs[0]
+		valueMap["eth_chain_id"] = fmt.Sprint(e.ChainID)
 	}
+	return valueMap
 }
