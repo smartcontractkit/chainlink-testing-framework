@@ -749,7 +749,7 @@ func ConnectChainlinkNodesByCharts(e *environment.Environment, charts []string) 
 			c, err := NewChainlink(&ChainlinkConfig{
 				URL:      localURL.String(),
 				Email:    "notreal@fakeemail.ch",
-				Password: "twochains",
+				Password: "fj293fbBnlQ!f9vNs",
 				RemoteIP: remoteURLs[urlIndex].Hostname(),
 			}, http.DefaultClient)
 			clients = append(clients, c)
@@ -779,7 +779,7 @@ func ConnectChainlinkNodesSoakByCharts(e *environment.Environment, charts []stri
 			c, err := NewChainlink(&ChainlinkConfig{
 				URL:      remoteURL.String(),
 				Email:    "notreal@fakeemail.ch",
-				Password: "twochains",
+				Password: "fj293fbBnlQ!f9vNs",
 				RemoteIP: remoteURL.Hostname(),
 			}, http.DefaultClient)
 			clients = append(clients, c)
