@@ -26,7 +26,6 @@ type KeeperBlockTimeTest struct {
 
 	keeperRegistry          contracts.KeeperRegistry
 	keeperConsumerContracts []contracts.KeeperConsumerPerformance
-	mockServer              *client.MockserverClient
 
 	env            *environment.Environment
 	chainlinkNodes []client.Chainlink
