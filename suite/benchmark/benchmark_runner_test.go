@@ -32,7 +32,7 @@ var (
 			"5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a",
 		},
 		ChainlinkTransactionLimit: 500000,
-		Timeout:                   5 * time.Minute,
+		Timeout:                   2 * time.Minute,
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       10000,
 	}

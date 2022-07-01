@@ -36,7 +36,7 @@ const (
 
 // ContractDeploymentInterval After how many contract actions to wait before starting any more
 // Example: When deploying 1000 contracts, stop every ContractDeploymentInterval have been deployed to wait before continuing
-var ContractDeploymentInterval = 500
+var ContractDeploymentInterval = 200
 
 // GinkgoSuite provides the default setup for running a Ginkgo test suite
 func GinkgoSuite() {
