@@ -64,13 +64,15 @@ func DeployKeeperContracts(
 	err = client.WaitForEvents()
 	Expect(err).ShouldNot(HaveOccurred(), "Failed waiting for mock feeds to deploy")
 
+	// Deploy the transcoder here, and then set it to the registry
+	transcoder := DeployUpkeepTranscoder(contractDeployer, client)
 	registry := DeployKeeperRegistry(contractDeployer, client,
 		&contracts.KeeperRegistryOpts{
 			RegistryVersion: registryVersion,
 			LinkAddr:        linkToken.Address(),
 			ETHFeedAddr:     ef.Address(),
 			GasFeedAddr:     gf.Address(),
-			TranscoderAddr:  ZeroAddress.Hex(),
+			TranscoderAddr:  transcoder.Address(),
 			RegistrarAddr:   ZeroAddress.Hex(),
 			Settings:        registrySettings,
 		},
@@ -189,6 +191,15 @@ func DeployKeeperRegistrar(
 	Expect(err).ShouldNot(HaveOccurred(), "Failed waiting for registry to set registrar")
 
 	return registrar
+}
+
+func DeployUpkeepTranscoder(contractDeployer contracts.ContractDeployer, client blockchain.EVMClient) contracts.UpkeepTranscoder {
+	transcoder, err := contractDeployer.DeployUpkeepTranscoder()
+	Expect(err).ShouldNot(HaveOccurred(), "Deploying UpkeepTranscoder contract shouldn't fail")
+	err = client.WaitForEvents()
+	Expect(err).ShouldNot(HaveOccurred(), "Failed waiting for transcoder to deploy")
+
+	return transcoder
 }
 
 func RegisterUpkeepContracts(

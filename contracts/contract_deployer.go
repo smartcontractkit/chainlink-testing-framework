@@ -34,6 +34,7 @@ type ContractDeployer interface {
 	DeployMockETHLINKFeed(answer *big.Int) (MockETHLINKFeed, error)
 	DeployMockGasFeed(answer *big.Int) (MockGasFeed, error)
 	DeployKeeperRegistrar(linkAddr string, registrarSettings KeeperRegistrarSettings) (KeeperRegistrar, error)
+	DeployUpkeepTranscoder() (UpkeepTranscoder, error)
 	DeployKeeperRegistry(opts *KeeperRegistryOpts) (KeeperRegistry, error)
 	DeployKeeperConsumer(updateInterval *big.Int) (KeeperConsumer, error)
 	DeployKeeperConsumerPerformance(
@@ -392,6 +393,25 @@ func (e *EthereumContractDeployer) DeployMockGasFeed(answer *big.Int) (MockGasFe
 	}, err
 }
 
+func (e *EthereumContractDeployer) DeployUpkeepTranscoder() (UpkeepTranscoder, error) {
+	address, _, instance, err := e.client.DeployContract("UpkeepTranscoder", func(
+		opts *bind.TransactOpts,
+		backend bind.ContractBackend,
+	) (common.Address, *types.Transaction, interface{}, error) {
+		return ethereum.DeployUpkeepTranscoder(opts, backend)
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &EthereumUpkeepTranscoder{
+		client:     e.client,
+		transcoder: instance.(*ethereum.UpkeepTranscoder),
+		address:    address,
+	}, err
+}
+
 func (e *EthereumContractDeployer) DeployKeeperRegistrar(linkAddr string,
 	registrarSettings KeeperRegistrarSettings) (KeeperRegistrar, error) {
 
@@ -412,7 +432,6 @@ func (e *EthereumContractDeployer) DeployKeeperRegistrar(linkAddr string,
 		registrar: instance.(*ethereum.KeeperRegistrar),
 		address:   address,
 	}, err
-
 }
 
 func (e *EthereumContractDeployer) DeployKeeperRegistry(

@@ -38,6 +38,10 @@ type KeeperRegistrar interface {
 	Fund(ethAmount *big.Float) error
 }
 
+type UpkeepTranscoder interface {
+	Address() string
+}
+
 type KeeperRegistry interface {
 	Address() string
 	Fund(ethAmount *big.Float) error
@@ -53,6 +57,8 @@ type KeeperRegistry interface {
 	SetUpkeepGasLimit(id *big.Int, gas uint32) error
 	ParseUpkeepIdFromRegisteredLog(log *types.Log) (*big.Int, error)
 	Pause() error
+	Migrate(upkeepIDs []*big.Int, destinationAddress common.Address) error
+	SetMigrationPermissions(peerAddress common.Address, permission uint8) error
 }
 
 type KeeperConsumer interface {
@@ -210,6 +216,7 @@ func (v *EthereumKeeperRegistry) SetConfig(config KeeperRegistrySettings) error 
 	return fmt.Errorf("keeper registry version %d is not supported", v.version)
 }
 
+// Pause pauses the registry.
 func (v *EthereumKeeperRegistry) Pause() error {
 	txOpts, err := v.client.TransactionOpts(v.client.GetDefaultWallet())
 	if err != nil {
@@ -234,6 +241,44 @@ func (v *EthereumKeeperRegistry) Pause() error {
 	}
 
 	return fmt.Errorf("keeper registry version %d is not supported", v.version)
+}
+
+// Migrate performs a migration of the given upkeep ids to the specific destination passed as parameter.
+func (v *EthereumKeeperRegistry) Migrate(upkeepIDs []*big.Int, destinationAddress common.Address) error {
+	if v.version != ethereum.RegistryVersion_1_2 {
+		return fmt.Errorf("migration of upkeeps is only avaiable for version 1.2 of the registries")
+	}
+
+	txOpts, err := v.client.TransactionOpts(v.client.GetDefaultWallet())
+	if err != nil {
+		return err
+	}
+
+	tx, err := v.registry1_2.MigrateUpkeeps(txOpts, upkeepIDs, destinationAddress)
+	if err != nil {
+		return err
+	}
+
+	return v.client.ProcessTransaction(tx)
+}
+
+// SetMigrationPermissions sets the permissions of another registry to allow migrations between the two.
+func (v *EthereumKeeperRegistry) SetMigrationPermissions(peerAddress common.Address, permission uint8) error {
+	if v.version != ethereum.RegistryVersion_1_2 {
+		return fmt.Errorf("migration of upkeeps is only avaiable for version 1.2 of the registries")
+	}
+
+	txOpts, err := v.client.TransactionOpts(v.client.GetDefaultWallet())
+	if err != nil {
+		return err
+	}
+
+	tx, err := v.registry1_2.SetPeerRegistryMigrationPermission(txOpts, peerAddress, permission)
+	if err != nil {
+		return err
+	}
+
+	return v.client.ProcessTransaction(tx)
 }
 
 func (v *EthereumKeeperRegistry) SetRegistrar(registrarAddr string) error {
@@ -927,4 +972,16 @@ func (v *EthereumKeeperRegistrar) EncodeRegisterRequest(
 		return nil, err
 	}
 	return req, nil
+}
+
+// EthereumUpkeepTranscoder represents the transcoder which is used to perform migrations
+// of upkeeps from one registry to another.
+type EthereumUpkeepTranscoder struct {
+	client     blockchain.EVMClient
+	transcoder *ethereum.UpkeepTranscoder
+	address    *common.Address
+}
+
+func (v *EthereumUpkeepTranscoder) Address() string {
+	return v.address.Hex()
 }
