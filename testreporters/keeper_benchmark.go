@@ -19,6 +19,7 @@ type KeeperBenchmarkTestReporter struct {
 	Reports                        []KeeperBenchmarkTestReport `json:"reports"`
 	ReportMutex                    sync.Mutex
 	AttemptedChainlinkTransactions []*client.TransactionsData `json:"attemptedChainlinkTransactions"`
+	NumRevertedUpkeeps             int64
 
 	namespace                 string
 	keeperReportFile          string
@@ -47,7 +48,7 @@ func (k *KeeperBenchmarkTestReporter) WriteReport(folderLocation string) error {
 	defer keeperReportFile.Close()
 
 	keeperReportWriter := csv.NewWriter(keeperReportFile)
-	var totalExpected, totalSuccessful int64
+	var totalExpected, totalSuccessful, totalReverted int64
 	var allDelays []int64
 	for _, report := range k.Reports {
 		totalExpected += report.TotalExpectedUpkeeps
@@ -55,12 +56,18 @@ func (k *KeeperBenchmarkTestReporter) WriteReport(folderLocation string) error {
 
 		allDelays = append(allDelays, report.AllCheckDelays...)
 	}
+	totalReverted = k.NumRevertedUpkeeps
+	pct_success := (float64(totalSuccessful) / float64(totalExpected)) * 100
+	var pct_reverted float64 = 0
+	if totalSuccessful > 0 {
+		pct_reverted = (float64(totalReverted) / float64(totalSuccessful)) * 100
+	}
 
 	err = keeperReportWriter.Write([]string{"Full Test Summary"})
 	if err != nil {
 		return err
 	}
-	err = keeperReportWriter.Write([]string{"Total Expected", "Total Successful", "Average Perform Delay", "Largest Perform Delay", "Percent Successful"})
+	err = keeperReportWriter.Write([]string{"Total Expected", "Total Successful", "Total Reverted", "Average Perform Delay", "Largest Perform Delay", "Percent Performed", "Percent Revert"})
 	if err != nil {
 		return err
 	}
@@ -68,13 +75,25 @@ func (k *KeeperBenchmarkTestReporter) WriteReport(folderLocation string) error {
 	err = keeperReportWriter.Write([]string{
 		fmt.Sprint(totalExpected),
 		fmt.Sprint(totalSuccessful),
+		fmt.Sprint(totalReverted),
 		fmt.Sprint(avg),
 		fmt.Sprint(max),
-		fmt.Sprintf("%.2f%%", (float64(totalSuccessful)/float64(totalExpected))*100)})
+		fmt.Sprintf("%.2f%%", pct_success),
+		fmt.Sprintf("%.2f%%", pct_reverted),
+	})
 	if err != nil {
 		return err
 	}
 	keeperReportWriter.Flush()
+	log.Info().
+		Int64("Total Expected", totalExpected).
+		Int64("Total Successful", totalSuccessful).
+		Int64("Total Reverted", totalReverted).
+		Float64("Average Delay", avg).
+		Int64("Max Delay", max).
+		Float64("Percentage Success", pct_success).
+		Float64("Percentage Reverted", pct_reverted).
+		Msg("Calculated Aggregate Results")
 
 	err = keeperReportWriter.Write([]string{
 		"Contract Index",

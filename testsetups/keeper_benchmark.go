@@ -2,10 +2,14 @@ package testsetups
 
 //revive:disable:dot-imports
 import (
+	"context"
 	"fmt"
 	"math/big"
 	"time"
 
+	goeath "github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/smartcontractkit/chainlink-env/environment"
 
 	. "github.com/onsi/gomega"
@@ -116,8 +120,11 @@ func (k *KeeperBenchmarkTest) Run() {
 			k.chainClient.DeleteHeaderEventSubscription(fmt.Sprintf("Keeper Tracker %d", index))
 		}
 	}()
+	logSubscriptionStop := make(chan bool)
+	k.subscribeToUpkeepPerformedEvent(logSubscriptionStop, &k.TestReporter)
 	err := k.chainClient.WaitForEvents()
 	Expect(err).ShouldNot(HaveOccurred(), "Error waiting for keeper subscriptions")
+	close(logSubscriptionStop)
 
 	for _, chainlinkNode := range k.chainlinkNodes {
 		txData, err := chainlinkNode.ReadTransactionAttempts()
@@ -126,6 +133,56 @@ func (k *KeeperBenchmarkTest) Run() {
 	}
 
 	log.Info().Str("Run Time", time.Since(startTime).String()).Msg("Finished Keeper Benchmark Test")
+}
+
+// subscribeToUpkeepPerformedEvent subscribes to the event log for UpkeepPerformed event and
+// counts the number of times it was unsuccessful
+func (t *KeeperBenchmarkTest) subscribeToUpkeepPerformedEvent(doneChan chan bool, metricsReporter *testreporters.KeeperBenchmarkTestReporter) {
+	contractABI, err := ethereum.KeeperRegistryMetaData.GetAbi()
+	Expect(err).ShouldNot(HaveOccurred(), "Getting contract abi for registry shouldn't fail")
+	query := goeath.FilterQuery{
+		Addresses: []common.Address{common.HexToAddress(t.keeperRegistry.Address())},
+	}
+	eventLogs := make(chan types.Log)
+	sub, err := t.chainClient.SubscribeFilterLogs(context.Background(), query, eventLogs)
+	Expect(err).ShouldNot(HaveOccurred(), "Subscribing to upkeep performed events log shouldn't fail")
+	go func() {
+		var numRevertedUpkeeps int64 = 0
+		for {
+			select {
+			case err := <-sub.Err():
+				Expect(err).ShouldNot(HaveOccurred(), "Retrieving upkeep performed log shouldn't fail")
+			case vLog := <-eventLogs:
+				eventDetails, err := contractABI.EventByID(vLog.Topics[0])
+				Expect(err).ShouldNot(HaveOccurred(), "Getting event details for subscribed log shouldn't fail")
+				if eventDetails.Name != "UpkeepPerformed" {
+					// Skip non upkeepPerformed Logs
+					continue
+				}
+				parsedLog, err := t.keeperRegistry.ParseUpkeepPerformedLog(&vLog)
+				Expect(err).ShouldNot(HaveOccurred(), "Parsing upkeep performed log shouldn't fail")
+
+				if parsedLog.Success {
+					log.Info().
+						Str("Upkeep ID", parsedLog.Id.String()).
+						Bool("Success", parsedLog.Success).
+						Str("From", parsedLog.From.String()).
+						Msg("Got successful Upkeep Performed log on Registry")
+
+				} else {
+					log.Warn().
+						Str("Upkeep ID", parsedLog.Id.String()).
+						Bool("Success", parsedLog.Success).
+						Str("From", parsedLog.From.String()).
+						Msg("Got reverted Upkeep Performed log on Registry")
+					numRevertedUpkeeps++
+				}
+			case <-doneChan:
+				metricsReporter.NumRevertedUpkeeps = numRevertedUpkeeps
+				return
+			}
+		}
+	}()
 }
 
 // Networks returns the networks that the test is running on
