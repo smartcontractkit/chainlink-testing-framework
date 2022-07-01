@@ -240,8 +240,8 @@ func (k *KeeperBenchmarkTest) Run() {
 		k.chainClient.AddHeaderEventSubscription(fmt.Sprintf("Keeper Tracker %d", index),
 			contracts.NewKeeperConsumerBenchmarkRoundConfirmer(
 				keeperConsumer,
-				k.Inputs.BlockInterval,
 				k.Inputs.BlockRange,
+				k.Inputs.BlockRange/k.Inputs.BlockInterval,
 				&k.TestReporter,
 			),
 		)

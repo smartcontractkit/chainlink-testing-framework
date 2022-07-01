@@ -45,6 +45,9 @@ suite/remote_runner_config.yaml
 # Common report file format
 *.csv
 
+# Custom env files
+*.env
+
 # docs
 docs/_site/
 docs/.sass-cache/

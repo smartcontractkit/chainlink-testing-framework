@@ -784,39 +784,38 @@ type KeeperConsumerBenchmarkRoundConfirmer struct {
 	context  context.Context
 	cancel   context.CancelFunc
 
-	blockCadence                int64   // How many blocks before an upkeep should happen
-	blockRange                  int64   // How many blocks to watch upkeeps for
-	blocksSinceSubscription     int64   // How many blocks have passed since subscribing
-	expectedUpkeepCount         int64   // The count of upkeeps expected next iteration
-	blocksSinceSuccessfulUpkeep int64   // How many blocks have come in since the last successful upkeep
-	allMissedUpkeeps            []int64 // Tracks the amount of blocks missed in each missed upkeep
-	totalSuccessfulUpkeeps      int64
-
+	blockRange      int64                                      // How many blocks to watch upkeeps for
+	expectedUpkeeps int64                                      //expected number of times these upkeep will be performed
 	metricsReporter *testreporters.KeeperBenchmarkTestReporter // Testreporter to track results
+
+	// State variables, changes as we get blocks
+	blocksSinceSubscription int64   // How many blocks have passed since subscribing
+	blocksSinceEligible     int64   // How many blocks have come in since upkeep has been eligible for check
+	upkeepCount             int64   // The count of upkeeps done so far
+	allCheckDelays          []int64 // Tracks the amount of blocks missed before an upkeep since it became eligible
 }
 
 // NewKeeperConsumerBenchmarkRoundConfirmer provides a new instance of a KeeperConsumerBenchmarkRoundConfirmer
 // Used to track and log performance test results for keepers
 func NewKeeperConsumerBenchmarkRoundConfirmer(
 	contract KeeperConsumerBenchmark,
-	expectedBlockCadence int64, // Expected to upkeep every 5/10/20 blocks, for example
 	blockRange int64,
+	expectedUpkeeps int64,
 	metricsReporter *testreporters.KeeperBenchmarkTestReporter,
 ) *KeeperConsumerBenchmarkRoundConfirmer {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	return &KeeperConsumerBenchmarkRoundConfirmer{
-		instance:                    contract,
-		doneChan:                    make(chan bool),
-		context:                     ctx,
-		cancel:                      cancelFunc,
-		blockCadence:                expectedBlockCadence,
-		blockRange:                  blockRange,
-		blocksSinceSubscription:     0,
-		blocksSinceSuccessfulUpkeep: 0,
-		expectedUpkeepCount:         1,
-		allMissedUpkeeps:            []int64{},
-		totalSuccessfulUpkeeps:      0,
-		metricsReporter:             metricsReporter,
+		instance:                contract,
+		doneChan:                make(chan bool),
+		context:                 ctx,
+		cancel:                  cancelFunc,
+		blockRange:              blockRange,
+		expectedUpkeeps:         expectedUpkeeps,
+		blocksSinceSubscription: 0,
+		blocksSinceEligible:     0,
+		upkeepCount:             0,
+		allCheckDelays:          []int64{},
+		metricsReporter:         metricsReporter,
 	}
 }
 
@@ -824,10 +823,24 @@ func NewKeeperConsumerBenchmarkRoundConfirmer(
 func (o *KeeperConsumerBenchmarkRoundConfirmer) ReceiveBlock(receivedBlock blockchain.NodeBlock) error {
 	// Increment block counters
 	o.blocksSinceSubscription++
-	o.blocksSinceSuccessfulUpkeep++
+
 	upkeepCount, err := o.instance.GetUpkeepCount(context.Background())
 	if err != nil {
 		return err
+	}
+
+	if upkeepCount.Int64() > o.upkeepCount { // A new upkeep was done
+		if upkeepCount.Int64() != o.upkeepCount+1 {
+			return errors.New("Upkeep count increased by more than 1 in a single block")
+		}
+		log.Info().
+			Str("Contract Address", o.instance.Address()).
+			Int64("Upkeep Count", upkeepCount.Int64()).
+			Int64("Blocks since eligible", o.blocksSinceEligible).
+			Msg("Upkeep Performed")
+
+		o.allCheckDelays = append(o.allCheckDelays, o.blocksSinceEligible)
+		o.upkeepCount++
 	}
 
 	isEligible, err := o.instance.CheckEligible(context.Background())
@@ -835,60 +848,31 @@ func (o *KeeperConsumerBenchmarkRoundConfirmer) ReceiveBlock(receivedBlock block
 		return err
 	}
 	if isEligible {
-		log.Trace().
+		o.blocksSinceEligible++
+		log.Debug().
 			Str("Contract Address", o.instance.Address()).
-			Int64("Upkeeps Performed", upkeepCount.Int64()).
+			Int64("Blocks since eligible", o.blocksSinceEligible).
 			Msg("Upkeep Now Eligible")
-	}
-	if upkeepCount.Int64() >= o.expectedUpkeepCount { // Upkeep was successful
-		if o.blocksSinceSuccessfulUpkeep < o.blockCadence { // If there's an early upkeep, that's weird
-			log.Error().
-				Str("Contract Address", o.instance.Address()).
-				Int64("Upkeeps Performed", upkeepCount.Int64()).
-				Int64("Expected Cadence", o.blockCadence).
-				Int64("Actual Cadence", o.blocksSinceSuccessfulUpkeep).
-				Err(errors.New("Found an early Upkeep"))
-			return fmt.Errorf("Found an early Upkeep on contract %s", o.instance.Address())
-		} else if o.blocksSinceSuccessfulUpkeep == o.blockCadence { // Perfectly timed upkeep
-			log.Info().
-				Str("Contract Address", o.instance.Address()).
-				Int64("Upkeeps Performed", upkeepCount.Int64()).
-				Int64("Expected Cadence", o.blockCadence).
-				Int64("Actual Cadence", o.blocksSinceSuccessfulUpkeep).
-				Msg("Successful Upkeep on Expected Cadence")
-			o.totalSuccessfulUpkeeps++
-		} else { // Late upkeep
-			log.Warn().
-				Str("Contract Address", o.instance.Address()).
-				Int64("Upkeeps Performed", upkeepCount.Int64()).
-				Int64("Expected Cadence", o.blockCadence).
-				Int64("Actual Cadence", o.blocksSinceSuccessfulUpkeep).
-				Msg("Upkeep Completed Late")
-			o.allMissedUpkeeps = append(o.allMissedUpkeeps, o.blocksSinceSuccessfulUpkeep-o.blockCadence)
-		}
-		// Update upkeep tracking values
-		o.blocksSinceSuccessfulUpkeep = 0
-		o.expectedUpkeepCount++
+	} else {
+		o.blocksSinceEligible = 0
 	}
 
 	if o.blocksSinceSubscription > o.blockRange {
-		if o.blocksSinceSuccessfulUpkeep > o.blockCadence {
-			log.Warn().
-				Str("Contract Address", o.instance.Address()).
-				Int64("Upkeeps Performed", upkeepCount.Int64()).
-				Int64("Expected Cadence", o.blockCadence).
-				Int64("Expected Upkeep Count", o.expectedUpkeepCount).
-				Int64("Blocks Waiting", o.blocksSinceSuccessfulUpkeep).
-				Int64("Total Blocks Watched", o.blocksSinceSubscription).
-				Msg("Finished Watching for Upkeeps While Waiting on a Late Upkeep")
-			o.allMissedUpkeeps = append(o.allMissedUpkeeps, o.blocksSinceSuccessfulUpkeep-o.blockCadence)
-		} else {
+		if o.blocksSinceEligible > 0 {
+			o.allCheckDelays = append(o.allCheckDelays, o.blocksSinceEligible)
 			log.Info().
 				Str("Contract Address", o.instance.Address()).
-				Int64("Upkeeps Performed", upkeepCount.Int64()).
-				Int64("Total Blocks Watched", o.blocksSinceSubscription).
-				Msg("Finished Watching for Upkeeps")
+				Int64("Upkeep Count", upkeepCount.Int64()).
+				Int64("Blocks since eligible", o.blocksSinceEligible).
+				Msg("Upkeep remained eligible at end of test")
 		}
+
+		log.Info().
+			Str("Contract Address", o.instance.Address()).
+			Int64("Upkeeps Performed", upkeepCount.Int64()).
+			Int64("Total Blocks Watched", o.blocksSinceSubscription).
+			Msg("Finished Watching for Upkeeps")
+
 		o.doneChan <- true
 		return nil
 	}
@@ -904,7 +888,7 @@ func (o *KeeperConsumerBenchmarkRoundConfirmer) Wait() error {
 			o.logDetails()
 			return nil
 		case <-o.context.Done():
-			return fmt.Errorf("timeout waiting for expected upkeep count to confirm: %d", o.expectedUpkeepCount)
+			return fmt.Errorf("timeout waiting for expected number of blocks: %d", o.blockRange)
 		}
 	}
 }
@@ -912,9 +896,9 @@ func (o *KeeperConsumerBenchmarkRoundConfirmer) Wait() error {
 func (o *KeeperConsumerBenchmarkRoundConfirmer) logDetails() {
 	report := testreporters.KeeperBenchmarkTestReport{
 		ContractAddress:        o.instance.Address(),
-		TotalExpectedUpkeeps:   o.blockRange / o.blockCadence,
-		TotalSuccessfulUpkeeps: o.totalSuccessfulUpkeeps,
-		AllMissedUpkeeps:       o.allMissedUpkeeps,
+		TotalSuccessfulUpkeeps: o.upkeepCount,
+		TotalExpectedUpkeeps:   o.expectedUpkeeps,
+		AllCheckDelays:         o.allCheckDelays,
 	}
 	o.metricsReporter.ReportMutex.Lock()
 	o.metricsReporter.Reports = append(o.metricsReporter.Reports, report)

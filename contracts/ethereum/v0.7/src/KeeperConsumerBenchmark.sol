@@ -12,14 +12,12 @@ contract KeeperConsumerBenchmark {
   mapping(bytes32 => bool) public dummyMap; // used to force storage lookup
 
   uint256 public count = 0;
-  uint256 private maxCount = 0;
 
   constructor(uint256 _testRange, uint256 _averageEligibilityCadence, uint256 _checkGasToBurn, uint256 _performGasToBurn) {
     testRange = _testRange;
     averageEligibilityCadence = _averageEligibilityCadence;
     checkGasToBurn = _checkGasToBurn;
     performGasToBurn = _performGasToBurn;
-    maxCount = _testRange / (_averageEligibilityCadence *2);
   }
 
   function checkUpkeep(bytes calldata data) external view returns (bool, bytes memory) {
@@ -40,7 +38,7 @@ contract KeeperConsumerBenchmark {
     if (initialCall == 0) {
       initialCall = block.number;
     }
-    nextEligible = (block.number + (rand() % (averageEligibilityCadence * 2))) + 1;
+    nextEligible = (block.number + (rand() % (averageEligibilityCadence))) + 1;
     count++;
     emit PerformingUpkeep( tx.origin, initialCall, nextEligible, block.number);
     // burn gas
@@ -65,7 +63,7 @@ contract KeeperConsumerBenchmark {
   }
 
   function eligible() internal view returns (bool) {
-    return initialCall == 0 || (count < maxCount && block.number > nextEligible);
+    return initialCall == 0 || (block.number > nextEligible);
   }
 
   function checkEligible() public view returns (bool) {
