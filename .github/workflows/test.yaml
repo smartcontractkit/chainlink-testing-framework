@@ -51,7 +51,7 @@ jobs:
           files: ./tests-unit-report.xml
           github_token: ${{ secrets.GITHUB_TOKEN }}
           check_name: Unit Test Report
-          comment_mode: create new
+          comment_mode: always
       - name: Publish Artifacts
         if: failure()
         uses: actions/upload-artifact@v3
