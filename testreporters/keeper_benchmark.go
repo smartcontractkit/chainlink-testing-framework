@@ -47,40 +47,14 @@ func (k *KeeperBenchmarkTestReporter) WriteReport(folderLocation string) error {
 	defer keeperReportFile.Close()
 
 	keeperReportWriter := csv.NewWriter(keeperReportFile)
-	err = keeperReportWriter.Write([]string{
-		"Contract Index",
-		"Contract Address",
-		"Total Expected Upkeeps",
-		"Total Successful Upkeeps",
-		"Average Perform Delay",
-		"Largest Perform Delay",
-		"Percent Successful",
-	})
-	if err != nil {
-		return err
-	}
 	var totalExpected, totalSuccessful int64
 	var allDelays []int64
-	for contractIndex, report := range k.Reports {
-		avg, max := int64AvgMax(report.AllCheckDelays)
-
-		err = keeperReportWriter.Write([]string{
-			fmt.Sprint(contractIndex),
-			report.ContractAddress,
-			fmt.Sprint(report.TotalExpectedUpkeeps),
-			fmt.Sprint(report.TotalSuccessfulUpkeeps),
-			fmt.Sprint(avg),
-			fmt.Sprint(max),
-			fmt.Sprintf("%.2f%%", (float64(report.TotalSuccessfulUpkeeps)/float64(report.TotalExpectedUpkeeps))*100),
-		})
+	for _, report := range k.Reports {
 		totalExpected += report.TotalExpectedUpkeeps
 		totalSuccessful += report.TotalSuccessfulUpkeeps
-		if err != nil {
-			return err
-		}
+
 		allDelays = append(allDelays, report.AllCheckDelays...)
 	}
-	keeperReportWriter.Flush()
 
 	err = keeperReportWriter.Write([]string{"Full Test Summary"})
 	if err != nil {
@@ -99,6 +73,36 @@ func (k *KeeperBenchmarkTestReporter) WriteReport(folderLocation string) error {
 		fmt.Sprintf("%.2f%%", (float64(totalSuccessful)/float64(totalExpected))*100)})
 	if err != nil {
 		return err
+	}
+	keeperReportWriter.Flush()
+
+	err = keeperReportWriter.Write([]string{
+		"Contract Index",
+		"Contract Address",
+		"Total Expected Upkeeps",
+		"Total Successful Upkeeps",
+		"Average Perform Delay",
+		"Largest Perform Delay",
+		"Percent Successful",
+	})
+	if err != nil {
+		return err
+	}
+
+	for contractIndex, report := range k.Reports {
+		avg, max := int64AvgMax(report.AllCheckDelays)
+		err = keeperReportWriter.Write([]string{
+			fmt.Sprint(contractIndex),
+			report.ContractAddress,
+			fmt.Sprint(report.TotalExpectedUpkeeps),
+			fmt.Sprint(report.TotalSuccessfulUpkeeps),
+			fmt.Sprint(avg),
+			fmt.Sprint(max),
+			fmt.Sprintf("%.2f%%", (float64(report.TotalSuccessfulUpkeeps)/float64(report.TotalExpectedUpkeeps))*100),
+		})
+		if err != nil {
+			return err
+		}
 	}
 	keeperReportWriter.Flush()
 

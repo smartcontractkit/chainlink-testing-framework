@@ -57,3 +57,4 @@ dist/
 
 **/remote_runner_config.yaml
 logs/
+tmp*
