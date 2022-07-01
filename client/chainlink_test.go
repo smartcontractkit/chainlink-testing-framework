@@ -711,7 +711,7 @@ var _ = Describe("Chainlink @unit", func() {
 func newDefaultClient(url string) (Chainlink, error) {
 	cl, err := NewChainlink(&ChainlinkConfig{
 		Email:    "admin@node.local",
-		Password: "twochains",
+		Password: "fj293fbBnlQ!f9vNs",
 		URL:      url,
 	}, nil)
 	return cl, err
