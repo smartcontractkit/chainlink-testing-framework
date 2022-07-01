@@ -58,7 +58,7 @@ func (k *KeeperBenchmarkTestReporter) WriteReport(folderLocation string) error {
 	}
 	totalReverted = k.NumRevertedUpkeeps
 	pct_success := (float64(totalSuccessful) / float64(totalExpected)) * 100
-	var pct_reverted float64 = 0
+	var pct_reverted float64
 	if totalSuccessful > 0 {
 		pct_reverted = (float64(totalReverted) / float64(totalSuccessful)) * 100
 	}

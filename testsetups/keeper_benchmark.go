@@ -137,17 +137,17 @@ func (k *KeeperBenchmarkTest) Run() {
 
 // subscribeToUpkeepPerformedEvent subscribes to the event log for UpkeepPerformed event and
 // counts the number of times it was unsuccessful
-func (t *KeeperBenchmarkTest) subscribeToUpkeepPerformedEvent(doneChan chan bool, metricsReporter *testreporters.KeeperBenchmarkTestReporter) {
+func (k *KeeperBenchmarkTest) subscribeToUpkeepPerformedEvent(doneChan chan bool, metricsReporter *testreporters.KeeperBenchmarkTestReporter) {
 	contractABI, err := ethereum.KeeperRegistryMetaData.GetAbi()
 	Expect(err).ShouldNot(HaveOccurred(), "Getting contract abi for registry shouldn't fail")
 	query := goeath.FilterQuery{
-		Addresses: []common.Address{common.HexToAddress(t.keeperRegistry.Address())},
+		Addresses: []common.Address{common.HexToAddress(k.keeperRegistry.Address())},
 	}
 	eventLogs := make(chan types.Log)
-	sub, err := t.chainClient.SubscribeFilterLogs(context.Background(), query, eventLogs)
+	sub, err := k.chainClient.SubscribeFilterLogs(context.Background(), query, eventLogs)
 	Expect(err).ShouldNot(HaveOccurred(), "Subscribing to upkeep performed events log shouldn't fail")
 	go func() {
-		var numRevertedUpkeeps int64 = 0
+		var numRevertedUpkeeps int64
 		for {
 			select {
 			case err := <-sub.Err():
@@ -159,7 +159,7 @@ func (t *KeeperBenchmarkTest) subscribeToUpkeepPerformedEvent(doneChan chan bool
 					// Skip non upkeepPerformed Logs
 					continue
 				}
-				parsedLog, err := t.keeperRegistry.ParseUpkeepPerformedLog(&vLog)
+				parsedLog, err := k.keeperRegistry.ParseUpkeepPerformedLog(&vLog)
 				Expect(err).ShouldNot(HaveOccurred(), "Parsing upkeep performed log shouldn't fail")
 
 				if parsedLog.Success {
