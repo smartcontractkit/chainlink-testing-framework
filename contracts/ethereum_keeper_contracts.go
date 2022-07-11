@@ -868,6 +868,7 @@ func (o *KeeperConsumerBenchmarkRoundConfirmer) ReceiveBlock(receivedBlock block
 			return errors.New("Upkeep count increased by more than 1 in a single block")
 		}
 		log.Info().
+			Uint64("Block Number", receivedBlock.NumberU64()).
 			Str("Contract Address", o.instance.Address()).
 			Int64("Upkeep Count", upkeepCount.Int64()).
 			Int64("Blocks since eligible", o.blocksSinceEligible).
@@ -884,6 +885,7 @@ func (o *KeeperConsumerBenchmarkRoundConfirmer) ReceiveBlock(receivedBlock block
 	if isEligible {
 		o.blocksSinceEligible++
 		log.Debug().
+			Uint64("Block Number", receivedBlock.NumberU64()).
 			Str("Contract Address", o.instance.Address()).
 			Int64("Blocks since eligible", o.blocksSinceEligible).
 			Msg("Upkeep Now Eligible")
@@ -895,6 +897,7 @@ func (o *KeeperConsumerBenchmarkRoundConfirmer) ReceiveBlock(receivedBlock block
 		if o.blocksSinceEligible > 0 {
 			o.allCheckDelays = append(o.allCheckDelays, o.blocksSinceEligible)
 			log.Info().
+				Uint64("Block Number", receivedBlock.NumberU64()).
 				Str("Contract Address", o.instance.Address()).
 				Int64("Upkeep Count", upkeepCount.Int64()).
 				Int64("Blocks since eligible", o.blocksSinceEligible).
@@ -902,6 +905,7 @@ func (o *KeeperConsumerBenchmarkRoundConfirmer) ReceiveBlock(receivedBlock block
 		}
 
 		log.Info().
+			Uint64("Block Number", receivedBlock.NumberU64()).
 			Str("Contract Address", o.instance.Address()).
 			Int64("Upkeeps Performed", upkeepCount.Int64()).
 			Int64("Total Blocks Watched", o.blocksSinceSubscription).
