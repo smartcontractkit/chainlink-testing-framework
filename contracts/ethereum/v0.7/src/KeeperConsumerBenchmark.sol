@@ -38,7 +38,7 @@ contract KeeperConsumerBenchmark {
     if (initialCall == 0) {
       initialCall = block.number;
     }
-    nextEligible = (block.number + averageEligibilityCadence) + 1;
+    nextEligible = block.number + averageEligibilityCadence;
     count++;
     emit PerformingUpkeep( tx.origin, initialCall, nextEligible, block.number);
     // burn gas
@@ -63,7 +63,7 @@ contract KeeperConsumerBenchmark {
   }
 
   function eligible() internal view returns (bool) {
-    return initialCall == 0 || (block.number - initialCall < testRange && block.number > nextEligible);
+    return initialCall == 0 || (block.number - initialCall <= testRange && block.number >= nextEligible);
   }
 
   function checkEligible() public view returns (bool) {
