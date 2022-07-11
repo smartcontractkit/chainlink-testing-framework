@@ -4,6 +4,7 @@ package testsetups
 import (
 	"context"
 	"fmt"
+	"math"
 	"math/big"
 	"time"
 
@@ -110,7 +111,7 @@ func (k *KeeperBenchmarkTest) Run() {
 			contracts.NewKeeperConsumerBenchmarkRoundConfirmer(
 				keeperConsumer,
 				k.Inputs.BlockRange,
-				k.Inputs.BlockRange/k.Inputs.BlockInterval,
+				int64(math.Ceil(float64(k.Inputs.BlockRange)/float64(k.Inputs.BlockInterval))),
 				&k.TestReporter,
 			),
 		)

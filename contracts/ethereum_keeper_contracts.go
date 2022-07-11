@@ -891,7 +891,7 @@ func (o *KeeperConsumerBenchmarkRoundConfirmer) ReceiveBlock(receivedBlock block
 		o.blocksSinceEligible = 0
 	}
 
-	if o.blocksSinceSubscription > o.blockRange {
+	if o.blocksSinceSubscription >= o.blockRange {
 		if o.blocksSinceEligible > 0 {
 			o.allCheckDelays = append(o.allCheckDelays, o.blocksSinceEligible)
 			log.Info().
