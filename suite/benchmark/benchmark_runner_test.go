@@ -75,6 +75,10 @@ func benchmarkTestHelper(
 	// Set Chainlink vals
 	chainlinkVals := map[string]interface{}{
 		"replicas": chainlinkReplicas,
+		"env": map[string]interface{}{
+			"MIN_INCOMING_CONFIRMATIONS": "1",
+			"KEEPER_TURN_FLAG_ENABLED":   "true",
+		},
 	}
 
 	err = env.
