@@ -229,8 +229,9 @@ func (rc *ReorgController) forkNetwork(blk blockchain.NodeBlock) error {
 		chaos.NewNetworkPartition(
 			rc.cfg.Env.Cfg.Namespace,
 			&chaos.Props{
-				FromLabels: &map[string]*string{"app": a.Str(reorg.TXNodesAppLabel)},
-				ToLabels:   &map[string]*string{"app": a.Str(reorg.MinerNodesAppLabel)},
+				DurationStr: "999h",
+				FromLabels:  &map[string]*string{"app": a.Str(reorg.TXNodesAppLabel)},
+				ToLabels:    &map[string]*string{"app": a.Str(reorg.MinerNodesAppLabel)},
 			},
 		))
 	rc.chaosExperimentName = expName
