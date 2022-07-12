@@ -28,10 +28,11 @@ type KeeperBenchmarkTestReporter struct {
 
 // KeeperBenchmarkTestReport holds a report information for a single Upkeep Consumer contract
 type KeeperBenchmarkTestReport struct {
-	ContractAddress        string  `json:"contractAddress"`
-	TotalExpectedUpkeeps   int64   `json:"totalExpectedUpkeeps"`
-	TotalSuccessfulUpkeeps int64   `json:"totalSuccessfulUpkeeps"`
-	AllCheckDelays         []int64 `json:"allCheckDelays"` // List of the delays since checkUpkeep for all performs
+	ContractAddress       string  `json:"contractAddress"`
+	TotalEligibleCount    int64   `json:"totalEligibleCount"`
+	TotalSLAMissedUpkeeps int64   `json:"totalSLAMissedUpkeeps"`
+	TotalPerformedUpkeeps int64   `json:"totalPerformedUpkeeps"`
+	AllCheckDelays        []int64 `json:"allCheckDelays"` // List of the delays since checkUpkeep for all performs
 }
 
 func (k *KeeperBenchmarkTestReporter) SetNamespace(namespace string) {
@@ -48,37 +49,38 @@ func (k *KeeperBenchmarkTestReporter) WriteReport(folderLocation string) error {
 	defer keeperReportFile.Close()
 
 	keeperReportWriter := csv.NewWriter(keeperReportFile)
-	var totalExpected, totalSuccessful, totalReverted int64
+	var totalEligibleCount, totalPerformed, totalMissedSLA, totalReverted int64
 	var allDelays []int64
 	for _, report := range k.Reports {
-		totalExpected += report.TotalExpectedUpkeeps
-		totalSuccessful += report.TotalSuccessfulUpkeeps
+		totalEligibleCount += report.TotalEligibleCount
+		totalPerformed += report.TotalPerformedUpkeeps
+		totalMissedSLA += report.TotalSLAMissedUpkeeps
 
 		allDelays = append(allDelays, report.AllCheckDelays...)
 	}
 	totalReverted = k.NumRevertedUpkeeps
-	pct_success := (float64(totalSuccessful) / float64(totalExpected)) * 100
+	pct_within_SLA := (1.0 - float64(totalMissedSLA)/float64(totalEligibleCount)) * 100
 	var pct_reverted float64
-	if totalSuccessful > 0 {
-		pct_reverted = (float64(totalReverted) / float64(totalSuccessful)) * 100
+	if totalPerformed > 0 {
+		pct_reverted = (float64(totalReverted) / float64(totalPerformed)) * 100
 	}
 
 	err = keeperReportWriter.Write([]string{"Full Test Summary"})
 	if err != nil {
 		return err
 	}
-	err = keeperReportWriter.Write([]string{"Total Expected", "Total Successful", "Total Reverted", "Average Perform Delay", "Largest Perform Delay", "Percent Performed", "Percent Revert"})
+	err = keeperReportWriter.Write([]string{"Total Times Eligible", "Total Performed", "Total Reverted", "Average Perform Delay", "Max Perform Delay", "Percent Within SLA", "Percent Revert"})
 	if err != nil {
 		return err
 	}
 	avg, max := int64AvgMax(allDelays)
 	err = keeperReportWriter.Write([]string{
-		fmt.Sprint(totalExpected),
-		fmt.Sprint(totalSuccessful),
+		fmt.Sprint(totalEligibleCount),
+		fmt.Sprint(totalPerformed),
 		fmt.Sprint(totalReverted),
 		fmt.Sprint(avg),
 		fmt.Sprint(max),
-		fmt.Sprintf("%.2f%%", pct_success),
+		fmt.Sprintf("%.2f%%", pct_within_SLA),
 		fmt.Sprintf("%.2f%%", pct_reverted),
 	})
 	if err != nil {
@@ -86,23 +88,23 @@ func (k *KeeperBenchmarkTestReporter) WriteReport(folderLocation string) error {
 	}
 	keeperReportWriter.Flush()
 	log.Info().
-		Int64("Total Expected", totalExpected).
-		Int64("Total Successful", totalSuccessful).
+		Int64("Total Times Eligible", totalEligibleCount).
+		Int64("Total Performed", totalPerformed).
 		Int64("Total Reverted", totalReverted).
-		Float64("Average Delay", avg).
-		Int64("Max Delay", max).
-		Float64("Percentage Success", pct_success).
-		Float64("Percentage Reverted", pct_reverted).
+		Float64("Average Perform Delay", avg).
+		Int64("Max Perform Delay", max).
+		Float64("Percent Within SLA", pct_within_SLA).
+		Float64("Percent Reverted", pct_reverted).
 		Msg("Calculated Aggregate Results")
 
 	err = keeperReportWriter.Write([]string{
 		"Contract Index",
 		"Contract Address",
-		"Total Expected Upkeeps",
-		"Total Successful Upkeeps",
+		"Total Times Eligible",
+		"Total Performed Upkeeps",
 		"Average Perform Delay",
 		"Largest Perform Delay",
-		"Percent Successful",
+		"Percent Within SLA",
 	})
 	if err != nil {
 		return err
@@ -113,11 +115,11 @@ func (k *KeeperBenchmarkTestReporter) WriteReport(folderLocation string) error {
 		err = keeperReportWriter.Write([]string{
 			fmt.Sprint(contractIndex),
 			report.ContractAddress,
-			fmt.Sprint(report.TotalExpectedUpkeeps),
-			fmt.Sprint(report.TotalSuccessfulUpkeeps),
+			fmt.Sprint(report.TotalEligibleCount),
+			fmt.Sprint(report.TotalPerformedUpkeeps),
 			fmt.Sprint(avg),
 			fmt.Sprint(max),
-			fmt.Sprintf("%.2f%%", (float64(report.TotalSuccessfulUpkeeps)/float64(report.TotalExpectedUpkeeps))*100),
+			fmt.Sprintf("%.2f%%", (1.0-float64(report.TotalSLAMissedUpkeeps)/float64(report.TotalEligibleCount))*100),
 		})
 		if err != nil {
 			return err

@@ -4,7 +4,6 @@ package testsetups
 import (
 	"context"
 	"fmt"
-	"math"
 	"math/big"
 	"time"
 
@@ -50,6 +49,7 @@ type KeeperBenchmarkTestInputs struct {
 	PerformGasToBurn       int64                             // How much gas should be burned on performUpkeep() calls
 	ChainlinkNodeFunding   *big.Float                        // Amount of ETH to fund each chainlink node with
 	UpkeepGasLimit         int64                             // Maximum gas that can be consumed by the upkeeps
+	UpkeepSLA              int64                             // SLA in number of blocks for an upkeep to be performed once it becomes eligible
 }
 
 // NewKeeperBenchmarkTest prepares a new keeper benchmark test to be run
@@ -111,7 +111,7 @@ func (k *KeeperBenchmarkTest) Run() {
 			contracts.NewKeeperConsumerBenchmarkRoundConfirmer(
 				keeperConsumer,
 				k.Inputs.BlockRange,
-				int64(math.Ceil(float64(k.Inputs.BlockRange)/float64(k.Inputs.BlockInterval))),
+				k.Inputs.UpkeepSLA,
 				&k.TestReporter,
 			),
 		)

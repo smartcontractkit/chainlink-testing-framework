@@ -69,6 +69,7 @@ var _ = Describe("Keeper benchmark suite @benchmark-keeper", func() {
 					BlockInterval:        20,
 					ChainlinkNodeFunding: big.NewFloat(1000),
 					UpkeepGasLimit:       500000,
+					UpkeepSLA:            20,
 				},
 			)
 			keeperBenchmarkTest.Setup(testEnvironment)

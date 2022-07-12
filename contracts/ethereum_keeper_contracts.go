@@ -819,12 +819,14 @@ type KeeperConsumerBenchmarkRoundConfirmer struct {
 	cancel   context.CancelFunc
 
 	blockRange      int64                                      // How many blocks to watch upkeeps for
-	expectedUpkeeps int64                                      //expected number of times these upkeep will be performed
+	upkeepSLA       int64                                      // SLA after which an upkeep is counted as 'missed'
 	metricsReporter *testreporters.KeeperBenchmarkTestReporter // Testreporter to track results
 
 	// State variables, changes as we get blocks
 	blocksSinceSubscription int64   // How many blocks have passed since subscribing
 	blocksSinceEligible     int64   // How many blocks have come in since upkeep has been eligible for check
+	countEligible           int64   // Number of times the upkeep became eligible
+	countMissed             int64   // Number of times we missed SLA for performing upkeep
 	upkeepCount             int64   // The count of upkeeps done so far
 	allCheckDelays          []int64 // Tracks the amount of blocks missed before an upkeep since it became eligible
 }
@@ -834,7 +836,7 @@ type KeeperConsumerBenchmarkRoundConfirmer struct {
 func NewKeeperConsumerBenchmarkRoundConfirmer(
 	contract KeeperConsumerBenchmark,
 	blockRange int64,
-	expectedUpkeeps int64,
+	upkeepSLA int64,
 	metricsReporter *testreporters.KeeperBenchmarkTestReporter,
 ) *KeeperConsumerBenchmarkRoundConfirmer {
 	ctx, cancelFunc := context.WithCancel(context.Background())
@@ -844,7 +846,7 @@ func NewKeeperConsumerBenchmarkRoundConfirmer(
 		context:                 ctx,
 		cancel:                  cancelFunc,
 		blockRange:              blockRange,
-		expectedUpkeeps:         expectedUpkeeps,
+		upkeepSLA:               upkeepSLA,
 		blocksSinceSubscription: 0,
 		blocksSinceEligible:     0,
 		upkeepCount:             0,
@@ -865,7 +867,7 @@ func (o *KeeperConsumerBenchmarkRoundConfirmer) ReceiveBlock(receivedBlock block
 
 	if upkeepCount.Int64() > o.upkeepCount { // A new upkeep was done
 		if upkeepCount.Int64() != o.upkeepCount+1 {
-			return errors.New("Upkeep count increased by more than 1 in a single block")
+			return errors.New("upkeep count increased by more than 1 in a single block")
 		}
 		log.Info().
 			Uint64("Block Number", receivedBlock.NumberU64()).
@@ -874,8 +876,18 @@ func (o *KeeperConsumerBenchmarkRoundConfirmer) ReceiveBlock(receivedBlock block
 			Int64("Blocks since eligible", o.blocksSinceEligible).
 			Msg("Upkeep Performed")
 
+		if o.blocksSinceEligible > o.upkeepSLA {
+			log.Warn().
+				Uint64("Block Number", receivedBlock.NumberU64()).
+				Str("Contract Address", o.instance.Address()).
+				Int64("Blocks since eligible", o.blocksSinceEligible).
+				Msg("Upkeep Missed SLA")
+			o.countMissed++
+		}
+
 		o.allCheckDelays = append(o.allCheckDelays, o.blocksSinceEligible)
 		o.upkeepCount++
+		o.blocksSinceEligible = 0
 	}
 
 	isEligible, err := o.instance.CheckEligible(context.Background())
@@ -883,25 +895,35 @@ func (o *KeeperConsumerBenchmarkRoundConfirmer) ReceiveBlock(receivedBlock block
 		return err
 	}
 	if isEligible {
+		if o.blocksSinceEligible == 0 {
+			// First time this upkeep became eligible
+			o.countEligible++
+			log.Info().
+				Uint64("Block Number", receivedBlock.NumberU64()).
+				Str("Contract Address", o.instance.Address()).
+				Msg("Upkeep Now Eligible")
+		}
 		o.blocksSinceEligible++
-		log.Debug().
-			Uint64("Block Number", receivedBlock.NumberU64()).
-			Str("Contract Address", o.instance.Address()).
-			Int64("Blocks since eligible", o.blocksSinceEligible).
-			Msg("Upkeep Now Eligible")
-	} else {
-		o.blocksSinceEligible = 0
 	}
 
 	if o.blocksSinceSubscription >= o.blockRange {
 		if o.blocksSinceEligible > 0 {
+			if o.blocksSinceEligible > o.upkeepSLA {
+				log.Warn().
+					Uint64("Block Number", receivedBlock.NumberU64()).
+					Str("Contract Address", o.instance.Address()).
+					Int64("Blocks since eligible", o.blocksSinceEligible).
+					Msg("Upkeep remained eligible at end of test and missed SLA")
+				o.countMissed++
+			} else {
+				log.Info().
+					Uint64("Block Number", receivedBlock.NumberU64()).
+					Str("Contract Address", o.instance.Address()).
+					Int64("Upkeep Count", upkeepCount.Int64()).
+					Int64("Blocks since eligible", o.blocksSinceEligible).
+					Msg("Upkeep remained eligible at end of test and was within SLA")
+			}
 			o.allCheckDelays = append(o.allCheckDelays, o.blocksSinceEligible)
-			log.Info().
-				Uint64("Block Number", receivedBlock.NumberU64()).
-				Str("Contract Address", o.instance.Address()).
-				Int64("Upkeep Count", upkeepCount.Int64()).
-				Int64("Blocks since eligible", o.blocksSinceEligible).
-				Msg("Upkeep remained eligible at end of test")
 		}
 
 		log.Info().
@@ -933,10 +955,11 @@ func (o *KeeperConsumerBenchmarkRoundConfirmer) Wait() error {
 
 func (o *KeeperConsumerBenchmarkRoundConfirmer) logDetails() {
 	report := testreporters.KeeperBenchmarkTestReport{
-		ContractAddress:        o.instance.Address(),
-		TotalSuccessfulUpkeeps: o.upkeepCount,
-		TotalExpectedUpkeeps:   o.expectedUpkeeps,
-		AllCheckDelays:         o.allCheckDelays,
+		ContractAddress:       o.instance.Address(),
+		TotalEligibleCount:    o.countEligible,
+		TotalSLAMissedUpkeeps: o.countMissed,
+		TotalPerformedUpkeeps: o.upkeepCount,
+		AllCheckDelays:        o.allCheckDelays,
 	}
 	o.metricsReporter.ReportMutex.Lock()
 	o.metricsReporter.Reports = append(o.metricsReporter.Reports, report)
