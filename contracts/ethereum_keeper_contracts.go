@@ -814,6 +814,7 @@ func (o *KeeperConsumerPerformanceRoundConfirmer) logDetails() {
 // KeeperConsumerBenchmarkRoundConfirmer is a header subscription that awaits for a round of upkeeps
 type KeeperConsumerBenchmarkRoundConfirmer struct {
 	instance KeeperConsumerBenchmark
+	upkeepID *big.Int
 	doneChan chan bool
 	context  context.Context
 	cancel   context.CancelFunc
@@ -835,6 +836,7 @@ type KeeperConsumerBenchmarkRoundConfirmer struct {
 // Used to track and log performance test results for keepers
 func NewKeeperConsumerBenchmarkRoundConfirmer(
 	contract KeeperConsumerBenchmark,
+	upkeepID *big.Int,
 	blockRange int64,
 	upkeepSLA int64,
 	metricsReporter *testreporters.KeeperBenchmarkTestReporter,
@@ -842,6 +844,7 @@ func NewKeeperConsumerBenchmarkRoundConfirmer(
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	return &KeeperConsumerBenchmarkRoundConfirmer{
 		instance:                contract,
+		upkeepID:                upkeepID,
 		doneChan:                make(chan bool),
 		context:                 ctx,
 		cancel:                  cancelFunc,
@@ -871,6 +874,7 @@ func (o *KeeperConsumerBenchmarkRoundConfirmer) ReceiveBlock(receivedBlock block
 		}
 		log.Info().
 			Uint64("Block Number", receivedBlock.NumberU64()).
+			Str("Upkeep ID", o.upkeepID.String()).
 			Str("Contract Address", o.instance.Address()).
 			Int64("Upkeep Count", upkeepCount.Int64()).
 			Int64("Blocks since eligible", o.blocksSinceEligible).
@@ -879,6 +883,7 @@ func (o *KeeperConsumerBenchmarkRoundConfirmer) ReceiveBlock(receivedBlock block
 		if o.blocksSinceEligible > o.upkeepSLA {
 			log.Warn().
 				Uint64("Block Number", receivedBlock.NumberU64()).
+				Str("Upkeep ID", o.upkeepID.String()).
 				Str("Contract Address", o.instance.Address()).
 				Int64("Blocks since eligible", o.blocksSinceEligible).
 				Msg("Upkeep Missed SLA")
@@ -900,6 +905,7 @@ func (o *KeeperConsumerBenchmarkRoundConfirmer) ReceiveBlock(receivedBlock block
 			o.countEligible++
 			log.Info().
 				Uint64("Block Number", receivedBlock.NumberU64()).
+				Str("Upkeep ID", o.upkeepID.String()).
 				Str("Contract Address", o.instance.Address()).
 				Msg("Upkeep Now Eligible")
 		}
@@ -911,6 +917,7 @@ func (o *KeeperConsumerBenchmarkRoundConfirmer) ReceiveBlock(receivedBlock block
 			if o.blocksSinceEligible > o.upkeepSLA {
 				log.Warn().
 					Uint64("Block Number", receivedBlock.NumberU64()).
+					Str("Upkeep ID", o.upkeepID.String()).
 					Str("Contract Address", o.instance.Address()).
 					Int64("Blocks since eligible", o.blocksSinceEligible).
 					Msg("Upkeep remained eligible at end of test and missed SLA")
@@ -918,6 +925,7 @@ func (o *KeeperConsumerBenchmarkRoundConfirmer) ReceiveBlock(receivedBlock block
 			} else {
 				log.Info().
 					Uint64("Block Number", receivedBlock.NumberU64()).
+					Str("Upkeep ID", o.upkeepID.String()).
 					Str("Contract Address", o.instance.Address()).
 					Int64("Upkeep Count", upkeepCount.Int64()).
 					Int64("Blocks since eligible", o.blocksSinceEligible).
@@ -928,6 +936,7 @@ func (o *KeeperConsumerBenchmarkRoundConfirmer) ReceiveBlock(receivedBlock block
 
 		log.Info().
 			Uint64("Block Number", receivedBlock.NumberU64()).
+			Str("Upkeep ID", o.upkeepID.String()).
 			Str("Contract Address", o.instance.Address()).
 			Int64("Upkeeps Performed", upkeepCount.Int64()).
 			Int64("Total Blocks Watched", o.blocksSinceSubscription).

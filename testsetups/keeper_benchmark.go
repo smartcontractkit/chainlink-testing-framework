@@ -30,6 +30,7 @@ type KeeperBenchmarkTest struct {
 
 	keeperRegistry          contracts.KeeperRegistry
 	keeperConsumerContracts []contracts.KeeperConsumerBenchmark
+	upkeepIDs               []*big.Int
 	mockServer              *client.MockserverClient
 
 	env            *environment.Environment
@@ -82,7 +83,7 @@ func (k *KeeperBenchmarkTest) Setup(env *environment.Environment) {
 	err = k.chainClient.WaitForEvents()
 	Expect(err).ShouldNot(HaveOccurred(), "Failed waiting for LINK Contract deployment")
 
-	k.keeperRegistry, k.keeperConsumerContracts, _ = actions.DeployBenchmarkKeeperContracts(
+	k.keeperRegistry, k.keeperConsumerContracts, k.upkeepIDs = actions.DeployBenchmarkKeeperContracts(
 		ethereum.RegistryVersion_1_2,
 		inputs.NumberOfContracts,
 		uint32(inputs.UpkeepGasLimit), //upkeepGasLimit
@@ -110,6 +111,7 @@ func (k *KeeperBenchmarkTest) Run() {
 		k.chainClient.AddHeaderEventSubscription(fmt.Sprintf("Keeper Tracker %d", index),
 			contracts.NewKeeperConsumerBenchmarkRoundConfirmer(
 				keeperConsumer,
+				k.upkeepIDs[index],
 				k.Inputs.BlockRange,
 				k.Inputs.UpkeepSLA,
 				&k.TestReporter,
