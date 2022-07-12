@@ -4,8 +4,10 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
+	"sort"
 	"sync"
 
 	"github.com/onsi/ginkgo/v2"
@@ -59,29 +61,43 @@ func (k *KeeperBenchmarkTestReporter) WriteReport(folderLocation string) error {
 		allDelays = append(allDelays, report.AllCheckDelays...)
 	}
 	totalReverted = k.NumRevertedUpkeeps
-	pct_within_SLA := (1.0 - float64(totalMissedSLA)/float64(totalEligibleCount)) * 100
-	var pct_reverted float64
+	pctWithinSLA := (1.0 - float64(totalMissedSLA)/float64(totalEligibleCount)) * 100
+	var pctReverted float64
 	if totalPerformed > 0 {
-		pct_reverted = (float64(totalReverted) / float64(totalPerformed)) * 100
+		pctReverted = (float64(totalReverted) / float64(totalPerformed)) * 100
 	}
 
 	err = keeperReportWriter.Write([]string{"Full Test Summary"})
 	if err != nil {
 		return err
 	}
-	err = keeperReportWriter.Write([]string{"Total Times Eligible", "Total Performed", "Total Reverted", "Average Perform Delay", "Max Perform Delay", "Percent Within SLA", "Percent Revert"})
+	err = keeperReportWriter.Write([]string{
+		"Total Times Eligible",
+		"Total Performed",
+		"Total Reverted",
+		"Average Perform Delay",
+		"Median Perform Delay",
+		"90th pct Perform Delay",
+		"99th pct Perform Delay",
+		"Max Perform Delay",
+		"Percent Within SLA",
+		"Percent Revert",
+	})
 	if err != nil {
 		return err
 	}
-	avg, max := int64AvgMax(allDelays)
+	avg, median, ninetyPct, ninetyNinePct, max := intListStats(allDelays)
 	err = keeperReportWriter.Write([]string{
 		fmt.Sprint(totalEligibleCount),
 		fmt.Sprint(totalPerformed),
 		fmt.Sprint(totalReverted),
-		fmt.Sprint(avg),
+		fmt.Sprintf("%.2f", avg),
+		fmt.Sprint(median),
+		fmt.Sprint(ninetyPct),
+		fmt.Sprint(ninetyNinePct),
 		fmt.Sprint(max),
-		fmt.Sprintf("%.2f%%", pct_within_SLA),
-		fmt.Sprintf("%.2f%%", pct_reverted),
+		fmt.Sprintf("%.2f%%", pctWithinSLA),
+		fmt.Sprintf("%.2f%%", pctReverted),
 	})
 	if err != nil {
 		return err
@@ -92,9 +108,12 @@ func (k *KeeperBenchmarkTestReporter) WriteReport(folderLocation string) error {
 		Int64("Total Performed", totalPerformed).
 		Int64("Total Reverted", totalReverted).
 		Float64("Average Perform Delay", avg).
+		Int64("Median Perform Delay", median).
+		Int64("90th pct Perform Delay", ninetyPct).
+		Int64("99th pct Perform Delay", ninetyNinePct).
 		Int64("Max Perform Delay", max).
-		Float64("Percent Within SLA", pct_within_SLA).
-		Float64("Percent Reverted", pct_reverted).
+		Float64("Percent Within SLA", pctWithinSLA).
+		Float64("Percent Reverted", pctReverted).
 		Msg("Calculated Aggregate Results")
 
 	err = keeperReportWriter.Write([]string{
@@ -103,6 +122,9 @@ func (k *KeeperBenchmarkTestReporter) WriteReport(folderLocation string) error {
 		"Total Times Eligible",
 		"Total Performed Upkeeps",
 		"Average Perform Delay",
+		"Median Perform Delay",
+		"90th pct Perform Delay",
+		"99th pct Perform Delay",
 		"Largest Perform Delay",
 		"Percent Within SLA",
 	})
@@ -111,13 +133,16 @@ func (k *KeeperBenchmarkTestReporter) WriteReport(folderLocation string) error {
 	}
 
 	for contractIndex, report := range k.Reports {
-		avg, max := int64AvgMax(report.AllCheckDelays)
+		avg, median, ninetyPct, ninetyNinePct, max := intListStats(report.AllCheckDelays)
 		err = keeperReportWriter.Write([]string{
 			fmt.Sprint(contractIndex),
 			report.ContractAddress,
 			fmt.Sprint(report.TotalEligibleCount),
 			fmt.Sprint(report.TotalPerformedUpkeeps),
-			fmt.Sprint(avg),
+			fmt.Sprintf("%.2f", avg),
+			fmt.Sprint(median),
+			fmt.Sprint(ninetyPct),
+			fmt.Sprint(ninetyNinePct),
 			fmt.Sprint(max),
 			fmt.Sprintf("%.2f%%", (1.0-float64(report.TotalSLAMissedUpkeeps)/float64(report.TotalEligibleCount))*100),
 		})
@@ -177,4 +202,18 @@ func (k *KeeperBenchmarkTestReporter) SendSlackNotification(slackClient *slack.C
 		Channels:        []string{slackChannel},
 		ThreadTimestamp: ts,
 	})
+}
+
+// intListStats helper calculates some statistics on an int list: avg, median, 90pct, 99pct, max
+func intListStats(in []int64) (float64, int64, int64, int64, int64) {
+	length := len(in)
+	if length == 0 {
+		return 0, 0, 0, 0, 0
+	}
+	sort.Slice(in, func(i, j int) bool { return in[i] < in[j] })
+	var sum int64
+	for _, num := range in {
+		sum += num
+	}
+	return float64(sum) / float64(length), in[int(math.Floor(float64(length)*0.5))], in[int(math.Floor(float64(length)*0.9))], in[int(math.Floor(float64(length)*0.99))], in[length-1]
 }
