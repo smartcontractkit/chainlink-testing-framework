@@ -4,12 +4,11 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-
 	"math"
 	"os"
 	"path/filepath"
 	"sync"
-	
+
 	"github.com/onsi/ginkgo/v2"
 	"github.com/rs/zerolog/log"
 	"github.com/slack-go/slack"

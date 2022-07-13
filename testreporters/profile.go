@@ -2,12 +2,12 @@ package testreporters
 
 import (
 	"fmt"
-	"github.com/smartcontractkit/chainlink-testing-framework/client"
 	"os"
 	"path/filepath"
 
 	"github.com/rs/zerolog/log"
 	"github.com/slack-go/slack"
+	"github.com/smartcontractkit/chainlink-testing-framework/client"
 	"golang.org/x/sync/errgroup"
 )
 
