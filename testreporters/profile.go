@@ -7,12 +7,19 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/slack-go/slack"
-	"github.com/smartcontractkit/chainlink-testing-framework/client"
 	"golang.org/x/sync/errgroup"
 )
 
 type ChainlinkProfileTestReporter struct {
-	Results   []*client.ChainlinkProfileResults
+	Results []*struct {
+		Reports []*struct {
+			Type string
+			Data []byte
+		}
+		ScheduledProfileSeconds int // How long the profile was scheduled to last
+		ActualRunSeconds        int // How long the target function to profile actually took to execute
+		NodeIndex               int
+	}
 	namespace string
 }
 

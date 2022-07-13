@@ -12,14 +12,35 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"github.com/rs/zerolog/log"
 	"github.com/slack-go/slack"
-	"github.com/smartcontractkit/chainlink-testing-framework/client"
 )
 
 // KeeperBlockTimeTestReporter enables reporting on the keeper block time test
 type KeeperBlockTimeTestReporter struct {
 	Reports                        []KeeperBlockTimeTestReport `json:"reports"`
 	ReportMutex                    sync.Mutex
-	AttemptedChainlinkTransactions []*client.TransactionsData `json:"attemptedChainlinkTransactions"`
+	AttemptedChainlinkTransactions []*struct {
+		Data []struct {
+			Type       string `json:"type"`
+			ID         string `json:"id"`
+			Attributes struct {
+				State    string `json:"state"`
+				Data     string `json:"data"`
+				From     string `json:"from"`
+				To       string `json:"to"`
+				Value    string `json:"value"`
+				ChainID  string `json:"evmChainID"`
+				GasLimit string `json:"gasLimit"`
+				GasPrice string `json:"gasPrice"`
+				Hash     string `json:"hash"`
+				RawHex   string `json:"rawHex"`
+				Nonce    string `json:"nonce"`
+				SentAt   string `json:"sentAt"`
+			} `json:"attributes"`
+		} `json:"data"`
+		Meta struct {
+			Count int `json:"count"`
+		} `json:"meta"`
+	} `json:"attemptedChainlinkTransactions"`
 
 	namespace                 string
 	keeperReportFile          string
