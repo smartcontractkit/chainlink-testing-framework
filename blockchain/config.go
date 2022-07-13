@@ -85,8 +85,8 @@ func (e *EVMNetwork) ToMap() map[string]interface{} {
 func (e *EVMNetwork) ChainlinkValuesMap() map[string]interface{} {
 	valueMap := map[string]interface{}{}
 	if !e.Simulated {
-		valueMap["eth_url"] = e.URLs[0]
-		valueMap["eth_chain_id"] = fmt.Sprint(e.ChainID)
+		valueMap["ETH_URL"] = e.URLs[0]
+		valueMap["ETH_CHAIN_ID"] = fmt.Sprint(e.ChainID)
 	}
 	return valueMap
 }
