@@ -29,6 +29,9 @@ type MetisClient struct {
 // NewMetisClient returns an instantiated instance of the Metis client that has connected to the server
 func NewMetisClient(networkSettings *EVMNetwork) (EVMClient, error) {
 	client, err := NewEthereumClient(networkSettings)
+	if err != nil {
+		return nil, err
+	}
 	log.Info().Str("Network Name", client.GetNetworkName()).Msg("Using custom Metis client")
 	return &MetisClient{client.(*EthereumClient)}, err
 }
