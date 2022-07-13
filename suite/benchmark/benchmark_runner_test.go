@@ -9,8 +9,6 @@ import (
 	"github.com/smartcontractkit/chainlink-env/pkg"
 	"github.com/smartcontractkit/chainlink-env/pkg/helm/chainlink"
 	"github.com/smartcontractkit/chainlink-env/pkg/helm/ethereum"
-	"github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver"
-	mockservercfg "github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver-cfg"
 	"github.com/smartcontractkit/chainlink-env/pkg/helm/remotetestrunner"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/actions"
@@ -79,11 +77,35 @@ func benchmarkTestHelper(
 			"MIN_INCOMING_CONFIRMATIONS": "1",
 			"KEEPER_TURN_FLAG_ENABLED":   "true",
 		},
+		"chainlink": map[string]interface{}{
+			"resources": map[string]interface{}{
+				"requests": map[string]interface{}{
+					"cpu":    "1000m",
+					"memory": "4086Mi",
+				},
+				"limits": map[string]interface{}{
+					"cpu":    "1000m",
+					"memory": "4086Mi",
+				},
+			},
+		},
+		"db": map[string]interface{}{
+			"resources": map[string]interface{}{
+				"requests": map[string]interface{}{
+					"cpu":    "1000m",
+					"memory": "1024Mi",
+				},
+				"limits": map[string]interface{}{
+					"cpu":    "1000m",
+					"memory": "1024Mi",
+				},
+			},
+			"stateful": true,
+			"capacity": "5Gi",
+		},
 	}
 
 	err = env.
-		AddHelm(mockservercfg.New(nil)).
-		AddHelm(mockserver.New(nil)).
 		AddHelm(remotetestrunner.New(remoteRunnerWrapper)).
 		AddHelm(ethereum.New(&ethereum.Props{
 			NetworkName: evmNetwork.Name,
@@ -92,11 +114,11 @@ func benchmarkTestHelper(
 				"resources": map[string]interface{}{
 					"requests": map[string]interface{}{
 						"cpu":    "1500m",
-						"memory": "1536Mi",
+						"memory": "4086Mi",
 					},
 					"limits": map[string]interface{}{
 						"cpu":    "1500m",
-						"memory": "1536Mi",
+						"memory": "4086Mi",
 					},
 				},
 			}})).

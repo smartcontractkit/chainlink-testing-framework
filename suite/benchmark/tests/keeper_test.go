@@ -7,8 +7,6 @@ import (
 	"github.com/smartcontractkit/chainlink-env/environment"
 	"github.com/smartcontractkit/chainlink-env/pkg/helm/chainlink"
 	"github.com/smartcontractkit/chainlink-env/pkg/helm/ethereum"
-	"github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver"
-	mockservercfg "github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver-cfg"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/actions"
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
@@ -33,8 +31,6 @@ var _ = Describe("Keeper benchmark suite @benchmark-keeper", func() {
 			benchmarkNetwork = blockchain.LoadNetworkFromEnvironment()
 			testEnvironment = environment.New(&environment.Config{InsideK8s: true})
 			err = testEnvironment.
-				AddHelm(mockservercfg.New(nil)).
-				AddHelm(mockserver.New(nil)).
 				AddHelm(ethereum.New(&ethereum.Props{
 					NetworkName: benchmarkNetwork.Name,
 					Simulated:   benchmarkNetwork.Simulated,
@@ -46,7 +42,7 @@ var _ = Describe("Keeper benchmark suite @benchmark-keeper", func() {
 		})
 
 		By("Setup the Keeper test", func() {
-			chainClient, err := blockchain.NewEthereumMultiNodeClientSetup(blockchain.SimulatedEVMNetwork)(testEnvironment)
+			chainClient, err := blockchain.NewEthereumMultiNodeClientSetup(benchmarkNetwork)(testEnvironment)
 			Expect(err).ShouldNot(HaveOccurred(), "Connecting to blockchain nodes shouldn't fail")
 			keeperBenchmarkTest = testsetups.NewKeeperBenchmarkTest(
 				testsetups.KeeperBenchmarkTestInputs{
@@ -87,6 +83,7 @@ var _ = Describe("Keeper benchmark suite @benchmark-keeper", func() {
 			if err := actions.TeardownRemoteSuite(keeperBenchmarkTest.TearDownVals()); err != nil {
 				log.Error().Err(err).Msg("Error tearing down environment")
 			}
+			log.Info().Msg("Keepers Benchmark Test Concluded")
 		})
 	})
 })
