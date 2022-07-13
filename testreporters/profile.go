@@ -2,6 +2,7 @@ package testreporters
 
 import (
 	"fmt"
+	"github.com/smartcontractkit/chainlink-testing-framework/client"
 	"os"
 	"path/filepath"
 
@@ -11,15 +12,7 @@ import (
 )
 
 type ChainlinkProfileTestReporter struct {
-	Results []*struct {
-		Reports []*struct {
-			Type string
-			Data []byte
-		}
-		ScheduledProfileSeconds int // How long the profile was scheduled to last
-		ActualRunSeconds        int // How long the target function to profile actually took to execute
-		NodeIndex               int
-	}
+	Results   []*client.ChainlinkProfileResults
 	namespace string
 }
 
