@@ -40,9 +40,9 @@ type KeeperBenchmarkTestSummary struct {
 }
 
 type KeeperBenchmarkTestLoad struct {
-	TotalCheckGasPerBlock   int64   `json:"totalCheckGasPerBlock"`
-	TotalPerformGasPerBlock int64   `json:"totalPerformGasPerBlock"`
-	AveragePerformsPerBlock float64 `json:"averagePerformsPerBlock"`
+	TotalCheckGasPerBlock           int64   `json:"totalCheckGasPerBlock"`
+	TotalPerformGasPerBlock         int64   `json:"totalPerformGasPerBlock"`
+	AverageExpectedPerformsPerBlock float64 `json:"averageExpectedPerformsPerBlock"`
 }
 
 type KeeperBenchmarkTestConfig struct {
@@ -51,11 +51,12 @@ type KeeperBenchmarkTestConfig struct {
 }
 
 type KeeperBenchmarkTestMetrics struct {
-	Delay               map[string]interface{} `json:"delay"`
-	PercentWithinSLA    float64                `json:"percentWithinSLA"`
-	PercentRevert       float64                `json:"percentRevert"`
-	TotalTimesEligible  int64                  `json:"totalTimesEligible"`
-	TotalTimesPerformed int64                  `json:"totalTimesPerformed"`
+	Delay                         map[string]interface{} `json:"delay"`
+	PercentWithinSLA              float64                `json:"percentWithinSLA"`
+	PercentRevert                 float64                `json:"percentRevert"`
+	TotalTimesEligible            int64                  `json:"totalTimesEligible"`
+	TotalTimesPerformed           int64                  `json:"totalTimesPerformed"`
+	AverageActualPerformsPerBlock float64                `json:"averageActualPerformsPerBlock"`
 }
 
 // KeeperBenchmarkTestReport holds a report information for a single Upkeep Consumer contract
@@ -205,6 +206,7 @@ func (k *KeeperBenchmarkTestReporter) WriteReport(folderLocation string) error {
 	k.Summary.Metrics.PercentRevert = pctReverted
 	k.Summary.Metrics.TotalTimesEligible = totalEligibleCount
 	k.Summary.Metrics.TotalTimesPerformed = totalPerformed
+	k.Summary.Metrics.AverageActualPerformsPerBlock = float64(totalPerformed) / float64(k.Summary.TestInputs["BlockRange"].(int64))
 
 	res, err := json.MarshalIndent(k.Summary, "", "  ")
 	if err != nil {
