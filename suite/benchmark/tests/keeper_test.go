@@ -47,11 +47,11 @@ var _ = Describe("Keeper benchmark suite @benchmark-keeper", func() {
 			keeperBenchmarkTest = testsetups.NewKeeperBenchmarkTest(
 				testsetups.KeeperBenchmarkTestInputs{
 					BlockchainClient:  chainClient,
-					NumberOfContracts: 10, // TODO- Update to 500
+					NumberOfContracts: 500,
 					KeeperRegistrySettings: &contracts.KeeperRegistrySettings{
 						PaymentPremiumPPB:    uint32(0),
 						BlockCountPerTurn:    big.NewInt(100),
-						CheckGasLimit:        uint32(2000000),
+						CheckGasLimit:        uint32(10000000),
 						StalenessSeconds:     big.NewInt(90000),
 						GasCeilingMultiplier: uint16(2),
 						MaxPerformGas:        uint32(5000000),
@@ -61,10 +61,10 @@ var _ = Describe("Keeper benchmark suite @benchmark-keeper", func() {
 					},
 					CheckGasToBurn:       100000,
 					PerformGasToBurn:     150000,
-					BlockRange:           100, // TODO- Update to 3600
+					BlockRange:           3600,
 					BlockInterval:        20,
-					ChainlinkNodeFunding: big.NewFloat(1000),
-					UpkeepGasLimit:       500000,
+					ChainlinkNodeFunding: big.NewFloat(1000000),
+					UpkeepGasLimit:       5000000,
 					UpkeepSLA:            20,
 				},
 			)

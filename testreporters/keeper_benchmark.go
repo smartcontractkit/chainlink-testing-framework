@@ -22,10 +22,40 @@ type KeeperBenchmarkTestReporter struct {
 	ReportMutex                    sync.Mutex
 	AttemptedChainlinkTransactions []*client.TransactionsData `json:"attemptedChainlinkTransactions"`
 	NumRevertedUpkeeps             int64
+	Summary                        KeeperBenchmarkTestSummary `json:"summary"`
 
 	namespace                 string
 	keeperReportFile          string
 	attemptedTransactionsFile string
+	keeperSummaryFile         string
+}
+
+type KeeperBenchmarkTestSummary struct {
+	Load       KeeperBenchmarkTestLoad    `json:"load"`
+	Config     KeeperBenchmarkTestConfig  `json:"config"`
+	Metrics    KeeperBenchmarkTestMetrics `json:"metrics"`
+	TestInputs map[string]interface{}     `json:"testInputs"`
+	StartTime  int64                      `json:"startTime"`
+	EndTime    int64                      `json:"endTime"`
+}
+
+type KeeperBenchmarkTestLoad struct {
+	TotalCheckGasPerBlock   int64   `json:"totalCheckGasPerBlock"`
+	TotalPerformGasPerBlock int64   `json:"totalPerformGasPerBlock"`
+	AveragePerformsPerBlock float64 `json:"averagePerformsPerBlock"`
+}
+
+type KeeperBenchmarkTestConfig struct {
+	Chainlink map[string]map[string]string `json:"chainlink"`
+	Geth      map[string]map[string]string `json:"geth"`
+}
+
+type KeeperBenchmarkTestMetrics struct {
+	Delay               map[string]interface{} `json:"delay"`
+	PercentWithinSLA    float64                `json:"percentWithinSLA"`
+	PercentRevert       float64                `json:"percentRevert"`
+	TotalTimesEligible  int64                  `json:"totalTimesEligible"`
+	TotalTimesPerformed int64                  `json:"totalTimesPerformed"`
 }
 
 // KeeperBenchmarkTestReport holds a report information for a single Upkeep Consumer contract
@@ -43,6 +73,7 @@ func (k *KeeperBenchmarkTestReporter) SetNamespace(namespace string) {
 
 func (k *KeeperBenchmarkTestReporter) WriteReport(folderLocation string) error {
 	k.keeperReportFile = filepath.Join(folderLocation, "./benchmark_report.csv")
+	k.keeperSummaryFile = filepath.Join(folderLocation, "./benchmark_summary.json")
 	k.attemptedTransactionsFile = filepath.Join(folderLocation, "./attempted_transactions_report.json")
 	keeperReportFile, err := os.Create(k.keeperReportFile)
 	if err != nil {
@@ -162,6 +193,29 @@ func (k *KeeperBenchmarkTestReporter) WriteReport(folderLocation string) error {
 	}
 
 	log.Info().Msg("Successfully wrote report on Keeper Benchmark")
+
+	k.Summary.Metrics.Delay = map[string]interface{}{
+		"mean":   avg,
+		"median": median,
+		"90p":    ninetyNinePct,
+		"99p":    ninetyNinePct,
+		"max":    max,
+	}
+	k.Summary.Metrics.PercentWithinSLA = pctWithinSLA
+	k.Summary.Metrics.PercentRevert = pctReverted
+	k.Summary.Metrics.TotalTimesEligible = totalEligibleCount
+	k.Summary.Metrics.TotalTimesPerformed = totalPerformed
+
+	res, err := json.MarshalIndent(k.Summary, "", "  ")
+	if err != nil {
+		return err
+	}
+	err = os.WriteFile(k.keeperSummaryFile, res, 0600)
+	if err != nil {
+		return err
+	}
+
+	log.Info().Str("Summary", string(res)).Msg("Successfully wrote summary on Keeper Benchmark")
 	return nil
 }
 
@@ -182,10 +236,26 @@ func (k *KeeperBenchmarkTestReporter) SendSlackNotification(slackClient *slack.C
 		return err
 	}
 
+	dashboardUrl := os.Getenv("GRAFANA_DASHBOARD_URL")
+	formattedDashboardUrl := fmt.Sprintf("%s&from=%d&to=%d&var-namespace=%s&var-cl_node=chainlink-0-0", dashboardUrl, k.Summary.StartTime, k.Summary.EndTime, k.namespace)
+	log.Info().Str("Dashboard", formattedDashboardUrl).Msg("Dashboard URL")
+
+	if err := uploadSlackFile(slackClient, slack.FileUploadParameters{
+		Title:           fmt.Sprintf("Keeper Benchmark Test Summary %s", k.namespace),
+		Filetype:        "json",
+		Filename:        fmt.Sprintf("keeper_benchmark_summary_%s.json", k.namespace),
+		File:            k.keeperSummaryFile,
+		InitialComment:  fmt.Sprintf("Keeper Benchmark Test Summary %s.\nDashboard: %s ", k.namespace, formattedDashboardUrl),
+		Channels:        []string{slackChannel},
+		ThreadTimestamp: ts,
+	}); err != nil {
+		return err
+	}
+
 	if err := uploadSlackFile(slackClient, slack.FileUploadParameters{
 		Title:           fmt.Sprintf("Keeper Benchmark Test Report %s", k.namespace),
 		Filetype:        "csv",
-		Filename:        fmt.Sprintf("keeper_benchmark_%s.csv", k.namespace),
+		Filename:        fmt.Sprintf("keeper_benchmark_report_%s.csv", k.namespace),
 		File:            k.keeperReportFile,
 		InitialComment:  fmt.Sprintf("Keeper Benchmark Test Report %s", k.namespace),
 		Channels:        []string{slackChannel},

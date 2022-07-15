@@ -17,7 +17,7 @@ require (
 	github.com/rs/zerolog v1.27.0
 	github.com/satori/go.uuid v1.2.0
 	github.com/slack-go/slack v0.10.3
-	github.com/smartcontractkit/chainlink-env v0.2.19
+	github.com/smartcontractkit/chainlink-env v0.2.24
 	github.com/smartcontractkit/libocr v0.0.0-20220121130134-5d2b1d5f424b
 	github.com/stretchr/testify v1.8.0
 	go.uber.org/atomic v1.9.0

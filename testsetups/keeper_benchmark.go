@@ -135,7 +135,36 @@ func (k *KeeperBenchmarkTest) Run() {
 		k.TestReporter.AttemptedChainlinkTransactions = append(k.TestReporter.AttemptedChainlinkTransactions, txData)
 	}
 
-	log.Info().Str("Run Time", time.Since(startTime).String()).Msg("Finished Keeper Benchmark Test")
+	k.TestReporter.Summary.Load.TotalCheckGasPerBlock = int64(k.Inputs.NumberOfContracts) * k.Inputs.CheckGasToBurn
+	k.TestReporter.Summary.Load.TotalPerformGasPerBlock = int64((float64(k.Inputs.NumberOfContracts) / float64(k.Inputs.BlockInterval)) * float64(k.Inputs.PerformGasToBurn))
+	k.TestReporter.Summary.Load.AveragePerformsPerBlock = float64(k.Inputs.NumberOfContracts) / float64(k.Inputs.BlockInterval)
+	k.TestReporter.Summary.TestInputs = map[string]interface{}{
+		"NumberOfContracts": k.Inputs.NumberOfContracts,
+		"BlockCountPerTurn": k.Inputs.KeeperRegistrySettings.BlockCountPerTurn,
+		"CheckGasLimit":     k.Inputs.KeeperRegistrySettings.CheckGasLimit,
+		"MaxPerformGas":     k.Inputs.KeeperRegistrySettings.MaxPerformGas,
+		"CheckGasToBurn":    k.Inputs.CheckGasToBurn,
+		"PerformGasToBurn":  k.Inputs.PerformGasToBurn,
+		"BlockRange":        k.Inputs.BlockRange,
+		"BlockInterval":     k.Inputs.BlockInterval,
+		"UpkeepSLA":         k.Inputs.UpkeepSLA,
+	}
+
+	k.TestReporter.Summary.Config.Chainlink, err = k.env.ResourcesSummary("app=chainlink-0")
+	if err != nil {
+		panic(err)
+	}
+
+	k.TestReporter.Summary.Config.Geth, err = k.env.ResourcesSummary("app=geth")
+	if err != nil {
+		panic(err)
+	}
+
+	endTime := time.Now()
+	k.TestReporter.Summary.StartTime = startTime.UnixMilli()
+	k.TestReporter.Summary.EndTime = endTime.UnixMilli()
+
+	log.Info().Str("Run Time", endTime.Sub(startTime).String()).Msg("Finished Keeper Benchmark Test")
 }
 
 // subscribeToUpkeepPerformedEvent subscribes to the event log for UpkeepPerformed event and
