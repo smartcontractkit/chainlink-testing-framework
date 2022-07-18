@@ -44,7 +44,7 @@ contract KeeperConsumerBenchmark {
     // burn gas
     bytes32 dummyIndex = blockhash(block.number - 1);
     bool dummy;
-    while (startGas - gasleft() < checkGasToBurn) {
+    while (startGas - gasleft() < performGasToBurn) {
       dummy = dummy && dummyMap[dummyIndex]; // arbitrary storage reads
       dummyIndex = keccak256(abi.encode(dummyIndex, address(this)));
     }
