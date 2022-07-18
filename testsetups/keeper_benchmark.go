@@ -161,8 +161,8 @@ func (k *KeeperBenchmarkTest) Run() {
 	}
 
 	endTime := time.Now()
-	k.TestReporter.Summary.StartTime = startTime.UnixMilli()
-	k.TestReporter.Summary.EndTime = endTime.UnixMilli()
+	k.TestReporter.Summary.StartTime = startTime.UnixMilli() - (30 * time.Second.Milliseconds())
+	k.TestReporter.Summary.EndTime = endTime.UnixMilli() + (30 * time.Second.Milliseconds())
 
 	log.Info().Str("Run Time", endTime.Sub(startTime).String()).Msg("Finished Keeper Benchmark Test")
 }
