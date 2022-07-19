@@ -18,24 +18,24 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3.2.0
 
-  vulnerabilities-check:  
+  vulnerabilities-check:
     name: Check for Vulnerabilities
     runs-on: ubuntu-latest
     steps:
-    - name: Check out Code
-      uses: actions/checkout@v3
-    - uses: smartcontractkit/tool-versions-to-env-action@v1.0.7
-      id: go-version
-    - run: echo ${{ steps.go-version.outputs.golang_version }}
-    - name: Install Go ${{ steps.go-version.outputs.golang_version }}
-      uses: actions/setup-go@v3
-      with:
-        go-version: ${{ steps.go-version.outputs.golang_version }}
-    - name: Write Go List
-      run: go list -json -deps ./... > go.list
-    - name: Nancy
-      uses: sonatype-nexus-community/nancy-github-action@v1.0.2
-  
+      - name: Check out Code
+        uses: actions/checkout@v3
+      - uses: smartcontractkit/tool-versions-to-env-action@v1.0.7
+        id: go-version
+      - run: echo ${{ steps.go-version.outputs.golang_version }}
+      - name: Install Go ${{ steps.go-version.outputs.golang_version }}
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ steps.go-version.outputs.golang_version }}
+      - name: Write Go List
+        run: go list -json -deps ./... > go.list
+      - name: Nancy
+        uses: sonatype-nexus-community/nancy-github-action@v1.0.2
+
   actionlint:
     name: Validate github action workflows
     runs-on: ubuntu-latest
