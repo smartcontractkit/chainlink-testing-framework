@@ -34,11 +34,11 @@ type EVMNetwork struct {
 	// Chain ID for the blockchain
 	ChainID int64 `envconfig:"evm_chain_id" default:"1337"`
 	// List of websocket URLs you want to connect to
-	URLs []string `envconfig:"evm_urls"`
+	URLs []string `envconfig:"evm_urls" default:"ws://example.url"`
 	// True if the network is simulated like a geth instance in dev mode. False if the network is a real test or mainnet
 	Simulated bool `envconfig:"evm_simulated" default:"false"`
 	// List of private keys to fund the tests
-	PrivateKeys []string `envconfig:"evm_private_keys"`
+	PrivateKeys []string `envconfig:"evm_private_keys" default:"examplePrivateKey"`
 	// Default gas limit to assume that Chainlink nodes will use. Used to try to estimate the funds that Chainlink
 	// nodes require to run the tests.
 	ChainlinkTransactionLimit uint64 `envconfig:"evm_chainlink_transaction_limit" default:"500000"`
