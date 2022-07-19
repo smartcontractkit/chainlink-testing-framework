@@ -2,7 +2,6 @@ package actions
 
 import (
 	"fmt"
-	"math/big"
 	"path/filepath"
 	"strings"
 	"time"
@@ -10,9 +9,8 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	"github.com/rs/zerolog/log"
-	uuid "github.com/satori/go.uuid"
+
 	"github.com/smartcontractkit/chainlink-env/environment"
-	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/testreporters"
 	kubeerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -66,21 +64,4 @@ func SendReport(env *environment.Environment, logsPath string, optionalTestRepor
 		}
 	}
 	return nil
-}
-
-// FundAddresses will fund a list of addresses with an amount of native currency
-func FundAddresses(blockchain blockchain.EVMClient, amount *big.Float, addresses ...string) error {
-	for _, address := range addresses {
-		if err := blockchain.Fund(address, amount); err != nil {
-			return err
-		}
-	}
-	return blockchain.WaitForEvents()
-}
-
-// EncodeOnChainExternalJobID encodes external job uuid to on-chain representation
-func EncodeOnChainExternalJobID(jobID uuid.UUID) [32]byte {
-	var ji [32]byte
-	copy(ji[:], strings.Replace(jobID.String(), "-", "", 4))
-	return ji
 }
