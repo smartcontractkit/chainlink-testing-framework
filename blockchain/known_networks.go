@@ -31,16 +31,12 @@ func wrapSingleClient(networkSettings *EVMNetwork, client *EthereumClient) EVMCl
 	}
 
 	var wrappedEc EVMClient
-	logMsg := log.Debug().Str("Network", networkSettings.Name).Int64("Based on Chain ID", networkSettings.ChainID)
 	switch networkType {
 	case "Ethereum":
-		logMsg.Msg("Using Standard Ethereum Client")
 		wrappedEc = client
 	case "Metis":
-		logMsg.Msg("Using Metis Client")
 		wrappedEc = &MetisClient{client}
 	case "Klaytn":
-		logMsg.Msg("Using Klaytn Client")
 		wrappedEc = &KlaytnClient{client}
 	}
 	return wrappedEc
@@ -58,7 +54,7 @@ func wrapMultiClient(networkSettings *EVMNetwork, client *EthereumMultinodeClien
 	}
 
 	var wrappedEc EVMClient
-	logMsg := log.Debug().Str("Network", networkSettings.Name).Int64("Based on Chain ID", networkSettings.ChainID)
+	logMsg := log.Info().Str("Network", networkSettings.Name).Int64("Based on Chain ID", networkSettings.ChainID)
 	switch networkType {
 	case "Ethereum":
 		logMsg.Msg("Using Standard Ethereum Client")
