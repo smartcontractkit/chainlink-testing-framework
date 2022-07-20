@@ -7,6 +7,7 @@ require (
 	github.com/ethereum/go-ethereum v1.10.18
 	github.com/google/uuid v1.3.0
 	github.com/julienschmidt/httprouter v1.3.0
+	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/lib/pq v1.10.6
 	github.com/onsi/ginkgo/v2 v2.1.4
 	github.com/onsi/gomega v1.19.0
@@ -30,7 +31,6 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
 	github.com/go-test/deep v1.0.7 // indirect
-	github.com/kelseyhightower/envconfig v1.4.0 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/onsi/ginkgo v1.16.5 // indirect
