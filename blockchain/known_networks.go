@@ -48,6 +48,7 @@ func wrapMultiClient(networkSettings *EVMNetwork, client *EthereumMultinodeClien
 	if !known {
 		log.Warn().
 			Str("Network", networkSettings.Name).
+			Interface("URLs", networkSettings.URLs).
 			Int64("Based on Chain ID", networkSettings.ChainID).
 			Msg("Unrecognized Chain ID. Defaulting to a Standard Ethereum Client.")
 		return client

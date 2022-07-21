@@ -504,10 +504,7 @@ func NewEVMClient(networkSettings *EVMNetwork, env *environment.Environment) (EV
 		ecl.Clients = append(ecl.Clients, ec)
 	}
 	ecl.DefaultClient = ecl.Clients[0]
-	log.Info().
-		Interface("URLs", networkSettings.URLs).
-		Msg("Connected multi-node client")
-
+	wrappedClient := wrapMultiClient(networkSettings, ecl)
 	// required in Geth when you need to call "simulate" transactions from nodes
 	if ecl.NetworkSimulated() {
 		if err := ecl.Fund("0x0", big.NewFloat(1000)); err != nil {
@@ -515,7 +512,7 @@ func NewEVMClient(networkSettings *EVMNetwork, env *environment.Environment) (EV
 		}
 	}
 
-	return wrapMultiClient(networkSettings, ecl), nil
+	return wrappedClient, nil
 }
 
 // Get gets default client as an interface{}

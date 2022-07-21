@@ -16,7 +16,7 @@ require (
 	github.com/prometheus/common v0.34.0
 	github.com/rs/zerolog v1.27.0
 	github.com/slack-go/slack v0.10.3
-	github.com/smartcontractkit/chainlink-env v0.2.19
+	github.com/smartcontractkit/chainlink-env v0.2.26
 	github.com/stretchr/testify v1.8.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	k8s.io/apimachinery v0.24.2
@@ -42,7 +42,6 @@ require (
 	github.com/evanphx/json-patch v5.6.0+incompatible // indirect
 	github.com/exponent-io/jsonpath v0.0.0-20210407135951-1de76d718b3f // indirect
 	github.com/fatih/camelcase v1.0.0 // indirect
-	github.com/fatih/structs v1.1.0 // indirect
 	github.com/fvbommel/sortorder v1.0.1 // indirect
 	github.com/go-errors/errors v1.4.1 // indirect
 	github.com/go-logr/logr v1.2.2 // indirect
