@@ -2,14 +2,15 @@ package testreporters
 
 import (
 	"fmt"
+	"path/filepath"
+	"strings"
+	"time"
+
 	"github.com/onsi/ginkgo/v2"
 	"github.com/rs/zerolog/log"
 	"github.com/slack-go/slack"
 	"github.com/smartcontractkit/chainlink-env/environment"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"path/filepath"
-	"strings"
-	"time"
 )
 
 // TestReporter is a general interface for all test reporters
