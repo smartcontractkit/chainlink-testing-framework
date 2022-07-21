@@ -38,7 +38,8 @@ used_contract_names = [
   "VRFConsumer",
   "VRFCoordinator",
   "VRFConsumerV2",
-  "VRFCoordinatorV2"
+  "VRFCoordinatorV2",
+  "KeeperConsumerBenchmark"
 ]
 
 print("Locally installing hardhat...")
