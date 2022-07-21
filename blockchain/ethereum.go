@@ -38,8 +38,8 @@ type EthereumClient struct {
 	doneChan            chan struct{}
 }
 
-// NewEthereumClient returns an instantiated instance of the Ethereum client that has connected to the server
-func NewEthereumClient(networkSettings *EVMNetwork) (EVMClient, error) {
+// newEVMClient creates an EVM client for a single node/URL
+func newEVMClient(networkSettings *EVMNetwork) (EVMClient, error) {
 	log.Info().
 		Str("Name", networkSettings.Name).
 		Str("URL", networkSettings.URL).
@@ -68,7 +68,8 @@ func NewEthereumClient(networkSettings *EVMNetwork) (EVMClient, error) {
 	}
 	ec.gasStats = NewGasStats(ec.ID)
 	go ec.newHeadersLoop()
-	return ec, nil
+
+	return wrapSingleClient(networkSettings, ec), nil
 }
 
 // newHeadersLoop Logs when new headers come in
@@ -489,33 +490,29 @@ type EthereumMultinodeClient struct {
 	Clients       []EVMClient
 }
 
-func NewEthereumMultiNodeClientSetup(networkSettings *EVMNetwork) func(*environment.Environment) (EVMClient, error) {
-	return func(env *environment.Environment) (EVMClient, error) {
-		ecl := &EthereumMultinodeClient{}
-		networkSettings.URLs = env.URLs[networkSettings.Name]
-
-		for idx, networkURL := range networkSettings.URLs {
-			networkSettings.URL = networkURL
-			ec, err := NewEthereumClient(networkSettings)
-			if err != nil {
-				return nil, err
-			}
-			ec.SetID(idx)
-			ecl.Clients = append(ecl.Clients, ec)
+// NewEVMClient returns a multi-node EVM client connected to the specified network
+func NewEVMClient(networkSettings *EVMNetwork, env *environment.Environment) (EVMClient, error) {
+	ecl := &EthereumMultinodeClient{}
+	networkSettings.URLs = env.URLs[networkSettings.Name]
+	for idx, networkURL := range networkSettings.URLs {
+		networkSettings.URL = networkURL
+		ec, err := newEVMClient(networkSettings)
+		if err != nil {
+			return nil, err
 		}
-		ecl.DefaultClient = ecl.Clients[0]
-		log.Info().
-			Interface("URLs", networkSettings.URLs).
-			Msg("Connected multi-node client")
-
-		// required in Geth when you need to call "simulate" transactions from nodes
-		if ecl.NetworkSimulated() {
-			if err := ecl.Fund("0x0", big.NewFloat(1000)); err != nil {
-				return nil, err
-			}
-		}
-		return ecl, nil
+		ec.SetID(idx)
+		ecl.Clients = append(ecl.Clients, ec)
 	}
+	ecl.DefaultClient = ecl.Clients[0]
+	wrappedClient := wrapMultiClient(networkSettings, ecl)
+	// required in Geth when you need to call "simulate" transactions from nodes
+	if ecl.NetworkSimulated() {
+		if err := ecl.Fund("0x0", big.NewFloat(1000)); err != nil {
+			return nil, err
+		}
+	}
+
+	return wrappedClient, nil
 }
 
 // Get gets default client as an interface{}

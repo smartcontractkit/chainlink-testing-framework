@@ -4,8 +4,6 @@ import (
 	"context"
 	"math/big"
 
-	"github.com/smartcontractkit/chainlink-env/environment"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -23,37 +21,6 @@ type KlaytnMultinodeClient struct {
 // KlaytnClient represents a single node, EVM compatible client for the Klaytn network
 type KlaytnClient struct {
 	*EthereumClient
-}
-
-// NewKlaytnClient returns an instantiated instance of the Klaytn client that has connected to the server
-func NewKlaytnClient(networkSettings *EVMNetwork) (EVMClient, error) {
-	client, err := NewEthereumClient(networkSettings)
-	if err != nil {
-		return nil, err
-	}
-	log.Info().Str("Network Name", client.GetNetworkName()).Msg("Using custom Klaytn client")
-	return &KlaytnClient{client.(*EthereumClient)}, err
-}
-
-func NewKlaytnMultiNodeClientSetup(networkSettings *EVMNetwork) func(*environment.Environment) (EVMClient, error) {
-	return func(env *environment.Environment) (EVMClient, error) {
-		multiNodeClient := &EthereumMultinodeClient{}
-		networkSettings.URLs = append(networkSettings.URLs, env.URLs[networkSettings.Name]...)
-		for idx, networkURL := range networkSettings.URLs {
-			networkSettings.URL = networkURL
-			ec, err := NewKlaytnClient(networkSettings)
-			if err != nil {
-				return nil, err
-			}
-			ec.SetID(idx)
-			multiNodeClient.Clients = append(multiNodeClient.Clients, ec)
-		}
-		multiNodeClient.DefaultClient = multiNodeClient.Clients[0]
-		log.Info().
-			Interface("URLs", networkSettings.URLs).
-			Msg("Connected multi-node client")
-		return &KlaytnMultinodeClient{multiNodeClient}, nil
-	}
 }
 
 // Fund overrides ethereum's fund to account for Klaytn's gas specifications
