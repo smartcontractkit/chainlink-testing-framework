@@ -12,46 +12,39 @@ import (
 	"github.com/slack-go/slack"
 )
 
-// TestReporter is a general interface for all test reporters
-type TestReporter interface {
-	WriteReport(folderLocation string) error
-	SendSlackNotification(slackClient *slack.Client) error
-	SetNamespace(namespace string)
-}
-
 // Common Slack Notification Helpers
 
 // Values for reporters to use slack to notify user of test end
 var (
-	slackAPIKey  = os.Getenv("SLACK_API")
-	slackChannel = os.Getenv("SLACK_CHANNEL")
-	slackUserID  = os.Getenv("SLACK_USER_ID")
+	SlackAPIKey  = os.Getenv("SLACK_API")
+	SlackChannel = os.Getenv("SLACK_CHANNEL")
+	SlackUserID  = os.Getenv("SLACK_USER_ID")
 )
 
 // UpdateSlackEnvVars updates the slack environment variables in case they are changed while remote test is running.
 // Usually used for unit tests.
 func UpdateSlackEnvVars() {
-	slackAPIKey = os.Getenv("SLACK_API")
-	slackChannel = os.Getenv("SLACK_CHANNEL")
-	slackUserID = os.Getenv("SLACK_USER_ID")
+	SlackAPIKey = os.Getenv("SLACK_API")
+	SlackChannel = os.Getenv("SLACK_CHANNEL")
+	SlackUserID = os.Getenv("SLACK_USER_ID")
 }
 
 // Uploads a slack file to the designated channel using the API key
-func uploadSlackFile(slackClient *slack.Client, uploadParams slack.FileUploadParameters) error {
+func UploadSlackFile(slackClient *slack.Client, uploadParams slack.FileUploadParameters) error {
 	log.Info().
-		Str("Slack API Key", slackAPIKey).
-		Str("Slack Channel", slackChannel).
-		Str("User Id to Notify", slackUserID).
+		Str("Slack API Key", SlackAPIKey).
+		Str("Slack Channel", SlackChannel).
+		Str("User Id to Notify", SlackUserID).
 		Str("File", uploadParams.File).
 		Msg("Attempting to upload file")
-	if slackAPIKey == "" {
+	if SlackAPIKey == "" {
 		return errors.New("Unable to upload file without a Slack API Key")
 	}
-	if slackChannel == "" {
+	if SlackChannel == "" {
 		return errors.New("Unable to upload file without a Slack Channel")
 	}
 	if uploadParams.Channels == nil || uploadParams.Channels[0] == "" {
-		uploadParams.Channels = []string{slackChannel}
+		uploadParams.Channels = []string{SlackChannel}
 	}
 	if uploadParams.File != "" {
 		if _, err := os.Stat(uploadParams.File); errors.Is(err, os.ErrNotExist) {
@@ -65,24 +58,24 @@ func uploadSlackFile(slackClient *slack.Client, uploadParams slack.FileUploadPar
 }
 
 // Sends a slack message, and returns an error and the message timestamp
-func sendSlackMessage(slackClient *slack.Client, msgOptions ...slack.MsgOption) (string, error) {
+func SendSlackMessage(slackClient *slack.Client, msgOptions ...slack.MsgOption) (string, error) {
 	log.Info().
-		Str("Slack API Key", slackAPIKey).
-		Str("Slack Channel", slackChannel).
+		Str("Slack API Key", SlackAPIKey).
+		Str("Slack Channel", SlackChannel).
 		Msg("Attempting to send message")
-	if slackAPIKey == "" {
+	if SlackAPIKey == "" {
 		return "", errors.New("Unable to send message without a Slack API Key")
 	}
-	if slackChannel == "" {
+	if SlackChannel == "" {
 		return "", errors.New("Unable to send message without a Slack Channel")
 	}
 	msgOptions = append(msgOptions, slack.MsgOptionAsUser(true))
-	_, timeStamp, err := slackClient.PostMessage(slackChannel, msgOptions...)
+	_, timeStamp, err := slackClient.PostMessage(SlackChannel, msgOptions...)
 	return timeStamp, err
 }
 
 // creates a directory if it doesn't already exist
-func mkdirIfNotExists(dirName string) error {
+func MkdirIfNotExists(dirName string) error {
 	if _, err := os.Stat(dirName); os.IsNotExist(err) {
 		if err = os.MkdirAll(dirName, os.ModePerm); err != nil {
 			return errors.Wrapf(err, "failed to create directory: %s", dirName)
@@ -91,7 +84,7 @@ func mkdirIfNotExists(dirName string) error {
 	return nil
 }
 
-func commonSlackNotificationBlocks(slackClient *slack.Client, headerText, namespace, reportCsvLocation, slackUserId string, testFailed bool) []slack.Block {
+func CommonSlackNotificationBlocks(slackClient *slack.Client, headerText, namespace, reportCsvLocation, slackUserId string, testFailed bool) []slack.Block {
 	notificationBlocks := []slack.Block{}
 	notificationBlocks = append(notificationBlocks,
 		slack.NewHeaderBlock(slack.NewTextBlockObject("plain_text", headerText, true, false)))
@@ -100,7 +93,7 @@ func commonSlackNotificationBlocks(slackClient *slack.Client, headerText, namesp
 	notificationBlocks = append(notificationBlocks, slack.NewDividerBlock())
 	notificationBlocks = append(notificationBlocks, slack.NewSectionBlock(slack.NewTextBlockObject("mrkdwn",
 		fmt.Sprintf("Test ran for %s\nSummary CSV created on _remote-test-runner_ at _%s_\nNotifying <@%s>",
-			ginkgo.CurrentSpecReport().RunTime.Truncate(time.Second), reportCsvLocation, slackUserID), false, true), nil, nil))
+			ginkgo.CurrentSpecReport().RunTime.Truncate(time.Second), reportCsvLocation, SlackUserID), false, true), nil, nil))
 	if testFailed {
 		notificationBlocks = append(notificationBlocks,
 			slack.NewHeaderBlock(slack.NewTextBlockObject("plain_text", "Error Trace", true, false)))

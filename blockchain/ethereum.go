@@ -8,12 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/smartcontractkit/chainlink-env/environment"
-
-	"github.com/smartcontractkit/chainlink-testing-framework/utils"
-
-	"golang.org/x/sync/errgroup"
-
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -21,6 +15,9 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/rs/zerolog/log"
+	"github.com/smartcontractkit/chainlink-env/environment"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils"
+	"golang.org/x/sync/errgroup"
 )
 
 // EthereumClient wraps the client and the BlockChain network to interact with an EVM based Blockchain
