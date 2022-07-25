@@ -16,7 +16,7 @@ require (
 	github.com/prometheus/common v0.34.0
 	github.com/rs/zerolog v1.27.0
 	github.com/slack-go/slack v0.10.3
-	github.com/smartcontractkit/chainlink-env v0.2.26
+	github.com/smartcontractkit/chainlink-env v0.2.29
 	github.com/stretchr/testify v1.8.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	k8s.io/apimachinery v0.24.2
