@@ -8,30 +8,30 @@ import (
 
 // ExplorerClient is used to call Explorer API endpoints
 type ExplorerClient struct {
-	*BasicHTTPClient
+	*APIClient
 	Config *ExplorerConfig
 }
 
 // NewExplorerClient creates a new explorer mock client
 func NewExplorerClient(cfg *ExplorerConfig) *ExplorerClient {
 	return &ExplorerClient{
-		Config:          cfg,
-		BasicHTTPClient: NewBasicHTTPClient(&http.Client{}, cfg.URL),
+		Config:    cfg,
+		APIClient: NewAPIClient(cfg.URL),
 	}
 }
 
 // PostAdminNodes is used to exercise the POST /api/v1/admin/nodes endpoint
 // This endpoint is used to create access keys for nodes
 func (em *ExplorerClient) PostAdminNodes(nodeName string) (NodeAccessKeys, error) {
-	em.Header = map[string][]string{
+	em.WithHeader(map[string][]string{
 		"x-explore-admin-password": {em.Config.AdminPassword},
 		"x-explore-admin-username": {em.Config.AdminUsername},
 		"Content-Type":             {"application/json"},
-	}
+	})
 	requestBody := &Name{Name: nodeName}
 	responseBody := NodeAccessKeys{}
 	log.Info().Str("Explorer URL", em.Config.URL).Msg("Creating node credentials")
-	_, err := em.Do(http.MethodPost, "/api/v1/admin/nodes", &requestBody, &responseBody, http.StatusCreated)
+	_, err := em.Request(http.MethodPost, "/api/v1/admin/nodes", &requestBody, &responseBody, http.StatusCreated)
 	return responseBody, err
 }
 
