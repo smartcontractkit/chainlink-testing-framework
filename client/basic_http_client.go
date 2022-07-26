@@ -9,28 +9,8 @@ import (
 
 // APIClient handles basic request sending logic and cookie handling
 type APIClient struct {
-	RC      *resty.Client
-	Cookies []*http.Cookie
-	Header  http.Header
-}
-
-type ReqParams struct {
-	QueryParams map[string]string
-	PathParams  map[string]string
-}
-
-type SetReqArgs func(r *ReqParams)
-
-func WithPathParam(p map[string]string) SetReqArgs {
-	return func(r *ReqParams) {
-		r.PathParams = p
-	}
-}
-
-func WithQueryParam(q map[string]string) SetReqArgs {
-	return func(r *ReqParams) {
-		r.QueryParams = q
-	}
+	RC     *resty.Client
+	Header http.Header
 }
 
 // NewAPIClient returns new basic resty client configured with an base URL
@@ -47,36 +27,15 @@ func (c *APIClient) WithHeader(header http.Header) *APIClient {
 	return c
 }
 
-func (c *APIClient) WithRetryCount(retries int) *APIClient {
-	c.RC.SetRetryCount(retries)
-	return c
-}
-
-func (c *APIClient) WithCookies() *APIClient {
-	c.RC.SetCookies(c.Cookies)
-	return c
-}
-
 func (c *APIClient) Request(method,
 	endpoint string,
 	body interface{},
 	obj interface{},
 	expectedStatusCode int,
-	args ...SetReqArgs,
 ) (*resty.Response, error) {
 	req := c.RC.R()
 	req.Method = method
 	req.URL = endpoint
-	rArgs := &ReqParams{}
-	for _, f := range args {
-		f(rArgs)
-	}
-	if rArgs.PathParams != nil {
-		req.SetPathParams(rArgs.PathParams)
-	}
-	if rArgs.QueryParams != nil {
-		req.SetQueryParams(rArgs.QueryParams)
-	}
 	resp, err := req.
 		SetHeaderMultiValues(c.Header).
 		SetBody(body).
