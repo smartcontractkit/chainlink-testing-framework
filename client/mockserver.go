@@ -43,13 +43,13 @@ func NewMockserverClient(cfg *MockserverConfig) *MockserverClient {
 
 // PutExpectations sets the expectations (i.e. mocked responses)
 func (em *MockserverClient) PutExpectations(body interface{}) error {
-	_, err := em.Request(http.MethodPut, "/expectation", &body, nil, http.StatusCreated)
+	_, err := em.Request(http.MethodPut, "/expectation", body, nil, http.StatusCreated)
 	return err
 }
 
 // ClearExpectation clears expectations
 func (em *MockserverClient) ClearExpectation(body interface{}) error {
-	_, err := em.Request(http.MethodPut, "/clear", &body, nil, http.StatusOK)
+	_, err := em.Request(http.MethodPut, "/clear", body, nil, http.StatusOK)
 	return err
 }
 

@@ -5,14 +5,7 @@ import (
 	"net/http"
 
 	resty "github.com/go-resty/resty/v2"
-	"github.com/pkg/errors"
 )
-
-// ErrNotFound Error for not found
-var ErrNotFound = errors.New("unexpected response code, got 404")
-
-// ErrUnprocessableEntity Error for and unprocessable entity
-var ErrUnprocessableEntity = errors.New("unexpected response code, got 422")
 
 // APIClient handles basic request sending logic and cookie handling
 type APIClient struct {
@@ -89,7 +82,9 @@ func (c *APIClient) Request(method,
 		SetBody(body).
 		SetResult(&obj).
 		Send()
-	if resp.IsError() {
+	if err != nil {
+		return nil, err
+	} else if resp.IsError() {
 		return resp, fmt.Errorf(
 			"unexpected response code, got %d",
 			resp.StatusCode(),
