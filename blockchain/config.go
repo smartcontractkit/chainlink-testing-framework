@@ -24,6 +24,7 @@ var (
 		Timeout:                   2 * time.Minute,
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       10000,
+		URLs: []string{"ws://geth:8546"},
 	}
 )
 
