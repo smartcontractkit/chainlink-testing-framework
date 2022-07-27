@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"github.com/go-resty/resty/v2"
 	"net/http"
 	"strings"
 
@@ -13,8 +14,8 @@ import (
 
 // MockserverClient mockserver client
 type MockserverClient struct {
-	*APIClient
-	Config *MockserverConfig
+	APIClient *resty.Client
+	Config    *MockserverConfig
 }
 
 // MockserverConfig holds config information for MockserverClient
@@ -37,19 +38,25 @@ func NewMockserverClient(cfg *MockserverConfig) *MockserverClient {
 	log.Debug().Str("Local URL", cfg.LocalURL).Str("Remote URL", cfg.ClusterURL).Msg("Connected to MockServer")
 	return &MockserverClient{
 		Config:    cfg,
-		APIClient: NewAPIClient(cfg.LocalURL),
+		APIClient: resty.New().SetBaseURL(cfg.LocalURL),
 	}
 }
 
 // PutExpectations sets the expectations (i.e. mocked responses)
 func (em *MockserverClient) PutExpectations(body interface{}) error {
-	_, err := em.Request(http.MethodPut, "/expectation", body, nil, http.StatusCreated)
+	resp, err := em.APIClient.R().SetBody(body).Put("/expectation")
+	if resp.StatusCode() != http.StatusCreated {
+		err = fmt.Errorf("Unexpected Status Code. Expected %d; Got %d", http.StatusCreated, resp.StatusCode())
+	}
 	return err
 }
 
 // ClearExpectation clears expectations
 func (em *MockserverClient) ClearExpectation(body interface{}) error {
-	_, err := em.Request(http.MethodPut, "/clear", body, nil, http.StatusOK)
+	resp, err := em.APIClient.R().SetBody(body).Put("/clear")
+	if resp.StatusCode() != http.StatusOK {
+		err = fmt.Errorf("Unexpected Status Code. Expected %d; Got %d", http.StatusOK, resp.StatusCode())
+	}
 	return err
 }
 
@@ -70,7 +77,10 @@ func (em *MockserverClient) SetValuePath(path string, v int) error {
 		}},
 	}
 	initializers := []HttpInitializer{initializer}
-	_, err := em.Request(http.MethodPut, "/expectation", &initializers, nil, http.StatusCreated)
+	resp, err := em.APIClient.R().SetBody(&initializers).Put("/expectation")
+	if resp.StatusCode() != http.StatusCreated {
+		err = fmt.Errorf("Unexpected Status Code. Expected %d; Got %d", http.StatusCreated, resp.StatusCode())
+	}
 	return err
 }
 
