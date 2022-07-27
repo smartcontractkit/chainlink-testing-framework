@@ -2,9 +2,10 @@ package client
 
 import (
 	"fmt"
+	"net/http"
+
 	"github.com/go-resty/resty/v2"
 	"github.com/rs/zerolog/log"
-	"net/http"
 )
 
 // ExplorerClient is used to call Explorer API endpoints

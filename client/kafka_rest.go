@@ -2,8 +2,9 @@ package client
 
 import (
 	"fmt"
-	"github.com/go-resty/resty/v2"
 	"net/http"
+
+	"github.com/go-resty/resty/v2"
 )
 
 // KafkaRestClient kafka-rest client

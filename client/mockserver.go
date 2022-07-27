@@ -2,9 +2,10 @@ package client
 
 import (
 	"fmt"
-	"github.com/go-resty/resty/v2"
 	"net/http"
 	"strings"
+
+	"github.com/go-resty/resty/v2"
 
 	"github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver"
 
