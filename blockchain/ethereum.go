@@ -348,15 +348,10 @@ func (e *EthereumClient) ProcessTransaction(tx *types.Transaction) error {
 func (e *EthereumClient) ProcessEvent(
 	eventName string,
 	event types.Log,
-	eventConfirmed chan bool,
-	eventError chan error,
+	eventConfirmedChan chan bool,
+	eventErrorChan chan error,
 ) error {
 	minConfirmations := e.NetworkConfig.MinimumConfirmations
-	headerChannel := make(chan *types.Header)
-	subscription, err := e.Client.SubscribeNewHead(context.Background(), headerChannel)
-	if err != nil {
-		return err
-	}
 	debugLog := log.Debug().
 		Str("Name", eventName).
 		Int("Min Confirmations", minConfirmations).
@@ -365,7 +360,14 @@ func (e *EthereumClient) ProcessEvent(
 		Str("TxHash", event.TxHash.Hex())
 
 	go func() {
+		headerChannel := make(chan *types.Header)
+		subscription, err := e.Client.SubscribeNewHead(context.Background(), headerChannel)
 		defer subscription.Unsubscribe()
+		if err != nil {
+			eventErrorChan <- err
+			return
+		}
+
 		confirmations := 0
 		lastBlockNum := big.NewInt(0)
 		for {
@@ -383,7 +385,7 @@ func (e *EthereumClient) ProcessEvent(
 						Str("Address", event.Address.Hex()).
 						Str("TxHash", event.TxHash.Hex()).
 						Msg("Error checking Event confirmations")
-					eventError <- err
+					eventErrorChan <- err
 				}
 				if block != nil && !event.Removed {
 					confirmations++
@@ -398,11 +400,12 @@ func (e *EthereumClient) ProcessEvent(
 						Str("TxHash", event.TxHash.Hex()).
 						Str("Uncled Block Hash", event.BlockHash.Hex()).
 						Msg("Abandoning Event on Uncled Block")
+					eventConfirmedChan <- false
 					return
 				}
 				if confirmations >= minConfirmations {
 					debugLog.Int("Confirmations", confirmations).Msg("Confirmed Event")
-					eventConfirmed <- true
+					eventConfirmedChan <- true
 					return
 				}
 			case err := <-subscription.Err():
@@ -412,7 +415,7 @@ func (e *EthereumClient) ProcessEvent(
 					Str("Address", event.Address.Hex()).
 					Str("TxHash", event.TxHash.Hex()).
 					Msg("Error in subscribing to new blocks while tracking event confirmation")
-				eventError <- err
+				eventErrorChan <- err
 			}
 		}
 	}()
