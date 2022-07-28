@@ -18,6 +18,7 @@ var knownNetworks = map[int64]string{
 	1001: "Klaytn", // Testnet
 	8217: "Klaytn", // Mainnet
 
+	421611: "Arbitrum", // Rinkeby
 	421613: "Arbitrum", // Goerli
 }
 
