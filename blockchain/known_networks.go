@@ -18,6 +18,9 @@ var knownNetworks = map[int64]string{
 
 	1001: "Klaytn", // Testnet
 	8217: "Klaytn", // Mainnet
+
+	421611: "Arbitrum", // Rinkeby
+	421613: "Arbitrum", // Goerli
 }
 
 // wrapSingleClient Wraps a single EVM client in its appropriate implementation, based on the chain ID
@@ -39,6 +42,8 @@ func wrapSingleClient(networkSettings *EVMNetwork, client *EthereumClient) EVMCl
 		wrappedEc = &MetisClient{client}
 	case "Klaytn":
 		wrappedEc = &KlaytnClient{client}
+	case "Arbitrum":
+		wrappedEc = &ArbitrumClient{client}
 	}
 	return wrappedEc
 }
@@ -67,6 +72,9 @@ func wrapMultiClient(networkSettings *EVMNetwork, client *EthereumMultinodeClien
 	case "Klaytn":
 		logMsg.Msg("Using Klaytn Client")
 		wrappedEc = &KlaytnMultinodeClient{client}
+	case "Arbitrum":
+		logMsg.Msg("Using Arbitrum Client")
+		wrappedEc = &ArbitrumMultinodeClient{client}
 	}
 	return wrappedEc
 }
