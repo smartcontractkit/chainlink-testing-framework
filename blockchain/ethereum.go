@@ -343,6 +343,82 @@ func (e *EthereumClient) ProcessTransaction(tx *types.Transaction) error {
 	return nil
 }
 
+// ProcessEvent will take an event and a channel, when that event has hit your chain's minimum confirmations, it will
+// pass nil to your provided channel, or will return an error if one is encountered.
+func (e *EthereumClient) ProcessEvent(
+	eventName string,
+	event types.Log,
+	eventConfirmed chan bool,
+	eventError chan error,
+) error {
+	minConfirmations := e.NetworkConfig.MinimumConfirmations
+	headerChannel := make(chan *types.Header)
+	subscription, err := e.Client.SubscribeNewHead(context.Background(), headerChannel)
+	if err != nil {
+		return err
+	}
+	debugLog := log.Debug().
+		Str("Name", eventName).
+		Int("Min Confirmations", minConfirmations).
+		Str("Address", event.Address.Hex()).
+		Str("From Block Hash", event.BlockHash.Hex()).
+		Str("TxHash", event.TxHash.Hex())
+
+	go func() {
+		defer subscription.Unsubscribe()
+		confirmations := 0
+		lastBlockNum := big.NewInt(0)
+		for {
+			select {
+			case newBlock := <-headerChannel:
+				if 1 != newBlock.Number.Cmp(lastBlockNum) {
+					continue
+				}
+				lastBlockNum = newBlock.Number
+				block, err := e.Client.HeaderByHash(context.Background(), event.BlockHash)
+				if err != nil {
+					log.Error().
+						Err(err).
+						Str("Name", eventName).
+						Str("Address", event.Address.Hex()).
+						Str("TxHash", event.TxHash.Hex()).
+						Msg("Error checking Event confirmations")
+					eventError <- err
+				}
+				if block != nil && !event.Removed {
+					confirmations++
+					debugLog.
+						Str("New Block Hash", event.BlockHash.Hex()).
+						Int("Confirmations", confirmations).
+						Msg("Confirming Event")
+				} else {
+					log.Debug().
+						Str("Name", eventName).
+						Str("Address", event.Address.Hex()).
+						Str("TxHash", event.TxHash.Hex()).
+						Str("Uncled Block Hash", event.BlockHash.Hex()).
+						Msg("Abandoning Event on Uncled Block")
+					return
+				}
+				if confirmations >= minConfirmations {
+					debugLog.Int("Confirmations", confirmations).Msg("Confirmed Event")
+					eventConfirmed <- true
+					return
+				}
+			case err := <-subscription.Err():
+				log.Error().
+					Err(err).
+					Str("Name", eventName).
+					Str("Address", event.Address.Hex()).
+					Str("TxHash", event.TxHash.Hex()).
+					Msg("Error in subscribing to new blocks while tracking event confirmation")
+				eventError <- err
+			}
+		}
+	}()
+	return nil
+}
+
 // IsTxConfirmed checks if the transaction is confirmed on chain or not
 func (e *EthereumClient) IsTxConfirmed(txHash common.Hash) (bool, error) {
 	tx, isPending, err := e.Client.TransactionByHash(context.Background(), txHash)
@@ -640,6 +716,16 @@ func (e *EthereumMultinodeClient) TransactionOpts(from *EthereumWallet) (*bind.T
 // ProcessTransaction returns the result of the default client's processed transaction
 func (e *EthereumMultinodeClient) ProcessTransaction(tx *types.Transaction) error {
 	return e.DefaultClient.ProcessTransaction(tx)
+}
+
+// ProcessTransaction returns the result of the default client's processed transaction
+func (e *EthereumMultinodeClient) ProcessEvent(
+	eventName string,
+	event types.Log,
+	eventConfirmed chan bool,
+	eventError chan error,
+) error {
+	return e.DefaultClient.ProcessEvent(eventName, event, eventConfirmed, eventError)
 }
 
 // IsTxConfirmed returns the default client's transaction confirmations

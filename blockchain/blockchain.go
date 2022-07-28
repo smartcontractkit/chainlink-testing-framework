@@ -44,6 +44,12 @@ type EVMClient interface {
 	) (*common.Address, *types.Transaction, interface{}, error)
 	TransactionOpts(from *EthereumWallet) (*bind.TransactOpts, error)
 	ProcessTransaction(tx *types.Transaction) error
+	ProcessEvent(
+		eventName string,
+		event types.Log,
+		eventConfirmed chan bool,
+		eventError chan error,
+	) error
 	IsTxConfirmed(txHash common.Hash) (bool, error)
 	GetTxReceipt(txHash common.Hash) (*types.Receipt, error)
 	ParallelTransactions(enabled bool)

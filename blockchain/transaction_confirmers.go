@@ -48,10 +48,11 @@ func NewTransactionConfirmer(client EVMClient, tx *types.Transaction, minConfirm
 func (t *TransactionConfirmer) ReceiveBlock(block NodeBlock) error {
 	if block.Block == nil {
 		// Strange case that happens in some EVM testnets
-		log.Info().Msg("Received nil block")
+		log.Debug().Msg("Received nil block")
 		return nil
 	}
-	confirmationLog := log.Debug().Str("Network Name", t.networkConfig.Name).
+	confirmationLog := log.Debug().
+		Str("Network Name", t.networkConfig.Name).
 		Str("Block Hash", block.Hash().Hex()).
 		Str("Block Number", block.Number().String()).
 		Str("Tx Hash", t.tx.Hash().String()).
