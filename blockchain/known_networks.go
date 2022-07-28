@@ -70,8 +70,8 @@ func wrapMultiClient(networkSettings *EVMNetwork, client *EthereumMultinodeClien
 	case "Klaytn":
 		logMsg.Msg("Using Klaytn Client")
 		wrappedEc = &KlaytnMultinodeClient{client}
-	case "Arbitrum Nitro":
-		logMsg.Msg("Using Arbitrum Nitro Client")
+	case "Arbitrum":
+		logMsg.Msg("Using Arbitrum Client")
 		wrappedEc = &ArbitrumMultinodeClient{client}
 	}
 	return wrappedEc
