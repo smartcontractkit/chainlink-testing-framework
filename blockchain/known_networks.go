@@ -10,6 +10,7 @@ var knownNetworks = map[int64]string{
 	1:        "Ethereum", // Mainnet
 	5:        "Ethereum", // Goerli
 	1337:     "Ethereum", // Geth Dev
+	2337:     "Ethereum", // Geth Dev #2 used in reorg tests
 	11155111: "Ethereum", // Sepolia
 
 	588:  "Metis", // Stardust (testnet)
