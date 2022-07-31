@@ -16,14 +16,15 @@ import (
 
 // TransactionConfirmer is an implementation of HeaderEventSubscription that checks whether tx are confirmed
 type TransactionConfirmer struct {
-	minConfirmations int
-	confirmations    int
-	client           EVMClient
-	tx               *types.Transaction
-	doneChan         chan struct{}
-	context          context.Context
-	cancel           context.CancelFunc
-	networkConfig    *EVMNetwork
+	minConfirmations     int
+	confirmations        int
+	client               EVMClient
+	tx                   *types.Transaction
+	doneChan             chan struct{}
+	context              context.Context
+	cancel               context.CancelFunc
+	networkConfig        *EVMNetwork
+	lastReceivedBlockNum uint64
 }
 
 // NewTransactionConfirmer returns a new instance of the transaction confirmer that waits for on-chain minimum
@@ -51,6 +52,10 @@ func (t *TransactionConfirmer) ReceiveBlock(block NodeBlock) error {
 		log.Debug().Msg("Received nil block")
 		return nil
 	}
+	if block.NumberU64() <= t.lastReceivedBlockNum {
+		return nil // Block with same number mined, disregard for confirming
+	}
+	t.lastReceivedBlockNum = block.NumberU64()
 	confirmationLog := log.Debug().
 		Str("Network Name", t.networkConfig.Name).
 		Str("Block Hash", block.Hash().Hex()).

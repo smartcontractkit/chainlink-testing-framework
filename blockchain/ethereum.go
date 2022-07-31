@@ -343,21 +343,15 @@ func (e *EthereumClient) ProcessTransaction(tx *types.Transaction) error {
 	return nil
 }
 
-// ProcessEvent will take an event and a channel, when that event has hit your chain's minimum confirmations, it will
-// pass nil to your provided channel, or will return an error if one is encountered.
+// ProcessEvent will attempt to confirm an event for the chain's configured minimum confirmed blocks. Errors encountered
+// are sent along the eventErrorChan, and the result of confirming the event is sent to eventConfirmedChan.
 func (e *EthereumClient) ProcessEvent(
 	eventName string,
-	event types.Log,
+	event *types.Log,
 	eventConfirmedChan chan bool,
 	eventErrorChan chan error,
-) error {
+) {
 	minConfirmations := e.NetworkConfig.MinimumConfirmations
-	debugLog := log.Debug().
-		Str("Name", eventName).
-		Int("Min Confirmations", minConfirmations).
-		Str("Address", event.Address.Hex()).
-		Str("From Block Hash", event.BlockHash.Hex()).
-		Str("TxHash", event.TxHash.Hex())
 
 	go func() {
 		headerChannel := make(chan *types.Header)
@@ -369,57 +363,59 @@ func (e *EthereumClient) ProcessEvent(
 		}
 
 		confirmations := 0
-		lastBlockNum := big.NewInt(0)
+		var lastBlockNum uint64
 		for {
 			select {
 			case newBlock := <-headerChannel:
-				if 1 != newBlock.Number.Cmp(lastBlockNum) {
-					continue
-				}
-				lastBlockNum = newBlock.Number
-				block, err := e.Client.HeaderByHash(context.Background(), event.BlockHash)
-				if err != nil {
-					log.Error().
-						Err(err).
-						Str("Name", eventName).
-						Str("Address", event.Address.Hex()).
-						Str("TxHash", event.TxHash.Hex()).
-						Msg("Error checking Event confirmations")
-					eventErrorChan <- err
-				}
-				if block != nil && !event.Removed {
-					confirmations++
-					debugLog.
-						Str("New Block Hash", event.BlockHash.Hex()).
-						Int("Confirmations", confirmations).
-						Msg("Confirming Event")
-				} else {
-					log.Debug().
-						Str("Name", eventName).
-						Str("Address", event.Address.Hex()).
-						Str("TxHash", event.TxHash.Hex()).
-						Str("Uncled Block Hash", event.BlockHash.Hex()).
-						Msg("Abandoning Event on Uncled Block")
+				if event.Removed { // Check if event removed
 					eventConfirmedChan <- false
 					return
 				}
+				if lastBlockNum >= newBlock.Number.Uint64() {
+					continue
+				}
+				eventBlock, err := e.Client.BlockByNumber(context.Background(), big.NewInt(0).SetUint64(event.BlockNumber))
+				if err != nil {
+					eventErrorChan <- err
+					return
+				}
+				if eventBlock == nil {
+					continue
+				}
+				if eventBlock.Hash() != event.BlockHash {
+					eventConfirmedChan <- false
+					return
+				}
+				eventInBlock, err := e.Client.TransactionInBlock(context.Background(), eventBlock.Hash(), event.TxIndex)
+				if err != nil {
+					if err.Error() == "not found" { // TX not in the block
+						eventConfirmedChan <- false
+						return
+					}
+					eventErrorChan <- err
+					return
+				}
+				if eventInBlock.Hash() != event.TxHash {
+					eventConfirmedChan <- false
+					return
+				}
+				confirmations++
 				if confirmations >= minConfirmations {
-					debugLog.Int("Confirmations", confirmations).Msg("Confirmed Event")
 					eventConfirmedChan <- true
 					return
 				}
 			case err := <-subscription.Err():
 				log.Error().
 					Err(err).
-					Str("Name", eventName).
+					Str("Event", eventName).
 					Str("Address", event.Address.Hex()).
 					Str("TxHash", event.TxHash.Hex()).
 					Msg("Error in subscribing to new blocks while tracking event confirmation")
 				eventErrorChan <- err
+				return
 			}
 		}
 	}()
-	return nil
 }
 
 // IsTxConfirmed checks if the transaction is confirmed on chain or not
@@ -724,11 +720,11 @@ func (e *EthereumMultinodeClient) ProcessTransaction(tx *types.Transaction) erro
 // ProcessTransaction returns the result of the default client's processed transaction
 func (e *EthereumMultinodeClient) ProcessEvent(
 	eventName string,
-	event types.Log,
+	event *types.Log,
 	eventConfirmed chan bool,
 	eventError chan error,
-) error {
-	return e.DefaultClient.ProcessEvent(eventName, event, eventConfirmed, eventError)
+) {
+	e.DefaultClient.ProcessEvent(eventName, event, eventConfirmed, eventError)
 }
 
 // IsTxConfirmed returns the default client's transaction confirmations
