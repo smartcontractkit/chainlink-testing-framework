@@ -25,6 +25,7 @@ type TransactionConfirmer struct {
 	cancel               context.CancelFunc
 	networkConfig        *EVMNetwork
 	lastReceivedBlockNum uint64
+	complete             bool
 }
 
 // NewTransactionConfirmer returns a new instance of the transaction confirmer that waits for on-chain minimum
@@ -40,6 +41,7 @@ func NewTransactionConfirmer(client EVMClient, tx *types.Transaction, minConfirm
 		context:          ctx,
 		cancel:           ctxCancel,
 		networkConfig:    client.GetNetworkConfig(),
+		complete:         false,
 	}
 	return tc
 }
@@ -72,6 +74,7 @@ func (t *TransactionConfirmer) ReceiveBlock(block NodeBlock) error {
 	if t.confirmations == t.minConfirmations {
 		confirmationLog.Int("Current Confirmations", t.confirmations).
 			Msg("Transaction confirmations met")
+		t.complete = true
 		t.doneChan <- struct{}{}
 	} else if t.confirmations <= t.minConfirmations {
 		confirmationLog.Int("Current Confirmations", t.confirmations).
@@ -82,6 +85,7 @@ func (t *TransactionConfirmer) ReceiveBlock(block NodeBlock) error {
 
 // Wait is a blocking function that waits until the transaction is complete
 func (t *TransactionConfirmer) Wait() error {
+	defer func() { t.complete = true }()
 	for {
 		select {
 		case <-t.doneChan:
@@ -91,6 +95,11 @@ func (t *TransactionConfirmer) Wait() error {
 			return fmt.Errorf("timeout waiting for transaction to confirm: %s", t.tx.Hash())
 		}
 	}
+}
+
+// Complete returns if the confirmer has completed or not
+func (t *TransactionConfirmer) Complete() bool {
+	return t.complete
 }
 
 // InstantConfirmations is a no-op confirmer as all transactions are instantly mined so no confirmations are needed
@@ -104,6 +113,112 @@ func (i *InstantConfirmations) ReceiveBlock(block NodeBlock) error {
 // Wait is a no-op
 func (i *InstantConfirmations) Wait() error {
 	return nil
+}
+
+// Complete is a no-op
+func (i *InstantConfirmations) Complete() bool {
+	return true
+}
+
+// EventConfirmer confirms that an event is confirmed by a certain amount of blocks
+type EventConfirmer struct {
+	minConfirmations     int
+	confirmations        int
+	client               EVMClient
+	event                *types.Log
+	waitChan             chan struct{}
+	errorChan            chan error
+	confirmedChan        chan bool
+	context              context.Context
+	cancel               context.CancelFunc
+	lastReceivedBlockNum uint64
+	complete             bool
+}
+
+// NewEventConfirmer returns a new instance of the event confirmer that waits for on-chain minimum
+// confirmations
+func NewEventConfirmer(
+	client EVMClient,
+	event *types.Log,
+	minConfirmations int,
+	errorChan chan error,
+	confirmedChan chan bool,
+) *EventConfirmer {
+	ctx, ctxCancel := context.WithTimeout(context.Background(), client.GetNetworkConfig().Timeout)
+	tc := &EventConfirmer{
+		minConfirmations: minConfirmations,
+		confirmations:    0,
+		client:           client,
+		event:            event,
+		waitChan:         make(chan struct{}, 1),
+		errorChan:        errorChan,
+		confirmedChan:    confirmedChan,
+		context:          ctx,
+		cancel:           ctxCancel,
+		complete:         false,
+	}
+	return tc
+}
+
+// ProcessEvent will attempt to confirm an event for the chain's configured minimum confirmed blocks. Errors encountered
+// are sent along the eventErrorChan, and the result of confirming the event is sent to eventConfirmedChan.
+func (e *EventConfirmer) ReceiveBlock(block NodeBlock) error {
+	if block.NumberU64() <= e.lastReceivedBlockNum {
+		return nil
+	}
+	if e.event.Removed { // Check if event removed
+		e.confirmedChan <- false
+		return nil
+	}
+	eventBlock, err := e.client.BlockByNumber(context.Background(), big.NewInt(0).SetUint64(e.event.BlockNumber))
+	if err != nil {
+		eventErrorChan <- err
+		return
+	}
+	if eventBlock == nil {
+		continue
+	}
+	if eventBlock.Hash() != e.event.BlockHash {
+		e.confirmedChan <- false
+		return nil
+	}
+	eventInBlock, err := e.client.TransactionInBlock(context.Background(), eventBlock.Hash(), e.event.TxIndex)
+	if err != nil {
+		if err.Error() == "not found" { // TX not in the block
+			eventConfirmedChan <- false
+			return
+		}
+		eventErrorChan <- err
+		return
+	}
+	if eventInBlock.Hash() != event.TxHash {
+		eventConfirmedChan <- false
+		return
+	}
+	confirmations++
+	if confirmations >= minConfirmations {
+		eventConfirmedChan <- true
+		return
+	}
+}
+
+// Wait until the event fully presents as complete
+func (e *EventConfirmer) Wait() error {
+	defer func() { e.complete = true }()
+	for {
+		select {
+		case <-e.waitChan:
+			e.cancel()
+			return nil
+		case <-e.context.Done():
+			return fmt.Errorf("timeout waiting for transaction to confirm: %s", e.event.TxHash.Hex())
+		}
+	}
+}
+
+// Complete returns if the event has officially been confirmed (true or false)
+func (e *EventConfirmer) Complete() bool {
+	return e.complete
 }
 
 // GetNonce keep tracking of nonces per address, add last nonce for addr if the map is empty
@@ -197,6 +312,11 @@ func (e *EthereumClient) receiveHeader(header *types.Header) {
 	}
 	if err := g.Wait(); err != nil {
 		log.Err(fmt.Errorf("error on sending block to receivers: %v", err))
+	}
+	for key, sub := range subs { // Cleanup subscriptions that might not have Wait called on them
+		if sub.Complete() {
+			e.DeleteHeaderEventSubscription(key)
+		}
 	}
 }
 
