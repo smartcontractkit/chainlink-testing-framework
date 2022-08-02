@@ -32,7 +32,8 @@ func NewGauntlet() (*Gauntlet, error) {
 	log.Debug().Str("PATH", yarn).Msg("Executable Path")
 	os.Setenv("SKIP_PROMPTS", "true")
 	g := &Gauntlet{
-		exec: yarn,
+		exec:          yarn,
+		NetworkConfig: make(map[string]string),
 	}
 	g.GenerateRandomNetwork()
 	return g, nil
@@ -186,4 +187,8 @@ func printArgs(args []string) {
 
 	}
 	log.Info().Str("Command", out).Msg("Gauntlet")
+}
+
+func (g *Gauntlet) AddNetworkConfigVar(k string, v string) {
+	g.NetworkConfig[k] = v
 }
