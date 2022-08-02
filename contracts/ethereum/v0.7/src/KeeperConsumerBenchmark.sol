@@ -10,16 +10,18 @@ contract KeeperConsumerBenchmark {
   uint256 public checkGasToBurn;
   uint256 public performGasToBurn;
   uint256 public firstEligibleBlock;
+  uint256 public firstEligibleBuffer;
   mapping(bytes32 => bool) public dummyMap; // used to force storage lookup
 
   uint256 public count = 0;
 
-  constructor(uint256 _testRange, uint256 _averageEligibilityCadence, uint256 _checkGasToBurn, uint256 _performGasToBurn) {
+  constructor(uint256 _testRange, uint256 _averageEligibilityCadence, uint256 _checkGasToBurn, uint256 _performGasToBurn, uint256 _firstEligibleBuffer) {
     testRange = _testRange;
     averageEligibilityCadence = _averageEligibilityCadence;
     checkGasToBurn = _checkGasToBurn;
     performGasToBurn = _performGasToBurn;
-    firstEligibleBlock = (block.number +(rand() % averageEligibilityCadence)) + 1;
+    firstEligibleBuffer = _firstEligibleBuffer;
+    firstEligibleBlock = (block.number +(rand() % averageEligibilityCadence)) + firstEligibleBuffer;
   }
 
   function checkUpkeep(bytes calldata data) external view returns (bool, bytes memory) {
@@ -75,7 +77,7 @@ contract KeeperConsumerBenchmark {
   function reset() external {
     initialCall = 0;
     count = 0;
-    firstEligibleBlock = (block.number +(rand() % averageEligibilityCadence)) + 1;
+    firstEligibleBlock = (block.number +(rand() % averageEligibilityCadence)) + firstEligibleBuffer;
   }
 
   function setSpread(uint256 _newTestRange, uint256 _newAverageEligibilityCadence) external {
