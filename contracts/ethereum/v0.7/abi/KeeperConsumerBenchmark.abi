@@ -20,6 +20,11 @@
         "internalType": "uint256",
         "name": "_performGasToBurn",
         "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_firstEligibleBuffer",
+        "type": "uint256"
       }
     ],
     "stateMutability": "nonpayable",
@@ -146,6 +151,32 @@
         "internalType": "bool",
         "name": "",
         "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "firstEligibleBlock",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "firstEligibleBuffer",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
