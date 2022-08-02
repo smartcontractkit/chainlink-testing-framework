@@ -343,6 +343,26 @@ func (e *EthereumClient) ProcessTransaction(tx *types.Transaction) error {
 	return nil
 }
 
+// ProcessTransaction will queue or wait on a transaction depending on whether parallel transactions are enabled
+func (e *EthereumClient) ProcessEvent(name string, event *types.Log, confirmedChan chan bool, errorChan chan error) error {
+	var eventConfirmer HeaderEventSubscription
+	if e.GetNetworkConfig().MinimumConfirmations == 0 {
+		eventConfirmer = &InstantConfirmations{}
+	} else {
+		eventConfirmer = NewEventConfirmer(name, e, event, e.GetNetworkConfig().MinimumConfirmations, errorChan, confirmedChan)
+	}
+
+	subscriptionHash := fmt.Sprintf("%s-%s", event.TxHash.Hex(), name) // Many events can occupy the same tx hash
+	e.AddHeaderEventSubscription(subscriptionHash, eventConfirmer)
+
+	if !e.queueTransactions { // For sequential transactions
+		log.Debug().Str("Hash", event.Address.Hex()).Msg("Waiting for Event to confirm before moving on")
+		defer e.DeleteHeaderEventSubscription(subscriptionHash)
+		return eventConfirmer.Wait()
+	}
+	return nil
+}
+
 // IsTxConfirmed checks if the transaction is confirmed on chain or not
 func (e *EthereumClient) IsTxConfirmed(txHash common.Hash) (bool, error) {
 	tx, isPending, err := e.Client.TransactionByHash(context.Background(), txHash)
@@ -378,6 +398,44 @@ func (e *EthereumClient) IsTxConfirmed(txHash common.Hash) (bool, error) {
 		}
 	}
 	return !isPending, err
+}
+
+// IsEventConfirmed returns if eth client can confirm that the event happened
+func (e *EthereumClient) IsEventConfirmed(event *types.Log) (confirmed, removed bool, err error) {
+	if event.Removed {
+		return false, event.Removed, nil
+	}
+	eventTx, isPending, err := e.Client.TransactionByHash(context.Background(), event.TxHash)
+	if err != nil {
+		return false, event.Removed, err
+	}
+	if isPending {
+		return false, event.Removed, nil
+	}
+	eventReceipt, err := e.Client.TransactionReceipt(context.Background(), eventTx.Hash())
+	if err != nil {
+		return false, event.Removed, err
+	}
+	if eventReceipt.Status == 0 { // Failed event tx
+		reason, err := e.errorReason(e.Client, eventTx, eventReceipt)
+		if err != nil {
+			log.Warn().Str("TX Hash", eventTx.Hash().Hex()).Msg("Transaction failed and was reverted! Unable to retrieve reason!")
+			return false, event.Removed, err
+		}
+		log.Warn().Str("TX Hash", eventTx.Hash().Hex()).
+			Str("Revert reason", reason).
+			Msg("Transaction failed and was reverted!")
+		return false, event.Removed, err
+	}
+	blockByNumber, err := e.Client.BlockByNumber(context.Background(), big.NewInt(0).SetUint64(event.BlockNumber))
+	if err != nil || blockByNumber == nil {
+		return false, event.Removed, err
+	}
+	if blockByNumber.Hash() != event.BlockHash {
+		return false, event.Removed, nil
+	}
+
+	return true, event.Removed, nil
 }
 
 // GetTxReceipt returns the receipt of the transaction if available, error otherwise
@@ -642,9 +700,19 @@ func (e *EthereumMultinodeClient) ProcessTransaction(tx *types.Transaction) erro
 	return e.DefaultClient.ProcessTransaction(tx)
 }
 
+// ProcessEvent returns the result of the default client's processed event
+func (e *EthereumMultinodeClient) ProcessEvent(name string, event *types.Log, confirmedChan chan bool, errorChan chan error) error {
+	return e.DefaultClient.ProcessEvent(name, event, confirmedChan, errorChan)
+}
+
 // IsTxConfirmed returns the default client's transaction confirmations
 func (e *EthereumMultinodeClient) IsTxConfirmed(txHash common.Hash) (bool, error) {
 	return e.DefaultClient.IsTxConfirmed(txHash)
+}
+
+// IsEventConfirmed returns if the default client can confirm the event has happened
+func (e *EthereumMultinodeClient) IsEventConfirmed(event *types.Log) (confirmed, removed bool, err error) {
+	return e.DefaultClient.IsEventConfirmed(event)
 }
 
 // GetTxReceipt returns the receipt of the transaction if available, error otherwise

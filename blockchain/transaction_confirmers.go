@@ -122,6 +122,7 @@ func (i *InstantConfirmations) Complete() bool {
 
 // EventConfirmer confirms that an event is confirmed by a certain amount of blocks
 type EventConfirmer struct {
+	eventName            string
 	minConfirmations     int
 	confirmations        int
 	client               EVMClient
@@ -138,6 +139,7 @@ type EventConfirmer struct {
 // NewEventConfirmer returns a new instance of the event confirmer that waits for on-chain minimum
 // confirmations
 func NewEventConfirmer(
+	eventName string,
 	client EVMClient,
 	event *types.Log,
 	minConfirmations int,
@@ -146,6 +148,7 @@ func NewEventConfirmer(
 ) *EventConfirmer {
 	ctx, ctxCancel := context.WithTimeout(context.Background(), client.GetNetworkConfig().Timeout)
 	tc := &EventConfirmer{
+		eventName:        eventName,
 		minConfirmations: minConfirmations,
 		confirmations:    0,
 		client:           client,
@@ -163,43 +166,32 @@ func NewEventConfirmer(
 // ProcessEvent will attempt to confirm an event for the chain's configured minimum confirmed blocks. Errors encountered
 // are sent along the eventErrorChan, and the result of confirming the event is sent to eventConfirmedChan.
 func (e *EventConfirmer) ReceiveBlock(block NodeBlock) error {
+	if block.Block == nil {
+		log.Debug().Msg("Block nil")
+		return nil
+	}
 	if block.NumberU64() <= e.lastReceivedBlockNum {
 		return nil
 	}
-	if e.event.Removed { // Check if event removed
+	e.lastReceivedBlockNum = block.NumberU64()
+	confirmed, removed, err := e.client.IsEventConfirmed(e.event)
+	if err != nil {
+		e.errorChan <- err
+		return err
+	}
+	if removed {
 		e.confirmedChan <- false
+		e.complete = true
 		return nil
 	}
-	eventBlock, err := e.client.BlockByNumber(context.Background(), big.NewInt(0).SetUint64(e.event.BlockNumber))
-	if err != nil {
-		eventErrorChan <- err
-		return
+	if confirmed {
+		e.confirmations++
 	}
-	if eventBlock == nil {
-		continue
+	if e.confirmations >= e.minConfirmations {
+		e.confirmedChan <- true
+		e.complete = true
 	}
-	if eventBlock.Hash() != e.event.BlockHash {
-		e.confirmedChan <- false
-		return nil
-	}
-	eventInBlock, err := e.client.TransactionInBlock(context.Background(), eventBlock.Hash(), e.event.TxIndex)
-	if err != nil {
-		if err.Error() == "not found" { // TX not in the block
-			eventConfirmedChan <- false
-			return
-		}
-		eventErrorChan <- err
-		return
-	}
-	if eventInBlock.Hash() != event.TxHash {
-		eventConfirmedChan <- false
-		return
-	}
-	confirmations++
-	if confirmations >= minConfirmations {
-		eventConfirmedChan <- true
-		return
-	}
+	return nil
 }
 
 // Wait until the event fully presents as complete
