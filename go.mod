@@ -20,7 +20,7 @@ require (
 	github.com/smartcontractkit/chainlink-env v0.2.26
 	github.com/stretchr/testify v1.8.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	k8s.io/apimachinery v0.24.2
+	k8s.io/apimachinery v0.24.3
 )
 
 require (
