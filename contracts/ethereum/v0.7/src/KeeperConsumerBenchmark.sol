@@ -21,7 +21,7 @@ contract KeeperConsumerBenchmark {
     checkGasToBurn = _checkGasToBurn;
     performGasToBurn = _performGasToBurn;
     firstEligibleBuffer = _firstEligibleBuffer;
-    firstEligibleBlock = (block.number +(rand() % averageEligibilityCadence)) + firstEligibleBuffer;
+    firstEligibleBlock = firstEligibleBuffer > 0 ? (block.number +(rand() % averageEligibilityCadence)) + firstEligibleBuffer : block.number;
   }
 
   function checkUpkeep(bytes calldata data) external view returns (bool, bytes memory) {
@@ -77,12 +77,16 @@ contract KeeperConsumerBenchmark {
   function reset() external {
     initialCall = 0;
     count = 0;
-    firstEligibleBlock = (block.number +(rand() % averageEligibilityCadence)) + firstEligibleBuffer;
+    firstEligibleBlock = firstEligibleBuffer > 0 ? (block.number +(rand() % averageEligibilityCadence)) + firstEligibleBuffer : block.number;
   }
 
   function setSpread(uint256 _newTestRange, uint256 _newAverageEligibilityCadence) external {
     testRange = _newTestRange;
     averageEligibilityCadence = _newAverageEligibilityCadence;
+  }
+
+  function setFirstEligibleBuffer(uint256 _firstEligibleBuffer) external {
+    firstEligibleBuffer = _firstEligibleBuffer;
   }
 
   function rand() private view returns (uint256) {

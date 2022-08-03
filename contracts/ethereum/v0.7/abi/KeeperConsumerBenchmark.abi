@@ -271,6 +271,19 @@
     "inputs": [
       {
         "internalType": "uint256",
+        "name": "_firstEligibleBuffer",
+        "type": "uint256"
+      }
+    ],
+    "name": "setFirstEligibleBuffer",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
         "name": "value",
         "type": "uint256"
       }
