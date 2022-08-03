@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	execDir string = ""
+	execDir string
 )
 
 // Gauntlet contains helpful data to run gauntlet commands
