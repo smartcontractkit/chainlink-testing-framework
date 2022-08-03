@@ -43,9 +43,9 @@ jobs:
         uses: codecov/codecov-action@v3
         with:
           files: ./unit-test-coverage.out
-          name: codecov-umbrella 
+          name: codecov-umbrella
       - name: Publish Unit Test Results
-        uses: EnricoMi/publish-unit-test-result-action@v1
+        uses: EnricoMi/publish-unit-test-result-action@v2
         if: always()
         with:
           files: ./tests-unit-report.xml
