@@ -30,8 +30,8 @@ var (
 
 // KeeperConsumerBenchmarkMetaData contains all meta data concerning the KeeperConsumerBenchmark contract.
 var KeeperConsumerBenchmarkMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_testRange\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_averageEligibilityCadence\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_checkGasToBurn\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_performGasToBurn\",\"type\":\"uint256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"initialCall\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"nextEligible\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"blockNumber\",\"type\":\"uint256\"}],\"name\":\"PerformingUpkeep\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"averageEligibilityCadence\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"checkEligible\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"checkGasToBurn\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"name\":\"checkUpkeep\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"},{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"count\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"name\":\"dummyMap\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getCountPerforms\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"initialCall\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"nextEligible\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"performGasToBurn\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"name\":\"performUpkeep\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"reset\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"}],\"name\":\"setCheckGasToBurn\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"}],\"name\":\"setPerformGasToBurn\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_newTestRange\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_newAverageEligibilityCadence\",\"type\":\"uint256\"}],\"name\":\"setSpread\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"testRange\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]",
-	Bin: "0x6080604052600080556000600155600060075534801561001e57600080fd5b506040516106083803806106088339818101604052608081101561004157600080fd5b50805160208201516040830151606090930151600292909255600355600491909155600555610593806100756000396000f3fe608060405234801561001057600080fd5b50600436106100e05760003560e01c80637145f11b116100875780637145f11b146102b05780637f407edf146102e1578063926f086e14610304578063a9a4c57c1461030c578063b30566b414610314578063c228a98e1461031c578063d826f88f14610324578063e303666f1461032c576100e0565b806306661abd146100e557806313bda75b146100ff5780632555d2cf1461011e5780632ff3617d1461013b5780634585e33b14610143578063523d9b8a146101b15780636250a13a146101b95780636e04ff0d146101c1575b600080fd5b6100ed610334565b60408051918252519081900360200190f35b61011c6004803603602081101561011557600080fd5b503561033a565b005b61011c6004803603602081101561013457600080fd5b503561033f565b6100ed610344565b61011c6004803603602081101561015957600080fd5b810190602081018135600160201b81111561017357600080fd5b82018360208201111561018557600080fd5b803590602001918460018302840111600160201b831117156101a657600080fd5b50909250905061034a565b6100ed61043b565b6100ed610441565b61022f600480360360208110156101d757600080fd5b810190602081018135600160201b8111156101f157600080fd5b82018360208201111561020357600080fd5b803590602001918460018302840111600160201b8311171561022457600080fd5b509092509050610447565b60405180831515815260200180602001828103825283818151815260200191508051906020019080838360005b8381101561027457818101518382015260200161025c565b50505050905090810190601f1680156102a15780820380516001836020036101000a031916815260200191505b50935050505060405180910390f35b6102cd600480360360208110156102c657600080fd5b50356104e6565b604080519115158252519081900360200190f35b61011c600480360360408110156102f757600080fd5b50803590602001356104fb565b6100ed610506565b6100ed61050c565b6100ed610512565b6102cd610518565b61011c610527565b6100ed610531565b60075481565b600455565b600555565b60045481565b610352610537565b61035b57600080fd5b60005a90506000546000141561037057436000555b600354439081016001818155600780549091019055600054604080513281526020810192909252818101929092526060810192909252517f1313be6f6d6263f115d3e986c9622f868fcda43c8b8e7ef193e7a53d75a4d27c9181900360800190a160001943014060005b6005545a8403101561043457808015610401575060008281526006602052604090205460ff165b604080516020808201959095523081830152815180820383018152606090910190915280519301929092209190506103da565b5050505050565b60015481565b60025481565b6000606060005a905060001943014060005b6004545a840310156104b357808015610480575060008281526006602052604090205460ff165b60408051602080820195909552308183015281518082038301815260609091019091528051930192909220919050610459565b6104bb610537565b6040805192151560208085019190915281518085039091018152928101905297909650945050505050565b60066020526000908152604090205460ff1681565b600291909155600355565b60005481565b60035481565b60055481565b6000610522610537565b905090565b6000808055600755565b60075490565b60008054158061052257506002546000544303111580156105225750506001544310159056fea26469706673582212206f977357f6c4c9c1358cb4ea783d3b7367b38f620f65ec4056593e6016cd40dd64736f6c63430007060033",
+	ABI: "[{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_testRange\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_averageEligibilityCadence\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_checkGasToBurn\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_performGasToBurn\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_firstEligibleBuffer\",\"type\":\"uint256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"initialCall\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"nextEligible\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"blockNumber\",\"type\":\"uint256\"}],\"name\":\"PerformingUpkeep\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"averageEligibilityCadence\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"checkEligible\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"checkGasToBurn\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"name\":\"checkUpkeep\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"},{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"count\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"name\":\"dummyMap\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"firstEligibleBlock\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"firstEligibleBuffer\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getCountPerforms\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"initialCall\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"nextEligible\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"performGasToBurn\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"name\":\"performUpkeep\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"reset\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"}],\"name\":\"setCheckGasToBurn\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_firstEligibleBuffer\",\"type\":\"uint256\"}],\"name\":\"setFirstEligibleBuffer\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"}],\"name\":\"setPerformGasToBurn\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_newTestRange\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_newAverageEligibilityCadence\",\"type\":\"uint256\"}],\"name\":\"setSpread\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"testRange\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]",
+	Bin: "0x6080604052600080556000600155600060095534801561001e57600080fd5b50604051610741380380610741833981810160405260a081101561004157600080fd5b508051602082015160408301516060840151608090940151600284905560038390556004829055600585905560078190559293919290919080610084574361009e565b6007546003546100926100ac565b8161009957fe5b064301015b600655506100dd9350505050565b6040805160001943014060208083019190915230828401528251808303840181526060909201909252805191012090565b610655806100ec6000396000f3fe608060405234801561001057600080fd5b50600436106101015760003560e01c80637f407edf1161009d5780637f407edf146103025780638dba0fba14610325578063926f086e1461032d578063a9a4c57c14610335578063ad0d5c4d1461033d578063b30566b41461035a578063c228a98e14610362578063c4da244d1461036a578063d826f88f14610372578063e303666f1461037a57610101565b806306661abd1461010657806313bda75b146101205780632555d2cf1461013f5780632ff3617d1461015c5780634585e33b14610164578063523d9b8a146101d25780636250a13a146101da5780636e04ff0d146101e25780637145f11b146102d1575b600080fd5b61010e610382565b60408051918252519081900360200190f35b61013d6004803603602081101561013657600080fd5b5035610388565b005b61013d6004803603602081101561015557600080fd5b503561038d565b61010e610392565b61013d6004803603602081101561017a57600080fd5b810190602081018135600160201b81111561019457600080fd5b8201836020820111156101a657600080fd5b803590602001918460018302840111600160201b831117156101c757600080fd5b509092509050610398565b61010e610489565b61010e61048f565b610250600480360360208110156101f857600080fd5b810190602081018135600160201b81111561021257600080fd5b82018360208201111561022457600080fd5b803590602001918460018302840111600160201b8311171561024557600080fd5b509092509050610495565b60405180831515815260200180602001828103825283818151815260200191508051906020019080838360005b8381101561029557818101518382015260200161027d565b50505050905090810190601f1680156102c25780820380516001836020036101000a031916815260200191505b50935050505060405180910390f35b6102ee600480360360208110156102e757600080fd5b5035610534565b604080519115158252519081900360200190f35b61013d6004803603604081101561031857600080fd5b5080359060200135610549565b61010e610554565b61010e61055a565b61010e610560565b61013d6004803603602081101561035357600080fd5b5035610566565b61010e61056b565b6102ee610571565b61010e610580565b61013d610586565b61010e6105ba565b60095481565b600455565b600555565b60045481565b6103a06105c0565b6103a957600080fd5b60005a9050600054600014156103be57436000555b600354439081016001818155600980549091019055600054604080513281526020810192909252818101929092526060810192909252517f1313be6f6d6263f115d3e986c9622f868fcda43c8b8e7ef193e7a53d75a4d27c9181900360800190a160001943014060005b6005545a840310156104825780801561044f575060008281526008602052604090205460ff165b60408051602080820195909552308183015281518082038301815260609091019091528051930192909220919050610428565b5050505050565b60015481565b60025481565b6000606060005a905060001943014060005b6004545a84031015610501578080156104ce575060008281526008602052604090205460ff165b604080516020808201959095523081830152815180820383018152606090910190915280519301929092209190506104a7565b6105096105c0565b6040805192151560208085019190915281518085039091018152928101905297909650945050505050565b60086020526000908152604090205460ff1681565b600291909155600355565b60075481565b60005481565b60035481565b600755565b60055481565b600061057b6105c0565b905090565b60065481565b600080805560095560075461059b57436105b5565b6007546003546105a96105ee565b816105b057fe5b064301015b600655565b60095490565b60008054156105e45760025460005443031080156105df575060015443115b61057b565b5060065443101590565b604080516000194301406020808301919091523082840152825180830384018152606090920190925280519101209056fea2646970667358221220aca1c31f2a0fb9a854dd47864921d36b78865fd84f4d343cf5b590005c6f1e2764736f6c63430007060033",
 }
 
 // KeeperConsumerBenchmarkABI is the input ABI used to generate the binding from.
@@ -43,7 +43,7 @@ var KeeperConsumerBenchmarkABI = KeeperConsumerBenchmarkMetaData.ABI
 var KeeperConsumerBenchmarkBin = KeeperConsumerBenchmarkMetaData.Bin
 
 // DeployKeeperConsumerBenchmark deploys a new Ethereum contract, binding an instance of KeeperConsumerBenchmark to it.
-func DeployKeeperConsumerBenchmark(auth *bind.TransactOpts, backend bind.ContractBackend, _testRange *big.Int, _averageEligibilityCadence *big.Int, _checkGasToBurn *big.Int, _performGasToBurn *big.Int) (common.Address, *types.Transaction, *KeeperConsumerBenchmark, error) {
+func DeployKeeperConsumerBenchmark(auth *bind.TransactOpts, backend bind.ContractBackend, _testRange *big.Int, _averageEligibilityCadence *big.Int, _checkGasToBurn *big.Int, _performGasToBurn *big.Int, _firstEligibleBuffer *big.Int) (common.Address, *types.Transaction, *KeeperConsumerBenchmark, error) {
 	parsed, err := KeeperConsumerBenchmarkMetaData.GetAbi()
 	if err != nil {
 		return common.Address{}, nil, nil, err
@@ -52,7 +52,7 @@ func DeployKeeperConsumerBenchmark(auth *bind.TransactOpts, backend bind.Contrac
 		return common.Address{}, nil, nil, errors.New("GetABI returned nil")
 	}
 
-	address, tx, contract, err := bind.DeployContract(auth, *parsed, common.FromHex(KeeperConsumerBenchmarkBin), backend, _testRange, _averageEligibilityCadence, _checkGasToBurn, _performGasToBurn)
+	address, tx, contract, err := bind.DeployContract(auth, *parsed, common.FromHex(KeeperConsumerBenchmarkBin), backend, _testRange, _averageEligibilityCadence, _checkGasToBurn, _performGasToBurn, _firstEligibleBuffer)
 	if err != nil {
 		return common.Address{}, nil, nil, err
 	}
@@ -388,6 +388,68 @@ func (_KeeperConsumerBenchmark *KeeperConsumerBenchmarkCallerSession) DummyMap(a
 	return _KeeperConsumerBenchmark.Contract.DummyMap(&_KeeperConsumerBenchmark.CallOpts, arg0)
 }
 
+// FirstEligibleBlock is a free data retrieval call binding the contract method 0xc4da244d.
+//
+// Solidity: function firstEligibleBlock() view returns(uint256)
+func (_KeeperConsumerBenchmark *KeeperConsumerBenchmarkCaller) FirstEligibleBlock(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _KeeperConsumerBenchmark.contract.Call(opts, &out, "firstEligibleBlock")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// FirstEligibleBlock is a free data retrieval call binding the contract method 0xc4da244d.
+//
+// Solidity: function firstEligibleBlock() view returns(uint256)
+func (_KeeperConsumerBenchmark *KeeperConsumerBenchmarkSession) FirstEligibleBlock() (*big.Int, error) {
+	return _KeeperConsumerBenchmark.Contract.FirstEligibleBlock(&_KeeperConsumerBenchmark.CallOpts)
+}
+
+// FirstEligibleBlock is a free data retrieval call binding the contract method 0xc4da244d.
+//
+// Solidity: function firstEligibleBlock() view returns(uint256)
+func (_KeeperConsumerBenchmark *KeeperConsumerBenchmarkCallerSession) FirstEligibleBlock() (*big.Int, error) {
+	return _KeeperConsumerBenchmark.Contract.FirstEligibleBlock(&_KeeperConsumerBenchmark.CallOpts)
+}
+
+// FirstEligibleBuffer is a free data retrieval call binding the contract method 0x8dba0fba.
+//
+// Solidity: function firstEligibleBuffer() view returns(uint256)
+func (_KeeperConsumerBenchmark *KeeperConsumerBenchmarkCaller) FirstEligibleBuffer(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _KeeperConsumerBenchmark.contract.Call(opts, &out, "firstEligibleBuffer")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// FirstEligibleBuffer is a free data retrieval call binding the contract method 0x8dba0fba.
+//
+// Solidity: function firstEligibleBuffer() view returns(uint256)
+func (_KeeperConsumerBenchmark *KeeperConsumerBenchmarkSession) FirstEligibleBuffer() (*big.Int, error) {
+	return _KeeperConsumerBenchmark.Contract.FirstEligibleBuffer(&_KeeperConsumerBenchmark.CallOpts)
+}
+
+// FirstEligibleBuffer is a free data retrieval call binding the contract method 0x8dba0fba.
+//
+// Solidity: function firstEligibleBuffer() view returns(uint256)
+func (_KeeperConsumerBenchmark *KeeperConsumerBenchmarkCallerSession) FirstEligibleBuffer() (*big.Int, error) {
+	return _KeeperConsumerBenchmark.Contract.FirstEligibleBuffer(&_KeeperConsumerBenchmark.CallOpts)
+}
+
 // GetCountPerforms is a free data retrieval call binding the contract method 0xe303666f.
 //
 // Solidity: function getCountPerforms() view returns(uint256)
@@ -604,6 +666,27 @@ func (_KeeperConsumerBenchmark *KeeperConsumerBenchmarkSession) SetCheckGasToBur
 // Solidity: function setCheckGasToBurn(uint256 value) returns()
 func (_KeeperConsumerBenchmark *KeeperConsumerBenchmarkTransactorSession) SetCheckGasToBurn(value *big.Int) (*types.Transaction, error) {
 	return _KeeperConsumerBenchmark.Contract.SetCheckGasToBurn(&_KeeperConsumerBenchmark.TransactOpts, value)
+}
+
+// SetFirstEligibleBuffer is a paid mutator transaction binding the contract method 0xad0d5c4d.
+//
+// Solidity: function setFirstEligibleBuffer(uint256 _firstEligibleBuffer) returns()
+func (_KeeperConsumerBenchmark *KeeperConsumerBenchmarkTransactor) SetFirstEligibleBuffer(opts *bind.TransactOpts, _firstEligibleBuffer *big.Int) (*types.Transaction, error) {
+	return _KeeperConsumerBenchmark.contract.Transact(opts, "setFirstEligibleBuffer", _firstEligibleBuffer)
+}
+
+// SetFirstEligibleBuffer is a paid mutator transaction binding the contract method 0xad0d5c4d.
+//
+// Solidity: function setFirstEligibleBuffer(uint256 _firstEligibleBuffer) returns()
+func (_KeeperConsumerBenchmark *KeeperConsumerBenchmarkSession) SetFirstEligibleBuffer(_firstEligibleBuffer *big.Int) (*types.Transaction, error) {
+	return _KeeperConsumerBenchmark.Contract.SetFirstEligibleBuffer(&_KeeperConsumerBenchmark.TransactOpts, _firstEligibleBuffer)
+}
+
+// SetFirstEligibleBuffer is a paid mutator transaction binding the contract method 0xad0d5c4d.
+//
+// Solidity: function setFirstEligibleBuffer(uint256 _firstEligibleBuffer) returns()
+func (_KeeperConsumerBenchmark *KeeperConsumerBenchmarkTransactorSession) SetFirstEligibleBuffer(_firstEligibleBuffer *big.Int) (*types.Transaction, error) {
+	return _KeeperConsumerBenchmark.Contract.SetFirstEligibleBuffer(&_KeeperConsumerBenchmark.TransactOpts, _firstEligibleBuffer)
 }
 
 // SetPerformGasToBurn is a paid mutator transaction binding the contract method 0x2555d2cf.

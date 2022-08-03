@@ -9,15 +9,19 @@ contract KeeperConsumerBenchmark {
   uint256 public averageEligibilityCadence;
   uint256 public checkGasToBurn;
   uint256 public performGasToBurn;
+  uint256 public firstEligibleBlock;
+  uint256 public firstEligibleBuffer;
   mapping(bytes32 => bool) public dummyMap; // used to force storage lookup
 
   uint256 public count = 0;
 
-  constructor(uint256 _testRange, uint256 _averageEligibilityCadence, uint256 _checkGasToBurn, uint256 _performGasToBurn) {
+  constructor(uint256 _testRange, uint256 _averageEligibilityCadence, uint256 _checkGasToBurn, uint256 _performGasToBurn, uint256 _firstEligibleBuffer) {
     testRange = _testRange;
     averageEligibilityCadence = _averageEligibilityCadence;
     checkGasToBurn = _checkGasToBurn;
     performGasToBurn = _performGasToBurn;
+    firstEligibleBuffer = _firstEligibleBuffer;
+    firstEligibleBlock = firstEligibleBuffer > 0 ? (block.number +(rand() % averageEligibilityCadence)) + firstEligibleBuffer : block.number;
   }
 
   function checkUpkeep(bytes calldata data) external view returns (bool, bytes memory) {
@@ -63,7 +67,7 @@ contract KeeperConsumerBenchmark {
   }
 
   function eligible() internal view returns (bool) {
-    return initialCall == 0 || (block.number - initialCall <= testRange && block.number >= nextEligible);
+    return initialCall == 0 ? block.number >= firstEligibleBlock: (block.number - initialCall < testRange && block.number > nextEligible);
   }
 
   function checkEligible() public view returns (bool) {
@@ -73,10 +77,19 @@ contract KeeperConsumerBenchmark {
   function reset() external {
     initialCall = 0;
     count = 0;
+    firstEligibleBlock = firstEligibleBuffer > 0 ? (block.number +(rand() % averageEligibilityCadence)) + firstEligibleBuffer : block.number;
   }
 
   function setSpread(uint256 _newTestRange, uint256 _newAverageEligibilityCadence) external {
     testRange = _newTestRange;
     averageEligibilityCadence = _newAverageEligibilityCadence;
+  }
+
+  function setFirstEligibleBuffer(uint256 _firstEligibleBuffer) external {
+    firstEligibleBuffer = _firstEligibleBuffer;
+  }
+
+  function rand() private view returns (uint256) {
+    return uint256(keccak256(abi.encode(blockhash(block.number - 1), address(this))));
   }
 }
