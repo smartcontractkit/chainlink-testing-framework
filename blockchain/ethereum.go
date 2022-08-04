@@ -328,7 +328,7 @@ func (e *EthereumClient) TransactionOpts(from *EthereumWallet) (*bind.TransactOp
 func (e *EthereumClient) ProcessTransaction(tx *types.Transaction) error {
 	var txConfirmer HeaderEventSubscription
 	if e.GetNetworkConfig().MinimumConfirmations == 0 {
-		txConfirmer = &InstantConfirmations{}
+		txConfirmer = NewL2TxConfirmer(e, tx.Hash())
 	} else {
 		txConfirmer = NewTransactionConfirmer(e, tx, e.GetNetworkConfig().MinimumConfirmations)
 	}
@@ -347,7 +347,7 @@ func (e *EthereumClient) ProcessTransaction(tx *types.Transaction) error {
 func (e *EthereumClient) ProcessEvent(name string, event *types.Log, confirmedChan chan bool, errorChan chan error) error {
 	var eventConfirmer HeaderEventSubscription
 	if e.GetNetworkConfig().MinimumConfirmations == 0 {
-		eventConfirmer = &InstantConfirmations{}
+		eventConfirmer = NewL2TxConfirmer(e, event.TxHash)
 	} else {
 		eventConfirmer = NewEventConfirmer(name, e, event, e.GetNetworkConfig().MinimumConfirmations, errorChan, confirmedChan)
 	}
@@ -369,6 +369,7 @@ func (e *EthereumClient) IsTxConfirmed(txHash common.Hash) (bool, error) {
 	if err != nil {
 		return !isPending, err
 	}
+	log.Debug().Bool("Pending", isPending).Str("Hash", txHash.Hex()).Msg("Is Tx Confirmed")
 	if !isPending {
 		receipt, err := e.Client.TransactionReceipt(context.Background(), txHash)
 		if err != nil {
@@ -551,7 +552,11 @@ type EthereumMultinodeClient struct {
 // NewEVMClient returns a multi-node EVM client connected to the specified network
 func NewEVMClient(networkSettings *EVMNetwork, env *environment.Environment) (EVMClient, error) {
 	ecl := &EthereumMultinodeClient{}
-	networkSettings.URLs = env.URLs[networkSettings.Name]
+	if env == nil {
+		log.Warn().Str("Network", networkSettings.Name).Msg("No test environment deployed")
+	} else {
+		networkSettings.URLs = env.URLs[networkSettings.Name]
+	}
 	for idx, networkURL := range networkSettings.URLs {
 		networkSettings.URL = networkURL
 		ec, err := newEVMClient(networkSettings)
