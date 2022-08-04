@@ -369,7 +369,6 @@ func (e *EthereumClient) IsTxConfirmed(txHash common.Hash) (bool, error) {
 	if err != nil {
 		return !isPending, err
 	}
-	log.Debug().Bool("Pending", isPending).Str("Hash", txHash.Hex()).Msg("Is Tx Confirmed")
 	if !isPending {
 		receipt, err := e.Client.TransactionReceipt(context.Background(), txHash)
 		if err != nil {
