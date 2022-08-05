@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rs/zerolog/log"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 )
 
@@ -95,7 +96,7 @@ func (k *KlaytnClient) DeployContract(
 		return nil, nil, nil, err
 	}
 
-	if err := k.ProcessTransaction(transaction); err != nil {
+	if err = k.ProcessTransaction(transaction); err != nil {
 		return nil, nil, nil, err
 	}
 
