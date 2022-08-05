@@ -59,7 +59,7 @@ type ExecCommandOptions struct {
 	RetryDelay        time.Duration
 }
 
-// ExecCommand Executes a gauntlet command with the provided arguements.
+// ExecCommand Executes a gauntlet command with the provided arguments.
 //  It will also check for any errors you specify in the output via the errHandling slice.
 func (g *Gauntlet) ExecCommand(args []string, options ExecCommandOptions) (string, error) {
 	output := ""

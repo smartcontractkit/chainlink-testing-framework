@@ -5,26 +5,43 @@ run:
     - contracts/ethereum
 linters:
   enable:
+    # defaults
+    - deadcode
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - structcheck
+    - typecheck
+    - unused
+    - varcheck
+    # extra
     - exhaustive
     - exportloopref
     - revive
     - goimports
     - gosec
+    - misspell
     - rowserrcheck
-  disable:
-    # These are all considered deprecated: https://github.com/golangci/golangci-lint/issues/1841
-    - deadcode
-    - structcheck
-    - unused
-    - varcheck
+    - errorlint
+    - contextcheck
 linters-settings:
   exhaustive:
     default-signifies-exhaustive: true
+  goimports:
+    local-prefixes: github.com/smartcontractkit/chainlink-testing-framework
+  gosec:
+    exclude-generated: true
+  govet:
+    # report about shadowed variables
+    check-shadowing: false
+  errorlint:
+    # Allow formatting of errors without %w
+    errorf: false
   revive:
     confidence: 0.8
     rules:
-      - name: exported
-        severity: error
       - name: blank-imports
       - name: context-as-argument
       - name: context-keys-type
@@ -41,6 +58,7 @@ linters-settings:
       - name: time-naming
       - name: indent-error-flow
       - name: errorf
+      - name: exported
       - name: empty-block
       - name: superfluous-else
       - name: unreachable-code
