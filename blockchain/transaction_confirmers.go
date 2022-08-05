@@ -262,7 +262,12 @@ func (e *EthereumClient) subscribeToNewHeaders() error {
 	for {
 		select {
 		case err := <-subscription.Err():
-			return err
+			log.Error().Err(err).Msg("Error while subscribed to new headers, restarting subscription")
+
+			subscription, err = e.Client.SubscribeNewHead(context.Background(), headerChannel)
+			if err != nil {
+				return err
+			}
 		case header := <-headerChannel:
 			e.receiveHeader(header)
 		case <-e.doneChan:
