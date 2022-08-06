@@ -16,8 +16,9 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-env/environment"
-	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 )
 
 // EthereumClient wraps the client and the BlockChain network to interact with an EVM based Blockchain
@@ -287,7 +288,7 @@ func (e *EthereumClient) DeployContract(
 		return nil, nil, nil, err
 	}
 
-	if err := e.ProcessTransaction(transaction); err != nil {
+	if err = e.ProcessTransaction(transaction); err != nil {
 		return nil, nil, nil, err
 	}
 

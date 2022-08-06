@@ -19,7 +19,7 @@ else
 endif
 
 lint:
-	golangci-lint --color=always run ./... -v
+	golangci-lint --color=always run ./... --fix -v
 
 go_mod:
 	go mod tidy

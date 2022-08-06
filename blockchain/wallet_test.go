@@ -3,8 +3,9 @@ package blockchain_test
 import (
 	"testing"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 )
 
 // Publicly available private key that is used as default in hardhat, geth, etc...

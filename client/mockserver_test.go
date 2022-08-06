@@ -6,8 +6,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/client"
 	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/client"
 )
 
 func TestSetValuePath(t *testing.T) {

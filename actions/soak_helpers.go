@@ -1,3 +1,4 @@
+// Package actions contains some general functions that help setup tests
 package actions
 
 import (
@@ -9,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-env/environment"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 )
 
