@@ -66,7 +66,7 @@ type EVMClient interface {
 // NodeBlock block with a node ID which mined it
 type NodeBlock struct {
 	NodeID int
-	*types.Block
+	types.Block
 }
 
 // HeaderEventSubscription is an interface for allowing callbacks when the client receives a new header

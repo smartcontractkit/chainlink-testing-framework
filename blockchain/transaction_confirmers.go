@@ -50,11 +50,6 @@ func NewTransactionConfirmer(client EVMClient, tx *types.Transaction, minConfirm
 // ReceiveBlock the implementation of the HeaderEventSubscription that receives each block and checks
 // tx confirmation
 func (t *TransactionConfirmer) ReceiveBlock(block NodeBlock) error {
-	if block.Block == nil {
-		// Strange case that happens in some EVM testnets
-		log.Debug().Msg("Received nil block")
-		return nil
-	}
 	if block.NumberU64() <= t.lastReceivedBlockNum {
 		return nil // Block with same number mined, disregard for confirming
 	}
@@ -214,10 +209,6 @@ func NewEventConfirmer(
 // ProcessEvent will attempt to confirm an event for the chain's configured minimum confirmed blocks. Errors encountered
 // are sent along the eventErrorChan, and the result of confirming the event is sent to eventConfirmedChan.
 func (e *EventConfirmer) ReceiveBlock(block NodeBlock) error {
-	if block.Block == nil {
-		log.Debug().Msg("Block nil")
-		return nil
-	}
 	if block.NumberU64() <= e.lastReceivedBlockNum {
 		return nil
 	}
@@ -328,6 +319,10 @@ func (e *EthereumClient) subscribeToNewHeaders() error {
 
 // receiveHeader
 func (e *EthereumClient) receiveHeader(header *types.Header) {
+	if header == nil {
+		log.Debug().Msg("Received Nil block")
+		return
+	}
 	suggestedPrice, err := e.Client.SuggestGasPrice(context.Background())
 	if err != nil {
 		suggestedPrice = big.NewInt(0)
@@ -344,16 +339,20 @@ func (e *EthereumClient) receiveHeader(header *types.Header) {
 		Msg("Received block header")
 
 	subs := e.GetHeaderSubscriptions()
-	block, err := e.Client.BlockByNumber(context.Background(), header.Number)
+	block, err := e.Client.BlockByHash(context.Background(), header.Hash())
 	if err != nil {
-		log.Err(fmt.Errorf("error fetching block by number: %v", err))
+		log.Err(fmt.Errorf("error fetching block by hash: %v", err))
+	}
+	if block == nil || header == nil {
+		log.Debug().Msg("Received Nil block")
+		return
 	}
 
 	g := errgroup.Group{}
 	for _, sub := range subs {
 		sub := sub
 		g.Go(func() error {
-			return sub.ReceiveBlock(NodeBlock{NodeID: e.ID, Block: block})
+			return sub.ReceiveBlock(NodeBlock{NodeID: e.ID, Block: *block})
 		})
 	}
 	if err := g.Wait(); err != nil {
