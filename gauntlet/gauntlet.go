@@ -16,6 +16,10 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+var (
+	execDir string
+)
+
 // Gauntlet contains helpful data to run gauntlet commands
 type Gauntlet struct {
 	exec          string
@@ -44,6 +48,10 @@ func (g *Gauntlet) Flag(flag, value string) string {
 	return fmt.Sprintf("--%s=%s", flag, value)
 }
 
+func (g *Gauntlet) SetWorkingDir(wrkDir string) {
+	execDir = wrkDir
+}
+
 // GenerateRandomNetwork Creates and sets a random network prepended with test
 func (g *Gauntlet) GenerateRandomNetwork() {
 	r := uuid.NewString()[0:8]
@@ -69,6 +77,9 @@ func (g *Gauntlet) ExecCommand(args []string, options ExecCommandOptions) (strin
 	printArgs(updatedArgs)
 
 	cmd := exec.Command(g.exec, updatedArgs...) // #nosec G204
+	if execDir != "" {
+		cmd.Dir = execDir
+	}
 	stdout, _ := cmd.StdoutPipe()
 	stderr, _ := cmd.StderrPipe()
 	if err := cmd.Start(); err != nil {
