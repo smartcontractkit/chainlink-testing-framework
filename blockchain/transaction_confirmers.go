@@ -108,11 +108,10 @@ type L2TxConfirmer struct {
 func NewL2TxConfirmer(client EVMClient, txHash common.Hash) *L2TxConfirmer {
 	ctx, ctxCancel := context.WithTimeout(context.Background(), client.GetNetworkConfig().Timeout)
 	return &L2TxConfirmer{
-		client:   client,
-		txHash:   txHash,
-		complete: false,
-		context:  ctx,
-		cancel:   ctxCancel,
+		client:  client,
+		txHash:  txHash,
+		context: ctx,
+		cancel:  ctxCancel,
 	}
 }
 
@@ -122,9 +121,7 @@ func (l *L2TxConfirmer) ReceiveBlock(block NodeBlock) error {
 	if err != nil {
 		return err
 	}
-	if confirmed {
-		l.complete = true
-	}
+	l.complete = confirmed
 	return nil
 }
 
