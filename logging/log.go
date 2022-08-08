@@ -8,7 +8,7 @@ import (
 )
 
 func Init() {
-	lvlStr := os.Getenv("LOG_LEVEL")
+	lvlStr := os.Getenv("TEST_LOG_LEVEL")
 	if lvlStr == "" {
 		lvlStr = "info"
 	}

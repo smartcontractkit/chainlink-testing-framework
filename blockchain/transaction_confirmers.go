@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"time"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -49,11 +50,6 @@ func NewTransactionConfirmer(client EVMClient, tx *types.Transaction, minConfirm
 // ReceiveBlock the implementation of the HeaderEventSubscription that receives each block and checks
 // tx confirmation
 func (t *TransactionConfirmer) ReceiveBlock(block NodeBlock) error {
-	if block.Block == nil {
-		// Strange case that happens in some EVM testnets
-		log.Debug().Msg("Received nil block")
-		return nil
-	}
 	if block.NumberU64() <= t.lastReceivedBlockNum {
 		return nil // Block with same number mined, disregard for confirming
 	}
@@ -71,14 +67,12 @@ func (t *TransactionConfirmer) ReceiveBlock(block NodeBlock) error {
 	} else if isConfirmed {
 		t.confirmations++
 	}
-	if t.confirmations == t.minConfirmations {
-		confirmationLog.Int("Current Confirmations", t.confirmations).
-			Msg("Transaction confirmations met")
+	if t.confirmations >= t.minConfirmations {
+		confirmationLog.Int("Current Confirmations", t.confirmations).Msg("Transaction confirmations met")
 		t.complete = true
 		t.doneChan <- struct{}{}
-	} else if t.confirmations <= t.minConfirmations {
-		confirmationLog.Int("Current Confirmations", t.confirmations).
-			Msg("Waiting on minimum confirmations")
+	} else {
+		confirmationLog.Int("Current Confirmations", t.confirmations).Msg("Waiting on minimum confirmations")
 	}
 	return nil
 }
@@ -102,22 +96,68 @@ func (t *TransactionConfirmer) Complete() bool {
 	return t.complete
 }
 
-// InstantConfirmations is a no-op confirmer as all transactions are instantly mined so no confirmations are needed
-type InstantConfirmations struct{}
+// L2TxConfirmer is a near-instant confirmation method, primarily for optimistic L2s that have near-instant finalization
+type L2TxConfirmer struct {
+	client   EVMClient
+	txHash   common.Hash
+	complete bool
+	context  context.Context
+	cancel   context.CancelFunc
+}
 
-// ReceiveBlock is a no-op
-func (i *InstantConfirmations) ReceiveBlock(block NodeBlock) error {
+func NewL2TxConfirmer(client EVMClient, txHash common.Hash) *L2TxConfirmer {
+	ctx, ctxCancel := context.WithTimeout(context.Background(), client.GetNetworkConfig().Timeout)
+	return &L2TxConfirmer{
+		client:  client,
+		txHash:  txHash,
+		context: ctx,
+		cancel:  ctxCancel,
+	}
+}
+
+// ReceiveBlock does a quick check on if the tx is confirmed already
+func (l *L2TxConfirmer) ReceiveBlock(block NodeBlock) error {
+	confirmed, err := l.client.IsTxConfirmed(l.txHash)
+	if err != nil {
+		return err
+	}
+	l.complete = confirmed
 	return nil
 }
 
-// Wait is a no-op
-func (i *InstantConfirmations) Wait() error {
-	return nil
+// Wait checks every 50 milliseconds if the tx has been confirmed or not
+func (l *L2TxConfirmer) Wait() error {
+	countdown := time.NewTimer(0)
+	defer func() {
+		l.cancel()
+		countdown.Stop()
+		l.complete = true
+	}()
+	if l.complete {
+		return nil
+	}
+
+	for {
+		select {
+		case <-countdown.C:
+			confirmed, err := l.client.IsTxConfirmed(l.txHash)
+			if err != nil {
+				return err
+			}
+			if confirmed {
+				log.Debug().Str("Hash", l.txHash.Hex()).Msg("L2 Tx Confirmed")
+				return nil
+			}
+			countdown = time.NewTimer(time.Millisecond * 50)
+		case <-l.context.Done():
+			return fmt.Errorf("timeout waiting for transaction to confirm: %s", l.txHash.Hex())
+		}
+	}
 }
 
 // Complete is a no-op
-func (i *InstantConfirmations) Complete() bool {
-	return true
+func (l *L2TxConfirmer) Complete() bool {
+	return l.complete
 }
 
 // EventConfirmer confirms that an event is confirmed by a certain amount of blocks
@@ -166,10 +206,6 @@ func NewEventConfirmer(
 // ProcessEvent will attempt to confirm an event for the chain's configured minimum confirmed blocks. Errors encountered
 // are sent along the eventErrorChan, and the result of confirming the event is sent to eventConfirmedChan.
 func (e *EventConfirmer) ReceiveBlock(block NodeBlock) error {
-	if block.Block == nil {
-		log.Debug().Msg("Block nil")
-		return nil
-	}
 	if block.NumberU64() <= e.lastReceivedBlockNum {
 		return nil
 	}
@@ -280,6 +316,10 @@ func (e *EthereumClient) subscribeToNewHeaders() error {
 
 // receiveHeader
 func (e *EthereumClient) receiveHeader(header *types.Header) {
+	if header == nil {
+		log.Debug().Msg("Received Nil block")
+		return
+	}
 	suggestedPrice, err := e.Client.SuggestGasPrice(context.Background())
 	if err != nil {
 		suggestedPrice = big.NewInt(0)
@@ -296,16 +336,20 @@ func (e *EthereumClient) receiveHeader(header *types.Header) {
 		Msg("Received block header")
 
 	subs := e.GetHeaderSubscriptions()
-	block, err := e.Client.BlockByNumber(context.Background(), header.Number)
+	block, err := e.Client.BlockByHash(context.Background(), header.Hash())
 	if err != nil {
-		log.Err(fmt.Errorf("error fetching block by number: %v", err))
+		log.Err(fmt.Errorf("error fetching block by hash: %v", err))
+	}
+	if block == nil || header == nil {
+		log.Debug().Msg("Received Nil block")
+		return
 	}
 
 	g := errgroup.Group{}
 	for _, sub := range subs {
 		sub := sub
 		g.Go(func() error {
-			return sub.ReceiveBlock(NodeBlock{NodeID: e.ID, Block: block})
+			return sub.ReceiveBlock(NodeBlock{NodeID: e.ID, Block: *block})
 		})
 	}
 	if err := g.Wait(); err != nil {

@@ -209,10 +209,11 @@ func (e *EthereumClient) Fund(
 	amount *big.Float,
 ) error {
 	privateKey, err := crypto.HexToECDSA(e.DefaultWallet.PrivateKey())
-	to := common.HexToAddress(toAddress)
 	if err != nil {
 		return fmt.Errorf("invalid private key: %v", err)
 	}
+	to := common.HexToAddress(toAddress)
+
 	suggestedGasTipCap, err := e.Client.SuggestGasTipCap(context.Background())
 	if err != nil {
 		return err
@@ -240,7 +241,7 @@ func (e *EthereumClient) Fund(
 		Value:     utils.EtherToWei(amount),
 		GasTipCap: suggestedGasTipCap,
 		GasFeeCap: gasFeeCap,
-		Gas:       22000,
+		Gas:       21000,
 	})
 	if err != nil {
 		return err
@@ -329,7 +330,7 @@ func (e *EthereumClient) TransactionOpts(from *EthereumWallet) (*bind.TransactOp
 func (e *EthereumClient) ProcessTransaction(tx *types.Transaction) error {
 	var txConfirmer HeaderEventSubscription
 	if e.GetNetworkConfig().MinimumConfirmations == 0 {
-		txConfirmer = &InstantConfirmations{}
+		txConfirmer = NewL2TxConfirmer(e, tx.Hash())
 	} else {
 		txConfirmer = NewTransactionConfirmer(e, tx, e.GetNetworkConfig().MinimumConfirmations)
 	}
@@ -348,7 +349,7 @@ func (e *EthereumClient) ProcessTransaction(tx *types.Transaction) error {
 func (e *EthereumClient) ProcessEvent(name string, event *types.Log, confirmedChan chan bool, errorChan chan error) error {
 	var eventConfirmer HeaderEventSubscription
 	if e.GetNetworkConfig().MinimumConfirmations == 0 {
-		eventConfirmer = &InstantConfirmations{}
+		eventConfirmer = NewL2TxConfirmer(e, event.TxHash)
 	} else {
 		eventConfirmer = NewEventConfirmer(name, e, event, e.GetNetworkConfig().MinimumConfirmations, errorChan, confirmedChan)
 	}
@@ -552,7 +553,11 @@ type EthereumMultinodeClient struct {
 // NewEVMClient returns a multi-node EVM client connected to the specified network
 func NewEVMClient(networkSettings *EVMNetwork, env *environment.Environment) (EVMClient, error) {
 	ecl := &EthereumMultinodeClient{}
-	networkSettings.URLs = env.URLs[networkSettings.Name]
+	if env == nil {
+		log.Warn().Str("Network", networkSettings.Name).Msg("No test environment deployed")
+	} else {
+		networkSettings.URLs = env.URLs[networkSettings.Name]
+	}
 	for idx, networkURL := range networkSettings.URLs {
 		networkSettings.URL = networkURL
 		ec, err := newEVMClient(networkSettings)
@@ -677,12 +682,12 @@ func (e *EthereumMultinodeClient) LatestBlockNumber(ctx context.Context) (uint64
 	return e.DefaultClient.LatestBlockNumber(ctx)
 }
 
-// Fund funds a specified address with LINK token and or ETH from the given wallet
+// Fund funds a specified address with ETH from the given wallet
 func (e *EthereumMultinodeClient) Fund(toAddress string, nativeAmount *big.Float) error {
 	return e.DefaultClient.Fund(toAddress, nativeAmount)
 }
 
-// Fund funds a specified address with LINK token and or ETH from the given wallet
+// DeployContract deploys a specified contract
 func (e *EthereumMultinodeClient) DeployContract(
 	contractName string,
 	deployer ContractDeployer,
