@@ -71,7 +71,7 @@ func (t *TransactionConfirmer) ReceiveBlock(block NodeBlock) error {
 		confirmationLog.Int("Current Confirmations", t.confirmations).Msg("Transaction confirmations met")
 		t.complete = true
 		t.doneChan <- struct{}{}
-	} else if t.confirmations < t.minConfirmations {
+	} else {
 		confirmationLog.Int("Current Confirmations", t.confirmations).Msg("Waiting on minimum confirmations")
 	}
 	return nil
