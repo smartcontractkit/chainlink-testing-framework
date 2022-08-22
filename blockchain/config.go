@@ -44,7 +44,7 @@ type EVMNetwork struct {
 	ChainlinkTransactionLimit uint64 `envconfig:"evm_chainlink_transaction_limit" default:"500000"`
 	// How long to wait for on-chain operations before timing out an on-chain operation
 	Timeout time.Duration `envconfig:"evm_transaction_timeout" default:"2m"`
-	// How many block confirmations to wait to confirm on-chain events
+	// How many block confirmations to wait to confirm on-chain events. Most L2 Roll-Up chains should use 0
 	MinimumConfirmations int `envconfig:"evm_minimum_confirmations" default:"1"`
 	// How much WEI to add to gas estimations for sending transactions
 	GasEstimationBuffer uint64 `envconfig:"evm_gas_estimation_buffer" default:"1000"`

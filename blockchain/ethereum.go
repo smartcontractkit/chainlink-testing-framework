@@ -328,7 +328,7 @@ func (e *EthereumClient) TransactionOpts(from *EthereumWallet) (*bind.TransactOp
 func (e *EthereumClient) ProcessTransaction(tx *types.Transaction) error {
 	var txConfirmer HeaderEventSubscription
 	if e.GetNetworkConfig().MinimumConfirmations == 0 {
-		txConfirmer = NewL2TxConfirmer(e, tx.Hash())
+		txConfirmer = NewInstantConfirmer(e, tx.Hash(), nil, nil)
 	} else {
 		txConfirmer = NewTransactionConfirmer(e, tx, e.GetNetworkConfig().MinimumConfirmations)
 	}
@@ -347,7 +347,7 @@ func (e *EthereumClient) ProcessTransaction(tx *types.Transaction) error {
 func (e *EthereumClient) ProcessEvent(name string, event *types.Log, confirmedChan chan bool, errorChan chan error) error {
 	var eventConfirmer HeaderEventSubscription
 	if e.GetNetworkConfig().MinimumConfirmations == 0 {
-		eventConfirmer = NewL2TxConfirmer(e, event.TxHash)
+		eventConfirmer = NewInstantConfirmer(e, event.TxHash, confirmedChan, errorChan)
 	} else {
 		eventConfirmer = NewEventConfirmer(name, e, event, e.GetNetworkConfig().MinimumConfirmations, errorChan, confirmedChan)
 	}

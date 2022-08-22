@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"time"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -101,44 +100,63 @@ func (t *TransactionConfirmer) Complete() bool {
 	return t.complete
 }
 
-// L2TxConfirmer is a near-instant confirmation method, primarily for optimistic L2s that have near-instant finalization
-type L2TxConfirmer struct {
-	client   EVMClient
-	txHash   common.Hash
-	complete bool
-	context  context.Context
-	cancel   context.CancelFunc
+// InstantConfirmer is a near-instant confirmation method, primarily for optimistic L2s that have near-instant finalization
+type InstantConfirmer struct {
+	client       EVMClient
+	txHash       common.Hash
+	complete     bool
+	completeChan chan struct{}
+	context      context.Context
+	cancel       context.CancelFunc
+	// Used in case of an event
+	confirmedChannel chan bool
+	errorChan        chan error
 }
 
-func NewL2TxConfirmer(client EVMClient, txHash common.Hash) *L2TxConfirmer {
+// NewInstantConfirmer assumes that the transaction will be confirmed near-instantly
+func NewInstantConfirmer(
+	client EVMClient,
+	txHash common.Hash,
+	confirmedChannel chan bool,
+	errorChan chan error,
+) *InstantConfirmer {
 	ctx, ctxCancel := context.WithTimeout(context.Background(), client.GetNetworkConfig().Timeout)
-	return &L2TxConfirmer{
-		client:   client,
-		txHash:   txHash,
-		complete: false,
-		context:  ctx,
-		cancel:   ctxCancel,
+	return &InstantConfirmer{
+		client:           client,
+		txHash:           txHash,
+		complete:         false,
+		completeChan:     make(chan struct{}, 1),
+		context:          ctx,
+		cancel:           ctxCancel,
+		confirmedChannel: confirmedChannel,
+		errorChan:        errorChan,
 	}
 }
 
 // ReceiveBlock does a quick check on if the tx is confirmed already
-func (l *L2TxConfirmer) ReceiveBlock(block NodeBlock) error {
+func (l *InstantConfirmer) ReceiveBlock(block NodeBlock) error {
 	confirmed, err := l.client.IsTxConfirmed(l.txHash)
 	if err != nil {
+		if l.errorChan != nil {
+			l.errorChan <- err
+		}
 		return err
 	}
 	if confirmed {
+		log.Debug().Bool("Confirmed", confirmed).Str("Tx", l.txHash.Hex()).Msg("Instant Confirmation")
 		l.complete = true
+		if l.confirmedChannel != nil {
+			l.confirmedChannel <- true
+		}
+		l.completeChan <- struct{}{}
 	}
 	return nil
 }
 
 // Wait checks every 50 milliseconds if the tx has been confirmed or not
-func (l *L2TxConfirmer) Wait() error {
-	countdown := time.NewTimer(0)
+func (l *InstantConfirmer) Wait() error {
 	defer func() {
 		l.cancel()
-		countdown.Stop()
 		l.complete = true
 	}()
 	if l.complete {
@@ -147,24 +165,16 @@ func (l *L2TxConfirmer) Wait() error {
 
 	for {
 		select {
-		case <-countdown.C:
-			confirmed, err := l.client.IsTxConfirmed(l.txHash)
-			if err != nil {
-				return err
-			}
-			if confirmed {
-				log.Debug().Str("Hash", l.txHash.Hex()).Msg("L2 Tx Confirmed")
-				return nil
-			}
-			countdown = time.NewTimer(time.Millisecond * 50)
+		case <-l.completeChan:
+			return nil
 		case <-l.context.Done():
 			return fmt.Errorf("timeout waiting for transaction to confirm: %s", l.txHash.Hex())
 		}
 	}
 }
 
-// Complete is a no-op
-func (l *L2TxConfirmer) Complete() bool {
+// Complete returns if the confirmation has completed or not
+func (l *InstantConfirmer) Complete() bool {
 	return l.complete
 }
 
@@ -296,7 +306,7 @@ func (e *EthereumClient) GetHeaderSubscriptions() map[string]HeaderEventSubscrip
 	return newMap
 }
 
-// subscribeToNewHeaders
+// subscribeToNewHeaders adds a new subscription to receive new headers
 func (e *EthereumClient) subscribeToNewHeaders() error {
 	headerChannel := make(chan *types.Header)
 	subscription, err := e.Client.SubscribeNewHead(context.Background(), headerChannel)
@@ -320,7 +330,7 @@ func (e *EthereumClient) subscribeToNewHeaders() error {
 	}
 }
 
-// receiveHeader
+// receiveHeader sends the received header block to all current subscriptions
 func (e *EthereumClient) receiveHeader(header *types.Header) {
 	suggestedPrice, err := e.Client.SuggestGasPrice(context.Background())
 	if err != nil {
