@@ -16,16 +16,16 @@ import (
 
 // TransactionConfirmer is an implementation of HeaderEventSubscription that checks whether tx are confirmed
 type TransactionConfirmer struct {
-	minConfirmations     int
-	confirmations        int
-	client               EVMClient
-	tx                   *types.Transaction
-	doneChan             chan struct{}
-	context              context.Context
-	cancel               context.CancelFunc
-	networkConfig        *EVMNetwork
-	lastReceivedBlockNum uint64
-	complete             bool
+	minConfirmations      int
+	confirmations         int
+	client                EVMClient
+	tx                    *types.Transaction
+	doneChan              chan struct{}
+	context               context.Context
+	cancel                context.CancelFunc
+	networkConfig         *EVMNetwork
+	lastReceivedHeaderNum uint64
+	complete              bool
 }
 
 // NewTransactionConfirmer returns a new instance of the transaction confirmer that waits for on-chain minimum
@@ -46,17 +46,17 @@ func NewTransactionConfirmer(client EVMClient, tx *types.Transaction, minConfirm
 	return tc
 }
 
-// ReceiveBlock the implementation of the HeaderEventSubscription that receives each block and checks
+// ReceiveHeader the implementation of the HeaderEventSubscription that receives each header and checks
 // tx confirmation
 func (t *TransactionConfirmer) ReceiveHeader(header NodeHeader) error {
-	if header.Number.Uint64() <= t.lastReceivedBlockNum {
-		return nil // Block with same number mined, disregard for confirming
+	if header.Number.Uint64() <= t.lastReceivedHeaderNum {
+		return nil // Header with same number mined, disregard for confirming
 	}
-	t.lastReceivedBlockNum = header.Number.Uint64()
+	t.lastReceivedHeaderNum = header.Number.Uint64()
 	confirmationLog := log.Debug().
 		Str("Network Name", t.networkConfig.Name).
-		Str("Block Hash", header.Hash().Hex()).
-		Str("Block Number", header.Number.String()).
+		Str("Header Hash", header.Hash().Hex()).
+		Str("Header Number", header.Number.String()).
 		Str("Tx Hash", t.tx.Hash().String()).
 		Uint64("Nonce", t.tx.Nonce()).
 		Int("Minimum Confirmations", t.minConfirmations)
@@ -128,7 +128,7 @@ func NewInstantConfirmer(
 	}
 }
 
-// ReceiveBlock does a quick check on if the tx is confirmed already
+// ReceiveHeader does a quick check on if the tx is confirmed already
 func (l *InstantConfirmer) ReceiveHeader(x NodeHeader) error {
 	var err error
 	l.confirmed, err = l.client.IsTxConfirmed(l.txHash)
@@ -150,7 +150,7 @@ func (l *InstantConfirmer) ReceiveHeader(x NodeHeader) error {
 	return nil
 }
 
-// Wait checks every block if the tx has been included on chain or not
+// Wait checks every header if the tx has been included on chain or not
 func (l *InstantConfirmer) Wait() error {
 	defer func() { l.complete = true }()
 	if l.complete {
@@ -174,20 +174,20 @@ func (l *InstantConfirmer) Complete() bool {
 	return l.complete
 }
 
-// EventConfirmer confirms that an event is confirmed by a certain amount of blocks
+// EventConfirmer confirms that an event is confirmed by a certain amount of headers
 type EventConfirmer struct {
-	eventName            string
-	minConfirmations     int
-	confirmations        int
-	client               EVMClient
-	event                *types.Log
-	waitChan             chan struct{}
-	errorChan            chan error
-	confirmedChan        chan bool
-	context              context.Context
-	cancel               context.CancelFunc
-	lastReceivedBlockNum uint64
-	complete             bool
+	eventName             string
+	minConfirmations      int
+	confirmations         int
+	client                EVMClient
+	event                 *types.Log
+	waitChan              chan struct{}
+	errorChan             chan error
+	confirmedChan         chan bool
+	context               context.Context
+	cancel                context.CancelFunc
+	lastReceivedHeaderNum uint64
+	complete              bool
 }
 
 // NewEventConfirmer returns a new instance of the event confirmer that waits for on-chain minimum
@@ -217,13 +217,13 @@ func NewEventConfirmer(
 	return tc
 }
 
-// ReceiveHeader will attempt to confirm an event for the chain's configured minimum confirmed blocks. Errors encountered
+// ReceiveHeader will attempt to confirm an event for the chain's configured minimum confirmed headers. Errors encountered
 // are sent along the eventErrorChan, and the result of confirming the event is sent to eventConfirmedChan.
 func (e *EventConfirmer) ReceiveHeader(header NodeHeader) error {
-	if header.Number.Uint64() <= e.lastReceivedBlockNum {
+	if header.Number.Uint64() <= e.lastReceivedHeaderNum {
 		return nil
 	}
-	e.lastReceivedBlockNum = header.Number.Uint64()
+	e.lastReceivedHeaderNum = header.Number.Uint64()
 	confirmed, removed, err := e.client.IsEventConfirmed(e.event)
 	if err != nil {
 		e.errorChan <- err
@@ -329,7 +329,7 @@ func (e *EthereumClient) subscribeToNewHeaders() error {
 	}
 }
 
-// receiveHeader takes in a new header from the chain, and sends the block to all active header subscriptions
+// receiveHeader takes in a new header from the chain, and sends the header to all active header subscriptions
 func (e *EthereumClient) receiveHeader(header *types.Header) {
 	if header == nil {
 		log.Debug().Msg("Received Nil Header")
@@ -362,7 +362,7 @@ func (e *EthereumClient) receiveHeader(header *types.Header) {
 		})
 	}
 	if err := g.Wait(); err != nil {
-		log.Err(fmt.Errorf("error on sending block to receivers: %v", err))
+		log.Err(fmt.Errorf("error on sending block header to receivers: %v", err))
 	}
 	if len(subs) > 0 {
 		var subsRemoved uint
