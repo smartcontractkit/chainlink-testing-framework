@@ -23,22 +23,18 @@ type ArbitrumClient struct {
 	*EthereumClient
 }
 
-// Fund sends some ETH to an address using the default wallet
+// Fund sends some ARB to an address using the default wallet
 func (m *ArbitrumClient) Fund(toAddress string, amount *big.Float) error {
 	privateKey, err := crypto.HexToECDSA(m.DefaultWallet.PrivateKey())
 	to := common.HexToAddress(toAddress)
 	if err != nil {
 		return fmt.Errorf("invalid private key: %v", err)
 	}
-	// Metis uses legacy transactions and gas estimations, is behind London fork as of 04/27/2022
+	// Arbitrum uses legacy transactions and gas estimations
 	suggestedGasPrice, err := m.Client.SuggestGasPrice(context.Background())
 	if err != nil {
 		return err
 	}
-
-	// Bump gas price
-	gasPriceBuffer := big.NewInt(0).SetUint64(m.NetworkConfig.GasEstimationBuffer)
-	suggestedGasPrice.Add(suggestedGasPrice, gasPriceBuffer)
 
 	nonce, err := m.GetNonce(context.Background(), common.HexToAddress(m.DefaultWallet.Address()))
 	if err != nil {
