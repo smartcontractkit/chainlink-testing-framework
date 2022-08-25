@@ -1,26 +1,26 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.13;
+pragma solidity 0.8.6;
 
-import "./libraries/EnumerableSet.sol";
-import "./libraries/Address.sol";
-import "./libraries/Pausable.sol";
-import "./libraries/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./KeeperBase.sol";
 import "./ConfirmedOwner.sol";
 import "./interfaces/TypeAndVersionInterface.sol";
 import "./interfaces/AggregatorV3Interface.sol";
 import "./interfaces/LinkTokenInterface.sol";
 import "./interfaces/KeeperCompatibleInterface.sol";
-import "./interfaces/KeeperRegistryInterface.sol";
-import "./interfaces/MigratableKeeperRegistryInterface.sol";
-import "./interfaces/UpkeepTranscoderInterface.sol";
+import "./interfaces/KeeperRegistryInterface1_2.sol";
+import "./interfaces/MigratableKeeperRegistryInterface1_2.sol";
+import "./interfaces/UpkeepTranscoderInterface1_2.sol";
 import "./interfaces/ERC677ReceiverInterface.sol";
 
 /**
  * @notice Registry for adding work for Chainlink Keepers to perform on client
  * contracts. Clients must support the Upkeep interface.
  */
-contract KeeperRegistry is
+contract KeeperRegistry1_2 is
   TypeAndVersionInterface,
   ConfirmedOwner,
   KeeperBase,
@@ -311,7 +311,7 @@ contract KeeperRegistry is
     address sender,
     uint256 amount,
     bytes calldata data
-  ) external {
+  ) external override {
     if (msg.sender != address(LINK)) revert OnlyCallableByLINKToken();
     if (data.length != 32) revert InvalidDataLength();
     uint256 id = abi.decode(data, (uint256));
@@ -652,10 +652,6 @@ contract KeeperRegistry is
     ) revert MigrationNotPermitted();
     if (s_transcoder == ZERO_ADDRESS) revert TranscoderNotSet();
     if (ids.length == 0) revert ArrayHasNoEntries();
-    address admin = s_upkeep[ids[0]].admin;
-    bool isOwner = msg.sender == owner();
-    if (msg.sender != admin && !isOwner) revert OnlyCallableByOwnerOrAdmin();
-
     uint256 id;
     Upkeep memory upkeep;
     uint256 totalBalanceRemaining;
@@ -664,7 +660,7 @@ contract KeeperRegistry is
     for (uint256 idx = 0; idx < ids.length; idx++) {
       id = ids[idx];
       upkeep = s_upkeep[id];
-      if (upkeep.admin != admin) revert OnlyCallableByAdmin();
+      if (upkeep.admin != msg.sender) revert OnlyCallableByAdmin();
       if (upkeep.maxValidBlocknumber != UINT64_MAX) revert UpkeepNotActive();
       upkeeps[idx] = upkeep;
       checkDatas[idx] = s_checkData[id];
@@ -689,7 +685,7 @@ contract KeeperRegistry is
   /**
    * @inheritdoc MigratableKeeperRegistryInterface
    */
-  UpkeepFormat public constant upkeepTranscoderVersion = UpkeepFormat.V1;
+  UpkeepFormat public constant override upkeepTranscoderVersion = UpkeepFormat.V1;
 
   /**
    * @inheritdoc MigratableKeeperRegistryInterface

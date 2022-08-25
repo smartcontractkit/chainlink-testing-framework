@@ -23,7 +23,7 @@ used_contract_names = [
   "KeeperConsumerPerformance",
   "KeeperRegistrar",
   "KeeperRegistry1_1",
-  "KeeperRegistry",
+  "KeeperRegistry1_2",
   "LinkToken",
   "MockETHLINKAggregator",
   "MockGASAggregator",
