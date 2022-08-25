@@ -53,3 +53,6 @@ install_ci: go_mod install_tools
 
 compile_contracts:
 	python3 ./utils/compile_contracts.py
+
+test_unit:
+	ginkgo -r --junit-report=tests-unit-report.xml --keep-going --trace --randomize-all --randomize-suites --progress -cover -covermode=count -coverprofile=unit-test-coverage.out -nodes=10 ./client ./config ./gauntlet ./testreporters
