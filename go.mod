@@ -14,7 +14,7 @@ require (
 	github.com/onsi/gomega v1.20.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.12.2
-	github.com/prometheus/common v0.35.0
+	github.com/prometheus/common v0.37.0
 	github.com/rs/zerolog v1.27.0
 	github.com/slack-go/slack v0.11.2
 	github.com/smartcontractkit/chainlink-env v0.2.36
