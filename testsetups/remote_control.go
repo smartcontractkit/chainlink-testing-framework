@@ -41,6 +41,7 @@ func StartRemoteControlServer(name string, stopChan chan struct{}) {
 
 	// Start listening for shutdown calls
 	go func() {
+		//nolint:gosec
 		log.Error().Err(http.ListenAndServe(fmt.Sprintf(":%s", accessPort), router)).Msg("Error running remote control server")
 	}()
 

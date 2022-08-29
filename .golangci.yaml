@@ -6,16 +6,13 @@ run:
 linters:
   enable:
     # defaults
-    - deadcode
     - errcheck
     - gosimple
     - govet
     - ineffassign
     - staticcheck
-    - structcheck
     - typecheck
     - unused
-    - varcheck
     # extra
     - exhaustive
     - exportloopref
@@ -23,7 +20,6 @@ linters:
     - goimports
     - gosec
     - misspell
-    - rowserrcheck
     - errorlint
     - contextcheck
 linters-settings:
@@ -51,28 +47,37 @@ linters-settings:
       - name: error-naming
       - name: if-return
       - name: increment-decrement
+      # - name: var-naming
       - name: var-declaration
       - name: package-comments
       - name: range
       - name: receiver-naming
       - name: time-naming
+      - name: unexported-return
       - name: indent-error-flow
       - name: errorf
       - name: exported
       - name: empty-block
       - name: superfluous-else
+      # - name: unused-parameter
       - name: unreachable-code
       - name: redefines-builtin-id
       - name: waitgroup-by-value
       - name: unconditional-recursion
       - name: struct-tag
+      - name: string-format
       - name: string-of-int
+      - name: range-val-address
       - name: range-val-in-closure
       - name: modifies-value-receiver
       - name: modifies-parameter
       - name: identical-branches
       - name: get-return
+      # - name: flag-parameter
+      # - name: early-return
       - name: defer
       - name: constant-logical-expr
+      # - name: confusing-naming
+      # - name: confusing-results
       - name: bool-literal-in-expr
       - name: atomic

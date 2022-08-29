@@ -16,8 +16,9 @@ import (
 
 // BuildGoTests builds the go tests using native go cross-compilation to run, and returns a path to the test executable
 // along with its size in bytes.
-//  Note: currentProjectRootPath and currentSoakTestRootPath are not interchangeable with utils.ProjectRoot and utils.SoakRoot
-//  when running in outside repositories. Keep an eye on when you need paths leading to this go package vs the current running project.
+//
+//	Note: currentProjectRootPath and currentSoakTestRootPath are not interchangeable with utils.ProjectRoot and utils.SoakRoot
+//	when running in outside repositories. Keep an eye on when you need paths leading to this go package vs the current running project.
 func BuildGoTests(executablePath, testsPath, projectRootPath string) (string, int64, error) {
 	logging.Init()
 	absExecutablePath, err := filepath.Abs(executablePath)

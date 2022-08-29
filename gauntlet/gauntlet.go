@@ -68,7 +68,8 @@ type ExecCommandOptions struct {
 }
 
 // ExecCommand Executes a gauntlet command with the provided arguments.
-//  It will also check for any errors you specify in the output via the errHandling slice.
+//
+//	It will also check for any errors you specify in the output via the errHandling slice.
 func (g *Gauntlet) ExecCommand(args []string, options ExecCommandOptions) (string, error) {
 	output := ""
 	// append gauntlet and network to args since it is always needed
