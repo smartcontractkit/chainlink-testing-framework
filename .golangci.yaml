@@ -22,11 +22,6 @@ linters:
     - misspell
     - errorlint
     - contextcheck
-  disable:
-    - deadcode
-    - rowserrcheck
-    - structcheck
-    - varcheck
 linters-settings:
   exhaustive:
     default-signifies-exhaustive: true
