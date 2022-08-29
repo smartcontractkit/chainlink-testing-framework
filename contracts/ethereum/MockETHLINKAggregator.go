@@ -30,8 +30,8 @@ var (
 
 // MockETHLINKAggregatorMetaData contains all meta data concerning the MockETHLINKAggregator contract.
 var MockETHLINKAggregatorMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[{\"internalType\":\"int256\",\"name\":\"_answer\",\"type\":\"int256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"answer\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"decimals\",\"outputs\":[{\"internalType\":\"uint8\",\"name\":\"\",\"type\":\"uint8\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"description\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint80\",\"name\":\"_roundId\",\"type\":\"uint80\"}],\"name\":\"getRoundData\",\"outputs\":[{\"internalType\":\"uint80\",\"name\":\"roundId\",\"type\":\"uint80\"},{\"internalType\":\"int256\",\"name\":\"answer\",\"type\":\"int256\"},{\"internalType\":\"uint256\",\"name\":\"startedAt\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"updatedAt\",\"type\":\"uint256\"},{\"internalType\":\"uint80\",\"name\":\"answeredInRound\",\"type\":\"uint80\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"latestRoundData\",\"outputs\":[{\"internalType\":\"uint80\",\"name\":\"roundId\",\"type\":\"uint80\"},{\"internalType\":\"int256\",\"name\":\"answer\",\"type\":\"int256\"},{\"internalType\":\"uint256\",\"name\":\"startedAt\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"updatedAt\",\"type\":\"uint256\"},{\"internalType\":\"uint80\",\"name\":\"answeredInRound\",\"type\":\"uint80\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"version\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]",
-	Bin: "0x608060405234801561001057600080fd5b5060405161024338038061024383398101604081905261002f91610037565b600055610050565b60006020828403121561004957600080fd5b5051919050565b6101e48061005f6000396000f3fe608060405234801561001057600080fd5b50600436106100625760003560e01c8063313ce5671461006757806354fd4d501461007b5780637284e4161461008c57806385bb7d69146100c35780639a6fc8f5146100cc578063feaf968c1461011d575b600080fd5b604051601281526020015b60405180910390f35b60015b604051908152602001610072565b604080518082018252601581527426b7b1b5a2aa242624a725a0b3b3b932b3b0ba37b960591b602082015290516100729190610129565b61007e60005481565b6100e96100da36600461017e565b50600190600090429081908490565b604080516001600160501b03968716815260208101959095528401929092526060830152909116608082015260a001610072565b600160004280836100e9565b600060208083528351808285015260005b818110156101565785810183015185820160400152820161013a565b81811115610168576000604083870101525b50601f01601f1916929092016040019392505050565b60006020828403121561019057600080fd5b81356001600160501b03811681146101a757600080fd5b939250505056fea26469706673582212204fab6a851eb3c639b34a6e2f0e9da3e3c484c88593211976168c2433000e61b864736f6c634300080d0033",
+	ABI: "[{\"inputs\":[{\"internalType\":\"int256\",\"name\":\"_answer\",\"type\":\"int256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"answer\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"decimals\",\"outputs\":[{\"internalType\":\"uint8\",\"name\":\"\",\"type\":\"uint8\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"description\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"\",\"type\":\"string\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint80\",\"name\":\"_roundId\",\"type\":\"uint80\"}],\"name\":\"getRoundData\",\"outputs\":[{\"internalType\":\"uint80\",\"name\":\"roundId\",\"type\":\"uint80\"},{\"internalType\":\"int256\",\"name\":\"ans\",\"type\":\"int256\"},{\"internalType\":\"uint256\",\"name\":\"startedAt\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"updatedAt\",\"type\":\"uint256\"},{\"internalType\":\"uint80\",\"name\":\"answeredInRound\",\"type\":\"uint80\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"latestRoundData\",\"outputs\":[{\"internalType\":\"uint80\",\"name\":\"roundId\",\"type\":\"uint80\"},{\"internalType\":\"int256\",\"name\":\"ans\",\"type\":\"int256\"},{\"internalType\":\"uint256\",\"name\":\"startedAt\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"updatedAt\",\"type\":\"uint256\"},{\"internalType\":\"uint80\",\"name\":\"answeredInRound\",\"type\":\"uint80\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"version\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"pure\",\"type\":\"function\"}]",
+	Bin: "0x608060405234801561001057600080fd5b5060405161024538038061024583398101604081905261002f91610037565b600055610050565b60006020828403121561004957600080fd5b5051919050565b6101e68061005f6000396000f3fe608060405234801561001057600080fd5b50600436106100625760003560e01c8063313ce5671461006757806354fd4d501461007b5780637284e4161461008c57806385bb7d69146100c35780639a6fc8f5146100cc578063feaf968c1461011d575b600080fd5b604051601281526020015b60405180910390f35b60015b604051908152602001610072565b604080518082018252601581527426b7b1b5a2aa242624a725a0b3b3b932b3b0ba37b960591b60208201529051610072919061012b565b61007e60005481565b6100e96100da366004610180565b50600054600191429081908490565b604080516001600160501b03968716815260208101959095528401929092526060830152909116608082015260a001610072565b6000546001904280836100e9565b600060208083528351808285015260005b818110156101585785810183015185820160400152820161013c565b8181111561016a576000604083870101525b50601f01601f1916929092016040019392505050565b60006020828403121561019257600080fd5b81356001600160501b03811681146101a957600080fd5b939250505056fea2646970667358221220221f919ef5ae81ca8cddf75f7e7bea18da77a41e7ae7a5415c1dde1cffdc935364736f6c634300080d0033",
 }
 
 // MockETHLINKAggregatorABI is the input ABI used to generate the binding from.
@@ -234,7 +234,7 @@ func (_MockETHLINKAggregator *MockETHLINKAggregatorCallerSession) Answer() (*big
 
 // Decimals is a free data retrieval call binding the contract method 0x313ce567.
 //
-// Solidity: function decimals() view returns(uint8)
+// Solidity: function decimals() pure returns(uint8)
 func (_MockETHLINKAggregator *MockETHLINKAggregatorCaller) Decimals(opts *bind.CallOpts) (uint8, error) {
 	var out []interface{}
 	err := _MockETHLINKAggregator.contract.Call(opts, &out, "decimals")
@@ -251,21 +251,21 @@ func (_MockETHLINKAggregator *MockETHLINKAggregatorCaller) Decimals(opts *bind.C
 
 // Decimals is a free data retrieval call binding the contract method 0x313ce567.
 //
-// Solidity: function decimals() view returns(uint8)
+// Solidity: function decimals() pure returns(uint8)
 func (_MockETHLINKAggregator *MockETHLINKAggregatorSession) Decimals() (uint8, error) {
 	return _MockETHLINKAggregator.Contract.Decimals(&_MockETHLINKAggregator.CallOpts)
 }
 
 // Decimals is a free data retrieval call binding the contract method 0x313ce567.
 //
-// Solidity: function decimals() view returns(uint8)
+// Solidity: function decimals() pure returns(uint8)
 func (_MockETHLINKAggregator *MockETHLINKAggregatorCallerSession) Decimals() (uint8, error) {
 	return _MockETHLINKAggregator.Contract.Decimals(&_MockETHLINKAggregator.CallOpts)
 }
 
 // Description is a free data retrieval call binding the contract method 0x7284e416.
 //
-// Solidity: function description() view returns(string)
+// Solidity: function description() pure returns(string)
 func (_MockETHLINKAggregator *MockETHLINKAggregatorCaller) Description(opts *bind.CallOpts) (string, error) {
 	var out []interface{}
 	err := _MockETHLINKAggregator.contract.Call(opts, &out, "description")
@@ -282,24 +282,24 @@ func (_MockETHLINKAggregator *MockETHLINKAggregatorCaller) Description(opts *bin
 
 // Description is a free data retrieval call binding the contract method 0x7284e416.
 //
-// Solidity: function description() view returns(string)
+// Solidity: function description() pure returns(string)
 func (_MockETHLINKAggregator *MockETHLINKAggregatorSession) Description() (string, error) {
 	return _MockETHLINKAggregator.Contract.Description(&_MockETHLINKAggregator.CallOpts)
 }
 
 // Description is a free data retrieval call binding the contract method 0x7284e416.
 //
-// Solidity: function description() view returns(string)
+// Solidity: function description() pure returns(string)
 func (_MockETHLINKAggregator *MockETHLINKAggregatorCallerSession) Description() (string, error) {
 	return _MockETHLINKAggregator.Contract.Description(&_MockETHLINKAggregator.CallOpts)
 }
 
 // GetRoundData is a free data retrieval call binding the contract method 0x9a6fc8f5.
 //
-// Solidity: function getRoundData(uint80 _roundId) view returns(uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
+// Solidity: function getRoundData(uint80 _roundId) view returns(uint80 roundId, int256 ans, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
 func (_MockETHLINKAggregator *MockETHLINKAggregatorCaller) GetRoundData(opts *bind.CallOpts, _roundId *big.Int) (struct {
 	RoundId         *big.Int
-	Answer          *big.Int
+	Ans             *big.Int
 	StartedAt       *big.Int
 	UpdatedAt       *big.Int
 	AnsweredInRound *big.Int
@@ -309,7 +309,7 @@ func (_MockETHLINKAggregator *MockETHLINKAggregatorCaller) GetRoundData(opts *bi
 
 	outstruct := new(struct {
 		RoundId         *big.Int
-		Answer          *big.Int
+		Ans             *big.Int
 		StartedAt       *big.Int
 		UpdatedAt       *big.Int
 		AnsweredInRound *big.Int
@@ -319,7 +319,7 @@ func (_MockETHLINKAggregator *MockETHLINKAggregatorCaller) GetRoundData(opts *bi
 	}
 
 	outstruct.RoundId = *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
-	outstruct.Answer = *abi.ConvertType(out[1], new(*big.Int)).(**big.Int)
+	outstruct.Ans = *abi.ConvertType(out[1], new(*big.Int)).(**big.Int)
 	outstruct.StartedAt = *abi.ConvertType(out[2], new(*big.Int)).(**big.Int)
 	outstruct.UpdatedAt = *abi.ConvertType(out[3], new(*big.Int)).(**big.Int)
 	outstruct.AnsweredInRound = *abi.ConvertType(out[4], new(*big.Int)).(**big.Int)
@@ -330,10 +330,10 @@ func (_MockETHLINKAggregator *MockETHLINKAggregatorCaller) GetRoundData(opts *bi
 
 // GetRoundData is a free data retrieval call binding the contract method 0x9a6fc8f5.
 //
-// Solidity: function getRoundData(uint80 _roundId) view returns(uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
+// Solidity: function getRoundData(uint80 _roundId) view returns(uint80 roundId, int256 ans, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
 func (_MockETHLINKAggregator *MockETHLINKAggregatorSession) GetRoundData(_roundId *big.Int) (struct {
 	RoundId         *big.Int
-	Answer          *big.Int
+	Ans             *big.Int
 	StartedAt       *big.Int
 	UpdatedAt       *big.Int
 	AnsweredInRound *big.Int
@@ -343,10 +343,10 @@ func (_MockETHLINKAggregator *MockETHLINKAggregatorSession) GetRoundData(_roundI
 
 // GetRoundData is a free data retrieval call binding the contract method 0x9a6fc8f5.
 //
-// Solidity: function getRoundData(uint80 _roundId) view returns(uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
+// Solidity: function getRoundData(uint80 _roundId) view returns(uint80 roundId, int256 ans, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
 func (_MockETHLINKAggregator *MockETHLINKAggregatorCallerSession) GetRoundData(_roundId *big.Int) (struct {
 	RoundId         *big.Int
-	Answer          *big.Int
+	Ans             *big.Int
 	StartedAt       *big.Int
 	UpdatedAt       *big.Int
 	AnsweredInRound *big.Int
@@ -356,10 +356,10 @@ func (_MockETHLINKAggregator *MockETHLINKAggregatorCallerSession) GetRoundData(_
 
 // LatestRoundData is a free data retrieval call binding the contract method 0xfeaf968c.
 //
-// Solidity: function latestRoundData() view returns(uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
+// Solidity: function latestRoundData() view returns(uint80 roundId, int256 ans, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
 func (_MockETHLINKAggregator *MockETHLINKAggregatorCaller) LatestRoundData(opts *bind.CallOpts) (struct {
 	RoundId         *big.Int
-	Answer          *big.Int
+	Ans             *big.Int
 	StartedAt       *big.Int
 	UpdatedAt       *big.Int
 	AnsweredInRound *big.Int
@@ -369,7 +369,7 @@ func (_MockETHLINKAggregator *MockETHLINKAggregatorCaller) LatestRoundData(opts 
 
 	outstruct := new(struct {
 		RoundId         *big.Int
-		Answer          *big.Int
+		Ans             *big.Int
 		StartedAt       *big.Int
 		UpdatedAt       *big.Int
 		AnsweredInRound *big.Int
@@ -379,7 +379,7 @@ func (_MockETHLINKAggregator *MockETHLINKAggregatorCaller) LatestRoundData(opts 
 	}
 
 	outstruct.RoundId = *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
-	outstruct.Answer = *abi.ConvertType(out[1], new(*big.Int)).(**big.Int)
+	outstruct.Ans = *abi.ConvertType(out[1], new(*big.Int)).(**big.Int)
 	outstruct.StartedAt = *abi.ConvertType(out[2], new(*big.Int)).(**big.Int)
 	outstruct.UpdatedAt = *abi.ConvertType(out[3], new(*big.Int)).(**big.Int)
 	outstruct.AnsweredInRound = *abi.ConvertType(out[4], new(*big.Int)).(**big.Int)
@@ -390,10 +390,10 @@ func (_MockETHLINKAggregator *MockETHLINKAggregatorCaller) LatestRoundData(opts 
 
 // LatestRoundData is a free data retrieval call binding the contract method 0xfeaf968c.
 //
-// Solidity: function latestRoundData() view returns(uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
+// Solidity: function latestRoundData() view returns(uint80 roundId, int256 ans, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
 func (_MockETHLINKAggregator *MockETHLINKAggregatorSession) LatestRoundData() (struct {
 	RoundId         *big.Int
-	Answer          *big.Int
+	Ans             *big.Int
 	StartedAt       *big.Int
 	UpdatedAt       *big.Int
 	AnsweredInRound *big.Int
@@ -403,10 +403,10 @@ func (_MockETHLINKAggregator *MockETHLINKAggregatorSession) LatestRoundData() (s
 
 // LatestRoundData is a free data retrieval call binding the contract method 0xfeaf968c.
 //
-// Solidity: function latestRoundData() view returns(uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
+// Solidity: function latestRoundData() view returns(uint80 roundId, int256 ans, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
 func (_MockETHLINKAggregator *MockETHLINKAggregatorCallerSession) LatestRoundData() (struct {
 	RoundId         *big.Int
-	Answer          *big.Int
+	Ans             *big.Int
 	StartedAt       *big.Int
 	UpdatedAt       *big.Int
 	AnsweredInRound *big.Int
@@ -416,7 +416,7 @@ func (_MockETHLINKAggregator *MockETHLINKAggregatorCallerSession) LatestRoundDat
 
 // Version is a free data retrieval call binding the contract method 0x54fd4d50.
 //
-// Solidity: function version() view returns(uint256)
+// Solidity: function version() pure returns(uint256)
 func (_MockETHLINKAggregator *MockETHLINKAggregatorCaller) Version(opts *bind.CallOpts) (*big.Int, error) {
 	var out []interface{}
 	err := _MockETHLINKAggregator.contract.Call(opts, &out, "version")
@@ -433,14 +433,14 @@ func (_MockETHLINKAggregator *MockETHLINKAggregatorCaller) Version(opts *bind.Ca
 
 // Version is a free data retrieval call binding the contract method 0x54fd4d50.
 //
-// Solidity: function version() view returns(uint256)
+// Solidity: function version() pure returns(uint256)
 func (_MockETHLINKAggregator *MockETHLINKAggregatorSession) Version() (*big.Int, error) {
 	return _MockETHLINKAggregator.Contract.Version(&_MockETHLINKAggregator.CallOpts)
 }
 
 // Version is a free data retrieval call binding the contract method 0x54fd4d50.
 //
-// Solidity: function version() view returns(uint256)
+// Solidity: function version() pure returns(uint256)
 func (_MockETHLINKAggregator *MockETHLINKAggregatorCallerSession) Version() (*big.Int, error) {
 	return _MockETHLINKAggregator.Contract.Version(&_MockETHLINKAggregator.CallOpts)
 }

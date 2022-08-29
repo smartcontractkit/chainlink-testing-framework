@@ -33,7 +33,7 @@
         "type": "uint8"
       }
     ],
-    "stateMutability": "view",
+    "stateMutability": "pure",
     "type": "function"
   },
   {
@@ -46,7 +46,7 @@
         "type": "string"
       }
     ],
-    "stateMutability": "view",
+    "stateMutability": "pure",
     "type": "function"
   },
   {
@@ -66,7 +66,7 @@
       },
       {
         "internalType": "int256",
-        "name": "answer",
+        "name": "ans",
         "type": "int256"
       },
       {
@@ -99,7 +99,7 @@
       },
       {
         "internalType": "int256",
-        "name": "answer",
+        "name": "ans",
         "type": "int256"
       },
       {
@@ -131,7 +131,7 @@
         "type": "uint256"
       }
     ],
-    "stateMutability": "view",
+    "stateMutability": "pure",
     "type": "function"
   }
 ]
