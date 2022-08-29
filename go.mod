@@ -1,6 +1,6 @@
 module github.com/smartcontractkit/chainlink-testing-framework
 
-go 1.18
+go 1.19
 
 require (
 	github.com/avast/retry-go v3.0.0+incompatible
@@ -27,9 +27,6 @@ require (
 require (
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	gopkg.in/guregu/null.v4 v4.0.0 // indirect
-)
-
-require (
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect
 	github.com/Masterminds/semver/v3 v3.1.1 // indirect
