@@ -2,18 +2,24 @@ package blockchain
 
 // Contans implementations for multi and single node ethereum clients
 import (
+	"bytes"
 	"context"
+	"encoding/hex"
 	"fmt"
 	"math/big"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-env/environment"
 	"golang.org/x/sync/errgroup"
@@ -793,4 +799,32 @@ func (e *EthereumMultinodeClient) WaitForEvents() error {
 // BorrowedNonces allows to handle nonces concurrently without requesting them every time
 func (e *EthereumClient) BorrowedNonces(n bool) {
 	e.BorrowNonces = n
+}
+
+// LogRevertReason prints the revert reason for the transaction error by parsing through abi defined error list
+func LogRevertReason(err error, abiString string) error {
+	var dataError rpc.DataError
+	if errors.As(err, dataError) && dataError.ErrorData() != nil {
+		data, err := hex.DecodeString(dataError.ErrorData().(string)[2:])
+		if err != nil {
+			return err
+		}
+		jsonABI, err := abi.JSON(strings.NewReader(abiString))
+		if err != nil {
+			return err
+		}
+		for k, abiError := range jsonABI.Errors {
+			if bytes.Equal(data[:4], abiError.ID.Bytes()[:4]) {
+				// Found a matching error
+				v, err := abiError.Unpack(data)
+				if err != nil {
+					return err
+				}
+				log.Info().Interface("Error", k).Interface("args - ", v).Msg("Revert Reason")
+				return nil
+			}
+		}
+		return fmt.Errorf("Revert Reason could not be found with given abistring")
+	}
+	return nil
 }
