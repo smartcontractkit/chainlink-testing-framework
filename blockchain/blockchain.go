@@ -63,15 +63,15 @@ type EVMClient interface {
 	SubscribeFilterLogs(ctx context.Context, q ethereum.FilterQuery, ch chan<- types.Log) (ethereum.Subscription, error)
 }
 
-// NodeBlock block with a node ID which mined it
-type NodeBlock struct {
+// NodeHeader header with the ID of the node that received it
+type NodeHeader struct {
 	NodeID int
-	types.Block
+	types.Header
 }
 
 // HeaderEventSubscription is an interface for allowing callbacks when the client receives a new header
 type HeaderEventSubscription interface {
-	ReceiveBlock(header NodeBlock) error
+	ReceiveHeader(header NodeHeader) error
 	Wait() error
 	Complete() bool
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/slack-go/slack"
 	"github.com/smartcontractkit/chainlink-env/environment"
-	"k8s.io/apimachinery/pkg/api/errors"
 )
 
 // TestReporter is a general interface for all test reporters
@@ -34,11 +33,7 @@ func WriteTeardownLogs(env *environment.Environment, optionalTestReporter TestRe
 		logsPath := filepath.Join(DefaultArtifactsDir, fmt.Sprintf("%s-%d", testName, time.Now().Unix()))
 		if err := env.Artifacts.DumpTestResult(logsPath, "chainlink"); err != nil {
 			log.Warn().Err(err).Msg("Error trying to collect pod logs")
-			if errors.IsForbidden(err) {
-				log.Warn().Msg("Unable to gather logs from a remote_test_runner instance. Working on improving this.")
-			} else {
-				return err
-			}
+			return err
 		}
 		if err := SendReport(env, logsPath, optionalTestReporter); err != nil {
 			log.Warn().Err(err).Msg("Error writing test report")
