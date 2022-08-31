@@ -80,7 +80,44 @@ func (em *MockserverClient) SetValuePath(path string, v int) error {
 	initializers := []HttpInitializer{initializer}
 	resp, err := em.APIClient.R().SetBody(&initializers).Put("/expectation")
 	if resp.StatusCode() != http.StatusCreated {
-		err = fmt.Errorf("Unexpected Status Code. Expected %d; Got %d", http.StatusCreated, resp.StatusCode())
+		err = fmt.Errorf("status code expected %d got %d", http.StatusCreated, resp.StatusCode())
+	}
+	return err
+}
+
+// SetAnyValuePath sets any type of value for a path
+func (em *MockserverClient) SetAnyValuePath(path string, v interface{}) error {
+	sanitizedPath := strings.ReplaceAll(path, "/", "_")
+	id := fmt.Sprintf("%s_mock_id", sanitizedPath)
+	log.Debug().Str("ID", id).
+		Str("Path", path).
+		Interface("Value", v).
+		Msg("Setting Mock Server Path")
+	initializer := HttpInitializer{
+		Id:      id,
+		Request: HttpRequest{Path: path},
+		Response: HttpResponse{
+			Body: struct {
+				Id   string
+				Data struct {
+					Result interface{}
+				}
+				Error interface{}
+			}{
+				Id: "",
+				Data: struct {
+					Result interface{}
+				}{
+					Result: v,
+				},
+				Error: nil,
+			},
+		},
+	}
+	initializers := []HttpInitializer{initializer}
+	resp, err := em.APIClient.R().SetBody(&initializers).Put("/expectation")
+	if resp.StatusCode() != http.StatusCreated {
+		err = fmt.Errorf("status code expected %d got %d", http.StatusCreated, resp.StatusCode())
 	}
 	return err
 }

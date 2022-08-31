@@ -33,6 +33,7 @@ tests-*.xml
 # ide
 .vscode/
 *.idea
+*.iml
 
 # gauntlet test output
 gauntlet/yarn.lock
