@@ -31,7 +31,7 @@ func CreateNodeKeysBundle(nodes []*client.Chainlink, chainName string, chainId s
 		}
 
 		peerID := p2pkeys.Data[0].Attributes.PeerID
-		txKey, _, err := n.CreateTxKey(chainId)
+		txKey, _, err := n.CreateTxKey(chainName, chainId)
 		if err != nil {
 			return nil, err
 		}

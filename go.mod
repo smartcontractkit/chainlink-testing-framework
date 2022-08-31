@@ -18,7 +18,7 @@ require (
 	github.com/rs/zerolog v1.28.0
 	github.com/slack-go/slack v0.11.2
 	github.com/smartcontractkit/chainlink-env v0.2.37
-	github.com/smartcontractkit/chainlink/integration-tests v0.0.0-20220829161838-6ef02935af09
+	github.com/smartcontractkit/chainlink/integration-tests v0.0.0-20220830115508-dbe68e88b9a9
 	github.com/stretchr/testify v1.8.0
 	golang.org/x/sync v0.0.0-20220819030929-7fc1605a5dde
 )
