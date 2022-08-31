@@ -15,7 +15,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.12.2
 	github.com/prometheus/common v0.35.0
-	github.com/rs/zerolog v1.27.0
+	github.com/rs/zerolog v1.28.0
 	github.com/slack-go/slack v0.11.2
 	github.com/smartcontractkit/chainlink-env v0.2.36
 	github.com/smartcontractkit/chainlink/integration-tests v0.0.0-20220830115508-dbe68e88b9a9
