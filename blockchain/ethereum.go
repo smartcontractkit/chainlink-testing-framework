@@ -329,8 +329,8 @@ func (e *EthereumClient) TransactionOpts(from *EthereumWallet) (*bind.TransactOp
 // ProcessTransaction will queue or wait on a transaction depending on whether parallel transactions are enabled
 func (e *EthereumClient) ProcessTransaction(tx *types.Transaction) error {
 	var txConfirmer HeaderEventSubscription
-	if e.GetNetworkConfig().MinimumConfirmations == 0 {
-		txConfirmer = NewL2TxConfirmer(e, tx.Hash())
+	if e.GetNetworkConfig().MinimumConfirmations <= 0 {
+		txConfirmer = NewInstantConfirmer(e, tx.Hash(), nil, nil)
 	} else {
 		txConfirmer = NewTransactionConfirmer(e, tx, e.GetNetworkConfig().MinimumConfirmations)
 	}
@@ -348,10 +348,10 @@ func (e *EthereumClient) ProcessTransaction(tx *types.Transaction) error {
 // ProcessTransaction will queue or wait on a transaction depending on whether parallel transactions are enabled
 func (e *EthereumClient) ProcessEvent(name string, event *types.Log, confirmedChan chan bool, errorChan chan error) error {
 	var eventConfirmer HeaderEventSubscription
-	if e.GetNetworkConfig().MinimumConfirmations == 0 {
-		eventConfirmer = NewL2TxConfirmer(e, event.TxHash)
+	if e.GetNetworkConfig().MinimumConfirmations <= 0 {
+		eventConfirmer = NewInstantConfirmer(e, event.TxHash, confirmedChan, errorChan)
 	} else {
-		eventConfirmer = NewEventConfirmer(name, e, event, e.GetNetworkConfig().MinimumConfirmations, errorChan, confirmedChan)
+		eventConfirmer = NewEventConfirmer(name, e, event, e.GetNetworkConfig().MinimumConfirmations, confirmedChan, errorChan)
 	}
 
 	subscriptionHash := fmt.Sprintf("%s-%s", event.TxHash.Hex(), name) // Many events can occupy the same tx hash
