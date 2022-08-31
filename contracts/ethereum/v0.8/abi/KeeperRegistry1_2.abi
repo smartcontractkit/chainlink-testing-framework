@@ -926,7 +926,7 @@
     "name": "getPeerRegistryMigrationPermission",
     "outputs": [
       {
-        "internalType": "enum KeeperRegistry.MigrationPermission",
+        "internalType": "enum KeeperRegistry1_2.MigrationPermission",
         "name": "",
         "type": "uint8"
       }
@@ -1348,7 +1348,7 @@
         "type": "address"
       },
       {
-        "internalType": "enum KeeperRegistry.MigrationPermission",
+        "internalType": "enum KeeperRegistry1_2.MigrationPermission",
         "name": "permission",
         "type": "uint8"
       }
