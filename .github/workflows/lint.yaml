@@ -1,38 +1,46 @@
 name: Linting
 on:
-  push:
+  pull_request:
 jobs:
-  golangci:
-    name: Linting
+  tools:
+    name: Get tool-versions
     runs-on: ubuntu-latest
     steps:
       - name: Check out Code
         uses: actions/checkout@v3
-      - uses: smartcontractkit/tool-versions-to-env-action@v1.0.7
-        id: go-version
-      - run: echo ${{ steps.go-version.outputs.golang_version }}
-      - name: Install Go ${{ steps.go-version.outputs.golang_version }}
+      - name: Parse tool-versions file
+        uses: smartcontractkit/tool-versions-to-env-action@v1.0.7
+        id: tool-versions
+    outputs:
+      go-version: ${{ steps.tool-versions.outputs.golang_version }}
+      golangci-lint-version: ${{ steps.tool-versions.outputs.golangci-lint_version }}
+  golangci:
+    name: Linting
+    runs-on: ubuntu-latest
+    needs: [tools]
+    steps:
+      - name: Check out Code
+        uses: actions/checkout@v3
+      - name: Install Go ${{ needs.tools.outputs.go-version }}
         uses: actions/setup-go@v3
         with:
-          go-version: ${{ steps.go-version.outputs.golang_version }}
-      - name: golangci-lint
+          go-version: ${{ needs.tools.outputs.go-version }}
+      - name: golangci-lint ${{ needs.tools.outputs.golangci-lint-version }}
         uses: golangci/golangci-lint-action@v3.2.0
         with:
-          version: v1.47.3
+          version: v${{ needs.tools.outputs.golangci-lint-version }}
 
   vulnerabilities-check:
     name: Check for Vulnerabilities
     runs-on: ubuntu-latest
+    needs: [tools]
     steps:
       - name: Check out Code
         uses: actions/checkout@v3
-      - uses: smartcontractkit/tool-versions-to-env-action@v1.0.7
-        id: go-version
-      - run: echo ${{ steps.go-version.outputs.golang_version }}
-      - name: Install Go ${{ steps.go-version.outputs.golang_version }}
+      - name: Install Go ${{ needs.tools.outputs.go-version }}
         uses: actions/setup-go@v3
         with:
-          go-version: ${{ steps.go-version.outputs.golang_version }}
+          go-version: ${{ needs.tools.outputs.go-version }}
       - name: Write Go List
         run: go list -json -deps ./... > go.list
       - name: Nancy
