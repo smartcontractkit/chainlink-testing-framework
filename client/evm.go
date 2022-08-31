@@ -22,7 +22,7 @@ type Node struct {
 	UpdatedAt time.Time `json:"UpdatedAt"`
 }
 
-func CreateNodeKeysBundle(nodes []*client.Chainlink, chainName string) ([]NodeKeysBundle, error) {
+func CreateNodeKeysBundle(nodes []*client.Chainlink, chainName string, chainId string) ([]NodeKeysBundle, error) {
 	nkb := make([]NodeKeysBundle, 0)
 	for _, n := range nodes {
 		p2pkeys, err := n.MustReadP2PKeys()
@@ -31,7 +31,7 @@ func CreateNodeKeysBundle(nodes []*client.Chainlink, chainName string) ([]NodeKe
 		}
 
 		peerID := p2pkeys.Data[0].Attributes.PeerID
-		txKey, _, err := n.CreateTxKey(chainName)
+		txKey, _, err := n.CreateTxKey(chainName, chainId)
 		if err != nil {
 			return nil, err
 		}
