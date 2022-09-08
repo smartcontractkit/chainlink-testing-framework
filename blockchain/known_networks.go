@@ -19,6 +19,8 @@ var knownNetworks = map[int64]string{
 	1001: "Klaytn", // Testnet
 	8217: "Klaytn", // Mainnet
 
+	80001: "Mumbai",
+
 	421611: "Arbitrum", // Rinkeby
 	421613: "Arbitrum", // Goerli
 }
@@ -44,6 +46,8 @@ func wrapSingleClient(networkSettings *EVMNetwork, client *EthereumClient) EVMCl
 		wrappedEc = &KlaytnClient{client}
 	case "Arbitrum":
 		wrappedEc = &ArbitrumClient{client}
+	default:
+		wrappedEc = client
 	}
 	return wrappedEc
 }
