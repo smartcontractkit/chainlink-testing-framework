@@ -35,6 +35,8 @@ type EVMNetwork struct {
 	ChainID int64 `envconfig:"evm_chain_id" default:"1337" toml:"chain_id"`
 	// List of websocket URLs you want to connect to
 	URLs []string `envconfig:"evm_urls" default:"ws://example.url" toml:"urls"`
+	// List of websocket URLs you want to connect to
+	HTTPURLs []string `envconfig:"evm_http_urls" default:"http://example.url" toml:"urls"`
 	// True if the network is simulated like a geth instance in dev mode. False if the network is a real test or mainnet
 	Simulated bool `envconfig:"evm_simulated" default:"false" toml:"simulated"`
 	// List of private keys to fund the tests
@@ -71,6 +73,7 @@ func (e *EVMNetwork) ToMap() map[string]interface{} {
 		"evm_name":                        e.Name,
 		"evm_chain_id":                    fmt.Sprint(e.ChainID),
 		"evm_urls":                        strings.Join(e.URLs, ","),
+		"evm_http_urls":                   strings.Join(e.HTTPURLs, ","),
 		"evm_simulated":                   fmt.Sprint(e.Simulated),
 		"evm_private_keys":                strings.Join(e.PrivateKeys, ","),
 		"evm_chainlink_transaction_limit": fmt.Sprint(e.ChainlinkTransactionLimit),
