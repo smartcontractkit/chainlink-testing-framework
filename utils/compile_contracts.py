@@ -25,8 +25,7 @@ used_contract_names = [
   "KeeperRegistry1_1",
   "KeeperRegistry1_2",
   "KeeperRegistry1_3",
-  "KeeperRegistryBase",
-  "KeeperRegistryLogic1_3"
+  "KeeperRegistryLogic1_3",
   "LinkToken",
   "MockETHLINKAggregator",
   "MockGASAggregator",
