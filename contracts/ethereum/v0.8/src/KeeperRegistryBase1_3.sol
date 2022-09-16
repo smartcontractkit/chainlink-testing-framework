@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "./vendor/@arbitrum/nitro-contracts/src/precompiles/ArbGasInfo.sol";
 import "./vendor/@eth-optimism/contracts/0.8.6/contracts/L2/predeploys/OVM_GasPriceOracle.sol";
 import "./ExecutionPrevention.sol";
-import {Config, State, Upkeep} from "./interfaces/KeeperRegistryInterface1_3.sol";
+import { Config1_3, State1_3, Upkeep} from "./interfaces/KeeperRegistryInterface1_3.sol";
 import "./ConfirmedOwner.sol";
 import "./interfaces/AggregatorV3Interface.sol";
 import "./interfaces/LinkTokenInterface.sol";
@@ -139,7 +139,7 @@ abstract contract KeeperRegistryBase1_3 is ConfirmedOwner, ExecutionPrevention, 
     uint256 linkEth;
   }
 
-  event ConfigSet(Config config);
+  event ConfigSet(Config1_3 config);
   event FundsAdded(uint256 indexed id, address indexed from, uint96 amount);
   event FundsWithdrawn(uint256 indexed id, uint256 amount, address to);
   event KeepersUpdated(address[] keepers, address[] payees);

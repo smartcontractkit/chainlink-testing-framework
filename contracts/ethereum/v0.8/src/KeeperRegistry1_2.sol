@@ -11,7 +11,7 @@ import "./interfaces/TypeAndVersionInterface.sol";
 import "./interfaces/AggregatorV3Interface.sol";
 import "./interfaces/LinkTokenInterface.sol";
 import "./interfaces/KeeperCompatibleInterface.sol";
-import "./interfaces/KeeperRegistryInterface1_2.sol";
+import {KeeperRegistryExecutableInterface, Config1_2, State1_2}  from "./interfaces/KeeperRegistryInterface1_2.sol";
 import "./interfaces/MigratableKeeperRegistryInterface1_2.sol";
 import "./interfaces/UpkeepTranscoderInterface1_2.sol";
 import "./interfaces/ERC677ReceiverInterface.sol";
@@ -167,7 +167,7 @@ contract KeeperRegistry1_2 is
   event OwnerFundsWithdrawn(uint96 amount);
   event UpkeepMigrated(uint256 indexed id, uint256 remainingBalance, address destination);
   event UpkeepReceived(uint256 indexed id, uint256 startingBalance, address importedFrom);
-  event ConfigSet(Config config);
+  event ConfigSet(Config1_2 config);
   event KeepersUpdated(address[] keepers, address[] payees);
   event PaymentWithdrawn(address indexed keeper, uint256 indexed amount, address indexed to, address payee);
   event PayeeshipTransferRequested(address indexed keeper, address indexed from, address indexed to);
@@ -184,7 +184,7 @@ contract KeeperRegistry1_2 is
     address link,
     address linkEthFeed,
     address fastGasFeed,
-    Config memory config
+    Config1_2 memory config
   ) ConfirmedOwner(msg.sender) {
     LINK = LinkTokenInterface(link);
     LINK_ETH_FEED = AggregatorV3Interface(linkEthFeed);
@@ -457,7 +457,7 @@ contract KeeperRegistry1_2 is
    * @notice updates the configuration of the registry
    * @param config registry config fields
    */
-  function setConfig(Config memory config) public onlyOwner {
+  function setConfig(Config1_2 memory config) public onlyOwner {
     if (config.maxPerformGas < s_storage.maxPerformGas) revert GasLimitCanOnlyIncrease();
     s_storage = Storage({
       paymentPremiumPPB: config.paymentPremiumPPB,
@@ -585,8 +585,8 @@ contract KeeperRegistry1_2 is
     view
     override
     returns (
-      State memory state,
-      Config memory config,
+      State1_2 memory state,
+      Config1_2 memory config,
       address[] memory keepers
     )
   {

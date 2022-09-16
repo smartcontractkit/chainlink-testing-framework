@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./KeeperRegistryBase1_3.sol";
 import "./KeeperRegistryLogic1_3.sol";
-import {KeeperRegistryExecutableInterface} from "./interfaces/KeeperRegistryInterface1_3.sol";
+import {KeeperRegistryExecutableInterface,  Config1_3, State1_3} from "./interfaces/KeeperRegistryInterface1_3.sol";
 import "./interfaces/MigratableKeeperRegistryInterface.sol";
 import "./interfaces/TypeAndVersionInterface.sol";
 import "./interfaces/ERC677ReceiverInterface.sol";
@@ -47,7 +47,7 @@ contract KeeperRegistry1_3 is
    * @param keeperRegistryLogic the address of keeper registry logic
    * @param config registry config settings
    */
-  constructor(KeeperRegistryLogic1_3 keeperRegistryLogic, Config memory config)
+  constructor(KeeperRegistryLogic1_3 keeperRegistryLogic, Config1_3 memory config)
     KeeperRegistryBase1_3(
       keeperRegistryLogic.PAYMENT_MODEL(),
       keeperRegistryLogic.REGISTRY_GAS_OVERHEAD(),
@@ -310,7 +310,7 @@ contract KeeperRegistry1_3 is
    * @notice updates the configuration of the registry
    * @param config registry config fields
    */
-  function setConfig(Config memory config) public onlyOwner {
+  function setConfig(Config1_3 memory config) public onlyOwner {
     if (config.maxPerformGas < s_storage.maxPerformGas) revert GasLimitCanOnlyIncrease();
     s_storage = Storage({
       paymentPremiumPPB: config.paymentPremiumPPB,
@@ -421,8 +421,8 @@ contract KeeperRegistry1_3 is
     view
     override
     returns (
-      State memory state,
-      Config memory config,
+      State1_3 memory state,
+      Config1_3 memory config,
       address[] memory keepers
     )
   {

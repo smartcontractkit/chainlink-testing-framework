@@ -268,7 +268,7 @@
           }
         ],
         "indexed": false,
-        "internalType": "struct Config",
+        "internalType": "struct Config1_3",
         "name": "config",
         "type": "tuple"
       }

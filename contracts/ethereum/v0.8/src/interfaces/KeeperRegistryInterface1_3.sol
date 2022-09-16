@@ -23,7 +23,7 @@ pragma solidity ^0.8.0;
  * @member transcoder address of the transcoder contract
  * @member registrar address of the registrar contract
  */
-struct Config {
+struct Config1_3 {
   uint32 paymentPremiumPPB;
   uint32 flatFeeMicroLink; // min 0.000001 LINK, max 4294 LINK
   uint24 blockCountPerTurn;
@@ -46,7 +46,7 @@ struct Config {
  * @member expectedLinkBalance the expected balance of LINK of the registry
  * @member numUpkeeps total number of upkeeps on the registry
  */
-struct State {
+struct State1_3 {
   uint32 nonce;
   uint96 ownerLinkBalance;
   uint256 expectedLinkBalance;
@@ -131,8 +131,8 @@ interface KeeperRegistryBaseInterface {
     external
     view
     returns (
-      State memory,
-      Config memory,
+      State1_3 memory,
+      Config1_3 memory,
       address[] memory
     );
 }
