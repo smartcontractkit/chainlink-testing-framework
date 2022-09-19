@@ -66,10 +66,12 @@ func BuildGoTests(executablePath, testsPath, projectRootPath string) (string, in
 func TriggerRemoteTest(exePath string, testEnvironment *environment.Environment) error {
 	logging.Init()
 
+	// Add gcompat package, required by libwasmvm
 	_, _, err := testEnvironment.Client.ExecuteInPod(testEnvironment.Cfg.Namespace, "remote-test-runner", "remote-test-runner", []string{"apk", "add", "gcompat"})
 	if err != nil {
 		return errors.Wrap(err, "Error adding gcompat")
 	}
+	// Copy libwasmvm dependency of chainlink core
 	_, _, errOut, err := testEnvironment.Client.CopyToPod(
 		testEnvironment.Cfg.Namespace,
 		os.Getenv("GOPATH")+"/pkg/mod/github.com/!cosm!wasm/wasmvm@v0.16.6/api/libwasmvm.so",
