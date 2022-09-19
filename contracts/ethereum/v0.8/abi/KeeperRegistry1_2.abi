@@ -79,7 +79,7 @@
             "type": "address"
           }
         ],
-        "internalType": "struct Config",
+        "internalType": "struct Config1_2",
         "name": "config",
         "type": "tuple"
       }
@@ -305,7 +305,7 @@
           }
         ],
         "indexed": false,
-        "internalType": "struct Config",
+        "internalType": "struct Config1_2",
         "name": "config",
         "type": "tuple"
       }
@@ -961,7 +961,7 @@
             "type": "uint256"
           }
         ],
-        "internalType": "struct State",
+        "internalType": "struct State1_2",
         "name": "state",
         "type": "tuple"
       },
@@ -1028,7 +1028,7 @@
             "type": "address"
           }
         ],
-        "internalType": "struct Config",
+        "internalType": "struct Config1_2",
         "name": "config",
         "type": "tuple"
       },
@@ -1312,7 +1312,7 @@
             "type": "address"
           }
         ],
-        "internalType": "struct Config",
+        "internalType": "struct Config1_2",
         "name": "config",
         "type": "tuple"
       }

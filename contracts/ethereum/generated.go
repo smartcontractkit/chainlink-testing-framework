@@ -15,4 +15,5 @@ const (
 	RegistryVersion_1_0 KeeperRegistryVersion = iota
 	RegistryVersion_1_1
 	RegistryVersion_1_2
+	RegistryVersion_1_3
 )
