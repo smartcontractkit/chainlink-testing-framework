@@ -29,11 +29,12 @@ func (em *ExplorerClient) PostAdminNodes(nodeName string) (NodeAccessKeys, error
 		"x-explore-admin-password": em.Config.AdminPassword,
 		"x-explore-admin-username": em.Config.AdminUsername,
 		"Content-Type":             "application/json",
+		"Accept":                   "application/json",
 	})
 	requestBody := &Name{Name: nodeName}
 	responseBody := NodeAccessKeys{}
 	log.Info().Str("Explorer URL", em.Config.URL).Msg("Creating node credentials")
-	resp, err := em.APIClient.R().SetBody(requestBody).SetResult(responseBody).Post("/api/v1/admin/nodes")
+	resp, err := em.APIClient.R().SetBody(requestBody).SetResult(&responseBody).Post("/api/v1/admin/nodes")
 	if resp.StatusCode() != http.StatusCreated {
 		err = fmt.Errorf("Unexpected Status Code. Expected %d; Got %d", http.StatusCreated, resp.StatusCode())
 	}
@@ -47,9 +48,9 @@ type Name struct {
 
 // NodeAccessKeys is the body of the response
 type NodeAccessKeys struct {
-	ID        string `mapstructure:"id" yaml:"id"`
-	AccessKey string `mapstructure:"accessKey" yaml:"accessKey"`
-	Secret    string `mapstructure:"secret" yaml:"secret"`
+	ID        string `json:"id"`
+	AccessKey string `json:"accessKey"`
+	Secret    string `json:"secret"`
 }
 
 // ExplorerConfig holds config information for ExplorerClient
