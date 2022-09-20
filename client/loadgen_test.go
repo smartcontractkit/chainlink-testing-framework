@@ -216,3 +216,25 @@ func TestStaticRPSScheduleIsNotBlocking(t *testing.T) {
 	require.Empty(t, failResponses)
 	require.Empty(t, gen.Errors())
 }
+
+func TestPace(t *testing.T) {
+	t.Parallel()
+	gen := NewLoadGenerator(&LoadGeneratorConfig{
+		RPS:               1,
+		StatsPollInterval: 1 * time.Second,
+		Schedule: &LoadSchedule{
+			StartRPS:      1,
+			IncreaseRPS:   1,
+			IncreaseAfter: 1 * time.Second,
+			HoldRPS:       5,
+		},
+		Duration: 7000 * time.Millisecond,
+		Gun: NewMockGun(&MockGunConfig{
+			CallSleep: 10 * time.Millisecond,
+		}),
+	})
+	gen.Run()
+	_, failed := gen.Wait()
+	require.Equal(t, false, failed)
+	require.GreaterOrEqual(t, gen.Stats().Success.Load(), int64(29))
+}

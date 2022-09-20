@@ -12,6 +12,7 @@ import (
 )
 
 const (
+	DefaultRPS               = 1
 	DefaultCallTimeout       = 1 * time.Minute
 	DefaultStatsPollInterval = 10 * time.Second
 	UntilStopDuration        = 99999 * time.Hour
@@ -26,20 +27,25 @@ type LoadTestable interface {
 	Call(data interface{}) CallResult
 }
 
+// CallResult represents basic call result info
 type CallResult struct {
 	Duration time.Duration
 	Data     interface{}
 	Error    error
 }
 
-type VerifyResult struct {
-	Data  interface{}
-	Error error
+// LoadSchedule load test schedule
+type LoadSchedule struct {
+	StartRPS      int
+	IncreaseRPS   int
+	IncreaseAfter time.Duration
+	HoldRPS       int
 }
 
 // LoadGeneratorConfig is for shared load test data and configuration
 type LoadGeneratorConfig struct {
 	RPS                  int
+	Schedule             *LoadSchedule
 	Duration             time.Duration
 	StatsPollInterval    time.Duration
 	CallFailThreshold    int64
@@ -72,6 +78,8 @@ type ResponseData struct {
 type LoadGenerator struct {
 	cfg           *LoadGeneratorConfig
 	rl            ratelimit.Limiter
+	currentRPS    int
+	schedule      *LoadSchedule
 	wg            *sync.WaitGroup
 	ctx           context.Context
 	cancel        context.CancelFunc
@@ -87,7 +95,9 @@ type LoadGenerator struct {
 // NewLoadGenerator creates a new instance for a contract,
 // shoots for scheduled RPS until timeout, test logic is defined through LoadTestable
 func NewLoadGenerator(cfg *LoadGeneratorConfig) *LoadGenerator {
-	rl := ratelimit.New(cfg.RPS)
+	if cfg.RPS == 0 {
+		cfg.RPS = DefaultRPS
+	}
 	if cfg.Duration == 0 {
 		cfg.Duration = UntilStopDuration
 	}
@@ -97,14 +107,16 @@ func NewLoadGenerator(cfg *LoadGeneratorConfig) *LoadGenerator {
 	if cfg.StatsPollInterval == 0 {
 		cfg.StatsPollInterval = DefaultStatsPollInterval
 	}
+	rl := ratelimit.New(cfg.RPS)
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.Duration)
 	return &LoadGenerator{
-		cfg:    cfg,
-		rl:     rl,
-		wg:     &sync.WaitGroup{},
-		ctx:    ctx,
-		cancel: cancel,
-		gun:    cfg.Gun,
+		cfg:      cfg,
+		schedule: cfg.Schedule,
+		rl:       rl,
+		wg:       &sync.WaitGroup{},
+		ctx:      ctx,
+		cancel:   cancel,
+		gun:      cfg.Gun,
 		responsesData: &ResponseData{
 			okDataMu:        &sync.Mutex{},
 			OKData:          make([]interface{}, 0),
@@ -119,8 +131,35 @@ func NewLoadGenerator(cfg *LoadGeneratorConfig) *LoadGenerator {
 	}
 }
 
-// scheduledCall schedules a rate limited contract call
-func (l *LoadGenerator) scheduledCall() {
+// runSchedule runs scheduling loop, changes LoadGenerator.currentRPS according to a load schedule
+func (l *LoadGenerator) runSchedule() {
+	if l.schedule == nil {
+		return
+	}
+	l.rl = ratelimit.New(l.schedule.StartRPS)
+	l.currentRPS = l.schedule.StartRPS
+	go func() {
+		for {
+			select {
+			case <-l.ctx.Done():
+				return
+			default:
+				time.Sleep(l.schedule.IncreaseAfter)
+				newRPS := l.currentRPS + l.schedule.IncreaseRPS
+				if newRPS > l.schedule.HoldRPS {
+					log.Info().Int("RPS", l.currentRPS).Msg("Holding RPS")
+					continue
+				}
+				l.rl = ratelimit.New(newRPS)
+				l.currentRPS = newRPS
+				log.Info().Int("RPS", l.currentRPS).Msg("Increasing RPS")
+			}
+		}
+	}()
+}
+
+// pacedCall calls a gun according to a schedule or plain RPS
+func (l *LoadGenerator) pacedCall() {
 	l.rl.Take()
 	if l.stopped.Load() {
 		return
@@ -176,11 +215,12 @@ func (l *LoadGenerator) scheduledCall() {
 	}()
 }
 
-// Run runs load until timeout
+// Run runs load loop until timeout or stop
 func (l *LoadGenerator) Run() {
 	log.Info().Msg("Load generator started")
 	l.printStatsLoop()
 	l.wg.Add(1)
+	go l.runSchedule()
 	go func() {
 		for {
 			select {
@@ -197,13 +237,13 @@ func (l *LoadGenerator) Run() {
 					l.failed.Store(true)
 					log.Info().Msg("Test reached failed requests threshold")
 				}
-				l.scheduledCall()
+				l.pacedCall()
 			}
 		}
 	}()
 }
 
-// Stop stops load generator, waiting for all txns for either finish or timeout
+// Stop stops load generator, waiting for all calls for either finish or timeout
 func (l *LoadGenerator) Stop() (interface{}, bool) {
 	l.cancel()
 	l.wg.Wait()
@@ -216,19 +256,22 @@ func (l *LoadGenerator) Wait() (interface{}, bool) {
 	return l.GetData(), l.failed.Load()
 }
 
+// Errors get all calls errors
 func (l *LoadGenerator) Errors() []error {
 	return l.errs
 }
 
+// GetData get all calls data
 func (l *LoadGenerator) GetData() *ResponseData {
 	return l.responsesData
 }
 
+// Stats get all load stats
 func (l *LoadGenerator) Stats() *GeneratorStats {
 	return l.stats
 }
 
-// PrintStats prints some runtime stats
+// PrintStats prints some runtime LoadGenerator.stats
 func (l *LoadGenerator) PrintStats() {
 	log.Info().
 		Int64("Success", l.stats.Success.Load()).
@@ -237,6 +280,7 @@ func (l *LoadGenerator) PrintStats() {
 		Msg("On-chain load stats")
 }
 
+// printStatsLoop prints stats periodically, with LoadGeneratorConfig.StatsPollInterval
 func (l *LoadGenerator) printStatsLoop() {
 	go func() {
 		for {
