@@ -17,16 +17,19 @@ func TestPositiveOneRequest(t *testing.T) {
 		}),
 	})
 	gen.Run()
-	time.Sleep(40 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	_, failed := gen.Stop()
 	require.Equal(t, false, failed)
 	gs := &GeneratorStats{}
 	gs.Success.Add(2)
 	require.Equal(t, gs, gen.Stats())
 
-	okData, failData := convertResponsesData(gen.GetData())
+	okData, okResponses, failResponses := convertResponsesData(gen.GetData())
 	require.Equal(t, []string{"successCallData", "successCallData"}, okData)
-	require.Empty(t, failData)
+	require.GreaterOrEqual(t, okResponses[0].Duration, 50*time.Millisecond)
+	require.Equal(t, okResponses[0].Data.(string), "successCallData")
+	require.Equal(t, okResponses[1].Data.(string), "successCallData")
+	require.Empty(t, failResponses)
 	require.Empty(t, gen.Errors())
 }
 
@@ -47,9 +50,14 @@ func TestFailedOneRequest(t *testing.T) {
 	gs.Failed.Add(2)
 	require.Equal(t, gs, gen.Stats())
 
-	okData, failData := convertResponsesData(gen.GetData())
+	okData, _, failResponses := convertResponsesData(gen.GetData())
 	require.Empty(t, okData)
-	require.Equal(t, []string{"failedCallData", "error", "failedCallData", "error"}, failData)
+	require.GreaterOrEqual(t, failResponses[0].Duration, 50*time.Millisecond)
+	require.GreaterOrEqual(t, failResponses[1].Duration, 50*time.Millisecond)
+	require.Equal(t, failResponses[0].Data.(string), "failedCallData")
+	require.Equal(t, failResponses[0].Error, errors.New("error"))
+	require.Equal(t, failResponses[1].Data.(string), "failedCallData")
+	require.Equal(t, failResponses[1].Error, errors.New("error"))
 	require.Equal(t, []error{errors.New("error"), errors.New("error")}, gen.Errors())
 }
 
@@ -71,9 +79,10 @@ func TestLoadGenCallTimeout(t *testing.T) {
 	gs.CallTimeout.Add(1)
 	require.Equal(t, gs, gen.Stats())
 
-	okData, failData := convertResponsesData(gen.GetData())
+	okData, _, failResponses := convertResponsesData(gen.GetData())
 	require.Empty(t, okData)
-	require.Equal(t, []string{"generator request call timeout"}, failData)
+	require.Equal(t, failResponses[0].Data, nil)
+	require.Equal(t, failResponses[0].Error, errors.New("generator request call timeout"))
 	require.Equal(t, []error{ErrCallTimeout}, gen.Errors())
 }
 
@@ -94,9 +103,10 @@ func TestLoadGenCallTimeoutWait(t *testing.T) {
 	gs.CallTimeout.Add(1)
 	require.Equal(t, gs, gen.Stats())
 
-	okData, failData := convertResponsesData(gen.GetData())
+	okData, _, failResponses := convertResponsesData(gen.GetData())
 	require.Empty(t, okData)
-	require.Equal(t, []string{"generator request call timeout"}, failData)
+	require.Equal(t, failResponses[0].Data, nil)
+	require.Equal(t, failResponses[0].Error, errors.New("generator request call timeout"))
 	require.Equal(t, []error{ErrCallTimeout}, gen.Errors())
 }
 
@@ -126,9 +136,9 @@ func TestCancelledByDeadlineWait(t *testing.T) {
 
 	// in case of gen.Stop() if we don't have test duration or if gen.Wait() and we have a deadline
 	// we are waiting for all requests, so result in that case must be successful
-	okData, failData := convertResponsesData(gen.GetData())
+	okData, _, failResponses := convertResponsesData(gen.GetData())
 	require.Equal(t, []string{"successCallData", "successCallData"}, okData)
-	require.Empty(t, failData)
+	require.Empty(t, failResponses)
 	require.Empty(t, gen.Errors())
 }
 
@@ -154,9 +164,9 @@ func TestCancelledBeforeDeadline(t *testing.T) {
 	gs.Success.Add(2)
 	require.Equal(t, gs, gen.Stats())
 
-	okData, failData := convertResponsesData(gen.GetData())
+	okData, _, failResponses := convertResponsesData(gen.GetData())
 	require.Equal(t, []string{"successCallData", "successCallData"}, okData)
-	require.Empty(t, failData)
+	require.Empty(t, failResponses)
 	require.Empty(t, gen.Errors())
 }
 
@@ -176,10 +186,11 @@ func TestStaticRPSSchedulePrecision(t *testing.T) {
 	require.Equal(t, gen.Stats().Failed.Load(), int64(0))
 	require.Equal(t, gen.Stats().CallTimeout.Load(), int64(0))
 
-	okData, failData := convertResponsesData(gen.GetData())
+	okData, _, failResponses := convertResponsesData(gen.GetData())
 	require.GreaterOrEqual(t, len(okData), 999)
 	require.LessOrEqual(t, len(okData), 1001)
-	require.Empty(t, failData)
+	require.Empty(t, failResponses)
+	require.Empty(t, gen.Errors())
 }
 
 func TestStaticRPSScheduleIsNotBlocking(t *testing.T) {
@@ -187,6 +198,7 @@ func TestStaticRPSScheduleIsNotBlocking(t *testing.T) {
 		RPS:      1000,
 		Duration: 1 * time.Second,
 		Gun: NewMockGun(&MockGunConfig{
+			// call time must not affect the load schedule
 			CallSleep: 1 * time.Second,
 		}),
 	})
@@ -194,12 +206,13 @@ func TestStaticRPSScheduleIsNotBlocking(t *testing.T) {
 	_, failed := gen.Wait()
 	require.Equal(t, false, failed)
 	require.GreaterOrEqual(t, gen.Stats().Success.Load(), int64(999))
-	require.LessOrEqual(t, gen.Stats().Success.Load(), int64(1001))
+	require.LessOrEqual(t, gen.Stats().Success.Load(), int64(1002))
 	require.Equal(t, gen.Stats().Failed.Load(), int64(0))
 	require.Equal(t, gen.Stats().CallTimeout.Load(), int64(0))
 
-	okData, failData := convertResponsesData(gen.GetData())
+	okData, _, failResponses := convertResponsesData(gen.GetData())
 	require.GreaterOrEqual(t, len(okData), 999)
-	require.LessOrEqual(t, len(okData), 1001)
-	require.Empty(t, failData)
+	require.LessOrEqual(t, len(okData), 1002)
+	require.Empty(t, failResponses)
+	require.Empty(t, gen.Errors())
 }

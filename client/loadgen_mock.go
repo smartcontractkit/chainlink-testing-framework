@@ -26,25 +26,19 @@ func NewMockGun(cfg *MockGunConfig) *MockGun {
 func (m *MockGun) Call(data interface{}) CallResult {
 	time.Sleep(m.cfg.CallSleep)
 	if m.cfg.Fail {
-		return CallResult{"failedCallData", errors.New("error")}
+		return CallResult{Data: "failedCallData", Error: errors.New("error")}
 	}
-	return CallResult{"successCallData", nil}
+	return CallResult{Data: "successCallData"}
 }
 
 func (m *MockGun) CollectData() interface{} {
 	return m.Data
 }
 
-func convertResponsesData(rd *ResponseData) ([]string, []string) {
-	ok, fail := make([]string, 0), make([]string, 0)
+func convertResponsesData(rd *ResponseData) ([]string, []CallResult, []CallResult) {
+	ok := make([]string, 0)
 	for _, d := range rd.OKData {
 		ok = append(ok, d.(string))
 	}
-	for _, d := range rd.FailData {
-		if d.Data != nil {
-			fail = append(fail, d.Data.(string))
-		}
-		fail = append(fail, d.Error.Error())
-	}
-	return ok, fail
+	return ok, rd.OKResponses, rd.FailResponses
 }

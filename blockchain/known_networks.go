@@ -20,6 +20,7 @@ var knownNetworks = map[int64]string{
 	8217: "Klaytn", // Mainnet
 
 	80001: "Mumbai",
+	100:   "edge",
 
 	421611: "Arbitrum", // Rinkeby
 	421613: "Arbitrum", // Goerli
@@ -42,6 +43,8 @@ func wrapSingleClient(networkSettings *EVMNetwork, client *EthereumClient) EVMCl
 		wrappedEc = client
 	case "Metis":
 		wrappedEc = &MetisClient{client}
+	case "edge":
+		wrappedEc = &PolygonEdgeClient{client}
 	case "Klaytn":
 		wrappedEc = &KlaytnClient{client}
 	case "Arbitrum":
@@ -70,6 +73,9 @@ func wrapMultiClient(networkSettings *EVMNetwork, client *EthereumMultinodeClien
 	case "Ethereum":
 		logMsg.Msg("Using Standard Ethereum Client")
 		wrappedEc = client
+	case "edge":
+		logMsg.Msg("Using Polygon edge client")
+		wrappedEc = &PolygonEdgeMultinodeClient{client}
 	case "Metis":
 		logMsg.Msg("Using Metis Client")
 		wrappedEc = &MetisMultinodeClient{client}
@@ -79,6 +85,9 @@ func wrapMultiClient(networkSettings *EVMNetwork, client *EthereumMultinodeClien
 	case "Arbitrum":
 		logMsg.Msg("Using Arbitrum Client")
 		wrappedEc = &ArbitrumMultinodeClient{client}
+	default:
+		logMsg.Msg("Using Standard Ethereum Client")
+		wrappedEc = client
 	}
 	return wrappedEc
 }

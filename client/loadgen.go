@@ -27,8 +27,9 @@ type LoadTestable interface {
 }
 
 type CallResult struct {
-	Data  interface{}
-	Error error
+	Duration time.Duration
+	Data     interface{}
+	Error    error
 }
 
 type VerifyResult struct {
@@ -59,10 +60,12 @@ type GeneratorStats struct {
 // ok* slices usually contains successful responses and their verifications if their done async
 // fail* slices contains CallResult with response data and an error
 type ResponseData struct {
-	okDataMu   *sync.Mutex
-	OKData     []interface{}
-	failDataMu *sync.Mutex
-	FailData   []CallResult
+	okDataMu        *sync.Mutex
+	OKData          []interface{}
+	okResponsesMu   *sync.Mutex
+	OKResponses     []CallResult
+	failResponsesMu *sync.Mutex
+	FailResponses   []CallResult
 }
 
 // LoadGenerator generates load on chain with some RPS
@@ -74,6 +77,7 @@ type LoadGenerator struct {
 	cancel        context.CancelFunc
 	gun           LoadTestable
 	responsesData *ResponseData
+	errsMu        *sync.Mutex
 	errs          []error
 	stopped       atomic.Bool
 	failed        atomic.Bool
@@ -102,53 +106,17 @@ func NewLoadGenerator(cfg *LoadGeneratorConfig) *LoadGenerator {
 		cancel: cancel,
 		gun:    cfg.Gun,
 		responsesData: &ResponseData{
-			okDataMu:   &sync.Mutex{},
-			OKData:     make([]interface{}, 0),
-			failDataMu: &sync.Mutex{},
-			FailData:   make([]CallResult, 0),
+			okDataMu:        &sync.Mutex{},
+			OKData:          make([]interface{}, 0),
+			okResponsesMu:   &sync.Mutex{},
+			OKResponses:     make([]CallResult, 0),
+			failResponsesMu: &sync.Mutex{},
+			FailResponses:   make([]CallResult, 0),
 		},
-		errs:  make([]error, 0),
-		stats: &GeneratorStats{},
+		errsMu: &sync.Mutex{},
+		errs:   make([]error, 0),
+		stats:  &GeneratorStats{},
 	}
-}
-
-func (l *LoadGenerator) Errors() []error {
-	return l.errs
-}
-
-func (l *LoadGenerator) GetData() *ResponseData {
-	return l.responsesData
-}
-
-func (l *LoadGenerator) Stats() *GeneratorStats {
-	return l.stats
-}
-
-// PrintStats prints some runtime stats
-func (l *LoadGenerator) PrintStats() {
-	log.Info().
-		Int64("Success", l.stats.Success.Load()).
-		Int64("Failed", l.stats.Failed.Load()).
-		Int64("CallTimeout", l.stats.CallTimeout.Load()).
-		Msg("On-chain load stats")
-}
-
-func (l *LoadGenerator) printStatsLoop() {
-	go func() {
-		for {
-			select {
-			case <-l.ctx.Done():
-				return
-			default:
-				time.Sleep(l.cfg.StatsPollInterval)
-				log.Info().
-					Int64("Success", l.stats.Success.Load()).
-					Int64("Failed", l.stats.Failed.Load()).
-					Int64("CallTimeout", l.stats.CallTimeout.Load()).
-					Msg("Load stats")
-			}
-		}
-	}()
 }
 
 // scheduledCall schedules a rate limited contract call
@@ -160,6 +128,7 @@ func (l *LoadGenerator) scheduledCall() {
 	l.wg.Add(1)
 	result := make(chan CallResult)
 	ctx, cancel := context.WithTimeout(context.Background(), l.cfg.CallTimeout)
+	callStartTS := time.Now()
 	go func() {
 		result <- l.gun.Call(l.cfg.SharedData)
 	}()
@@ -171,20 +140,25 @@ func (l *LoadGenerator) scheduledCall() {
 			l.stats.CallTimeout.Add(1)
 			l.stats.Failed.Add(1)
 
+			l.errsMu.Lock()
+			defer l.errsMu.Unlock()
 			l.errs = append(l.errs, ErrCallTimeout)
-			l.responsesData.failDataMu.Lock()
-			defer l.responsesData.failDataMu.Unlock()
-			l.responsesData.FailData = append(l.responsesData.FailData, CallResult{Error: ErrCallTimeout})
+			l.responsesData.failResponsesMu.Lock()
+			defer l.responsesData.failResponsesMu.Unlock()
+			l.responsesData.FailResponses = append(l.responsesData.FailResponses, CallResult{Duration: time.Now().Sub(callStartTS), Error: ErrCallTimeout})
 			log.Err(ctx.Err()).Msg("load generator transaction timeout")
 		case res := <-result:
 			defer close(result)
+			res.Duration = time.Now().Sub(callStartTS)
 			if res.Error != nil {
 				l.stats.Failed.Add(1)
 
+				l.errsMu.Lock()
+				defer l.errsMu.Unlock()
 				l.errs = append(l.errs, res.Error)
-				l.responsesData.failDataMu.Lock()
-				defer l.responsesData.failDataMu.Unlock()
-				l.responsesData.FailData = append(l.responsesData.FailData, res)
+				l.responsesData.failResponsesMu.Lock()
+				defer l.responsesData.failResponsesMu.Unlock()
+				l.responsesData.FailResponses = append(l.responsesData.FailResponses, res)
 
 				log.Err(res.Error).Msg("load generator request failed")
 			} else {
@@ -192,6 +166,9 @@ func (l *LoadGenerator) scheduledCall() {
 				l.responsesData.okDataMu.Lock()
 				defer l.responsesData.okDataMu.Unlock()
 				l.responsesData.OKData = append(l.responsesData.OKData, res.Data)
+				l.responsesData.okResponsesMu.Lock()
+				defer l.responsesData.okResponsesMu.Unlock()
+				l.responsesData.OKResponses = append(l.responsesData.OKResponses, res)
 			}
 		}
 		cancel()
@@ -237,4 +214,43 @@ func (l *LoadGenerator) Stop() (interface{}, bool) {
 func (l *LoadGenerator) Wait() (interface{}, bool) {
 	l.wg.Wait()
 	return l.GetData(), l.failed.Load()
+}
+
+func (l *LoadGenerator) Errors() []error {
+	return l.errs
+}
+
+func (l *LoadGenerator) GetData() *ResponseData {
+	return l.responsesData
+}
+
+func (l *LoadGenerator) Stats() *GeneratorStats {
+	return l.stats
+}
+
+// PrintStats prints some runtime stats
+func (l *LoadGenerator) PrintStats() {
+	log.Info().
+		Int64("Success", l.stats.Success.Load()).
+		Int64("Failed", l.stats.Failed.Load()).
+		Int64("CallTimeout", l.stats.CallTimeout.Load()).
+		Msg("On-chain load stats")
+}
+
+func (l *LoadGenerator) printStatsLoop() {
+	go func() {
+		for {
+			select {
+			case <-l.ctx.Done():
+				return
+			default:
+				time.Sleep(l.cfg.StatsPollInterval)
+				log.Info().
+					Int64("Success", l.stats.Success.Load()).
+					Int64("Failed", l.stats.Failed.Load()).
+					Int64("CallTimeout", l.stats.CallTimeout.Load()).
+					Msg("Load stats")
+			}
+		}
+	}()
 }
