@@ -29,6 +29,7 @@ func (em *ExplorerClient) PostAdminNodes(nodeName string) (NodeAccessKeys, error
 		"x-explore-admin-password": em.Config.AdminPassword,
 		"x-explore-admin-username": em.Config.AdminUsername,
 		"Content-Type":             "application/json",
+		"Accept":                   "application/json",
 	})
 	requestBody := &Name{Name: nodeName}
 	responseBody := NodeAccessKeys{}
