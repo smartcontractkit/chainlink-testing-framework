@@ -559,6 +559,9 @@ type EthereumMultinodeClient struct {
 // NewEVMClient returns a multi-node EVM client connected to the specified network
 func NewEVMClient(networkSettings *EVMNetwork, env *environment.Environment) (EVMClient, error) {
 	ecl := &EthereumMultinodeClient{}
+	if _, ok := env.URLs[networkSettings.Name]; !ok {
+		return nil, fmt.Errorf("network %s not found in environment", networkSettings.Name)
+	}
 	if env == nil {
 		log.Warn().Str("Network", networkSettings.Name).Msg("No test environment deployed")
 	} else {

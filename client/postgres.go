@@ -2,8 +2,11 @@ package client
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/smartcontractkit/chainlink-env/environment"
+
 	// import for side effect of sql packages
 	_ "github.com/lib/pq"
 	"github.com/rs/zerolog/log"
@@ -42,4 +45,20 @@ func NewPostgresConnector(cfg *PostgresConfig) (*PostgresConnector, error) {
 	}
 	log.Debug().Str("ConnectionString", psqlInfo).Msg("Connected")
 	return &PostgresConnector{DB: db, Cfg: cfg}, nil
+}
+
+func ConnectDB(nodeNum int, e *environment.Environment) (*PostgresConnector, error) {
+	spl := strings.Split(e.URLs["chainlink_db"][nodeNum], ":")
+	port := spl[len(spl)-1]
+	db, err := NewPostgresConnector(&PostgresConfig{
+		Host:     "localhost",
+		Port:     port,
+		User:     "postgres",
+		Password: "postgres",
+		DBName:   "chainlink",
+	})
+	if err != nil {
+		return nil, err
+	}
+	return db, nil
 }
