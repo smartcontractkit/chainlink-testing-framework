@@ -34,7 +34,7 @@ func (em *ExplorerClient) PostAdminNodes(nodeName string) (NodeAccessKeys, error
 	requestBody := &Name{Name: nodeName}
 	responseBody := NodeAccessKeys{}
 	log.Info().Str("Explorer URL", em.Config.URL).Msg("Creating node credentials")
-	resp, err := em.APIClient.R().SetBody(requestBody).SetResult(responseBody).Post("/api/v1/admin/nodes")
+	resp, err := em.APIClient.R().SetBody(requestBody).SetResult(&responseBody).Post("/api/v1/admin/nodes")
 	if resp.StatusCode() != http.StatusCreated {
 		err = fmt.Errorf("Unexpected Status Code. Expected %d; Got %d", http.StatusCreated, resp.StatusCode())
 	}
