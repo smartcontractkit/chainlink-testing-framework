@@ -47,9 +47,9 @@ type Name struct {
 
 // NodeAccessKeys is the body of the response
 type NodeAccessKeys struct {
-	ID        string `mapstructure:"id" yaml:"id" json:"id"`
-	AccessKey string `mapstructure:"accessKey" yaml:"accessKey" json:"accessKey"`
-	Secret    string `mapstructure:"secret" yaml:"secret" json:"secret"`
+	ID        string `json:"id"`
+	AccessKey string `json:"accessKey"`
+	Secret    string `json:"secret"`
 }
 
 // ExplorerConfig holds config information for ExplorerClient
