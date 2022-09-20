@@ -31,10 +31,6 @@ func (m *MockGun) Call(data interface{}) CallResult {
 	return CallResult{Data: "successCallData"}
 }
 
-func (m *MockGun) CollectData() interface{} {
-	return m.Data
-}
-
 func convertResponsesData(rd *ResponseData) ([]string, []CallResult, []CallResult) {
 	ok := make([]string, 0)
 	for _, d := range rd.OKData {

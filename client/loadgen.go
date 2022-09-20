@@ -12,14 +12,20 @@ import (
 )
 
 const (
-	DefaultRPS               = 1
 	DefaultCallTimeout       = 1 * time.Minute
 	DefaultStatsPollInterval = 10 * time.Second
 	UntilStopDuration        = 99999 * time.Hour
 )
 
 var (
-	ErrCallTimeout = errors.New("generator request call timeout")
+	ErrNoCfg                 = errors.New("config is nil")
+	ErrNoGun                 = errors.New("no gun implementation provided")
+	ErrStaticRPS             = errors.New("static RPS must be > 0")
+	ErrCallTimeout           = errors.New("generator request call timeout")
+	ErrStartRPS              = errors.New("StartRPS must be > 0")
+	ErrIncreaseRPS           = errors.New("IncreaseRPS must be > 0")
+	ErrIncreaseAfterDuration = errors.New("IncreaseAfter must be > 1sec")
+	ErrHoldRPS               = errors.New("HoldRPS must be > 0")
 )
 
 // LoadTestable is basic interface to run limited load with a contract call and save all transactions
@@ -42,6 +48,22 @@ type LoadSchedule struct {
 	HoldRPS       int
 }
 
+func (ls *LoadSchedule) Validate() error {
+	if ls.StartRPS <= 0 {
+		return ErrStartRPS
+	}
+	if ls.IncreaseRPS <= 0 {
+		return ErrIncreaseRPS
+	}
+	if ls.HoldRPS <= 0 {
+		return ErrHoldRPS
+	}
+	if ls.IncreaseAfter < 1 {
+		return ErrIncreaseAfterDuration
+	}
+	return nil
+}
+
 // LoadGeneratorConfig is for shared load test data and configuration
 type LoadGeneratorConfig struct {
 	RPS                  int
@@ -53,6 +75,25 @@ type LoadGeneratorConfig struct {
 	CallTimeout          time.Duration
 	Gun                  LoadTestable
 	SharedData           interface{}
+}
+
+func (lgc *LoadGeneratorConfig) Validate() error {
+	if lgc.RPS == 0 {
+		return ErrStaticRPS
+	}
+	if lgc.Duration == 0 {
+		lgc.Duration = UntilStopDuration
+	}
+	if lgc.CallTimeout == 0 {
+		lgc.CallTimeout = DefaultCallTimeout
+	}
+	if lgc.StatsPollInterval == 0 {
+		lgc.StatsPollInterval = DefaultStatsPollInterval
+	}
+	if lgc.Gun == nil {
+		return ErrNoGun
+	}
+	return nil
 }
 
 // GeneratorStats basic generator load stats
@@ -94,18 +135,17 @@ type LoadGenerator struct {
 
 // NewLoadGenerator creates a new instance for a contract,
 // shoots for scheduled RPS until timeout, test logic is defined through LoadTestable
-func NewLoadGenerator(cfg *LoadGeneratorConfig) *LoadGenerator {
-	if cfg.RPS == 0 {
-		cfg.RPS = DefaultRPS
+func NewLoadGenerator(cfg *LoadGeneratorConfig) (*LoadGenerator, error) {
+	if cfg == nil {
+		return nil, ErrNoCfg
 	}
-	if cfg.Duration == 0 {
-		cfg.Duration = UntilStopDuration
+	if err := cfg.Validate(); err != nil {
+		return nil, err
 	}
-	if cfg.CallTimeout == 0 {
-		cfg.CallTimeout = DefaultCallTimeout
-	}
-	if cfg.StatsPollInterval == 0 {
-		cfg.StatsPollInterval = DefaultStatsPollInterval
+	if cfg.Schedule != nil {
+		if err := cfg.Schedule.Validate(); err != nil {
+			return nil, err
+		}
 	}
 	rl := ratelimit.New(cfg.RPS)
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.Duration)
@@ -128,7 +168,7 @@ func NewLoadGenerator(cfg *LoadGeneratorConfig) *LoadGenerator {
 		errsMu: &sync.Mutex{},
 		errs:   make([]error, 0),
 		stats:  &GeneratorStats{},
-	}
+	}, nil
 }
 
 // runSchedule runs scheduling loop, changes LoadGenerator.currentRPS according to a load schedule
@@ -184,11 +224,11 @@ func (l *LoadGenerator) pacedCall() {
 			l.errs = append(l.errs, ErrCallTimeout)
 			l.responsesData.failResponsesMu.Lock()
 			defer l.responsesData.failResponsesMu.Unlock()
-			l.responsesData.FailResponses = append(l.responsesData.FailResponses, CallResult{Duration: time.Now().Sub(callStartTS), Error: ErrCallTimeout})
+			l.responsesData.FailResponses = append(l.responsesData.FailResponses, CallResult{Duration: time.Since(callStartTS), Error: ErrCallTimeout})
 			log.Err(ctx.Err()).Msg("load generator transaction timeout")
 		case res := <-result:
 			defer close(result)
-			res.Duration = time.Now().Sub(callStartTS)
+			res.Duration = time.Since(callStartTS)
 			if res.Error != nil {
 				l.stats.Failed.Add(1)
 

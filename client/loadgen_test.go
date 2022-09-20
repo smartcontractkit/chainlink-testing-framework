@@ -10,7 +10,7 @@ import (
 
 func TestPositiveOneRequest(t *testing.T) {
 	t.Parallel()
-	gen := NewLoadGenerator(&LoadGeneratorConfig{
+	gen, _ := NewLoadGenerator(&LoadGeneratorConfig{
 		RPS: 1,
 		Gun: NewMockGun(&MockGunConfig{
 			CallSleep: 50 * time.Millisecond,
@@ -35,7 +35,7 @@ func TestPositiveOneRequest(t *testing.T) {
 
 func TestFailedOneRequest(t *testing.T) {
 	t.Parallel()
-	gen := NewLoadGenerator(&LoadGeneratorConfig{
+	gen, _ := NewLoadGenerator(&LoadGeneratorConfig{
 		RPS: 1,
 		Gun: NewMockGun(&MockGunConfig{
 			Fail:      true,
@@ -63,7 +63,7 @@ func TestFailedOneRequest(t *testing.T) {
 
 func TestLoadGenCallTimeout(t *testing.T) {
 	t.Parallel()
-	gen := NewLoadGenerator(&LoadGeneratorConfig{
+	gen, _ := NewLoadGenerator(&LoadGeneratorConfig{
 		RPS:         1,
 		CallTimeout: 50 * time.Millisecond,
 		Gun: NewMockGun(&MockGunConfig{
@@ -88,7 +88,7 @@ func TestLoadGenCallTimeout(t *testing.T) {
 
 func TestLoadGenCallTimeoutWait(t *testing.T) {
 	t.Parallel()
-	gen := NewLoadGenerator(&LoadGeneratorConfig{
+	gen, _ := NewLoadGenerator(&LoadGeneratorConfig{
 		RPS:         1,
 		CallTimeout: 50 * time.Millisecond,
 		Gun: NewMockGun(&MockGunConfig{
@@ -112,7 +112,7 @@ func TestLoadGenCallTimeoutWait(t *testing.T) {
 
 func TestCancelledByDeadlineWait(t *testing.T) {
 	t.Parallel()
-	gen := NewLoadGenerator(&LoadGeneratorConfig{
+	gen, _ := NewLoadGenerator(&LoadGeneratorConfig{
 		RPS:      1,
 		Duration: 40 * time.Millisecond,
 		Gun: NewMockGun(&MockGunConfig{
@@ -144,7 +144,7 @@ func TestCancelledByDeadlineWait(t *testing.T) {
 
 func TestCancelledBeforeDeadline(t *testing.T) {
 	t.Parallel()
-	gen := NewLoadGenerator(&LoadGeneratorConfig{
+	gen, _ := NewLoadGenerator(&LoadGeneratorConfig{
 		RPS:      1,
 		Duration: 40 * time.Millisecond,
 		Gun: NewMockGun(&MockGunConfig{
@@ -171,7 +171,7 @@ func TestCancelledBeforeDeadline(t *testing.T) {
 }
 
 func TestStaticRPSSchedulePrecision(t *testing.T) {
-	gen := NewLoadGenerator(&LoadGeneratorConfig{
+	gen, _ := NewLoadGenerator(&LoadGeneratorConfig{
 		RPS:      1000,
 		Duration: 1 * time.Second,
 		Gun: NewMockGun(&MockGunConfig{
@@ -194,7 +194,7 @@ func TestStaticRPSSchedulePrecision(t *testing.T) {
 }
 
 func TestStaticRPSScheduleIsNotBlocking(t *testing.T) {
-	gen := NewLoadGenerator(&LoadGeneratorConfig{
+	gen, _ := NewLoadGenerator(&LoadGeneratorConfig{
 		RPS:      1000,
 		Duration: 1 * time.Second,
 		Gun: NewMockGun(&MockGunConfig{
@@ -217,9 +217,9 @@ func TestStaticRPSScheduleIsNotBlocking(t *testing.T) {
 	require.Empty(t, gen.Errors())
 }
 
-func TestPace(t *testing.T) {
+func TestLoadSchedule(t *testing.T) {
 	t.Parallel()
-	gen := NewLoadGenerator(&LoadGeneratorConfig{
+	gen, _ := NewLoadGenerator(&LoadGeneratorConfig{
 		RPS:               1,
 		StatsPollInterval: 1 * time.Second,
 		Schedule: &LoadSchedule{
@@ -237,4 +237,74 @@ func TestPace(t *testing.T) {
 	_, failed := gen.Wait()
 	require.Equal(t, false, failed)
 	require.GreaterOrEqual(t, gen.Stats().Success.Load(), int64(29))
+}
+
+func TestValidation(t *testing.T) {
+	t.Parallel()
+	_, err := NewLoadGenerator(&LoadGeneratorConfig{
+		RPS:               1,
+		StatsPollInterval: 1 * time.Second,
+		Schedule: &LoadSchedule{
+			StartRPS:      0,
+			IncreaseRPS:   1,
+			IncreaseAfter: 1 * time.Second,
+			HoldRPS:       5,
+		},
+		Gun: NewMockGun(&MockGunConfig{
+			CallSleep: 10 * time.Millisecond,
+		}),
+	})
+	require.Equal(t, ErrStartRPS, err)
+	_, err = NewLoadGenerator(&LoadGeneratorConfig{
+		RPS:               1,
+		StatsPollInterval: 1 * time.Second,
+		Schedule: &LoadSchedule{
+			StartRPS:    1,
+			IncreaseRPS: 1,
+			HoldRPS:     5,
+		},
+		Gun: NewMockGun(&MockGunConfig{
+			CallSleep: 10 * time.Millisecond,
+		}),
+	})
+	require.Equal(t, ErrIncreaseAfterDuration, err)
+	_, err = NewLoadGenerator(&LoadGeneratorConfig{
+		RPS:               1,
+		StatsPollInterval: 1 * time.Second,
+		Schedule: &LoadSchedule{
+			StartRPS:      1,
+			IncreaseAfter: 1 * time.Second,
+			HoldRPS:       5,
+		},
+		Gun: NewMockGun(&MockGunConfig{
+			CallSleep: 10 * time.Millisecond,
+		}),
+	})
+	require.Equal(t, ErrIncreaseRPS, err)
+	_, err = NewLoadGenerator(&LoadGeneratorConfig{
+		RPS:               1,
+		StatsPollInterval: 1 * time.Second,
+		Schedule: &LoadSchedule{
+			StartRPS:      1,
+			IncreaseRPS:   1,
+			IncreaseAfter: 1 * time.Second,
+		},
+		Gun: NewMockGun(&MockGunConfig{
+			CallSleep: 10 * time.Millisecond,
+		}),
+	})
+	require.Equal(t, ErrHoldRPS, err)
+	_, err = NewLoadGenerator(&LoadGeneratorConfig{
+		Gun: NewMockGun(&MockGunConfig{
+			CallSleep: 10 * time.Millisecond,
+		}),
+	})
+	require.Equal(t, ErrStaticRPS, err)
+	_, err = NewLoadGenerator(nil)
+	require.Equal(t, ErrNoCfg, err)
+	_, err = NewLoadGenerator(&LoadGeneratorConfig{
+		RPS: 1,
+		Gun: nil,
+	})
+	require.Equal(t, ErrNoGun, err)
 }
