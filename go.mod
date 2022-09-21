@@ -23,12 +23,11 @@ require (
 	golang.org/x/sync v0.0.0-20220819030929-7fc1605a5dde
 )
 
-require github.com/andres-erbsen/clock v0.0.0-20160526145045-9e14626cd129 // indirect
-
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect
 	github.com/Masterminds/semver/v3 v3.1.1 // indirect
+	github.com/andres-erbsen/clock v0.0.0-20160526145045-9e14626cd129 // indirect
 	github.com/aws/constructs-go/constructs/v10 v10.1.90 // indirect
 	github.com/aws/jsii-runtime-go v1.65.1 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.2.1 // indirect
