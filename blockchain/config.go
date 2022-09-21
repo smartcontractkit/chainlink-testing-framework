@@ -34,9 +34,9 @@ type EVMNetwork struct {
 	// Chain ID for the blockchain
 	ChainID int64 `envconfig:"evm_chain_id" default:"1337" toml:"chain_id"`
 	// List of websocket URLs you want to connect to
-	URLs []string `envconfig:"evm_urls" default:"ws://example.url" toml:"urls"`
+	URLs []string `envconfig:"evm_urls" default:"ws://example.url" toml:"ws_urls"`
 	// List of websocket URLs you want to connect to
-	HTTPURLs []string `envconfig:"evm_http_urls" default:"http://example.url" toml:"urls"`
+	HTTPURLs []string `envconfig:"evm_http_urls" default:"http://example.url" toml:"http_urls"`
 	// True if the network is simulated like a geth instance in dev mode. False if the network is a real test or mainnet
 	Simulated bool `envconfig:"evm_simulated" default:"false" toml:"simulated"`
 	// List of private keys to fund the tests
