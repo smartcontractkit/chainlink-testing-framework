@@ -74,8 +74,8 @@ func TriggerRemoteTest(exePath string, testEnvironment *environment.Environment)
 	// Copy libwasmvm dependency of chainlink core
 	_, _, errOut, err := testEnvironment.Client.CopyToPod(
 		testEnvironment.Cfg.Namespace,
-		os.Getenv("GOPATH")+"/pkg/mod/github.com/!cosm!wasm/wasmvm@v0.16.6/api/libwasmvm.so",
-		fmt.Sprintf("%s/%s:/usr/lib/libwasmvm.so", testEnvironment.Cfg.Namespace, "remote-test-runner"),
+		os.Getenv("GOPATH")+"/pkg/mod/github.com/!cosm!wasm/wasmvm@v1.0.0/api/libwasmvm.x86_64.so",
+		fmt.Sprintf("%s/%s:/usr/lib/libwasmvm.x86_64.so", testEnvironment.Cfg.Namespace, "remote-test-runner"),
 		"remote-test-runner")
 	if err != nil {
 		return errors.Wrap(err, errOut.String())
