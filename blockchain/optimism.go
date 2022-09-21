@@ -23,7 +23,7 @@ type OptimismClient struct {
 	*EthereumClient
 }
 
-// Fund sends some ARB to an address using the default wallet
+// Fund sends some OP to an address using the default wallet
 func (m *OptimismClient) Fund(toAddress string, amount *big.Float) error {
 	privateKey, err := crypto.HexToECDSA(m.DefaultWallet.PrivateKey())
 	to := common.HexToAddress(toAddress)
