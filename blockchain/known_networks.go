@@ -19,6 +19,10 @@ var knownNetworks = map[int64]string{
 	1001: "Klaytn", // Testnet
 	8217: "Klaytn", // Mainnet
 
+	10:  "Optimism", // Mainnet
+	69:  "Optimism", // Kovan
+	420: "Optimism", // Goerli
+
 	80001: "Mumbai",
 	100:   "edge",
 
@@ -49,6 +53,8 @@ func wrapSingleClient(networkSettings *EVMNetwork, client *EthereumClient) EVMCl
 		wrappedEc = &KlaytnClient{client}
 	case "Arbitrum":
 		wrappedEc = &ArbitrumClient{client}
+	case "Optimism":
+		wrappedEc = &OptimismClient{client}
 	default:
 		wrappedEc = client
 	}
@@ -85,6 +91,9 @@ func wrapMultiClient(networkSettings *EVMNetwork, client *EthereumMultinodeClien
 	case "Arbitrum":
 		logMsg.Msg("Using Arbitrum Client")
 		wrappedEc = &ArbitrumMultinodeClient{client}
+	case "Optimism":
+		logMsg.Msg("Using Optimism Client")
+		wrappedEc = &OptimismMultinodeClient{client}
 	default:
 		logMsg.Msg("Using Standard Ethereum Client")
 		wrappedEc = client

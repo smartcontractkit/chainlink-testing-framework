@@ -13,24 +13,24 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 )
 
-// ArbitrumMultinodeClient represents a multi-node, EVM compatible client for the Arbitrum network
-type ArbitrumMultinodeClient struct {
+// OptimismMultinodeClient represents a multi-node, EVM compatible client for the Optimism network
+type OptimismMultinodeClient struct {
 	*EthereumMultinodeClient
 }
 
-// ArbitrumClient represents a single node, EVM compatible client for the Arbitrum network
-type ArbitrumClient struct {
+// OptimismClient represents a single node, EVM compatible client for the Optimism network
+type OptimismClient struct {
 	*EthereumClient
 }
 
-// Fund sends some ARB to an address using the default wallet
-func (m *ArbitrumClient) Fund(toAddress string, amount *big.Float) error {
+// Fund sends some OP to an address using the default wallet
+func (m *OptimismClient) Fund(toAddress string, amount *big.Float) error {
 	privateKey, err := crypto.HexToECDSA(m.DefaultWallet.PrivateKey())
 	to := common.HexToAddress(toAddress)
 	if err != nil {
 		return fmt.Errorf("invalid private key: %v", err)
 	}
-	// Arbitrum uses legacy transactions and gas estimations
+	// Optimism uses legacy transactions and gas estimations
 	suggestedGasPrice, err := m.Client.SuggestGasPrice(context.Background())
 	if err != nil {
 		return err
@@ -53,7 +53,7 @@ func (m *ArbitrumClient) Fund(toAddress string, amount *big.Float) error {
 	}
 
 	log.Info().
-		Str("Token", "ARB").
+		Str("Token", "OP").
 		Str("From", m.DefaultWallet.Address()).
 		Str("To", toAddress).
 		Str("Amount", amount.String()).

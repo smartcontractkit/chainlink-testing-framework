@@ -55,7 +55,7 @@ func (k *KlaytnClient) Fund(
 		Value:     utils.EtherToWei(amount),
 		GasTipCap: gasPrice,
 		GasFeeCap: gasPrice,
-		Gas:       22000,
+		Gas:       21000,
 	})
 	if err != nil {
 		return err
