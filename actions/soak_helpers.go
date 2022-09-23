@@ -42,7 +42,7 @@ func BuildGoTests(executablePath, testsPath, projectRootPath string) (string, in
 	exeFile := filepath.Join(absExecutablePath, "remote.test")
 	compileCmd := exec.Command("go", "test", "-ldflags=-s -w", "-c", absTestsPath, "-o", exeFile) // #nosec G204
 	compileCmd.Env = os.Environ()
-	compileCmd.Env = append(compileCmd.Env, "CGO_ENABLED=1", "GOOS=linux", "GOARCH=amd64")
+	compileCmd.Env = append(compileCmd.Env, "CGO_ENABLED=0", "GOOS=linux", "GOARCH=amd64")
 
 	compileOut, err := compileCmd.CombinedOutput()
 	log.Debug().
@@ -66,21 +66,22 @@ func BuildGoTests(executablePath, testsPath, projectRootPath string) (string, in
 func TriggerRemoteTest(exePath string, testEnvironment *environment.Environment) error {
 	logging.Init()
 
+	// Leaving commented out for now since it may be useful for the final solution to compiling cosmwasm into the tests
 	// Add gcompat package, required by libwasmvm
-	_, _, err := testEnvironment.Client.ExecuteInPod(testEnvironment.Cfg.Namespace, "remote-test-runner", "remote-test-runner", []string{"apk", "add", "gcompat"})
-	if err != nil {
-		return errors.Wrap(err, "Error adding gcompat")
-	}
+	// _, _, err := testEnvironment.Client.ExecuteInPod(testEnvironment.Cfg.Namespace, "remote-test-runner", "remote-test-runner", []string{"apk", "add", "gcompat"})
+	// if err != nil {
+	// 	return errors.Wrap(err, "Error adding gcompat")
+	// }
 	// Copy libwasmvm dependency of chainlink core
+	// _, _, errOut, err := testEnvironment.Client.CopyToPod(
+	// 	testEnvironment.Cfg.Namespace,
+	// 	os.Getenv("GOPATH")+"/pkg/mod/github.com/!cosm!wasm/wasmvm@v1.0.0/api/libwasmvm.x86_64.so",
+	// 	fmt.Sprintf("%s/%s:/usr/lib/libwasmvm.x86_64.so", testEnvironment.Cfg.Namespace, "remote-test-runner"),
+	// 	"remote-test-runner")
+	// if err != nil {
+	// 	return errors.Wrap(err, errOut.String())
+	// }
 	_, _, errOut, err := testEnvironment.Client.CopyToPod(
-		testEnvironment.Cfg.Namespace,
-		os.Getenv("GOPATH")+"/pkg/mod/github.com/!cosm!wasm/wasmvm@v1.0.0/api/libwasmvm.x86_64.so",
-		fmt.Sprintf("%s/%s:/usr/lib/libwasmvm.x86_64.so", testEnvironment.Cfg.Namespace, "remote-test-runner"),
-		"remote-test-runner")
-	if err != nil {
-		return errors.Wrap(err, errOut.String())
-	}
-	_, _, errOut, err = testEnvironment.Client.CopyToPod(
 		testEnvironment.Cfg.Namespace,
 		exePath,
 		fmt.Sprintf("%s/%s:/root/remote.test", testEnvironment.Cfg.Namespace, "remote-test-runner"),
