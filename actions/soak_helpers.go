@@ -5,10 +5,10 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -18,62 +18,10 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 )
 
-// BuildGoTests builds the go tests using native go cross-compilation to run, and returns a path to the test executable
-// along with its size in bytes.
-//
-//	Note: currentProjectRootPath and currentSoakTestRootPath are not interchangeable with utils.ProjectRoot and utils.SoakRoot
-//	when running in outside repositories. Keep an eye on when you need paths leading to this go package vs the current running project.
-func BuildGoTests(executablePath, testsPath, projectRootPath, repoRootPath string) (string, int64, error) {
-	logging.Init()
-	// absExecutablePath, err := filepath.Abs(executablePath)
-	// if err != nil {
-	// 	return "", 0, err
-	// }
-	// absTestsPath, err := filepath.Abs(testsPath)
-	// if err != nil {
-	// 	return "", 0, err
-	// }
-	// absProjectRootPath, err := filepath.Abs(projectRootPath)
-	// if err != nil {
-	// 	return "", 0, err
-	// }
-	// log.Info().
-	// 	Str("Test Directory", absTestsPath).
-	// 	Str("Executable Path", absExecutablePath).
-	// 	Str("Project Root Path", absProjectRootPath).
-	// 	Msg("Compiling tests")
-
-	// dest, size, err :=  buildLocal(absExecutablePath, absTestsPath, absProjectRootPath)
-	// dest, size, err := buildDocker(absExecutablePath, absTestsPath, absProjectRootPath)
-	dest, size, err := buildDocker(executablePath, testsPath, projectRootPath, repoRootPath)
-	return dest, size, err
-}
-
-// func buildLocal(executablePath, testsPath, projectRootPath string) (string, int64, error) {
-// 	exeFile := filepath.Join(executablePath, "remote.test")
-// 	compileCmd := exec.Command("go", "test", "-ldflags=-s -w", "-c", testsPath, "-o", exeFile) // #nosec G204
-// 	compileCmd.Env = os.Environ()
-// 	compileCmd.Env = append(compileCmd.Env, "CGO_ENABLED=0", "GOOS=linux", "GOARCH=amd64")
-
-// 	compileOut, err := compileCmd.CombinedOutput()
-// 	log.Debug().
-// 		Str("Output", string(compileOut)).
-// 		Str("Command", compileCmd.String()).
-// 		Msg("Ran command")
-// 	if err != nil {
-// 		return "", 0, fmt.Errorf("env: %s\nCommand: %s\nCommand Output: %s, %w",
-// 			compileCmd.Env, compileCmd.String(), string(compileOut), err)
-// 	}
-
-// 	exeFileInfo, err := os.Stat(exeFile)
-// 	if err != nil {
-// 		return "", 0, fmt.Errorf("expected '%s' to exist, %w", exeFile, err)
-// 	}
-// 	log.Info().Str("Path", exeFile).Int64("File Size (bytes)", exeFileInfo.Size()).Msg("Compiled tests")
-// 	return exeFile, exeFileInfo.Size(), nil
-// }
-
-// BuildGoTestsWithDocker Builds the tests inside of a docker container to get a consistently working binary regardless of your machine.
+// BuildGoTests Builds the tests inside of a docker container to get a consistently working binary regardless of your machine.
+// Builds the go tests and returns a path to the test executable along with its size in bytes.
+// All paths should be relative to the repoRootPath.
+// The repoRootPath needs to be relative to where you are running go test from.
 // This is a temporary solution to m1 macs having issues with compiling cosmwasm compared to x84_64 macs
 //
 //	There are also potential issues with how go is installed on a machine (via brew, executable, asdf, nix) behaving
@@ -81,7 +29,9 @@ func BuildGoTests(executablePath, testsPath, projectRootPath, repoRootPath strin
 //
 // Note: executablePath and projectRootPath are not interchangeable with utils.ProjectRoot and utils.SoakRoot
 // when running in outside repositories. Keep an eye on when you need paths leading to this go package vs the current running project.
-func buildDocker(executablePath, testsPath, goProjectPath, repoRootPath string) (string, int64, error) {
+func BuildGoTests(repoRootPath, executablePath, testsPath, goProjectPath string) (string, int64, error) {
+	logging.Init()
+	// build all the paths
 	absRepoRootPath, err := filepath.Abs(repoRootPath)
 	if err != nil {
 		return "", 0, err
@@ -124,31 +74,24 @@ func buildDocker(executablePath, testsPath, goProjectPath, repoRootPath string) 
 		Str("relativeGoProjectPath", relativeGoProjectPath).
 		Msg("Paths")
 
-	// clean out old dockerfile
-	if _, err := os.Stat(absDockerFilePath); err == nil {
-		if err = os.Remove(absDockerFilePath); err != nil {
-			return "", 0, err
-		}
-	}
 	// copy the dockerfile over to the repo so we can get the repos context during build
 	err = copyDockerfile(dockerfilePath, absDockerFilePath)
 	if err != nil {
 		return "", 0, err
 	}
 
-	// change to the repos root path so docker will get the context it needs consistently
+	// change to the repos root path so docker will get the context it needs
 	originalPath, err := os.Getwd()
 	if err != nil {
 		return "", 0, err
 	}
-	log.Info().Str("Path", originalPath).Msg("Originating Path")
+	log.Info().Str("Path", originalPath).Msg("Originating Path For Test Run")
 	err = os.Chdir(absRepoRootPath)
 	if err != nil {
 		return "", 0, err
 	}
 
-	// TODO: Docker has a Go API, but it was oddly complicated and not at well documented, and kept failing.
-	// So for now, we're doing the tried and true method of plain commands.
+	// build the docker command to run
 	dockerBuildCmd := exec.Command("docker",
 		"build",
 		"-t",
@@ -161,12 +104,9 @@ func buildDocker(executablePath, testsPath, goProjectPath, repoRootPath string) 
 		absDockerFilePath,
 		"--output",
 		absExecutablePath,
-		absRepoRootPath)
-	// executablePath) // #nosec G204
+		absRepoRootPath) // #nosec G204
 	dockerBuildCmd.Env = os.Environ()
-	log.Info().Str("Docker File", absDockerFilePath).Msg("Compiling tests using Docker")
-	log.Info().Str("cmd", dockerBuildCmd.String()).Msg("Docker commands")
-	// compileOut, err := dockerBuildCmd.CombinedOutput()
+	log.Info().Str("cmd", dockerBuildCmd.String()).Msg("Docker command")
 	stderr, err := dockerBuildCmd.StderrPipe()
 	if err != nil {
 		return "", 0, err
@@ -177,62 +117,21 @@ func buildDocker(executablePath, testsPath, goProjectPath, repoRootPath string) 
 	}
 
 	// start the command and wrap stderr and stdout
+	started := time.Now()
 	err = dockerBuildCmd.Start()
 	if err != nil {
 		return "", 0, err
 	}
-	go readStdPipe(stderr, "Error")
-	go readStdPipe(stdout, "Output")
+	go readStdPipeDocker(stderr, "Error")
+	go readStdPipeDocker(stdout, "Output")
 
 	// wait for the command to finish
 	err = dockerBuildCmd.Wait()
 	if err != nil {
 		return "", 0, err
 	}
-
-	// cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// td := fmt.Sprintf("./%s", relativeTestDirectoryToRootPath)
-	// prf := fmt.Sprintf("./%s", relativeProjectRootPathToRunningTest)
-
-	// opt := &types.ImageBuildOptions{
-	// 	Tags: []string{
-	// 		"test-compiler",
-	// 	},
-	// 	Dockerfile: absDockerFilePath,
-	// 	BuildArgs: map[string]*string{
-	// 		"testDirectory":   &td,
-	// 		"projectRootPath": &prf,
-	// 	},
-	// 	Outputs: []types.ImageBuildOutput{
-	// 		{
-	// 			Type: "local",
-	// 			Attrs: map[string]string{
-	// 				"dest": testTargetDir,
-	// 			},
-	// 		},
-	// 	},
-	// }
-	// buildResponse, err := cli.ImageBuild(context.Background(), nil, *opt)
-	// if err == nil {
-	// 	fmt.Printf("Error, %v", err)
-	// }
-	// if err != nil {
-	// 	fmt.Printf("%s", err.Error())
-	// }
-	// defer buildResponse.Body.Close()
-	// fmt.Printf("********* %s **********\n", buildResponse.OSType)
-
-	// err = os.Rename(filepath.Join(testTargetDir, "remote.test"), finalTestDestination)
-	// if err != nil {
-	// 	return "", 0, err
-	// }
-	// err = os.Remove(testTargetDir)
-	// if err != nil {
-	// 	return "", 0, err
-	// }
+	finished := time.Now()
+	log.Info().Str("total", fmt.Sprintf("%v", finished.Sub(started))).Msg("Docker Command Run Time")
 
 	exeFileInfo, err := os.Stat(builtExecutablePath)
 	if err != nil {
@@ -249,17 +148,26 @@ func buildDocker(executablePath, testsPath, goProjectPath, repoRootPath string) 
 	return builtExecutablePath, exeFileInfo.Size(), nil
 }
 
+// copyDockerfile copies the dockerfile from the chainlink-testing-framework to the repo it needs to run in
 func copyDockerfile(source, destination string) error {
-	bytesRead, err := ioutil.ReadFile(source)
+	// clean out old dockerfile first
+	if _, err := os.Stat(destination); err == nil {
+		if err = os.Remove(destination); err != nil {
+			return err
+		}
+	}
+
+	bytesRead, err := os.ReadFile(source)
 	if err != nil {
 		return err
 	}
 
-	err = ioutil.WriteFile(destination, bytesRead, 0644)
+	err = os.WriteFile(destination, bytesRead, 0600)
 	return err
 }
 
-func readStdPipe(writer io.ReadCloser, prependOutput string) {
+// readStdPipeDocker continuously read a pipe from the docker command
+func readStdPipeDocker(writer io.ReadCloser, prependOutput string) {
 	reader := bufio.NewReader(writer)
 	line, err := reader.ReadString('\n')
 	for err == nil {
@@ -267,43 +175,6 @@ func readStdPipe(writer io.ReadCloser, prependOutput string) {
 		line, err = reader.ReadString('\n')
 	}
 }
-
-// func DockerBuild(testTargetDir, dockerfilePath, relativeProjectRootPathToRunningTest, relativeTestDirectoryToRootPath string) {
-// 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	td := fmt.Sprintf("./%s", relativeTestDirectoryToRootPath)
-// 	prf := fmt.Sprintf("./%s", relativeProjectRootPathToRunningTest)
-
-// 	opt := &types.ImageBuildOptions{
-// 		Tags: []string{
-// 			"test-compiler",
-// 		},
-// 		Dockerfile: dockerfilePath,
-// 		BuildArgs: map[string]*string{
-// 			"testDirectory":   &td,
-// 			"projectRootPath": &prf,
-// 		},
-// 		Outputs: []types.ImageBuildOutput{
-// 			{
-// 				Type: "local",
-// 				Attrs: map[string]string{
-// 					"dest": testTargetDir,
-// 				},
-// 			},
-// 		},
-// 	}
-// 	buildResponse, err := cli.ImageBuild(context.Background(), nil, *opt)
-// 	if err == nil {
-// 		fmt.Printf("Error, %v", err)
-// 	}
-// 	if err != nil {
-// 		fmt.Printf("%s", err.Error())
-// 	}
-// 	defer buildResponse.Body.Close()
-// 	fmt.Printf("********* %s **********\n", buildResponse.OSType)
-// }
 
 // TriggerRemoteTest copies the executable to the remote-test-runner and starts the run
 func TriggerRemoteTest(exePath string, testEnvironment *environment.Environment) error {
