@@ -1,4 +1,4 @@
-golang 1.19
+golang 1.19.1
 nodejs 14.20.0
 ginkgo 2.1.6
 k3d 5.4.6
