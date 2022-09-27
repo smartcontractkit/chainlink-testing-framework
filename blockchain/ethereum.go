@@ -309,6 +309,20 @@ func (e *EthereumClient) DeployContract(
 	return &contractAddress, transaction, contractInstance, err
 }
 
+// LoadContract load already deployed contract instance
+func (e *EthereumClient) LoadContract(contractName string, contractAddress common.Address, loader ContractLoader) (interface{}, error) {
+	contractInstance, err := loader(contractAddress, e.Client)
+	if err != nil {
+		return nil, err
+	}
+	log.Info().
+		Str("Contract Address", contractAddress.Hex()).
+		Str("Contract Name", contractName).
+		Str("Network Name", e.NetworkConfig.Name).
+		Msg("Loaded contract instance")
+	return contractInstance, err
+}
+
 // TransactionOpts returns the base Tx options for 'transactions' that interact with a smart contract. Since most
 // contract interactions in this framework are designed to happen through abigen calls, it's intentionally quite bare.
 func (e *EthereumClient) TransactionOpts(from *EthereumWallet) (*bind.TransactOpts, error) {
@@ -554,6 +568,11 @@ func (e *EthereumClient) SubscribeFilterLogs(ctx context.Context, q ethereum.Fil
 type EthereumMultinodeClient struct {
 	DefaultClient EVMClient
 	Clients       []EVMClient
+}
+
+// LoadContract load already deployed contract instance
+func (e *EthereumMultinodeClient) LoadContract(contractName string, address common.Address, loader ContractLoader) (interface{}, error) {
+	return e.DefaultClient.LoadContract(contractName, address, loader)
 }
 
 // NewEVMClient returns a multi-node EVM client connected to the specified network

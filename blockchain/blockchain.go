@@ -42,6 +42,7 @@ type EVMClient interface {
 		contractName string,
 		deployer ContractDeployer,
 	) (*common.Address, *types.Transaction, interface{}, error)
+	LoadContract(contractName string, address common.Address, loader ContractLoader) (interface{}, error)
 	TransactionOpts(from *EthereumWallet) (*bind.TransactOpts, error)
 	ProcessTransaction(tx *types.Transaction) error
 	ProcessEvent(name string, event *types.Log, confirmedChan chan bool, errorChan chan error) error
@@ -80,6 +81,12 @@ type HeaderEventSubscription interface {
 type ContractDeployer func(auth *bind.TransactOpts, backend bind.ContractBackend) (
 	common.Address,
 	*types.Transaction,
+	interface{},
+	error,
+)
+
+// ContractLoader helps loading already deployed contracts
+type ContractLoader func(address common.Address, backend bind.ContractBackend) (
 	interface{},
 	error,
 )
