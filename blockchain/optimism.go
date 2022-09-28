@@ -2,14 +2,17 @@ package blockchain
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rs/zerolog/log"
 
+	contracts "github.com/smartcontractkit/chainlink-testing-framework/contracts/ethereum"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 )
 
@@ -104,4 +107,70 @@ func (o *OptimismClient) DeployContract(
 		Str("Network Name", o.NetworkConfig.Name).
 		Msg("Deployed contract")
 	return &contractAddress, transaction, contractInstance, err
+}
+
+// Fund sends some ARB to an address using the default wallet
+func (o *OptimismClient) ReturnFunds(fromPrivateKey *ecdsa.PrivateKey) error {
+	to := common.HexToAddress(o.DefaultWallet.Address())
+
+	// Arbitrum uses legacy transactions and gas estimations
+	suggestedGasPrice, err := o.Client.SuggestGasPrice(context.Background())
+	if err != nil {
+		return err
+	}
+	fromAddress, err := utils.PrivateKeyToAddress(fromPrivateKey)
+	if err != nil {
+		return err
+	}
+
+	balance, err := o.Client.BalanceAt(context.Background(), fromAddress, nil)
+	if err != nil {
+		return err
+	}
+	estimatedGasCost := big.NewInt(1).Mul(suggestedGasPrice, big.NewInt(21000))
+	// Optimism needs to calculate both the L1 and L2 gas fees
+	// https://community.optimism.io/docs/developers/build/transaction-fees/#the-l1-data-fee
+	optimismL1GasContract := common.HexToAddress("0x420000000000000000000000000000000000000F")
+	optimismGasContract, err := contracts.NewOptimismGas(optimismL1GasContract, o.Client)
+	if err != nil {
+		return err
+	}
+	l1Gas, err := optimismGasContract.GetL1GasUsed(&bind.CallOpts{}, nil)
+	if err != nil {
+		return err
+	}
+	l1Fee, err := optimismGasContract.GetL1Fee(&bind.CallOpts{}, nil)
+	if err != nil {
+		return err
+	}
+	estimatedGasCost.Add(estimatedGasCost, l1Fee.Mul(l1Gas, l1Fee))
+	balance.Sub(balance, estimatedGasCost)
+
+	nonce, err := o.GetNonce(context.Background(), fromAddress)
+	if err != nil {
+		return err
+	}
+
+	tx, err := types.SignNewTx(fromPrivateKey, types.LatestSignerForChainID(o.GetChainID()), &types.LegacyTx{
+		Nonce:    nonce,
+		To:       &to,
+		Value:    balance,
+		GasPrice: suggestedGasPrice,
+		Gas:      21000,
+	})
+	if err != nil {
+		return err
+	}
+
+	log.Info().
+		Str("Token", "OP").
+		Str("From", fromAddress.Hex()).
+		Str("Amount", balance.String()).
+		Str("Estimated Gas Cost", estimatedGasCost.String()).
+		Msg("Returning Funds to Default Wallet")
+	if err := o.Client.SendTransaction(context.Background(), tx); err != nil {
+		return err
+	}
+
+	return o.ProcessTransaction(tx)
 }

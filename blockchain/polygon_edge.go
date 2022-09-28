@@ -22,24 +22,21 @@ type PolygonEdgeClient struct {
 	*EthereumClient
 }
 
-func (k *PolygonEdgeClient) Fund(
+func (p *PolygonEdgeClient) Fund(
 	toAddress string,
 	amount *big.Float,
 ) error {
-	privateKey, err := crypto.HexToECDSA(k.DefaultWallet.PrivateKey())
+	privateKey, err := crypto.HexToECDSA(p.DefaultWallet.PrivateKey())
 	to := common.HexToAddress(toAddress)
 	if err != nil {
 		return err
 	}
-	nonce, err := k.GetNonce(context.Background(), k.DefaultWallet.address)
+	nonce, err := p.GetNonce(context.Background(), p.DefaultWallet.address)
 	if err != nil {
 		return err
 	}
-	log.Warn().
-		Str("Network Name", k.NetworkConfig.Name).
-		Msg("Setting GasTipCap = SuggestedGasPrice for Polygon edge network")
-	tx, err := types.SignNewTx(privateKey, types.LatestSignerForChainID(k.GetChainID()), &types.DynamicFeeTx{
-		ChainID: k.GetChainID(),
+	tx, err := types.SignNewTx(privateKey, types.LatestSignerForChainID(p.GetChainID()), &types.DynamicFeeTx{
+		ChainID: p.GetChainID(),
 		Nonce:   nonce,
 		To:      &to,
 		Value:   utils.EtherToWei(amount),
@@ -50,43 +47,43 @@ func (k *PolygonEdgeClient) Fund(
 	}
 
 	log.Info().
-		Str("From", k.DefaultWallet.Address()).
+		Str("From", p.DefaultWallet.Address()).
 		Str("To", toAddress).
 		Str("Amount", amount.String()).
 		Msg("Funding Address")
-	if err := k.Client.SendTransaction(context.Background(), tx); err != nil {
+	if err := p.Client.SendTransaction(context.Background(), tx); err != nil {
 		return err
 	}
-	return k.ProcessTransaction(tx)
+	return p.ProcessTransaction(tx)
 }
 
 // DeployContract acts as a general contract deployment tool to an ethereum chain
-func (k *PolygonEdgeClient) DeployContract(
+func (p *PolygonEdgeClient) DeployContract(
 	contractName string,
 	deployer ContractDeployer,
 ) (*common.Address, *types.Transaction, interface{}, error) {
-	opts, err := k.TransactionOpts(k.DefaultWallet)
+	opts, err := p.TransactionOpts(p.DefaultWallet)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	opts.GasTipCap = nil
 	opts.GasPrice = nil
 
-	contractAddress, transaction, contractInstance, err := deployer(opts, k.Client)
+	contractAddress, transaction, contractInstance, err := deployer(opts, p.Client)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	if err = k.ProcessTransaction(transaction); err != nil {
+	if err = p.ProcessTransaction(transaction); err != nil {
 		return nil, nil, nil, err
 	}
 
 	log.Info().
 		Str("Contract Address", contractAddress.Hex()).
 		Str("Contract Name", contractName).
-		Str("From", k.DefaultWallet.Address()).
-		Str("Total Gas Cost (KLAY)", utils.WeiToEther(transaction.Cost()).String()).
-		Str("Network Name", k.NetworkConfig.Name).
+		Str("From", p.DefaultWallet.Address()).
+		Str("Total Gas Cost", utils.WeiToEther(transaction.Cost()).String()).
+		Str("Network Name", p.NetworkConfig.Name).
 		Msg("Deployed contract")
 	return &contractAddress, transaction, contractInstance, err
 }

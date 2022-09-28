@@ -133,6 +133,10 @@ func (l *InstantConfirmer) ReceiveHeader(x NodeHeader) error {
 	var err error
 	l.confirmed, err = l.client.IsTxConfirmed(l.txHash)
 	if err != nil {
+		if err.Error() == "not found" {
+			log.Warn().Str("Tx", l.txHash.Hex()).Msg("Transaction not found on chain yet. Waiting to confirm.")
+			return err
+		}
 		log.Error().Str("Tx", l.txHash.Hex()).Err(err).Msg("Error checking tx confirmed")
 		if l.errorChan != nil {
 			l.errorChan <- err
@@ -289,8 +293,8 @@ func (e *EthereumClient) GetNonce(ctx context.Context, addr common.Address) (uin
 
 // GetHeaderSubscriptions returns a duplicate map of the queued transactions
 func (e *EthereumClient) GetHeaderSubscriptions() map[string]HeaderEventSubscription {
-	e.mutex.Lock()
-	defer e.mutex.Unlock()
+	e.subscriptionMutex.Lock()
+	defer e.subscriptionMutex.Unlock()
 
 	newMap := map[string]HeaderEventSubscription{}
 	for k, v := range e.headerSubscriptions {
@@ -372,10 +376,12 @@ func (e *EthereumClient) receiveHeader(header *types.Header) {
 				e.DeleteHeaderEventSubscription(key)
 			}
 		}
-		log.Debug().
-			Uint("Recently Removed", subsRemoved).
-			Int("Active", len(e.GetHeaderSubscriptions())).
-			Msg("Updated Header Subscriptions")
+		if subsRemoved > 0 {
+			log.Debug().
+				Uint("Recently Removed", subsRemoved).
+				Int("Active", len(e.GetHeaderSubscriptions())).
+				Msg("Updated Header Subscriptions")
+		}
 	}
 }
 

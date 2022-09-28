@@ -3,6 +3,7 @@ package blockchain
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum"
@@ -38,6 +39,7 @@ type EVMClient interface {
 	HeaderTimestampByNumber(ctx context.Context, bn *big.Int) (uint64, error)
 	LatestBlockNumber(ctx context.Context) (uint64, error)
 	Fund(toAddress string, amount *big.Float) error
+	ReturnFunds(fromKey *ecdsa.PrivateKey) error
 	DeployContract(
 		contractName string,
 		deployer ContractDeployer,

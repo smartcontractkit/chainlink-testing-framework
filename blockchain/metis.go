@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"fmt"
 	"math/big"
 
@@ -110,4 +111,52 @@ func (m *MetisClient) DeployContract(
 		Str("Network Name", m.NetworkConfig.Name).
 		Msg("Deployed contract")
 	return &contractAddress, transaction, contractInstance, err
+}
+
+// Fund sends some ARB to an address using the default wallet
+func (m *MetisClient) ReturnFunds(fromPrivateKey *ecdsa.PrivateKey) error {
+	to := common.HexToAddress(m.DefaultWallet.Address())
+
+	// Arbitrum uses legacy transactions and gas estimations
+	suggestedGasPrice, err := m.Client.SuggestGasPrice(context.Background())
+	if err != nil {
+		return err
+	}
+	fromAddress, err := utils.PrivateKeyToAddress(fromPrivateKey)
+	if err != nil {
+		return err
+	}
+
+	balance, err := m.Client.BalanceAt(context.Background(), fromAddress, nil)
+	if err != nil {
+		return err
+	}
+	balance.Sub(balance, big.NewInt(1).Mul(suggestedGasPrice, big.NewInt(21000)))
+
+	nonce, err := m.GetNonce(context.Background(), fromAddress)
+	if err != nil {
+		return err
+	}
+
+	tx, err := types.SignNewTx(fromPrivateKey, types.LatestSignerForChainID(m.GetChainID()), &types.LegacyTx{
+		Nonce:    nonce,
+		To:       &to,
+		Value:    balance,
+		GasPrice: suggestedGasPrice,
+		Gas:      21000,
+	})
+	if err != nil {
+		return err
+	}
+
+	log.Info().
+		Str("Token", "METIS").
+		Str("From", fromAddress.Hex()).
+		Str("Amount", balance.String()).
+		Msg("Returning Funds to Default Wallet")
+	if err := m.Client.SendTransaction(context.Background(), tx); err != nil {
+		return err
+	}
+
+	return m.ProcessTransaction(tx)
 }

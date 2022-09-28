@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -85,9 +86,6 @@ func (k *KlaytnClient) DeployContract(
 
 	// Don't bump gas for Klaytn
 	// https://docs.klaytn.com/klaytn/design/transaction-fees#unit-price
-	log.Warn().
-		Str("Network Name", k.NetworkConfig.Name).
-		Msg("Setting GasTipCap = SuggestedGasPrice for Klaytn network")
 	opts.GasTipCap = nil
 	opts.GasPrice = nil
 
@@ -108,4 +106,52 @@ func (k *KlaytnClient) DeployContract(
 		Str("Network Name", k.NetworkConfig.Name).
 		Msg("Deployed contract")
 	return &contractAddress, transaction, contractInstance, err
+}
+
+func (k *KlaytnClient) ReturnFunds(fromPrivateKey *ecdsa.PrivateKey) error {
+	to := common.HexToAddress(k.DefaultWallet.Address())
+
+	// Don't bump gas for Klaytn
+	gasPrice, err := k.Client.SuggestGasPrice(context.Background())
+	if err != nil {
+		return err
+	}
+
+	fromAddress, err := utils.PrivateKeyToAddress(fromPrivateKey)
+	if err != nil {
+		return err
+	}
+
+	nonce, err := k.GetNonce(context.Background(), fromAddress)
+	if err != nil {
+		return err
+	}
+	balance, err := k.Client.BalanceAt(context.Background(), fromAddress, nil)
+	if err != nil {
+		return err
+	}
+	balance.Sub(balance, big.NewInt(1).Mul(gasPrice, big.NewInt(21000)))
+	// https://docs.klaytn.com/klaytn/design/transaction-fees#gas
+	tx, err := types.SignNewTx(fromPrivateKey, types.LatestSignerForChainID(k.GetChainID()), &types.DynamicFeeTx{
+		ChainID:   k.GetChainID(),
+		Nonce:     nonce,
+		To:        &to,
+		Value:     balance,
+		GasTipCap: gasPrice,
+		GasFeeCap: gasPrice,
+		Gas:       21000,
+	})
+	if err != nil {
+		return err
+	}
+
+	log.Info().
+		Str("Token", "KLAY").
+		Str("From", fromAddress.Hex()).
+		Str("Amount", balance.String()).
+		Msg("Returning Funds to Default Wallet")
+	if err := k.Client.SendTransaction(context.Background(), tx); err != nil {
+		return err
+	}
+	return k.ProcessTransaction(tx)
 }

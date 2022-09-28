@@ -23,8 +23,8 @@ var knownNetworks = map[int64]string{
 	69:  "Optimism", // Kovan
 	420: "Optimism", // Goerli
 
-	80001: "Mumbai",
-	100:   "edge",
+	80001: "Mumbai", // Polygon Mumbai
+	100:   "edge",   // Polygon Edge
 
 	421611: "Arbitrum", // Rinkeby
 	421613: "Arbitrum", // Goerli
