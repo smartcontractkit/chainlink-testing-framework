@@ -4,6 +4,7 @@ package blockchain
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
 	"encoding/hex"
 	"fmt"
 	"math/big"
@@ -37,9 +38,8 @@ type EthereumClient struct {
 	BorrowNonces        bool
 	NonceMu             *sync.Mutex
 	Nonces              map[string]uint64
-	txQueue             chan common.Hash
 	headerSubscriptions map[string]HeaderEventSubscription
-	mutex               *sync.Mutex
+	subscriptionMutex   *sync.Mutex
 	queueTransactions   bool
 	gasStats            *GasStats
 	doneChan            chan struct{}
@@ -64,9 +64,8 @@ func newEVMClient(networkSettings *EVMNetwork) (EVMClient, error) {
 		NonceMu:             &sync.Mutex{},
 		Wallets:             make([]*EthereumWallet, 0),
 		Nonces:              make(map[string]uint64),
-		txQueue:             make(chan common.Hash, 64), // Max buffer of 64 tx
 		headerSubscriptions: map[string]HeaderEventSubscription{},
-		mutex:               &sync.Mutex{},
+		subscriptionMutex:   &sync.Mutex{},
 		queueTransactions:   false,
 		doneChan:            make(chan struct{}),
 	}
@@ -259,6 +258,60 @@ func (e *EthereumClient) Fund(
 		Str("To", toAddress).
 		Str("Amount", amount.String()).
 		Msg("Funding Address")
+	if err := e.Client.SendTransaction(context.Background(), tx); err != nil {
+		return err
+	}
+
+	return e.ProcessTransaction(tx)
+}
+
+func (e *EthereumClient) ReturnFunds(fromKey *ecdsa.PrivateKey) error {
+	to := common.HexToAddress(e.DefaultWallet.Address())
+
+	suggestedGasTipCap, err := e.Client.SuggestGasTipCap(context.Background())
+	if err != nil {
+		return err
+	}
+	latestBlock, err := e.Client.BlockByNumber(context.Background(), nil)
+	if err != nil {
+		return err
+	}
+	baseFeeMult := big.NewInt(1).Mul(latestBlock.BaseFee(), big.NewInt(2))
+	gasFeeCap := baseFeeMult.Add(baseFeeMult, suggestedGasTipCap)
+
+	fromAddress, err := utils.PrivateKeyToAddress(fromKey)
+	if err != nil {
+		return err
+	}
+	balance, err := e.Client.BalanceAt(context.Background(), fromAddress, nil)
+	if err != nil {
+		return err
+	}
+	balance.Sub(balance, big.NewInt(1).Mul(gasFeeCap, big.NewInt(21000)))
+
+	nonce, err := e.GetNonce(context.Background(), fromAddress)
+	if err != nil {
+		return err
+	}
+
+	tx, err := types.SignNewTx(fromKey, types.LatestSignerForChainID(e.GetChainID()), &types.DynamicFeeTx{
+		ChainID:   e.GetChainID(),
+		Nonce:     nonce,
+		To:        &to,
+		Value:     balance,
+		GasTipCap: suggestedGasTipCap,
+		GasFeeCap: gasFeeCap,
+		Gas:       21000,
+	})
+	if err != nil {
+		return err
+	}
+
+	log.Info().
+		Str("Token", "ETH").
+		Str("Amount", balance.String()).
+		Str("From", fromAddress.Hex()).
+		Msg("Returning Funds to Default Wallet")
 	if err := e.Client.SendTransaction(context.Background(), tx); err != nil {
 		return err
 	}
@@ -530,15 +583,15 @@ func (e *EthereumClient) GasStats() *GasStats {
 
 // AddHeaderEventSubscription adds a new header subscriber within the client to receive new headers
 func (e *EthereumClient) AddHeaderEventSubscription(key string, subscriber HeaderEventSubscription) {
-	e.mutex.Lock()
-	defer e.mutex.Unlock()
+	e.subscriptionMutex.Lock()
+	defer e.subscriptionMutex.Unlock()
 	e.headerSubscriptions[key] = subscriber
 }
 
 // DeleteHeaderEventSubscription removes a header subscriber from the map
 func (e *EthereumClient) DeleteHeaderEventSubscription(key string) {
-	e.mutex.Lock()
-	defer e.mutex.Unlock()
+	e.subscriptionMutex.Lock()
+	defer e.subscriptionMutex.Unlock()
 	delete(e.headerSubscriptions, key)
 }
 
@@ -713,6 +766,10 @@ func (e *EthereumMultinodeClient) LatestBlockNumber(ctx context.Context) (uint64
 // Fund funds a specified address with ETH from the given wallet
 func (e *EthereumMultinodeClient) Fund(toAddress string, nativeAmount *big.Float) error {
 	return e.DefaultClient.Fund(toAddress, nativeAmount)
+}
+
+func (e *EthereumMultinodeClient) ReturnFunds(fromKey *ecdsa.PrivateKey) error {
+	return e.DefaultClient.ReturnFunds(fromKey)
 }
 
 // DeployContract deploys a specified contract
