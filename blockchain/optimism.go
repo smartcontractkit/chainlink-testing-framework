@@ -147,7 +147,6 @@ func (o *OptimismClient) ReturnFunds(fromPrivateKey *ecdsa.PrivateKey) error {
 	l1Fee.SetUint64(l1FeeFloatUint)
 
 	estimatedGasCost.Add(estimatedGasCost, l1Fee)
-	estimatedGasCost.Add(estimatedGasCost, big.NewInt(111_677_895_522))
 	balance.Sub(balance, estimatedGasCost)
 
 	nonce, err := o.GetNonce(context.Background(), fromAddress)
