@@ -130,21 +130,39 @@ func (o *OptimismClient) ReturnFunds(fromPrivateKey *ecdsa.PrivateKey) error {
 	estimatedGasCost := big.NewInt(1).Mul(suggestedGasPrice, big.NewInt(21000))
 	// Optimism needs to calculate both the L1 and L2 gas fees
 	// https://community.optimism.io/docs/developers/build/transaction-fees/#the-l1-data-fee
+	log.Warn().
+		Uint64("estimatedGasCost", estimatedGasCost.Uint64()).
+		Uint64("balance", balance.Uint64()).
+		Msg("LEVEL 1")
 	optimismL1GasContract := common.HexToAddress("0x420000000000000000000000000000000000000F")
 	optimismGasContract, err := contracts.NewOptimismGas(optimismL1GasContract, o.Client)
 	if err != nil {
 		return err
 	}
-	l1Gas, err := optimismGasContract.GetL1GasUsed(&bind.CallOpts{}, nil)
+	l1Fee, err := optimismGasContract.GetL1Fee(&bind.CallOpts{}, types.LegacyTx{}.Data)
 	if err != nil {
 		return err
 	}
-	l1Fee, err := optimismGasContract.GetL1Fee(&bind.CallOpts{}, nil)
-	if err != nil {
-		return err
-	}
-	estimatedGasCost.Add(estimatedGasCost, l1Fee.Mul(l1Gas, l1Fee))
+	log.Warn().
+		Uint64("l1Fee", l1Fee.Uint64()).
+		Uint64("balance", balance.Uint64()).
+		Uint64("estimatedGasCost", estimatedGasCost.Uint64()).
+		Msg("LEVEL 2")
+	// Optimism's L1 gas estimation has an error margin of 25%, we use 26 for rounding errors
+	// https://help.optimism.io/hc/en-us/articles/4416677738907
+	l1FeeFloat := big.NewFloat(1).SetUint64(l1Fee.Uint64())
+	l1FeeFloat.Mul(l1FeeFloat, big.NewFloat(1.26))
+	l1FeeFloatUint, _ := l1FeeFloat.Uint64()
+	l1Fee.SetUint64(l1FeeFloatUint)
+
+	estimatedGasCost.Add(estimatedGasCost, l1Fee)
+	estimatedGasCost.Add(estimatedGasCost, big.NewInt(111_677_895_522))
 	balance.Sub(balance, estimatedGasCost)
+	log.Warn().
+		Uint64("l1Fee", l1Fee.Uint64()).
+		Uint64("balance", balance.Uint64()).
+		Uint64("estimatedGasCost", estimatedGasCost.Uint64()).
+		Msg("LEVEL 3")
 
 	nonce, err := o.GetNonce(context.Background(), fromAddress)
 	if err != nil {
@@ -165,8 +183,8 @@ func (o *OptimismClient) ReturnFunds(fromPrivateKey *ecdsa.PrivateKey) error {
 	log.Info().
 		Str("Token", "OP").
 		Str("From", fromAddress.Hex()).
-		Str("Amount", balance.String()).
-		Str("Estimated Gas Cost", estimatedGasCost.String()).
+		Uint64("Amount", balance.Uint64()).
+		Uint64("Estimated Gas Cost", estimatedGasCost.Uint64()).
 		Msg("Returning Funds to Default Wallet")
 	if err := o.Client.SendTransaction(context.Background(), tx); err != nil {
 		return err

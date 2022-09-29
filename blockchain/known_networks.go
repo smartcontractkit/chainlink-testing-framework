@@ -4,56 +4,38 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// knownNetworks lets us toggle which blockchain client to utilize depending on the supplied Chain ID for the network.
-// Use resources like https://chainlist.org/ or official docs on each chain to distinguish each one.
-var knownNetworks = map[int64]string{
-	1:        "Ethereum", // Mainnet
-	5:        "Ethereum", // Goerli
-	1337:     "Ethereum", // Geth Dev
-	2337:     "Ethereum", // Geth Dev #2 used in reorg tests
-	11155111: "Ethereum", // Sepolia
+type ClientImplementation string
 
-	588:  "Metis", // Stardust (testnet)
-	1088: "Metis", // Andoromeda (mainnet)
-
-	1001: "Klaytn", // Testnet
-	8217: "Klaytn", // Mainnet
-
-	10:  "Optimism", // Mainnet
-	69:  "Optimism", // Kovan
-	420: "Optimism", // Goerli
-
-	80001: "Mumbai", // Polygon Mumbai
-	100:   "edge",   // Polygon Edge
-
-	421611: "Arbitrum", // Rinkeby
-	421613: "Arbitrum", // Goerli
-}
+const (
+	// Ethereum uses the standard EVM implementation, and is considered default
+	EthereumClientImplementation ClientImplementation = "Ethereum"
+	// MetisClientImplementation uses a client tailored for MetisClientImplementation EVM networks
+	MetisClientImplementation ClientImplementation = "Metis"
+	// KlaytnClientImplementation uses a client tailored for KlaytnClientImplementation EVM networks
+	KlaytnClientImplementation ClientImplementation = "Klaytn"
+	// OptimismClientImplementation uses a client tailored for OptimismClientImplementation EVM networks
+	OptimismClientImplementation ClientImplementation = "Optimism"
+	// ArbitrumClientImplementation uses a client tailored for ArbitrumClientImplementation EVM networks
+	ArbitrumClientImplementation ClientImplementation = "Arbitrum"
+	// PolygonClientImplementation uses a client tailored for PolygonClientImplementation EVM networks
+	PolygonClientImplementation ClientImplementation = "Polygon"
+)
 
 // wrapSingleClient Wraps a single EVM client in its appropriate implementation, based on the chain ID
 func wrapSingleClient(networkSettings *EVMNetwork, client *EthereumClient) EVMClient {
-	networkType, known := knownNetworks[networkSettings.ChainID]
-	if !known {
-		log.Warn().
-			Str("Network", networkSettings.Name).
-			Int64("Based on Chain ID", networkSettings.ChainID).
-			Msg("Unrecognized Chain ID. Defaulting to a Standard Ethereum Client.")
-		return client
-	}
-
 	var wrappedEc EVMClient
-	switch networkType {
-	case "Ethereum":
+	switch networkSettings.ClientImplementation {
+	case EthereumClientImplementation:
 		wrappedEc = client
-	case "Metis":
+	case MetisClientImplementation:
 		wrappedEc = &MetisClient{client}
-	case "edge":
+	case PolygonClientImplementation:
 		wrappedEc = &PolygonEdgeClient{client}
-	case "Klaytn":
+	case KlaytnClientImplementation:
 		wrappedEc = &KlaytnClient{client}
-	case "Arbitrum":
+	case ArbitrumClientImplementation:
 		wrappedEc = &ArbitrumClient{client}
-	case "Optimism":
+	case OptimismClientImplementation:
 		wrappedEc = &OptimismClient{client}
 	default:
 		wrappedEc = client
@@ -63,39 +45,29 @@ func wrapSingleClient(networkSettings *EVMNetwork, client *EthereumClient) EVMCl
 
 // wrapMultiClient Wraps a multi-node EVM client in its appropriate implementation, based on the chain ID
 func wrapMultiClient(networkSettings *EVMNetwork, client *EthereumMultinodeClient) EVMClient {
-	networkType, known := knownNetworks[networkSettings.ChainID]
-	if !known {
-		log.Warn().
-			Str("Network", networkSettings.Name).
-			Interface("URLs", networkSettings.URLs).
-			Int64("Based on Chain ID", networkSettings.ChainID).
-			Msg("Unrecognized Chain ID. Defaulting to a Standard Ethereum Client.")
-		return client
-	}
-
 	var wrappedEc EVMClient
-	logMsg := log.Info().Str("Network", networkSettings.Name).Int64("Based on Chain ID", networkSettings.ChainID)
-	switch networkType {
-	case "Ethereum":
+	logMsg := log.Info().Str("Network", networkSettings.Name)
+	switch networkSettings.ClientImplementation {
+	case EthereumClientImplementation:
 		logMsg.Msg("Using Standard Ethereum Client")
 		wrappedEc = client
-	case "edge":
-		logMsg.Msg("Using Polygon edge client")
+	case PolygonClientImplementation:
+		logMsg.Msg("Using Polygon Client")
 		wrappedEc = &PolygonEdgeMultinodeClient{client}
-	case "Metis":
+	case MetisClientImplementation:
 		logMsg.Msg("Using Metis Client")
 		wrappedEc = &MetisMultinodeClient{client}
-	case "Klaytn":
+	case KlaytnClientImplementation:
 		logMsg.Msg("Using Klaytn Client")
 		wrappedEc = &KlaytnMultinodeClient{client}
-	case "Arbitrum":
+	case ArbitrumClientImplementation:
 		logMsg.Msg("Using Arbitrum Client")
 		wrappedEc = &ArbitrumMultinodeClient{client}
-	case "Optimism":
+	case OptimismClientImplementation:
 		logMsg.Msg("Using Optimism Client")
 		wrappedEc = &OptimismMultinodeClient{client}
 	default:
-		logMsg.Msg("Using Standard Ethereum Client")
+		log.Warn().Str("Network", networkSettings.Name).Msg("Unknown client implementation, defaulting to standard Ethereum client")
 		wrappedEc = client
 	}
 	return wrappedEc
