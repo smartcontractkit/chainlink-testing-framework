@@ -4,19 +4,19 @@ go 1.19
 
 require (
 	github.com/avast/retry-go v3.0.0+incompatible
-	github.com/ethereum/go-ethereum v1.10.23
+	github.com/ethereum/go-ethereum v1.10.25
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/google/uuid v1.3.0
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/lib/pq v1.10.6
-	github.com/onsi/ginkgo/v2 v2.1.6
+	github.com/lib/pq v1.10.7
+	github.com/onsi/ginkgo/v2 v2.2.0
 	github.com/onsi/gomega v1.20.2
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.13.0
 	github.com/prometheus/common v0.37.0
 	github.com/rs/zerolog v1.28.0
-	github.com/slack-go/slack v0.11.2
+	github.com/slack-go/slack v0.11.3
 	github.com/smartcontractkit/chainlink-env v0.2.41
 	github.com/stretchr/testify v1.8.0
 	go.uber.org/ratelimit v0.2.0
