@@ -9,15 +9,15 @@ type ClientImplementation string
 const (
 	// Ethereum uses the standard EVM implementation, and is considered default
 	EthereumClientImplementation ClientImplementation = "Ethereum"
-	// MetisClientImplementation uses a client tailored for MetisClientImplementation EVM networks
+	// MetisClientImplementation uses a client tailored for Metis EVM networks
 	MetisClientImplementation ClientImplementation = "Metis"
-	// KlaytnClientImplementation uses a client tailored for KlaytnClientImplementation EVM networks
+	// KlaytnClientImplementation uses a client tailored for Klaytn EVM networks
 	KlaytnClientImplementation ClientImplementation = "Klaytn"
-	// OptimismClientImplementation uses a client tailored for OptimismClientImplementation EVM networks
+	// OptimismClientImplementation uses a client tailored for Optimism EVM networks
 	OptimismClientImplementation ClientImplementation = "Optimism"
-	// ArbitrumClientImplementation uses a client tailored for ArbitrumClientImplementation EVM networks
+	// ArbitrumClientImplementation uses a client tailored for Arbitrum EVM networks
 	ArbitrumClientImplementation ClientImplementation = "Arbitrum"
-	// PolygonClientImplementation uses a client tailored for PolygonClientImplementation EVM networks
+	// PolygonClientImplementation uses a client tailored for Polygon EVM networks
 	PolygonClientImplementation ClientImplementation = "Polygon"
 )
 
