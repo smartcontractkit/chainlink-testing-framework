@@ -50,6 +50,8 @@ type EVMNetwork struct {
 	MinimumConfirmations int `envconfig:"evm_minimum_confirmations" default:"1" toml:"minimum_confirmations"`
 	// How much WEI to add to gas estimations for sending transactions
 	GasEstimationBuffer uint64 `envconfig:"evm_gas_estimation_buffer" default:"1000" toml:"gas_estimation_buffer"`
+	// ClientImplementation is the blockchain client to use when interacting with the test chain
+	ClientImplementation ClientImplementation `envconfig:"client_implementation" default:"Ethereum" toml:"client_implementation"`
 
 	// Only used internally, do not set
 	URL string `ignored:"true"`
