@@ -55,7 +55,6 @@ type EVMClient interface {
 	Close() error
 
 	// Gas Operations
-	EstimateCostForChainlinkOperations(amountOfOperations int) (*big.Float, error)
 	EstimateTransactionGasCost() (*big.Int, error)
 	GasStats() *GasStats
 

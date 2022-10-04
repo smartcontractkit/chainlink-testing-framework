@@ -270,25 +270,18 @@ func (e *EventConfirmer) Complete() bool {
 
 // GetNonce keep tracking of nonces per address, add last nonce for addr if the map is empty
 func (e *EthereumClient) GetNonce(ctx context.Context, addr common.Address) (uint64, error) {
-	if e.BorrowNonces {
-		e.NonceMu.Lock()
-		defer e.NonceMu.Unlock()
-		if _, ok := e.Nonces[addr.Hex()]; !ok {
-			lastNonce, err := e.Client.PendingNonceAt(ctx, addr)
-			if err != nil {
-				return 0, err
-			}
-			e.Nonces[addr.Hex()] = lastNonce
-			return lastNonce, nil
+	e.NonceMu.Lock()
+	defer e.NonceMu.Unlock()
+	if _, ok := e.Nonces[addr.Hex()]; !ok {
+		lastNonce, err := e.Client.PendingNonceAt(ctx, addr)
+		if err != nil {
+			return 0, err
 		}
-		e.Nonces[addr.Hex()]++
-		return e.Nonces[addr.Hex()], nil
+		e.Nonces[addr.Hex()] = lastNonce
+		return lastNonce, nil
 	}
-	lastNonce, err := e.Client.PendingNonceAt(ctx, addr)
-	if err != nil {
-		return 0, err
-	}
-	return lastNonce, nil
+	e.Nonces[addr.Hex()]++
+	return e.Nonces[addr.Hex()], nil
 }
 
 // GetHeaderSubscriptions returns a duplicate map of the queued transactions
@@ -322,6 +315,7 @@ func (e *EthereumClient) subscribeToNewHeaders() error {
 
 			subscription, err = e.Client.SubscribeNewHead(context.Background(), headerChannel)
 			if err != nil {
+				log.Error().Err(err).Msg("Failed to resubscribe to new headers")
 				return err
 			}
 		case header := <-headerChannel:

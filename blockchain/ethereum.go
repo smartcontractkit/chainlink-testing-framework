@@ -35,7 +35,6 @@ type EthereumClient struct {
 	NetworkConfig       *EVMNetwork
 	Wallets             []*EthereumWallet
 	DefaultWallet       *EthereumWallet
-	BorrowNonces        bool
 	NonceMu             *sync.Mutex
 	Nonces              map[string]uint64
 	headerSubscriptions map[string]HeaderEventSubscription
@@ -60,7 +59,6 @@ func newEVMClient(networkSettings *EVMNetwork) (EVMClient, error) {
 	ec := &EthereumClient{
 		NetworkConfig:       networkSettings,
 		Client:              cl,
-		BorrowNonces:        true,
 		NonceMu:             &sync.Mutex{},
 		Wallets:             make([]*EthereumWallet, 0),
 		Nonces:              make(map[string]uint64),
@@ -232,11 +230,11 @@ func (e *EthereumClient) Fund(
 	if err != nil {
 		return err
 	}
-	latestBlock, err := e.Client.BlockByNumber(context.Background(), nil)
+	latestHeader, err := e.Client.HeaderByNumber(context.Background(), nil)
 	if err != nil {
 		return err
 	}
-	baseFeeMult := big.NewInt(1).Mul(latestBlock.BaseFee(), big.NewInt(2))
+	baseFeeMult := big.NewInt(1).Mul(latestHeader.BaseFee, big.NewInt(2))
 	gasFeeCap := baseFeeMult.Add(baseFeeMult, suggestedGasTipCap)
 
 	tx, err := types.SignNewTx(privateKey, types.LatestSignerForChainID(e.GetChainID()), &types.DynamicFeeTx{
@@ -272,11 +270,11 @@ func (e *EthereumClient) ReturnFunds(fromKey *ecdsa.PrivateKey) error {
 	if err != nil {
 		return err
 	}
-	latestBlock, err := e.Client.BlockByNumber(context.Background(), nil)
+	latestHeader, err := e.Client.HeaderByNumber(context.Background(), nil)
 	if err != nil {
 		return err
 	}
-	baseFeeMult := big.NewInt(1).Mul(latestBlock.BaseFee(), big.NewInt(2))
+	baseFeeMult := big.NewInt(1).Mul(latestHeader.BaseFee, big.NewInt(2))
 	gasFeeCap := baseFeeMult.Add(baseFeeMult, suggestedGasTipCap)
 
 	fromAddress, err := utils.PrivateKeyToAddress(fromKey)
@@ -328,6 +326,7 @@ func (e *EthereumClient) DeployContract(
 	if err != nil {
 		return nil, nil, nil, err
 	}
+
 	suggestedTipCap, err := e.Client.SuggestGasTipCap(context.Background())
 	if err != nil {
 		return nil, nil, nil, err
@@ -534,37 +533,6 @@ func (e *EthereumClient) Close() error {
 	e.doneChan <- struct{}{}
 	e.Client.Close()
 	return nil
-}
-
-// EstimateCostForChainlinkOperations calculates required amount of ETH for amountOfOperations Chainlink operations
-// based on the network's suggested gas price and the chainlink gas limit. This is fairly imperfect and should be used
-// as only a rough, upper-end estimate instead of an exact calculation.
-// See https://ethereum.org/en/developers/docs/gas/#post-london for info on how gas calculation works
-func (e *EthereumClient) EstimateCostForChainlinkOperations(amountOfOperations int) (*big.Float, error) {
-	bigAmountOfOperations := big.NewInt(int64(amountOfOperations))
-	gasPriceInWei, err := e.Client.SuggestGasPrice(context.Background())
-	if err != nil {
-		return nil, err
-	}
-
-	// https://ethereum.stackexchange.com/questions/19665/how-to-calculate-transaction-fee
-	// total gas limit = chainlink gas limit + gas limit buffer
-	gasLimit := e.NetworkConfig.GasEstimationBuffer + e.NetworkConfig.ChainlinkTransactionLimit
-	// gas cost for TX = total gas limit * estimated gas price
-	gasCostPerOperationWei := big.NewInt(1).Mul(big.NewInt(1).SetUint64(gasLimit), gasPriceInWei)
-	gasCostPerOperationETH := utils.WeiToEther(gasCostPerOperationWei)
-	// total Wei needed for all TXs = total value for TX * number of TXs
-	totalWeiForAllOperations := big.NewInt(1).Mul(gasCostPerOperationWei, bigAmountOfOperations)
-	totalEthForAllOperations := utils.WeiToEther(totalWeiForAllOperations)
-
-	log.Debug().
-		Int("Number of Operations", amountOfOperations).
-		Uint64("Gas Limit per Operation", gasLimit).
-		Str("Value per Operation (ETH)", gasCostPerOperationETH.String()).
-		Str("Total (ETH)", totalEthForAllOperations.String()).
-		Msg("Calculated ETH for Chainlink Operations")
-
-	return totalEthForAllOperations, nil
 }
 
 // EstimateTransactionGasCost estimates the current total gas cost for a simple transaction
@@ -830,11 +798,6 @@ func (e *EthereumMultinodeClient) Close() error {
 	return nil
 }
 
-// EstimateCostForChainlinkOperations calculates TXs cost as a dirty estimation based on transactionLimit for that network
-func (e *EthereumMultinodeClient) EstimateCostForChainlinkOperations(amountOfOperations int) (*big.Float, error) {
-	return e.DefaultClient.EstimateCostForChainlinkOperations(amountOfOperations)
-}
-
 func (e *EthereumMultinodeClient) EstimateTransactionGasCost() (*big.Int, error) {
 	return e.DefaultClient.EstimateTransactionGasCost()
 }
@@ -873,11 +836,6 @@ func (e *EthereumMultinodeClient) WaitForEvents() error {
 		})
 	}
 	return g.Wait()
-}
-
-// BorrowedNonces allows to handle nonces concurrently without requesting them every time
-func (e *EthereumClient) BorrowedNonces(n bool) {
-	e.BorrowNonces = n
 }
 
 // LogRevertReason prints the revert reason for the transaction error by parsing through abi defined error list
