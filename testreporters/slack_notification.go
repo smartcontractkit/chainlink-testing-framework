@@ -2,6 +2,7 @@
 package testreporters
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"time"
@@ -102,4 +103,24 @@ func CommonSlackNotificationBlocks(slackClient *slack.Client, headerText, namesp
 			slack.NewTextBlockObject("plain_text", ginkgo.CurrentSpecReport().FailureMessage(), false, false), nil, nil))
 	}
 	return notificationBlocks
+}
+
+// SlackNotifyBlocks creates a slack payload and writes into the specified json
+func SlackNotifyBlocks(headerText string, msgtext []string, jsonFile *os.File) error {
+	var notificationBlocks slack.Blocks
+	notificationBlocks.BlockSet = append(notificationBlocks.BlockSet,
+		slack.NewHeaderBlock(slack.NewTextBlockObject("plain_text", headerText, true, false)))
+	notificationBlocks.BlockSet = append(notificationBlocks.BlockSet, slack.NewDividerBlock())
+	msgtexts := ""
+	for _, text := range msgtext {
+		msgtexts = fmt.Sprintf("%s%s\n", msgtexts, text)
+	}
+	notificationBlocks.BlockSet = append(notificationBlocks.BlockSet, slack.NewSectionBlock(slack.NewTextBlockObject("mrkdwn",
+		msgtexts, false, true), nil, nil))
+	json, err := json.Marshal(slack.Msg{Blocks: notificationBlocks})
+	if err != nil {
+		return err
+	}
+	_, err = jsonFile.Write(json)
+	return err
 }
