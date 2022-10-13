@@ -7,7 +7,8 @@ pre-reqs
 * install node.js 18+
 * k3d 
 
-1. Build a Docker image of the chainlink repo:
+1. cd into your main chainlink repo directory
+2. Build a Docker image of the chainlink repo:
 
    ```shell
    env DOCKER_DEFAULT_PLATFORM=linux/amd64 docker buildx build --platform linux/amd64 -f ./core/chainlink.Dockerfile --build-arg ENVIRONMENT=release --build-arg COMMIT_SHA=$(git rev-parse HEAD) -t smartcontract/chainlink:develop-$(git rev-parse HEAD) .
