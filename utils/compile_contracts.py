@@ -25,9 +25,11 @@ used_contract_names = [
   "KeeperRegistry1_1",
   "KeeperRegistry1_2",
   "KeeperRegistry1_3",
+  "KeeperRegistry2_0",
   # Note: KeeperRegistryLogic1_3 needs some manual changes in go wrapper after generation to avoid
   # conflict with KeeperRegistry1_3. Hence it is commented out to not be regenerated every time
   #"KeeperRegistryLogic1_3",
+  "KeeperRegistryLogic2_0",
   "LinkToken",
   "MockETHLINKAggregator",
   "MockGASAggregator",
