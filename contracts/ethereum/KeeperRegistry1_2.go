@@ -28,8 +28,8 @@ var (
 	_ = event.NewSubscription
 )
 
-// Config12 is an auto generated low-level Go binding around an user-defined struct.
-type Config12 struct {
+// Config1_2 is an auto generated low-level Go binding around an user-defined struct.
+type Config1_2 struct {
 	PaymentPremiumPPB    uint32
 	FlatFeeMicroLink     uint32
 	BlockCountPerTurn    *big.Int
@@ -44,8 +44,8 @@ type Config12 struct {
 	Registrar            common.Address
 }
 
-// State12 is an auto generated low-level Go binding around an user-defined struct.
-type State12 struct {
+// State1_2 is an auto generated low-level Go binding around an user-defined struct.
+type State1_2 struct {
 	Nonce               uint32
 	OwnerLinkBalance    *big.Int
 	ExpectedLinkBalance *big.Int
@@ -67,7 +67,7 @@ var KeeperRegistry12ABI = KeeperRegistry12MetaData.ABI
 var KeeperRegistry12Bin = KeeperRegistry12MetaData.Bin
 
 // DeployKeeperRegistry12 deploys a new Ethereum contract, binding an instance of KeeperRegistry12 to it.
-func DeployKeeperRegistry12(auth *bind.TransactOpts, backend bind.ContractBackend, link common.Address, linkEthFeed common.Address, fastGasFeed common.Address, config Config12) (common.Address, *types.Transaction, *KeeperRegistry12, error) {
+func DeployKeeperRegistry12(auth *bind.TransactOpts, backend bind.ContractBackend, link common.Address, linkEthFeed common.Address, fastGasFeed common.Address, config Config1_2) (common.Address, *types.Transaction, *KeeperRegistry12, error) {
 	parsed, err := KeeperRegistry12MetaData.GetAbi()
 	if err != nil {
 		return common.Address{}, nil, nil, err
@@ -496,24 +496,24 @@ func (_KeeperRegistry12 *KeeperRegistry12CallerSession) GetPeerRegistryMigration
 //
 // Solidity: function getState() view returns((uint32,uint96,uint256,uint256) state, (uint32,uint32,uint24,uint32,uint24,uint16,uint96,uint32,uint256,uint256,address,address) config, address[] keepers)
 func (_KeeperRegistry12 *KeeperRegistry12Caller) GetState(opts *bind.CallOpts) (struct {
-	State   State12
-	Config  Config12
+	State   State1_2
+	Config  Config1_2
 	Keepers []common.Address
 }, error) {
 	var out []interface{}
 	err := _KeeperRegistry12.contract.Call(opts, &out, "getState")
 
 	outstruct := new(struct {
-		State   State12
-		Config  Config12
+		State   State1_2
+		Config  Config1_2
 		Keepers []common.Address
 	})
 	if err != nil {
 		return *outstruct, err
 	}
 
-	outstruct.State = *abi.ConvertType(out[0], new(State12)).(*State12)
-	outstruct.Config = *abi.ConvertType(out[1], new(Config12)).(*Config12)
+	outstruct.State = *abi.ConvertType(out[0], new(State1_2)).(*State1_2)
+	outstruct.Config = *abi.ConvertType(out[1], new(Config1_2)).(*Config1_2)
 	outstruct.Keepers = *abi.ConvertType(out[2], new([]common.Address)).(*[]common.Address)
 
 	return *outstruct, err
@@ -524,8 +524,8 @@ func (_KeeperRegistry12 *KeeperRegistry12Caller) GetState(opts *bind.CallOpts) (
 //
 // Solidity: function getState() view returns((uint32,uint96,uint256,uint256) state, (uint32,uint32,uint24,uint32,uint24,uint16,uint96,uint32,uint256,uint256,address,address) config, address[] keepers)
 func (_KeeperRegistry12 *KeeperRegistry12Session) GetState() (struct {
-	State   State12
-	Config  Config12
+	State   State1_2
+	Config  Config1_2
 	Keepers []common.Address
 }, error) {
 	return _KeeperRegistry12.Contract.GetState(&_KeeperRegistry12.CallOpts)
@@ -535,8 +535,8 @@ func (_KeeperRegistry12 *KeeperRegistry12Session) GetState() (struct {
 //
 // Solidity: function getState() view returns((uint32,uint96,uint256,uint256) state, (uint32,uint32,uint24,uint32,uint24,uint16,uint96,uint32,uint256,uint256,address,address) config, address[] keepers)
 func (_KeeperRegistry12 *KeeperRegistry12CallerSession) GetState() (struct {
-	State   State12
-	Config  Config12
+	State   State1_2
+	Config  Config1_2
 	Keepers []common.Address
 }, error) {
 	return _KeeperRegistry12.Contract.GetState(&_KeeperRegistry12.CallOpts)
@@ -996,21 +996,21 @@ func (_KeeperRegistry12 *KeeperRegistry12TransactorSession) RegisterUpkeep(targe
 // SetConfig is a paid mutator transaction binding the contract method 0xef47a0ce.
 //
 // Solidity: function setConfig((uint32,uint32,uint24,uint32,uint24,uint16,uint96,uint32,uint256,uint256,address,address) config) returns()
-func (_KeeperRegistry12 *KeeperRegistry12Transactor) SetConfig(opts *bind.TransactOpts, config Config12) (*types.Transaction, error) {
+func (_KeeperRegistry12 *KeeperRegistry12Transactor) SetConfig(opts *bind.TransactOpts, config Config1_2) (*types.Transaction, error) {
 	return _KeeperRegistry12.contract.Transact(opts, "setConfig", config)
 }
 
 // SetConfig is a paid mutator transaction binding the contract method 0xef47a0ce.
 //
 // Solidity: function setConfig((uint32,uint32,uint24,uint32,uint24,uint16,uint96,uint32,uint256,uint256,address,address) config) returns()
-func (_KeeperRegistry12 *KeeperRegistry12Session) SetConfig(config Config12) (*types.Transaction, error) {
+func (_KeeperRegistry12 *KeeperRegistry12Session) SetConfig(config Config1_2) (*types.Transaction, error) {
 	return _KeeperRegistry12.Contract.SetConfig(&_KeeperRegistry12.TransactOpts, config)
 }
 
 // SetConfig is a paid mutator transaction binding the contract method 0xef47a0ce.
 //
 // Solidity: function setConfig((uint32,uint32,uint24,uint32,uint24,uint16,uint96,uint32,uint256,uint256,address,address) config) returns()
-func (_KeeperRegistry12 *KeeperRegistry12TransactorSession) SetConfig(config Config12) (*types.Transaction, error) {
+func (_KeeperRegistry12 *KeeperRegistry12TransactorSession) SetConfig(config Config1_2) (*types.Transaction, error) {
 	return _KeeperRegistry12.Contract.SetConfig(&_KeeperRegistry12.TransactOpts, config)
 }
 
@@ -1272,7 +1272,7 @@ func (it *KeeperRegistry12ConfigSetIterator) Close() error {
 
 // KeeperRegistry12ConfigSet represents a ConfigSet event raised by the KeeperRegistry12 contract.
 type KeeperRegistry12ConfigSet struct {
-	Config Config12
+	Config Config1_2
 	Raw    types.Log // Blockchain specific contextual infos
 }
 

@@ -28,21 +28,12 @@ var (
 	_ = event.NewSubscription
 )
 
-// Config is an auto generated low-level Go binding around an user-defined struct.
-type Config struct {
-	PaymentPremiumPPB    uint32
-	FlatFeeMicroLink     uint32
-	BlockCountPerTurn    *big.Int
-	CheckGasLimit        uint32
-	StalenessSeconds     *big.Int
-	GasCeilingMultiplier uint16
-	MinUpkeepSpend       *big.Int
-	MaxPerformGas        uint32
-	FallbackGasPrice     *big.Int
-	FallbackLinkPrice    *big.Int
-	Transcoder           common.Address
-	Registrar            common.Address
-}
+/**
+ * NOTE: Config2_0 is manually deleted from this auto generated file, since it is shared among KeeperRegsitry2_0.go
+ * This is a hacky fix as all go wrappers are in the same package.
+ *
+ * If this file is re-generated, this will need to be deleted again
+ */
 
 // KeeperRegistryLogic20MetaData contains all meta data concerning the KeeperRegistryLogic20 contract.
 var KeeperRegistryLogic20MetaData = &bind.MetaData{
@@ -1068,7 +1059,7 @@ func (it *KeeperRegistryLogic20ConfigSetIterator) Close() error {
 
 // KeeperRegistryLogic20ConfigSet represents a ConfigSet event raised by the KeeperRegistryLogic20 contract.
 type KeeperRegistryLogic20ConfigSet struct {
-	Config Config
+	Config Config2_0
 	Raw    types.Log // Blockchain specific contextual infos
 }
 
