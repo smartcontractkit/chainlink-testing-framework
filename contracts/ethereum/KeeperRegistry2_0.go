@@ -28,8 +28,8 @@ var (
 	_ = event.NewSubscription
 )
 
-// Config is an auto generated low-level Go binding around an user-defined struct.
-type Config struct {
+// Config2_0 is an auto generated low-level Go binding around an user-defined struct.
+type Config2_0 struct {
 	PaymentPremiumPPB    uint32
 	FlatFeeMicroLink     uint32
 	BlockCountPerTurn    *big.Int
@@ -44,8 +44,8 @@ type Config struct {
 	Registrar            common.Address
 }
 
-// State is an auto generated low-level Go binding around an user-defined struct.
-type State struct {
+// State2_0 is an auto generated low-level Go binding around an user-defined struct.
+type State2_0 struct {
 	Nonce               uint32
 	OwnerLinkBalance    *big.Int
 	ExpectedLinkBalance *big.Int
@@ -67,7 +67,7 @@ var KeeperRegistry20ABI = KeeperRegistry20MetaData.ABI
 var KeeperRegistry20Bin = KeeperRegistry20MetaData.Bin
 
 // DeployKeeperRegistry20 deploys a new Ethereum contract, binding an instance of KeeperRegistry20 to it.
-func DeployKeeperRegistry20(auth *bind.TransactOpts, backend bind.ContractBackend, paymentModel uint8, registryGasOverhead *big.Int, link common.Address, linkEthFeed common.Address, fastGasFeed common.Address, keeperRegistryLogic common.Address, config Config) (common.Address, *types.Transaction, *KeeperRegistry20, error) {
+func DeployKeeperRegistry20(auth *bind.TransactOpts, backend bind.ContractBackend, paymentModel uint8, registryGasOverhead *big.Int, link common.Address, linkEthFeed common.Address, fastGasFeed common.Address, keeperRegistryLogic common.Address, config Config2_0) (common.Address, *types.Transaction, *KeeperRegistry20, error) {
 	parsed, err := KeeperRegistry20MetaData.GetAbi()
 	if err != nil {
 		return common.Address{}, nil, nil, err
@@ -713,24 +713,24 @@ func (_KeeperRegistry20 *KeeperRegistry20CallerSession) GetPeerRegistryMigration
 //
 // Solidity: function getState() view returns((uint32,uint96,uint256,uint256) state, (uint32,uint32,uint24,uint32,uint24,uint16,uint96,uint32,uint256,uint256,address,address) config, address[] keepers)
 func (_KeeperRegistry20 *KeeperRegistry20Caller) GetState(opts *bind.CallOpts) (struct {
-	State   State
-	Config  Config
+	State   State2_0
+	Config  Config2_0
 	Keepers []common.Address
 }, error) {
 	var out []interface{}
 	err := _KeeperRegistry20.contract.Call(opts, &out, "getState")
 
 	outstruct := new(struct {
-		State   State
-		Config  Config
+		State   State2_0
+		Config  Config2_0
 		Keepers []common.Address
 	})
 	if err != nil {
 		return *outstruct, err
 	}
 
-	outstruct.State = *abi.ConvertType(out[0], new(State)).(*State)
-	outstruct.Config = *abi.ConvertType(out[1], new(Config)).(*Config)
+	outstruct.State = *abi.ConvertType(out[0], new(State2_0)).(*State2_0)
+	outstruct.Config = *abi.ConvertType(out[1], new(Config2_0)).(*Config2_0)
 	outstruct.Keepers = *abi.ConvertType(out[2], new([]common.Address)).(*[]common.Address)
 
 	return *outstruct, err
@@ -741,8 +741,8 @@ func (_KeeperRegistry20 *KeeperRegistry20Caller) GetState(opts *bind.CallOpts) (
 //
 // Solidity: function getState() view returns((uint32,uint96,uint256,uint256) state, (uint32,uint32,uint24,uint32,uint24,uint16,uint96,uint32,uint256,uint256,address,address) config, address[] keepers)
 func (_KeeperRegistry20 *KeeperRegistry20Session) GetState() (struct {
-	State   State
-	Config  Config
+	State   State2_0
+	Config  Config2_0
 	Keepers []common.Address
 }, error) {
 	return _KeeperRegistry20.Contract.GetState(&_KeeperRegistry20.CallOpts)
@@ -752,8 +752,8 @@ func (_KeeperRegistry20 *KeeperRegistry20Session) GetState() (struct {
 //
 // Solidity: function getState() view returns((uint32,uint96,uint256,uint256) state, (uint32,uint32,uint24,uint32,uint24,uint16,uint96,uint32,uint256,uint256,address,address) config, address[] keepers)
 func (_KeeperRegistry20 *KeeperRegistry20CallerSession) GetState() (struct {
-	State   State
-	Config  Config
+	State   State2_0
+	Config  Config2_0
 	Keepers []common.Address
 }, error) {
 	return _KeeperRegistry20.Contract.GetState(&_KeeperRegistry20.CallOpts)
@@ -1260,21 +1260,21 @@ func (_KeeperRegistry20 *KeeperRegistry20TransactorSession) RegisterUpkeep(targe
 // SetConfig is a paid mutator transaction binding the contract method 0xef47a0ce.
 //
 // Solidity: function setConfig((uint32,uint32,uint24,uint32,uint24,uint16,uint96,uint32,uint256,uint256,address,address) config) returns()
-func (_KeeperRegistry20 *KeeperRegistry20Transactor) SetConfig(opts *bind.TransactOpts, config Config) (*types.Transaction, error) {
+func (_KeeperRegistry20 *KeeperRegistry20Transactor) SetConfig(opts *bind.TransactOpts, config Config2_0) (*types.Transaction, error) {
 	return _KeeperRegistry20.contract.Transact(opts, "setConfig", config)
 }
 
 // SetConfig is a paid mutator transaction binding the contract method 0xef47a0ce.
 //
 // Solidity: function setConfig((uint32,uint32,uint24,uint32,uint24,uint16,uint96,uint32,uint256,uint256,address,address) config) returns()
-func (_KeeperRegistry20 *KeeperRegistry20Session) SetConfig(config Config) (*types.Transaction, error) {
+func (_KeeperRegistry20 *KeeperRegistry20Session) SetConfig(config Config2_0) (*types.Transaction, error) {
 	return _KeeperRegistry20.Contract.SetConfig(&_KeeperRegistry20.TransactOpts, config)
 }
 
 // SetConfig is a paid mutator transaction binding the contract method 0xef47a0ce.
 //
 // Solidity: function setConfig((uint32,uint32,uint24,uint32,uint24,uint16,uint96,uint32,uint256,uint256,address,address) config) returns()
-func (_KeeperRegistry20 *KeeperRegistry20TransactorSession) SetConfig(config Config) (*types.Transaction, error) {
+func (_KeeperRegistry20 *KeeperRegistry20TransactorSession) SetConfig(config Config2_0) (*types.Transaction, error) {
 	return _KeeperRegistry20.Contract.SetConfig(&_KeeperRegistry20.TransactOpts, config)
 }
 
@@ -1641,7 +1641,7 @@ func (it *KeeperRegistry20ConfigSetIterator) Close() error {
 
 // KeeperRegistry20ConfigSet represents a ConfigSet event raised by the KeeperRegistry20 contract.
 type KeeperRegistry20ConfigSet struct {
-	Config Config
+	Config Config2_0
 	Raw    types.Log // Blockchain specific contextual infos
 }
 
