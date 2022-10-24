@@ -67,7 +67,7 @@ func TriggerRemoteTest(repoSourcePath string, testEnvironment *environment.Envir
 	}
 
 	// create start file in pod to start the test
-	testEnvironment.Client.ExecuteInPod(
+	_, _, err = testEnvironment.Client.ExecuteInPod(
 		testEnvironment.Cfg.Namespace,
 		containerName,
 		containerName,
@@ -76,6 +76,9 @@ func TriggerRemoteTest(repoSourcePath string, testEnvironment *environment.Envir
 			"/root/start.txt",
 		},
 	)
+	if err != nil {
+		return err
+	}
 
 	log.Info().Str("Namespace", testEnvironment.Cfg.Namespace).Msg(fmt.Sprintf("Remote Test Triggered on '%s'", containerName))
 	return nil
@@ -136,7 +139,10 @@ func tarRepo(repoRootPath string) (string, int64, error) {
 	go readStdPipeDocker(stdout, "Output")
 
 	// wait for the command to finish
-	dockerBuildCmd.Wait()
+	err = dockerBuildCmd.Wait()
+	if err != nil {
+		log.Info().Err(err).Msg("Ignoring error since it always fails for directory changing.")
+	}
 
 	finished := time.Now()
 	log.Info().Str("total", fmt.Sprintf("%v", finished.Sub(started))).Msg("Docker Command Run Time")
