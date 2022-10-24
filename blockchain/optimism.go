@@ -135,15 +135,18 @@ func (o *OptimismClient) ReturnFunds(fromPrivateKey *ecdsa.PrivateKey) error {
 	if err != nil {
 		return err
 	}
-	l1Gas, err := optimismGasContract.GetL1GasUsed(&bind.CallOpts{}, nil)
+	l1Fee, err := optimismGasContract.GetL1Fee(&bind.CallOpts{}, types.LegacyTx{}.Data)
 	if err != nil {
 		return err
 	}
-	l1Fee, err := optimismGasContract.GetL1Fee(&bind.CallOpts{}, nil)
-	if err != nil {
-		return err
-	}
-	estimatedGasCost.Add(estimatedGasCost, l1Fee.Mul(l1Gas, l1Fee))
+	// Optimism's L1 gas estimation has an error margin of 25%, we use 26 for rounding errors
+	// https://help.optimism.io/hc/en-us/articles/4416677738907
+	l1FeeFloat := big.NewFloat(1).SetUint64(l1Fee.Uint64())
+	l1FeeFloat.Mul(l1FeeFloat, big.NewFloat(1.26))
+	l1FeeFloatUint, _ := l1FeeFloat.Uint64()
+	l1Fee.SetUint64(l1FeeFloatUint)
+
+	estimatedGasCost.Add(estimatedGasCost, l1Fee)
 	balance.Sub(balance, estimatedGasCost)
 
 	nonce, err := o.GetNonce(context.Background(), fromAddress)
@@ -165,8 +168,8 @@ func (o *OptimismClient) ReturnFunds(fromPrivateKey *ecdsa.PrivateKey) error {
 	log.Info().
 		Str("Token", "OP").
 		Str("From", fromAddress.Hex()).
-		Str("Amount", balance.String()).
-		Str("Estimated Gas Cost", estimatedGasCost.String()).
+		Uint64("Amount", balance.Uint64()).
+		Uint64("Estimated Gas Cost", estimatedGasCost.Uint64()).
 		Msg("Returning Funds to Default Wallet")
 	if err := o.Client.SendTransaction(context.Background(), tx); err != nil {
 		return err
