@@ -5,15 +5,16 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"github.com/avast/retry-go"
+	"github.com/google/uuid"
+	"github.com/rs/zerolog/log"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
-
-	"github.com/avast/retry-go"
-	"github.com/google/uuid"
-	"github.com/rs/zerolog/log"
 )
 
 var (
@@ -23,6 +24,7 @@ var (
 // Gauntlet contains helpful data to run gauntlet commands
 type Gauntlet struct {
 	exec          string
+	Command       string
 	Network       string
 	NetworkConfig map[string]string
 }
@@ -37,6 +39,7 @@ func NewGauntlet() (*Gauntlet, error) {
 	os.Setenv("SKIP_PROMPTS", "true")
 	g := &Gauntlet{
 		exec:          yarn,
+		Command:       "gauntlet",
 		NetworkConfig: make(map[string]string),
 	}
 	g.GenerateRandomNetwork()
@@ -72,9 +75,12 @@ type ExecCommandOptions struct {
 //	It will also check for any errors you specify in the output via the errHandling slice.
 func (g *Gauntlet) ExecCommand(args []string, options ExecCommandOptions) (string, error) {
 	output := ""
-	// append gauntlet and network to args since it is always needed
-	updatedArgs := append([]string{"gauntlet"}, args...)
-	updatedArgs = insertArg(updatedArgs, 2, g.Flag("network", g.Network))
+	updatedArgs := append([]string{g.Command}, args...)
+	if g.Command == "gauntlet" {
+		// append gauntlet and network to args since it is always needed
+		updatedArgs = insertArg(updatedArgs, 2, g.Flag("network", g.Network))
+	}
+
 	printArgs(updatedArgs)
 
 	cmd := exec.Command(g.exec, updatedArgs...) // #nosec G204
@@ -90,7 +96,7 @@ func (g *Gauntlet) ExecCommand(args []string, options ExecCommandOptions) (strin
 	reader := bufio.NewReader(stdout)
 	line, err := reader.ReadString('\n')
 	for err == nil {
-		log.Info().Str("stdout", line).Msg("Gauntlet")
+		log.Info().Str("stdout", line).Msg(cases.Title(language.English).String(g.Command))
 		output = fmt.Sprintf("%s%s", output, line)
 		if options.CheckErrorsInRead {
 			rerr := checkForErrors(options.ErrHandling, output)
@@ -104,7 +110,7 @@ func (g *Gauntlet) ExecCommand(args []string, options ExecCommandOptions) (strin
 	reader = bufio.NewReader(stderr)
 	line, err = reader.ReadString('\n')
 	for err == nil {
-		log.Info().Str("stderr", line).Msg("Gauntlet")
+		log.Info().Str("stderr", line).Msg(cases.Title(language.English).String(g.Command))
 		output = fmt.Sprintf("%s%s", output, line)
 		if options.CheckErrorsInRead {
 			rerr := checkForErrors(options.ErrHandling, output)
@@ -127,7 +133,7 @@ func (g *Gauntlet) ExecCommand(args []string, options ExecCommandOptions) (strin
 	// catch any exit codes
 	err = cmd.Wait()
 
-	log.Debug().Msg("Gauntlet command Completed")
+	log.Debug().Msg(fmt.Sprintf("%s command Completed", cases.Title(language.English).String(g.Command)))
 	return output, err
 }
 
