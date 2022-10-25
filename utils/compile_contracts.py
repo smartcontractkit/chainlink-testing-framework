@@ -14,46 +14,47 @@ targetdir = "./contracts/ethereum"
 
 # The names of the contracts that we're actually compiling to use.
 used_contract_names = [
-  "APIConsumer",
-  "BlockhashStore",
-  "DeviationFlaggingValidator",
-  "Flags",
-  "FluxAggregator",
-  "KeeperConsumer",
-  "KeeperConsumerPerformance",
-  "KeeperRegistrar",
-  # Note: when re generating wrappers you need to rollback changes made to old registries as they have manual changes to config and state struct names
-  "KeeperRegistry1_1",
-  "KeeperRegistry1_2",
-  "KeeperRegistry1_3",
-  "KeeperRegistry2_0",
-  # Note: KeeperRegistryLogic 1.3/2.0 needs some manual changes in go wrapper after generation to avoid
-  # conflict with KeeperRegistry. Hence it is commented out to not be regenerated every time
-  #"KeeperRegistryLogic1_3",
-  #"KeeperRegistryLogic2_0",
-  "LinkToken",
-  "MockETHLINKAggregator",
-  "MockGASAggregator",
-  "OffchainAggregator",
-  "Oracle",
-  "SimpleReadAccessController",
-  "SimpleWriteAccessController",
-  "UpkeepCounter",
-  "UpkeepPerformCounterRestrictive",
-  "UpkeepTranscoder"
-  "VRF",
-  "VRFConsumer",
-  "VRFCoordinator",
-  "VRFConsumerV2",
-  "VRFCoordinatorV2",
-  "KeeperConsumerBenchmark"
+    "APIConsumer",
+    "BlockhashStore",
+    "DeviationFlaggingValidator",
+    "Flags",
+    "FluxAggregator",
+    "KeeperConsumer",
+    "KeeperConsumerPerformance",
+    "KeeperRegistrar",
+    # Note: when re generating wrappers you need to rollback changes made to old registries as they have manual changes to config and state struct names
+    "KeeperRegistry1_1",
+    "KeeperRegistry1_2",
+    "KeeperRegistry1_3",
+    "KeeperRegistry2_0",
+    # Note: KeeperRegistryLogic 1.3/2.0 needs some manual changes in go wrapper after generation to avoid
+    # conflict with KeeperRegistry. Hence it is commented out to not be regenerated every time
+    # "KeeperRegistryLogic1_3",
+    # "KeeperRegistryLogic2_0",
+    "LinkToken",
+    "MockETHLINKAggregator",
+    "MockGASAggregator",
+    "OffchainAggregator",
+    "Oracle",
+    "SimpleReadAccessController",
+    "SimpleWriteAccessController",
+    "UpkeepCounter",
+    "UpkeepPerformCounterRestrictive",
+    "UpkeepTranscoder"
+    "VRF",
+    "VRFConsumer",
+    "VRFCoordinator",
+    "VRFConsumerV2",
+    "VRFCoordinatorV2",
+    "KeeperConsumerBenchmark"
 ]
 
 print("Locally installing hardhat...")
 subprocess.run('npm install --save-dev hardhat', shell=True, check=True)
 
 print("Locally installing openzeppelin contracts...")
-subprocess.run('npm install --save-dev @openzeppelin/contracts@^4.3.3', shell=True, check=True)
+subprocess.run(
+    'npm install --save-dev @openzeppelin/contracts@^4.3.3', shell=True, check=True)
 
 print("Modifying hardhat settings...")
 with open("hardhat.config.js", "w") as hardhat_config:
@@ -144,15 +145,16 @@ for version in solc_versions:
                 if contract_name in used_contract_names:
                     go_file_name = targetdir + "/" + contract_name + ".go"
                     subprocess.run("abigen --bin=" + bin_name + " --abi=" + abi_name + " --pkg=" + contract_name + " --out=" +
-                    go_file_name, shell=True, check=True)
+                                   go_file_name, shell=True, check=True)
                     # Replace package name in file, abigen doesn't let you specify differently
                     with open(go_file_name, 'r+') as f:
                         text = f.read()
-                        text = re.sub("package " + contract_name, "package ethereum", text)
+                        text = re.sub("package " + contract_name,
+                                      "package ethereum", text)
                         f.seek(0)
                         f.write(text)
                         f.truncate()
-            
+
 print("Cleaning up Hardhat...")
 subprocess.run('npm uninstall --save-dev hardhat', shell=True)
 if path.exists("hardhat.config.js"):
@@ -164,7 +166,7 @@ if path.exists("package.json"):
 if path.exists("node_modules/"):
     shutil.rmtree("node_modules/")
 if path.exists("artifacts/"):
-    shutil.rmtree("artifacts/") 
+    shutil.rmtree("artifacts/")
 if path.exists("cache/"):
     shutil.rmtree("cache/")
 
