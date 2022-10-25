@@ -2,10 +2,13 @@
 package actions
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -14,61 +17,25 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 )
 
-// BuildGoTests builds the go tests using native go cross-compilation to run, and returns a path to the test executable
-// along with its size in bytes.
-//
-//	Note: currentProjectRootPath and currentSoakTestRootPath are not interchangeable with utils.ProjectRoot and utils.SoakRoot
-//	when running in outside repositories. Keep an eye on when you need paths leading to this go package vs the current running project.
-func BuildGoTests(executablePath, testsPath, projectRootPath string) (string, int64, error) {
-	logging.Init()
-	absExecutablePath, err := filepath.Abs(executablePath)
-	if err != nil {
-		return "", 0, err
-	}
-	absTestsPath, err := filepath.Abs(testsPath)
-	if err != nil {
-		return "", 0, err
-	}
-	absProjectRootPath, err := filepath.Abs(projectRootPath)
-	if err != nil {
-		return "", 0, err
-	}
-	log.Info().
-		Str("Test Directory", absTestsPath).
-		Str("Executable Path", absExecutablePath).
-		Str("Project Root Path", absProjectRootPath).
-		Msg("Compiling tests")
+const containerName = "remote-test-runner"
+const tarFileName = "ztarrepo.tar.gz"
 
-	exeFile := filepath.Join(absExecutablePath, "remote.test")
-	compileCmd := exec.Command("go", "test", "-ldflags=-s -w", "-c", absTestsPath, "-o", exeFile) // #nosec G204
-	compileCmd.Env = os.Environ()
-	compileCmd.Env = append(compileCmd.Env, "CGO_ENABLED=0", "GOOS=linux", "GOARCH=amd64")
-
-	compileOut, err := compileCmd.CombinedOutput()
-	log.Debug().
-		Str("Output", string(compileOut)).
-		Str("Command", compileCmd.String()).
-		Msg("Ran command")
-	if err != nil {
-		return "", 0, fmt.Errorf("Env: %s\nCommand: %s\nCommand Output: %s, %w",
-			compileCmd.Env, compileCmd.String(), string(compileOut), err)
+// BasicRunnerValuesSetup Basic values needed to run a soak test in the remote runner
+func BasicRunnerValuesSetup(focus, namespace, testDirectory string) map[string]interface{} {
+	return map[string]interface{}{
+		"focus":         focus,
+		"env_namespace": namespace,
+		"test_dir":      testDirectory,
 	}
-
-	exeFileInfo, err := os.Stat(exeFile)
-	if err != nil {
-		return "", 0, fmt.Errorf("Expected '%s' to exist, %w", exeFile, err)
-	}
-	log.Info().Str("Path", exeFile).Int64("File Size (bytes)", exeFileInfo.Size()).Msg("Compiled tests")
-	return exeFile, exeFileInfo.Size(), nil
 }
 
 // TriggerRemoteTest copies the executable to the remote-test-runner and starts the run
-func TriggerRemoteTest(exePath string, testEnvironment *environment.Environment) error {
+func TriggerRemoteTest(repoSourcePath string, testEnvironment *environment.Environment) error {
 	logging.Init()
 
 	// Leaving commented out for now since it may be useful for the final solution to compiling cosmwasm into the tests
 	// Add gcompat package, required by libwasmvm
-	// _, _, err := testEnvironment.Client.ExecuteInPod(testEnvironment.Cfg.Namespace, "remote-test-runner", "remote-test-runner", []string{"apk", "add", "gcompat"})
+	// _, _, err := testEnvironment.Client.ExecuteInPod(testEnvironment.Cfg.Namespace, containerName, containerName, []string{"apk", "add", "gcompat"})
 	// if err != nil {
 	// 	return errors.Wrap(err, "Error adding gcompat")
 	// }
@@ -76,94 +43,125 @@ func TriggerRemoteTest(exePath string, testEnvironment *environment.Environment)
 	// _, _, errOut, err := testEnvironment.Client.CopyToPod(
 	// 	testEnvironment.Cfg.Namespace,
 	// 	os.Getenv("GOPATH")+"/pkg/mod/github.com/!cosm!wasm/wasmvm@v1.0.0/api/libwasmvm.x86_64.so",
-	// 	fmt.Sprintf("%s/%s:/usr/lib/libwasmvm.x86_64.so", testEnvironment.Cfg.Namespace, "remote-test-runner"),
+	// 	fmt.Sprintf("%s/%s:/usr/lib/libwasmvm.x86_64.so", testEnvironment.Cfg.Namespace, containerName),
 	// 	"remote-test-runner")
 	// if err != nil {
 	// 	return errors.Wrap(err, errOut.String())
 	// }
+
+	// tar the repo
+	tarPath, _, err := tarRepo(repoSourcePath)
+	if err != nil {
+		return err
+	}
+	log.Debug().Str("Path", tarPath).Msg("Tar file to copy to pod")
+
+	// copy the repo containing the test to the pod
 	_, _, errOut, err := testEnvironment.Client.CopyToPod(
 		testEnvironment.Cfg.Namespace,
-		exePath,
-		fmt.Sprintf("%s/%s:/root/remote.test", testEnvironment.Cfg.Namespace, "remote-test-runner"),
-		"remote-test-runner")
+		tarPath,
+		fmt.Sprintf("%s/%s:/root/", testEnvironment.Cfg.Namespace, containerName),
+		containerName)
 	if err != nil {
 		return errors.Wrap(err, errOut.String())
 	}
-	log.Info().Str("Namespace", testEnvironment.Cfg.Namespace).Msg("Remote Test Triggered on 'remote-test-runner'")
+
+	// create start file in pod to start the test
+	_, _, err = testEnvironment.Client.ExecuteInPod(
+		testEnvironment.Cfg.Namespace,
+		containerName,
+		containerName,
+		[]string{
+			"touch",
+			"/root/start.txt",
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	log.Info().Str("Namespace", testEnvironment.Cfg.Namespace).Msg(fmt.Sprintf("Remote Test Triggered on '%s'", containerName))
 	return nil
 }
 
-/** This gets complicated with recent refactoring. Seeing how it's a niche use case, we'll remove it for now.
-BuildGoTestsWithDocker builds the go tests to run using docker, and returns a path to the test executable, along with
-remote config options. This version usually takes longer to run, but eliminates issues with cross-compilation.
- Note: executablePath and projectRootPath are not interchangeable with utils.ProjectRoot and utils.SoakRoot
- when running in outside repositories. Keep an eye on when you need paths leading to this go package vs the current running project.
-func BuildGoTestsWithDocker(executablePath, testsPath, projectRootPath string) (fs.FileInfo, error) {
-	dockerfilePath, err := filepath.Abs("./Dockerfile.compiler")
+// tarRep Uses the gnu tar command from a docker image to consistently compress the code
+// using .gitingore and some other excludes to reduce the file size
+func tarRepo(repoRootPath string) (string, int64, error) {
+	absRepoRootPath, err := filepath.Abs(repoRootPath)
 	if err != nil {
-		return nil, err
+		return "", 0, err
 	}
-	testTargetDir := filepath.Join(executablePath, "generated_test_dir")
-	finalTestDestination := filepath.Join(executablePath, "remote.test")
+	err = os.Chdir(absRepoRootPath)
+	if err != nil {
+		return "", 0, err
+	}
+
+	absTarFilePath := filepath.Join(absRepoRootPath, tarFileName)
 	// Clean up old test files if they're around
-	if _, err := os.Stat(finalTestDestination); err == nil {
-		if err = os.Remove(finalTestDestination); err != nil {
-			return nil, err
+	if _, err := os.Stat(absTarFilePath); err == nil {
+		if err = os.Remove(absTarFilePath); err != nil {
+			return "", 0, err
 		}
 	}
 
-	// Get the relative paths to directories needed by docker
-	relativeTestDirectoryToRootPath, err := filepath.Rel(executablePath, testsPath)
-	if err != nil {
-		return nil, err
-	}
-	log.Info().Str("path", relativeTestDirectoryToRootPath).Msg("docker build arg testDirectory")
-	relativeProjectRootPathToRunningTest, err := filepath.Rel(projectRootPath, executablePath)
-
-	if err != nil {
-		return nil, err
-	}
-	log.Info().Str("path", relativeProjectRootPathToRunningTest).Msg("docker build arg projectRootPath")
-
-	// TODO: Docker has a Go API, but it was oddly complicated and not at all documented, and kept failing.
-	// So for now, we're doing the tried and true method of plain commands.
 	dockerBuildCmd := exec.Command("docker",
-		"build",
-		"-t",
-		"test-compiler",
-		"--build-arg",
-		fmt.Sprintf("testDirectory=./%s", relativeTestDirectoryToRootPath),
-		"--build-arg",
-		fmt.Sprintf("projectRootPath=./%s", relativeProjectRootPathToRunningTest),
-		"-f",
-		dockerfilePath,
-		"--output",
-		testTargetDir,
-		executablePath) // #nosec G204
+		"run",
+		"--rm",
+		"-v",
+		fmt.Sprintf("%s:/usr/src", absRepoRootPath),
+		"tateexon/tar@sha256:093ca3ba5dbdd906d03425cbec3296705a6aa316db2071f4c8b487504de9e129",
+		fmt.Sprintf("--exclude=%s", tarFileName),
+		"--exclude=.git",
+		"--exclude-vcs-ignores",
+		"--ignore-failed-read",
+		"-czvf",
+		fmt.Sprintf("/usr/src/%s", tarFileName),
+		"/usr/src/",
+	) // #nosec G204
 	dockerBuildCmd.Env = os.Environ()
-	log.Info().Str("Docker File", dockerfilePath).Msg("Compiling tests using Docker")
-	compileOut, err := dockerBuildCmd.CombinedOutput()
-	log.Debug().
-		Str("Output", string(compileOut)).
-		Str("Command", dockerBuildCmd.String()).
-		Msg("Ran command")
+	log.Info().Str("cmd", dockerBuildCmd.String()).Msg("Docker command")
+	stderr, err := dockerBuildCmd.StderrPipe()
 	if err != nil {
-		return nil, err
+		return "", 0, err
+	}
+	stdout, err := dockerBuildCmd.StdoutPipe()
+	if err != nil {
+		return "", 0, err
 	}
 
-	err = os.Rename(filepath.Join(testTargetDir, "remote.test"), finalTestDestination)
+	// start the command and wrap stderr and stdout
+	started := time.Now()
+	err = dockerBuildCmd.Start()
 	if err != nil {
-		return nil, err
+		return "", 0, err
 	}
-	err = os.Remove(testTargetDir)
+	go readStdPipeDocker(stderr, "Error")
+	go readStdPipeDocker(stdout, "Output")
+
+	// wait for the command to finish
+	err = dockerBuildCmd.Wait()
 	if err != nil {
-		return nil, err
+		log.Info().Err(err).Msg("Ignoring error since it always fails for directory changing.")
 	}
 
-	exeFileInfo, err := os.Stat(finalTestDestination)
+	finished := time.Now()
+	log.Info().Str("total", fmt.Sprintf("%v", finished.Sub(started))).Msg("Docker Command Run Time")
+
+	tarFileInfo, err := os.Stat(absTarFilePath)
 	if err != nil {
-		return nil, fmt.Errorf("Expected '%s' to exist, %w", finalTestDestination, err)
+		return "", 0, fmt.Errorf("expected '%s' to exist, %w", absTarFilePath, err)
 	}
-	return exeFileInfo, nil
+	log.Info().Str("Path", absTarFilePath).Int64("File Size (bytes)", tarFileInfo.Size()).Msg("Compiled tests")
+
+	return absTarFilePath, tarFileInfo.Size(), nil
 }
-**/
+
+// readStdPipeDocker continuously read a pipe from the docker command
+func readStdPipeDocker(writer io.ReadCloser, prependOutput string) {
+	reader := bufio.NewReader(writer)
+	line, err := reader.ReadString('\n')
+	for err == nil {
+		log.Info().Str(prependOutput, line).Msg("Docker")
+		line, err = reader.ReadString('\n')
+	}
+}
