@@ -20,12 +20,12 @@ import "./OCR2Abstract.sol";
  * contracts. Clients must support the Upkeep interface.
  */
 contract KeeperRegistry2_0 is
-  KeeperRegistryBase2_0,
-  Proxy,
-  OCR2Abstract,
-  KeeperRegistryExecutableInterface,
-  MigratableKeeperRegistryInterface,
-  ERC677ReceiverInterface
+KeeperRegistryBase2_0,
+Proxy,
+OCR2Abstract,
+KeeperRegistryExecutableInterface,
+MigratableKeeperRegistryInterface,
+ERC677ReceiverInterface
 {
   using Address for address;
   using EnumerableSet for EnumerableSet.UintSet;
@@ -58,12 +58,12 @@ contract KeeperRegistry2_0 is
    * @param keeperRegistryLogic address of the logic contract
    */
   constructor(KeeperRegistryBase2_0 keeperRegistryLogic)
-    KeeperRegistryBase2_0(
-      keeperRegistryLogic.getPaymentModel(),
-      keeperRegistryLogic.getLinkAddress(),
-      keeperRegistryLogic.getLinkNativeFeedAddress(),
-      keeperRegistryLogic.getFastGasFeedAddress()
-    )
+  KeeperRegistryBase2_0(
+    keeperRegistryLogic.getPaymentModel(),
+    keeperRegistryLogic.getLinkAddress(),
+    keeperRegistryLogic.getLinkNativeFeedAddress(),
+    keeperRegistryLogic.getFastGasFeedAddress()
+  )
   {
     i_keeperRegistryLogic = address(keeperRegistryLogic);
   }
@@ -165,9 +165,9 @@ contract KeeperRegistry2_0 is
     // Take upper bound of 16 gas per callData bytes, which is approximated to be reportLength
     // Rest of msg.data is accounted for in accounting overheads
     gasOverhead =
-      (gasOverhead - gasleft() + 16 * rawReport.length) +
-      ACCOUNTING_FIXED_GAS_OVERHEAD +
-      (ACCOUNTING_PER_SIGNER_GAS_OVERHEAD * (hotVars.f + 1));
+    (gasOverhead - gasleft() + 16 * rawReport.length) +
+    ACCOUNTING_FIXED_GAS_OVERHEAD +
+    (ACCOUNTING_PER_SIGNER_GAS_OVERHEAD * (hotVars.f + 1));
     gasOverhead = gasOverhead / numUpkeepsPassedChecks + ACCOUNTING_PER_UPKEEP_GAS_OVERHEAD;
 
     uint96 totalReimbursement;
@@ -223,9 +223,9 @@ contract KeeperRegistry2_0 is
    * @param performData calldata parameter to be passed to the target upkeep.
    */
   function simulatePerformUpkeep(uint256 id, bytes calldata performData)
-    external
-    cannotExecute
-    returns (bool success, uint256 gasUsed)
+  external
+  cannotExecute
+  returns (bool success, uint256 gasUsed)
   {
     if (s_hotVars.paused) revert RegistryPaused();
 
@@ -322,29 +322,29 @@ contract KeeperRegistry2_0 is
       revert MaxPerformDataSizeCanOnlyIncrease();
 
     s_hotVars = HotVars({
-      f: f,
-      paymentPremiumPPB: onchainConfigStruct.paymentPremiumPPB,
-      flatFeeMicroLink: onchainConfigStruct.flatFeeMicroLink,
-      stalenessSeconds: onchainConfigStruct.stalenessSeconds,
-      gasCeilingMultiplier: onchainConfigStruct.gasCeilingMultiplier,
-      paused: false,
-      reentrancyGuard: false,
-      totalPremium: totalPremium,
-      latestEpoch: 0
+    f: f,
+    paymentPremiumPPB: onchainConfigStruct.paymentPremiumPPB,
+    flatFeeMicroLink: onchainConfigStruct.flatFeeMicroLink,
+    stalenessSeconds: onchainConfigStruct.stalenessSeconds,
+    gasCeilingMultiplier: onchainConfigStruct.gasCeilingMultiplier,
+    paused: false,
+    reentrancyGuard: false,
+    totalPremium: totalPremium,
+    latestEpoch: 0
     });
 
     s_storage = Storage({
-      checkGasLimit: onchainConfigStruct.checkGasLimit,
-      minUpkeepSpend: onchainConfigStruct.minUpkeepSpend,
-      maxPerformGas: onchainConfigStruct.maxPerformGas,
-      transcoder: onchainConfigStruct.transcoder,
-      registrar: onchainConfigStruct.registrar,
-      maxCheckDataSize: onchainConfigStruct.maxCheckDataSize,
-      maxPerformDataSize: onchainConfigStruct.maxPerformDataSize,
-      nonce: s_storage.nonce,
-      configCount: s_storage.configCount,
-      latestConfigBlockNumber: s_storage.latestConfigBlockNumber,
-      ownerLinkBalance: s_storage.ownerLinkBalance
+    checkGasLimit: onchainConfigStruct.checkGasLimit,
+    minUpkeepSpend: onchainConfigStruct.minUpkeepSpend,
+    maxPerformGas: onchainConfigStruct.maxPerformGas,
+    transcoder: onchainConfigStruct.transcoder,
+    registrar: onchainConfigStruct.registrar,
+    maxCheckDataSize: onchainConfigStruct.maxCheckDataSize,
+    maxPerformDataSize: onchainConfigStruct.maxPerformDataSize,
+    nonce: s_storage.nonce,
+    configCount: s_storage.configCount,
+    latestConfigBlockNumber: s_storage.latestConfigBlockNumber,
+    ownerLinkBalance: s_storage.ownerLinkBalance
     });
     s_fallbackGasPrice = onchainConfigStruct.fallbackGasPrice;
     s_fallbackLinkPrice = onchainConfigStruct.fallbackLinkPrice;
@@ -388,16 +388,16 @@ contract KeeperRegistry2_0 is
   function getUpkeep(uint256 id) external view override returns (UpkeepInfo memory upkeepInfo) {
     Upkeep memory reg = s_upkeep[id];
     upkeepInfo = UpkeepInfo({
-      target: reg.target,
-      executeGas: reg.executeGas,
-      checkData: s_checkData[id],
-      balance: reg.balance,
-      admin: s_upkeepAdmin[id],
-      maxValidBlocknumber: reg.maxValidBlocknumber,
-      lastPerformBlockNumber: reg.lastPerformBlockNumber,
-      amountSpent: reg.amountSpent,
-      paused: reg.paused,
-      offchainConfig: s_upkeepOffchainConfig[id]
+    target: reg.target,
+    executeGas: reg.executeGas,
+    checkData: s_checkData[id],
+    balance: reg.balance,
+    admin: s_upkeepAdmin[id],
+    maxValidBlocknumber: reg.maxValidBlocknumber,
+    lastPerformBlockNumber: reg.lastPerformBlockNumber,
+    amountSpent: reg.amountSpent,
+    paused: reg.paused,
+    offchainConfig: s_upkeepOffchainConfig[id]
     });
     return upkeepInfo;
   }
@@ -426,27 +426,27 @@ contract KeeperRegistry2_0 is
    * @notice read the current info about any transmitter address
    */
   function getTransmitterInfo(address query)
-    external
-    view
-    override
-    returns (
-      bool active,
-      uint8 index,
-      uint96 balance,
-      uint96 lastCollected,
-      address payee
-    )
+  external
+  view
+  override
+  returns (
+    bool active,
+    uint8 index,
+    uint96 balance,
+    uint96 lastCollected,
+    address payee
+  )
   {
     Transmitter memory transmitter = s_transmitters[query];
     uint96 totalDifference = s_hotVars.totalPremium - transmitter.lastCollected;
     uint96 pooledShare = totalDifference / uint96(s_transmittersList.length);
 
     return (
-      transmitter.active,
-      transmitter.index,
-      (transmitter.balance + pooledShare),
-      transmitter.lastCollected,
-      s_transmitterPayees[query]
+    transmitter.active,
+    transmitter.index,
+    (transmitter.balance + pooledShare),
+    transmitter.lastCollected,
+    s_transmitterPayees[query]
     );
   }
 
@@ -462,44 +462,44 @@ contract KeeperRegistry2_0 is
    * @notice read the current state of the registry
    */
   function getState()
-    external
-    view
-    override
-    returns (
-      State memory state,
-      OnchainConfig memory config,
-      address[] memory signers,
-      address[] memory transmitters,
-      uint8 f
-    )
+  external
+  view
+  override
+  returns (
+    State memory state,
+    OnchainConfig memory config,
+    address[] memory signers,
+    address[] memory transmitters,
+    uint8 f
+  )
   {
     state = State({
-      nonce: s_storage.nonce,
-      ownerLinkBalance: s_storage.ownerLinkBalance,
-      expectedLinkBalance: s_expectedLinkBalance,
-      totalPremium: s_hotVars.totalPremium,
-      numUpkeeps: s_upkeepIDs.length(),
-      configCount: s_storage.configCount,
-      latestConfigBlockNumber: s_storage.latestConfigBlockNumber,
-      latestConfigDigest: s_latestConfigDigest,
-      latestEpoch: s_hotVars.latestEpoch,
-      paused: s_hotVars.paused
+    nonce: s_storage.nonce,
+    ownerLinkBalance: s_storage.ownerLinkBalance,
+    expectedLinkBalance: s_expectedLinkBalance,
+    totalPremium: s_hotVars.totalPremium,
+    numUpkeeps: s_upkeepIDs.length(),
+    configCount: s_storage.configCount,
+    latestConfigBlockNumber: s_storage.latestConfigBlockNumber,
+    latestConfigDigest: s_latestConfigDigest,
+    latestEpoch: s_hotVars.latestEpoch,
+    paused: s_hotVars.paused
     });
 
     config = OnchainConfig({
-      paymentPremiumPPB: s_hotVars.paymentPremiumPPB,
-      flatFeeMicroLink: s_hotVars.flatFeeMicroLink,
-      checkGasLimit: s_storage.checkGasLimit,
-      stalenessSeconds: s_hotVars.stalenessSeconds,
-      gasCeilingMultiplier: s_hotVars.gasCeilingMultiplier,
-      minUpkeepSpend: s_storage.minUpkeepSpend,
-      maxPerformGas: s_storage.maxPerformGas,
-      maxCheckDataSize: s_storage.maxCheckDataSize,
-      maxPerformDataSize: s_storage.maxPerformDataSize,
-      fallbackGasPrice: s_fallbackGasPrice,
-      fallbackLinkPrice: s_fallbackLinkPrice,
-      transcoder: s_storage.transcoder,
-      registrar: s_storage.registrar
+    paymentPremiumPPB: s_hotVars.paymentPremiumPPB,
+    flatFeeMicroLink: s_hotVars.flatFeeMicroLink,
+    checkGasLimit: s_storage.checkGasLimit,
+    stalenessSeconds: s_hotVars.stalenessSeconds,
+    gasCeilingMultiplier: s_hotVars.gasCeilingMultiplier,
+    minUpkeepSpend: s_storage.minUpkeepSpend,
+    maxPerformGas: s_storage.maxPerformGas,
+    maxCheckDataSize: s_storage.maxCheckDataSize,
+    maxPerformDataSize: s_storage.maxPerformDataSize,
+    fallbackGasPrice: s_fallbackGasPrice,
+    fallbackLinkPrice: s_fallbackLinkPrice,
+    transcoder: s_storage.transcoder,
+    registrar: s_storage.registrar
     });
 
     return (state, config, s_signersList, s_transmittersList, s_hotVars.f);
@@ -541,14 +541,14 @@ contract KeeperRegistry2_0 is
    * @inheritdoc OCR2Abstract
    */
   function latestConfigDetails()
-    external
-    view
-    override
-    returns (
-      uint32 configCount,
-      uint32 blockNumber,
-      bytes32 configDigest
-    )
+  external
+  view
+  override
+  returns (
+    uint32 configCount,
+    uint32 blockNumber,
+    bytes32 configDigest
+  )
   {
     return (s_storage.configCount, s_storage.latestConfigBlockNumber, s_latestConfigDigest);
   }
@@ -557,14 +557,14 @@ contract KeeperRegistry2_0 is
    * @inheritdoc OCR2Abstract
    */
   function latestConfigDigestAndEpoch()
-    external
-    view
-    override
-    returns (
-      bool scanLogs,
-      bytes32 configDigest,
-      uint32 epoch
-    )
+  external
+  view
+  override
+  returns (
+    bool scanLogs,
+    bytes32 configDigest,
+    uint32 epoch
+  )
   {
     return (false, s_latestConfigDigest, s_hotVars.latestEpoch);
   }
@@ -591,21 +591,21 @@ contract KeeperRegistry2_0 is
   ) private returns (bool success) {
     assembly {
       let g := gas()
-      // Compute g -= PERFORM_GAS_CUSHION and check for underflow
+    // Compute g -= PERFORM_GAS_CUSHION and check for underflow
       if lt(g, PERFORM_GAS_CUSHION) {
         revert(0, 0)
       }
       g := sub(g, PERFORM_GAS_CUSHION)
-      // if g - g//64 <= gasAmount, revert
-      // (we subtract g//64 because of EIP-150)
+    // if g - g//64 <= gasAmount, revert
+    // (we subtract g//64 because of EIP-150)
       if iszero(gt(sub(g, div(g, 64)), gasAmount)) {
         revert(0, 0)
       }
-      // solidity calls check that a contract actually exists at the destination, so we do the same
+    // solidity calls check that a contract actually exists at the destination, so we do the same
       if iszero(extcodesize(target)) {
         revert(0, 0)
       }
-      // call and return whether we succeeded. ignore return data
+    // call and return whether we succeeded. ignore return data
       success := call(gasAmount, target, 0, add(data, 0x20), mload(data), 0, 0)
     }
     return success;
@@ -616,20 +616,20 @@ contract KeeperRegistry2_0 is
    */
   function _decodeReport(bytes memory rawReport) internal pure returns (Report memory) {
     (
-      uint256 fastGasWei,
-      uint256 linkNative,
-      uint256[] memory upkeepIds,
-      PerformDataWrapper[] memory wrappedPerformDatas
+    uint256 fastGasWei,
+    uint256 linkNative,
+    uint256[] memory upkeepIds,
+    PerformDataWrapper[] memory wrappedPerformDatas
     ) = abi.decode(rawReport, (uint256, uint256, uint256[], PerformDataWrapper[]));
     if (upkeepIds.length != wrappedPerformDatas.length) revert InvalidReport();
 
     return
-      Report({
-        fastGasWei: fastGasWei,
-        linkNative: linkNative,
-        upkeepIds: upkeepIds,
-        wrappedPerformDatas: wrappedPerformDatas
-      });
+    Report({
+    fastGasWei: fastGasWei,
+    linkNative: linkNative,
+    upkeepIds: upkeepIds,
+    wrappedPerformDatas: wrappedPerformDatas
+    });
   }
 
   /**
@@ -691,9 +691,9 @@ contract KeeperRegistry2_0 is
       signerAddress = ecrecover(h, uint8(rawVs[i]) + 27, rs[i], ss[i]);
       signer = s_signers[signerAddress];
       if (!signer.active) revert OnlyActiveSigners();
-      unchecked {
-        signedCount += 1 << (8 * signer.index);
-      }
+    unchecked {
+      signedCount += 1 << (8 * signer.index);
+    }
     }
 
     if (signedCount & ORACLE_MASK != signedCount) revert DuplicateSigners();
@@ -704,9 +704,9 @@ contract KeeperRegistry2_0 is
    * transmitter and the exact gas required by the Upkeep
    */
   function _performUpkeep(Upkeep memory upkeep, bytes memory performData)
-    private
-    nonReentrant
-    returns (bool success, uint256 gasUsed)
+  private
+  nonReentrant
+  returns (bool success, uint256 gasUsed)
   {
     gasUsed = gasleft();
     bytes memory callData = abi.encodeWithSelector(PERFORM_SELECTOR, performData);
@@ -790,17 +790,17 @@ contract KeeperRegistry2_0 is
    * @param id identifier of the upkeep to check
    */
   function checkUpkeep(uint256 id)
-    external
-    override
-    cannotExecute
-    returns (
-      bool upkeepNeeded,
-      bytes memory performData,
-      UpkeepFailureReason upkeepFailureReason,
-      uint256 gasUsed,
-      uint256 fastGasWei,
-      uint256 linkNative
-    )
+  external
+  override
+  cannotExecute
+  returns (
+    bool upkeepNeeded,
+    bytes memory performData,
+    UpkeepFailureReason upkeepFailureReason,
+    uint256 gasUsed,
+    uint256 fastGasWei,
+    uint256 linkNative
+  )
   {
     // Executed through logic contract
     _fallback();
