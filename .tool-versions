@@ -1,6 +1,6 @@
-golang 1.19.1
+golang 1.19.2
 nodejs 14.20.0
-ginkgo 2.1.6
+ginkgo 2.4.0
 k3d 5.4.6
 act 0.2.30
 golangci-lint 1.49.0
