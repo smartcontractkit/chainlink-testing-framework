@@ -9,7 +9,7 @@ jobs:
       - name: Check out Code
         uses: actions/checkout@v3
       - name: Parse tool-versions file
-        uses: smartcontractkit/tool-versions-to-env-action@v1.0.7
+        uses: smartcontractkit/tool-versions-to-env-action@v1.0.8
         id: tool-versions
     outputs:
       go-version: ${{ steps.tool-versions.outputs.golang_version }}
@@ -26,7 +26,7 @@ jobs:
         with:
           go-version: ${{ needs.tools.outputs.go-version }}
       - name: golangci-lint ${{ needs.tools.outputs.golangci-lint-version }}
-        uses: golangci/golangci-lint-action@v3.2.0
+        uses: golangci/golangci-lint-action@v3.3.0
         with:
           version: v${{ needs.tools.outputs.golangci-lint-version }}
 
