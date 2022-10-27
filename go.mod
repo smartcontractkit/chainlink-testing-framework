@@ -17,10 +17,27 @@ require (
 	github.com/prometheus/common v0.37.0
 	github.com/rs/zerolog v1.28.0
 	github.com/slack-go/slack v0.11.3
-	github.com/smartcontractkit/chainlink-env v0.2.43
+	github.com/smartcontractkit/chainlink-env v0.2.45
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/ratelimit v0.2.0
 	golang.org/x/sync v0.0.0-20220819030929-7fc1605a5dde
+)
+
+require (
+	github.com/alecthomas/units v0.0.0-20210927113745-59d0afb8317a // indirect
+	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/cespare/xxhash/v2 v2.1.2 // indirect
+	github.com/chaos-mesh/chaos-mesh/api/v1alpha1 v0.0.0-20220226050744-799408773657 // indirect
+	github.com/docker/go-units v0.4.0 // indirect
+	github.com/evanphx/json-patch/v5 v5.6.0 // indirect
+	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
+	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
+	github.com/prometheus/client_model v0.2.0 // indirect
+	github.com/prometheus/procfs v0.8.0 // indirect
+	github.com/robfig/cron/v3 v3.0.1 // indirect
+	gomodules.xyz/jsonpatch/v2 v2.2.0 // indirect
+	k8s.io/apiextensions-apiserver v0.25.0 // indirect
+	sigs.k8s.io/controller-runtime v0.13.0 // indirect
 )
 
 require (
@@ -78,7 +95,6 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/monochromegane/go-gitignore v0.0.0-20200626010858-205db1a8cc00 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/tsdb v0.10.0 // indirect
@@ -107,11 +123,11 @@ require (
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/api v0.24.4 // indirect
-	k8s.io/apimachinery v0.24.4 // indirect
+	k8s.io/api v0.25.0 // indirect
+	k8s.io/apimachinery v0.25.0 // indirect
 	k8s.io/cli-runtime v0.24.4 // indirect
-	k8s.io/client-go v0.24.4 // indirect
-	k8s.io/component-base v0.24.4 // indirect
+	k8s.io/client-go v0.25.0 // indirect
+	k8s.io/component-base v0.25.0 // indirect
 	k8s.io/klog/v2 v2.70.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20220803164354-a70c9af30aea // indirect
 	k8s.io/kubectl v0.24.4 // indirect
