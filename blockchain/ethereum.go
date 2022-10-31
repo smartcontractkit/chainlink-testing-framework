@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -624,6 +625,11 @@ type EthereumMultinodeClient struct {
 // LoadContract load already deployed contract instance
 func (e *EthereumMultinodeClient) LoadContract(contractName string, address common.Address, loader ContractLoader) (interface{}, error) {
 	return e.DefaultClient.LoadContract(contractName, address, loader)
+}
+
+// EstimateCostForChainlinkOperations calculates TXs cost as a dirty estimation based on transactionLimit for that network
+func (e *EthereumMultinodeClient) EstimateCostForChainlinkOperations(amountOfOperations int) (*big.Float, error) {
+	return e.DefaultClient.EstimateCostForChainlinkOperations(amountOfOperations)
 }
 
 // NewEVMClient returns a multi-node EVM client connected to the specified network
