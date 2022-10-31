@@ -89,16 +89,17 @@ func (a *ArbitrumClient) ReturnFunds(fromPrivateKey *ecdsa.PrivateKey) error {
 	if err != nil {
 		return err
 	}
-	balance.Sub(balance, big.NewInt(1).Mul(suggestedGasPrice, big.NewInt(21000)))
+	gas, err := a.Client.EstimateGas(context.Background(), ethereum.CallMsg{})
+	if err != nil {
+		return err
+	}
+	balance.Sub(balance, big.NewInt(1).Mul(suggestedGasPrice, big.NewInt(0).SetUint64(gas)))
 
 	nonce, err := a.GetNonce(context.Background(), fromAddress)
 	if err != nil {
 		return err
 	}
-	gas, err := a.Client.EstimateGas(context.Background(), ethereum.CallMsg{})
-	if err != nil {
-		return err
-	}
+
 	tx, err := types.SignNewTx(fromPrivateKey, types.LatestSignerForChainID(a.GetChainID()), &types.LegacyTx{
 		Nonce:    nonce,
 		To:       &to,
