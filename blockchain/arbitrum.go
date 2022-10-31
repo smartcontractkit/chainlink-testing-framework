@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -25,29 +26,33 @@ type ArbitrumClient struct {
 }
 
 // Fund sends some ARB to an address using the default wallet
-func (m *ArbitrumClient) Fund(toAddress string, amount *big.Float) error {
-	privateKey, err := crypto.HexToECDSA(m.DefaultWallet.PrivateKey())
+func (a *ArbitrumClient) Fund(toAddress string, amount *big.Float) error {
+	privateKey, err := crypto.HexToECDSA(a.DefaultWallet.PrivateKey())
 	to := common.HexToAddress(toAddress)
 	if err != nil {
 		return fmt.Errorf("invalid private key: %v", err)
 	}
 	// Arbitrum uses legacy transactions and gas estimations
-	suggestedGasPrice, err := m.Client.SuggestGasPrice(context.Background())
+	suggestedGasPrice, err := a.Client.SuggestGasPrice(context.Background())
 	if err != nil {
 		return err
 	}
 
-	nonce, err := m.GetNonce(context.Background(), common.HexToAddress(m.DefaultWallet.Address()))
+	nonce, err := a.GetNonce(context.Background(), common.HexToAddress(a.DefaultWallet.Address()))
+	if err != nil {
+		return err
+	}
+	gas, err := a.Client.EstimateGas(context.Background(), ethereum.CallMsg{})
 	if err != nil {
 		return err
 	}
 
-	tx, err := types.SignNewTx(privateKey, types.LatestSignerForChainID(m.GetChainID()), &types.LegacyTx{
+	tx, err := types.SignNewTx(privateKey, types.LatestSignerForChainID(a.GetChainID()), &types.LegacyTx{
 		Nonce:    nonce,
 		To:       &to,
 		Value:    utils.EtherToWei(amount),
 		GasPrice: suggestedGasPrice,
-		Gas:      21000,
+		Gas:      gas,
 	})
 	if err != nil {
 		return err
@@ -55,23 +60,23 @@ func (m *ArbitrumClient) Fund(toAddress string, amount *big.Float) error {
 
 	log.Info().
 		Str("Token", "ARB").
-		Str("From", m.DefaultWallet.Address()).
+		Str("From", a.DefaultWallet.Address()).
 		Str("To", toAddress).
 		Str("Amount", amount.String()).
 		Msg("Funding Address")
-	if err := m.Client.SendTransaction(context.Background(), tx); err != nil {
+	if err := a.Client.SendTransaction(context.Background(), tx); err != nil {
 		return err
 	}
 
-	return m.ProcessTransaction(tx)
+	return a.ProcessTransaction(tx)
 }
 
 // Fund sends some ARB to an address using the default wallet
-func (m *ArbitrumClient) ReturnFunds(fromPrivateKey *ecdsa.PrivateKey) error {
-	to := common.HexToAddress(m.DefaultWallet.Address())
+func (a *ArbitrumClient) ReturnFunds(fromPrivateKey *ecdsa.PrivateKey) error {
+	to := common.HexToAddress(a.DefaultWallet.Address())
 
 	// Arbitrum uses legacy transactions and gas estimations
-	suggestedGasPrice, err := m.Client.SuggestGasPrice(context.Background())
+	suggestedGasPrice, err := a.Client.SuggestGasPrice(context.Background())
 	if err != nil {
 		return err
 	}
@@ -80,23 +85,27 @@ func (m *ArbitrumClient) ReturnFunds(fromPrivateKey *ecdsa.PrivateKey) error {
 		return err
 	}
 
-	balance, err := m.Client.BalanceAt(context.Background(), fromAddress, nil)
+	balance, err := a.Client.BalanceAt(context.Background(), fromAddress, nil)
 	if err != nil {
 		return err
 	}
-	balance.Sub(balance, big.NewInt(1).Mul(suggestedGasPrice, big.NewInt(21000)))
+	gas, err := a.Client.EstimateGas(context.Background(), ethereum.CallMsg{})
+	if err != nil {
+		return err
+	}
+	balance.Sub(balance, big.NewInt(1).Mul(suggestedGasPrice, big.NewInt(0).SetUint64(gas)))
 
-	nonce, err := m.GetNonce(context.Background(), fromAddress)
+	nonce, err := a.GetNonce(context.Background(), fromAddress)
 	if err != nil {
 		return err
 	}
 
-	tx, err := types.SignNewTx(fromPrivateKey, types.LatestSignerForChainID(m.GetChainID()), &types.LegacyTx{
+	tx, err := types.SignNewTx(fromPrivateKey, types.LatestSignerForChainID(a.GetChainID()), &types.LegacyTx{
 		Nonce:    nonce,
 		To:       &to,
 		Value:    balance,
 		GasPrice: suggestedGasPrice,
-		Gas:      21000,
+		Gas:      gas,
 	})
 	if err != nil {
 		return err
@@ -107,9 +116,9 @@ func (m *ArbitrumClient) ReturnFunds(fromPrivateKey *ecdsa.PrivateKey) error {
 		Str("From", fromAddress.Hex()).
 		Str("Amount", balance.String()).
 		Msg("Returning Funds to Default Wallet")
-	if err := m.Client.SendTransaction(context.Background(), tx); err != nil {
+	if err := a.Client.SendTransaction(context.Background(), tx); err != nil {
 		return err
 	}
 
-	return m.ProcessTransaction(tx)
+	return a.ProcessTransaction(tx)
 }
