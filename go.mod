@@ -17,7 +17,7 @@ require (
 	github.com/prometheus/common v0.37.0
 	github.com/rs/zerolog v1.28.0
 	github.com/slack-go/slack v0.11.3
-	github.com/smartcontractkit/chainlink-env v0.2.47
+	github.com/smartcontractkit/chainlink-env v0.2.49
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/ratelimit v0.2.0
 	golang.org/x/sync v0.0.0-20220819030929-7fc1605a5dde
@@ -29,11 +29,11 @@ require (
 	github.com/Masterminds/semver/v3 v3.1.1 // indirect
 	github.com/alecthomas/units v0.0.0-20210927113745-59d0afb8317a // indirect
 	github.com/andres-erbsen/clock v0.0.0-20160526145045-9e14626cd129 // indirect
-	github.com/aws/constructs-go/constructs/v10 v10.1.138 // indirect
+	github.com/aws/constructs-go/constructs/v10 v10.1.145 // indirect
 	github.com/aws/jsii-runtime-go v1.70.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.2.1 // indirect
-	github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2 v2.5.26 // indirect
+	github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2 v2.5.33 // indirect
 	github.com/cespare/cp v1.1.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/chai2010/gettext-go v0.0.0-20160711120539-c6fed771bfd5 // indirect
