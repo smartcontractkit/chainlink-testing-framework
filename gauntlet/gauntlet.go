@@ -39,7 +39,7 @@ func NewGauntlet() (*Gauntlet, error) {
 	os.Setenv("SKIP_PROMPTS", "true")
 	g := &Gauntlet{
 		exec:          yarn,
-		Command:       "gauntlet",
+		Command:       "gauntlet", // Setting gauntlet as the default command
 		NetworkConfig: make(map[string]string),
 	}
 	g.GenerateRandomNetwork()
@@ -70,7 +70,7 @@ type ExecCommandOptions struct {
 	RetryDelay        time.Duration
 }
 
-// ExecCommand Executes a gauntlet command with the provided arguments.
+// ExecCommand Executes a gauntlet or yarn command with the provided arguments.
 //
 //	It will also check for any errors you specify in the output via the errHandling slice.
 func (g *Gauntlet) ExecCommand(args []string, options ExecCommandOptions) (string, error) {
@@ -78,6 +78,7 @@ func (g *Gauntlet) ExecCommand(args []string, options ExecCommandOptions) (strin
 	var updatedArgs []string
 	if g.Command == "gauntlet" {
 		updatedArgs = append([]string{g.Command}, args...)
+		// Appending network to the gauntlet command
 		updatedArgs = insertArg(updatedArgs, 2, g.Flag("network", g.Network))
 	} else {
 		updatedArgs = args
