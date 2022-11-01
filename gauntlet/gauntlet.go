@@ -5,16 +5,17 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"github.com/avast/retry-go"
-	"github.com/google/uuid"
-	"github.com/rs/zerolog/log"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/avast/retry-go"
+	"github.com/google/uuid"
+	"github.com/rs/zerolog/log"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 var (
