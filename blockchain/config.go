@@ -41,7 +41,7 @@ type EVMNetwork struct {
 	// True if the network is simulated like a geth instance in dev mode. False if the network is a real test or mainnet
 	Simulated bool `envconfig:"evm_simulated" default:"false" toml:"simulated"`
 	// List of private keys to fund the tests
-	PrivateKeys []string `envconfig:"evm_private_keys" default:"examplePrivateKey" toml:"private_keys"`
+	PrivateKeys []string `envconfig:"evm_keys" default:"examplePrivateKey" toml:"evm_keys"`
 	// Default gas limit to assume that Chainlink nodes will use. Used to try to estimate the funds that Chainlink
 	// nodes require to run the tests.
 	ChainlinkTransactionLimit uint64 `envconfig:"evm_chainlink_transaction_limit" default:"500000" toml:"chainlink_transaction_limit"`
@@ -78,7 +78,7 @@ func (e *EVMNetwork) ToMap() map[string]interface{} {
 		"evm_urls":                        strings.Join(e.URLs, ","),
 		"evm_http_urls":                   strings.Join(e.HTTPURLs, ","),
 		"evm_simulated":                   fmt.Sprint(e.Simulated),
-		"evm_private_keys":                strings.Join(e.PrivateKeys, ","),
+		"evm_keys":                        strings.Join(e.PrivateKeys, ","),
 		"evm_chainlink_transaction_limit": fmt.Sprint(e.ChainlinkTransactionLimit),
 		"evm_transaction_timeout":         fmt.Sprint(e.Timeout),
 		"evm_minimum_confirmations":       fmt.Sprint(e.MinimumConfirmations),
