@@ -78,7 +78,7 @@ func (e *EVMNetwork) ToMap() map[string]interface{} {
 		"evm_urls":                        strings.Join(e.URLs, ","),
 		"evm_http_urls":                   strings.Join(e.HTTPURLs, ","),
 		"evm_simulated":                   fmt.Sprint(e.Simulated),
-		"evm_private_keys":                strings.Join(e.PrivateKeys, ","),
+		"evm_keys":                        strings.Join(e.PrivateKeys, ","),
 		"evm_chainlink_transaction_limit": fmt.Sprint(e.ChainlinkTransactionLimit),
 		"evm_transaction_timeout":         fmt.Sprint(e.Timeout),
 		"evm_minimum_confirmations":       fmt.Sprint(e.MinimumConfirmations),
