@@ -75,10 +75,12 @@ type ExecCommandOptions struct {
 //	It will also check for any errors you specify in the output via the errHandling slice.
 func (g *Gauntlet) ExecCommand(args []string, options ExecCommandOptions) (string, error) {
 	output := ""
-	updatedArgs := append([]string{g.Command}, args...)
+	var updatedArgs []string
 	if g.Command == "gauntlet" {
-		// append gauntlet and network to args since it is always needed
+		updatedArgs = append([]string{g.Command}, args...)
 		updatedArgs = insertArg(updatedArgs, 2, g.Flag("network", g.Network))
+	} else {
+		updatedArgs = args
 	}
 
 	printArgs(updatedArgs)
