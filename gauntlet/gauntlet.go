@@ -137,7 +137,7 @@ func (g *Gauntlet) ExecCommand(args []string, options ExecCommandOptions) (strin
 	// catch any exit codes
 	err = cmd.Wait()
 
-	log.Debug().Msg(fmt.Sprintf("%s command Completed", cases.Title(language.English).String(g.Command)))
+	log.Debug().Str("Command", cases.Title(language.English).String(g.Command)).Msg("command Completed")
 	return output, err
 }
 
