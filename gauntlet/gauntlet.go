@@ -14,8 +14,6 @@ import (
 	"github.com/avast/retry-go"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 )
 
 var (
@@ -100,7 +98,7 @@ func (g *Gauntlet) ExecCommand(args []string, options ExecCommandOptions) (strin
 	reader := bufio.NewReader(stdout)
 	line, err := reader.ReadString('\n')
 	for err == nil {
-		log.Info().Str("stdout", line).Msg(cases.Title(language.English).String(g.Command))
+		log.Info().Str("stdout", line).Msg(g.Command)
 		output = fmt.Sprintf("%s%s", output, line)
 		if options.CheckErrorsInRead {
 			rerr := checkForErrors(options.ErrHandling, output)
@@ -114,7 +112,7 @@ func (g *Gauntlet) ExecCommand(args []string, options ExecCommandOptions) (strin
 	reader = bufio.NewReader(stderr)
 	line, err = reader.ReadString('\n')
 	for err == nil {
-		log.Info().Str("stderr", line).Msg(cases.Title(language.English).String(g.Command))
+		log.Info().Str("stderr", line).Msg(g.Command)
 		output = fmt.Sprintf("%s%s", output, line)
 		if options.CheckErrorsInRead {
 			rerr := checkForErrors(options.ErrHandling, output)
@@ -137,7 +135,7 @@ func (g *Gauntlet) ExecCommand(args []string, options ExecCommandOptions) (strin
 	// catch any exit codes
 	err = cmd.Wait()
 
-	log.Debug().Str("Command", cases.Title(language.English).String(g.Command)).Msg("command Completed")
+	log.Debug().Str("Command", g.Command).Msg("command Completed")
 	return output, err
 }
 
