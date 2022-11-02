@@ -23,6 +23,7 @@ var (
 // Gauntlet contains helpful data to run gauntlet commands
 type Gauntlet struct {
 	exec          string
+	Command       string
 	Network       string
 	NetworkConfig map[string]string
 }
@@ -37,6 +38,7 @@ func NewGauntlet() (*Gauntlet, error) {
 	os.Setenv("SKIP_PROMPTS", "true")
 	g := &Gauntlet{
 		exec:          yarn,
+		Command:       "gauntlet", // Setting gauntlet as the default command
 		NetworkConfig: make(map[string]string),
 	}
 	g.GenerateRandomNetwork()
@@ -67,14 +69,20 @@ type ExecCommandOptions struct {
 	RetryDelay        time.Duration
 }
 
-// ExecCommand Executes a gauntlet command with the provided arguments.
+// ExecCommand Executes a gauntlet or yarn command with the provided arguments.
 //
 //	It will also check for any errors you specify in the output via the errHandling slice.
 func (g *Gauntlet) ExecCommand(args []string, options ExecCommandOptions) (string, error) {
 	output := ""
-	// append gauntlet and network to args since it is always needed
-	updatedArgs := append([]string{"gauntlet"}, args...)
-	updatedArgs = insertArg(updatedArgs, 2, g.Flag("network", g.Network))
+	var updatedArgs []string
+	if g.Command == "gauntlet" {
+		updatedArgs = append([]string{g.Command}, args...)
+		// Appending network to the gauntlet command
+		updatedArgs = insertArg(updatedArgs, 2, g.Flag("network", g.Network))
+	} else {
+		updatedArgs = args
+	}
+
 	printArgs(updatedArgs)
 
 	cmd := exec.Command(g.exec, updatedArgs...) // #nosec G204
@@ -90,7 +98,7 @@ func (g *Gauntlet) ExecCommand(args []string, options ExecCommandOptions) (strin
 	reader := bufio.NewReader(stdout)
 	line, err := reader.ReadString('\n')
 	for err == nil {
-		log.Info().Str("stdout", line).Msg("Gauntlet")
+		log.Info().Str("stdout", line).Msg(g.Command)
 		output = fmt.Sprintf("%s%s", output, line)
 		if options.CheckErrorsInRead {
 			rerr := checkForErrors(options.ErrHandling, output)
@@ -104,7 +112,7 @@ func (g *Gauntlet) ExecCommand(args []string, options ExecCommandOptions) (strin
 	reader = bufio.NewReader(stderr)
 	line, err = reader.ReadString('\n')
 	for err == nil {
-		log.Info().Str("stderr", line).Msg("Gauntlet")
+		log.Info().Str("stderr", line).Msg(g.Command)
 		output = fmt.Sprintf("%s%s", output, line)
 		if options.CheckErrorsInRead {
 			rerr := checkForErrors(options.ErrHandling, output)
@@ -127,7 +135,7 @@ func (g *Gauntlet) ExecCommand(args []string, options ExecCommandOptions) (strin
 	// catch any exit codes
 	err = cmd.Wait()
 
-	log.Debug().Msg("Gauntlet command Completed")
+	log.Debug().Str("Command", g.Command).Msg("command Completed")
 	return output, err
 }
 
