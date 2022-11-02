@@ -19,6 +19,8 @@ const (
 	ArbitrumClientImplementation ClientImplementation = "Arbitrum"
 	// PolygonClientImplementation uses a client tailored for Polygon EVM networks
 	PolygonClientImplementation ClientImplementation = "Polygon"
+	// RSKClientImplementation uses a client tailored for RSK EVM networks
+	RSKClientImplementation ClientImplementation = "RSK"
 )
 
 // wrapSingleClient Wraps a single EVM client in its appropriate implementation, based on the chain ID
@@ -37,6 +39,8 @@ func wrapSingleClient(networkSettings *EVMNetwork, client *EthereumClient) EVMCl
 		wrappedEc = &ArbitrumClient{client}
 	case OptimismClientImplementation:
 		wrappedEc = &OptimismClient{client}
+	case RSKClientImplementation:
+		wrappedEc = &RSKClient{client}
 	default:
 		wrappedEc = client
 	}
@@ -66,6 +70,9 @@ func wrapMultiClient(networkSettings *EVMNetwork, client *EthereumMultinodeClien
 	case OptimismClientImplementation:
 		logMsg.Msg("Using Optimism Client")
 		wrappedEc = &OptimismMultinodeClient{client}
+	case RSKClientImplementation:
+		logMsg.Msg("Using RSK Client")
+		wrappedEc = &RSKMultinodeClient{client}
 	default:
 		log.Warn().Str("Network", networkSettings.Name).Msg("Unknown client implementation, defaulting to standard Ethereum client")
 		wrappedEc = client
