@@ -83,6 +83,7 @@ func (e *EVMNetwork) ToMap() map[string]interface{} {
 		"evm_transaction_timeout":         fmt.Sprint(e.Timeout),
 		"evm_minimum_confirmations":       fmt.Sprint(e.MinimumConfirmations),
 		"evm_gas_estimation_buffer":       fmt.Sprint(e.GasEstimationBuffer),
+		"client_implementation":           fmt.Sprint(e.ClientImplementation),
 	}
 }
 
