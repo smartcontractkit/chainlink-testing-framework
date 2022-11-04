@@ -317,6 +317,37 @@ func (e *EthereumClient) ReturnFunds(fromKey *ecdsa.PrivateKey) error {
 	return e.ProcessTransaction(tx)
 }
 
+// EstimateCostForChainlinkOperations calculates required amount of ETH for amountOfOperations Chainlink operations
+// based on the network's suggested gas price and the chainlink gas limit. This is fairly imperfect and should be used
+// as only a rough, upper-end estimate instead of an exact calculation.
+// See https://ethereum.org/en/developers/docs/gas/#post-london for info on how gas calculation works
+func (e *EthereumClient) EstimateCostForChainlinkOperations(amountOfOperations int) (*big.Float, error) {
+	bigAmountOfOperations := big.NewInt(int64(amountOfOperations))
+	gasPriceInWei, err := e.Client.SuggestGasPrice(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	// https://ethereum.stackexchange.com/questions/19665/how-to-calculate-transaction-fee
+	// total gas limit = chainlink gas limit + gas limit buffer
+	gasLimit := e.NetworkConfig.GasEstimationBuffer + e.NetworkConfig.ChainlinkTransactionLimit
+	// gas cost for TX = total gas limit * estimated gas price
+	gasCostPerOperationWei := big.NewInt(1).Mul(big.NewInt(1).SetUint64(gasLimit), gasPriceInWei)
+	gasCostPerOperationETH := utils.WeiToEther(gasCostPerOperationWei)
+	// total Wei needed for all TXs = total value for TX * number of TXs
+	totalWeiForAllOperations := big.NewInt(1).Mul(gasCostPerOperationWei, bigAmountOfOperations)
+	totalEthForAllOperations := utils.WeiToEther(totalWeiForAllOperations)
+
+	log.Debug().
+		Int("Number of Operations", amountOfOperations).
+		Uint64("Gas Limit per Operation", gasLimit).
+		Str("Value per Operation (ETH)", gasCostPerOperationETH.String()).
+		Str("Total (ETH)", totalEthForAllOperations.String()).
+		Msg("Calculated ETH for Chainlink Operations")
+
+	return totalEthForAllOperations, nil
+}
+
 // DeployContract acts as a general contract deployment tool to an ethereum chain
 func (e *EthereumClient) DeployContract(
 	contractName string,
@@ -594,6 +625,11 @@ type EthereumMultinodeClient struct {
 // LoadContract load already deployed contract instance
 func (e *EthereumMultinodeClient) LoadContract(contractName string, address common.Address, loader ContractLoader) (interface{}, error) {
 	return e.DefaultClient.LoadContract(contractName, address, loader)
+}
+
+// EstimateCostForChainlinkOperations calculates TXs cost as a dirty estimation based on transactionLimit for that network
+func (e *EthereumMultinodeClient) EstimateCostForChainlinkOperations(amountOfOperations int) (*big.Float, error) {
+	return e.DefaultClient.EstimateCostForChainlinkOperations(amountOfOperations)
 }
 
 // NewEVMClient returns a multi-node EVM client connected to the specified network

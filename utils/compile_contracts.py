@@ -22,6 +22,7 @@ used_contract_names = [
     "KeeperConsumer",
     "KeeperConsumerPerformance",
     "KeeperRegistrar",
+    "KeeperRegistrar2_0",
     # Note: when re generating wrappers you need to rollback changes made to old registries as they have manual changes to config and state struct names
     "KeeperRegistry1_1",
     "KeeperRegistry1_2",
