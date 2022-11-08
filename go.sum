@@ -54,8 +54,8 @@ github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kd
 github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5 h1:0CwZNZbxp69SHPdPJAN/hZIm0C4OItdklCFmMRWYpio=
 github.com/avast/retry-go v3.0.0+incompatible h1:4SOWQ7Qs+oroOTQOYnAHqelpCO0biHSxpiH9JdtuBj0=
 github.com/avast/retry-go v3.0.0+incompatible/go.mod h1:XtSnn+n/sHqQIpZ10K1qAevBhOOCWBLXXy3hyiqqBrY=
-github.com/aws/constructs-go/constructs/v10 v10.1.145 h1:cvK2Dueu0d9JhQWAnD6PvIx3ae09F9PlZWWMePUHFYk=
-github.com/aws/constructs-go/constructs/v10 v10.1.145/go.mod h1:L6ZTlHmRRQiWl8EAyoItmg9qUDvHmJ3PPFkAG91GRDw=
+github.com/aws/constructs-go/constructs/v10 v10.1.146 h1:He1ajRuTSSBUHIkJIModMs1/XX0ZhNjyUCu8FZH5gMY=
+github.com/aws/constructs-go/constructs/v10 v10.1.146/go.mod h1:L6ZTlHmRRQiWl8EAyoItmg9qUDvHmJ3PPFkAG91GRDw=
 github.com/aws/jsii-runtime-go v1.70.0 h1:grgd4ZcLn9rApgLOSzll4u3xJsBL4qKbs2McxASqz5g=
 github.com/aws/jsii-runtime-go v1.70.0/go.mod h1:Cd836+6/rhL8LbslPaGofAh8c7H75KVMF6bfHyNl7vY=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
@@ -67,8 +67,8 @@ github.com/btcsuite/btcd/btcec/v2 v2.2.1/go.mod h1:9/CSmJxmuvqzX9Wh2fXMWToLOHhPd
 github.com/btcsuite/btcd/chaincfg/chainhash v1.0.1 h1:q0rUy8C/TYNBQS1+CGKw68tLOFYSNEs0TFnxxnS9+4U=
 github.com/buger/jsonparser v1.1.1/go.mod h1:6RYKKt7H4d4+iWqouImQ9R2FZql3VbhNgx27UK13J/0=
 github.com/bxcodec/faker v2.0.1+incompatible h1:P0KUpUw5w6WJXwrPfv35oc91i4d8nf40Nwln+M/+faA=
-github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2 v2.5.33 h1:XCvGyLSpU7p9nO2cUxCyQJqjcli2qMYMIFCrOgePLgM=
-github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2 v2.5.33/go.mod h1:19pEx6YJhnygE49n7QfD9xKFqpcrHHHG95HYVMmtAh8=
+github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2 v2.5.34 h1:gji5XYngIXTZ7usd/fB6NFSl1hTjCHCTwA9Aqn6j6JI=
+github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2 v2.5.34/go.mod h1:19pEx6YJhnygE49n7QfD9xKFqpcrHHHG95HYVMmtAh8=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/cespare/cp v1.1.1 h1:nCb6ZLdB7NRaqsm91JtQTAme2SKJzXVsdPIPkyJr1MU=
 github.com/cespare/cp v1.1.1/go.mod h1:SOGHArjBr4JWaSDEVpWpo/hNg6RoKrls6Oh40hiwW+s=
