@@ -92,7 +92,11 @@ func (e *EVMNetwork) ToMap() map[string]interface{} {
 var (
 	evmNetworkTOML = `[[EVM]]
 ChainID = '%d'
-`
+MinContractPayment = '0'
+
+[EVM.Transactions]
+ForwardersEnabled = true`
+
 	evmNodeTOML = `[[EVM.Nodes]]
 Name = '%s'
 WSURL = '%s'

@@ -23,6 +23,8 @@ require (
 	golang.org/x/sync v0.1.0
 )
 
+replace github.com/smartcontractkit/chainlink-env => /Users/adamhamrick/Projects/chainlink-env
+
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect
