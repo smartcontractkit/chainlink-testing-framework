@@ -142,7 +142,7 @@ func tarRepo(repoRootPath string) (string, int64, error) {
 	// wait for the command to finish
 	err = dockerBuildCmd.Wait()
 	if err != nil {
-		log.Info().Err(err).Msg("Ignoring error since it always fails for directory changing.")
+		log.Debug().Err(err).Msg("Ignoring error since it always fails for directory changing.")
 	}
 
 	finished := time.Now()
@@ -162,7 +162,7 @@ func readStdPipeDocker(writer io.ReadCloser, prependOutput string) {
 	reader := bufio.NewReader(writer)
 	line, err := reader.ReadString('\n')
 	for err == nil {
-		log.Info().Str(prependOutput, line).Msg("Docker")
+		log.Debug().Str(prependOutput, line).Msg("Docker")
 		line, err = reader.ReadString('\n')
 	}
 }
