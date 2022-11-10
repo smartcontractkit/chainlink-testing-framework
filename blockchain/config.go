@@ -92,9 +92,9 @@ func (e *EVMNetwork) ToMap() map[string]interface{} {
 var (
 	evmNetworkTOML = `[[EVM]]
 ChainID = '%d'
-MinContractPayment = '0'
+MinContractPayment = '0'`
 
-[EVM.Transactions]
+	enableForwardersTOML = `[EVM.Transactions]
 ForwardersEnabled = true`
 
 	evmNodeTOML = `[[EVM.Nodes]]
@@ -105,11 +105,14 @@ HTTPURL = '%s'`
 
 // ChainlinkValuesMap is a convenience function that marshalls the Chain ID and Chain URL into Chainlink Env var
 // viable map
-func (e *EVMNetwork) ChainlinkTOML() (string, error) {
+func (e *EVMNetwork) ChainlinkTOML(enableForwarders bool) (string, error) {
 	if len(e.HTTPURLs) != len(e.URLs) {
 		return "", fmt.Errorf("amount of http and ws urls should match, have %d ws urls and %d http urls", len(e.URLs), len(e.HTTPURLs))
 	}
 	netString := fmt.Sprintf(evmNetworkTOML, e.ChainID)
+	if enableForwarders {
+		netString = fmt.Sprintf("%s\n%s", netString, enableForwardersTOML)
+	}
 	for index, url := range e.URLs {
 		netString = fmt.Sprintf("%s\n%s", netString, fmt.Sprintf(evmNodeTOML, fmt.Sprintf("node-%d", index), url, e.HTTPURLs[index]))
 	}
