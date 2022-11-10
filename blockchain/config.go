@@ -16,6 +16,8 @@ var (
 		ClientImplementation: EthereumClientImplementation,
 		Simulated:            true,
 		ChainID:              1337,
+		URLs:                 []string{"ws://geth:8546"},
+		HTTPURLs:             []string{"http://geth:8544"},
 		PrivateKeys: []string{
 			"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
 			"59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d",
@@ -87,13 +89,30 @@ func (e *EVMNetwork) ToMap() map[string]interface{} {
 	}
 }
 
+var (
+	evmNetworkTOML = `[[EVM]]
+ChainID = '%d'
+MinContractPayment = '0'
+
+[EVM.Transactions]
+ForwardersEnabled = true`
+
+	evmNodeTOML = `[[EVM.Nodes]]
+Name = '%s'
+WSURL = '%s'
+HTTPURL = '%s'`
+)
+
 // ChainlinkValuesMap is a convenience function that marshalls the Chain ID and Chain URL into Chainlink Env var
 // viable map
-func (e *EVMNetwork) ChainlinkValuesMap() map[string]interface{} {
-	valueMap := map[string]interface{}{}
-	if !e.Simulated {
-		valueMap["ETH_URL"] = e.URLs[0]
-		valueMap["ETH_CHAIN_ID"] = fmt.Sprint(e.ChainID)
+func (e *EVMNetwork) ChainlinkTOML() (string, error) {
+	if len(e.HTTPURLs) != len(e.URLs) {
+		return "", fmt.Errorf("amount of http and ws urls should match, have %d ws urls and %d http urls", len(e.URLs), len(e.HTTPURLs))
 	}
-	return valueMap
+	netString := fmt.Sprintf(evmNetworkTOML, e.ChainID)
+	for index, url := range e.URLs {
+		netString = fmt.Sprintf("%s\n%s", netString, fmt.Sprintf(evmNodeTOML, fmt.Sprintf("node-%d", index), url, e.HTTPURLs[index]))
+	}
+
+	return netString, nil
 }
