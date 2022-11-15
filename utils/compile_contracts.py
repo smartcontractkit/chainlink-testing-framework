@@ -14,39 +14,43 @@ targetdir = "./contracts/ethereum"
 
 # The names of the contracts that we're actually compiling to use.
 used_contract_names = [
-    "APIConsumer",
-    "BlockhashStore",
-    "DeviationFlaggingValidator",
-    "Flags",
-    "FluxAggregator",
-    "KeeperConsumer",
-    "KeeperConsumerPerformance",
-    "KeeperRegistrar",
-    # Note: when re generating wrappers you need to rollback changes made to old registries as they have manual changes to config and state struct names
-    "KeeperRegistry1_1",
-    "KeeperRegistry1_2",
-    "KeeperRegistry1_3",
-    "KeeperRegistry2_0",
-    # Note: KeeperRegistryLogic 1.3/2.0 needs some manual changes in go wrapper after generation to avoid
-    # conflict with KeeperRegistry. Hence it is commented out to not be regenerated every time
-    # "KeeperRegistryLogic1_3",
-    # "KeeperRegistryLogic2_0",
-    "LinkToken",
-    "MockETHLINKAggregator",
-    "MockGASAggregator",
-    "OffchainAggregator",
-    "Oracle",
-    "SimpleReadAccessController",
-    "SimpleWriteAccessController",
-    "UpkeepCounter",
-    "UpkeepPerformCounterRestrictive",
-    "UpkeepTranscoder"
-    "VRF",
-    "VRFConsumer",
-    "VRFCoordinator",
-    "VRFConsumerV2",
-    "VRFCoordinatorV2",
-    "KeeperConsumerBenchmark"
+#     "APIConsumer",
+#     "BlockhashStore",
+#     "DeviationFlaggingValidator",
+#     "Flags",
+#     "FluxAggregator",
+#     "KeeperConsumer",
+#     "KeeperConsumerPerformance",
+#     "KeeperRegistrar",
+#     # Note: when re generating wrappers you need to rollback changes made to old registries as they have manual changes to config and state struct names
+#     "KeeperRegistry1_1",
+#     "KeeperRegistry1_2",
+#     "KeeperRegistry1_3",
+#     "KeeperRegistry2_0",
+#     # Note: KeeperRegistryLogic 1.3/2.0 needs some manual changes in go wrapper after generation to avoid
+#     # conflict with KeeperRegistry. Hence it is commented out to not be regenerated every time
+#     # "KeeperRegistryLogic1_3",
+#     # "KeeperRegistryLogic2_0",
+#     "LinkToken",
+#     "MockETHLINKAggregator",
+#     "MockGASAggregator",
+#     "OffchainAggregator",
+#     "Oracle",
+#     "SimpleReadAccessController",
+#     "SimpleWriteAccessController",
+#     "UpkeepCounter",
+#     "UpkeepPerformCounterRestrictive",
+#     "UpkeepTranscoder"
+#     "VRF",
+#     "VRFConsumer",
+#     "VRFCoordinator",
+#     "VRFConsumerV2",
+#     "VRFCoordinatorV2",
+#     "KeeperConsumerBenchmark"
+#     "RewardLib",
+#     "SafeCast",
+    "Staking",
+#     "StakingPoolLib"
 ]
 
 print("Locally installing hardhat...")
@@ -54,7 +58,9 @@ subprocess.run('npm install --save-dev hardhat', shell=True, check=True)
 
 print("Locally installing openzeppelin contracts...")
 subprocess.run(
-    'npm install --save-dev @openzeppelin/contracts@^4.3.3', shell=True, check=True)
+    'npm install --save-dev @openzeppelin/contracts@^4.6.0', shell=True, check=True)
+subprocess.run(
+    'npm install --save-dev @chainlink/contracts@^0.4.1', shell=True, check=True)
 
 print("Modifying hardhat settings...")
 with open("hardhat.config.js", "w") as hardhat_config:
@@ -72,6 +78,15 @@ solidity: {
     },
     {
         version: "0.8.13",
+        settings: {
+            optimizer: {
+                enabled: true,
+                runs: 50
+            }
+        }
+    },
+    {
+        version: "0.8.16",
         settings: {
             optimizer: {
                 enabled: true,

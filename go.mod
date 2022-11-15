@@ -32,7 +32,7 @@ require (
 	github.com/aws/constructs-go/constructs/v10 v10.1.145 // indirect
 	github.com/aws/jsii-runtime-go v1.70.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/btcsuite/btcd/btcec/v2 v2.2.1 // indirect
+	github.com/btcsuite/btcd/btcec/v2 v2.3.0 // indirect
 	github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2 v2.5.33 // indirect
 	github.com/cespare/cp v1.1.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
