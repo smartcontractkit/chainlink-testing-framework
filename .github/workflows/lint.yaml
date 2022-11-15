@@ -26,7 +26,7 @@ jobs:
         with:
           go-version: ${{ needs.tools.outputs.go-version }}
       - name: golangci-lint ${{ needs.tools.outputs.golangci-lint-version }}
-        uses: golangci/golangci-lint-action@v3.3.0
+        uses: golangci/golangci-lint-action@v3.3.1
         with:
           version: v${{ needs.tools.outputs.golangci-lint-version }}
 
