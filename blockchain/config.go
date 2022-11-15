@@ -92,10 +92,8 @@ func (e *EVMNetwork) ToMap() map[string]interface{} {
 var (
 	evmNetworkTOML = `[[EVM]]
 ChainID = '%d'
-MinContractPayment = '0'`
-
-	enableForwardersTOML = `[EVM.Transactions]
-ForwardersEnabled = true`
+MinContractPayment = '0'
+%s`
 
 	evmNodeTOML = `[[EVM.Nodes]]
 Name = '%s'
@@ -103,19 +101,23 @@ WSURL = '%s'
 HTTPURL = '%s'`
 )
 
-// ChainlinkValuesMap is a convenience function that marshalls the Chain ID and Chain URL into Chainlink Env var
-// viable map
-func (e *EVMNetwork) ChainlinkTOML(enableForwarders bool) (string, error) {
-	if len(e.HTTPURLs) != len(e.URLs) {
-		return "", fmt.Errorf("amount of http and ws urls should match, have %d ws urls and %d http urls", len(e.URLs), len(e.HTTPURLs))
+// MustChainlinkTOML marshals EVM network values into a TOML setting snippet. Will fail if error is encountered
+// Can provide more detailed config for the network if non-default behaviors are desired.
+func (e *EVMNetwork) MustChainlinkTOML(networkDetails string) string {
+	if len(e.HTTPURLs) != len(e.URLs) || len(e.HTTPURLs) == 0 || len(e.URLs) == 0 {
+		log.Fatal().
+			Int("WS Count", len(e.URLs)).
+			Int("HTTP Count", len(e.HTTPURLs)).
+			Interface("WS URLs", e.URLs).
+			Interface("HTTP URLs", e.HTTPURLs).
+			Msg("Amount of HTTP and WS URLs should match, and not be empty")
+		return ""
 	}
-	netString := fmt.Sprintf(evmNetworkTOML, e.ChainID)
-	if enableForwarders {
-		netString = fmt.Sprintf("%s\n%s", netString, enableForwardersTOML)
-	}
-	for index, url := range e.URLs {
-		netString = fmt.Sprintf("%s\n%s", netString, fmt.Sprintf(evmNodeTOML, fmt.Sprintf("node-%d", index), url, e.HTTPURLs[index]))
+	netString := fmt.Sprintf(evmNetworkTOML, e.ChainID, networkDetails)
+	for index := range e.URLs {
+		netString = fmt.Sprintf("%s\n\n%s", netString,
+			fmt.Sprintf(evmNodeTOML, fmt.Sprintf("node-%d", index), e.URLs[index], e.HTTPURLs[index]))
 	}
 
-	return netString, nil
+	return netString
 }
