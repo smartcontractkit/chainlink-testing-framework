@@ -450,10 +450,12 @@ func (e *EthereumClient) ProcessTransaction(tx *types.Transaction) error {
 
 // ProcessTransaction will queue or wait on a transaction depending on whether parallel transactions are enabled
 func (e *EthereumClient) ProcessEvent(name string, event *types.Log, confirmedChan chan bool, errorChan chan error) error {
+	log.Warn().Msg("Processing event")
 	var eventConfirmer HeaderEventSubscription
 	if e.GetNetworkConfig().MinimumConfirmations <= 0 {
 		eventConfirmer = NewInstantConfirmer(e, event.TxHash, confirmedChan, errorChan)
 	} else {
+		log.Warn().Msg("New Event Confirmer")
 		eventConfirmer = NewEventConfirmer(name, e, event, e.GetNetworkConfig().MinimumConfirmations, confirmedChan, errorChan)
 	}
 
