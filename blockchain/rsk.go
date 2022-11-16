@@ -160,3 +160,48 @@ func (r *RSKClient) ReturnFunds(fromPrivateKey *ecdsa.PrivateKey) error {
 
 	return r.ProcessTransaction(tx)
 }
+
+// IsEventConfirmed returns if eth client can confirm that the event happened
+func (r *RSKClient) IsEventConfirmed(event *types.Log) (confirmed, removed bool, err error) {
+	log.Warn().Msg("CONFIRMING EVENT")
+	if event.Removed {
+		return false, event.Removed, nil
+	}
+	log.Warn().Msg("Start TransactionByHash")
+	eventTx, isPending, err := r.Client.TransactionByHash(context.Background(), event.TxHash)
+	if err != nil {
+		return false, event.Removed, err
+	}
+	log.Warn().Msg("End TransactionByHash")
+	if isPending {
+		return false, event.Removed, nil
+	}
+	log.Warn().Msg("Start TransactionReceipt")
+	eventReceipt, err := r.Client.TransactionReceipt(context.Background(), eventTx.Hash())
+	if err != nil {
+		return false, event.Removed, err
+	}
+	log.Warn().Msg("End TransactionReceipt")
+	if eventReceipt.Status == 0 { // Failed event tx
+		reason, err := r.errorReason(r.Client, eventTx, eventReceipt)
+		if err != nil {
+			log.Warn().Str("TX Hash", eventTx.Hash().Hex()).Msg("Transaction failed and was reverted! Unable to retrieve reason!")
+			return false, event.Removed, err
+		}
+		log.Warn().Str("TX Hash", eventTx.Hash().Hex()).
+			Str("Revert reason", reason).
+			Msg("Transaction failed and was reverted!")
+		return false, event.Removed, err
+	}
+	log.Warn().Msg("Start BlockByNumber")
+	blockByNumber, err := r.Client.BlockByNumber(context.Background(), big.NewInt(0).SetUint64(event.BlockNumber))
+	if err != nil || blockByNumber == nil {
+		return false, event.Removed, err
+	}
+	log.Warn().Msg("End BlockByNumber")
+	if blockByNumber.Hash() != event.BlockHash {
+		return false, event.Removed, nil
+	}
+
+	return true, event.Removed, nil
+}
