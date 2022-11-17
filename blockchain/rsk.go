@@ -28,7 +28,6 @@ type RSKClient struct {
 
 // Fund sends some ETH to an address using the default wallet
 func (r *RSKClient) Fund(toAddress string, amount *big.Float) error {
-	log.Warn().Msg("Funding with RSK Client")
 	privateKey, err := crypto.HexToECDSA(r.DefaultWallet.PrivateKey())
 	to := common.HexToAddress(toAddress)
 	if err != nil {
@@ -160,6 +159,26 @@ func (r *RSKClient) ReturnFunds(fromPrivateKey *ecdsa.PrivateKey) error {
 	}
 
 	return r.ProcessTransaction(tx)
+}
+
+// ProcessTransaction will queue or wait on a transaction depending on whether parallel transactions are enabled
+func (r *RSKClient) ProcessEvent(name string, event *types.Log, confirmedChan chan bool, errorChan chan error) error {
+	var eventConfirmer HeaderEventSubscription
+	if r.GetNetworkConfig().MinimumConfirmations <= 0 {
+		eventConfirmer = NewInstantConfirmer(r, event.TxHash, confirmedChan, errorChan)
+	} else {
+		eventConfirmer = NewEventConfirmer(name, r, event, r.GetNetworkConfig().MinimumConfirmations, confirmedChan, errorChan)
+	}
+
+	subscriptionHash := fmt.Sprintf("%s-%s", event.TxHash.Hex(), name) // Many events can occupy the same tx hash
+	r.AddHeaderEventSubscription(subscriptionHash, eventConfirmer)
+
+	if !r.queueTransactions { // For sequential transactions
+		log.Debug().Str("Hash", event.Address.Hex()).Msg("Waiting for Event to confirm before moving on")
+		defer r.DeleteHeaderEventSubscription(subscriptionHash)
+		return eventConfirmer.Wait()
+	}
+	return nil
 }
 
 // IsEventConfirmed returns if eth client can confirm that the event happened
