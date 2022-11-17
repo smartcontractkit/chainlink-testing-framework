@@ -28,6 +28,7 @@ type RSKClient struct {
 
 // Fund sends some ETH to an address using the default wallet
 func (r *RSKClient) Fund(toAddress string, amount *big.Float) error {
+	log.Warn().Msg("Funding with RSK Client")
 	privateKey, err := crypto.HexToECDSA(r.DefaultWallet.PrivateKey())
 	to := common.HexToAddress(toAddress)
 	if err != nil {
