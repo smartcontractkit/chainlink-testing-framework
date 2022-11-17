@@ -257,7 +257,7 @@ func (e *EventConfirmer) Wait() error {
 			e.cancel()
 			return nil
 		case <-e.context.Done():
-			return fmt.Errorf("timeout waiting for transaction to confirm after %s: %s",
+			return fmt.Errorf("timeout waiting for event to confirm after %s: %s",
 				e.client.GetNetworkConfig().Timeout.String(), e.event.TxHash.Hex())
 		}
 	}

@@ -532,11 +532,11 @@ func (e *EthereumClient) IsEventConfirmed(event *types.Log) (confirmed, removed 
 			Msg("Transaction failed and was reverted!")
 		return false, event.Removed, err
 	}
-	blockByNumber, err := e.Client.BlockByNumber(context.Background(), big.NewInt(0).SetUint64(event.BlockNumber))
-	if err != nil || blockByNumber == nil {
+	headerByNumber, err := e.Client.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(event.BlockNumber))
+	if err != nil || headerByNumber == nil {
 		return false, event.Removed, err
 	}
-	if blockByNumber.Hash() != event.BlockHash {
+	if headerByNumber.Hash() != event.BlockHash {
 		return false, event.Removed, nil
 	}
 
