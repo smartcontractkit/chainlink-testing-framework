@@ -509,6 +509,7 @@ func (e *EthereumClient) IsTxConfirmed(txHash common.Hash) (bool, error) {
 
 // IsEventConfirmed returns if eth client can confirm that the event happened
 func (e *EthereumClient) IsEventConfirmed(event *types.Log) (confirmed, removed bool, err error) {
+	log.Warn().Msg("CONFIRMING EVENT with ETH CLIENT")
 	if event.Removed {
 		return false, event.Removed, nil
 	}

@@ -224,10 +224,12 @@ func NewEventConfirmer(
 // ReceiveHeader will attempt to confirm an event for the chain's configured minimum confirmed headers. Errors encountered
 // are sent along the eventErrorChan, and the result of confirming the event is sent to eventConfirmedChan.
 func (e *EventConfirmer) ReceiveHeader(header NodeHeader) error {
+	log.Warn().Msg("Header Received")
 	if header.Number.Uint64() <= e.lastReceivedHeaderNum {
 		return nil
 	}
 	e.lastReceivedHeaderNum = header.Number.Uint64()
+	log.Warn().Msg("Checking Event Confirmed")
 	confirmed, removed, err := e.client.IsEventConfirmed(e.event)
 	if err != nil {
 		e.errorChan <- err
@@ -257,7 +259,7 @@ func (e *EventConfirmer) Wait() error {
 			e.cancel()
 			return nil
 		case <-e.context.Done():
-			return fmt.Errorf("timeout waiting for transaction to confirm after %s: %s",
+			return fmt.Errorf("timeout waiting for event to confirm after %s: %s",
 				e.client.GetNetworkConfig().Timeout.String(), e.event.TxHash.Hex())
 		}
 	}
