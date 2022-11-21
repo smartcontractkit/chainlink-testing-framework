@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -35,12 +36,17 @@ func (p *PolygonEdgeClient) Fund(
 	if err != nil {
 		return err
 	}
+	gas, err := p.Client.EstimateGas(context.Background(), ethereum.CallMsg{})
+	if err != nil {
+		return err
+	}
+
 	tx, err := types.SignNewTx(privateKey, types.LatestSignerForChainID(p.GetChainID()), &types.DynamicFeeTx{
 		ChainID: p.GetChainID(),
 		Nonce:   nonce,
 		To:      &to,
 		Value:   utils.EtherToWei(amount),
-		Gas:     100000,
+		Gas:     gas,
 	})
 	if err != nil {
 		return err
