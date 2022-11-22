@@ -7,7 +7,6 @@ interface IMerkleAccessController {
   event MerkleRootChanged(bytes32 newMerkleRoot);
 
   /// @notice Validates if a community staker has access to the private staking pool
-  /// @dev Called by the Staking contract
   /// @param staker The community staker's address
   /// @param proof Merkle proof for the community staker's allowlist
   function hasAccess(address staker, bytes32[] calldata proof)

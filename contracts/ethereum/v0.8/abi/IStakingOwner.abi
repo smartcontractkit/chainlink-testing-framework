@@ -6,6 +6,21 @@
   },
   {
     "inputs": [],
+    "name": "InvalidMaxAlertingRewardAmount",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidMinCommunityStakeAmount",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidMinOperatorStakeAmount",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "InvalidRegularPeriodThreshold",
     "type": "error"
   },

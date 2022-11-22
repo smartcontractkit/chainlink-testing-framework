@@ -220,9 +220,12 @@ library StakingPoolLib {
       uint256(poolState.totalCommunityStakedAmount);
   }
 
-  /// @dev intentionally allow adding operators after the pool is closed as it causes no harm.
-  /// Operators can only been added to the pool if they have no prior stake.
-  /// Operators can only been readded to the pool if they have no removed stake.
+  /// @dev Required conditions for adding operators:
+  /// - Operators can only been added to the pool if they have no prior stake.
+  /// - Operators can only been readded to the pool if they have no removed
+  /// stake.
+  /// - Operators cannot be added to the pool after staking ends (either through
+  /// conclusion or through reward expiry).
   function _addOperators(Pool storage pool, address[] calldata operators)
     internal
   {
@@ -235,7 +238,7 @@ library StakingPoolLib {
         requiredReservedPoolSpace
       );
 
-    for (uint256 i = 0; i < operators.length; i++) {
+    for (uint256 i; i < operators.length; i++) {
       if (pool.stakers[operators[i]].isOperator)
         revert OperatorAlreadyExists(operators[i]);
       if (pool.stakers[operators[i]].stakedAmount > 0)
@@ -258,13 +261,12 @@ library StakingPoolLib {
   function _setFeedOperators(Pool storage pool, address[] calldata operators)
     internal
   {
-    for (uint256 i = 0; i < pool.feedOperators.length; i++) {
-      address oldFeedOperator = pool.feedOperators[i];
-      pool.stakers[oldFeedOperator].isFeedOperator = false;
+    for (uint256 i; i < pool.feedOperators.length; i++) {
+      delete pool.stakers[pool.feedOperators[i]].isFeedOperator;
     }
     delete pool.feedOperators;
 
-    for (uint256 i = 0; i < operators.length; i++) {
+    for (uint256 i; i < operators.length; i++) {
       address newFeedOperator = operators[i];
       if (!_isOperator(pool, newFeedOperator))
         revert OperatorDoesNotExist(newFeedOperator);

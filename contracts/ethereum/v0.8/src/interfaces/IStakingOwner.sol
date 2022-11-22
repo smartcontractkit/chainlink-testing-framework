@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
 
-import {IMerkleAccessController} from './IMerkleAccessController.sol';
-
 /// @notice Owner functions restricted to the setup and maintenance
 /// of the staking contract by the owner.
 interface IStakingOwner {
@@ -11,6 +9,18 @@ interface IStakingOwner {
 
   /// @notice This error is thrown when an invalid regular period threshold is supplied
   error InvalidRegularPeriodThreshold();
+
+  /// @notice This error is thrown when an invalid min operator stake amount is
+  /// supplied
+  error InvalidMinOperatorStakeAmount();
+
+  /// @notice This error is thrown when an invalid min community stake amount
+  /// is supplied
+  error InvalidMinCommunityStakeAmount();
+
+  /// @notice This error is thrown when an invalid max alerting reward is
+  /// supplied
+  error InvalidMaxAlertingRewardAmount();
 
   /// @notice This error is thrown when the pool is started with an empty
   /// merkle root
@@ -75,11 +85,6 @@ interface IStakingOwner {
   /// @param amount rewards amount in LINK
   /// @param initialRewardRate The amount of LINK earned per second for
   /// each LINK staked.
-  /// Example rate calculation
-  /// 60 * 60 * 24 * 365 = 31,536,000 approximate number of seconds in a year
-  /// 10^12 is the reward precision
-  /// 10^12 * 0.05 / 31,536,000 = 1,585
-  /// constant rate of 5% per year per LINK staked
   function start(uint256 amount, uint256 initialRewardRate) external;
 
   /// @notice Closes the pool, unreserving future staker rewards, expires the

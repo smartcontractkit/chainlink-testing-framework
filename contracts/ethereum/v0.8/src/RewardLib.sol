@@ -160,10 +160,12 @@ library RewardLib {
   /// Accumulate reward per micro LINK before changing reward rate.
   /// This keeps rewards prior to rate change unaffected.
   function _accumulateBaseRewards(Reward storage reward) internal {
+    uint256 cappedTimestamp = _getCappedTimestamp(reward);
+
     reward.base.cumulativePerMicroLINK += (uint256(reward.base.rate) *
-      (block.timestamp - uint256(reward.base.lastAccumulateTimestamp)))
+      (cappedTimestamp - uint256(reward.base.lastAccumulateTimestamp)))
       ._toUint96();
-    reward.base.lastAccumulateTimestamp = block.timestamp._toUint32();
+    reward.base.lastAccumulateTimestamp = cappedTimestamp._toUint32();
   }
 
   /// @notice Helper function to accumulate delegation rewards
@@ -173,15 +175,13 @@ library RewardLib {
     Reward storage reward,
     uint256 delegatedAmount
   ) internal {
-    if (reward.delegated.delegatesCount > 0) {
-      reward
-        .delegated
-        .cumulativePerDelegate = _calculateAccruedDelegatedRewards(
-        reward,
-        delegatedAmount
-      )._toUint96();
-    }
-    reward.delegated.lastAccumulateTimestamp = block.timestamp._toUint32();
+    reward.delegated.cumulativePerDelegate = _calculateAccruedDelegatedRewards(
+      reward,
+      delegatedAmount
+    )._toUint96();
+
+    reward.delegated.lastAccumulateTimestamp = _getCappedTimestamp(reward)
+      ._toUint32();
   }
 
   /// @notice Helper function to calculate rewards
@@ -207,15 +207,19 @@ library RewardLib {
     uint256 elapsedDurationSinceLastAccumulate = _isDepleted(reward)
       ? uint256(reward.endTimestamp) -
         uint256(reward.delegated.lastAccumulateTimestamp)
-      : block.timestamp - uint256(reward.delegated.lastAccumulateTimestamp);
+      : _getCappedTimestamp(reward) -
+        uint256(reward.delegated.lastAccumulateTimestamp);
 
     return
       uint256(reward.delegated.cumulativePerDelegate) +
       _calculateReward(
         reward,
-        totalDelegatedAmount / uint256(reward.delegated.delegatesCount),
+        totalDelegatedAmount,
         elapsedDurationSinceLastAccumulate
-      );
+      ) /
+      // We are doing this to keep track of delegated rewards prior to the
+      // first operator staking.
+      Math.max(uint256(reward.delegated.delegatesCount), 1);
   }
 
   /// @notice Calculates the amount of rewards accrued so far.
@@ -502,15 +506,15 @@ library RewardLib {
       totalDelegatedAmount
     );
 
-    uint256 totalSlashedBaseReward = 0;
-    uint256 totalSlashedDelegatedReward = 0;
+    uint256 totalSlashedBaseReward;
+    uint256 totalSlashedDelegatedReward;
 
     uint256[] memory slashedBaseAmounts = new uint256[](feedOperators.length);
-    uint256[] memory slashedDelegatedRateAmounts = new uint256[](
+    uint256[] memory slashedDelegatedAmounts = new uint256[](
       feedOperators.length
     );
 
-    for (uint256 i = 0; i < feedOperators.length; i++) {
+    for (uint256 i; i < feedOperators.length; i++) {
       address operator = feedOperators[i];
       uint256 operatorStakedAmount = stakers[operator].stakedAmount;
       if (operatorStakedAmount == 0) continue;
@@ -520,14 +524,14 @@ library RewardLib {
         operator,
         operatorStakedAmount
       );
-      slashedDelegatedRateAmounts[i] = _slashOperatorDelegatedRewards(
+      slashedDelegatedAmounts[i] = _slashOperatorDelegatedRewards(
         reward,
         slashableDelegatedRewards,
         operator,
         totalDelegatedAmount
       );
       totalSlashedBaseReward += slashedBaseAmounts[i];
-      totalSlashedDelegatedReward += slashedDelegatedRateAmounts[i];
+      totalSlashedDelegatedReward += slashedDelegatedAmounts[i];
     }
     reward.reserved.base -= totalSlashedBaseReward._toUint96();
     reward.reserved.delegated -= totalSlashedDelegatedReward._toUint96();
@@ -537,7 +541,7 @@ library RewardLib {
     emit RewardSlashed(
       feedOperators,
       slashedBaseAmounts,
-      slashedDelegatedRateAmounts
+      slashedDelegatedAmounts
     );
   }
 
@@ -561,13 +565,10 @@ library RewardLib {
     DelegatedRewards memory delegatedRewards = reward.delegated;
 
     return
-      delegatedRewards.delegatesCount == 0
-        ? 0
-        : _calculateReward(
-          reward,
-          totalDelegatedAmount / uint256(delegatedRewards.delegatesCount),
-          slashableDuration
-        );
+      _calculateReward(reward, totalDelegatedAmount, slashableDuration) /
+      // We don't validate for delegatedRewards.delegatesCount to be a
+      // non-zero value as this is already checked in _slashOnFeedOperators.
+      uint256(delegatedRewards.delegatesCount);
   }
 
   /// @notice Slashes an on feed node operator the minimum of
@@ -632,5 +633,17 @@ library RewardLib {
     return
       _calculateAccruedDelegatedRewards(reward, totalDelegatedAmount) -
       uint256(reward.missed[operator].delegated);
+  }
+
+  /// @return The current timestamp or, if the current timestamp has passed reward
+  /// end timestamp, reward end timestamp.
+  /// @dev This is necessary to ensure that rewards are calculated correctly
+  /// after the reward is depleted.
+  function _getCappedTimestamp(Reward storage reward)
+    internal
+    view
+    returns (uint256)
+  {
+    return Math.min(uint256(reward.endTimestamp), block.timestamp);
   }
 }

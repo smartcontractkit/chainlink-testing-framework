@@ -28,7 +28,9 @@ interface IMigratable {
   /// @notice This function returns the migration target contract address
   function getMigrationTarget() external view returns (address);
 
-  /// @notice This function allows the contract owner to set a proposed migration target address.
+  /// @notice This function allows the contract owner to set a proposed
+  /// migration target address. If the migration target is valid it renounces
+  /// the previously accepted migration target (if any).
   /// @param migrationTarget Contract address to migrate stakes to.
   function proposeMigrationTarget(address migrationTarget) external;
 

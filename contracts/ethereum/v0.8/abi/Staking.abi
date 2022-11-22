@@ -179,6 +179,11 @@
     "type": "error"
   },
   {
+    "inputs": [],
+    "name": "InvalidMaxAlertingRewardAmount",
+    "type": "error"
+  },
+  {
     "inputs": [
       {
         "internalType": "uint256",
@@ -192,6 +197,16 @@
   {
     "inputs": [],
     "name": "InvalidMigrationTarget",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidMinCommunityStakeAmount",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidMinOperatorStakeAmount",
     "type": "error"
   },
   {

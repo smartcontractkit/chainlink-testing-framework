@@ -65,7 +65,7 @@ contract Staking is
     /// @notice The duration of earned rewards to slash when an alert is raised
     uint256 slashableDuration;
     /// @notice Used to calculate delegated stake amount
-    /// = amount / delegation rate denominator = 100% / 20 = 5%
+    /// = amount / delegation rate denominator = 100% / 100 = 1%
     uint256 delegationRateDenominator;
   }
 
@@ -103,7 +103,7 @@ contract Staking is
   /// @notice The duration of earned rewards to slash when an alert is raised
   uint256 private immutable i_slashableDuration;
   /// @notice Used to calculate delegated stake amount
-  /// = amount / delegation rate denominator = 100% / 20 = 5%
+  /// = amount / delegation rate denominator = 100% / 100 = 1%
   uint256 private immutable i_delegationRateDenominator;
 
   constructor(PoolConstructorParams memory params) ConfirmedOwner(msg.sender) {
@@ -113,6 +113,15 @@ contract Staking is
     if (params.delegationRateDenominator == 0) revert InvalidDelegationRate();
     if (params.regularPeriodThreshold <= params.priorityPeriodThreshold)
       revert InvalidRegularPeriodThreshold();
+    if (params.minOperatorStakeAmount == 0)
+      revert InvalidMinOperatorStakeAmount();
+    if (params.minOperatorStakeAmount > params.initialMaxOperatorStakeAmount)
+      revert InvalidMinOperatorStakeAmount();
+    if (params.minCommunityStakeAmount > params.initialMaxCommunityStakeAmount)
+      revert InvalidMinCommunityStakeAmount();
+    if (params.maxAlertingRewardAmount > params.initialMaxOperatorStakeAmount)
+      revert InvalidMaxAlertingRewardAmount();
+
     i_LINK = params.LINKAddress;
     s_pool._setConfig(
       params.initialMaxPoolSize,
@@ -213,7 +222,7 @@ contract Staking is
 
     s_pool._open(i_minInitialOperatorCount);
 
-    // We need to trasfer LINK balance before we initialize the reward to
+    // We need to transfer LINK balance before we initialize the reward to
     // calculate the new reward expiry timestamp.
     i_LINK.transferFrom(msg.sender, address(this), amount);
 
@@ -279,8 +288,8 @@ contract Staking is
   /// - Operators can only been added to the pool if they have no prior stake.
   /// - Operators can only been readded to the pool if they have no removed
   /// stake.
-  /// - Operators cannot be added to the pool after staking ends (either through)
-  /// conclusion or through reward expiry.
+  /// - Operators cannot be added to the pool after staking ends (either through
+  /// conclusion or through reward expiry).
   /// @inheritdoc IStakingOwner
   function addOperators(address[] calldata operators)
     external
@@ -306,7 +315,7 @@ contract Staking is
     // rewards that are distributed to remaining operators.
     s_reward._accumulateDelegationRewards(getTotalDelegatedAmount());
 
-    for (uint256 i = 0; i < operators.length; i++) {
+    for (uint256 i; i < operators.length; i++) {
       address operator = operators[i];
       StakingPoolLib.Staker memory staker = s_pool.stakers[operator];
 
@@ -335,12 +344,18 @@ contract Staking is
           ._toUint96();
 
         s_reward.delegated.delegatesCount -= 1;
-        s_pool.stakers[operator].stakedAmount = 0;
+        delete s_pool.stakers[operator].stakedAmount;
         uint96 castPrincipal = principal._toUint96();
         s_pool.state.totalOperatorStakedAmount -= castPrincipal;
         // Only the operator's principal is withdrawable after they are removed
         s_pool.stakers[operator].removedStakeAmount = castPrincipal;
         s_pool.totalOperatorRemovedAmount += castPrincipal;
+
+        // We need to reset operator's missed base rewards in case they decide
+        // to stake as a community staker using the same address. It's fine to
+        // not reset missed delegated rewards, because a removed operator
+        // cannot be re-added as operator again.
+        delete s_reward.missed[operator].base;
       }
 
       s_pool.stakers[operator].isOperator = false;
@@ -423,6 +438,7 @@ contract Staking is
       !IERC165(migrationTarget).supportsInterface(this.onTokenTransfer.selector)
     ) revert InvalidMigrationTarget();
 
+    s_migrationTarget = address(0);
     s_proposedMigrationTarget = migrationTarget;
     s_proposedMigrationTargetAt = block.timestamp;
     emit MigrationTargetProposed(migrationTarget);
@@ -486,7 +502,7 @@ contract Staking is
     if (isInPriorityPeriod && !s_pool._isOperator(msg.sender))
       revert AlertInvalid();
 
-    s_lastAlertedRoundId = roundId._toUint128();
+    s_lastAlertedRoundId = roundId;
 
     // There is a risk that this might get us below the total amount of
     // reserved when rewards if the reward amount slashed is greater than LINK
@@ -564,7 +580,7 @@ contract Staking is
     if (amount == 0) revert StakingPoolLib.StakeNotFound(msg.sender);
 
     s_pool.totalOperatorRemovedAmount -= amount._toUint128();
-    s_pool.stakers[msg.sender].removedStakeAmount = 0;
+    delete s_pool.stakers[msg.sender].removedStakeAmount;
     emit Unstaked(msg.sender, amount, 0, 0);
     i_LINK.transfer(msg.sender, amount);
   }
@@ -799,6 +815,8 @@ contract Staking is
     uint256 amount,
     bytes memory data
   ) external validateFromLINK whenNotPaused whenActive {
+    if (amount < RewardLib.REWARD_PRECISION)
+      revert StakingPoolLib.InsufficientStakeAmount(RewardLib.REWARD_PRECISION);
     if (!s_pool._isOperator(sender)) {
       // If a Merkle root is set, the sender should
       // prove that they are part of the merkle tree
@@ -904,7 +922,23 @@ contract Staking is
     // On first stake
     if (currentStakedAmount == 0) {
       s_reward._accumulateDelegationRewards(getTotalDelegatedAmount());
-      s_reward.delegated.delegatesCount++;
+      uint8 delegatesCount = s_reward.delegated.delegatesCount;
+
+      // We are doing this check to unreserve any unused delegated rewards
+      // prior to the first operator staking. After the rewards are unreserved
+      // we reset the accumulated value so it doesn't count towards missed
+      // rewards.
+      // There is a known edge-case where, if no operator stakes throughout the
+      // duration of the pool, we wouldn't unreserve unused delegation rewards.
+      // In practice this shouldn't happen and, if it does, there are
+      // operational workarounds to unreserve those rewards.
+      if (delegatesCount == 0) {
+        s_reward.reserved.delegated -= s_reward.delegated.cumulativePerDelegate;
+        delete s_reward.delegated.cumulativePerDelegate;
+      }
+
+      s_reward.delegated.delegatesCount = delegatesCount + 1;
+
       s_reward.missed[staker].delegated = s_reward
         .delegated
         .cumulativePerDelegate;
@@ -933,46 +967,46 @@ contract Staking is
     if (stakerAccount.stakedAmount == 0)
       revert StakingPoolLib.StakeNotFound(staker);
 
-    StakingPoolLib.PoolState memory poolState = s_pool.state;
+    // If the pool isOpen that means that we haven't concluded it and stakers
+    // got here because the reward depleted. In that case, the first user to
+    // unstake will accumulate delegation and base rewards to save on cost for
+    // others.
+    if (s_pool.state.isOpen) {
+      // Accumulate base and delegation rewards before unreserving rewards to save gas costs.
+      // We can use the accumulated reward per micro LINK and accumulated delegation reward
+      // to simplify reward calculations.
+      s_reward._accumulateDelegationRewards(getTotalDelegatedAmount());
+      s_reward._accumulateBaseRewards();
+      delete s_pool.state.isOpen;
+    }
+
     if (stakerAccount.isOperator) {
       s_pool.state.totalOperatorStakedAmount -= stakerAccount.stakedAmount;
 
-      // If the pool isOpen that means that we haven't concluded it and stakers got here because
-      // the reward expired. In that case, we still need to do the full calculation as we can't
-      // rely on reward.base.cumulativePerMicroLINK alone.
-      uint256 baseReward = (poolState.isOpen)
-        ? getBaseReward(staker)
-        : s_reward._calculateConcludedBaseRewards(
-          stakerAccount.stakedAmount,
-          staker
-        );
-      // Same as above, except in this case we can't rely on reward.delegated.cumulativePerDelegate alone.
-      uint256 delegationReward = (poolState.isOpen)
-        ? s_reward._getOperatorEarnedDelegatedRewards(
-          staker,
-          getTotalDelegatedAmount()
-        )
-        : uint256(s_reward.delegated.cumulativePerDelegate) -
-          uint256(s_reward.missed[staker].delegated);
+      uint256 baseReward = s_reward._calculateConcludedBaseRewards(
+        stakerAccount.stakedAmount,
+        staker
+      );
+      uint256 delegationReward = uint256(
+        s_reward.delegated.cumulativePerDelegate
+      ) - uint256(s_reward.missed[staker].delegated);
 
-      s_pool.stakers[staker].stakedAmount = 0;
+      delete s_pool.stakers[staker].stakedAmount;
+      s_reward.reserved.base -= baseReward._toUint96();
+      s_reward.reserved.delegated -= delegationReward._toUint96();
       return (stakerAccount.stakedAmount, baseReward, delegationReward);
     } else {
       s_pool.state.totalCommunityStakedAmount -= stakerAccount.stakedAmount;
 
-      // If the pool isOpen that means that we haven't concluded it and stakers got here because
-      // the reward expired. In that case, we still need to do the full calculation as we can't
-      // rely on reward.base.cumulativePerMicroLINK alone.
-      uint256 baseReward = (poolState.isOpen)
-        ? getBaseReward(staker)
-        : s_reward._calculateConcludedBaseRewards(
-          RewardLib._getNonDelegatedAmount(
-            stakerAccount.stakedAmount,
-            i_delegationRateDenominator
-          ),
-          staker
-        );
-      s_pool.stakers[staker].stakedAmount = 0;
+      uint256 baseReward = s_reward._calculateConcludedBaseRewards(
+        RewardLib._getNonDelegatedAmount(
+          stakerAccount.stakedAmount,
+          i_delegationRateDenominator
+        ),
+        staker
+      );
+      delete s_pool.stakers[staker].stakedAmount;
+      s_reward.reserved.base -= baseReward._toUint96();
       return (stakerAccount.stakedAmount, baseReward, 0);
     }
   }
@@ -994,27 +1028,26 @@ contract Staking is
   // Modifiers
   // =========
 
-  /**
-   * @dev Reverts if the staking pool is inactive (not open for staking or expired)
-   */
-  modifier whenActive() {
+  /// @dev Having a private function for the modifer saves on the contract size
+  function _isActive() private view {
     if (!isActive()) revert StakingPoolLib.InvalidPoolStatus(false, true);
+  }
+
+  /// @dev Reverts if the staking pool is inactive (not open for staking or expired)
+  modifier whenActive() {
+    _isActive();
 
     _;
   }
 
-  /**
-   * @dev Reverts if the staking pool is active (open for staking)
-   */
+  /// @dev Reverts if the staking pool is active (open for staking)
   modifier whenInactive() {
     if (isActive()) revert StakingPoolLib.InvalidPoolStatus(true, false);
 
     _;
   }
 
-  /**
-   * @dev Reverts if not sent from the LINK token
-   */
+  /// @dev Reverts if not sent from the LINK token
   modifier validateFromLINK() {
     if (msg.sender != getChainlinkToken()) revert SenderNotLinkToken();
 
