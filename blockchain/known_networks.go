@@ -32,7 +32,7 @@ func wrapSingleClient(networkSettings *EVMNetwork, client *EthereumClient) EVMCl
 	case MetisClientImplementation:
 		wrappedEc = &MetisClient{client}
 	case PolygonClientImplementation:
-		wrappedEc = &PolygonEdgeClient{client}
+		wrappedEc = &PolygonClient{client}
 	case KlaytnClientImplementation:
 		wrappedEc = &KlaytnClient{client}
 	case ArbitrumClientImplementation:
@@ -57,7 +57,7 @@ func wrapMultiClient(networkSettings *EVMNetwork, client *EthereumMultinodeClien
 		wrappedEc = client
 	case PolygonClientImplementation:
 		logMsg.Msg("Using Polygon Client")
-		wrappedEc = &PolygonEdgeMultinodeClient{client}
+		wrappedEc = &PolygonMultinodeClient{client}
 	case MetisClientImplementation:
 		logMsg.Msg("Using Metis Client")
 		wrappedEc = &MetisMultinodeClient{client}
