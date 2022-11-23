@@ -81,13 +81,13 @@ library RewardLib {
   }
 
   struct ReservedRewards {
-    // Tracks base reward amount reserved to stakers. This can be used after
-    // `endTimestamp` to calculated unused amount.
+    // Tracks base reward amount reserved for stakers. This can be used after
+    // `endTimestamp` to calculate unused amount.
     // This amount accumulates as the reward is utilized.
     // Formula: duration * rate * amount
     uint96 base;
-    // Tracks delegated reward amount reserved to node operators. This can be used after
-    // `endTimestamp` to calculated unused amount.
+    // Tracks delegated reward amount reserved for node operators. This can
+    // be used after `endTimestamp` to calculate unused amount.
     // This amount accumulates as the reward is utilized.
     // Formula: duration * rate * amount
     uint96 delegated;
@@ -101,7 +101,7 @@ library RewardLib {
     // Timestamp when the reward stops accumulating. Has to support a very long
     // duration for scenarios with low reward rate.
     // `endTimestamp` >= `startTimestamp`
-    uint128 endTimestamp;
+    uint256 endTimestamp;
     // Timestamp when the reward comes into effect
     // `startTimestamp` <= `endTimestamp`
     uint32 startTimestamp;
@@ -110,8 +110,6 @@ library RewardLib {
   /// @notice initializes the reward with the defined parameters
   /// @param maxPoolSize maximum pool size that the reward is initialized with
   /// @param rate reward rate
-  /// @param amount initial amount of rewards that are available for
-  /// distribution to stakers
   /// @param minRewardDuration the minimum duration rewards need to last for
   /// @param availableReward available reward amount
   /// @dev can only be called once. Any future reward changes have to be done
@@ -120,7 +118,6 @@ library RewardLib {
     Reward storage reward,
     uint256 maxPoolSize,
     uint256 rate,
-    uint256 amount,
     uint256 minRewardDuration,
     uint256 availableReward
   ) internal {
@@ -145,7 +142,7 @@ library RewardLib {
 
     emit RewardInitialized(
       rate,
-      amount,
+      availableReward,
       reward.startTimestamp,
       reward.endTimestamp
     );
@@ -235,7 +232,7 @@ library RewardLib {
     uint256 elapsedDurationSinceLastAccumulate = _isDepleted(reward)
       ? (uint256(reward.endTimestamp) -
         uint256(reward.base.lastAccumulateTimestamp))
-      : (block.timestamp - uint256(reward.base.lastAccumulateTimestamp));
+      : block.timestamp - uint256(reward.base.lastAccumulateTimestamp);
 
     return
       (amount *
@@ -267,7 +264,8 @@ library RewardLib {
   /// or unreserve for
   /// @param delegatedRewardAmount The amount of delegated rewards to reserve
   /// or unreserve for
-  /// @param isReserving true if function should reserve more rewards. false will unreserve and deduct from the reserved total
+  /// @param isReserving true if function should reserve more rewards. false will
+  /// unreserve and deduct from the reserved total
   function _updateReservedRewards(
     Reward storage reward,
     uint256 baseRewardAmount,
@@ -355,7 +353,7 @@ library RewardLib {
     _accumulateBaseRewards(reward);
     _unreserve(reward, amount - delegatedAmount, delegatedAmount);
 
-    reward.endTimestamp = block.timestamp._toUint128();
+    reward.endTimestamp = block.timestamp;
   }
 
   /// @notice calculates an amount that community stakers have to delegate to operators
@@ -392,7 +390,6 @@ library RewardLib {
   /// @param maxPoolSize Current maximum staking pool size
   /// @param totalStakedAmount Currently staked amount across community stakers and operators
   /// @param newRate New reward rate if it needs to be changed
-  /// the new reward duration is less than the minimum reward duration.
   /// @param minRewardDuration The minimum duration rewards need to last for
   /// @param availableReward available reward amount
   /// @param totalDelegatedAmount total delegated amount delegated by community stakers
@@ -426,7 +423,7 @@ library RewardLib {
     uint256 availableRewardDuration = (remainingRewards * REWARD_PRECISION) /
       (newRate * maxPoolSize);
 
-    // Validate that the new reward duration is at least one month.
+    // Validate that the new reward duration is at least the min reward duration.
     // This is a safety mechanism to guard against operational mistakes.
     if (availableRewardDuration < minRewardDuration)
       revert RewardDurationTooShort();
@@ -447,8 +444,7 @@ library RewardLib {
       _calculateReward(reward, totalDelegatedAmount, availableRewardDuration))
       ._toUint96();
 
-    reward.endTimestamp = (block.timestamp + availableRewardDuration)
-      ._toUint128();
+    reward.endTimestamp = block.timestamp + availableRewardDuration;
   }
 
   /// @return The total amount of base rewards earned by all stakers
@@ -546,7 +542,8 @@ library RewardLib {
   }
 
   /// @return The amount of base rewards to slash
-  /// @notice The amount of rewards accrued over the slashable duration for a minimum node operator stake amount
+  /// @notice The amount of rewards accrued over the slashable duration for a
+  /// minimum node operator stake amount
   function _getSlashableBaseRewards(
     Reward storage reward,
     uint256 minOperatorStakeAmount,

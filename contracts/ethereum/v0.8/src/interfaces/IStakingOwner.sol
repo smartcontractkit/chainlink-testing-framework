@@ -44,7 +44,7 @@ interface IStakingOwner {
   function removeOperators(address[] calldata operators) external;
 
   /// @notice Allows the contract owner to set the list of on-feed operator addresses who are subject to slashing
-  /// @dev Existing feed operators are cleared before setting the new oeprators.
+  /// @dev Existing feed operators are cleared before setting the new operators.
   /// @param operators New list of on-feed operator staker addresses
   function setFeedOperators(address[] calldata operators) external;
 

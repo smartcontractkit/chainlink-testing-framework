@@ -60,7 +60,8 @@ contract Staking is
     /// @notice The minimum number of node operators required to initialize the
     /// staking pool.
     uint256 minInitialOperatorCount;
-    /// @notice The minimum reward duration after pool config updates and pool reward extensions
+    /// @notice The minimum reward duration after pool config updates and pool
+    /// reward extensions
     uint256 minRewardDuration;
     /// @notice The duration of earned rewards to slash when an alert is raised
     uint256 slashableDuration;
@@ -98,7 +99,8 @@ contract Staking is
   /// @notice The minimum number of node operators required to initialize the
   /// staking pool.
   uint256 private immutable i_minInitialOperatorCount;
-  /// @notice The minimum reward duration after pool config updates and pool reward extensions
+  /// @notice The minimum reward duration after pool config updates and pool
+  /// reward extensions
   uint256 private immutable i_minRewardDuration;
   /// @notice The duration of earned rewards to slash when an alert is raised
   uint256 private immutable i_slashableDuration;
@@ -122,13 +124,12 @@ contract Staking is
     if (params.maxAlertingRewardAmount > params.initialMaxOperatorStakeAmount)
       revert InvalidMaxAlertingRewardAmount();
 
-    i_LINK = params.LINKAddress;
     s_pool._setConfig(
       params.initialMaxPoolSize,
       params.initialMaxCommunityStakeAmount,
       params.initialMaxOperatorStakeAmount
     );
-
+    i_LINK = params.LINKAddress;
     i_monitoredFeed = params.monitoredFeed;
     i_priorityPeriodThreshold = params.priorityPeriodThreshold;
     i_regularPeriodThreshold = params.regularPeriodThreshold;
@@ -145,6 +146,7 @@ contract Staking is
   // TypeAndVersionInterface
   // =======================
 
+  /// @inheritdoc TypeAndVersionInterface
   function typeAndVersion() external pure override returns (string memory) {
     return 'Staking 0.1.0';
   }
@@ -160,12 +162,11 @@ contract Staking is
     override
     returns (bool)
   {
+    if (s_merkleRoot == bytes32(0)) return true;
     return
       MerkleProof.verify(proof, s_merkleRoot, keccak256(abi.encode(staker)));
   }
 
-  /// @dev This could have an if check in the case where merkleRoot == newMerkleRoot to skip the following step.
-  /// We chose to optimize for the happy path gas cost instead of the no-op rare case
   /// @inheritdoc IMerkleAccessController
   function setMerkleRoot(bytes32 newMerkleRoot) external override onlyOwner {
     s_merkleRoot = newMerkleRoot;
@@ -181,7 +182,7 @@ contract Staking is
   // IStakingOwner
   // =============
 
-  /// @inheritdoc	IStakingOwner
+  /// @inheritdoc IStakingOwner
   function setPoolConfig(
     uint256 maxPoolSize,
     uint256 maxCommunityStakeAmount,
@@ -203,7 +204,7 @@ contract Staking is
     );
   }
 
-  /// @inheritdoc	IStakingOwner
+  /// @inheritdoc IStakingOwner
   function setFeedOperators(address[] calldata operators)
     external
     override(IStakingOwner)
@@ -229,7 +230,6 @@ contract Staking is
     s_reward._initialize(
       uint256(s_pool.limits.maxPoolSize),
       initialRewardRate,
-      amount,
       i_minRewardDuration,
       getAvailableReward()
     );
@@ -285,8 +285,8 @@ contract Staking is
   }
 
   /// @dev Required conditions for adding operators:
-  /// - Operators can only been added to the pool if they have no prior stake.
-  /// - Operators can only been readded to the pool if they have no removed
+  /// - Operators can only be added to the pool if they have no prior stake.
+  /// - Operators can only be readded to the pool if they have no removed
   /// stake.
   /// - Operators cannot be added to the pool after staking ends (either through
   /// conclusion or through reward expiry).
@@ -304,7 +304,7 @@ contract Staking is
     s_pool._addOperators(operators);
   }
 
-  /// @inheritdoc	IStakingOwner
+  /// @inheritdoc IStakingOwner
   function removeOperators(address[] calldata operators)
     external
     override(IStakingOwner)
@@ -400,7 +400,7 @@ contract Staking is
     _unpause();
   }
 
-  /// @inheritdoc	IStakingOwner
+  /// @inheritdoc IStakingOwner
   function getFeedOperators()
     external
     view
@@ -446,7 +446,7 @@ contract Staking is
 
   /// @inheritdoc IMigratable
   function acceptMigrationTarget() external override(IMigratable) onlyOwner {
-    if (address(s_proposedMigrationTarget) == address(0))
+    if (s_proposedMigrationTarget == address(0))
       revert InvalidMigrationTarget();
 
     if (block.timestamp < (uint256(s_proposedMigrationTargetAt) + 7 days))
@@ -463,8 +463,7 @@ contract Staking is
     override(IMigratable)
     whenInactive
   {
-    if (address(s_migrationTarget) == address(0))
-      revert InvalidMigrationTarget();
+    if (s_migrationTarget == address(0)) revert InvalidMigrationTarget();
 
     (uint256 amount, uint256 baseReward, uint256 delegationReward) = _exit(
       msg.sender
@@ -505,7 +504,7 @@ contract Staking is
     s_lastAlertedRoundId = roundId;
 
     // There is a risk that this might get us below the total amount of
-    // reserved when rewards if the reward amount slashed is greater than LINK
+    // reserved if the reward amount slashed is greater than LINK
     // balance in the pool.  This is an extreme edge case that will only occur
     /// if an alert is raised many times such that it completely depletes the
     // available rewards in the pool.  As this is an unlikely scenario, the
@@ -544,7 +543,7 @@ contract Staking is
     );
   }
 
-  /// @inheritdoc	IAlertsController
+  /// @inheritdoc IAlertsController
   function canAlert(address alerter)
     external
     view
@@ -552,11 +551,16 @@ contract Staking is
     returns (bool)
   {
     if (getStake(alerter) == 0) return false;
+    if (!isActive()) return false;
     (uint256 roundId, , , uint256 updatedAt, ) = i_monitoredFeed
       .latestRoundData();
     if (roundId == s_lastAlertedRoundId) return false;
-    if (block.timestamp < updatedAt + i_priorityPeriodThreshold) return false; // nobody can (feed is not stale)
-    if (block.timestamp >= updatedAt + i_regularPeriodThreshold) return true; // all stakers can (regular alerters)
+
+    // nobody can (feed is not stale)
+    if (block.timestamp < updatedAt + i_priorityPeriodThreshold) return false;
+
+    // all stakers can (regular alerters)
+    if (block.timestamp >= updatedAt + i_regularPeriodThreshold) return true;
     return s_pool._isOperator(alerter); // only operators can (priority alerters)
   }
 
@@ -564,7 +568,7 @@ contract Staking is
   // IStaking
   // ========
 
-  /// @inheritdoc	IStaking
+  /// @inheritdoc IStaking
   function unstake() external override(IStaking) whenInactive {
     (uint256 amount, uint256 baseReward, uint256 delegationReward) = _exit(
       msg.sender
@@ -574,12 +578,12 @@ contract Staking is
     i_LINK.transfer(msg.sender, amount + baseReward + delegationReward);
   }
 
-  /// @inheritdoc	IStaking
+  /// @inheritdoc IStaking
   function withdrawRemovedStake() external override(IStaking) whenInactive {
     uint256 amount = s_pool.stakers[msg.sender].removedStakeAmount;
     if (amount == 0) revert StakingPoolLib.StakeNotFound(msg.sender);
 
-    s_pool.totalOperatorRemovedAmount -= amount._toUint128();
+    s_pool.totalOperatorRemovedAmount -= amount;
     delete s_pool.stakers[msg.sender].removedStakeAmount;
     emit Unstaked(msg.sender, amount, 0, 0);
     i_LINK.transfer(msg.sender, amount);
@@ -676,7 +680,7 @@ contract Staking is
     return
       i_LINK.balanceOf(address(this)) -
       s_pool._getTotalStakedAmount() -
-      uint256(s_pool.totalOperatorRemovedAmount);
+      s_pool.totalOperatorRemovedAmount;
   }
 
   /// @inheritdoc IStaking
@@ -689,14 +693,14 @@ contract Staking is
     uint256 stake = s_pool.stakers[staker].stakedAmount;
     if (stake == 0) return 0;
 
-    if (!s_pool._isOperator(staker)) {
-      return
-        s_reward._calculateAccruedBaseRewards(
-          RewardLib._getNonDelegatedAmount(stake, i_delegationRateDenominator)
-        ) - uint256(s_reward.missed[staker].base);
+    if (s_pool._isOperator(staker)) {
+      return s_reward._getOperatorEarnedBaseRewards(staker, stake);
     }
 
-    return s_reward._getOperatorEarnedBaseRewards(staker, stake);
+    return
+      s_reward._calculateAccruedBaseRewards(
+        RewardLib._getNonDelegatedAmount(stake, i_delegationRateDenominator)
+      ) - uint256(s_reward.missed[staker].base);
   }
 
   /// @inheritdoc IStaking
@@ -750,17 +754,27 @@ contract Staking is
     return s_pool._getTotalStakedAmount();
   }
 
-  /// @inheritdoc	IStaking
+  /// @inheritdoc IStaking
+  function getTotalCommunityStakedAmount()
+    external
+    view
+    override(IStaking)
+    returns (uint256)
+  {
+    return s_pool.state.totalCommunityStakedAmount;
+  }
+
+  /// @inheritdoc IStaking
   function getTotalRemovedAmount()
     external
     view
     override(IStaking)
     returns (uint256)
   {
-    return uint256(s_pool.totalOperatorRemovedAmount);
+    return s_pool.totalOperatorRemovedAmount;
   }
 
-  /// @inheritdoc	IStaking
+  /// @inheritdoc IStaking
   function getEarnedBaseRewards()
     external
     view
@@ -774,7 +788,7 @@ contract Staking is
       );
   }
 
-  /// @inheritdoc	IStaking
+  /// @inheritdoc IStaking
   function getEarnedDelegationRewards()
     external
     view
@@ -817,7 +831,9 @@ contract Staking is
   ) external validateFromLINK whenNotPaused whenActive {
     if (amount < RewardLib.REWARD_PRECISION)
       revert StakingPoolLib.InsufficientStakeAmount(RewardLib.REWARD_PRECISION);
-    if (!s_pool._isOperator(sender)) {
+    if (s_pool._isOperator(sender)) {
+      _stakeAsOperator(sender, amount);
+    } else {
       // If a Merkle root is set, the sender should
       // prove that they are part of the merkle tree
       if (s_merkleRoot != bytes32(0)) {
@@ -831,8 +847,6 @@ contract Staking is
         ) revert AccessForbidden();
       }
       _stakeAsCommunityStaker(sender, amount);
-    } else {
-      _stakeAsOperator(sender, amount);
     }
   }
 
@@ -848,20 +862,15 @@ contract Staking is
   /// staking) is going to unnecessarily increase gas costs in 99.99% of the
   /// cases.
   function _stakeAsCommunityStaker(address staker, uint256 amount) private {
-    // NOTE: We are loading Staker for isOperator in onTokenTransfer and we are
-    // doing it again here. We could save 1 load (~100 gas) if we merge these
-    // functions.
     uint256 currentStakedAmount = s_pool.stakers[staker].stakedAmount;
     uint256 newStakedAmount = currentStakedAmount + amount;
     // Check that the amount is greater than or equal to the minimum required
     if (newStakedAmount < i_minCommunityStakeAmount)
       revert StakingPoolLib.InsufficientStakeAmount(i_minCommunityStakeAmount);
 
-    StakingPoolLib.PoolLimits memory poolLimits = s_pool.limits;
-
     // Check that the amount is less than or equal to the maximum allowed
     uint256 maxCommunityStakeAmount = uint256(
-      poolLimits.maxCommunityStakeAmount
+      s_pool.limits.maxCommunityStakeAmount
     );
     if (newStakedAmount > maxCommunityStakeAmount)
       revert StakingPoolLib.ExcessiveStakeAmount(
@@ -896,13 +905,14 @@ contract Staking is
   /// amount will cause the total stake amount to exceed the maximum pool size.
   /// This is because the pool already reserves a fixed amount of space
   /// for each operator meaning that an operator staking cannot cause the
-  /// total stake amount to exceed the maximum pool size.  Each operator receives a
-  /// reserved stake amount equal to the maxOperatorStakeAmount. This is done by deducting
-  /// operatorCount * maxOperator/CommunityStakeAmount from the remaining pool space available for staking.
+  /// total stake amount to exceed the maximum pool size.  Each operator
+  /// receives a reserved stake amount equal to the maxOperatorStakeAmount.
+  /// This is done by deducting operatorCount * maxOperatorStakeAmount from the
+  /// remaining pool space available for staking.
   /// @param staker The staker address
   /// @param amount The amount of principal staked
   function _stakeAsOperator(address staker, uint256 amount) private {
-    StakingPoolLib.Staker memory operator = s_pool.stakers[staker];
+    StakingPoolLib.Staker storage operator = s_pool.stakers[staker];
     uint256 currentStakedAmount = operator.stakedAmount;
     uint256 newStakedAmount = currentStakedAmount + amount;
 
@@ -972,9 +982,9 @@ contract Staking is
     // unstake will accumulate delegation and base rewards to save on cost for
     // others.
     if (s_pool.state.isOpen) {
-      // Accumulate base and delegation rewards before unreserving rewards to save gas costs.
-      // We can use the accumulated reward per micro LINK and accumulated delegation reward
-      // to simplify reward calculations.
+      // Accumulate base and delegation rewards before unreserving rewards to
+      // save gas costs. We can use the accumulated reward per micro LINK and
+      // accumulated delegation reward to simplify reward calculations.
       s_reward._accumulateDelegationRewards(getTotalDelegatedAmount());
       s_reward._accumulateBaseRewards();
       delete s_pool.state.isOpen;
@@ -1021,7 +1031,7 @@ contract Staking is
     bool isInPriorityPeriod
   ) private view returns (uint256) {
     if (isInPriorityPeriod) return i_maxAlertingRewardAmount;
-    return Math.min(stakedAmount >> 1, i_maxAlertingRewardAmount);
+    return Math.min(stakedAmount / 5, i_maxAlertingRewardAmount);
   }
 
   // =========
@@ -1033,7 +1043,8 @@ contract Staking is
     if (!isActive()) revert StakingPoolLib.InvalidPoolStatus(false, true);
   }
 
-  /// @dev Reverts if the staking pool is inactive (not open for staking or expired)
+  /// @dev Reverts if the staking pool is inactive (not open for staking or
+  /// expired)
   modifier whenActive() {
     _isActive();
 

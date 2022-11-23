@@ -111,6 +111,9 @@ interface IStaking {
   /// @return uint256 total amount staked by community stakers and operators in Juels
   function getTotalStakedAmount() external view returns (uint256);
 
+  /// @return uint256 total amount staked by community stakers in Juels
+  function getTotalCommunityStakedAmount() external view returns (uint256);
+
   /// @return uint256 the sum of removed operator principals that have not been
   /// withdrawn from the staking pool in Juels.
   /// @dev Used to make sure that contract's balance is correct.

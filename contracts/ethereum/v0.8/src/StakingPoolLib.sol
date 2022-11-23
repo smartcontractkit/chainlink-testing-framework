@@ -10,13 +10,16 @@ library StakingPoolLib {
   event PoolOpened();
   /// @notice This event is emitted when the staking pool is concluded
   event PoolConcluded();
-  /// @notice This event is emitted when the staking pool's maximum size is increased
+  /// @notice This event is emitted when the staking pool's maximum size is
+  /// increased
   /// @param maxPoolSize the new maximum pool size
   event PoolSizeIncreased(uint256 maxPoolSize);
-  /// @notice This event is emitted when the maximum stake amount for community stakers is increased
+  /// @notice This event is emitted when the maximum stake amount
+  // for community stakers is increased
   /// @param maxStakeAmount the new maximum stake amount
   event MaxCommunityStakeAmountIncreased(uint256 maxStakeAmount);
-  /// @notice This event is emitted when the maximum stake amount for node operators is increased
+  /// @notice This event is emitted when the maximum stake amount for node
+  /// operators is increased
   /// @param maxStakeAmount the new maximum stake amount
   event MaxOperatorStakeAmountIncreased(uint256 maxStakeAmount);
   /// @notice This event is emitted when an operator is added
@@ -26,20 +29,24 @@ library StakingPoolLib {
   /// @param operator address of the operator that was removed from the staking pool
   /// @param amount principal amount that will be available for withdrawal when staking ends
   event OperatorRemoved(address operator, uint256 amount);
-  /// @notice This event is emitted when the contract owner sets the list of feed operators subject to slashing
+  /// @notice This event is emitted when the contract owner sets the list
+  /// of feed operators subject to slashing
   /// @param feedOperators new list of feed operator staking addresses
   event FeedOperatorsSet(address[] feedOperators);
   /// @notice Surfaces the required pool status to perform an operation
   /// @param currentStatus current status of the pool (true if open / false if closed)
-  /// @param requiredStatus required status of the pool to proceed (true if pool must be open / false if pool must be closed)
+  /// @param requiredStatus required status of the pool to proceed
+  /// (true if pool must be open / false if pool must be closed)
   error InvalidPoolStatus(bool currentStatus, bool requiredStatus);
   /// @notice This error is raised when attempting to decrease maximum pool size
   /// @param maxPoolSize the current maximum pool size
   error InvalidPoolSize(uint256 maxPoolSize);
-  /// @notice This error is raised when attempting to decrease maximum stake amount for community stakers or node operators
+  /// @notice This error is raised when attempting to decrease maximum stake amount
+  /// for community stakers or node operators
   /// @param maxStakeAmount the current maximum stake amount
   error InvalidMaxStakeAmount(uint256 maxStakeAmount);
-  /// @notice This error is raised when attempting to add more node operators without sufficient available pool space to reserve their allocations.
+  /// @notice This error is raised when attempting to add more node operators without
+  /// sufficient available pool space to reserve their allocations.
   /// @param remainingPoolSize the remaining pool space available to reserve
   /// @param requiredPoolSize the required reserved pool space to add new node operators
   error InsufficientRemainingPoolSpace(
@@ -49,8 +56,8 @@ library StakingPoolLib {
   /// @param requiredAmount minimum required stake amount
   error InsufficientStakeAmount(uint256 requiredAmount);
   /// @notice This error is raised when stakers attempt to stake past pool limits
-  /// @param remainingAmount maximum remaining amount that can be staked. This is the difference between the existing staked amount
-  /// and the individual and global limits.
+  /// @param remainingAmount maximum remaining amount that can be staked. This is
+  /// the difference between the existing staked amount and the individual and global limits.
   error ExcessiveStakeAmount(uint256 remainingAmount);
   /// @notice This error is raised when stakers attempt to exit the pool
   /// @param staker address of the staker who attempted to withdraw funds
@@ -65,15 +72,19 @@ library StakingPoolLib {
   /// @notice This error is thrown when the owner attempts to remove an on-feed operator.
   /// @dev The owner must remove the operator from the on-feed list first.
   error OperatorIsAssignedToFeed(address operator);
-  /// @notice This error is raised when removing an operator in removeOperators and setFeedOperators
+  /// @notice This error is raised when removing an operator in removeOperators
+  /// and setFeedOperators
   /// @param operator address of the operator
   error OperatorDoesNotExist(address operator);
-  /// @notice This error is raised when operator has been removed from the pool and is attempted to be readded
+  /// @notice This error is raised when operator has been removed from the pool
+  /// and is attempted to be readded
   /// @param operator address of the locked operator
   error OperatorIsLocked(address operator);
-  /// @notice This error is raised when attempting to start staking with less than the minimum required node operators
+  /// @notice This error is raised when attempting to start staking with less
+  /// than the minimum required node operators
   /// @param currentOperatorsCount The current number of operators in the staking pool
-  /// @param minInitialOperatorsCount The minimum required number of operators in the staking pool before opening
+  /// @param minInitialOperatorsCount The minimum required number of operators
+  /// in the staking pool before opening
   error InadequateInitialOperatorsCount(
     uint256 currentOperatorsCount,
     uint256 minInitialOperatorsCount
@@ -120,7 +131,7 @@ library StakingPoolLib {
     // Sum of removed operator principals that have not been withdrawn.
     // Used to make sure that contract's balance is correct.
     // total staked amount + total removed amount + available rewards = current balance
-    uint128 totalOperatorRemovedAmount;
+    uint256 totalOperatorRemovedAmount;
   }
 
   /// @notice Sets staking pool parameters
@@ -204,8 +215,9 @@ library StakingPoolLib {
       uint256(poolState.totalOperatorStakedAmount);
   }
 
-  /// @notice Returns the amount of remaining space available in the pool
-  /// Stakers can only stake up to this amount even if they are within their individual limits.
+  /// @notice Returns the amount of remaining space available in the pool for
+  /// community stakers. Community stakers can only stake up to this amount
+  /// even if they are within their individual limits.
   /// @return remainingPoolSpace
   function _getRemainingPoolSpace(Pool storage pool)
     internal
@@ -252,8 +264,9 @@ library StakingPoolLib {
     }
 
     // Safely update operators count with respect to the maximum of 255 operators
-    pool.state.operatorsCount = (uint256(pool.state.operatorsCount) +
-      operators.length)._toUint8();
+    pool.state.operatorsCount =
+      pool.state.operatorsCount +
+      operators.length._toUint8();
   }
 
   /// @notice Helper function to set the list of on-feed Operator addresses

@@ -12,8 +12,6 @@ library SafeCast {
   uint256 private constant MAX_UINT_80 = type(uint80).max;
   /// @notice This is used to safely case timestamps to uint96
   uint256 private constant MAX_UINT_96 = type(uint96).max;
-  /// @notice This is used to safely case timestamps to uint128
-  uint256 private constant MAX_UINT_128 = type(uint128).max;
 
   function _toUint8(uint256 value) internal pure returns (uint8) {
     if (value > MAX_UINT_8) revert CastError();
@@ -33,10 +31,5 @@ library SafeCast {
   function _toUint96(uint256 value) internal pure returns (uint96) {
     if (value > MAX_UINT_96) revert CastError();
     return uint96(value);
-  }
-
-  function _toUint128(uint256 value) internal pure returns (uint128) {
-    if (value > MAX_UINT_128) revert CastError();
-    return uint128(value);
   }
 }
