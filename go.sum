@@ -420,8 +420,8 @@ github.com/sirupsen/logrus v1.4.2/go.mod h1:tLMulIdttU9McNUspp0xgXVQah82FyeX6Mwd
 github.com/sirupsen/logrus v1.6.0/go.mod h1:7uNnSEd1DgxDLC74fIahvMZmmYsHGZGEOFrfsX/uA88=
 github.com/slack-go/slack v0.11.4 h1:ojSa7KlPm3PqY2AomX4VTxEsK5eci5JaxCjlzGV5zoM=
 github.com/slack-go/slack v0.11.4/go.mod h1:hlGi5oXA+Gt+yWTPP0plCdRKmjsDxecdHxYQdlMQKOw=
-github.com/smartcontractkit/chainlink-env v0.2.52 h1:9Dd/jcIizCHuUKMDEdKWe993Qm26Zx1U8HMaexZGWtQ=
-github.com/smartcontractkit/chainlink-env v0.2.52/go.mod h1:+LGY2SyAvKvxPJ2I4kWM5arcC8SJDPMlhFg2TL616pA=
+github.com/smartcontractkit/chainlink-env v0.2.54 h1:CE/L07R5Pk1TGTARnE1YNULRLjWktM9WiMHuA6/8W+8=
+github.com/smartcontractkit/chainlink-env v0.2.54/go.mod h1:z+SUR5w+jdyvLqi3FLMoI7DtqU5XjhUGSOVDzVoRRfg=
 github.com/spaolacci/murmur3 v0.0.0-20180118202830-f09979ecbc72/go.mod h1:JwIasOWyU6f++ZhiEuf87xNszmSA2myDM2Kzu9HwQUA=
 github.com/spf13/afero v1.2.2/go.mod h1:9ZxEEn6pIJ8Rxe320qSDBk6AsU0r9pR7Q4OcevTdifk=
 github.com/spf13/cobra v1.5.0 h1:X+jTBEBqF0bHN+9cSMgmfuvv2VHJ9ezmFNf9Y/XstYU=
