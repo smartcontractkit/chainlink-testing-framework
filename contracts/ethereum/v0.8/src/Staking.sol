@@ -70,19 +70,26 @@ contract Staking is
     uint256 delegationRateDenominator;
   }
 
+  /// @notice The amount to divide an alerter's stake amount when
+  /// calculating their reward for raising an alert.
+  uint256 private constant ALERTING_REWARD_STAKED_AMOUNT_DENOMINATOR = 5;
+
   LinkTokenInterface private immutable i_LINK;
   StakingPoolLib.Pool private s_pool;
   RewardLib.Reward private s_reward;
   /// @notice The ETH USD feed that alerters can raise alerts for.
   AggregatorV3Interface private immutable i_monitoredFeed;
+  /// @notice The proposed address stakers will migrate funds to
   address private s_proposedMigrationTarget;
+  /// @notice The timestamp of when the migration target was proposed at
   uint256 private s_proposedMigrationTargetAt;
+  /// @notice The address stakers can migrate their funds to
   address private s_migrationTarget;
   /// @notice The round ID of the last feed round an alert was raised
   uint256 private s_lastAlertedRoundId;
-
+  /// @notice The merkle root of the merkle tree generated from the list
+  /// of staker addresses with early acccess.
   bytes32 private s_merkleRoot;
-
   /// @notice The number of seconds until the feed is considered stale
   /// and the priority period begins.
   uint256 private immutable i_priorityPeriodThreshold;
@@ -113,6 +120,8 @@ contract Staking is
     if (address(params.monitoredFeed) == address(0))
       revert InvalidZeroAddress();
     if (params.delegationRateDenominator == 0) revert InvalidDelegationRate();
+    if (RewardLib.REWARD_PRECISION % params.delegationRateDenominator > 0)
+      revert InvalidDelegationRate();
     if (params.regularPeriodThreshold <= params.priorityPeriodThreshold)
       revert InvalidRegularPeriodThreshold();
     if (params.minOperatorStakeAmount == 0)
@@ -831,6 +840,22 @@ contract Staking is
   ) external validateFromLINK whenNotPaused whenActive {
     if (amount < RewardLib.REWARD_PRECISION)
       revert StakingPoolLib.InsufficientStakeAmount(RewardLib.REWARD_PRECISION);
+
+    // TL;DR: Reward calculation and delegation logic requires precise numbers
+    // to avoid cumulative rounding errors.
+    // Long explanation:
+    // When users stake amounts that are rounded down to 0 after dividing
+    // by the delegation rate denominator, not enough rewards are reserved for
+    // the user. When the user then stakes enough times, small rounding errors
+    // accumulate. This causes an integer underflow when unreserving rewards because
+    // the total delegated amount returns a larger number than what individual
+    // reserved amounts sum up to.
+    uint256 remainder = amount % RewardLib.REWARD_PRECISION;
+    if (remainder > 0) {
+      amount -= remainder;
+      i_LINK.transfer(sender, remainder);
+    }
+
     if (s_pool._isOperator(sender)) {
       _stakeAsOperator(sender, amount);
     } else {
@@ -1031,7 +1056,11 @@ contract Staking is
     bool isInPriorityPeriod
   ) private view returns (uint256) {
     if (isInPriorityPeriod) return i_maxAlertingRewardAmount;
-    return Math.min(stakedAmount / 5, i_maxAlertingRewardAmount);
+    return
+      Math.min(
+        stakedAmount / ALERTING_REWARD_STAKED_AMOUNT_DENOMINATOR,
+        i_maxAlertingRewardAmount
+      );
   }
 
   // =========

@@ -204,8 +204,7 @@ library RewardLib {
     uint256 elapsedDurationSinceLastAccumulate = _isDepleted(reward)
       ? uint256(reward.endTimestamp) -
         uint256(reward.delegated.lastAccumulateTimestamp)
-      : _getCappedTimestamp(reward) -
-        uint256(reward.delegated.lastAccumulateTimestamp);
+      : block.timestamp - uint256(reward.delegated.lastAccumulateTimestamp);
 
     return
       uint256(reward.delegated.cumulativePerDelegate) +
@@ -532,8 +531,6 @@ library RewardLib {
     reward.reserved.base -= totalSlashedBaseReward._toUint96();
     reward.reserved.delegated -= totalSlashedDelegatedReward._toUint96();
 
-    // One event emitted per slashed on feed node operator so that
-    // the contract can expose more detailed information.
     emit RewardSlashed(
       feedOperators,
       slashedBaseAmounts,
