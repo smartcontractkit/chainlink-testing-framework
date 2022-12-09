@@ -3,10 +3,9 @@ package testreporters
 import (
 	"fmt"
 	"path/filepath"
-	"strings"
+	"testing"
 	"time"
 
-	"github.com/onsi/ginkgo/v2"
 	"github.com/rs/zerolog/log"
 	"github.com/slack-go/slack"
 	"github.com/smartcontractkit/chainlink-env/environment"
@@ -15,7 +14,7 @@ import (
 // TestReporter is a general interface for all test reporters
 type TestReporter interface {
 	WriteReport(folderLocation string) error
-	SendSlackNotification(slackClient *slack.Client) error
+	SendSlackNotification(t *testing.T, slackClient *slack.Client) error
 	SetNamespace(namespace string)
 }
 
@@ -26,16 +25,14 @@ const (
 
 // attempts to download the logs of all ephemeral test deployments onto the test runner, also writing a test report
 // if one is provided
-func WriteTeardownLogs(env *environment.Environment, optionalTestReporter TestReporter) error {
-	if ginkgo.CurrentSpecReport().Failed() || optionalTestReporter != nil {
-		testFilename := strings.Split(ginkgo.CurrentSpecReport().FileName(), ".")[0]
-		_, testName := filepath.Split(testFilename)
-		logsPath := filepath.Join(DefaultArtifactsDir, fmt.Sprintf("%s-%d", testName, time.Now().Unix()))
+func WriteTeardownLogs(t *testing.T, env *environment.Environment, optionalTestReporter TestReporter) error {
+	if t.Failed() || optionalTestReporter != nil {
+		logsPath := filepath.Join(DefaultArtifactsDir, fmt.Sprintf("%s-%s-%d", t.Name(), env.Cfg.Namespace, time.Now().Unix()))
 		if err := env.Artifacts.DumpTestResult(logsPath, "chainlink"); err != nil {
 			log.Warn().Err(err).Msg("Error trying to collect pod logs")
 			return err
 		}
-		if err := SendReport(env, logsPath, optionalTestReporter); err != nil {
+		if err := SendReport(t, env, logsPath, optionalTestReporter); err != nil {
 			log.Warn().Err(err).Msg("Error writing test report")
 		}
 	}
@@ -43,7 +40,7 @@ func WriteTeardownLogs(env *environment.Environment, optionalTestReporter TestRe
 }
 
 // if provided, writes a test report and sends a Slack notification
-func SendReport(env *environment.Environment, logsPath string, optionalTestReporter TestReporter) error {
+func SendReport(t *testing.T, env *environment.Environment, logsPath string, optionalTestReporter TestReporter) error {
 	if optionalTestReporter != nil {
 		log.Info().Msg("Writing Test Report")
 		optionalTestReporter.SetNamespace(env.Cfg.Namespace)
@@ -51,7 +48,7 @@ func SendReport(env *environment.Environment, logsPath string, optionalTestRepor
 		if err != nil {
 			return err
 		}
-		err = optionalTestReporter.SendSlackNotification(nil)
+		err = optionalTestReporter.SendSlackNotification(t, nil)
 		if err != nil {
 			return err
 		}

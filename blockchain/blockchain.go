@@ -30,7 +30,7 @@ type EVMClient interface {
 	SetID(id int)
 	SetDefaultWallet(num int) error
 	SetWallets([]*EthereumWallet)
-	LoadWallets(ns interface{}) error
+	LoadWallets(ns EVMNetwork) error
 	SwitchNode(node int) error
 
 	// On-chain Operations

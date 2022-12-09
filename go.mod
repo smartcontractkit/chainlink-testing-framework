@@ -10,14 +10,12 @@ require (
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/lib/pq v1.10.7
-	github.com/onsi/ginkgo/v2 v2.5.1
-	github.com/onsi/gomega v1.24.1
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.14.0
 	github.com/prometheus/common v0.37.0
 	github.com/rs/zerolog v1.28.0
 	github.com/slack-go/slack v0.11.4
-	github.com/smartcontractkit/chainlink-env v0.2.52
+	github.com/smartcontractkit/chainlink-env v0.2.56
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/ratelimit v0.2.0
 	golang.org/x/sync v0.1.0
@@ -29,11 +27,11 @@ require (
 	github.com/Masterminds/semver/v3 v3.1.1 // indirect
 	github.com/alecthomas/units v0.0.0-20210927113745-59d0afb8317a // indirect
 	github.com/andres-erbsen/clock v0.0.0-20160526145045-9e14626cd129 // indirect
-	github.com/aws/constructs-go/constructs/v10 v10.1.152 // indirect
-	github.com/aws/jsii-runtime-go v1.70.0 // indirect
+	github.com/aws/constructs-go/constructs/v10 v10.1.173 // indirect
+	github.com/aws/jsii-runtime-go v1.71.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.2.1 // indirect
-	github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2 v2.5.37 // indirect
+	github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2 v2.5.58 // indirect
 	github.com/cespare/cp v1.1.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/chai2010/gettext-go v1.0.2 // indirect
@@ -122,15 +120,15 @@ require (
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/api v0.25.3 // indirect
+	k8s.io/api v0.25.4 // indirect
 	k8s.io/apiextensions-apiserver v0.25.3 // indirect
-	k8s.io/apimachinery v0.25.3 // indirect
-	k8s.io/cli-runtime v0.25.3 // indirect
-	k8s.io/client-go v0.25.3 // indirect
-	k8s.io/component-base v0.25.3 // indirect
+	k8s.io/apimachinery v0.25.4 // indirect
+	k8s.io/cli-runtime v0.25.4 // indirect
+	k8s.io/client-go v0.25.4 // indirect
+	k8s.io/component-base v0.25.4 // indirect
 	k8s.io/klog/v2 v2.70.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20220803164354-a70c9af30aea // indirect
-	k8s.io/kubectl v0.25.3 // indirect
+	k8s.io/kubectl v0.25.4 // indirect
 	k8s.io/utils v0.0.0-20220823124924-e9cbc92d1a73 // indirect
 	sigs.k8s.io/controller-runtime v0.13.0 // indirect
 	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect

@@ -26,10 +26,6 @@ go_mod:
 	go mod download
 
 install_tools:
-ifeq ($(OSFLAG),$(LINUX))
-	# used for linux and ci
-	go install github.com/onsi/ginkgo/v2/ginkgo@v$(shell cat ./.tool-versions | grep ginkgo | sed -En "s/ginkgo.(.*)/\1/p")
-endif
 ifeq ($(OSFLAG),$(WINDOWS))
 	echo "If you are running windows and know how to install what is needed, please contribute by adding it here!"
 	exit 1
@@ -38,7 +34,6 @@ ifeq ($(OSFLAG),$(OSX))
 	brew install asdf
 	asdf plugin-add nodejs https://github.com/asdf-vm/asdf-nodejs.git || true
 	asdf plugin-add golang https://github.com/kennyp/asdf-golang.git || true
-	asdf plugin-add ginkgo https://github.com/jimmidyson/asdf-ginkgo.git || true
 	asdf plugin add k3d https://github.com/spencergilbert/asdf-k3d.git || true
 	asdf plugin add act https://github.com/grimoh/asdf-act.git || true
 	asdf plugin add golangci-lint https://github.com/hypnoglow/asdf-golangci-lint.git || true
@@ -55,4 +50,4 @@ compile_contracts:
 	python3 ./utils/compile_contracts.py
 
 test_unit:
-	ginkgo -r --junit-report=tests-unit-report.xml --keep-going --trace --randomize-all --randomize-suites --progress -cover -covermode=count -coverprofile=unit-test-coverage.out -nodes=10 ./client ./config ./gauntlet ./testreporters
+	go test -cover -covermode=count -coverprofile=unit-test-coverage.out ./client ./gauntlet ./testreporters

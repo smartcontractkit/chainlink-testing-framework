@@ -21,9 +21,9 @@ const containerName = "remote-test-runner"
 const tarFileName = "ztarrepo.tar.gz"
 
 // BasicRunnerValuesSetup Basic values needed to run a soak test in the remote runner
-func BasicRunnerValuesSetup(focus, namespace, testDirectory string) map[string]interface{} {
+func BasicRunnerValuesSetup(testName, namespace, testDirectory string) map[string]interface{} {
 	return map[string]interface{}{
-		"focus":         focus,
+		"test_name":     testName,
 		"env_namespace": namespace,
 		"test_dir":      testDirectory,
 	}
