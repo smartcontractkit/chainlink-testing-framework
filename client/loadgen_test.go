@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+
 	"github.com/stretchr/testify/require"
 )
 
