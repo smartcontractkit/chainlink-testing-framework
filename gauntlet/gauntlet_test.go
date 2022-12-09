@@ -4,9 +4,9 @@ import (
 	"os"
 	"testing"
 
+	gauntlet "github.com/smartcontractkit/chainlink-testing-framework/gauntlet"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 
-	gauntlet "github.com/smartcontractkit/chainlink-testing-framework/gauntlet"
 	"github.com/stretchr/testify/require"
 )
 
