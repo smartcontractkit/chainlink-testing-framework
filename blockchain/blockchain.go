@@ -38,7 +38,6 @@ type EVMClient interface {
 	HeaderHashByNumber(ctx context.Context, bn *big.Int) (string, error)
 	HeaderTimestampByNumber(ctx context.Context, bn *big.Int) (uint64, error)
 	LatestBlockNumber(ctx context.Context) (uint64, error)
-	BlockTimestampByNumber(ctx context.Context, number *big.Int) (uint64, error)
 	Fund(toAddress string, amount *big.Float) error
 	ReturnFunds(fromKey *ecdsa.PrivateKey) error
 	DeployContract(

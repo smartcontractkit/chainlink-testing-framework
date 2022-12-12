@@ -206,16 +206,6 @@ func (e *EthereumClient) LatestBlockNumber(ctx context.Context) (uint64, error) 
 	return bn, nil
 }
 
-// BlockTimestampByNumber returns a block timestamp from the current canonical chain. If number is nil, the
-// latest known block is returned.
-func (e *EthereumClient) BlockTimestampByNumber(ctx context.Context, number *big.Int) (uint64, error) {
-	block, err := e.Client.BlockByNumber(ctx, number)
-	if err != nil {
-		return 0, err
-	}
-	return block.Time(), nil
-}
-
 // Fund sends some ETH to an address using the default wallet
 func (e *EthereumClient) Fund(
 	toAddress string,
@@ -775,12 +765,6 @@ func (e *EthereumMultinodeClient) HeaderTimestampByNumber(ctx context.Context, b
 // LatestBlockNumber gets the latest block number from the default client
 func (e *EthereumMultinodeClient) LatestBlockNumber(ctx context.Context) (uint64, error) {
 	return e.DefaultClient.LatestBlockNumber(ctx)
-}
-
-// BlockTimestampByNumber returns a block timestamp from the current canonical chain. If number is nil, the
-// latest known block is returned.
-func (e *EthereumMultinodeClient) BlockTimestampByNumber(ctx context.Context, number *big.Int) (uint64, error) {
-	return e.DefaultClient.BlockTimestampByNumber(ctx, number)
 }
 
 // Fund funds a specified address with ETH from the given wallet
