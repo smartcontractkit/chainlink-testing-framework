@@ -58,9 +58,7 @@ subprocess.run('npm install --save-dev hardhat', shell=True, check=True)
 
 print("Locally installing openzeppelin contracts...")
 subprocess.run(
-    'npm install --save-dev @openzeppelin/contracts@^4.6.0', shell=True, check=True)
-subprocess.run(
-    'npm install --save-dev @chainlink/contracts@^0.4.1', shell=True, check=True)
+  'npm install --save-dev @openzeppelin/contracts@^4.3.3', shell=True, check=True)
 
 print("Modifying hardhat settings...")
 with open("hardhat.config.js", "w") as hardhat_config:
@@ -78,15 +76,6 @@ solidity: {
     },
     {
         version: "0.8.13",
-        settings: {
-            optimizer: {
-                enabled: true,
-                runs: 50
-            }
-        }
-    },
-    {
-        version: "0.8.16",
         settings: {
             optimizer: {
                 enabled: true,
