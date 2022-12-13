@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"sort"
+	"sync"
 
 	"github.com/rs/zerolog/log"
 )
@@ -19,6 +20,7 @@ type GasStats struct {
 	TotalGasUsed int64
 	SeenHashes   map[string]bool
 	ClientTXs    []TXGasData
+	addMu        sync.Mutex
 }
 
 // TXGasData transaction gas data
@@ -42,6 +44,8 @@ func NewGasStats(nodeID int) *GasStats {
 
 // AddClientTXData adds client TX data
 func (g *GasStats) AddClientTXData(data TXGasData) {
+	g.addMu.Lock()
+	defer g.addMu.Unlock()
 	if _, ok := g.SeenHashes[data.TXHash]; !ok {
 		g.ClientTXs = append(g.ClientTXs, data)
 	}

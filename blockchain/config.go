@@ -11,7 +11,7 @@ import (
 
 var (
 	// SimulatedEVMNetwork ensures that the test will use a default simulated geth instance
-	SimulatedEVMNetwork = &EVMNetwork{
+	SimulatedEVMNetwork = EVMNetwork{
 		Name:                 "Simulated Geth",
 		ClientImplementation: EthereumClientImplementation,
 		Simulated:            true,
@@ -68,13 +68,13 @@ type EVMNetwork struct {
 }
 
 // LoadNetworkFromEnvironment loads an EVM network from default environment variables. Helpful in soak tests
-func LoadNetworkFromEnvironment() *EVMNetwork {
+func LoadNetworkFromEnvironment() EVMNetwork {
 	var network EVMNetwork
 	if err := envconfig.Process("", &network); err != nil {
 		log.Fatal().Err(err).Msg("Error loading network settings from environment variables")
 	}
 	log.Debug().Str("Name", network.Name).Int64("Chain ID", network.ChainID).Msg("Loaded Network")
-	return &network
+	return network
 }
 
 // ToMap marshalls the network's values to a generic map, useful for setting env vars on instances like the remote runner

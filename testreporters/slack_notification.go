@@ -5,9 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"time"
+	"testing"
 
-	"github.com/onsi/ginkgo/v2"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/slack-go/slack"
@@ -85,7 +84,14 @@ func MkdirIfNotExists(dirName string) error {
 	return nil
 }
 
-func CommonSlackNotificationBlocks(slackClient *slack.Client, headerText, namespace, reportCsvLocation, slackUserId string, testFailed bool) []slack.Block {
+func CommonSlackNotificationBlocks(
+	t *testing.T,
+	slackClient *slack.Client,
+	headerText, namespace,
+	reportCsvLocation,
+	slackUserId string,
+	testFailed bool,
+) []slack.Block {
 	notificationBlocks := []slack.Block{}
 	notificationBlocks = append(notificationBlocks,
 		slack.NewHeaderBlock(slack.NewTextBlockObject("plain_text", headerText, true, false)))
@@ -93,15 +99,8 @@ func CommonSlackNotificationBlocks(slackClient *slack.Client, headerText, namesp
 		slack.NewContextBlock("context_block", slack.NewTextBlockObject("plain_text", namespace, false, false)))
 	notificationBlocks = append(notificationBlocks, slack.NewDividerBlock())
 	notificationBlocks = append(notificationBlocks, slack.NewSectionBlock(slack.NewTextBlockObject("mrkdwn",
-		fmt.Sprintf("Test ran for %s\nSummary CSV created on _remote-test-runner_ at _%s_\nNotifying <@%s>",
-			ginkgo.CurrentSpecReport().RunTime.Truncate(time.Second), reportCsvLocation, SlackUserID), false, true), nil, nil))
-	if testFailed {
-		notificationBlocks = append(notificationBlocks,
-			slack.NewHeaderBlock(slack.NewTextBlockObject("plain_text", "Error Trace", true, false)))
-		notificationBlocks = append(notificationBlocks, slack.NewDividerBlock())
-		notificationBlocks = append(notificationBlocks, slack.NewSectionBlock(
-			slack.NewTextBlockObject("plain_text", ginkgo.CurrentSpecReport().FailureMessage(), false, false), nil, nil))
-	}
+		fmt.Sprintf("Summary CSV created on _remote-test-runner_ at _%s_\nNotifying <@%s>",
+			reportCsvLocation, SlackUserID), false, true), nil, nil))
 	return notificationBlocks
 }
 
