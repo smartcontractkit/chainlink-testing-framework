@@ -2,11 +2,19 @@ package client
 
 import (
 	"errors"
+	"os"
 	"testing"
 	"time"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+
 	"github.com/stretchr/testify/require"
 )
+
+func TestMain(m *testing.M) {
+	logging.Init()
+	os.Exit(m.Run())
+}
 
 func TestPositiveOneRequest(t *testing.T) {
 	t.Parallel()

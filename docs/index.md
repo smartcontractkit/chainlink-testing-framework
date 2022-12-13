@@ -24,5 +24,4 @@ Some notable packages we use include:
 
 * [chainlink-env](https://github.com/smartcontractkit/chainlink-env)
 * [zerolog](https://github.com/rs/zerolog)
-* [Ginkgo and Gomega](https://github.com/onsi/ginkgo)
 * [Kubernetes](https://github.com/kubernetes/kubernetes)

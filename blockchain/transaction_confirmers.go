@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"sync"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -26,6 +27,7 @@ type TransactionConfirmer struct {
 	networkConfig         *EVMNetwork
 	lastReceivedHeaderNum uint64
 	complete              bool
+	completeMu            sync.Mutex
 }
 
 // NewTransactionConfirmer returns a new instance of the transaction confirmer that waits for on-chain minimum
@@ -78,7 +80,11 @@ func (t *TransactionConfirmer) ReceiveHeader(header NodeHeader) error {
 
 // Wait is a blocking function that waits until the transaction is complete
 func (t *TransactionConfirmer) Wait() error {
-	defer func() { t.complete = true }()
+	defer func() {
+		t.completeMu.Lock()
+		t.complete = true
+		t.completeMu.Unlock()
+	}()
 	for {
 		select {
 		case <-t.doneChan:
@@ -92,6 +98,8 @@ func (t *TransactionConfirmer) Wait() error {
 
 // Complete returns if the confirmer has completed or not
 func (t *TransactionConfirmer) Complete() bool {
+	t.completeMu.Lock()
+	defer t.completeMu.Unlock()
 	return t.complete
 }
 

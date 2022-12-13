@@ -24,7 +24,7 @@ const (
 )
 
 // wrapSingleClient Wraps a single EVM client in its appropriate implementation, based on the chain ID
-func wrapSingleClient(networkSettings *EVMNetwork, client *EthereumClient) EVMClient {
+func wrapSingleClient(networkSettings EVMNetwork, client *EthereumClient) EVMClient {
 	var wrappedEc EVMClient
 	switch networkSettings.ClientImplementation {
 	case EthereumClientImplementation:
@@ -48,7 +48,7 @@ func wrapSingleClient(networkSettings *EVMNetwork, client *EthereumClient) EVMCl
 }
 
 // wrapMultiClient Wraps a multi-node EVM client in its appropriate implementation, based on the chain ID
-func wrapMultiClient(networkSettings *EVMNetwork, client *EthereumMultinodeClient) EVMClient {
+func wrapMultiClient(networkSettings EVMNetwork, client *EthereumMultinodeClient) EVMClient {
 	var wrappedEc EVMClient
 	logMsg := log.Info().Str("Network", networkSettings.Name)
 	switch networkSettings.ClientImplementation {

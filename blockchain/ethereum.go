@@ -32,7 +32,7 @@ import (
 type EthereumClient struct {
 	ID                  int
 	Client              *ethclient.Client
-	NetworkConfig       *EVMNetwork
+	NetworkConfig       EVMNetwork
 	Wallets             []*EthereumWallet
 	DefaultWallet       *EthereumWallet
 	NonceMu             *sync.Mutex
@@ -45,7 +45,7 @@ type EthereumClient struct {
 }
 
 // newEVMClient creates an EVM client for a single node/URL
-func newEVMClient(networkSettings *EVMNetwork) (EVMClient, error) {
+func newEVMClient(networkSettings EVMNetwork) (EVMClient, error) {
 	log.Info().
 		Str("Name", networkSettings.Name).
 		Str("URL", networkSettings.URL).
@@ -130,7 +130,7 @@ func (e *EthereumClient) GetWallets() []*EthereumWallet {
 
 // DefaultWallet returns the default wallet for the network
 func (e *EthereumClient) GetNetworkConfig() *EVMNetwork {
-	return e.NetworkConfig
+	return &e.NetworkConfig
 }
 
 // SetID sets client id, only used for multi-node networks
@@ -153,8 +153,8 @@ func (e *EthereumClient) SetWallets(wallets []*EthereumWallet) {
 }
 
 // LoadWallets loads wallets from config
-func (e *EthereumClient) LoadWallets(cfg interface{}) error {
-	pkStrings := cfg.(*EVMNetwork).PrivateKeys
+func (e *EthereumClient) LoadWallets(cfg EVMNetwork) error {
+	pkStrings := cfg.PrivateKeys
 	for _, pks := range pkStrings {
 		w, err := NewEthereumWallet(pks)
 		if err != nil {
@@ -633,7 +633,7 @@ func (e *EthereumMultinodeClient) EstimateCostForChainlinkOperations(amountOfOpe
 }
 
 // NewEVMClient returns a multi-node EVM client connected to the specified network
-func NewEVMClient(networkSettings *EVMNetwork, env *environment.Environment) (EVMClient, error) {
+func NewEVMClient(networkSettings EVMNetwork, env *environment.Environment) (EVMClient, error) {
 	ecl := &EthereumMultinodeClient{}
 	if _, ok := env.URLs[networkSettings.Name]; !ok {
 		return nil, fmt.Errorf("network %s not found in environment", networkSettings.Name)
@@ -660,6 +660,14 @@ func NewEVMClient(networkSettings *EVMNetwork, env *environment.Environment) (EV
 			return nil, err
 		}
 	}
+	fundingBalance, err := wrappedClient.BalanceAt(context.Background(), wrappedClient.GetDefaultWallet().address)
+	if err != nil {
+		return nil, err
+	}
+	log.Debug().
+		Str("Address", wrappedClient.GetDefaultWallet().address.Hex()).
+		Uint64("Balance", fundingBalance.Uint64()).
+		Msg("Funding Wallet")
 
 	return wrappedClient, nil
 }
@@ -722,8 +730,8 @@ func (e *EthereumMultinodeClient) SetWallets(wallets []*EthereumWallet) {
 }
 
 // LoadWallets loads wallets using private keys provided in the config
-func (e *EthereumMultinodeClient) LoadWallets(cfg interface{}) error {
-	pkStrings := cfg.(EVMNetwork).PrivateKeys
+func (e *EthereumMultinodeClient) LoadWallets(cfg EVMNetwork) error {
+	pkStrings := cfg.PrivateKeys
 	wallets := make([]*EthereumWallet, 0)
 	for _, pks := range pkStrings {
 		w, err := NewEthereumWallet(pks)

@@ -1,11 +1,13 @@
 package blockchain_test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 )
 
 // Publicly available private key that is used as default in hardhat, geth, etc...
@@ -14,7 +16,13 @@ var key = "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
 // Address of the key above
 var address = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
 
+func TestMain(m *testing.M) {
+	logging.Init()
+	os.Exit(m.Run())
+}
+
 func TestWallet(t *testing.T) {
+	t.Parallel()
 	wallet, err := blockchain.NewEthereumWallet(key)
 	require.NoError(t, err)
 

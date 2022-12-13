@@ -1,8 +1,7 @@
-golang 1.19.2
+golang 1.19.4
 nodejs 14.20.0
-ginkgo 2.4.0
 k3d 5.4.6
 act 0.2.30
-golangci-lint 1.49.0
+golangci-lint 1.50.1
 actionlint 1.6.17
 shellcheck 0.8.0
