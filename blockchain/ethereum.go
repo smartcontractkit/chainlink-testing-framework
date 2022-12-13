@@ -699,7 +699,7 @@ func NewEVMClient(networkSettings EVMNetwork, env *environment.Environment) (EVM
 // ConcurrentEVMClient returns a multi-node EVM client connected to the specified network
 // It is used for concurrent interactions from different threads with the same network and from same owner
 // account. This ensures that correct nonce value is fetched when an instance of EVMClient is initiated using this method.
-func ConcurrentEVMClient(networkSettings *EVMNetwork, env *environment.Environment, existing EVMClient) (EVMClient, error) {
+func ConcurrentEVMClient(networkSettings EVMNetwork, env *environment.Environment, existing EVMClient) (EVMClient, error) {
 	ecl := &EthereumMultinodeClient{}
 	if _, ok := env.URLs[networkSettings.Name]; !ok {
 		return nil, fmt.Errorf("network %s not found in environment", networkSettings.Name)
