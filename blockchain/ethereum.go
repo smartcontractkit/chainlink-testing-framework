@@ -44,6 +44,11 @@ type EthereumClient struct {
 	doneChan            chan struct{}
 }
 
+type NonceSettings struct {
+	NonceMu *sync.Mutex
+	Nonces  map[string]uint64
+}
+
 // newEVMClient creates an EVM client for a single node/URL
 func newEVMClient(networkSettings EVMNetwork) (EVMClient, error) {
 	log.Info().
@@ -67,6 +72,7 @@ func newEVMClient(networkSettings EVMNetwork) (EVMClient, error) {
 		queueTransactions:   false,
 		doneChan:            make(chan struct{}),
 	}
+
 	if err := ec.LoadWallets(networkSettings); err != nil {
 		return nil, err
 	}
@@ -74,6 +80,14 @@ func newEVMClient(networkSettings EVMNetwork) (EVMClient, error) {
 	go ec.newHeadersLoop()
 
 	return wrapSingleClient(networkSettings, ec), nil
+}
+
+// SyncNonce sets the NonceMu and Nonces value based on existing EVMClient
+// it ensures the instance of EthereumClient is synced with passed EVMClient's nonce updates.
+func (e *EthereumClient) SyncNonce(c EVMClient) {
+	n := c.GetNonceSetting()
+	e.NonceMu = n.NonceMu
+	e.Nonces = n.Nonces
 }
 
 // newHeadersLoop Logs when new headers come in
@@ -106,6 +120,15 @@ func (e *EthereumClient) GetNetworkName() string {
 // NetworkSimulated returns true if the network is a simulated geth instance, false otherwise
 func (e *EthereumClient) NetworkSimulated() bool {
 	return e.NetworkConfig.Simulated
+}
+
+func (e *EthereumClient) GetNonceSetting() NonceSettings {
+	e.NonceMu.Lock()
+	defer e.NonceMu.Unlock()
+	return NonceSettings{
+		NonceMu: e.NonceMu,
+		Nonces:  e.Nonces,
+	}
 }
 
 // GetChainID retrieves the ChainID of the network that the client interacts with
@@ -580,6 +603,10 @@ func (e *EthereumClient) GasStats() *GasStats {
 	return e.gasStats
 }
 
+func (e *EthereumClient) Backend() bind.ContractBackend {
+	return e.Client
+}
+
 // AddHeaderEventSubscription adds a new header subscriber within the client to receive new headers
 func (e *EthereumClient) AddHeaderEventSubscription(key string, subscriber HeaderEventSubscription) {
 	e.subscriptionMutex.Lock()
@@ -622,6 +649,10 @@ type EthereumMultinodeClient struct {
 	Clients       []EVMClient
 }
 
+func (e *EthereumMultinodeClient) Backend() bind.ContractBackend {
+	return e.DefaultClient.Backend()
+}
+
 // LoadContract load already deployed contract instance
 func (e *EthereumMultinodeClient) LoadContract(contractName string, address common.Address, loader ContractLoader) (interface{}, error) {
 	return e.DefaultClient.LoadContract(contractName, address, loader)
@@ -646,6 +677,42 @@ func NewEVMClient(networkSettings EVMNetwork, env *environment.Environment) (EVM
 	for idx, networkURL := range networkSettings.URLs {
 		networkSettings.URL = networkURL
 		ec, err := newEVMClient(networkSettings)
+
+		if err != nil {
+			return nil, err
+		}
+		ec.SetID(idx)
+		ecl.Clients = append(ecl.Clients, ec)
+	}
+	ecl.DefaultClient = ecl.Clients[0]
+	wrappedClient := wrapMultiClient(networkSettings, ecl)
+	// required in Geth when you need to call "simulate" transactions from nodes
+	if ecl.NetworkSimulated() {
+		if err := ecl.Fund("0x0", big.NewFloat(1000)); err != nil {
+			return nil, err
+		}
+	}
+
+	return wrappedClient, nil
+}
+
+// ConcurrentEVMClient returns a multi-node EVM client connected to the specified network
+// It is used for concurrent interactions from different threads with the same network and from same owner
+// account. This ensures that correct nonce value is fetched when an instance of EVMClient is initiated using this method.
+func ConcurrentEVMClient(networkSettings EVMNetwork, env *environment.Environment, existing EVMClient) (EVMClient, error) {
+	ecl := &EthereumMultinodeClient{}
+	if _, ok := env.URLs[networkSettings.Name]; !ok {
+		return nil, fmt.Errorf("network %s not found in environment", networkSettings.Name)
+	}
+	if env == nil {
+		log.Warn().Str("Network", networkSettings.Name).Msg("No test environment deployed")
+	} else {
+		networkSettings.URLs = env.URLs[networkSettings.Name]
+	}
+	for idx, networkURL := range networkSettings.URLs {
+		networkSettings.URL = networkURL
+		ec, err := newEVMClient(networkSettings)
+		ec.SyncNonce(existing)
 		if err != nil {
 			return nil, err
 		}
@@ -675,6 +742,13 @@ func NewEVMClient(networkSettings EVMNetwork, env *environment.Environment) (EVM
 // Get gets default client as an interface{}
 func (e *EthereumMultinodeClient) Get() interface{} {
 	return e.DefaultClient
+}
+func (e *EthereumMultinodeClient) GetNonceSetting() NonceSettings {
+	return e.DefaultClient.GetNonceSetting()
+}
+
+func (e *EthereumMultinodeClient) SyncNonce(c EVMClient) {
+	e.DefaultClient.SyncNonce(c)
 }
 
 // GetNetworkName gets the ID of the chain that the clients are connected to

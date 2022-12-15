@@ -25,6 +25,7 @@ type EVMClient interface {
 	GetDefaultWallet() *EthereumWallet
 	GetWallets() []*EthereumWallet
 	GetNetworkConfig() *EVMNetwork
+	GetNonceSetting() NonceSettings
 
 	// Setters
 	SetID(id int)
@@ -32,6 +33,7 @@ type EVMClient interface {
 	SetWallets([]*EthereumWallet)
 	LoadWallets(ns EVMNetwork) error
 	SwitchNode(node int) error
+	SyncNonce(c EVMClient)
 
 	// On-chain Operations
 	BalanceAt(ctx context.Context, address common.Address) (*big.Int, error)
@@ -53,6 +55,7 @@ type EVMClient interface {
 	GetTxReceipt(txHash common.Hash) (*types.Receipt, error)
 	ParallelTransactions(enabled bool)
 	Close() error
+	Backend() bind.ContractBackend
 
 	// Gas Operations
 	EstimateCostForChainlinkOperations(amountOfOperations int) (*big.Float, error)
