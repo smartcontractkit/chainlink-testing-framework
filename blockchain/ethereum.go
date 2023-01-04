@@ -28,6 +28,23 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 )
 
+// Used for when running tests on a live test network, so tests can share nonces and run in parallel
+var globalNonceManager = newNonceSettings()
+
+// convenience function
+func newNonceSettings() *NonceSettings {
+	return &NonceSettings{
+		NonceMu: &sync.Mutex{},
+		Nonces:  make(map[string]uint64),
+	}
+}
+
+// NonceSettings is a convenient wrapper for holding nonce state
+type NonceSettings struct {
+	NonceMu *sync.Mutex
+	Nonces  map[string]uint64
+}
+
 // EthereumClient wraps the client and the BlockChain network to interact with an EVM based Blockchain
 type EthereumClient struct {
 	ID                  int
@@ -35,18 +52,12 @@ type EthereumClient struct {
 	NetworkConfig       EVMNetwork
 	Wallets             []*EthereumWallet
 	DefaultWallet       *EthereumWallet
-	NonceMu             *sync.Mutex
-	Nonces              map[string]uint64
+	NonceSettings       *NonceSettings
 	headerSubscriptions map[string]HeaderEventSubscription
 	subscriptionMutex   *sync.Mutex
 	queueTransactions   bool
 	gasStats            *GasStats
 	doneChan            chan struct{}
-}
-
-type NonceSettings struct {
-	NonceMu *sync.Mutex
-	Nonces  map[string]uint64
 }
 
 // newEVMClient creates an EVM client for a single node/URL
@@ -64,13 +75,17 @@ func newEVMClient(networkSettings EVMNetwork) (EVMClient, error) {
 	ec := &EthereumClient{
 		NetworkConfig:       networkSettings,
 		Client:              cl,
-		NonceMu:             &sync.Mutex{},
 		Wallets:             make([]*EthereumWallet, 0),
-		Nonces:              make(map[string]uint64),
 		headerSubscriptions: map[string]HeaderEventSubscription{},
 		subscriptionMutex:   &sync.Mutex{},
 		queueTransactions:   false,
 		doneChan:            make(chan struct{}),
+	}
+
+	if ec.NetworkConfig.Simulated {
+		ec.NonceSettings = newNonceSettings()
+	} else { // un-simulated chain means potentially running tests in parallel, need to share nonces
+		ec.NonceSettings = globalNonceManager
 	}
 
 	if err := ec.LoadWallets(networkSettings); err != nil {
@@ -86,8 +101,8 @@ func newEVMClient(networkSettings EVMNetwork) (EVMClient, error) {
 // it ensures the instance of EthereumClient is synced with passed EVMClient's nonce updates.
 func (e *EthereumClient) SyncNonce(c EVMClient) {
 	n := c.GetNonceSetting()
-	e.NonceMu = n.NonceMu
-	e.Nonces = n.Nonces
+	e.NonceSettings.NonceMu = n.NonceMu
+	e.NonceSettings.Nonces = n.Nonces
 }
 
 // newHeadersLoop Logs when new headers come in
@@ -123,11 +138,11 @@ func (e *EthereumClient) NetworkSimulated() bool {
 }
 
 func (e *EthereumClient) GetNonceSetting() NonceSettings {
-	e.NonceMu.Lock()
-	defer e.NonceMu.Unlock()
+	e.NonceSettings.NonceMu.Lock()
+	defer e.NonceSettings.NonceMu.Unlock()
 	return NonceSettings{
-		NonceMu: e.NonceMu,
-		Nonces:  e.Nonces,
+		NonceMu: e.NonceSettings.NonceMu,
+		Nonces:  e.NonceSettings.Nonces,
 	}
 }
 
@@ -280,6 +295,9 @@ func (e *EthereumClient) Fund(
 		Str("Amount", amount.String()).
 		Msg("Funding Address")
 	if err := e.Client.SendTransaction(context.Background(), tx); err != nil {
+		if strings.Contains(err.Error(), "nonce") {
+			err = errors.Wrap(err, fmt.Sprintf("using nonce %d", nonce))
+		}
 		return err
 	}
 
@@ -398,6 +416,9 @@ func (e *EthereumClient) DeployContract(
 
 	contractAddress, transaction, contractInstance, err := deployer(opts, e.Client)
 	if err != nil {
+		if strings.Contains(err.Error(), "nonce") {
+			err = errors.Wrap(err, fmt.Sprintf("using nonce %d", opts.Nonce.Uint64()))
+		}
 		return nil, nil, nil, err
 	}
 
@@ -579,6 +600,13 @@ func (e *EthereumClient) GetTxReceipt(txHash common.Hash) (*types.Receipt, error
 // are then stored within the client and confirmations can be waited on by calling WaitForEvents.
 // When disabled, the minimum confirmations are waited on when the transaction is sent, so parallelisation is disabled.
 func (e *EthereumClient) ParallelTransactions(enabled bool) {
+	if e.NetworkConfig.MinimumConfirmations <= 0 {
+		log.Warn().
+			Str("Why", "Instant confirmation chains like Optimistic roll-ups don't play nice with parallel txs with out-of-order nonces").
+			Str("Network", e.NetworkConfig.Name).
+			Msg("Instant confirmations on for chain, setting parallel txs to false")
+		enabled = false
+	}
 	e.queueTransactions = enabled
 }
 

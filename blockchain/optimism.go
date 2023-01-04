@@ -5,11 +5,13 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"math/big"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
 	contracts "github.com/smartcontractkit/chainlink-testing-framework/contracts/ethereum"
@@ -60,8 +62,12 @@ func (o *OptimismClient) Fund(toAddress string, amount *big.Float) error {
 		Str("From", o.DefaultWallet.Address()).
 		Str("To", toAddress).
 		Str("Amount", amount.String()).
+		Uint64("Nonce", nonce).
 		Msg("Funding Address")
 	if err := o.Client.SendTransaction(context.Background(), tx); err != nil {
+		if strings.Contains(err.Error(), "nonce") {
+			err = errors.Wrap(err, fmt.Sprintf("using nonce %d", nonce))
+		}
 		return err
 	}
 
@@ -92,6 +98,9 @@ func (o *OptimismClient) DeployContract(
 
 	contractAddress, transaction, contractInstance, err := deployer(opts, o.Client)
 	if err != nil {
+		if strings.Contains(err.Error(), "nonce") {
+			err = errors.Wrap(err, fmt.Sprintf("using nonce %d", opts.Nonce.Uint64()))
+		}
 		return nil, nil, nil, err
 	}
 
