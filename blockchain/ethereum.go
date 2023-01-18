@@ -717,14 +717,21 @@ func (e *EthereumMultinodeClient) EstimateCostForChainlinkOperations(amountOfOpe
 // NewEVMClient returns a multi-node EVM client connected to the specified network
 func NewEVMClient(networkSettings EVMNetwork, env *environment.Environment) (EVMClient, error) {
 	ecl := &EthereumMultinodeClient{}
-	if _, ok := env.URLs[networkSettings.Name]; !ok {
-		return nil, fmt.Errorf("network %s not found in environment", networkSettings.Name)
-	}
-	if env == nil {
-		log.Warn().Str("Network", networkSettings.Name).Msg("No test environment deployed")
+	if networkSettings.Simulated {
+		if _, ok := env.URLs[networkSettings.Name]; !ok {
+			return nil, fmt.Errorf("network %s not found in environment", networkSettings.Name)
+		}
+		if env == nil {
+			log.Warn().Str("Network", networkSettings.Name).Msg("No test environment deployed")
+		} else {
+			networkSettings.URLs = env.URLs[networkSettings.Name]
+		}
 	} else {
-		networkSettings.URLs = env.URLs[networkSettings.Name]
+		if len(networkSettings.URLs) == 0 {
+			return nil, fmt.Errorf("no URL is provided to connect to network %s", networkSettings.Name)
+		}
 	}
+
 	for idx, networkURL := range networkSettings.URLs {
 		networkSettings.URL = networkURL
 		ec, err := newEVMClient(networkSettings)
@@ -752,13 +759,19 @@ func NewEVMClient(networkSettings EVMNetwork, env *environment.Environment) (EVM
 // account. This ensures that correct nonce value is fetched when an instance of EVMClient is initiated using this method.
 func ConcurrentEVMClient(networkSettings EVMNetwork, env *environment.Environment, existing EVMClient) (EVMClient, error) {
 	ecl := &EthereumMultinodeClient{}
-	if _, ok := env.URLs[networkSettings.Name]; !ok {
-		return nil, fmt.Errorf("network %s not found in environment", networkSettings.Name)
-	}
-	if env == nil {
-		log.Warn().Str("Network", networkSettings.Name).Msg("No test environment deployed")
+	if networkSettings.Simulated {
+		if _, ok := env.URLs[networkSettings.Name]; !ok {
+			return nil, fmt.Errorf("network %s not found in environment", networkSettings.Name)
+		}
+		if env == nil {
+			log.Warn().Str("Network", networkSettings.Name).Msg("No test environment deployed")
+		} else {
+			networkSettings.URLs = env.URLs[networkSettings.Name]
+		}
 	} else {
-		networkSettings.URLs = env.URLs[networkSettings.Name]
+		if len(networkSettings.URLs) == 0 {
+			return nil, fmt.Errorf("no URL is provided to connect to network %s", networkSettings.Name)
+		}
 	}
 	for idx, networkURL := range networkSettings.URLs {
 		networkSettings.URL = networkURL
@@ -770,6 +783,7 @@ func ConcurrentEVMClient(networkSettings EVMNetwork, env *environment.Environmen
 		ec.SetID(idx)
 		ecl.Clients = append(ecl.Clients, ec)
 	}
+
 	ecl.DefaultClient = ecl.Clients[0]
 	wrappedClient := wrapMultiClient(networkSettings, ecl)
 	// required in Geth when you need to call "simulate" transactions from nodes
