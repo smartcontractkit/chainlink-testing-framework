@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -45,13 +46,17 @@ func (o *OptimismClient) Fund(toAddress string, amount *big.Float) error {
 	if err != nil {
 		return err
 	}
+	estimatedGas, err := o.Client.EstimateGas(context.Background(), ethereum.CallMsg{})
+	if err != nil {
+		return err
+	}
 
 	tx, err := types.SignNewTx(privateKey, types.LatestSignerForChainID(o.GetChainID()), &types.LegacyTx{
 		Nonce:    nonce,
 		To:       &to,
 		Value:    utils.EtherToWei(amount),
 		GasPrice: suggestedGasPrice,
-		Gas:      21000,
+		Gas:      estimatedGas,
 	})
 	if err != nil {
 		return err
@@ -64,7 +69,7 @@ func (o *OptimismClient) Fund(toAddress string, amount *big.Float) error {
 		Str("Amount", amount.String()).
 		Uint64("Nonce", nonce).
 		Msg("Funding Address")
-	if err := o.Client.SendTransaction(context.Background(), tx); err != nil {
+	if err := o.SendTransaction(context.Background(), tx); err != nil {
 		if strings.Contains(err.Error(), "nonce") {
 			err = errors.Wrap(err, fmt.Sprintf("using nonce %d", nonce))
 		}
@@ -136,7 +141,11 @@ func (o *OptimismClient) ReturnFunds(fromPrivateKey *ecdsa.PrivateKey) error {
 	if err != nil {
 		return err
 	}
-	estimatedGasCost := big.NewInt(1).Mul(suggestedGasPrice, big.NewInt(21000))
+	estimatedGas, err := o.Client.EstimateGas(context.Background(), ethereum.CallMsg{})
+	if err != nil {
+		return err
+	}
+	estimatedGasCost := big.NewInt(1).Mul(suggestedGasPrice, big.NewInt(0).SetUint64(estimatedGas))
 	// Optimism needs to calculate both the L1 and L2 gas fees
 	// https://community.optimism.io/docs/developers/build/transaction-fees/#the-l1-data-fee
 	optimismL1GasContract := common.HexToAddress("0x420000000000000000000000000000000000000F")
@@ -168,7 +177,7 @@ func (o *OptimismClient) ReturnFunds(fromPrivateKey *ecdsa.PrivateKey) error {
 		To:       &to,
 		Value:    balance,
 		GasPrice: suggestedGasPrice,
-		Gas:      21000,
+		Gas:      estimatedGas,
 	})
 	if err != nil {
 		return err
@@ -180,7 +189,7 @@ func (o *OptimismClient) ReturnFunds(fromPrivateKey *ecdsa.PrivateKey) error {
 		Uint64("Amount", balance.Uint64()).
 		Uint64("Estimated Gas Cost", estimatedGasCost.Uint64()).
 		Msg("Returning Funds to Default Wallet")
-	if err := o.Client.SendTransaction(context.Background(), tx); err != nil {
+	if err := o.SendTransaction(context.Background(), tx); err != nil {
 		return err
 	}
 

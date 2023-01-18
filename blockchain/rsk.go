@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -47,13 +48,17 @@ func (r *RSKClient) Fund(toAddress string, amount *big.Float) error {
 	if err != nil {
 		return err
 	}
+	estimatedGas, err := r.Client.EstimateGas(context.Background(), ethereum.CallMsg{})
+	if err != nil {
+		return err
+	}
 
 	tx, err := types.SignNewTx(privateKey, types.LatestSignerForChainID(r.GetChainID()), &types.LegacyTx{
 		Nonce:    nonce,
 		To:       &to,
 		Value:    utils.EtherToWei(amount),
 		GasPrice: suggestedGasPrice,
-		Gas:      21000,
+		Gas:      estimatedGas,
 	})
 	if err != nil {
 		return err
@@ -65,7 +70,7 @@ func (r *RSKClient) Fund(toAddress string, amount *big.Float) error {
 		Str("To", toAddress).
 		Str("Amount", amount.String()).
 		Msg("Funding Address")
-	if err := r.Client.SendTransaction(context.Background(), tx); err != nil {
+	if err := r.SendTransaction(context.Background(), tx); err != nil {
 		return err
 	}
 
@@ -137,13 +142,17 @@ func (r *RSKClient) ReturnFunds(fromPrivateKey *ecdsa.PrivateKey) error {
 	if err != nil {
 		return err
 	}
+	estimatedGas, err := r.Client.EstimateGas(context.Background(), ethereum.CallMsg{})
+	if err != nil {
+		return err
+	}
 
 	tx, err := types.SignNewTx(fromPrivateKey, types.LatestSignerForChainID(r.GetChainID()), &types.LegacyTx{
 		Nonce:    nonce,
 		To:       &to,
 		Value:    balance,
 		GasPrice: suggestedGasPrice,
-		Gas:      21000,
+		Gas:      estimatedGas,
 	})
 	if err != nil {
 		return err
@@ -154,7 +163,7 @@ func (r *RSKClient) ReturnFunds(fromPrivateKey *ecdsa.PrivateKey) error {
 		Str("From", fromAddress.Hex()).
 		Str("Amount", balance.String()).
 		Msg("Returning Funds to Default Wallet")
-	if err := r.Client.SendTransaction(context.Background(), tx); err != nil {
+	if err := r.SendTransaction(context.Background(), tx); err != nil {
 		return err
 	}
 

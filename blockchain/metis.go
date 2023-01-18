@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -47,13 +48,17 @@ func (m *MetisClient) Fund(toAddress string, amount *big.Float) error {
 	if err != nil {
 		return err
 	}
+	estimatedGas, err := m.Client.EstimateGas(context.Background(), ethereum.CallMsg{})
+	if err != nil {
+		return err
+	}
 
 	tx, err := types.SignNewTx(privateKey, types.LatestSignerForChainID(m.GetChainID()), &types.LegacyTx{
 		Nonce:    nonce,
 		To:       &to,
 		Value:    utils.EtherToWei(amount),
 		GasPrice: suggestedGasPrice,
-		Gas:      21000,
+		Gas:      estimatedGas,
 	})
 	if err != nil {
 		return err
@@ -65,7 +70,7 @@ func (m *MetisClient) Fund(toAddress string, amount *big.Float) error {
 		Str("To", toAddress).
 		Str("Amount", amount.String()).
 		Msg("Funding Address")
-	if err := m.Client.SendTransaction(context.Background(), tx); err != nil {
+	if err := m.SendTransaction(context.Background(), tx); err != nil {
 		return err
 	}
 
@@ -77,11 +82,6 @@ func (m *MetisClient) DeployContract(
 	contractName string,
 	deployer ContractDeployer,
 ) (*common.Address, *types.Transaction, interface{}, error) {
-	opts, err := m.TransactionOpts(m.DefaultWallet)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
 	// Metis uses legacy transactions and gas estimations, is behind London fork as of 04/27/2022
 	suggestedGasPrice, err := m.Client.SuggestGasPrice(context.Background())
 	if err != nil {
@@ -92,6 +92,10 @@ func (m *MetisClient) DeployContract(
 	gasPriceBuffer := big.NewInt(0).SetUint64(m.NetworkConfig.GasEstimationBuffer)
 	suggestedGasPrice.Add(suggestedGasPrice, gasPriceBuffer)
 
+	opts, err := m.TransactionOpts(m.DefaultWallet)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 	opts.GasPrice = suggestedGasPrice
 
 	contractAddress, transaction, contractInstance, err := deployer(opts, m.Client)
@@ -137,13 +141,17 @@ func (m *MetisClient) ReturnFunds(fromPrivateKey *ecdsa.PrivateKey) error {
 	if err != nil {
 		return err
 	}
+	estimatedGas, err := m.Client.EstimateGas(context.Background(), ethereum.CallMsg{})
+	if err != nil {
+		return err
+	}
 
 	tx, err := types.SignNewTx(fromPrivateKey, types.LatestSignerForChainID(m.GetChainID()), &types.LegacyTx{
 		Nonce:    nonce,
 		To:       &to,
 		Value:    balance,
 		GasPrice: suggestedGasPrice,
-		Gas:      21000,
+		Gas:      estimatedGas,
 	})
 	if err != nil {
 		return err
@@ -154,7 +162,7 @@ func (m *MetisClient) ReturnFunds(fromPrivateKey *ecdsa.PrivateKey) error {
 		Str("From", fromAddress.Hex()).
 		Str("Amount", balance.String()).
 		Msg("Returning Funds to Default Wallet")
-	if err := m.Client.SendTransaction(context.Background(), tx); err != nil {
+	if err := m.SendTransaction(context.Background(), tx); err != nil {
 		return err
 	}
 

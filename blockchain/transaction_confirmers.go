@@ -144,7 +144,7 @@ func NewInstantConfirmer(
 }
 
 // ReceiveHeader does a quick check on if the tx is confirmed already
-func (l *InstantConfirmer) ReceiveHeader(x NodeHeader) error {
+func (l *InstantConfirmer) ReceiveHeader(_ NodeHeader) error {
 	var err error
 	l.confirmed, err = l.client.IsTxConfirmed(l.txHash)
 	if err != nil {
@@ -285,22 +285,6 @@ func (e *EventConfirmer) Complete() bool {
 	return e.complete
 }
 
-// GetNonce keep tracking of nonces per address, add last nonce for addr if the map is empty
-func (e *EthereumClient) GetNonce(ctx context.Context, addr common.Address) (uint64, error) {
-	e.NonceSettings.NonceMu.Lock()
-	defer e.NonceSettings.NonceMu.Unlock()
-	if _, ok := e.NonceSettings.Nonces[addr.Hex()]; !ok {
-		pendingNonce, err := e.Client.PendingNonceAt(ctx, addr)
-		if err != nil {
-			return 0, err
-		}
-		e.NonceSettings.Nonces[addr.Hex()] = pendingNonce
-		return pendingNonce, nil
-	}
-	e.NonceSettings.Nonces[addr.Hex()]++
-	return e.NonceSettings.Nonces[addr.Hex()], nil
-}
-
 // GetHeaderSubscriptions returns a duplicate map of the queued transactions
 func (e *EthereumClient) GetHeaderSubscriptions() map[string]HeaderEventSubscription {
 	e.subscriptionMutex.Lock()
@@ -339,6 +323,7 @@ func (e *EthereumClient) subscribeToNewHeaders() error {
 			e.receiveHeader(header)
 		case <-e.doneChan:
 			log.Debug().Str("Network", e.NetworkConfig.Name).Msg("Subscription cancelled")
+			e.Client.Close()
 			return nil
 		}
 	}
@@ -357,11 +342,13 @@ func (e *EthereumClient) receiveHeader(header *types.Header) {
 		suggestedPrice = big.NewInt(0)
 		log.Err(err).
 			Str("Header Hash", headerValue.Hash().String()).
+			Int("Debug ID", e.debugID).
 			Msg("Error retrieving Suggested Gas Price for new block header")
 	}
 	log.Debug().
 		Str("NetworkName", e.NetworkConfig.Name).
 		Int("Node", e.ID).
+		Int("Debug ID", e.debugID).
 		Str("Hash", headerValue.Hash().String()).
 		Str("Number", headerValue.Number.String()).
 		Str("Gas Price", suggestedPrice.String()).
@@ -388,7 +375,7 @@ func (e *EthereumClient) receiveHeader(header *types.Header) {
 			}
 		}
 		if subsRemoved > 0 {
-			log.Debug().
+			log.Trace().
 				Uint("Recently Removed", subsRemoved).
 				Int("Active", len(e.GetHeaderSubscriptions())).
 				Msg("Updated Header Subscriptions")
