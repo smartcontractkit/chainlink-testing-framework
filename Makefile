@@ -25,6 +25,11 @@ go_mod:
 	go mod tidy
 	go mod download
 
+.PHONY: install_gotestfmt
+install_gotestfmt:
+	go install github.com/gotesttools/gotestfmt/v2/cmd/gotestfmt@latest
+	set -euo pipefail
+
 install_tools:
 ifeq ($(OSFLAG),$(WINDOWS))
 	echo "If you are running windows and know how to install what is needed, please contribute by adding it here!"
@@ -49,5 +54,5 @@ install_ci: go_mod install_tools
 compile_contracts:
 	python3 ./utils/compile_contracts.py
 
-test_unit:
-	go test -cover -covermode=count -coverprofile=unit-test-coverage.out ./client ./gauntlet ./testreporters
+test_unit: install_gotestfmt
+	go test -json -cover -covermode=count -coverprofile=unit-test-coverage.out ./client ./gauntlet ./testreporters 2>&1 | tee /tmp/gotest.log | gotestfmt
