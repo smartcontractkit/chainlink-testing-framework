@@ -103,8 +103,6 @@ func (ns *NonceSettings) watchInstantTransactions() {
 			ns.instantNoncesMu.Lock()
 			ns.instantNonces[sentAddr]++
 			ns.instantNoncesMu.Unlock()
-		case <-ns.doneChan: // Rarely need to call this
-			return
 		default:
 			for addr, releaseChannels := range ns.instantTransactions {
 				ns.instantNoncesMu.Lock()

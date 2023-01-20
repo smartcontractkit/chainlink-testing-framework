@@ -28,8 +28,6 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 )
 
-var debugID int
-
 // EthereumClient wraps the client and the BlockChain network to interact with an EVM based Blockchain
 type EthereumClient struct {
 	ID                  int
@@ -43,7 +41,6 @@ type EthereumClient struct {
 	queueTransactions   bool
 	gasStats            *GasStats
 	doneChan            chan struct{}
-	debugID             int
 }
 
 // newEVMClient creates an EVM client for a single node/URL
@@ -58,10 +55,8 @@ func newEVMClient(networkSettings EVMNetwork) (EVMClient, error) {
 		return nil, err
 	}
 
-	debugID++
 	ec := &EthereumClient{
 		NetworkConfig:       networkSettings,
-		debugID:             debugID,
 		Client:              cl,
 		Wallets:             make([]*EthereumWallet, 0),
 		headerSubscriptions: map[string]HeaderEventSubscription{},
@@ -99,7 +94,6 @@ func (e *EthereumClient) newHeadersLoop() {
 		if err := e.subscribeToNewHeaders(); err != nil {
 			log.Error().
 				Err(err).
-				Int("Debug ID", e.debugID).
 				Str("NetworkName", e.NetworkConfig.Name).
 				Msg("Error while subscribing to headers")
 			time.Sleep(time.Second)

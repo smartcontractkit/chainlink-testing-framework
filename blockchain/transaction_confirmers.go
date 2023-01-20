@@ -342,13 +342,11 @@ func (e *EthereumClient) receiveHeader(header *types.Header) {
 		suggestedPrice = big.NewInt(0)
 		log.Err(err).
 			Str("Header Hash", headerValue.Hash().String()).
-			Int("Debug ID", e.debugID).
 			Msg("Error retrieving Suggested Gas Price for new block header")
 	}
 	log.Debug().
 		Str("NetworkName", e.NetworkConfig.Name).
 		Int("Node", e.ID).
-		Int("Debug ID", e.debugID).
 		Str("Hash", headerValue.Hash().String()).
 		Str("Number", headerValue.Number.String()).
 		Str("Gas Price", suggestedPrice.String()).
