@@ -32,11 +32,17 @@ jobs:
       - name: Download Go Vendor Packages
         if: steps.cache-packages.outputs.cache-hit != 'true'
         run: make install_ci
+      # gotestfmt gives us pretty test output
+      - name: Set Up gotestfmt
+        uses: GoTestTools/gotestfmt-action@v2
+        with:
+          token: ${{ github.token }} # Avoids rate-limiting
       - name: Run Tests
         run: |
           PATH=$PATH:$(go env GOPATH)/bin
           export PATH
-          make test_unit
+          set -euo pipefail
+          go test -json -cover -covermode=count -coverprofile=unit-test-coverage.out ./client ./gauntlet ./testreporters 2>&1 | tee /tmp/gotest.log | gotestfmt
       - name: Code Coverage
         uses: codecov/codecov-action@v3
         with:
