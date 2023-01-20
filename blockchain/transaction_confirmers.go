@@ -85,6 +85,12 @@ func (t *TransactionConfirmer) Wait() error {
 		t.complete = true
 		t.completeMu.Unlock()
 	}()
+
+	if t.Complete() {
+		t.cancel()
+		return nil
+	}
+
 	for {
 		select {
 		case <-t.doneChan:
@@ -109,6 +115,7 @@ type InstantConfirmer struct {
 	txHash       common.Hash
 	complete     bool // tracks if the subscription is completed or not
 	completeChan chan struct{}
+	completeMu   sync.Mutex
 	context      context.Context
 	cancel       context.CancelFunc
 	// For events
@@ -137,7 +144,7 @@ func NewInstantConfirmer(
 }
 
 // ReceiveHeader does a quick check on if the tx is confirmed already
-func (l *InstantConfirmer) ReceiveHeader(x NodeHeader) error {
+func (l *InstantConfirmer) ReceiveHeader(_ NodeHeader) error {
 	var err error
 	l.confirmed, err = l.client.IsTxConfirmed(l.txHash)
 	if err != nil {
@@ -151,7 +158,6 @@ func (l *InstantConfirmer) ReceiveHeader(x NodeHeader) error {
 		}
 		return err
 	}
-	l.complete = l.confirmed
 	log.Debug().Bool("Confirmed", l.confirmed).Str("Tx", l.txHash.Hex()).Msg("Instant Confirmation")
 	if l.confirmed {
 		l.completeChan <- struct{}{}
@@ -164,10 +170,11 @@ func (l *InstantConfirmer) ReceiveHeader(x NodeHeader) error {
 
 // Wait checks every header if the tx has been included on chain or not
 func (l *InstantConfirmer) Wait() error {
-	defer func() { l.complete = true }()
-	if l.complete {
-		return nil
-	}
+	defer func() {
+		l.completeMu.Lock()
+		l.complete = true
+		l.completeMu.Unlock()
+	}()
 
 	for {
 		select {
@@ -181,8 +188,10 @@ func (l *InstantConfirmer) Wait() error {
 	}
 }
 
-// Complete is a no-op
+// Complete returns if the transaction is complete or not
 func (l *InstantConfirmer) Complete() bool {
+	l.completeMu.Lock()
+	defer l.completeMu.Unlock()
 	return l.complete
 }
 
@@ -271,25 +280,9 @@ func (e *EventConfirmer) Wait() error {
 	}
 }
 
-// Complete returns if the event has officially been confirmed (true or false)
+// Complete returns if the confirmer is done, whether confirmation was successful or not
 func (e *EventConfirmer) Complete() bool {
 	return e.complete
-}
-
-// GetNonce keep tracking of nonces per address, add last nonce for addr if the map is empty
-func (e *EthereumClient) GetNonce(ctx context.Context, addr common.Address) (uint64, error) {
-	e.NonceMu.Lock()
-	defer e.NonceMu.Unlock()
-	if _, ok := e.Nonces[addr.Hex()]; !ok {
-		lastNonce, err := e.Client.PendingNonceAt(ctx, addr)
-		if err != nil {
-			return 0, err
-		}
-		e.Nonces[addr.Hex()] = lastNonce
-		return lastNonce, nil
-	}
-	e.Nonces[addr.Hex()]++
-	return e.Nonces[addr.Hex()], nil
 }
 
 // GetHeaderSubscriptions returns a duplicate map of the queued transactions
@@ -330,6 +323,7 @@ func (e *EthereumClient) subscribeToNewHeaders() error {
 			e.receiveHeader(header)
 		case <-e.doneChan:
 			log.Debug().Str("Network", e.NetworkConfig.Name).Msg("Subscription cancelled")
+			e.Client.Close()
 			return nil
 		}
 	}
@@ -379,7 +373,7 @@ func (e *EthereumClient) receiveHeader(header *types.Header) {
 			}
 		}
 		if subsRemoved > 0 {
-			log.Debug().
+			log.Trace().
 				Uint("Recently Removed", subsRemoved).
 				Int("Active", len(e.GetHeaderSubscriptions())).
 				Msg("Updated Header Subscriptions")

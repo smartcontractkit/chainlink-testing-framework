@@ -64,7 +64,7 @@ func (a *ArbitrumClient) Fund(toAddress string, amount *big.Float) error {
 		Str("To", toAddress).
 		Str("Amount", amount.String()).
 		Msg("Funding Address")
-	if err := a.Client.SendTransaction(context.Background(), tx); err != nil {
+	if err := a.SendTransaction(context.Background(), tx); err != nil {
 		return err
 	}
 
@@ -116,7 +116,7 @@ func (a *ArbitrumClient) ReturnFunds(fromPrivateKey *ecdsa.PrivateKey) error {
 		Str("From", fromAddress.Hex()).
 		Str("Amount", balance.String()).
 		Msg("Returning Funds to Default Wallet")
-	if err := a.Client.SendTransaction(context.Background(), tx); err != nil {
+	if err := a.SendTransaction(context.Background(), tx); err != nil {
 		return err
 	}
 

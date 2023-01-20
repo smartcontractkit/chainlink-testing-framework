@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -48,6 +49,10 @@ func (k *KlaytnClient) Fund(
 	log.Warn().
 		Str("Network Name", k.NetworkConfig.Name).
 		Msg("Setting GasTipCap = SuggestedGasPrice for Klaytn network")
+	estimatedGas, err := k.Client.EstimateGas(context.Background(), ethereum.CallMsg{})
+	if err != nil {
+		return err
+	}
 	// https://docs.klaytn.com/klaytn/design/transaction-fees#gas
 	tx, err := types.SignNewTx(privateKey, types.LatestSignerForChainID(k.GetChainID()), &types.DynamicFeeTx{
 		ChainID:   k.GetChainID(),
@@ -56,7 +61,7 @@ func (k *KlaytnClient) Fund(
 		Value:     utils.EtherToWei(amount),
 		GasTipCap: gasPrice,
 		GasFeeCap: gasPrice,
-		Gas:       21000,
+		Gas:       estimatedGas,
 	})
 	if err != nil {
 		return err
@@ -68,7 +73,7 @@ func (k *KlaytnClient) Fund(
 		Str("To", toAddress).
 		Str("Amount", amount.String()).
 		Msg("Funding Address")
-	if err := k.Client.SendTransaction(context.Background(), tx); err != nil {
+	if err := k.SendTransaction(context.Background(), tx); err != nil {
 		return err
 	}
 	return k.ProcessTransaction(tx)
@@ -130,7 +135,11 @@ func (k *KlaytnClient) ReturnFunds(fromPrivateKey *ecdsa.PrivateKey) error {
 	if err != nil {
 		return err
 	}
-	balance.Sub(balance, big.NewInt(1).Mul(gasPrice, big.NewInt(21000)))
+	estimatedGas, err := k.Client.EstimateGas(context.Background(), ethereum.CallMsg{})
+	if err != nil {
+		return err
+	}
+	balance.Sub(balance, big.NewInt(1).Mul(gasPrice, big.NewInt(0).SetUint64(estimatedGas)))
 	// https://docs.klaytn.com/klaytn/design/transaction-fees#gas
 	tx, err := types.SignNewTx(fromPrivateKey, types.LatestSignerForChainID(k.GetChainID()), &types.DynamicFeeTx{
 		ChainID:   k.GetChainID(),
@@ -139,7 +148,7 @@ func (k *KlaytnClient) ReturnFunds(fromPrivateKey *ecdsa.PrivateKey) error {
 		Value:     balance,
 		GasTipCap: gasPrice,
 		GasFeeCap: gasPrice,
-		Gas:       21000,
+		Gas:       estimatedGas,
 	})
 	if err != nil {
 		return err
@@ -150,7 +159,7 @@ func (k *KlaytnClient) ReturnFunds(fromPrivateKey *ecdsa.PrivateKey) error {
 		Str("From", fromAddress.Hex()).
 		Str("Amount", balance.String()).
 		Msg("Returning Funds to Default Wallet")
-	if err := k.Client.SendTransaction(context.Background(), tx); err != nil {
+	if err := k.SendTransaction(context.Background(), tx); err != nil {
 		return err
 	}
 	return k.ProcessTransaction(tx)

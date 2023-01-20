@@ -35,18 +35,12 @@ type EthereumClient struct {
 	NetworkConfig       EVMNetwork
 	Wallets             []*EthereumWallet
 	DefaultWallet       *EthereumWallet
-	NonceMu             *sync.Mutex
-	Nonces              map[string]uint64
+	NonceSettings       *NonceSettings
 	headerSubscriptions map[string]HeaderEventSubscription
 	subscriptionMutex   *sync.Mutex
 	queueTransactions   bool
 	gasStats            *GasStats
 	doneChan            chan struct{}
-}
-
-type NonceSettings struct {
-	NonceMu *sync.Mutex
-	Nonces  map[string]uint64
 }
 
 // newEVMClient creates an EVM client for a single node/URL
@@ -64,13 +58,17 @@ func newEVMClient(networkSettings EVMNetwork) (EVMClient, error) {
 	ec := &EthereumClient{
 		NetworkConfig:       networkSettings,
 		Client:              cl,
-		NonceMu:             &sync.Mutex{},
 		Wallets:             make([]*EthereumWallet, 0),
-		Nonces:              make(map[string]uint64),
 		headerSubscriptions: map[string]HeaderEventSubscription{},
 		subscriptionMutex:   &sync.Mutex{},
 		queueTransactions:   false,
 		doneChan:            make(chan struct{}),
+	}
+
+	if ec.NetworkConfig.Simulated {
+		ec.NonceSettings = newNonceSettings()
+	} else { // un-simulated chain means potentially running tests in parallel, need to share nonces
+		ec.NonceSettings = useGlobalNonceManager()
 	}
 
 	if err := ec.LoadWallets(networkSettings); err != nil {
@@ -86,8 +84,8 @@ func newEVMClient(networkSettings EVMNetwork) (EVMClient, error) {
 // it ensures the instance of EthereumClient is synced with passed EVMClient's nonce updates.
 func (e *EthereumClient) SyncNonce(c EVMClient) {
 	n := c.GetNonceSetting()
-	e.NonceMu = n.NonceMu
-	e.Nonces = n.Nonces
+	e.NonceSettings.NonceMu = n.NonceMu
+	e.NonceSettings.Nonces = n.Nonces
 }
 
 // newHeadersLoop Logs when new headers come in
@@ -123,11 +121,11 @@ func (e *EthereumClient) NetworkSimulated() bool {
 }
 
 func (e *EthereumClient) GetNonceSetting() NonceSettings {
-	e.NonceMu.Lock()
-	defer e.NonceMu.Unlock()
+	e.NonceSettings.NonceMu.Lock()
+	defer e.NonceSettings.NonceMu.Unlock()
 	return NonceSettings{
-		NonceMu: e.NonceMu,
-		Nonces:  e.Nonces,
+		NonceMu: e.NonceSettings.NonceMu,
+		Nonces:  e.NonceSettings.Nonces,
 	}
 }
 
@@ -229,6 +227,18 @@ func (e *EthereumClient) LatestBlockNumber(ctx context.Context) (uint64, error) 
 	return bn, nil
 }
 
+func (e *EthereumClient) SendTransaction(ctx context.Context, tx *types.Transaction) error {
+	// for instant txs, wait for permission to go
+	if e.NetworkConfig.MinimumConfirmations <= 0 {
+		fromAddr, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx)
+		if err != nil {
+			return err
+		}
+		<-e.NonceSettings.registerInstantTransaction(fromAddr.Hex(), tx.Nonce())
+	}
+	return e.Client.SendTransaction(ctx, tx)
+}
+
 // Fund sends some ETH to an address using the default wallet
 func (e *EthereumClient) Fund(
 	toAddress string,
@@ -260,6 +270,11 @@ func (e *EthereumClient) Fund(
 	baseFeeMult := big.NewInt(1).Mul(latestHeader.BaseFee, big.NewInt(2))
 	gasFeeCap := baseFeeMult.Add(baseFeeMult, suggestedGasTipCap)
 
+	estimatedGas, err := e.Client.EstimateGas(context.Background(), ethereum.CallMsg{})
+	if err != nil {
+		return err
+	}
+
 	tx, err := types.SignNewTx(privateKey, types.LatestSignerForChainID(e.GetChainID()), &types.DynamicFeeTx{
 		ChainID:   e.GetChainID(),
 		Nonce:     nonce,
@@ -267,7 +282,7 @@ func (e *EthereumClient) Fund(
 		Value:     utils.EtherToWei(amount),
 		GasTipCap: suggestedGasTipCap,
 		GasFeeCap: gasFeeCap,
-		Gas:       21000,
+		Gas:       estimatedGas,
 	})
 	if err != nil {
 		return err
@@ -279,7 +294,10 @@ func (e *EthereumClient) Fund(
 		Str("To", toAddress).
 		Str("Amount", amount.String()).
 		Msg("Funding Address")
-	if err := e.Client.SendTransaction(context.Background(), tx); err != nil {
+	if err := e.SendTransaction(context.Background(), tx); err != nil {
+		if strings.Contains(err.Error(), "nonce") {
+			err = errors.Wrap(err, fmt.Sprintf("using nonce %d", nonce))
+		}
 		return err
 	}
 
@@ -287,32 +305,54 @@ func (e *EthereumClient) Fund(
 }
 
 func (e *EthereumClient) ReturnFunds(fromKey *ecdsa.PrivateKey) error {
+	var tx *types.Transaction
+	var err error
+	for attempt := 0; attempt < 5; attempt++ {
+		tx, err = attemptReturn(e, fromKey, attempt)
+		if err == nil {
+			return e.ProcessTransaction(tx)
+		}
+		log.Debug().Err(err).Int("Attempt", attempt+1).Msg("Error returning funds from Chainlink node, trying again")
+	}
+	return err
+}
+
+func attemptReturn(e *EthereumClient, fromKey *ecdsa.PrivateKey, attemptCount int) (*types.Transaction, error) {
 	to := common.HexToAddress(e.DefaultWallet.Address())
 
 	suggestedGasTipCap, err := e.Client.SuggestGasTipCap(context.Background())
 	if err != nil {
-		return err
+		return nil, err
 	}
 	latestHeader, err := e.Client.HeaderByNumber(context.Background(), nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	baseFeeMult := big.NewInt(1).Mul(latestHeader.BaseFee, big.NewInt(2))
 	gasFeeCap := baseFeeMult.Add(baseFeeMult, suggestedGasTipCap)
+	gasFeeCap.Add(gasFeeCap, big.NewInt(int64(attemptCount*1000)))
 
 	fromAddress, err := utils.PrivateKeyToAddress(fromKey)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	balance, err := e.Client.BalanceAt(context.Background(), fromAddress, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	balance.Sub(balance, big.NewInt(1).Mul(gasFeeCap, big.NewInt(21000)))
+	estGas, err := e.Client.EstimateGas(context.Background(), ethereum.CallMsg{})
+	if err != nil {
+		return nil, err
+	}
+	balance.Sub(balance, big.NewInt(1).Mul(gasFeeCap, big.NewInt(0).SetUint64(estGas)))
 
 	nonce, err := e.GetNonce(context.Background(), fromAddress)
 	if err != nil {
-		return err
+		return nil, err
+	}
+	estimatedGas, err := e.Client.EstimateGas(context.Background(), ethereum.CallMsg{})
+	if err != nil {
+		return nil, err
 	}
 
 	tx, err := types.SignNewTx(fromKey, types.LatestSignerForChainID(e.GetChainID()), &types.DynamicFeeTx{
@@ -322,22 +362,17 @@ func (e *EthereumClient) ReturnFunds(fromKey *ecdsa.PrivateKey) error {
 		Value:     balance,
 		GasTipCap: suggestedGasTipCap,
 		GasFeeCap: gasFeeCap,
-		Gas:       21000,
+		Gas:       estimatedGas,
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
-
 	log.Info().
 		Str("Token", "ETH").
 		Str("Amount", balance.String()).
 		Str("From", fromAddress.Hex()).
 		Msg("Returning Funds to Default Wallet")
-	if err := e.Client.SendTransaction(context.Background(), tx); err != nil {
-		return err
-	}
-
-	return e.ProcessTransaction(tx)
+	return tx, e.SendTransaction(context.Background(), tx)
 }
 
 // EstimateCostForChainlinkOperations calculates required amount of ETH for amountOfOperations Chainlink operations
@@ -376,16 +411,16 @@ func (e *EthereumClient) DeployContract(
 	contractName string,
 	deployer ContractDeployer,
 ) (*common.Address, *types.Transaction, interface{}, error) {
-	opts, err := e.TransactionOpts(e.DefaultWallet)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
 	suggestedTipCap, err := e.Client.SuggestGasTipCap(context.Background())
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	gasPriceBuffer := big.NewInt(0).SetUint64(e.NetworkConfig.GasEstimationBuffer)
+
+	opts, err := e.TransactionOpts(e.DefaultWallet)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 	opts.GasTipCap = suggestedTipCap.Add(gasPriceBuffer, suggestedTipCap)
 
 	if e.NetworkConfig.GasEstimationBuffer > 0 {
@@ -398,6 +433,9 @@ func (e *EthereumClient) DeployContract(
 
 	contractAddress, transaction, contractInstance, err := deployer(opts, e.Client)
 	if err != nil {
+		if strings.Contains(err.Error(), "nonce") {
+			err = errors.Wrap(err, fmt.Sprintf("using nonce %d", opts.Nonce.Uint64()))
+		}
 		return nil, nil, nil, err
 	}
 
@@ -449,6 +487,9 @@ func (e *EthereumClient) TransactionOpts(from *EthereumWallet) (*bind.TransactOp
 	}
 	opts.Nonce = big.NewInt(int64(nonce))
 
+	if e.NetworkConfig.MinimumConfirmations <= 0 { // Wait for your turn to send on an L2 chain
+		<-e.NonceSettings.registerInstantTransaction(from.Address(), nonce)
+	}
 	return opts, nil
 }
 
@@ -456,6 +497,11 @@ func (e *EthereumClient) TransactionOpts(from *EthereumWallet) (*bind.TransactOp
 func (e *EthereumClient) ProcessTransaction(tx *types.Transaction) error {
 	var txConfirmer HeaderEventSubscription
 	if e.GetNetworkConfig().MinimumConfirmations <= 0 {
+		fromAddr, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx)
+		if err != nil {
+			return err
+		}
+		e.NonceSettings.sentInstantTransaction(fromAddr.Hex()) // On an L2 chain, indicate the tx has been sent
 		txConfirmer = NewInstantConfirmer(e, tx.Hash(), nil, nil)
 	} else {
 		txConfirmer = NewTransactionConfirmer(e, tx, e.GetNetworkConfig().MinimumConfirmations)
@@ -577,15 +623,14 @@ func (e *EthereumClient) GetTxReceipt(txHash common.Hash) (*types.Receipt, error
 
 // ParallelTransactions when enabled, sends the transaction without waiting for transaction confirmations. The hashes
 // are then stored within the client and confirmations can be waited on by calling WaitForEvents.
-// When disabled, the minimum confirmations are waited on when the transaction is sent, so parallelisation is disabled.
 func (e *EthereumClient) ParallelTransactions(enabled bool) {
 	e.queueTransactions = enabled
 }
 
 // Close tears down the current open Ethereum client
 func (e *EthereumClient) Close() error {
-	e.doneChan <- struct{}{}
-	e.Client.Close()
+	// close(e.NonceSettings.doneChan)
+	close(e.doneChan)
 	return nil
 }
 
@@ -861,6 +906,11 @@ func (e *EthereumMultinodeClient) HeaderTimestampByNumber(ctx context.Context, b
 // LatestBlockNumber gets the latest block number from the default client
 func (e *EthereumMultinodeClient) LatestBlockNumber(ctx context.Context) (uint64, error) {
 	return e.DefaultClient.LatestBlockNumber(ctx)
+}
+
+// SendTransaction wraps ethereum's SendTransaction to make it safe with instant transaction types
+func (e *EthereumMultinodeClient) SendTransaction(ctx context.Context, tx *types.Transaction) error {
+	return e.DefaultClient.SendTransaction(ctx, tx)
 }
 
 // Fund funds a specified address with ETH from the given wallet
