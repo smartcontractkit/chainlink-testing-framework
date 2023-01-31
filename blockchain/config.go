@@ -1,14 +1,13 @@
 package blockchain
 
 import (
-	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/kelseyhightower/envconfig"
 	"github.com/rs/zerolog/log"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 )
 
 var (
@@ -33,7 +32,7 @@ var (
 			"58845406a51d98fb2026887281b4e91b8843bbec5f16b89de06d5b9a62b231e8",
 		},
 		ChainlinkTransactionLimit: 500000,
-		Timeout:                   JSONStrDuration{2 * time.Minute},
+		Timeout:                   utils.JSONStrDuration{Duration: 2 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       10000,
 	}
@@ -57,7 +56,7 @@ type EVMNetwork struct {
 	// nodes require to run the tests.
 	ChainlinkTransactionLimit uint64 `envconfig:"evm_chainlink_transaction_limit" default:"500000" toml:"evm_chainlink_transaction_limit" json:"evm_chainlink_transaction_limit"`
 	// How long to wait for on-chain operations before timing out an on-chain operation
-	Timeout JSONStrDuration `envconfig:"evm_transaction_timeout" default:"2m" toml:"evm_transaction_timeout" json:"evm_transaction_timeout"`
+	Timeout utils.JSONStrDuration `envconfig:"evm_transaction_timeout" default:"2m" toml:"evm_transaction_timeout" json:"evm_transaction_timeout"`
 	// How many block confirmations to wait to confirm on-chain events
 	MinimumConfirmations int `envconfig:"evm_minimum_confirmations" default:"1" toml:"evm_minimum_confirmations" json:"evm_minimum_confirmations"`
 	// How much WEI to add to gas estimations for sending transactions
@@ -129,31 +128,4 @@ func (e *EVMNetwork) MustChainlinkTOML(networkDetails string) string {
 	}
 
 	return netString
-}
-
-// JSONStrDuration is JSON friendly duration that can be parsed from "1h2m0s" Go format
-type JSONStrDuration struct {
-	time.Duration
-}
-
-func (d *JSONStrDuration) MarshalJSON() ([]byte, error) {
-	return json.Marshal(d.String())
-}
-
-func (d *JSONStrDuration) UnmarshalJSON(b []byte) error {
-	var v interface{}
-	if err := json.Unmarshal(b, &v); err != nil {
-		return err
-	}
-	switch value := v.(type) {
-	case string:
-		var err error
-		d.Duration, err = time.ParseDuration(value)
-		if err != nil {
-			return err
-		}
-		return nil
-	default:
-		return errors.New("invalid duration")
-	}
 }
