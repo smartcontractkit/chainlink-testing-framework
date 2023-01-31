@@ -1,6 +1,8 @@
 package blockchain
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -31,7 +33,7 @@ var (
 			"58845406a51d98fb2026887281b4e91b8843bbec5f16b89de06d5b9a62b231e8",
 		},
 		ChainlinkTransactionLimit: 500000,
-		Timeout:                   2 * time.Minute,
+		Timeout:                   JSONStrDuration{2 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       10000,
 	}
@@ -40,28 +42,28 @@ var (
 // EVMNetwork configures all the data the test needs to connect and operate on an EVM compatible network
 type EVMNetwork struct {
 	// Human-readable name of the network:
-	Name string `envconfig:"evm_name" default:"Unnamed EVM Network" toml:"name"`
+	Name string `envconfig:"evm_name" default:"Unnamed EVM Network" toml:"evm_name" json:"evm_name"`
 	// Chain ID for the blockchain
-	ChainID int64 `envconfig:"evm_chain_id" default:"1337" toml:"chain_id"`
+	ChainID int64 `envconfig:"evm_chain_id" default:"1337" toml:"evm_chain_id" json:"evm_chain_id"`
 	// List of websocket URLs you want to connect to
-	URLs []string `envconfig:"evm_urls" default:"ws://example.url" toml:"ws_urls"`
+	URLs []string `envconfig:"evm_urls" default:"ws://example.url" toml:"evm_urls" json:"evm_urls"`
 	// List of websocket URLs you want to connect to
-	HTTPURLs []string `envconfig:"evm_http_urls" default:"http://example.url" toml:"http_urls"`
+	HTTPURLs []string `envconfig:"evm_http_urls" default:"http://example.url" toml:"evm_http_urls" json:"evm_http_urls"`
 	// True if the network is simulated like a geth instance in dev mode. False if the network is a real test or mainnet
-	Simulated bool `envconfig:"evm_simulated" default:"false" toml:"simulated"`
+	Simulated bool `envconfig:"evm_simulated" default:"false" toml:"evm_simulated" json:"evm_simulated"`
 	// List of private keys to fund the tests
-	PrivateKeys []string `envconfig:"evm_keys" default:"examplePrivateKey" toml:"evm_keys"`
+	PrivateKeys []string `envconfig:"evm_keys" default:"examplePrivateKey" toml:"evm_keys" json:"evm_keys"`
 	// Default gas limit to assume that Chainlink nodes will use. Used to try to estimate the funds that Chainlink
 	// nodes require to run the tests.
-	ChainlinkTransactionLimit uint64 `envconfig:"evm_chainlink_transaction_limit" default:"500000" toml:"chainlink_transaction_limit"`
+	ChainlinkTransactionLimit uint64 `envconfig:"evm_chainlink_transaction_limit" default:"500000" toml:"evm_chainlink_transaction_limit" json:"evm_chainlink_transaction_limit"`
 	// How long to wait for on-chain operations before timing out an on-chain operation
-	Timeout time.Duration `envconfig:"evm_transaction_timeout" default:"2m" toml:"transaction_timeout"`
+	Timeout JSONStrDuration `envconfig:"evm_transaction_timeout" default:"2m" toml:"evm_transaction_timeout" json:"evm_transaction_timeout"`
 	// How many block confirmations to wait to confirm on-chain events
-	MinimumConfirmations int `envconfig:"evm_minimum_confirmations" default:"1" toml:"minimum_confirmations"`
+	MinimumConfirmations int `envconfig:"evm_minimum_confirmations" default:"1" toml:"evm_minimum_confirmations" json:"evm_minimum_confirmations"`
 	// How much WEI to add to gas estimations for sending transactions
-	GasEstimationBuffer uint64 `envconfig:"evm_gas_estimation_buffer" default:"1000" toml:"gas_estimation_buffer"`
+	GasEstimationBuffer uint64 `envconfig:"evm_gas_estimation_buffer" default:"1000" toml:"evm_gas_estimation_buffer" json:"evm_gas_estimation_buffer"`
 	// ClientImplementation is the blockchain client to use when interacting with the test chain
-	ClientImplementation ClientImplementation `envconfig:"client_implementation" default:"Ethereum" toml:"client_implementation"`
+	ClientImplementation ClientImplementation `envconfig:"client_implementation" default:"Ethereum" toml:"client_implementation" json:"client_implementation"`
 
 	// Only used internally, do not set
 	URL string `ignored:"true"`
@@ -127,4 +129,31 @@ func (e *EVMNetwork) MustChainlinkTOML(networkDetails string) string {
 	}
 
 	return netString
+}
+
+// JSONStrDuration is JSON friendly duration that can be parsed from "1h2m0s" Go format
+type JSONStrDuration struct {
+	time.Duration
+}
+
+func (d *JSONStrDuration) MarshalJSON() ([]byte, error) {
+	return json.Marshal(d.String())
+}
+
+func (d *JSONStrDuration) UnmarshalJSON(b []byte) error {
+	var v interface{}
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	switch value := v.(type) {
+	case string:
+		var err error
+		d.Duration, err = time.ParseDuration(value)
+		if err != nil {
+			return err
+		}
+		return nil
+	default:
+		return errors.New("invalid duration")
+	}
 }
