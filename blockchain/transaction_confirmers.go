@@ -33,7 +33,7 @@ type TransactionConfirmer struct {
 // NewTransactionConfirmer returns a new instance of the transaction confirmer that waits for on-chain minimum
 // confirmations
 func NewTransactionConfirmer(client EVMClient, tx *types.Transaction, minConfirmations int) *TransactionConfirmer {
-	ctx, ctxCancel := context.WithTimeout(context.Background(), client.GetNetworkConfig().Timeout)
+	ctx, ctxCancel := context.WithTimeout(context.Background(), client.GetNetworkConfig().Timeout.Duration)
 	tc := &TransactionConfirmer{
 		minConfirmations: minConfirmations,
 		confirmations:    0,
@@ -130,7 +130,7 @@ func NewInstantConfirmer(
 	confirmedChan chan bool,
 	errorChan chan error,
 ) *InstantConfirmer {
-	ctx, ctxCancel := context.WithTimeout(context.Background(), client.GetNetworkConfig().Timeout)
+	ctx, ctxCancel := context.WithTimeout(context.Background(), client.GetNetworkConfig().Timeout.Duration)
 	return &InstantConfirmer{
 		client:       client,
 		txHash:       txHash,
@@ -221,7 +221,7 @@ func NewEventConfirmer(
 	confirmedChan chan bool,
 	errorChan chan error,
 ) *EventConfirmer {
-	ctx, ctxCancel := context.WithTimeout(context.Background(), client.GetNetworkConfig().Timeout)
+	ctx, ctxCancel := context.WithTimeout(context.Background(), client.GetNetworkConfig().Timeout.Duration)
 	tc := &EventConfirmer{
 		eventName:        eventName,
 		minConfirmations: minConfirmations,
