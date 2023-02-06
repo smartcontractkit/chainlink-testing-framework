@@ -7,6 +7,7 @@ import (
 	"crypto/ecdsa"
 	"encoding/hex"
 	"fmt"
+	"math"
 	"math/big"
 	"strings"
 	"sync"
@@ -307,7 +308,7 @@ func (e *EthereumClient) Fund(
 func (e *EthereumClient) ReturnFunds(fromKey *ecdsa.PrivateKey) error {
 	var tx *types.Transaction
 	var err error
-	for attempt := 0; attempt < 5; attempt++ {
+	for attempt := 0; attempt < 10; attempt++ {
 		tx, err = attemptReturn(e, fromKey, attempt)
 		if err == nil {
 			return e.ProcessTransaction(tx)
@@ -317,6 +318,7 @@ func (e *EthereumClient) ReturnFunds(fromKey *ecdsa.PrivateKey) error {
 	return err
 }
 
+// a single fund return attempt, further attempts exponentially raise the error margin for fund returns
 func attemptReturn(e *EthereumClient, fromKey *ecdsa.PrivateKey, attemptCount int) (*types.Transaction, error) {
 	to := common.HexToAddress(e.DefaultWallet.Address())
 
@@ -330,7 +332,7 @@ func attemptReturn(e *EthereumClient, fromKey *ecdsa.PrivateKey, attemptCount in
 	}
 	baseFeeMult := big.NewInt(1).Mul(latestHeader.BaseFee, big.NewInt(2))
 	gasFeeCap := baseFeeMult.Add(baseFeeMult, suggestedGasTipCap)
-	gasFeeCap.Add(gasFeeCap, big.NewInt(int64(attemptCount*1000)))
+	gasFeeCap.Add(gasFeeCap, big.NewInt(int64(math.Pow(float64(attemptCount), 2)*1000))) // exponentially increase error margin
 
 	fromAddress, err := utils.PrivateKeyToAddress(fromKey)
 	if err != nil {
