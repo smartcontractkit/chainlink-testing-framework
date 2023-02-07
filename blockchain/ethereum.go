@@ -308,7 +308,7 @@ func (e *EthereumClient) Fund(
 func (e *EthereumClient) ReturnFunds(fromKey *ecdsa.PrivateKey) error {
 	var tx *types.Transaction
 	var err error
-	for attempt := 0; attempt < 10; attempt++ {
+	for attempt := 1; attempt < 10; attempt++ {
 		tx, err = attemptReturn(e, fromKey, attempt)
 		if err == nil {
 			return e.ProcessTransaction(tx)

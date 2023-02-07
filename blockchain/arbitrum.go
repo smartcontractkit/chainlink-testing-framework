@@ -75,7 +75,7 @@ func (a *ArbitrumClient) Fund(toAddress string, amount *big.Float) error {
 func (a *ArbitrumClient) ReturnFunds(fromKey *ecdsa.PrivateKey) error {
 	var tx *types.Transaction
 	var err error
-	for attempt := 0; attempt < 10; attempt++ {
+	for attempt := 1; attempt < 10; attempt++ {
 		tx, err = attemptArbReturn(a, fromKey, attempt)
 		if err == nil {
 			return a.ProcessTransaction(tx)
