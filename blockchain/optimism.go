@@ -52,7 +52,7 @@ func (o *OptimismClient) attemptReturn(fromKey *ecdsa.PrivateKey, attemptCount i
 		return nil, err
 	}
 	baseFeeMult := big.NewInt(1).Mul(latestHeader.BaseFee, big.NewInt(2))
-	gasFeeCap := baseFeeMult.Add(baseFeeMult, suggestedGasTipCap)
+	gasFeeCap := new(big.Int).Add(baseFeeMult, suggestedGasTipCap)
 	// optimism is being cagey for now about these values, makes it tricky to estimate properly
 	// https://community.optimism.io/docs/developers/bedrock/how-is-bedrock-different/#eip-1559
 
@@ -64,17 +64,14 @@ func (o *OptimismClient) attemptReturn(fromKey *ecdsa.PrivateKey, attemptCount i
 	if err != nil {
 		return nil, err
 	}
-	estGas, err := o.Client.EstimateGas(context.Background(), ethereum.CallMsg{})
+	gas, err := o.Client.EstimateGas(context.Background(), ethereum.CallMsg{})
 	if err != nil {
 		return nil, err
 	}
-	balance.Sub(balance, big.NewInt(1).Mul(gasFeeCap, big.NewInt(0).SetUint64(estGas)))
+	totalGasCost := new(big.Int).Mul(gasFeeCap, new(big.Int).SetUint64(gas))
+	balance.Sub(balance, totalGasCost)
 
 	nonce, err := o.GetNonce(context.Background(), fromAddress)
-	if err != nil {
-		return nil, err
-	}
-	estimatedGas, err := o.Client.EstimateGas(context.Background(), ethereum.CallMsg{})
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +83,7 @@ func (o *OptimismClient) attemptReturn(fromKey *ecdsa.PrivateKey, attemptCount i
 		Value:     balance,
 		GasTipCap: suggestedGasTipCap,
 		GasFeeCap: gasFeeCap,
-		Gas:       estimatedGas,
+		Gas:       gas,
 	})
 	if err != nil {
 		return nil, err
@@ -97,7 +94,9 @@ func (o *OptimismClient) attemptReturn(fromKey *ecdsa.PrivateKey, attemptCount i
 		Str("From", fromAddress.Hex()).
 		Str("Gas Fee Cap", gasFeeCap.String()).
 		Str("Gas Tip Cap", suggestedGasTipCap.String()).
+		Uint64("Gas", gas).
 		Str("Base Fee", baseFeeMult.String()).
-		Msg("Returning Funds to Default Wallet")
+		Str("Total Gas Cost", totalGasCost.String()).
+		Msg("Attempting to Return Funds to Default Wallet")
 	return tx, o.SendTransaction(context.Background(), tx)
 }
