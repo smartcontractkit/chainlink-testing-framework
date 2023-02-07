@@ -94,6 +94,7 @@ func (o *OptimismClient) attemptReturn(fromKey *ecdsa.PrivateKey, attemptCount i
 		Str("Token", "ETH").
 		Str("Amount", balance.String()).
 		Str("From", fromAddress.Hex()).
+		Str("Gas Fee Cap", gasFeeCap.String()).
 		Msg("Returning Funds to Default Wallet")
 	return tx, o.SendTransaction(context.Background(), tx)
 }
