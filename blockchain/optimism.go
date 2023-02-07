@@ -27,7 +27,7 @@ type OptimismClient struct {
 func (o *OptimismClient) ReturnFunds(fromKey *ecdsa.PrivateKey) error {
 	var tx *types.Transaction
 	var err error
-	for attempt := 1; attempt < 10; attempt++ {
+	for attempt := 1; attempt < 20; attempt++ {
 		tx, err = o.attemptReturn(fromKey, attempt)
 		if err == nil {
 			return o.ProcessTransaction(tx)
@@ -53,7 +53,7 @@ func (o *OptimismClient) attemptReturn(fromKey *ecdsa.PrivateKey, attemptCount i
 	gasFeeCap := baseFeeMult.Add(baseFeeMult, suggestedGasTipCap)
 	// optimism is being cagey for now about these values, makes it tricky to estimate properly
 	// https://community.optimism.io/docs/developers/bedrock/how-is-bedrock-different/#eip-1559
-	gasFeeCap.Add(gasFeeCap, big.NewInt(int64(math.Pow(float64(attemptCount), 3)*1000))) // exponentially increase error margin
+	gasFeeCap.Add(gasFeeCap, big.NewInt(int64(math.Pow(float64(attemptCount), 2)*100000))) // exponentially increase error margin
 
 	fromAddress, err := utils.PrivateKeyToAddress(fromKey)
 	if err != nil {
