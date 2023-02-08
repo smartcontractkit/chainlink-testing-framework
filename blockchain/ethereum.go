@@ -993,9 +993,7 @@ func (e *EthereumMultinodeClient) GasStats() *GasStats {
 
 // AddHeaderEventSubscription adds a new header subscriber within the client to receive new headers
 func (e *EthereumMultinodeClient) AddHeaderEventSubscription(key string, subscriber HeaderEventSubscription) {
-	for _, c := range e.Clients {
-		c.AddHeaderEventSubscription(key, subscriber)
-	}
+	e.DefaultClient.AddHeaderEventSubscription(key, subscriber)
 }
 
 // SubscribeFilterLogs subscribes to the results of a streaming filter query.
@@ -1005,9 +1003,7 @@ func (e *EthereumMultinodeClient) SubscribeFilterLogs(ctx context.Context, q eth
 
 // DeleteHeaderEventSubscription removes a header subscriber from the map
 func (e *EthereumMultinodeClient) DeleteHeaderEventSubscription(key string) {
-	for _, c := range e.Clients {
-		c.DeleteHeaderEventSubscription(key)
-	}
+	e.DefaultClient.DeleteHeaderEventSubscription(key)
 }
 
 // WaitForEvents is a blocking function that waits for all event subscriptions for all clients
