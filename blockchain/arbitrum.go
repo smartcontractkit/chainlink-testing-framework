@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
+	"math"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum"
@@ -71,36 +72,50 @@ func (a *ArbitrumClient) Fund(toAddress string, amount *big.Float) error {
 	return a.ProcessTransaction(tx)
 }
 
-// Fund sends some ARB to an address using the default wallet
-func (a *ArbitrumClient) ReturnFunds(fromPrivateKey *ecdsa.PrivateKey) error {
+func (a *ArbitrumClient) ReturnFunds(fromKey *ecdsa.PrivateKey) error {
+	var tx *types.Transaction
+	var err error
+	for attempt := 1; attempt < 10; attempt++ {
+		tx, err = attemptArbReturn(a, fromKey, attempt)
+		if err == nil {
+			return a.ProcessTransaction(tx)
+		}
+		log.Debug().Err(err).Int("Attempt", attempt+1).Msg("Error returning funds from Chainlink node, trying again")
+	}
+	return err
+}
+
+// a single fund return attempt, further attempts exponentially raise the error margin for fund returns
+func attemptArbReturn(a *ArbitrumClient, fromKey *ecdsa.PrivateKey, attemptCount int) (*types.Transaction, error) {
 	to := common.HexToAddress(a.DefaultWallet.Address())
 
 	// Arbitrum uses legacy transactions and gas estimations
 	suggestedGasPrice, err := a.Client.SuggestGasPrice(context.Background())
 	if err != nil {
-		return err
+		return nil, err
 	}
-	fromAddress, err := utils.PrivateKeyToAddress(fromPrivateKey)
+	suggestedGasPrice.Add(suggestedGasPrice, big.NewInt(int64(math.Pow(float64(attemptCount), 2)*1000))) // exponentially increase error margin
+	fromAddress, err := utils.PrivateKeyToAddress(fromKey)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	balance, err := a.Client.BalanceAt(context.Background(), fromAddress, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	gas, err := a.Client.EstimateGas(context.Background(), ethereum.CallMsg{})
 	if err != nil {
-		return err
+		return nil, err
 	}
 	balance.Sub(balance, big.NewInt(1).Mul(suggestedGasPrice, big.NewInt(0).SetUint64(gas)))
 
 	nonce, err := a.GetNonce(context.Background(), fromAddress)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	tx, err := types.SignNewTx(fromPrivateKey, types.LatestSignerForChainID(a.GetChainID()), &types.LegacyTx{
+	tx, err := types.SignNewTx(fromKey, types.LatestSignerForChainID(a.GetChainID()), &types.LegacyTx{
 		Nonce:    nonce,
 		To:       &to,
 		Value:    balance,
@@ -108,7 +123,7 @@ func (a *ArbitrumClient) ReturnFunds(fromPrivateKey *ecdsa.PrivateKey) error {
 		Gas:      gas,
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	log.Info().
@@ -116,9 +131,5 @@ func (a *ArbitrumClient) ReturnFunds(fromPrivateKey *ecdsa.PrivateKey) error {
 		Str("From", fromAddress.Hex()).
 		Str("Amount", balance.String()).
 		Msg("Returning Funds to Default Wallet")
-	if err := a.SendTransaction(context.Background(), tx); err != nil {
-		return err
-	}
-
-	return a.ProcessTransaction(tx)
+	return tx, a.SendTransaction(context.Background(), tx)
 }
