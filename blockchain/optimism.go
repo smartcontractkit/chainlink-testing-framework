@@ -1,17 +1,10 @@
 package blockchain
 
 import (
-	"context"
 	"crypto/ecdsa"
-	"math"
-	"math/big"
+	"fmt"
 
-	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/rs/zerolog/log"
-
-	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 )
 
 // OptimismMultinodeClient represents a multi-node, EVM compatible client for the Optimism network
@@ -25,78 +18,6 @@ type OptimismClient struct {
 }
 
 func (o *OptimismClient) ReturnFunds(fromKey *ecdsa.PrivateKey) error {
-	var tx *types.Transaction
-	var err error
-	for attempt := 0; attempt < 20; attempt++ {
-		tx, err = o.attemptReturn(fromKey, attempt)
-		if err == nil {
-			return o.ProcessTransaction(tx)
-		}
-		log.Debug().Err(err).Int("Attempt", attempt+1).Msg("Error returning funds from Chainlink node, trying again")
-	}
-	return err
-}
-
-// a single fund return attempt, further attempts exponentially raise the error margin for fund returns
-func (o *OptimismClient) attemptReturn(fromKey *ecdsa.PrivateKey, attemptCount int) (*types.Transaction, error) {
-	to := common.HexToAddress(o.DefaultWallet.Address())
-
-	suggestedGasTipCap, err := o.Client.SuggestGasTipCap(context.Background())
-	if err != nil {
-		return nil, err
-	}
-	// exponentially increase error margin based on past attempts
-	suggestedGasTipCap.Add(suggestedGasTipCap, big.NewInt(int64(math.Pow(float64(attemptCount), 2)*1000)))
-	latestHeader, err := o.Client.HeaderByNumber(context.Background(), nil)
-	if err != nil {
-		return nil, err
-	}
-	baseFeeMult := big.NewInt(1).Mul(latestHeader.BaseFee, big.NewInt(2))
-	gasFeeCap := new(big.Int).Add(baseFeeMult, suggestedGasTipCap)
-	// optimism is being cagey for now about these values, makes it tricky to estimate properly
-	// https://community.optimism.io/docs/developers/bedrock/how-is-bedrock-different/#eip-1559
-
-	fromAddress, err := utils.PrivateKeyToAddress(fromKey)
-	if err != nil {
-		return nil, err
-	}
-	balance, err := o.Client.BalanceAt(context.Background(), fromAddress, nil)
-	if err != nil {
-		return nil, err
-	}
-	gas, err := o.Client.EstimateGas(context.Background(), ethereum.CallMsg{})
-	if err != nil {
-		return nil, err
-	}
-	totalGasCost := new(big.Int).Mul(gasFeeCap, new(big.Int).SetUint64(gas))
-	balance.Sub(balance, totalGasCost)
-
-	nonce, err := o.GetNonce(context.Background(), fromAddress)
-	if err != nil {
-		return nil, err
-	}
-
-	tx, err := types.SignNewTx(fromKey, types.LatestSignerForChainID(o.GetChainID()), &types.DynamicFeeTx{
-		ChainID:   o.GetChainID(),
-		Nonce:     nonce,
-		To:        &to,
-		Value:     balance,
-		GasTipCap: suggestedGasTipCap,
-		GasFeeCap: gasFeeCap,
-		Gas:       gas,
-	})
-	if err != nil {
-		return nil, err
-	}
-	log.Info().
-		Str("Token", "ETH").
-		Str("Amount", balance.String()).
-		Str("From", fromAddress.Hex()).
-		Str("Gas Fee Cap", gasFeeCap.String()).
-		Str("Gas Tip Cap", suggestedGasTipCap.String()).
-		Uint64("Gas", gas).
-		Str("Base Fee", baseFeeMult.String()).
-		Str("Total Gas Cost", totalGasCost.String()).
-		Msg("Attempting to Return Funds to Default Wallet")
-	return tx, o.SendTransaction(context.Background(), tx)
+	log.Warn().Str("Key", fmt.Sprintf("%x", fromKey)).Msg("Unable to return funds from Optimism at this time. Do so manually")
+	return nil
 }
