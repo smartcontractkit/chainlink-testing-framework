@@ -18,7 +18,7 @@ import (
 var (
 	SlackAPIKey  = os.Getenv("SLACK_API_KEY")
 	SlackChannel = os.Getenv("SLACK_CHANNEL")
-	SlackUserID  = os.Getenv("SLACK_USER_ID")
+	SlackUserID  = os.Getenv("SLACK_USER")
 )
 
 // UpdateSlackEnvVars updates the slack environment variables in case they are changed while remote test is running.
@@ -26,7 +26,7 @@ var (
 func UpdateSlackEnvVars() {
 	SlackAPIKey = os.Getenv("SLACK_API_KEY")
 	SlackChannel = os.Getenv("SLACK_CHANNEL")
-	SlackUserID = os.Getenv("SLACK_USER_ID")
+	SlackUserID = os.Getenv("SLACK_USER")
 }
 
 // Uploads a slack file to the designated channel using the API key
