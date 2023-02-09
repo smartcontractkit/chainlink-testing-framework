@@ -97,7 +97,7 @@ func (t *TransactionConfirmer) Wait() error {
 			t.cancel()
 			return nil
 		case <-t.context.Done():
-			return fmt.Errorf("timeout waiting for transaction to confirm: %s", t.tx.Hash())
+			return fmt.Errorf("timeout waiting for transaction to confirm: %s network %s", t.tx.Hash(), t.client.GetNetworkName())
 		}
 	}
 }
