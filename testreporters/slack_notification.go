@@ -16,7 +16,7 @@ import (
 
 // Values for reporters to use slack to notify user of test end
 var (
-	SlackAPIKey  = os.Getenv("SLACK_API")
+	SlackAPIKey  = os.Getenv("SLACK_API_KEY")
 	SlackChannel = os.Getenv("SLACK_CHANNEL")
 	SlackUserID  = os.Getenv("SLACK_USER_ID")
 )
@@ -24,7 +24,7 @@ var (
 // UpdateSlackEnvVars updates the slack environment variables in case they are changed while remote test is running.
 // Usually used for unit tests.
 func UpdateSlackEnvVars() {
-	SlackAPIKey = os.Getenv("SLACK_API")
+	SlackAPIKey = os.Getenv("SLACK_API_KEY")
 	SlackChannel = os.Getenv("SLACK_CHANNEL")
 	SlackUserID = os.Getenv("SLACK_USER_ID")
 }
