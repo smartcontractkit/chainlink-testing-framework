@@ -69,7 +69,7 @@ func newEVMClient(networkSettings EVMNetwork) (EVMClient, error) {
 	if ec.NetworkConfig.Simulated {
 		ec.NonceSettings = newNonceSettings()
 	} else { // un-simulated chain means potentially running tests in parallel, need to share nonces
-		ec.NonceSettings = useGlobalNonceManager()
+		ec.NonceSettings = useGlobalNonceManager(ec.GetChainID())
 	}
 
 	if err := ec.LoadWallets(networkSettings); err != nil {
@@ -293,6 +293,9 @@ func (e *EthereumClient) Fund(
 		Str("Token", "ETH").
 		Str("From", e.DefaultWallet.Address()).
 		Str("To", toAddress).
+		Str("Hash", tx.Hash().Hex()).
+		Uint64("Nonce", tx.Nonce()).
+		Str("Network Name", e.GetNetworkName()).
 		Str("Amount", amount.String()).
 		Uint64("Estimated Gas Cost", new(big.Int).Mul(gasFeeCap, new(big.Int).SetUint64(estimatedGas)).Uint64()).
 		Msg("Funding Address")

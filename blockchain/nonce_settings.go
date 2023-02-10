@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"context"
+	"math/big"
 	"sync"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -9,17 +10,16 @@ import (
 
 // Used for when running tests on a live test network, so tests can share nonces and run in parallel on the same network
 var (
-	globalNonceManager *NonceSettings
-	onlyOnce           sync.Once
+	globalNonceManager = make(map[*big.Int]*NonceSettings)
 )
 
 // useGlobalNonceManager for when running tests on a non-simulated network
-func useGlobalNonceManager() *NonceSettings {
-	onlyOnce.Do(func() {
-		globalNonceManager = newNonceSettings()
-		go globalNonceManager.watchInstantTransactions()
-	})
-	return globalNonceManager
+func useGlobalNonceManager(chainId *big.Int) *NonceSettings {
+	if _, ok := globalNonceManager[chainId]; !ok {
+		globalNonceManager[chainId] = newNonceSettings()
+		go globalNonceManager[chainId].watchInstantTransactions()
+	}
+	return globalNonceManager[chainId]
 }
 
 // convenience function
