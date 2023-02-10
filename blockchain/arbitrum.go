@@ -64,6 +64,7 @@ func (a *ArbitrumClient) Fund(toAddress string, amount *big.Float) error {
 		Str("From", a.DefaultWallet.Address()).
 		Str("To", toAddress).
 		Str("Amount", amount.String()).
+		Uint64("Estimated Gas Cost", new(big.Int).Mul(suggestedGasPrice, new(big.Int).SetUint64(gas)).Uint64()).
 		Msg("Funding Address")
 	if err := a.SendTransaction(context.Background(), tx); err != nil {
 		return err

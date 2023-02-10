@@ -42,6 +42,21 @@ func (o *OptimismClient) Fund(
 	}
 	to := common.HexToAddress(toAddress)
 
+	// Optimism is unique in its usage of an L1 data fee on top of regular gas costs. Need to call their oracle
+	// https://community.optimism.io/docs/developers/build/transaction-fees/#the-l1-data-fee
+	gasOracle, err := ethcontracts.NewOptimismGas(common.HexToAddress(optimismGasOracleAddress), o.Client)
+	if err != nil {
+		return err
+	}
+	opts := &bind.CallOpts{
+		From:    common.HexToAddress(o.GetDefaultWallet().Address()),
+		Context: context.Background(),
+	}
+	l1Fee, err := gasOracle.GetL1Fee(opts, types.DynamicFeeTx{To: &to}.Data)
+	if err != nil {
+		return err
+	}
+
 	suggestedGasTipCap, err := o.Client.SuggestGasTipCap(context.Background())
 	if err != nil {
 		return err
@@ -59,20 +74,16 @@ func (o *OptimismClient) Fund(
 	if err != nil {
 		return err
 	}
-	baseFeeMult := big.NewInt(1).Mul(latestHeader.BaseFee, big.NewInt(2))
-	gasFeeCap := baseFeeMult.Add(baseFeeMult, suggestedGasTipCap)
+	baseFeeMult := new(big.Int).Mul(latestHeader.BaseFee, big.NewInt(2))
+	gasFeeCap := new(big.Int).Add(baseFeeMult, suggestedGasTipCap)
 
 	estimatedGas, err := o.Client.EstimateGas(context.Background(), ethereum.CallMsg{})
 	if err != nil {
 		return err
 	}
+	totalEstimatedGasCost := new(big.Int).Mul(gasFeeCap, new(big.Int).SetUint64(estimatedGas))
+	totalEstimatedGasCost.Add(totalEstimatedGasCost, l1Fee)
 
-	// Optimism is unique in its usage of an L1 data fee on top of regular gas costs. Need to call their oracle
-	// https://community.optimism.io/docs/developers/build/transaction-fees/#the-l1-data-fee
-	gasOracle, err := ethcontracts.NewOptimismGas(common.HexToAddress(optimismGasOracleAddress), o.Client)
-	if err != nil {
-		return err
-	}
 	unsignedTx := &types.DynamicFeeTx{
 		ChainID:   o.GetChainID(),
 		Nonce:     nonce,
@@ -82,15 +93,6 @@ func (o *OptimismClient) Fund(
 		GasFeeCap: gasFeeCap,
 		Gas:       estimatedGas,
 	}
-	opts := &bind.CallOpts{
-		From:    common.HexToAddress(o.GetDefaultWallet().Address()),
-		Context: context.Background(),
-	}
-	l1Fee, err := gasOracle.GetL1Fee(opts, unsignedTx.Data)
-	if err != nil {
-		return err
-	}
-	unsignedTx.GasFeeCap.Add(unsignedTx.GasFeeCap, l1Fee)
 
 	tx, err := types.SignNewTx(privateKey, types.LatestSignerForChainID(o.GetChainID()), unsignedTx)
 	if err != nil {
@@ -102,6 +104,7 @@ func (o *OptimismClient) Fund(
 		Str("From", o.DefaultWallet.Address()).
 		Str("To", toAddress).
 		Str("Amount", amount.String()).
+		Uint64("Estimated Gas Cost", totalEstimatedGasCost.Uint64()).
 		Msg("Funding Address")
 	if err := o.SendTransaction(context.Background(), tx); err != nil {
 		if strings.Contains(err.Error(), "nonce") {
@@ -158,8 +161,6 @@ func (o *OptimismClient) attemptReturn(fromKey *ecdsa.PrivateKey, attemptCount i
 	}
 	baseFeeMult := new(big.Int).Mul(latestHeader.BaseFee, big.NewInt(2))
 	gasFeeCap := new(big.Int).Add(baseFeeMult, suggestedGasTipCap)
-	gasFeeCap.Add(gasFeeCap, l1Fee)
-	gasFeeCap.Add(gasFeeCap, big.NewInt(int64(math.Pow(float64(attemptCount), 2)*1000))) // exponentially increase error margin
 
 	fromAddress, err := utils.PrivateKeyToAddress(fromKey)
 	if err != nil {
@@ -169,11 +170,6 @@ func (o *OptimismClient) attemptReturn(fromKey *ecdsa.PrivateKey, attemptCount i
 	if err != nil {
 		return nil, err
 	}
-	estGas, err := o.Client.EstimateGas(context.Background(), ethereum.CallMsg{})
-	if err != nil {
-		return nil, err
-	}
-	sendBalance := new(big.Int).Sub(originalBalance, new(big.Int).Mul(gasFeeCap, big.NewInt(0).SetUint64(estGas)))
 
 	nonce, err := o.GetNonce(context.Background(), fromAddress)
 	if err != nil {
@@ -183,6 +179,13 @@ func (o *OptimismClient) attemptReturn(fromKey *ecdsa.PrivateKey, attemptCount i
 	if err != nil {
 		return nil, err
 	}
+	totalEstimatedGasCost := new(big.Int).Mul(gasFeeCap, new(big.Int).SetUint64(estimatedGas))
+	buffer := big.NewInt(int64(math.Pow(float64(attemptCount), 2) * 1000000000)) // exponentially increase error margin)
+	totalEstimatedGasCost.Add(totalEstimatedGasCost, l1Fee)
+	totalEstimatedGasCost.Add(totalEstimatedGasCost, buffer)
+
+	sendBalance := new(big.Int).Sub(originalBalance, totalEstimatedGasCost)
+	sendBalance.Sub(sendBalance, totalEstimatedGasCost)
 
 	unsignedTx := &types.DynamicFeeTx{
 		ChainID:   o.GetChainID(),
@@ -190,7 +193,7 @@ func (o *OptimismClient) attemptReturn(fromKey *ecdsa.PrivateKey, attemptCount i
 		To:        &to,
 		Value:     sendBalance,
 		GasTipCap: suggestedGasTipCap, // eth_maxPriorityFeePerGas
-		GasFeeCap: gasFeeCap,          // eth_maxPriorityFeePerGas + (BASEFEE * 2) + gasOracle.GetL1Fee(txData)
+		GasFeeCap: gasFeeCap,          // maxFeePerGas = eth_maxPriorityFeePerGas + (BASEFEE * 2) + gasOracle.GetL1Fee(txData) + buffer
 		Gas:       estimatedGas,       // eth_estimateGas (51,000 for a normal Tx)
 	}
 
@@ -204,8 +207,8 @@ func (o *OptimismClient) attemptReturn(fromKey *ecdsa.PrivateKey, attemptCount i
 		Uint64("Send Amount", signedTx.Value().Uint64()).
 		Str("From", fromAddress.Hex()).
 		Uint64("L1 Fee", l1Fee.Uint64()).
-		Uint64("Total Cost", signedTx.Cost().Uint64()).
-		Uint64("GasFeeCap", signedTx.GasFeeCap().Uint64()).
+		Uint64("Buffer", buffer.Uint64()).
+		Uint64("Estimated Gas Cost", totalEstimatedGasCost.Uint64()).
 		Msg("Returning Funds to Default Wallet")
 	return signedTx, o.SendTransaction(context.Background(), signedTx)
 }

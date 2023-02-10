@@ -294,6 +294,7 @@ func (e *EthereumClient) Fund(
 		Str("From", e.DefaultWallet.Address()).
 		Str("To", toAddress).
 		Str("Amount", amount.String()).
+		Uint64("Estimated Gas Cost", new(big.Int).Mul(gasFeeCap, new(big.Int).SetUint64(estimatedGas)).Uint64()).
 		Msg("Funding Address")
 	if err := e.SendTransaction(context.Background(), tx); err != nil {
 		if strings.Contains(err.Error(), "nonce") {
