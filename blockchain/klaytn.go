@@ -72,6 +72,7 @@ func (k *KlaytnClient) Fund(
 		Str("From", k.DefaultWallet.Address()).
 		Str("To", toAddress).
 		Str("Amount", amount.String()).
+		Uint64("Estimated Gas Cost", new(big.Int).Mul(gasPrice, new(big.Int).SetUint64(estimatedGas)).Uint64()).
 		Msg("Funding Address")
 	if err := k.SendTransaction(context.Background(), tx); err != nil {
 		return err

@@ -69,6 +69,7 @@ func (m *MetisClient) Fund(toAddress string, amount *big.Float) error {
 		Str("From", m.DefaultWallet.Address()).
 		Str("To", toAddress).
 		Str("Amount", amount.String()).
+		Uint64("Estimated Gas Cost", new(big.Int).Mul(suggestedGasPrice, new(big.Int).SetUint64(estimatedGas)).Uint64()).
 		Msg("Funding Address")
 	if err := m.SendTransaction(context.Background(), tx); err != nil {
 		return err

@@ -293,10 +293,11 @@ func (e *EthereumClient) Fund(
 		Str("Token", "ETH").
 		Str("From", e.DefaultWallet.Address()).
 		Str("To", toAddress).
-		Str("Amount", amount.String()).
-		Str("Network Name", e.GetNetworkName()).
-		Str("tx", tx.Hash().String()).
+		Str("Hash", tx.Hash().Hex()).
 		Uint64("Nonce", tx.Nonce()).
+		Str("Network Name", e.GetNetworkName()).
+		Str("Amount", amount.String()).
+		Uint64("Estimated Gas Cost", new(big.Int).Mul(gasFeeCap, new(big.Int).SetUint64(estimatedGas)).Uint64()).
 		Msg("Funding Address")
 	if err := e.SendTransaction(context.Background(), tx); err != nil {
 		if strings.Contains(err.Error(), "nonce") {
