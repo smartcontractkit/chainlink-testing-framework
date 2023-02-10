@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"sync"
 
@@ -10,16 +11,21 @@ import (
 
 // Used for when running tests on a live test network, so tests can share nonces and run in parallel on the same network
 var (
-	globalNonceManager = make(map[*big.Int]*NonceSettings)
+	globalNonceManager = make(map[uint64]*NonceSettings)
+	globalNonceLock    sync.Mutex
 )
 
 // useGlobalNonceManager for when running tests on a non-simulated network
 func useGlobalNonceManager(chainId *big.Int) *NonceSettings {
-	if _, ok := globalNonceManager[chainId]; !ok {
-		globalNonceManager[chainId] = newNonceSettings()
-		go globalNonceManager[chainId].watchInstantTransactions()
+	globalNonceLock.Lock()
+	defer globalNonceLock.Unlock()
+	if _, ok := globalNonceManager[chainId.Uint64()]; !ok {
+		fmt.Printf("Using a new Global Nonce Manager for chain %d\n%v", chainId.Uint64(), globalNonceManager)
+		globalNonceManager[chainId.Uint64()] = newNonceSettings()
+		go globalNonceManager[chainId.Uint64()].watchInstantTransactions()
 	}
-	return globalNonceManager[chainId]
+
+	return globalNonceManager[chainId.Uint64()]
 }
 
 // convenience function
@@ -48,41 +54,6 @@ type NonceSettings struct {
 	instantNoncesMu     sync.Mutex
 	registerChan        chan instantTxRegistration
 	sentChan            chan string
-}
-
-// GetNonce keep tracking of nonces per address, add last nonce for addr if the map is empty
-func (e *EthereumClient) GetNonce(ctx context.Context, addr common.Address) (uint64, error) {
-	e.NonceSettings.NonceMu.Lock()
-	defer e.NonceSettings.NonceMu.Unlock()
-	if _, ok := e.NonceSettings.Nonces[addr.Hex()]; !ok {
-		pendingNonce, err := e.Client.PendingNonceAt(ctx, addr)
-		if err != nil {
-			return 0, err
-		}
-		e.NonceSettings.Nonces[addr.Hex()] = pendingNonce
-
-		e.NonceSettings.instantNoncesMu.Lock()
-		e.NonceSettings.instantNonces[addr.Hex()] = pendingNonce
-		e.NonceSettings.instantNoncesMu.Unlock()
-
-		return pendingNonce, nil
-	}
-	e.NonceSettings.Nonces[addr.Hex()]++
-	return e.NonceSettings.Nonces[addr.Hex()], nil
-}
-
-// PeekPendingNonce returns the current pending nonce for the address. Does not change any nonce settings state
-func (e *EthereumClient) PeekPendingNonce(addr common.Address) (uint64, error) {
-	e.NonceSettings.NonceMu.Lock()
-	defer e.NonceSettings.NonceMu.Unlock()
-	if _, ok := e.NonceSettings.Nonces[addr.Hex()]; !ok {
-		pendingNonce, err := e.Client.PendingNonceAt(context.Background(), addr)
-		if err != nil {
-			return 0, err
-		}
-		e.NonceSettings.Nonces[addr.Hex()] = pendingNonce
-	}
-	return e.NonceSettings.Nonces[addr.Hex()], nil
 }
 
 // watchInstantTransactions should only be called when minConfirmations for the chain is 0, generally an L2 chain.
@@ -133,6 +104,49 @@ func (ns *NonceSettings) registerInstantTransaction(fromAddr string, nonce uint6
 // See watchInstantTransactions for a deeper explanation.
 func (ns *NonceSettings) sentInstantTransaction(fromAddr string) {
 	ns.sentChan <- fromAddr
+}
+
+// GetNonce keep tracking of nonces per address, add last nonce for addr if the map is empty
+func (e *EthereumClient) GetNonce(ctx context.Context, addr common.Address) (uint64, error) {
+	e.NonceSettings.NonceMu.Lock()
+	defer e.NonceSettings.NonceMu.Unlock()
+
+	// See current state of the nonce manager, handy for debugging
+	// fmt.Println("-------Nonce Manager Current State-----------------")
+	// for address, nonce := range e.NonceSettings.Nonces {
+	// 	fmt.Printf("%s: %d\n", address, nonce)
+	// }
+	// fmt.Println("---------------------------------------------------")
+
+	if _, ok := e.NonceSettings.Nonces[addr.Hex()]; !ok {
+		pendingNonce, err := e.Client.PendingNonceAt(ctx, addr)
+		if err != nil {
+			return 0, err
+		}
+		e.NonceSettings.Nonces[addr.Hex()] = pendingNonce
+
+		e.NonceSettings.instantNoncesMu.Lock()
+		e.NonceSettings.instantNonces[addr.Hex()] = pendingNonce
+		e.NonceSettings.instantNoncesMu.Unlock()
+
+		return pendingNonce, nil
+	}
+	e.NonceSettings.Nonces[addr.Hex()]++
+	return e.NonceSettings.Nonces[addr.Hex()], nil
+}
+
+// PeekPendingNonce returns the current pending nonce for the address. Does not change any nonce settings state
+func (e *EthereumClient) PeekPendingNonce(addr common.Address) (uint64, error) {
+	e.NonceSettings.NonceMu.Lock()
+	defer e.NonceSettings.NonceMu.Unlock()
+	if _, ok := e.NonceSettings.Nonces[addr.Hex()]; !ok {
+		pendingNonce, err := e.Client.PendingNonceAt(context.Background(), addr)
+		if err != nil {
+			return 0, err
+		}
+		e.NonceSettings.Nonces[addr.Hex()] = pendingNonce
+	}
+	return e.NonceSettings.Nonces[addr.Hex()], nil
 }
 
 type instantTxRegistration struct {
