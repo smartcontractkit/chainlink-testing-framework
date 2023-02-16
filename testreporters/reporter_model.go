@@ -38,7 +38,7 @@ func WriteTeardownLogs(
 	t *testing.T,
 	env *environment.Environment,
 	optionalTestReporter TestReporter,
-	failingLogLevel zapcore.Level, // Chainlink core uses zapcore for logging
+	failingLogLevel zapcore.Level, // Chainlink core uses zapcore for logging https://docs.chain.link/chainlink-nodes/v1/configuration#log_level
 ) error {
 	logsPath := filepath.Join(DefaultArtifactsDir, fmt.Sprintf("%s-%s-%d", t.Name(), env.Cfg.Namespace, time.Now().Unix()))
 	if err := env.Artifacts.DumpTestResult(logsPath, "chainlink"); err != nil {
