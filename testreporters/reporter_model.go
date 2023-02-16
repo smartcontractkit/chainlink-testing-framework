@@ -32,7 +32,8 @@ const (
 )
 
 // WriteTeardownLogs attempts to download the logs of all ephemeral test deployments onto the test runner, also writing
-// a test report if one is provided
+// a test report if one is provided. A failing log level also enables you to fail a test based on what level logs the
+// Chainlink nodes have thrown during their test.
 func WriteTeardownLogs(
 	t *testing.T,
 	env *environment.Environment,
