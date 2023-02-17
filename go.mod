@@ -1,6 +1,6 @@
 module github.com/smartcontractkit/chainlink-testing-framework
 
-go 1.19
+go 1.20
 
 require (
 	github.com/avast/retry-go v3.0.0+incompatible
@@ -17,6 +17,7 @@ require (
 	github.com/smartcontractkit/chainlink-env v0.3.10
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/ratelimit v0.2.0
+	go.uber.org/zap v1.21.0
 	golang.org/x/sync v0.1.0
 )
 
@@ -102,6 +103,8 @@ require (
 	github.com/yuin/goldmark v1.4.13 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	go.starlark.net v0.0.0-20220817180228-f738f5508c12 // indirect
+	go.uber.org/atomic v1.7.0 // indirect
+	go.uber.org/multierr v1.6.0 // indirect
 	golang.org/x/crypto v0.1.0 // indirect
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616 // indirect
 	golang.org/x/mod v0.7.0 // indirect
