@@ -119,6 +119,9 @@ func verifyLogFile(file *os.File, failingLogLevel zapcore.Level) error {
 	for scanner.Scan() {
 		jsonLogLine := scanner.Text()
 		if !strings.HasPrefix(jsonLogLine, "{") { // don't bother with non-json lines
+			if strings.HasPrefix(jsonLogLine, "panic") { // unless it's a panic
+				return fmt.Errorf("found panic: %s", jsonLogLine)
+			}
 			continue
 		}
 		jsonMapping := map[string]any{}
