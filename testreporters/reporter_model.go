@@ -114,6 +114,10 @@ func verifyLogFile(file *os.File, failingLogLevel zapcore.Level) error {
 	// nolint
 	defer file.Close()
 
+	var (
+		zapLevel zapcore.Level
+		err      error
+	)
 	scanner := bufio.NewScanner(file)
 	scanner.Split(bufio.ScanLines)
 	for scanner.Scan() {
@@ -126,17 +130,23 @@ func verifyLogFile(file *os.File, failingLogLevel zapcore.Level) error {
 		}
 		jsonMapping := map[string]any{}
 
-		if err := json.Unmarshal([]byte(jsonLogLine), &jsonMapping); err != nil {
+		if err = json.Unmarshal([]byte(jsonLogLine), &jsonMapping); err != nil {
 			return err
 		}
 		logLevel, ok := jsonMapping["level"].(string)
 		if !ok {
 			return fmt.Errorf("found no log level in chainlink log line: %s", jsonLogLine)
 		}
-		zapLevel, err := zapcore.ParseLevel(logLevel)
-		if err != nil {
-			return fmt.Errorf("'%s' not a valid zapcore level", logLevel)
+
+		if logLevel == "crit" { // "crit" is a custom core type they map to DPanic
+			zapLevel = zapcore.DPanicLevel
+		} else {
+			zapLevel, err = zapcore.ParseLevel(logLevel)
+			if err != nil {
+				return fmt.Errorf("'%s' not a valid zapcore level", logLevel)
+			}
 		}
+
 		if zapLevel > failingLogLevel {
 			return fmt.Errorf("found log at level '%s', failing any log level higher than %s: %s", logLevel, zapLevel.String(), jsonLogLine)
 		}
