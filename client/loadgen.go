@@ -5,8 +5,11 @@ import (
 	"errors"
 	"sync"
 	"sync/atomic"
+	"testing"
 	"time"
 
+	"github.com/prometheus/common/model"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"go.uber.org/ratelimit"
 )
@@ -35,17 +38,19 @@ type LoadTestable interface {
 
 // CallResult represents basic call result info
 type CallResult struct {
-	Duration time.Duration
-	Data     interface{}
-	Error    error
+	Failed   bool          `json:"failed"`
+	Timeout  bool          `json:"timeout"`
+	Duration time.Duration `json:"duration"`
+	Data     interface{}   `json:"data"`
+	Error    string        `json:"error,omitempty"`
 }
 
 // LoadSchedule load test schedule
 type LoadSchedule struct {
-	StartRPS      int
-	IncreaseRPS   int
+	StartRPS      int64
+	IncreaseRPS   int64
 	IncreaseAfter time.Duration
-	HoldRPS       int
+	HoldRPS       int64
 }
 
 func (ls *LoadSchedule) Validate() error {
@@ -66,18 +71,23 @@ func (ls *LoadSchedule) Validate() error {
 
 // LoadGeneratorConfig is for shared load test data and configuration
 type LoadGeneratorConfig struct {
-	RPS                  int
-	Schedule             *LoadSchedule
-	Duration             time.Duration
-	StatsPollInterval    time.Duration
-	CallFailThreshold    int64
-	CallTimeoutThreshold int64
-	CallTimeout          time.Duration
-	Gun                  LoadTestable
-	SharedData           interface{}
+	T                 *testing.T
+	Labels            map[string]string
+	LokiConfig        *LokiConfig
+	RPS               int64
+	Schedule          *LoadSchedule
+	Duration          time.Duration
+	StatsPollInterval time.Duration
+	CallTimeout       time.Duration
+	Gun               LoadTestable
+	Logger            zerolog.Logger
+	SharedData        interface{}
 }
 
 func (lgc *LoadGeneratorConfig) Validate() error {
+	if lgc.Schedule != nil {
+		lgc.RPS = lgc.Schedule.StartRPS
+	}
 	if lgc.RPS == 0 {
 		return ErrStaticRPS
 	}
@@ -98,9 +108,12 @@ func (lgc *LoadGeneratorConfig) Validate() error {
 
 // GeneratorStats basic generator load stats
 type GeneratorStats struct {
-	Success     atomic.Int64
-	Failed      atomic.Int64
-	CallTimeout atomic.Int64
+	CurrentRPS  atomic.Int64 `json:"currentRPS"`
+	RunStopped  atomic.Bool  `json:"runStopped"`
+	RunFailed   atomic.Bool  `json:"runFailed"`
+	Success     atomic.Int64 `json:"success"`
+	Failed      atomic.Int64 `json:"failed"`
+	CallTimeout atomic.Int64 `json:"callTimeout"`
 }
 
 // ResponseData includes any request/response data that a gun might store
@@ -115,22 +128,23 @@ type ResponseData struct {
 	FailResponses   []CallResult
 }
 
-// LoadGenerator generates load on chain with some RPS
+// LoadGenerator generates load with some RPS
 type LoadGenerator struct {
-	cfg           *LoadGeneratorConfig
-	rl            ratelimit.Limiter
-	currentRPS    int
-	schedule      *LoadSchedule
-	wg            *sync.WaitGroup
-	ctx           context.Context
-	cancel        context.CancelFunc
-	gun           LoadTestable
-	responsesData *ResponseData
-	errsMu        *sync.Mutex
-	errs          []error
-	stopped       atomic.Bool
-	failed        atomic.Bool
-	stats         *GeneratorStats
+	cfg               *LoadGeneratorConfig
+	log               zerolog.Logger
+	labels            model.LabelSet
+	rl                ratelimit.Limiter
+	schedule          *LoadSchedule
+	wg                *sync.WaitGroup
+	ctx               context.Context
+	cancel            context.CancelFunc
+	gun               LoadTestable
+	responsesData     *ResponseData
+	errsMu            *sync.Mutex
+	errs              []string
+	stats             *GeneratorStats
+	loki              *LokiClient
+	lokiResponsesChan chan interface{}
 }
 
 // NewLoadGenerator creates a new instance for a contract,
@@ -139,16 +153,35 @@ func NewLoadGenerator(cfg *LoadGeneratorConfig) (*LoadGenerator, error) {
 	if cfg == nil {
 		return nil, ErrNoCfg
 	}
-	if err := cfg.Validate(); err != nil {
-		return nil, err
-	}
 	if cfg.Schedule != nil {
 		if err := cfg.Schedule.Validate(); err != nil {
 			return nil, err
 		}
 	}
-	rl := ratelimit.New(cfg.RPS)
+	if err := cfg.Validate(); err != nil {
+		return nil, err
+	}
+	rl := ratelimit.New(int(cfg.RPS))
+	var loki *LokiClient
+	var err error
+	if cfg.LokiConfig != nil {
+		loki, err = NewLokiClient(cfg.LokiConfig)
+		if err != nil {
+			return nil, err
+		}
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.Duration)
+	ls := model.LabelSet{}
+	for k, v := range cfg.Labels {
+		ls[model.LabelName(k)] = model.LabelValue(v)
+	}
+	// we either creating logger from *testing.T context or using a global logger
+	var l zerolog.Logger
+	if cfg.T != nil {
+		l = zerolog.New(zerolog.NewConsoleWriter(zerolog.ConsoleTestWriter(cfg.T)))
+	} else {
+		l = log.Logger
+	}
 	return &LoadGenerator{
 		cfg:      cfg,
 		schedule: cfg.Schedule,
@@ -157,6 +190,7 @@ func NewLoadGenerator(cfg *LoadGeneratorConfig) (*LoadGenerator, error) {
 		ctx:      ctx,
 		cancel:   cancel,
 		gun:      cfg.Gun,
+		labels:   ls,
 		responsesData: &ResponseData{
 			okDataMu:        &sync.Mutex{},
 			OKData:          make([]interface{}, 0),
@@ -165,10 +199,74 @@ func NewLoadGenerator(cfg *LoadGeneratorConfig) (*LoadGenerator, error) {
 			failResponsesMu: &sync.Mutex{},
 			FailResponses:   make([]CallResult, 0),
 		},
-		errsMu: &sync.Mutex{},
-		errs:   make([]error, 0),
-		stats:  &GeneratorStats{},
+		errsMu:            &sync.Mutex{},
+		errs:              make([]string, 0),
+		stats:             &GeneratorStats{},
+		loki:              loki,
+		log:               l,
+		lokiResponsesChan: make(chan interface{}, 10),
 	}, nil
+}
+
+func (l *LoadGenerator) handleLokiResponsePayload(cr interface{}) {
+	ls := l.labels.Merge(model.LabelSet{
+		"go_test_name":   model.LabelValue(l.cfg.T.Name()),
+		"test_data_type": "responses",
+	})
+	err := l.loki.HandleStruct(ls, time.Now(), cr)
+	if err != nil {
+		l.log.Err(err).Send()
+	}
+}
+
+func (l *LoadGenerator) handleLokiStatsPayload() {
+	ls := l.labels.Merge(model.LabelSet{
+		"go_test_name":   model.LabelValue(l.cfg.T.Name()),
+		"test_data_type": "stats",
+	})
+	err := l.loki.HandleStruct(ls, time.Now(), l.StatsJSON())
+	if err != nil {
+		l.log.Err(err).Send()
+	}
+}
+
+func (l *LoadGenerator) runLokiPromtailResponses() {
+	if l.cfg.LokiConfig == nil {
+		return
+	}
+	l.log.Info().Str("URL", l.cfg.LokiConfig.URL).Msg("Streaming data to Loki")
+	go func() {
+		for {
+			select {
+			case <-l.ctx.Done():
+				for r := range l.lokiResponsesChan {
+					l.handleLokiResponsePayload(r)
+				}
+				close(l.lokiResponsesChan)
+				l.loki.Stop()
+				return
+			case r := <-l.lokiResponsesChan:
+				l.handleLokiResponsePayload(r)
+			}
+		}
+	}()
+}
+
+func (l *LoadGenerator) runLokiPromtailStats() {
+	if l.cfg.LokiConfig == nil {
+		return
+	}
+	go func() {
+		for {
+			select {
+			case <-l.ctx.Done():
+				return
+			default:
+				time.Sleep(l.cfg.StatsPollInterval)
+				l.handleLokiStatsPayload()
+			}
+		}
+	}()
 }
 
 // runSchedule runs scheduling loop, changes LoadGenerator.currentRPS according to a load schedule
@@ -176,23 +274,25 @@ func (l *LoadGenerator) runSchedule() {
 	if l.schedule == nil {
 		return
 	}
-	l.rl = ratelimit.New(l.schedule.StartRPS)
-	l.currentRPS = l.schedule.StartRPS
+	l.wg.Add(1)
+	l.rl = ratelimit.New(int(l.schedule.StartRPS))
+	l.stats.CurrentRPS.Store(l.schedule.StartRPS)
 	go func() {
 		for {
 			select {
 			case <-l.ctx.Done():
+				l.wg.Done()
 				return
 			default:
 				time.Sleep(l.schedule.IncreaseAfter)
-				newRPS := l.currentRPS + l.schedule.IncreaseRPS
+				newRPS := l.stats.CurrentRPS.Load() + l.schedule.IncreaseRPS
 				if newRPS > l.schedule.HoldRPS {
-					log.Info().Int("RPS", l.currentRPS).Msg("Holding RPS")
+					l.log.Info().Int64("RPS", l.stats.CurrentRPS.Load()).Msg("Holding RPS")
 					continue
 				}
-				l.rl = ratelimit.New(newRPS)
-				l.currentRPS = newRPS
-				log.Info().Int("RPS", l.currentRPS).Msg("Increasing RPS")
+				l.rl = ratelimit.New(int(newRPS))
+				l.stats.CurrentRPS.Store(newRPS)
+				l.log.Info().Int64("RPS", l.stats.CurrentRPS.Load()).Msg("Increasing RPS")
 			}
 		}
 	}()
@@ -201,7 +301,7 @@ func (l *LoadGenerator) runSchedule() {
 // pacedCall calls a gun according to a schedule or plain RPS
 func (l *LoadGenerator) pacedCall() {
 	l.rl.Take()
-	if l.stopped.Load() {
+	if l.stats.RunStopped.Load() {
 		return
 	}
 	l.wg.Add(1)
@@ -214,22 +314,30 @@ func (l *LoadGenerator) pacedCall() {
 	go func() {
 		select {
 		case <-ctx.Done():
-			l.stopped.Store(true)
-			l.failed.Store(true)
+			cr := CallResult{Duration: time.Since(callStartTS), Timeout: true, Failed: true, Error: ErrCallTimeout.Error()}
+			if l.cfg.LokiConfig != nil {
+				l.lokiResponsesChan <- cr
+			}
+			l.stats.RunFailed.Store(true)
 			l.stats.CallTimeout.Add(1)
-			l.stats.Failed.Add(1)
 
 			l.errsMu.Lock()
 			defer l.errsMu.Unlock()
-			l.errs = append(l.errs, ErrCallTimeout)
+			l.errs = append(l.errs, ErrCallTimeout.Error())
+
 			l.responsesData.failResponsesMu.Lock()
 			defer l.responsesData.failResponsesMu.Unlock()
-			l.responsesData.FailResponses = append(l.responsesData.FailResponses, CallResult{Duration: time.Since(callStartTS), Error: ErrCallTimeout})
-			log.Err(ctx.Err()).Msg("load generator transaction timeout")
+			l.responsesData.FailResponses = append(l.responsesData.FailResponses, cr)
+
+			l.log.Err(ctx.Err()).Msg("load generator transaction timeout")
 		case res := <-result:
 			defer close(result)
 			res.Duration = time.Since(callStartTS)
-			if res.Error != nil {
+			if l.cfg.LokiConfig != nil {
+				l.lokiResponsesChan <- res
+			}
+			if res.Error != "" {
+				l.stats.RunFailed.Store(true)
 				l.stats.Failed.Add(1)
 
 				l.errsMu.Lock()
@@ -239,7 +347,7 @@ func (l *LoadGenerator) pacedCall() {
 				defer l.responsesData.failResponsesMu.Unlock()
 				l.responsesData.FailResponses = append(l.responsesData.FailResponses, res)
 
-				log.Err(res.Error).Msg("load generator request failed")
+				l.log.Error().Str("Err", res.Error).Msg("load generator request failed")
 			} else {
 				l.stats.Success.Add(1)
 				l.responsesData.okDataMu.Lock()
@@ -257,26 +365,25 @@ func (l *LoadGenerator) pacedCall() {
 
 // Run runs load loop until timeout or stop
 func (l *LoadGenerator) Run() {
-	log.Info().Msg("Load generator started")
+	l.log.Info().Msg("Load generator started")
+	l.stats.CurrentRPS.Store(l.cfg.RPS)
+
 	l.printStatsLoop()
+	l.runSchedule()
+	l.runLokiPromtailResponses()
+	l.runLokiPromtailStats()
+
 	l.wg.Add(1)
-	go l.runSchedule()
 	go func() {
 		for {
 			select {
 			case <-l.ctx.Done():
-				log.Info().Msg("Load generator stopped, waiting for requests to finish")
+				l.log.Info().Msg("Load generator stopped, waiting for requests to finish")
+				l.PrintStats()
 				l.wg.Done()
 				l.wg.Wait()
-				log.Info().Msg("Load generator exited")
-				l.PrintStats()
 				return
 			default:
-				if l.stats.Failed.Load() > l.cfg.CallFailThreshold || l.stats.CallTimeout.Load() > l.cfg.CallTimeoutThreshold {
-					l.cancel()
-					l.failed.Store(true)
-					log.Info().Msg("Test reached failed requests threshold")
-				}
 				l.pacedCall()
 			}
 		}
@@ -287,17 +394,17 @@ func (l *LoadGenerator) Run() {
 func (l *LoadGenerator) Stop() (interface{}, bool) {
 	l.cancel()
 	l.wg.Wait()
-	return l.GetData(), l.failed.Load()
+	return l.GetData(), l.stats.RunFailed.Load()
 }
 
 // Wait waits until test ends
 func (l *LoadGenerator) Wait() (interface{}, bool) {
 	l.wg.Wait()
-	return l.GetData(), l.failed.Load()
+	return l.GetData(), l.stats.RunFailed.Load()
 }
 
 // Errors get all calls errors
-func (l *LoadGenerator) Errors() []error {
+func (l *LoadGenerator) Errors() []string {
 	return l.errs
 }
 
@@ -311,25 +418,39 @@ func (l *LoadGenerator) Stats() *GeneratorStats {
 	return l.stats
 }
 
+// StatsJSON get all load stats for export
+func (l *LoadGenerator) StatsJSON() map[string]interface{} {
+	return map[string]interface{}{
+		"current_rps": l.stats.CurrentRPS.Load(),
+		"run_stopped": l.stats.RunStopped.Load(),
+		"run_failed":  l.stats.RunFailed.Load(),
+		"failed":      l.stats.Failed.Load(),
+		"success":     l.stats.Success.Load(),
+		"callTimeout": l.stats.CallTimeout.Load(),
+	}
+}
+
 // PrintStats prints some runtime LoadGenerator.stats
 func (l *LoadGenerator) PrintStats() {
-	log.Info().
+	l.log.Info().
 		Int64("Success", l.stats.Success.Load()).
 		Int64("Failed", l.stats.Failed.Load()).
 		Int64("CallTimeout", l.stats.CallTimeout.Load()).
-		Msg("On-chain load stats")
+		Msg("Final load stats")
 }
 
 // printStatsLoop prints stats periodically, with LoadGeneratorConfig.StatsPollInterval
 func (l *LoadGenerator) printStatsLoop() {
+	l.wg.Add(1)
 	go func() {
 		for {
 			select {
 			case <-l.ctx.Done():
+				l.wg.Done()
 				return
 			default:
 				time.Sleep(l.cfg.StatsPollInterval)
-				log.Info().
+				l.log.Info().
 					Int64("Success", l.stats.Success.Load()).
 					Int64("Failed", l.stats.Failed.Load()).
 					Int64("CallTimeout", l.stats.CallTimeout.Load()).

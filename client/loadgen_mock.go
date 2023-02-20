@@ -1,21 +1,27 @@
 package client
 
 import (
-	"errors"
+	"math/rand"
 	"time"
 )
 
+// MockGunConfig configures a mock gun
 type MockGunConfig struct {
-	Fail        bool
-	CallSleep   time.Duration
-	VerifySleep time.Duration
+	// FailRatio in percentage, 0-100
+	FailRatio int
+	// TimeoutRatio in percentage, 0-100
+	TimeoutRatio int
+	// CallSleep time spent waiting inside a call
+	CallSleep time.Duration
 }
 
+// MockGun is a mock gun
 type MockGun struct {
 	cfg  *MockGunConfig
 	Data []string
 }
 
+// NewMockGun create a mock gun
 func NewMockGun(cfg *MockGunConfig) *MockGun {
 	return &MockGun{
 		cfg:  cfg,
@@ -25,8 +31,20 @@ func NewMockGun(cfg *MockGunConfig) *MockGun {
 
 func (m *MockGun) Call(data interface{}) CallResult {
 	time.Sleep(m.cfg.CallSleep)
-	if m.cfg.Fail {
-		return CallResult{Data: "failedCallData", Error: errors.New("error")}
+	if m.cfg.FailRatio > 0 && m.cfg.FailRatio <= 100 {
+		//nolint
+		r := rand.Intn(100)
+		if r <= m.cfg.FailRatio {
+			return CallResult{Data: "failedCallData", Error: "error", Failed: true}
+		}
+	}
+	if m.cfg.TimeoutRatio > 0 && m.cfg.TimeoutRatio <= 100 {
+		//nolint
+		r := rand.Intn(100)
+		if r <= m.cfg.TimeoutRatio {
+			time.Sleep(m.cfg.CallSleep + 100*time.Millisecond)
+			return CallResult{}
+		}
 	}
 	return CallResult{Data: "successCallData"}
 }
