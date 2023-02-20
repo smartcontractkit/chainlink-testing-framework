@@ -11,7 +11,7 @@ require (
 	github.com/lib/pq v1.10.7
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.14.0
-	github.com/prometheus/common v0.39.0
+	github.com/prometheus/common v0.40.0
 	github.com/rs/zerolog v1.29.0
 	github.com/slack-go/slack v0.12.1
 	github.com/smartcontractkit/chainlink-env v0.3.10
