@@ -16,19 +16,20 @@ import (
 
 const (
 	DefaultCallTimeout       = 1 * time.Minute
-	DefaultStatsPollInterval = 10 * time.Second
+	DefaultStatsPollInterval = 5 * time.Second
 	UntilStopDuration        = 99999 * time.Hour
 )
 
 var (
-	ErrNoCfg                 = errors.New("config is nil")
-	ErrNoGun                 = errors.New("no gun implementation provided")
-	ErrStaticRPS             = errors.New("static RPS must be > 0")
-	ErrCallTimeout           = errors.New("generator request call timeout")
-	ErrStartRPS              = errors.New("StartRPS must be > 0")
-	ErrIncreaseRPS           = errors.New("IncreaseRPS must be > 0")
-	ErrIncreaseAfterDuration = errors.New("IncreaseAfter must be > 1sec")
-	ErrHoldRPS               = errors.New("HoldRPS must be > 0")
+	ErrNoCfg         = errors.New("config is nil")
+	ErrNoImpl        = errors.New("either \"gun\" or \"instance\" implementation must provided")
+	ErrStaticRPS     = errors.New("static RPS must be > 0")
+	ErrCallTimeout   = errors.New("generator request call timeout")
+	ErrStartFrom     = errors.New("StartFrom must be > 0")
+	ErrIncrease      = errors.New("increase must be > 0")
+	ErrStageInterval = errors.New("stage interval must be > 1sec")
+	ErrScheduleLimit = errors.New("limit must be > 0")
+	ErrScheduleType  = errors.New("schedule type must be \"rps_schedule\" or \"instance_schedule\"")
 )
 
 // LoadTestable is basic interface to run limited load with a contract call and save all transactions
@@ -36,36 +37,52 @@ type LoadTestable interface {
 	Call(data interface{}) CallResult
 }
 
+// LoadInstance is basic interface to run load instances
+type LoadInstance interface {
+	Run(data interface{}, responses chan CallResult)
+}
+
 // CallResult represents basic call result info
 type CallResult struct {
-	Failed   bool          `json:"failed"`
-	Timeout  bool          `json:"timeout"`
-	Duration time.Duration `json:"duration"`
-	Data     interface{}   `json:"data"`
-	Error    string        `json:"error,omitempty"`
+	Failed     bool          `json:"failed"`
+	Timeout    bool          `json:"timeout"`
+	Duration   time.Duration `json:"duration"`
+	StartedAt  time.Time     `json:"started_at"`
+	FinishedAt time.Time     `json:"finished_at"`
+	Data       interface{}   `json:"data"`
+	Error      string        `json:"error,omitempty"`
 }
+
+const (
+	RPSScheduleType       string = "rps_schedule"
+	InstancesScheduleType string = "instance_schedule"
+)
 
 // LoadSchedule load test schedule
 type LoadSchedule struct {
-	StartRPS      int64
-	IncreaseRPS   int64
-	IncreaseAfter time.Duration
-	HoldRPS       int64
+	Type          string
+	StartFrom     int64
+	Increase      int64
+	StageInterval time.Duration
+	Limit         int64
 }
 
 func (ls *LoadSchedule) Validate() error {
-	if ls.StartRPS <= 0 {
-		return ErrStartRPS
+	if ls.Type != RPSScheduleType && ls.Type != InstancesScheduleType {
+		return ErrScheduleType
 	}
-	if ls.IncreaseRPS <= 0 {
-		return ErrIncreaseRPS
+	if ls.StartFrom <= 0 {
+		return ErrStartFrom
 	}
-	if ls.HoldRPS <= 0 {
-		return ErrHoldRPS
-	}
-	if ls.IncreaseAfter < 1 {
-		return ErrIncreaseAfterDuration
-	}
+	//if ls.Increase <= 0 {
+	//	return ErrIncrease
+	//}
+	//if ls.Limit <= 0 {
+	//	return ErrScheduleLimit
+	//}
+	//if ls.StageInterval < 1*time.Second {
+	//	return ErrStageInterval
+	//}
 	return nil
 }
 
@@ -80,13 +97,14 @@ type LoadGeneratorConfig struct {
 	StatsPollInterval time.Duration
 	CallTimeout       time.Duration
 	Gun               LoadTestable
+	Instance          LoadInstance
 	Logger            zerolog.Logger
 	SharedData        interface{}
 }
 
 func (lgc *LoadGeneratorConfig) Validate() error {
 	if lgc.Schedule != nil {
-		lgc.RPS = lgc.Schedule.StartRPS
+		lgc.RPS = lgc.Schedule.StartFrom
 	}
 	if lgc.RPS == 0 {
 		return ErrStaticRPS
@@ -100,20 +118,21 @@ func (lgc *LoadGeneratorConfig) Validate() error {
 	if lgc.StatsPollInterval == 0 {
 		lgc.StatsPollInterval = DefaultStatsPollInterval
 	}
-	if lgc.Gun == nil {
-		return ErrNoGun
+	if lgc.Gun == nil && lgc.Instance == nil {
+		return ErrNoImpl
 	}
 	return nil
 }
 
 // GeneratorStats basic generator load stats
 type GeneratorStats struct {
-	CurrentRPS  atomic.Int64 `json:"currentRPS"`
-	RunStopped  atomic.Bool  `json:"runStopped"`
-	RunFailed   atomic.Bool  `json:"runFailed"`
-	Success     atomic.Int64 `json:"success"`
-	Failed      atomic.Int64 `json:"failed"`
-	CallTimeout atomic.Int64 `json:"callTimeout"`
+	CurrentRPS       atomic.Int64 `json:"currentRPS"`
+	CurrentInstances atomic.Int64 `json:"currentInstances"`
+	RunStopped       atomic.Bool  `json:"runStopped"`
+	RunFailed        atomic.Bool  `json:"runFailed"`
+	Success          atomic.Int64 `json:"success"`
+	Failed           atomic.Int64 `json:"failed"`
+	CallTimeout      atomic.Int64 `json:"callTimeout"`
 }
 
 // ResponseData includes any request/response data that a gun might store
@@ -130,21 +149,23 @@ type ResponseData struct {
 
 // LoadGenerator generates load with some RPS
 type LoadGenerator struct {
-	cfg               *LoadGeneratorConfig
-	log               zerolog.Logger
-	labels            model.LabelSet
-	rl                ratelimit.Limiter
-	schedule          *LoadSchedule
-	wg                *sync.WaitGroup
-	ctx               context.Context
-	cancel            context.CancelFunc
-	gun               LoadTestable
-	responsesData     *ResponseData
-	errsMu            *sync.Mutex
-	errs              []string
-	stats             *GeneratorStats
-	loki              *LokiClient
-	lokiResponsesChan chan interface{}
+	cfg                  *LoadGeneratorConfig
+	log                  zerolog.Logger
+	labels               model.LabelSet
+	rl                   ratelimit.Limiter
+	schedule             *LoadSchedule
+	wg                   *sync.WaitGroup
+	ctx                  context.Context
+	cancel               context.CancelFunc
+	gun                  LoadTestable
+	instance             LoadInstance
+	instanceResponseChan chan CallResult
+	responsesData        *ResponseData
+	errsMu               *sync.Mutex
+	errs                 []string
+	stats                *GeneratorStats
+	loki                 *LokiClient
+	lokiResponsesChan    chan interface{}
 }
 
 // NewLoadGenerator creates a new instance for a contract,
@@ -183,14 +204,16 @@ func NewLoadGenerator(cfg *LoadGeneratorConfig) (*LoadGenerator, error) {
 		l = log.Logger
 	}
 	return &LoadGenerator{
-		cfg:      cfg,
-		schedule: cfg.Schedule,
-		rl:       rl,
-		wg:       &sync.WaitGroup{},
-		ctx:      ctx,
-		cancel:   cancel,
-		gun:      cfg.Gun,
-		labels:   ls,
+		cfg:                  cfg,
+		schedule:             cfg.Schedule,
+		rl:                   rl,
+		wg:                   &sync.WaitGroup{},
+		ctx:                  ctx,
+		cancel:               cancel,
+		gun:                  cfg.Gun,
+		instance:             cfg.Instance,
+		instanceResponseChan: make(chan CallResult),
+		labels:               ls,
 		responsesData: &ResponseData{
 			okDataMu:        &sync.Mutex{},
 			OKData:          make([]interface{}, 0),
@@ -275,8 +298,8 @@ func (l *LoadGenerator) runSchedule() {
 		return
 	}
 	l.wg.Add(1)
-	l.rl = ratelimit.New(int(l.schedule.StartRPS))
-	l.stats.CurrentRPS.Store(l.schedule.StartRPS)
+	l.rl = ratelimit.New(int(l.schedule.StartFrom))
+	l.stats.CurrentRPS.Store(l.schedule.StartFrom)
 	go func() {
 		for {
 			select {
@@ -284,15 +307,76 @@ func (l *LoadGenerator) runSchedule() {
 				l.wg.Done()
 				return
 			default:
-				time.Sleep(l.schedule.IncreaseAfter)
-				newRPS := l.stats.CurrentRPS.Load() + l.schedule.IncreaseRPS
-				if newRPS > l.schedule.HoldRPS {
-					l.log.Info().Int64("RPS", l.stats.CurrentRPS.Load()).Msg("Holding RPS")
-					continue
+				time.Sleep(l.schedule.StageInterval)
+				switch l.cfg.Schedule.Type {
+				case RPSScheduleType:
+					newRPS := l.stats.CurrentRPS.Load() + l.schedule.Increase
+					if newRPS > l.schedule.Limit {
+						//l.log.Info().Int64("RPS", l.stats.CurrentRPS.Load()).Msg("Holding RPS")
+						continue
+					}
+					l.rl = ratelimit.New(int(newRPS))
+					l.stats.CurrentRPS.Store(newRPS)
+					//l.log.Info().Int64("RPS", l.stats.CurrentRPS.Load()).Msg("Increasing RPS")
+				case InstancesScheduleType:
+					newInstances := l.stats.CurrentInstances.Load() + l.schedule.Increase
+					if newInstances > l.schedule.Limit {
+						//l.log.Info().Int64("Instances", l.stats.CurrentInstances.Load()).Msg("Holding instances")
+						continue
+					}
+					l.stats.CurrentInstances.Store(newInstances)
+					for i := 0; i < int(newInstances); i++ {
+						l.instance.Run(l.cfg.SharedData, l.instanceResponseChan)
+					}
+					//l.log.Info().Int64("Instances", l.stats.CurrentInstances.Load()).Msg("Increasing instances")
 				}
-				l.rl = ratelimit.New(int(newRPS))
-				l.stats.CurrentRPS.Store(newRPS)
-				l.log.Info().Int64("RPS", l.stats.CurrentRPS.Load()).Msg("Increasing RPS")
+			}
+		}
+	}()
+}
+
+func (l *LoadGenerator) collectData() {
+	if l.stats.RunStopped.Load() {
+		return
+	}
+	l.wg.Add(1)
+	go func() {
+		defer l.wg.Done()
+		for {
+			select {
+			case <-l.ctx.Done():
+				return
+			case res := <-l.instanceResponseChan:
+				if res.StartedAt.IsZero() {
+					log.Error().Msg("StartedAt is not set in instance implementation")
+				}
+				res.FinishedAt = time.Now()
+				res.Duration = time.Since(res.StartedAt)
+
+				if l.cfg.LokiConfig != nil {
+					l.lokiResponsesChan <- res
+				}
+				if res.Error != "" {
+					l.stats.RunFailed.Store(true)
+					l.stats.Failed.Add(1)
+
+					l.errsMu.Lock()
+					l.responsesData.failResponsesMu.Lock()
+					l.errs = append(l.errs, res.Error)
+					l.responsesData.FailResponses = append(l.responsesData.FailResponses, res)
+					l.errsMu.Unlock()
+					l.responsesData.failResponsesMu.Unlock()
+
+					l.log.Error().Str("Err", res.Error).Msg("load generator request failed")
+				} else {
+					l.stats.Success.Add(1)
+					l.responsesData.okDataMu.Lock()
+					l.responsesData.OKData = append(l.responsesData.OKData, res.Data)
+					l.responsesData.okResponsesMu.Lock()
+					l.responsesData.OKResponses = append(l.responsesData.OKResponses, res)
+					l.responsesData.okDataMu.Unlock()
+					l.responsesData.okResponsesMu.Unlock()
+				}
 			}
 		}
 	}()
@@ -304,14 +388,20 @@ func (l *LoadGenerator) pacedCall() {
 	if l.stats.RunStopped.Load() {
 		return
 	}
-	l.wg.Add(1)
 	result := make(chan CallResult)
 	ctx, cancel := context.WithTimeout(context.Background(), l.cfg.CallTimeout)
 	callStartTS := time.Now()
 	go func() {
-		result <- l.gun.Call(l.cfg.SharedData)
+		select {
+		case result <- l.gun.Call(l.cfg.SharedData):
+		case <-ctx.Done():
+			// TODO: send timeout here
+			return
+		}
 	}()
+	l.wg.Add(1)
 	go func() {
+		defer l.wg.Done()
 		select {
 		case <-ctx.Done():
 			cr := CallResult{Duration: time.Since(callStartTS), Timeout: true, Failed: true, Error: ErrCallTimeout.Error()}
@@ -359,7 +449,6 @@ func (l *LoadGenerator) pacedCall() {
 			}
 		}
 		cancel()
-		l.wg.Done()
 	}()
 }
 
@@ -372,22 +461,25 @@ func (l *LoadGenerator) Run() {
 	l.runSchedule()
 	l.runLokiPromtailResponses()
 	l.runLokiPromtailStats()
+	l.collectData()
 
-	l.wg.Add(1)
-	go func() {
-		for {
-			select {
-			case <-l.ctx.Done():
-				l.log.Info().Msg("Load generator stopped, waiting for requests to finish")
-				l.PrintStats()
-				l.wg.Done()
-				l.wg.Wait()
-				return
-			default:
-				l.pacedCall()
+	if l.cfg.Schedule.Type == RPSScheduleType {
+		l.wg.Add(1)
+		go func() {
+			for {
+				select {
+				case <-l.ctx.Done():
+					l.log.Info().Msg("Load generator stopped, waiting for requests to finish")
+					l.PrintStats()
+					l.wg.Done()
+					l.wg.Wait()
+					return
+				default:
+					l.pacedCall()
+				}
 			}
-		}
-	}()
+		}()
+	}
 }
 
 // Stop stops load generator, waiting for all calls for either finish or timeout
@@ -421,12 +513,13 @@ func (l *LoadGenerator) Stats() *GeneratorStats {
 // StatsJSON get all load stats for export
 func (l *LoadGenerator) StatsJSON() map[string]interface{} {
 	return map[string]interface{}{
-		"current_rps": l.stats.CurrentRPS.Load(),
-		"run_stopped": l.stats.RunStopped.Load(),
-		"run_failed":  l.stats.RunFailed.Load(),
-		"failed":      l.stats.Failed.Load(),
-		"success":     l.stats.Success.Load(),
-		"callTimeout": l.stats.CallTimeout.Load(),
+		"current_rps":       l.stats.CurrentRPS.Load(),
+		"current_instances": l.stats.CurrentInstances.Load(),
+		"run_stopped":       l.stats.RunStopped.Load(),
+		"run_failed":        l.stats.RunFailed.Load(),
+		"failed":            l.stats.Failed.Load(),
+		"success":           l.stats.Success.Load(),
+		"callTimeout":       l.stats.CallTimeout.Load(),
 	}
 }
 
