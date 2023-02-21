@@ -61,6 +61,28 @@ func (em *MockserverClient) ClearExpectation(body interface{}) error {
 	return err
 }
 
+// SetRandomValuePath sets a random int value for a path
+func (em *MockserverClient) SetRandomValuePath(path string) error {
+	sanitizedPath := strings.ReplaceAll(path, "/", "_")
+	log.Debug().Str("ID", fmt.Sprintf("%s_mock_id", sanitizedPath)).
+		Str("Path", path).
+		Msg("Setting Random Value Mock Server Path")
+	initializer := HttpInitializerTemplate{
+		Id:      fmt.Sprintf("%s_mock_id", sanitizedPath),
+		Request: HttpRequest{Path: path},
+		Response: HttpResponseTemplate{
+			Template:     "return { statusCode: 200, body: JSON.stringify({id: '', error: null, data: { result: Math.floor(Math.random() * (1000 - 900) + 900) } }) }",
+			TemplateType: "JAVASCRIPT",
+		},
+	}
+	initializers := []HttpInitializerTemplate{initializer}
+	resp, err := em.APIClient.R().SetBody(&initializers).Put("/expectation")
+	if resp.StatusCode() != http.StatusCreated {
+		err = fmt.Errorf("status code expected %d got %d", http.StatusCreated, resp.StatusCode())
+	}
+	return err
+}
+
 // SetValuePath sets an int for a path
 func (em *MockserverClient) SetValuePath(path string, v int) error {
 	sanitizedPath := strings.ReplaceAll(path, "/", "_")
@@ -142,6 +164,19 @@ type HttpInitializer struct {
 	Id       string       `json:"id"`
 	Request  HttpRequest  `json:"httpRequest"`
 	Response HttpResponse `json:"httpResponse"`
+}
+
+// HttpResponse represents the httpResponse json object used in the mockserver initializer
+type HttpResponseTemplate struct {
+	Template     string `json:"template"`
+	TemplateType string `json:"templateType"`
+}
+
+// HttpInitializer represents an element of the initializer array used in the mockserver initializer
+type HttpInitializerTemplate struct {
+	Id       string               `json:"id"`
+	Request  HttpRequest          `json:"httpRequest"`
+	Response HttpResponseTemplate `json:"httpResponseTemplate"`
 }
 
 // For OTPE - weiwatchers
