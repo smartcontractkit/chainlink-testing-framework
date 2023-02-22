@@ -29,7 +29,7 @@ func NewMockGun(cfg *MockGunConfig) *MockGun {
 	}
 }
 
-func (m *MockGun) Call(data interface{}) CallResult {
+func (m *MockGun) Call(l *LoadGenerator) CallResult {
 	time.Sleep(m.cfg.CallSleep)
 	if m.cfg.FailRatio > 0 && m.cfg.FailRatio <= 100 {
 		//nolint

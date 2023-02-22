@@ -29,27 +29,33 @@ func NewMockInstance(cfg *MockInstanceConfig) *MockInstance {
 	}
 }
 
-func (m *MockInstance) Run(data interface{}, ch chan CallResult) {
+func (m *MockInstance) Run(l *LoadGenerator) {
 	go func() {
 		for {
-			startedAt := time.Now()
-			time.Sleep(m.cfg.CallSleep)
-			if m.cfg.FailRatio > 0 && m.cfg.FailRatio <= 100 {
-				//nolint
-				r := rand.Intn(100)
-				if r <= m.cfg.FailRatio {
-					ch <- CallResult{StartedAt: startedAt, Data: "failedCallData", Error: "error", Failed: true}
+			select {
+			case <-l.ResponsesCtx.Done():
+				l.responsesWaitGroup.Done()
+				return
+			default:
+				startedAt := time.Now()
+				time.Sleep(m.cfg.CallSleep)
+				if m.cfg.FailRatio > 0 && m.cfg.FailRatio <= 100 {
+					//nolint
+					r := rand.Intn(100)
+					if r <= m.cfg.FailRatio {
+						l.instanceResponseChan <- CallResult{StartedAt: startedAt, Data: "failedCallData", Error: "error", Failed: true}
+					}
 				}
-			}
-			if m.cfg.TimeoutRatio > 0 && m.cfg.TimeoutRatio <= 100 {
-				//nolint
-				r := rand.Intn(100)
-				if r <= m.cfg.TimeoutRatio {
-					time.Sleep(m.cfg.CallSleep + 100*time.Millisecond)
-					ch <- CallResult{}
+				if m.cfg.TimeoutRatio > 0 && m.cfg.TimeoutRatio <= 100 {
+					//nolint
+					r := rand.Intn(100)
+					if r <= m.cfg.TimeoutRatio {
+						time.Sleep(m.cfg.CallSleep + 100*time.Millisecond)
+						l.instanceResponseChan <- CallResult{StartedAt: startedAt, Data: "timeoutData", Timeout: true}
+					}
 				}
+				l.instanceResponseChan <- CallResult{StartedAt: startedAt, Data: "successCallData"}
 			}
-			ch <- CallResult{StartedAt: startedAt, Data: "successCallData"}
 		}
 	}()
 }

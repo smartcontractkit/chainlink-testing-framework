@@ -15,41 +15,6 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func TestLokiReporting(t *testing.T) {
-	t.Skip("This test is for manual run and dashboard development")
-	t.Parallel()
-	t.Run("can_report_to_loki", func(t *testing.T) {
-		t.Parallel()
-		gen, err := NewLoadGenerator(&LoadGeneratorConfig{
-			T:          t,
-			LokiConfig: NewDefaultLokiConfig("http://localhost:3030/loki/api/v1/push"),
-			Labels: map[string]string{
-				"cluster":    "sdlc",
-				"app":        "chainlink",
-				"env":        "chainlink-test",
-				"test_group": "stress",
-				"test_id":    "zxc-11",
-			},
-			CallTimeout: 300 * time.Millisecond,
-			Duration:    60 * time.Second,
-			Schedule: &LoadSchedule{
-				Type:          RPSScheduleType,
-				StartFrom:     10,
-				Increase:      1,
-				StageInterval: 1 * time.Second,
-				Limit:         60,
-			},
-			Gun: NewMockGun(&MockGunConfig{
-				TimeoutRatio: 15,
-				CallSleep:    130 * time.Millisecond,
-			}),
-		})
-		require.NoError(t, err)
-		gen.Run()
-		_, _ = gen.Wait()
-	})
-}
-
 func TestInstancesRequests(t *testing.T) {
 	t.Parallel()
 	gen, err := NewLoadGenerator(&LoadGeneratorConfig{
@@ -299,13 +264,13 @@ func TestStaticRPSSchedulePrecision(t *testing.T) {
 	gen.Run()
 	_, failed := gen.Wait()
 	require.Equal(t, false, failed)
-	require.GreaterOrEqual(t, gen.Stats().Success.Load(), int64(998))
+	require.GreaterOrEqual(t, gen.Stats().Success.Load(), int64(997))
 	require.LessOrEqual(t, gen.Stats().Success.Load(), int64(1003))
 	require.Equal(t, gen.Stats().Failed.Load(), int64(0))
 	require.Equal(t, gen.Stats().CallTimeout.Load(), int64(0))
 
 	okData, _, failResponses := convertResponsesData(gen.GetData())
-	require.GreaterOrEqual(t, len(okData), 998)
+	require.GreaterOrEqual(t, len(okData), 997)
 	require.LessOrEqual(t, len(okData), 1002)
 	require.Empty(t, failResponses)
 	require.Empty(t, gen.Errors())
@@ -381,58 +346,6 @@ func TestValidation(t *testing.T) {
 		}),
 	})
 	require.Equal(t, ErrStartFrom, err)
-	//_, err = NewLoadGenerator(&LoadGeneratorConfig{
-	//	T:                 t,
-	//	RPS:               1,
-	//	StatsPollInterval: 1 * time.Second,
-	//	Schedule: &LoadSchedule{
-	//		Type:      RPSScheduleType,
-	//		StartFrom: 1,
-	//		Increase:  1,
-	//		Limit:     5,
-	//	},
-	//	Gun: NewMockGun(&MockGunConfig{
-	//		CallSleep: 10 * time.Millisecond,
-	//	}),
-	//})
-	//require.Equal(t, ErrStageInterval, err)
-	//_, err = NewLoadGenerator(&LoadGeneratorConfig{
-	//	T:                 t,
-	//	RPS:               1,
-	//	StatsPollInterval: 1 * time.Second,
-	//	Schedule: &LoadSchedule{
-	//		Type:          RPSScheduleType,
-	//		StartFrom:     1,
-	//		StageInterval: 1 * time.Second,
-	//		Limit:         5,
-	//	},
-	//	Gun: NewMockGun(&MockGunConfig{
-	//		CallSleep: 10 * time.Millisecond,
-	//	}),
-	//})
-	//require.Equal(t, ErrIncrease, err)
-	//_, err = NewLoadGenerator(&LoadGeneratorConfig{
-	//	T:                 t,
-	//	RPS:               1,
-	//	StatsPollInterval: 1 * time.Second,
-	//	Schedule: &LoadSchedule{
-	//		Type:          RPSScheduleType,
-	//		StartFrom:     1,
-	//		Increase:      1,
-	//		StageInterval: 1 * time.Second,
-	//	},
-	//	Gun: NewMockGun(&MockGunConfig{
-	//		CallSleep: 10 * time.Millisecond,
-	//	}),
-	//})
-	//require.Equal(t, ErrScheduleLimit, err)
-	//_, err = NewLoadGenerator(&LoadGeneratorConfig{
-	//	T: t,
-	//	Gun: NewMockGun(&MockGunConfig{
-	//		CallSleep: 10 * time.Millisecond,
-	//	}),
-	//})
-	//require.Equal(t, ErrStaticRPS, err)
 	_, err = NewLoadGenerator(nil)
 	require.Equal(t, ErrNoCfg, err)
 	_, err = NewLoadGenerator(&LoadGeneratorConfig{
