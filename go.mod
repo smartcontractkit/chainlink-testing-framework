@@ -4,21 +4,59 @@ go 1.20
 
 require (
 	github.com/avast/retry-go v3.0.0+incompatible
+	github.com/cortexproject/cortex v1.2.1-0.20200803161316-7014ff11ed70
 	github.com/ethereum/go-ethereum v1.10.26
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/google/uuid v1.3.0
+	github.com/grafana/loki v1.6.1
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/lib/pq v1.10.7
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.14.0
-	github.com/prometheus/common v0.39.0
+	github.com/prometheus/common v0.37.0
 	github.com/rs/zerolog v1.29.0
 	github.com/slack-go/slack v0.12.1
-	github.com/smartcontractkit/chainlink-env v0.3.10
+	github.com/smartcontractkit/chainlink-env v0.3.12
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/ratelimit v0.2.0
 	go.uber.org/zap v1.21.0
 	golang.org/x/sync v0.1.0
+)
+
+require (
+	github.com/blang/semver v3.5.1+incompatible // indirect
+	github.com/c2h5oh/datasize v0.0.0-20200112174442-28bbd4740fee // indirect
+	github.com/cespare/xxhash v1.1.0 // indirect
+	github.com/dustin/go-humanize v1.0.0 // indirect
+	github.com/edsrzf/mmap-go v1.0.0 // indirect
+	github.com/fatih/color v1.9.0 // indirect
+	github.com/go-kit/kit v0.10.0 // indirect
+	github.com/go-logfmt/logfmt v0.5.1 // indirect
+	github.com/gogo/googleapis v1.1.0 // indirect
+	github.com/gogo/status v1.0.3 // indirect
+	github.com/golang/snappy v0.0.4 // indirect
+	github.com/gorilla/mux v1.7.3 // indirect
+	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
+	github.com/jpillora/backoff v1.0.0 // indirect
+	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f // indirect
+	github.com/oklog/ulid v1.3.1 // indirect
+	github.com/opentracing-contrib/go-grpc v0.0.0-20180928155321-4b5a12d3ff02 // indirect
+	github.com/opentracing-contrib/go-stdlib v1.0.0 // indirect
+	github.com/opentracing/opentracing-go v1.2.0 // indirect
+	github.com/prometheus/node_exporter v1.0.0-rc.0.0.20200428091818-01054558c289 // indirect
+	github.com/prometheus/prometheus v1.8.2-0.20200727090838-6f296594a852 // indirect
+	github.com/sercand/kuberesolver v2.4.0+incompatible // indirect
+	github.com/sirupsen/logrus v1.8.1 // indirect
+	github.com/stretchr/objx v0.5.0 // indirect
+	github.com/uber/jaeger-client-go v2.25.0+incompatible // indirect
+	github.com/uber/jaeger-lib v2.2.0+incompatible // indirect
+	github.com/weaveworks/common v0.0.0-20200625145055-4b1847531bc9 // indirect
+	github.com/weaveworks/promrus v1.2.0 // indirect
+	go.uber.org/atomic v1.7.0 // indirect
+	go.uber.org/goleak v1.2.0 // indirect
+	go.uber.org/multierr v1.6.0 // indirect
+	google.golang.org/genproto v0.0.0-20220502173005-c8bf987b8c21 // indirect
+	google.golang.org/grpc v1.47.0 // indirect
 )
 
 require (
@@ -27,8 +65,8 @@ require (
 	github.com/Masterminds/semver/v3 v3.2.0 // indirect
 	github.com/alecthomas/units v0.0.0-20210927113745-59d0afb8317a // indirect
 	github.com/andres-erbsen/clock v0.0.0-20160526145045-9e14626cd129 // indirect
-	github.com/aws/constructs-go/constructs/v10 v10.1.187 // indirect
-	github.com/aws/jsii-runtime-go v1.72.0 // indirect
+	github.com/aws/constructs-go/constructs/v10 v10.1.249 // indirect
+	github.com/aws/jsii-runtime-go v1.74.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.2.1 // indirect
 	github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2 v2.5.72 // indirect
@@ -95,7 +133,7 @@ require (
 	github.com/rs/cors v1.8.0 // indirect
 	github.com/russross/blackfriday v1.6.0 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
-	github.com/spf13/cobra v1.5.0 // indirect
+	github.com/spf13/cobra v1.6.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/tklauser/go-sysconf v0.3.10 // indirect
 	github.com/tklauser/numcpus v0.5.0 // indirect
@@ -103,8 +141,6 @@ require (
 	github.com/yuin/goldmark v1.4.13 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	go.starlark.net v0.0.0-20220817180228-f738f5508c12 // indirect
-	go.uber.org/atomic v1.7.0 // indirect
-	go.uber.org/multierr v1.6.0 // indirect
 	golang.org/x/crypto v0.1.0 // indirect
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616 // indirect
 	golang.org/x/mod v0.7.0 // indirect
@@ -114,7 +150,7 @@ require (
 	golang.org/x/term v0.5.0 // indirect
 	golang.org/x/text v0.7.0 // indirect
 	golang.org/x/time v0.0.0-20220722155302-e5dcc9cfc0b9 // indirect
-	golang.org/x/tools v0.3.0 // indirect
+	golang.org/x/tools v0.5.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.2.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
@@ -128,10 +164,10 @@ require (
 	k8s.io/cli-runtime v0.25.4 // indirect
 	k8s.io/client-go v0.25.4 // indirect
 	k8s.io/component-base v0.25.4 // indirect
-	k8s.io/klog/v2 v2.70.1 // indirect
-	k8s.io/kube-openapi v0.0.0-20220803164354-a70c9af30aea // indirect
+	k8s.io/klog/v2 v2.80.1 // indirect
+	k8s.io/kube-openapi v0.0.0-20221012153701-172d655c2280 // indirect
 	k8s.io/kubectl v0.25.4 // indirect
-	k8s.io/utils v0.0.0-20220823124924-e9cbc92d1a73 // indirect
+	k8s.io/utils v0.0.0-20221107191617-1a15be271d1d // indirect
 	sigs.k8s.io/controller-runtime v0.13.0 // indirect
 	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect
 	sigs.k8s.io/kustomize/api v0.12.1 // indirect
@@ -146,8 +182,14 @@ require (
 // for it. If its in 4.X.X, then we need all our transitive deps to upgrade to it.
 replace github.com/dgrijalva/jwt-go => github.com/form3tech-oss/jwt-go v3.2.1+incompatible
 
+replace google.golang.org/grpc v1.47.0 => google.golang.org/grpc v1.31.0
+
+replace github.com/prometheus/common v0.37.0 => github.com/prometheus/common v0.10.0
+
 // Fix go mod tidy issue for ambiguous imports from go-ethereum
 // See https://github.com/ugorji/go/issues/279
 replace github.com/btcsuite/btcd => github.com/btcsuite/btcd v0.22.1
 
 replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
+
+exclude k8s.io/client-go v12.0.0+incompatible
