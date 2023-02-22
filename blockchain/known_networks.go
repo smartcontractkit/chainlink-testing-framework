@@ -21,7 +21,7 @@ const (
 	PolygonClientImplementation ClientImplementation = "Polygon"
 	// RSKClientImplementation uses a client tailored for RSK EVM networks
 	RSKClientImplementation ClientImplementation = "RSK"
-	// ZKSyncClientImplementation uses a client tailored for Klaytn EVM networks
+	// ZKSyncClientImplementation uses a client tailored for ZKSync EVM networks
 	ZKSyncClientImplementation ClientImplementation = "ZKSync"
 	// CeloClientImplementation uses a client tailored for Celo EVM networks
 	CeloClientImplementation ClientImplementation = "Celo"
