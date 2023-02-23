@@ -30,7 +30,9 @@ So we've implemented a simple tool with goals in mind:
 ## How to use
 Docs is `TBD` for the time being, check test implementations
 
-- [examples](loadgen_example_test.go) for full-fledged generator tests with `Loki`
+Dashboard is private, you can find it in `K8s tests -> Loadgen`
+
+- [examples](loadgen_example_test.go) for full-fledged generator tests with `Loki`, you can also use them to validate performance of `loadgen`
 
 - [implementation](loadgen_gun_mock.go) of an `RPS` type `gun`
 

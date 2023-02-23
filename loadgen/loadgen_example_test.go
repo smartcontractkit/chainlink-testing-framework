@@ -9,8 +9,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+/* This tests can also be used as a performance validation of a tool itself */
+
 func TestLokiRPSRun(t *testing.T) {
-	//t.Skip("This test is for manual run and dashboard development, you need LOKI_URL and LOKI_TOKEN to run")
+	t.Skip("This test is for manual run and dashboard development, you need LOKI_URL and LOKI_TOKEN to run")
 	t.Parallel()
 	t.Run("can_report_to_loki", func(t *testing.T) {
 		t.Parallel()
@@ -30,7 +32,7 @@ func TestLokiRPSRun(t *testing.T) {
 			Duration:    10 * time.Second,
 			Schedule: &LoadSchedule{
 				Type:      RPSScheduleType,
-				StartFrom: 1000,
+				StartFrom: 5000,
 			},
 			Gun: NewMockGun(&MockGunConfig{
 				TimeoutRatio: 1,
@@ -44,7 +46,7 @@ func TestLokiRPSRun(t *testing.T) {
 }
 
 func TestLokiInstancesRun(t *testing.T) {
-	//t.Skip("This test is for manual run and dashboard development, you need LOKI_URL and LOKI_TOKEN to run")
+	t.Skip("This test is for manual run and dashboard development, you need LOKI_URL and LOKI_TOKEN to run")
 	t.Parallel()
 	t.Run("can_report_to_loki", func(t *testing.T) {
 		t.Parallel()
