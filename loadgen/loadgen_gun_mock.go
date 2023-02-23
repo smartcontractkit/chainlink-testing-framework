@@ -1,4 +1,4 @@
-package client
+package loadgen
 
 import (
 	"math/rand"
@@ -43,7 +43,7 @@ func (m *MockGun) Call(l *LoadGenerator) CallResult {
 		r := rand.Intn(100)
 		if r <= m.cfg.TimeoutRatio {
 			time.Sleep(m.cfg.CallSleep + 100*time.Millisecond)
-			return CallResult{}
+			return CallResult{Data: "timeoutCallData", Timeout: true}
 		}
 	}
 	return CallResult{Data: "successCallData"}
