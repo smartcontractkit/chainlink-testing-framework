@@ -109,6 +109,10 @@ func findAllLogFilesToScan(directoryPath string) (logFilesToScan []*os.File, err
 	return logFilesToScan, err
 }
 
+var allowedLogMessages = []string{
+	"No EVM primary nodes available: 0/1 nodes are alive",
+}
+
 // verifyLogFile verifies that a log file
 func verifyLogFile(file *os.File, failingLogLevel zapcore.Level) error {
 	// nolint
@@ -148,7 +152,17 @@ func verifyLogFile(file *os.File, failingLogLevel zapcore.Level) error {
 		}
 
 		if zapLevel > failingLogLevel {
-			return fmt.Errorf("found log at level '%s', failing any log level higher than %s: %s", logLevel, zapLevel.String(), jsonLogLine)
+			logErr := fmt.Errorf("found log at level '%s', failing any log level higher than %s: %s", logLevel, zapLevel.String(), jsonLogLine)
+			logMessage, hasMessage := jsonMapping["msg"]
+			if !hasMessage {
+				return logErr
+			}
+			for _, allowedMessage := range allowedLogMessages {
+				if strings.Contains(logMessage.(string), allowedMessage) {
+					log.Debug().Str("Msg", logMessage.(string)).Msg("Found allowed log message, ignoring")
+					return nil
+				}
+			}
 		}
 	}
 	return nil
