@@ -29,7 +29,8 @@ func NewMockGun(cfg *MockGunConfig) *MockGun {
 	}
 }
 
-func (m *MockGun) Call(l *LoadGenerator) CallResult {
+// Call implements example gun call, assertions on response bodies should be done here
+func (m *MockGun) Call(l *Generator) CallResult {
 	time.Sleep(m.cfg.CallSleep)
 	if m.cfg.FailRatio > 0 && m.cfg.FailRatio <= 100 {
 		//nolint
