@@ -1,6 +1,8 @@
 package client
 
 import (
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/grafana/loki/pkg/promtail/api"
@@ -22,6 +24,8 @@ type MockPromtailClient struct {
 // ExtendedLokiClient an extended Loki/Promtail client used for testing last results in batch
 type ExtendedLokiClient interface {
 	lokiClient.Client
+	api.EntryHandler
+	HandleStruct(ls model.LabelSet, t time.Time, st interface{}) error
 	LastHandleResult() PromtailSendResult
 	AllHandleResults() []PromtailSendResult
 }
@@ -43,6 +47,14 @@ func NewMockPromtailClient() ExtendedLokiClient {
 		return nil
 	}
 	return mc
+}
+
+func (c *MockPromtailClient) HandleStruct(ls model.LabelSet, t time.Time, st interface{}) error {
+	d, err := json.Marshal(st)
+	if err != nil {
+		return fmt.Errorf("failed to marshal struct in response: %v", st)
+	}
+	return c.OnHandleEntry.Handle(ls, t, string(d))
 }
 
 // Stop implements client.Client

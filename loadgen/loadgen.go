@@ -1,4 +1,4 @@
-package client
+package loadgen
 
 import (
 	"context"
@@ -7,6 +7,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/client"
 
 	"github.com/prometheus/common/model"
 	"github.com/rs/zerolog"
@@ -28,24 +30,24 @@ var (
 	ErrScheduleType = errors.New("schedule type must be \"rps_schedule\" or \"instance_schedule\"")
 )
 
-// LoadTestable is basic interface to run limited load with a contract call and save all transactions
-type LoadTestable interface {
+// Gun is basic interface to run limited load with a contract call and save all transactions
+type Gun interface {
 	Call(l *LoadGenerator) CallResult
 }
 
-// LoadInstance is basic interface to run load instances
-type LoadInstance interface {
+// Instance is basic interface to run load instances
+type Instance interface {
 	Run(l *LoadGenerator)
 }
 
 // CallResult represents basic call result info
 type CallResult struct {
-	Failed     bool          `json:"failed"`
-	Timeout    bool          `json:"timeout"`
+	Failed     bool          `json:"failed,omitempty"`
+	Timeout    bool          `json:"timeout,omitempty"`
 	Duration   time.Duration `json:"duration"`
-	StartedAt  time.Time     `json:"started_at"`
-	FinishedAt time.Time     `json:"finished_at"`
-	Data       interface{}   `json:"data"`
+	StartedAt  *time.Time    `json:"started_at,omitempty"`
+	FinishedAt *time.Time    `json:"finished_at,omitempty"`
+	Data       interface{}   `json:"data,omitempty"`
 	Error      string        `json:"error,omitempty"`
 }
 
@@ -77,13 +79,13 @@ func (ls *LoadSchedule) Validate() error {
 type LoadGeneratorConfig struct {
 	T                 *testing.T
 	Labels            map[string]string
-	LokiConfig        *LokiConfig
+	LokiConfig        *client.LokiConfig
 	Schedule          *LoadSchedule
 	Duration          time.Duration
 	StatsPollInterval time.Duration
 	CallTimeout       time.Duration
-	Gun               LoadTestable
-	Instance          LoadInstance
+	Gun               Gun
+	Instance          Instance
 	Logger            zerolog.Logger
 	SharedData        interface{}
 }
@@ -139,19 +141,19 @@ type LoadGenerator struct {
 	responsesCancel      context.CancelFunc
 	dataCtx              context.Context
 	dataCancel           context.CancelFunc
-	gun                  LoadTestable
-	instance             LoadInstance
+	gun                  Gun
+	instance             Instance
 	instanceResponseChan chan CallResult
 	responsesData        *ResponseData
 	errsMu               *sync.Mutex
 	errs                 []string
 	stats                *GeneratorStats
-	loki                 *LokiClient
+	loki                 client.ExtendedLokiClient
 	lokiResponsesChan    chan CallResult
 }
 
 // NewLoadGenerator creates a new instance for a contract,
-// shoots for scheduled RPS until timeout, test logic is defined through LoadTestable
+// shoots for scheduled RPS until timeout, test logic is defined through Gun
 func NewLoadGenerator(cfg *LoadGeneratorConfig) (*LoadGenerator, error) {
 	if cfg == nil {
 		return nil, ErrNoCfg
@@ -164,13 +166,29 @@ func NewLoadGenerator(cfg *LoadGeneratorConfig) (*LoadGenerator, error) {
 	}
 	rl := ratelimit.New(int(cfg.Schedule.StartFrom))
 
-	var loki *LokiClient
+	// creating logger from *testing.T context or using a global logger
+	var l zerolog.Logger
+	if cfg.T != nil {
+		l = zerolog.New(zerolog.NewConsoleWriter(zerolog.ConsoleTestWriter(cfg.T))).With().Timestamp().Logger()
+	} else {
+		l = log.Logger
+	}
+
+	var loki client.ExtendedLokiClient
 	var ls model.LabelSet
 	var err error
 	if cfg.LokiConfig != nil {
-		loki, err = NewLokiClient(cfg.LokiConfig)
-		if err != nil {
-			return nil, err
+		if cfg.LokiConfig.URL == "" {
+			l.Warn().Msg("Loki config is set but URL is empty, data is collected but won't be pushed anywhere!")
+			loki = client.NewMockPromtailClient()
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			loki, err = client.NewLokiClient(cfg.LokiConfig)
+			if err != nil {
+				return nil, err
+			}
 		}
 		ls = model.LabelSet{}
 		for k, v := range cfg.Labels {
@@ -181,13 +199,6 @@ func NewLoadGenerator(cfg *LoadGeneratorConfig) (*LoadGenerator, error) {
 	responsesCtx, responsesCancel := context.WithTimeout(context.Background(), cfg.Duration)
 	// context for all the collected data
 	dataCtx, dataCancel := context.WithCancel(context.Background())
-	// creating logger from *testing.T context or using a global logger
-	var l zerolog.Logger
-	if cfg.T != nil {
-		l = zerolog.New(zerolog.NewConsoleWriter(zerolog.ConsoleTestWriter(cfg.T))).With().Timestamp().Logger()
-	} else {
-		l = log.Logger
-	}
 	return &LoadGenerator{
 		cfg:                  cfg,
 		schedule:             cfg.Schedule,
@@ -216,64 +227,6 @@ func NewLoadGenerator(cfg *LoadGeneratorConfig) (*LoadGenerator, error) {
 		log:               l,
 		lokiResponsesChan: make(chan CallResult, 50000),
 	}, nil
-}
-
-func (l *LoadGenerator) handleLokiResponsePayload(cr CallResult) {
-	ls := l.labels.Merge(model.LabelSet{
-		"go_test_name":   model.LabelValue(l.cfg.T.Name()),
-		"test_data_type": "responses",
-	})
-	// generates new labels, Duration is already calculated at that point
-	cr.StartedAt = time.Time{}
-	cr.FinishedAt = time.Time{}
-	err := l.loki.HandleStruct(ls, time.Now(), cr)
-	if err != nil {
-		l.log.Err(err).Send()
-	}
-}
-
-func (l *LoadGenerator) handleLokiStatsPayload() {
-	ls := l.labels.Merge(model.LabelSet{
-		"go_test_name":   model.LabelValue(l.cfg.T.Name()),
-		"test_data_type": "stats",
-	})
-	err := l.loki.HandleStruct(ls, time.Now(), l.StatsJSON())
-	if err != nil {
-		l.log.Err(err).Send()
-	}
-}
-
-func (l *LoadGenerator) runLokiPromtailResponses() {
-	l.log.Info().
-		Str("URL", l.cfg.LokiConfig.URL).
-		Interface("DefaultLabels", l.cfg.Labels).
-		Msg("Streaming data to Loki")
-	go func() {
-		for {
-			select {
-			case <-l.dataCtx.Done():
-				l.log.Info().Msg("Loki responses exited")
-				return
-			case r := <-l.lokiResponsesChan:
-				l.handleLokiResponsePayload(r)
-			}
-		}
-	}()
-}
-
-func (l *LoadGenerator) runLokiPromtailStats() {
-	go func() {
-		for {
-			select {
-			case <-l.dataCtx.Done():
-				l.log.Info().Msg("Loki stats exited")
-				return
-			default:
-				time.Sleep(l.cfg.StatsPollInterval)
-				l.handleLokiStatsPayload()
-			}
-		}
-	}()
 }
 
 // runSchedule runs scheduling loop, changes LoadGenerator.currentRPS according to a load schedule
@@ -314,6 +267,7 @@ func (l *LoadGenerator) runSchedule() {
 	}()
 }
 
+// handleCallResult stores local metrics for CallResult, pushed them to Loki stream too if Loki is on
 func (l *LoadGenerator) handleCallResult(res CallResult) {
 	if l.cfg.LokiConfig != nil {
 		l.lokiResponsesChan <- res
@@ -341,6 +295,7 @@ func (l *LoadGenerator) handleCallResult(res CallResult) {
 	}
 }
 
+// collectData collects CallResult from all the Instances
 func (l *LoadGenerator) collectData() {
 	if l.cfg.Schedule.Type == RPSScheduleType {
 		return
@@ -356,8 +311,9 @@ func (l *LoadGenerator) collectData() {
 					log.Error().Msg("StartedAt is not set in instance implementation")
 					return
 				}
-				res.FinishedAt = time.Now()
-				res.Duration = time.Since(res.StartedAt)
+				tn := time.Now()
+				res.FinishedAt = &tn
+				res.Duration = time.Since(*res.StartedAt)
 				l.handleCallResult(res)
 			}
 		}
@@ -376,7 +332,7 @@ func (l *LoadGenerator) pacedCall() {
 		select {
 		case result <- l.gun.Call(l):
 		case <-requestCtx.Done():
-			cr := CallResult{Duration: time.Since(callStartTS), Timeout: true, Failed: true, Error: ErrCallTimeout.Error()}
+			cr := CallResult{Duration: time.Since(callStartTS), Timeout: true, Error: ErrCallTimeout.Error()}
 			if l.cfg.LokiConfig != nil {
 				l.lokiResponsesChan <- cr
 			}
@@ -406,14 +362,6 @@ func (l *LoadGenerator) pacedCall() {
 		}
 		cancel()
 	}()
-}
-
-func (l *LoadGenerator) flushLokiStream() {
-	if l.cfg.LokiConfig != nil {
-		l.log.Info().Msg("Stopping Loki")
-		l.loki.Stop()
-		l.log.Info().Msg("Loki exited")
-	}
 }
 
 // Run runs load loop until timeout or stop
@@ -451,7 +399,7 @@ func (l *LoadGenerator) Stop() (interface{}, bool) {
 	if l.cfg.LokiConfig != nil {
 		l.handleLokiStatsPayload()
 		l.dataCancel()
-		l.flushLokiStream()
+		l.stopLokiStream()
 	}
 	return l.GetData(), l.stats.RunFailed.Load()
 }
@@ -462,7 +410,7 @@ func (l *LoadGenerator) Wait() (interface{}, bool) {
 	if l.cfg.LokiConfig != nil {
 		l.handleLokiStatsPayload()
 		l.dataCancel()
-		l.flushLokiStream()
+		l.stopLokiStream()
 	}
 	return l.GetData(), l.stats.RunFailed.Load()
 }
@@ -481,6 +429,82 @@ func (l *LoadGenerator) GetData() *ResponseData {
 func (l *LoadGenerator) Stats() *GeneratorStats {
 	return l.stats
 }
+
+/* Loki's methods to handle CallResult/Stats and stream it to Loki */
+
+// stopLokiStream stops the Loki stream client
+func (l *LoadGenerator) stopLokiStream() {
+	if l.cfg.LokiConfig != nil && l.cfg.LokiConfig.URL != "" {
+		l.log.Info().Msg("Stopping Loki")
+		l.loki.Stop()
+		l.log.Info().Msg("Loki exited")
+	}
+}
+
+// handleLokiResponsePayload handles CallResult payload with adding default labels
+func (l *LoadGenerator) handleLokiResponsePayload(cr CallResult) {
+	ls := l.labels.Merge(model.LabelSet{
+		"go_test_name":   model.LabelValue(l.cfg.T.Name()),
+		"test_data_type": "responses",
+	})
+	// we are removing time.Time{} because when it marshalled to string it creates N responses for some Loki queries
+	// and to minimize the payload, duration is already calculated at that point
+	cr.StartedAt = nil
+	cr.FinishedAt = nil
+	err := l.loki.HandleStruct(ls, time.Now(), cr)
+	if err != nil {
+		l.log.Err(err).Send()
+	}
+}
+
+// handleLokiStatsPayload handles StatsJSON payload with adding default labels
+func (l *LoadGenerator) handleLokiStatsPayload() {
+	ls := l.labels.Merge(model.LabelSet{
+		"go_test_name":   model.LabelValue(l.cfg.T.Name()),
+		"test_data_type": "stats",
+	})
+	err := l.loki.HandleStruct(ls, time.Now(), l.StatsJSON())
+	if err != nil {
+		l.log.Err(err).Send()
+	}
+}
+
+// runLokiPromtailResponses pushes CallResult to Loki
+func (l *LoadGenerator) runLokiPromtailResponses() {
+	l.log.Info().
+		Str("URL", l.cfg.LokiConfig.URL).
+		Interface("DefaultLabels", l.cfg.Labels).
+		Msg("Streaming data to Loki")
+	go func() {
+		for {
+			select {
+			case <-l.dataCtx.Done():
+				l.log.Info().Msg("Loki responses exited")
+				return
+			case r := <-l.lokiResponsesChan:
+				l.handleLokiResponsePayload(r)
+			}
+		}
+	}()
+}
+
+// runLokiPromtailStats pushes Stats payloads to Loki
+func (l *LoadGenerator) runLokiPromtailStats() {
+	go func() {
+		for {
+			select {
+			case <-l.dataCtx.Done():
+				l.log.Info().Msg("Loki stats exited")
+				return
+			default:
+				time.Sleep(l.cfg.StatsPollInterval)
+				l.handleLokiStatsPayload()
+			}
+		}
+	}()
+}
+
+/* Local logging methods */
 
 // StatsJSON get all load stats for export
 func (l *LoadGenerator) StatsJSON() map[string]interface{} {

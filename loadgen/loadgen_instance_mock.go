@@ -1,4 +1,4 @@
-package client
+package loadgen
 
 import (
 	"math/rand"
@@ -33,6 +33,8 @@ func (m *MockInstance) Run(l *LoadGenerator) {
 	go func() {
 		for {
 			select {
+			// TODO: this is mandatory, we should stop the instance when test is done
+			// TODO: wrap this in closure to simplify setup
 			case <-l.ResponsesCtx.Done():
 				l.responsesWaitGroup.Done()
 				return
@@ -43,7 +45,7 @@ func (m *MockInstance) Run(l *LoadGenerator) {
 					//nolint
 					r := rand.Intn(100)
 					if r <= m.cfg.FailRatio {
-						l.instanceResponseChan <- CallResult{StartedAt: startedAt, Data: "failedCallData", Error: "error", Failed: true}
+						l.instanceResponseChan <- CallResult{StartedAt: &startedAt, Data: "failedCallData", Error: "error", Failed: true}
 					}
 				}
 				if m.cfg.TimeoutRatio > 0 && m.cfg.TimeoutRatio <= 100 {
@@ -51,10 +53,10 @@ func (m *MockInstance) Run(l *LoadGenerator) {
 					r := rand.Intn(100)
 					if r <= m.cfg.TimeoutRatio {
 						time.Sleep(m.cfg.CallSleep + 100*time.Millisecond)
-						l.instanceResponseChan <- CallResult{StartedAt: startedAt, Data: "timeoutData", Timeout: true}
+						l.instanceResponseChan <- CallResult{StartedAt: &startedAt, Data: "timeoutData", Timeout: true}
 					}
 				}
-				l.instanceResponseChan <- CallResult{StartedAt: startedAt, Data: "successCallData"}
+				l.instanceResponseChan <- CallResult{StartedAt: &startedAt, Data: "successCallData"}
 			}
 		}
 	}()

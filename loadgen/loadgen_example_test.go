@@ -1,12 +1,16 @@
-package client
+package loadgen
 
 import (
 	"os"
 	"testing"
 	"time"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/client"
+
 	"github.com/stretchr/testify/require"
 )
+
+/* This tests can also be used as a performance validation of a tool itself */
 
 func TestLokiRPSRun(t *testing.T) {
 	t.Skip("This test is for manual run and dashboard development, you need LOKI_URL and LOKI_TOKEN to run")
@@ -15,15 +19,15 @@ func TestLokiRPSRun(t *testing.T) {
 		t.Parallel()
 		gen, err := NewLoadGenerator(&LoadGeneratorConfig{
 			T: t,
-			LokiConfig: NewDefaultLokiConfig(
+			LokiConfig: client.NewDefaultLokiConfig(
 				os.Getenv("LOKI_URL"),
 				os.Getenv("LOKI_TOKEN")),
 			Labels: map[string]string{
 				"cluster":    "sdlc",
 				"namespace":  "load-dummy-test",
 				"app":        "dummy",
-				"test_group": "stress",
-				"test_id":    "dummy-final-rps-1",
+				"test_group": "generator_healthcheck",
+				"test_id":    "dummy-healthcheck-rps-1",
 			},
 			CallTimeout: 100 * time.Millisecond,
 			Duration:    10 * time.Second,
@@ -49,15 +53,15 @@ func TestLokiInstancesRun(t *testing.T) {
 		t.Parallel()
 		gen, err := NewLoadGenerator(&LoadGeneratorConfig{
 			T: t,
-			LokiConfig: NewDefaultLokiConfig(
+			LokiConfig: client.NewDefaultLokiConfig(
 				os.Getenv("LOKI_URL"),
 				os.Getenv("LOKI_TOKEN")),
 			Labels: map[string]string{
 				"cluster":    "sdlc",
 				"namespace":  "load-dummy-test",
 				"app":        "dummy",
-				"test_group": "stress",
-				"test_id":    "dummy-final-instances-1",
+				"test_group": "generator_healthcheck",
+				"test_id":    "dummy-healthcheck-instances-1",
 			},
 			CallTimeout: 100 * time.Millisecond,
 			Duration:    30 * time.Second,
