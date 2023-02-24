@@ -109,6 +109,21 @@ func findAllLogFilesToScan(directoryPath string) (logFilesToScan []*os.File, err
 	return logFilesToScan, err
 }
 
+// allowedLogMessage is a log message that might be thrown by a Chainlink node during a test, but is not a concern
+type allowedLogMessage struct {
+	message string
+	reason  string
+	level   zapcore.Level
+}
+
+var allowedLogMessages = []allowedLogMessage{
+	{
+		message: "No EVM primary nodes available: 0/1 nodes are alive",
+		reason:  "Sometimes geth gets unlucky in the start up process and the Chainlink node starts before geth is ready",
+		level:   zapcore.DPanicLevel,
+	},
+}
+
 // verifyLogFile verifies that a log file
 func verifyLogFile(file *os.File, failingLogLevel zapcore.Level) error {
 	// nolint
@@ -148,7 +163,20 @@ func verifyLogFile(file *os.File, failingLogLevel zapcore.Level) error {
 		}
 
 		if zapLevel > failingLogLevel {
-			return fmt.Errorf("found log at level '%s', failing any log level higher than %s: %s", logLevel, zapLevel.String(), jsonLogLine)
+			logErr := fmt.Errorf("found log at level '%s', failing any log level higher than %s: %s", logLevel, zapLevel.String(), jsonLogLine)
+			logMessage, hasMessage := jsonMapping["msg"]
+			if !hasMessage {
+				return logErr
+			}
+			for _, allowedLog := range allowedLogMessages {
+				if strings.Contains(logMessage.(string), allowedLog.message) {
+					log.Warn().
+						Str("Reason", allowedLog.reason).
+						Str("Level", allowedLog.level.CapitalString()).
+						Str("Msg", logMessage.(string)).
+						Msg("Found allowed log message, ignoring")
+				}
+			}
 		}
 	}
 	return nil
