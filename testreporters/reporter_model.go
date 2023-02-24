@@ -175,7 +175,6 @@ func verifyLogFile(file *os.File, failingLogLevel zapcore.Level) error {
 						Str("Level", allowedLog.level.CapitalString()).
 						Str("Msg", logMessage.(string)).
 						Msg("Found allowed log message, ignoring")
-					return nil
 				}
 			}
 		}
