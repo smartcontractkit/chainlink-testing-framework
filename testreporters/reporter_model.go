@@ -109,8 +109,19 @@ func findAllLogFilesToScan(directoryPath string) (logFilesToScan []*os.File, err
 	return logFilesToScan, err
 }
 
-var allowedLogMessages = []string{
-	"No EVM primary nodes available: 0/1 nodes are alive",
+// allowedLogMessage is a log message that might be thrown by a Chainlink node during a test, but is not a concern
+type allowedLogMessage struct {
+	message string
+	reason  string
+	level   zapcore.Level
+}
+
+var allowedLogMessages = []allowedLogMessage{
+	{
+		message: "No EVM primary nodes available: 0/1 nodes are alive",
+		reason:  "Sometimes geth gets unlucky in the start up process and the Chainlink node starts before geth is ready",
+		level:   zapcore.DPanicLevel,
+	},
 }
 
 // verifyLogFile verifies that a log file
@@ -157,9 +168,13 @@ func verifyLogFile(file *os.File, failingLogLevel zapcore.Level) error {
 			if !hasMessage {
 				return logErr
 			}
-			for _, allowedMessage := range allowedLogMessages {
-				if strings.Contains(logMessage.(string), allowedMessage) {
-					log.Debug().Str("Msg", logMessage.(string)).Msg("Found allowed log message, ignoring")
+			for _, allowedLog := range allowedLogMessages {
+				if strings.Contains(logMessage.(string), allowedLog.message) {
+					log.Warn().
+						Str("Reason", allowedLog.reason).
+						Str("Level", allowedLog.level.CapitalString()).
+						Str("Msg", logMessage.(string)).
+						Msg("Found allowed log message, ignoring")
 					return nil
 				}
 			}
