@@ -47,7 +47,7 @@ jobs:
         uses: sonatype-nexus-community/nancy-github-action@v1.0.3
 
   actionlint:
-    name: Validate github action workflows
+    name: Validate GitHub Action Workflows
     runs-on: ubuntu-latest
     steps:
       - name: Check out Code
