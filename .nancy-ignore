@@ -3,3 +3,4 @@ CVE-2022-23328 # Geth is able to be used for DoS attacks on different nodes. Not
 sonatype-2021-0076 # More weird geth vulnerabilities we don't care about.
 CVE-2022-31030  # This is associated to the dependency 'containerd' and also warns of a DoS attack.
 CVE-2022-37450 # Geth bug that only affects nodes used for mining
+CVE-2021-42219 # Uncontrolled Resource Consumption ('Resource Exhaustion')
