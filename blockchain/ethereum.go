@@ -85,6 +85,8 @@ func newEVMClient(networkSettings EVMNetwork) (EVMClient, error) {
 // it ensures the instance of EthereumClient is synced with passed EVMClient's nonce updates.
 func (e *EthereumClient) SyncNonce(c EVMClient) {
 	n := c.GetNonceSetting()
+	n.NonceMu.Lock()
+	defer n.NonceMu.Unlock()
 	e.NonceSettings.NonceMu = n.NonceMu
 	e.NonceSettings.Nonces = n.Nonces
 }
