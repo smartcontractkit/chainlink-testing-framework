@@ -37,3 +37,11 @@ Dashboard is private, you can find it in `K8s tests -> Loadgen`
 - [implementation](loadgen_gun_mock.go) of an `RPS` type `gun`
 
 - [implementation](loadgen_instance_mock.go) of an `Instance` type `gun`
+
+## Debug & Profile
+Start `pyroscope`
+
+```bash
+docker compose up
+```
+Run `TestLocalTrace` from [examples](loadgen_example_test.go) with or without `Loki`

@@ -17,7 +17,7 @@ func TestMain(m *testing.M) {
 
 func TestConcurrentGenerators(t *testing.T) {
 	t.Parallel()
-	gens := make([]*LoadGenerator, 0)
+	gens := make([]*Generator, 0)
 	for i := 0; i < 2; i++ {
 		gen, err := NewLoadGenerator(&LoadGeneratorConfig{
 			T:        t,
@@ -37,16 +37,21 @@ func TestConcurrentGenerators(t *testing.T) {
 	for _, gen := range gens {
 		_, failed := gen.Wait()
 		require.Equal(t, false, failed)
-		gs := &GeneratorStats{}
-		gs.CurrentRPS.Store(1)
-		gs.Success.Add(2)
-		require.Equal(t, gs, gen.Stats())
+		stats := gen.Stats()
+		require.Equal(t, int64(1), stats.CurrentRPS.Load())
+		// we do not check exact RPS, because ratelimit.Limiter implementation
+		// compensate RPS only after several requests
+		// see example_test.go for precision tests of long runs
+		// https://github.com/uber-go/ratelimit/blob/a12885fa6127db0aa3c29d33fc8ddeeb1fa1530c/limiter_atomic.go#L54
+		require.GreaterOrEqual(t, stats.Success.Load(), int64(2))
 
 		okData, okResponses, failResponses := convertResponsesData(gen.GetData())
-		require.Equal(t, []string{"successCallData", "successCallData"}, okData)
+		require.Contains(t, okData, "successCallData")
+		require.GreaterOrEqual(t, len(okData), 2)
 		require.GreaterOrEqual(t, okResponses[0].Duration, 50*time.Millisecond)
 		require.Equal(t, okResponses[0].Data.(string), "successCallData")
 		require.Equal(t, okResponses[1].Data.(string), "successCallData")
+		require.GreaterOrEqual(t, len(okResponses), 2)
 		require.Empty(t, failResponses)
 		require.Empty(t, gen.Errors())
 	}
@@ -199,10 +204,7 @@ func TestCancelledByDeadlineWait(t *testing.T) {
 	_, failed := gen.Wait()
 	after := time.Now()
 	elapsed := after.Sub(before)
-	// because of go.uber.org/ratelimit implementation, if RPS = 1 it waits for one tick before start,
-	// so 1 sec to start the schedule + 50ms because we are waiting for request to finish after the test is finished
-	// it also fires 2 requests from the beginning to compensate that, so RPS schedule is accurate +-1 request
-	// see TestStaticRPSSchedulePrecision
+	// execution time + last request
 	require.Greater(t, elapsed, 1050*time.Millisecond)
 	require.Equal(t, false, failed)
 	gs := &GeneratorStats{}

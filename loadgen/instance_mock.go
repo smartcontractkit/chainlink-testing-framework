@@ -29,7 +29,7 @@ func NewMockInstance(cfg *MockInstanceConfig) *MockInstance {
 	}
 }
 
-func (m *MockInstance) Run(l *LoadGenerator) {
+func (m *MockInstance) Run(l *Generator) {
 	go func() {
 		for {
 			select {

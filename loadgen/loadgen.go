@@ -32,12 +32,12 @@ var (
 
 // Gun is basic interface to run limited load with a contract call and save all transactions
 type Gun interface {
-	Call(l *LoadGenerator) CallResult
+	Call(l *Generator) CallResult
 }
 
 // Instance is basic interface to run load instances
 type Instance interface {
-	Run(l *LoadGenerator)
+	Run(l *Generator)
 }
 
 // CallResult represents basic call result info
@@ -129,14 +129,15 @@ type ResponseData struct {
 	FailResponses   []CallResult
 }
 
-// LoadGenerator generates load with some RPS
-type LoadGenerator struct {
+// Generator generates load with some RPS
+type Generator struct {
 	cfg                  *LoadGeneratorConfig
 	log                  zerolog.Logger
 	labels               model.LabelSet
 	rl                   ratelimit.Limiter
 	schedule             *LoadSchedule
 	responsesWaitGroup   *sync.WaitGroup
+	dataWaitGroup        *sync.WaitGroup
 	ResponsesCtx         context.Context
 	responsesCancel      context.CancelFunc
 	dataCtx              context.Context
@@ -154,7 +155,7 @@ type LoadGenerator struct {
 
 // NewLoadGenerator creates a new instance for a contract,
 // shoots for scheduled RPS until timeout, test logic is defined through Gun
-func NewLoadGenerator(cfg *LoadGeneratorConfig) (*LoadGenerator, error) {
+func NewLoadGenerator(cfg *LoadGeneratorConfig) (*Generator, error) {
 	if cfg == nil {
 		return nil, ErrNoCfg
 	}
@@ -199,11 +200,12 @@ func NewLoadGenerator(cfg *LoadGeneratorConfig) (*LoadGenerator, error) {
 	responsesCtx, responsesCancel := context.WithTimeout(context.Background(), cfg.Duration)
 	// context for all the collected data
 	dataCtx, dataCancel := context.WithCancel(context.Background())
-	return &LoadGenerator{
+	return &Generator{
 		cfg:                  cfg,
 		schedule:             cfg.Schedule,
 		rl:                   rl,
 		responsesWaitGroup:   &sync.WaitGroup{},
+		dataWaitGroup:        &sync.WaitGroup{},
 		ResponsesCtx:         responsesCtx,
 		responsesCancel:      responsesCancel,
 		dataCtx:              dataCtx,
@@ -229,8 +231,8 @@ func NewLoadGenerator(cfg *LoadGeneratorConfig) (*LoadGenerator, error) {
 	}, nil
 }
 
-// runSchedule runs scheduling loop, changes LoadGenerator.currentRPS according to a load schedule
-func (l *LoadGenerator) runSchedule() {
+// runSchedule runs scheduling loop, changes Generator.currentRPS according to a load schedule
+func (l *Generator) runSchedule() {
 	l.rl = ratelimit.New(int(l.schedule.StartFrom))
 	l.stats.CurrentRPS.Store(l.schedule.StartFrom)
 	l.responsesWaitGroup.Add(1)
@@ -268,7 +270,7 @@ func (l *LoadGenerator) runSchedule() {
 }
 
 // handleCallResult stores local metrics for CallResult, pushed them to Loki stream too if Loki is on
-func (l *LoadGenerator) handleCallResult(res CallResult) {
+func (l *Generator) handleCallResult(res CallResult) {
 	if l.cfg.LokiConfig != nil {
 		l.lokiResponsesChan <- res
 	}
@@ -296,11 +298,13 @@ func (l *LoadGenerator) handleCallResult(res CallResult) {
 }
 
 // collectData collects CallResult from all the Instances
-func (l *LoadGenerator) collectData() {
+func (l *Generator) collectData() {
 	if l.cfg.Schedule.Type == RPSScheduleType {
 		return
 	}
+	l.dataWaitGroup.Add(1)
 	go func() {
+		defer l.dataWaitGroup.Done()
 		for {
 			select {
 			case <-l.dataCtx.Done():
@@ -321,7 +325,7 @@ func (l *LoadGenerator) collectData() {
 }
 
 // pacedCall calls a gun according to a schedule or plain RPS
-func (l *LoadGenerator) pacedCall() {
+func (l *Generator) pacedCall() {
 	l.rl.Take()
 	result := make(chan CallResult)
 	requestCtx, cancel := context.WithTimeout(context.Background(), l.cfg.CallTimeout)
@@ -365,7 +369,7 @@ func (l *LoadGenerator) pacedCall() {
 }
 
 // Run runs load loop until timeout or stop
-func (l *LoadGenerator) Run() {
+func (l *Generator) Run() {
 	l.log.Info().Msg("Load generator started")
 	l.runSchedule()
 	l.printStatsLoop()
@@ -382,7 +386,7 @@ func (l *LoadGenerator) Run() {
 				select {
 				case <-l.ResponsesCtx.Done():
 					l.responsesWaitGroup.Done()
-					l.log.Info().Msg("RPS generator stopped, waiting for requests to finish")
+					l.log.Info().Msg("RPS generator stopped")
 					return
 				default:
 					l.pacedCall()
@@ -393,47 +397,43 @@ func (l *LoadGenerator) Run() {
 }
 
 // Stop stops load generator, waiting for all calls for either finish or timeout
-func (l *LoadGenerator) Stop() (interface{}, bool) {
+func (l *Generator) Stop() (interface{}, bool) {
 	l.responsesCancel()
-	l.responsesWaitGroup.Wait()
-	if l.cfg.LokiConfig != nil {
-		l.handleLokiStatsPayload()
-		l.dataCancel()
-		l.stopLokiStream()
-	}
-	return l.GetData(), l.stats.RunFailed.Load()
+	return l.Wait()
 }
 
 // Wait waits until test ends
-func (l *LoadGenerator) Wait() (interface{}, bool) {
+func (l *Generator) Wait() (interface{}, bool) {
+	l.log.Info().Msg("Waiting for all responses to finish")
 	l.responsesWaitGroup.Wait()
 	if l.cfg.LokiConfig != nil {
 		l.handleLokiStatsPayload()
 		l.dataCancel()
+		l.dataWaitGroup.Wait()
 		l.stopLokiStream()
 	}
 	return l.GetData(), l.stats.RunFailed.Load()
 }
 
 // Errors get all calls errors
-func (l *LoadGenerator) Errors() []string {
+func (l *Generator) Errors() []string {
 	return l.errs
 }
 
 // GetData get all calls data
-func (l *LoadGenerator) GetData() *ResponseData {
+func (l *Generator) GetData() *ResponseData {
 	return l.responsesData
 }
 
 // Stats get all load stats
-func (l *LoadGenerator) Stats() *GeneratorStats {
+func (l *Generator) Stats() *GeneratorStats {
 	return l.stats
 }
 
 /* Loki's methods to handle CallResult/Stats and stream it to Loki */
 
 // stopLokiStream stops the Loki stream client
-func (l *LoadGenerator) stopLokiStream() {
+func (l *Generator) stopLokiStream() {
 	if l.cfg.LokiConfig != nil && l.cfg.LokiConfig.URL != "" {
 		l.log.Info().Msg("Stopping Loki")
 		l.loki.Stop()
@@ -442,7 +442,7 @@ func (l *LoadGenerator) stopLokiStream() {
 }
 
 // handleLokiResponsePayload handles CallResult payload with adding default labels
-func (l *LoadGenerator) handleLokiResponsePayload(cr CallResult) {
+func (l *Generator) handleLokiResponsePayload(cr CallResult) {
 	ls := l.labels.Merge(model.LabelSet{
 		"go_test_name":   model.LabelValue(l.cfg.T.Name()),
 		"test_data_type": "responses",
@@ -458,7 +458,7 @@ func (l *LoadGenerator) handleLokiResponsePayload(cr CallResult) {
 }
 
 // handleLokiStatsPayload handles StatsJSON payload with adding default labels
-func (l *LoadGenerator) handleLokiStatsPayload() {
+func (l *Generator) handleLokiStatsPayload() {
 	ls := l.labels.Merge(model.LabelSet{
 		"go_test_name":   model.LabelValue(l.cfg.T.Name()),
 		"test_data_type": "stats",
@@ -470,12 +470,14 @@ func (l *LoadGenerator) handleLokiStatsPayload() {
 }
 
 // runLokiPromtailResponses pushes CallResult to Loki
-func (l *LoadGenerator) runLokiPromtailResponses() {
+func (l *Generator) runLokiPromtailResponses() {
 	l.log.Info().
 		Str("URL", l.cfg.LokiConfig.URL).
 		Interface("DefaultLabels", l.cfg.Labels).
 		Msg("Streaming data to Loki")
+	l.dataWaitGroup.Add(1)
 	go func() {
+		defer l.dataWaitGroup.Done()
 		for {
 			select {
 			case <-l.dataCtx.Done():
@@ -489,8 +491,10 @@ func (l *LoadGenerator) runLokiPromtailResponses() {
 }
 
 // runLokiPromtailStats pushes Stats payloads to Loki
-func (l *LoadGenerator) runLokiPromtailStats() {
+func (l *Generator) runLokiPromtailStats() {
+	l.dataWaitGroup.Add(1)
 	go func() {
+		defer l.dataWaitGroup.Done()
 		for {
 			select {
 			case <-l.dataCtx.Done():
@@ -507,7 +511,7 @@ func (l *LoadGenerator) runLokiPromtailStats() {
 /* Local logging methods */
 
 // StatsJSON get all load stats for export
-func (l *LoadGenerator) StatsJSON() map[string]interface{} {
+func (l *Generator) StatsJSON() map[string]interface{} {
 	return map[string]interface{}{
 		"current_rps":       l.stats.CurrentRPS.Load(),
 		"current_instances": l.stats.CurrentInstances.Load(),
@@ -520,7 +524,7 @@ func (l *LoadGenerator) StatsJSON() map[string]interface{} {
 }
 
 // printStatsLoop prints stats periodically, with LoadGeneratorConfig.StatsPollInterval
-func (l *LoadGenerator) printStatsLoop() {
+func (l *Generator) printStatsLoop() {
 	l.responsesWaitGroup.Add(1)
 	go func() {
 		defer l.responsesWaitGroup.Done()
