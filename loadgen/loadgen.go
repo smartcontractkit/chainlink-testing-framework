@@ -284,7 +284,7 @@ func (l *Generator) handleCallResult(res CallResult) {
 	if l.cfg.LokiConfig != nil {
 		l.lokiResponsesChan <- res
 	}
-	if res.Error.Error() != "" {
+	if res.Error != nil && res.Error.Error() != "" {
 		l.stats.RunFailed.Store(true)
 		l.stats.Failed.Add(1)
 
