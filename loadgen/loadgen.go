@@ -436,6 +436,11 @@ func (l *Generator) Wait() (interface{}, bool) {
 	return l.GetData(), l.stats.RunFailed.Load()
 }
 
+// InputSharedData returns the SharedData passed in Generator config
+func (l *Generator) InputSharedData() interface{} {
+	return l.cfg.SharedData
+}
+
 // Errors get all calls errors
 func (l *Generator) Errors() []string {
 	return l.errs
