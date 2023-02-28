@@ -74,7 +74,7 @@ func NewDefaultLokiConfig(url string, token string) *LokiConfig {
 		URL:       url,
 		Token:     token,
 		BatchWait: 5 * time.Second,
-		BatchSize: 10 * 1024,
+		BatchSize: 500 * 1024,
 		Timeout:   20 * time.Second,
 	}
 }

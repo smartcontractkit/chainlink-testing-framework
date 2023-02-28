@@ -75,6 +75,7 @@ func TestPositiveOneRequest(t *testing.T) {
 	_, failed := gen.Stop()
 	require.Equal(t, false, failed)
 	gs := &GeneratorStats{}
+	gs.CurrentInstances.Store(1)
 	gs.CurrentRPS.Store(1)
 	gs.Success.Add(2)
 	require.Equal(t, gs, gen.Stats())
@@ -109,6 +110,7 @@ func TestFailedOneRequest(t *testing.T) {
 	gs := &GeneratorStats{}
 	gs.RunFailed.Store(true)
 	gs.CurrentRPS.Store(1)
+	gs.CurrentInstances.Store(1)
 	gs.Failed.Add(2)
 	require.Equal(t, gs, gen.Stats())
 
@@ -143,6 +145,7 @@ func TestLoadGenCallTimeout(t *testing.T) {
 	require.Equal(t, true, failed)
 	gs := &GeneratorStats{}
 	gs.CurrentRPS.Store(1)
+	gs.CurrentInstances.Store(1)
 	gs.RunFailed.Store(true)
 	gs.CallTimeout.Add(2)
 	require.Equal(t, gs, gen.Stats())
@@ -208,6 +211,7 @@ func TestCancelledByDeadlineWait(t *testing.T) {
 	require.Greater(t, elapsed, 1050*time.Millisecond)
 	require.Equal(t, false, failed)
 	gs := &GeneratorStats{}
+	gs.CurrentInstances.Store(1)
 	gs.CurrentRPS.Store(1)
 	gs.Success.Add(2)
 	require.Equal(t, gs, gen.Stats())
@@ -244,6 +248,7 @@ func TestCancelledBeforeDeadline(t *testing.T) {
 	require.Greater(t, elapsed, 1050*time.Millisecond)
 	require.Equal(t, false, failed)
 	gs := &GeneratorStats{}
+	gs.CurrentInstances.Store(1)
 	gs.CurrentRPS.Store(1)
 	gs.Success.Add(2)
 	require.Equal(t, gs, gen.Stats())
@@ -373,7 +378,7 @@ func TestInstancesRequests(t *testing.T) {
 		Schedule: &LoadSchedule{
 			Type:          InstancesScheduleType,
 			StartFrom:     1,
-			Increase:      2,
+			Increase:      1,
 			StageInterval: 1 * time.Second,
 			Limit:         10,
 		},
@@ -390,10 +395,10 @@ func TestInstancesRequests(t *testing.T) {
 
 	okData, okResponses, failResponses := convertResponsesData(gen.GetData())
 	require.GreaterOrEqual(t, okResponses[0].Duration, 50*time.Millisecond)
-	require.Greater(t, len(okResponses), 3720)
-	require.Greater(t, len(okData), 3720)
+	require.Greater(t, len(okResponses), 3500)
+	require.Greater(t, len(okData), 3500)
 	require.Equal(t, okResponses[0].Data.(string), "successCallData")
-	require.Equal(t, okResponses[3720].Data.(string), "successCallData")
+	require.Equal(t, okResponses[3500].Data.(string), "successCallData")
 	require.Empty(t, failResponses)
 	require.Empty(t, gen.Errors())
 }

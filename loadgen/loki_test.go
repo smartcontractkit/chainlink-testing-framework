@@ -98,7 +98,7 @@ func TestLokiSamples(t *testing.T) {
 				StatsSamples: []StatsSample{
 					{
 						CallTimeout:      0,
-						CurrentInstances: 0,
+						CurrentInstances: 1,
 						CurrentRPS:       1,
 						RunFailed:        false,
 						RunStopped:       false,
@@ -107,7 +107,7 @@ func TestLokiSamples(t *testing.T) {
 					},
 					{
 						CallTimeout:      0,
-						CurrentInstances: 0,
+						CurrentInstances: 1,
 						CurrentRPS:       1,
 						RunFailed:        false,
 						RunStopped:       false,

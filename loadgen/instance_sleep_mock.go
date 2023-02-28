@@ -30,6 +30,7 @@ func NewMockInstance(cfg *MockInstanceConfig) *MockInstance {
 }
 
 func (m *MockInstance) Run(l *Generator) {
+	l.responsesWaitGroup.Add(1)
 	go func() {
 		for {
 			select {
