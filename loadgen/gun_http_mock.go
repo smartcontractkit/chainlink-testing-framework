@@ -1,8 +1,6 @@
 package loadgen
 
 import (
-	"errors"
-
 	"github.com/go-resty/resty/v2"
 )
 
@@ -34,10 +32,10 @@ func (m *MockHTTPGun) Call(l *Generator) CallResult {
 		SetResult(&result).
 		Get(m.cfg.TargetURL)
 	if err != nil {
-		return CallResult{Data: result, Error: err}
+		return CallResult{Data: result, Error: err.Error()}
 	}
 	if r.Status() != "200 OK" {
-		return CallResult{Data: result, Error: errors.New("not 200")}
+		return CallResult{Data: result, Error: "not 200"}
 	}
 	return CallResult{Data: result}
 }

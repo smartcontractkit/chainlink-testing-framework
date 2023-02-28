@@ -119,9 +119,9 @@ func TestFailedOneRequest(t *testing.T) {
 	require.GreaterOrEqual(t, failResponses[0].Duration, 50*time.Millisecond)
 	require.GreaterOrEqual(t, failResponses[1].Duration, 50*time.Millisecond)
 	require.Equal(t, failResponses[0].Data.(string), "failedCallData")
-	require.Equal(t, failResponses[0].Error.Error(), "error")
+	require.Equal(t, failResponses[0].Error, "error")
 	require.Equal(t, failResponses[1].Data.(string), "failedCallData")
-	require.Equal(t, failResponses[1].Error.Error(), "error")
+	require.Equal(t, failResponses[1].Error, "error")
 	require.Equal(t, []string{"error", "error"}, gen.Errors())
 }
 
@@ -153,7 +153,7 @@ func TestLoadGenCallTimeout(t *testing.T) {
 	okData, _, failResponses := convertResponsesData(gen.GetData())
 	require.Empty(t, okData)
 	require.Equal(t, failResponses[0].Data, nil)
-	require.Equal(t, failResponses[0].Error.Error(), "generator request call timeout")
+	require.Equal(t, failResponses[0].Error, "generator request call timeout")
 	require.Equal(t, []string{ErrCallTimeout.Error(), ErrCallTimeout.Error()}, gen.Errors())
 }
 
@@ -183,7 +183,7 @@ func TestLoadGenCallTimeoutWait(t *testing.T) {
 	okData, _, failResponses := convertResponsesData(gen.GetData())
 	require.Empty(t, okData)
 	require.Equal(t, failResponses[0].Data, nil)
-	require.Equal(t, failResponses[0].Error.Error(), "generator request call timeout")
+	require.Equal(t, failResponses[0].Error, "generator request call timeout")
 	require.Contains(t, gen.Errors(), ErrCallTimeout.Error())
 	require.GreaterOrEqual(t, len(gen.Errors()), 2)
 }

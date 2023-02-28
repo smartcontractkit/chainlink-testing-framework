@@ -50,7 +50,7 @@ type CallResult struct {
 	StartedAt  *time.Time    `json:"started_at,omitempty"`
 	FinishedAt *time.Time    `json:"finished_at,omitempty"`
 	Data       interface{}   `json:"data,omitempty"`
-	Error      error         `json:"error,omitempty"`
+	Error      string        `json:"error,omitempty"`
 }
 
 const (
@@ -284,18 +284,18 @@ func (l *Generator) handleCallResult(res CallResult) {
 	if l.cfg.LokiConfig != nil {
 		l.lokiResponsesChan <- res
 	}
-	if res.Error != nil && res.Error.Error() != "" {
+	if res.Error != "" {
 		l.stats.RunFailed.Store(true)
 		l.stats.Failed.Add(1)
 
 		l.errsMu.Lock()
 		l.responsesData.failResponsesMu.Lock()
-		l.errs = append(l.errs, res.Error.Error())
+		l.errs = append(l.errs, res.Error)
 		l.responsesData.FailResponses = append(l.responsesData.FailResponses, res)
 		l.errsMu.Unlock()
 		l.responsesData.failResponsesMu.Unlock()
 
-		l.log.Error().Str("Err", res.Error.Error()).Msg("load generator request failed")
+		l.log.Error().Str("Err", res.Error).Msg("load generator request failed")
 	} else {
 		l.stats.Success.Add(1)
 		l.responsesData.okDataMu.Lock()
@@ -347,7 +347,7 @@ func (l *Generator) pacedCall() {
 		case result <- l.gun.Call(l):
 		case <-requestCtx.Done():
 			ts := time.Now()
-			cr := CallResult{Duration: time.Since(callStartTS), FinishedAt: &ts, Timeout: true, Error: ErrCallTimeout}
+			cr := CallResult{Duration: time.Since(callStartTS), FinishedAt: &ts, Timeout: true, Error: ErrCallTimeout.Error()}
 			if l.cfg.LokiConfig != nil {
 				l.lokiResponsesChan <- cr
 			}
