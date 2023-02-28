@@ -28,6 +28,8 @@ var (
 	ErrCallTimeout  = errors.New("generator request call timeout")
 	ErrStartFrom    = errors.New("StartFrom must be > 0")
 	ErrScheduleType = errors.New("schedule type must be \"rps_schedule\" or \"instance_schedule\"")
+	ErrNoGun        = errors.New("rps load schedule selected but gun implementation is nil")
+	ErrNoInstance   = errors.New("instance load schedule selected but instance implementation is nil")
 )
 
 // Gun is basic interface to run limited load with a contract call and save all transactions
@@ -165,6 +167,12 @@ func NewLoadGenerator(cfg *LoadGeneratorConfig) (*Generator, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
+	if cfg.Schedule.Type == RPSScheduleType && cfg.Gun == nil {
+		return nil, ErrNoGun
+	}
+	if cfg.Schedule.Type == InstancesScheduleType && cfg.Instance == nil {
+		return nil, ErrNoInstance
+	}
 	rl := ratelimit.New(int(cfg.Schedule.StartFrom))
 
 	// creating logger from *testing.T context or using a global logger
@@ -235,6 +243,7 @@ func NewLoadGenerator(cfg *LoadGeneratorConfig) (*Generator, error) {
 func (l *Generator) runSchedule() {
 	l.rl = ratelimit.New(int(l.schedule.StartFrom))
 	l.stats.CurrentRPS.Store(l.schedule.StartFrom)
+	l.stats.CurrentInstances.Store(l.schedule.StartFrom)
 	l.responsesWaitGroup.Add(1)
 	go func() {
 		defer l.responsesWaitGroup.Done()
@@ -258,10 +267,11 @@ func (l *Generator) runSchedule() {
 					if newInstances > l.schedule.Limit {
 						return
 					}
-					l.stats.CurrentInstances.Store(newInstances)
-					for i := 0; i < int(newInstances); i++ {
-						l.responsesWaitGroup.Add(1)
-						l.instance.Run(l)
+					if newInstances > l.stats.CurrentInstances.Load() {
+						l.stats.CurrentInstances.Store(newInstances)
+						for i := 0; i < int(newInstances); i++ {
+							l.instance.Run(l)
+						}
 					}
 				}
 			}
@@ -336,7 +346,8 @@ func (l *Generator) pacedCall() {
 		select {
 		case result <- l.gun.Call(l):
 		case <-requestCtx.Done():
-			cr := CallResult{Duration: time.Since(callStartTS), Timeout: true, Error: ErrCallTimeout.Error()}
+			ts := time.Now()
+			cr := CallResult{Duration: time.Since(callStartTS), FinishedAt: &ts, Timeout: true, Error: ErrCallTimeout.Error()}
 			if l.cfg.LokiConfig != nil {
 				l.lokiResponsesChan <- cr
 			}
@@ -362,6 +373,8 @@ func (l *Generator) pacedCall() {
 		case res := <-result:
 			defer close(result)
 			res.Duration = time.Since(callStartTS)
+			ts := time.Now()
+			res.FinishedAt = &ts
 			l.handleCallResult(res)
 		}
 		cancel()
@@ -379,8 +392,10 @@ func (l *Generator) Run() {
 	}
 	l.collectData()
 
-	if l.cfg.Schedule.Type == RPSScheduleType {
+	switch l.cfg.Schedule.Type {
+	case RPSScheduleType:
 		l.responsesWaitGroup.Add(1)
+		// we run pacedCall controlled by stats.CurrentRPS
 		go func() {
 			for {
 				select {
@@ -393,6 +408,12 @@ func (l *Generator) Run() {
 				}
 			}
 		}()
+	case InstancesScheduleType:
+		// we start all instances once
+		instances := l.stats.CurrentInstances.Load()
+		for i := 0; i < int(instances); i++ {
+			l.instance.Run(l)
+		}
 	}
 }
 
@@ -449,9 +470,10 @@ func (l *Generator) handleLokiResponsePayload(cr CallResult) {
 	})
 	// we are removing time.Time{} because when it marshalled to string it creates N responses for some Loki queries
 	// and to minimize the payload, duration is already calculated at that point
+	ts := cr.FinishedAt
 	cr.StartedAt = nil
 	cr.FinishedAt = nil
-	err := l.loki.HandleStruct(ls, time.Now(), cr)
+	err := l.loki.HandleStruct(ls, *ts, cr)
 	if err != nil {
 		l.log.Err(err).Send()
 	}

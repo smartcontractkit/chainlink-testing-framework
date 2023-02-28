@@ -1,6 +1,7 @@
 package loadgen
 
 import (
+	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
@@ -192,4 +193,71 @@ func TestLokiSpikeMaxLoadRun(t *testing.T) {
 		gen.Run()
 		_, _ = gen.Wait()
 	})
+}
+
+func TestWS(t *testing.T) {
+	t.Skip("This test is for manual run to measure max WS messages/s")
+	s := httptest.NewServer(MockWSServer{
+		sleep: 50 * time.Millisecond,
+		logf:  t.Logf,
+	})
+	defer s.Close()
+
+	gen, err := NewLoadGenerator(&LoadGeneratorConfig{
+		T: t,
+		LokiConfig: client.NewDefaultLokiConfig(
+			os.Getenv("LOKI_URL"),
+			os.Getenv("LOKI_TOKEN")),
+		Labels: map[string]string{
+			"cluster":    "sdlc",
+			"namespace":  "ws-dummy-test",
+			"app":        "dummy",
+			"test_group": "generator_healthcheck",
+			"test_id":    "dummy-healthcheck-ws-instances-stages-25ms-answer",
+		},
+		Duration: 100 * time.Second,
+		Schedule: &LoadSchedule{
+			Type:          InstancesScheduleType,
+			StartFrom:     10,
+			Increase:      20,
+			StageInterval: 10 * time.Second,
+			Limit:         300,
+		},
+		Instance: NewWSMockInstance(&WSMockConfig{TargetURl: s.URL}),
+	})
+	require.NoError(t, err)
+	gen.Run()
+	_, _ = gen.Wait()
+}
+
+func TestHTTP(t *testing.T) {
+	t.Skip("This test is for manual run to measure max HTTP RPS")
+	srv := NewHTTPMockServer(50 * time.Millisecond)
+	srv.Run()
+
+	gen, err := NewLoadGenerator(&LoadGeneratorConfig{
+		T: t,
+		LokiConfig: client.NewDefaultLokiConfig(
+			os.Getenv("LOKI_URL"),
+			os.Getenv("LOKI_TOKEN")),
+		Labels: map[string]string{
+			"cluster":    "sdlc",
+			"namespace":  "http-dummy-test",
+			"app":        "dummy",
+			"test_group": "generator_healthcheck",
+			"test_id":    "dummy-healthcheck-http-rps-25ms-answer",
+		},
+		Duration: 100 * time.Second,
+		Schedule: &LoadSchedule{
+			Type:          RPSScheduleType,
+			StartFrom:     5000,
+			Increase:      1000,
+			StageInterval: 10 * time.Second,
+			Limit:         20000,
+		},
+		Gun: NewHTTPMockGun(&MockHTTPGunConfig{TargetURL: "http://localhost:8080"}),
+	})
+	require.NoError(t, err)
+	gen.Run()
+	_, _ = gen.Wait()
 }
