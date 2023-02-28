@@ -38,6 +38,8 @@ func (a *ArbitrumClient) Fund(toAddress string, amount *big.Float) error {
 	if err != nil {
 		return err
 	}
+	gasPriceBuffer := big.NewInt(0).SetUint64(a.NetworkConfig.GasEstimationBuffer)
+	suggestedGasPrice.Add(suggestedGasPrice, gasPriceBuffer)
 
 	nonce, err := a.GetNonce(context.Background(), common.HexToAddress(a.DefaultWallet.Address()))
 	if err != nil {
