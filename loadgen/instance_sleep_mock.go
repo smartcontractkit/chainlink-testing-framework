@@ -3,6 +3,8 @@ package loadgen
 import (
 	"math/rand"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 // MockInstanceConfig configures a mock instance
@@ -46,7 +48,7 @@ func (m *MockInstance) Run(l *Generator) {
 					//nolint
 					r := rand.Intn(100)
 					if r <= m.cfg.FailRatio {
-						l.instanceResponseChan <- CallResult{StartedAt: &startedAt, Data: "failedCallData", Error: "error", Failed: true}
+						l.instanceResponseChan <- CallResult{StartedAt: &startedAt, Data: "failedCallData", Error: errors.New("error"), Failed: true}
 					}
 				}
 				if m.cfg.TimeoutRatio > 0 && m.cfg.TimeoutRatio <= 100 {

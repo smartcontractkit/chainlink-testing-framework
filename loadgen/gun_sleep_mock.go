@@ -1,6 +1,7 @@
 package loadgen
 
 import (
+	"errors"
 	"math/rand"
 	"time"
 )
@@ -36,7 +37,7 @@ func (m *MockGun) Call(l *Generator) CallResult {
 		//nolint
 		r := rand.Intn(100)
 		if r <= m.cfg.FailRatio {
-			return CallResult{Data: "failedCallData", Error: "error", Failed: true}
+			return CallResult{Data: "failedCallData", Error: errors.New("error"), Failed: true}
 		}
 	}
 	if m.cfg.TimeoutRatio > 0 && m.cfg.TimeoutRatio <= 100 {
