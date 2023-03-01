@@ -133,26 +133,26 @@ type ResponseData struct {
 
 // Generator generates load with some RPS
 type Generator struct {
-	cfg                  *LoadGeneratorConfig
-	log                  zerolog.Logger
-	labels               model.LabelSet
-	rl                   ratelimit.Limiter
-	schedule             *LoadSchedule
-	responsesWaitGroup   *sync.WaitGroup
-	dataWaitGroup        *sync.WaitGroup
-	ResponsesCtx         context.Context
-	responsesCancel      context.CancelFunc
-	dataCtx              context.Context
-	dataCancel           context.CancelFunc
-	gun                  Gun
-	instance             Instance
-	instanceResponseChan chan CallResult
-	responsesData        *ResponseData
-	errsMu               *sync.Mutex
-	errs                 []string
-	stats                *GeneratorStats
-	loki                 client.ExtendedLokiClient
-	lokiResponsesChan    chan CallResult
+	cfg                *LoadGeneratorConfig
+	Log                zerolog.Logger
+	labels             model.LabelSet
+	rl                 ratelimit.Limiter
+	schedule           *LoadSchedule
+	ResponsesWaitGroup *sync.WaitGroup
+	dataWaitGroup      *sync.WaitGroup
+	ResponsesCtx       context.Context
+	responsesCancel    context.CancelFunc
+	dataCtx            context.Context
+	dataCancel         context.CancelFunc
+	gun                Gun
+	instance           Instance
+	ResponsesChan      chan CallResult
+	responsesData      *ResponseData
+	errsMu             *sync.Mutex
+	errs               []string
+	stats              *GeneratorStats
+	loki               client.ExtendedLokiClient
+	lokiResponsesChan  chan CallResult
 }
 
 // NewLoadGenerator creates a new instance for a contract,
@@ -209,19 +209,19 @@ func NewLoadGenerator(cfg *LoadGeneratorConfig) (*Generator, error) {
 	// context for all the collected data
 	dataCtx, dataCancel := context.WithCancel(context.Background())
 	return &Generator{
-		cfg:                  cfg,
-		schedule:             cfg.Schedule,
-		rl:                   rl,
-		responsesWaitGroup:   &sync.WaitGroup{},
-		dataWaitGroup:        &sync.WaitGroup{},
-		ResponsesCtx:         responsesCtx,
-		responsesCancel:      responsesCancel,
-		dataCtx:              dataCtx,
-		dataCancel:           dataCancel,
-		gun:                  cfg.Gun,
-		instance:             cfg.Instance,
-		instanceResponseChan: make(chan CallResult),
-		labels:               ls,
+		cfg:                cfg,
+		schedule:           cfg.Schedule,
+		rl:                 rl,
+		ResponsesWaitGroup: &sync.WaitGroup{},
+		dataWaitGroup:      &sync.WaitGroup{},
+		ResponsesCtx:       responsesCtx,
+		responsesCancel:    responsesCancel,
+		dataCtx:            dataCtx,
+		dataCancel:         dataCancel,
+		gun:                cfg.Gun,
+		instance:           cfg.Instance,
+		ResponsesChan:      make(chan CallResult),
+		labels:             ls,
 		responsesData: &ResponseData{
 			okDataMu:        &sync.Mutex{},
 			OKData:          make([]interface{}, 0),
@@ -234,7 +234,7 @@ func NewLoadGenerator(cfg *LoadGeneratorConfig) (*Generator, error) {
 		errs:              make([]string, 0),
 		stats:             &GeneratorStats{},
 		loki:              loki,
-		log:               l,
+		Log:               l,
 		lokiResponsesChan: make(chan CallResult, 50000),
 	}, nil
 }
@@ -244,13 +244,13 @@ func (l *Generator) runSchedule() {
 	l.rl = ratelimit.New(int(l.schedule.StartFrom))
 	l.stats.CurrentRPS.Store(l.schedule.StartFrom)
 	l.stats.CurrentInstances.Store(l.schedule.StartFrom)
-	l.responsesWaitGroup.Add(1)
+	l.ResponsesWaitGroup.Add(1)
 	go func() {
-		defer l.responsesWaitGroup.Done()
+		defer l.ResponsesWaitGroup.Done()
 		for {
 			select {
 			case <-l.ResponsesCtx.Done():
-				l.log.Info().Msg("Scheduler exited")
+				l.Log.Info().Msg("Scheduler exited")
 				return
 			default:
 				time.Sleep(l.schedule.StageInterval)
@@ -295,7 +295,7 @@ func (l *Generator) handleCallResult(res CallResult) {
 		l.errsMu.Unlock()
 		l.responsesData.failResponsesMu.Unlock()
 
-		l.log.Error().Str("Err", res.Error).Msg("load generator request failed")
+		l.Log.Error().Str("Err", res.Error).Msg("load generator request failed")
 	} else {
 		l.stats.Success.Add(1)
 		l.responsesData.okDataMu.Lock()
@@ -318,9 +318,9 @@ func (l *Generator) collectData() {
 		for {
 			select {
 			case <-l.dataCtx.Done():
-				l.log.Info().Msg("Collect data exited")
+				l.Log.Info().Msg("Collect data exited")
 				return
-			case res := <-l.instanceResponseChan:
+			case res := <-l.ResponsesChan:
 				if res.StartedAt.IsZero() {
 					log.Error().Msg("StartedAt is not set in instance implementation")
 					return
@@ -340,9 +340,9 @@ func (l *Generator) pacedCall() {
 	result := make(chan CallResult)
 	requestCtx, cancel := context.WithTimeout(context.Background(), l.cfg.CallTimeout)
 	callStartTS := time.Now()
-	l.responsesWaitGroup.Add(1)
+	l.ResponsesWaitGroup.Add(1)
 	go func() {
-		defer l.responsesWaitGroup.Done()
+		defer l.ResponsesWaitGroup.Done()
 		select {
 		case result <- l.gun.Call(l):
 		case <-requestCtx.Done():
@@ -364,9 +364,9 @@ func (l *Generator) pacedCall() {
 			return
 		}
 	}()
-	l.responsesWaitGroup.Add(1)
+	l.ResponsesWaitGroup.Add(1)
 	go func() {
-		defer l.responsesWaitGroup.Done()
+		defer l.ResponsesWaitGroup.Done()
 		select {
 		case <-requestCtx.Done():
 			return
@@ -383,7 +383,7 @@ func (l *Generator) pacedCall() {
 
 // Run runs load loop until timeout or stop
 func (l *Generator) Run() {
-	l.log.Info().Msg("Load generator started")
+	l.Log.Info().Msg("Load generator started")
 	l.runSchedule()
 	l.printStatsLoop()
 	if l.cfg.LokiConfig != nil {
@@ -394,14 +394,14 @@ func (l *Generator) Run() {
 
 	switch l.cfg.Schedule.Type {
 	case RPSScheduleType:
-		l.responsesWaitGroup.Add(1)
+		l.ResponsesWaitGroup.Add(1)
 		// we run pacedCall controlled by stats.CurrentRPS
 		go func() {
 			for {
 				select {
 				case <-l.ResponsesCtx.Done():
-					l.responsesWaitGroup.Done()
-					l.log.Info().Msg("RPS generator stopped")
+					l.ResponsesWaitGroup.Done()
+					l.Log.Info().Msg("RPS generator stopped")
 					return
 				default:
 					l.pacedCall()
@@ -425,8 +425,8 @@ func (l *Generator) Stop() (interface{}, bool) {
 
 // Wait waits until test ends
 func (l *Generator) Wait() (interface{}, bool) {
-	l.log.Info().Msg("Waiting for all responses to finish")
-	l.responsesWaitGroup.Wait()
+	l.Log.Info().Msg("Waiting for all responses to finish")
+	l.ResponsesWaitGroup.Wait()
 	if l.cfg.LokiConfig != nil {
 		l.handleLokiStatsPayload()
 		l.dataCancel()
@@ -461,9 +461,9 @@ func (l *Generator) Stats() *GeneratorStats {
 // stopLokiStream stops the Loki stream client
 func (l *Generator) stopLokiStream() {
 	if l.cfg.LokiConfig != nil && l.cfg.LokiConfig.URL != "" {
-		l.log.Info().Msg("Stopping Loki")
+		l.Log.Info().Msg("Stopping Loki")
 		l.loki.Stop()
-		l.log.Info().Msg("Loki exited")
+		l.Log.Info().Msg("Loki exited")
 	}
 }
 
@@ -480,7 +480,7 @@ func (l *Generator) handleLokiResponsePayload(cr CallResult) {
 	cr.FinishedAt = nil
 	err := l.loki.HandleStruct(ls, *ts, cr)
 	if err != nil {
-		l.log.Err(err).Send()
+		l.Log.Err(err).Send()
 	}
 }
 
@@ -492,13 +492,13 @@ func (l *Generator) handleLokiStatsPayload() {
 	})
 	err := l.loki.HandleStruct(ls, time.Now(), l.StatsJSON())
 	if err != nil {
-		l.log.Err(err).Send()
+		l.Log.Err(err).Send()
 	}
 }
 
 // runLokiPromtailResponses pushes CallResult to Loki
 func (l *Generator) runLokiPromtailResponses() {
-	l.log.Info().
+	l.Log.Info().
 		Str("URL", l.cfg.LokiConfig.URL).
 		Interface("DefaultLabels", l.cfg.Labels).
 		Msg("Streaming data to Loki")
@@ -508,7 +508,7 @@ func (l *Generator) runLokiPromtailResponses() {
 		for {
 			select {
 			case <-l.dataCtx.Done():
-				l.log.Info().Msg("Loki responses exited")
+				l.Log.Info().Msg("Loki responses exited")
 				return
 			case r := <-l.lokiResponsesChan:
 				l.handleLokiResponsePayload(r)
@@ -525,7 +525,7 @@ func (l *Generator) runLokiPromtailStats() {
 		for {
 			select {
 			case <-l.dataCtx.Done():
-				l.log.Info().Msg("Loki stats exited")
+				l.Log.Info().Msg("Loki stats exited")
 				return
 			default:
 				time.Sleep(l.cfg.StatsPollInterval)
@@ -552,17 +552,17 @@ func (l *Generator) StatsJSON() map[string]interface{} {
 
 // printStatsLoop prints stats periodically, with LoadGeneratorConfig.StatsPollInterval
 func (l *Generator) printStatsLoop() {
-	l.responsesWaitGroup.Add(1)
+	l.ResponsesWaitGroup.Add(1)
 	go func() {
-		defer l.responsesWaitGroup.Done()
+		defer l.ResponsesWaitGroup.Done()
 		for {
 			select {
 			case <-l.ResponsesCtx.Done():
-				l.log.Info().Msg("Stats loop exited")
+				l.Log.Info().Msg("Stats loop exited")
 				return
 			default:
 				time.Sleep(l.cfg.StatsPollInterval)
-				l.log.Info().
+				l.Log.Info().
 					Int64("Success", l.stats.Success.Load()).
 					Int64("Failed", l.stats.Failed.Load()).
 					Int64("CallTimeout", l.stats.CallTimeout.Load()).

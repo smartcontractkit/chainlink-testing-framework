@@ -30,14 +30,14 @@ func NewMockInstance(cfg *MockInstanceConfig) *MockInstance {
 }
 
 func (m *MockInstance) Run(l *Generator) {
-	l.responsesWaitGroup.Add(1)
+	l.ResponsesWaitGroup.Add(1)
 	go func() {
 		for {
 			select {
 			// TODO: this is mandatory, we should stop the instance when test is done
 			// TODO: wrap this in closure to simplify setup
 			case <-l.ResponsesCtx.Done():
-				l.responsesWaitGroup.Done()
+				l.ResponsesWaitGroup.Done()
 				return
 			default:
 				startedAt := time.Now()
@@ -46,7 +46,7 @@ func (m *MockInstance) Run(l *Generator) {
 					//nolint
 					r := rand.Intn(100)
 					if r <= m.cfg.FailRatio {
-						l.instanceResponseChan <- CallResult{StartedAt: &startedAt, Data: "failedCallData", Error: "error", Failed: true}
+						l.ResponsesChan <- CallResult{StartedAt: &startedAt, Data: "failedCallData", Error: "error", Failed: true}
 					}
 				}
 				if m.cfg.TimeoutRatio > 0 && m.cfg.TimeoutRatio <= 100 {
@@ -54,10 +54,10 @@ func (m *MockInstance) Run(l *Generator) {
 					r := rand.Intn(100)
 					if r <= m.cfg.TimeoutRatio {
 						time.Sleep(m.cfg.CallSleep + 100*time.Millisecond)
-						l.instanceResponseChan <- CallResult{StartedAt: &startedAt, Data: "timeoutData", Timeout: true}
+						l.ResponsesChan <- CallResult{StartedAt: &startedAt, Data: "timeoutData", Timeout: true}
 					}
 				}
-				l.instanceResponseChan <- CallResult{StartedAt: &startedAt, Data: "successCallData"}
+				l.ResponsesChan <- CallResult{StartedAt: &startedAt, Data: "successCallData"}
 			}
 		}
 	}()
