@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/rs/zerolog/log"
 	"github.com/zksync-sdk/zksync2-go"
 	"math/big"
+	"strconv"
 )
 
 // ZKSyncClient represents a single node, EVM compatible client for the ZKSync network
@@ -54,6 +56,55 @@ func (z *ZKSyncClient) TransactionOpts(from *EthereumWallet) (*bind.TransactOpts
 	return opts, nil
 }
 
+// ProcessTransaction will queue or wait on a transaction depending on whether parallel transactions are enabled
+func (z *ZKSyncClient) ProcessTransaction(tx *types.Transaction) error {
+	var txConfirmer HeaderEventSubscription
+	if z.GetNetworkConfig().MinimumConfirmations <= 0 {
+		fromAddr, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx)
+		if err != nil {
+			return err
+		}
+		z.NonceSettings.sentInstantTransaction(fromAddr.Hex()) // On an L2 chain, indicate the tx has been sent
+		txConfirmer = NewInstantConfirmer(z, tx.Hash(), nil, nil)
+	} else {
+		txConfirmer = NewTransactionConfirmer(z, tx, z.GetNetworkConfig().MinimumConfirmations)
+	}
+
+	z.AddHeaderEventSubscription(tx.Hash().String(), txConfirmer)
+
+	if !z.queueTransactions { // For sequential transactions
+		log.Debug().Str("Hash", tx.Hash().String()).Msg("Waiting for TX to confirm before moving on")
+		defer z.DeleteHeaderEventSubscription(tx.Hash().String())
+		return txConfirmer.Wait()
+	}
+	return nil
+}
+
+// IsTxConfirmed checks if the transaction is confirmed on chain or not
+// Temp changes until the TransactionByHash method is fixed
+func (z *ZKSyncClient) IsTxConfirmed(txHash common.Hash) (bool, error) {
+	isPending := false
+	receipt, err := z.Client.TransactionReceipt(context.Background(), txHash)
+	if err != nil {
+		return !isPending, err
+	}
+	z.gasStats.AddClientTXData(TXGasData{
+		TXHash:            txHash.String(),
+		GasUsed:           receipt.GasUsed,
+		CumulativeGasUsed: receipt.CumulativeGasUsed,
+	})
+	if receipt.Status == 0 { // 0 indicates failure, 1 indicates success
+		if err != nil {
+			log.Warn().Str("TX Hash", txHash.Hex()).
+				Msg("Transaction failed and was reverted! Unable to retrieve reason!")
+			return false, err
+		}
+		log.Warn().Str("TX Hash", txHash.Hex()).
+			Msg("Transaction failed and was reverted!")
+	}
+	return !isPending, err
+}
+
 func (z *ZKSyncClient) Fund(
 	toAddress string,
 	amount *big.Float,
@@ -76,7 +127,11 @@ func (z *ZKSyncClient) Fund(
 	ethRpc, err := rpc.Dial(z.GetNetworkConfig().HTTPURLs[1])
 	ep, err := w.CreateEthereumProvider(ethRpc)
 	transferAmt, _ := amount.Int64()
-	log.Info().Str("ZKSync", fmt.Sprintf("About to fund %s with %d", toAddress, transferAmt)).Msg("Executing ZKSync transaction")
+	log.Info().
+		Str("From", z.DefaultWallet.Address()).
+		Str("To", toAddress).
+		Str("Amount", strconv.FormatInt(transferAmt, 10)).
+		Msg("Transferring ETH")
 	tx, err := ep.Deposit(
 		zksync2.CreateETH(),
 		big.NewInt(transferAmt),
