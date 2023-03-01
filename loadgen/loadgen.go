@@ -254,6 +254,10 @@ func (l *Generator) runSchedule() {
 				return
 			default:
 				time.Sleep(l.schedule.StageInterval)
+				log.Info().
+					Int64("Instances", l.stats.CurrentInstances.Load()).
+					Int64("RPS", l.stats.CurrentRPS.Load()).
+					Msg("Scheduler step")
 				switch l.cfg.Schedule.Type {
 				case RPSScheduleType:
 					newRPS := l.stats.CurrentRPS.Load() + l.schedule.Increase
@@ -269,7 +273,7 @@ func (l *Generator) runSchedule() {
 					}
 					if newInstances > l.stats.CurrentInstances.Load() {
 						l.stats.CurrentInstances.Store(newInstances)
-						for i := 0; i < int(newInstances); i++ {
+						for i := 0; i < int(l.schedule.Increase); i++ {
 							l.instance.Run(l)
 						}
 					}

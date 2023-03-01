@@ -395,10 +395,10 @@ func TestInstancesRequests(t *testing.T) {
 
 	okData, okResponses, failResponses := convertResponsesData(gen.GetData())
 	require.GreaterOrEqual(t, okResponses[0].Duration, 50*time.Millisecond)
-	require.Greater(t, len(okResponses), 3500)
-	require.Greater(t, len(okData), 3500)
+	require.Greater(t, len(okResponses), 1000)
+	require.Greater(t, len(okData), 1000)
 	require.Equal(t, okResponses[0].Data.(string), "successCallData")
-	require.Equal(t, okResponses[3500].Data.(string), "successCallData")
+	require.Equal(t, okResponses[1000].Data.(string), "successCallData")
 	require.Empty(t, failResponses)
 	require.Empty(t, gen.Errors())
 }
