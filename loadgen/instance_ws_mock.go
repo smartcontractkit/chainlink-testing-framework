@@ -29,10 +29,10 @@ func NewWSMockInstance(cfg *WSMockConfig) *WSMockInstance {
 
 // Run create an instance firing read requests against mock ws server
 func (m *WSMockInstance) Run(l *Generator) {
-	l.responsesWaitGroup.Add(1)
+	l.ResponsesWaitGroup.Add(1)
 	c, _, err := websocket.Dial(context.Background(), m.cfg.TargetURl, &websocket.DialOptions{})
 	if err != nil {
-		l.log.Error().Err(err).Msg("failed to connect from instance")
+		l.Log.Error().Err(err).Msg("failed to connect from instance")
 		//nolint
 		c.Close(websocket.StatusInternalError, "")
 	}
@@ -40,7 +40,7 @@ func (m *WSMockInstance) Run(l *Generator) {
 		for {
 			select {
 			case <-l.ResponsesCtx.Done():
-				l.responsesWaitGroup.Done()
+				l.ResponsesWaitGroup.Done()
 				//nolint
 				c.Close(websocket.StatusNormalClosure, "")
 				return
@@ -49,9 +49,9 @@ func (m *WSMockInstance) Run(l *Generator) {
 				v := map[string]string{}
 				err = wsjson.Read(context.Background(), c, &v)
 				if err != nil {
-					l.log.Error().Err(err).Msg("failed read ws msg from instance")
+					l.Log.Error().Err(err).Msg("failed read ws msg from instance")
 				}
-				l.instanceResponseChan <- CallResult{StartedAt: &startedAt, Data: v}
+				l.ResponsesChan <- CallResult{StartedAt: &startedAt, Data: v}
 			}
 		}
 	}()
