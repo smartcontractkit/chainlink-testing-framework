@@ -79,8 +79,8 @@ func TestLokiSamples(t *testing.T) {
 				Labels:     defaultLabels,
 				Duration:   55 * time.Millisecond,
 				Schedule: &LoadSchedule{
-					Type:      RPSScheduleType,
-					StartFrom: 1,
+					Type: RPSScheduleType,
+					From: 1,
 				},
 				Gun: NewMockGun(&MockGunConfig{
 					CallSleep: 50 * time.Millisecond,
@@ -98,7 +98,7 @@ func TestLokiSamples(t *testing.T) {
 				StatsSamples: []StatsSample{
 					{
 						CallTimeout:      0,
-						CurrentInstances: 1,
+						CurrentInstances: 0,
 						CurrentRPS:       1,
 						RunFailed:        false,
 						RunStopped:       false,
@@ -107,7 +107,7 @@ func TestLokiSamples(t *testing.T) {
 					},
 					{
 						CallTimeout:      0,
-						CurrentInstances: 1,
+						CurrentInstances: 0,
 						CurrentRPS:       1,
 						RunFailed:        false,
 						RunStopped:       false,

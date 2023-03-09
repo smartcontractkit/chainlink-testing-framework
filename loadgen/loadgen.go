@@ -3,6 +3,7 @@ package loadgen
 import (
 	"context"
 	"errors"
+	"math"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -24,12 +25,12 @@ const (
 
 var (
 	ErrNoCfg        = errors.New("config is nil")
-	ErrNoImpl       = errors.New("either \"gun\" or \"instance\" implementation must provided")
+	ErrNoImpl       = errors.New("either \"gun\" or \"instanceTemplate\" implementation must provided")
 	ErrCallTimeout  = errors.New("generator request call timeout")
-	ErrStartFrom    = errors.New("StartFrom must be > 0")
+	ErrStartFrom    = errors.New("from must be > 0")
 	ErrScheduleType = errors.New("schedule type must be \"rps_schedule\" or \"instance_schedule\"")
 	ErrNoGun        = errors.New("rps load schedule selected but gun implementation is nil")
-	ErrNoInstance   = errors.New("instance load schedule selected but instance implementation is nil")
+	ErrNoInstance   = errors.New("instanceTemplate load schedule selected but instanceTemplate implementation is nil")
 )
 
 // Gun is basic interface to run limited load with a contract call and save all transactions
@@ -40,6 +41,7 @@ type Gun interface {
 // Instance is basic interface to run load instances
 type Instance interface {
 	Run(l *Generator)
+	Stop(l *Generator)
 }
 
 // CallResult represents basic call result info
@@ -60,19 +62,25 @@ const (
 
 // LoadSchedule load test schedule
 type LoadSchedule struct {
-	Type          string
-	StartFrom     int64
-	Increase      int64
-	StageInterval time.Duration
-	Limit         int64
+	Type         string
+	From         int64
+	Increase     int64
+	StepDuration time.Duration
+	Limit        int64
 }
 
 func (ls *LoadSchedule) Validate() error {
 	if ls.Type != RPSScheduleType && ls.Type != InstancesScheduleType {
 		return ErrScheduleType
 	}
-	if ls.StartFrom <= 0 {
+	if ls.From <= 0 {
 		return ErrStartFrom
+	}
+	switch ls.Type {
+	case RPSScheduleType:
+		if ls.Increase < 0 && ls.Limit < 1 {
+			ls.Limit = 1
+		}
 	}
 	return nil
 }
@@ -110,13 +118,15 @@ func (lgc *LoadGeneratorConfig) Validate() error {
 
 // GeneratorStats basic generator load stats
 type GeneratorStats struct {
-	CurrentRPS       atomic.Int64 `json:"currentRPS"`
-	CurrentInstances atomic.Int64 `json:"currentInstances"`
-	RunStopped       atomic.Bool  `json:"runStopped"`
-	RunFailed        atomic.Bool  `json:"runFailed"`
-	Success          atomic.Int64 `json:"success"`
-	Failed           atomic.Int64 `json:"failed"`
-	CallTimeout      atomic.Int64 `json:"callTimeout"`
+	CurrentRPS             atomic.Int64 `json:"currentRPS"`
+	CurrentInstances       atomic.Int64 `json:"currentInstances"`
+	CurrentScheduleSegment atomic.Int64 `json:"current_schedule_segment"`
+	CurrentScheduleStep    atomic.Int64 `json:"current_schedule_step"`
+	RunStopped             atomic.Bool  `json:"runStopped"`
+	RunFailed              atomic.Bool  `json:"runFailed"`
+	Success                atomic.Int64 `json:"success"`
+	Failed                 atomic.Int64 `json:"failed"`
+	CallTimeout            atomic.Int64 `json:"callTimeout"`
 }
 
 // ResponseData includes any request/response data that a gun might store
@@ -145,7 +155,8 @@ type Generator struct {
 	dataCtx            context.Context
 	dataCancel         context.CancelFunc
 	gun                Gun
-	instance           Instance
+	instanceTemplate   Instance
+	instances          []Instance
 	ResponsesChan      chan CallResult
 	responsesData      *ResponseData
 	errsMu             *sync.Mutex
@@ -155,7 +166,7 @@ type Generator struct {
 	lokiResponsesChan  chan CallResult
 }
 
-// NewLoadGenerator creates a new instance for a contract,
+// NewLoadGenerator creates a new instanceTemplate for a contract,
 // shoots for scheduled RPS until timeout, test logic is defined through Gun
 func NewLoadGenerator(cfg *LoadGeneratorConfig) (*Generator, error) {
 	if cfg == nil {
@@ -173,7 +184,7 @@ func NewLoadGenerator(cfg *LoadGeneratorConfig) (*Generator, error) {
 	if cfg.Schedule.Type == InstancesScheduleType && cfg.Instance == nil {
 		return nil, ErrNoInstance
 	}
-	rl := ratelimit.New(int(cfg.Schedule.StartFrom))
+	rl := ratelimit.New(int(cfg.Schedule.From))
 
 	// creating logger from *testing.T context or using a global logger
 	var l zerolog.Logger
@@ -219,7 +230,7 @@ func NewLoadGenerator(cfg *LoadGeneratorConfig) (*Generator, error) {
 		dataCtx:            dataCtx,
 		dataCancel:         dataCancel,
 		gun:                cfg.Gun,
-		instance:           cfg.Instance,
+		instanceTemplate:   cfg.Instance,
 		ResponsesChan:      make(chan CallResult),
 		labels:             ls,
 		responsesData: &ResponseData{
@@ -239,11 +250,40 @@ func NewLoadGenerator(cfg *LoadGeneratorConfig) (*Generator, error) {
 	}, nil
 }
 
+func (l *Generator) setupSchedule() {
+	switch l.cfg.Schedule.Type {
+	case RPSScheduleType:
+		l.ResponsesWaitGroup.Add(1)
+		l.rl = ratelimit.New(int(l.schedule.From))
+		l.stats.CurrentRPS.Store(l.schedule.From)
+
+		// we run pacedCall controlled by stats.CurrentRPS
+		go func() {
+			for {
+				select {
+				case <-l.ResponsesCtx.Done():
+					l.ResponsesWaitGroup.Done()
+					l.Log.Info().Msg("RPS generator stopped")
+					return
+				default:
+					l.pacedCall()
+				}
+			}
+		}()
+	case InstancesScheduleType:
+		l.stats.CurrentInstances.Store(l.schedule.From)
+		// we start all instances once
+		instances := l.stats.CurrentInstances.Load()
+		for i := 0; i < int(instances); i++ {
+			inst := l.instanceTemplate
+			inst.Run(l)
+			l.instances = append(l.instances, inst)
+		}
+	}
+}
+
 // runSchedule runs scheduling loop, changes Generator.currentRPS according to a load schedule
 func (l *Generator) runSchedule() {
-	l.rl = ratelimit.New(int(l.schedule.StartFrom))
-	l.stats.CurrentRPS.Store(l.schedule.StartFrom)
-	l.stats.CurrentInstances.Store(l.schedule.StartFrom)
 	l.ResponsesWaitGroup.Add(1)
 	go func() {
 		defer l.ResponsesWaitGroup.Done()
@@ -253,7 +293,7 @@ func (l *Generator) runSchedule() {
 				l.Log.Info().Msg("Scheduler exited")
 				return
 			default:
-				time.Sleep(l.schedule.StageInterval)
+				time.Sleep(l.schedule.StepDuration)
 				log.Info().
 					Int64("Instances", l.stats.CurrentInstances.Load()).
 					Int64("RPS", l.stats.CurrentRPS.Load()).
@@ -267,14 +307,34 @@ func (l *Generator) runSchedule() {
 					l.rl = ratelimit.New(int(newRPS))
 					l.stats.CurrentRPS.Store(newRPS)
 				case InstancesScheduleType:
-					newInstances := l.stats.CurrentInstances.Load() + l.schedule.Increase
-					if newInstances > l.schedule.Limit {
-						return
+					if l.schedule.Increase == 0 {
+						log.Info().Msg("No instances changes, skipping scheduling")
 					}
-					if newInstances > l.stats.CurrentInstances.Load() {
-						l.stats.CurrentInstances.Store(newInstances)
+					if l.schedule.Increase > 0 {
 						for i := 0; i < int(l.schedule.Increase); i++ {
-							l.instance.Run(l)
+							if l.stats.CurrentInstances.Load()+l.schedule.Increase > l.schedule.Limit {
+								log.Info().Msg("Upper instances limit reached")
+								continue
+							}
+							instance := l.instanceTemplate
+							instance.Run(l)
+							l.instances = append(l.instances, instance)
+							l.stats.CurrentInstances.Store(l.stats.CurrentInstances.Load() + 1)
+						}
+					} else {
+						log.Info().Int("Instances len", len(l.instances)).Send()
+						for i := 0; i < int(math.Abs(float64(l.schedule.Increase))); i++ {
+							if l.stats.CurrentInstances.Load()+l.schedule.Increase < l.schedule.Limit {
+								log.Info().Msg("Lower instances limit reached")
+								continue
+							}
+							if len(l.instances) == 0 {
+								log.Info().Msg("No more instances left")
+								continue
+							}
+							l.instances[0].Stop(l)
+							l.instances = l.instances[1:]
+							l.stats.CurrentInstances.Store(l.stats.CurrentInstances.Load() - 1)
 						}
 					}
 				}
@@ -311,8 +371,8 @@ func (l *Generator) handleCallResult(res CallResult) {
 	}
 }
 
-// collectData collects CallResult from all the Instances
-func (l *Generator) collectData() {
+// collectResults collects CallResult from all the Instances
+func (l *Generator) collectResults() {
 	if l.cfg.Schedule.Type == RPSScheduleType {
 		return
 	}
@@ -326,7 +386,7 @@ func (l *Generator) collectData() {
 				return
 			case res := <-l.ResponsesChan:
 				if res.StartedAt.IsZero() {
-					log.Error().Msg("StartedAt is not set in instance implementation")
+					log.Error().Msg("StartedAt is not set in instanceTemplate implementation")
 					return
 				}
 				tn := time.Now()
@@ -388,37 +448,14 @@ func (l *Generator) pacedCall() {
 // Run runs load loop until timeout or stop
 func (l *Generator) Run() {
 	l.Log.Info().Msg("Load generator started")
-	l.runSchedule()
 	l.printStatsLoop()
 	if l.cfg.LokiConfig != nil {
 		l.runLokiPromtailResponses()
 		l.runLokiPromtailStats()
 	}
-	l.collectData()
-
-	switch l.cfg.Schedule.Type {
-	case RPSScheduleType:
-		l.ResponsesWaitGroup.Add(1)
-		// we run pacedCall controlled by stats.CurrentRPS
-		go func() {
-			for {
-				select {
-				case <-l.ResponsesCtx.Done():
-					l.ResponsesWaitGroup.Done()
-					l.Log.Info().Msg("RPS generator stopped")
-					return
-				default:
-					l.pacedCall()
-				}
-			}
-		}()
-	case InstancesScheduleType:
-		// we start all instances once
-		instances := l.stats.CurrentInstances.Load()
-		for i := 0; i < int(instances); i++ {
-			l.instance.Run(l)
-		}
-	}
+	l.collectResults()
+	l.setupSchedule()
+	l.runSchedule()
 }
 
 // Stop stops load generator, waiting for all calls for either finish or timeout

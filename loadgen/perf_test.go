@@ -73,8 +73,8 @@ func TestLocalTrace(t *testing.T) {
 				CallTimeout: 100 * time.Millisecond,
 				Duration:    10 * time.Second,
 				Schedule: &LoadSchedule{
-					Type:      RPSScheduleType,
-					StartFrom: 2000,
+					Type: RPSScheduleType,
+					From: 2000,
 				},
 				Gun: NewMockGun(&MockGunConfig{
 					TimeoutRatio: 1,
@@ -90,7 +90,7 @@ func TestLocalTrace(t *testing.T) {
 }
 
 func TestLokiRPSRun(t *testing.T) {
-	t.Skip("This test is for manual run and dashboard development, you need LOKI_URL and LOKI_TOKEN to run")
+	//t.Skip("This test is for manual run and dashboard development, you need LOKI_URL and LOKI_TOKEN to run")
 	t.Parallel()
 	t.Run("can_report_to_loki", func(t *testing.T) {
 		t.Parallel()
@@ -100,17 +100,17 @@ func TestLokiRPSRun(t *testing.T) {
 				os.Getenv("LOKI_URL"),
 				os.Getenv("LOKI_TOKEN")),
 			Labels: map[string]string{
-				"cluster":    "sdlc",
-				"namespace":  "load-dummy-test",
-				"app":        "dummy",
 				"test_group": "generator_healthcheck",
+				"cluster":    "sdlc",
+				"app":        "dummy",
+				"namespace":  "load-dummy-test",
 				"test_id":    "dummy-healthcheck-rps-1",
 			},
 			CallTimeout: 100 * time.Millisecond,
 			Duration:    10 * time.Second,
 			Schedule: &LoadSchedule{
-				Type:      RPSScheduleType,
-				StartFrom: 1000,
+				Type: RPSScheduleType,
+				From: 1000,
 			},
 			Gun: NewMockGun(&MockGunConfig{
 				TimeoutRatio: 1,
@@ -124,7 +124,7 @@ func TestLokiRPSRun(t *testing.T) {
 }
 
 func TestLokiInstancesRun(t *testing.T) {
-	t.Skip("This test is for manual run and dashboard development, you need LOKI_URL and LOKI_TOKEN to run")
+	//t.Skip("This test is for manual run and dashboard development, you need LOKI_URL and LOKI_TOKEN to run")
 	t.Parallel()
 	t.Run("can_report_to_loki", func(t *testing.T) {
 		t.Parallel()
@@ -134,22 +134,22 @@ func TestLokiInstancesRun(t *testing.T) {
 				os.Getenv("LOKI_URL"),
 				os.Getenv("LOKI_TOKEN")),
 			Labels: map[string]string{
-				"cluster":    "sdlc",
-				"namespace":  "load-dummy-test",
-				"app":        "dummy",
 				"test_group": "generator_healthcheck",
+				"cluster":    "sdlc",
+				"app":        "dummy",
+				"namespace":  "load-dummy-test",
 				"test_id":    "dummy-healthcheck-instances-1",
 			},
 			CallTimeout: 100 * time.Millisecond,
 			Duration:    30 * time.Second,
 			Schedule: &LoadSchedule{
-				Type:          InstancesScheduleType,
-				StartFrom:     1,
-				Increase:      3,
-				StageInterval: 10 * time.Second,
-				Limit:         30,
+				Type:         InstancesScheduleType,
+				From:         1,
+				Increase:     3,
+				StepDuration: 10 * time.Second,
+				Limit:        30,
 			},
-			Instance: NewMockInstance(&MockInstanceConfig{
+			Instance: NewMockInstance(MockInstanceConfig{
 				FailRatio: 5,
 				CallSleep: 100 * time.Millisecond,
 			}),
@@ -182,10 +182,9 @@ func TestLokiSpikeMaxLoadRun(t *testing.T) {
 			Schedule: &LoadSchedule{
 				Type: RPSScheduleType,
 				// TODO: tune Loki for 5k+ RPS responses
-				StartFrom: 5000,
+				From: 5000,
 			},
 			Gun: NewMockGun(&MockGunConfig{
-				//TimeoutRatio: 1,
 				CallSleep: 50 * time.Millisecond,
 			}),
 		})
@@ -217,13 +216,13 @@ func TestWS(t *testing.T) {
 		},
 		Duration: 100 * time.Second,
 		Schedule: &LoadSchedule{
-			Type:          InstancesScheduleType,
-			StartFrom:     10,
-			Increase:      20,
-			StageInterval: 10 * time.Second,
-			Limit:         300,
+			Type:         InstancesScheduleType,
+			From:         10,
+			Increase:     20,
+			StepDuration: 10 * time.Second,
+			Limit:        300,
 		},
-		Instance: NewWSMockInstance(&WSMockConfig{TargetURl: s.URL}),
+		Instance: NewWSMockInstance(WSMockConfig{TargetURl: s.URL}),
 	})
 	require.NoError(t, err)
 	gen.Run()
@@ -249,11 +248,11 @@ func TestHTTP(t *testing.T) {
 		},
 		Duration: 100 * time.Second,
 		Schedule: &LoadSchedule{
-			Type:          RPSScheduleType,
-			StartFrom:     5000,
-			Increase:      1000,
-			StageInterval: 10 * time.Second,
-			Limit:         20000,
+			Type:         RPSScheduleType,
+			From:         5000,
+			Increase:     1000,
+			StepDuration: 10 * time.Second,
+			Limit:        20000,
 		},
 		Gun: NewHTTPMockGun(&MockHTTPGunConfig{TargetURL: "http://localhost:8080"}),
 	})
