@@ -32,7 +32,6 @@ type LokiSamplesAssertions struct {
 func assertSamples(t *testing.T, samples []client.PromtailSendResult, a LokiSamplesAssertions) {
 	var cd CallResult
 	for i, s := range samples[0:2] {
-		t.Logf("Entry: %s", s.Entry)
 		err := json.Unmarshal([]byte(s.Entry), &cd)
 		require.NoError(t, err)
 		require.NotEmpty(t, cd.Duration)
@@ -41,7 +40,6 @@ func assertSamples(t *testing.T, samples []client.PromtailSendResult, a LokiSamp
 	// marshal to map because atomic can't be marshalled
 	var ls map[string]interface{}
 	for i, s := range samples[2:4] {
-		t.Logf("Stats: %s", s.Entry)
 		err := json.Unmarshal([]byte(s.Entry), &ls)
 		require.NoError(t, err)
 		require.Equal(t, ls["callTimeout"], a.StatsSamples[i].CallTimeout)
@@ -78,9 +76,11 @@ func TestLokiSamples(t *testing.T) {
 				LokiConfig: client.NewDefaultLokiConfig("", ""),
 				Labels:     defaultLabels,
 				Duration:   55 * time.Millisecond,
-				Schedule: &LoadSchedule{
-					Type: RPSScheduleType,
-					From: 1,
+				LoadType:   RPSScheduleType,
+				Schedule: []*Segment{
+					{
+						From: 1,
+					},
 				},
 				Gun: NewMockGun(&MockGunConfig{
 					CallSleep: 50 * time.Millisecond,

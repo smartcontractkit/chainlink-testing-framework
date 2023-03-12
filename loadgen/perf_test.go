@@ -72,9 +72,11 @@ func TestLocalTrace(t *testing.T) {
 				},
 				CallTimeout: 100 * time.Millisecond,
 				Duration:    10 * time.Second,
-				Schedule: &LoadSchedule{
-					Type: RPSScheduleType,
-					From: 2000,
+				LoadType:    RPSScheduleType,
+				Schedule: []*Segment{
+					{
+						From: 2000,
+					},
 				},
 				Gun: NewMockGun(&MockGunConfig{
 					TimeoutRatio: 1,
@@ -106,12 +108,16 @@ func TestLokiRPSRun(t *testing.T) {
 				"namespace":  "load-dummy-test",
 				"test_id":    "dummy-healthcheck-rps-1",
 			},
+			Duration:    3 * time.Minute,
 			CallTimeout: 100 * time.Millisecond,
-			Duration:    10 * time.Second,
-			Schedule: &LoadSchedule{
-				Type: RPSScheduleType,
-				From: 1000,
-			},
+			LoadType:    RPSScheduleType,
+			Schedule: Saw(SawScheduleProfile{
+				From:         1,
+				Increase:     100,
+				Steps:        10,
+				StepDuration: 3 * time.Second,
+				Length:       4,
+			}),
 			Gun: NewMockGun(&MockGunConfig{
 				TimeoutRatio: 1,
 				CallSleep:    50 * time.Millisecond,
@@ -140,15 +146,16 @@ func TestLokiInstancesRun(t *testing.T) {
 				"namespace":  "load-dummy-test",
 				"test_id":    "dummy-healthcheck-instances-1",
 			},
+			Duration:    60 * time.Second,
 			CallTimeout: 100 * time.Millisecond,
-			Duration:    30 * time.Second,
-			Schedule: &LoadSchedule{
-				Type:         InstancesScheduleType,
+			LoadType:    InstancesScheduleType,
+			Schedule: Saw(SawScheduleProfile{
 				From:         1,
-				Increase:     3,
-				StepDuration: 10 * time.Second,
-				Limit:        30,
-			},
+				Increase:     2,
+				Steps:        10,
+				StepDuration: 1 * time.Second,
+				Length:       6,
+			}),
 			Instance: NewMockInstance(MockInstanceConfig{
 				FailRatio: 5,
 				CallSleep: 100 * time.Millisecond,
@@ -179,10 +186,11 @@ func TestLokiSpikeMaxLoadRun(t *testing.T) {
 			},
 			CallTimeout: 100 * time.Millisecond,
 			Duration:    20 * time.Second,
-			Schedule: &LoadSchedule{
-				Type: RPSScheduleType,
-				// TODO: tune Loki for 5k+ RPS responses
-				From: 5000,
+			LoadType:    RPSScheduleType,
+			Schedule: []*Segment{
+				{
+					From: 5000,
+				},
 			},
 			Gun: NewMockGun(&MockGunConfig{
 				CallSleep: 50 * time.Millisecond,
@@ -215,12 +223,14 @@ func TestWS(t *testing.T) {
 			"test_id":    "dummy-healthcheck-ws-instances-stages-25ms-answer",
 		},
 		Duration: 100 * time.Second,
-		Schedule: &LoadSchedule{
-			Type:         InstancesScheduleType,
-			From:         10,
-			Increase:     20,
-			StepDuration: 10 * time.Second,
-			Limit:        300,
+		LoadType: InstancesScheduleType,
+		Schedule: []*Segment{
+			{
+				From:         10,
+				Increase:     20,
+				Steps:        10,
+				StepDuration: 10 * time.Second,
+			},
 		},
 		Instance: NewWSMockInstance(WSMockConfig{TargetURl: s.URL}),
 	})
@@ -247,12 +257,14 @@ func TestHTTP(t *testing.T) {
 			"test_id":    "dummy-healthcheck-http-rps-25ms-answer",
 		},
 		Duration: 100 * time.Second,
-		Schedule: &LoadSchedule{
-			Type:         RPSScheduleType,
-			From:         5000,
-			Increase:     1000,
-			StepDuration: 10 * time.Second,
-			Limit:        20000,
+		LoadType: RPSScheduleType,
+		Schedule: []*Segment{
+			{
+				From:         5000,
+				Increase:     1000,
+				Steps:        10,
+				StepDuration: 10 * time.Second,
+			},
 		},
 		Gun: NewHTTPMockGun(&MockHTTPGunConfig{TargetURL: "http://localhost:8080"}),
 	})

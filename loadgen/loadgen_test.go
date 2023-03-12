@@ -22,9 +22,12 @@ func TestConcurrentGenerators(t *testing.T) {
 		gen, err := NewLoadGenerator(&LoadGeneratorConfig{
 			T:        t,
 			Duration: 1 * time.Second,
-			Schedule: &LoadSchedule{
-				Type: RPSScheduleType,
-				From: 1,
+			LoadType: RPSScheduleType,
+
+			Schedule: []*Segment{
+				{
+					From: 1,
+				},
 			},
 			Gun: NewMockGun(&MockGunConfig{
 				CallSleep: 50 * time.Millisecond,
@@ -60,10 +63,12 @@ func TestConcurrentGenerators(t *testing.T) {
 func TestPositiveOneRequest(t *testing.T) {
 	t.Parallel()
 	gen, err := NewLoadGenerator(&LoadGeneratorConfig{
-		T: t,
-		Schedule: &LoadSchedule{
-			Type: RPSScheduleType,
-			From: 1,
+		T:        t,
+		LoadType: RPSScheduleType,
+		Schedule: []*Segment{
+			{
+				From: 1,
+			},
 		},
 		Gun: NewMockGun(&MockGunConfig{
 			CallSleep: 50 * time.Millisecond,
@@ -75,6 +80,9 @@ func TestPositiveOneRequest(t *testing.T) {
 	_, failed := gen.Stop()
 	require.Equal(t, false, failed)
 	gs := &GeneratorStats{}
+	gs.LastSegment.Store(1)
+	gs.CurrentSegment.Store(1)
+	gs.CurrentStep.Store(0)
 	gs.CurrentInstances.Store(0)
 	gs.CurrentRPS.Store(1)
 	gs.Success.Add(2)
@@ -92,10 +100,12 @@ func TestPositiveOneRequest(t *testing.T) {
 func TestFailedOneRequest(t *testing.T) {
 	t.Parallel()
 	gen, err := NewLoadGenerator(&LoadGeneratorConfig{
-		T: t,
-		Schedule: &LoadSchedule{
-			Type: RPSScheduleType,
-			From: 1,
+		T:        t,
+		LoadType: RPSScheduleType,
+		Schedule: []*Segment{
+			{
+				From: 1,
+			},
 		},
 		Gun: NewMockGun(&MockGunConfig{
 			FailRatio: 100,
@@ -108,6 +118,9 @@ func TestFailedOneRequest(t *testing.T) {
 	_, failed := gen.Stop()
 	require.Equal(t, true, failed)
 	gs := &GeneratorStats{}
+	gs.LastSegment.Store(1)
+	gs.CurrentSegment.Store(1)
+	gs.CurrentStep.Store(0)
 	gs.RunFailed.Store(true)
 	gs.CurrentRPS.Store(1)
 	gs.CurrentInstances.Store(0)
@@ -128,10 +141,12 @@ func TestFailedOneRequest(t *testing.T) {
 func TestLoadGenCallTimeout(t *testing.T) {
 	t.Parallel()
 	gen, err := NewLoadGenerator(&LoadGeneratorConfig{
-		T: t,
-		Schedule: &LoadSchedule{
-			Type: RPSScheduleType,
-			From: 1,
+		T:        t,
+		LoadType: RPSScheduleType,
+		Schedule: []*Segment{
+			{
+				From: 1,
+			},
 		},
 		CallTimeout: 40 * time.Millisecond,
 		Gun: NewMockGun(&MockGunConfig{
@@ -144,6 +159,9 @@ func TestLoadGenCallTimeout(t *testing.T) {
 	_, failed := gen.Stop()
 	require.Equal(t, true, failed)
 	gs := &GeneratorStats{}
+	gs.LastSegment.Store(1)
+	gs.CurrentSegment.Store(1)
+	gs.CurrentStep.Store(0)
 	gs.CurrentRPS.Store(1)
 	gs.CurrentInstances.Store(0)
 	gs.RunFailed.Store(true)
@@ -160,10 +178,12 @@ func TestLoadGenCallTimeout(t *testing.T) {
 func TestLoadGenCallTimeoutWait(t *testing.T) {
 	t.Parallel()
 	gen, err := NewLoadGenerator(&LoadGeneratorConfig{
-		T: t,
-		Schedule: &LoadSchedule{
-			Type: RPSScheduleType,
-			From: 1,
+		T:        t,
+		LoadType: RPSScheduleType,
+		Schedule: []*Segment{
+			{
+				From: 1,
+			},
 		},
 		CallTimeout: 50 * time.Millisecond,
 		Duration:    1 * time.Second,
@@ -191,10 +211,12 @@ func TestLoadGenCallTimeoutWait(t *testing.T) {
 func TestCancelledByDeadlineWait(t *testing.T) {
 	t.Parallel()
 	gen, err := NewLoadGenerator(&LoadGeneratorConfig{
-		T: t,
-		Schedule: &LoadSchedule{
-			Type: RPSScheduleType,
-			From: 1,
+		T:        t,
+		LoadType: RPSScheduleType,
+		Schedule: []*Segment{
+			{
+				From: 1,
+			},
 		},
 		Duration: 40 * time.Millisecond,
 		Gun: NewMockGun(&MockGunConfig{
@@ -211,6 +233,9 @@ func TestCancelledByDeadlineWait(t *testing.T) {
 	require.Greater(t, elapsed, 1050*time.Millisecond)
 	require.Equal(t, false, failed)
 	gs := &GeneratorStats{}
+	gs.LastSegment.Store(1)
+	gs.CurrentSegment.Store(1)
+	gs.CurrentStep.Store(0)
 	gs.CurrentInstances.Store(0)
 	gs.CurrentRPS.Store(1)
 	gs.Success.Add(2)
@@ -227,10 +252,12 @@ func TestCancelledByDeadlineWait(t *testing.T) {
 func TestCancelledBeforeDeadline(t *testing.T) {
 	t.Parallel()
 	gen, err := NewLoadGenerator(&LoadGeneratorConfig{
-		T: t,
-		Schedule: &LoadSchedule{
-			Type: RPSScheduleType,
-			From: 1,
+		T:        t,
+		LoadType: RPSScheduleType,
+		Schedule: []*Segment{
+			{
+				From: 1,
+			},
 		},
 		Duration: 40 * time.Millisecond,
 		Gun: NewMockGun(&MockGunConfig{
@@ -248,6 +275,9 @@ func TestCancelledBeforeDeadline(t *testing.T) {
 	require.Greater(t, elapsed, 1050*time.Millisecond)
 	require.Equal(t, false, failed)
 	gs := &GeneratorStats{}
+	gs.LastSegment.Store(1)
+	gs.CurrentSegment.Store(1)
+	gs.CurrentStep.Store(0)
 	gs.CurrentInstances.Store(0)
 	gs.CurrentRPS.Store(1)
 	gs.Success.Add(2)
@@ -263,9 +293,11 @@ func TestStaticRPSSchedulePrecision(t *testing.T) {
 	gen, err := NewLoadGenerator(&LoadGeneratorConfig{
 		T:        t,
 		Duration: 1 * time.Second,
-		Schedule: &LoadSchedule{
-			Type: RPSScheduleType,
-			From: 1000,
+		LoadType: RPSScheduleType,
+		Schedule: []*Segment{
+			{
+				From: 1000,
+			},
 		},
 		Gun: NewMockGun(&MockGunConfig{
 			CallSleep: 50 * time.Millisecond,
@@ -291,12 +323,10 @@ func TestStaticRPSScheduleIsNotBlocking(t *testing.T) {
 	gen, err := NewLoadGenerator(&LoadGeneratorConfig{
 		T:        t,
 		Duration: 1 * time.Second,
-		Schedule: &LoadSchedule{
-			Type: RPSScheduleType,
-			From: 1000,
-		},
+		LoadType: RPSScheduleType,
+		Schedule: HorizontalLine(1000),
 		Gun: NewMockGun(&MockGunConfig{
-			// call time must not affect the load schedule
+			// call time must not affect the load scheduleSegments
 			CallSleep: 1 * time.Second,
 		}),
 	})
@@ -316,17 +346,51 @@ func TestStaticRPSScheduleIsNotBlocking(t *testing.T) {
 	require.Empty(t, gen.Errors())
 }
 
-func TestLoadScheduleRPSIncrease(t *testing.T) {
+func TestMultipleScheduleSegments(t *testing.T) {
 	t.Parallel()
 	gen, err := NewLoadGenerator(&LoadGeneratorConfig{
 		T:                 t,
 		StatsPollInterval: 1 * time.Second,
-		Schedule: &LoadSchedule{
-			Type:         RPSScheduleType,
-			From:         1,
-			Increase:     1,
-			StepDuration: 1 * time.Second,
-			Limit:        5,
+		LoadType:          RPSScheduleType,
+		Schedule: []*Segment{
+			{
+				From:         1,
+				Increase:     1,
+				Steps:        5,
+				StepDuration: 1 * time.Second,
+			},
+			{
+				From:         5,
+				Increase:     -1,
+				Steps:        5,
+				StepDuration: 1 * time.Second,
+			},
+		},
+		Duration: 12 * time.Second,
+		Gun: NewMockGun(&MockGunConfig{
+			CallSleep: 10 * time.Millisecond,
+		}),
+	})
+	require.NoError(t, err)
+	gen.Run()
+	_, failed := gen.Wait()
+	require.Equal(t, false, failed)
+	require.GreaterOrEqual(t, gen.Stats().Success.Load(), int64(35))
+}
+
+func TestLoadScheduleSegmentRPSIncrease(t *testing.T) {
+	t.Parallel()
+	gen, err := NewLoadGenerator(&LoadGeneratorConfig{
+		T:                 t,
+		StatsPollInterval: 1 * time.Second,
+		LoadType:          RPSScheduleType,
+		Schedule: []*Segment{
+			{
+				From:         1,
+				Increase:     1,
+				Steps:        5,
+				StepDuration: 1 * time.Second,
+			},
 		},
 		Duration: 7000 * time.Millisecond,
 		Gun: NewMockGun(&MockGunConfig{
@@ -340,19 +404,21 @@ func TestLoadScheduleRPSIncrease(t *testing.T) {
 	require.GreaterOrEqual(t, gen.Stats().Success.Load(), int64(28))
 }
 
-func TestLoadScheduleRPSDecrease(t *testing.T) {
+func TestLoadScheduleSegmentRPSDecrease(t *testing.T) {
 	t.Parallel()
 	gen, err := NewLoadGenerator(&LoadGeneratorConfig{
 		T:                 t,
 		StatsPollInterval: 1 * time.Second,
-		Schedule: &LoadSchedule{
-			Type:         RPSScheduleType,
-			From:         5,
-			Increase:     -1,
-			StepDuration: 1 * time.Second,
-			Limit:        0,
+		LoadType:          RPSScheduleType,
+		Schedule: []*Segment{
+			{
+				From:         5,
+				Increase:     -1,
+				Steps:        5,
+				StepDuration: 1 * time.Second,
+			},
 		},
-		Duration: 7000 * time.Millisecond,
+		Duration: 7 * time.Second,
 		Gun: NewMockGun(&MockGunConfig{
 			CallSleep: 10 * time.Millisecond,
 		}),
@@ -361,7 +427,7 @@ func TestLoadScheduleRPSDecrease(t *testing.T) {
 	gen.Run()
 	_, failed := gen.Wait()
 	require.Equal(t, false, failed)
-	require.GreaterOrEqual(t, gen.Stats().Success.Load(), int64(28))
+	require.GreaterOrEqual(t, gen.Stats().Success.Load(), int64(20))
 }
 
 func TestValidation(t *testing.T) {
@@ -369,25 +435,61 @@ func TestValidation(t *testing.T) {
 	_, err := NewLoadGenerator(&LoadGeneratorConfig{
 		T:                 t,
 		StatsPollInterval: 1 * time.Second,
-		Schedule: &LoadSchedule{
-			Type:         RPSScheduleType,
-			From:         0,
-			Increase:     1,
-			StepDuration: 1 * time.Second,
-			Limit:        5,
+		LoadType:          RPSScheduleType,
+		Schedule: []*Segment{
+			{
+				From:         0,
+				Increase:     1,
+				Steps:        1,
+				StepDuration: 1 * time.Second,
+			},
 		},
 		Gun: NewMockGun(&MockGunConfig{
 			CallSleep: 10 * time.Millisecond,
 		}),
 	})
 	require.Equal(t, ErrStartFrom, err)
+	_, err = NewLoadGenerator(&LoadGeneratorConfig{
+		T:                 t,
+		StatsPollInterval: 1 * time.Second,
+		LoadType:          RPSScheduleType,
+		Schedule: []*Segment{
+			{
+				From:         1,
+				Increase:     1,
+				StepDuration: 1 * time.Second,
+			},
+		},
+		Gun: NewMockGun(&MockGunConfig{
+			CallSleep: 10 * time.Millisecond,
+		}),
+	})
+	require.Equal(t, ErrInvalidSteps, err)
+	_, err = NewLoadGenerator(&LoadGeneratorConfig{
+		T:                 t,
+		StatsPollInterval: 1 * time.Second,
+		LoadType:          RPSScheduleType,
+		Schedule: []*Segment{
+			{
+				From:     1,
+				Increase: 1,
+				Steps:    1,
+			},
+		},
+		Gun: NewMockGun(&MockGunConfig{
+			CallSleep: 10 * time.Millisecond,
+		}),
+	})
+	require.Equal(t, ErrInvalidSteps, err)
 	_, err = NewLoadGenerator(nil)
 	require.Equal(t, ErrNoCfg, err)
 	_, err = NewLoadGenerator(&LoadGeneratorConfig{
-		T: t,
-		Schedule: &LoadSchedule{
-			Type: RPSScheduleType,
-			From: 1,
+		T:        t,
+		LoadType: RPSScheduleType,
+		Schedule: []*Segment{
+			{
+				From: 1,
+			},
 		},
 		Gun: nil,
 	})
@@ -399,12 +501,14 @@ func TestInstancesIncrease(t *testing.T) {
 	gen, err := NewLoadGenerator(&LoadGeneratorConfig{
 		T:        t,
 		Duration: 1 * time.Second,
-		Schedule: &LoadSchedule{
-			Type:         InstancesScheduleType,
-			From:         1,
-			Increase:     1,
-			StepDuration: 100 * time.Millisecond,
-			Limit:        10,
+		LoadType: InstancesScheduleType,
+		Schedule: []*Segment{
+			{
+				From:         1,
+				Increase:     1,
+				Steps:        10,
+				StepDuration: 100 * time.Millisecond,
+			},
 		},
 		Instance: NewMockInstance(MockInstanceConfig{
 			CallSleep: 100 * time.Millisecond,
@@ -415,7 +519,7 @@ func TestInstancesIncrease(t *testing.T) {
 	_, failed := gen.Wait()
 	stats := gen.Stats()
 	require.Equal(t, false, failed)
-	require.Equal(t, int64(10), stats.CurrentInstances.Load())
+	require.Equal(t, int64(11), stats.CurrentInstances.Load())
 
 	okData, okResponses, failResponses := convertResponsesData(gen.GetData())
 	require.GreaterOrEqual(t, okResponses[0].Duration, 50*time.Millisecond)
@@ -432,12 +536,14 @@ func TestInstancesDecrease(t *testing.T) {
 	gen, err := NewLoadGenerator(&LoadGeneratorConfig{
 		T:        t,
 		Duration: 10 * time.Second,
-		Schedule: &LoadSchedule{
-			Type:         InstancesScheduleType,
-			From:         10,
-			Increase:     -1,
-			StepDuration: 1 * time.Second,
-			Limit:        0,
+		LoadType: InstancesScheduleType,
+		Schedule: []*Segment{
+			{
+				From:         10,
+				Increase:     -1,
+				Steps:        10,
+				StepDuration: 1 * time.Second,
+			},
 		},
 		Instance: NewMockInstance(MockInstanceConfig{
 			CallSleep: 50 * time.Millisecond,
@@ -448,7 +554,7 @@ func TestInstancesDecrease(t *testing.T) {
 	_, failed := gen.Wait()
 	stats := gen.Stats()
 	require.Equal(t, false, failed)
-	require.Equal(t, int64(0), stats.CurrentInstances.Load())
+	require.Equal(t, int64(1), stats.CurrentInstances.Load())
 
 	okData, okResponses, failResponses := convertResponsesData(gen.GetData())
 	require.GreaterOrEqual(t, okResponses[0].Duration, 50*time.Millisecond)

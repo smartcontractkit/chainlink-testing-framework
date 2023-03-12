@@ -3,8 +3,6 @@ package loadgen
 import (
 	"math/rand"
 	"time"
-
-	"github.com/rs/zerolog/log"
 )
 
 // MockInstanceConfig configures a mock instanceTemplate
@@ -28,7 +26,15 @@ type MockInstance struct {
 func NewMockInstance(cfg MockInstanceConfig) MockInstance {
 	return MockInstance{
 		cfg:  cfg,
-		stop: make(chan struct{}, 1),
+		stop: make(chan struct{}, 100),
+		Data: make([]string, 0),
+	}
+}
+
+func (m MockInstance) Clone(l *Generator) Instance {
+	return MockInstance{
+		cfg:  m.cfg,
+		stop: make(chan struct{}, 100),
 		Data: make([]string, 0),
 	}
 }
@@ -39,8 +45,6 @@ func (m MockInstance) Run(l *Generator) {
 		defer l.ResponsesWaitGroup.Done()
 		for {
 			select {
-			// TODO: this is mandatory, we should stop the instanceTemplate when test is done
-			// TODO: wrap this in closure to simplify setup
 			case <-l.ResponsesCtx.Done():
 				return
 			case <-m.stop:
@@ -70,6 +74,5 @@ func (m MockInstance) Run(l *Generator) {
 }
 
 func (m MockInstance) Stop(l *Generator) {
-	log.Info().Msg("Stopping instance")
 	m.stop <- struct{}{}
 }
