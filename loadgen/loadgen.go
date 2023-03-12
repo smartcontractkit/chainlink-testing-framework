@@ -24,14 +24,15 @@ const (
 )
 
 var (
-	ErrNoCfg        = errors.New("config is nil")
-	ErrNoImpl       = errors.New("either \"gun\" or \"instanceTemplate\" implementation must provided")
-	ErrNoSched      = errors.New("no schedule segments were provided")
-	ErrCallTimeout  = errors.New("generator request call timeout")
-	ErrStartFrom    = errors.New("from must be > 0")
-	ErrInvalidSteps = errors.New("both \"Steps\" and \"StepsDuration\" must be defined in a schedule segment")
-	ErrNoGun        = errors.New("rps load scheduleSegments selected but gun implementation is nil")
-	ErrNoInstance   = errors.New("instanceTemplate load scheduleSegments selected but instanceTemplate implementation is nil")
+	ErrNoCfg              = errors.New("config is nil")
+	ErrNoImpl             = errors.New("either \"gun\" or \"instanceTemplate\" implementation must provided")
+	ErrNoSched            = errors.New("no schedule segments were provided")
+	ErrCallTimeout        = errors.New("generator request call timeout")
+	ErrStartFrom          = errors.New("from must be > 0")
+	ErrWrongLineDirection = errors.New("direction can be \"up\" or \"down\"")
+	ErrInvalidSteps       = errors.New("both \"Steps\" and \"StepsDuration\" must be defined in a schedule segment")
+	ErrNoGun              = errors.New("rps load scheduleSegments selected but gun implementation is nil")
+	ErrNoInstance         = errors.New("instanceTemplate load scheduleSegments selected but instanceTemplate implementation is nil")
 )
 
 // Gun is basic interface to run limited load with a contract call and save all transactions
@@ -292,6 +293,7 @@ func (l *Generator) processSegment() bool {
 		l.stats.CurrentStep.Store(0)
 		if l.stats.CurrentSegment.Load() == l.stats.LastSegment.Load() {
 			l.Log.Info().Msg("Finished all schedule segments")
+			//l.Stop()
 			return true
 		}
 		l.currentSegment = l.scheduleSegments[l.stats.CurrentSegment.Load()]

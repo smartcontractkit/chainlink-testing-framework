@@ -92,7 +92,7 @@ func TestLocalTrace(t *testing.T) {
 }
 
 func TestLokiRPSRun(t *testing.T) {
-	//t.Skip("This test is for manual run and dashboard development, you need LOKI_URL and LOKI_TOKEN to run")
+	t.Skip("This test is for manual run and dashboard development, you need LOKI_URL and LOKI_TOKEN to run")
 	t.Parallel()
 	t.Run("can_report_to_loki", func(t *testing.T) {
 		t.Parallel()
@@ -108,7 +108,7 @@ func TestLokiRPSRun(t *testing.T) {
 				"namespace":  "load-dummy-test",
 				"test_id":    "dummy-healthcheck-rps-1",
 			},
-			Duration:    3 * time.Minute,
+			Duration:    2 * time.Minute,
 			CallTimeout: 100 * time.Millisecond,
 			LoadType:    RPSScheduleType,
 			Schedule: Saw(SawScheduleProfile{
@@ -130,7 +130,7 @@ func TestLokiRPSRun(t *testing.T) {
 }
 
 func TestLokiInstancesRun(t *testing.T) {
-	//t.Skip("This test is for manual run and dashboard development, you need LOKI_URL and LOKI_TOKEN to run")
+	t.Skip("This test is for manual run and dashboard development, you need LOKI_URL and LOKI_TOKEN to run")
 	t.Parallel()
 	t.Run("can_report_to_loki", func(t *testing.T) {
 		t.Parallel()
@@ -271,4 +271,36 @@ func TestHTTP(t *testing.T) {
 	require.NoError(t, err)
 	gen.Run()
 	_, _ = gen.Wait()
+}
+
+func TestIncreasingLine(t *testing.T) {
+	t.Skip("This test is for manual run and dashboard development, you need LOKI_URL and LOKI_TOKEN to run")
+	t.Parallel()
+	t.Run("can_report_to_loki", func(t *testing.T) {
+		t.Parallel()
+		gen, err := NewLoadGenerator(&LoadGeneratorConfig{
+			T: t,
+			LokiConfig: client.NewDefaultLokiConfig(
+				os.Getenv("LOKI_URL"),
+				os.Getenv("LOKI_TOKEN")),
+			Labels: map[string]string{
+				"test_group": "generator_healthcheck",
+				"cluster":    "sdlc",
+				"app":        "dummy",
+				"namespace":  "load-dummy-test",
+				"test_id":    "dummy-healthcheck-rps-1",
+			},
+			Duration:    80 * time.Second,
+			CallTimeout: 100 * time.Millisecond,
+			LoadType:    RPSScheduleType,
+			Schedule:    Line(10, 0, 60*time.Second),
+			Gun: NewMockGun(&MockGunConfig{
+				TimeoutRatio: 1,
+				CallSleep:    50 * time.Millisecond,
+			}),
+		})
+		require.NoError(t, err)
+		gen.Run()
+		_, _ = gen.Wait()
+	})
 }

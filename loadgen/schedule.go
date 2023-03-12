@@ -1,8 +1,16 @@
 package loadgen
 
-import "time"
+import (
+	"time"
+
+	"github.com/rs/zerolog/log"
+)
 
 /* Different load profile schedules definitions */
+
+const (
+	DefaultStepChangePrecision = 10
+)
 
 type SawScheduleProfile struct {
 	From         int64
@@ -16,6 +24,23 @@ func HorizontalLine(from int64) []*Segment {
 	return []*Segment{
 		{
 			From: from,
+		},
+	}
+}
+
+func Line(from, to int64, duration time.Duration) []*Segment {
+	stepDur := duration / DefaultStepChangePrecision
+	inc := (to - from) / DefaultStepChangePrecision
+	log.Info().
+		Dur("StepDur", stepDur).
+		Int64("Increase", inc).
+		Msg("Stats generated")
+	return []*Segment{
+		{
+			From:         from,
+			Steps:        DefaultStepChangePrecision,
+			Increase:     inc,
+			StepDuration: stepDur,
 		},
 	}
 }
