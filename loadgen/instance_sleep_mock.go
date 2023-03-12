@@ -26,7 +26,7 @@ type MockInstance struct {
 func NewMockInstance(cfg MockInstanceConfig) MockInstance {
 	return MockInstance{
 		cfg:  cfg,
-		stop: make(chan struct{}, 100),
+		stop: make(chan struct{}, 1),
 		Data: make([]string, 0),
 	}
 }
@@ -34,7 +34,7 @@ func NewMockInstance(cfg MockInstanceConfig) MockInstance {
 func (m MockInstance) Clone(l *Generator) Instance {
 	return MockInstance{
 		cfg:  m.cfg,
-		stop: make(chan struct{}, 100),
+		stop: make(chan struct{}, 1),
 		Data: make([]string, 0),
 	}
 }

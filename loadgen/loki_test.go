@@ -63,25 +63,20 @@ func TestLokiSamples(t *testing.T) {
 
 	type test struct {
 		name       string
-		genCfg     *LoadGeneratorConfig
+		genCfg     *Config
 		assertions LokiSamplesAssertions
 	}
 
 	tests := []test{
 		{
 			name: "successful RPS run should contain at least 2 response samples without errors and 2 stats samples",
-			genCfg: &LoadGeneratorConfig{
+			genCfg: &Config{
 				T: t,
 				// empty URL is a special case for mocked client
 				LokiConfig: client.NewDefaultLokiConfig("", ""),
 				Labels:     defaultLabels,
-				Duration:   55 * time.Millisecond,
 				LoadType:   RPSScheduleType,
-				Schedule: []*Segment{
-					{
-						From: 1,
-					},
-				},
+				Schedule:   Plain(1, 55*time.Millisecond),
 				Gun: NewMockGun(&MockGunConfig{
 					CallSleep: 50 * time.Millisecond,
 				}),

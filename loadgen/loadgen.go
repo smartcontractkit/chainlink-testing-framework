@@ -24,15 +24,15 @@ const (
 )
 
 var (
-	ErrNoCfg              = errors.New("config is nil")
-	ErrNoImpl             = errors.New("either \"gun\" or \"instanceTemplate\" implementation must provided")
-	ErrNoSched            = errors.New("no schedule segments were provided")
-	ErrCallTimeout        = errors.New("generator request call timeout")
-	ErrStartFrom          = errors.New("from must be > 0")
-	ErrWrongLineDirection = errors.New("direction can be \"up\" or \"down\"")
-	ErrInvalidSteps       = errors.New("both \"Steps\" and \"StepsDuration\" must be defined in a schedule segment")
-	ErrNoGun              = errors.New("rps load scheduleSegments selected but gun implementation is nil")
-	ErrNoInstance         = errors.New("instanceTemplate load scheduleSegments selected but instanceTemplate implementation is nil")
+	ErrNoCfg             = errors.New("config is nil")
+	ErrNoImpl            = errors.New("either \"gun\" or \"instanceTemplate\" implementation must provided")
+	ErrNoSched           = errors.New("no schedule segments were provided")
+	ErrWrongScheduleType = errors.New("schedule type must be RPSScheduleType or InstancesScheduleType, use package constants")
+	ErrCallTimeout       = errors.New("generator request call timeout")
+	ErrStartFrom         = errors.New("from must be > 0")
+	ErrInvalidSteps      = errors.New("both \"Steps\" and \"StepsDuration\" must be defined in a schedule segment")
+	ErrNoGun             = errors.New("rps load scheduleSegments selected but gun implementation is nil")
+	ErrNoInstance        = errors.New("instanceTemplate load scheduleSegments selected but instanceTemplate implementation is nil")
 )
 
 // Gun is basic interface to run limited load with a contract call and save all transactions
@@ -72,7 +72,7 @@ type Segment struct {
 	rl           ratelimit.Limiter
 }
 
-func (ls *Segment) Validate(cfg *LoadGeneratorConfig) error {
+func (ls *Segment) Validate(cfg *Config) error {
 	if ls.From <= 0 {
 		return ErrStartFrom
 	}
@@ -82,14 +82,14 @@ func (ls *Segment) Validate(cfg *LoadGeneratorConfig) error {
 	return nil
 }
 
-// LoadGeneratorConfig is for shared load test data and configuration
-type LoadGeneratorConfig struct {
+// Config is for shared load test data and configuration
+type Config struct {
 	T                 *testing.T
 	LoadType          string
 	Labels            map[string]string
 	LokiConfig        *client.LokiConfig
 	Schedule          []*Segment
-	Duration          time.Duration
+	duration          time.Duration
 	StatsPollInterval time.Duration
 	CallTimeout       time.Duration
 	Gun               Gun
@@ -98,10 +98,7 @@ type LoadGeneratorConfig struct {
 	SharedData        interface{}
 }
 
-func (lgc *LoadGeneratorConfig) Validate() error {
-	if lgc.Duration == 0 {
-		lgc.Duration = UntilStopDuration
-	}
+func (lgc *Config) Validate() error {
 	if lgc.CallTimeout == 0 {
 		lgc.CallTimeout = DefaultCallTimeout
 	}
@@ -114,6 +111,9 @@ func (lgc *LoadGeneratorConfig) Validate() error {
 	if lgc.Schedule == nil {
 		return ErrNoSched
 	}
+	if lgc.LoadType != RPSScheduleType && lgc.LoadType != InstancesScheduleType {
+		return ErrWrongScheduleType
+	}
 	if lgc.LoadType == RPSScheduleType && lgc.Gun == nil {
 		return ErrNoGun
 	}
@@ -123,8 +123,8 @@ func (lgc *LoadGeneratorConfig) Validate() error {
 	return nil
 }
 
-// GeneratorStats basic generator load stats
-type GeneratorStats struct {
+// Stats basic generator load stats
+type Stats struct {
 	CurrentRPS       atomic.Int64 `json:"currentRPS"`
 	CurrentInstances atomic.Int64 `json:"currentInstances"`
 	LastSegment      atomic.Int64 `json:"last_segment"`
@@ -151,7 +151,7 @@ type ResponseData struct {
 
 // Generator generates load with some RPS
 type Generator struct {
-	cfg                *LoadGeneratorConfig
+	cfg                *Config
 	Log                zerolog.Logger
 	labels             model.LabelSet
 	scheduleSegments   []*Segment
@@ -169,14 +169,14 @@ type Generator struct {
 	responsesData      *ResponseData
 	errsMu             *sync.Mutex
 	errs               []string
-	stats              *GeneratorStats
+	stats              *Stats
 	loki               client.ExtendedLokiClient
 	lokiResponsesChan  chan CallResult
 }
 
 // NewLoadGenerator creates a new instanceTemplate for a contract,
 // shoots for scheduled RPS until timeout, test logic is defined through Gun
-func NewLoadGenerator(cfg *LoadGeneratorConfig) (*Generator, error) {
+func NewLoadGenerator(cfg *Config) (*Generator, error) {
 	if cfg == nil {
 		return nil, ErrNoCfg
 	}
@@ -187,6 +187,10 @@ func NewLoadGenerator(cfg *LoadGeneratorConfig) (*Generator, error) {
 		if err := s.Validate(cfg); err != nil {
 			return nil, err
 		}
+	}
+	for _, s := range cfg.Schedule {
+		segmentTotal := time.Duration(s.Steps) * s.StepDuration
+		cfg.duration += segmentTotal
 	}
 
 	// creating logger from *testing.T context or using a global logger
@@ -219,7 +223,7 @@ func NewLoadGenerator(cfg *LoadGeneratorConfig) (*Generator, error) {
 		}
 	}
 	// context for all requests/responses and instances
-	responsesCtx, responsesCancel := context.WithTimeout(context.Background(), cfg.Duration)
+	responsesCtx, responsesCancel := context.WithTimeout(context.Background(), cfg.duration)
 	// context for all the collected data
 	dataCtx, dataCancel := context.WithCancel(context.Background())
 	return &Generator{
@@ -245,7 +249,7 @@ func NewLoadGenerator(cfg *LoadGeneratorConfig) (*Generator, error) {
 		},
 		errsMu:            &sync.Mutex{},
 		errs:              make([]string, 0),
-		stats:             &GeneratorStats{},
+		stats:             &Stats{},
 		loki:              loki,
 		Log:               l,
 		lokiResponsesChan: make(chan CallResult, 50000),
@@ -287,13 +291,14 @@ func (l *Generator) setupSchedule() {
 	}
 }
 
+// processSegment change RPS or Instances accordingly
+// changing both internal and Stats values to report
 func (l *Generator) processSegment() bool {
 	if l.stats.CurrentStep.Load() == l.currentSegment.Steps {
 		l.stats.CurrentSegment.Add(1)
 		l.stats.CurrentStep.Store(0)
 		if l.stats.CurrentSegment.Load() == l.stats.LastSegment.Load() {
 			l.Log.Info().Msg("Finished all schedule segments")
-			//l.Stop()
 			return true
 		}
 		l.currentSegment = l.scheduleSegments[l.stats.CurrentSegment.Load()]
@@ -336,7 +341,7 @@ func (l *Generator) processStep() {
 		l.stats.CurrentRPS.Store(newRPS)
 	case InstancesScheduleType:
 		if l.currentSegment.Increase == 0 {
-			log.Info().Msg("No instances changes, skipping scheduling")
+			l.Log.Info().Msg("No instances changes, passing the step")
 			return
 		}
 		if l.currentSegment.Increase > 0 {
@@ -350,7 +355,7 @@ func (l *Generator) processStep() {
 			absInst := int(math.Abs(float64(l.currentSegment.Increase)))
 			for i := 0; i < absInst; i++ {
 				if l.stats.CurrentInstances.Load()+l.currentSegment.Increase <= 0 {
-					log.Info().Msg("Lower instances limit reached")
+					l.Log.Info().Msg("Instances can't be 0, keeping one instance")
 					continue
 				}
 				l.instances[0].Stop(l)
@@ -361,7 +366,9 @@ func (l *Generator) processStep() {
 	}
 }
 
-// runSchedule runs scheduling loop, changes Generator.currentRPS according to a load scheduleSegments
+// runSchedule runs scheduling loop
+// processing steps inside segments
+// processing segments inside the whole schedule
 func (l *Generator) runSchedule() {
 	l.ResponsesWaitGroup.Add(1)
 	go func() {
@@ -532,7 +539,7 @@ func (l *Generator) GetData() *ResponseData {
 }
 
 // Stats get all load stats
-func (l *Generator) Stats() *GeneratorStats {
+func (l *Generator) Stats() *Stats {
 	return l.stats
 }
 
@@ -630,7 +637,7 @@ func (l *Generator) StatsJSON() map[string]interface{} {
 	}
 }
 
-// printStatsLoop prints stats periodically, with LoadGeneratorConfig.StatsPollInterval
+// printStatsLoop prints stats periodically, with Config.StatsPollInterval
 func (l *Generator) printStatsLoop() {
 	l.ResponsesWaitGroup.Add(1)
 	go func() {
@@ -643,7 +650,6 @@ func (l *Generator) printStatsLoop() {
 			default:
 				time.Sleep(l.cfg.StatsPollInterval)
 				l.Log.Info().
-					Int("InstancesLen", len(l.instances)).
 					Int64("Success", l.stats.Success.Load()).
 					Int64("Failed", l.stats.Failed.Load()).
 					Int64("CallTimeout", l.stats.CallTimeout.Load()).
@@ -651,8 +657,4 @@ func (l *Generator) printStatsLoop() {
 			}
 		}
 	}()
-}
-
-func removeInstance[T Instance](slice []T, s int) []T {
-	return append(slice[:s], slice[s+1:]...)
 }

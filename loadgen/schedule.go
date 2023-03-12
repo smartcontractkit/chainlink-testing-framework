@@ -1,40 +1,36 @@
 package loadgen
 
 import (
+	"math"
 	"time"
-
-	"github.com/rs/zerolog/log"
 )
 
 /* Different load profile schedules definitions */
 
 const (
+	// DefaultStepChangePrecision is default amount of steps in which we split a schedule
 	DefaultStepChangePrecision = 10
 )
 
-type SawScheduleProfile struct {
-	From         int64
-	Increase     int64
-	Steps        int64
-	StepDuration time.Duration
-	Length       int
-}
-
-func HorizontalLine(from int64) []*Segment {
+func Plain(from int64, duration time.Duration) []*Segment {
 	return []*Segment{
 		{
-			From: from,
+			From:         from,
+			Steps:        DefaultStepChangePrecision,
+			StepDuration: duration / DefaultStepChangePrecision,
 		},
 	}
 }
 
 func Line(from, to int64, duration time.Duration) []*Segment {
+	var inc int64
 	stepDur := duration / DefaultStepChangePrecision
-	inc := (to - from) / DefaultStepChangePrecision
-	log.Info().
-		Dur("StepDur", stepDur).
-		Int64("Increase", inc).
-		Msg("Stats generated")
+	incFloat := (float64(to) - float64(from)) / DefaultStepChangePrecision
+	if math.Signbit(incFloat) {
+		inc = int64(math.Floor(incFloat))
+	} else {
+		inc = int64(math.Ceil(incFloat))
+	}
 	return []*Segment{
 		{
 			From:         from,
@@ -45,21 +41,23 @@ func Line(from, to int64, duration time.Duration) []*Segment {
 	}
 }
 
-func Saw(prof SawScheduleProfile) []*Segment {
-	segs := make([]*Segment, 0)
-	for i := 0; i < prof.Length; i++ {
-		s := &Segment{
-			From:         prof.From,
-			Steps:        prof.Steps,
-			StepDuration: prof.StepDuration,
-		}
-		if i%2 == 0 {
-			s.Increase = prof.Increase
-		} else {
-			s.From = prof.From + (prof.Increase * prof.Steps)
-			s.Increase = -prof.Increase
-		}
-		segs = append(segs, s)
+func Combine(segs ...[]*Segment) []*Segment {
+	acc := make([]*Segment, 0)
+	for _, ss := range segs {
+		acc = append(acc, ss...)
 	}
-	return segs
+	return acc
+}
+
+func CombineAndRepeat(times int, segs ...[]*Segment) []*Segment {
+	if len(segs) == 0 {
+		panic(ErrNoSched)
+	}
+	acc := make([]*Segment, 0)
+	for i := 0; i < times; i++ {
+		for _, ss := range segs {
+			acc = append(acc, ss...)
+		}
+	}
+	return acc
 }

@@ -24,7 +24,7 @@ type WSMockInstance struct {
 func NewWSMockInstance(cfg WSMockConfig) WSMockInstance {
 	return WSMockInstance{
 		cfg:  cfg,
-		stop: make(chan struct{}),
+		stop: make(chan struct{}, 1),
 		Data: make([]string, 0),
 	}
 }
@@ -32,7 +32,7 @@ func NewWSMockInstance(cfg WSMockConfig) WSMockInstance {
 func (m WSMockInstance) Clone(l *Generator) Instance {
 	return WSMockInstance{
 		cfg:  m.cfg,
-		stop: make(chan struct{}),
+		stop: make(chan struct{}, 1),
 		Data: make([]string, 0),
 	}
 }

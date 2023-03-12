@@ -58,7 +58,7 @@ func TestLocalTrace(t *testing.T) {
 	t.Run("trace test", func(t *testing.T) {
 		t.Parallel()
 		pyroscope.TagWrapper(context.Background(), pyroscope.Labels("scope", "loadgen_impl"), func(c context.Context) {
-			gen, err := NewLoadGenerator(&LoadGeneratorConfig{
+			gen, err := NewLoadGenerator(&Config{
 				T: t,
 				LokiConfig: client.NewDefaultLokiConfig(
 					os.Getenv("LOKI_URL"),
@@ -71,13 +71,8 @@ func TestLocalTrace(t *testing.T) {
 					"test_id":    "dummy-healthcheck-pyro-1",
 				},
 				CallTimeout: 100 * time.Millisecond,
-				Duration:    10 * time.Second,
 				LoadType:    RPSScheduleType,
-				Schedule: []*Segment{
-					{
-						From: 2000,
-					},
-				},
+				Schedule:    Plain(2000, 10*time.Second),
 				Gun: NewMockGun(&MockGunConfig{
 					TimeoutRatio: 1,
 					CallSleep:    50 * time.Millisecond,
@@ -96,7 +91,7 @@ func TestLokiRPSRun(t *testing.T) {
 	t.Parallel()
 	t.Run("can_report_to_loki", func(t *testing.T) {
 		t.Parallel()
-		gen, err := NewLoadGenerator(&LoadGeneratorConfig{
+		gen, err := NewLoadGenerator(&Config{
 			T: t,
 			LokiConfig: client.NewDefaultLokiConfig(
 				os.Getenv("LOKI_URL"),
@@ -108,16 +103,14 @@ func TestLokiRPSRun(t *testing.T) {
 				"namespace":  "load-dummy-test",
 				"test_id":    "dummy-healthcheck-rps-1",
 			},
-			Duration:    2 * time.Minute,
 			CallTimeout: 100 * time.Millisecond,
 			LoadType:    RPSScheduleType,
-			Schedule: Saw(SawScheduleProfile{
-				From:         1,
-				Increase:     100,
-				Steps:        10,
-				StepDuration: 3 * time.Second,
-				Length:       4,
-			}),
+			Schedule: CombineAndRepeat(
+				2,
+				Line(1, 100, 30*time.Second),
+				Plain(200, 30*time.Second),
+				Line(100, 1, 30*time.Second),
+			),
 			Gun: NewMockGun(&MockGunConfig{
 				TimeoutRatio: 1,
 				CallSleep:    50 * time.Millisecond,
@@ -134,7 +127,7 @@ func TestLokiInstancesRun(t *testing.T) {
 	t.Parallel()
 	t.Run("can_report_to_loki", func(t *testing.T) {
 		t.Parallel()
-		gen, err := NewLoadGenerator(&LoadGeneratorConfig{
+		gen, err := NewLoadGenerator(&Config{
 			T: t,
 			LokiConfig: client.NewDefaultLokiConfig(
 				os.Getenv("LOKI_URL"),
@@ -146,18 +139,15 @@ func TestLokiInstancesRun(t *testing.T) {
 				"namespace":  "load-dummy-test",
 				"test_id":    "dummy-healthcheck-instances-1",
 			},
-			Duration:    60 * time.Second,
 			CallTimeout: 100 * time.Millisecond,
 			LoadType:    InstancesScheduleType,
-			Schedule: Saw(SawScheduleProfile{
-				From:         1,
-				Increase:     2,
-				Steps:        10,
-				StepDuration: 1 * time.Second,
-				Length:       6,
-			}),
+			Schedule: CombineAndRepeat(
+				2,
+				Line(1, 20, 30*time.Second),
+				Plain(30, 30*time.Second),
+				Line(20, 1, 30*time.Second),
+			),
 			Instance: NewMockInstance(MockInstanceConfig{
-				FailRatio: 5,
 				CallSleep: 100 * time.Millisecond,
 			}),
 		})
@@ -172,7 +162,7 @@ func TestLokiSpikeMaxLoadRun(t *testing.T) {
 	t.Parallel()
 	t.Run("max_spike", func(t *testing.T) {
 		t.Parallel()
-		gen, err := NewLoadGenerator(&LoadGeneratorConfig{
+		gen, err := NewLoadGenerator(&Config{
 			T: t,
 			LokiConfig: client.NewDefaultLokiConfig(
 				os.Getenv("LOKI_URL"),
@@ -185,13 +175,8 @@ func TestLokiSpikeMaxLoadRun(t *testing.T) {
 				"test_id":    "dummy-healthcheck-max-1",
 			},
 			CallTimeout: 100 * time.Millisecond,
-			Duration:    20 * time.Second,
 			LoadType:    RPSScheduleType,
-			Schedule: []*Segment{
-				{
-					From: 5000,
-				},
-			},
+			Schedule:    Plain(5000, 20*time.Second),
 			Gun: NewMockGun(&MockGunConfig{
 				CallSleep: 50 * time.Millisecond,
 			}),
@@ -210,7 +195,7 @@ func TestWS(t *testing.T) {
 	})
 	defer s.Close()
 
-	gen, err := NewLoadGenerator(&LoadGeneratorConfig{
+	gen, err := NewLoadGenerator(&Config{
 		T: t,
 		LokiConfig: client.NewDefaultLokiConfig(
 			os.Getenv("LOKI_URL"),
@@ -222,7 +207,6 @@ func TestWS(t *testing.T) {
 			"test_group": "generator_healthcheck",
 			"test_id":    "dummy-healthcheck-ws-instances-stages-25ms-answer",
 		},
-		Duration: 100 * time.Second,
 		LoadType: InstancesScheduleType,
 		Schedule: []*Segment{
 			{
@@ -244,63 +228,23 @@ func TestHTTP(t *testing.T) {
 	srv := NewHTTPMockServer(50 * time.Millisecond)
 	srv.Run()
 
-	gen, err := NewLoadGenerator(&LoadGeneratorConfig{
+	gen, err := NewLoadGenerator(&Config{
 		T: t,
 		LokiConfig: client.NewDefaultLokiConfig(
 			os.Getenv("LOKI_URL"),
 			os.Getenv("LOKI_TOKEN")),
 		Labels: map[string]string{
 			"cluster":    "sdlc",
-			"namespace":  "http-dummy-test",
+			"namespace":  "dummy",
 			"app":        "dummy",
-			"test_group": "generator_healthcheck",
-			"test_id":    "dummy-healthcheck-http-rps-25ms-answer",
+			"test_group": "dummy",
+			"test_id":    "http",
 		},
-		Duration: 100 * time.Second,
 		LoadType: RPSScheduleType,
-		Schedule: []*Segment{
-			{
-				From:         5000,
-				Increase:     1000,
-				Steps:        10,
-				StepDuration: 10 * time.Second,
-			},
-		},
-		Gun: NewHTTPMockGun(&MockHTTPGunConfig{TargetURL: "http://localhost:8080"}),
+		Schedule: Line(10, 400, 500*time.Second),
+		Gun:      NewHTTPMockGun(&MockHTTPGunConfig{TargetURL: "http://localhost:8080"}),
 	})
 	require.NoError(t, err)
 	gen.Run()
 	_, _ = gen.Wait()
-}
-
-func TestIncreasingLine(t *testing.T) {
-	t.Skip("This test is for manual run and dashboard development, you need LOKI_URL and LOKI_TOKEN to run")
-	t.Parallel()
-	t.Run("can_report_to_loki", func(t *testing.T) {
-		t.Parallel()
-		gen, err := NewLoadGenerator(&LoadGeneratorConfig{
-			T: t,
-			LokiConfig: client.NewDefaultLokiConfig(
-				os.Getenv("LOKI_URL"),
-				os.Getenv("LOKI_TOKEN")),
-			Labels: map[string]string{
-				"test_group": "generator_healthcheck",
-				"cluster":    "sdlc",
-				"app":        "dummy",
-				"namespace":  "load-dummy-test",
-				"test_id":    "dummy-healthcheck-rps-1",
-			},
-			Duration:    80 * time.Second,
-			CallTimeout: 100 * time.Millisecond,
-			LoadType:    RPSScheduleType,
-			Schedule:    Line(10, 0, 60*time.Second),
-			Gun: NewMockGun(&MockGunConfig{
-				TimeoutRatio: 1,
-				CallSleep:    50 * time.Millisecond,
-			}),
-		})
-		require.NoError(t, err)
-		gen.Run()
-		_, _ = gen.Wait()
-	})
 }
