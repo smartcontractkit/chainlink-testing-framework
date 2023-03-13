@@ -35,6 +35,7 @@ used_contract_names = [
     "LinkToken",
     "MockETHLINKAggregator",
     "MockGASAggregator",
+    "OCR2Aggregator",
     "OffchainAggregator",
     "Oracle",
     "SimpleReadAccessController",
