@@ -32,7 +32,6 @@ type LokiSamplesAssertions struct {
 func assertSamples(t *testing.T, samples []client.PromtailSendResult, a LokiSamplesAssertions) {
 	var cd CallResult
 	for i, s := range samples[0:2] {
-		t.Logf("Entry: %s", s.Entry)
 		err := json.Unmarshal([]byte(s.Entry), &cd)
 		require.NoError(t, err)
 		require.NotEmpty(t, cd.Duration)
@@ -41,7 +40,6 @@ func assertSamples(t *testing.T, samples []client.PromtailSendResult, a LokiSamp
 	// marshal to map because atomic can't be marshalled
 	var ls map[string]interface{}
 	for i, s := range samples[2:4] {
-		t.Logf("Stats: %s", s.Entry)
 		err := json.Unmarshal([]byte(s.Entry), &ls)
 		require.NoError(t, err)
 		require.Equal(t, ls["callTimeout"], a.StatsSamples[i].CallTimeout)
@@ -65,23 +63,20 @@ func TestLokiSamples(t *testing.T) {
 
 	type test struct {
 		name       string
-		genCfg     *LoadGeneratorConfig
+		genCfg     *Config
 		assertions LokiSamplesAssertions
 	}
 
 	tests := []test{
 		{
 			name: "successful RPS run should contain at least 2 response samples without errors and 2 stats samples",
-			genCfg: &LoadGeneratorConfig{
+			genCfg: &Config{
 				T: t,
 				// empty URL is a special case for mocked client
 				LokiConfig: client.NewDefaultLokiConfig("", ""),
 				Labels:     defaultLabels,
-				Duration:   55 * time.Millisecond,
-				Schedule: &LoadSchedule{
-					Type:      RPSScheduleType,
-					StartFrom: 1,
-				},
+				LoadType:   RPSScheduleType,
+				Schedule:   Plain(1, 55*time.Millisecond),
 				Gun: NewMockGun(&MockGunConfig{
 					CallSleep: 50 * time.Millisecond,
 				}),
@@ -98,7 +93,7 @@ func TestLokiSamples(t *testing.T) {
 				StatsSamples: []StatsSample{
 					{
 						CallTimeout:      0,
-						CurrentInstances: 1,
+						CurrentInstances: 0,
 						CurrentRPS:       1,
 						RunFailed:        false,
 						RunStopped:       false,
@@ -107,7 +102,7 @@ func TestLokiSamples(t *testing.T) {
 					},
 					{
 						CallTimeout:      0,
-						CurrentInstances: 1,
+						CurrentInstances: 0,
 						CurrentRPS:       1,
 						RunFailed:        false,
 						RunStopped:       false,

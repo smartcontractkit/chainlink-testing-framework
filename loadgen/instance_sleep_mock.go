@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// MockInstanceConfig configures a mock instance
+// MockInstanceConfig configures a mock instanceTemplate
 type MockInstanceConfig struct {
 	// FailRatio in percentage, 0-100
 	FailRatio int
@@ -15,29 +15,39 @@ type MockInstanceConfig struct {
 	CallSleep time.Duration
 }
 
-// MockInstance is a mock instance
+// MockInstance is a mock instanceTemplate
 type MockInstance struct {
-	cfg  *MockInstanceConfig
+	cfg  MockInstanceConfig
+	stop chan struct{}
 	Data []string
 }
 
-// NewMockInstance create a mock instance
-func NewMockInstance(cfg *MockInstanceConfig) *MockInstance {
-	return &MockInstance{
+// NewMockInstance create a mock instanceTemplate
+func NewMockInstance(cfg MockInstanceConfig) MockInstance {
+	return MockInstance{
 		cfg:  cfg,
+		stop: make(chan struct{}, 1),
 		Data: make([]string, 0),
 	}
 }
 
-func (m *MockInstance) Run(l *Generator) {
+func (m MockInstance) Clone(l *Generator) Instance {
+	return MockInstance{
+		cfg:  m.cfg,
+		stop: make(chan struct{}, 1),
+		Data: make([]string, 0),
+	}
+}
+
+func (m MockInstance) Run(l *Generator) {
 	l.ResponsesWaitGroup.Add(1)
 	go func() {
+		defer l.ResponsesWaitGroup.Done()
 		for {
 			select {
-			// TODO: this is mandatory, we should stop the instance when test is done
-			// TODO: wrap this in closure to simplify setup
 			case <-l.ResponsesCtx.Done():
-				l.ResponsesWaitGroup.Done()
+				return
+			case <-m.stop:
 				return
 			default:
 				startedAt := time.Now()
@@ -61,4 +71,8 @@ func (m *MockInstance) Run(l *Generator) {
 			}
 		}
 	}()
+}
+
+func (m MockInstance) Stop(l *Generator) {
+	m.stop <- struct{}{}
 }
