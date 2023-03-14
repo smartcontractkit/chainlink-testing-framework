@@ -3,6 +3,8 @@ package utils
 import (
 	"fmt"
 	"os"
+
+	"github.com/smartcontractkit/chainlink-env/config"
 )
 
 // GetEnv returns the value of the environment variable named by the key
@@ -10,7 +12,7 @@ import (
 func GetEnv(key string) string {
 	val := os.Getenv(key)
 	if val != "" {
-		os.Setenv(fmt.Sprintf("TEST_%s", key), val)
+		os.Setenv(fmt.Sprintf("%s%s", config.EnvVarPrefix, key), val)
 	}
 	return val
 }
