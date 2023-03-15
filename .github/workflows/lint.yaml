@@ -22,7 +22,7 @@ jobs:
       - name: Check out Code
         uses: actions/checkout@v3
       - name: Install Go ${{ needs.tools.outputs.go-version }}
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: ${{ needs.tools.outputs.go-version }}
       - name: golangci-lint ${{ needs.tools.outputs.golangci-lint-version }}
@@ -38,7 +38,7 @@ jobs:
       - name: Check out Code
         uses: actions/checkout@v3
       - name: Install Go ${{ needs.tools.outputs.go-version }}
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: ${{ needs.tools.outputs.go-version }}
       - name: Write Go List
