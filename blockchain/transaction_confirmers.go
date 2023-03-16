@@ -57,7 +57,7 @@ func (t *TransactionConfirmer) ReceiveHeader(header NodeHeader) error {
 	t.lastReceivedHeaderNum = header.Number.Uint64()
 	confirmationLog := log.Debug().
 		Str("Network Name", t.networkConfig.Name).
-		Str("Header Hash", header.Hash().Hex()).
+		Str("Header Hash", header.Hash.Hex()).
 		Str("Header Number", header.Number.String()).
 		Str("Tx Hash", t.tx.Hash().String()).
 		Uint64("Nonce", t.tx.Nonce()).
@@ -299,8 +299,8 @@ func (e *EthereumClient) GetHeaderSubscriptions() map[string]HeaderEventSubscrip
 
 // subscribeToNewHeaders
 func (e *EthereumClient) subscribeToNewHeaders() error {
-	headerChannel := make(chan *types.Header)
-	subscription, err := e.Client.SubscribeNewHead(context.Background(), headerChannel)
+	headerChannel := make(chan *SafeEVMHeader)
+	subscription, err := e.SubscribeNewHeaders(context.Background(), headerChannel)
 	if err != nil {
 		return err
 	}
@@ -314,7 +314,7 @@ func (e *EthereumClient) subscribeToNewHeaders() error {
 			log.Error().Err(err).Msg("Error while subscribed to new headers, restarting subscription")
 			subscription.Unsubscribe()
 
-			subscription, err = e.Client.SubscribeNewHead(context.Background(), headerChannel)
+			subscription, err = e.SubscribeNewHeaders(context.Background(), headerChannel)
 			if err != nil {
 				log.Error().Err(err).Msg("Failed to resubscribe to new headers")
 				return err
@@ -330,7 +330,7 @@ func (e *EthereumClient) subscribeToNewHeaders() error {
 }
 
 // receiveHeader takes in a new header from the chain, and sends the header to all active header subscriptions
-func (e *EthereumClient) receiveHeader(header *types.Header) {
+func (e *EthereumClient) receiveHeader(header *SafeEVMHeader) {
 	if header == nil {
 		log.Debug().Msg("Received Nil Header")
 		return
@@ -341,13 +341,13 @@ func (e *EthereumClient) receiveHeader(header *types.Header) {
 	if err != nil {
 		suggestedPrice = big.NewInt(0)
 		log.Err(err).
-			Str("Header Hash", headerValue.Hash().String()).
+			Str("Header Hash", headerValue.Hash.String()).
 			Msg("Error retrieving Suggested Gas Price for new block header")
 	}
 	log.Debug().
 		Str("NetworkName", e.NetworkConfig.Name).
 		Int("Node", e.ID).
-		Str("Hash", headerValue.Hash().String()).
+		Str("Hash", headerValue.Hash.String()).
 		Str("Number", headerValue.Number.String()).
 		Str("Gas Price", suggestedPrice.String()).
 		Msg("Received block header")
@@ -358,7 +358,7 @@ func (e *EthereumClient) receiveHeader(header *types.Header) {
 	for _, sub := range subs {
 		sub := sub
 		g.Go(func() error {
-			return sub.ReceiveHeader(NodeHeader{NodeID: e.ID, Header: headerValue})
+			return sub.ReceiveHeader(NodeHeader{NodeID: e.ID, SafeEVMHeader: headerValue})
 		})
 	}
 	if err := g.Wait(); err != nil {
