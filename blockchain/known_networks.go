@@ -21,6 +21,8 @@ const (
 	PolygonClientImplementation ClientImplementation = "Polygon"
 	// RSKClientImplementation uses a client tailored for RSK EVM networks
 	RSKClientImplementation ClientImplementation = "RSK"
+	// CeloClientImplementation uses a client tailored for Celo EVM networks
+	CeloClientImplementation ClientImplementation = "Celo"
 )
 
 // wrapSingleClient Wraps a single EVM client in its appropriate implementation, based on the chain ID
@@ -41,6 +43,8 @@ func wrapSingleClient(networkSettings EVMNetwork, client *EthereumClient) EVMCli
 		wrappedEc = &OptimismClient{client}
 	case RSKClientImplementation:
 		wrappedEc = &RSKClient{client}
+	case CeloClientImplementation:
+		wrappedEc = &CeloClient{client}
 	default:
 		wrappedEc = client
 	}
@@ -73,6 +77,9 @@ func wrapMultiClient(networkSettings EVMNetwork, client *EthereumMultinodeClient
 	case RSKClientImplementation:
 		logMsg.Msg("Using RSK Client")
 		wrappedEc = &RSKMultinodeClient{client}
+	case CeloClientImplementation:
+		logMsg.Msg("Using Celo Client")
+		wrappedEc = &CeloMultinodeClient{client}
 	default:
 		log.Warn().Str("Network", networkSettings.Name).Msg("Unknown client implementation, defaulting to standard Ethereum client")
 		wrappedEc = client

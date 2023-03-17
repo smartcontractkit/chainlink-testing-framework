@@ -4,11 +4,14 @@ package blockchain
 import (
 	"context"
 	"crypto/ecdsa"
+	"encoding/json"
 	"math/big"
+	"time"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
@@ -57,6 +60,10 @@ type EVMClient interface {
 	ParallelTransactions(enabled bool)
 	Close() error
 	Backend() bind.ContractBackend
+	// Deal with wrapped headers
+	SubscribeNewHeaders(ctx context.Context, headerChan chan *SafeEVMHeader) (ethereum.Subscription, error)
+	HeaderByNumber(ctx context.Context, number *big.Int) (*SafeEVMHeader, error)
+	HeaderByHash(ctx context.Context, hash common.Hash) (*SafeEVMHeader, error)
 
 	// Gas Operations
 	EstimateCostForChainlinkOperations(amountOfOperations int) (*big.Float, error)
@@ -73,7 +80,42 @@ type EVMClient interface {
 // NodeHeader header with the ID of the node that received it
 type NodeHeader struct {
 	NodeID int
-	types.Header
+	SafeEVMHeader
+}
+
+// SafeEVMHeader is a wrapper for the EVM header, to allow for the addition/removal of fields without breaking the interface
+type SafeEVMHeader struct {
+	Hash      common.Hash
+	Number    *big.Int
+	Timestamp time.Time
+	BaseFee   *big.Int
+}
+
+// UnmarshalJSON enables Geth to unmarshal block headers into our custom type
+func (h *SafeEVMHeader) UnmarshalJSON(bs []byte) error {
+	type head struct {
+		Hash      common.Hash    `json:"hash"`
+		Number    *hexutil.Big   `json:"number"`
+		Timestamp hexutil.Uint64 `json:"timestamp"`
+		BaseFee   *hexutil.Big   `json:"baseFeePerGas"`
+	}
+
+	var jsonHead head
+	err := json.Unmarshal(bs, &jsonHead)
+	if err != nil {
+		return err
+	}
+
+	if jsonHead.Number == nil {
+		*h = SafeEVMHeader{}
+		return nil
+	}
+
+	h.Hash = jsonHead.Hash
+	h.Number = (*big.Int)(jsonHead.Number)
+	h.Timestamp = time.Unix(int64(jsonHead.Timestamp), 0)
+	h.BaseFee = (*big.Int)(jsonHead.BaseFee)
+	return nil
 }
 
 // HeaderEventSubscription is an interface for allowing callbacks when the client receives a new header

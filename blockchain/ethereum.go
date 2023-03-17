@@ -17,6 +17,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -33,6 +34,7 @@ import (
 type EthereumClient struct {
 	ID                  int
 	Client              *ethclient.Client
+	rawRPC              *rpc.Client
 	NetworkConfig       EVMNetwork
 	Wallets             []*EthereumWallet
 	DefaultWallet       *EthereumWallet
@@ -55,10 +57,15 @@ func newEVMClient(networkSettings EVMNetwork) (EVMClient, error) {
 	if err != nil {
 		return nil, err
 	}
+	raw, err := rpc.Dial(networkSettings.URL)
+	if err != nil {
+		return nil, err
+	}
 
 	ec := &EthereumClient{
 		NetworkConfig:       networkSettings,
 		Client:              cl,
+		rawRPC:              raw,
 		Wallets:             make([]*EthereumWallet, 0),
 		headerSubscriptions: map[string]HeaderEventSubscription{},
 		subscriptionMutex:   &sync.Mutex{},
@@ -205,20 +212,20 @@ func (e *EthereumClient) SwitchNode(_ int) error {
 
 // HeaderHashByNumber gets header hash by block number
 func (e *EthereumClient) HeaderHashByNumber(ctx context.Context, bn *big.Int) (string, error) {
-	h, err := e.Client.HeaderByNumber(ctx, bn)
+	h, err := e.HeaderByNumber(ctx, bn)
 	if err != nil {
 		return "", err
 	}
-	return h.Hash().String(), nil
+	return h.Hash.String(), nil
 }
 
 // HeaderTimestampByNumber gets header timestamp by number
 func (e *EthereumClient) HeaderTimestampByNumber(ctx context.Context, bn *big.Int) (uint64, error) {
-	h, err := e.Client.HeaderByNumber(ctx, bn)
+	h, err := e.HeaderByNumber(ctx, bn)
 	if err != nil {
 		return 0, err
 	}
-	return h.Time, nil
+	return uint64(h.Timestamp.Unix()), nil
 }
 
 // BlockNumber gets latest block number
@@ -266,7 +273,7 @@ func (e *EthereumClient) Fund(
 	if err != nil {
 		return err
 	}
-	latestHeader, err := e.Client.HeaderByNumber(context.Background(), nil)
+	latestHeader, err := e.HeaderByNumber(context.Background(), nil)
 	if err != nil {
 		return err
 	}
@@ -332,7 +339,7 @@ func attemptReturn(e *EthereumClient, fromKey *ecdsa.PrivateKey, attemptCount in
 	if err != nil {
 		return nil, err
 	}
-	latestHeader, err := e.Client.HeaderByNumber(context.Background(), nil)
+	latestHeader, err := e.HeaderByNumber(context.Background(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -447,6 +454,7 @@ func (e *EthereumClient) DeployContract(
 		return nil, nil, nil, err
 	}
 
+	log.Debug().Msg("Processing Tx")
 	if err = e.ProcessTransaction(transaction); err != nil {
 		return nil, nil, nil, err
 	}
@@ -609,11 +617,11 @@ func (e *EthereumClient) IsEventConfirmed(event *types.Log) (confirmed, removed 
 			Msg("Transaction failed and was reverted!")
 		return false, event.Removed, err
 	}
-	headerByNumber, err := e.Client.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(event.BlockNumber))
+	headerByNumber, err := e.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(event.BlockNumber))
 	if err != nil || headerByNumber == nil {
 		return false, event.Removed, err
 	}
-	if headerByNumber.Hash() != event.BlockHash {
+	if headerByNumber.Hash != event.BlockHash {
 		return false, event.Removed, nil
 	}
 
@@ -660,6 +668,53 @@ func (e *EthereumClient) Backend() bind.ContractBackend {
 	return e.Client
 }
 
+func (e *EthereumClient) SubscribeNewHeaders(
+	ctx context.Context,
+	headerChan chan *SafeEVMHeader,
+) (ethereum.Subscription, error) {
+	clientSub, err := e.rawRPC.EthSubscribe(ctx, headerChan, "newHeads")
+	if err != nil {
+		return nil, err
+	}
+
+	return clientSub, err
+}
+
+// HeaderByNumber retrieves a Safe EVM header by number, nil for latest
+func (e *EthereumClient) HeaderByNumber(
+	ctx context.Context,
+	number *big.Int,
+) (*SafeEVMHeader, error) {
+	var head *SafeEVMHeader
+	err := e.rawRPC.CallContext(ctx, &head, "eth_getBlockByNumber", toBlockNumArg(number), false)
+	if err == nil && head == nil {
+		err = ethereum.NotFound
+	}
+	return head, err
+}
+
+// HeaderByHash retrieves a Safe EVM header by hash
+func (e *EthereumClient) HeaderByHash(ctx context.Context, hash common.Hash) (*SafeEVMHeader, error) {
+	var head *SafeEVMHeader
+	err := e.rawRPC.CallContext(ctx, &head, "eth_getBlockByHash", hash, false)
+	if err == nil && head == nil {
+		err = ethereum.NotFound
+	}
+	return head, err
+}
+
+// toBlockNumArg translates a block number to the correct argument for the RPC call
+func toBlockNumArg(number *big.Int) string {
+	if number == nil {
+		return "latest"
+	}
+	pending := big.NewInt(-1)
+	if number.Cmp(pending) == 0 {
+		return "pending"
+	}
+	return hexutil.EncodeBig(number)
+}
+
 // AddHeaderEventSubscription adds a new header subscriber within the client to receive new headers
 func (e *EthereumClient) AddHeaderEventSubscription(key string, subscriber HeaderEventSubscription) {
 	e.subscriptionMutex.Lock()
@@ -704,6 +759,26 @@ type EthereumMultinodeClient struct {
 
 func (e *EthereumMultinodeClient) Backend() bind.ContractBackend {
 	return e.DefaultClient.Backend()
+}
+
+func (e *EthereumMultinodeClient) SubscribeNewHeaders(
+	ctx context.Context,
+	headerChan chan *SafeEVMHeader,
+) (ethereum.Subscription, error) {
+	return e.DefaultClient.SubscribeNewHeaders(ctx, headerChan)
+}
+
+// HeaderByNumber retrieves a Safe EVM header by number, nil for latest
+func (e *EthereumMultinodeClient) HeaderByNumber(
+	ctx context.Context,
+	number *big.Int,
+) (*SafeEVMHeader, error) {
+	return e.DefaultClient.HeaderByNumber(ctx, number)
+}
+
+// HeaderByHash retrieves a Safe EVM header by hash
+func (e *EthereumMultinodeClient) HeaderByHash(ctx context.Context, hash common.Hash) (*SafeEVMHeader, error) {
+	return e.DefaultClient.HeaderByHash(ctx, hash)
 }
 
 // LoadContract load already deployed contract instance
