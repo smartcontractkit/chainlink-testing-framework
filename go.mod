@@ -208,7 +208,9 @@ replace (
 
 	github.com/prometheus/common => github.com/prometheus/common v0.10.0
 
-	google.golang.org/grpc v1.47.0 => google.golang.org/grpc v1.31.0
+	// The Loki - Grafana - Prometheus - Cortex stack is all sorts of wack
+	github.com/weaveworks/common => github.com/weaveworks/common v0.0.0-20200625145055-4b1847531bc9
+	google.golang.org/grpc => google.golang.org/grpc v1.29.1
 )
 
 exclude k8s.io/client-go v12.0.0+incompatible
