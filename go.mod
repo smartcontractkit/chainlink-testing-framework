@@ -19,7 +19,7 @@ require (
 	github.com/rs/zerolog v1.29.0
 	github.com/slack-go/slack v0.12.1
 	github.com/smartcontractkit/chainlink-env v0.3.19
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.2
 	go.uber.org/ratelimit v0.2.0
 	go.uber.org/zap v1.24.0
 	golang.org/x/sync v0.1.0
