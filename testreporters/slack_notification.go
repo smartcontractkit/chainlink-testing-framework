@@ -2,10 +2,8 @@
 package testreporters
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
-	"testing"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -78,30 +76,21 @@ func MkdirIfNotExists(dirName string) error {
 }
 
 func CommonSlackNotificationBlocks(
-	t *testing.T,
-	slackClient *slack.Client,
 	headerText, namespace,
-	reportCsvLocation,
-	slackUserId string,
-	testFailed bool,
+	reportCsvLocation string,
 ) []slack.Block {
-	notificationBlocks := []slack.Block{}
-	notificationBlocks = append(notificationBlocks,
-		slack.NewHeaderBlock(slack.NewTextBlockObject("plain_text", headerText, true, false)))
-	notificationBlocks = append(notificationBlocks,
-		slack.NewContextBlock("context_block", slack.NewTextBlockObject("plain_text", namespace, false, false)))
-	notificationBlocks = append(notificationBlocks, slack.NewDividerBlock())
-	notificationBlocks = append(notificationBlocks, slack.NewSectionBlock(slack.NewTextBlockObject("mrkdwn",
+	return SlackNotifyBlocks(headerText, namespace, []string{
 		fmt.Sprintf("Summary CSV created on _remote-test-runner_ at _%s_\nNotifying <@%s>",
-			reportCsvLocation, SlackUserID), false, true), nil, nil))
-	return notificationBlocks
+			reportCsvLocation, SlackUserID)})
 }
 
 // SlackNotifyBlocks creates a slack payload and writes into the specified json
-func SlackNotifyBlocks(headerText string, msgtext []string, jsonFile *os.File) error {
+func SlackNotifyBlocks(headerText, namespace string, msgtext []string) []slack.Block {
 	var notificationBlocks slack.Blocks
 	notificationBlocks.BlockSet = append(notificationBlocks.BlockSet,
 		slack.NewHeaderBlock(slack.NewTextBlockObject("plain_text", headerText, true, false)))
+	notificationBlocks.BlockSet = append(notificationBlocks.BlockSet,
+		slack.NewContextBlock("context_block", slack.NewTextBlockObject("plain_text", namespace, false, false)))
 	notificationBlocks.BlockSet = append(notificationBlocks.BlockSet, slack.NewDividerBlock())
 	msgtexts := ""
 	for _, text := range msgtext {
@@ -109,10 +98,5 @@ func SlackNotifyBlocks(headerText string, msgtext []string, jsonFile *os.File) e
 	}
 	notificationBlocks.BlockSet = append(notificationBlocks.BlockSet, slack.NewSectionBlock(slack.NewTextBlockObject("mrkdwn",
 		msgtexts, false, true), nil, nil))
-	json, err := json.Marshal(slack.Msg{Blocks: notificationBlocks})
-	if err != nil {
-		return err
-	}
-	_, err = jsonFile.Write(json)
-	return err
+	return notificationBlocks.BlockSet
 }
