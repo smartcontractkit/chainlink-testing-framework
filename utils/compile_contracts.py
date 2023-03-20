@@ -19,19 +19,6 @@ used_contract_names = [
     "DeviationFlaggingValidator",
     "Flags",
     "FluxAggregator",
-    "KeeperConsumer",
-    "KeeperConsumerPerformance",
-    "KeeperRegistrar",
-    "KeeperRegistrar2_0",
-    # Note: when re generating wrappers you need to rollback changes made to old registries as they have manual changes to config and state struct names
-    "KeeperRegistry1_1",
-    "KeeperRegistry1_2",
-    "KeeperRegistry1_3",
-    "KeeperRegistry2_0",
-    # Note: KeeperRegistryLogic 1.3/2.0 needs some manual changes in go wrapper after generation to avoid
-    # conflict with KeeperRegistry. Hence it is commented out to not be regenerated every time
-    # "KeeperRegistryLogic1_3",
-    # "KeeperRegistryLogic2_0",
     "LinkToken",
     "MockETHLINKAggregator",
     "MockGASAggregator",
@@ -39,15 +26,11 @@ used_contract_names = [
     "Oracle",
     "SimpleReadAccessController",
     "SimpleWriteAccessController",
-    "UpkeepCounter",
-    "UpkeepPerformCounterRestrictive",
-    "UpkeepTranscoder"
     "VRF",
     "VRFConsumer",
     "VRFCoordinator",
     "VRFConsumerV2",
     "VRFCoordinatorV2",
-    "KeeperConsumerBenchmark"
 ]
 
 print("Locally installing hardhat...")
