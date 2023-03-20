@@ -202,7 +202,6 @@ func NewLoadGenerator(cfg *Config) (*Generator, error) {
 	}
 
 	var loki client.ExtendedLokiClient
-	var ls model.LabelSet
 	var err error
 	if cfg.LokiConfig != nil {
 		if cfg.LokiConfig.URL == "" {
@@ -216,10 +215,6 @@ func NewLoadGenerator(cfg *Config) (*Generator, error) {
 			if err != nil {
 				return nil, err
 			}
-		}
-		ls = model.LabelSet{}
-		for k, v := range cfg.Labels {
-			ls[model.LabelName(k)] = model.LabelValue(v)
 		}
 	}
 	// context for all requests/responses and instances
@@ -238,7 +233,7 @@ func NewLoadGenerator(cfg *Config) (*Generator, error) {
 		gun:                cfg.Gun,
 		instanceTemplate:   cfg.Instance,
 		ResponsesChan:      make(chan CallResult),
-		labels:             ls,
+		labels:             LabelsMapToModel(cfg.Labels),
 		responsesData: &ResponseData{
 			okDataMu:        &sync.Mutex{},
 			OKData:          make([]interface{}, 0),
@@ -657,4 +652,12 @@ func (l *Generator) printStatsLoop() {
 			}
 		}
 	}()
+}
+
+func LabelsMapToModel(m map[string]string) model.LabelSet {
+	ls := model.LabelSet{}
+	for k, v := range m {
+		ls[model.LabelName(k)] = model.LabelValue(v)
+	}
+	return ls
 }
