@@ -21,6 +21,8 @@ const (
 	PolygonClientImplementation ClientImplementation = "Polygon"
 	// RSKClientImplementation uses a client tailored for RSK EVM networks
 	RSKClientImplementation ClientImplementation = "RSK"
+	// ZKSyncClientImplementation uses a client tailored for Klaytn EVM networks
+	ZKSyncClientImplementation ClientImplementation = "ZKSync"
 	// CeloClientImplementation uses a client tailored for Celo EVM networks
 	CeloClientImplementation ClientImplementation = "Celo"
 )
@@ -45,6 +47,8 @@ func wrapSingleClient(networkSettings EVMNetwork, client *EthereumClient) EVMCli
 		wrappedEc = &RSKClient{client}
 	case CeloClientImplementation:
 		wrappedEc = &CeloClient{client}
+	case ZKSyncClientImplementation:
+		wrappedEc = &ZKSyncClient{client}
 	default:
 		wrappedEc = client
 	}
