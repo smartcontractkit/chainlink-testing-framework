@@ -20,7 +20,7 @@ require (
 	github.com/slack-go/slack v0.12.1
 	github.com/smartcontractkit/chainlink-env v0.3.19
 	github.com/stretchr/testify v1.8.1
-	github.com/zksync-sdk/zksync2-go v0.0.2
+	github.com/zksync-sdk/zksync2-go v0.0.0-20230221170049-a21c27df41ef
 	go.uber.org/ratelimit v0.2.0
 	go.uber.org/zap v1.24.0
 	golang.org/x/sync v0.1.0
