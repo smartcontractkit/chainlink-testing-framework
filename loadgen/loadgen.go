@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/client"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 
 	"github.com/prometheus/common/model"
 	"github.com/rs/zerolog"
@@ -125,16 +126,17 @@ func (lgc *Config) Validate() error {
 
 // Stats basic generator load stats
 type Stats struct {
-	CurrentRPS       atomic.Int64 `json:"currentRPS"`
-	CurrentInstances atomic.Int64 `json:"currentInstances"`
-	LastSegment      atomic.Int64 `json:"last_segment"`
-	CurrentSegment   atomic.Int64 `json:"current_schedule_segment"`
-	CurrentStep      atomic.Int64 `json:"current_schedule_step"`
-	RunStopped       atomic.Bool  `json:"runStopped"`
-	RunFailed        atomic.Bool  `json:"runFailed"`
-	Success          atomic.Int64 `json:"success"`
-	Failed           atomic.Int64 `json:"failed"`
-	CallTimeout      atomic.Int64 `json:"callTimeout"`
+	CurrentRPS       atomic.Int64  `json:"currentRPS"`
+	CurrentInstances atomic.Int64  `json:"currentInstances"`
+	LastSegment      atomic.Int64  `json:"last_segment"`
+	CurrentSegment   atomic.Int64  `json:"current_schedule_segment"`
+	CurrentStep      atomic.Int64  `json:"current_schedule_step"`
+	RunStopped       atomic.Bool   `json:"runStopped"`
+	RunFailed        atomic.Bool   `json:"runFailed"`
+	Success          atomic.Int64  `json:"success"`
+	Failed           atomic.Int64  `json:"failed"`
+	CallTimeout      atomic.Int64  `json:"callTimeout"`
+	Duration         time.Duration `json:"test_duration"`
 }
 
 // ResponseData includes any request/response data that a gun might store
@@ -233,7 +235,7 @@ func NewLoadGenerator(cfg *Config) (*Generator, error) {
 		gun:                cfg.Gun,
 		instanceTemplate:   cfg.Instance,
 		ResponsesChan:      make(chan CallResult),
-		labels:             LabelsMapToModel(cfg.Labels),
+		labels:             utils.LabelsMapToModel(cfg.Labels),
 		responsesData: &ResponseData{
 			okDataMu:        &sync.Mutex{},
 			OKData:          make([]interface{}, 0),
@@ -509,6 +511,7 @@ func (l *Generator) Stop() (interface{}, bool) {
 func (l *Generator) Wait() (interface{}, bool) {
 	l.Log.Info().Msg("Waiting for all responses to finish")
 	l.ResponsesWaitGroup.Wait()
+	l.stats.Duration = l.cfg.duration
 	if l.cfg.LokiConfig != nil {
 		l.handleLokiStatsPayload()
 		l.dataCancel()
@@ -652,12 +655,4 @@ func (l *Generator) printStatsLoop() {
 			}
 		}
 	}()
-}
-
-func LabelsMapToModel(m map[string]string) model.LabelSet {
-	ls := model.LabelSet{}
-	for k, v := range m {
-		ls[model.LabelName(k)] = model.LabelValue(v)
-	}
-	return ls
 }
