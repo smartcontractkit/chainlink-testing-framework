@@ -91,11 +91,12 @@ func newEVMClient(networkSettings EVMNetwork) (EVMClient, error) {
 // SyncNonce sets the NonceMu and Nonces value based on existing EVMClient
 // it ensures the instance of EthereumClient is synced with passed EVMClient's nonce updates.
 func (e *EthereumClient) SyncNonce(c EVMClient) {
-	n := c.GetNonceSetting()
-	n.NonceMu.Lock()
-	defer n.NonceMu.Unlock()
-	e.NonceSettings.NonceMu = n.NonceMu
-	e.NonceSettings.Nonces = n.Nonces
+	clients := c.(*EthereumMultinodeClient)
+	n := clients.DefaultClient.(*EthereumClient)
+	e.NonceSettings.NonceMu = n.NonceSettings.NonceMu
+	n.NonceSettings.NonceMu.Lock()
+	e.NonceSettings.Nonces = n.NonceSettings.Nonces
+	n.NonceSettings.NonceMu.Unlock()
 }
 
 // newHeadersLoop Logs when new headers come in
