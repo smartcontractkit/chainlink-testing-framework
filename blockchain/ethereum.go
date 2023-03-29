@@ -853,10 +853,10 @@ func ConcurrentEVMClient(networkSettings EVMNetwork, env *environment.Environmen
 	for idx, networkURL := range networkSettings.URLs {
 		networkSettings.URL = networkURL
 		ec, err := newEVMClient(networkSettings)
-		ec.SyncNonce(existing)
 		if err != nil {
 			return nil, err
 		}
+		ec.SyncNonce(existing)
 		ec.SetID(idx)
 		ecl.Clients = append(ecl.Clients, ec)
 	}

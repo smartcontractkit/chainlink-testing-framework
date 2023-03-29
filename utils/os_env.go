@@ -20,3 +20,14 @@ func GetEnv(key string) (string, error) {
 	}
 	return val, nil
 }
+
+// SetupEnvVarsForRemoteRunner sets up the environment variables in the list to propagate to the remote runner
+func SetupEnvVarsForRemoteRunner(envVars []string) error {
+	for _, envVar := range envVars {
+		_, err := GetEnv(envVar)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
