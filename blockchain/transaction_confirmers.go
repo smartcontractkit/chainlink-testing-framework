@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -391,12 +392,12 @@ func (e *EthereumClient) errorReason(
 	if err != nil {
 		return "", err
 	}
-	msg, err := tx.AsMessage(types.NewEIP155Signer(chID), nil)
+	msg, err := core.TransactionToMessage(tx, types.NewEIP155Signer(chID), nil)
 	if err != nil {
 		return "", err
 	}
 	callMsg := ethereum.CallMsg{
-		From:     msg.From(),
+		From:     msg.From,
 		To:       tx.To(),
 		Gas:      tx.Gas(),
 		GasPrice: tx.GasPrice(),
