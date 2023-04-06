@@ -85,6 +85,9 @@ func (em *MockserverClient) SetRandomValuePath(path string) error {
 
 // SetValuePath sets an int for a path
 func (em *MockserverClient) SetValuePath(path string, v int) error {
+	if !strings.HasPrefix(path, "/") {
+		path = fmt.Sprintf("/%s", path)
+	}
 	sanitizedPath := strings.ReplaceAll(path, "/", "_")
 	log.Debug().Str("ID", fmt.Sprintf("%s_mock_id", sanitizedPath)).
 		Str("Path", path).
