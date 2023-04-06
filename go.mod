@@ -9,7 +9,7 @@ require (
 	github.com/gin-gonic/gin v1.8.1
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/google/uuid v1.3.0
-	github.com/grafana/loki v1.6.1
+	github.com/grafana/loki v6.7.8+incompatible
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/lib/pq v1.10.7
 	github.com/pkg/errors v0.9.1
@@ -27,6 +27,33 @@ require (
 )
 
 require (
+	cloud.google.com/go v0.97.0 // indirect
+	cloud.google.com/go/bigtable v1.2.0 // indirect
+	cloud.google.com/go/storage v1.10.0 // indirect
+	github.com/Azure/azure-pipeline-go v0.2.2 // indirect
+	github.com/Azure/azure-storage-blob-go v0.8.0 // indirect
+	github.com/aws/aws-sdk-go v1.40.45 // indirect
+	github.com/bradfitz/gomemcache v0.0.0-20190913173617-a41fca850d0b // indirect
+	github.com/facette/natsort v0.0.0-20181210072756-2cd4dd1e2dcb // indirect
+	github.com/fsouza/fake-gcs-server v1.7.0 // indirect
+	github.com/gocql/gocql v0.0.0-20200526081602-cd04bd7f22a7 // indirect
+	github.com/gomodule/redigo v2.0.0+incompatible // indirect
+	github.com/googleapis/gax-go/v2 v2.1.0 // indirect
+	github.com/gophercloud/gophercloud v0.12.0 // indirect
+	github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed // indirect
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
+	github.com/mattn/go-ieproxy v0.0.0-20191113090002-7c0f6868bffe // indirect
+	github.com/miekg/dns v1.1.43 // indirect
+	github.com/ncw/swift v1.0.50 // indirect
+	github.com/thanos-io/thanos v0.13.1-0.20200731083140-69b87607decf // indirect
+	go.etcd.io/bbolt v1.3.6 // indirect
+	go.opencensus.io v0.23.0 // indirect
+	golang.org/x/xerrors v0.0.0-20220517211312-f3a8303e98df // indirect
+	google.golang.org/api v0.57.0 // indirect
+	rsc.io/binaryregexp v0.2.0 // indirect
+)
+
+require (
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/DataDog/zstd v1.5.2 // indirect
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect
@@ -39,7 +66,6 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.2.1 // indirect
-	github.com/c2h5oh/datasize v0.0.0-20200112174442-28bbd4740fee // indirect
 	github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2 v2.7.5 // indirect
 	github.com/cespare/cp v1.1.1 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
@@ -61,7 +87,6 @@ require (
 	github.com/evanphx/json-patch/v5 v5.6.0 // indirect
 	github.com/exponent-io/jsonpath v0.0.0-20210407135951-1de76d718b3f // indirect
 	github.com/fatih/camelcase v1.0.0 // indirect
-	github.com/fatih/color v1.13.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/fvbommel/sortorder v1.0.2 // indirect
 	github.com/gballet/go-libpcsclite v0.0.0-20191108122812-4678299bea08 // indirect
