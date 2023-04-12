@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/cortexproject/cortex/pkg/util/flagext"
-	lokiClient "github.com/grafana/loki/pkg/promtail/client"
+	lokiClient "github.com/grafana/loki/clients/pkg/promtail/client"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/rs/zerolog/log"

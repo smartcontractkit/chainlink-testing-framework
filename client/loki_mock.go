@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/grafana/loki/pkg/promtail/api"
-	lokiClient "github.com/grafana/loki/pkg/promtail/client"
+	lokiClient "github.com/grafana/loki/clients/pkg/promtail"
+	"github.com/grafana/loki/clients/pkg/promtail/api"
 	"github.com/prometheus/common/model"
 )
 
