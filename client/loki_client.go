@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cortexproject/cortex/pkg/util/flagext"
+	"github.com/grafana/dskit/flagext"
+	"github.com/grafana/loki/clients/pkg/promtail/api"
 	lokiClient "github.com/grafana/loki/clients/pkg/promtail/client"
+	"github.com/grafana/loki/pkg/logproto"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/rs/zerolog/log"
@@ -26,16 +28,6 @@ type LokiClient struct {
 	lokiClient.Client
 }
 
-// Handle handles adding a new label set and a message to the batch
-func (m *LokiClient) Handle(ls model.LabelSet, t time.Time, s string) error {
-	log.Debug().
-		Interface("Labels", ls).
-		Time("Time", t).
-		Str("Data", s).
-		Msg("Sending data to Loki")
-	return m.Client.Handle(ls, t, s)
-}
-
 // HandleStruct handles adding a new label set and a message to the batch, marshalling JSON from struct
 func (m *LokiClient) HandleStruct(ls model.LabelSet, t time.Time, st interface{}) error {
 	d, err := json.Marshal(st)
@@ -47,7 +39,14 @@ func (m *LokiClient) HandleStruct(ls model.LabelSet, t time.Time, st interface{}
 		Time("Time", t).
 		Str("Data", string(d)).
 		Msg("Sending data to Loki")
-	return m.Client.Handle(ls, t, string(d))
+	m.Chan() <- api.Entry{
+		Labels: ls,
+		Entry: logproto.Entry{
+			Timestamp: t,
+			Line:      string(d),
+		},
+	}
+	return nil
 }
 
 // Stop stops the client goroutine
@@ -93,7 +92,7 @@ func NewLokiClient(extCfg *LokiConfig) (*LokiClient, error) {
 		Timeout:   extCfg.Timeout,
 		Client:    config.HTTPClientConfig{BearerToken: config.Secret(extCfg.Token)},
 	}
-	c, err := lokiClient.New(cfg, &LocalLogger{})
+	c, err := lokiClient.NewLogger(nil, nil, &LocalLogger{}, cfg)
 	if err != nil {
 		return nil, err
 	}
