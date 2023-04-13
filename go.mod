@@ -165,14 +165,6 @@ replace (
 	// If that happens to get released in a 3.X.X version, we can add a constraint to our go.mod
 	// for it. If its in 4.X.X, then we need all our transitive deps to upgrade to it.
 	github.com/dgrijalva/jwt-go => github.com/form3tech-oss/jwt-go v3.2.1+incompatible
-
-// github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
-
-// github.com/prometheus/common => github.com/prometheus/common v0.10.0
-
-// The Loki - Grafana - Prometheus - Cortex stack is all sorts of wack
-// github.com/weaveworks/common => github.com/weaveworks/common v0.0.0-20200625145055-4b1847531bc9
-// google.golang.org/grpc => google.golang.org/grpc v1.29.1
 )
 
 exclude k8s.io/client-go v12.0.0+incompatible
