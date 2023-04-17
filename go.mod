@@ -14,7 +14,7 @@ require (
 	github.com/prometheus/client_golang v1.14.0
 	github.com/prometheus/common v0.42.0
 	github.com/rs/zerolog v1.29.0
-	github.com/slack-go/slack v0.12.1
+	github.com/slack-go/slack v0.12.2
 	github.com/smartcontractkit/chainlink-env v0.3.19
 	github.com/stretchr/testify v1.8.2
 	go.uber.org/zap v1.24.0
