@@ -4,25 +4,20 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// ClientImplementation represents the type of EVM client implementation for the framework to use
 type ClientImplementation string
 
 const (
 	// Ethereum uses the standard EVM implementation, and is considered default
 	EthereumClientImplementation ClientImplementation = "Ethereum"
-	// MetisClientImplementation uses a client tailored for Metis EVM networks
-	MetisClientImplementation ClientImplementation = "Metis"
-	// KlaytnClientImplementation uses a client tailored for Klaytn EVM networks
-	KlaytnClientImplementation ClientImplementation = "Klaytn"
-	// OptimismClientImplementation uses a client tailored for Optimism EVM networks
+	MetisClientImplementation    ClientImplementation = "Metis"
+	KlaytnClientImplementation   ClientImplementation = "Klaytn"
 	OptimismClientImplementation ClientImplementation = "Optimism"
-	// ArbitrumClientImplementation uses a client tailored for Arbitrum EVM networks
 	ArbitrumClientImplementation ClientImplementation = "Arbitrum"
-	// PolygonClientImplementation uses a client tailored for Polygon EVM networks
-	PolygonClientImplementation ClientImplementation = "Polygon"
-	// RSKClientImplementation uses a client tailored for RSK EVM networks
-	RSKClientImplementation ClientImplementation = "RSK"
-	// CeloClientImplementation uses a client tailored for Celo EVM networks
-	CeloClientImplementation ClientImplementation = "Celo"
+	PolygonClientImplementation  ClientImplementation = "Polygon"
+	RSKClientImplementation      ClientImplementation = "RSK"
+	CeloClientImplementation     ClientImplementation = "Celo"
+	QuorumClientImplementation   ClientImplementation = "Quorum"
 )
 
 // wrapSingleClient Wraps a single EVM client in its appropriate implementation, based on the chain ID
@@ -45,6 +40,8 @@ func wrapSingleClient(networkSettings EVMNetwork, client *EthereumClient) EVMCli
 		wrappedEc = &RSKClient{client}
 	case CeloClientImplementation:
 		wrappedEc = &CeloClient{client}
+	case QuorumClientImplementation:
+		wrappedEc = &QuorumClient{client}
 	default:
 		wrappedEc = client
 	}
@@ -80,6 +77,9 @@ func wrapMultiClient(networkSettings EVMNetwork, client *EthereumMultinodeClient
 	case CeloClientImplementation:
 		logMsg.Msg("Using Celo Client")
 		wrappedEc = &CeloMultinodeClient{client}
+	case QuorumClientImplementation:
+		logMsg.Msg("Using Quorum Client")
+		wrappedEc = &QuorumMultinodeClient{client}
 	default:
 		log.Warn().Str("Network", networkSettings.Name).Msg("Unknown client implementation, defaulting to standard Ethereum client")
 		wrappedEc = client
