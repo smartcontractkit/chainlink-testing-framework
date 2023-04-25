@@ -835,20 +835,17 @@ func NewEVMClient(networkSettings EVMNetwork, env *environment.Environment) (EVM
 // It is used for concurrent interactions from different threads with the same network and from same owner
 // account. This ensures that correct nonce value is fetched when an instance of EVMClient is initiated using this method.
 func ConcurrentEVMClient(networkSettings EVMNetwork, env *environment.Environment, existing EVMClient) (EVMClient, error) {
+	if !networkSettings.Simulated {
+		return NewEVMClient(networkSettings, env)
+	}
 	ecl := &EthereumMultinodeClient{}
-	if networkSettings.Simulated {
-		if _, ok := env.URLs[networkSettings.Name]; !ok {
-			return nil, fmt.Errorf("network %s not found in environment", networkSettings.Name)
-		}
-		if env == nil {
-			log.Warn().Str("Network", networkSettings.Name).Msg("No test environment deployed")
-		} else {
-			networkSettings.URLs = env.URLs[networkSettings.Name]
-		}
+	if _, ok := env.URLs[networkSettings.Name]; !ok {
+		return nil, fmt.Errorf("network %s not found in environment", networkSettings.Name)
+	}
+	if env == nil {
+		log.Warn().Str("Network", networkSettings.Name).Msg("No test environment deployed")
 	} else {
-		if len(networkSettings.URLs) == 0 {
-			return nil, fmt.Errorf("no URL is provided to connect to network %s", networkSettings.Name)
-		}
+		networkSettings.URLs = env.URLs[networkSettings.Name]
 	}
 	for idx, networkURL := range networkSettings.URLs {
 		networkSettings.URL = networkURL
