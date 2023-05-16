@@ -831,10 +831,12 @@ func NewEVMClient(networkSettings EVMNetwork, env *environment.Environment) (EVM
 	return wrappedClient, nil
 }
 
-// ConcurrentEVMClient returns a multi-node EVM client connected to the specified network
+// ConcurrentEVMClient returns a multi-node EVM client connected to a specified network
 // It is used for concurrent interactions from different threads with the same network and from same owner
 // account. This ensures that correct nonce value is fetched when an instance of EVMClient is initiated using this method.
+// This is mainly useful for simulated networks as we don't use global nonce manager for them.
 func ConcurrentEVMClient(networkSettings EVMNetwork, env *environment.Environment, existing EVMClient) (EVMClient, error) {
+	// if not simulated use the NewEVMClient
 	if !networkSettings.Simulated {
 		return NewEVMClient(networkSettings, env)
 	}
@@ -860,21 +862,7 @@ func ConcurrentEVMClient(networkSettings EVMNetwork, env *environment.Environmen
 
 	ecl.DefaultClient = ecl.Clients[0]
 	wrappedClient := wrapMultiClient(networkSettings, ecl)
-	// required in Geth when you need to call "simulate" transactions from nodes
-	if ecl.NetworkSimulated() {
-		if err := ecl.Fund("0x0", big.NewFloat(1000)); err != nil {
-			return nil, err
-		}
-	}
-	fundingBalance, err := wrappedClient.BalanceAt(context.Background(), wrappedClient.GetDefaultWallet().address)
-	if err != nil {
-		return nil, err
-	}
-	log.Debug().
-		Str("Address", wrappedClient.GetDefaultWallet().address.Hex()).
-		Uint64("Balance", fundingBalance.Uint64()).
-		Msg("Funding Wallet")
-
+	// no need to fund the account as it is already funded in the existing client
 	return wrappedClient, nil
 }
 
