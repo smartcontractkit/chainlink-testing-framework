@@ -860,11 +860,9 @@ func ConcurrentEVMClient(networkSettings EVMNetwork, env *environment.Environmen
 
 	ecl.DefaultClient = ecl.Clients[0]
 	wrappedClient := wrapMultiClient(networkSettings, ecl)
-	// required in Geth when you need to call "simulate" transactions from nodes
+
 	if ecl.NetworkSimulated() {
-		if err := ecl.Fund("0x0", big.NewFloat(1000)); err != nil {
-			return nil, err
-		}
+		return wrappedClient, nil
 	}
 	fundingBalance, err := wrappedClient.BalanceAt(context.Background(), wrappedClient.GetDefaultWallet().address)
 	if err != nil {
