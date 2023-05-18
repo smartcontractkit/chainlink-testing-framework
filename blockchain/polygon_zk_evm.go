@@ -46,7 +46,8 @@ func (p *PolygonZkEvmClient) Fund(toAddress string, amount *big.Float) error {
 		return err
 	}
 	fmt.Println(ethereum.CallMsg{})
-	estimatedGas, err := p.Client.EstimateGas(context.Background(), ethereum.CallMsg{})
+	// estimatedGas, err := p.Client.EstimateGas(context.Background(), ethereum.CallMsg{})
+	estimatedGas := uint64(21_000)
 	if err != nil {
 		return err
 	}
