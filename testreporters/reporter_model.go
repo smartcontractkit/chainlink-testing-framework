@@ -146,7 +146,8 @@ func verifyLogFile(file *os.File, failingLogLevel zapcore.Level) error {
 		jsonMapping := map[string]any{}
 
 		if err = json.Unmarshal([]byte(jsonLogLine), &jsonMapping); err != nil {
-			return err
+			// This error can occur anytime someone uses %+v in a log message, ignoring
+			continue
 		}
 		logLevel, ok := jsonMapping["level"].(string)
 		if !ok {
