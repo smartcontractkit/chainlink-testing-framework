@@ -1072,6 +1072,11 @@ func (e *EthereumMultinodeClient) SubscribeFilterLogs(ctx context.Context, q eth
 	return e.DefaultClient.SubscribeFilterLogs(ctx, q, logs)
 }
 
+// FilterLogs executes a filter query
+func (e *EthereumMultinodeClient) FilterLogs(ctx context.Context, filterQuery ethereum.FilterQuery) ([]types.Log, error) {
+	return e.DefaultClient.FilterLogs(ctx, filterQuery)
+}
+
 // DeleteHeaderEventSubscription removes a header subscriber from the map
 func (e *EthereumMultinodeClient) DeleteHeaderEventSubscription(key string) {
 	e.DefaultClient.DeleteHeaderEventSubscription(key)
