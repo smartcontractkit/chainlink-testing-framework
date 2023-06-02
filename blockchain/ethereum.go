@@ -751,6 +751,11 @@ func (e *EthereumClient) SubscribeFilterLogs(ctx context.Context, q ethereum.Fil
 	return e.Client.SubscribeFilterLogs(ctx, q, ch)
 }
 
+// FilterLogs executes a filter query
+func (e *EthereumClient) FilterLogs(ctx context.Context, filterQuery ethereum.FilterQuery) ([]types.Log, error) {
+	return e.Client.FilterLogs(ctx, filterQuery)
+}
+
 // EthereumMultinodeClient wraps the client and the BlockChain network to interact with an EVM based Blockchain with multiple nodes
 type EthereumMultinodeClient struct {
 	DefaultClient EVMClient
