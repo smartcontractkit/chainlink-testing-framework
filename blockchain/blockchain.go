@@ -69,6 +69,14 @@ type EVMClient interface {
 	EstimateCostForChainlinkOperations(amountOfOperations int) (*big.Float, error)
 	EstimateTransactionGasCost() (*big.Int, error)
 	GasStats() *GasStats
+	EstimateGas(callMsg ethereum.CallMsg) (
+		gasUnits uint64, // How many units of gas the transaction will use
+		gasPrice *big.Int, // Gas price of the transaction (for Legacy transactions)
+		gasFeeCap *big.Int, // Gas fee cap of the transaction (for DynamicFee transactions)
+		gasTipCap *big.Int, // Gas tip cap of the transaction (for DynamicFee transactions)
+		totalGasCost *big.Int, // Total gas cost of the transaction (gas units * total gas price)
+		err error,
+	)
 
 	// Event Subscriptions
 	AddHeaderEventSubscription(key string, subscriber HeaderEventSubscription)
