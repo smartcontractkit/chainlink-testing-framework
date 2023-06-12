@@ -7,7 +7,6 @@ import (
 	"crypto/ecdsa"
 	"encoding/hex"
 	"fmt"
-	"math"
 	"math/big"
 	"strings"
 	"sync"
@@ -44,6 +43,7 @@ type EthereumClient struct {
 	queueTransactions   bool
 	gasStats            *GasStats
 	doneChan            chan struct{}
+	supportsEIP1559     bool
 }
 
 // newEVMClient creates an EVM client for a single node/URL
@@ -84,6 +84,22 @@ func newEVMClient(networkSettings EVMNetwork) (EVMClient, error) {
 	}
 	ec.gasStats = NewGasStats(ec.ID)
 	go ec.newHeadersLoop()
+
+	// Check if the chain supports EIP-1559
+	// https://eips.ethereum.org/EIPS/eip-1559
+	if _, err = cl.SuggestGasTipCap(context.Background()); err != nil {
+		if strings.Contains(err.Error(), "unknown field") ||
+			strings.Contains(err.Error(), "does not exist") ||
+			strings.Contains(err.Error(), "is not available") {
+			ec.supportsEIP1559 = false
+			log.Debug().Msg("Chain does not support EIP-1559 transactions, using legacy")
+		} else {
+			return nil, err
+		}
+	} else {
+		ec.supportsEIP1559 = true
+		log.Debug().Msg("Chain supports EIP-1559 transactions")
+	}
 
 	return wrapSingleClient(networkSettings, ec), nil
 }
@@ -253,6 +269,7 @@ func (e *EthereumClient) SendTransaction(ctx context.Context, tx *types.Transact
 func (e *EthereumClient) Fund(
 	toAddress string,
 	amount *big.Float,
+	gasEstimations GasEstimations,
 ) error {
 	privateKey, err := crypto.HexToECDSA(e.DefaultWallet.PrivateKey())
 	if err != nil {
@@ -265,20 +282,7 @@ func (e *EthereumClient) Fund(
 		return err
 	}
 
-	gasUnits, _, gasTipCap, gasFeeCap, _, err := e.EstimateGas(ethereum.CallMsg{})
-	if err != nil {
-		return err
-	}
-
-	tx, err := types.SignNewTx(privateKey, types.LatestSignerForChainID(e.GetChainID()), &types.DynamicFeeTx{
-		ChainID:   e.GetChainID(),
-		Nonce:     nonce,
-		To:        &to,
-		Value:     utils.EtherToWei(amount),
-		GasTipCap: gasTipCap,
-		GasFeeCap: gasFeeCap,
-		Gas:       gasUnits,
-	})
+	tx, err := e.NewTx(privateKey, nonce, to, utils.EtherToWei(amount), gasEstimations)
 	if err != nil {
 		return err
 	}
@@ -291,7 +295,7 @@ func (e *EthereumClient) Fund(
 		Uint64("Nonce", tx.Nonce()).
 		Str("Network Name", e.GetNetworkName()).
 		Str("Amount", amount.String()).
-		Uint64("Estimated Gas Cost", gasUnits).
+		Uint64("Estimated Gas Cost", tx.Cost().Uint64()).
 		Msg("Funding Address")
 	if err := e.SendTransaction(context.Background(), tx); err != nil {
 		if strings.Contains(err.Error(), "nonce") {
@@ -319,20 +323,11 @@ func (e *EthereumClient) ReturnFunds(fromKey *ecdsa.PrivateKey) error {
 // a single fund return attempt, further attempts exponentially raise the error margin for fund returns
 func attemptReturn(e *EthereumClient, fromKey *ecdsa.PrivateKey, attemptCount int) (*types.Transaction, error) {
 	to := common.HexToAddress(e.DefaultWallet.Address())
-
-	suggestedGasTipCap, err := e.Client.SuggestGasTipCap(context.Background())
-	if err != nil {
-		return nil, err
-	}
-	latestHeader, err := e.HeaderByNumber(context.Background(), nil)
-	if err != nil {
-		return nil, err
-	}
-	baseFeeMult := big.NewInt(1).Mul(latestHeader.BaseFee, big.NewInt(2))
-	gasFeeCap := baseFeeMult.Add(baseFeeMult, suggestedGasTipCap)
-	gasFeeCap.Add(gasFeeCap, big.NewInt(int64(math.Pow(float64(attemptCount), 2)*1000))) // exponentially increase error margin
-
 	fromAddress, err := utils.PrivateKeyToAddress(fromKey)
+	if err != nil {
+		return nil, err
+	}
+	nonce, err := e.GetNonce(context.Background(), fromAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -340,30 +335,16 @@ func attemptReturn(e *EthereumClient, fromKey *ecdsa.PrivateKey, attemptCount in
 	if err != nil {
 		return nil, err
 	}
-	estGas, err := e.Client.EstimateGas(context.Background(), ethereum.CallMsg{})
+	gasEstimations, err := e.EstimateGas(ethereum.CallMsg{})
 	if err != nil {
 		return nil, err
 	}
-	balance.Sub(balance, big.NewInt(1).Mul(gasFeeCap, big.NewInt(0).SetUint64(estGas)))
+	totalGasCost := gasEstimations.TotalGasCost
+	addedBuffer := 1000000000 * attemptCount
+	totalGasCost.Add(totalGasCost, big.NewInt(int64(addedBuffer))) // Add 1 Gewi of buffer per attempt
+	balance.Sub(balance, totalGasCost)
 
-	nonce, err := e.GetNonce(context.Background(), fromAddress)
-	if err != nil {
-		return nil, err
-	}
-	estimatedGas, err := e.Client.EstimateGas(context.Background(), ethereum.CallMsg{})
-	if err != nil {
-		return nil, err
-	}
-
-	tx, err := types.SignNewTx(fromKey, types.LatestSignerForChainID(e.GetChainID()), &types.DynamicFeeTx{
-		ChainID:   e.GetChainID(),
-		Nonce:     nonce,
-		To:        &to,
-		Value:     balance,
-		GasTipCap: suggestedGasTipCap,
-		GasFeeCap: gasFeeCap,
-		Gas:       estimatedGas,
-	})
+	tx, err := e.NewTx(fromKey, nonce, to, balance, gasEstimations)
 	if err != nil {
 		return nil, err
 	}
@@ -371,6 +352,7 @@ func attemptReturn(e *EthereumClient, fromKey *ecdsa.PrivateKey, attemptCount in
 		Str("Token", "ETH").
 		Str("Amount", balance.String()).
 		Str("From", fromAddress.Hex()).
+		Int("Added Buffer", addedBuffer).
 		Msg("Returning Funds to Default Wallet")
 	return tx, e.SendTransaction(context.Background(), tx)
 }
@@ -477,6 +459,45 @@ func (e *EthereumClient) TransactionOpts(from *EthereumWallet) (*bind.TransactOp
 		<-e.NonceSettings.registerInstantTransaction(from.Address(), nonce)
 	}
 	return opts, nil
+}
+
+func (e *EthereumClient) NewTx(
+	fromPrivateKey *ecdsa.PrivateKey,
+	nonce uint64,
+	to common.Address,
+	value *big.Int,
+	gasEstimations GasEstimations,
+) (*types.Transaction, error) {
+	var (
+		tx  *types.Transaction
+		err error
+	)
+	if !e.supportsEIP1559 {
+		tx, err = types.SignNewTx(fromPrivateKey, types.LatestSignerForChainID(e.GetChainID()), &types.LegacyTx{
+			Nonce:    nonce,
+			To:       &to,
+			Value:    value,
+			GasPrice: gasEstimations.GasPrice,
+			Gas:      gasEstimations.GasUnits,
+		})
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		tx, err = types.SignNewTx(fromPrivateKey, types.LatestSignerForChainID(e.GetChainID()), &types.DynamicFeeTx{
+			ChainID:   e.GetChainID(),
+			Nonce:     nonce,
+			To:        &to,
+			Value:     value,
+			GasTipCap: gasEstimations.GasTipCap,
+			GasFeeCap: gasEstimations.GasFeeCap,
+			Gas:       gasEstimations.GasUnits,
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	return tx, nil
 }
 
 // ProcessTransaction will queue or wait on a transaction depending on whether parallel transactions are enabled
@@ -635,40 +656,61 @@ func (e *EthereumClient) GasStats() *GasStats {
 }
 
 // EstimateGas estimates all gas values based on call data
-func (e *EthereumClient) EstimateGas(callData ethereum.CallMsg) (
-	gasUnits uint64, // How many units of gas the transaction will use
-	gasPrice *big.Int, // Gas price of the transaction (for Legacy transactions)
-	gasFeeCap *big.Int, // Gas fee cap of the transaction (for DynamicFee transactions)
-	gasTipCap *big.Int, // Gas tip cap of the transaction (for DynamicFee transactions)
-	totalGasCost *big.Int, // Total gas cost of the transaction (gas units * total gas price)
-	err error,
-) {
+func (e *EthereumClient) EstimateGas(callMsg ethereum.CallMsg) (GasEstimations, error) {
+	var (
+		gasUnits  uint64
+		gasTipCap *big.Int
+		gasFeeCap *big.Int
+		err       error
+	)
 	// Gas Units
-	gasUnits, err = e.Client.EstimateGas(context.Background(), callData)
-	if err != nil {
-		return 0, nil, nil, nil, nil, err
+	if len(callMsg.Data) == 0 {
+		gasUnits = 21_000 // Probably just a basic Tx, `eth_estimateGas` defaults to 53_000 for some reason
+	} else {
+		gasUnits, err = e.Client.EstimateGas(context.Background(), callMsg)
+		if err != nil {
+			return GasEstimations{}, err
+		}
 	}
 
-	// GasTipCap
-	gasTipCap, err = e.Client.SuggestGasTipCap(context.Background())
-	if err != nil {
-		return 0, nil, nil, nil, nil, err
-	}
 	gasPriceBuffer := big.NewInt(0).SetUint64(e.NetworkConfig.GasEstimationBuffer)
-	gasTipCap.Add(gasTipCap, gasPriceBuffer)
-
-	// GasFeeCap
-	latestHeader, err := e.HeaderByNumber(context.Background(), nil)
+	// Legacy Gas Price
+	gasPrice, err := e.Client.SuggestGasPrice(context.Background())
 	if err != nil {
-		return 0, nil, nil, nil, nil, err
+		return GasEstimations{}, err
 	}
-	baseFeeMult := big.NewInt(1).Mul(latestHeader.BaseFee, big.NewInt(2))
-	gasFeeCap = baseFeeMult.Add(baseFeeMult, gasTipCap)
+	gasPrice.Add(gasPrice, gasPriceBuffer)
+
+	if e.supportsEIP1559 {
+		// GasTipCap
+		gasTipCap, err = e.Client.SuggestGasTipCap(context.Background())
+		if err != nil {
+			return GasEstimations{}, err
+		}
+		gasTipCap.Add(gasTipCap, gasPriceBuffer)
+
+		// GasFeeCap
+		latestHeader, err := e.HeaderByNumber(context.Background(), nil)
+		if err != nil {
+			return GasEstimations{}, err
+		}
+		baseFeeMult := big.NewInt(1).Mul(latestHeader.BaseFee, big.NewInt(2))
+		gasFeeCap = baseFeeMult.Add(baseFeeMult, gasTipCap)
+	} else {
+		gasFeeCap = gasPrice
+		gasTipCap = gasPrice
+	}
 
 	// Total Gas Cost
-	totalGasCost = big.NewInt(0).Mul(gasFeeCap, new(big.Int).SetUint64(gasUnits))
+	totalGasCost := big.NewInt(0).Mul(gasFeeCap, new(big.Int).SetUint64(gasUnits))
 
-	return gasUnits, nil, gasFeeCap, gasTipCap, totalGasCost, nil
+	return GasEstimations{
+		GasUnits:     gasUnits,
+		GasPrice:     gasPrice,
+		GasFeeCap:    gasFeeCap,
+		GasTipCap:    gasTipCap,
+		TotalGasCost: totalGasCost,
+	}, nil
 }
 
 func (e *EthereumClient) Backend() bind.ContractBackend {
@@ -830,7 +872,11 @@ func NewEVMClient(networkSettings EVMNetwork, env *environment.Environment) (EVM
 	wrappedClient := wrapMultiClient(networkSettings, ecl)
 	// required in Geth when you need to call "simulate" transactions from nodes
 	if ecl.NetworkSimulated() {
-		if err := ecl.Fund("0x0", big.NewFloat(1000)); err != nil {
+		gasEstimations, err := wrappedClient.EstimateGas(ethereum.CallMsg{})
+		if err != nil {
+			return nil, err
+		}
+		if err := ecl.Fund("0x0", big.NewFloat(1000), gasEstimations); err != nil {
 			return nil, err
 		}
 	}
@@ -989,8 +1035,8 @@ func (e *EthereumMultinodeClient) SendTransaction(ctx context.Context, tx *types
 }
 
 // Fund funds a specified address with ETH from the given wallet
-func (e *EthereumMultinodeClient) Fund(toAddress string, nativeAmount *big.Float) error {
-	return e.DefaultClient.Fund(toAddress, nativeAmount)
+func (e *EthereumMultinodeClient) Fund(toAddress string, nativeAmount *big.Float, gasEstimations GasEstimations) error {
+	return e.DefaultClient.Fund(toAddress, nativeAmount, gasEstimations)
 }
 
 func (e *EthereumMultinodeClient) ReturnFunds(fromKey *ecdsa.PrivateKey) error {
@@ -1009,6 +1055,16 @@ func (e *EthereumMultinodeClient) DeployContract(
 // contract interactions in this framework are designed to happen through abigen calls, it's intentionally quite bare.
 func (e *EthereumMultinodeClient) TransactionOpts(from *EthereumWallet) (*bind.TransactOpts, error) {
 	return e.DefaultClient.TransactionOpts(from)
+}
+
+func (e *EthereumMultinodeClient) NewTx(
+	fromPrivateKey *ecdsa.PrivateKey,
+	nonce uint64,
+	to common.Address,
+	value *big.Int,
+	gasEstimations GasEstimations,
+) (*types.Transaction, error) {
+	return e.DefaultClient.NewTx(fromPrivateKey, nonce, to, value, gasEstimations)
 }
 
 // ProcessTransaction returns the result of the default client's processed transaction
@@ -1064,15 +1120,8 @@ func (e *EthereumMultinodeClient) GasStats() *GasStats {
 	return e.DefaultClient.GasStats()
 }
 
-func (e *EthereumMultinodeClient) EstimateGas(callData ethereum.CallMsg) (
-	gasUnits uint64, // How many units of gas the transaction will use
-	gasPrice *big.Int, // Gas price of the transaction (for Legacy transactions)
-	gasFeeCap *big.Int, // Gas fee cap of the transaction (for DynamicFee transactions)
-	gasTipCap *big.Int, // Gas tip cap of the transaction (for DynamicFee transactions)
-	totalGasCost *big.Int, // Total gas cost of the transaction (gas units * total gas price)
-	err error,
-) {
-	return e.DefaultClient.EstimateGas(callData)
+func (e *EthereumMultinodeClient) EstimateGas(callMsg ethereum.CallMsg) (GasEstimations, error) {
+	return e.DefaultClient.EstimateGas(callMsg)
 }
 
 // AddHeaderEventSubscription adds a new header subscriber within the client to receive new headers
