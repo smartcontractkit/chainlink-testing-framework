@@ -16,12 +16,12 @@ const optimismGasOracleAddress string = "0x4200000000000000000000000000000000000
 
 // OptimismMultinodeClient represents a multi-node, EVM compatible client for the Optimism network
 type OptimismMultinodeClient struct {
-	EthereumMultinodeClient
+	*EthereumMultinodeClient
 }
 
 // OptimismClient represents a single node, EVM compatible client for the Optimism network
 type OptimismClient struct {
-	EthereumClient
+	*EthereumClient
 }
 
 func (o *OptimismClient) EstimateGas(callData ethereum.CallMsg) (GasEstimations, error) {

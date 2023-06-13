@@ -35,7 +35,7 @@ func wrapSingleClient(networkSettings EVMNetwork, client *EthereumClient) EVMCli
 	case ArbitrumClientImplementation:
 		wrappedEc = &ArbitrumClient{client}
 	case OptimismClientImplementation:
-		wrappedEc = &OptimismClient{*client}
+		wrappedEc = &OptimismClient{client}
 	case RSKClientImplementation:
 		wrappedEc = &RSKClient{client}
 	case CeloClientImplementation:
@@ -70,7 +70,7 @@ func wrapMultiClient(networkSettings EVMNetwork, client *EthereumMultinodeClient
 		wrappedEc = &ArbitrumMultinodeClient{client}
 	case OptimismClientImplementation:
 		logMsg.Msg("Using Optimism Client")
-		wrappedEc = &OptimismMultinodeClient{*client}
+		wrappedEc = &OptimismMultinodeClient{client}
 	case RSKClientImplementation:
 		logMsg.Msg("Using RSK Client")
 		wrappedEc = &RSKMultinodeClient{client}
