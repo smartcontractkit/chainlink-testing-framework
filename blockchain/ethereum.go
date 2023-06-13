@@ -43,7 +43,6 @@ type EthereumClient struct {
 	queueTransactions   bool
 	gasStats            *GasStats
 	doneChan            chan struct{}
-	supportsEIP1559     bool
 }
 
 // newEVMClient creates an EVM client for a single node/URL
@@ -87,18 +86,10 @@ func newEVMClient(networkSettings EVMNetwork) (EVMClient, error) {
 
 	// Check if the chain supports EIP-1559
 	// https://eips.ethereum.org/EIPS/eip-1559
-	if _, err = cl.SuggestGasTipCap(context.Background()); err != nil {
-		if strings.Contains(err.Error(), "unknown field") ||
-			strings.Contains(err.Error(), "does not exist") ||
-			strings.Contains(err.Error(), "is not available") {
-			ec.supportsEIP1559 = false
-			log.Debug().Msg("Chain does not support EIP-1559 transactions, using legacy")
-		} else {
-			return nil, err
-		}
+	if networkSettings.SupportsEIP1559 {
+		log.Debug().Msg("Network supports EIP-1559, using Dynamic transactions")
 	} else {
-		ec.supportsEIP1559 = true
-		log.Debug().Msg("Chain supports EIP-1559 transactions")
+		log.Debug().Msg("Network does NOT support EIP-1559, using Legacy transactions")
 	}
 
 	return wrapSingleClient(networkSettings, ec), nil
@@ -472,18 +463,7 @@ func (e *EthereumClient) NewTx(
 		tx  *types.Transaction
 		err error
 	)
-	if !e.supportsEIP1559 {
-		tx, err = types.SignNewTx(fromPrivateKey, types.LatestSignerForChainID(e.GetChainID()), &types.LegacyTx{
-			Nonce:    nonce,
-			To:       &to,
-			Value:    value,
-			GasPrice: gasEstimations.GasPrice,
-			Gas:      gasEstimations.GasUnits,
-		})
-		if err != nil {
-			return nil, err
-		}
-	} else {
+	if e.NetworkConfig.SupportsEIP1559 {
 		tx, err = types.SignNewTx(fromPrivateKey, types.LatestSignerForChainID(e.GetChainID()), &types.DynamicFeeTx{
 			ChainID:   e.GetChainID(),
 			Nonce:     nonce,
@@ -492,6 +472,17 @@ func (e *EthereumClient) NewTx(
 			GasTipCap: gasEstimations.GasTipCap,
 			GasFeeCap: gasEstimations.GasFeeCap,
 			Gas:       gasEstimations.GasUnits,
+		})
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		tx, err = types.SignNewTx(fromPrivateKey, types.LatestSignerForChainID(e.GetChainID()), &types.LegacyTx{
+			Nonce:    nonce,
+			To:       &to,
+			Value:    value,
+			GasPrice: gasEstimations.GasPrice,
+			Gas:      gasEstimations.GasUnits,
 		})
 		if err != nil {
 			return nil, err
@@ -681,7 +672,7 @@ func (e *EthereumClient) EstimateGas(callMsg ethereum.CallMsg) (GasEstimations, 
 	}
 	gasPrice.Add(gasPrice, gasPriceBuffer)
 
-	if e.supportsEIP1559 {
+	if e.NetworkConfig.SupportsEIP1559 {
 		// GasTipCap
 		gasTipCap, err = e.Client.SuggestGasTipCap(context.Background())
 		if err != nil {
