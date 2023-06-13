@@ -64,6 +64,8 @@ type EVMNetwork struct {
 	GasEstimationBuffer uint64 `envconfig:"evm_gas_estimation_buffer" default:"1000" toml:"evm_gas_estimation_buffer" json:"evm_gas_estimation_buffer"`
 	// ClientImplementation is the blockchain client to use when interacting with the test chain
 	ClientImplementation ClientImplementation `envconfig:"client_implementation" default:"Ethereum" toml:"client_implementation" json:"client_implementation"`
+	// SupportsEIP1559 indicates if the client should try to use EIP1559 style gas and transactions
+	SupportsEIP1559 bool `envconfig:"evm_supports_eip1559" default:"false" toml:"evm_supports_eip1559" json:"evm_supports_eip1559"`
 
 	// Default gaslimit to use when sending transactions. If set this will override the transactionOptions gaslimit in case the
 	// transactionOptions gaslimit is lesser than the defaultGasLimit.
