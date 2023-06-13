@@ -65,9 +65,13 @@ type EVMNetwork struct {
 	// ClientImplementation is the blockchain client to use when interacting with the test chain
 	ClientImplementation ClientImplementation `envconfig:"client_implementation" default:"Ethereum" toml:"client_implementation" json:"client_implementation"`
 
+	// Default gaslimit to use when sending transactions. If set this will override the transactionOptions gaslimit in case the
+	// transactionOptions gaslimit is lesser than the defaultGasLimit.
 	DefaultGasLimit uint64 `envconfig:"evm_default_gas_limit" default:"500000" toml:"evm_default_gas_limit" json:"evm_default_gas_limit"`
-	FinalityTag     bool   `envconfig:"evm_finality_tag" default:"false" toml:"evm_finality_tag" json:"evm_finality_tag"`
-	FinalityDepth   uint64 `envconfig:"evm_finality_depth" default:"50" toml:"evm_finality_depth" json:"evm_finality_depth"`
+	// Few chains use finality tags to mark blocks as finalized. This is used to determine if the chain uses finality tags.
+	FinalityTag bool `envconfig:"evm_finality_tag" default:"false" toml:"evm_finality_tag" json:"evm_finality_tag"`
+	// If the chain does not use finality tags, this is used to determine how many blocks to wait for before considering a block finalized.
+	FinalityDepth uint64 `envconfig:"evm_finality_depth" default:"50" toml:"evm_finality_depth" json:"evm_finality_depth"`
 
 	// Only used internally, do not set
 	URL string `ignored:"true"`
