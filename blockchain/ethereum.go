@@ -791,16 +791,20 @@ func (e *EthereumClient) AvgBlockTime(ctx context.Context) (time.Duration, error
 		return 0, errors.New("not enough blocks mined to calculate block time")
 	}
 	totalTime := time.Duration(0)
-	previousHeader, err := e.Client.HeaderByNumber(ctx, big.NewInt(int64(startBlockNumber-1)))
+	var previousHeader *types.Header
+	previousHeader, err = e.Client.HeaderByNumber(ctx, big.NewInt(int64(startBlockNumber-1)))
+	if err != nil {
+		return totalTime, err
+	}
 	for i := startBlockNumber; i <= latestBlockNumber; i++ {
 		hdr, err := e.Client.HeaderByNumber(ctx, big.NewInt(int64(i)))
 		if err != nil {
-			return 0, err
+			return totalTime, err
 		}
 
 		blockTime := time.Unix(int64(hdr.Time), 0)
 		if err != nil {
-			return 0, err
+			return totalTime, err
 		}
 		previousBlockTime := time.Unix(int64(previousHeader.Time), 0)
 		blockDuration := blockTime.Sub(previousBlockTime)
