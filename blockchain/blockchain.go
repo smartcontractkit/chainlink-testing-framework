@@ -75,6 +75,9 @@ type EVMClient interface {
 	DeleteHeaderEventSubscription(key string)
 	WaitForEvents() error
 	SubscribeFilterLogs(ctx context.Context, q ethereum.FilterQuery, ch chan<- types.Log) (ethereum.Subscription, error)
+
+	GetLatestFinalizedBlockHeader(ctx context.Context) (*types.Header, error)
+	AvgBlockTime(ctx context.Context) (time.Duration, error)
 }
 
 // NodeHeader header with the ID of the node that received it

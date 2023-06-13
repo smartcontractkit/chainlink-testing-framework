@@ -506,6 +506,10 @@ func (e *EthereumClient) TransactionOpts(from *EthereumWallet) (*bind.TransactOp
 	if e.NetworkConfig.MinimumConfirmations <= 0 { // Wait for your turn to send on an L2 chain
 		<-e.NonceSettings.registerInstantTransaction(from.Address(), nonce)
 	}
+	// if the gas limit is less than the default gas limit, use the default
+	if e.NetworkConfig.DefaultGasLimit > opts.GasLimit {
+		opts.GasLimit = e.NetworkConfig.DefaultGasLimit
+	}
 	return opts, nil
 }
 
@@ -749,6 +753,64 @@ func (e *EthereumClient) WaitForEvents() error {
 // SubscribeFilterLogs subscribes to the results of a streaming filter query.
 func (e *EthereumClient) SubscribeFilterLogs(ctx context.Context, q ethereum.FilterQuery, ch chan<- types.Log) (ethereum.Subscription, error) {
 	return e.Client.SubscribeFilterLogs(ctx, q, ch)
+}
+
+// GetLatestFinalizedBlockHeader returns the latest finalized block header
+// if finality tag is enabled, it returns the latest finalized block header
+// otherwise it returns the block header for the block obtained by latest block number - finality depth
+func (e *EthereumClient) GetLatestFinalizedBlockHeader(ctx context.Context) (*types.Header, error) {
+	if e.NetworkConfig.FinalityTag {
+		return e.Client.HeaderByNumber(ctx, big.NewInt(rpc.FinalizedBlockNumber.Int64()))
+	}
+	if e.NetworkConfig.FinalityDepth == 0 {
+		return nil, errors.New("finality depth is 0 and finality tag is not enabled")
+	}
+	header, err := e.Client.HeaderByNumber(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	latestBlockNumber := header.Number.Uint64()
+	finalizedBlockNumber := latestBlockNumber - e.NetworkConfig.FinalityDepth
+	return e.Client.HeaderByNumber(ctx, big.NewInt(int64(finalizedBlockNumber)))
+}
+
+// AvgBlockTime calculates the average block time over the last 100 blocks for non-simulated networks
+// and the last 10 blocks for simulated networks.
+func (e *EthereumClient) AvgBlockTime(ctx context.Context) (time.Duration, error) {
+	header, err := e.Client.HeaderByNumber(ctx, nil)
+	if err != nil {
+		return 0, err
+	}
+	latestBlockNumber := header.Number.Uint64()
+	numBlocks := uint64(100) // Number of blocks to consider for calculating block time
+	if e.NetworkSimulated() {
+		numBlocks = uint64(10)
+	}
+	startBlockNumber := latestBlockNumber - numBlocks + 1
+	if startBlockNumber <= 0 {
+		return 0, errors.New("not enough blocks mined to calculate block time")
+	}
+	totalTime := time.Duration(0)
+	previousHeader, err := e.Client.HeaderByNumber(ctx, big.NewInt(int64(startBlockNumber-1)))
+	for i := startBlockNumber; i <= latestBlockNumber; i++ {
+		hdr, err := e.Client.HeaderByNumber(ctx, big.NewInt(int64(i)))
+		if err != nil {
+			return 0, err
+		}
+
+		blockTime := time.Unix(int64(hdr.Time), 0)
+		if err != nil {
+			return 0, err
+		}
+		previousBlockTime := time.Unix(int64(previousHeader.Time), 0)
+		blockDuration := blockTime.Sub(previousBlockTime)
+		totalTime += blockDuration
+		previousHeader = hdr
+	}
+
+	averageBlockTime := totalTime / time.Duration(numBlocks)
+
+	return averageBlockTime, nil
 }
 
 // EthereumMultinodeClient wraps the client and the BlockChain network to interact with an EVM based Blockchain with multiple nodes
@@ -1065,6 +1127,14 @@ func (e *EthereumMultinodeClient) AddHeaderEventSubscription(key string, subscri
 // SubscribeFilterLogs subscribes to the results of a streaming filter query.
 func (e *EthereumMultinodeClient) SubscribeFilterLogs(ctx context.Context, q ethereum.FilterQuery, logs chan<- types.Log) (ethereum.Subscription, error) {
 	return e.DefaultClient.SubscribeFilterLogs(ctx, q, logs)
+}
+
+func (e *EthereumMultinodeClient) GetLatestFinalizedBlockHeader(ctx context.Context) (*types.Header, error) {
+	return e.DefaultClient.GetLatestFinalizedBlockHeader(ctx)
+}
+
+func (e *EthereumMultinodeClient) AvgBlockTime(ctx context.Context) (time.Duration, error) {
+	return e.DefaultClient.AvgBlockTime(ctx)
 }
 
 // DeleteHeaderEventSubscription removes a header subscriber from the map

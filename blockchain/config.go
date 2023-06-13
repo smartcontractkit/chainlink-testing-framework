@@ -65,6 +65,10 @@ type EVMNetwork struct {
 	// ClientImplementation is the blockchain client to use when interacting with the test chain
 	ClientImplementation ClientImplementation `envconfig:"client_implementation" default:"Ethereum" toml:"client_implementation" json:"client_implementation"`
 
+	DefaultGasLimit uint64 `envconfig:"evm_default_gas_limit" default:"500000" toml:"evm_default_gas_limit" json:"evm_default_gas_limit"`
+	FinalityTag     bool   `envconfig:"evm_finality_tag" default:"false" toml:"evm_finality_tag" json:"evm_finality_tag"`
+	FinalityDepth   uint64 `envconfig:"evm_finality_depth" default:"50" toml:"evm_finality_depth" json:"evm_finality_depth"`
+
 	// Only used internally, do not set
 	URL string `ignored:"true"`
 }
