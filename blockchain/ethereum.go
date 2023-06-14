@@ -23,8 +23,9 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
-	"github.com/smartcontractkit/chainlink-env/environment"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/smartcontractkit/chainlink-env/environment"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 )
