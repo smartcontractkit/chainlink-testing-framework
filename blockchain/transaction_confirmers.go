@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/big"
 	"sync"
-	"time"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -309,29 +308,17 @@ func (e *EthereumClient) subscribeToNewHeaders() error {
 	defer subscription.Unsubscribe()
 
 	log.Info().Str("Network", e.NetworkConfig.Name).Msg("Subscribed to new block headers")
-	rpcDegradedTime, rpcDegradedNotifyTime := time.Now(), time.Now()
 
 	for {
 		select {
 		case err := <-subscription.Err():
-			log.Error().Err(err).Msg("Error while subscribed to new headers, likely RPC errors")
+			log.Error().Err(err).Msg("Error while subscribed to new headers, restarting subscription")
 			subscription.Unsubscribe()
 
-			ticker := time.NewTicker(time.Second)
-			for range ticker.C { // Keep trying to re-subscribe to new headers
-				if time.Since(rpcDegradedNotifyTime) >= time.Minute {
-					log.Info().Msg("RPC connection still down, waiting for it to come back up")
-					rpcDegradedNotifyTime = time.Now()
-				}
-				subscription, err = e.SubscribeNewHeaders(context.Background(), headerChannel)
-				if err != nil {
-					subscription.Unsubscribe()
-					log.Error().Err(err).Msg("Failed to resubscribe to new headers")
-					continue
-				}
-				ticker.Stop()
-				log.Info().Str("Time Disconnected", time.Since(rpcDegradedTime).String()).Msg("RPC and subscription connection restored")
-				break
+			subscription, err = e.SubscribeNewHeaders(context.Background(), headerChannel)
+			if err != nil {
+				log.Error().Err(err).Msg("Failed to resubscribe to new headers")
+				return err
 			}
 		case header := <-headerChannel:
 			e.receiveHeader(header)
