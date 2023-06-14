@@ -302,44 +302,51 @@ func (e *EthereumClient) GetHeaderSubscriptions() map[string]HeaderEventSubscrip
 	return newMap
 }
 
-// subscribeToNewHeaders
+// subscribeToNewHeaders is called at client creation, and subscribes to new headers, attempting to reconnect if encountering issues
 func (e *EthereumClient) subscribeToNewHeaders() error {
-	headerChannel, latestHeaderNumber := make(chan *SafeEVMHeader), big.NewInt(0)
+	headerChannel := make(chan *SafeEVMHeader)
 	subscription, err := e.SubscribeNewHeaders(context.Background(), headerChannel)
 	if err != nil {
 		return err
 	}
-	defer subscription.Unsubscribe()
 
 	log.Info().Str("Network", e.NetworkConfig.Name).Msg("Subscribed to new block headers")
 
-	for {
-		select {
-		case err := <-subscription.Err():
-			log.Error().Err(err).Msg("Error while subscribed to new headers, waiting to restart subscription")
-			subscription.Unsubscribe() // Probably unnecessary, but just in case
-
-			// If the sub is down, it's likely RPC node issues, keep trying to reconnect
-			resubStart, resubTicker := time.Now(), time.NewTicker(time.Second)
-			for range resubTicker.C {
-				subscription, err = e.SubscribeNewHeaders(context.Background(), headerChannel)
+	go func() {
+		defer subscription.Unsubscribe()
+		for {
+			select {
+			case err := <-subscription.Err():
 				if err == nil {
-					log.Info().Msg("Resubscribed to new headers, resuming test")
-					break
+					log.Debug().Msg("Subscription stopped")
+					return
 				}
-				log.Debug().Err(err).Dur("Time Retrying", time.Since(resubStart)).Msg("Attempting to resubscribe to new headers")
+				log.Error().Err(err).Msg("Error while subscribed to new headers, waiting to restart subscription")
+				subscription.Unsubscribe() // Probably unnecessary, but just in case
+
+				// If the sub is down, it's likely RPC node issues, keep trying to reconnect
+				resubStart, resubTicker := time.Now(), time.NewTicker(time.Second)
+				for range resubTicker.C {
+					subscription, err = e.SubscribeNewHeaders(context.Background(), headerChannel)
+					if err == nil {
+						log.Info().Msg("Resubscribed to new headers, resuming test")
+						break
+					}
+					log.Debug().Err(err).Dur("Time Retrying", time.Since(resubStart)).Msg("Attempting to resubscribe to new headers")
+				}
+				log.Info().Dur("Time Retrying", time.Since(resubStart)).Msg("Resubscribed to new headers")
+				resubTicker.Stop()
+			case header := <-headerChannel:
+				e.receiveHeader(header)
+			case <-e.doneChan:
+				log.Debug().Str("Network", e.NetworkConfig.Name).Msg("Subscription cancelled")
+				e.Client.Close()
+				return
 			}
-			log.Info().Dur("Time Retrying", time.Since(resubStart)).Msg("Resubscribed to new headers")
-			resubTicker.Stop()
-		case header := <-headerChannel:
-			latestHeaderNumber = header.Number
-			e.receiveHeader(header)
-		case <-e.doneChan:
-			log.Debug().Str("Network", e.NetworkConfig.Name).Msg("Subscription cancelled")
-			e.Client.Close()
-			return nil
 		}
-	}
+	}()
+
+	return nil
 }
 
 // receiveHeader takes in a new header from the chain, and sends the header to all active header subscriptions
