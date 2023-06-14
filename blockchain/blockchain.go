@@ -43,8 +43,10 @@ type EVMClient interface {
 	HeaderHashByNumber(ctx context.Context, bn *big.Int) (string, error)
 	HeaderTimestampByNumber(ctx context.Context, bn *big.Int) (uint64, error)
 	LatestBlockNumber(ctx context.Context) (uint64, error)
+	GetLatestFinalizedBlockHeader(ctx context.Context) (*types.Header, error)
+	AvgBlockTime(ctx context.Context) (time.Duration, error)
 	SendTransaction(ctx context.Context, tx *types.Transaction) error
-	Fund(toAddress string, amount *big.Float) error
+	Fund(toAddress string, amount *big.Float, gasEstimations GasEstimations) error
 	ReturnFunds(fromKey *ecdsa.PrivateKey) error
 	DeployContract(
 		contractName string,
@@ -52,6 +54,13 @@ type EVMClient interface {
 	) (*common.Address, *types.Transaction, interface{}, error)
 	LoadContract(contractName string, address common.Address, loader ContractLoader) (interface{}, error)
 	TransactionOpts(from *EthereumWallet) (*bind.TransactOpts, error)
+	NewTx(
+		fromPrivateKey *ecdsa.PrivateKey,
+		nonce uint64,
+		to common.Address,
+		value *big.Int,
+		gasEstimations GasEstimations,
+	) (*types.Transaction, error)
 	ProcessTransaction(tx *types.Transaction) error
 	ProcessEvent(name string, event *types.Log, confirmedChan chan bool, errorChan chan error) error
 	IsEventConfirmed(event *types.Log) (confirmed, removed bool, err error)
@@ -69,6 +78,7 @@ type EVMClient interface {
 	EstimateCostForChainlinkOperations(amountOfOperations int) (*big.Float, error)
 	EstimateTransactionGasCost() (*big.Int, error)
 	GasStats() *GasStats
+	EstimateGas(callMsg ethereum.CallMsg) (GasEstimations, error)
 
 	// Event Subscriptions
 	AddHeaderEventSubscription(key string, subscriber HeaderEventSubscription)
@@ -92,6 +102,15 @@ type SafeEVMHeader struct {
 	Number    *big.Int
 	Timestamp time.Time
 	BaseFee   *big.Int
+}
+
+// GasEstimations is a wrapper for the gas estimations
+type GasEstimations struct {
+	GasUnits     uint64   // How many units of gas the transaction will use
+	GasPrice     *big.Int // Gas price of the transaction (for Legacy transactions)
+	GasTipCap    *big.Int // Gas tip cap of the transaction (for DynamicFee transactions)
+	GasFeeCap    *big.Int // Gas fee cap of the transaction (for DynamicFee transactions)
+	TotalGasCost *big.Int // Total gas cost of the transaction (gas units * total gas price)
 }
 
 // UnmarshalJSON enables Geth to unmarshal block headers into our custom type
