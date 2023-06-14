@@ -49,8 +49,8 @@ func DBMigration(spec *DBMigrationSpec) (*environment.Environment, error) {
 	e.Cfg.KeepConnection = spec.KeepConnection
 	e.Cfg.RemoveOnInterrupt = spec.RemoveOnInterrupt
 	e.Cfg.UpdateWaitInterval = 10 * time.Second
-	err = e.
-		ModifyHelm("chainlink-0", chainlink.New(0, map[string]interface{}{
+	env, err := e.
+		ReplaceHelm("chainlink-0", chainlink.New(0, map[string]interface{}{
 			"chainlink": map[string]interface{}{
 				"image": map[string]interface{}{
 					"image":   spec.ToSpec.Image,
@@ -61,7 +61,11 @@ func DBMigration(spec *DBMigrationSpec) (*environment.Environment, error) {
 				"stateful": true,
 				"capacity": "1Gi",
 			},
-		})).Run()
+		}))
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to replace helm chart for version: %s:%s", spec.ToSpec.Image, spec.ToSpec.Tag)
+	}
+	err = env.Run()
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to migrate to version: %s:%s", spec.ToSpec.Image, spec.ToSpec.Tag)
 	}

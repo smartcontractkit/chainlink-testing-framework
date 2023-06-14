@@ -26,6 +26,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/smartcontractkit/chainlink-env/environment"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 )
 
