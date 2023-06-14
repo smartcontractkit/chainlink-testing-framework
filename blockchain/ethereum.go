@@ -1,6 +1,6 @@
 package blockchain
 
-// Contans implementations for multi and single node ethereum clients
+// Contains implementations for multi and single node ethereum clients
 import (
 	"bytes"
 	"context"
@@ -83,7 +83,10 @@ func newEVMClient(networkSettings EVMNetwork) (EVMClient, error) {
 		return nil, err
 	}
 	ec.gasStats = NewGasStats(ec.ID)
-	go ec.newHeadersLoop()
+	err = ec.subscribeToNewHeaders()
+	if err != nil {
+		return nil, err
+	}
 
 	// Check if the chain supports EIP-1559
 	// https://eips.ethereum.org/EIPS/eip-1559
@@ -104,22 +107,6 @@ func (e *EthereumClient) SyncNonce(c EVMClient) {
 	defer n.NonceMu.Unlock()
 	e.NonceSettings.NonceMu = n.NonceMu
 	e.NonceSettings.Nonces = n.Nonces
-}
-
-// newHeadersLoop Logs when new headers come in
-func (e *EthereumClient) newHeadersLoop() {
-	for {
-		if err := e.subscribeToNewHeaders(); err != nil {
-			log.Error().
-				Err(err).
-				Str("NetworkName", e.NetworkConfig.Name).
-				Msg("Error while subscribing to headers")
-			time.Sleep(time.Second)
-			continue
-		}
-		break
-	}
-	log.Debug().Str("NetworkName", e.NetworkConfig.Name).Msg("Stopped subscribing to new headers")
 }
 
 // Get returns the underlying client type to be used generically across the framework for switching
