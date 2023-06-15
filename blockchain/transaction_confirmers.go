@@ -339,7 +339,10 @@ func (e *EthereumClient) headerSubscriptionLoop(subscription ethereum.Subscripti
 					if err == nil { // No error on resubscription, RPC connection restored, back to regularly scheduled programming
 						ticker.Stop()
 						log.Info().Dur("Time waiting", time.Since(rpcDegradedTime)).Msg("RPC and subscription connection restored")
-						e.backfillMissedBlocks(lastHeaderNumber, headerChannel)
+						err = e.backfillMissedBlocks(lastHeaderNumber, headerChannel)
+						if err != nil {
+							log.Error().Err(err).Msg("Error backfilling missed blocks, subscriptions may be out of sync")
+						}
 						break reSubLoop
 					}
 					log.Trace().Err(err).Msg("Error trying to resubscribe to new headers, likely RPC down")
