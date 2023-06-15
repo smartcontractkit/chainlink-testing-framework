@@ -783,6 +783,11 @@ func (e *EthereumClient) SubscribeFilterLogs(ctx context.Context, q ethereum.Fil
 	return e.Client.SubscribeFilterLogs(ctx, q, ch)
 }
 
+// FilterLogs executes a filter query
+func (e *EthereumClient) FilterLogs(ctx context.Context, filterQuery ethereum.FilterQuery) ([]types.Log, error) {
+	return e.Client.FilterLogs(ctx, filterQuery)
+}
+
 // GetLatestFinalizedBlockHeader returns the latest finalized block header
 // if finality tag is enabled, it returns the latest finalized block header
 // otherwise it returns the block header for the block obtained by latest block number - finality depth
@@ -1177,6 +1182,11 @@ func (e *EthereumMultinodeClient) AddHeaderEventSubscription(key string, subscri
 // SubscribeFilterLogs subscribes to the results of a streaming filter query.
 func (e *EthereumMultinodeClient) SubscribeFilterLogs(ctx context.Context, q ethereum.FilterQuery, logs chan<- types.Log) (ethereum.Subscription, error) {
 	return e.DefaultClient.SubscribeFilterLogs(ctx, q, logs)
+}
+
+// FilterLogs executes a filter query
+func (e *EthereumMultinodeClient) FilterLogs(ctx context.Context, filterQuery ethereum.FilterQuery) ([]types.Log, error) {
+	return e.DefaultClient.FilterLogs(ctx, filterQuery)
 }
 
 func (e *EthereumMultinodeClient) GetLatestFinalizedBlockHeader(ctx context.Context) (*types.Header, error) {

@@ -43,6 +43,8 @@ type EVMClient interface {
 	HeaderHashByNumber(ctx context.Context, bn *big.Int) (string, error)
 	HeaderTimestampByNumber(ctx context.Context, bn *big.Int) (uint64, error)
 	LatestBlockNumber(ctx context.Context) (uint64, error)
+	GetLatestFinalizedBlockHeader(ctx context.Context) (*types.Header, error)
+	AvgBlockTime(ctx context.Context) (time.Duration, error)
 	SendTransaction(ctx context.Context, tx *types.Transaction) error
 	Fund(toAddress string, amount *big.Float, gasEstimations GasEstimations) error
 	ReturnFunds(fromKey *ecdsa.PrivateKey) error
@@ -84,8 +86,8 @@ type EVMClient interface {
 	WaitForEvents() error
 	SubscribeFilterLogs(ctx context.Context, q ethereum.FilterQuery, ch chan<- types.Log) (ethereum.Subscription, error)
 
-	GetLatestFinalizedBlockHeader(ctx context.Context) (*types.Header, error)
-	AvgBlockTime(ctx context.Context) (time.Duration, error)
+	// Polling Events
+	FilterLogs(ctx context.Context, filterQuery ethereum.FilterQuery) ([]types.Log, error)
 }
 
 // NodeHeader header with the ID of the node that received it
