@@ -317,6 +317,7 @@ func (e *EthereumClient) subscribeToNewHeaders() error {
 
 // headerSubscriptionLoop receives new headers, and handles subscription errors when they pop up
 func (e *EthereumClient) headerSubscriptionLoop(subscription ethereum.Subscription, headerChannel chan *SafeEVMHeader) {
+	lastHeaderNumber := uint64(0)
 	for {
 		select {
 		case err := <-subscription.Err(): // Most subscription errors are temporary RPC downtime, so let's poll to resubscribe
@@ -341,12 +342,14 @@ func (e *EthereumClient) headerSubscriptionLoop(subscription ethereum.Subscripti
 					if err == nil { // No error on resubscription, RPC connection restored, back to regularly scheduled programming
 						ticker.Stop()
 						log.Info().Dur("Time waiting", time.Since(rpcDegradedTime)).Msg("RPC and subscription connection restored")
+						e.backfillMissedBlocks(lastHeaderNumber, headerChannel)
 						break reSubLoop
 					}
 					log.Trace().Err(err).Msg("Error trying to resubscribe to new headers, likely RPC down")
 				}
 			}
 		case header := <-headerChannel:
+			lastHeaderNumber = header.Number.Uint64()
 			e.receiveHeader(header)
 		case <-e.doneChan:
 			log.Debug().Str("Network", e.NetworkConfig.Name).Msg("Subscription cancelled")
@@ -354,6 +357,26 @@ func (e *EthereumClient) headerSubscriptionLoop(subscription ethereum.Subscripti
 			return
 		}
 	}
+}
+
+// backfillMissedBlocks checks if there are any missed blocks since a bad connection was detected, and if so, backfills them
+// to our header channel
+func (e *EthereumClient) backfillMissedBlocks(lastBlockSeen uint64, headerChannel chan *SafeEVMHeader) error {
+	latestBlockNumber, err := e.LatestBlockNumber(context.Background())
+	if err != nil {
+		return err
+	}
+	if latestBlockNumber <= lastBlockSeen {
+		return nil
+	}
+	for i := lastBlockSeen + 1; i <= latestBlockNumber; i++ {
+		header, err := e.HeaderByNumber(context.Background(), big.NewInt(int64(i)))
+		if err != nil {
+			return err
+		}
+		headerChannel <- header
+	}
+	return nil
 }
 
 // receiveHeader takes in a new header from the chain, and sends the header to all active header subscriptions
