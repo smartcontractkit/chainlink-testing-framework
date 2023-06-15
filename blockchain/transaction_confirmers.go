@@ -302,51 +302,58 @@ func (e *EthereumClient) GetHeaderSubscriptions() map[string]HeaderEventSubscrip
 	return newMap
 }
 
-// subscribeToNewHeaders is called at client creation, and subscribes to new headers, attempting to reconnect if encountering issues
+// subscribeToNewHeaders kicks of the primary header subscription for the test loop
 func (e *EthereumClient) subscribeToNewHeaders() error {
 	headerChannel := make(chan *SafeEVMHeader)
 	subscription, err := e.SubscribeNewHeaders(context.Background(), headerChannel)
 	if err != nil {
 		return err
 	}
-
 	log.Info().Str("Network", e.NetworkConfig.Name).Msg("Subscribed to new block headers")
 
-	go func() {
-		defer subscription.Unsubscribe()
-		for {
-			select {
-			case err := <-subscription.Err():
-				if err == nil {
-					log.Debug().Msg("Subscription stopped")
-					return
-				}
-				log.Error().Err(err).Msg("Error while subscribed to new headers, waiting to restart subscription")
-				subscription.Unsubscribe() // Probably unnecessary, but just in case
-
-				// If the sub is down, it's likely RPC node issues, keep trying to reconnect
-				resubStart, resubTicker := time.Now(), time.NewTicker(time.Second)
-				for range resubTicker.C {
-					subscription, err = e.SubscribeNewHeaders(context.Background(), headerChannel)
-					if err == nil {
-						log.Info().Msg("Resubscribed to new headers, resuming test")
-						break
-					}
-					log.Debug().Err(err).Dur("Time Retrying", time.Since(resubStart)).Msg("Attempting to resubscribe to new headers")
-				}
-				log.Info().Dur("Time Retrying", time.Since(resubStart)).Msg("Resubscribed to new headers")
-				resubTicker.Stop()
-			case header := <-headerChannel:
-				e.receiveHeader(header)
-			case <-e.doneChan:
-				log.Debug().Str("Network", e.NetworkConfig.Name).Msg("Subscription cancelled")
-				e.Client.Close()
-				return
-			}
-		}
-	}()
-
+	go e.headerSubscriptionLoop(subscription, headerChannel)
 	return nil
+}
+
+// headerSubscriptionLoop receives new headers, and handles subscription errors when they pop up
+func (e *EthereumClient) headerSubscriptionLoop(subscription ethereum.Subscription, headerChannel chan *SafeEVMHeader) {
+	for {
+		select {
+		case err := <-subscription.Err(): // Most subscription errors are temporary RPC downtime, so let's poll to resubscribe
+			log.Error().Err(err).Msg("Error while subscribed to new headers, likely RPC errors")
+			subscription.Unsubscribe()
+
+			rpcDegradedTime, rpcDegradedNotifyTime := time.Now(), time.Now()
+			timeout, ticker := time.NewTimer(e.NetworkConfig.Timeout.Duration), time.NewTicker(time.Second)
+		reSubLoop:
+			for { // Loop to resubscribe to new headers,
+				select {
+				case <-timeout.C: // Timeout waiting for RPC to come back up
+					log.Error().Dur("Time waiting", time.Since(rpcDegradedTime)).Msg("RPC connection still down, timed out waiting for it to come back up")
+					e.Client.Close()
+					return
+				case <-ticker.C: // Poll the RPC connection to see if it's back up
+					if time.Since(rpcDegradedNotifyTime) >= time.Second*15 { // Periodically inform that we're still waiting for RPC to come back up
+						log.Warn().Dur("Time waiting", time.Since(rpcDegradedTime)).Msg("RPC connection still down, waiting for it to come back up")
+						rpcDegradedNotifyTime = time.Now()
+					}
+					subscription, err = e.SubscribeNewHeaders(context.Background(), headerChannel)
+					if err == nil { // No error on resubscription, RPC connection restored, back to regularly scheduled programming
+						ticker.Stop()
+						log.Info().Dur("Time waiting", time.Since(rpcDegradedTime)).Msg("RPC and subscription connection restored")
+						break reSubLoop
+					}
+					log.Trace().Err(err).Msg("Error trying to resubscribe to new headers, likely RPC down")
+				}
+			}
+		case header := <-headerChannel:
+			e.receiveHeader(header)
+		case <-e.doneChan:
+			log.Debug().Str("Network", e.NetworkConfig.Name).Msg("Subscription cancelled")
+			e.Client.Close()
+			return
+		}
+	}
 }
 
 // receiveHeader takes in a new header from the chain, and sends the header to all active header subscriptions
