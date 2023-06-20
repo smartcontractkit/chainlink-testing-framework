@@ -647,13 +647,9 @@ func (e *EthereumClient) EstimateGas(callMsg ethereum.CallMsg) (GasEstimations, 
 		err       error
 	)
 	// Gas Units
-	if len(callMsg.Data) == 0 {
-		gasUnits = 21_000 // Probably just a basic Tx, `eth_estimateGas` defaults to 53_000 for some reason
-	} else {
-		gasUnits, err = e.Client.EstimateGas(context.Background(), callMsg)
-		if err != nil {
-			return GasEstimations{}, err
-		}
+	gasUnits, err = e.Client.EstimateGas(context.Background(), callMsg)
+	if err != nil {
+		return GasEstimations{}, err
 	}
 
 	gasPriceBuffer := big.NewInt(0).SetUint64(e.NetworkConfig.GasEstimationBuffer)
