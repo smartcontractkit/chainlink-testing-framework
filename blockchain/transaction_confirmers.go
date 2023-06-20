@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"sync"
@@ -404,9 +405,26 @@ func (e *EthereumClient) errorReason(
 		Value:    tx.Value(),
 		Data:     tx.Data(),
 	}
-	res, err := b.CallContract(context.Background(), callMsg, receipt.BlockNumber)
-	if err != nil {
-		return "", errors.Wrap(err, "CallContract")
+	res, txError := b.CallContract(context.Background(), callMsg, receipt.BlockNumber)
+	if txError == nil {
+		return "", errors.Wrap(err, "no error in CallContract")
+	}
+	if len(res) < 4 {
+		errBytes, err := json.Marshal(txError)
+		if err != nil {
+			return "", err
+		}
+		var callErr struct {
+			Code    int
+			Data    string `json:"data"`
+			Message string `json:"message"`
+		}
+		err = json.Unmarshal(errBytes, &callErr)
+		if err != nil {
+			return "", err
+		}
+
+		return callErr.Data, nil
 	}
 	return abi.UnpackRevert(res)
 }
