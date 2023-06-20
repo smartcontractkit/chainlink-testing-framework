@@ -355,10 +355,7 @@ func (e *EthereumClient) resubscribeLoop(headerChannel chan *SafeEVMHeader, last
 			if err == nil { // No error on resubscription, RPC connection restored, back to regularly scheduled programming
 				ticker.Stop()
 				log.Info().Str("Time waiting", time.Since(rpcDegradedTime).String()).Msg("RPC connection and subscription restored")
-				err = e.backfillMissedBlocks(lastHeaderNumber, headerChannel)
-				if err != nil {
-					log.Error().Err(err).Msg("Error backfilling missed blocks, subscriptions may be out of sync")
-				}
+				go e.backfillMissedBlocks(lastHeaderNumber, headerChannel)
 				return subscription
 			}
 			log.Trace().Err(err).Msg("Error trying to resubscribe to new headers, likely RPC down")
@@ -368,15 +365,16 @@ func (e *EthereumClient) resubscribeLoop(headerChannel chan *SafeEVMHeader, last
 
 // backfillMissedBlocks checks if there are any missed blocks since a bad connection was detected, and if so, backfills them
 // to our header channel
-func (e *EthereumClient) backfillMissedBlocks(lastBlockSeen uint64, headerChannel chan *SafeEVMHeader) error {
+func (e *EthereumClient) backfillMissedBlocks(lastBlockSeen uint64, headerChannel chan *SafeEVMHeader) {
 	start := time.Now()
 	latestBlockNumber, err := e.LatestBlockNumber(context.Background())
 	if err != nil {
-		return err
+		log.Err(err).Msg("Error getting latest block number. Unable to backfill missed blocks")
+		return
 	}
 	if latestBlockNumber <= lastBlockSeen {
 		log.Info().Msg("No missed blocks to backfill")
-		return nil
+		return
 	}
 	log.Info().
 		Uint64("Last Block Seen", lastBlockSeen).
@@ -384,20 +382,18 @@ func (e *EthereumClient) backfillMissedBlocks(lastBlockSeen uint64, headerChanne
 		Uint64("Latest Block", latestBlockNumber).
 		Msg("Backfilling missed blocks since RPC connection issues")
 	for i := lastBlockSeen + 1; i <= latestBlockNumber; i++ {
-		log.Trace().Uint64("Number", i).Msg("Backfilling block")
 		header, err := e.HeaderByNumber(context.Background(), big.NewInt(int64(i)))
 		if err != nil {
-			return err
+			log.Err(err).Uint64("Number", i).Msg("Error getting header, unable to backfill and process it")
+			return
 		}
 		log.Trace().Str("Hash", header.Hash.Hex()).Uint64("Number", i).Msg("Got header")
 		headerChannel <- header
-		log.Trace().Str("Hash", header.Hash.Hex()).Uint64("Number", i).Msg("Sent header to channel")
 	}
 	log.Info().
 		Uint64("Backfilled blocks", latestBlockNumber-lastBlockSeen).
 		Str("Time", time.Since(start).String()).
 		Msg("Finished backfilling missed blocks")
-	return nil
 }
 
 // receiveHeader takes in a new header from the chain, and sends the header to all active header subscriptions
