@@ -45,6 +45,7 @@ type EVMClient interface {
 	LatestBlockNumber(ctx context.Context) (uint64, error)
 	GetLatestFinalizedBlockHeader(ctx context.Context) (*types.Header, error)
 	AvgBlockTime(ctx context.Context) (time.Duration, error)
+	EstimatedFinalizationTime(ctx context.Context) (time.Duration, error)
 	SendTransaction(ctx context.Context, tx *types.Transaction) error
 	Fund(toAddress string, amount *big.Float, gasEstimations GasEstimations) error
 	ReturnFunds(fromKey *ecdsa.PrivateKey) error
