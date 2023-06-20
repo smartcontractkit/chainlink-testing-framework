@@ -565,13 +565,15 @@ func (e *EthereumClient) IsTxConfirmed(txHash common.Hash) (bool, error) {
 				log.Warn().Str("TX Hash", txHash.Hex()).
 					Str("To", tx.To().Hex()).
 					Uint64("Nonce", tx.Nonce()).
+					Str("Error extracting reason", err.Error()).
 					Msg("Transaction failed and was reverted! Unable to retrieve reason!")
-				return false, err
+			} else {
+				log.Warn().Str("TX Hash", txHash.Hex()).
+					Str("To", tx.To().Hex()).
+					Str("Revert reason", reason).
+					Msg("Transaction failed and was reverted!")
 			}
-			log.Warn().Str("TX Hash", txHash.Hex()).
-				Str("To", tx.To().Hex()).
-				Str("Revert reason", reason).
-				Msg("Transaction failed and was reverted!")
+			return false, err
 		}
 	}
 	return !isPending, err
@@ -596,12 +598,14 @@ func (e *EthereumClient) IsEventConfirmed(event *types.Log) (confirmed, removed 
 	if eventReceipt.Status == 0 { // Failed event tx
 		reason, err := e.errorReason(e.Client, eventTx, eventReceipt)
 		if err != nil {
-			log.Warn().Str("TX Hash", eventTx.Hash().Hex()).Msg("Transaction failed and was reverted! Unable to retrieve reason!")
-			return false, event.Removed, err
+			log.Warn().Str("TX Hash", eventTx.Hash().Hex()).
+				Str("Error extracting reason", err.Error()).
+				Msg("Transaction failed and was reverted! Unable to retrieve reason!")
+		} else {
+			log.Warn().Str("TX Hash", eventTx.Hash().Hex()).
+				Str("Revert reason", reason).
+				Msg("Transaction failed and was reverted!")
 		}
-		log.Warn().Str("TX Hash", eventTx.Hash().Hex()).
-			Str("Revert reason", reason).
-			Msg("Transaction failed and was reverted!")
 		return false, event.Removed, err
 	}
 	headerByNumber, err := e.HeaderByNumber(context.Background(), big.NewInt(0).SetUint64(event.BlockNumber))
