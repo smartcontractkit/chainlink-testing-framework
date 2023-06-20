@@ -567,12 +567,12 @@ func (e *EthereumClient) IsTxConfirmed(txHash common.Hash) (bool, error) {
 					Uint64("Nonce", tx.Nonce()).
 					Str("Error extracting reason", err.Error()).
 					Msg("Transaction failed and was reverted! Unable to retrieve reason!")
-				return false, err
 			}
 			log.Warn().Str("TX Hash", txHash.Hex()).
 				Str("To", tx.To().Hex()).
 				Str("Revert reason", reason).
 				Msg("Transaction failed and was reverted!")
+			return false, err
 		}
 	}
 	return !isPending, err

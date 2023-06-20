@@ -2,9 +2,11 @@ package blockchain
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"strings"
 	"sync"
 
 	"github.com/ethereum/go-ethereum"
@@ -393,10 +395,16 @@ func (e *EthereumClient) errorReason(
 	if err != nil {
 		return "", err
 	}
-	msg, err := core.TransactionToMessage(tx, types.NewEIP155Signer(chID), nil)
+	var msg *core.Message
+	if e.NetworkConfig.SupportsEIP1559 {
+		msg, err = core.TransactionToMessage(tx, types.LatestSignerForChainID(chID), nil)
+	} else {
+		msg, err = core.TransactionToMessage(tx, types.NewEIP155Signer(chID), nil)
+	}
 	if err != nil {
 		return "", err
 	}
+
 	callMsg := ethereum.CallMsg{
 		From:     msg.From,
 		To:       tx.To(),
@@ -405,26 +413,33 @@ func (e *EthereumClient) errorReason(
 		Value:    tx.Value(),
 		Data:     tx.Data(),
 	}
-	res, txError := b.CallContract(context.Background(), callMsg, receipt.BlockNumber)
+	_, txError := b.CallContract(context.Background(), callMsg, receipt.BlockNumber)
 	if txError == nil {
 		return "", errors.Wrap(err, "no error in CallContract")
 	}
-	if len(res) < 4 {
-		errBytes, err := json.Marshal(txError)
-		if err != nil {
-			return "", err
-		}
-		var callErr struct {
-			Code    int
-			Data    string `json:"data"`
-			Message string `json:"message"`
-		}
-		err = json.Unmarshal(errBytes, &callErr)
-		if err != nil {
-			return "", err
-		}
-
+	errBytes, err := json.Marshal(txError)
+	if err != nil {
+		return "", err
+	}
+	var callErr struct {
+		Code    int
+		Data    string `json:"data"`
+		Message string `json:"message"`
+	}
+	err = json.Unmarshal(errBytes, &callErr)
+	if err != nil {
+		return "", err
+	}
+	// Some nodes prepend "Reverted " and we also remove the 0x
+	trimmed := strings.TrimPrefix(callErr.Data, "Reverted ")[2:]
+	data, err := hex.DecodeString(trimmed)
+	if err != nil {
+		return "", err
+	}
+	revert, err := abi.UnpackRevert(data)
+	// If we can't decode the revert reason, return the raw data
+	if err != nil {
 		return callErr.Data, nil
 	}
-	return abi.UnpackRevert(res)
+	return revert, nil
 }
