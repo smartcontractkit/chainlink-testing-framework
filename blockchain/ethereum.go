@@ -843,7 +843,7 @@ func (e *EthereumClient) EstimatedFinalizationTime(ctx context.Context) (time.Du
 			if nextFinalizedHeader.Number.Cmp(currentFinalizedHeader.Number) > 0 {
 				timeBetween := time.Unix(int64(nextFinalizedHeader.Time), 0).Sub(time.Unix(int64(currentFinalizedHeader.Time), 0))
 				log.Info().
-					Str("Time", fmt.Sprintf("%s", timeBetween)).
+					Str("Time", timeBetween.String()).
 					Str("Network", e.GetNetworkName()).
 					Msg("Estimated finalization time")
 				return timeBetween, nil
@@ -864,7 +864,7 @@ func (e *EthereumClient) EstimatedFinalizationTime(ctx context.Context) (time.Du
 		bufferBlocks := uint64(50)
 		timeBetween := time.Duration(e.NetworkConfig.FinalityDepth+bufferBlocks) * blckTime
 		log.Info().
-			Str("Time", fmt.Sprintf("%s", timeBetween)).
+			Str("Time", timeBetween.String()).
 			Str("Network", e.GetNetworkName()).
 			Msg("Estimated finalization time")
 		return timeBetween, nil
