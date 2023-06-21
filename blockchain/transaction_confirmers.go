@@ -320,12 +320,6 @@ func (e *EthereumClient) headerSubscriptionLoop(subscription ethereum.Subscripti
 	lastHeaderNumber := uint64(0)
 	for {
 		select {
-		case <-time.After(e.NetworkConfig.Timeout.Duration):
-			log.Error().
-				Str("Timeout", e.NetworkConfig.Timeout.Duration.String()).
-				Msg("Timeout waiting for new header. Attempting to resubscribe")
-			subscription.Unsubscribe()
-			subscription = e.resubscribeLoop(headerChannel, lastHeaderNumber)
 		case err := <-subscription.Err(): // Most subscription errors are temporary RPC downtime, so let's poll to resubscribe
 			log.Error().Err(err).Msg("Error while subscribed to new headers, likely RPC downtime. Attempting to resubscribe")
 			subscription.Unsubscribe()
