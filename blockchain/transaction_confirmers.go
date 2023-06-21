@@ -338,27 +338,48 @@ func (e *EthereumClient) headerSubscriptionLoop(subscription ethereum.Subscripti
 
 // resubscribeLoop polls the RPC connection until it comes back up, and then resubscribes to new headers
 func (e *EthereumClient) resubscribeLoop(headerChannel chan *SafeEVMHeader, lastHeaderNumber uint64) ethereum.Subscription {
-	rpcDegradedTime, rpcDegradedNotifyTime := time.Now(), time.Now()
-	timeout, ticker := time.NewTimer(e.NetworkConfig.Timeout.Duration), time.NewTicker(time.Second)
-	for { // Loop to resubscribe to new headers,
+	rpcDegradedTime := time.Now()
+	checkTicker, informTicker := time.NewTicker(time.Millisecond*500), time.NewTicker(time.Second*10)
+	reconnectAttempts, consecutiveSuccessCount, targetSuccessCount := 0, 0, 3
+
+	for {
 		select {
-		case <-timeout.C: // Timeout waiting for RPC to come back up
-			log.Error().Str("Time waiting", time.Since(rpcDegradedTime).String()).Msg("RPC connection still down, timed out waiting for it to come back up")
-			e.Client.Close()
-			return nil
-		case <-ticker.C: // Poll the RPC connection to see if it's back up
-			if time.Since(rpcDegradedNotifyTime) >= time.Second*10 { // Periodically inform that we're still waiting for RPC to come back up
-				log.Warn().Str("Time waiting", time.Since(rpcDegradedTime).String()).Msg("RPC connection still down, waiting for it to come back up")
-				rpcDegradedNotifyTime = time.Now()
+		case <-checkTicker.C:
+			reconnectAttempts++
+			_, err := e.LatestBlockNumber(context.Background())
+			if err != nil {
+				log.Trace().Err(err).Msg("Error trying to resubscribe to new headers, likely RPC down")
+				consecutiveSuccessCount = 0
+				continue
 			}
-			subscription, err := e.SubscribeNewHeaders(context.Background(), headerChannel)
-			if err == nil { // No error on resubscription, RPC connection restored, back to regularly scheduled programming
-				ticker.Stop()
-				log.Info().Str("Time waiting", time.Since(rpcDegradedTime).String()).Msg("RPC connection and subscription restored")
+			consecutiveSuccessCount++
+			log.Debug().
+				Int("Target Success Count", targetSuccessCount).
+				Int("Consecutive Success Count", consecutiveSuccessCount).
+				Msg("RPC connection seems to be healthy, still checking")
+
+			if consecutiveSuccessCount >= targetSuccessCount { // Make sure node is actually back up and not just a blip
+				subscription, err := e.SubscribeNewHeaders(context.Background(), headerChannel)
+				if err != nil {
+					log.Error().Err(err).Msg("Error resubscribing to new headers, RPC connection is still coming up")
+					consecutiveSuccessCount = 0
+					continue
+				}
+				// No error on resubscription, RPC connection restored, back to regularly scheduled programming
+				checkTicker.Stop()
+				informTicker.Stop()
+				log.Info().
+					Int("Reconnect Attempts", reconnectAttempts).
+					Str("Time waiting", time.Since(rpcDegradedTime).String()).
+					Msg("RPC connection and subscription restored")
 				go e.backfillMissedBlocks(lastHeaderNumber, headerChannel)
 				return subscription
 			}
-			log.Trace().Err(err).Msg("Error trying to resubscribe to new headers, likely RPC down")
+		case <-informTicker.C:
+			log.Warn().
+				Int("Reconnect Attempts", reconnectAttempts).
+				Str("Time waiting", time.Since(rpcDegradedTime).String()).
+				Msg("RPC connection still down, waiting for it to come back up")
 		}
 	}
 }
@@ -369,7 +390,7 @@ func (e *EthereumClient) backfillMissedBlocks(lastBlockSeen uint64, headerChanne
 	start := time.Now()
 	latestBlockNumber, err := e.LatestBlockNumber(context.Background())
 	if err != nil {
-		log.Err(err).Msg("Error getting latest block number. Unable to backfill missed blocks")
+		log.Error().Err(err).Msg("Error getting latest block number. Unable to backfill missed blocks. Subscription likely degraded")
 		return
 	}
 	if latestBlockNumber <= lastBlockSeen {
