@@ -103,8 +103,6 @@ type SafeEVMHeader struct {
 	Number    *big.Int
 	Timestamp time.Time
 	BaseFee   *big.Int
-	// Backfill is a custom attribute that lets us know if the block is received as a backfill after RPC downtime
-	Backfill bool
 }
 
 // GasEstimations is a wrapper for the gas estimations
