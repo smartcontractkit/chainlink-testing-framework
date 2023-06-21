@@ -832,22 +832,22 @@ func (e *EthereumClient) EstimatedFinalizationTime(ctx context.Context) (time.Du
 	log.Info().Msg("TimeToReachFinality is not provided. Calculating estimated finalization time")
 	if e.NetworkConfig.FinalityTag {
 		return e.TimeBetweenFinalizedBlocks(ctx, MaxTimeoutForFinality)
-	} else {
-		blckTime, err := e.AvgBlockTime(ctx)
-		if err != nil {
-			return 0, err
-		}
-		if e.NetworkConfig.FinalityDepth == 0 {
-			return 0, errors.New("finality depth is 0 and finality tag is not enabled")
-		}
-		bufferBlocks := uint64(50)
-		timeBetween := time.Duration(e.NetworkConfig.FinalityDepth+bufferBlocks) * blckTime
-		log.Info().
-			Str("Time", timeBetween.String()).
-			Str("Network", e.GetNetworkName()).
-			Msg("Estimated finalization time")
-		return timeBetween, nil
 	}
+	blckTime, err := e.AvgBlockTime(ctx)
+	if err != nil {
+		return 0, err
+	}
+	if e.NetworkConfig.FinalityDepth == 0 {
+		return 0, errors.New("finality depth is 0 and finality tag is not enabled")
+	}
+	bufferBlocks := uint64(50)
+	timeBetween := time.Duration(e.NetworkConfig.FinalityDepth+bufferBlocks) * blckTime
+	log.Info().
+		Str("Time", timeBetween.String()).
+		Str("Network", e.GetNetworkName()).
+		Msg("Estimated finalization time")
+	return timeBetween, nil
+
 }
 
 // TimeBetweenFinalizedBlocks is used to calculate the time between finalized blocks for chains with finality tag enabled
@@ -857,7 +857,8 @@ func (e *EthereumClient) TimeBetweenFinalizedBlocks(ctx context.Context, maxTime
 	}
 	currentFinalizedHeader, err := e.GetLatestFinalizedBlockHeader(ctx)
 	hdrChannel := make(chan *types.Header)
-	sub, err := e.Client.SubscribeNewHead(ctx, hdrChannel)
+	var sub ethereum.Subscription
+	sub, err = e.Client.SubscribeNewHead(ctx, hdrChannel)
 	if err != nil {
 		return 0, err
 	}
