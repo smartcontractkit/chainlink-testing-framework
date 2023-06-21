@@ -856,6 +856,9 @@ func (e *EthereumClient) TimeBetweenFinalizedBlocks(ctx context.Context, maxTime
 		return 0, errors.New("finality tag is not enabled; cannot calculate time between finalized blocks")
 	}
 	currentFinalizedHeader, err := e.GetLatestFinalizedBlockHeader(ctx)
+	if err != nil {
+		return 0, err
+	}
 	hdrChannel := make(chan *types.Header)
 	var sub ethereum.Subscription
 	sub, err = e.Client.SubscribeNewHead(ctx, hdrChannel)
