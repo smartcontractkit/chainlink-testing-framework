@@ -411,7 +411,7 @@ func (e *EthereumClient) backfillMissedBlocks(lastBlockSeen uint64, headerChanne
 			log.Err(err).Uint64("Number", i).Msg("Error getting header, unable to backfill and process it")
 			return
 		}
-		log.Trace().Str("Hash", header.Hash.Hex()).Uint64("Number", i).Msg("Got header")
+		log.Trace().Str("Hash", header.Hash.Hex()).Uint64("Number", i).Msg("Backfilling header")
 		headerChannel <- header
 	}
 	log.Info().
