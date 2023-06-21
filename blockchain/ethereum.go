@@ -826,30 +826,35 @@ func (e *EthereumClient) GetLatestFinalizedBlockHeader(ctx context.Context) (*ty
 // for networks with finality tag enabled, it returns the time between the current and next finalized block
 // for networks with finality depth enabled, it returns the time to mine blocks equal to finality depth
 func (e *EthereumClient) EstimatedFinalizationTime(ctx context.Context) (time.Duration, error) {
+	if e.NetworkConfig.TimeToReachFinality.Duration != 0 {
+		return e.NetworkConfig.TimeToReachFinality.Duration, nil
+	}
 	log.Info().Msg("Calculating estimated finalization time")
 	if e.NetworkConfig.FinalityTag {
 		currentFinalizedHeader, err := e.GetLatestFinalizedBlockHeader(ctx)
 		if err != nil {
 			return 0, err
 		}
-		now := time.Now()
+		c, cancel := context.WithTimeout(ctx, MaxTimeoutForFinality)
+		defer cancel()
+		tick := time.NewTicker(time.Second)
 		// wait for the next finalized block
 		for {
-			time.Sleep(30 * time.Second)
-			nextFinalizedHeader, err := e.GetLatestFinalizedBlockHeader(ctx)
-			if err != nil {
-				return 0, err
-			}
-			if nextFinalizedHeader.Number.Cmp(currentFinalizedHeader.Number) > 0 {
-				timeBetween := time.Unix(int64(nextFinalizedHeader.Time), 0).Sub(time.Unix(int64(currentFinalizedHeader.Time), 0))
-				log.Info().
-					Str("Time", timeBetween.String()).
-					Str("Network", e.GetNetworkName()).
-					Msg("Estimated finalization time")
-				return timeBetween, nil
-			}
-			// if certain amount of time has passed and no block is finalized, return an error
-			if time.Since(now) > MaxTimeoutForFinality {
+			select {
+			case <-tick.C:
+				nextFinalizedHeader, err := e.GetLatestFinalizedBlockHeader(ctx)
+				if err != nil {
+					return 0, err
+				}
+				if nextFinalizedHeader.Number.Cmp(currentFinalizedHeader.Number) > 0 {
+					timeBetween := time.Unix(int64(nextFinalizedHeader.Time), 0).Sub(time.Unix(int64(currentFinalizedHeader.Time), 0))
+					log.Info().
+						Str("Time", timeBetween.String()).
+						Str("Network", e.GetNetworkName()).
+						Msg("Estimated finalization time")
+					return timeBetween, nil
+				}
+			case <-c.Done():
 				return 0, errors.New("timed out waiting for next finalized block")
 			}
 		}
