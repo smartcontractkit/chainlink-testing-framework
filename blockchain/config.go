@@ -75,6 +75,9 @@ type EVMNetwork struct {
 	// If the chain does not use finality tags, this is used to determine how many blocks to wait for before considering a block finalized.
 	FinalityDepth uint64 `envconfig:"evm_finality_depth" default:"50" toml:"evm_finality_depth" json:"evm_finality_depth"`
 
+	// TimeToReachFinality is the time it takes for a block to be considered final. This is used to determine how long to wait for a block to be considered final.
+	TimeToReachFinality JSONStrDuration `envconfig:"evm_time_to_reach_finality" default:"0s" toml:"evm_time_to_reach_finality" json:"evm_time_to_reach_finality"`
+
 	// Only used internally, do not set
 	URL string `ignored:"true"`
 }
