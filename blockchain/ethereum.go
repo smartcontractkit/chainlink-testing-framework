@@ -829,35 +829,9 @@ func (e *EthereumClient) EstimatedFinalizationTime(ctx context.Context) (time.Du
 	if e.NetworkConfig.TimeToReachFinality.Duration != 0 {
 		return e.NetworkConfig.TimeToReachFinality.Duration, nil
 	}
-	log.Info().Msg("Calculating estimated finalization time")
+	log.Info().Msg("TimeToReachFinality is not provided. Calculating estimated finalization time")
 	if e.NetworkConfig.FinalityTag {
-		currentFinalizedHeader, err := e.GetLatestFinalizedBlockHeader(ctx)
-		if err != nil {
-			return 0, err
-		}
-		c, cancel := context.WithTimeout(ctx, MaxTimeoutForFinality)
-		defer cancel()
-		tick := time.NewTicker(time.Second)
-		// wait for the next finalized block
-		for {
-			select {
-			case <-tick.C:
-				nextFinalizedHeader, err := e.GetLatestFinalizedBlockHeader(ctx)
-				if err != nil {
-					return 0, err
-				}
-				if nextFinalizedHeader.Number.Cmp(currentFinalizedHeader.Number) > 0 {
-					timeBetween := time.Unix(int64(nextFinalizedHeader.Time), 0).Sub(time.Unix(int64(currentFinalizedHeader.Time), 0))
-					log.Info().
-						Str("Time", timeBetween.String()).
-						Str("Network", e.GetNetworkName()).
-						Msg("Estimated finalization time")
-					return timeBetween, nil
-				}
-			case <-c.Done():
-				return 0, errors.New("timed out waiting for next finalized block")
-			}
-		}
+		return e.TimeBetweenFinalizedBlocks(ctx, MaxTimeoutForFinality)
 	} else {
 		blckTime, err := e.AvgBlockTime(ctx)
 		if err != nil {
@@ -873,6 +847,44 @@ func (e *EthereumClient) EstimatedFinalizationTime(ctx context.Context) (time.Du
 			Str("Network", e.GetNetworkName()).
 			Msg("Estimated finalization time")
 		return timeBetween, nil
+	}
+}
+
+// TimeBetweenFinalizedBlocks is used to calculate the time between finalized blocks for chains with finality tag enabled
+func (e *EthereumClient) TimeBetweenFinalizedBlocks(ctx context.Context, maxTimeToWait time.Duration) (time.Duration, error) {
+	if !e.NetworkConfig.FinalityTag {
+		return 0, errors.New("finality tag is not enabled; cannot calculate time between finalized blocks")
+	}
+	currentFinalizedHeader, err := e.GetLatestFinalizedBlockHeader(ctx)
+	hdrChannel := make(chan *types.Header)
+	sub, err := e.Client.SubscribeNewHead(ctx, hdrChannel)
+	if err != nil {
+		return 0, err
+	}
+	defer sub.Unsubscribe()
+	c, cancel := context.WithTimeout(ctx, maxTimeToWait)
+	defer cancel()
+	for {
+		select {
+		case <-c.Done():
+			return 0, errors.Wrapf(c.Err(), "timed out waiting for next finalized block. If the finality time is more than %s, provide it as TimeToReachFinality in Network config", maxTimeToWait)
+		case <-hdrChannel:
+			// a new header is received now query the finalized block
+			nextFinalizedHeader, err := e.GetLatestFinalizedBlockHeader(ctx)
+			if err != nil {
+				return 0, err
+			}
+			if nextFinalizedHeader.Number.Cmp(currentFinalizedHeader.Number) > 0 {
+				timeBetween := time.Unix(int64(nextFinalizedHeader.Time), 0).Sub(time.Unix(int64(currentFinalizedHeader.Time), 0))
+				log.Info().
+					Str("Time", timeBetween.String()).
+					Str("Network", e.GetNetworkName()).
+					Msg("Time between finalized blocks")
+				return timeBetween, nil
+			}
+		case subErr := <-sub.Err():
+			return 0, subErr
+		}
 	}
 }
 
