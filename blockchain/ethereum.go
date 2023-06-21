@@ -316,7 +316,9 @@ func attemptReturn(e *EthereumClient, fromKey *ecdsa.PrivateKey, attemptCount in
 	if err != nil {
 		return nil, err
 	}
-	gasEstimations, err := e.EstimateGas(ethereum.CallMsg{})
+	gasEstimations, err := e.EstimateGas(ethereum.CallMsg{
+		To: &to,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -330,7 +332,6 @@ func attemptReturn(e *EthereumClient, fromKey *ecdsa.PrivateKey, attemptCount in
 		return nil, err
 	}
 	log.Info().
-		Str("Token", "ETH").
 		Str("Amount", balance.String()).
 		Str("From", fromAddress.Hex()).
 		Int("Added Buffer", addedBuffer).
@@ -652,15 +653,19 @@ func (e *EthereumClient) EstimateGas(callMsg ethereum.CallMsg) (GasEstimations, 
 		gasFeeCap *big.Int
 		err       error
 	)
+	ctx, cancel := context.WithTimeout(context.Background(), e.NetworkConfig.Timeout.Duration)
 	// Gas Units
-	gasUnits, err = e.Client.EstimateGas(context.Background(), callMsg)
+	gasUnits, err = e.Client.EstimateGas(ctx, callMsg)
+	cancel()
 	if err != nil {
 		return GasEstimations{}, err
 	}
 
 	gasPriceBuffer := big.NewInt(0).SetUint64(e.NetworkConfig.GasEstimationBuffer)
 	// Legacy Gas Price
-	gasPrice, err := e.Client.SuggestGasPrice(context.Background())
+	ctx, cancel = context.WithTimeout(context.Background(), e.NetworkConfig.Timeout.Duration)
+	gasPrice, err := e.Client.SuggestGasPrice(ctx)
+	cancel()
 	if err != nil {
 		return GasEstimations{}, err
 	}
@@ -668,14 +673,18 @@ func (e *EthereumClient) EstimateGas(callMsg ethereum.CallMsg) (GasEstimations, 
 
 	if e.NetworkConfig.SupportsEIP1559 {
 		// GasTipCap
-		gasTipCap, err = e.Client.SuggestGasTipCap(context.Background())
+		ctx, cancel := context.WithTimeout(context.Background(), e.NetworkConfig.Timeout.Duration)
+		gasTipCap, err = e.Client.SuggestGasTipCap(ctx)
+		cancel()
 		if err != nil {
 			return GasEstimations{}, err
 		}
 		gasTipCap.Add(gasTipCap, gasPriceBuffer)
 
 		// GasFeeCap
-		latestHeader, err := e.HeaderByNumber(context.Background(), nil)
+		ctx, cancel = context.WithTimeout(context.Background(), e.NetworkConfig.Timeout.Duration)
+		latestHeader, err := e.HeaderByNumber(ctx, nil)
+		cancel()
 		if err != nil {
 			return GasEstimations{}, err
 		}

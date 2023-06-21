@@ -321,16 +321,22 @@ func (e *EthereumClient) headerSubscriptionLoop(subscription ethereum.Subscripti
 	for {
 		select {
 		case <-time.After(e.NetworkConfig.Timeout.Duration):
-			log.Error().Msg("Timeout waiting for new header, attempting to resubscribe")
+			log.Error().
+				Str("Timeout", e.NetworkConfig.Timeout.Duration.String()).
+				Msg("Timeout waiting for new header. Attempting to resubscribe")
 			subscription.Unsubscribe()
 			subscription = e.resubscribeLoop(headerChannel, lastHeaderNumber)
 		case err := <-subscription.Err(): // Most subscription errors are temporary RPC downtime, so let's poll to resubscribe
-			log.Error().Err(err).Msg("Error while subscribed to new headers, likely RPC errors. Attempting Reconnect.")
+			log.Error().Err(err).Msg("Error while subscribed to new headers, likely RPC downtime. Attempting to resubscribe")
 			subscription.Unsubscribe()
 			subscription = e.resubscribeLoop(headerChannel, lastHeaderNumber)
 		case header := <-headerChannel:
-			lastHeaderNumber = header.Number.Uint64()
-			e.receiveHeader(header)
+			err := e.receiveHeader(header)
+			if err != nil {
+				log.Error().Err(err).Msg("Error receiving header. Possible RPC issues.")
+			} else {
+				lastHeaderNumber = header.Number.Uint64()
+			}
 		case <-e.doneChan:
 			log.Debug().Str("Network", e.NetworkConfig.Name).Msg("Subscription cancelled")
 			e.Client.Close()
@@ -342,8 +348,10 @@ func (e *EthereumClient) headerSubscriptionLoop(subscription ethereum.Subscripti
 // resubscribeLoop polls the RPC connection until it comes back up, and then resubscribes to new headers
 func (e *EthereumClient) resubscribeLoop(headerChannel chan *SafeEVMHeader, lastHeaderNumber uint64) ethereum.Subscription {
 	rpcDegradedTime := time.Now()
-	checkTicker, informTicker := time.NewTicker(time.Millisecond*500), time.NewTicker(time.Second*10)
+	pollInterval := time.Millisecond * 500
+	checkTicker, informTicker := time.NewTicker(pollInterval), time.NewTicker(time.Second*10)
 	reconnectAttempts, consecutiveSuccessCount, targetSuccessCount := 0, 0, 3
+	log.Debug().Str("Poll Interval", pollInterval.String()).Msg("Attempting to resubscribe to new headers")
 
 	for {
 		select {
@@ -421,29 +429,35 @@ func (e *EthereumClient) backfillMissedBlocks(lastBlockSeen uint64, headerChanne
 }
 
 // receiveHeader takes in a new header from the chain, and sends the header to all active header subscriptions
-func (e *EthereumClient) receiveHeader(header *SafeEVMHeader) {
+func (e *EthereumClient) receiveHeader(header *SafeEVMHeader) error {
 	if header == nil {
 		log.Debug().Msg("Received Nil Header")
-		return
+		return nil
 	}
 	headerValue := *header
 
-	suggestedPrice, err := e.Client.SuggestGasPrice(context.Background())
+	suggestedGasStats, err := e.EstimateGas(ethereum.CallMsg{})
 	if err != nil {
-		suggestedPrice = big.NewInt(0)
-		log.Err(err).
-			Str("Header Hash", headerValue.Hash.String()).
-			Msg("Error retrieving Suggested Gas Price for new block header")
+		return fmt.Errorf("error retrieving gas stats: %w", err)
 	}
-	log.Debug().
+
+	headerLog := log.Debug().
 		Str("NetworkName", e.NetworkConfig.Name).
 		Int("Node", e.ID).
 		Str("Hash", headerValue.Hash.String()).
-		Str("Number", headerValue.Number.String()).
-		Str("Gas Price", suggestedPrice.String()).
-		Msg("Received block header")
+		Str("Number", headerValue.Number.String())
+
+	if e.NetworkConfig.SupportsEIP1559 {
+		headerLog = headerLog.
+			Uint64("Suggested GasTipCap", suggestedGasStats.GasTipCap.Uint64()).
+			Uint64("Suggested Gas Fee Cap", suggestedGasStats.GasFeeCap.Uint64())
+	} else {
+		headerLog = headerLog.Uint64("Suggested Gas Price", suggestedGasStats.GasPrice.Uint64())
+	}
+	headerLog.Msg("Received Header")
 
 	subs := e.GetHeaderSubscriptions()
+	log.Trace().Interface("Map", subs).Msg("Active Header Subscriptions")
 
 	g := errgroup.Group{}
 	for _, sub := range subs {
@@ -452,8 +466,9 @@ func (e *EthereumClient) receiveHeader(header *SafeEVMHeader) {
 			return sub.ReceiveHeader(NodeHeader{NodeID: e.ID, SafeEVMHeader: headerValue})
 		})
 	}
+	log.Trace().Msg("Waiting on Header Subscriptions")
 	if err := g.Wait(); err != nil {
-		log.Err(fmt.Errorf("error on sending block header to receivers: %v", err))
+		return fmt.Errorf("error on sending block header to receivers: %w", err)
 	}
 	if len(subs) > 0 {
 		var subsRemoved uint
@@ -470,6 +485,7 @@ func (e *EthereumClient) receiveHeader(header *SafeEVMHeader) {
 				Msg("Updated Header Subscriptions")
 		}
 	}
+	return nil
 }
 
 // errorReason decodes tx revert reason
