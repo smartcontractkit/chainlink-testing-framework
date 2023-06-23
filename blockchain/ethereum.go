@@ -844,8 +844,7 @@ func (e *EthereumClient) EstimatedFinalizationTime(ctx context.Context) (time.Du
 	if e.NetworkConfig.FinalityDepth == 0 {
 		return 0, errors.New("finality depth is 0 and finality tag is not enabled")
 	}
-	bufferBlocks := uint64(50)
-	timeBetween := time.Duration(e.NetworkConfig.FinalityDepth+bufferBlocks) * blckTime
+	timeBetween := time.Duration(e.NetworkConfig.FinalityDepth) * blckTime
 	log.Info().
 		Str("Time", timeBetween.String()).
 		Str("Network", e.GetNetworkName()).
