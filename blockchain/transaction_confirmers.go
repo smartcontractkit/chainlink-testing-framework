@@ -430,6 +430,10 @@ func (e *EthereumClient) errorReason(
 	if err != nil {
 		return "", err
 	}
+	// If the error data is blank
+	if len(callErr.Data) == 0 {
+		return callErr.Data, nil
+	}
 	// Some nodes prepend "Reverted " and we also remove the 0x
 	trimmed := strings.TrimPrefix(callErr.Data, "Reverted ")[2:]
 	data, err := hex.DecodeString(trimmed)
