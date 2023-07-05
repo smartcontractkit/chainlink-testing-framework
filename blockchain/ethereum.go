@@ -235,7 +235,7 @@ func (e *EthereumClient) HeaderTimestampByNumber(ctx context.Context, bn *big.In
 	if err != nil {
 		return 0, err
 	}
-	return uint64(h.Timestamp.Unix()), nil
+	return uint64(h.Timestamp.UTC().Unix()), nil
 }
 
 // BlockNumber gets latest block number
