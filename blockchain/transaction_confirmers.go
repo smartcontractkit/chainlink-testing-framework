@@ -322,7 +322,6 @@ func (e *EthereumClient) headerSubscriptionLoop(subscription ethereum.Subscripti
 		select {
 		case err := <-subscription.Err(): // Most subscription errors are temporary RPC downtime, so let's poll to resubscribe
 			log.Error().Err(err).Msg("Error while subscribed to new headers, likely RPC downtime. Attempting to resubscribe")
-			subscription.Unsubscribe()
 			subscription = e.resubscribeLoop(headerChannel, lastHeaderNumber)
 		case header := <-headerChannel:
 			err := e.receiveHeader(header)
@@ -460,7 +459,6 @@ func (e *EthereumClient) receiveHeader(header *SafeEVMHeader) error {
 			return sub.ReceiveHeader(NodeHeader{NodeID: e.ID, SafeEVMHeader: headerValue})
 		})
 	}
-	log.Trace().Msg("Waiting on Header Subscriptions")
 	if err := g.Wait(); err != nil {
 		return fmt.Errorf("error on sending block header to receivers: %w", err)
 	}
