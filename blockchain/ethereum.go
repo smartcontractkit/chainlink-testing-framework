@@ -44,7 +44,7 @@ type EthereumClient struct {
 	headerSubscriptions     map[string]HeaderEventSubscription
 	subscriptionMutex       *sync.Mutex
 	longHeaderSubscriptions map[string]LongHeaderEventSubscription
-	longSubscriptionMutex   *sync.Mutex
+	longSubscriptionMutex   sync.Mutex
 	queueTransactions       bool
 	gasStats                *GasStats
 	doneChan                chan struct{}
