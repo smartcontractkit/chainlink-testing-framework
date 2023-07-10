@@ -30,6 +30,8 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 )
 
+const MaxTimeoutForFinality = 15 * time.Minute
+
 // EthereumClient wraps the client and the BlockChain network to interact with an EVM based Blockchain
 type EthereumClient struct {
 	ID                  int
@@ -220,7 +222,7 @@ func (e *EthereumClient) HeaderTimestampByNumber(ctx context.Context, bn *big.In
 	if err != nil {
 		return 0, err
 	}
-	return uint64(h.Timestamp.Unix()), nil
+	return uint64(h.Timestamp.UTC().Unix()), nil
 }
 
 // BlockNumber gets latest block number
@@ -816,6 +818,75 @@ func (e *EthereumClient) GetLatestFinalizedBlockHeader(ctx context.Context) (*ty
 	return e.Client.HeaderByNumber(ctx, big.NewInt(int64(finalizedBlockNumber)))
 }
 
+// EstimatedFinalizationTime returns the estimated time it takes for a block to be finalized
+// for networks with finality tag enabled, it returns the time between the current and next finalized block
+// for networks with finality depth enabled, it returns the time to mine blocks equal to finality depth
+func (e *EthereumClient) EstimatedFinalizationTime(ctx context.Context) (time.Duration, error) {
+	if e.NetworkConfig.TimeToReachFinality.Duration != 0 {
+		return e.NetworkConfig.TimeToReachFinality.Duration, nil
+	}
+	log.Info().Msg("TimeToReachFinality is not provided. Calculating estimated finalization time")
+	if e.NetworkConfig.FinalityTag {
+		return e.TimeBetweenFinalizedBlocks(ctx, MaxTimeoutForFinality)
+	}
+	blckTime, err := e.AvgBlockTime(ctx)
+	if err != nil {
+		return 0, err
+	}
+	if e.NetworkConfig.FinalityDepth == 0 {
+		return 0, errors.New("finality depth is 0 and finality tag is not enabled")
+	}
+	timeBetween := time.Duration(e.NetworkConfig.FinalityDepth) * blckTime
+	log.Info().
+		Str("Time", timeBetween.String()).
+		Str("Network", e.GetNetworkName()).
+		Msg("Estimated finalization time")
+	return timeBetween, nil
+
+}
+
+// TimeBetweenFinalizedBlocks is used to calculate the time between finalized blocks for chains with finality tag enabled
+func (e *EthereumClient) TimeBetweenFinalizedBlocks(ctx context.Context, maxTimeToWait time.Duration) (time.Duration, error) {
+	if !e.NetworkConfig.FinalityTag {
+		return 0, errors.New("finality tag is not enabled; cannot calculate time between finalized blocks")
+	}
+	currentFinalizedHeader, err := e.GetLatestFinalizedBlockHeader(ctx)
+	if err != nil {
+		return 0, err
+	}
+	hdrChannel := make(chan *types.Header)
+	var sub ethereum.Subscription
+	sub, err = e.Client.SubscribeNewHead(ctx, hdrChannel)
+	if err != nil {
+		return 0, err
+	}
+	defer sub.Unsubscribe()
+	c, cancel := context.WithTimeout(ctx, maxTimeToWait)
+	defer cancel()
+	for {
+		select {
+		case <-c.Done():
+			return 0, errors.Wrapf(c.Err(), "timed out waiting for next finalized block. If the finality time is more than %s, provide it as TimeToReachFinality in Network config", maxTimeToWait)
+		case <-hdrChannel:
+			// a new header is received now query the finalized block
+			nextFinalizedHeader, err := e.GetLatestFinalizedBlockHeader(ctx)
+			if err != nil {
+				return 0, err
+			}
+			if nextFinalizedHeader.Number.Cmp(currentFinalizedHeader.Number) > 0 {
+				timeBetween := time.Unix(int64(nextFinalizedHeader.Time), 0).Sub(time.Unix(int64(currentFinalizedHeader.Time), 0))
+				log.Info().
+					Str("Time", timeBetween.String()).
+					Str("Network", e.GetNetworkName()).
+					Msg("Time between finalized blocks")
+				return timeBetween, nil
+			}
+		case subErr := <-sub.Err():
+			return 0, subErr
+		}
+	}
+}
+
 // AvgBlockTime calculates the average block time over the last 100 blocks for non-simulated networks
 // and the last 10 blocks for simulated networks.
 func (e *EthereumClient) AvgBlockTime(ctx context.Context) (time.Duration, error) {
@@ -1200,6 +1271,10 @@ func (e *EthereumMultinodeClient) FilterLogs(ctx context.Context, filterQuery et
 
 func (e *EthereumMultinodeClient) GetLatestFinalizedBlockHeader(ctx context.Context) (*types.Header, error) {
 	return e.DefaultClient.GetLatestFinalizedBlockHeader(ctx)
+}
+
+func (e *EthereumMultinodeClient) EstimatedFinalizationTime(ctx context.Context) (time.Duration, error) {
+	return e.DefaultClient.EstimatedFinalizationTime(ctx)
 }
 
 func (e *EthereumMultinodeClient) AvgBlockTime(ctx context.Context) (time.Duration, error) {
