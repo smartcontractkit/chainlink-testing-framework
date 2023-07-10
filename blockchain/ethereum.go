@@ -562,7 +562,7 @@ func (e *EthereumClient) IsTxConfirmed(txHash common.Hash) (bool, error) {
 			CumulativeGasUsed: receipt.CumulativeGasUsed,
 		})
 		if receipt.Status == 0 { // 0 indicates failure, 1 indicates success
-			reason, err := e.ErrorReason(e.Client, tx, receipt)
+			reason, err := e.errorReason(e.Client, tx, receipt)
 			if err != nil {
 				log.Warn().Str("TX Hash", txHash.Hex()).
 					Str("To", tx.To().Hex()).
@@ -598,7 +598,7 @@ func (e *EthereumClient) IsEventConfirmed(event *types.Log) (confirmed, removed 
 		return false, event.Removed, err
 	}
 	if eventReceipt.Status == 0 { // Failed event tx
-		reason, err := e.ErrorReason(e.Client, eventTx, eventReceipt)
+		reason, err := e.errorReason(e.Client, eventTx, eventReceipt)
 		if err != nil {
 			log.Warn().Str("TX Hash", eventTx.Hash().Hex()).
 				Str("Error extracting reason", err.Error()).

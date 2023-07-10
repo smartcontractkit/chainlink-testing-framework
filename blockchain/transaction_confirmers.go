@@ -385,8 +385,8 @@ func (e *EthereumClient) receiveHeader(header *SafeEVMHeader) {
 	}
 }
 
-// ErrorReason decodes tx revert reason
-func (e *EthereumClient) ErrorReason(
+// errorReason decodes tx revert reason
+func (e *EthereumClient) errorReason(
 	b ethereum.ContractCaller,
 	tx *types.Transaction,
 	receipt *types.Receipt,
@@ -417,6 +417,10 @@ func (e *EthereumClient) ErrorReason(
 	if txError == nil {
 		return "", errors.Wrap(err, "no error in CallContract")
 	}
+	return RPCErrorFromError(txError)
+}
+
+func RPCErrorFromError(txError error) (string, error) {
 	errBytes, err := json.Marshal(txError)
 	if err != nil {
 		return "", err
