@@ -34,18 +34,20 @@ const MaxTimeoutForFinality = 15 * time.Minute
 
 // EthereumClient wraps the client and the BlockChain network to interact with an EVM based Blockchain
 type EthereumClient struct {
-	ID                  int
-	Client              *ethclient.Client
-	rawRPC              *rpc.Client
-	NetworkConfig       EVMNetwork
-	Wallets             []*EthereumWallet
-	DefaultWallet       *EthereumWallet
-	NonceSettings       *NonceSettings
-	headerSubscriptions map[string]HeaderEventSubscription
-	subscriptionMutex   *sync.Mutex
-	queueTransactions   bool
-	gasStats            *GasStats
-	doneChan            chan struct{}
+	ID                      int
+	Client                  *ethclient.Client
+	rawRPC                  *rpc.Client
+	NetworkConfig           EVMNetwork
+	Wallets                 []*EthereumWallet
+	DefaultWallet           *EthereumWallet
+	NonceSettings           *NonceSettings
+	headerSubscriptions     map[string]HeaderEventSubscription
+	subscriptionMutex       *sync.Mutex
+	longHeaderSubscriptions map[string]LongHeaderEventSubscription
+	longSubscriptionMutex   *sync.Mutex
+	queueTransactions       bool
+	gasStats                *GasStats
+	doneChan                chan struct{}
 }
 
 // newEVMClient creates an EVM client for a single node/URL
@@ -65,14 +67,15 @@ func newEVMClient(networkSettings EVMNetwork) (EVMClient, error) {
 	}
 
 	ec := &EthereumClient{
-		NetworkConfig:       networkSettings,
-		Client:              cl,
-		rawRPC:              raw,
-		Wallets:             make([]*EthereumWallet, 0),
-		headerSubscriptions: map[string]HeaderEventSubscription{},
-		subscriptionMutex:   &sync.Mutex{},
-		queueTransactions:   false,
-		doneChan:            make(chan struct{}),
+		NetworkConfig:           networkSettings,
+		Client:                  cl,
+		rawRPC:                  raw,
+		Wallets:                 make([]*EthereumWallet, 0),
+		headerSubscriptions:     map[string]HeaderEventSubscription{},
+		longHeaderSubscriptions: map[string]LongHeaderEventSubscription{},
+		subscriptionMutex:       &sync.Mutex{},
+		queueTransactions:       false,
+		doneChan:                make(chan struct{}),
 	}
 
 	if ec.NetworkConfig.Simulated {
@@ -765,6 +768,13 @@ func (e *EthereumClient) AddHeaderEventSubscription(key string, subscriber Heade
 	e.headerSubscriptions[key] = subscriber
 }
 
+// AddLongHeaderEventSubscription adds a new header subscriber within the client to receive new headers
+func (e *EthereumClient) AddLongHeaderEventSubscription(key string, subscription LongHeaderEventSubscription) {
+	e.subscriptionMutex.Lock()
+	defer e.subscriptionMutex.Unlock()
+	e.longHeaderSubscriptions[key] = subscription
+}
+
 // DeleteHeaderEventSubscription removes a header subscriber from the map
 func (e *EthereumClient) DeleteHeaderEventSubscription(key string) {
 	e.subscriptionMutex.Lock()
@@ -772,21 +782,43 @@ func (e *EthereumClient) DeleteHeaderEventSubscription(key string) {
 	delete(e.headerSubscriptions, key)
 }
 
+// DeleteLongHeaderEventSubscription removes a header subscriber from the map
+func (e *EthereumClient) DeleteLongHeaderEventSubscription(key string) {
+	e.subscriptionMutex.Lock()
+	defer e.subscriptionMutex.Unlock()
+	delete(e.longHeaderSubscriptions, key)
+}
+
 // WaitForEvents is a blocking function that waits for all event subscriptions that have been queued within the client.
 func (e *EthereumClient) WaitForEvents() error {
 	log.Debug().Msg("Waiting for blockchain events to finish before continuing")
 	queuedEvents := e.GetHeaderSubscriptions()
-	g := errgroup.Group{}
+	queuedLongEvents := e.GetLongHeaderSubscriptions()
+
+	shortG := errgroup.Group{}
+	longG := errgroup.Group{}
 
 	for subName, sub := range queuedEvents {
 		subName := subName
 		sub := sub
-		g.Go(func() error {
+		shortG.Go(func() error {
 			defer e.DeleteHeaderEventSubscription(subName)
 			return sub.Wait()
 		})
 	}
-	return g.Wait()
+
+	for subName, sub := range queuedLongEvents {
+		subName := subName
+		sub := sub
+		longG.Go(func() error {
+			defer e.DeleteLongHeaderEventSubscription(subName)
+			return sub.Wait()
+		})
+	}
+	if err := shortG.Wait(); err != nil {
+		return err
+	}
+	return longG.Wait()
 }
 
 // SubscribeFilterLogs subscribes to the results of a streaming filter query.
@@ -1259,6 +1291,11 @@ func (e *EthereumMultinodeClient) AddHeaderEventSubscription(key string, subscri
 	e.DefaultClient.AddHeaderEventSubscription(key, subscriber)
 }
 
+// AddLongHeaderEventSubscription adds a new header subscriber within the client to receive new headers
+func (e *EthereumMultinodeClient) AddLongHeaderEventSubscription(key string, subscriber LongHeaderEventSubscription) {
+	e.DefaultClient.AddLongHeaderEventSubscription(key, subscriber)
+}
+
 // SubscribeFilterLogs subscribes to the results of a streaming filter query.
 func (e *EthereumMultinodeClient) SubscribeFilterLogs(ctx context.Context, q ethereum.FilterQuery, logs chan<- types.Log) (ethereum.Subscription, error) {
 	return e.DefaultClient.SubscribeFilterLogs(ctx, q, logs)
@@ -1284,6 +1321,11 @@ func (e *EthereumMultinodeClient) AvgBlockTime(ctx context.Context) (time.Durati
 // DeleteHeaderEventSubscription removes a header subscriber from the map
 func (e *EthereumMultinodeClient) DeleteHeaderEventSubscription(key string) {
 	e.DefaultClient.DeleteHeaderEventSubscription(key)
+}
+
+// DeleteLongHeaderEventSubscription removes a header subscriber from the map
+func (e *EthereumMultinodeClient) DeleteLongHeaderEventSubscription(key string) {
+	e.DefaultClient.DeleteLongHeaderEventSubscription(key)
 }
 
 // WaitForEvents is a blocking function that waits for all event subscriptions for all clients

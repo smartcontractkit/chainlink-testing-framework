@@ -83,7 +83,9 @@ type EVMClient interface {
 
 	// Event Subscriptions
 	AddHeaderEventSubscription(key string, subscriber HeaderEventSubscription)
+	AddLongHeaderEventSubscription(key string, subscriber LongHeaderEventSubscription)
 	DeleteHeaderEventSubscription(key string)
+	DeleteLongHeaderEventSubscription(key string)
 	WaitForEvents() error
 	SubscribeFilterLogs(ctx context.Context, q ethereum.FilterQuery, ch chan<- types.Log) (ethereum.Subscription, error)
 
