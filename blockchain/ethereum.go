@@ -714,12 +714,12 @@ func (e *EthereumClient) EstimateGas(callMsg ethereum.CallMsg) (GasEstimations, 
 }
 
 // ConnectionIssue returns a channel that will receive a timestamp when the connection is lost
-func (e *EthereumClient) ConnectionIssue() chan<- time.Time {
+func (e *EthereumClient) ConnectionIssue() chan time.Time {
 	return e.connectionIssueCh
 }
 
 // ConnectionRestored returns a channel that will receive a timestamp when the connection is restored
-func (e *EthereumClient) ConnectionRestored() chan<- time.Time {
+func (e *EthereumClient) ConnectionRestored() chan time.Time {
 	return e.connectionRestoredCh
 }
 
@@ -1272,10 +1272,10 @@ func (e *EthereumMultinodeClient) EstimateGas(callMsg ethereum.CallMsg) (GasEsti
 	return e.DefaultClient.EstimateGas(callMsg)
 }
 
-func (e *EthereumMultinodeClient) ConnectionIssue() chan<- time.Time {
+func (e *EthereumMultinodeClient) ConnectionIssue() chan time.Time {
 	return e.DefaultClient.ConnectionIssue()
 }
-func (e *EthereumMultinodeClient) ConnectionRestored() chan<- time.Time {
+func (e *EthereumMultinodeClient) ConnectionRestored() chan time.Time {
 	return e.DefaultClient.ConnectionRestored()
 }
 

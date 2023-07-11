@@ -83,9 +83,9 @@ type EVMClient interface {
 
 	// Connection Status
 	// ConnectionIssue returns a channel that will receive a timestamp when the connection is lost
-	ConnectionIssue() chan<- time.Time
+	ConnectionIssue() chan time.Time
 	// ConnectionRestored returns a channel that will receive a timestamp when the connection is restored
-	ConnectionRestored() chan<- time.Time
+	ConnectionRestored() chan time.Time
 
 	// Event Subscriptions
 	AddHeaderEventSubscription(key string, subscriber HeaderEventSubscription)
