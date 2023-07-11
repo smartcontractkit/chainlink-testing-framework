@@ -81,11 +81,15 @@ type EVMClient interface {
 	GasStats() *GasStats
 	EstimateGas(callMsg ethereum.CallMsg) (GasEstimations, error)
 
+	// Connection Status
+	// ConnectionIssue returns a channel that will receive a timestamp when the connection is lost
+	ConnectionIssue() chan<- time.Time
+	// ConnectionRestored returns a channel that will receive a timestamp when the connection is restored
+	ConnectionRestored() chan<- time.Time
+
 	// Event Subscriptions
 	AddHeaderEventSubscription(key string, subscriber HeaderEventSubscription)
-	AddLongHeaderEventSubscription(key string, subscriber LongHeaderEventSubscription)
 	DeleteHeaderEventSubscription(key string)
-	DeleteLongHeaderEventSubscription(key string)
 	WaitForEvents() error
 	SubscribeFilterLogs(ctx context.Context, q ethereum.FilterQuery, ch chan<- types.Log) (ethereum.Subscription, error)
 
@@ -144,25 +148,10 @@ func (h *SafeEVMHeader) UnmarshalJSON(bs []byte) error {
 }
 
 // HeaderEventSubscription is an interface for allowing callbacks when the client receives a new header
-// Deprecated: Use LongHeaderEventSubscription instead whenever possible, especially for long-running tests
 type HeaderEventSubscription interface {
 	ReceiveHeader(header NodeHeader) error
 	Wait() error
 	Complete() bool
-}
-
-// LongHeaderEventSubscription can be added to the main test loop's subscription and will be called whenever a new header is received
-type LongHeaderEventSubscription interface {
-	// ReceiveHeader is called when the main test loop senses a new header
-	ReceiveHeader(header NodeHeader) error
-	// Wait is called by the main test loop to wait for the subscription to complete
-	Wait() error
-	// Complete is called by the main test loop to check if the subscription has completed
-	Complete() bool
-	// Pause is called by the main test loop to pause the subscription, usually because of an unhealthy RPC node
-	Pause()
-	// Resume is called by the main test loop to resume the subscription, usually because an unhealthy RPC node has recovered
-	Resume()
 }
 
 // ContractDeployer acts as a go-between function for general contract deployment

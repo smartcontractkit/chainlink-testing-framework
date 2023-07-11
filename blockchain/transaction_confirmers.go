@@ -302,18 +302,6 @@ func (e *EthereumClient) GetHeaderSubscriptions() map[string]HeaderEventSubscrip
 	return newMap
 }
 
-// GetLongHeaderSubscriptions returns a duplicate map of the queued transactions
-func (e *EthereumClient) GetLongHeaderSubscriptions() map[string]LongHeaderEventSubscription {
-	e.longSubscriptionMutex.Lock()
-	defer e.longSubscriptionMutex.Unlock()
-
-	newMap := map[string]LongHeaderEventSubscription{}
-	for k, v := range e.longHeaderSubscriptions {
-		newMap[k] = v
-	}
-	return newMap
-}
-
 // subscribeToNewHeaders kicks off the primary header subscription for the test loop
 func (e *EthereumClient) subscribeToNewHeaders() error {
 	headerChannel := make(chan *SafeEVMHeader)
@@ -333,14 +321,8 @@ func (e *EthereumClient) headerSubscriptionLoop(subscription ethereum.Subscripti
 	for {
 		select {
 		case err := <-subscription.Err(): // Most subscription errors are temporary RPC downtime, so let's poll to resubscribe
-			for _, sub := range e.GetLongHeaderSubscriptions() {
-				go sub.Pause()
-			}
 			log.Error().Err(err).Msg("Error while subscribed to new headers, likely RPC downtime. Attempting to resubscribe")
 			subscription = e.resubscribeLoop(headerChannel, lastHeaderNumber)
-			for _, sub := range e.GetLongHeaderSubscriptions() {
-				go sub.Resume()
-			}
 		case header := <-headerChannel:
 			err := e.receiveHeader(header)
 			if err != nil {
@@ -469,21 +451,12 @@ func (e *EthereumClient) receiveHeader(header *SafeEVMHeader) error {
 
 	safeHeader := NodeHeader{NodeID: e.ID, SafeEVMHeader: headerValue}
 	subs := e.GetHeaderSubscriptions()
-	longSubs := e.GetLongHeaderSubscriptions()
 	log.Trace().Interface("Map", subs).Msg("Active Header Subscriptions")
-	log.Trace().Interface("Map", longSubs).Msg("Active Long Header Subscriptions")
 
 	shortG := errgroup.Group{}
-	longG := errgroup.Group{}
 	for _, sub := range subs {
 		sub := sub
 		shortG.Go(func() error {
-			return sub.ReceiveHeader(safeHeader)
-		})
-	}
-	for _, sub := range longSubs {
-		sub := sub
-		longG.Go(func() error {
 			return sub.ReceiveHeader(safeHeader)
 		})
 	}
@@ -491,11 +464,8 @@ func (e *EthereumClient) receiveHeader(header *SafeEVMHeader) error {
 	if err := shortG.Wait(); err != nil {
 		return fmt.Errorf("error on sending block header to receivers: %w", err)
 	}
-	if err := longG.Wait(); err != nil {
-		return fmt.Errorf("error on sending block header to receivers: %w", err)
-	}
 
-	if len(subs) > 0 || len(longSubs) > 0 {
+	if len(subs) > 0 {
 		var subsRemoved uint
 		for key, sub := range subs { // Cleanup subscriptions that might not have Wait called on them
 			if sub.Complete() {
@@ -503,16 +473,10 @@ func (e *EthereumClient) receiveHeader(header *SafeEVMHeader) error {
 				e.DeleteHeaderEventSubscription(key)
 			}
 		}
-		for key, sub := range longSubs { // Cleanup subscriptions that might not have Wait called on them
-			if sub.Complete() {
-				subsRemoved++
-				e.DeleteLongHeaderEventSubscription(key)
-			}
-		}
 		if subsRemoved > 0 {
 			log.Trace().
 				Uint("Recently Removed", subsRemoved).
-				Int("Active", len(e.GetHeaderSubscriptions())+len(e.GetLongHeaderSubscriptions())).
+				Int("Active", len(e.GetHeaderSubscriptions())).
 				Msg("Updated Header Subscriptions")
 		}
 	}
