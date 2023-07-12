@@ -328,7 +328,7 @@ func (e *EthereumClient) headerSubscriptionLoop(subscription ethereum.Subscripti
 		case header := <-headerChannel:
 			err := e.receiveHeader(header)
 			if err != nil {
-				log.Error().Err(err).Msg("Error receiving header. Possible RPC issues.")
+				log.Error().Err(err).Msg("Error receiving header, possible RPC issues")
 			} else {
 				lastHeaderNumber = header.Number.Uint64()
 			}
@@ -433,7 +433,7 @@ func (e *EthereumClient) receiveHeader(header *SafeEVMHeader) error {
 
 	suggestedGasStats, err := e.EstimateGas(ethereum.CallMsg{})
 	if err != nil {
-		return fmt.Errorf("error retrieving gas stats: %w", err)
+		return fmt.Errorf("error retrieving gas stats after timeout %s: %w", e.NetworkConfig.Timeout.Duration.String(), err)
 	}
 
 	headerLog := log.Debug().
@@ -455,15 +455,15 @@ func (e *EthereumClient) receiveHeader(header *SafeEVMHeader) error {
 	subs := e.GetHeaderSubscriptions()
 	log.Trace().Interface("Map", subs).Msg("Active Header Subscriptions")
 
-	shortG := errgroup.Group{}
+	g := errgroup.Group{}
 	for _, sub := range subs {
 		sub := sub
-		shortG.Go(func() error {
+		g.Go(func() error {
 			return sub.ReceiveHeader(safeHeader)
 		})
 	}
 
-	if err := shortG.Wait(); err != nil {
+	if err := g.Wait(); err != nil {
 		return fmt.Errorf("error on sending block header to receivers: %w", err)
 	}
 
