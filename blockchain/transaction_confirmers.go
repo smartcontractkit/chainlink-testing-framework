@@ -431,25 +431,12 @@ func (e *EthereumClient) receiveHeader(header *SafeEVMHeader) error {
 	}
 	headerValue := *header
 
-	suggestedGasStats, err := e.EstimateGas(ethereum.CallMsg{})
-	if err != nil {
-		return fmt.Errorf("error retrieving gas stats after timeout %s: %w", e.NetworkConfig.Timeout.Duration.String(), err)
-	}
-
-	headerLog := log.Debug().
+	log.Debug().
 		Str("NetworkName", e.NetworkConfig.Name).
 		Int("Node", e.ID).
 		Str("Hash", headerValue.Hash.String()).
-		Str("Number", headerValue.Number.String())
-
-	if e.NetworkConfig.SupportsEIP1559 {
-		headerLog = headerLog.
-			Uint64("Suggested GasTipCap", suggestedGasStats.GasTipCap.Uint64()).
-			Uint64("Suggested Gas Fee Cap", suggestedGasStats.GasFeeCap.Uint64())
-	} else {
-		headerLog = headerLog.Uint64("Suggested Gas Price", suggestedGasStats.GasPrice.Uint64())
-	}
-	headerLog.Msg("Received Header")
+		Str("Number", headerValue.Number.String()).
+		Msg("Received Header")
 
 	safeHeader := NodeHeader{NodeID: e.ID, SafeEVMHeader: headerValue}
 	subs := e.GetHeaderSubscriptions()
