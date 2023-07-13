@@ -20,6 +20,9 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+// How many successful connection polls to consider the connection restored after a disconnection
+const targetSuccessCount = 3
+
 // TransactionConfirmer is an implementation of HeaderEventSubscription that checks whether tx are confirmed
 type TransactionConfirmer struct {
 	minConfirmations      int
@@ -345,7 +348,7 @@ func (e *EthereumClient) resubscribeLoop(headerChannel chan *SafeEVMHeader, last
 	rpcDegradedTime := time.Now()
 	pollInterval := time.Millisecond * 500
 	checkTicker, informTicker := time.NewTicker(pollInterval), time.NewTicker(time.Second*10)
-	reconnectAttempts, consecutiveSuccessCount, targetSuccessCount := 0, 0, 3
+	reconnectAttempts, consecutiveSuccessCount := 0, 0
 	log.Debug().Str("Poll Interval", pollInterval.String()).Msg("Attempting to resubscribe to new headers")
 
 	for {
