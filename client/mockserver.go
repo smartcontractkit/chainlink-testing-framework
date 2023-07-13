@@ -7,8 +7,6 @@ import (
 
 	"github.com/go-resty/resty/v2"
 
-	"github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver"
-
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-env/environment"
 )
@@ -28,8 +26,8 @@ type MockserverConfig struct {
 // ConnectMockServer creates a connection to a deployed mockserver in the environment
 func ConnectMockServer(e *environment.Environment) (*MockserverClient, error) {
 	c := NewMockserverClient(&MockserverConfig{
-		LocalURL:   e.URLs[mockserver.URLsKey][0],
-		ClusterURL: e.URLs[mockserver.URLsKey][1],
+		LocalURL:   "mockserver",
+		ClusterURL: "mockserver",
 	})
 	return c, nil
 }
