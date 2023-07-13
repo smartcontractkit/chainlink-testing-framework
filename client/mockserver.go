@@ -9,6 +9,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-env/environment"
+	"github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver"
 )
 
 // MockserverClient mockserver client
@@ -26,8 +27,8 @@ type MockserverConfig struct {
 // ConnectMockServer creates a connection to a deployed mockserver in the environment
 func ConnectMockServer(e *environment.Environment) (*MockserverClient, error) {
 	c := NewMockserverClient(&MockserverConfig{
-		LocalURL:   "http://mockserver:1080",
-		ClusterURL: "http://mockserver:1080",
+		LocalURL:   e.URLs[mockserver.LocalURLsKey][0],
+		ClusterURL: e.URLs[mockserver.InternalURLsKey][0],
 	})
 	return c, nil
 }
