@@ -26,8 +26,8 @@ type MockserverConfig struct {
 // ConnectMockServer creates a connection to a deployed mockserver in the environment
 func ConnectMockServer(e *environment.Environment) (*MockserverClient, error) {
 	c := NewMockserverClient(&MockserverConfig{
-		LocalURL:   "http://mockserver",
-		ClusterURL: "http://mockserver",
+		LocalURL:   "http://mockserver:1080",
+		ClusterURL: "http://mockserver:1080",
 	})
 	return c, nil
 }
