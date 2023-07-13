@@ -504,6 +504,10 @@ func (e *EthereumClient) errorReason(
 	if txError == nil {
 		return "", errors.Wrap(err, "no error in CallContract")
 	}
+	return RPCErrorFromError(txError)
+}
+
+func RPCErrorFromError(txError error) (string, error) {
 	errBytes, err := json.Marshal(txError)
 	if err != nil {
 		return "", err

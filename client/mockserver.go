@@ -7,10 +7,9 @@ import (
 
 	"github.com/go-resty/resty/v2"
 
-	"github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver"
-
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-env/environment"
+	"github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver"
 )
 
 // MockserverClient mockserver client
@@ -28,8 +27,8 @@ type MockserverConfig struct {
 // ConnectMockServer creates a connection to a deployed mockserver in the environment
 func ConnectMockServer(e *environment.Environment) (*MockserverClient, error) {
 	c := NewMockserverClient(&MockserverConfig{
-		LocalURL:   e.URLs[mockserver.URLsKey][0],
-		ClusterURL: e.URLs[mockserver.URLsKey][1],
+		LocalURL:   e.URLs[mockserver.LocalURLsKey][0],
+		ClusterURL: e.URLs[mockserver.InternalURLsKey][0],
 	})
 	return c, nil
 }
@@ -90,6 +89,7 @@ func (em *MockserverClient) SetValuePath(path string, v int) error {
 	}
 	sanitizedPath := strings.ReplaceAll(path, "/", "_")
 	log.Debug().Str("ID", fmt.Sprintf("%s_mock_id", sanitizedPath)).
+		Str("URL", em.APIClient.BaseURL).
 		Str("Path", path).
 		Int("Value", v).
 		Msg("Setting Mock Server Path")
