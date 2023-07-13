@@ -1,6 +1,6 @@
 package blockchain
 
-// Contans implementations for multi and single node ethereum clients
+// Contains implementations for multi and single node ethereum clients
 import (
 	"bytes"
 	"context"
@@ -45,7 +45,10 @@ type EthereumClient struct {
 	subscriptionMutex   *sync.Mutex
 	queueTransactions   bool
 	gasStats            *GasStats
-	doneChan            chan struct{}
+
+	connectionIssueCh    chan time.Time
+	connectionRestoredCh chan time.Time
+	doneChan             chan struct{}
 }
 
 // newEVMClient creates an EVM client for a single node/URL
@@ -72,7 +75,10 @@ func newEVMClient(networkSettings EVMNetwork) (EVMClient, error) {
 		headerSubscriptions: map[string]HeaderEventSubscription{},
 		subscriptionMutex:   &sync.Mutex{},
 		queueTransactions:   false,
-		doneChan:            make(chan struct{}),
+
+		connectionIssueCh:    make(chan time.Time, 100), // buffered to prevent blocking, size is probably overkill, but some tests might not care
+		connectionRestoredCh: make(chan time.Time, 100),
+		doneChan:             make(chan struct{}),
 	}
 
 	if ec.NetworkConfig.Simulated {
@@ -85,7 +91,10 @@ func newEVMClient(networkSettings EVMNetwork) (EVMClient, error) {
 		return nil, err
 	}
 	ec.gasStats = NewGasStats(ec.ID)
-	go ec.newHeadersLoop()
+	err = ec.subscribeToNewHeaders()
+	if err != nil {
+		return nil, err
+	}
 
 	// Check if the chain supports EIP-1559
 	// https://eips.ethereum.org/EIPS/eip-1559
@@ -106,22 +115,6 @@ func (e *EthereumClient) SyncNonce(c EVMClient) {
 	defer n.NonceMu.Unlock()
 	e.NonceSettings.NonceMu = n.NonceMu
 	e.NonceSettings.Nonces = n.Nonces
-}
-
-// newHeadersLoop Logs when new headers come in
-func (e *EthereumClient) newHeadersLoop() {
-	for {
-		if err := e.subscribeToNewHeaders(); err != nil {
-			log.Error().
-				Err(err).
-				Str("NetworkName", e.NetworkConfig.Name).
-				Msg("Error while subscribing to headers")
-			time.Sleep(time.Second)
-			continue
-		}
-		break
-	}
-	log.Debug().Str("NetworkName", e.NetworkConfig.Name).Msg("Stopped subscribing to new headers")
 }
 
 // Get returns the underlying client type to be used generically across the framework for switching
@@ -329,7 +322,9 @@ func attemptReturn(e *EthereumClient, fromKey *ecdsa.PrivateKey, attemptCount in
 	if err != nil {
 		return nil, err
 	}
-	gasEstimations, err := e.EstimateGas(ethereum.CallMsg{})
+	gasEstimations, err := e.EstimateGas(ethereum.CallMsg{
+		To: &to,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -343,7 +338,6 @@ func attemptReturn(e *EthereumClient, fromKey *ecdsa.PrivateKey, attemptCount in
 		return nil, err
 	}
 	log.Info().
-		Str("Token", "ETH").
 		Str("Amount", balance.String()).
 		Str("From", fromAddress.Hex()).
 		Int("Added Buffer", addedBuffer).
@@ -665,19 +659,19 @@ func (e *EthereumClient) EstimateGas(callMsg ethereum.CallMsg) (GasEstimations, 
 		gasFeeCap *big.Int
 		err       error
 	)
+	ctx, cancel := context.WithTimeout(context.Background(), e.NetworkConfig.Timeout.Duration)
 	// Gas Units
-	if len(callMsg.Data) == 0 {
-		gasUnits = 21_000 // Probably just a basic Tx, `eth_estimateGas` defaults to 53_000 for some reason
-	} else {
-		gasUnits, err = e.Client.EstimateGas(context.Background(), callMsg)
-		if err != nil {
-			return GasEstimations{}, err
-		}
+	gasUnits, err = e.Client.EstimateGas(ctx, callMsg)
+	cancel()
+	if err != nil {
+		return GasEstimations{}, err
 	}
 
 	gasPriceBuffer := big.NewInt(0).SetUint64(e.NetworkConfig.GasEstimationBuffer)
 	// Legacy Gas Price
-	gasPrice, err := e.Client.SuggestGasPrice(context.Background())
+	ctx, cancel = context.WithTimeout(context.Background(), e.NetworkConfig.Timeout.Duration)
+	gasPrice, err := e.Client.SuggestGasPrice(ctx)
+	cancel()
 	if err != nil {
 		return GasEstimations{}, err
 	}
@@ -685,14 +679,18 @@ func (e *EthereumClient) EstimateGas(callMsg ethereum.CallMsg) (GasEstimations, 
 
 	if e.NetworkConfig.SupportsEIP1559 {
 		// GasTipCap
-		gasTipCap, err = e.Client.SuggestGasTipCap(context.Background())
+		ctx, cancel := context.WithTimeout(context.Background(), e.NetworkConfig.Timeout.Duration)
+		gasTipCap, err = e.Client.SuggestGasTipCap(ctx)
+		cancel()
 		if err != nil {
 			return GasEstimations{}, err
 		}
 		gasTipCap.Add(gasTipCap, gasPriceBuffer)
 
 		// GasFeeCap
-		latestHeader, err := e.HeaderByNumber(context.Background(), nil)
+		ctx, cancel = context.WithTimeout(context.Background(), e.NetworkConfig.Timeout.Duration)
+		latestHeader, err := e.HeaderByNumber(ctx, nil)
+		cancel()
 		if err != nil {
 			return GasEstimations{}, err
 		}
@@ -713,6 +711,16 @@ func (e *EthereumClient) EstimateGas(callMsg ethereum.CallMsg) (GasEstimations, 
 		GasTipCap:    gasTipCap,
 		TotalGasCost: totalGasCost,
 	}, nil
+}
+
+// ConnectionIssue returns a channel that will receive a timestamp when the connection is lost
+func (e *EthereumClient) ConnectionIssue() chan time.Time {
+	return e.connectionIssueCh
+}
+
+// ConnectionRestored returns a channel that will receive a timestamp when the connection is restored
+func (e *EthereumClient) ConnectionRestored() chan time.Time {
+	return e.connectionRestoredCh
 }
 
 func (e *EthereumClient) Backend() bind.ContractBackend {
@@ -784,6 +792,7 @@ func (e *EthereumClient) DeleteHeaderEventSubscription(key string) {
 func (e *EthereumClient) WaitForEvents() error {
 	log.Debug().Msg("Waiting for blockchain events to finish before continuing")
 	queuedEvents := e.GetHeaderSubscriptions()
+
 	g := errgroup.Group{}
 
 	for subName, sub := range queuedEvents {
@@ -794,6 +803,7 @@ func (e *EthereumClient) WaitForEvents() error {
 			return sub.Wait()
 		})
 	}
+
 	return g.Wait()
 }
 
@@ -1260,6 +1270,13 @@ func (e *EthereumMultinodeClient) GasStats() *GasStats {
 
 func (e *EthereumMultinodeClient) EstimateGas(callMsg ethereum.CallMsg) (GasEstimations, error) {
 	return e.DefaultClient.EstimateGas(callMsg)
+}
+
+func (e *EthereumMultinodeClient) ConnectionIssue() chan time.Time {
+	return e.DefaultClient.ConnectionIssue()
+}
+func (e *EthereumMultinodeClient) ConnectionRestored() chan time.Time {
+	return e.DefaultClient.ConnectionRestored()
 }
 
 // AddHeaderEventSubscription adds a new header subscriber within the client to receive new headers

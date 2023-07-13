@@ -81,6 +81,12 @@ type EVMClient interface {
 	GasStats() *GasStats
 	EstimateGas(callMsg ethereum.CallMsg) (GasEstimations, error)
 
+	// Connection Status
+	// ConnectionIssue returns a channel that will receive a timestamp when the connection is lost
+	ConnectionIssue() chan time.Time
+	// ConnectionRestored returns a channel that will receive a timestamp when the connection is restored
+	ConnectionRestored() chan time.Time
+
 	// Event Subscriptions
 	AddHeaderEventSubscription(key string, subscriber HeaderEventSubscription)
 	DeleteHeaderEventSubscription(key string)

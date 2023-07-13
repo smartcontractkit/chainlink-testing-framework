@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -18,6 +19,9 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 )
+
+// How many successful connection polls to consider the connection restored after a disconnection
+const targetSuccessCount = 3
 
 // TransactionConfirmer is an implementation of HeaderEventSubscription that checks whether tx are confirmed
 type TransactionConfirmer struct {
@@ -301,73 +305,158 @@ func (e *EthereumClient) GetHeaderSubscriptions() map[string]HeaderEventSubscrip
 	return newMap
 }
 
-// subscribeToNewHeaders
+// subscribeToNewHeaders kicks off the primary header subscription for the test loop
 func (e *EthereumClient) subscribeToNewHeaders() error {
 	headerChannel := make(chan *SafeEVMHeader)
 	subscription, err := e.SubscribeNewHeaders(context.Background(), headerChannel)
 	if err != nil {
 		return err
 	}
-	defer subscription.Unsubscribe()
-
 	log.Info().Str("Network", e.NetworkConfig.Name).Msg("Subscribed to new block headers")
 
+	go e.headerSubscriptionLoop(subscription, headerChannel)
+	return nil
+}
+
+// headerSubscriptionLoop receives new headers, and handles subscription errors when they pop up
+func (e *EthereumClient) headerSubscriptionLoop(subscription ethereum.Subscription, headerChannel chan *SafeEVMHeader) {
+	lastHeaderNumber := uint64(0)
 	for {
 		select {
-		case err := <-subscription.Err():
-			log.Error().Err(err).Msg("Error while subscribed to new headers, restarting subscription")
-			subscription.Unsubscribe()
-
-			subscription, err = e.SubscribeNewHeaders(context.Background(), headerChannel)
-			if err != nil {
-				log.Error().Err(err).Msg("Failed to resubscribe to new headers")
-				return err
-			}
+		case err := <-subscription.Err(): // Most subscription errors are temporary RPC downtime, so let's poll to resubscribe
+			log.Error().Err(err).Msg("Error while subscribed to new headers, likely RPC downtime. Attempting to resubscribe")
+			e.connectionIssueCh <- time.Now()
+			subscription = e.resubscribeLoop(headerChannel, lastHeaderNumber)
+			e.connectionRestoredCh <- time.Now()
 		case header := <-headerChannel:
-			e.receiveHeader(header)
+			err := e.receiveHeader(header)
+			if err != nil {
+				log.Error().Err(err).Msg("Error receiving header, possible RPC issues")
+			} else {
+				lastHeaderNumber = header.Number.Uint64()
+			}
 		case <-e.doneChan:
 			log.Debug().Str("Network", e.NetworkConfig.Name).Msg("Subscription cancelled")
 			e.Client.Close()
-			return nil
+			return
 		}
 	}
 }
 
+// resubscribeLoop polls the RPC connection until it comes back up, and then resubscribes to new headers
+func (e *EthereumClient) resubscribeLoop(headerChannel chan *SafeEVMHeader, lastHeaderNumber uint64) ethereum.Subscription {
+	rpcDegradedTime := time.Now()
+	pollInterval := time.Millisecond * 500
+	checkTicker, informTicker := time.NewTicker(pollInterval), time.NewTicker(time.Second*10)
+	reconnectAttempts, consecutiveSuccessCount := 0, 0
+	log.Debug().Str("Poll Interval", pollInterval.String()).Msg("Attempting to resubscribe to new headers")
+
+	for {
+		select {
+		case <-checkTicker.C:
+			reconnectAttempts++
+			_, err := e.LatestBlockNumber(context.Background())
+			if err != nil {
+				log.Trace().Err(err).Msg("Error trying to resubscribe to new headers, likely RPC down")
+				consecutiveSuccessCount = 0
+				continue
+			}
+			consecutiveSuccessCount++
+			log.Debug().
+				Int("Target Success Count", targetSuccessCount).
+				Int("Consecutive Success Count", consecutiveSuccessCount).
+				Msg("RPC connection seems to be healthy, still checking")
+
+			if consecutiveSuccessCount >= targetSuccessCount { // Make sure node is actually back up and not just a blip
+				subscription, err := e.SubscribeNewHeaders(context.Background(), headerChannel)
+				if err != nil {
+					log.Error().Err(err).Msg("Error resubscribing to new headers, RPC connection is still coming up")
+					consecutiveSuccessCount = 0
+					continue
+				}
+				// No error on resubscription, RPC connection restored, back to regularly scheduled programming
+				checkTicker.Stop()
+				informTicker.Stop()
+				log.Info().
+					Int("Reconnect Attempts", reconnectAttempts).
+					Str("Time waiting", time.Since(rpcDegradedTime).String()).
+					Msg("RPC connection and subscription restored")
+				go e.backfillMissedBlocks(lastHeaderNumber, headerChannel)
+				return subscription
+			}
+		case <-informTicker.C:
+			log.Warn().
+				Int("Reconnect Attempts", reconnectAttempts).
+				Str("Time waiting", time.Since(rpcDegradedTime).String()).
+				Msg("RPC connection still down, waiting for it to come back up")
+		}
+	}
+}
+
+// backfillMissedBlocks checks if there are any missed blocks since a bad connection was detected, and if so, backfills them
+// to our header channel
+func (e *EthereumClient) backfillMissedBlocks(lastBlockSeen uint64, headerChannel chan *SafeEVMHeader) {
+	start := time.Now()
+	latestBlockNumber, err := e.LatestBlockNumber(context.Background())
+	if err != nil {
+		log.Error().Err(err).Msg("Error getting latest block number. Unable to backfill missed blocks. Subscription likely degraded")
+		return
+	}
+	if latestBlockNumber <= lastBlockSeen {
+		log.Info().Msg("No missed blocks to backfill")
+		return
+	}
+	log.Info().
+		Uint64("Last Block Seen", lastBlockSeen).
+		Uint64("Blocks Behind", latestBlockNumber-lastBlockSeen).
+		Uint64("Latest Block", latestBlockNumber).
+		Msg("Backfilling missed blocks since RPC connection issues")
+	for i := lastBlockSeen + 1; i <= latestBlockNumber; i++ {
+		header, err := e.HeaderByNumber(context.Background(), big.NewInt(int64(i)))
+		if err != nil {
+			log.Err(err).Uint64("Number", i).Msg("Error getting header, unable to backfill and process it")
+			return
+		}
+		log.Trace().Str("Hash", header.Hash.Hex()).Uint64("Number", i).Msg("Backfilling header")
+		headerChannel <- header
+	}
+	log.Info().
+		Uint64("Backfilled blocks", latestBlockNumber-lastBlockSeen).
+		Str("Time", time.Since(start).String()).
+		Msg("Finished backfilling missed blocks")
+}
+
 // receiveHeader takes in a new header from the chain, and sends the header to all active header subscriptions
-func (e *EthereumClient) receiveHeader(header *SafeEVMHeader) {
+func (e *EthereumClient) receiveHeader(header *SafeEVMHeader) error {
 	if header == nil {
 		log.Debug().Msg("Received Nil Header")
-		return
+		return nil
 	}
 	headerValue := *header
 
-	suggestedPrice, err := e.Client.SuggestGasPrice(context.Background())
-	if err != nil {
-		suggestedPrice = big.NewInt(0)
-		log.Err(err).
-			Str("Header Hash", headerValue.Hash.String()).
-			Msg("Error retrieving Suggested Gas Price for new block header")
-	}
 	log.Debug().
 		Str("NetworkName", e.NetworkConfig.Name).
 		Int("Node", e.ID).
 		Str("Hash", headerValue.Hash.String()).
 		Str("Number", headerValue.Number.String()).
-		Str("Gas Price", suggestedPrice.String()).
-		Msg("Received block header")
+		Msg("Received Header")
 
+	safeHeader := NodeHeader{NodeID: e.ID, SafeEVMHeader: headerValue}
 	subs := e.GetHeaderSubscriptions()
+	log.Trace().Interface("Map", subs).Msg("Active Header Subscriptions")
 
 	g := errgroup.Group{}
 	for _, sub := range subs {
 		sub := sub
 		g.Go(func() error {
-			return sub.ReceiveHeader(NodeHeader{NodeID: e.ID, SafeEVMHeader: headerValue})
+			return sub.ReceiveHeader(safeHeader)
 		})
 	}
+
 	if err := g.Wait(); err != nil {
-		log.Err(fmt.Errorf("error on sending block header to receivers: %v", err))
+		return fmt.Errorf("error on sending block header to receivers: %w", err)
 	}
+
 	if len(subs) > 0 {
 		var subsRemoved uint
 		for key, sub := range subs { // Cleanup subscriptions that might not have Wait called on them
@@ -383,6 +472,7 @@ func (e *EthereumClient) receiveHeader(header *SafeEVMHeader) {
 				Msg("Updated Header Subscriptions")
 		}
 	}
+	return nil
 }
 
 // errorReason decodes tx revert reason
