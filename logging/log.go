@@ -16,5 +16,5 @@ func Init() {
 	if err != nil {
 		panic(err)
 	}
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr}).Level(lvl)
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "15:04:05.00"}).Level(lvl)
 }
