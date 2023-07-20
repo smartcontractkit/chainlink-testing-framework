@@ -2,15 +2,17 @@ package logwatch
 
 import (
 	"context"
-	"github.com/prometheus/common/model"
-	"github.com/rs/zerolog"
-	"github.com/smartcontractkit/chainlink-testing-framework/utils"
-	"github.com/smartcontractkit/wasp"
-	"github.com/testcontainers/testcontainers-go"
 	"regexp"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/prometheus/common/model"
+	"github.com/rs/zerolog"
+	"github.com/smartcontractkit/wasp"
+	"github.com/testcontainers/testcontainers-go"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 )
 
 // LogNotification notification about log line match for some container
@@ -62,7 +64,7 @@ func (m *LogWatch) ConnectContainer(ctx context.Context, container testcontainer
 	m.consumers[name] = cons
 	m.containers = append(m.containers, container)
 	container.FollowOutput(cons)
-	err = container.StartLogProducer(context.Background())
+	err = container.StartLogProducer(ctx)
 	if err != nil {
 		return "", err
 	}

@@ -3,17 +3,19 @@ package logwatch_test
 import (
 	"context"
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
-	"github.com/google/uuid"
-	"github.com/smartcontractkit/chainlink-testing-framework/logwatch"
-	"github.com/stretchr/testify/require"
-	"github.com/testcontainers/testcontainers-go"
 	"os"
 	"reflect"
 	"regexp"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/davecgh/go-spew/spew"
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/logwatch"
 )
 
 type TestCase struct {

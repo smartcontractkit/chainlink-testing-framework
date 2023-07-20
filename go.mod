@@ -266,6 +266,10 @@ replace (
 	// If that happens to get released in a 3.X.X version, we can add a constraint to our go.mod
 	// for it. If its in 4.X.X, then we need all our transitive deps to upgrade to it.
 	github.com/dgrijalva/jwt-go => github.com/form3tech-oss/jwt-go v3.2.1+incompatible
+
+	k8s.io/api => k8s.io/api v0.25.4
+	k8s.io/client-go => k8s.io/client-go v0.25.4
+	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20230303024457-afdc3dddf62d
 )
 
 replace google.golang.org/grpc => google.golang.org/grpc v1.45.0
