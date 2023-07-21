@@ -34,7 +34,7 @@ func NewDeployment(data testData) (*MyDeployment, error) {
 	for i, messages := range data.streams {
 		c, err := startTestContainer(fmt.Sprintf("container-%d", i), messages, data.repeat, data.perSecond, false)
 		if err != nil {
-			return nil, err
+			return md, err
 		}
 		md.containers = append(md.containers, c)
 	}
