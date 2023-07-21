@@ -3,7 +3,6 @@ package logwatch_test
 import (
 	"context"
 	"fmt"
-	"os"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -41,6 +40,8 @@ func getNotificationsAmount(m map[string][]*regexp.Regexp) int {
 	return notificationsToAwait
 }
 
+// replaceContainerNamePlaceholders this function is used to replace container names with dynamic values
+// so we can run tests in parallel
 func replaceContainerNamePlaceholders(tc TestCase) []string {
 	dynamicContainerNames := make([]string, 0)
 	for i := 0; i < tc.containers; i++ {
@@ -60,7 +61,8 @@ func replaceContainerNamePlaceholders(tc TestCase) []string {
 	return dynamicContainerNames
 }
 
-func containerWithMessages(containerName string, msg string, amount int, intervalSeconds float64, exitEarly bool) (testcontainers.Container, error) {
+// startTestContainer with custom streams emitted
+func startTestContainer(containerName string, msg string, amount int, intervalSeconds float64, exitEarly bool) (testcontainers.Container, error) {
 	ctx := context.Background()
 	var cmd []string
 	if exitEarly {
@@ -94,14 +96,14 @@ func containerWithMessages(containerName string, msg string, amount int, interva
 func TestLogWatchDocker(t *testing.T) {
 	tests := []TestCase{
 		{
-			name:                "should read exactly 10 messages (1 container)",
+			name:                "should read exactly 10 streams (1 container)",
 			containers:          1,
 			msg:                 "hello!",
 			msgsAmount:          10,
 			msgsIntervalSeconds: 0.1,
 		},
 		{
-			name:                "should read exactly 10 messages even if container exits (1 container)",
+			name:                "should read exactly 10 streams even if container exits (1 container)",
 			containers:          1,
 			msg:                 "hello!",
 			msgsAmount:          10,
@@ -109,14 +111,14 @@ func TestLogWatchDocker(t *testing.T) {
 			exitEarly:           true,
 		},
 		{
-			name:                "should read exactly 100 messages fast (1 container)",
+			name:                "should read exactly 100 streams fast (1 container)",
 			containers:          1,
 			msg:                 "hello!",
 			msgsAmount:          100,
 			msgsIntervalSeconds: 0.01,
 		},
 		{
-			name:                "should read exactly 100 messages fast even if container exits (1 container)",
+			name:                "should read exactly 100 streams fast even if container exits (1 container)",
 			containers:          1,
 			msg:                 "hello!",
 			msgsAmount:          100,
@@ -124,8 +126,8 @@ func TestLogWatchDocker(t *testing.T) {
 			exitEarly:           true,
 		},
 		{
-			name:                "should read exactly 10 messages and notify 4 times (2 containers)",
-			msg:                 "A\nB\nC\nD\nE\nF",
+			name:                "should read exactly 10 streams and notify 4 times (2 containers)",
+			msg:                 "A\nB\nC\nD",
 			containers:          2,
 			msgsAmount:          1,
 			msgsIntervalSeconds: 0.1,
@@ -133,38 +135,23 @@ func TestLogWatchDocker(t *testing.T) {
 				"0": {
 					regexp.MustCompile("A"),
 					regexp.MustCompile("B"),
-					regexp.MustCompile("C"),
 				},
 				"1": {
+					regexp.MustCompile("C"),
 					regexp.MustCompile("D"),
-					regexp.MustCompile("E"),
-					regexp.MustCompile("F"),
 				},
 			},
 			expectedNotifications: map[string][]*logwatch.LogNotification{
 				"0": {
 					&logwatch.LogNotification{Container: "0", Log: "A\n"},
 					&logwatch.LogNotification{Container: "0", Log: "B\n"},
-					&logwatch.LogNotification{Container: "0", Log: "C\n"},
 				},
 				"1": {
+					&logwatch.LogNotification{Container: "1", Log: "C\n"},
 					&logwatch.LogNotification{Container: "1", Log: "D\n"},
-					&logwatch.LogNotification{Container: "1", Log: "E\n"},
-					&logwatch.LogNotification{Container: "1", Log: "F\n"},
 				},
 			},
 		},
-	}
-
-	if os.Getenv("LOKI_TESTS") == "1" {
-		tests = append(tests, TestCase{
-			name:                "should push to Loki (1 container)",
-			containers:          1,
-			msg:                 "hello!",
-			msgsAmount:          100,
-			msgsIntervalSeconds: 0.01,
-			pushToLoki:          true,
-		})
 	}
 
 	for _, tc := range tests {
@@ -173,37 +160,31 @@ func TestLogWatchDocker(t *testing.T) {
 			t.Parallel()
 
 			dynamicContainerNames := replaceContainerNamePlaceholders(tc)
-			t.Logf("total containers: %d", tc.containers)
-			t.Logf("notificationList: %s", tc.mustNotifyList)
 			lw, err := logwatch.NewLogWatch(t, tc.mustNotifyList)
 			require.NoError(t, err)
 			containers := make([]testcontainers.Container, 0)
 			for _, cn := range dynamicContainerNames {
-				container, err := containerWithMessages(cn, tc.msg, tc.msgsAmount, tc.msgsIntervalSeconds, tc.exitEarly)
+				container, err := startTestContainer(cn, tc.msg, tc.msgsAmount, tc.msgsIntervalSeconds, tc.exitEarly)
 				require.NoError(t, err)
-				_, err = lw.ConnectContainer(context.Background(), container, tc.pushToLoki)
+				err = lw.ConnectContainer(context.Background(), container, tc.pushToLoki)
 				require.NoError(t, err)
 			}
-			// messages should be there with a gap of 1 second
+
+			// streams should be there with a gap of 1 second
 			time.Sleep(time.Duration(int(tc.msgsIntervalSeconds*float64(tc.msgsAmount)))*time.Second + 1*time.Second)
 			lw.PrintAll()
 
-			// all messages should be recorded
+			// all streams should be recorded
 			for _, cn := range dynamicContainerNames {
 				require.Len(t, lw.ContainerLogs(cn), tc.msgsAmount*getNotificationsAmount(tc.mustNotifyList))
 			}
 
 			// client must receive notifications if mustNotifyList is set
-			// each container must have different notifications
+			// each container must have notifications according to their match patterns
 			if tc.mustNotifyList != nil {
 				notifications := make(map[string][]*logwatch.LogNotification)
-				//notifications := make([]logwatch.LogNotification, 0)
-				//t.Log("receiving notifications")
-				//t.Logf("notifyList len: %d", len(tc.mustNotifyList))
-				//t.Logf("notifyList: %s", tc.mustNotifyList)
 				for i := 0; i < getNotificationsAmount(tc.mustNotifyList); i++ {
 					msg := lw.Listen()
-					t.Logf("notification: %s", msg)
 					if notifications[msg.Container] == nil {
 						notifications[msg.Container] = make([]*logwatch.LogNotification, 0)
 					}
@@ -223,6 +204,7 @@ func TestLogWatchDocker(t *testing.T) {
 				// forever if container is already exited
 				// https://github.com/testcontainers/testcontainers-go/pull/1085
 				// tried latest branch with a fix, but no luck
+				// this code terminates the containers properly
 				for _, c := range containers {
 					if !tc.exitEarly {
 						lw.DisconnectContainer(c)

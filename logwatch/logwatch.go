@@ -24,6 +24,7 @@ type LogNotification struct {
 // LogWatch is a test helper struct to monitor docker container logs for some patterns
 // and push their logs into Loki for further analysis
 type LogWatch struct {
+	t          *testing.T
 	log        zerolog.Logger
 	loki       *wasp.LokiClient
 	patterns   map[string][]*regexp.Regexp
@@ -39,6 +40,7 @@ func NewLogWatch(t *testing.T, patterns map[string][]*regexp.Regexp) (*LogWatch,
 		return nil, err
 	}
 	return &LogWatch{
+		t:          t,
 		log:        utils.GetTestComponentLogger(t, "LogWatch"),
 		loki:       loki,
 		patterns:   patterns,
@@ -49,39 +51,46 @@ func NewLogWatch(t *testing.T, patterns map[string][]*regexp.Regexp) (*LogWatch,
 
 // Listen listen for the next notification
 func (m *LogWatch) Listen() *LogNotification {
-	return <-m.notifyTest
+	msg := <-m.notifyTest
+	m.log.Warn().
+		Str("Container", msg.Container).
+		Str("Line", msg.Log).
+		Msg("Received notification from container")
+	return msg
+}
+
+// OnMatch calling your testing hook on first match
+func (m *LogWatch) OnMatch(f func()) {
+	go func() {
+		for {
+			msg := <-m.notifyTest
+			m.log.Warn().
+				Str("Container", msg.Container).
+				Str("Line", msg.Log).
+				Msg("Received notification from container")
+			f()
+		}
+	}()
 }
 
 // ConnectContainer connects consumer to selected container and starts testcontainers.LogProducer
-func (m *LogWatch) ConnectContainer(ctx context.Context, container testcontainers.Container, pushToLoki bool) (string, error) {
+func (m *LogWatch) ConnectContainer(ctx context.Context, container testcontainers.Container, pushToLoki bool) error {
 	name, err := container.Name(ctx)
 	if err != nil {
-		return "", err
+		return err
 	}
 	name = strings.Replace(name, "/", "", 1)
 	m.log.Info().Str("name", name).Msg("Connecting container logs")
-	cons := NewContainerLogConsumer(m, name, pushToLoki)
+	cons := newContainerLogConsumer(m, name, pushToLoki)
 	m.consumers[name] = cons
 	m.containers = append(m.containers, container)
 	container.FollowOutput(cons)
-	err = container.StartLogProducer(ctx)
-	if err != nil {
-		return "", err
-	}
-	return name, nil
+	return container.StartLogProducer(ctx)
 }
 
 // Shutdown disconnects all containers, stops notifications
 func (m *LogWatch) Shutdown() {
-	for _, c := range m.containers {
-		if c.IsRunning() {
-			_ = c.StopLogProducer()
-		}
-	}
-	for cn := range m.consumers {
-		m.consumers[cn] = nil
-	}
-	close(m.notifyTest)
+	m.loki.Stop()
 }
 
 // DisconnectContainer disconnects the particular container
@@ -125,10 +134,10 @@ type ContainerLogConsumer struct {
 	Messages   []string
 }
 
-// NewContainerLogConsumer creates new log consumer for a container that
+// newContainerLogConsumer creates new log consumer for a container that
 // - signal if log line matches the pattern
 // - push all lines to Loki if enabled
-func NewContainerLogConsumer(lw *LogWatch, containerName string, pushToLoki bool) *ContainerLogConsumer {
+func newContainerLogConsumer(lw *LogWatch, containerName string, pushToLoki bool) *ContainerLogConsumer {
 	return &ContainerLogConsumer{
 		name:       containerName,
 		pushToLoki: pushToLoki,
@@ -148,18 +157,20 @@ func (g *ContainerLogConsumer) Accept(l testcontainers.Log) {
 	if g.pushToLoki && g.lw.loki != nil {
 		_ = g.lw.loki.Handle(model.LabelSet{
 			"type":      "log_watch",
+			"test":      model.LabelValue(g.lw.t.Name()),
 			"container": model.LabelValue(g.name),
 		}, time.Now(), string(l.Content))
 	}
 }
 
 // FindMatch check multiple regex patterns for the same string
-// can be checked with one regex, made for readability of API
+// can be checked with one regex, made for readability of user-facing API
 func (g *ContainerLogConsumer) FindMatch(l testcontainers.Log) int {
 	matchesPerPattern := 0
 	for _, filterRegex := range g.lw.patterns[g.name] {
 		if filterRegex.Match(l.Content) {
 			g.lw.log.Info().
+				Str("Container", g.name).
 				Str("Regex", filterRegex.String()).
 				Str("String", string(l.Content)).
 				Msg("Match found")
