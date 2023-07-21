@@ -18,6 +18,7 @@ import (
 /* This data is for testing only, won't exist in real deployment */
 
 type testData struct {
+	name      string
 	repeat    int
 	perSecond float64
 	streams   []string
