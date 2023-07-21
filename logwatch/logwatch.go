@@ -39,9 +39,10 @@ func NewLogWatch(t *testing.T, patterns map[string][]*regexp.Regexp) (*LogWatch,
 	if err != nil {
 		return nil, err
 	}
+	l := utils.GetTestLogger(t).With().Str("Component", "LogWatch").Logger()
 	return &LogWatch{
 		t:          t,
-		log:        utils.GetTestComponentLogger(t, "LogWatch"),
+		log:        l,
 		loki:       loki,
 		patterns:   patterns,
 		notifyTest: make(chan *LogNotification, 10000),
