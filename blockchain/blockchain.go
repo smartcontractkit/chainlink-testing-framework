@@ -67,7 +67,7 @@ type EVMClient interface {
 	IsEventConfirmed(event *types.Log) (confirmed, removed bool, err error)
 	IsTxConfirmed(txHash common.Hash) (bool, error)
 	GetTxReceipt(txHash common.Hash) (*types.Receipt, error)
-	RevertReasonFromTx(txHash, abiString string) (string, interface{}, error)
+	RevertReasonFromTx(txHash common.Hash, abiString string) (string, interface{}, error)
 
 	ParallelTransactions(enabled bool)
 	Close() error

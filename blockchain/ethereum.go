@@ -625,12 +625,12 @@ func (e *EthereumClient) GetTxReceipt(txHash common.Hash) (*types.Receipt, error
 }
 
 // RevertReasonFromTx returns the revert reason for the transaction error by parsing through abi defined error list
-func (e *EthereumClient) RevertReasonFromTx(txHash, abiString string) (string, interface{}, error) {
-	tx, _, err := e.Client.TransactionByHash(context.Background(), common.HexToHash(txHash))
+func (e *EthereumClient) RevertReasonFromTx(txHash common.Hash, abiString string) (string, interface{}, error) {
+	tx, _, err := e.Client.TransactionByHash(context.Background(), txHash)
 	if err != nil {
 		return "", nil, err
 	}
-	re, err := e.GetTxReceipt(common.HexToHash(txHash))
+	re, err := e.GetTxReceipt(txHash)
 	if err != nil {
 		return "", nil, err
 	}
@@ -1278,7 +1278,7 @@ func (e *EthereumMultinodeClient) GetTxReceipt(txHash common.Hash) (*types.Recei
 	return e.DefaultClient.GetTxReceipt(txHash)
 }
 
-func (e *EthereumMultinodeClient) RevertReasonFromTx(txHash, abiString string) (string, interface{}, error) {
+func (e *EthereumMultinodeClient) RevertReasonFromTx(txHash common.Hash, abiString string) (string, interface{}, error) {
 	return e.DefaultClient.RevertReasonFromTx(txHash, abiString)
 }
 
