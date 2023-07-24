@@ -624,6 +624,44 @@ func (e *EthereumClient) GetTxReceipt(txHash common.Hash) (*types.Receipt, error
 	return receipt, nil
 }
 
+// RevertReasonFromTx returns the revert reason for the transaction error by parsing through abi defined error list
+func (e *EthereumClient) RevertReasonFromTx(txHash, abiString string) (string, interface{}, error) {
+	tx, _, err := e.Client.TransactionByHash(context.Background(), common.HexToHash(txHash))
+	if err != nil {
+		return "", nil, err
+	}
+	re, err := e.GetTxReceipt(common.HexToHash(txHash))
+	if err != nil {
+		return "", nil, err
+	}
+	errData, err := e.errorReason(e.Client, tx, re)
+	if err != nil {
+		return "", nil, err
+	}
+	if errData == "" {
+		return "", nil, fmt.Errorf("no revert reason found")
+	}
+	data, err := hex.DecodeString(errData[2:])
+	if err != nil {
+		return "", nil, err
+	}
+	jsonABI, err := abi.JSON(strings.NewReader(abiString))
+	if err != nil {
+		return "", nil, err
+	}
+	for errName, abiError := range jsonABI.Errors {
+		if bytes.Equal(data[:4], abiError.ID.Bytes()[:4]) {
+			// Found a matching error
+			v, err := abiError.Unpack(data)
+			if err != nil {
+				return "", nil, err
+			}
+			return errName, v, nil
+		}
+	}
+	return "", nil, fmt.Errorf("revert Reason could not be found for given abistring")
+}
+
 // ParallelTransactions when enabled, sends the transaction without waiting for transaction confirmations. The hashes
 // are then stored within the client and confirmations can be waited on by calling WaitForEvents.
 func (e *EthereumClient) ParallelTransactions(enabled bool) {
@@ -1240,6 +1278,10 @@ func (e *EthereumMultinodeClient) GetTxReceipt(txHash common.Hash) (*types.Recei
 	return e.DefaultClient.GetTxReceipt(txHash)
 }
 
+func (e *EthereumMultinodeClient) RevertReasonFromTx(txHash, abiString string) (string, interface{}, error) {
+	return e.DefaultClient.RevertReasonFromTx(txHash, abiString)
+}
+
 // ParallelTransactions when enabled, sends the transaction without waiting for transaction confirmations. The hashes
 // are then stored within the client and confirmations can be waited on by calling WaitForEvents.
 // When disabled, the minimum confirmations are waited on when the transaction is sent, so parallelisation is disabled.
@@ -1321,32 +1363,4 @@ func (e *EthereumMultinodeClient) WaitForEvents() error {
 		})
 	}
 	return g.Wait()
-}
-
-// LogRevertReason prints the revert reason for the transaction error by parsing through abi defined error list
-func LogRevertReason(err error, abiString string) error {
-	var dataError rpc.DataError
-	if errors.As(err, dataError) && dataError.ErrorData() != nil {
-		data, err := hex.DecodeString(dataError.ErrorData().(string)[2:])
-		if err != nil {
-			return err
-		}
-		jsonABI, err := abi.JSON(strings.NewReader(abiString))
-		if err != nil {
-			return err
-		}
-		for k, abiError := range jsonABI.Errors {
-			if bytes.Equal(data[:4], abiError.ID.Bytes()[:4]) {
-				// Found a matching error
-				v, err := abiError.Unpack(data)
-				if err != nil {
-					return err
-				}
-				log.Info().Interface("Error", k).Interface("args - ", v).Msg("Revert Reason")
-				return nil
-			}
-		}
-		return fmt.Errorf("Revert Reason could not be found with given abistring")
-	}
-	return nil
 }
