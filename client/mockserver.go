@@ -156,6 +156,11 @@ func (em *MockserverClient) SetAnyValuePath(path string, v interface{}) error {
 	return err
 }
 
+// LocalURL returns the local url of the mockserver
+func (em *MockserverClient) LocalURL() string {
+	return em.Config.LocalURL
+}
+
 // PathSelector represents the json object used to find expectations by path
 type PathSelector struct {
 	Path string `json:"path"`

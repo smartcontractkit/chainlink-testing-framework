@@ -53,6 +53,7 @@ type EVMClient interface {
 		contractName string,
 		deployer ContractDeployer,
 	) (*common.Address, *types.Transaction, interface{}, error)
+	// TODO: Load and Deploy need to both agree to use an address pointer, there's unnecessary casting going on
 	LoadContract(contractName string, address common.Address, loader ContractLoader) (interface{}, error)
 	TransactionOpts(from *EthereumWallet) (*bind.TransactOpts, error)
 	NewTx(
