@@ -569,7 +569,7 @@ func (e *EthereumClient) IsTxConfirmed(txHash common.Hash) (bool, error) {
 					Str("Revert reason", reason).
 					Msg("Transaction failed and was reverted!")
 			}
-			return false, err
+			return false, fmt.Errorf("transaction failed and was reverted %+v", err)
 		}
 	}
 	return !isPending, err
