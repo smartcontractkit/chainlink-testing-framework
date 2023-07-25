@@ -18,6 +18,7 @@ const (
 	RSKClientImplementation      ClientImplementation = "RSK"
 	CeloClientImplementation     ClientImplementation = "Celo"
 	QuorumClientImplementation   ClientImplementation = "Quorum"
+	ScrollClientImplementation   ClientImplementation = "Scroll"
 )
 
 // wrapSingleClient Wraps a single EVM client in its appropriate implementation, based on the chain ID
@@ -42,6 +43,8 @@ func wrapSingleClient(networkSettings EVMNetwork, client *EthereumClient) EVMCli
 		wrappedEc = &CeloClient{client}
 	case QuorumClientImplementation:
 		wrappedEc = &QuorumClient{client}
+	case ScrollClientImplementation:
+		wrappedEc = &ScrollClient{client}
 	default:
 		wrappedEc = client
 	}
@@ -80,6 +83,9 @@ func wrapMultiClient(networkSettings EVMNetwork, client *EthereumMultinodeClient
 	case QuorumClientImplementation:
 		logMsg.Msg("Using Quorum Client")
 		wrappedEc = &QuorumMultinodeClient{client}
+	case ScrollClientImplementation:
+		logMsg.Msg("Using Scroll Client")
+		wrappedEc = &ScrollMultinodeClient{client}
 	default:
 		log.Warn().Str("Network", networkSettings.Name).Msg("Unknown client implementation, defaulting to standard Ethereum client")
 		wrappedEc = client
