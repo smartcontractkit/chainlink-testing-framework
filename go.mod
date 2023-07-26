@@ -277,9 +277,14 @@ replace (
 
 	github.com/sercand/kuberesolver v2.4.0+incompatible => github.com/sercand/kuberesolver/v5 v5.1.0
 
-	k8s.io/api => k8s.io/api v0.25.4
-	k8s.io/client-go => k8s.io/client-go v0.25.4
+	// K8s versions are infuriating
+	k8s.io/api => k8s.io/api v0.25.11
+	k8s.io/apimachinery => k8s.io/apimachinery v0.25.11
+	k8s.io/cli-runtime => k8s.io/cli-runtime v0.25.11
+	k8s.io/client-go => k8s.io/client-go v0.25.11
+
 	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20230303024457-afdc3dddf62d
+	k8s.io/kubectl => k8s.io/kubectl v0.25.11
 )
 
 exclude k8s.io/client-go v12.0.0+incompatible
