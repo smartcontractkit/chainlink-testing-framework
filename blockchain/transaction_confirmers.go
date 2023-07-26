@@ -30,6 +30,7 @@ type TransactionConfirmer struct {
 	client                EVMClient
 	tx                    *types.Transaction
 	doneChan              chan struct{}
+	revertChan            chan struct{}
 	context               context.Context
 	cancel                context.CancelFunc
 	networkConfig         *EVMNetwork
@@ -48,6 +49,7 @@ func NewTransactionConfirmer(client EVMClient, tx *types.Transaction, minConfirm
 		client:           client,
 		tx:               tx,
 		doneChan:         make(chan struct{}, 1),
+		revertChan:       make(chan struct{}, 1),
 		context:          ctx,
 		cancel:           ctxCancel,
 		networkConfig:    client.GetNetworkConfig(),
@@ -72,6 +74,9 @@ func (t *TransactionConfirmer) ReceiveHeader(header NodeHeader) error {
 		Int("Minimum Confirmations", t.minConfirmations)
 	isConfirmed, err := t.client.IsTxConfirmed(t.tx.Hash())
 	if err != nil {
+		if strings.Contains(err.Error(), "transaction failed and was reverted") {
+			t.revertChan <- struct{}{}
+		}
 		return err
 	} else if isConfirmed {
 		t.confirmations++
@@ -104,6 +109,8 @@ func (t *TransactionConfirmer) Wait() error {
 		case <-t.doneChan:
 			t.cancel()
 			return nil
+		case <-t.revertChan:
+			return fmt.Errorf("transaction reverted: %s network %s", t.tx.Hash(), t.client.GetNetworkName())
 		case <-t.context.Done():
 			return fmt.Errorf("timeout waiting for transaction to confirm: %s network %s", t.tx.Hash(), t.client.GetNetworkName())
 		}
@@ -123,6 +130,7 @@ type InstantConfirmer struct {
 	txHash       common.Hash
 	complete     bool // tracks if the subscription is completed or not
 	completeChan chan struct{}
+	revertChan   chan struct{}
 	completeMu   sync.Mutex
 	context      context.Context
 	cancel       context.CancelFunc
@@ -145,6 +153,7 @@ func NewInstantConfirmer(
 		completeChan: make(chan struct{}, 1),
 		context:      ctx,
 		cancel:       ctxCancel,
+		revertChan:   make(chan struct{}, 1),
 		// For events
 		confirmedChan: confirmedChan,
 		errorChan:     errorChan,
@@ -161,6 +170,9 @@ func (l *InstantConfirmer) ReceiveHeader(_ NodeHeader) error {
 			return nil
 		}
 		log.Error().Str("Tx", l.txHash.Hex()).Err(err).Msg("Error checking tx confirmed")
+		if strings.Contains(err.Error(), "transaction failed and was reverted") {
+			l.revertChan <- struct{}{}
+		}
 		if l.errorChan != nil {
 			l.errorChan <- err
 		}
@@ -189,6 +201,8 @@ func (l *InstantConfirmer) Wait() error {
 		case <-l.completeChan:
 			l.cancel()
 			return nil
+		case <-l.revertChan:
+			return fmt.Errorf("transaction reverted: %s network %s", l.txHash.Hex(), l.client.GetNetworkName())
 		case <-l.context.Done():
 			return fmt.Errorf("timeout waiting for instant transaction to confirm after %s: %s",
 				l.client.GetNetworkConfig().Timeout.String(), l.txHash.Hex())
