@@ -60,7 +60,7 @@ func WriteTeardownLogs(
 	assert.NoError(t, verifyLogsGroup.Wait(), "Found a concerning log")
 
 	if t.Failed() || optionalTestReporter != nil {
-		if err := SendReport(t, env, logsPath, optionalTestReporter); err != nil {
+		if err := SendReport(t, env.Cfg.Namespace, logsPath, optionalTestReporter); err != nil {
 			log.Warn().Err(err).Msg("Error writing test report")
 		}
 	}
@@ -68,10 +68,10 @@ func WriteTeardownLogs(
 }
 
 // SendReport writes a test report and sends a Slack notification if the test provides one
-func SendReport(t *testing.T, env *environment.Environment, logsPath string, optionalTestReporter TestReporter) error {
+func SendReport(t *testing.T, namespace string, logsPath string, optionalTestReporter TestReporter) error {
 	if optionalTestReporter != nil {
 		log.Info().Msg("Writing Test Report")
-		optionalTestReporter.SetNamespace(env.Cfg.Namespace)
+		optionalTestReporter.SetNamespace(namespace)
 		err := optionalTestReporter.WriteReport(logsPath)
 		if err != nil {
 			return err
