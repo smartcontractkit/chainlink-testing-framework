@@ -24,6 +24,8 @@ require (
 	golang.org/x/sync v0.3.0
 )
 
+replace github.com/smartcontractkit/chainlink-env => github.com/smartcontractkit/chainlink-env v0.35.3-0.20230726213524-7bda3a4a40f6
+
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/DataDog/zstd v1.5.2 // indirect
