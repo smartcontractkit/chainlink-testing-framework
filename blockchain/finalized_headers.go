@@ -73,6 +73,7 @@ func (f *FinalizedHeader) ReceiveHeader(header NodeHeader) error {
 // newGlobalFinalizedHeaderManager is a global manager for finalized headers per network.
 // It is used to keep track of the latest finalized header for each network.
 func newGlobalFinalizedHeaderManager(client EVMClient) *FinalizedHeader {
+	// if simulated network or finality depth is greater than 0, there is no need to track finalized headers return nil
 	if client.NetworkSimulated() || client.GetNetworkConfig().FinalityDepth > 0 {
 		return nil
 	}
