@@ -38,8 +38,6 @@ jobs:
         with:
           token: ${{ github.token }} # Avoids rate-limiting
       - name: Run Tests
-        env:
-          TC_HOST: host.docker.internal
         run: |
           PATH=$PATH:$(go env GOPATH)/bin
           export PATH
