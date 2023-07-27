@@ -590,15 +590,14 @@ func (e *EthereumClient) IsTxFinalized(txHdr, header *SafeEVMHeader) (bool, *big
 			return true, header.Number, header.Timestamp, nil
 		}
 		return false, nil, time.Time{}, nil
-	} else {
-		fHead := e.FinalizedHeader.Load()
-		if fHead != nil {
-			if fHead.LatestFinalized.Cmp(txHdr.Number) >= 0 {
-				return true, fHead.LatestFinalized, fHead.FinalizedAt, nil
-			}
-		}
-		return false, fHead.LatestFinalized, fHead.FinalizedAt, nil
 	}
+	fHead := e.FinalizedHeader.Load()
+	if fHead != nil {
+		if fHead.LatestFinalized.Cmp(txHdr.Number) >= 0 {
+			return true, fHead.LatestFinalized, fHead.FinalizedAt, nil
+		}
+	}
+	return false, nil, time.Time{}, fmt.Errorf("no finalized head found. start polling for finalized header")
 }
 
 // IsTxConfirmed checks if the transaction is confirmed on chain or not
