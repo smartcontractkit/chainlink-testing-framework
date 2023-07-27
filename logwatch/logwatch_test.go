@@ -196,7 +196,6 @@ func TestLogWatchDocker(t *testing.T) {
 					t.Fatalf("expected: %v, got: %v", tc.expectedNotifications, notifications)
 				}
 			}
-
 			defer func() {
 				// testcontainers/ryuk:v0.5.1 will handle the shutdown automatically if container exited
 				// container.IsReady() is inconsistent and not always showing that container has exited
