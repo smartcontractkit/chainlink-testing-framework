@@ -69,8 +69,8 @@ type EVMClient interface {
 	IsTxConfirmed(txHash common.Hash) (bool, error)
 	IsTxFinalized(txHdr, header *SafeEVMHeader) (bool, *big.Int, time.Time, error)
 	WaitForTxTobeFinalized(txHash common.Hash) (*big.Int, time.Time, error)
-	PollFinalizedHeader()
-	StopPollingForFinalizedHeader()
+	PollFinality()
+	StopPollingForFinality()
 	GetTxReceipt(txHash common.Hash) (*types.Receipt, error)
 	RevertReasonFromTx(txHash common.Hash, abiString string) (string, interface{}, error)
 

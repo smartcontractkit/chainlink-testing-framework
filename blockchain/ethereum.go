@@ -538,12 +538,12 @@ func (e *EthereumClient) ProcessEvent(name string, event *types.Log, confirmedCh
 }
 
 // PollFinalizedHeader continuously polls the latest finalized header and stores it in the client
-func (e *EthereumClient) PollFinalizedHeader() {
+func (e *EthereumClient) PollFinality() {
 	e.FinalizedHeader.Store(newGlobalFinalizedHeaderManager(e))
 }
 
 // StopPollingForFinalizedHeader stops polling for the latest finalized header
-func (e *EthereumClient) StopPollingForFinalizedHeader() {
+func (e *EthereumClient) StopPollingForFinality() {
 	if _, ok := e.headerSubscriptions[finalizedHeaderKey]; ok {
 		e.DeleteHeaderEventSubscription(finalizedHeaderKey)
 	}
@@ -1373,6 +1373,26 @@ func (e *EthereumMultinodeClient) IsTxConfirmed(txHash common.Hash) (bool, error
 // IsEventConfirmed returns if the default client can confirm the event has happened
 func (e *EthereumMultinodeClient) IsEventConfirmed(event *types.Log) (confirmed, removed bool, err error) {
 	return e.DefaultClient.IsEventConfirmed(event)
+}
+
+// IsTxFinalized returns if the default client can confirm the transaction has been finalized
+func (e *EthereumMultinodeClient) IsTxFinalized(txHdr, header *SafeEVMHeader) (bool, *big.Int, time.Time, error) {
+	return e.DefaultClient.IsTxFinalized(txHdr, header)
+}
+
+// WaitForTxTobeFinalized waits for the transaction to be finalized
+func (e *EthereumMultinodeClient) WaitForTxTobeFinalized(txHash common.Hash) (*big.Int, time.Time, error) {
+	return e.DefaultClient.WaitForTxTobeFinalized(txHash)
+}
+
+// PollFinality polls for finality
+func (e *EthereumMultinodeClient) PollFinality() {
+	e.DefaultClient.PollFinality()
+}
+
+// StopPollingForFinality stops polling for finality
+func (e *EthereumMultinodeClient) StopPollingForFinality() {
+	e.DefaultClient.StopPollingForFinality()
 }
 
 // GetTxReceipt returns the receipt of the transaction if available, error otherwise

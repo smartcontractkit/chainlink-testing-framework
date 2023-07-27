@@ -327,6 +327,7 @@ func (e *EthereumClient) subscribeToNewHeaders() error {
 		return err
 	}
 	log.Info().Str("Network", e.NetworkConfig.Name).Msg("Subscribed to new block headers")
+
 	go e.headerSubscriptionLoop(subscription, headerChannel)
 	return nil
 }
