@@ -543,7 +543,7 @@ func (e *EthereumClient) PollFinality() {
 }
 
 // StopPollingForFinalizedHeader stops polling for the latest finalized header
-func (e *EthereumClient) StopPollingForFinality() {
+func (e *EthereumClient) CancelFinalityPolling() {
 	if _, ok := e.headerSubscriptions[finalizedHeaderKey]; ok {
 		e.DeleteHeaderEventSubscription(finalizedHeaderKey)
 	}
@@ -552,7 +552,7 @@ func (e *EthereumClient) StopPollingForFinality() {
 // WaitForTxTobeFinalized waits for a transaction to be finalized
 // If the network is simulated, it will return immediately
 // otherwise it waits for the transaction to be finalized and returns the block number and time of the finalization
-func (e *EthereumClient) WaitForTxTobeFinalized(txHash common.Hash) (*big.Int, time.Time, error) {
+func (e *EthereumClient) WaitForFinalizedTx(txHash common.Hash) (*big.Int, time.Time, error) {
 	if e.NetworkSimulated() {
 		return nil, time.Time{}, nil
 	}
@@ -1380,8 +1380,8 @@ func (e *EthereumMultinodeClient) IsTxFinalized(txHdr, header *SafeEVMHeader) (b
 }
 
 // WaitForTxTobeFinalized waits for the transaction to be finalized
-func (e *EthereumMultinodeClient) WaitForTxTobeFinalized(txHash common.Hash) (*big.Int, time.Time, error) {
-	return e.DefaultClient.WaitForTxTobeFinalized(txHash)
+func (e *EthereumMultinodeClient) WaitForFinalizedTx(txHash common.Hash) (*big.Int, time.Time, error) {
+	return e.DefaultClient.WaitForFinalizedTx(txHash)
 }
 
 // PollFinality polls for finality
@@ -1390,8 +1390,8 @@ func (e *EthereumMultinodeClient) PollFinality() {
 }
 
 // StopPollingForFinality stops polling for finality
-func (e *EthereumMultinodeClient) StopPollingForFinality() {
-	e.DefaultClient.StopPollingForFinality()
+func (e *EthereumMultinodeClient) CancelFinalityPolling() {
+	e.DefaultClient.CancelFinalityPolling()
 }
 
 // GetTxReceipt returns the receipt of the transaction if available, error otherwise
