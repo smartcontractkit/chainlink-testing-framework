@@ -1026,6 +1026,34 @@ func (e *EthereumMultinodeClient) EstimateCostForChainlinkOperations(amountOfOpe
 	return e.DefaultClient.EstimateCostForChainlinkOperations(amountOfOperations)
 }
 
+// NewEVMClientFromNetwork returns a multi-node EVM client connected to the specified network
+func NewEVMClientFromNetwork(networkSettings EVMNetwork) (EVMClient, error) {
+	ecl := &EthereumMultinodeClient{}
+	for idx, networkURL := range networkSettings.URLs {
+		networkSettings.URL = networkURL
+		ec, err := newEVMClient(networkSettings)
+
+		if err != nil {
+			return nil, err
+		}
+		ec.SetID(idx)
+		ecl.Clients = append(ecl.Clients, ec)
+	}
+	ecl.DefaultClient = ecl.Clients[0]
+	wrappedClient := wrapMultiClient(networkSettings, ecl)
+	// required in Geth when you need to call "simulate" transactions from nodes
+	if ecl.NetworkSimulated() {
+		gasEstimations, err := wrappedClient.EstimateGas(ethereum.CallMsg{})
+		if err != nil {
+			return nil, err
+		}
+		if err := ecl.Fund("0x0", big.NewFloat(1000), gasEstimations); err != nil {
+			return nil, err
+		}
+	}
+	return wrappedClient, nil
+}
+
 // NewEVMClient returns a multi-node EVM client connected to the specified network
 func NewEVMClient(networkSettings EVMNetwork, env *environment.Environment) (EVMClient, error) {
 	ecl := &EthereumMultinodeClient{}

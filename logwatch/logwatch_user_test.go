@@ -55,7 +55,7 @@ func (m *MyDeployment) Shutdown() error {
 
 func (m *MyDeployment) ConnectLogs(lw *logwatch.LogWatch, pushToLoki bool) error {
 	for _, c := range m.containers {
-		if err := lw.ConnectContainer(context.Background(), c, pushToLoki); err != nil {
+		if err := lw.ConnectContainer(context.Background(), c, "", pushToLoki); err != nil {
 			return err
 		}
 	}
@@ -104,7 +104,7 @@ func TestExampleUserInteraction(t *testing.T) {
 			},
 		)
 		require.NoError(t, err)
-		lw.OnMatch(func() { notifications++ })
+		lw.OnMatch(func(ln *logwatch.LogNotification) { notifications++ })
 		err = d.ConnectLogs(lw, false)
 		require.NoError(t, err)
 		time.Sleep(1 * time.Second)
