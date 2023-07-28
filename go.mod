@@ -24,7 +24,19 @@ require (
 	golang.org/x/sync v0.3.0
 )
 
+// DEBUG: Remove and pin properly on full PR
 replace github.com/smartcontractkit/chainlink-env => github.com/smartcontractkit/chainlink-env v0.35.3-0.20230726213524-7bda3a4a40f6
+
+// K8s versions are infuriatingly inconsistent, so we pin them here.
+replace (
+	k8s.io/api => k8s.io/api v0.25.11
+	k8s.io/apimachinery => k8s.io/apimachinery v0.25.11
+	k8s.io/cli-runtime => k8s.io/cli-runtime v0.25.11
+	k8s.io/client-go => k8s.io/client-go v0.25.11
+
+	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20230303024457-afdc3dddf62d
+	k8s.io/kubectl => k8s.io/kubectl v0.25.11
+)
 
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
@@ -276,15 +288,6 @@ replace (
 	github.com/dgrijalva/jwt-go => github.com/form3tech-oss/jwt-go v3.2.1+incompatible
 
 	github.com/sercand/kuberesolver v2.4.0+incompatible => github.com/sercand/kuberesolver/v5 v5.1.0
-
-	// K8s versions are infuriating
-	k8s.io/api => k8s.io/api v0.25.11
-	k8s.io/apimachinery => k8s.io/apimachinery v0.25.11
-	k8s.io/cli-runtime => k8s.io/cli-runtime v0.25.11
-	k8s.io/client-go => k8s.io/client-go v0.25.11
-
-	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20230303024457-afdc3dddf62d
-	k8s.io/kubectl => k8s.io/kubectl v0.25.11
 )
 
 exclude k8s.io/client-go v12.0.0+incompatible
