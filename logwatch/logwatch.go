@@ -18,6 +18,7 @@ import (
 // LogNotification notification about log line match for some container
 type LogNotification struct {
 	Container string
+	Prefix    string
 	Log       string
 }
 
@@ -61,7 +62,7 @@ func (m *LogWatch) Listen() *LogNotification {
 }
 
 // OnMatch calling your testing hook on first match
-func (m *LogWatch) OnMatch(f func()) {
+func (m *LogWatch) OnMatch(f func(ln *LogNotification)) {
 	go func() {
 		for {
 			msg := <-m.notifyTest
@@ -69,20 +70,29 @@ func (m *LogWatch) OnMatch(f func()) {
 				Str("Container", msg.Container).
 				Str("Line", msg.Log).
 				Msg("Received notification from container")
-			f()
+			f(msg)
 		}
 	}()
 }
 
 // ConnectContainer connects consumer to selected container and starts testcontainers.LogProducer
-func (m *LogWatch) ConnectContainer(ctx context.Context, container testcontainers.Container, pushToLoki bool) error {
+func (m *LogWatch) ConnectContainer(ctx context.Context, container testcontainers.Container, prefix string, pushToLoki bool) error {
 	name, err := container.Name(ctx)
 	if err != nil {
 		return err
 	}
 	name = strings.Replace(name, "/", "", 1)
-	m.log.Info().Str("name", name).Msg("Connecting container logs")
-	cons := newContainerLogConsumer(m, name, pushToLoki)
+	prefix = strings.Replace(prefix, "/", "", 1)
+	var cons *ContainerLogConsumer
+	if prefix != "" {
+		cons = newContainerLogConsumer(m, name, prefix, pushToLoki)
+	} else {
+		cons = newContainerLogConsumer(m, name, name, pushToLoki)
+	}
+	m.log.Info().
+		Str("Prefix", prefix).
+		Str("Name", name).
+		Msg("Connecting container logs")
 	m.consumers[name] = cons
 	m.containers = append(m.containers, container)
 	container.FollowOutput(cons)
@@ -130,6 +140,7 @@ func (m *LogWatch) PrintAll() {
 // ContainerLogConsumer is a container log lines consumer
 type ContainerLogConsumer struct {
 	name       string
+	prefix     string
 	pushToLoki bool
 	lw         *LogWatch
 	Messages   []string
@@ -138,9 +149,10 @@ type ContainerLogConsumer struct {
 // newContainerLogConsumer creates new log consumer for a container that
 // - signal if log line matches the pattern
 // - push all lines to Loki if enabled
-func newContainerLogConsumer(lw *LogWatch, containerName string, pushToLoki bool) *ContainerLogConsumer {
+func newContainerLogConsumer(lw *LogWatch, containerName string, prefix string, pushToLoki bool) *ContainerLogConsumer {
 	return &ContainerLogConsumer{
 		name:       containerName,
+		prefix:     prefix,
 		pushToLoki: pushToLoki,
 		lw:         lw,
 		Messages:   make([]string, 0),
@@ -152,7 +164,7 @@ func (g *ContainerLogConsumer) Accept(l testcontainers.Log) {
 	g.Messages = append(g.Messages, string(l.Content))
 	matches := g.FindMatch(l)
 	for i := 0; i < matches; i++ {
-		g.lw.notifyTest <- &LogNotification{Container: g.name, Log: string(l.Content)}
+		g.lw.notifyTest <- &LogNotification{Container: g.name, Prefix: g.prefix, Log: string(l.Content)}
 	}
 	// we can notify more than one time if it matches, but we push only once
 	if g.pushToLoki && g.lw.loki != nil {
@@ -168,6 +180,9 @@ func (g *ContainerLogConsumer) Accept(l testcontainers.Log) {
 // can be checked with one regex, made for readability of user-facing API
 func (g *ContainerLogConsumer) FindMatch(l testcontainers.Log) int {
 	matchesPerPattern := 0
+	if g.prefix == "" {
+		g.prefix = g.name
+	}
 	for _, filterRegex := range g.lw.patterns[g.name] {
 		if filterRegex.Match(l.Content) {
 			g.lw.log.Info().
