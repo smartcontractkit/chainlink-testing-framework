@@ -40,7 +40,7 @@ func NewLogWatch(t *testing.T, patterns map[string][]*regexp.Regexp) (*LogWatch,
 	if err != nil {
 		return nil, err
 	}
-	l := utils.GetTestLogger(t).With().Str("Component", "LogWatch").Logger()
+	l := utils.GetLogger(t, "LOGWATCH_LOG_LEVEL").With().Str("Component", "LogWatch").Logger()
 	return &LogWatch{
 		t:          t,
 		log:        l,
@@ -166,11 +166,17 @@ func (g *ContainerLogConsumer) Accept(l testcontainers.Log) {
 	for i := 0; i < matches; i++ {
 		g.lw.notifyTest <- &LogNotification{Container: g.name, Prefix: g.prefix, Log: string(l.Content)}
 	}
+	var testName string
+	if g.lw.t == nil {
+		testName = "no_test"
+	} else {
+		testName = g.lw.t.Name()
+	}
 	// we can notify more than one time if it matches, but we push only once
 	if g.pushToLoki && g.lw.loki != nil {
 		_ = g.lw.loki.Handle(model.LabelSet{
 			"type":      "log_watch",
-			"test":      model.LabelValue(g.lw.t.Name()),
+			"test":      model.LabelValue(testName),
 			"container": model.LabelValue(g.name),
 		}, time.Now(), string(l.Content))
 	}
