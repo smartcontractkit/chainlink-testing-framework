@@ -33,6 +33,15 @@ func ConnectMockServer(e *environment.Environment) (*MockserverClient, error) {
 	return c, nil
 }
 
+// ConnectMockServerURL creates a connection to a mockserver at a given url, should only be used for inside K8s tests
+func ConnectMockServerURL(url string) (*MockserverClient, error) {
+	c := NewMockserverClient(&MockserverConfig{
+		LocalURL:   url,
+		ClusterURL: url,
+	})
+	return c, nil
+}
+
 // NewMockserverClient returns a mockserver client
 func NewMockserverClient(cfg *MockserverConfig) *MockserverClient {
 	log.Debug().Str("Local URL", cfg.LocalURL).Str("Remote URL", cfg.ClusterURL).Msg("Connected to MockServer")
@@ -145,6 +154,11 @@ func (em *MockserverClient) SetAnyValuePath(path string, v interface{}) error {
 		err = fmt.Errorf("status code expected %d got %d", http.StatusCreated, resp.StatusCode())
 	}
 	return err
+}
+
+// LocalURL returns the local url of the mockserver
+func (em *MockserverClient) LocalURL() string {
+	return em.Config.LocalURL
 }
 
 // PathSelector represents the json object used to find expectations by path

@@ -1055,22 +1055,31 @@ func NewEVMClientFromNetwork(networkSettings EVMNetwork) (EVMClient, error) {
 }
 
 // NewEVMClient returns a multi-node EVM client connected to the specified network
+// Note: This should mostly be deprecated in favor of ConnectEVMClient. This is really only used when needing to connect
+// to simulated networks
 func NewEVMClient(networkSettings EVMNetwork, env *environment.Environment) (EVMClient, error) {
-	ecl := &EthereumMultinodeClient{}
+	if env == nil {
+		return nil, fmt.Errorf("environment nil, use ConnectEVMClient or provide a non-nil environment")
+	}
+
 	if networkSettings.Simulated {
 		if _, ok := env.URLs[networkSettings.Name]; !ok {
 			return nil, fmt.Errorf("network %s not found in environment", networkSettings.Name)
 		}
-		if env == nil {
-			log.Warn().Str("Network", networkSettings.Name).Msg("No test environment deployed")
-		} else {
-			networkSettings.URLs = env.URLs[networkSettings.Name]
-		}
-	} else {
-		if len(networkSettings.URLs) == 0 {
-			return nil, fmt.Errorf("no URL is provided to connect to network %s", networkSettings.Name)
-		}
+		networkSettings.URLs = env.URLs[networkSettings.Name]
 	}
+
+	return ConnectEVMClient(networkSettings)
+}
+
+// ConnectEVMClient returns a multi-node EVM client connected to a specified network, using only URLs.
+// Should mostly be used for inside K8s, non-simulated tests.
+func ConnectEVMClient(networkSettings EVMNetwork) (EVMClient, error) {
+	if len(networkSettings.URLs) == 0 {
+		return nil, errors.New("no URLs provided to connect to network")
+	}
+
+	ecl := &EthereumMultinodeClient{}
 
 	for idx, networkURL := range networkSettings.URLs {
 		networkSettings.URL = networkURL

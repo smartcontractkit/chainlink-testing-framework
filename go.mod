@@ -16,12 +16,23 @@ require (
 	github.com/prometheus/common v0.44.0
 	github.com/rs/zerolog v1.29.1
 	github.com/slack-go/slack v0.12.2
-	github.com/smartcontractkit/chainlink-env v0.35.0
+	github.com/smartcontractkit/chainlink-env v0.36.0
 	github.com/smartcontractkit/wasp v0.2.7
 	github.com/stretchr/testify v1.8.4
 	github.com/testcontainers/testcontainers-go v0.21.1-0.20230623154539-f5a4a541f71a
 	go.uber.org/zap v1.24.0
 	golang.org/x/sync v0.3.0
+)
+
+// K8s versions are infuriatingly inconsistent, so we pin them here.
+replace (
+	k8s.io/api => k8s.io/api v0.25.11
+	k8s.io/apimachinery => k8s.io/apimachinery v0.25.11
+	k8s.io/cli-runtime => k8s.io/cli-runtime v0.25.11
+	k8s.io/client-go => k8s.io/client-go v0.25.11
+
+	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20230303024457-afdc3dddf62d
+	k8s.io/kubectl => k8s.io/kubectl v0.25.11
 )
 
 require (
@@ -274,10 +285,6 @@ replace (
 	github.com/dgrijalva/jwt-go => github.com/form3tech-oss/jwt-go v3.2.1+incompatible
 
 	github.com/sercand/kuberesolver v2.4.0+incompatible => github.com/sercand/kuberesolver/v5 v5.1.0
-
-	k8s.io/api => k8s.io/api v0.25.4
-	k8s.io/client-go => k8s.io/client-go v0.25.4
-	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20230303024457-afdc3dddf62d
 )
 
 exclude k8s.io/client-go v12.0.0+incompatible

@@ -167,7 +167,7 @@ func (l *InstantConfirmer) ReceiveHeader(_ NodeHeader) error {
 	if err != nil {
 		if err.Error() == "not found" {
 			log.Debug().Str("Tx", l.txHash.Hex()).Msg("Transaction not found on chain yet. Waiting to confirm.")
-			return err
+			return nil
 		}
 		log.Error().Str("Tx", l.txHash.Hex()).Err(err).Msg("Error checking tx confirmed")
 		if strings.Contains(err.Error(), "transaction failed and was reverted") {
