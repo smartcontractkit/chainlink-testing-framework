@@ -159,7 +159,6 @@ func TestLogWatchDocker(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-
 			dynamicContainerNames := replaceContainerNamePlaceholders(tc)
 			lw, err := logwatch.NewLogWatch(t, tc.mustNotifyList)
 			require.NoError(t, err)
