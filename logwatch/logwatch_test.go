@@ -53,6 +53,7 @@ func replaceContainerNamePlaceholders(tc TestCase) []string {
 			delete(tc.mustNotifyList, staticSortedIndex)
 			for _, log := range tc.expectedNotifications[staticSortedIndex] {
 				log.Container = containerName
+				log.Prefix = containerName
 			}
 			tc.expectedNotifications[containerName] = tc.expectedNotifications[staticSortedIndex]
 			delete(tc.expectedNotifications, staticSortedIndex)
@@ -158,7 +159,6 @@ func TestLogWatchDocker(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-
 			dynamicContainerNames := replaceContainerNamePlaceholders(tc)
 			lw, err := logwatch.NewLogWatch(t, tc.mustNotifyList)
 			require.NoError(t, err)
@@ -166,7 +166,9 @@ func TestLogWatchDocker(t *testing.T) {
 			for _, cn := range dynamicContainerNames {
 				container, err := startTestContainer(cn, tc.msg, tc.msgsAmount, tc.msgsIntervalSeconds, tc.exitEarly)
 				require.NoError(t, err)
-				err = lw.ConnectContainer(context.Background(), container, tc.pushToLoki)
+				name, err := container.Name(context.Background())
+				require.NoError(t, err)
+				err = lw.ConnectContainer(context.Background(), container, name, tc.pushToLoki)
 				require.NoError(t, err)
 			}
 
