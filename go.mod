@@ -16,16 +16,13 @@ require (
 	github.com/prometheus/common v0.44.0
 	github.com/rs/zerolog v1.29.1
 	github.com/slack-go/slack v0.12.2
-	github.com/smartcontractkit/chainlink-env v0.35.0
+	github.com/smartcontractkit/chainlink-env v0.36.0
 	github.com/smartcontractkit/wasp v0.2.7
 	github.com/stretchr/testify v1.8.4
 	github.com/testcontainers/testcontainers-go v0.21.1-0.20230623154539-f5a4a541f71a
 	go.uber.org/zap v1.24.0
 	golang.org/x/sync v0.3.0
 )
-
-// DEBUG: Remove and pin properly on full PR
-replace github.com/smartcontractkit/chainlink-env => github.com/smartcontractkit/chainlink-env v0.35.3-0.20230726213524-7bda3a4a40f6
 
 // K8s versions are infuriatingly inconsistent, so we pin them here.
 replace (
