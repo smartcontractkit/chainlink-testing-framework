@@ -9,11 +9,12 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+	tc "github.com/testcontainers/testcontainers-go"
+	tcwait "github.com/testcontainers/testcontainers-go/wait"
+
 	ctfClient "github.com/smartcontractkit/chainlink-testing-framework/client"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker-env/types/envcommon"
 	"github.com/smartcontractkit/chainlink-testing-framework/logwatch"
-	tc "github.com/testcontainers/testcontainers-go"
-	tcwait "github.com/testcontainers/testcontainers-go/wait"
 )
 
 type MockServer struct {

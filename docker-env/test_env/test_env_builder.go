@@ -1,10 +1,12 @@
 package test_env
 
 import (
+	"os"
+
 	"github.com/rs/zerolog/log"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/docker-env/types/node"
 	"github.com/smartcontractkit/chainlink-testing-framework/logwatch"
-	"os"
 )
 
 type CLTestEnvBuilder struct {
@@ -53,9 +55,8 @@ func (m *CLTestEnvBuilder) Build() (*CLClusterTestEnv, error) {
 		}
 		_ = os.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
 		return m.connectExistingEnv(cfg)
-	} else {
-		return m.buildNewEnv()
 	}
+	return m.buildNewEnv()
 }
 
 func (m *CLTestEnvBuilder) connectExistingEnv(cfg *TestEnvConfig) (*CLClusterTestEnv, error) {
@@ -103,7 +104,7 @@ func (m *CLTestEnvBuilder) connectExistingEnv(cfg *TestEnvConfig) (*CLClusterTes
 	// Start Chainlink Nodes
 	if m.clNodesCount > 0 {
 		// Create nodes
-		nodeConfOpts := node.NodeConfigOpts{
+		nodeConfOpts := node.ConfigOpts{
 			EVM: struct {
 				HttpUrl string
 				WsUrl   string
@@ -173,7 +174,7 @@ func (m *CLTestEnvBuilder) buildNewEnv() (*CLClusterTestEnv, error) {
 	// Start Chainlink Nodes
 	if m.clNodesCount > 0 {
 		// Create nodes
-		nodeConfOpts := node.NodeConfigOpts{
+		nodeConfOpts := node.ConfigOpts{
 			EVM: struct {
 				HttpUrl string
 				WsUrl   string

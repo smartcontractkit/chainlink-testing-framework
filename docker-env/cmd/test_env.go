@@ -9,10 +9,11 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/smartcontractkit/chainlink-testing-framework/docker-env/test_env"
-	"github.com/smartcontractkit/chainlink-testing-framework/docker-env/utils"
 	"github.com/spf13/cobra"
 	"github.com/testcontainers/testcontainers-go"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/docker-env/test_env"
+	"github.com/smartcontractkit/chainlink-testing-framework/docker-env/utils"
 )
 
 func main() {

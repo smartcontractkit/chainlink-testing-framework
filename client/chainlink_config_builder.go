@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/smartcontractkit/chainlink-env/config"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 )
 
@@ -13,7 +14,7 @@ const (
 ServerAddress = '%s'
 Environment = '%s'`
 
-	secretTOML = `
+	secTOML = `
 [Mercury.Credentials.cred1]
 URL = '%s'
 Username = '%s'
@@ -32,7 +33,7 @@ func AddNetworksConfig(baseTOML string, networks ...blockchain.EVMNetwork) strin
 }
 
 func AddSecretTomlConfig(url, username, password string) string {
-	return fmt.Sprintf(secretTOML, url, username, password)
+	return fmt.Sprintf(secTOML, url, username, password)
 }
 
 // AddNetworkDetailedConfig adds EVM config to a base TOML. Also takes a detailed network config TOML where values like

@@ -64,9 +64,7 @@ func (e *OCRTestState) Time() time.Time {
 // CSV returns a CSV representation of the test state and all events
 func (e *OCRTestState) CSV() [][]string {
 	rows := [][]string{{e.StartTime.Format("2006-01-02 15:04:05.00 MST"), fmt.Sprintf("Expecting new Answer: %d", e.Answer)}}
-	for _, anomaly := range e.anomalies {
-		rows = append(rows, anomaly)
-	}
+	rows = append(rows, e.anomalies...)
 	return rows
 }
 

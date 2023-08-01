@@ -3,21 +3,24 @@ package test_env
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"strings"
+
+	"time"
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+	tc "github.com/testcontainers/testcontainers-go"
+	tcwait "github.com/testcontainers/testcontainers-go/wait"
+
+	"os"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/contracts"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker-env/types/envcommon"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker-env/utils/templates"
 	"github.com/smartcontractkit/chainlink-testing-framework/logwatch"
-	tc "github.com/testcontainers/testcontainers-go"
-	tcwait "github.com/testcontainers/testcontainers-go/wait"
-	"time"
 )
 
 const (
@@ -117,7 +120,7 @@ func (m *Geth) getGethContainerRequest(networks []string) (*tc.ContainerRequest,
 	chainId := "1337"
 	blocktime := "1"
 
-	initScriptFile, err := ioutil.TempFile("", "init_script")
+	initScriptFile, err := os.CreateTemp("", "init_script")
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -125,7 +128,7 @@ func (m *Geth) getGethContainerRequest(networks []string) (*tc.ContainerRequest,
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	keystoreDir, err := ioutil.TempDir("", "keystore")
+	keystoreDir, err := os.MkdirTemp("", "keystore")
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -139,7 +142,7 @@ func (m *Geth) getGethContainerRequest(networks []string) (*tc.ContainerRequest,
 	if err != nil {
 		return nil, ks, &account, err
 	}
-	genesisFile, err := ioutil.TempFile("", "genesis_json")
+	genesisFile, err := os.CreateTemp("", "genesis_json")
 	if err != nil {
 		return nil, ks, &account, err
 	}
@@ -147,7 +150,7 @@ func (m *Geth) getGethContainerRequest(networks []string) (*tc.ContainerRequest,
 	if err != nil {
 		return nil, ks, &account, err
 	}
-	key1File, err := ioutil.TempFile(keystoreDir, "key1")
+	key1File, err := os.CreateTemp(keystoreDir, "key1")
 	if err != nil {
 		return nil, ks, &account, err
 	}
@@ -155,11 +158,11 @@ func (m *Geth) getGethContainerRequest(networks []string) (*tc.ContainerRequest,
 	if err != nil {
 		return nil, ks, &account, err
 	}
-	configDir, err := ioutil.TempDir("", "config")
+	configDir, err := os.MkdirTemp("", "config")
 	if err != nil {
 		return nil, ks, &account, err
 	}
-	err = ioutil.WriteFile(configDir+"/password.txt", []byte(""), 0644)
+	err = os.WriteFile(configDir+"/password.txt", []byte(""), 0600)
 	if err != nil {
 		return nil, ks, &account, err
 	}

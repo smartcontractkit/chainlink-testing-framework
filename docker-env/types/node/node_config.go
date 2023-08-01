@@ -58,14 +58,14 @@ ListenIP = '0.0.0.0'
 ListenPort = 6690
 `
 
-type NodeConfigOpts struct {
+type ConfigOpts struct {
 	EVM struct {
 		HttpUrl string
 		WsUrl   string
 	}
 }
 
-func ExecuteNodeConfigTemplate(opts NodeConfigOpts) (string, error) {
+func ExecuteNodeConfigTemplate(opts ConfigOpts) (string, error) {
 	t, err := template.New("node-config").Parse(NodeConfigTemplate)
 	if err != nil {
 		fmt.Println("Error parsing template:", err)

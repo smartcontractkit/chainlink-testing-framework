@@ -7,7 +7,7 @@ import (
 	"text/template"
 )
 
-var NodeSecretsTemplate = `
+var NodeSecTemplate = `
 [Database]
 URL = 'postgresql://postgres:test@{{ .PgHost }}:{{ .PgPort }}/cl-node?sslmode=disable' # Required
 AllowSimplePasswords = true
@@ -31,7 +31,7 @@ func ExecuteNodeSecretsTemplate(pgHost string, pgPort string) (string, error) {
 		PgPort: pgPort,
 	}
 
-	t, err := template.New("node-secrets").Parse(NodeSecretsTemplate)
+	t, err := template.New("node-secrets").Parse(NodeSecTemplate)
 	if err != nil {
 		fmt.Println("Error parsing template:", err)
 		os.Exit(1)

@@ -3,12 +3,14 @@ package envcommon
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"time"
+
+	"io"
+
 	"github.com/google/uuid"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
-	"io/ioutil"
-	"os"
-	"time"
 )
 
 type PgOpts struct {
@@ -77,7 +79,7 @@ func ParseJSONFile(path string, v any) error {
 		return err
 	}
 	defer jsonFile.Close()
-	b, _ := ioutil.ReadAll(jsonFile)
+	b, _ := io.ReadAll(jsonFile)
 	err = json.Unmarshal(b, v)
 	if err != nil {
 		return err

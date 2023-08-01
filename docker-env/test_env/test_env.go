@@ -1,26 +1,21 @@
 package test_env
 
 import (
-	"crypto/ed25519"
-	"encoding/hex"
-	"strings"
 	"sync"
 
 	"fmt"
+	"math/big"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
-	"github.com/smartcontractkit/chainlink-testing-framework/client"
+	tc "github.com/testcontainers/testcontainers-go"
+	"go.uber.org/multierr"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/docker-env"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker-env/types/envcommon"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker-env/types/node"
 	"github.com/smartcontractkit/chainlink-testing-framework/logwatch"
-	"github.com/smartcontractkit/chainlink/v2/core/services/keystore/chaintype"
-	ocrtypes "github.com/smartcontractkit/libocr/offchainreporting2/types"
-	"github.com/smartcontractkit/libocr/offchainreporting2plus/confighelper"
-	tc "github.com/testcontainers/testcontainers-go"
-	"go.uber.org/multierr"
-	"math/big"
 )
 
 type CLClusterTestEnv struct {
@@ -79,7 +74,7 @@ func (m *CLClusterTestEnv) StartMockServer() error {
 }
 
 // StartClNodes start one bootstrap node and {count} OCR nodes
-func (m *CLClusterTestEnv) StartClNodes(nodeConfigOpts node.NodeConfigOpts, count int) error {
+func (m *CLClusterTestEnv) StartClNodes(nodeConfigOpts node.ConfigOpts, count int) error {
 	var wg sync.WaitGroup
 	var errs = []error{}
 	var mu sync.Mutex
@@ -120,8 +115,8 @@ func (m *CLClusterTestEnv) StartClNodes(nodeConfigOpts node.NodeConfigOpts, coun
 	return nil
 }
 
-func (m *CLClusterTestEnv) GetDefaultNodeConfigOpts() node.NodeConfigOpts {
-	return node.NodeConfigOpts{
+func (m *CLClusterTestEnv) GetDefaultNodeConfigOpts() node.ConfigOpts {
+	return node.ConfigOpts{
 		EVM: struct {
 			HttpUrl string
 			WsUrl   string
@@ -167,88 +162,8 @@ func (m *CLClusterTestEnv) GetNodeCSAKeys() ([]string, error) {
 	return keys, nil
 }
 
-func getOracleIdentities(chainlinkNodes []ClNode) ([]int, []confighelper.OracleIdentityExtra) {
-	S := make([]int, len(chainlinkNodes))
-	oracleIdentities := make([]confighelper.OracleIdentityExtra, len(chainlinkNodes))
-	sharedSecretEncryptionPublicKeys := make([]ocrtypes.ConfigEncryptionPublicKey, len(chainlinkNodes))
-	var wg sync.WaitGroup
-	for i, cl := range chainlinkNodes {
-		wg.Add(1)
-		go func(i int, cl ClNode) error {
-			defer wg.Done()
-
-			ocr2Keys, err := cl.API.MustReadOCR2Keys()
-			if err != nil {
-				return err
-			}
-			var ocr2Config client.OCR2KeyAttributes
-			for _, key := range ocr2Keys.Data {
-				if key.Attributes.ChainType == string(chaintype.EVM) {
-					ocr2Config = key.Attributes
-					break
-				}
-			}
-
-			keys, err := cl.API.MustReadP2PKeys()
-			if err != nil {
-				return err
-			}
-			p2pKeyID := keys.Data[0].Attributes.PeerID
-
-			offchainPkBytes, err := hex.DecodeString(strings.TrimPrefix(ocr2Config.OffChainPublicKey, "ocr2off_evm_"))
-			if err != nil {
-				return err
-			}
-
-			offchainPkBytesFixed := [ed25519.PublicKeySize]byte{}
-			copy(offchainPkBytesFixed[:], offchainPkBytes)
-			if err != nil {
-				return err
-			}
-
-			configPkBytes, err := hex.DecodeString(strings.TrimPrefix(ocr2Config.ConfigPublicKey, "ocr2cfg_evm_"))
-			if err != nil {
-				return err
-			}
-
-			configPkBytesFixed := [ed25519.PublicKeySize]byte{}
-			copy(configPkBytesFixed[:], configPkBytes)
-			if err != nil {
-				return err
-			}
-
-			onchainPkBytes, err := hex.DecodeString(strings.TrimPrefix(ocr2Config.OnChainPublicKey, "ocr2on_evm_"))
-			if err != nil {
-				return err
-			}
-
-			csaKeys, _, err := cl.API.ReadCSAKeys()
-			if err != nil {
-				return err
-			}
-
-			sharedSecretEncryptionPublicKeys[i] = configPkBytesFixed
-			oracleIdentities[i] = confighelper.OracleIdentityExtra{
-				OracleIdentity: confighelper.OracleIdentity{
-					OnchainPublicKey:  onchainPkBytes,
-					OffchainPublicKey: offchainPkBytesFixed,
-					PeerID:            p2pKeyID,
-					TransmitAccount:   ocrtypes.Account(csaKeys.Data[0].ID),
-				},
-				ConfigEncryptionPublicKey: configPkBytesFixed,
-			}
-			S[i] = 1
-
-			return nil
-		}(i, cl)
-	}
-	wg.Wait()
-
-	return S, oracleIdentities
-}
-
 func (m *CLClusterTestEnv) Terminate() error {
-	// TESTCONTAINERS_RYUK_DISABLED=false by defualt so ryuk will remove all
+	// TESTCONTAINERS_RYUK_DISABLED=false by default so ryuk will remove all
 	// the containers and the network
 	return nil
 }

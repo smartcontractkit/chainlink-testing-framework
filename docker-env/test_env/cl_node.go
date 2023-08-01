@@ -3,7 +3,6 @@ package test_env
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 	"time"
@@ -13,28 +12,31 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/rs/zerolog/log"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/logwatch"
+
+	"math/big"
+
+	tc "github.com/testcontainers/testcontainers-go"
+	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/client"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker-env/types/envcommon"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker-env/types/node"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker-env/utils"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker-env/utils/templates"
-	tc "github.com/testcontainers/testcontainers-go"
-	tcwait "github.com/testcontainers/testcontainers-go/wait"
-	"math/big"
 )
 
 type ClNode struct {
 	envcommon.EnvComponent
 	API            *client.ChainlinkClient
-	NodeConfigOpts node.NodeConfigOpts
+	NodeConfigOpts node.ConfigOpts
 	DbC            *tc.Container
 	DbCName        string
 	DbOpts         envcommon.PgOpts
 }
 
-func NewClNode(compOpts envcommon.EnvComponentOpts, opts node.NodeConfigOpts, dbContainerName string) *ClNode {
+func NewClNode(compOpts envcommon.EnvComponentOpts, opts node.ConfigOpts, dbContainerName string) *ClNode {
 	return &ClNode{
 		EnvComponent:   envcommon.NewEnvComponent("cl-node", compOpts),
 		DbCName:        dbContainerName,
@@ -159,7 +161,7 @@ func (m *ClNode) StartContainer(lw *logwatch.LogWatch) error {
 
 func (m *ClNode) getContainerRequest(secrets string) (
 	*tc.ContainerRequest, error) {
-	configFile, err := ioutil.TempFile("", "node_config")
+	configFile, err := os.CreateTemp("", "node_config")
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +174,7 @@ func (m *ClNode) getContainerRequest(secrets string) (
 		return nil, err
 	}
 
-	secretsFile, err := ioutil.TempFile("", "node_secrets")
+	secretsFile, err := os.CreateTemp("", "node_secrets")
 	if err != nil {
 		return nil, err
 	}
@@ -182,7 +184,7 @@ func (m *ClNode) getContainerRequest(secrets string) (
 	}
 
 	adminCreds := "local@local.com\nlocaldevpassword"
-	adminCredsFile, err := ioutil.TempFile("", "admin_creds")
+	adminCredsFile, err := os.CreateTemp("", "admin_creds")
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +194,7 @@ func (m *ClNode) getContainerRequest(secrets string) (
 	}
 
 	apiCreds := "local@local.com\nlocaldevpassword"
-	apiCredsFile, err := ioutil.TempFile("", "api_creds")
+	apiCredsFile, err := os.CreateTemp("", "api_creds")
 	if err != nil {
 		return nil, err
 	}
@@ -202,9 +204,9 @@ func (m *ClNode) getContainerRequest(secrets string) (
 	}
 
 	configPath := "/home/cl-node-config.toml"
-	secretsPath := "/home/cl-node-secrets.toml"
-	adminCredsPath := "/home/admin-credentials.txt"
-	apiCredsPath := "/home/api-credentials.txt"
+	secPath := "/home/cl-node-secrets.toml"
+	adminCrePath := "/home/admin-credentials.txt"
+	apiCrePath := "/home/api-credentials.txt"
 
 	image, ok := os.LookupEnv("CHAINLINK_IMAGE")
 	if !ok {
@@ -221,10 +223,10 @@ func (m *ClNode) getContainerRequest(secrets string) (
 		ExposedPorts: []string{"6688/tcp"},
 		Entrypoint: []string{"chainlink",
 			"-c", configPath,
-			"-s", secretsPath,
+			"-s", secPath,
 			"node", "start", "-d",
-			"-p", adminCredsPath,
-			"-a", apiCredsPath,
+			"-p", adminCrePath,
+			"-a", apiCrePath,
 		},
 		Networks: m.Networks,
 		WaitingFor: tcwait.ForHTTP("/health").
@@ -239,17 +241,17 @@ func (m *ClNode) getContainerRequest(secrets string) (
 			},
 			{
 				HostFilePath:      secretsFile.Name(),
-				ContainerFilePath: secretsPath,
+				ContainerFilePath: secPath,
 				FileMode:          0644,
 			},
 			{
 				HostFilePath:      adminCredsFile.Name(),
-				ContainerFilePath: adminCredsPath,
+				ContainerFilePath: adminCrePath,
 				FileMode:          0644,
 			},
 			{
 				HostFilePath:      apiCredsFile.Name(),
-				ContainerFilePath: apiCredsPath,
+				ContainerFilePath: apiCrePath,
 				FileMode:          0644,
 			},
 		},

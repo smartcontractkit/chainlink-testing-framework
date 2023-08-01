@@ -974,7 +974,7 @@ func (o *OCR2TaskJobSpec) Type() string { return o.JobType }
 // String representation of the job
 func (o *OCR2TaskJobSpec) String() (string, error) {
 	var feedID string
-	if &o.OCR2OracleSpec.FeedID != nil {
+	if o.OCR2OracleSpec.FeedID != [32]byte{} {
 		feedID = o.OCR2OracleSpec.FeedID.Hex()
 	}
 	specWrap := struct {
