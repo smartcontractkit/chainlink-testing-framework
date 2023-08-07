@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -16,6 +17,7 @@ const (
 	minBlocksToFinalize = 10
 	finalityTimeout     = 45 * time.Minute
 	finalizedHeaderKey  = "finalizedHeads"
+	logNotifyFrequency  = 2 * time.Minute
 )
 
 var (
@@ -25,10 +27,11 @@ var (
 // FinalizedHeader is an implementation of the HeaderEventSubscription interface.
 // It keeps track of the latest finalized header for a network.
 type FinalizedHeader struct {
-	mutex           *sync.Mutex
-	LatestFinalized *big.Int
-	FinalizedAt     time.Time
+	lggr            zerolog.Logger
+	LatestFinalized atomic.Value // *big.Int
+	FinalizedAt     atomic.Value // time.Time
 	client          EVMClient
+	prevHeaderTime  atomic.Value // time.Time
 }
 
 // Wait is not a blocking call.
@@ -44,10 +47,10 @@ func (f *FinalizedHeader) Complete() bool {
 // ReceiveHeader is called whenever a new header is received.
 // During the course of test whenever a new header is received, ReceiveHeader checks if there is a new finalized header tagged.
 func (f *FinalizedHeader) ReceiveHeader(header NodeHeader) error {
-	if header.Number.Cmp(f.LatestFinalized) > 0 &&
-		// assumption : it will take at least minBlocksToFinalize num of blocks to finalize
-		// this is to reduce the number of calls to the client
-		new(big.Int).Sub(header.Number, f.LatestFinalized).Cmp(big.NewInt(minBlocksToFinalize)) <= 0 {
+	fLatest := f.LatestFinalized.Load().(*big.Int)
+	// assumption : it will take at least minBlocksToFinalize num of blocks to finalize
+	// this is to reduce the number of calls to the client
+	if new(big.Int).Sub(header.Number, fLatest).Cmp(big.NewInt(minBlocksToFinalize)) <= 0 {
 		return nil
 	}
 	ctx, ctxCancel := context.WithTimeout(context.Background(), f.client.GetNetworkConfig().Timeout.Duration)
@@ -56,48 +59,56 @@ func (f *FinalizedHeader) ReceiveHeader(header NodeHeader) error {
 	if err != nil {
 		return fmt.Errorf("error getting latest finalized block header - network %s", f.client.GetNetworkName())
 	}
-	if lastFinalized.Number.Cmp(f.LatestFinalized) > 0 {
-		f.mutex.Lock()
-		f.LatestFinalized = lastFinalized.Number
-		f.FinalizedAt = header.Timestamp
-		f.mutex.Unlock()
-		log.Info().
+
+	if lastFinalized.Number.Cmp(fLatest) > 0 {
+		f.LatestFinalized.Store(lastFinalized.Number)
+		f.FinalizedAt.Store(header.Timestamp)
+		f.lggr.Info().
 			Str("Finalized Header", lastFinalized.Number.String()).
-			Str("Network", f.client.GetNetworkName()).
-			Str("Finalized At", f.FinalizedAt.String()).
+			Str("Finalized At", header.Timestamp.String()).
 			Msg("new finalized header received")
 	}
+	f.prevHeaderTime.Store(header.Timestamp)
 	return nil
 }
 
 // newGlobalFinalizedHeaderManager is a global manager for finalized headers per network.
 // It is used to keep track of the latest finalized header for each network.
-func newGlobalFinalizedHeaderManager(client EVMClient) *FinalizedHeader {
+func newGlobalFinalizedHeaderManager(evmClient EVMClient) *FinalizedHeader {
 	// if simulated network or finality depth is greater than 0, there is no need to track finalized headers return nil
-	if client.NetworkSimulated() || client.GetNetworkConfig().FinalityDepth > 0 {
+	if evmClient.NetworkSimulated() || evmClient.GetNetworkConfig().FinalityDepth > 0 {
 		return nil
 	}
-	f, ok := globalFinalizedHeaderManager.Load(client.GetChainID().String())
-	now := time.Now().UTC()
+	f, ok := globalFinalizedHeaderManager.Load(evmClient.GetChainID().String())
+	isFinalizedHeaderObsolete := false
+	var fHeader *FinalizedHeader
+	if f != nil {
+		now := time.Now().UTC()
+		// if the last finalized header is older than an hour
+		lastFinalizedAt := f.(*FinalizedHeader).FinalizedAt.Load().(time.Time)
+		isFinalizedHeaderObsolete = now.Sub(lastFinalizedAt) > 1*time.Hour
+		fHeader = f.(*FinalizedHeader)
+	}
+
 	// if there is no finalized header for this network or the last finalized header is older than 1 hour
-	if !ok || f != nil && now.Sub(f.(*FinalizedHeader).FinalizedAt) > 1*time.Hour {
-		ctx, ctxCancel := context.WithTimeout(context.Background(), client.GetNetworkConfig().Timeout.Duration)
-		lastFinalized, err := client.GetLatestFinalizedBlockHeader(ctx)
+	if !ok || isFinalizedHeaderObsolete {
+		ctx, ctxCancel := context.WithTimeout(context.Background(), evmClient.GetNetworkConfig().Timeout.Duration)
+		lastFinalized, err := evmClient.GetLatestFinalizedBlockHeader(ctx)
 		ctxCancel()
 		if err != nil {
 			log.Err(fmt.Errorf("error getting latest finalized block header")).Msg("NewFinalizedHeader")
 			return nil
 		}
-		f := &FinalizedHeader{
-			mutex:           &sync.Mutex{},
-			LatestFinalized: lastFinalized.Number,
-			FinalizedAt:     time.Now().UTC(),
-			client:          client,
+		fHeader = &FinalizedHeader{
+			lggr:   log.With().Str("Network", evmClient.GetNetworkName()).Logger(),
+			client: evmClient,
 		}
-		globalFinalizedHeaderManager.Store(client.GetChainID().String(), f)
-		client.AddHeaderEventSubscription(finalizedHeaderKey, f)
+		fHeader.LatestFinalized.Store(lastFinalized.Number)
+		fHeader.FinalizedAt.Store(time.Now().UTC())
+		globalFinalizedHeaderManager.Store(evmClient.GetChainID().String(), fHeader)
 	}
-	return f.(*FinalizedHeader)
+
+	return fHeader
 }
 
 // TransactionFinalizer is an implementation of HeaderEventSubscription that waits for a transaction to be finalized.
@@ -114,12 +125,17 @@ type TransactionFinalizer struct {
 	txHash        common.Hash
 	FinalizedBy   *big.Int
 	FinalizedAt   time.Time
+	lastLogUpdate time.Time
 }
 
 func NewTransactionFinalizer(client EVMClient, txHdr *SafeEVMHeader, txHash common.Hash) *TransactionFinalizer {
 	ctx, ctxCancel := context.WithTimeout(context.Background(), finalityTimeout)
 	tf := &TransactionFinalizer{
-		lggr:          log.With().Str("txHash", txHash.String()).Str("Tx Block", txHdr.Number.String()).Logger(),
+		lggr: log.With().
+			Str("txHash", txHash.String()).
+			Str("Tx Block", txHdr.Number.String()).
+			Str("Network", client.GetNetworkName()).
+			Logger(),
 		client:        client,
 		doneChan:      make(chan struct{}, 1),
 		context:       ctx,
@@ -138,11 +154,10 @@ func (tf *TransactionFinalizer) ReceiveHeader(header NodeHeader) error {
 	if tf.client.NetworkSimulated() {
 		return nil
 	}
-	isFinalized, by, at, err := tf.client.IsTxFinalized(tf.txHdr, &header.SafeEVMHeader)
+	isFinalized, by, at, err := tf.client.IsTxHeadFinalized(tf.txHdr, &header.SafeEVMHeader)
 	if err != nil {
 		return err
 	}
-	lgEvent := tf.lggr.Info()
 	if isFinalized {
 		tf.lggr.Info().
 			Str("Finalized Block", header.Number.String()).
@@ -153,6 +168,11 @@ func (tf *TransactionFinalizer) ReceiveHeader(header NodeHeader) error {
 		tf.FinalizedBy = by
 		tf.FinalizedAt = at
 	} else {
+		lgEvent := tf.lggr.Info()
+		// if the transaction is not finalized, notify every logNotifyFrequency duration
+		if time.Now().UTC().Sub(tf.lastLogUpdate) < logNotifyFrequency {
+			return nil
+		}
 		if tf.networkConfig.FinalityDepth > 0 {
 			lgEvent.
 				Str("Current Block", header.Number.String()).
@@ -162,6 +182,7 @@ func (tf *TransactionFinalizer) ReceiveHeader(header NodeHeader) error {
 				Str("Last Finalized Block", by.String())
 		}
 		lgEvent.Msg("Still Waiting for transaction log to be finalized")
+		tf.lastLogUpdate = time.Now().UTC()
 	}
 	return nil
 }
