@@ -31,7 +31,6 @@ type FinalizedHeader struct {
 	LatestFinalized atomic.Value // *big.Int
 	FinalizedAt     atomic.Value // time.Time
 	client          EVMClient
-	prevHeaderTime  atomic.Value // time.Time
 }
 
 // Wait is not a blocking call.
@@ -68,7 +67,7 @@ func (f *FinalizedHeader) ReceiveHeader(header NodeHeader) error {
 			Str("Finalized At", header.Timestamp.String()).
 			Msg("new finalized header received")
 	}
-	f.prevHeaderTime.Store(header.Timestamp)
+
 	return nil
 }
 
