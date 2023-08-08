@@ -457,7 +457,10 @@ func (e *EthereumClient) receiveHeader(header *SafeEVMHeader) error {
 
 	safeHeader := NodeHeader{NodeID: e.ID, SafeEVMHeader: headerValue}
 	subs := e.GetHeaderSubscriptions()
-	log.Trace().Interface("Map", subs).Msg("Active Header Subscriptions")
+	log.Trace().
+		Str("NetworkName", e.NetworkConfig.Name).
+		Int("Node", e.ID).
+		Interface("Map", subs).Msg("Active Header Subscriptions")
 
 	g := errgroup.Group{}
 	for _, sub := range subs {
@@ -481,6 +484,8 @@ func (e *EthereumClient) receiveHeader(header *SafeEVMHeader) error {
 		}
 		if subsRemoved > 0 {
 			log.Trace().
+				Str("NetworkName", e.NetworkConfig.Name).
+				Int("Node", e.ID).
 				Uint("Recently Removed", subsRemoved).
 				Int("Active", len(e.GetHeaderSubscriptions())).
 				Msg("Updated Header Subscriptions")
