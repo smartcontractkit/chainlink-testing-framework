@@ -6,3 +6,5 @@ CVE-2022-37450 # Geth bug that only affects nodes used for mining
 CVE-2021-42219 # Uncontrolled Resource Consumption ('Resource Exhaustion')
 CVE-2020-28483 # Inconsistent Interpretation of HTTP Requests ('HTTP Request Smuggling')
 CVE-2022-29153 # Server-Side Request Forgery (SSRF)
+CVE-2022-23492 # CWE-770: Allocation of Resources Without Limits or Throttling
+CVE-2022-44797 # CWE-617: Reachable Assertion
