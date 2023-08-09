@@ -23,6 +23,7 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+	"go.uber.org/atomic"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/smartcontractkit/chainlink-env/environment"
@@ -34,18 +35,18 @@ const MaxTimeoutForFinality = 15 * time.Minute
 
 // EthereumClient wraps the client and the BlockChain network to interact with an EVM based Blockchain
 type EthereumClient struct {
-	ID                  int
-	Client              *ethclient.Client
-	rawRPC              *rpc.Client
-	NetworkConfig       EVMNetwork
-	Wallets             []*EthereumWallet
-	DefaultWallet       *EthereumWallet
-	NonceSettings       *NonceSettings
-	headerSubscriptions map[string]HeaderEventSubscription
-	subscriptionMutex   *sync.Mutex
-	queueTransactions   bool
-	gasStats            *GasStats
-
+	ID                   int
+	Client               *ethclient.Client
+	rawRPC               *rpc.Client
+	NetworkConfig        EVMNetwork
+	Wallets              []*EthereumWallet
+	DefaultWallet        *EthereumWallet
+	NonceSettings        *NonceSettings
+	FinalizedHeader      atomic.Pointer[FinalizedHeader]
+	headerSubscriptions  map[string]HeaderEventSubscription
+	subscriptionMutex    *sync.Mutex
+	queueTransactions    bool
+	gasStats             *GasStats
 	connectionIssueCh    chan time.Time
 	connectionRestoredCh chan time.Time
 	doneChan             chan struct{}
@@ -516,7 +517,7 @@ func (e *EthereumClient) ProcessTransaction(tx *types.Transaction) error {
 	return nil
 }
 
-// ProcessTransaction will queue or wait on a transaction depending on whether parallel transactions are enabled
+// ProcessEvent will queue or wait on an event depending on whether parallel transactions are enabled
 func (e *EthereumClient) ProcessEvent(name string, event *types.Log, confirmedChan chan bool, errorChan chan error) error {
 	var eventConfirmer HeaderEventSubscription
 	if e.GetNetworkConfig().MinimumConfirmations <= 0 {
@@ -534,6 +535,82 @@ func (e *EthereumClient) ProcessEvent(name string, event *types.Log, confirmedCh
 		return eventConfirmer.Wait()
 	}
 	return nil
+}
+
+// PollFinalizedHeader continuously polls the latest finalized header and stores it in the client
+func (e *EthereumClient) PollFinality() error {
+	if e.NetworkConfig.FinalityDepth > 0 {
+		return fmt.Errorf("finality depth is greater than zero. no need to poll for finality")
+	}
+	f := newGlobalFinalizedHeaderManager(e)
+	if f == nil {
+		return fmt.Errorf("could not create finalized header manager")
+	}
+	e.FinalizedHeader.Store(f)
+	e.AddHeaderEventSubscription(finalizedHeaderKey, f)
+	return nil
+}
+
+// CancelFinalityPolling stops polling for the latest finalized header
+func (e *EthereumClient) CancelFinalityPolling() {
+	if _, ok := e.headerSubscriptions[finalizedHeaderKey]; ok {
+		e.DeleteHeaderEventSubscription(finalizedHeaderKey)
+	}
+}
+
+// WaitForFinalizedTx waits for a transaction to be finalized
+// If the network is simulated, it will return immediately
+// otherwise it waits for the transaction to be finalized and returns the block number and time of the finalization
+func (e *EthereumClient) WaitForFinalizedTx(txHash common.Hash) (*big.Int, time.Time, error) {
+	if e.NetworkSimulated() {
+		return nil, time.Time{}, nil
+	}
+
+	receipt, err := e.Client.TransactionReceipt(context.Background(), txHash)
+	if err != nil {
+		return nil, time.Time{}, err
+	}
+	txHdr, err := e.HeaderByNumber(context.Background(), receipt.BlockNumber)
+	if err != nil {
+		return nil, time.Time{}, err
+	}
+	finalizer := NewTransactionFinalizer(e, txHdr, receipt.TxHash)
+	key := "txFinalizer-" + txHash.String()
+	e.AddHeaderEventSubscription(key, finalizer)
+	defer e.DeleteHeaderEventSubscription(key)
+	err = finalizer.Wait()
+	if err != nil {
+		return nil, time.Time{}, err
+	}
+	return finalizer.FinalizedBy, finalizer.FinalizedAt, nil
+}
+
+// IsTxHeadFinalized checks if the transaction is finalized on chain
+// in case of network with finality tag if the tx is not finalized it returns false,
+// the latest finalized header number and the time at which it was finalized
+// if the tx is finalized it returns true, the finalized header number by which the tx was considered finalized and the time at which it was finalized
+// In case of simulated network, it always returns true
+func (e *EthereumClient) IsTxHeadFinalized(txHdr, header *SafeEVMHeader) (bool, *big.Int, time.Time, error) {
+	if e.NetworkSimulated() {
+		return true, nil, time.Time{}, nil
+	}
+	if e.NetworkConfig.FinalityDepth > 0 {
+		if header.Number.Cmp(new(big.Int).Add(txHdr.Number,
+			big.NewInt(int64(e.NetworkConfig.FinalityDepth)))) > 0 {
+			return true, header.Number, header.Timestamp, nil
+		}
+		return false, nil, time.Time{}, nil
+	}
+	fHead := e.FinalizedHeader.Load()
+	if fHead != nil {
+		latestFinalized := fHead.LatestFinalized.Load().(*big.Int)
+		latestFinalizedAt := fHead.FinalizedAt.Load().(time.Time)
+		if latestFinalized.Cmp(txHdr.Number) >= 0 {
+			return true, latestFinalized, latestFinalizedAt, nil
+		}
+		return false, latestFinalized, latestFinalizedAt, nil
+	}
+	return false, nil, time.Time{}, fmt.Errorf("no finalized head found. start polling for finalized header")
 }
 
 // IsTxConfirmed checks if the transaction is confirmed on chain or not
@@ -837,7 +914,12 @@ func (e *EthereumClient) WaitForEvents() error {
 		subName := subName
 		sub := sub
 		g.Go(func() error {
-			defer e.DeleteHeaderEventSubscription(subName)
+			defer func() {
+				// if the subscription is complete, delete it from the queue
+				if sub.Complete() {
+					e.DeleteHeaderEventSubscription(subName)
+				}
+			}()
 			return sub.Wait()
 		})
 	}
@@ -1308,6 +1390,26 @@ func (e *EthereumMultinodeClient) IsTxConfirmed(txHash common.Hash) (bool, error
 // IsEventConfirmed returns if the default client can confirm the event has happened
 func (e *EthereumMultinodeClient) IsEventConfirmed(event *types.Log) (confirmed, removed bool, err error) {
 	return e.DefaultClient.IsEventConfirmed(event)
+}
+
+// IsTxFinalized returns if the default client can confirm the transaction has been finalized
+func (e *EthereumMultinodeClient) IsTxHeadFinalized(txHdr, header *SafeEVMHeader) (bool, *big.Int, time.Time, error) {
+	return e.DefaultClient.IsTxHeadFinalized(txHdr, header)
+}
+
+// WaitForTxTobeFinalized waits for the transaction to be finalized
+func (e *EthereumMultinodeClient) WaitForFinalizedTx(txHash common.Hash) (*big.Int, time.Time, error) {
+	return e.DefaultClient.WaitForFinalizedTx(txHash)
+}
+
+// PollFinality polls for finality
+func (e *EthereumMultinodeClient) PollFinality() error {
+	return e.DefaultClient.PollFinality()
+}
+
+// StopPollingForFinality stops polling for finality
+func (e *EthereumMultinodeClient) CancelFinalityPolling() {
+	e.DefaultClient.CancelFinalityPolling()
 }
 
 // GetTxReceipt returns the receipt of the transaction if available, error otherwise
