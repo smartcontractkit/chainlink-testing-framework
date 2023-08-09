@@ -18,6 +18,7 @@ const (
 	RSKClientImplementation      ClientImplementation = "RSK"
 	CeloClientImplementation     ClientImplementation = "Celo"
 	QuorumClientImplementation   ClientImplementation = "Quorum"
+	ScrollClientImplementation   ClientImplementation = "Scroll"
 	BSCClientImplementation      ClientImplementation = "BSC"
 )
 
@@ -43,6 +44,8 @@ func wrapSingleClient(networkSettings EVMNetwork, client *EthereumClient) EVMCli
 		wrappedEc = &CeloClient{client}
 	case QuorumClientImplementation:
 		wrappedEc = &QuorumClient{client}
+	case ScrollClientImplementation:
+		wrappedEc = &ScrollClient{client}
 	case BSCClientImplementation:
 		wrappedEc = &BSCClient{client}
 	default:
@@ -83,6 +86,9 @@ func wrapMultiClient(networkSettings EVMNetwork, client *EthereumMultinodeClient
 	case QuorumClientImplementation:
 		logMsg.Msg("Using Quorum Client")
 		wrappedEc = &QuorumMultinodeClient{client}
+	case ScrollClientImplementation:
+		logMsg.Msg("Using Scroll Client")
+		wrappedEc = &ScrollMultinodeClient{client}
 	case BSCClientImplementation:
 		logMsg.Msg("Using BSC Client")
 		wrappedEc = &BSCMultinodeClient{client}
