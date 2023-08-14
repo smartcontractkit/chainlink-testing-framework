@@ -15,6 +15,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
@@ -94,8 +95,9 @@ func NewNonDevGethNode(networks []string, networkCfg *blockchain.EVMNetwork) *No
 			networkCfg: networkCfg,
 		},
 		EnvComponent: EnvComponent{
-			ContainerName: fmt.Sprintf("%s-%s", networkCfg.Name, uuid.NewString()[0:3]),
-			Networks:      networks,
+			ContainerName: fmt.Sprintf("%s-%s",
+				strings.ReplaceAll(networkCfg.Name, " ", "_"), uuid.NewString()[0:3]),
+			Networks: networks,
 		},
 	}
 }
@@ -275,8 +277,21 @@ func (g *NonDevGethNode) ConnectToClient() error {
 	}
 	fmt.Printf("balance: %s\n", at.String())
 	g.EVMClient = ec
-
-	g.EthClient, err = ethclient.Dial(g.ExternalWsUrl)
+	// to make sure all the pending txs are done
+	err = ec.WaitForEvents()
+	if err != nil {
+		return err
+	}
+	switch val := ec.(type) {
+	case *blockchain.EthereumMultinodeClient:
+		ethClient, ok := val.Clients[0].(*blockchain.EthereumClient)
+		if !ok {
+			return errors.Errorf("could not get blockchain.EthereumClient from %+v", val)
+		}
+		g.EthClient = ethClient.Client
+	default:
+		return errors.Errorf("%+v not supported for geth", val)
+	}
 	if err != nil {
 		return err
 	}
