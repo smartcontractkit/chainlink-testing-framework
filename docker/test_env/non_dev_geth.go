@@ -219,6 +219,9 @@ func (g *NonDevGethNode) Start() error {
 	}
 	defer r.Close()
 	b, err := io.ReadAll(r)
+	if err != nil {
+		return err
+	}
 	g.Config.bootNodeURL = fmt.Sprintf("enode://%s@%s:0?discport=%s", strings.TrimSpace(string(b)), host, BOOTNODE_PORT)
 
 	ct, err := tc.GenericContainer(context.Background(),
