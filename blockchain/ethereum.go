@@ -1199,10 +1199,10 @@ func ConcurrentEVMClient(networkSettings EVMNetwork, env *environment.Environmen
 		return NewEVMClient(networkSettings, env)
 	}
 	ecl := &EthereumMultinodeClient{}
-	if _, ok := env.URLs[networkSettings.Name]; !ok {
-		return nil, fmt.Errorf("network %s not found in environment", networkSettings.Name)
-	}
 	if env != nil {
+		if _, ok := env.URLs[networkSettings.Name]; !ok {
+			return nil, fmt.Errorf("network %s not found in environment", networkSettings.Name)
+		}
 		networkSettings.URLs = env.URLs[networkSettings.Name]
 	}
 	for idx, networkURL := range networkSettings.URLs {
