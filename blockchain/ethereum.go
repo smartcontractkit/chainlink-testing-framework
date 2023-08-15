@@ -1202,9 +1202,7 @@ func ConcurrentEVMClient(networkSettings EVMNetwork, env *environment.Environmen
 	if _, ok := env.URLs[networkSettings.Name]; !ok {
 		return nil, fmt.Errorf("network %s not found in environment", networkSettings.Name)
 	}
-	if env == nil {
-		log.Warn().Str("Network", networkSettings.Name).Msg("No test environment deployed")
-	} else {
+	if env != nil {
 		networkSettings.URLs = env.URLs[networkSettings.Name]
 	}
 	for idx, networkURL := range networkSettings.URLs {
