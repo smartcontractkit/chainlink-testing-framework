@@ -23,6 +23,7 @@ type Blockscout struct {
 	EnvComponent
 	NetworkConfig blockchain.EVMNetwork
 	HTTPURL       string
+	Image         string
 	pgContainer   *PostgresDb
 }
 
@@ -33,7 +34,15 @@ func NewBlockscout(networks []string, networkConfig blockchain.EVMNetwork) *Bloc
 			Networks:      networks,
 		},
 		NetworkConfig: networkConfig,
+		Image:         BLKSCOUT_IMAGE,
 	}
+}
+
+func (b *Blockscout) WithImage(image string) {
+	if image == "" {
+		return
+	}
+	b.Image = image
 }
 
 func (b *Blockscout) Start() error {
@@ -74,7 +83,7 @@ func (b *Blockscout) Start() error {
 func (b *Blockscout) getBlockscoutContainerRequest() tc.ContainerRequest {
 	return tc.ContainerRequest{
 		Name:  b.ContainerName,
-		Image: BLKSCOUT_IMAGE,
+		Image: b.Image,
 		ExposedPorts: []string{
 			fmt.Sprintf("%s/tcp", BLKSCOUT_HTTP_PORT),
 		},
