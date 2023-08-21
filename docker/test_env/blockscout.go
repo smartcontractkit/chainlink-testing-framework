@@ -38,14 +38,21 @@ func NewBlockscout(networks []string, networkConfig blockchain.EVMNetwork) *Bloc
 	}
 }
 
-func (b *Blockscout) WithImage(image string) {
-	if image == "" {
-		return
+type BlockscoutOption = func(c *Blockscout)
+
+func WithImage(image string) BlockscoutOption {
+	return func(b *Blockscout) {
+		if image == "" {
+			return
+		}
+		b.Image = image
 	}
-	b.Image = image
 }
 
-func (b *Blockscout) Start() error {
+func (b *Blockscout) Start(opts ...BlockscoutOption) error {
+	for _, opt := range opts {
+		opt(b)
+	}
 	b.pgContainer = NewPostgresDb(b.Networks,
 		WithPostgresDbContainerName(fmt.Sprintf("pg-%s", b.ContainerName)),
 		WithPostgresDbDatabaseName(BLCSCOUT_DB_NAME),
