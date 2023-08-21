@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	BLKSCOUT_IMAGE     = "f4hrenh9it/blockscout:v1"
+	BLKSCOUT_IMAGE     = "blockscout/blockscout:5.2.1.commit.14c2a7cc"
 	BLKSCOUT_HTTP_PORT = "4000"
 	BLKSCOUT_PASS      = "blockscoutpass"
 	BLCSCOUT_DB_NAME   = "blockscout"
@@ -64,7 +64,10 @@ func (b *Blockscout) Start() error {
 		return err
 	}
 	b.HTTPURL = fmt.Sprintf("http://%s:%s", host, port.Port())
-	log.Info().Str("url", b.HTTPURL).Msg("Blockscout started")
+	log.Info().
+		Str("Network", b.NetworkConfig.Name).
+		Str("url", b.HTTPURL).
+		Msg("Started Blockscout")
 	return nil
 }
 
@@ -78,10 +81,9 @@ func (b *Blockscout) getBlockscoutContainerRequest() tc.ContainerRequest {
 		Networks: b.Networks,
 		WaitingFor: tcwait.ForHTTP("/").
 			WithPort(nat.Port(fmt.Sprintf("%s/tcp", BLKSCOUT_HTTP_PORT))),
-		Entrypoint: []string{"/bin/bash", "-c",
-			"mix", "ecto.create", "&&",
-			"mix", "ecto.migrate", "&&",
-			"mix", "phx.server",
+		Cmd: []string{
+			"bin/blockscout", "eval", `"Elixir.Explorer.ReleaseTasks.create_and_migrate()\"`, "&&",
+			"bin/blockscout", "start",
 		},
 		Env: map[string]string{
 			"MIX_ENV":                   "prod",
