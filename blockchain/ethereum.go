@@ -57,7 +57,10 @@ func newEVMClient(networkSettings EVMNetwork) (EVMClient, error) {
 	log.Info().
 		Str("Name", networkSettings.Name).
 		Str("URL", networkSettings.URL).
-		Interface("Settings", networkSettings).
+		Int64("Chain ID", networkSettings.ChainID).
+		Bool("Simulated", networkSettings.Simulated).
+		Bool("Supports EIP-1559", networkSettings.SupportsEIP1559).
+		Bool("Finality Tag", networkSettings.FinalityTag).
 		Msg("Connecting client")
 	cl, err := ethclient.Dial(networkSettings.URL)
 	if err != nil {
