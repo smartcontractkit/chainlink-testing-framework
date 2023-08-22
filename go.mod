@@ -21,7 +21,7 @@ require (
 	github.com/smartcontractkit/wasp v0.3.0
 	github.com/stretchr/testify v1.8.4
 	github.com/testcontainers/testcontainers-go v0.23.0
-	go.uber.org/atomic v1.10.0
+	go.uber.org/atomic v1.11.0
 	go.uber.org/zap v1.25.0
 	golang.org/x/sync v0.3.0
 )
