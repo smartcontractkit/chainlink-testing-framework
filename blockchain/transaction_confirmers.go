@@ -338,14 +338,14 @@ func (e *EthereumClient) headerSubscriptionLoop(subscription ethereum.Subscripti
 	for {
 		select {
 		case err := <-subscription.Err(): // Most subscription errors are temporary RPC downtime, so let's poll to resubscribe
-			log.Error().Err(err).Msg("Error while subscribed to new headers, likely RPC downtime. Attempting to resubscribe")
+			log.Error().Str("Network", e.NetworkConfig.Name).Err(err).Msg("Error while subscribed to new headers, likely RPC downtime. Attempting to resubscribe")
 			e.connectionIssueCh <- time.Now()
 			subscription = e.resubscribeLoop(headerChannel, lastHeaderNumber)
 			e.connectionRestoredCh <- time.Now()
 		case header := <-headerChannel:
 			err := e.receiveHeader(header)
 			if err != nil {
-				log.Error().Err(err).Msg("Error receiving header, possible RPC issues")
+				log.Error().Str("Network", e.NetworkConfig.Name).Err(err).Msg("Error receiving header, possible RPC issues")
 			} else {
 				lastHeaderNumber = header.Number.Uint64()
 			}
@@ -363,7 +363,7 @@ func (e *EthereumClient) resubscribeLoop(headerChannel chan *SafeEVMHeader, last
 	pollInterval := time.Millisecond * 500
 	checkTicker, informTicker := time.NewTicker(pollInterval), time.NewTicker(time.Second*10)
 	reconnectAttempts, consecutiveSuccessCount := 0, 0
-	log.Debug().Str("Poll Interval", pollInterval.String()).Msg("Attempting to resubscribe to new headers")
+	log.Debug().Str("Network", e.NetworkConfig.Name).Str("Poll Interval", pollInterval.String()).Msg("Attempting to resubscribe to new headers")
 
 	for {
 		select {
@@ -377,6 +377,7 @@ func (e *EthereumClient) resubscribeLoop(headerChannel chan *SafeEVMHeader, last
 			}
 			consecutiveSuccessCount++
 			log.Debug().
+				Str("Network", e.NetworkConfig.Name).
 				Int("Target Success Count", targetSuccessCount).
 				Int("Consecutive Success Count", consecutiveSuccessCount).
 				Msg("RPC connection seems to be healthy, still checking")
@@ -400,6 +401,7 @@ func (e *EthereumClient) resubscribeLoop(headerChannel chan *SafeEVMHeader, last
 			}
 		case <-informTicker.C:
 			log.Warn().
+				Str("Network", e.NetworkConfig.Name).
 				Int("Reconnect Attempts", reconnectAttempts).
 				Str("Time waiting", time.Since(rpcDegradedTime).String()).
 				Msg("RPC connection still down, waiting for it to come back up")
@@ -413,7 +415,7 @@ func (e *EthereumClient) backfillMissedBlocks(lastBlockSeen uint64, headerChanne
 	start := time.Now()
 	latestBlockNumber, err := e.LatestBlockNumber(context.Background())
 	if err != nil {
-		log.Error().Err(err).Msg("Error getting latest block number. Unable to backfill missed blocks. Subscription likely degraded")
+		log.Error().Str("Network", e.NetworkConfig.Name).Err(err).Msg("Error getting latest block number. Unable to backfill missed blocks. Subscription likely degraded")
 		return
 	}
 	if latestBlockNumber <= lastBlockSeen {
@@ -421,6 +423,7 @@ func (e *EthereumClient) backfillMissedBlocks(lastBlockSeen uint64, headerChanne
 		return
 	}
 	log.Info().
+		Str("Network", e.NetworkConfig.Name).
 		Uint64("Last Block Seen", lastBlockSeen).
 		Uint64("Blocks Behind", latestBlockNumber-lastBlockSeen).
 		Uint64("Latest Block", latestBlockNumber).
@@ -431,10 +434,11 @@ func (e *EthereumClient) backfillMissedBlocks(lastBlockSeen uint64, headerChanne
 			log.Err(err).Uint64("Number", i).Msg("Error getting header, unable to backfill and process it")
 			return
 		}
-		log.Trace().Str("Hash", header.Hash.Hex()).Uint64("Number", i).Msg("Backfilling header")
+		log.Trace().Str("Network", e.NetworkConfig.Name).Str("Hash", header.Hash.Hex()).Uint64("Number", i).Msg("Backfilling header")
 		headerChannel <- header
 	}
 	log.Info().
+		Str("Network", e.NetworkConfig.Name).
 		Uint64("Backfilled blocks", latestBlockNumber-lastBlockSeen).
 		Str("Time", time.Since(start).String()).
 		Msg("Finished backfilling missed blocks")

@@ -61,7 +61,7 @@ var GenesisJson = `
 	  "berlinBlock": 0,
 	  "londonBlock": 0,
 	  "clique": {
-			"period": 5,
+			"period": 2,
       		"epoch": 30000
     	}
 	},
