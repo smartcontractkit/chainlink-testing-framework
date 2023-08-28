@@ -172,7 +172,7 @@ func (g *NonDevGethNode) createMountDirs() error {
 		return err
 	}
 
-	genesisJsonStr, err := templates.BuildGenesisJson(g.Config.chainId, accounts, fmt.Sprintf("0x%s", hex.EncodeToString(extradata)))
+	genesisJsonStr, err := templates.BuildGenesisJsonForNonDevChain(g.Config.chainId, accounts, fmt.Sprintf("0x%s", hex.EncodeToString(extradata)))
 	if err != nil {
 		return err
 	}
