@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"text/template"
+
+	"github.com/google/uuid"
 )
 
 var InitGethScript = `
@@ -89,7 +91,7 @@ var funcMap = template.FuncMap{
 	},
 }
 
-func BuildGenesisJson(chainId string, accountAddr []string, extraData string) (string, error) {
+func BuildGenesisJsonForNonDevChain(chainId string, accountAddr []string, extraData string) (string, error) {
 	data := struct {
 		AccountAddr []string
 		ChainId     string
@@ -110,4 +112,44 @@ func BuildGenesisJson(chainId string, accountAddr []string, extraData string) (s
 	err = t.Execute(&buf, data)
 
 	return buf.String(), err
+}
+
+type GenesisJsonTemplate struct {
+	AccountAddr string
+	ChainId     string
+}
+
+// String representation of the job
+func (c GenesisJsonTemplate) String() (string, error) {
+	tpl := `
+{
+	"config": {
+	  "chainId": {{ .ChainId }},
+	  "homesteadBlock": 0,
+	  "eip150Block": 0,
+	  "eip155Block": 0,
+	  "eip158Block": 0,
+	  "eip160Block": 0,
+	  "byzantiumBlock": 0,
+	  "constantinopleBlock": 0,
+	  "petersburgBlock": 0,
+	  "istanbulBlock": 0,
+	  "muirGlacierBlock": 0,
+	  "berlinBlock": 0,
+	  "londonBlock": 0
+	},
+	"nonce": "0x0000000000000042",
+	"mixhash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+	"difficulty": "1",
+	"coinbase": "0x3333333333333333333333333333333333333333",
+	"parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+	"extraData": "0x",
+	"gasLimit": "8000000000",
+	"alloc": {
+	  "{{ .AccountAddr }}": {
+		"balance": "20000000000000000000000"
+	  }
+	}
+  }`
+	return MarshalTemplate(c, uuid.NewString(), tpl)
 }
