@@ -88,7 +88,7 @@ jobs:
       - name: Download all workflow run artifacts
         uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3.0.2
       - name: SonarQube Scan
-        uses: sonarsource/sonarqube-scan-action@4b0bfc149f5e285930eeb5e917327e66660c6e92 # v2.0.0
+        uses: sonarsource/sonarqube-scan-action@69c1a75940dec6249b86dace6b630d3a2ae9d2a7 # v2.0.1
         with:
           args: >
             -Dsonar.go.golangci-lint.reportPaths=golangci-lint-report/golangci-lint-report.xml
