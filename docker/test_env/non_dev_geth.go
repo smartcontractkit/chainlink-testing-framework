@@ -333,8 +333,21 @@ func (g *NonDevGethNode) getGethContainerRequest() tc.ContainerRequest {
 			fmt.Sprintf("%s/tcp", TX_HTTP_PORT),
 			fmt.Sprintf("%s/tcp", TX_WS_PORT),
 			"30303/tcp", "30303/udp"},
-		Networks:   g.Networks,
-		WaitingFor: tcwait.ForHTTP("/").WithPort(nat.Port(fmt.Sprintf("%s/tcp", TX_HTTP_PORT))),
+		Networks: g.Networks,
+		WaitingFor: tcwait.ForAll(
+			tcwait.NewHTTPStrategy("/").
+				WithPort(nat.Port(fmt.Sprintf("%s/tcp", TX_HTTP_PORT))),
+			tcwait.NewHTTPStrategy("/").
+				WithPort(nat.Port(fmt.Sprintf("%s/tcp", TX_WS_PORT))).
+				WithStatusCodeMatcher(func(status int) bool {
+					if status == 101 {
+						return true
+					}
+					return false
+				}).
+				WithPollInterval(2*time.Second).
+				WithStartupTimeout(2*time.Minute),
+		),
 		Entrypoint: []string{"/bin/sh", "./root/init.sh",
 			"--http.vhosts=*",
 			"--nousb", "--metrics", "--nocompaction", "--syncmode", "full",
