@@ -170,7 +170,7 @@ func (g *Geth) getGethContainerRequest(networks []string) (*tc.ContainerRequest,
 			tcwait.NewHTTPStrategy("/").
 				WithPort("8544/tcp"),
 			tcwait.ForLog("WebSocket enabled"),
-			tcwait.ForLog("Chain head was updated").
+			tcwait.ForLog("Started P2P networking").
 				WithStartupTimeout(120*time.Second).
 				WithPollInterval(1*time.Second),
 		),
@@ -196,6 +196,7 @@ func (g *Geth) getGethContainerRequest(networks []string) (*tc.ContainerRequest,
 			"*",
 			"--ws.addr",
 			"0.0.0.0",
+			"--ws.api", "admin,debug,web3,eth,txpool,personal,clique,miner,net",
 			"--ws.port=8545",
 			"--graphql",
 			"-graphql.corsdomain",
