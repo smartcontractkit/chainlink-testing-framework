@@ -337,16 +337,7 @@ func (g *NonDevGethNode) getGethContainerRequest() tc.ContainerRequest {
 		WaitingFor: tcwait.ForAll(
 			tcwait.NewHTTPStrategy("/").
 				WithPort(nat.Port(fmt.Sprintf("%s/tcp", TX_HTTP_PORT))),
-			tcwait.NewHTTPStrategy("/").
-				WithPort(nat.Port(fmt.Sprintf("%s/tcp", TX_WS_PORT))).
-				WithStatusCodeMatcher(func(status int) bool {
-					if status == 101 {
-						return true
-					}
-					return false
-				}).
-				WithPollInterval(2*time.Second).
-				WithStartupTimeout(2*time.Minute),
+			tcwait.ForLog("WebSocket enabled"),
 		),
 		Entrypoint: []string{"/bin/sh", "./root/init.sh",
 			"--http.vhosts=*",
