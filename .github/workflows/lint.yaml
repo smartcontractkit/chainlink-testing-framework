@@ -16,7 +16,6 @@ jobs:
         uses: smartcontractkit/tool-versions-to-env-action@v1.0.8
         id: tool-versions
     outputs:
-      go-version: ${{ steps.tool-versions.outputs.golang_version }}
       golangci-lint-version: ${{ steps.tool-versions.outputs.golangci-lint_version }}
   golangci:
     name: Linting
@@ -25,19 +24,17 @@ jobs:
     steps:
       - name: Check out Code
         uses: actions/checkout@v3
-      - name: Install Go ${{ needs.tools.outputs.go-version }}
-        uses: actions/setup-go@v4
+      - name: Install Go
+        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/setup-go@00c6214deb10a3f374c6d3430c32c5202015d463 # v2.2.12
         with:
-          go-version: ${{ needs.tools.outputs.go-version }}
+          test_download_vendor_packages_command: go mod download
+          go_mod_path: ./go.mod
+          cache_key_id: ctf-go
+          cache_restore_only: 'false'
       - name: golangci-lint ${{ needs.tools.outputs.golangci-lint-version }}
-        ##
-        # XXX: change this to the official action once multiple --out-format args are supported.
-        # See: https://github.com/golangci/golangci-lint-action/issues/612
-        ##
-        uses: smartcontractkit/golangci-lint-action@54ab6c5f11d66a92d14c3f7cc41ea13f676644bd # feature/multiple-output-formats-backup
+        uses: smartcontractkit/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc # v3.7.0
         with:
           version: v${{ needs.tools.outputs.golangci-lint-version }}
-          allow-extra-out-format-args: true
           args: --out-format checkstyle:golangci-lint-report.xml
       - name: Print lint report artifact
         if: always()
@@ -56,10 +53,13 @@ jobs:
     steps:
       - name: Check out Code
         uses: actions/checkout@v3
-      - name: Install Go ${{ needs.tools.outputs.go-version }}
-        uses: actions/setup-go@v4
+      - name: Install Go
+        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/setup-go@00c6214deb10a3f374c6d3430c32c5202015d463 # v2.2.12
         with:
-          go-version: ${{ needs.tools.outputs.go-version }}
+          test_download_vendor_packages_command: go mod download
+          go_mod_path: ./go.mod
+          cache_key_id: ctf-go
+          cache_restore_only: 'false'
       - name: Write Go List
         run: go list -json -deps ./... > go.list
       - name: Nancy
