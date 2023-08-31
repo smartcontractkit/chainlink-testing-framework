@@ -357,6 +357,7 @@ var (
 		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
 		MinimumConfirmations:      0,
 		GasEstimationBuffer:       0,
+		FinalityTag:               true,
 	}
 
 	CeloAlfajores = blockchain.EVMNetwork{
@@ -414,6 +415,7 @@ var (
 		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
 		MinimumConfirmations:      0,
 		GasEstimationBuffer:       0,
+		FinalityTag:               true,
 	}
 
 	BSCTestnet blockchain.EVMNetwork = blockchain.EVMNetwork{
@@ -426,6 +428,7 @@ var (
 		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
 		MinimumConfirmations:      3,
 		GasEstimationBuffer:       0,
+		FinalityTag:               true,
 	}
 
 	BSCMainnet blockchain.EVMNetwork = blockchain.EVMNetwork{
@@ -438,6 +441,7 @@ var (
 		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
 		MinimumConfirmations:      3,
 		GasEstimationBuffer:       0,
+		FinalityTag:               true,
 	}
 
 	MappedNetworks = map[string]blockchain.EVMNetwork{
@@ -478,10 +482,14 @@ var (
 // Use DetermineSelectedNetwork for tests that only use one network
 func determineSelectedNetworks() []blockchain.EVMNetwork {
 	logging.Init()
-	selectedNetworks := make([]blockchain.EVMNetwork, 0)
 	rawSelectedNetworks := strings.ToUpper(os.Getenv("SELECTED_NETWORKS"))
 	setNetworkNames := strings.Split(rawSelectedNetworks, ",")
 
+	return SetNetworks(setNetworkNames)
+}
+
+func SetNetworks(setNetworkNames []string) []blockchain.EVMNetwork {
+	selectedNetworks := make([]blockchain.EVMNetwork, 0)
 	for _, setNetworkName := range setNetworkNames {
 		if chosenNetwork, valid := MappedNetworks[setNetworkName]; valid {
 			log.Info().
