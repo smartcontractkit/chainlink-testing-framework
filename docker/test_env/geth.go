@@ -306,8 +306,6 @@ func (w *WebSocketStrategy) WaitUntilReady(ctx context.Context, target tcwait.St
 			log.Info().Msgf("WebSocket attempt %d failed: %s. Retrying...", i, err)
 		}
 	}
-
-	return err
 }
 
 func natPortFormat(port string) string {
