@@ -6,8 +6,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/docker/go-connections/nat"
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -15,7 +17,6 @@ import (
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
-
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/templates"
 )
 
@@ -25,6 +26,9 @@ const (
 	// if you need more keys, keep them compatible, so we can swap Geth to Ganache/Hardhat in the future
 	RootFundingAddr   = `0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266`
 	RootFundingWallet = `{"address":"f39fd6e51aad88f6f4ce6ab8827279cfffb92266","crypto":{"cipher":"aes-128-ctr","ciphertext":"c36afd6e60b82d6844530bd6ab44dbc3b85a53e826c3a7f6fc6a75ce38c1e4c6","cipherparams":{"iv":"f69d2bb8cd0cb6274535656553b61806"},"kdf":"scrypt","kdfparams":{"dklen":32,"n":262144,"p":1,"r":8,"salt":"80d5f5e38ba175b6b89acfc8ea62a6f163970504af301292377ff7baafedab53"},"mac":"f2ecec2c4d05aacc10eba5235354c2fcc3776824f81ec6de98022f704efbf065"},"id":"e5c124e9-e280-4b10-a27b-d7f3e516b408","version":3}`
+
+	TX_GETH_HTTP_PORT = "8544"
+	TX_GETH_WS_PORT   = "8545"
 )
 
 type InternalDockerUrls struct {
@@ -71,20 +75,20 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, InternalDockerUrls, erro
 	if err != nil {
 		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
 	}
-	httpPort, err := ct.MappedPort(context.Background(), "8544/tcp")
+	httpPort, err := ct.MappedPort(context.Background(), natPort(TX_GETH_HTTP_PORT))
 	if err != nil {
 		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
 	}
-	wsPort, err := ct.MappedPort(context.Background(), "8545/tcp")
+	wsPort, err := ct.MappedPort(context.Background(), natPort(TX_GETH_WS_PORT))
 	if err != nil {
 		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
 	}
 
 	g.Container = ct
 	g.ExternalHttpUrl = fmt.Sprintf("http://%s:%s", host, httpPort.Port())
-	g.InternalHttpUrl = fmt.Sprintf("http://%s:8544", g.ContainerName)
+	g.InternalHttpUrl = fmt.Sprintf("http://%s:%s", g.ContainerName, TX_GETH_HTTP_PORT)
 	g.ExternalWsUrl = fmt.Sprintf("ws://%s:%s", host, wsPort.Port())
-	g.InternalWsUrl = fmt.Sprintf("ws://%s:8545", g.ContainerName)
+	g.InternalWsUrl = fmt.Sprintf("ws://%s:%s", g.ContainerName, TX_GETH_WS_PORT)
 
 	networkConfig := blockchain.SimulatedEVMNetwork
 	networkConfig.Name = "geth"
@@ -164,15 +168,16 @@ func (g *Geth) getGethContainerRequest(networks []string) (*tc.ContainerRequest,
 		Name:            g.ContainerName,
 		AlwaysPullImage: true,
 		Image:           "ethereum/client-go:stable",
-		ExposedPorts:    []string{"8544/tcp", "8545/tcp"},
+		ExposedPorts:    []string{natPortFormat(TX_GETH_HTTP_PORT), natPortFormat(TX_GETH_WS_PORT)},
 		Networks:        networks,
 		WaitingFor: tcwait.ForAll(
 			tcwait.NewHTTPStrategy("/").
-				WithPort("8544/tcp"),
+				WithPort(natPort(TX_GETH_HTTP_PORT)),
 			tcwait.ForLog("WebSocket enabled"),
 			tcwait.ForLog("Started P2P networking").
 				WithStartupTimeout(120*time.Second).
 				WithPollInterval(1*time.Second),
+			NewWebSocketStrategy(natPort(TX_GETH_WS_PORT)),
 		),
 		Entrypoint: []string{"sh", "./root/init.sh",
 			"--dev",
@@ -190,14 +195,14 @@ func (g *Geth) getGethContainerRequest(networks []string) (*tc.ContainerRequest,
 			"*",
 			"--http.addr",
 			"0.0.0.0",
-			"--http.port=8544",
+			fmt.Sprintf("--http.port=%s", TX_GETH_HTTP_PORT),
 			"--ws",
 			"--ws.origins",
 			"*",
 			"--ws.addr",
 			"0.0.0.0",
 			"--ws.api", "admin,debug,web3,eth,txpool,personal,clique,miner,net",
-			"--ws.port=8545",
+			fmt.Sprintf("--ws.port=%s", TX_GETH_WS_PORT),
 			"--graphql",
 			"-graphql.corsdomain",
 			"*",
@@ -241,4 +246,65 @@ func (g *Geth) getGethContainerRequest(networks []string) (*tc.ContainerRequest,
 			},
 		},
 	}, ks, &account, nil
+}
+
+type WebSocketStrategy struct {
+	Port       nat.Port
+	Retries    int
+	RetryDelay time.Duration
+}
+
+func NewWebSocketStrategy(port nat.Port) *WebSocketStrategy {
+	return &WebSocketStrategy{
+		Port:       port,
+		Retries:    10,
+		RetryDelay: 10 * time.Second,
+	}
+}
+
+func (w *WebSocketStrategy) WaitUntilReady(ctx context.Context, target tcwait.StrategyTarget) (err error) {
+	var client *rpc.Client
+	var host string
+	for i := 1; i <= w.Retries; i++ {
+		host, err = target.Host(ctx)
+		if err != nil {
+			log.Error().Msg("Failed to get the target host")
+			return err
+		}
+		mappedPort, err := target.MappedPort(ctx, w.Port)
+		if err != nil {
+			log.Error().Msg("Failed to get the mapped ws port")
+			return err
+		}
+
+		url := fmt.Sprintf("ws://%s:%s", host, mappedPort.Port())
+		log.Info().Msgf("Attempting to dial %s", url)
+		client, err = rpc.DialContext(ctx, url)
+		if err == nil {
+			client.Close()
+			log.Info().Msg("WebSocket rpc port is ready")
+			return nil
+		}
+		if client != nil {
+			client.Close() // Close client if DialContext failed
+			client = nil
+		}
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(w.RetryDelay):
+			log.Info().Msgf("WebSocket attempt %d failed: %s. Retrying...", i, err)
+		}
+	}
+
+	return err
+}
+
+func natPortFormat(port string) string {
+	return fmt.Sprintf("%s/tcp", port)
+}
+
+func natPort(port string) nat.Port {
+	return nat.Port(natPortFormat(port))
 }

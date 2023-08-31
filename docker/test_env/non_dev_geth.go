@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/go-connections/nat"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -24,11 +23,10 @@ import (
 )
 
 const (
-	GETH_IMAGE          = "ethereum/client-go:stable"
-	GETH_BOOTNODE_IMAGE = "ethereum/client-go:alltools-v1.10.25"
-	TX_HTTP_PORT        = "8544"
-	TX_WS_PORT          = "8546"
-	BOOTNODE_PORT       = "30301"
+	GETH_IMAGE              = "ethereum/client-go:stable"
+	GETH_BOOTNODE_IMAGE     = "ethereum/client-go:alltools-v1.10.25"
+	TX_NON_DEV_GETH_WS_PORT = "8546"
+	BOOTNODE_PORT           = "30301"
 )
 
 var (
@@ -248,20 +246,20 @@ func (g *NonDevGethNode) ConnectToClient() error {
 	if err != nil {
 		return err
 	}
-	port := nat.Port(fmt.Sprintf("%s/tcp", TX_HTTP_PORT))
+	port := natPort(TX_GETH_HTTP_PORT)
 	httpPort, err := ct.MappedPort(context.Background(), port)
 	if err != nil {
 		return err
 	}
-	port = nat.Port(fmt.Sprintf("%s/tcp", TX_WS_PORT))
+	port = natPort(TX_NON_DEV_GETH_WS_PORT)
 	wsPort, err := ct.MappedPort(context.Background(), port)
 	if err != nil {
 		return err
 	}
 	g.ExternalHttpUrl = fmt.Sprintf("http://%s:%s", host, httpPort.Port())
-	g.InternalHttpUrl = fmt.Sprintf("http://%s:%s", g.ContainerName, TX_HTTP_PORT)
+	g.InternalHttpUrl = fmt.Sprintf("http://%s:%s", g.ContainerName, TX_GETH_HTTP_PORT)
 	g.ExternalWsUrl = fmt.Sprintf("ws://%s:%s", host, wsPort.Port())
-	g.InternalWsUrl = fmt.Sprintf("ws://%s:%s", g.ContainerName, TX_WS_PORT)
+	g.InternalWsUrl = fmt.Sprintf("ws://%s:%s", g.ContainerName, TX_NON_DEV_GETH_WS_PORT)
 
 	networkConfig := g.Config.networkCfg
 	networkConfig.URLs = []string{g.ExternalWsUrl}
@@ -330,14 +328,15 @@ func (g *NonDevGethNode) getGethContainerRequest() tc.ContainerRequest {
 		Name:  g.ContainerName,
 		Image: GETH_IMAGE,
 		ExposedPorts: []string{
-			fmt.Sprintf("%s/tcp", TX_HTTP_PORT),
-			fmt.Sprintf("%s/tcp", TX_WS_PORT),
+			natPortFormat(TX_GETH_HTTP_PORT),
+			natPortFormat(TX_NON_DEV_GETH_WS_PORT),
 			"30303/tcp", "30303/udp"},
 		Networks: g.Networks,
 		WaitingFor: tcwait.ForAll(
 			tcwait.NewHTTPStrategy("/").
-				WithPort(nat.Port(fmt.Sprintf("%s/tcp", TX_HTTP_PORT))),
+				WithPort(natPort(TX_GETH_HTTP_PORT)),
 			tcwait.ForLog("WebSocket enabled"),
+			NewWebSocketStrategy(natPort(TX_NON_DEV_GETH_WS_PORT)),
 		),
 		Entrypoint: []string{"/bin/sh", "./root/init.sh",
 			"--http.vhosts=*",
@@ -348,12 +347,12 @@ func (g *NonDevGethNode) getGethContainerRequest() tc.ContainerRequest {
 			"--http.corsdomain", "*",
 			"--http.api", "admin,debug,web3,eth,txpool,personal,clique,miner,net",
 			"--http.addr", "0.0.0.0",
-			fmt.Sprintf("--http.port=%s", TX_HTTP_PORT),
+			fmt.Sprintf("--http.port=%s", TX_GETH_HTTP_PORT),
 			"--ws",
 			"--ws.origins", "*",
 			"--ws.api", "admin,debug,web3,eth,txpool,personal,clique,miner,net",
 			"--ws.addr", "0.0.0.0",
-			fmt.Sprintf("--ws.port=%s", TX_WS_PORT),
+			fmt.Sprintf("--ws.port=%s", TX_NON_DEV_GETH_WS_PORT),
 			"--unlock", g.Config.accountAddr,
 			"--mine",
 			"--miner.etherbase", g.Config.accountAddr,
