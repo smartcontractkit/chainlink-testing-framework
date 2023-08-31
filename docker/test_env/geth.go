@@ -250,22 +250,30 @@ func (g *Geth) getGethContainerRequest(networks []string) (*tc.ContainerRequest,
 
 type WebSocketStrategy struct {
 	Port       nat.Port
-	Retries    int
 	RetryDelay time.Duration
+	timeout    time.Duration
 }
 
 func NewWebSocketStrategy(port nat.Port) *WebSocketStrategy {
 	return &WebSocketStrategy{
 		Port:       port,
-		Retries:    10,
 		RetryDelay: 10 * time.Second,
+		timeout:    120 * time.Second,
 	}
+}
+
+func (w *WebSocketStrategy) WithTimeout(timeout time.Duration) *WebSocketStrategy {
+	w.timeout = timeout
+	return w
 }
 
 func (w *WebSocketStrategy) WaitUntilReady(ctx context.Context, target tcwait.StrategyTarget) (err error) {
 	var client *rpc.Client
 	var host string
-	for i := 1; i <= w.Retries; i++ {
+	ctx, cancel := context.WithTimeout(ctx, w.timeout)
+	defer cancel()
+	i := 0
+	for {
 		host, err = target.Host(ctx)
 		if err != nil {
 			log.Error().Msg("Failed to get the target host")
@@ -294,6 +302,7 @@ func (w *WebSocketStrategy) WaitUntilReady(ctx context.Context, target tcwait.St
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-time.After(w.RetryDelay):
+			i++
 			log.Info().Msgf("WebSocket attempt %d failed: %s. Retrying...", i, err)
 		}
 	}
