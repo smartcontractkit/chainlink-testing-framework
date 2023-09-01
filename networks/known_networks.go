@@ -584,7 +584,7 @@ func setKeys(prefix string, network *blockchain.EVMNetwork) {
 	for _, key := range network.PrivateKeys {
 		publicKey, err := privateKeyToAddress(key)
 		if err != nil {
-			log.Warn().Err(err).Msg("Error getting public key from private key")
+			log.Fatal().Err(err).Msg("Error getting public key from private key")
 		}
 		publicKeys = append(publicKeys, publicKey)
 	}
