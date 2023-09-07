@@ -62,12 +62,20 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, InternalDockerUrls, erro
 	if err != nil {
 		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
 	}
-	ct, err := tc.GenericContainer(context.Background(),
-		tc.GenericContainerRequest{
-			ContainerRequest: *r,
-			Started:          true,
-			Reuse:            true,
-		})
+	retryAttempts := 4
+	var ct tc.Container
+	for i := 0; i < retryAttempts; i++ {
+		ct, err = tc.GenericContainer(context.Background(),
+			tc.GenericContainerRequest{
+				ContainerRequest: *r,
+				Started:          true,
+				Reuse:            true,
+			})
+		if err == nil {
+			break
+		}
+		log.Error().Err(err).Msgf("Cannot start geth container, retrying %d/%d", i+1, retryAttempts)
+	}
 	if err != nil {
 		return blockchain.EVMNetwork{}, InternalDockerUrls{}, errors.Wrapf(err, "cannot start geth container")
 	}
