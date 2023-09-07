@@ -201,7 +201,11 @@ func (g *NonDevGethNode) Start() error {
 	if err != nil {
 		return err
 	}
-	bootNode, err := docker.StartContainerWithRetry(g.getBootNodeContainerRequest())
+	bootNode, err := docker.StartContainerWithRetry(tc.GenericContainerRequest{
+		ContainerRequest: g.getBootNodeContainerRequest(),
+		Reuse:            true,
+		Started:          true,
+	})
 	if err != nil {
 		return err
 	}
@@ -220,7 +224,11 @@ func (g *NonDevGethNode) Start() error {
 	}
 	g.Config.bootNodeURL = fmt.Sprintf("enode://%s@%s:0?discport=%s", strings.TrimSpace(string(b)), host, BOOTNODE_PORT)
 
-	ct, err := docker.StartContainerWithRetry(g.getGethContainerRequest())
+	ct, err := docker.StartContainerWithRetry(tc.GenericContainerRequest{
+		ContainerRequest: g.getGethContainerRequest(),
+		Reuse:            true,
+		Started:          true,
+	})
 	if err != nil {
 		return err
 	}

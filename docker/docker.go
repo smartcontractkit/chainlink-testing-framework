@@ -31,20 +31,15 @@ func CreateNetwork() (*tc.DockerNetwork, error) {
 	return dockerNetwork, nil
 }
 
-func StartContainerWithRetry(req tc.ContainerRequest) (tc.Container, error) {
+func StartContainerWithRetry(req tc.GenericContainerRequest) (tc.Container, error) {
 	var ct tc.Container
 	var err error
 	for i := 0; i < RetryAttempts; i++ {
-		ct, err = tc.GenericContainer(context.Background(),
-			tc.GenericContainerRequest{
-				ContainerRequest: req,
-				Started:          true,
-				Reuse:            true,
-			})
+		ct, err = tc.GenericContainer(context.Background(), req)
 		if err == nil {
 			break
 		}
-		log.Error().Err(err).Msgf("Cannot start %s container, retrying %d/%d", i+1, req.Name, RetryAttempts)
+		log.Error().Err(err).Msgf("Cannot start %s container, retrying %d/%d", req.Name, i+1, RetryAttempts)
 	}
 	return ct, err
 }

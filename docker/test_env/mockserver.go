@@ -61,7 +61,11 @@ func (ms *MockServer) SetExternalAdapterMocks(count int) error {
 }
 
 func (ms *MockServer) StartContainer() error {
-	c, err := docker.StartContainerWithRetry(ms.getContainerRequest())
+	c, err := docker.StartContainerWithRetry(tc.GenericContainerRequest{
+		ContainerRequest: ms.getContainerRequest(),
+		Reuse:            true,
+		Started:          true,
+	})
 	if err != nil {
 		return errors.Wrapf(err, "cannot start MockServer container")
 	}
