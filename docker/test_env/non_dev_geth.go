@@ -15,6 +15,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
@@ -235,6 +236,7 @@ func (g *NonDevGethNode) Start() error {
 		if err == nil {
 			break
 		}
+		log.Error().Err(err).Msgf("Cannot start geth container, retrying %d/%d", i+1, retryAttempts)
 	}
 	if err != nil {
 		return err
