@@ -15,11 +15,11 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/templates"
 )
 
@@ -201,12 +201,7 @@ func (g *NonDevGethNode) Start() error {
 	if err != nil {
 		return err
 	}
-	bootNode, err := tc.GenericContainer(context.Background(),
-		tc.GenericContainerRequest{
-			ContainerRequest: g.getBootNodeContainerRequest(),
-			Started:          true,
-			Reuse:            true,
-		})
+	bootNode, err := docker.StartContainerWithRetry(g.getBootNodeContainerRequest())
 	if err != nil {
 		return err
 	}
@@ -224,20 +219,8 @@ func (g *NonDevGethNode) Start() error {
 		return err
 	}
 	g.Config.bootNodeURL = fmt.Sprintf("enode://%s@%s:0?discport=%s", strings.TrimSpace(string(b)), host, BOOTNODE_PORT)
-	retryAttempts := 3
-	var ct tc.Container
-	for i := 0; i < retryAttempts; i++ {
-		ct, err = tc.GenericContainer(context.Background(),
-			tc.GenericContainerRequest{
-				ContainerRequest: g.getGethContainerRequest(),
-				Started:          true,
-				Reuse:            true,
-			})
-		if err == nil {
-			break
-		}
-		log.Error().Err(err).Msgf("Cannot start geth container, retrying %d/%d", i+1, retryAttempts)
-	}
+
+	ct, err := docker.StartContainerWithRetry(g.getGethContainerRequest())
 	if err != nil {
 		return err
 	}

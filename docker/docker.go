@@ -9,6 +9,8 @@ import (
 	tc "github.com/testcontainers/testcontainers-go"
 )
 
+const RetryAttempts = 3
+
 func CreateNetwork() (*tc.DockerNetwork, error) {
 	uuidObj, _ := uuid.NewRandom()
 	var networkName = fmt.Sprintf("network-%s", uuidObj.String())
@@ -27,4 +29,22 @@ func CreateNetwork() (*tc.DockerNetwork, error) {
 	}
 	log.Trace().Any("network", dockerNetwork).Msgf("created network")
 	return dockerNetwork, nil
+}
+
+func StartContainerWithRetry(req tc.ContainerRequest) (tc.Container, error) {
+	var ct tc.Container
+	var err error
+	for i := 0; i < RetryAttempts; i++ {
+		ct, err = tc.GenericContainer(context.Background(),
+			tc.GenericContainerRequest{
+				ContainerRequest: req,
+				Started:          true,
+				Reuse:            true,
+			})
+		if err == nil {
+			break
+		}
+		log.Error().Err(err).Msgf("Cannot start %s container, retrying %d/%d", i+1, req.Name, RetryAttempts)
+	}
+	return ct, err
 }
