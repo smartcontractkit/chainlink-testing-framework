@@ -62,7 +62,7 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, InternalDockerUrls, erro
 	if err != nil {
 		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
 	}
-	retryAttempts := 4
+	retryAttempts := 3
 	var ct tc.Container
 	for i := 0; i < retryAttempts; i++ {
 		ct, err = tc.GenericContainer(context.Background(),

@@ -223,13 +223,19 @@ func (g *NonDevGethNode) Start() error {
 		return err
 	}
 	g.Config.bootNodeURL = fmt.Sprintf("enode://%s@%s:0?discport=%s", strings.TrimSpace(string(b)), host, BOOTNODE_PORT)
-
-	ct, err := tc.GenericContainer(context.Background(),
-		tc.GenericContainerRequest{
-			ContainerRequest: g.getGethContainerRequest(),
-			Started:          true,
-			Reuse:            true,
-		})
+	retryAttempts := 3
+	var ct tc.Container
+	for i := 0; i < retryAttempts; i++ {
+		ct, err = tc.GenericContainer(context.Background(),
+			tc.GenericContainerRequest{
+				ContainerRequest: g.getGethContainerRequest(),
+				Started:          true,
+				Reuse:            true,
+			})
+		if err == nil {
+			break
+		}
+	}
 	if err != nil {
 		return err
 	}
