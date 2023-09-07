@@ -63,7 +63,7 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, InternalDockerUrls, erro
 	if err != nil {
 		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
 	}
-	
+
 	ct, err := docker.StartContainerWithRetry(*r)
 	if err != nil {
 		return blockchain.EVMNetwork{}, InternalDockerUrls{}, errors.Wrapf(err, "cannot start geth container")
@@ -255,7 +255,7 @@ func NewWebSocketStrategy(port nat.Port) *WebSocketStrategy {
 	return &WebSocketStrategy{
 		Port:       port,
 		RetryDelay: 10 * time.Second,
-		timeout:    5 * time.Minute,
+		timeout:    1 * time.Minute,
 	}
 }
 
