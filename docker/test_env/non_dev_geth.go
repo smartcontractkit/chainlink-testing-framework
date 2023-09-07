@@ -19,6 +19,7 @@ import (
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/templates"
 )
 
@@ -200,12 +201,11 @@ func (g *NonDevGethNode) Start() error {
 	if err != nil {
 		return err
 	}
-	bootNode, err := tc.GenericContainer(context.Background(),
-		tc.GenericContainerRequest{
-			ContainerRequest: g.getBootNodeContainerRequest(),
-			Started:          true,
-			Reuse:            true,
-		})
+	bootNode, err := docker.StartContainerWithRetry(tc.GenericContainerRequest{
+		ContainerRequest: g.getBootNodeContainerRequest(),
+		Reuse:            true,
+		Started:          true,
+	})
 	if err != nil {
 		return err
 	}
@@ -224,12 +224,11 @@ func (g *NonDevGethNode) Start() error {
 	}
 	g.Config.bootNodeURL = fmt.Sprintf("enode://%s@%s:0?discport=%s", strings.TrimSpace(string(b)), host, BOOTNODE_PORT)
 
-	ct, err := tc.GenericContainer(context.Background(),
-		tc.GenericContainerRequest{
-			ContainerRequest: g.getGethContainerRequest(),
-			Started:          true,
-			Reuse:            true,
-		})
+	ct, err := docker.StartContainerWithRetry(tc.GenericContainerRequest{
+		ContainerRequest: g.getGethContainerRequest(),
+		Reuse:            true,
+		Started:          true,
+	})
 	if err != nil {
 		return err
 	}

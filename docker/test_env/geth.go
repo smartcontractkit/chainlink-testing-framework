@@ -17,6 +17,7 @@ import (
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/templates"
 )
 
@@ -62,12 +63,12 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, InternalDockerUrls, erro
 	if err != nil {
 		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
 	}
-	ct, err := tc.GenericContainer(context.Background(),
-		tc.GenericContainerRequest{
-			ContainerRequest: *r,
-			Started:          true,
-			Reuse:            true,
-		})
+
+	ct, err := docker.StartContainerWithRetry(tc.GenericContainerRequest{
+		ContainerRequest: *r,
+		Reuse:            true,
+		Started:          true,
+	})
 	if err != nil {
 		return blockchain.EVMNetwork{}, InternalDockerUrls{}, errors.Wrapf(err, "cannot start geth container")
 	}
@@ -258,7 +259,7 @@ func NewWebSocketStrategy(port nat.Port) *WebSocketStrategy {
 	return &WebSocketStrategy{
 		Port:       port,
 		RetryDelay: 10 * time.Second,
-		timeout:    5 * time.Minute,
+		timeout:    1 * time.Minute,
 	}
 }
 

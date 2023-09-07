@@ -14,6 +14,7 @@ import (
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	ctfClient "github.com/smartcontractkit/chainlink-testing-framework/client"
+	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 )
 
 type MockServer struct {
@@ -60,10 +61,10 @@ func (ms *MockServer) SetExternalAdapterMocks(count int) error {
 }
 
 func (ms *MockServer) StartContainer() error {
-	c, err := tc.GenericContainer(context.Background(), tc.GenericContainerRequest{
+	c, err := docker.StartContainerWithRetry(tc.GenericContainerRequest{
 		ContainerRequest: ms.getContainerRequest(),
-		Started:          true,
 		Reuse:            true,
+		Started:          true,
 	})
 	if err != nil {
 		return errors.Wrapf(err, "cannot start MockServer container")
