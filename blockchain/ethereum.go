@@ -454,6 +454,9 @@ func (e *EthereumClient) TransactionOpts(from *EthereumWallet) (*bind.TransactOp
 	if e.NetworkConfig.DefaultGasLimit > opts.GasLimit {
 		opts.GasLimit = e.NetworkConfig.DefaultGasLimit
 	}
+	if !e.NetworkConfig.SupportsEIP1559 {
+		opts.GasPrice = big.NewInt(5_000)
+	}
 	return opts, nil
 }
 
