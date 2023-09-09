@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Parse tool-versions file
         uses: smartcontractkit/tool-versions-to-env-action@v1.0.8
         id: tool-versions
@@ -23,7 +23,7 @@ jobs:
     needs: [tools]
     steps:
       - name: Check out Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Install Go
         uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/setup-go@00c6214deb10a3f374c6d3430c32c5202015d463 # v2.2.12
         with:
@@ -52,7 +52,7 @@ jobs:
     needs: [tools]
     steps:
       - name: Check out Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Install Go
         uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/setup-go@00c6214deb10a3f374c6d3430c32c5202015d463 # v2.2.12
         with:
@@ -70,7 +70,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Install asdf dependencies
         uses: asdf-vm/actions/install@v2.2.0
       - name: Run actionlint
@@ -82,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the repo
-        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
+        uses: actions/checkout@v4 # v3.5.2
         with:
           fetch-depth: 0 # fetches all history for all tags and branches to provide more metadata for sonar reports
       - name: Download all workflow run artifacts
