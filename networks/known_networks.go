@@ -568,15 +568,22 @@ func setKeys(prefix string, network *blockchain.EVMNetwork) {
 	envVar := fmt.Sprintf("%s_KEYS", prefix)
 	keysEnv, err := utils.GetEnv(envVar)
 	if err != nil {
-		log.Warn().Err(err).Str("env var", envVar).Msg("getting env var")
+		log.Warn().Err(err).Str("env var", envVar).Msg("Error getting env var")
 	}
 	if keysEnv == "" {
-		keys := strings.Split(os.Getenv("EVM_KEYS"), ",")
 		log.Warn().Msg(fmt.Sprintf("No '%s' env var defined, defaulting to 'EVM_KEYS'", envVar))
-		network.PrivateKeys = keys
-		return
+		keysEnv, err = utils.GetEnv("EVM_KEYS")
+		if err != nil {
+			log.Warn().Err(err).Str("env var", envVar).Msg("getting env var")
+		}
 	}
+
 	keys := strings.Split(keysEnv, ",")
+	for keyIndex, key := range keys { // Sanitize keys of possible `0x` prefix
+		if strings.HasPrefix(key, "0x") {
+			keys[keyIndex] = key[2:]
+		}
+	}
 	network.PrivateKeys = keys
 
 	// log public keys for debugging
@@ -588,7 +595,7 @@ func setKeys(prefix string, network *blockchain.EVMNetwork) {
 		}
 		publicKeys = append(publicKeys, publicKey)
 	}
-	log.Info().Interface("Funding Addresses", publicKeys).Msg("Read network Keys")
+	log.Info().Interface("Funding Addresses", publicKeys).Msg("Read Network Keys")
 }
 
 func privateKeyToAddress(privateKeyString string) (string, error) {
