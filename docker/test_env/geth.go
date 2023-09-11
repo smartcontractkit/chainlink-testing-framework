@@ -259,7 +259,7 @@ func NewWebSocketStrategy(port nat.Port) *WebSocketStrategy {
 	return &WebSocketStrategy{
 		Port:       port,
 		RetryDelay: 10 * time.Second,
-		timeout:    1 * time.Minute,
+		timeout:    2 * time.Minute,
 	}
 }
 
