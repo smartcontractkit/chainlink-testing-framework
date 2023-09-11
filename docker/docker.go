@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/docker/docker/api/types/container"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	tc "github.com/testcontainers/testcontainers-go"
@@ -44,6 +45,11 @@ func StartContainerWithRetry(req tc.GenericContainerRequest) (tc.Container, erro
 		if err != nil {
 			log.Error().Err(err).Msgf("Cannot terminate %s container to initiate restart", req.Name)
 			return nil, err
+		}
+		// spike the host config resources
+		req.HostConfigModifier = func(config *container.HostConfig) {
+			config.CPUCount = 6
+			config.Memory = 8 * 1024 * 1024 * 1024
 		}
 	}
 	return ct, err

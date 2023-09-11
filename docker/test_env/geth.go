@@ -6,7 +6,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
@@ -172,10 +171,6 @@ func (g *Geth) getGethContainerRequest(networks []string) (*tc.ContainerRequest,
 		Image:           "ethereum/client-go:stable",
 		ExposedPorts:    []string{natPortFormat(TX_GETH_HTTP_PORT), natPortFormat(TX_GETH_WS_PORT)},
 		Networks:        networks,
-		HostConfigModifier: func(config *container.HostConfig) {
-			config.CPUCount = 8
-			config.Memory = 8 * 1024 * 1024 * 1024
-		},
 		WaitingFor: tcwait.ForAll(
 			tcwait.NewHTTPStrategy("/").
 				WithPort(natPort(TX_GETH_HTTP_PORT)),
