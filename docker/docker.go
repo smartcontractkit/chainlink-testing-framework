@@ -3,6 +3,7 @@ package docker
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
@@ -33,14 +34,22 @@ func CreateNetwork() (*tc.DockerNetwork, error) {
 
 func StartContainerWithRetry(req tc.GenericContainerRequest) (tc.Container, error) {
 	var ct tc.Container
-	var err error
+	ct, err := tc.GenericContainer(context.Background(), req)
+	if err == nil {
+		return ct, nil
+	}
 	for i := 0; i < RetryAttempts; i++ {
-		ct, err = tc.GenericContainer(context.Background(), req)
+		log.Info().Err(err).Msgf("Cannot start %s container, restarting %d/%d", req.Name, i+1, RetryAttempts)
+		timeout := 10 * time.Second
+		err := ct.Stop(context.Background(), &timeout)
+		if err != nil {
+			log.Info().Err(err).Msgf("Cannot stop %s container", req.Name)
+			continue
+		}
+		err = ct.Start(context.Background())
 		if err == nil {
 			break
 		}
-		log.Info().Err(err).Msgf("Cannot start %s container, retrying %d/%d", req.Name, i+1, RetryAttempts)
-		req.Started = false
 	}
 	return ct, err
 }
