@@ -40,7 +40,11 @@ func StartContainerWithRetry(req tc.GenericContainerRequest) (tc.Container, erro
 			break
 		}
 		log.Info().Err(err).Msgf("Cannot start %s container, retrying %d/%d", req.Name, i+1, RetryAttempts)
-		req.Started = false
+		err := ct.Terminate(context.Background())
+		if err != nil {
+			log.Error().Err(err).Msgf("Cannot terminate %s container to initiate restart", req.Name)
+			return nil, err
+		}
 	}
 	return ct, err
 }
