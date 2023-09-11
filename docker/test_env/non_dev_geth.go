@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/docker/docker/api/types/container"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -337,6 +338,10 @@ func (g *NonDevGethNode) getGethContainerRequest() tc.ContainerRequest {
 			tcwait.ForLog("WebSocket enabled"),
 			NewWebSocketStrategy(natPort(TX_NON_DEV_GETH_WS_PORT)),
 		),
+		HostConfigModifier: func(config *container.HostConfig) {
+			config.CPUCount = 8
+			config.Memory = 8 * 1024 * 1024 * 1024
+		},
 		Entrypoint: []string{"/bin/sh", "./root/init.sh",
 			"--http.vhosts=*",
 			"--nousb", "--metrics", "--nocompaction", "--syncmode", "full",
