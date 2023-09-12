@@ -9,10 +9,9 @@ import (
 
 	"github.com/prometheus/common/model"
 	"github.com/rs/zerolog"
+	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/wasp"
 	"github.com/testcontainers/testcontainers-go"
-
-	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 )
 
 // LogNotification notification about log line match for some container
@@ -40,7 +39,7 @@ func NewLogWatch(t *testing.T, patterns map[string][]*regexp.Regexp) (*LogWatch,
 	if err != nil {
 		return nil, err
 	}
-	l := utils.GetLogger(t, "LOGWATCH_LOG_LEVEL").With().Str("Component", "LogWatch").Logger()
+	l := logging.GetLogger(t, "LOGWATCH_LOG_LEVEL").With().Str("Component", "LogWatch").Logger()
 	return &LogWatch{
 		t:          t,
 		log:        l,

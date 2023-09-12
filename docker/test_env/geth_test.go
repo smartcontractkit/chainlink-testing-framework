@@ -7,12 +7,15 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
+	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 )
 
 func TestGeth(t *testing.T) {
-	network, err := docker.CreateNetwork()
+	l := logging.GetTestLogger(t)
+	network, err := docker.CreateNetwork(l)
 	require.NoError(t, err)
-	g := NewGeth([]string{network.Name})
+	g := NewGeth([]string{network.Name}).
+		WithTestLogger(t)
 	_, _, err = g.StartContainer()
 	require.NoError(t, err)
 	ns := blockchain.SimulatedEVMNetwork

@@ -5,16 +5,19 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	ctfClient "github.com/smartcontractkit/chainlink-testing-framework/client"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
+	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 )
 
 type MockServer struct {
@@ -23,6 +26,8 @@ type MockServer struct {
 	Endpoint         string
 	InternalEndpoint string
 	EAMockUrls       []*url.URL
+	t                *testing.T
+	l                zerolog.Logger
 }
 
 func NewMockServer(networks []string, opts ...EnvComponentOption) *MockServer {
@@ -31,10 +36,17 @@ func NewMockServer(networks []string, opts ...EnvComponentOption) *MockServer {
 			ContainerName: fmt.Sprintf("%s-%s", "mockserver", uuid.NewString()[0:8]),
 			Networks:      networks,
 		},
+		l: log.Logger,
 	}
 	for _, opt := range opts {
 		opt(&ms.EnvComponent)
 	}
+	return ms
+}
+
+func (ms *MockServer) WithTestLogger(t *testing.T) *MockServer {
+	ms.l = logging.GetTestLogger(t)
+	ms.t = t
 	return ms
 }
 
@@ -61,10 +73,15 @@ func (ms *MockServer) SetExternalAdapterMocks(count int) error {
 }
 
 func (ms *MockServer) StartContainer() error {
-	c, err := docker.StartContainerWithRetry(tc.GenericContainerRequest{
+	l := tc.Logger
+	if ms.t != nil {
+		l = tc.TestLogger(ms.t)
+	}
+	c, err := docker.StartContainerWithRetry(ms.l, tc.GenericContainerRequest{
 		ContainerRequest: ms.getContainerRequest(),
 		Reuse:            true,
 		Started:          true,
+		Logger:           l,
 	})
 	if err != nil {
 		return errors.Wrapf(err, "cannot start MockServer container")
@@ -74,7 +91,7 @@ func (ms *MockServer) StartContainer() error {
 	if err != nil {
 		return err
 	}
-	log.Info().Any("endpoint", endpoint).Str("containerName", ms.ContainerName).
+	ms.l.Info().Any("endpoint", endpoint).Str("containerName", ms.ContainerName).
 		Msgf("Started MockServer container")
 	ms.Endpoint = endpoint
 	ms.InternalEndpoint = fmt.Sprintf("http://%s:%s", ms.ContainerName, "1080")

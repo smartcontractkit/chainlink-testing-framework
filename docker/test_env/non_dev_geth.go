@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"testing"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/keystore"
@@ -15,11 +16,14 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
+	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/templates"
 )
 
@@ -64,6 +68,11 @@ func NewPrivateGethChain(networkCfg *blockchain.EVMNetwork, dockerNetworks []str
 	return evmChain
 }
 
+func (p PrivateGethChain) WithTestLogger(t *testing.T) PrivateGethChain {
+	p.PrimaryNode.WithTestLogger(t)
+	return p
+}
+
 type gethTxNodeConfig struct {
 	networkCfg       *blockchain.EVMNetwork
 	chainId          string
@@ -85,6 +94,8 @@ type NonDevGethNode struct {
 	InternalWsUrl   string
 	EVMClient       blockchain.EVMClient
 	EthClient       *ethclient.Client
+	t               *testing.T
+	l               zerolog.Logger
 }
 
 func NewNonDevGethNode(networks []string, networkCfg *blockchain.EVMNetwork) *NonDevGethNode {
@@ -98,7 +109,14 @@ func NewNonDevGethNode(networks []string, networkCfg *blockchain.EVMNetwork) *No
 				strings.ReplaceAll(networkCfg.Name, " ", "_"), uuid.NewString()[0:3]),
 			Networks: networks,
 		},
+		l: log.Logger,
 	}
+}
+
+func (g *NonDevGethNode) WithTestLogger(t *testing.T) *NonDevGethNode {
+	g.t = t
+	g.l = logging.GetTestLogger(t)
+	return g
 }
 
 func (g *NonDevGethNode) createMountDirs() error {
@@ -201,10 +219,16 @@ func (g *NonDevGethNode) Start() error {
 	if err != nil {
 		return err
 	}
-	bootNode, err := docker.StartContainerWithRetry(tc.GenericContainerRequest{
+
+	l := tc.Logger
+	if g.t != nil {
+		l = tc.TestLogger(g.t)
+	}
+	bootNode, err := docker.StartContainerWithRetry(g.l, tc.GenericContainerRequest{
 		ContainerRequest: g.getBootNodeContainerRequest(),
 		Reuse:            true,
 		Started:          true,
+		Logger:           l,
 	})
 	if err != nil {
 		return err
@@ -224,7 +248,7 @@ func (g *NonDevGethNode) Start() error {
 	}
 	g.Config.bootNodeURL = fmt.Sprintf("enode://%s@%s:0?discport=%s", strings.TrimSpace(string(b)), host, BOOTNODE_PORT)
 
-	ct, err := docker.StartContainerWithRetry(tc.GenericContainerRequest{
+	ct, err := docker.StartContainerWithRetry(g.l, tc.GenericContainerRequest{
 		ContainerRequest: g.getGethContainerRequest(),
 		Reuse:            true,
 		Started:          true,
@@ -335,7 +359,7 @@ func (g *NonDevGethNode) getGethContainerRequest() tc.ContainerRequest {
 			tcwait.NewHTTPStrategy("/").
 				WithPort(natPort(TX_GETH_HTTP_PORT)),
 			tcwait.ForLog("WebSocket enabled"),
-			NewWebSocketStrategy(natPort(TX_NON_DEV_GETH_WS_PORT)),
+			NewWebSocketStrategy(natPort(TX_NON_DEV_GETH_WS_PORT), g.l),
 		),
 		Entrypoint: []string{"/bin/sh", "./root/init.sh",
 			"--http.vhosts=*",
