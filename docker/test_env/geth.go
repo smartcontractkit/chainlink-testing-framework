@@ -286,7 +286,7 @@ func (w *WebSocketStrategy) WaitUntilReady(ctx context.Context, target tcwait.St
 			return err
 		}
 
-		url := fmt.Sprintf("wss://%s:%s", host, mappedPort.Port())
+		url := fmt.Sprintf("ws://%s:%s", host, mappedPort.Port())
 		log.Info().Msgf("Attempting to dial %s", url)
 		client, err = rpc.DialContext(ctx, url)
 		if err == nil {
