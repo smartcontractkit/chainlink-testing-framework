@@ -11,8 +11,10 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/templates"
 	tc "github.com/testcontainers/testcontainers-go"
@@ -30,14 +32,34 @@ type PrivateBesuChain struct {
 	DockerNetworks []string
 }
 
-func NewPrivateBesuChain(networkCfg *blockchain.EVMNetwork, dockerNetworks []string) PrivateBesuChain {
-	evmChain := PrivateBesuChain{
+func NewPrivateBesuChain(networkCfg *blockchain.EVMNetwork, dockerNetworks []string) PrivateChain {
+	evmChain := &PrivateBesuChain{
 		NetworkConfig:  networkCfg,
 		DockerNetworks: dockerNetworks,
 	}
 	evmChain.PrimaryNode = NewNonDevBesuNode(dockerNetworks, networkCfg)
 	evmChain.Nodes = []*NonDevBesuNode{evmChain.PrimaryNode}
 	return evmChain
+}
+
+func (p *PrivateBesuChain) GetPrimaryNode() NonDevNode {
+	return p.PrimaryNode
+}
+
+func (p *PrivateBesuChain) GetNodes() []NonDevNode {
+	nodes := make([]NonDevNode, 0)
+	for _, node := range p.Nodes {
+		nodes = append(nodes, node)
+	}
+	return nodes
+}
+
+func (p *PrivateBesuChain) GetNetworkConfig() *blockchain.EVMNetwork {
+	return p.NetworkConfig
+}
+
+func (p *PrivateBesuChain) GetDockerNetworks() []string {
+	return p.DockerNetworks
 }
 
 type NonDevBesuNode struct {
@@ -63,6 +85,18 @@ func NewNonDevBesuNode(networks []string, networkCfg *blockchain.EVMNetwork) *No
 			Networks: networks,
 		},
 	}
+}
+
+func (g *NonDevBesuNode) GetInternalHttpUrl() string {
+	return g.InternalHttpUrl
+}
+
+func (g *NonDevBesuNode) GetInternalWsUrl() string {
+	return g.InternalWsUrl
+}
+
+func (g *NonDevBesuNode) GetEVMClient() blockchain.EVMClient {
+	return g.EVMClient
 }
 
 func (g *NonDevBesuNode) createMountDirs() error {
@@ -140,6 +174,65 @@ func (g *NonDevBesuNode) createMountDirs() error {
 	}
 	g.Config.rootPath = configDir
 
+	return nil
+}
+
+func (g *NonDevBesuNode) ConnectToClient() error {
+	ct := g.Container
+	if ct == nil {
+		return fmt.Errorf("container not started")
+	}
+	host, err := ct.Host(context.Background())
+	if err != nil {
+		return err
+	}
+	port := natPort(TX_GETH_HTTP_PORT)
+	httpPort, err := ct.MappedPort(context.Background(), port)
+	if err != nil {
+		return err
+	}
+	port = natPort(TX_NON_DEV_GETH_WS_PORT)
+	wsPort, err := ct.MappedPort(context.Background(), port)
+	if err != nil {
+		return err
+	}
+	g.ExternalHttpUrl = fmt.Sprintf("http://%s:%s", host, httpPort.Port())
+	g.InternalHttpUrl = fmt.Sprintf("http://%s:%s", g.ContainerName, TX_GETH_HTTP_PORT)
+	g.ExternalWsUrl = fmt.Sprintf("ws://%s:%s", host, wsPort.Port())
+	g.InternalWsUrl = fmt.Sprintf("ws://%s:%s", g.ContainerName, TX_NON_DEV_GETH_WS_PORT)
+
+	networkConfig := g.Config.networkCfg
+	networkConfig.URLs = []string{g.ExternalWsUrl}
+	networkConfig.HTTPURLs = []string{g.ExternalHttpUrl}
+
+	ec, err := blockchain.NewEVMClientFromNetwork(*networkConfig)
+	if err != nil {
+		return err
+	}
+	at, err := ec.BalanceAt(context.Background(), common.HexToAddress("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"))
+	if err != nil {
+		return err
+	}
+	fmt.Printf("balance: %s\n", at.String())
+	g.EVMClient = ec
+	// to make sure all the pending txs are done
+	err = ec.WaitForEvents()
+	if err != nil {
+		return err
+	}
+	switch val := ec.(type) {
+	case *blockchain.EthereumMultinodeClient:
+		ethClient, ok := val.Clients[0].(*blockchain.EthereumClient)
+		if !ok {
+			return errors.Errorf("could not get blockchain.EthereumClient from %+v", val)
+		}
+		g.EthClient = ethClient.Client
+	default:
+		return errors.Errorf("%+v not supported for geth", val)
+	}
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

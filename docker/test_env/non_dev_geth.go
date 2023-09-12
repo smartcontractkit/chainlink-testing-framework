@@ -54,14 +54,34 @@ type PrivateGethChain struct {
 	DockerNetworks []string
 }
 
-func NewPrivateGethChain(networkCfg *blockchain.EVMNetwork, dockerNetworks []string) PrivateGethChain {
-	evmChain := PrivateGethChain{
+func NewPrivateGethChain(networkCfg *blockchain.EVMNetwork, dockerNetworks []string) PrivateChain {
+	evmChain := &PrivateGethChain{
 		NetworkConfig:  networkCfg,
 		DockerNetworks: dockerNetworks,
 	}
 	evmChain.PrimaryNode = NewNonDevGethNode(dockerNetworks, networkCfg)
 	evmChain.Nodes = []*NonDevGethNode{evmChain.PrimaryNode}
 	return evmChain
+}
+
+func (p *PrivateGethChain) GetPrimaryNode() NonDevNode {
+	return p.PrimaryNode
+}
+
+func (p *PrivateGethChain) GetNodes() []NonDevNode {
+	nodes := make([]NonDevNode, 0)
+	for _, node := range p.Nodes {
+		nodes = append(nodes, node)
+	}
+	return nodes
+}
+
+func (p *PrivateGethChain) GetNetworkConfig() *blockchain.EVMNetwork {
+	return p.NetworkConfig
+}
+
+func (p *PrivateGethChain) GetDockerNetworks() []string {
+	return p.DockerNetworks
 }
 
 type gethTxNodeConfig struct {
@@ -99,6 +119,18 @@ func NewNonDevGethNode(networks []string, networkCfg *blockchain.EVMNetwork) *No
 			Networks: networks,
 		},
 	}
+}
+
+func (g *NonDevGethNode) GetInternalHttpUrl() string {
+	return g.InternalHttpUrl
+}
+
+func (g *NonDevGethNode) GetInternalWsUrl() string {
+	return g.InternalWsUrl
+}
+
+func (g *NonDevGethNode) GetEVMClient() blockchain.EVMClient {
+	return g.EVMClient
 }
 
 func (g *NonDevGethNode) createMountDirs() error {
