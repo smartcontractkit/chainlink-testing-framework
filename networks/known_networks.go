@@ -84,6 +84,46 @@ var (
 		DefaultGasLimit:           6000000,
 	}
 
+	// SimulatedBesuNonDev1 represents a simulated network which can be used to deploy a non-dev besu node
+	// in a CCIP source-chain -> dest-chain communication
+	SimulatedBesuNonDev1 = blockchain.EVMNetwork{
+		Name:                 "source-chain",
+		Simulated:            true,
+		ClientImplementation: blockchain.EthereumClientImplementation,
+		SupportsEIP1559:      false,
+		ChainID:              1337,
+		PrivateKeys: []string{
+			"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+		},
+		URLs:                      []string{"ws://source-chain-ethereum-besu:8546"},
+		HTTPURLs:                  []string{"http://source-chain-ethereum-besu:8544"},
+		ChainlinkTransactionLimit: 500000,
+		Timeout:                   blockchain.JSONStrDuration{Duration: 2 * time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       10000,
+		DefaultGasLimit:           6000000,
+	}
+
+	// SimulatedBesuNonDev2 represents a simulated network which can be used to deploy a non-dev besu node
+	// in a CCIP source-chain -> dest-chain communication
+	SimulatedBesuNonDev2 = blockchain.EVMNetwork{
+		Name:                 "dest-chain",
+		Simulated:            true,
+		ClientImplementation: blockchain.EthereumClientImplementation,
+		SupportsEIP1559:      false,
+		ChainID:              2337,
+		PrivateKeys: []string{
+			"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+		},
+		URLs:                      []string{"ws://dest-chain-ethereum-besu:8546"},
+		HTTPURLs:                  []string{"http://dest-chain-ethereum-besu:8544"},
+		ChainlinkTransactionLimit: 500000,
+		Timeout:                   blockchain.JSONStrDuration{Duration: 2 * time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       10000,
+		DefaultGasLimit:           6000000,
+	}
+
 	SimulatedEVMNonDev = blockchain.EVMNetwork{
 		Name:                 "geth",
 		Simulated:            true,
@@ -445,10 +485,12 @@ var (
 	}
 
 	MappedNetworks = map[string]blockchain.EVMNetwork{
-		"SIMULATED":        SimulatedEVM,
-		"SIMULATED_1":      SimulatedEVMNonDev1,
-		"SIMULATED_2":      SimulatedEVMNonDev2,
-		"SIMULATED_NONDEV": SimulatedEVMNonDev,
+		"SIMULATED":               SimulatedEVM,
+		"SIMULATED_1":             SimulatedEVMNonDev1,
+		"SIMULATED_2":             SimulatedEVMNonDev2,
+		"SIMULATED_BESU_NONDEV_1": SimulatedBesuNonDev1,
+		"SIMULATED_BESU_NONDEV_2": SimulatedBesuNonDev2,
+		"SIMULATED_NONDEV":        SimulatedEVMNonDev,
 		// "GENERAL":         generalEVM, // See above
 		"ETHEREUM_MAINNET":  EthereumMainnet,
 		"GOERLI":            GoerliTestnet,
