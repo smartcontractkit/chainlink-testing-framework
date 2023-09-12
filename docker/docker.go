@@ -51,6 +51,7 @@ func StartContainerWithRetry(req tc.GenericContainerRequest) (tc.Container, erro
 			config.CPUCount = 6
 			config.Memory = 8 * 1024 * 1024 * 1024
 		}
+		req.Reuse = false
 	}
 	return ct, err
 }
