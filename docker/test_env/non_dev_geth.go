@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	GETH_IMAGE              = "ethereum/client-go:stable"
+	GETH_IMAGE              = "ethereum/client-go:v1.12.0"
 	GETH_BOOTNODE_IMAGE     = "ethereum/client-go:alltools-v1.10.25"
 	TX_NON_DEV_GETH_WS_PORT = "8546"
 	BOOTNODE_PORT           = "30301"

@@ -168,7 +168,7 @@ func (g *Geth) getGethContainerRequest(networks []string) (*tc.ContainerRequest,
 	return &tc.ContainerRequest{
 		Name:            g.ContainerName,
 		AlwaysPullImage: true,
-		Image:           "ethereum/client-go:stable",
+		Image:           "ethereum/client-go:v1.12.0",
 		ExposedPorts:    []string{natPortFormat(TX_GETH_HTTP_PORT), natPortFormat(TX_GETH_WS_PORT)},
 		Networks:        networks,
 		WaitingFor: tcwait.ForAll(
