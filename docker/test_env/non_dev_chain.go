@@ -1,11 +1,16 @@
 package test_env
 
-import "github.com/smartcontractkit/chainlink-testing-framework/blockchain"
+import (
+	"testing"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
+)
 
 type NonDevNode interface {
 	GetInternalHttpUrl() string
 	GetInternalWsUrl() string
 	GetEVMClient() blockchain.EVMClient
+	WithTestLogger(t *testing.T) NonDevNode
 	Start() error
 	ConnectToClient() error
 }

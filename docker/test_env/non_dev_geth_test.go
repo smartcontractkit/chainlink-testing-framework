@@ -14,9 +14,10 @@ func TestNonDevGeth(t *testing.T) {
 	l := logging.GetTestLogger(t)
 	network, err := docker.CreateNetwork(l)
 	require.NoError(t, err)
-	g := NewPrivateGethChain(&blockchain.SimulatedEVMNetwork, []string{network.Name}).
-		WithTestLogger(t)
-	err = g.GetPrimaryNode().Start()
+	g := NewPrivateGethChain(&blockchain.SimulatedEVMNetwork, []string{network.Name})
+	err = g.GetPrimaryNode().
+		WithTestLogger(t).
+		Start()
 	require.NoError(t, err)
 	err = g.GetPrimaryNode().ConnectToClient()
 	require.NoError(t, err)

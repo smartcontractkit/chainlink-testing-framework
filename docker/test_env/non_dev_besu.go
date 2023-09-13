@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"testing"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/keystore"
@@ -15,10 +16,12 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/templates"
 )
 
@@ -72,6 +75,8 @@ type NonDevBesuNode struct {
 	InternalWsUrl   string
 	EVMClient       blockchain.EVMClient
 	EthClient       *ethclient.Client
+	t               *testing.T
+	l               zerolog.Logger
 }
 
 func NewNonDevBesuNode(networks []string, networkCfg *blockchain.EVMNetwork) *NonDevBesuNode {
@@ -86,6 +91,12 @@ func NewNonDevBesuNode(networks []string, networkCfg *blockchain.EVMNetwork) *No
 			Networks: networks,
 		},
 	}
+}
+
+func (g *NonDevBesuNode) WithTestLogger(t *testing.T) NonDevNode {
+	g.t = t
+	g.l = logging.GetTestLogger(t)
+	return g
 }
 
 func (g *NonDevBesuNode) GetInternalHttpUrl() string {
@@ -206,7 +217,7 @@ func (g *NonDevBesuNode) ConnectToClient() error {
 	networkConfig.URLs = []string{g.ExternalWsUrl}
 	networkConfig.HTTPURLs = []string{g.ExternalHttpUrl}
 
-	ec, err := blockchain.NewEVMClientFromNetwork(*networkConfig)
+	ec, err := blockchain.NewEVMClientFromNetwork(*networkConfig, g.l)
 	if err != nil {
 		return err
 	}
@@ -242,6 +253,13 @@ func (g *NonDevBesuNode) Start() error {
 	if err != nil {
 		return err
 	}
+	l := tc.Logger
+	if g.t != nil {
+		l = logging.CustomT{
+			T: g.t,
+			L: g.l,
+		}
+	}
 
 	// Besu Bootnode setup: BEGIN
 	// Generate public key for besu bootnode
@@ -250,6 +268,7 @@ func (g *NonDevBesuNode) Start() error {
 			ContainerRequest: g.getBesuBootNodeContainerRequest(),
 			Started:          true,
 			Reuse:            true,
+			Logger:           l,
 		})
 	if err != nil {
 		return err
@@ -358,7 +377,7 @@ func (g *NonDevBesuNode) getBesuContainerRequest() tc.ContainerRequest {
 		Networks: g.Networks,
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForLog("WebSocketService | Websocket service started"),
-			NewWebSocketStrategy(natPort(TX_NON_DEV_GETH_WS_PORT)),
+			NewWebSocketStrategy(natPort(TX_NON_DEV_GETH_WS_PORT), g.l),
 			tcwait.NewHTTPStrategy("/").
 				WithPort(natPort(TX_GETH_HTTP_PORT)).
 				WithStatusCodeMatcher(func(status int) bool {
