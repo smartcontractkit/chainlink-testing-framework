@@ -389,6 +389,13 @@ func (e *EthereumClient) DeployContract(
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	if !e.NetworkConfig.SupportsEIP1559 {
+		gasEstimations, err := e.EstimateGas(ethereum.CallMsg{})
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		opts.GasPrice = gasEstimations.GasPrice
+	}
 
 	contractAddress, transaction, contractInstance, err := deployer(opts, e.Client)
 	if err != nil {
@@ -453,6 +460,13 @@ func (e *EthereumClient) TransactionOpts(from *EthereumWallet) (*bind.TransactOp
 	// if the gas limit is less than the default gas limit, use the default
 	if e.NetworkConfig.DefaultGasLimit > opts.GasLimit {
 		opts.GasLimit = e.NetworkConfig.DefaultGasLimit
+	}
+	if !e.NetworkConfig.SupportsEIP1559 {
+		gasEstimations, err := e.EstimateGas(ethereum.CallMsg{})
+		if err != nil {
+			return nil, err
+		}
+		opts.GasPrice = gasEstimations.GasPrice
 	}
 	return opts, nil
 }
