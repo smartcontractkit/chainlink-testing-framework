@@ -13,7 +13,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// CustomT wraps testing.T and provides a bytes.Buffer to capture logs.
+// CustomT wraps testing.T for two puposes:
+// 1. it implements Write to override the default logger
+// 2. it implements Printf to implement the testcontainers-go/Logging interface
 type CustomT struct {
 	*testing.T
 	L zerolog.Logger
@@ -29,8 +31,8 @@ func (ct *CustomT) Write(p []byte) (n int, err error) {
 }
 
 // Printf implements the testcontainers-go/Logging interface.
-func (t CustomT) Printf(format string, v ...interface{}) {
-	t.L.Info().Msgf(format, v...)
+func (ct CustomT) Printf(format string, v ...interface{}) {
+	ct.L.Info().Msgf(format, v...)
 }
 
 func Init() {

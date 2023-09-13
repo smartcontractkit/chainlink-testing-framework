@@ -9,9 +9,10 @@ import (
 
 	"github.com/prometheus/common/model"
 	"github.com/rs/zerolog"
-	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/wasp"
 	"github.com/testcontainers/testcontainers-go"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 )
 
 // LogNotification notification about log line match for some container

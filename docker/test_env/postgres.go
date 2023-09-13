@@ -9,9 +9,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 )
 
 type PostgresDb struct {
