@@ -22,7 +22,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 	"go.uber.org/atomic"
 	"golang.org/x/sync/errgroup"
 
@@ -50,11 +50,12 @@ type EthereumClient struct {
 	connectionIssueCh    chan time.Time
 	connectionRestoredCh chan time.Time
 	doneChan             chan struct{}
+	l                    zerolog.Logger
 }
 
 // newEVMClient creates an EVM client for a single node/URL
-func newEVMClient(networkSettings EVMNetwork) (EVMClient, error) {
-	log.Info().
+func newEVMClient(networkSettings EVMNetwork, logger zerolog.Logger) (EVMClient, error) {
+	logger.Info().
 		Str("Name", networkSettings.Name).
 		Str("URL", networkSettings.URL).
 		Int64("Chain ID", networkSettings.ChainID).
@@ -83,6 +84,7 @@ func newEVMClient(networkSettings EVMNetwork) (EVMClient, error) {
 		connectionIssueCh:    make(chan time.Time, 100), // buffered to prevent blocking, size is probably overkill, but some tests might not care
 		connectionRestoredCh: make(chan time.Time, 100),
 		doneChan:             make(chan struct{}),
+		l:                    logger,
 	}
 
 	if ec.NetworkConfig.Simulated {
@@ -103,9 +105,9 @@ func newEVMClient(networkSettings EVMNetwork) (EVMClient, error) {
 	// Check if the chain supports EIP-1559
 	// https://eips.ethereum.org/EIPS/eip-1559
 	if networkSettings.SupportsEIP1559 {
-		log.Debug().Msg("Network supports EIP-1559, using Dynamic transactions")
+		ec.l.Debug().Msg("Network supports EIP-1559, using Dynamic transactions")
 	} else {
-		log.Debug().Msg("Network does NOT support EIP-1559, using Legacy transactions")
+		ec.l.Debug().Msg("Network does NOT support EIP-1559, using Legacy transactions")
 	}
 
 	return wrapSingleClient(networkSettings, ec), nil
@@ -278,7 +280,7 @@ func (e *EthereumClient) Fund(
 		return err
 	}
 
-	log.Info().
+	e.l.Info().
 		Str("Token", "ETH").
 		Str("From", e.DefaultWallet.Address()).
 		Str("To", toAddress).
@@ -306,7 +308,7 @@ func (e *EthereumClient) ReturnFunds(fromKey *ecdsa.PrivateKey) error {
 		if err == nil {
 			return e.ProcessTransaction(tx)
 		}
-		log.Debug().Err(err).Int("Attempt", attempt+1).Msg("Error returning funds from Chainlink node, trying again")
+		e.l.Debug().Err(err).Int("Attempt", attempt+1).Msg("Error returning funds from Chainlink node, trying again")
 	}
 	return err
 }
@@ -341,7 +343,7 @@ func attemptReturn(e *EthereumClient, fromKey *ecdsa.PrivateKey, attemptCount in
 	if err != nil {
 		return nil, err
 	}
-	log.Info().
+	e.l.Info().
 		Str("Amount", balance.String()).
 		Str("From", fromAddress.Hex()).
 		Int("Added Buffer", addedBuffer).
@@ -370,7 +372,7 @@ func (e *EthereumClient) EstimateCostForChainlinkOperations(amountOfOperations i
 	totalWeiForAllOperations := big.NewInt(1).Mul(gasCostPerOperationWei, bigAmountOfOperations)
 	totalEthForAllOperations := utils.WeiToEther(totalWeiForAllOperations)
 
-	log.Debug().
+	e.l.Debug().
 		Int("Number of Operations", amountOfOperations).
 		Uint64("Gas Limit per Operation", gasLimit).
 		Str("Value per Operation (ETH)", gasCostPerOperationETH.String()).
@@ -398,12 +400,12 @@ func (e *EthereumClient) DeployContract(
 		return nil, nil, nil, err
 	}
 
-	log.Debug().Msg("Processing Tx")
+	e.l.Debug().Msg("Processing Tx")
 	if err = e.ProcessTransaction(transaction); err != nil {
 		return nil, nil, nil, err
 	}
 
-	log.Info().
+	e.l.Info().
 		Str("Contract Address", contractAddress.Hex()).
 		Str("Contract Name", contractName).
 		Str("From", e.DefaultWallet.Address()).
@@ -419,7 +421,7 @@ func (e *EthereumClient) LoadContract(contractName string, contractAddress commo
 	if err != nil {
 		return nil, err
 	}
-	log.Info().
+	e.l.Info().
 		Str("Contract Address", contractAddress.Hex()).
 		Str("Contract Name", contractName).
 		Str("Network Name", e.NetworkConfig.Name).
@@ -505,15 +507,15 @@ func (e *EthereumClient) ProcessTransaction(tx *types.Transaction) error {
 			return err
 		}
 		e.NonceSettings.sentInstantTransaction(fromAddr.Hex()) // On an L2 chain, indicate the tx has been sent
-		txConfirmer = NewInstantConfirmer(e, tx.Hash(), nil, nil)
+		txConfirmer = NewInstantConfirmer(e, tx.Hash(), nil, nil, e.l)
 	} else {
-		txConfirmer = NewTransactionConfirmer(e, tx, e.GetNetworkConfig().MinimumConfirmations)
+		txConfirmer = NewTransactionConfirmer(e, tx, e.GetNetworkConfig().MinimumConfirmations, e.l)
 	}
 
 	e.AddHeaderEventSubscription(tx.Hash().String(), txConfirmer)
 
 	if !e.queueTransactions { // For sequential transactions
-		log.Debug().Str("Hash", tx.Hash().String()).Msg("Waiting for TX to confirm before moving on")
+		e.l.Debug().Str("Hash", tx.Hash().String()).Msg("Waiting for TX to confirm before moving on")
 		defer e.DeleteHeaderEventSubscription(tx.Hash().String())
 		return txConfirmer.Wait()
 	}
@@ -524,7 +526,7 @@ func (e *EthereumClient) ProcessTransaction(tx *types.Transaction) error {
 func (e *EthereumClient) ProcessEvent(name string, event *types.Log, confirmedChan chan bool, errorChan chan error) error {
 	var eventConfirmer HeaderEventSubscription
 	if e.GetNetworkConfig().MinimumConfirmations <= 0 {
-		eventConfirmer = NewInstantConfirmer(e, event.TxHash, confirmedChan, errorChan)
+		eventConfirmer = NewInstantConfirmer(e, event.TxHash, confirmedChan, errorChan, e.l)
 	} else {
 		eventConfirmer = NewEventConfirmer(name, e, event, e.GetNetworkConfig().MinimumConfirmations, confirmedChan, errorChan)
 	}
@@ -533,7 +535,7 @@ func (e *EthereumClient) ProcessEvent(name string, event *types.Log, confirmedCh
 	e.AddHeaderEventSubscription(subscriptionHash, eventConfirmer)
 
 	if !e.queueTransactions { // For sequential transactions
-		log.Debug().Str("Hash", event.Address.Hex()).Msg("Waiting for Event to confirm before moving on")
+		e.l.Debug().Str("Hash", event.Address.Hex()).Msg("Waiting for Event to confirm before moving on")
 		defer e.DeleteHeaderEventSubscription(subscriptionHash)
 		return eventConfirmer.Wait()
 	}
@@ -638,13 +640,13 @@ func (e *EthereumClient) IsTxConfirmed(txHash common.Hash) (bool, error) {
 		if receipt.Status == 0 { // 0 indicates failure, 1 indicates success
 			reason, err := e.errorReason(e.Client, tx, receipt)
 			if err != nil {
-				log.Warn().Str("TX Hash", txHash.Hex()).
+				e.l.Warn().Str("TX Hash", txHash.Hex()).
 					Str("To", tx.To().Hex()).
 					Uint64("Nonce", tx.Nonce()).
 					Str("Error extracting reason", err.Error()).
 					Msg("Transaction failed and was reverted! Unable to retrieve reason!")
 			} else {
-				log.Warn().Str("TX Hash", txHash.Hex()).
+				e.l.Warn().Str("TX Hash", txHash.Hex()).
 					Str("To", tx.To().Hex()).
 					Str("Revert reason", reason).
 					Msg("Transaction failed and was reverted!")
@@ -674,11 +676,11 @@ func (e *EthereumClient) IsEventConfirmed(event *types.Log) (confirmed, removed 
 	if eventReceipt.Status == 0 { // Failed event tx
 		reason, err := e.errorReason(e.Client, eventTx, eventReceipt)
 		if err != nil {
-			log.Warn().Str("TX Hash", eventTx.Hash().Hex()).
+			e.l.Warn().Str("TX Hash", eventTx.Hash().Hex()).
 				Str("Error extracting reason", err.Error()).
 				Msg("Transaction failed and was reverted! Unable to retrieve reason!")
 		} else {
-			log.Warn().Str("TX Hash", eventTx.Hash().Hex()).
+			e.l.Warn().Str("TX Hash", eventTx.Hash().Hex()).
 				Str("Revert reason", reason).
 				Msg("Transaction failed and was reverted!")
 		}
@@ -908,7 +910,7 @@ func (e *EthereumClient) DeleteHeaderEventSubscription(key string) {
 
 // WaitForEvents is a blocking function that waits for all event subscriptions that have been queued within the client.
 func (e *EthereumClient) WaitForEvents() error {
-	log.Debug().Msg("Waiting for blockchain events to finish before continuing")
+	e.l.Debug().Msg("Waiting for blockchain events to finish before continuing")
 	queuedEvents := e.GetHeaderSubscriptions()
 
 	g := errgroup.Group{}
@@ -966,7 +968,7 @@ func (e *EthereumClient) EstimatedFinalizationTime(ctx context.Context) (time.Du
 	if e.NetworkConfig.TimeToReachFinality.Duration != 0 {
 		return e.NetworkConfig.TimeToReachFinality.Duration, nil
 	}
-	log.Info().Msg("TimeToReachFinality is not provided. Calculating estimated finalization time")
+	e.l.Info().Msg("TimeToReachFinality is not provided. Calculating estimated finalization time")
 	if e.NetworkConfig.FinalityTag {
 		return e.TimeBetweenFinalizedBlocks(ctx, MaxTimeoutForFinality)
 	}
@@ -978,7 +980,7 @@ func (e *EthereumClient) EstimatedFinalizationTime(ctx context.Context) (time.Du
 		return 0, errors.New("finality depth is 0 and finality tag is not enabled")
 	}
 	timeBetween := time.Duration(e.NetworkConfig.FinalityDepth) * blckTime
-	log.Info().
+	e.l.Info().
 		Str("Time", timeBetween.String()).
 		Str("Network", e.GetNetworkName()).
 		Msg("Estimated finalization time")
@@ -1016,7 +1018,7 @@ func (e *EthereumClient) TimeBetweenFinalizedBlocks(ctx context.Context, maxTime
 			}
 			if nextFinalizedHeader.Number.Cmp(currentFinalizedHeader.Number) > 0 {
 				timeBetween := time.Unix(int64(nextFinalizedHeader.Time), 0).Sub(time.Unix(int64(currentFinalizedHeader.Time), 0))
-				log.Info().
+				e.l.Info().
 					Str("Time", timeBetween.String()).
 					Str("Network", e.GetNetworkName()).
 					Msg("Time between finalized blocks")
@@ -1112,11 +1114,11 @@ func (e *EthereumMultinodeClient) EstimateCostForChainlinkOperations(amountOfOpe
 }
 
 // NewEVMClientFromNetwork returns a multi-node EVM client connected to the specified network
-func NewEVMClientFromNetwork(networkSettings EVMNetwork) (EVMClient, error) {
+func NewEVMClientFromNetwork(networkSettings EVMNetwork, logger zerolog.Logger) (EVMClient, error) {
 	ecl := &EthereumMultinodeClient{}
 	for idx, networkURL := range networkSettings.URLs {
 		networkSettings.URL = networkURL
-		ec, err := newEVMClient(networkSettings)
+		ec, err := newEVMClient(networkSettings, logger)
 
 		if err != nil {
 			return nil, err
@@ -1142,7 +1144,7 @@ func NewEVMClientFromNetwork(networkSettings EVMNetwork) (EVMClient, error) {
 // NewEVMClient returns a multi-node EVM client connected to the specified network
 // Note: This should mostly be deprecated in favor of ConnectEVMClient. This is really only used when needing to connect
 // to simulated networks
-func NewEVMClient(networkSettings EVMNetwork, env *environment.Environment) (EVMClient, error) {
+func NewEVMClient(networkSettings EVMNetwork, env *environment.Environment, logger zerolog.Logger) (EVMClient, error) {
 	if env == nil {
 		return nil, fmt.Errorf("environment nil, use ConnectEVMClient or provide a non-nil environment")
 	}
@@ -1154,12 +1156,12 @@ func NewEVMClient(networkSettings EVMNetwork, env *environment.Environment) (EVM
 		networkSettings.URLs = env.URLs[networkSettings.Name]
 	}
 
-	return ConnectEVMClient(networkSettings)
+	return ConnectEVMClient(networkSettings, logger)
 }
 
 // ConnectEVMClient returns a multi-node EVM client connected to a specified network, using only URLs.
 // Should mostly be used for inside K8s, non-simulated tests.
-func ConnectEVMClient(networkSettings EVMNetwork) (EVMClient, error) {
+func ConnectEVMClient(networkSettings EVMNetwork, logger zerolog.Logger) (EVMClient, error) {
 	if len(networkSettings.URLs) == 0 {
 		return nil, errors.New("no URLs provided to connect to network")
 	}
@@ -1168,7 +1170,7 @@ func ConnectEVMClient(networkSettings EVMNetwork) (EVMClient, error) {
 
 	for idx, networkURL := range networkSettings.URLs {
 		networkSettings.URL = networkURL
-		ec, err := newEVMClient(networkSettings)
+		ec, err := newEVMClient(networkSettings, logger)
 
 		if err != nil {
 			return nil, err
@@ -1196,10 +1198,10 @@ func ConnectEVMClient(networkSettings EVMNetwork) (EVMClient, error) {
 // It is used for concurrent interactions from different threads with the same network and from same owner
 // account. This ensures that correct nonce value is fetched when an instance of EVMClient is initiated using this method.
 // This is mainly useful for simulated networks as we don't use global nonce manager for them.
-func ConcurrentEVMClient(networkSettings EVMNetwork, env *environment.Environment, existing EVMClient) (EVMClient, error) {
+func ConcurrentEVMClient(networkSettings EVMNetwork, env *environment.Environment, existing EVMClient, logger zerolog.Logger) (EVMClient, error) {
 	// if not simulated use the NewEVMClient
 	if !networkSettings.Simulated {
-		return NewEVMClient(networkSettings, env)
+		return NewEVMClient(networkSettings, env, logger)
 	}
 	ecl := &EthereumMultinodeClient{}
 	if env != nil {
@@ -1210,7 +1212,7 @@ func ConcurrentEVMClient(networkSettings EVMNetwork, env *environment.Environmen
 	}
 	for idx, networkURL := range networkSettings.URLs {
 		networkSettings.URL = networkURL
-		ec, err := newEVMClient(networkSettings)
+		ec, err := newEVMClient(networkSettings, logger)
 		if err != nil {
 			return nil, err
 		}

@@ -63,7 +63,10 @@ func (pg *PostgresDb) StartContainer() error {
 	req := pg.getContainerRequest()
 	l := tc.Logger
 	if pg.t != nil {
-		l = tc.TestLogger(pg.t)
+		l = logging.CustomT{
+			T: pg.t,
+			L: pg.l,
+		}
 	}
 	c, err := tc.GenericContainer(context.Background(), tc.GenericContainerRequest{
 		ContainerRequest: *req,

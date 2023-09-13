@@ -222,7 +222,10 @@ func (g *NonDevGethNode) Start() error {
 
 	l := tc.Logger
 	if g.t != nil {
-		l = tc.TestLogger(g.t)
+		l = logging.CustomT{
+			T: g.t,
+			L: g.l,
+		}
 	}
 	bootNode, err := docker.StartContainerWithRetry(g.l, tc.GenericContainerRequest{
 		ContainerRequest: g.getBootNodeContainerRequest(),
@@ -288,7 +291,7 @@ func (g *NonDevGethNode) ConnectToClient() error {
 	networkConfig.URLs = []string{g.ExternalWsUrl}
 	networkConfig.HTTPURLs = []string{g.ExternalHttpUrl}
 
-	ec, err := blockchain.NewEVMClientFromNetwork(*networkConfig)
+	ec, err := blockchain.NewEVMClientFromNetwork(*networkConfig, g.l)
 	if err != nil {
 		return err
 	}

@@ -78,7 +78,10 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, InternalDockerUrls, erro
 
 	l := tc.Logger
 	if g.t != nil {
-		l = tc.TestLogger(g.t)
+		l = logging.CustomT{
+			T: g.t,
+			L: g.l,
+		}
 	}
 	ct, err := docker.StartContainerWithRetry(g.l, tc.GenericContainerRequest{
 		ContainerRequest: *r,

@@ -14,17 +14,23 @@ import (
 )
 
 // CustomT wraps testing.T and provides a bytes.Buffer to capture logs.
-type customT struct {
+type CustomT struct {
 	*testing.T
+	L zerolog.Logger
 }
 
-func (ct *customT) Write(p []byte) (n int, err error) {
+func (ct *CustomT) Write(p []byte) (n int, err error) {
 	str := string(p)
 	if strings.TrimSpace(str) == "" {
 		return len(p), nil
 	}
 	ct.T.Log(strings.TrimSuffix(str, "\n"))
 	return len(p), nil
+}
+
+// Printf implements the testcontainers-go/Logging interface.
+func (t CustomT) Printf(format string, v ...interface{}) {
+	t.L.Info().Msgf(format, v...)
 }
 
 func Init() {
@@ -47,7 +53,7 @@ func GetLogger(t *testing.T, envVarName string) zerolog.Logger {
 	}
 	zerolog.TimeFieldFormat = time.RFC3339Nano
 	if t != nil {
-		ct := &customT{T: t}
+		ct := &CustomT{T: t}
 		return zerolog.New(ct).Output(zerolog.ConsoleWriter{Out: ct, TimeFormat: "15:04:05.00"}).Level(lvl).With().Timestamp().Logger()
 	}
 	return log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "15:04:05.00"}).Level(lvl).With().Timestamp().Logger()

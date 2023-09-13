@@ -75,7 +75,10 @@ func (ms *MockServer) SetExternalAdapterMocks(count int) error {
 func (ms *MockServer) StartContainer() error {
 	l := tc.Logger
 	if ms.t != nil {
-		l = tc.TestLogger(ms.t)
+		l = logging.CustomT{
+			T: ms.t,
+			L: ms.l,
+		}
 	}
 	c, err := docker.StartContainerWithRetry(ms.l, tc.GenericContainerRequest{
 		ContainerRequest: ms.getContainerRequest(),
