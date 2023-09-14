@@ -486,8 +486,8 @@ var (
 		FinalityTag:               true,
 	}
 
-	LineaTestnet blockchain.EVMNetwork = blockchain.EVMNetwork{
-		Name:                      "Linea Testnet",
+	LineaGoerli blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Linea Goerli",
 		SupportsEIP1559:           true,
 		ClientImplementation:      blockchain.LineaClientImplementation,
 		ChainID:                   59140,
@@ -543,7 +543,8 @@ var (
 		"BASE_MAINNET":      BaseMainnet,
 		"BSC_TESTNET":       BSCTestnet,
 		"BSC_MAINNET":       BSCMainnet,
-		"LINEA_TESTNET":     LineaTestnet,
+		"LINEA_Goerli":      LineaGoerli,
+		"LINEA_MAINNET":     LineaMainnet,
 	}
 )
 
