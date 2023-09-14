@@ -543,7 +543,7 @@ var (
 		"BASE_MAINNET":      BaseMainnet,
 		"BSC_TESTNET":       BSCTestnet,
 		"BSC_MAINNET":       BSCMainnet,
-		"LINEA_Goerli":      LineaGoerli,
+		"LINEA_GOERLI":      LineaGoerli,
 		"LINEA_MAINNET":     LineaMainnet,
 	}
 )
