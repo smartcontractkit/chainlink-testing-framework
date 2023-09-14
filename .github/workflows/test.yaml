@@ -31,7 +31,7 @@ jobs:
           set -euo pipefail
           go test -json -cover -covermode=count -coverprofile=unit-test-coverage.out ./... 2>&1 | tee /tmp/gotest.log | gotestfmt
       - name: Code Coverage
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           files: ./unit-test-coverage.out
           name: codecov-umbrella
