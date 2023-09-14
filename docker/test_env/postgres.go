@@ -3,12 +3,16 @@ package test_env
 import (
 	"context"
 	"fmt"
+	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 )
 
 type PostgresDb struct {
@@ -17,6 +21,8 @@ type PostgresDb struct {
 	Password string
 	DbName   string
 	Port     string
+	l        zerolog.Logger
+	t        *testing.T
 }
 
 type PostgresDbOption = func(c *PostgresDb)
@@ -40,6 +46,7 @@ func NewPostgresDb(networks []string, opts ...PostgresDbOption) *PostgresDb {
 		Password: "mysecretpassword",
 		DbName:   "testdb",
 		Port:     "5432",
+		l:        log.Logger,
 	}
 	for _, opt := range opts {
 		opt(pg)
@@ -47,19 +54,33 @@ func NewPostgresDb(networks []string, opts ...PostgresDbOption) *PostgresDb {
 	return pg
 }
 
+func (pg *PostgresDb) WithTestLogger(t *testing.T) *PostgresDb {
+	pg.l = logging.GetTestLogger(t)
+	pg.t = t
+	return pg
+}
+
 func (pg *PostgresDb) StartContainer() error {
 	req := pg.getContainerRequest()
+	l := tc.Logger
+	if pg.t != nil {
+		l = logging.CustomT{
+			T: pg.t,
+			L: pg.l,
+		}
+	}
 	c, err := tc.GenericContainer(context.Background(), tc.GenericContainerRequest{
 		ContainerRequest: *req,
 		Started:          true,
 		Reuse:            true,
+		Logger:           l,
 	})
 	if err != nil {
 		return err
 	}
 	pg.Container = c
 
-	log.Info().Str("containerName", pg.ContainerName).
+	pg.l.Info().Str("containerName", pg.ContainerName).
 		Msg("Started Postgres DB container")
 
 	return nil

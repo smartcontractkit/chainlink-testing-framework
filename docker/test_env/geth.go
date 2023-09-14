@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"testing"
 	"time"
 
 	"github.com/docker/go-connections/nat"
@@ -12,12 +13,14 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
+	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/templates"
 )
 
@@ -43,6 +46,8 @@ type Geth struct {
 	InternalHttpUrl string
 	ExternalWsUrl   string
 	InternalWsUrl   string
+	l               zerolog.Logger
+	t               *testing.T
 }
 
 func NewGeth(networks []string, opts ...EnvComponentOption) *Geth {
@@ -51,10 +56,17 @@ func NewGeth(networks []string, opts ...EnvComponentOption) *Geth {
 			ContainerName: fmt.Sprintf("%s-%s", "geth", uuid.NewString()[0:8]),
 			Networks:      networks,
 		},
+		l: log.Logger,
 	}
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
+	return g
+}
+
+func (g *Geth) WithTestLogger(t *testing.T) *Geth {
+	g.l = logging.GetTestLogger(t)
+	g.t = t
 	return g
 }
 
@@ -64,10 +76,18 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, InternalDockerUrls, erro
 		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
 	}
 
-	ct, err := docker.StartContainerWithRetry(tc.GenericContainerRequest{
+	l := tc.Logger
+	if g.t != nil {
+		l = logging.CustomT{
+			T: g.t,
+			L: g.l,
+		}
+	}
+	ct, err := docker.StartContainerWithRetry(g.l, tc.GenericContainerRequest{
 		ContainerRequest: *r,
 		Reuse:            true,
 		Started:          true,
+		Logger:           l,
 	})
 	if err != nil {
 		return blockchain.EVMNetwork{}, InternalDockerUrls{}, errors.Wrapf(err, "cannot start geth container")
@@ -101,7 +121,7 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, InternalDockerUrls, erro
 		WsUrl:   g.InternalWsUrl,
 	}
 
-	log.Info().Str("containerName", g.ContainerName).
+	g.l.Info().Str("containerName", g.ContainerName).
 		Str("internalHttpUrl", g.InternalHttpUrl).
 		Str("externalHttpUrl", g.ExternalHttpUrl).
 		Str("externalWsUrl", g.ExternalWsUrl).
@@ -178,7 +198,7 @@ func (g *Geth) getGethContainerRequest(networks []string) (*tc.ContainerRequest,
 			tcwait.ForLog("Started P2P networking").
 				WithStartupTimeout(120*time.Second).
 				WithPollInterval(1*time.Second),
-			NewWebSocketStrategy(natPort(TX_GETH_WS_PORT)),
+			NewWebSocketStrategy(natPort(TX_GETH_WS_PORT), g.l),
 		),
 		Entrypoint: []string{"sh", "./root/init.sh",
 			"--dev",
@@ -253,9 +273,10 @@ type WebSocketStrategy struct {
 	Port       nat.Port
 	RetryDelay time.Duration
 	timeout    time.Duration
+	l          zerolog.Logger
 }
 
-func NewWebSocketStrategy(port nat.Port) *WebSocketStrategy {
+func NewWebSocketStrategy(port nat.Port, l zerolog.Logger) *WebSocketStrategy {
 	return &WebSocketStrategy{
 		Port:       port,
 		RetryDelay: 10 * time.Second,
@@ -277,21 +298,21 @@ func (w *WebSocketStrategy) WaitUntilReady(ctx context.Context, target tcwait.St
 	for {
 		host, err = target.Host(ctx)
 		if err != nil {
-			log.Error().Msg("Failed to get the target host")
+			w.l.Error().Msg("Failed to get the target host")
 			return err
 		}
 		mappedPort, err := target.MappedPort(ctx, w.Port)
 		if err != nil {
-			log.Error().Msg("Failed to get the mapped ws port")
+			w.l.Error().Msg("Failed to get the mapped ws port")
 			return err
 		}
 
 		url := fmt.Sprintf("ws://%s:%s", host, mappedPort.Port())
-		log.Info().Msgf("Attempting to dial %s", url)
+		w.l.Info().Msgf("Attempting to dial %s", url)
 		client, err = rpc.DialContext(ctx, url)
 		if err == nil {
 			client.Close()
-			log.Info().Msg("WebSocket rpc port is ready")
+			w.l.Info().Msg("WebSocket rpc port is ready")
 			return nil
 		}
 		if client != nil {
@@ -304,7 +325,7 @@ func (w *WebSocketStrategy) WaitUntilReady(ctx context.Context, target tcwait.St
 			return ctx.Err()
 		case <-time.After(w.RetryDelay):
 			i++
-			log.Info().Msgf("WebSocket attempt %d failed: %s. Retrying...", i, err)
+			w.l.Info().Msgf("WebSocket attempt %d failed: %s. Retrying...", i, err)
 		}
 	}
 }
