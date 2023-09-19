@@ -28,13 +28,13 @@ require (
 
 // K8s versions are infuriatingly inconsistent, so we pin them here.
 replace (
-	k8s.io/api => k8s.io/api v0.25.11
-	k8s.io/apimachinery => k8s.io/apimachinery v0.25.11
-	k8s.io/cli-runtime => k8s.io/cli-runtime v0.25.11
-	k8s.io/client-go => k8s.io/client-go v0.25.11
+	k8s.io/api => k8s.io/api v0.26.9
+	k8s.io/apimachinery => k8s.io/apimachinery v0.26.9
+	k8s.io/cli-runtime => k8s.io/cli-runtime v0.26.9
+	k8s.io/client-go => k8s.io/client-go v0.26.9
 
 	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20230303024457-afdc3dddf62d
-	k8s.io/kubectl => k8s.io/kubectl v0.25.11
+	k8s.io/kubectl => k8s.io/kubectl v0.26.9
 )
 
 require (
@@ -203,7 +203,7 @@ require (
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/rogpeppe/go-internal v1.10.0 // indirect
-	github.com/russross/blackfriday v1.6.0 // indirect
+	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529 // indirect
 	github.com/sercand/kuberesolver v2.4.0+incompatible // indirect
 	github.com/shirou/gopsutil v3.21.4-0.20210419000835-c7a38de76ee5+incompatible // indirect
@@ -257,12 +257,12 @@ require (
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/api v0.26.2 // indirect
+	k8s.io/api v0.26.9 // indirect
 	k8s.io/apiextensions-apiserver v0.25.3 // indirect
-	k8s.io/apimachinery v0.26.2 // indirect
-	k8s.io/cli-runtime v0.25.11 // indirect
-	k8s.io/client-go v0.26.2 // indirect
-	k8s.io/component-base v0.26.2 // indirect
+	k8s.io/apimachinery v0.26.9 // indirect
+	k8s.io/cli-runtime v0.26.9 // indirect
+	k8s.io/client-go v0.26.9 // indirect
+	k8s.io/component-base v0.26.9 // indirect
 	k8s.io/klog/v2 v2.90.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20230303024457-afdc3dddf62d // indirect
 	k8s.io/kubectl v0.25.11 // indirect
