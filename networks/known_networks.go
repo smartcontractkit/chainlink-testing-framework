@@ -510,6 +510,18 @@ var (
 		GasEstimationBuffer:       1000,
 	}
 
+	CeloBaklava = blockchain.EVMNetwork{
+		Name:                      "Celo Baklava",
+		SupportsEIP1559:           false,
+		ClientImplementation:      blockchain.CeloClientImplementation,
+		ChainID:                   62320,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       1000,
+	}
+
 	MappedNetworks = map[string]blockchain.EVMNetwork{
 		"SIMULATED":               SimulatedEVM,
 		"SIMULATED_1":             SimulatedEVMNonDev1,
@@ -531,6 +543,7 @@ var (
 		"OPTIMISM_GOERLI":   OptimismGoerli,
 		"BASE_GOERLI":       BaseGoerli,
 		"CELO_ALFAJORES":    CeloAlfajores,
+		"CELO_BAKLAVA":      CeloBaklava,
 		"CELO_MAINNET":      CeloMainnet,
 		"RSK":               RSKTestnet,
 		"MUMBAI":            PolygonMumbai,
