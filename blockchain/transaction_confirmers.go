@@ -76,11 +76,16 @@ func (t *TransactionConfirmer) ReceiveHeader(header NodeHeader) error {
 		Int("Minimum Confirmations", t.minConfirmations)
 	isConfirmed, err := t.client.IsTxConfirmed(t.tx.Hash())
 	if err != nil {
+		if err.Error() == "not found" {
+			confirmationLog.Msg("Transaction not found on chain yet. Waiting to confirm.")
+			return nil
+		}
 		if strings.Contains(err.Error(), "transaction failed and was reverted") {
 			t.revertChan <- struct{}{}
 		}
 		return err
-	} else if isConfirmed {
+	}
+	if isConfirmed {
 		t.confirmations++
 	}
 	if t.confirmations >= t.minConfirmations {
@@ -139,8 +144,7 @@ type InstantConfirmer struct {
 	// For events
 	confirmed     bool // tracks the confirmation status of the subscription
 	confirmedChan chan bool
-	errorChan     chan error
-	l             zerolog.Logger
+	log           zerolog.Logger
 }
 
 func NewInstantConfirmer(
@@ -160,8 +164,7 @@ func NewInstantConfirmer(
 		revertChan:   make(chan struct{}, 1),
 		// For events
 		confirmedChan: confirmedChan,
-		errorChan:     errorChan,
-		l:             logger,
+		log:           logger,
 	}
 }
 
@@ -171,19 +174,16 @@ func (l *InstantConfirmer) ReceiveHeader(_ NodeHeader) error {
 	l.confirmed, err = l.client.IsTxConfirmed(l.txHash)
 	if err != nil {
 		if err.Error() == "not found" {
-			l.l.Debug().Str("Tx", l.txHash.Hex()).Msg("Transaction not found on chain yet. Waiting to confirm.")
+			l.log.Trace().Str("Tx", l.txHash.Hex()).Msg("Transaction not found on chain yet. Waiting to confirm.")
 			return nil
 		}
-		l.l.Error().Str("Tx", l.txHash.Hex()).Err(err).Msg("Error checking tx confirmed")
+		l.log.Error().Str("Tx", l.txHash.Hex()).Err(err).Msg("Error checking tx confirmed")
 		if strings.Contains(err.Error(), "transaction failed and was reverted") {
 			l.revertChan <- struct{}{}
 		}
-		if l.errorChan != nil {
-			l.errorChan <- err
-		}
 		return err
 	}
-	l.l.Debug().Bool("Confirmed", l.confirmed).Str("Tx", l.txHash.Hex()).Msg("Instant Confirmation")
+	l.log.Debug().Bool("Confirmed", l.confirmed).Str("Tx", l.txHash.Hex()).Msg("Instant Confirmation")
 	if l.confirmed {
 		l.completeChan <- struct{}{}
 		if l.confirmedChan != nil {
@@ -480,7 +480,7 @@ func (e *EthereumClient) receiveHeader(header *SafeEVMHeader) error {
 	}
 
 	if err := g.Wait(); err != nil {
-		return fmt.Errorf("error on sending block header to receivers: %w", err)
+		return fmt.Errorf("error on sending block header to receivers: '%w'", err)
 	}
 
 	if len(subs) > 0 {
