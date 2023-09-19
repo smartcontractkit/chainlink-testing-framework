@@ -18,18 +18,44 @@ jobs:
           test_download_vendor_packages_command: go mod download
           go_mod_path: ./go.mod
           cache_key_id: ctf-go
-          cache_restore_only: 'false'
-      # gotestfmt gives us pretty test output
+          cache_restore_only: "false"
       - name: Set Up gotestfmt
         uses: GoTestTools/gotestfmt-action@v2
         with:
           token: ${{ github.token }} # Avoids rate-limiting
       - name: Run Tests
+        uses: ./.github/actions/go-test
+        with:
+          go-test-command: go test -json -cover -covermode=count -coverprofile=unit-test-coverage.out ./...
+          use-gotestfmt: true
+          exclude-flakes: true
+
+      - name: Verify We Fail When Non Skipped Test Fails
+        env:
+          FORCE_FAILURE: "true"
         run: |
           PATH=$PATH:$(go env GOPATH)/bin
           export PATH
-          set -euo pipefail
-          go test -json -cover -covermode=count -coverprofile=unit-test-coverage.out ./... 2>&1 | tee /tmp/gotest.log | gotestfmt
+          set -uo pipefail
+
+          # Allow a command to exit with non zero temporarily
+          set +e
+
+          # Run the tests and pipe through test cli to filter out flakes
+          go test -json -cover -covermode=count -coverprofile=unit-test-coverage.out ./test 2>&1 | go run ./test/cmd/go_test_results_cli.go -excludeFlakes > ./gotest2.log
+          exit_code=${PIPESTATUS[1]} # Capture the exit code
+
+          # Format the logs and ignore the exit code
+          gotestfmt < ./gotest2.log
+
+          # We expect the exit code to be 1 since we forced a failure
+          set -e
+          if [ "$exit_code" -eq 1 ]; then
+              echo "We failed as expected! Passing step."
+          else
+              echo "The test should have a non skipped failure, but it didn't. Failing step."
+              exit 1
+          fi
       - name: Code Coverage
         uses: codecov/codecov-action@v3
         with:
@@ -40,4 +66,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: test-logs
-          path: ./logs
+          path: |
+            ./logs
+            ./gotest.log
+            ./gotest2.log

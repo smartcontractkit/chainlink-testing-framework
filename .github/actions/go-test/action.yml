@@ -1,0 +1,66 @@
+name: Run Go Test
+description: Run Go Test With CTF Tooling
+inputs:
+  go-test-command:
+    description: The full go test command with args and must include -json
+  use-gotestfmt:
+    description: Set this to cache bust
+    default: "false"
+  exclude-flakes:
+    description: Exclude failing flaky tests from failing job
+    default: "false"
+  go-test-result-log:
+    description: The filename for the output test results logs
+    default: ./gotest.log
+
+runs:
+  using: composite
+  steps:
+    - name: Set Up gotestfmt
+      if: inputs.use-gotestfmt == 'true'
+      uses: GoTestTools/gotestfmt-action@v2
+      with:
+        token: ${{ github.token }} # Avoids rate-limiting
+    - name: Run Tests
+      shell: bash
+      env:
+        GO_TEST_COMMAND: ${{ inputs.go-test-command }}
+        EXCLUDE_FLAKES: ${{ inputs.exclude-flakes }}
+        TEST_RESULTS_LOG: ${{ inputs.go-test-result-log }}
+        GOTESTFMT: ${{ inputs.use-gotestfmt }}
+      run: |
+        PATH=$PATH:$(go env GOPATH)/bin
+        export PATH
+        set -euo pipefail
+
+        # Verify go test command contains -json
+        if [[ "$GO_TEST_COMMAND" != *"-json"* ]]; then
+          echo "The provided go-test-command does not contain the -json argument. This is required. Your command: ${GO_TEST_COMMAND}"
+          exit 1
+        fi
+
+        # Build results cli  args
+        CLI_ARGS=
+        if [ "$EXCLUDE_FLAKES" == "true" ]; then
+            CLI_ARGS=-excludeFlakes
+        fi
+
+        # Allow a command to exit with non zero temporarily
+        set +e
+
+        # Run the tests and pipe through test cli to filter out flakes
+        ${GO_TEST_COMMAND} 2>&1 | go run ./test/cmd/go_test_results_cli.go ${CLI_ARGS} > ${TEST_RESULTS_LOG}
+        exit_code=${PIPESTATUS[1]} # Capture the exit code
+
+        # Format the logs, gotestfmt will output an exit code of 1 if it finds a failure and we are actively ignoring it
+        if [ "$GOTESTFMT" == "true" ]; then
+            gotestfmt < ${TEST_RESULTS_LOG}
+        else
+            echo $(<${TEST_RESULTS_LOG})
+        fi
+
+        # Enable exit with non zero again
+        set -e
+
+        # Exit with the captured exit code from the tests
+        exit $exit_code
