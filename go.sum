@@ -1499,8 +1499,6 @@ github.com/sirupsen/logrus v1.9.0 h1:trlNQbNUG3OdDrDil03MCb1H2o9nJ1x4/5LYw7byDE0
 github.com/sirupsen/logrus v1.9.0/go.mod h1:naHLuLoDiP4jHNo9R0sCBMtWGeIprob74mVsIT4qYEQ=
 github.com/slack-go/slack v0.12.2 h1:x3OppyMyGIbbiyFhsBmpf9pwkUzMhthJMRNmNlA4LaQ=
 github.com/slack-go/slack v0.12.2/go.mod h1:hlGi5oXA+Gt+yWTPP0plCdRKmjsDxecdHxYQdlMQKOw=
-github.com/smartcontractkit/chainlink-env v0.37.0 h1:Yl+cMd3gzKx2217hLzDKN0EOmAjD7MrcWHzuR+knb8s=
-github.com/smartcontractkit/chainlink-env v0.37.0/go.mod h1:NbRExHmJGnKSYXmvNuJx5VErSx26GtE1AEN/CRzYOg8=
 github.com/smartcontractkit/chainlink-env v0.37.1-0.20230919160127-3848d580aca0 h1:kx3WYByjt36ILL8VzaG8JZE7lB3V5Ykh0akJe+k/HvQ=
 github.com/smartcontractkit/chainlink-env v0.37.1-0.20230919160127-3848d580aca0/go.mod h1:yfiUSnd8tqcWAjG4Schafb0k/LilSW19YLuiWUPJZIM=
 github.com/smartcontractkit/wasp v0.3.0 h1:mueeLvpb6HyGNwILxCOKShDR6q18plQn7Gb1j3G/Qkk=
