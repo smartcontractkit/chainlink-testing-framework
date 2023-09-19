@@ -512,7 +512,7 @@ var (
 
 	CeloBaklava = blockchain.EVMNetwork{
 		Name:                      "Celo Baklava",
-		SupportsEIP1559:           false,
+		SupportsEIP1559:           true,
 		ClientImplementation:      blockchain.CeloClientImplementation,
 		ChainID:                   62320,
 		Simulated:                 false,
