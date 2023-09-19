@@ -344,7 +344,7 @@ func (e *EthereumClient) headerSubscriptionLoop(subscription ethereum.Subscripti
 		select {
 		case err := <-subscription.Err(): // Most subscription errors are temporary RPC downtime, so let's poll to resubscribe
 			e.l.Error().
-				Str("URL Suffix", e.NetworkConfig.URL[len(e.NetworkConfig.URL)-10:]).
+				Str("URL Suffix", e.NetworkConfig.URL[len(e.NetworkConfig.URL)-6:]).
 				Str("Network", e.NetworkConfig.Name).
 				Err(err).
 				Msg("Error while subscribed to new headers, likely RPC downtime. Attempting to resubscribe")
@@ -387,7 +387,7 @@ func (e *EthereumClient) resubscribeLoop(headerChannel chan *SafeEVMHeader, last
 			consecutiveSuccessCount++
 			e.l.Debug().
 				Str("Network", e.NetworkConfig.Name).
-				Str("URL Suffix", e.NetworkConfig.URL[len(e.NetworkConfig.URL)-10:]).
+				Str("URL Suffix", e.NetworkConfig.URL[len(e.NetworkConfig.URL)-6:]).
 				Int("Target Success Count", targetSuccessCount).
 				Int("Consecutive Success Count", consecutiveSuccessCount).
 				Msg("RPC connection seems to be healthy, still checking")
@@ -404,7 +404,7 @@ func (e *EthereumClient) resubscribeLoop(headerChannel chan *SafeEVMHeader, last
 				informTicker.Stop()
 				e.l.Info().
 					Int("Reconnect Attempts", reconnectAttempts).
-					Str("URL Suffix", e.NetworkConfig.URL[len(e.NetworkConfig.URL)-10:]).
+					Str("URL Suffix", e.NetworkConfig.URL[len(e.NetworkConfig.URL)-6:]).
 					Str("Time waiting", time.Since(rpcDegradedTime).String()).
 					Msg("RPC connection and subscription restored")
 				go e.backfillMissedBlocks(lastHeaderNumber, headerChannel)
@@ -413,7 +413,7 @@ func (e *EthereumClient) resubscribeLoop(headerChannel chan *SafeEVMHeader, last
 		case <-informTicker.C:
 			e.l.Warn().
 				Str("Network", e.NetworkConfig.Name).
-				Str("URL Suffix", e.NetworkConfig.URL[len(e.NetworkConfig.URL)-10:]).
+				Str("URL Suffix", e.NetworkConfig.URL[len(e.NetworkConfig.URL)-6:]).
 				Int("Reconnect Attempts", reconnectAttempts).
 				Str("Time waiting", time.Since(rpcDegradedTime).String()).
 				Str("RPC URL", e.NetworkConfig.URL).
