@@ -17,7 +17,7 @@ require (
 	github.com/prometheus/common v0.44.0
 	github.com/rs/zerolog v1.30.0
 	github.com/slack-go/slack v0.12.2
-	github.com/smartcontractkit/chainlink-env v0.37.0
+	github.com/smartcontractkit/chainlink-env v0.37.1-0.20230919160127-3848d580aca0
 	github.com/smartcontractkit/wasp v0.3.0
 	github.com/stretchr/testify v1.8.4
 	github.com/testcontainers/testcontainers-go v0.23.0
@@ -265,7 +265,7 @@ require (
 	k8s.io/component-base v0.26.9 // indirect
 	k8s.io/klog/v2 v2.90.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20230303024457-afdc3dddf62d // indirect
-	k8s.io/kubectl v0.25.11 // indirect
+	k8s.io/kubectl v0.26.9 // indirect
 	k8s.io/utils v0.0.0-20230308161112-d77c459e9343 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
 	sigs.k8s.io/controller-runtime v0.13.0 // indirect
