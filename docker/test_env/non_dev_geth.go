@@ -304,12 +304,12 @@ func (g *NonDevGethNode) ConnectToClient() error {
 	if err != nil {
 		return err
 	}
-	port := natPort(TX_GETH_HTTP_PORT)
+	port := NatPort(TX_GETH_HTTP_PORT)
 	httpPort, err := ct.MappedPort(context.Background(), port)
 	if err != nil {
 		return err
 	}
-	port = natPort(TX_NON_DEV_GETH_WS_PORT)
+	port = NatPort(TX_NON_DEV_GETH_WS_PORT)
 	wsPort, err := ct.MappedPort(context.Background(), port)
 	if err != nil {
 		return err
@@ -386,15 +386,15 @@ func (g *NonDevGethNode) getGethContainerRequest() tc.ContainerRequest {
 		Name:  g.ContainerName,
 		Image: GETH_IMAGE,
 		ExposedPorts: []string{
-			natPortFormat(TX_GETH_HTTP_PORT),
-			natPortFormat(TX_NON_DEV_GETH_WS_PORT),
+			NatPortFormat(TX_GETH_HTTP_PORT),
+			NatPortFormat(TX_NON_DEV_GETH_WS_PORT),
 			"30303/tcp", "30303/udp"},
 		Networks: g.Networks,
 		WaitingFor: tcwait.ForAll(
 			tcwait.NewHTTPStrategy("/").
-				WithPort(natPort(TX_GETH_HTTP_PORT)),
+				WithPort(NatPort(TX_GETH_HTTP_PORT)),
 			tcwait.ForLog("WebSocket enabled"),
-			NewWebSocketStrategy(natPort(TX_NON_DEV_GETH_WS_PORT), g.l),
+			NewWebSocketStrategy(NatPort(TX_NON_DEV_GETH_WS_PORT), g.l),
 		),
 		Entrypoint: []string{"/bin/sh", "./root/init.sh",
 			"--http.vhosts=*",
