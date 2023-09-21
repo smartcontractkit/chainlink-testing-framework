@@ -12,21 +12,25 @@ import (
 
 // Used for when running tests on a live test network, so tests can share nonces and run in parallel on the same network
 var (
-	globalNonceManager = make(map[uint64]*NonceSettings)
-	globalNonceLock    sync.Mutex
+	altGlobalNonceManager = sync.Map{}
 )
 
 // useGlobalNonceManager for when running tests on a non-simulated network
 func useGlobalNonceManager(chainId *big.Int) *NonceSettings {
-	globalNonceLock.Lock()
-	defer globalNonceLock.Unlock()
-	if _, ok := globalNonceManager[chainId.Uint64()]; !ok {
-		fmt.Printf("Using a new Global Nonce Manager for chain %d\n%v", chainId.Uint64(), globalNonceManager)
-		globalNonceManager[chainId.Uint64()] = newNonceSettings()
-		go globalNonceManager[chainId.Uint64()].watchInstantTransactions()
+	if _, ok := altGlobalNonceManager.Load(chainId.Uint64()); !ok {
+		altGlobalNonceManager.Store(chainId.Uint64(), newNonceSettings())
+		settings, _ := altGlobalNonceManager.Load(chainId.Uint64())
+		go settings.(*NonceSettings).watchInstantTransactions()
 	}
-
-	return globalNonceManager[chainId.Uint64()]
+	settings, _ := altGlobalNonceManager.Load(chainId.Uint64())
+	altGlobalNonceManager.Range(func(key, value interface{}) bool {
+		settings := value.(*NonceSettings)
+		if settings != nil {
+			fmt.Printf("Using a new Global Nonce Manager for chain %d\n%v", chainId.Uint64(), settings.Nonces)
+		}
+		return true
+	})
+	return settings.(*NonceSettings)
 }
 
 // convenience function
