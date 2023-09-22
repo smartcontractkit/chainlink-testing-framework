@@ -21,15 +21,16 @@ func useGlobalNonceManager(chainId *big.Int) *NonceSettings {
 		altGlobalNonceManager.Store(chainId.Uint64(), newNonceSettings())
 		settings, _ := altGlobalNonceManager.Load(chainId.Uint64())
 		go settings.(*NonceSettings).watchInstantTransactions()
+		altGlobalNonceManager.Range(func(key, value interface{}) bool {
+			settings := value.(*NonceSettings)
+			if settings != nil {
+				fmt.Printf("Using a new Global Nonce Manager for chain %d\n%v", chainId.Uint64(), settings.Nonces)
+			}
+			return true
+		})
 	}
 	settings, _ := altGlobalNonceManager.Load(chainId.Uint64())
-	altGlobalNonceManager.Range(func(key, value interface{}) bool {
-		settings := value.(*NonceSettings)
-		if settings != nil {
-			fmt.Printf("Using a new Global Nonce Manager for chain %d\n%v", chainId.Uint64(), settings.Nonces)
-		}
-		return true
-	})
+
 	return settings.(*NonceSettings)
 }
 
