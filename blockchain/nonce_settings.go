@@ -22,9 +22,10 @@ func useGlobalNonceManager(chainId *big.Int) *NonceSettings {
 		settings, _ := altGlobalNonceManager.Load(chainId.Uint64())
 		go settings.(*NonceSettings).watchInstantTransactions()
 		altGlobalNonceManager.Range(func(key, value interface{}) bool {
+			chainID := key.(uint64)
 			settings := value.(*NonceSettings)
 			if settings != nil {
-				fmt.Printf("Using a new Global Nonce Manager for chain %d\n%v", chainId.Uint64(), settings.Nonces)
+				fmt.Printf("Using a new Global Nonce Manager for chain %d\n%v", chainID, settings.Nonces)
 			}
 			return true
 		})
