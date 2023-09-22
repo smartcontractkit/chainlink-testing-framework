@@ -1187,10 +1187,17 @@ func ConnectEVMClient(networkSettings EVMNetwork, logger zerolog.Logger) (EVMCli
 		ec, err := newEVMClient(networkSettings, logger)
 
 		if err != nil {
-			return nil, err
+			logger.Info().
+				Err(err).
+				Str("URL Suffix", networkURL[len(networkURL)-6:]).
+				Msg("failed to create new EVM client")
+			continue
 		}
 		ec.SetID(idx)
 		ecl.Clients = append(ecl.Clients, ec)
+	}
+	if len(ecl.Clients) == 0 {
+		return nil, fmt.Errorf("failed to create new EVM client")
 	}
 	ecl.DefaultClient = ecl.Clients[0]
 	wrappedClient := wrapMultiClient(networkSettings, ecl)
