@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -27,10 +28,11 @@ var (
 // FinalizedHeader is an implementation of the HeaderEventSubscription interface.
 // It keeps track of the latest finalized header for a network.
 type FinalizedHeader struct {
-	lggr            zerolog.Logger
-	LatestFinalized atomic.Value // *big.Int
-	FinalizedAt     atomic.Value // time.Time
-	client          EVMClient
+	lggr              zerolog.Logger
+	LatestFinalized   atomic.Value // *big.Int
+	FinalizedAt       atomic.Value // time.Time
+	client            EVMClient
+	headerUpdateMutex sync.Mutex
 }
 
 // Wait is not a blocking call.
@@ -52,11 +54,20 @@ func (f *FinalizedHeader) ReceiveHeader(header NodeHeader) error {
 	if new(big.Int).Sub(header.Number, fLatest).Cmp(big.NewInt(minBlocksToFinalize)) <= 0 {
 		return nil
 	}
+	f.headerUpdateMutex.Lock()
+	if f.FinalizedAt.Load() != nil {
+		fTime := f.FinalizedAt.Load().(time.Time)
+		// if the time difference between the new header and the last finalized header is less than 100ms, ignore
+		if header.Timestamp.Sub(fTime) <= 100*time.Millisecond {
+			return nil
+		}
+	}
+
 	ctx, ctxCancel := context.WithTimeout(context.Background(), f.client.GetNetworkConfig().Timeout.Duration)
 	lastFinalized, err := f.client.GetLatestFinalizedBlockHeader(ctx)
 	ctxCancel()
 	if err != nil {
-		return fmt.Errorf("error getting latest finalized block header - network %s", f.client.GetNetworkName())
+		return errors.Wrapf(err, "error getting latest finalized block header")
 	}
 
 	if lastFinalized.Number.Cmp(fLatest) > 0 {
@@ -67,7 +78,7 @@ func (f *FinalizedHeader) ReceiveHeader(header NodeHeader) error {
 			Str("Finalized At", header.Timestamp.String()).
 			Msg("new finalized header received")
 	}
-
+	f.headerUpdateMutex.Unlock()
 	return nil
 }
 
