@@ -551,6 +551,7 @@ var (
 		MinimumConfirmations:      0,
 		GasEstimationBuffer:       1000,
 	}
+
 	WeMixTestnet blockchain.EVMNetwork = blockchain.EVMNetwork{
 		Name:                      "WeMix Testnet",
 		SupportsEIP1559:           true,
@@ -592,6 +593,30 @@ var (
 		SupportsEIP1559:           true,
 		ClientImplementation:      blockchain.FantomClientImplementation,
 		ChainID:                   250,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       1000,
+	}
+
+	KromaMainnet blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Kroma Mainnet",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.KromaClientImplementation,
+		ChainID:                   255,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       1000,
+	}
+
+	KromaSepolia blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Kroma Sepolia",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.KromaClientImplementation,
+		ChainID:                   2358,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
 		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
@@ -641,6 +666,8 @@ var (
 		"FANTOM_MAINNET":        FantomMainnet,
 		"WEMIX_TESTNET":         WeMixTestnet,
 		"WEMIX_MAINNET":         WeMixMainnet,
+		"KROMA_SEPOLIA":         KromaSepolia,
+		"KROMA_MAINNET":         KromaMainnet,
 	}
 )
 
