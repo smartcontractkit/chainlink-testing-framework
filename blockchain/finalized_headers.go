@@ -32,7 +32,7 @@ type FinalizedHeader struct {
 	LatestFinalized   atomic.Value // *big.Int
 	FinalizedAt       atomic.Value // time.Time
 	client            EVMClient
-	headerUpdateMutex sync.Mutex
+	headerUpdateMutex *sync.Mutex
 }
 
 // Wait is not a blocking call.
@@ -58,7 +58,7 @@ func (f *FinalizedHeader) ReceiveHeader(header NodeHeader) error {
 	if f.FinalizedAt.Load() != nil {
 		fTime := f.FinalizedAt.Load().(time.Time)
 		// if the time difference between the new header and the last finalized header is less than 100ms, ignore
-		if header.Timestamp.Sub(fTime) <= 100*time.Millisecond {
+		if header.Timestamp.Sub(fTime) <= 10*time.Second {
 			return nil
 		}
 	}
@@ -110,8 +110,9 @@ func newGlobalFinalizedHeaderManager(evmClient EVMClient) *FinalizedHeader {
 			return nil
 		}
 		fHeader = &FinalizedHeader{
-			lggr:   log.With().Str("Network", evmClient.GetNetworkName()).Logger(),
-			client: evmClient,
+			lggr:              log.With().Str("Network", evmClient.GetNetworkName()).Logger(),
+			client:            evmClient,
+			headerUpdateMutex: &sync.Mutex{},
 		}
 		fHeader.LatestFinalized.Store(lastFinalized.Number)
 		fHeader.FinalizedAt.Store(time.Now().UTC())
