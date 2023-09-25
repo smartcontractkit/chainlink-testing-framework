@@ -1138,6 +1138,7 @@ func NewEVMClientFromNetwork(networkSettings EVMNetwork, logger zerolog.Logger) 
 		}
 		ec.SetID(idx)
 		ecl.Clients = append(ecl.Clients, ec)
+		break
 	}
 	ecl.DefaultClient = ecl.Clients[0]
 	wrappedClient := wrapMultiClient(networkSettings, ecl)
@@ -1194,6 +1195,7 @@ func ConnectEVMClient(networkSettings EVMNetwork, logger zerolog.Logger) (EVMCli
 		}
 		ec.SetID(idx)
 		ecl.Clients = append(ecl.Clients, ec)
+		break
 	}
 	if len(ecl.Clients) == 0 {
 		return nil, fmt.Errorf("failed to create new EVM client")
@@ -1243,6 +1245,7 @@ func ConcurrentEVMClient(networkSettings EVMNetwork, env *environment.Environmen
 		ec.SyncNonce(existing)
 		ec.SetID(idx)
 		ecl.Clients = append(ecl.Clients, ec)
+		break
 	}
 	if len(ecl.Clients) == 0 {
 		return nil, fmt.Errorf("failed to create new EVM client")
