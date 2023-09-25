@@ -661,7 +661,6 @@ func (e *EthereumClient) IsTxConfirmed(txHash common.Hash) (bool, error) {
 					Msg("Transaction failed and was reverted! Unable to retrieve reason!")
 			} else {
 				e.l.Warn().Str("TX Hash", txHash.Hex()).
-					Str("To", tx.To().Hex()).
 					Str("Revert reason", reason).
 					Msg("Transaction failed and was reverted!")
 			}
