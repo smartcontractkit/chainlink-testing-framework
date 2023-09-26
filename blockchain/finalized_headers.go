@@ -58,7 +58,7 @@ func (f *FinalizedHeader) ReceiveHeader(header NodeHeader) error {
 	defer f.headerUpdateMutex.Unlock()
 	if f.FinalizedAt.Load() != nil {
 		fTime := f.FinalizedAt.Load().(time.Time)
-		// if the time difference between the new header and the last finalized header is less than 100ms, ignore
+		// if the time difference between the new header and the last finalized header is less than 10s, ignore
 		if header.Timestamp.Sub(fTime) <= 10*time.Second {
 			return nil
 		}
