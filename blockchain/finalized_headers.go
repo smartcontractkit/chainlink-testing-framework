@@ -102,6 +102,9 @@ func newGlobalFinalizedHeaderManager(evmClient EVMClient) *FinalizedHeader {
 
 	// if there is no finalized header for this network or the last finalized header is older than 1 hour
 	if !ok || isFinalizedHeaderObsolete {
+		mu := &sync.Mutex{}
+		mu.Lock()
+		defer mu.Unlock()
 		ctx, ctxCancel := context.WithTimeout(context.Background(), evmClient.GetNetworkConfig().Timeout.Duration)
 		lastFinalized, err := evmClient.GetLatestFinalizedBlockHeader(ctx)
 		ctxCancel()
@@ -112,11 +115,15 @@ func newGlobalFinalizedHeaderManager(evmClient EVMClient) *FinalizedHeader {
 		fHeader = &FinalizedHeader{
 			lggr:              log.With().Str("Network", evmClient.GetNetworkName()).Logger(),
 			client:            evmClient,
-			headerUpdateMutex: &sync.Mutex{},
+			headerUpdateMutex: mu,
 		}
 		fHeader.LatestFinalized.Store(lastFinalized.Number)
 		fHeader.FinalizedAt.Store(time.Now().UTC())
 		globalFinalizedHeaderManager.Store(evmClient.GetChainID().String(), fHeader)
+		fHeader.lggr.Info().
+			Str("Finalized Header", lastFinalized.Number.String()).
+			Str("Finalized At", time.Now().UTC().String()).
+			Msg("new finalized header received")
 	}
 
 	return fHeader
