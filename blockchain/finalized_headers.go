@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -27,10 +28,11 @@ var (
 // FinalizedHeader is an implementation of the HeaderEventSubscription interface.
 // It keeps track of the latest finalized header for a network.
 type FinalizedHeader struct {
-	lggr            zerolog.Logger
-	LatestFinalized atomic.Value // *big.Int
-	FinalizedAt     atomic.Value // time.Time
-	client          EVMClient
+	lggr              zerolog.Logger
+	LatestFinalized   atomic.Value // *big.Int
+	FinalizedAt       atomic.Value // time.Time
+	client            EVMClient
+	headerUpdateMutex *sync.Mutex
 }
 
 // Wait is not a blocking call.
@@ -52,11 +54,21 @@ func (f *FinalizedHeader) ReceiveHeader(header NodeHeader) error {
 	if new(big.Int).Sub(header.Number, fLatest).Cmp(big.NewInt(minBlocksToFinalize)) <= 0 {
 		return nil
 	}
+	f.headerUpdateMutex.Lock()
+	defer f.headerUpdateMutex.Unlock()
+	if f.FinalizedAt.Load() != nil {
+		fTime := f.FinalizedAt.Load().(time.Time)
+		// if the time difference between the new header and the last finalized header is less than 10s, ignore
+		if header.Timestamp.Sub(fTime) <= 10*time.Second {
+			return nil
+		}
+	}
+
 	ctx, ctxCancel := context.WithTimeout(context.Background(), f.client.GetNetworkConfig().Timeout.Duration)
 	lastFinalized, err := f.client.GetLatestFinalizedBlockHeader(ctx)
 	ctxCancel()
 	if err != nil {
-		return fmt.Errorf("error getting latest finalized block header - network %s", f.client.GetNetworkName())
+		return errors.Wrapf(err, "error getting latest finalized block header")
 	}
 
 	if lastFinalized.Number.Cmp(fLatest) > 0 {
@@ -67,7 +79,6 @@ func (f *FinalizedHeader) ReceiveHeader(header NodeHeader) error {
 			Str("Finalized At", header.Timestamp.String()).
 			Msg("new finalized header received")
 	}
-
 	return nil
 }
 
@@ -91,6 +102,9 @@ func newGlobalFinalizedHeaderManager(evmClient EVMClient) *FinalizedHeader {
 
 	// if there is no finalized header for this network or the last finalized header is older than 1 hour
 	if !ok || isFinalizedHeaderObsolete {
+		mu := &sync.Mutex{}
+		mu.Lock()
+		defer mu.Unlock()
 		ctx, ctxCancel := context.WithTimeout(context.Background(), evmClient.GetNetworkConfig().Timeout.Duration)
 		lastFinalized, err := evmClient.GetLatestFinalizedBlockHeader(ctx)
 		ctxCancel()
@@ -99,12 +113,17 @@ func newGlobalFinalizedHeaderManager(evmClient EVMClient) *FinalizedHeader {
 			return nil
 		}
 		fHeader = &FinalizedHeader{
-			lggr:   log.With().Str("Network", evmClient.GetNetworkName()).Logger(),
-			client: evmClient,
+			lggr:              log.With().Str("Network", evmClient.GetNetworkName()).Logger(),
+			client:            evmClient,
+			headerUpdateMutex: mu,
 		}
 		fHeader.LatestFinalized.Store(lastFinalized.Number)
 		fHeader.FinalizedAt.Store(time.Now().UTC())
 		globalFinalizedHeaderManager.Store(evmClient.GetChainID().String(), fHeader)
+		fHeader.lggr.Info().
+			Str("Finalized Header", lastFinalized.Number.String()).
+			Str("Finalized At", time.Now().UTC().String()).
+			Msg("new finalized header received")
 	}
 
 	return fHeader
