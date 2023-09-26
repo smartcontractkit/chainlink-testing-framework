@@ -1132,13 +1132,16 @@ func NewEVMClientFromNetwork(networkSettings EVMNetwork, logger zerolog.Logger) 
 	for idx, networkURL := range networkSettings.URLs {
 		networkSettings.URL = networkURL
 		ec, err := newEVMClient(networkSettings, logger)
-
 		if err != nil {
 			return nil, err
 		}
-		ec.SetID(idx)
-		ecl.Clients = append(ecl.Clients, ec)
-		break
+		// a call to BalanceAt (can be any on chain call) to ensure the client is connected
+		_, err = ec.BalanceAt(context.Background(), ec.GetDefaultWallet().address)
+		if err == nil {
+			ec.SetID(idx)
+			ecl.Clients = append(ecl.Clients, ec)
+			break
+		}
 	}
 	ecl.DefaultClient = ecl.Clients[0]
 	wrappedClient := wrapMultiClient(networkSettings, ecl)
@@ -1193,9 +1196,13 @@ func ConnectEVMClient(networkSettings EVMNetwork, logger zerolog.Logger) (EVMCli
 				Msg("failed to create new EVM client")
 			continue
 		}
-		ec.SetID(idx)
-		ecl.Clients = append(ecl.Clients, ec)
-		break
+		// a call to BalanceAt to ensure the client is connected
+		_, err = ec.BalanceAt(context.Background(), ec.GetDefaultWallet().address)
+		if err == nil {
+			ec.SetID(idx)
+			ecl.Clients = append(ecl.Clients, ec)
+			break
+		}
 	}
 	if len(ecl.Clients) == 0 {
 		return nil, fmt.Errorf("failed to create new EVM client")
@@ -1242,10 +1249,14 @@ func ConcurrentEVMClient(networkSettings EVMNetwork, env *environment.Environmen
 				Msg("failed to create new EVM client")
 			continue
 		}
-		ec.SyncNonce(existing)
-		ec.SetID(idx)
-		ecl.Clients = append(ecl.Clients, ec)
-		break
+		// a call to BalanceAt (can be any on chain call) to ensure the client is connected
+		_, err = ec.BalanceAt(context.Background(), ec.GetDefaultWallet().address)
+		if err == nil {
+			ec.SyncNonce(existing)
+			ec.SetID(idx)
+			ecl.Clients = append(ecl.Clients, ec)
+			break
+		}
 	}
 	if len(ecl.Clients) == 0 {
 		return nil, fmt.Errorf("failed to create new EVM client")
