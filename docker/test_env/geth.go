@@ -96,11 +96,11 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, InternalDockerUrls, erro
 	if err != nil {
 		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
 	}
-	httpPort, err := ct.MappedPort(context.Background(), natPort(TX_GETH_HTTP_PORT))
+	httpPort, err := ct.MappedPort(context.Background(), NatPort(TX_GETH_HTTP_PORT))
 	if err != nil {
 		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
 	}
-	wsPort, err := ct.MappedPort(context.Background(), natPort(TX_GETH_WS_PORT))
+	wsPort, err := ct.MappedPort(context.Background(), NatPort(TX_GETH_WS_PORT))
 	if err != nil {
 		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
 	}
@@ -189,16 +189,16 @@ func (g *Geth) getGethContainerRequest(networks []string) (*tc.ContainerRequest,
 		Name:            g.ContainerName,
 		AlwaysPullImage: true,
 		Image:           "ethereum/client-go:v1.12.0",
-		ExposedPorts:    []string{natPortFormat(TX_GETH_HTTP_PORT), natPortFormat(TX_GETH_WS_PORT)},
+		ExposedPorts:    []string{NatPortFormat(TX_GETH_HTTP_PORT), NatPortFormat(TX_GETH_WS_PORT)},
 		Networks:        networks,
 		WaitingFor: tcwait.ForAll(
 			tcwait.NewHTTPStrategy("/").
-				WithPort(natPort(TX_GETH_HTTP_PORT)),
+				WithPort(NatPort(TX_GETH_HTTP_PORT)),
 			tcwait.ForLog("WebSocket enabled"),
 			tcwait.ForLog("Started P2P networking").
 				WithStartupTimeout(120*time.Second).
 				WithPollInterval(1*time.Second),
-			NewWebSocketStrategy(natPort(TX_GETH_WS_PORT), g.l),
+			NewWebSocketStrategy(NatPort(TX_GETH_WS_PORT), g.l),
 		),
 		Entrypoint: []string{"sh", "./root/init.sh",
 			"--dev",
@@ -328,12 +328,4 @@ func (w *WebSocketStrategy) WaitUntilReady(ctx context.Context, target tcwait.St
 			w.l.Info().Msgf("WebSocket attempt %d failed: %s. Retrying...", i, err)
 		}
 	}
-}
-
-func natPortFormat(port string) string {
-	return fmt.Sprintf("%s/tcp", port)
-}
-
-func natPort(port string) nat.Port {
-	return nat.Port(natPortFormat(port))
 }
