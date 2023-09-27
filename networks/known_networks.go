@@ -603,7 +603,7 @@ var (
 	KromaMainnet blockchain.EVMNetwork = blockchain.EVMNetwork{
 		Name:                      "Kroma Mainnet",
 		SupportsEIP1559:           true,
-		ClientImplementation:      blockchain.OptimismClientImplementation,
+		ClientImplementation:      blockchain.KromaClientImplementation,
 		ChainID:                   255,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
