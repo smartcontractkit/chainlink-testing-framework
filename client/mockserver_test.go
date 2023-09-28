@@ -33,6 +33,28 @@ func TestSetValuePath(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestSetStringValuePath(t *testing.T) {
+	t.Parallel()
+
+	server := mockedServer(func(rw http.ResponseWriter, req *http.Request) {
+		if req.Method == http.MethodPut {
+			switch req.URL.Path {
+			case "/expectation":
+				writeResponse(t, rw, http.StatusCreated, nil)
+			default:
+				require.Fail(t, "Path '%s' not supported", req.URL.Path)
+			}
+		} else {
+			require.Fail(t, "Method '%s' not supported", req.Method)
+		}
+	})
+	defer server.Close()
+
+	mockServerClient := newDefaultClient(server.URL)
+	err := mockServerClient.SetStringValuePath("variable", "hello")
+	require.NoError(t, err)
+}
+
 func TestPutExpectations(t *testing.T) {
 	t.Parallel()
 
