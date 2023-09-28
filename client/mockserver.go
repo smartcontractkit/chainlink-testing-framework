@@ -156,6 +156,30 @@ func (em *MockserverClient) SetAnyValuePath(path string, v interface{}) error {
 	return err
 }
 
+// SetStringValuePath sets a string value for a path and returns it as a raw string
+func (em *MockserverClient) SetStringValuePath(path string, stringValue string) error {
+	sanitizedPath := strings.ReplaceAll(path, "/", "_")
+	id := fmt.Sprintf("%s_mock_id", sanitizedPath)
+	log.Debug().Str("ID", id).
+		Str("Path", path).
+		Msg("Setting Mock Server String Path")
+
+	initializer := HttpInitializer{
+		Id:      id,
+		Request: HttpRequest{Path: path},
+		Response: HttpResponse{
+			Body: stringValue,
+		},
+	}
+
+	initializers := []HttpInitializer{initializer}
+	resp, err := em.APIClient.R().SetBody(&initializers).Put("/expectation")
+	if resp.StatusCode() != http.StatusCreated {
+		err = fmt.Errorf("status code expected %d got %d", http.StatusCreated, resp.StatusCode())
+	}
+	return err
+}
+
 // LocalURL returns the local url of the mockserver
 func (em *MockserverClient) LocalURL() string {
 	return em.Config.LocalURL
