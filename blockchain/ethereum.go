@@ -303,12 +303,13 @@ func (e *EthereumClient) Fund(
 func (e *EthereumClient) ReturnFunds(fromKey *ecdsa.PrivateKey) error {
 	var tx *types.Transaction
 	var err error
-	for attempt := 1; attempt < 10; attempt++ {
+	for attempt := 1; attempt < 20; attempt++ {
 		tx, err = attemptReturn(e, fromKey, attempt)
 		if err == nil {
 			return e.ProcessTransaction(tx)
 		}
 		e.l.Debug().Err(err).Int("Attempt", attempt+1).Msg("Error returning funds from Chainlink node, trying again")
+		time.Sleep(time.Millisecond * 500)
 	}
 	return err
 }
@@ -335,18 +336,21 @@ func attemptReturn(e *EthereumClient, fromKey *ecdsa.PrivateKey, attemptCount in
 		return nil, err
 	}
 	totalGasCost := gasEstimations.TotalGasCost
-	addedBuffer := 1000000000 * attemptCount
-	totalGasCost.Add(totalGasCost, big.NewInt(int64(addedBuffer))) // Add 1 Gewi of buffer per attempt
-	balance.Sub(balance, totalGasCost)
+	balanceGasDelta := big.NewInt(0).Sub(balance, totalGasCost)
 
-	tx, err := e.NewTx(fromKey, nonce, to, balance, gasEstimations)
+	if balanceGasDelta.Cmp(big.NewInt(0)) <= 1 { // Try with 0.5 gwei if we have no or negative margin. Might as well
+		balanceGasDelta = big.NewInt(500_000_000)
+	}
+
+	tx, err := e.NewTx(fromKey, nonce, to, balanceGasDelta, gasEstimations)
 	if err != nil {
 		return nil, err
 	}
 	e.l.Info().
 		Str("Amount", balance.String()).
 		Str("From", fromAddress.Hex()).
-		Int("Added Buffer", addedBuffer).
+		Str("To", to.Hex()).
+		Str("Total Gas Cost", totalGasCost.String()).
 		Msg("Returning Funds to Default Wallet")
 	return tx, e.SendTransaction(context.Background(), tx)
 }
