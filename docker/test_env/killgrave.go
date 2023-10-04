@@ -186,11 +186,7 @@ func (k *Killgrave) AddImposter(imposters []KillgraveImposter) error {
 	}
 
 	// build the file name from the req.Endpoint
-	// Remove leading '/'
-	unsafeFileName := req.Endpoint
-	if strings.HasPrefix(unsafeFileName, "/") {
-		unsafeFileName = unsafeFileName[1:]
-	}
+	unsafeFileName := strings.TrimPrefix(req.Endpoint, "/")
 	safeFileName := strings.ReplaceAll(unsafeFileName, "/", ".")
 	f, err := os.Create(filepath.Join(k.impostersDirBinding, fmt.Sprintf("%s.imp.json", safeFileName)))
 	if err != nil {
