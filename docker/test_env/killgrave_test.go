@@ -79,6 +79,13 @@ func TestKillgraveMocks(t *testing.T) {
 			Path:          "/adapterint",
 			Headers:       map[string]string{"Content-Type": "application/json"},
 		},
+		{
+			Name:          "LongPathForAdapterInt",
+			AdapterResult: 5,
+			Expected:      "{\"id\":\"\",\"data\":{\"result\":5},\"error\":null}",
+			Path:          "/long/adapter/path",
+			Headers:       map[string]string{"Content-Type": "application/json"},
+		},
 	}
 
 	runTestWithExpectations(t, k, expectations)
@@ -111,6 +118,8 @@ func runTestWithExpectations(t *testing.T, k *Killgrave, expectations []kgTest) 
 			case fmt.Sprintf("%s/SetAdapterBasedAnyValuePathObject", n):
 				err = k.SetAdapterBasedAnyValuePath(test.Path, m, test.AdapterResult)
 			case fmt.Sprintf("%s/SetAdapterBasedIntValuePath", n):
+				err = k.SetAdapterBasedIntValuePath(test.Path, m, test.AdapterResult.(int))
+			case fmt.Sprintf("%s/LongPathForAdapterInt", n):
 				err = k.SetAdapterBasedIntValuePath(test.Path, m, test.AdapterResult.(int))
 			default:
 				require.Fail(t, fmt.Sprintf("unknown test name %s", t.Name()))

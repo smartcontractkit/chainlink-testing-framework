@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -184,7 +185,14 @@ func (k *Killgrave) AddImposter(imposters []KillgraveImposter) error {
 		return err
 	}
 
-	f, err := os.Create(filepath.Join(k.impostersDirBinding, fmt.Sprintf("%s.imp.json", req.Endpoint)))
+	// build the file name from the req.Endpoint
+	// Remove leading '/'
+	unsafeFileName := req.Endpoint
+	if strings.HasPrefix(unsafeFileName, "/") {
+		unsafeFileName = unsafeFileName[1:]
+	}
+	safeFileName := strings.ReplaceAll(unsafeFileName, "/", ".")
+	f, err := os.Create(filepath.Join(k.impostersDirBinding, fmt.Sprintf("%s.imp.json", safeFileName)))
 	if err != nil {
 		return err
 	}
@@ -199,7 +207,7 @@ func (k *Killgrave) AddImposter(imposters []KillgraveImposter) error {
 	// this allows us to add them without having to wait for the imposter to load later
 	if k.Container != nil {
 		// wait for the log saying the imposter was loaded
-		containerFile := filepath.Join("/imposters", fmt.Sprintf("%s.imp.json", req.Endpoint))
+		containerFile := filepath.Join("/imposters", fmt.Sprintf("%s.imp.json", safeFileName))
 		logWaitStrategy := wait.ForLog(fmt.Sprintf("imposter %s loaded", containerFile)).WithStartupTimeout(15 * time.Second)
 		err = logWaitStrategy.WaitUntilReady(context.Background(), k.Container)
 	}
