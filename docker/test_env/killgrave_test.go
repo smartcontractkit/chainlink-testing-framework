@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
-	"os"
 	"testing"
 	"time"
 
@@ -22,22 +21,35 @@ type kgTest struct {
 	Headers       map[string]string
 }
 
+func TestKillgraveNoUserImposters(t *testing.T) {
+	t.Parallel()
+	l := logging.GetTestLogger(t)
+	network, err := docker.CreateNetwork(l)
+	require.NoError(t, err)
+	k := NewKillgrave([]string{network.Name}, "").
+		WithTestLogger(t)
+	err = k.StartContainer()
+	require.NoError(t, err)
+
+	runTestWithExpectations(t, k, []kgTest{})
+}
+
 func TestKillgraveMocks(t *testing.T) {
-	n := t.Name()
+	t.Parallel()
 	l := logging.GetTestLogger(t)
 	network, err := docker.CreateNetwork(l)
 	require.NoError(t, err)
 
-	k := NewKillgrave([]string{network.Name}, "").
+	k := NewKillgrave([]string{network.Name}, "./killgrave_imposters").
 		WithTestLogger(t)
 	err = k.StartContainer()
 	require.NoError(t, err)
 
 	expectations := []kgTest{
 		{
-			Name:     "DefaultFive",
-			Expected: "{ \"id\": \"\", \"error\": null, \"data\": { \"result\": 5 } }",
-			Path:     "/five",
+			Name:     "LoadedSix",
+			Expected: "{\"id\":\"\",\"error\":null,\"data\":{\"result\":6}}",
+			Path:     "/six",
 			Headers:  map[string]string{"Content-Type": "text/plain"},
 		},
 		{
@@ -69,34 +81,37 @@ func TestKillgraveMocks(t *testing.T) {
 		},
 	}
 
-	// cleanup the files created during the test
-	t.Cleanup(func() {
-		for _, e := range expectations {
-			if e.Path == "/five" {
-				continue
-			}
-			err := os.Remove(fmt.Sprintf("./killgrave_imposters%s.imp.json", e.Path))
-			if err != nil {
-				t.Logf("Failed to delete the file: %v", err)
-			}
-		}
-	})
+	runTestWithExpectations(t, k, expectations)
+}
 
+func runTestWithExpectations(t *testing.T, k *Killgrave, expectations []kgTest) {
+	n := t.Name()
+	expectations = append(expectations, kgTest{
+		Name:     "DefaultFive",
+		Expected: "{\"id\":\"\",\"data\":{\"result\":5},\"error\":null}",
+		Path:     "/five",
+		Headers:  map[string]string{"Content-Type": "text/plain"},
+	})
+	var err error
 	// Check the different kinds of responses
 	for _, e := range expectations {
 		t.Run(e.Name, func(t *testing.T) {
+			t.Parallel()
 			test := e
+			m := []string{http.MethodGet}
 			switch t.Name() {
 			case fmt.Sprintf("%s/DefaultFive", n):
 				// do nothing, it is provided by default
+			case fmt.Sprintf("%s/LoadedSix", n):
+				// do nothing, it is loaded from the imposters directory
 			case fmt.Sprintf("%s/SetStringValuePath", n):
-				err = k.SetStringValuePath(test.Path, http.MethodGet, test.Headers, test.Expected)
+				err = k.SetStringValuePath(test.Path, m, test.Headers, test.Expected)
 			case fmt.Sprintf("%s/SetAdapterBasedAnyValuePath", n):
-				err = k.SetAdapterBasedAnyValuePath(test.Path, http.MethodGet, test.AdapterResult)
+				err = k.SetAdapterBasedAnyValuePath(test.Path, m, test.AdapterResult)
 			case fmt.Sprintf("%s/SetAdapterBasedAnyValuePathObject", n):
-				err = k.SetAdapterBasedAnyValuePath(test.Path, http.MethodGet, test.AdapterResult)
+				err = k.SetAdapterBasedAnyValuePath(test.Path, m, test.AdapterResult)
 			case fmt.Sprintf("%s/SetAdapterBasedIntValuePath", n):
-				err = k.SetAdapterBasedIntValuePath(test.Path, http.MethodGet, test.AdapterResult.(int))
+				err = k.SetAdapterBasedIntValuePath(test.Path, m, test.AdapterResult.(int))
 			default:
 				require.Fail(t, fmt.Sprintf("unknown test name %s", t.Name()))
 			}
@@ -107,7 +122,7 @@ func TestKillgraveMocks(t *testing.T) {
 				Timeout: 10 * time.Second,
 			}
 
-			req, err := http.NewRequest(http.MethodGet, url, nil)
+			req, err := http.NewRequest(m[0], url, nil)
 			require.NoError(t, err)
 
 			resp, err := client.Do(req)

@@ -2,11 +2,11 @@
   {
     "request": {
       "method": "GET",
-      "endpoint": "/five"
+      "endpoint": "/six"
     },
     "response": {
       "status": 200,
-      "body": "{ \"id\": \"\", \"error\": null, \"data\": { \"result\": 5 } }",
+      "body": "{\"id\":\"\",\"error\":null,\"data\":{\"result\":6}}",
       "headers": {
         "Content-Type": "application/json"
       }
@@ -15,11 +15,11 @@
   {
     "request": {
       "method": "POST",
-      "endpoint": "/five"
+      "endpoint": "/six"
     },
     "response": {
       "status": 200,
-      "body": "{ \"id\": \"\", \"error\": null, \"data\": { \"result\": 5 } }",
+      "body": "{\"id\":\"\",\"error\":null,\"data\":{\"result\":6}}",
       "headers": {
         "Content-Type": "application/json"
       }
