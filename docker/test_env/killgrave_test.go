@@ -95,9 +95,9 @@ func runTestWithExpectations(t *testing.T, k *Killgrave, expectations []kgTest) 
 	var err error
 	// Check the different kinds of responses
 	for _, e := range expectations {
-		t.Run(e.Name, func(t *testing.T) {
+		test := e
+		t.Run(test.Name, func(t *testing.T) {
 			t.Parallel()
-			test := e
 			m := []string{http.MethodGet}
 			switch t.Name() {
 			case fmt.Sprintf("%s/DefaultFive", n):
