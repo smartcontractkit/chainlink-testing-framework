@@ -861,6 +861,10 @@ func (e *EthereumClient) Backend() bind.ContractBackend {
 	return e.Client
 }
 
+func (e *EthereumClient) DeployBackend() bind.DeployBackend {
+	return e.Client
+}
+
 func (e *EthereumClient) SubscribeNewHeaders(
 	ctx context.Context,
 	headerChan chan *SafeEVMHeader,
@@ -1097,6 +1101,10 @@ func (e *EthereumMultinodeClient) Backend() bind.ContractBackend {
 	return e.DefaultClient.Backend()
 }
 
+func (e *EthereumMultinodeClient) DeployBackend() bind.DeployBackend {
+	return e.DefaultClient.DeployBackend()
+}
+
 func (e *EthereumMultinodeClient) SubscribeNewHeaders(
 	ctx context.Context,
 	headerChan chan *SafeEVMHeader,
@@ -1125,6 +1133,10 @@ func (e *EthereumMultinodeClient) LoadContract(contractName string, address comm
 // EstimateCostForChainlinkOperations calculates TXs cost as a dirty estimation based on transactionLimit for that network
 func (e *EthereumMultinodeClient) EstimateCostForChainlinkOperations(amountOfOperations int) (*big.Float, error) {
 	return e.DefaultClient.EstimateCostForChainlinkOperations(amountOfOperations)
+}
+
+func (e *EthereumMultinodeClient) GetHeaderSubscriptions() map[string]HeaderEventSubscription {
+	return e.DefaultClient.GetHeaderSubscriptions()
 }
 
 // NewEVMClientFromNetwork returns a multi-node EVM client connected to the specified network
