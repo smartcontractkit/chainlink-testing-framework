@@ -1,0 +1,28 @@
+[
+  {
+    "request": {
+      "method": "GET",
+      "endpoint": "/five"
+    },
+    "response": {
+      "status": 200,
+      "body": "{ \"id\": \"\", \"error\": null, \"data\": { \"result\": 5 } }",
+      "headers": {
+        "Content-Type": "application/json"
+      }
+    }
+  },
+  {
+    "request": {
+      "method": "POST",
+      "endpoint": "/five"
+    },
+    "response": {
+      "status": 200,
+      "body": "{ \"id\": \"\", \"error\": null, \"data\": { \"result\": 5 } }",
+      "headers": {
+        "Content-Type": "application/json"
+      }
+    }
+  }
+]
