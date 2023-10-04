@@ -566,14 +566,14 @@ func (e *EthereumClient) PollFinality() error {
 		return fmt.Errorf("could not create finalized header manager")
 	}
 	e.FinalizedHeader.Store(f)
-	e.AddHeaderEventSubscription(finalizedHeaderKey, f)
+	e.AddHeaderEventSubscription(FinalizedHeaderKey, f)
 	return nil
 }
 
 // CancelFinalityPolling stops polling for the latest finalized header
 func (e *EthereumClient) CancelFinalityPolling() {
-	if _, ok := e.headerSubscriptions[finalizedHeaderKey]; ok {
-		e.DeleteHeaderEventSubscription(finalizedHeaderKey)
+	if _, ok := e.headerSubscriptions[FinalizedHeaderKey]; ok {
+		e.DeleteHeaderEventSubscription(FinalizedHeaderKey)
 	}
 }
 
