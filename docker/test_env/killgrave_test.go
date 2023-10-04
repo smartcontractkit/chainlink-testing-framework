@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -86,6 +87,13 @@ func TestKillgraveMocks(t *testing.T) {
 			Path:          "/long/adapter/path",
 			Headers:       map[string]string{"Content-Type": "application/json"},
 		},
+		{
+			Name:          "MissingLeadingSlash",
+			AdapterResult: 5,
+			Expected:      "{\"id\":\"\",\"data\":{\"result\":5},\"error\":null}",
+			Path:          "noleadingslash",
+			Headers:       map[string]string{"Content-Type": "application/json"},
+		},
 	}
 
 	runTestWithExpectations(t, k, expectations)
@@ -121,12 +129,19 @@ func runTestWithExpectations(t *testing.T, k *Killgrave, expectations []kgTest) 
 				err = k.SetAdapterBasedIntValuePath(test.Path, m, test.AdapterResult.(int))
 			case fmt.Sprintf("%s/LongPathForAdapterInt", n):
 				err = k.SetAdapterBasedIntValuePath(test.Path, m, test.AdapterResult.(int))
+			case fmt.Sprintf("%s/MissingLeadingSlash", n):
+				err = k.SetAdapterBasedIntValuePath(test.Path, m, test.AdapterResult.(int))
 			default:
 				require.Fail(t, fmt.Sprintf("unknown test name %s", t.Name()))
 			}
 			require.NoError(t, err)
 
-			url := fmt.Sprintf("%s%s", k.ExternalEndpoint, test.Path)
+			var url string
+			if strings.HasPrefix(test.Path, "/") {
+				url = fmt.Sprintf("%s%s", k.ExternalEndpoint, test.Path)
+			} else {
+				url = fmt.Sprintf("%s/%s", k.ExternalEndpoint, test.Path)
+			}
 			client := &http.Client{
 				Timeout: 10 * time.Second,
 			}

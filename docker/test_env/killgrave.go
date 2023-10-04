@@ -179,6 +179,14 @@ func (k *Killgrave) setupImposters() error {
 
 // AddImposter adds an imposter to the killgrave container
 func (k *Killgrave) AddImposter(imposters []KillgraveImposter) error {
+	// if the endpoint paths do not start with '/' then add it
+	for i, imposter := range imposters {
+		if !strings.HasPrefix(imposter.Request.Endpoint, "/") {
+			imposter.Request.Endpoint = fmt.Sprintf("/%s", imposter.Request.Endpoint)
+			imposters[i] = imposter
+		}
+	}
+
 	req := imposters[0].Request
 	data, err := json.Marshal(imposters)
 	if err != nil {
