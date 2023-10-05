@@ -801,7 +801,7 @@ func (e *EthereumClient) EstimateGas(callMsg ethereum.CallMsg) (GasEstimations, 
 	gasUnits, err = e.Client.EstimateGas(ctx, callMsg)
 	cancel()
 	if err != nil {
-		e.l.Warn().Err(err).Msg("Error estimating gas for transaction, leaving blank")
+		return GasEstimations{}, err
 	}
 
 	gasPriceBuffer := big.NewInt(0).SetUint64(e.NetworkConfig.GasEstimationBuffer)
