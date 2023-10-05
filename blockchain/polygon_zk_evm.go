@@ -15,7 +15,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 )
 
-// PolygonZkEvmMultinodeClient represents a multi-node, EVM compatible client for the Polygon zkEVM network
+// PolygonZkEvmMultinodeClient a multi-node, EVM compatible client for the Polygon zkEVM network
 type PolygonZkEvmMultinodeClient struct {
 	*EthereumMultinodeClient
 }
