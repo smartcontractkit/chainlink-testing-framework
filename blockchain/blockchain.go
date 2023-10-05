@@ -30,6 +30,8 @@ type EVMClient interface {
 	GetNetworkConfig() *EVMNetwork
 	GetNonceSetting() NonceSettings
 
+	GetHeaderSubscriptions() map[string]HeaderEventSubscription
+
 	// Setters
 	SetID(id int)
 	SetDefaultWallet(num int) error
@@ -77,6 +79,7 @@ type EVMClient interface {
 	ParallelTransactions(enabled bool)
 	Close() error
 	Backend() bind.ContractBackend
+	DeployBackend() bind.DeployBackend
 	// Deal with wrapped headers
 	SubscribeNewHeaders(ctx context.Context, headerChan chan *SafeEVMHeader) (ethereum.Subscription, error)
 	HeaderByNumber(ctx context.Context, number *big.Int) (*SafeEVMHeader, error)
