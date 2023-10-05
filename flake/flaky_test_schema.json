@@ -1,0 +1,22 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "array",
+    "items": {
+      "type": "object",
+      "properties": {
+        "test": {
+          "type": "string",
+          "pattern": "^Test"
+        },
+        "package": {
+          "type": "string",
+          "pattern": "^github\\.com/smartcontractkit/[a-zA-Z0-9_.-]+(/[a-zA-Z0-9_.-]+)*$"
+        },
+        "error": {
+          "type": "string",
+          "pattern": "^\\s*Error:"
+        }
+      },
+      "required": ["test", "package", "error"]
+    }
+  }

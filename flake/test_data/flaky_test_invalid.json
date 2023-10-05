@@ -1,0 +1,7 @@
+[
+    {
+        "test": "InvalidTest",
+        "package": "github.com/smartcontractkit/chainlink/core/services/fluxmonitor",
+        "error": "Error: TestFlakyTest failed"
+    }
+]

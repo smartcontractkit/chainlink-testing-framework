@@ -1,0 +1,12 @@
+[
+    {
+        "test": "TestDuplicateTestNamesAreFound",
+        "package": "github.com/smartcontractkit/chainlink/core/services/fluxmonitor",
+        "error": "Error: TestFlakyTest failed"
+    },
+    {
+        "test": "TestCompareDuplicatesGood",
+        "package": "github.com/smartcontractkit/chainlink/core/services/fluxmonitor",
+        "error": "Error: TestFlakyTest failed"
+    }
+]

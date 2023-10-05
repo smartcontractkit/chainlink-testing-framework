@@ -1,0 +1,12 @@
+[
+    {
+        "test": "TestCompareDuplicatesGood",
+        "package": "github.com/smartcontractkit/somerepo/example",
+        "error": "Error: TestFlakyTest failed"
+    },
+    {
+        "test": "TestCompareDuplicatesBad",
+        "package": "github.com/smartcontractkit/somerepo/example",
+        "error": "Error: TestFlakyTest failed"
+    }
+]
