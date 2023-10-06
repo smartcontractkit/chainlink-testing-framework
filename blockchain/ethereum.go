@@ -396,11 +396,10 @@ func (e *EthereumClient) DeployContract(
 		return nil, nil, nil, err
 	}
 	if !e.NetworkConfig.SupportsEIP1559 {
-		gasEstimations, err := e.EstimateGas(ethereum.CallMsg{})
+		opts.GasPrice, err = e.EstimateGasPrice()
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		opts.GasPrice = gasEstimations.GasPrice
 	}
 
 	contractAddress, transaction, contractInstance, err := deployer(opts, e.Client)
@@ -468,11 +467,10 @@ func (e *EthereumClient) TransactionOpts(from *EthereumWallet) (*bind.TransactOp
 		opts.GasLimit = e.NetworkConfig.DefaultGasLimit
 	}
 	if !e.NetworkConfig.SupportsEIP1559 {
-		gasEstimations, err := e.EstimateGas(ethereum.CallMsg{})
+		opts.GasPrice, err = e.EstimateGasPrice()
 		if err != nil {
 			return nil, err
 		}
-		opts.GasPrice = gasEstimations.GasPrice
 	}
 	return opts, nil
 }
@@ -796,6 +794,9 @@ func (e *EthereumClient) EstimateGas(callMsg ethereum.CallMsg) (GasEstimations, 
 		gasFeeCap *big.Int
 		err       error
 	)
+	if callMsg.To == nil && callMsg.Data == nil {
+		return GasEstimations{}, fmt.Errorf("you've called EstimateGas with a nil To address, this can cause weird errors and inaccuracies, provide a To address in your callMsg, or use EstimateGasPrice for just a price")
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), e.NetworkConfig.Timeout.Duration)
 	// Gas Units
 	gasUnits, err = e.Client.EstimateGas(ctx, callMsg)
@@ -848,6 +849,12 @@ func (e *EthereumClient) EstimateGas(callMsg ethereum.CallMsg) (GasEstimations, 
 		GasTipCap:    gasTipCap,
 		TotalGasCost: totalGasCost,
 	}, nil
+}
+
+func (e *EthereumClient) EstimateGasPrice() (*big.Int, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), e.NetworkConfig.Timeout.Duration)
+	defer cancel()
+	return e.Client.SuggestGasPrice(ctx)
 }
 
 // ConnectionIssue returns a channel that will receive a timestamp when the connection is lost
@@ -1163,7 +1170,10 @@ func NewEVMClientFromNetwork(networkSettings EVMNetwork, logger zerolog.Logger) 
 	wrappedClient := wrapMultiClient(networkSettings, ecl)
 	// required in Geth when you need to call "simulate" transactions from nodes
 	if ecl.NetworkSimulated() {
-		gasEstimations, err := wrappedClient.EstimateGas(ethereum.CallMsg{})
+		zero := common.HexToAddress("0x0")
+		gasEstimations, err := wrappedClient.EstimateGas(ethereum.CallMsg{
+			To: &zero,
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -1227,7 +1237,10 @@ func ConnectEVMClient(networkSettings EVMNetwork, logger zerolog.Logger) (EVMCli
 	wrappedClient := wrapMultiClient(networkSettings, ecl)
 	// required in Geth when you need to call "simulate" transactions from nodes
 	if ecl.NetworkSimulated() {
-		gasEstimations, err := wrappedClient.EstimateGas(ethereum.CallMsg{})
+		zero := common.HexToAddress("0x0")
+		gasEstimations, err := wrappedClient.EstimateGas(ethereum.CallMsg{
+			To: &zero,
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -1510,6 +1523,10 @@ func (e *EthereumMultinodeClient) GasStats() *GasStats {
 
 func (e *EthereumMultinodeClient) EstimateGas(callMsg ethereum.CallMsg) (GasEstimations, error) {
 	return e.DefaultClient.EstimateGas(callMsg)
+}
+
+func (e *EthereumMultinodeClient) EstimateGasPrice() (*big.Int, error) {
+	return e.DefaultClient.EstimateGasPrice()
 }
 
 func (e *EthereumMultinodeClient) ConnectionIssue() chan time.Time {
