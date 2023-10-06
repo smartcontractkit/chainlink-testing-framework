@@ -89,7 +89,10 @@ type EVMClient interface {
 	EstimateCostForChainlinkOperations(amountOfOperations int) (*big.Float, error)
 	EstimateTransactionGasCost() (*big.Int, error)
 	GasStats() *GasStats
+	// EstimateGas provides all gas stats needed, best for estimating gas and prices for a specific transaction
 	EstimateGas(callMsg ethereum.CallMsg) (GasEstimations, error)
+	// EstimateGasPrice provides a plain gas price estimate, best for quick checks and contract deployments
+	EstimateGasPrice() (*big.Int, error)
 
 	// Connection Status
 	// ConnectionIssue returns a channel that will receive a timestamp when the connection is lost
