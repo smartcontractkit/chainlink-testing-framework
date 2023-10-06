@@ -795,7 +795,7 @@ func (e *EthereumClient) EstimateGas(callMsg ethereum.CallMsg) (GasEstimations, 
 		err       error
 	)
 	if callMsg.To == nil && callMsg.Data == nil {
-		return GasEstimations{}, fmt.Errorf("you've called EstimateGas with a nil To address, this can cause weird errors and inaccuracies, provide a To address in your callMsg")
+		return GasEstimations{}, fmt.Errorf("you've called EstimateGas with a nil To address, this can cause weird errors and inaccuracies, provide a To address in your callMsg, or use EstimateGasPrice for just a price")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), e.NetworkConfig.Timeout.Duration)
 	// Gas Units
