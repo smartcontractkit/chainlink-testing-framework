@@ -83,15 +83,30 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, InternalDockerUrls, erro
 			L: g.l,
 		}
 	}
-	ct, err := docker.StartContainerWithRetry(g.l, tc.GenericContainerRequest{
-		ContainerRequest: *r,
-		Reuse:            true,
-		Started:          true,
-		Logger:           l,
-	})
+	ct, err := docker.StartContainerWithRetry(g.l,
+		tc.GenericContainerRequest{
+			ContainerRequest: *r,
+			Reuse:            true,
+			Started:          true,
+			Logger:           l,
+		},
+	)
 	if err != nil {
 		return blockchain.EVMNetwork{}, InternalDockerUrls{}, errors.Wrapf(err, "cannot start geth container")
 	}
+
+	// {
+	// 	"30303/tcp": null,
+	// 	"30303/udp": null,
+	// 	"8545/tcp": [
+	// 	  { "HostIp": "0.0.0.0", "HostPort": "32875" },
+	// 	  { "HostIp": "::", "HostPort": "32874" }
+	// 	],
+	// 	"8546/tcp": [
+	// 	  { "HostIp": "0.0.0.0", "HostPort": "32874" },
+	// 	  { "HostIp": "::", "HostPort": "32873" }
+	// 	]
+	//   }
 	host, err := ct.Host(context.Background())
 	if err != nil {
 		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
@@ -100,10 +115,25 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, InternalDockerUrls, erro
 	if err != nil {
 		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
 	}
-	wsPort, err := ct.MappedPort(context.Background(), NatPort(TX_GETH_WS_PORT))
+	p, err := ct.Ports(context.Background())
 	if err != nil {
 		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
 	}
+	httpPorts := p[NatPort(TX_GETH_HTTP_PORT)]
+	wsPorts := p[NatPort(TX_GETH_WS_PORT)]
+	wsPort := NatPort(wsPorts[0].HostPort)
+	if len(wsPorts) > 1 {
+		if httpPorts[0].HostPort == wsPorts[0].HostPort || httpPorts[1].HostPort == wsPorts[0].HostPort {
+			wsPort = NatPort(wsPorts[1].HostPort)
+		}
+	}
+
+	g.l.Info().
+		Str("host", host).
+		Str("mapped_http_port", httpPort.Port()).
+		Str("mapped_ws_port", wsPort.Port()).
+		Interface("ports", p).
+		Msg("Successfully fetched and mapped container endpoints.")
 
 	g.Container = ct
 	g.ExternalHttpUrl = fmt.Sprintf("http://%s:%s", host, httpPort.Port())
@@ -188,13 +218,17 @@ func (g *Geth) getGethContainerRequest(networks []string) (*tc.ContainerRequest,
 	return &tc.ContainerRequest{
 		Name:            g.ContainerName,
 		AlwaysPullImage: true,
-		Image:           "ethereum/client-go:v1.12.0",
-		ExposedPorts:    []string{NatPortFormat(TX_GETH_HTTP_PORT), NatPortFormat(TX_GETH_WS_PORT)},
-		Networks:        networks,
+		Image:           "ethereum/client-go:v1.13.2",
+		// Image:        "tateexon/tmp-go-ethereum:latest",
+		ExposedPorts: []string{NatPortFormat(TX_GETH_HTTP_PORT), NatPortFormat(TX_GETH_WS_PORT)},
 		WaitingFor: tcwait.ForAll(
 			tcwait.NewHTTPStrategy("/").
-				WithPort(NatPort(TX_GETH_HTTP_PORT)),
-			tcwait.ForLog("WebSocket enabled"),
+				WithPort(NatPort(TX_GETH_HTTP_PORT)).
+				WithStartupTimeout(120*time.Second).
+				WithPollInterval(1*time.Second),
+			tcwait.ForLog("WebSocket enabled").
+				WithStartupTimeout(120*time.Second).
+				WithPollInterval(1*time.Second),
 			tcwait.ForLog("Started P2P networking").
 				WithStartupTimeout(120*time.Second).
 				WithPollInterval(1*time.Second),
@@ -281,6 +315,7 @@ func NewWebSocketStrategy(port nat.Port, l zerolog.Logger) *WebSocketStrategy {
 		Port:       port,
 		RetryDelay: 10 * time.Second,
 		timeout:    2 * time.Minute,
+		l:          l,
 	}
 }
 
@@ -306,6 +341,18 @@ func (w *WebSocketStrategy) WaitUntilReady(ctx context.Context, target tcwait.St
 			w.l.Error().Msg("Failed to get the mapped ws port")
 			return err
 		}
+		p, err := target.Ports(context.Background())
+		if err != nil {
+			return err
+		}
+		httpPorts := p[NatPort(TX_GETH_HTTP_PORT)]
+		wsPorts := p[w.Port]
+		mappedPort = NatPort(wsPorts[0].HostPort)
+		if len(wsPorts) > 1 {
+			if httpPorts[0].HostPort == wsPorts[0].HostPort || httpPorts[1].HostPort == wsPorts[0].HostPort {
+				mappedPort = NatPort(wsPorts[1].HostPort)
+			}
+		}
 
 		url := fmt.Sprintf("ws://%s:%s", host, mappedPort.Port())
 		w.l.Info().Msgf("Attempting to dial %s", url)
@@ -325,6 +372,8 @@ func (w *WebSocketStrategy) WaitUntilReady(ctx context.Context, target tcwait.St
 			return ctx.Err()
 		case <-time.After(w.RetryDelay):
 			i++
+			w.l.Info()
+
 			w.l.Info().Msgf("WebSocket attempt %d failed: %s. Retrying...", i, err)
 		}
 	}

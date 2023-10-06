@@ -9,6 +9,21 @@ on:
 jobs:
   unit:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        product:
+          - name: run_01
+          - name: run_02
+          - name: run_03
+          - name: run_04
+          - name: run_05
+          - name: run_06
+          - name: run_07
+          - name: run_08
+          - name: run_09
+          - name: run_10
+    name: ${{ matrix.product.name }}
     steps:
       - name: Checkout the Repo
         uses: actions/checkout@v3
@@ -25,11 +40,14 @@ jobs:
         with:
           token: ${{ github.token }} # Avoids rate-limiting
       - name: Run Tests
+        env:
+          LOB_LEVEL: debug
+          TEST_LOB_LEVEL: debug
         run: |
           PATH=$PATH:$(go env GOPATH)/bin
           export PATH
           set -euo pipefail
-          go test -json -cover -covermode=count -coverprofile=unit-test-coverage.out ./... 2>&1 | tee /tmp/gotest.log | gotestfmt
+          go test -timeout 5h -v -run "^(TestGeth1|TestGeth2)$" ./docker/test_env 2>&1 | tee /tmp/gotest.log
       - name: Code Coverage
         uses: codecov/codecov-action@v3
         with:

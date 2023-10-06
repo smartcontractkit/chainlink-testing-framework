@@ -309,10 +309,17 @@ func (g *NonDevGethNode) ConnectToClient() error {
 	if err != nil {
 		return err
 	}
-	port = NatPort(TX_NON_DEV_GETH_WS_PORT)
-	wsPort, err := ct.MappedPort(context.Background(), port)
+	p, err := ct.Ports(context.Background())
 	if err != nil {
 		return err
+	}
+	httpPorts := p[NatPort(TX_GETH_HTTP_PORT)]
+	wsPorts := p[NatPort(TX_NON_DEV_GETH_WS_PORT)]
+	wsPort := NatPort(wsPorts[0].HostPort)
+	if len(wsPorts) > 1 {
+		if httpPorts[0].HostPort == wsPorts[0].HostPort || httpPorts[1].HostPort == wsPorts[0].HostPort {
+			wsPort = NatPort(wsPorts[1].HostPort)
+		}
 	}
 	g.ExternalHttpUrl = fmt.Sprintf("http://%s:%s", host, httpPort.Port())
 	g.InternalHttpUrl = fmt.Sprintf("http://%s:%s", g.ContainerName, TX_GETH_HTTP_PORT)
