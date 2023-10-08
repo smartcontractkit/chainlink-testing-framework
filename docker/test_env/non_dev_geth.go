@@ -309,11 +309,11 @@ func (g *NonDevGethNode) ConnectToClient() error {
 	if err != nil {
 		return err
 	}
-	port = NatPort(TX_NON_DEV_GETH_WS_PORT)
-	wsPort, err := ct.MappedPort(context.Background(), port)
+	wsPort, err := getUniqueWsPort(ct, TX_GETH_HTTP_PORT, TX_NON_DEV_GETH_WS_PORT, g.l)
 	if err != nil {
 		return err
 	}
+
 	g.ExternalHttpUrl = fmt.Sprintf("http://%s:%s", host, httpPort.Port())
 	g.InternalHttpUrl = fmt.Sprintf("http://%s:%s", g.ContainerName, TX_GETH_HTTP_PORT)
 	g.ExternalWsUrl = fmt.Sprintf("ws://%s:%s", host, wsPort.Port())
