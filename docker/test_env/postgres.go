@@ -17,12 +17,13 @@ import (
 
 type PostgresDb struct {
 	EnvComponent
-	User     string
-	Password string
-	DbName   string
-	Port     string
-	l        zerolog.Logger
-	t        *testing.T
+	User         string
+	Password     string
+	DbName       string
+	Port         string
+	ImageVersion string
+	l            zerolog.Logger
+	t            *testing.T
 }
 
 type PostgresDbOption = func(c *PostgresDb)
@@ -36,17 +37,26 @@ func WithPostgresDbContainerName(name string) PostgresDbOption {
 	}
 }
 
+func WithPostgresImageVersion(version string) PostgresDbOption {
+	return func(c *PostgresDb) {
+		if version != "" {
+			c.ImageVersion = version
+		}
+	}
+}
+
 func NewPostgresDb(networks []string, opts ...PostgresDbOption) *PostgresDb {
 	pg := &PostgresDb{
 		EnvComponent: EnvComponent{
 			ContainerName: fmt.Sprintf("%s-%s", "postgres-db", uuid.NewString()[0:8]),
 			Networks:      networks,
 		},
-		User:     "postgres",
-		Password: "mysecretpassword",
-		DbName:   "testdb",
-		Port:     "5432",
-		l:        log.Logger,
+		User:         "postgres",
+		Password:     "mysecretpassword",
+		DbName:       "testdb",
+		Port:         "5432",
+		ImageVersion: "15.3",
+		l:            log.Logger,
 	}
 	for _, opt := range opts {
 		opt(pg)
@@ -89,7 +99,7 @@ func (pg *PostgresDb) StartContainer() error {
 func (pg *PostgresDb) getContainerRequest() *tc.ContainerRequest {
 	return &tc.ContainerRequest{
 		Name:         pg.ContainerName,
-		Image:        "postgres:15.3",
+		Image:        fmt.Sprintf("postgres:%s", pg.ImageVersion),
 		ExposedPorts: []string{fmt.Sprintf("%s/tcp", pg.Port)},
 		Env: map[string]string{
 			"POSTGRES_USER":     pg.User,
