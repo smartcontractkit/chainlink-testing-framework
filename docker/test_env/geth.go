@@ -131,6 +131,14 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, InternalDockerUrls, erro
 	return networkConfig, internalDockerUrls, nil
 }
 
+// getUniqueWsPort returns the unique websocket port for the container
+// This is needed for multiple reasons.
+// First there is this docker bug https://github.com/moby/moby/issues/42442
+// that causes docker to intermittently map an ipv6 port to a port other than the same one as the mapped
+// ipv4 port. This causes port collisions where our ws port will actually call the http port.
+// Second there is this docker bug https://github.com/moby/moby/issues/42375
+// that shows disabling ipv6 does not actually disable ipv6. This means the above issue is present
+// even though we disabled it in the docker network creation.
 func getUniqueWsPort(ctx context.Context, ct tc.Container, httpInternalPort, wsInternalPort string, l zerolog.Logger) (nat.Port, error) {
 	p, err := ct.Ports(ctx)
 	if err != nil {
