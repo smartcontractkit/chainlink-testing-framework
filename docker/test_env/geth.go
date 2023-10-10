@@ -100,7 +100,7 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, InternalDockerUrls, erro
 	if err != nil {
 		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
 	}
-	wsPort, err := getUniqueWsPort(ct, TX_GETH_HTTP_PORT, TX_GETH_WS_PORT, g.l)
+	wsPort, err := getUniqueWsPort(context.Background(), ct, TX_GETH_HTTP_PORT, TX_GETH_WS_PORT, g.l)
 	if err != nil {
 		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
 	}
@@ -131,8 +131,8 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, InternalDockerUrls, erro
 	return networkConfig, internalDockerUrls, nil
 }
 
-func getUniqueWsPort(ct tc.Container, httpInternalPort, wsInternalPort string, l zerolog.Logger) (nat.Port, error) {
-	p, err := ct.Ports(context.Background())
+func getUniqueWsPort(ctx context.Context, ct tc.Container, httpInternalPort, wsInternalPort string, l zerolog.Logger) (nat.Port, error) {
+	p, err := ct.Ports(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -320,7 +320,7 @@ func (w *WebSocketStrategy) WaitUntilReady(ctx context.Context, target tcwait.St
 			w.l.Error().Msg("Failed to get the target host")
 			return err
 		}
-		wsPort, err := getUniqueWsPort(target.(tc.Container), TX_GETH_HTTP_PORT, w.Port.Port(), w.l)
+		wsPort, err := getUniqueWsPort(ctx, target.(tc.Container), TX_GETH_HTTP_PORT, w.Port.Port(), w.l)
 		if err != nil {
 			return err
 		}

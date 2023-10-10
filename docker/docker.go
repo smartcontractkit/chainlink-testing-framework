@@ -18,6 +18,7 @@ func CreateNetwork(l zerolog.Logger) (*tc.DockerNetwork, error) {
 		NetworkRequest: tc.NetworkRequest{
 			Name:           networkName,
 			CheckDuplicate: true,
+			EnableIPv6:     false,
 		},
 	})
 	if err != nil {

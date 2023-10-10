@@ -309,7 +309,7 @@ func (g *NonDevGethNode) ConnectToClient() error {
 	if err != nil {
 		return err
 	}
-	wsPort, err := getUniqueWsPort(ct, TX_GETH_HTTP_PORT, TX_NON_DEV_GETH_WS_PORT, g.l)
+	wsPort, err := getUniqueWsPort(context.Background(), ct, TX_GETH_HTTP_PORT, TX_NON_DEV_GETH_WS_PORT, g.l)
 	if err != nil {
 		return err
 	}
