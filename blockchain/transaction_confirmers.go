@@ -133,14 +133,11 @@ func (t *TransactionConfirmer) Complete() bool {
 
 // InstantConfirmer is a near-instant confirmation method, primarily for optimistic L2s that have near-instant finalization
 type InstantConfirmer struct {
-	client       EVMClient
-	txHash       common.Hash
-	complete     bool // tracks if the subscription is completed or not
-	completeChan chan struct{}
-	revertChan   chan struct{}
-	completeMu   sync.Mutex
-	context      context.Context
-	cancel       context.CancelFunc
+	client   EVMClient
+	txHash   common.Hash
+	complete bool // tracks if the subscription is completed or not
+	context  context.Context
+	cancel   context.CancelFunc
 	// For events
 	confirmed     bool // tracks the confirmation status of the subscription
 	confirmedChan chan bool
@@ -156,12 +153,10 @@ func NewInstantConfirmer(
 ) *InstantConfirmer {
 	ctx, ctxCancel := context.WithTimeout(context.Background(), client.GetNetworkConfig().Timeout.Duration)
 	return &InstantConfirmer{
-		client:       client,
-		txHash:       txHash,
-		completeChan: make(chan struct{}, 1),
-		context:      ctx,
-		cancel:       ctxCancel,
-		revertChan:   make(chan struct{}, 1),
+		client:  client,
+		txHash:  txHash,
+		context: ctx,
+		cancel:  ctxCancel,
 		// For events
 		confirmedChan: confirmedChan,
 		log:           logger,
@@ -170,44 +165,45 @@ func NewInstantConfirmer(
 
 // ReceiveHeader does a quick check on if the tx is confirmed already
 func (l *InstantConfirmer) ReceiveHeader(_ NodeHeader) error {
-	var err error
-	l.confirmed, err = l.client.IsTxConfirmed(l.txHash)
-	if err != nil {
-		if err.Error() == "not found" {
-			l.log.Trace().Str("Tx", l.txHash.Hex()).Msg("Transaction not found on chain yet. Waiting to confirm.")
-			return nil
-		}
-		l.log.Error().Str("Tx", l.txHash.Hex()).Err(err).Msg("Error checking tx confirmed")
-		if strings.Contains(err.Error(), "transaction failed and was reverted") {
-			l.revertChan <- struct{}{}
-		}
-		return err
-	}
-	l.log.Debug().Bool("Confirmed", l.confirmed).Str("Tx", l.txHash.Hex()).Msg("Instant Confirmation")
-	if l.confirmed {
-		l.completeChan <- struct{}{}
-		if l.confirmedChan != nil {
-			l.confirmedChan <- l.confirmed
-		}
-	}
-	return nil
+	return nil // NOP as instant chains can be weird with headers and timings
 }
 
 // Wait checks every header if the tx has been included on chain or not
 func (l *InstantConfirmer) Wait() error {
 	defer func() {
-		l.completeMu.Lock()
 		l.complete = true
-		l.completeMu.Unlock()
+		l.cancel()
 	}()
+	confirmed, err := l.client.IsTxConfirmed(l.txHash)
+	if err != nil {
+		return err
+	}
+	if confirmed {
+		l.confirmed = true
+		go func() {
+			if l.confirmedChan != nil {
+				l.confirmedChan <- true
+			}
+		}()
+		return nil
+	}
 
+	poll := time.NewTicker(time.Millisecond * 500)
 	for {
 		select {
-		case <-l.completeChan:
-			l.cancel()
-			return nil
-		case <-l.revertChan:
-			return fmt.Errorf("transaction reverted: %s network %s", l.txHash.Hex(), l.client.GetNetworkName())
+		case <-poll.C:
+			confirmed, err := l.client.IsTxConfirmed(l.txHash)
+			if err != nil {
+				return err
+			}
+			if confirmed {
+				l.confirmed = true
+				go func() {
+					if l.confirmedChan != nil {
+						l.confirmedChan <- true
+					}
+				}()
+			}
 		case <-l.context.Done():
 			return fmt.Errorf("timeout waiting for instant transaction to confirm after %s: %s",
 				l.client.GetNetworkConfig().Timeout.String(), l.txHash.Hex())
@@ -217,8 +213,6 @@ func (l *InstantConfirmer) Wait() error {
 
 // Complete returns if the transaction is complete or not
 func (l *InstantConfirmer) Complete() bool {
-	l.completeMu.Lock()
-	defer l.completeMu.Unlock()
 	return l.complete
 }
 
