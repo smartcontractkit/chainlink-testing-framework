@@ -333,12 +333,14 @@ func (e *EthereumClient) subscribeToNewHeaders() error {
 	}
 	e.l.Info().Str("Network", e.NetworkConfig.Name).Msg("Subscribed to new block headers")
 
+	e.subscriptionWg.Add(1)
 	go e.headerSubscriptionLoop(subscription, headerChannel)
 	return nil
 }
 
 // headerSubscriptionLoop receives new headers, and handles subscription errors when they pop up
 func (e *EthereumClient) headerSubscriptionLoop(subscription ethereum.Subscription, headerChannel chan *SafeEVMHeader) {
+	defer e.subscriptionWg.Done()
 	lastHeaderNumber := uint64(0)
 	for {
 		select {
