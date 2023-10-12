@@ -69,7 +69,7 @@ type NonceSettings struct {
 // rejected.
 func (ns *NonceSettings) watchInstantTransactions() {
 	ns.instantTransactions = make(map[string]map[uint64]chan struct{})
-	checkInterval := time.NewTicker(time.Millisecond * 100)
+	checkInterval := time.NewTicker(time.Millisecond * 50)
 
 	for {
 		select {

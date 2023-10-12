@@ -253,7 +253,9 @@ func (e *EthereumClient) SendTransaction(ctx context.Context, tx *types.Transact
 		if err != nil {
 			return err
 		}
+		e.l.Warn().Str("From", fromAddr.Hex()).Str("Hash", tx.Hash().Hex()).Msg("Waiting for permission to send instant transaction")
 		<-e.NonceSettings.registerInstantTransaction(fromAddr.Hex(), tx.Nonce())
+		e.l.Warn().Str("From", fromAddr.Hex()).Str("Hash", tx.Hash().Hex()).Msg("Sending instant transaction")
 	}
 	return e.Client.SendTransaction(ctx, tx)
 }
@@ -636,13 +638,25 @@ func (e *EthereumClient) IsTxHeadFinalized(txHdr, header *SafeEVMHeader) (bool, 
 
 // IsTxConfirmed checks if the transaction is confirmed on chain or not
 func (e *EthereumClient) IsTxConfirmed(txHash common.Hash) (bool, error) {
-	tx, isPending, err := e.Client.TransactionByHash(context.Background(), txHash)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	tx, isPending, err := e.Client.TransactionByHash(ctx, txHash)
+	cancel()
 	if err != nil {
+		e.l.Error().Err(err).Str("TX Hash", txHash.Hex()).Msg("Error retrieving transaction") // DEBUG
+		if errors.Is(err, ethereum.NotFound) {                                                // not found is fine, it's not on chain yet
+			return false, nil
+		}
 		return !isPending, err
 	}
 	if !isPending {
-		receipt, err := e.Client.TransactionReceipt(context.Background(), txHash)
+		ctx, cancel = context.WithTimeout(context.Background(), time.Second*5)
+		receipt, err := e.Client.TransactionReceipt(ctx, txHash)
+		cancel()
 		if err != nil {
+			e.l.Error().Err(err).Str("TX Hash", txHash.Hex()).Msg("Error retrieving transaction") // DEBUG
+			if errors.Is(err, ethereum.NotFound) {                                                // not found is fine, it's not on chain yet
+				return false, nil
+			}
 			return !isPending, err
 		}
 		e.gasStats.AddClientTXData(TXGasData{
