@@ -20,6 +20,8 @@ func TestGeth(t *testing.T) {
 	require.NoError(t, err)
 	ns := blockchain.SimulatedEVMNetwork
 	ns.URLs = []string{g.ExternalWsUrl}
-	_, err = blockchain.ConnectEVMClient(ns, l)
+	c, err := blockchain.ConnectEVMClient(ns, l)
 	require.NoError(t, err, "Couldn't connect to the evm client")
+	err = c.Close()
+	require.NoError(t, err, "Couldn't close the client")
 }
