@@ -87,7 +87,7 @@ func (r *SchemaRegistry) StartContainer(envVars map[string]string) error {
 	return nil
 }
 
-func (r *SchemaRegistry) getContainerRequest(envVars map[string) tc.ContainerRequest {
+func (r *SchemaRegistry) getContainerRequest(envVars map[string]string) tc.ContainerRequest {
 	defaultValues := map[string]string{
 		"SCHEMA_REGISTRY_HOST_NAME":                    r.ContainerName,
 		"SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS": "kafka:9092",
