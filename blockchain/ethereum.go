@@ -253,9 +253,7 @@ func (e *EthereumClient) SendTransaction(ctx context.Context, tx *types.Transact
 		if err != nil {
 			return err
 		}
-		e.l.Warn().Str("From", fromAddr.Hex()).Str("Hash", tx.Hash().Hex()).Msg("Waiting for permission to send instant transaction")
 		<-e.NonceSettings.registerInstantTransaction(fromAddr.Hex(), tx.Nonce())
-		e.l.Warn().Str("From", fromAddr.Hex()).Str("Hash", tx.Hash().Hex()).Msg("Sending instant transaction")
 	}
 	return e.Client.SendTransaction(ctx, tx)
 }
@@ -341,6 +339,11 @@ func attemptReturn(e *EthereumClient, fromKey *ecdsa.PrivateKey, attemptCount in
 	balanceGasDelta := big.NewInt(0).Sub(balance, totalGasCost)
 
 	if balanceGasDelta.Cmp(big.NewInt(0)) <= 1 { // Try with 0.5 gwei if we have no or negative margin. Might as well
+		e.l.Warn().
+			Uint64("Balance", balance.Uint64()).
+			Uint64("Estimated Gas Cost", totalGasCost.Uint64()).
+			Str("Delta", balanceGasDelta.String()).
+			Msg("Fund return calculation had issues, trying to send 0.5 gwei as a minimum")
 		balanceGasDelta = big.NewInt(500_000_000)
 	}
 

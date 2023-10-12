@@ -158,7 +158,7 @@ func NewInstantConfirmer(
 		txHash:        txHash,
 		context:       ctx,
 		cancel:        ctxCancel,
-		newHeaderChan: make(chan struct{}, 0),
+		newHeaderChan: make(chan struct{}),
 		// For events
 		confirmedChan: confirmedChan,
 		log:           logger,
@@ -224,7 +224,6 @@ func (l *InstantConfirmer) checkConfirmed() (bool, error) {
 			}
 		}()
 	}
-	l.log.Warn().Bool("Confirmed", confirmed).Str("Hash", l.txHash.Hex()).Msg("//DEBUG")
 	return confirmed, nil
 }
 
