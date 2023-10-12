@@ -17,6 +17,7 @@ import (
 
 	"github.com/imdario/mergo"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 )
 
@@ -66,13 +67,12 @@ func (k *Kafka) StartContainer(envVars map[string]string) error {
 			L: k.l,
 		}
 	}
-	req := tc.GenericContainerRequest{
+	c, err := docker.StartContainerWithRetry(k.l, tc.GenericContainerRequest{
 		ContainerRequest: k.getContainerRequest(envVars),
 		Started:          true,
 		Reuse:            true,
 		Logger:           l,
-	}
-	c, err := tc.GenericContainer(context.Background(), req)
+	})
 	if err != nil {
 		return errors.Wrapf(err, "cannot start Kafka container")
 	}
@@ -120,8 +120,8 @@ func (k *Kafka) getContainerRequest(envVars map[string]string) tc.ContainerReque
 		"KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR": "1",
 		"KAFKA_CREATE_TOPICS":                            "reports_instant:1:1,reports_dlq:1:1",
 	}
-	if err := mergo.Merge(defaultValues, envVars, mergo.WithOverride); err != nil {
-		panic(err)
+	if err := mergo.Merge(&defaultValues, envVars, mergo.WithOverride); err != nil {
+		k.l.Fatal().Err(err).Msg("Failed to merge env vars")
 	}
 	return tc.ContainerRequest{
 		Name:         k.ContainerName,

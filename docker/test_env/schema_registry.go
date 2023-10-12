@@ -94,8 +94,8 @@ func (r *SchemaRegistry) getContainerRequest(envVars map[string]string) tc.Conta
 		"SCHEMA_REGISTRY_DEBUG":                        "true",
 		"SCHEMA_REGISTRY_LISTENERS":                    r.InternalUrl,
 	}
-	if err := mergo.Merge(defaultValues, envVars, mergo.WithOverride); err != nil {
-		panic(err)
+	if err := mergo.Merge(&defaultValues, envVars, mergo.WithOverride); err != nil {
+		r.l.Fatal().Err(err).Msgf("Cannot merge env vars")
 	}
 	return tc.ContainerRequest{
 		Name:         r.ContainerName,
