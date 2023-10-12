@@ -51,6 +51,7 @@ type EthereumClient struct {
 	connectionRestoredCh chan time.Time
 	doneChan             chan struct{}
 	l                    zerolog.Logger
+	subscriptionWg       sync.WaitGroup
 }
 
 // newEVMClient creates an EVM client for a single node/URL
@@ -786,6 +787,7 @@ func (e *EthereumClient) ParallelTransactions(enabled bool) {
 func (e *EthereumClient) Close() error {
 	// close(e.NonceSettings.doneChan)
 	close(e.doneChan)
+	e.subscriptionWg.Wait()
 	return nil
 }
 
