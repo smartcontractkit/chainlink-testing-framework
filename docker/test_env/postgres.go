@@ -3,10 +3,15 @@ package test_env
 import (
 	"context"
 	"fmt"
+	"io"
+	"net/url"
+	"os/exec"
 	"testing"
 	"time"
 
+	"github.com/docker/go-connections/nat"
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	tc "github.com/testcontainers/testcontainers-go"
@@ -20,7 +25,10 @@ type PostgresDb struct {
 	User         string
 	Password     string
 	DbName       string
-	Port         string
+	InternalPort string
+	ExternalPort string
+	InternalURL  *url.URL
+	ExternalURL  *url.URL
 	ImageVersion string
 	l            zerolog.Logger
 	t            *testing.T
@@ -45,6 +53,14 @@ func WithPostgresImageVersion(version string) PostgresDbOption {
 	}
 }
 
+func WithPostgresDbName(name string) PostgresDbOption {
+	return func(c *PostgresDb) {
+		if name != "" {
+			c.DbName = name
+		}
+	}
+}
+
 func NewPostgresDb(networks []string, opts ...PostgresDbOption) *PostgresDb {
 	pg := &PostgresDb{
 		EnvComponent: EnvComponent{
@@ -54,7 +70,7 @@ func NewPostgresDb(networks []string, opts ...PostgresDbOption) *PostgresDb {
 		User:         "postgres",
 		Password:     "mysecretpassword",
 		DbName:       "testdb",
-		Port:         "5432",
+		InternalPort: "5432",
 		ImageVersion: "15.3",
 		l:            log.Logger,
 	}
@@ -89,18 +105,51 @@ func (pg *PostgresDb) StartContainer() error {
 		return err
 	}
 	pg.Container = c
+	externalPort, err := c.MappedPort(context.Background(), nat.Port(fmt.Sprintf("%s/tcp", pg.InternalPort)))
+	if err != nil {
+		return err
+	}
+	pg.ExternalPort = externalPort.Port()
 
-	pg.l.Info().Str("containerName", pg.ContainerName).
+	internalUrl, err := url.Parse(fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
+		pg.User, pg.Password, pg.ContainerName, "5432", pg.DbName))
+	if err != nil {
+		return errors.Wrapf(err, "error parsing mercury db internal url")
+	}
+	pg.InternalURL = internalUrl
+	externalUrl, err := url.Parse(fmt.Sprintf("postgres://%s:%s@localhost:%s/%s?sslmode=disable",
+		pg.User, pg.Password, externalPort.Port(), pg.DbName))
+	if err != nil {
+		return errors.Wrapf(err, "error parsing mercury db external url")
+	}
+	pg.ExternalURL = externalUrl
+
+	pg.l.Info().
+		Str("containerName", pg.ContainerName).
+		Str("internalPort", pg.InternalPort).
+		Str("externalPort", pg.ExternalPort).
+		Str("internalURL", pg.InternalURL.String()).
+		Str("externalURL", pg.ExternalURL.String()).
 		Msg("Started Postgres DB container")
 
 	return nil
+}
+
+func (pg *PostgresDb) ExecPgDump(stdout io.Writer) error {
+	cmd := exec.Command("pg_dump", "-U", pg.User, "-h", "localhost", "-p", pg.ExternalPort, pg.DbName) //nolint:gosec
+	cmd.Env = []string{
+		fmt.Sprintf("PGPASSWORD=%s", pg.Password),
+	}
+	cmd.Stdout = stdout
+
+	return cmd.Run()
 }
 
 func (pg *PostgresDb) getContainerRequest() *tc.ContainerRequest {
 	return &tc.ContainerRequest{
 		Name:         pg.ContainerName,
 		Image:        fmt.Sprintf("postgres:%s", pg.ImageVersion),
-		ExposedPorts: []string{fmt.Sprintf("%s/tcp", pg.Port)},
+		ExposedPorts: []string{fmt.Sprintf("%s/tcp", pg.InternalPort)},
 		Env: map[string]string{
 			"POSTGRES_USER":     pg.User,
 			"POSTGRES_DB":       pg.DbName,

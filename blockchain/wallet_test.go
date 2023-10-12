@@ -11,6 +11,7 @@ import (
 )
 
 // Publicly available private key that is used as default in hardhat, geth, etc...
+// #nosec G101
 var key = "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
 
 // Address of the key above

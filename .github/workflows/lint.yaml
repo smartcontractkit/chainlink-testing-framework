@@ -32,7 +32,7 @@ jobs:
           cache_key_id: ctf-go
           cache_restore_only: 'false'
       - name: golangci-lint ${{ needs.tools.outputs.golangci-lint-version }}
-        uses: smartcontractkit/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc # v3.7.0
+        uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc # v3.7.0
         with:
           version: v${{ needs.tools.outputs.golangci-lint-version }}
           args: --out-format checkstyle:golangci-lint-report.xml
