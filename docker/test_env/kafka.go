@@ -82,6 +82,13 @@ func (k *Kafka) WithTopics(topics []KafkaTopicConfig) *Kafka {
 	return k
 }
 
+func (k *Kafka) WithZookeeper(zookeeperUrl string) *Kafka {
+	envVars := map[string]string{
+		"KAFKA_ZOOKEEPER_CONNECT": zookeeperUrl,
+	}
+	return k.WithEnvVars(envVars)
+}
+
 func (k *Kafka) WithEnvVars(envVars map[string]string) *Kafka {
 	if err := mergo.Merge(&k.EnvVars, envVars, mergo.WithOverride); err != nil {
 		k.l.Fatal().Err(err).Msg("Failed to merge env vars")

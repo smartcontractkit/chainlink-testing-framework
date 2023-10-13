@@ -50,6 +50,13 @@ func (r *SchemaRegistry) WithContainerName(name string) *SchemaRegistry {
 	return r
 }
 
+func (r *SchemaRegistry) WithKafka(kafkaUrl string) *SchemaRegistry {
+	envVars := map[string]string{
+		"SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS": kafkaUrl,
+	}
+	return r.WithEnvVars(envVars)
+}
+
 func (r *SchemaRegistry) WithEnvVars(envVars map[string]string) *SchemaRegistry {
 	if err := mergo.Merge(&r.EnvVars, envVars, mergo.WithOverride); err != nil {
 		r.l.Fatal().Err(err).Msg("Failed to merge env vars")
@@ -59,7 +66,6 @@ func (r *SchemaRegistry) WithEnvVars(envVars map[string]string) *SchemaRegistry 
 
 func (r *SchemaRegistry) StartContainer() error {
 	r.InternalUrl = fmt.Sprintf("http://%s:%s", r.ContainerName, "8081")
-
 	l := tc.Logger
 	if r.t != nil {
 		l = logging.CustomT{
@@ -82,7 +88,6 @@ func (r *SchemaRegistry) StartContainer() error {
 	if err != nil {
 		return errors.Wrapf(err, "cannot start Schema Registry container")
 	}
-
 	host, err := c.Host(context.Background())
 	if err != nil {
 		return err
@@ -92,7 +97,6 @@ func (r *SchemaRegistry) StartContainer() error {
 		return err
 	}
 	r.ExternalUrl = fmt.Sprintf("%s:%s", host, port.Port())
-
 	r.l.Info().
 		Str("containerName", r.ContainerName).
 		Str("internalUrl", r.InternalUrl).
