@@ -247,11 +247,9 @@ require (
 
 // K8s versions are infuriatingly inconsistent, so we pin them here.
 replace (
-
 	// replicating the replace directive on cosmos SDK
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
 
-	github.com/smartcontractkit/chainlink/integration-tests => /Users/lukasz/Documents/smartcontractkit/chainlink-core/integration-tests
 	k8s.io/api => k8s.io/api v0.25.11
 	k8s.io/apimachinery => k8s.io/apimachinery v0.25.11
 	k8s.io/cli-runtime => k8s.io/cli-runtime v0.25.11
