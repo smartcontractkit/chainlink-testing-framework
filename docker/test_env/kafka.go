@@ -106,7 +106,7 @@ func (k *Kafka) StartContainer() error {
 	}
 	k.InternalUrl = fmt.Sprintf("%s:%s", k.ContainerName, "9092")
 	// TODO: Fix mapped port
-	k.ExternalUrl = fmt.Sprintf("localhost:%s", "29092")
+	k.ExternalUrl = fmt.Sprintf("127.0.0.1:%s", "29092")
 	k.BootstrapServerUrl = k.InternalUrl
 	envVars := map[string]string{
 		"KAFKA_ADVERTISED_LISTENERS": fmt.Sprintf("PLAINTEXT://%s,PLAINTEXT_HOST://%s", k.InternalUrl, k.ExternalUrl),

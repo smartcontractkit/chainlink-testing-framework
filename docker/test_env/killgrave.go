@@ -122,7 +122,7 @@ func (k *Killgrave) StartContainer() error {
 	if err != nil {
 		return errors.Wrapf(err, "cannot start Killgrave container")
 	}
-	endpoint, err := c.Endpoint(context.Background(), "http")
+	endpoint, err := GetEndpoint(context.Background(), c, "http")
 	if err != nil {
 		return err
 	}

@@ -51,7 +51,7 @@ func ConnectDB(nodeNum int, e *environment.Environment) (*PostgresConnector, err
 	spl := strings.Split(e.URLs["chainlink_db"][nodeNum], ":")
 	port := spl[len(spl)-1]
 	db, err := NewPostgresConnector(&PostgresConfig{
-		Host:     "localhost",
+		Host:     "127.0.0.1",
 		Port:     port,
 		User:     "postgres",
 		Password: "postgres",
