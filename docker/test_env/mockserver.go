@@ -90,7 +90,7 @@ func (ms *MockServer) StartContainer() error {
 		return errors.Wrapf(err, "cannot start MockServer container")
 	}
 	ms.Container = c
-	endpoint, err := c.Endpoint(context.Background(), "http")
+	endpoint, err := GetEndpoint(context.Background(), c, "http")
 	if err != nil {
 		return err
 	}

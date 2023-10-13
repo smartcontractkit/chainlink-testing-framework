@@ -117,7 +117,7 @@ func (pg *PostgresDb) StartContainer() error {
 		return errors.Wrapf(err, "error parsing mercury db internal url")
 	}
 	pg.InternalURL = internalUrl
-	externalUrl, err := url.Parse(fmt.Sprintf("postgres://%s:%s@localhost:%s/%s?sslmode=disable",
+	externalUrl, err := url.Parse(fmt.Sprintf("postgres://%s:%s@127.0.0.1:%s/%s?sslmode=disable",
 		pg.User, pg.Password, externalPort.Port(), pg.DbName))
 	if err != nil {
 		return errors.Wrapf(err, "error parsing mercury db external url")
@@ -136,7 +136,7 @@ func (pg *PostgresDb) StartContainer() error {
 }
 
 func (pg *PostgresDb) ExecPgDump(stdout io.Writer) error {
-	cmd := exec.Command("pg_dump", "-U", pg.User, "-h", "localhost", "-p", pg.ExternalPort, pg.DbName) //nolint:gosec
+	cmd := exec.Command("pg_dump", "-U", pg.User, "-h", "127.0.0.1", "-p", pg.ExternalPort, pg.DbName) //nolint:gosec
 	cmd.Env = []string{
 		fmt.Sprintf("PGPASSWORD=%s", pg.Password),
 	}
@@ -156,7 +156,7 @@ func (pg *PostgresDb) getContainerRequest() *tc.ContainerRequest {
 			"POSTGRES_PASSWORD": pg.Password,
 		},
 		Networks: pg.Networks,
-		WaitingFor: tcwait.ForExec([]string{"psql", "-h", "localhost",
+		WaitingFor: tcwait.ForExec([]string{"psql", "-h", "127.0.0.1",
 			"-U", pg.User, "-c", "select", "1", "-d", pg.DbName}).
 			WithStartupTimeout(10 * time.Second),
 	}
