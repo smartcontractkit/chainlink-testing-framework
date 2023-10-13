@@ -33,10 +33,10 @@ type Kafka struct {
 }
 
 type KafkaTopicConfig struct {
-	TopicName     string
-	Partitions    int
-	Replication   int
-	CleanupPolicy string
+	TopicName     string `json:"topic_name"`
+	Partitions    int    `json:"partitions"`
+	Replication   int    `json:"replication"`
+	CleanupPolicy string `json:"cleanup_policy"`
 }
 
 func NewKafka(networks []string) *Kafka {
