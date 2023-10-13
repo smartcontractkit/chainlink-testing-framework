@@ -18,6 +18,7 @@ import (
 
 type SchemaRegistry struct {
 	EnvComponent
+	EnvVars     map[string]string
 	InternalUrl string
 	ExternalUrl string
 	l           zerolog.Logger
@@ -26,11 +27,15 @@ type SchemaRegistry struct {
 
 func NewSchemaRegistry(networks []string) *SchemaRegistry {
 	id, _ := uuid.NewRandom()
+	defaultEnvVars := map[string]string{
+		"SCHEMA_REGISTRY_DEBUG": "true",
+	}
 	return &SchemaRegistry{
 		EnvComponent: EnvComponent{
 			ContainerName: fmt.Sprintf("schema-registry-%s", id.String()),
 			Networks:      networks,
 		},
+		EnvVars: defaultEnvVars,
 	}
 }
 
@@ -45,7 +50,14 @@ func (r *SchemaRegistry) WithContainerName(name string) *SchemaRegistry {
 	return r
 }
 
-func (r *SchemaRegistry) StartContainer(envVars map[string]string) error {
+func (r *SchemaRegistry) WithEnvVars(envVars map[string]string) *SchemaRegistry {
+	if err := mergo.Merge(&r.EnvVars, envVars, mergo.WithOverride); err != nil {
+		r.l.Fatal().Err(err).Msg("Failed to merge env vars")
+	}
+	return r
+}
+
+func (r *SchemaRegistry) StartContainer() error {
 	r.InternalUrl = fmt.Sprintf("http://%s:%s", r.ContainerName, "8081")
 
 	l := tc.Logger
@@ -55,8 +67,13 @@ func (r *SchemaRegistry) StartContainer(envVars map[string]string) error {
 			L: r.l,
 		}
 	}
+	envVars := map[string]string{
+		"SCHEMA_REGISTRY_HOST_NAME": r.ContainerName,
+		"SCHEMA_REGISTRY_LISTENERS": r.InternalUrl,
+	}
+	r.WithEnvVars(envVars)
 	req := tc.GenericContainerRequest{
-		ContainerRequest: r.getContainerRequest(envVars),
+		ContainerRequest: r.getContainerRequest(),
 		Started:          true,
 		Reuse:            true,
 		Logger:           l,
@@ -87,21 +104,12 @@ func (r *SchemaRegistry) StartContainer(envVars map[string]string) error {
 	return nil
 }
 
-func (r *SchemaRegistry) getContainerRequest(envVars map[string]string) tc.ContainerRequest {
-	defaultValues := map[string]string{
-		"SCHEMA_REGISTRY_HOST_NAME":                    r.ContainerName,
-		"SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS": "kafka:9092",
-		"SCHEMA_REGISTRY_DEBUG":                        "true",
-		"SCHEMA_REGISTRY_LISTENERS":                    r.InternalUrl,
-	}
-	if err := mergo.Merge(&defaultValues, envVars, mergo.WithOverride); err != nil {
-		r.l.Fatal().Err(err).Msgf("Cannot merge env vars")
-	}
+func (r *SchemaRegistry) getContainerRequest() tc.ContainerRequest {
 	return tc.ContainerRequest{
 		Name:         r.ContainerName,
 		Image:        "confluentinc/cp-schema-registry:7.4.0",
 		ExposedPorts: []string{"8081/tcp"},
-		Env:          defaultValues,
+		Env:          r.EnvVars,
 		Networks:     r.Networks,
 		WaitingFor: tcwait.ForLog("INFO Server started, listening for requests").
 			WithStartupTimeout(30 * time.Second).
