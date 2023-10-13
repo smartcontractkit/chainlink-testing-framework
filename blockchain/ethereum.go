@@ -254,9 +254,7 @@ func (e *EthereumClient) SendTransaction(ctx context.Context, tx *types.Transact
 		if err != nil {
 			return err
 		}
-		e.l.Warn().Str("Hash", tx.Hash().Hex()).Msg("//DEBUG: Waiting for permission to send instant transaction")
 		<-e.NonceSettings.registerInstantTransaction(fromAddr.Hex(), tx.Nonce())
-		e.l.Warn().Str("Hash", tx.Hash().Hex()).Msg("//DEBUG: Sent instant transaction")
 	}
 	return e.Client.SendTransaction(ctx, tx)
 }
@@ -341,7 +339,7 @@ func attemptReturn(e *EthereumClient, fromKey *ecdsa.PrivateKey, attemptCount in
 	totalGasCost := gasEstimations.TotalGasCost
 	balanceGasDelta := big.NewInt(0).Sub(balance, totalGasCost)
 
-	if balanceGasDelta.Cmp(big.NewInt(0)) <= 1 { // Try with 0.5 gwei if we have no or negative margin. Might as well
+	if balanceGasDelta.Cmp(big.NewInt(0)) <= 0 { // Try with 0.5 gwei if we have no or negative margin. Might as well
 		e.l.Warn().
 			Uint64("Balance", balance.Uint64()).
 			Uint64("Estimated Gas Cost", totalGasCost.Uint64()).
@@ -355,7 +353,7 @@ func attemptReturn(e *EthereumClient, fromKey *ecdsa.PrivateKey, attemptCount in
 		return nil, err
 	}
 	e.l.Info().
-		Str("Amount", balance.String()).
+		Str("Amount", balanceGasDelta.String()).
 		Str("From", fromAddress.Hex()).
 		Str("To", to.Hex()).
 		Str("Total Gas Cost", totalGasCost.String()).
@@ -418,7 +416,6 @@ func (e *EthereumClient) DeployContract(
 		return nil, nil, nil, err
 	}
 
-	e.l.Debug().Msg("Processing Tx")
 	if err = e.ProcessTransaction(transaction); err != nil {
 		return nil, nil, nil, err
 	}
@@ -524,6 +521,7 @@ func (e *EthereumClient) NewTx(
 
 // ProcessTransaction will queue or wait on a transaction depending on whether parallel transactions are enabled
 func (e *EthereumClient) ProcessTransaction(tx *types.Transaction) error {
+	e.l.Trace().Str("Hash", tx.Hash().Hex()).Msg("Processing Tx")
 	var txConfirmer HeaderEventSubscription
 	if e.GetNetworkConfig().MinimumConfirmations <= 0 {
 		fromAddr, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx)
@@ -648,19 +646,17 @@ func (e *EthereumClient) IsTxConfirmed(txHash common.Hash) (bool, error) {
 	tx, isPending, err := e.Client.TransactionByHash(ctx, txHash)
 	cancel()
 	if err != nil {
-		e.l.Error().Err(err).Str("TX Hash", txHash.Hex()).Msg("Error retrieving transaction") // DEBUG
-		if errors.Is(err, ethereum.NotFound) {                                                // not found is fine, it's not on chain yet
+		if errors.Is(err, ethereum.NotFound) { // not found is fine, it's not on chain yet
 			return false, nil
 		}
 		return !isPending, err
 	}
-	if !isPending {
+	if !isPending && e.NetworkConfig.MinimumConfirmations > 0 { // Instant chains don't bother with this receipt nonsense
 		ctx, cancel = context.WithTimeout(context.Background(), time.Second*5)
 		receipt, err := e.Client.TransactionReceipt(ctx, txHash)
 		cancel()
 		if err != nil {
-			e.l.Error().Err(err).Str("TX Hash", txHash.Hex()).Msg("Error retrieving transaction") // DEBUG
-			if errors.Is(err, ethereum.NotFound) {                                                // not found is fine, it's not on chain yet
+			if errors.Is(err, ethereum.NotFound) { // not found is fine, it's not on chain yet
 				return false, nil
 			}
 			return !isPending, err
@@ -965,7 +961,6 @@ func (e *EthereumClient) WaitForEvents() error {
 	g := errgroup.Group{}
 
 	for subName, sub := range queuedEvents {
-		e.l.Warn().Str("Subscription", subName).Msg("//DEBUG Waiting for event subscription to finish")
 		subName := subName
 		sub := sub
 		g.Go(func() error {

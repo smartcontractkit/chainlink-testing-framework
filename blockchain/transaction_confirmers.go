@@ -216,15 +216,15 @@ func (l *InstantConfirmer) checkConfirmed() (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	l.confirmed = confirmed
 	if confirmed {
-		l.confirmed = true
 		go func() {
 			if l.confirmedChan != nil {
 				l.confirmedChan <- true
 			}
 		}()
 	}
-	l.log.Warn().Bool("Confirmed", confirmed).Str("Hash", l.txHash.Hex()).Msg("//DEBUG: Checked Confirmed")
+	l.log.Trace().Bool("Confirmed", confirmed).Str("Hash", l.txHash.Hex()).Msg("Checked if transaction confirmed")
 	return confirmed, nil
 }
 
