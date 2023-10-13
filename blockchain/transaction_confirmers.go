@@ -224,6 +224,7 @@ func (l *InstantConfirmer) checkConfirmed() (bool, error) {
 			}
 		}()
 	}
+	l.log.Warn().Bool("Confirmed", confirmed).Str("Hash", l.txHash.Hex()).Msg("//DEBUG: Checked Confirmed")
 	return confirmed, nil
 }
 

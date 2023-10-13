@@ -254,7 +254,9 @@ func (e *EthereumClient) SendTransaction(ctx context.Context, tx *types.Transact
 		if err != nil {
 			return err
 		}
+		e.l.Warn().Str("Hash", tx.Hash().Hex()).Msg("//DEBUG: Waiting for permission to send instant transaction")
 		<-e.NonceSettings.registerInstantTransaction(fromAddr.Hex(), tx.Nonce())
+		e.l.Warn().Str("Hash", tx.Hash().Hex()).Msg("//DEBUG: Sent instant transaction")
 	}
 	return e.Client.SendTransaction(ctx, tx)
 }
@@ -963,6 +965,7 @@ func (e *EthereumClient) WaitForEvents() error {
 	g := errgroup.Group{}
 
 	for subName, sub := range queuedEvents {
+		e.l.Warn().Str("Subscription", subName).Msg("//DEBUG Waiting for event subscription to finish")
 		subName := subName
 		sub := sub
 		g.Go(func() error {
