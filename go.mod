@@ -39,10 +39,6 @@ require (
 	filippo.io/edwards25519 v1.0.0 // indirect
 	github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4 // indirect
 	github.com/99designs/keyring v1.2.1 // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.7.0 // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.3.0 // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/internal v1.3.0 // indirect
-	github.com/AzureAD/microsoft-authentication-library-for-go v1.0.0 // indirect
 	github.com/ChainSafe/go-schnorrkel v0.0.0-20200405005733-88cbf1b4c40d // indirect
 	github.com/CosmWasm/wasmd v0.40.1 // indirect
 	github.com/CosmWasm/wasmvm v1.2.4 // indirect
@@ -127,7 +123,6 @@ require (
 	github.com/jbenet/goprocess v0.1.4 // indirect
 	github.com/jmhodges/levigo v1.0.0 // indirect
 	github.com/koron/go-ssdp v0.0.2 // indirect
-	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/leanovate/gopter v0.2.10-0.20210127095200-9abe2343507a // indirect
 	github.com/libp2p/go-addr-util v0.0.2 // indirect
 	github.com/libp2p/go-buffer-pool v0.1.0 // indirect
@@ -190,7 +185,6 @@ require (
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/petermattis/goid v0.0.0-20230317030725-371a4b8eda08 // indirect
-	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
 	github.com/sasha-s/go-deadlock v0.3.1 // indirect
@@ -508,6 +502,14 @@ replace (
 	// If that happens to get released in a 3.X.X version, we can add a constraint to our go.mod
 	// for it. If its in 4.X.X, then we need all our transitive deps to upgrade to it.
 	github.com/dgrijalva/jwt-go => github.com/form3tech-oss/jwt-go v3.2.1+incompatible
+
+	// until merged upstream: https://github.com/hashicorp/go-plugin/pull/257
+	github.com/hashicorp/go-plugin => github.com/smartcontractkit/go-plugin v0.0.0-20231003134350-e49dad63b306
+
+	// until merged upstream: https://github.com/mwitkow/grpc-proxy/pull/69
+	github.com/mwitkow/grpc-proxy => github.com/smartcontractkit/grpc-proxy v0.0.0-20230731113816-f1be6620749f
+
+	github.com/prometheus/prometheus => github.com/prometheus/prometheus v0.43.1-0.20230327151049-211ae4f1f0a2
 
 	github.com/sercand/kuberesolver v2.4.0+incompatible => github.com/sercand/kuberesolver/v5 v5.1.0
 )
