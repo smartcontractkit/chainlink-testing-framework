@@ -341,10 +341,10 @@ func attemptReturn(e *EthereumClient, fromKey *ecdsa.PrivateKey, attemptCount in
 
 	if balanceGasDelta.Cmp(big.NewInt(0)) <= 0 { // Try with 0.5 gwei if we have no or negative margin. Might as well
 		e.l.Warn().
-			Uint64("Balance", balance.Uint64()).
-			Uint64("Estimated Gas Cost", totalGasCost.Uint64()).
 			Str("Delta", balanceGasDelta.String()).
-			Msg("Fund return calculation had issues, trying to send 0.5 gwei as a minimum")
+			Str("Gas Cost", totalGasCost.String()).
+			Str("Total Balance", balance.String()).
+			Msg("Errors calculating fund return, trying with 0.5 gwei")
 		balanceGasDelta = big.NewInt(500_000_000)
 	}
 
