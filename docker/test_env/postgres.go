@@ -22,13 +22,13 @@ import (
 
 type PostgresDb struct {
 	EnvComponent
-	User         string
-	Password     string
-	DbName       string
-	InternalPort string
-	ExternalPort string
-	InternalURL  *url.URL
-	ExternalURL  *url.URL
+	User         string   `json:"user"`
+	Password     string   `json:"password"`
+	DbName       string   `json:"dbName"`
+	InternalPort string   `json:"internalPort"`
+	ExternalPort string   `json:"-"`
+	InternalURL  *url.URL `json:"-"`
+	ExternalURL  *url.URL `json:"-"`
 	l            zerolog.Logger
 	t            *testing.T
 }

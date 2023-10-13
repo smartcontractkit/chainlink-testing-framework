@@ -5,11 +5,11 @@ import (
 )
 
 type EnvComponent struct {
-	ContainerName    string   `json:"containerName"`
-	ContainerImage   string   `json:"containerImage"`
-	ContainerVersion string   `json:"containerVersion"`
-	Networks         []string `json:"networks"`
-	Container        tc.Container
+	ContainerName    string       `json:"containerName"`
+	ContainerImage   string       `json:"containerImage"`
+	ContainerVersion string       `json:"containerVersion"`
+	Networks         []string     `json:"networks"`
+	Container        tc.Container `json:"-"`
 }
 
 type EnvComponentOption = func(c *EnvComponent)
