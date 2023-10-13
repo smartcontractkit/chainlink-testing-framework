@@ -100,7 +100,7 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, InternalDockerUrls, erro
 	if err != nil {
 		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
 	}
-	wsPort, err := ct.MappedPort(context.Background(), NatPort(TX_GETH_WS_PORT))
+	wsPort, err := getUniqueWsPort(context.Background(), ct, TX_GETH_HTTP_PORT, TX_GETH_WS_PORT, g.l)
 	if err != nil {
 		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
 	}
@@ -129,6 +129,33 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, InternalDockerUrls, erro
 		Msg("Started Geth container")
 
 	return networkConfig, internalDockerUrls, nil
+}
+
+// getUniqueWsPort returns the unique websocket port for the container
+// This is needed for multiple reasons.
+// First there is this docker bug https://github.com/moby/moby/issues/42442
+// that causes docker to intermittently map an ipv6 port to a port other than the same one as the mapped
+// ipv4 port. This causes port collisions where our ws port will actually call the http port.
+// Second there is this docker bug https://github.com/moby/moby/issues/42375
+// that shows disabling ipv6 does not actually disable ipv6. This means the above issue is present
+// even though we disabled it in the docker network creation.
+func getUniqueWsPort(ctx context.Context, ct tc.Container, httpInternalPort, wsInternalPort string, l zerolog.Logger) (nat.Port, error) {
+	p, err := ct.Ports(ctx)
+	if err != nil {
+		return "", err
+	}
+	l.Info().
+		Interface("ports", p).
+		Msg("Ports mapped")
+	httpPorts := p[NatPort(httpInternalPort)]
+	wsPorts := p[NatPort(wsInternalPort)]
+	wsPort := NatPort(wsPorts[0].HostPort)
+	if len(wsPorts) > 1 {
+		if httpPorts[0].HostPort == wsPorts[0].HostPort || httpPorts[1].HostPort == wsPorts[0].HostPort {
+			wsPort = NatPort(wsPorts[1].HostPort)
+		}
+	}
+	return wsPort, nil
 }
 
 func (g *Geth) getGethContainerRequest(networks []string) (*tc.ContainerRequest, *keystore.KeyStore, *accounts.Account, error) {
@@ -301,13 +328,12 @@ func (w *WebSocketStrategy) WaitUntilReady(ctx context.Context, target tcwait.St
 			w.l.Error().Msg("Failed to get the target host")
 			return err
 		}
-		mappedPort, err := target.MappedPort(ctx, w.Port)
+		wsPort, err := getUniqueWsPort(ctx, target.(tc.Container), TX_GETH_HTTP_PORT, w.Port.Port(), w.l)
 		if err != nil {
-			w.l.Error().Msg("Failed to get the mapped ws port")
 			return err
 		}
 
-		url := fmt.Sprintf("ws://%s:%s", host, mappedPort.Port())
+		url := fmt.Sprintf("ws://%s:%s", host, wsPort.Port())
 		w.l.Info().Msgf("Attempting to dial %s", url)
 		client, err = rpc.DialContext(ctx, url)
 		if err == nil {

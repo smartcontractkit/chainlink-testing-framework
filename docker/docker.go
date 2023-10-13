@@ -18,6 +18,7 @@ func CreateNetwork(l zerolog.Logger) (*tc.DockerNetwork, error) {
 		NetworkRequest: tc.NetworkRequest{
 			Name:           networkName,
 			CheckDuplicate: true,
+			EnableIPv6:     false, // disabling due to https://github.com/moby/moby/issues/42442
 		},
 	})
 	if err != nil {
