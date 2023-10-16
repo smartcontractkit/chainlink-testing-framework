@@ -22,14 +22,13 @@ import (
 
 type PostgresDb struct {
 	EnvComponent
-	User         string
-	Password     string
-	DbName       string
-	InternalPort string
-	ExternalPort string
-	InternalURL  *url.URL
-	ExternalURL  *url.URL
-	ImageVersion string
+	User         string   `json:"user"`
+	Password     string   `json:"password"`
+	DbName       string   `json:"dbName"`
+	InternalPort string   `json:"internalPort"`
+	ExternalPort string   `json:"-"`
+	InternalURL  *url.URL `json:"-"`
+	ExternalURL  *url.URL `json:"-"`
 	l            zerolog.Logger
 	t            *testing.T
 }
@@ -48,7 +47,7 @@ func WithPostgresDbContainerName(name string) PostgresDbOption {
 func WithPostgresImageVersion(version string) PostgresDbOption {
 	return func(c *PostgresDb) {
 		if version != "" {
-			c.ImageVersion = version
+			c.ContainerVersion = version
 		}
 	}
 }
@@ -64,14 +63,15 @@ func WithPostgresDbName(name string) PostgresDbOption {
 func NewPostgresDb(networks []string, opts ...PostgresDbOption) *PostgresDb {
 	pg := &PostgresDb{
 		EnvComponent: EnvComponent{
-			ContainerName: fmt.Sprintf("%s-%s", "postgres-db", uuid.NewString()[0:8]),
-			Networks:      networks,
+			ContainerName:    fmt.Sprintf("%s-%s", "postgres-db", uuid.NewString()[0:8]),
+			ContainerImage:   "postgres",
+			ContainerVersion: "15.3",
+			Networks:         networks,
 		},
 		User:         "postgres",
 		Password:     "mysecretpassword",
 		DbName:       "testdb",
 		InternalPort: "5432",
-		ImageVersion: "15.3",
 		l:            log.Logger,
 	}
 	for _, opt := range opts {
@@ -148,7 +148,7 @@ func (pg *PostgresDb) ExecPgDump(stdout io.Writer) error {
 func (pg *PostgresDb) getContainerRequest() *tc.ContainerRequest {
 	return &tc.ContainerRequest{
 		Name:         pg.ContainerName,
-		Image:        fmt.Sprintf("postgres:%s", pg.ImageVersion),
+		Image:        fmt.Sprintf("%s:%s", pg.ContainerImage, pg.ContainerVersion),
 		ExposedPorts: []string{fmt.Sprintf("%s/tcp", pg.InternalPort)},
 		Env: map[string]string{
 			"POSTGRES_USER":     pg.User,
