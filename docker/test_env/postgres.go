@@ -22,14 +22,13 @@ import (
 
 type PostgresDb struct {
 	EnvComponent
-	User         string
-	Password     string
-	DbName       string
-	InternalPort string
-	ExternalPort string
-	InternalURL  *url.URL
-	ExternalURL  *url.URL
-	ImageVersion string
+	User         string   `json:"user"`
+	Password     string   `json:"password"`
+	DbName       string   `json:"dbName"`
+	InternalPort string   `json:"internalPort"`
+	ExternalPort string   `json:"-"`
+	InternalURL  *url.URL `json:"-"`
+	ExternalURL  *url.URL `json:"-"`
 	l            zerolog.Logger
 	t            *testing.T
 }
@@ -48,7 +47,7 @@ func WithPostgresDbContainerName(name string) PostgresDbOption {
 func WithPostgresImageVersion(version string) PostgresDbOption {
 	return func(c *PostgresDb) {
 		if version != "" {
-			c.ImageVersion = version
+			c.ContainerVersion = version
 		}
 	}
 }
@@ -64,14 +63,15 @@ func WithPostgresDbName(name string) PostgresDbOption {
 func NewPostgresDb(networks []string, opts ...PostgresDbOption) *PostgresDb {
 	pg := &PostgresDb{
 		EnvComponent: EnvComponent{
-			ContainerName: fmt.Sprintf("%s-%s", "postgres-db", uuid.NewString()[0:8]),
-			Networks:      networks,
+			ContainerName:    fmt.Sprintf("%s-%s", "postgres-db", uuid.NewString()[0:8]),
+			ContainerImage:   "postgres",
+			ContainerVersion: "15.3",
+			Networks:         networks,
 		},
 		User:         "postgres",
 		Password:     "mysecretpassword",
 		DbName:       "testdb",
 		InternalPort: "5432",
-		ImageVersion: "15.3",
 		l:            log.Logger,
 	}
 	for _, opt := range opts {
@@ -117,7 +117,7 @@ func (pg *PostgresDb) StartContainer() error {
 		return errors.Wrapf(err, "error parsing mercury db internal url")
 	}
 	pg.InternalURL = internalUrl
-	externalUrl, err := url.Parse(fmt.Sprintf("postgres://%s:%s@localhost:%s/%s?sslmode=disable",
+	externalUrl, err := url.Parse(fmt.Sprintf("postgres://%s:%s@127.0.0.1:%s/%s?sslmode=disable",
 		pg.User, pg.Password, externalPort.Port(), pg.DbName))
 	if err != nil {
 		return errors.Wrapf(err, "error parsing mercury db external url")
@@ -136,7 +136,7 @@ func (pg *PostgresDb) StartContainer() error {
 }
 
 func (pg *PostgresDb) ExecPgDump(stdout io.Writer) error {
-	cmd := exec.Command("pg_dump", "-U", pg.User, "-h", "localhost", "-p", pg.ExternalPort, pg.DbName) //nolint:gosec
+	cmd := exec.Command("pg_dump", "-U", pg.User, "-h", "127.0.0.1", "-p", pg.ExternalPort, pg.DbName) //nolint:gosec
 	cmd.Env = []string{
 		fmt.Sprintf("PGPASSWORD=%s", pg.Password),
 	}
@@ -148,7 +148,7 @@ func (pg *PostgresDb) ExecPgDump(stdout io.Writer) error {
 func (pg *PostgresDb) getContainerRequest() *tc.ContainerRequest {
 	return &tc.ContainerRequest{
 		Name:         pg.ContainerName,
-		Image:        fmt.Sprintf("postgres:%s", pg.ImageVersion),
+		Image:        fmt.Sprintf("%s:%s", pg.ContainerImage, pg.ContainerVersion),
 		ExposedPorts: []string{fmt.Sprintf("%s/tcp", pg.InternalPort)},
 		Env: map[string]string{
 			"POSTGRES_USER":     pg.User,
@@ -156,7 +156,7 @@ func (pg *PostgresDb) getContainerRequest() *tc.ContainerRequest {
 			"POSTGRES_PASSWORD": pg.Password,
 		},
 		Networks: pg.Networks,
-		WaitingFor: tcwait.ForExec([]string{"psql", "-h", "localhost",
+		WaitingFor: tcwait.ForExec([]string{"psql", "-h", "127.0.0.1",
 			"-U", pg.User, "-c", "select", "1", "-d", pg.DbName}).
 			WithStartupTimeout(10 * time.Second),
 	}

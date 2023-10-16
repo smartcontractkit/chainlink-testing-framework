@@ -194,7 +194,7 @@ func (g *NonDevBesuNode) ConnectToClient() error {
 	if ct == nil {
 		return fmt.Errorf("container not started")
 	}
-	host, err := ct.Host(context.Background())
+	host, err := GetHost(context.Background(), ct)
 	if err != nil {
 		return err
 	}
@@ -280,7 +280,7 @@ func (g *NonDevBesuNode) Start() error {
 	}
 	// Besu Bootnode setup: END
 
-	host, err := bootNode.Host(context.Background())
+	host, err := GetHost(context.Background(), bootNode)
 	if err != nil {
 		return err
 	}
@@ -292,9 +292,6 @@ func (g *NonDevBesuNode) Start() error {
 	b, err := io.ReadAll(r)
 	if err != nil {
 		return err
-	}
-	if host == "localhost" {
-		host = "127.0.0.1"
 	}
 	bootnodePubKey := strings.TrimPrefix(strings.TrimSpace(string(b)), "0x")
 	g.Config.bootNodeURL = fmt.Sprintf("enode://%s@%s:%s", bootnodePubKey, host, BOOTNODE_PORT)
@@ -378,11 +375,7 @@ func (g *NonDevBesuNode) getBesuContainerRequest() tc.ContainerRequest {
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForLog("WebSocketService | Websocket service started"),
 			NewWebSocketStrategy(NatPort(TX_NON_DEV_GETH_WS_PORT), g.l),
-			tcwait.NewHTTPStrategy("/").
-				WithPort(NatPort(TX_GETH_HTTP_PORT)).
-				WithStatusCodeMatcher(func(status int) bool {
-					return status == 201
-				}),
+			NewHTTPStrategy("/", NatPort(TX_GETH_HTTP_PORT)).WithStatusCode(201),
 		),
 		Entrypoint: []string{
 			"besu",

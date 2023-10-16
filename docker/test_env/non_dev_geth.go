@@ -300,7 +300,7 @@ func (g *NonDevGethNode) ConnectToClient() error {
 	if ct == nil {
 		return fmt.Errorf("container not started")
 	}
-	host, err := ct.Host(context.Background())
+	host, err := GetHost(context.Background(), ct)
 	if err != nil {
 		return err
 	}
@@ -309,7 +309,7 @@ func (g *NonDevGethNode) ConnectToClient() error {
 	if err != nil {
 		return err
 	}
-	wsPort, err := getUniqueWsPort(context.Background(), ct, TX_GETH_HTTP_PORT, TX_NON_DEV_GETH_WS_PORT, g.l)
+	wsPort, err := ct.MappedPort(context.Background(), NatPort(TX_NON_DEV_GETH_WS_PORT))
 	if err != nil {
 		return err
 	}
@@ -391,8 +391,7 @@ func (g *NonDevGethNode) getGethContainerRequest() tc.ContainerRequest {
 			"30303/tcp", "30303/udp"},
 		Networks: g.Networks,
 		WaitingFor: tcwait.ForAll(
-			tcwait.NewHTTPStrategy("/").
-				WithPort(NatPort(TX_GETH_HTTP_PORT)),
+			NewHTTPStrategy("/", NatPort(TX_GETH_HTTP_PORT)),
 			tcwait.ForLog("WebSocket enabled"),
 			NewWebSocketStrategy(NatPort(TX_NON_DEV_GETH_WS_PORT), g.l),
 		),

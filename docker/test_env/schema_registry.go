@@ -88,7 +88,7 @@ func (r *SchemaRegistry) StartContainer() error {
 	if err != nil {
 		return errors.Wrapf(err, "cannot start Schema Registry container")
 	}
-	host, err := c.Host(context.Background())
+	host, err := GetHost(context.Background(), c)
 	if err != nil {
 		return err
 	}

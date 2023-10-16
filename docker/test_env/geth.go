@@ -1,9 +1,14 @@
 package test_env
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"net"
+	"net/http"
+	"net/url"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -92,7 +97,7 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, InternalDockerUrls, erro
 	if err != nil {
 		return blockchain.EVMNetwork{}, InternalDockerUrls{}, errors.Wrapf(err, "cannot start geth container")
 	}
-	host, err := ct.Host(context.Background())
+	host, err := GetHost(context.Background(), ct)
 	if err != nil {
 		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
 	}
@@ -100,7 +105,7 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, InternalDockerUrls, erro
 	if err != nil {
 		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
 	}
-	wsPort, err := getUniqueWsPort(context.Background(), ct, TX_GETH_HTTP_PORT, TX_GETH_WS_PORT, g.l)
+	wsPort, err := ct.MappedPort(context.Background(), NatPort(TX_GETH_WS_PORT))
 	if err != nil {
 		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
 	}
@@ -129,33 +134,6 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, InternalDockerUrls, erro
 		Msg("Started Geth container")
 
 	return networkConfig, internalDockerUrls, nil
-}
-
-// getUniqueWsPort returns the unique websocket port for the container
-// This is needed for multiple reasons.
-// First there is this docker bug https://github.com/moby/moby/issues/42442
-// that causes docker to intermittently map an ipv6 port to a port other than the same one as the mapped
-// ipv4 port. This causes port collisions where our ws port will actually call the http port.
-// Second there is this docker bug https://github.com/moby/moby/issues/42375
-// that shows disabling ipv6 does not actually disable ipv6. This means the above issue is present
-// even though we disabled it in the docker network creation.
-func getUniqueWsPort(ctx context.Context, ct tc.Container, httpInternalPort, wsInternalPort string, l zerolog.Logger) (nat.Port, error) {
-	p, err := ct.Ports(ctx)
-	if err != nil {
-		return "", err
-	}
-	l.Info().
-		Interface("ports", p).
-		Msg("Ports mapped")
-	httpPorts := p[NatPort(httpInternalPort)]
-	wsPorts := p[NatPort(wsInternalPort)]
-	wsPort := NatPort(wsPorts[0].HostPort)
-	if len(wsPorts) > 1 {
-		if httpPorts[0].HostPort == wsPorts[0].HostPort || httpPorts[1].HostPort == wsPorts[0].HostPort {
-			wsPort = NatPort(wsPorts[1].HostPort)
-		}
-	}
-	return wsPort, nil
 }
 
 func (g *Geth) getGethContainerRequest(networks []string) (*tc.ContainerRequest, *keystore.KeyStore, *accounts.Account, error) {
@@ -219,8 +197,7 @@ func (g *Geth) getGethContainerRequest(networks []string) (*tc.ContainerRequest,
 		ExposedPorts:    []string{NatPortFormat(TX_GETH_HTTP_PORT), NatPortFormat(TX_GETH_WS_PORT)},
 		Networks:        networks,
 		WaitingFor: tcwait.ForAll(
-			tcwait.NewHTTPStrategy("/").
-				WithPort(NatPort(TX_GETH_HTTP_PORT)),
+			NewHTTPStrategy("/", NatPort(TX_GETH_HTTP_PORT)),
 			tcwait.ForLog("WebSocket enabled"),
 			tcwait.ForLog("Started P2P networking").
 				WithStartupTimeout(120*time.Second).
@@ -323,12 +300,12 @@ func (w *WebSocketStrategy) WaitUntilReady(ctx context.Context, target tcwait.St
 	defer cancel()
 	i := 0
 	for {
-		host, err = target.Host(ctx)
+		host, err = GetHost(ctx, target.(tc.Container))
 		if err != nil {
 			w.l.Error().Msg("Failed to get the target host")
 			return err
 		}
-		wsPort, err := getUniqueWsPort(ctx, target.(tc.Container), TX_GETH_HTTP_PORT, w.Port.Port(), w.l)
+		wsPort, err := target.MappedPort(ctx, w.Port)
 		if err != nil {
 			return err
 		}
@@ -352,6 +329,106 @@ func (w *WebSocketStrategy) WaitUntilReady(ctx context.Context, target tcwait.St
 		case <-time.After(w.RetryDelay):
 			i++
 			w.l.Info().Msgf("WebSocket attempt %d failed: %s. Retrying...", i, err)
+		}
+	}
+}
+
+type HTTPStrategy struct {
+	Path               string
+	Port               nat.Port
+	RetryDelay         time.Duration
+	ExpectedStatusCode int
+	timeout            time.Duration
+}
+
+func NewHTTPStrategy(path string, port nat.Port) *HTTPStrategy {
+	return &HTTPStrategy{
+		Path:               path,
+		Port:               port,
+		RetryDelay:         10 * time.Second,
+		ExpectedStatusCode: 200,
+		timeout:            2 * time.Minute,
+	}
+}
+
+func (w *HTTPStrategy) WithTimeout(timeout time.Duration) *HTTPStrategy {
+	w.timeout = timeout
+	return w
+}
+
+func (w *HTTPStrategy) WithStatusCode(statusCode int) *HTTPStrategy {
+	w.ExpectedStatusCode = statusCode
+	return w
+}
+
+// WaitUntilReady implements Strategy.WaitUntilReady
+func (w *HTTPStrategy) WaitUntilReady(ctx context.Context, target tcwait.StrategyTarget) (err error) {
+
+	ctx, cancel := context.WithTimeout(ctx, w.timeout)
+	defer cancel()
+
+	host, err := GetHost(ctx, target.(tc.Container))
+	if err != nil {
+		return
+	}
+
+	var mappedPort nat.Port
+	mappedPort, err = target.MappedPort(ctx, w.Port)
+	if err != nil {
+		return err
+	}
+
+	tripper := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   time.Second,
+			KeepAlive: 30 * time.Second,
+			DualStack: true,
+		}).DialContext,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
+
+	client := http.Client{Transport: tripper, Timeout: time.Second}
+	address := net.JoinHostPort(host, strconv.Itoa(mappedPort.Int()))
+
+	endpoint := url.URL{
+		Scheme: "http",
+		Host:   address,
+		Path:   w.Path,
+	}
+
+	var body []byte
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(100 * time.Millisecond):
+			state, err := target.State(ctx)
+			if err != nil {
+				return err
+			}
+			if !state.Running {
+				return fmt.Errorf("container is not running %s", state.Status)
+			}
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint.String(), bytes.NewReader(body))
+			if err != nil {
+				return err
+			}
+			resp, err := client.Do(req)
+			if err != nil {
+				continue
+			}
+			if resp.StatusCode != w.ExpectedStatusCode {
+				_ = resp.Body.Close()
+				continue
+			}
+			if err := resp.Body.Close(); err != nil {
+				continue
+			}
+			return nil
 		}
 	}
 }
