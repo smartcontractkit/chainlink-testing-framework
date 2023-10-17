@@ -42,6 +42,7 @@ require (
 	github.com/sercand/kuberesolver/v4 v4.0.0 // indirect
 	github.com/sergi/go-diff v1.2.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
+	github.com/zksync-sdk/zksync2-go v0.3.1 // indirect
 )
 
 // K8s versions are infuriatingly inconsistent, so we pin them here.
