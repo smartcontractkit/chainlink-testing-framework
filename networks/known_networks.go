@@ -534,6 +534,30 @@ var (
 		GasEstimationBuffer:       1000,
 	}
 
+	FantomTestnet blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Fantom Testnet",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.FantomClientImplementation,
+		ChainID:                   4002,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       1000,
+	}
+
+	FantomMainnet blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Fantom Mainnet",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.FantomClientImplementation,
+		ChainID:                   250,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       1000,
+	}
+
 	MappedNetworks = map[string]blockchain.EVMNetwork{
 		"SIMULATED":               SimulatedEVM,
 		"SIMULATED_1":             SimulatedEVMNonDev1,
@@ -571,6 +595,8 @@ var (
 		"LINEA_MAINNET":         LineaMainnet,
 		"POLYGON_ZKEVM_GOERLI":  PolygonZkEvmGoerli,
 		"POLYGON_ZKEVM_MAINNET": PolygonZkEvmMainnet,
+		"FANTOM_TESTNET":        FantomTestnet,
+		"FANTOM_MAINNET":        FantomMainnet,
 	}
 )
 
