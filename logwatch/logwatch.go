@@ -2,18 +2,20 @@ package logwatch
 
 import (
 	"context"
+	"os"
 	"regexp"
 	"strings"
 	"testing"
-	"time"
 
-	"github.com/prometheus/common/model"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/smartcontractkit/wasp"
 	"github.com/testcontainers/testcontainers-go"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 )
+
+const NO_TEST = "no_test"
 
 // LogNotification notification about log line match for some container
 type LogNotification struct {
@@ -25,30 +27,101 @@ type LogNotification struct {
 // LogWatch is a test helper struct to monitor docker container logs for some patterns
 // and push their logs into Loki for further analysis
 type LogWatch struct {
-	t          *testing.T
-	log        zerolog.Logger
-	loki       *wasp.LokiClient
-	patterns   map[string][]*regexp.Regexp
-	notifyTest chan *LogNotification
-	containers []testcontainers.Container
-	consumers  map[string]*ContainerLogConsumer
+	testName          string
+	log               zerolog.Logger
+	loki              *wasp.LokiClient
+	patterns          map[string][]*regexp.Regexp
+	notifyTest        chan *LogNotification
+	containers        []testcontainers.Container
+	consumers         map[string]*ContainerLogConsumer
+	logTargetHandlers map[LogTarget]HandleLogTarget
 }
 
-// NewLogWatch creates a new LogWatch instance, with a Loki client
-func NewLogWatch(t *testing.T, patterns map[string][]*regexp.Regexp) (*LogWatch, error) {
-	loki, err := wasp.NewLokiClient(wasp.NewEnvLokiConfig())
-	if err != nil {
+type LogContent struct {
+	TestName      string
+	ContainerName string
+	Content       []byte
+}
+
+type LogWatchOption func(*LogWatch)
+
+// NewLogWatch creates a new LogWatch instance, with Loki client only if Loki log target is enabled (lazy init)
+func NewLogWatch(t *testing.T, patterns map[string][]*regexp.Regexp, options ...LogWatchOption) (*LogWatch, error) {
+	l := logging.GetLogger(nil, "LOGWATCH_LOG_LEVEL").With().Str("Component", "LogWatch").Logger()
+	var testName string
+	if t == nil {
+		testName = NO_TEST
+	} else {
+		testName = t.Name()
+	}
+
+	logWatch := &LogWatch{
+		testName:          testName,
+		log:               l,
+		patterns:          patterns,
+		notifyTest:        make(chan *LogNotification, 10000),
+		consumers:         make(map[string]*ContainerLogConsumer, 0),
+		logTargetHandlers: getDefaultLogHandlers(),
+	}
+
+	for _, option := range options {
+		option(logWatch)
+	}
+
+	if err := logWatch.validateLogTargets(); err != nil {
 		return nil, err
 	}
-	l := logging.GetLogger(t, "LOGWATCH_LOG_LEVEL").With().Str("Component", "LogWatch").Logger()
-	return &LogWatch{
-		t:          t,
-		log:        l,
-		loki:       loki,
-		patterns:   patterns,
-		notifyTest: make(chan *LogNotification, 10000),
-		consumers:  make(map[string]*ContainerLogConsumer, 0),
-	}, nil
+
+	return logWatch, nil
+}
+
+func (l *LogWatch) validateLogTargets() error {
+	envLogTargets, err := getLogTargetsFromEnv()
+	if err != nil {
+		return err
+	}
+
+	// check if all requested log targets are supported
+	for _, wantedTarget := range envLogTargets {
+		found := false
+		for knownTargets := range l.logTargetHandlers {
+			if knownTargets == wantedTarget {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			return errors.Errorf("no handler found for log target: %d", wantedTarget)
+		}
+	}
+
+	// deactivate known log targets that are not enabled
+	for knownTarget := range l.logTargetHandlers {
+		wanted := false
+		for _, wantedTarget := range envLogTargets {
+			if knownTarget == wantedTarget {
+				wanted = true
+				break
+			}
+		}
+		if !wanted {
+			l.log.Debug().Int("handler id", int(knownTarget)).Msg("Log target disabled")
+			delete(l.logTargetHandlers, knownTarget)
+		}
+	}
+
+	if len(l.logTargetHandlers) == 0 {
+		l.log.Warn().Msg("No log targets enabled. LogWatch will not do anything")
+	}
+
+	return nil
+}
+
+func WithCustomLogHandler(logTarget LogTarget, handler HandleLogTarget) LogWatchOption {
+	return func(lw *LogWatch) {
+		lw.logTargetHandlers[logTarget] = handler
+	}
 }
 
 // Listen listen for the next notification
@@ -76,19 +149,26 @@ func (m *LogWatch) OnMatch(f func(ln *LogNotification)) {
 }
 
 // ConnectContainer connects consumer to selected container and starts testcontainers.LogProducer
-func (m *LogWatch) ConnectContainer(ctx context.Context, container testcontainers.Container, prefix string, pushToLoki bool) error {
+func (m *LogWatch) ConnectContainer(ctx context.Context, container testcontainers.Container, prefix string) error {
 	name, err := container.Name(ctx)
 	if err != nil {
 		return err
 	}
 	name = strings.Replace(name, "/", "", 1)
 	prefix = strings.Replace(prefix, "/", "", 1)
+
+	enabledLogTargets := make([]LogTarget, 0)
+	for logTarget := range m.logTargetHandlers {
+		enabledLogTargets = append(enabledLogTargets, logTarget)
+	}
+
 	var cons *ContainerLogConsumer
 	if prefix != "" {
-		cons = newContainerLogConsumer(m, name, prefix, pushToLoki)
+		cons = newContainerLogConsumer(m, name, prefix, enabledLogTargets...)
 	} else {
-		cons = newContainerLogConsumer(m, name, name, pushToLoki)
+		cons = newContainerLogConsumer(m, name, name, enabledLogTargets...)
 	}
+
 	m.log.Info().
 		Str("Prefix", prefix).
 		Str("Name", name).
@@ -101,18 +181,35 @@ func (m *LogWatch) ConnectContainer(ctx context.Context, container testcontainer
 
 // Shutdown disconnects all containers, stops notifications
 func (m *LogWatch) Shutdown() {
-	m.loki.Stop()
+	for _, c := range m.containers {
+		m.DisconnectContainer(c)
+	}
+
+	if m.loki != nil {
+		m.loki.Stop()
+	}
+}
+
+func (m *LogWatch) PrintLogTargetsLocations() {
+	for _, handler := range m.logTargetHandlers {
+		handler.PrintLogLocation(m)
+	}
 }
 
 // DisconnectContainer disconnects the particular container
 func (m *LogWatch) DisconnectContainer(container testcontainers.Container) {
 	if container.IsRunning() {
+		m.log.Info().Str("container", container.GetContainerID()).Msg("Disconnecting container")
 		_ = container.StopLogProducer()
 	}
 }
 
 // ContainerLogs return all logs for the particular container
 func (m *LogWatch) ContainerLogs(name string) []string {
+	if _, ok := m.consumers[name]; !ok {
+		return []string{}
+	}
+
 	return m.consumers[name].Messages
 }
 
@@ -141,19 +238,19 @@ func (m *LogWatch) PrintAll() {
 type ContainerLogConsumer struct {
 	name       string
 	prefix     string
-	pushToLoki bool
+	logTargets []LogTarget
 	lw         *LogWatch
 	Messages   []string
 }
 
 // newContainerLogConsumer creates new log consumer for a container that
 // - signal if log line matches the pattern
-// - push all lines to Loki if enabled
-func newContainerLogConsumer(lw *LogWatch, containerName string, prefix string, pushToLoki bool) *ContainerLogConsumer {
+// - push all lines to configured log targets
+func newContainerLogConsumer(lw *LogWatch, containerName string, prefix string, logTargets ...LogTarget) *ContainerLogConsumer {
 	return &ContainerLogConsumer{
 		name:       containerName,
 		prefix:     prefix,
-		pushToLoki: pushToLoki,
+		logTargets: logTargets,
 		lw:         lw,
 		Messages:   make([]string, 0),
 	}
@@ -166,19 +263,21 @@ func (g *ContainerLogConsumer) Accept(l testcontainers.Log) {
 	for i := 0; i < matches; i++ {
 		g.lw.notifyTest <- &LogNotification{Container: g.name, Prefix: g.prefix, Log: string(l.Content)}
 	}
-	var testName string
-	if g.lw.t == nil {
-		testName = "no_test"
-	} else {
-		testName = g.lw.t.Name()
+
+	content := LogContent{
+		TestName:      g.lw.testName,
+		ContainerName: g.name,
+		Content:       l.Content,
 	}
-	// we can notify more than one time if it matches, but we push only once
-	if g.pushToLoki && g.lw.loki != nil {
-		_ = g.lw.loki.Handle(model.LabelSet{
-			"type":      "log_watch",
-			"test":      model.LabelValue(testName),
-			"container": model.LabelValue(g.name),
-		}, time.Now(), string(l.Content))
+
+	for _, logTarget := range g.logTargets {
+		if handler, ok := g.lw.logTargetHandlers[logTarget]; ok {
+			if err := handler.Handle(g, content); err != nil {
+				g.lw.log.Error().Err(err).Msg("Failed to handle log target")
+			}
+		} else {
+			g.lw.log.Warn().Int("handler id", int(logTarget)).Msg("No handler found for log target")
+		}
 	}
 }
 
@@ -200,4 +299,35 @@ func (g *ContainerLogConsumer) FindMatch(l testcontainers.Log) int {
 		}
 	}
 	return matchesPerPattern
+}
+
+func (g *ContainerLogConsumer) hasLogTarget(logTarget LogTarget) bool {
+	for _, lt := range g.logTargets {
+		if lt&logTarget != 0 {
+			return true
+		}
+	}
+
+	return false
+}
+
+func getLogTargetsFromEnv() ([]LogTarget, error) {
+	envLogTargetsValue := os.Getenv("LOGWATCH_LOG_TARGETS")
+	if envLogTargetsValue != "" {
+		envLogTargets := make([]LogTarget, 0)
+		for _, target := range strings.Split(envLogTargetsValue, ",") {
+			switch strings.TrimSpace(strings.ToLower(target)) {
+			case "loki":
+				envLogTargets = append(envLogTargets, Loki)
+			case "file":
+				envLogTargets = append(envLogTargets, File)
+			default:
+				return []LogTarget{}, errors.Errorf("unknown log target: %s", target)
+			}
+		}
+
+		return envLogTargets, nil
+	}
+
+	return []LogTarget{}, nil
 }

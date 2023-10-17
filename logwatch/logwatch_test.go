@@ -3,6 +3,7 @@ package logwatch_test
 import (
 	"context"
 	"fmt"
+	"os"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -26,7 +27,7 @@ type TestCase struct {
 	exitEarly             bool
 	mustNotifyList        map[string][]*regexp.Regexp
 	expectedNotifications map[string][]*logwatch.LogNotification
-	pushToLoki            bool
+	logTargets            []logwatch.LogTarget
 }
 
 func getNotificationsAmount(m map[string][]*regexp.Regexp) int {
@@ -95,6 +96,7 @@ func startTestContainer(containerName string, msg string, amount int, intervalSe
 }
 
 func TestLogWatchDocker(t *testing.T) {
+	os.Setenv("LOGWATCH_LOG_TARGETS", "loki")
 	tests := []TestCase{
 		{
 			name:                "should read exactly 10 streams (1 container)",
@@ -168,7 +170,7 @@ func TestLogWatchDocker(t *testing.T) {
 				require.NoError(t, err)
 				name, err := container.Name(context.Background())
 				require.NoError(t, err)
-				err = lw.ConnectContainer(context.Background(), container, name, tc.pushToLoki)
+				err = lw.ConnectContainer(context.Background(), container, name)
 				require.NoError(t, err)
 			}
 

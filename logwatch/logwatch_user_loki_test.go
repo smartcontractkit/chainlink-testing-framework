@@ -1,6 +1,7 @@
 package logwatch_test
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 
 func TestExampleLokiStreaming(t *testing.T) {
 	t.Skip("uncomment and run manually")
+	os.Setenv("LOGWATCH_LOG_TARGETS", "loki")
 	tests := []testData{
 		{
 			name:      "stream all container logs to Loki, subtest 1",
@@ -43,7 +45,7 @@ func TestExampleLokiStreaming(t *testing.T) {
 			require.NoError(t, err)
 			lw, err := logwatch.NewLogWatch(t, nil)
 			require.NoError(t, err)
-			err = d.ConnectLogs(lw, true)
+			err = d.ConnectLogs(lw)
 			require.NoError(t, err)
 			time.Sleep(5 * time.Second)
 		})

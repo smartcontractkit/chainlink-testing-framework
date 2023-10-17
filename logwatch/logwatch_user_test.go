@@ -3,6 +3,7 @@ package logwatch_test
 import (
 	"context"
 	"fmt"
+	"os"
 	"regexp"
 	"testing"
 	"time"
@@ -51,11 +52,10 @@ func (m *MyDeployment) Shutdown() error {
 	return nil
 }
 
-/* That's what you need to implement to have your logs in Loki */
-
-func (m *MyDeployment) ConnectLogs(lw *logwatch.LogWatch, pushToLoki bool) error {
+/* That's what you need to implement to have your logs send to your chosen targets */
+func (m *MyDeployment) ConnectLogs(lw *logwatch.LogWatch) error {
 	for _, c := range m.containers {
-		if err := lw.ConnectContainer(context.Background(), c, "", pushToLoki); err != nil {
+		if err := lw.ConnectContainer(context.Background(), c, ""); err != nil {
 			return err
 		}
 	}
@@ -65,6 +65,7 @@ func (m *MyDeployment) ConnectLogs(lw *logwatch.LogWatch, pushToLoki bool) error
 /* That's how you use it */
 
 func TestExampleUserInteraction(t *testing.T) {
+	os.Setenv("LOGWATCH_LOG_TARGETS", "loki")
 	t.Run("sync API, block, receive one message", func(t *testing.T) {
 		testData := testData{repeat: 10, perSecond: 0.01, streams: []string{"A\nB\nC\nD"}}
 		d, err := NewDeployment(testData)
@@ -80,7 +81,7 @@ func TestExampleUserInteraction(t *testing.T) {
 			},
 		)
 		require.NoError(t, err)
-		err = d.ConnectLogs(lw, false)
+		err = d.ConnectLogs(lw)
 		require.NoError(t, err)
 		match := lw.Listen()
 		require.NotEmpty(t, match)
@@ -105,7 +106,7 @@ func TestExampleUserInteraction(t *testing.T) {
 		)
 		require.NoError(t, err)
 		lw.OnMatch(func(ln *logwatch.LogNotification) { notifications++ })
-		err = d.ConnectLogs(lw, false)
+		err = d.ConnectLogs(lw)
 		require.NoError(t, err)
 		time.Sleep(1 * time.Second)
 		require.Equal(t, testData.repeat*len(testData.streams), notifications)
