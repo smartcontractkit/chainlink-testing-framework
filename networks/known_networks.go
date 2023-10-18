@@ -266,6 +266,20 @@ var (
 		DefaultGasLimit:           100000000,
 	}
 
+	ArbitrumSepolia blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Arbitrum Sepolia",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.ArbitrumClientImplementation,
+		ChainID:                   421614,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.JSONStrDuration{Duration: 2 * time.Minute},
+		MinimumConfirmations:      0,
+		GasEstimationBuffer:       0,
+		FinalityTag:               true,
+		DefaultGasLimit:           100000000,
+	}
+
 	OptimismMainnet blockchain.EVMNetwork = blockchain.EVMNetwork{
 		Name:                      "Optimism Mainnet",
 		SupportsEIP1559:           true,
@@ -575,6 +589,7 @@ var (
 		"METIS_STARDUST":        MetisStardust,
 		"ARBITRUM_MAINNET":      ArbitrumMainnet,
 		"ARBITRUM_GOERLI":       ArbitrumGoerli,
+		"ARBITRUM_SEPOLIA":      ArbitrumSepolia,
 		"OPTIMISM_MAINNET":      OptimismMainnet,
 		"OPTIMISM_GOERLI":       OptimismGoerli,
 		"BASE_GOERLI":           BaseGoerli,
