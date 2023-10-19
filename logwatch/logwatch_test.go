@@ -27,7 +27,6 @@ type TestCase struct {
 	exitEarly             bool
 	mustNotifyList        map[string][]*regexp.Regexp
 	expectedNotifications map[string][]*logwatch.LogNotification
-	logTargets            []logwatch.LogTarget
 }
 
 func getNotificationsAmount(m map[string][]*regexp.Regexp) int {

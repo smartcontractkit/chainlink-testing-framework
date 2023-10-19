@@ -43,10 +43,10 @@ type LogContent struct {
 	Content       []byte
 }
 
-type LogWatchOption func(*LogWatch)
+type Option func(*LogWatch)
 
 // NewLogWatch creates a new LogWatch instance, with Loki client only if Loki log target is enabled (lazy init)
-func NewLogWatch(t *testing.T, patterns map[string][]*regexp.Regexp, options ...LogWatchOption) (*LogWatch, error) {
+func NewLogWatch(t *testing.T, patterns map[string][]*regexp.Regexp, options ...Option) (*LogWatch, error) {
 	l := logging.GetLogger(nil, "LOGWATCH_LOG_LEVEL").With().Str("Component", "LogWatch").Logger()
 	var testName string
 	if t == nil {
@@ -118,16 +118,16 @@ func (l *LogWatch) validateLogTargets() error {
 	return nil
 }
 
-func WithCustomLogHandler(logTarget LogTarget, handler HandleLogTarget) LogWatchOption {
+func WithCustomLogHandler(logTarget LogTarget, handler HandleLogTarget) Option {
 	return func(lw *LogWatch) {
 		lw.logTargetHandlers[logTarget] = handler
 	}
 }
 
 // Listen listen for the next notification
-func (m *LogWatch) Listen() *LogNotification {
-	msg := <-m.notifyTest
-	m.log.Warn().
+func (l *LogWatch) Listen() *LogNotification {
+	msg := <-l.notifyTest
+	l.log.Warn().
 		Str("Container", msg.Container).
 		Str("Line", msg.Log).
 		Msg("Received notification from container")
@@ -135,11 +135,11 @@ func (m *LogWatch) Listen() *LogNotification {
 }
 
 // OnMatch calling your testing hook on first match
-func (m *LogWatch) OnMatch(f func(ln *LogNotification)) {
+func (l *LogWatch) OnMatch(f func(ln *LogNotification)) {
 	go func() {
 		for {
-			msg := <-m.notifyTest
-			m.log.Warn().
+			msg := <-l.notifyTest
+			l.log.Warn().
 				Str("Container", msg.Container).
 				Str("Line", msg.Log).
 				Msg("Received notification from container")
@@ -149,7 +149,7 @@ func (m *LogWatch) OnMatch(f func(ln *LogNotification)) {
 }
 
 // ConnectContainer connects consumer to selected container and starts testcontainers.LogProducer
-func (m *LogWatch) ConnectContainer(ctx context.Context, container testcontainers.Container, prefix string) error {
+func (l *LogWatch) ConnectContainer(ctx context.Context, container testcontainers.Container, prefix string) error {
 	name, err := container.Name(ctx)
 	if err != nil {
 		return err
@@ -158,23 +158,23 @@ func (m *LogWatch) ConnectContainer(ctx context.Context, container testcontainer
 	prefix = strings.Replace(prefix, "/", "", 1)
 
 	enabledLogTargets := make([]LogTarget, 0)
-	for logTarget := range m.logTargetHandlers {
+	for logTarget := range l.logTargetHandlers {
 		enabledLogTargets = append(enabledLogTargets, logTarget)
 	}
 
 	var cons *ContainerLogConsumer
 	if prefix != "" {
-		cons = newContainerLogConsumer(m, name, prefix, enabledLogTargets...)
+		cons = newContainerLogConsumer(l, name, prefix, enabledLogTargets...)
 	} else {
-		cons = newContainerLogConsumer(m, name, name, enabledLogTargets...)
+		cons = newContainerLogConsumer(l, name, name, enabledLogTargets...)
 	}
 
-	m.log.Info().
+	l.log.Info().
 		Str("Prefix", prefix).
 		Str("Name", name).
 		Msg("Connecting container logs")
-	m.consumers[name] = cons
-	m.containers = append(m.containers, container)
+	l.consumers[name] = cons
+	l.containers = append(l.containers, container)
 	container.FollowOutput(cons)
 	return container.StartLogProducer(ctx)
 }
