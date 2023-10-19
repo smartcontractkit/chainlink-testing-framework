@@ -75,7 +75,7 @@ func NewLogWatch(t *testing.T, patterns map[string][]*regexp.Regexp, options ...
 	return logWatch, nil
 }
 
-func (l *LogWatch) validateLogTargets() error {
+func (m *LogWatch) validateLogTargets() error {
 	envLogTargets, err := getLogTargetsFromEnv()
 	if err != nil {
 		return err
@@ -84,7 +84,7 @@ func (l *LogWatch) validateLogTargets() error {
 	// check if all requested log targets are supported
 	for _, wantedTarget := range envLogTargets {
 		found := false
-		for knownTargets := range l.logTargetHandlers {
+		for knownTargets := range m.logTargetHandlers {
 			if knownTargets == wantedTarget {
 				found = true
 				break
@@ -97,7 +97,7 @@ func (l *LogWatch) validateLogTargets() error {
 	}
 
 	// deactivate known log targets that are not enabled
-	for knownTarget := range l.logTargetHandlers {
+	for knownTarget := range m.logTargetHandlers {
 		wanted := false
 		for _, wantedTarget := range envLogTargets {
 			if knownTarget == wantedTarget {
@@ -106,13 +106,13 @@ func (l *LogWatch) validateLogTargets() error {
 			}
 		}
 		if !wanted {
-			l.log.Debug().Int("handler id", int(knownTarget)).Msg("Log target disabled")
-			delete(l.logTargetHandlers, knownTarget)
+			m.log.Debug().Int("handler id", int(knownTarget)).Msg("Log target disabled")
+			delete(m.logTargetHandlers, knownTarget)
 		}
 	}
 
-	if len(l.logTargetHandlers) == 0 {
-		l.log.Warn().Msg("No log targets enabled. LogWatch will not do anything")
+	if len(m.logTargetHandlers) == 0 {
+		m.log.Warn().Msg("No log targets enabled. LogWatch will not do anything")
 	}
 
 	return nil
@@ -125,9 +125,9 @@ func WithCustomLogHandler(logTarget LogTarget, handler HandleLogTarget) Option {
 }
 
 // Listen listen for the next notification
-func (l *LogWatch) Listen() *LogNotification {
-	msg := <-l.notifyTest
-	l.log.Warn().
+func (m *LogWatch) Listen() *LogNotification {
+	msg := <-m.notifyTest
+	m.log.Warn().
 		Str("Container", msg.Container).
 		Str("Line", msg.Log).
 		Msg("Received notification from container")
@@ -135,11 +135,11 @@ func (l *LogWatch) Listen() *LogNotification {
 }
 
 // OnMatch calling your testing hook on first match
-func (l *LogWatch) OnMatch(f func(ln *LogNotification)) {
+func (m *LogWatch) OnMatch(f func(ln *LogNotification)) {
 	go func() {
 		for {
-			msg := <-l.notifyTest
-			l.log.Warn().
+			msg := <-m.notifyTest
+			m.log.Warn().
 				Str("Container", msg.Container).
 				Str("Line", msg.Log).
 				Msg("Received notification from container")
@@ -149,7 +149,7 @@ func (l *LogWatch) OnMatch(f func(ln *LogNotification)) {
 }
 
 // ConnectContainer connects consumer to selected container and starts testcontainers.LogProducer
-func (l *LogWatch) ConnectContainer(ctx context.Context, container testcontainers.Container, prefix string) error {
+func (m *LogWatch) ConnectContainer(ctx context.Context, container testcontainers.Container, prefix string) error {
 	name, err := container.Name(ctx)
 	if err != nil {
 		return err
@@ -158,23 +158,23 @@ func (l *LogWatch) ConnectContainer(ctx context.Context, container testcontainer
 	prefix = strings.Replace(prefix, "/", "", 1)
 
 	enabledLogTargets := make([]LogTarget, 0)
-	for logTarget := range l.logTargetHandlers {
+	for logTarget := range m.logTargetHandlers {
 		enabledLogTargets = append(enabledLogTargets, logTarget)
 	}
 
 	var cons *ContainerLogConsumer
 	if prefix != "" {
-		cons = newContainerLogConsumer(l, name, prefix, enabledLogTargets...)
+		cons = newContainerLogConsumer(m, name, prefix, enabledLogTargets...)
 	} else {
-		cons = newContainerLogConsumer(l, name, name, enabledLogTargets...)
+		cons = newContainerLogConsumer(m, name, name, enabledLogTargets...)
 	}
 
-	l.log.Info().
+	m.log.Info().
 		Str("Prefix", prefix).
 		Str("Name", name).
 		Msg("Connecting container logs")
-	l.consumers[name] = cons
-	l.containers = append(l.containers, container)
+	m.consumers[name] = cons
+	m.containers = append(m.containers, container)
 	container.FollowOutput(cons)
 	return container.StartLogProducer(ctx)
 }

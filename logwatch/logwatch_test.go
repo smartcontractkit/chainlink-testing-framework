@@ -95,7 +95,7 @@ func startTestContainer(containerName string, msg string, amount int, intervalSe
 }
 
 func TestLogWatchDocker(t *testing.T) {
-	os.Setenv("LOGWATCH_LOG_TARGETS", "loki")
+	os.Setenv("LOGWATCH_LOG_TARGETS", "")
 	tests := []TestCase{
 		{
 			name:                "should read exactly 10 streams (1 container)",

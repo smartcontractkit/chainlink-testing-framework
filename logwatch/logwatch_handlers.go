@@ -74,9 +74,9 @@ func (h FileLogHandler) Handle(c *ContainerLogConsumer, content LogContent) erro
 	return nil
 }
 
-func (h FileLogHandler) PrintLogLocation(l *LogWatch) {
+func (h FileLogHandler) PrintLogLocation(m *LogWatch) {
 	for testname, folder := range h.testLogFolders {
-		l.log.Info().Str("Test", testname).Str("Folder", folder).Msg("Logs saved to folder:")
+		m.log.Info().Str("Test", testname).Str("Folder", folder).Msg("Logs saved to folder:")
 	}
 }
 
@@ -125,13 +125,13 @@ func (h LokiLogHandler) Handle(c *ContainerLogConsumer, content LogContent) erro
 	return nil
 }
 
-func (h LokiLogHandler) PrintLogLocation(l *LogWatch) {
+func (h LokiLogHandler) PrintLogLocation(m *LogWatch) {
 	queries := make([]GrafanaExploreQuery, 0)
 
 	rangeFrom := time.Now()
 	rangeTo := time.Now()
 
-	for _, c := range l.consumers {
+	for _, c := range m.consumers {
 		if c.hasLogTarget(Loki) {
 			queries = append(queries, GrafanaExploreQuery{
 				refId:     c.name,
@@ -145,11 +145,11 @@ func (h LokiLogHandler) PrintLogLocation(l *LogWatch) {
 				Ts string `json:"ts"`
 			}
 			if err := json.Unmarshal([]byte(c.Messages[0]), &firstMsg); err != nil {
-				l.log.Error().Err(err).Str("container", c.name).Msg("Failed to unmarshal first log message")
+				m.log.Error().Err(err).Str("container", c.name).Msg("Failed to unmarshal first log message")
 			} else {
 				firstTs, err := time.Parse(time.RFC3339, firstMsg.Ts)
 				if err != nil {
-					l.log.Error().Err(err).Str("container", c.name).Msg("Failed to parse first log message timestamp")
+					m.log.Error().Err(err).Str("container", c.name).Msg("Failed to parse first log message timestamp")
 				} else {
 					if firstTs.Before(rangeFrom) {
 						rangeFrom = firstTs
@@ -167,7 +167,7 @@ func (h LokiLogHandler) PrintLogLocation(l *LogWatch) {
 		rangeTo:    rangeTo.UnixMilli() + 60000, //just to make sure we get the last message
 	}.getUrl()
 
-	l.log.Info().Str("URL", string(grafanaUrl)).Msg("Loki logs can be found in Grafana at (will only work when you unescape quotes):")
+	m.log.Info().Str("URL", string(grafanaUrl)).Msg("Loki logs can be found in Grafana at (will only work when you unescape quotes):")
 
 	fmt.Printf("Loki logs can be found in Grafana at: %s\n", grafanaUrl)
 }

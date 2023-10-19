@@ -65,7 +65,7 @@ func (m *MyDeployment) ConnectLogs(lw *logwatch.LogWatch) error {
 /* That's how you use it */
 
 func TestExampleUserInteraction(t *testing.T) {
-	os.Setenv("LOGWATCH_LOG_TARGETS", "loki")
+	os.Setenv("LOGWATCH_LOG_TARGETS", "")
 	t.Run("sync API, block, receive one message", func(t *testing.T) {
 		testData := testData{repeat: 10, perSecond: 0.01, streams: []string{"A\nB\nC\nD"}}
 		d, err := NewDeployment(testData)
