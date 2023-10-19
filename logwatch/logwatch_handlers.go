@@ -12,11 +12,11 @@ import (
 	"github.com/smartcontractkit/wasp"
 )
 
-type LogTarget int
+type LogTarget string
 
 const (
-	Loki LogTarget = 1 << iota
-	File
+	Loki LogTarget = "loki"
+	File LogTarget = "file"
 )
 
 type HandleLogTarget interface {

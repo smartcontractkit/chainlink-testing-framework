@@ -84,8 +84,8 @@ func (m *LogWatch) validateLogTargets() error {
 	// check if all requested log targets are supported
 	for _, wantedTarget := range envLogTargets {
 		found := false
-		for knownTargets := range m.logTargetHandlers {
-			if knownTargets == wantedTarget {
+		for knownTarget := range m.logTargetHandlers {
+			if knownTarget == wantedTarget {
 				found = true
 				break
 			}
@@ -106,7 +106,7 @@ func (m *LogWatch) validateLogTargets() error {
 			}
 		}
 		if !wanted {
-			m.log.Debug().Int("handler id", int(knownTarget)).Msg("Log target disabled")
+			m.log.Debug().Str("log target", string(knownTarget)).Msg("Log target disabled")
 			delete(m.logTargetHandlers, knownTarget)
 		}
 	}
@@ -276,7 +276,7 @@ func (g *ContainerLogConsumer) Accept(l testcontainers.Log) {
 				g.lw.log.Error().Err(err).Msg("Failed to handle log target")
 			}
 		} else {
-			g.lw.log.Warn().Int("handler id", int(logTarget)).Msg("No handler found for log target")
+			g.lw.log.Warn().Str("log target", string(logTarget)).Msg("No handler found for log target")
 		}
 	}
 }
@@ -303,7 +303,7 @@ func (g *ContainerLogConsumer) FindMatch(l testcontainers.Log) int {
 
 func (g *ContainerLogConsumer) hasLogTarget(logTarget LogTarget) bool {
 	for _, lt := range g.logTargets {
-		if lt&logTarget != 0 {
+		if lt == logTarget {
 			return true
 		}
 	}
