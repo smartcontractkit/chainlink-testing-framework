@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	LocalURLsKey    = "qa_mock_adapter_local"
-	InternalURLsKey = "qa_mock_adapter_internal"
+	LocalURLsKey    = "qa_mock_adapter_local"    // #nosec G101
+	InternalURLsKey = "qa_mock_adapter_internal" // #nosec G101
 )
 
 type Props struct {

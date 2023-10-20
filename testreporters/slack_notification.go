@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/slack-go/slack"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/env/config"
 )
 

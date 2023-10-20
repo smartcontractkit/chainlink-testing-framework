@@ -14,7 +14,7 @@ import (
 const (
 	URLsKey            = "geth"
 	TXNodesAppLabel    = "geth-ethereum-geth"
-	MinerNodesAppLabel = "geth-ethereum-miner-node"
+	MinerNodesAppLabel = "geth-ethereum-miner-node" // #nosec G101
 )
 
 type Props struct {
