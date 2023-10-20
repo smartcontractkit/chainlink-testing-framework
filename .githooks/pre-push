@@ -17,10 +17,10 @@ fi
 
 printf "Executing unit tests...\r"
 
-make test_unit > /dev/null
+make test_unit > /dev/null 2>&1
 unit_test_result=$?
 
-if [[ $linting_result -ne 0 ]];
+if [[ $unit_test_result -ne 0 ]];
 then
     printf "Executing unit tests... \e[31mNOK!\e[0m\n"
     printf "Run `make test_unit` and fix them\n"
