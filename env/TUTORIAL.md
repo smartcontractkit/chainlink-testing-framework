@@ -33,11 +33,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/smartcontractkit/chainlink-env/environment"
-	"github.com/smartcontractkit/chainlink-env/pkg"
-	"github.com/smartcontractkit/chainlink-env/pkg/helm/chainlink"
-	"github.com/smartcontractkit/chainlink-env/pkg/helm/ethereum"
-	"github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver"
+	"github.com/smartcontractkit/chainlink-testing-framework/env/environment"
+	"github.com/smartcontractkit/chainlink-testing-framework/env/pkg"
+	"github.com/smartcontractkit/chainlink-testing-framework/env/pkg/helm/chainlink"
+	"github.com/smartcontractkit/chainlink-testing-framework/env/pkg/helm/ethereum"
+	"github.com/smartcontractkit/chainlink-testing-framework/env/pkg/helm/mockserver"
 )
 
 func main() {
@@ -82,9 +82,9 @@ You can spin up environment and block on forwarder if you'd like to run some oth
 package main
 
 import (
-	"github.com/smartcontractkit/chainlink-env/environment"
-	"github.com/smartcontractkit/chainlink-env/pkg/helm/chainlink"
-	"github.com/smartcontractkit/chainlink-env/pkg/helm/ethereum"
+	"github.com/smartcontractkit/chainlink-testing-framework/env/environment"
+	"github.com/smartcontractkit/chainlink-testing-framework/env/pkg/helm/chainlink"
+	"github.com/smartcontractkit/chainlink-testing-framework/env/pkg/helm/ethereum"
 )
 
 func main() {
@@ -153,9 +153,9 @@ Now let's tie them together
 package main
 
 import (
-	"github.com/smartcontractkit/chainlink-env/environment"
-	"github.com/smartcontractkit/chainlink-env/examples/deployment_part"
-	"github.com/smartcontractkit/chainlink-env/pkg/helm/chainlink"
+	"github.com/smartcontractkit/chainlink-testing-framework/env/environment"
+	"github.com/smartcontractkit/chainlink-testing-framework/env/examples/deployment_part"
+	"github.com/smartcontractkit/chainlink-testing-framework/env/pkg/helm/chainlink"
 	"time"
 )
 
@@ -220,10 +220,10 @@ Now let's tie them together
 package main
 
 import (
-  "github.com/smartcontractkit/chainlink-env/environment"
-  "github.com/smartcontractkit/chainlink-env/examples/deployment_part_cdk8s"
-  "github.com/smartcontractkit/chainlink-env/pkg/helm/chainlink"
-  "github.com/smartcontractkit/chainlink-env/pkg/helm/ethereum"
+  "github.com/smartcontractkit/chainlink-testing-framework/env/environment"
+  "github.com/smartcontractkit/chainlink-testing-framework/env/examples/deployment_part_cdk8s"
+  "github.com/smartcontractkit/chainlink-testing-framework/env/pkg/helm/chainlink"
+  "github.com/smartcontractkit/chainlink-testing-framework/env/pkg/helm/ethereum"
 )
 
 func main() {
@@ -251,12 +251,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/smartcontractkit/chainlink-env/environment"
-	"github.com/smartcontractkit/chainlink-env/pkg/cdk8s/blockscout"
-	"github.com/smartcontractkit/chainlink-env/pkg/helm/chainlink"
-	"github.com/smartcontractkit/chainlink-env/pkg/helm/ethereum"
-	"github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver"
-	mockservercfg "github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver-cfg"
+	"github.com/smartcontractkit/chainlink-testing-framework/env/environment"
+	"github.com/smartcontractkit/chainlink-testing-framework/env/pkg/cdk8s/blockscout"
+	"github.com/smartcontractkit/chainlink-testing-framework/env/pkg/helm/chainlink"
+	"github.com/smartcontractkit/chainlink-testing-framework/env/pkg/helm/ethereum"
+	"github.com/smartcontractkit/chainlink-testing-framework/env/pkg/helm/mockserver"
+	mockservercfg "github.com/smartcontractkit/chainlink-testing-framework/env/pkg/helm/mockserver-cfg"
 )
 
 func main() {
@@ -306,10 +306,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/smartcontractkit/chainlink-env/environment"
-	"github.com/smartcontractkit/chainlink-env/pkg/cdk8s/blockscout"
-	"github.com/smartcontractkit/chainlink-env/pkg/helm/chainlink"
-	"github.com/smartcontractkit/chainlink-env/pkg/helm/ethereum"
+	"github.com/smartcontractkit/chainlink-testing-framework/env/environment"
+	"github.com/smartcontractkit/chainlink-testing-framework/env/pkg/cdk8s/blockscout"
+	"github.com/smartcontractkit/chainlink-testing-framework/env/pkg/helm/chainlink"
+	"github.com/smartcontractkit/chainlink-testing-framework/env/pkg/helm/ethereum"
 )
 
 func main() {
@@ -354,11 +354,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/smartcontractkit/chainlink-env/environment"
-	"github.com/smartcontractkit/chainlink-env/pkg/helm/chainlink"
-	"github.com/smartcontractkit/chainlink-env/pkg/helm/ethereum"
-	"github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver"
-	mockservercfg "github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver-cfg"
+	"github.com/smartcontractkit/chainlink-testing-framework/env/environment"
+	"github.com/smartcontractkit/chainlink-testing-framework/env/pkg/helm/chainlink"
+	"github.com/smartcontractkit/chainlink-testing-framework/env/pkg/helm/ethereum"
+	"github.com/smartcontractkit/chainlink-testing-framework/env/pkg/helm/mockserver"
+	mockservercfg "github.com/smartcontractkit/chainlink-testing-framework/env/pkg/helm/mockserver-cfg"
 )
 
 func main() {
@@ -483,9 +483,9 @@ You can collect the [logs](examples/dump/env.go) while running tests, or if you 
 package main
 
 import (
-	"github.com/smartcontractkit/chainlink-env/environment"
-	"github.com/smartcontractkit/chainlink-env/pkg/helm/chainlink"
-	"github.com/smartcontractkit/chainlink-env/pkg/helm/ethereum"
+	"github.com/smartcontractkit/chainlink-testing-framework/env/environment"
+	"github.com/smartcontractkit/chainlink-testing-framework/env/pkg/helm/chainlink"
+	"github.com/smartcontractkit/chainlink-testing-framework/env/pkg/helm/ethereum"
 )
 
 func main() {
@@ -511,10 +511,10 @@ package main
 import (
 	"fmt"
 	"github.com/rs/zerolog/log"
-	"github.com/smartcontractkit/chainlink-env/environment"
-	"github.com/smartcontractkit/chainlink-env/pkg"
-	"github.com/smartcontractkit/chainlink-env/pkg/helm/chainlink"
-	"github.com/smartcontractkit/chainlink-env/pkg/helm/ethereum"
+	"github.com/smartcontractkit/chainlink-testing-framework/env/environment"
+	"github.com/smartcontractkit/chainlink-testing-framework/env/pkg"
+	"github.com/smartcontractkit/chainlink-testing-framework/env/pkg/helm/chainlink"
+	"github.com/smartcontractkit/chainlink-testing-framework/env/pkg/helm/ethereum"
 )
 
 func main() {
@@ -564,9 +564,9 @@ package main
 import (
   "time"
 
-  "github.com/smartcontractkit/chainlink-env/environment"
-  goc "github.com/smartcontractkit/chainlink-env/pkg/cdk8s/goc"
-  dummy "github.com/smartcontractkit/chainlink-env/pkg/cdk8s/http_dummy"
+  "github.com/smartcontractkit/chainlink-testing-framework/env/environment"
+  goc "github.com/smartcontractkit/chainlink-testing-framework/env/pkg/cdk8s/goc"
+  dummy "github.com/smartcontractkit/chainlink-testing-framework/env/pkg/cdk8s/http_dummy"
 )
 
 func main() {

@@ -38,10 +38,12 @@ jobs:
           AWS_ROLE_TO_ASSUME: ${{ secrets.QA_AWS_ROLE_TO_ASSUME }}
       - name: Base Image Built
         run: |
-          echo "### chainlink image used for this test run :link:" >>$GITHUB_STEP_SUMMARY
-          echo "\`${{ env.CHAINLINK_VERSION }}\`" >>$GITHUB_STEP_SUMMARY
-          echo "### test-base-image image tag for this test run :ship:" >>$GITHUB_STEP_SUMMARY
-          echo "\`ci.${{ github.sha }}\`" >>$GITHUB_STEP_SUMMARY
+          cat << EOF
+          ### chainlink image used for this test run :link: >>$GITHUB_STEP_SUMMARY
+          ${{ env.CHAINLINK_VERSION }} >>$GITHUB_STEP_SUMMARY
+          ### test-base-image image tag for this test run :ship:" >>$GITHUB_STEP_SUMMARY
+          ci.${{ github.sha }} >>$GITHUB_STEP_SUMMARY
+          EOF
       - name: Build Test Runner
         uses: smartcontractkit/chainlink-github-actions/docker/build-push@ce87f8986ca18336cc5015df75916c2ec0a7c4b3 # v2.1.2
         with:

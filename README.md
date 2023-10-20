@@ -12,6 +12,6 @@
 
 </div>
 
-The Chainlink Testing Framework is a blockchain development framework written in Go. Its primary purpose is to help chainlink developers create extensive integration, e2e, performance, and chaos tests to ensure the stability of the chainlink project. It can also be helpful to those who just want to use chainlink oracles in their projects to help test their contracts, or even for those that aren't using chainlink. This project makes ample use of the [chainlink-env](https://github.com/smartcontractkit/chainlink-env) package to launch resources and testing apparatus.
+The Chainlink Testing Framework is a blockchain development framework written in Go. Its primary purpose is to help chainlink developers create extensive integration, e2e, performance, and chaos tests to ensure the stability of the chainlink project. It can also be helpful to those who just want to use chainlink oracles in their projects to help test their contracts, or even for those that aren't using chainlink.
 
 If you're looking to implement a new chain integration for the testing framework, head over to the [blockchain](./blockchain/) directory for more info.
