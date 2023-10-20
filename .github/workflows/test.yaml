@@ -29,7 +29,7 @@ jobs:
           PATH=$PATH:$(go env GOPATH)/bin
           export PATH
           set -euo pipefail
-          go test -json -cover -covermode=count -coverprofile=unit-test-coverage.out $(go list ./... | grep -v /env\/e2e/ | grep -v /env\/examples/) 2>&1 | tee /tmp/gotest.log | gotestfmt
+          go test -json -cover -covermode=count -coverprofile=unit-test-coverage.out "$(go list ./... | grep -v /env/e2e/ | grep -v /env/examples/)" 2>&1 | tee /tmp/gotest.log | gotestfmt
       - name: Code Coverage
         uses: codecov/codecov-action@v3
         with:
