@@ -1,0 +1,7 @@
+golang 1.21.1
+helm 3.10.3
+golangci-lint 1.51.1
+kubectl 1.25.5
+nodejs 18.13.0
+yarn 1.22.19
+k3d 5.5.1
