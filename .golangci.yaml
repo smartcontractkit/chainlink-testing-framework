@@ -3,6 +3,9 @@ run:
   timeout: 5m
   skip-dirs:
     - contracts/ethereum
+    - environment
+    - imports
+    - client
 linters:
   enable:
     # defaults

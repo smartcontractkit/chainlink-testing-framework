@@ -13,7 +13,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/slack-go/slack"
-	"github.com/smartcontractkit/chainlink-env/environment"
+	"github.com/smartcontractkit/chainlink-testing-framework/env/environment"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/sync/errgroup"

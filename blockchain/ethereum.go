@@ -26,7 +26,7 @@ import (
 	"go.uber.org/atomic"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/smartcontractkit/chainlink-env/environment"
+	"github.com/smartcontractkit/chainlink-testing-framework/env/environment"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 )

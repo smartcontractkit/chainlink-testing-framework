@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/smartcontractkit/chainlink-env/config"
+	"github.com/smartcontractkit/chainlink-testing-framework/env/config"
 )
 
 // GetEnv returns the value of the environment variable named by the key

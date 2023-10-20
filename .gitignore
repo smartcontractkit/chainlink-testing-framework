@@ -55,3 +55,13 @@ dist/
 
 **/remote_runner_config.yaml
 logs/
+
+env/cmd/chaos
+env/bin/
+# temp manifest for deployment and validation
+tmp-manifest-*.yaml
+# remote runner binary
+remote.test
+e2e.test
+
+k3dvolume/
