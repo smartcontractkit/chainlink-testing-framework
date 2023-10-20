@@ -21,4 +21,4 @@ if [ "${TEST_BASE_VERSION}" = "" ]; then
     TEST_BASE_VERSION="${TEST_BASE_VERSION_DEFAULT}"
 fi
 
-buildImage "${1}" "chainlink-env-tests" "Dockerfile" "--build-arg BASE_IMAGE=${ACCOUNT}.dkr.ecr.us-west-2.amazonaws.com/test-base-image --build-arg IMAGE_VERSION=${TEST_BASE_VERSION}"
+buildImage "${1}" "chainlink-testing-framework-tests" "Dockerfile" "--build-arg BASE_IMAGE=${ACCOUNT}.dkr.ecr.us-west-2.amazonaws.com/test-base-image --build-arg IMAGE_VERSION=${TEST_BASE_VERSION}"
