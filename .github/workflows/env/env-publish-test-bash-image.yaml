@@ -8,6 +8,7 @@ on:
 
 jobs:
   publish_test_base_image:
+    if: ${{ false }}
     runs-on: ubuntu-latest
     environment: integration
     permissions:
