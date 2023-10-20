@@ -5,11 +5,11 @@ import (
 	"strings"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/smartcontractkit/chainlink-testing-framework/env/environment"
-
 	// import for side effect of sql packages
 	_ "github.com/lib/pq"
 	"github.com/rs/zerolog/log"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/env/environment"
 )
 
 // PostgresConnector sqlx postgres connector

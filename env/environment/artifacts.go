@@ -43,10 +43,7 @@ func (a *Artifacts) DumpTestResult(testDir string, dbName string) error {
 	if err := MkdirIfNotExists(testDir); err != nil {
 		return err
 	}
-	if err := a.writePodArtifacts(testDir); err != nil {
-		return err
-	}
-	return nil
+	return a.writePodArtifacts(testDir)
 }
 
 func (a *Artifacts) writePodArtifacts(testDir string) error {
@@ -124,10 +121,7 @@ func (a *Artifacts) writePostgresDump(podDir string, pod coreV1.Pod, cont coreV1
 	if err != nil {
 		return err
 	}
-	if err = logFile.Close(); err != nil {
-		return err
-	}
-	return nil
+	return logFile.Close()
 }
 
 func (a *Artifacts) writeContainerLogs(podDir string, pod coreV1.Pod, cont coreV1.Container) error {
@@ -153,10 +147,7 @@ func (a *Artifacts) writeContainerLogs(podDir string, pod coreV1.Pod, cont coreV
 	if err = logFile.Close(); err != nil {
 		return err
 	}
-	if err = podLogs.Close(); err != nil {
-		return err
-	}
-	return nil
+	return podLogs.Close()
 }
 
 // Writes logs for each container in a pod

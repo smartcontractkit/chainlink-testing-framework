@@ -691,7 +691,7 @@ func (m *Environment) RunCustomReadyConditions(customCheck *client.ReadyCheckDat
 			return err
 		}
 		if m.Cfg.fundReturnFailed {
-			return errors.New("failed to return funds in remote runner.")
+			return errors.New("failed to return funds in remote runner")
 		}
 		m.Cfg.jobDeployed = true
 	} else {
@@ -770,15 +770,12 @@ func (m *Environment) DeployCustomReadyConditions(customCheck *client.ReadyCheck
 	log.Info().Str("Namespace", m.Cfg.Namespace).Msg("Deploying namespace")
 
 	if m.Cfg.DryRun {
-		if err := m.Client.DryRun(m.CurrentManifest); err != nil {
-			return err
-		}
-		return nil
+		return m.Client.DryRun(m.CurrentManifest)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), m.Cfg.ReadyCheckData.Timeout)
 	defer cancel()
 	err := m.Client.Apply(ctx, m.CurrentManifest, m.Cfg.Namespace)
-	if ctx.Err() == context.DeadlineExceeded {
+	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 		return errors.New("timeout waiting for environment to be ready")
 	}
 	if err != nil {
@@ -814,7 +811,7 @@ func (m *Environment) RolloutStatefulSets() error {
 	ctx, cancel := context.WithTimeout(context.Background(), m.Cfg.ReadyCheckData.Timeout)
 	defer cancel()
 	err := m.Client.RolloutStatefulSets(ctx, m.Cfg.Namespace)
-	if ctx.Err() == context.DeadlineExceeded {
+	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 		return errors.New("timeout waiting for rollout statefulset to complete")
 	}
 	return err
@@ -828,7 +825,7 @@ func (m *Environment) RolloutRestartBySelector(resource string, selector string)
 	ctx, cancel := context.WithTimeout(context.Background(), m.Cfg.ReadyCheckData.Timeout)
 	defer cancel()
 	err := m.Client.RolloutRestartBySelector(ctx, m.Cfg.Namespace, resource, selector)
-	if ctx.Err() == context.DeadlineExceeded {
+	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 		return errors.New("timeout waiting for rollout restart to complete")
 	}
 	return err
@@ -896,7 +893,7 @@ func getReplicaCount(spec map[string]any) int {
 	if ok {
 		replicaCount += int(replicas.(float64))
 	} else {
-		replicaCount += 1
+		replicaCount++
 	}
 
 	return replicaCount

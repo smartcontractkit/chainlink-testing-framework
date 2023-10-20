@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/go-resty/resty/v2"
-
 	"github.com/rs/zerolog/log"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/env/environment"
 	"github.com/smartcontractkit/chainlink-testing-framework/env/pkg/helm/mockserver"
 )

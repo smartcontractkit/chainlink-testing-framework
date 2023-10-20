@@ -341,16 +341,13 @@ func (m *K8sClient) NamespaceExists(namespace string) bool {
 // RemoveNamespace removes namespace
 func (m *K8sClient) RemoveNamespace(namespace string) error {
 	log.Info().Str("Namespace", namespace).Msg("Removing namespace")
-	if err := m.ClientSet.CoreV1().Namespaces().Delete(context.Background(), namespace, metaV1.DeleteOptions{}); err != nil {
-		return err
-	}
-	return nil
+	return m.ClientSet.CoreV1().Namespaces().Delete(context.Background(), namespace, metaV1.DeleteOptions{})
 }
 
 // RolloutStatefulSets applies "rollout statefulset" to all existing statefulsets in that namespace
 func (m *K8sClient) RolloutStatefulSets(ctx context.Context, namespace string) error {
 	stsClient := m.ClientSet.AppsV1().StatefulSets(namespace)
-	sts, err := stsClient.List(context.Background(), metaV1.ListOptions{})
+	sts, err := stsClient.List(ctx, metaV1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -421,7 +418,7 @@ func (m *K8sClient) WaitForJob(namespaceName string, jobName string, fundReturnS
 }
 
 func (m *K8sClient) WaitForDeploymentsAvailable(ctx context.Context, namespace string) error {
-	deployments, err := m.ClientSet.AppsV1().Deployments(namespace).List(context.Background(), metaV1.ListOptions{})
+	deployments, err := m.ClientSet.AppsV1().Deployments(namespace).List(ctx, metaV1.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -472,10 +469,7 @@ func (m *K8sClient) Create(manifest string) error {
 func (m *K8sClient) DryRun(manifest string) error {
 	manifestFile := fmt.Sprintf(TempDebugManifest, uuid.NewString())
 	log.Info().Str("File", manifestFile).Msg("Creating manifest")
-	if err := os.WriteFile(manifestFile, []byte(manifest), os.ModePerm); err != nil {
-		return err
-	}
-	return nil
+	return os.WriteFile(manifestFile, []byte(manifest), os.ModePerm)
 }
 
 // CopyToPod copies src to a particular container. Destination should be in the form of a proper K8s destination path
