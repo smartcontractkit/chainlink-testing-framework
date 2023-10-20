@@ -39,10 +39,8 @@ jobs:
         run: |
           # shellcheck disable=SC2086
           cat <<EOT >>$GITHUB_STEP_SUMMARY
-           ### chainlink image used for this test run :link:"
-          $(${{ env.CHAINLINK_VERSION }})
-          ### test-base-image image tag for this test run :ship:
-          $(ci.${{ github.sha }})
+          ### chainlink image used for this test run :link: => ${{ env.CHAINLINK_VERSION }}
+          ### test-base-image image tag for this test run :ship: => ci.${{ github.sha }}
           EOT
       - name: Build Test Runner
         uses: smartcontractkit/chainlink-github-actions/docker/build-push@ce87f8986ca18336cc5015df75916c2ec0a7c4b3 # v2.1.2
@@ -58,8 +56,7 @@ jobs:
         run: |
          # shellcheck disable=SC2086
          cat <<EOT >>$GITHUB_STEP_SUMMARY
-         ### chainlink-env-tests image tag for this test run :ship: 
-         $(ci.${{ github.sha }})
+         ### chainlink-env-tests image tag for this test run :ship: -> ci.${{ github.sha }}
          EOT
   e2e_tests:
     runs-on: ubuntu-latest
