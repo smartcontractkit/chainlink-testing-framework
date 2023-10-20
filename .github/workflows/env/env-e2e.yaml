@@ -1,6 +1,6 @@
 name: Env deployments tests (E2E)
 on:
-  pull_request:
+  push:
     paths:
       - "env/**"
 
