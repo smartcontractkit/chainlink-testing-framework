@@ -92,7 +92,7 @@ func (m *LogWatch) validateLogTargets() error {
 		}
 
 		if !found {
-			return errors.Errorf("no handler found for log target: %d", wantedTarget)
+			return errors.Errorf("no handler found for log target: %s", wantedTarget)
 		}
 	}
 
