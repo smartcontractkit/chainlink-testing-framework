@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	TestEnvType = "chainlink-env-test"
+	TestEnvType = "chainlink-testing-framework-test"
 )
 
 var (
