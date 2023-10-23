@@ -32,6 +32,16 @@ var (
 		"4bbbf85ce3377467afe5d46f804f221813b2bb87f24d81f60f1fcdbf7cbf4356",
 		"dbda1821b80551c9d65939329250298aa3472ba22feea921c0cf5d620ea67b97",
 		"2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6",
+		"f214f2b2cd398c806f84e317254e0f0b801d0643303237d97a22a48e01628897",
+		"701b615bbdfb9de65240bc28bd21bbc0d996645a3dd57e7b12bc2bdf6f192c82",
+		"a267530f49f8280200edf313ee7af6b827f2a8bce2897751d06a843f644967b1",
+		"47c99abed3324a2707c28affff1267e45918ec8c3f20b8aa892e8b065d2942dd",
+		"c526ee95bf44d8fc405a158bb884d9d1238d99f0612e9f33d006bb0789009aaa",
+		"8166f546bab6da521a8369cab06c5d2b9e46670292d85c875ee9ec20e84ffb61",
+		"ea6c44ac03bff858b476bba40716402b03e41b8e97e276d1baec7c37d42484a0",
+		"689af8efa8c651a91ad287602527f3af2fe9f6501a7ac4b061667b5a93e037fd",
+		"de9be858da4a475276426320d5e9262ecfc3ba460bfac56360bfa6c4c28b4ee0",
+		"df57089febbacf7ba0bc227dafbffa9fc08a93fdc68e1e42411a14efcf23656e",
 	}
 	// SelectedNetworks uses the SELECTED_NETWORKS env var to determine which network to run the test on.
 	// For use in tests that utilize multiple chains. For tests on one chain, see SelectedNetwork
@@ -257,6 +267,20 @@ var (
 		SupportsEIP1559:           true,
 		ClientImplementation:      blockchain.ArbitrumClientImplementation,
 		ChainID:                   421613,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.JSONStrDuration{Duration: 2 * time.Minute},
+		MinimumConfirmations:      0,
+		GasEstimationBuffer:       0,
+		FinalityTag:               true,
+		DefaultGasLimit:           100000000,
+	}
+
+	ArbitrumSepolia blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Arbitrum Sepolia",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.ArbitrumClientImplementation,
+		ChainID:                   421614,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
 		Timeout:                   blockchain.JSONStrDuration{Duration: 2 * time.Minute},
@@ -575,6 +599,7 @@ var (
 		"METIS_STARDUST":        MetisStardust,
 		"ARBITRUM_MAINNET":      ArbitrumMainnet,
 		"ARBITRUM_GOERLI":       ArbitrumGoerli,
+		"ARBITRUM_SEPOLIA":      ArbitrumSepolia,
 		"OPTIMISM_MAINNET":      OptimismMainnet,
 		"OPTIMISM_GOERLI":       OptimismGoerli,
 		"BASE_GOERLI":           BaseGoerli,
