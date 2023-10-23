@@ -54,9 +54,9 @@ jobs:
           AWS_ROLE_TO_ASSUME: ${{ secrets.QA_AWS_ROLE_TO_ASSUME }}
       - name: Test Image Built
         run: |
-         # shellcheck disable=SC2086
+         # shellcheck disable=SC2086,SC2006
          cat <<EOT >>$GITHUB_STEP_SUMMARY
-         ### chainlink-env-tests image tag for this test run :ship: -> ci.${{ github.sha }}
+         ### chainlink-env-tests image tag for this test run :ship: -> `ci.${{ github.sha }}`
          EOT
   e2e_tests:
     runs-on: ubuntu-latest
