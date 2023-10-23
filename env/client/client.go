@@ -285,7 +285,7 @@ func (m *K8sClient) WaitPodsReady(ns string, rcd *ReadyCheckData, expectedPodCou
 	for {
 		select {
 		case <-timeout.C:
-			return fmt.Errorf("waitcontainersready, no pods in %s with selector %s after timeout %s",
+			return fmt.Errorf("waitcontainersready, no pods in '%s' with selector '%s' after timeout '%s'",
 				ns, rcd.ReadinessProbeCheckSelector, rcd.Timeout)
 		case <-ticker.C:
 			podList, err := m.ListPods(ns, rcd.ReadinessProbeCheckSelector)
@@ -303,8 +303,10 @@ func (m *K8sClient) WaitPodsReady(ns string, rcd *ReadyCheckData, expectedPodCou
 			allReady := true
 			for _, pod := range podList.Items {
 				if pod.Status.Phase == "Succeeded" {
+					log.Debug().Str("Pod", pod.Name).Msg("Pod is in Succeeded state")
 					continue
 				} else if pod.Status.Phase != v1.PodRunning {
+					log.Debug().Str("Pod", pod.Name).Str("Phase", string(pod.Status.Phase)).Msg("Pod is not running")
 					allReady = false
 					break
 				}
