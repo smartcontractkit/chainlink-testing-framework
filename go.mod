@@ -28,16 +28,24 @@ require (
 
 require (
 	github.com/allegro/bigcache v1.2.1 // indirect
+	github.com/bits-and-blooms/bitset v1.7.0 // indirect
 	github.com/cespare/cp v1.1.1 // indirect
+	github.com/consensys/bavard v0.1.13 // indirect
+	github.com/consensys/gnark-crypto v0.10.0 // indirect
+	github.com/crate-crypto/go-kzg-4844 v0.3.0 // indirect
+	github.com/ethereum/c-kzg-4844 v0.3.1 // indirect
 	github.com/gballet/go-libpcsclite v0.0.0-20191108122812-4678299bea08 // indirect
 	github.com/google/pprof v0.0.0-20230705174524-200ffdc848b8 // indirect
 	github.com/hashicorp/go-version v1.6.0 // indirect
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible // indirect
+	github.com/mmcloughlin/addchain v0.4.0 // indirect
 	github.com/onsi/ginkgo/v2 v2.9.7 // indirect
 	github.com/onsi/gomega v1.27.8 // indirect
 	github.com/pyroscope-io/client v0.7.1 // indirect
 	github.com/rs/cors v1.8.3 // indirect
+	github.com/supranational/blst v0.3.11 // indirect
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
+	rsc.io/tmplfunc v0.0.3 // indirect
 )
 
 // K8s versions are infuriatingly inconsistent, so we pin them here.
