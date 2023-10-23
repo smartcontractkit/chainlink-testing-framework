@@ -309,7 +309,7 @@ func (m *Environment) initApp() error {
 	startTime := time.Now()
 	deadline, _ := ctx.Deadline()
 	for {
-		err = m.Client.Apply(ctx, m.CurrentManifest, m.Cfg.Namespace)
+		err = m.Client.Apply(ctx, m.CurrentManifest, m.Cfg.Namespace, true)
 		if err == nil || ctx.Err() != nil {
 			break
 		}
@@ -774,7 +774,7 @@ func (m *Environment) DeployCustomReadyConditions(customCheck *client.ReadyCheck
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), m.Cfg.ReadyCheckData.Timeout)
 	defer cancel()
-	err := m.Client.Apply(ctx, m.CurrentManifest, m.Cfg.Namespace)
+	err := m.Client.Apply(ctx, m.CurrentManifest, m.Cfg.Namespace, true)
 	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 		return errors.New("timeout waiting for environment to be ready")
 	}

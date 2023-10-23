@@ -43,13 +43,13 @@ func (c *Chaos) Run(app cdk8s.App, id string, resource string) (string, error) {
 	config.JSIIGlobalMu.Unlock()
 	log.Trace().Str("Raw", manifest).Msg("Manifest")
 	c.ResourceByName[id] = resource
-	if err := c.Client.Apply(context.Background(), manifest, c.Namespace); err != nil {
+	if err := c.Client.Apply(context.Background(), manifest, c.Namespace, false); err != nil {
 		return id, err
 	}
 	if err := c.checkForPodsExistence(app); err != nil {
 		return id, err
 	}
-	err := c.waitForChaosStatus(id, v1alpha1.ConditionAllInjected, time.Minute)
+	err := c.waitForChaosStatus(id, v1alpha1.ConditionAllInjected, 5*time.Minute)
 	if err != nil {
 		return id, err
 	}

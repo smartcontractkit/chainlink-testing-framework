@@ -437,7 +437,7 @@ func (m *K8sClient) WaitForDeploymentsAvailable(ctx context.Context, namespace s
 }
 
 // Apply applying a manifest to a currently connected k8s context
-func (m *K8sClient) Apply(ctx context.Context, manifest, namespace string) error {
+func (m *K8sClient) Apply(ctx context.Context, manifest, namespace string, waitForDeployment bool) error {
 	manifestFile := fmt.Sprintf(TempDebugManifest, uuid.NewString())
 	log.Info().Str("File", manifestFile).Msg("Applying manifest")
 	if err := os.WriteFile(manifestFile, []byte(manifest), os.ModePerm); err != nil {
@@ -448,7 +448,10 @@ func (m *K8sClient) Apply(ctx context.Context, manifest, namespace string) error
 	if err := ExecCmdWithContext(ctx, cmd); err != nil {
 		return err
 	}
-	return m.WaitForDeploymentsAvailable(ctx, namespace)
+	if waitForDeployment {
+		return m.WaitForDeploymentsAvailable(ctx, namespace)
+	}
+	return nil
 }
 
 // DeleteResource deletes resource
