@@ -1,0 +1,33 @@
+printf "\n\e[37m*** Running Pre-push hooks ***\e[0m\n\n"
+
+printf "Executing linters...\r"
+
+golangci-lint run > /dev/null
+linting_result=$?
+
+if [[ $linting_result -ne 0 ]];
+then
+    printf "Executing linters... \e[31mNOK!\e[0m\n"
+    printf "Run `golangci-lint run -v` and fix them\n"
+
+    exit 1
+else 
+    printf "Executing linters... \e[32mOK!\e[0m\n"
+fi
+
+printf "Executing unit tests...\r"
+
+make test_unit > /dev/null 2>&1
+unit_test_result=$?
+
+if [[ $unit_test_result -ne 0 ]];
+then
+    printf "Executing unit tests... \e[31mNOK!\e[0m\n"
+    printf "Run `make test_unit` and fix them\n"
+
+    exit 1
+else 
+    printf "Executing unit tests... \e[32mOK!\e[0m\n"
+fi
+
+printf "\n\e[37m*** All good! ***\e[0m\n\n"
