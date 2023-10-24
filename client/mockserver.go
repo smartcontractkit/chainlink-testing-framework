@@ -6,10 +6,10 @@ import (
 	"strings"
 
 	"github.com/go-resty/resty/v2"
-
 	"github.com/rs/zerolog/log"
-	"github.com/smartcontractkit/chainlink-env/environment"
-	"github.com/smartcontractkit/chainlink-env/pkg/helm/mockserver"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/k8s/environment"
+	"github.com/smartcontractkit/chainlink-testing-framework/k8s/pkg/helm/mockserver"
 )
 
 // MockserverClient mockserver client

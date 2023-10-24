@@ -13,10 +13,11 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/slack-go/slack"
-	"github.com/smartcontractkit/chainlink-env/environment"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/k8s/environment"
 )
 
 // TestReporter is a general interface for all test reporters

@@ -1,4 +1,4 @@
-name: Static Analysis
+name: (all packages) Static Analysis
 on:
   push:
     branches: [main]
