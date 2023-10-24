@@ -16,11 +16,11 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/env/client"
 	"github.com/smartcontractkit/chainlink-testing-framework/env/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/env/environment"
-	"github.com/smartcontractkit/chainlink-testing-framework/env/logging"
 	a "github.com/smartcontractkit/chainlink-testing-framework/env/pkg/alias"
 	"github.com/smartcontractkit/chainlink-testing-framework/env/pkg/helm/chainlink"
 	"github.com/smartcontractkit/chainlink-testing-framework/env/pkg/helm/ethereum"
 	"github.com/smartcontractkit/chainlink-testing-framework/env/presets"
+	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 )
 
 const (

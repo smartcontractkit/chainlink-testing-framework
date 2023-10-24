@@ -22,9 +22,9 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/env/client"
 	"github.com/smartcontractkit/chainlink-testing-framework/env/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/env/imports/k8s"
-	"github.com/smartcontractkit/chainlink-testing-framework/env/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/env/pkg"
 	a "github.com/smartcontractkit/chainlink-testing-framework/env/pkg/alias"
+	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 )
 
 const (
