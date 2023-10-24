@@ -1,0 +1,24 @@
+name: Publish Test Base Image
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  publish_test_base_image:
+    runs-on: ubuntu-latest
+    environment: integration
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      BASE_IMAGE_TAG: ${{ secrets.QA_AWS_ACCOUNT_NUMBER }}.dkr.ecr.${{ secrets.QA_AWS_REGION }}.amazonaws.com/test-base-image:${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build Base Image
+        uses: smartcontractkit/chainlink-github-actions/docker/build-push@cb4a8f51d77cbf77ea6a765bd1f437ffc7a18730 # v2.0.28
+        with:
+          tags: ${{ env.BASE_IMAGE_TAG }}
+          file: Dockerfile.base
+          AWS_REGION: ${{ secrets.QA_AWS_REGION }}
+          AWS_ROLE_TO_ASSUME: ${{ secrets.QA_AWS_ROLE_TO_ASSUME }}

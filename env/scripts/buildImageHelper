@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+
+# Runs compiled go executables and specificies the test to run
+# Builds executable go test binaries for this repos tests
+
+set -ex
+
+buildImage() {
+    SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
+
+    cd "$SCRIPT_DIR"/../ || exit 1
+
+    local TAG_VERSION="${1}"
+    local REPO="${2}"
+    local DOCKER_FILE="${3}"
+    local ARGS=$4
+    local ACCOUNT=$(aws sts get-caller-identity | jq -r .Account)
+    local TAG="${ACCOUNT}".dkr.ecr.us-west-2.amazonaws.com/"${REPO}":"${TAG_VERSION}"
+
+    if [ "${TAG_VERSION}" = "" ]; then
+        echo "Need an argument for the image tag version in argument 1"
+        exit 1
+    fi
+
+    if [ "${REPO}" = "" ]; then
+        echo "Need an argument for the ecr name"
+        exit 1
+    fi
+
+    if [ "${DOCKER_FILE}" = "" ]; then
+        echo "Need an argument for the Dockerfile location"
+        exit 1
+    fi
+
+    
+    docker build -t "${TAG}" -f "${DOCKER_FILE}" $ARGS .
+    aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin "${ACCOUNT}".dkr.ecr.us-west-2.amazonaws.com
+    docker push "${TAG}"
+}

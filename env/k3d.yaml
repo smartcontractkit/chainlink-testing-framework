@@ -1,0 +1,19 @@
+apiVersion: k3d.io/v1alpha4
+kind: Simple
+volumes:
+  - volume: /tmp/k3dvolume:/tmp/k3dvolume
+    nodeFilters:
+      - server:0
+      - agent:*
+options:
+  k3d:
+    wait: true
+    timeout: "200s"
+  k3s:
+    extraArgs:
+      - arg: --kubelet-arg=eviction-hard=imagefs.available<1%,nodefs.available<1%
+        nodeFilters:
+          - server:*
+      - arg: --kubelet-arg=eviction-minimum-reclaim=imagefs.available=1%,nodefs.available=1%
+        nodeFilters:
+          - server:*

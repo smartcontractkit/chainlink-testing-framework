@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+# Runs compiled go executables and specificies the test to run
+# Builds executable go test binaries for this repos tests
+
+set -ex
+
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
+
+cd "$SCRIPT_DIR"/../ || exit 1
+source ./scripts/buildImageHelper
+
+# get account and region
+REGION=
+TEST_BASE_VERSION="${2}"
+TEST_BASE_VERSION_DEFAULT=latest
+ACCOUNT=$(aws sts get-caller-identity | jq -r .Account)
+
+if [ "${TEST_BASE_VERSION}" = "" ]; then
+    echo "No test-base-image version supplied in argument 3 so using the default of ${TEST_BASE_VERSION_DEFAULT}"
+    TEST_BASE_VERSION="${TEST_BASE_VERSION_DEFAULT}"
+fi
+
+buildImage "${1}" "chainlink-env-tests" "Dockerfile" "--build-arg BASE_IMAGE=${ACCOUNT}.dkr.ecr.us-west-2.amazonaws.com/test-base-image --build-arg IMAGE_VERSION=${TEST_BASE_VERSION}"

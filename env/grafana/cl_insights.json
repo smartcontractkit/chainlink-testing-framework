@@ -1,0 +1,3021 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "datasource",
+          "uid": "grafana"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [],
+          "type": "dashboard"
+        },
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "A look at the components of Chainlink Integration tests",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "iteration": 1662412920215,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 161,
+      "panels": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "description": "Components health",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 20,
+            "w": 24,
+            "x": 0,
+            "y": 1
+          },
+          "id": 163,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "last"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "text": {
+              "titleSize": 14,
+              "valueSize": 14
+            },
+            "textMode": "name"
+          },
+          "pluginVersion": "8.3.5",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "health{namespace=\"$namespace\", pod=\"$cl_node\"}",
+              "interval": "",
+              "legendFormat": "service: {{service_id}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Components health",
+          "transparent": true,
+          "type": "stat"
+        }
+      ],
+      "title": "Components health",
+      "type": "row"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 1
+      },
+      "id": 181,
+      "panels": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "description": "Overall log count by type",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 2
+          },
+          "id": 179,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "right"
+            },
+            "tooltip": {
+              "mode": "single"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "log_error_count{namespace=\"$namespace\"}",
+              "interval": "",
+              "legendFormat": "WARN, pod: {{pod}}",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "log_warn_count{namespace=\"$namespace\"}",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "ERROR, pod: {{pod}}",
+              "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "log_panic_count{namespace=\"$namespace\"}",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "PANIC, pod: {{pod}}",
+              "refId": "C"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "log_critical_count{namespace=\"$namespace\"}",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "CRITICAL, pod: {{pod}}",
+              "refId": "D"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "log_fatal_count{namespace=\"$namespace\"}",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "FATAL, pod: {{pod}}",
+              "refId": "E"
+            }
+          ],
+          "title": "Overall log count by type",
+          "transparent": true,
+          "type": "timeseries"
+        }
+      ],
+      "title": "Overall metrics across all CL nodes",
+      "type": "row"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 2
+      },
+      "id": 169,
+      "panels": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 24,
+            "x": 0,
+            "y": 3
+          },
+          "id": 167,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "pluginVersion": "8.3.5",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "pipeline_tasks_total_finished{namespace=\"$namespace\", pod=\"$cl_node\"}",
+              "interval": "",
+              "legendFormat": "type: {{task_type}}, jobID: {{job_id}}, status: {{status}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Pipeline tasks",
+          "transparent": true,
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 7
+          },
+          "id": 171,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "single"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "pipeline_task_runs_queued{namespace=\"$namespace\", pod=\"$cl_node\"}",
+              "interval": "",
+              "legendFormat": "Tasks",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "pipeline_runs_queued{namespace=\"$namespace\", pod=\"$cl_node\"}",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "Pipelines",
+              "refId": "B"
+            }
+          ],
+          "title": "Queued tasks and pipelines",
+          "transparent": true,
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "description": "Pipeline avg time to completion",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "Duration, ms",
+                "axisPlacement": "left",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 7
+          },
+          "id": 173,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "single"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "pipeline_run_total_time_to_completion{namespace=\"$namespace\", pod=\"$cl_node\"} * 1e-6",
+              "interval": "",
+              "legendFormat": "jobID: {{job_id}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Pipeline avg time to completion",
+          "transparent": true,
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "description": "Pipeline fetch avg bytes",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "Size, Bytes",
+                "axisPlacement": "left",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 15
+          },
+          "id": 177,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "single"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "pipeline_task_http_response_body_size{namespace=\"$namespace\", pod=\"$cl_node\"}",
+              "interval": "",
+              "legendFormat": "Task type: {{pipeline_task_spec_id}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Pipeline fetch avg bytes",
+          "transparent": true,
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "description": "Task execution time by type",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "Duration, ms",
+                "axisPlacement": "left",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 15
+          },
+          "id": 175,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "single"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "pipeline_task_execution_time{namespace=\"$namespace\", pod=\"$cl_node\"} * 1e-6",
+              "interval": "",
+              "legendFormat": "type: {{task_type}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Task execution time by type",
+          "transparent": true,
+          "type": "timeseries"
+        }
+      ],
+      "title": "Pipeline tasks ($cl_node)",
+      "type": "row"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 3
+      },
+      "id": 147,
+      "panels": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 4
+          },
+          "id": 159,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "single"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "rate(evm_pool_rpc_node_polls_success{namespace=\"$namespace\", pod=\"$cl_node\"} [2m])",
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "EVM node polls",
+          "transparent": true,
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "description": "RPC calls hist",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 4
+          },
+          "id": 157,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "single"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "histogram_quantile(0.95, sum(rate(evm_pool_rpc_node_rpc_call_time_bucket{pod=\"$cl_node\", rpcCallName=\"CallContext\"}[2m])) by (le)) * 1e-6",
+              "interval": "",
+              "legendFormat": "CallContext - 95",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "histogram_quantile(0.5, sum(rate(evm_pool_rpc_node_rpc_call_time_bucket{pod=\"$cl_node\", rpcCallName=\"CallContext\"}[2m])) by (le)) * 1e-6",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "CallContext - 50",
+              "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "histogram_quantile(0.95, sum(rate(evm_pool_rpc_node_rpc_call_time_bucket{rpcCallName=\"BatchCallContext\"}[2m])) by (le)) * 1e-6",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "BatchCallContext - 95",
+              "refId": "C"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "histogram_quantile(0.5, sum(rate(evm_pool_rpc_node_rpc_call_time_bucket{rpcCallName=\"BatchCallContext\"}[2m])) by (le)) * 1e-6",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "BatchCallContext - 50",
+              "refId": "D"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "histogram_quantile(0.95, sum(rate(evm_pool_rpc_node_rpc_call_time_bucket{rpcCallName=\"BalanceAt\"}[2m])) by (le)) * 1e-6",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "BalanceAt - 95",
+              "refId": "E"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "histogram_quantile(0.50, sum(rate(evm_pool_rpc_node_rpc_call_time_bucket{rpcCallName=\"BalanceAt\"}[2m])) by (le)) * 1e-6",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "BalanceAt - 50",
+              "refId": "F"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "histogram_quantile(0.95, sum(rate(evm_pool_rpc_node_rpc_call_time_bucket{rpcCallName=\"PendingNonceAt\"}[2m])) by (le)) * 1e-6",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "PendingNonceAt - 95",
+              "refId": "G"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "histogram_quantile(0.50, sum(rate(evm_pool_rpc_node_rpc_call_time_bucket{rpcCallName=\"PendingNonceAt\"}[2m])) by (le)) * 1e-6",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "PendingNonceAt - 50",
+              "refId": "H"
+            }
+          ],
+          "title": "RPC calls hist",
+          "transparent": true,
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "description": "RPC node states",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 12
+          },
+          "id": 153,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "single"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "evm_pool_rpc_node_states{namespace=\"$namespace\", pod=\"$cl_node\"}",
+              "interval": "",
+              "legendFormat": "chainId: {{evmChainID}} pod: {{pod}} state: {{state}}",
+              "refId": "A"
+            }
+          ],
+          "title": "RPC node states",
+          "transparent": true,
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 12
+          },
+          "id": 151,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "single"
+            }
+          },
+          "pluginVersion": "8.3.5",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "evm_pool_rpc_node_num_transitions_to_alive{namespace=\"$namespace\", pod=\"$cl_node\"}",
+              "interval": "",
+              "legendFormat": "chainId: {{evmChainID}} pod: {{pod}}",
+              "refId": "A"
+            }
+          ],
+          "title": "RPC node alive statuses",
+          "transparent": true,
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "description": "RPC calls total (rate)",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 20
+          },
+          "id": 145,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "single"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "rate(evm_pool_rpc_node_calls_total{namespace=\"$namespace\", pod=\"$cl_node\"}[2m])",
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "RPC calls total (rate)",
+          "transparent": true,
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 20
+          },
+          "id": 155,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "single"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "rate(evm_pool_rpc_node_verifies{namespace=\"$namespace\", pod=\"$cl_node\"} [2m])",
+              "interval": "",
+              "legendFormat": "Success, chainId: {{evmChainID}} nodeName: {{nodeName }} instance: {{instance}}",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "rate(evm_pool_rpc_node_verifies_success{namespace=\"$namespace\", pod=\"$cl_node\"} [2m])",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "Total, chainId: {{evmChainID}} nodeName: {{nodeName }} instance: {{instance}}",
+              "refId": "B"
+            }
+          ],
+          "title": "Total verifications (success/errors)",
+          "transparent": true,
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "description": "ETH account value",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "",
+                "axisPlacement": "left",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineStyle": {
+                  "fill": "solid"
+                },
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 28
+          },
+          "id": 165,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "single"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": false,
+              "expr": "eth_balance{namespace=\"$namespace\", pod=\"$cl_node\"}",
+              "interval": "",
+              "intervalFactor": 1,
+              "legendFormat": "account: {{account}}",
+              "refId": "A"
+            }
+          ],
+          "title": "ETH account value",
+          "transparent": true,
+          "type": "timeseries"
+        }
+      ],
+      "title": "EVM CL node metrics ($cl_node)",
+      "type": "row"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 4
+      },
+      "id": 183,
+      "panels": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "description": "TXns count (confirmed/unconfirmed)",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 5
+          },
+          "id": 185,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "single"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "unconfirmed_transactions{namespace=\"$namespace\", pod=\"$cl_node\"}",
+              "interval": "",
+              "legendFormat": "Unconfirmed, Pod: {{pod}}",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "tx_manager_num_confirmed_transactions{namespace=\"$namespace\", pod=\"$cl_node\"}",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "Confirmed, Pod: {{pod}}",
+              "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "tx_manager_num_successful_transactions{namespace=\"$namespace\", pod=\"$cl_node\"}",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "Successful, Pod: {{pod}}",
+              "refId": "C"
+            }
+          ],
+          "title": "TXns count (confirmed/unconfirmed)",
+          "transparent": true,
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "Duration, ms",
+                "axisPlacement": "left",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 5
+          },
+          "id": 187,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "single"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "histogram_quantile(0.95, sum(rate(tx_manager_time_until_tx_confirmed_bucket [2m])) by (le)) * 1e-6",
+              "instant": false,
+              "interval": "",
+              "legendFormat": "TxConfirmed - 95",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "histogram_quantile(0.50, sum(rate(tx_manager_time_until_tx_confirmed_bucket [2m])) by (le)) * 1e-6",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "TxConfirmed - 50",
+              "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "histogram_quantile(0.95, sum(rate(tx_manager_time_until_tx_broadcast_bucket [2m])) by (le)) * 1e-6",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "TxBroadcast -95",
+              "refId": "C"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "histogram_quantile(0.50, sum(rate(tx_manager_time_until_tx_broadcast_bucket [2m])) by (le)) * 1e-6",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "TxBroadcast -50",
+              "refId": "D"
+            }
+          ],
+          "title": "TXns times",
+          "transparent": true,
+          "type": "timeseries"
+        }
+      ],
+      "title": "TX manager ($cl_node)",
+      "type": "row"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 5
+      },
+      "id": 35,
+      "panels": [
+        {
+          "description": "All logs of the Chainlink node",
+          "gridPos": {
+            "h": 10,
+            "w": 12,
+            "x": 0,
+            "y": 6
+          },
+          "id": 33,
+          "options": {
+            "dedupStrategy": "none",
+            "enableLogDetails": true,
+            "prettifyLogMessage": false,
+            "showCommonLabels": false,
+            "showLabels": false,
+            "showTime": false,
+            "sortOrder": "Descending",
+            "wrapLogMessage": false
+          },
+          "pluginVersion": "8.5.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "grafanacloud-logs"
+              },
+              "expr": "{namespace=\"$namespace\", container=\"node\", pod=\"$cl_node\"}",
+              "queryType": "range",
+              "refId": "A"
+            }
+          ],
+          "title": "Chainlink Node Logs",
+          "transparent": true,
+          "type": "logs"
+        },
+        {
+          "description": "All [ERROR] logs from the Chainlink node.",
+          "gridPos": {
+            "h": 10,
+            "w": 12,
+            "x": 12,
+            "y": 6
+          },
+          "id": 38,
+          "options": {
+            "dedupStrategy": "none",
+            "enableLogDetails": true,
+            "prettifyLogMessage": false,
+            "showCommonLabels": false,
+            "showLabels": false,
+            "showTime": false,
+            "sortOrder": "Descending",
+            "wrapLogMessage": false
+          },
+          "pluginVersion": "8.5.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "grafanacloud-logs"
+              },
+              "expr": "{namespace=\"$namespace\", container=\"node\", pod=\"$cl_node\"} | json | level=~\"error|crit\"",
+              "queryType": "range",
+              "refId": "A"
+            }
+          ],
+          "title": "Chainlink Node Errors",
+          "transparent": true,
+          "type": "logs"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "description": "Chainlink CPU usage and limit",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "CPU Power",
+                "axisPlacement": "left",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 5,
+                "gradientMode": "opacity",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineStyle": {
+                  "fill": "solid"
+                },
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 6,
+            "x": 0,
+            "y": 16
+          },
+          "id": 41,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "kube_pod_container_resource_limits{container=\"node\", pod=\"$cl_node\", resource=\"cpu\"}",
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "container_cpu_load_average_10s{namespace=\"$namespace\", container=\"node\", pod=\"$cl_node\"}",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "B"
+            }
+          ],
+          "title": "CPU",
+          "transparent": true,
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "description": "Chainlink RAM usage and limit",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "MiB",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 5,
+                "gradientMode": "opacity",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 6,
+            "x": 6,
+            "y": 16
+          },
+          "id": 42,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "kube_pod_container_resource_limits{container=\"node\", pod=\"$cl_node\", resource=\"memory\"} / 1024 / 1024",
+              "interval": "",
+              "legendFormat": "Limits, container: {{container}} pod: {{pod}}",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "container_memory_usage_bytes{container=\"node\", pod=\"$cl_node\"} / 1024 / 1024",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "Used, container: {{container}} pod: {{pod}}",
+              "refId": "B"
+            }
+          ],
+          "title": "RAM",
+          "transparent": true,
+          "type": "timeseries"
+        },
+        {
+          "description": "All [WARN] logs from the Chainlink node.",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 16
+          },
+          "id": 102,
+          "options": {
+            "dedupStrategy": "none",
+            "enableLogDetails": true,
+            "prettifyLogMessage": false,
+            "showCommonLabels": false,
+            "showLabels": false,
+            "showTime": false,
+            "sortOrder": "Descending",
+            "wrapLogMessage": false
+          },
+          "pluginVersion": "8.5.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "grafanacloud-logs"
+              },
+              "expr": "{namespace=\"$namespace\", container=\"node\", pod=\"$cl_node\"}  | json | level=~\"warn\" | msg!=\"Disk space is not enough to log into disk any longer, required disk space\"",
+              "queryType": "range",
+              "refId": "A"
+            }
+          ],
+          "title": "Chainlink Node Warnings",
+          "transparent": true,
+          "type": "logs"
+        }
+      ],
+      "repeat": "cl_node",
+      "title": "CL node metrics ($cl_node)",
+      "type": "row"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 6
+      },
+      "id": 104,
+      "panels": [
+        {
+          "gridPos": {
+            "h": 12,
+            "w": 18,
+            "x": 0,
+            "y": 7
+          },
+          "id": 106,
+          "options": {
+            "dedupStrategy": "none",
+            "enableLogDetails": true,
+            "prettifyLogMessage": false,
+            "showCommonLabels": false,
+            "showLabels": false,
+            "showTime": false,
+            "sortOrder": "Descending",
+            "wrapLogMessage": false
+          },
+          "pluginVersion": "8.5.5",
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "grafanacloud-logs"
+              },
+              "expr": "{namespace=\"$namespace\", container=~\"geth-network|starknetdev\", pod=\"$geth_node\"}",
+              "refId": "A"
+            }
+          ],
+          "title": "Geth Logs",
+          "transparent": true,
+          "type": "logs"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "description": "Geth CPU usage and limit",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "CPU Power",
+                "axisPlacement": "left",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 5,
+                "gradientMode": "opacity",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineStyle": {
+                  "fill": "solid"
+                },
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 6,
+            "w": 6,
+            "x": 18,
+            "y": 7
+          },
+          "id": 107,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "kube_pod_container_resource_limits{exported_namespace=\"$namespace\", container=\"geth-network\", resource=\"cpu\"}",
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "container_cpu_load_average_10s{namespace=\"$namespace\", container=~\"geth-network|starknetdev\"}",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "B"
+            }
+          ],
+          "title": "Geth CPU",
+          "transparent": true,
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "description": "Geth RAM usage and limit",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "MiB",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 5,
+                "gradientMode": "opacity",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 6,
+            "w": 6,
+            "x": 18,
+            "y": 13
+          },
+          "id": 108,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "kube_pod_container_resource_limits{exported_namespace=\"$namespace\", container=~\"geth-network|starknetdev\", resource=\"memory\"} / 1024 / 1024",
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "container_memory_usage_bytes{namespace=\"$namespace\", container=~\"geth-network|starknetdev\"} / 1024 / 1024",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "B"
+            }
+          ],
+          "title": "Geth RAM",
+          "transparent": true,
+          "type": "timeseries"
+        }
+      ],
+      "repeat": "geth_node",
+      "title": "Simulated network metrics ($geth_node)",
+      "type": "row"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 7
+      },
+      "id": 76,
+      "panels": [
+        {
+          "description": "Logs of the mockserver",
+          "gridPos": {
+            "h": 12,
+            "w": 18,
+            "x": 0,
+            "y": 8
+          },
+          "id": 70,
+          "options": {
+            "dedupStrategy": "none",
+            "enableLogDetails": true,
+            "prettifyLogMessage": false,
+            "showCommonLabels": false,
+            "showLabels": false,
+            "showTime": true,
+            "sortOrder": "Descending",
+            "wrapLogMessage": false
+          },
+          "pluginVersion": "8.5.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "grafanacloud-logs"
+              },
+              "expr": "{namespace=\"$namespace\", container=\"mockserver\"}",
+              "refId": "A"
+            }
+          ],
+          "title": "Mock Server Logs",
+          "transparent": true,
+          "type": "logs"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "description": "Mock Server CPU usage and limit",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "CPU Power",
+                "axisPlacement": "left",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 5,
+                "gradientMode": "opacity",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineStyle": {
+                  "fill": "solid"
+                },
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 6,
+            "w": 6,
+            "x": 18,
+            "y": 8
+          },
+          "id": 71,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "kube_pod_container_resource_limits{exported_namespace=\"$namespace\", container=\"mockserver\", resource=\"cpu\"}",
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "container_cpu_load_average_10s{namespace=\"$namespace\", container=\"mockserver\"}",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "B"
+            }
+          ],
+          "title": "Mock Server CPU",
+          "transparent": true,
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "description": "Mock Server RAM usage and limit",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "MiB",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 5,
+                "gradientMode": "opacity",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 6,
+            "w": 6,
+            "x": 18,
+            "y": 14
+          },
+          "id": 72,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "kube_pod_container_resource_limits{exported_namespace=\"$namespace\", container=\"mockserver\", resource=\"memory\"} / 1024 / 1024",
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "container_memory_usage_bytes{namespace=\"$namespace\", container=\"mockserver\"} / 1024 / 1024",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "B"
+            }
+          ],
+          "title": "Mock Server RAM",
+          "transparent": true,
+          "type": "timeseries"
+        }
+      ],
+      "title": "Mock Server",
+      "type": "row"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "id": 74,
+      "panels": [
+        {
+          "description": "Logs of the instance actually running the tests",
+          "gridPos": {
+            "h": 12,
+            "w": 18,
+            "x": 0,
+            "y": 9
+          },
+          "id": 36,
+          "options": {
+            "dedupStrategy": "none",
+            "enableLogDetails": true,
+            "prettifyLogMessage": false,
+            "showCommonLabels": false,
+            "showLabels": false,
+            "showTime": false,
+            "sortOrder": "Descending",
+            "wrapLogMessage": false
+          },
+          "pluginVersion": "8.5.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "grafanacloud-logs"
+              },
+              "expr": "{namespace=\"$namespace\", container=\"remote-test-runner\"}",
+              "refId": "A"
+            }
+          ],
+          "title": "Test Runner Logs",
+          "transparent": true,
+          "type": "logs"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "description": "Test Runner CPU usage and limit",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "CPU Power",
+                "axisPlacement": "left",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 5,
+                "gradientMode": "opacity",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineStyle": {
+                  "fill": "solid"
+                },
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 6,
+            "w": 6,
+            "x": 18,
+            "y": 9
+          },
+          "id": 43,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "kube_pod_container_resource_limits{exported_namespace=\"$namespace\", container=\"remote-test-runner\", resource=\"cpu\"}",
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "container_cpu_load_average_10s{namespace=\"$namespace\", container=\"remote-test-runner\"}",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "B"
+            }
+          ],
+          "title": "Runner CPU",
+          "transparent": true,
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "description": "Test Runner RAM usage and limit",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "MiB",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 5,
+                "gradientMode": "opacity",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 6,
+            "w": 6,
+            "x": 18,
+            "y": 15
+          },
+          "id": 44,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "kube_pod_container_resource_limits{exported_namespace=\"$namespace\", container=\"remote-test-runner\", resource=\"memory\"} / 1024 / 1024",
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "exemplar": true,
+              "expr": "container_memory_usage_bytes{namespace=\"$namespace\", container=\"remote-test-runner\"} / 1024 / 1024",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "B"
+            }
+          ],
+          "title": "Runner RAM",
+          "transparent": true,
+          "type": "timeseries"
+        },
+        {
+          "description": "Errors and Warnings found in Test Runner",
+          "gridPos": {
+            "h": 5,
+            "w": 8,
+            "x": 0,
+            "y": 21
+          },
+          "id": 139,
+          "options": {
+            "dedupStrategy": "none",
+            "enableLogDetails": true,
+            "prettifyLogMessage": false,
+            "showCommonLabels": false,
+            "showLabels": false,
+            "showTime": false,
+            "sortOrder": "Descending",
+            "wrapLogMessage": false
+          },
+          "pluginVersion": "8.5.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "grafanacloud-logs"
+              },
+              "expr": "{namespace=\"$namespace\", container=\"remote-test-runner\"} |~ \"WRN|ERR\"",
+              "refId": "A"
+            }
+          ],
+          "title": "Test Runner Errors and Warnings",
+          "transparent": true,
+          "type": "logs"
+        },
+        {
+          "description": "Info logs",
+          "gridPos": {
+            "h": 5,
+            "w": 8,
+            "x": 8,
+            "y": 21
+          },
+          "id": 140,
+          "options": {
+            "dedupStrategy": "none",
+            "enableLogDetails": true,
+            "prettifyLogMessage": false,
+            "showCommonLabels": false,
+            "showLabels": false,
+            "showTime": false,
+            "sortOrder": "Descending",
+            "wrapLogMessage": false
+          },
+          "pluginVersion": "8.5.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "grafanacloud-logs"
+              },
+              "expr": "{namespace=\"$namespace\", container=\"remote-test-runner\"} |= \"INF\"",
+              "refId": "A"
+            }
+          ],
+          "title": "Test Runner Info",
+          "transparent": true,
+          "type": "logs"
+        },
+        {
+          "description": "Debugs",
+          "gridPos": {
+            "h": 5,
+            "w": 8,
+            "x": 16,
+            "y": 21
+          },
+          "id": 141,
+          "options": {
+            "dedupStrategy": "none",
+            "enableLogDetails": true,
+            "prettifyLogMessage": false,
+            "showCommonLabels": false,
+            "showLabels": false,
+            "showTime": false,
+            "sortOrder": "Descending",
+            "wrapLogMessage": false
+          },
+          "pluginVersion": "8.5.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "grafanacloud-logs"
+              },
+              "expr": "{namespace=\"$namespace\", container=\"remote-test-runner\"} |~ \"DBG\"",
+              "refId": "A"
+            }
+          ],
+          "title": "Test Runner Debugs",
+          "transparent": true,
+          "type": "logs"
+        }
+      ],
+      "title": "Test runner",
+      "type": "row"
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 34,
+  "style": "dark",
+  "tags": [
+    "tests"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "text": "chainlink-test-env-3735f",
+          "value": "chainlink-test-env-3735f"
+        },
+        "definition": "label_values(namespace)",
+        "description": "Namespace",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Namespace",
+        "multi": false,
+        "name": "namespace",
+        "options": [],
+        "query": "label_values(namespace)",
+        "refresh": 1,
+        "regex": "chainlink-.*|.*-soak-.*|.*performance-.*|.*-chaos-.*",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": [
+            "chainlink-0-98744888d-r9n6r"
+          ],
+          "value": [
+            "chainlink-0-98744888d-r9n6r"
+          ]
+        },
+        "definition": "label_values({namespace=\"$namespace\"}, pod)",
+        "description": "The specific Chainlink node to get insight into",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Chainlink Node",
+        "multi": true,
+        "name": "cl_node",
+        "options": [],
+        "query": "label_values({namespace=\"$namespace\"}, pod)",
+        "refresh": 1,
+        "regex": "chainlink-.*",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "geth-6469b5b5f8-smd2z",
+          "value": "geth-6469b5b5f8-smd2z"
+        },
+        "definition": "label_values({namespace=\"$namespace\"}, pod)",
+        "description": "If launched, a simulated instance of Geth",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Simulated Geth Node",
+        "multi": false,
+        "name": "geth_node",
+        "options": [],
+        "query": "label_values({namespace=\"$namespace\"}, pod)",
+        "refresh": 1,
+        "regex": "geth-|starknet.*",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Chainlink Testing Insights",
+  "uid": "AFATC9A7k",
+  "version": 1,
+  "weekStart": ""
+}

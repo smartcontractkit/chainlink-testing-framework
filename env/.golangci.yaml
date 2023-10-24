@@ -1,0 +1,15 @@
+run:
+  timeout: 5m
+  skip-dirs:
+    - bin
+    - imports
+issues:
+  exclude-use-default: false
+linters-settings:
+  revive:
+    rules:
+      - name: exported
+        severity: warning
+      - name: dot-imports
+        disabled: true
+linters:

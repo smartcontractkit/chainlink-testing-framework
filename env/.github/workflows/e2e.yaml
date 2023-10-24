@@ -1,0 +1,118 @@
+name: Deployments tests (E2E)
+on:
+  pull_request:
+
+concurrency:
+  group: e2e-tests-chainlink-env-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  INTERNAL_DOCKER_REPO: ${{ secrets.QA_AWS_ACCOUNT_NUMBER }}.dkr.ecr.${{ secrets.QA_AWS_REGION }}.amazonaws.com
+  ENV_JOB_IMAGE: ${{ secrets.QA_AWS_ACCOUNT_NUMBER }}.dkr.ecr.${{ secrets.QA_AWS_REGION }}.amazonaws.com/chainlink-env-tests:ci.${{ github.sha }}
+  BASE_IMAGE_NAME: ${{ secrets.QA_AWS_ACCOUNT_NUMBER }}.dkr.ecr.${{ secrets.QA_AWS_REGION }}.amazonaws.com/test-base-image:ci.${{ github.sha }}
+  CHAINLINK_IMAGE: ${{ secrets.QA_AWS_ACCOUNT_NUMBER }}.dkr.ecr.${{ secrets.QA_AWS_REGION }}.amazonaws.com/chainlink
+  CHAINLINK_VERSION: develop
+  SELECTED_NETWORKS: SIMULATED
+  CHAINLINK_COMMIT_SHA: ${{ github.sha }}
+  CHAINLINK_ENV_USER: ${{ github.actor }}
+  TEST_LOG_LEVEL: debug
+
+jobs:
+  build_tests:
+    runs-on: ubuntu-latest
+    environment: integration
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build Base Image
+        uses: smartcontractkit/chainlink-github-actions/docker/build-push@ce87f8986ca18336cc5015df75916c2ec0a7c4b3 # v2.1.2
+        with:
+          tags: ${{ env.BASE_IMAGE_NAME }}
+          file: Dockerfile.base
+          AWS_REGION: ${{ secrets.QA_AWS_REGION }}
+          AWS_ROLE_TO_ASSUME: ${{ secrets.QA_AWS_ROLE_TO_ASSUME }}
+      - name: Base Image Built
+        run: |
+          echo "### chainlink image used for this test run :link:" >>$GITHUB_STEP_SUMMARY
+          echo "\`${{ env.CHAINLINK_VERSION }}\`" >>$GITHUB_STEP_SUMMARY
+          echo "### test-base-image image tag for this test run :ship:" >>$GITHUB_STEP_SUMMARY
+          echo "\`ci.${{ github.sha }}\`" >>$GITHUB_STEP_SUMMARY
+      - name: Build Test Runner
+        uses: smartcontractkit/chainlink-github-actions/docker/build-push@ce87f8986ca18336cc5015df75916c2ec0a7c4b3 # v2.1.2
+        with:
+          tags: ${{ env.ENV_JOB_IMAGE }}
+          file: Dockerfile
+          build-args: |
+            BASE_IMAGE=${{ secrets.QA_AWS_ACCOUNT_NUMBER }}.dkr.ecr.${{ secrets.QA_AWS_REGION }}.amazonaws.com/test-base-image
+            IMAGE_VERSION=ci.${{ github.sha }}
+          AWS_REGION: ${{ secrets.QA_AWS_REGION }}
+          AWS_ROLE_TO_ASSUME: ${{ secrets.QA_AWS_ROLE_TO_ASSUME }}
+      - name: Test Image Built
+        run: |
+          echo "### chainlink-env-tests image tag for this test run :ship:" >>$GITHUB_STEP_SUMMARY
+          echo "\`ci.${{ github.sha }}\`" >>$GITHUB_STEP_SUMMARY
+  e2e_tests:
+    runs-on: ubuntu-latest
+    environment: integration
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      TEST_SUITE: local-runner
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run Tests
+        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/run-tests@ce87f8986ca18336cc5015df75916c2ec0a7c4b3 # v2.1.2
+        with:
+          cl_repo: ${{ env.CHAINLINK_IMAGE }}
+          cl_image_tag: ${{ env.CHAINLINK_VERSION }}
+          test_command_to_run: unset ENV_JOB_IMAGE && make test_e2e_ci
+          test_download_vendor_packages_command: go mod download
+          artifacts_location: ./e2e/logs
+          publish_check_name: E2E Test Results
+          token: ${{ secrets.GITHUB_TOKEN }}
+          go_mod_path: go.mod
+          QA_AWS_REGION: ${{ secrets.QA_AWS_REGION }}
+          QA_AWS_ROLE_TO_ASSUME: ${{ secrets.QA_AWS_ROLE_TO_ASSUME }}
+          QA_KUBECONFIG: ${{ secrets.QA_KUBECONFIG }}
+      - name: Upload test log
+        uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: test-log
+          path: /tmp/gotest.log
+
+  e2e_remote_runner_tests:
+    runs-on: ubuntu-latest
+    environment: integration
+    needs: [build_tests]
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      TEST_SUITE: remote-runner
+      TEST_TRIGGERED_BY: chainlink-env-remote-runner-ci
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run Remote Runner Tests
+        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/run-tests@ce87f8986ca18336cc5015df75916c2ec0a7c4b3 # v2.1.2
+        with:
+          cl_repo: ${{ env.CHAINLINK_IMAGE }}
+          cl_image_tag: ${{ env.CHAINLINK_VERSION }}
+          test_command_to_run: make test_e2e_ci_remote_runner
+          test_download_vendor_packages_command: go mod download
+          artifacts_location: ./e2e/logs
+          publish_check_name: E2E Remote Runner Test Results
+          token: ${{ secrets.GITHUB_TOKEN }}
+          go_mod_path: go.mod
+          QA_AWS_REGION: ${{ secrets.QA_AWS_REGION }}
+          QA_AWS_ROLE_TO_ASSUME: ${{ secrets.QA_AWS_ROLE_TO_ASSUME }}
+          QA_KUBECONFIG: ${{ secrets.QA_KUBECONFIG }}
+      - name: Upload test log
+        uses: actions/upload-artifact@v2
+        if: failure()
+        with:
+          name: remote-runner-test-log
+          path: /tmp/remoterunnergotest.log
