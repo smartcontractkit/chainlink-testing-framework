@@ -190,9 +190,27 @@ func (m *LogWatch) Shutdown() {
 	}
 }
 
+type LogWriter = func(testName string, name string, location interface{}) error
+
 func (m *LogWatch) PrintLogTargetsLocations() {
+	m.SaveLogTargetsLocations(func(testName string, name string, location interface{}) error {
+		m.log.Info().Str("Test", testName).Str("Handler", name).Interface("Location", location).Msg("Log location")
+		return nil
+	})
+}
+
+func (m *LogWatch) SaveLogTargetsLocations(writer LogWriter) {
 	for _, handler := range m.logTargetHandlers {
-		handler.PrintLogLocation(m)
+		name := string(handler.GetTarget())
+		location, err := handler.GetLogLocation(m.consumers)
+		if err != nil {
+			m.log.Error().Str("Handler", name).Err(err).Msg("Failed to get log location")
+			continue
+		}
+
+		if err := writer(m.testName, name, location); err != nil {
+			m.log.Error().Str("Handler", name).Err(err).Msg("Failed to write log location")
+		}
 	}
 }
 

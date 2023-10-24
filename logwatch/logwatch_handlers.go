@@ -21,36 +21,33 @@ const (
 
 type HandleLogTarget interface {
 	Handle(*ContainerLogConsumer, LogContent) error
-	PrintLogLocation(*LogWatch)
+	// PrintLogLocation(*LogWatch)
+	GetLogLocation(map[string]*ContainerLogConsumer) (string, error)
+	GetTarget() LogTarget
 }
 
 func getDefaultLogHandlers() map[LogTarget]HandleLogTarget {
 	handlers := make(map[LogTarget]HandleLogTarget)
-	handlers[Loki] = LokiLogHandler{
-		shouldSkipLogging: make(map[string]bool),
-	}
-	handlers[File] = FileLogHandler{
-		testLogFolders:    make(map[string]string),
-		shouldSkipLogging: make(map[string]bool),
-	}
+	handlers[Loki] = &LokiLogHandler{}
+	handlers[File] = &FileLogHandler{}
 
 	return handlers
 }
 
 // streams logs to local files
 type FileLogHandler struct {
-	testLogFolders    map[string]string
-	shouldSkipLogging map[string]bool
+	logFolder         string
+	shouldSkipLogging bool
 }
 
-func (h FileLogHandler) Handle(c *ContainerLogConsumer, content LogContent) error {
-	if val, ok := h.shouldSkipLogging[content.TestName]; val && ok {
+func (h *FileLogHandler) Handle(c *ContainerLogConsumer, content LogContent) error {
+	if h.shouldSkipLogging {
 		return nil
 	}
 
 	folder, err := h.getOrCreateLogFolder(content.TestName)
 	if err != nil {
-		h.shouldSkipLogging[content.TestName] = true
+		h.shouldSkipLogging = true
 
 		return errors.Wrap(err, "failed to create logs folder. File logging stopped")
 	}
@@ -58,7 +55,7 @@ func (h FileLogHandler) Handle(c *ContainerLogConsumer, content LogContent) erro
 	logFileName := filepath.Join(folder, fmt.Sprintf("%s.log", content.ContainerName))
 	logFile, err := os.OpenFile(logFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		h.shouldSkipLogging[content.TestName] = true
+		h.shouldSkipLogging = true
 
 		return errors.Wrap(err, "failed to open log file. File logging stopped")
 	}
@@ -66,7 +63,7 @@ func (h FileLogHandler) Handle(c *ContainerLogConsumer, content LogContent) erro
 	defer logFile.Close()
 
 	if _, err := logFile.WriteString(string(content.Content)); err != nil {
-		h.shouldSkipLogging[content.TestName] = true
+		h.shouldSkipLogging = true
 
 		return errors.Wrap(err, "failed to write to log file. File logging stopped")
 	}
@@ -74,33 +71,34 @@ func (h FileLogHandler) Handle(c *ContainerLogConsumer, content LogContent) erro
 	return nil
 }
 
-func (h FileLogHandler) PrintLogLocation(m *LogWatch) {
-	for testname, folder := range h.testLogFolders {
-		m.log.Info().Str("Test", testname).Str("Folder", folder).Msg("Logs saved to folder:")
-	}
+func (h FileLogHandler) GetLogLocation(_ map[string]*ContainerLogConsumer) (string, error) {
+	return h.logFolder, nil
 }
 
-func (h FileLogHandler) getOrCreateLogFolder(testname string) (string, error) {
-	var folder string
-	if _, ok := h.testLogFolders[testname]; !ok {
-		folder = fmt.Sprintf("./logs/%s-%s", testname, time.Now().Format("2006-01-02T15-04-05"))
+func (h *FileLogHandler) getOrCreateLogFolder(testname string) (string, error) {
+	if h.logFolder == "" {
+		folder := fmt.Sprintf("./logs/%s-%s", testname, time.Now().Format("2006-01-02T15-04-05"))
 		if err := os.MkdirAll(folder, os.ModePerm); err != nil {
 			return "", err
 		}
-		h.testLogFolders[testname] = folder
+		h.logFolder = folder
 	}
-	folder = h.testLogFolders[testname]
 
-	return folder, nil
+	return h.logFolder, nil
+}
+
+func (h FileLogHandler) GetTarget() LogTarget {
+	return File
 }
 
 // streams logs to Loki
 type LokiLogHandler struct {
-	shouldSkipLogging map[string]bool
+	grafanaUrl        string
+	shouldSkipLogging bool
 }
 
-func (h LokiLogHandler) Handle(c *ContainerLogConsumer, content LogContent) error {
-	if val, ok := h.shouldSkipLogging[content.TestName]; val && ok {
+func (h *LokiLogHandler) Handle(c *ContainerLogConsumer, content LogContent) error {
+	if h.shouldSkipLogging {
 		c.lw.log.Warn().Str("Test", content.TestName).Msg("Skipping pushing logs to Loki for this test")
 		return nil
 	}
@@ -109,7 +107,7 @@ func (h LokiLogHandler) Handle(c *ContainerLogConsumer, content LogContent) erro
 		loki, err := wasp.NewLokiClient(wasp.NewEnvLokiConfig())
 		if err != nil {
 			c.lw.log.Error().Err(err).Msg("Failed to create Loki client")
-			h.shouldSkipLogging[content.TestName] = true
+			h.shouldSkipLogging = true
 
 			return err
 		}
@@ -125,13 +123,17 @@ func (h LokiLogHandler) Handle(c *ContainerLogConsumer, content LogContent) erro
 	return nil
 }
 
-func (h LokiLogHandler) PrintLogLocation(m *LogWatch) {
+func (h *LokiLogHandler) GetLogLocation(consumers map[string]*ContainerLogConsumer) (string, error) {
+	if h.grafanaUrl != "" {
+		return h.grafanaUrl, nil
+	}
+
 	queries := make([]GrafanaExploreQuery, 0)
 
 	rangeFrom := time.Now()
-	rangeTo := time.Now()
+	rangeTo := time.Now().Add(time.Minute) //just to make sure we get the last message
 
-	for _, c := range m.consumers {
+	for _, c := range consumers {
 		if c.hasLogTarget(Loki) {
 			queries = append(queries, GrafanaExploreQuery{
 				refId:     c.name,
@@ -144,30 +146,37 @@ func (h LokiLogHandler) PrintLogLocation(m *LogWatch) {
 			var firstMsg struct {
 				Ts string `json:"ts"`
 			}
+
 			if err := json.Unmarshal([]byte(c.Messages[0]), &firstMsg); err != nil {
-				m.log.Error().Err(err).Str("container", c.name).Msg("Failed to unmarshal first log message")
-			} else {
-				firstTs, err := time.Parse(time.RFC3339, firstMsg.Ts)
-				if err != nil {
-					m.log.Error().Err(err).Str("container", c.name).Msg("Failed to parse first log message timestamp")
-				} else {
-					if firstTs.Before(rangeFrom) {
-						rangeFrom = firstTs
-					}
-				}
+				return "", errors.Errorf("failed to unmarshal first log message for container '%s'", c.name)
+			}
+
+			firstTs, err := time.Parse(time.RFC3339, firstMsg.Ts)
+			if err != nil {
+				return "", errors.Errorf("failed to parse first log message's timestamp '%+v' for container '%s'", firstTs, c.name)
+			}
+
+			if firstTs.Before(rangeFrom) {
+				rangeFrom = firstTs
 			}
 		}
 	}
 
-	grafanaUrl := GrafanaExploreUrl{
+	if len(queries) == 0 {
+		return "", errors.New("no Loki consumers found")
+	}
+
+	h.grafanaUrl = GrafanaExploreUrl{
 		baseurl:    os.Getenv("GRAFANA_URL"),
 		datasource: os.Getenv("GRAFANA_DATASOURCE"),
 		queries:    queries,
 		rangeFrom:  rangeFrom.UnixMilli(),
-		rangeTo:    rangeTo.UnixMilli() + 60000, //just to make sure we get the last message
+		rangeTo:    rangeTo.UnixMilli(),
 	}.getUrl()
 
-	m.log.Info().Str("URL", string(grafanaUrl)).Msg("Loki logs can be found in Grafana at (will only work when you unescape quotes):")
+	return h.grafanaUrl, nil
+}
 
-	fmt.Printf("Loki logs can be found in Grafana at: %s\n", grafanaUrl)
+func (h LokiLogHandler) GetTarget() LogTarget {
+	return Loki
 }
