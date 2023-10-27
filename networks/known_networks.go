@@ -8,13 +8,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rs/zerolog/log"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/utils"
-
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
-	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 )
 
 // Pre-configured test networks and their connections
@@ -43,12 +42,6 @@ var (
 		"de9be858da4a475276426320d5e9262ecfc3ba460bfac56360bfa6c4c28b4ee0",
 		"df57089febbacf7ba0bc227dafbffa9fc08a93fdc68e1e42411a14efcf23656e",
 	}
-	// SelectedNetworks uses the SELECTED_NETWORKS env var to determine which network to run the test on.
-	// For use in tests that utilize multiple chains. For tests on one chain, see SelectedNetwork
-	// For CCIP use index 1 and 2 of SELECTED_NETWORKS to denote source and destination network respectively
-	SelectedNetworks []blockchain.EVMNetwork = determineSelectedNetworks()
-	// SelectedNetwork uses the first listed network in SELECTED_NETWORKS, for use in tests on only one chain
-	SelectedNetwork blockchain.EVMNetwork = SelectedNetworks[0]
 
 	// SimulatedEVM represents a simulated network
 	SimulatedEVM blockchain.EVMNetwork = blockchain.SimulatedEVMNetwork
@@ -625,113 +618,87 @@ var (
 	}
 )
 
-// determineSelectedNetworks uses `SELECTED_NETWORKS` to determine which networks to run the tests on.
-// Use DetermineSelectedNetwork for tests that only use one network
-func determineSelectedNetworks() []blockchain.EVMNetwork {
-	logging.Init()
-	rawSelectedNetworks := strings.ToUpper(os.Getenv("SELECTED_NETWORKS"))
-	setNetworkNames := strings.Split(rawSelectedNetworks, ",")
-
-	return SetNetworks(setNetworkNames)
-}
-
-func SetNetworks(setNetworkNames []string) []blockchain.EVMNetwork {
-	selectedNetworks := make([]blockchain.EVMNetwork, 0)
-	for _, setNetworkName := range setNetworkNames {
-		if chosenNetwork, valid := MappedNetworks[setNetworkName]; valid {
-			log.Info().
-				Interface("SELECTED_NETWORKS", setNetworkNames).
-				Str("Network Name", chosenNetwork.Name).
-				Msg("Read network choice from 'SELECTED_NETWORKS'")
-			setURLs(setNetworkName, &chosenNetwork)
-			setKeys(setNetworkName, &chosenNetwork)
-			selectedNetworks = append(selectedNetworks, chosenNetwork)
-		} else {
-			validNetworks := make([]string, 0)
-			for validNetwork := range MappedNetworks {
-				validNetworks = append(validNetworks, validNetwork)
+// Get []blockchain.EVMNetwork from env vars. Panic if env vars not set or no networks found
+func MustGetSelectedNetworksFromEnv() []blockchain.EVMNetwork {
+	selectedNetworksEnv := os.Getenv("SELECTED_NETWORKS")
+	emptyEnvErr := errors.Errorf("env var 'SELECTED_NETWORKS' is not set or is empty. Use valid network(s) separated by comma from %v", getValidNetworkKeys())
+	if selectedNetworksEnv == "" {
+		panic(emptyEnvErr)
+	}
+	networkKeys := strings.Split(selectedNetworksEnv, ",")
+	if len(networkKeys) == 0 {
+		panic(emptyEnvErr)
+	}
+	networks := make([]blockchain.EVMNetwork, 0)
+	for i := range networkKeys {
+		var walletKeys, httpUrls, wsUrls []string
+		if !strings.Contains(networkKeys[i], "SIMULATED") {
+			// Get network RPC WS URL from env var
+			wsEnvVar := fmt.Sprintf("%s_URLS", networkKeys[i])
+			wsEnvVal := os.Getenv(wsEnvVar)
+			if wsEnvVal == "" {
+				panic(errors.Errorf("set %s env var", wsEnvVar))
 			}
-			log.Fatal().
-				Interface("SELECTED_NETWORKS", setNetworkNames).
-				Str("Valid Networks", strings.Join(validNetworks, ", ")).
-				Msg("SELECTED_NETWORKS value is invalid. Use a valid network(s).")
+			wsUrls = strings.Split(wsEnvVal, ",")
+
+			// Get network RPC HTTP URL from env var
+			httpEnvVar := fmt.Sprintf("%s_HTTP_URLS", networkKeys[i])
+			httpEnvVal := os.Getenv(httpEnvVar)
+			if httpEnvVal == "" {
+				panic(errors.Errorf("set %s env var", httpEnvVar))
+			}
+			httpUrls = strings.Split(httpEnvVal, ",")
+
+			// Get network wallet key from env var
+			walletKeysEnvVar := fmt.Sprintf("%s_KEYS", networkKeys[i])
+			walletKeysEnvVal := os.Getenv(walletKeysEnvVar)
+			if walletKeysEnvVal == "" {
+				panic(errors.Errorf("set %s env var", walletKeysEnvVar))
+			}
+			walletKeys = strings.Split(walletKeysEnvVal, ",")
 		}
+		network, err := NewEVMNetwork(networkKeys[i], walletKeys, httpUrls, wsUrls)
+		if err != nil {
+			panic(err)
+		}
+		networks = append(networks, network)
 	}
-	return selectedNetworks
+	return networks
 }
 
-// setURLs sets a network URL(s) based on env vars
-func setURLs(prefix string, network *blockchain.EVMNetwork) {
-	prefix = strings.Trim(prefix, "_")
-	prefix = strings.ToUpper(prefix)
-
-	if strings.Contains(prefix, "SIMULATED") { // Use defaults for SIMULATED
-		return
-	}
-
-	wsEnvVar := fmt.Sprintf("%s_URLS", prefix)
-	httpEnvVar := fmt.Sprintf("%s_HTTP_URLS", prefix)
-	wsEnvURLs, err := utils.GetEnv(wsEnvVar)
-	if err != nil {
-		log.Warn().Err(err).Str("env var", wsEnvVar).Msg("Error getting env var")
-	}
-	httpEnvURLs, err := utils.GetEnv(httpEnvVar)
-	if err != nil {
-		log.Warn().Err(err).Str("env var", httpEnvVar).Msg("Error getting env var")
-	}
-	if wsEnvURLs == "" {
-		evmUrls, err := utils.GetEnv("EVM_URLS")
-		if err != nil {
-			log.Warn().Err(err).Str("env var", "EVM_URLS").Msg("Error getting env var")
+func NewEVMNetwork(networkKey string, walletKeys, httpUrls, wsUrls []string) (blockchain.EVMNetwork, error) {
+	if network, valid := MappedNetworks[networkKey]; valid {
+		// Overwrite network default values
+		if len(httpUrls) > 0 {
+			network.HTTPURLs = httpUrls
 		}
-		evmhttpUrls, err := utils.GetEnv("EVM_HTTP_URLS")
-		if err != nil {
-			log.Warn().Err(err).Str("env var", "EVM_HTTP_URLS").Msg("Error getting env var")
+		if len(wsUrls) > 0 {
+			network.URLs = wsUrls
 		}
-		wsURLs := strings.Split(evmUrls, ",")
-		httpURLs := strings.Split(evmhttpUrls, ",")
-		log.Warn().Msgf("No '%s' env var defined, defaulting to 'EVM_URLS'", wsEnvVar)
-		network.URLs = wsURLs
-		network.HTTPURLs = httpURLs
-		return
+		if len(walletKeys) > 0 {
+			setKeys(&network, walletKeys)
+		}
+		return network, nil
 	}
+	return blockchain.EVMNetwork{}, errors.Errorf("network key: '%v' is invalid. Use a valid network(s) separated by comma from %v", networkKey, getValidNetworkKeys())
+}
 
-	wsURLs := strings.Split(wsEnvURLs, ",")
-	httpURLs := strings.Split(httpEnvURLs, ",")
-	network.URLs = wsURLs
-	network.HTTPURLs = httpURLs
-	log.Info().Msg("Read network URLs")
+func getValidNetworkKeys() []string {
+	validKeys := make([]string, 0)
+	for validNetwork := range MappedNetworks {
+		validKeys = append(validKeys, validNetwork)
+	}
+	return validKeys
 }
 
 // setKeys sets a network's private key(s) based on env vars
-func setKeys(prefix string, network *blockchain.EVMNetwork) {
-	prefix = strings.Trim(prefix, "_")
-	prefix = strings.ToUpper(prefix)
-
-	if strings.Contains(prefix, "SIMULATED") { // Use defaults for SIMULATED
-		return
-	}
-
-	envVar := fmt.Sprintf("%s_KEYS", prefix)
-	keysEnv, err := utils.GetEnv(envVar)
-	if err != nil {
-		log.Warn().Err(err).Str("env var", envVar).Msg("Error getting env var")
-	}
-	if keysEnv == "" {
-		log.Warn().Msg(fmt.Sprintf("No '%s' env var defined, defaulting to 'EVM_KEYS'", envVar))
-		keysEnv, err = utils.GetEnv("EVM_KEYS")
-		if err != nil {
-			log.Warn().Err(err).Str("env var", envVar).Msg("getting env var")
-		}
-	}
-
-	keys := strings.Split(keysEnv, ",")
-	for keyIndex, key := range keys { // Sanitize keys of possible `0x` prefix
+func setKeys(network *blockchain.EVMNetwork, walletKeys []string) {
+	for keyIndex, key := range walletKeys { // Sanitize keys of possible `0x` prefix
 		if strings.HasPrefix(key, "0x") {
-			keys[keyIndex] = key[2:]
+			walletKeys[keyIndex] = key[2:]
 		}
 	}
-	network.PrivateKeys = keys
+	network.PrivateKeys = walletKeys
 
 	// log public keys for debugging
 	publicKeys := []string{}
