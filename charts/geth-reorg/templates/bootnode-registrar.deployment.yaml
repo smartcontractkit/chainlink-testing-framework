@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "ethereum.fullname" . }}-node-registrar
+  labels:
+    app: node-registrar
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.bootnodeRegistrar.replicas }}
+  selector:
+    matchLabels:
+      app: {{ template "ethereum.fullname" . }}-node-registrar
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "ethereum.fullname" . }}-node-registrar
+        release: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: node-registrar
+          image: {{ .Values.bootnodeRegistrar.image.repository }}:{{ .Values.bootnodeRegistrar.image.tag }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          env:
+            - name: BOOTNODE_SERVICE
+              value: {{ template "ethereum.fullname" . }}-bootnode-service.{{ .Release.Namespace }}.svc.cluster.local
+          ports:
+            - name: node-registrar
+              containerPort: 9898
+{{- with .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .Values.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .Values.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+{{- end }}

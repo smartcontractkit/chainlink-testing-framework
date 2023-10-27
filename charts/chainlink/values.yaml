@@ -1,0 +1,43 @@
+chainlink:
+  image:
+    image: public.ecr.aws/chainlink/chainlink
+    version: 1.9.0
+  web_port: 6688
+  p2p_port: 6690
+  resources:
+    requests:
+      cpu: 350m
+      memory: 1024Mi
+    limits:
+      cpu: 350m
+      memory: 1024Mi
+db:
+  image:
+    image: postgres
+    version: 11.15
+  stateful: true
+  capacity: 1Gi
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+replicas: 1
+prometheus: false
+
+toml: ''
+secretsToml: ''
+
+env:
+  CL_DEV: 'false'
+  CL_DATABASE_URL: postgresql://postgres:verylongdatabasepassword@0.0.0.0/chainlink?sslmode=disable
+
+podAnnotations: {}
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

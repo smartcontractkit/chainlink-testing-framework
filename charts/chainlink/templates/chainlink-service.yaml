@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    app: {{ .Release.Name }}
+{{/*  generateName: {{ .Release.Name }}-*/}}
+spec:
+  ports:
+    - name: node-port
+      port: {{ .Values.chainlink.web_port }}
+      targetPort: {{ .Values.chainlink.web_port }}
+    - name: p2p-port
+      port: {{ .Values.chainlink.p2p_port }}
+      targetPort: {{ .Values.chainlink.p2p_port }}
+  selector:
+    app: {{ .Release.Name }}
+  type: ClusterIP

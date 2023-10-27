@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app: {{ .Release.Name }}-cm
+    release: {{ .Release.Name }}
+  name: {{ .Release.Name }}-cm
+data:
+  apicredentials: |
+    notreal@fakeemail.ch
+    fj293fbBnlQ!f9vNs
+  node-password: T.tLHkcmwePT/p,]sYuntjwHKAsrhm#4eRs4LuKHwvHejWYAC2JP4M8HimwgmbaZ
+  init.sql: |
+    CREATE EXTENSION pg_stat_statements;
+  default.toml: |
+    RootDir = './clroot'
+
+    [Log]
+    JSONConsole = true
+    Level = 'debug'
+
+    [WebServer]
+    AllowOrigins = '*'
+    SecureCookies = false
+    SessionTimeout = '999h0m0s'
+
+    [WebServer.TLS]
+    HTTPSPort = 0
+  overrides.toml: |
+{{ indent 4 .Values.toml }}
+  secrets.toml: |
+{{ indent 4 .Values.secretsToml }}
