@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	TestEnvType = "chainlink-testing-framework-env-test"
+	TestEnvType = "chainlink-testing-framework-k8s-test"
 )
 
 var (
@@ -359,7 +359,7 @@ func TestRolloutRestart(t *testing.T, statefulSet bool) {
 		err = e.RolloutStatefulSets()
 		require.NoError(t, err, "failed to rollout statefulsets")
 	} else {
-		err = e.RolloutRestartBySelector("deployment", "envType=chainlink-env-test")
+		err = e.RolloutRestartBySelector("deployment", testSelector)
 		require.NoError(t, err, "failed to rollout restart deployment")
 	}
 

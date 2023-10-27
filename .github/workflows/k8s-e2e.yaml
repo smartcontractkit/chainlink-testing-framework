@@ -5,7 +5,7 @@ on:
       - "k8s/**"
 
 concurrency:
-  group: e2e-tests-chainlink-env-${{ github.ref }}
+  group: e2e-tests-k8s-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -73,7 +73,7 @@ jobs:
         with:
           cl_repo: ${{ env.CHAINLINK_IMAGE }}
           cl_image_tag: ${{ env.CHAINLINK_VERSION }}
-          test_command_to_run: unset ENV_JOB_IMAGE && cd k8s && make test_e2e_ci
+          test_command_to_run: unset ENV_JOB_IMAGE && make k8s_test_e2e_ci
           test_download_vendor_packages_command: go mod download
           artifacts_location: ./e2e/logs
           publish_check_name: E2E Test Results
@@ -98,7 +98,7 @@ jobs:
       contents: read
     env:
       TEST_SUITE: remote-runner
-      TEST_TRIGGERED_BY: chainlink-env-remote-runner-ci
+      TEST_TRIGGERED_BY: chainlink-testing-framework-remote-runner-ci
     steps:
       - uses: actions/checkout@v3
       - name: Run Remote Runner Tests
@@ -106,7 +106,7 @@ jobs:
         with:
           cl_repo: ${{ env.CHAINLINK_IMAGE }}
           cl_image_tag: ${{ env.CHAINLINK_VERSION }}
-          test_command_to_run: cd k8s && make test_e2e_ci_remote_runner
+          test_command_to_run: make k8s_test_e2e_ci_remote_runner
           test_download_vendor_packages_command: go mod download
           artifacts_location: ./k8s/logs
           publish_check_name: E2E Remote Runner Test Results
