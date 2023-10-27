@@ -643,9 +643,8 @@ func GetNetworkByKey(networkKey string) (blockchain.EVMNetwork, error) {
 		setURLs(networkKey, &network)
 		setKeys(networkKey, &network)
 		return network, nil
-	} else {
-		return blockchain.EVMNetwork{}, errors.Errorf("network key: '%v' is invalid. Use a valid network(s) separated by comma from %v", networkKey, getValidNetworkKeys())
 	}
+	return blockchain.EVMNetwork{}, errors.Errorf("network key: '%v' is invalid. Use a valid network(s) separated by comma from %v", networkKey, getValidNetworkKeys())
 }
 
 func GetNetworksByKeys(networkKeys []string) ([]blockchain.EVMNetwork, error) {
