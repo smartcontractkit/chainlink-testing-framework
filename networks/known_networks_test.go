@@ -76,13 +76,17 @@ func TestMustGetSelectedNetworksFromEnv_MultipleNetworks(t *testing.T) {
 }
 
 func TestNewEVMNetwork(t *testing.T) {
-	// Set up a mock mapping for this test
+	// Set up a mock mapping and revert it after test
+	originalMappedNetworks := MappedNetworks
 	MappedNetworks = map[string]blockchain.EVMNetwork{
 		"VALID_KEY": {
 			HTTPURLs: []string{"default_http"},
 			URLs:     []string{"default_ws"},
 		},
 	}
+	defer func() {
+		MappedNetworks = originalMappedNetworks
+	}()
 
 	t.Run("valid networkKey", func(t *testing.T) {
 		network, err := NewEVMNetwork("VALID_KEY", nil, nil, nil)
