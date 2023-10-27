@@ -1,4 +1,4 @@
-name: Tests
+name: (all packages) Unit tests
 on:
   push:
     tags:
@@ -29,7 +29,9 @@ jobs:
           PATH=$PATH:$(go env GOPATH)/bin
           export PATH
           set -euo pipefail
-          go test -json -cover -covermode=count -coverprofile=unit-test-coverage.out ./... 2>&1 | tee /tmp/gotest.log | gotestfmt
+          # disabled, because we want to use a multiline output of go list command
+          # shellcheck disable=SC2046
+          go test -json -cover -covermode=count -coverprofile=unit-test-coverage.out $(go list ./... | grep -v /k8s/e2e/ | grep -v /k8s/examples/) 2>&1 | tee /tmp/gotest.log | gotestfmt
       - name: Code Coverage
         uses: codecov/codecov-action@v3
         with:

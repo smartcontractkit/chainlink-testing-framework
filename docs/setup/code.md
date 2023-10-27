@@ -7,11 +7,11 @@ parent: Setup
 
 # Test Setup Code
 
-Now that we've got our config and Kubernetes sorted, we can write a bit of code that will deploy an environment for our test to run. To deploy our simulated geth, mock-server, and Chainlink instances, we rely on another chainlink library, [chainlink-env](https://github.com/smartcontractkit/chainlink-env/). This library handles deploying everything our test needs to the Kubernetes cluster.
+Now that we've got our config and Kubernetes sorted, we can write a bit of code that will deploy an environment for our test to run. To deploy our simulated geth, mock-server, and Chainlink instances, we rely on `env` package. This package handles deploying everything our test needs to the Kubernetes cluster.
 
 ```go
-// We use the chainlink-env library to make and handle deployed resources
-import "github.com/smartcontractkit/chainlink-env/environment"
+// We use the env package to make and handle deployed resources
+import "github.com/smartcontractkit/chainlink-testing-framework/k8s/environment"
 
 // Deploy a testing environment, and receive it as the `env` variable. This is used to connect to resources.
 e = environment.New(nil)

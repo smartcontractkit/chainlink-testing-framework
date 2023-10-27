@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+# Runs compiled go executables and specificies the test to run
+# Builds executable go test binaries for this repos tests
+
+set -ex
+
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
+
+cd "$SCRIPT_DIR"/../ || exit 1
+
+# parse out quotes if they exist in the string
+suites="local-runner remote-runner"
+temp="${suites%\"}"
+tosplit="${temp#\"}"
+
+# find the suite name
+OIFS=$IFS
+IFS=' '
+for x in $tosplit
+do
+    go test -c ./e2e/"${x}"
+done
+IFS=$OIFS
