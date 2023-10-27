@@ -8,13 +8,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rs/zerolog/log"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
-	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 )
 
 // Pre-configured test networks and their connections
@@ -43,12 +44,6 @@ var (
 		"de9be858da4a475276426320d5e9262ecfc3ba460bfac56360bfa6c4c28b4ee0",
 		"df57089febbacf7ba0bc227dafbffa9fc08a93fdc68e1e42411a14efcf23656e",
 	}
-	// SelectedNetworks uses the SELECTED_NETWORKS env var to determine which network to run the test on.
-	// For use in tests that utilize multiple chains. For tests on one chain, see SelectedNetwork
-	// For CCIP use index 1 and 2 of SELECTED_NETWORKS to denote source and destination network respectively
-	SelectedNetworks []blockchain.EVMNetwork = determineSelectedNetworks()
-	// SelectedNetwork uses the first listed network in SELECTED_NETWORKS, for use in tests on only one chain
-	SelectedNetwork blockchain.EVMNetwork = SelectedNetworks[0]
 
 	// SimulatedEVM represents a simulated network
 	SimulatedEVM blockchain.EVMNetwork = blockchain.SimulatedEVMNetwork
@@ -625,39 +620,52 @@ var (
 	}
 )
 
-// determineSelectedNetworks uses `SELECTED_NETWORKS` to determine which networks to run the tests on.
-// Use DetermineSelectedNetwork for tests that only use one network
-func determineSelectedNetworks() []blockchain.EVMNetwork {
-	logging.Init()
-	rawSelectedNetworks := strings.ToUpper(os.Getenv("SELECTED_NETWORKS"))
-	setNetworkNames := strings.Split(rawSelectedNetworks, ",")
-
-	return SetNetworks(setNetworkNames)
+// Get networks from SELECTED_NETWORKS env. Panic if env not set or no networks found
+func MustGetSelectedNetworksFromEnv() []blockchain.EVMNetwork {
+	env := os.Getenv("SELECTED_NETWORKS")
+	emptyEnvErr := errors.Errorf("env var 'SELECTED_NETWORKS' is not set or is empty. Use valid network(s) separated by comma from %v", getValidNetworkKeys())
+	if env == "" {
+		panic(emptyEnvErr)
+	}
+	networkKeys := strings.Split(env, ",")
+	if len(networkKeys) == 0 {
+		panic(emptyEnvErr)
+	}
+	networks, err := GetNetworksByKeys(networkKeys)
+	if err != nil {
+		panic(err)
+	}
+	return networks
 }
 
-func SetNetworks(setNetworkNames []string) []blockchain.EVMNetwork {
-	selectedNetworks := make([]blockchain.EVMNetwork, 0)
-	for _, setNetworkName := range setNetworkNames {
-		if chosenNetwork, valid := MappedNetworks[setNetworkName]; valid {
-			log.Info().
-				Interface("SELECTED_NETWORKS", setNetworkNames).
-				Str("Network Name", chosenNetwork.Name).
-				Msg("Read network choice from 'SELECTED_NETWORKS'")
-			setURLs(setNetworkName, &chosenNetwork)
-			setKeys(setNetworkName, &chosenNetwork)
-			selectedNetworks = append(selectedNetworks, chosenNetwork)
-		} else {
-			validNetworks := make([]string, 0)
-			for validNetwork := range MappedNetworks {
-				validNetworks = append(validNetworks, validNetwork)
-			}
-			log.Fatal().
-				Interface("SELECTED_NETWORKS", setNetworkNames).
-				Str("Valid Networks", strings.Join(validNetworks, ", ")).
-				Msg("SELECTED_NETWORKS value is invalid. Use a valid network(s).")
-		}
+func GetNetworkByKey(networkKey string) (blockchain.EVMNetwork, error) {
+	if network, valid := MappedNetworks[networkKey]; valid {
+		setURLs(networkKey, &network)
+		setKeys(networkKey, &network)
+		return network, nil
+	} else {
+		return blockchain.EVMNetwork{}, errors.Errorf("network key: '%v' is invalid. Use a valid network(s) separated by comma from %v", networkKey, getValidNetworkKeys())
 	}
-	return selectedNetworks
+}
+
+func GetNetworksByKeys(networkKeys []string) ([]blockchain.EVMNetwork, error) {
+	evmNetworks := make([]blockchain.EVMNetwork, 0)
+	for i := range networkKeys {
+		network, err := GetNetworkByKey(networkKeys[i])
+		if err != nil {
+			return []blockchain.EVMNetwork{}, err
+		}
+		evmNetworks = append(evmNetworks, network)
+	}
+	return evmNetworks, nil
+}
+
+func getValidNetworkKeys() []string {
+	validKeys := make([]string, 0)
+	for validNetwork := range MappedNetworks {
+		validKeys = append(validKeys, validNetwork)
+	}
+	return validKeys
 }
 
 // setURLs sets a network URL(s) based on env vars
