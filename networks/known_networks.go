@@ -668,8 +668,13 @@ func MustGetSelectedNetworksFromEnv() []blockchain.EVMNetwork {
 
 func NewEVMNetwork(networkKey string, walletKeys, httpUrls, wsUrls []string) (blockchain.EVMNetwork, error) {
 	if network, valid := MappedNetworks[networkKey]; valid {
-		network.HTTPURLs = httpUrls
-		network.URLs = wsUrls
+		// Overwrite network default values
+		if len(httpUrls) > 0 {
+			network.HTTPURLs = httpUrls
+		}
+		if len(wsUrls) > 0 {
+			network.URLs = wsUrls
+		}
 		if len(walletKeys) > 0 {
 			setKeys(&network, walletKeys)
 		}
