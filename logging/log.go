@@ -9,8 +9,9 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/smartcontractkit/chainlink-env/config"
 	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/k8s/config"
 )
 
 const afterTestEndedMsg = "LOG AFTER TEST ENDED"

@@ -1,4 +1,4 @@
-name: Linting and SonarQube Analysis
+name: (all packages) Lints
 on:
   push:
     branches:

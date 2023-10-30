@@ -26,7 +26,7 @@ import (
 	"go.uber.org/atomic"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/smartcontractkit/chainlink-env/environment"
+	"github.com/smartcontractkit/chainlink-testing-framework/k8s/environment"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 )
@@ -1276,7 +1276,7 @@ func ConnectEVMClient(networkSettings EVMNetwork, logger zerolog.Logger) (EVMCli
 func ConcurrentEVMClient(networkSettings EVMNetwork, env *environment.Environment, existing EVMClient, logger zerolog.Logger) (EVMClient, error) {
 	// if not simulated use the NewEVMClient
 	if !networkSettings.Simulated {
-		return NewEVMClient(networkSettings, env, logger)
+		return ConnectEVMClient(networkSettings, logger)
 	}
 	ecl := &EthereumMultinodeClient{}
 	if env != nil {

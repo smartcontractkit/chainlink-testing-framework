@@ -22,6 +22,7 @@ const (
 	BSCClientImplementation          ClientImplementation = "BSC"
 	LineaClientImplementation        ClientImplementation = "Linea"
 	PolygonZkEvmClientImplementation ClientImplementation = "PolygonZkEvm"
+	FantomClientImplementation       ClientImplementation = "Fantom"
 )
 
 // wrapSingleClient Wraps a single EVM client in its appropriate implementation, based on the chain ID
@@ -54,6 +55,8 @@ func wrapSingleClient(networkSettings EVMNetwork, client *EthereumClient) EVMCli
 		wrappedEc = &LineaClient{client}
 	case PolygonZkEvmClientImplementation:
 		wrappedEc = &PolygonZkEvmClient{client}
+	case FantomClientImplementation:
+		wrappedEc = &FantomClient{client}
 	default:
 		wrappedEc = client
 	}
@@ -104,6 +107,9 @@ func wrapMultiClient(networkSettings EVMNetwork, client *EthereumMultinodeClient
 	case PolygonZkEvmClientImplementation:
 		logMsg.Msg("Using Polygon zkEVM Client")
 		wrappedEc = &PolygonZkEvmMultinodeClient{client}
+	case FantomClientImplementation:
+		logMsg.Msg("Using Fantom Client")
+		wrappedEc = &FantomMultinodeClient{client}
 	default:
 		log.Warn().Str("Network", networkSettings.Name).Msg("Unknown client implementation, defaulting to standard Ethereum client")
 		wrappedEc = client
