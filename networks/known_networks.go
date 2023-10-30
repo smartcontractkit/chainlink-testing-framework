@@ -646,6 +646,7 @@ func MustGetSelectedNetworksFromEnv() []blockchain.EVMNetwork {
 				if defaultUrls == "" {
 					panic(errors.Errorf("set %s or EVM_URLS env var", wsEnvVar))
 				}
+				log.Warn().Msgf("%s not set, defaulting to EVM_URLS", wsEnvVar)
 				wsUrls = strings.Split(defaultUrls, ",")
 			} else {
 				wsUrls = strings.Split(wsEnvVal, ",")
@@ -663,6 +664,7 @@ func MustGetSelectedNetworksFromEnv() []blockchain.EVMNetwork {
 				if defaultUrls == "" {
 					panic(errors.Errorf("set %s or EVM_HTTP_URLS env var", httpEnvVar))
 				}
+				log.Warn().Msgf("%s not set, defaulting to EVM_HTTP_URLS", httpEnvVar)
 				httpUrls = strings.Split(defaultUrls, ",")
 			} else {
 				httpUrls = strings.Split(httpEnvVal, ",")
@@ -680,6 +682,7 @@ func MustGetSelectedNetworksFromEnv() []blockchain.EVMNetwork {
 				if defaultKeys == "" {
 					panic(errors.Errorf("set %s or EVM_KEYS env var", walletKeysEnvVar))
 				}
+				log.Warn().Msgf("%s not set, defaulting to EVM_KEYS", walletKeysEnvVar)
 				walletKeys = strings.Split(defaultKeys, ",")
 			} else {
 				walletKeys = strings.Split(walletKeysEnvVal, ",")
