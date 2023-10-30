@@ -30,7 +30,7 @@ func TestMustGetSelectedNetworksFromEnv_Missing_HTTP_URLS(t *testing.T) {
 	t.Setenv(fmt.Sprintf("%s_URLS", networkKey), "xxxx")
 	t.Setenv(fmt.Sprintf("%s_KEYS", networkKey), "xxxx")
 
-	require.PanicsWithError(t, fmt.Sprintf("set %s_HTTP_URLS env var", networkKey), func() {
+	require.PanicsWithError(t, fmt.Sprintf("set %s_HTTP_URLS or EVM_HTTP_URLS env var", networkKey), func() {
 		MustGetSelectedNetworksFromEnv()
 	})
 }
@@ -42,7 +42,7 @@ func TestMustGetSelectedNetworksFromEnv_Missing_KEYS(t *testing.T) {
 	t.Setenv(fmt.Sprintf("%s_URLS", networkKey), "xxxx")
 	t.Setenv(fmt.Sprintf("%s_HTTP_URLS", networkKey), "xxxx")
 
-	require.PanicsWithError(t, fmt.Sprintf("set %s_KEYS env var", networkKey), func() {
+	require.PanicsWithError(t, fmt.Sprintf("set %s_KEYS or EVM_KEYS env var", networkKey), func() {
 		MustGetSelectedNetworksFromEnv()
 	})
 }
@@ -54,9 +54,25 @@ func TestMustGetSelectedNetworksFromEnv_Missing_URLS(t *testing.T) {
 	t.Setenv(fmt.Sprintf("%s_HTTP_URLS", networkKey), "xxxx")
 	t.Setenv(fmt.Sprintf("%s_KEYS", networkKey), "xxxx")
 
-	require.PanicsWithError(t, fmt.Sprintf("set %s_URLS env var", networkKey), func() {
+	require.PanicsWithError(t, fmt.Sprintf("set %s_URLS or EVM_URLS env var", networkKey), func() {
 		MustGetSelectedNetworksFromEnv()
 	})
+}
+
+func TestMustGetSelectedNetworksFromEnv_DefaultEnvVars(t *testing.T) {
+	networkKey := "ARBITRUM_GOERLI"
+
+	t.Setenv("SELECTED_NETWORKS", networkKey)
+	t.Setenv("EVM_URLS", "wss://devnet-1.mt/ABC/rpc/")
+	t.Setenv("EVM_HTTP_URLS", "https://devnet-1.mt/ABC/rpc/")
+	t.Setenv("EVM_KEYS", "1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed")
+
+	networks := MustGetSelectedNetworksFromEnv()
+	require.Len(t, networks, 1)
+	require.Equal(t, "Arbitrum Goerli", networks[0].Name)
+	require.Equal(t, []string{"wss://devnet-1.mt/ABC/rpc/"}, networks[0].URLs)
+	require.Equal(t, []string{"https://devnet-1.mt/ABC/rpc/"}, networks[0].HTTPURLs)
+	require.Equal(t, []string{"1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed"}, networks[0].PrivateKeys)
 }
 
 func TestMustGetSelectedNetworksFromEnv_MultipleNetworks(t *testing.T) {
