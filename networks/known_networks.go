@@ -736,7 +736,7 @@ func setKeys(network *blockchain.EVMNetwork, walletKeys []string) {
 	for _, key := range network.PrivateKeys {
 		publicKey, err := privateKeyToAddress(key)
 		if err != nil {
-			log.Fatal().Err(err).Msg("Error getting public key from private key")
+			log.Fatal().Err(err).Msg("Error reading private key")
 		}
 		publicKeys = append(publicKeys, publicKey)
 	}
@@ -744,6 +744,12 @@ func setKeys(network *blockchain.EVMNetwork, walletKeys []string) {
 }
 
 func privateKeyToAddress(privateKeyString string) (string, error) {
+	// Trim some common addons
+	privateKeyString = strings.TrimPrefix(privateKeyString, "0x")
+	privateKeyString = strings.Trim("\"", privateKeyString)
+	privateKeyString = strings.Trim("'", privateKeyString)
+	privateKeyString = strings.TrimSpace(privateKeyString)
+
 	privateKey, err := crypto.HexToECDSA(privateKeyString)
 	if err != nil {
 		return "", err
