@@ -745,10 +745,10 @@ func setKeys(network *blockchain.EVMNetwork, walletKeys []string) {
 
 func privateKeyToAddress(privateKeyString string) (string, error) {
 	// Trim some common addons
-	privateKeyString = strings.TrimPrefix(privateKeyString, "0x")
 	privateKeyString = strings.Trim("\"", privateKeyString)
 	privateKeyString = strings.Trim("'", privateKeyString)
 	privateKeyString = strings.TrimSpace(privateKeyString)
+	privateKeyString = strings.TrimPrefix(privateKeyString, "0x")
 
 	privateKey, err := crypto.HexToECDSA(privateKeyString)
 	if err != nil {
