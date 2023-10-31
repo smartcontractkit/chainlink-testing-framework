@@ -92,4 +92,4 @@ Modified packages or new packages get added and pushed to the `gh-pages` branch 
 
 Removed charts do not trigger a re-publish, the packages have to be removed and the index file regenerated in the `gh-pages` branch of the [qa-charts](https://github.com/smartcontractkit/qa-charts) repository.
 
-Note: The qa-charts repository is sceduled to look for changes to the charts once every hour. This can be expedited by going to that repo and running the cd action via github UI.
+Note: The qa-charts repository is scheduled to look for changes to the charts once every hour. This can be expedited by going to that repo and running the cd action via github UI.

@@ -32,7 +32,7 @@ RUN curl -sL https://deb.nodesource.com/setup_${NODE_VERSION}.x  | bash - && \
     rm -rf linux-${ARCH} && \
     npm install -g yarn && \
     apt-get clean all && \
-    helm repo add chainlink-qa https://raw.githubusercontent.com/smartcontractkit/chainlink-testing-framework/gh-pages/ && \
+    helm repo add chainlink-qa https://raw.githubusercontent.com/smartcontractkit/qa-charts/gh-pages/ && \
     helm repo add bitnami https://charts.bitnami.com/bitnami && \
     helm repo update
 
