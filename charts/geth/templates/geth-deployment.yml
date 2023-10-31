@@ -1,8 +1,18 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: geth
 spec:
+  serviceName: {{ .Release.Name }}
+  volumeClaimTemplates:
+  - metadata:
+      name: geth
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: {{ .Values.geth.capacity }}
   replicas: {{ .Values.replicas }}
   selector:
     matchLabels:
@@ -18,6 +28,7 @@ spec:
         {{ $key }}: {{ $value | quote }}
         {{- end }}
     spec:
+      restartPolicy: Always
       volumes:
       - name: configmap-volume
         configMap:
@@ -26,7 +37,9 @@ spec:
       - name: geth-network
         image: "{{ .Values.geth.image.image }}:{{ .Values.geth.image.version }}"
         command: [ "sh", "./root/init.sh" ]
-        volumeMounts:
+        volumeMounts: 
+        - name: geth
+          mountPath: /root/.ethereum/devchain/
         - name : configmap-volume
           mountPath: /root/init.sh
           subPath: init.sh
@@ -112,4 +125,3 @@ spec:
       tolerations:
 {{ toYaml . | indent 8 }}
 {{- end }}
-

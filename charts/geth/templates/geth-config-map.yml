@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   labels:
     app: geth-cm
-    release: {{ .Release.Name }}
+    release: {{.Release.Name}}
   name: geth-cm
 data:
   key1: |
@@ -55,6 +55,7 @@ data:
         echo "...done!"
     fi
 
+    echo "Running command: geth $@"
     geth "$@"
   genesis.json: |
     {

@@ -1,7 +1,7 @@
 chainlink:
   image:
     image: public.ecr.aws/chainlink/chainlink
-    version: 1.9.0
+    version: 2.5.0
   web_port: 6688
   p2p_port: 6690
   resources:
@@ -24,15 +24,37 @@ db:
     limits:
       cpu: 250m
       memory: 256Mi
+  postgresUser: postgres
+  postgresPassword: verylongdatabasepassword
+  postgresDatabase: chainlink
+  pgArgs:
+    - "-c"
+    - "shared_preload_libraries=pg_stat_statements"
+    - "-c"
+    - "pg_stat_statements.track=all"
+  additionalArgs:
+    - "-c"
+    - "shared_buffers=128MB"
+    - "-c"
+    - "effective_cache_size=4096MB"
+    - "-c"
+    - "work_mem=4MB"
+
 replicas: 1
+nodes:
+  - name: node-1
+    db:
+      image:
+        image: postgres
+        version: 13.12
+
 prometheus: false
 
-toml: ''
-secretsToml: ''
+toml: ""
+secretsToml: ""
 
 env:
-  CL_DEV: 'false'
-  CL_DATABASE_URL: postgresql://postgres:verylongdatabasepassword@0.0.0.0/chainlink?sslmode=disable
+  CL_DEV: "false"
 
 podAnnotations: {}
 

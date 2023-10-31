@@ -3,10 +3,11 @@ replicas: 1
 geth:
   image:
     image: ethereum/client-go
-    version: stable
+    version: v1.10.25
 
   networkid: 1337
   blocktime: 1
+  capacity: 1Gi
 
 resources:
   requests:
