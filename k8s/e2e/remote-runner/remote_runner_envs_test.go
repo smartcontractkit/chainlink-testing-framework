@@ -85,6 +85,7 @@ func TestRemoteRunnerOneSetupWithMultipeTests(t *testing.T) {
 		AddHelm(ethChart).
 		AddHelm(chainlink.New(0, map[string]any{
 			"replicas": 5,
+			"toml":     presets.BaseToml,
 		}))
 	err := e.Run()
 	t.Cleanup(func() {

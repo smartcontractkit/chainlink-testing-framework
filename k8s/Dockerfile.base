@@ -11,7 +11,7 @@ ENV GOOS="linux"
 ENV BASE_URL="https://get.helm.sh"
 ENV HELM_VERSION="3.10.3"
 ENV KUBE_VERSION="v1.25.5"
-ENV NODE_VERSION=18
+ENV NODE_VERSION=20
 
 RUN curl -sL https://deb.nodesource.com/setup_${NODE_VERSION}.x  | bash - && \
     apt-get update && apt-get install -y nodejs wget curl git gnupg && \
