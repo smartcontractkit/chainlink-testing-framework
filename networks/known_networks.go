@@ -724,19 +724,21 @@ func getValidNetworkKeys() []string {
 
 // setKeys sets a network's private key(s) based on env vars
 func setKeys(network *blockchain.EVMNetwork, walletKeys []string) {
-	for keyIndex, key := range walletKeys { // Sanitize keys of possible `0x` prefix
-		if strings.HasPrefix(key, "0x") {
-			walletKeys[keyIndex] = key[2:]
-		}
+	for keyIndex := range walletKeys { // Sanitize keys of possible `0x` prefix
+		// Trim some common addons
+		walletKeys[keyIndex] = strings.Trim(walletKeys[keyIndex], "\"'")
+		walletKeys[keyIndex] = strings.TrimSpace(walletKeys[keyIndex])
+		walletKeys[keyIndex] = strings.TrimPrefix(walletKeys[keyIndex], "0x")
 	}
 	network.PrivateKeys = walletKeys
+	fmt.Println("network.PrivateKeys", network.PrivateKeys)
 
 	// log public keys for debugging
 	publicKeys := []string{}
 	for _, key := range network.PrivateKeys {
 		publicKey, err := privateKeyToAddress(key)
 		if err != nil {
-			log.Fatal().Err(err).Msg("Error reading private key")
+			log.Fatal().Err(err).Str("Key", key).Msg("Error reading private key")
 		}
 		publicKeys = append(publicKeys, publicKey)
 	}
@@ -744,12 +746,6 @@ func setKeys(network *blockchain.EVMNetwork, walletKeys []string) {
 }
 
 func privateKeyToAddress(privateKeyString string) (string, error) {
-	// Trim some common addons
-	privateKeyString = strings.Trim("\"", privateKeyString)
-	privateKeyString = strings.Trim("'", privateKeyString)
-	privateKeyString = strings.TrimSpace(privateKeyString)
-	privateKeyString = strings.TrimPrefix(privateKeyString, "0x")
-
 	privateKey, err := crypto.HexToECDSA(privateKeyString)
 	if err != nil {
 		return "", err
