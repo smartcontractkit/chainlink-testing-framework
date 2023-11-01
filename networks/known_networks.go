@@ -677,7 +677,7 @@ func MustGetSelectedNetworksFromEnv() []blockchain.EVMNetwork {
 				// Get default value
 				defaultKeys, err := utils.GetEnv("EVM_KEYS")
 				if err != nil {
-					panic(errors.Errorf("error getting %s EVM_KEYS var", err))
+					panic(errors.Errorf("error getting EVM_KEYS var: %s", err))
 				}
 				if defaultKeys == "" {
 					panic(errors.Errorf("set %s or EVM_KEYS env var", walletKeysEnvVar))

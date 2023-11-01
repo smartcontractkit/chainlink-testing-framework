@@ -8,6 +8,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/big"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -23,11 +25,11 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"go.uber.org/atomic"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/environment"
-
 	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 )
 
@@ -301,18 +303,66 @@ func (e *EthereumClient) Fund(
 	return e.ProcessTransaction(tx)
 }
 
+// ReturnFunds achieves a lazy method of fund return as too many guarantees get too complex
 func (e *EthereumClient) ReturnFunds(fromKey *ecdsa.PrivateKey) error {
-	var tx *types.Transaction
-	var err error
-	for attempt := 1; attempt < 20; attempt++ {
-		tx, err = attemptReturn(e, fromKey, attempt)
-		if err == nil {
-			return e.ProcessTransaction(tx)
-		}
-		e.l.Debug().Err(err).Int("Attempt", attempt+1).Msg("Error returning funds from Chainlink node, trying again")
-		time.Sleep(time.Millisecond * 500)
+	fromAddress, err := utils.PrivateKeyToAddress(fromKey)
+	if err != nil {
+		return err
 	}
-	return err
+	nonce, err := e.Client.PendingNonceAt(context.Background(), fromAddress)
+	if err != nil {
+		return err
+	}
+	balance, err := e.Client.BalanceAt(context.Background(), fromAddress, nil)
+	if err != nil {
+		return err
+
+	}
+	gasLimit := big.NewInt(21_000)
+	gasPrice, err := e.Client.SuggestGasPrice(context.Background())
+	if err != nil {
+		return err
+	}
+	totalGasCost := new(big.Int).Mul(gasLimit, gasPrice)
+	toSend := new(big.Int).Sub(balance, new(big.Int).Mul(gasLimit, gasPrice))
+
+	tx := types.NewTransaction(nonce, e.DefaultWallet.address, toSend, gasLimit.Uint64(), gasPrice, nil)
+	signedTx, err := types.SignTx(tx, types.LatestSignerForChainID(e.GetChainID()), fromKey)
+	if err != nil {
+		return err
+	}
+	log.Debug().
+		Str("Gas Limit", gasLimit.String()).
+		Str("Gas Price", gasPrice.String()).
+		Str("Total Gas Cost", totalGasCost.String()).
+		Str("To Send", toSend.String()).
+		Str("Balance", balance.String()).
+		Str("Tx Cost", signedTx.Cost().String()).
+		Msg("Send Calculation")
+
+	// regex to extract overshot amount from error
+	re := regexp.MustCompile(`overshot (\d+)`)
+
+	overshotErr := e.Client.SendTransaction(context.Background(), signedTx)
+	for overshotErr != nil && strings.Contains(overshotErr.Error(), "overshot") {
+		submatches := re.FindStringSubmatch(overshotErr.Error())
+		if len(submatches) < 1 {
+			return fmt.Errorf("error parsing overshot amount in error: %w", err)
+		}
+		numberString := submatches[1]
+		overshotAmount, err := strconv.Atoi(numberString)
+		if err != nil {
+			return err
+		}
+		toSend.Sub(toSend, big.NewInt(int64(overshotAmount)))
+		tx := types.NewTransaction(nonce, e.DefaultWallet.address, toSend, gasLimit.Uint64(), gasPrice, nil)
+		signedTx, err = types.SignTx(tx, types.LatestSignerForChainID(e.GetChainID()), fromKey)
+		if err != nil {
+			return err
+		}
+		overshotErr = e.Client.SendTransaction(context.Background(), signedTx)
+	}
+	return overshotErr
 }
 
 // a single fund return attempt, further attempts exponentially raise the error margin for fund returns
