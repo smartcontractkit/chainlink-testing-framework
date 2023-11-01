@@ -25,7 +25,6 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"go.uber.org/atomic"
 	"golang.org/x/sync/errgroup"
 
@@ -324,23 +323,16 @@ func (e *EthereumClient) ReturnFunds(fromKey *ecdsa.PrivateKey) error {
 		return err
 	}
 	totalGasCost := new(big.Int).Mul(gasLimit, gasPrice)
-	toSend := new(big.Int).Sub(balance, new(big.Int).Mul(gasLimit, gasPrice))
+	toSend := new(big.Int).Sub(balance, totalGasCost)
 
 	tx := types.NewTransaction(nonce, e.DefaultWallet.address, toSend, gasLimit.Uint64(), gasPrice, nil)
 	signedTx, err := types.SignTx(tx, types.LatestSignerForChainID(e.GetChainID()), fromKey)
 	if err != nil {
 		return err
 	}
-	log.Debug().
-		Str("Gas Limit", gasLimit.String()).
-		Str("Gas Price", gasPrice.String()).
-		Str("Total Gas Cost", totalGasCost.String()).
-		Str("To Send", toSend.String()).
-		Str("Balance", balance.String()).
-		Str("Tx Cost", signedTx.Cost().String()).
-		Msg("Send Calculation")
 
 	// regex to extract overshot amount from error
+	// we estimate a little high, expecting an overshot issue, then keep subtracting and sending until it works
 	re := regexp.MustCompile(`overshot (\d+)`)
 
 	overshotErr := e.Client.SendTransaction(context.Background(), signedTx)
@@ -363,52 +355,6 @@ func (e *EthereumClient) ReturnFunds(fromKey *ecdsa.PrivateKey) error {
 		overshotErr = e.Client.SendTransaction(context.Background(), signedTx)
 	}
 	return overshotErr
-}
-
-// a single fund return attempt, further attempts exponentially raise the error margin for fund returns
-func attemptReturn(e *EthereumClient, fromKey *ecdsa.PrivateKey, attemptCount int) (*types.Transaction, error) {
-	to := common.HexToAddress(e.DefaultWallet.Address())
-	fromAddress, err := utils.PrivateKeyToAddress(fromKey)
-	if err != nil {
-		return nil, err
-	}
-	nonce, err := e.GetNonce(context.Background(), fromAddress)
-	if err != nil {
-		return nil, err
-	}
-	balance, err := e.Client.BalanceAt(context.Background(), fromAddress, nil)
-	if err != nil {
-		return nil, err
-	}
-	gasEstimations, err := e.EstimateGas(ethereum.CallMsg{
-		To: &to,
-	})
-	if err != nil {
-		return nil, err
-	}
-	totalGasCost := gasEstimations.TotalGasCost
-	balanceGasDelta := big.NewInt(0).Sub(balance, totalGasCost)
-
-	if balanceGasDelta.Cmp(big.NewInt(0)) <= 0 { // Try with 0.5 gwei if we have no or negative margin. Might as well
-		e.l.Warn().
-			Str("Delta", balanceGasDelta.String()).
-			Str("Gas Cost", totalGasCost.String()).
-			Str("Total Balance", balance.String()).
-			Msg("Errors calculating fund return, trying with 0.5 gwei")
-		balanceGasDelta = big.NewInt(500_000_000)
-	}
-
-	tx, err := e.NewTx(fromKey, nonce, to, balanceGasDelta, gasEstimations)
-	if err != nil {
-		return nil, err
-	}
-	e.l.Info().
-		Str("Amount", balance.String()).
-		Str("From", fromAddress.Hex()).
-		Str("To", to.Hex()).
-		Str("Total Gas Cost", totalGasCost.String()).
-		Msg("Returning Funds to Default Wallet")
-	return tx, e.SendTransaction(context.Background(), tx)
 }
 
 // EstimateCostForChainlinkOperations calculates required amount of ETH for amountOfOperations Chainlink operations
