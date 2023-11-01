@@ -132,13 +132,11 @@ HTTPURL = 'http://geth-ethereum-geth:8544'
 
 [EVM.HeadTracker]
 HistoryDepth = 400
-[P2P]
-[P2P.V1]
+[OCR2]
 Enabled = true
-ListenIP = "0.0.0.0"
-ListenPort = 6690
+[P2P]
 [P2P.V2]
-Enabled = false`
+ListenAddresses = ["0.0.0.0:6690"]`
 	c := chainlink.New(0, map[string]interface{}{
 		"replicas": 5,
 		"toml":     clToml,
