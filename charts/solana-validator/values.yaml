@@ -1,0 +1,21 @@
+replicas: 1
+
+sol:
+  image:
+    image: solanalabs/solana
+    version: v1.9.14
+  resources:
+    requests:
+      cpu: 2000m
+      memory: 4000Mi
+    limits:
+      cpu: 2000m
+      memory: 4000Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+podAnnotations: {}

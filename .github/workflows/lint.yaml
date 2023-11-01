@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       - name: Parse tool-versions file
         uses: smartcontractkit/tool-versions-to-env-action@v1.0.8
         id: tool-versions
@@ -23,7 +23,7 @@ jobs:
     needs: [tools]
     steps:
       - name: Check out Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       - name: Install Go
         uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/setup-go@00c6214deb10a3f374c6d3430c32c5202015d463 # v2.2.12
         with:
@@ -52,7 +52,7 @@ jobs:
     needs: [tools]
     steps:
       - name: Check out Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       - name: Install Go
         uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/setup-go@00c6214deb10a3f374c6d3430c32c5202015d463 # v2.2.12
         with:
@@ -63,18 +63,52 @@ jobs:
       - name: Write Go List
         run: go list -json -deps ./... > go.list
       - name: Nancy
-        uses: sonatype-nexus-community/nancy-github-action@v1.0.3
+        uses: sonatype-nexus-community/nancy-github-action@726e338312e68ecdd4b4195765f174d3b3ce1533 # v1.0.3
+
+  asdf-install:
+    name: Validate GitHub Action Workflows
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - name: Install asdf dependencies
+        uses: asdf-vm/actions/install@05e0d2ed97b598bfce82fd30daf324ae0c4570e6 # v3.0.2
+
+  prettier:
+    name: Formatting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the repo
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - name: Run Prettier
+        uses: creyD/prettier_action@31355f8eef017f8aeba2e0bc09d8502b13dbbad1 # v4.3
+        with:
+          dry: true
+          prettier_options: --write **/*.{yaml,yml,json} --config ./.prettierrc.yaml --ignore-path ./.prettierignore
+
+  helmlint:
+    name: Lint Helm Charts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          # Without this parameter, the merged commit that CI produces will make it so that ct will
+          # not detect a diff even if one exists
+          fetch-depth: 0
+      - name: Set up chart-testing
+        uses: helm/chart-testing-action@b43128a8b25298e1e7b043b78ea6613844e079b1 # v2.6.0
+      - name: Run chart-testing (lint)
+        run: ct lint --config ${{ github.workspace }}/.github/configs/ct.yaml
 
   actionlint:
     name: Validate GitHub Action Workflows
     runs-on: ubuntu-latest
     steps:
       - name: Check out Code
-        uses: actions/checkout@v3
-      - name: Install asdf dependencies
-        uses: asdf-vm/actions/install@v2.2.0
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       - name: Run actionlint
-        run: actionlint
+        uses: reviewdog/action-actionlint@82693e9e3b239f213108d6e412506f8b54003586 # v1.39.1
 
   sonarqube:
     name: SonarQube Analysis
@@ -82,7 +116,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the repo
-        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           fetch-depth: 0 # fetches all history for all tags and branches to provide more metadata for sonar reports
       - name: Download all workflow run artifacts
@@ -95,4 +129,3 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-          

@@ -1,0 +1,13 @@
+{{- if .Values.prometheus }}
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  labels:
+    release: grafana-agent
+spec:
+  selector:
+    matchLabels:
+      release: {{ .Release.Name }}
+  podMetricsEndpoints:
+    - port: access
+{{- end }}
