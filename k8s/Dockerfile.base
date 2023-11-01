@@ -11,10 +11,13 @@ ENV GOOS="linux"
 ENV BASE_URL="https://get.helm.sh"
 ENV HELM_VERSION="3.10.3"
 ENV KUBE_VERSION="v1.25.5"
-ENV NODE_VERSION=20
+ENV NODE_VERSION=18
 
-RUN curl -sL https://deb.nodesource.com/setup_${NODE_VERSION}.x  | bash - && \
-    apt-get update && apt-get install -y nodejs wget curl git gnupg && \
+RUN apt-get update && apt-get install -y ca-certificates wget curl git gnupg && \
+    mkdir -p /etc/apt/keyrings && \
+    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg && \
+    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_VERSION.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list && \
+    apt-get update && apt-get install -y nodejs && \
     curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl && \
     chmod +x ./kubectl && \
     mv ./kubectl /usr/local/bin && \
