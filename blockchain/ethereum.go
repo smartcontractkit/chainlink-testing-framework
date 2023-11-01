@@ -8,6 +8,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/big"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -27,7 +29,6 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/environment"
-
 	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 )
 
@@ -301,64 +302,59 @@ func (e *EthereumClient) Fund(
 	return e.ProcessTransaction(tx)
 }
 
+// ReturnFunds achieves a lazy method of fund return as too many guarantees get too complex
 func (e *EthereumClient) ReturnFunds(fromKey *ecdsa.PrivateKey) error {
-	var tx *types.Transaction
-	var err error
-	for attempt := 1; attempt < 20; attempt++ {
-		tx, err = attemptReturn(e, fromKey, attempt)
-		if err == nil {
-			return e.ProcessTransaction(tx)
-		}
-		e.l.Debug().Err(err).Int("Attempt", attempt+1).Msg("Error returning funds from Chainlink node, trying again")
-		time.Sleep(time.Millisecond * 500)
-	}
-	return err
-}
-
-// a single fund return attempt, further attempts exponentially raise the error margin for fund returns
-func attemptReturn(e *EthereumClient, fromKey *ecdsa.PrivateKey, attemptCount int) (*types.Transaction, error) {
-	to := common.HexToAddress(e.DefaultWallet.Address())
 	fromAddress, err := utils.PrivateKeyToAddress(fromKey)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	nonce, err := e.GetNonce(context.Background(), fromAddress)
+	nonce, err := e.Client.PendingNonceAt(context.Background(), fromAddress)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	balance, err := e.Client.BalanceAt(context.Background(), fromAddress, nil)
 	if err != nil {
-		return nil, err
-	}
-	gasEstimations, err := e.EstimateGas(ethereum.CallMsg{
-		To: &to,
-	})
-	if err != nil {
-		return nil, err
-	}
-	totalGasCost := gasEstimations.TotalGasCost
-	balanceGasDelta := big.NewInt(0).Sub(balance, totalGasCost)
+		return err
 
-	if balanceGasDelta.Cmp(big.NewInt(0)) <= 0 { // Try with 0.5 gwei if we have no or negative margin. Might as well
-		e.l.Warn().
-			Str("Delta", balanceGasDelta.String()).
-			Str("Gas Cost", totalGasCost.String()).
-			Str("Total Balance", balance.String()).
-			Msg("Errors calculating fund return, trying with 0.5 gwei")
-		balanceGasDelta = big.NewInt(500_000_000)
+	}
+	gasLimit := big.NewInt(21_000)
+	gasPrice, err := e.Client.SuggestGasPrice(context.Background())
+	if err != nil {
+		return err
+	}
+	totalGasCost := new(big.Int).Mul(gasLimit, gasPrice)
+	toSend := new(big.Int).Sub(balance, totalGasCost)
+
+	tx := types.NewTransaction(nonce, e.DefaultWallet.address, toSend, gasLimit.Uint64(), gasPrice, nil)
+	signedTx, err := types.SignTx(tx, types.LatestSignerForChainID(e.GetChainID()), fromKey)
+	if err != nil {
+		return err
 	}
 
-	tx, err := e.NewTx(fromKey, nonce, to, balanceGasDelta, gasEstimations)
-	if err != nil {
-		return nil, err
+	// regex to extract overshot amount from error
+	// we estimate a little high, expecting an overshot issue, then keep subtracting and sending until it works
+	re := regexp.MustCompile(`overshot (\d+)`)
+
+	overshotErr := e.Client.SendTransaction(context.Background(), signedTx)
+	for overshotErr != nil && strings.Contains(overshotErr.Error(), "overshot") {
+		submatches := re.FindStringSubmatch(overshotErr.Error())
+		if len(submatches) < 1 {
+			return fmt.Errorf("error parsing overshot amount in error: %w", err)
+		}
+		numberString := submatches[1]
+		overshotAmount, err := strconv.Atoi(numberString)
+		if err != nil {
+			return err
+		}
+		toSend.Sub(toSend, big.NewInt(int64(overshotAmount)))
+		tx := types.NewTransaction(nonce, e.DefaultWallet.address, toSend, gasLimit.Uint64(), gasPrice, nil)
+		signedTx, err = types.SignTx(tx, types.LatestSignerForChainID(e.GetChainID()), fromKey)
+		if err != nil {
+			return err
+		}
+		overshotErr = e.Client.SendTransaction(context.Background(), signedTx)
 	}
-	e.l.Info().
-		Str("Amount", balance.String()).
-		Str("From", fromAddress.Hex()).
-		Str("To", to.Hex()).
-		Str("Total Gas Cost", totalGasCost.String()).
-		Msg("Returning Funds to Default Wallet")
-	return tx, e.SendTransaction(context.Background(), tx)
+	return overshotErr
 }
 
 // EstimateCostForChainlinkOperations calculates required amount of ETH for amountOfOperations Chainlink operations
