@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sol-cm
+  labels:
+    app: sol-cm
+    release: {{ .Release.Name }}
+data:
+  config.yml: |
+    json_rpc_url: http://0.0.0.0:8899
+    websocket_url: ws://0.0.0.0:8900
+    keypair_path: /root/.config/solana/cli/id.json
+    address_labels:
+      "11111111111111111111111111111111": ""
+    commitment: finalized
+  id.json: |
+    [205,246,252,222,193,57,3,13,164,146,52,162,143,135,8,254,37,4,250,48,137,61,49,57,187,210,209,118,108,125,81,235,136,69,202,17,24,209,91,226,206,92,80,45,83,14,222,113,229,190,94,142,188,124,102,122,15,246,40,190,24,247,69,133]
+

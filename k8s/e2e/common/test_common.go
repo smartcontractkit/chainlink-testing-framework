@@ -51,7 +51,10 @@ func TestMultiStageMultiManifestConnection(t *testing.T) {
 	// connections should be renewed
 	e := environment.New(testEnvConfig)
 	err := e.AddHelm(ethChart).
-		AddHelm(chainlink.New(0, nil)).
+		AddHelm(chainlink.New(0, map[string]any{
+			"replicas": 1,
+			"toml":     presets.BaseToml,
+		})).
 		Run()
 	require.NoError(t, err)
 	if e.WillUseRemoteRunner() {
@@ -65,7 +68,10 @@ func TestMultiStageMultiManifestConnection(t *testing.T) {
 	require.Len(t, e.URLs[chainlink.DBsLocalURLsKey], 1)
 	require.Len(t, e.URLs, 7)
 
-	err = e.AddHelm(chainlink.New(1, nil)).
+	err = e.AddHelm(chainlink.New(1, map[string]any{
+		"replicas": 1,
+		"toml":     presets.BaseToml,
+	})).
 		Run()
 	require.NoError(t, err)
 	require.Len(t, e.URLs[chainlink.NodesLocalURLsKey], 2)
@@ -108,6 +114,7 @@ func TestConnectWithoutManifest(t *testing.T) {
 		existingEnv.AddHelm(ethereum.New(nil)).
 			AddHelm(chainlink.New(0, map[string]any{
 				"replicas": 1,
+				"toml":     presets.BaseToml,
 			}))
 		err := existingEnv.Run()
 		require.NoError(t, err)
@@ -130,6 +137,7 @@ func TestConnectWithoutManifest(t *testing.T) {
 	err := testEnv.AddHelm(ethereum.New(nil)).
 		AddHelm(chainlink.New(0, map[string]any{
 			"replicas": 1,
+			"toml":     presets.BaseToml,
 		})).
 		Run()
 	require.NoError(t, err)
@@ -249,8 +257,14 @@ func TestMultipleInstancesOfTheSameType(t *testing.T) {
 	testEnvConfig := GetTestEnvConfig(t)
 	e := environment.New(testEnvConfig).
 		AddHelm(ethereum.New(nil)).
-		AddHelm(chainlink.New(0, nil)).
-		AddHelm(chainlink.New(1, nil))
+		AddHelm(chainlink.New(0, map[string]any{
+			"replicas": 1,
+			"toml":     presets.BaseToml,
+		})).
+		AddHelm(chainlink.New(1, map[string]any{
+			"replicas": 1,
+			"toml":     presets.BaseToml,
+		}))
 	err := e.Run()
 	require.NoError(t, err)
 	if e.WillUseRemoteRunner() {
@@ -277,7 +291,10 @@ func TestWithChaos(t *testing.T) {
 		},
 	}
 	testEnvConfig := GetTestEnvConfig(t)
-	cd := chainlink.New(0, nil)
+	cd := chainlink.New(0, map[string]any{
+		"replicas": 1,
+		"toml":     presets.BaseToml,
+	})
 
 	e := environment.New(testEnvConfig).
 		AddHelm(ethereum.New(nil)).
@@ -337,6 +354,7 @@ func TestRolloutRestart(t *testing.T, statefulSet bool) {
 	testEnvConfig := GetTestEnvConfig(t)
 	cd := chainlink.New(0, map[string]any{
 		"replicas": 5,
+		"toml":     presets.BaseToml,
 		"db": map[string]any{
 			"stateful": true,
 			"capacity": "1Gi",
@@ -371,6 +389,7 @@ func TestReplaceHelm(t *testing.T) {
 	t.Parallel()
 	testEnvConfig := GetTestEnvConfig(t)
 	cd := chainlink.New(0, map[string]any{
+		"toml": presets.BaseToml,
 		"chainlink": map[string]any{
 			"resources": map[string]any{
 				"requests": map[string]any{
@@ -394,6 +413,7 @@ func TestReplaceHelm(t *testing.T) {
 	})
 	require.NoError(t, err)
 	cd = chainlink.New(1, map[string]any{
+		"toml": presets.BaseToml,
 		"chainlink": map[string]any{
 			"resources": map[string]any{
 				"requests": map[string]any{

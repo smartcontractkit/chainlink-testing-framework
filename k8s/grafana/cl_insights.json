@@ -80,9 +80,7 @@
             "justifyMode": "auto",
             "orientation": "auto",
             "reduceOptions": {
-              "calcs": [
-                "last"
-              ],
+              "calcs": ["last"],
               "fields": "",
               "values": false
             },
@@ -316,9 +314,7 @@
             "justifyMode": "auto",
             "orientation": "auto",
             "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
+              "calcs": ["lastNotNull"],
               "fields": "",
               "values": false
             },
@@ -2934,9 +2930,7 @@
   "refresh": "5s",
   "schemaVersion": 34,
   "style": "dark",
-  "tags": [
-    "tests"
-  ],
+  "tags": ["tests"],
   "templating": {
     "list": [
       {
@@ -2963,12 +2957,8 @@
       {
         "current": {
           "selected": true,
-          "text": [
-            "chainlink-0-98744888d-r9n6r"
-          ],
-          "value": [
-            "chainlink-0-98744888d-r9n6r"
-          ]
+          "text": ["chainlink-0-98744888d-r9n6r"],
+          "value": ["chainlink-0-98744888d-r9n6r"]
         },
         "definition": "label_values({namespace=\"$namespace\"}, pod)",
         "description": "The specific Chainlink node to get insight into",

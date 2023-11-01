@@ -1,0 +1,35 @@
+replicaCount: 1
+
+image:
+  repository: confluentinc/cp-kafka-rest
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ''
+
+nameOverride: ''
+fullnameOverride: ''
+
+podAnnotations: {}
+
+service:
+  type: ClusterIP
+  port: 8082
+
+resources:
+  limits:
+    memory: '400M'
+    cpu: '0.2'
+
+env:
+  kafka_rest_debug: 'true'
+  kafka_rest_host_name: 'cp-kafka-rest'
+  kafka_rest_bootstrap_servers: 'PLAINTEXT://kafka:9092'
+  kafka_rest_listeners: 'http://0.0.0.0:8082'
+  kafka_rest_client_security_protocol: 'PLAINTEXT'
+  kafka_rest_schema_registry_url: 'http://cp-schema-registry:8081'
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

@@ -1,0 +1,26 @@
+replicas: 1
+
+geth:
+  image:
+    image: ethereum/client-go
+    version: v1.10.25
+
+  networkid: 1337
+  blocktime: 1
+  capacity: 1Gi
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 528Mi
+  limits:
+    cpu: 200m
+    memory: 528Mi
+
+podAnnotations: {}
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
