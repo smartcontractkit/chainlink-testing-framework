@@ -1,10 +1,16 @@
 package starknet
 
 import (
+	"fmt"
+	"os"
+	"strconv"
+
 	"github.com/rs/zerolog/log"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/client"
+	"github.com/smartcontractkit/chainlink-testing-framework/k8s/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/environment"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 )
 
 type Props struct {
@@ -100,10 +106,14 @@ func NewVersioned(helmVersion string, props *Props) environment.ConnectedChart {
 	if props == nil {
 		props = defaultProps()
 	}
+	chartPath := "chainlink-qa/starknet"
+	if b, err := strconv.ParseBool(os.Getenv(config.EnvVarLocalCharts)); err == nil && b {
+		chartPath = fmt.Sprintf("%s/starknet", utils.ChartsRoot)
+	}
 	return Chart{
 		HelmProps: &HelmProps{
 			Name:    "starknet-dev",
-			Path:    "chainlink-qa/starknet",
+			Path:    chartPath,
 			Values:  &props.Values,
 			Version: helmVersion,
 		},

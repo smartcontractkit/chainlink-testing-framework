@@ -113,6 +113,10 @@ const (
 	EnvVarEVMHttpUrls                = "EVM_HTTP_URLS"
 	EnvVarEVMHttpUrlsUserDescription = "The HTTP RPC URLs used to connect to the chain"
 	EnvVarEVMHttpUrlsExample         = "https://mainnet.infura.io/v3/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+	EnvVarLocalCharts                = "LOCAL_CHARTS"
+	EnvVarLocalChartsUserDescription = "Use local charts from the CTF repository directly"
+	EnvVarLocalChartsExample         = "true"
 )
 
 var (

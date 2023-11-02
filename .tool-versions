@@ -8,3 +8,5 @@ shellcheck 0.9.0
 helm 3.13.1
 kubectl 1.25.5
 yarn 1.22.19
+python 3.9.13
+pre-commit 3.5.0

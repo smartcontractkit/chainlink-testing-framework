@@ -3,12 +3,14 @@ package mock_adapter
 import (
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/rs/zerolog/log"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/client"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/environment"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 )
 
 const (
@@ -121,9 +123,13 @@ func New(props map[string]interface{}) environment.ConnectedChart {
 func NewVersioned(helmVersion string, props map[string]interface{}) environment.ConnectedChart {
 	dp := defaultProps()
 	config.MustMerge(&dp, props)
+	chartPath := "chainlink-qa/qa-mock-adapter"
+	if b, err := strconv.ParseBool(os.Getenv(config.EnvVarLocalCharts)); err == nil && b {
+		chartPath = fmt.Sprintf("%s/qa-mock-adapter", utils.ChartsRoot)
+	}
 	return Chart{
 		Name:    "qa-mock-adapter",
-		Path:    "chainlink-qa/qa-mock-adapter",
+		Path:    chartPath,
 		Values:  &dp,
 		Version: helmVersion,
 	}

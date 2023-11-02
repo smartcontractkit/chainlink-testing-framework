@@ -16,11 +16,11 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/client"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/environment"
-	a "github.com/smartcontractkit/chainlink-testing-framework/k8s/pkg/alias"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/pkg/helm/chainlink"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/pkg/helm/ethereum"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/presets"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 )
 
 const (
@@ -179,8 +179,12 @@ func Test5NodesSoakEnvironmentWithPVCs(t *testing.T) {
 	})
 }
 
-func TestWithSingleNodeEnv(t *testing.T) {
+func TestWithSingleNodeEnvParallel(t *testing.T) {
 	t.Parallel()
+	TestWithSingleNodeEnv(t)
+}
+
+func TestWithSingleNodeEnv(t *testing.T) {
 	testEnvConfig := GetTestEnvConfig(t)
 	e, err := presets.EVMOneNode(testEnvConfig)
 	require.NoError(t, err)
@@ -286,7 +290,7 @@ func TestWithChaos(t *testing.T) {
 	}{
 		chaos.NewFailPods,
 		&chaos.Props{
-			LabelsSelector: &map[string]*string{client.AppLabel: a.Str(appLabel)},
+			LabelsSelector: &map[string]*string{client.AppLabel: utils.Ptr(appLabel)},
 			DurationStr:    "30s",
 		},
 	}
