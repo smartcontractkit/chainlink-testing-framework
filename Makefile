@@ -49,6 +49,8 @@ ifeq ($(OSFLAG),$(OSX))
 	asdf plugin-add k3d || true
 	asdf plugin-add helm || true
 	asdf plugin-add kubectl || true
+	asdf plugin-add python || true
+	asdf plugin add pre-commit || true
 	asdf install
 	mkdir /tmp/k3dvolume/ || true
 	yarn global add cdk8s-cli@$(CDK8S_CLI_VERSION)
@@ -56,6 +58,7 @@ ifeq ($(OSFLAG),$(OSX))
 	helm repo add chainlink-qa https://raw.githubusercontent.com/smartcontractkit/qa-charts/gh-pages/
 	helm repo add grafana https://grafana.github.io/helm-charts
 	helm repo update
+	pre-commit install
 endif
 
 install: go_mod install_tools
