@@ -731,14 +731,13 @@ func setKeys(network *blockchain.EVMNetwork, walletKeys []string) {
 		walletKeys[keyIndex] = strings.TrimPrefix(walletKeys[keyIndex], "0x")
 	}
 	network.PrivateKeys = walletKeys
-	fmt.Println("network.PrivateKeys", network.PrivateKeys)
 
 	// log public keys for debugging
 	publicKeys := []string{}
 	for _, key := range network.PrivateKeys {
 		publicKey, err := privateKeyToAddress(key)
 		if err != nil {
-			log.Fatal().Err(err).Str("Key", key).Msg("Error reading private key")
+			log.Fatal().Err(err).Msg("Error reading private key")
 		}
 		publicKeys = append(publicKeys, publicKey)
 	}
