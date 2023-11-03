@@ -54,7 +54,6 @@ func (e *CeloClient) DeployContract(
 		return nil, nil, nil, err
 	}
 
-	log.Debug().Msg("Processing Tx")
 	if err = e.ProcessTransaction(transaction); err != nil {
 		return nil, nil, nil, err
 	}

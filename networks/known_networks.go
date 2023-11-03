@@ -600,7 +600,7 @@ var (
 		"CELO_ALFAJORES":        CeloAlfajores,
 		"CELO_MAINNET":          CeloMainnet,
 		"RSK":                   RSKTestnet,
-		"MUMBAI":                PolygonMumbai,
+		"POLYGON_MUMBAI":        PolygonMumbai,
 		"POLYGON_MAINNET":       PolygonMainnet,
 		"AVALANCHE_FUJI":        AvalancheFuji,
 		"AVALANCHE_MAINNET":     AvalancheMainnet,
