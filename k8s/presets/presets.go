@@ -10,9 +10,38 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/pkg/helm/reorg"
 )
 
+var BaseToml = `[Log]
+Level = "debug"
+JSONConsole = true
+[Log.File]
+MaxSize = "0b"
+[WebServer]
+AllowOrigins = "*"
+HTTPPort = 6688
+SecureCookies = false
+SessionTimeout = "999h0m0s"
+[WebServer.RateLimit]
+Authenticated = 2000
+Unauthenticated = 100
+[WebServer.TLS]
+HTTPSPort = 0
+[Database]
+MaxIdleConns = 20
+MaxOpenConns = 40
+MigrateOnStartup = true
+[OCR2]
+Enabled = true
+[P2P]
+[P2P.V2]
+ListenAddresses = ["0.0.0.0:6690"]`
+
 // EVMOneNode local development Chainlink deployment
 func EVMOneNode(config *environment.Config) (*environment.Environment, error) {
-	c := chainlink.New(0, nil)
+
+	c := chainlink.New(0, map[string]any{
+		"replicas": 1,
+		"toml":     BaseToml,
+	})
 
 	return environment.New(config).
 		AddHelm(mockservercfg.New(nil)).
@@ -26,6 +55,7 @@ func EVMOneNode(config *environment.Config) (*environment.Environment, error) {
 func EVMMinimalLocalBS(config *environment.Config) (*environment.Environment, error) {
 	c := chainlink.New(0, map[string]any{
 		"replicas": 5,
+		"toml":     BaseToml,
 	})
 	return environment.New(config).
 		AddChart(blockscout.New(&blockscout.Props{})).
@@ -44,6 +74,7 @@ func EVMMinimalLocal(config *environment.Config) *environment.Environment {
 		AddHelm(ethereum.New(nil)).
 		AddHelm(chainlink.New(0, map[string]interface{}{
 			"replicas": 5,
+			"toml":     BaseToml,
 		}))
 }
 
@@ -55,6 +86,7 @@ func EVMMultipleNodesWithDiffDBVersion(config *environment.Config) *environment.
 		AddHelm(mockserver.New(nil)).
 		AddHelm(ethereum.New(nil)).
 		AddHelm(chainlink.New(0, map[string]interface{}{
+			"toml": BaseToml,
 			"nodes": []map[string]any{
 				{
 					"name": "node-1",
@@ -99,7 +131,12 @@ WSURL = 'ws://geth-ethereum-geth:8546'
 HTTPURL = 'http://geth-ethereum-geth:8544'
 
 [EVM.HeadTracker]
-HistoryDepth = 400`
+HistoryDepth = 400
+[OCR2]
+Enabled = true
+[P2P]
+[P2P.V2]
+ListenAddresses = ["0.0.0.0:6690"]`
 	c := chainlink.New(0, map[string]interface{}{
 		"replicas": 5,
 		"toml":     clToml,
@@ -155,6 +192,7 @@ func EVMSoak(config *environment.Config) *environment.Environment {
 		})).
 		AddHelm(chainlink.New(0, map[string]interface{}{
 			"replicas": 5,
+			"toml":     BaseToml,
 			"db": map[string]interface{}{
 				"stateful": true,
 				"capacity": "1Gi",

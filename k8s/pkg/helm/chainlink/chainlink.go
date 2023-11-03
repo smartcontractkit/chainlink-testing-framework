@@ -3,12 +3,14 @@ package chainlink
 import (
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/rs/zerolog/log"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/client"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/environment"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 )
 
 const (
@@ -193,10 +195,14 @@ func NewVersioned(index int, helmVersion string, props map[string]any) environme
 		}
 		dp["nodes"] = nodesMap
 	}
+	chartPath := "chainlink-qa/chainlink"
+	if b, err := strconv.ParseBool(os.Getenv(config.EnvVarLocalCharts)); err == nil && b {
+		chartPath = fmt.Sprintf("%s/chainlink", utils.ChartsRoot)
+	}
 	return Chart{
 		Index:   index,
 		Name:    fmt.Sprintf("%s-%d", AppName, index),
-		Path:    "chainlink-qa/chainlink",
+		Path:    chartPath,
 		Version: helmVersion,
 		Values:  &dp,
 		Props:   p,

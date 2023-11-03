@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sol
+spec:
+  selector:
+    matchLabels:
+      app: sol
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: sol
+        release: {{ .Release.Name }}
+      annotations:
+        {{- range $key, $value := .Values.podAnnotations }}
+        {{ $key }}: {{ $value | quote }}
+        {{- end }}
+    spec:
+      volumes:
+      - name: vol
+        configMap:
+          name: sol-cm
+      containers:
+      - name: sol-val
+        image: "{{ .Values.sol.image.image }}:{{ .Values.sol.image.version }}"
+        ports:
+          - name: http-rpc
+            containerPort: 8899
+          - name: ws-rpc
+            containerPort: 8900
+        volumeMounts:
+          - mountPath: /root/.config/solana/cli
+            name: vol
+        resources:
+          {{ toYaml .Values.sol.resources | nindent 10 }}
+        command: ["solana-test-validator"]
+        args: ["-r", "--mint", "AAxAoGfkbWnbgsiQeAanwUvjv6bQrM5JS8Vxv1ckzVxg"]
+{{- with .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .Values.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .Values.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+{{- end }}

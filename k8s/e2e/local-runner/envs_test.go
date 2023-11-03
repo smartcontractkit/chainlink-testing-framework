@@ -3,6 +3,7 @@ package env_test
 import (
 	"testing"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/k8s/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/e2e/common"
 )
 
@@ -19,6 +20,11 @@ func Test5NodesSoakEnvironmentWithPVCs(t *testing.T) {
 }
 
 func TestWithSingleNodeEnv(t *testing.T) {
+	common.TestWithSingleNodeEnvParallel(t)
+}
+
+func TestWithSingleNodeEnvLocalCharts(t *testing.T) {
+	t.Setenv(config.EnvVarLocalCharts, "true")
 	common.TestWithSingleNodeEnv(t)
 }
 

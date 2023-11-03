@@ -1,11 +1,16 @@
 package kafka_rest
 
 import (
+	"fmt"
+	"os"
+	"strconv"
+
 	"github.com/rs/zerolog/log"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/client"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/environment"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 )
 
 type Props struct {
@@ -76,9 +81,13 @@ func New(props map[string]interface{}) environment.ConnectedChart {
 func NewVersioned(helmVersion string, props map[string]interface{}) environment.ConnectedChart {
 	dp := defaultProps()
 	config.MustMerge(&dp, props)
+	chartPath := "chainlink-qa/kafka-rest"
+	if b, err := strconv.ParseBool(os.Getenv(config.EnvVarLocalCharts)); err == nil && b {
+		chartPath = fmt.Sprintf("%s/kafka-rest", utils.ChartsRoot)
+	}
 	return Chart{
 		Name:    "cp-kafka-rest",
-		Path:    "chainlink-qa/kafka-rest",
+		Path:    chartPath,
 		Values:  &dp,
 		Version: helmVersion,
 	}

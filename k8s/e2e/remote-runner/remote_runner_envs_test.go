@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/k8s/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/e2e/common"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/environment"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/pkg/helm/chainlink"
@@ -32,6 +33,11 @@ func Test5NodesSoakEnvironmentWithPVCs(t *testing.T) {
 }
 
 func TestWithSingleNodeEnv(t *testing.T) {
+	common.TestWithSingleNodeEnvParallel(t)
+}
+
+func TestWithSingleNodeEnvLocalCharts(t *testing.T) {
+	t.Setenv(config.EnvVarLocalCharts, "true")
 	common.TestWithSingleNodeEnv(t)
 }
 
@@ -85,6 +91,7 @@ func TestRemoteRunnerOneSetupWithMultipeTests(t *testing.T) {
 		AddHelm(ethChart).
 		AddHelm(chainlink.New(0, map[string]any{
 			"replicas": 5,
+			"toml":     presets.BaseToml,
 		}))
 	err := e.Run()
 	t.Cleanup(func() {
