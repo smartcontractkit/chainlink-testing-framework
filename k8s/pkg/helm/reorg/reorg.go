@@ -3,12 +3,14 @@ package reorg
 import (
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/rs/zerolog/log"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/client"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/environment"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 )
 
 const (
@@ -192,9 +194,13 @@ func NewVersioned(helmVersion string, props *Props) environment.ConnectedChart {
 	targetProps := defaultProps()
 	config.MustMerge(targetProps, props)
 	config.MustMerge(&targetProps.Values, props.Values)
+	chartPath := "chainlink-qa/ethereum"
+	if b, err := strconv.ParseBool(os.Getenv(config.EnvVarLocalCharts)); err == nil && b {
+		chartPath = fmt.Sprintf("%s/geth-reorg", utils.ChartsRoot)
+	}
 	return Chart{
 		Name:    targetProps.NetworkName,
-		Path:    "chainlink-qa/ethereum",
+		Path:    chartPath,
 		Values:  &targetProps.Values,
 		Props:   targetProps,
 		Version: helmVersion,

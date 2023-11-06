@@ -25,6 +25,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/pkg"
 	a "github.com/smartcontractkit/chainlink-testing-framework/k8s/pkg/alias"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 )
 
 const (
@@ -39,9 +40,9 @@ const (
 
 var (
 	defaultNamespaceAnnotations = map[string]*string{
-		"prometheus.io/scrape":                             a.Str("true"),
-		"backyards.banzaicloud.io/image-registry-access":   a.Str("true"),
-		"backyards.banzaicloud.io/public-dockerhub-access": a.Str("true"),
+		"prometheus.io/scrape":                             utils.Ptr("true"),
+		"backyards.banzaicloud.io/image-registry-access":   utils.Ptr("true"),
+		"backyards.banzaicloud.io/public-dockerhub-access": utils.Ptr("true"),
 	}
 )
 
@@ -274,29 +275,29 @@ func (m *Environment) initApp() error {
 		return err
 	}
 	defaultNamespaceAnnotations[pkg.TTLLabelKey] = a.ShortDur(m.Cfg.TTL)
-	m.root = cdk8s.NewChart(m.App, a.Str(fmt.Sprintf("root-chart-%s", m.Cfg.Namespace)), &cdk8s.ChartProps{
+	m.root = cdk8s.NewChart(m.App, utils.Ptr(fmt.Sprintf("root-chart-%s", m.Cfg.Namespace)), &cdk8s.ChartProps{
 		Labels:    nsLabels,
-		Namespace: a.Str(m.Cfg.Namespace),
+		Namespace: utils.Ptr(m.Cfg.Namespace),
 	})
-	k8s.NewKubeNamespace(m.root, a.Str("namespace"), &k8s.KubeNamespaceProps{
+	k8s.NewKubeNamespace(m.root, utils.Ptr("namespace"), &k8s.KubeNamespaceProps{
 		Metadata: &k8s.ObjectMeta{
-			Name:        a.Str(m.Cfg.Namespace),
+			Name:        utils.Ptr(m.Cfg.Namespace),
 			Labels:      nsLabels,
 			Annotations: &defaultNamespaceAnnotations,
 		},
 	})
 	if m.Cfg.PreventPodEviction {
 		zero := float64(0)
-		k8s.NewKubePodDisruptionBudget(m.root, a.Str("pdb"), &k8s.KubePodDisruptionBudgetProps{
+		k8s.NewKubePodDisruptionBudget(m.root, utils.Ptr("pdb"), &k8s.KubePodDisruptionBudgetProps{
 			Metadata: &k8s.ObjectMeta{
-				Name:      a.Str("clenv-pdb"),
-				Namespace: a.Str(m.Cfg.Namespace),
+				Name:      utils.Ptr("clenv-pdb"),
+				Namespace: utils.Ptr(m.Cfg.Namespace),
 			},
 			Spec: &k8s.PodDisruptionBudgetSpec{
 				MaxUnavailable: k8s.IntOrString_FromNumber(&zero),
 				Selector: &k8s.LabelSelector{
 					MatchLabels: &map[string]*string{
-						pkg.NamespaceLabelKey: a.Str(m.Cfg.Namespace),
+						pkg.NamespaceLabelKey: utils.Ptr(m.Cfg.Namespace),
 					},
 				},
 			},
@@ -345,7 +346,7 @@ func (m *Environment) removeChart(name string) error {
 		return err
 	}
 	m.Charts = append(m.Charts[:chartIndex], m.Charts[chartIndex+1:]...)
-	m.root.Node().TryRemoveChild(a.Str(name))
+	m.root.Node().TryRemoveChild(utils.Ptr(name))
 	return nil
 }
 
@@ -380,13 +381,13 @@ func (m *Environment) ReplaceHelm(name string, chart ConnectedChart) (*Environme
 		Interface("Props", chart.GetProps()).
 		Interface("Values", chart.GetValues()).
 		Msg("Chart deployment values")
-	h := cdk8s.NewHelm(m.root, a.Str(chart.GetName()), &cdk8s.HelmProps{
-		Chart: a.Str(chart.GetPath()),
+	h := cdk8s.NewHelm(m.root, utils.Ptr(chart.GetName()), &cdk8s.HelmProps{
+		Chart: utils.Ptr(chart.GetPath()),
 		HelmFlags: &[]*string{
-			a.Str("--namespace"),
-			a.Str(m.Cfg.Namespace),
+			utils.Ptr("--namespace"),
+			utils.Ptr(m.Cfg.Namespace),
 		},
-		ReleaseName: a.Str(chart.GetName()),
+		ReleaseName: utils.Ptr(chart.GetName()),
 		Values:      chart.GetValues(),
 	})
 	addDefaultPodAnnotationsAndLabels(h, markNotSafeToEvict(m.Cfg.PreventPodEviction, nil), m.Cfg.PodLabels)
@@ -432,7 +433,7 @@ func addDefaultPodAnnotationsAndLabels(h cdk8s.Helm, annotations, labels map[str
 					annoatationsCopy[k] = v.(string)
 				}
 			}
-			ao.AddJsonPatch(cdk8s.JsonPatch_Add(a.Str("/spec/template/metadata/annotations"), annoatationsCopy))
+			ao.AddJsonPatch(cdk8s.JsonPatch_Add(utils.Ptr("/spec/template/metadata/annotations"), annoatationsCopy))
 
 			// loop over the labels and apply them to both the labels and selectors
 			// these should in theory always have at least one label/selector combo in existence so we don't
@@ -440,8 +441,8 @@ func addDefaultPodAnnotationsAndLabels(h cdk8s.Helm, annotations, labels map[str
 			for k, v := range labels {
 				// Escape the keys according to JSON Pointer syntax in RFC 6901
 				escapedKey := strings.ReplaceAll(strings.ReplaceAll(k, "~", "~0"), "/", "~1")
-				ao.AddJsonPatch(cdk8s.JsonPatch_Add(a.Str(fmt.Sprintf("/spec/template/metadata/labels/%s", escapedKey)), v))
-				ao.AddJsonPatch(cdk8s.JsonPatch_Add(a.Str(fmt.Sprintf("/spec/selector/matchLabels/%s", escapedKey)), v))
+				ao.AddJsonPatch(cdk8s.JsonPatch_Add(utils.Ptr(fmt.Sprintf("/spec/template/metadata/labels/%s", escapedKey)), v))
+				ao.AddJsonPatch(cdk8s.JsonPatch_Add(utils.Ptr(fmt.Sprintf("/spec/selector/matchLabels/%s", escapedKey)), v))
 			}
 		}
 	}
@@ -461,7 +462,7 @@ func (m *Environment) UpdateHelm(name string, values map[string]any) (*Environme
 	if _, labelsExist := values["labels"]; !labelsExist {
 		values["labels"] = make(map[string]*string)
 	}
-	values["labels"].(map[string]*string)["updated"] = a.Str("true")
+	values["labels"].(map[string]*string)["updated"] = utils.Ptr("true")
 	if err = mergo.Merge(chart.GetValues(), values, mergo.WithOverride); err != nil {
 		return nil, err
 	}
@@ -502,22 +503,22 @@ func (m *Environment) AddHelm(chart ConnectedChart) *Environment {
 		Interface("Values", values).
 		Msg("Chart deployment values")
 	helmFlags := []*string{
-		a.Str("--namespace"),
-		a.Str(m.Cfg.Namespace),
-		a.Str("--skip-tests"),
+		utils.Ptr("--namespace"),
+		utils.Ptr(m.Cfg.Namespace),
+		utils.Ptr("--skip-tests"),
 	}
 	if chart.GetVersion() != "" {
-		helmFlags = append(helmFlags, a.Str("--version"), a.Str(chart.GetVersion()))
+		helmFlags = append(helmFlags, utils.Ptr("--version"), utils.Ptr(chart.GetVersion()))
 	}
 	chartPath, err := m.PullOCIChart(chart)
 	if err != nil {
 		m.err = err
 		return m
 	}
-	h := cdk8s.NewHelm(m.root, a.Str(chart.GetName()), &cdk8s.HelmProps{
-		Chart:       a.Str(chartPath),
+	h := cdk8s.NewHelm(m.root, utils.Ptr(chart.GetName()), &cdk8s.HelmProps{
+		Chart:       utils.Ptr(chartPath),
 		HelmFlags:   &helmFlags,
-		ReleaseName: a.Str(chart.GetName()),
+		ReleaseName: utils.Ptr(chart.GetName()),
 		Values:      values,
 	})
 	addDefaultPodAnnotationsAndLabels(h, markNotSafeToEvict(m.Cfg.PreventPodEviction, nil), m.Cfg.PodLabels)
@@ -642,7 +643,7 @@ func (m *Environment) RunCustomReadyConditions(customCheck *client.ReadyCheckDat
 		if m.Cfg.Test == nil {
 			return errors.New("Test must be configured in the environment when using the remote runner")
 		}
-		rrSelector := map[string]*string{pkg.NamespaceLabelKey: a.Str(m.Cfg.Namespace)}
+		rrSelector := map[string]*string{pkg.NamespaceLabelKey: utils.Ptr(m.Cfg.Namespace)}
 		m.AddChart(NewRunner(&Props{
 			BaseName:           REMOTE_RUNNER_NAME,
 			TargetNamespace:    m.Cfg.Namespace,

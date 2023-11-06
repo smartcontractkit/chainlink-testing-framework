@@ -13,8 +13,8 @@ func GetEnv(key string) (string, error) {
 	val := os.Getenv(key)
 	if val != "" {
 		prefixedKey := fmt.Sprintf("%s%s", config.EnvVarPrefix, key)
-		if os.Getenv(prefixedKey) != "" {
-			return val, fmt.Errorf("environment variable collision with prefixed key, Original: %s, Prefixed: %s", key, prefixedKey)
+		if os.Getenv(prefixedKey) != "" && os.Getenv(prefixedKey) != val {
+			return val, fmt.Errorf("environment variable collision with prefixed key, Original: %s=%s, Prefixed: %s=%s", key, val, prefixedKey, os.Getenv(prefixedKey))
 		}
 		err := os.Setenv(prefixedKey, val)
 		if err != nil {

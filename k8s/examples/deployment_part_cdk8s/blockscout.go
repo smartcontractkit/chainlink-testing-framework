@@ -11,6 +11,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/imports/k8s"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/pkg"
 	a "github.com/smartcontractkit/chainlink-testing-framework/k8s/pkg/alias"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 )
 
 const (
@@ -64,7 +65,7 @@ func New(props *Props) func(root cdk8s.Chart) environment.ConnectedChart {
 		}
 		vars := vars{
 			Labels: &map[string]*string{
-				"app": a.Str(c.GetName()),
+				"app": utils.Ptr(c.GetName()),
 			},
 			ConfigMapName: fmt.Sprintf("%s-cm", c.GetName()),
 			BaseName:      c.GetName(),
@@ -99,16 +100,16 @@ type vars struct {
 }
 
 func service(chart cdk8s.Chart, vars vars) {
-	k8s.NewKubeService(chart, a.Str(fmt.Sprintf("%s-service", vars.BaseName)), &k8s.KubeServiceProps{
+	k8s.NewKubeService(chart, utils.Ptr(fmt.Sprintf("%s-service", vars.BaseName)), &k8s.KubeServiceProps{
 		Metadata: &k8s.ObjectMeta{
-			Name: a.Str(vars.BaseName),
+			Name: utils.Ptr(vars.BaseName),
 		},
 		Spec: &k8s.ServiceSpec{
 			Ports: &[]*k8s.ServicePort{
 				{
-					Name:       a.Str("explorer"),
-					Port:       a.Num(vars.Port),
-					TargetPort: k8s.IntOrString_FromNumber(a.Num(4000)),
+					Name:       utils.Ptr("explorer"),
+					Port:       utils.Ptr(vars.Port),
+					TargetPort: k8s.IntOrString_FromNumber(utils.Ptr[float64](4000)),
 				},
 			},
 			Selector: vars.Labels,
@@ -118,12 +119,12 @@ func service(chart cdk8s.Chart, vars vars) {
 
 func postgresContainer(p vars) *k8s.Container {
 	return &k8s.Container{
-		Name:  a.Str(fmt.Sprintf("%s-db", p.BaseName)),
-		Image: a.Str("postgres:13.6"),
+		Name:  utils.Ptr(fmt.Sprintf("%s-db", p.BaseName)),
+		Image: utils.Ptr("postgres:13.6"),
 		Ports: &[]*k8s.ContainerPort{
 			{
-				Name:          a.Str("postgres"),
-				ContainerPort: a.Num(5432),
+				Name:          utils.Ptr("postgres"),
+				ContainerPort: utils.Ptr[float64](5432),
 			},
 		},
 		Env: &[]*k8s.EnvVar{
@@ -133,14 +134,14 @@ func postgresContainer(p vars) *k8s.Container {
 		LivenessProbe: &k8s.Probe{
 			Exec: &k8s.ExecAction{
 				Command: pkg.PGIsReadyCheck()},
-			InitialDelaySeconds: a.Num(60),
-			PeriodSeconds:       a.Num(60),
+			InitialDelaySeconds: utils.Ptr[float64](60),
+			PeriodSeconds:       utils.Ptr[float64](60),
 		},
 		ReadinessProbe: &k8s.Probe{
 			Exec: &k8s.ExecAction{
 				Command: pkg.PGIsReadyCheck()},
-			InitialDelaySeconds: a.Num(2),
-			PeriodSeconds:       a.Num(2),
+			InitialDelaySeconds: utils.Ptr[float64](2),
+			PeriodSeconds:       utils.Ptr[float64](2),
 		},
 		Resources: a.ContainerResources("1000m", "2048Mi", "1000m", "2048Mi"),
 	}
@@ -149,10 +150,10 @@ func postgresContainer(p vars) *k8s.Container {
 func deployment(chart cdk8s.Chart, vars vars) {
 	k8s.NewKubeDeployment(
 		chart,
-		a.Str(fmt.Sprintf("%s-deployment", vars.BaseName)),
+		utils.Ptr(fmt.Sprintf("%s-deployment", vars.BaseName)),
 		&k8s.KubeDeploymentProps{
 			Metadata: &k8s.ObjectMeta{
-				Name: a.Str(vars.BaseName),
+				Name: utils.Ptr(vars.BaseName),
 			},
 			Spec: &k8s.DeploymentSpec{
 				Selector: &k8s.LabelSelector{
@@ -163,7 +164,7 @@ func deployment(chart cdk8s.Chart, vars vars) {
 						Labels: vars.Labels,
 					},
 					Spec: &k8s.PodSpec{
-						ServiceAccountName: a.Str("default"),
+						ServiceAccountName: utils.Ptr("default"),
 						Containers: &[]*k8s.Container{
 							container(vars),
 							postgresContainer(vars),
@@ -176,27 +177,27 @@ func deployment(chart cdk8s.Chart, vars vars) {
 
 func container(vars vars) *k8s.Container {
 	return &k8s.Container{
-		Name:            a.Str(fmt.Sprintf("%s-node", vars.BaseName)),
-		Image:           a.Str("f4hrenh9it/blockscout:v1"),
-		ImagePullPolicy: a.Str("Always"),
-		Command:         &[]*string{a.Str(`/bin/bash`)},
+		Name:            utils.Ptr(fmt.Sprintf("%s-node", vars.BaseName)),
+		Image:           utils.Ptr("f4hrenh9it/blockscout:v1"),
+		ImagePullPolicy: utils.Ptr("Always"),
+		Command:         &[]*string{utils.Ptr(`/bin/bash`)},
 		Args: &[]*string{
-			a.Str("-c"),
-			a.Str("mix ecto.create && mix ecto.migrate && mix phx.server"),
+			utils.Ptr("-c"),
+			utils.Ptr("mix ecto.create && mix ecto.migrate && mix phx.server"),
 		},
 		Ports: &[]*k8s.ContainerPort{
 			{
-				Name:          a.Str("explorer"),
-				ContainerPort: a.Num(vars.Port),
+				Name:          utils.Ptr("explorer"),
+				ContainerPort: utils.Ptr(vars.Port),
 			},
 		},
 		ReadinessProbe: &k8s.Probe{
 			HttpGet: &k8s.HttpGetAction{
-				Port: k8s.IntOrString_FromNumber(a.Num(vars.Port)),
-				Path: a.Str("/"),
+				Port: k8s.IntOrString_FromNumber(utils.Ptr(vars.Port)),
+				Path: utils.Ptr("/"),
 			},
-			InitialDelaySeconds: a.Num(20),
-			PeriodSeconds:       a.Num(5),
+			InitialDelaySeconds: utils.Ptr[float64](20),
+			PeriodSeconds:       utils.Ptr[float64](5),
 		},
 		Env: &[]*k8s.EnvVar{
 			a.EnvVarStr("MIX_ENV", "prod"),

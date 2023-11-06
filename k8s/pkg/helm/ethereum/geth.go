@@ -3,12 +3,14 @@ package ethereum
 import (
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/rs/zerolog/log"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/client"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/environment"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 )
 
 type Props struct {
@@ -142,10 +144,14 @@ func NewVersioned(helmVersion string, props *Props) environment.ConnectedChart {
 	config.MustMerge(&targetProps.Values, props.Values)
 	targetProps.Simulated = props.Simulated // Mergo has issues with boolean merging for simulated networks
 	if targetProps.Simulated {
+		chartPath := "chainlink-qa/geth"
+		if b, err := strconv.ParseBool(os.Getenv(config.EnvVarLocalCharts)); err == nil && b {
+			chartPath = fmt.Sprintf("%s/geth", utils.ChartsRoot)
+		}
 		return Chart{
 			HelmProps: &HelmProps{
 				Name:   "geth",
-				Path:   "chainlink-qa/geth",
+				Path:   chartPath,
 				Values: &targetProps.Values,
 			},
 			Props: targetProps,

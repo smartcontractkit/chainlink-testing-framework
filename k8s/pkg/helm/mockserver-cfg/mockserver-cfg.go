@@ -1,7 +1,13 @@
 package mockserver_cfg
 
 import (
+	"fmt"
+	"os"
+	"strconv"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/k8s/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/environment"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 )
 
 type Props struct {
@@ -49,9 +55,13 @@ func New(props map[string]interface{}) environment.ConnectedChart {
 
 // NewVersioned enables choosing a specific helm chart version
 func NewVersioned(helmVersion string, props map[string]interface{}) environment.ConnectedChart {
+	chartPath := "chainlink-qa/mockserver-config"
+	if b, err := strconv.ParseBool(os.Getenv(config.EnvVarLocalCharts)); err == nil && b {
+		chartPath = fmt.Sprintf("%s/mockserver-config", utils.ChartsRoot)
+	}
 	return Chart{
 		Name:    "mockserver-cfg",
-		Path:    "chainlink-qa/mockserver-config",
+		Path:    chartPath,
 		Values:  &props,
 		Version: helmVersion,
 	}

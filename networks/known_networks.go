@@ -551,6 +551,29 @@ var (
 		MinimumConfirmations:      0,
 		GasEstimationBuffer:       1000,
 	}
+	WeMixTestnet blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "WeMix Testnet",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.WeMixClientImplementation,
+		ChainID:                   1112,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       0,
+	}
+
+	WeMixMainnet blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "WeMix Mainnet",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.WeMixClientImplementation,
+		ChainID:                   1111,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       0,
+	}
 
 	FantomTestnet blockchain.EVMNetwork = blockchain.EVMNetwork{
 		Name:                      "Fantom Testnet",
@@ -600,7 +623,7 @@ var (
 		"CELO_ALFAJORES":        CeloAlfajores,
 		"CELO_MAINNET":          CeloMainnet,
 		"RSK":                   RSKTestnet,
-		"MUMBAI":                PolygonMumbai,
+		"POLYGON_MUMBAI":        PolygonMumbai,
 		"POLYGON_MAINNET":       PolygonMainnet,
 		"AVALANCHE_FUJI":        AvalancheFuji,
 		"AVALANCHE_MAINNET":     AvalancheMainnet,
@@ -616,6 +639,8 @@ var (
 		"POLYGON_ZKEVM_MAINNET": PolygonZkEvmMainnet,
 		"FANTOM_TESTNET":        FantomTestnet,
 		"FANTOM_MAINNET":        FantomMainnet,
+		"WEMIX_TESTNET":         WeMixTestnet,
+		"WEMIX_MAINNET":         WeMixMainnet,
 	}
 )
 
@@ -677,7 +702,7 @@ func MustGetSelectedNetworksFromEnv() []blockchain.EVMNetwork {
 				// Get default value
 				defaultKeys, err := utils.GetEnv("EVM_KEYS")
 				if err != nil {
-					panic(errors.Errorf("error getting %s EVM_KEYS var", err))
+					panic(errors.Errorf("error getting EVM_KEYS var: %s", err))
 				}
 				if defaultKeys == "" {
 					panic(errors.Errorf("set %s or EVM_KEYS env var", walletKeysEnvVar))
@@ -724,10 +749,11 @@ func getValidNetworkKeys() []string {
 
 // setKeys sets a network's private key(s) based on env vars
 func setKeys(network *blockchain.EVMNetwork, walletKeys []string) {
-	for keyIndex, key := range walletKeys { // Sanitize keys of possible `0x` prefix
-		if strings.HasPrefix(key, "0x") {
-			walletKeys[keyIndex] = key[2:]
-		}
+	for keyIndex := range walletKeys { // Sanitize keys of possible `0x` prefix
+		// Trim some common addons
+		walletKeys[keyIndex] = strings.Trim(walletKeys[keyIndex], "\"'")
+		walletKeys[keyIndex] = strings.TrimSpace(walletKeys[keyIndex])
+		walletKeys[keyIndex] = strings.TrimPrefix(walletKeys[keyIndex], "0x")
 	}
 	network.PrivateKeys = walletKeys
 
@@ -736,7 +762,7 @@ func setKeys(network *blockchain.EVMNetwork, walletKeys []string) {
 	for _, key := range network.PrivateKeys {
 		publicKey, err := privateKeyToAddress(key)
 		if err != nil {
-			log.Fatal().Err(err).Msg("Error getting public key from private key")
+			log.Fatal().Err(err).Msg("Error reading private key")
 		}
 		publicKeys = append(publicKeys, publicKey)
 	}

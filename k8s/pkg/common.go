@@ -1,6 +1,6 @@
 package pkg
 
-import a "github.com/smartcontractkit/chainlink-testing-framework/k8s/pkg/alias"
+import "github.com/smartcontractkit/chainlink-testing-framework/utils"
 
 // Common labels for k8s envs
 const (
@@ -16,8 +16,8 @@ const (
 
 func PGIsReadyCheck() *[]*string {
 	return &[]*string{
-		a.Str("pg_isready"),
-		a.Str("-U"),
-		a.Str("postgres"),
+		utils.Ptr("pg_isready"),
+		utils.Ptr("-U"),
+		utils.Ptr("postgres"),
 	}
 }

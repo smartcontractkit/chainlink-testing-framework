@@ -38,7 +38,7 @@ func readStdPipe(pipe io.ReadCloser, outputFunction func(string)) {
 func ExecCmdWithOptions(ctx context.Context, l zerolog.Logger, command string, outputFunction func(string)) error {
 	c := strings.Split(command, " ")
 	l.Info().Interface("Command", c).Msg("Executing command")
-	cmd := exec.CommandContext(ctx, c[0], c[1:]...)
+	cmd := exec.CommandContext(ctx, c[0], c[1:]...) // #nosec: G204
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		return err

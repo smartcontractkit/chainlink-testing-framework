@@ -8,7 +8,7 @@ volumes:
 options:
   k3d:
     wait: true
-    timeout: "200s"
+    timeout: '200s'
   k3s:
     extraArgs:
       - arg: --kubelet-arg=eviction-hard=imagefs.available<1%,nodefs.available<1%

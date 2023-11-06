@@ -5,18 +5,9 @@ import (
 	"strings"
 	"time"
 
-	jsii "github.com/aws/jsii-runtime-go"
-
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/imports/k8s"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 )
-
-func Str(value string) *string {
-	return jsii.String(value)
-}
-
-func Num(value float64) *float64 {
-	return jsii.Number(value)
-}
 
 // ShortDur is a helper method for kube-janitor duration format
 func ShortDur(d time.Duration) *string {
@@ -27,7 +18,7 @@ func ShortDur(d time.Duration) *string {
 	if strings.HasSuffix(s, "h0m") {
 		s = s[:len(s)-2]
 	}
-	return Str(s)
+	return utils.Ptr(s)
 }
 
 func ConvertLabels(labels []string) (*map[string]*string, error) {
@@ -37,7 +28,7 @@ func ConvertLabels(labels []string) (*map[string]*string, error) {
 		if len(a) != 2 {
 			return nil, fmt.Errorf("invalid label '%s' provided, please provide labels in format key=value", a)
 		}
-		cdk8sLabels[a[0]] = Str(a[1])
+		cdk8sLabels[a[0]] = utils.Ptr(a[1])
 	}
 	return &cdk8sLabels, nil
 }
@@ -46,7 +37,7 @@ func ConvertLabels(labels []string) (*map[string]*string, error) {
 func ConvertAnnotations(annotations map[string]string) *map[string]*string {
 	a := make(map[string]*string)
 	for k, v := range annotations {
-		a[k] = Str(v)
+		a[k] = utils.Ptr(v)
 	}
 	return &a
 }
@@ -54,8 +45,8 @@ func ConvertAnnotations(annotations map[string]string) *map[string]*string {
 // EnvVarStr quick shortcut for string/string key/value var
 func EnvVarStr(k, v string) *k8s.EnvVar {
 	return &k8s.EnvVar{
-		Name:  Str(k),
-		Value: Str(v),
+		Name:  utils.Ptr(k),
+		Value: utils.Ptr(v),
 	}
 }
 
@@ -63,12 +54,12 @@ func EnvVarStr(k, v string) *k8s.EnvVar {
 func ContainerResources(reqCPU, reqMEM, limCPU, limMEM string) *k8s.ResourceRequirements {
 	return &k8s.ResourceRequirements{
 		Requests: &map[string]k8s.Quantity{
-			"cpu":    k8s.Quantity_FromString(Str(reqCPU)),
-			"memory": k8s.Quantity_FromString(Str(reqMEM)),
+			"cpu":    k8s.Quantity_FromString(utils.Ptr(reqCPU)),
+			"memory": k8s.Quantity_FromString(utils.Ptr(reqMEM)),
 		},
 		Limits: &map[string]k8s.Quantity{
-			"cpu":    k8s.Quantity_FromString(Str(limCPU)),
-			"memory": k8s.Quantity_FromString(Str(limMEM)),
+			"cpu":    k8s.Quantity_FromString(utils.Ptr(limCPU)),
+			"memory": k8s.Quantity_FromString(utils.Ptr(limMEM)),
 		},
 	}
 }
