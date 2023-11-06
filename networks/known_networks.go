@@ -557,6 +557,29 @@ var (
 		MinimumConfirmations:      0,
 		GasEstimationBuffer:       1000,
 	}
+	WeMixTestnet blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "WeMix Testnet",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.WeMixClientImplementation,
+		ChainID:                   1112,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       0,
+	}
+
+	WeMixMainnet blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "WeMix Mainnet",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.WeMixClientImplementation,
+		ChainID:                   1111,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       0,
+	}
 
 	FantomTestnet blockchain.EVMNetwork = blockchain.EVMNetwork{
 		Name:                      "Fantom Testnet",
@@ -622,6 +645,8 @@ var (
 		"POLYGON_ZKEVM_MAINNET": PolygonZkEvmMainnet,
 		"FANTOM_TESTNET":        FantomTestnet,
 		"FANTOM_MAINNET":        FantomMainnet,
+		"WEMIX_TESTNET":         WeMixTestnet,
+		"WEMIX_MAINNET":         WeMixMainnet,
 	}
 )
 
