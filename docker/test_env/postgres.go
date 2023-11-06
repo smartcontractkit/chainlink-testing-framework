@@ -16,6 +16,7 @@ import (
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 )
 
@@ -64,7 +65,7 @@ func NewPostgresDb(networks []string, opts ...PostgresDbOption) *PostgresDb {
 		EnvComponent: EnvComponent{
 			ContainerName:    fmt.Sprintf("%s-%s", "postgres-db", uuid.NewString()[0:8]),
 			ContainerImage:   "postgres",
-			ContainerVersion: "15.3",
+			ContainerVersion: "15.4",
 			Networks:         networks,
 		},
 		User:         "postgres",
@@ -94,7 +95,7 @@ func (pg *PostgresDb) StartContainer() error {
 			L: pg.l,
 		}
 	}
-	c, err := tc.GenericContainer(context.Background(), tc.GenericContainerRequest{
+	c, err := docker.StartContainerWithRetry(pg.l, tc.GenericContainerRequest{
 		ContainerRequest: *req,
 		Started:          true,
 		Reuse:            true,
