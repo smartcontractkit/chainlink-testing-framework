@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -99,7 +98,7 @@ func (m *K8sClient) AddLabel(namespace string, selector string, label string) er
 	}
 	l := strings.Split(label, "=")
 	if len(l) != 2 {
-		return errors.New("labels must be in format key=value")
+		return fmt.Errorf("labels must be in format key=value")
 	}
 	for _, pod := range podList.Items {
 		labelPatch := fmt.Sprintf(`[{"op":"add","path":"/metadata/labels/%s","value":"%s" }]`, l[0], l[1])
@@ -111,7 +110,7 @@ func (m *K8sClient) AddLabel(namespace string, selector string, label string) er
 			metaV1.PatchOptions{},
 		)
 		if err != nil {
-			return errors.Wrapf(err, "failed to update labels %s for pod %s", labelPatch, pod.Name)
+			return fmt.Errorf("failed to update labels %s for pod %s err: %w", labelPatch, pod.Name, err)
 		}
 	}
 	log.Debug().Str("Selector", selector).Str("Label", label).Msg("Updated label")
@@ -405,7 +404,7 @@ func (m *K8sClient) WaitForJob(namespaceName string, jobName string, fundReturnS
 			exitErr = err
 		}
 		if int(job.Status.Failed) > 0 {
-			exitErr = errors.New("job failed")
+			exitErr = fmt.Errorf("job failed")
 			return true, nil
 		}
 		if int(job.Status.Succeeded) > 0 {
@@ -500,7 +499,7 @@ func (m *K8sClient) CopyToPod(namespace, src, destination, containername string)
 
 	formatted, err := regexp.MatchString(".*?\\/.*?\\:.*", destination)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("could not parse the pod destination: %v", err)
+		return nil, nil, nil, fmt.Errorf("could not parse the pod destination: %w", err)
 	}
 	if !formatted {
 		return nil, nil, nil, fmt.Errorf("pod destination string improperly formatted, see reference 'NAMESPACE/POD_NAME:folder/FILE_NAME'")
@@ -514,7 +513,7 @@ func (m *K8sClient) CopyToPod(namespace, src, destination, containername string)
 		Msg("Uploading file to pod")
 	err = copyOptions.Run()
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("could not run copy operation: %v", err)
+		return nil, nil, nil, fmt.Errorf("could not run copy operation: %w", err)
 	}
 	return in, out, errOut, nil
 }
