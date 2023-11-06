@@ -26,8 +26,7 @@ type KromaClient struct {
 }
 
 func (o *KromaClient) EstimateGas(callData ethereum.CallMsg) (GasEstimations, error) {
-	// Kroma is unique in its usage of an L1 data fee on top of regular gas costs. Need to call their oracle
-	// https://community.optimism.io/docs/developers/build/transaction-fees/#the-l1-data-fee
+	// Kroma is based on Optimism and uses the same gas machanism. The L1 fee needs to be added on top of the regular gas costs.
 	gasOracle, err := ethcontracts.NewOptimismGas(common.HexToAddress(kromaGasOracleAddress), o.Client)
 	if err != nil {
 		return GasEstimations{}, err
