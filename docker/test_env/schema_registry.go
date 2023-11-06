@@ -8,12 +8,12 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/imdario/mergo"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 )
 
 type SchemaRegistry struct {
@@ -78,15 +78,19 @@ func (r *SchemaRegistry) StartContainer() error {
 		"SCHEMA_REGISTRY_LISTENERS": r.InternalUrl,
 	}
 	r.WithEnvVars(envVars)
+	cr, err := r.getContainerRequest()
+	if err != nil {
+		return err
+	}
 	req := tc.GenericContainerRequest{
-		ContainerRequest: r.getContainerRequest(),
+		ContainerRequest: cr,
 		Started:          true,
 		Reuse:            true,
 		Logger:           l,
 	}
 	c, err := tc.GenericContainer(context.Background(), req)
 	if err != nil {
-		return errors.Wrapf(err, "cannot start Schema Registry container")
+		return fmt.Errorf("cannot start Schema Registry container: %w", err)
 	}
 	host, err := GetHost(context.Background(), c)
 	if err != nil {
@@ -108,15 +112,19 @@ func (r *SchemaRegistry) StartContainer() error {
 	return nil
 }
 
-func (r *SchemaRegistry) getContainerRequest() tc.ContainerRequest {
+func (r *SchemaRegistry) getContainerRequest() (tc.ContainerRequest, error) {
+	schemaImage, err := mirror.GetImage("confluentinc/cp-schema-registry")
+	if err != nil {
+		return tc.ContainerRequest{}, err
+	}
 	return tc.ContainerRequest{
 		Name:         r.ContainerName,
-		Image:        "confluentinc/cp-schema-registry:7.4.0",
+		Image:        schemaImage,
 		ExposedPorts: []string{"8081/tcp"},
 		Env:          r.EnvVars,
 		Networks:     r.Networks,
 		WaitingFor: tcwait.ForLog("INFO Server started, listening for requests").
 			WithStartupTimeout(30 * time.Second).
 			WithPollInterval(100 * time.Millisecond),
-	}
+	}, nil
 }

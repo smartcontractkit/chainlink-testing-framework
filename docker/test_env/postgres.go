@@ -11,7 +11,6 @@ import (
 
 	"github.com/docker/go-connections/nat"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	tc "github.com/testcontainers/testcontainers-go"
@@ -114,13 +113,13 @@ func (pg *PostgresDb) StartContainer() error {
 	internalUrl, err := url.Parse(fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
 		pg.User, pg.Password, pg.ContainerName, "5432", pg.DbName))
 	if err != nil {
-		return errors.Wrapf(err, "error parsing mercury db internal url")
+		return fmt.Errorf("error parsing mercury db internal url: %w", err)
 	}
 	pg.InternalURL = internalUrl
 	externalUrl, err := url.Parse(fmt.Sprintf("postgres://%s:%s@127.0.0.1:%s/%s?sslmode=disable",
 		pg.User, pg.Password, externalPort.Port(), pg.DbName))
 	if err != nil {
-		return errors.Wrapf(err, "error parsing mercury db external url")
+		return fmt.Errorf("error parsing mercury db external url: %w", err)
 	}
 	pg.ExternalURL = externalUrl
 
@@ -148,7 +147,7 @@ func (pg *PostgresDb) ExecPgDump(stdout io.Writer) error {
 func (pg *PostgresDb) getContainerRequest() *tc.ContainerRequest {
 	return &tc.ContainerRequest{
 		Name:         pg.ContainerName,
-		Image:        fmt.Sprintf("%s:%s", pg.ContainerImage, pg.ContainerVersion),
+		Image:        fmt.Sprintf("public.ecr.aws/docker/library/%s:%s", pg.ContainerImage, pg.ContainerVersion),
 		ExposedPorts: []string{fmt.Sprintf("%s/tcp", pg.InternalPort)},
 		Env: map[string]string{
 			"POSTGRES_USER":     pg.User,
