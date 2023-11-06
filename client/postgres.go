@@ -25,13 +25,20 @@ type PostgresConfig struct {
 	User     string
 	Password string
 	DBName   string
+	SSLMode  string
 }
 
 // NewPostgresConnector creates new sqlx postgres connector
 func NewPostgresConnector(cfg *PostgresConfig) (*PostgresConnector, error) {
+	var sslmode string
+	if cfg.SSLMode == "" {
+		sslmode = "sslmode=disable"
+	} else {
+		sslmode = fmt.Sprintf("sslmode=%s", cfg.SSLMode)
+	}
 	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s "+
-		"password=%s dbname=%s sslmode=disable",
-		cfg.Host, cfg.Port, cfg.User, cfg.Password, cfg.DBName)
+		"password=%s dbname=%s %s",
+		cfg.Host, cfg.Port, cfg.User, cfg.Password, cfg.DBName, sslmode)
 	log.Debug().Str("ConnectionString", psqlInfo).Msg("Connecting")
 	db, err := sqlx.Connect("postgres", psqlInfo)
 	if err != nil {
