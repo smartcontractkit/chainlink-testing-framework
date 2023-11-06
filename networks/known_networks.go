@@ -562,6 +562,7 @@ var (
 		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       0,
+		FinalityDepth:             1,
 	}
 
 	WeMixMainnet blockchain.EVMNetwork = blockchain.EVMNetwork{
@@ -574,6 +575,7 @@ var (
 		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       0,
+		FinalityDepth:             1,
 	}
 
 	FantomTestnet blockchain.EVMNetwork = blockchain.EVMNetwork{
@@ -610,6 +612,7 @@ var (
 		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       1000,
+		FinalityTag:               true,
 	}
 
 	KromaSepolia blockchain.EVMNetwork = blockchain.EVMNetwork{
@@ -622,6 +625,7 @@ var (
 		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       1000,
+		FinalityTag:               true,
 	}
 
 	MappedNetworks = map[string]blockchain.EVMNetwork{
