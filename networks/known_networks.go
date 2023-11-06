@@ -551,6 +551,7 @@ var (
 		MinimumConfirmations:      0,
 		GasEstimationBuffer:       1000,
 	}
+
 	WeMixTestnet blockchain.EVMNetwork = blockchain.EVMNetwork{
 		Name:                      "WeMix Testnet",
 		SupportsEIP1559:           true,
@@ -561,6 +562,7 @@ var (
 		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       0,
+		FinalityDepth:             1,
 	}
 
 	WeMixMainnet blockchain.EVMNetwork = blockchain.EVMNetwork{
@@ -573,6 +575,7 @@ var (
 		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       0,
+		FinalityDepth:             1,
 	}
 
 	FantomTestnet blockchain.EVMNetwork = blockchain.EVMNetwork{
@@ -597,6 +600,32 @@ var (
 		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       1000,
+	}
+
+	KromaMainnet blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Kroma Mainnet",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.KromaClientImplementation,
+		ChainID:                   255,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       1000,
+		FinalityTag:               true,
+	}
+
+	KromaSepolia blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Kroma Sepolia",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.KromaClientImplementation,
+		ChainID:                   2358,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       1000,
+		FinalityTag:               true,
 	}
 
 	MappedNetworks = map[string]blockchain.EVMNetwork{
@@ -641,6 +670,8 @@ var (
 		"FANTOM_MAINNET":        FantomMainnet,
 		"WEMIX_TESTNET":         WeMixTestnet,
 		"WEMIX_MAINNET":         WeMixMainnet,
+		"KROMA_SEPOLIA":         KromaSepolia,
+		"KROMA_MAINNET":         KromaMainnet,
 	}
 )
 
