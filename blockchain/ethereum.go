@@ -354,6 +354,11 @@ func (e *EthereumClient) ReturnFunds(fromKey *ecdsa.PrivateKey) error {
 		}
 		overshotErr = e.Client.SendTransaction(context.Background(), signedTx)
 	}
+	e.l.Info().
+		Uint64("Funds", toSend.Uint64()).
+		Str("From", fromAddress.Hex()).
+		Str("To", e.DefaultWallet.Address()).
+		Msg("Returning funds to Default Wallet")
 	return overshotErr
 }
 
@@ -412,7 +417,6 @@ func (e *EthereumClient) DeployContract(
 		return nil, nil, nil, err
 	}
 
-	e.l.Debug().Msg("Processing Tx")
 	if err = e.ProcessTransaction(transaction); err != nil {
 		return nil, nil, nil, err
 	}
@@ -518,6 +522,7 @@ func (e *EthereumClient) NewTx(
 
 // ProcessTransaction will queue or wait on a transaction depending on whether parallel transactions are enabled
 func (e *EthereumClient) ProcessTransaction(tx *types.Transaction) error {
+	e.l.Trace().Str("Hash", tx.Hash().Hex()).Msg("Processing Tx")
 	var txConfirmer HeaderEventSubscription
 	if e.GetNetworkConfig().MinimumConfirmations <= 0 {
 		fromAddr, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx)
@@ -638,13 +643,23 @@ func (e *EthereumClient) IsTxHeadFinalized(txHdr, header *SafeEVMHeader) (bool, 
 
 // IsTxConfirmed checks if the transaction is confirmed on chain or not
 func (e *EthereumClient) IsTxConfirmed(txHash common.Hash) (bool, error) {
-	tx, isPending, err := e.Client.TransactionByHash(context.Background(), txHash)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	tx, isPending, err := e.Client.TransactionByHash(ctx, txHash)
+	cancel()
 	if err != nil {
+		if errors.Is(err, ethereum.NotFound) { // not found is fine, it's not on chain yet
+			return false, nil
+		}
 		return !isPending, err
 	}
-	if !isPending {
-		receipt, err := e.Client.TransactionReceipt(context.Background(), txHash)
+	if !isPending && e.NetworkConfig.MinimumConfirmations > 0 { // Instant chains don't bother with this receipt nonsense
+		ctx, cancel = context.WithTimeout(context.Background(), time.Second*5)
+		receipt, err := e.Client.TransactionReceipt(ctx, txHash)
+		cancel()
 		if err != nil {
+			if errors.Is(err, ethereum.NotFound) { // not found is fine, it's not on chain yet
+				return false, nil
+			}
 			return !isPending, err
 		}
 		e.gasStats.AddClientTXData(TXGasData{
