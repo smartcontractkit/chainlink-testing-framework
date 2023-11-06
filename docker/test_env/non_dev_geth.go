@@ -15,7 +15,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	tc "github.com/testcontainers/testcontainers-go"
@@ -24,12 +23,11 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/templates"
 )
 
 const (
-	GETH_IMAGE              = "ethereum/client-go:v1.12.0"
-	GETH_BOOTNODE_IMAGE     = "ethereum/client-go:alltools-v1.10.25"
 	TX_NON_DEV_GETH_WS_PORT = "8546"
 	BOOTNODE_PORT           = "30301"
 )
@@ -259,8 +257,12 @@ func (g *NonDevGethNode) Start() error {
 			L: g.l,
 		}
 	}
+	bncr, err := g.getBootNodeContainerRequest()
+	if err != nil {
+		return err
+	}
 	bootNode, err := docker.StartContainerWithRetry(g.l, tc.GenericContainerRequest{
-		ContainerRequest: g.getBootNodeContainerRequest(),
+		ContainerRequest: bncr,
 		Reuse:            true,
 		Started:          true,
 		Logger:           l,
@@ -283,8 +285,12 @@ func (g *NonDevGethNode) Start() error {
 	}
 	g.Config.bootNodeURL = fmt.Sprintf("enode://%s@%s:0?discport=%s", strings.TrimSpace(string(b)), host, BOOTNODE_PORT)
 
+	cr, err := g.getGethContainerRequest()
+	if err != nil {
+		return err
+	}
 	ct, err := docker.StartContainerWithRetry(g.l, tc.GenericContainerRequest{
-		ContainerRequest: g.getGethContainerRequest(),
+		ContainerRequest: cr,
 		Reuse:            true,
 		Started:          true,
 	})
@@ -342,11 +348,11 @@ func (g *NonDevGethNode) ConnectToClient() error {
 	case *blockchain.EthereumMultinodeClient:
 		ethClient, ok := val.Clients[0].(*blockchain.EthereumClient)
 		if !ok {
-			return errors.Errorf("could not get blockchain.EthereumClient from %+v", val)
+			return fmt.Errorf("could not get blockchain.EthereumClient from %+v", val)
 		}
 		g.EthClient = ethClient.Client
 	default:
-		return errors.Errorf("%+v not supported for geth", val)
+		return fmt.Errorf("%+v not supported for geth", val)
 	}
 	if err != nil {
 		return err
@@ -354,10 +360,14 @@ func (g *NonDevGethNode) ConnectToClient() error {
 	return nil
 }
 
-func (g *NonDevGethNode) getBootNodeContainerRequest() tc.ContainerRequest {
+func (g *NonDevGethNode) getBootNodeContainerRequest() (tc.ContainerRequest, error) {
+	bootNodeImage, err := mirror.GetImage("ethereum/client-go:alltools")
+	if err != nil {
+		return tc.ContainerRequest{}, err
+	}
 	return tc.ContainerRequest{
 		Name:         g.ContainerName + "-bootnode",
-		Image:        GETH_BOOTNODE_IMAGE,
+		Image:        bootNodeImage,
 		Networks:     g.Networks,
 		ExposedPorts: []string{"30301/udp"},
 		WaitingFor: tcwait.ForLog("New local node record").
@@ -379,12 +389,16 @@ func (g *NonDevGethNode) getBootNodeContainerRequest() tc.ContainerRequest {
 				Target: "/root/.ethereum/",
 			},
 		},
-	}
+	}, nil
 }
-func (g *NonDevGethNode) getGethContainerRequest() tc.ContainerRequest {
+func (g *NonDevGethNode) getGethContainerRequest() (tc.ContainerRequest, error) {
+	gethImage, err := mirror.GetImage("ethereum/client-go:v")
+	if err != nil {
+		return tc.ContainerRequest{}, err
+	}
 	return tc.ContainerRequest{
 		Name:  g.ContainerName,
-		Image: GETH_IMAGE,
+		Image: gethImage,
 		ExposedPorts: []string{
 			NatPortFormat(TX_GETH_HTTP_PORT),
 			NatPortFormat(TX_NON_DEV_GETH_WS_PORT),
@@ -451,5 +465,5 @@ func (g *NonDevGethNode) getGethContainerRequest() tc.ContainerRequest {
 				Target: "/root/.ethereum/",
 			},
 		},
-	}
+	}, nil
 }
