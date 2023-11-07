@@ -317,7 +317,16 @@ func (e *EthereumClient) ReturnFunds(fromKey *ecdsa.PrivateKey) error {
 		return err
 
 	}
-	gasLimit := big.NewInt(21_000)
+	gas, err := e.Client.EstimateGas(context.Background(), ethereum.CallMsg{
+		From: fromAddress,
+		To:   &e.DefaultWallet.address,
+	})
+	if err != nil { // Just try with the default gas limit
+		e.l.Warn().Err(err).Msg("Error getting gas limit for returning funds, defaulting to 21,000")
+		gas = 21_000
+	}
+
+	gasLimit := new(big.Int).SetUint64(gas)
 	gasPrice, err := e.Client.SuggestGasPrice(context.Background())
 	if err != nil {
 		return err
