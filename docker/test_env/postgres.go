@@ -44,6 +44,14 @@ func WithPostgresDbContainerName(name string) PostgresDbOption {
 	}
 }
 
+func WithPostgresImageName(imageName string) PostgresDbOption {
+	return func(c *PostgresDb) {
+		if imageName != "" {
+			c.ContainerImage = imageName
+		}
+	}
+}
+
 func WithPostgresImageVersion(version string) PostgresDbOption {
 	return func(c *PostgresDb) {
 		if version != "" {
@@ -64,7 +72,7 @@ func NewPostgresDb(networks []string, opts ...PostgresDbOption) *PostgresDb {
 	pg := &PostgresDb{
 		EnvComponent: EnvComponent{
 			ContainerName:    fmt.Sprintf("%s-%s", "postgres-db", uuid.NewString()[0:8]),
-			ContainerImage:   "postgres",
+			ContainerImage:   "public.ecr.aws/docker/library/postgres",
 			ContainerVersion: "15.4",
 			Networks:         networks,
 		},
@@ -148,7 +156,7 @@ func (pg *PostgresDb) ExecPgDump(stdout io.Writer) error {
 func (pg *PostgresDb) getContainerRequest() *tc.ContainerRequest {
 	return &tc.ContainerRequest{
 		Name:         pg.ContainerName,
-		Image:        fmt.Sprintf("public.ecr.aws/docker/library/%s:%s", pg.ContainerImage, pg.ContainerVersion),
+		Image:        fmt.Sprintf("%s:%s", pg.ContainerImage, pg.ContainerVersion),
 		ExposedPorts: []string{fmt.Sprintf("%s/tcp", pg.InternalPort)},
 		Env: map[string]string{
 			"POSTGRES_USER":     pg.User,
