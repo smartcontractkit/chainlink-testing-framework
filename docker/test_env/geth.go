@@ -17,7 +17,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	tc "github.com/testcontainers/testcontainers-go"
@@ -26,6 +25,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/templates"
 )
 
@@ -95,7 +95,7 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, InternalDockerUrls, erro
 		Logger:           l,
 	})
 	if err != nil {
-		return blockchain.EVMNetwork{}, InternalDockerUrls{}, errors.Wrapf(err, "cannot start geth container")
+		return blockchain.EVMNetwork{}, InternalDockerUrls{}, fmt.Errorf("cannot start geth container: %w", err)
 	}
 	host, err := GetHost(context.Background(), ct)
 	if err != nil {
@@ -189,11 +189,15 @@ func (g *Geth) getGethContainerRequest(networks []string) (*tc.ContainerRequest,
 	if err != nil {
 		return nil, ks, &account, err
 	}
+	gethImage, err := mirror.GetImage("ethereum/client-go:v")
+	if err != nil {
+		return nil, nil, nil, err
+	}
 
 	return &tc.ContainerRequest{
 		Name:            g.ContainerName,
 		AlwaysPullImage: true,
-		Image:           "ethereum/client-go:v1.12.0",
+		Image:           gethImage,
 		ExposedPorts:    []string{NatPortFormat(TX_GETH_HTTP_PORT), NatPortFormat(TX_GETH_WS_PORT)},
 		Networks:        networks,
 		WaitingFor: tcwait.ForAll(

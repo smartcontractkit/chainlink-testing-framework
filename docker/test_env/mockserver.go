@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	tc "github.com/testcontainers/testcontainers-go"
@@ -18,6 +17,7 @@ import (
 	ctfClient "github.com/smartcontractkit/chainlink-testing-framework/client"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 )
 
 type MockServer struct {
@@ -80,14 +80,18 @@ func (ms *MockServer) StartContainer() error {
 			L: ms.l,
 		}
 	}
+	cr, err := ms.getContainerRequest()
+	if err != nil {
+		return err
+	}
 	c, err := docker.StartContainerWithRetry(ms.l, tc.GenericContainerRequest{
-		ContainerRequest: ms.getContainerRequest(),
+		ContainerRequest: cr,
 		Reuse:            true,
 		Started:          true,
 		Logger:           l,
 	})
 	if err != nil {
-		return errors.Wrapf(err, "cannot start MockServer container")
+		return fmt.Errorf("cannot start MockServer container: %w", err)
 	}
 	ms.Container = c
 	endpoint, err := GetEndpoint(context.Background(), c, "http")
@@ -104,17 +108,21 @@ func (ms *MockServer) StartContainer() error {
 		ClusterURL: ms.InternalEndpoint,
 	})
 	if err != nil {
-		return errors.Wrapf(err, "cannot connect to MockServer client")
+		return fmt.Errorf("cannot create MockServer client: %w", err)
 	}
 	ms.Client = client
 
 	return nil
 }
 
-func (ms *MockServer) getContainerRequest() tc.ContainerRequest {
+func (ms *MockServer) getContainerRequest() (tc.ContainerRequest, error) {
+	msImage, err := mirror.GetImage("mockserver/mockserver")
+	if err != nil {
+		return tc.ContainerRequest{}, err
+	}
 	return tc.ContainerRequest{
 		Name:         ms.ContainerName,
-		Image:        "mockserver/mockserver:5.15.0",
+		Image:        msImage,
 		ExposedPorts: []string{"1080/tcp"},
 		Env: map[string]string{
 			"SERVER_PORT": "1080",
@@ -123,5 +131,5 @@ func (ms *MockServer) getContainerRequest() tc.ContainerRequest {
 		WaitingFor: tcwait.ForLog("INFO 1080 started on port: 1080").
 			WithStartupTimeout(30 * time.Second).
 			WithPollInterval(100 * time.Millisecond),
-	}
+	}, nil
 }

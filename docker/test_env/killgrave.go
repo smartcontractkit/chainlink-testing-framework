@@ -13,13 +13,13 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/otiai10/copy"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 )
 
 type Killgrave struct {
@@ -113,14 +113,18 @@ func (k *Killgrave) StartContainer() error {
 			L: k.l,
 		}
 	}
+	cr, err := k.getContainerRequest()
+	if err != nil {
+		return err
+	}
 	c, err := tc.GenericContainer(context.Background(), tc.GenericContainerRequest{
-		ContainerRequest: k.getContainerRequest(),
+		ContainerRequest: cr,
 		Started:          true,
 		Reuse:            true,
 		Logger:           l,
 	})
 	if err != nil {
-		return errors.Wrapf(err, "cannot start Killgrave container")
+		return fmt.Errorf("cannot start Killgrave container: %w", err)
 	}
 	endpoint, err := GetEndpoint(context.Background(), c, "http")
 	if err != nil {
@@ -137,11 +141,15 @@ func (k *Killgrave) StartContainer() error {
 	return nil
 }
 
-func (k *Killgrave) getContainerRequest() tc.ContainerRequest {
+func (k *Killgrave) getContainerRequest() (tc.ContainerRequest, error) {
+	killgraveImage, err := mirror.GetImage("friendsofgo/killgrave")
+	if err != nil {
+		return tc.ContainerRequest{}, err
+	}
 	return tc.ContainerRequest{
 		Name:         k.ContainerName,
 		Networks:     k.Networks,
-		Image:        "friendsofgo/killgrave",
+		Image:        killgraveImage,
 		ExposedPorts: []string{NatPortFormat(k.InternalPort)},
 		Cmd:          []string{"-host=0.0.0.0", "-imposters=/imposters", "-watcher"},
 		Mounts: tc.ContainerMounts{
@@ -153,7 +161,7 @@ func (k *Killgrave) getContainerRequest() tc.ContainerRequest {
 			},
 		},
 		WaitingFor: wait.ForLog("The fake server is on tap now"),
-	}
+	}, nil
 }
 
 func (k *Killgrave) setupImposters() error {

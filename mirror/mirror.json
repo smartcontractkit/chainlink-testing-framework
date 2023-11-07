@@ -1,0 +1,11 @@
+[
+  "ethereum/client-go:v1.12.0",
+  "ethereum/client-go:alltools-v1.10.25",
+  "friendsofgo/killgrave:0.4.1",
+  "mockserver/mockserver:5.15.0",
+  "testcontainers/ryuk:0.5.1",
+  "confluentinc/cp-kafka:7.4.0",
+  "confluentinc/cp-schema-registry:7.4.0",
+  "confluentinc/cp-zookeeper:7.4.0",
+  "hyperledger/besu:23.10"
+]

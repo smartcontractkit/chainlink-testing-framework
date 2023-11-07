@@ -20,4 +20,6 @@ var (
 	ContractsDir = filepath.Join(ProjectRoot, "contracts")
 	// EthereumContractsDir path to our ethereum contracts
 	EthereumContractsDir = filepath.Join(ContractsDir, "ethereum")
+	// MirrorDir path to our ecr mirror helpers
+	MirrorDir = filepath.Join(ProjectRoot, "mirror")
 )
