@@ -682,9 +682,12 @@ func MustGetSelectedNetworksFromEnv() []blockchain.EVMNetwork {
 	if selectedNetworksEnv == "" {
 		panic(emptyEnvErr)
 	}
-	networkKeys := strings.Split(selectedNetworksEnv, ",")
+	return SetNetworks(selectedNetworksEnv)
+}
+func SetNetworks(strNetworks string) []blockchain.EVMNetwork {
+	networkKeys := strings.Split(strNetworks, ",")
 	if len(networkKeys) == 0 {
-		panic(emptyEnvErr)
+		panic(errors.Errorf("%s is not set or empty. Use valid network(s) separated by comma from %v", strNetworks, getValidNetworkKeys()))
 	}
 	networks := make([]blockchain.EVMNetwork, 0)
 	for i := range networkKeys {
