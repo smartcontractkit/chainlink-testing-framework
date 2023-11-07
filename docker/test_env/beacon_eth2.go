@@ -24,9 +24,10 @@ import (
 const (
 	ETH2_CONSENSUS_DIRECTORY = "/consensus"
 	ETH2_EXECUTION_DIRECTORY = "/execution"
-	GO_CLIENT_IMAGE          = "ethereum/client-go:latest" //TODO: fix version
+	GO_CLIENT_IMAGE          = "ethereum/client-go:v1.13.4"
 	BEACON_RPC_PORT          = "4000"
 	GETH_EXECUTION_PORT      = "8511"
+	PRYSM_IMAGE_TAG          = "v4.1.1"
 )
 
 type BeaconChainGenesis struct {
@@ -384,29 +385,23 @@ func (g *BeaconChain) getContainerRequest(networks []string) (*tc.ContainerReque
 	return &tc.ContainerRequest{
 		Name:            g.ContainerName,
 		AlwaysPullImage: true,
-		Image:           "gcr.io/prysmaticlabs/prysm/beacon-chain:v4.1.1",
+		Image:           fmt.Sprintf("gcr.io/prysmaticlabs/prysm/beacon-chain:%s", PRYSM_IMAGE_TAG),
 		ImagePlatform:   "linux/amd64",
 		Networks:        networks,
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForLog("Received state initialized event"),
 			tcwait.ForLog("Node started p2p server").
-				// tcwait.ForLog("Chain genesis time reached").
 				WithStartupTimeout(120*time.Second).
 				WithPollInterval(1*time.Second),
 		),
-		//write a bash script to execute that command?
-		//I have no idea why it's failing with level=error msg="flag provided but not defined: -interop-eth1data-votesgeth" prefix=main
-		//if according to output it should be there:
-		//           --interop-eth1data-votes                                Enable mocking of eth1 data votes for proposers to package into blocks (default: false)
 		Cmd: []string{
 			"--datadir=/consensus/beacondata",
 			"--min-sync-peers=0",
 			"--genesis-state=/consensus/genesis.ssz",
 			"--bootstrap-node=",
-			//TODO check if genesis file is there
 			"--chain-config-file=/consensus/config.yml",
 			"--contract-deployment-block=0",
-			"--chain-id=1337", //TODO change me
+			"--chain-id=1337",
 			"--rpc-host=0.0.0.0",
 			"--grpc-gateway-host=0.0.0.0",
 			fmt.Sprintf("--execution-endpoint=%s", g.GethExecutionURL),
@@ -415,16 +410,9 @@ func (g *BeaconChain) getContainerRequest(networks []string) (*tc.ContainerReque
 			"--suggested-fee-recipient=0x123463a4b065722e99115d6c222f267d9cabb524",
 			"--minimum-peers-per-subnet=0",
 			"--enable-debug-rpc-endpoints",
-			// "--interop-eth1data-votesgeth",
+			// "--interop-eth1data-votesgeth", //no idea why this flag results in error when passed here
 		},
 		ExposedPorts: []string{NatPortFormat(BEACON_RPC_PORT), NatPortFormat("3500"), NatPortFormat("8080"), NatPortFormat("6060"), NatPortFormat("9090")},
-		// Files: []tc.ContainerFile{
-		// 	{
-		// 		HostFilePath:      jwtSecret.Name(),
-		// 		ContainerFilePath: "/execution/jwtsecret",
-		// 		FileMode:          0644,
-		// 	},
-		// },
 		Mounts: tc.ContainerMounts{
 			tc.ContainerMount{
 				Source: tc.GenericBindMountSource{
@@ -679,7 +667,7 @@ func (g *Validator) getContainerRequest(networks []string) (*tc.ContainerRequest
 	return &tc.ContainerRequest{
 		Name:            g.ContainerName,
 		AlwaysPullImage: true,
-		Image:           "gcr.io/prysmaticlabs/prysm/validator:v4.1.1",
+		Image:           fmt.Sprintf("gcr.io/prysmaticlabs/prysm/validator:%s", PRYSM_IMAGE_TAG),
 		Networks:        networks,
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForLog("Beacon chain started").
