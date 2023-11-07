@@ -682,13 +682,13 @@ func MustGetSelectedNetworksFromEnv() []blockchain.EVMNetwork {
 	if selectedNetworksEnv == "" {
 		panic(emptyEnvErr)
 	}
-	return SetNetworks(selectedNetworksEnv)
-}
-func SetNetworks(strNetworks string) []blockchain.EVMNetwork {
-	networkKeys := strings.Split(strNetworks, ",")
+	networkKeys := strings.Split(selectedNetworksEnv, ",")
 	if len(networkKeys) == 0 {
-		panic(errors.Errorf("%s is not set or empty. Use valid network(s) separated by comma from %v", strNetworks, getValidNetworkKeys()))
+		panic(emptyEnvErr)
 	}
+	return SetNetworks(networkKeys)
+}
+func SetNetworks(networkKeys []string) []blockchain.EVMNetwork {
 	networks := make([]blockchain.EVMNetwork, 0)
 	for i := range networkKeys {
 		var walletKeys, httpUrls, wsUrls []string
