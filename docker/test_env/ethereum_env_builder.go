@@ -34,13 +34,14 @@ const (
 )
 
 type EthereumNetworkBuilder struct {
-	t              *testing.T
-	l              zerolog.Logger
-	consensusType  *ConsensusType
-	consensusLayer *ConsensusLayer
-	consensusNodes int
-	executionLayer *ExecutionLayer
-	executionNodes int
+	t                 *testing.T
+	l                 zerolog.Logger
+	consensusType     *ConsensusType
+	consensusLayer    *ConsensusLayer
+	consensusNodes    int
+	executionLayer    *ExecutionLayer
+	executionNodes    int
+	BeaconChainConfig *BeaconChainConfig
 }
 
 type Eth2Components struct {
@@ -78,6 +79,11 @@ func (b *EthereumNetworkBuilder) WithConsensusNodes(consensusNodes int) *Ethereu
 
 func (b *EthereumNetworkBuilder) WithExecutionNodes(executionNodes int) *EthereumNetworkBuilder {
 	b.executionNodes = executionNodes
+	return b
+}
+
+func (b *EthereumNetworkBuilder) WithBeaconChainConfig(config BeaconChainConfig) *EthereumNetworkBuilder {
+	b.BeaconChainConfig = &config
 	return b
 }
 
@@ -130,32 +136,39 @@ func (b *EthereumNetworkBuilder) startPos() (blockchain.EVMNetwork, Eth2Componen
 		return blockchain.EVMNetwork{}, Eth2Components{}, err
 	}
 
-	bg := NewEth2Genesis([]string{network.Name}).
+	var beaconChainConfig BeaconChainConfig
+	if b.BeaconChainConfig != nil {
+		beaconChainConfig = *b.BeaconChainConfig
+	} else {
+		beaconChainConfig = DefaultBeaconChainConfig
+	}
+
+	bg := NewEth2Genesis([]string{network.Name}, beaconChainConfig).
 		WithTestLogger(b.t)
 	err = bg.StartContainer()
 	if err != nil {
 		return blockchain.EVMNetwork{}, Eth2Components{}, err
 	}
 
-	gg := NewEth1Genesis([]string{network.Name}, bg.ExecutionDir).WithTestLogger(b.t)
+	gg := NewEth1Genesis([]string{network.Name}, bg.hostExecutionDir).WithTestLogger(b.t)
 	err = gg.StartContainer()
 	if err != nil {
 		return blockchain.EVMNetwork{}, Eth2Components{}, err
 	}
 
-	geth := NewGeth2([]string{network.Name}, bg.ExecutionDir).WithTestLogger(b.t)
+	geth := NewGeth2([]string{network.Name}, bg.hostExecutionDir).WithTestLogger(b.t)
 	net, _, err := geth.StartContainer()
 	if err != nil {
 		return blockchain.EVMNetwork{}, Eth2Components{}, err
 	}
 
-	beacon := NewPrysmBeaconChain([]string{network.Name}, bg.ExecutionDir, bg.ConsensusDir, geth.ExecutionURL).WithTestLogger(b.t)
+	beacon := NewPrysmBeaconChain([]string{network.Name}, bg.hostExecutionDir, bg.hostConsensusDir, geth.InternalExecutionURL).WithTestLogger(b.t)
 	err = beacon.StartContainer()
 	if err != nil {
 		return blockchain.EVMNetwork{}, Eth2Components{}, err
 	}
 
-	validator := NewPrysmValidator([]string{network.Name}, bg.ConsensusDir, beacon.InternalRpcURL).WithTestLogger(b.t)
+	validator := NewPrysmValidator([]string{network.Name}, bg.hostConsensusDir, beacon.InternalBeaconRpcProvider).WithTestLogger(b.t)
 	err = validator.StartContainer()
 	if err != nil {
 		return blockchain.EVMNetwork{}, Eth2Components{}, err

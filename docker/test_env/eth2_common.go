@@ -1,9 +1,24 @@
 package test_env
 
-const (
-	CONSENSUS_DIRECTORY = "/consensus"
-	EXECUTION_DIRECTORY = "/execution"
+import (
+	"bytes"
+	"html/template"
 )
+
+const (
+	CONTAINER_ETH2_CONSENSUS_DIRECTORY = "/consensus"
+	CONTAINER_ETH2_EXECUTION_DIRECTORY = "/execution"
+)
+
+type BeaconChainConfig struct {
+	SecondsPerSlot int
+	SlotsPerEpoch  int
+}
+
+var DefaultBeaconChainConfig = BeaconChainConfig{
+	SecondsPerSlot: 12,
+	SlotsPerEpoch:  6,
+}
 
 var BeaconChainConfigYAML = `
 CONFIG_NAME: interop
@@ -29,12 +44,25 @@ MAX_WITHDRAWALS_PER_PAYLOAD: 16
 DENEB_FORK_VERSION: 0x20000093
 
 # Time parameters
-SECONDS_PER_SLOT: 12
-SLOTS_PER_EPOCH: 6
+SECONDS_PER_SLOT: {{.SecondsPerSlot}}
+SLOTS_PER_EPOCH: {{.SlotsPerEpoch}}
 
 # Deposit contract
 DEPOSIT_CONTRACT_ADDRESS: 0x4242424242424242424242424242424242424242
 `
+
+func GenerateBeaconChainConfig(c *BeaconChainConfig) (string, error) {
+	tmpl, err := template.New("yaml").Parse(BeaconChainConfigYAML)
+	if err != nil {
+		return "", err
+	}
+	var buf bytes.Buffer
+	err = tmpl.Execute(&buf, *c)
+	if err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
 
 var Eth1GenesisJSON = `
 {

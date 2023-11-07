@@ -19,43 +19,49 @@ import (
 )
 
 const (
-	PRYSM_RPC_PORT  = "4000"
-	PRYSM_IMAGE_TAG = "v4.1.1"
+	PRYSM_QUERY_RPC_PORT = "3500"
+	PRYSM_NODE_RPC_PORT  = "4000"
+	PRYSM_IMAGE_TAG      = "v4.1.1"
 )
 
 type PrysmGenesis struct {
 	EnvComponent
-	ExecutionDir string
-	ConsensusDir string
-	l            zerolog.Logger
-	t            *testing.T
+	hostExecutionDir  string
+	hostConsensusDir  string
+	beaconChainConfig BeaconChainConfig
+	l                 zerolog.Logger
+	t                 *testing.T
 }
 
 type PrysmBeaconChain struct {
 	EnvComponent
-	InternalRpcURL   string
-	ExecutionDir     string
-	ConsensusDir     string
-	GethExecutionURL string
-	l                zerolog.Logger
-	t                *testing.T
-}
-
-type PrysmValidator struct {
-	EnvComponent
 	InternalBeaconRpcProvider string
-	ConsensusDir              string
+	InternalQueryRpcUrl       string
+	ExternalBeaconRpcProvider string
+	ExternalQueryRpcUrl       string
+	hostExecutionDir          string
+	hostConsensusDir          string
+	gethInternalExecutionURL  string
 	l                         zerolog.Logger
 	t                         *testing.T
 }
 
-func NewEth2Genesis(networks []string, opts ...EnvComponentOption) *PrysmGenesis {
+type PrysmValidator struct {
+	EnvComponent
+	internalBeaconRpcProvider string
+	hostConsensusDir          string
+	l                         zerolog.Logger
+	t                         *testing.T
+}
+
+func NewEth2Genesis(networks []string, beaconChainConfig BeaconChainConfig, opts ...EnvComponentOption) *PrysmGenesis {
 	g := &PrysmGenesis{
 		EnvComponent: EnvComponent{
 			ContainerName: fmt.Sprintf("%s-%s", "prysm-eth2-genesis", uuid.NewString()[0:8]),
 			Networks:      networks,
 		},
-		l: log.Logger,
+		beaconChainConfig: beaconChainConfig,
+		l:                 log.Logger,
 	}
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
@@ -90,11 +96,11 @@ func (g *PrysmGenesis) StartContainer() error {
 		Logger:           l,
 	})
 	if err != nil {
-		return errors.Wrapf(err, "cannot start beacon chain genesis container")
+		return errors.Wrapf(err, "cannot start prysm beacon chain genesis container")
 	}
 
 	g.l.Info().Str("containerName", g.ContainerName).
-		Msg("Started Beacon Chain Genesis container")
+		Msg("Started Prysm Beacon Chain Genesis container")
 
 	return nil
 }
@@ -115,7 +121,11 @@ func (g *PrysmGenesis) getContainerRequest(networks []string) (*tc.ContainerRequ
 		return nil, err
 	}
 
-	_, err = configFile.WriteString(BeaconChainConfigYAML)
+	bc, err := GenerateBeaconChainConfig(&g.beaconChainConfig)
+	if err != nil {
+		return nil, err
+	}
+	_, err = configFile.WriteString(bc)
 	if err != nil {
 		return nil, err
 	}
@@ -129,8 +139,8 @@ func (g *PrysmGenesis) getContainerRequest(networks []string) (*tc.ContainerRequ
 		return nil, err
 	}
 
-	g.ExecutionDir = executionDir
-	g.ConsensusDir = consensusDir
+	g.hostExecutionDir = executionDir
+	g.hostConsensusDir = consensusDir
 
 	return &tc.ContainerRequest{
 		Name:            g.ContainerName,
@@ -140,14 +150,14 @@ func (g *PrysmGenesis) getContainerRequest(networks []string) (*tc.ContainerRequ
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForLog("Done writing genesis state to"),
 			tcwait.ForLog("Command completed").
-				WithStartupTimeout(120*time.Second).
+				WithStartupTimeout(20*time.Second).
 				WithPollInterval(1*time.Second),
 		),
 		Cmd: []string{"testnet",
 			"generate-genesis",
 			"--fork=capella",
 			"--num-validators=64",
-			"--genesis-time-delay=15", //TODO: replace also here
+			"--genesis-time-delay=15",
 			"--output-ssz=/consensus/genesis.ssz",
 			"--chain-config-file=/consensus/config.yml",
 			"--geth-genesis-json-in=/execution/genesis.json",
@@ -170,13 +180,13 @@ func (g *PrysmGenesis) getContainerRequest(networks []string) (*tc.ContainerRequ
 				Source: tc.GenericBindMountSource{
 					HostPath: executionDir,
 				},
-				Target: EXECUTION_DIRECTORY,
+				Target: CONTAINER_ETH2_EXECUTION_DIRECTORY,
 			},
 			tc.ContainerMount{
 				Source: tc.GenericBindMountSource{
 					HostPath: consensusDir,
 				},
-				Target: CONSENSUS_DIRECTORY,
+				Target: CONTAINER_ETH2_CONSENSUS_DIRECTORY,
 			},
 		},
 	}, nil
@@ -188,10 +198,10 @@ func NewPrysmBeaconChain(networks []string, executionDir, consensusDir, gethExec
 			ContainerName: fmt.Sprintf("%s-%s", "prysm-beacon-chain", uuid.NewString()[0:8]),
 			Networks:      networks,
 		},
-		ExecutionDir:     executionDir,
-		ConsensusDir:     consensusDir,
-		GethExecutionURL: gethExecutionURL,
-		l:                log.Logger,
+		hostExecutionDir:         executionDir,
+		hostConsensusDir:         consensusDir,
+		gethInternalExecutionURL: gethExecutionURL,
+		l:                        log.Logger,
 	}
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
@@ -225,36 +235,19 @@ func (g *PrysmBeaconChain) StartContainer() error {
 		Logger:           l,
 	})
 	if err != nil {
-		return errors.Wrapf(err, "cannot start beacon chain container")
+		return errors.Wrapf(err, "cannot start prysm beacon chain container")
 	}
 
-	//TODO is this even needed?
-	_, err = GetHost(context.Background(), ct)
+	host, err := GetHost(context.Background(), ct)
+	if err != nil {
+		return err
+	}
+	queryPort, err := ct.MappedPort(context.Background(), NatPort(PRYSM_QUERY_RPC_PORT))
 	if err != nil {
 		return err
 	}
 
-	_, err = ct.MappedPort(context.Background(), NatPort("3500"))
-	if err != nil {
-		return err
-	}
-
-	_, err = ct.MappedPort(context.Background(), NatPort("8080"))
-	if err != nil {
-		return err
-	}
-
-	_, err = ct.MappedPort(context.Background(), NatPort("6060"))
-	if err != nil {
-		return err
-	}
-
-	_, err = ct.MappedPort(context.Background(), NatPort("9090"))
-	if err != nil {
-		return err
-	}
-
-	externalRcpPort, err := ct.MappedPort(context.Background(), NatPort("4000"))
+	externalRcpPort, err := ct.MappedPort(context.Background(), NatPort(PRYSM_NODE_RPC_PORT))
 	if err != nil {
 		return err
 	}
@@ -262,7 +255,10 @@ func (g *PrysmBeaconChain) StartContainer() error {
 	_ = externalRcpPort
 
 	g.Container = ct
-	g.InternalRpcURL = fmt.Sprintf("%s:%s", g.ContainerName, "4000")
+	g.InternalBeaconRpcProvider = fmt.Sprintf("%s:%s", g.ContainerName, PRYSM_NODE_RPC_PORT)
+	g.InternalQueryRpcUrl = fmt.Sprintf("%s:%s", g.ContainerName, PRYSM_QUERY_RPC_PORT)
+	g.ExternalBeaconRpcProvider = fmt.Sprintf("http://%s:%s", host, externalRcpPort.Port())
+	g.ExternalQueryRpcUrl = fmt.Sprintf("http://%s:%s", host, queryPort.Port())
 
 	g.l.Info().Str("containerName", g.ContainerName).
 		Msg("Started Prysm Beacon Chain container")
@@ -271,15 +267,6 @@ func (g *PrysmBeaconChain) StartContainer() error {
 }
 
 func (g *PrysmBeaconChain) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
-	// jwtSecret, err := os.CreateTemp(g.ExecutionDir, "jwtsecret")
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// _, err = jwtSecret.WriteString("0xfad2709d0bb03bf0e8ba3c99bea194575d3e98863133d1af638ed056d1d59345")
-	// if err != nil {
-	// 	return nil, err
-	// }
-
 	return &tc.ContainerRequest{
 		Name:            g.ContainerName,
 		AlwaysPullImage: true,
@@ -302,7 +289,7 @@ func (g *PrysmBeaconChain) getContainerRequest(networks []string) (*tc.Container
 			"--chain-id=1337",
 			"--rpc-host=0.0.0.0",
 			"--grpc-gateway-host=0.0.0.0",
-			fmt.Sprintf("--execution-endpoint=%s", g.GethExecutionURL),
+			fmt.Sprintf("--execution-endpoint=%s", g.gethInternalExecutionURL),
 			"--accept-terms-of-use",
 			"--jwt-secret=/execution/jwtsecret",
 			"--suggested-fee-recipient=0x123463a4b065722e99115d6c222f267d9cabb524",
@@ -310,19 +297,19 @@ func (g *PrysmBeaconChain) getContainerRequest(networks []string) (*tc.Container
 			"--enable-debug-rpc-endpoints",
 			// "--interop-eth1data-votesgeth", //no idea why this flag results in error when passed here
 		},
-		ExposedPorts: []string{NatPortFormat(PRYSM_RPC_PORT), NatPortFormat("3500"), NatPortFormat("8080"), NatPortFormat("6060"), NatPortFormat("9090")},
+		ExposedPorts: []string{NatPortFormat(PRYSM_NODE_RPC_PORT), NatPortFormat(PRYSM_QUERY_RPC_PORT)},
 		Mounts: tc.ContainerMounts{
 			tc.ContainerMount{
 				Source: tc.GenericBindMountSource{
-					HostPath: g.ExecutionDir,
+					HostPath: g.hostExecutionDir,
 				},
-				Target: EXECUTION_DIRECTORY,
+				Target: CONTAINER_ETH2_EXECUTION_DIRECTORY,
 			},
 			tc.ContainerMount{
 				Source: tc.GenericBindMountSource{
-					HostPath: g.ConsensusDir,
+					HostPath: g.hostConsensusDir,
 				},
-				Target: CONSENSUS_DIRECTORY,
+				Target: CONTAINER_ETH2_CONSENSUS_DIRECTORY,
 			},
 		},
 	}, nil
@@ -334,8 +321,8 @@ func NewPrysmValidator(networks []string, consensusDir, internalBeaconRpcProvide
 			ContainerName: fmt.Sprintf("%s-%s", "prysm-validator", uuid.NewString()[0:8]),
 			Networks:      networks,
 		},
-		ConsensusDir:              consensusDir,
-		InternalBeaconRpcProvider: internalBeaconRpcProvider,
+		hostConsensusDir:          consensusDir,
+		internalBeaconRpcProvider: internalBeaconRpcProvider,
 		l:                         log.Logger,
 	}
 	for _, opt := range opts {
@@ -392,7 +379,7 @@ func (g *PrysmValidator) getContainerRequest(networks []string) (*tc.ContainerRe
 				WithStartupTimeout(120 * time.Second).
 				WithPollInterval(1 * time.Second),
 		),
-		Cmd: []string{fmt.Sprintf("--beacon-rpc-provider=%s", g.InternalBeaconRpcProvider),
+		Cmd: []string{fmt.Sprintf("--beacon-rpc-provider=%s", g.internalBeaconRpcProvider),
 			"--datadir=/consensus/validatordata",
 			"--accept-terms-of-use",
 			"--interop-num-validators=64",
@@ -402,9 +389,9 @@ func (g *PrysmValidator) getContainerRequest(networks []string) (*tc.ContainerRe
 		Mounts: tc.ContainerMounts{
 			tc.ContainerMount{
 				Source: tc.GenericBindMountSource{
-					HostPath: g.ConsensusDir,
+					HostPath: g.hostConsensusDir,
 				},
-				Target: CONSENSUS_DIRECTORY,
+				Target: CONTAINER_ETH2_CONSENSUS_DIRECTORY,
 			},
 		},
 	}, nil

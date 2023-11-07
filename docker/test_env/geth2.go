@@ -34,20 +34,21 @@ type GethGenesis struct {
 
 type Geth2 struct {
 	EnvComponent
-	ExternalHttpUrl string
-	InternalHttpUrl string
-	ExternalWsUrl   string
-	InternalWsUrl   string
-	ExecutionURL    string
-	ExecutionDir    string
-	l               zerolog.Logger
-	t               *testing.T
+	ExternalHttpUrl      string
+	InternalHttpUrl      string
+	ExternalWsUrl        string
+	InternalWsUrl        string
+	InternalExecutionURL string
+	ExternalExecutionURL string
+	ExecutionDir         string
+	l                    zerolog.Logger
+	t                    *testing.T
 }
 
 func NewEth1Genesis(networks []string, executionDir string, opts ...EnvComponentOption) *GethGenesis {
 	g := &GethGenesis{
 		EnvComponent: EnvComponent{
-			ContainerName: fmt.Sprintf("%s-%s", "geth-genesis", uuid.NewString()[0:8]),
+			ContainerName: fmt.Sprintf("%s-%s", "geth-eth1-genesis", uuid.NewString()[0:8]),
 			Networks:      networks,
 		},
 		ExecutionDir: executionDir,
@@ -114,7 +115,7 @@ func (g *GethGenesis) getContainerRequest(networks []string) (*tc.ContainerReque
 				Source: tc.GenericBindMountSource{
 					HostPath: g.ExecutionDir,
 				},
-				Target: EXECUTION_DIRECTORY,
+				Target: CONTAINER_ETH2_EXECUTION_DIRECTORY,
 			},
 		},
 	}, nil
@@ -179,7 +180,7 @@ func (g *Geth2) StartContainer() (blockchain.EVMNetwork, InternalDockerUrls, err
 	if err != nil {
 		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
 	}
-	_, err = ct.MappedPort(context.Background(), NatPort(GETH_ETH2_EXECUTION_PORT))
+	executionPort, err := ct.MappedPort(context.Background(), NatPort(GETH_ETH2_EXECUTION_PORT))
 	if err != nil {
 		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
 	}
@@ -189,7 +190,8 @@ func (g *Geth2) StartContainer() (blockchain.EVMNetwork, InternalDockerUrls, err
 	g.InternalHttpUrl = fmt.Sprintf("http://%s:%s", g.ContainerName, TX_GETH_HTTP_PORT)
 	g.ExternalWsUrl = fmt.Sprintf("ws://%s:%s", host, wsPort.Port())
 	g.InternalWsUrl = fmt.Sprintf("ws://%s:%s", g.ContainerName, TX_GETH_WS_PORT)
-	g.ExecutionURL = fmt.Sprintf("http://%s:%s", g.ContainerName, GETH_ETH2_EXECUTION_PORT)
+	g.InternalExecutionURL = fmt.Sprintf("http://%s:%s", g.ContainerName, GETH_ETH2_EXECUTION_PORT)
+	g.ExternalExecutionURL = fmt.Sprintf("http://%s:%s", host, executionPort.Port())
 
 	networkConfig := blockchain.SimulatedEVMNetwork
 	networkConfig.Name = "geth"
@@ -290,7 +292,7 @@ func (g *Geth2) getContainerRequest(networks []string) (*tc.ContainerRequest, er
 				Source: tc.GenericBindMountSource{
 					HostPath: g.ExecutionDir,
 				},
-				Target: EXECUTION_DIRECTORY,
+				Target: CONTAINER_ETH2_EXECUTION_DIRECTORY,
 			},
 		},
 	}, nil
