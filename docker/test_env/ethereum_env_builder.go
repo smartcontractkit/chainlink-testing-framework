@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
@@ -36,6 +37,7 @@ const (
 type EthereumNetworkBuilder struct {
 	t                 *testing.T
 	l                 zerolog.Logger
+	dockerNetworkName string
 	consensusType     *ConsensusType
 	consensusLayer    *ConsensusLayer
 	consensusNodes    int
@@ -87,6 +89,11 @@ func (b *EthereumNetworkBuilder) WithBeaconChainConfig(config BeaconChainConfig)
 	return b
 }
 
+func (b *EthereumNetworkBuilder) WithDockerNetworkName(name string) *EthereumNetworkBuilder {
+	b.dockerNetworkName = name
+	return b
+}
+
 func (b *EthereumNetworkBuilder) Start() (blockchain.EVMNetwork, Eth2Components, error) {
 	err := b.validate()
 	if err != nil {
@@ -131,7 +138,15 @@ func (b *EthereumNetworkBuilder) validate() error {
 }
 
 func (b *EthereumNetworkBuilder) startPos() (blockchain.EVMNetwork, Eth2Components, error) {
-	network, err := docker.CreateNetwork(b.l)
+	var network *tc.DockerNetwork
+	var err error
+
+	if b.dockerNetworkName != "" {
+		network, err = docker.UseExistingNetwork(b.l, b.dockerNetworkName)
+	} else {
+		network, err = docker.CreateNetwork(b.l)
+	}
+	network, err = docker.CreateNetwork(b.l)
 	if err != nil {
 		return blockchain.EVMNetwork{}, Eth2Components{}, err
 	}
