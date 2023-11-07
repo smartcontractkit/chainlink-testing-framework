@@ -384,7 +384,7 @@ func (g *BeaconChain) getContainerRequest(networks []string) (*tc.ContainerReque
 	return &tc.ContainerRequest{
 		Name:            g.ContainerName,
 		AlwaysPullImage: true,
-		Image:           "gcr.io/prysmaticlabs/prysm/beacon-chain:v4.0.8",
+		Image:           "gcr.io/prysmaticlabs/prysm/beacon-chain:v4.1.1",
 		ImagePlatform:   "linux/amd64",
 		Networks:        networks,
 		WaitingFor: tcwait.ForAll(
@@ -406,7 +406,7 @@ func (g *BeaconChain) getContainerRequest(networks []string) (*tc.ContainerReque
 			//TODO check if genesis file is there
 			"--chain-config-file=/consensus/config.yml",
 			"--contract-deployment-block=0",
-			"--chain-id=32382", //TODO change me
+			"--chain-id=1337", //TODO change me
 			"--rpc-host=0.0.0.0",
 			"--grpc-gateway-host=0.0.0.0",
 			fmt.Sprintf("--execution-endpoint=%s", g.GethExecutionURL),
@@ -415,7 +415,7 @@ func (g *BeaconChain) getContainerRequest(networks []string) (*tc.ContainerReque
 			"--suggested-fee-recipient=0x123463a4b065722e99115d6c222f267d9cabb524",
 			"--minimum-peers-per-subnet=0",
 			"--enable-debug-rpc-endpoints",
-			"--interop-eth1data-votesgeth",
+			// "--interop-eth1data-votesgeth",
 		},
 		ExposedPorts: []string{NatPortFormat(BEACON_RPC_PORT), NatPortFormat("3500"), NatPortFormat("8080"), NatPortFormat("6060"), NatPortFormat("9090")},
 		// Files: []tc.ContainerFile{
@@ -679,14 +679,14 @@ func (g *Validator) getContainerRequest(networks []string) (*tc.ContainerRequest
 	return &tc.ContainerRequest{
 		Name:            g.ContainerName,
 		AlwaysPullImage: true,
-		Image:           "gcr.io/prysmaticlabs/prysm/validator:v4.0.8",
+		Image:           "gcr.io/prysmaticlabs/prysm/validator:v4.1.1",
 		Networks:        networks,
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForLog("Beacon chain started").
 				WithStartupTimeout(120 * time.Second).
 				WithPollInterval(1 * time.Second),
 		),
-		Cmd: []string{fmt.Sprintf("--beacon-rpc-provider==%s", g.InternalBeaconRpcProvider),
+		Cmd: []string{fmt.Sprintf("--beacon-rpc-provider=%s", g.InternalBeaconRpcProvider),
 			"--datadir=/consensus/validatordata",
 			"--accept-terms-of-use",
 			"--interop-num-validators=64",
@@ -740,7 +740,7 @@ DEPOSIT_CONTRACT_ADDRESS: 0x4242424242424242424242424242424242424242
 var genesisJSON = `
 {
 	"config": {
-		"chainId": 32382,
+		"chainId": 1337,
 		"homesteadBlock": 0,
 		"daoForkSupport": true,
 		"eip150Block": 0,

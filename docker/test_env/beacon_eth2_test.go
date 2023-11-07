@@ -5,12 +5,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 )
 
-// precalculate geth2 container id and pass to beacon chain, so that it can start before geth2
-// no network visibility between containers, why?
 func TestEth2(t *testing.T) {
 	l := logging.GetTestLogger(t)
 	network, err := docker.CreateNetwork(l)
@@ -46,4 +45,11 @@ func TestEth2(t *testing.T) {
 	validator := NewValidator([]string{network.Name}, bg.ConsensusDir, beacon.InternalRpcURL).WithTestLogger(t)
 	err = validator.StartContainer()
 	require.NoError(t, err)
+
+	ns := blockchain.SimulatedEVMNetwork
+	ns.URLs = []string{geth.ExternalWsUrl}
+	c, err := blockchain.ConnectEVMClient(ns, l)
+	require.NoError(t, err, "Couldn't connect to the evm client")
+	err = c.Close()
+	require.NoError(t, err, "Couldn't close the client")
 }
