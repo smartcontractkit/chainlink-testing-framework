@@ -1,4 +1,4 @@
-package eth2
+package test_env
 
 import (
 	"context"
@@ -7,10 +7,11 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	tcwait "github.com/testcontainers/testcontainers-go/wait"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
-	tcwait "github.com/testcontainers/testcontainers-go/wait"
 )
 
 type ConsensusType string
@@ -44,8 +45,8 @@ type EthereumNetworkBuilder struct {
 
 type Eth2Components struct {
 	Geth        *Geth2
-	BeaconChain *BeaconChain
-	Validator   *Validator
+	BeaconChain *PrysmBeaconChain
+	Validator   *PrysmValidator
 }
 
 func NewEthereumNetworkBuilder(t *testing.T) *EthereumNetworkBuilder {
@@ -148,13 +149,13 @@ func (b *EthereumNetworkBuilder) startPos() (blockchain.EVMNetwork, Eth2Componen
 		return blockchain.EVMNetwork{}, Eth2Components{}, err
 	}
 
-	beacon := NewBeaconChain([]string{network.Name}, bg.ExecutionDir, bg.ConsensusDir, geth.ExecutionURL).WithTestLogger(b.t)
+	beacon := NewPrysmBeaconChain([]string{network.Name}, bg.ExecutionDir, bg.ConsensusDir, geth.ExecutionURL).WithTestLogger(b.t)
 	err = beacon.StartContainer()
 	if err != nil {
 		return blockchain.EVMNetwork{}, Eth2Components{}, err
 	}
 
-	validator := NewValidator([]string{network.Name}, bg.ConsensusDir, beacon.InternalRpcURL).WithTestLogger(b.t)
+	validator := NewPrysmValidator([]string{network.Name}, bg.ConsensusDir, beacon.InternalRpcURL).WithTestLogger(b.t)
 	err = validator.StartContainer()
 	if err != nil {
 		return blockchain.EVMNetwork{}, Eth2Components{}, err

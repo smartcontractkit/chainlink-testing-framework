@@ -1,4 +1,4 @@
-package eth2
+package test_env
 
 import (
 	"testing"
