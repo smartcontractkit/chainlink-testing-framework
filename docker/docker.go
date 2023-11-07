@@ -16,10 +16,6 @@ const RetryAttempts = 3
 func CreateNetwork(l zerolog.Logger) (*tc.DockerNetwork, error) {
 	uuidObj, _ := uuid.NewRandom()
 	var networkName = fmt.Sprintf("network-%s", uuidObj.String())
-	return UseExistingNetwork(l, networkName)
-}
-
-func UseExistingNetwork(l zerolog.Logger, networkName string) (*tc.DockerNetwork, error) {
 	ryukImage, err := mirror.GetImage("testcontainers/ryuk")
 	if err != nil {
 		return nil, err
