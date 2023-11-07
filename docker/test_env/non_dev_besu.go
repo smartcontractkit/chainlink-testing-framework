@@ -15,18 +15,18 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/templates"
 )
 
 const (
-	BESU_IMAGE = "hyperledger/besu:latest"
+	BESU_IMAGE = "hyperledger/besu"
 )
 
 type PrivateBesuChain struct {
@@ -236,11 +236,11 @@ func (g *NonDevBesuNode) ConnectToClient() error {
 	case *blockchain.EthereumMultinodeClient:
 		ethClient, ok := val.Clients[0].(*blockchain.EthereumClient)
 		if !ok {
-			return errors.Errorf("could not get blockchain.EthereumClient from %+v", val)
+			return fmt.Errorf("could not get blockchain.EthereumClient from %+v", val)
 		}
 		g.EthClient = ethClient.Client
 	default:
-		return errors.Errorf("%+v not supported for geth", val)
+		return fmt.Errorf("%+v not supported for geth", val)
 	}
 	if err != nil {
 		return err
@@ -263,9 +263,13 @@ func (g *NonDevBesuNode) Start() error {
 
 	// Besu Bootnode setup: BEGIN
 	// Generate public key for besu bootnode
+	crbn, err := g.getBesuBootNodeContainerRequest()
+	if err != nil {
+		return err
+	}
 	bootNode, err := tc.GenericContainer(context.Background(),
 		tc.GenericContainerRequest{
-			ContainerRequest: g.getBesuBootNodeContainerRequest(),
+			ContainerRequest: crbn,
 			Started:          true,
 			Reuse:            true,
 			Logger:           l,
@@ -298,10 +302,14 @@ func (g *NonDevBesuNode) Start() error {
 
 	fmt.Printf("Besu Bootnode URL: %s\n", g.Config.bootNodeURL)
 
+	cr, err := g.getBesuContainerRequest()
+	if err != nil {
+		return err
+	}
 	var ct tc.Container
 	ct, err = tc.GenericContainer(context.Background(),
 		tc.GenericContainerRequest{
-			ContainerRequest: g.getBesuContainerRequest(),
+			ContainerRequest: cr,
 			Started:          true,
 			Reuse:            true,
 		})
@@ -312,10 +320,14 @@ func (g *NonDevBesuNode) Start() error {
 	return nil
 }
 
-func (g *NonDevBesuNode) getBesuBootNodeContainerRequest() tc.ContainerRequest {
+func (g *NonDevBesuNode) getBesuBootNodeContainerRequest() (tc.ContainerRequest, error) {
+	besuImage, err := mirror.GetImage(BESU_IMAGE)
+	if err != nil {
+		return tc.ContainerRequest{}, err
+	}
 	return tc.ContainerRequest{
 		Name:         g.ContainerName + "-bootnode",
-		Image:        BESU_IMAGE,
+		Image:        besuImage,
 		Networks:     g.Networks,
 		ExposedPorts: []string{"30301/udp"},
 		WaitingFor: tcwait.ForLog("PeerDiscoveryAgent | P2P peer discovery agent started and listening on").
@@ -345,7 +357,7 @@ func (g *NonDevBesuNode) getBesuBootNodeContainerRequest() tc.ContainerRequest {
 				Target: "/opt/besu/nodedata/",
 			},
 		},
-	}
+	}, nil
 }
 
 func (g *NonDevBesuNode) exportBesuBootNodeAddress(bootNode tc.Container) (err error) {
@@ -363,10 +375,14 @@ func (g *NonDevBesuNode) exportBesuBootNodeAddress(bootNode tc.Container) (err e
 	return nil
 }
 
-func (g *NonDevBesuNode) getBesuContainerRequest() tc.ContainerRequest {
+func (g *NonDevBesuNode) getBesuContainerRequest() (tc.ContainerRequest, error) {
+	besuImage, err := mirror.GetImage(BESU_IMAGE)
+	if err != nil {
+		return tc.ContainerRequest{}, err
+	}
 	return tc.ContainerRequest{
 		Name:  g.ContainerName,
-		Image: BESU_IMAGE,
+		Image: besuImage,
 		ExposedPorts: []string{
 			NatPortFormat(TX_GETH_HTTP_PORT),
 			NatPortFormat(TX_NON_DEV_GETH_WS_PORT),
@@ -418,5 +434,5 @@ func (g *NonDevBesuNode) getBesuContainerRequest() tc.ContainerRequest {
 				Target: "/opt/besu/nodedata/",
 			},
 		},
-	}
+	}, nil
 }

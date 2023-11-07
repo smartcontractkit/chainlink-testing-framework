@@ -8,12 +8,12 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 )
 
 type Zookeeper struct {
@@ -52,15 +52,19 @@ func (z *Zookeeper) StartContainer() error {
 			L: z.l,
 		}
 	}
+	cr, err := z.getContainerRequest()
+	if err != nil {
+		return err
+	}
 	req := tc.GenericContainerRequest{
-		ContainerRequest: z.getContainerRequest(),
+		ContainerRequest: cr,
 		Started:          true,
 		Reuse:            true,
 		Logger:           l,
 	}
 	c, err := tc.GenericContainer(context.Background(), req)
 	if err != nil {
-		return errors.Wrapf(err, "cannot start Zookeper container")
+		return fmt.Errorf("cannot start Zookeper container: %w", err)
 	}
 	name, err := c.Name(context.Background())
 	if err != nil {
@@ -78,10 +82,14 @@ func (z *Zookeeper) StartContainer() error {
 	return nil
 }
 
-func (z *Zookeeper) getContainerRequest() tc.ContainerRequest {
+func (z *Zookeeper) getContainerRequest() (tc.ContainerRequest, error) {
+	zookeeperImage, err := mirror.GetImage("confluentinc/cp-zookeeper")
+	if err != nil {
+		return tc.ContainerRequest{}, err
+	}
 	return tc.ContainerRequest{
 		Name:         z.ContainerName,
-		Image:        "confluentinc/cp-zookeeper:7.4.0",
+		Image:        zookeeperImage,
 		ExposedPorts: []string{"2181/tcp"},
 		Env: map[string]string{
 			"ZOOKEEPER_CLIENT_PORT": "2181",
@@ -91,5 +99,5 @@ func (z *Zookeeper) getContainerRequest() tc.ContainerRequest {
 		WaitingFor: tcwait.ForLog("ZooKeeper audit is disabled.").
 			WithStartupTimeout(30 * time.Second).
 			WithPollInterval(100 * time.Millisecond),
-	}
+	}, nil
 }
