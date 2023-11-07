@@ -684,6 +684,9 @@ func MustGetSelectedNetworksFromEnv() []blockchain.EVMNetwork {
 	if len(networkKeys) == 0 {
 		panic(emptyEnvErr)
 	}
+	return SetNetworks(networkKeys)
+}
+func SetNetworks(networkKeys []string) []blockchain.EVMNetwork {
 	networks := make([]blockchain.EVMNetwork, 0)
 	for i := range networkKeys {
 		var walletKeys, httpUrls, wsUrls []string
