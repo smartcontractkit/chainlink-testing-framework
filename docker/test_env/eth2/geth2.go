@@ -1,4 +1,4 @@
-package test_env
+package eth2
 
 import (
 	"context"
@@ -13,58 +13,26 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
+	te "github.com/smartcontractkit/chainlink-testing-framework/docker/test_env"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 )
 
-//TODO expose simple API that will start all these containers and return only data we care about
-//TODO fund our addresses
-
 const (
-	ETH2_CONSENSUS_DIRECTORY = "/consensus"
-	ETH2_EXECUTION_DIRECTORY = "/execution"
-	GO_CLIENT_IMAGE          = "ethereum/client-go:v1.13.4"
-	BEACON_RPC_PORT          = "4000"
-	GETH_EXECUTION_PORT      = "8511"
-	PRYSM_IMAGE_TAG          = "v4.1.1"
+	GO_CLIENT_IMAGE_TAG = "v1.13.4"
+	GETH_EXECUTION_PORT = "8511"
 )
 
-type BeaconChainGenesis struct {
-	EnvComponent
-	ExecutionDir string
-	ConsensusDir string
-	l            zerolog.Logger
-	t            *testing.T
-}
-
 type GethGenesis struct {
-	EnvComponent
+	te.EnvComponent
 	ExecutionDir string
 	l            zerolog.Logger
 	t            *testing.T
-}
-
-type BeaconChain struct {
-	EnvComponent
-	InternalRpcURL   string
-	ExecutionDir     string
-	ConsensusDir     string
-	GethExecutionURL string
-	l                zerolog.Logger
-	t                *testing.T
-}
-
-type Validator struct {
-	EnvComponent
-	InternalBeaconRpcProvider string
-	ConsensusDir              string
-	l                         zerolog.Logger
-	t                         *testing.T
 }
 
 type Geth2 struct {
-	EnvComponent
+	te.EnvComponent
 	ExternalHttpUrl string
 	InternalHttpUrl string
 	ExternalWsUrl   string
@@ -75,142 +43,9 @@ type Geth2 struct {
 	t               *testing.T
 }
 
-func NewBeaconChainGenesis(networks []string, opts ...EnvComponentOption) *BeaconChainGenesis {
-	g := &BeaconChainGenesis{
-		EnvComponent: EnvComponent{
-			ContainerName: fmt.Sprintf("%s-%s", "beacon-chain-genesis", uuid.NewString()[0:8]),
-			Networks:      networks,
-		},
-		l: log.Logger,
-	}
-	for _, opt := range opts {
-		opt(&g.EnvComponent)
-	}
-	return g
-}
-
-func (g *BeaconChainGenesis) WithTestLogger(t *testing.T) *BeaconChainGenesis {
-	g.l = logging.GetTestLogger(t)
-	g.t = t
-	return g
-}
-
-func (g *BeaconChainGenesis) StartContainer() error {
-	r, err := g.getContainerRequest(g.Networks)
-	if err != nil {
-		return err
-	}
-
-	l := tc.Logger
-	if g.t != nil {
-		l = logging.CustomT{
-			T: g.t,
-			L: g.l,
-		}
-	}
-
-	_, err = docker.StartContainerWithRetry(g.l, tc.GenericContainerRequest{
-		ContainerRequest: *r,
-		Reuse:            true,
-		Started:          true,
-		Logger:           l,
-	})
-	if err != nil {
-		return errors.Wrapf(err, "cannot start beacon chain genesis container")
-	}
-
-	g.l.Info().Str("containerName", g.ContainerName).
-		Msg("Started Beacon Chain Genesis container")
-
-	return nil
-}
-
-func (g *BeaconChainGenesis) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
-	executionDir, err := os.MkdirTemp("", "execution")
-	if err != nil {
-		return nil, err
-	}
-
-	consensusDir, err := os.MkdirTemp("", "consensus")
-	if err != nil {
-		return nil, err
-	}
-
-	configFile, err := os.CreateTemp("", "config.yml")
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = configFile.WriteString(beaconConfigYAML)
-	if err != nil {
-		return nil, err
-	}
-
-	genesisFile, err := os.CreateTemp("", "genesis_json")
-	if err != nil {
-		return nil, err
-	}
-	_, err = genesisFile.WriteString(genesisJSON)
-	if err != nil {
-		return nil, err
-	}
-
-	g.ExecutionDir = executionDir
-	g.ConsensusDir = consensusDir
-
-	return &tc.ContainerRequest{
-		Name:            g.ContainerName,
-		AlwaysPullImage: true,
-		Image:           "gcr.io/prysmaticlabs/prysm/cmd/prysmctl:local-devnet",
-		Networks:        networks,
-		WaitingFor: tcwait.ForAll(
-			tcwait.ForLog("Done writing genesis state to"),
-			tcwait.ForLog("Command completed").
-				WithStartupTimeout(120*time.Second).
-				WithPollInterval(1*time.Second),
-		),
-		Cmd: []string{"testnet",
-			"generate-genesis",
-			"--fork=capella",
-			"--num-validators=64",
-			"--genesis-time-delay=15", //TODO: replace also here
-			"--output-ssz=/consensus/genesis.ssz",
-			"--chain-config-file=/consensus/config.yml",
-			"--geth-genesis-json-in=/execution/genesis.json",
-			"--geth-genesis-json-out=/execution/genesis.json",
-		},
-		Files: []tc.ContainerFile{
-			{
-				HostFilePath:      configFile.Name(),
-				ContainerFilePath: "/consensus/config.yml",
-				FileMode:          0644,
-			},
-			{
-				HostFilePath:      genesisFile.Name(),
-				ContainerFilePath: "/execution/genesis.json",
-				FileMode:          0644,
-			},
-		},
-		Mounts: tc.ContainerMounts{
-			tc.ContainerMount{
-				Source: tc.GenericBindMountSource{
-					HostPath: executionDir,
-				},
-				Target: ETH2_EXECUTION_DIRECTORY,
-			},
-			tc.ContainerMount{
-				Source: tc.GenericBindMountSource{
-					HostPath: consensusDir,
-				},
-				Target: ETH2_CONSENSUS_DIRECTORY,
-			},
-		},
-	}, nil
-}
-
-func NewGethGenesis(networks []string, executionDir string, opts ...EnvComponentOption) *GethGenesis {
+func NewEth1Genesis(networks []string, executionDir string, opts ...te.EnvComponentOption) *GethGenesis {
 	g := &GethGenesis{
-		EnvComponent: EnvComponent{
+		EnvComponent: te.EnvComponent{
 			ContainerName: fmt.Sprintf("%s-%s", "geth-genesis", uuid.NewString()[0:8]),
 			Networks:      networks,
 		},
@@ -262,7 +97,7 @@ func (g *GethGenesis) getContainerRequest(networks []string) (*tc.ContainerReque
 	return &tc.ContainerRequest{
 		Name:            g.ContainerName,
 		AlwaysPullImage: true,
-		Image:           GO_CLIENT_IMAGE,
+		Image:           fmt.Sprintf("ethereum/client-go:%s", GO_CLIENT_IMAGE_TAG),
 		Networks:        networks,
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForLog("Successfully wrote genesis state").
@@ -284,155 +119,9 @@ func (g *GethGenesis) getContainerRequest(networks []string) (*tc.ContainerReque
 	}, nil
 }
 
-func NewBeaconChain(networks []string, executionDir, consensusDir, gethExecutionURL string, opts ...EnvComponentOption) *BeaconChain {
-	g := &BeaconChain{
-		EnvComponent: EnvComponent{
-			ContainerName: fmt.Sprintf("%s-%s", "prysm-beacon-chain", uuid.NewString()[0:8]),
-			Networks:      networks,
-		},
-		ExecutionDir:     executionDir,
-		ConsensusDir:     consensusDir,
-		GethExecutionURL: gethExecutionURL,
-		l:                log.Logger,
-	}
-	for _, opt := range opts {
-		opt(&g.EnvComponent)
-	}
-	return g
-}
-
-func (g *BeaconChain) WithTestLogger(t *testing.T) *BeaconChain {
-	g.l = logging.GetTestLogger(t)
-	g.t = t
-	return g
-}
-
-func (g *BeaconChain) StartContainer() error {
-	r, err := g.getContainerRequest(g.Networks)
-	if err != nil {
-		return err
-	}
-
-	l := tc.Logger
-	if g.t != nil {
-		l = logging.CustomT{
-			T: g.t,
-			L: g.l,
-		}
-	}
-	ct, err := docker.StartContainerWithRetry(g.l, tc.GenericContainerRequest{
-		ContainerRequest: *r,
-		Reuse:            true,
-		Started:          true,
-		Logger:           l,
-	})
-	if err != nil {
-		return errors.Wrapf(err, "cannot start beacon chain container")
-	}
-
-	//TODO is this even needed?
-	_, err = GetHost(context.Background(), ct)
-	if err != nil {
-		return err
-	}
-
-	_, err = ct.MappedPort(context.Background(), NatPort("3500"))
-	if err != nil {
-		return err
-	}
-
-	_, err = ct.MappedPort(context.Background(), NatPort("8080"))
-	if err != nil {
-		return err
-	}
-
-	_, err = ct.MappedPort(context.Background(), NatPort("6060"))
-	if err != nil {
-		return err
-	}
-
-	_, err = ct.MappedPort(context.Background(), NatPort("9090"))
-	if err != nil {
-		return err
-	}
-
-	externalRcpPort, err := ct.MappedPort(context.Background(), NatPort("4000"))
-	if err != nil {
-		return err
-	}
-
-	_ = externalRcpPort
-
-	g.Container = ct
-	g.InternalRpcURL = fmt.Sprintf("%s:%s", g.ContainerName, "4000")
-
-	g.l.Info().Str("containerName", g.ContainerName).
-		Msg("Started Prysm Beacon Chain container")
-
-	return nil
-}
-
-func (g *BeaconChain) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
-	// jwtSecret, err := os.CreateTemp(g.ExecutionDir, "jwtsecret")
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// _, err = jwtSecret.WriteString("0xfad2709d0bb03bf0e8ba3c99bea194575d3e98863133d1af638ed056d1d59345")
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	return &tc.ContainerRequest{
-		Name:            g.ContainerName,
-		AlwaysPullImage: true,
-		Image:           fmt.Sprintf("gcr.io/prysmaticlabs/prysm/beacon-chain:%s", PRYSM_IMAGE_TAG),
-		ImagePlatform:   "linux/amd64",
-		Networks:        networks,
-		WaitingFor: tcwait.ForAll(
-			tcwait.ForLog("Received state initialized event"),
-			tcwait.ForLog("Node started p2p server").
-				WithStartupTimeout(120*time.Second).
-				WithPollInterval(1*time.Second),
-		),
-		Cmd: []string{
-			"--datadir=/consensus/beacondata",
-			"--min-sync-peers=0",
-			"--genesis-state=/consensus/genesis.ssz",
-			"--bootstrap-node=",
-			"--chain-config-file=/consensus/config.yml",
-			"--contract-deployment-block=0",
-			"--chain-id=1337",
-			"--rpc-host=0.0.0.0",
-			"--grpc-gateway-host=0.0.0.0",
-			fmt.Sprintf("--execution-endpoint=%s", g.GethExecutionURL),
-			"--accept-terms-of-use",
-			"--jwt-secret=/execution/jwtsecret",
-			"--suggested-fee-recipient=0x123463a4b065722e99115d6c222f267d9cabb524",
-			"--minimum-peers-per-subnet=0",
-			"--enable-debug-rpc-endpoints",
-			// "--interop-eth1data-votesgeth", //no idea why this flag results in error when passed here
-		},
-		ExposedPorts: []string{NatPortFormat(BEACON_RPC_PORT), NatPortFormat("3500"), NatPortFormat("8080"), NatPortFormat("6060"), NatPortFormat("9090")},
-		Mounts: tc.ContainerMounts{
-			tc.ContainerMount{
-				Source: tc.GenericBindMountSource{
-					HostPath: g.ExecutionDir,
-				},
-				Target: ETH2_EXECUTION_DIRECTORY,
-			},
-			tc.ContainerMount{
-				Source: tc.GenericBindMountSource{
-					HostPath: g.ConsensusDir,
-				},
-				Target: ETH2_CONSENSUS_DIRECTORY,
-			},
-		},
-	}, nil
-}
-
-func NewGeth2(networks []string, executionDir string, opts ...EnvComponentOption) *Geth2 {
+func NewGeth2(networks []string, executionDir string, opts ...te.EnvComponentOption) *Geth2 {
 	g := &Geth2{
-		EnvComponent: EnvComponent{
+		EnvComponent: te.EnvComponent{
 			ContainerName: fmt.Sprintf("%s-%s", "geth2", uuid.NewString()[0:8]),
 			Networks:      networks,
 		},
@@ -451,10 +140,10 @@ func (g *Geth2) WithTestLogger(t *testing.T) *Geth2 {
 	return g
 }
 
-func (g *Geth2) StartContainer() (blockchain.EVMNetwork, InternalDockerUrls, error) {
+func (g *Geth2) StartContainer() (blockchain.EVMNetwork, te.InternalDockerUrls, error) {
 	r, err := g.getContainerRequest(g.Networks)
 	if err != nil {
-		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
+		return blockchain.EVMNetwork{}, te.InternalDockerUrls{}, err
 	}
 
 	l := tc.Logger
@@ -471,36 +160,36 @@ func (g *Geth2) StartContainer() (blockchain.EVMNetwork, InternalDockerUrls, err
 		Logger:           l,
 	})
 	if err != nil {
-		return blockchain.EVMNetwork{}, InternalDockerUrls{}, errors.Wrapf(err, "cannot start geth container")
+		return blockchain.EVMNetwork{}, te.InternalDockerUrls{}, errors.Wrapf(err, "cannot start geth container")
 	}
 
-	host, err := GetHost(context.Background(), ct)
+	host, err := te.GetHost(context.Background(), ct)
 	if err != nil {
-		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
+		return blockchain.EVMNetwork{}, te.InternalDockerUrls{}, err
 	}
 	// host, err := ct.ContainerIP(context.Background())
 	// host, err := ct.Host(context.Background())
 	if err != nil {
-		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
+		return blockchain.EVMNetwork{}, te.InternalDockerUrls{}, err
 	}
-	httpPort, err := ct.MappedPort(context.Background(), NatPort(TX_GETH_HTTP_PORT))
+	httpPort, err := ct.MappedPort(context.Background(), te.NatPort(te.TX_GETH_HTTP_PORT))
 	if err != nil {
-		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
+		return blockchain.EVMNetwork{}, te.InternalDockerUrls{}, err
 	}
-	wsPort, err := ct.MappedPort(context.Background(), NatPort(TX_GETH_WS_PORT))
+	wsPort, err := ct.MappedPort(context.Background(), te.NatPort(te.TX_GETH_WS_PORT))
 	if err != nil {
-		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
+		return blockchain.EVMNetwork{}, te.InternalDockerUrls{}, err
 	}
-	_, err = ct.MappedPort(context.Background(), NatPort("8551"))
+	_, err = ct.MappedPort(context.Background(), te.NatPort("8551"))
 	if err != nil {
-		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
+		return blockchain.EVMNetwork{}, te.InternalDockerUrls{}, err
 	}
 
 	g.Container = ct
 	g.ExternalHttpUrl = fmt.Sprintf("http://%s:%s", host, httpPort.Port())
-	g.InternalHttpUrl = fmt.Sprintf("http://%s:%s", g.ContainerName, TX_GETH_HTTP_PORT)
+	g.InternalHttpUrl = fmt.Sprintf("http://%s:%s", g.ContainerName, te.TX_GETH_HTTP_PORT)
 	g.ExternalWsUrl = fmt.Sprintf("ws://%s:%s", host, wsPort.Port())
-	g.InternalWsUrl = fmt.Sprintf("ws://%s:%s", g.ContainerName, TX_GETH_WS_PORT)
+	g.InternalWsUrl = fmt.Sprintf("ws://%s:%s", g.ContainerName, te.TX_GETH_WS_PORT)
 	g.ExecutionURL = fmt.Sprintf("http://%s:%s", g.ContainerName, "8551")
 
 	networkConfig := blockchain.SimulatedEVMNetwork
@@ -508,7 +197,7 @@ func (g *Geth2) StartContainer() (blockchain.EVMNetwork, InternalDockerUrls, err
 	networkConfig.URLs = []string{g.ExternalWsUrl}
 	networkConfig.HTTPURLs = []string{g.ExternalHttpUrl}
 
-	internalDockerUrls := InternalDockerUrls{
+	internalDockerUrls := te.InternalDockerUrls{
 		HttpUrl: g.InternalHttpUrl,
 		WsUrl:   g.InternalWsUrl,
 	}
@@ -554,29 +243,29 @@ func (g *Geth2) getContainerRequest(networks []string) (*tc.ContainerRequest, er
 	return &tc.ContainerRequest{
 		Name:            g.ContainerName,
 		AlwaysPullImage: true,
-		Image:           GO_CLIENT_IMAGE,
+		Image:           fmt.Sprintf("ethereum/client-go:%s", GO_CLIENT_IMAGE_TAG),
 		Networks:        networks,
-		ExposedPorts:    []string{NatPortFormat(TX_GETH_HTTP_PORT), NatPortFormat(TX_GETH_WS_PORT), NatPortFormat("8551")},
+		ExposedPorts:    []string{te.NatPortFormat(te.TX_GETH_HTTP_PORT), te.NatPortFormat(te.TX_GETH_WS_PORT), te.NatPortFormat("8551")},
 		// ExposedPorts: []string{NatPortFormat(TX_GETH_HTTP_PORT), NatPortFormat(TX_GETH_WS_PORT), "8551"},
 		WaitingFor: tcwait.ForAll(
 			// NewHTTPStrategy("/", NatPort("8551")),
-			NewHTTPStrategy("/", NatPort(TX_GETH_HTTP_PORT)),
+			te.NewHTTPStrategy("/", te.NatPort(te.TX_GETH_HTTP_PORT)),
 			tcwait.ForLog("WebSocket enabled"),
 			tcwait.ForLog("Started P2P networking").
 				WithStartupTimeout(120*time.Second).
 				WithPollInterval(1*time.Second),
-			NewWebSocketStrategy(NatPort(TX_GETH_WS_PORT), g.l),
+			te.NewWebSocketStrategy(te.NatPort(te.TX_GETH_WS_PORT), g.l),
 		),
 		Cmd: []string{"--http",
 			"--http.api=eth,net,web3",
 			"--http.addr=0.0.0.0",
 			"--http.corsdomain=*",
-			fmt.Sprintf("--http.port=%s", TX_GETH_HTTP_PORT),
+			fmt.Sprintf("--http.port=%s", te.TX_GETH_HTTP_PORT),
 			"--ws",
 			"--ws.api=eth,net,web3",
 			"--ws.addr=0.0.0.0",
 			"--ws.origins=*",
-			fmt.Sprintf("--ws.port=%s", TX_GETH_WS_PORT),
+			fmt.Sprintf("--ws.port=%s", te.TX_GETH_WS_PORT),
 			"--authrpc.vhosts=*",
 			"--authrpc.addr=0.0.0.0",
 			"--authrpc.jwtsecret=/execution/jwtsecret",
@@ -610,9 +299,9 @@ func (g *Geth2) getContainerRequest(networks []string) (*tc.ContainerRequest, er
 	}, nil
 }
 
-func NewValidator(networks []string, consensusDir, internalBeaconRpcProvider string, opts ...EnvComponentOption) *Validator {
+func NewValidator(networks []string, consensusDir, internalBeaconRpcProvider string, opts ...te.EnvComponentOption) *Validator {
 	g := &Validator{
-		EnvComponent: EnvComponent{
+		EnvComponent: te.EnvComponent{
 			ContainerName: fmt.Sprintf("%s-%s", "prysm-validator", uuid.NewString()[0:8]),
 			Networks:      networks,
 		},
@@ -723,8 +412,6 @@ SLOTS_PER_EPOCH: 6
 DEPOSIT_CONTRACT_ADDRESS: 0x4242424242424242424242424242424242424242
 `
 
-// TODO change chainID and founded addresses
-// TODO what about shanghaiTime?
 var genesisJSON = `
 {
 	"config": {
