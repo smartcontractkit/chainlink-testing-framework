@@ -17,11 +17,12 @@ const (
 )
 
 type EnvComponent struct {
-	ContainerName    string       `json:"containerName"`
-	ContainerImage   string       `json:"containerImage"`
-	ContainerVersion string       `json:"containerVersion"`
-	Networks         []string     `json:"networks"`
-	Container        tc.Container `json:"-"`
+	ContainerName    string            `json:"containerName"`
+	ContainerImage   string            `json:"containerImage"`
+	ContainerVersion string            `json:"containerVersion"`
+	ContainerEnvs    map[string]string `json:"containerEnvs"`
+	Networks         []string          `json:"networks"`
+	Container        tc.Container      `json:"-"`
 }
 
 type EnvComponentOption = func(c *EnvComponent)
