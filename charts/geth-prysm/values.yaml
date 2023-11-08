@@ -1,0 +1,53 @@
+imagePullPolicy: IfNotPresent
+general:
+  networkId: 1337
+eth2:
+  genesis:
+    secondsPerSlot: 12
+    slotsPerEpoch: 6
+bootnode:
+  replicas: 2
+  image:
+    repository: ethereum/client-go
+    tag: alltools-v1.10.6
+bootnodeRegistrar:
+  replicas: 1
+  image:
+    repository: jpoon/bootnode-registrar
+    tag: v1.0.0
+geth:
+  image:
+    repository: ethereum/client-go
+    tag: v1.13.4
+  tx:
+    replicas: 1
+    service:
+      type: ClusterIP
+    resources:
+      requests:
+        cpu: 200m
+        memory: 528Mi
+      limits:
+        cpu: 200m
+        memory: 528Mi
+prysm:
+  genesis:
+    image:
+      repository: gcr.io/prysmaticlabs/prysm/cmd/prysmctl
+      tag: local-devnet
+  beacon:
+    image:
+      repository: gcr.io/prysmaticlabs/prysm/beacon-chain
+      tag: v4.1.1
+  validator:
+    image:
+      repository: gcr.io/prysmaticlabs/prysm/validator
+      tag: v4.1.1
+
+podAnnotations: {}
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

@@ -1,0 +1,162 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "ethereum.fullname" . }}-geth
+  labels:
+    app: {{ template "ethereum.fullname" . }}-geth
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.geth.tx.replicas }}
+  selector:
+    matchLabels:
+      app: {{ template "ethereum.fullname" . }}-geth
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "ethereum.fullname" . }}-geth
+        release: {{ .Release.Name }}
+        tx: "0"
+      annotations:
+        {{- range $key, $value := .Values.podAnnotations }}
+        {{ $key }}: {{ $value | quote }}
+        {{- end }}
+    spec:
+      volumes:
+      - name: chain-data
+        persistentVolumeClaim:
+          claimName: chain-state-claim
+      # - name: data
+      #   emptyDir: {}
+      - name: geth-config
+        configMap:
+          name: {{ template "ethereum.fullname" . }}-geth-config
+      - name: prysm-config
+        configMap:
+          name: {{ template "ethereum.fullname" . }}-prysm-config          
+      containers:
+        - name: geth
+          image: {{ .Values.geth.image.repository }}:{{ .Values.geth.image.tag }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          command: ["/bin/sh"]
+          args:
+            - "-c"
+            - "geth --http.vhosts=* --nousb --metrics --nocompaction --syncmode full --gcmode archive --http --http.corsdomain \"*\" --http.vhosts=\"*\"  --http.api admin,debug,web3,eth,txpool,net --http.addr 0.0.0.0 --http.port=8544 --ws --ws.origins \"*\" --ws.api admin,debug,web3,eth,txpool,net --ws.addr 0.0.0.0 --ws.port=8546 --authrpc.vhosts=\"*\" --authrpc.addr=0.0.0.0 --authrpc.jwtsecret=/data/execution/jwtsecret --graphql --graphql.corsdomain=\"*\" --datadir=/data/execution  --networkid=${NETWORK_ID} --rpc.allow-unprotected-txs --rpc.txfeecap=0 --nodiscover --allow-insecure-unlock --unlock=0x123463a4b065722e99115d6c222f267d9cabb524 --password=/data/execution/password.txt --verbosity=5"
+          env:
+            - name: NETWORK_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ template "ethereum.fullname" . }}-geth-config
+                  key: networkid
+          resources:
+            requests:
+              memory: {{ .Values.geth.tx.resources.requests.memory }}
+              cpu: {{ .Values.geth.tx.resources.requests.cpu }}
+            limits:
+              memory: {{ .Values.geth.tx.resources.limits.memory }}
+              cpu: {{ .Values.geth.tx.resources.limits.cpu }}
+          ports:
+            - name: http-rpc
+              containerPort: 8544
+            - name: ws-rpc
+              containerPort: 8546
+            - name: execution-rpc
+              containerPort: 8551
+            # - name: discovery-udp
+            #   containerPort: 30303
+            #   protocol: UDP
+            # - name: discovery-tcp
+            #   containerPort: 30303
+          volumeMounts:
+            - name: geth-config
+              mountPath: /data/execution/keystore/node1key
+              subPath: node1key
+            - name: geth-config
+              mountPath: /data/execution/password.txt
+              subPath: password.txt
+            - name: geth-config
+              mountPath: /data/execution/jwtsecret
+              subPath: jwtsecret              
+            - name: geth-config
+              mountPath: /data/execution/sk.json
+              subPath: sk                
+            - name: chain-state
+              mountPath: /data 
+      initContainers:
+        - name: init-eth2-genesis
+          image: {{ .Values.prysm.genesis.image.repository }}:{{ .Values.prysm.genesis.image.tag }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          command:
+            - "testnet"
+            - "generate-genesis",
+            - "--fork=capella",
+            - "--num-validators=64",
+            - "--genesis-time-delay=15",
+            - "--output-ssz=/data/consensus/genesis.ssz",
+            - "--chain-config-file=/data/consensus/config.yml",
+            - "--geth-genesis-json-in=/data/execution/genesis.json",
+            - "--geth-genesis-json-out=/data/execution/genesis.json",
+          volumeMounts:
+            - name: chain-state
+              mountPath: /data 
+            - name: prysm-config
+              mountPath: /data/consensus/config.yml
+              subPath: config.yml
+            - name: geth-config
+              mountPath: /data/execution/genesis.json
+              subPath: genesis.json          
+        - name: init-eth1-genesis
+          image: {{ .Values.geth.image.repository }}:{{ .Values.geth.image.tag }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          command:
+            - "--datadir=/data/execution"
+            - "init",
+            - "/execution/genesis.json"
+          volumeMounts:
+            - name: chain-state
+              mountPath: /data               
+        # - name: get-bootnodes
+        #   image: {{ .Values.geth.image.repository }}:{{ .Values.geth.image.tag }}
+        #   imagePullPolicy: {{ .Values.imagePullPolicy }}
+        #   command: ["/bin/sh"]
+        #   args:
+        #     - "-c"
+        #     - |-
+        #       apk add --no-cache curl;
+        #       CNT=0;
+        #       echo "retreiving bootnodes from $BOOTNODE_REGISTRAR_SVC"
+        #       while [ $CNT -le 90 ]
+        #       do
+        #         curl -m 5 -s $BOOTNODE_REGISTRAR_SVC | xargs echo -n >> /geth/bootnodes;
+        #         if [ -s /geth/bootnodes ]
+        #         then
+        #           cat /geth/bootnodes;
+        #           exit 0;
+        #         fi;
+
+        #         echo "no bootnodes found. retrying $CNT...";
+        #         sleep 2 || break;
+        #         CNT=$((CNT+1));
+        #       done;
+        #       echo "WARNING. unable to find bootnodes. continuing but geth may not be able to find any peers.";
+        #       exit 0;
+        #   env:
+        #     - name: BOOTNODE_REGISTRAR_SVC
+        #       value: {{ template "ethereum.fullname" . }}-node-registrar.{{ .Release.Namespace }}
+        #   volumeMounts:
+        #     - name: data
+        #       mountPath: /geth
+{{- with .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .Values.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .Values.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+{{- end }}
