@@ -41,6 +41,7 @@ type Geth2 struct {
 	InternalExecutionURL string
 	ExternalExecutionURL string
 	ExecutionDir         string
+	consensusLayer       ConsensusLayer
 	l                    zerolog.Logger
 	t                    *testing.T
 }
@@ -121,14 +122,15 @@ func (g *GethGenesis) getContainerRequest(networks []string) (*tc.ContainerReque
 	}, nil
 }
 
-func NewGeth2(networks []string, executionDir string, opts ...EnvComponentOption) *Geth2 {
+func NewGeth2(networks []string, executionDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) *Geth2 {
 	g := &Geth2{
 		EnvComponent: EnvComponent{
 			ContainerName: fmt.Sprintf("%s-%s", "geth2", uuid.NewString()[0:8]),
 			Networks:      networks,
 		},
-		ExecutionDir: executionDir,
-		l:            log.Logger,
+		ExecutionDir:   executionDir,
+		consensusLayer: consensusLayer,
+		l:              log.Logger,
 	}
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
@@ -142,10 +144,10 @@ func (g *Geth2) WithTestLogger(t *testing.T) *Geth2 {
 	return g
 }
 
-func (g *Geth2) StartContainer() (blockchain.EVMNetwork, InternalDockerUrls, error) {
+func (g *Geth2) StartContainer() (blockchain.EVMNetwork, error) {
 	r, err := g.getContainerRequest(g.Networks)
 	if err != nil {
-		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
+		return blockchain.EVMNetwork{}, err
 	}
 
 	l := tc.Logger
@@ -162,27 +164,27 @@ func (g *Geth2) StartContainer() (blockchain.EVMNetwork, InternalDockerUrls, err
 		Logger:           l,
 	})
 	if err != nil {
-		return blockchain.EVMNetwork{}, InternalDockerUrls{}, errors.Wrapf(err, "cannot start geth container")
+		return blockchain.EVMNetwork{}, errors.Wrapf(err, "cannot start geth container")
 	}
 
 	host, err := GetHost(context.Background(), ct)
 	if err != nil {
-		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
+		return blockchain.EVMNetwork{}, err
 	}
 	if err != nil {
-		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
+		return blockchain.EVMNetwork{}, err
 	}
 	httpPort, err := ct.MappedPort(context.Background(), NatPort(TX_GETH_HTTP_PORT))
 	if err != nil {
-		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
+		return blockchain.EVMNetwork{}, err
 	}
 	wsPort, err := ct.MappedPort(context.Background(), NatPort(TX_GETH_WS_PORT))
 	if err != nil {
-		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
+		return blockchain.EVMNetwork{}, err
 	}
 	executionPort, err := ct.MappedPort(context.Background(), NatPort(GETH_ETH2_EXECUTION_PORT))
 	if err != nil {
-		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
+		return blockchain.EVMNetwork{}, err
 	}
 
 	g.Container = ct
@@ -194,19 +196,14 @@ func (g *Geth2) StartContainer() (blockchain.EVMNetwork, InternalDockerUrls, err
 	g.ExternalExecutionURL = fmt.Sprintf("http://%s:%s", host, executionPort.Port())
 
 	networkConfig := blockchain.SimulatedEVMNetwork
-	networkConfig.Name = "geth"
+	networkConfig.Name = fmt.Sprintf("geth-eth2-%s", g.consensusLayer)
 	networkConfig.URLs = []string{g.ExternalWsUrl}
 	networkConfig.HTTPURLs = []string{g.ExternalHttpUrl}
-
-	internalDockerUrls := InternalDockerUrls{
-		HttpUrl: g.InternalHttpUrl,
-		WsUrl:   g.InternalWsUrl,
-	}
 
 	g.l.Info().Str("containerName", g.ContainerName).
 		Msg("Started Geth2 container")
 
-	return networkConfig, internalDockerUrls, nil
+	return networkConfig, nil
 }
 
 func (g *Geth2) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {

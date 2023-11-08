@@ -54,13 +54,15 @@ type PrysmValidator struct {
 	t                         *testing.T
 }
 
-func NewEth2Genesis(networks []string, beaconChainConfig BeaconChainConfig, opts ...EnvComponentOption) *PrysmGenesis {
+func NewEth2Genesis(networks []string, beaconChainConfig BeaconChainConfig, hostExecutionDir, hostConsensusDir string, opts ...EnvComponentOption) *PrysmGenesis {
 	g := &PrysmGenesis{
 		EnvComponent: EnvComponent{
 			ContainerName: fmt.Sprintf("%s-%s", "prysm-eth2-genesis", uuid.NewString()[0:8]),
 			Networks:      networks,
 		},
 		beaconChainConfig: beaconChainConfig,
+		hostExecutionDir:  hostExecutionDir,
+		hostConsensusDir:  hostConsensusDir,
 		l:                 log.Logger,
 	}
 	for _, opt := range opts {
@@ -106,16 +108,6 @@ func (g *PrysmGenesis) StartContainer() error {
 }
 
 func (g *PrysmGenesis) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
-	executionDir, err := os.MkdirTemp("", "execution")
-	if err != nil {
-		return nil, err
-	}
-
-	consensusDir, err := os.MkdirTemp("", "consensus")
-	if err != nil {
-		return nil, err
-	}
-
 	configFile, err := os.CreateTemp("", "config.yml")
 	if err != nil {
 		return nil, err
@@ -138,9 +130,6 @@ func (g *PrysmGenesis) getContainerRequest(networks []string) (*tc.ContainerRequ
 	if err != nil {
 		return nil, err
 	}
-
-	g.hostExecutionDir = executionDir
-	g.hostConsensusDir = consensusDir
 
 	return &tc.ContainerRequest{
 		Name:            g.ContainerName,
@@ -178,13 +167,13 @@ func (g *PrysmGenesis) getContainerRequest(networks []string) (*tc.ContainerRequ
 		Mounts: tc.ContainerMounts{
 			tc.ContainerMount{
 				Source: tc.GenericBindMountSource{
-					HostPath: executionDir,
+					HostPath: g.hostExecutionDir,
 				},
 				Target: CONTAINER_ETH2_EXECUTION_DIRECTORY,
 			},
 			tc.ContainerMount{
 				Source: tc.GenericBindMountSource{
-					HostPath: consensusDir,
+					HostPath: g.hostConsensusDir,
 				},
 				Target: CONTAINER_ETH2_CONSENSUS_DIRECTORY,
 			},
@@ -395,4 +384,18 @@ func (g *PrysmValidator) getContainerRequest(networks []string) (*tc.ContainerRe
 			},
 		},
 	}, nil
+}
+
+func createHostDirectories() (string, string, error) {
+	executionDir, err := os.MkdirTemp("", "execution")
+	if err != nil {
+		return "", "", err
+	}
+
+	consensusDir, err := os.MkdirTemp("", "consensus")
+	if err != nil {
+		return "", "", err
+	}
+
+	return executionDir, consensusDir, nil
 }
