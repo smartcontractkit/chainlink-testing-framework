@@ -86,18 +86,18 @@ spec:
               mountPath: /data 
       initContainers:
         - name: init-eth2-genesis
-          image: {{ .Values.prysm.genesis.image.repository }}:{{ .Values.prysm.genesis.image.tag }}
-          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          image: "{{ .Values.prysm.genesis.image.repository }}:{{ .Values.prysm.genesis.image.tag }}"
+          imagePullPolicy: "{{ .Values.imagePullPolicy }}"
           command:
             - "testnet"
-            - "generate-genesis",
-            - "--fork=capella",
-            - "--num-validators=64",
-            - "--genesis-time-delay=15",
-            - "--output-ssz=/data/consensus/genesis.ssz",
-            - "--chain-config-file=/data/consensus/config.yml",
-            - "--geth-genesis-json-in=/data/execution/genesis.json",
-            - "--geth-genesis-json-out=/data/execution/genesis.json",
+            - "generate-genesis"
+            - "--fork=capella"
+            - "--num-validators=64"
+            - "--genesis-time-delay=15"
+            - "--output-ssz=/data/consensus/genesis.ssz"
+            - "--chain-config-file=/data/consensus/config.yml"
+            - "--geth-genesis-json-in=/data/execution/genesis.json"
+            - "--geth-genesis-json-out=/data/execution/genesis.json"
           volumeMounts:
             - name: chain-state
               mountPath: /data 
@@ -108,11 +108,11 @@ spec:
               mountPath: /data/execution/genesis.json
               subPath: genesis.json          
         - name: init-eth1-genesis
-          image: {{ .Values.geth.image.repository }}:{{ .Values.geth.image.tag }}
+          image: "{{ .Values.geth.image.repository }}:{{ .Values.geth.image.tag }}"
           imagePullPolicy: {{ .Values.imagePullPolicy }}
           command:
             - "--datadir=/data/execution"
-            - "init",
+            - "init"
             - "/execution/genesis.json"
           volumeMounts:
             - name: chain-state
