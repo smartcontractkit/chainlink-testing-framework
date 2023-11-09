@@ -44,6 +44,14 @@ func WithPostgresDbContainerName(name string) PostgresDbOption {
 	}
 }
 
+func WithPostgresImageName(imageName string) PostgresDbOption {
+	return func(c *PostgresDb) {
+		if imageName != "" {
+			c.ContainerImage = imageName
+		}
+	}
+}
+
 func WithPostgresImageVersion(version string) PostgresDbOption {
 	return func(c *PostgresDb) {
 		if version != "" {
@@ -60,12 +68,19 @@ func WithPostgresDbName(name string) PostgresDbOption {
 	}
 }
 
+func WithContainerEnv(key, value string) PostgresDbOption {
+	return func(c *PostgresDb) {
+		c.ContainerEnvs[key] = value
+	}
+}
+
 func NewPostgresDb(networks []string, opts ...PostgresDbOption) *PostgresDb {
 	pg := &PostgresDb{
 		EnvComponent: EnvComponent{
 			ContainerName:    fmt.Sprintf("%s-%s", "postgres-db", uuid.NewString()[0:8]),
-			ContainerImage:   "postgres",
+			ContainerImage:   "public.ecr.aws/docker/library/postgres",
 			ContainerVersion: "15.4",
+			ContainerEnvs:    map[string]string{},
 			Networks:         networks,
 		},
 		User:         "postgres",
@@ -74,9 +89,16 @@ func NewPostgresDb(networks []string, opts ...PostgresDbOption) *PostgresDb {
 		InternalPort: "5432",
 		l:            log.Logger,
 	}
+
 	for _, opt := range opts {
 		opt(pg)
 	}
+
+	// Set default container envs
+	pg.ContainerEnvs["POSTGRES_USER"] = pg.User
+	pg.ContainerEnvs["POSTGRES_DB"] = pg.DbName
+	pg.ContainerEnvs["POSTGRES_PASSWORD"] = pg.Password
+
 	return pg
 }
 
@@ -148,14 +170,10 @@ func (pg *PostgresDb) ExecPgDump(stdout io.Writer) error {
 func (pg *PostgresDb) getContainerRequest() *tc.ContainerRequest {
 	return &tc.ContainerRequest{
 		Name:         pg.ContainerName,
-		Image:        fmt.Sprintf("public.ecr.aws/docker/library/%s:%s", pg.ContainerImage, pg.ContainerVersion),
+		Image:        fmt.Sprintf("%s:%s", pg.ContainerImage, pg.ContainerVersion),
 		ExposedPorts: []string{fmt.Sprintf("%s/tcp", pg.InternalPort)},
-		Env: map[string]string{
-			"POSTGRES_USER":     pg.User,
-			"POSTGRES_DB":       pg.DbName,
-			"POSTGRES_PASSWORD": pg.Password,
-		},
-		Networks: pg.Networks,
+		Env:          pg.ContainerEnvs,
+		Networks:     pg.Networks,
 		WaitingFor: tcwait.ForExec([]string{"psql", "-h", "127.0.0.1",
 			"-U", pg.User, "-c", "select", "1", "-d", pg.DbName}).
 			WithStartupTimeout(10 * time.Second),
