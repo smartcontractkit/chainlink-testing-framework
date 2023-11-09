@@ -15,7 +15,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
 )
@@ -554,7 +553,7 @@ func (e *EthereumClient) errorReason(
 	}
 	_, txError := b.CallContract(context.Background(), callMsg, receipt.BlockNumber)
 	if txError == nil {
-		return "", errors.Wrap(err, "no error in CallContract")
+		return "", fmt.Errorf("no error in CallContract: %w", err)
 	}
 	return RPCErrorFromError(txError)
 }

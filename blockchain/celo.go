@@ -10,7 +10,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/utils"
@@ -49,7 +48,7 @@ func (e *CeloClient) DeployContract(
 	contractAddress, transaction, contractInstance, err := deployer(opts, e.Client)
 	if err != nil {
 		if strings.Contains(err.Error(), "nonce") {
-			err = errors.Wrap(err, fmt.Sprintf("using nonce %d", opts.Nonce.Uint64()))
+			err = fmt.Errorf("using nonce %d err: %w", opts.Nonce.Uint64(), err)
 		}
 		return nil, nil, nil, err
 	}
@@ -71,7 +70,7 @@ func (e *CeloClient) DeployContract(
 func (e *CeloClient) TransactionOpts(from *EthereumWallet) (*bind.TransactOpts, error) {
 	privateKey, err := crypto.HexToECDSA(from.PrivateKey())
 	if err != nil {
-		return nil, fmt.Errorf("invalid private key: %v", err)
+		return nil, fmt.Errorf("invalid private key: %w", err)
 	}
 	opts, err := bind.NewKeyedTransactorWithChainID(privateKey, big.NewInt(e.NetworkConfig.ChainID))
 	if err != nil {

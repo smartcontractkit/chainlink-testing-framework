@@ -18,7 +18,7 @@ func GetEnv(key string) (string, error) {
 		}
 		err := os.Setenv(prefixedKey, val)
 		if err != nil {
-			return val, fmt.Errorf("failed to set environment variable %s: %v", prefixedKey, err)
+			return val, fmt.Errorf("failed to set environment variable %s err: %w", prefixedKey, err)
 		}
 	}
 	return val, nil

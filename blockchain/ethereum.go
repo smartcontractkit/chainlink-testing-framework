@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"math/big"
 	"regexp"
@@ -23,7 +24,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"go.uber.org/atomic"
 	"golang.org/x/sync/errgroup"
@@ -268,7 +268,7 @@ func (e *EthereumClient) Fund(
 ) error {
 	privateKey, err := crypto.HexToECDSA(e.DefaultWallet.PrivateKey())
 	if err != nil {
-		return fmt.Errorf("invalid private key: %v", err)
+		return fmt.Errorf("invalid private key: %w", err)
 	}
 	to := common.HexToAddress(toAddress)
 
@@ -294,7 +294,7 @@ func (e *EthereumClient) Fund(
 		Msg("Funding Address")
 	if err := e.SendTransaction(context.Background(), tx); err != nil {
 		if strings.Contains(err.Error(), "nonce") {
-			err = errors.Wrap(err, fmt.Sprintf("using nonce %d", nonce))
+			err = fmt.Errorf("using nonce %d err: %w", nonce, err)
 		}
 		return err
 	}
@@ -412,7 +412,7 @@ func (e *EthereumClient) DeployContract(
 	contractAddress, transaction, contractInstance, err := deployer(opts, e.Client)
 	if err != nil {
 		if strings.Contains(err.Error(), "nonce") {
-			err = errors.Wrap(err, fmt.Sprintf("using nonce %d", opts.Nonce.Uint64()))
+			err = fmt.Errorf("using nonce %d err: %w", opts.Nonce.Uint64(), err)
 		}
 		return nil, nil, nil, err
 	}
@@ -450,7 +450,7 @@ func (e *EthereumClient) LoadContract(contractName string, contractAddress commo
 func (e *EthereumClient) TransactionOpts(from *EthereumWallet) (*bind.TransactOpts, error) {
 	privateKey, err := crypto.HexToECDSA(from.PrivateKey())
 	if err != nil {
-		return nil, fmt.Errorf("invalid private key: %v", err)
+		return nil, fmt.Errorf("invalid private key: %w", err)
 	}
 	opts, err := bind.NewKeyedTransactorWithChainID(privateKey, big.NewInt(e.NetworkConfig.ChainID))
 	if err != nil {
@@ -996,7 +996,7 @@ func (e *EthereumClient) GetLatestFinalizedBlockHeader(ctx context.Context) (*ty
 		return e.Client.HeaderByNumber(ctx, big.NewInt(rpc.FinalizedBlockNumber.Int64()))
 	}
 	if e.NetworkConfig.FinalityDepth == 0 {
-		return nil, errors.New("finality depth is 0 and finality tag is not enabled")
+		return nil, fmt.Errorf("finality depth is 0 and finality tag is not enabled")
 	}
 	header, err := e.Client.HeaderByNumber(ctx, nil)
 	if err != nil {
@@ -1023,7 +1023,7 @@ func (e *EthereumClient) EstimatedFinalizationTime(ctx context.Context) (time.Du
 		return 0, err
 	}
 	if e.NetworkConfig.FinalityDepth == 0 {
-		return 0, errors.New("finality depth is 0 and finality tag is not enabled")
+		return 0, fmt.Errorf("finality depth is 0 and finality tag is not enabled")
 	}
 	timeBetween := time.Duration(e.NetworkConfig.FinalityDepth) * blckTime
 	e.l.Info().
@@ -1037,7 +1037,7 @@ func (e *EthereumClient) EstimatedFinalizationTime(ctx context.Context) (time.Du
 // TimeBetweenFinalizedBlocks is used to calculate the time between finalized blocks for chains with finality tag enabled
 func (e *EthereumClient) TimeBetweenFinalizedBlocks(ctx context.Context, maxTimeToWait time.Duration) (time.Duration, error) {
 	if !e.NetworkConfig.FinalityTag {
-		return 0, errors.New("finality tag is not enabled; cannot calculate time between finalized blocks")
+		return 0, fmt.Errorf("finality tag is not enabled; cannot calculate time between finalized blocks")
 	}
 	currentFinalizedHeader, err := e.GetLatestFinalizedBlockHeader(ctx)
 	if err != nil {
@@ -1055,7 +1055,7 @@ func (e *EthereumClient) TimeBetweenFinalizedBlocks(ctx context.Context, maxTime
 	for {
 		select {
 		case <-c.Done():
-			return 0, errors.Wrapf(c.Err(), "timed out waiting for next finalized block. If the finality time is more than %s, provide it as TimeToReachFinality in Network config", maxTimeToWait)
+			return 0, fmt.Errorf("timed out waiting for next finalized block. If the finality time is more than %s, provide it as TimeToReachFinality in Network config: %w", maxTimeToWait, c.Err())
 		case <-hdrChannel:
 			// a new header is received now query the finalized block
 			nextFinalizedHeader, err := e.GetLatestFinalizedBlockHeader(ctx)
@@ -1090,7 +1090,7 @@ func (e *EthereumClient) AvgBlockTime(ctx context.Context) (time.Duration, error
 	}
 	startBlockNumber := latestBlockNumber - numBlocks + 1
 	if startBlockNumber <= 0 {
-		return 0, errors.New("not enough blocks mined to calculate block time")
+		return 0, fmt.Errorf("not enough blocks mined to calculate block time")
 	}
 	totalTime := time.Duration(0)
 	var previousHeader *types.Header
@@ -1224,7 +1224,7 @@ func NewEVMClient(networkSettings EVMNetwork, env *environment.Environment, logg
 // Should mostly be used for inside K8s, non-simulated tests.
 func ConnectEVMClient(networkSettings EVMNetwork, logger zerolog.Logger) (EVMClient, error) {
 	if len(networkSettings.URLs) == 0 {
-		return nil, errors.New("no URLs provided to connect to network")
+		return nil, fmt.Errorf("no URLs provided to connect to network")
 	}
 
 	ecl := &EthereumMultinodeClient{}

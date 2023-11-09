@@ -11,7 +11,6 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/client"
 
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	coreV1 "k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -171,7 +170,7 @@ func (a *Artifacts) writePodLogs(pod coreV1.Pod, appDir string) error {
 func MkdirIfNotExists(dirName string) error {
 	if _, err := os.Stat(dirName); os.IsNotExist(err) {
 		if err = os.MkdirAll(dirName, os.ModePerm); err != nil {
-			return errors.Wrapf(err, "failed to create directory: %s", dirName)
+			return fmt.Errorf("failed to create directory: %s err: %w", dirName, err)
 		}
 	}
 	return nil

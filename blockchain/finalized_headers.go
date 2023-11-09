@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -68,7 +67,7 @@ func (f *FinalizedHeader) ReceiveHeader(header NodeHeader) error {
 	lastFinalized, err := f.client.GetLatestFinalizedBlockHeader(ctx)
 	ctxCancel()
 	if err != nil {
-		return errors.Wrapf(err, "error getting latest finalized block header")
+		return fmt.Errorf("error getting latest finalized block header: %w", err)
 	}
 
 	if lastFinalized.Number.Cmp(fLatest) > 0 {
