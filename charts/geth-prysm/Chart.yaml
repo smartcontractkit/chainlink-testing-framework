@@ -1,4 +1,4 @@
 apiVersion: v1
 description: Eth2 private network with Prysm and Geth
-name: ethereum2
+name: ethereum
 version: 0.0.1

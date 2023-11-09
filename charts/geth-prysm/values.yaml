@@ -1,6 +1,11 @@
 imagePullPolicy: IfNotPresent
 general:
+  uuid: ""
   networkId: 1337
+images:
+  platform:
+    os: linux
+    architecture: x86_64
 eth2:
   genesis:
     secondsPerSlot: 12
@@ -19,7 +24,27 @@ geth:
   image:
     repository: ethereum/client-go
     tag: v1.13.4
-  tx:
+  replicas: 1
+  service:
+    type: ClusterIP
+  resources:
+    requests:
+      cpu: 200m
+      memory: 528Mi
+    limits:
+      cpu: 200m
+      memory: 528Mi
+prysm:
+  genesis:
+    image:
+      repository: gcr.io/prysmaticlabs/prysm/cmd/prysmctl
+      tag: latest
+  beacon:
+    image:
+      repository: gcr.io/prysmaticlabs/prysm/beacon-chain
+      tag: v4.1.1
+    startup:
+      timeoutSeconds: 600
     replicas: 1
     service:
       type: ClusterIP
@@ -29,20 +54,25 @@ geth:
         memory: 528Mi
       limits:
         cpu: 200m
-        memory: 528Mi
-prysm:
-  genesis:
-    image:
-      repository: gcr.io/prysmaticlabs/prysm/cmd/prysmctl
-      tag: local-devnet
-  beacon:
-    image:
-      repository: gcr.io/prysmaticlabs/prysm/beacon-chain
-      tag: v4.1.1
+        memory: 528Mi      
   validator:
     image:
       repository: gcr.io/prysmaticlabs/prysm/validator
       tag: v4.1.1
+    replicas: 1
+    service:
+      type: ClusterIP
+    resources:
+      requests:
+        cpu: 200m
+        memory: 528Mi
+      limits:
+        cpu: 200m
+        memory: 528Mi      
+busybox:
+  image:
+    repository: busybox
+    tag: 1.36.1
 
 podAnnotations: {}
 

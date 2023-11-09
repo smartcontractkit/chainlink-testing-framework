@@ -1,0 +1,109 @@
+apiVersion: apps/v1
+kind: Deployment 
+metadata:
+  name: {{ template "ethereum.fullname" . }}-prysm-beacon
+  labels:
+    app: {{ template "ethereum.fullname" . }}-prysm-beacon
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ template "ethereum.fullname" . }}-prysm-beacon
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "ethereum.fullname" . }}-prysm-beacon
+        release: {{ .Release.Name }}
+      annotations:
+        {{- range $key, $value := .Values.podAnnotations }}
+        {{ $key }}: {{ $value | quote }}
+        {{- end }}
+    spec:
+      volumes:
+      - name: chain-state
+        persistentVolumeClaim:
+          claimName: chain-state-claim    
+      - name: geth-config
+        configMap:
+          name: {{ template "ethereum.fullname" . }}-geth-config          
+      - name: prysm-config
+        configMap:
+          name: {{ template "ethereum.fullname" . }}-prysm-config                  
+      containers:
+        - name: prysm-beacon-chain
+          image: {{ .Values.prysm.beacon.image.repository }}:{{ .Values.prysm.beacon.image.tag }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          args:
+            - "--datadir=/data/consensus/beacondata"
+            - "--min-sync-peers=0"
+            - "--genesis-state=/data/consensus/genesis.ssz"
+            - "--bootstrap-node="
+            - "--chain-config-file=/data/consensus/config.yml"
+            - "--contract-deployment-block=0"
+            - "--chain-id={{ .Values.general.networkId }}"
+            - "--rpc-host=0.0.0.0"
+            - "--grpc-gateway-host=0.0.0.0"
+            - "--execution-endpoint=http://{{ template "ethereum.fullname" . }}-geth:8551"
+            - "--accept-terms-of-use"
+            - "--jwt-secret=/data/execution/jwtsecret"
+            - "--suggested-fee-recipient=0x123463a4b065722e99115d6c222f267d9cabb524"
+            - "--minimum-peers-per-subnet=0"
+            - "--enable-debug-rpc-endpoints"           
+          resources:
+            requests:
+              memory: {{ .Values.prysm.beacon.resources.requests.memory }}
+              cpu: {{ .Values.prysm.beacon.resources.requests.cpu }}
+            limits:
+              memory: {{ .Values.prysm.beacon.resources.limits.memory }}
+              cpu: {{ .Values.prysm.beacon.resources.limits.cpu }}
+          ports:
+            - name: node-rpc
+              containerPort: 4000
+            - name: query-rpc
+              containerPort: 3500         
+            - name: status
+              containerPort: 8080                              
+          volumeMounts:               
+            - name: chain-state
+              mountPath: /data 
+            - name: geth-config
+              mountPath: /data/execution/jwtsecret
+              subPath: jwtsecret  
+            - name: prysm-config
+              mountPath: /data/consensus/config.yml
+              subPath: config.yml         
+          # for some reason doesn't work                            
+          # readinessProbe:
+          #     httpGet:
+          #       path: /healthz
+          #       port: 8080
+          #   initialDelaySeconds: 5
+          #   periodSeconds: 5   
+          # livenessProbe:
+          #     httpGet:
+          #       path: /healthz
+          #       port: 8080
+          #   initialDelaySeconds: 5
+          #   periodSeconds: 5                                       
+      initContainers:
+        - name: wait-for-geth
+          image: {{ .Values.busybox.image.repository }}:{{ .Values.busybox.image.tag }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }} 
+          command: ["/bin/sh", "-c", 'until nc -z -v {{ template "ethereum.fullname" . }}-geth 8551; do echo "Waiting for geth to start..."; sleep 2; done']
+
+{{- with .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .Values.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .Values.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+{{- end }}

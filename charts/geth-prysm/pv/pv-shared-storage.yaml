@@ -8,7 +8,10 @@ spec:
   volumeMode: Filesystem
   accessModes:
     - ReadWriteMany
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: standard
+  persistentVolumeReclaimPolicy: Recycle
+  storageClassName: hostpath
   hostPath:
-    path: /data/shared
+    path: /tmp/data/shared22
+  claimRef:
+    namespace: default
+    name: chain-state-claim    

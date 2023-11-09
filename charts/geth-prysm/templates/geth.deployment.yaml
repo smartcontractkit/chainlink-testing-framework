@@ -8,7 +8,7 @@ metadata:
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
 spec:
-  replicas: {{ .Values.geth.tx.replicas }}
+  replicas: 1
   selector:
     matchLabels:
       app: {{ template "ethereum.fullname" . }}-geth
@@ -18,18 +18,15 @@ spec:
       labels:
         app: {{ template "ethereum.fullname" . }}-geth
         release: {{ .Release.Name }}
-        tx: "0"
       annotations:
         {{- range $key, $value := .Values.podAnnotations }}
         {{ $key }}: {{ $value | quote }}
         {{- end }}
     spec:
       volumes:
-      - name: chain-data
+      - name: chain-state
         persistentVolumeClaim:
           claimName: chain-state-claim
-      # - name: data
-      #   emptyDir: {}
       - name: geth-config
         configMap:
           name: {{ template "ethereum.fullname" . }}-geth-config
@@ -52,11 +49,11 @@ spec:
                   key: networkid
           resources:
             requests:
-              memory: {{ .Values.geth.tx.resources.requests.memory }}
-              cpu: {{ .Values.geth.tx.resources.requests.cpu }}
+              memory: {{ .Values.geth.resources.requests.memory }}
+              cpu: {{ .Values.geth.resources.requests.cpu }}
             limits:
-              memory: {{ .Values.geth.tx.resources.limits.memory }}
-              cpu: {{ .Values.geth.tx.resources.limits.cpu }}
+              memory: {{ .Values.geth.resources.limits.memory }}
+              cpu: {{ .Values.geth.resources.limits.cpu }}
           ports:
             - name: http-rpc
               containerPort: 8544
@@ -64,11 +61,11 @@ spec:
               containerPort: 8546
             - name: execution-rpc
               containerPort: 8551
-            # - name: discovery-udp
-            #   containerPort: 30303
-            #   protocol: UDP
-            # - name: discovery-tcp
-            #   containerPort: 30303
+            - name: discovery-udp
+              containerPort: 30303
+              protocol: UDP
+            - name: discovery-tcp
+              containerPort: 30303              
           volumeMounts:
             - name: geth-config
               mountPath: /data/execution/keystore/node1key
@@ -84,20 +81,31 @@ spec:
               subPath: sk                
             - name: chain-state
               mountPath: /data 
+          readinessProbe:
+            exec:
+              command: ["/bin/sh", "-c", 'until nc -z -v localhost 8551; do sleep 2; done']
+            initialDelaySeconds: 5
+            periodSeconds: 5        
+          livenessProbe:
+            exec:
+              command: ["/bin/sh", "-c", 'until nc -z -v localhost 8551; do sleep 2; done']
+            initialDelaySeconds: 5
+            periodSeconds: 5                    
       initContainers:
         - name: init-eth2-genesis
           image: {{ .Values.prysm.genesis.image.repository }}:{{ .Values.prysm.genesis.image.tag }}
-          imagePullPolicy: {{ .Values.imagePullPolicy }}
-          command:
+          imagePullPolicy: {{ .Values.imagePullPolicy }}      
+          # command: ["/bin/sh", "-c", "while true; do sleep 3600; done"]
+          args:
             - "testnet"
-            - "generate-genesis",
-            - "--fork=capella",
-            - "--num-validators=64",
-            - "--genesis-time-delay=15",
-            - "--output-ssz=/data/consensus/genesis.ssz",
-            - "--chain-config-file=/data/consensus/config.yml",
-            - "--geth-genesis-json-in=/data/execution/genesis.json",
-            - "--geth-genesis-json-out=/data/execution/genesis.json",
+            - "generate-genesis"
+            - "--fork=capella"
+            - "--num-validators=64"
+            - "--genesis-time-delay=15"
+            - "--output-ssz=/data/consensus/genesis.ssz"
+            - "--chain-config-file=/data/consensus/config.yml"
+            - "--geth-genesis-json-in=/data/execution/genesis-raw.json"
+            - "--geth-genesis-json-out=/data/execution/genesis.json"
           volumeMounts:
             - name: chain-state
               mountPath: /data 
@@ -105,49 +113,19 @@ spec:
               mountPath: /data/consensus/config.yml
               subPath: config.yml
             - name: geth-config
-              mountPath: /data/execution/genesis.json
+              mountPath: /data/execution/genesis-raw.json
               subPath: genesis.json          
         - name: init-eth1-genesis
           image: {{ .Values.geth.image.repository }}:{{ .Values.geth.image.tag }}
-          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}           
           command:
+            - "geth"
             - "--datadir=/data/execution"
-            - "init",
-            - "/execution/genesis.json"
+            - "init"
+            - "/data/execution/genesis.json"
           volumeMounts:
             - name: chain-state
               mountPath: /data               
-        # - name: get-bootnodes
-        #   image: {{ .Values.geth.image.repository }}:{{ .Values.geth.image.tag }}
-        #   imagePullPolicy: {{ .Values.imagePullPolicy }}
-        #   command: ["/bin/sh"]
-        #   args:
-        #     - "-c"
-        #     - |-
-        #       apk add --no-cache curl;
-        #       CNT=0;
-        #       echo "retreiving bootnodes from $BOOTNODE_REGISTRAR_SVC"
-        #       while [ $CNT -le 90 ]
-        #       do
-        #         curl -m 5 -s $BOOTNODE_REGISTRAR_SVC | xargs echo -n >> /geth/bootnodes;
-        #         if [ -s /geth/bootnodes ]
-        #         then
-        #           cat /geth/bootnodes;
-        #           exit 0;
-        #         fi;
-
-        #         echo "no bootnodes found. retrying $CNT...";
-        #         sleep 2 || break;
-        #         CNT=$((CNT+1));
-        #       done;
-        #       echo "WARNING. unable to find bootnodes. continuing but geth may not be able to find any peers.";
-        #       exit 0;
-        #   env:
-        #     - name: BOOTNODE_REGISTRAR_SVC
-        #       value: {{ template "ethereum.fullname" . }}-node-registrar.{{ .Release.Namespace }}
-        #   volumeMounts:
-        #     - name: data
-        #       mountPath: /geth
 {{- with .Values.nodeSelector }}
       nodeSelector:
 {{ toYaml . | indent 8 }}

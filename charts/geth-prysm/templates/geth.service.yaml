@@ -10,7 +10,7 @@ metadata:
 spec:
   selector:
     app: {{ template "ethereum.fullname" . }}-geth
-  type: {{ .Values.geth.tx.service.type }}
+  type: {{ .Values.geth.service.type }}
   ports:
     - name: http-rpc
       port: 8544
