@@ -1,23 +1,23 @@
 kind: Service
 apiVersion: v1
 metadata:
-  name: {{ template "ethereum.fullname" . }}-prysm-beacon
+  name: {{ template "ethereum.fullname" . }}-{{ .Values.prysm.beacon.name }}
   labels:
-    app: {{ template "ethereum.fullname" . }}-prysm-beacon
+    app: {{ template "ethereum.fullname" . }}-{{ .Values.prysm.beacon.name }}
     chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
 spec:
   selector:
-    app: {{ template "ethereum.fullname" . }}-prysm-beacon
+    app: {{ template "ethereum.fullname" . }}-{{ .Values.prysm.beacon.name }}
   type: {{ .Values.prysm.beacon.service.type }}
   ports:
-    - name: node-rpc
-      port: 4000
-      targetPort: 4000
     - name: query-rpc
-      port: 3500  
-      targetPort: 3500
+      port: {{ .Values.prysm.beacon.ports.query }}   
+      targetPort: {{ .Values.prysm.beacon.ports.query }}   
+    - name: node-rpc
+      port: {{ .Values.prysm.beacon.ports.node }} 
+      targetPort: {{ .Values.prysm.beacon.ports.node }} 
     - name: status
-      port: 8080  
-      targetPort: 8080      
+      port: {{ .Values.prysm.beacon.ports.status }}   
+      targetPort: {{ .Values.prysm.beacon.ports.status }}       

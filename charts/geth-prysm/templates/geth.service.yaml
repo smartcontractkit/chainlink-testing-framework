@@ -1,23 +1,23 @@
 kind: Service
 apiVersion: v1
 metadata:
-  name: {{ template "ethereum.fullname" . }}-geth
+  name: {{ template "ethereum.fullname" . }}-{{ .Values.geth.name }}
   labels:
-    app: {{ template "ethereum.fullname" . }}-geth
+    app: {{ template "ethereum.fullname" . }}-{{ .Values.geth.name }}
     chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
 spec:
   selector:
-    app: {{ template "ethereum.fullname" . }}-geth
+    app: {{ template "ethereum.fullname" . }}-{{ .Values.geth.name }}
   type: {{ .Values.geth.service.type }}
   ports:
     - name: http-rpc
-      port: 8544
-      targetPort: 8544
+      port: {{ .Values.geth.ports.http }}
+      targetPort: {{ .Values.geth.ports.http }}
     - name: ws-rpc
-      port: 8546
-      targetPort: 8546
+      port: {{ .Values.geth.ports.ws }}
+      targetPort: {{ .Values.geth.ports.ws }}
     - name: execution-rpc
-      port: 8551
-      targetPort: 8551      
+      port: {{ .Values.geth.ports.execution }}
+      targetPort: {{ .Values.geth.ports.execution }}   

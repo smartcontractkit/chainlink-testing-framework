@@ -1,9 +1,9 @@
 apiVersion: apps/v1
 kind: Deployment 
 metadata:
-  name: {{ template "ethereum.fullname" . }}-prysm-beacon
+  name: {{ template "ethereum.fullname" . }}-{{ .Values.prysm.beacon.name }}
   labels:
-    app: {{ template "ethereum.fullname" . }}-prysm-beacon
+    app: {{ template "ethereum.fullname" . }}-{{ .Values.prysm.beacon.name }}
     chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
@@ -11,12 +11,12 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: {{ template "ethereum.fullname" . }}-prysm-beacon
+      app: {{ template "ethereum.fullname" . }}-{{ .Values.prysm.beacon.name }}
       release: {{ .Release.Name }}
   template:
     metadata:
       labels:
-        app: {{ template "ethereum.fullname" . }}-prysm-beacon
+        app: {{ template "ethereum.fullname" . }}-{{ .Values.prysm.beacon.name }}
         release: {{ .Release.Name }}
       annotations:
         {{- range $key, $value := .Values.podAnnotations }}
@@ -26,7 +26,7 @@ spec:
       volumes:
       - name: chain-state
         persistentVolumeClaim:
-          claimName: chain-state-claim    
+          claimName: {{ .Values.storage.claim }}
       - name: geth-config
         configMap:
           name: {{ template "ethereum.fullname" . }}-geth-config          
@@ -34,23 +34,23 @@ spec:
         configMap:
           name: {{ template "ethereum.fullname" . }}-prysm-config                  
       containers:
-        - name: prysm-beacon-chain
+        - name: {{ .Values.prysm.beacon.name }}
           image: {{ .Values.prysm.beacon.image.repository }}:{{ .Values.prysm.beacon.image.tag }}
           imagePullPolicy: {{ .Values.imagePullPolicy }}
           args:
             - "--datadir=/data/consensus/beacondata"
             - "--min-sync-peers=0"
-            - "--genesis-state=/data/consensus/genesis.ssz"
+            - "--genesis-state={{ .Values.prysm.shared.genesisFile }}"
             - "--bootstrap-node="
-            - "--chain-config-file=/data/consensus/config.yml"
+            - "--chain-config-file={{ .Values.prysm.shared.configFile }}"
             - "--contract-deployment-block=0"
             - "--chain-id={{ .Values.general.networkId }}"
             - "--rpc-host=0.0.0.0"
             - "--grpc-gateway-host=0.0.0.0"
-            - "--execution-endpoint=http://{{ template "ethereum.fullname" . }}-geth:8551"
+            - "--execution-endpoint=http://{{ template "ethereum.fullname" . }}-{{ .Values.geth.name }}:{{ .Values.geth.ports.execution }}"
             - "--accept-terms-of-use"
-            - "--jwt-secret=/data/execution/jwtsecret"
-            - "--suggested-fee-recipient=0x123463a4b065722e99115d6c222f267d9cabb524"
+            - "--jwt-secret={{ .Values.shared.jwtSecretFile }}"
+            - "--suggested-fee-recipient={{ .Values.feeRecipient }}"
             - "--minimum-peers-per-subnet=0"
             - "--enable-debug-rpc-endpoints"           
           resources:
@@ -61,20 +61,20 @@ spec:
               memory: {{ .Values.prysm.beacon.resources.limits.memory }}
               cpu: {{ .Values.prysm.beacon.resources.limits.cpu }}
           ports:
-            - name: node-rpc
-              containerPort: 4000
             - name: query-rpc
-              containerPort: 3500         
+              containerPort: {{ .Values.prysm.beacon.ports.query }}               
+            - name: node-rpc
+              containerPort: {{ .Values.prysm.beacon.ports.node }}    
             - name: status
-              containerPort: 8080                              
+              containerPort: {{ .Values.prysm.beacon.ports.status }}                              
           volumeMounts:               
             - name: chain-state
               mountPath: /data 
             - name: geth-config
-              mountPath: /data/execution/jwtsecret
+              mountPath: {{ .Values.shared.jwtSecretFile }}
               subPath: jwtsecret  
             - name: prysm-config
-              mountPath: /data/consensus/config.yml
+              mountPath: {{ .Values.prysm.shared.configFile }}
               subPath: config.yml         
           # for some reason doesn't work                            
           # readinessProbe:
@@ -93,7 +93,7 @@ spec:
         - name: wait-for-geth
           image: {{ .Values.busybox.image.repository }}:{{ .Values.busybox.image.tag }}
           imagePullPolicy: {{ .Values.imagePullPolicy }} 
-          command: ["/bin/sh", "-c", 'until nc -z -v {{ template "ethereum.fullname" . }}-geth 8551; do echo "Waiting for geth to start..."; sleep 2; done']
+          command: ["/bin/sh", "-c", 'until nc -z -v {{ template "ethereum.fullname" . }}-{{ .Values.geth.name }} {{ .Values.geth.ports.execution }}; do sleep 2; done']
 
 {{- with .Values.nodeSelector }}
       nodeSelector:

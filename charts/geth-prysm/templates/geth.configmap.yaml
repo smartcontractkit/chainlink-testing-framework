@@ -124,6 +124,5 @@ data:
       "excessBlobGas": null,
       "blobGasUsed": null
     }
-  networkid: "{{ .Values.general.networkId }}"
   jwtsecret: 0xfad2709d0bb03bf0e8ba3c99bea194575d3e98863133d1af638ed056d1d59345
   sk: 2e0834786285daccd064ca17f1654f67b4aef298acbb82cef9ec422fb4975622

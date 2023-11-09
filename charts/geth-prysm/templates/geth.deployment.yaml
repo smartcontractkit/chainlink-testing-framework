@@ -1,9 +1,9 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ template "ethereum.fullname" . }}-geth
+  name: {{ template "ethereum.fullname" . }}-{{ .Values.geth.name }}
   labels:
-    app: {{ template "ethereum.fullname" . }}-geth
+    app: {{ template "ethereum.fullname" . }}-{{ .Values.geth.name }}
     chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
@@ -11,12 +11,12 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: {{ template "ethereum.fullname" . }}-geth
+      app: {{ template "ethereum.fullname" . }}-{{ .Values.geth.name }}
       release: {{ .Release.Name }}
   template:
     metadata:
       labels:
-        app: {{ template "ethereum.fullname" . }}-geth
+        app: {{ template "ethereum.fullname" . }}-{{ .Values.geth.name }}
         release: {{ .Release.Name }}
       annotations:
         {{- range $key, $value := .Values.podAnnotations }}
@@ -34,19 +34,13 @@ spec:
         configMap:
           name: {{ template "ethereum.fullname" . }}-prysm-config          
       containers:
-        - name: geth
+        - name: {{ .Values.geth.name }}
           image: {{ .Values.geth.image.repository }}:{{ .Values.geth.image.tag }}
           imagePullPolicy: {{ .Values.imagePullPolicy }}
           command: ["/bin/sh"]
           args:
             - "-c"
-            - "geth --http.vhosts=* --nousb --metrics --nocompaction --syncmode full --gcmode archive --http --http.corsdomain \"*\" --http.vhosts=\"*\"  --http.api admin,debug,web3,eth,txpool,net --http.addr 0.0.0.0 --http.port=8544 --ws --ws.origins \"*\" --ws.api admin,debug,web3,eth,txpool,net --ws.addr 0.0.0.0 --ws.port=8546 --authrpc.vhosts=\"*\" --authrpc.addr=0.0.0.0 --authrpc.jwtsecret=/data/execution/jwtsecret --graphql --graphql.corsdomain=\"*\" --datadir=/data/execution  --networkid=${NETWORK_ID} --rpc.allow-unprotected-txs --rpc.txfeecap=0 --nodiscover --allow-insecure-unlock --unlock=0x123463a4b065722e99115d6c222f267d9cabb524 --password=/data/execution/password.txt --verbosity=5"
-          env:
-            - name: NETWORK_ID
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ template "ethereum.fullname" . }}-geth-config
-                  key: networkid
+            - "geth --http.vhosts=* --nousb --metrics --nocompaction --syncmode full --gcmode archive --http --http.corsdomain \"*\" --http.vhosts=\"*\"  --http.api admin,debug,web3,eth,txpool,net --http.addr 0.0.0.0 --http.port=8544 --ws --ws.origins \"*\" --ws.api admin,debug,web3,eth,txpool,net --ws.addr 0.0.0.0 --ws.port=8546 --authrpc.vhosts=\"*\" --authrpc.addr=0.0.0.0 --authrpc.jwtsecret={{ .Values.shared.jwtSecretFile }} --graphql --graphql.corsdomain=\"*\" --datadir={{ .Values.geth.executionDir }} --networkid={{ .Values.general.networkId }} --rpc.allow-unprotected-txs --rpc.txfeecap=0 --nodiscover --allow-insecure-unlock --unlock={{ .Values.feeRecipient }} --password={{ .Values.geth.passwordFile }} --verbosity=5"
           resources:
             requests:
               memory: {{ .Values.geth.resources.requests.memory }}
@@ -56,73 +50,72 @@ spec:
               cpu: {{ .Values.geth.resources.limits.cpu }}
           ports:
             - name: http-rpc
-              containerPort: 8544
+              containerPort: {{ .Values.geth.ports.http }}
             - name: ws-rpc
-              containerPort: 8546
+              containerPort: {{ .Values.geth.ports.ws }}
             - name: execution-rpc
-              containerPort: 8551
+              containerPort: {{ .Values.geth.ports.execution }}
             - name: discovery-udp
-              containerPort: 30303
+              containerPort: {{ .Values.geth.ports.discovery }}
               protocol: UDP
             - name: discovery-tcp
-              containerPort: 30303              
+              containerPort: {{ .Values.geth.ports.discovery }}              
           volumeMounts:
             - name: geth-config
-              mountPath: /data/execution/keystore/node1key
+              mountPath: {{ .Values.geth.executionDir }}/keystore/node1key
               subPath: node1key
             - name: geth-config
-              mountPath: /data/execution/password.txt
+              mountPath: {{ .Values.geth.passwordFile }}
               subPath: password.txt
             - name: geth-config
-              mountPath: /data/execution/jwtsecret
+              mountPath: {{ .Values.shared.jwtSecretFile }}
               subPath: jwtsecret              
             - name: geth-config
-              mountPath: /data/execution/sk.json
+              mountPath: {{ .Values.geth.executionDir }}/sk.json
               subPath: sk                
             - name: chain-state
               mountPath: /data 
           readinessProbe:
             exec:
-              command: ["/bin/sh", "-c", 'until nc -z -v localhost 8551; do sleep 2; done']
+              command: ["/bin/sh", "-c", 'until nc -z -v localhost {{ .Values.geth.ports.execution }}; do sleep 2; done']
             initialDelaySeconds: 5
             periodSeconds: 5        
           livenessProbe:
             exec:
-              command: ["/bin/sh", "-c", 'until nc -z -v localhost 8551; do sleep 2; done']
+              command: ["/bin/sh", "-c", 'until nc -z -v localhost {{ .Values.geth.ports.execution }}; do sleep 2; done']
             initialDelaySeconds: 5
             periodSeconds: 5                    
       initContainers:
         - name: init-eth2-genesis
           image: {{ .Values.prysm.genesis.image.repository }}:{{ .Values.prysm.genesis.image.tag }}
           imagePullPolicy: {{ .Values.imagePullPolicy }}      
-          # command: ["/bin/sh", "-c", "while true; do sleep 3600; done"]
           args:
             - "testnet"
             - "generate-genesis"
             - "--fork=capella"
             - "--num-validators=64"
             - "--genesis-time-delay=15"
-            - "--output-ssz=/data/consensus/genesis.ssz"
-            - "--chain-config-file=/data/consensus/config.yml"
-            - "--geth-genesis-json-in=/data/execution/genesis-raw.json"
-            - "--geth-genesis-json-out=/data/execution/genesis.json"
+            - "--output-ssz={{ .Values.prysm.shared.genesisFile }}"
+            - "--chain-config-file={{ .Values.prysm.shared.configFile }}"
+            - "--geth-genesis-json-in={{ .Values.geth.executionDir }}/genesis-raw.json"
+            - "--geth-genesis-json-out={{ .Values.shared.genesisFile }}"
           volumeMounts:
             - name: chain-state
               mountPath: /data 
             - name: prysm-config
-              mountPath: /data/consensus/config.yml
+              mountPath: {{ .Values.prysm.shared.configFile }}
               subPath: config.yml
             - name: geth-config
-              mountPath: /data/execution/genesis-raw.json
+              mountPath: {{ .Values.geth.executionDir }}/genesis-raw.json
               subPath: genesis.json          
         - name: init-eth1-genesis
           image: {{ .Values.geth.image.repository }}:{{ .Values.geth.image.tag }}
           imagePullPolicy: {{ .Values.imagePullPolicy }}           
           command:
             - "geth"
-            - "--datadir=/data/execution"
+            - "--datadir={{ .Values.geth.executionDir }}"
             - "init"
-            - "/data/execution/genesis.json"
+            - "{{ .Values.shared.genesisFile }}"
           volumeMounts:
             - name: chain-state
               mountPath: /data               

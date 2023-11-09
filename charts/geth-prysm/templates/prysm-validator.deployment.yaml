@@ -26,7 +26,7 @@ spec:
       volumes:
       - name: chain-state
         persistentVolumeClaim:
-          claimName: chain-state-claim    
+          claimName: {{ .Values.storage.claim }}  
       - name: geth-config
         configMap:
           name: {{ template "ethereum.fullname" . }}-geth-config          
@@ -38,12 +38,12 @@ spec:
           image: {{ .Values.prysm.validator.image.repository }}:{{ .Values.prysm.validator.image.tag }}
           imagePullPolicy: {{ .Values.imagePullPolicy }}
           args:
-          - "--beacon-rpc-provider={{ template "ethereum.fullname" . }}-prysm-beacon:4000"
+          - "--beacon-rpc-provider={{ template "ethereum.fullname" . }}-{{ .Values.prysm.beacon.name }}:{{ .Values.prysm.beacon.ports.node }}"
           - "--datadir=/data/consensus/validatordata"
           - "--accept-terms-of-use"
           - "--interop-num-validators=64"
           - "--interop-start-index=0"
-          - "--chain-config-file=/data/consensus/config.yml"
+          - "--chain-config-file={{ .Values.prysm.shared.configFile }}"
           resources:
             requests:
               memory: {{ .Values.prysm.validator.resources.requests.memory }}
@@ -55,13 +55,13 @@ spec:
             - name: chain-state
               mountPath: /data 
             - name: prysm-config
-              mountPath: /data/consensus/config.yml
+              mountPath: {{ .Values.prysm.shared.configFile }}
               subPath: config.yml                                 
       initContainers:
         - name: wait-for-geth
           image: {{ .Values.busybox.image.repository }}:{{ .Values.busybox.image.tag }}
           imagePullPolicy: {{ .Values.imagePullPolicy }} 
-          command: ["/bin/sh", "-c", 'until nc -z -v {{ template "ethereum.fullname" . }}-geth 8551; do echo "Waiting for geth to start..."; sleep 2; done']
+          command: ["/bin/sh", "-c", 'until nc -z -v {{ template "ethereum.fullname" . }}-{{ .Values.geth.name }} {{ .Values.geth.ports.execution }}; do sleep 2; done']
 
 {{- with .Values.nodeSelector }}
       nodeSelector:

@@ -33,8 +33,8 @@ data:
     DENEB_FORK_VERSION: 0x20000093
 
     # Time parameters
-    SECONDS_PER_SLOT: {{ .Values.eth2.genesis.secondsPerSlot }}
-    SLOTS_PER_EPOCH: {{ .Values.eth2.genesis.slotsPerEpoch }}
+    SECONDS_PER_SLOT: {{ .Values.prysm.genesis.values.secondsPerSlot }}
+    SLOTS_PER_EPOCH: {{ .Values.prysm.genesis.values.slotsPerEpoch }}
 
     # Deposit contract
     DEPOSIT_CONTRACT_ADDRESS: 0x4242424242424242424242424242424242424242

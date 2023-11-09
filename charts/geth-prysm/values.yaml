@@ -1,29 +1,22 @@
 imagePullPolicy: IfNotPresent
 general:
-  uuid: ""
   networkId: 1337
-images:
-  platform:
-    os: linux
-    architecture: x86_64
-eth2:
-  genesis:
-    secondsPerSlot: 12
-    slotsPerEpoch: 6
-bootnode:
-  replicas: 2
-  image:
-    repository: ethereum/client-go
-    tag: alltools-v1.10.6
-bootnodeRegistrar:
-  replicas: 1
-  image:
-    repository: jpoon/bootnode-registrar
-    tag: v1.0.0
+shared:
+  jwtSecretFile: /data/execution/jwtsecret
+  genesisFile: /data/execution/genesis.json
+  feeRecipient: 0x123463a4b065722e99115d6c222f267d9cabb524
 geth:
   image:
     repository: ethereum/client-go
     tag: v1.13.4
+  name: geth
+  passwordFile: /data/execution/password.txt
+  executionDir: /data/execution
+  ports:
+    http: 8545
+    ws: 8546
+    execution: 8551
+    discovery: 30303
   replicas: 1
   service:
     type: ClusterIP
@@ -35,16 +28,25 @@ geth:
       cpu: 200m
       memory: 528Mi
 prysm:
+  shared:
+    configFile: /data/consensus/config.yml 
+    genesisFile: /data/consensus/genesis.ssz
   genesis:
     image:
       repository: gcr.io/prysmaticlabs/prysm/cmd/prysmctl
-      tag: latest
+      tag: latest # use fixed version
+    values:
+      secondsPerSlot: 4
+      slotsPerEpoch: 2
   beacon:
+    name: prysm-beacon-chain
     image:
       repository: gcr.io/prysmaticlabs/prysm/beacon-chain
       tag: v4.1.1
-    startup:
-      timeoutSeconds: 600
+    ports:
+      query: 3500
+      node: 4000
+      status: 8080  
     replicas: 1
     service:
       type: ClusterIP
@@ -73,6 +75,9 @@ busybox:
   image:
     repository: busybox
     tag: 1.36.1
+storage:
+  class: hostpath
+  claim: chain-state-claim
 
 podAnnotations: {}
 
