@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "ethereum.fullname" . }}-{{ .Values.ready.name }}
+  labels:
+    app: {{ template "ethereum.fullname" . }}-{{ .Values.ready.name }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ template "ethereum.fullname" . }}-{{ .Values.ready.name }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "ethereum.fullname" . }}-{{ .Values.ready.name }}
+        release: {{ .Release.Name }}
+      annotations:
+        {{- range $key, $value := .Values.podAnnotations }}
+        {{ $key }}: {{ $value | quote }}
+        {{- end }}
+    spec:       
+      containers:
+        - name: {{ .Values.ready.name }}
+          image: {{ .Values.ready.image.repository }}:{{ .Values.ready.image.tag }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          command: ["sleep", "infinity"]
+          resources:
+            requests:
+              memory: {{ .Values.ready.resources.requests.memory }}
+              cpu: {{ .Values.ready.resources.requests.cpu }}
+            limits:
+              memory: {{ .Values.ready.resources.limits.memory }}
+              cpu: {{ .Values.ready.resources.limits.cpu }}           
+          readinessProbe:
+            exec:
+              command:
+              - /bin/sh
+              - -c
+              - |
+                response=$(curl -s -H "Content-Type: application/json" -X POST --data '{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["latest", false],"id":1}' http://{{ template "ethereum.fullname" . }}-{{ .Values.geth.name }}:{{ .Values.geth.ports.http }})
+                block_number=$(echo $response | grep -o '"number":"[^"]*' | cut -d'"' -f4)
+                block_number_decimal=$(printf "%d" "$block_number")
+
+                if [ "$block_number_decimal" -gt 1 ]; then
+                    exit 0
+                else
+                    exit 1
+                fi
+            initialDelaySeconds: 60
+            periodSeconds: 5                            
+{{- with .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .Values.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .Values.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+{{- end }}

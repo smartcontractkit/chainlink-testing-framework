@@ -4,7 +4,6 @@ general:
 shared:
   jwtSecretFile: /data/execution/jwtsecret
   genesisFile: /data/execution/genesis.json
-  feeRecipient: 0x123463a4b065722e99115d6c222f267d9cabb524
 geth:
   image:
     repository: ethereum/client-go
@@ -13,8 +12,8 @@ geth:
   passwordFile: /data/execution/password.txt
   executionDir: /data/execution
   ports:
-    http: 8545
-    ws: 8546
+    http: 8544
+    ws: 8545
     execution: 8551
     discovery: 30303
   replicas: 1
@@ -34,9 +33,9 @@ prysm:
   genesis:
     image:
       repository: gcr.io/prysmaticlabs/prysm/cmd/prysmctl
-      tag: latest # use fixed version
+      tag: HEAD-1530d1 # latest one that works, a bit newer than v4.1.1
     values:
-      secondsPerSlot: 4
+      secondsPerSlot: 20
       slotsPerEpoch: 2
   beacon:
     name: prysm-beacon-chain
@@ -75,6 +74,21 @@ busybox:
   image:
     repository: busybox
     tag: 1.36.1
+ready:
+  name: chain-ready
+  image:
+    repository: curlimages/curl
+    tag: 8.4.0
+  replicas: 1
+  service:
+    type: ClusterIP
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+    limits:
+      cpu: 50m
+      memory: 256Mi       
 storage:
   class: hostpath
   claim: chain-state-claim

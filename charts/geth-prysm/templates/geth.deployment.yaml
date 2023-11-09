@@ -40,7 +40,7 @@ spec:
           command: ["/bin/sh"]
           args:
             - "-c"
-            - "geth --http.vhosts=* --nousb --metrics --nocompaction --syncmode full --gcmode archive --http --http.corsdomain \"*\" --http.vhosts=\"*\"  --http.api admin,debug,web3,eth,txpool,net --http.addr 0.0.0.0 --http.port=8544 --ws --ws.origins \"*\" --ws.api admin,debug,web3,eth,txpool,net --ws.addr 0.0.0.0 --ws.port=8546 --authrpc.vhosts=\"*\" --authrpc.addr=0.0.0.0 --authrpc.jwtsecret={{ .Values.shared.jwtSecretFile }} --graphql --graphql.corsdomain=\"*\" --datadir={{ .Values.geth.executionDir }} --networkid={{ .Values.general.networkId }} --rpc.allow-unprotected-txs --rpc.txfeecap=0 --nodiscover --allow-insecure-unlock --unlock={{ .Values.feeRecipient }} --password={{ .Values.geth.passwordFile }} --verbosity=5"
+            - "geth --http.vhosts=* --nousb --metrics --nocompaction --syncmode full --gcmode archive --http --http.corsdomain \"*\" --http.vhosts=\"*\"  --http.api admin,debug,web3,eth,txpool,net --http.addr 0.0.0.0 --http.port={{ .Values.geth.ports.http }} --ws --ws.origins \"*\" --ws.api admin,debug,web3,eth,txpool,net --ws.addr 0.0.0.0 --ws.port={{ .Values.geth.ports.ws }} --authrpc.vhosts=\"*\" --authrpc.addr=0.0.0.0 --authrpc.jwtsecret={{ .Values.shared.jwtSecretFile }} --graphql --graphql.corsdomain=\"*\" --datadir={{ .Values.geth.executionDir }} --networkid={{ .Values.general.networkId }} --rpc.allow-unprotected-txs --rpc.txfeecap=0 --nodiscover --allow-insecure-unlock --unlock=0x123463a4b065722e99115d6c222f267d9cabb524 --password={{ .Values.geth.passwordFile }} --verbosity=5"
           resources:
             requests:
               memory: {{ .Values.geth.resources.requests.memory }}
@@ -94,7 +94,7 @@ spec:
             - "generate-genesis"
             - "--fork=capella"
             - "--num-validators=64"
-            - "--genesis-time-delay=15"
+            - "--genesis-time-delay=20"
             - "--output-ssz={{ .Values.prysm.shared.genesisFile }}"
             - "--chain-config-file={{ .Values.prysm.shared.configFile }}"
             - "--geth-genesis-json-in={{ .Values.geth.executionDir }}/genesis-raw.json"

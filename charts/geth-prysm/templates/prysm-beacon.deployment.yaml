@@ -50,7 +50,7 @@ spec:
             - "--execution-endpoint=http://{{ template "ethereum.fullname" . }}-{{ .Values.geth.name }}:{{ .Values.geth.ports.execution }}"
             - "--accept-terms-of-use"
             - "--jwt-secret={{ .Values.shared.jwtSecretFile }}"
-            - "--suggested-fee-recipient={{ .Values.feeRecipient }}"
+            - "--suggested-fee-recipient=0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
             - "--minimum-peers-per-subnet=0"
             - "--enable-debug-rpc-endpoints"           
           resources:

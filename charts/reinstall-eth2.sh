@@ -1,7 +1,5 @@
 #!/bin/bash
 
-RELEASE_NAME="eth2-prysm-geth"
-
 # Run helm list and grab the name of the first deployment
 deployment_name=$(helm list -o json | jq -r '.[0].name')
 
@@ -37,5 +35,5 @@ if [ -z "$chart_package" ]; then
 fi
 
 # Install the newly generated chart package
-helm install $RELEASE_NAME "$chart_package" -f ./geth-prysm/Values.yaml
+helm install --generate-name "$chart_package" -f ./geth-prysm/Values.yaml
 
