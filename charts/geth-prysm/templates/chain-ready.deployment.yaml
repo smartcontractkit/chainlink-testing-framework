@@ -15,7 +15,24 @@ spec:
         - name: {{ .Values.ready.name }}
           image: {{ .Values.ready.image.repository }}:{{ .Values.ready.image.tag }}
           imagePullPolicy: {{ .Values.imagePullPolicy }}
-          command: ["sleep", "infinity"]
+          # command: ["sleep", "infinity"]
+          command:
+          - /bin/sh
+          - -c
+          - |
+            while true; do
+              response=$(curl -s -H "Content-Type: application/json" -X POST --data '{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["latest", false],"id":1}' http://{{ .Values.geth.name }}-svc:{{ .Values.geth.ports.http }})
+              block_number=$(echo $response | grep -o '"number":"[^"]*' | cut -d'"' -f4)
+
+              if [ -n "$block_number" ]; then
+                block_number_decimal=$(printf "%d" "$block_number")
+                echo "Latest unfinalised block number: $block_number_decimal"
+              else
+                echo "Latest unfinalised block number: N/A"
+              fi
+
+              sleep {{ printf "%d" (add .Values.prysm.genesis.secondsPerSlot 2) }}
+              done
           resources:
             requests:
               memory: {{ .Values.ready.resources.requests.memory }}

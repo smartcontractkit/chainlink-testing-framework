@@ -58,3 +58,5 @@ storage:
 3. Run `./reinstall-eth2.sh`
 
 That script will use `Helm` to stop any existing deployment, remove PV and PVC, run lint, prepare a package and install a it.
+
+Then you should wait for `chain-ready` container to become ready, as that will mean that chain started to produce blocks. You can check it's logs to see current latest unfinalized block.
