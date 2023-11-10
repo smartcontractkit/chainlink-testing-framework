@@ -55,6 +55,7 @@ prysm:
         cpu: 200m
         memory: 528Mi      
   validator:
+    name: prysm-validator
     image:
       repository: gcr.io/prysmaticlabs/prysm/validator
       tag: v4.1.1-debug

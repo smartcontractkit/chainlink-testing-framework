@@ -16,12 +16,15 @@ func TestEth2WithPrysmAndGethDefaultConfig(t *testing.T) {
 	l := logging.GetTestLogger(t)
 
 	builder := NewEthereumNetworkBuilder(t)
-	_, eth2, _, err := builder.
+	err := builder.
 		WithConsensusType(ConsensusType_PoS).
 		WithConsensusLayer(ConsensusLayer_Prysm).
 		WithExecutionLayer(ExecutionLayer_Geth).
-		Start()
-	require.NoError(t, err)
+		Build()
+	require.NoError(t, err, "Builder validation failed")
+
+	_, eth2, _, err := builder.Start()
+	require.NoError(t, err, "Couldn't start PoS network")
 
 	ns := blockchain.SimulatedEVMNetwork
 	ns.URLs = eth2.PublicWsUrsl()

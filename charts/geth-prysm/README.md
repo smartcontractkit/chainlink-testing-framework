@@ -1,4 +1,4 @@
-# Initalisation flow
+# Deployment initalisation flow
 1. Generate eth2 genesis
 2. Generate eth1 genesis
 3. Start Geth
@@ -6,10 +6,6 @@
 5. Start Prysm beacon chain
 6. Start Prysm validator
 7. Wait for first block to be produced (that's when `chain-ready` pod becomes ready)
-
-# Limitations
-* No support for restarting of geth app (it will try to initialize the chain from scratch every time and that will fail, becuase it will try to generate genesis.json based on previous chain state)
-* Untested scalability
 
 # Default ports
 ## Geth
@@ -60,3 +56,8 @@ storage:
 That script will use `Helm` to stop any existing deployment, remove PV and PVC, run lint, prepare a package and install a it.
 
 Then you should wait for `chain-ready` container to become ready, as that will mean that chain started to produce blocks. You can check it's logs to see current latest unfinalized block.
+
+# Limitations
+* No support for restarting of geth app (it will try to initialize the chain from scratch every time and that will fail, becuase it will try to generate genesis.json based on previous chain state)
+* Untested scalability
+* I wasn't able to add a working readiness/liveliness probe for beacon chain

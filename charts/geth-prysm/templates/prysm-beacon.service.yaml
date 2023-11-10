@@ -1,10 +1,10 @@
 kind: Service
 apiVersion: v1
 metadata:
-  name: {{ .Values.prysm.beacon.name }}-svc
+  name: {{ .Release.Name }}-{{ .Values.prysm.beacon.name }}-svc
 spec:
   selector:
-    app: {{ .Values.prysm.beacon.name }}
+    app: {{ .Release.Name }}-{{ .Values.prysm.beacon.name }}
   ports:
     - name: query-rpc
       port: {{ .Values.prysm.beacon.ports.query }}   

@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment #StatefulSet?
 metadata:
-  name: prysm-validator
+  name: {{ .Release.Name }}-{{ .Values.prysm.validator.name }}
 spec:
   selector:
     matchLabels:
-      app: prysm-validator
+      app: {{ .Release.Name }}-{{ .Values.prysm.validator.name }}
   template:
     metadata:
       labels:
-        app: prysm-validator
+        app: {{ .Release.Name }}-{{ .Values.prysm.validator.name }}
     spec:
       volumes:
       - name: chain-state
         persistentVolumeClaim:
-          claimName: {{ .Values.storage.claim }}  
+          claimName: {{ .Release.Name }}-{{ .Values.storage.claim }}  
       - name: geth-config
         configMap:
           name: geth-config          
@@ -22,11 +22,11 @@ spec:
         configMap:
           name: prysm-config                  
       containers:
-        - name: prysm-validator-chain
+        - name: {{ .Values.prysm.validator.name }}
           image: {{ .Values.prysm.validator.image.repository }}:{{ .Values.prysm.validator.image.tag }}
           imagePullPolicy: {{ .Values.imagePullPolicy }}
           args:
-          - "--beacon-rpc-provider={{ .Values.prysm.beacon.name }}-svc:{{ .Values.prysm.beacon.ports.node }}"
+          - "--beacon-rpc-provider={{ .Release.Name }}-{{ .Values.prysm.beacon.name }}-svc:{{ .Values.prysm.beacon.ports.node }}"
           - "--datadir=/data/consensus/validatordata"
           - "--accept-terms-of-use"
           - "--interop-num-validators={{ .Values.prysm.shared.validators }}"
@@ -57,7 +57,7 @@ spec:
             - >
               timeout 900 sh -c '
                 start_time=$(date +%s)
-                while ! nc -z -v {{ .Values.geth.name }}-svc {{ .Values.geth.ports.execution }}; do
+                while ! nc -z -v {{ .Release.Name }}-{{ .Values.geth.name }}-svc {{ .Values.geth.ports.execution }}; do
                   current_time=$(date +%s)
                   elapsed_time=$((current_time - start_time))
                   remaining_time=$((900 - elapsed_time))

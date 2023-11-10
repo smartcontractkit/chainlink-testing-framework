@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment 
 metadata:
-  name: {{ .Values.prysm.beacon.name }}
+  name: {{ .Release.Name }}-{{ .Values.prysm.beacon.name }}
 spec:
   selector:
     matchLabels:
-      app: {{ .Values.prysm.beacon.name }}
+      app: {{ .Release.Name }}-{{ .Values.prysm.beacon.name }}
   template:
     metadata:
       labels:
-        app: {{ .Values.prysm.beacon.name }}
+        app: {{ .Release.Name }}-{{ .Values.prysm.beacon.name }}
     spec:
       volumes:
       - name: chain-state
         persistentVolumeClaim:
-          claimName: {{ .Values.storage.claim }}
+          claimName: {{ .Release.Name }}-{{ .Values.storage.claim }}
       - name: geth-config
         configMap:
           name: geth-config   
@@ -35,7 +35,7 @@ spec:
             - "--chain-id={{ .Values.general.networkId }}"
             - "--rpc-host=0.0.0.0"
             - "--grpc-gateway-host=0.0.0.0"
-            - "--execution-endpoint=http://{{ .Values.geth.name }}-svc:{{ .Values.geth.ports.execution }}"
+            - "--execution-endpoint=http://{{ .Release.Name }}-{{ .Values.geth.name }}-svc:{{ .Values.geth.ports.execution }}"
             - "--accept-terms-of-use"
             - "--jwt-secret={{ .Values.shared.jwtSecretFile }}"
             - "--suggested-fee-recipient={{ .Values.prysm.shared.feeRecipent }}"
@@ -92,7 +92,7 @@ spec:
           - >
             timeout 900 sh -c '
               start_time=$(date +%s)
-              while ! nc -z -v {{ .Values.geth.name }}-svc {{ .Values.geth.ports.execution }}; do
+              while ! nc -z -v {{ .Release.Name }}-{{ .Values.geth.name }}-svc {{ .Values.geth.ports.execution }}; do
                 current_time=$(date +%s)
                 elapsed_time=$((current_time - start_time))
                 remaining_time=$((900 - elapsed_time))

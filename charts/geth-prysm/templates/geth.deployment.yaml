@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Values.geth.name }}
+  name: {{ .Release.Name }}-{{ .Values.geth.name }}
 spec:
   selector:
     matchLabels:
-      app: {{ .Values.geth.name }}
+      app: {{ .Release.Name }}-{{ .Values.geth.name }}
   template:
     metadata:
       labels:
-        app: {{ .Values.geth.name }}
+        app: {{ .Release.Name }}-{{ .Values.geth.name }}
     spec:
       volumes:
       - name: chain-state
         persistentVolumeClaim:
-          claimName: chain-state-claim
+          claimName: {{ .Release.Name }}-{{ .Values.storage.claim }}
       - name: geth-config
         configMap:
           name: geth-config
@@ -111,16 +111,3 @@ spec:
           volumeMounts:
             - name: chain-state
               mountPath: /data               
-
-# {{- with .Values.nodeSelector }}
-#       nodeSelector:
-# {{ toYaml . | indent 8 }}
-# {{- end }}
-# {{- with .Values.affinity }}
-#       affinity:
-# {{ toYaml . | indent 8 }}
-# {{- end }}
-# {{- with .Values.tolerations }}
-#       tolerations:
-# {{ toYaml . | indent 8 }}
-# {{- end }}

@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ .Values.storage.claim }}
+  name: {{ .Release.Name }}-{{ .Values.storage.claim }}
 spec:
   accessModes:
     - ReadWriteMany

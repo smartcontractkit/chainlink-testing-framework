@@ -1,10 +1,10 @@
 kind: Service
 apiVersion: v1
 metadata:
-  name: {{ .Values.geth.name }}-svc
+  name: {{ .Release.Name }}-{{ .Values.geth.name }}-svc
 spec:
   selector:
-    app: {{ .Values.geth.name }}
+    app: {{ .Release.Name }}-{{ .Values.geth.name }}
   ports:
     - name: http-rpc
       port: {{ .Values.geth.ports.http }}
