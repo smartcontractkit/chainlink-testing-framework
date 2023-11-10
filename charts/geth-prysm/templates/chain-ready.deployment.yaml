@@ -1,27 +1,15 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ template "ethereum.fullname" . }}-{{ .Values.ready.name }}
-  labels:
-    app: {{ template "ethereum.fullname" . }}-{{ .Values.ready.name }}
-    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
+  name: {{ .Values.ready.name }}
 spec:
-  replicas: 1
   selector:
     matchLabels:
-      app: {{ template "ethereum.fullname" . }}-{{ .Values.ready.name }}
-      release: {{ .Release.Name }}
+      app: {{ .Values.ready.name }}
   template:
     metadata:
       labels:
-        app: {{ template "ethereum.fullname" . }}-{{ .Values.ready.name }}
-        release: {{ .Release.Name }}
-      annotations:
-        {{- range $key, $value := .Values.podAnnotations }}
-        {{ $key }}: {{ $value | quote }}
-        {{- end }}
+        app: {{ .Values.ready.name }}
     spec:       
       containers:
         - name: {{ .Values.ready.name }}
@@ -41,7 +29,7 @@ spec:
               - /bin/sh
               - -c
               - |
-                response=$(curl -s -H "Content-Type: application/json" -X POST --data '{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["latest", false],"id":1}' http://{{ template "ethereum.fullname" . }}-{{ .Values.geth.name }}:{{ .Values.geth.ports.http }})
+                response=$(curl -s -H "Content-Type: application/json" -X POST --data '{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["latest", false],"id":1}' http://{{ .Values.geth.name }}-svc:{{ .Values.geth.ports.http }})
                 block_number=$(echo $response | grep -o '"number":"[^"]*' | cut -d'"' -f4)
                 block_number_decimal=$(printf "%d" "$block_number")
 
@@ -52,15 +40,3 @@ spec:
                 fi
             initialDelaySeconds: 60
             periodSeconds: 5                            
-{{- with .Values.nodeSelector }}
-      nodeSelector:
-{{ toYaml . | indent 8 }}
-{{- end }}
-{{- with .Values.affinity }}
-      affinity:
-{{ toYaml . | indent 8 }}
-{{- end }}
-{{- with .Values.tolerations }}
-      tolerations:
-{{ toYaml . | indent 8 }}
-{{- end }}

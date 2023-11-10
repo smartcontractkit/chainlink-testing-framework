@@ -1,16 +1,10 @@
 kind: Service
 apiVersion: v1
 metadata:
-  name: {{ template "ethereum.fullname" . }}-{{ .Values.prysm.beacon.name }}
-  labels:
-    app: {{ template "ethereum.fullname" . }}-{{ .Values.prysm.beacon.name }}
-    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
+  name: {{ .Values.prysm.beacon.name }}-svc
 spec:
   selector:
-    app: {{ template "ethereum.fullname" . }}-{{ .Values.prysm.beacon.name }}
-  type: {{ .Values.prysm.beacon.service.type }}
+    app: {{ .Values.prysm.beacon.name }}
   ports:
     - name: query-rpc
       port: {{ .Values.prysm.beacon.ports.query }}   

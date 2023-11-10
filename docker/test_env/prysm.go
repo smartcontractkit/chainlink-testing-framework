@@ -134,7 +134,7 @@ func (g *PrysmGenesis) getContainerRequest(networks []string) (*tc.ContainerRequ
 	return &tc.ContainerRequest{
 		Name:            g.ContainerName,
 		AlwaysPullImage: true,
-		Image:           "gcr.io/prysmaticlabs/prysm/cmd/prysmctl:local-devnet",
+		Image:           "gcr.io/prysmaticlabs/prysm/cmd/prysmctl:HEAD-1530d1", // latest one that works, a bit newer than v4.1.1
 		Networks:        networks,
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForLog("Done writing genesis state to"),

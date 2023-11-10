@@ -16,9 +16,6 @@ geth:
     ws: 8545
     execution: 8551
     discovery: 30303
-  replicas: 1
-  service:
-    type: ClusterIP
   resources:
     requests:
       cpu: 200m
@@ -26,29 +23,30 @@ geth:
     limits:
       cpu: 200m
       memory: 528Mi
-prysm:
-  shared:
+prysm: 
+  shared: 
     configFile: /data/consensus/config.yml 
     genesisFile: /data/consensus/genesis.ssz
+    feeRecipent: 0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266
+    validators: 8
+    gethInitTimeoutSeconds: 600
   genesis:
     image:
       repository: gcr.io/prysmaticlabs/prysm/cmd/prysmctl
       tag: HEAD-1530d1 # latest one that works, a bit newer than v4.1.1
     values:
-      secondsPerSlot: 20
-      slotsPerEpoch: 2
+      secondsPerSlot: 12
+      slotsPerEpoch: 4
+      delaySeconds: 20
   beacon:
     name: prysm-beacon-chain
     image:
       repository: gcr.io/prysmaticlabs/prysm/beacon-chain
-      tag: v4.1.1
+      tag: v4.1.1-debug
     ports:
       query: 3500
       node: 4000
       status: 8080  
-    replicas: 1
-    service:
-      type: ClusterIP
     resources:
       requests:
         cpu: 200m
@@ -59,17 +57,14 @@ prysm:
   validator:
     image:
       repository: gcr.io/prysmaticlabs/prysm/validator
-      tag: v4.1.1
-    replicas: 1
-    service:
-      type: ClusterIP
+      tag: v4.1.1-debug
     resources:
       requests:
-        cpu: 200m
-        memory: 528Mi
+        cpu: 400m
+        memory: 1Gi
       limits:
-        cpu: 200m
-        memory: 528Mi      
+        cpu: 400m
+        memory: 1Gi      
 busybox:
   image:
     repository: busybox
@@ -79,9 +74,6 @@ ready:
   image:
     repository: curlimages/curl
     tag: 8.4.0
-  replicas: 1
-  service:
-    type: ClusterIP
   resources:
     requests:
       cpu: 50m
@@ -92,11 +84,4 @@ ready:
 storage:
   class: hostpath
   claim: chain-state-claim
-
-podAnnotations: {}
-
-nodeSelector: {}
-
-tolerations: []
-
-affinity: {}
+  size: 2Gi

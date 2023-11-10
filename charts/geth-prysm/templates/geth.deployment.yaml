@@ -1,27 +1,15 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ template "ethereum.fullname" . }}-{{ .Values.geth.name }}
-  labels:
-    app: {{ template "ethereum.fullname" . }}-{{ .Values.geth.name }}
-    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
+  name: {{ .Values.geth.name }}
 spec:
-  replicas: 1
   selector:
     matchLabels:
-      app: {{ template "ethereum.fullname" . }}-{{ .Values.geth.name }}
-      release: {{ .Release.Name }}
+      app: {{ .Values.geth.name }}
   template:
     metadata:
       labels:
-        app: {{ template "ethereum.fullname" . }}-{{ .Values.geth.name }}
-        release: {{ .Release.Name }}
-      annotations:
-        {{- range $key, $value := .Values.podAnnotations }}
-        {{ $key }}: {{ $value | quote }}
-        {{- end }}
+        app: {{ .Values.geth.name }}
     spec:
       volumes:
       - name: chain-state
@@ -29,10 +17,10 @@ spec:
           claimName: chain-state-claim
       - name: geth-config
         configMap:
-          name: {{ template "ethereum.fullname" . }}-geth-config
+          name: geth-config
       - name: prysm-config
         configMap:
-          name: {{ template "ethereum.fullname" . }}-prysm-config          
+          name: prysm-config          
       containers:
         - name: {{ .Values.geth.name }}
           image: {{ .Values.geth.image.repository }}:{{ .Values.geth.image.tag }}
@@ -80,11 +68,15 @@ spec:
               command: ["/bin/sh", "-c", 'until nc -z -v localhost {{ .Values.geth.ports.execution }}; do sleep 2; done']
             initialDelaySeconds: 5
             periodSeconds: 5        
+            failureThreshold: 2
+            timeoutSeconds: 120
           livenessProbe:
             exec:
               command: ["/bin/sh", "-c", 'until nc -z -v localhost {{ .Values.geth.ports.execution }}; do sleep 2; done']
             initialDelaySeconds: 5
-            periodSeconds: 5                    
+            periodSeconds: 5         
+            failureThreshold: 2    
+            timeoutSeconds: 10       
       initContainers:
         - name: init-eth2-genesis
           image: {{ .Values.prysm.genesis.image.repository }}:{{ .Values.prysm.genesis.image.tag }}
@@ -93,8 +85,8 @@ spec:
             - "testnet"
             - "generate-genesis"
             - "--fork=capella"
-            - "--num-validators=64"
-            - "--genesis-time-delay=20"
+            - "--num-validators={{ .Values.prysm.shared.validators }}"
+            - "--genesis-time-delay={{ .Values.prysm.genesis.values.delaySeconds }}"
             - "--output-ssz={{ .Values.prysm.shared.genesisFile }}"
             - "--chain-config-file={{ .Values.prysm.shared.configFile }}"
             - "--geth-genesis-json-in={{ .Values.geth.executionDir }}/genesis-raw.json"
@@ -119,15 +111,16 @@ spec:
           volumeMounts:
             - name: chain-state
               mountPath: /data               
-{{- with .Values.nodeSelector }}
-      nodeSelector:
-{{ toYaml . | indent 8 }}
-{{- end }}
-{{- with .Values.affinity }}
-      affinity:
-{{ toYaml . | indent 8 }}
-{{- end }}
-{{- with .Values.tolerations }}
-      tolerations:
-{{ toYaml . | indent 8 }}
-{{- end }}
+
+# {{- with .Values.nodeSelector }}
+#       nodeSelector:
+# {{ toYaml . | indent 8 }}
+# {{- end }}
+# {{- with .Values.affinity }}
+#       affinity:
+# {{ toYaml . | indent 8 }}
+# {{- end }}
+# {{- with .Values.tolerations }}
+#       tolerations:
+# {{ toYaml . | indent 8 }}
+# {{- end }}

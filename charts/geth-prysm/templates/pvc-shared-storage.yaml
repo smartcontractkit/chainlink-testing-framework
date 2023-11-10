@@ -8,4 +8,4 @@ spec:
   storageClassName: {{ .Values.storage.class }}
   resources:
     requests:
-      storage: 2Gi
+      storage: {{ .Values.storage.size }}

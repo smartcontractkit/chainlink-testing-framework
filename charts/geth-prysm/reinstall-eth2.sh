@@ -18,13 +18,13 @@ kubectl delete pvc $PVC_NAME
 kubectl delete pv $PV_NAME
 
 # Run helm lint
-if ! helm lint ./geth-prysm -f ./geth-prysm/Values.yaml; then
+if ! helm lint . -f ./Values.yaml; then
   echo "Helm lint failed. Exiting."
   exit 1
 fi
 
 # Package the Helm chart in the current directory
-helm package ./geth-prysm
+helm package .
 
 # Get the name of the generated chart package
 chart_package=$(ls -1 | grep '.tgz')
@@ -35,5 +35,5 @@ if [ -z "$chart_package" ]; then
 fi
 
 # Install the newly generated chart package
-helm install --generate-name "$chart_package" -f ./geth-prysm/Values.yaml
+helm install --generate-name "$chart_package" -f ./Values.yaml
 

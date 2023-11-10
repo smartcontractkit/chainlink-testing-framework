@@ -1,16 +1,10 @@
 kind: Service
 apiVersion: v1
 metadata:
-  name: {{ template "ethereum.fullname" . }}-{{ .Values.geth.name }}
-  labels:
-    app: {{ template "ethereum.fullname" . }}-{{ .Values.geth.name }}
-    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
+  name: {{ .Values.geth.name }}-svc
 spec:
   selector:
-    app: {{ template "ethereum.fullname" . }}-{{ .Values.geth.name }}
-  type: {{ .Values.geth.service.type }}
+    app: {{ .Values.geth.name }}
   ports:
     - name: http-rpc
       port: {{ .Values.geth.ports.http }}
