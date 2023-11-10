@@ -79,8 +79,8 @@ spec:
             timeoutSeconds: 10       
       initContainers:
         - name: init-eth2-genesis
-          image: {{ .Values.prysm.genesis.image.repository }}:{{ .Values.prysm.genesis.image.tag }}
-          imagePullPolicy: {{ .Values.imagePullPolicy }}      
+          image: "{{ .Values.prysm.genesis.image.repository }}:{{ .Values.prysm.genesis.image.tag }}"
+          imagePullPolicy: "{{ .Values.imagePullPolicy }}"      
           args:
             - "testnet"
             - "generate-genesis"
