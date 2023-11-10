@@ -29,14 +29,14 @@ func TestOldGeth(t *testing.T) {
 func TestEth1WithGeth(t *testing.T) {
 	l := logging.GetTestLogger(t)
 
-	builder := NewEthereumNetworkBuilder(t)
-	err := builder.
+	builder := NewEthereumNetworkBuilder()
+	cfg, err := builder.
 		WithConsensusType(ConsensusType_PoW).
 		WithExecutionLayer(ExecutionLayer_Geth).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 
-	_, eth2, _, err := builder.Start()
+	_, eth2, err := cfg.Start()
 	require.NoError(t, err, "Couldn't start PoW network")
 
 	ns := blockchain.SimulatedEVMNetwork

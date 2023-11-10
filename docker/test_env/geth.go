@@ -69,6 +69,11 @@ func NewGeth(networks []string, opts ...EnvComponentOption) *Geth {
 	return g
 }
 
+func (g *Geth) WithLogger(l zerolog.Logger) *Geth {
+	g.l = l
+	return g
+}
+
 func (g *Geth) WithTestLogger(t *testing.T) *Geth {
 	g.l = logging.GetTestLogger(t)
 	g.t = t

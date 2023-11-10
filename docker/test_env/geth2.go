@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"testing"
 	"time"
 
 	"github.com/google/uuid"
@@ -17,7 +16,6 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
-	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 )
 
 const (
@@ -29,7 +27,6 @@ type GethGenesis struct {
 	EnvComponent
 	ExecutionDir string
 	l            zerolog.Logger
-	t            *testing.T
 }
 
 type Geth2 struct {
@@ -43,7 +40,6 @@ type Geth2 struct {
 	ExecutionDir         string
 	consensusLayer       ConsensusLayer
 	l                    zerolog.Logger
-	t                    *testing.T
 }
 
 func NewEth1Genesis(networks []string, executionDir string, opts ...EnvComponentOption) *GethGenesis {
@@ -61,9 +57,8 @@ func NewEth1Genesis(networks []string, executionDir string, opts ...EnvComponent
 	return g
 }
 
-func (g *GethGenesis) WithTestLogger(t *testing.T) *GethGenesis {
-	g.l = logging.GetTestLogger(t)
-	g.t = t
+func (g *GethGenesis) WithLogger(l zerolog.Logger) *GethGenesis {
+	g.l = l
 	return g
 }
 
@@ -73,18 +68,11 @@ func (g *GethGenesis) StartContainer() error {
 		return err
 	}
 
-	l := tc.Logger
-	if g.t != nil {
-		l = logging.CustomT{
-			T: g.t,
-			L: g.l,
-		}
-	}
 	_, err = docker.StartContainerWithRetry(g.l, tc.GenericContainerRequest{
 		ContainerRequest: *r,
 		Reuse:            true,
 		Started:          true,
-		Logger:           l,
+		Logger:           &g.l,
 	})
 	if err != nil {
 		return errors.Wrapf(err, "cannot start geth eth1 genesis container")
@@ -138,9 +126,8 @@ func NewGeth2(networks []string, executionDir string, consensusLayer ConsensusLa
 	return g
 }
 
-func (g *Geth2) WithTestLogger(t *testing.T) *Geth2 {
-	g.l = logging.GetTestLogger(t)
-	g.t = t
+func (g *Geth2) WithLogger(l zerolog.Logger) *Geth2 {
+	g.l = l
 	return g
 }
 
@@ -150,18 +137,11 @@ func (g *Geth2) StartContainer() (blockchain.EVMNetwork, error) {
 		return blockchain.EVMNetwork{}, err
 	}
 
-	l := tc.Logger
-	if g.t != nil {
-		l = logging.CustomT{
-			T: g.t,
-			L: g.l,
-		}
-	}
 	ct, err := docker.StartContainerWithRetry(g.l, tc.GenericContainerRequest{
 		ContainerRequest: *r,
 		Reuse:            true,
 		Started:          true,
-		Logger:           l,
+		Logger:           &g.l,
 	})
 	if err != nil {
 		return blockchain.EVMNetwork{}, errors.Wrapf(err, "cannot start geth container")

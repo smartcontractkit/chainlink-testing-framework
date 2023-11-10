@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"testing"
 	"time"
 
 	"github.com/google/uuid"
@@ -15,7 +14,6 @@ import (
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
-	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 )
 
 const (
@@ -29,8 +27,8 @@ type PrysmGenesis struct {
 	hostExecutionDir  string
 	hostConsensusDir  string
 	beaconChainConfig BeaconChainConfig
+	addressesToFund   []string
 	l                 zerolog.Logger
-	t                 *testing.T
 }
 
 type PrysmBeaconChain struct {
@@ -43,7 +41,6 @@ type PrysmBeaconChain struct {
 	hostConsensusDir          string
 	gethInternalExecutionURL  string
 	l                         zerolog.Logger
-	t                         *testing.T
 }
 
 type PrysmValidator struct {
@@ -51,7 +48,6 @@ type PrysmValidator struct {
 	internalBeaconRpcProvider string
 	hostConsensusDir          string
 	l                         zerolog.Logger
-	t                         *testing.T
 }
 
 func NewEth2Genesis(networks []string, beaconChainConfig BeaconChainConfig, hostExecutionDir, hostConsensusDir string, opts ...EnvComponentOption) *PrysmGenesis {
@@ -64,6 +60,7 @@ func NewEth2Genesis(networks []string, beaconChainConfig BeaconChainConfig, host
 		hostExecutionDir:  hostExecutionDir,
 		hostConsensusDir:  hostConsensusDir,
 		l:                 log.Logger,
+		addressesToFund:   []string{},
 	}
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
@@ -71,9 +68,13 @@ func NewEth2Genesis(networks []string, beaconChainConfig BeaconChainConfig, host
 	return g
 }
 
-func (g *PrysmGenesis) WithTestLogger(t *testing.T) *PrysmGenesis {
-	g.l = logging.GetTestLogger(t)
-	g.t = t
+func (g *PrysmGenesis) WithLogger(l zerolog.Logger) *PrysmGenesis {
+	g.l = l
+	return g
+}
+
+func (g *PrysmGenesis) WithFundedAccounts(addresses []string) *PrysmGenesis {
+	g.addressesToFund = addresses
 	return g
 }
 
@@ -83,19 +84,11 @@ func (g *PrysmGenesis) StartContainer() error {
 		return err
 	}
 
-	l := tc.Logger
-	if g.t != nil {
-		l = logging.CustomT{
-			T: g.t,
-			L: g.l,
-		}
-	}
-
 	_, err = docker.StartContainerWithRetry(g.l, tc.GenericContainerRequest{
 		ContainerRequest: *r,
 		Reuse:            true,
 		Started:          true,
-		Logger:           l,
+		Logger:           &g.l,
 	})
 	if err != nil {
 		return errors.Wrapf(err, "cannot start prysm beacon chain genesis container")
@@ -126,7 +119,11 @@ func (g *PrysmGenesis) getContainerRequest(networks []string) (*tc.ContainerRequ
 	if err != nil {
 		return nil, err
 	}
-	_, err = genesisFile.WriteString(Eth1GenesisJSON)
+	genesis, err := buildGenesisJson(g.addressesToFund)
+	if err != nil {
+		return nil, err
+	}
+	_, err = genesisFile.WriteString(genesis)
 	if err != nil {
 		return nil, err
 	}
@@ -198,9 +195,8 @@ func NewPrysmBeaconChain(networks []string, executionDir, consensusDir, gethExec
 	return g
 }
 
-func (g *PrysmBeaconChain) WithTestLogger(t *testing.T) *PrysmBeaconChain {
-	g.l = logging.GetTestLogger(t)
-	g.t = t
+func (g *PrysmBeaconChain) WithLogger(l zerolog.Logger) *PrysmBeaconChain {
+	g.l = l
 	return g
 }
 
@@ -210,18 +206,11 @@ func (g *PrysmBeaconChain) StartContainer() error {
 		return err
 	}
 
-	l := tc.Logger
-	if g.t != nil {
-		l = logging.CustomT{
-			T: g.t,
-			L: g.l,
-		}
-	}
 	ct, err := docker.StartContainerWithRetry(g.l, tc.GenericContainerRequest{
 		ContainerRequest: *r,
 		Reuse:            true,
 		Started:          true,
-		Logger:           l,
+		Logger:           &g.l,
 	})
 	if err != nil {
 		return errors.Wrapf(err, "cannot start prysm beacon chain container")
@@ -320,9 +309,8 @@ func NewPrysmValidator(networks []string, consensusDir, internalBeaconRpcProvide
 	return g
 }
 
-func (g *PrysmValidator) WithTestLogger(t *testing.T) *PrysmValidator {
-	g.l = logging.GetTestLogger(t)
-	g.t = t
+func (g *PrysmValidator) WithLogger(l zerolog.Logger) *PrysmValidator {
+	g.l = l
 	return g
 }
 
@@ -332,18 +320,11 @@ func (g *PrysmValidator) StartContainer() error {
 		return err
 	}
 
-	l := tc.Logger
-	if g.t != nil {
-		l = logging.CustomT{
-			T: g.t,
-			L: g.l,
-		}
-	}
 	ct, err := docker.StartContainerWithRetry(g.l, tc.GenericContainerRequest{
 		ContainerRequest: *r,
 		Reuse:            true,
 		Started:          true,
-		Logger:           l,
+		Logger:           &g.l,
 	})
 	if err != nil {
 		return errors.Wrapf(err, "cannot start prysm validator container")

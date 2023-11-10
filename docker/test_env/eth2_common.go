@@ -2,7 +2,9 @@ package test_env
 
 import (
 	"bytes"
+	"fmt"
 	"html/template"
+	"os"
 )
 
 const (
@@ -93,7 +95,13 @@ var Eth1GenesisJSON = `
 	"difficulty": "0x1",
 	"mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
 	"coinbase": "0x0000000000000000000000000000000000000000",
-	"alloc": {
+	"alloc": {	
+		{{- $lastIndex := decrement (len $.AddressesToFund)}}
+		{{- range $i, $addr := .AddressesToFund }}
+	    "{{$addr}}": {
+			"balance": "20000000000000000000000"		
+	  	},
+		{{- end }}			
 		"123463a4b065722e99115d6c222f267d9cabb524": {
 			"balance": "0x43c33c1937564800000"
 		},
@@ -177,3 +185,39 @@ var Eth1GenesisJSON = `
 	"blobGasUsed": null
 }
 `
+
+func buildGenesisJson(addressesToFund []string) (string, error) {
+	for i := range addressesToFund {
+		if has0xPrefix(addressesToFund[i]) {
+			addressesToFund[i] = addressesToFund[i][2:]
+		}
+	}
+
+	data := struct {
+		AddressesToFund []string
+	}{
+		AddressesToFund: addressesToFund,
+	}
+
+	t, err := template.New("genesis-json").Funcs(funcMap).Parse(Eth1GenesisJSON)
+	if err != nil {
+		fmt.Println("Error parsing template:", err)
+		os.Exit(1)
+	}
+
+	var buf bytes.Buffer
+	err = t.Execute(&buf, data)
+
+	return buf.String(), err
+}
+
+var funcMap = template.FuncMap{
+	// The name "inc" is what the function will be called in the template text.
+	"decrement": func(i int) int {
+		return i - 1
+	},
+}
+
+func has0xPrefix(str string) bool {
+	return len(str) >= 2 && str[0] == '0' && (str[1] == 'x' || str[1] == 'X')
+}
