@@ -116,10 +116,10 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, InternalDockerUrls, erro
 	}
 
 	g.Container = ct
-	g.ExternalHttpUrl = fmt.Sprintf("http://%s:%s", host, httpPort.Port())
-	g.InternalHttpUrl = fmt.Sprintf("http://%s:%s", g.ContainerName, TX_GETH_HTTP_PORT)
-	g.ExternalWsUrl = fmt.Sprintf("ws://%s:%s", host, wsPort.Port())
-	g.InternalWsUrl = fmt.Sprintf("ws://%s:%s", g.ContainerName, TX_GETH_WS_PORT)
+	g.ExternalHttpUrl = FormatHttpUrl(host, httpPort.Port())
+	g.InternalHttpUrl = FormatHttpUrl(g.ContainerName, TX_GETH_HTTP_PORT)
+	g.ExternalWsUrl = FormatWsUrl(host, wsPort.Port())
+	g.InternalWsUrl = FormatWsUrl(g.ContainerName, TX_GETH_WS_PORT)
 
 	networkConfig := blockchain.SimulatedEVMNetwork
 	networkConfig.Name = "geth"

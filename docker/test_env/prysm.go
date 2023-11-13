@@ -144,20 +144,20 @@ func (g *PrysmGenesis) getContainerRequest(networks []string) (*tc.ContainerRequ
 			"--fork=capella",
 			"--num-validators=64",
 			"--genesis-time-delay=15",
-			"--output-ssz=/consensus/genesis.ssz",
-			"--chain-config-file=/consensus/config.yml",
-			"--geth-genesis-json-in=/execution/genesis.json",
-			"--geth-genesis-json-out=/execution/genesis.json",
+			"--output-ssz=" + eth2GenesisFile,
+			"--chain-config-file=" + beaconConfigFile,
+			"--geth-genesis-json-in=" + eth1GenesisFile,
+			"--geth-genesis-json-out=" + eth1GenesisFile,
 		},
 		Files: []tc.ContainerFile{
 			{
 				HostFilePath:      configFile.Name(),
-				ContainerFilePath: "/consensus/config.yml",
+				ContainerFilePath: beaconConfigFile,
 				FileMode:          0644,
 			},
 			{
 				HostFilePath:      genesisFile.Name(),
-				ContainerFilePath: "/execution/genesis.json",
+				ContainerFilePath: eth1GenesisFile,
 				FileMode:          0644,
 			},
 		},
@@ -235,8 +235,8 @@ func (g *PrysmBeaconChain) StartContainer() error {
 	g.Container = ct
 	g.InternalBeaconRpcProvider = fmt.Sprintf("%s:%s", g.ContainerName, PRYSM_NODE_RPC_PORT)
 	g.InternalQueryRpcUrl = fmt.Sprintf("%s:%s", g.ContainerName, PRYSM_QUERY_RPC_PORT)
-	g.ExternalBeaconRpcProvider = fmt.Sprintf("http://%s:%s", host, externalRcpPort.Port())
-	g.ExternalQueryRpcUrl = fmt.Sprintf("http://%s:%s", host, queryPort.Port())
+	g.ExternalBeaconRpcProvider = FormatHttpUrl(host, externalRcpPort.Port())
+	g.ExternalQueryRpcUrl = FormatHttpUrl(host, queryPort.Port())
 
 	g.l.Info().Str("containerName", g.ContainerName).
 		Msg("Started Prysm Beacon Chain container")
@@ -260,16 +260,16 @@ func (g *PrysmBeaconChain) getContainerRequest(networks []string) (*tc.Container
 		Cmd: []string{
 			"--datadir=/consensus/beacondata",
 			"--min-sync-peers=0",
-			"--genesis-state=/consensus/genesis.ssz",
+			"--genesis-state=" + eth2GenesisFile,
 			"--bootstrap-node=",
-			"--chain-config-file=/consensus/config.yml",
+			"--chain-config-file=" + beaconConfigFile,
 			"--contract-deployment-block=0",
 			"--chain-id=1337",
 			"--rpc-host=0.0.0.0",
 			"--grpc-gateway-host=0.0.0.0",
 			fmt.Sprintf("--execution-endpoint=%s", g.gethInternalExecutionURL),
 			"--accept-terms-of-use",
-			"--jwt-secret=/execution/jwtsecret",
+			"--jwt-secret=" + jwtSecretFile,
 			"--suggested-fee-recipient=0x123463a4b065722e99115d6c222f267d9cabb524",
 			"--minimum-peers-per-subnet=0",
 			"--enable-debug-rpc-endpoints",
@@ -354,7 +354,7 @@ func (g *PrysmValidator) getContainerRequest(networks []string) (*tc.ContainerRe
 			"--accept-terms-of-use",
 			"--interop-num-validators=64",
 			"--interop-start-index=0",
-			"--chain-config-file=/consensus/config.yml",
+			"--chain-config-file=" + beaconConfigFile,
 		},
 		Mounts: tc.ContainerMounts{
 			tc.ContainerMount{

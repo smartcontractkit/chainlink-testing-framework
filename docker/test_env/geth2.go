@@ -97,7 +97,7 @@ func (g *GethGenesis) getContainerRequest(networks []string) (*tc.ContainerReque
 		),
 		Cmd: []string{"--datadir=/execution",
 			"init",
-			"/execution/genesis.json",
+			eth1GenesisFile,
 		},
 		Mounts: tc.ContainerMounts{
 			tc.ContainerMount{
@@ -168,12 +168,12 @@ func (g *Geth2) StartContainer() (blockchain.EVMNetwork, error) {
 	}
 
 	g.Container = ct
-	g.ExternalHttpUrl = fmt.Sprintf("http://%s:%s", host, httpPort.Port())
-	g.InternalHttpUrl = fmt.Sprintf("http://%s:%s", g.ContainerName, TX_GETH_HTTP_PORT)
-	g.ExternalWsUrl = fmt.Sprintf("ws://%s:%s", host, wsPort.Port())
-	g.InternalWsUrl = fmt.Sprintf("ws://%s:%s", g.ContainerName, TX_GETH_WS_PORT)
-	g.InternalExecutionURL = fmt.Sprintf("http://%s:%s", g.ContainerName, GETH_ETH2_EXECUTION_PORT)
-	g.ExternalExecutionURL = fmt.Sprintf("http://%s:%s", host, executionPort.Port())
+	g.ExternalHttpUrl = FormatHttpUrl(host, httpPort.Port())
+	g.InternalHttpUrl = FormatHttpUrl(g.ContainerName, TX_GETH_HTTP_PORT)
+	g.ExternalWsUrl = FormatWsUrl(host, wsPort.Port())
+	g.InternalWsUrl = FormatWsUrl(g.ContainerName, TX_GETH_WS_PORT)
+	g.InternalExecutionURL = FormatHttpUrl(g.ContainerName, GETH_ETH2_EXECUTION_PORT)
+	g.ExternalExecutionURL = FormatHttpUrl(host, executionPort.Port())
 
 	networkConfig := blockchain.SimulatedEVMNetwork
 	networkConfig.Name = fmt.Sprintf("geth-eth2-%s", g.consensusLayer)
@@ -192,7 +192,7 @@ func (g *Geth2) getContainerRequest(networks []string) (*tc.ContainerRequest, er
 		return nil, err
 	}
 
-	key1File, err := os.CreateTemp(g.ExecutionDir+"/keystore", "UTC--2022-08-19T17-38-31.257380510Z--123463a4b065722e99115d6c222f267d9cabb524")
+	key1File, err := os.CreateTemp(g.ExecutionDir+"/keystore", "key1")
 	if err != nil {
 		return nil, err
 	}
@@ -245,7 +245,7 @@ func (g *Geth2) getContainerRequest(networks []string) (*tc.ContainerRequest, er
 			fmt.Sprintf("--ws.port=%s", TX_GETH_WS_PORT),
 			"--authrpc.vhosts=*",
 			"--authrpc.addr=0.0.0.0",
-			"--authrpc.jwtsecret=/execution/jwtsecret",
+			"--authrpc.jwtsecret=" + jwtSecretFile,
 			"--datadir=/execution",
 			"--rpc.allow-unprotected-txs",
 			"--rpc.txfeecap=0",
@@ -261,7 +261,7 @@ func (g *Geth2) getContainerRequest(networks []string) (*tc.ContainerRequest, er
 		Files: []tc.ContainerFile{
 			{
 				HostFilePath:      jwtSecret.Name(),
-				ContainerFilePath: "/execution/jwtsecret",
+				ContainerFilePath: jwtSecretFile,
 				FileMode:          0644,
 			},
 			{

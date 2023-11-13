@@ -10,6 +10,10 @@ import (
 const (
 	CONTAINER_ETH2_CONSENSUS_DIRECTORY = "/consensus"
 	CONTAINER_ETH2_EXECUTION_DIRECTORY = "/execution"
+	beaconConfigFile                   = "/consensus/config.yml"
+	eth2GenesisFile                    = "/consensus/genesis.ssz"
+	eth1GenesisFile                    = "/execution/genesis.json"
+	jwtSecretFile                      = "/execution/jwtsecret" // #nosec G101
 )
 
 type BeaconChainConfig struct {
