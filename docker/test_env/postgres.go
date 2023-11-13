@@ -1,7 +1,6 @@
 package test_env
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"net/url"
@@ -18,6 +17,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 )
 
 type PostgresDb struct {
@@ -127,7 +127,7 @@ func (pg *PostgresDb) StartContainer() error {
 		return err
 	}
 	pg.Container = c
-	externalPort, err := c.MappedPort(context.Background(), nat.Port(fmt.Sprintf("%s/tcp", pg.InternalPort)))
+	externalPort, err := c.MappedPort(utils.TestContext(pg.t), nat.Port(fmt.Sprintf("%s/tcp", pg.InternalPort)))
 	if err != nil {
 		return err
 	}

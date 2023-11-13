@@ -1,7 +1,6 @@
 package test_env
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -19,6 +18,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 )
 
 type Kafka struct {
@@ -147,7 +147,7 @@ func (k *Kafka) CreateLocalTopics() error {
 		if topicConfig.CleanupPolicy != "" {
 			cmd = append(cmd, "--config", fmt.Sprintf("cleanup.policy=%s", topicConfig.CleanupPolicy))
 		}
-		code, output, err := k.Container.Exec(context.Background(), cmd)
+		code, output, err := k.Container.Exec(utils.TestContext(k.t), cmd)
 		if err != nil {
 			return err
 		}

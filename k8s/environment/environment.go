@@ -305,7 +305,7 @@ func (m *Environment) initApp() error {
 	}
 	m.CurrentManifest = *m.App.SynthYaml()
 	// loop retry applying the initial manifest with the namespace and other basics
-	ctx, cancel := context.WithTimeout(context.Background(), m.Cfg.ReadyCheckData.Timeout)
+	ctx, cancel := context.WithTimeout(utils.TestContext(m.Cfg.Test), m.Cfg.ReadyCheckData.Timeout)
 	defer cancel()
 	startTime := time.Now()
 	deadline, _ := ctx.Deadline()
@@ -773,7 +773,7 @@ func (m *Environment) DeployCustomReadyConditions(customCheck *client.ReadyCheck
 	if m.Cfg.DryRun {
 		return m.Client.DryRun(m.CurrentManifest)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), m.Cfg.ReadyCheckData.Timeout)
+	ctx, cancel := context.WithTimeout(utils.TestContext(m.Cfg.Test), m.Cfg.ReadyCheckData.Timeout)
 	defer cancel()
 	err := m.Client.Apply(ctx, m.CurrentManifest, m.Cfg.Namespace, true)
 	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
@@ -809,7 +809,7 @@ func (m *Environment) RolloutStatefulSets() error {
 	if m.err != nil {
 		return m.err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), m.Cfg.ReadyCheckData.Timeout)
+	ctx, cancel := context.WithTimeout(utils.TestContext(m.Cfg.Test), m.Cfg.ReadyCheckData.Timeout)
 	defer cancel()
 	err := m.Client.RolloutStatefulSets(ctx, m.Cfg.Namespace)
 	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
@@ -823,7 +823,7 @@ func (m *Environment) RolloutRestartBySelector(resource string, selector string)
 	if m.err != nil {
 		return m.err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), m.Cfg.ReadyCheckData.Timeout)
+	ctx, cancel := context.WithTimeout(utils.TestContext(m.Cfg.Test), m.Cfg.ReadyCheckData.Timeout)
 	defer cancel()
 	err := m.Client.RolloutRestartBySelector(ctx, m.Cfg.Namespace, resource, selector)
 	if errors.Is(ctx.Err(), context.DeadlineExceeded) {

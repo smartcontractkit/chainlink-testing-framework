@@ -11,6 +11,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/logwatch"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 )
 
 /* These tests are for user-facing API */
@@ -30,10 +31,10 @@ type MyDeployment struct {
 	containers []testcontainers.Container
 }
 
-func NewDeployment(data testData) (*MyDeployment, error) {
+func NewDeployment(ctx context.Context, data testData) (*MyDeployment, error) {
 	md := &MyDeployment{containers: make([]testcontainers.Container, 0)}
 	for i, messages := range data.streams {
-		c, err := startTestContainer(fmt.Sprintf("container-%d", i), messages, data.repeat, data.perSecond, false)
+		c, err := startTestContainer(ctx, fmt.Sprintf("container-%d", i), messages, data.repeat, data.perSecond, false)
 		if err != nil {
 			return md, err
 		}
@@ -42,9 +43,9 @@ func NewDeployment(data testData) (*MyDeployment, error) {
 	return md, nil
 }
 
-func (m *MyDeployment) Shutdown() error {
+func (m *MyDeployment) Shutdown(ctx context.Context) error {
 	for _, c := range m.containers {
-		if err := c.Terminate(context.Background()); err != nil {
+		if err := c.Terminate(ctx); err != nil {
 			return err
 		}
 	}
@@ -53,9 +54,9 @@ func (m *MyDeployment) Shutdown() error {
 
 /* That's what you need to implement to have your logs in Loki */
 
-func (m *MyDeployment) ConnectLogs(lw *logwatch.LogWatch, pushToLoki bool) error {
+func (m *MyDeployment) ConnectLogs(ctx context.Context, lw *logwatch.LogWatch, pushToLoki bool) error {
 	for _, c := range m.containers {
-		if err := lw.ConnectContainer(context.Background(), c, "", pushToLoki); err != nil {
+		if err := lw.ConnectContainer(ctx, c, "", pushToLoki); err != nil {
 			return err
 		}
 	}
@@ -65,11 +66,12 @@ func (m *MyDeployment) ConnectLogs(lw *logwatch.LogWatch, pushToLoki bool) error
 /* That's how you use it */
 
 func TestExampleUserInteraction(t *testing.T) {
+	ctx := utils.TestContext(t)
 	t.Run("sync API, block, receive one message", func(t *testing.T) {
 		testData := testData{repeat: 10, perSecond: 0.01, streams: []string{"A\nB\nC\nD"}}
-		d, err := NewDeployment(testData)
+		d, err := NewDeployment(ctx, testData)
 		// nolint
-		defer d.Shutdown()
+		defer d.Shutdown(ctx)
 		require.NoError(t, err)
 		lw, err := logwatch.NewLogWatch(
 			t,
@@ -80,7 +82,7 @@ func TestExampleUserInteraction(t *testing.T) {
 			},
 		)
 		require.NoError(t, err)
-		err = d.ConnectLogs(lw, false)
+		err = d.ConnectLogs(ctx, lw, false)
 		require.NoError(t, err)
 		match := lw.Listen()
 		require.NotEmpty(t, match)
@@ -88,9 +90,9 @@ func TestExampleUserInteraction(t *testing.T) {
 	t.Run("async API, execute some logic on match", func(t *testing.T) {
 		testData := testData{repeat: 10, perSecond: 0.01, streams: []string{"A\nB\nC\nD\n", "E\nF\nG\nH\n"}}
 		notifications := 0
-		d, err := NewDeployment(testData)
+		d, err := NewDeployment(ctx, testData)
 		// nolint
-		defer d.Shutdown()
+		defer d.Shutdown(ctx)
 		require.NoError(t, err)
 		lw, err := logwatch.NewLogWatch(
 			t,
@@ -105,7 +107,7 @@ func TestExampleUserInteraction(t *testing.T) {
 		)
 		require.NoError(t, err)
 		lw.OnMatch(func(ln *logwatch.LogNotification) { notifications++ })
-		err = d.ConnectLogs(lw, false)
+		err = d.ConnectLogs(ctx, lw, false)
 		require.NoError(t, err)
 		time.Sleep(1 * time.Second)
 		require.Equal(t, testData.repeat*len(testData.streams), notifications)

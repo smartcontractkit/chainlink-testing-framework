@@ -1,7 +1,6 @@
 package test_env
 
 import (
-	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 )
 
 type SchemaRegistry struct {
@@ -88,15 +88,15 @@ func (r *SchemaRegistry) StartContainer() error {
 		Reuse:            true,
 		Logger:           l,
 	}
-	c, err := tc.GenericContainer(context.Background(), req)
+	c, err := tc.GenericContainer(utils.TestContext(r.t), req)
 	if err != nil {
 		return fmt.Errorf("cannot start Schema Registry container: %w", err)
 	}
-	host, err := GetHost(context.Background(), c)
+	host, err := GetHost(utils.TestContext(r.t), c)
 	if err != nil {
 		return err
 	}
-	port, err := c.MappedPort(context.Background(), "8081/tcp")
+	port, err := c.MappedPort(utils.TestContext(r.t), "8081/tcp")
 	if err != nil {
 		return err
 	}

@@ -1,7 +1,6 @@
 package test_env
 
 import (
-	"context"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -22,6 +21,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/templates"
 )
 
@@ -194,17 +194,17 @@ func (g *NonDevBesuNode) ConnectToClient() error {
 	if ct == nil {
 		return fmt.Errorf("container not started")
 	}
-	host, err := GetHost(context.Background(), ct)
+	host, err := GetHost(utils.TestContext(g.t), ct)
 	if err != nil {
 		return err
 	}
 	port := NatPort(TX_GETH_HTTP_PORT)
-	httpPort, err := ct.MappedPort(context.Background(), port)
+	httpPort, err := ct.MappedPort(utils.TestContext(g.t), port)
 	if err != nil {
 		return err
 	}
 	port = NatPort(TX_NON_DEV_GETH_WS_PORT)
-	wsPort, err := ct.MappedPort(context.Background(), port)
+	wsPort, err := ct.MappedPort(utils.TestContext(g.t), port)
 	if err != nil {
 		return err
 	}
@@ -221,7 +221,7 @@ func (g *NonDevBesuNode) ConnectToClient() error {
 	if err != nil {
 		return err
 	}
-	at, err := ec.BalanceAt(context.Background(), common.HexToAddress("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"))
+	at, err := ec.BalanceAt(utils.TestContext(g.t), common.HexToAddress("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"))
 	if err != nil {
 		return err
 	}
@@ -267,7 +267,7 @@ func (g *NonDevBesuNode) Start() error {
 	if err != nil {
 		return err
 	}
-	bootNode, err := tc.GenericContainer(context.Background(),
+	bootNode, err := tc.GenericContainer(utils.TestContext(g.t),
 		tc.GenericContainerRequest{
 			ContainerRequest: crbn,
 			Started:          true,
@@ -284,11 +284,11 @@ func (g *NonDevBesuNode) Start() error {
 	}
 	// Besu Bootnode setup: END
 
-	host, err := GetHost(context.Background(), bootNode)
+	host, err := GetHost(utils.TestContext(g.t), bootNode)
 	if err != nil {
 		return err
 	}
-	r, err := bootNode.CopyFileFromContainer(context.Background(), "/opt/besu/nodedata/bootnodes")
+	r, err := bootNode.CopyFileFromContainer(utils.TestContext(g.t), "/opt/besu/nodedata/bootnodes")
 	if err != nil {
 		return err
 	}
@@ -307,7 +307,7 @@ func (g *NonDevBesuNode) Start() error {
 		return err
 	}
 	var ct tc.Container
-	ct, err = tc.GenericContainer(context.Background(),
+	ct, err = tc.GenericContainer(utils.TestContext(g.t),
 		tc.GenericContainerRequest{
 			ContainerRequest: cr,
 			Started:          true,
@@ -361,7 +361,7 @@ func (g *NonDevBesuNode) getBesuBootNodeContainerRequest() (tc.ContainerRequest,
 }
 
 func (g *NonDevBesuNode) exportBesuBootNodeAddress(bootNode tc.Container) (err error) {
-	resCode, _, err := bootNode.Exec(context.Background(), []string{
+	resCode, _, err := bootNode.Exec(utils.TestContext(g.t), []string{
 		"besu",
 		"--genesis-file", "/opt/besu/nodedata/genesis.json",
 		"--data-path", "/opt/besu/nodedata",

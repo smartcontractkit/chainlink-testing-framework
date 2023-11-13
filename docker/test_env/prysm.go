@@ -1,9 +1,9 @@
 package test_env
 
 import (
-	"context"
 	"fmt"
 	"os"
+	"testing"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,6 +14,8 @@ import (
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
+	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 )
 
 const (
@@ -29,6 +31,7 @@ type PrysmGenesis struct {
 	beaconChainConfig BeaconChainConfig
 	addressesToFund   []string
 	l                 zerolog.Logger
+	t                 *testing.T
 }
 
 type PrysmBeaconChain struct {
@@ -41,6 +44,7 @@ type PrysmBeaconChain struct {
 	hostConsensusDir          string
 	gethInternalExecutionURL  string
 	l                         zerolog.Logger
+	t                         *testing.T
 }
 
 type PrysmValidator struct {
@@ -48,6 +52,7 @@ type PrysmValidator struct {
 	internalBeaconRpcProvider string
 	hostConsensusDir          string
 	l                         zerolog.Logger
+	t                         *testing.T
 }
 
 func NewEth2Genesis(networks []string, beaconChainConfig BeaconChainConfig, hostExecutionDir, hostConsensusDir string, opts ...EnvComponentOption) *PrysmGenesis {
@@ -73,6 +78,12 @@ func (g *PrysmGenesis) WithLogger(l zerolog.Logger) *PrysmGenesis {
 	return g
 }
 
+func (g *PrysmGenesis) WithTestLogger(t *testing.T) *PrysmGenesis {
+	g.l = logging.GetTestLogger(t)
+	g.t = t
+	return g
+}
+
 func (g *PrysmGenesis) WithFundedAccounts(addresses []string) *PrysmGenesis {
 	g.addressesToFund = addresses
 	return g
@@ -84,11 +95,19 @@ func (g *PrysmGenesis) StartContainer() error {
 		return err
 	}
 
+	l := tc.Logger
+	if g.t != nil {
+		l = logging.CustomT{
+			T: g.t,
+			L: g.l,
+		}
+	}
+
 	_, err = docker.StartContainerWithRetry(g.l, tc.GenericContainerRequest{
 		ContainerRequest: *r,
 		Reuse:            true,
 		Started:          true,
-		Logger:           &g.l,
+		Logger:           l,
 	})
 	if err != nil {
 		return errors.Wrapf(err, "cannot start prysm beacon chain genesis container")
@@ -200,32 +219,46 @@ func (g *PrysmBeaconChain) WithLogger(l zerolog.Logger) *PrysmBeaconChain {
 	return g
 }
 
+func (g *PrysmBeaconChain) WithTestLogger(t *testing.T) *PrysmBeaconChain {
+	g.l = logging.GetTestLogger(t)
+	g.t = t
+	return g
+}
+
 func (g *PrysmBeaconChain) StartContainer() error {
 	r, err := g.getContainerRequest(g.Networks)
 	if err != nil {
 		return err
 	}
 
+	l := tc.Logger
+	if g.t != nil {
+		l = logging.CustomT{
+			T: g.t,
+			L: g.l,
+		}
+	}
+
 	ct, err := docker.StartContainerWithRetry(g.l, tc.GenericContainerRequest{
 		ContainerRequest: *r,
 		Reuse:            true,
 		Started:          true,
-		Logger:           &g.l,
+		Logger:           l,
 	})
 	if err != nil {
 		return errors.Wrapf(err, "cannot start prysm beacon chain container")
 	}
 
-	host, err := GetHost(context.Background(), ct)
+	host, err := GetHost(utils.TestContext(g.t), ct)
 	if err != nil {
 		return err
 	}
-	queryPort, err := ct.MappedPort(context.Background(), NatPort(PRYSM_QUERY_RPC_PORT))
+	queryPort, err := ct.MappedPort(utils.TestContext(g.t), NatPort(PRYSM_QUERY_RPC_PORT))
 	if err != nil {
 		return err
 	}
 
-	externalRcpPort, err := ct.MappedPort(context.Background(), NatPort(PRYSM_NODE_RPC_PORT))
+	externalRcpPort, err := ct.MappedPort(utils.TestContext(g.t), NatPort(PRYSM_NODE_RPC_PORT))
 	if err != nil {
 		return err
 	}
@@ -314,17 +347,31 @@ func (g *PrysmValidator) WithLogger(l zerolog.Logger) *PrysmValidator {
 	return g
 }
 
+func (g *PrysmValidator) WithTestLogger(t *testing.T) *PrysmValidator {
+	g.l = logging.GetTestLogger(t)
+	g.t = t
+	return g
+}
+
 func (g *PrysmValidator) StartContainer() error {
 	r, err := g.getContainerRequest(g.Networks)
 	if err != nil {
 		return err
 	}
 
+	l := tc.Logger
+	if g.t != nil {
+		l = logging.CustomT{
+			T: g.t,
+			L: g.l,
+		}
+	}
+
 	ct, err := docker.StartContainerWithRetry(g.l, tc.GenericContainerRequest{
 		ContainerRequest: *r,
 		Reuse:            true,
 		Started:          true,
-		Logger:           &g.l,
+		Logger:           l,
 	})
 	if err != nil {
 		return errors.Wrapf(err, "cannot start prysm validator container")
