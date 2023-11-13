@@ -17,7 +17,7 @@ type EthereumWallet struct {
 func NewEthereumWallet(pk string) (*EthereumWallet, error) {
 	privateKey, err := crypto.HexToECDSA(pk)
 	if err != nil {
-		return nil, fmt.Errorf("invalid private key: %v", err)
+		return nil, fmt.Errorf("invalid private key: %w", err)
 	}
 	return &EthereumWallet{
 		privateKey: pk,

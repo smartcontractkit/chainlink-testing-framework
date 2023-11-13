@@ -1,9 +1,8 @@
 package testsetups
 
 import (
+	"fmt"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/environment"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/pkg/helm/chainlink"
@@ -45,7 +44,7 @@ func DBMigration(spec *DBMigrationSpec) (*environment.Environment, error) {
 		}))
 	err := e.Run()
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to setup initial deployment for version: %s:%s", spec.FromSpec.Image, spec.FromSpec.Tag)
+		return nil, fmt.Errorf("failed to setup initial deployment for version: %s:%s err: %w", spec.FromSpec.Image, spec.FromSpec.Tag, err)
 	}
 	e.Cfg.KeepConnection = spec.KeepConnection
 	e.Cfg.RemoveOnInterrupt = spec.RemoveOnInterrupt
@@ -64,11 +63,11 @@ func DBMigration(spec *DBMigrationSpec) (*environment.Environment, error) {
 			},
 		}))
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to replace helm chart for version: %s:%s", spec.ToSpec.Image, spec.ToSpec.Tag)
+		return nil, fmt.Errorf("failed to replace helm chart for version: %s:%s err: %w", spec.ToSpec.Image, spec.ToSpec.Tag, err)
 	}
 	err = env.Run()
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to migrate to version: %s:%s", spec.ToSpec.Image, spec.ToSpec.Tag)
+		return nil, fmt.Errorf("failed to migrate to version: %s:%s err: %w", spec.ToSpec.Image, spec.ToSpec.Tag, err)
 	}
 	return e, nil
 }

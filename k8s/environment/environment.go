@@ -2,6 +2,7 @@ package environment
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -15,7 +16,6 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/google/uuid"
 	"github.com/imdario/mergo"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
 
@@ -593,7 +593,7 @@ func (m *Environment) ResourcesSummary(selector string) (map[string]map[string]s
 		return nil, err
 	}
 	if len(pl.Items) == 0 {
-		return nil, errors.Errorf("no pods found for selector: %s", selector)
+		return nil, fmt.Errorf("no pods found for selector: %s", selector)
 	}
 	resources := make(map[string]map[string]string)
 	for _, p := range pl.Items {
@@ -641,7 +641,7 @@ func (m *Environment) RunCustomReadyConditions(customCheck *client.ReadyCheckDat
 	}
 	if m.Cfg.JobImage != "" {
 		if m.Cfg.Test == nil {
-			return errors.New("Test must be configured in the environment when using the remote runner")
+			return fmt.Errorf("Test must be configured in the environment when using the remote runner")
 		}
 		rrSelector := map[string]*string{pkg.NamespaceLabelKey: utils.Ptr(m.Cfg.Namespace)}
 		m.AddChart(NewRunner(&Props{
@@ -692,7 +692,7 @@ func (m *Environment) RunCustomReadyConditions(customCheck *client.ReadyCheckDat
 			return err
 		}
 		if m.Cfg.fundReturnFailed {
-			return errors.New("failed to return funds in remote runner")
+			return fmt.Errorf("failed to return funds in remote runner")
 		}
 		m.Cfg.jobDeployed = true
 	} else {
@@ -777,7 +777,7 @@ func (m *Environment) DeployCustomReadyConditions(customCheck *client.ReadyCheck
 	defer cancel()
 	err := m.Client.Apply(ctx, m.CurrentManifest, m.Cfg.Namespace, true)
 	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-		return errors.New("timeout waiting for environment to be ready")
+		return fmt.Errorf("timeout waiting for environment to be ready")
 	}
 	if err != nil {
 		return err
@@ -813,7 +813,7 @@ func (m *Environment) RolloutStatefulSets() error {
 	defer cancel()
 	err := m.Client.RolloutStatefulSets(ctx, m.Cfg.Namespace)
 	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-		return errors.New("timeout waiting for rollout statefulset to complete")
+		return fmt.Errorf("timeout waiting for rollout statefulset to complete")
 	}
 	return err
 }
@@ -827,7 +827,7 @@ func (m *Environment) RolloutRestartBySelector(resource string, selector string)
 	defer cancel()
 	err := m.Client.RolloutRestartBySelector(ctx, m.Cfg.Namespace, resource, selector)
 	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-		return errors.New("timeout waiting for rollout restart to complete")
+		return fmt.Errorf("timeout waiting for rollout restart to complete")
 	}
 	return err
 }
@@ -917,7 +917,7 @@ func (m *Environment) getCoverageList() (map[string]any, error) {
 		return nil, err
 	}
 	if resp.Status() != "200 OK" {
-		return nil, errors.New("coverage service list request is not 200")
+		return nil, fmt.Errorf("coverage service list request is not 200")
 	}
 	return servicesMap, nil
 }
@@ -935,7 +935,7 @@ func (m *Environment) ClearCoverage() error {
 			return err
 		}
 		if r.Status() != "200 OK" {
-			return errors.New("coverage service list request is not 200")
+			return fmt.Errorf("coverage service list request is not 200")
 		}
 		log.Debug().Str("Service", serviceName).Msg("Coverage cleared")
 	}
@@ -959,7 +959,7 @@ func (m *Environment) SaveCoverage() error {
 			return err
 		}
 		if r.Status() != "200 OK" {
-			return errors.New("coverage service list request is not 200")
+			return fmt.Errorf("coverage service list request is not 200")
 		}
 		log.Debug().Str("Service", serviceName).Msg("Coverage received")
 		if err := os.WriteFile(fmt.Sprintf("%s/%s.cov", COVERAGE_DIR, serviceName), r.Body(), os.ModePerm); err != nil {

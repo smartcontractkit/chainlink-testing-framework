@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
-
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rs/zerolog/log"
 
@@ -678,7 +676,7 @@ var (
 // Get []blockchain.EVMNetwork from env vars. Panic if env vars not set or no networks found
 func MustGetSelectedNetworksFromEnv() []blockchain.EVMNetwork {
 	selectedNetworksEnv := os.Getenv("SELECTED_NETWORKS")
-	emptyEnvErr := errors.Errorf("env var 'SELECTED_NETWORKS' is not set or is empty. Use valid network(s) separated by comma from %v", getValidNetworkKeys())
+	emptyEnvErr := fmt.Errorf("env var 'SELECTED_NETWORKS' is not set or is empty. Use valid network(s) separated by comma from %v", getValidNetworkKeys())
 	if selectedNetworksEnv == "" {
 		panic(emptyEnvErr)
 	}
@@ -686,6 +684,9 @@ func MustGetSelectedNetworksFromEnv() []blockchain.EVMNetwork {
 	if len(networkKeys) == 0 {
 		panic(emptyEnvErr)
 	}
+	return SetNetworks(networkKeys)
+}
+func SetNetworks(networkKeys []string) []blockchain.EVMNetwork {
 	networks := make([]blockchain.EVMNetwork, 0)
 	for i := range networkKeys {
 		var walletKeys, httpUrls, wsUrls []string
@@ -697,10 +698,10 @@ func MustGetSelectedNetworksFromEnv() []blockchain.EVMNetwork {
 				// Get default value
 				defaultUrls, err := utils.GetEnv("EVM_URLS")
 				if err != nil {
-					panic(errors.Errorf("error getting %s EVM_URLS var", err))
+					panic(fmt.Errorf("error getting EVM_URLS var: %w", err))
 				}
 				if defaultUrls == "" {
-					panic(errors.Errorf("set %s or EVM_URLS env var", wsEnvVar))
+					panic(fmt.Errorf("set %s or EVM_URLS env var", wsEnvVar))
 				}
 				log.Warn().Msgf("%s not set, defaulting to EVM_URLS", wsEnvVar)
 				wsUrls = strings.Split(defaultUrls, ",")
@@ -715,10 +716,10 @@ func MustGetSelectedNetworksFromEnv() []blockchain.EVMNetwork {
 				// Get default value
 				defaultUrls, err := utils.GetEnv("EVM_HTTP_URLS")
 				if err != nil {
-					panic(errors.Errorf("error getting %s EVM_HTTP_URLS var", err))
+					panic(fmt.Errorf("error getting EVM_HTTP_URLS var: %w", err))
 				}
 				if defaultUrls == "" {
-					panic(errors.Errorf("set %s or EVM_HTTP_URLS env var", httpEnvVar))
+					panic(fmt.Errorf("set %s or EVM_HTTP_URLS env var", httpEnvVar))
 				}
 				log.Warn().Msgf("%s not set, defaulting to EVM_HTTP_URLS", httpEnvVar)
 				httpUrls = strings.Split(defaultUrls, ",")
@@ -733,10 +734,10 @@ func MustGetSelectedNetworksFromEnv() []blockchain.EVMNetwork {
 				// Get default value
 				defaultKeys, err := utils.GetEnv("EVM_KEYS")
 				if err != nil {
-					panic(errors.Errorf("error getting EVM_KEYS var: %s", err))
+					panic(fmt.Errorf("error getting EVM_KEYS var: %w", err))
 				}
 				if defaultKeys == "" {
-					panic(errors.Errorf("set %s or EVM_KEYS env var", walletKeysEnvVar))
+					panic(fmt.Errorf("set %s or EVM_KEYS env var", walletKeysEnvVar))
 				}
 				log.Warn().Msgf("%s not set, defaulting to EVM_KEYS", walletKeysEnvVar)
 				walletKeys = strings.Split(defaultKeys, ",")
@@ -767,7 +768,7 @@ func NewEVMNetwork(networkKey string, walletKeys, httpUrls, wsUrls []string) (bl
 		}
 		return network, nil
 	}
-	return blockchain.EVMNetwork{}, errors.Errorf("network key: '%v' is invalid. Use a valid network(s) separated by comma from %v", networkKey, getValidNetworkKeys())
+	return blockchain.EVMNetwork{}, fmt.Errorf("network key: '%v' is invalid. Use a valid network(s) separated by comma from %v", networkKey, getValidNetworkKeys())
 }
 
 func getValidNetworkKeys() []string {
