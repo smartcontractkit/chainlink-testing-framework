@@ -387,7 +387,7 @@ func (s *RpcProvider) PublicHttpUrls() []string {
 	return s.publiclHttpUrls
 }
 
-func (s *RpcProvider) PublicWsUrsl() []string {
+func (s *RpcProvider) PublicWsUrls() []string {
 	return s.publicsUrls
 }
 

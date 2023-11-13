@@ -28,7 +28,7 @@ func TestEth2WithPrysmAndGethDefaultConfig(t *testing.T) {
 	require.NoError(t, err, "Couldn't start PoS network")
 
 	ns := blockchain.SimulatedEVMNetwork
-	ns.URLs = eth2.PublicWsUrsl()
+	ns.URLs = eth2.PublicWsUrls()
 	c, err := blockchain.ConnectEVMClient(ns, l)
 	require.NoError(t, err, "Couldn't connect to the evm client")
 	err = c.Close()
@@ -54,7 +54,7 @@ func TestEth2WithPrysmAndGethCustomConfig(t *testing.T) {
 	require.NoError(t, err, "Couldn't start PoS network")
 
 	ns := blockchain.SimulatedEVMNetwork
-	ns.URLs = eth2.PublicWsUrsl()
+	ns.URLs = eth2.PublicWsUrls()
 	c, err := blockchain.ConnectEVMClient(ns, l)
 	require.NoError(t, err, "Couldn't connect to the evm client")
 	err = c.Close()
@@ -79,7 +79,7 @@ func TestEth2WithPrysmAndGethExtraFunding(t *testing.T) {
 	require.NoError(t, err, "Couldn't start PoS network")
 
 	ns := blockchain.SimulatedEVMNetwork
-	ns.URLs = eth2.PublicWsUrsl()
+	ns.URLs = eth2.PublicWsUrls()
 	c, err := blockchain.ConnectEVMClient(ns, l)
 	require.NoError(t, err, "Couldn't connect to the evm client")
 
@@ -107,7 +107,7 @@ func TestEth2WithPrysmRestart(t *testing.T) {
 	require.NoError(t, err, "Couldn't start PoS network")
 
 	ns := blockchain.SimulatedEVMNetwork
-	ns.URLs = eth2.PublicWsUrsl()
+	ns.URLs = eth2.PublicWsUrls()
 	c, err := blockchain.ConnectEVMClient(ns, l)
 	require.NoError(t, err, "Couldn't connect to the evm client")
 	err = c.Close()
