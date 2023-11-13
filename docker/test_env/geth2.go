@@ -187,12 +187,12 @@ func (g *Geth2) StartContainer() (blockchain.EVMNetwork, error) {
 }
 
 func (g *Geth2) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
-	err := os.WriteFile(g.ExecutionDir+"/password.txt", []byte(""), 0600)
+	passwordFile, err := os.CreateTemp("", "password.txt")
 	if err != nil {
 		return nil, err
 	}
 
-	key1File, err := os.CreateTemp(g.ExecutionDir+"/keystore", "key1")
+	key1File, err := os.CreateTemp("", "key1")
 	if err != nil {
 		return nil, err
 	}
@@ -201,7 +201,7 @@ func (g *Geth2) getContainerRequest(networks []string) (*tc.ContainerRequest, er
 		return nil, err
 	}
 
-	jwtSecret, err := os.CreateTemp(g.ExecutionDir, "jwtsecret")
+	jwtSecret, err := os.CreateTemp("", "jwtsecret")
 	if err != nil {
 		return nil, err
 	}
@@ -209,7 +209,7 @@ func (g *Geth2) getContainerRequest(networks []string) (*tc.ContainerRequest, er
 	if err != nil {
 		return nil, err
 	}
-	secretKey, err := os.CreateTemp(g.ExecutionDir, "sk.json")
+	secretKey, err := os.CreateTemp("", "sk.json")
 	if err != nil {
 		return nil, err
 	}
@@ -260,8 +260,18 @@ func (g *Geth2) getContainerRequest(networks []string) (*tc.ContainerRequest, er
 		},
 		Files: []tc.ContainerFile{
 			{
+				HostFilePath:      passwordFile.Name(),
+				ContainerFilePath: "/execution/password.txt",
+				FileMode:          0644,
+			},
+			{
 				HostFilePath:      jwtSecret.Name(),
 				ContainerFilePath: jwtSecretFile,
+				FileMode:          0644,
+			},
+			{
+				HostFilePath:      key1File.Name(),
+				ContainerFilePath: "/execution/keystore/key1",
 				FileMode:          0644,
 			},
 			{
