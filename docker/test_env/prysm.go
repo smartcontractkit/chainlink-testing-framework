@@ -378,5 +378,13 @@ func createHostDirectories() (string, string, error) {
 		return "", "", err
 	}
 
+	// otherwise in CI we get permission denied further downstream
+	if err := os.Chmod(executionDir, 0777); err != nil {
+		return "", "", err
+	}
+	if err := os.Chmod(consensusDir, 0777); err != nil {
+		return "", "", err
+	}
+
 	return executionDir, consensusDir, nil
 }
