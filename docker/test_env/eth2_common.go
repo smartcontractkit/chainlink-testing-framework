@@ -5,9 +5,13 @@ import (
 	"fmt"
 	"html/template"
 	"os"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
+	tc "github.com/testcontainers/testcontainers-go"
 )
 
 const (
+	ETH2_EXECUTION_PORT                = "8551"
 	CONTAINER_ETH2_CONSENSUS_DIRECTORY = "/consensus"
 	CONTAINER_ETH2_EXECUTION_DIRECTORY = "/execution"
 	beaconConfigFile                   = "/consensus/config.yml"
@@ -189,6 +193,18 @@ var Eth1GenesisJSON = `
 	"blobGasUsed": null
 }
 `
+
+type ExecutionClient interface {
+	GetContainerName() string
+	StartContainer() (blockchain.EVMNetwork, error)
+	GetContainer() *tc.Container
+	GetInternalExecutionURL() string
+	GetExternalExecutionURL() string
+	GetInternalHttpUrl() string
+	GetInternalWsUrl() string
+	GetExternalHttpUrl() string
+	GetExternalWsUrl() string
+}
 
 func buildGenesisJson(addressesToFund []string) (string, error) {
 	for i := range addressesToFund {

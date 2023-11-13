@@ -19,16 +19,10 @@ import (
 )
 
 const (
-	GO_CLIENT_IMAGE_TAG = "v1.13.4"
+	NETHERMIND_IMAGE_TAG = "v1.22.0"
 )
 
-type GethGenesis struct {
-	EnvComponent
-	ExecutionDir string
-	l            zerolog.Logger
-}
-
-type Geth2 struct {
+type Nethermind struct {
 	EnvComponent
 	ExternalHttpUrl      string
 	InternalHttpUrl      string
@@ -41,78 +35,10 @@ type Geth2 struct {
 	l                    zerolog.Logger
 }
 
-func NewEth1Genesis(networks []string, executionDir string, opts ...EnvComponentOption) *GethGenesis {
-	g := &GethGenesis{
-		EnvComponent: EnvComponent{
-			ContainerName: fmt.Sprintf("%s-%s", "geth-eth1-genesis", uuid.NewString()[0:8]),
-			Networks:      networks,
-		},
-		ExecutionDir: executionDir,
-		l:            log.Logger,
-	}
-	for _, opt := range opts {
-		opt(&g.EnvComponent)
-	}
-	return g
-}
-
-func (g *GethGenesis) WithLogger(l zerolog.Logger) *GethGenesis {
-	g.l = l
-	return g
-}
-
-func (g *GethGenesis) StartContainer() error {
-	r, err := g.getContainerRequest(g.Networks)
-	if err != nil {
-		return err
-	}
-
-	_, err = docker.StartContainerWithRetry(g.l, tc.GenericContainerRequest{
-		ContainerRequest: *r,
-		Reuse:            true,
-		Started:          true,
-		Logger:           &g.l,
-	})
-	if err != nil {
-		return errors.Wrapf(err, "cannot start geth eth1 genesis container")
-	}
-
-	g.l.Info().Str("containerName", g.ContainerName).
-		Msg("Started Geth Eth1 Genesis container")
-
-	return nil
-}
-
-func (g *GethGenesis) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
-	return &tc.ContainerRequest{
-		Name:            g.ContainerName,
-		AlwaysPullImage: true,
-		Image:           fmt.Sprintf("ethereum/client-go:%s", GO_CLIENT_IMAGE_TAG),
-		Networks:        networks,
-		WaitingFor: tcwait.ForAll(
-			tcwait.ForLog("Successfully wrote genesis state").
-				WithStartupTimeout(120 * time.Second).
-				WithPollInterval(1 * time.Second),
-		),
-		Cmd: []string{"--datadir=/execution",
-			"init",
-			eth1GenesisFile,
-		},
-		Mounts: tc.ContainerMounts{
-			tc.ContainerMount{
-				Source: tc.GenericBindMountSource{
-					HostPath: g.ExecutionDir,
-				},
-				Target: CONTAINER_ETH2_EXECUTION_DIRECTORY,
-			},
-		},
-	}, nil
-}
-
-func NewGeth2(networks []string, executionDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) *Geth2 {
+func NewNethermind(networks []string, executionDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) *Geth2 {
 	g := &Geth2{
 		EnvComponent: EnvComponent{
-			ContainerName: fmt.Sprintf("%s-%s", "geth2", uuid.NewString()[0:8]),
+			ContainerName: fmt.Sprintf("%s-%s", "nethermind", uuid.NewString()[0:8]),
 			Networks:      networks,
 		},
 		ExecutionDir:   executionDir,
@@ -125,12 +51,12 @@ func NewGeth2(networks []string, executionDir string, consensusLayer ConsensusLa
 	return g
 }
 
-func (g *Geth2) WithLogger(l zerolog.Logger) *Geth2 {
+func (g *Nethermind) WithLogger(l zerolog.Logger) *Nethermind {
 	g.l = l
 	return g
 }
 
-func (g *Geth2) StartContainer() (blockchain.EVMNetwork, error) {
+func (g *Nethermind) StartContainer() (blockchain.EVMNetwork, error) {
 	r, err := g.getContainerRequest(g.Networks)
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
@@ -143,7 +69,7 @@ func (g *Geth2) StartContainer() (blockchain.EVMNetwork, error) {
 		Logger:           &g.l,
 	})
 	if err != nil {
-		return blockchain.EVMNetwork{}, errors.Wrapf(err, "cannot start geth container")
+		return blockchain.EVMNetwork{}, errors.Wrapf(err, "cannot start nethermind container")
 	}
 
 	host, err := GetHost(context.Background(), ct)
@@ -175,55 +101,61 @@ func (g *Geth2) StartContainer() (blockchain.EVMNetwork, error) {
 	g.ExternalExecutionURL = FormatHttpUrl(host, executionPort.Port())
 
 	networkConfig := blockchain.SimulatedEVMNetwork
-	networkConfig.Name = fmt.Sprintf("geth-eth2-%s", g.consensusLayer)
+	networkConfig.Name = fmt.Sprintf("nethermind-eth2-%s", g.consensusLayer)
 	networkConfig.URLs = []string{g.ExternalWsUrl}
 	networkConfig.HTTPURLs = []string{g.ExternalHttpUrl}
 
 	g.l.Info().Str("containerName", g.ContainerName).
-		Msg("Started Geth2 container")
+		Msg("Started Nethermind container")
 
 	return networkConfig, nil
 }
 
-func (g *Geth2) GetInternalExecutionURL() string {
+func (g *Nethermind) GetInternalExecutionURL() string {
 	return g.InternalExecutionURL
 }
 
-func (g *Geth2) GetExternalExecutionURL() string {
+func (g *Nethermind) GetExternalExecutionURL() string {
 	return g.ExternalExecutionURL
 }
 
-func (g *Geth2) GetInternalHttpUrl() string {
+func (g *Nethermind) GetInternalHttpUrl() string {
 	return g.InternalHttpUrl
 }
 
-func (g *Geth2) GetInternalWsUrl() string {
+func (g *Nethermind) GetInternalWsUrl() string {
 	return g.InternalWsUrl
 }
 
-func (g *Geth2) GetExternalHttpUrl() string {
+func (g *Nethermind) GetExternalHttpUrl() string {
 	return g.ExternalHttpUrl
 }
 
-func (g *Geth2) GetExternalWsUrl() string {
+func (g *Nethermind) GetExternalWsUrl() string {
 	return g.ExternalWsUrl
 }
 
-func (g *Geth2) GetContainerName() string {
+func (g *Nethermind) GetContainerName() string {
 	return g.ContainerName
 }
 
-func (g *Geth2) GetContainer() *tc.Container {
+func (g *Nethermind) GetContainer() *tc.Container {
 	return &g.Container
 }
 
-func (g *Geth2) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
+func (g *Nethermind) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
+	//this might fail in CI
+	keystoreDir, err := os.MkdirTemp(g.ExecutionDir, "keystore")
+	if err != nil {
+		return nil, err
+	}
+
 	passwordFile, err := os.CreateTemp("", "password.txt")
 	if err != nil {
 		return nil, err
 	}
 
-	key1File, err := os.CreateTemp("", "key1")
+	key1File, err := os.CreateTemp(keystoreDir, "key1")
 	if err != nil {
 		return nil, err
 	}
@@ -240,19 +172,25 @@ func (g *Geth2) getContainerRequest(networks []string) (*tc.ContainerRequest, er
 	if err != nil {
 		return nil, err
 	}
-	secretKey, err := os.CreateTemp("", "sk.json")
-	if err != nil {
-		return nil, err
-	}
-	_, err = secretKey.WriteString("2e0834786285daccd064ca17f1654f67b4aef298acbb82cef9ec422fb4975622")
-	if err != nil {
-		return nil, err
-	}
+
+	//$NETHERMIND/Nethermind.Runner
+	//--Init.ChainSpecPath ./nethermind.json
+	//--JsonRpc.JwtSecretFile $DEVNET/jwt.hex
+	//--Init.IsMining true
+	//--KeyStore.PasswordFiles $DEVNET/keystore_password.txt
+	//--KeyStore.UnlockAccounts 0x123463a4b065722e99115d6c222f267d9cabb524
+	//--KeyStore.BlockAuthorAccount 0x123463a4b065722e99115d6c222f267d9cabb524 //what is this?
+	//--Network.MaxActivePeers 0
+	//--Init.GenesisHash 0x19286b9ba93edd49b64266c1df5e8303ecb3c504528b010b56f5b237aa0896c2 //we can use default
+	//-c withdrawals_test
+
+	//--Blocks.RandomizedBlocks -- could be interesting!
+	//--Network.EnableUPnP -- enable and see what's the result?
 
 	return &tc.ContainerRequest{
 		Name:            g.ContainerName,
 		AlwaysPullImage: true,
-		Image:           fmt.Sprintf("ethereum/client-go:%s", GO_CLIENT_IMAGE_TAG),
+		Image:           fmt.Sprintf("nethermind/nethermind:%s", NETHERMIND_IMAGE_TAG),
 		Networks:        networks,
 		ExposedPorts:    []string{NatPortFormat(TX_GETH_HTTP_PORT), NatPortFormat(TX_GETH_WS_PORT), NatPortFormat(ETH2_EXECUTION_PORT)},
 		WaitingFor: tcwait.ForAll(
@@ -263,31 +201,38 @@ func (g *Geth2) getContainerRequest(networks []string) (*tc.ContainerRequest, er
 				WithPollInterval(1*time.Second),
 			NewWebSocketStrategy(NatPort(TX_GETH_WS_PORT), g.l),
 		),
-		Cmd: []string{"--http",
-			"--http.api=eth,net,web3,debug",
-			"--http.addr=0.0.0.0",
-			"--http.corsdomain=*",
-			"--http.vhosts=*",
-			fmt.Sprintf("--http.port=%s", TX_GETH_HTTP_PORT),
-			"--ws",
-			"--ws.api=admin,debug,web3,eth,txpool,net",
-			"--ws.addr=0.0.0.0",
-			"--ws.origins=*",
-			fmt.Sprintf("--ws.port=%s", TX_GETH_WS_PORT),
-			"--authrpc.vhosts=*",
-			"--authrpc.addr=0.0.0.0",
-			"--authrpc.jwtsecret=" + jwtSecretFile,
-			"--datadir=/execution",
-			"--rpc.allow-unprotected-txs",
-			"--rpc.txfeecap=0",
-			"--allow-insecure-unlock",
-			"--unlock=0x123463a4b065722e99115d6c222f267d9cabb524",
-			"--password=/execution/password.txt",
-			"--nodiscover",
-			"--syncmode=full",
-			"--networkid=1337",
-			"--graphql",
-			"--graphql.corsdomain=*",
+		Cmd: []string{"--Init.ChainSpecPath=/execution/genesis.json",
+			"--Init.IsMining=true",
+			"--Init.DiscoveryEnabled=false",
+			"--Init.IsMining=true",
+			"--HealthChecks.Enabled=true", // default slug /health
+			"--JsonRpc.Enabled=true",
+			"--JsonRpc.EnabledModules=[eth,subscribe,trace,txPool,web3,personal,proof,net,parity,health,rpc, debug]",
+			"--JsonRpc.Host=0.0.0.0",
+			//			"--http.corsdomain=*",
+			//			"--http.vhosts=*",
+			fmt.Sprintf("--JsonRpc.Port=%s", TX_GETH_HTTP_PORT),
+			// "--ws",
+			// "--ws.api=admin,debug,web3,eth,txpool,net",
+			// "--ws.addr=0.0.0.0",
+			// "--ws.origins=*",
+			fmt.Sprintf("--JsonRpc.WebSocketsPort=%s", TX_GETH_WS_PORT),
+			// "--authrpc.vhosts=*",
+			// "--authrpc.addr=0.0.0.0",
+			"--JsonRpc.JwtSecretFile" + jwtSecretFile,
+			// "--datadir=/execution",
+			// "--rpc.allow-unprotected-txs",
+			// "--rpc.txfeecap=0",
+			// "--allow-insecure-unlock",
+			"--Network.MaxActivePeers=0",
+			"--KeyStore.BlockAuthorAccount=0x123463a4b065722e99115d6c222f267d9cabb524",
+			"--KeyStore.UnlockAccounts=0x123463a4b065722e99115d6c222f267d9cabb524",
+			"--KeyStore.PasswordFiles=/execution/password.txt",
+			// "--nodiscover",
+			// "--syncmode=full",
+			// "--networkid=1337",
+			// "--graphql",
+			// "--graphql.corsdomain=*",
 		},
 		Files: []tc.ContainerFile{
 			{
@@ -303,11 +248,6 @@ func (g *Geth2) getContainerRequest(networks []string) (*tc.ContainerRequest, er
 			{
 				HostFilePath:      key1File.Name(),
 				ContainerFilePath: "/execution/keystore/key1",
-				FileMode:          0644,
-			},
-			{
-				HostFilePath:      secretKey.Name(),
-				ContainerFilePath: "/execution/sk.json",
 				FileMode:          0644,
 			},
 		},

@@ -28,7 +28,8 @@ const (
 type ExecutionLayer string
 
 const (
-	ExecutionLayer_Geth ExecutionLayer = "geth"
+	ExecutionLayer_Geth       ExecutionLayer = "geth"
+	ExecutionLayer_Nethermind ExecutionLayer = "nethermind"
 )
 
 type ConsensusLayer string
@@ -260,20 +261,30 @@ func (b *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error)
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
 		}
 
-		gg := NewEth1Genesis(networkNames, hostExecutionDir).WithLogger(b.logger)
-		err = gg.StartContainer()
-		if err != nil {
-			return blockchain.EVMNetwork{}, RpcProvider{}, err
+		//TODO make this nicer
+		if b.ExecutionLayer == ExecutionLayer_Geth {
+			gg := NewEth1Genesis(networkNames, hostExecutionDir).WithLogger(b.logger)
+			err = gg.StartContainer()
+			if err != nil {
+				return blockchain.EVMNetwork{}, RpcProvider{}, err
+			}
 		}
 	}
 
-	geth2 := NewGeth2(networkNames, hostExecutionDir, ConsensusLayer_Prysm, b.setExistingContainerName(ContainerType_Geth2)).WithLogger(b.logger)
-	net, err := geth2.StartContainer()
+	var net blockchain.EVMNetwork
+	var client ExecutionClient
+	if b.ExecutionLayer == ExecutionLayer_Geth {
+		client = NewGeth2(networkNames, hostExecutionDir, ConsensusLayer_Prysm, b.setExistingContainerName(ContainerType_Geth2)).WithLogger(b.logger)
+	} else {
+		client = NewNethermind(networkNames, hostExecutionDir, ConsensusLayer_Prysm, b.setExistingContainerName(ContainerType_Nethermind)).WithLogger(b.logger)
+	}
+
+	net, err = client.StartContainer()
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
-	beacon := NewPrysmBeaconChain(networkNames, hostExecutionDir, hostConsensusDir, geth2.InternalExecutionURL, b.setExistingContainerName(ContainerType_PrysmBeacon)).WithLogger(b.logger)
+	beacon := NewPrysmBeaconChain(networkNames, hostExecutionDir, hostConsensusDir, client.GetInternalExecutionURL(), b.setExistingContainerName(ContainerType_PrysmBeacon)).WithLogger(b.logger)
 	err = beacon.StartContainer()
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
@@ -286,24 +297,24 @@ func (b *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error)
 	}
 
 	waitForFirstBlock := tcwait.NewLogStrategy("Chain head was updated").WithPollInterval(1 * time.Second).WithStartupTimeout(60 * time.Second)
-	err = waitForFirstBlock.WaitUntilReady(context.Background(), geth2.Container)
+	err = waitForFirstBlock.WaitUntilReady(context.Background(), *client.GetContainer())
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
 	rpcProvider := RpcProvider{
-		privateHttpUrls: []string{geth2.InternalHttpUrl},
-		privatelWsUrls:  []string{geth2.InternalWsUrl},
-		publiclHttpUrls: []string{geth2.ExternalHttpUrl},
-		publicsUrls:     []string{geth2.ExternalWsUrl},
+		privateHttpUrls: []string{client.GetInternalHttpUrl()},
+		privatelWsUrls:  []string{client.GetInternalWsUrl()},
+		publiclHttpUrls: []string{client.GetExternalHttpUrl()},
+		publicsUrls:     []string{client.GetExternalWsUrl()},
 	}
 
 	b.DockerNetworkNames = networkNames
 	b.Containers = EthereumNetworkContainers{
 		{
-			ContainerName: geth2.ContainerName,
+			ContainerName: client.GetContainerName(),
 			ContainerType: ContainerType_Geth2,
-			Container:     &geth2.Container,
+			Container:     client.GetContainer(),
 		},
 		{
 			ContainerName: beacon.ContainerName,
@@ -401,6 +412,7 @@ type ContainerType string
 const (
 	ContainerType_Geth        ContainerType = "geth"
 	ContainerType_Geth2       ContainerType = "geth2"
+	ContainerType_Nethermind  ContainerType = "nethermind"
 	ContainerType_PrysmBeacon ContainerType = "prysm-beacon"
 	ContainerType_PrysmVal    ContainerType = "prysm-validator"
 )

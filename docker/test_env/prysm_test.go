@@ -91,7 +91,7 @@ func TestEth2WithPrysmAndGethExtraFunding(t *testing.T) {
 	require.NoError(t, err, "Couldn't close the client")
 }
 
-func TestEth2WithPrysmRestart(t *testing.T) {
+func TestEth2WithPrysmAndGethRestart(t *testing.T) {
 	t.Skip("add support for restarting -- meaning that we shouldn't create any config files, keystores, etc anymore")
 	l := logging.GetTestLogger(t)
 
@@ -130,6 +130,28 @@ func TestEth2WithPrysmRestart(t *testing.T) {
 	require.NoError(t, err, "Couldn't start PoS network")
 
 	c, err = blockchain.ConnectEVMClient(ns, l)
+	require.NoError(t, err, "Couldn't connect to the evm client")
+	err = c.Close()
+	require.NoError(t, err, "Couldn't close the client")
+}
+
+func TestEth2WithPrysmAndNethermindDefaultConfig(t *testing.T) {
+	l := logging.GetTestLogger(t)
+
+	builder := NewEthereumNetworkBuilder()
+	cfg, err := builder.
+		WithConsensusType(ConsensusType_PoS).
+		WithConsensusLayer(ConsensusLayer_Prysm).
+		WithExecutionLayer(ExecutionLayer_Nethermind).
+		Build()
+	require.NoError(t, err, "Builder validation failed")
+
+	_, eth2, err := cfg.Start()
+	require.NoError(t, err, "Couldn't start PoS network")
+
+	ns := blockchain.SimulatedEVMNetwork
+	ns.URLs = eth2.PublicWsUrsl()
+	c, err := blockchain.ConnectEVMClient(ns, l)
 	require.NoError(t, err, "Couldn't connect to the evm client")
 	err = c.Close()
 	require.NoError(t, err, "Couldn't close the client")
