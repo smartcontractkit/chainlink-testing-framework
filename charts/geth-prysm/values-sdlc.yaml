@@ -33,7 +33,8 @@ prysm:
   genesis:
     image:
       repository: gcr.io/prysmaticlabs/prysm/cmd/prysmctl
-      tag: HEAD-1530d1  # latest one that works, a bit newer than v4.1.1
+      # latest one that works, a bit newer than v4.1.1
+      tag: HEAD-1530d1
     values:
       secondsPerSlot: 12
       slotsPerEpoch: 4
