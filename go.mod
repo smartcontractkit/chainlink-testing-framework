@@ -15,6 +15,7 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/lib/pq v1.10.9
 	github.com/onsi/gomega v1.27.8
+	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.17.0
 	github.com/prometheus/common v0.44.0
 	github.com/rs/zerolog v1.30.0
@@ -34,7 +35,6 @@ require (
 	github.com/google/pprof v0.0.0-20230705174524-200ffdc848b8 // indirect
 	github.com/hashicorp/go-version v1.6.0 // indirect
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible // indirect
-	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pyroscope-io/client v0.7.1 // indirect
 	github.com/rs/cors v1.8.3 // indirect
 	github.com/sergi/go-diff v1.2.0 // indirect
