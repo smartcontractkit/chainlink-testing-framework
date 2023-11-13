@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: prysm-config
+  name: {{ .Release.Name }}-prysm-config
 data:
   config.yml: |-
     CONFIG_NAME: interop

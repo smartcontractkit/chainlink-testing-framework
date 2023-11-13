@@ -12,15 +12,15 @@ spec:
         app: {{ .Release.Name }}-{{ .Values.geth.name }}
     spec:
       volumes:
-      - name: chain-state
+      - name: {{ .Release.Name }}-chain-state
         persistentVolumeClaim:
           claimName: {{ .Release.Name }}-{{ .Values.storage.claim }}
-      - name: geth-config
+      - name: {{ .Release.Name }}-geth-config
         configMap:
-          name: geth-config
-      - name: prysm-config
+          name: {{ .Release.Name }}-geth-config
+      - name: {{ .Release.Name }}-prysm-config
         configMap:
-          name: prysm-config          
+          name: {{ .Release.Name }}-prysm-config          
       containers:
         - name: {{ .Values.geth.name }}
           image: {{ .Values.geth.image.repository }}:{{ .Values.geth.image.tag }}
@@ -49,19 +49,19 @@ spec:
             - name: discovery-tcp
               containerPort: {{ .Values.geth.ports.discovery }}              
           volumeMounts:
-            - name: geth-config
+            - name: {{ .Release.Name }}-geth-config
               mountPath: {{ .Values.geth.executionDir }}/keystore/node1key
               subPath: node1key
-            - name: geth-config
+            - name: {{ .Release.Name }}-geth-config
               mountPath: {{ .Values.geth.passwordFile }}
               subPath: password.txt
-            - name: geth-config
+            - name: {{ .Release.Name }}-geth-config
               mountPath: {{ .Values.shared.jwtSecretFile }}
               subPath: jwtsecret              
-            - name: geth-config
+            - name: {{ .Release.Name }}-geth-config
               mountPath: {{ .Values.geth.executionDir }}/sk.json
               subPath: sk                
-            - name: chain-state
+            - name: {{ .Release.Name }}-chain-state
               mountPath: /data 
           readinessProbe:
             exec:
@@ -78,7 +78,7 @@ spec:
             failureThreshold: 2    
             timeoutSeconds: 10       
       initContainers:
-        - name: init-eth2-genesis
+        - name: {{ .Release.Name }}-init-eth2-genesis
           image: "{{ .Values.prysm.genesis.image.repository }}:{{ .Values.prysm.genesis.image.tag }}"
           imagePullPolicy: "{{ .Values.imagePullPolicy }}"      
           args:
@@ -92,15 +92,15 @@ spec:
             - "--geth-genesis-json-in={{ .Values.geth.executionDir }}/genesis-raw.json"
             - "--geth-genesis-json-out={{ .Values.shared.genesisFile }}"
           volumeMounts:
-            - name: chain-state
+            - name: {{ .Release.Name }}-chain-state
               mountPath: /data 
-            - name: prysm-config
+            - name: {{ .Release.Name }}-prysm-config
               mountPath: {{ .Values.prysm.shared.configFile }}
               subPath: config.yml
-            - name: geth-config
+            - name: {{ .Release.Name }}-geth-config
               mountPath: {{ .Values.geth.executionDir }}/genesis-raw.json
               subPath: genesis.json          
-        - name: init-eth1-genesis
+        - name: {{ .Release.Name }}-init-eth1-genesis
           image: {{ .Values.geth.image.repository }}:{{ .Values.geth.image.tag }}
           imagePullPolicy: {{ .Values.imagePullPolicy }}           
           command:
@@ -109,5 +109,5 @@ spec:
             - "init"
             - "{{ .Values.shared.genesisFile }}"
           volumeMounts:
-            - name: chain-state
+            - name: {{ .Release.Name }}-chain-state
               mountPath: /data               

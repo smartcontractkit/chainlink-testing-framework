@@ -12,15 +12,15 @@ spec:
         app: {{ .Release.Name }}-{{ .Values.prysm.beacon.name }}
     spec:
       volumes:
-      - name: chain-state
+      - name: {{ .Release.Name }}-chain-state
         persistentVolumeClaim:
           claimName: {{ .Release.Name }}-{{ .Values.storage.claim }}
-      - name: geth-config
+      - name: {{ .Release.Name }}-geth-config
         configMap:
-          name: geth-config   
-      - name: prysm-config
+          name: {{ .Release.Name }}-geth-config   
+      - name: {{ .Release.Name }}-prysm-config
         configMap:
-          name: prysm-config                  
+          name: {{ .Release.Name }}-prysm-config                  
       containers:
         - name: {{ .Values.prysm.beacon.name }}
           image: {{ .Values.prysm.beacon.image.repository }}:{{ .Values.prysm.beacon.image.tag }}
@@ -58,12 +58,12 @@ spec:
             - name: status
               containerPort: {{ .Values.prysm.beacon.ports.status }}                              
           volumeMounts:               
-            - name: chain-state
+            - name: {{ .Release.Name }}-chain-state
               mountPath: /data 
-            - name: geth-config
+            - name: {{ .Release.Name }}-geth-config
               mountPath: {{ .Values.shared.jwtSecretFile }}
               subPath: jwtsecret  
-            - name: prysm-config
+            - name: {{ .Release.Name }}-prysm-config
               mountPath: {{ .Values.prysm.shared.configFile }}
               subPath: config.yml         
           # for some reason doesn't work, the pod is never ready :/                         
@@ -83,7 +83,7 @@ spec:
           #   timeoutSeconds: 5                              
           #   failureThreshold: 2
       initContainers:
-        - name: wait-for-geth
+        - name: {{ .Release.Name }}-wait-for-geth
           image: {{ .Values.busybox.image.repository }}:{{ .Values.busybox.image.tag }}
           imagePullPolicy: {{ .Values.imagePullPolicy }} 
           command:
