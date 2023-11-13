@@ -23,9 +23,9 @@ geth:
     limits:
       cpu: 200m
       memory: 528Mi
-prysm: 
-  shared: 
-    configFile: /data/consensus/config.yml 
+prysm:
+  shared:
+    configFile: /data/consensus/config.yml
     genesisFile: /data/consensus/genesis.ssz
     feeRecipent: 0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266
     validators: 8
@@ -33,7 +33,7 @@ prysm:
   genesis:
     image:
       repository: gcr.io/prysmaticlabs/prysm/cmd/prysmctl
-      tag: HEAD-1530d1 # latest one that works, a bit newer than v4.1.1
+      tag: HEAD-1530d1  # latest one that works, a bit newer than v4.1.1
     values:
       secondsPerSlot: 12
       slotsPerEpoch: 4
@@ -46,14 +46,14 @@ prysm:
     ports:
       query: 3500
       node: 4000
-      status: 8080  
+      status: 8080
     resources:
       requests:
         cpu: 200m
         memory: 528Mi
       limits:
         cpu: 200m
-        memory: 528Mi      
+        memory: 528Mi
   validator:
     name: prysm-validator
     image:
@@ -65,7 +65,7 @@ prysm:
         memory: 1Gi
       limits:
         cpu: 400m
-        memory: 1Gi      
+        memory: 1Gi
 busybox:
   image:
     repository: busybox
@@ -81,7 +81,7 @@ ready:
       memory: 256Mi
     limits:
       cpu: 50m
-      memory: 256Mi       
+      memory: 256Mi
 storage:
   class: hostpath
   claim: chain-state-claim
