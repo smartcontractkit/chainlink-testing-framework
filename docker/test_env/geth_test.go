@@ -33,6 +33,7 @@ func TestEth1WithGeth(t *testing.T) {
 	cfg, err := builder.
 		WithConsensusType(ConsensusType_PoW).
 		WithExecutionLayer(ExecutionLayer_Geth).
+		WithTest(t).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 

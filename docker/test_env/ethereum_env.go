@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
@@ -138,7 +137,7 @@ func (b *EthereumNetworkBuilder) buildConfig() EthereumNetwork {
 		n.beaconChainConfig = b.beaconChainConfig
 	}
 
-	n.logger = logging.GetTestLogger(b.t)
+	n.t = b.t
 	n.addressesToFund = b.addressesToFund
 
 	return n
@@ -254,32 +253,32 @@ func (b *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error)
 		}
 
 		bg := NewEth2Genesis(networkNames, beaconChainConfig, hostExecutionDir, hostConsensusDir).
-			WithLogger(b.logger).WithFundedAccounts(b.addressesToFund)
+			WithTestLogger(b.t).WithFundedAccounts(b.addressesToFund)
 		err = bg.StartContainer()
 		if err != nil {
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
 		}
 
-		gg := NewEth1Genesis(networkNames, hostExecutionDir).WithLogger(b.logger)
+		gg := NewEth1Genesis(networkNames, hostExecutionDir).WithTestLogger(b.t)
 		err = gg.StartContainer()
 		if err != nil {
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
 		}
 	}
 
-	geth2 := NewGeth2(networkNames, hostExecutionDir, ConsensusLayer_Prysm, b.setExistingContainerName(ContainerType_Geth2)).WithLogger(b.logger)
+	geth2 := NewGeth2(networkNames, hostExecutionDir, ConsensusLayer_Prysm, b.setExistingContainerName(ContainerType_Geth2)).WithTestLogger(b.t)
 	net, err := geth2.StartContainer()
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
-	beacon := NewPrysmBeaconChain(networkNames, hostExecutionDir, hostConsensusDir, geth2.InternalExecutionURL, b.setExistingContainerName(ContainerType_PrysmBeacon)).WithLogger(b.logger)
+	beacon := NewPrysmBeaconChain(networkNames, hostExecutionDir, hostConsensusDir, geth2.InternalExecutionURL, b.setExistingContainerName(ContainerType_PrysmBeacon)).WithTestLogger(b.t)
 	err = beacon.StartContainer()
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
-	validator := NewPrysmValidator(networkNames, hostConsensusDir, beacon.InternalBeaconRpcProvider, b.setExistingContainerName(ContainerType_PrysmVal)).WithLogger(b.logger)
+	validator := NewPrysmValidator(networkNames, hostConsensusDir, beacon.InternalBeaconRpcProvider, b.setExistingContainerName(ContainerType_PrysmVal)).WithTestLogger(b.t)
 	err = validator.StartContainer()
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
@@ -329,7 +328,7 @@ func (b *EthereumNetwork) startPow() (blockchain.EVMNetwork, RpcProvider, error)
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
-	geth := NewGeth(networkNames, b.setExistingContainerName(ContainerType_Geth)).WithLogger(b.logger)
+	geth := NewGeth(networkNames, b.setExistingContainerName(ContainerType_Geth)).WithTestLogger(b.t)
 	net, docker, err := geth.StartContainer()
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
@@ -356,7 +355,7 @@ func (b *EthereumNetwork) getOrCreateDockerNetworks() ([]string, error) {
 	var networkNames []string
 
 	if len(b.DockerNetworkNames) == 0 {
-		network, err := docker.CreateNetwork(b.logger)
+		network, err := docker.CreateNetwork(logging.GetTestLogger(b.t))
 		if err != nil {
 			return networkNames, err
 		}
@@ -421,10 +420,10 @@ type EthereumNetwork struct {
 	ExecutionDir       string                    `json:"execution_dir"`
 	ConsensusDir       string                    `json:"consensus_dir"`
 	Containers         EthereumNetworkContainers `json:"containers"`
-	logger             zerolog.Logger
 	isRecreated        bool
 	beaconChainConfig  *BeaconChainConfig
 	addressesToFund    []string
+	t                  *testing.T
 }
 
 type EthereumNetworkContainers []EthereumNetworkContainer
