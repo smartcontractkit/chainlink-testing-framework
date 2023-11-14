@@ -110,13 +110,7 @@ func (pg *PostgresDb) WithTestLogger(t *testing.T) *PostgresDb {
 
 func (pg *PostgresDb) StartContainer() error {
 	req := pg.getContainerRequest()
-	l := tc.Logger
-	if pg.t != nil {
-		l = logging.CustomT{
-			T: pg.t,
-			L: pg.l,
-		}
-	}
+	l := logging.GetTestContainersGoTestLogger(pg.t)
 	c, err := docker.StartContainerWithRetry(pg.l, tc.GenericContainerRequest{
 		ContainerRequest: *req,
 		Started:          true,

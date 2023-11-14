@@ -73,13 +73,7 @@ func (ms *MockServer) SetExternalAdapterMocks(count int) error {
 }
 
 func (ms *MockServer) StartContainer() error {
-	l := tc.Logger
-	if ms.t != nil {
-		l = logging.CustomT{
-			T: ms.t,
-			L: ms.l,
-		}
-	}
+	l := logging.GetTestContainersGoTestLogger(ms.t)
 	cr, err := ms.getContainerRequest()
 	if err != nil {
 		return err

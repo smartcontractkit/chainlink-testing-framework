@@ -106,13 +106,7 @@ func (k *Killgrave) StartContainer() error {
 			os.RemoveAll(k.impostersDirBinding)
 		})
 	}
-	l := tc.Logger
-	if k.t != nil {
-		l = logging.CustomT{
-			T: k.t,
-			L: k.l,
-		}
-	}
+	l := logging.GetTestContainersGoTestLogger(k.t)
 	cr, err := k.getContainerRequest()
 	if err != nil {
 		return err

@@ -253,13 +253,7 @@ func (g *NonDevBesuNode) Start() error {
 	if err != nil {
 		return err
 	}
-	l := tc.Logger
-	if g.t != nil {
-		l = logging.CustomT{
-			T: g.t,
-			L: g.l,
-		}
-	}
+	l := logging.GetTestContainersGoTestLogger(g.t)
 
 	// Besu Bootnode setup: BEGIN
 	// Generate public key for besu bootnode

@@ -250,13 +250,7 @@ func (g *NonDevGethNode) Start() error {
 		return err
 	}
 
-	l := tc.Logger
-	if g.t != nil {
-		l = logging.CustomT{
-			T: g.t,
-			L: g.l,
-		}
-	}
+	l := logging.GetTestContainersGoTestLogger(g.t)
 	bncr, err := g.getBootNodeContainerRequest()
 	if err != nil {
 		return err

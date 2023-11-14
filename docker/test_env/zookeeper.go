@@ -45,13 +45,7 @@ func (z *Zookeeper) WithContainerName(name string) *Zookeeper {
 }
 
 func (z *Zookeeper) StartContainer() error {
-	l := tc.Logger
-	if z.t != nil {
-		l = logging.CustomT{
-			T: z.t,
-			L: z.l,
-		}
-	}
+	l := logging.GetTestContainersGoTestLogger(z.t)
 	cr, err := z.getContainerRequest()
 	if err != nil {
 		return err

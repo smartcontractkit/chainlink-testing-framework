@@ -66,13 +66,7 @@ func (r *SchemaRegistry) WithEnvVars(envVars map[string]string) *SchemaRegistry 
 
 func (r *SchemaRegistry) StartContainer() error {
 	r.InternalUrl = fmt.Sprintf("http://%s:%s", r.ContainerName, "8081")
-	l := tc.Logger
-	if r.t != nil {
-		l = logging.CustomT{
-			T: r.t,
-			L: r.l,
-		}
-	}
+	l := logging.GetTestContainersGoTestLogger(r.t)
 	envVars := map[string]string{
 		"SCHEMA_REGISTRY_HOST_NAME": r.ContainerName,
 		"SCHEMA_REGISTRY_LISTENERS": r.InternalUrl,

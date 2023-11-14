@@ -87,13 +87,7 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, InternalDockerUrls, erro
 		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
 	}
 
-	l := tc.Logger
-	if g.t != nil {
-		l = logging.CustomT{
-			T: g.t,
-			L: g.l,
-		}
-	}
+	l := logging.GetTestContainersGoTestLogger(g.t)
 	ct, err := docker.StartContainerWithRetry(g.l, tc.GenericContainerRequest{
 		ContainerRequest: *r,
 		Reuse:            true,
