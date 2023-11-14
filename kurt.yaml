@@ -1,0 +1,25 @@
+participants:
+    - el_client_type: nethermind
+      el_client_image: nethermind/nethermind:1.22.0
+      el_client_log_level: ''
+      el_extra_params: []
+    - cl_client_type: prysm
+      cl_client_image: gcr.io/prysmaticlabs/prysm/beacon-chain:v4.1.1-debug,gcr.io/prysmaticlabs/prysm/validator:v4.1.1-debug
+      cl_client_log_level: ''
+      beacon_extra_params: []
+      validator_extra_params: []
+      builder_network_params:
+      count: 1
+network_params:
+  network_id: '1337'
+  deposit_contract_address: '0x4242424242424242424242424242424242424242'
+  seconds_per_slot: 12
+  slots_per_epoch: 32
+  num_validator_keys_per_node: 64
+  preregistered_validator_keys_mnemonic: 'giant issue aisle success illegal bike spike
+    question tent bar rely arctic volcano long crawl hungry vocal artwork sniff fantasy
+    very lucky have athlete'
+  deneb_for_epoch: 500
+verifications_epoch_limit: 5
+global_client_log_level: info
+additional_services: []

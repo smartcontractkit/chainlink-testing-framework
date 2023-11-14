@@ -19,7 +19,7 @@ import (
 const (
 	PRYSM_QUERY_RPC_PORT = "3500"
 	PRYSM_NODE_RPC_PORT  = "4000"
-	PRYSM_IMAGE_TAG      = "v4.1.1"
+	PRYSM_IMAGE_TAG      = "v4.1.1-debug"
 )
 
 type PrysmGenesis struct {
@@ -129,10 +129,10 @@ func (g *PrysmGenesis) getContainerRequest(networks []string) (*tc.ContainerRequ
 	}
 
 	return &tc.ContainerRequest{
-		Name:            g.ContainerName,
-		AlwaysPullImage: true,
-		Image:           "gcr.io/prysmaticlabs/prysm/cmd/prysmctl:HEAD-1530d1", // latest one that works, a bit newer than v4.1.1
-		Networks:        networks,
+		Name: g.ContainerName,
+		// AlwaysPullImage: true,
+		Image:    "gcr.io/prysmaticlabs/prysm/cmd/prysmctl:HEAD-1530d1", // latest one that works, a bit newer than v4.1.1
+		Networks: networks,
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForLog("Done writing genesis state to"),
 			tcwait.ForLog("Command completed").
@@ -142,12 +142,14 @@ func (g *PrysmGenesis) getContainerRequest(networks []string) (*tc.ContainerRequ
 		Cmd: []string{"testnet",
 			"generate-genesis",
 			"--fork=capella",
-			"--num-validators=64",
-			"--genesis-time-delay=15",
+			"--num-validators=8",
+			// "--genesis-time-delay=20",
+			// "--genesis-time=" + fmt.Sprintf("%d", time.Now().Add(time.Duration(30*time.Second)).Unix()),
+			"--genesis-time=" + fmt.Sprintf("%d", g.beaconChainConfig.MinGenesisTime+100),
 			"--output-ssz=" + eth2GenesisFile,
 			"--chain-config-file=" + beaconConfigFile,
-			"--geth-genesis-json-in=" + eth1GenesisFile,
-			"--geth-genesis-json-out=" + eth1GenesisFile,
+			// "--geth-genesis-json-in=" + eth1GenesisFile,
+			// "--geth-genesis-json-out=" + eth1GenesisFile,
 		},
 		Files: []tc.ContainerFile{
 			{
@@ -246,11 +248,11 @@ func (g *PrysmBeaconChain) StartContainer() error {
 
 func (g *PrysmBeaconChain) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
 	return &tc.ContainerRequest{
-		Name:            g.ContainerName,
-		AlwaysPullImage: true,
-		Image:           fmt.Sprintf("gcr.io/prysmaticlabs/prysm/beacon-chain:%s", PRYSM_IMAGE_TAG),
-		ImagePlatform:   "linux/amd64",
-		Networks:        networks,
+		Name: g.ContainerName,
+		// AlwaysPullImage: true,
+		Image:         fmt.Sprintf("gcr.io/prysmaticlabs/prysm/beacon-chain:%s", PRYSM_IMAGE_TAG),
+		ImagePlatform: "linux/amd64",
+		Networks:      networks,
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForLog("Received state initialized event"),
 			tcwait.ForLog("Node started p2p server").
@@ -261,6 +263,7 @@ func (g *PrysmBeaconChain) getContainerRequest(networks []string) (*tc.Container
 			"--datadir=/consensus/beacondata",
 			"--min-sync-peers=0",
 			"--genesis-state=" + eth2GenesisFile,
+			"--interop-eth1data-votes",
 			"--bootstrap-node=",
 			"--chain-config-file=" + beaconConfigFile,
 			"--contract-deployment-block=0",
@@ -273,6 +276,7 @@ func (g *PrysmBeaconChain) getContainerRequest(networks []string) (*tc.Container
 			"--suggested-fee-recipient=0x123463a4b065722e99115d6c222f267d9cabb524",
 			"--minimum-peers-per-subnet=0",
 			"--enable-debug-rpc-endpoints",
+			"--verbosity=debug",
 			// "--interop-eth1data-votesgeth", //no idea why this flag results in error when passed here
 		},
 		ExposedPorts: []string{NatPortFormat(PRYSM_NODE_RPC_PORT), NatPortFormat(PRYSM_QUERY_RPC_PORT)},
@@ -340,10 +344,10 @@ func (g *PrysmValidator) StartContainer() error {
 
 func (g *PrysmValidator) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
 	return &tc.ContainerRequest{
-		Name:            g.ContainerName,
-		AlwaysPullImage: true,
-		Image:           fmt.Sprintf("gcr.io/prysmaticlabs/prysm/validator:%s", PRYSM_IMAGE_TAG),
-		Networks:        networks,
+		Name: g.ContainerName,
+		// AlwaysPullImage: true,
+		Image:    fmt.Sprintf("gcr.io/prysmaticlabs/prysm/validator:%s", PRYSM_IMAGE_TAG),
+		Networks: networks,
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForLog("Beacon chain started").
 				WithStartupTimeout(120 * time.Second).
@@ -352,9 +356,10 @@ func (g *PrysmValidator) getContainerRequest(networks []string) (*tc.ContainerRe
 		Cmd: []string{fmt.Sprintf("--beacon-rpc-provider=%s", g.internalBeaconRpcProvider),
 			"--datadir=/consensus/validatordata",
 			"--accept-terms-of-use",
-			"--interop-num-validators=64",
+			"--interop-num-validators=8",
 			"--interop-start-index=0",
 			"--chain-config-file=" + beaconConfigFile,
+			"--verbosity=debug",
 		},
 		Mounts: tc.ContainerMounts{
 			tc.ContainerMount{

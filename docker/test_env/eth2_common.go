@@ -23,12 +23,17 @@ const (
 type BeaconChainConfig struct {
 	SecondsPerSlot int
 	SlotsPerEpoch  int
+	MinGenesisTime int
 }
 
 var DefaultBeaconChainConfig = BeaconChainConfig{
 	SecondsPerSlot: 12,
 	SlotsPerEpoch:  6,
 }
+
+// GENESIS_FORK_VERSION: 0x10000038
+// MIN_GENESIS_TIME: {{.MinGenesisTime}}}
+//GENESIS_DELAY: 20
 
 var BeaconChainConfigYAML = `
 CONFIG_NAME: interop
@@ -44,12 +49,11 @@ ALTAIR_FORK_VERSION: 0x20000090
 # Merge
 BELLATRIX_FORK_EPOCH: 0
 BELLATRIX_FORK_VERSION: 0x20000091
-TERMINAL_TOTAL_DIFFICULTY: 0
 
 # Capella
 CAPELLA_FORK_EPOCH: 0
 CAPELLA_FORK_VERSION: 0x20000092
-MAX_WITHDRAWALS_PER_PAYLOAD: 16
+MAX_WITHDRAWALS_PER_PAYLOAD: 4
 
 DENEB_FORK_VERSION: 0x20000093
 
@@ -59,6 +63,8 @@ SLOTS_PER_EPOCH: {{.SlotsPerEpoch}}
 
 # Deposit contract
 DEPOSIT_CONTRACT_ADDRESS: 0x4242424242424242424242424242424242424242
+
+TERMINAL_TOTAL_DIFFICULTY: 0
 `
 
 func GenerateBeaconChainConfig(c *BeaconChainConfig) (string, error) {

@@ -235,6 +235,7 @@ func (b *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error)
 	}
 
 	var hostExecutionDir, hostConsensusDir string
+	genesisTime := time.Now().Add(20 * time.Second).Unix()
 
 	// create host directories and run genesis containers only if we are NOT recreating existing containers
 	if !b.isRecreated {
@@ -252,6 +253,7 @@ func (b *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error)
 			beaconChainConfig = *b.beaconChainConfig
 		} else {
 			beaconChainConfig = DefaultBeaconChainConfig
+			beaconChainConfig.MinGenesisTime = int(genesisTime)
 		}
 
 		bg := NewEth2Genesis(networkNames, beaconChainConfig, hostExecutionDir, hostConsensusDir).
@@ -276,7 +278,7 @@ func (b *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error)
 	if b.ExecutionLayer == ExecutionLayer_Geth {
 		client = NewGeth2(networkNames, hostExecutionDir, ConsensusLayer_Prysm, b.setExistingContainerName(ContainerType_Geth2)).WithLogger(b.logger)
 	} else {
-		client = NewNethermind(networkNames, hostExecutionDir, ConsensusLayer_Prysm, b.setExistingContainerName(ContainerType_Nethermind)).WithLogger(b.logger)
+		client = NewNethermind(networkNames, hostExecutionDir, ConsensusLayer_Prysm, int(genesisTime), b.setExistingContainerName(ContainerType_Nethermind)).WithLogger(b.logger)
 	}
 
 	net, err = client.StartContainer()
