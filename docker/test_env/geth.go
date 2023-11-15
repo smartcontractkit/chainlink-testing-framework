@@ -26,8 +26,8 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
-	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/templates"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
 const (
@@ -97,15 +97,15 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, InternalDockerUrls, erro
 	if err != nil {
 		return blockchain.EVMNetwork{}, InternalDockerUrls{}, fmt.Errorf("cannot start geth container: %w", err)
 	}
-	host, err := GetHost(utils.TestContext(g.t), ct)
+	host, err := GetHost(testcontext.Get(g.t), ct)
 	if err != nil {
 		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
 	}
-	httpPort, err := ct.MappedPort(utils.TestContext(g.t), NatPort(TX_GETH_HTTP_PORT))
+	httpPort, err := ct.MappedPort(testcontext.Get(g.t), NatPort(TX_GETH_HTTP_PORT))
 	if err != nil {
 		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
 	}
-	wsPort, err := ct.MappedPort(utils.TestContext(g.t), NatPort(TX_GETH_WS_PORT))
+	wsPort, err := ct.MappedPort(testcontext.Get(g.t), NatPort(TX_GETH_WS_PORT))
 	if err != nil {
 		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
 	}

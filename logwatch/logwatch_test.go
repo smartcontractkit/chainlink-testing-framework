@@ -15,7 +15,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/logwatch"
-	"github.com/smartcontractkit/chainlink-testing-framework/utils"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
 type TestCase struct {
@@ -159,7 +159,7 @@ func TestLogWatchDocker(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			ctx := utils.TestContext(t)
+			ctx := testcontext.Get(t)
 			dynamicContainerNames := replaceContainerNamePlaceholders(tc)
 			lw, err := logwatch.NewLogWatch(t, tc.mustNotifyList)
 			require.NoError(t, err)

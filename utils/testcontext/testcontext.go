@@ -1,12 +1,12 @@
-package utils
+package testcontext
 
 import (
 	"context"
 	"testing"
 )
 
-// TestContext returns a context with the test's deadline, if available.
-func TestContext(tb testing.TB) context.Context {
+// Get returns a context with the test's deadline, if available.
+func Get(tb testing.TB) context.Context {
 	ctx := context.Background()
 	if tb == nil {
 		return ctx

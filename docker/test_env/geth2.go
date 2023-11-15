@@ -17,7 +17,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
-	"github.com/smartcontractkit/chainlink-testing-framework/utils"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
 const (
@@ -165,22 +165,22 @@ func (g *Geth2) StartContainer() (blockchain.EVMNetwork, error) {
 		return blockchain.EVMNetwork{}, errors.Wrapf(err, "cannot start geth container")
 	}
 
-	host, err := GetHost(utils.TestContext(g.t), ct)
+	host, err := GetHost(testcontext.Get(g.t), ct)
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
-	httpPort, err := ct.MappedPort(utils.TestContext(g.t), NatPort(TX_GETH_HTTP_PORT))
+	httpPort, err := ct.MappedPort(testcontext.Get(g.t), NatPort(TX_GETH_HTTP_PORT))
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
-	wsPort, err := ct.MappedPort(utils.TestContext(g.t), NatPort(TX_GETH_WS_PORT))
+	wsPort, err := ct.MappedPort(testcontext.Get(g.t), NatPort(TX_GETH_WS_PORT))
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
-	executionPort, err := ct.MappedPort(utils.TestContext(g.t), NatPort(GETH_ETH2_EXECUTION_PORT))
+	executionPort, err := ct.MappedPort(testcontext.Get(g.t), NatPort(GETH_ETH2_EXECUTION_PORT))
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}

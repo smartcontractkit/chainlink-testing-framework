@@ -19,7 +19,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
-	"github.com/smartcontractkit/chainlink-testing-framework/utils"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
 type Killgrave struct {
@@ -111,7 +111,7 @@ func (k *Killgrave) StartContainer() error {
 	if err != nil {
 		return err
 	}
-	c, err := tc.GenericContainer(utils.TestContext(k.t), tc.GenericContainerRequest{
+	c, err := tc.GenericContainer(testcontext.Get(k.t), tc.GenericContainerRequest{
 		ContainerRequest: cr,
 		Started:          true,
 		Reuse:            true,
@@ -120,7 +120,7 @@ func (k *Killgrave) StartContainer() error {
 	if err != nil {
 		return fmt.Errorf("cannot start Killgrave container: %w", err)
 	}
-	endpoint, err := GetEndpoint(utils.TestContext(k.t), c, "http")
+	endpoint, err := GetEndpoint(testcontext.Get(k.t), c, "http")
 	if err != nil {
 		return err
 	}
@@ -215,7 +215,7 @@ func (k *Killgrave) AddImposter(imposters []KillgraveImposter) error {
 		// wait for the log saying the imposter was loaded
 		containerFile := filepath.Join("/imposters", fmt.Sprintf("%s.imp.json", safeFileName))
 		logWaitStrategy := wait.ForLog(fmt.Sprintf("imposter %s loaded", containerFile)).WithStartupTimeout(15 * time.Second)
-		err = logWaitStrategy.WaitUntilReady(utils.TestContext(k.t), k.Container)
+		err = logWaitStrategy.WaitUntilReady(testcontext.Get(k.t), k.Container)
 	}
 	return err
 }

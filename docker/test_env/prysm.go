@@ -15,7 +15,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
-	"github.com/smartcontractkit/chainlink-testing-framework/utils"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
 const (
@@ -235,16 +235,16 @@ func (g *PrysmBeaconChain) StartContainer() error {
 		return errors.Wrapf(err, "cannot start prysm beacon chain container")
 	}
 
-	host, err := GetHost(utils.TestContext(g.t), ct)
+	host, err := GetHost(testcontext.Get(g.t), ct)
 	if err != nil {
 		return err
 	}
-	queryPort, err := ct.MappedPort(utils.TestContext(g.t), NatPort(PRYSM_QUERY_RPC_PORT))
+	queryPort, err := ct.MappedPort(testcontext.Get(g.t), NatPort(PRYSM_QUERY_RPC_PORT))
 	if err != nil {
 		return err
 	}
 
-	externalRcpPort, err := ct.MappedPort(utils.TestContext(g.t), NatPort(PRYSM_NODE_RPC_PORT))
+	externalRcpPort, err := ct.MappedPort(testcontext.Get(g.t), NatPort(PRYSM_NODE_RPC_PORT))
 	if err != nil {
 		return err
 	}

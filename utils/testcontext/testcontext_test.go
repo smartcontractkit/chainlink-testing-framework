@@ -1,4 +1,4 @@
-package utils
+package testcontext
 
 import (
 	"context"
@@ -8,11 +8,11 @@ import (
 )
 
 func TestContextWithTest(t *testing.T) {
-	ctx := TestContext(t)
+	ctx := Get(t)
 	require.NotEqual(t, context.Background(), ctx)
 }
 
 func TestContextWithNilTest(t *testing.T) {
-	ctx := TestContext(nil)
+	ctx := Get(nil)
 	require.Equal(t, context.Background(), ctx)
 }

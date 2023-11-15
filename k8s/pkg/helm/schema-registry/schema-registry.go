@@ -7,7 +7,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/environment"
-	"github.com/smartcontractkit/chainlink-testing-framework/utils"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/projectpath"
 )
 
 type Props struct {
@@ -63,7 +63,7 @@ func NewVersioned(helmVersion string, props map[string]interface{}) environment.
 	config.MustMerge(&dp, props)
 	chartPath := "chainlink-qa/schema-registry"
 	if b, err := strconv.ParseBool(os.Getenv(config.EnvVarLocalCharts)); err == nil && b {
-		chartPath = fmt.Sprintf("%s/schema-registry", utils.ChartsRoot)
+		chartPath = fmt.Sprintf("%s/schema-registry", projectpath.ChartsRoot)
 	}
 	return Chart{
 		Name:    "cp-schema-registry",

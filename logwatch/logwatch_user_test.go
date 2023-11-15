@@ -11,7 +11,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/logwatch"
-	"github.com/smartcontractkit/chainlink-testing-framework/utils"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
 /* These tests are for user-facing API */
@@ -66,7 +66,7 @@ func (m *MyDeployment) ConnectLogs(ctx context.Context, lw *logwatch.LogWatch, p
 /* That's how you use it */
 
 func TestExampleUserInteraction(t *testing.T) {
-	ctx := utils.TestContext(t)
+	ctx := testcontext.Get(t)
 	t.Run("sync API, block, receive one message", func(t *testing.T) {
 		testData := testData{repeat: 10, perSecond: 0.01, streams: []string{"A\nB\nC\nD"}}
 		d, err := NewDeployment(ctx, testData)

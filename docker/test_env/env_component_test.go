@@ -10,7 +10,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
-	"github.com/smartcontractkit/chainlink-testing-framework/utils"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
 type TestLogConsumer struct {
@@ -27,7 +27,7 @@ func followLogs(t *testing.T, c testcontainers.Container) *TestLogConsumer {
 	}
 	go func() {
 		c.FollowOutput(consumer)
-		err := c.StartLogProducer(utils.TestContext(t))
+		err := c.StartLogProducer(testcontext.Get(t))
 		require.NoError(t, err)
 	}()
 	return consumer

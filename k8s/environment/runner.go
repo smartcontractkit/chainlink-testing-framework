@@ -12,7 +12,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/imports/k8s"
 	a "github.com/smartcontractkit/chainlink-testing-framework/k8s/pkg/alias"
-	"github.com/smartcontractkit/chainlink-testing-framework/utils"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/ptr"
 )
 
 const REMOTE_RUNNER_NAME = "remote-test-runner"
@@ -73,49 +73,49 @@ type Props struct {
 func role(chart cdk8s.Chart, props *Props) {
 	k8s.NewKubeRole(
 		chart,
-		utils.Ptr(fmt.Sprintf("%s-role", props.BaseName)),
+		ptr.Ptr(fmt.Sprintf("%s-role", props.BaseName)),
 		&k8s.KubeRoleProps{
 			Metadata: &k8s.ObjectMeta{
-				Name: utils.Ptr(props.BaseName),
+				Name: ptr.Ptr(props.BaseName),
 			},
 			Rules: &[]*k8s.PolicyRule{
 				{
 					ApiGroups: &[]*string{
-						utils.Ptr(""), // this empty line is needed or k8s get really angry
-						utils.Ptr("apps"),
-						utils.Ptr("batch"),
-						utils.Ptr("core"),
-						utils.Ptr("networking.k8s.io"),
-						utils.Ptr("storage.k8s.io"),
-						utils.Ptr("policy"),
-						utils.Ptr("chaos-mesh.org"),
-						utils.Ptr("monitoring.coreos.com"),
-						utils.Ptr("rbac.authorization.k8s.io"),
+						ptr.Ptr(""), // this empty line is needed or k8s get really angry
+						ptr.Ptr("apps"),
+						ptr.Ptr("batch"),
+						ptr.Ptr("core"),
+						ptr.Ptr("networking.k8s.io"),
+						ptr.Ptr("storage.k8s.io"),
+						ptr.Ptr("policy"),
+						ptr.Ptr("chaos-mesh.org"),
+						ptr.Ptr("monitoring.coreos.com"),
+						ptr.Ptr("rbac.authorization.k8s.io"),
 					},
 					Resources: &[]*string{
-						utils.Ptr("*"),
+						ptr.Ptr("*"),
 					},
 					Verbs: &[]*string{
-						utils.Ptr("*"),
+						ptr.Ptr("*"),
 					},
 				},
 			},
 		})
 	k8s.NewKubeRoleBinding(
 		chart,
-		utils.Ptr(fmt.Sprintf("%s-role-binding", props.BaseName)),
+		ptr.Ptr(fmt.Sprintf("%s-role-binding", props.BaseName)),
 		&k8s.KubeRoleBindingProps{
 			RoleRef: &k8s.RoleRef{
-				ApiGroup: utils.Ptr("rbac.authorization.k8s.io"),
-				Kind:     utils.Ptr("Role"),
-				Name:     utils.Ptr("remote-test-runner"),
+				ApiGroup: ptr.Ptr("rbac.authorization.k8s.io"),
+				Kind:     ptr.Ptr("Role"),
+				Name:     ptr.Ptr("remote-test-runner"),
 			},
 			Metadata: nil,
 			Subjects: &[]*k8s.Subject{
 				{
-					Kind:      utils.Ptr("ServiceAccount"),
-					Name:      utils.Ptr("default"),
-					Namespace: utils.Ptr(props.TargetNamespace),
+					Kind:      ptr.Ptr("ServiceAccount"),
+					Name:      ptr.Ptr("default"),
+					Namespace: ptr.Ptr(props.TargetNamespace),
 				},
 			},
 		},
@@ -132,10 +132,10 @@ func job(chart cdk8s.Chart, props *Props) {
 	}
 	k8s.NewKubeJob(
 		chart,
-		utils.Ptr(fmt.Sprintf("%s-job", props.BaseName)),
+		ptr.Ptr(fmt.Sprintf("%s-job", props.BaseName)),
 		&k8s.KubeJobProps{
 			Metadata: &k8s.ObjectMeta{
-				Name: utils.Ptr(props.BaseName),
+				Name: ptr.Ptr(props.BaseName),
 			},
 			Spec: &k8s.JobSpec{
 				Template: &k8s.PodTemplateSpec{
@@ -144,21 +144,21 @@ func job(chart cdk8s.Chart, props *Props) {
 						Annotations: a.ConvertAnnotations(defaultRunnerPodAnnotations),
 					},
 					Spec: &k8s.PodSpec{
-						ServiceAccountName: utils.Ptr("default"),
+						ServiceAccountName: ptr.Ptr("default"),
 						Containers: &[]*k8s.Container{
 							container(props),
 						},
-						RestartPolicy: utils.Ptr(restartPolicy),
+						RestartPolicy: ptr.Ptr(restartPolicy),
 						Volumes: &[]*k8s.Volume{
 							{
-								Name:     utils.Ptr("persistence"),
+								Name:     ptr.Ptr("persistence"),
 								EmptyDir: &k8s.EmptyDirVolumeSource{},
 							},
 						},
 					},
 				},
 				ActiveDeadlineSeconds: nil,
-				BackoffLimit:          utils.Ptr(backOffLimit),
+				BackoffLimit:          ptr.Ptr(backOffLimit),
 			},
 		})
 }
@@ -173,15 +173,15 @@ func container(props *Props) *k8s.Container {
 		mem = "1024Mi"
 	}
 	return &k8s.Container{
-		Name:            utils.Ptr(fmt.Sprintf("%s-node", props.BaseName)),
-		Image:           utils.Ptr(props.Image),
-		ImagePullPolicy: utils.Ptr("Always"),
+		Name:            ptr.Ptr(fmt.Sprintf("%s-node", props.BaseName)),
+		Image:           ptr.Ptr(props.Image),
+		ImagePullPolicy: ptr.Ptr("Always"),
 		Env:             jobEnvVars(props),
 		Resources:       a.ContainerResources(cpu, mem, cpu, mem),
 		VolumeMounts: &[]*k8s.VolumeMount{
 			{
-				Name:      utils.Ptr("persistence"),
-				MountPath: utils.Ptr("/persistence"),
+				Name:      ptr.Ptr("persistence"),
+				MountPath: ptr.Ptr("/persistence"),
 			},
 		},
 	}

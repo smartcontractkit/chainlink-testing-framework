@@ -7,7 +7,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/environment"
-	"github.com/smartcontractkit/chainlink-testing-framework/utils"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/projectpath"
 )
 
 type Props struct {
@@ -57,7 +57,7 @@ func New(props map[string]interface{}) environment.ConnectedChart {
 func NewVersioned(helmVersion string, props map[string]interface{}) environment.ConnectedChart {
 	chartPath := "chainlink-qa/mockserver-config"
 	if b, err := strconv.ParseBool(os.Getenv(config.EnvVarLocalCharts)); err == nil && b {
-		chartPath = fmt.Sprintf("%s/mockserver-config", utils.ChartsRoot)
+		chartPath = fmt.Sprintf("%s/mockserver-config", projectpath.ChartsRoot)
 	}
 	return Chart{
 		Name:    "mockserver-cfg",

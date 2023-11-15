@@ -10,7 +10,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
-	"github.com/smartcontractkit/chainlink-testing-framework/utils"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
 func TestEth2WithPrysmAndGethDefaultConfig(t *testing.T) {
@@ -83,7 +83,7 @@ func TestEth2WithPrysmAndGethExtraFunding(t *testing.T) {
 	c, err := blockchain.ConnectEVMClient(ns, l)
 	require.NoError(t, err, "Couldn't connect to the evm client")
 
-	balance, err := c.BalanceAt(utils.TestContext(t), common.HexToAddress(addressToFund))
+	balance, err := c.BalanceAt(testcontext.Get(t), common.HexToAddress(addressToFund))
 	require.NoError(t, err, "Couldn't get balance")
 	require.Equal(t, "1864712049423024128", fmt.Sprintf("%d", balance.Uint64()), "Balance is not correct")
 
@@ -113,7 +113,7 @@ func TestEth2WithPrysmRestart(t *testing.T) {
 	err = c.Close()
 	require.NoError(t, err, "Couldn't close the client")
 
-	ctx := utils.TestContext(t)
+	ctx := testcontext.Get(t)
 	stopDuration := 5 * time.Second
 	for _, c := range cfg.Containers {
 		err := (*c.Container).Stop(ctx, &stopDuration)

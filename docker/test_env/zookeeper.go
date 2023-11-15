@@ -13,7 +13,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
-	"github.com/smartcontractkit/chainlink-testing-framework/utils"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
 type Zookeeper struct {
@@ -56,11 +56,11 @@ func (z *Zookeeper) StartContainer() error {
 		Reuse:            true,
 		Logger:           l,
 	}
-	c, err := tc.GenericContainer(utils.TestContext(z.t), req)
+	c, err := tc.GenericContainer(testcontext.Get(z.t), req)
 	if err != nil {
 		return fmt.Errorf("cannot start Zookeper container: %w", err)
 	}
-	name, err := c.Name(utils.TestContext(z.t))
+	name, err := c.Name(testcontext.Get(z.t))
 	if err != nil {
 		return err
 	}

@@ -9,7 +9,7 @@ import (
 	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/utils"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/osutil"
 )
 
 const (
@@ -41,7 +41,7 @@ func (ec EnvComponent) ChaosPause(
 	duration time.Duration,
 ) error {
 	withNet := fmt.Sprintf(BaseCMD, ec.Networks[0])
-	return utils.ExecCmd(l, fmt.Sprintf(`%s pause --duration=%s %s`, withNet, duration.String(), ec.ContainerName))
+	return osutil.ExecCmd(l, fmt.Sprintf(`%s pause --duration=%s %s`, withNet, duration.String(), ec.ContainerName))
 }
 
 // ChaosNetworkDelay delays the container's network traffic for the specified duration
@@ -59,7 +59,7 @@ func (ec EnvComponent) ChaosNetworkDelay(
 	sb.Write([]byte(fmt.Sprintf(`%s netem --tc-image=gaiadocker/iproute2 --duration=%s`, withNet, duration.String())))
 	writeTargetNetworkParams(&sb, targetInterfaceName, targetIPs, targetIngressPorts, targetEgressPorts)
 	sb.Write([]byte(fmt.Sprintf(` delay --time=%d %s`, delay, ec.ContainerName)))
-	return utils.ExecCmd(l, sb.String())
+	return osutil.ExecCmd(l, sb.String())
 }
 
 // ChaosNetworkLoss causes the container to lose the specified percentage of network traffic for the specified duration
@@ -77,7 +77,7 @@ func (ec EnvComponent) ChaosNetworkLoss(
 	sb.Write([]byte(fmt.Sprintf(`%s netem --tc-image=gaiadocker/iproute2 --duration=%s`, withNet, duration.String())))
 	writeTargetNetworkParams(&sb, targetInterfaceName, targetIPs, targetIngressPorts, targetEgressPorts)
 	sb.Write([]byte(fmt.Sprintf(` loss --percent %d %s`, lossPercentage, ec.ContainerName)))
-	return utils.ExecCmd(l, sb.String())
+	return osutil.ExecCmd(l, sb.String())
 }
 
 // writeTargetNetworkParams writes the target network parameters to the provided strings.Builder

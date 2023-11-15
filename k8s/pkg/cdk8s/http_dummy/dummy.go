@@ -10,7 +10,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/environment"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/imports/k8s"
 	a "github.com/smartcontractkit/chainlink-testing-framework/k8s/pkg/alias"
-	"github.com/smartcontractkit/chainlink-testing-framework/utils"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/ptr"
 )
 
 const (
@@ -63,7 +63,7 @@ func New() func(root cdk8s.Chart) environment.ConnectedChart {
 		c := &Chart{}
 		vars := vars{
 			Labels: &map[string]*string{
-				"app": utils.Ptr(c.GetName()),
+				"app": ptr.Ptr(c.GetName()),
 			},
 			ConfigMapName: fmt.Sprintf("%s-cm", c.GetName()),
 			BaseName:      c.GetName(),
@@ -89,16 +89,16 @@ type vars struct {
 }
 
 func service(chart cdk8s.Chart, vars vars) {
-	k8s.NewKubeService(chart, utils.Ptr(fmt.Sprintf("%s-service", vars.BaseName)), &k8s.KubeServiceProps{
+	k8s.NewKubeService(chart, ptr.Ptr(fmt.Sprintf("%s-service", vars.BaseName)), &k8s.KubeServiceProps{
 		Metadata: &k8s.ObjectMeta{
-			Name: utils.Ptr(vars.BaseName),
+			Name: ptr.Ptr(vars.BaseName),
 		},
 		Spec: &k8s.ServiceSpec{
 			Ports: &[]*k8s.ServicePort{
 				{
-					Name:       utils.Ptr("http"),
-					Port:       utils.Ptr(vars.Port),
-					TargetPort: k8s.IntOrString_FromNumber(utils.Ptr[float64](7777)),
+					Name:       ptr.Ptr("http"),
+					Port:       ptr.Ptr(vars.Port),
+					TargetPort: k8s.IntOrString_FromNumber(ptr.Ptr[float64](7777)),
 				},
 			},
 			Selector: vars.Labels,
@@ -109,10 +109,10 @@ func service(chart cdk8s.Chart, vars vars) {
 func deployment(chart cdk8s.Chart, vars vars) {
 	k8s.NewKubeDeployment(
 		chart,
-		utils.Ptr(fmt.Sprintf("%s-deployment", vars.BaseName)),
+		ptr.Ptr(fmt.Sprintf("%s-deployment", vars.BaseName)),
 		&k8s.KubeDeploymentProps{
 			Metadata: &k8s.ObjectMeta{
-				Name: utils.Ptr(vars.BaseName),
+				Name: ptr.Ptr(vars.BaseName),
 			},
 			Spec: &k8s.DeploymentSpec{
 				Selector: &k8s.LabelSelector{
@@ -123,7 +123,7 @@ func deployment(chart cdk8s.Chart, vars vars) {
 						Labels: vars.Labels,
 					},
 					Spec: &k8s.PodSpec{
-						ServiceAccountName: utils.Ptr("default"),
+						ServiceAccountName: ptr.Ptr("default"),
 						Containers: &[]*k8s.Container{
 							container(vars),
 						},
@@ -135,22 +135,22 @@ func deployment(chart cdk8s.Chart, vars vars) {
 
 func container(vars vars) *k8s.Container {
 	return &k8s.Container{
-		Name:            utils.Ptr(vars.BaseName),
-		Image:           utils.Ptr("public.ecr.aws/chainlink/goc:latest"),
-		ImagePullPolicy: utils.Ptr("Always"),
+		Name:            ptr.Ptr(vars.BaseName),
+		Image:           ptr.Ptr("public.ecr.aws/chainlink/goc:latest"),
+		ImagePullPolicy: ptr.Ptr("Always"),
 		Ports: &[]*k8s.ContainerPort{
 			{
-				Name:          utils.Ptr("http"),
-				ContainerPort: utils.Ptr(vars.Port),
+				Name:          ptr.Ptr("http"),
+				ContainerPort: ptr.Ptr(vars.Port),
 			},
 		},
 		ReadinessProbe: &k8s.Probe{
 			HttpGet: &k8s.HttpGetAction{
-				Port: k8s.IntOrString_FromNumber(utils.Ptr(vars.Port)),
-				Path: utils.Ptr("/v1/cover/list"),
+				Port: k8s.IntOrString_FromNumber(ptr.Ptr(vars.Port)),
+				Path: ptr.Ptr("/v1/cover/list"),
 			},
-			InitialDelaySeconds: utils.Ptr[float64](20),
-			PeriodSeconds:       utils.Ptr[float64](5),
+			InitialDelaySeconds: ptr.Ptr[float64](20),
+			PeriodSeconds:       ptr.Ptr[float64](5),
 		},
 		Env:       &[]*k8s.EnvVar{},
 		Resources: a.ContainerResources("200m", "512Mi", "200m", "512Mi"),

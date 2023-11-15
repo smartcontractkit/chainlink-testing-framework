@@ -17,7 +17,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
-	"github.com/smartcontractkit/chainlink-testing-framework/utils"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
 type MockServer struct {
@@ -57,7 +57,7 @@ func (ms *MockServer) SetExternalAdapterMocks(count int) error {
 		if err != nil {
 			return err
 		}
-		cName, err := ms.Container.Name(utils.TestContext(ms.t))
+		cName, err := ms.Container.Name(testcontext.Get(ms.t))
 		if err != nil {
 			return err
 		}
@@ -88,7 +88,7 @@ func (ms *MockServer) StartContainer() error {
 		return fmt.Errorf("cannot start MockServer container: %w", err)
 	}
 	ms.Container = c
-	endpoint, err := GetEndpoint(utils.TestContext(ms.t), c, "http")
+	endpoint, err := GetEndpoint(testcontext.Get(ms.t), c, "http")
 	if err != nil {
 		return err
 	}

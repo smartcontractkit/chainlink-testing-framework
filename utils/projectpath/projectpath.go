@@ -1,5 +1,5 @@
 // Package utils contains some common paths used in configuration and tests
-package utils
+package projectpath
 
 import (
 	"path/filepath"
