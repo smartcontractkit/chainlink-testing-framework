@@ -9,7 +9,7 @@ import (
 var (
 	_, b, _, _ = runtime.Caller(0)
 	// ProjectRoot Root folder of this project
-	ProjectRoot = filepath.Join(filepath.Dir(b), "/..")
+	ProjectRoot = filepath.Join(filepath.Dir(b), "/../..")
 	// ChartsRoot test suite root
 	ChartsRoot = filepath.Join(ProjectRoot, "charts")
 	// K8sRoot test suite soak root
