@@ -1,7 +1,6 @@
 package test_env
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"net/url"
@@ -18,6 +17,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
 type PostgresDb struct {
@@ -110,13 +110,7 @@ func (pg *PostgresDb) WithTestLogger(t *testing.T) *PostgresDb {
 
 func (pg *PostgresDb) StartContainer() error {
 	req := pg.getContainerRequest()
-	l := tc.Logger
-	if pg.t != nil {
-		l = logging.CustomT{
-			T: pg.t,
-			L: pg.l,
-		}
-	}
+	l := logging.GetTestContainersGoTestLogger(pg.t)
 	c, err := docker.StartContainerWithRetry(pg.l, tc.GenericContainerRequest{
 		ContainerRequest: *req,
 		Started:          true,
@@ -127,7 +121,7 @@ func (pg *PostgresDb) StartContainer() error {
 		return err
 	}
 	pg.Container = c
-	externalPort, err := c.MappedPort(context.Background(), nat.Port(fmt.Sprintf("%s/tcp", pg.InternalPort)))
+	externalPort, err := c.MappedPort(testcontext.Get(pg.t), nat.Port(fmt.Sprintf("%s/tcp", pg.InternalPort)))
 	if err != nil {
 		return err
 	}

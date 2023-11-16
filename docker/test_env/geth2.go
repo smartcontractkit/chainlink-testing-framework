@@ -1,9 +1,9 @@
 package test_env
 
 import (
-	"context"
 	"fmt"
 	"os"
+	"testing"
 	"time"
 
 	"github.com/google/uuid"
@@ -16,6 +16,8 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
+	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
 const (
@@ -27,6 +29,7 @@ type GethGenesis struct {
 	EnvComponent
 	ExecutionDir string
 	l            zerolog.Logger
+	t            *testing.T
 }
 
 type Geth2 struct {
@@ -40,6 +43,7 @@ type Geth2 struct {
 	ExecutionDir         string
 	consensusLayer       ConsensusLayer
 	l                    zerolog.Logger
+	t                    *testing.T
 }
 
 func NewEth1Genesis(networks []string, executionDir string, opts ...EnvComponentOption) *GethGenesis {
@@ -62,17 +66,24 @@ func (g *GethGenesis) WithLogger(l zerolog.Logger) *GethGenesis {
 	return g
 }
 
+func (g *GethGenesis) WithTestLogger(t *testing.T) *GethGenesis {
+	g.l = logging.GetTestLogger(t)
+	g.t = t
+	return g
+}
+
 func (g *GethGenesis) StartContainer() error {
 	r, err := g.getContainerRequest(g.Networks)
 	if err != nil {
 		return err
 	}
 
+	l := logging.GetTestContainersGoTestLogger(g.t)
 	_, err = docker.StartContainerWithRetry(g.l, tc.GenericContainerRequest{
 		ContainerRequest: *r,
 		Reuse:            true,
 		Started:          true,
-		Logger:           &g.l,
+		Logger:           l,
 	})
 	if err != nil {
 		return errors.Wrapf(err, "cannot start geth eth1 genesis container")
@@ -131,38 +142,45 @@ func (g *Geth2) WithLogger(l zerolog.Logger) *Geth2 {
 	return g
 }
 
+func (g *Geth2) WithTestLogger(t *testing.T) *Geth2 {
+	g.l = logging.GetTestLogger(t)
+	g.t = t
+	return g
+}
+
 func (g *Geth2) StartContainer() (blockchain.EVMNetwork, error) {
 	r, err := g.getContainerRequest(g.Networks)
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
 
+	l := logging.GetTestContainersGoTestLogger(g.t)
 	ct, err := docker.StartContainerWithRetry(g.l, tc.GenericContainerRequest{
 		ContainerRequest: *r,
 		Reuse:            true,
 		Started:          true,
-		Logger:           &g.l,
+		Logger:           l,
 	})
 	if err != nil {
 		return blockchain.EVMNetwork{}, errors.Wrapf(err, "cannot start geth container")
 	}
 
-	host, err := GetHost(context.Background(), ct)
+	host, err := GetHost(testcontext.Get(g.t), ct)
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
-	httpPort, err := ct.MappedPort(context.Background(), NatPort(TX_GETH_HTTP_PORT))
+	httpPort, err := ct.MappedPort(testcontext.Get(g.t), NatPort(TX_GETH_HTTP_PORT))
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
-	wsPort, err := ct.MappedPort(context.Background(), NatPort(TX_GETH_WS_PORT))
+	wsPort, err := ct.MappedPort(testcontext.Get(g.t), NatPort(TX_GETH_WS_PORT))
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
-	executionPort, err := ct.MappedPort(context.Background(), NatPort(GETH_ETH2_EXECUTION_PORT))
+	executionPort, err := ct.MappedPort(testcontext.Get(g.t), NatPort(GETH_ETH2_EXECUTION_PORT))
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}

@@ -1,7 +1,6 @@
 package test_env
 
 import (
-	"context"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -25,6 +24,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/templates"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
 const (
@@ -250,13 +250,7 @@ func (g *NonDevGethNode) Start() error {
 		return err
 	}
 
-	l := tc.Logger
-	if g.t != nil {
-		l = logging.CustomT{
-			T: g.t,
-			L: g.l,
-		}
-	}
+	l := logging.GetTestContainersGoTestLogger(g.t)
 	bncr, err := g.getBootNodeContainerRequest()
 	if err != nil {
 		return err
@@ -270,11 +264,11 @@ func (g *NonDevGethNode) Start() error {
 	if err != nil {
 		return err
 	}
-	host, err := bootNode.Host(context.Background())
+	host, err := bootNode.Host(testcontext.Get(g.t))
 	if err != nil {
 		return err
 	}
-	r, err := bootNode.CopyFileFromContainer(context.Background(), "/root/.ethereum/bootnodes")
+	r, err := bootNode.CopyFileFromContainer(testcontext.Get(g.t), "/root/.ethereum/bootnodes")
 	if err != nil {
 		return err
 	}
@@ -306,16 +300,16 @@ func (g *NonDevGethNode) ConnectToClient() error {
 	if ct == nil {
 		return fmt.Errorf("container not started")
 	}
-	host, err := GetHost(context.Background(), ct)
+	host, err := GetHost(testcontext.Get(g.t), ct)
 	if err != nil {
 		return err
 	}
 	port := NatPort(TX_GETH_HTTP_PORT)
-	httpPort, err := ct.MappedPort(context.Background(), port)
+	httpPort, err := ct.MappedPort(testcontext.Get(g.t), port)
 	if err != nil {
 		return err
 	}
-	wsPort, err := ct.MappedPort(context.Background(), NatPort(TX_NON_DEV_GETH_WS_PORT))
+	wsPort, err := ct.MappedPort(testcontext.Get(g.t), NatPort(TX_NON_DEV_GETH_WS_PORT))
 	if err != nil {
 		return err
 	}
@@ -333,7 +327,7 @@ func (g *NonDevGethNode) ConnectToClient() error {
 	if err != nil {
 		return err
 	}
-	at, err := ec.BalanceAt(context.Background(), common.HexToAddress("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"))
+	at, err := ec.BalanceAt(testcontext.Get(g.t), common.HexToAddress("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"))
 	if err != nil {
 		return err
 	}

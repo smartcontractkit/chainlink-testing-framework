@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/imports/k8s"
-	"github.com/smartcontractkit/chainlink-testing-framework/utils"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/ptr"
 )
 
 // ShortDur is a helper method for kube-janitor duration format
@@ -18,7 +18,7 @@ func ShortDur(d time.Duration) *string {
 	if strings.HasSuffix(s, "h0m") {
 		s = s[:len(s)-2]
 	}
-	return utils.Ptr(s)
+	return ptr.Ptr(s)
 }
 
 func ConvertLabels(labels []string) (*map[string]*string, error) {
@@ -28,7 +28,7 @@ func ConvertLabels(labels []string) (*map[string]*string, error) {
 		if len(a) != 2 {
 			return nil, fmt.Errorf("invalid label '%s' provided, please provide labels in format key=value", a)
 		}
-		cdk8sLabels[a[0]] = utils.Ptr(a[1])
+		cdk8sLabels[a[0]] = ptr.Ptr(a[1])
 	}
 	return &cdk8sLabels, nil
 }
@@ -37,7 +37,7 @@ func ConvertLabels(labels []string) (*map[string]*string, error) {
 func ConvertAnnotations(annotations map[string]string) *map[string]*string {
 	a := make(map[string]*string)
 	for k, v := range annotations {
-		a[k] = utils.Ptr(v)
+		a[k] = ptr.Ptr(v)
 	}
 	return &a
 }
@@ -45,8 +45,8 @@ func ConvertAnnotations(annotations map[string]string) *map[string]*string {
 // EnvVarStr quick shortcut for string/string key/value var
 func EnvVarStr(k, v string) *k8s.EnvVar {
 	return &k8s.EnvVar{
-		Name:  utils.Ptr(k),
-		Value: utils.Ptr(v),
+		Name:  ptr.Ptr(k),
+		Value: ptr.Ptr(v),
 	}
 }
 
@@ -54,12 +54,12 @@ func EnvVarStr(k, v string) *k8s.EnvVar {
 func ContainerResources(reqCPU, reqMEM, limCPU, limMEM string) *k8s.ResourceRequirements {
 	return &k8s.ResourceRequirements{
 		Requests: &map[string]k8s.Quantity{
-			"cpu":    k8s.Quantity_FromString(utils.Ptr(reqCPU)),
-			"memory": k8s.Quantity_FromString(utils.Ptr(reqMEM)),
+			"cpu":    k8s.Quantity_FromString(ptr.Ptr(reqCPU)),
+			"memory": k8s.Quantity_FromString(ptr.Ptr(reqMEM)),
 		},
 		Limits: &map[string]k8s.Quantity{
-			"cpu":    k8s.Quantity_FromString(utils.Ptr(limCPU)),
-			"memory": k8s.Quantity_FromString(utils.Ptr(limMEM)),
+			"cpu":    k8s.Quantity_FromString(ptr.Ptr(limCPU)),
+			"memory": k8s.Quantity_FromString(ptr.Ptr(limMEM)),
 		},
 	}
 }

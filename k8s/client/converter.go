@@ -51,7 +51,7 @@ func (m *URLConverter) As(conn ConnectionMode, proto Protocol) (string, error) {
 		host = m.ci.Host
 		port = m.ci.Ports.Remote
 	} else {
-		host = "localhost"
+		host = "127.0.0.1"
 		port = m.ci.Ports.Local
 	}
 	switch proto {
