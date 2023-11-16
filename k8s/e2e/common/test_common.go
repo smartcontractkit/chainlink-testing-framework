@@ -20,7 +20,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/pkg/helm/ethereum"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/presets"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
-	"github.com/smartcontractkit/chainlink-testing-framework/utils"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/ptr"
 )
 
 const (
@@ -290,7 +290,7 @@ func TestWithChaos(t *testing.T) {
 	}{
 		chaos.NewFailPods,
 		&chaos.Props{
-			LabelsSelector: &map[string]*string{client.AppLabel: utils.Ptr(appLabel)},
+			LabelsSelector: &map[string]*string{client.AppLabel: ptr.Ptr(appLabel)},
 			DurationStr:    "30s",
 		},
 	}

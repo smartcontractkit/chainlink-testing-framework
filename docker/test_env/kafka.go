@@ -1,7 +1,6 @@
 package test_env
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -19,6 +18,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
 type Kafka struct {
@@ -97,13 +97,7 @@ func (k *Kafka) WithEnvVars(envVars map[string]string) *Kafka {
 }
 
 func (k *Kafka) StartContainer() error {
-	l := tc.Logger
-	if k.t != nil {
-		l = logging.CustomT{
-			T: k.t,
-			L: k.l,
-		}
-	}
+	l := logging.GetTestContainersGoTestLogger(k.t)
 	k.InternalUrl = fmt.Sprintf("%s:%s", k.ContainerName, "9092")
 	// TODO: Fix mapped port
 	k.ExternalUrl = fmt.Sprintf("127.0.0.1:%s", "29092")
@@ -147,7 +141,7 @@ func (k *Kafka) CreateLocalTopics() error {
 		if topicConfig.CleanupPolicy != "" {
 			cmd = append(cmd, "--config", fmt.Sprintf("cleanup.policy=%s", topicConfig.CleanupPolicy))
 		}
-		code, output, err := k.Container.Exec(context.Background(), cmd)
+		code, output, err := k.Container.Exec(testcontext.Get(k.t), cmd)
 		if err != nil {
 			return err
 		}

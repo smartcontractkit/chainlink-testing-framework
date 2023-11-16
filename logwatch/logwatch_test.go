@@ -15,6 +15,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/logwatch"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
 type TestCase struct {
@@ -63,8 +64,7 @@ func replaceContainerNamePlaceholders(tc TestCase) []string {
 }
 
 // startTestContainer with custom streams emitted
-func startTestContainer(containerName string, msg string, amount int, intervalSeconds float64, exitEarly bool) (testcontainers.Container, error) {
-	ctx := context.Background()
+func startTestContainer(ctx context.Context, containerName string, msg string, amount int, intervalSeconds float64, exitEarly bool) (testcontainers.Container, error) {
 	var cmd []string
 	if exitEarly {
 		cmd = []string{"bash", "-c",
@@ -159,16 +159,17 @@ func TestLogWatchDocker(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+			ctx := testcontext.Get(t)
 			dynamicContainerNames := replaceContainerNamePlaceholders(tc)
 			lw, err := logwatch.NewLogWatch(t, tc.mustNotifyList)
 			require.NoError(t, err)
 			containers := make([]testcontainers.Container, 0)
 			for _, cn := range dynamicContainerNames {
-				container, err := startTestContainer(cn, tc.msg, tc.msgsAmount, tc.msgsIntervalSeconds, tc.exitEarly)
+				container, err := startTestContainer(ctx, cn, tc.msg, tc.msgsAmount, tc.msgsIntervalSeconds, tc.exitEarly)
 				require.NoError(t, err)
-				name, err := container.Name(context.Background())
+				name, err := container.Name(ctx)
 				require.NoError(t, err)
-				err = lw.ConnectContainer(context.Background(), container, name, tc.pushToLoki)
+				err = lw.ConnectContainer(ctx, container, name, tc.pushToLoki)
 				require.NoError(t, err)
 			}
 
@@ -210,7 +211,7 @@ func TestLogWatchDocker(t *testing.T) {
 				for _, c := range containers {
 					if !tc.exitEarly {
 						lw.DisconnectContainer(c)
-						if err := c.Terminate(context.Background()); err != nil {
+						if err := c.Terminate(ctx); err != nil {
 							t.Fatalf("failed to terminate container: %s", err.Error())
 						}
 					}

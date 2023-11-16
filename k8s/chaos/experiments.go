@@ -6,11 +6,11 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/config"
 	networkChaos "github.com/smartcontractkit/chainlink-testing-framework/k8s/imports/k8s/networkchaos/chaosmeshorg"
 	podChaos "github.com/smartcontractkit/chainlink-testing-framework/k8s/imports/k8s/podchaos/chaosmeshorg"
-	"github.com/smartcontractkit/chainlink-testing-framework/utils"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/ptr"
 )
 
 var (
-	FOREVER = utils.Ptr("999h")
+	FOREVER = ptr.Ptr("999h")
 )
 
 type ManifestFunc func(namespace string, props *Props) (cdk8s.App, string, string)
@@ -28,8 +28,8 @@ func blankManifest(namespace string) (cdk8s.App, cdk8s.Chart) {
 	app := cdk8s.NewApp(&cdk8s.AppProps{
 		YamlOutputType: cdk8s.YamlOutputType_FILE_PER_APP,
 	})
-	return app, cdk8s.NewChart(app, utils.Ptr("root"), &cdk8s.ChartProps{
-		Namespace: utils.Ptr(namespace),
+	return app, cdk8s.NewChart(app, ptr.Ptr("root"), &cdk8s.ChartProps{
+		Namespace: ptr.Ptr(namespace),
 	})
 }
 
@@ -37,7 +37,7 @@ func NewKillPods(namespace string, props *Props) (cdk8s.App, string, string) {
 	config.JSIIGlobalMu.Lock()
 	defer config.JSIIGlobalMu.Unlock()
 	app, root := blankManifest(namespace)
-	c := podChaos.NewPodChaos(root, utils.Ptr("experiment"), &podChaos.PodChaosProps{
+	c := podChaos.NewPodChaos(root, ptr.Ptr("experiment"), &podChaos.PodChaosProps{
 		Spec: &podChaos.PodChaosSpec{
 			Action: podChaos.PodChaosSpecAction_POD_KILL,
 			Mode:   podChaos.PodChaosSpecMode_ALL,
@@ -54,14 +54,14 @@ func NewFailPods(namespace string, props *Props) (cdk8s.App, string, string) {
 	config.JSIIGlobalMu.Lock()
 	defer config.JSIIGlobalMu.Unlock()
 	app, root := blankManifest(namespace)
-	c := podChaos.NewPodChaos(root, utils.Ptr("experiment"), &podChaos.PodChaosProps{
+	c := podChaos.NewPodChaos(root, ptr.Ptr("experiment"), &podChaos.PodChaosProps{
 		Spec: &podChaos.PodChaosSpec{
 			Action: podChaos.PodChaosSpecAction_POD_FAILURE,
 			Mode:   podChaos.PodChaosSpecMode_ALL,
 			Selector: &podChaos.PodChaosSpecSelector{
 				LabelSelectors: props.LabelsSelector,
 			},
-			Duration: utils.Ptr(props.DurationStr),
+			Duration: ptr.Ptr(props.DurationStr),
 		},
 	})
 	return app, *c.Name(), "podchaos"
@@ -71,7 +71,7 @@ func NewFailContainers(namespace string, props *Props) (cdk8s.App, string, strin
 	config.JSIIGlobalMu.Lock()
 	defer config.JSIIGlobalMu.Unlock()
 	app, root := blankManifest(namespace)
-	c := podChaos.NewPodChaos(root, utils.Ptr("experiment"), &podChaos.PodChaosProps{
+	c := podChaos.NewPodChaos(root, ptr.Ptr("experiment"), &podChaos.PodChaosProps{
 		Spec: &podChaos.PodChaosSpec{
 			Action: podChaos.PodChaosSpecAction_POD_KILL,
 			Mode:   podChaos.PodChaosSpecMode_ALL,
@@ -89,7 +89,7 @@ func NewContainerKill(namespace string, props *Props) (cdk8s.App, string, string
 	config.JSIIGlobalMu.Lock()
 	defer config.JSIIGlobalMu.Unlock()
 	app, root := blankManifest(namespace)
-	c := podChaos.NewPodChaos(root, utils.Ptr("experiment"), &podChaos.PodChaosProps{
+	c := podChaos.NewPodChaos(root, ptr.Ptr("experiment"), &podChaos.PodChaosProps{
 		Spec: &podChaos.PodChaosSpec{
 			Action: podChaos.PodChaosSpecAction_POD_KILL,
 			Mode:   podChaos.PodChaosSpecMode_ALL,
@@ -106,7 +106,7 @@ func NewNetworkPartition(namespace string, props *Props) (cdk8s.App, string, str
 	config.JSIIGlobalMu.Lock()
 	defer config.JSIIGlobalMu.Unlock()
 	app, root := blankManifest(namespace)
-	c := networkChaos.NewNetworkChaos(root, utils.Ptr("experiment"), &networkChaos.NetworkChaosProps{
+	c := networkChaos.NewNetworkChaos(root, ptr.Ptr("experiment"), &networkChaos.NetworkChaosProps{
 		Spec: &networkChaos.NetworkChaosSpec{
 			Action: networkChaos.NetworkChaosSpecAction_PARTITION,
 			Mode:   networkChaos.NetworkChaosSpecMode_ALL,
@@ -114,10 +114,10 @@ func NewNetworkPartition(namespace string, props *Props) (cdk8s.App, string, str
 				LabelSelectors: props.FromLabels,
 			},
 			Direction:       networkChaos.NetworkChaosSpecDirection_BOTH,
-			Duration:        utils.Ptr(props.DurationStr),
+			Duration:        ptr.Ptr(props.DurationStr),
 			ExternalTargets: nil,
 			Loss: &networkChaos.NetworkChaosSpecLoss{
-				Loss: utils.Ptr("100"),
+				Loss: ptr.Ptr("100"),
 			},
 			Target: &networkChaos.NetworkChaosSpecTarget{
 				Mode: networkChaos.NetworkChaosSpecTargetMode_ALL,
@@ -132,7 +132,7 @@ func NewNetworkPartition(namespace string, props *Props) (cdk8s.App, string, str
 
 func NewNetworkLatency(namespace string, props *Props) (cdk8s.App, string, string) {
 	app, root := blankManifest(namespace)
-	c := networkChaos.NewNetworkChaos(root, utils.Ptr("experiment"), &networkChaos.NetworkChaosProps{
+	c := networkChaos.NewNetworkChaos(root, ptr.Ptr("experiment"), &networkChaos.NetworkChaosProps{
 		Spec: &networkChaos.NetworkChaosSpec{
 			Action: networkChaos.NetworkChaosSpecAction_DELAY,
 			Mode:   networkChaos.NetworkChaosSpecMode_ALL,
@@ -140,10 +140,10 @@ func NewNetworkLatency(namespace string, props *Props) (cdk8s.App, string, strin
 				LabelSelectors: props.FromLabels,
 			},
 			Direction: networkChaos.NetworkChaosSpecDirection_BOTH,
-			Duration:  utils.Ptr(props.DurationStr),
+			Duration:  ptr.Ptr(props.DurationStr),
 			Delay: &networkChaos.NetworkChaosSpecDelay{
-				Latency:     utils.Ptr(props.Delay),
-				Correlation: utils.Ptr("100"),
+				Latency:     ptr.Ptr(props.Delay),
+				Correlation: ptr.Ptr("100"),
 			},
 			Target: &networkChaos.NetworkChaosSpecTarget{
 				Mode: networkChaos.NetworkChaosSpecTargetMode_ALL,

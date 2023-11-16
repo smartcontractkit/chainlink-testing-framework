@@ -25,7 +25,8 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/pkg"
 	a "github.com/smartcontractkit/chainlink-testing-framework/k8s/pkg/alias"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
-	"github.com/smartcontractkit/chainlink-testing-framework/utils"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/ptr"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
 const (
@@ -40,9 +41,9 @@ const (
 
 var (
 	defaultNamespaceAnnotations = map[string]*string{
-		"prometheus.io/scrape":                             utils.Ptr("true"),
-		"backyards.banzaicloud.io/image-registry-access":   utils.Ptr("true"),
-		"backyards.banzaicloud.io/public-dockerhub-access": utils.Ptr("true"),
+		"prometheus.io/scrape":                             ptr.Ptr("true"),
+		"backyards.banzaicloud.io/image-registry-access":   ptr.Ptr("true"),
+		"backyards.banzaicloud.io/public-dockerhub-access": ptr.Ptr("true"),
 	}
 )
 
@@ -275,29 +276,29 @@ func (m *Environment) initApp() error {
 		return err
 	}
 	defaultNamespaceAnnotations[pkg.TTLLabelKey] = a.ShortDur(m.Cfg.TTL)
-	m.root = cdk8s.NewChart(m.App, utils.Ptr(fmt.Sprintf("root-chart-%s", m.Cfg.Namespace)), &cdk8s.ChartProps{
+	m.root = cdk8s.NewChart(m.App, ptr.Ptr(fmt.Sprintf("root-chart-%s", m.Cfg.Namespace)), &cdk8s.ChartProps{
 		Labels:    nsLabels,
-		Namespace: utils.Ptr(m.Cfg.Namespace),
+		Namespace: ptr.Ptr(m.Cfg.Namespace),
 	})
-	k8s.NewKubeNamespace(m.root, utils.Ptr("namespace"), &k8s.KubeNamespaceProps{
+	k8s.NewKubeNamespace(m.root, ptr.Ptr("namespace"), &k8s.KubeNamespaceProps{
 		Metadata: &k8s.ObjectMeta{
-			Name:        utils.Ptr(m.Cfg.Namespace),
+			Name:        ptr.Ptr(m.Cfg.Namespace),
 			Labels:      nsLabels,
 			Annotations: &defaultNamespaceAnnotations,
 		},
 	})
 	if m.Cfg.PreventPodEviction {
 		zero := float64(0)
-		k8s.NewKubePodDisruptionBudget(m.root, utils.Ptr("pdb"), &k8s.KubePodDisruptionBudgetProps{
+		k8s.NewKubePodDisruptionBudget(m.root, ptr.Ptr("pdb"), &k8s.KubePodDisruptionBudgetProps{
 			Metadata: &k8s.ObjectMeta{
-				Name:      utils.Ptr("clenv-pdb"),
-				Namespace: utils.Ptr(m.Cfg.Namespace),
+				Name:      ptr.Ptr("clenv-pdb"),
+				Namespace: ptr.Ptr(m.Cfg.Namespace),
 			},
 			Spec: &k8s.PodDisruptionBudgetSpec{
 				MaxUnavailable: k8s.IntOrString_FromNumber(&zero),
 				Selector: &k8s.LabelSelector{
 					MatchLabels: &map[string]*string{
-						pkg.NamespaceLabelKey: utils.Ptr(m.Cfg.Namespace),
+						pkg.NamespaceLabelKey: ptr.Ptr(m.Cfg.Namespace),
 					},
 				},
 			},
@@ -305,7 +306,7 @@ func (m *Environment) initApp() error {
 	}
 	m.CurrentManifest = *m.App.SynthYaml()
 	// loop retry applying the initial manifest with the namespace and other basics
-	ctx, cancel := context.WithTimeout(context.Background(), m.Cfg.ReadyCheckData.Timeout)
+	ctx, cancel := context.WithTimeout(testcontext.Get(m.Cfg.Test), m.Cfg.ReadyCheckData.Timeout)
 	defer cancel()
 	startTime := time.Now()
 	deadline, _ := ctx.Deadline()
@@ -346,7 +347,7 @@ func (m *Environment) removeChart(name string) error {
 		return err
 	}
 	m.Charts = append(m.Charts[:chartIndex], m.Charts[chartIndex+1:]...)
-	m.root.Node().TryRemoveChild(utils.Ptr(name))
+	m.root.Node().TryRemoveChild(ptr.Ptr(name))
 	return nil
 }
 
@@ -381,13 +382,13 @@ func (m *Environment) ReplaceHelm(name string, chart ConnectedChart) (*Environme
 		Interface("Props", chart.GetProps()).
 		Interface("Values", chart.GetValues()).
 		Msg("Chart deployment values")
-	h := cdk8s.NewHelm(m.root, utils.Ptr(chart.GetName()), &cdk8s.HelmProps{
-		Chart: utils.Ptr(chart.GetPath()),
+	h := cdk8s.NewHelm(m.root, ptr.Ptr(chart.GetName()), &cdk8s.HelmProps{
+		Chart: ptr.Ptr(chart.GetPath()),
 		HelmFlags: &[]*string{
-			utils.Ptr("--namespace"),
-			utils.Ptr(m.Cfg.Namespace),
+			ptr.Ptr("--namespace"),
+			ptr.Ptr(m.Cfg.Namespace),
 		},
-		ReleaseName: utils.Ptr(chart.GetName()),
+		ReleaseName: ptr.Ptr(chart.GetName()),
 		Values:      chart.GetValues(),
 	})
 	addDefaultPodAnnotationsAndLabels(h, markNotSafeToEvict(m.Cfg.PreventPodEviction, nil), m.Cfg.PodLabels)
@@ -433,7 +434,7 @@ func addDefaultPodAnnotationsAndLabels(h cdk8s.Helm, annotations, labels map[str
 					annoatationsCopy[k] = v.(string)
 				}
 			}
-			ao.AddJsonPatch(cdk8s.JsonPatch_Add(utils.Ptr("/spec/template/metadata/annotations"), annoatationsCopy))
+			ao.AddJsonPatch(cdk8s.JsonPatch_Add(ptr.Ptr("/spec/template/metadata/annotations"), annoatationsCopy))
 
 			// loop over the labels and apply them to both the labels and selectors
 			// these should in theory always have at least one label/selector combo in existence so we don't
@@ -441,8 +442,8 @@ func addDefaultPodAnnotationsAndLabels(h cdk8s.Helm, annotations, labels map[str
 			for k, v := range labels {
 				// Escape the keys according to JSON Pointer syntax in RFC 6901
 				escapedKey := strings.ReplaceAll(strings.ReplaceAll(k, "~", "~0"), "/", "~1")
-				ao.AddJsonPatch(cdk8s.JsonPatch_Add(utils.Ptr(fmt.Sprintf("/spec/template/metadata/labels/%s", escapedKey)), v))
-				ao.AddJsonPatch(cdk8s.JsonPatch_Add(utils.Ptr(fmt.Sprintf("/spec/selector/matchLabels/%s", escapedKey)), v))
+				ao.AddJsonPatch(cdk8s.JsonPatch_Add(ptr.Ptr(fmt.Sprintf("/spec/template/metadata/labels/%s", escapedKey)), v))
+				ao.AddJsonPatch(cdk8s.JsonPatch_Add(ptr.Ptr(fmt.Sprintf("/spec/selector/matchLabels/%s", escapedKey)), v))
 			}
 		}
 	}
@@ -462,7 +463,7 @@ func (m *Environment) UpdateHelm(name string, values map[string]any) (*Environme
 	if _, labelsExist := values["labels"]; !labelsExist {
 		values["labels"] = make(map[string]*string)
 	}
-	values["labels"].(map[string]*string)["updated"] = utils.Ptr("true")
+	values["labels"].(map[string]*string)["updated"] = ptr.Ptr("true")
 	if err = mergo.Merge(chart.GetValues(), values, mergo.WithOverride); err != nil {
 		return nil, err
 	}
@@ -503,22 +504,22 @@ func (m *Environment) AddHelm(chart ConnectedChart) *Environment {
 		Interface("Values", values).
 		Msg("Chart deployment values")
 	helmFlags := []*string{
-		utils.Ptr("--namespace"),
-		utils.Ptr(m.Cfg.Namespace),
-		utils.Ptr("--skip-tests"),
+		ptr.Ptr("--namespace"),
+		ptr.Ptr(m.Cfg.Namespace),
+		ptr.Ptr("--skip-tests"),
 	}
 	if chart.GetVersion() != "" {
-		helmFlags = append(helmFlags, utils.Ptr("--version"), utils.Ptr(chart.GetVersion()))
+		helmFlags = append(helmFlags, ptr.Ptr("--version"), ptr.Ptr(chart.GetVersion()))
 	}
 	chartPath, err := m.PullOCIChart(chart)
 	if err != nil {
 		m.err = err
 		return m
 	}
-	h := cdk8s.NewHelm(m.root, utils.Ptr(chart.GetName()), &cdk8s.HelmProps{
-		Chart:       utils.Ptr(chartPath),
+	h := cdk8s.NewHelm(m.root, ptr.Ptr(chart.GetName()), &cdk8s.HelmProps{
+		Chart:       ptr.Ptr(chartPath),
 		HelmFlags:   &helmFlags,
-		ReleaseName: utils.Ptr(chart.GetName()),
+		ReleaseName: ptr.Ptr(chart.GetName()),
 		Values:      values,
 	})
 	addDefaultPodAnnotationsAndLabels(h, markNotSafeToEvict(m.Cfg.PreventPodEviction, nil), m.Cfg.PodLabels)
@@ -643,7 +644,7 @@ func (m *Environment) RunCustomReadyConditions(customCheck *client.ReadyCheckDat
 		if m.Cfg.Test == nil {
 			return fmt.Errorf("Test must be configured in the environment when using the remote runner")
 		}
-		rrSelector := map[string]*string{pkg.NamespaceLabelKey: utils.Ptr(m.Cfg.Namespace)}
+		rrSelector := map[string]*string{pkg.NamespaceLabelKey: ptr.Ptr(m.Cfg.Namespace)}
 		m.AddChart(NewRunner(&Props{
 			BaseName:           REMOTE_RUNNER_NAME,
 			TargetNamespace:    m.Cfg.Namespace,
@@ -773,7 +774,7 @@ func (m *Environment) DeployCustomReadyConditions(customCheck *client.ReadyCheck
 	if m.Cfg.DryRun {
 		return m.Client.DryRun(m.CurrentManifest)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), m.Cfg.ReadyCheckData.Timeout)
+	ctx, cancel := context.WithTimeout(testcontext.Get(m.Cfg.Test), m.Cfg.ReadyCheckData.Timeout)
 	defer cancel()
 	err := m.Client.Apply(ctx, m.CurrentManifest, m.Cfg.Namespace, true)
 	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
@@ -809,7 +810,7 @@ func (m *Environment) RolloutStatefulSets() error {
 	if m.err != nil {
 		return m.err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), m.Cfg.ReadyCheckData.Timeout)
+	ctx, cancel := context.WithTimeout(testcontext.Get(m.Cfg.Test), m.Cfg.ReadyCheckData.Timeout)
 	defer cancel()
 	err := m.Client.RolloutStatefulSets(ctx, m.Cfg.Namespace)
 	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
@@ -823,7 +824,7 @@ func (m *Environment) RolloutRestartBySelector(resource string, selector string)
 	if m.err != nil {
 		return m.err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), m.Cfg.ReadyCheckData.Timeout)
+	ctx, cancel := context.WithTimeout(testcontext.Get(m.Cfg.Test), m.Cfg.ReadyCheckData.Timeout)
 	defer cancel()
 	err := m.Client.RolloutRestartBySelector(ctx, m.Cfg.Namespace, resource, selector)
 	if errors.Is(ctx.Err(), context.DeadlineExceeded) {

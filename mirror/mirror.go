@@ -8,14 +8,14 @@ import (
 	"strings"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/config"
-	"github.com/smartcontractkit/chainlink-testing-framework/utils"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/projectpath"
 )
 
 // findImageByName takes the name to search for as a string.
 // It returns the name and version of the name if found, or an empty string with an error otherwise.
 func findImageByName(name string) (string, error) {
 	// Read the mirror json file from chainlink-testing-framework/mirror/mirror.json
-	data, err := os.ReadFile(filepath.Join(utils.MirrorDir, "mirror.json"))
+	data, err := os.ReadFile(filepath.Join(projectpath.MirrorDir, "mirror.json"))
 	if err != nil {
 		return "", err
 	}

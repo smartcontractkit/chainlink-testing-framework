@@ -12,7 +12,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
-	"github.com/smartcontractkit/chainlink-testing-framework/utils"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/osutil"
 )
 
 // Pre-configured test networks and their connections
@@ -696,7 +696,7 @@ func SetNetworks(networkKeys []string) []blockchain.EVMNetwork {
 			wsEnvVal := os.Getenv(wsEnvVar)
 			if wsEnvVal == "" {
 				// Get default value
-				defaultUrls, err := utils.GetEnv("EVM_URLS")
+				defaultUrls, err := osutil.GetEnv("EVM_URLS")
 				if err != nil {
 					panic(fmt.Errorf("error getting EVM_URLS var: %w", err))
 				}
@@ -714,7 +714,7 @@ func SetNetworks(networkKeys []string) []blockchain.EVMNetwork {
 			httpEnvVal := os.Getenv(httpEnvVar)
 			if httpEnvVal == "" {
 				// Get default value
-				defaultUrls, err := utils.GetEnv("EVM_HTTP_URLS")
+				defaultUrls, err := osutil.GetEnv("EVM_HTTP_URLS")
 				if err != nil {
 					panic(fmt.Errorf("error getting EVM_HTTP_URLS var: %w", err))
 				}
@@ -732,7 +732,7 @@ func SetNetworks(networkKeys []string) []blockchain.EVMNetwork {
 			walletKeysEnvVal := os.Getenv(walletKeysEnvVar)
 			if walletKeysEnvVal == "" {
 				// Get default value
-				defaultKeys, err := utils.GetEnv("EVM_KEYS")
+				defaultKeys, err := osutil.GetEnv("EVM_KEYS")
 				if err != nil {
 					panic(fmt.Errorf("error getting EVM_KEYS var: %w", err))
 				}

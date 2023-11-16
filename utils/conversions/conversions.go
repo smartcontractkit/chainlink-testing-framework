@@ -1,4 +1,4 @@
-package utils
+package conversions
 
 import (
 	"crypto/ecdsa"
