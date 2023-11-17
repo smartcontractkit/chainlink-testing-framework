@@ -304,7 +304,7 @@ func buildNethermindChainspec(addressesToFund []string, genesisTime int) (string
 	}{
 		AddressesToFund:   addressesToFund,
 		GenesisTimestamp:  fmt.Sprintf("%x", genesisTime),
-		ShanghaiTimestamp: fmt.Sprintf("%x", genesisTime+100),
+		ShanghaiTimestamp: fmt.Sprintf("%x", genesisTime+30),
 	}
 
 	t, err := template.New("genesis-json").Funcs(funcMap).Parse(NethermindGeneisJSON)
@@ -319,7 +319,7 @@ func buildNethermindChainspec(addressesToFund []string, genesisTime int) (string
 	return buf.String(), err
 }
 
-// 	  "timestamp": "0x{{ .ShangaiTimestamp }}",
+//"timestamp": "0x{{ .GenesisTimestamp }}",
 
 var NethermindGeneisJSON = `
 {
@@ -365,7 +365,15 @@ var NethermindGeneisJSON = `
 		"eip3198Transition": "0x0",
 		"eip3529Transition": "0x0",
 		"eip3541Transition": "0x0",
-		"eip4895TransitionTimestamp": "0x{{ .ShanghaiTimestamp }}",
+		"eip4895TransitionTimestamp": "0x6553701d",
+		"eip3855TransitionTimestamp": "0x6553701d",
+		"eip3651TransitionTimestamp": "0x6553701d",
+		"eip3860TransitionTimestamp": "0x6553701d",
+		"eip4844TransitionTimestamp": "0x65565e1d",
+		"eip4788TransitionTimestamp": "0x65565e1d",
+		"eip1153TransitionTimestamp": "0x65565e1d",
+		"eip5656TransitionTimestamp": "0x65565e1d",
+		"eip6780TransitionTimestamp": "0x65565e1d"
 		"terminalTotalDifficulty": "0x0"
 		},
 		"genesis": {
@@ -379,9 +387,9 @@ var NethermindGeneisJSON = `
 	  "author": "0x0000000000000000000000000000000000000000",
 	  "timestamp": "0x{{ .GenesisTimestamp }}",
 	  "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
-	  "extraData": "0x0000000000000000000000000000000000000000000000000000000000000000123463a4b065722e99115d6c222f267d9cabb5240000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-	  "gasLimit":"0x1c9c380",
-	  "baseFeePerGas":"0x0"
+	  "extradata": "0x0000000000000000000000000000000000000000000000000000000000000000123463a4B065722E99115D6c222f267d9cABb5240000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+	  "gasLimit":"0x1C9C380",
+	  "baseFeePerGas":"0x7"
 	},
 	"accounts": {
 	  "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b":

@@ -141,11 +141,11 @@ func (g *PrysmGenesis) getContainerRequest(networks []string) (*tc.ContainerRequ
 		),
 		Cmd: []string{"testnet",
 			"generate-genesis",
-			"--fork=capella",
+			"--fork=deneb",
 			"--num-validators=8",
 			// "--genesis-time-delay=20",
 			// "--genesis-time=" + fmt.Sprintf("%d", time.Now().Add(time.Duration(30*time.Second)).Unix()),
-			"--genesis-time=" + fmt.Sprintf("%d", g.beaconChainConfig.MinGenesisTime+100),
+			"--genesis-time=" + fmt.Sprintf("%d", g.beaconChainConfig.MinGenesisTime+30),
 			"--output-ssz=" + eth2GenesisFile,
 			"--chain-config-file=" + beaconConfigFile,
 			// "--geth-genesis-json-in=" + eth1GenesisFile,
@@ -277,7 +277,6 @@ func (g *PrysmBeaconChain) getContainerRequest(networks []string) (*tc.Container
 			"--minimum-peers-per-subnet=0",
 			"--enable-debug-rpc-endpoints",
 			"--verbosity=debug",
-			// "--interop-eth1data-votesgeth", //no idea why this flag results in error when passed here
 		},
 		ExposedPorts: []string{NatPortFormat(PRYSM_NODE_RPC_PORT), NatPortFormat(PRYSM_QUERY_RPC_PORT)},
 		Mounts: tc.ContainerMounts{

@@ -143,6 +143,10 @@ func TestEth2WithPrysmAndNethermindDefaultConfig(t *testing.T) {
 		WithConsensusType(ConsensusType_PoS).
 		WithConsensusLayer(ConsensusLayer_Prysm).
 		WithExecutionLayer(ExecutionLayer_Nethermind).
+		WithBeaconChainConfig(BeaconChainConfig{
+			SecondsPerSlot: 6,
+			SlotsPerEpoch:  4,
+		}).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 
