@@ -25,6 +25,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"go.uber.org/atomic"
 	"golang.org/x/sync/errgroup"
 
@@ -292,6 +293,18 @@ func (e *EthereumClient) Fund(
 		Str("Amount", amount.String()).
 		Uint64("Estimated Gas Cost", tx.Cost().Uint64()).
 		Msg("Funding Address")
+	// Add plain log for Grafana parsing purposes
+	log.Info().
+		Str("Token", "ETH").
+		Str("From", e.DefaultWallet.Address()).
+		Str("To", toAddress).
+		Str("Hash", tx.Hash().Hex()).
+		Uint64("Nonce", tx.Nonce()).
+		Str("Network Name", e.GetNetworkName()).
+		Str("Amount", amount.String()).
+		Uint64("Estimated Gas Cost", tx.Cost().Uint64()).
+		Msg("Funding Address")
+
 	if err := e.SendTransaction(context.Background(), tx); err != nil {
 		if strings.Contains(err.Error(), "nonce") {
 			err = fmt.Errorf("using nonce %d err: %w", nonce, err)
@@ -422,6 +435,14 @@ func (e *EthereumClient) DeployContract(
 	}
 
 	e.l.Info().
+		Str("Contract Address", contractAddress.Hex()).
+		Str("Contract Name", contractName).
+		Str("From", e.DefaultWallet.Address()).
+		Str("Total Gas Cost", conversions.WeiToEther(transaction.Cost()).String()).
+		Str("Network Name", e.NetworkConfig.Name).
+		Msg("Deployed contract")
+
+	log.Info().
 		Str("Contract Address", contractAddress.Hex()).
 		Str("Contract Name", contractName).
 		Str("From", e.DefaultWallet.Address()).
