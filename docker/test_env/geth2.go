@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	GO_CLIENT_IMAGE_TAG      = "v1.13.4"
+	GO_CLIENT_IMAGE_TAG      = "v1.13.5"
 	GETH_ETH2_EXECUTION_PORT = "8551"
 )
 

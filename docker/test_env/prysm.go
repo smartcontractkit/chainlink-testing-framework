@@ -51,6 +51,7 @@ type PrysmValidator struct {
 	EnvComponent
 	internalBeaconRpcProvider string
 	hostConsensusDir          string
+	chainConfig               BeaconChainConfig
 	l                         zerolog.Logger
 	t                         *testing.T
 }
@@ -154,8 +155,8 @@ func (g *PrysmGenesis) getContainerRequest(networks []string) (*tc.ContainerRequ
 		Cmd: []string{"testnet",
 			"generate-genesis",
 			"--fork=capella",
-			"--num-validators=64",
-			"--genesis-time-delay=15",
+			fmt.Sprintf("--num-validators=%d", g.beaconChainConfig.ValidatorCount),
+			"--genesis-time-delay=30",
 			"--output-ssz=" + eth2GenesisFile,
 			"--chain-config-file=" + beaconConfigFile,
 			"--geth-genesis-json-in=" + eth1GenesisFile,
@@ -292,7 +293,7 @@ func (g *PrysmBeaconChain) getContainerRequest(networks []string) (*tc.Container
 			"--suggested-fee-recipient=0x123463a4b065722e99115d6c222f267d9cabb524",
 			"--minimum-peers-per-subnet=0",
 			"--enable-debug-rpc-endpoints",
-			// "--interop-eth1data-votesgeth", //no idea why this flag results in error when passed here
+			"--interop-eth1data-votes",
 		},
 		ExposedPorts: []string{NatPortFormat(PRYSM_NODE_RPC_PORT), NatPortFormat(PRYSM_QUERY_RPC_PORT)},
 		Mounts: tc.ContainerMounts{
@@ -312,7 +313,7 @@ func (g *PrysmBeaconChain) getContainerRequest(networks []string) (*tc.Container
 	}, nil
 }
 
-func NewPrysmValidator(networks []string, consensusDir, internalBeaconRpcProvider string, opts ...EnvComponentOption) *PrysmValidator {
+func NewPrysmValidator(networks []string, consensusDir, internalBeaconRpcProvider string, chainConfig BeaconChainConfig, opts ...EnvComponentOption) *PrysmValidator {
 	g := &PrysmValidator{
 		EnvComponent: EnvComponent{
 			ContainerName: fmt.Sprintf("%s-%s", "prysm-validator", uuid.NewString()[0:8]),
@@ -320,6 +321,7 @@ func NewPrysmValidator(networks []string, consensusDir, internalBeaconRpcProvide
 		},
 		hostConsensusDir:          consensusDir,
 		internalBeaconRpcProvider: internalBeaconRpcProvider,
+		chainConfig:               chainConfig,
 		l:                         log.Logger,
 	}
 	for _, opt := range opts {
@@ -378,7 +380,7 @@ func (g *PrysmValidator) getContainerRequest(networks []string) (*tc.ContainerRe
 		Cmd: []string{fmt.Sprintf("--beacon-rpc-provider=%s", g.internalBeaconRpcProvider),
 			"--datadir=/consensus/validatordata",
 			"--accept-terms-of-use",
-			"--interop-num-validators=64",
+			fmt.Sprintf("--interop-num-validators=%d", g.chainConfig.ValidatorCount),
 			"--interop-start-index=0",
 			"--chain-config-file=" + beaconConfigFile,
 		},

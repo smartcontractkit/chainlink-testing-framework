@@ -17,13 +17,15 @@ const (
 )
 
 type BeaconChainConfig struct {
-	SecondsPerSlot int
-	SlotsPerEpoch  int
+	SecondsPerSlot int `json:"secondsPerSlot"`
+	SlotsPerEpoch  int `json:"slotsPerEpoch"`
+	ValidatorCount int `json:"validatorCount"`
 }
 
 var DefaultBeaconChainConfig = BeaconChainConfig{
 	SecondsPerSlot: 12,
 	SlotsPerEpoch:  6,
+	ValidatorCount: 64,
 }
 
 var BeaconChainConfigYAML = `

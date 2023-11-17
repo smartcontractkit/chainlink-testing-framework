@@ -139,6 +139,7 @@ func (b *EthereumNetworkBuilder) buildConfig() EthereumNetwork {
 
 	n.t = b.t
 	n.addressesToFund = b.addressesToFund
+	n.beaconChainConfig = b.beaconChainConfig
 
 	return n
 }
@@ -180,6 +181,7 @@ func (b *EthereumNetworkBuilder) importExistingConfig() {
 	b.executionLayer = &b.existingConfig.ExecutionLayer
 	b.executionNodes = b.existingConfig.ExecutionNodes
 	b.dockerNetworks = b.existingConfig.DockerNetworkNames
+	b.beaconChainConfig = b.existingConfig.beaconChainConfig
 }
 
 func (b *EthereumNetworkBuilder) validate() error {
@@ -233,6 +235,7 @@ func (b *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error)
 	}
 
 	var hostExecutionDir, hostConsensusDir string
+	var beaconChainConfig BeaconChainConfig
 
 	// create host directories and run genesis containers only if we are NOT recreating existing containers
 	if !b.isRecreated {
@@ -245,8 +248,8 @@ func (b *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error)
 		b.ExecutionDir = hostExecutionDir
 		b.ConsensusDir = hostConsensusDir
 
-		var beaconChainConfig BeaconChainConfig
 		if b.beaconChainConfig != nil {
+			processOptionalChainConfig(b.beaconChainConfig)
 			beaconChainConfig = *b.beaconChainConfig
 		} else {
 			beaconChainConfig = DefaultBeaconChainConfig
@@ -278,7 +281,7 @@ func (b *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error)
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
-	validator := NewPrysmValidator(networkNames, hostConsensusDir, beacon.InternalBeaconRpcProvider, b.setExistingContainerName(ContainerType_PrysmVal)).WithTestLogger(b.t)
+	validator := NewPrysmValidator(networkNames, hostConsensusDir, beacon.InternalBeaconRpcProvider, beaconChainConfig, b.setExistingContainerName(ContainerType_PrysmVal)).WithTestLogger(b.t)
 	err = validator.StartContainer()
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
@@ -420,6 +423,7 @@ type EthereumNetwork struct {
 	ExecutionDir       string                    `json:"execution_dir"`
 	ConsensusDir       string                    `json:"consensus_dir"`
 	Containers         EthereumNetworkContainers `json:"containers"`
+	BeaconChainConfig  BeaconChainConfig         `json:"beacon_chain_config"`
 	isRecreated        bool
 	beaconChainConfig  *BeaconChainConfig
 	addressesToFund    []string
@@ -475,4 +479,22 @@ func createHostDirectories() (string, string, error) {
 	}
 
 	return executionDir, consensusDir, nil
+}
+
+func processOptionalChainConfig(beaconChainConfig *BeaconChainConfig) {
+	if beaconChainConfig == nil {
+		return
+	}
+
+	if beaconChainConfig.SecondsPerSlot == 0 {
+		beaconChainConfig.SecondsPerSlot = DefaultBeaconChainConfig.SecondsPerSlot
+	}
+
+	if beaconChainConfig.SlotsPerEpoch == 0 {
+		beaconChainConfig.SlotsPerEpoch = DefaultBeaconChainConfig.SlotsPerEpoch
+	}
+
+	if beaconChainConfig.ValidatorCount == 0 {
+		beaconChainConfig.ValidatorCount = DefaultBeaconChainConfig.ValidatorCount
+	}
 }
