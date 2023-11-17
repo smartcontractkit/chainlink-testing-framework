@@ -39,7 +39,7 @@ func (m Chart) GetValues() *map[string]interface{} {
 	return nil
 }
 
-func (m Chart) ExportData(e *environment.Environment) error {
+func (m Chart) ExportData(_ *environment.Environment) error {
 	return nil
 }
 

@@ -384,7 +384,7 @@ func (g *NonDevBesuNode) getBesuContainerRequest() (tc.ContainerRequest, error) 
 		Networks: g.Networks,
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForLog("WebSocketService | Websocket service started"),
-			NewWebSocketStrategy(NatPort(TX_NON_DEV_GETH_WS_PORT), g.l),
+			NewWebSocketStrategy(NatPort(TX_NON_DEV_GETH_WS_PORT)),
 			NewHTTPStrategy("/", NatPort(TX_GETH_HTTP_PORT)).WithStatusCode(201),
 		),
 		Entrypoint: []string{

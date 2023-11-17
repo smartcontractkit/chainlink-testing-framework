@@ -86,16 +86,16 @@ func (p *Prometheus) MemoryUsage() (float64, error) {
 }
 
 // ResourcesSummary returns a summary of memory and cpu used
-func (p *Prometheus) ResourcesSummary() (float64, float64, error) {
-	cpu, err := p.CPUBusyPercentage()
+func (p *Prometheus) ResourcesSummary() (cpu float64, memory float64, err error) {
+	cpu, err = p.CPUBusyPercentage()
 	if err != nil {
 		return 0, 0, err
 	}
-	mem, err := p.MemoryUsage()
+	memory, err = p.MemoryUsage()
 	if err != nil {
 		return 0, 0, err
 	}
-	return cpu, mem, nil
+	return cpu, memory, nil
 }
 
 // GetAlerts returns all firing alerts

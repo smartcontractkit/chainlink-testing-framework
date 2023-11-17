@@ -463,13 +463,13 @@ func (b *EthereumNetwork) setExistingContainerName(ct ContainerType) EnvComponen
 	return func(c *EnvComponent) {}
 }
 
-func createHostDirectories() (string, string, error) {
-	executionDir, err := os.MkdirTemp("", "execution")
+func createHostDirectories() (executionDir string, consensusDir string, err error) {
+	executionDir, err = os.MkdirTemp("", "execution")
 	if err != nil {
 		return "", "", err
 	}
 
-	consensusDir, err := os.MkdirTemp("", "consensus")
+	consensusDir, err = os.MkdirTemp("", "consensus")
 	if err != nil {
 		return "", "", err
 	}

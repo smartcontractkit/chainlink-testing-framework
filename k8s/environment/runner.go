@@ -45,7 +45,7 @@ func (m Chart) GetValues() *map[string]interface{} {
 	return nil
 }
 
-func (m Chart) ExportData(e *Environment) error {
+func (m Chart) ExportData(_ *Environment) error {
 	return nil
 }
 

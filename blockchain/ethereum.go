@@ -55,8 +55,8 @@ type EthereumClient struct {
 	subscriptionWg       sync.WaitGroup
 }
 
-// newEVMClient creates an EVM client for a single node/URL
-func newEVMClient(networkSettings EVMNetwork, logger zerolog.Logger) (EVMClient, error) {
+// createEVMClient creates an EVM client for a single node/URL
+func createEVMClient(networkSettings EVMNetwork, logger zerolog.Logger) (EVMClient, error) {
 	logger.Info().
 		Str("Name", networkSettings.Name).
 		Str("URL", networkSettings.URL).
@@ -1172,7 +1172,7 @@ func NewEVMClientFromNetwork(networkSettings EVMNetwork, logger zerolog.Logger) 
 	ecl := &EthereumMultinodeClient{}
 	for idx, networkURL := range networkSettings.URLs {
 		networkSettings.URL = networkURL
-		ec, err := newEVMClient(networkSettings, logger)
+		ec, err := createEVMClient(networkSettings, logger)
 		if err != nil {
 			return nil, err
 		}
@@ -1231,7 +1231,7 @@ func ConnectEVMClient(networkSettings EVMNetwork, logger zerolog.Logger) (EVMCli
 
 	for idx, networkURL := range networkSettings.URLs {
 		networkSettings.URL = networkURL
-		ec, err := newEVMClient(networkSettings, logger)
+		ec, err := createEVMClient(networkSettings, logger)
 
 		if err != nil {
 			logger.Info().
@@ -1288,7 +1288,7 @@ func ConcurrentEVMClient(networkSettings EVMNetwork, env *environment.Environmen
 	}
 	for idx, networkURL := range networkSettings.URLs {
 		networkSettings.URL = networkURL
-		ec, err := newEVMClient(networkSettings, logger)
+		ec, err := createEVMClient(networkSettings, logger)
 		if err != nil {
 			logger.Info().
 				Err(err).

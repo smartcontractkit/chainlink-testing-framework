@@ -248,7 +248,7 @@ func (g *Geth2) getContainerRequest(networks []string) (*tc.ContainerRequest, er
 			tcwait.ForLog("Started P2P networking").
 				WithStartupTimeout(120*time.Second).
 				WithPollInterval(1*time.Second),
-			NewWebSocketStrategy(NatPort(TX_GETH_WS_PORT), g.l),
+			NewWebSocketStrategy(NatPort(TX_GETH_WS_PORT)),
 		),
 		Cmd: []string{"--http",
 			"--http.api=eth,net,web3,debug",

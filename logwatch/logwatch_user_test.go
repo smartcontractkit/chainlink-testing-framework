@@ -68,8 +68,8 @@ func (m *MyDeployment) ConnectLogs(ctx context.Context, lw *logwatch.LogWatch, p
 func TestExampleUserInteraction(t *testing.T) {
 	ctx := testcontext.Get(t)
 	t.Run("sync API, block, receive one message", func(t *testing.T) {
-		testData := testData{repeat: 10, perSecond: 0.01, streams: []string{"A\nB\nC\nD"}}
-		d, err := NewDeployment(ctx, testData)
+		td := testData{repeat: 10, perSecond: 0.01, streams: []string{"A\nB\nC\nD"}}
+		d, err := NewDeployment(ctx, td)
 		// nolint
 		defer d.Shutdown(ctx)
 		require.NoError(t, err)
@@ -88,9 +88,9 @@ func TestExampleUserInteraction(t *testing.T) {
 		require.NotEmpty(t, match)
 	})
 	t.Run("async API, execute some logic on match", func(t *testing.T) {
-		testData := testData{repeat: 10, perSecond: 0.01, streams: []string{"A\nB\nC\nD\n", "E\nF\nG\nH\n"}}
+		td := testData{repeat: 10, perSecond: 0.01, streams: []string{"A\nB\nC\nD\n", "E\nF\nG\nH\n"}}
 		notifications := 0
-		d, err := NewDeployment(ctx, testData)
+		d, err := NewDeployment(ctx, td)
 		// nolint
 		defer d.Shutdown(ctx)
 		require.NoError(t, err)
@@ -110,6 +110,6 @@ func TestExampleUserInteraction(t *testing.T) {
 		err = d.ConnectLogs(ctx, lw, false)
 		require.NoError(t, err)
 		time.Sleep(1 * time.Second)
-		require.Equal(t, testData.repeat*len(testData.streams), notifications)
+		require.Equal(t, td.repeat*len(td.streams), notifications)
 	})
 }

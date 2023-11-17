@@ -401,7 +401,7 @@ func (g *NonDevGethNode) getGethContainerRequest() (tc.ContainerRequest, error) 
 		WaitingFor: tcwait.ForAll(
 			NewHTTPStrategy("/", NatPort(TX_GETH_HTTP_PORT)),
 			tcwait.ForLog("WebSocket enabled"),
-			NewWebSocketStrategy(NatPort(TX_NON_DEV_GETH_WS_PORT), g.l),
+			NewWebSocketStrategy(NatPort(TX_NON_DEV_GETH_WS_PORT)),
 		),
 		Entrypoint: []string{"/bin/sh", "./root/init.sh",
 			"--http.vhosts=*",

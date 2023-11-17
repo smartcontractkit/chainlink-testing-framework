@@ -206,7 +206,7 @@ func (g *Geth) getGethContainerRequest(networks []string) (*tc.ContainerRequest,
 			tcwait.ForLog("Started P2P networking").
 				WithStartupTimeout(120*time.Second).
 				WithPollInterval(1*time.Second),
-			NewWebSocketStrategy(NatPort(TX_GETH_WS_PORT), g.l),
+			NewWebSocketStrategy(NatPort(TX_GETH_WS_PORT)),
 		),
 		Entrypoint: []string{"sh", "./root/init.sh",
 			"--dev",
@@ -284,7 +284,7 @@ type WebSocketStrategy struct {
 	l          zerolog.Logger
 }
 
-func NewWebSocketStrategy(port nat.Port, l zerolog.Logger) *WebSocketStrategy {
+func NewWebSocketStrategy(port nat.Port) *WebSocketStrategy {
 	return &WebSocketStrategy{
 		Port:       port,
 		RetryDelay: 10 * time.Second,

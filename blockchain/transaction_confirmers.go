@@ -148,7 +148,7 @@ func NewInstantConfirmer(
 	client EVMClient,
 	txHash common.Hash,
 	confirmedChan chan bool,
-	errorChan chan error,
+	_ chan error,
 	logger zerolog.Logger,
 ) *InstantConfirmer {
 	ctx, ctxCancel := context.WithTimeout(context.Background(), client.GetNetworkConfig().Timeout.Duration)

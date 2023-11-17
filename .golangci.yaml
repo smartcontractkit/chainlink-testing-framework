@@ -1,13 +1,11 @@
 run:
   concurrency: 4
-  timeout: 5m
+  timeout: 15m
   skip-dirs:
     - contracts/ethereum
-    - examples
     - imports
 linters:
   enable:
-    # defaults
     - errcheck
     - gosimple
     - govet
@@ -33,10 +31,7 @@ linters-settings:
     exclude-generated: true
   govet:
     # report about shadowed variables
-    check-shadowing: false
-  errorlint:
-    # Allow formatting of errors without %w
-    errorf: false
+    check-shadowing: true
   revive:
     confidence: 0.8
     rules:
@@ -49,7 +44,7 @@ linters-settings:
       - name: error-naming
       - name: if-return
       - name: increment-decrement
-      # - name: var-naming
+      # - name: var-naming // doesn't work with some generated names
       - name: var-declaration
       - name: package-comments
       - name: range
@@ -61,7 +56,7 @@ linters-settings:
       - name: exported
       - name: empty-block
       - name: superfluous-else
-      # - name: unused-parameter
+      - name: unused-parameter
       - name: unreachable-code
       - name: redefines-builtin-id
       - name: waitgroup-by-value
@@ -75,11 +70,19 @@ linters-settings:
       - name: modifies-parameter
       - name: identical-branches
       - name: get-return
-      # - name: flag-parameter
-      # - name: early-return
+      # - name: flag-parameter // probably one we should work on doing better at in the future
+      # - name: early-return // probably one we should work on doing better at in the future
       - name: defer
       - name: constant-logical-expr
-      # - name: confusing-naming
-      # - name: confusing-results
+      - name: confusing-naming
+      - name: confusing-results
       - name: bool-literal-in-expr
       - name: atomic
+issues:
+  exclude-rules:
+    # - text: "^G404: Use of weak random number generator"
+    #   linters:
+    #     - gosec
+    - linters:
+        - govet
+      text: 'declaration of "err" shadows'
