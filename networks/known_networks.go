@@ -626,6 +626,32 @@ var (
 		FinalityTag:               true,
 	}
 
+	KavaMainnet blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Kava Mainnet",
+		SupportsEIP1559:           false,
+		ClientImplementation:      blockchain.KavaClientImplementation,
+		ChainID:                   2222,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       1000,
+		FinalityTag:               true,
+	}
+
+	KavaTestnet blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Kava Mainnet",
+		SupportsEIP1559:           false,
+		ClientImplementation:      blockchain.KavaClientImplementation,
+		ChainID:                   2221,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       1000,
+		FinalityTag:               true,
+	}
+
 	MappedNetworks = map[string]blockchain.EVMNetwork{
 		"SIMULATED":               SimulatedEVM,
 		"SIMULATED_1":             SimulatedEVMNonDev1,
@@ -670,6 +696,8 @@ var (
 		"WEMIX_MAINNET":         WeMixMainnet,
 		"KROMA_SEPOLIA":         KromaSepolia,
 		"KROMA_MAINNET":         KromaMainnet,
+		"KAVA_MAINNET":          KavaMainnet,
+		"KAVA_TESTNET":          KavaTestnet,
 	}
 )
 
