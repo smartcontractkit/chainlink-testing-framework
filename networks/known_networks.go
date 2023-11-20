@@ -416,6 +416,7 @@ var (
 		MinimumConfirmations:      0,
 		GasEstimationBuffer:       0,
 		FinalityTag:               true,
+		DefaultGasLimit:           6000000,
 	}
 
 	CeloAlfajores = blockchain.EVMNetwork{
@@ -474,6 +475,7 @@ var (
 		MinimumConfirmations:      0,
 		GasEstimationBuffer:       0,
 		FinalityTag:               true,
+		DefaultGasLimit:           6000000,
 	}
 
 	BSCTestnet blockchain.EVMNetwork = blockchain.EVMNetwork{
@@ -487,6 +489,7 @@ var (
 		MinimumConfirmations:      3,
 		GasEstimationBuffer:       0,
 		FinalityTag:               true,
+		DefaultGasLimit:           6000000,
 	}
 
 	BSCMainnet blockchain.EVMNetwork = blockchain.EVMNetwork{
@@ -500,6 +503,7 @@ var (
 		MinimumConfirmations:      3,
 		GasEstimationBuffer:       0,
 		FinalityTag:               true,
+		DefaultGasLimit:           6000000,
 	}
 
 	LineaGoerli blockchain.EVMNetwork = blockchain.EVMNetwork{
@@ -561,6 +565,7 @@ var (
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       0,
 		FinalityDepth:             1,
+		DefaultGasLimit:           6000000,
 	}
 
 	WeMixMainnet blockchain.EVMNetwork = blockchain.EVMNetwork{
@@ -574,6 +579,7 @@ var (
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       0,
 		FinalityDepth:             1,
+		DefaultGasLimit:           6000000,
 	}
 
 	FantomTestnet blockchain.EVMNetwork = blockchain.EVMNetwork{
@@ -611,6 +617,7 @@ var (
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       1000,
 		FinalityTag:               true,
+		DefaultGasLimit:           6000000,
 	}
 
 	KromaSepolia blockchain.EVMNetwork = blockchain.EVMNetwork{
@@ -624,6 +631,7 @@ var (
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       1000,
 		FinalityTag:               true,
+		DefaultGasLimit:           6000000,
 	}
 
 	MappedNetworks = map[string]blockchain.EVMNetwork{
