@@ -29,14 +29,20 @@ require (
 )
 
 require (
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.7.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.3.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/internal v1.3.0 // indirect
+	github.com/AzureAD/microsoft-authentication-library-for-go v1.0.0 // indirect
 	github.com/allegro/bigcache v1.2.1 // indirect
 	github.com/c9s/goprocinfo v0.0.0-20210130143923-c95fcf8c64a8 // indirect
 	github.com/cespare/cp v1.1.1 // indirect
 	github.com/gballet/go-libpcsclite v0.0.0-20191108122812-4678299bea08 // indirect
-	github.com/google/pprof v0.0.0-20230705174524-200ffdc848b8 // indirect
+	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/hashicorp/go-version v1.6.0 // indirect
+	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible // indirect
 	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58 // indirect
+	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8 // indirect
 	github.com/pyroscope-io/client v0.7.1 // indirect
 	github.com/rs/cors v1.8.3 // indirect
 	github.com/sercand/kuberesolver/v4 v4.0.0 // indirect
@@ -302,8 +308,8 @@ replace (
 	// for it. If its in 4.X.X, then we need all our transitive deps to upgrade to it.
 	github.com/dgrijalva/jwt-go => github.com/form3tech-oss/jwt-go v3.2.1+incompatible
 
-	// Fixes mod/github.com/grafana/loki@v1.6.2-0.20230403212622-90888a0cc737/pkg/util/metrics_helper.go:798:39: too many arguments in call to lbls.Labels
-	github.com/prometheus/prometheus => github.com/prometheus/prometheus v0.43.1-0.20230327151049-211ae4f1f0a2
+// Fixes mod/github.com/grafana/loki@v1.6.2-0.20230403212622-90888a0cc737/pkg/util/metrics_helper.go:798:39: too many arguments in call to lbls.Labels
+// github.com/prometheus/prometheus => github.com/prometheus/prometheus v0.43.1-0.20230327151049-211ae4f1f0a2
 )
 
 exclude k8s.io/client-go v12.0.0+incompatible
