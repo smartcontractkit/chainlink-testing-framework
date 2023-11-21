@@ -296,9 +296,24 @@ var (
 		DefaultGasLimit:           6000000,
 	}
 
-	// optimismGoerli https://dev.optimism.io/kovan-to-goerli/
+	// OptimismGoerli https://dev.optimism.io/kovan-to-goerli/
 	OptimismGoerli blockchain.EVMNetwork = blockchain.EVMNetwork{
 		Name:                      "Optimism Goerli",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.OptimismClientImplementation,
+		ChainID:                   420,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.JSONStrDuration{Duration: 3 * time.Minute},
+		MinimumConfirmations:      0,
+		GasEstimationBuffer:       0,
+		FinalityTag:               true,
+		DefaultGasLimit:           6000000,
+	}
+
+	// OptimismSepolia https://community.optimism.io/docs/useful-tools/networks/#parameters-for-node-operators-2
+	OptimismSepolia blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Optimism Sepolia",
 		SupportsEIP1559:           true,
 		ClientImplementation:      blockchain.OptimismClientImplementation,
 		ChainID:                   420,
@@ -407,6 +422,21 @@ var (
 
 	BaseGoerli blockchain.EVMNetwork = blockchain.EVMNetwork{
 		Name:                      "Base Goerli",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.OptimismClientImplementation,
+		ChainID:                   84531,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.JSONStrDuration{Duration: 3 * time.Minute},
+		MinimumConfirmations:      0,
+		GasEstimationBuffer:       0,
+		FinalityTag:               true,
+		DefaultGasLimit:           6000000,
+	}
+
+	// BaseSepolia https://base.mirror.xyz/kkz1-KFdUwl0n23PdyBRtnFewvO48_m-fZNzPMJehM4
+	BaseSepolia blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Base Sepolia",
 		SupportsEIP1559:           true,
 		ClientImplementation:      blockchain.OptimismClientImplementation,
 		ChainID:                   84531,
@@ -654,7 +684,9 @@ var (
 		"ARBITRUM_SEPOLIA":      ArbitrumSepolia,
 		"OPTIMISM_MAINNET":      OptimismMainnet,
 		"OPTIMISM_GOERLI":       OptimismGoerli,
+		"OPTIMISM_SEPOLIA":      OptimismSepolia,
 		"BASE_GOERLI":           BaseGoerli,
+		"BASE_SEPOLIA":          BaseSepolia,
 		"CELO_ALFAJORES":        CeloAlfajores,
 		"CELO_MAINNET":          CeloMainnet,
 		"RSK":                   RSKTestnet,
