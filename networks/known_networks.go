@@ -701,10 +701,7 @@ func SetNetworks(networkKeys []string) []blockchain.EVMNetwork {
 		if !strings.Contains(networkKeys[i], "SIMULATED") {
 			// Get network RPC WS URL from env var
 			wsEnvVar := fmt.Sprintf("%s_URLS", networkKeys[i])
-			wsEnvVal, err := osutil.GetEnv(wsEnvVar)
-			if err != nil {
-				panic(fmt.Errorf("error getting %s var: %w", wsEnvVar, err))
-			}
+			wsEnvVal, _ := osutil.GetEnv(wsEnvVar)
 			if wsEnvVal == "" {
 				// Get default value
 				defaultUrls, err := osutil.GetEnv("EVM_URLS")
@@ -722,10 +719,7 @@ func SetNetworks(networkKeys []string) []blockchain.EVMNetwork {
 
 			// Get network RPC HTTP URL from env var
 			httpEnvVar := fmt.Sprintf("%s_HTTP_URLS", networkKeys[i])
-			httpEnvVal, err := osutil.GetEnv(httpEnvVar)
-			if err != nil {
-				panic(fmt.Errorf("error getting %s var: %w", httpEnvVar, err))
-			}
+			httpEnvVal, _ := osutil.GetEnv(httpEnvVar)
 			if httpEnvVal == "" {
 				// Get default value
 				defaultUrls, err := osutil.GetEnv("EVM_HTTP_URLS")
@@ -743,10 +737,7 @@ func SetNetworks(networkKeys []string) []blockchain.EVMNetwork {
 
 			// Get network wallet key from env var
 			walletKeysEnvVar := fmt.Sprintf("%s_KEYS", networkKeys[i])
-			walletKeysEnvVal, err := osutil.GetEnv(walletKeysEnvVar)
-			if err != nil {
-				panic(fmt.Errorf("error getting %s var: %w", walletKeysEnvVar, err))
-			}
+			walletKeysEnvVal, _ := osutil.GetEnv(walletKeysEnvVar)
 			if walletKeysEnvVal == "" {
 				// Get default value
 				defaultKeys, err := osutil.GetEnv("EVM_KEYS")
