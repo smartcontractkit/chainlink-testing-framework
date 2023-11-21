@@ -640,7 +640,7 @@ var (
 	}
 
 	KavaTestnet blockchain.EVMNetwork = blockchain.EVMNetwork{
-		Name:                      "Kava Mainnet",
+		Name:                      "Kava Testnet",
 		SupportsEIP1559:           false,
 		ClientImplementation:      blockchain.KavaClientImplementation,
 		ChainID:                   2221,
