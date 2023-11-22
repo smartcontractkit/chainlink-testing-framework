@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/conversions"
 	"math/big"
 	"strconv"
 	"time"
@@ -18,8 +19,6 @@ import (
 	"github.com/zksync-sdk/zksync2-go/accounts"
 	"github.com/zksync-sdk/zksync2-go/clients"
 	zkutils "github.com/zksync-sdk/zksync2-go/utils"
-
-	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 )
 
 // ZKSyncClient represents a single node, EVM compatible client for the ZKSync network
@@ -180,7 +179,7 @@ func (z *ZKSyncClient) ReturnFunds(fromKey *ecdsa.PrivateKey) error {
 // accept an interface.
 func attemptZKSyncReturn(z *ZKSyncClient, fromKey *ecdsa.PrivateKey, _ int) (*types.Transaction, error) {
 	to := common.HexToAddress(z.DefaultWallet.Address())
-	fromAddress, err := utils.PrivateKeyToAddress(fromKey)
+	fromAddress, err := conversions.PrivateKeyToAddress(fromKey)
 	if err != nil {
 		return nil, err
 	}
