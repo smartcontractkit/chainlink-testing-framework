@@ -113,7 +113,10 @@ func (g *AfterGenesisHelper) buildInitScript() (string, error) {
 	initTemplate := `#!/bin/bash
 echo "Saving wallet password to {{.WalletPasswordFileLocation}}"
 echo "{{.WalletPassword}}" > {{.WalletPasswordFileLocation}}
-echo "Saving account password to {{.AccountPasswordFileLocation}}"
+echo "Saving execution client keystore file to {{.AccountKeystoreFileLocation}}"
+mkdir -p {{.KeystoreDirLocation}}
+echo '{"address":"123463a4b065722e99115d6c222f267d9cabb524","crypto":{"cipher":"aes-128-ctr","ciphertext":"93b90389b855889b9f91c89fd15b9bd2ae95b06fe8e2314009fc88859fc6fde9","cipherparams":{"iv":"9dc2eff7967505f0e6a40264d1511742"},"kdf":"scrypt","kdfparams":{"dklen":32,"n":262144,"p":1,"r":8,"salt":"c07503bb1b66083c37527cd8f06f8c7c1443d4c724767f625743bd47ae6179a4"},"mac":"6d359be5d6c432d5bbb859484009a4bf1bd71b76e89420c380bd0593ce25a817"},"id":"622df904-0bb1-4236-b254-f1b8dfdff1ec","version":3}' > {{.AccountKeystoreFileLocation}}
+echo "Saving execution client account password to {{.AccountPasswordFileLocation}}"
 echo "" > {{.AccountPasswordFileLocation}}
 echo "Saving jwt secret to {{.JwtFileLocation}}"
 echo "0xfad2709d0bb03bf0e8ba3c99bea194575d3e98863133d1af638ed056d1d59345" > {{.JwtFileLocation}}
@@ -125,11 +128,15 @@ echo "All done!"
 		WalletPasswordFileLocation  string
 		AccountPasswordFileLocation string
 		JwtFileLocation             string
+		AccountKeystoreFileLocation string
+		KeystoreDirLocation         string
 	}{
 		WalletPassword:              WALLET_PASSWORD,
 		WalletPasswordFileLocation:  VALIDATOR_WALLET_PASSWORD_FILE_INSIDE_CONTAINER,
-		AccountPasswordFileLocation: EL_ACCOUNT_PASSWORD_FILE_INSIDE_CONTAINER,
+		AccountPasswordFileLocation: ACCOUNT_PASSWORD_FILE_INSIDE_CONTAINER,
 		JwtFileLocation:             JWT_SECRET_FILE_LOCATION_INSIDE_CONTAINER,
+		AccountKeystoreFileLocation: ACCOUNT_KEYSTORE_FILE_INSIDE_CONTAINER,
+		KeystoreDirLocation:         KEYSTORE_DIR_LOCATION_INSIDE_CONTAINER,
 	}
 
 	t, err := template.New("init").Parse(initTemplate)

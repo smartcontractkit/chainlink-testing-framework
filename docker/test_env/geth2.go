@@ -33,16 +33,18 @@ type Geth2 struct {
 	InternalExecutionURL string
 	ExternalExecutionURL string
 	generatedDataHostDir string
+	chainConfg           EthereumChainConfig
 	consensusLayer       ConsensusLayer
 	l                    zerolog.Logger
 }
 
-func NewGeth2(networks []string, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) *Geth2 {
+func NewGeth2(networks []string, chainConfg EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) *Geth2 {
 	g := &Geth2{
 		EnvComponent: EnvComponent{
 			ContainerName: fmt.Sprintf("%s-%s", "geth2", uuid.NewString()[0:8]),
 			Networks:      networks,
 		},
+		chainConfg:           chainConfg,
 		generatedDataHostDir: generatedDataHostDir,
 		consensusLayer:       consensusLayer,
 		l:                    log.Logger,
@@ -152,7 +154,7 @@ func (g *Geth2) getContainerRequest(networks []string) (*tc.ContainerRequest, er
 		return nil, err
 	}
 
-	initScriptContent, err := buildInitScript()
+	initScriptContent, err := g.buildInitScript()
 	if err != nil {
 		return nil, err
 	}
@@ -200,34 +202,54 @@ func (g Geth2) WaitUntilChainIsReady(waitTime time.Duration) error {
 	return waitForFirstBlock.WaitUntilReady(context.Background(), *g.GetContainer())
 }
 
-func buildInitScript() (string, error) {
+func (g Geth2) buildInitScript() (string, error) {
 	initTemplate := `#!/bin/bash
-	mkdir -p /execution/keystore && \
-	echo "2e0834786285daccd064ca17f1654f67b4aef298acbb82cef9ec422fb4975622" > /execution/sk.json && \
-	echo '{"address":"123463a4b065722e99115d6c222f267d9cabb524","crypto":{"cipher":"aes-128-ctr","ciphertext":"93b90389b855889b9f91c89fd15b9bd2ae95b06fe8e2314009fc88859fc6fde9","cipherparams":{"iv":"9dc2eff7967505f0e6a40264d1511742"},"kdf":"scrypt","kdfparams":{"dklen":32,"n":262144,"p":1,"r":8,"salt":"c07503bb1b66083c37527cd8f06f8c7c1443d4c724767f625743bd47ae6179a4"},"mac":"6d359be5d6c432d5bbb859484009a4bf1bd71b76e89420c380bd0593ce25a817"},"id":"622df904-0bb1-4236-b254-f1b8dfdff1ec","version":3}' > /execution/keystore/key1 && \
-	geth init --state.scheme=path --datadir=/execution {{.GeneratedDataDir}}/genesis.json && \
+	mkdir -p {{.ExecutionDir}} 
+
+	# copy general keystore to execution directory, because Geth doesn't allow to specify keystore location
+	echo "Copying keystore to {{.ExecutionDir}}/keystore"
+	cp -R {{.KeystoreDirLocation}} {{.ExecutionDir}}/keystore
+
+	echo "Creating sk.json file"
+	echo "2e0834786285daccd064ca17f1654f67b4aef298acbb82cef9ec422fb4975622" > {{.ExecutionDir}}/sk.json
+
+	echo "Running geth init"
+	geth init --state.scheme=path --datadir={{.ExecutionDir}} {{.GeneratedDataDir}}/genesis.json
+	exit_coed=$?
+	if [ $exit_code -ne 0 ]; then
+		echo "Geth init failed with exit code $exit_code"
+		exit 1
+	fi
+
+	echo "Running Geth"
 	geth --http --http.api=eth,net,web3,debug --http.addr=0.0.0.0 --http.corsdomain=* \
 		--http.vhosts=* --http.port={{.HttpPort}} --ws --ws.api=admin,debug,web3,eth,txpool,net \
 		--ws.addr=0.0.0.0 --ws.origins=* --ws.port={{.WsPort}} --authrpc.vhosts=* \
-		--authrpc.addr=0.0.0.0 --authrpc.jwtsecret={{.JwtFileLocation}} --datadir=/execution \
+		--authrpc.addr=0.0.0.0 --authrpc.jwtsecret={{.JwtFileLocation}} --datadir={{.ExecutionDir}} \
 		--rpc.allow-unprotected-txs --rpc.txfeecap=0 --allow-insecure-unlock \
 		--password={{.PasswordFileLocation}} --nodiscover --syncmode=full --networkid={{.ChainID}} \
 		--graphql --graphql.corsdomain=* --unlock=0x123463a4b065722e99115d6c222f267d9cabb524`
 
 	data := struct {
-		HttpPort             string
-		WsPort               string
-		ChainID              string
-		GeneratedDataDir     string
-		JwtFileLocation      string
-		PasswordFileLocation string
+		HttpPort                    string
+		WsPort                      string
+		ChainID                     int
+		GeneratedDataDir            string
+		JwtFileLocation             string
+		PasswordFileLocation        string
+		AccountKeystoreFileLocation string
+		KeystoreDirLocation         string
+		ExecutionDir                string
 	}{
-		HttpPort:             TX_GETH_HTTP_PORT,
-		WsPort:               TX_GETH_WS_PORT,
-		ChainID:              "1337",
-		GeneratedDataDir:     GENERATED_DATA_DIR_INSIDE_CONTAINER,
-		JwtFileLocation:      JWT_SECRET_FILE_LOCATION_INSIDE_CONTAINER,
-		PasswordFileLocation: EL_ACCOUNT_PASSWORD_FILE_INSIDE_CONTAINER,
+		HttpPort:                    TX_GETH_HTTP_PORT,
+		WsPort:                      TX_GETH_WS_PORT,
+		ChainID:                     g.chainConfg.ChainID,
+		GeneratedDataDir:            GENERATED_DATA_DIR_INSIDE_CONTAINER,
+		JwtFileLocation:             JWT_SECRET_FILE_LOCATION_INSIDE_CONTAINER,
+		PasswordFileLocation:        ACCOUNT_PASSWORD_FILE_INSIDE_CONTAINER,
+		AccountKeystoreFileLocation: ACCOUNT_KEYSTORE_FILE_INSIDE_CONTAINER,
+		KeystoreDirLocation:         KEYSTORE_DIR_LOCATION_INSIDE_CONTAINER,
+		ExecutionDir:                "/execution-data",
 	}
 
 	t, err := template.New("init").Parse(initTemplate)
@@ -241,4 +263,8 @@ func buildInitScript() (string, error) {
 
 	return buf.String(), err
 
+}
+
+func (g *Geth2) GetContainerType() ContainerType {
+	return ContainerType_Geth2
 }

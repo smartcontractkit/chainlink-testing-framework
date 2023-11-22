@@ -81,7 +81,7 @@ func (b *EthereumNetworkBuilder) WithExecutionNodes(executionNodes int) *Ethereu
 	return b
 }
 
-func (b *EthereumNetworkBuilder) WithBeaconChainConfig(config EthereumChainConfig) *EthereumNetworkBuilder {
+func (b *EthereumNetworkBuilder) WithEthereumChainConfig(config EthereumChainConfig) *EthereumNetworkBuilder {
 	b.beaconChainConfig = &config
 	return b
 }
@@ -125,7 +125,7 @@ func (b *EthereumNetworkBuilder) buildConfig() EthereumNetwork {
 		n.isRecreated = true
 		n.Containers = b.existingConfig.Containers
 	} else {
-		n.beaconChainConfig = b.beaconChainConfig
+		n.ehtereumChainConfig = b.beaconChainConfig
 	}
 
 	n.logger = logging.GetTestLogger(b.t)
@@ -223,7 +223,7 @@ func (b *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error)
 	}
 
 	var generatedDataHostDir, valKeysDir string
-	var beaconChainConfig EthereumChainConfig
+	var ethereumChainConfig EthereumChainConfig
 
 	// create host directories and run genesis containers only if we are NOT recreating existing containers
 	if !b.isRecreated {
@@ -233,25 +233,25 @@ func (b *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error)
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
 		}
 
-		if b.beaconChainConfig != nil {
-			beaconChainConfig = *b.beaconChainConfig
+		if b.ehtereumChainConfig != nil {
+			ethereumChainConfig = *b.ehtereumChainConfig
 		} else {
-			beaconChainConfig = DefaultBeaconChainConfig
+			ethereumChainConfig = DefaultBeaconChainConfig
 		}
 
-		valKeysGeneretor := NewValKeysGeneretor(beaconChainConfig, valKeysDir).WithLogger(b.logger)
+		valKeysGeneretor := NewValKeysGeneretor(ethereumChainConfig, valKeysDir).WithLogger(b.logger)
 		err = valKeysGeneretor.StartContainer()
 		if err != nil {
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
 		}
 
-		genesis := NewEthGenesisGenerator(beaconChainConfig, generatedDataHostDir).WithLogger(b.logger)
+		genesis := NewEthGenesisGenerator(ethereumChainConfig, generatedDataHostDir).WithLogger(b.logger)
 		err = genesis.StartContainer()
 		if err != nil {
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
 		}
 
-		initHelper := NewInitHelper(beaconChainConfig, generatedDataHostDir).WithLogger(b.logger)
+		initHelper := NewInitHelper(ethereumChainConfig, generatedDataHostDir).WithLogger(b.logger)
 		err = initHelper.StartContainer()
 		if err != nil {
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
@@ -260,10 +260,13 @@ func (b *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error)
 
 	var net blockchain.EVMNetwork
 	var client ExecutionClient
-	if b.ExecutionLayer == ExecutionLayer_Geth {
-		client = NewGeth2(networkNames, generatedDataHostDir, ConsensusLayer_Prysm, b.setExistingContainerName(ContainerType_Geth2)).WithLogger(b.logger)
-	} else {
+	switch b.ExecutionLayer {
+	case ExecutionLayer_Geth:
+		client = NewGeth2(networkNames, ethereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, b.setExistingContainerName(ContainerType_Geth2)).WithLogger(b.logger)
+	case ExecutionLayer_Nethermind:
 		client = NewNethermind(networkNames, generatedDataHostDir, ConsensusLayer_Prysm, b.setExistingContainerName(ContainerType_Nethermind)).WithLogger(b.logger)
+	default:
+		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf("unsupported execution layer: %s", b.ExecutionLayer)
 	}
 
 	net, err = client.StartContainer()
@@ -271,19 +274,19 @@ func (b *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error)
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
-	beacon := NewPrysmBeaconChain(networkNames, beaconChainConfig, generatedDataHostDir, client.GetInternalExecutionURL(), b.setExistingContainerName(ContainerType_PrysmBeacon)).WithLogger(b.logger)
+	beacon := NewPrysmBeaconChain(networkNames, ethereumChainConfig, generatedDataHostDir, client.GetInternalExecutionURL(), b.setExistingContainerName(ContainerType_PrysmBeacon)).WithLogger(b.logger)
 	err = beacon.StartContainer()
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
-	validator := NewPrysmValidator(networkNames, beaconChainConfig, generatedDataHostDir, valKeysDir, beacon.InternalBeaconRpcProvider, b.setExistingContainerName(ContainerType_PrysmVal)).WithLogger(b.logger)
+	validator := NewPrysmValidator(networkNames, ethereumChainConfig, generatedDataHostDir, valKeysDir, beacon.InternalBeaconRpcProvider, b.setExistingContainerName(ContainerType_PrysmVal)).WithLogger(b.logger)
 	err = validator.StartContainer()
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
-	err = client.WaitUntilChainIsReady(beaconChainConfig.GetDefaultWaitDuration())
+	err = client.WaitUntilChainIsReady(ethereumChainConfig.GetDefaultWaitDuration())
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
@@ -299,7 +302,7 @@ func (b *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error)
 	b.Containers = EthereumNetworkContainers{
 		{
 			ContainerName: client.GetContainerName(),
-			ContainerType: ContainerType_Geth2,
+			ContainerType: client.GetContainerType(),
 			Container:     client.GetContainer(),
 		},
 		{
@@ -410,16 +413,16 @@ type EthereumNetworkContainer struct {
 }
 
 type EthereumNetwork struct {
-	ConsensusType      ConsensusType             `json:"consensus_type"`
-	ConsensusLayer     ConsensusLayer            `json:"consensus_layer"`
-	ConsensusNodes     int                       `json:"consensus_nodes"`
-	ExecutionLayer     ExecutionLayer            `json:"execution_layer"`
-	ExecutionNodes     int                       `json:"execution_nodes"`
-	DockerNetworkNames []string                  `json:"docker_network_names"`
-	Containers         EthereumNetworkContainers `json:"containers"`
-	logger             zerolog.Logger
-	isRecreated        bool
-	beaconChainConfig  *EthereumChainConfig
+	ConsensusType       ConsensusType             `json:"consensus_type"`
+	ConsensusLayer      ConsensusLayer            `json:"consensus_layer"`
+	ConsensusNodes      int                       `json:"consensus_nodes"`
+	ExecutionLayer      ExecutionLayer            `json:"execution_layer"`
+	ExecutionNodes      int                       `json:"execution_nodes"`
+	DockerNetworkNames  []string                  `json:"docker_network_names"`
+	Containers          EthereumNetworkContainers `json:"containers"`
+	logger              zerolog.Logger
+	isRecreated         bool
+	ehtereumChainConfig *EthereumChainConfig
 }
 
 type EthereumNetworkContainers []EthereumNetworkContainer

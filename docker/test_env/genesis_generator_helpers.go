@@ -10,12 +10,21 @@ import (
 )
 
 func generateEnvValues(config *EthereumChainConfig) (string, error) {
+	// GenesisTimestamp needs to be exported in order to be used in the template
+	// but I don't want to expose it in config struct, user should not set it manually
+	data := struct {
+		EthereumChainConfig
+		GenesisTimestamp int
+	}{
+		EthereumChainConfig: *config,
+		GenesisTimestamp:    config.genesisTimestamp,
+	}
 	tmpl, err := template.New("valuesEnv").Funcs(funcMap).Parse(valuesEnv)
 	if err != nil {
 		return "", err
 	}
 	var buf bytes.Buffer
-	err = tmpl.Execute(&buf, *config)
+	err = tmpl.Execute(&buf, data)
 	if err != nil {
 		return "", err
 	}

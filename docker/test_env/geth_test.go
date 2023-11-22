@@ -46,5 +46,3 @@ func TestEth1WithGeth(t *testing.T) {
 	err = c.Close()
 	require.NoError(t, err, "Couldn't close the client")
 }
-
-//TODO test for restart

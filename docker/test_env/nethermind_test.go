@@ -24,6 +24,7 @@ func TestEth2WithPrysmAndNethermind(t *testing.T) {
 	require.NoError(t, err, "Couldn't start PoS network")
 
 	ns := blockchain.SimulatedEVMNetwork
+	ns.Name = "Simulated Nethermind + Prysm"
 	ns.URLs = eth2.PublicWsUrsl()
 	c, err := blockchain.ConnectEVMClient(ns, l)
 	require.NoError(t, err, "Couldn't connect to the evm client")

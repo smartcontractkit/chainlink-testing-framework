@@ -13,7 +13,9 @@ var (
 	ETH2_EXECUTION_PORT                             = "8551"
 	WALLET_PASSWORD                                 = "password"
 	VALIDATOR_WALLET_PASSWORD_FILE_INSIDE_CONTAINER = fmt.Sprintf("%s/wallet_password.txt", GENERATED_DATA_DIR_INSIDE_CONTAINER)
-	EL_ACCOUNT_PASSWORD_FILE_INSIDE_CONTAINER       = fmt.Sprintf("%s/account_password.txt", GENERATED_DATA_DIR_INSIDE_CONTAINER)
+	ACCOUNT_PASSWORD_FILE_INSIDE_CONTAINER          = fmt.Sprintf("%s/account_password.txt", GENERATED_DATA_DIR_INSIDE_CONTAINER)
+	ACCOUNT_KEYSTORE_FILE_INSIDE_CONTAINER          = fmt.Sprintf("%s/account_key", KEYSTORE_DIR_LOCATION_INSIDE_CONTAINER)
+	KEYSTORE_DIR_LOCATION_INSIDE_CONTAINER          = fmt.Sprintf("%s/keystore", GENERATED_DATA_DIR_INSIDE_CONTAINER)
 	GENERATED_VALIDATOR_KEYS_DIR_INSIDE_CONTAINER   = "/keys"
 	NODE_0_DIR_INSIDE_CONTAINER                     = fmt.Sprintf("%s/node-0", GENERATED_VALIDATOR_KEYS_DIR_INSIDE_CONTAINER)
 	GENERATED_DATA_DIR_INSIDE_CONTAINER             = "/data/custom_config_data"
@@ -27,7 +29,7 @@ type EthereumChainConfig struct {
 	GenesisDelay     int
 	ValidatorCount   int
 	ChainID          int
-	GenesisTimestamp int
+	genesisTimestamp int
 	AddressesToFund  []string
 }
 
@@ -49,7 +51,7 @@ func (c *EthereumChainConfig) GetValidatorBasedGenesisDelay() int {
 }
 
 func (c *EthereumChainConfig) GenerateGenesisTimestamp() {
-	c.GenesisTimestamp = int(time.Now().Unix()) + c.GetValidatorBasedGenesisDelay()
+	c.genesisTimestamp = int(time.Now().Unix()) + c.GetValidatorBasedGenesisDelay()
 }
 
 func (c *EthereumChainConfig) GetDefaultWaitDuration() time.Duration {
@@ -60,6 +62,7 @@ type ExecutionClient interface {
 	GetContainerName() string
 	StartContainer() (blockchain.EVMNetwork, error)
 	GetContainer() *tc.Container
+	GetContainerType() ContainerType
 	GetInternalExecutionURL() string
 	GetExternalExecutionURL() string
 	GetInternalHttpUrl() string

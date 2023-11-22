@@ -20,7 +20,7 @@ func TestEth2CustomConfig(t *testing.T) {
 		WithConsensusType(ConsensusType_PoS).
 		WithConsensusLayer(ConsensusLayer_Prysm).
 		WithExecutionLayer(ExecutionLayer_Geth).
-		WithBeaconChainConfig(EthereumChainConfig{
+		WithEthereumChainConfig(EthereumChainConfig{
 			SecondsPerSlot: 4,
 			SlotsPerEpoch:  2,
 		}).
@@ -31,6 +31,7 @@ func TestEth2CustomConfig(t *testing.T) {
 	require.NoError(t, err, "Couldn't start PoS network")
 
 	ns := blockchain.SimulatedEVMNetwork
+	ns.Name = "Simulated Geth + Prysm"
 	ns.URLs = eth2.PublicWsUrsl()
 	c, err := blockchain.ConnectEVMClient(ns, l)
 	require.NoError(t, err, "Couldn't connect to the evm client")
@@ -56,6 +57,7 @@ func TestEth2ExtraFunding(t *testing.T) {
 	require.NoError(t, err, "Couldn't start PoS network")
 
 	ns := blockchain.SimulatedEVMNetwork
+	ns.Name = "Simulated Geth + Prysm"
 	ns.URLs = eth2.PublicWsUrsl()
 	c, err := blockchain.ConnectEVMClient(ns, l)
 	require.NoError(t, err, "Couldn't connect to the evm client")
@@ -67,3 +69,5 @@ func TestEth2ExtraFunding(t *testing.T) {
 	err = c.Close()
 	require.NoError(t, err, "Couldn't close the client")
 }
+
+//TODO test for reusing existing network
