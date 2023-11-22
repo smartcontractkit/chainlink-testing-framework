@@ -111,18 +111,25 @@ func (g *AfterGenesisHelper) getContainerRequest(networks []string) (*tc.Contain
 
 func (g *AfterGenesisHelper) buildInitScript() (string, error) {
 	initTemplate := `#!/bin/bash
+echo "Saving wallet password to {{.WalletPasswordFileLocation}}"
 echo "{{.WalletPassword}}" > {{.WalletPasswordFileLocation}}
+echo "Saving account password to {{.AccountPasswordFileLocation}}"
 echo "" > {{.AccountPasswordFileLocation}}
+echo "Saving jwt secret to {{.JwtFileLocation}}"
+echo "0xfad2709d0bb03bf0e8ba3c99bea194575d3e98863133d1af638ed056d1d59345" > {{.JwtFileLocation}}
+echo "All done!"
 `
 
 	data := struct {
 		WalletPassword              string
 		WalletPasswordFileLocation  string
 		AccountPasswordFileLocation string
+		JwtFileLocation             string
 	}{
 		WalletPassword:              WALLET_PASSWORD,
 		WalletPasswordFileLocation:  VALIDATOR_WALLET_PASSWORD_FILE_INSIDE_CONTAINER,
 		AccountPasswordFileLocation: EL_ACCOUNT_PASSWORD_FILE_INSIDE_CONTAINER,
+		JwtFileLocation:             JWT_SECRET_FILE_LOCATION_INSIDE_CONTAINER,
 	}
 
 	t, err := template.New("init").Parse(initTemplate)

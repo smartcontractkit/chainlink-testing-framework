@@ -106,15 +106,6 @@ func (g *EthGenesisGeneretor) getContainerRequest(networks []string) (*tc.Contai
 		return nil, err
 	}
 
-	jwtSecretFile, err := os.CreateTemp("/tmp", "jwtsecret")
-	if err != nil {
-		return nil, err
-	}
-	_, err = jwtSecretFile.WriteString("0xfad2709d0bb03bf0e8ba3c99bea194575d3e98863133d1af638ed056d1d59345")
-	if err != nil {
-		return nil, err
-	}
-
 	return &tc.ContainerRequest{
 		Name:          g.ContainerName,
 		Image:         "tofelb/ethereum-genesis-generator:2.0.4-slots-per-epoch",
@@ -146,11 +137,6 @@ func (g *EthGenesisGeneretor) getContainerRequest(networks []string) (*tc.Contai
 			{
 				HostFilePath:      mnemonicsFile.Name(),
 				ContainerFilePath: "/config/cl/mnemonics.yaml",
-				FileMode:          0644,
-			},
-			{
-				HostFilePath:      jwtSecretFile.Name(),
-				ContainerFilePath: JWT_SECRET_LOCATION_INSIDE_CONTAINER,
 				FileMode:          0644,
 			},
 		},

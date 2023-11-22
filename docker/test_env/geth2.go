@@ -200,8 +200,6 @@ func (g Geth2) WaitUntilChainIsReady(waitTime time.Duration) error {
 	return waitForFirstBlock.WaitUntilReady(context.Background(), *g.GetContainer())
 }
 
-// echo "" > /execution/password.txt && \
-
 func buildInitScript() (string, error) {
 	initTemplate := `#!/bin/bash
 	mkdir -p /execution/keystore && \
@@ -228,7 +226,7 @@ func buildInitScript() (string, error) {
 		WsPort:               TX_GETH_WS_PORT,
 		ChainID:              "1337",
 		GeneratedDataDir:     GENERATED_DATA_DIR_INSIDE_CONTAINER,
-		JwtFileLocation:      JWT_SECRET_LOCATION_INSIDE_CONTAINER,
+		JwtFileLocation:      JWT_SECRET_FILE_LOCATION_INSIDE_CONTAINER,
 		PasswordFileLocation: EL_ACCOUNT_PASSWORD_FILE_INSIDE_CONTAINER,
 	}
 

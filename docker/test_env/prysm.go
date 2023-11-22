@@ -94,8 +94,6 @@ func (g *PrysmBeaconChain) StartContainer() error {
 		return err
 	}
 
-	_ = externalRcpPort
-
 	g.Container = ct
 	g.InternalBeaconRpcProvider = fmt.Sprintf("%s:%s", g.ContainerName, PRYSM_NODE_RPC_PORT)
 	g.InternalQueryRpcUrl = fmt.Sprintf("%s:%s", g.ContainerName, PRYSM_QUERY_RPC_PORT)
@@ -130,7 +128,7 @@ func (g *PrysmBeaconChain) getContainerRequest(networks []string) (*tc.Container
 			"--grpc-gateway-corsdomain=*",
 			"--suggested-fee-recipient=0x8943545177806ED17B9F23F0a21ee5948eCaa776",
 			"--subscribe-all-subnets=true",
-			fmt.Sprintf("--jwt-secret=%s/jwtsecret", GENERATED_DATA_DIR_INSIDE_CONTAINER),
+			fmt.Sprintf("--jwt-secret=%s", JWT_SECRET_FILE_LOCATION_INSIDE_CONTAINER),
 			// mine, modify when running multi-node
 			"--minimum-peers-per-subnet=0",
 			"--min-sync-peers=0",

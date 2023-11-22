@@ -153,15 +153,6 @@ func (g *Nethermind) getContainerRequest(networks []string) (*tc.ContainerReques
 		return nil, err
 	}
 
-	jwtSecret, err := os.CreateTemp("/tmp", "jwtsecret")
-	if err != nil {
-		return nil, err
-	}
-	_, err = jwtSecret.WriteString("0xfad2709d0bb03bf0e8ba3c99bea194575d3e98863133d1af638ed056d1d59345")
-	if err != nil {
-		return nil, err
-	}
-
 	return &tc.ContainerRequest{
 		Name:            g.ContainerName,
 		Image:           fmt.Sprintf("nethermind/nethermind:%s", NETHERMIND_IMAGE_TAG),
@@ -187,7 +178,7 @@ func (g *Nethermind) getContainerRequest(networks []string) (*tc.ContainerReques
 			fmt.Sprintf("--JsonRpc.Port=%s", TX_GETH_HTTP_PORT),
 			"--JsonRpc.EngineHost=0.0.0.0",
 			"--JsonRpc.EnginePort=" + ETH2_EXECUTION_PORT,
-			"--JsonRpc.JwtSecretFile=/nethermind/jwtsecret",
+			fmt.Sprintf("--JsonRpc.JwtSecretFile=%s", JWT_SECRET_FILE_LOCATION_INSIDE_CONTAINER),
 			"--KeyStore.KeyStoreDirectory=/nethermind/keystore",
 			"--KeyStore.BlockAuthorAccount=0x123463a4b065722e99115d6c222f267d9cabb524",
 			"--KeyStore.UnlockAccounts=0x123463a4b065722e99115d6c222f267d9cabb524",
@@ -197,11 +188,6 @@ func (g *Nethermind) getContainerRequest(networks []string) (*tc.ContainerReques
 			"--HealthChecks.Enabled=true", // default slug /health
 		},
 		Files: []tc.ContainerFile{
-			{
-				HostFilePath:      jwtSecret.Name(),
-				ContainerFilePath: "/nethermind/jwtsecret",
-				FileMode:          0644,
-			},
 			{
 				HostFilePath:      key1File.Name(),
 				ContainerFilePath: "/nethermind/keystore/key-123463a4b065722e99115d6c222f267d9cabb524",
