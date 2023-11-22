@@ -296,9 +296,24 @@ var (
 		DefaultGasLimit:           6000000,
 	}
 
-	// optimismGoerli https://dev.optimism.io/kovan-to-goerli/
+	// OptimismGoerli https://dev.optimism.io/kovan-to-goerli/
 	OptimismGoerli blockchain.EVMNetwork = blockchain.EVMNetwork{
 		Name:                      "Optimism Goerli",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.OptimismClientImplementation,
+		ChainID:                   420,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.JSONStrDuration{Duration: 3 * time.Minute},
+		MinimumConfirmations:      0,
+		GasEstimationBuffer:       0,
+		FinalityTag:               true,
+		DefaultGasLimit:           6000000,
+	}
+
+	// OptimismSepolia https://community.optimism.io/docs/useful-tools/networks/#parameters-for-node-operators-2
+	OptimismSepolia blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Optimism Sepolia",
 		SupportsEIP1559:           true,
 		ClientImplementation:      blockchain.OptimismClientImplementation,
 		ChainID:                   420,
@@ -407,6 +422,21 @@ var (
 
 	BaseGoerli blockchain.EVMNetwork = blockchain.EVMNetwork{
 		Name:                      "Base Goerli",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.OptimismClientImplementation,
+		ChainID:                   84531,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.JSONStrDuration{Duration: 3 * time.Minute},
+		MinimumConfirmations:      0,
+		GasEstimationBuffer:       0,
+		FinalityTag:               true,
+		DefaultGasLimit:           6000000,
+	}
+
+	// BaseSepolia https://base.mirror.xyz/kkz1-KFdUwl0n23PdyBRtnFewvO48_m-fZNzPMJehM4
+	BaseSepolia blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Base Sepolia",
 		SupportsEIP1559:           true,
 		ClientImplementation:      blockchain.OptimismClientImplementation,
 		ChainID:                   84531,
@@ -654,7 +684,9 @@ var (
 		"ARBITRUM_SEPOLIA":      ArbitrumSepolia,
 		"OPTIMISM_MAINNET":      OptimismMainnet,
 		"OPTIMISM_GOERLI":       OptimismGoerli,
+		"OPTIMISM_SEPOLIA":      OptimismSepolia,
 		"BASE_GOERLI":           BaseGoerli,
+		"BASE_SEPOLIA":          BaseSepolia,
 		"CELO_ALFAJORES":        CeloAlfajores,
 		"CELO_MAINNET":          CeloMainnet,
 		"RSK":                   RSKTestnet,
@@ -701,7 +733,10 @@ func SetNetworks(networkKeys []string) []blockchain.EVMNetwork {
 		if !strings.Contains(networkKeys[i], "SIMULATED") {
 			// Get network RPC WS URL from env var
 			wsEnvVar := fmt.Sprintf("%s_URLS", networkKeys[i])
-			wsEnvVal := os.Getenv(wsEnvVar)
+			wsEnvVal, err := osutil.GetEnv(wsEnvVar)
+			if err != nil {
+				log.Warn().Msgf("error getting %s var: %v", wsEnvVar, err)
+			}
 			if wsEnvVal == "" {
 				// Get default value
 				defaultUrls, err := osutil.GetEnv("EVM_URLS")
@@ -719,7 +754,10 @@ func SetNetworks(networkKeys []string) []blockchain.EVMNetwork {
 
 			// Get network RPC HTTP URL from env var
 			httpEnvVar := fmt.Sprintf("%s_HTTP_URLS", networkKeys[i])
-			httpEnvVal := os.Getenv(httpEnvVar)
+			httpEnvVal, err := osutil.GetEnv(httpEnvVar)
+			if err != nil {
+				log.Warn().Msgf("error getting %s var: %v", httpEnvVal, err)
+			}
 			if httpEnvVal == "" {
 				// Get default value
 				defaultUrls, err := osutil.GetEnv("EVM_HTTP_URLS")
@@ -737,7 +775,10 @@ func SetNetworks(networkKeys []string) []blockchain.EVMNetwork {
 
 			// Get network wallet key from env var
 			walletKeysEnvVar := fmt.Sprintf("%s_KEYS", networkKeys[i])
-			walletKeysEnvVal := os.Getenv(walletKeysEnvVar)
+			walletKeysEnvVal, err := osutil.GetEnv(walletKeysEnvVar)
+			if err != nil {
+				log.Warn().Msgf("error getting %s var: %v", walletKeysEnvVal, err)
+			}
 			if walletKeysEnvVal == "" {
 				// Get default value
 				defaultKeys, err := osutil.GetEnv("EVM_KEYS")
