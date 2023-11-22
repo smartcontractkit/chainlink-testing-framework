@@ -678,7 +678,7 @@ var (
 
 	// https://era.zksync.io/docs/dev/troubleshooting/important-links.html
 	ZKSyncMainnet blockchain.EVMNetwork = blockchain.EVMNetwork{
-		Name:                      "ZKSync Goerli Testnet",
+		Name:                      "ZKSync era Mainnet",
 		ClientImplementation:      blockchain.ZKSyncClientImplementation,
 		ChainID:                   324,
 		Simulated:                 false,
