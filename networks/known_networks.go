@@ -735,6 +735,7 @@ var (
 		"KROMA_SEPOLIA":         KromaSepolia,
 		"KROMA_MAINNET":         KromaMainnet,
 		"ZK_SYNC_GOERLI":        ZKSyncGoerliTestnet,
+		"ZK_SYNC_MAINNET":       ZKSyncMainnet,
 	}
 )
 
