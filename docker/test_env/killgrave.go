@@ -141,7 +141,7 @@ func (k *Killgrave) getContainerRequest() tc.ContainerRequest {
 	return tc.ContainerRequest{
 		Name:         k.ContainerName,
 		Networks:     k.Networks,
-		Image:        "friendsofgo/killgrave",
+		Image:        "friendsofgo/killgrave:0.4.1",
 		ExposedPorts: []string{NatPortFormat(k.InternalPort)},
 		Cmd:          []string{"-host=0.0.0.0", "-imposters=/imposters", "-watcher"},
 		Mounts: tc.ContainerMounts{
