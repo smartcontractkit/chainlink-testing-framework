@@ -20,7 +20,7 @@ func TestEth2CustomConfig(t *testing.T) {
 		WithConsensusType(ConsensusType_PoS).
 		WithConsensusLayer(ConsensusLayer_Prysm).
 		WithExecutionLayer(ExecutionLayer_Geth).
-		WithBeaconChainConfig(BeaconChainConfig{
+		WithBeaconChainConfig(EthereumChainConfig{
 			SecondsPerSlot: 4,
 			SlotsPerEpoch:  2,
 		}).

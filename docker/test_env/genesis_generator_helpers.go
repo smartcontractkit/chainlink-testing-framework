@@ -2,24 +2,20 @@ package test_env
 
 import (
 	"bytes"
+	"context"
 	"html/template"
+	"time"
+
+	tcwait "github.com/testcontainers/testcontainers-go/wait"
 )
 
-func generateEnvValues(c *BeaconChainConfig, addressesToFund []string) (string, error) {
-	data := struct {
-		AccountAddr []string
-		*BeaconChainConfig
-	}{
-		AccountAddr:       addressesToFund,
-		BeaconChainConfig: c,
-	}
-
+func generateEnvValues(config *EthereumChainConfig) (string, error) {
 	tmpl, err := template.New("valuesEnv").Funcs(funcMap).Parse(valuesEnv)
 	if err != nil {
 		return "", err
 	}
 	var buf bytes.Buffer
-	err = tmpl.Execute(&buf, data)
+	err = tmpl.Execute(&buf, *config)
 	if err != nil {
 		return "", err
 	}
@@ -57,9 +53,9 @@ export GENESIS_DELAY={{.GenesisDelay}}
 export MAX_CHURN=8
 export EJECTION_BALANCE=16000000000
 export SLOTS_PER_EPOCH={{.SlotsPerEpoch}}
-export PREMINE_ADDRS={{ if .AccountAddr }}'
-{{- $lastIndex := decrement (len .AccountAddr) }}
-{{- range $i, $addr := .AccountAddr }}
+export PREMINE_ADDRS={{ if .AddressesToFund }}'
+{{- $lastIndex := decrement (len .AddressesToFund) }}
+{{- range $i, $addr := .AddressesToFund }}
   "{{ $addr }}": 1000000000ETH
 {{- end }}'
 {{ else }}{}
@@ -226,3 +222,58 @@ var mnemonics = `
 - mnemonic: "${EL_AND_CL_MNEMONIC}"  # a 24 word BIP 39 mnemonic
   count: $NUMBER_OF_VALIDATORS
 `
+
+type ExitCodeStrategy struct {
+	expectedExitCode int
+	timeout          time.Duration
+	pollInterval     time.Duration
+}
+
+func NewExitCodeStrategy() *ExitCodeStrategy {
+	return &ExitCodeStrategy{
+		expectedExitCode: 0,
+		timeout:          2 * time.Minute,
+		pollInterval:     2 * time.Second,
+	}
+}
+
+func (w *ExitCodeStrategy) WithTimeout(timeout time.Duration) *ExitCodeStrategy {
+	w.timeout = timeout
+	return w
+}
+
+func (w *ExitCodeStrategy) WithExitCode(exitCode int) *ExitCodeStrategy {
+	w.expectedExitCode = exitCode
+	return w
+}
+
+func (w *ExitCodeStrategy) WithPollInterval(pollInterval time.Duration) *ExitCodeStrategy {
+	w.pollInterval = pollInterval
+	return w
+}
+
+// WaitUntilReady implements Strategy.WaitUntilReady
+func (w *ExitCodeStrategy) WaitUntilReady(ctx context.Context, target tcwait.StrategyTarget) (err error) {
+
+	ctx, cancel := context.WithTimeout(ctx, w.timeout)
+	defer cancel()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(100 * time.Millisecond):
+			state, err := target.State(ctx)
+			if err != nil {
+				return err
+			}
+
+			if state.ExitCode != w.expectedExitCode {
+				time.Sleep(w.pollInterval)
+				continue
+			} else {
+				return nil
+			}
+		}
+	}
+}

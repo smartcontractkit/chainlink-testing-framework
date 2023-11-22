@@ -3,9 +3,10 @@ package test_env
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
-	"github.com/stretchr/testify/require"
 )
 
 func TestEth2WithPrysmAndNethermind(t *testing.T) {

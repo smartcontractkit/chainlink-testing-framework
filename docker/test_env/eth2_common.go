@@ -1,6 +1,7 @@
 package test_env
 
 import (
+	"fmt"
 	"time"
 
 	tc "github.com/testcontainers/testcontainers-go"
@@ -8,44 +9,52 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 )
 
-const (
-	ETH2_EXECUTION_PORT                = "8551"
-	CONTAINER_ETH2_CONSENSUS_DIRECTORY = "/consensus"
-	CONTAINER_ETH2_EXECUTION_DIRECTORY = "/execution"
-	beaconConfigFile                   = "/consensus/config.yml"
-	eth2GenesisFile                    = "/consensus/genesis.ssz"
-	eth1GenesisFile                    = "/execution/genesis.json"
-	jwtSecretFileLocation              = "/execution/jwtsecret" // #nosec G101
-	VALIDATOR_BIPC39_MNEMONIC          = "giant issue aisle success illegal bike spike question tent bar rely arctic volcano long crawl hungry vocal artwork sniff fantasy very lucky have athlete"
+var (
+	ETH2_EXECUTION_PORT = "8551"
+	WALLET_PASSWORD     = "password"
+	// VALIDATOR_WALLET_PASSWORD_FILE_INSIDE_CONTAINER             = "/keys/password.txt"
+	VALIDATOR_WALLET_PASSWORD_FILE_INSIDE_CONTAINER = fmt.Sprintf("%s/wallet_password.txt", GENERATED_DATA_DIR_INSIDE_CONTAINER)
+	EL_ACCOUNT_PASSWORD_FILE_INSIDE_CONTAINER       = fmt.Sprintf("%s/account_password.txt", GENERATED_DATA_DIR_INSIDE_CONTAINER)
+	GENERATED_VALIDATOR_KEYS_DIR_INSIDE_CONTAINER   = "/keys"
+	NODE_0_DIR_INSIDE_CONTAINER                     = fmt.Sprintf("%s/node-0", GENERATED_VALIDATOR_KEYS_DIR_INSIDE_CONTAINER)
+	GENERATED_DATA_DIR_INSIDE_CONTAINER             = "/data/custom_config_data"
+	JWT_SECRET_LOCATION_INSIDE_CONTAINER            = fmt.Sprintf("%s/jwtsecret", GENERATED_DATA_DIR_INSIDE_CONTAINER) // #nosec G101
+	VALIDATOR_BIP39_MNEMONIC                        = "giant issue aisle success illegal bike spike question tent bar rely arctic volcano long crawl hungry vocal artwork sniff fantasy very lucky have athlete"
 )
 
-type BeaconChainConfig struct {
+type EthereumChainConfig struct {
 	SecondsPerSlot   int
 	SlotsPerEpoch    int
 	GenesisDelay     int
 	ValidatorCount   int
 	ChainID          int
 	GenesisTimestamp int
+	AddressesToFund  []string
 }
 
-var DefaultBeaconChainConfig = func() BeaconChainConfig {
-	config := BeaconChainConfig{
-		SecondsPerSlot: 12,
-		SlotsPerEpoch:  6,
-		GenesisDelay:   30,
-		ValidatorCount: 8,
-		ChainID:        1337,
+var DefaultBeaconChainConfig = func() EthereumChainConfig {
+	config := EthereumChainConfig{
+		SecondsPerSlot:  12,
+		SlotsPerEpoch:   6,
+		GenesisDelay:    15,
+		ValidatorCount:  8,
+		ChainID:         1337,
+		AddressesToFund: []string{"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"},
 	}
 	config.GenerateGenesisTimestamp()
 	return config
 }()
 
-func (b *BeaconChainConfig) GetValidatorBasedGenesisDelay() int {
-	return b.ValidatorCount * 5
+func (c *EthereumChainConfig) GetValidatorBasedGenesisDelay() int {
+	return c.ValidatorCount * 5
 }
 
-func (b *BeaconChainConfig) GenerateGenesisTimestamp() {
-	b.GenesisTimestamp = int(time.Now().Unix()) + b.GetValidatorBasedGenesisDelay()
+func (c *EthereumChainConfig) GenerateGenesisTimestamp() {
+	c.GenesisTimestamp = int(time.Now().Unix()) + c.GetValidatorBasedGenesisDelay()
+}
+
+func (c *EthereumChainConfig) GetDefaultWaitDuration() time.Duration {
+	return time.Duration((c.GenesisDelay+c.GetValidatorBasedGenesisDelay())*4) * time.Second
 }
 
 type ExecutionClient interface {
@@ -60,39 +69,3 @@ type ExecutionClient interface {
 	GetExternalWsUrl() string
 	WaitUntilChainIsReady(waitTime time.Duration) error
 }
-
-// func buildGenesisJson(addressesToFund []string) (string, error) {
-// 	for i := range addressesToFund {
-// 		if has0xPrefix(addressesToFund[i]) {
-// 			addressesToFund[i] = addressesToFund[i][2:]
-// 		}
-// 	}
-
-// 	data := struct {
-// 		AddressesToFund []string
-// 	}{
-// 		AddressesToFund: addressesToFund,
-// 	}
-
-// 	t, err := template.New("genesis-json").Funcs(funcMap).Parse(Eth1GenesisJSON)
-// 	if err != nil {
-// 		fmt.Println("Error parsing template:", err)
-// 		os.Exit(1)
-// 	}
-
-// 	var buf bytes.Buffer
-// 	err = t.Execute(&buf, data)
-
-// 	return buf.String(), err
-// }
-
-// var funcMap = template.FuncMap{
-// 	// The name "inc" is what the function will be called in the template text.
-// 	"decrement": func(i int) int {
-// 		return i - 1
-// 	},
-// }
-
-// func has0xPrefix(str string) bool {
-// 	return len(str) >= 2 && str[0] == '0' && (str[1] == 'x' || str[1] == 'X')
-// }

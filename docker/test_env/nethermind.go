@@ -30,20 +30,20 @@ type Nethermind struct {
 	InternalWsUrl        string
 	InternalExecutionURL string
 	ExternalExecutionURL string
-	CustomConfigDataDir  string
+	generatedDataHostDir string
 	consensusLayer       ConsensusLayer
 	l                    zerolog.Logger
 }
 
-func NewNethermind(networks []string, customConfigDataDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) *Nethermind {
+func NewNethermind(networks []string, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) *Nethermind {
 	g := &Nethermind{
 		EnvComponent: EnvComponent{
 			ContainerName: fmt.Sprintf("%s-%s", "nethermind", uuid.NewString()[0:8]),
 			Networks:      networks,
 		},
-		CustomConfigDataDir: customConfigDataDir,
-		consensusLayer:      consensusLayer,
-		l:                   log.Logger,
+		generatedDataHostDir: generatedDataHostDir,
+		consensusLayer:       consensusLayer,
+		l:                    log.Logger,
 	}
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
@@ -101,7 +101,7 @@ func (g *Nethermind) StartContainer() (blockchain.EVMNetwork, error) {
 	g.ExternalExecutionURL = FormatHttpUrl(host, executionPort.Port())
 
 	networkConfig := blockchain.SimulatedEVMNetwork
-	networkConfig.Name = fmt.Sprintf("nethermind-eth2-%s", g.consensusLayer)
+	networkConfig.Name = fmt.Sprintf("Simulated Eth2 (Nethermind %s)", g.consensusLayer)
 	networkConfig.URLs = []string{g.ExternalWsUrl}
 	networkConfig.HTTPURLs = []string{g.ExternalHttpUrl}
 
@@ -144,17 +144,6 @@ func (g *Nethermind) GetContainer() *tc.Container {
 }
 
 func (g *Nethermind) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
-	//this might fail in CI
-	// keystoreDir, err := os.MkdirTemp(g.ExecutionDir, "keystore")
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	passwordFile, err := os.CreateTemp("", "password.txt")
-	if err != nil {
-		return nil, err
-	}
-
 	key1File, err := os.CreateTemp("", "key1")
 	if err != nil {
 		return nil, err
@@ -173,53 +162,22 @@ func (g *Nethermind) getContainerRequest(networks []string) (*tc.ContainerReques
 		return nil, err
 	}
 
-	// netherChainspecFile, err := os.CreateTemp("", "chainspec.json")
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// netherChainspec, err := buildNethermindChainspec([]string{}, g.genesisTime)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// _, err = netherChainspecFile.WriteString(netherChainspec)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// fmt.Print(netherChainspec)
-
-	//$NETHERMIND/Nethermind.Runner
-	//--Init.ChainSpecPath ./nethermind.json
-	//--JsonRpc.JwtSecretFile $DEVNET/jwt.hex
-	//--Init.IsMining true
-	//--KeyStore.PasswordFiles $DEVNET/keystore_password.txt
-	//--KeyStore.UnlockAccounts 0x123463a4b065722e99115d6c222f267d9cabb524
-	//--KeyStore.BlockAuthorAccount 0x123463a4b065722e99115d6c222f267d9cabb524 //what is this?
-	//--Network.MaxActivePeers 0
-	//--Init.GenesisHash 0x19286b9ba93edd49b64266c1df5e8303ecb3c504528b010b56f5b237aa0896c2 //we can use default
-	//-c withdrawals_test
-
-	//--Blocks.RandomizedBlocks -- could be interesting!
-	//--Network.EnableUPnP -- enable and see what's the result?
-
 	return &tc.ContainerRequest{
 		Name:            g.ContainerName,
-		AlwaysPullImage: true,
 		Image:           fmt.Sprintf("nethermind/nethermind:%s", NETHERMIND_IMAGE_TAG),
 		Networks:        networks,
-		ExposedPorts:    []string{NatPortFormat(TX_GETH_HTTP_PORT), NatPortFormat(TX_GETH_WS_PORT), NatPortFormat(ETH2_EXECUTION_PORT)},
+		AlwaysPullImage: true,
+		// ImagePlatform: "linux/x86_64", // this breaks everything, don't try it
+		ExposedPorts: []string{NatPortFormat(TX_GETH_HTTP_PORT), NatPortFormat(TX_GETH_WS_PORT), NatPortFormat(ETH2_EXECUTION_PORT)},
 		WaitingFor: tcwait.ForAll(
-			// NewHTTPStrategy("/", NatPort(TX_GETH_HTTP_PORT)),
 			tcwait.ForLog("Nethermind initialization completed").
 				WithStartupTimeout(120 * time.Second).
 				WithPollInterval(1 * time.Second),
-			// NewWebSocketStrategy(NatPort(TX_GETH_WS_PORT), g.l),
 		),
 		Cmd: []string{
+			"--datadir=/nethermind",
 			"--config=none.cfg",
-			"--Init.ChainSpecPath=/nethermind/custom_config_data/chainspec.json",
+			fmt.Sprintf("--Init.ChainSpecPath=%s/chainspec.json", GENERATED_DATA_DIR_INSIDE_CONTAINER),
 			"--Init.DiscoveryEnabled=false",
 			"--Init.WebSocketsEnabled=true",
 			fmt.Sprintf("--JsonRpc.WebSocketsPort=%s", TX_GETH_WS_PORT),
@@ -230,46 +188,20 @@ func (g *Nethermind) getContainerRequest(networks []string) (*tc.ContainerReques
 			"--JsonRpc.EngineHost=0.0.0.0",
 			"--JsonRpc.EnginePort=" + ETH2_EXECUTION_PORT,
 			"--JsonRpc.JwtSecretFile=/nethermind/jwtsecret",
+			"--KeyStore.KeyStoreDirectory=/nethermind/keystore",
 			"--KeyStore.BlockAuthorAccount=0x123463a4b065722e99115d6c222f267d9cabb524",
 			"--KeyStore.UnlockAccounts=0x123463a4b065722e99115d6c222f267d9cabb524",
-			"--KeyStore.PasswordFiles=/nethermind/password.txt",
+			fmt.Sprintf("--KeyStore.PasswordFiles=%s", EL_ACCOUNT_PASSWORD_FILE_INSIDE_CONTAINER),
 			"--Network.MaxActivePeers=0",
 			"--Network.OnlyStaticPeers=true",
 			"--HealthChecks.Enabled=true", // default slug /health
-
-			// "--ws",
-			// "--ws.api=admin,debug,web3,eth,txpool,net",
-			// "--ws.addr=0.0.0.0",
-			// "--ws.origins=*",
-			// "--authrpc.vhosts=*",
-			// "--authrpc.addr=0.0.0.0",
-			// "--datadir=/execution",
-			// "--rpc.allow-unprotected-txs",
-			// "--rpc.txfeecap=0",
-			// "--allow-insecure-unlock",
-			// "--Init.IsMining=true",
-			// "--nodiscover",
-			// "--syncmode=full",
-			// "--networkid=1337",
-			// "--graphql",
-			// "--graphql.corsdomain=*",
 		},
 		Files: []tc.ContainerFile{
-			{
-				HostFilePath:      passwordFile.Name(),
-				ContainerFilePath: "/nethermind/password.txt",
-				FileMode:          0644,
-			},
 			{
 				HostFilePath:      jwtSecret.Name(),
 				ContainerFilePath: "/nethermind/jwtsecret",
 				FileMode:          0644,
 			},
-			// {
-			// 	HostFilePath:      netherChainspecFile.Name(),
-			// 	ContainerFilePath: "/nethermind/chainspec.json",
-			// 	FileMode:          0644,
-			// },
 			{
 				HostFilePath:      key1File.Name(),
 				ContainerFilePath: "/nethermind/keystore/key-123463a4b065722e99115d6c222f267d9cabb524",
@@ -279,9 +211,9 @@ func (g *Nethermind) getContainerRequest(networks []string) (*tc.ContainerReques
 		Mounts: tc.ContainerMounts{
 			tc.ContainerMount{
 				Source: tc.GenericBindMountSource{
-					HostPath: g.CustomConfigDataDir,
+					HostPath: g.generatedDataHostDir,
 				},
-				Target: "/nethermind/custom_config_data",
+				Target: tc.ContainerMountTarget(GENERATED_DATA_DIR_INSIDE_CONTAINER),
 			},
 		},
 	}, nil

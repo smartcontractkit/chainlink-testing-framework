@@ -17,21 +17,19 @@ import (
 
 type EthGenesisGeneretor struct {
 	EnvComponent
-	beaconChainConfig   BeaconChainConfig
-	l                   zerolog.Logger
-	customConfigDataDir string
-	addressesToFund     []string
+	beaconChainConfig    EthereumChainConfig
+	l                    zerolog.Logger
+	generatedDataHostDir string
 }
 
-func NewEthGenesisGenerator(beaconChainConfig BeaconChainConfig, addressesToFund []string, hostSharedDataDir string, opts ...EnvComponentOption) *EthGenesisGeneretor {
+func NewEthGenesisGenerator(beaconChainConfig EthereumChainConfig, generatedDataHostDir string, opts ...EnvComponentOption) *EthGenesisGeneretor {
 	g := &EthGenesisGeneretor{
 		EnvComponent: EnvComponent{
 			ContainerName: fmt.Sprintf("%s-%s", "eth-genesis-generator", uuid.NewString()[0:8]),
 		},
-		beaconChainConfig:   beaconChainConfig,
-		customConfigDataDir: hostSharedDataDir,
-		l:                   log.Logger,
-		addressesToFund:     addressesToFund,
+		beaconChainConfig:    beaconChainConfig,
+		generatedDataHostDir: generatedDataHostDir,
+		l:                    log.Logger,
 	}
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
@@ -41,11 +39,6 @@ func NewEthGenesisGenerator(beaconChainConfig BeaconChainConfig, addressesToFund
 
 func (g *EthGenesisGeneretor) WithLogger(l zerolog.Logger) *EthGenesisGeneretor {
 	g.l = l
-	return g
-}
-
-func (g *EthGenesisGeneretor) WithFundedAccounts(addresses []string) *EthGenesisGeneretor {
-	g.addressesToFund = addresses
 	return g
 }
 
@@ -77,7 +70,7 @@ func (g *EthGenesisGeneretor) getContainerRequest(networks []string) (*tc.Contai
 		return nil, err
 	}
 
-	bc, err := generateEnvValues(&g.beaconChainConfig, g.addressesToFund)
+	bc, err := generateEnvValues(&g.beaconChainConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -109,6 +102,15 @@ func (g *EthGenesisGeneretor) getContainerRequest(networks []string) (*tc.Contai
 		return nil, err
 	}
 	_, err = mnemonicsFile.WriteString(mnemonics)
+	if err != nil {
+		return nil, err
+	}
+
+	jwtSecretFile, err := os.CreateTemp("/tmp", "jwtsecret")
+	if err != nil {
+		return nil, err
+	}
+	_, err = jwtSecretFile.WriteString("0xfad2709d0bb03bf0e8ba3c99bea194575d3e98863133d1af638ed056d1d59345")
 	if err != nil {
 		return nil, err
 	}
@@ -146,13 +148,18 @@ func (g *EthGenesisGeneretor) getContainerRequest(networks []string) (*tc.Contai
 				ContainerFilePath: "/config/cl/mnemonics.yaml",
 				FileMode:          0644,
 			},
+			{
+				HostFilePath:      jwtSecretFile.Name(),
+				ContainerFilePath: JWT_SECRET_LOCATION_INSIDE_CONTAINER,
+				FileMode:          0644,
+			},
 		},
 		Mounts: tc.ContainerMounts{
 			tc.ContainerMount{
 				Source: tc.GenericBindMountSource{
-					HostPath: g.customConfigDataDir,
+					HostPath: g.generatedDataHostDir,
 				},
-				Target: "/data/custom_config_data",
+				Target: tc.ContainerMountTarget(GENERATED_DATA_DIR_INSIDE_CONTAINER),
 			},
 		},
 	}, nil

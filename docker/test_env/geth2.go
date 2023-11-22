@@ -24,12 +24,6 @@ const (
 	GO_CLIENT_IMAGE_TAG = "v1.13.4"
 )
 
-type GethGenesis struct {
-	EnvComponent
-	ExecutionDir string
-	l            zerolog.Logger
-}
-
 type Geth2 struct {
 	EnvComponent
 	ExternalHttpUrl      string
@@ -38,90 +32,20 @@ type Geth2 struct {
 	InternalWsUrl        string
 	InternalExecutionURL string
 	ExternalExecutionURL string
-	ExecutionDir         string
-	customConfigDataDir  string
+	generatedDataHostDir string
 	consensusLayer       ConsensusLayer
 	l                    zerolog.Logger
 }
 
-func NewEth1Genesis(networks []string, executionDir string, opts ...EnvComponentOption) *GethGenesis {
-	g := &GethGenesis{
-		EnvComponent: EnvComponent{
-			ContainerName: fmt.Sprintf("%s-%s", "geth-eth1-genesis", uuid.NewString()[0:8]),
-			Networks:      networks,
-		},
-		ExecutionDir: executionDir,
-		l:            log.Logger,
-	}
-	for _, opt := range opts {
-		opt(&g.EnvComponent)
-	}
-	return g
-}
-
-func (g *GethGenesis) WithLogger(l zerolog.Logger) *GethGenesis {
-	g.l = l
-	return g
-}
-
-func (g *GethGenesis) StartContainer() error {
-	r, err := g.getContainerRequest(g.Networks)
-	if err != nil {
-		return err
-	}
-
-	_, err = docker.StartContainerWithRetry(g.l, tc.GenericContainerRequest{
-		ContainerRequest: *r,
-		Reuse:            true,
-		Started:          true,
-		Logger:           &g.l,
-	})
-	if err != nil {
-		return errors.Wrapf(err, "cannot start geth eth1 genesis container")
-	}
-
-	g.l.Info().Str("containerName", g.ContainerName).
-		Msg("Started Geth Eth1 Genesis container")
-
-	return nil
-}
-
-func (g *GethGenesis) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
-	return &tc.ContainerRequest{
-		Name:            g.ContainerName,
-		AlwaysPullImage: true,
-		Image:           fmt.Sprintf("ethereum/client-go:%s", GO_CLIENT_IMAGE_TAG),
-		Networks:        networks,
-		WaitingFor: tcwait.ForAll(
-			tcwait.ForLog("Successfully wrote genesis state").
-				WithStartupTimeout(120 * time.Second).
-				WithPollInterval(1 * time.Second),
-		),
-		Cmd: []string{"--datadir=/execution",
-			"init",
-			eth1GenesisFile,
-		},
-		Mounts: tc.ContainerMounts{
-			tc.ContainerMount{
-				Source: tc.GenericBindMountSource{
-					HostPath: g.ExecutionDir,
-				},
-				Target: CONTAINER_ETH2_EXECUTION_DIRECTORY,
-			},
-		},
-	}, nil
-}
-
-func NewGeth2(networks []string, executionDir, customConfigDataDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) *Geth2 {
+func NewGeth2(networks []string, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) *Geth2 {
 	g := &Geth2{
 		EnvComponent: EnvComponent{
 			ContainerName: fmt.Sprintf("%s-%s", "geth2", uuid.NewString()[0:8]),
 			Networks:      networks,
 		},
-		customConfigDataDir: customConfigDataDir,
-		ExecutionDir:        executionDir,
-		consensusLayer:      consensusLayer,
-		l:                   log.Logger,
+		generatedDataHostDir: generatedDataHostDir,
+		consensusLayer:       consensusLayer,
+		l:                    log.Logger,
 	}
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
@@ -179,6 +103,7 @@ func (g *Geth2) StartContainer() (blockchain.EVMNetwork, error) {
 	g.ExternalExecutionURL = FormatHttpUrl(host, executionPort.Port())
 
 	networkConfig := blockchain.SimulatedEVMNetwork
+	networkConfig.Name = fmt.Sprintf("Simulated Eth2 (Geth %s)", g.consensusLayer)
 	networkConfig.Name = fmt.Sprintf("geth-eth2-%s", g.consensusLayer)
 	networkConfig.URLs = []string{g.ExternalWsUrl}
 	networkConfig.HTTPURLs = []string{g.ExternalHttpUrl}
@@ -222,37 +147,6 @@ func (g *Geth2) GetContainer() *tc.Container {
 }
 
 func (g *Geth2) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
-	passwordFile, err := os.CreateTemp("", "password.txt")
-	if err != nil {
-		return nil, err
-	}
-
-	// key1File, err := os.CreateTemp("", "key1")
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// _, err = key1File.WriteString(`{"address":"123463a4b065722e99115d6c222f267d9cabb524","crypto":{"cipher":"aes-128-ctr","ciphertext":"93b90389b855889b9f91c89fd15b9bd2ae95b06fe8e2314009fc88859fc6fde9","cipherparams":{"iv":"9dc2eff7967505f0e6a40264d1511742"},"kdf":"scrypt","kdfparams":{"dklen":32,"n":262144,"p":1,"r":8,"salt":"c07503bb1b66083c37527cd8f06f8c7c1443d4c724767f625743bd47ae6179a4"},"mac":"6d359be5d6c432d5bbb859484009a4bf1bd71b76e89420c380bd0593ce25a817"},"id":"622df904-0bb1-4236-b254-f1b8dfdff1ec","version":3}`)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	jwtSecret, err := os.CreateTemp("", "jwtsecret")
-	if err != nil {
-		return nil, err
-	}
-	_, err = jwtSecret.WriteString("0xfad2709d0bb03bf0e8ba3c99bea194575d3e98863133d1af638ed056d1d59345")
-	if err != nil {
-		return nil, err
-	}
-	secretKey, err := os.CreateTemp("", "sk.json")
-	if err != nil {
-		return nil, err
-	}
-	_, err = secretKey.WriteString("2e0834786285daccd064ca17f1654f67b4aef298acbb82cef9ec422fb4975622")
-	if err != nil {
-		return nil, err
-	}
-
 	initFile, err := os.CreateTemp("", "init.sh")
 	if err != nil {
 		return nil, err
@@ -269,11 +163,11 @@ func (g *Geth2) getContainerRequest(networks []string) (*tc.ContainerRequest, er
 	}
 
 	return &tc.ContainerRequest{
-		Name: g.ContainerName,
-		// AlwaysPullImage: true,
-		Image:        fmt.Sprintf("ethereum/client-go:%s", GO_CLIENT_IMAGE_TAG),
-		Networks:     networks,
-		ExposedPorts: []string{NatPortFormat(TX_GETH_HTTP_PORT), NatPortFormat(TX_GETH_WS_PORT), NatPortFormat(ETH2_EXECUTION_PORT)},
+		Name:          g.ContainerName,
+		Image:         fmt.Sprintf("ethereum/client-go:%s", GO_CLIENT_IMAGE_TAG),
+		Networks:      networks,
+		ImagePlatform: "linux/x86_64",
+		ExposedPorts:  []string{NatPortFormat(TX_GETH_HTTP_PORT), NatPortFormat(TX_GETH_WS_PORT), NatPortFormat(ETH2_EXECUTION_PORT)},
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForLog("WebSocket enabled").
 				WithStartupTimeout(120 * time.Second).
@@ -285,43 +179,17 @@ func (g *Geth2) getContainerRequest(networks []string) (*tc.ContainerRequest, er
 		},
 		Files: []tc.ContainerFile{
 			{
-				HostFilePath:      passwordFile.Name(),
-				ContainerFilePath: "/execution/password.txt",
-				FileMode:          0644,
-			},
-			{
 				HostFilePath:      initFile.Name(),
 				ContainerFilePath: "/init.sh",
 				FileMode:          0744,
-			},
-			{
-				HostFilePath:      jwtSecret.Name(),
-				ContainerFilePath: jwtSecretFileLocation,
-				FileMode:          0644,
-			},
-			// {
-			// 	HostFilePath:      key1File.Name(),
-			// 	ContainerFilePath: "/execution/keystore/key1",
-			// 	FileMode:          0644,
-			// },
-			{
-				HostFilePath:      secretKey.Name(),
-				ContainerFilePath: "/execution/sk.json",
-				FileMode:          0644,
 			},
 		},
 		Mounts: tc.ContainerMounts{
 			tc.ContainerMount{
 				Source: tc.GenericBindMountSource{
-					HostPath: g.ExecutionDir,
+					HostPath: g.generatedDataHostDir,
 				},
-				Target: CONTAINER_ETH2_EXECUTION_DIRECTORY,
-			},
-			tc.ContainerMount{
-				Source: tc.GenericBindMountSource{
-					HostPath: g.customConfigDataDir,
-				},
-				Target: "/data/custom_config_data",
+				Target: tc.ContainerMountTarget(GENERATED_DATA_DIR_INSIDE_CONTAINER),
 			},
 		},
 	}, nil
@@ -332,27 +200,36 @@ func (g Geth2) WaitUntilChainIsReady(waitTime time.Duration) error {
 	return waitForFirstBlock.WaitUntilReady(context.Background(), *g.GetContainer())
 }
 
+// echo "" > /execution/password.txt && \
+
 func buildInitScript() (string, error) {
 	initTemplate := `#!/bin/bash
-	mkdir /execution/keystore && \
+	mkdir -p /execution/keystore && \
+	echo "2e0834786285daccd064ca17f1654f67b4aef298acbb82cef9ec422fb4975622" > /execution/sk.json && \
 	echo '{"address":"123463a4b065722e99115d6c222f267d9cabb524","crypto":{"cipher":"aes-128-ctr","ciphertext":"93b90389b855889b9f91c89fd15b9bd2ae95b06fe8e2314009fc88859fc6fde9","cipherparams":{"iv":"9dc2eff7967505f0e6a40264d1511742"},"kdf":"scrypt","kdfparams":{"dklen":32,"n":262144,"p":1,"r":8,"salt":"c07503bb1b66083c37527cd8f06f8c7c1443d4c724767f625743bd47ae6179a4"},"mac":"6d359be5d6c432d5bbb859484009a4bf1bd71b76e89420c380bd0593ce25a817"},"id":"622df904-0bb1-4236-b254-f1b8dfdff1ec","version":3}' > /execution/keystore/key1 && \
-	geth init --state.scheme=path --datadir=/execution /data/custom_config_data/genesis.json && \
+	geth init --state.scheme=path --datadir=/execution {{.GeneratedDataDir}}/genesis.json && \
 	geth --http --http.api=eth,net,web3,debug --http.addr=0.0.0.0 --http.corsdomain=* \
 		--http.vhosts=* --http.port={{.HttpPort}} --ws --ws.api=admin,debug,web3,eth,txpool,net \
 		--ws.addr=0.0.0.0 --ws.origins=* --ws.port={{.WsPort}} --authrpc.vhosts=* \
-		--authrpc.addr=0.0.0.0 --authrpc.jwtsecret=/execution/jwtsecret --datadir=/execution \
+		--authrpc.addr=0.0.0.0 --authrpc.jwtsecret={{.JwtFileLocation}} --datadir=/execution \
 		--rpc.allow-unprotected-txs --rpc.txfeecap=0 --allow-insecure-unlock \
-		--password=/execution/password.txt --nodiscover --syncmode=full --networkid={{.ChainID}} \
+		--password={{.PasswordFileLocation}} --nodiscover --syncmode=full --networkid={{.ChainID}} \
 		--graphql --graphql.corsdomain=* --unlock=0x123463a4b065722e99115d6c222f267d9cabb524`
 
 	data := struct {
-		HttpPort string
-		WsPort   string
-		ChainID  string
+		HttpPort             string
+		WsPort               string
+		ChainID              string
+		GeneratedDataDir     string
+		JwtFileLocation      string
+		PasswordFileLocation string
 	}{
-		HttpPort: TX_GETH_HTTP_PORT,
-		WsPort:   TX_GETH_WS_PORT,
-		ChainID:  "1337",
+		HttpPort:             TX_GETH_HTTP_PORT,
+		WsPort:               TX_GETH_WS_PORT,
+		ChainID:              "1337",
+		GeneratedDataDir:     GENERATED_DATA_DIR_INSIDE_CONTAINER,
+		JwtFileLocation:      JWT_SECRET_LOCATION_INSIDE_CONTAINER,
+		PasswordFileLocation: EL_ACCOUNT_PASSWORD_FILE_INSIDE_CONTAINER,
 	}
 
 	t, err := template.New("init").Parse(initTemplate)
