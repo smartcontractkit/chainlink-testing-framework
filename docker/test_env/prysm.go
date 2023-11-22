@@ -22,15 +22,6 @@ const (
 	PRYSM_IMAGE_TAG      = "v4.1.1-debug"
 )
 
-type PrysmGenesis struct {
-	EnvComponent
-	hostExecutionDir  string
-	hostConsensusDir  string
-	beaconChainConfig BeaconChainConfig
-	addressesToFund   []string
-	l                 zerolog.Logger
-}
-
 type PrysmBeaconChain struct {
 	EnvComponent
 	InternalBeaconRpcProvider string
@@ -53,136 +44,6 @@ type PrysmValidator struct {
 	customConfigDataDir       string
 	beaconChainConfig         BeaconChainConfig
 	l                         zerolog.Logger
-}
-
-func NewEth2Genesis(networks []string, beaconChainConfig BeaconChainConfig, hostExecutionDir, hostConsensusDir, customConfigDataDir string, opts ...EnvComponentOption) *PrysmGenesis {
-	g := &PrysmGenesis{
-		EnvComponent: EnvComponent{
-			ContainerName: fmt.Sprintf("%s-%s", "prysm-eth2-genesis", uuid.NewString()[0:8]),
-			Networks:      networks,
-		},
-		beaconChainConfig: beaconChainConfig,
-		hostExecutionDir:  hostExecutionDir,
-		hostConsensusDir:  hostConsensusDir,
-		l:                 log.Logger,
-		addressesToFund:   []string{},
-	}
-	for _, opt := range opts {
-		opt(&g.EnvComponent)
-	}
-	return g
-}
-
-func (g *PrysmGenesis) WithLogger(l zerolog.Logger) *PrysmGenesis {
-	g.l = l
-	return g
-}
-
-func (g *PrysmGenesis) WithFundedAccounts(addresses []string) *PrysmGenesis {
-	g.addressesToFund = addresses
-	return g
-}
-
-func (g *PrysmGenesis) StartContainer() error {
-	r, err := g.getContainerRequest(g.Networks)
-	if err != nil {
-		return err
-	}
-
-	_, err = docker.StartContainerWithRetry(g.l, tc.GenericContainerRequest{
-		ContainerRequest: *r,
-		Reuse:            true,
-		Started:          true,
-		Logger:           &g.l,
-	})
-	if err != nil {
-		return errors.Wrapf(err, "cannot start prysm beacon chain genesis container")
-	}
-
-	g.l.Info().Str("containerName", g.ContainerName).
-		Msg("Started Prysm Beacon Chain Genesis container")
-
-	return nil
-}
-
-func (g *PrysmGenesis) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
-	configFile, err := os.CreateTemp("", "config.yml")
-	if err != nil {
-		return nil, err
-	}
-
-	bc, err := GenerateBeaconChainConfig(&g.beaconChainConfig)
-	if err != nil {
-		return nil, err
-	}
-	_, err = configFile.WriteString(bc)
-	if err != nil {
-		return nil, err
-	}
-
-	genesisFile, err := os.CreateTemp("", "genesis_json")
-	if err != nil {
-		return nil, err
-	}
-	genesis, err := buildGenesisJson(g.addressesToFund)
-	if err != nil {
-		return nil, err
-	}
-	_, err = genesisFile.WriteString(genesis)
-	if err != nil {
-		return nil, err
-	}
-
-	return &tc.ContainerRequest{
-		Name: g.ContainerName,
-		// AlwaysPullImage: true,
-		Image:    "gcr.io/prysmaticlabs/prysm/cmd/prysmctl:HEAD-1530d1", // latest one that works, a bit newer than v4.1.1
-		Networks: networks,
-		WaitingFor: tcwait.ForAll(
-			tcwait.ForLog("Done writing genesis state to"),
-			tcwait.ForLog("Command completed").
-				WithStartupTimeout(20*time.Second).
-				WithPollInterval(1*time.Second),
-		),
-		Cmd: []string{"testnet",
-			"generate-genesis",
-			"--fork=deneb",
-			"--num-validators=8",
-			// "--genesis-time-delay=20",
-			// "--genesis-time=" + fmt.Sprintf("%d", time.Now().Add(time.Duration(30*time.Second)).Unix()),
-			"--genesis-time=" + fmt.Sprintf("%d", 30),
-			"--output-ssz=" + eth2GenesisFile,
-			"--chain-config-file=" + beaconConfigFile,
-			// "--geth-genesis-json-in=" + eth1GenesisFile,
-			// "--geth-genesis-json-out=" + eth1GenesisFile,
-		},
-		Files: []tc.ContainerFile{
-			{
-				HostFilePath:      configFile.Name(),
-				ContainerFilePath: beaconConfigFile,
-				FileMode:          0644,
-			},
-			{
-				HostFilePath:      genesisFile.Name(),
-				ContainerFilePath: eth1GenesisFile,
-				FileMode:          0644,
-			},
-		},
-		Mounts: tc.ContainerMounts{
-			tc.ContainerMount{
-				Source: tc.GenericBindMountSource{
-					HostPath: g.hostExecutionDir,
-				},
-				Target: CONTAINER_ETH2_EXECUTION_DIRECTORY,
-			},
-			tc.ContainerMount{
-				Source: tc.GenericBindMountSource{
-					HostPath: g.hostConsensusDir,
-				},
-				Target: CONTAINER_ETH2_CONSENSUS_DIRECTORY,
-			},
-		},
-	}, nil
 }
 
 func NewPrysmBeaconChain(networks []string, beaconChainConfig BeaconChainConfig, executionDir, consensusDir, customConfigDataDir, gethExecutionURL string, opts ...EnvComponentOption) *PrysmBeaconChain {
@@ -294,10 +155,10 @@ func (g *PrysmBeaconChain) getContainerRequest(networks []string) (*tc.Container
 			// unused
 			// "--chain-id=1337",
 			// "--bootstrap-node=",
-			"--contract-deployment-block=0",
+			// "--contract-deployment-block=0",
 			// "--enable-debug-rpc-endpoints",
 			// "--verbosity=debug",
-			"--interop-eth1data-votes",
+			// "--interop-eth1data-votes",
 		},
 		ExposedPorts: []string{NatPortFormat(PRYSM_NODE_RPC_PORT), NatPortFormat(PRYSM_QUERY_RPC_PORT)},
 		Files: []tc.ContainerFile{

@@ -286,7 +286,7 @@ func (b *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error)
 	var net blockchain.EVMNetwork
 	var client ExecutionClient
 	if b.ExecutionLayer == ExecutionLayer_Geth {
-		client = NewGeth2(networkNames, hostExecutionDir, ConsensusLayer_Prysm, b.setExistingContainerName(ContainerType_Geth2)).WithLogger(b.logger)
+		client = NewGeth2(networkNames, hostExecutionDir, customConfigDataDir, ConsensusLayer_Prysm, b.setExistingContainerName(ContainerType_Geth2)).WithLogger(b.logger)
 	} else {
 		client = NewNethermind(networkNames, customConfigDataDir, ConsensusLayer_Prysm, b.setExistingContainerName(ContainerType_Nethermind)).WithLogger(b.logger)
 	}
