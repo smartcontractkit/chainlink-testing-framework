@@ -5,17 +5,31 @@ import (
 	"html/template"
 )
 
-func generateEnvValues(c *BeaconChainConfig) (string, error) {
-	tmpl, err := template.New("genesis").Parse(valuesEnv)
+func generateEnvValues(c *BeaconChainConfig, addressesToFund []string) (string, error) {
+	data := struct {
+		AccountAddr []string
+		*BeaconChainConfig
+	}{
+		AccountAddr:       addressesToFund,
+		BeaconChainConfig: c,
+	}
+
+	tmpl, err := template.New("valuesEnv").Funcs(funcMap).Parse(valuesEnv)
 	if err != nil {
 		return "", err
 	}
 	var buf bytes.Buffer
-	err = tmpl.Execute(&buf, *c)
+	err = tmpl.Execute(&buf, data)
 	if err != nil {
 		return "", err
 	}
 	return buf.String(), nil
+}
+
+var funcMap = template.FuncMap{
+	"decrement": func(i int) int {
+		return i - 1
+	},
 }
 
 var valuesEnv = `
@@ -43,6 +57,13 @@ export GENESIS_DELAY={{.GenesisDelay}}
 export MAX_CHURN=8
 export EJECTION_BALANCE=16000000000
 export SLOTS_PER_EPOCH={{.SlotsPerEpoch}}
+export PREMINE_ADDRS={{ if .AccountAddr }}'
+{{- $lastIndex := decrement (len .AccountAddr) }}
+{{- range $i, $addr := .AccountAddr }}
+  "{{ $addr }}": 1000000000ETH
+{{- end }}'
+{{ else }}{}
+{{ end }}
 `
 
 var elGenesisConfig = `
@@ -71,7 +92,7 @@ el_premine:
   "m/44'/60'/0'/0/18": 1000000000ETH
   "m/44'/60'/0'/0/19": 1000000000ETH
   "m/44'/60'/0'/0/20": 1000000000ETH
-el_premine_addrs: {}
+el_premine_addrs: ${PREMINE_ADDRS}
 genesis_timestamp: ${GENESIS_TIMESTAMP}
 genesis_delay: ${GENESIS_DELAY}
 slot_duration_in_seconds: ${SLOT_DURATION_IN_SECONDS}

@@ -1,8 +1,10 @@
 package test_env
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"html/template"
 	"os"
 	"time"
 
@@ -256,18 +258,12 @@ func (g *Geth2) getContainerRequest(networks []string) (*tc.ContainerRequest, er
 		return nil, err
 	}
 
-	_, err = initFile.WriteString(
-		`#!/bin/bash
-mkdir /execution/keystore && \
-geth init --state.scheme=path --datadir=/execution /data/custom_config_data/genesis.json && \
-geth --http --http.api=eth,net,web3,debug --http.addr=0.0.0.0 --http.corsdomain=* \
-	--http.vhosts=* --http.port=8544 --ws --ws.api=admin,debug,web3,eth,txpool,net \
-	--ws.addr=0.0.0.0 --ws.origins=* --ws.port=8545 --authrpc.vhosts=* \
-	--authrpc.addr=0.0.0.0 --authrpc.jwtsecret=/execution/jwtsecret --datadir=/execution \
-	--rpc.allow-unprotected-txs --rpc.txfeecap=0 --allow-insecure-unlock \
-	--password=/execution/password.txt --nodiscover --syncmode=full --networkid=1337 \
-	--graphql --graphql.corsdomain=*
-`)
+	initScriptContent, err := buildInitScript()
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = initFile.WriteString(initScriptContent)
 	if err != nil {
 		return nil, err
 	}
@@ -279,51 +275,13 @@ geth --http --http.api=eth,net,web3,debug --http.addr=0.0.0.0 --http.corsdomain=
 		Networks:     networks,
 		ExposedPorts: []string{NatPortFormat(TX_GETH_HTTP_PORT), NatPortFormat(TX_GETH_WS_PORT), NatPortFormat(ETH2_EXECUTION_PORT)},
 		WaitingFor: tcwait.ForAll(
-			tcwait.ForLog("WebSocket enabled"),
-			tcwait.ForLog("Post-merge network, but no beacon client seen.").
-				WithStartupTimeout(120*time.Second).
-				WithPollInterval(1*time.Second),
+			tcwait.ForLog("WebSocket enabled").
+				WithStartupTimeout(120 * time.Second).
+				WithPollInterval(1 * time.Second),
 		),
 		Entrypoint: []string{
-			// "sleep",
-			// "infinity",
 			"sh",
 			"/init.sh",
-			// "mkdir /execution/keystore",
-			// "&&",
-			// "cp /data/custom_config/data/genesis.json /execution/genesis.json",
-			// "",
-			// "&&",
-			// "geth init --state.scheme=path && --datadir=/execution/genesis.json",
-			// "init",
-			// "&&",
-			// "geth --http --http.api=eth,net,web3,debug --http.addr=0.0.0.0 --http.corsdomain=* --http.vhosts=* --http.port=8545 --ws --ws.api=admin,debug,web3,eth,txpool,net --ws.addr=0.0.0.0 --ws.origins=* --ws.port=8545 --authrpc.vhosts=* --authrpc.addr=0.0.0.0 --authrpc.jwtsecret=/execution/jwtsecret --datadir=/execution --rpc.allow-unprotected-txs --rpc.txfeecap=0 --allow-insecure-unlock --password=/execution/password.txt --nodiscover --syncmode=full --networkid=1337 --graphql --graphql.corsdomain=*",
-
-			// "--http",
-			// "--http.api=eth,net,web3,debug",
-			// "--http.addr=0.0.0.0",
-			// "--http.corsdomain=*",
-			// "--http.vhosts=*",
-			// fmt.Sprintf("--http.port=%s", TX_GETH_HTTP_PORT),
-			// "--ws",
-			// "--ws.api=admin,debug,web3,eth,txpool,net",
-			// "--ws.addr=0.0.0.0",
-			// "--ws.origins=*",
-			// fmt.Sprintf("--ws.port=%s", TX_GETH_WS_PORT),
-			// "--authrpc.vhosts=*",
-			// "--authrpc.addr=0.0.0.0",
-			// "--authrpc.jwtsecret=" + jwtSecretFileLocation,
-			// "--datadir=/execution",
-			// "--rpc.allow-unprotected-txs",
-			// "--rpc.txfeecap=0",
-			// "--allow-insecure-unlock",
-			// // "--unlock=0x123463a4b065722e99115d6c222f267d9cabb524",
-			// "--password=/execution/password.txt",
-			// "--nodiscover",
-			// "--syncmode=full",
-			// "--networkid=1337",
-			// "--graphql",
-			// "--graphql.corsdomain=*",
 		},
 		Files: []tc.ContainerFile{
 			{
@@ -372,4 +330,40 @@ geth --http --http.api=eth,net,web3,debug --http.addr=0.0.0.0 --http.corsdomain=
 func (g Geth2) WaitUntilChainIsReady(waitTime time.Duration) error {
 	waitForFirstBlock := tcwait.NewLogStrategy("Chain head was updated").WithPollInterval(1 * time.Second).WithStartupTimeout(waitTime)
 	return waitForFirstBlock.WaitUntilReady(context.Background(), *g.GetContainer())
+}
+
+func buildInitScript() (string, error) {
+	initTemplate := `#!/bin/bash
+	mkdir /execution/keystore && \
+	echo '{"address":"123463a4b065722e99115d6c222f267d9cabb524","crypto":{"cipher":"aes-128-ctr","ciphertext":"93b90389b855889b9f91c89fd15b9bd2ae95b06fe8e2314009fc88859fc6fde9","cipherparams":{"iv":"9dc2eff7967505f0e6a40264d1511742"},"kdf":"scrypt","kdfparams":{"dklen":32,"n":262144,"p":1,"r":8,"salt":"c07503bb1b66083c37527cd8f06f8c7c1443d4c724767f625743bd47ae6179a4"},"mac":"6d359be5d6c432d5bbb859484009a4bf1bd71b76e89420c380bd0593ce25a817"},"id":"622df904-0bb1-4236-b254-f1b8dfdff1ec","version":3}' > /execution/keystore/key1 && \
+	geth init --state.scheme=path --datadir=/execution /data/custom_config_data/genesis.json && \
+	geth --http --http.api=eth,net,web3,debug --http.addr=0.0.0.0 --http.corsdomain=* \
+		--http.vhosts=* --http.port={{.HttpPort}} --ws --ws.api=admin,debug,web3,eth,txpool,net \
+		--ws.addr=0.0.0.0 --ws.origins=* --ws.port={{.WsPort}} --authrpc.vhosts=* \
+		--authrpc.addr=0.0.0.0 --authrpc.jwtsecret=/execution/jwtsecret --datadir=/execution \
+		--rpc.allow-unprotected-txs --rpc.txfeecap=0 --allow-insecure-unlock \
+		--password=/execution/password.txt --nodiscover --syncmode=full --networkid={{.ChainID}} \
+		--graphql --graphql.corsdomain=* --unlock=0x123463a4b065722e99115d6c222f267d9cabb524`
+
+	data := struct {
+		HttpPort string
+		WsPort   string
+		ChainID  string
+	}{
+		HttpPort: TX_GETH_HTTP_PORT,
+		WsPort:   TX_GETH_WS_PORT,
+		ChainID:  "1337",
+	}
+
+	t, err := template.New("init").Parse(initTemplate)
+	if err != nil {
+		fmt.Println("Error parsing template:", err)
+		os.Exit(1)
+	}
+
+	var buf bytes.Buffer
+	err = t.Execute(&buf, data)
+
+	return buf.String(), err
+
 }

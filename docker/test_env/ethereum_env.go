@@ -145,6 +145,7 @@ func (b *EthereumNetworkBuilder) buildConfig() EthereumNetwork {
 
 func (b *EthereumNetworkBuilder) Build() (EthereumNetwork, error) {
 	b.importExistingConfig()
+	b.addDefaultAddressesToFund()
 	err := b.validate()
 	if err != nil {
 		return EthereumNetwork{}, err
@@ -223,6 +224,23 @@ func (b *EthereumNetworkBuilder) validate() error {
 	return nil
 }
 
+func (b *EthereumNetworkBuilder) addDefaultAddressesToFund() {
+	toAdd := []string{"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"}
+	b.addressesToFund = append(b.addressesToFund, toAdd...)
+
+	seen := make(map[string]bool)
+	deduplicated := make([]string, 0)
+
+	for _, value := range b.addressesToFund {
+		if !seen[value] {
+			deduplicated = append(deduplicated, value)
+			seen[value] = true
+		}
+	}
+
+	b.addressesToFund = deduplicated
+}
+
 func (b *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error) {
 	if b.ConsensusLayer != ConsensusLayer_Prysm {
 		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf("unsupported consensus layer: %s", b.ConsensusLayer)
@@ -260,7 +278,7 @@ func (b *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error)
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
 		}
 
-		genesis := NewEthGenesisGenerator(beaconChainConfig, customConfigDataDir, b.setExistingContainerName(ContainerType_Geth2)).WithLogger(b.logger)
+		genesis := NewEthGenesisGenerator(beaconChainConfig, b.addressesToFund, customConfigDataDir, b.setExistingContainerName(ContainerType_Geth2)).WithLogger(b.logger)
 		err = genesis.StartContainer()
 		if err != nil {
 			return blockchain.EVMNetwork{}, RpcProvider{}, err

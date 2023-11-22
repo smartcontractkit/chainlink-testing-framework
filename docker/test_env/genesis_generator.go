@@ -9,9 +9,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 )
 
 type EthGenesisGeneretor struct {
@@ -22,7 +23,7 @@ type EthGenesisGeneretor struct {
 	addressesToFund     []string
 }
 
-func NewEthGenesisGenerator(beaconChainConfig BeaconChainConfig, hostSharedDataDir string, opts ...EnvComponentOption) *EthGenesisGeneretor {
+func NewEthGenesisGenerator(beaconChainConfig BeaconChainConfig, addressesToFund []string, hostSharedDataDir string, opts ...EnvComponentOption) *EthGenesisGeneretor {
 	g := &EthGenesisGeneretor{
 		EnvComponent: EnvComponent{
 			ContainerName: fmt.Sprintf("%s-%s", "eth-genesis-generator", uuid.NewString()[0:8]),
@@ -30,7 +31,7 @@ func NewEthGenesisGenerator(beaconChainConfig BeaconChainConfig, hostSharedDataD
 		beaconChainConfig:   beaconChainConfig,
 		customConfigDataDir: hostSharedDataDir,
 		l:                   log.Logger,
-		addressesToFund:     []string{},
+		addressesToFund:     addressesToFund,
 	}
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
@@ -76,7 +77,7 @@ func (g *EthGenesisGeneretor) getContainerRequest(networks []string) (*tc.Contai
 		return nil, err
 	}
 
-	bc, err := generateEnvValues(&g.beaconChainConfig)
+	bc, err := generateEnvValues(&g.beaconChainConfig, g.addressesToFund)
 	if err != nil {
 		return nil, err
 	}
