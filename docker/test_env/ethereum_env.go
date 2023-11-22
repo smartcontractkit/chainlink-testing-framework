@@ -1,7 +1,6 @@
 package test_env
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -11,7 +10,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
-	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
@@ -234,12 +232,13 @@ func (b *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error)
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
-	var hostExecutionDir, hostConsensusDir string
-	genesisTime := time.Now().Add(20 * time.Second).Unix()
+	var hostExecutionDir, hostConsensusDir, customConfigDataDir, valKeysDir string
+	var beaconChainConfig BeaconChainConfig
+	// genesisTime := time.Now().Add(20 * time.Second).Unix()
 
 	// create host directories and run genesis containers only if we are NOT recreating existing containers
 	if !b.isRecreated {
-		hostExecutionDir, hostConsensusDir, err = createHostDirectories()
+		hostExecutionDir, hostConsensusDir, customConfigDataDir, valKeysDir, err = createHostDirectories()
 
 		if err != nil {
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
@@ -248,29 +247,40 @@ func (b *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error)
 		b.ExecutionDir = hostExecutionDir
 		b.ConsensusDir = hostConsensusDir
 
-		var beaconChainConfig BeaconChainConfig
 		if b.beaconChainConfig != nil {
 			beaconChainConfig = *b.beaconChainConfig
 		} else {
 			beaconChainConfig = DefaultBeaconChainConfig
-			beaconChainConfig.MinGenesisTime = int(genesisTime)
+			// beaconChainConfig.MinGenesisTime = int(genesisTime)
 		}
 
-		bg := NewEth2Genesis(networkNames, beaconChainConfig, hostExecutionDir, hostConsensusDir).
-			WithLogger(b.logger).WithFundedAccounts(b.addressesToFund)
-		err = bg.StartContainer()
+		valKeysGeneretor := NewValKeysGeneretor(beaconChainConfig, valKeysDir, b.setExistingContainerName(ContainerType_PrysmVal)).WithLogger(b.logger).WithFundedAccounts(b.addressesToFund)
+		err = valKeysGeneretor.StartContainer()
 		if err != nil {
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
 		}
 
-		//TODO make this nicer
-		if b.ExecutionLayer == ExecutionLayer_Geth {
-			gg := NewEth1Genesis(networkNames, hostExecutionDir).WithLogger(b.logger)
-			err = gg.StartContainer()
-			if err != nil {
-				return blockchain.EVMNetwork{}, RpcProvider{}, err
-			}
+		genesis := NewEthGenesisGenerator(beaconChainConfig, customConfigDataDir, b.setExistingContainerName(ContainerType_Geth2)).WithLogger(b.logger)
+		err = genesis.StartContainer()
+		if err != nil {
+			return blockchain.EVMNetwork{}, RpcProvider{}, err
 		}
+
+		// bg := NewEth2Genesis(networkNames, beaconChainConfig, hostExecutionDir, hostConsensusDir).
+		// 	WithLogger(b.logger).WithFundedAccounts(b.addressesToFund)
+		// err = bg.StartContainer()
+		// if err != nil {
+		// 	return blockchain.EVMNetwork{}, RpcProvider{}, err
+		// }
+
+		//TODO get rid of this, if we go with the genesis container
+		// if b.ExecutionLayer == ExecutionLayer_Geth {
+		// 	gg := NewEth1Genesis(networkNames, hostExecutionDir).WithLogger(b.logger)
+		// 	err = gg.StartContainer()
+		// 	if err != nil {
+		// 		return blockchain.EVMNetwork{}, RpcProvider{}, err
+		// 	}
+		// }
 	}
 
 	var net blockchain.EVMNetwork
@@ -278,7 +288,7 @@ func (b *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error)
 	if b.ExecutionLayer == ExecutionLayer_Geth {
 		client = NewGeth2(networkNames, hostExecutionDir, ConsensusLayer_Prysm, b.setExistingContainerName(ContainerType_Geth2)).WithLogger(b.logger)
 	} else {
-		client = NewNethermind(networkNames, hostExecutionDir, ConsensusLayer_Prysm, int(genesisTime), b.setExistingContainerName(ContainerType_Nethermind)).WithLogger(b.logger)
+		client = NewNethermind(networkNames, customConfigDataDir, ConsensusLayer_Prysm, b.setExistingContainerName(ContainerType_Nethermind)).WithLogger(b.logger)
 	}
 
 	net, err = client.StartContainer()
@@ -286,20 +296,20 @@ func (b *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error)
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
-	beacon := NewPrysmBeaconChain(networkNames, hostExecutionDir, hostConsensusDir, client.GetInternalExecutionURL(), b.setExistingContainerName(ContainerType_PrysmBeacon)).WithLogger(b.logger)
+	beacon := NewPrysmBeaconChain(networkNames, beaconChainConfig, hostExecutionDir, hostConsensusDir, customConfigDataDir, client.GetInternalExecutionURL(), b.setExistingContainerName(ContainerType_PrysmBeacon)).WithLogger(b.logger)
 	err = beacon.StartContainer()
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
-	validator := NewPrysmValidator(networkNames, hostConsensusDir, beacon.InternalBeaconRpcProvider, b.setExistingContainerName(ContainerType_PrysmVal)).WithLogger(b.logger)
+	validator := NewPrysmValidator(networkNames, beaconChainConfig, hostConsensusDir, customConfigDataDir, valKeysDir, beacon.InternalBeaconRpcProvider, b.setExistingContainerName(ContainerType_PrysmVal)).WithLogger(b.logger)
 	err = validator.StartContainer()
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
-	waitForFirstBlock := tcwait.NewLogStrategy("Chain head was updated").WithPollInterval(1 * time.Second).WithStartupTimeout(60 * time.Second)
-	err = waitForFirstBlock.WaitUntilReady(context.Background(), *client.GetContainer())
+	waitDuration := time.Duration((beaconChainConfig.GenesisDelay+beaconChainConfig.GetValidatorBasedGenesisDelay())*2) * time.Second
+	err = client.WaitUntilChainIsReady(waitDuration)
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
@@ -478,16 +488,26 @@ func (b *EthereumNetwork) setExistingContainerName(ct ContainerType) EnvComponen
 	return func(c *EnvComponent) {}
 }
 
-func createHostDirectories() (string, string, error) {
+func createHostDirectories() (string, string, string, string, error) {
 	executionDir, err := os.MkdirTemp("", "execution")
 	if err != nil {
-		return "", "", err
+		return "", "", "", "", err
 	}
 
 	consensusDir, err := os.MkdirTemp("", "consensus")
 	if err != nil {
-		return "", "", err
+		return "", "", "", "", err
 	}
 
-	return executionDir, consensusDir, nil
+	customConfigDataDir, err := os.MkdirTemp("", "custom_config_data")
+	if err != nil {
+		return "", "", "", "", err
+	}
+
+	valKeysDir, err := os.MkdirTemp("", "val_keys")
+	if err != nil {
+		return "", "", "", "", err
+	}
+
+	return executionDir, consensusDir, customConfigDataDir, valKeysDir, nil
 }

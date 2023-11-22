@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"html/template"
 	"os"
+	"time"
+
+	tc "github.com/testcontainers/testcontainers-go"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
-	tc "github.com/testcontainers/testcontainers-go"
 )
 
 const (
@@ -17,30 +19,38 @@ const (
 	beaconConfigFile                   = "/consensus/config.yml"
 	eth2GenesisFile                    = "/consensus/genesis.ssz"
 	eth1GenesisFile                    = "/execution/genesis.json"
-	jwtSecretFile                      = "/execution/jwtsecret" // #nosec G101
+	jwtSecretFileLocation              = "/execution/jwtsecret" // #nosec G101
+	VALIDATOR_BIPC39_MNEMONIC          = "giant issue aisle success illegal bike spike question tent bar rely arctic volcano long crawl hungry vocal artwork sniff fantasy very lucky have athlete"
 )
 
 type BeaconChainConfig struct {
-	SecondsPerSlot int
-	SlotsPerEpoch  int
-	MinGenesisTime int
+	SecondsPerSlot   int
+	SlotsPerEpoch    int
+	GenesisDelay     int
+	ValidatorCount   int
+	ChainID          int
+	GenesisTimestamp int
 }
 
-var DefaultBeaconChainConfig = BeaconChainConfig{
-	SecondsPerSlot: 12,
-	SlotsPerEpoch:  6,
+var DefaultBeaconChainConfig = func() BeaconChainConfig {
+	config := BeaconChainConfig{
+		SecondsPerSlot: 12,
+		SlotsPerEpoch:  6,
+		GenesisDelay:   30,
+		ValidatorCount: 8,
+		ChainID:        1337,
+	}
+	config.GenerateGenesisTimestamp()
+	return config
+}()
+
+func (b *BeaconChainConfig) GetValidatorBasedGenesisDelay() int {
+	return b.ValidatorCount * 5
 }
 
-// GENESIS_FORK_VERSION: 0x10000038
-// MIN_GENESIS_TIME: {{.MinGenesisTime}}}
-//GENESIS_DELAY: 20
-
-// # Deposit contract
-// DEPOSIT_CONTRACT_ADDRESS: 0x4242424242424242424242424242424242424242
-
-// TERMINAL_TOTAL_DIFFICULTY: 0
-
-// TERMINAL_BLOCK_HASH: 0
+func (b *BeaconChainConfig) GenerateGenesisTimestamp() {
+	b.GenesisTimestamp = int(time.Now().Unix()) + b.GetValidatorBasedGenesisDelay()
+}
 
 var BeaconChainConfigYAML = `
 CONFIG_NAME: interop
@@ -214,6 +224,7 @@ type ExecutionClient interface {
 	GetInternalWsUrl() string
 	GetExternalHttpUrl() string
 	GetExternalWsUrl() string
+	WaitUntilChainIsReady(waitTime time.Duration) error
 }
 
 func buildGenesisJson(addressesToFund []string) (string, error) {

@@ -39,7 +39,9 @@ type PrysmBeaconChain struct {
 	ExternalQueryRpcUrl       string
 	hostExecutionDir          string
 	hostConsensusDir          string
+	customConfigDataDir       string
 	gethInternalExecutionURL  string
+	beaconChainConfig         BeaconChainConfig
 	l                         zerolog.Logger
 }
 
@@ -47,10 +49,13 @@ type PrysmValidator struct {
 	EnvComponent
 	internalBeaconRpcProvider string
 	hostConsensusDir          string
+	valKeysDir                string
+	customConfigDataDir       string
+	beaconChainConfig         BeaconChainConfig
 	l                         zerolog.Logger
 }
 
-func NewEth2Genesis(networks []string, beaconChainConfig BeaconChainConfig, hostExecutionDir, hostConsensusDir string, opts ...EnvComponentOption) *PrysmGenesis {
+func NewEth2Genesis(networks []string, beaconChainConfig BeaconChainConfig, hostExecutionDir, hostConsensusDir, customConfigDataDir string, opts ...EnvComponentOption) *PrysmGenesis {
 	g := &PrysmGenesis{
 		EnvComponent: EnvComponent{
 			ContainerName: fmt.Sprintf("%s-%s", "prysm-eth2-genesis", uuid.NewString()[0:8]),
@@ -145,7 +150,7 @@ func (g *PrysmGenesis) getContainerRequest(networks []string) (*tc.ContainerRequ
 			"--num-validators=8",
 			// "--genesis-time-delay=20",
 			// "--genesis-time=" + fmt.Sprintf("%d", time.Now().Add(time.Duration(30*time.Second)).Unix()),
-			"--genesis-time=" + fmt.Sprintf("%d", g.beaconChainConfig.MinGenesisTime+30),
+			"--genesis-time=" + fmt.Sprintf("%d", 30),
 			"--output-ssz=" + eth2GenesisFile,
 			"--chain-config-file=" + beaconConfigFile,
 			// "--geth-genesis-json-in=" + eth1GenesisFile,
@@ -180,14 +185,16 @@ func (g *PrysmGenesis) getContainerRequest(networks []string) (*tc.ContainerRequ
 	}, nil
 }
 
-func NewPrysmBeaconChain(networks []string, executionDir, consensusDir, gethExecutionURL string, opts ...EnvComponentOption) *PrysmBeaconChain {
+func NewPrysmBeaconChain(networks []string, beaconChainConfig BeaconChainConfig, executionDir, consensusDir, customConfigDataDir, gethExecutionURL string, opts ...EnvComponentOption) *PrysmBeaconChain {
 	g := &PrysmBeaconChain{
 		EnvComponent: EnvComponent{
 			ContainerName: fmt.Sprintf("%s-%s", "prysm-beacon-chain", uuid.NewString()[0:8]),
 			Networks:      networks,
 		},
+		beaconChainConfig:        beaconChainConfig,
 		hostExecutionDir:         executionDir,
 		hostConsensusDir:         consensusDir,
+		customConfigDataDir:      customConfigDataDir,
 		gethInternalExecutionURL: gethExecutionURL,
 		l:                        log.Logger,
 	}
@@ -247,6 +254,17 @@ func (g *PrysmBeaconChain) StartContainer() error {
 }
 
 func (g *PrysmBeaconChain) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
+	jwtSecretFile, err := os.CreateTemp("/tmp", "jwtsecret")
+	if err != nil {
+		return nil, err
+	}
+	_, err = jwtSecretFile.WriteString("0xfad2709d0bb03bf0e8ba3c99bea194575d3e98863133d1af638ed056d1d59345")
+	if err != nil {
+		return nil, err
+	}
+
+	waitDuration := time.Duration(g.beaconChainConfig.GenesisDelay+g.beaconChainConfig.GetValidatorBasedGenesisDelay()) * 2
+
 	return &tc.ContainerRequest{
 		Name: g.ContainerName,
 		// AlwaysPullImage: true,
@@ -254,31 +272,41 @@ func (g *PrysmBeaconChain) getContainerRequest(networks []string) (*tc.Container
 		ImagePlatform: "linux/amd64",
 		Networks:      networks,
 		WaitingFor: tcwait.ForAll(
-			tcwait.ForLog("Received state initialized event"),
-			tcwait.ForLog("Node started p2p server").
-				WithStartupTimeout(120*time.Second).
-				WithPollInterval(1*time.Second),
+			tcwait.ForLog("Starting beacon node").
+				WithStartupTimeout(waitDuration * time.Second).
+				WithPollInterval(2 * time.Second),
 		),
 		Cmd: []string{
-			"--datadir=/consensus/beacondata",
-			"--min-sync-peers=0",
-			"--genesis-state=" + eth2GenesisFile,
-			"--interop-eth1data-votes",
-			"--bootstrap-node=",
-			"--chain-config-file=" + beaconConfigFile,
-			"--contract-deployment-block=0",
-			"--chain-id=1337",
+			"--accept-terms-of-use",
+			"--datadir=/consensus-data",
+			"--chain-config-file=/data/custom_config_data/config.yaml",
+			"--genesis-state=/data/custom_config_data/genesis.ssz",
+			fmt.Sprintf("--execution-endpoint=%s", g.gethInternalExecutionURL),
 			"--rpc-host=0.0.0.0",
 			"--grpc-gateway-host=0.0.0.0",
-			fmt.Sprintf("--execution-endpoint=%s", g.gethInternalExecutionURL),
-			"--accept-terms-of-use",
-			"--jwt-secret=" + jwtSecretFile,
-			"--suggested-fee-recipient=0x123463a4b065722e99115d6c222f267d9cabb524",
+			"--grpc-gateway-corsdomain=*",
+			"--suggested-fee-recipient=0x8943545177806ED17B9F23F0a21ee5948eCaa776",
+			"--subscribe-all-subnets=true",
+			"--jwt-secret=/data/jwtsecret",
+			// mine
 			"--minimum-peers-per-subnet=0",
-			"--enable-debug-rpc-endpoints",
-			"--verbosity=debug",
+			"--min-sync-peers=0",
+			// unused
+			// "--chain-id=1337",
+			// "--bootstrap-node=",
+			"--contract-deployment-block=0",
+			// "--enable-debug-rpc-endpoints",
+			// "--verbosity=debug",
+			"--interop-eth1data-votes",
 		},
 		ExposedPorts: []string{NatPortFormat(PRYSM_NODE_RPC_PORT), NatPortFormat(PRYSM_QUERY_RPC_PORT)},
+		Files: []tc.ContainerFile{
+			{
+				HostFilePath:      jwtSecretFile.Name(),
+				ContainerFilePath: "/data/jwtsecret",
+				FileMode:          0644,
+			},
+		},
 		Mounts: tc.ContainerMounts{
 			tc.ContainerMount{
 				Source: tc.GenericBindMountSource{
@@ -292,17 +320,26 @@ func (g *PrysmBeaconChain) getContainerRequest(networks []string) (*tc.Container
 				},
 				Target: CONTAINER_ETH2_CONSENSUS_DIRECTORY,
 			},
+			tc.ContainerMount{
+				Source: tc.GenericBindMountSource{
+					HostPath: g.customConfigDataDir,
+				},
+				Target: "/data/custom_config_data",
+			},
 		},
 	}, nil
 }
 
-func NewPrysmValidator(networks []string, consensusDir, internalBeaconRpcProvider string, opts ...EnvComponentOption) *PrysmValidator {
+func NewPrysmValidator(networks []string, beaconChainConfig BeaconChainConfig, consensusDir, customConfigDataDir, valKeysDir, internalBeaconRpcProvider string, opts ...EnvComponentOption) *PrysmValidator {
 	g := &PrysmValidator{
 		EnvComponent: EnvComponent{
 			ContainerName: fmt.Sprintf("%s-%s", "prysm-validator", uuid.NewString()[0:8]),
 			Networks:      networks,
 		},
+		beaconChainConfig:         beaconChainConfig,
 		hostConsensusDir:          consensusDir,
+		customConfigDataDir:       customConfigDataDir,
+		valKeysDir:                valKeysDir,
 		internalBeaconRpcProvider: internalBeaconRpcProvider,
 		l:                         log.Logger,
 	}
@@ -342,6 +379,17 @@ func (g *PrysmValidator) StartContainer() error {
 }
 
 func (g *PrysmValidator) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
+	passwordFile, err := os.CreateTemp("", "password.txt")
+	if err != nil {
+		return nil, err
+	}
+	_, err = passwordFile.WriteString("password")
+	if err != nil {
+		return nil, err
+	}
+
+	waitDuration := time.Duration(g.beaconChainConfig.GenesisDelay+g.beaconChainConfig.GetValidatorBasedGenesisDelay()) * 2
+
 	return &tc.ContainerRequest{
 		Name: g.ContainerName,
 		// AlwaysPullImage: true,
@@ -349,23 +397,40 @@ func (g *PrysmValidator) getContainerRequest(networks []string) (*tc.ContainerRe
 		Networks: networks,
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForLog("Beacon chain started").
-				WithStartupTimeout(120 * time.Second).
-				WithPollInterval(1 * time.Second),
+				WithStartupTimeout(waitDuration * time.Second).
+				WithPollInterval(2 * time.Second),
 		),
-		Cmd: []string{fmt.Sprintf("--beacon-rpc-provider=%s", g.internalBeaconRpcProvider),
-			"--datadir=/consensus/validatordata",
+		Cmd: []string{
 			"--accept-terms-of-use",
-			"--interop-num-validators=8",
-			"--interop-start-index=0",
-			"--chain-config-file=" + beaconConfigFile,
-			"--verbosity=debug",
+			"--chain-config-file=/data/custom_config_data/config.yaml",
+			fmt.Sprintf("--beacon-rpc-provider=%s", g.internalBeaconRpcProvider),
+			"--datadir=/consensus-data",
+			"--suggested-fee-recipient=0x8943545177806ED17B9F23F0a21ee5948eCaa776",
+			"--wallet-dir=/keys/node-0/prysm",
+			"--wallet-password-file=/keys/password.txt",
+			// "--interop-num-validators=8",
+			// "--interop-start-index=0",
+			// "--verbosity=debug",
+		},
+		Files: []tc.ContainerFile{
+			{
+				HostFilePath:      passwordFile.Name(),
+				ContainerFilePath: "/keys/password.txt",
+				FileMode:          0644,
+			},
 		},
 		Mounts: tc.ContainerMounts{
 			tc.ContainerMount{
 				Source: tc.GenericBindMountSource{
-					HostPath: g.hostConsensusDir,
+					HostPath: g.valKeysDir,
 				},
-				Target: CONTAINER_ETH2_CONSENSUS_DIRECTORY,
+				Target: "/keys",
+			},
+			tc.ContainerMount{
+				Source: tc.GenericBindMountSource{
+					HostPath: g.customConfigDataDir,
+				},
+				Target: "/data/custom_config_data",
 			},
 		},
 	}, nil

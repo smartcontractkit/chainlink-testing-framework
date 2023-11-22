@@ -276,7 +276,7 @@ func (g *Geth2) getContainerRequest(networks []string) (*tc.ContainerRequest, er
 			fmt.Sprintf("--ws.port=%s", TX_GETH_WS_PORT),
 			"--authrpc.vhosts=*",
 			"--authrpc.addr=0.0.0.0",
-			"--authrpc.jwtsecret=" + jwtSecretFile,
+			"--authrpc.jwtsecret=" + jwtSecretFileLocation,
 			"--datadir=/execution",
 			"--rpc.allow-unprotected-txs",
 			"--rpc.txfeecap=0",
@@ -297,7 +297,7 @@ func (g *Geth2) getContainerRequest(networks []string) (*tc.ContainerRequest, er
 			},
 			{
 				HostFilePath:      jwtSecret.Name(),
-				ContainerFilePath: jwtSecretFile,
+				ContainerFilePath: jwtSecretFileLocation,
 				FileMode:          0644,
 			},
 			{
@@ -320,4 +320,9 @@ func (g *Geth2) getContainerRequest(networks []string) (*tc.ContainerRequest, er
 			},
 		},
 	}, nil
+}
+
+func (g Geth2) WaitUntilChainIsReady(waitTime time.Duration) error {
+	waitForFirstBlock := tcwait.NewLogStrategy("Chain head was updated").WithPollInterval(1 * time.Second).WithStartupTimeout(waitTime)
+	return waitForFirstBlock.WaitUntilReady(context.Background(), *g.GetContainer())
 }
