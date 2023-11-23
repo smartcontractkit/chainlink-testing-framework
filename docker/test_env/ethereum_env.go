@@ -197,7 +197,7 @@ func (b *EthereumNetworkBuilder) validate() error {
 		}
 	}
 
-	err := b.ehtereumChainConfig.Validate()
+	err := b.ehtereumChainConfig.Validate(logging.GetTestLogger(b.t))
 	if err != nil {
 		return err
 	}
