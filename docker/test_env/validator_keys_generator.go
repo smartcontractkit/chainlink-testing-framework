@@ -70,20 +70,6 @@ func (g *ValKeysGeneretor) StartContainer() error {
 }
 
 func (g *ValKeysGeneretor) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
-	// walletPasswordFile, err := os.CreateTemp("", "password.txt")
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// _, err = walletPasswordFile.WriteString(WALLET_PASSWORD)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// accountPasswordFile, err := os.CreateTemp("", "password.txt")
-	// if err != nil {
-	// 	return nil, err
-	// }
-
 	return &tc.ContainerRequest{
 		Name:          g.ContainerName,
 		Image:         "protolambda/eth2-val-tools:latest",
@@ -102,25 +88,6 @@ func (g *ValKeysGeneretor) getContainerRequest(networks []string) (*tc.Container
 			"--source-min=0",
 			fmt.Sprintf("--source-max=%d", g.chainConfig.ValidatorCount),
 		},
-		// Files: []tc.ContainerFile{
-		// 	{
-		// 		HostFilePath:      initScriptFile.Name(),
-		// 		ContainerFilePath: "/init.sh",
-		// 		FileMode:          0744,
-		// 	},
-		// },
-		// Files: []tc.ContainerFile{
-		// 	{
-		// 		HostFilePath:      walletPasswordFile.Name(),
-		// 		ContainerFilePath: WALLET_PASSWORD_FILE_INSIDE_CONTAINER,
-		// 		FileMode:          0644,
-		// 	},
-		// 	{
-		// 		HostFilePath:      accountPasswordFile.Name(),
-		// 		ContainerFilePath: DEFAULT_EL_ACCOUNT_PASSWORD_FILE_INSIDE_CONTAINER,
-		// 		FileMode:          0644,
-		// 	},
-		// },
 		Mounts: tc.ContainerMounts{
 			tc.ContainerMount{
 				Source: tc.GenericBindMountSource{
