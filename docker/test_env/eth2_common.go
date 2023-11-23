@@ -30,7 +30,7 @@ type EthereumChainConfig struct {
 	ValidatorCount   int
 	ChainID          int
 	genesisTimestamp int
-	AddressesToFund  []string
+	addressesToFund  []string
 }
 
 var DefaultBeaconChainConfig = func() EthereumChainConfig {
@@ -40,7 +40,7 @@ var DefaultBeaconChainConfig = func() EthereumChainConfig {
 		GenesisDelay:    15,
 		ValidatorCount:  8,
 		ChainID:         1337,
-		AddressesToFund: []string{"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"},
+		addressesToFund: []string{"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"},
 	}
 	config.GenerateGenesisTimestamp()
 	return config
@@ -55,7 +55,7 @@ func (c *EthereumChainConfig) GenerateGenesisTimestamp() {
 }
 
 func (c *EthereumChainConfig) GetDefaultWaitDuration() time.Duration {
-	return time.Duration((c.GenesisDelay+c.GetValidatorBasedGenesisDelay())*4) * time.Second
+	return time.Duration((c.GenesisDelay+c.GetValidatorBasedGenesisDelay())*2) * time.Second
 }
 
 type ExecutionClient interface {

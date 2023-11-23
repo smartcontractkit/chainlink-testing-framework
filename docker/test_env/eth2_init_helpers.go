@@ -18,18 +18,18 @@ import (
 
 type AfterGenesisHelper struct {
 	EnvComponent
-	beaconChainConfig   EthereumChainConfig
+	chainConfig         EthereumChainConfig
 	l                   zerolog.Logger
 	customConfigDataDir string
 	addressesToFund     []string
 }
 
-func NewInitHelper(beaconChainConfig EthereumChainConfig, customConfigDataDir string, opts ...EnvComponentOption) *AfterGenesisHelper {
+func NewInitHelper(chainConfig EthereumChainConfig, customConfigDataDir string, opts ...EnvComponentOption) *AfterGenesisHelper {
 	g := &AfterGenesisHelper{
 		EnvComponent: EnvComponent{
 			ContainerName: fmt.Sprintf("%s-%s", "after-genesis-helper", uuid.NewString()[0:8]),
 		},
-		beaconChainConfig:   beaconChainConfig,
+		chainConfig:         chainConfig,
 		customConfigDataDir: customConfigDataDir,
 		l:                   log.Logger,
 		addressesToFund:     []string{},

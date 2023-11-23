@@ -33,12 +33,12 @@ type Geth2 struct {
 	InternalExecutionURL string
 	ExternalExecutionURL string
 	generatedDataHostDir string
-	chainConfg           EthereumChainConfig
+	chainConfg           *EthereumChainConfig
 	consensusLayer       ConsensusLayer
 	l                    zerolog.Logger
 }
 
-func NewGeth2(networks []string, chainConfg EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) *Geth2 {
+func NewGeth2(networks []string, chainConfg *EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) *Geth2 {
 	g := &Geth2{
 		EnvComponent: EnvComponent{
 			ContainerName: fmt.Sprintf("%s-%s", "geth2", uuid.NewString()[0:8]),

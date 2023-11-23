@@ -36,16 +36,16 @@ const (
 )
 
 type EthereumNetworkBuilder struct {
-	t                 *testing.T
-	dockerNetworks    []string
-	consensusType     *ConsensusType
-	consensusLayer    *ConsensusLayer
-	consensusNodes    int
-	executionLayer    *ExecutionLayer
-	executionNodes    int
-	beaconChainConfig *EthereumChainConfig
-	existingConfig    *EthereumNetwork
-	addressesToFund   []string
+	t                   *testing.T
+	dockerNetworks      []string
+	consensusType       *ConsensusType
+	consensusLayer      *ConsensusLayer
+	consensusNodes      int
+	executionLayer      *ExecutionLayer
+	executionNodes      int
+	ehtereumChainConfig *EthereumChainConfig
+	existingConfig      *EthereumNetwork
+	addressesToFund     []string
 }
 
 func NewEthereumNetworkBuilder() EthereumNetworkBuilder {
@@ -82,7 +82,7 @@ func (b *EthereumNetworkBuilder) WithExecutionNodes(executionNodes int) *Ethereu
 }
 
 func (b *EthereumNetworkBuilder) WithEthereumChainConfig(config EthereumChainConfig) *EthereumNetworkBuilder {
-	b.beaconChainConfig = &config
+	b.ehtereumChainConfig = &config
 	return b
 }
 
@@ -106,7 +106,7 @@ func (b *EthereumNetworkBuilder) WithAddressesToFund(addresses []string) *Ethere
 	return b
 }
 
-func (b *EthereumNetworkBuilder) buildConfig() EthereumNetwork {
+func (b *EthereumNetworkBuilder) buildNetworkConfig() EthereumNetwork {
 	n := EthereumNetwork{
 		ConsensusType:  *b.consensusType,
 		ConsensusNodes: b.consensusNodes,
@@ -121,11 +121,15 @@ func (b *EthereumNetworkBuilder) buildConfig() EthereumNetwork {
 		n.ConsensusLayer = ""
 	}
 
+	if b.ehtereumChainConfig != nil {
+		n.ehtereumChainConfig = b.ehtereumChainConfig
+	} else {
+		n.ehtereumChainConfig = &DefaultBeaconChainConfig
+	}
+
 	if b.existingConfig != nil {
 		n.isRecreated = true
 		n.Containers = b.existingConfig.Containers
-	} else {
-		n.ehtereumChainConfig = b.beaconChainConfig
 	}
 
 	n.logger = logging.GetTestLogger(b.t)
@@ -140,18 +144,7 @@ func (b *EthereumNetworkBuilder) Build() (EthereumNetwork, error) {
 		return EthereumNetwork{}, err
 	}
 
-	return b.buildConfig(), nil
-}
-
-func (b *EthereumNetwork) Start() (blockchain.EVMNetwork, RpcProvider, error) {
-	switch b.ConsensusType {
-	case ConsensusType_PoS:
-		return b.startPos()
-	case ConsensusType_PoW:
-		return b.startPow()
-	default:
-		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf("unknown consensus type: %s", b.ConsensusType)
-	}
+	return b.buildNetworkConfig(), nil
 }
 
 func (b *EthereumNetworkBuilder) importExistingConfig() {
@@ -170,6 +163,7 @@ func (b *EthereumNetworkBuilder) importExistingConfig() {
 	b.executionLayer = &b.existingConfig.ExecutionLayer
 	b.executionNodes = b.existingConfig.ExecutionNodes
 	b.dockerNetworks = b.existingConfig.DockerNetworkNames
+	b.ehtereumChainConfig = b.existingConfig.ehtereumChainConfig
 }
 
 func (b *EthereumNetworkBuilder) validate() error {
@@ -196,7 +190,7 @@ func (b *EthereumNetworkBuilder) validate() error {
 		return errors.New("only one execution node is currently supported")
 	}
 
-	if *b.consensusType == ConsensusType_PoW && b.beaconChainConfig != nil {
+	if *b.consensusType == ConsensusType_PoW && b.ehtereumChainConfig != nil {
 		return errors.New("beacon chain config is not allowed for PoW")
 	}
 
@@ -213,60 +207,81 @@ func (b *EthereumNetworkBuilder) validate() error {
 	return nil
 }
 
-func (b *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error) {
-	if b.ConsensusLayer != ConsensusLayer_Prysm {
-		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf("unsupported consensus layer: %s", b.ConsensusLayer)
+type EthereumNetwork struct {
+	ConsensusType       ConsensusType             `json:"consensus_type"`
+	ConsensusLayer      ConsensusLayer            `json:"consensus_layer"`
+	ConsensusNodes      int                       `json:"consensus_nodes"`
+	ExecutionLayer      ExecutionLayer            `json:"execution_layer"`
+	ExecutionNodes      int                       `json:"execution_nodes"`
+	DockerNetworkNames  []string                  `json:"docker_network_names"`
+	Containers          EthereumNetworkContainers `json:"containers"`
+	logger              zerolog.Logger
+	isRecreated         bool
+	ehtereumChainConfig *EthereumChainConfig
+}
+
+func (en *EthereumNetwork) Start() (blockchain.EVMNetwork, RpcProvider, error) {
+	switch en.ConsensusType {
+	case ConsensusType_PoS:
+		return en.startPos()
+	case ConsensusType_PoW:
+		return en.startPow()
+	default:
+		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf("unknown consensus type: %s", en.ConsensusType)
 	}
-	networkNames, err := b.getOrCreateDockerNetworks()
+}
+
+func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error) {
+	if en.ConsensusLayer != ConsensusLayer_Prysm {
+		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf("unsupported consensus layer: %s", en.ConsensusLayer)
+	}
+	networkNames, err := en.getOrCreateDockerNetworks()
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
 	var generatedDataHostDir, valKeysDir string
-	var ethereumChainConfig EthereumChainConfig
 
 	// create host directories and run genesis containers only if we are NOT recreating existing containers
-	if !b.isRecreated {
+	if !en.isRecreated {
 		generatedDataHostDir, valKeysDir, err = createHostDirectories()
 
 		if err != nil {
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
 		}
 
-		if b.ehtereumChainConfig != nil {
-			ethereumChainConfig = *b.ehtereumChainConfig
-		} else {
-			ethereumChainConfig = DefaultBeaconChainConfig
-		}
-
-		valKeysGeneretor := NewValKeysGeneretor(ethereumChainConfig, valKeysDir).WithLogger(b.logger)
+		valKeysGeneretor := NewValKeysGeneretor(en.ehtereumChainConfig, valKeysDir).WithLogger(en.logger)
 		err = valKeysGeneretor.StartContainer()
 		if err != nil {
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
 		}
 
-		genesis := NewEthGenesisGenerator(ethereumChainConfig, generatedDataHostDir).WithLogger(b.logger)
+		genesis := NewEthGenesisGenerator(*en.ehtereumChainConfig, generatedDataHostDir).WithLogger(en.logger)
 		err = genesis.StartContainer()
 		if err != nil {
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
 		}
 
-		initHelper := NewInitHelper(ethereumChainConfig, generatedDataHostDir).WithLogger(b.logger)
+		initHelper := NewInitHelper(*en.ehtereumChainConfig, generatedDataHostDir).WithLogger(en.logger)
 		err = initHelper.StartContainer()
 		if err != nil {
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
 		}
+	} else {
+		//TODO set to actual values, even if they do not matter for containers that are already running
+		generatedDataHostDir = ""
+		valKeysDir = ""
 	}
 
 	var net blockchain.EVMNetwork
 	var client ExecutionClient
-	switch b.ExecutionLayer {
+	switch en.ExecutionLayer {
 	case ExecutionLayer_Geth:
-		client = NewGeth2(networkNames, ethereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, b.setExistingContainerName(ContainerType_Geth2)).WithLogger(b.logger)
+		client = NewGeth2(networkNames, en.ehtereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Geth2)).WithLogger(en.logger)
 	case ExecutionLayer_Nethermind:
-		client = NewNethermind(networkNames, generatedDataHostDir, ConsensusLayer_Prysm, b.setExistingContainerName(ContainerType_Nethermind)).WithLogger(b.logger)
+		client = NewNethermind(networkNames, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Nethermind)).WithLogger(en.logger)
 	default:
-		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf("unsupported execution layer: %s", b.ExecutionLayer)
+		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf("unsupported execution layer: %s", en.ExecutionLayer)
 	}
 
 	net, err = client.StartContainer()
@@ -274,19 +289,19 @@ func (b *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error)
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
-	beacon := NewPrysmBeaconChain(networkNames, ethereumChainConfig, generatedDataHostDir, client.GetInternalExecutionURL(), b.setExistingContainerName(ContainerType_PrysmBeacon)).WithLogger(b.logger)
+	beacon := NewPrysmBeaconChain(networkNames, en.ehtereumChainConfig, generatedDataHostDir, client.GetInternalExecutionURL(), en.setExistingContainerName(ContainerType_PrysmBeacon)).WithLogger(en.logger)
 	err = beacon.StartContainer()
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
-	validator := NewPrysmValidator(networkNames, ethereumChainConfig, generatedDataHostDir, valKeysDir, beacon.InternalBeaconRpcProvider, b.setExistingContainerName(ContainerType_PrysmVal)).WithLogger(b.logger)
+	validator := NewPrysmValidator(networkNames, en.ehtereumChainConfig, generatedDataHostDir, valKeysDir, beacon.InternalBeaconRpcProvider, en.setExistingContainerName(ContainerType_PrysmVal)).WithLogger(en.logger)
 	err = validator.StartContainer()
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
-	err = client.WaitUntilChainIsReady(ethereumChainConfig.GetDefaultWaitDuration())
+	err = client.WaitUntilChainIsReady(en.ehtereumChainConfig.GetDefaultWaitDuration())
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
@@ -298,8 +313,8 @@ func (b *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error)
 		publicsUrls:     []string{client.GetExternalWsUrl()},
 	}
 
-	b.DockerNetworkNames = networkNames
-	b.Containers = EthereumNetworkContainers{
+	en.DockerNetworkNames = networkNames
+	en.Containers = EthereumNetworkContainers{
 		{
 			ContainerName: client.GetContainerName(),
 			ContainerType: client.GetContainerType(),
@@ -320,23 +335,23 @@ func (b *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error)
 	return net, rpcProvider, nil
 }
 
-func (b *EthereumNetwork) startPow() (blockchain.EVMNetwork, RpcProvider, error) {
-	if b.ExecutionLayer != ExecutionLayer_Geth {
-		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf("unsupported execution layer: %s", b.ExecutionLayer)
+func (en *EthereumNetwork) startPow() (blockchain.EVMNetwork, RpcProvider, error) {
+	if en.ExecutionLayer != ExecutionLayer_Geth {
+		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf("unsupported execution layer: %s", en.ExecutionLayer)
 	}
-	networkNames, err := b.getOrCreateDockerNetworks()
+	networkNames, err := en.getOrCreateDockerNetworks()
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
-	geth := NewGeth(networkNames, b.setExistingContainerName(ContainerType_Geth)).WithLogger(b.logger)
+	geth := NewGeth(networkNames, en.setExistingContainerName(ContainerType_Geth)).WithLogger(en.logger)
 	net, docker, err := geth.StartContainer()
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
-	b.DockerNetworkNames = networkNames
-	b.Containers = EthereumNetworkContainers{
+	en.DockerNetworkNames = networkNames
+	en.Containers = EthereumNetworkContainers{
 		{
 			ContainerName: geth.ContainerName,
 			ContainerType: ContainerType_Geth,
@@ -352,22 +367,55 @@ func (b *EthereumNetwork) startPow() (blockchain.EVMNetwork, RpcProvider, error)
 	}, nil
 }
 
-func (b *EthereumNetwork) getOrCreateDockerNetworks() ([]string, error) {
+func (en *EthereumNetwork) getOrCreateDockerNetworks() ([]string, error) {
 	var networkNames []string
 
-	if len(b.DockerNetworkNames) == 0 {
-		network, err := docker.CreateNetwork(b.logger)
+	if len(en.DockerNetworkNames) == 0 {
+		network, err := docker.CreateNetwork(en.logger)
 		if err != nil {
 			return networkNames, err
 		}
 		networkNames = []string{network.Name}
 	} else {
-		networkNames = b.DockerNetworkNames
+		networkNames = en.DockerNetworkNames
 	}
 
 	return networkNames, nil
 }
 
+func (en *EthereumNetwork) Describe() string {
+	return fmt.Sprintf("consensus type: %s, consensus layer: %s, execution layer: %s, consensus nodes: %d, execution nodes: %d",
+		en.ConsensusType, en.ConsensusLayer, en.ExecutionLayer, en.ConsensusNodes, en.ExecutionNodes)
+}
+
+func (en *EthereumNetwork) setExistingContainerName(ct ContainerType) EnvComponentOption {
+	if !en.isRecreated {
+		return func(c *EnvComponent) {}
+	}
+
+	// in that way we can support restarting of multiple nodes out of the box
+	for _, container := range en.Containers {
+		if container.ContainerType == ct && !restartedContainers.wasAlreadyRestarted(container.ContainerName) {
+			restartedContainers.add(container)
+			return func(c *EnvComponent) {
+				if container.ContainerName != "" {
+					c.ContainerName = container.ContainerName
+				}
+			}
+		}
+	}
+
+	return func(c *EnvComponent) {}
+}
+
+// maybe only store ports here and depending on where the test is executed return different URLs?
+// maybe 3 different constructors for each "perspective"?
+// also it could expose 2 iterators:
+// 1. that iterates until it has something to return
+// 2. that iterates in a loop and always returns something
+// why? because then client could decide not to care about how many RPCs there are and just be fine
+// with any, even if all calls return the same RPC... and if there were more, then each node could
+// use a different one, but the code for calling the provider would be the same
 type RpcProvider struct {
 	privateHttpUrls []string
 	privatelWsUrls  []string
@@ -391,11 +439,6 @@ func (s *RpcProvider) PublicWsUrsl() []string {
 	return s.publicsUrls
 }
 
-func (b *EthereumNetwork) Describe() string {
-	return fmt.Sprintf("consensus type: %s, consensus layer: %s, execution layer: %s, consensus nodes: %d, execution nodes: %d",
-		b.ConsensusType, b.ConsensusLayer, b.ExecutionLayer, b.ConsensusNodes, b.ExecutionNodes)
-}
-
 type ContainerType string
 
 const (
@@ -412,20 +455,9 @@ type EthereumNetworkContainer struct {
 	Container     *tc.Container `json:"-"`
 }
 
-type EthereumNetwork struct {
-	ConsensusType       ConsensusType             `json:"consensus_type"`
-	ConsensusLayer      ConsensusLayer            `json:"consensus_layer"`
-	ConsensusNodes      int                       `json:"consensus_nodes"`
-	ExecutionLayer      ExecutionLayer            `json:"execution_layer"`
-	ExecutionNodes      int                       `json:"execution_nodes"`
-	DockerNetworkNames  []string                  `json:"docker_network_names"`
-	Containers          EthereumNetworkContainers `json:"containers"`
-	logger              zerolog.Logger
-	isRecreated         bool
-	ehtereumChainConfig *EthereumChainConfig
-}
-
 type EthereumNetworkContainers []EthereumNetworkContainer
+
+var restartedContainers = make(EthereumNetworkContainers, 0)
 
 func (e *EthereumNetworkContainers) add(container EthereumNetworkContainer) {
 	*e = append(*e, container)
@@ -438,28 +470,6 @@ func (e *EthereumNetworkContainers) wasAlreadyRestarted(containerName string) bo
 		}
 	}
 	return false
-}
-
-var restartedContainers = make(EthereumNetworkContainers, 0)
-
-func (b *EthereumNetwork) setExistingContainerName(ct ContainerType) EnvComponentOption {
-	if !b.isRecreated {
-		return func(c *EnvComponent) {}
-	}
-
-	// in that way we can support restarting of multiple nodes out of the box
-	for _, container := range b.Containers {
-		if container.ContainerType == ct && !restartedContainers.wasAlreadyRestarted(container.ContainerName) {
-			restartedContainers.add(container)
-			return func(c *EnvComponent) {
-				if container.ContainerName != "" {
-					c.ContainerName = container.ContainerName
-				}
-			}
-		}
-	}
-
-	return func(c *EnvComponent) {}
 }
 
 func createHostDirectories() (string, string, error) {

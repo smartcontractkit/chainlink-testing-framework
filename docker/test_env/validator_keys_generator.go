@@ -15,18 +15,18 @@ import (
 
 type ValKeysGeneretor struct {
 	EnvComponent
-	beaconChainConfig  EthereumChainConfig
+	chainConfig        *EthereumChainConfig
 	l                  zerolog.Logger
 	valKeysHostDataDir string
 	addressesToFund    []string
 }
 
-func NewValKeysGeneretor(beaconChainConfig EthereumChainConfig, valKeysHostDataDir string, opts ...EnvComponentOption) *ValKeysGeneretor {
+func NewValKeysGeneretor(chainConfig *EthereumChainConfig, valKeysHostDataDir string, opts ...EnvComponentOption) *ValKeysGeneretor {
 	g := &ValKeysGeneretor{
 		EnvComponent: EnvComponent{
 			ContainerName: fmt.Sprintf("%s-%s", "val-keys-generator", uuid.NewString()[0:8]),
 		},
-		beaconChainConfig:  beaconChainConfig,
+		chainConfig:        chainConfig,
 		valKeysHostDataDir: valKeysHostDataDir,
 		l:                  log.Logger,
 		addressesToFund:    []string{},
@@ -100,7 +100,7 @@ func (g *ValKeysGeneretor) getContainerRequest(networks []string) (*tc.Container
 			//if we ever have more than 1 node these indexes should be updated, so that we don't generate the same keys
 			//e.g. if network has 2 nodes each with 10 validators, then the next source-min should be 10, and max should be 20
 			"--source-min=0",
-			fmt.Sprintf("--source-max=%d", g.beaconChainConfig.ValidatorCount),
+			fmt.Sprintf("--source-max=%d", g.chainConfig.ValidatorCount),
 		},
 		// Files: []tc.ContainerFile{
 		// 	{

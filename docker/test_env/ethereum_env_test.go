@@ -70,4 +70,34 @@ func TestEth2ExtraFunding(t *testing.T) {
 	require.NoError(t, err, "Couldn't close the client")
 }
 
-//TODO test for reusing existing network
+func TestEth2WithPrysmAndGethReuseNetwork(t *testing.T) {
+	l := logging.GetTestLogger(t)
+
+	builder := NewEthereumNetworkBuilder()
+	cfg, err := builder.
+		WithConsensusType(ConsensusType_PoS).
+		WithConsensusLayer(ConsensusLayer_Prysm).
+		WithExecutionLayer(ExecutionLayer_Geth).
+		Build()
+	require.NoError(t, err, "Builder validation failed")
+
+	_, _, err = cfg.Start()
+	require.NoError(t, err, "Couldn't start PoS network")
+
+	newBuilder := NewEthereumNetworkBuilder()
+	reusedCfg, err := newBuilder.
+		WithExistingConfig(cfg).
+		Build()
+	require.NoError(t, err, "Builder validation failed")
+
+	_, eth2, err := reusedCfg.Start()
+	require.NoError(t, err, "Couldn't reuse PoS network")
+
+	ns := blockchain.SimulatedEVMNetwork
+	ns.Name = "Simulated Geth + Prysm"
+	ns.URLs = eth2.PublicWsUrsl()
+	c, err := blockchain.ConnectEVMClient(ns, l)
+	require.NoError(t, err, "Couldn't connect to the evm client")
+	err = c.Close()
+	require.NoError(t, err, "Couldn't close the client")
+}

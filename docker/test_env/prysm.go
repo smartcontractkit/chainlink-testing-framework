@@ -29,26 +29,26 @@ type PrysmBeaconChain struct {
 	ExternalQueryRpcUrl       string
 	generatedDataHostDir      string
 	gethInternalExecutionURL  string
-	beaconChainConfig         EthereumChainConfig
+	chainConfig               *EthereumChainConfig
 	l                         zerolog.Logger
 }
 
 type PrysmValidator struct {
 	EnvComponent
+	chainConfig               *EthereumChainConfig
 	internalBeaconRpcProvider string
 	valKeysDir                string
 	generatedDataHostDir      string
-	beaconChainConfig         EthereumChainConfig
 	l                         zerolog.Logger
 }
 
-func NewPrysmBeaconChain(networks []string, beaconChainConfig EthereumChainConfig, customConfigDataDir, gethExecutionURL string, opts ...EnvComponentOption) *PrysmBeaconChain {
+func NewPrysmBeaconChain(networks []string, chainConfig *EthereumChainConfig, customConfigDataDir, gethExecutionURL string, opts ...EnvComponentOption) *PrysmBeaconChain {
 	g := &PrysmBeaconChain{
 		EnvComponent: EnvComponent{
 			ContainerName: fmt.Sprintf("%s-%s", "prysm-beacon-chain", uuid.NewString()[0:8]),
 			Networks:      networks,
 		},
-		beaconChainConfig:        beaconChainConfig,
+		chainConfig:              chainConfig,
 		generatedDataHostDir:     customConfigDataDir,
 		gethInternalExecutionURL: gethExecutionURL,
 		l:                        log.Logger,
@@ -114,7 +114,7 @@ func (g *PrysmBeaconChain) getContainerRequest(networks []string) (*tc.Container
 		Networks:      networks,
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForLog("Starting beacon node").
-				WithStartupTimeout(g.beaconChainConfig.GetDefaultWaitDuration()).
+				WithStartupTimeout(g.chainConfig.GetDefaultWaitDuration()).
 				WithPollInterval(2 * time.Second),
 		),
 		Cmd: []string{
@@ -145,12 +145,13 @@ func (g *PrysmBeaconChain) getContainerRequest(networks []string) (*tc.Container
 	}, nil
 }
 
-func NewPrysmValidator(networks []string, beaconChainConfig EthereumChainConfig, generatedDataHostDir, valKeysDir, internalBeaconRpcProvider string, opts ...EnvComponentOption) *PrysmValidator {
+func NewPrysmValidator(networks []string, chainConfig *EthereumChainConfig, generatedDataHostDir, valKeysDir, internalBeaconRpcProvider string, opts ...EnvComponentOption) *PrysmValidator {
 	g := &PrysmValidator{
 		EnvComponent: EnvComponent{
 			ContainerName: fmt.Sprintf("%s-%s", "prysm-validator", uuid.NewString()[0:8]),
 			Networks:      networks,
 		},
+		chainConfig:               chainConfig,
 		generatedDataHostDir:      generatedDataHostDir,
 		valKeysDir:                valKeysDir,
 		internalBeaconRpcProvider: internalBeaconRpcProvider,
@@ -199,7 +200,7 @@ func (g *PrysmValidator) getContainerRequest(networks []string) (*tc.ContainerRe
 		ImagePlatform: "linux/x86_64",
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForLog("Beacon chain started").
-				WithStartupTimeout(200 * time.Second).
+				WithStartupTimeout(g.chainConfig.GetDefaultWaitDuration()).
 				WithPollInterval(2 * time.Second),
 		),
 		Cmd: []string{

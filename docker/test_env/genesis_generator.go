@@ -17,17 +17,17 @@ import (
 
 type EthGenesisGeneretor struct {
 	EnvComponent
-	beaconChainConfig    EthereumChainConfig
+	chainConfig          EthereumChainConfig
 	l                    zerolog.Logger
 	generatedDataHostDir string
 }
 
-func NewEthGenesisGenerator(beaconChainConfig EthereumChainConfig, generatedDataHostDir string, opts ...EnvComponentOption) *EthGenesisGeneretor {
+func NewEthGenesisGenerator(chainConfig EthereumChainConfig, generatedDataHostDir string, opts ...EnvComponentOption) *EthGenesisGeneretor {
 	g := &EthGenesisGeneretor{
 		EnvComponent: EnvComponent{
 			ContainerName: fmt.Sprintf("%s-%s", "eth-genesis-generator", uuid.NewString()[0:8]),
 		},
-		beaconChainConfig:    beaconChainConfig,
+		chainConfig:          chainConfig,
 		generatedDataHostDir: generatedDataHostDir,
 		l:                    log.Logger,
 	}
@@ -70,7 +70,7 @@ func (g *EthGenesisGeneretor) getContainerRequest(networks []string) (*tc.Contai
 		return nil, err
 	}
 
-	bc, err := generateEnvValues(&g.beaconChainConfig)
+	bc, err := generateEnvValues(&g.chainConfig)
 	if err != nil {
 		return nil, err
 	}
