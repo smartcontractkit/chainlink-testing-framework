@@ -21,7 +21,7 @@ func TestEth2CustomConfig(t *testing.T) {
 		WithConsensusLayer(ConsensusLayer_Prysm).
 		WithExecutionLayer(ExecutionLayer_Geth).
 		WithEthereumChainConfig(EthereumChainConfig{
-			SecondsPerSlot: 4,
+			SecondsPerSlot: 6,
 			SlotsPerEpoch:  2,
 		}).
 		Build()
@@ -49,7 +49,9 @@ func TestEth2ExtraFunding(t *testing.T) {
 		WithConsensusType(ConsensusType_PoS).
 		WithConsensusLayer(ConsensusLayer_Prysm).
 		WithExecutionLayer(ExecutionLayer_Geth).
-		WithAddressesToFund([]string{addressToFund}).
+		WithEthereumChainConfig(EthereumChainConfig{
+			AddressesToFund: []string{addressToFund},
+		}).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 

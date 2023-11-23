@@ -15,11 +15,9 @@ func generateEnvValues(config *EthereumChainConfig) (string, error) {
 	data := struct {
 		EthereumChainConfig
 		GenesisTimestamp int
-		AddressesToFund  []string
 	}{
 		EthereumChainConfig: *config,
 		GenesisTimestamp:    config.genesisTimestamp,
-		AddressesToFund:     config.addressesToFund,
 	}
 	tmpl, err := template.New("valuesEnv").Funcs(funcMap).Parse(valuesEnv)
 	if err != nil {

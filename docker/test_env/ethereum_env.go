@@ -100,11 +100,6 @@ func (b *EthereumNetworkBuilder) WithTest(t *testing.T) *EthereumNetworkBuilder 
 	return b
 }
 
-func (b *EthereumNetworkBuilder) WithAddressesToFund(addresses []string) *EthereumNetworkBuilder {
-	b.addressesToFund = addresses
-	return b
-}
-
 func (b *EthereumNetworkBuilder) buildNetworkConfig() EthereumNetwork {
 	n := EthereumNetwork{
 		ConsensusType:  *b.consensusType,
@@ -120,17 +115,12 @@ func (b *EthereumNetworkBuilder) buildNetworkConfig() EthereumNetwork {
 		n.ConsensusLayer = ""
 	}
 
-	if b.ehtereumChainConfig != nil {
-		n.ehtereumChainConfig = b.ehtereumChainConfig
-	} else {
-		n.ehtereumChainConfig = &DefaultBeaconChainConfig
-	}
-
 	if b.existingConfig != nil {
 		n.isRecreated = true
 		n.Containers = b.existingConfig.Containers
 	}
 
+	n.ehtereumChainConfig = b.ehtereumChainConfig
 	n.t = b.t
 
 	return n
@@ -138,6 +128,12 @@ func (b *EthereumNetworkBuilder) buildNetworkConfig() EthereumNetwork {
 
 func (b *EthereumNetworkBuilder) Build() (EthereumNetwork, error) {
 	b.importExistingConfig()
+	if b.ehtereumChainConfig == nil {
+		b.ehtereumChainConfig = &DefaultChainConfig
+	} else {
+		b.ehtereumChainConfig.fillInMissingValuesWithDefault()
+		b.ehtereumChainConfig.GenerateGenesisTimestamp()
+	}
 	err := b.validate()
 	if err != nil {
 		return EthereumNetwork{}, err
@@ -201,6 +197,11 @@ func (b *EthereumNetworkBuilder) validate() error {
 		if !common.IsHexAddress(addr) {
 			return fmt.Errorf("address %s is not a valid hex address", addr)
 		}
+	}
+
+	err := b.ehtereumChainConfig.Validate()
+	if err != nil {
+		return err
 	}
 
 	return nil

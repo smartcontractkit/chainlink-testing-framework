@@ -30,21 +30,63 @@ type EthereumChainConfig struct {
 	ValidatorCount   int
 	ChainID          int
 	genesisTimestamp int
-	addressesToFund  []string
+	AddressesToFund  []string
 }
 
-var DefaultBeaconChainConfig = func() EthereumChainConfig {
+var DefaultChainConfig = func() EthereumChainConfig {
 	config := EthereumChainConfig{
 		SecondsPerSlot:  12,
 		SlotsPerEpoch:   6,
 		GenesisDelay:    15,
 		ValidatorCount:  8,
 		ChainID:         1337,
-		addressesToFund: []string{"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"},
+		AddressesToFund: []string{"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"},
 	}
 	config.GenerateGenesisTimestamp()
 	return config
 }()
+
+func (c *EthereumChainConfig) Validate() error {
+	if c.ValidatorCount < 4 {
+		return fmt.Errorf("validator count must be >= 4")
+	}
+	if c.SecondsPerSlot < 4 {
+		return fmt.Errorf("seconds per slot must be >= 4")
+	}
+	if c.SlotsPerEpoch < 2 {
+		return fmt.Errorf("slots per epoch must be >= 2")
+	}
+	if c.GenesisDelay < 10 {
+		return fmt.Errorf("genesis delay must be >= 10")
+	}
+	if c.ChainID < 1 {
+		return fmt.Errorf("chain id must be >= 0")
+	}
+	return nil
+}
+
+func (c *EthereumChainConfig) fillInMissingValuesWithDefault() {
+	if c.ValidatorCount == 0 {
+		c.ValidatorCount = DefaultChainConfig.ValidatorCount
+	}
+	if c.SecondsPerSlot == 0 {
+		c.SecondsPerSlot = DefaultChainConfig.SecondsPerSlot
+	}
+	if c.SlotsPerEpoch == 0 {
+		c.SlotsPerEpoch = DefaultChainConfig.SlotsPerEpoch
+	}
+	if c.GenesisDelay == 0 {
+		c.GenesisDelay = DefaultChainConfig.GenesisDelay
+	}
+	if c.ChainID == 0 {
+		c.ChainID = DefaultChainConfig.ChainID
+	}
+	if len(c.AddressesToFund) == 0 {
+		c.AddressesToFund = DefaultChainConfig.AddressesToFund
+	} else {
+		c.AddressesToFund = append(c.AddressesToFund, DefaultChainConfig.AddressesToFund...)
+	}
+}
 
 func (c *EthereumChainConfig) GetValidatorBasedGenesisDelay() int {
 	return c.ValidatorCount * 5
