@@ -37,7 +37,7 @@ func TestEnvComponentPauseChaos(t *testing.T) {
 	l := logging.GetTestLogger(t)
 	network, err := docker.CreateNetwork(l)
 	require.NoError(t, err)
-	g := NewGeth([]string{network.Name}).
+	g := NewGeth([]string{network.Name}, DefaultChainConfig).
 		WithTestLogger(t)
 	_, _, err = g.StartContainer()
 	require.NoError(t, err)

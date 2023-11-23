@@ -52,17 +52,19 @@ type Geth struct {
 	InternalHttpUrl string
 	ExternalWsUrl   string
 	InternalWsUrl   string
+	chainConfig     EthereumChainConfig
 	l               zerolog.Logger
 	t               *testing.T
 }
 
-func NewGeth(networks []string, opts ...EnvComponentOption) *Geth {
+func NewGeth(networks []string, chainConfig EthereumChainConfig, opts ...EnvComponentOption) *Geth {
 	g := &Geth{
 		EnvComponent: EnvComponent{
 			ContainerName: fmt.Sprintf("%s-%s", "geth", uuid.NewString()[0:8]),
 			Networks:      networks,
 		},
-		l: log.Logger,
+		chainConfig: chainConfig,
+		l:           log.Logger,
 	}
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
@@ -137,7 +139,6 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, InternalDockerUrls, erro
 }
 
 func (g *Geth) getGethContainerRequest(networks []string) (*tc.ContainerRequest, *keystore.KeyStore, *accounts.Account, error) {
-	chainId := "1337"
 	blocktime := "1"
 
 	initScriptFile, err := os.CreateTemp("", "init_script")
@@ -159,7 +160,7 @@ func (g *Geth) getGethContainerRequest(networks []string) (*tc.ContainerRequest,
 		return nil, ks, &account, err
 	}
 	genesisJsonStr, err := templates.GenesisJsonTemplate{
-		ChainId:     chainId,
+		ChainId:     fmt.Sprintf("%d", g.chainConfig.ChainID),
 		AccountAddr: account.Address.Hex(),
 	}.String()
 	if err != nil {
@@ -242,7 +243,7 @@ func (g *Geth) getGethContainerRequest(networks []string) (*tc.ContainerRequest,
 			"--http.corsdomain",
 			"*",
 			"--vmdebug",
-			fmt.Sprintf("--networkid=%s", chainId),
+			fmt.Sprintf("--networkid=%d", g.chainConfig.ChainID),
 			"--rpc.txfeecap",
 			"0",
 			"--dev.period",

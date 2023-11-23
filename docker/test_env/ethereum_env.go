@@ -185,10 +185,6 @@ func (b *EthereumNetworkBuilder) validate() error {
 		return errors.New("only one execution node is currently supported")
 	}
 
-	if *b.consensusType == ConsensusType_PoW && b.ehtereumChainConfig != nil {
-		return errors.New("beacon chain config is not allowed for PoW")
-	}
-
 	if *b.consensusType == ConsensusType_PoW {
 		b.consensusNodes = 0
 	}
@@ -344,7 +340,7 @@ func (en *EthereumNetwork) startPow() (blockchain.EVMNetwork, RpcProvider, error
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
-	geth := NewGeth(networkNames, en.setExistingContainerName(ContainerType_Geth)).WithTestLogger(en.t)
+	geth := NewGeth(networkNames, *en.ehtereumChainConfig, en.setExistingContainerName(ContainerType_Geth)).WithTestLogger(en.t)
 	net, docker, err := geth.StartContainer()
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
