@@ -58,6 +58,10 @@ func StartContainerWithRetry(l zerolog.Logger, req tc.GenericContainerRequest) (
 				return nil, err
 			}
 		}
+		// TODO we should dynamically check if container was removed, otherwise retry will fail anyway, just becasuse
+		// container with the same name already exists | that or regenerate container name
+		// But regenerating container name will not help to remove temporary data created on host machine and that can be
+		// a problem if data is stateful
 		req.Reuse = false
 	}
 	return ct, err

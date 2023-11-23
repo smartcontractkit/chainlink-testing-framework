@@ -129,11 +129,13 @@ func (b *EthereumNetworkBuilder) buildNetworkConfig() EthereumNetwork {
 func (b *EthereumNetworkBuilder) Build() (EthereumNetwork, error) {
 	b.importExistingConfig()
 	if b.ehtereumChainConfig == nil {
-		b.ehtereumChainConfig = &DefaultChainConfig
+		defaultConfig := GetDefaultChainConfig()
+		b.ehtereumChainConfig = &defaultConfig
 	} else {
 		b.ehtereumChainConfig.fillInMissingValuesWithDefault()
-		b.ehtereumChainConfig.GenerateGenesisTimestamp()
 	}
+
+	b.ehtereumChainConfig.GenerateGenesisTimestamp()
 	err := b.validate()
 	if err != nil {
 		return EthereumNetwork{}, err
