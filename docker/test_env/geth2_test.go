@@ -22,6 +22,7 @@ func TestEth2WithPrysmAndGeth(t *testing.T) {
 				Count:          1,
 			},
 		}).
+		WithoutWaitingForFinalization().
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 

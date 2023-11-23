@@ -29,6 +29,7 @@ func TestEth2CustomConfig(t *testing.T) {
 			SecondsPerSlot: 6,
 			SlotsPerEpoch:  2,
 		}).
+		WithoutWaitingForFinalization().
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 
@@ -62,6 +63,7 @@ func TestEth2ExtraFunding(t *testing.T) {
 		WithEthereumChainConfig(EthereumChainConfig{
 			AddressesToFund: []string{addressToFund},
 		}).
+		WithoutWaitingForFinalization().
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 
@@ -95,6 +97,7 @@ func TestEth2WithPrysmAndGethReuseNetwork(t *testing.T) {
 				Count:          1,
 			},
 		}).
+		WithoutWaitingForFinalization().
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 

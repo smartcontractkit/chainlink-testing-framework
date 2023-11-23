@@ -1,13 +1,16 @@
 package test_env
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
@@ -39,10 +42,11 @@ type EthereumNetworkBuilder struct {
 	t                   *testing.T
 	dockerNetworks      []string
 	consensusType       *ConsensusType
-	ehtereumChainConfig *EthereumChainConfig
+	ethereumChainConfig *EthereumChainConfig
 	existingConfig      *EthereumNetwork
 	addressesToFund     []string
 	participants        []EthereumNetworkParticipant
+	waitForFinalization bool
 }
 
 type EthereumNetworkParticipant struct {
@@ -53,8 +57,9 @@ type EthereumNetworkParticipant struct {
 
 func NewEthereumNetworkBuilder() EthereumNetworkBuilder {
 	return EthereumNetworkBuilder{
-		dockerNetworks: []string{},
-		participants:   []EthereumNetworkParticipant{},
+		dockerNetworks:      []string{},
+		participants:        []EthereumNetworkParticipant{},
+		waitForFinalization: true,
 	}
 }
 
@@ -101,7 +106,7 @@ func (b *EthereumNetworkBuilder) WithCustomNetworkParticipants(participants []Et
 }
 
 func (b *EthereumNetworkBuilder) WithEthereumChainConfig(config EthereumChainConfig) *EthereumNetworkBuilder {
-	b.ehtereumChainConfig = &config
+	b.ethereumChainConfig = &config
 	return b
 }
 
@@ -120,6 +125,11 @@ func (b *EthereumNetworkBuilder) WithTest(t *testing.T) *EthereumNetworkBuilder 
 	return b
 }
 
+func (b *EthereumNetworkBuilder) WithoutWaitingForFinalization() *EthereumNetworkBuilder {
+	b.waitForFinalization = false
+	return b
+}
+
 func (b *EthereumNetworkBuilder) buildNetworkConfig() EthereumNetwork {
 	n := EthereumNetwork{
 		ConsensusType: *b.consensusType,
@@ -131,7 +141,8 @@ func (b *EthereumNetworkBuilder) buildNetworkConfig() EthereumNetwork {
 		n.Containers = b.existingConfig.Containers
 	}
 
-	n.ehtereumChainConfig = b.ehtereumChainConfig
+	n.WaitForFinalization = b.waitForFinalization
+	n.ethereumChainConfig = b.ethereumChainConfig
 	n.t = b.t
 
 	return n
@@ -139,14 +150,14 @@ func (b *EthereumNetworkBuilder) buildNetworkConfig() EthereumNetwork {
 
 func (b *EthereumNetworkBuilder) Build() (EthereumNetwork, error) {
 	b.importExistingConfig()
-	if b.ehtereumChainConfig == nil {
+	if b.ethereumChainConfig == nil {
 		defaultConfig := GetDefaultChainConfig()
-		b.ehtereumChainConfig = &defaultConfig
+		b.ethereumChainConfig = &defaultConfig
 	} else {
-		b.ehtereumChainConfig.fillInMissingValuesWithDefault()
+		b.ethereumChainConfig.fillInMissingValuesWithDefault()
 	}
 
-	b.ehtereumChainConfig.GenerateGenesisTimestamp()
+	b.ethereumChainConfig.GenerateGenesisTimestamp()
 	err := b.validate()
 	if err != nil {
 		return EthereumNetwork{}, err
@@ -163,7 +174,7 @@ func (b *EthereumNetworkBuilder) importExistingConfig() {
 	b.participants = b.existingConfig.Participants
 	b.consensusType = &b.existingConfig.ConsensusType
 	b.dockerNetworks = b.existingConfig.DockerNetworkNames
-	b.ehtereumChainConfig = b.existingConfig.ehtereumChainConfig
+	b.ethereumChainConfig = b.existingConfig.ethereumChainConfig
 }
 
 func (b *EthereumNetworkBuilder) validate() error {
@@ -197,7 +208,7 @@ func (b *EthereumNetworkBuilder) validate() error {
 		}
 	}
 
-	err := b.ehtereumChainConfig.Validate(logging.GetTestLogger(b.t))
+	err := b.ethereumChainConfig.Validate(logging.GetTestLogger(b.t))
 	if err != nil {
 		return err
 	}
@@ -211,7 +222,8 @@ type EthereumNetwork struct {
 	Containers          EthereumNetworkContainers    `json:"containers"`
 	Participants        []EthereumNetworkParticipant `json:"participants"`
 	isRecreated         bool
-	ehtereumChainConfig *EthereumChainConfig
+	ethereumChainConfig *EthereumChainConfig
+	WaitForFinalization bool `json:"wait_for_finalization"`
 	t                   *testing.T
 }
 
@@ -257,19 +269,19 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 				return blockchain.EVMNetwork{}, RpcProvider{}, err
 			}
 
-			valKeysGeneretor := NewValKeysGeneretor(en.ehtereumChainConfig, valKeysDir).WithTestInstance(en.t)
+			valKeysGeneretor := NewValKeysGeneretor(en.ethereumChainConfig, valKeysDir).WithTestInstance(en.t)
 			err = valKeysGeneretor.StartContainer()
 			if err != nil {
 				return blockchain.EVMNetwork{}, RpcProvider{}, err
 			}
 
-			genesis := NewEthGenesisGenerator(*en.ehtereumChainConfig, generatedDataHostDir).WithTestInstance(en.t)
+			genesis := NewEthGenesisGenerator(*en.ethereumChainConfig, generatedDataHostDir).WithTestInstance(en.t)
 			err = genesis.StartContainer()
 			if err != nil {
 				return blockchain.EVMNetwork{}, RpcProvider{}, err
 			}
 
-			initHelper := NewInitHelper(*en.ehtereumChainConfig, generatedDataHostDir).WithTestInstance(en.t)
+			initHelper := NewInitHelper(*en.ethereumChainConfig, generatedDataHostDir).WithTestInstance(en.t)
 			err = initHelper.StartContainer()
 			if err != nil {
 				return blockchain.EVMNetwork{}, RpcProvider{}, err
@@ -283,7 +295,7 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 		var client ExecutionClient
 		switch p.ExecutionLayer {
 		case ExecutionLayer_Geth:
-			client = NewGeth2(singleNetwork, en.ehtereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Geth2)).WithTestInstance(en.t)
+			client = NewGeth2(singleNetwork, en.ethereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Geth2)).WithTestInstance(en.t)
 		case ExecutionLayer_Nethermind:
 			client = NewNethermind(singleNetwork, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Nethermind)).WithTestInstance(en.t)
 		default:
@@ -295,19 +307,19 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
 		}
 
-		beacon := NewPrysmBeaconChain(singleNetwork, en.ehtereumChainConfig, generatedDataHostDir, client.GetInternalExecutionURL(), en.setExistingContainerName(ContainerType_PrysmBeacon)).WithTestInstance(en.t)
+		beacon := NewPrysmBeaconChain(singleNetwork, en.ethereumChainConfig, generatedDataHostDir, client.GetInternalExecutionURL(), en.setExistingContainerName(ContainerType_PrysmBeacon)).WithTestInstance(en.t)
 		err = beacon.StartContainer()
 		if err != nil {
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
 		}
 
-		validator := NewPrysmValidator(singleNetwork, en.ehtereumChainConfig, generatedDataHostDir, valKeysDir, beacon.InternalBeaconRpcProvider, en.setExistingContainerName(ContainerType_PrysmVal)).WithTestInstance(en.t)
+		validator := NewPrysmValidator(singleNetwork, en.ethereumChainConfig, generatedDataHostDir, valKeysDir, beacon.InternalBeaconRpcProvider, en.setExistingContainerName(ContainerType_PrysmVal)).WithTestInstance(en.t)
 		err = validator.StartContainer()
 		if err != nil {
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
 		}
 
-		err = client.WaitUntilChainIsReady(en.ehtereumChainConfig.GetDefaultWaitDuration())
+		err = client.WaitUntilChainIsReady(en.ethereumChainConfig.GetDefaultWaitDuration())
 		if err != nil {
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
 		}
@@ -341,6 +353,20 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 	en.DockerNetworkNames = networkNames
 	//TODO when we support multiple participants, we need to modify net so that it contains all the RPC URLs, not just the last one
 
+	logger := logging.GetTestLogger(en.t)
+	if en.WaitForFinalization {
+		evmClient, err := blockchain.NewEVMClientFromNetwork(net, logger)
+		if err != nil {
+			return blockchain.EVMNetwork{}, RpcProvider{}, err
+		}
+		err = waitForChainToFinaliseFirstEpoch(logger, evmClient)
+		if err != nil {
+			return blockchain.EVMNetwork{}, RpcProvider{}, err
+		}
+	} else {
+		logger.Info().Msg("Not waiting for chain to finalize first epoch")
+	}
+
 	return net, rpcProvider, nil
 }
 
@@ -363,7 +389,7 @@ func (en *EthereumNetwork) startPow() (blockchain.EVMNetwork, RpcProvider, error
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
 		}
 
-		geth := NewGeth(singleNetwork, *en.ehtereumChainConfig, en.setExistingContainerName(ContainerType_Geth)).WithTestLogger(en.t)
+		geth := NewGeth(singleNetwork, *en.ethereumChainConfig, en.setExistingContainerName(ContainerType_Geth)).WithTestLogger(en.t)
 		network, docker, err := geth.StartContainer()
 		if err != nil {
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
@@ -516,4 +542,38 @@ func createHostDirectories() (string, string, error) {
 	}
 
 	return customConfigDataDir, valKeysDir, nil
+}
+
+func waitForChainToFinaliseFirstEpoch(lggr zerolog.Logger, evmClient blockchain.EVMClient) error {
+	lggr.Info().Msg("Waiting for chain to finalize first epoch")
+
+	timeout := 180 * time.Second
+	pollInterval := 15 * time.Second
+	endTime := time.Now().Add(timeout)
+
+	chainStarted := false
+	for {
+		finalized, err := evmClient.GetLatestFinalizedBlockHeader(context.Background())
+		if err != nil {
+			if strings.Contains(err.Error(), "finalized block not found") {
+				lggr.Err(err).Msgf("error getting finalized block number for %s", evmClient.GetNetworkName())
+			} else {
+				lggr.Warn().Msgf("no epoch finalized yet for chain %s", evmClient.GetNetworkName())
+			}
+		}
+
+		if finalized != nil && finalized.Number.Int64() > 0 || time.Now().After(endTime) {
+			lggr.Info().Msgf("Chain '%s' finalized first epoch", evmClient.GetNetworkName())
+			chainStarted = true
+			break
+		}
+
+		time.Sleep(pollInterval)
+	}
+
+	if !chainStarted {
+		return fmt.Errorf("chain %s failed to finalize first epoch", evmClient.GetNetworkName())
+	}
+
+	return nil
 }
