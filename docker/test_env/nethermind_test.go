@@ -15,8 +15,13 @@ func TestEth2WithPrysmAndNethermind(t *testing.T) {
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
 		WithConsensusType(ConsensusType_PoS).
-		WithConsensusLayer(ConsensusLayer_Prysm).
-		WithExecutionLayer(ExecutionLayer_Nethermind).
+		WithCustomNetworkParticipants([]EthereumNetworkParticipant{
+			{
+				ConsensusLayer: ConsensusLayer_Prysm,
+				ExecutionLayer: ExecutionLayer_Nethermind,
+				Count:          1,
+			},
+		}).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 

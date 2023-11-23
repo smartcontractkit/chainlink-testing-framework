@@ -20,7 +20,7 @@ import (
 const (
 	PRYSM_QUERY_RPC_PORT = "3500"
 	PRYSM_NODE_RPC_PORT  = "4000"
-	PRYSM_IMAGE_TAG      = "v4.1.1-debug"
+	PRYSM_IMAGE_TAG      = "v4.1.1"
 )
 
 type PrysmBeaconChain struct {

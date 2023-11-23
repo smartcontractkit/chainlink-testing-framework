@@ -31,8 +31,7 @@ func TestEth1WithGeth(t *testing.T) {
 
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WithConsensusType(ConsensusType_PoW).
-		WithExecutionLayer(ExecutionLayer_Geth).
+		WithDefaultNetworkParticipants(ConsensusType_PoW).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 
