@@ -30,6 +30,7 @@ type ExecutionLayer string
 const (
 	ExecutionLayer_Geth       ExecutionLayer = "geth"
 	ExecutionLayer_Nethermind ExecutionLayer = "nethermind"
+	ExecutionLayer_Erigon     ExecutionLayer = "erigon"
 )
 
 type ConsensusLayer string
@@ -298,6 +299,8 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 			client = NewGeth2(singleNetwork, en.ethereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Geth2)).WithTestInstance(en.t)
 		case ExecutionLayer_Nethermind:
 			client = NewNethermind(singleNetwork, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Nethermind)).WithTestInstance(en.t)
+		case ExecutionLayer_Erigon:
+			client = NewErigon(singleNetwork, en.ethereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Erigon)).WithTestInstance(en.t)
 		default:
 			return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf("unsupported execution layer: %s", p.ExecutionLayer)
 		}
@@ -502,6 +505,7 @@ type ContainerType string
 const (
 	ContainerType_Geth        ContainerType = "geth"
 	ContainerType_Geth2       ContainerType = "geth2"
+	ContainerType_Erigon      ContainerType = "erigon"
 	ContainerType_Nethermind  ContainerType = "nethermind"
 	ContainerType_PrysmBeacon ContainerType = "prysm-beacon"
 	ContainerType_PrysmVal    ContainerType = "prysm-validator"

@@ -126,6 +126,15 @@ echo "" > {{.AccountPasswordFileLocation}}
 echo "Saving jwt secret to {{.JwtFileLocation}}"
 echo "0xfad2709d0bb03bf0e8ba3c99bea194575d3e98863133d1af638ed056d1d59345" > {{.JwtFileLocation}}
 echo "All done!"
+echo 
+echo "------------------------------------------------------------------"
+formatted_genesis_date=$(date -d "@{{.GenesisTimestamp}}" '+%Y-%m-%d %H:%M:%S')
+echo "Chain genesis timestamp: $formatted_genesis_date UTC"
+
+current_timestamp=$(date +%s)
+time_diff=$(({{.GenesisTimestamp}} - current_timestamp))
+echo "More or less $time_diff seconds from now"
+echo "------------------------------------------------------------------"
 `
 
 	data := struct {
@@ -135,6 +144,7 @@ echo "All done!"
 		JwtFileLocation             string
 		AccountKeystoreFileLocation string
 		KeystoreDirLocation         string
+		GenesisTimestamp            int
 	}{
 		WalletPassword:              WALLET_PASSWORD,
 		WalletPasswordFileLocation:  VALIDATOR_WALLET_PASSWORD_FILE_INSIDE_CONTAINER,
@@ -142,6 +152,7 @@ echo "All done!"
 		JwtFileLocation:             JWT_SECRET_FILE_LOCATION_INSIDE_CONTAINER,
 		AccountKeystoreFileLocation: ACCOUNT_KEYSTORE_FILE_INSIDE_CONTAINER,
 		KeystoreDirLocation:         KEYSTORE_DIR_LOCATION_INSIDE_CONTAINER,
+		GenesisTimestamp:            g.chainConfig.genesisTimestamp,
 	}
 
 	t, err := template.New("init").Parse(initTemplate)
