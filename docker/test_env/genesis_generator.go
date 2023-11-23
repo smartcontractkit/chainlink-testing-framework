@@ -3,6 +3,7 @@ package test_env
 import (
 	"fmt"
 	"os"
+	"testing"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,6 +14,7 @@ import (
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
+	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 )
 
 type EthGenesisGeneretor struct {
@@ -20,6 +22,7 @@ type EthGenesisGeneretor struct {
 	chainConfig          EthereumChainConfig
 	l                    zerolog.Logger
 	generatedDataHostDir string
+	t                    *testing.T
 }
 
 func NewEthGenesisGenerator(chainConfig EthereumChainConfig, generatedDataHostDir string, opts ...EnvComponentOption) *EthGenesisGeneretor {
@@ -37,8 +40,9 @@ func NewEthGenesisGenerator(chainConfig EthereumChainConfig, generatedDataHostDi
 	return g
 }
 
-func (g *EthGenesisGeneretor) WithLogger(l zerolog.Logger) *EthGenesisGeneretor {
-	g.l = l
+func (g *EthGenesisGeneretor) WithTestInstance(t *testing.T) *EthGenesisGeneretor {
+	g.l = logging.GetTestLogger(t)
+	g.t = t
 	return g
 }
 
@@ -48,11 +52,12 @@ func (g *EthGenesisGeneretor) StartContainer() error {
 		return err
 	}
 
+	l := logging.GetTestContainersGoTestLogger(g.t)
 	_, err = docker.StartContainerWithRetry(g.l, tc.GenericContainerRequest{
 		ContainerRequest: *r,
 		Reuse:            true,
 		Started:          true,
-		Logger:           &g.l,
+		Logger:           l,
 	})
 	if err != nil {
 		return errors.Wrapf(err, "cannot start eth genesis generation container")

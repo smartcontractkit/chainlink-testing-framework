@@ -282,9 +282,8 @@ func (w *ExitCodeStrategy) WaitUntilReady(ctx context.Context, target tcwait.Str
 			if state.ExitCode != w.expectedExitCode {
 				time.Sleep(w.pollInterval)
 				continue
-			} else {
-				return nil
 			}
+			return nil
 		}
 	}
 }

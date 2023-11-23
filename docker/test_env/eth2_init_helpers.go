@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"os"
+	"testing"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,6 +15,7 @@ import (
 	tc "github.com/testcontainers/testcontainers-go"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
+	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 )
 
 type AfterGenesisHelper struct {
@@ -22,6 +24,7 @@ type AfterGenesisHelper struct {
 	l                   zerolog.Logger
 	customConfigDataDir string
 	addressesToFund     []string
+	t                   *testing.T
 }
 
 func NewInitHelper(chainConfig EthereumChainConfig, customConfigDataDir string, opts ...EnvComponentOption) *AfterGenesisHelper {
@@ -40,8 +43,9 @@ func NewInitHelper(chainConfig EthereumChainConfig, customConfigDataDir string, 
 	return g
 }
 
-func (g *AfterGenesisHelper) WithLogger(l zerolog.Logger) *AfterGenesisHelper {
-	g.l = l
+func (g *AfterGenesisHelper) WithTestInstance(t *testing.T) *AfterGenesisHelper {
+	g.l = logging.GetTestLogger(t)
+	g.t = t
 	return g
 }
 
@@ -51,11 +55,12 @@ func (g *AfterGenesisHelper) StartContainer() error {
 		return err
 	}
 
+	l := logging.GetTestContainersGoTestLogger(g.t)
 	_, err = docker.StartContainerWithRetry(g.l, tc.GenericContainerRequest{
 		ContainerRequest: *r,
 		Reuse:            true,
 		Started:          true,
-		Logger:           &g.l,
+		Logger:           l,
 	})
 	if err != nil {
 		return errors.Wrapf(err, "cannot start init helper container")

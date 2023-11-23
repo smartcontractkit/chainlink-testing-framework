@@ -12,7 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rs/zerolog/log"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/utils"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/conversions"
 )
 
 // Handles specific issues with the Celo EVM chain: https://docs.celo.org/
@@ -61,7 +61,7 @@ func (e *CeloClient) DeployContract(
 		Str("Contract Address", contractAddress.Hex()).
 		Str("Contract Name", contractName).
 		Str("From", e.DefaultWallet.Address()).
-		Str("Total Gas Cost (CELO)", utils.WeiToEther(transaction.Cost()).String()).
+		Str("Total Gas Cost (CELO)", conversions.WeiToEther(transaction.Cost()).String()).
 		Str("Network Name", e.NetworkConfig.Name).
 		Msg("Deployed contract")
 	return &contractAddress, transaction, contractInstance, err

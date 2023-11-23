@@ -3,6 +3,7 @@ package test_env
 import (
 	"context"
 	"fmt"
+	"testing"
 	"time"
 
 	"github.com/google/uuid"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
+	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 )
 
 const (
@@ -32,6 +34,7 @@ type Nethermind struct {
 	generatedDataHostDir string
 	consensusLayer       ConsensusLayer
 	l                    zerolog.Logger
+	t                    *testing.T
 }
 
 func NewNethermind(networks []string, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) *Nethermind {
@@ -50,8 +53,9 @@ func NewNethermind(networks []string, generatedDataHostDir string, consensusLaye
 	return g
 }
 
-func (g *Nethermind) WithLogger(l zerolog.Logger) *Nethermind {
-	g.l = l
+func (g *Nethermind) WithTestInstance(t *testing.T) *Nethermind {
+	g.l = logging.GetTestLogger(t)
+	g.t = t
 	return g
 }
 
@@ -61,11 +65,12 @@ func (g *Nethermind) StartContainer() (blockchain.EVMNetwork, error) {
 		return blockchain.EVMNetwork{}, err
 	}
 
+	l := logging.GetTestContainersGoTestLogger(g.t)
 	ct, err := docker.StartContainerWithRetry(g.l, tc.GenericContainerRequest{
 		ContainerRequest: *r,
 		Reuse:            true,
 		Started:          true,
-		Logger:           &g.l,
+		Logger:           l,
 	})
 	if err != nil {
 		return blockchain.EVMNetwork{}, errors.Wrapf(err, "cannot start nethermind container")

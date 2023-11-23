@@ -40,7 +40,7 @@ func TestEth1WithGeth(t *testing.T) {
 	require.NoError(t, err, "Couldn't start PoW network")
 
 	ns := blockchain.SimulatedEVMNetwork
-	ns.URLs = eth2.PublicWsUrsl()
+	ns.URLs = eth2.PublicWsUrls()
 	c, err := blockchain.ConnectEVMClient(ns, l)
 	require.NoError(t, err, "Couldn't connect to the evm client")
 	err = c.Close()

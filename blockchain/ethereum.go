@@ -29,7 +29,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/environment"
-	"github.com/smartcontractkit/chainlink-testing-framework/utils"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/conversions"
 )
 
 const MaxTimeoutForFinality = 15 * time.Minute
@@ -277,7 +277,7 @@ func (e *EthereumClient) Fund(
 		return err
 	}
 
-	tx, err := e.NewTx(privateKey, nonce, to, utils.EtherToWei(amount), gasEstimations)
+	tx, err := e.NewTx(privateKey, nonce, to, conversions.EtherToWei(amount), gasEstimations)
 	if err != nil {
 		return err
 	}
@@ -304,7 +304,7 @@ func (e *EthereumClient) Fund(
 
 // ReturnFunds achieves a lazy method of fund return as too many guarantees get too complex
 func (e *EthereumClient) ReturnFunds(fromKey *ecdsa.PrivateKey) error {
-	fromAddress, err := utils.PrivateKeyToAddress(fromKey)
+	fromAddress, err := conversions.PrivateKeyToAddress(fromKey)
 	if err != nil {
 		return err
 	}
@@ -378,10 +378,10 @@ func (e *EthereumClient) EstimateCostForChainlinkOperations(amountOfOperations i
 	gasLimit := e.NetworkConfig.GasEstimationBuffer + e.NetworkConfig.ChainlinkTransactionLimit
 	// gas cost for TX = total gas limit * estimated gas price
 	gasCostPerOperationWei := big.NewInt(1).Mul(big.NewInt(1).SetUint64(gasLimit), gasPriceInWei)
-	gasCostPerOperationETH := utils.WeiToEther(gasCostPerOperationWei)
+	gasCostPerOperationETH := conversions.WeiToEther(gasCostPerOperationWei)
 	// total Wei needed for all TXs = total value for TX * number of TXs
 	totalWeiForAllOperations := big.NewInt(1).Mul(gasCostPerOperationWei, bigAmountOfOperations)
-	totalEthForAllOperations := utils.WeiToEther(totalWeiForAllOperations)
+	totalEthForAllOperations := conversions.WeiToEther(totalWeiForAllOperations)
 
 	e.l.Debug().
 		Int("Number of Operations", amountOfOperations).
@@ -425,7 +425,7 @@ func (e *EthereumClient) DeployContract(
 		Str("Contract Address", contractAddress.Hex()).
 		Str("Contract Name", contractName).
 		Str("From", e.DefaultWallet.Address()).
-		Str("Total Gas Cost", utils.WeiToEther(transaction.Cost()).String()).
+		Str("Total Gas Cost", conversions.WeiToEther(transaction.Cost()).String()).
 		Str("Network Name", e.NetworkConfig.Name).
 		Msg("Deployed contract")
 	return &contractAddress, transaction, contractInstance, err

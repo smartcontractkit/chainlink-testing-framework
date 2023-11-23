@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
@@ -132,7 +131,7 @@ func (b *EthereumNetworkBuilder) buildNetworkConfig() EthereumNetwork {
 		n.Containers = b.existingConfig.Containers
 	}
 
-	n.logger = logging.GetTestLogger(b.t)
+	n.t = b.t
 
 	return n
 }
@@ -215,9 +214,9 @@ type EthereumNetwork struct {
 	ExecutionNodes      int                       `json:"execution_nodes"`
 	DockerNetworkNames  []string                  `json:"docker_network_names"`
 	Containers          EthereumNetworkContainers `json:"containers"`
-	logger              zerolog.Logger
 	isRecreated         bool
 	ehtereumChainConfig *EthereumChainConfig
+	t                   *testing.T
 }
 
 func (en *EthereumNetwork) Start() (blockchain.EVMNetwork, RpcProvider, error) {
@@ -250,19 +249,19 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
 		}
 
-		valKeysGeneretor := NewValKeysGeneretor(en.ehtereumChainConfig, valKeysDir).WithLogger(en.logger)
+		valKeysGeneretor := NewValKeysGeneretor(en.ehtereumChainConfig, valKeysDir).WithTestInstance(en.t)
 		err = valKeysGeneretor.StartContainer()
 		if err != nil {
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
 		}
 
-		genesis := NewEthGenesisGenerator(*en.ehtereumChainConfig, generatedDataHostDir).WithLogger(en.logger)
+		genesis := NewEthGenesisGenerator(*en.ehtereumChainConfig, generatedDataHostDir).WithTestInstance(en.t)
 		err = genesis.StartContainer()
 		if err != nil {
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
 		}
 
-		initHelper := NewInitHelper(*en.ehtereumChainConfig, generatedDataHostDir).WithLogger(en.logger)
+		initHelper := NewInitHelper(*en.ehtereumChainConfig, generatedDataHostDir).WithTestInstance(en.t)
 		err = initHelper.StartContainer()
 		if err != nil {
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
@@ -277,9 +276,9 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 	var client ExecutionClient
 	switch en.ExecutionLayer {
 	case ExecutionLayer_Geth:
-		client = NewGeth2(networkNames, en.ehtereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Geth2)).WithLogger(en.logger)
+		client = NewGeth2(networkNames, en.ehtereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Geth2)).WithTestInstance(en.t)
 	case ExecutionLayer_Nethermind:
-		client = NewNethermind(networkNames, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Nethermind)).WithLogger(en.logger)
+		client = NewNethermind(networkNames, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Nethermind)).WithTestInstance(en.t)
 	default:
 		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf("unsupported execution layer: %s", en.ExecutionLayer)
 	}
@@ -289,13 +288,13 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
-	beacon := NewPrysmBeaconChain(networkNames, en.ehtereumChainConfig, generatedDataHostDir, client.GetInternalExecutionURL(), en.setExistingContainerName(ContainerType_PrysmBeacon)).WithLogger(en.logger)
+	beacon := NewPrysmBeaconChain(networkNames, en.ehtereumChainConfig, generatedDataHostDir, client.GetInternalExecutionURL(), en.setExistingContainerName(ContainerType_PrysmBeacon)).WithTestInstance(en.t)
 	err = beacon.StartContainer()
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
-	validator := NewPrysmValidator(networkNames, en.ehtereumChainConfig, generatedDataHostDir, valKeysDir, beacon.InternalBeaconRpcProvider, en.setExistingContainerName(ContainerType_PrysmVal)).WithLogger(en.logger)
+	validator := NewPrysmValidator(networkNames, en.ehtereumChainConfig, generatedDataHostDir, valKeysDir, beacon.InternalBeaconRpcProvider, en.setExistingContainerName(ContainerType_PrysmVal)).WithTestInstance(en.t)
 	err = validator.StartContainer()
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
@@ -344,7 +343,7 @@ func (en *EthereumNetwork) startPow() (blockchain.EVMNetwork, RpcProvider, error
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
-	geth := NewGeth(networkNames, en.setExistingContainerName(ContainerType_Geth)).WithLogger(en.logger)
+	geth := NewGeth(networkNames, en.setExistingContainerName(ContainerType_Geth)).WithTestLogger(en.t)
 	net, docker, err := geth.StartContainer()
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
@@ -371,7 +370,7 @@ func (en *EthereumNetwork) getOrCreateDockerNetworks() ([]string, error) {
 	var networkNames []string
 
 	if len(en.DockerNetworkNames) == 0 {
-		network, err := docker.CreateNetwork(en.logger)
+		network, err := docker.CreateNetwork(logging.GetTestLogger(en.t))
 		if err != nil {
 			return networkNames, err
 		}
@@ -435,7 +434,7 @@ func (s *RpcProvider) PublicHttpUrls() []string {
 	return s.publiclHttpUrls
 }
 
-func (s *RpcProvider) PublicWsUrsl() []string {
+func (s *RpcProvider) PublicWsUrls() []string {
 	return s.publicsUrls
 }
 

@@ -148,16 +148,15 @@ func NewInstantConfirmer(
 	client EVMClient,
 	txHash common.Hash,
 	confirmedChan chan bool,
-	errorChan chan error,
+	_ chan error,
 	logger zerolog.Logger,
 ) *InstantConfirmer {
 	ctx, ctxCancel := context.WithTimeout(context.Background(), client.GetNetworkConfig().Timeout.Duration)
 	return &InstantConfirmer{
-		client:        client,
-		txHash:        txHash,
-		context:       ctx,
-		cancel:        ctxCancel,
-		newHeaderChan: make(chan struct{}),
+		client:  client,
+		txHash:  txHash,
+		context: ctx,
+		cancel:  ctxCancel,
 		// For events
 		confirmedChan: confirmedChan,
 		log:           logger,
@@ -166,7 +165,6 @@ func NewInstantConfirmer(
 
 // ReceiveHeader does a quick check on if the tx is confirmed already
 func (l *InstantConfirmer) ReceiveHeader(_ NodeHeader) error {
-	l.newHeaderChan <- struct{}{} // Notify the wait function that a new header has been received
 	return nil
 }
 
@@ -184,7 +182,7 @@ func (l *InstantConfirmer) Wait() error {
 		return nil
 	}
 
-	poll := time.NewTicker(time.Millisecond * 500)
+	poll := time.NewTicker(time.Millisecond * 250)
 	for {
 		select {
 		case <-poll.C:

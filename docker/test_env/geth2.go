@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"os"
+	"testing"
 	"time"
 
 	"github.com/google/uuid"
@@ -18,6 +19,8 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
+	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
 const (
@@ -36,6 +39,7 @@ type Geth2 struct {
 	chainConfg           *EthereumChainConfig
 	consensusLayer       ConsensusLayer
 	l                    zerolog.Logger
+	t                    *testing.T
 }
 
 func NewGeth2(networks []string, chainConfg *EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) *Geth2 {
@@ -55,8 +59,9 @@ func NewGeth2(networks []string, chainConfg *EthereumChainConfig, generatedDataH
 	return g
 }
 
-func (g *Geth2) WithLogger(l zerolog.Logger) *Geth2 {
-	g.l = l
+func (g *Geth2) WithTestInstance(t *testing.T) *Geth2 {
+	g.l = logging.GetTestLogger(t)
+	g.t = t
 	return g
 }
 
@@ -66,32 +71,33 @@ func (g *Geth2) StartContainer() (blockchain.EVMNetwork, error) {
 		return blockchain.EVMNetwork{}, err
 	}
 
+	l := logging.GetTestContainersGoTestLogger(g.t)
 	ct, err := docker.StartContainerWithRetry(g.l, tc.GenericContainerRequest{
 		ContainerRequest: *r,
 		Reuse:            true,
 		Started:          true,
-		Logger:           &g.l,
+		Logger:           l,
 	})
 	if err != nil {
 		return blockchain.EVMNetwork{}, errors.Wrapf(err, "cannot start geth container")
 	}
 
-	host, err := GetHost(context.Background(), ct)
+	host, err := GetHost(testcontext.Get(g.t), ct)
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
-	httpPort, err := ct.MappedPort(context.Background(), NatPort(TX_GETH_HTTP_PORT))
+	httpPort, err := ct.MappedPort(testcontext.Get(g.t), NatPort(TX_GETH_HTTP_PORT))
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
-	wsPort, err := ct.MappedPort(context.Background(), NatPort(TX_GETH_WS_PORT))
+	wsPort, err := ct.MappedPort(testcontext.Get(g.t), NatPort(TX_GETH_WS_PORT))
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
-	executionPort, err := ct.MappedPort(context.Background(), NatPort(ETH2_EXECUTION_PORT))
+	executionPort, err := ct.MappedPort(testcontext.Get(g.t), NatPort(ETH2_EXECUTION_PORT))
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}

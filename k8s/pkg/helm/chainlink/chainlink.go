@@ -10,7 +10,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/client"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/environment"
-	"github.com/smartcontractkit/chainlink-testing-framework/utils"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/projectpath"
 )
 
 const (
@@ -197,7 +197,7 @@ func NewVersioned(index int, helmVersion string, props map[string]any) environme
 	}
 	chartPath := "chainlink-qa/chainlink"
 	if b, err := strconv.ParseBool(os.Getenv(config.EnvVarLocalCharts)); err == nil && b {
-		chartPath = fmt.Sprintf("%s/chainlink", utils.ChartsRoot)
+		chartPath = fmt.Sprintf("%s/chainlink", projectpath.ChartsRoot)
 	}
 	return Chart{
 		Index:   index,

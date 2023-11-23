@@ -25,7 +25,7 @@ func TestEth2WithPrysmAndGeth(t *testing.T) {
 
 	ns := blockchain.SimulatedEVMNetwork
 	ns.Name = "Simulated Geth + Prysm"
-	ns.URLs = eth2.PublicWsUrsl()
+	ns.URLs = eth2.PublicWsUrls()
 	c, err := blockchain.ConnectEVMClient(ns, l)
 	require.NoError(t, err, "Couldn't connect to the evm client")
 	err = c.Close()

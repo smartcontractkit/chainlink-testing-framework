@@ -1,8 +1,8 @@
 package test_env
 
 import (
-	"context"
 	"fmt"
+	"testing"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,6 +13,8 @@ import (
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
+	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
 const (
@@ -31,6 +33,7 @@ type PrysmBeaconChain struct {
 	gethInternalExecutionURL  string
 	chainConfig               *EthereumChainConfig
 	l                         zerolog.Logger
+	t                         *testing.T
 }
 
 type PrysmValidator struct {
@@ -40,6 +43,7 @@ type PrysmValidator struct {
 	valKeysDir                string
 	generatedDataHostDir      string
 	l                         zerolog.Logger
+	t                         *testing.T
 }
 
 func NewPrysmBeaconChain(networks []string, chainConfig *EthereumChainConfig, customConfigDataDir, gethExecutionURL string, opts ...EnvComponentOption) *PrysmBeaconChain {
@@ -59,8 +63,9 @@ func NewPrysmBeaconChain(networks []string, chainConfig *EthereumChainConfig, cu
 	return g
 }
 
-func (g *PrysmBeaconChain) WithLogger(l zerolog.Logger) *PrysmBeaconChain {
-	g.l = l
+func (g *PrysmBeaconChain) WithTestInstance(t *testing.T) *PrysmBeaconChain {
+	g.l = logging.GetTestLogger(t)
+	g.t = t
 	return g
 }
 
@@ -70,26 +75,27 @@ func (g *PrysmBeaconChain) StartContainer() error {
 		return err
 	}
 
+	l := logging.GetTestContainersGoTestLogger(g.t)
 	ct, err := docker.StartContainerWithRetry(g.l, tc.GenericContainerRequest{
 		ContainerRequest: *r,
 		Reuse:            true,
 		Started:          true,
-		Logger:           &g.l,
+		Logger:           l,
 	})
 	if err != nil {
 		return errors.Wrapf(err, "cannot start prysm beacon chain container")
 	}
 
-	host, err := GetHost(context.Background(), ct)
+	host, err := GetHost(testcontext.Get(g.t), ct)
 	if err != nil {
 		return err
 	}
-	queryPort, err := ct.MappedPort(context.Background(), NatPort(PRYSM_QUERY_RPC_PORT))
+	queryPort, err := ct.MappedPort(testcontext.Get(g.t), NatPort(PRYSM_QUERY_RPC_PORT))
 	if err != nil {
 		return err
 	}
 
-	externalRcpPort, err := ct.MappedPort(context.Background(), NatPort(PRYSM_NODE_RPC_PORT))
+	externalRcpPort, err := ct.MappedPort(testcontext.Get(g.t), NatPort(PRYSM_NODE_RPC_PORT))
 	if err != nil {
 		return err
 	}
@@ -163,8 +169,9 @@ func NewPrysmValidator(networks []string, chainConfig *EthereumChainConfig, gene
 	return g
 }
 
-func (g *PrysmValidator) WithLogger(l zerolog.Logger) *PrysmValidator {
-	g.l = l
+func (g *PrysmValidator) WithTestInstance(t *testing.T) *PrysmValidator {
+	g.l = logging.GetTestLogger(t)
+	g.t = t
 	return g
 }
 
@@ -174,11 +181,12 @@ func (g *PrysmValidator) StartContainer() error {
 		return err
 	}
 
+	l := logging.GetTestContainersGoTestLogger(g.t)
 	ct, err := docker.StartContainerWithRetry(g.l, tc.GenericContainerRequest{
 		ContainerRequest: *r,
 		Reuse:            true,
 		Started:          true,
-		Logger:           &g.l,
+		Logger:           l,
 	})
 	if err != nil {
 		return errors.Wrapf(err, "cannot start prysm validator container")

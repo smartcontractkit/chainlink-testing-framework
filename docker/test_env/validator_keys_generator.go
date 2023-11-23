@@ -2,6 +2,7 @@ package test_env
 
 import (
 	"fmt"
+	"testing"
 	"time"
 
 	"github.com/google/uuid"
@@ -11,6 +12,7 @@ import (
 	tc "github.com/testcontainers/testcontainers-go"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
+	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 )
 
 type ValKeysGeneretor struct {
@@ -19,6 +21,7 @@ type ValKeysGeneretor struct {
 	l                  zerolog.Logger
 	valKeysHostDataDir string
 	addressesToFund    []string
+	t                  *testing.T
 }
 
 func NewValKeysGeneretor(chainConfig *EthereumChainConfig, valKeysHostDataDir string, opts ...EnvComponentOption) *ValKeysGeneretor {
@@ -37,13 +40,9 @@ func NewValKeysGeneretor(chainConfig *EthereumChainConfig, valKeysHostDataDir st
 	return g
 }
 
-func (g *ValKeysGeneretor) WithLogger(l zerolog.Logger) *ValKeysGeneretor {
-	g.l = l
-	return g
-}
-
-func (g *ValKeysGeneretor) WithFundedAccounts(addresses []string) *ValKeysGeneretor {
-	g.addressesToFund = addresses
+func (g *ValKeysGeneretor) WithTestInstance(t *testing.T) *ValKeysGeneretor {
+	g.l = logging.GetTestLogger(t)
+	g.t = t
 	return g
 }
 
@@ -53,11 +52,12 @@ func (g *ValKeysGeneretor) StartContainer() error {
 		return err
 	}
 
+	l := logging.GetTestContainersGoTestLogger(g.t)
 	_, err = docker.StartContainerWithRetry(g.l, tc.GenericContainerRequest{
 		ContainerRequest: *r,
 		Reuse:            true,
 		Started:          true,
-		Logger:           &g.l,
+		Logger:           l,
 	})
 	if err != nil {
 		return errors.Wrapf(err, "cannot start val keys generation container")
