@@ -177,8 +177,8 @@ func (g *Erigon) getContainerRequest(networks []string) (*tc.ContainerRequest, e
 				WithStartupTimeout(120 * time.Second).
 				WithPollInterval(1 * time.Second),
 		),
+		User: "0:0",
 		Entrypoint: []string{
-			// "sleep", "infinity",
 			"sh",
 			"/home/erigon/init.sh",
 		},
@@ -205,10 +205,14 @@ func (g Erigon) WaitUntilChainIsReady(waitTime time.Duration) error {
 	return waitForFirstBlock.WaitUntilReady(context.Background(), *g.GetContainer())
 }
 
+// TODO copy genesis file to /hpme/erigon?
 func (g Erigon) buildInitScript() (string, error) {
 	initTemplate := `#!/bin/bash
+	echo "Copied genesis file to {{.ExecutionDir}}"
+	mkdir -p {{.ExecutionDir}}
+	cp {{.GeneratedDataDir}}/genesis.json {{.ExecutionDir}}/genesis.json
 	echo "Running erigon init"
-	erigon init --datadir={{.ExecutionDir}} {{.GeneratedDataDir}}/genesis.json
+	erigon init --datadir={{.ExecutionDir}} {{.ExecutionDir}}/genesis.json
 	exit_code=$?
 	if [ $exit_code -ne 0 ]; then
 		echo "Erigon init failed with exit code $exit_code"
