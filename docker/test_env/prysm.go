@@ -152,10 +152,6 @@ func (g *PrysmBeaconChain) getContainerRequest(networks []string) (*tc.Container
 	}, nil
 }
 
-func (g *PrysmBeaconChain) GetContainer() *tc.Container {
-	return &g.Container
-}
-
 func NewPrysmValidator(networks []string, chainConfig *EthereumChainConfig, generatedDataHostDir, valKeysDir, internalBeaconRpcProvider string, opts ...EnvComponentOption) *PrysmValidator {
 	g := &PrysmValidator{
 		EnvComponent: EnvComponent{

@@ -208,8 +208,3 @@ func (g Besu) WaitUntilChainIsReady(waitTime time.Duration) error {
 func (g *Besu) GetContainerType() ContainerType {
 	return ContainerType_Besu
 }
-
-func (g *Besu) WaitUntilFirstEpochIsFinalized(waitTime time.Duration) error {
-	waitForFirstBlock := tcwait.NewLogStrategy("finalizedEpoch=1").WithPollInterval(1 * time.Second).WithStartupTimeout(waitTime)
-	return waitForFirstBlock.WaitUntilReady(context.Background(), *g.GetContainer())
-}
