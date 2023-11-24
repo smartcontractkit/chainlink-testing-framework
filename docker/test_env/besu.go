@@ -163,6 +163,7 @@ func (g *Besu) getContainerRequest(networks []string) (*tc.ContainerRequest, err
 				WithStartupTimeout(120 * time.Second).
 				WithPollInterval(1 * time.Second),
 		),
+		User: "0:0", //otherwise in CI we get "permission denied" error, when trying to access data from mounted volume
 		Cmd: []string{
 			"--data-path=/opt/besu/execution-data",
 			fmt.Sprintf("--genesis-file=%s/besu.json", GENERATED_DATA_DIR_INSIDE_CONTAINER),
