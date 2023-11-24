@@ -178,6 +178,7 @@ func (g *Erigon) getContainerRequest(networks []string) (*tc.ContainerRequest, e
 				WithStartupTimeout(120 * time.Second).
 				WithPollInterval(1 * time.Second),
 		),
+		User: "0:0",
 		Entrypoint: []string{
 			"sh",
 			"/home/erigon/init.sh",
