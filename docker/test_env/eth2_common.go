@@ -25,13 +25,13 @@ var (
 )
 
 type EthereumChainConfig struct {
-	SecondsPerSlot   int
-	SlotsPerEpoch    int
-	GenesisDelay     int
-	ValidatorCount   int
-	ChainID          int
-	genesisTimestamp int
-	AddressesToFund  []string
+	SecondsPerSlot   int      `json:"slots_per_epoch"`
+	SlotsPerEpoch    int      `json:"seconds_per_slot"`
+	GenesisDelay     int      `json:"genesis_delay"`
+	ValidatorCount   int      `json:"validator_count"`
+	ChainID          int      `json:"chain_id"`
+	genesisTimestamp int      // this is not serialized
+	AddressesToFund  []string `json:"addresses_to_fund"`
 }
 
 func GetDefaultChainConfig() EthereumChainConfig {

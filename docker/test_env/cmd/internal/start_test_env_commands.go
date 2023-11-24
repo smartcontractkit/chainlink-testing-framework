@@ -176,6 +176,11 @@ func startBesuPrysmChainE(cmd *cobra.Command, args []string) error {
 	log.Info().Msgf("Public RPC WS URLs: %v", eth2.PublicWsUrls())
 	log.Info().Msgf("Public RPC HTTP URLs: %v", eth2.PublicHttpUrls())
 
+	err = cfg.Save()
+	if err != nil {
+		return err
+	}
+
 	handleExitSignal()
 
 	return nil
