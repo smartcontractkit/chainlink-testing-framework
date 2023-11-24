@@ -664,6 +664,30 @@ var (
 		DefaultGasLimit:           6000000,
 	}
 
+	// https://era.zksync.io/docs/dev/troubleshooting/important-links.html
+	ZKSyncGoerliTestnet blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "ZKSync Goerli Testnet",
+		ClientImplementation:      blockchain.ZKSyncClientImplementation,
+		ChainID:                   280,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.JSONStrDuration{5 * time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       1000,
+	}
+
+	// https://era.zksync.io/docs/dev/troubleshooting/important-links.html
+	ZKSyncMainnet blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "ZKSync era Mainnet",
+		ClientImplementation:      blockchain.ZKSyncClientImplementation,
+		ChainID:                   324,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.JSONStrDuration{5 * time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       1000,
+	}
+
 	MappedNetworks = map[string]blockchain.EVMNetwork{
 		"SIMULATED":               SimulatedEVM,
 		"SIMULATED_1":             SimulatedEVMNonDev1,
@@ -710,6 +734,8 @@ var (
 		"WEMIX_MAINNET":         WeMixMainnet,
 		"KROMA_SEPOLIA":         KromaSepolia,
 		"KROMA_MAINNET":         KromaMainnet,
+		"ZK_SYNC_GOERLI":        ZKSyncGoerliTestnet,
+		"ZK_SYNC_MAINNET":       ZKSyncMainnet,
 	}
 )
 
