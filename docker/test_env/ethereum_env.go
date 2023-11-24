@@ -342,7 +342,7 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 				return blockchain.EVMNetwork{}, RpcProvider{}, err
 			}
 		} else {
-			logger.Info().Msg("Not waiting for chain to finalize first epoch")
+			logger.Warn().Msg("Not waiting for chain to finalize first epoch")
 		}
 
 		containers := EthereumNetworkContainers{
@@ -447,12 +447,18 @@ func (en *EthereumNetwork) getOrCreateDockerNetworks() ([]string, error) {
 
 func (en *EthereumNetwork) Describe() string {
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("consensus type: %s", en.ConsensusType))
-	sb.WriteString("\nparticipants: {")
-	for _, p := range en.Participants {
-		sb.WriteString(fmt.Sprintf("\n\tconsensus layer: %s, execution layer: %s, count: %d", p.ConsensusLayer, p.ExecutionLayer, p.Count))
+	sb.WriteString(fmt.Sprintf("chain id: %d, consensus type: %s, ", en.ethereumChainConfig.ChainID, en.ConsensusType))
+	sb.WriteString("participants: ")
+	for i, p := range en.Participants {
+		consensusLayer := p.ConsensusLayer
+		if consensusLayer == "" {
+			consensusLayer = "(none)"
+		}
+		sb.WriteString(fmt.Sprintf("{ consensus layer: %s, execution layer: %s, count: %d }", consensusLayer, p.ExecutionLayer, p.Count))
+		if i != len(en.Participants)-1 {
+			sb.WriteString(", ")
+		}
 	}
-	sb.WriteString("\n}")
 	return sb.String()
 }
 
