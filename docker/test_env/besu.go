@@ -110,7 +110,6 @@ func (g *Besu) StartContainer() (blockchain.EVMNetwork, error) {
 
 	networkConfig := blockchain.SimulatedEVMNetwork
 	networkConfig.Name = fmt.Sprintf("Simulated Eth2 (Besu %s)", g.consensusLayer)
-	networkConfig.Name = fmt.Sprintf("erigon-eth2-%s", g.consensusLayer)
 	networkConfig.URLs = []string{g.ExternalWsUrl}
 	networkConfig.HTTPURLs = []string{g.ExternalHttpUrl}
 
@@ -184,7 +183,8 @@ func (g *Besu) getContainerRequest(networks []string) (*tc.ContainerRequest, err
 			fmt.Sprintf("--engine-rpc-port=%s", ETH2_EXECUTION_PORT),
 			"--sync-mode=FULL",
 			"--data-storage-format=BONSAI",
-			"--logging=DEBUG",
+			// "--logging=DEBUG",
+			"--rpc-tx-feecap=0",
 		},
 		Env: map[string]string{
 			"JAVA_OPTS": "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n",
@@ -207,4 +207,9 @@ func (g Besu) WaitUntilChainIsReady(waitTime time.Duration) error {
 
 func (g *Besu) GetContainerType() ContainerType {
 	return ContainerType_Besu
+}
+
+func (g *Besu) WaitUntilFirstEpochIsFinalized(waitTime time.Duration) error {
+	waitForFirstBlock := tcwait.NewLogStrategy("finalizedEpoch=1").WithPollInterval(1 * time.Second).WithStartupTimeout(waitTime)
+	return waitForFirstBlock.WaitUntilReady(context.Background(), *g.GetContainer())
 }

@@ -330,6 +330,21 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
 		}
 
+		logger := logging.GetTestLogger(en.t)
+		if en.WaitForFinalization {
+			evmClient, err := blockchain.NewEVMClientFromNetwork(net, logger)
+			if err != nil {
+				return blockchain.EVMNetwork{}, RpcProvider{}, err
+			}
+
+			err = waitForChainToFinaliseFirstEpoch(logger, evmClient)
+			if err != nil {
+				return blockchain.EVMNetwork{}, RpcProvider{}, err
+			}
+		} else {
+			logger.Info().Msg("Not waiting for chain to finalize first epoch")
+		}
+
 		containers := EthereumNetworkContainers{
 			{
 				ContainerName: client.GetContainerName(),
@@ -357,22 +372,10 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 	}
 
 	en.DockerNetworkNames = networkNames
-	//TODO when we support multiple participants, we need to modify net so that it contains all the RPC URLs, not just the last one
+	net.ChainID = int64(en.ethereumChainConfig.ChainID)
+	net.SupportsEIP1559 = true
 
-	logger := logging.GetTestLogger(en.t)
-	if en.WaitForFinalization {
-		// net.SupportsEIP1559 = true
-		evmClient, err := blockchain.NewEVMClientFromNetwork(net, logger)
-		if err != nil {
-			return blockchain.EVMNetwork{}, RpcProvider{}, err
-		}
-		err = waitForChainToFinaliseFirstEpoch(logger, evmClient)
-		if err != nil {
-			return blockchain.EVMNetwork{}, RpcProvider{}, err
-		}
-	} else {
-		logger.Info().Msg("Not waiting for chain to finalize first epoch")
-	}
+	//TODO when we support multiple participants, we need to modify net so that it contains all the RPC URLs, not just the last one
 
 	return net, rpcProvider, nil
 }

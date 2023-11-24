@@ -120,6 +120,10 @@ func (c *EthereumChainConfig) GetDefaultWaitDuration() time.Duration {
 	return time.Duration((c.GenesisDelay+c.GetValidatorBasedGenesisDelay())*2) * time.Second
 }
 
+func (c *EthereumChainConfig) GetDefaultFinalizationWaitDuration() time.Duration {
+	return time.Duration(5 * time.Minute)
+}
+
 type ExecutionClient interface {
 	GetContainerName() string
 	StartContainer() (blockchain.EVMNetwork, error)
