@@ -7,6 +7,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 )
 
 const RetryAttempts = 3
@@ -14,11 +16,19 @@ const RetryAttempts = 3
 func CreateNetwork(l zerolog.Logger) (*tc.DockerNetwork, error) {
 	uuidObj, _ := uuid.NewRandom()
 	var networkName = fmt.Sprintf("network-%s", uuidObj.String())
+	ryukImage, err := mirror.GetImage("testcontainers/ryuk")
+	if err != nil {
+		return nil, err
+	}
+	reaperCO := tc.WithImageName(ryukImage)
 	network, err := tc.GenericNetwork(context.Background(), tc.GenericNetworkRequest{
 		NetworkRequest: tc.NetworkRequest{
 			Name:           networkName,
 			CheckDuplicate: true,
 			EnableIPv6:     false, // disabling due to https://github.com/moby/moby/issues/42442
+			ReaperOptions: []tc.ContainerOption{
+				reaperCO,
+			},
 		},
 	})
 	if err != nil {

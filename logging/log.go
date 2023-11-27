@@ -9,8 +9,10 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/smartcontractkit/chainlink-env/config"
 	"github.com/stretchr/testify/require"
+	tc "github.com/testcontainers/testcontainers-go"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/k8s/config"
 )
 
 const afterTestEndedMsg = "LOG AFTER TEST ENDED"
@@ -18,6 +20,10 @@ const afterTestEndedMsg = "LOG AFTER TEST ENDED"
 // CustomT wraps testing.T for two puposes:
 // 1. it implements Write to override the default logger
 // 2. it implements Printf to implement the testcontainers-go/Logging interface
+// The reason for both of these is that go parallel testing causes the logs to get mixed up,
+// so we need to override the default logger to *testing.T.Log to ensure that the logs are
+// properly associated with the tests running. The testcontainers-go/Logging interface complicates
+// this more since it needs a struct with L to hold the logger and needs to override Printf.
 type CustomT struct {
 	*testing.T
 	L     zerolog.Logger
@@ -55,6 +61,8 @@ func Init() {
 	log.Logger = l
 }
 
+// GetLogger returns a logger that will write to the testing.T.Log function using the env var provided for the log level.
+// nil can be passed for t to get a logger that is not associated with a go test.
 func GetLogger(t *testing.T, envVarName string) zerolog.Logger {
 	lvlStr := os.Getenv(envVarName)
 	if lvlStr == "" {
@@ -80,6 +88,21 @@ func GetLogger(t *testing.T, envVarName string) zerolog.Logger {
 	return log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "15:04:05.00"}).Level(lvl).With().Timestamp().Logger()
 }
 
+// GetTestLogger returns a logger that will write to the testing.T.Log function using the env var for log level.
+// nil can be passed for t to get a logger that is not associated with a go test.
 func GetTestLogger(t *testing.T) zerolog.Logger {
 	return GetLogger(t, config.EnvVarLogLevel)
+}
+
+// GetTestContainersGoTestLogger returns a logger that will write to the testing.T.Log function using the env var for log level
+// for logs that testcontainers-go will log out. nil can be passed to this and it will be treated as the default tc.Logger
+func GetTestContainersGoTestLogger(t *testing.T) tc.Logging {
+	l := tc.Logger
+	if t != nil {
+		l = CustomT{
+			T: t,
+			L: GetTestLogger(t),
+		}
+	}
+	return l
 }

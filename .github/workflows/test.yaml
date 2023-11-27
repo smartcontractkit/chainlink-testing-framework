@@ -1,17 +1,15 @@
-name: Tests
+name: (all packages) Unit tests
 on:
   push:
     tags:
       - v*
-    branches:
-      - main
   pull_request:
 jobs:
   unit:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       - name: Install Go
         uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/setup-go@00c6214deb10a3f374c6d3430c32c5202015d463 # v2.2.12
         with:
@@ -29,7 +27,9 @@ jobs:
           PATH=$PATH:$(go env GOPATH)/bin
           export PATH
           set -euo pipefail
-          go test -json -cover -covermode=count -coverprofile=unit-test-coverage.out ./... 2>&1 | tee /tmp/gotest.log | gotestfmt
+          # disabled, because we want to use a multiline output of go list command
+          # shellcheck disable=SC2046
+          go test -json -cover -covermode=count -coverprofile=unit-test-coverage.out $(go list ./... | grep -v /k8s/e2e/ | grep -v /k8s/examples/) 2>&1 | tee /tmp/gotest.log | gotestfmt
       - name: Code Coverage
         uses: codecov/codecov-action@v3
         with:

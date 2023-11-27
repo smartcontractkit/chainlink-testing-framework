@@ -1,0 +1,90 @@
+imagePullPolicy: IfNotPresent
+general:
+  networkId: 1337
+shared:
+  jwtSecretFile: /data/execution/jwtsecret
+  genesisFile: /data/execution/genesis.json
+geth:
+  image:
+    repository: ethereum/client-go
+    tag: v1.13.4
+  name: geth
+  passwordFile: /data/execution/password.txt
+  executionDir: /data/execution
+  ports:
+    http: 8544
+    ws: 8545
+    execution: 8551
+    discovery: 30303
+  resources:
+    requests:
+      cpu: 200m
+      memory: 528Mi
+    limits:
+      cpu: 200m
+      memory: 528Mi
+prysm:
+  shared:
+    configFile: /data/consensus/config.yml
+    genesisFile: /data/consensus/genesis.ssz
+    feeRecipent: 0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266
+    validators: 8
+    gethInitTimeoutSeconds: 600
+  genesis:
+    image:
+      repository: gcr.io/prysmaticlabs/prysm/cmd/prysmctl
+      # latest one that works, a bit newer than v4.1.1
+      tag: HEAD-1530d1
+    values:
+      secondsPerSlot: 12
+      slotsPerEpoch: 4
+      delaySeconds: 20
+  beacon:
+    name: prysm-beacon-chain
+    image:
+      repository: gcr.io/prysmaticlabs/prysm/beacon-chain
+      tag: v4.1.1
+    ports:
+      query: 3500
+      node: 4000
+      status: 8080
+    resources:
+      requests:
+        cpu: 200m
+        memory: 528Mi
+      limits:
+        cpu: 200m
+        memory: 528Mi
+  validator:
+    name: prysm-validator
+    image:
+      repository: gcr.io/prysmaticlabs/prysm/validator
+      tag: v4.1.1
+    resources:
+      requests:
+        cpu: 400m
+        memory: 1Gi
+      limits:
+        cpu: 400m
+        memory: 1Gi
+busybox:
+  image:
+    repository: busybox
+    tag: 1.36.1
+ready:
+  name: chain-ready
+  image:
+    repository: curlimages/curl
+    tag: 8.4.0
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+    limits:
+      cpu: 50m
+      memory: 256Mi
+storage:
+  # fails with error running PreBind plugin "VolumeBinding": Operation cannot be fulfilled on persistentvolumes "eth2-0-1699628290-chain-state-storage": the object has been modified; please apply your changes to the latest version and try again
+  class: gp2
+  claim: chain-state-claim
+  size: 2Gi

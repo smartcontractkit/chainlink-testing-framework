@@ -1,7 +1,6 @@
 package test_env
 
 import (
-	"context"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -15,18 +14,19 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/templates"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
 const (
-	BESU_IMAGE = "hyperledger/besu:latest"
+	BESU_IMAGE = "hyperledger/besu"
 )
 
 type PrivateBesuChain struct {
@@ -194,17 +194,17 @@ func (g *NonDevBesuNode) ConnectToClient() error {
 	if ct == nil {
 		return fmt.Errorf("container not started")
 	}
-	host, err := GetHost(context.Background(), ct)
+	host, err := GetHost(testcontext.Get(g.t), ct)
 	if err != nil {
 		return err
 	}
 	port := NatPort(TX_GETH_HTTP_PORT)
-	httpPort, err := ct.MappedPort(context.Background(), port)
+	httpPort, err := ct.MappedPort(testcontext.Get(g.t), port)
 	if err != nil {
 		return err
 	}
 	port = NatPort(TX_NON_DEV_GETH_WS_PORT)
-	wsPort, err := ct.MappedPort(context.Background(), port)
+	wsPort, err := ct.MappedPort(testcontext.Get(g.t), port)
 	if err != nil {
 		return err
 	}
@@ -221,7 +221,7 @@ func (g *NonDevBesuNode) ConnectToClient() error {
 	if err != nil {
 		return err
 	}
-	at, err := ec.BalanceAt(context.Background(), common.HexToAddress("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"))
+	at, err := ec.BalanceAt(testcontext.Get(g.t), common.HexToAddress("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"))
 	if err != nil {
 		return err
 	}
@@ -236,11 +236,11 @@ func (g *NonDevBesuNode) ConnectToClient() error {
 	case *blockchain.EthereumMultinodeClient:
 		ethClient, ok := val.Clients[0].(*blockchain.EthereumClient)
 		if !ok {
-			return errors.Errorf("could not get blockchain.EthereumClient from %+v", val)
+			return fmt.Errorf("could not get blockchain.EthereumClient from %+v", val)
 		}
 		g.EthClient = ethClient.Client
 	default:
-		return errors.Errorf("%+v not supported for geth", val)
+		return fmt.Errorf("%+v not supported for geth", val)
 	}
 	if err != nil {
 		return err
@@ -253,19 +253,17 @@ func (g *NonDevBesuNode) Start() error {
 	if err != nil {
 		return err
 	}
-	l := tc.Logger
-	if g.t != nil {
-		l = logging.CustomT{
-			T: g.t,
-			L: g.l,
-		}
-	}
+	l := logging.GetTestContainersGoTestLogger(g.t)
 
 	// Besu Bootnode setup: BEGIN
 	// Generate public key for besu bootnode
-	bootNode, err := tc.GenericContainer(context.Background(),
+	crbn, err := g.getBesuBootNodeContainerRequest()
+	if err != nil {
+		return err
+	}
+	bootNode, err := tc.GenericContainer(testcontext.Get(g.t),
 		tc.GenericContainerRequest{
-			ContainerRequest: g.getBesuBootNodeContainerRequest(),
+			ContainerRequest: crbn,
 			Started:          true,
 			Reuse:            true,
 			Logger:           l,
@@ -280,11 +278,11 @@ func (g *NonDevBesuNode) Start() error {
 	}
 	// Besu Bootnode setup: END
 
-	host, err := GetHost(context.Background(), bootNode)
+	host, err := GetHost(testcontext.Get(g.t), bootNode)
 	if err != nil {
 		return err
 	}
-	r, err := bootNode.CopyFileFromContainer(context.Background(), "/opt/besu/nodedata/bootnodes")
+	r, err := bootNode.CopyFileFromContainer(testcontext.Get(g.t), "/opt/besu/nodedata/bootnodes")
 	if err != nil {
 		return err
 	}
@@ -298,10 +296,14 @@ func (g *NonDevBesuNode) Start() error {
 
 	fmt.Printf("Besu Bootnode URL: %s\n", g.Config.bootNodeURL)
 
+	cr, err := g.getBesuContainerRequest()
+	if err != nil {
+		return err
+	}
 	var ct tc.Container
-	ct, err = tc.GenericContainer(context.Background(),
+	ct, err = tc.GenericContainer(testcontext.Get(g.t),
 		tc.GenericContainerRequest{
-			ContainerRequest: g.getBesuContainerRequest(),
+			ContainerRequest: cr,
 			Started:          true,
 			Reuse:            true,
 		})
@@ -312,10 +314,14 @@ func (g *NonDevBesuNode) Start() error {
 	return nil
 }
 
-func (g *NonDevBesuNode) getBesuBootNodeContainerRequest() tc.ContainerRequest {
+func (g *NonDevBesuNode) getBesuBootNodeContainerRequest() (tc.ContainerRequest, error) {
+	besuImage, err := mirror.GetImage(BESU_IMAGE)
+	if err != nil {
+		return tc.ContainerRequest{}, err
+	}
 	return tc.ContainerRequest{
 		Name:         g.ContainerName + "-bootnode",
-		Image:        BESU_IMAGE,
+		Image:        besuImage,
 		Networks:     g.Networks,
 		ExposedPorts: []string{"30301/udp"},
 		WaitingFor: tcwait.ForLog("PeerDiscoveryAgent | P2P peer discovery agent started and listening on").
@@ -345,11 +351,11 @@ func (g *NonDevBesuNode) getBesuBootNodeContainerRequest() tc.ContainerRequest {
 				Target: "/opt/besu/nodedata/",
 			},
 		},
-	}
+	}, nil
 }
 
 func (g *NonDevBesuNode) exportBesuBootNodeAddress(bootNode tc.Container) (err error) {
-	resCode, _, err := bootNode.Exec(context.Background(), []string{
+	resCode, _, err := bootNode.Exec(testcontext.Get(g.t), []string{
 		"besu",
 		"--genesis-file", "/opt/besu/nodedata/genesis.json",
 		"--data-path", "/opt/besu/nodedata",
@@ -363,10 +369,14 @@ func (g *NonDevBesuNode) exportBesuBootNodeAddress(bootNode tc.Container) (err e
 	return nil
 }
 
-func (g *NonDevBesuNode) getBesuContainerRequest() tc.ContainerRequest {
+func (g *NonDevBesuNode) getBesuContainerRequest() (tc.ContainerRequest, error) {
+	besuImage, err := mirror.GetImage(BESU_IMAGE)
+	if err != nil {
+		return tc.ContainerRequest{}, err
+	}
 	return tc.ContainerRequest{
 		Name:  g.ContainerName,
-		Image: BESU_IMAGE,
+		Image: besuImage,
 		ExposedPorts: []string{
 			NatPortFormat(TX_GETH_HTTP_PORT),
 			NatPortFormat(TX_NON_DEV_GETH_WS_PORT),
@@ -418,5 +428,5 @@ func (g *NonDevBesuNode) getBesuContainerRequest() tc.ContainerRequest {
 				Target: "/opt/besu/nodedata/",
 			},
 		},
-	}
+	}, nil
 }

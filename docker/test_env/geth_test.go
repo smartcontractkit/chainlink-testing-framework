@@ -10,7 +10,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 )
 
-func TestGeth(t *testing.T) {
+func TestOldGeth(t *testing.T) {
 	l := logging.GetTestLogger(t)
 	network, err := docker.CreateNetwork(l)
 	require.NoError(t, err)
@@ -25,3 +25,26 @@ func TestGeth(t *testing.T) {
 	err = c.Close()
 	require.NoError(t, err, "Couldn't close the client")
 }
+
+func TestEth1WithGeth(t *testing.T) {
+	l := logging.GetTestLogger(t)
+
+	builder := NewEthereumNetworkBuilder()
+	cfg, err := builder.
+		WithConsensusType(ConsensusType_PoW).
+		WithExecutionLayer(ExecutionLayer_Geth).
+		Build()
+	require.NoError(t, err, "Builder validation failed")
+
+	_, eth2, err := cfg.Start()
+	require.NoError(t, err, "Couldn't start PoW network")
+
+	ns := blockchain.SimulatedEVMNetwork
+	ns.URLs = eth2.PublicWsUrls()
+	c, err := blockchain.ConnectEVMClient(ns, l)
+	require.NoError(t, err, "Couldn't connect to the evm client")
+	err = c.Close()
+	require.NoError(t, err, "Couldn't close the client")
+}
+
+//TODO test for restart

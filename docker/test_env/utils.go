@@ -40,3 +40,11 @@ func GetEndpoint(ctx context.Context, container tc.Container, endpointType strin
 	}
 	return strings.Replace(endpoint, "localhost", "127.0.0.1", 1), nil
 }
+
+func FormatHttpUrl(host string, port string) string {
+	return fmt.Sprintf("http://%s:%s", host, port)
+}
+
+func FormatWsUrl(host string, port string) string {
+	return fmt.Sprintf("ws://%s:%s", host, port)
+}

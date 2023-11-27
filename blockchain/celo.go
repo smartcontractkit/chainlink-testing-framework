@@ -10,10 +10,9 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/utils"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/conversions"
 )
 
 // Handles specific issues with the Celo EVM chain: https://docs.celo.org/
@@ -49,12 +48,11 @@ func (e *CeloClient) DeployContract(
 	contractAddress, transaction, contractInstance, err := deployer(opts, e.Client)
 	if err != nil {
 		if strings.Contains(err.Error(), "nonce") {
-			err = errors.Wrap(err, fmt.Sprintf("using nonce %d", opts.Nonce.Uint64()))
+			err = fmt.Errorf("using nonce %d err: %w", opts.Nonce.Uint64(), err)
 		}
 		return nil, nil, nil, err
 	}
 
-	log.Debug().Msg("Processing Tx")
 	if err = e.ProcessTransaction(transaction); err != nil {
 		return nil, nil, nil, err
 	}
@@ -63,7 +61,7 @@ func (e *CeloClient) DeployContract(
 		Str("Contract Address", contractAddress.Hex()).
 		Str("Contract Name", contractName).
 		Str("From", e.DefaultWallet.Address()).
-		Str("Total Gas Cost (CELO)", utils.WeiToEther(transaction.Cost()).String()).
+		Str("Total Gas Cost (CELO)", conversions.WeiToEther(transaction.Cost()).String()).
 		Str("Network Name", e.NetworkConfig.Name).
 		Msg("Deployed contract")
 	return &contractAddress, transaction, contractInstance, err
@@ -72,7 +70,7 @@ func (e *CeloClient) DeployContract(
 func (e *CeloClient) TransactionOpts(from *EthereumWallet) (*bind.TransactOpts, error) {
 	privateKey, err := crypto.HexToECDSA(from.PrivateKey())
 	if err != nil {
-		return nil, fmt.Errorf("invalid private key: %v", err)
+		return nil, fmt.Errorf("invalid private key: %w", err)
 	}
 	opts, err := bind.NewKeyedTransactorWithChainID(privateKey, big.NewInt(e.NetworkConfig.ChainID))
 	if err != nil {

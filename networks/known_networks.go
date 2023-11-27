@@ -11,10 +11,8 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rs/zerolog/log"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/utils"
-
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
-	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/osutil"
 )
 
 // Pre-configured test networks and their connections
@@ -43,12 +41,6 @@ var (
 		"de9be858da4a475276426320d5e9262ecfc3ba460bfac56360bfa6c4c28b4ee0",
 		"df57089febbacf7ba0bc227dafbffa9fc08a93fdc68e1e42411a14efcf23656e",
 	}
-	// SelectedNetworks uses the SELECTED_NETWORKS env var to determine which network to run the test on.
-	// For use in tests that utilize multiple chains. For tests on one chain, see SelectedNetwork
-	// For CCIP use index 1 and 2 of SELECTED_NETWORKS to denote source and destination network respectively
-	SelectedNetworks []blockchain.EVMNetwork = determineSelectedNetworks()
-	// SelectedNetwork uses the first listed network in SELECTED_NETWORKS, for use in tests on only one chain
-	SelectedNetwork blockchain.EVMNetwork = SelectedNetworks[0]
 
 	// SimulatedEVM represents a simulated network
 	SimulatedEVM blockchain.EVMNetwork = blockchain.SimulatedEVMNetwork
@@ -304,9 +296,24 @@ var (
 		DefaultGasLimit:           6000000,
 	}
 
-	// optimismGoerli https://dev.optimism.io/kovan-to-goerli/
+	// OptimismGoerli https://dev.optimism.io/kovan-to-goerli/
 	OptimismGoerli blockchain.EVMNetwork = blockchain.EVMNetwork{
 		Name:                      "Optimism Goerli",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.OptimismClientImplementation,
+		ChainID:                   420,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.JSONStrDuration{Duration: 3 * time.Minute},
+		MinimumConfirmations:      0,
+		GasEstimationBuffer:       0,
+		FinalityTag:               true,
+		DefaultGasLimit:           6000000,
+	}
+
+	// OptimismSepolia https://community.optimism.io/docs/useful-tools/networks/#parameters-for-node-operators-2
+	OptimismSepolia blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Optimism Sepolia",
 		SupportsEIP1559:           true,
 		ClientImplementation:      blockchain.OptimismClientImplementation,
 		ChainID:                   420,
@@ -424,6 +431,22 @@ var (
 		MinimumConfirmations:      0,
 		GasEstimationBuffer:       0,
 		FinalityTag:               true,
+		DefaultGasLimit:           6000000,
+	}
+
+	// BaseSepolia https://base.mirror.xyz/kkz1-KFdUwl0n23PdyBRtnFewvO48_m-fZNzPMJehM4
+	BaseSepolia blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Base Sepolia",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.OptimismClientImplementation,
+		ChainID:                   84531,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.JSONStrDuration{Duration: 3 * time.Minute},
+		MinimumConfirmations:      0,
+		GasEstimationBuffer:       0,
+		FinalityTag:               true,
+		DefaultGasLimit:           6000000,
 	}
 
 	CeloAlfajores = blockchain.EVMNetwork{
@@ -482,6 +505,7 @@ var (
 		MinimumConfirmations:      0,
 		GasEstimationBuffer:       0,
 		FinalityTag:               true,
+		DefaultGasLimit:           6000000,
 	}
 
 	BSCTestnet blockchain.EVMNetwork = blockchain.EVMNetwork{
@@ -495,6 +519,7 @@ var (
 		MinimumConfirmations:      3,
 		GasEstimationBuffer:       0,
 		FinalityTag:               true,
+		DefaultGasLimit:           6000000,
 	}
 
 	BSCMainnet blockchain.EVMNetwork = blockchain.EVMNetwork{
@@ -508,6 +533,7 @@ var (
 		MinimumConfirmations:      3,
 		GasEstimationBuffer:       0,
 		FinalityTag:               true,
+		DefaultGasLimit:           6000000,
 	}
 
 	LineaGoerli blockchain.EVMNetwork = blockchain.EVMNetwork{
@@ -518,7 +544,7 @@ var (
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
 		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
-		MinimumConfirmations:      1,
+		MinimumConfirmations:      0,
 		GasEstimationBuffer:       1000,
 	}
 
@@ -558,6 +584,34 @@ var (
 		GasEstimationBuffer:       1000,
 	}
 
+	WeMixTestnet blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "WeMix Testnet",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.WeMixClientImplementation,
+		ChainID:                   1112,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       0,
+		FinalityDepth:             1,
+		DefaultGasLimit:           6000000,
+	}
+
+	WeMixMainnet blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "WeMix Mainnet",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.WeMixClientImplementation,
+		ChainID:                   1111,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       0,
+		FinalityDepth:             1,
+		DefaultGasLimit:           6000000,
+	}
+
 	FantomTestnet blockchain.EVMNetwork = blockchain.EVMNetwork{
 		Name:                      "Fantom Testnet",
 		SupportsEIP1559:           true,
@@ -582,6 +636,34 @@ var (
 		GasEstimationBuffer:       1000,
 	}
 
+	KromaMainnet blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Kroma Mainnet",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.KromaClientImplementation,
+		ChainID:                   255,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       1000,
+		FinalityTag:               true,
+		DefaultGasLimit:           6000000,
+	}
+
+	KromaSepolia blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Kroma Sepolia",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.KromaClientImplementation,
+		ChainID:                   2358,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       1000,
+		FinalityTag:               true,
+		DefaultGasLimit:           6000000,
+	}
+
 	MappedNetworks = map[string]blockchain.EVMNetwork{
 		"SIMULATED":               SimulatedEVM,
 		"SIMULATED_1":             SimulatedEVMNonDev1,
@@ -602,11 +684,13 @@ var (
 		"ARBITRUM_SEPOLIA":      ArbitrumSepolia,
 		"OPTIMISM_MAINNET":      OptimismMainnet,
 		"OPTIMISM_GOERLI":       OptimismGoerli,
+		"OPTIMISM_SEPOLIA":      OptimismSepolia,
 		"BASE_GOERLI":           BaseGoerli,
+		"BASE_SEPOLIA":          BaseSepolia,
 		"CELO_ALFAJORES":        CeloAlfajores,
 		"CELO_MAINNET":          CeloMainnet,
 		"RSK":                   RSKTestnet,
-		"MUMBAI":                PolygonMumbai,
+		"POLYGON_MUMBAI":        PolygonMumbai,
 		"POLYGON_MAINNET":       PolygonMainnet,
 		"AVALANCHE_FUJI":        AvalancheFuji,
 		"AVALANCHE_MAINNET":     AvalancheMainnet,
@@ -622,123 +706,144 @@ var (
 		"POLYGON_ZKEVM_MAINNET": PolygonZkEvmMainnet,
 		"FANTOM_TESTNET":        FantomTestnet,
 		"FANTOM_MAINNET":        FantomMainnet,
+		"WEMIX_TESTNET":         WeMixTestnet,
+		"WEMIX_MAINNET":         WeMixMainnet,
+		"KROMA_SEPOLIA":         KromaSepolia,
+		"KROMA_MAINNET":         KromaMainnet,
 	}
 )
 
-// determineSelectedNetworks uses `SELECTED_NETWORKS` to determine which networks to run the tests on.
-// Use DetermineSelectedNetwork for tests that only use one network
-func determineSelectedNetworks() []blockchain.EVMNetwork {
-	logging.Init()
-	rawSelectedNetworks := strings.ToUpper(os.Getenv("SELECTED_NETWORKS"))
-	setNetworkNames := strings.Split(rawSelectedNetworks, ",")
-
-	return SetNetworks(setNetworkNames)
+// Get []blockchain.EVMNetwork from env vars. Panic if env vars not set or no networks found
+func MustGetSelectedNetworksFromEnv() []blockchain.EVMNetwork {
+	selectedNetworksEnv := os.Getenv("SELECTED_NETWORKS")
+	emptyEnvErr := fmt.Errorf("env var 'SELECTED_NETWORKS' is not set or is empty. Use valid network(s) separated by comma from %v", getValidNetworkKeys())
+	if selectedNetworksEnv == "" {
+		panic(emptyEnvErr)
+	}
+	networkKeys := strings.Split(selectedNetworksEnv, ",")
+	if len(networkKeys) == 0 {
+		panic(emptyEnvErr)
+	}
+	return SetNetworks(networkKeys)
 }
-
-func SetNetworks(setNetworkNames []string) []blockchain.EVMNetwork {
-	selectedNetworks := make([]blockchain.EVMNetwork, 0)
-	for _, setNetworkName := range setNetworkNames {
-		if chosenNetwork, valid := MappedNetworks[setNetworkName]; valid {
-			log.Info().
-				Interface("SELECTED_NETWORKS", setNetworkNames).
-				Str("Network Name", chosenNetwork.Name).
-				Msg("Read network choice from 'SELECTED_NETWORKS'")
-			setURLs(setNetworkName, &chosenNetwork)
-			setKeys(setNetworkName, &chosenNetwork)
-			selectedNetworks = append(selectedNetworks, chosenNetwork)
-		} else {
-			validNetworks := make([]string, 0)
-			for validNetwork := range MappedNetworks {
-				validNetworks = append(validNetworks, validNetwork)
+func SetNetworks(networkKeys []string) []blockchain.EVMNetwork {
+	networks := make([]blockchain.EVMNetwork, 0)
+	for i := range networkKeys {
+		var walletKeys, httpUrls, wsUrls []string
+		if !strings.Contains(networkKeys[i], "SIMULATED") {
+			// Get network RPC WS URL from env var
+			wsEnvVar := fmt.Sprintf("%s_URLS", networkKeys[i])
+			wsEnvVal, err := osutil.GetEnv(wsEnvVar)
+			if err != nil {
+				log.Warn().Msgf("error getting %s var: %v", wsEnvVar, err)
 			}
-			log.Fatal().
-				Interface("SELECTED_NETWORKS", setNetworkNames).
-				Str("Valid Networks", strings.Join(validNetworks, ", ")).
-				Msg("SELECTED_NETWORKS value is invalid. Use a valid network(s).")
+			if wsEnvVal == "" {
+				// Get default value
+				defaultUrls, err := osutil.GetEnv("EVM_URLS")
+				if err != nil {
+					panic(fmt.Errorf("error getting EVM_URLS var: %w", err))
+				}
+				if defaultUrls == "" {
+					panic(fmt.Errorf("set %s or EVM_URLS env var", wsEnvVar))
+				}
+				log.Warn().Msgf("%s not set, defaulting to EVM_URLS", wsEnvVar)
+				wsUrls = strings.Split(defaultUrls, ",")
+			} else {
+				wsUrls = strings.Split(wsEnvVal, ",")
+			}
+
+			// Get network RPC HTTP URL from env var
+			httpEnvVar := fmt.Sprintf("%s_HTTP_URLS", networkKeys[i])
+			httpEnvVal, err := osutil.GetEnv(httpEnvVar)
+			if err != nil {
+				log.Warn().Msgf("error getting %s var: %v", httpEnvVal, err)
+			}
+			if httpEnvVal == "" {
+				// Get default value
+				defaultUrls, err := osutil.GetEnv("EVM_HTTP_URLS")
+				if err != nil {
+					panic(fmt.Errorf("error getting EVM_HTTP_URLS var: %w", err))
+				}
+				if defaultUrls == "" {
+					panic(fmt.Errorf("set %s or EVM_HTTP_URLS env var", httpEnvVar))
+				}
+				log.Warn().Msgf("%s not set, defaulting to EVM_HTTP_URLS", httpEnvVar)
+				httpUrls = strings.Split(defaultUrls, ",")
+			} else {
+				httpUrls = strings.Split(httpEnvVal, ",")
+			}
+
+			// Get network wallet key from env var
+			walletKeysEnvVar := fmt.Sprintf("%s_KEYS", networkKeys[i])
+			walletKeysEnvVal, err := osutil.GetEnv(walletKeysEnvVar)
+			if err != nil {
+				log.Warn().Msgf("error getting %s var: %v", walletKeysEnvVal, err)
+			}
+			if walletKeysEnvVal == "" {
+				// Get default value
+				defaultKeys, err := osutil.GetEnv("EVM_KEYS")
+				if err != nil {
+					panic(fmt.Errorf("error getting EVM_KEYS var: %w", err))
+				}
+				if defaultKeys == "" {
+					panic(fmt.Errorf("set %s or EVM_KEYS env var", walletKeysEnvVar))
+				}
+				log.Warn().Msgf("%s not set, defaulting to EVM_KEYS", walletKeysEnvVar)
+				walletKeys = strings.Split(defaultKeys, ",")
+			} else {
+				walletKeys = strings.Split(walletKeysEnvVal, ",")
+			}
 		}
+		network, err := NewEVMNetwork(networkKeys[i], walletKeys, httpUrls, wsUrls)
+		if err != nil {
+			panic(err)
+		}
+		networks = append(networks, network)
 	}
-	return selectedNetworks
+	return networks
 }
 
-// setURLs sets a network URL(s) based on env vars
-func setURLs(prefix string, network *blockchain.EVMNetwork) {
-	prefix = strings.Trim(prefix, "_")
-	prefix = strings.ToUpper(prefix)
-
-	if strings.Contains(prefix, "SIMULATED") { // Use defaults for SIMULATED
-		return
-	}
-
-	wsEnvVar := fmt.Sprintf("%s_URLS", prefix)
-	httpEnvVar := fmt.Sprintf("%s_HTTP_URLS", prefix)
-	wsEnvURLs, err := utils.GetEnv(wsEnvVar)
-	if err != nil {
-		log.Warn().Err(err).Str("env var", wsEnvVar).Msg("Error getting env var")
-	}
-	httpEnvURLs, err := utils.GetEnv(httpEnvVar)
-	if err != nil {
-		log.Warn().Err(err).Str("env var", httpEnvVar).Msg("Error getting env var")
-	}
-	if wsEnvURLs == "" {
-		evmUrls, err := utils.GetEnv("EVM_URLS")
-		if err != nil {
-			log.Warn().Err(err).Str("env var", "EVM_URLS").Msg("Error getting env var")
+func NewEVMNetwork(networkKey string, walletKeys, httpUrls, wsUrls []string) (blockchain.EVMNetwork, error) {
+	if network, valid := MappedNetworks[networkKey]; valid {
+		// Overwrite network default values
+		if len(httpUrls) > 0 {
+			network.HTTPURLs = httpUrls
 		}
-		evmhttpUrls, err := utils.GetEnv("EVM_HTTP_URLS")
-		if err != nil {
-			log.Warn().Err(err).Str("env var", "EVM_HTTP_URLS").Msg("Error getting env var")
+		if len(wsUrls) > 0 {
+			network.URLs = wsUrls
 		}
-		wsURLs := strings.Split(evmUrls, ",")
-		httpURLs := strings.Split(evmhttpUrls, ",")
-		log.Warn().Msgf("No '%s' env var defined, defaulting to 'EVM_URLS'", wsEnvVar)
-		network.URLs = wsURLs
-		network.HTTPURLs = httpURLs
-		return
+		if len(walletKeys) > 0 {
+			setKeys(&network, walletKeys)
+		}
+		return network, nil
 	}
+	return blockchain.EVMNetwork{}, fmt.Errorf("network key: '%v' is invalid. Use a valid network(s) separated by comma from %v", networkKey, getValidNetworkKeys())
+}
 
-	wsURLs := strings.Split(wsEnvURLs, ",")
-	httpURLs := strings.Split(httpEnvURLs, ",")
-	network.URLs = wsURLs
-	network.HTTPURLs = httpURLs
-	log.Info().Msg("Read network URLs")
+func getValidNetworkKeys() []string {
+	validKeys := make([]string, 0)
+	for validNetwork := range MappedNetworks {
+		validKeys = append(validKeys, validNetwork)
+	}
+	return validKeys
 }
 
 // setKeys sets a network's private key(s) based on env vars
-func setKeys(prefix string, network *blockchain.EVMNetwork) {
-	prefix = strings.Trim(prefix, "_")
-	prefix = strings.ToUpper(prefix)
-
-	if strings.Contains(prefix, "SIMULATED") { // Use defaults for SIMULATED
-		return
+func setKeys(network *blockchain.EVMNetwork, walletKeys []string) {
+	for keyIndex := range walletKeys { // Sanitize keys of possible `0x` prefix
+		// Trim some common addons
+		walletKeys[keyIndex] = strings.Trim(walletKeys[keyIndex], "\"'")
+		walletKeys[keyIndex] = strings.TrimSpace(walletKeys[keyIndex])
+		walletKeys[keyIndex] = strings.TrimPrefix(walletKeys[keyIndex], "0x")
 	}
-
-	envVar := fmt.Sprintf("%s_KEYS", prefix)
-	keysEnv, err := utils.GetEnv(envVar)
-	if err != nil {
-		log.Warn().Err(err).Str("env var", envVar).Msg("Error getting env var")
-	}
-	if keysEnv == "" {
-		log.Warn().Msg(fmt.Sprintf("No '%s' env var defined, defaulting to 'EVM_KEYS'", envVar))
-		keysEnv, err = utils.GetEnv("EVM_KEYS")
-		if err != nil {
-			log.Warn().Err(err).Str("env var", envVar).Msg("getting env var")
-		}
-	}
-
-	keys := strings.Split(keysEnv, ",")
-	for keyIndex, key := range keys { // Sanitize keys of possible `0x` prefix
-		if strings.HasPrefix(key, "0x") {
-			keys[keyIndex] = key[2:]
-		}
-	}
-	network.PrivateKeys = keys
+	network.PrivateKeys = walletKeys
 
 	// log public keys for debugging
 	publicKeys := []string{}
 	for _, key := range network.PrivateKeys {
 		publicKey, err := privateKeyToAddress(key)
 		if err != nil {
-			log.Fatal().Err(err).Msg("Error getting public key from private key")
+			log.Fatal().Err(err).Msg("Error reading private key")
 		}
 		publicKeys = append(publicKeys, publicKey)
 	}

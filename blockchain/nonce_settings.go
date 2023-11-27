@@ -41,7 +41,6 @@ func newNonceSettings() *NonceSettings {
 		NonceMu: &sync.Mutex{},
 		Nonces:  make(map[string]uint64),
 
-		doneChan:            make(chan struct{}),
 		instantTransactions: make(map[string]map[uint64]chan struct{}),
 		instantNonces:       make(map[string]uint64),
 		registerChan:        make(chan instantTxRegistration),
@@ -55,7 +54,6 @@ type NonceSettings struct {
 	Nonces  map[string]uint64
 
 	// used to properly meter out instant txs on L2s
-	doneChan            chan struct{}
 	instantTransactions map[string]map[uint64]chan struct{}
 	instantNonces       map[string]uint64
 	instantNoncesMu     sync.Mutex
@@ -69,7 +67,8 @@ type NonceSettings struct {
 // rejected.
 func (ns *NonceSettings) watchInstantTransactions() {
 	ns.instantTransactions = make(map[string]map[uint64]chan struct{})
-	checkInterval := time.NewTicker(time.Millisecond * 100)
+	checkInterval := time.NewTicker(time.Millisecond * 50)
+	defer checkInterval.Stop()
 
 	for {
 		select {
@@ -98,7 +97,7 @@ func (ns *NonceSettings) watchInstantTransactions() {
 
 // registerInstantTransaction helps meter out txs for L2 chains. Register, then wait to receive from the returned channel
 // to know when your Tx can send. See watchInstantTransactions for a deeper explanation.
-func (ns *NonceSettings) registerInstantTransaction(fromAddr string, nonce uint64) chan struct{} {
+func (ns *NonceSettings) registerInstantTransaction(fromAddr string, nonce uint64) <-chan struct{} {
 	releaseChan := make(chan struct{})
 	ns.registerChan <- instantTxRegistration{
 		fromAddr:    fromAddr,

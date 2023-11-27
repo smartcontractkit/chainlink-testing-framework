@@ -22,6 +22,5 @@ Here you'll find some guidelines on writing blockchain tests using this framewor
 
 Some notable packages we use include:
 
-* [chainlink-env](https://github.com/smartcontractkit/chainlink-env)
 * [zerolog](https://github.com/rs/zerolog)
 * [Kubernetes](https://github.com/kubernetes/kubernetes)

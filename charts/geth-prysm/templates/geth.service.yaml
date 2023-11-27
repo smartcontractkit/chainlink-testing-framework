@@ -1,0 +1,17 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: {{ .Release.Name }}-{{ .Values.geth.name }}-svc
+spec:
+  selector:
+    app: {{ .Release.Name }}-{{ .Values.geth.name }}
+  ports:
+    - name: http-rpc
+      port: {{ .Values.geth.ports.http }}
+      targetPort: {{ .Values.geth.ports.http }}
+    - name: ws-rpc
+      port: {{ .Values.geth.ports.ws }}
+      targetPort: {{ .Values.geth.ports.ws }}
+    - name: execution-rpc
+      port: {{ .Values.geth.ports.execution }}
+      targetPort: {{ .Values.geth.ports.execution }}   

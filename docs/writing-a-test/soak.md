@@ -62,4 +62,4 @@ The Slack Bot will need to have the following:
 
 ## After the Test
 
-The test environment **will stay active until you manually delete it from your Kubernetes cluster**. This keeps the test env alive so you can view the logs when the test is done. You can do so by [using kubectl](https://www.dnsstuff.com/how-to-tail-kubernetes-and-kubectl-logs), something like [Lens](https://k8slens.dev/), or use the [chainlink-env](https://github.com/smartcontractkit/chainlink-env) `dump` command.
+The test environment **will stay active until you manually delete it from your Kubernetes cluster**. This keeps the test env alive so you can view the logs when the test is done. You can do so by [using kubectl](https://www.dnsstuff.com/how-to-tail-kubernetes-and-kubectl-logs), something like [Lens](https://k8slens.dev/), or use the [chainlink-testing-framework](https://github.com/smartcontractkit/chainlink-testing-framework/k8s/examples/dump/env.go) `dump` command.

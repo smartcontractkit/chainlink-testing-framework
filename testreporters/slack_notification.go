@@ -2,13 +2,14 @@
 package testreporters
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/slack-go/slack"
-	"github.com/smartcontractkit/chainlink-env/config"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/k8s/config"
 )
 
 // Common Slack Notification Helpers
@@ -29,10 +30,10 @@ func UploadSlackFile(slackClient *slack.Client, uploadParams slack.FileUploadPar
 		Str("File", uploadParams.File).
 		Msg("Attempting to upload file")
 	if SlackAPIKey == "" {
-		return errors.New("Unable to upload file without a Slack API Key")
+		return fmt.Errorf("unable to upload file without a Slack API Key")
 	}
 	if SlackChannel == "" {
-		return errors.New("Unable to upload file without a Slack Channel")
+		return fmt.Errorf("unable to upload file without a Slack Channel")
 	}
 	if uploadParams.Channels == nil || uploadParams.Channels[0] == "" {
 		uploadParams.Channels = []string{SlackChannel}
@@ -55,10 +56,10 @@ func SendSlackMessage(slackClient *slack.Client, msgOptions ...slack.MsgOption) 
 		Str("Slack Channel", SlackChannel).
 		Msg("Attempting to send message")
 	if SlackAPIKey == "" {
-		return "", errors.New("Unable to send message without a Slack API Key")
+		return "", fmt.Errorf("unable to send message without a Slack API Key")
 	}
 	if SlackChannel == "" {
-		return "", errors.New("Unable to send message without a Slack Channel")
+		return "", fmt.Errorf("unable to send message without a Slack Channel")
 	}
 	msgOptions = append(msgOptions, slack.MsgOptionAsUser(true))
 	_, timeStamp, err := slackClient.PostMessage(SlackChannel, msgOptions...)
@@ -69,7 +70,7 @@ func SendSlackMessage(slackClient *slack.Client, msgOptions ...slack.MsgOption) 
 func MkdirIfNotExists(dirName string) error {
 	if _, err := os.Stat(dirName); os.IsNotExist(err) {
 		if err = os.MkdirAll(dirName, os.ModePerm); err != nil {
-			return errors.Wrapf(err, "failed to create directory: %s", dirName)
+			return fmt.Errorf("failed to create directory: %s err: %w", dirName, err)
 		}
 	}
 	return nil

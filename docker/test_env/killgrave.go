@@ -1,7 +1,6 @@
 package test_env
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -13,13 +12,14 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/otiai10/copy"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
 type Killgrave struct {
@@ -106,23 +106,21 @@ func (k *Killgrave) StartContainer() error {
 			os.RemoveAll(k.impostersDirBinding)
 		})
 	}
-	l := tc.Logger
-	if k.t != nil {
-		l = logging.CustomT{
-			T: k.t,
-			L: k.l,
-		}
+	l := logging.GetTestContainersGoTestLogger(k.t)
+	cr, err := k.getContainerRequest()
+	if err != nil {
+		return err
 	}
-	c, err := tc.GenericContainer(context.Background(), tc.GenericContainerRequest{
-		ContainerRequest: k.getContainerRequest(),
+	c, err := tc.GenericContainer(testcontext.Get(k.t), tc.GenericContainerRequest{
+		ContainerRequest: cr,
 		Started:          true,
 		Reuse:            true,
 		Logger:           l,
 	})
 	if err != nil {
-		return errors.Wrapf(err, "cannot start Killgrave container")
+		return fmt.Errorf("cannot start Killgrave container: %w", err)
 	}
-	endpoint, err := GetEndpoint(context.Background(), c, "http")
+	endpoint, err := GetEndpoint(testcontext.Get(k.t), c, "http")
 	if err != nil {
 		return err
 	}
@@ -137,11 +135,15 @@ func (k *Killgrave) StartContainer() error {
 	return nil
 }
 
-func (k *Killgrave) getContainerRequest() tc.ContainerRequest {
+func (k *Killgrave) getContainerRequest() (tc.ContainerRequest, error) {
+	killgraveImage, err := mirror.GetImage("friendsofgo/killgrave:0.4.1")
+	if err != nil {
+		return tc.ContainerRequest{}, err
+	}
 	return tc.ContainerRequest{
 		Name:         k.ContainerName,
 		Networks:     k.Networks,
-		Image:        "friendsofgo/killgrave",
+		Image:        killgraveImage,
 		ExposedPorts: []string{NatPortFormat(k.InternalPort)},
 		Cmd:          []string{"-host=0.0.0.0", "-imposters=/imposters", "-watcher"},
 		Mounts: tc.ContainerMounts{
@@ -153,7 +155,7 @@ func (k *Killgrave) getContainerRequest() tc.ContainerRequest {
 			},
 		},
 		WaitingFor: wait.ForLog("The fake server is on tap now"),
-	}
+	}, nil
 }
 
 func (k *Killgrave) setupImposters() error {
@@ -213,7 +215,7 @@ func (k *Killgrave) AddImposter(imposters []KillgraveImposter) error {
 		// wait for the log saying the imposter was loaded
 		containerFile := filepath.Join("/imposters", fmt.Sprintf("%s.imp.json", safeFileName))
 		logWaitStrategy := wait.ForLog(fmt.Sprintf("imposter %s loaded", containerFile)).WithStartupTimeout(15 * time.Second)
-		err = logWaitStrategy.WaitUntilReady(context.Background(), k.Container)
+		err = logWaitStrategy.WaitUntilReady(testcontext.Get(k.t), k.Container)
 	}
 	return err
 }

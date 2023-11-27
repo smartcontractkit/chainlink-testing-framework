@@ -1,0 +1,12 @@
+{
+  "grafana_url": [
+    {
+      "test_name": "first test",
+      "value": "https://grafana_url.pl/1"
+    },
+    {
+      "test_name": "second test",
+      "value": "https://grafana_url.pl/2"
+    }
+  ]
+}

@@ -1,19 +1,19 @@
 package test_env
 
 import (
-	"context"
 	"fmt"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/imdario/mergo"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
 type SchemaRegistry struct {
@@ -66,33 +66,31 @@ func (r *SchemaRegistry) WithEnvVars(envVars map[string]string) *SchemaRegistry 
 
 func (r *SchemaRegistry) StartContainer() error {
 	r.InternalUrl = fmt.Sprintf("http://%s:%s", r.ContainerName, "8081")
-	l := tc.Logger
-	if r.t != nil {
-		l = logging.CustomT{
-			T: r.t,
-			L: r.l,
-		}
-	}
+	l := logging.GetTestContainersGoTestLogger(r.t)
 	envVars := map[string]string{
 		"SCHEMA_REGISTRY_HOST_NAME": r.ContainerName,
 		"SCHEMA_REGISTRY_LISTENERS": r.InternalUrl,
 	}
 	r.WithEnvVars(envVars)
+	cr, err := r.getContainerRequest()
+	if err != nil {
+		return err
+	}
 	req := tc.GenericContainerRequest{
-		ContainerRequest: r.getContainerRequest(),
+		ContainerRequest: cr,
 		Started:          true,
 		Reuse:            true,
 		Logger:           l,
 	}
-	c, err := tc.GenericContainer(context.Background(), req)
+	c, err := tc.GenericContainer(testcontext.Get(r.t), req)
 	if err != nil {
-		return errors.Wrapf(err, "cannot start Schema Registry container")
+		return fmt.Errorf("cannot start Schema Registry container: %w", err)
 	}
-	host, err := GetHost(context.Background(), c)
+	host, err := GetHost(testcontext.Get(r.t), c)
 	if err != nil {
 		return err
 	}
-	port, err := c.MappedPort(context.Background(), "8081/tcp")
+	port, err := c.MappedPort(testcontext.Get(r.t), "8081/tcp")
 	if err != nil {
 		return err
 	}
@@ -108,15 +106,19 @@ func (r *SchemaRegistry) StartContainer() error {
 	return nil
 }
 
-func (r *SchemaRegistry) getContainerRequest() tc.ContainerRequest {
+func (r *SchemaRegistry) getContainerRequest() (tc.ContainerRequest, error) {
+	schemaImage, err := mirror.GetImage("confluentinc/cp-schema-registry")
+	if err != nil {
+		return tc.ContainerRequest{}, err
+	}
 	return tc.ContainerRequest{
 		Name:         r.ContainerName,
-		Image:        "confluentinc/cp-schema-registry:7.4.0",
+		Image:        schemaImage,
 		ExposedPorts: []string{"8081/tcp"},
 		Env:          r.EnvVars,
 		Networks:     r.Networks,
 		WaitingFor: tcwait.ForLog("INFO Server started, listening for requests").
 			WithStartupTimeout(30 * time.Second).
 			WithPollInterval(100 * time.Millisecond),
-	}
+	}, nil
 }

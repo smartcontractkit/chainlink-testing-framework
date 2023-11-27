@@ -6,8 +6,11 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"math/big"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -21,14 +24,12 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"go.uber.org/atomic"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/smartcontractkit/chainlink-env/environment"
-
-	"github.com/smartcontractkit/chainlink-testing-framework/utils"
+	"github.com/smartcontractkit/chainlink-testing-framework/k8s/environment"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/conversions"
 )
 
 const MaxTimeoutForFinality = 15 * time.Minute
@@ -267,7 +268,7 @@ func (e *EthereumClient) Fund(
 ) error {
 	privateKey, err := crypto.HexToECDSA(e.DefaultWallet.PrivateKey())
 	if err != nil {
-		return fmt.Errorf("invalid private key: %v", err)
+		return fmt.Errorf("invalid private key: %w", err)
 	}
 	to := common.HexToAddress(toAddress)
 
@@ -276,7 +277,7 @@ func (e *EthereumClient) Fund(
 		return err
 	}
 
-	tx, err := e.NewTx(privateKey, nonce, to, utils.EtherToWei(amount), gasEstimations)
+	tx, err := e.NewTx(privateKey, nonce, to, conversions.EtherToWei(amount), gasEstimations)
 	if err != nil {
 		return err
 	}
@@ -293,7 +294,7 @@ func (e *EthereumClient) Fund(
 		Msg("Funding Address")
 	if err := e.SendTransaction(context.Background(), tx); err != nil {
 		if strings.Contains(err.Error(), "nonce") {
-			err = errors.Wrap(err, fmt.Sprintf("using nonce %d", nonce))
+			err = fmt.Errorf("using nonce %d err: %w", nonce, err)
 		}
 		return err
 	}
@@ -301,64 +302,64 @@ func (e *EthereumClient) Fund(
 	return e.ProcessTransaction(tx)
 }
 
+// ReturnFunds achieves a lazy method of fund return as too many guarantees get too complex
 func (e *EthereumClient) ReturnFunds(fromKey *ecdsa.PrivateKey) error {
-	var tx *types.Transaction
-	var err error
-	for attempt := 1; attempt < 20; attempt++ {
-		tx, err = attemptReturn(e, fromKey, attempt)
-		if err == nil {
-			return e.ProcessTransaction(tx)
-		}
-		e.l.Debug().Err(err).Int("Attempt", attempt+1).Msg("Error returning funds from Chainlink node, trying again")
-		time.Sleep(time.Millisecond * 500)
-	}
-	return err
-}
-
-// a single fund return attempt, further attempts exponentially raise the error margin for fund returns
-func attemptReturn(e *EthereumClient, fromKey *ecdsa.PrivateKey, attemptCount int) (*types.Transaction, error) {
-	to := common.HexToAddress(e.DefaultWallet.Address())
-	fromAddress, err := utils.PrivateKeyToAddress(fromKey)
+	fromAddress, err := conversions.PrivateKeyToAddress(fromKey)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	nonce, err := e.GetNonce(context.Background(), fromAddress)
+	nonce, err := e.Client.PendingNonceAt(context.Background(), fromAddress)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	balance, err := e.Client.BalanceAt(context.Background(), fromAddress, nil)
 	if err != nil {
-		return nil, err
-	}
-	gasEstimations, err := e.EstimateGas(ethereum.CallMsg{
-		To: &to,
-	})
-	if err != nil {
-		return nil, err
-	}
-	totalGasCost := gasEstimations.TotalGasCost
-	balanceGasDelta := big.NewInt(0).Sub(balance, totalGasCost)
+		return err
 
-	if balanceGasDelta.Cmp(big.NewInt(0)) <= 0 { // Try with 0.5 gwei if we have no or negative margin. Might as well
-		e.l.Warn().
-			Str("Delta", balanceGasDelta.String()).
-			Str("Gas Cost", totalGasCost.String()).
-			Str("Total Balance", balance.String()).
-			Msg("Errors calculating fund return, trying with 0.5 gwei")
-		balanceGasDelta = big.NewInt(500_000_000)
+	}
+	gasLimit := big.NewInt(21_000)
+	gasPrice, err := e.Client.SuggestGasPrice(context.Background())
+	if err != nil {
+		return err
+	}
+	totalGasCost := new(big.Int).Mul(gasLimit, gasPrice)
+	toSend := new(big.Int).Sub(balance, totalGasCost)
+
+	tx := types.NewTransaction(nonce, e.DefaultWallet.address, toSend, gasLimit.Uint64(), gasPrice, nil)
+	signedTx, err := types.SignTx(tx, types.LatestSignerForChainID(e.GetChainID()), fromKey)
+	if err != nil {
+		return err
 	}
 
-	tx, err := e.NewTx(fromKey, nonce, to, balanceGasDelta, gasEstimations)
-	if err != nil {
-		return nil, err
+	// regex to extract overshot amount from error
+	// we estimate a little high, expecting an overshot issue, then keep subtracting and sending until it works
+	re := regexp.MustCompile(`overshot (\d+)`)
+
+	overshotErr := e.Client.SendTransaction(context.Background(), signedTx)
+	for overshotErr != nil && strings.Contains(overshotErr.Error(), "overshot") {
+		submatches := re.FindStringSubmatch(overshotErr.Error())
+		if len(submatches) < 1 {
+			return fmt.Errorf("error parsing overshot amount in error: %w", err)
+		}
+		numberString := submatches[1]
+		overshotAmount, err := strconv.Atoi(numberString)
+		if err != nil {
+			return err
+		}
+		toSend.Sub(toSend, big.NewInt(int64(overshotAmount)))
+		tx := types.NewTransaction(nonce, e.DefaultWallet.address, toSend, gasLimit.Uint64(), gasPrice, nil)
+		signedTx, err = types.SignTx(tx, types.LatestSignerForChainID(e.GetChainID()), fromKey)
+		if err != nil {
+			return err
+		}
+		overshotErr = e.Client.SendTransaction(context.Background(), signedTx)
 	}
 	e.l.Info().
-		Str("Amount", balance.String()).
+		Uint64("Funds", toSend.Uint64()).
 		Str("From", fromAddress.Hex()).
-		Str("To", to.Hex()).
-		Str("Total Gas Cost", totalGasCost.String()).
-		Msg("Returning Funds to Default Wallet")
-	return tx, e.SendTransaction(context.Background(), tx)
+		Str("To", e.DefaultWallet.Address()).
+		Msg("Returning funds to Default Wallet")
+	return overshotErr
 }
 
 // EstimateCostForChainlinkOperations calculates required amount of ETH for amountOfOperations Chainlink operations
@@ -377,10 +378,10 @@ func (e *EthereumClient) EstimateCostForChainlinkOperations(amountOfOperations i
 	gasLimit := e.NetworkConfig.GasEstimationBuffer + e.NetworkConfig.ChainlinkTransactionLimit
 	// gas cost for TX = total gas limit * estimated gas price
 	gasCostPerOperationWei := big.NewInt(1).Mul(big.NewInt(1).SetUint64(gasLimit), gasPriceInWei)
-	gasCostPerOperationETH := utils.WeiToEther(gasCostPerOperationWei)
+	gasCostPerOperationETH := conversions.WeiToEther(gasCostPerOperationWei)
 	// total Wei needed for all TXs = total value for TX * number of TXs
 	totalWeiForAllOperations := big.NewInt(1).Mul(gasCostPerOperationWei, bigAmountOfOperations)
-	totalEthForAllOperations := utils.WeiToEther(totalWeiForAllOperations)
+	totalEthForAllOperations := conversions.WeiToEther(totalWeiForAllOperations)
 
 	e.l.Debug().
 		Int("Number of Operations", amountOfOperations).
@@ -411,12 +412,11 @@ func (e *EthereumClient) DeployContract(
 	contractAddress, transaction, contractInstance, err := deployer(opts, e.Client)
 	if err != nil {
 		if strings.Contains(err.Error(), "nonce") {
-			err = errors.Wrap(err, fmt.Sprintf("using nonce %d", opts.Nonce.Uint64()))
+			err = fmt.Errorf("using nonce %d err: %w", opts.Nonce.Uint64(), err)
 		}
 		return nil, nil, nil, err
 	}
 
-	e.l.Debug().Msg("Processing Tx")
 	if err = e.ProcessTransaction(transaction); err != nil {
 		return nil, nil, nil, err
 	}
@@ -425,7 +425,7 @@ func (e *EthereumClient) DeployContract(
 		Str("Contract Address", contractAddress.Hex()).
 		Str("Contract Name", contractName).
 		Str("From", e.DefaultWallet.Address()).
-		Str("Total Gas Cost", utils.WeiToEther(transaction.Cost()).String()).
+		Str("Total Gas Cost", conversions.WeiToEther(transaction.Cost()).String()).
 		Str("Network Name", e.NetworkConfig.Name).
 		Msg("Deployed contract")
 	return &contractAddress, transaction, contractInstance, err
@@ -450,7 +450,7 @@ func (e *EthereumClient) LoadContract(contractName string, contractAddress commo
 func (e *EthereumClient) TransactionOpts(from *EthereumWallet) (*bind.TransactOpts, error) {
 	privateKey, err := crypto.HexToECDSA(from.PrivateKey())
 	if err != nil {
-		return nil, fmt.Errorf("invalid private key: %v", err)
+		return nil, fmt.Errorf("invalid private key: %w", err)
 	}
 	opts, err := bind.NewKeyedTransactorWithChainID(privateKey, big.NewInt(e.NetworkConfig.ChainID))
 	if err != nil {
@@ -522,6 +522,7 @@ func (e *EthereumClient) NewTx(
 
 // ProcessTransaction will queue or wait on a transaction depending on whether parallel transactions are enabled
 func (e *EthereumClient) ProcessTransaction(tx *types.Transaction) error {
+	e.l.Trace().Str("Hash", tx.Hash().Hex()).Msg("Processing Tx")
 	var txConfirmer HeaderEventSubscription
 	if e.GetNetworkConfig().MinimumConfirmations <= 0 {
 		fromAddr, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx)
@@ -642,13 +643,23 @@ func (e *EthereumClient) IsTxHeadFinalized(txHdr, header *SafeEVMHeader) (bool, 
 
 // IsTxConfirmed checks if the transaction is confirmed on chain or not
 func (e *EthereumClient) IsTxConfirmed(txHash common.Hash) (bool, error) {
-	tx, isPending, err := e.Client.TransactionByHash(context.Background(), txHash)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	tx, isPending, err := e.Client.TransactionByHash(ctx, txHash)
+	cancel()
 	if err != nil {
+		if errors.Is(err, ethereum.NotFound) { // not found is fine, it's not on chain yet
+			return false, nil
+		}
 		return !isPending, err
 	}
-	if !isPending {
-		receipt, err := e.Client.TransactionReceipt(context.Background(), txHash)
+	if !isPending && e.NetworkConfig.MinimumConfirmations > 0 { // Instant chains don't bother with this receipt nonsense
+		ctx, cancel = context.WithTimeout(context.Background(), time.Second*5)
+		receipt, err := e.Client.TransactionReceipt(ctx, txHash)
+		cancel()
 		if err != nil {
+			if errors.Is(err, ethereum.NotFound) { // not found is fine, it's not on chain yet
+				return false, nil
+			}
 			return !isPending, err
 		}
 		e.gasStats.AddClientTXData(TXGasData{
@@ -985,7 +996,7 @@ func (e *EthereumClient) GetLatestFinalizedBlockHeader(ctx context.Context) (*ty
 		return e.Client.HeaderByNumber(ctx, big.NewInt(rpc.FinalizedBlockNumber.Int64()))
 	}
 	if e.NetworkConfig.FinalityDepth == 0 {
-		return nil, errors.New("finality depth is 0 and finality tag is not enabled")
+		return nil, fmt.Errorf("finality depth is 0 and finality tag is not enabled")
 	}
 	header, err := e.Client.HeaderByNumber(ctx, nil)
 	if err != nil {
@@ -1012,7 +1023,7 @@ func (e *EthereumClient) EstimatedFinalizationTime(ctx context.Context) (time.Du
 		return 0, err
 	}
 	if e.NetworkConfig.FinalityDepth == 0 {
-		return 0, errors.New("finality depth is 0 and finality tag is not enabled")
+		return 0, fmt.Errorf("finality depth is 0 and finality tag is not enabled")
 	}
 	timeBetween := time.Duration(e.NetworkConfig.FinalityDepth) * blckTime
 	e.l.Info().
@@ -1026,7 +1037,7 @@ func (e *EthereumClient) EstimatedFinalizationTime(ctx context.Context) (time.Du
 // TimeBetweenFinalizedBlocks is used to calculate the time between finalized blocks for chains with finality tag enabled
 func (e *EthereumClient) TimeBetweenFinalizedBlocks(ctx context.Context, maxTimeToWait time.Duration) (time.Duration, error) {
 	if !e.NetworkConfig.FinalityTag {
-		return 0, errors.New("finality tag is not enabled; cannot calculate time between finalized blocks")
+		return 0, fmt.Errorf("finality tag is not enabled; cannot calculate time between finalized blocks")
 	}
 	currentFinalizedHeader, err := e.GetLatestFinalizedBlockHeader(ctx)
 	if err != nil {
@@ -1044,7 +1055,7 @@ func (e *EthereumClient) TimeBetweenFinalizedBlocks(ctx context.Context, maxTime
 	for {
 		select {
 		case <-c.Done():
-			return 0, errors.Wrapf(c.Err(), "timed out waiting for next finalized block. If the finality time is more than %s, provide it as TimeToReachFinality in Network config", maxTimeToWait)
+			return 0, fmt.Errorf("timed out waiting for next finalized block. If the finality time is more than %s, provide it as TimeToReachFinality in Network config: %w", maxTimeToWait, c.Err())
 		case <-hdrChannel:
 			// a new header is received now query the finalized block
 			nextFinalizedHeader, err := e.GetLatestFinalizedBlockHeader(ctx)
@@ -1079,7 +1090,7 @@ func (e *EthereumClient) AvgBlockTime(ctx context.Context) (time.Duration, error
 	}
 	startBlockNumber := latestBlockNumber - numBlocks + 1
 	if startBlockNumber <= 0 {
-		return 0, errors.New("not enough blocks mined to calculate block time")
+		return 0, fmt.Errorf("not enough blocks mined to calculate block time")
 	}
 	totalTime := time.Duration(0)
 	var previousHeader *types.Header
@@ -1213,7 +1224,7 @@ func NewEVMClient(networkSettings EVMNetwork, env *environment.Environment, logg
 // Should mostly be used for inside K8s, non-simulated tests.
 func ConnectEVMClient(networkSettings EVMNetwork, logger zerolog.Logger) (EVMClient, error) {
 	if len(networkSettings.URLs) == 0 {
-		return nil, errors.New("no URLs provided to connect to network")
+		return nil, fmt.Errorf("no URLs provided to connect to network")
 	}
 
 	ecl := &EthereumMultinodeClient{}
@@ -1266,7 +1277,7 @@ func ConnectEVMClient(networkSettings EVMNetwork, logger zerolog.Logger) (EVMCli
 func ConcurrentEVMClient(networkSettings EVMNetwork, env *environment.Environment, existing EVMClient, logger zerolog.Logger) (EVMClient, error) {
 	// if not simulated use the NewEVMClient
 	if !networkSettings.Simulated {
-		return NewEVMClient(networkSettings, env, logger)
+		return ConnectEVMClient(networkSettings, logger)
 	}
 	ecl := &EthereumMultinodeClient{}
 	if env != nil {

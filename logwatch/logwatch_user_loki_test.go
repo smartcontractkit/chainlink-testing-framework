@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/logwatch"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
 /* These tests are for testing Loki format, they rarely change so you can run them manually */
@@ -39,9 +40,10 @@ func TestExampleLokiStreaming(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			d, err := NewDeployment(tc)
+			ctx := testcontext.Get(t)
+			d, err := NewDeployment(ctx, tc)
 			// nolint
-			defer d.Shutdown()
+			defer d.Shutdown(ctx)
 			require.NoError(t, err)
 			lw, err := logwatch.NewLogWatch(t, nil)
 			require.NoError(t, err)

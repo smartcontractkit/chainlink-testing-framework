@@ -1,7 +1,6 @@
 package test_env
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"net/url"
@@ -11,13 +10,14 @@ import (
 
 	"github.com/docker/go-connections/nat"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
 type PostgresDb struct {
@@ -44,6 +44,14 @@ func WithPostgresDbContainerName(name string) PostgresDbOption {
 	}
 }
 
+func WithPostgresImageName(imageName string) PostgresDbOption {
+	return func(c *PostgresDb) {
+		if imageName != "" {
+			c.ContainerImage = imageName
+		}
+	}
+}
+
 func WithPostgresImageVersion(version string) PostgresDbOption {
 	return func(c *PostgresDb) {
 		if version != "" {
@@ -60,12 +68,19 @@ func WithPostgresDbName(name string) PostgresDbOption {
 	}
 }
 
+func WithContainerEnv(key, value string) PostgresDbOption {
+	return func(c *PostgresDb) {
+		c.ContainerEnvs[key] = value
+	}
+}
+
 func NewPostgresDb(networks []string, opts ...PostgresDbOption) *PostgresDb {
 	pg := &PostgresDb{
 		EnvComponent: EnvComponent{
 			ContainerName:    fmt.Sprintf("%s-%s", "postgres-db", uuid.NewString()[0:8]),
-			ContainerImage:   "postgres",
-			ContainerVersion: "15.3",
+			ContainerImage:   "public.ecr.aws/docker/library/postgres",
+			ContainerVersion: "15.4",
+			ContainerEnvs:    map[string]string{},
 			Networks:         networks,
 		},
 		User:         "postgres",
@@ -74,9 +89,16 @@ func NewPostgresDb(networks []string, opts ...PostgresDbOption) *PostgresDb {
 		InternalPort: "5432",
 		l:            log.Logger,
 	}
+
 	for _, opt := range opts {
 		opt(pg)
 	}
+
+	// Set default container envs
+	pg.ContainerEnvs["POSTGRES_USER"] = pg.User
+	pg.ContainerEnvs["POSTGRES_DB"] = pg.DbName
+	pg.ContainerEnvs["POSTGRES_PASSWORD"] = pg.Password
+
 	return pg
 }
 
@@ -88,14 +110,8 @@ func (pg *PostgresDb) WithTestLogger(t *testing.T) *PostgresDb {
 
 func (pg *PostgresDb) StartContainer() error {
 	req := pg.getContainerRequest()
-	l := tc.Logger
-	if pg.t != nil {
-		l = logging.CustomT{
-			T: pg.t,
-			L: pg.l,
-		}
-	}
-	c, err := tc.GenericContainer(context.Background(), tc.GenericContainerRequest{
+	l := logging.GetTestContainersGoTestLogger(pg.t)
+	c, err := docker.StartContainerWithRetry(pg.l, tc.GenericContainerRequest{
 		ContainerRequest: *req,
 		Started:          true,
 		Reuse:            true,
@@ -105,7 +121,7 @@ func (pg *PostgresDb) StartContainer() error {
 		return err
 	}
 	pg.Container = c
-	externalPort, err := c.MappedPort(context.Background(), nat.Port(fmt.Sprintf("%s/tcp", pg.InternalPort)))
+	externalPort, err := c.MappedPort(testcontext.Get(pg.t), nat.Port(fmt.Sprintf("%s/tcp", pg.InternalPort)))
 	if err != nil {
 		return err
 	}
@@ -114,13 +130,13 @@ func (pg *PostgresDb) StartContainer() error {
 	internalUrl, err := url.Parse(fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
 		pg.User, pg.Password, pg.ContainerName, "5432", pg.DbName))
 	if err != nil {
-		return errors.Wrapf(err, "error parsing mercury db internal url")
+		return fmt.Errorf("error parsing mercury db internal url: %w", err)
 	}
 	pg.InternalURL = internalUrl
 	externalUrl, err := url.Parse(fmt.Sprintf("postgres://%s:%s@127.0.0.1:%s/%s?sslmode=disable",
 		pg.User, pg.Password, externalPort.Port(), pg.DbName))
 	if err != nil {
-		return errors.Wrapf(err, "error parsing mercury db external url")
+		return fmt.Errorf("error parsing mercury db external url: %w", err)
 	}
 	pg.ExternalURL = externalUrl
 
@@ -150,12 +166,8 @@ func (pg *PostgresDb) getContainerRequest() *tc.ContainerRequest {
 		Name:         pg.ContainerName,
 		Image:        fmt.Sprintf("%s:%s", pg.ContainerImage, pg.ContainerVersion),
 		ExposedPorts: []string{fmt.Sprintf("%s/tcp", pg.InternalPort)},
-		Env: map[string]string{
-			"POSTGRES_USER":     pg.User,
-			"POSTGRES_DB":       pg.DbName,
-			"POSTGRES_PASSWORD": pg.Password,
-		},
-		Networks: pg.Networks,
+		Env:          pg.ContainerEnvs,
+		Networks:     pg.Networks,
 		WaitingFor: tcwait.ForExec([]string{"psql", "-h", "127.0.0.1",
 			"-U", pg.User, "-c", "select", "1", "-d", pg.DbName}).
 			WithStartupTimeout(10 * time.Second),

@@ -1,7 +1,12 @@
 golang 1.21.3
 nodejs 14.20.0
-k3d 5.4.6
-act 0.2.30
+k3d 5.5.1
+act 0.2.52
 golangci-lint 1.54.2
-actionlint 1.6.17
+actionlint 1.6.26
 shellcheck 0.9.0
+helm 3.13.1
+kubectl 1.25.5
+yarn 1.22.19
+python 3.9.13
+pre-commit 3.5.0

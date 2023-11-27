@@ -1,7 +1,6 @@
 package test_env
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -9,7 +8,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	tc "github.com/testcontainers/testcontainers-go"
@@ -19,6 +17,8 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
 type Kafka struct {
@@ -97,13 +97,7 @@ func (k *Kafka) WithEnvVars(envVars map[string]string) *Kafka {
 }
 
 func (k *Kafka) StartContainer() error {
-	l := tc.Logger
-	if k.t != nil {
-		l = logging.CustomT{
-			T: k.t,
-			L: k.l,
-		}
-	}
+	l := logging.GetTestContainersGoTestLogger(k.t)
 	k.InternalUrl = fmt.Sprintf("%s:%s", k.ContainerName, "9092")
 	// TODO: Fix mapped port
 	k.ExternalUrl = fmt.Sprintf("127.0.0.1:%s", "29092")
@@ -112,14 +106,18 @@ func (k *Kafka) StartContainer() error {
 		"KAFKA_ADVERTISED_LISTENERS": fmt.Sprintf("PLAINTEXT://%s,PLAINTEXT_HOST://%s", k.InternalUrl, k.ExternalUrl),
 	}
 	k.WithEnvVars(envVars)
+	cr, err := k.getContainerRequest()
+	if err != nil {
+		return err
+	}
 	c, err := docker.StartContainerWithRetry(k.l, tc.GenericContainerRequest{
-		ContainerRequest: k.getContainerRequest(),
+		ContainerRequest: cr,
 		Started:          true,
 		Reuse:            true,
 		Logger:           l,
 	})
 	if err != nil {
-		return errors.Wrapf(err, "cannot start Kafka container")
+		return fmt.Errorf("cannot start Kafka container: %w", err)
 	}
 
 	k.l.Info().Str("containerName", k.ContainerName).
@@ -143,14 +141,14 @@ func (k *Kafka) CreateLocalTopics() error {
 		if topicConfig.CleanupPolicy != "" {
 			cmd = append(cmd, "--config", fmt.Sprintf("cleanup.policy=%s", topicConfig.CleanupPolicy))
 		}
-		code, output, err := k.Container.Exec(context.Background(), cmd)
+		code, output, err := k.Container.Exec(testcontext.Get(k.t), cmd)
 		if err != nil {
 			return err
 		}
 		if code != 0 {
 			outputBytes, _ := io.ReadAll(output)
 			outputString := strings.TrimSpace(string(outputBytes))
-			return errors.Errorf("Create topics returned %d code. Output: %s", code, outputString)
+			return fmt.Errorf("Create topics returned %d code. Output: %s", code, outputString)
 		}
 		k.l.Info().
 			Strs("cmd", cmd).
@@ -160,15 +158,19 @@ func (k *Kafka) CreateLocalTopics() error {
 	return nil
 }
 
-func (k *Kafka) getContainerRequest() tc.ContainerRequest {
+func (k *Kafka) getContainerRequest() (tc.ContainerRequest, error) {
+	kafkaImage, err := mirror.GetImage("confluentinc/cp-kafka")
+	if err != nil {
+		return tc.ContainerRequest{}, err
+	}
 	return tc.ContainerRequest{
 		Name:         k.ContainerName,
-		Image:        "confluentinc/cp-kafka:7.4.0",
+		Image:        kafkaImage,
 		ExposedPorts: []string{"29092/tcp"},
 		Env:          k.EnvVars,
 		Networks:     k.Networks,
 		WaitingFor: tcwait.ForLog("[KafkaServer id=1] started (kafka.server.KafkaServer)").
 			WithStartupTimeout(30 * time.Second).
 			WithPollInterval(100 * time.Millisecond),
-	}
+	}, nil
 }

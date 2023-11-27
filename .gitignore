@@ -57,3 +57,14 @@ dist/
 logs/
 
 test_summary.json
+
+env/cmd/chaos
+env/bin/
+# temp manifest for deployment and validation
+tmp-manifest-*.yaml
+# remote runner binary
+remote.test
+e2e.test
+
+k3dvolume/
+charts/**/*.tgz
