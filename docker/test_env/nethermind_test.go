@@ -37,10 +37,10 @@ func TestEth2WithPrysmAndNethermind(t *testing.T) {
 	clientOne, err := blockchain.ConnectEVMClient(nonEip1559Network, l)
 	require.NoError(t, err, "Couldn't connect to the evm client")
 
-	defer func() {
+	t.Cleanup(func() {
 		err = clientOne.Close()
 		require.NoError(t, err, "Couldn't close the client")
-	}()
+	})
 
 	address := common.HexToAddress("0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1")
 	err = sendAndCompareBalances(clientOne, address)
@@ -53,10 +53,10 @@ func TestEth2WithPrysmAndNethermind(t *testing.T) {
 	clientTwo, err := blockchain.ConnectEVMClient(eip1559Network, l)
 	require.NoError(t, err, "Couldn't connect to the evm client")
 
-	defer func() {
+	t.Cleanup(func() {
 		err = clientTwo.Close()
 		require.NoError(t, err, "Couldn't close the client")
-	}()
+	})
 
 	err = sendAndCompareBalances(clientTwo, address)
 	require.NoError(t, err, fmt.Sprintf("balance wasn't correctly updated when %s network", eip1559Network.Name))

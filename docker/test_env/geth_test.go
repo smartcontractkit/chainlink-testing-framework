@@ -15,7 +15,7 @@ func TestOldGeth(t *testing.T) {
 	network, err := docker.CreateNetwork(l)
 	require.NoError(t, err)
 	g := NewGeth([]string{network.Name}, GetDefaultChainConfig()).
-		WithTestLogger(t)
+		WithTestInstance(t)
 	_, _, err = g.StartContainer()
 	require.NoError(t, err)
 	ns := blockchain.SimulatedEVMNetwork

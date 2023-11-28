@@ -111,7 +111,7 @@ func (g *Geth2) StartContainer() (blockchain.EVMNetwork, error) {
 	g.ExternalExecutionURL = FormatHttpUrl(host, executionPort.Port())
 
 	networkConfig := blockchain.SimulatedEVMNetwork
-	networkConfig.Name = fmt.Sprintf("Simulated Eth2 (Geth %s)", g.consensusLayer)
+	networkConfig.Name = fmt.Sprintf("Simulated Eth2 (geth %s)", g.consensusLayer)
 	networkConfig.URLs = []string{g.ExternalWsUrl}
 	networkConfig.HTTPURLs = []string{g.ExternalHttpUrl}
 

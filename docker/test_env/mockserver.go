@@ -44,7 +44,7 @@ func NewMockServer(networks []string, opts ...EnvComponentOption) *MockServer {
 	return ms
 }
 
-func (ms *MockServer) WithTestLogger(t *testing.T) *MockServer {
+func (ms *MockServer) WithTestInstance(t *testing.T) *MockServer {
 	ms.l = logging.GetTestLogger(t)
 	ms.t = t
 	return ms

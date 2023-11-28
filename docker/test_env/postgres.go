@@ -102,7 +102,7 @@ func NewPostgresDb(networks []string, opts ...PostgresDbOption) *PostgresDb {
 	return pg
 }
 
-func (pg *PostgresDb) WithTestLogger(t *testing.T) *PostgresDb {
+func (pg *PostgresDb) WithTestInstance(t *testing.T) *PostgresDb {
 	pg.l = logging.GetTestLogger(t)
 	pg.t = t
 	return pg

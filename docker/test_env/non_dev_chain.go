@@ -10,7 +10,7 @@ type NonDevNode interface {
 	GetInternalHttpUrl() string
 	GetInternalWsUrl() string
 	GetEVMClient() blockchain.EVMClient
-	WithTestLogger(t *testing.T) NonDevNode
+	WithTestInstance(t *testing.T) NonDevNode
 	Start() error
 	ConnectToClient() error
 }

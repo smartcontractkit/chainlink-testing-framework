@@ -77,7 +77,7 @@ func (g *Geth) WithLogger(l zerolog.Logger) *Geth {
 	return g
 }
 
-func (g *Geth) WithTestLogger(t *testing.T) *Geth {
+func (g *Geth) WithTestInstance(t *testing.T) *Geth {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
 	return g

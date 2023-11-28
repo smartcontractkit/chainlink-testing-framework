@@ -330,6 +330,17 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
 		}
 
+		en.DockerNetworkNames = networkNames
+		net.ChainID = int64(en.ethereumChainConfig.ChainID)
+		net.FinalityTag = true
+		if en.Participants[0].ExecutionLayer == ExecutionLayer_Besu {
+			// Besu doesn't support "eth_maxPriorityFeePerGas" https://github.com/hyperledger/besu/issues/5658
+			// And if gas is too low, then transaction doesn't get to prioritized pool and is not a candidate for inclusion in the next block
+			net.GasEstimationBuffer = 10_000_000_000
+		} else {
+			net.SupportsEIP1559 = true
+		}
+
 		logger := logging.GetTestLogger(en.t)
 		if en.WaitForFinalization {
 			evmClient, err := blockchain.NewEVMClientFromNetwork(net, logger)
@@ -337,7 +348,7 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 				return blockchain.EVMNetwork{}, RpcProvider{}, err
 			}
 
-			err = waitForChainToFinaliseFirstEpoch(logger, evmClient)
+			err = waitForChainToFinaliseAnEpoch(logger, evmClient)
 			if err != nil {
 				return blockchain.EVMNetwork{}, RpcProvider{}, err
 			}
@@ -371,10 +382,6 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 		rpcProvider.publicsUrls = append(rpcProvider.publicsUrls, client.GetExternalWsUrl())
 	}
 
-	en.DockerNetworkNames = networkNames
-	net.ChainID = int64(en.ethereumChainConfig.ChainID)
-	net.SupportsEIP1559 = true
-
 	//TODO when we support multiple participants, we need to modify net so that it contains all the RPC URLs, not just the last one
 
 	return net, rpcProvider, nil
@@ -399,7 +406,7 @@ func (en *EthereumNetwork) startPow() (blockchain.EVMNetwork, RpcProvider, error
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
 		}
 
-		geth := NewGeth(singleNetwork, *en.ethereumChainConfig, en.setExistingContainerName(ContainerType_Geth)).WithTestLogger(en.t)
+		geth := NewGeth(singleNetwork, *en.ethereumChainConfig, en.setExistingContainerName(ContainerType_Geth)).WithTestInstance(en.t)
 		network, docker, err := geth.StartContainer()
 		if err != nil {
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
@@ -556,8 +563,8 @@ func createHostDirectories() (string, string, error) {
 	return customConfigDataDir, valKeysDir, nil
 }
 
-func waitForChainToFinaliseFirstEpoch(lggr zerolog.Logger, evmClient blockchain.EVMClient) error {
-	lggr.Info().Msg("Waiting for chain to finalize first epoch")
+func waitForChainToFinaliseAnEpoch(lggr zerolog.Logger, evmClient blockchain.EVMClient) error {
+	lggr.Info().Msg("Waiting for chain to finalize an epoch")
 
 	timeout := 180 * time.Second
 	pollInterval := 15 * time.Second
@@ -575,7 +582,7 @@ func waitForChainToFinaliseFirstEpoch(lggr zerolog.Logger, evmClient blockchain.
 		}
 
 		if finalized != nil && finalized.Number.Int64() > 0 || time.Now().After(endTime) {
-			lggr.Info().Msgf("Chain '%s' finalized first epoch", evmClient.GetNetworkName())
+			lggr.Info().Msgf("Chain '%s' finalized an epoch", evmClient.GetNetworkName())
 			chainStarted = true
 			break
 		}
@@ -584,7 +591,7 @@ func waitForChainToFinaliseFirstEpoch(lggr zerolog.Logger, evmClient blockchain.
 	}
 
 	if !chainStarted {
-		return fmt.Errorf("chain %s failed to finalize first epoch", evmClient.GetNetworkName())
+		return fmt.Errorf("chain %s failed to finalize an epoch", evmClient.GetNetworkName())
 	}
 
 	return nil

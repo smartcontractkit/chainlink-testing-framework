@@ -28,7 +28,7 @@ func TestKillgraveNoUserImposters(t *testing.T) {
 	network, err := docker.CreateNetwork(l)
 	require.NoError(t, err)
 	k := NewKillgrave([]string{network.Name}, "").
-		WithTestLogger(t)
+		WithTestInstance(t)
 	err = k.StartContainer()
 	require.NoError(t, err)
 
@@ -42,7 +42,7 @@ func TestKillgraveMocks(t *testing.T) {
 	require.NoError(t, err)
 
 	k := NewKillgrave([]string{network.Name}, "./killgrave_imposters").
-		WithTestLogger(t)
+		WithTestInstance(t)
 	err = k.StartContainer()
 	require.NoError(t, err)
 
