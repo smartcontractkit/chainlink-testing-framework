@@ -31,6 +31,7 @@ const (
 	ExecutionLayer_Geth       ExecutionLayer = "geth"
 	ExecutionLayer_Nethermind ExecutionLayer = "nethermind"
 	ExecutionLayer_Erigon     ExecutionLayer = "erigon"
+	ExecutionLayer_Besu       ExecutionLayer = "besu"
 )
 
 type ConsensusLayer string
@@ -222,9 +223,9 @@ type EthereumNetwork struct {
 	DockerNetworkNames  []string                     `json:"docker_network_names"`
 	Containers          EthereumNetworkContainers    `json:"containers"`
 	Participants        []EthereumNetworkParticipant `json:"participants"`
+	WaitForFinalization bool                         `json:"wait_for_finalization"`
 	isRecreated         bool
 	ethereumChainConfig *EthereumChainConfig
-	WaitForFinalization bool `json:"wait_for_finalization"`
 	t                   *testing.T
 }
 
@@ -301,6 +302,8 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 			client = NewNethermind(singleNetwork, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Nethermind)).WithTestInstance(en.t)
 		case ExecutionLayer_Erigon:
 			client = NewErigon(singleNetwork, en.ethereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Erigon)).WithTestInstance(en.t)
+		case ExecutionLayer_Besu:
+			client = NewBesu(singleNetwork, en.ethereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Besu)).WithTestInstance(en.t)
 		default:
 			return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf("unsupported execution layer: %s", p.ExecutionLayer)
 		}
@@ -325,6 +328,21 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 		err = client.WaitUntilChainIsReady(en.ethereumChainConfig.GetDefaultWaitDuration())
 		if err != nil {
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
+		}
+
+		logger := logging.GetTestLogger(en.t)
+		if en.WaitForFinalization {
+			evmClient, err := blockchain.NewEVMClientFromNetwork(net, logger)
+			if err != nil {
+				return blockchain.EVMNetwork{}, RpcProvider{}, err
+			}
+
+			err = waitForChainToFinaliseFirstEpoch(logger, evmClient)
+			if err != nil {
+				return blockchain.EVMNetwork{}, RpcProvider{}, err
+			}
+		} else {
+			logger.Info().Msg("Not waiting for chain to finalize first epoch")
 		}
 
 		containers := EthereumNetworkContainers{
@@ -354,21 +372,10 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 	}
 
 	en.DockerNetworkNames = networkNames
-	//TODO when we support multiple participants, we need to modify net so that it contains all the RPC URLs, not just the last one
+	net.ChainID = int64(en.ethereumChainConfig.ChainID)
+	net.SupportsEIP1559 = true
 
-	logger := logging.GetTestLogger(en.t)
-	if en.WaitForFinalization {
-		evmClient, err := blockchain.NewEVMClientFromNetwork(net, logger)
-		if err != nil {
-			return blockchain.EVMNetwork{}, RpcProvider{}, err
-		}
-		err = waitForChainToFinaliseFirstEpoch(logger, evmClient)
-		if err != nil {
-			return blockchain.EVMNetwork{}, RpcProvider{}, err
-		}
-	} else {
-		logger.Info().Msg("Not waiting for chain to finalize first epoch")
-	}
+	//TODO when we support multiple participants, we need to modify net so that it contains all the RPC URLs, not just the last one
 
 	return net, rpcProvider, nil
 }
@@ -506,6 +513,7 @@ const (
 	ContainerType_Geth        ContainerType = "geth"
 	ContainerType_Geth2       ContainerType = "geth2"
 	ContainerType_Erigon      ContainerType = "erigon"
+	ContainerType_Besu        ContainerType = "besu"
 	ContainerType_Nethermind  ContainerType = "nethermind"
 	ContainerType_PrysmBeacon ContainerType = "prysm-beacon"
 	ContainerType_PrysmVal    ContainerType = "prysm-validator"

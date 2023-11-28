@@ -138,6 +138,7 @@ func (g *PrysmBeaconChain) getContainerRequest(networks []string) (*tc.Container
 			// mine, modify when running multi-node
 			"--minimum-peers-per-subnet=0",
 			"--min-sync-peers=0",
+			"--interop-eth1data-votes",
 		},
 		ExposedPorts: []string{NatPortFormat(PRYSM_NODE_RPC_PORT), NatPortFormat(PRYSM_QUERY_RPC_PORT)},
 		Mounts: tc.ContainerMounts{

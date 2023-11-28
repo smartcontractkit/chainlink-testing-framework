@@ -109,7 +109,6 @@ func (g *Erigon) StartContainer() (blockchain.EVMNetwork, error) {
 
 	networkConfig := blockchain.SimulatedEVMNetwork
 	networkConfig.Name = fmt.Sprintf("Simulated Eth2 (Erigon %s)", g.consensusLayer)
-	networkConfig.Name = fmt.Sprintf("erigon-eth2-%s", g.consensusLayer)
 	networkConfig.URLs = []string{g.ExternalWsUrl}
 	networkConfig.HTTPURLs = []string{g.ExternalHttpUrl}
 
