@@ -6,9 +6,11 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/retries"
 	"github.com/smartcontractkit/wasp"
 	"github.com/testcontainers/testcontainers-go"
 
@@ -27,14 +29,17 @@ type LogNotification struct {
 // LogWatch is a test helper struct to monitor docker container logs for some patterns
 // and push their logs into Loki for further analysis
 type LogWatch struct {
-	testName          string
-	log               zerolog.Logger
-	loki              *wasp.LokiClient
-	patterns          map[string][]*regexp.Regexp
-	notifyTest        chan *LogNotification
-	containers        []testcontainers.Container
-	consumers         map[string]*ContainerLogConsumer
-	logTargetHandlers map[LogTarget]HandleLogTarget
+	testName                     string
+	log                          zerolog.Logger
+	loki                         *wasp.LokiClient
+	patterns                     map[string][]*regexp.Regexp
+	notifyTest                   chan *LogNotification
+	containers                   []testcontainers.Container
+	consumers                    map[string]*ContainerLogConsumer
+	logTargetHandlers            map[LogTarget]HandleLogTarget
+	logListeningDone             chan struct{}
+	logProducerTimeout           time.Duration
+	logProducerTimeoutRetryLimit int // -1 for infinite retries
 }
 
 type LogContent struct {
@@ -56,12 +61,15 @@ func NewLogWatch(t *testing.T, patterns map[string][]*regexp.Regexp, options ...
 	}
 
 	logWatch := &LogWatch{
-		testName:          testName,
-		log:               l,
-		patterns:          patterns,
-		notifyTest:        make(chan *LogNotification, 10000),
-		consumers:         make(map[string]*ContainerLogConsumer, 0),
-		logTargetHandlers: getDefaultLogHandlers(),
+		testName:                     testName,
+		log:                          l,
+		patterns:                     patterns,
+		notifyTest:                   make(chan *LogNotification, 10000),
+		consumers:                    make(map[string]*ContainerLogConsumer, 0),
+		logTargetHandlers:            getDefaultLogHandlers(),
+		logListeningDone:             make(chan struct{}, 1),
+		logProducerTimeout:           time.Duration(10 * time.Second),
+		logProducerTimeoutRetryLimit: 10,
 	}
 
 	for _, option := range options {
@@ -124,6 +132,18 @@ func WithCustomLogHandler(logTarget LogTarget, handler HandleLogTarget) Option {
 	}
 }
 
+func WithLogProducerTimeout(timeout time.Duration) Option {
+	return func(lw *LogWatch) {
+		lw.logProducerTimeout = timeout
+	}
+}
+
+func WithLogProducerTimeoutRetryLimit(retryLimit int) Option {
+	return func(lw *LogWatch) {
+		lw.logProducerTimeoutRetryLimit = retryLimit
+	}
+}
+
 // Listen listen for the next notification
 func (m *LogWatch) Listen() *LogNotification {
 	msg := <-m.notifyTest
@@ -172,22 +192,97 @@ func (m *LogWatch) ConnectContainer(ctx context.Context, container testcontainer
 	m.log.Info().
 		Str("Prefix", prefix).
 		Str("Name", name).
+		Str("Timeout", m.logProducerTimeout.String()).
 		Msg("Connecting container logs")
 	m.consumers[name] = cons
 	m.containers = append(m.containers, container)
 	container.FollowOutput(cons)
-	return container.StartLogProducer(ctx)
+
+	err = container.StartLogProducer(ctx, m.logProducerTimeout)
+
+	go func(done chan struct{}, timeout time.Duration, retryLimit int) {
+		defer m.log.Info().Str("Container name", name).Msg("Log listener stopped")
+		currentAttempt := 0
+
+		var shouldRetry = func() bool {
+			if retryLimit == -1 {
+				return true
+			}
+
+			if currentAttempt < retryLimit {
+				currentAttempt++
+				return true
+			}
+
+			return false
+		}
+
+		for {
+			select {
+			case err = <-container.GetLogProducerErrorChannel():
+				if err != nil {
+					m.log.Error().
+						Str("Name", name).
+						Err(err).
+						Msg("Log producer errored")
+					if shouldRetry() {
+						backoff := retries.Fibonacci(currentAttempt)
+						timeout = timeout + time.Duration(backoff)*time.Millisecond
+						m.log.Info().
+							Str("Prefix", prefix).
+							Str("Name", name).
+							Str("Timeout", timeout.String()).
+							Msgf("Retrying connection and listening to container logs. Attempt %d/%d", currentAttempt, retryLimit)
+						err = container.StartLogProducer(ctx, timeout)
+						if err != nil {
+							m.log.Error().Err(err).Msg("Log producer was already running. This should never happen. Exiting")
+							return
+						}
+						m.log.Info().
+							Str("Name", name).
+							Msg("Started new log producer")
+					} else {
+						m.log.Error().
+							Err(err).
+							Str("Name", name).
+							Msg("Used all attempts to listen to container logs. Won't try again")
+						return
+					}
+				}
+			case <-done:
+				return
+			}
+		}
+	}(m.logListeningDone, m.logProducerTimeout, m.logProducerTimeoutRetryLimit)
+
+	return err
 }
 
 // Shutdown disconnects all containers, stops notifications
-func (m *LogWatch) Shutdown() {
+func (m *LogWatch) Shutdown() error {
+	defer close(m.logListeningDone)
+	var err error
 	for _, c := range m.containers {
-		m.DisconnectContainer(c)
+		singleErr := m.DisconnectContainer(c)
+		if singleErr != nil {
+			ctx := context.Background()
+			name, _ := c.Name(ctx)
+			m.log.Error().
+				Err(err).
+				Str("Name", name).
+				Msg("Failed to disconnect container")
+
+			err = errors.Wrap(singleErr, "failed to disconnect container")
+		}
 	}
 
 	if m.loki != nil {
 		m.loki.Stop()
 	}
+
+	m.logListeningDone <- struct{}{}
+
+	return err
 }
 
 type LogWriter = func(testName string, name string, location interface{}) error
@@ -215,11 +310,13 @@ func (m *LogWatch) SaveLogTargetsLocations(writer LogWriter) {
 }
 
 // DisconnectContainer disconnects the particular container
-func (m *LogWatch) DisconnectContainer(container testcontainers.Container) {
+func (m *LogWatch) DisconnectContainer(container testcontainers.Container) error {
 	if container.IsRunning() {
 		m.log.Info().Str("container", container.GetContainerID()).Msg("Disconnecting container")
-		_ = container.StopLogProducer()
+		return container.StopLogProducer()
 	}
+
+	return nil
 }
 
 // ContainerLogs return all logs for the particular container
