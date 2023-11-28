@@ -2,13 +2,16 @@ package logwatch
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/osutil"
 	"github.com/smartcontractkit/wasp"
 	"github.com/testcontainers/testcontainers-go"
 
@@ -35,6 +38,7 @@ type LogWatch struct {
 	containers        []testcontainers.Container
 	consumers         map[string]*ContainerLogConsumer
 	logTargetHandlers map[LogTarget]HandleLogTarget
+	logListeningDone  chan struct{}
 }
 
 type LogContent struct {
@@ -62,6 +66,7 @@ func NewLogWatch(t *testing.T, patterns map[string][]*regexp.Regexp, options ...
 		notifyTest:        make(chan *LogNotification, 10000),
 		consumers:         make(map[string]*ContainerLogConsumer, 0),
 		logTargetHandlers: getDefaultLogHandlers(),
+		logListeningDone:  make(chan struct{}, 1),
 	}
 
 	for _, option := range options {
@@ -148,6 +153,25 @@ func (m *LogWatch) OnMatch(f func(ln *LogNotification)) {
 	}()
 }
 
+const (
+	BaseCMD = `docker run -i --rm -v /var/run/docker.sock:/var/run/docker.sock --network %s gaiaadm/pumba --log-level=info`
+)
+
+// ChaosPause pauses the container for the specified duration
+func ChaosPause(
+	l zerolog.Logger,
+	duration time.Duration,
+	container testcontainers.Container,
+	ch chan struct{},
+) error {
+	ctx := context.Background()
+	networks, _ := container.Networks(ctx)
+	withNet := fmt.Sprintf(BaseCMD, networks[0])
+	name, _ := container.Name(ctx)
+	ch <- struct{}{}
+	return osutil.ExecCmd(l, fmt.Sprintf(`%s pause --duration=%s %s`, withNet, duration.String(), name))
+}
+
 // ConnectContainer connects consumer to selected container and starts testcontainers.LogProducer
 func (m *LogWatch) ConnectContainer(ctx context.Context, container testcontainers.Container, prefix string) error {
 	name, err := container.Name(ctx)
@@ -169,6 +193,15 @@ func (m *LogWatch) ConnectContainer(ctx context.Context, container testcontainer
 		cons = newContainerLogConsumer(m, name, name, enabledLogTargets...)
 	}
 
+	// ch := make(chan struct{})
+
+	// go func() {
+	// 	ChaosPause(m.log, 15*time.Second, container, ch)
+	// }()
+
+	// <-ch
+	// time.Sleep(1 * time.Second)
+
 	m.log.Info().
 		Str("Prefix", prefix).
 		Str("Name", name).
@@ -176,11 +209,60 @@ func (m *LogWatch) ConnectContainer(ctx context.Context, container testcontainer
 	m.consumers[name] = cons
 	m.containers = append(m.containers, container)
 	container.FollowOutput(cons)
-	return container.StartLogProducer(ctx)
+
+	// err = container.StartLogProducer(ctx, time.Duration(5*time.Second))
+	// if err == nil {
+	go func(done chan struct{}) {
+		// defer func() {
+		// 	fmt.Printf("Closing logListeningDone\n")
+		// 	close(m.logListeningDone)
+		// 	fmt.Printf("Closed logListeningDone\n")
+		// }()
+		retryLimit := 5
+		currentAttempt := 0
+
+		if err := container.StartLogProducer(ctx, time.Duration(15*time.Second)); err != nil {
+			currentAttempt++
+			if currentAttempt < retryLimit {
+				m.log.Error().Err(err).Int("Attempt", currentAttempt).Int("Retry limit", retryLimit).Msg("Failed to connect container logs. Will try in 5 seconds")
+				time.Sleep(5 * time.Second)
+			} else {
+				m.log.Error().Msg("Used all attempts to listen to container logs. Won't try again")
+				return
+			}
+		} else {
+			select {
+			case err := <-container.GetLogProducerErrorChannel():
+				if err != nil {
+					m.log.Error().Err(err).Msg("Log producer errored")
+					if currentAttempt < retryLimit {
+						currentAttempt++
+						m.log.Info().Msgf("Retrying to listen to container logs. Attempt %d/%d", currentAttempt, retryLimit)
+						err = container.StartLogProducer(ctx, time.Duration(15*time.Second))
+						if err != nil {
+							m.log.Error().Err(err).Msg("Failed to connect container logs")
+						} else {
+							m.log.Info().Msg("Successfully connected container logs")
+						}
+					} else {
+						m.log.Error().Err(err).Msg("Used all attempts to listen to container logs. Won't try again")
+						return
+					}
+				}
+			case <-done:
+				m.log.Info().Msg("Received logListeningDone")
+				return
+			}
+		}
+	}(m.logListeningDone)
+	// }
+
+	return nil
 }
 
 // Shutdown disconnects all containers, stops notifications
 func (m *LogWatch) Shutdown() {
+	defer close(m.logListeningDone)
 	for _, c := range m.containers {
 		m.DisconnectContainer(c)
 	}
@@ -188,6 +270,10 @@ func (m *LogWatch) Shutdown() {
 	if m.loki != nil {
 		m.loki.Stop()
 	}
+
+	m.log.Info().Msg("Sending logListeningDone")
+	m.logListeningDone <- struct{}{}
+	m.log.Info().Msg("Sent logListeningDone")
 }
 
 type LogWriter = func(testName string, name string, location interface{}) error

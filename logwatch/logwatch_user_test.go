@@ -67,6 +67,7 @@ func (m *MyDeployment) ConnectLogs(lw *logwatch.LogWatch) error {
 func TestExampleUserInteraction(t *testing.T) {
 	os.Setenv("LOGWATCH_LOG_TARGETS", "")
 	t.Run("sync API, block, receive one message", func(t *testing.T) {
+		ctx := context.Background()
 		testData := testData{repeat: 10, perSecond: 0.01, streams: []string{"A\nB\nC\nD"}}
 		d, err := NewDeployment(ctx, testData)
 		// nolint
@@ -87,6 +88,7 @@ func TestExampleUserInteraction(t *testing.T) {
 		require.NotEmpty(t, match)
 	})
 	t.Run("async API, execute some logic on match", func(t *testing.T) {
+		ctx := context.Background()
 		testData := testData{repeat: 10, perSecond: 0.01, streams: []string{"A\nB\nC\nD\n", "E\nF\nG\nH\n"}}
 		notifications := 0
 		d, err := NewDeployment(ctx, testData)
