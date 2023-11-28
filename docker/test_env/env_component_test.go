@@ -25,9 +25,10 @@ func followLogs(t *testing.T, c testcontainers.Container) *TestLogConsumer {
 	consumer := &TestLogConsumer{
 		Msgs: make([]string, 0),
 	}
+	errCh := make(chan error, 1)
 	go func() {
 		c.FollowOutput(consumer)
-		err := c.StartLogProducer(testcontext.Get(t), time.Duration(5*time.Second))
+		err := c.StartLogProducer(testcontext.Get(t), time.Duration(5*time.Second), errCh)
 		require.NoError(t, err)
 	}()
 	return consumer

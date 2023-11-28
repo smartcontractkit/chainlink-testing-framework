@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/osutil"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/retries"
 	"github.com/smartcontractkit/wasp"
 	"github.com/testcontainers/testcontainers-go"
 
@@ -193,71 +194,74 @@ func (m *LogWatch) ConnectContainer(ctx context.Context, container testcontainer
 		cons = newContainerLogConsumer(m, name, name, enabledLogTargets...)
 	}
 
-	// ch := make(chan struct{})
-
-	// go func() {
-	// 	ChaosPause(m.log, 15*time.Second, container, ch)
-	// }()
-
-	// <-ch
-	// time.Sleep(1 * time.Second)
+	logProducerTimeout := 0 * time.Millisecond
 
 	m.log.Info().
 		Str("Prefix", prefix).
 		Str("Name", name).
+		Str("Timeout", logProducerTimeout.String()).
 		Msg("Connecting container logs")
 	m.consumers[name] = cons
 	m.containers = append(m.containers, container)
 	container.FollowOutput(cons)
 
-	// err = container.StartLogProducer(ctx, time.Duration(5*time.Second))
-	// if err == nil {
-	go func(done chan struct{}) {
-		// defer func() {
-		// 	fmt.Printf("Closing logListeningDone\n")
-		// 	close(m.logListeningDone)
-		// 	fmt.Printf("Closed logListeningDone\n")
-		// }()
+	// errCh := make(chan error, 1)
+
+	err = container.StartLogProducer(ctx, logProducerTimeout)
+	// err = container.StartLogProducer(ctx, logProducerTimeout, errCh)
+
+	go func(done chan struct{}, timeout time.Duration) {
+		// go func(done chan struct{}, timeout time.Duration, errorChannel chan error) {
+		defer func() {
+			fmt.Println("goroutine exited")
+		}()
 		retryLimit := 5
 		currentAttempt := 0
 
-		if err := container.StartLogProducer(ctx, time.Duration(15*time.Second)); err != nil {
-			currentAttempt++
-			if currentAttempt < retryLimit {
-				m.log.Error().Err(err).Int("Attempt", currentAttempt).Int("Retry limit", retryLimit).Msg("Failed to connect container logs. Will try in 5 seconds")
-				time.Sleep(5 * time.Second)
-			} else {
-				m.log.Error().Msg("Used all attempts to listen to container logs. Won't try again")
-				return
-			}
-		} else {
+		for {
 			select {
-			case err := <-container.GetLogProducerErrorChannel():
+			// case err, ok := <-errorChannel:
+			case err, ok := <-container.GetLogProducerErrorChannel():
+				if !ok {
+					m.log.Info().Msg("Error channel was closed")
+				} else {
+					m.log.Info().Msg("Error channel was still open")
+				}
 				if err != nil {
 					m.log.Error().Err(err).Msg("Log producer errored")
 					if currentAttempt < retryLimit {
 						currentAttempt++
-						m.log.Info().Msgf("Retrying to listen to container logs. Attempt %d/%d", currentAttempt, retryLimit)
-						err = container.StartLogProducer(ctx, time.Duration(15*time.Second))
+						backoff := retries.Fibonacci(currentAttempt)
+						timeout = timeout + time.Duration(backoff)*time.Millisecond
+						m.log.Info().Str("timeout", timeout.String()).Msgf("Retrying to listen to container logs. Attempt %d/%d", currentAttempt, retryLimit)
+						// TODO close error channel here?
+						// errorChannel = make(chan error, 1)
+						// err = container.StartLogProducer(ctx, timeout, errorChannel)
+						err = container.StartLogProducer(ctx, timeout)
 						if err != nil {
-							m.log.Error().Err(err).Msg("Failed to connect container logs")
+							m.log.Error().Err(err).Msg("Log producer was already running")
 						} else {
-							m.log.Info().Msg("Successfully connected container logs")
+							m.log.Info().Msg("Started new log producer")
 						}
 					} else {
 						m.log.Error().Err(err).Msg("Used all attempts to listen to container logs. Won't try again")
 						return
 					}
+				} else {
+					m.log.Info().Msg("Received log producer equal to nil, all good")
 				}
 			case <-done:
 				m.log.Info().Msg("Received logListeningDone")
 				return
+			default:
+				m.log.Info().Msg("Log listener running")
 			}
 		}
-	}(m.logListeningDone)
-	// }
+		// }
+		// }(m.logListeningDone, logProducerTimeout, errCh)
+	}(m.logListeningDone, logProducerTimeout)
 
-	return nil
+	return err
 }
 
 // Shutdown disconnects all containers, stops notifications
