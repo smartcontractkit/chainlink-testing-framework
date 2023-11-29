@@ -9,7 +9,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
@@ -38,6 +37,7 @@ type Besu struct {
 	consensusLayer       ConsensusLayer
 	l                    zerolog.Logger
 	t                    *testing.T
+	image                string
 }
 
 func NewBesu(networks []string, chainConfg *EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) *Besu {
@@ -49,7 +49,8 @@ func NewBesu(networks []string, chainConfg *EthereumChainConfig, generatedDataHo
 		chainConfg:           chainConfg,
 		generatedDataHostDir: generatedDataHostDir,
 		consensusLayer:       consensusLayer,
-		l:                    log.Logger,
+		l:                    logging.GetTestLogger(nil),
+		image:                fmt.Sprintf("hyperledger/besu:%s", BESU_IMAGE_TAG),
 	}
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
@@ -57,10 +58,19 @@ func NewBesu(networks []string, chainConfg *EthereumChainConfig, generatedDataHo
 	return g
 }
 
+func (g *Besu) WithImage(imageWithTag string) *Besu {
+	g.image = imageWithTag
+	return g
+}
+
 func (g *Besu) WithTestInstance(t *testing.T) *Besu {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
 	return g
+}
+
+func (g *Besu) GetImage() string {
+	return g.image
 }
 
 func (g *Besu) StartContainer() (blockchain.EVMNetwork, error) {
@@ -154,7 +164,7 @@ func (g *Besu) GetContainer() *tc.Container {
 func (g *Besu) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
 	return &tc.ContainerRequest{
 		Name:     g.ContainerName,
-		Image:    fmt.Sprintf("hyperledger/besu:%s", BESU_IMAGE_TAG),
+		Image:    g.image,
 		Networks: networks,
 		// ImagePlatform: "linux/x86_64", //don't even try this on Apple Silicon, the node won't start due to JVM error
 		ExposedPorts: []string{NatPortFormat(TX_GETH_HTTP_PORT), NatPortFormat(TX_GETH_WS_PORT), NatPortFormat(ETH2_EXECUTION_PORT)},
@@ -201,7 +211,7 @@ func (g *Besu) getContainerRequest(networks []string) (*tc.ContainerRequest, err
 	}, nil
 }
 
-func (g Besu) WaitUntilChainIsReady(waitTime time.Duration) error {
+func (g *Besu) WaitUntilChainIsReady(waitTime time.Duration) error {
 	waitForFirstBlock := tcwait.NewLogStrategy("Imported #1").WithPollInterval(1 * time.Second).WithStartupTimeout(waitTime)
 	return waitForFirstBlock.WaitUntilReady(context.Background(), *g.GetContainer())
 }

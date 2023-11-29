@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
@@ -34,16 +33,7 @@ type PrysmBeaconChain struct {
 	chainConfig               *EthereumChainConfig
 	l                         zerolog.Logger
 	t                         *testing.T
-}
-
-type PrysmValidator struct {
-	EnvComponent
-	chainConfig               *EthereumChainConfig
-	internalBeaconRpcProvider string
-	valKeysDir                string
-	generatedDataHostDir      string
-	l                         zerolog.Logger
-	t                         *testing.T
+	image                     string
 }
 
 func NewPrysmBeaconChain(networks []string, chainConfig *EthereumChainConfig, customConfigDataDir, gethExecutionURL string, opts ...EnvComponentOption) *PrysmBeaconChain {
@@ -55,7 +45,8 @@ func NewPrysmBeaconChain(networks []string, chainConfig *EthereumChainConfig, cu
 		chainConfig:              chainConfig,
 		generatedDataHostDir:     customConfigDataDir,
 		gethInternalExecutionURL: gethExecutionURL,
-		l:                        log.Logger,
+		l:                        logging.GetTestLogger(nil),
+		image:                    fmt.Sprintf("gcr.io/prysmaticlabs/prysm/beacon-chain:%s", PRYSM_IMAGE_TAG),
 	}
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
@@ -63,10 +54,19 @@ func NewPrysmBeaconChain(networks []string, chainConfig *EthereumChainConfig, cu
 	return g
 }
 
+func (g *PrysmBeaconChain) WithImage(imageWithTag string) *PrysmBeaconChain {
+	g.image = imageWithTag
+	return g
+}
+
 func (g *PrysmBeaconChain) WithTestInstance(t *testing.T) *PrysmBeaconChain {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
 	return g
+}
+
+func (g *PrysmBeaconChain) GetImage() string {
+	return g.image
 }
 
 func (g *PrysmBeaconChain) StartContainer() error {
@@ -115,7 +115,7 @@ func (g *PrysmBeaconChain) StartContainer() error {
 func (g *PrysmBeaconChain) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
 	return &tc.ContainerRequest{
 		Name:          g.ContainerName,
-		Image:         fmt.Sprintf("gcr.io/prysmaticlabs/prysm/beacon-chain:%s", PRYSM_IMAGE_TAG),
+		Image:         g.image,
 		ImagePlatform: "linux/amd64",
 		Networks:      networks,
 		WaitingFor: tcwait.ForAll(
@@ -152,6 +152,17 @@ func (g *PrysmBeaconChain) getContainerRequest(networks []string) (*tc.Container
 	}, nil
 }
 
+type PrysmValidator struct {
+	EnvComponent
+	chainConfig               *EthereumChainConfig
+	internalBeaconRpcProvider string
+	valKeysDir                string
+	generatedDataHostDir      string
+	l                         zerolog.Logger
+	t                         *testing.T
+	image                     string
+}
+
 func NewPrysmValidator(networks []string, chainConfig *EthereumChainConfig, generatedDataHostDir, valKeysDir, internalBeaconRpcProvider string, opts ...EnvComponentOption) *PrysmValidator {
 	g := &PrysmValidator{
 		EnvComponent: EnvComponent{
@@ -162,7 +173,8 @@ func NewPrysmValidator(networks []string, chainConfig *EthereumChainConfig, gene
 		generatedDataHostDir:      generatedDataHostDir,
 		valKeysDir:                valKeysDir,
 		internalBeaconRpcProvider: internalBeaconRpcProvider,
-		l:                         log.Logger,
+		l:                         logging.GetTestLogger(nil),
+		image:                     fmt.Sprintf("gcr.io/prysmaticlabs/prysm/validator:%s", PRYSM_IMAGE_TAG),
 	}
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
@@ -170,10 +182,19 @@ func NewPrysmValidator(networks []string, chainConfig *EthereumChainConfig, gene
 	return g
 }
 
+func (g *PrysmValidator) WithImage(imageWithTag string) *PrysmValidator {
+	g.image = imageWithTag
+	return g
+}
+
 func (g *PrysmValidator) WithTestInstance(t *testing.T) *PrysmValidator {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
 	return g
+}
+
+func (g *PrysmValidator) GetImage() string {
+	return g.image
 }
 
 func (g *PrysmValidator) StartContainer() error {
@@ -204,7 +225,7 @@ func (g *PrysmValidator) StartContainer() error {
 func (g *PrysmValidator) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
 	return &tc.ContainerRequest{
 		Name:          g.ContainerName,
-		Image:         fmt.Sprintf("gcr.io/prysmaticlabs/prysm/validator:%s", PRYSM_IMAGE_TAG),
+		Image:         g.image,
 		Networks:      networks,
 		ImagePlatform: "linux/x86_64",
 		WaitingFor: tcwait.ForAll(
