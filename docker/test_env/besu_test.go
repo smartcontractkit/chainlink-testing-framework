@@ -21,14 +21,8 @@ func TestEth2WithPrysmAndBesu(t *testing.T) {
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
 		WithConsensusType(ConsensusType_PoS).
-		WithCustomNetworkParticipants([]EthereumNetworkParticipant{
-			{
-				ConsensusLayer: ConsensusLayer_Prysm,
-				ExecutionLayer: ExecutionLayer_Besu,
-				Count:          1,
-			},
-		}).
-		WithoutWaitingForFinalization().
+		WithConsensusLayer(ConsensusLayer_Prysm).
+		WithExecutionLayer(ExecutionLayer_Besu).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 

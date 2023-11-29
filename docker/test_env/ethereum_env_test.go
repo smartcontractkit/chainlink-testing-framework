@@ -18,18 +18,12 @@ func TestEth2CustomConfig(t *testing.T) {
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
 		WithConsensusType(ConsensusType_PoS).
-		WithCustomNetworkParticipants([]EthereumNetworkParticipant{
-			{
-				ConsensusLayer: ConsensusLayer_Prysm,
-				ExecutionLayer: ExecutionLayer_Geth,
-				Count:          1,
-			},
-		}).
+		WithConsensusLayer(ConsensusLayer_Prysm).
+		WithExecutionLayer(ExecutionLayer_Geth).
 		WithEthereumChainConfig(EthereumChainConfig{
 			SecondsPerSlot: 6,
 			SlotsPerEpoch:  2,
 		}).
-		WithoutWaitingForFinalization().
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 
@@ -53,17 +47,11 @@ func TestEth2ExtraFunding(t *testing.T) {
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
 		WithConsensusType(ConsensusType_PoS).
-		WithCustomNetworkParticipants([]EthereumNetworkParticipant{
-			{
-				ConsensusLayer: ConsensusLayer_Prysm,
-				ExecutionLayer: ExecutionLayer_Geth,
-				Count:          1,
-			},
-		}).
+		WithConsensusLayer(ConsensusLayer_Prysm).
+		WithExecutionLayer(ExecutionLayer_Geth).
 		WithEthereumChainConfig(EthereumChainConfig{
 			AddressesToFund: []string{addressToFund},
 		}).
-		WithoutWaitingForFinalization().
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 
@@ -90,14 +78,8 @@ func TestEth2WithPrysmAndGethReuseNetwork(t *testing.T) {
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
 		WithConsensusType(ConsensusType_PoS).
-		WithCustomNetworkParticipants([]EthereumNetworkParticipant{
-			{
-				ConsensusLayer: ConsensusLayer_Prysm,
-				ExecutionLayer: ExecutionLayer_Geth,
-				Count:          1,
-			},
-		}).
-		WithoutWaitingForFinalization().
+		WithConsensusLayer(ConsensusLayer_Prysm).
+		WithExecutionLayer(ExecutionLayer_Geth).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 
