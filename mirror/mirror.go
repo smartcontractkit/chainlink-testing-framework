@@ -1,28 +1,25 @@
 package mirror
 
 import (
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/config"
-	"github.com/smartcontractkit/chainlink-testing-framework/utils/projectpath"
 )
+
+// Reads the mirror.json file into memory
+//
+//go:embed mirror.json
+var mirrorJSON []byte
 
 // findImageByName takes the name to search for as a string.
 // It returns the name and version of the name if found, or an empty string with an error otherwise.
 func findImageByName(name string) (string, error) {
-	// Read the mirror json file from chainlink-testing-framework/mirror/mirror.json
-	data, err := os.ReadFile(filepath.Join(projectpath.MirrorDir, "mirror.json"))
-	if err != nil {
-		return "", err
-	}
-
-	// Unmarshal the JSON data into a slice of strings
 	var images []string
-	err = json.Unmarshal(data, &images)
+	err := json.Unmarshal(mirrorJSON, &images)
 	if err != nil {
 		return "", err
 	}
