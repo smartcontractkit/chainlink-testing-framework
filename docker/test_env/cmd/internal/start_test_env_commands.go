@@ -140,13 +140,8 @@ func startBesuPrysmChainE(cmd *cobra.Command, args []string) error {
 
 	builder := test_env.NewEthereumNetworkBuilder()
 	builder = *builder.WithConsensusType(test_env.ConsensusType(consensusType)).
-		WithCustomNetworkParticipants([]test_env.EthereumNetworkParticipant{
-			{
-				ConsensusLayer: consensusLayerToUse,
-				ExecutionLayer: test_env.ExecutionLayer(executionLayer),
-				Count:          1,
-			},
-		}).
+		WithConsensusLayer(consensusLayerToUse).
+		WithExecutionLayer(test_env.ExecutionLayer(executionLayer)).
 		WithEthereumChainConfig(test_env.EthereumChainConfig{
 			ValidatorCount: 8,
 			SlotsPerEpoch:  2,
@@ -154,8 +149,8 @@ func startBesuPrysmChainE(cmd *cobra.Command, args []string) error {
 			ChainID:        chainId,
 		})
 
-	if !waitForFinalization {
-		builder = *builder.WithoutWaitingForFinalization()
+	if waitForFinalization {
+		builder = *builder.WithWaitingForFinalization()
 	}
 
 	cfg, err := builder.

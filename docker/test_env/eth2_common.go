@@ -137,3 +137,8 @@ type ExecutionClient interface {
 	GetExternalWsUrl() string
 	WaitUntilChainIsReady(waitTime time.Duration) error
 }
+
+type HasDockerImage[T any] interface {
+	WithImage(imageWithTag string) T
+	GetImage() string
+}

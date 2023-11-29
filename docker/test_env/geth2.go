@@ -12,7 +12,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
@@ -24,7 +23,7 @@ import (
 )
 
 const (
-	GO_CLIENT_IMAGE_TAG = "v1.13.4"
+	ETHEREUM_CLIENT_GO_IMAGE_TAG = "v1.13.4"
 )
 
 type Geth2 struct {
@@ -40,6 +39,7 @@ type Geth2 struct {
 	consensusLayer       ConsensusLayer
 	l                    zerolog.Logger
 	t                    *testing.T
+	image                string
 }
 
 func NewGeth2(networks []string, chainConfg *EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) *Geth2 {
@@ -51,7 +51,8 @@ func NewGeth2(networks []string, chainConfg *EthereumChainConfig, generatedDataH
 		chainConfg:           chainConfg,
 		generatedDataHostDir: generatedDataHostDir,
 		consensusLayer:       consensusLayer,
-		l:                    log.Logger,
+		l:                    logging.GetTestLogger(nil),
+		image:                fmt.Sprintf("ethereum/client-go:%s", ETHEREUM_CLIENT_GO_IMAGE_TAG),
 	}
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
@@ -59,10 +60,19 @@ func NewGeth2(networks []string, chainConfg *EthereumChainConfig, generatedDataH
 	return g
 }
 
+func (g *Geth2) WithImage(imageWithTag string) *Geth2 {
+	g.image = imageWithTag
+	return g
+}
+
 func (g *Geth2) WithTestInstance(t *testing.T) *Geth2 {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
 	return g
+}
+
+func (g *Geth2) GetImage() string {
+	return g.image
 }
 
 func (g *Geth2) StartContainer() (blockchain.EVMNetwork, error) {
@@ -171,7 +181,7 @@ func (g *Geth2) getContainerRequest(networks []string) (*tc.ContainerRequest, er
 
 	return &tc.ContainerRequest{
 		Name:          g.ContainerName,
-		Image:         fmt.Sprintf("ethereum/client-go:%s", GO_CLIENT_IMAGE_TAG),
+		Image:         g.image,
 		Networks:      networks,
 		ImagePlatform: "linux/x86_64",
 		ExposedPorts:  []string{NatPortFormat(TX_GETH_HTTP_PORT), NatPortFormat(TX_GETH_WS_PORT), NatPortFormat(ETH2_EXECUTION_PORT)},
@@ -202,12 +212,12 @@ func (g *Geth2) getContainerRequest(networks []string) (*tc.ContainerRequest, er
 	}, nil
 }
 
-func (g Geth2) WaitUntilChainIsReady(waitTime time.Duration) error {
+func (g *Geth2) WaitUntilChainIsReady(waitTime time.Duration) error {
 	waitForFirstBlock := tcwait.NewLogStrategy("Chain head was updated").WithPollInterval(1 * time.Second).WithStartupTimeout(waitTime)
 	return waitForFirstBlock.WaitUntilReady(context.Background(), *g.GetContainer())
 }
 
-func (g Geth2) buildInitScript() (string, error) {
+func (g *Geth2) buildInitScript() (string, error) {
 	initTemplate := `#!/bin/bash
 	mkdir -p {{.ExecutionDir}} 
 

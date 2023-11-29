@@ -16,7 +16,7 @@ func TestNonDevGeth(t *testing.T) {
 	require.NoError(t, err)
 	g := NewPrivateGethChain(&blockchain.SimulatedEVMNetwork, []string{network.Name})
 	err = g.GetPrimaryNode().
-		WithTestLogger(t).
+		WithTestInstance(t).
 		Start()
 	require.NoError(t, err)
 	err = g.GetPrimaryNode().ConnectToClient()

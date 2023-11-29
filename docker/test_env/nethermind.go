@@ -9,7 +9,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
@@ -35,6 +34,7 @@ type Nethermind struct {
 	consensusLayer       ConsensusLayer
 	l                    zerolog.Logger
 	t                    *testing.T
+	image                string
 }
 
 func NewNethermind(networks []string, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) *Nethermind {
@@ -45,7 +45,8 @@ func NewNethermind(networks []string, generatedDataHostDir string, consensusLaye
 		},
 		generatedDataHostDir: generatedDataHostDir,
 		consensusLayer:       consensusLayer,
-		l:                    log.Logger,
+		l:                    logging.GetTestLogger(nil),
+		image:                fmt.Sprintf("nethermind/nethermind:%s", NETHERMIND_IMAGE_TAG),
 	}
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
@@ -53,10 +54,19 @@ func NewNethermind(networks []string, generatedDataHostDir string, consensusLaye
 	return g
 }
 
+func (g *Nethermind) WithImage(imageWithTag string) *Nethermind {
+	g.image = imageWithTag
+	return g
+}
+
 func (g *Nethermind) WithTestInstance(t *testing.T) *Nethermind {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
 	return g
+}
+
+func (g *Nethermind) GetImage() string {
+	return g.image
 }
 
 func (g *Nethermind) StartContainer() (blockchain.EVMNetwork, error) {
@@ -150,10 +160,10 @@ func (g *Nethermind) GetContainer() *tc.Container {
 func (g *Nethermind) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
 	return &tc.ContainerRequest{
 		Name:            g.ContainerName,
-		Image:           fmt.Sprintf("nethermind/nethermind:%s", NETHERMIND_IMAGE_TAG),
+		Image:           g.image,
 		Networks:        networks,
 		AlwaysPullImage: true,
-		// ImagePlatform: "linux/x86_64", // this breaks everything, don't try it
+		// ImagePlatform: "linux/x86_64",  //don't even try this on Apple Silicon, the node won't start due to .NET error
 		ExposedPorts: []string{NatPortFormat(TX_GETH_HTTP_PORT), NatPortFormat(TX_GETH_WS_PORT), NatPortFormat(ETH2_EXECUTION_PORT)},
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForLog("Nethermind initialization completed").
@@ -193,7 +203,7 @@ func (g *Nethermind) getContainerRequest(networks []string) (*tc.ContainerReques
 	}, nil
 }
 
-func (g Nethermind) WaitUntilChainIsReady(waitTime time.Duration) error {
+func (g *Nethermind) WaitUntilChainIsReady(waitTime time.Duration) error {
 	waitForFirstBlock := tcwait.NewLogStrategy("Improved post-merge block").WithPollInterval(1 * time.Second).WithStartupTimeout(waitTime)
 	return waitForFirstBlock.WaitUntilReady(context.Background(), *g.GetContainer())
 }

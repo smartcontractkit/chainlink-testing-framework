@@ -93,7 +93,7 @@ func NewNonDevBesuNode(networks []string, networkCfg *blockchain.EVMNetwork) *No
 	}
 }
 
-func (g *NonDevBesuNode) WithTestLogger(t *testing.T) NonDevNode {
+func (g *NonDevBesuNode) WithTestInstance(t *testing.T) NonDevNode {
 	g.t = t
 	g.l = logging.GetTestLogger(t)
 	return g

@@ -52,12 +52,12 @@ type Geth struct {
 	InternalHttpUrl string
 	ExternalWsUrl   string
 	InternalWsUrl   string
-	chainConfig     EthereumChainConfig
+	chainConfig     *EthereumChainConfig
 	l               zerolog.Logger
 	t               *testing.T
 }
 
-func NewGeth(networks []string, chainConfig EthereumChainConfig, opts ...EnvComponentOption) *Geth {
+func NewGeth(networks []string, chainConfig *EthereumChainConfig, opts ...EnvComponentOption) *Geth {
 	g := &Geth{
 		EnvComponent: EnvComponent{
 			ContainerName: fmt.Sprintf("%s-%s", "geth", uuid.NewString()[0:8]),
@@ -77,7 +77,7 @@ func (g *Geth) WithLogger(l zerolog.Logger) *Geth {
 	return g
 }
 
-func (g *Geth) WithTestLogger(t *testing.T) *Geth {
+func (g *Geth) WithTestInstance(t *testing.T) *Geth {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
 	return g

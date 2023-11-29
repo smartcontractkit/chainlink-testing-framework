@@ -12,7 +12,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
@@ -41,6 +40,7 @@ type Erigon struct {
 	consensusLayer       ConsensusLayer
 	l                    zerolog.Logger
 	t                    *testing.T
+	image                string
 }
 
 func NewErigon(networks []string, chainConfg *EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) *Erigon {
@@ -52,7 +52,8 @@ func NewErigon(networks []string, chainConfg *EthereumChainConfig, generatedData
 		chainConfg:           chainConfg,
 		generatedDataHostDir: generatedDataHostDir,
 		consensusLayer:       consensusLayer,
-		l:                    log.Logger,
+		l:                    logging.GetTestLogger(nil),
+		image:                fmt.Sprintf("thorax/erigon:%s", ERIGON_IMAGE_TAG),
 	}
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
@@ -60,10 +61,19 @@ func NewErigon(networks []string, chainConfg *EthereumChainConfig, generatedData
 	return g
 }
 
+func (g *Erigon) WithImage(imageWithTag string) *Erigon {
+	g.image = imageWithTag
+	return g
+}
+
 func (g *Erigon) WithTestInstance(t *testing.T) *Erigon {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
 	return g
+}
+
+func (g *Erigon) GetImage() string {
+	return g.image
 }
 
 func (g *Erigon) StartContainer() (blockchain.EVMNetwork, error) {
@@ -168,7 +178,7 @@ func (g *Erigon) getContainerRequest(networks []string) (*tc.ContainerRequest, e
 
 	return &tc.ContainerRequest{
 		Name:          g.ContainerName,
-		Image:         fmt.Sprintf("thorax/erigon:%s", ERIGON_IMAGE_TAG),
+		Image:         g.image,
 		Networks:      networks,
 		ImagePlatform: "linux/x86_64",
 		ExposedPorts:  []string{NatPortFormat(TX_GETH_HTTP_PORT), NatPortFormat(ETH2_EXECUTION_PORT)},
@@ -200,13 +210,13 @@ func (g *Erigon) getContainerRequest(networks []string) (*tc.ContainerRequest, e
 	}, nil
 }
 
-func (g Erigon) WaitUntilChainIsReady(waitTime time.Duration) error {
+func (g *Erigon) WaitUntilChainIsReady(waitTime time.Duration) error {
 	waitForFirstBlock := tcwait.NewLogStrategy("Built block").WithPollInterval(1 * time.Second).WithStartupTimeout(waitTime)
 	return waitForFirstBlock.WaitUntilReady(context.Background(), *g.GetContainer())
 }
 
 // TODO copy genesis file to /hpme/erigon?
-func (g Erigon) buildInitScript() (string, error) {
+func (g *Erigon) buildInitScript() (string, error) {
 	initTemplate := `#!/bin/bash
 	echo "Copied genesis file to {{.ExecutionDir}}"
 	mkdir -p {{.ExecutionDir}}

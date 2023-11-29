@@ -77,7 +77,6 @@ func (g *ValKeysGeneretor) getContainerRequest(networks []string) (*tc.Container
 		Networks:      networks,
 		WaitingFor: NewExitCodeStrategy().WithExitCode(0).
 			WithPollInterval(1 * time.Second).WithTimeout(10 * time.Second),
-		// Entrypoint: []string{"sh", "/init.sh"},
 		Cmd: []string{"keystores",
 			"--insecure",
 			fmt.Sprintf("--prysm-pass=%s", WALLET_PASSWORD),

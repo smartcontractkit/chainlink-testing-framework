@@ -21,14 +21,8 @@ func TestEth2WithPrysmAndBesu(t *testing.T) {
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
 		WithConsensusType(ConsensusType_PoS).
-		WithCustomNetworkParticipants([]EthereumNetworkParticipant{
-			{
-				ConsensusLayer: ConsensusLayer_Prysm,
-				ExecutionLayer: ExecutionLayer_Besu,
-				Count:          1,
-			},
-		}).
-		WithoutWaitingForFinalization().
+		WithConsensusLayer(ConsensusLayer_Prysm).
+		WithExecutionLayer(ExecutionLayer_Besu).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 
@@ -42,10 +36,10 @@ func TestEth2WithPrysmAndBesu(t *testing.T) {
 	clientOne, err := blockchain.ConnectEVMClient(nonEip1559Network, l)
 	require.NoError(t, err, "Couldn't connect to the evm client")
 
-	defer func() {
+	t.Cleanup(func() {
 		err = clientOne.Close()
 		require.NoError(t, err, "Couldn't close the client")
-	}()
+	})
 
 	address := common.HexToAddress("0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1")
 	err = sendAndCompareBalances(clientOne, address)
@@ -55,16 +49,9 @@ func TestEth2WithPrysmAndBesu(t *testing.T) {
 	eip1559Network.Name = "Simulated Besu + Prysm (EIP 1559)"
 	eip1559Network.SupportsEIP1559 = true
 	eip1559Network.URLs = eth2.PublicWsUrls()
-	clientTwo, err := blockchain.ConnectEVMClient(eip1559Network, l)
-	require.NoError(t, err, "Couldn't connect to the evm client")
-
-	defer func() {
-		err = clientTwo.Close()
-		require.NoError(t, err, "Couldn't close the client")
-	}()
-
-	err = sendAndCompareBalances(clientTwo, address)
-	require.NoError(t, err, fmt.Sprintf("balance wasn't correctly updated when %s network", eip1559Network.Name))
+	_, err = blockchain.ConnectEVMClient(eip1559Network, l)
+	require.Error(t, err, "Couldn't connect to the evm client")
+	require.Contains(t, err.Error(), "Method not found", "Besu should not work EIP-1559 yet")
 }
 
 func sendAndCompareBalances(c blockchain.EVMClient, address common.Address) error {
