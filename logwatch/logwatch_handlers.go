@@ -21,7 +21,6 @@ const (
 
 type HandleLogTarget interface {
 	Handle(*ContainerLogConsumer, LogContent) error
-	// PrintLogLocation(*LogWatch)
 	GetLogLocation(map[string]*ContainerLogConsumer) (string, error)
 	GetTarget() LogTarget
 }

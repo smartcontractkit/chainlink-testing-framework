@@ -5,16 +5,17 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
-	"github.com/smartcontractkit/chainlink-testing-framework/utils/retries"
 	"github.com/smartcontractkit/wasp"
 	"github.com/testcontainers/testcontainers-go"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/retries"
 )
 
 const NO_TEST = "no_test"
@@ -26,6 +27,16 @@ type LogNotification struct {
 	Log       string
 }
 
+type LogProducingContainer interface {
+	Name(ctx context.Context) (string, error)
+	FollowOutput(consumer testcontainers.LogConsumer)
+	StartLogProducer(ctx context.Context, timeout time.Duration) error
+	StopLogProducer() error
+	GetLogProducerErrorChannel() <-chan error
+	IsRunning() bool
+	GetContainerID() string
+}
+
 // LogWatch is a test helper struct to monitor docker container logs for some patterns
 // and push their logs into Loki for further analysis
 type LogWatch struct {
@@ -34,12 +45,14 @@ type LogWatch struct {
 	loki                         *wasp.LokiClient
 	patterns                     map[string][]*regexp.Regexp
 	notifyTest                   chan *LogNotification
-	containers                   []testcontainers.Container
+	containers                   []LogProducingContainer
 	consumers                    map[string]*ContainerLogConsumer
 	logTargetHandlers            map[LogTarget]HandleLogTarget
+	enabledLogTargets            []LogTarget
 	logListeningDone             chan struct{}
 	logProducerTimeout           time.Duration
 	logProducerTimeoutRetryLimit int // -1 for infinite retries
+	acceptMutex                  sync.Mutex
 }
 
 type LogContent struct {
@@ -60,6 +73,11 @@ func NewLogWatch(t *testing.T, patterns map[string][]*regexp.Regexp, options ...
 		testName = t.Name()
 	}
 
+	envLogTargets, err := getLogTargetsFromEnv()
+	if err != nil {
+		return nil, err
+	}
+
 	logWatch := &LogWatch{
 		testName:                     testName,
 		log:                          l,
@@ -70,6 +88,7 @@ func NewLogWatch(t *testing.T, patterns map[string][]*regexp.Regexp, options ...
 		logListeningDone:             make(chan struct{}, 1),
 		logProducerTimeout:           time.Duration(10 * time.Second),
 		logProducerTimeoutRetryLimit: 10,
+		enabledLogTargets:            envLogTargets,
 	}
 
 	for _, option := range options {
@@ -84,13 +103,8 @@ func NewLogWatch(t *testing.T, patterns map[string][]*regexp.Regexp, options ...
 }
 
 func (m *LogWatch) validateLogTargets() error {
-	envLogTargets, err := getLogTargetsFromEnv()
-	if err != nil {
-		return err
-	}
-
 	// check if all requested log targets are supported
-	for _, wantedTarget := range envLogTargets {
+	for _, wantedTarget := range m.enabledLogTargets {
 		found := false
 		for knownTarget := range m.logTargetHandlers {
 			if knownTarget == wantedTarget {
@@ -107,7 +121,7 @@ func (m *LogWatch) validateLogTargets() error {
 	// deactivate known log targets that are not enabled
 	for knownTarget := range m.logTargetHandlers {
 		wanted := false
-		for _, wantedTarget := range envLogTargets {
+		for _, wantedTarget := range m.enabledLogTargets {
 			if knownTarget == wantedTarget {
 				wanted = true
 				break
@@ -120,7 +134,7 @@ func (m *LogWatch) validateLogTargets() error {
 	}
 
 	if len(m.logTargetHandlers) == 0 {
-		m.log.Warn().Msg("No log targets enabled. LogWatch will not do anything")
+		m.log.Warn().Msg("No log targets enabled. LogWatch will not persist any logs")
 	}
 
 	return nil
@@ -129,6 +143,12 @@ func (m *LogWatch) validateLogTargets() error {
 func WithCustomLogHandler(logTarget LogTarget, handler HandleLogTarget) Option {
 	return func(lw *LogWatch) {
 		lw.logTargetHandlers[logTarget] = handler
+	}
+}
+
+func WithLogTarget(logTarget LogTarget) Option {
+	return func(lw *LogWatch) {
+		lw.enabledLogTargets = append(lw.enabledLogTargets, logTarget)
 	}
 }
 
@@ -169,7 +189,7 @@ func (m *LogWatch) OnMatch(f func(ln *LogNotification)) {
 }
 
 // ConnectContainer connects consumer to selected container and starts testcontainers.LogProducer
-func (m *LogWatch) ConnectContainer(ctx context.Context, container testcontainers.Container, prefix string) error {
+func (m *LogWatch) ConnectContainer(ctx context.Context, container LogProducingContainer, prefix string) error {
 	name, err := container.Name(ctx)
 	if err != nil {
 		return err
@@ -219,35 +239,54 @@ func (m *LogWatch) ConnectContainer(ctx context.Context, container testcontainer
 
 		for {
 			select {
-			case err = <-container.GetLogProducerErrorChannel():
+			case err := <-container.GetLogProducerErrorChannel():
 				if err != nil {
 					m.log.Error().
-						Str("Name", name).
+						Str("Container name", name).
 						Err(err).
 						Msg("Log producer errored")
 					if shouldRetry() {
 						backoff := retries.Fibonacci(currentAttempt)
-						timeout = timeout + time.Duration(backoff)*time.Millisecond
+						timeout = timeout + time.Duration(backoff)*time.Second
 						m.log.Info().
 							Str("Prefix", prefix).
-							Str("Name", name).
+							Str("Container name", name).
 							Str("Timeout", timeout.String()).
 							Msgf("Retrying connection and listening to container logs. Attempt %d/%d", currentAttempt, retryLimit)
-						err = container.StartLogProducer(ctx, timeout)
-						if err != nil {
-							m.log.Error().Err(err).Msg("Log producer was already running. This should never happen. Exiting")
+						// we will request all logs from the start, when we start log producer, so we need to remove ones already saved to avoid duplicates
+						// in the unlikely case that log producer fails to start we will copy the messages, so that at least some logs are salvaged
+						messagesCopy := append([]string{}, m.consumers[name].Messages...)
+						m.consumers[name].Messages = make([]string, 0)
+						m.log.Warn().Msgf("Consumer messages: %d", len(m.consumers[name].Messages))
+						startTime := time.Now()
+						timedout := false
+						for container.StartLogProducer(ctx, timeout) != nil {
+							if time.Since(startTime) >= 5*time.Second {
+								timedout = true
+								break
+							}
+							m.log.Info().Msg("Waiting for log producer to stop")
+							time.Sleep(500 * time.Millisecond)
+						}
+						if timedout {
+							m.log.Error().
+								Err(err).
+								Msg("Previously running log producer couldn't be stopped. Won't try again")
+							m.consumers[name].Messages = messagesCopy
 							return
 						}
 						m.log.Info().
-							Str("Name", name).
+							Str("Container name", name).
 							Msg("Started new log producer")
 					} else {
 						m.log.Error().
 							Err(err).
-							Str("Name", name).
+							Str("Container name", name).
 							Msg("Used all attempts to listen to container logs. Won't try again")
 						return
 					}
+
+					time.Sleep(500 * time.Millisecond)
 				}
 			case <-done:
 				return
@@ -259,14 +298,13 @@ func (m *LogWatch) ConnectContainer(ctx context.Context, container testcontainer
 }
 
 // Shutdown disconnects all containers, stops notifications
-func (m *LogWatch) Shutdown() error {
+func (m *LogWatch) Shutdown(context context.Context) error {
 	defer close(m.logListeningDone)
 	var err error
 	for _, c := range m.containers {
 		singleErr := m.DisconnectContainer(c)
 		if singleErr != nil {
-			ctx := context.Background()
-			name, _ := c.Name(ctx)
+			name, _ := c.Name(context)
 			m.log.Error().
 				Err(err).
 				Str("Name", name).
@@ -310,7 +348,7 @@ func (m *LogWatch) SaveLogTargetsLocations(writer LogWriter) {
 }
 
 // DisconnectContainer disconnects the particular container
-func (m *LogWatch) DisconnectContainer(container testcontainers.Container) error {
+func (m *LogWatch) DisconnectContainer(container LogProducingContainer) error {
 	if container.IsRunning() {
 		m.log.Info().Str("container", container.GetContainerID()).Msg("Disconnecting container")
 		return container.StopLogProducer()
@@ -321,6 +359,8 @@ func (m *LogWatch) DisconnectContainer(container testcontainers.Container) error
 
 // ContainerLogs return all logs for the particular container
 func (m *LogWatch) ContainerLogs(name string) []string {
+	m.acceptMutex.Lock()
+	defer m.acceptMutex.Unlock()
 	if _, ok := m.consumers[name]; !ok {
 		return []string{}
 	}
@@ -330,6 +370,8 @@ func (m *LogWatch) ContainerLogs(name string) []string {
 
 // AllLogs returns all logs for all containers
 func (m *LogWatch) AllLogs() []string {
+	m.acceptMutex.Lock()
+	defer m.acceptMutex.Unlock()
 	logs := make([]string, 0)
 	for _, l := range m.consumers {
 		logs = append(logs, l.Messages...)
@@ -339,6 +381,8 @@ func (m *LogWatch) AllLogs() []string {
 
 // PrintAll prints all logs for all containers connected
 func (m *LogWatch) PrintAll() {
+	m.acceptMutex.Lock()
+	defer m.acceptMutex.Unlock()
 	for cname, c := range m.consumers {
 		for _, msg := range c.Messages {
 			m.log.Info().
@@ -373,6 +417,9 @@ func newContainerLogConsumer(lw *LogWatch, containerName string, prefix string, 
 
 // Accept accepts the log message from particular container
 func (g *ContainerLogConsumer) Accept(l testcontainers.Log) {
+	g.lw.acceptMutex.Lock()
+	defer g.lw.acceptMutex.Unlock()
+	g.lw.log.Info().Msgf("Received log message: %s", string(l.Content))
 	g.Messages = append(g.Messages, string(l.Content))
 	matches := g.FindMatch(l)
 	for i := 0; i < matches; i++ {
