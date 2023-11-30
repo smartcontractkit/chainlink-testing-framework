@@ -13,6 +13,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
 func TestEth2WithPrysmAndBesu(t *testing.T) {
@@ -42,7 +43,7 @@ func TestEth2WithPrysmAndBesu(t *testing.T) {
 	})
 
 	address := common.HexToAddress("0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1")
-	err = sendAndCompareBalances(clientOne, address)
+	err = sendAndCompareBalances(testcontext.Get(t), clientOne, address)
 	require.NoError(t, err, fmt.Sprintf("balance wasn't correctly updated when %s network", nonEip1559Network.Name))
 
 	eip1559Network := blockchain.SimulatedEVMNetwork
@@ -54,8 +55,8 @@ func TestEth2WithPrysmAndBesu(t *testing.T) {
 	require.Contains(t, err.Error(), "Method not found", "Besu should not work EIP-1559 yet")
 }
 
-func sendAndCompareBalances(c blockchain.EVMClient, address common.Address) error {
-	balanceBefore, err := c.BalanceAt(context.Background(), address)
+func sendAndCompareBalances(ctx context.Context, c blockchain.EVMClient, address common.Address) error {
+	balanceBefore, err := c.BalanceAt(ctx, address)
 	if err != nil {
 		return err
 	}
@@ -72,7 +73,7 @@ func sendAndCompareBalances(c blockchain.EVMClient, address common.Address) erro
 		return err
 	}
 
-	balanceAfter, err := c.BalanceAt(context.Background(), address)
+	balanceAfter, err := c.BalanceAt(ctx, address)
 	if err != nil {
 		return err
 	}

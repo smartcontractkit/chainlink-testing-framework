@@ -22,6 +22,7 @@ import (
 
 const (
 	CONFIG_ENV_VAR_NAME = "PRIVATE_ETHEREUM_NETWORK_CONFIG_PATH"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
 type ConsensusType string
@@ -330,7 +331,7 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
-	err = client.WaitUntilChainIsReady(en.EthereumChainConfig.GetDefaultWaitDuration())
+	err = client.WaitUntilChainIsReady(testcontext.Get(en.t), en.EthereumChainConfig.GetDefaultWaitDuration())
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}

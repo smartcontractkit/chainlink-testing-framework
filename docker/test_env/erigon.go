@@ -210,9 +210,9 @@ func (g *Erigon) getContainerRequest(networks []string) (*tc.ContainerRequest, e
 	}, nil
 }
 
-func (g *Erigon) WaitUntilChainIsReady(waitTime time.Duration) error {
+func (g *Erigon) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error {
 	waitForFirstBlock := tcwait.NewLogStrategy("Built block").WithPollInterval(1 * time.Second).WithStartupTimeout(waitTime)
-	return waitForFirstBlock.WaitUntilReady(context.Background(), *g.GetContainer())
+	return waitForFirstBlock.WaitUntilReady(ctx, *g.GetContainer())
 }
 
 // TODO copy genesis file to /hpme/erigon?

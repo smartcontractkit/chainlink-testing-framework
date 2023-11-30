@@ -9,6 +9,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
 func TestEth2WithPrysmAndErigon(t *testing.T) {
@@ -36,8 +37,9 @@ func TestEth2WithPrysmAndErigon(t *testing.T) {
 		require.NoError(t, err, "Couldn't close the client")
 	})
 
+	ctx := testcontext.Get(t)
 	address := common.HexToAddress("0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1")
-	err = sendAndCompareBalances(clientOne, address)
+	err = sendAndCompareBalances(ctx, clientOne, address)
 	require.NoError(t, err, fmt.Sprintf("balance wasn't correctly updated when %s network", nonEip1559Network.Name))
 
 	eip1559Network := blockchain.SimulatedEVMNetwork
@@ -52,6 +54,6 @@ func TestEth2WithPrysmAndErigon(t *testing.T) {
 		require.NoError(t, err, "Couldn't close the client")
 	})
 
-	err = sendAndCompareBalances(clientTwo, address)
+	err = sendAndCompareBalances(ctx, clientTwo, address)
 	require.NoError(t, err, fmt.Sprintf("balance wasn't correctly updated when %s network", eip1559Network.Name))
 }

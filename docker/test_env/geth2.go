@@ -212,9 +212,9 @@ func (g *Geth2) getContainerRequest(networks []string) (*tc.ContainerRequest, er
 	}, nil
 }
 
-func (g *Geth2) WaitUntilChainIsReady(waitTime time.Duration) error {
+func (g *Geth2) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error {
 	waitForFirstBlock := tcwait.NewLogStrategy("Chain head was updated").WithPollInterval(1 * time.Second).WithStartupTimeout(waitTime)
-	return waitForFirstBlock.WaitUntilReady(context.Background(), *g.GetContainer())
+	return waitForFirstBlock.WaitUntilReady(ctx, *g.GetContainer())
 }
 
 func (g *Geth2) buildInitScript() (string, error) {
