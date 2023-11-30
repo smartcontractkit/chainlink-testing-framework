@@ -271,8 +271,7 @@ type MockedLogProducingContainer struct {
 	errorChannelError error
 	startCounter      int
 	messages          []string
-	// logMutex          sync.Mutex
-	errorCh chan error
+	errorCh           chan error
 }
 
 func (m *MockedLogProducingContainer) Name(ctx context.Context) (string, error) {
@@ -296,28 +295,21 @@ func (m *MockedLogProducingContainer) StartLogProducer(ctx context.Context, time
 	}
 
 	go func() {
-		// fmt.Println("starting log producer loop")
 		lastProcessedLogIndex := -1
 		for {
 			time.Sleep(200 * time.Millisecond)
-			{
-				// m.lock("loop")
-				m.errorCh <- m.errorChannelError
-				if m.errorChannelError != nil {
-					// fmt.Println("stopping log producer loop")
-					// m.unlock("loop")
-					return
-				}
-				// m.unlock("loop")
+
+			m.errorCh <- m.errorChannelError
+			if m.errorChannelError != nil {
+				return
 			}
+
 			for i, msg := range m.messages {
 				time.Sleep(50 * time.Millisecond)
 				if i <= lastProcessedLogIndex {
-					// fmt.Println("skipping log")
 					continue
 				}
 				lastProcessedLogIndex = i
-				// fmt.Println("processing log")
 				m.consumer.Accept(testcontainers.Log{
 					LogType: testcontainers.StdoutLog,
 					Content: []byte(msg),
@@ -347,18 +339,7 @@ func (m *MockedLogProducingContainer) GetContainerID() string {
 
 func (m *MockedLogProducingContainer) SendLog(msg string) {
 	m.messages = append(m.messages, msg)
-	// fmt.Println("new log sent")
 }
-
-// func (m *MockedLogProducingContainer) lock(msg string) {
-// 	m.logMutex.Lock()
-// 	fmt.Printf("lock acquired: %s\n", msg)
-// }
-
-// func (m *MockedLogProducingContainer) unlock(msg string) {
-// 	m.logMutex.Unlock()
-// 	fmt.Printf("lock released: %s\n", msg)
-// }
 
 // secenario: log watch consumes a log, then the container returns an error, log watch reconnects
 // and consumes logs again. log watch should not miss any logs nor consume any log twice
