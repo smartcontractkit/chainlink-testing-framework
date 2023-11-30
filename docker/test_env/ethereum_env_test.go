@@ -3,6 +3,7 @@ package test_env
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -27,13 +28,10 @@ func TestEth2CustomConfig(t *testing.T) {
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 
-	_, eth2, err := cfg.Start()
+	net, _, err := cfg.Start()
 	require.NoError(t, err, "Couldn't start PoS network")
 
-	ns := blockchain.SimulatedEVMNetwork
-	ns.Name = "Simulated Geth + Prysm"
-	ns.URLs = eth2.PublicWsUrls()
-	c, err := blockchain.ConnectEVMClient(ns, l)
+	c, err := blockchain.ConnectEVMClient(net, l)
 	require.NoError(t, err, "Couldn't connect to the evm client")
 	err = c.Close()
 	require.NoError(t, err, "Couldn't close the client")
@@ -55,13 +53,10 @@ func TestEth2ExtraFunding(t *testing.T) {
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 
-	_, eth2, err := cfg.Start()
+	net, _, err := cfg.Start()
 	require.NoError(t, err, "Couldn't start PoS network")
 
-	ns := blockchain.SimulatedEVMNetwork
-	ns.Name = "Simulated Geth + Prysm"
-	ns.URLs = eth2.PublicWsUrls()
-	c, err := blockchain.ConnectEVMClient(ns, l)
+	c, err := blockchain.ConnectEVMClient(net, l)
 	require.NoError(t, err, "Couldn't connect to the evm client")
 
 	balance, err := c.BalanceAt(context.Background(), common.HexToAddress(addressToFund))
@@ -92,13 +87,30 @@ func TestEth2WithPrysmAndGethReuseNetwork(t *testing.T) {
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 
-	_, eth2, err := reusedCfg.Start()
+	net, _, err := reusedCfg.Start()
 	require.NoError(t, err, "Couldn't reuse PoS network")
 
-	ns := blockchain.SimulatedEVMNetwork
-	ns.Name = "Simulated Geth + Prysm"
-	ns.URLs = eth2.PublicWsUrls()
-	c, err := blockchain.ConnectEVMClient(ns, l)
+	c, err := blockchain.ConnectEVMClient(net, l)
+	require.NoError(t, err, "Couldn't connect to the evm client")
+	err = c.Close()
+	require.NoError(t, err, "Couldn't close the client")
+}
+
+func TestEth2WithPrysmAndGethReuseFromEnv(t *testing.T) {
+	t.Skip("for demonstration purposes only")
+	l := logging.GetTestLogger(t)
+
+	os.Setenv(CONFIG_ENV_VAR_NAME, "change-me-to-the-path-of-your-config-file")
+	builder := NewEthereumNetworkBuilder()
+	cfg, err := builder.
+		FromEnvVar().
+		Build()
+	require.NoError(t, err, "Builder validation failed")
+
+	net, _, err := cfg.Start()
+	require.NoError(t, err, "Couldn't start PoS network")
+
+	c, err := blockchain.ConnectEVMClient(net, l)
 	require.NoError(t, err, "Couldn't connect to the evm client")
 	err = c.Close()
 	require.NoError(t, err, "Couldn't close the client")

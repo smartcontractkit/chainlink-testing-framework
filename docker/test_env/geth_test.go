@@ -14,7 +14,8 @@ func TestOldGeth(t *testing.T) {
 	l := logging.GetTestLogger(t)
 	network, err := docker.CreateNetwork(l)
 	require.NoError(t, err)
-	g := NewGeth([]string{network.Name}, GetDefaultChainConfig()).
+	defaultChainCfg := GetDefaultChainConfig()
+	g := NewGeth([]string{network.Name}, &defaultChainCfg).
 		WithTestInstance(t)
 	_, _, err = g.StartContainer()
 	require.NoError(t, err)

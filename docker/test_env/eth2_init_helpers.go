@@ -63,11 +63,11 @@ func (g *AfterGenesisHelper) StartContainer() error {
 		Logger:           l,
 	})
 	if err != nil {
-		return errors.Wrapf(err, "cannot start init helper container")
+		return errors.Wrapf(err, "cannot start after genesis helper container")
 	}
 
 	g.l.Info().Str("containerName", g.ContainerName).
-		Msg("Started Init Helper container")
+		Msg("Started After Genesis Helper container")
 
 	return nil
 }

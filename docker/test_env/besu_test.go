@@ -51,7 +51,7 @@ func TestEth2WithPrysmAndBesu(t *testing.T) {
 	eip1559Network.SupportsEIP1559 = true
 	eip1559Network.URLs = eth2.PublicWsUrls()
 	_, err = blockchain.ConnectEVMClient(eip1559Network, l)
-	require.Error(t, err, "Couldn't connect to the evm client")
+	require.Error(t, err, "Could connect to the evm client")
 	require.Contains(t, err.Error(), "Method not found", "Besu should not work EIP-1559 yet")
 }
 
