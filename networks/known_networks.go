@@ -316,7 +316,7 @@ var (
 		Name:                      "Optimism Sepolia",
 		SupportsEIP1559:           true,
 		ClientImplementation:      blockchain.OptimismClientImplementation,
-		ChainID:                   420,
+		ChainID:                   11155420,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
 		Timeout:                   blockchain.JSONStrDuration{Duration: 3 * time.Minute},
