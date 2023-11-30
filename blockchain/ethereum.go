@@ -839,12 +839,7 @@ func (e *EthereumClient) EstimateGas(callMsg ethereum.CallMsg) (GasEstimations, 
 		gasTipCap, err = e.Client.SuggestGasTipCap(ctx)
 		cancel()
 		if err != nil {
-			//For Besu, that support "eth_maxPriorityFeePerGas" https://github.com/hyperledger/besu/issues/5658
-			if strings.Contains(err.Error(), "Method not found") {
-				gasTipCap = big.NewInt(0)
-			} else {
-				return GasEstimations{}, err
-			}
+			return GasEstimations{}, err
 		}
 		gasTipCap.Add(gasTipCap, gasPriceBuffer)
 

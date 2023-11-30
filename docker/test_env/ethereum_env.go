@@ -18,11 +18,11 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	utils "github.com/smartcontractkit/chainlink-testing-framework/utils/json"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
 const (
 	CONFIG_ENV_VAR_NAME = "PRIVATE_ETHEREUM_NETWORK_CONFIG_PATH"
-	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
 type ConsensusType string
