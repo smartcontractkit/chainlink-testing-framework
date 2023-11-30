@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	//TODO use Tate's mirror?
+	//TODO use Tate's mirror
 	ERIGON_IMAGE_TAG = "v2.54.0"
 )
 
@@ -215,7 +215,6 @@ func (g *Erigon) WaitUntilChainIsReady(ctx context.Context, waitTime time.Durati
 	return waitForFirstBlock.WaitUntilReady(ctx, *g.GetContainer())
 }
 
-// TODO copy genesis file to /hpme/erigon?
 func (g *Erigon) buildInitScript() (string, error) {
 	initTemplate := `#!/bin/bash
 	echo "Copied genesis file to {{.ExecutionDir}}"

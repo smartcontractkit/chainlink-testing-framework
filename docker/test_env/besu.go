@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	//TODO use Tate's mirror?
+	//TODO use Tate's mirror
 	BESU_IMAGE_TAG = "23.10"
 )
 

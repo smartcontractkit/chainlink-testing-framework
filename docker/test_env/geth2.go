@@ -23,6 +23,7 @@ import (
 )
 
 const (
+	//TODO use Tate's mirror
 	ETHEREUM_CLIENT_GO_IMAGE_TAG = "v1.13.4"
 )
 

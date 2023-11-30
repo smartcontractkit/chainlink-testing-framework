@@ -19,6 +19,7 @@ import (
 )
 
 const (
+	//TODO use Tate's mirror
 	NETHERMIND_IMAGE_TAG = "1.22.0"
 )
 
