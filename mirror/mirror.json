@@ -7,5 +7,6 @@
   "confluentinc/cp-kafka:7.4.0",
   "confluentinc/cp-schema-registry:7.4.0",
   "confluentinc/cp-zookeeper:7.4.0",
-  "hyperledger/besu:23.10"
+  "hyperledger/besu:23.10",
+  "postgres:15.5"
 ]
