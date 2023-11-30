@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"regexp"
 	"strconv"
-	"sync"
 	"testing"
 	"time"
 
@@ -78,7 +77,7 @@ func startTestContainer(ctx context.Context, containerName string, msg string, a
 	} else {
 		cmd = []string{"bash", "-c",
 			fmt.Sprintf(
-				"for i in {1..%d}; do sleep %.2f; echo \"%s-$i\"; done; while true; do sleep 1; done",
+				"for i in {1..%d}; do sleep %.2f; echo '%s'; done; while true; do sleep 1; done",
 				amount,
 				intervalSeconds,
 				msg,
@@ -196,8 +195,9 @@ func TestLogWatchDocker(t *testing.T) {
 				}
 				t.Logf("notifications: %v", spew.Sdump(notifications))
 				t.Logf("expectations: %v", spew.Sdump(tc.expectedNotifications))
+
 				if !reflect.DeepEqual(tc.expectedNotifications, notifications) {
-					t.Fatalf("expected: %v, got: %v", tc.expectedNotifications, notifications)
+					t.Fatalf("expected logs: %v, got: %v", tc.expectedNotifications, notifications)
 				}
 			}
 
@@ -261,19 +261,18 @@ func TestLogWatchConnectWithDelayDocker(t *testing.T) {
 }
 
 type MockedLogProducingContainer struct {
-	name       string
-	id         string
-	isRunning  bool
-	consumer   testcontainers.LogConsumer
-	startError error
-	startSleep time.Duration
-	// acceptsLogs       bool
+	name              string
+	id                string
+	isRunning         bool
+	consumer          testcontainers.LogConsumer
+	startError        error
+	startSleep        time.Duration
 	stopError         error
 	errorChannelError error
 	startCounter      int
 	messages          []string
-	logMutex          sync.Mutex
-	errorCh           chan error
+	// logMutex          sync.Mutex
+	errorCh chan error
 }
 
 func (m *MockedLogProducingContainer) Name(ctx context.Context) (string, error) {
@@ -289,7 +288,6 @@ func (m *MockedLogProducingContainer) StartLogProducer(ctx context.Context, time
 	m.errorCh = make(chan error, 1)
 
 	if m.startError != nil {
-		// m.acceptsLogs = false
 		return m.startError
 	}
 
@@ -297,14 +295,8 @@ func (m *MockedLogProducingContainer) StartLogProducer(ctx context.Context, time
 		time.Sleep(m.startSleep)
 	}
 
-	// m.logMutex.Lock()
-	// defer m.logMutex.Unlock()
-	// m.acceptsLogs = true
-
-	// store index of last processed log
-	// iterate over m.messages in a goroutine and accept new logs
 	go func() {
-		fmt.Println("starting log producer loop")
+		// fmt.Println("starting log producer loop")
 		lastProcessedLogIndex := -1
 		for {
 			time.Sleep(200 * time.Millisecond)
@@ -312,21 +304,20 @@ func (m *MockedLogProducingContainer) StartLogProducer(ctx context.Context, time
 				// m.lock("loop")
 				m.errorCh <- m.errorChannelError
 				if m.errorChannelError != nil {
-					fmt.Println("stopping log producer loop")
+					// fmt.Println("stopping log producer loop")
 					// m.unlock("loop")
 					return
 				}
 				// m.unlock("loop")
 			}
 			for i, msg := range m.messages {
-				time.Sleep(200 * time.Millisecond)
-				// fmt.Printf("lastProcessedLogIndex: %d, i: %d\n", lastProcessedLogIndex, i)
+				time.Sleep(50 * time.Millisecond)
 				if i <= lastProcessedLogIndex {
-					fmt.Println("skipping log")
+					// fmt.Println("skipping log")
 					continue
 				}
 				lastProcessedLogIndex = i
-				fmt.Println("processing log")
+				// fmt.Println("processing log")
 				m.consumer.Accept(testcontainers.Log{
 					LogType: testcontainers.StdoutLog,
 					Content: []byte(msg),
@@ -356,22 +347,22 @@ func (m *MockedLogProducingContainer) GetContainerID() string {
 
 func (m *MockedLogProducingContainer) SendLog(msg string) {
 	m.messages = append(m.messages, msg)
-	fmt.Println("new log sent")
+	// fmt.Println("new log sent")
 }
 
-func (m *MockedLogProducingContainer) lock(msg string) {
-	m.logMutex.Lock()
-	fmt.Printf("lock acquired: %s\n", msg)
-}
+// func (m *MockedLogProducingContainer) lock(msg string) {
+// 	m.logMutex.Lock()
+// 	fmt.Printf("lock acquired: %s\n", msg)
+// }
 
-func (m *MockedLogProducingContainer) unlock(msg string) {
-	m.logMutex.Unlock()
-	fmt.Printf("lock released: %s\n", msg)
-}
+// func (m *MockedLogProducingContainer) unlock(msg string) {
+// 	m.logMutex.Unlock()
+// 	fmt.Printf("lock released: %s\n", msg)
+// }
 
-// make sure that before it stopped working it received at least 1 log
-// and that when it's started again, then it removes old logs and then receives old ones again and then follow the new ones
-func TestLogWatchConnectRetryMockContainer(t *testing.T) {
+// secenario: log watch consumes a log, then the container returns an error, log watch reconnects
+// and consumes logs again. log watch should not miss any logs nor consume any log twice
+func TestLogWatchConnectRetryMockContainer_Once(t *testing.T) {
 	t.Parallel()
 	ctx := testcontext.Get(t)
 	uuid := uuid.NewString()
@@ -379,51 +370,48 @@ func TestLogWatchConnectRetryMockContainer(t *testing.T) {
 	interval := float64(1.12)
 
 	mockedContainer := &MockedLogProducingContainer{
-		name: fmt.Sprintf("%s-container-%s", t.Name(), uuid),
-		id:   uuid,
-		// isRunning:         true,
+		name:              fmt.Sprintf("%s-container-%s", t.Name(), uuid),
+		id:                uuid,
+		isRunning:         true,
 		startError:        nil,
 		stopError:         nil,
 		errorChannelError: nil,
-		// acceptsLogs:       true,
 	}
 
 	lw, err := logwatch.NewLogWatch(t, nil, logwatch.WithLogProducerTimeout(1*time.Second))
-	require.NoError(t, err)
+	require.NoError(t, err, "log watch should be created")
 
 	go func() {
+		// wait for 1 second, so that log watch has time to consume at least one log before it's stopped
 		time.Sleep(1 * time.Second)
-		{
-			// mockedContainer.lock("set error")
-			mockedContainer.startSleep = 1 * time.Second
-			mockedContainer.errorChannelError = errors.New("test error")
-			// mockedContainer.unlock("set error")
-		}
-		// mockedContainer.startSleep = 1 * time.Second
+		mockedContainer.startSleep = 1 * time.Second
+		logsReceived := len(lw.ContainerLogs(mockedContainer.name))
+		require.True(t, logsReceived > 0, "should have received at least 1 log before injecting error")
+		mockedContainer.errorChannelError = errors.New("failed to read logs")
+
+		// clear the error after 1 second, so that log producer can resume log consumption
 		time.Sleep(1 * time.Second)
-		{
-			// mockedContainer.lock("unset error")
-			mockedContainer.errorChannelError = nil
-			// mockedContainer.unlock("unset errors")
-		}
+		mockedContainer.errorChannelError = nil
 	}()
 
+	logsSent := []string{}
 	go func() {
-		// time.Sleep(500 * time.Millisecond)
 		for i := 0; i < amount; i++ {
-			mockedContainer.SendLog(fmt.Sprintf("message-%d", i))
+			toSend := fmt.Sprintf("message-%d", i)
+			logsSent = append(logsSent, toSend)
+			mockedContainer.SendLog(toSend)
 			time.Sleep(time.Duration(time.Duration(interval) * time.Second))
 		}
 	}()
 
 	err = lw.ConnectContainer(context.Background(), mockedContainer, mockedContainer.name)
-	require.NoError(t, err)
+	require.NoError(t, err, "log watch should connect to container")
 
-	time.Sleep(time.Duration(int(interval*float64(amount)))*time.Second + 5*time.Second)
+	time.Sleep(time.Duration(int(interval*float64(amount)))*time.Second + 3*time.Second)
 	lw.PrintAll()
 
-	require.Len(t, lw.ContainerLogs(mockedContainer.name), 10)
-	require.Equal(t, 2, mockedContainer.startCounter)
+	require.EqualValues(t, lw.ContainerLogs(mockedContainer.name), logsSent, "log watch should receive all logs")
+	require.Equal(t, 2, mockedContainer.startCounter, "log producer should be started twice")
 
 	t.Cleanup(func() {
 		if err := lw.Shutdown(ctx); err != nil {
@@ -432,8 +420,77 @@ func TestLogWatchConnectRetryMockContainer(t *testing.T) {
 	})
 }
 
-// as above, but with 3 restarts, 2nd it is still running, 3rd it works
-// it should have 10 logs in the end
+// secenario: log watch consumes a log, then the container returns an error, log watch reconnects
+// and consumes logs again, then it happens again. log watch should not miss any logs nor consume any log twice
+func TestLogWatchConnectRetryMockContainer_Twice(t *testing.T) {
+	t.Parallel()
+	ctx := testcontext.Get(t)
+	uuid := uuid.NewString()
+	amount := 10
+	interval := float64(1.12)
+
+	mockedContainer := &MockedLogProducingContainer{
+		name:              fmt.Sprintf("%s-container-%s", t.Name(), uuid),
+		id:                uuid,
+		isRunning:         true,
+		startError:        nil,
+		stopError:         nil,
+		errorChannelError: nil,
+	}
+
+	lw, err := logwatch.NewLogWatch(t, nil, logwatch.WithLogProducerTimeout(1*time.Second))
+	require.NoError(t, err, "log watch should be created")
+
+	go func() {
+		// wait for 1 second, so that log watch has time to consume at least one log before it's stopped
+		time.Sleep(1 * time.Second)
+		mockedContainer.startSleep = 1 * time.Second
+		require.True(t, len(lw.ContainerLogs(mockedContainer.name)) > 0, "should have received at least 1 log before injecting error, but got 0")
+		mockedContainer.errorChannelError = errors.New("failed to read logs")
+
+		// clear the error after 1 second, so that log producer can resume log consumption
+		time.Sleep(1 * time.Second)
+		mockedContainer.errorChannelError = nil
+
+		// wait for 3 seconds so that some logs are consumed before we inject error again
+		time.Sleep(3 * time.Second)
+		mockedContainer.startSleep = 1 * time.Second
+		require.True(t, len(lw.ContainerLogs(mockedContainer.name)) > 0, "should have received at least 1 log before injecting error, but got 0")
+		mockedContainer.errorChannelError = errors.New("failed to read logs")
+
+		// clear the error after 1 second, so that log producer can resume log consumption
+		time.Sleep(1 * time.Second)
+		mockedContainer.errorChannelError = nil
+	}()
+
+	logsSent := []string{}
+	go func() {
+		for i := 0; i < amount; i++ {
+			toSend := fmt.Sprintf("message-%d", i)
+			logsSent = append(logsSent, toSend)
+			mockedContainer.SendLog(toSend)
+			time.Sleep(time.Duration(time.Duration(interval) * time.Second))
+		}
+	}()
+
+	err = lw.ConnectContainer(context.Background(), mockedContainer, mockedContainer.name)
+	require.NoError(t, err, "log watch should connect to container")
+
+	time.Sleep(time.Duration(int(interval*float64(amount)))*time.Second + 5*time.Second)
+	lw.PrintAll()
+
+	require.EqualValues(t, lw.ContainerLogs(mockedContainer.name), logsSent, "log watch should receive all logs")
+	require.Equal(t, 3, mockedContainer.startCounter, "log producer should be started twice")
+
+	t.Cleanup(func() {
+		if err := lw.Shutdown(ctx); err != nil {
+			t.Fatalf("failed to shutodwn logwatch: %s", err.Error())
+		}
+	})
+}
+
+// secenario: it consumes a log, then the container returns an error, but when log watch tries to reconnect log producer
+// is still running, but finally it stops and log watch reconnects. log watch should not miss any logs nor consume any log twice
 func TestLogWatchConnectRetryMockContainer_NotStoppedFirstTime(t *testing.T) {
 	t.Parallel()
 	ctx := testcontext.Get(t)
@@ -444,41 +501,110 @@ func TestLogWatchConnectRetryMockContainer_NotStoppedFirstTime(t *testing.T) {
 	mockedContainer := &MockedLogProducingContainer{
 		name:              fmt.Sprintf("%s-container-%s", t.Name(), uuid),
 		id:                uuid,
-		isRunning:         false,
+		isRunning:         true,
 		startError:        nil,
 		stopError:         nil,
 		errorChannelError: nil,
 	}
 
 	lw, err := logwatch.NewLogWatch(t, nil, logwatch.WithLogProducerTimeout(1*time.Second))
-	require.NoError(t, err)
+	require.NoError(t, err, "log watch should be created")
 
 	go func() {
-		for i := 0; i < amount; i++ {
-			mockedContainer.SendLog(fmt.Sprintf("message-%d", i))
-			time.Sleep(time.Duration(time.Duration(interval) * time.Second))
-		}
-		time.Sleep(500 * time.Millisecond)
-	}()
-
-	err = lw.ConnectContainer(context.Background(), mockedContainer, mockedContainer.name)
-	require.NoError(t, err)
-
-	go func() {
+		// wait for 1 second, so that log watch has time to consume at least one log before it's stopped
+		time.Sleep(1 * time.Second)
 		mockedContainer.startSleep = 1 * time.Second
-		mockedContainer.isRunning = true
-		mockedContainer.errorChannelError = errors.New("read error")
+		require.True(t, len(lw.ContainerLogs(mockedContainer.name)) > 0, "should have received at least 1 log before injecting error, but got 0")
+
+		// introduce read error, so that log producer stops
+		mockedContainer.errorChannelError = errors.New("failed to read logs")
+		// inject start error, that simulates log producer still running (e.g. closing connection to the container)
 		mockedContainer.startError = errors.New("still running")
-		time.Sleep(2 * time.Second)
+
+		// wait for one second before clearing errors, so that we retry to connect
+		time.Sleep(1 * time.Second)
 		mockedContainer.startError = nil
 		mockedContainer.errorChannelError = nil
 	}()
 
+	logsSent := []string{}
+	go func() {
+		for i := 0; i < amount; i++ {
+			toSend := fmt.Sprintf("message-%d", i)
+			logsSent = append(logsSent, toSend)
+			mockedContainer.SendLog(toSend)
+			time.Sleep(time.Duration(time.Duration(interval) * time.Second))
+		}
+	}()
+
+	err = lw.ConnectContainer(context.Background(), mockedContainer, mockedContainer.name)
+	require.NoError(t, err, "log watch should connect to container")
+
 	time.Sleep(time.Duration(int(interval*float64(amount)))*time.Second + 5*time.Second)
 	lw.PrintAll()
 
-	require.Len(t, lw.ContainerLogs(mockedContainer.name), 10)
-	require.Equal(t, 3, mockedContainer.startCounter)
+	require.EqualValues(t, logsSent, lw.ContainerLogs(mockedContainer.name), "log watch should receive all logs")
+	require.Equal(t, 3, mockedContainer.startCounter, "log producer should be started four times")
+
+	t.Cleanup(func() {
+		if err := lw.Shutdown(ctx); err != nil {
+			t.Fatalf("failed to shutodwn logwatch: %s", err.Error())
+		}
+	})
+}
+
+// secenario: it consumes a log, then the container returns an error, but when log watch tries to reconnect log producer
+// is still running and log watch never reconnects. log watch should salvage logs that were consumed before error was injected
+func TestLogWatchConnectRetryMockContainer_NotStoppedEver(t *testing.T) {
+	t.Parallel()
+	ctx := testcontext.Get(t)
+	uuid := uuid.NewString()
+	amount := 10
+	interval := float64(1)
+
+	mockedContainer := &MockedLogProducingContainer{
+		name:              fmt.Sprintf("%s-container-%s", t.Name(), uuid),
+		id:                uuid,
+		isRunning:         true,
+		startError:        nil,
+		stopError:         nil,
+		errorChannelError: nil,
+	}
+
+	lw, err := logwatch.NewLogWatch(t, nil, logwatch.WithLogProducerTimeout(1*time.Second), logwatch.WithLogProducerTimeoutRetryLimit(7))
+	require.NoError(t, err, "log watch should be created")
+
+	go func() {
+		// wait for 1 second, so that log watch has time to consume at least one log before it's stopped
+		time.Sleep(6 * time.Second)
+		mockedContainer.startSleep = 1 * time.Second
+		require.True(t, len(lw.ContainerLogs(mockedContainer.name)) > 0, "should have received at least 1 log before injecting error, but got 0")
+
+		// introduce read error, so that log producer stops
+		mockedContainer.errorChannelError = errors.New("failed to read logs")
+		// inject start error, that simulates log producer still running (e.g. closing connection to the container)
+		mockedContainer.startError = errors.New("still running")
+	}()
+
+	logsSent := []string{}
+	go func() {
+		for i := 0; i < amount; i++ {
+			toSend := fmt.Sprintf("message-%d", i)
+			logsSent = append(logsSent, toSend)
+			mockedContainer.SendLog(toSend)
+			time.Sleep(time.Duration(time.Duration(interval) * time.Second))
+		}
+	}()
+
+	err = lw.ConnectContainer(context.Background(), mockedContainer, mockedContainer.name)
+	require.NoError(t, err, "log watch should connect to container")
+
+	time.Sleep(time.Duration(int(interval*float64(amount)))*time.Second + 5*time.Second)
+	lw.PrintAll()
+
+	// it should still salvage 6 logs that were consumed before error was injected and restarting failed
+	require.EqualValues(t, logsSent[:6], lw.ContainerLogs(mockedContainer.name), "log watch should receive six logs")
+	require.Equal(t, 7, mockedContainer.startCounter, "log producer should be started seven times")
 
 	t.Cleanup(func() {
 		if err := lw.Shutdown(ctx); err != nil {

@@ -217,12 +217,11 @@ func (m *LogWatch) ConnectContainer(ctx context.Context, container LogProducingC
 	m.consumers[name] = cons
 	m.containers = append(m.containers, container)
 	container.FollowOutput(cons)
-
 	err = container.StartLogProducer(ctx, m.logProducerTimeout)
 
 	go func(done chan struct{}, timeout time.Duration, retryLimit int) {
-		defer m.log.Info().Str("Container name", name).Msg("Log listener stopped")
-		currentAttempt := 0
+		defer m.log.Info().Str("Container name", name).Msg("Disconnected container logs")
+		currentAttempt := 1
 
 		var shouldRetry = func() bool {
 			if retryLimit == -1 {
@@ -239,11 +238,11 @@ func (m *LogWatch) ConnectContainer(ctx context.Context, container LogProducingC
 
 		for {
 			select {
-			case err := <-container.GetLogProducerErrorChannel():
-				if err != nil {
+			case logErr := <-container.GetLogProducerErrorChannel():
+				if logErr != nil {
 					m.log.Error().
-						Str("Container name", name).
 						Err(err).
+						Str("Container name", name).
 						Msg("Log producer errored")
 					if shouldRetry() {
 						backoff := retries.Fibonacci(currentAttempt)
@@ -253,25 +252,28 @@ func (m *LogWatch) ConnectContainer(ctx context.Context, container LogProducingC
 							Str("Container name", name).
 							Str("Timeout", timeout.String()).
 							Msgf("Retrying connection and listening to container logs. Attempt %d/%d", currentAttempt, retryLimit)
-						// we will request all logs from the start, when we start log producer, so we need to remove ones already saved to avoid duplicates
-						// in the unlikely case that log producer fails to start we will copy the messages, so that at least some logs are salvaged
+						// when log producer starts again it will request all logs again, so we need to remove ones already saved by log watch to avoid duplicates
+						// in the unlikely case that log producer fails to start we will copy the messages received so far, so that at least some logs are salvaged
 						messagesCopy := append([]string{}, m.consumers[name].Messages...)
 						m.consumers[name].Messages = make([]string, 0)
 						m.log.Warn().Msgf("Consumer messages: %d", len(m.consumers[name].Messages))
-						startTime := time.Now()
-						timedout := false
+
+						failedToStart := false
 						for container.StartLogProducer(ctx, timeout) != nil {
-							if time.Since(startTime) >= 5*time.Second {
-								timedout = true
+							if !shouldRetry() {
+								failedToStart = true
 								break
 							}
-							m.log.Info().Msg("Waiting for log producer to stop")
-							time.Sleep(500 * time.Millisecond)
+							m.log.Info().
+								Str("Container name", name).
+								Msg("Waiting for log producer to stop before restarting it")
+							time.Sleep(1 * time.Second)
 						}
-						if timedout {
+						if failedToStart {
 							m.log.Error().
 								Err(err).
-								Msg("Previously running log producer couldn't be stopped. Won't try again")
+								Str("Container name", name).
+								Msg("Previously running log producer couldn't be stopped. Used all retry attempts. Won't try again")
 							m.consumers[name].Messages = messagesCopy
 							return
 						}
@@ -419,7 +421,6 @@ func newContainerLogConsumer(lw *LogWatch, containerName string, prefix string, 
 func (g *ContainerLogConsumer) Accept(l testcontainers.Log) {
 	g.lw.acceptMutex.Lock()
 	defer g.lw.acceptMutex.Unlock()
-	g.lw.log.Info().Msgf("Received log message: %s", string(l.Content))
 	g.Messages = append(g.Messages, string(l.Content))
 	matches := g.FindMatch(l)
 	for i := 0; i < matches; i++ {
