@@ -439,7 +439,7 @@ var (
 		Name:                      "Base Sepolia",
 		SupportsEIP1559:           true,
 		ClientImplementation:      blockchain.OptimismClientImplementation,
-		ChainID:                   84531,
+		ChainID:                   84532,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
 		Timeout:                   blockchain.JSONStrDuration{Duration: 3 * time.Minute},
