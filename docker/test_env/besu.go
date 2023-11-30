@@ -211,9 +211,9 @@ func (g *Besu) getContainerRequest(networks []string) (*tc.ContainerRequest, err
 	}, nil
 }
 
-func (g *Besu) WaitUntilChainIsReady(waitTime time.Duration) error {
+func (g *Besu) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error {
 	waitForFirstBlock := tcwait.NewLogStrategy("Imported #1").WithPollInterval(1 * time.Second).WithStartupTimeout(waitTime)
-	return waitForFirstBlock.WaitUntilReady(context.Background(), *g.GetContainer())
+	return waitForFirstBlock.WaitUntilReady(ctx, *g.GetContainer())
 }
 
 func (g *Besu) GetContainerType() ContainerType {

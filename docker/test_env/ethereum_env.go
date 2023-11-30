@@ -16,6 +16,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
 type ConsensusType string
@@ -302,7 +303,7 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
-	err = client.WaitUntilChainIsReady(en.ethereumChainConfig.GetDefaultWaitDuration())
+	err = client.WaitUntilChainIsReady(testcontext.Get(en.t), en.ethereumChainConfig.GetDefaultWaitDuration())
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}

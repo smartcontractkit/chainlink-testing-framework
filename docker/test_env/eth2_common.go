@@ -1,6 +1,7 @@
 package test_env
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -135,7 +136,7 @@ type ExecutionClient interface {
 	GetInternalWsUrl() string
 	GetExternalHttpUrl() string
 	GetExternalWsUrl() string
-	WaitUntilChainIsReady(waitTime time.Duration) error
+	WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error
 }
 
 type HasDockerImage[T any] interface {
