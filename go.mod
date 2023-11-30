@@ -54,8 +54,7 @@ require (
 replace (
 	// replicating the replace directive on cosmos SDK
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
-	// github.com/testcontainers/testcontainers-go => github.com/Tofel/testcontainers-go v0.0.0-20231128125734-9878fec1b450
-	github.com/testcontainers/testcontainers-go => ../testcontainers-go
+	github.com/testcontainers/testcontainers-go => github.com/Tofel/testcontainers-go v0.0.0-20231130110817-e6fbf9498b56
 
 	k8s.io/api => k8s.io/api v0.25.11
 	k8s.io/apimachinery => k8s.io/apimachinery v0.25.11
