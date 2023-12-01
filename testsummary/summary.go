@@ -5,14 +5,18 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/pkg/errors"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/runid"
 )
 
 var (
 	SUMMARY_FOLDER = ".test_summary"
-	SUMMARY_FILE   = fmt.Sprintf("%s/test_summary.json", SUMMARY_FOLDER)
+	SUMMARY_FILE   = fmt.Sprintf("%s/test_summary-%s-%s.json", SUMMARY_FOLDER, time.Now().Format("2006-01-02T15-04-05"), runid.GetOrGenerateRunId())
 )
 
 type SummaryKeys map[string][]KeyContent
@@ -52,7 +56,11 @@ func AddEntry(testName, key string, value interface{}) error {
 	var entries SummaryKeys
 	err = json.Unmarshal(fc, &entries)
 	if err != nil {
-		return err
+		if !strings.Contains(err.Error(), "unexpected end of JSON input") {
+			return err
+		}
+
+		entries = make(SummaryKeys)
 	}
 
 	if entry, ok := entries[key]; ok {
@@ -72,6 +80,16 @@ func AddEntry(testName, key string, value interface{}) error {
 		}
 	} else {
 		entries[key] = []KeyContent{{TestName: testName, Value: strValue}}
+	}
+
+	_, err = f.Seek(0, 0)
+	if err != nil {
+		return err
+	}
+
+	err = f.Truncate(0)
+	if err != nil {
+		return err
 	}
 
 	encoder := json.NewEncoder(f)

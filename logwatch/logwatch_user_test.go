@@ -133,9 +133,9 @@ func TestFileLoggingTarget(t *testing.T) {
 		nil,
 		logwatch.WithLogTarget(logwatch.File),
 	)
-	require.NoError(t, err)
+	require.NoError(t, err, "failed to create logwatch")
 	err = d.ConnectLogs(lw)
-	require.NoError(t, err)
+	require.NoError(t, err, "failed to connect logs")
 
 	time.Sleep(2 * time.Second)
 
@@ -146,10 +146,12 @@ func TestFileLoggingTarget(t *testing.T) {
 		return nil
 	}
 
+	err = lw.FlushLogsToTargets()
+	require.NoError(t, err, "failed to flush logs to targets")
 	lw.SaveLogTargetsLocations(bufferWriter)
 
 	content, err := os.ReadFile(logFileLocation + "/container-0.log")
-	require.NoError(t, err)
+	require.NoError(t, err, "failed to read log file")
 
 	require.True(t, bytes.Contains(content, A), "A should be present in log file")
 	require.True(t, bytes.Contains(content, B), "B should be present in log file")
@@ -200,11 +202,13 @@ func TestMultipleMockedLoggingTargets(t *testing.T) {
 		logwatch.WithLogTarget(logwatch.Loki),
 		logwatch.WithLogTarget(logwatch.File),
 	)
-	require.NoError(t, err)
+	require.NoError(t, err, "failed to create logwatch")
 	err = d.ConnectLogs(lw)
-	require.NoError(t, err)
+	require.NoError(t, err, "failed to connect logs")
 
 	time.Sleep(2 * time.Second)
+	err = lw.FlushLogsToTargets()
+	require.NoError(t, err, "failed to flush logs to targets")
 
 	assertMockedHandlerHasLogs(t, mockedFileHandler)
 	assertMockedHandlerHasLogs(t, mockedLokiHanlder)
@@ -224,11 +228,13 @@ func TestOneMockedLoggingTarget(t *testing.T) {
 		logwatch.WithCustomLogHandler(logwatch.Loki, mockedLokiHanlder),
 		logwatch.WithLogTarget(logwatch.Loki),
 	)
-	require.NoError(t, err)
+	require.NoError(t, err, "failed to create logwatch")
 	err = d.ConnectLogs(lw)
-	require.NoError(t, err)
+	require.NoError(t, err, "failed to connect logs")
 
 	time.Sleep(2 * time.Second)
+	err = lw.FlushLogsToTargets()
+	require.NoError(t, err, "failed to flush logs to targets")
 
 	assertMockedHandlerHasLogs(t, mockedLokiHanlder)
 }

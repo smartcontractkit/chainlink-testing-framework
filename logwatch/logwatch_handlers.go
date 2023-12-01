@@ -131,7 +131,7 @@ func (h *LokiLogHandler) Handle(c *ContainerLogConsumer, content LogContent) err
 		"test":         model.LabelValue(content.TestName),
 		"container_id": model.LabelValue(content.ContainerName),
 		"run_id":       model.LabelValue(h.runId),
-	}, time.Now(), string(content.Content))
+	}, content.Time, string(content.Content))
 
 	return nil
 }
