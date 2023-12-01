@@ -157,8 +157,9 @@ func TestFileLoggingTarget(t *testing.T) {
 }
 
 type MockedLogHandler struct {
-	logs   []logwatch.LogContent
-	Target logwatch.LogTarget
+	logs        []logwatch.LogContent
+	Target      logwatch.LogTarget
+	executionId string
 }
 
 func (m *MockedLogHandler) Handle(consumer *logwatch.ContainerLogConsumer, content logwatch.LogContent) error {
@@ -172,6 +173,14 @@ func (m *MockedLogHandler) GetLogLocation(consumers map[string]*logwatch.Contain
 
 func (m *MockedLogHandler) GetTarget() logwatch.LogTarget {
 	return m.Target
+}
+
+func (m *MockedLogHandler) SetRunId(executionId string) {
+	m.executionId = executionId
+}
+
+func (m *MockedLogHandler) GetRunId() string {
+	return m.executionId
 }
 
 func TestMultipleMockedLoggingTargets(t *testing.T) {

@@ -56,7 +56,7 @@ dist/
 **/remote_runner_config.yaml
 logs/
 
-test_summary.json
+.test_summary/
 
 env/cmd/chaos
 env/bin/

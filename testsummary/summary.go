@@ -2,6 +2,7 @@ package testsummary
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"sync"
@@ -9,7 +10,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-const SUMMARY_FILE = "test_summary.json"
+var (
+	SUMMARY_FOLDER = ".test_summary"
+	SUMMARY_FILE   = fmt.Sprintf("%s/test_summary.json", SUMMARY_FOLDER)
+)
 
 type SummaryKeys map[string][]KeyContent
 
@@ -30,7 +34,11 @@ func AddEntry(testName, key string, value interface{}) error {
 	}
 	strValue := value.(string)
 
-	f, err := os.OpenFile(SUMMARY_FILE, os.O_CREATE|os.O_WRONLY, 0644)
+	if err := os.MkdirAll(SUMMARY_FOLDER, 0755); err != nil {
+		return err
+	}
+
+	f, err := os.OpenFile(SUMMARY_FILE, os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
 		return err
 	}

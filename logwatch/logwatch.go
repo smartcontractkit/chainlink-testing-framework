@@ -2,6 +2,7 @@ package logwatch
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"regexp"
 	"strings"
@@ -9,12 +10,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/smartcontractkit/wasp"
 	"github.com/testcontainers/testcontainers-go"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/testsummary"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/retries"
 )
 
@@ -53,6 +56,7 @@ type LogWatch struct {
 	logProducerTimeout           time.Duration
 	logProducerTimeoutRetryLimit int // -1 for infinite retries
 	acceptMutex                  sync.Mutex
+	runId                        string
 }
 
 type LogContent struct {
@@ -91,6 +95,8 @@ func NewLogWatch(t *testing.T, patterns map[string][]*regexp.Regexp, options ...
 		enabledLogTargets:            envLogTargets,
 	}
 
+	logWatch.setOrGenerateRunId()
+
 	for _, option := range options {
 		option(logWatch)
 	}
@@ -99,7 +105,27 @@ func NewLogWatch(t *testing.T, patterns map[string][]*regexp.Regexp, options ...
 		return nil, err
 	}
 
+	for _, handler := range logWatch.logTargetHandlers {
+		handler.SetRunId(logWatch.runId)
+	}
+
+	l.Info().Str("Run_id", logWatch.runId).Msg("LogWatch initialized")
+
 	return logWatch, nil
+}
+
+func (m *LogWatch) setOrGenerateRunId() {
+	inOs := os.Getenv("RUN_ID")
+
+	if inOs != "" {
+		m.log.Info().Str("Run_id", inOs).Msg("Using run_id from env var")
+		m.runId = inOs
+	}
+
+	runId := fmt.Sprintf("%s-%s", m.testName, uuid.NewString()[0:16])
+	m.log.Info().Str("Run_id", runId).Msg("Generated run id")
+
+	m.runId = runId
 }
 
 func (m *LogWatch) validateLogTargets() error {
@@ -331,6 +357,12 @@ func (m *LogWatch) PrintLogTargetsLocations() {
 	m.SaveLogTargetsLocations(func(testName string, name string, location interface{}) error {
 		m.log.Info().Str("Test", testName).Str("Handler", name).Interface("Location", location).Msg("Log location")
 		return nil
+	})
+}
+
+func (m *LogWatch) SaveLogLocationInTestSummary() {
+	m.SaveLogTargetsLocations(func(testName string, name string, location interface{}) error {
+		return testsummary.AddEntry(testName, name, location)
 	})
 }
 

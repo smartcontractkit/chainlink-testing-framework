@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -23,6 +24,8 @@ type HandleLogTarget interface {
 	Handle(*ContainerLogConsumer, LogContent) error
 	GetLogLocation(map[string]*ContainerLogConsumer) (string, error)
 	GetTarget() LogTarget
+	SetRunId(string)
+	GetRunId() string
 }
 
 func getDefaultLogHandlers() map[LogTarget]HandleLogTarget {
@@ -37,6 +40,7 @@ func getDefaultLogHandlers() map[LogTarget]HandleLogTarget {
 type FileLogHandler struct {
 	logFolder         string
 	shouldSkipLogging bool
+	runId             string
 }
 
 func (h *FileLogHandler) Handle(c *ContainerLogConsumer, content LogContent) error {
@@ -76,7 +80,7 @@ func (h FileLogHandler) GetLogLocation(_ map[string]*ContainerLogConsumer) (stri
 
 func (h *FileLogHandler) getOrCreateLogFolder(testname string) (string, error) {
 	if h.logFolder == "" {
-		folder := fmt.Sprintf("./logs/%s-%s", testname, time.Now().Format("2006-01-02T15-04-05"))
+		folder := fmt.Sprintf("./logs/%s-%s-%s", testname, time.Now().Format("2006-01-02T15-04-05"), h.runId)
 		if err := os.MkdirAll(folder, os.ModePerm); err != nil {
 			return "", err
 		}
@@ -90,10 +94,19 @@ func (h FileLogHandler) GetTarget() LogTarget {
 	return File
 }
 
+func (h *FileLogHandler) SetRunId(executionId string) {
+	h.runId = executionId
+}
+
+func (h *FileLogHandler) GetRunId() string {
+	return h.runId
+}
+
 // streams logs to Loki
 type LokiLogHandler struct {
 	grafanaUrl        string
 	shouldSkipLogging bool
+	runId             string
 }
 
 func (h *LokiLogHandler) Handle(c *ContainerLogConsumer, content LogContent) error {
@@ -114,9 +127,10 @@ func (h *LokiLogHandler) Handle(c *ContainerLogConsumer, content LogContent) err
 	}
 	// we can notify more than one time if it matches, but we push only once
 	_ = c.lw.loki.Handle(model.LabelSet{
-		"type":      "log_watch",
-		"test":      model.LabelValue(content.TestName),
-		"container": model.LabelValue(content.ContainerName),
+		"type":         "log_watch",
+		"test":         model.LabelValue(content.TestName),
+		"container_id": model.LabelValue(content.ContainerName),
+		"run_id":       model.LabelValue(h.runId),
 	}, time.Now(), string(content.Content))
 
 	return nil
@@ -127,17 +141,28 @@ func (h *LokiLogHandler) GetLogLocation(consumers map[string]*ContainerLogConsum
 		return h.grafanaUrl, nil
 	}
 
-	queries := make([]GrafanaExploreQuery, 0)
+	grafanaBaseUrl := os.Getenv("GRAFANA_URL")
+	if grafanaBaseUrl == "" {
+		return "", errors.New("GRAFANA_URL env var is not set")
+	}
+
+	grafanaBaseUrl = strings.TrimSuffix(grafanaBaseUrl, "/")
 
 	rangeFrom := time.Now()
 	rangeTo := time.Now().Add(time.Minute) //just to make sure we get the last message
 
+	var sb strings.Builder
+	sb.WriteString(grafanaBaseUrl)
+	sb.WriteString("/d/ddf75041-1e39-42af-aa46-361fe4c36e9e/ci-e2e-tests-logs?orgId=1&")
+	sb.WriteString(fmt.Sprintf("var-run_id=%s", h.runId))
+
+	if len(consumers) == 0 {
+		return "", errors.New("no Loki consumers found")
+	}
+
 	for _, c := range consumers {
 		if c.hasLogTarget(Loki) {
-			queries = append(queries, GrafanaExploreQuery{
-				refId:     c.name,
-				container: c.name,
-			})
+			sb.WriteString(fmt.Sprintf("&var-container_id=%s", c.name))
 		}
 
 		// lets find the oldest log message to know when to start the range from
@@ -161,21 +186,20 @@ func (h *LokiLogHandler) GetLogLocation(consumers map[string]*ContainerLogConsum
 		}
 	}
 
-	if len(queries) == 0 {
-		return "", errors.New("no Loki consumers found")
-	}
-
-	h.grafanaUrl = GrafanaExploreUrl{
-		baseurl:    os.Getenv("GRAFANA_URL"),
-		datasource: os.Getenv("GRAFANA_DATASOURCE"),
-		queries:    queries,
-		rangeFrom:  rangeFrom.UnixMilli(),
-		rangeTo:    rangeTo.UnixMilli(),
-	}.getUrl()
+	sb.WriteString(fmt.Sprintf("&from=%d&to=%d", rangeFrom.UnixMilli(), rangeTo.UnixMilli()))
+	h.grafanaUrl = sb.String()
 
 	return h.grafanaUrl, nil
 }
 
 func (h LokiLogHandler) GetTarget() LogTarget {
 	return Loki
+}
+
+func (h *LokiLogHandler) SetRunId(executionId string) {
+	h.runId = executionId
+}
+
+func (h *LokiLogHandler) GetRunId() string {
+	return h.runId
 }
