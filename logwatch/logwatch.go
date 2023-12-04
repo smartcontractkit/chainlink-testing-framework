@@ -86,6 +86,11 @@ func NewLogWatch(t *testing.T, patterns map[string][]*regexp.Regexp, options ...
 		return nil, err
 	}
 
+	runId, err := runid.GetOrGenerateRunId()
+	if err != nil {
+		return nil, err
+	}
+
 	logWatch := &LogWatch{
 		testName:                     testName,
 		log:                          l,
@@ -97,7 +102,7 @@ func NewLogWatch(t *testing.T, patterns map[string][]*regexp.Regexp, options ...
 		logProducerTimeout:           time.Duration(10 * time.Second),
 		logProducerTimeoutRetryLimit: 10,
 		enabledLogTargets:            envLogTargets,
-		runId:                        fmt.Sprintf("%s-%s", testName, runid.GetOrGenerateRunId()),
+		runId:                        runId,
 	}
 
 	for _, option := range options {
@@ -451,6 +456,7 @@ func (m *LogWatch) FlushLogsToTargets() error {
 		counter := 0
 
 		//TODO handle in batches?
+	LOG_LOOP:
 		for {
 			var log LogContent
 			decodeErr := decoder.Decode(&log)
@@ -463,13 +469,14 @@ func (m *LogWatch) FlushLogsToTargets() error {
 								Err(err).
 								Str("Container", consumer.name).
 								Str("log target", string(logTarget)).
-								Msg("Failed to handle log target")
+								Msg("Failed to handle log target. Aborting")
+							break LOG_LOOP
 						}
 					} else {
 						m.log.Warn().
 							Str("Container", consumer.name).
 							Str("log target", string(logTarget)).
-							Msg("No handler found for log target")
+							Msg("No handler found for log target. Aborting")
 					}
 				}
 			} else if errors.Is(decodeErr, io.EOF) {

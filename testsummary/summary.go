@@ -16,7 +16,8 @@ import (
 
 var (
 	SUMMARY_FOLDER = ".test_summary"
-	SUMMARY_FILE   = fmt.Sprintf("%s/test_summary-%s-%s.json", SUMMARY_FOLDER, time.Now().Format("2006-01-02T15-04-05"), runid.GetOrGenerateRunId())
+	SUMMARY_FILE   string
+	mu             sync.Mutex
 )
 
 type SummaryKeys map[string][]KeyContent
@@ -26,7 +27,13 @@ type KeyContent struct {
 	Value    string `json:"value"`
 }
 
-var mu sync.Mutex
+func init() {
+	runId, err := runid.GetOrGenerateRunId()
+	if err != nil {
+		panic(err)
+	}
+	SUMMARY_FILE = fmt.Sprintf("%s/test_summary-%s-%s.json", SUMMARY_FOLDER, time.Now().Format("2006-01-02T15-04-05"), runId)
+}
 
 // TODO in future allow value to be also []string or map[string]string?
 func AddEntry(testName, key string, value interface{}) error {
