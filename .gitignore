@@ -57,6 +57,7 @@ dist/
 logs/
 
 .test_summary/
+.run.id
 
 env/cmd/chaos
 env/bin/
