@@ -19,12 +19,8 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
-)
-
-const (
-	//TODO use Tate's mirror
-	ETHEREUM_CLIENT_GO_IMAGE_TAG = "v1.13.4"
 )
 
 type Geth2 struct {
@@ -43,7 +39,13 @@ type Geth2 struct {
 	image                string
 }
 
-func NewGeth2(networks []string, chainConfg *EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) *Geth2 {
+func NewGeth2(networks []string, chainConfg *EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) (*Geth2, error) {
+	// currently it uses v1.13.5
+	dockerImage, err := mirror.GetImage("ethereum/client-go:v1.13")
+	if err != nil {
+		return nil, err
+	}
+
 	g := &Geth2{
 		EnvComponent: EnvComponent{
 			ContainerName: fmt.Sprintf("%s-%s", "geth2", uuid.NewString()[0:8]),
@@ -53,12 +55,12 @@ func NewGeth2(networks []string, chainConfg *EthereumChainConfig, generatedDataH
 		generatedDataHostDir: generatedDataHostDir,
 		consensusLayer:       consensusLayer,
 		l:                    logging.GetTestLogger(nil),
-		image:                fmt.Sprintf("ethereum/client-go:%s", ETHEREUM_CLIENT_GO_IMAGE_TAG),
+		image:                dockerImage,
 	}
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
-	return g
+	return g, nil
 }
 
 func (g *Geth2) WithImage(imageWithTag string) *Geth2 {
@@ -66,7 +68,7 @@ func (g *Geth2) WithImage(imageWithTag string) *Geth2 {
 	return g
 }
 
-func (g *Geth2) WithTestInstance(t *testing.T) *Geth2 {
+func (g *Geth2) WithTestInstance(t *testing.T) ExecutionClient {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
 	return g

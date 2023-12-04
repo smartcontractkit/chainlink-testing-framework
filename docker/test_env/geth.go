@@ -190,7 +190,7 @@ func (g *Geth) getGethContainerRequest(networks []string) (*tc.ContainerRequest,
 	if err != nil {
 		return nil, ks, &account, err
 	}
-	gethImage, err := mirror.GetImage("ethereum/client-go:v")
+	gethImage, err := mirror.GetImage("ethereum/client-go:v1.12")
 	if err != nil {
 		return nil, nil, nil, err
 	}

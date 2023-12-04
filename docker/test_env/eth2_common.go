@@ -3,6 +3,7 @@ package test_env
 import (
 	"context"
 	"fmt"
+	"testing"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -137,6 +138,7 @@ type ExecutionClient interface {
 	GetExternalHttpUrl() string
 	GetExternalWsUrl() string
 	WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error
+	WithTestInstance(t *testing.T) ExecutionClient
 }
 
 type HasDockerImage[T any] interface {

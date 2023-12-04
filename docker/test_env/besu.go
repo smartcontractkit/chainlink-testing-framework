@@ -16,12 +16,8 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
-)
-
-const (
-	//TODO use Tate's mirror
-	BESU_IMAGE_TAG = "23.10"
 )
 
 type Besu struct {
@@ -40,7 +36,14 @@ type Besu struct {
 	image                string
 }
 
-func NewBesu(networks []string, chainConfg *EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) *Besu {
+func NewBesu(networks []string, chainConfg *EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) (*Besu, error) {
+	// currently it uses 23.10
+	dockerImage, err := mirror.GetImage("hyperledger/besu:23")
+
+	if err != nil {
+		return nil, err
+	}
+
 	g := &Besu{
 		EnvComponent: EnvComponent{
 			ContainerName: fmt.Sprintf("%s-%s", "besu", uuid.NewString()[0:8]),
@@ -50,12 +53,12 @@ func NewBesu(networks []string, chainConfg *EthereumChainConfig, generatedDataHo
 		generatedDataHostDir: generatedDataHostDir,
 		consensusLayer:       consensusLayer,
 		l:                    logging.GetTestLogger(nil),
-		image:                fmt.Sprintf("hyperledger/besu:%s", BESU_IMAGE_TAG),
+		image:                dockerImage,
 	}
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
-	return g
+	return g, nil
 }
 
 func (g *Besu) WithImage(imageWithTag string) *Besu {
@@ -63,7 +66,7 @@ func (g *Besu) WithImage(imageWithTag string) *Besu {
 	return g
 }
 
-func (g *Besu) WithTestInstance(t *testing.T) *Besu {
+func (g *Besu) WithTestInstance(t *testing.T) ExecutionClient {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
 	return g

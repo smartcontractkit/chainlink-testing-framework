@@ -13,13 +13,13 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
 const (
 	PRYSM_QUERY_RPC_PORT = "3500"
 	PRYSM_NODE_RPC_PORT  = "4000"
-	PRYSM_IMAGE_TAG      = "v4.1.1"
 )
 
 type PrysmBeaconChain struct {
@@ -36,7 +36,13 @@ type PrysmBeaconChain struct {
 	image                     string
 }
 
-func NewPrysmBeaconChain(networks []string, chainConfig *EthereumChainConfig, customConfigDataDir, gethExecutionURL string, opts ...EnvComponentOption) *PrysmBeaconChain {
+func NewPrysmBeaconChain(networks []string, chainConfig *EthereumChainConfig, customConfigDataDir, gethExecutionURL string, opts ...EnvComponentOption) (*PrysmBeaconChain, error) {
+	// currently it uses v4.1.1
+	dockerImage, err := mirror.GetImage("gcr.io/prysmaticlabs/prysm/beacon-chain:v")
+	if err != nil {
+		return nil, err
+	}
+
 	g := &PrysmBeaconChain{
 		EnvComponent: EnvComponent{
 			ContainerName: fmt.Sprintf("%s-%s", "prysm-beacon-chain", uuid.NewString()[0:8]),
@@ -46,12 +52,12 @@ func NewPrysmBeaconChain(networks []string, chainConfig *EthereumChainConfig, cu
 		generatedDataHostDir:     customConfigDataDir,
 		gethInternalExecutionURL: gethExecutionURL,
 		l:                        logging.GetTestLogger(nil),
-		image:                    fmt.Sprintf("gcr.io/prysmaticlabs/prysm/beacon-chain:%s", PRYSM_IMAGE_TAG),
+		image:                    dockerImage,
 	}
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
-	return g
+	return g, nil
 }
 
 func (g *PrysmBeaconChain) WithImage(imageWithTag string) *PrysmBeaconChain {
@@ -163,7 +169,13 @@ type PrysmValidator struct {
 	image                     string
 }
 
-func NewPrysmValidator(networks []string, chainConfig *EthereumChainConfig, generatedDataHostDir, valKeysDir, internalBeaconRpcProvider string, opts ...EnvComponentOption) *PrysmValidator {
+func NewPrysmValidator(networks []string, chainConfig *EthereumChainConfig, generatedDataHostDir, valKeysDir, internalBeaconRpcProvider string, opts ...EnvComponentOption) (*PrysmValidator, error) {
+	// currently it uses v4.1.1
+	dockerImage, err := mirror.GetImage("gcr.io/prysmaticlabs/prysm/validator:v")
+	if err != nil {
+		return nil, err
+	}
+
 	g := &PrysmValidator{
 		EnvComponent: EnvComponent{
 			ContainerName: fmt.Sprintf("%s-%s", "prysm-validator", uuid.NewString()[0:8]),
@@ -174,12 +186,12 @@ func NewPrysmValidator(networks []string, chainConfig *EthereumChainConfig, gene
 		valKeysDir:                valKeysDir,
 		internalBeaconRpcProvider: internalBeaconRpcProvider,
 		l:                         logging.GetTestLogger(nil),
-		image:                     fmt.Sprintf("gcr.io/prysmaticlabs/prysm/validator:%s", PRYSM_IMAGE_TAG),
+		image:                     dockerImage,
 	}
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
-	return g
+	return g, nil
 }
 
 func (g *PrysmValidator) WithImage(imageWithTag string) *PrysmValidator {

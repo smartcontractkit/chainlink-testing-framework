@@ -277,13 +277,24 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
 		}
 
-		valKeysGeneretor := NewValKeysGeneretor(en.EthereumChainConfig, valKeysDir).WithTestInstance(en.t)
+		valKeysGeneretor, err := NewValKeysGeneretor(en.EthereumChainConfig, valKeysDir)
+		if err != nil {
+			return blockchain.EVMNetwork{}, RpcProvider{}, err
+		}
+		valKeysGeneretor.WithTestInstance(en.t)
+
 		err = valKeysGeneretor.StartContainer()
 		if err != nil {
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
 		}
 
-		genesis := NewEthGenesisGenerator(*en.EthereumChainConfig, generatedDataHostDir).WithTestInstance(en.t)
+		genesis, err := NewEthGenesisGenerator(*en.EthereumChainConfig, generatedDataHostDir)
+		if err != nil {
+			return blockchain.EVMNetwork{}, RpcProvider{}, err
+		}
+
+		genesis.WithTestInstance(en.t)
+
 		err = genesis.StartContainer()
 		if err != nil {
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
@@ -301,31 +312,49 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 	}
 
 	var client ExecutionClient
+	var clientErr error
 	switch en.ExecutionLayer {
 	case ExecutionLayer_Geth:
-		client = NewGeth2(singleNetwork, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Geth2)).WithTestInstance(en.t)
+		client, clientErr = NewGeth2(singleNetwork, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Geth2))
 	case ExecutionLayer_Nethermind:
-		client = NewNethermind(singleNetwork, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Nethermind)).WithTestInstance(en.t)
+		client, clientErr = NewNethermind(singleNetwork, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Nethermind))
 	case ExecutionLayer_Erigon:
-		client = NewErigon(singleNetwork, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Erigon)).WithTestInstance(en.t)
+		client, clientErr = NewErigon(singleNetwork, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Erigon))
 	case ExecutionLayer_Besu:
-		client = NewBesu(singleNetwork, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Besu)).WithTestInstance(en.t)
+		client, clientErr = NewBesu(singleNetwork, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Besu))
 	default:
 		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf("unsupported execution layer: %s", en.ExecutionLayer)
 	}
+
+	if clientErr != nil {
+		return blockchain.EVMNetwork{}, RpcProvider{}, clientErr
+	}
+
+	client.WithTestInstance(en.t)
 
 	net, err = client.StartContainer()
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
-	beacon := NewPrysmBeaconChain(singleNetwork, en.EthereumChainConfig, generatedDataHostDir, client.GetInternalExecutionURL(), en.setExistingContainerName(ContainerType_PrysmBeacon)).WithTestInstance(en.t)
+	beacon, err := NewPrysmBeaconChain(singleNetwork, en.EthereumChainConfig, generatedDataHostDir, client.GetInternalExecutionURL(), en.setExistingContainerName(ContainerType_PrysmBeacon))
+	if err != nil {
+		return blockchain.EVMNetwork{}, RpcProvider{}, err
+	}
+
+	beacon.WithTestInstance(en.t)
 	err = beacon.StartContainer()
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
-	validator := NewPrysmValidator(singleNetwork, en.EthereumChainConfig, generatedDataHostDir, valKeysDir, beacon.InternalBeaconRpcProvider, en.setExistingContainerName(ContainerType_PrysmVal)).WithTestInstance(en.t)
+	validator, err := NewPrysmValidator(singleNetwork, en.EthereumChainConfig, generatedDataHostDir, valKeysDir, beacon.
+		InternalBeaconRpcProvider, en.setExistingContainerName(ContainerType_PrysmVal))
+	if err != nil {
+		return blockchain.EVMNetwork{}, RpcProvider{}, err
+	}
+
+	validator.WithTestInstance(en.t)
 	err = validator.StartContainer()
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err

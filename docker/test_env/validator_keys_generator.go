@@ -13,6 +13,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 )
 
 type ValKeysGeneretor struct {
@@ -22,9 +23,16 @@ type ValKeysGeneretor struct {
 	valKeysHostDataDir string
 	addressesToFund    []string
 	t                  *testing.T
+	image              string
 }
 
-func NewValKeysGeneretor(chainConfig *EthereumChainConfig, valKeysHostDataDir string, opts ...EnvComponentOption) *ValKeysGeneretor {
+func NewValKeysGeneretor(chainConfig *EthereumChainConfig, valKeysHostDataDir string, opts ...EnvComponentOption) (*ValKeysGeneretor, error) {
+	// currently it uses latest (no fixed version available)
+	dockerImage, err := mirror.GetImage("protolambda/eth2-val-tools:l")
+	if err != nil {
+		return nil, err
+	}
+
 	g := &ValKeysGeneretor{
 		EnvComponent: EnvComponent{
 			ContainerName: fmt.Sprintf("%s-%s", "val-keys-generator", uuid.NewString()[0:8]),
@@ -33,11 +41,13 @@ func NewValKeysGeneretor(chainConfig *EthereumChainConfig, valKeysHostDataDir st
 		valKeysHostDataDir: valKeysHostDataDir,
 		l:                  log.Logger,
 		addressesToFund:    []string{},
+		image:              dockerImage,
 	}
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
-	return g
+
+	return g, nil
 }
 
 func (g *ValKeysGeneretor) WithTestInstance(t *testing.T) *ValKeysGeneretor {
@@ -72,7 +82,7 @@ func (g *ValKeysGeneretor) StartContainer() error {
 func (g *ValKeysGeneretor) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
 	return &tc.ContainerRequest{
 		Name:          g.ContainerName,
-		Image:         "protolambda/eth2-val-tools:latest",
+		Image:         g.image,
 		ImagePlatform: "linux/x86_64",
 		Networks:      networks,
 		WaitingFor: NewExitCodeStrategy().WithExitCode(0).

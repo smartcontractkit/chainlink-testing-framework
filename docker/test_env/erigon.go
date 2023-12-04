@@ -19,12 +19,8 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
-)
-
-const (
-	//TODO use Tate's mirror
-	ERIGON_IMAGE_TAG = "v2.54.0"
 )
 
 type Erigon struct {
@@ -43,7 +39,13 @@ type Erigon struct {
 	image                string
 }
 
-func NewErigon(networks []string, chainConfg *EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) *Erigon {
+func NewErigon(networks []string, chainConfg *EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) (*Erigon, error) {
+	// currently it uses v2.54.0
+	dockerImage, err := mirror.GetImage("thorax/erigon:v")
+	if err != nil {
+		return nil, err
+	}
+
 	g := &Erigon{
 		EnvComponent: EnvComponent{
 			ContainerName: fmt.Sprintf("%s-%s", "erigon", uuid.NewString()[0:8]),
@@ -53,12 +55,12 @@ func NewErigon(networks []string, chainConfg *EthereumChainConfig, generatedData
 		generatedDataHostDir: generatedDataHostDir,
 		consensusLayer:       consensusLayer,
 		l:                    logging.GetTestLogger(nil),
-		image:                fmt.Sprintf("thorax/erigon:%s", ERIGON_IMAGE_TAG),
+		image:                dockerImage,
 	}
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
-	return g
+	return g, nil
 }
 
 func (g *Erigon) WithImage(imageWithTag string) *Erigon {
@@ -66,7 +68,7 @@ func (g *Erigon) WithImage(imageWithTag string) *Erigon {
 	return g
 }
 
-func (g *Erigon) WithTestInstance(t *testing.T) *Erigon {
+func (g *Erigon) WithTestInstance(t *testing.T) ExecutionClient {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
 	return g
