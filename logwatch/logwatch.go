@@ -382,14 +382,14 @@ func (m *LogWatch) SaveLogTargetsLocations(writer LogWriter) {
 	}
 }
 
-func (c *ContainerLogConsumer) Stop() {
-	if c.isDone {
+func (g *ContainerLogConsumer) Stop() {
+	if g.isDone {
 		return
 	}
 
-	c.isDone = true
-	c.logListeningDone <- struct{}{}
-	defer close(c.logListeningDone)
+	g.isDone = true
+	g.logListeningDone <- struct{}{}
+	defer close(g.logListeningDone)
 }
 
 // DisconnectContainer disconnects the particular container
