@@ -103,7 +103,7 @@ func TestEth2WithPrysmAndGethReuseFromEnv(t *testing.T) {
 	os.Setenv(CONFIG_ENV_VAR_NAME, "change-me-to-the-path-of-your-config-file")
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		FromEnvVar().
+		WihtExistingConfigFromEnvVar().
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 
@@ -114,4 +114,18 @@ func TestEth2WithPrysmAndGethReuseFromEnv(t *testing.T) {
 	require.NoError(t, err, "Couldn't connect to the evm client")
 	err = c.Close()
 	require.NoError(t, err, "Couldn't close the client")
+}
+
+func TestEth2ExecClientFromEnv(t *testing.T) {
+	os.Setenv(EXEC_CLIENT_ENV_VAR_NAME, "BEsu")
+	builder := NewEthereumNetworkBuilder()
+	cfg, err := builder.
+		WithExecClientFromEnvVar().
+		WithEthereumChainConfig(EthereumChainConfig{
+			SecondsPerSlot: 6,
+			SlotsPerEpoch:  2,
+		}).
+		Build()
+	require.NoError(t, err, "Builder validation failed")
+	require.Equal(t, ExecutionLayer_Besu, cfg.ExecutionLayer, "Execution layer should be Besu")
 }

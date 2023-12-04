@@ -22,7 +22,8 @@ import (
 )
 
 const (
-	CONFIG_ENV_VAR_NAME = "PRIVATE_ETHEREUM_NETWORK_CONFIG_PATH"
+	CONFIG_ENV_VAR_NAME      = "PRIVATE_ETHEREUM_NETWORK_CONFIG_PATH"
+	EXEC_CLIENT_ENV_VAR_NAME = "ETH2_EL_CLIENT"
 )
 
 type ConsensusType string
@@ -48,16 +49,17 @@ const (
 )
 
 type EthereumNetworkBuilder struct {
-	t                   *testing.T
-	dockerNetworks      []string
-	consensusType       ConsensusType
-	consensusLayer      *ConsensusLayer
-	executionLayer      ExecutionLayer
-	ethereumChainConfig *EthereumChainConfig
-	existingConfig      *EthereumNetwork
-	addressesToFund     []string
-	waitForFinalization bool
-	fromEnvVar          bool
+	t                    *testing.T
+	dockerNetworks       []string
+	consensusType        ConsensusType
+	consensusLayer       *ConsensusLayer
+	executionLayer       ExecutionLayer
+	ethereumChainConfig  *EthereumChainConfig
+	existingConfig       *EthereumNetwork
+	addressesToFund      []string
+	waitForFinalization  bool
+	existingFromEnvVar   bool
+	execClientFromEnvVar bool
 }
 
 type EthereumNetworkParticipant struct {
@@ -103,13 +105,18 @@ func (b *EthereumNetworkBuilder) WithExistingConfig(config EthereumNetwork) *Eth
 	return b
 }
 
-func (b *EthereumNetworkBuilder) WithTest(t *testing.T) *EthereumNetworkBuilder {
-	b.t = t
+func (b *EthereumNetworkBuilder) WihtExistingConfigFromEnvVar() *EthereumNetworkBuilder {
+	b.existingFromEnvVar = true
 	return b
 }
 
-func (b *EthereumNetworkBuilder) FromEnvVar() *EthereumNetworkBuilder {
-	b.fromEnvVar = true
+func (b *EthereumNetworkBuilder) WithExecClientFromEnvVar() *EthereumNetworkBuilder {
+	b.execClientFromEnvVar = true
+	return b
+}
+
+func (b *EthereumNetworkBuilder) WithTest(t *testing.T) *EthereumNetworkBuilder {
+	b.t = t
 	return b
 }
 
@@ -138,7 +145,7 @@ func (b *EthereumNetworkBuilder) buildNetworkConfig() EthereumNetwork {
 }
 
 func (b *EthereumNetworkBuilder) Build() (EthereumNetwork, error) {
-	if b.fromEnvVar {
+	if b.existingFromEnvVar {
 		path := os.Getenv(CONFIG_ENV_VAR_NAME)
 		if path == "" {
 			return EthereumNetwork{}, fmt.Errorf("environment variable %s is not set, but build from env var was requested", CONFIG_ENV_VAR_NAME)
@@ -163,6 +170,31 @@ func (b *EthereumNetworkBuilder) Build() (EthereumNetwork, error) {
 		}
 
 		b.ethereumChainConfig.GenerateGenesisTimestamp()
+	}
+
+	if b.execClientFromEnvVar {
+		b.consensusType = ConsensusType_PoS
+		c := ConsensusLayer_Prysm
+		b.consensusLayer = &c
+
+		elEnv := os.Getenv(EXEC_CLIENT_ENV_VAR_NAME)
+		if elEnv == "" {
+			return EthereumNetwork{}, errors.New("ETH2_EL_CLIENT env var is not set, but exec layer client config from env var was requested")
+		}
+
+		elEnv = strings.ToLower(elEnv)
+		switch elEnv {
+		case "geth":
+			b.executionLayer = ExecutionLayer_Geth
+		case "nethermind":
+			b.executionLayer = ExecutionLayer_Nethermind
+		case "erigon":
+			b.executionLayer = ExecutionLayer_Erigon
+		case "besu":
+			b.executionLayer = ExecutionLayer_Besu
+		default:
+			return EthereumNetwork{}, fmt.Errorf("unknown execution layer client: %s", elEnv)
+		}
 	}
 
 	err := b.validate()
