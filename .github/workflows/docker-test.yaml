@@ -1,11 +1,13 @@
-name: (all packages) Unit tests
+name: (all packages) Docker Test Env tests
 on:
-  push:
-    tags:
-      - v*
+  pull_request_review:
+    types: [submitted]
   pull_request:
+    types: [labeled]
+
 jobs:
-  unit:
+  docker:
+    if: ${{ github.event.label.name == 'docker_tests' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the Repo
@@ -29,7 +31,7 @@ jobs:
           set -euo pipefail
           # disabled, because we want to use a multiline output of go list command
           # shellcheck disable=SC2046
-          go test -timeout 5m -json -cover -covermode=count -coverprofile=unit-test-coverage.out $(go list ./... | grep -v /k8s/e2e/ | grep -v /k8s/examples/ | grep -v /docker/test_env) 2>&1 | tee /tmp/gotest.log | gotestfmt
+          go test -timeout 20m -json -cover -covermode=atomic -coverprofile=unit-test-coverage.out $(go list ./... | grep /docker/test_env) 2>&1 | tee /tmp/gotest.log | gotestfmt
       - name: Code Coverage
         uses: codecov/codecov-action@v3
         with:
