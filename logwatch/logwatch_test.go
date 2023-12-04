@@ -136,7 +136,7 @@ func TestLogWatchDocker(t *testing.T) {
 			dynamicContainerNames := replaceContainerNamePlaceholders(tc)
 			lw, err := logwatch.NewLogWatch(t, nil, logwatch.WithLogTarget(logwatch.InMemory))
 			require.NoError(t, err)
-			containers := make([]testcontainers.Container, 0)
+
 			for _, cn := range dynamicContainerNames {
 				container, err := startTestContainer(ctx, cn, tc.msg, tc.msgsAmount, tc.msgsIntervalSeconds, tc.exitEarly)
 				require.NoError(t, err)
@@ -165,12 +165,13 @@ func TestLogWatchDocker(t *testing.T) {
 				// https://github.com/testcontainers/testcontainers-go/pull/1085
 				// tried latest branch with a fix, but no luck
 				// this code terminates the containers properly
-				for _, c := range containers {
+				for _, c := range lw.GetConsumers() {
 					if !tc.exitEarly {
 						if err := lw.DisconnectContainer(c); err != nil {
 							t.Fatalf("failed to disconnect container: %s", err.Error())
 						}
-						if err := c.Terminate(ctx); err != nil {
+						container := c.GetContainer()
+						if err := container.Terminate(ctx); err != nil {
 							t.Fatalf("failed to terminate container: %s", err.Error())
 						}
 					}
@@ -213,6 +214,65 @@ func TestLogWatchConnectWithDelayDocker(t *testing.T) {
 		}
 		if err := container.Terminate(ctx); err != nil {
 			t.Fatalf("failed to terminate container: %s", err.Error())
+		}
+	})
+}
+
+func TestLogWatchTwoDockerContainers(t *testing.T) {
+	t.Parallel()
+	ctx := testcontext.Get(t)
+	containerOneName := fmt.Sprintf("%s-container-%s", t.Name(), uuid.NewString())
+	containerTwoName := fmt.Sprintf("%s-container-%s", t.Name(), uuid.NewString())
+	message := "message"
+	interval := float64(1)
+	amountFirst := 10
+	amountSecond := 20
+
+	lw, err := logwatch.NewLogWatch(t, nil, logwatch.WithLogTarget(logwatch.InMemory))
+	require.NoError(t, err, "log watch should be created")
+	containerOne, err := startTestContainer(ctx, containerOneName, message, amountFirst, interval, false)
+	require.NoError(t, err, "should not fail to start container")
+
+	containerTwo, err := startTestContainer(ctx, containerTwoName, message, amountSecond, interval, false)
+	require.NoError(t, err, "should not fail to start container")
+
+	err = lw.ConnectContainer(context.Background(), containerOne, containerOneName)
+	require.NoError(t, err, "log watch should connect to container")
+
+	err = lw.ConnectContainer(context.Background(), containerTwo, containerTwoName)
+	require.NoError(t, err, "log watch should connect to container")
+
+	time.Sleep(time.Duration(int(interval*float64(amountFirst)))*time.Second + 5*time.Second)
+
+	for _, c := range lw.GetConsumers() {
+		name, err := c.GetContainer().Name(ctx)
+		require.NoError(t, err, "should not fail to get container name")
+		if name == containerOneName {
+			err = lw.DisconnectContainer(c)
+			require.NoError(t, err, "log watch should disconnect from container")
+		}
+	}
+
+	time.Sleep(time.Duration(int(interval*float64(amountSecond-amountFirst)))*time.Second + 5*time.Second)
+
+	logs, err := lw.ContainerLogs(containerOneName)
+	require.NoError(t, err, "should not fail to get logs")
+
+	require.Len(t, logs, amountFirst, "wrong number of logs received from first container")
+
+	logs, err = lw.ContainerLogs(containerTwoName)
+	require.NoError(t, err, "should not fail to get logs")
+	require.Len(t, logs, amountSecond, "wrong number of logs received from first container")
+
+	t.Cleanup(func() {
+		if err := lw.Shutdown(ctx); err != nil {
+			t.Fatalf("failed to shutodwn logwatch: %s", err.Error())
+		}
+		if err := containerOne.Terminate(ctx); err != nil {
+			t.Fatalf("failed to terminate first container: %s", err.Error())
+		}
+		if err := containerTwo.Terminate(ctx); err != nil {
+			t.Fatalf("failed to terminate second container: %s", err.Error())
 		}
 	})
 }
@@ -290,6 +350,10 @@ func (m *MockedLogProducingContainer) IsRunning() bool {
 	return m.isRunning
 }
 
+func (m *MockedLogProducingContainer) Terminate(context.Context) error {
+	return nil
+}
+
 func (m *MockedLogProducingContainer) GetContainerID() string {
 	return m.id
 }
@@ -300,7 +364,7 @@ func (m *MockedLogProducingContainer) SendLog(msg string) {
 
 // secenario: log watch consumes a log, then the container returns an error, log watch reconnects
 // and consumes logs again. log watch should not miss any logs nor consume any log twice
-func TestLogWatchConnectRetryMockContainer_Once(t *testing.T) {
+func TestLogWatchConnectRetryMockContainer_FailsOnce(t *testing.T) {
 	t.Parallel()
 	ctx := testcontext.Get(t)
 	uuid := uuid.NewString()
@@ -362,7 +426,7 @@ func TestLogWatchConnectRetryMockContainer_Once(t *testing.T) {
 
 // secenario: log watch consumes a log, then the container returns an error, log watch reconnects
 // and consumes logs again, then it happens again. log watch should not miss any logs nor consume any log twice
-func TestLogWatchConnectRetryMockContainer_Twice(t *testing.T) {
+func TestLogWatchConnectRetryMockContainer_FailsTwice(t *testing.T) {
 	t.Parallel()
 	ctx := testcontext.Get(t)
 	uuid := uuid.NewString()
@@ -437,7 +501,7 @@ func TestLogWatchConnectRetryMockContainer_Twice(t *testing.T) {
 
 // secenario: it consumes a log, then the container returns an error, but when log watch tries to reconnect log producer
 // is still running, but finally it stops and log watch reconnects. log watch should not miss any logs nor consume any log twice
-func TestLogWatchConnectRetryMockContainer_NotStoppedFirstTime(t *testing.T) {
+func TestLogWatchConnectRetryMockContainer_FailsFirstRestart(t *testing.T) {
 	t.Parallel()
 	ctx := testcontext.Get(t)
 	uuid := uuid.NewString()
@@ -505,7 +569,7 @@ func TestLogWatchConnectRetryMockContainer_NotStoppedFirstTime(t *testing.T) {
 
 // secenario: it consumes a log, then the container returns an error, but when log watch tries to reconnect log producer
 // is still running and log watch never reconnects. log watch should have no logs (we could improve that in the future)
-func TestLogWatchConnectRetryMockContainer_NotStoppedEver(t *testing.T) {
+func TestLogWatchConnectRetryMockContainer_AlwaysFailsRestart(t *testing.T) {
 	t.Parallel()
 	ctx := testcontext.Get(t)
 	uuid := uuid.NewString()
@@ -538,11 +602,9 @@ func TestLogWatchConnectRetryMockContainer_NotStoppedEver(t *testing.T) {
 		mockedContainer.startError = errors.New("still running")
 	}()
 
-	logsSent := []string{}
 	go func() {
 		for i := 0; i < amount; i++ {
 			toSend := fmt.Sprintf("message-%d", i)
-			logsSent = append(logsSent, toSend)
 			mockedContainer.SendLog(toSend)
 			time.Sleep(time.Duration(time.Duration(interval) * time.Second))
 		}
@@ -558,6 +620,96 @@ func TestLogWatchConnectRetryMockContainer_NotStoppedEver(t *testing.T) {
 	require.NoError(t, err, "should not fail to get logs")
 	require.Equal(t, 0, len(logs), "log watch should have no logs")
 	require.Equal(t, 7, mockedContainer.startCounter, "log producer should be started seven times")
+
+	t.Cleanup(func() {
+		if err := lw.Shutdown(ctx); err != nil {
+			t.Fatalf("failed to shutodwn logwatch: %s", err.Error())
+		}
+	})
+}
+
+// scenario: log listening loops are independent for all containers/consumers and even if one of them stops
+// due to errors, second one continues and receives all logs
+func TestLogWatchConnectRetryTwoMockContainers_FirstAlwaysFailsRestart_SecondWorks(t *testing.T) {
+	t.Parallel()
+	ctx := testcontext.Get(t)
+	uuid_1 := uuid.NewString()
+	uuid_2 := uuid.NewString()
+	amountFirst := 10
+	amountSecond := 20
+	interval := float64(1)
+
+	mockedContainer_1 := &MockedLogProducingContainer{
+		name:              fmt.Sprintf("%s-container-%s", t.Name(), uuid_1),
+		id:                uuid_1,
+		isRunning:         true,
+		startError:        nil,
+		stopError:         nil,
+		errorChannelError: nil,
+	}
+
+	mockedContainer_2 := &MockedLogProducingContainer{
+		name:              fmt.Sprintf("%s-container-%s", t.Name(), uuid_2),
+		id:                uuid_2,
+		isRunning:         true,
+		startError:        nil,
+		stopError:         nil,
+		errorChannelError: nil,
+	}
+
+	lw, err := logwatch.NewLogWatch(t, nil, logwatch.WithLogProducerTimeout(1*time.Second), logwatch.WithLogProducerTimeoutRetryLimit(7), logwatch.WithLogTarget(logwatch.InMemory))
+	require.NoError(t, err, "log watch should be created")
+
+	go func() {
+		// wait for 1 second, so that log watch has time to consume at least one log before it's stopped
+		time.Sleep(6 * time.Second)
+		mockedContainer_1.startSleep = 1 * time.Second
+		logs, err := lw.ContainerLogs(mockedContainer_1.name)
+		require.NoError(t, err, "should not fail to get logs")
+		require.True(t, len(logs) > 0, "should have received at least 1 log before injecting error, but got 0")
+
+		// introduce read error, so that log producer stops
+		mockedContainer_1.errorChannelError = errors.New("failed to read logs")
+		// inject start error, that simulates log producer still running (e.g. closing connection to the container)
+		mockedContainer_1.startError = errors.New("still running")
+	}()
+
+	go func() {
+		for i := 0; i < amountFirst; i++ {
+			toSend := fmt.Sprintf("message-%d", i)
+			mockedContainer_1.SendLog(toSend)
+			time.Sleep(time.Duration(time.Duration(interval) * time.Second))
+		}
+	}()
+
+	logsSent := []string{}
+	go func() {
+		for i := 0; i < amountSecond; i++ {
+			toSend := fmt.Sprintf("message-%d", i)
+			logsSent = append(logsSent, toSend)
+			mockedContainer_2.SendLog(toSend)
+			time.Sleep(time.Duration(time.Duration(interval) * time.Second))
+		}
+	}()
+
+	err = lw.ConnectContainer(context.Background(), mockedContainer_1, mockedContainer_1.name)
+	require.NoError(t, err, "log watch should connect to container")
+
+	err = lw.ConnectContainer(context.Background(), mockedContainer_2, mockedContainer_2.name)
+	require.NoError(t, err, "log watch should connect to container")
+
+	time.Sleep(time.Duration(int(interval*float64(amountSecond)))*time.Second + 5*time.Second)
+
+	logs_1, err := lw.ContainerLogs(mockedContainer_1.name)
+	require.NoError(t, err, "should not fail to get logs")
+	require.Equal(t, 0, len(logs_1), "log watch should have no logs")
+	require.Equal(t, 7, mockedContainer_1.startCounter, "log producer should be started seven times for first container")
+
+	logs_2, err := lw.ContainerLogs(mockedContainer_2.name)
+	require.NoError(t, err, "should not fail to get logs")
+	require.Equal(t, amountSecond, len(logs_2), "log watch should have all logs for second container")
+	require.EqualValues(t, logsSent, logs_2, "log watch had different logs for second container than expected")
+	require.Equal(t, 1, mockedContainer_2.startCounter, "log producer should be started one time for second container")
 
 	t.Cleanup(func() {
 		if err := lw.Shutdown(ctx); err != nil {

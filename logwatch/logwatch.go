@@ -41,6 +41,7 @@ type LogProducingContainer interface {
 	GetLogProducerErrorChannel() <-chan error
 	IsRunning() bool
 	GetContainerID() string
+	Terminate(context.Context) error
 }
 
 // LogWatch is a test helper struct to monitor docker container logs for some patterns
@@ -53,7 +54,6 @@ type LogWatch struct {
 	consumers                    map[string]*ContainerLogConsumer
 	logTargetHandlers            map[LogTarget]HandleLogTarget
 	enabledLogTargets            []LogTarget
-	logListeningDone             chan struct{}
 	logProducerTimeout           time.Duration
 	logProducerTimeoutRetryLimit int // -1 for infinite retries
 	acceptMutex                  sync.Mutex
@@ -94,7 +94,6 @@ func NewLogWatch(t *testing.T, patterns map[string][]*regexp.Regexp, options ...
 		log:                          l,
 		consumers:                    make(map[string]*ContainerLogConsumer, 0),
 		logTargetHandlers:            getDefaultLogHandlers(),
-		logListeningDone:             make(chan struct{}, 1),
 		logProducerTimeout:           time.Duration(10 * time.Second),
 		logProducerTimeoutRetryLimit: 10,
 		enabledLogTargets:            envLogTargets,
@@ -189,18 +188,20 @@ func (m *LogWatch) ConnectContainer(ctx context.Context, container LogProducingC
 	name = strings.Replace(name, "/", "", 1)
 	prefix = strings.Replace(prefix, "/", "", 1)
 
+	if prefix == "" {
+		prefix = name
+	}
+
+	if _, ok := m.consumers[name]; ok {
+		return errors.Errorf("container %s is already connected", name)
+	}
+
 	enabledLogTargets := make([]LogTarget, 0)
 	for logTarget := range m.logTargetHandlers {
 		enabledLogTargets = append(enabledLogTargets, logTarget)
 	}
 
-	var cons *ContainerLogConsumer
-	if prefix != "" {
-		cons, err = newContainerLogConsumer(m, name, prefix, enabledLogTargets...)
-	} else {
-		cons, err = newContainerLogConsumer(m, name, name, enabledLogTargets...)
-	}
-
+	cons, err := newContainerLogConsumer(ctx, m, container, prefix, enabledLogTargets...)
 	if err != nil {
 		return err
 	}
@@ -259,6 +260,8 @@ func (m *LogWatch) ConnectContainer(ctx context.Context, container LogProducingC
 								Str("Container name", name).
 								Msg("Failed to reset temp file. Stopping logging")
 
+							cons.MarkAsErrored()
+
 							return
 						}
 						for container.StartLogProducer(ctx, timeout) != nil {
@@ -276,6 +279,9 @@ func (m *LogWatch) ConnectContainer(ctx context.Context, container LogProducingC
 								Err(err).
 								Str("Container name", name).
 								Msg("Previously running log producer couldn't be stopped. Used all retry attempts. Won't try again")
+
+							cons.MarkAsErrored()
+
 							return
 						}
 						m.log.Info().
@@ -286,6 +292,9 @@ func (m *LogWatch) ConnectContainer(ctx context.Context, container LogProducingC
 							Err(err).
 							Str("Container name", name).
 							Msg("Used all attempts to listen to container logs. Won't try again")
+
+						cons.MarkAsErrored()
+
 						return
 					}
 
@@ -295,28 +304,30 @@ func (m *LogWatch) ConnectContainer(ctx context.Context, container LogProducingC
 				return
 			}
 		}
-	}(m.logListeningDone, m.logProducerTimeout, m.logProducerTimeoutRetryLimit)
+	}(cons.logListeningDone, m.logProducerTimeout, m.logProducerTimeoutRetryLimit)
 
 	return err
 }
 
+func (m *LogWatch) GetConsumers() map[string]*ContainerLogConsumer {
+	return m.consumers
+}
+
 // Shutdown disconnects all containers, stops notifications
 func (m *LogWatch) Shutdown(context context.Context) error {
-	defer close(m.logListeningDone)
 	var err error
-	for _, c := range m.containers {
-		singleErr := m.DisconnectContainer(c)
-		if singleErr != nil {
-			name, _ := c.Name(context)
+	for _, c := range m.consumers {
+		discErr := m.DisconnectContainer(c)
+		if discErr != nil {
 			m.log.Error().
 				Err(err).
-				Str("Name", name).
+				Str("Name", c.name).
 				Msg("Failed to disconnect container")
 
 			if err == nil {
-				err = singleErr
+				err = discErr
 			} else {
-				err = errors.Wrap(err, singleErr.Error())
+				err = errors.Wrap(err, discErr.Error())
 			}
 		}
 	}
@@ -324,8 +335,6 @@ func (m *LogWatch) Shutdown(context context.Context) error {
 	if m.loki != nil {
 		m.loki.Stop()
 	}
-
-	m.logListeningDone <- struct{}{}
 
 	return err
 }
@@ -361,10 +370,18 @@ func (m *LogWatch) SaveLogTargetsLocations(writer LogWriter) {
 }
 
 // DisconnectContainer disconnects the particular container
-func (m *LogWatch) DisconnectContainer(container LogProducingContainer) error {
-	if container.IsRunning() {
-		m.log.Info().Str("container", container.GetContainerID()).Msg("Disconnecting container")
-		return container.StopLogProducer()
+func (m *LogWatch) DisconnectContainer(consumer *ContainerLogConsumer) error {
+	if consumer.isDone {
+		return nil
+	}
+
+	consumer.isDone = true
+	consumer.logListeningDone <- struct{}{}
+	defer close(consumer.logListeningDone)
+
+	if consumer.container.IsRunning() {
+		m.log.Info().Str("container", consumer.container.GetContainerID()).Msg("Disconnecting container")
+		return consumer.container.StopLogProducer()
 	}
 
 	return nil
@@ -537,27 +554,38 @@ func (m *LogWatch) FlushLogsToTargets() error {
 
 // ContainerLogConsumer is a container log lines consumer
 type ContainerLogConsumer struct {
-	name       string
-	prefix     string
-	logTargets []LogTarget
-	lw         *LogWatch
-	tempFile   *os.File
-	encoder    *gob.Encoder
-	isDone     bool
-	hasErrored bool
+	name             string
+	prefix           string
+	logTargets       []LogTarget
+	lw               *LogWatch
+	tempFile         *os.File
+	encoder          *gob.Encoder
+	isDone           bool
+	hasErrored       bool
+	logListeningDone chan struct{}
+	container        LogProducingContainer
 }
 
 // newContainerLogConsumer creates new log consumer for a container that
 // - signal if log line matches the pattern
 // - push all lines to configured log targets
-func newContainerLogConsumer(lw *LogWatch, containerName string, prefix string, logTargets ...LogTarget) (*ContainerLogConsumer, error) {
+func newContainerLogConsumer(ctx context.Context, lw *LogWatch, container LogProducingContainer, prefix string, logTargets ...LogTarget) (*ContainerLogConsumer, error) {
+	containerName, err := container.Name(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	containerName = strings.Replace(containerName, "/", "", 1)
+
 	consumer := &ContainerLogConsumer{
-		name:       containerName,
-		prefix:     prefix,
-		logTargets: logTargets,
-		lw:         lw,
-		isDone:     false,
-		hasErrored: false,
+		name:             containerName,
+		prefix:           prefix,
+		logTargets:       logTargets,
+		lw:               lw,
+		isDone:           false,
+		hasErrored:       false,
+		logListeningDone: make(chan struct{}, 1),
+		container:        container,
 	}
 
 	if len(logTargets) == 0 {
@@ -591,6 +619,16 @@ func (g *ContainerLogConsumer) ResetTempFile() error {
 	g.encoder = gob.NewEncoder(tempFile)
 
 	return nil
+}
+
+func (g *ContainerLogConsumer) MarkAsErrored() {
+	g.hasErrored = true
+	g.isDone = true
+	close(g.logListeningDone)
+}
+
+func (g *ContainerLogConsumer) GetContainer() LogProducingContainer {
+	return g.container
 }
 
 // Accept accepts the log message from particular container and saves it to the temp gob file
