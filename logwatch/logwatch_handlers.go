@@ -1,7 +1,6 @@
 package logwatch
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -167,29 +166,8 @@ func (h *LokiLogHandler) GetLogLocation(consumers map[string]*ContainerLogConsum
 			sb.WriteString(fmt.Sprintf("&var-container_id=%s", c.name))
 		}
 
-		allLogs, err := c.lw.ContainerLogs(c.name)
-		if err != nil {
-			return "", errors.Errorf("failed to get logs for container '%s'", c.name)
-		}
-
-		// lets find the oldest log message to know when to start the range from
-		if len(allLogs) > 0 {
-			var firstMsg struct {
-				Ts string `json:"ts"`
-			}
-
-			if err := json.Unmarshal([]byte(allLogs[0]), &firstMsg); err != nil {
-				return "", errors.Errorf("failed to unmarshal first log message for container '%s'", c.name)
-			}
-
-			firstTs, err := time.Parse(time.RFC3339, firstMsg.Ts)
-			if err != nil {
-				return "", errors.Errorf("failed to parse first log message's timestamp '%+v' for container '%s'", firstTs, c.name)
-			}
-
-			if firstTs.Before(rangeFrom) {
-				rangeFrom = firstTs
-			}
+		if c.GetStartTime().Before(rangeFrom) {
+			rangeFrom = c.GetStartTime()
 		}
 	}
 

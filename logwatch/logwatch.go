@@ -3,6 +3,7 @@ package logwatch
 import (
 	"context"
 	"encoding/gob"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -579,6 +580,7 @@ type ContainerLogConsumer struct {
 	hasErrored       bool
 	logListeningDone chan struct{}
 	container        LogProducingContainer
+	firstLogTs       time.Time
 }
 
 // newContainerLogConsumer creates new log consumer for a container that
@@ -601,6 +603,7 @@ func newContainerLogConsumer(ctx context.Context, lw *LogWatch, container LogPro
 		hasErrored:       false,
 		logListeningDone: make(chan struct{}, 1),
 		container:        container,
+		firstLogTs:       time.Now(),
 	}
 
 	if len(logTargets) == 0 {
@@ -616,6 +619,10 @@ func newContainerLogConsumer(ctx context.Context, lw *LogWatch, container LogPro
 	consumer.encoder = gob.NewEncoder(tempFile)
 
 	return consumer, nil
+}
+
+func (g *ContainerLogConsumer) GetStartTime() time.Time {
+	return g.firstLogTs
 }
 
 func (g *ContainerLogConsumer) ResetTempFile() error {
@@ -672,8 +679,31 @@ func (g *ContainerLogConsumer) Accept(l testcontainers.Log) {
 	if g.tempFile == nil || g.encoder == nil {
 		g.hasErrored = true
 		g.lw.log.Error().
+			Str("Container", g.name).
 			Msg("temp file or encoder is nil, consumer cannot work, this should never happen")
 		return
+	}
+
+	var logMsg struct {
+		Ts string `json:"ts"`
+	}
+
+	if err := json.Unmarshal([]byte(l.Content), &logMsg); err != nil {
+		g.lw.log.Error().
+			Str("Container", g.name).
+			Msg("failed to unmarshal log message for container")
+	}
+
+	maybeFirstTs, err := time.Parse(time.RFC3339, logMsg.Ts)
+	if err != nil {
+		g.lw.log.Error().
+			Str("Container", g.name).
+			Str("Timestamp", logMsg.Ts).
+			Msg("failed to parse first log message's timestamp ")
+	}
+
+	if maybeFirstTs.Before(g.firstLogTs) {
+		g.firstLogTs = maybeFirstTs
 	}
 
 	content := LogContent{
