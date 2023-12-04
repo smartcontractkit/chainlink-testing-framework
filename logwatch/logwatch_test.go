@@ -167,7 +167,8 @@ func TestLogWatchDocker(t *testing.T) {
 				// this code terminates the containers properly
 				for _, c := range lw.GetConsumers() {
 					if !tc.exitEarly {
-						if err := lw.DisconnectContainer(c); err != nil {
+						c.Stop()
+						if err := lw.DisconnectContainer(c.GetContainer()); err != nil {
 							t.Fatalf("failed to disconnect container: %s", err.Error())
 						}
 						container := c.GetContainer()
@@ -248,7 +249,8 @@ func TestLogWatchTwoDockerContainers(t *testing.T) {
 		name, err := c.GetContainer().Name(ctx)
 		require.NoError(t, err, "should not fail to get container name")
 		if name == containerOneName {
-			err = lw.DisconnectContainer(c)
+			c.Stop()
+			err = lw.DisconnectContainer(containerOne)
 			require.NoError(t, err, "log watch should disconnect from container")
 		}
 	}

@@ -328,7 +328,9 @@ func (m *LogWatch) GetConsumers() map[string]*ContainerLogConsumer {
 func (m *LogWatch) Shutdown(context context.Context) error {
 	var err error
 	for _, c := range m.consumers {
-		discErr := m.DisconnectContainer(c)
+		c.Stop()
+
+		discErr := m.DisconnectContainer(c.container)
 		if discErr != nil {
 			m.log.Error().
 				Err(err).
@@ -380,19 +382,21 @@ func (m *LogWatch) SaveLogTargetsLocations(writer LogWriter) {
 	}
 }
 
-// DisconnectContainer disconnects the particular container
-func (m *LogWatch) DisconnectContainer(consumer *ContainerLogConsumer) error {
-	if consumer.isDone {
-		return nil
+func (c *ContainerLogConsumer) Stop() {
+	if c.isDone {
+		return
 	}
 
-	consumer.isDone = true
-	consumer.logListeningDone <- struct{}{}
-	defer close(consumer.logListeningDone)
+	c.isDone = true
+	c.logListeningDone <- struct{}{}
+	defer close(c.logListeningDone)
+}
 
-	if consumer.container.IsRunning() {
-		m.log.Info().Str("container", consumer.container.GetContainerID()).Msg("Disconnecting container")
-		return consumer.container.StopLogProducer()
+// DisconnectContainer disconnects the particular container
+func (m *LogWatch) DisconnectContainer(container LogProducingContainer) error {
+	if container.IsRunning() {
+		m.log.Info().Str("container", container.GetContainerID()).Msg("Disconnecting container")
+		return container.StopLogProducer()
 	}
 
 	return nil
