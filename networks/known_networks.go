@@ -316,7 +316,7 @@ var (
 		Name:                      "Optimism Sepolia",
 		SupportsEIP1559:           true,
 		ClientImplementation:      blockchain.OptimismClientImplementation,
-		ChainID:                   420,
+		ChainID:                   11155420,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
 		Timeout:                   blockchain.JSONStrDuration{Duration: 3 * time.Minute},
@@ -361,7 +361,7 @@ var (
 		Timeout:                   blockchain.JSONStrDuration{Duration: 3 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       0,
-		FinalityDepth:             550,
+		FinalityTag:               true,
 		DefaultGasLimit:           6000000,
 	}
 
@@ -376,7 +376,7 @@ var (
 		Timeout:                   blockchain.JSONStrDuration{Duration: 3 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       1000,
-		FinalityDepth:             550,
+		FinalityTag:               true,
 		DefaultGasLimit:           6000000,
 	}
 
@@ -390,7 +390,7 @@ var (
 		Timeout:                   blockchain.JSONStrDuration{Duration: 2 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       0,
-		FinalityDepth:             35,
+		FinalityTag:               true,
 		DefaultGasLimit:           6000000,
 	}
 
@@ -404,7 +404,7 @@ var (
 		Timeout:                   blockchain.JSONStrDuration{Duration: 2 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       1000,
-		FinalityDepth:             35,
+		FinalityTag:               true,
 		DefaultGasLimit:           6000000,
 	}
 
@@ -439,7 +439,7 @@ var (
 		Name:                      "Base Sepolia",
 		SupportsEIP1559:           true,
 		ClientImplementation:      blockchain.OptimismClientImplementation,
-		ChainID:                   84531,
+		ChainID:                   84532,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
 		Timeout:                   blockchain.JSONStrDuration{Duration: 3 * time.Minute},
@@ -456,7 +456,7 @@ var (
 		ChainID:                   44787,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		Timeout:                   blockchain.JSONStrDuration{Duration: 3 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       1000,
 	}
@@ -467,7 +467,7 @@ var (
 		ChainID:                   534351,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		Timeout:                   blockchain.JSONStrDuration{Duration: 3 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       0,
 	}
@@ -478,7 +478,7 @@ var (
 		ChainID:                   534352,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		Timeout:                   blockchain.JSONStrDuration{Duration: 3 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       0,
 	}
@@ -543,7 +543,7 @@ var (
 		ChainID:                   59140,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		Timeout:                   blockchain.JSONStrDuration{Duration: 3 * time.Minute},
 		MinimumConfirmations:      0,
 		GasEstimationBuffer:       1000,
 	}
@@ -555,7 +555,7 @@ var (
 		ChainID:                   59144,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		Timeout:                   blockchain.JSONStrDuration{Duration: 3 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       1000,
 	}
@@ -619,7 +619,7 @@ var (
 		ChainID:                   4002,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		Timeout:                   blockchain.JSONStrDuration{Duration: 3 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       1000,
 	}
@@ -631,7 +631,7 @@ var (
 		ChainID:                   250,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		Timeout:                   blockchain.JSONStrDuration{Duration: 3 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       1000,
 	}

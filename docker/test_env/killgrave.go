@@ -136,7 +136,7 @@ func (k *Killgrave) StartContainer() error {
 }
 
 func (k *Killgrave) getContainerRequest() (tc.ContainerRequest, error) {
-	killgraveImage, err := mirror.GetImage("friendsofgo/killgrave:0.4.1")
+	killgraveImage, err := mirror.GetImage("friendsofgo/killgrave")
 	if err != nil {
 		return tc.ContainerRequest{}, err
 	}

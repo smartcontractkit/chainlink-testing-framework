@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/url"
 	"os/exec"
+	"strings"
 	"testing"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
@@ -74,12 +76,17 @@ func WithContainerEnv(key, value string) PostgresDbOption {
 	}
 }
 
-func NewPostgresDb(networks []string, opts ...PostgresDbOption) *PostgresDb {
+func NewPostgresDb(networks []string, opts ...PostgresDbOption) (*PostgresDb, error) {
+	image, err := mirror.GetImage("postgres")
+	if err != nil {
+		return nil, err
+	}
+	parts := strings.Split(image, ":")
 	pg := &PostgresDb{
 		EnvComponent: EnvComponent{
 			ContainerName:    fmt.Sprintf("%s-%s", "postgres-db", uuid.NewString()[0:8]),
-			ContainerImage:   "public.ecr.aws/docker/library/postgres",
-			ContainerVersion: "15.4",
+			ContainerImage:   parts[0],
+			ContainerVersion: parts[1],
 			ContainerEnvs:    map[string]string{},
 			Networks:         networks,
 		},
@@ -99,7 +106,7 @@ func NewPostgresDb(networks []string, opts ...PostgresDbOption) *PostgresDb {
 	pg.ContainerEnvs["POSTGRES_DB"] = pg.DbName
 	pg.ContainerEnvs["POSTGRES_PASSWORD"] = pg.Password
 
-	return pg
+	return pg, nil
 }
 
 func (pg *PostgresDb) WithTestInstance(t *testing.T) *PostgresDb {

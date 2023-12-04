@@ -331,13 +331,16 @@ func (e *EthereumClient) ReturnFunds(fromKey *ecdsa.PrivateKey) error {
 		return err
 	}
 
-	// regex to extract overshot amount from error
-	// we estimate a little high, expecting an overshot issue, then keep subtracting and sending until it works
-	re := regexp.MustCompile(`overshot (\d+)`)
+	// There are several errors that can happen when trying to drain an ETH wallet.
+	// Ultimately, we want our money back, so we'll catch errors and react to them until we get something through.
 
-	overshotErr := e.Client.SendTransaction(context.Background(), signedTx)
-	for overshotErr != nil && strings.Contains(overshotErr.Error(), "overshot") {
-		submatches := re.FindStringSubmatch(overshotErr.Error())
+	// Try to send the money back, see if we hit any issues, and if we recognize them
+	fundReturnErr := e.Client.SendTransaction(context.Background(), signedTx)
+
+	// Handle overshot error
+	overshotRe := regexp.MustCompile(`overshot (\d+)`)
+	for fundReturnErr != nil && strings.Contains(fundReturnErr.Error(), "overshot") {
+		submatches := overshotRe.FindStringSubmatch(fundReturnErr.Error())
 		if len(submatches) < 1 {
 			return fmt.Errorf("error parsing overshot amount in error: %w", err)
 		}
@@ -352,14 +355,27 @@ func (e *EthereumClient) ReturnFunds(fromKey *ecdsa.PrivateKey) error {
 		if err != nil {
 			return err
 		}
-		overshotErr = e.Client.SendTransaction(context.Background(), signedTx)
+		fundReturnErr = e.Client.SendTransaction(context.Background(), signedTx)
 	}
+
+	// Handle insufficient funds error
+	// We don't get an overshot calculation, we just know it was too much, so subtract by 1 GWei and try again
+	for fundReturnErr != nil && strings.Contains(fundReturnErr.Error(), "insufficient funds") {
+		toSend.Sub(toSend, big.NewInt(GWei))
+		tx := types.NewTransaction(nonce, e.DefaultWallet.address, toSend, gasLimit.Uint64(), gasPrice, nil)
+		signedTx, err = types.SignTx(tx, types.LatestSignerForChainID(e.GetChainID()), fromKey)
+		if err != nil {
+			return err
+		}
+		fundReturnErr = e.Client.SendTransaction(context.Background(), signedTx)
+	}
+
 	e.l.Info().
 		Uint64("Funds", toSend.Uint64()).
 		Str("From", fromAddress.Hex()).
 		Str("To", e.DefaultWallet.Address()).
 		Msg("Returning funds to Default Wallet")
-	return overshotErr
+	return fundReturnErr
 }
 
 // EstimateCostForChainlinkOperations calculates required amount of ETH for amountOfOperations Chainlink operations
