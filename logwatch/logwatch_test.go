@@ -3,13 +3,12 @@ package logwatch_test
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"regexp"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
@@ -28,17 +27,6 @@ type TestCase struct {
 	exitEarly             bool
 	mustNotifyList        map[string][]*regexp.Regexp
 	expectedNotifications map[string][]*logwatch.LogNotification
-}
-
-func getNotificationsAmount(m map[string][]*regexp.Regexp) int {
-	if m == nil {
-		return 1
-	}
-	notificationsToAwait := 0
-	for _, v := range m {
-		notificationsToAwait += len(v)
-	}
-	return notificationsToAwait
 }
 
 // replaceContainerNamePlaceholders this function is used to replace container names with dynamic values
@@ -127,32 +115,17 @@ func TestLogWatchDocker(t *testing.T) {
 			exitEarly:           true,
 		},
 		{
-			name:                "should read exactly 10 streams and notify 4 times (2 containers)",
+			name:                "should read exactly 10 streams (2 containers)",
 			msg:                 "A\nB\nC\nD",
 			containers:          2,
 			msgsAmount:          1,
 			msgsIntervalSeconds: 0.1,
-			mustNotifyList: map[string][]*regexp.Regexp{
-				"0": {
-					regexp.MustCompile("A"),
-					regexp.MustCompile("B"),
-				},
-				"1": {
-					regexp.MustCompile("C"),
-					regexp.MustCompile("D"),
-				},
-			},
-			expectedNotifications: map[string][]*logwatch.LogNotification{
-				"0": {
-					&logwatch.LogNotification{Container: "0", Log: "A\n"},
-					&logwatch.LogNotification{Container: "0", Log: "B\n"},
-				},
-				"1": {
-					&logwatch.LogNotification{Container: "1", Log: "C\n"},
-					&logwatch.LogNotification{Container: "1", Log: "D\n"},
-				},
-			},
 		},
+	}
+
+	var getExpectedMsgCount = func(msg string, msgAmount int) int {
+		splitted := strings.Split(msg, "\n")
+		return len(splitted) * msgAmount
 	}
 
 	for _, tc := range tests {
@@ -161,7 +134,7 @@ func TestLogWatchDocker(t *testing.T) {
 			t.Parallel()
 			ctx := testcontext.Get(t)
 			dynamicContainerNames := replaceContainerNamePlaceholders(tc)
-			lw, err := logwatch.NewLogWatch(t, tc.mustNotifyList)
+			lw, err := logwatch.NewLogWatch(t, nil, logwatch.WithLogTarget(logwatch.InMemory))
 			require.NoError(t, err)
 			containers := make([]testcontainers.Container, 0)
 			for _, cn := range dynamicContainerNames {
@@ -175,30 +148,13 @@ func TestLogWatchDocker(t *testing.T) {
 
 			// streams should be there with a gap of 1 second
 			time.Sleep(time.Duration(int(tc.msgsIntervalSeconds*float64(tc.msgsAmount)))*time.Second + 1*time.Second)
-			lw.PrintAll()
 
 			// all streams should be recorded
 			for _, cn := range dynamicContainerNames {
-				require.Len(t, lw.ContainerLogs(cn), tc.msgsAmount*getNotificationsAmount(tc.mustNotifyList))
-			}
+				logs, err := lw.ContainerLogs(cn)
+				require.NoError(t, err, "should not fail to get logs")
 
-			// client must receive notifications if mustNotifyList is set
-			// each container must have notifications according to their match patterns
-			if tc.mustNotifyList != nil {
-				notifications := make(map[string][]*logwatch.LogNotification)
-				for i := 0; i < getNotificationsAmount(tc.mustNotifyList); i++ {
-					msg := lw.Listen()
-					if notifications[msg.Container] == nil {
-						notifications[msg.Container] = make([]*logwatch.LogNotification, 0)
-					}
-					notifications[msg.Container] = append(notifications[msg.Container], msg)
-				}
-				t.Logf("notifications: %v", spew.Sdump(notifications))
-				t.Logf("expectations: %v", spew.Sdump(tc.expectedNotifications))
-
-				if !reflect.DeepEqual(tc.expectedNotifications, notifications) {
-					t.Fatalf("expected logs: %v, got: %v", tc.expectedNotifications, notifications)
-				}
+				require.Len(t, logs, getExpectedMsgCount(tc.msg, tc.msgsAmount))
 			}
 
 			defer func() {
@@ -232,8 +188,7 @@ func TestLogWatchConnectWithDelayDocker(t *testing.T) {
 	interval := float64(1)
 	amount := 10
 
-	//set initial timeout to 0 so that it retries to connect using fibonacci backoff
-	lw, err := logwatch.NewLogWatch(t, nil)
+	lw, err := logwatch.NewLogWatch(t, nil, logwatch.WithLogTarget(logwatch.InMemory))
 	require.NoError(t, err)
 	container, err := startTestContainer(ctx, containerName, message, amount, interval, false)
 	require.NoError(t, err)
@@ -246,9 +201,11 @@ func TestLogWatchConnectWithDelayDocker(t *testing.T) {
 	require.NoError(t, err)
 
 	time.Sleep(time.Duration(int(interval*float64(amount)))*time.Second + 5*time.Second)
-	lw.PrintAll()
 
-	require.Len(t, lw.ContainerLogs(containerName), amount)
+	logs, err := lw.ContainerLogs(containerName)
+	require.NoError(t, err, "should not fail to get logs")
+
+	require.Len(t, logs, amount)
 
 	t.Cleanup(func() {
 		if err := lw.Shutdown(ctx); err != nil {
@@ -359,15 +316,16 @@ func TestLogWatchConnectRetryMockContainer_Once(t *testing.T) {
 		errorChannelError: nil,
 	}
 
-	lw, err := logwatch.NewLogWatch(t, nil, logwatch.WithLogProducerTimeout(1*time.Second))
+	lw, err := logwatch.NewLogWatch(t, nil, logwatch.WithLogProducerTimeout(1*time.Second), logwatch.WithLogTarget(logwatch.InMemory))
 	require.NoError(t, err, "log watch should be created")
 
 	go func() {
 		// wait for 1 second, so that log watch has time to consume at least one log before it's stopped
 		time.Sleep(1 * time.Second)
 		mockedContainer.startSleep = 1 * time.Second
-		logsReceived := len(lw.ContainerLogs(mockedContainer.name))
-		require.True(t, logsReceived > 0, "should have received at least 1 log before injecting error")
+		logs, err := lw.ContainerLogs(mockedContainer.name)
+		require.NoError(t, err, "should not fail to get logs")
+		require.True(t, len(logs) > 0, "should have received at least 1 log before injecting error")
 		mockedContainer.errorChannelError = errors.New("failed to read logs")
 
 		// clear the error after 1 second, so that log producer can resume log consumption
@@ -389,9 +347,10 @@ func TestLogWatchConnectRetryMockContainer_Once(t *testing.T) {
 	require.NoError(t, err, "log watch should connect to container")
 
 	time.Sleep(time.Duration(int(interval*float64(amount)))*time.Second + 3*time.Second)
-	lw.PrintAll()
 
-	require.EqualValues(t, lw.ContainerLogs(mockedContainer.name), logsSent, "log watch should receive all logs")
+	logs, err := lw.ContainerLogs(mockedContainer.name)
+	require.NoError(t, err, "should not fail to get logs")
+	require.EqualValues(t, logs, logsSent, "log watch should receive all logs")
 	require.Equal(t, 2, mockedContainer.startCounter, "log producer should be started twice")
 
 	t.Cleanup(func() {
@@ -419,14 +378,16 @@ func TestLogWatchConnectRetryMockContainer_Twice(t *testing.T) {
 		errorChannelError: nil,
 	}
 
-	lw, err := logwatch.NewLogWatch(t, nil, logwatch.WithLogProducerTimeout(1*time.Second))
+	lw, err := logwatch.NewLogWatch(t, nil, logwatch.WithLogProducerTimeout(1*time.Second), logwatch.WithLogTarget(logwatch.InMemory))
 	require.NoError(t, err, "log watch should be created")
 
 	go func() {
 		// wait for 1 second, so that log watch has time to consume at least one log before it's stopped
 		time.Sleep(1 * time.Second)
 		mockedContainer.startSleep = 1 * time.Second
-		require.True(t, len(lw.ContainerLogs(mockedContainer.name)) > 0, "should have received at least 1 log before injecting error, but got 0")
+		logs, err := lw.ContainerLogs(mockedContainer.name)
+		require.NoError(t, err, "should not fail to get logs")
+		require.True(t, len(logs) > 0, "should have received at least 1 log before injecting error, but got 0")
 		mockedContainer.errorChannelError = errors.New("failed to read logs")
 
 		// clear the error after 1 second, so that log producer can resume log consumption
@@ -436,7 +397,9 @@ func TestLogWatchConnectRetryMockContainer_Twice(t *testing.T) {
 		// wait for 3 seconds so that some logs are consumed before we inject error again
 		time.Sleep(3 * time.Second)
 		mockedContainer.startSleep = 1 * time.Second
-		require.True(t, len(lw.ContainerLogs(mockedContainer.name)) > 0, "should have received at least 1 log before injecting error, but got 0")
+		logs, err = lw.ContainerLogs(mockedContainer.name)
+		require.NoError(t, err, "should not fail to get logs")
+		require.True(t, len(logs) > 0, "should have received at least 1 log before injecting error, but got 0")
 		mockedContainer.errorChannelError = errors.New("failed to read logs")
 
 		// clear the error after 1 second, so that log producer can resume log consumption
@@ -458,9 +421,11 @@ func TestLogWatchConnectRetryMockContainer_Twice(t *testing.T) {
 	require.NoError(t, err, "log watch should connect to container")
 
 	time.Sleep(time.Duration(int(interval*float64(amount)))*time.Second + 5*time.Second)
-	lw.PrintAll()
 
-	require.EqualValues(t, lw.ContainerLogs(mockedContainer.name), logsSent, "log watch should receive all logs")
+	logs, err := lw.ContainerLogs(mockedContainer.name)
+	require.NoError(t, err, "should not fail to get logs")
+
+	require.EqualValues(t, logs, logsSent, "log watch should receive all logs")
 	require.Equal(t, 3, mockedContainer.startCounter, "log producer should be started twice")
 
 	t.Cleanup(func() {
@@ -488,14 +453,16 @@ func TestLogWatchConnectRetryMockContainer_NotStoppedFirstTime(t *testing.T) {
 		errorChannelError: nil,
 	}
 
-	lw, err := logwatch.NewLogWatch(t, nil, logwatch.WithLogProducerTimeout(1*time.Second))
+	lw, err := logwatch.NewLogWatch(t, nil, logwatch.WithLogProducerTimeout(1*time.Second), logwatch.WithLogTarget(logwatch.InMemory))
 	require.NoError(t, err, "log watch should be created")
 
 	go func() {
 		// wait for 1 second, so that log watch has time to consume at least one log before it's stopped
 		time.Sleep(1 * time.Second)
 		mockedContainer.startSleep = 1 * time.Second
-		require.True(t, len(lw.ContainerLogs(mockedContainer.name)) > 0, "should have received at least 1 log before injecting error, but got 0")
+		logs, err := lw.ContainerLogs(mockedContainer.name)
+		require.NoError(t, err, "should not fail to get logs")
+		require.True(t, len(logs) > 0, "should have received at least 1 log before injecting error, but got 0")
 
 		// introduce read error, so that log producer stops
 		mockedContainer.errorChannelError = errors.New("failed to read logs")
@@ -522,9 +489,11 @@ func TestLogWatchConnectRetryMockContainer_NotStoppedFirstTime(t *testing.T) {
 	require.NoError(t, err, "log watch should connect to container")
 
 	time.Sleep(time.Duration(int(interval*float64(amount)))*time.Second + 5*time.Second)
-	lw.PrintAll()
 
-	require.EqualValues(t, logsSent, lw.ContainerLogs(mockedContainer.name), "log watch should receive all logs")
+	logs, err := lw.ContainerLogs(mockedContainer.name)
+	require.NoError(t, err, "should not fail to get logs")
+
+	require.EqualValues(t, logsSent, logs, "log watch should receive all logs")
 	require.Equal(t, 3, mockedContainer.startCounter, "log producer should be started four times")
 
 	t.Cleanup(func() {
@@ -535,7 +504,7 @@ func TestLogWatchConnectRetryMockContainer_NotStoppedFirstTime(t *testing.T) {
 }
 
 // secenario: it consumes a log, then the container returns an error, but when log watch tries to reconnect log producer
-// is still running and log watch never reconnects. log watch should salvage logs that were consumed before error was injected
+// is still running and log watch never reconnects. log watch should have no logs (we could improve that in the future)
 func TestLogWatchConnectRetryMockContainer_NotStoppedEver(t *testing.T) {
 	t.Parallel()
 	ctx := testcontext.Get(t)
@@ -552,14 +521,16 @@ func TestLogWatchConnectRetryMockContainer_NotStoppedEver(t *testing.T) {
 		errorChannelError: nil,
 	}
 
-	lw, err := logwatch.NewLogWatch(t, nil, logwatch.WithLogProducerTimeout(1*time.Second), logwatch.WithLogProducerTimeoutRetryLimit(7))
+	lw, err := logwatch.NewLogWatch(t, nil, logwatch.WithLogProducerTimeout(1*time.Second), logwatch.WithLogProducerTimeoutRetryLimit(7), logwatch.WithLogTarget(logwatch.InMemory))
 	require.NoError(t, err, "log watch should be created")
 
 	go func() {
 		// wait for 1 second, so that log watch has time to consume at least one log before it's stopped
 		time.Sleep(6 * time.Second)
 		mockedContainer.startSleep = 1 * time.Second
-		require.True(t, len(lw.ContainerLogs(mockedContainer.name)) > 0, "should have received at least 1 log before injecting error, but got 0")
+		logs, err := lw.ContainerLogs(mockedContainer.name)
+		require.NoError(t, err, "should not fail to get logs")
+		require.True(t, len(logs) > 0, "should have received at least 1 log before injecting error, but got 0")
 
 		// introduce read error, so that log producer stops
 		mockedContainer.errorChannelError = errors.New("failed to read logs")
@@ -581,10 +552,11 @@ func TestLogWatchConnectRetryMockContainer_NotStoppedEver(t *testing.T) {
 	require.NoError(t, err, "log watch should connect to container")
 
 	time.Sleep(time.Duration(int(interval*float64(amount)))*time.Second + 5*time.Second)
-	lw.PrintAll()
 
 	// it should still salvage 6 logs that were consumed before error was injected and restarting failed
-	require.EqualValues(t, logsSent[:6], lw.ContainerLogs(mockedContainer.name), "log watch should receive six logs")
+	logs, err := lw.ContainerLogs(mockedContainer.name)
+	require.NoError(t, err, "should not fail to get logs")
+	require.Equal(t, 0, len(logs), "log watch should have no logs")
 	require.Equal(t, 7, mockedContainer.startCounter, "log producer should be started seven times")
 
 	t.Cleanup(func() {

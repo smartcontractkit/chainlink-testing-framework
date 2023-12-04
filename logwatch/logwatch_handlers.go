@@ -16,8 +16,9 @@ import (
 type LogTarget string
 
 const (
-	Loki LogTarget = "loki"
-	File LogTarget = "file"
+	Loki     LogTarget = "loki"
+	File     LogTarget = "file"
+	InMemory LogTarget = "in-memory"
 )
 
 type HandleLogTarget interface {
@@ -32,6 +33,7 @@ func getDefaultLogHandlers() map[LogTarget]HandleLogTarget {
 	handlers := make(map[LogTarget]HandleLogTarget)
 	handlers[Loki] = &LokiLogHandler{}
 	handlers[File] = &FileLogHandler{}
+	handlers[InMemory] = &InMemoryLogHandler{}
 
 	return handlers
 }
@@ -165,13 +167,18 @@ func (h *LokiLogHandler) GetLogLocation(consumers map[string]*ContainerLogConsum
 			sb.WriteString(fmt.Sprintf("&var-container_id=%s", c.name))
 		}
 
+		allLogs, err := c.lw.ContainerLogs(c.name)
+		if err != nil {
+			return "", errors.Errorf("failed to get logs for container '%s'", c.name)
+		}
+
 		// lets find the oldest log message to know when to start the range from
-		if len(c.Messages) > 0 {
+		if len(allLogs) > 0 {
 			var firstMsg struct {
 				Ts string `json:"ts"`
 			}
 
-			if err := json.Unmarshal([]byte(c.Messages[0]), &firstMsg); err != nil {
+			if err := json.Unmarshal([]byte(allLogs[0]), &firstMsg); err != nil {
 				return "", errors.Errorf("failed to unmarshal first log message for container '%s'", c.name)
 			}
 
@@ -201,5 +208,41 @@ func (h *LokiLogHandler) SetRunId(executionId string) {
 }
 
 func (h *LokiLogHandler) GetRunId() string {
+	return h.runId
+}
+
+// stores logs in memory
+type InMemoryLogHandler struct {
+	logs  map[string][]LogContent
+	runId string
+}
+
+func (h *InMemoryLogHandler) Handle(c *ContainerLogConsumer, content LogContent) error {
+	if h.logs == nil {
+		h.logs = make(map[string][]LogContent)
+	}
+
+	if _, ok := h.logs[content.ContainerName]; !ok {
+		h.logs[content.ContainerName] = make([]LogContent, 0)
+	} else {
+		h.logs[content.ContainerName] = append(h.logs[content.ContainerName], content)
+	}
+
+	return nil
+}
+
+func (h InMemoryLogHandler) GetLogLocation(_ map[string]*ContainerLogConsumer) (string, error) {
+	return "", nil
+}
+
+func (h InMemoryLogHandler) GetTarget() LogTarget {
+	return InMemory
+}
+
+func (h *InMemoryLogHandler) SetRunId(executionId string) {
+	h.runId = executionId
+}
+
+func (h *InMemoryLogHandler) GetRunId() string {
 	return h.runId
 }

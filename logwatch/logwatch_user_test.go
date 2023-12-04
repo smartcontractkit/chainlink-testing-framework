@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"regexp"
 	"testing"
 	"time"
 
@@ -64,56 +63,6 @@ func (m *MyDeployment) ConnectLogs(lw *logwatch.LogWatch) error {
 }
 
 /* That's how you use it */
-
-func TestExampleUserInteraction(t *testing.T) {
-	t.Run("sync API, block, receive one message", func(t *testing.T) {
-		ctx := context.Background()
-		testData := testData{repeat: 10, perSecond: 0.01, streams: []string{"A\nB\nC\nD"}}
-		d, err := NewDeployment(ctx, testData)
-		// nolint
-		defer d.Shutdown(ctx)
-		require.NoError(t, err)
-		lw, err := logwatch.NewLogWatch(
-			t,
-			map[string][]*regexp.Regexp{
-				"container-0": {
-					regexp.MustCompile("A"),
-				},
-			},
-		)
-		require.NoError(t, err)
-		err = d.ConnectLogs(lw)
-		require.NoError(t, err)
-		match := lw.Listen()
-		require.NotEmpty(t, match)
-	})
-	t.Run("async API, execute some logic on match", func(t *testing.T) {
-		ctx := context.Background()
-		testData := testData{repeat: 10, perSecond: 0.01, streams: []string{"A\nB\nC\nD\n", "E\nF\nG\nH\n"}}
-		notifications := 0
-		d, err := NewDeployment(ctx, testData)
-		// nolint
-		defer d.Shutdown(ctx)
-		require.NoError(t, err)
-		lw, err := logwatch.NewLogWatch(
-			t,
-			map[string][]*regexp.Regexp{
-				"container-0": {
-					regexp.MustCompile("A"),
-				},
-				"container-1": {
-					regexp.MustCompile("E"),
-				},
-			},
-		)
-		require.NoError(t, err)
-		lw.OnMatch(func(ln *logwatch.LogNotification) { notifications++ })
-		err = d.ConnectLogs(lw)
-		require.NoError(t, err)
-		time.Sleep(1 * time.Second)
-		require.Equal(t, testData.repeat*len(testData.streams), notifications)
-	})
-}
 
 var (
 	A = []byte("A\n")

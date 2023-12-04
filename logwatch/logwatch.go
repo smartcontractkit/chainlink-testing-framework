@@ -49,8 +49,6 @@ type LogWatch struct {
 	testName                     string
 	log                          zerolog.Logger
 	loki                         *wasp.LokiClient
-	patterns                     map[string][]*regexp.Regexp
-	notifyTest                   chan *LogNotification
 	containers                   []LogProducingContainer
 	consumers                    map[string]*ContainerLogConsumer
 	logTargetHandlers            map[LogTarget]HandleLogTarget
@@ -94,8 +92,6 @@ func NewLogWatch(t *testing.T, patterns map[string][]*regexp.Regexp, options ...
 	logWatch := &LogWatch{
 		testName:                     testName,
 		log:                          l,
-		patterns:                     patterns,
-		notifyTest:                   make(chan *LogNotification, 10000),
 		consumers:                    make(map[string]*ContainerLogConsumer, 0),
 		logTargetHandlers:            getDefaultLogHandlers(),
 		logListeningDone:             make(chan struct{}, 1),
@@ -184,30 +180,6 @@ func WithLogProducerTimeoutRetryLimit(retryLimit int) Option {
 	}
 }
 
-// Listen listen for the next notification
-func (m *LogWatch) Listen() *LogNotification {
-	msg := <-m.notifyTest
-	m.log.Warn().
-		Str("Container", msg.Container).
-		Str("Line", msg.Log).
-		Msg("Received notification from container")
-	return msg
-}
-
-// OnMatch calling your testing hook on first match
-func (m *LogWatch) OnMatch(f func(ln *LogNotification)) {
-	go func() {
-		for {
-			msg := <-m.notifyTest
-			m.log.Warn().
-				Str("Container", msg.Container).
-				Str("Line", msg.Log).
-				Msg("Received notification from container")
-			f(msg)
-		}
-	}()
-}
-
 // ConnectContainer connects consumer to selected container and starts testcontainers.LogProducer
 func (m *LogWatch) ConnectContainer(ctx context.Context, container LogProducingContainer, prefix string) error {
 	name, err := container.Name(ctx)
@@ -276,13 +248,19 @@ func (m *LogWatch) ConnectContainer(ctx context.Context, container LogProducingC
 							Str("Container name", name).
 							Str("Timeout", timeout.String()).
 							Msgf("Retrying connection and listening to container logs. Attempt %d/%d", currentAttempt, retryLimit)
-						// when log producer starts again it will request all logs again, so we need to remove ones already saved by log watch to avoid duplicates
-						// in the unlikely case that log producer fails to start we will copy the messages received so far, so that at least some logs are salvaged
-						messagesCopy := append([]string{}, m.consumers[name].Messages...)
-						m.consumers[name].Messages = make([]string, 0)
-						m.log.Warn().Msgf("Consumer messages: %d", len(m.consumers[name].Messages))
 
 						failedToStart := false
+						//TODO if there are many failures here we could save the file and restore it content if we fail to
+						//create a new temp file
+						resetErr := cons.ResetTempFile()
+						if resetErr != nil {
+							m.log.Error().
+								Err(resetErr).
+								Str("Container name", name).
+								Msg("Failed to reset temp file. Stopping logging")
+
+							return
+						}
 						for container.StartLogProducer(ctx, timeout) != nil {
 							if !shouldRetry() {
 								failedToStart = true
@@ -298,7 +276,6 @@ func (m *LogWatch) ConnectContainer(ctx context.Context, container LogProducingC
 								Err(err).
 								Str("Container name", name).
 								Msg("Previously running log producer couldn't be stopped. Used all retry attempts. Won't try again")
-							m.consumers[name].Messages = messagesCopy
 							return
 						}
 						m.log.Info().
@@ -336,7 +313,11 @@ func (m *LogWatch) Shutdown(context context.Context) error {
 				Str("Name", name).
 				Msg("Failed to disconnect container")
 
-			err = errors.Wrap(singleErr, "failed to disconnect container")
+			if err == nil {
+				err = singleErr
+			} else {
+				err = errors.Wrap(err, singleErr.Error())
+			}
 		}
 	}
 
@@ -389,48 +370,44 @@ func (m *LogWatch) DisconnectContainer(container LogProducingContainer) error {
 	return nil
 }
 
+var noOpConsumerFn = func(consumer *ContainerLogConsumer) error {
+	return nil
+}
+
 // ContainerLogs return all logs for the particular container
-func (m *LogWatch) ContainerLogs(name string) []string {
-	m.acceptMutex.Lock()
-	defer m.acceptMutex.Unlock()
-	if _, ok := m.consumers[name]; !ok {
-		return []string{}
+func (m *LogWatch) ContainerLogs(name string) ([]string, error) {
+	logs := []string{}
+	var getLogsFn = func(consumer *ContainerLogConsumer, log LogContent) error {
+		if consumer.name == name {
+			logs = append(logs, string(log.Content))
+		}
+		return nil
 	}
 
-	return m.consumers[name].Messages
-}
-
-// AllLogs returns all logs for all containers
-func (m *LogWatch) AllLogs() []string {
-	m.acceptMutex.Lock()
-	defer m.acceptMutex.Unlock()
-	logs := make([]string, 0)
-	for _, l := range m.consumers {
-		logs = append(logs, l.Messages...)
+	err := m.getAllLogsAndExecute(noOpConsumerFn, getLogsFn, noOpConsumerFn)
+	if err != nil {
+		return []string{}, err
 	}
-	return logs
+
+	return logs, err
 }
 
-// PrintAll prints all logs for all containers connected
-func (m *LogWatch) PrintAll() {
+func (m *LogWatch) getAllLogsAndExecute(preExecuteFn func(consumer *ContainerLogConsumer) error, executeFn func(consumer *ContainerLogConsumer, log LogContent) error, cleanUpFn func(consumer *ContainerLogConsumer) error) error {
 	m.acceptMutex.Lock()
 	defer m.acceptMutex.Unlock()
-	for cname, c := range m.consumers {
-		for _, msg := range c.Messages {
-			m.log.Info().
-				Str("Container", cname).
-				Str("Msg", msg).
-				Send()
+
+	var loopErr error
+	var attachError = func(err error) {
+		if err == nil {
+			return
+		}
+		if loopErr == nil {
+			loopErr = err
+		} else {
+			loopErr = errors.Wrap(loopErr, err.Error())
 		}
 	}
-}
 
-// FlushLogsToTargets flushes all logs for all consumers (containers) to their targets
-func (m *LogWatch) FlushLogsToTargets() error {
-	m.acceptMutex.Lock()
-	defer m.acceptMutex.Unlock()
-
-	m.log.Info().Msg("Flushing logs to targets")
 	for _, consumer := range m.consumers {
 		// nothing to do if no log targets are configured
 		if len(consumer.logTargets) == 0 {
@@ -441,11 +418,23 @@ func (m *LogWatch) FlushLogsToTargets() error {
 			return errors.Errorf("temp file is nil for container %s, this should never happen", consumer.name)
 		}
 
-		// do not accept any new logs
-		consumer.isDone = true
-		// this was done on purpose, so that when we are done flushing all logs we can close the temp file and handle abrupt termination too
-		// nolint
-		defer consumer.tempFile.Close()
+		preExecuteErr := preExecuteFn(consumer)
+		if preExecuteErr != nil {
+			m.log.Error().
+				Err(preExecuteErr).
+				Str("Container", consumer.name).
+				Msg("Failed to run pre-execute function")
+			attachError(preExecuteErr)
+			break
+		}
+
+		// set the cursor to the end of the file, when done to resume writing
+		//revive:disable
+		defer func() {
+			_, deferErr := consumer.tempFile.Seek(0, 2)
+			attachError(deferErr)
+		}()
+		//revive:enable
 
 		_, err := consumer.tempFile.Seek(0, 0)
 		if err != nil {
@@ -462,39 +451,88 @@ func (m *LogWatch) FlushLogsToTargets() error {
 			decodeErr := decoder.Decode(&log)
 			if decodeErr == nil {
 				counter++
-				for _, logTarget := range consumer.logTargets {
-					if handler, ok := consumer.lw.logTargetHandlers[logTarget]; ok {
-						if err := handler.Handle(consumer, log); err != nil {
-							m.log.Error().
-								Err(err).
-								Str("Container", consumer.name).
-								Str("log target", string(logTarget)).
-								Msg("Failed to handle log target. Aborting")
-							break LOG_LOOP
-						}
-					} else {
-						m.log.Warn().
-							Str("Container", consumer.name).
-							Str("log target", string(logTarget)).
-							Msg("No handler found for log target. Aborting")
-					}
+				executeErr := executeFn(consumer, log)
+				if executeErr != nil {
+					m.log.Error().
+						Err(executeErr).
+						Str("Container", consumer.name).
+						Msg("Failed to run execute function")
+					attachError(preExecuteErr)
+					break LOG_LOOP
 				}
 			} else if errors.Is(decodeErr, io.EOF) {
 				m.log.Info().
 					Int("Log count", counter).
 					Str("Container", consumer.name).
-					Msg("Finished flushing logs")
+					Msg("Finished getting logs")
 				break
 			} else {
 				return decodeErr
 			}
 		}
+
+		c := consumer
+
+		// done on purpose
+		//revive:disable
+		defer func() {
+			attachError(cleanUpFn(c))
+		}()
+		//revive:enable
 	}
 
-	m.log.Info().
-		Msg("Flushed all logs to targets")
+	return loopErr
+}
 
-	return nil
+// FlushLogsToTargets flushes all logs for all consumers (containers) to their targets
+func (m *LogWatch) FlushLogsToTargets() error {
+	var preExecuteFn = func(consumer *ContainerLogConsumer) error {
+		// do not accept any new logs
+		consumer.isDone = true
+
+		return nil
+	}
+	var flushLogsFn = func(consumer *ContainerLogConsumer, log LogContent) error {
+		for _, logTarget := range consumer.logTargets {
+			if handler, ok := consumer.lw.logTargetHandlers[logTarget]; ok {
+				if err := handler.Handle(consumer, log); err != nil {
+					m.log.Error().
+						Err(err).
+						Str("Container", consumer.name).
+						Str("log target", string(logTarget)).
+						Msg("Failed to handle log target. Aborting")
+					return err
+				}
+			} else {
+				m.log.Warn().
+					Str("Container", consumer.name).
+					Str("log target", string(logTarget)).
+					Msg("No handler found for log target. Aborting")
+			}
+		}
+
+		return nil
+	}
+
+	var closeTempFileFn = func(consumer *ContainerLogConsumer) error {
+		if consumer.tempFile == nil {
+			return errors.Errorf("temp file is nil for container %s, this should never happen", consumer.name)
+		}
+
+		return consumer.tempFile.Close()
+	}
+
+	flushErr := m.getAllLogsAndExecute(preExecuteFn, flushLogsFn, closeTempFileFn)
+	if flushErr != nil {
+		m.log.Info().
+			Msg("Finished flushing logs")
+	} else {
+		m.log.Info().
+			Err(flushErr).
+			Msg("Failed to flush logs")
+	}
+
+	return flushErr
 }
 
 // ContainerLogConsumer is a container log lines consumer
@@ -503,7 +541,6 @@ type ContainerLogConsumer struct {
 	prefix     string
 	logTargets []LogTarget
 	lw         *LogWatch
-	Messages   []string
 	tempFile   *os.File
 	encoder    *gob.Encoder
 	isDone     bool
@@ -519,7 +556,6 @@ func newContainerLogConsumer(lw *LogWatch, containerName string, prefix string, 
 		prefix:     prefix,
 		logTargets: logTargets,
 		lw:         lw,
-		Messages:   make([]string, 0),
 		isDone:     false,
 		hasErrored: false,
 	}
@@ -539,6 +575,24 @@ func newContainerLogConsumer(lw *LogWatch, containerName string, prefix string, 
 	return consumer, nil
 }
 
+func (g *ContainerLogConsumer) ResetTempFile() error {
+	if g.tempFile != nil {
+		if err := g.tempFile.Close(); err != nil {
+			return err
+		}
+	}
+
+	tempFile, err := os.CreateTemp("", fmt.Sprintf("%s-%s-datafile.gob", g.name, uuid.NewString()[0:8]))
+	if err != nil {
+		return err
+	}
+
+	g.tempFile = tempFile
+	g.encoder = gob.NewEncoder(tempFile)
+
+	return nil
+}
+
 // Accept accepts the log message from particular container and saves it to the temp gob file
 func (g *ContainerLogConsumer) Accept(l testcontainers.Log) {
 	g.lw.acceptMutex.Lock()
@@ -555,12 +609,6 @@ func (g *ContainerLogConsumer) Accept(l testcontainers.Log) {
 			Str("Log", string(l.Content)).
 			Msg("Consumer has finished, but you are still trying to accept logs. This should never happen")
 		return
-	}
-
-	g.Messages = append(g.Messages, string(l.Content))
-	matches := g.FindMatch(l)
-	for i := 0; i < matches; i++ {
-		g.lw.notifyTest <- &LogNotification{Container: g.name, Prefix: g.prefix, Log: string(l.Content)}
 	}
 
 	// if no log targets are configured, we don't need to save the logs
@@ -605,26 +653,6 @@ func (g *ContainerLogConsumer) streamLogToTempFile(content LogContent) error {
 	return g.encoder.Encode(content)
 }
 
-// FindMatch check multiple regex patterns for the same string
-// can be checked with one regex, made for readability of user-facing API
-func (g *ContainerLogConsumer) FindMatch(l testcontainers.Log) int {
-	matchesPerPattern := 0
-	if g.prefix == "" {
-		g.prefix = g.name
-	}
-	for _, filterRegex := range g.lw.patterns[g.name] {
-		if filterRegex.Match(l.Content) {
-			g.lw.log.Info().
-				Str("Container", g.name).
-				Str("Regex", filterRegex.String()).
-				Str("String", string(l.Content)).
-				Msg("Match found")
-			matchesPerPattern++
-		}
-	}
-	return matchesPerPattern
-}
-
 func (g *ContainerLogConsumer) hasLogTarget(logTarget LogTarget) bool {
 	for _, lt := range g.logTargets {
 		if lt == logTarget {
@@ -645,6 +673,8 @@ func getLogTargetsFromEnv() ([]LogTarget, error) {
 				envLogTargets = append(envLogTargets, Loki)
 			case "file":
 				envLogTargets = append(envLogTargets, File)
+			case "in-memory":
+				envLogTargets = append(envLogTargets, InMemory)
 			default:
 				return []LogTarget{}, errors.Errorf("unknown log target: %s", target)
 			}
