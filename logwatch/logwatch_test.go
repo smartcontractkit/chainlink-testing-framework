@@ -585,7 +585,7 @@ func TestLogWatchConnectRetryMockContainer_AlwaysFailsRestart(t *testing.T) {
 		errorChannelError: nil,
 	}
 
-	lw, err := logwatch.NewLogWatch(t, nil, logwatch.WithLogProducerTimeout(1*time.Second), logwatch.WithLogProducerTimeoutRetryLimit(7), logwatch.WithLogTarget(logwatch.InMemory))
+	lw, err := logwatch.NewLogWatch(t, nil, logwatch.WithLogProducerTimeout(1*time.Second), logwatch.WithLogProducerRetryLimit(4), logwatch.WithLogTarget(logwatch.InMemory))
 	require.NoError(t, err, "log watch should be created")
 
 	go func() {
@@ -619,7 +619,7 @@ func TestLogWatchConnectRetryMockContainer_AlwaysFailsRestart(t *testing.T) {
 	logs, err := lw.ContainerLogs(mockedContainer.name)
 	require.NoError(t, err, "should not fail to get logs")
 	require.Equal(t, 0, len(logs), "log watch should have no logs")
-	require.Equal(t, 7, mockedContainer.startCounter, "log producer should be started seven times")
+	require.Equal(t, 5, mockedContainer.startCounter, "log producer should be started seven times")
 
 	t.Cleanup(func() {
 		if err := lw.Shutdown(ctx); err != nil {
@@ -657,7 +657,7 @@ func TestLogWatchConnectRetryTwoMockContainers_FirstAlwaysFailsRestart_SecondWor
 		errorChannelError: nil,
 	}
 
-	lw, err := logwatch.NewLogWatch(t, nil, logwatch.WithLogProducerTimeout(1*time.Second), logwatch.WithLogProducerTimeoutRetryLimit(7), logwatch.WithLogTarget(logwatch.InMemory))
+	lw, err := logwatch.NewLogWatch(t, nil, logwatch.WithLogProducerTimeout(1*time.Second), logwatch.WithLogProducerRetryLimit(4), logwatch.WithLogTarget(logwatch.InMemory))
 	require.NoError(t, err, "log watch should be created")
 
 	go func() {
@@ -703,7 +703,7 @@ func TestLogWatchConnectRetryTwoMockContainers_FirstAlwaysFailsRestart_SecondWor
 	logs_1, err := lw.ContainerLogs(mockedContainer_1.name)
 	require.NoError(t, err, "should not fail to get logs")
 	require.Equal(t, 0, len(logs_1), "log watch should have no logs")
-	require.Equal(t, 7, mockedContainer_1.startCounter, "log producer should be started seven times for first container")
+	require.Equal(t, 5, mockedContainer_1.startCounter, "log producer should be started seven times for first container")
 
 	logs_2, err := lw.ContainerLogs(mockedContainer_2.name)
 	require.NoError(t, err, "should not fail to get logs")

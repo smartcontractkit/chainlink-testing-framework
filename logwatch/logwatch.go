@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/avast/retry-go"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -20,7 +21,6 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/testsummary"
-	"github.com/smartcontractkit/chainlink-testing-framework/utils/retries"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/runid"
 )
 
@@ -173,10 +173,17 @@ func WithLogProducerTimeout(timeout time.Duration) Option {
 	}
 }
 
-func WithLogProducerTimeoutRetryLimit(retryLimit int) Option {
+func WithLogProducerRetryLimit(retryLimit int) Option {
 	return func(lw *LogWatch) {
 		lw.logProducerTimeoutRetryLimit = retryLimit
 	}
+}
+
+func fibonacci(n int) int {
+	if n <= 1 {
+		return n
+	}
+	return fibonacci(n-1) + fibonacci(n-2)
 }
 
 // ConnectContainer connects consumer to selected container and starts testcontainers.LogProducer
@@ -242,7 +249,7 @@ func (m *LogWatch) ConnectContainer(ctx context.Context, container LogProducingC
 						Str("Container name", name).
 						Msg("Log producer errored")
 					if shouldRetry() {
-						backoff := retries.Fibonacci(currentAttempt)
+						backoff := fibonacci(currentAttempt)
 						timeout = timeout + time.Duration(backoff)*time.Second
 						m.log.Info().
 							Str("Prefix", prefix).
@@ -250,11 +257,10 @@ func (m *LogWatch) ConnectContainer(ctx context.Context, container LogProducingC
 							Str("Timeout", timeout.String()).
 							Msgf("Retrying connection and listening to container logs. Attempt %d/%d", currentAttempt, retryLimit)
 
-						failedToStart := false
 						//TODO if there are many failures here we could save the file and restore it content if we fail to
-						//create a new temp file
-						resetErr := cons.ResetTempFile()
-						if resetErr != nil {
+						//create a new temp file; we remove the previous one to avoid log duplication, because new log producer
+						//fetches logs from the beginning
+						if resetErr := cons.ResetTempFile(); resetErr != nil {
 							m.log.Error().
 								Err(resetErr).
 								Str("Container name", name).
@@ -264,17 +270,21 @@ func (m *LogWatch) ConnectContainer(ctx context.Context, container LogProducingC
 
 							return
 						}
-						for container.StartLogProducer(ctx, timeout) != nil {
-							if !shouldRetry() {
-								failedToStart = true
-								break
-							}
-							m.log.Info().
-								Str("Container name", name).
-								Msg("Waiting for log producer to stop before restarting it")
-							time.Sleep(1 * time.Second)
-						}
-						if failedToStart {
+
+						startErr := retry.Do(func() error {
+							return container.StartLogProducer(ctx, timeout)
+						},
+							retry.Attempts(uint(retryLimit)),
+							retry.Delay(1*time.Second),
+							retry.OnRetry(func(n uint, err error) {
+								m.log.Info().
+									Str("Container name", name).
+									Str("Attempt", fmt.Sprintf("%d/%d", n+1, retryLimit)).
+									Msg("Waiting for log producer to stop before restarting it")
+							}),
+						)
+
+						if startErr != nil {
 							m.log.Error().
 								Err(err).
 								Str("Container name", name).
@@ -284,6 +294,7 @@ func (m *LogWatch) ConnectContainer(ctx context.Context, container LogProducingC
 
 							return
 						}
+
 						m.log.Info().
 							Str("Container name", name).
 							Msg("Started new log producer")
@@ -298,7 +309,7 @@ func (m *LogWatch) ConnectContainer(ctx context.Context, container LogProducingC
 						return
 					}
 
-					time.Sleep(500 * time.Millisecond)
+					// time.Sleep(500 * time.Millisecond)
 				}
 			case <-done:
 				return
