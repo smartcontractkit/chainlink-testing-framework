@@ -688,7 +688,7 @@ func (g *ContainerLogConsumer) Accept(l testcontainers.Log) {
 		Ts string `json:"ts"`
 	}
 
-	if err := json.Unmarshal([]byte(l.Content), &logMsg); err != nil {
+	if err := json.Unmarshal(l.Content, &logMsg); err != nil {
 		g.lw.log.Error().
 			Str("Container", g.name).
 			Msg("failed to unmarshal log message for container")
