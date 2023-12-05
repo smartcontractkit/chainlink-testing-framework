@@ -26,6 +26,15 @@ const (
 	EXEC_CLIENT_ENV_VAR_NAME = "ETH2_EL_CLIENT"
 )
 
+var (
+	ErrMissingExecClientEnvVar  = fmt.Errorf("environment variable %s is not set, but exec layer client config from env var was requested", EXEC_CLIENT_ENV_VAR_NAME)
+	ErrMissingConsensusType     = errors.New("consensus type is required")
+	ErrMissingExecutionLayer    = errors.New("execution layer is required")
+	ErrMissingConsensusLayer    = errors.New("consensus layer is required for PoS")
+	ErrConsensusLayerNotAllowed = errors.New("consensus layer is not allowed for PoW")
+	ErrTestConfigNotSaved       = errors.New("could not save test env config")
+)
+
 type ConsensusType string
 
 const (
@@ -179,7 +188,7 @@ func (b *EthereumNetworkBuilder) Build() (EthereumNetwork, error) {
 
 		elEnv := os.Getenv(EXEC_CLIENT_ENV_VAR_NAME)
 		if elEnv == "" {
-			return EthereumNetwork{}, errors.New("ETH2_EL_CLIENT env var is not set, but exec layer client config from env var was requested")
+			return EthereumNetwork{}, ErrMissingExecClientEnvVar
 		}
 
 		elEnv = strings.ToLower(elEnv)
@@ -221,19 +230,19 @@ func (b *EthereumNetworkBuilder) importExistingConfig() bool {
 
 func (b *EthereumNetworkBuilder) validate() error {
 	if b.consensusType == "" {
-		return errors.New("consensus type is required")
+		return ErrMissingConsensusType
 	}
 
 	if b.executionLayer == "" {
-		return errors.New("execution layer is required")
+		return ErrMissingExecutionLayer
 	}
 
 	if b.consensusType == ConsensusType_PoS && b.consensusLayer == nil {
-		return errors.New("consensus layer is required for PoS")
+		return ErrMissingConsensusLayer
 	}
 
 	if b.consensusType == ConsensusType_PoW && b.consensusLayer != nil {
-		return errors.New("consensus layer is not allowed for PoW")
+		return ErrConsensusLayerNotAllowed
 	}
 
 	for _, addr := range b.addressesToFund {
@@ -544,7 +553,7 @@ func (en *EthereumNetwork) Save() error {
 	name := fmt.Sprintf("ethereum_network_%s", uuid.NewString()[0:8])
 	confPath, err := utils.SaveStructAsJson(en, ".private_chains", name)
 	if err != nil {
-		return errors.New("could not save test env config")
+		return ErrTestConfigNotSaved
 	}
 
 	log := logging.GetTestLogger(en.t)
