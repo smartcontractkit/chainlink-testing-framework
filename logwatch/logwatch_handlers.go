@@ -95,8 +95,8 @@ func (h FileLogHandler) GetTarget() LogTarget {
 	return File
 }
 
-func (h *FileLogHandler) SetRunId(executionId string) {
-	h.runId = executionId
+func (h *FileLogHandler) SetRunId(runId string) {
+	h.runId = runId
 }
 
 func (h *FileLogHandler) GetRunId() string {
@@ -181,8 +181,8 @@ func (h LokiLogHandler) GetTarget() LogTarget {
 	return Loki
 }
 
-func (h *LokiLogHandler) SetRunId(executionId string) {
-	h.runId = executionId
+func (h *LokiLogHandler) SetRunId(runId string) {
+	h.runId = runId
 }
 
 func (h *LokiLogHandler) GetRunId() string {
@@ -217,8 +217,8 @@ func (h InMemoryLogHandler) GetTarget() LogTarget {
 	return InMemory
 }
 
-func (h *InMemoryLogHandler) SetRunId(executionId string) {
-	h.runId = executionId
+func (h *InMemoryLogHandler) SetRunId(runId string) {
+	h.runId = runId
 }
 
 func (h *InMemoryLogHandler) GetRunId() string {
