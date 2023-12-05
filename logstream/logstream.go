@@ -1,4 +1,4 @@
-package logwatch
+package logstream
 
 import (
 	"context"
@@ -45,9 +45,9 @@ type LogProducingContainer interface {
 	Terminate(context.Context) error
 }
 
-// LogWatch is a test helper struct to monitor docker container logs for some patterns
+// LogStream is a test helper struct to monitor docker container logs for some patterns
 // and push their logs into Loki for further analysis
-type LogWatch struct {
+type LogStream struct {
 	testName                     string
 	log                          zerolog.Logger
 	loki                         *wasp.LokiClient
@@ -68,11 +68,11 @@ type LogContent struct {
 	Time          time.Time
 }
 
-type Option func(*LogWatch)
+type Option func(*LogStream)
 
-// NewLogWatch creates a new LogWatch instance, with Loki client only if Loki log target is enabled (lazy init)
-func NewLogWatch(t *testing.T, patterns map[string][]*regexp.Regexp, options ...Option) (*LogWatch, error) {
-	l := logging.GetLogger(nil, "LOGWATCH_LOG_LEVEL").With().Str("Component", "LogWatch").Logger()
+// NewLogStream creates a new LogStream instance, with Loki client only if Loki log target is enabled (lazy init)
+func NewLogStream(t *testing.T, patterns map[string][]*regexp.Regexp, options ...Option) (*LogStream, error) {
+	l := logging.GetLogger(nil, "LOGWATCH_LOG_LEVEL").With().Str("Component", "LogStream").Logger()
 	var testName string
 	if t == nil {
 		testName = NO_TEST
@@ -90,7 +90,7 @@ func NewLogWatch(t *testing.T, patterns map[string][]*regexp.Regexp, options ...
 		return nil, err
 	}
 
-	logWatch := &LogWatch{
+	logWatch := &LogStream{
 		testName:                     testName,
 		log:                          l,
 		consumers:                    make(map[string]*ContainerLogConsumer, 0),
@@ -113,12 +113,12 @@ func NewLogWatch(t *testing.T, patterns map[string][]*regexp.Regexp, options ...
 		handler.SetRunId(logWatch.runId)
 	}
 
-	l.Info().Str("Run_id", logWatch.runId).Msg("LogWatch initialized")
+	l.Info().Str("Run_id", logWatch.runId).Msg("LogStream initialized")
 
 	return logWatch, nil
 }
 
-func (m *LogWatch) validateLogTargets() error {
+func (m *LogStream) validateLogTargets() error {
 	// check if all requested log targets are supported
 	for _, wantedTarget := range m.enabledLogTargets {
 		found := false
@@ -150,32 +150,32 @@ func (m *LogWatch) validateLogTargets() error {
 	}
 
 	if len(m.logTargetHandlers) == 0 {
-		m.log.Warn().Msg("No log targets enabled. LogWatch will not persist any logs")
+		m.log.Warn().Msg("No log targets enabled. LogStream will not persist any logs")
 	}
 
 	return nil
 }
 
 func WithCustomLogHandler(logTarget LogTarget, handler HandleLogTarget) Option {
-	return func(lw *LogWatch) {
+	return func(lw *LogStream) {
 		lw.logTargetHandlers[logTarget] = handler
 	}
 }
 
 func WithLogTarget(logTarget LogTarget) Option {
-	return func(lw *LogWatch) {
+	return func(lw *LogStream) {
 		lw.enabledLogTargets = append(lw.enabledLogTargets, logTarget)
 	}
 }
 
 func WithLogProducerTimeout(timeout time.Duration) Option {
-	return func(lw *LogWatch) {
+	return func(lw *LogStream) {
 		lw.logProducerTimeout = timeout
 	}
 }
 
 func WithLogProducerRetryLimit(retryLimit int) Option {
-	return func(lw *LogWatch) {
+	return func(lw *LogStream) {
 		lw.logProducerTimeoutRetryLimit = retryLimit
 	}
 }
@@ -188,7 +188,7 @@ func fibonacci(n int) int {
 }
 
 // ConnectContainer connects consumer to selected container and starts testcontainers.LogProducer
-func (m *LogWatch) ConnectContainer(ctx context.Context, container LogProducingContainer, prefix string) error {
+func (m *LogStream) ConnectContainer(ctx context.Context, container LogProducingContainer, prefix string) error {
 	name, err := container.Name(ctx)
 	if err != nil {
 		return err
@@ -322,12 +322,12 @@ func (m *LogWatch) ConnectContainer(ctx context.Context, container LogProducingC
 	return err
 }
 
-func (m *LogWatch) GetConsumers() map[string]*ContainerLogConsumer {
+func (m *LogStream) GetConsumers() map[string]*ContainerLogConsumer {
 	return m.consumers
 }
 
 // Shutdown disconnects all containers, stops notifications
-func (m *LogWatch) Shutdown(context context.Context) error {
+func (m *LogStream) Shutdown(context context.Context) error {
 	var err error
 	for _, c := range m.consumers {
 		if stopErr := c.Stop(); stopErr != nil {
@@ -362,20 +362,20 @@ func (m *LogWatch) Shutdown(context context.Context) error {
 
 type LogWriter = func(testName string, name string, location interface{}) error
 
-func (m *LogWatch) PrintLogTargetsLocations() {
+func (m *LogStream) PrintLogTargetsLocations() {
 	m.SaveLogTargetsLocations(func(testName string, name string, location interface{}) error {
 		m.log.Info().Str("Test", testName).Str("Handler", name).Interface("Location", location).Msg("Log location")
 		return nil
 	})
 }
 
-func (m *LogWatch) SaveLogLocationInTestSummary() {
+func (m *LogStream) SaveLogLocationInTestSummary() {
 	m.SaveLogTargetsLocations(func(testName string, name string, location interface{}) error {
 		return testsummary.AddEntry(testName, name, location)
 	})
 }
 
-func (m *LogWatch) SaveLogTargetsLocations(writer LogWriter) {
+func (m *LogStream) SaveLogTargetsLocations(writer LogWriter) {
 	for _, handler := range m.logTargetHandlers {
 		name := string(handler.GetTarget())
 		location, err := handler.GetLogLocation(m.consumers)
@@ -407,7 +407,7 @@ func (g *ContainerLogConsumer) Stop() error {
 }
 
 // DisconnectContainer disconnects the particular container
-func (m *LogWatch) DisconnectContainer(container LogProducingContainer) error {
+func (m *LogStream) DisconnectContainer(container LogProducingContainer) error {
 	if container.IsRunning() {
 		m.log.Info().Str("container", container.GetContainerID()).Msg("Disconnecting container")
 		return container.StopLogProducer()
@@ -417,7 +417,7 @@ func (m *LogWatch) DisconnectContainer(container LogProducingContainer) error {
 }
 
 // ContainerLogs return all logs for the particular container
-func (m *LogWatch) ContainerLogs(name string) ([]string, error) {
+func (m *LogStream) ContainerLogs(name string) ([]string, error) {
 	logs := []string{}
 	var getLogsFn = func(consumer *ContainerLogConsumer, log LogContent) error {
 		if consumer.name == name {
@@ -441,7 +441,7 @@ func NoOpConsumerFn(consumer *ContainerLogConsumer) error {
 	return nil
 }
 
-func (m *LogWatch) GetAllLogsAndConsume(preExecuteFn ConsumerConsumingFn, consumeLogFn ConsumerLogConsumingFn) (loopErr error) {
+func (m *LogStream) GetAllLogsAndConsume(preExecuteFn ConsumerConsumingFn, consumeLogFn ConsumerLogConsumingFn) (loopErr error) {
 	m.acceptMutex.Lock()
 	defer m.acceptMutex.Unlock()
 
@@ -533,7 +533,7 @@ func (m *LogWatch) GetAllLogsAndConsume(preExecuteFn ConsumerConsumingFn, consum
 }
 
 // FlushLogsToTargets flushes all logs for all consumers (containers) to their targets
-func (m *LogWatch) FlushLogsToTargets() error {
+func (m *LogStream) FlushLogsToTargets() error {
 	var preExecuteFn = func(consumer *ContainerLogConsumer) error {
 		// do not accept any new logs
 		consumer.isDone = true
@@ -582,7 +582,7 @@ type ContainerLogConsumer struct {
 	name             string
 	prefix           string
 	logTargets       []LogTarget
-	lw               *LogWatch
+	lw               *LogStream
 	tempFile         *os.File
 	encoder          *gob.Encoder
 	isDone           bool
@@ -595,7 +595,7 @@ type ContainerLogConsumer struct {
 // newContainerLogConsumer creates new log consumer for a container that
 // - signal if log line matches the pattern
 // - push all lines to configured log targets
-func newContainerLogConsumer(ctx context.Context, lw *LogWatch, container LogProducingContainer, prefix string, logTargets ...LogTarget) (*ContainerLogConsumer, error) {
+func newContainerLogConsumer(ctx context.Context, lw *LogStream, container LogProducingContainer, prefix string, logTargets ...LogTarget) (*ContainerLogConsumer, error) {
 	containerName, err := container.Name(ctx)
 	if err != nil {
 		return nil, err
@@ -748,7 +748,7 @@ func (g *ContainerLogConsumer) hasLogTarget(logTarget LogTarget) bool {
 }
 
 func getLogTargetsFromEnv() ([]LogTarget, error) {
-	envLogTargetsValue := os.Getenv("LOGWATCH_LOG_TARGETS")
+	envLogTargetsValue := os.Getenv("LOGSTREAM_LOG_TARGETS")
 	if envLogTargetsValue != "" {
 		envLogTargets := make([]LogTarget, 0)
 		for _, target := range strings.Split(envLogTargetsValue, ",") {

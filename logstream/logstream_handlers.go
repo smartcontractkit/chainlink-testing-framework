@@ -1,4 +1,4 @@
-package logwatch
+package logstream
 
 import (
 	"fmt"
@@ -128,7 +128,7 @@ func (h *LokiLogHandler) Handle(c *ContainerLogConsumer, content LogContent) err
 	}
 	// we can notify more than one time if it matches, but we push only once
 	_ = c.lw.loki.Handle(model.LabelSet{
-		"type":         "log_watch",
+		"type":         "log_stream",
 		"test":         model.LabelValue(content.TestName),
 		"container_id": model.LabelValue(content.ContainerName),
 		"run_id":       model.LabelValue(h.runId),

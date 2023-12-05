@@ -94,9 +94,9 @@ Removed charts do not trigger a re-publish, the packages have to be removed and 
 
 Note: The qa-charts repository is scheduled to look for changes to the charts once every hour. This can be expedited by going to that repo and running the cd action via github UI.
 
-# Using LogWatch
+# Using LogStream
 
-LogWatch is a package that allows to connect to a Docker container and then flush logs to configured targets. Currently 3 targets are supported:
+LogStream is a package that allows to connect to a Docker container and then flush logs to configured targets. Currently 3 targets are supported:
 * `file` - saves logs to a file in `./logs` folder
 * `loki` - sends logs to Loki
 * `in-memory` - stores logs in memory
@@ -104,14 +104,14 @@ LogWatch is a package that allows to connect to a Docker container and then flus
 It can be configured to use multiple targets at once. If no target is specified, it becomes a no-op.
 
 Targets can be set in two ways:
-* using `LOGWATCH_LOG_TARGETS` environment variable, e.g. `Loki,in-MemOry` (case insensitive)
+* using `LOGSTREAM_LOG_TARGETS` environment variable, e.g. `Loki,in-MemOry` (case insensitive)
 * using programmatic functional option `WithLogTarget()`
 
 Functional option has higher priority than environment variable.
 
-When you connect a contaier LogWatch will create a new consumer and start a detached goroutine that listens to logs emitted by that container and which reconnects and re-requests logs if listening fails for whatever reason. Retry limit and timeout can both be configured using functional options. In most cases one container should have one consumer, but it's possible to have multiple consumers for one container.
+When you connect a contaier LogStream will create a new consumer and start a detached goroutine that listens to logs emitted by that container and which reconnects and re-requests logs if listening fails for whatever reason. Retry limit and timeout can both be configured using functional options. In most cases one container should have one consumer, but it's possible to have multiple consumers for one container.
 
-LogWatch stores all logs in gob temporary file. To actually send/save them, you need to flush them. When you do it, LogWatch will decode the file and send logs to configured targets. If log handling results in an error it won't be retried and processing of logs for given consumer will stop (if you think we should add a retry mechanism please let us know).
+LogStream stores all logs in gob temporary file. To actually send/save them, you need to flush them. When you do it, LogStream will decode the file and send logs to configured targets. If log handling results in an error it won't be retried and processing of logs for given consumer will stop (if you think we should add a retry mechanism please let us know).
 
 *Important:* Flushing and accepting logs is blocking operation. That's because they both share the same cursor to temporary file and otherwise it's position would be racey and could result in mixed up logs.
 
@@ -120,23 +120,23 @@ When using `in-memory` or `file` target no other environment variables are requi
 * `LOKI_URL` - Loki URL to which logs will be pushed
 * `LOKI_BASIC_AUTH`
 
-You can print log location for each target using this function: `(m *LogWatch) PrintLogTargetsLocations()`. For `file` target it will print relative folder path, for `loki` it will print URL of a Grafana Dashboard scoped to current execution and container ids. For `in-memory` target it's no-op.
+You can print log location for each target using this function: `(m *LogStream) PrintLogTargetsLocations()`. For `file` target it will print relative folder path, for `loki` it will print URL of a Grafana Dashboard scoped to current execution and container ids. For `in-memory` target it's no-op.
 
-It is recommended to shutdown LogWatch at the end of your tests. Here's an example:
+It is recommended to shutdown LogStream at the end of your tests. Here's an example:
 ```go
 
 t.Cleanup(func() {
-    l.Warn().Msg("Shutting down logwatch")
+    l.Warn().Msg("Shutting down Log Stream")
 
     if t.Failed() || os.Getenv("TEST_LOG_COLLECT") == "true" {
         // we can't do much if this fails, so we just log the error
-        _ = logWatch.FlushLogsToTargets()
-        logWatch.PrintLogTargetsLocations()
-        logWatch.SaveLogLocationInTestSummary()
+        _ = logStream.FlushLogsToTargets()
+        logStream.PrintLogTargetsLocations()
+        logStream.SaveLogLocationInTestSummary()
     }
 
     // we can't do much if this fails, so we just log the error
-    _ = logWatch.Shutdown(testcontext.Get(b.t))
+    _ = logStream.Shutdown(testcontext.Get(b.t))
     })
 ```
 

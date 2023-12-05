@@ -1,4 +1,4 @@
-package logwatch_test
+package logstream_test
 
 import (
 	"bytes"
@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/logwatch"
+	"github.com/smartcontractkit/chainlink-testing-framework/logstream"
 )
 
 /* These tests are for user-facing API */
@@ -53,7 +53,7 @@ func (m *MyDeployment) Shutdown(ctx context.Context) error {
 }
 
 /* That's what you need to implement to have your logs send to your chosen targets */
-func (m *MyDeployment) ConnectLogs(lw *logwatch.LogWatch) error {
+func (m *MyDeployment) ConnectLogs(lw *logstream.LogStream) error {
 	for _, c := range m.containers {
 		if err := lw.ConnectContainer(context.Background(), c, ""); err != nil {
 			return err
@@ -77,12 +77,12 @@ func TestFileLoggingTarget(t *testing.T) {
 	// nolint
 	defer d.Shutdown(ctx)
 	require.NoError(t, err)
-	lw, err := logwatch.NewLogWatch(
+	lw, err := logstream.NewLogStream(
 		t,
 		nil,
-		logwatch.WithLogTarget(logwatch.File),
+		logstream.WithLogTarget(logstream.File),
 	)
-	require.NoError(t, err, "failed to create logwatch")
+	require.NoError(t, err, "failed to create logstream")
 	err = d.ConnectLogs(lw)
 	require.NoError(t, err, "failed to connect logs")
 
@@ -107,25 +107,25 @@ func TestFileLoggingTarget(t *testing.T) {
 	require.True(t, bytes.Contains(content, C), "C should be present in log file")
 
 	err = lw.Shutdown(ctx)
-	require.NoError(t, err, "failed to shutdown logwatch")
+	require.NoError(t, err, "failed to shutdown logstream")
 }
 
 type MockedLogHandler struct {
-	logs        []logwatch.LogContent
-	Target      logwatch.LogTarget
+	logs        []logstream.LogContent
+	Target      logstream.LogTarget
 	executionId string
 }
 
-func (m *MockedLogHandler) Handle(consumer *logwatch.ContainerLogConsumer, content logwatch.LogContent) error {
+func (m *MockedLogHandler) Handle(consumer *logstream.ContainerLogConsumer, content logstream.LogContent) error {
 	m.logs = append(m.logs, content)
 	return nil
 }
 
-func (m *MockedLogHandler) GetLogLocation(consumers map[string]*logwatch.ContainerLogConsumer) (string, error) {
+func (m *MockedLogHandler) GetLogLocation(consumers map[string]*logstream.ContainerLogConsumer) (string, error) {
 	return "", nil
 }
 
-func (m *MockedLogHandler) GetTarget() logwatch.LogTarget {
+func (m *MockedLogHandler) GetTarget() logstream.LogTarget {
 	return m.Target
 }
 
@@ -144,17 +144,17 @@ func TestMultipleMockedLoggingTargets(t *testing.T) {
 	// nolint
 	defer d.Shutdown(ctx)
 	require.NoError(t, err)
-	mockedFileHandler := &MockedLogHandler{Target: logwatch.File}
-	mockedLokiHanlder := &MockedLogHandler{Target: logwatch.Loki}
-	lw, err := logwatch.NewLogWatch(
+	mockedFileHandler := &MockedLogHandler{Target: logstream.File}
+	mockedLokiHanlder := &MockedLogHandler{Target: logstream.Loki}
+	lw, err := logstream.NewLogStream(
 		t,
 		nil,
-		logwatch.WithCustomLogHandler(logwatch.File, mockedFileHandler),
-		logwatch.WithCustomLogHandler(logwatch.Loki, mockedLokiHanlder),
-		logwatch.WithLogTarget(logwatch.Loki),
-		logwatch.WithLogTarget(logwatch.File),
+		logstream.WithCustomLogHandler(logstream.File, mockedFileHandler),
+		logstream.WithCustomLogHandler(logstream.Loki, mockedLokiHanlder),
+		logstream.WithLogTarget(logstream.Loki),
+		logstream.WithLogTarget(logstream.File),
 	)
-	require.NoError(t, err, "failed to create logwatch")
+	require.NoError(t, err, "failed to create logstream")
 	err = d.ConnectLogs(lw)
 	require.NoError(t, err, "failed to connect logs")
 
@@ -166,7 +166,7 @@ func TestMultipleMockedLoggingTargets(t *testing.T) {
 	assertMockedHandlerHasLogs(t, mockedLokiHanlder)
 
 	err = lw.Shutdown(ctx)
-	require.NoError(t, err, "failed to shutdown logwatch")
+	require.NoError(t, err, "failed to shutdown logstream")
 }
 
 func TestOneMockedLoggingTarget(t *testing.T) {
@@ -176,14 +176,14 @@ func TestOneMockedLoggingTarget(t *testing.T) {
 	// nolint
 	defer d.Shutdown(ctx)
 	require.NoError(t, err)
-	mockedLokiHanlder := &MockedLogHandler{Target: logwatch.Loki}
-	lw, err := logwatch.NewLogWatch(
+	mockedLokiHanlder := &MockedLogHandler{Target: logstream.Loki}
+	lw, err := logstream.NewLogStream(
 		t,
 		nil,
-		logwatch.WithCustomLogHandler(logwatch.Loki, mockedLokiHanlder),
-		logwatch.WithLogTarget(logwatch.Loki),
+		logstream.WithCustomLogHandler(logstream.Loki, mockedLokiHanlder),
+		logstream.WithLogTarget(logstream.Loki),
 	)
-	require.NoError(t, err, "failed to create logwatch")
+	require.NoError(t, err, "failed to create logstream")
 	err = d.ConnectLogs(lw)
 	require.NoError(t, err, "failed to connect logs")
 
@@ -194,7 +194,7 @@ func TestOneMockedLoggingTarget(t *testing.T) {
 	assertMockedHandlerHasLogs(t, mockedLokiHanlder)
 
 	err = lw.Shutdown(ctx)
-	require.NoError(t, err, "failed to shutdown logwatch")
+	require.NoError(t, err, "failed to shutdown logstream")
 }
 
 func assertMockedHandlerHasLogs(t *testing.T, handler *MockedLogHandler) {

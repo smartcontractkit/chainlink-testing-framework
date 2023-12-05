@@ -1,4 +1,4 @@
-package logwatch_test
+package logstream_test
 
 import (
 	"os"
@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/logwatch"
+	"github.com/smartcontractkit/chainlink-testing-framework/logstream"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
@@ -15,7 +15,7 @@ import (
 
 func TestExampleLokiStreaming(t *testing.T) {
 	t.Skip("uncomment and run manually")
-	os.Setenv("LOGWATCH_LOG_TARGETS", "loki")
+	os.Setenv("LOGSTREAM_LOG_TARGETS", "loki")
 	tests := []testData{
 		{
 			name:      "stream all container logs to Loki, subtest 1",
@@ -45,7 +45,7 @@ func TestExampleLokiStreaming(t *testing.T) {
 			// nolint
 			defer d.Shutdown(ctx)
 			require.NoError(t, err)
-			lw, err := logwatch.NewLogWatch(t, nil)
+			lw, err := logstream.NewLogStream(t, nil)
 			require.NoError(t, err)
 			err = d.ConnectLogs(lw)
 			require.NoError(t, err)
