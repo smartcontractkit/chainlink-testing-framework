@@ -126,15 +126,15 @@ func (h *LokiLogHandler) Handle(c *ContainerLogConsumer, content LogContent) err
 		}
 		c.lw.loki = loki
 	}
-	// we can notify more than one time if it matches, but we push only once
-	_ = c.lw.loki.Handle(model.LabelSet{
+
+	err := c.lw.loki.Handle(model.LabelSet{
 		"type":         "log_stream",
 		"test":         model.LabelValue(content.TestName),
 		"container_id": model.LabelValue(content.ContainerName),
 		"run_id":       model.LabelValue(h.runId),
 	}, content.Time, string(content.Content))
 
-	return nil
+	return err
 }
 
 func (h *LokiLogHandler) GetLogLocation(consumers map[string]*ContainerLogConsumer) (string, error) {
