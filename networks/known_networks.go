@@ -636,7 +636,6 @@ var (
 		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       1000,
-		FinalityTag:               true,
 	}
 
 	KavaTestnet blockchain.EVMNetwork = blockchain.EVMNetwork{
@@ -649,7 +648,6 @@ var (
 		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       1000,
-		FinalityTag:               true,
 	}
 
 	MappedNetworks = map[string]blockchain.EVMNetwork{
