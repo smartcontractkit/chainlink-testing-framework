@@ -167,7 +167,8 @@ func TestLogWatchDocker(t *testing.T) {
 				// this code terminates the containers properly
 				for _, c := range lw.GetConsumers() {
 					if !tc.exitEarly {
-						c.Stop()
+						stopErr := c.Stop()
+						require.NoError(t, stopErr, "should not fail to stop log producer")
 						if err := lw.DisconnectContainer(c.GetContainer()); err != nil {
 							t.Fatalf("failed to disconnect container: %s", err.Error())
 						}
@@ -202,12 +203,177 @@ func TestLogWatchConnectWithDelayDocker(t *testing.T) {
 	err = lw.ConnectContainer(context.Background(), container, name)
 	require.NoError(t, err)
 
-	time.Sleep(time.Duration(int(interval*float64(amount)))*time.Second + 5*time.Second)
+	time.Sleep(time.Duration(int(interval*float64(amount)))*time.Second + 10*time.Second)
 
 	logs, err := lw.ContainerLogs(containerName)
 	require.NoError(t, err, "should not fail to get logs")
 
 	require.Len(t, logs, amount)
+
+	t.Cleanup(func() {
+		if err := lw.Shutdown(ctx); err != nil {
+			t.Fatalf("failed to shutodwn logwatch: %s", err.Error())
+		}
+		if err := container.Terminate(ctx); err != nil {
+			t.Fatalf("failed to terminate container: %s", err.Error())
+		}
+	})
+}
+
+func TestLogWatch_GetAllLogs_ErrorsAfterFiveLogs(t *testing.T) {
+	t.Parallel()
+	ctx := testcontext.Get(t)
+	containerName := fmt.Sprintf("%s-container-%s", t.Name(), uuid.NewString())
+	message := `{"log":"message", "ts": "2021-01-01T00:00:00.000Z"}`
+	interval := float64(1)
+	amount := 10
+
+	lw, err := logwatch.NewLogWatch(t, nil, logwatch.WithLogTarget(logwatch.InMemory))
+	require.NoError(t, err)
+	container, err := startTestContainer(ctx, containerName, message, amount, interval, false)
+	require.NoError(t, err)
+	name, err := container.Name(ctx)
+	require.NoError(t, err)
+
+	err = lw.ConnectContainer(context.Background(), container, name)
+	require.NoError(t, err)
+
+	time.Sleep(time.Duration(int(interval*float64(amount)))*time.Second + 10*time.Second)
+
+	expectedErrorText := "execute test error"
+
+	count := 0
+	logsProcessed := []string{}
+	var testFn = func(consumer *logwatch.ContainerLogConsumer, log logwatch.LogContent) error {
+		if count < 5 {
+			logsProcessed = append(logsProcessed, string(log.Content))
+			count++
+			return nil
+		}
+
+		return errors.New(expectedErrorText)
+	}
+
+	err = lw.GetAllLogsAndConsume(logwatch.NoOpConsumerFn, testFn)
+	require.Error(t, err, "should fail to get all logs")
+	require.Equal(t, err.Error(), expectedErrorText, "should fail with test error")
+	require.Equal(t, 5, len(logsProcessed), "should process 5 logs")
+
+	t.Cleanup(func() {
+		if err := lw.Shutdown(ctx); err != nil {
+			t.Fatalf("failed to shutodwn logwatch: %s", err.Error())
+		}
+		if err := container.Terminate(ctx); err != nil {
+			t.Fatalf("failed to terminate container: %s", err.Error())
+		}
+	})
+}
+
+func TestLogWatch_GetAllLogs_TwoConsumers_FirstErrorsAfterFiveLogs(t *testing.T) {
+	t.Parallel()
+	ctx := testcontext.Get(t)
+	containerName_1 := fmt.Sprintf("container-%s", uuid.NewString())
+	containerName_2 := fmt.Sprintf("container-%s", uuid.NewString())
+	message := `{"log":"message", "ts": "2021-01-01T00:00:00.000Z"}`
+	interval := float64(1)
+	amount := 10
+
+	lw, err := logwatch.NewLogWatch(t, nil, logwatch.WithLogTarget(logwatch.InMemory))
+	require.NoError(t, err)
+	container_1, err := startTestContainer(ctx, containerName_1, message, amount, interval, false)
+	require.NoError(t, err)
+
+	err = lw.ConnectContainer(context.Background(), container_1, containerName_1)
+	require.NoError(t, err)
+
+	container_2, err := startTestContainer(ctx, containerName_2, message, amount, interval, false)
+	require.NoError(t, err)
+
+	err = lw.ConnectContainer(context.Background(), container_2, containerName_2)
+	require.NoError(t, err)
+
+	time.Sleep(time.Duration(int(interval*float64(amount)))*time.Second + 10*time.Second)
+
+	expectedErrorText := "execute test error"
+
+	count := 0
+	logsProcessed := map[string][]string{}
+	var testFn = func(consumer *logwatch.ContainerLogConsumer, log logwatch.LogContent) error {
+		name, _ := consumer.GetContainer().Name(ctx)
+		name = strings.TrimPrefix(name, "/")
+		if name == containerName_2 || count < 5 {
+			if _, ok := logsProcessed[name]; !ok {
+				logsProcessed[name] = []string{string(log.Content)}
+			} else {
+				logsProcessed[name] = append(logsProcessed[name], string(log.Content))
+			}
+			count++
+			return nil
+		}
+
+		return errors.New(expectedErrorText)
+	}
+
+	err = lw.GetAllLogsAndConsume(logwatch.NoOpConsumerFn, testFn)
+	require.Error(t, err, "should fail to get all logs")
+	require.Equal(t, expectedErrorText, err.Error(), "should fail with test error")
+	require.Equal(t, 5, len(logsProcessed[containerName_1]), "should process 5 logs for first container")
+	require.Equal(t, 10, len(logsProcessed[containerName_2]), "should process all logs for second container")
+
+	t.Cleanup(func() {
+		if err := lw.Shutdown(ctx); err != nil {
+			t.Fatalf("failed to shutodwn logwatch: %s", err.Error())
+		}
+		if err := container_1.Terminate(ctx); err != nil {
+			t.Fatalf("failed to terminate first ontainer: %s", err.Error())
+		}
+		if err := container_2.Terminate(ctx); err != nil {
+			t.Fatalf("failed to terminate second container: %s", err.Error())
+		}
+	})
+}
+
+func TestLogWatch_GetAllLogs_ErrorsBeforeConsumption(t *testing.T) {
+	t.Parallel()
+	ctx := testcontext.Get(t)
+	containerName := fmt.Sprintf("%s-container-%s", t.Name(), uuid.NewString())
+	message := `{"log":"message", "ts": "2021-01-01T00:00:00.000Z"}`
+	interval := float64(1)
+	amount := 10
+
+	lw, err := logwatch.NewLogWatch(t, nil, logwatch.WithLogTarget(logwatch.InMemory))
+	require.NoError(t, err)
+	container, err := startTestContainer(ctx, containerName, message, amount, interval, false)
+	require.NoError(t, err)
+	name, err := container.Name(ctx)
+	require.NoError(t, err)
+
+	err = lw.ConnectContainer(context.Background(), container, name)
+	require.NoError(t, err)
+
+	time.Sleep(time.Duration(int(interval*float64(amount)))*time.Second + 10*time.Second)
+
+	count := 0
+	logsProcessed := []string{}
+	var testFn = func(consumer *logwatch.ContainerLogConsumer, log logwatch.LogContent) error {
+		if count < 5 {
+			logsProcessed = append(logsProcessed, string(log.Content))
+			count++
+			return nil
+		}
+
+		return errors.New("test error")
+	}
+
+	expectedErrorText := "pre-execute test error"
+	var errorConsumerFn = func(consumer *logwatch.ContainerLogConsumer) error {
+		return errors.New(expectedErrorText)
+	}
+
+	err = lw.GetAllLogsAndConsume(errorConsumerFn, testFn)
+	require.Error(t, err, "should fail to get all logs")
+	require.Equal(t, err.Error(), expectedErrorText, "should fail with test error")
+	require.Equal(t, 0, len(logsProcessed), "should process zero logs")
 
 	t.Cleanup(func() {
 		if err := lw.Shutdown(ctx); err != nil {
@@ -243,13 +409,14 @@ func TestLogWatchTwoDockerContainers(t *testing.T) {
 	err = lw.ConnectContainer(context.Background(), containerTwo, containerTwoName)
 	require.NoError(t, err, "log watch should connect to container")
 
-	time.Sleep(time.Duration(int(interval*float64(amountFirst)))*time.Second + 5*time.Second)
+	time.Sleep(time.Duration(int(interval*float64(amountSecond)))*time.Second + 5*time.Second)
 
 	for _, c := range lw.GetConsumers() {
 		name, err := c.GetContainer().Name(ctx)
 		require.NoError(t, err, "should not fail to get container name")
 		if name == containerOneName {
-			c.Stop()
+			stopErr := c.Stop()
+			require.NoError(t, stopErr, "should not fail to stop log producer")
 			err = lw.DisconnectContainer(containerOne)
 			require.NoError(t, err, "log watch should disconnect from container")
 		}

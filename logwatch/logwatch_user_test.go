@@ -105,6 +105,9 @@ func TestFileLoggingTarget(t *testing.T) {
 	require.True(t, bytes.Contains(content, A), "A should be present in log file")
 	require.True(t, bytes.Contains(content, B), "B should be present in log file")
 	require.True(t, bytes.Contains(content, C), "C should be present in log file")
+
+	err = lw.Shutdown(ctx)
+	require.NoError(t, err, "failed to shutdown logwatch")
 }
 
 type MockedLogHandler struct {
@@ -161,6 +164,9 @@ func TestMultipleMockedLoggingTargets(t *testing.T) {
 
 	assertMockedHandlerHasLogs(t, mockedFileHandler)
 	assertMockedHandlerHasLogs(t, mockedLokiHanlder)
+
+	err = lw.Shutdown(ctx)
+	require.NoError(t, err, "failed to shutdown logwatch")
 }
 
 func TestOneMockedLoggingTarget(t *testing.T) {
@@ -186,6 +192,9 @@ func TestOneMockedLoggingTarget(t *testing.T) {
 	require.NoError(t, err, "failed to flush logs to targets")
 
 	assertMockedHandlerHasLogs(t, mockedLokiHanlder)
+
+	err = lw.Shutdown(ctx)
+	require.NoError(t, err, "failed to shutdown logwatch")
 }
 
 func assertMockedHandlerHasLogs(t *testing.T, handler *MockedLogHandler) {

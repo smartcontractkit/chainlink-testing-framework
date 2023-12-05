@@ -313,6 +313,7 @@ func (m *LogWatch) ConnectContainer(ctx context.Context, container LogProducingC
 					// time.Sleep(500 * time.Millisecond)
 				}
 			case <-done:
+				fmt.Printf("DONE")
 				return
 			}
 		}
@@ -329,7 +330,13 @@ func (m *LogWatch) GetConsumers() map[string]*ContainerLogConsumer {
 func (m *LogWatch) Shutdown(context context.Context) error {
 	var err error
 	for _, c := range m.consumers {
-		c.Stop()
+		if stopErr := c.Stop(); stopErr != nil {
+			m.log.Error().
+				Err(stopErr).
+				Str("Name", c.name).
+				Msg("Failed to stop container")
+			err = stopErr
+		}
 
 		discErr := m.DisconnectContainer(c.container)
 		if discErr != nil {
@@ -383,14 +390,20 @@ func (m *LogWatch) SaveLogTargetsLocations(writer LogWriter) {
 	}
 }
 
-func (g *ContainerLogConsumer) Stop() {
+func (g *ContainerLogConsumer) Stop() error {
 	if g.isDone {
-		return
+		return nil
 	}
 
 	g.isDone = true
 	g.logListeningDone <- struct{}{}
 	defer close(g.logListeningDone)
+
+	if g.tempFile != nil {
+		return g.tempFile.Close()
+	}
+
+	return nil
 }
 
 // DisconnectContainer disconnects the particular container
@@ -400,10 +413,6 @@ func (m *LogWatch) DisconnectContainer(container LogProducingContainer) error {
 		return container.StopLogProducer()
 	}
 
-	return nil
-}
-
-var noOpConsumerFn = func(consumer *ContainerLogConsumer) error {
 	return nil
 }
 
@@ -417,7 +426,7 @@ func (m *LogWatch) ContainerLogs(name string) ([]string, error) {
 		return nil
 	}
 
-	err := m.getAllLogsAndExecute(noOpConsumerFn, getLogsFn, noOpConsumerFn)
+	err := m.GetAllLogsAndConsume(NoOpConsumerFn, getLogsFn)
 	if err != nil {
 		return []string{}, err
 	}
@@ -425,11 +434,17 @@ func (m *LogWatch) ContainerLogs(name string) ([]string, error) {
 	return logs, err
 }
 
-func (m *LogWatch) getAllLogsAndExecute(preExecuteFn func(consumer *ContainerLogConsumer) error, executeFn func(consumer *ContainerLogConsumer, log LogContent) error, cleanUpFn func(consumer *ContainerLogConsumer) error) error {
+type ConsumerConsumingFn = func(consumer *ContainerLogConsumer) error
+type ConsumerLogConsumingFn = func(consumer *ContainerLogConsumer, log LogContent) error
+
+func NoOpConsumerFn(consumer *ContainerLogConsumer) error {
+	return nil
+}
+
+func (m *LogWatch) GetAllLogsAndConsume(preExecuteFn ConsumerConsumingFn, consumeLogFn ConsumerLogConsumingFn) (loopErr error) {
 	m.acceptMutex.Lock()
 	defer m.acceptMutex.Unlock()
 
-	var loopErr error
 	var attachError = func(err error) {
 		if err == nil {
 			return
@@ -448,7 +463,8 @@ func (m *LogWatch) getAllLogsAndExecute(preExecuteFn func(consumer *ContainerLog
 		}
 
 		if consumer.tempFile == nil {
-			return errors.Errorf("temp file is nil for container %s, this should never happen", consumer.name)
+			attachError(errors.Errorf("temp file is nil for container %s, this should never happen", consumer.name))
+			return
 		}
 
 		preExecuteErr := preExecuteFn(consumer)
@@ -458,20 +474,23 @@ func (m *LogWatch) getAllLogsAndExecute(preExecuteFn func(consumer *ContainerLog
 				Str("Container", consumer.name).
 				Msg("Failed to run pre-execute function")
 			attachError(preExecuteErr)
-			break
+			continue
 		}
 
-		// set the cursor to the end of the file, when done to resume writing
+		// set the cursor to the end of the file, when done to resume writing, unless it was closed
 		//revive:disable
 		defer func() {
-			_, deferErr := consumer.tempFile.Seek(0, 2)
-			attachError(deferErr)
+			if !consumer.isDone {
+				_, deferErr := consumer.tempFile.Seek(0, 2)
+				attachError(deferErr)
+			}
 		}()
 		//revive:enable
 
-		_, err := consumer.tempFile.Seek(0, 0)
-		if err != nil {
-			return err
+		_, seekErr := consumer.tempFile.Seek(0, 0)
+		if seekErr != nil {
+			attachError(seekErr)
+			return
 		}
 
 		decoder := gob.NewDecoder(consumer.tempFile)
@@ -484,13 +503,13 @@ func (m *LogWatch) getAllLogsAndExecute(preExecuteFn func(consumer *ContainerLog
 			decodeErr := decoder.Decode(&log)
 			if decodeErr == nil {
 				counter++
-				executeErr := executeFn(consumer, log)
-				if executeErr != nil {
+				consumeErr := consumeLogFn(consumer, log)
+				if consumeErr != nil {
 					m.log.Error().
-						Err(executeErr).
+						Err(consumeErr).
 						Str("Container", consumer.name).
-						Msg("Failed to run execute function")
-					attachError(preExecuteErr)
+						Msg("Failed to consume log")
+					attachError(consumeErr)
 					break LOG_LOOP
 				}
 			} else if errors.Is(decodeErr, io.EOF) {
@@ -500,21 +519,17 @@ func (m *LogWatch) getAllLogsAndExecute(preExecuteFn func(consumer *ContainerLog
 					Msg("Finished getting logs")
 				break
 			} else {
-				return decodeErr
+				m.log.Error().
+					Err(decodeErr).
+					Str("Container", consumer.name).
+					Msg("Failed to decode log")
+				attachError(decodeErr)
+				return
 			}
 		}
-
-		c := consumer
-
-		// done on purpose
-		//revive:disable
-		defer func() {
-			attachError(cleanUpFn(c))
-		}()
-		//revive:enable
 	}
 
-	return loopErr
+	return
 }
 
 // FlushLogsToTargets flushes all logs for all consumers (containers) to their targets
@@ -541,22 +556,16 @@ func (m *LogWatch) FlushLogsToTargets() error {
 					Str("Container", consumer.name).
 					Str("log target", string(logTarget)).
 					Msg("No handler found for log target. Aborting")
+
+				return errors.Errorf("no handler found for log target: %s", logTarget)
 			}
 		}
 
 		return nil
 	}
 
-	var closeTempFileFn = func(consumer *ContainerLogConsumer) error {
-		if consumer.tempFile == nil {
-			return errors.Errorf("temp file is nil for container %s, this should never happen", consumer.name)
-		}
-
-		return consumer.tempFile.Close()
-	}
-
-	flushErr := m.getAllLogsAndExecute(preExecuteFn, flushLogsFn, closeTempFileFn)
-	if flushErr != nil {
+	flushErr := m.GetAllLogsAndConsume(preExecuteFn, flushLogsFn)
+	if flushErr == nil {
 		m.log.Info().
 			Msg("Finished flushing logs")
 	} else {
@@ -677,10 +686,11 @@ func (g *ContainerLogConsumer) Accept(l testcontainers.Log) {
 	}
 
 	if g.tempFile == nil || g.encoder == nil {
-		g.hasErrored = true
 		g.lw.log.Error().
 			Str("Container", g.name).
 			Msg("temp file or encoder is nil, consumer cannot work, this should never happen")
+		g.MarkAsErrored()
+
 		return
 	}
 
@@ -688,22 +698,13 @@ func (g *ContainerLogConsumer) Accept(l testcontainers.Log) {
 		Ts string `json:"ts"`
 	}
 
-	if err := json.Unmarshal(l.Content, &logMsg); err != nil {
-		g.lw.log.Error().
-			Str("Container", g.name).
-			Msg("failed to unmarshal log message for container")
-	}
-
-	maybeFirstTs, err := time.Parse(time.RFC3339, logMsg.Ts)
-	if err != nil {
-		g.lw.log.Error().
-			Str("Container", g.name).
-			Str("Timestamp", logMsg.Ts).
-			Msg("failed to parse first log message's timestamp ")
-	}
-
-	if maybeFirstTs.Before(g.firstLogTs) {
-		g.firstLogTs = maybeFirstTs
+	// if we cannot unmarshal it, ignore it
+	if err := json.Unmarshal(l.Content, &logMsg); err == nil {
+		maybeFirstTs, err := time.Parse(time.RFC3339, logMsg.Ts)
+		// if it's not a valid timestamp, ignore it
+		if err == nil && maybeFirstTs.Before(g.firstLogTs) {
+			g.firstLogTs = maybeFirstTs
+		}
 	}
 
 	content := LogContent{
