@@ -330,27 +330,26 @@ func (m *LogStream) GetConsumers() map[string]*ContainerLogConsumer {
 	return m.consumers
 }
 
+// wrapError wraps existing error with new error
+func wrapError(existingErr, newErr error) error {
+	if existingErr == nil {
+		return newErr
+	}
+	return errors.Wrap(existingErr, newErr.Error())
+}
+
 // Shutdown disconnects all containers and stops all consumers
 func (m *LogStream) Shutdown(context context.Context) error {
 	var err error
-
-	var wrapError = func(newErr error) {
-		if err == nil {
-			err = newErr
-		} else {
-			err = errors.Wrap(err, newErr.Error())
-		}
-	}
-
 	for _, c := range m.consumers {
 		discErr := m.DisconnectContainer(c.container)
 		if discErr != nil {
 			m.log.Error().
-				Err(err).
+				Err(discErr).
 				Str("Name", c.name).
 				Msg("Failed to disconnect container")
 
-			wrapError(discErr)
+			err = wrapError(err, discErr)
 		}
 
 		if stopErr := c.Stop(); stopErr != nil {
@@ -358,7 +357,7 @@ func (m *LogStream) Shutdown(context context.Context) error {
 				Err(stopErr).
 				Str("Name", c.name).
 				Msg("Failed to stop container")
-			wrapError(stopErr)
+			err = wrapError(err, stopErr)
 		}
 	}
 
@@ -367,6 +366,46 @@ func (m *LogStream) Shutdown(context context.Context) error {
 	}
 
 	return err
+}
+
+// FlushAndShutdown flushes all logs to their targets and shuts down the log stream in a default sequence
+func (m *LogStream) FlushAndShutdown() error {
+	var wrappedErr error
+
+	// first disonnect all containers, so that no new logs are accepted
+	for _, c := range m.consumers {
+		if err := m.DisconnectContainer(c.container); err != nil {
+			m.log.Error().
+				Err(err).
+				Str("Name", c.name).
+				Msg("Failed to disconnect container")
+
+			wrappedErr = wrapError(wrappedErr, err)
+		}
+	}
+
+	for _, c := range m.consumers {
+		if err := c.Stop(); err != nil {
+			m.log.Error().
+				Err(err).
+				Str("Name", c.name).
+				Msg("Failed to stop container")
+			wrappedErr = wrapError(wrappedErr, err)
+		}
+	}
+
+	if err := m.FlushLogsToTargets(); err != nil {
+		m.log.Error().
+			Err(err).
+			Msg("Failed to flush logs to targets")
+		wrappedErr = wrapError(wrappedErr, err)
+	}
+
+	if m.loki != nil {
+		m.loki.Stop()
+	}
+
+	return wrappedErr
 }
 
 type LogWriter = func(testName string, name string, location interface{}) error

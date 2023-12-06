@@ -118,7 +118,9 @@ LogStream stores all logs in gob temporary file. To actually send/save them, you
 When using `in-memory` or `file` target no other environment variables are required. When using `loki` target, following environment variables are required:
 * `LOKI_TENTANT_ID` - tenant ID
 * `LOKI_URL` - Loki URL to which logs will be pushed
-* `LOKI_BASIC_AUTH`
+* `LOKI_BASIC_AUTH` -- only needed when running in CI and using public endpoint
+
+Also, do remember that different `LOKI_URL` should be used when running in CI and everywhere else. In CI it should be a public endpoint, while in local environment it should be a private one.
 
 You can print log location for each target using this function: `(m *LogStream) PrintLogTargetsLocations()`. For `file` target it will print relative folder path, for `loki` it will print URL of a Grafana Dashboard scoped to current execution and container ids. For `in-memory` target it's no-op.
 
