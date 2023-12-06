@@ -351,14 +351,6 @@ func (m *LogStream) Shutdown(context context.Context) error {
 
 			err = wrapError(err, discErr)
 		}
-
-		if stopErr := c.Stop(); stopErr != nil {
-			m.log.Error().
-				Err(stopErr).
-				Str("Name", c.name).
-				Msg("Failed to stop container")
-			err = wrapError(err, stopErr)
-		}
 	}
 
 	if m.loki != nil {
@@ -380,16 +372,6 @@ func (m *LogStream) FlushAndShutdown() error {
 				Str("Name", c.name).
 				Msg("Failed to disconnect container")
 
-			wrappedErr = wrapError(wrappedErr, err)
-		}
-	}
-
-	for _, c := range m.consumers {
-		if err := c.Stop(); err != nil {
-			m.log.Error().
-				Err(err).
-				Str("Name", c.name).
-				Msg("Failed to stop container")
 			wrappedErr = wrapError(wrappedErr, err)
 		}
 	}
@@ -442,7 +424,7 @@ func (m *LogStream) SaveLogTargetsLocations(writer LogWriter) {
 }
 
 // Stop stops the consumer and closes temp file
-func (g *ContainerLogConsumer) Stop() error {
+func (g *ContainerLogConsumer) stop() error {
 	if g.isDone {
 		return nil
 	}
@@ -460,12 +442,36 @@ func (g *ContainerLogConsumer) Stop() error {
 
 // DisconnectContainer disconnects particular container
 func (m *LogStream) DisconnectContainer(container LogProducingContainer) error {
+	var err error
+
 	if container.IsRunning() {
 		m.log.Info().Str("container", container.GetContainerID()).Msg("Disconnecting container")
-		return container.StopLogProducer()
+		err = container.StopLogProducer()
 	}
 
-	return nil
+	consumerFound := false
+	for _, consumer := range m.consumers {
+		if consumer.container.GetContainerID() == container.GetContainerID() {
+			consumerFound = true
+			if stopErr := consumer.stop(); err != nil {
+				m.log.Error().
+					Err(stopErr).
+					Str("Name", consumer.name).
+					Msg("Failed to stop consumer")
+				err = wrapError(err, stopErr)
+			}
+			delete(m.consumers, consumer.name)
+			break
+		}
+	}
+
+	if !consumerFound {
+		m.log.Warn().
+			Str("container ID", container.GetContainerID()).
+			Msg("No consume found for container")
+	}
+
+	return err
 }
 
 // ContainerLogs return all logs for particular container

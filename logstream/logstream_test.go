@@ -167,8 +167,6 @@ func TestLogStreamDocker(t *testing.T) {
 				// this code terminates the containers properly
 				for _, c := range lw.GetConsumers() {
 					if !tc.exitEarly {
-						stopErr := c.Stop()
-						require.NoError(t, stopErr, "should not fail to stop log producer")
 						if err := lw.DisconnectContainer(c.GetContainer()); err != nil {
 							t.Fatalf("failed to disconnect container: %s", err.Error())
 						}
@@ -415,8 +413,6 @@ func TestLogStreamTwoDockerContainers(t *testing.T) {
 		name, err := c.GetContainer().Name(ctx)
 		require.NoError(t, err, "should not fail to get container name")
 		if name == containerOneName {
-			stopErr := c.Stop()
-			require.NoError(t, stopErr, "should not fail to stop log producer")
 			err = lw.DisconnectContainer(containerOne)
 			require.NoError(t, err, "logstream should disconnect from container")
 		}
