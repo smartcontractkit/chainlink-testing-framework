@@ -38,6 +38,14 @@ func (m *MockedLogHandler) GetRunId() string {
 	return m.executionId
 }
 
+func (m *MockedLogHandler) Init(_ *logstream.ContainerLogConsumer) error {
+	return nil
+}
+
+func (m *MockedLogHandler) Teardown() error {
+	return nil
+}
+
 func TestMultipleMockedLoggingTargets(t *testing.T) {
 	ctx := context.Background()
 	testData := testData{repeat: 10, perSecond: 0.01, streams: []string{"A\nB\nC\nD"}}

@@ -26,6 +26,8 @@ type HandleLogTarget interface {
 	GetTarget() LogTarget
 	SetRunId(string)
 	GetRunId() string
+	Init(*ContainerLogConsumer) error
+	Teardown() error
 }
 
 func getDefaultLogHandlers() map[LogTarget]HandleLogTarget {
@@ -42,6 +44,7 @@ type FileLogHandler struct {
 	logFolder         string
 	shouldSkipLogging bool
 	runId             string
+	logFile           *os.File
 }
 
 func (h *FileLogHandler) Handle(c *ContainerLogConsumer, content LogContent) error {
@@ -103,6 +106,33 @@ func (h *FileLogHandler) GetRunId() string {
 	return h.runId
 }
 
+func (h *FileLogHandler) Init(c *ContainerLogConsumer) error {
+	folder, err := h.getOrCreateLogFolder(c.ls.testName)
+	if err != nil {
+		h.shouldSkipLogging = true
+
+		return errors.Wrap(err, "failed to create logs folder. File logging stopped")
+	}
+
+	logFileName := filepath.Join(folder, fmt.Sprintf("%s.log", c.name))
+	h.logFile, err = os.OpenFile(logFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		h.shouldSkipLogging = true
+
+		return errors.Wrap(err, "failed to open log file. File logging stopped")
+	}
+
+	return nil
+}
+
+func (h *FileLogHandler) Teardown() error {
+	if h.logFile != nil {
+		return h.logFile.Close()
+	}
+
+	return nil
+}
+
 // LokiLogHandler sends logs to Loki
 type LokiLogHandler struct {
 	grafanaUrl        string
@@ -112,22 +142,15 @@ type LokiLogHandler struct {
 
 func (h *LokiLogHandler) Handle(c *ContainerLogConsumer, content LogContent) error {
 	if h.shouldSkipLogging {
-		c.lw.log.Warn().Str("Test", content.TestName).Msg("Skipping pushing logs to Loki for this test")
+		c.ls.log.Warn().Str("Test", content.TestName).Msg("Skipping pushing logs to Loki for this test")
 		return nil
 	}
 
-	if c.lw.loki == nil {
-		loki, err := wasp.NewLokiClient(wasp.NewEnvLokiConfig())
-		if err != nil {
-			c.lw.log.Error().Err(err).Msg("Failed to create Loki client")
-			h.shouldSkipLogging = true
-
-			return err
-		}
-		c.lw.loki = loki
+	if c.ls.loki == nil {
+		return errors.New("Loki client is not initialized. Have you called Init()?")
 	}
 
-	err := c.lw.loki.Handle(model.LabelSet{
+	err := c.ls.loki.Handle(model.LabelSet{
 		"type":         "log_stream",
 		"test":         model.LabelValue(content.TestName),
 		"container_id": model.LabelValue(content.ContainerName),
@@ -171,8 +194,8 @@ func (h *LokiLogHandler) GetLogLocation(consumers map[string]*ContainerLogConsum
 			rangeFrom = c.GetStartTime()
 		}
 
-		if testName == "" && c.lw.testName != NO_TEST {
-			testName = c.lw.testName
+		if testName == "" && c.ls.testName != NO_TEST {
+			testName = c.ls.testName
 		}
 	}
 
@@ -195,6 +218,26 @@ func (h *LokiLogHandler) SetRunId(runId string) {
 
 func (h *LokiLogHandler) GetRunId() string {
 	return h.runId
+}
+
+func (h *LokiLogHandler) Init(c *ContainerLogConsumer) error {
+	if c.ls.loki == nil {
+		waspConfig := wasp.NewEnvLokiConfig()
+		loki, err := wasp.NewLokiClient(waspConfig)
+		if err != nil {
+			c.ls.log.Error().Err(err).Msg("Failed to create Loki client")
+			h.shouldSkipLogging = true
+
+			return err
+		}
+		c.ls.loki = loki
+	}
+
+	return nil
+}
+
+func (h *LokiLogHandler) Teardown() error {
+	return nil
 }
 
 // InMemoryLogHandler stores logs in memory
@@ -231,4 +274,12 @@ func (h *InMemoryLogHandler) SetRunId(runId string) {
 
 func (h *InMemoryLogHandler) GetRunId() string {
 	return h.runId
+}
+
+func (h *InMemoryLogHandler) Init(_ *ContainerLogConsumer) error {
+	return nil
+}
+
+func (h *InMemoryLogHandler) Teardown() error {
+	return nil
 }

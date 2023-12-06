@@ -252,7 +252,7 @@ func TestLogStream_GetAllLogs_ErrorsAfterFiveLogs(t *testing.T) {
 		return errors.New(expectedErrorText)
 	}
 
-	err = lw.GetAllLogsAndConsume(logstream.NoOpConsumerFn, testFn)
+	err = lw.GetAllLogsAndConsume(logstream.NoOpConsumerFn, testFn, logstream.NoOpConsumerFn)
 	require.Error(t, err, "should fail to get all logs")
 	require.Equal(t, err.Error(), expectedErrorText, "should fail with test error")
 	require.Equal(t, 5, len(logsProcessed), "should process 5 logs")
@@ -312,7 +312,7 @@ func TestLogStream_GetAllLogs_TwoConsumers_FirstErrorsAfterFiveLogs(t *testing.T
 		return errors.New(expectedErrorText)
 	}
 
-	err = lw.GetAllLogsAndConsume(logstream.NoOpConsumerFn, testFn)
+	err = lw.GetAllLogsAndConsume(logstream.NoOpConsumerFn, testFn, logstream.NoOpConsumerFn)
 	require.Error(t, err, "should fail to get all logs")
 	require.Equal(t, expectedErrorText, err.Error(), "should fail with test error")
 	require.Equal(t, 5, len(logsProcessed[containerName_1]), "should process 5 logs for first container")
@@ -368,7 +368,7 @@ func TestLogStream_GetAllLogs_ErrorsBeforeConsumption(t *testing.T) {
 		return errors.New(expectedErrorText)
 	}
 
-	err = lw.GetAllLogsAndConsume(errorConsumerFn, testFn)
+	err = lw.GetAllLogsAndConsume(errorConsumerFn, testFn, logstream.NoOpConsumerFn)
 	require.Error(t, err, "should fail to get all logs")
 	require.Equal(t, err.Error(), expectedErrorText, "should fail with test error")
 	require.Equal(t, 0, len(logsProcessed), "should process zero logs")

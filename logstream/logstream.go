@@ -419,7 +419,7 @@ func (m *LogStream) SaveLogTargetsLocations(writer LogWriter) {
 	}
 }
 
-// Stop stops the consumer and closes temp file
+// Stop stops the consumer and closes listening channel (it won't be accepting any logs from now on)
 func (g *ContainerLogConsumer) stop() error {
 	if g.isDone {
 		return nil
@@ -475,7 +475,7 @@ func (m *LogStream) ContainerLogs(name string) ([]string, error) {
 		return nil
 	}
 
-	err := m.GetAllLogsAndConsume(NoOpConsumerFn, getLogsFn)
+	err := m.GetAllLogsAndConsume(NoOpConsumerFn, getLogsFn, NoOpConsumerFn)
 	if err != nil {
 		return []string{}, err
 	}
@@ -492,7 +492,7 @@ func NoOpConsumerFn(consumer *ContainerLogConsumer) error {
 }
 
 // GetAllLogsAndConsume gets all logs for all consumers (containers) and consumes them using consumeLogFn
-func (m *LogStream) GetAllLogsAndConsume(preExecuteFn ConsumerConsumingFn, consumeLogFn ConsumerLogConsumingFn) (loopErr error) {
+func (m *LogStream) GetAllLogsAndConsume(preExecuteFn ConsumerConsumingFn, consumeLogFn ConsumerLogConsumingFn, postExecuteFn ConsumerConsumingFn) (loopErr error) {
 	m.acceptMutex.Lock()
 	defer m.acceptMutex.Unlock()
 
@@ -578,6 +578,16 @@ func (m *LogStream) GetAllLogsAndConsume(preExecuteFn ConsumerConsumingFn, consu
 				return
 			}
 		}
+
+		postExecuteErr := postExecuteFn(consumer)
+		if postExecuteErr != nil {
+			m.log.Error().
+				Err(postExecuteErr).
+				Str("Container", consumer.name).
+				Msg("Failed to run post-execute function")
+			attachError(postExecuteErr)
+			continue
+		}
 	}
 
 	return
@@ -589,11 +599,22 @@ func (m *LogStream) FlushLogsToTargets() error {
 		// do not accept any new logs
 		consumer.isDone = true
 
+		for _, handler := range m.logTargetHandlers {
+			consumer.ls.log.Debug().
+				Str("container name", consumer.name).
+				Str("Handler", string(handler.GetTarget())).
+				Msg("Initializing log target handler")
+
+			if err := handler.Init(consumer); err != nil {
+				return err
+			}
+		}
+
 		return nil
 	}
 	var flushLogsFn = func(consumer *ContainerLogConsumer, log LogContent) error {
 		for _, logTarget := range consumer.logTargets {
-			if handler, ok := consumer.lw.logTargetHandlers[logTarget]; ok {
+			if handler, ok := consumer.ls.logTargetHandlers[logTarget]; ok {
 				if err := handler.Handle(consumer, log); err != nil {
 					m.log.Error().
 						Err(err).
@@ -615,7 +636,22 @@ func (m *LogStream) FlushLogsToTargets() error {
 		return nil
 	}
 
-	flushErr := m.GetAllLogsAndConsume(preExecuteFn, flushLogsFn)
+	var postExecuteFn = func(consumer *ContainerLogConsumer) error {
+		for _, handler := range m.logTargetHandlers {
+			consumer.ls.log.Debug().
+				Str("container name", consumer.name).
+				Str("Handler", string(handler.GetTarget())).
+				Msg("Tearing down log target handler")
+
+			if err := handler.Teardown(); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+
+	flushErr := m.GetAllLogsAndConsume(preExecuteFn, flushLogsFn, postExecuteFn)
 	if flushErr == nil {
 		m.log.Info().
 			Msg("Finished flushing logs")
@@ -633,7 +669,7 @@ type ContainerLogConsumer struct {
 	name             string
 	prefix           string
 	logTargets       []LogTarget
-	lw               *LogStream
+	ls               *LogStream
 	tempFile         *os.File
 	encoder          *gob.Encoder
 	isDone           bool
@@ -656,7 +692,7 @@ func newContainerLogConsumer(ctx context.Context, lw *LogStream, container LogPr
 		name:             containerName,
 		prefix:           prefix,
 		logTargets:       logTargets,
-		lw:               lw,
+		ls:               lw,
 		isDone:           false,
 		hasErrored:       false,
 		logListeningDone: make(chan struct{}, 1),
@@ -717,16 +753,16 @@ func (g *ContainerLogConsumer) GetContainer() LogProducingContainer {
 
 // Accept accepts the log message from particular container and saves it to the temp gob file
 func (g *ContainerLogConsumer) Accept(l testcontainers.Log) {
-	g.lw.acceptMutex.Lock()
-	defer g.lw.acceptMutex.Unlock()
+	g.ls.acceptMutex.Lock()
+	defer g.ls.acceptMutex.Unlock()
 
 	if g.hasErrored {
 		return
 	}
 
 	if g.isDone {
-		g.lw.log.Error().
-			Str("Test", g.lw.testName).
+		g.ls.log.Error().
+			Str("Test", g.ls.testName).
 			Str("Container", g.name).
 			Str("Log", string(l.Content)).
 			Msg("Consumer has finished, but you are still trying to accept logs. This should never happen")
@@ -739,7 +775,7 @@ func (g *ContainerLogConsumer) Accept(l testcontainers.Log) {
 	}
 
 	if g.tempFile == nil || g.encoder == nil {
-		g.lw.log.Error().
+		g.ls.log.Error().
 			Str("Container", g.name).
 			Msg("temp file or encoder is nil, consumer cannot work, this should never happen")
 		g.MarkAsErrored()
@@ -761,21 +797,21 @@ func (g *ContainerLogConsumer) Accept(l testcontainers.Log) {
 	}
 
 	content := LogContent{
-		TestName:      g.lw.testName,
+		TestName:      g.ls.testName,
 		ContainerName: g.name,
 		Content:       l.Content,
 		Time:          time.Now(),
 	}
 
 	if err := g.streamLogToTempFile(content); err != nil {
-		g.lw.log.Error().
+		g.ls.log.Error().
 			Err(err).
 			Str("Container", g.name).
 			Msg("Failed to stream log to temp file")
 		g.hasErrored = true
 		err = g.tempFile.Close()
 		if err != nil {
-			g.lw.log.Error().
+			g.ls.log.Error().
 				Err(err).
 				Msg("Failed to close temp file")
 		}
