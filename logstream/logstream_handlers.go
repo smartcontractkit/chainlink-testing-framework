@@ -142,6 +142,10 @@ func (h *LokiLogHandler) GetLogLocation(consumers map[string]*ContainerLogConsum
 		return h.grafanaUrl, nil
 	}
 
+	if len(consumers) == 0 {
+		return "", errors.New("no Loki consumers found")
+	}
+
 	grafanaBaseUrl := os.Getenv("GRAFANA_URL")
 	if grafanaBaseUrl == "" {
 		return "", errors.New("GRAFANA_URL env var is not set")
@@ -157,10 +161,7 @@ func (h *LokiLogHandler) GetLogLocation(consumers map[string]*ContainerLogConsum
 	sb.WriteString("/d/ddf75041-1e39-42af-aa46-361fe4c36e9e/ci-e2e-tests-logs?orgId=1&")
 	sb.WriteString(fmt.Sprintf("var-run_id=%s", h.runId))
 
-	if len(consumers) == 0 {
-		return "", errors.New("no Loki consumers found")
-	}
-
+	var testName string
 	for _, c := range consumers {
 		if c.hasLogTarget(Loki) {
 			sb.WriteString(fmt.Sprintf("&var-container_id=%s", c.name))
@@ -169,9 +170,16 @@ func (h *LokiLogHandler) GetLogLocation(consumers map[string]*ContainerLogConsum
 		if c.GetStartTime().Before(rangeFrom) {
 			rangeFrom = c.GetStartTime()
 		}
+
+		if testName == "" && c.lw.testName != NO_TEST {
+			testName = c.lw.testName
+		}
 	}
 
 	sb.WriteString(fmt.Sprintf("&from=%d&to=%d", rangeFrom.UnixMilli(), rangeTo.UnixMilli()))
+	if testName != "" {
+		sb.WriteString(fmt.Sprintf("&var-test=%s", testName))
+	}
 	h.grafanaUrl = sb.String()
 
 	return h.grafanaUrl, nil
