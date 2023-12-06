@@ -333,15 +333,16 @@ func (m *LogStream) GetConsumers() map[string]*ContainerLogConsumer {
 // Shutdown disconnects all containers and stops all consumers
 func (m *LogStream) Shutdown(context context.Context) error {
 	var err error
-	for _, c := range m.consumers {
-		if stopErr := c.Stop(); stopErr != nil {
-			m.log.Error().
-				Err(stopErr).
-				Str("Name", c.name).
-				Msg("Failed to stop container")
-			err = stopErr
-		}
 
+	var wrapError = func(newErr error) {
+		if err == nil {
+			err = newErr
+		} else {
+			err = errors.Wrap(err, newErr.Error())
+		}
+	}
+
+	for _, c := range m.consumers {
 		discErr := m.DisconnectContainer(c.container)
 		if discErr != nil {
 			m.log.Error().
@@ -349,11 +350,15 @@ func (m *LogStream) Shutdown(context context.Context) error {
 				Str("Name", c.name).
 				Msg("Failed to disconnect container")
 
-			if err == nil {
-				err = discErr
-			} else {
-				err = errors.Wrap(err, discErr.Error())
-			}
+			wrapError(discErr)
+		}
+
+		if stopErr := c.Stop(); stopErr != nil {
+			m.log.Error().
+				Err(stopErr).
+				Str("Name", c.name).
+				Msg("Failed to stop container")
+			wrapError(stopErr)
 		}
 	}
 
