@@ -537,7 +537,7 @@ func (e *EthereumClient) NewTx(
 }
 
 // MarkTxAsSent On an L2 chain, indicate the tx has been sent
-func (e *EthereumClient) MarkTxAsSent(tx *types.Transaction) error {
+func (e *EthereumClient) MarkTxAsSentOnL2(tx *types.Transaction) error {
 	if e.NetworkConfig.MinimumConfirmations > 0 {
 		return nil
 	}
@@ -554,7 +554,7 @@ func (e *EthereumClient) ProcessTransaction(tx *types.Transaction) error {
 	e.l.Trace().Str("Hash", tx.Hash().Hex()).Msg("Processing Tx")
 	var txConfirmer HeaderEventSubscription
 	if e.GetNetworkConfig().MinimumConfirmations <= 0 {
-		err := e.MarkTxAsSent(tx)
+		err := e.MarkTxAsSentOnL2(tx)
 		if err != nil {
 			return err
 		}
@@ -1518,6 +1518,11 @@ func (e *EthereumMultinodeClient) IsTxHeadFinalized(txHdr, header *SafeEVMHeader
 // WaitForTxTobeFinalized waits for the transaction to be finalized
 func (e *EthereumMultinodeClient) WaitForFinalizedTx(txHash common.Hash) (*big.Int, time.Time, error) {
 	return e.DefaultClient.WaitForFinalizedTx(txHash)
+}
+
+// MarkTxAsSentOnL2 marks the transaction as sent on L2
+func (e *EthereumMultinodeClient) MarkTxAsSentOnL2(tx *types.Transaction) error {
+	return e.DefaultClient.MarkTxAsSentOnL2(tx)
 }
 
 // PollFinality polls for finality

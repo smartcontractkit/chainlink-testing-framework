@@ -66,6 +66,8 @@ type EVMClient interface {
 		gasEstimations GasEstimations,
 	) (*types.Transaction, error)
 	ProcessTransaction(tx *types.Transaction) error
+
+	MarkTxAsSentOnL2(tx *types.Transaction) error
 	ProcessEvent(name string, event *types.Log, confirmedChan chan bool, errorChan chan error) error
 	IsEventConfirmed(event *types.Log) (confirmed, removed bool, err error)
 	IsTxConfirmed(txHash common.Hash) (bool, error)
