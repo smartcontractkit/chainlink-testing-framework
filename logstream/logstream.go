@@ -34,6 +34,7 @@ type LogNotification struct {
 	Log       string
 }
 
+// LogProducingContainer is a facade that needs to be implemented by any container that wants to be connected to LogStream
 type LogProducingContainer interface {
 	Name(ctx context.Context) (string, error)
 	FollowOutput(consumer testcontainers.LogConsumer)
@@ -61,6 +62,7 @@ type LogStream struct {
 	runId                        string
 }
 
+// LogContent is a representation of log that will be send to Loki
 type LogContent struct {
 	TestName      string
 	ContainerName string
@@ -118,8 +120,8 @@ func NewLogStream(t *testing.T, patterns map[string][]*regexp.Regexp, options ..
 	return logWatch, nil
 }
 
+// validateLogTargets validates that all enabled log targets have a handler and disables handlers that are not enabled
 func (m *LogStream) validateLogTargets() error {
-	// check if all requested log targets are supported
 	for _, wantedTarget := range m.enabledLogTargets {
 		found := false
 		for knownTarget := range m.logTargetHandlers {
@@ -134,7 +136,6 @@ func (m *LogStream) validateLogTargets() error {
 		}
 	}
 
-	// deactivate known log targets that are not enabled
 	for knownTarget := range m.logTargetHandlers {
 		wanted := false
 		for _, wantedTarget := range m.enabledLogTargets {
@@ -156,30 +157,35 @@ func (m *LogStream) validateLogTargets() error {
 	return nil
 }
 
+// WithCustomLogHandler allows to override default log handler for particular log target
 func WithCustomLogHandler(logTarget LogTarget, handler HandleLogTarget) Option {
 	return func(lw *LogStream) {
 		lw.logTargetHandlers[logTarget] = handler
 	}
 }
 
+// WithLogTarget allows setting log targets programmatically (also overrides LOGSTREAM_LOG_TARGETS env var)
 func WithLogTarget(logTarget LogTarget) Option {
 	return func(lw *LogStream) {
 		lw.enabledLogTargets = append(lw.enabledLogTargets, logTarget)
 	}
 }
 
+// WithLogProducerTimeout allows to override default log producer timeout of 5 seconds
 func WithLogProducerTimeout(timeout time.Duration) Option {
 	return func(lw *LogStream) {
 		lw.logProducerTimeout = timeout
 	}
 }
 
+// WithLogProducerRetryLimit allows to override default log producer retry limit of 10
 func WithLogProducerRetryLimit(retryLimit int) Option {
 	return func(lw *LogStream) {
 		lw.logProducerTimeoutRetryLimit = retryLimit
 	}
 }
 
+// fibonacci is a helper function for retrying log producer
 func fibonacci(n int) int {
 	if n <= 1 {
 		return n
@@ -187,7 +193,7 @@ func fibonacci(n int) int {
 	return fibonacci(n-1) + fibonacci(n-2)
 }
 
-// ConnectContainer connects consumer to selected container and starts testcontainers.LogProducer
+// ConnectContainer connects consumer to selected container, starts testcontainers.LogProducer and listens to it's failures in a detached goroutine
 func (m *LogStream) ConnectContainer(ctx context.Context, container LogProducingContainer, prefix string) error {
 	name, err := container.Name(ctx)
 	if err != nil {
@@ -309,11 +315,8 @@ func (m *LogStream) ConnectContainer(ctx context.Context, container LogProducing
 
 						return
 					}
-
-					// time.Sleep(500 * time.Millisecond)
 				}
 			case <-done:
-				fmt.Printf("DONE")
 				return
 			}
 		}
@@ -322,11 +325,12 @@ func (m *LogStream) ConnectContainer(ctx context.Context, container LogProducing
 	return err
 }
 
+// GetConsumers returns all consumers
 func (m *LogStream) GetConsumers() map[string]*ContainerLogConsumer {
 	return m.consumers
 }
 
-// Shutdown disconnects all containers, stops notifications
+// Shutdown disconnects all containers and stops all consumers
 func (m *LogStream) Shutdown(context context.Context) error {
 	var err error
 	for _, c := range m.consumers {
@@ -362,6 +366,7 @@ func (m *LogStream) Shutdown(context context.Context) error {
 
 type LogWriter = func(testName string, name string, location interface{}) error
 
+// PrintLogTargetsLocations prints all log targets locations to stdout
 func (m *LogStream) PrintLogTargetsLocations() {
 	m.SaveLogTargetsLocations(func(testName string, name string, location interface{}) error {
 		m.log.Info().Str("Test", testName).Str("Handler", name).Interface("Location", location).Msg("Log location")
@@ -369,12 +374,14 @@ func (m *LogStream) PrintLogTargetsLocations() {
 	})
 }
 
+// SaveLogTargetsLocations saves all log targets locations to test summary
 func (m *LogStream) SaveLogLocationInTestSummary() {
 	m.SaveLogTargetsLocations(func(testName string, name string, location interface{}) error {
 		return testsummary.AddEntry(testName, name, location)
 	})
 }
 
+// SaveLogTargetsLocations saves all log targets given writer
 func (m *LogStream) SaveLogTargetsLocations(writer LogWriter) {
 	for _, handler := range m.logTargetHandlers {
 		name := string(handler.GetTarget())
@@ -390,6 +397,7 @@ func (m *LogStream) SaveLogTargetsLocations(writer LogWriter) {
 	}
 }
 
+// Stop stops the consumer and closes temp file
 func (g *ContainerLogConsumer) Stop() error {
 	if g.isDone {
 		return nil
@@ -406,7 +414,7 @@ func (g *ContainerLogConsumer) Stop() error {
 	return nil
 }
 
-// DisconnectContainer disconnects the particular container
+// DisconnectContainer disconnects particular container
 func (m *LogStream) DisconnectContainer(container LogProducingContainer) error {
 	if container.IsRunning() {
 		m.log.Info().Str("container", container.GetContainerID()).Msg("Disconnecting container")
@@ -416,7 +424,7 @@ func (m *LogStream) DisconnectContainer(container LogProducingContainer) error {
 	return nil
 }
 
-// ContainerLogs return all logs for the particular container
+// ContainerLogs return all logs for particular container
 func (m *LogStream) ContainerLogs(name string) ([]string, error) {
 	logs := []string{}
 	var getLogsFn = func(consumer *ContainerLogConsumer, log LogContent) error {
@@ -437,10 +445,12 @@ func (m *LogStream) ContainerLogs(name string) ([]string, error) {
 type ConsumerConsumingFn = func(consumer *ContainerLogConsumer) error
 type ConsumerLogConsumingFn = func(consumer *ContainerLogConsumer, log LogContent) error
 
+// NoOpConsumerFn is a no-op consumer function
 func NoOpConsumerFn(consumer *ContainerLogConsumer) error {
 	return nil
 }
 
+// GetAllLogsAndConsume gets all logs for all consumers (containers) and consumes them using consumeLogFn
 func (m *LogStream) GetAllLogsAndConsume(preExecuteFn ConsumerConsumingFn, consumeLogFn ConsumerLogConsumingFn) (loopErr error) {
 	m.acceptMutex.Lock()
 	defer m.acceptMutex.Unlock()
@@ -592,9 +602,7 @@ type ContainerLogConsumer struct {
 	firstLogTs       time.Time
 }
 
-// newContainerLogConsumer creates new log consumer for a container that
-// - signal if log line matches the pattern
-// - push all lines to configured log targets
+// newContainerLogConsumer creates new log consumer for a container that saves logs to a temp file
 func newContainerLogConsumer(ctx context.Context, lw *LogStream, container LogProducingContainer, prefix string, logTargets ...LogTarget) (*ContainerLogConsumer, error) {
 	containerName, err := container.Name(ctx)
 	if err != nil {
@@ -630,10 +638,12 @@ func newContainerLogConsumer(ctx context.Context, lw *LogStream, container LogPr
 	return consumer, nil
 }
 
+// GetStartTime returns the time of the first log line
 func (g *ContainerLogConsumer) GetStartTime() time.Time {
 	return g.firstLogTs
 }
 
+// ResetTempFile resets the temp file and gob encoder
 func (g *ContainerLogConsumer) ResetTempFile() error {
 	if g.tempFile != nil {
 		if err := g.tempFile.Close(); err != nil {
@@ -652,12 +662,14 @@ func (g *ContainerLogConsumer) ResetTempFile() error {
 	return nil
 }
 
+// MarkAsErrored marks the consumer as errored (which makes it stop accepting logs)
 func (g *ContainerLogConsumer) MarkAsErrored() {
 	g.hasErrored = true
 	g.isDone = true
 	close(g.logListeningDone)
 }
 
+// GetContainer returns the container that this consumer is connected to
 func (g *ContainerLogConsumer) GetContainer() LogProducingContainer {
 	return g.container
 }
@@ -729,6 +741,7 @@ func (g *ContainerLogConsumer) Accept(l testcontainers.Log) {
 	}
 }
 
+// streamLogToTempFile streams log to temp file
 func (g *ContainerLogConsumer) streamLogToTempFile(content LogContent) error {
 	if g.encoder == nil {
 		return errors.New("encoder is nil, this should never happen")
@@ -737,6 +750,7 @@ func (g *ContainerLogConsumer) streamLogToTempFile(content LogContent) error {
 	return g.encoder.Encode(content)
 }
 
+// hasLogTarget checks if the consumer has a particular log target
 func (g *ContainerLogConsumer) hasLogTarget(logTarget LogTarget) bool {
 	for _, lt := range g.logTargets {
 		if lt == logTarget {
@@ -747,6 +761,7 @@ func (g *ContainerLogConsumer) hasLogTarget(logTarget LogTarget) bool {
 	return false
 }
 
+// getLogTargetsFromEnv gets log targets from LOGSTREAM_LOG_TARGETS env var
 func getLogTargetsFromEnv() ([]LogTarget, error) {
 	envLogTargetsValue := os.Getenv("LOGSTREAM_LOG_TARGETS")
 	if envLogTargetsValue != "" {

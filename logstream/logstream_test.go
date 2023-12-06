@@ -703,7 +703,7 @@ func TestLogStreamConnectRetryMockContainer_FailsFirstRestart(t *testing.T) {
 		mockedContainer.startError = errors.New("still running")
 
 		// wait for one second before clearing errors, so that we retry to connect
-		time.Sleep(1 * time.Second)
+		time.Sleep(600 * time.Millisecond)
 		mockedContainer.startError = nil
 		mockedContainer.errorChannelError = nil
 	}()

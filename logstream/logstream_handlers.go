@@ -37,7 +37,7 @@ func getDefaultLogHandlers() map[LogTarget]HandleLogTarget {
 	return handlers
 }
 
-// streams logs to local files
+// FileLogHandler saves logs to local files
 type FileLogHandler struct {
 	logFolder         string
 	shouldSkipLogging bool
@@ -103,7 +103,7 @@ func (h *FileLogHandler) GetRunId() string {
 	return h.runId
 }
 
-// streams logs to Loki
+// LokiLogHandler sends logs to Loki
 type LokiLogHandler struct {
 	grafanaUrl        string
 	shouldSkipLogging bool
@@ -189,7 +189,7 @@ func (h *LokiLogHandler) GetRunId() string {
 	return h.runId
 }
 
-// stores logs in memory
+// InMemoryLogHandler stores logs in memory
 type InMemoryLogHandler struct {
 	logs  map[string][]LogContent
 	runId string

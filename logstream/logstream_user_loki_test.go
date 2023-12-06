@@ -1,7 +1,6 @@
 package logstream_test
 
 import (
-	"os"
 	"testing"
 	"time"
 
@@ -15,7 +14,6 @@ import (
 
 func TestExampleLokiStreaming(t *testing.T) {
 	t.Skip("uncomment and run manually")
-	os.Setenv("LOGSTREAM_LOG_TARGETS", "loki")
 	tests := []testData{
 		{
 			name:      "stream all container logs to Loki, subtest 1",
@@ -45,7 +43,7 @@ func TestExampleLokiStreaming(t *testing.T) {
 			// nolint
 			defer d.Shutdown(ctx)
 			require.NoError(t, err)
-			lw, err := logstream.NewLogStream(t, nil)
+			lw, err := logstream.NewLogStream(t, nil, logstream.WithLogTarget(logstream.Loki))
 			require.NoError(t, err)
 			err = d.ConnectLogs(lw)
 			require.NoError(t, err)
