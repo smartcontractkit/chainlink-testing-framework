@@ -206,10 +206,6 @@ func (m *LogStream) ConnectContainer(ctx context.Context, container LogProducing
 		prefix = name
 	}
 
-	if _, ok := m.consumers[name]; ok {
-		return errors.Errorf("container %s is already connected", name)
-	}
-
 	enabledLogTargets := make([]LogTarget, 0)
 	for logTarget := range m.logTargetHandlers {
 		enabledLogTargets = append(enabledLogTargets, logTarget)
@@ -433,10 +429,6 @@ func (g *ContainerLogConsumer) stop() error {
 	g.logListeningDone <- struct{}{}
 	defer close(g.logListeningDone)
 
-	if g.tempFile != nil {
-		return g.tempFile.Close()
-	}
-
 	return nil
 }
 
@@ -460,7 +452,6 @@ func (m *LogStream) DisconnectContainer(container LogProducingContainer) error {
 					Msg("Failed to stop consumer")
 				err = wrapError(err, stopErr)
 			}
-			delete(m.consumers, consumer.name)
 			break
 		}
 	}
