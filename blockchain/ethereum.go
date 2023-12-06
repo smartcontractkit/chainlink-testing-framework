@@ -482,7 +482,7 @@ func (e *EthereumClient) TransactionOpts(from *EthereumWallet) (*bind.TransactOp
 	opts.Nonce = big.NewInt(int64(nonce))
 
 	if e.NetworkConfig.MinimumConfirmations <= 0 { // Wait for your turn to send on an L2 chain
-		<-e.NonceSettings.registerInstantTransaction(from.Address(), nonce)
+		e.NonceSettings.registerInstantTransaction(from.Address(), nonce)
 	}
 	// if the gas limit is less than the default gas limit, use the default
 	if e.NetworkConfig.DefaultGasLimit > opts.GasLimit {

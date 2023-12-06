@@ -97,14 +97,13 @@ func (ns *NonceSettings) watchInstantTransactions() {
 
 // registerInstantTransaction helps meter out txs for L2 chains. Register, then wait to receive from the returned channel
 // to know when your Tx can send. See watchInstantTransactions for a deeper explanation.
-func (ns *NonceSettings) registerInstantTransaction(fromAddr string, nonce uint64) <-chan struct{} {
+func (ns *NonceSettings) registerInstantTransaction(fromAddr string, nonce uint64) {
 	releaseChan := make(chan struct{})
 	ns.registerChan <- instantTxRegistration{
 		fromAddr:    fromAddr,
 		nonce:       nonce,
 		releaseChan: releaseChan,
 	}
-	return releaseChan
 }
 
 // sentInstantTransaction shows that you have sent this instant transaction, unlocking the next L2 transaction to run.
