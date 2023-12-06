@@ -408,6 +408,8 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 
 	en.DockerNetworkNames = networkNames
 	net.ChainID = int64(en.EthereumChainConfig.ChainID)
+	// use a higher value than the default, because eth2 is slower than dev-mode eth1
+	net.Timeout = blockchain.JSONStrDuration{Duration: time.Duration(4 * time.Minute)}
 	net.FinalityTag = true
 	net.FinalityDepth = 0
 	if en.ExecutionLayer == ExecutionLayer_Besu {
