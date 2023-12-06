@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/rs/zerolog"
@@ -85,4 +86,13 @@ func ExecCmdWithOptions(ctx context.Context, l zerolog.Logger, command string, o
 	go readStdPipe(stderr, outputFunction)
 	go readStdPipe(stdout, outputFunction)
 	return cmd.Wait()
+}
+
+func GetAbsoluteFolderPath(folder string) (string, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(wd, folder), nil
 }
