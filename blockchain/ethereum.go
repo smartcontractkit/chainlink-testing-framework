@@ -482,7 +482,7 @@ func (e *EthereumClient) TransactionOpts(from *EthereumWallet) (*bind.TransactOp
 	opts.Nonce = big.NewInt(int64(nonce))
 
 	if e.NetworkConfig.MinimumConfirmations <= 0 { // Wait for your turn to send on an L2 chain
-		e.NonceSettings.registerInstantTransaction(from.Address(), nonce)
+		<-e.NonceSettings.registerInstantTransaction(from.Address(), nonce)
 	}
 	// if the gas limit is less than the default gas limit, use the default
 	if e.NetworkConfig.DefaultGasLimit > opts.GasLimit {
@@ -536,16 +536,28 @@ func (e *EthereumClient) NewTx(
 	return tx, nil
 }
 
+// MarkTxAsSent On an L2 chain, indicate the tx has been sent
+func (e *EthereumClient) MarkTxAsSent(tx *types.Transaction) error {
+	if e.NetworkConfig.MinimumConfirmations > 0 {
+		return nil
+	}
+	fromAddr, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx)
+	if err != nil {
+		return err
+	}
+	e.NonceSettings.sentInstantTransaction(fromAddr.Hex())
+	return nil
+}
+
 // ProcessTransaction will queue or wait on a transaction depending on whether parallel transactions are enabled
 func (e *EthereumClient) ProcessTransaction(tx *types.Transaction) error {
 	e.l.Trace().Str("Hash", tx.Hash().Hex()).Msg("Processing Tx")
 	var txConfirmer HeaderEventSubscription
 	if e.GetNetworkConfig().MinimumConfirmations <= 0 {
-		fromAddr, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx)
+		err := e.MarkTxAsSent(tx)
 		if err != nil {
 			return err
 		}
-		e.NonceSettings.sentInstantTransaction(fromAddr.Hex()) // On an L2 chain, indicate the tx has been sent
 		txConfirmer = NewInstantConfirmer(e, tx.Hash(), nil, nil, e.l)
 	} else {
 		txConfirmer = NewTransactionConfirmer(e, tx, e.GetNetworkConfig().MinimumConfirmations, e.l)
