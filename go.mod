@@ -19,7 +19,7 @@ require (
 	github.com/prometheus/common v0.44.0
 	github.com/rs/zerolog v1.30.0
 	github.com/slack-go/slack v0.12.2
-	github.com/smartcontractkit/wasp v0.3.6
+	github.com/smartcontractkit/wasp v0.3.7
 	github.com/stretchr/testify v1.8.4
 	github.com/testcontainers/testcontainers-go v0.23.0
 	go.uber.org/atomic v1.11.0
@@ -49,6 +49,9 @@ require (
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
 )
+
+// avoids ambigious imports of indirect dependencies
+exclude github.com/hashicorp/consul v1.2.1
 
 // K8s versions are infuriatingly inconsistent, so we pin them here.
 replace (

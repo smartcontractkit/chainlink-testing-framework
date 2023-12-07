@@ -350,7 +350,7 @@ func (m *LogStream) Shutdown(context context.Context) error {
 	}
 
 	if m.loki != nil {
-		m.loki.Stop()
+		m.loki.StopNow()
 	}
 
 	return err
@@ -380,7 +380,7 @@ func (m *LogStream) FlushAndShutdown() error {
 	}
 
 	if m.loki != nil {
-		m.loki.Stop()
+		m.loki.StopNow()
 	}
 
 	return wrappedErr
