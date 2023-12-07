@@ -1,5 +1,6 @@
 [
   "ethereum/client-go:v1.12.0",
+  "ethereum/client-go:v1.13.5",
   "ethereum/client-go:alltools-v1.10.25",
   "friendsofgo/killgrave:0.4.1",
   "mockserver/mockserver:5.15.0",
@@ -8,5 +9,11 @@
   "confluentinc/cp-schema-registry:7.4.0",
   "confluentinc/cp-zookeeper:7.4.0",
   "hyperledger/besu:23.10",
-  "postgres:15.5"
+  "postgres:15.5",
+  "thorax/erigon:v2.54.0",
+  "nethermind/nethermind:1.22.0",
+  "gcr.io/prysmaticlabs/prysm/beacon-chain:v4.1.1",
+  "gcr.io/prysmaticlabs/prysm/validator:v4.1.1",
+  "tofelb/ethereum-genesis-generator:2.0.4-slots-per-epoch",
+  "protolambda/eth2-val-tools:latest"
 ]

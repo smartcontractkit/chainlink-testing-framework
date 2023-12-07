@@ -94,6 +94,53 @@ Removed charts do not trigger a re-publish, the packages have to be removed and 
 
 Note: The qa-charts repository is scheduled to look for changes to the charts once every hour. This can be expedited by going to that repo and running the cd action via github UI.
 
+# Simulated EVM chains
+
+We have extended support for execution layer clients in simulated networks. Following ones are supported:
+* `Geth`
+* `Nethermind`
+* `Besu`
+* `Erigon`
+
+When it comes to consensus layer we currently support only `Prysm`.
+
+## Command line
+
+You can start a simulated network with a single command:
+```
+go run docker/test_env/cmd/main.go start-test-env private-chain
+```
+
+By default it will start a network with 1 node running `Geth` and `Prysm`. It will use default chain id of `1337` and won't wait for the chain to finalize at least one epoch. Once the chain is started it will save the network configuration in a `JSON` file, which then you can use in your tests to connect to that chain (and thus save time it takes to start a new chain each time you run your test).
+
+Following cmd line flags are available:
+```
+  -c, --chain-id int             chain id (default 1337)
+  -l, --consensus-layer string   consensus layer (prysm) (default "prysm")
+  -t, --consensus-type string    consensus type (pow or pos) (default "pos")
+  -e, --execution-layer string   execution layer (geth, nethermind, besu or erigon) (default "geth")
+  -w, --wait-for-finalization    wait for finalization of at least 1 epoch (might take up to 5 mintues)
+```
+
+To connect to that environment in your tests use the following code:
+```
+	builder := NewEthereumNetworkBuilder()
+	cfg, err := builder.
+		WihtExistingConfigFromEnvVar().
+		Build()
+
+    if err != nil {
+        return err
+    }
+
+	net, rpc, err := cfg.Start()
+    if err != nil {
+        return err
+    }
+```
+Builder will read the location of chain configuration from env var named `PRIVATE_ETHEREUM_NETWORK_CONFIG_PATH` (it will be printed in the console once the chain starts).
+
+`net` is an instance of `blockchain.EVMNetwork`, which contains characteristics of the network and can be used to connect to it using an EVM client. `rpc` variable contains arrays of public and private RPC endpoints, where "private" means URL that's accessible from the same Docker network as the chain is running in.
 # Using LogStream
 
 LogStream is a package that allows to connect to a Docker container and then flush logs to configured targets. Currently 3 targets are supported:

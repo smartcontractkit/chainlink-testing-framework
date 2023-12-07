@@ -90,7 +90,7 @@ func NewKillgrave(networks []string, impostersDirectoryPath string, opts ...EnvC
 	return k
 }
 
-func (k *Killgrave) WithTestLogger(t *testing.T) *Killgrave {
+func (k *Killgrave) WithTestInstance(t *testing.T) *Killgrave {
 	k.l = logging.GetTestLogger(t)
 	k.t = t
 	return k

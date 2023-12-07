@@ -19,7 +19,7 @@ func TestMockServerSetStringValue(t *testing.T) {
 	require.NoError(t, err)
 
 	m := NewMockServer([]string{network.Name}).
-		WithTestLogger(t)
+		WithTestInstance(t)
 	err = m.StartContainer()
 	require.NoError(t, err)
 

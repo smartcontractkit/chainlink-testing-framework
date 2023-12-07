@@ -66,7 +66,7 @@ func NewPrivateGethChain(networkCfg *blockchain.EVMNetwork, dockerNetworks []str
 	return evmChain
 }
 
-func (p *PrivateGethChain) WithTestLogger(t *testing.T) *PrivateGethChain {
+func (p *PrivateGethChain) WithTestInstance(t *testing.T) *PrivateGethChain {
 	p.PrimaryNode.l = logging.GetTestLogger(t)
 	return p
 }
@@ -143,7 +143,7 @@ func (g *NonDevGethNode) GetEVMClient() blockchain.EVMClient {
 	return g.EVMClient
 }
 
-func (g *NonDevGethNode) WithTestLogger(t *testing.T) NonDevNode {
+func (g *NonDevGethNode) WithTestInstance(t *testing.T) NonDevNode {
 	g.t = t
 	g.l = logging.GetTestLogger(t)
 	return g

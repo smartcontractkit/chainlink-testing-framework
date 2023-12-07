@@ -39,7 +39,7 @@ func NewSchemaRegistry(networks []string) *SchemaRegistry {
 	}
 }
 
-func (r *SchemaRegistry) WithTestLogger(t *testing.T) *SchemaRegistry {
+func (r *SchemaRegistry) WithTestInstance(t *testing.T) *SchemaRegistry {
 	r.l = logging.GetTestLogger(t)
 	r.t = t
 	return r

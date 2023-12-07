@@ -1,7 +1,6 @@
 package docker
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -9,6 +8,7 @@ import (
 	tc "github.com/testcontainers/testcontainers-go"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
 const RetryAttempts = 3
@@ -21,7 +21,7 @@ func CreateNetwork(l zerolog.Logger) (*tc.DockerNetwork, error) {
 		return nil, err
 	}
 	reaperCO := tc.WithImageName(ryukImage)
-	network, err := tc.GenericNetwork(context.Background(), tc.GenericNetworkRequest{
+	network, err := tc.GenericNetwork(testcontext.Get(nil), tc.GenericNetworkRequest{
 		NetworkRequest: tc.NetworkRequest{
 			Name:           networkName,
 			CheckDuplicate: true,
@@ -46,18 +46,22 @@ func StartContainerWithRetry(l zerolog.Logger, req tc.GenericContainerRequest) (
 	var ct tc.Container
 	var err error
 	for i := 0; i < RetryAttempts; i++ {
-		ct, err = tc.GenericContainer(context.Background(), req)
+		ct, err = tc.GenericContainer(testcontext.Get(nil), req)
 		if err == nil {
 			break
 		}
 		l.Info().Err(err).Msgf("Cannot start %s container, retrying %d/%d", req.Name, i+1, RetryAttempts)
 		if ct != nil {
-			err := ct.Terminate(context.Background())
+			err := ct.Terminate(testcontext.Get(nil))
 			if err != nil {
 				l.Error().Err(err).Msgf("Cannot terminate %s container to initiate restart", req.Name)
 				return nil, err
 			}
 		}
+		// TODO we should dynamically check if container was removed, otherwise retry will fail anyway, just becasuse
+		// container with the same name already exists | that or regenerate container name
+		// But regenerating container name will not help to remove temporary data created on host machine and that can be
+		// a problem if data is stateful
 		req.Reuse = false
 	}
 	return ct, err

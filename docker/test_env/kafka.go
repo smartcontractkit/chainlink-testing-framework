@@ -62,7 +62,7 @@ func NewKafka(networks []string) *Kafka {
 	}
 }
 
-func (k *Kafka) WithTestLogger(t *testing.T) *Kafka {
+func (k *Kafka) WithTestInstance(t *testing.T) *Kafka {
 	k.l = logging.GetTestLogger(t)
 	k.t = t
 	return k

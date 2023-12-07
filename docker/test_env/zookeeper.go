@@ -33,7 +33,7 @@ func NewZookeeper(networks []string) *Zookeeper {
 	}
 }
 
-func (z *Zookeeper) WithTestLogger(t *testing.T) *Zookeeper {
+func (z *Zookeeper) WithTestInstance(t *testing.T) *Zookeeper {
 	z.l = logging.GetTestLogger(t)
 	z.t = t
 	return z
