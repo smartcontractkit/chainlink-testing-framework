@@ -73,7 +73,7 @@ compile_contracts:
 	python3 ./utils/compile_contracts.py
 
 test_unit: install_gotestfmt
-	go test -json -cover -covermode=count -coverprofile=unit-test-coverage.out ./client ./gauntlet ./testreporters ./docker/test_env ./k8s/config 2>&1 | tee /tmp/gotest.log | gotestfmt
+	go test -json -cover -covermode=count -coverprofile=unit-test-coverage.out ./client ./gauntlet ./testreporters ./docker/test_env ./k8s/config ./logstream 2>&1 | tee /tmp/gotest.log | gotestfmt
 
 
 #######################

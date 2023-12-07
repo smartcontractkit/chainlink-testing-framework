@@ -56,6 +56,9 @@ dist/
 **/remote_runner_config.yaml
 logs/
 
+.test_summary/
+.run.id
+
 env/cmd/chaos
 env/bin/
 # temp manifest for deployment and validation
