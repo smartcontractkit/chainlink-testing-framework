@@ -336,6 +336,10 @@ func wrapError(existingErr, newErr error) error {
 
 // Shutdown disconnects all containers and stops all consumers
 func (m *LogStream) Shutdown(context context.Context) error {
+	if len(m.consumers) == 0 {
+		return nil
+	}
+
 	var err error
 	for _, c := range m.consumers {
 		discErr := m.DisconnectContainer(c.container)
@@ -358,6 +362,10 @@ func (m *LogStream) Shutdown(context context.Context) error {
 
 // FlushAndShutdown flushes all logs to their targets and shuts down the log stream in a default sequence
 func (m *LogStream) FlushAndShutdown() error {
+	if len(m.consumers) == 0 {
+		return nil
+	}
+
 	var wrappedErr error
 
 	// first disonnect all containers, so that no new logs are accepted
@@ -405,6 +413,10 @@ func (m *LogStream) SaveLogLocationInTestSummary() {
 
 // SaveLogTargetsLocations saves all log targets given writer
 func (m *LogStream) SaveLogTargetsLocations(writer LogWriter) {
+	if len(m.consumers) == 0 {
+		return
+	}
+
 	for _, handler := range m.logTargetHandlers {
 		name := string(handler.GetTarget())
 		location, err := handler.GetLogLocation(m.consumers)
