@@ -1391,12 +1391,6 @@ github.com/sirupsen/logrus v1.9.3 h1:dueUQJ1C2q9oE3F7wvmSGAaVtTmUizReu6fjN8uqzbQ
 github.com/sirupsen/logrus v1.9.3/go.mod h1:naHLuLoDiP4jHNo9R0sCBMtWGeIprob74mVsIT4qYEQ=
 github.com/slack-go/slack v0.12.2 h1:x3OppyMyGIbbiyFhsBmpf9pwkUzMhthJMRNmNlA4LaQ=
 github.com/slack-go/slack v0.12.2/go.mod h1:hlGi5oXA+Gt+yWTPP0plCdRKmjsDxecdHxYQdlMQKOw=
-github.com/smartcontractkit/wasp v0.3.6 h1:1TLWfrTzqZwNvyyoKzPZ8FLQat2lNz640eM+mMh2YxM=
-github.com/smartcontractkit/wasp v0.3.6/go.mod h1:L/cyUGfpaWxy/2twOVJLRt2mySJEIqGrFj9nyvRLpSo=
-github.com/smartcontractkit/wasp v0.3.7-0.20231206192146-5074f5d22131 h1:sWigo1JJIcScEYu63nB6gh3QzHNc9RdZ1mMdQ2gm1Ps=
-github.com/smartcontractkit/wasp v0.3.7-0.20231206192146-5074f5d22131/go.mod h1:L/cyUGfpaWxy/2twOVJLRt2mySJEIqGrFj9nyvRLpSo=
-github.com/smartcontractkit/wasp v0.3.7-0.20231206215104-c476be0723c5 h1:fiBq70lmIwH/Bc2pf7CX4bFD5H4CjKJTgsXzycX4JR8=
-github.com/smartcontractkit/wasp v0.3.7-0.20231206215104-c476be0723c5/go.mod h1:L/cyUGfpaWxy/2twOVJLRt2mySJEIqGrFj9nyvRLpSo=
 github.com/smartcontractkit/wasp v0.3.7 h1:3toT+iMSHJ1EKQXE+jGnxfmtLlT0gwEl1A7xGyw0NZY=
 github.com/smartcontractkit/wasp v0.3.7/go.mod h1:L/cyUGfpaWxy/2twOVJLRt2mySJEIqGrFj9nyvRLpSo=
 github.com/smartystreets/assertions v0.0.0-20180927180507-b2de0cb4f26d/go.mod h1:OnSkiWE9lh6wB0YB77sQom3nweQdgAjqCqsofrRNTgc=
