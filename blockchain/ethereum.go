@@ -536,16 +536,28 @@ func (e *EthereumClient) NewTx(
 	return tx, nil
 }
 
+// MarkTxAsSent On an L2 chain, indicate the tx has been sent
+func (e *EthereumClient) MarkTxAsSentOnL2(tx *types.Transaction) error {
+	if e.NetworkConfig.MinimumConfirmations > 0 {
+		return nil
+	}
+	fromAddr, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx)
+	if err != nil {
+		return err
+	}
+	e.NonceSettings.sentInstantTransaction(fromAddr.Hex())
+	return nil
+}
+
 // ProcessTransaction will queue or wait on a transaction depending on whether parallel transactions are enabled
 func (e *EthereumClient) ProcessTransaction(tx *types.Transaction) error {
 	e.l.Trace().Str("Hash", tx.Hash().Hex()).Msg("Processing Tx")
 	var txConfirmer HeaderEventSubscription
 	if e.GetNetworkConfig().MinimumConfirmations <= 0 {
-		fromAddr, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx)
+		err := e.MarkTxAsSentOnL2(tx)
 		if err != nil {
 			return err
 		}
-		e.NonceSettings.sentInstantTransaction(fromAddr.Hex()) // On an L2 chain, indicate the tx has been sent
 		txConfirmer = NewInstantConfirmer(e, tx.Hash(), nil, nil, e.l)
 	} else {
 		txConfirmer = NewTransactionConfirmer(e, tx, e.GetNetworkConfig().MinimumConfirmations, e.l)
@@ -1506,6 +1518,11 @@ func (e *EthereumMultinodeClient) IsTxHeadFinalized(txHdr, header *SafeEVMHeader
 // WaitForTxTobeFinalized waits for the transaction to be finalized
 func (e *EthereumMultinodeClient) WaitForFinalizedTx(txHash common.Hash) (*big.Int, time.Time, error) {
 	return e.DefaultClient.WaitForFinalizedTx(txHash)
+}
+
+// MarkTxAsSentOnL2 marks the transaction as sent on L2
+func (e *EthereumMultinodeClient) MarkTxAsSentOnL2(tx *types.Transaction) error {
+	return e.DefaultClient.MarkTxAsSentOnL2(tx)
 }
 
 // PollFinality polls for finality

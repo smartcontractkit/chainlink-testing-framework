@@ -76,7 +76,7 @@ test_unit: install_gotestfmt
 	go test -json -cover -covermode=count -coverprofile=unit-test-coverage.out ./client ./gauntlet ./testreporters ./k8s/config 2>&1 | tee /tmp/gotest.log | gotestfmt
 
 test_docker: install_gotestfmt
-	go test -json -cover -covermode=count -coverprofile=unit-test-coverage.out ./docker/test_env 2>&1 | tee /tmp/gotest.log | gotestfmt	
+	go test -json -cover -covermode=count -coverprofile=unit-test-coverage.out ./docker/test_env ./logstream 2>&1 | tee /tmp/gotest.log | gotestfmt	
 
 
 #######################
