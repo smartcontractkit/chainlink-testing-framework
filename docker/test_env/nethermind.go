@@ -174,6 +174,7 @@ func (g *Nethermind) getContainerRequest(networks []string) (*tc.ContainerReques
 				WithPollInterval(1 * time.Second),
 		),
 		Cmd: []string{
+			"--log=TRACE",
 			"--datadir=/nethermind",
 			"--config=none.cfg",
 			fmt.Sprintf("--Init.ChainSpecPath=%s/chainspec.json", GENERATED_DATA_DIR_INSIDE_CONTAINER),
@@ -181,7 +182,7 @@ func (g *Nethermind) getContainerRequest(networks []string) (*tc.ContainerReques
 			"--Init.WebSocketsEnabled=true",
 			fmt.Sprintf("--JsonRpc.WebSocketsPort=%s", TX_GETH_WS_PORT),
 			"--JsonRpc.Enabled=true",
-			"--JsonRpc.EnabledModules=net,eth,consensus,subscribe,web3,admin",
+			"--JsonRpc.EnabledModules=net,eth,consensus,subscribe,web3,admin,txpool",
 			"--JsonRpc.Host=0.0.0.0",
 			fmt.Sprintf("--JsonRpc.Port=%s", TX_GETH_HTTP_PORT),
 			"--JsonRpc.EngineHost=0.0.0.0",
