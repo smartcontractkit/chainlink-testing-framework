@@ -174,7 +174,7 @@ func (g *Nethermind) getContainerRequest(networks []string) (*tc.ContainerReques
 				WithPollInterval(1 * time.Second),
 		),
 		Cmd: []string{
-			"--log=TRACE",
+			"--log=DEBUG",
 			"--datadir=/nethermind",
 			"--config=none.cfg",
 			fmt.Sprintf("--Init.ChainSpecPath=%s/chainspec.json", GENERATED_DATA_DIR_INSIDE_CONTAINER),
