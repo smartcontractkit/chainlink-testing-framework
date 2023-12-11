@@ -25,6 +25,7 @@ const (
 	FantomClientImplementation       ClientImplementation = "Fantom"
 	WeMixClientImplementation        ClientImplementation = "WeMix"
 	KromaClientImplementation        ClientImplementation = "Kroma"
+	BttcClientImplementation         ClientImplementation = "Bttc"
 )
 
 // wrapSingleClient Wraps a single EVM client in its appropriate implementation, based on the chain ID
@@ -63,6 +64,8 @@ func wrapSingleClient(networkSettings EVMNetwork, client *EthereumClient) EVMCli
 		wrappedEc = &WeMixClient{client}
 	case KromaClientImplementation:
 		wrappedEc = &KromaClient{client}
+	case BttcClientImplementation:
+		wrappedEc = &BttcClient{client}
 	default:
 		wrappedEc = client
 	}
@@ -122,6 +125,9 @@ func wrapMultiClient(networkSettings EVMNetwork, client *EthereumMultinodeClient
 	case KromaClientImplementation:
 		logMsg.Msg("Using Kroma Client")
 		wrappedEc = &KromaMultinodeClient{client}
+	case BttcClientImplementation:
+		logMsg.Msg("Using Kava Client")
+		wrappedEc = &BttcMultinodeClient{client}
 	default:
 		log.Warn().Str("Network", networkSettings.Name).Msg("Unknown client implementation, defaulting to standard Ethereum client")
 		wrappedEc = client
