@@ -126,7 +126,7 @@ func wrapMultiClient(networkSettings EVMNetwork, client *EthereumMultinodeClient
 		logMsg.Msg("Using Kroma Client")
 		wrappedEc = &KromaMultinodeClient{client}
 	case BttcClientImplementation:
-		logMsg.Msg("Using Kava Client")
+		logMsg.Msg("Using Bttc Client")
 		wrappedEc = &BttcMultinodeClient{client}
 	default:
 		log.Warn().Str("Network", networkSettings.Name).Msg("Unknown client implementation, defaulting to standard Ethereum client")
