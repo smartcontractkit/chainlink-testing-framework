@@ -652,6 +652,19 @@ var (
 		FinalityTag:               true,
 	}
 
+	BttcTestnet blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Bttc testnet",
+		SupportsEIP1559:           false,
+		ClientImplementation:      blockchain.BttcClientImplementation,
+		ChainID:                   1029,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       1000,
+		FinalityTag:               false,
+	}
+
 	MappedNetworks = map[string]blockchain.EVMNetwork{
 		"SIMULATED":               SimulatedEVM,
 		"SIMULATED_1":             SimulatedEVMNonDev1,
@@ -698,6 +711,7 @@ var (
 		"KROMA_MAINNET":         KromaMainnet,
 		"KAVA_TESTNET":          KavaTestnet,
 		"KAVA_MAINNET":          KavaMainnet,
+		"BTTC_TESTNET":          BttcTestnet,
 	}
 )
 
