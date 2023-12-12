@@ -722,6 +722,7 @@ var (
 		"WEMIX_MAINNET":         WeMixMainnet,
 		"KROMA_SEPOLIA":         KromaSepolia,
 		"KROMA_MAINNET":         KromaMainnet,
+		"BTCC_TESTNET":          BTCCTestnet,
 	}
 )
 
