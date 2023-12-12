@@ -664,6 +664,18 @@ var (
 		DefaultGasLimit:           6000000,
 	}
 
+	BTCCTestnet blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "BTCC Testnet",
+		SupportsEIP1559:           false,
+		ClientImplementation:      blockchain.BTCCClientImplementation,
+		ChainID:                   1029,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       1000,
+	}
+
 	MappedNetworks = map[string]blockchain.EVMNetwork{
 		"SIMULATED":               SimulatedEVM,
 		"SIMULATED_1":             SimulatedEVMNonDev1,
