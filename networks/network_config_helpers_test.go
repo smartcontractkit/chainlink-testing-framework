@@ -62,7 +62,7 @@ func TestAddNetworksConfigWithPyroscopeEnabled(t *testing.T) {
 	err := networkCfg.ApplyDecoded(netowrkTOML)
 	require.NoError(t, err, "error reading network config")
 
-	pyroCfg, err := ReadPyroscopeConfig(peryscopeTOML)
+	pyroCfg, err := readPyroscopeConfig(peryscopeTOML)
 	require.NoError(t, err, "error reading pyroscope config")
 
 	s := AddNetworksConfig(getTestBaseToml(), &pyroCfg, MustGetSelectedNetworkConfig(&networkCfg)[0])
@@ -86,7 +86,7 @@ func TestAddNetworksConfigWithPyroscopeDisabled(t *testing.T) {
 	err := networkCfg.ApplyDecoded(netowrkTOML)
 	require.NoError(t, err, "error reading network config")
 
-	pyroCfg, err := ReadPyroscopeConfig(peryscopeTOML)
+	pyroCfg, err := readPyroscopeConfig(peryscopeTOML)
 	require.NoError(t, err, "error reading pyroscope config")
 
 	s := AddNetworksConfig(getTestBaseToml(), &pyroCfg, MustGetSelectedNetworkConfig(&networkCfg)[0])
@@ -101,7 +101,7 @@ func TestAddSecretTomlConfig(t *testing.T) {
 	require.Contains(t, s, fmt.Sprintf("Password = '%s'", "pass"))
 }
 
-func ReadPyroscopeConfig(configDecoded string) (config.PyroscopeConfig, error) {
+func readPyroscopeConfig(configDecoded string) (config.PyroscopeConfig, error) {
 	var cfg config.PyroscopeConfig
 	err := toml.Unmarshal([]byte(configDecoded), &cfg)
 	if err != nil {

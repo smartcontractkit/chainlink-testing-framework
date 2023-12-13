@@ -2,7 +2,7 @@ package test_env
 
 import (
 	"context"
-	"errors"
+	_ "embed"
 	"fmt"
 	"os"
 	"strings"
@@ -11,6 +11,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/google/uuid"
+	"github.com/pelletier/go-toml/v2"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
 
@@ -58,23 +60,16 @@ const (
 )
 
 type EthereumNetworkBuilder struct {
-	t                    *testing.T
-	dockerNetworks       []string
-	consensusType        ConsensusType
-	consensusLayer       *ConsensusLayer
-	executionLayer       ExecutionLayer
-	ethereumChainConfig  *EthereumChainConfig
-	existingConfig       *EthereumNetwork
-	addressesToFund      []string
-	waitForFinalization  bool
-	existingFromEnvVar   bool
-	execClientFromEnvVar bool
-}
-
-type EthereumNetworkParticipant struct {
-	ConsensusLayer ConsensusLayer `json:"consensus_layer"` //nil means PoW
-	ExecutionLayer ExecutionLayer `json:"execution_layer"`
-	Count          int            `json:"count"`
+	t                   *testing.T
+	dockerNetworks      []string
+	consensusType       ConsensusType
+	consensusLayer      *ConsensusLayer
+	executionLayer      ExecutionLayer
+	ethereumChainConfig *EthereumChainConfig
+	existingConfig      *EthereumNetwork
+	addressesToFund     []string
+	waitForFinalization bool
+	existingFromEnvVar  bool
 }
 
 func NewEthereumNetworkBuilder() EthereumNetworkBuilder {
@@ -119,11 +114,6 @@ func (b *EthereumNetworkBuilder) WihtExistingConfigFromEnvVar() *EthereumNetwork
 	return b
 }
 
-func (b *EthereumNetworkBuilder) WithExecClientFromEnvVar() *EthereumNetworkBuilder {
-	b.execClientFromEnvVar = true
-	return b
-}
-
 func (b *EthereumNetworkBuilder) WithTest(t *testing.T) *EthereumNetworkBuilder {
 	b.t = t
 	return b
@@ -141,12 +131,12 @@ func (b *EthereumNetworkBuilder) buildNetworkConfig() EthereumNetwork {
 		ConsensusLayer: b.consensusLayer,
 	}
 
-	if b.existingConfig != nil {
+	if b.existingConfig != nil && len(b.existingConfig.Containers) > 0 {
 		n.isRecreated = true
 		n.Containers = b.existingConfig.Containers
 	}
 
-	n.WaitForFinalization = b.waitForFinalization
+	n.WaitForFinalization = &b.waitForFinalization
 	n.EthereumChainConfig = b.ethereumChainConfig
 	n.t = b.t
 
@@ -181,31 +171,6 @@ func (b *EthereumNetworkBuilder) Build() (EthereumNetwork, error) {
 		b.ethereumChainConfig.GenerateGenesisTimestamp()
 	}
 
-	if b.execClientFromEnvVar {
-		b.consensusType = ConsensusType_PoS
-		c := ConsensusLayer_Prysm
-		b.consensusLayer = &c
-
-		elEnv := os.Getenv(EXEC_CLIENT_ENV_VAR_NAME)
-		if elEnv == "" {
-			return EthereumNetwork{}, ErrMissingExecClientEnvVar
-		}
-
-		elEnv = strings.ToLower(elEnv)
-		switch elEnv {
-		case "geth":
-			b.executionLayer = ExecutionLayer_Geth
-		case "nethermind":
-			b.executionLayer = ExecutionLayer_Nethermind
-		case "erigon":
-			b.executionLayer = ExecutionLayer_Erigon
-		case "besu":
-			b.executionLayer = ExecutionLayer_Besu
-		default:
-			return EthereumNetwork{}, fmt.Errorf("unknown execution layer client: %s", elEnv)
-		}
-	}
-
 	err := b.validate()
 	if err != nil {
 		return EthereumNetwork{}, err
@@ -222,7 +187,9 @@ func (b *EthereumNetworkBuilder) importExistingConfig() bool {
 	b.consensusType = b.existingConfig.ConsensusType
 	b.consensusLayer = b.existingConfig.ConsensusLayer
 	b.executionLayer = b.existingConfig.ExecutionLayer
-	b.dockerNetworks = b.existingConfig.DockerNetworkNames
+	if len(b.existingConfig.DockerNetworkNames) > 0 {
+		b.dockerNetworks = b.existingConfig.DockerNetworkNames
+	}
 	b.ethereumChainConfig = b.existingConfig.EthereumChainConfig
 
 	return true
@@ -260,15 +227,15 @@ func (b *EthereumNetworkBuilder) validate() error {
 }
 
 type EthereumNetwork struct {
-	ConsensusType        ConsensusType             `json:"consensus_type"`
-	ConsensusLayer       *ConsensusLayer           `json:"consensus_layer"`
-	ExecutionLayer       ExecutionLayer            `json:"execution_layer"`
+	ConsensusType        ConsensusType             `json:"consensus_type" toml:"consensus_type"`
+	ConsensusLayer       *ConsensusLayer           `json:"consensus_layer" toml:"consensus_layer"`
+	ExecutionLayer       ExecutionLayer            `json:"execution_layer" toml:"execution_layer"`
 	DockerNetworkNames   []string                  `json:"docker_network_names"`
 	Containers           EthereumNetworkContainers `json:"containers"`
-	WaitForFinalization  bool                      `json:"wait_for_finalization"`
+	WaitForFinalization  *bool                     `json:"wait_for_finalization" toml:"wait_for_finalization"`
 	GeneratedDataHostDir string                    `json:"generated_data_host_dir"`
 	ValKeysDir           string                    `json:"val_keys_dir"`
-	EthereumChainConfig  *EthereumChainConfig      `json:"ethereum_chain_config"`
+	EthereumChainConfig  *EthereumChainConfig      `json:"ethereum_chain_config" toml:"EthereumChainConfig"`
 	isRecreated          bool
 	t                    *testing.T
 }
@@ -412,6 +379,7 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 	net.Timeout = blockchain.JSONStrDuration{Duration: time.Duration(4 * time.Minute)}
 	net.FinalityTag = true
 	net.FinalityDepth = 0
+
 	if en.ExecutionLayer == ExecutionLayer_Besu {
 		// Besu doesn't support "eth_maxPriorityFeePerGas" https://github.com/hyperledger/besu/issues/5658
 		// And if gas is too low, then transaction doesn't get to prioritized pool and is not a candidate for inclusion in the next block
@@ -421,7 +389,7 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 	}
 
 	logger := logging.GetTestLogger(en.t)
-	if en.WaitForFinalization {
+	if en.WaitForFinalization != nil && *en.WaitForFinalization {
 		evmClient, err := blockchain.NewEVMClientFromNetwork(net, logger)
 		if err != nil {
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
@@ -560,6 +528,86 @@ func (en *EthereumNetwork) Save() error {
 
 	log := logging.GetTestLogger(en.t)
 	log.Info().Msgf("Saved private Ethereum Network config. To reuse in e2e tests, set: %s=%s", CONFIG_ENV_VAR_NAME, confPath)
+
+	return nil
+}
+
+func (en *EthereumNetwork) Validate() error {
+	if en.ConsensusType == "" {
+		return ErrMissingConsensusType
+	}
+
+	if en.ExecutionLayer == "" {
+		return ErrMissingExecutionLayer
+	}
+
+	if en.ConsensusType == ConsensusType_PoS && en.ConsensusLayer == nil {
+		return ErrMissingConsensusLayer
+	}
+
+	if en.ConsensusType == ConsensusType_PoW && en.ConsensusLayer != nil {
+		return ErrConsensusLayerNotAllowed
+	}
+
+	if en.EthereumChainConfig == nil {
+		return errors.New("ethereum chain config is required")
+	}
+
+	err := en.EthereumChainConfig.Validate(logging.GetTestLogger(nil))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (en *EthereumNetwork) ApplyOverrides(from *EthereumNetwork) error {
+	if from == nil {
+		return nil
+	}
+	if from.ConsensusLayer != nil {
+		en.ConsensusLayer = from.ConsensusLayer
+	}
+	if from.ExecutionLayer != "" {
+		en.ExecutionLayer = from.ExecutionLayer
+	}
+	if from.ConsensusType != "" {
+		en.ConsensusType = from.ConsensusType
+	}
+	if from.WaitForFinalization != nil {
+		en.WaitForFinalization = from.WaitForFinalization
+	}
+
+	if from.EthereumChainConfig != nil {
+		if en.EthereumChainConfig == nil {
+			en.EthereumChainConfig = from.EthereumChainConfig
+		} else {
+			err := en.EthereumChainConfig.ApplyOverrides(from.EthereumChainConfig)
+			if err != nil {
+				return errors.Wrapf(err, "error applying overrides from network config file to config")
+			}
+		}
+	}
+
+	return nil
+}
+
+//go:embed tomls/default_ethereum_env.toml
+var defaultEthEnvConfig []byte
+
+func (en *EthereumNetwork) Default() error {
+	wrapper := struct {
+		EthereumNetwork *EthereumNetwork `toml:"PrivateEthereumNetwork"`
+	}{}
+	if err := toml.Unmarshal(defaultEthEnvConfig, &wrapper); err != nil {
+		return errors.Wrapf(err, "error unmarshaling ethereum network config")
+	}
+
+	*en = *wrapper.EthereumNetwork
+
+	if en.EthereumChainConfig != nil && en.EthereumChainConfig.genesisTimestamp == 0 {
+		en.EthereumChainConfig.GenerateGenesisTimestamp()
+	}
 
 	return nil
 }
