@@ -664,8 +664,21 @@ var (
 		DefaultGasLimit:           6000000,
 	}
 
+	BttcMainnet blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Bttc Mainnet",
+		SupportsEIP1559:           false,
+		ClientImplementation:      blockchain.BttcClientImplementation,
+		ChainID:                   199,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       1000,
+		FinalityTag:               false,
+	}
+
 	BttcTestnet blockchain.EVMNetwork = blockchain.EVMNetwork{
-		Name:                      "Bttc testnet",
+		Name:                      "Bttc Testnet",
 		SupportsEIP1559:           false,
 		ClientImplementation:      blockchain.BttcClientImplementation,
 		ChainID:                   1029,
@@ -724,6 +737,7 @@ var (
 		"KROMA_SEPOLIA":         KromaSepolia,
 		"KROMA_MAINNET":         KromaMainnet,
 		"BTTC_TESTNET":          BttcTestnet,
+		"BTTC_MAINNET":          BttcMainnet,
 	}
 )
 
