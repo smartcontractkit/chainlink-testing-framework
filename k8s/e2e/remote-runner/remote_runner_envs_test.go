@@ -163,3 +163,7 @@ func TestReplaceHelm(t *testing.T) {
 func TestRunTimeout(t *testing.T) {
 	common.TestRunTimeout(t)
 }
+
+func TestReallyLongLogs(t *testing.T) {
+	common.TestReallyLongLogs(t)
+}

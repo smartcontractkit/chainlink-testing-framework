@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -445,4 +446,19 @@ func TestRunTimeout(t *testing.T) {
 	e.Cfg.ReadyCheckData.Timeout = 5 * time.Second
 	err = e.Run()
 	require.Error(t, err)
+}
+
+func TestReallyLongLogs(t *testing.T) {
+	t.Parallel()
+	l := logging.GetTestLogger(t)
+	testEnvConfig := GetTestEnvConfig(t)
+	val, _ := os.LookupEnv(config.EnvVarJobImage)
+	if val != "" {
+		env := environment.New(testEnvConfig)
+		err := env.Run()
+		require.NoError(t, err)
+	}
+	s := strings.Repeat("a", 500000)
+	// this shouldn't hang
+	l.Info().Int("len", len(s)).Str("string", s).Msg("string")
 }
