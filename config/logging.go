@@ -2,28 +2,27 @@ package config
 
 import (
 	_ "embed"
+	"net/url"
+	"strings"
 
 	"github.com/pelletier/go-toml/v2"
 	"github.com/pkg/errors"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
-	"github.com/smartcontractkit/chainlink-testing-framework/utils/osutil"
 )
 
 //go:embed tomls/default.toml
 var DefaultLoggingConfig []byte
 
 type LoggingConfig struct {
-	Logging *struct {
-		TestLogCollect *bool            `toml:"test_log_collect"`
-		TestLogLevel   *string          `toml:"test_log_level"`
-		LokiTenantId   *string          `toml:"loki_tenant_id"`
-		LokiUrl        *string          `toml:"loki_url"`
-		LokiBasicAuth  *string          `toml:"loki_basic_auth"`
-		Grafana        *GrafanaConfig   `toml:"Grafana"`
-		RunId          *string          `toml:"run_id"`
-		LogStream      *LogStreamConfig `toml:"log_stream"`
-	} `toml:"Logging"`
+	TestLogCollect *bool            `toml:"test_log_collect"`
+	TestLogLevel   *string          `toml:"test_log_level"`
+	LokiTenantId   *string          `toml:"loki_tenant_id"`
+	LokiUrl        *string          `toml:"loki_url"`
+	LokiBasicAuth  *string          `toml:"loki_basic_auth"`
+	Grafana        *GrafanaConfig   `toml:"Grafana"`
+	RunId          *string          `toml:"run_id"`
+	LogStream      *LogStreamConfig `toml:"log_stream"`
 }
 
 type LogStreamConfig struct {
@@ -32,29 +31,42 @@ type LogStreamConfig struct {
 	LogProducerRetryLimit *uint                       `toml:"log_producer_retry_limit"`
 }
 
-type GrafanaConfig struct {
-	GrafanaUrl *string `toml:"grafana_url"`
-}
-
-func (l *LoggingConfig) ReadSecrets() error {
-	lokiBasicAuth, err := osutil.GetEnv("LOKI_BASIC_AUTH")
-	if err != nil {
-		return err
-	}
-
-	if lokiBasicAuth != "" {
-		l.Logging.LokiBasicAuth = &lokiBasicAuth
-	}
-
-	return nil
-}
-
 func (l *LoggingConfig) Validate() error {
-	// TestLogLevel in ["trace", "debug", "info", "warn", "error", "panic", "fatal"]
-	// LogStreamLogTargets in ["loki", "file", "in-memory"] -- add method to LS to get valid targets
 	// LokiUrl is a valid URL, but only if log target includes loki
 	// GrafanaUrl is a valid URL, but only if log target includes loki
 	// GrafanaDataSource is not "", but only if log target includes loki
+
+	if l.TestLogLevel != nil {
+		validLevels := []string{"trace", "debug", "info", "warn", "error", "panic", "fatal"}
+		valid := false
+		for _, level := range validLevels {
+			if *l.TestLogLevel == strings.ToUpper(level) {
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			return errors.Errorf("invalid test log level %s", *l.TestLogLevel)
+		}
+	}
+
+	if l.LokiUrl != nil {
+		if !isValidURL(*l.LokiUrl) {
+			return errors.Errorf("invalid loki url %s", *l.LokiUrl)
+		}
+	}
+
+	if l.LogStream != nil {
+		if err := l.LogStream.Validate(); err != nil {
+			return errors.Wrapf(err, "invalid log stream config")
+		}
+	}
+
+	if l.Grafana != nil {
+		if err := l.Grafana.Validate(); err != nil {
+			return errors.Wrapf(err, "invalid grafana config")
+		}
+	}
 
 	return nil
 }
@@ -62,56 +74,59 @@ func (l *LoggingConfig) Validate() error {
 func (l *LoggingConfig) ApplyOverrides(from interface{}) error {
 	switch asCfg := (from).(type) {
 	case LoggingConfig:
-		if asCfg.Logging.TestLogLevel != nil {
-			l.Logging.TestLogLevel = asCfg.Logging.TestLogLevel
+		if asCfg.TestLogLevel != nil {
+			l.TestLogLevel = asCfg.TestLogLevel
 		}
-		if asCfg.Logging.TestLogCollect != nil {
-			l.Logging.TestLogCollect = asCfg.Logging.TestLogCollect
+		if asCfg.TestLogCollect != nil {
+			l.TestLogCollect = asCfg.TestLogCollect
 		}
-		if asCfg.Logging.LogStream != nil {
-			l.Logging.LogStream = asCfg.Logging.LogStream
+		if asCfg.LogStream != nil {
+			l.LogStream = asCfg.LogStream
 		}
-		if asCfg.Logging.LokiTenantId != nil {
-			l.Logging.LokiTenantId = asCfg.Logging.LokiTenantId
+		if asCfg.LokiTenantId != nil {
+			l.LokiTenantId = asCfg.LokiTenantId
 		}
-		if asCfg.Logging.LokiUrl != nil {
-			l.Logging.LokiUrl = asCfg.Logging.LokiUrl
+		if asCfg.LokiUrl != nil {
+			l.LokiUrl = asCfg.LokiUrl
 		}
-		if asCfg.Logging.LokiBasicAuth != nil {
-			l.Logging.LokiBasicAuth = asCfg.Logging.LokiBasicAuth
+		if asCfg.LokiBasicAuth != nil {
+			l.LokiBasicAuth = asCfg.LokiBasicAuth
 		}
-		if asCfg.Logging.Grafana.GrafanaUrl != nil {
-			l.Logging.Grafana.GrafanaUrl = asCfg.Logging.Grafana.GrafanaUrl
+		if asCfg.Grafana != nil {
+			l.Grafana = asCfg.Grafana
 		}
-		if asCfg.Logging.RunId != nil {
-			l.Logging.RunId = asCfg.Logging.RunId
+		if asCfg.RunId != nil {
+			l.RunId = asCfg.RunId
 		}
 
 		return nil
 	case *LoggingConfig:
-		if asCfg.Logging.TestLogLevel != nil {
-			l.Logging.TestLogLevel = asCfg.Logging.TestLogLevel
+		if asCfg == nil {
+			return nil
 		}
-		if asCfg.Logging.TestLogCollect != nil {
-			l.Logging.TestLogCollect = asCfg.Logging.TestLogCollect
+		if asCfg.TestLogLevel != nil {
+			l.TestLogLevel = asCfg.TestLogLevel
 		}
-		if asCfg.Logging.LogStream != nil {
-			l.Logging.LogStream = asCfg.Logging.LogStream
+		if asCfg.TestLogCollect != nil {
+			l.TestLogCollect = asCfg.TestLogCollect
 		}
-		if asCfg.Logging.LokiTenantId != nil {
-			l.Logging.LokiTenantId = asCfg.Logging.LokiTenantId
+		if asCfg.LogStream != nil {
+			l.LogStream = asCfg.LogStream
 		}
-		if asCfg.Logging.LokiUrl != nil {
-			l.Logging.LokiUrl = asCfg.Logging.LokiUrl
+		if asCfg.LokiTenantId != nil {
+			l.LokiTenantId = asCfg.LokiTenantId
 		}
-		if asCfg.Logging.LokiBasicAuth != nil {
-			l.Logging.LokiBasicAuth = asCfg.Logging.LokiBasicAuth
+		if asCfg.LokiUrl != nil {
+			l.LokiUrl = asCfg.LokiUrl
 		}
-		if asCfg.Logging.Grafana.GrafanaUrl != nil {
-			l.Logging.Grafana.GrafanaUrl = asCfg.Logging.Grafana.GrafanaUrl
+		if asCfg.LokiBasicAuth != nil {
+			l.LokiBasicAuth = asCfg.LokiBasicAuth
 		}
-		if asCfg.Logging.RunId != nil {
-			l.Logging.RunId = asCfg.Logging.RunId
+		if asCfg.Grafana.GrafanaUrl != nil {
+			l.Grafana.GrafanaUrl = asCfg.Grafana.GrafanaUrl
+		}
+		if asCfg.RunId != nil {
+			l.RunId = asCfg.RunId
 		}
 
 		return nil
@@ -128,7 +143,103 @@ func (l *LoggingConfig) Default() error {
 	return nil
 }
 
-// func isValidURL(testURL string) bool {
-// 	parsedURL, err := url.Parse(testURL)
-// 	return err == nil && parsedURL.Scheme != "" && parsedURL.Host != ""
-// }
+func (l *LogStreamConfig) ApplyOverrides(from interface{}) error {
+	switch asCfg := (from).(type) {
+	case LogStreamConfig:
+		if asCfg.LogTargets != nil {
+			l.LogTargets = asCfg.LogTargets
+		}
+		if asCfg.LogProducerTimeout != nil {
+			l.LogProducerTimeout = asCfg.LogProducerTimeout
+		}
+		if asCfg.LogProducerRetryLimit != nil {
+			l.LogProducerRetryLimit = asCfg.LogProducerRetryLimit
+		}
+
+		return nil
+	case *LogStreamConfig:
+		if asCfg == nil {
+			return nil
+		}
+		if asCfg.LogTargets != nil {
+			l.LogTargets = asCfg.LogTargets
+		}
+		if asCfg.LogProducerTimeout != nil {
+			l.LogProducerTimeout = asCfg.LogProducerTimeout
+		}
+		if asCfg.LogProducerRetryLimit != nil {
+			l.LogProducerRetryLimit = asCfg.LogProducerRetryLimit
+		}
+
+		return nil
+	default:
+		return errors.Errorf("cannot apply overrides to log stream config from unknown type %T", from)
+	}
+}
+
+func (l *LogStreamConfig) Validate() error {
+	if len(l.LogTargets) > 0 {
+		for _, target := range l.LogTargets {
+			if target != "loki" && target != "file" && target != "in-memory" {
+				return errors.Errorf("invalid log target %s", target)
+			}
+		}
+	}
+
+	if l.LogProducerTimeout != nil {
+		if l.LogProducerTimeout.Duration == 0 {
+			return errors.Errorf("log producer timeout must be greater than 0")
+		}
+	}
+
+	return nil
+}
+
+func (l *LogStreamConfig) Default() error {
+	return nil
+}
+
+type GrafanaConfig struct {
+	GrafanaUrl *string `toml:"grafana_url"`
+}
+
+func (c *GrafanaConfig) ApplyOverrides(from interface{}) error {
+	switch asCfg := (from).(type) {
+	case GrafanaConfig:
+		if asCfg.GrafanaUrl != nil {
+			c.GrafanaUrl = asCfg.GrafanaUrl
+		}
+
+		return nil
+	case *GrafanaConfig:
+		if asCfg == nil {
+			return nil
+		}
+		if asCfg.GrafanaUrl != nil {
+			c.GrafanaUrl = asCfg.GrafanaUrl
+		}
+
+		return nil
+	default:
+		return errors.Errorf("cannot apply overrides to grafana config from unknown type %T", from)
+	}
+}
+
+func (c *GrafanaConfig) Validate() error {
+	if c.GrafanaUrl != nil {
+		if !isValidURL(*c.GrafanaUrl) {
+			return errors.Errorf("invalid grafana url %s", *c.GrafanaUrl)
+		}
+	}
+
+	return nil
+}
+
+func (c *GrafanaConfig) Default() error {
+	return nil
+}
+
+func isValidURL(testURL string) bool {
+	parsedURL, err := url.Parse(testURL)
+	return err == nil && parsedURL.Scheme != "" && parsedURL.Host != ""
+}

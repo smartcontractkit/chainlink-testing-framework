@@ -714,7 +714,7 @@ var (
 
 // Get []blockchain.EVMNetwork from TOML config. Panic if no networks are found
 func MustGetSelectedNetworkConfig(networkCfg *config.NetworkConfig) []blockchain.EVMNetwork {
-	if networkCfg == nil || networkCfg.Network == nil || len(networkCfg.Network.SelectedNetworks) == 0 {
+	if networkCfg == nil || len(networkCfg.SelectedNetworks) == 0 {
 		panic(fmt.Errorf("network config has no or empty selected networks. Use valid network(s) separated by comma from %v", getValidNetworkKeys()))
 	}
 	return MustSetNetworks(*networkCfg)
@@ -722,23 +722,23 @@ func MustGetSelectedNetworkConfig(networkCfg *config.NetworkConfig) []blockchain
 
 func MustSetNetworks(networkCfg config.NetworkConfig) []blockchain.EVMNetwork {
 	networks := make([]blockchain.EVMNetwork, 0)
-	selectedNetworks := networkCfg.Network.SelectedNetworks
+	selectedNetworks := networkCfg.SelectedNetworks
 	for i := range selectedNetworks {
 		var walletKeys, httpUrls, wsUrls []string
 		networkName := strings.ToUpper(selectedNetworks[i])
 		if !strings.Contains(networkName, "SIMULATED") {
 			var ok bool
-			wsUrls, ok = networkCfg.Network.WsRpcsUrls[selectedNetworks[i]]
+			wsUrls, ok = networkCfg.WsRpcsUrls[selectedNetworks[i]]
 			if !ok {
 				panic(fmt.Errorf("no rpc ws urls found in config for '%s' network", selectedNetworks[i]))
 			}
 
-			httpUrls, ok = networkCfg.Network.RpcHttpUrls[selectedNetworks[i]]
+			httpUrls, ok = networkCfg.RpcHttpUrls[selectedNetworks[i]]
 			if !ok {
 				panic(fmt.Errorf("no rpc http urls found in config for '%s' network", selectedNetworks[i]))
 			}
 
-			walletKeys, ok = networkCfg.Network.WalletKeys[selectedNetworks[i]]
+			walletKeys, ok = networkCfg.WalletKeys[selectedNetworks[i]]
 			if !ok {
 				panic(fmt.Errorf("no wallet keys found in config for '%s' network", selectedNetworks[i]))
 			}

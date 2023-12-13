@@ -58,7 +58,7 @@ func TestMultipleMockedLoggingTargets(t *testing.T) {
 	mockedLokiHanlder := &MockedLogHandler{Target: logstream.Loki}
 
 	loggingConfig := config.LoggingConfig{}
-	loggingConfig.Logging.LogStream = &config.LogStreamConfig{
+	loggingConfig.LogStream = &config.LogStreamConfig{
 		LogTargets: []string{"loki", "file"},
 	}
 
@@ -93,7 +93,7 @@ func TestOneMockedLoggingTarget(t *testing.T) {
 	mockedLokiHanlder := &MockedLogHandler{Target: logstream.Loki}
 
 	loggingConfig := config.LoggingConfig{}
-	loggingConfig.Logging.LogStream = &config.LogStreamConfig{
+	loggingConfig.LogStream = &config.LogStreamConfig{
 		LogTargets: []string{"loki"},
 	}
 

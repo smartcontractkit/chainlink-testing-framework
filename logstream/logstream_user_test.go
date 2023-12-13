@@ -80,7 +80,7 @@ func TestFileLoggingTarget(t *testing.T) {
 	require.NoError(t, err)
 
 	loggingConfig := config.LoggingConfig{}
-	loggingConfig.Logging.LogStream = &config.LogStreamConfig{
+	loggingConfig.LogStream = &config.LogStreamConfig{
 		LogTargets: []string{"file"},
 	}
 

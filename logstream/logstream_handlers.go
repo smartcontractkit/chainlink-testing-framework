@@ -9,8 +9,9 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
-	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/wasp"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/config"
 )
 
 type LogTarget string
@@ -98,7 +99,7 @@ func (h FileLogHandler) GetTarget() LogTarget {
 }
 
 func (h *FileLogHandler) Init(c *ContainerLogConsumer) error {
-	h.runId = *c.ls.loggingConfig.Logging.RunId
+	h.runId = *c.ls.loggingConfig.RunId
 
 	folder, err := h.getOrCreateLogFolder(c.ls.testName)
 	if err != nil {
@@ -147,7 +148,7 @@ func (h *LokiLogHandler) Handle(c *ContainerLogConsumer, content LogContent) err
 		"type":         "log_stream",
 		"test":         model.LabelValue(content.TestName),
 		"container_id": model.LabelValue(content.ContainerName),
-		"run_id":       model.LabelValue(*h.loggingConfig.Logging.RunId),
+		"run_id":       model.LabelValue(*h.loggingConfig.RunId),
 	}, content.Time, string(content.Content))
 
 	return err
@@ -162,11 +163,11 @@ func (h *LokiLogHandler) GetLogLocation(consumers map[string]*ContainerLogConsum
 		return "", errors.New("no Loki consumers found")
 	}
 
-	if h.loggingConfig.Logging.Grafana.GrafanaUrl == nil {
+	if h.loggingConfig.Grafana.GrafanaUrl == nil {
 		return "", errors.New("GrafanaUrl is not set in logging config")
 	}
 
-	grafanaBaseUrl := *h.loggingConfig.Logging.Grafana.GrafanaUrl
+	grafanaBaseUrl := *h.loggingConfig.Grafana.GrafanaUrl
 	grafanaBaseUrl = strings.TrimSuffix(grafanaBaseUrl, "/")
 
 	rangeFrom := time.Now()
@@ -175,7 +176,7 @@ func (h *LokiLogHandler) GetLogLocation(consumers map[string]*ContainerLogConsum
 	var sb strings.Builder
 	sb.WriteString(grafanaBaseUrl)
 	sb.WriteString("/d/ddf75041-1e39-42af-aa46-361fe4c36e9e/ci-e2e-tests-logs?orgId=1&")
-	sb.WriteString(fmt.Sprintf("var-run_id=%s", *&h.loggingConfig.Logging.RunId))
+	sb.WriteString(fmt.Sprintf("var-run_id=%s", *h.loggingConfig.RunId))
 
 	var testName string
 	for _, c := range consumers {
@@ -210,10 +211,10 @@ func (h *LokiLogHandler) Init(c *ContainerLogConsumer) error {
 
 	if c.ls.loki == nil {
 		waspConfig := wasp.NewEnvLokiConfig()
-		waspConfig.TenantID = *h.loggingConfig.Logging.LokiTenantId
-		waspConfig.URL = *h.loggingConfig.Logging.LokiUrl
-		if h.loggingConfig.Logging.LokiBasicAuth != nil {
-			waspConfig.BasicAuth = *h.loggingConfig.Logging.LokiBasicAuth
+		waspConfig.TenantID = *h.loggingConfig.LokiTenantId
+		waspConfig.URL = *h.loggingConfig.LokiUrl
+		if h.loggingConfig.LokiBasicAuth != nil {
+			waspConfig.BasicAuth = *h.loggingConfig.LokiBasicAuth
 		}
 		loki, err := wasp.NewLokiClient(waspConfig)
 		if err != nil {
@@ -234,8 +235,7 @@ func (h *LokiLogHandler) Teardown() error {
 
 // InMemoryLogHandler stores logs in memory
 type InMemoryLogHandler struct {
-	logs  map[string][]LogContent
-	runId string
+	logs map[string][]LogContent
 }
 
 func (h *InMemoryLogHandler) Handle(c *ContainerLogConsumer, content LogContent) error {

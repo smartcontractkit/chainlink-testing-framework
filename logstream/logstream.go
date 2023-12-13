@@ -92,12 +92,12 @@ func NewLogStream(t *testing.T, loggingConfig *config.LoggingConfig, options ...
 		return nil, err
 	}
 
-	runId, err := runid.GetOrGenerateRunId(loggingConfig.Logging.RunId)
+	runId, err := runid.GetOrGenerateRunId(loggingConfig.RunId)
 	if err != nil {
 		return nil, err
 	}
 
-	loggingConfig.Logging.RunId = &runId
+	loggingConfig.RunId = &runId
 
 	logWatch := &LogStream{
 		testName:                     testName,
@@ -120,7 +120,7 @@ func NewLogStream(t *testing.T, loggingConfig *config.LoggingConfig, options ...
 
 	//TODO validate config depending on log targets to make sure nothing is missing
 
-	l.Info().Str("Run_id", *logWatch.loggingConfig.Logging.RunId).Msg("LogStream initialized")
+	l.Info().Str("Run_id", *logWatch.loggingConfig.RunId).Msg("LogStream initialized")
 
 	return logWatch, nil
 }
@@ -824,9 +824,9 @@ func (g *ContainerLogConsumer) hasLogTarget(logTarget LogTarget) bool {
 
 // getLogTargetsFromConfig gets log targets from LOGSTREAM_LOG_TARGETS env var
 func getLogTargetsFromConfig(config config.LoggingConfig) ([]LogTarget, error) {
-	if config.Logging.LogStream != nil && len(config.Logging.LogStream.LogTargets) > 0 {
+	if config.LogStream != nil && len(config.LogStream.LogTargets) > 0 {
 		logTargets := make([]LogTarget, 0)
-		for _, target := range config.Logging.LogStream.LogTargets {
+		for _, target := range config.LogStream.LogTargets {
 			switch strings.TrimSpace(strings.ToLower(target)) {
 			case "loki":
 				logTargets = append(logTargets, Loki)

@@ -27,13 +27,12 @@ func TestMustGetSelectedNetworksFromEnv_MissingSelectedNetwork(t *testing.T) {
 func TestMustGetSelectedNetworksFromEnv_Missing_RpcHttpUrls(t *testing.T) {
 	networkName := "arbitrum_goerli"
 	testTOML := `
-	[Network]
 	selected_networks = ["arbitrum_goerli"]
 	
-	[Network.RpcWsUrls]
+	[RpcWsUrls]
 	arbitrum_goerli = ["wss://devnet-1.mt/ABC/rpc/"]
 
-	[Network.WalletKeys]
+	[WalletKeys]
 	arbitrum_goerli = ["1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed"]
 	`
 
@@ -49,13 +48,12 @@ func TestMustGetSelectedNetworksFromEnv_Missing_RpcHttpUrls(t *testing.T) {
 func TestMustGetSelectedNetworksFromEnv_Missing_RpcWsUrls(t *testing.T) {
 	networkName := "arbitrum_goerli"
 	testTOML := `
-	[Network]
 	selected_networks = ["arbitrum_goerli"]
 	
-	[Network.RpcHttpUrls]
+	[RpcHttpUrls]
 	arbitrum_goerli = ["https://devnet-1.mt/ABC/rpc/"]
 
-	[Network.WalletKeys]
+	[WalletKeys]
 	arbitrum_goerli = ["1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed"]
 	`
 
@@ -71,13 +69,12 @@ func TestMustGetSelectedNetworksFromEnv_Missing_RpcWsUrls(t *testing.T) {
 func TestMustGetSelectedNetworksFromEnv_Missing_WalletKeys(t *testing.T) {
 	networkName := "arbitrum_goerli"
 	testTOML := `
-	[Network]
 	selected_networks = ["arbitrum_goerli"]
 	
-	[Network.RpcHttpUrls]
+	[RpcHttpUrls]
 	arbitrum_goerli = ["https://devnet-1.mt/ABC/rpc/"]
 
-	[Network.RpcWsUrls]
+	[RpcWsUrls]
 	arbitrum_goerli = ["wss://devnet-1.mt/ABC/rpc/"]
 	`
 
@@ -92,20 +89,18 @@ func TestMustGetSelectedNetworksFromEnv_Missing_WalletKeys(t *testing.T) {
 
 func TestMustGetSelectedNetworksFromEnv_DefaultUrlsFromSecret(t *testing.T) {
 	networkConfigTOML := `
-	[Network]
-	[Network.RpcHttpUrls]
+	[RpcHttpUrls]
 	arbitrum_goerli = ["https://devnet-1.mt/ABC/rpc/"]
 
-	[Network.RpcWsUrls]
+	[RpcWsUrls]
 	arbitrum_goerli = ["wss://devnet-1.mt/ABC/rpc/"]
 	`
 	encoded := base64.StdEncoding.EncodeToString([]byte(networkConfigTOML))
 
 	testTOML := `
-	[Network]
 	selected_networks = ["arbitrum_goerli"]
 
-	[Network.WalletKeys]
+	[WalletKeys]
 	arbitrum_goerli = ["1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed"]
 	`
 
@@ -128,18 +123,17 @@ func TestMustGetSelectedNetworksFromEnv_DefaultUrlsFromSecret(t *testing.T) {
 
 func TestMustGetSelectedNetworksFromEnv_MultipleNetworks(t *testing.T) {
 	testTOML := `
-	[Network]
 	selected_networks = ["arbitrum_goerli", "optimism_goerli"]
 	
-	[Network.RpcHttpUrls]
+	[RpcHttpUrls]
 	arbitrum_goerli = ["https://devnet-1.mt/ABC/rpc/"]
 	optimism_goerli = ["https://devnet-1.mt/ABC/rpc/"]
 
-	[Network.RpcWsUrls]
+	[RpcWsUrls]
 	arbitrum_goerli = ["wss://devnet-1.mt/ABC/rpc/"]
 	optimism_goerli = ["wss://devnet-1.mt/ABC/rpc/"]
 
-	[Network.WalletKeys]
+	[WalletKeys]
 	arbitrum_goerli = ["1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed"]
 	optimism_goerli = ["1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed"]
 	`
@@ -156,25 +150,23 @@ func TestMustGetSelectedNetworksFromEnv_MultipleNetworks(t *testing.T) {
 
 func TestMustGetSelectedNetworksFromEnv_DefaultUrlsFromSecret_OverrideOne(t *testing.T) {
 	networkConfigTOML := `
-	[Network]
-	[Network.RpcHttpUrls]
+	[RpcHttpUrls]
 	arbitrum_goerli = ["https://devnet-1.mt/ABC/rpc/"]
 	optimism_goerli = ["https://devnet-1.mt/ABC/rpc/"]
 
-	[Network.RpcWsUrls]
+	[RpcWsUrls]
 	arbitrum_goerli = ["wss://devnet-1.mt/ABC/rpc/"]
 	optimism_goerli = ["wss://devnet-1.mt/ABC/rpc/"]
 	`
 	encoded := base64.StdEncoding.EncodeToString([]byte(networkConfigTOML))
 
 	testTOML := `
-	[Network]
 	selected_networks = ["arbitrum_goerli", "optimism_goerli"]
 
-	[Network.RpcHttpUrls]
+	[RpcHttpUrls]
 	arbitrum_goerli = ["https://devnet-2.mt/ABC/rpc/"]
 
-	[Network.WalletKeys]
+	[WalletKeys]
 	arbitrum_goerli = ["1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed"]
 	optimism_goerli = ["1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed"]
 	`

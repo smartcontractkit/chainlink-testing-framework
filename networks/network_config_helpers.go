@@ -42,8 +42,8 @@ func AddNetworkDetailedConfig(baseTOML string, pyroscopeConfig *config.Pyroscope
 }
 
 func pyroscopeSettings(config *config.PyroscopeConfig) string {
-	if config == nil || config.Pyroscope == nil || config.Pyroscope.Enabled == nil || !*config.Pyroscope.Enabled {
+	if config == nil || config.Enabled == nil || !*config.Enabled {
 		return ""
 	}
-	return fmt.Sprintf(pyroscopeTOML, config.Pyroscope.ServerUrl, config.Pyroscope.Environment)
+	return fmt.Sprintf(pyroscopeTOML, *config.ServerUrl, *config.Environment)
 }

@@ -1,51 +1,21 @@
 package config
 
 import (
-	_ "embed"
-
-	"github.com/pelletier/go-toml/v2"
 	"github.com/pkg/errors"
 )
 
-//go:embed tomls/default.toml
-var DefaultChainlinkImageConfig []byte
-
 type ChainlinkImageConfig struct {
-	ChainlinkImage *struct {
-		Image   *string `toml:"image"`
-		Version *string `toml:"version"`
-	} `toml:"ChainlinkImage"`
-	ChainlinkUpgradeImage *struct {
-		Image   *string `toml:"image"`
-		Version *string `toml:"version"`
-	} `toml:"ChainlinkUpgradeImage"`
-}
-
-func (c *ChainlinkImageConfig) ReadSecrets() error {
-	return nil
+	Image   *string `toml:"image"`
+	Version *string `toml:"version"`
 }
 
 func (c *ChainlinkImageConfig) Validate() error {
-	if c.ChainlinkImage == nil {
-		return errors.New("chainlink image information must be set")
-	}
-
-	if c.ChainlinkImage.Image == nil || *c.ChainlinkImage.Image == "" {
+	if c.Image == nil || *c.Image == "" {
 		return errors.New("chainlink image name must be set")
 	}
 
-	if c.ChainlinkImage.Version == nil || *c.ChainlinkImage.Version == "" {
+	if c.Version == nil || *c.Version == "" {
 		return errors.New("chainlink version must be set")
-	}
-
-	if c.ChainlinkUpgradeImage != nil {
-		if c.ChainlinkUpgradeImage.Image == nil || *c.ChainlinkUpgradeImage.Image == "" {
-			return errors.New("chainlink upgrade image name must be set")
-		}
-
-		if c.ChainlinkUpgradeImage.Version == nil || *c.ChainlinkUpgradeImage.Version == "" {
-			return errors.New("chainlink upgrade version must be set")
-		}
 	}
 
 	return nil
@@ -54,34 +24,22 @@ func (c *ChainlinkImageConfig) Validate() error {
 func (c *ChainlinkImageConfig) ApplyOverrides(from interface{}) error {
 	switch asCfg := (from).(type) {
 	case ChainlinkImageConfig:
-		if asCfg.ChainlinkImage.Image != nil && *asCfg.ChainlinkImage.Image != "" {
-			c.ChainlinkImage.Image = asCfg.ChainlinkImage.Image
+		if asCfg.Image != nil && *asCfg.Image != "" {
+			c.Image = asCfg.Image
 		}
-		if asCfg.ChainlinkImage.Version != nil && *asCfg.ChainlinkImage.Version != "" {
-			c.ChainlinkImage.Version = asCfg.ChainlinkImage.Version
-		}
-		if asCfg.ChainlinkUpgradeImage.Image != nil && *asCfg.ChainlinkUpgradeImage.Image != "" {
-			c.ChainlinkUpgradeImage.Image = asCfg.ChainlinkUpgradeImage.Image
-		}
-		if asCfg.ChainlinkImage.Version != nil && *asCfg.ChainlinkUpgradeImage.Version != "" {
-			c.ChainlinkUpgradeImage.Version = asCfg.ChainlinkUpgradeImage.Version
+		if asCfg.Version != nil && *asCfg.Version != "" {
+			c.Version = asCfg.Version
 		}
 		return nil
 	case *ChainlinkImageConfig:
 		if asCfg == nil {
 			return nil
 		}
-		if asCfg.ChainlinkImage.Image != nil && *asCfg.ChainlinkImage.Image != "" {
-			c.ChainlinkImage.Image = asCfg.ChainlinkImage.Image
+		if asCfg.Image != nil && *asCfg.Image != "" {
+			c.Image = asCfg.Image
 		}
-		if asCfg.ChainlinkImage.Version != nil && *asCfg.ChainlinkImage.Version != "" {
-			c.ChainlinkImage.Version = asCfg.ChainlinkImage.Version
-		}
-		if asCfg.ChainlinkUpgradeImage.Image != nil && *asCfg.ChainlinkUpgradeImage.Image != "" {
-			c.ChainlinkUpgradeImage.Image = asCfg.ChainlinkUpgradeImage.Image
-		}
-		if asCfg.ChainlinkImage.Version != nil && *asCfg.ChainlinkUpgradeImage.Version != "" {
-			c.ChainlinkUpgradeImage.Version = asCfg.ChainlinkUpgradeImage.Version
+		if asCfg.Version != nil && *asCfg.Version != "" {
+			c.Version = asCfg.Version
 		}
 		return nil
 	default:
@@ -90,9 +48,5 @@ func (c *ChainlinkImageConfig) ApplyOverrides(from interface{}) error {
 }
 
 func (c *ChainlinkImageConfig) Default() error {
-	if err := toml.Unmarshal(DefaultChainlinkImageConfig, c); err != nil {
-		return errors.Wrapf(err, "error unmarshaling config")
-	}
-
 	return nil
 }

@@ -137,7 +137,7 @@ func TestLogStreamDocker(t *testing.T) {
 			ctx := testcontext.Get(t)
 			dynamicContainerNames := replaceContainerNamePlaceholders(tc)
 			loggingConfig := config.LoggingConfig{}
-			loggingConfig.Logging.LogStream = &config.LogStreamConfig{
+			loggingConfig.LogStream = &config.LogStreamConfig{
 				LogTargets: []string{"in-memory"},
 			}
 			lw, err := logstream.NewLogStream(t, &loggingConfig)
@@ -196,7 +196,7 @@ func TestLogStreamConnectWithDelayDocker(t *testing.T) {
 	amount := 10
 
 	loggingConfig := config.LoggingConfig{}
-	loggingConfig.Logging.LogStream = &config.LogStreamConfig{
+	loggingConfig.LogStream = &config.LogStreamConfig{
 		LogTargets: []string{"in-memory"},
 	}
 
@@ -238,7 +238,7 @@ func TestLogStream_GetAllLogs_ErrorsAfterFiveLogs(t *testing.T) {
 	amount := 10
 
 	loggingConfig := config.LoggingConfig{}
-	loggingConfig.Logging.LogStream = &config.LogStreamConfig{
+	loggingConfig.LogStream = &config.LogStreamConfig{
 		LogTargets: []string{"in-memory"},
 	}
 
@@ -293,7 +293,7 @@ func TestLogStream_GetAllLogs_TwoConsumers_FirstErrorsAfterFiveLogs(t *testing.T
 	amount := 10
 
 	loggingConfig := config.LoggingConfig{}
-	loggingConfig.Logging.LogStream = &config.LogStreamConfig{
+	loggingConfig.LogStream = &config.LogStreamConfig{
 		LogTargets: []string{"in-memory"},
 	}
 
@@ -361,7 +361,7 @@ func TestLogStream_GetAllLogs_ErrorsBeforeConsumption(t *testing.T) {
 	amount := 10
 
 	loggingConfig := config.LoggingConfig{}
-	loggingConfig.Logging.LogStream = &config.LogStreamConfig{
+	loggingConfig.LogStream = &config.LogStreamConfig{
 		LogTargets: []string{"in-memory"},
 	}
 
@@ -420,7 +420,7 @@ func TestLogStreamTwoDockerContainers(t *testing.T) {
 	amountSecond := 20
 
 	loggingConfig := config.LoggingConfig{}
-	loggingConfig.Logging.LogStream = &config.LogStreamConfig{
+	loggingConfig.LogStream = &config.LogStreamConfig{
 		LogTargets: []string{"in-memory"},
 	}
 
@@ -577,7 +577,7 @@ func TestLogStreamConnectRetryMockContainer_FailsOnce(t *testing.T) {
 	}
 
 	loggingConfig := config.LoggingConfig{}
-	loggingConfig.Logging.LogStream = &config.LogStreamConfig{
+	loggingConfig.LogStream = &config.LogStreamConfig{
 		LogTargets:         []string{"in-memory"},
 		LogProducerTimeout: &blockchain.JSONStrDuration{Duration: time.Duration(1 * time.Second)},
 	}
@@ -645,7 +645,7 @@ func TestLogStreamConnectRetryMockContainer_FailsTwice(t *testing.T) {
 	}
 
 	loggingConfig := config.LoggingConfig{}
-	loggingConfig.Logging.LogStream = &config.LogStreamConfig{
+	loggingConfig.LogStream = &config.LogStreamConfig{
 		LogTargets:         []string{"in-memory"},
 		LogProducerTimeout: &blockchain.JSONStrDuration{Duration: time.Duration(1 * time.Second)},
 	}
@@ -726,7 +726,7 @@ func TestLogStreamConnectRetryMockContainer_FailsFirstRestart(t *testing.T) {
 	}
 
 	loggingConfig := config.LoggingConfig{}
-	loggingConfig.Logging.LogStream = &config.LogStreamConfig{
+	loggingConfig.LogStream = &config.LogStreamConfig{
 		LogTargets:         []string{"in-memory"},
 		LogProducerTimeout: &blockchain.JSONStrDuration{Duration: time.Duration(1 * time.Second)},
 	}
@@ -800,7 +800,7 @@ func TestLogStreamConnectRetryMockContainer_AlwaysFailsRestart(t *testing.T) {
 	}
 
 	loggingConfig := config.LoggingConfig{}
-	loggingConfig.Logging.LogStream = &config.LogStreamConfig{
+	loggingConfig.LogStream = &config.LogStreamConfig{
 		LogTargets:         []string{"in-memory"},
 		LogProducerTimeout: &blockchain.JSONStrDuration{Duration: time.Duration(1 * time.Second)},
 	}
@@ -878,7 +878,7 @@ func TestLogStreamConnectRetryTwoMockContainers_FirstAlwaysFailsRestart_SecondWo
 	}
 
 	loggingConfig := config.LoggingConfig{}
-	loggingConfig.Logging.LogStream = &config.LogStreamConfig{
+	loggingConfig.LogStream = &config.LogStreamConfig{
 		LogTargets:         []string{"in-memory"},
 		LogProducerTimeout: &blockchain.JSONStrDuration{Duration: time.Duration(1 * time.Second)},
 	}
