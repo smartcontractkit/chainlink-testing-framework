@@ -11,7 +11,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 )
 
-//go:embed tomls/default.toml
+//go:embed tomls/logging_default.toml
 var DefaultLoggingConfig []byte
 
 type LoggingConfig struct {
@@ -32,10 +32,6 @@ type LogStreamConfig struct {
 }
 
 func (l *LoggingConfig) Validate() error {
-	// LokiUrl is a valid URL, but only if log target includes loki
-	// GrafanaUrl is a valid URL, but only if log target includes loki
-	// GrafanaDataSource is not "", but only if log target includes loki
-
 	if l.TestLogLevel != nil {
 		validLevels := []string{"trace", "debug", "info", "warn", "error", "panic", "fatal"}
 		valid := false
@@ -71,68 +67,36 @@ func (l *LoggingConfig) Validate() error {
 	return nil
 }
 
-func (l *LoggingConfig) ApplyOverrides(from interface{}) error {
-	switch asCfg := (from).(type) {
-	case LoggingConfig:
-		if asCfg.TestLogLevel != nil {
-			l.TestLogLevel = asCfg.TestLogLevel
-		}
-		if asCfg.TestLogCollect != nil {
-			l.TestLogCollect = asCfg.TestLogCollect
-		}
-		if asCfg.LogStream != nil {
-			l.LogStream = asCfg.LogStream
-		}
-		if asCfg.LokiTenantId != nil {
-			l.LokiTenantId = asCfg.LokiTenantId
-		}
-		if asCfg.LokiUrl != nil {
-			l.LokiUrl = asCfg.LokiUrl
-		}
-		if asCfg.LokiBasicAuth != nil {
-			l.LokiBasicAuth = asCfg.LokiBasicAuth
-		}
-		if asCfg.Grafana != nil {
-			l.Grafana = asCfg.Grafana
-		}
-		if asCfg.RunId != nil {
-			l.RunId = asCfg.RunId
-		}
-
+func (l *LoggingConfig) ApplyOverrides(from *LoggingConfig) error {
+	if from == nil {
 		return nil
-	case *LoggingConfig:
-		if asCfg == nil {
-			return nil
-		}
-		if asCfg.TestLogLevel != nil {
-			l.TestLogLevel = asCfg.TestLogLevel
-		}
-		if asCfg.TestLogCollect != nil {
-			l.TestLogCollect = asCfg.TestLogCollect
-		}
-		if asCfg.LogStream != nil {
-			l.LogStream = asCfg.LogStream
-		}
-		if asCfg.LokiTenantId != nil {
-			l.LokiTenantId = asCfg.LokiTenantId
-		}
-		if asCfg.LokiUrl != nil {
-			l.LokiUrl = asCfg.LokiUrl
-		}
-		if asCfg.LokiBasicAuth != nil {
-			l.LokiBasicAuth = asCfg.LokiBasicAuth
-		}
-		if asCfg.Grafana.GrafanaUrl != nil {
-			l.Grafana.GrafanaUrl = asCfg.Grafana.GrafanaUrl
-		}
-		if asCfg.RunId != nil {
-			l.RunId = asCfg.RunId
-		}
-
-		return nil
-	default:
-		return errors.Errorf("cannot apply overrides from unknown type %T", from)
 	}
+	if from.TestLogLevel != nil {
+		l.TestLogLevel = from.TestLogLevel
+	}
+	if from.TestLogCollect != nil {
+		l.TestLogCollect = from.TestLogCollect
+	}
+	if from.LogStream != nil {
+		l.LogStream = from.LogStream
+	}
+	if from.LokiTenantId != nil {
+		l.LokiTenantId = from.LokiTenantId
+	}
+	if from.LokiUrl != nil {
+		l.LokiUrl = from.LokiUrl
+	}
+	if from.LokiBasicAuth != nil {
+		l.LokiBasicAuth = from.LokiBasicAuth
+	}
+	if from.Grafana != nil {
+		l.Grafana = from.Grafana
+	}
+	if from.RunId != nil {
+		l.RunId = from.RunId
+	}
+
+	return nil
 }
 
 func (l *LoggingConfig) Default() error {

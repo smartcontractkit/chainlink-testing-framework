@@ -60,7 +60,6 @@ type LogStream struct {
 	logProducerTimeoutRetryLimit int // -1 for infinite retries
 	acceptMutex                  sync.Mutex
 	loggingConfig                config.LoggingConfig
-	// runId                        string
 }
 
 // LogContent is a representation of log that will be send to Loki
@@ -117,8 +116,6 @@ func NewLogStream(t *testing.T, loggingConfig *config.LoggingConfig, options ...
 	if err := logWatch.validateLogTargets(); err != nil {
 		return nil, err
 	}
-
-	//TODO validate config depending on log targets to make sure nothing is missing
 
 	l.Info().Str("Run_id", *logWatch.loggingConfig.RunId).Msg("LogStream initialized")
 

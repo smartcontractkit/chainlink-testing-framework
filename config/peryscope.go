@@ -27,42 +27,23 @@ func (c *PyroscopeConfig) Validate() error {
 	return nil
 }
 
-func (c *PyroscopeConfig) ApplyOverrides(from interface{}) error {
-	switch asCfg := (from).(type) {
-	case PyroscopeConfig:
-		if asCfg.Enabled != nil {
-			c.Enabled = asCfg.Enabled
-		}
-		if asCfg.ServerUrl != nil {
-			c.ServerUrl = asCfg.ServerUrl
-		}
-		if asCfg.Key != nil {
-			c.Key = asCfg.Key
-		}
-		if asCfg.Environment != nil {
-			c.Environment = asCfg.Environment
-		}
+func (c *PyroscopeConfig) ApplyOverrides(from *PyroscopeConfig) error {
+	if from == nil {
 		return nil
-	case *PyroscopeConfig:
-		if asCfg == nil {
-			return nil
-		}
-		if asCfg.Enabled != nil {
-			c.Enabled = asCfg.Enabled
-		}
-		if asCfg.ServerUrl != nil {
-			c.ServerUrl = asCfg.ServerUrl
-		}
-		if asCfg.Key != nil {
-			c.Key = asCfg.Key
-		}
-		if asCfg.Environment != nil {
-			c.Environment = asCfg.Environment
-		}
-		return nil
-	default:
-		return errors.Errorf("cannot apply overrides to pyroscope config from type %T", from)
 	}
+	if from.Enabled != nil {
+		c.Enabled = from.Enabled
+	}
+	if from.ServerUrl != nil {
+		c.ServerUrl = from.ServerUrl
+	}
+	if from.Key != nil {
+		c.Key = from.Key
+	}
+	if from.Environment != nil {
+		c.Environment = from.Environment
+	}
+	return nil
 }
 
 func (c *PyroscopeConfig) Default() error {

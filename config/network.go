@@ -42,7 +42,7 @@ func (n *NetworkConfig) ApplyDecoded(configDecoded string) error {
 		return errors.Wrapf(err, "error unmarshaling network config")
 	}
 
-	err = n.ApplyOverrides(cfg)
+	err = n.ApplyOverrides(&cfg)
 	if err != nil {
 		return errors.Wrapf(err, "error applying overrides from decoded network config file to config")
 	}
@@ -95,59 +95,42 @@ func (n *NetworkConfig) Validate() error {
 	return nil
 }
 
-func (n *NetworkConfig) ApplyOverrides(from interface{}) error {
-	switch asCfg := (from).(type) {
-	case NetworkConfig:
-		if asCfg.SelectedNetworks != nil {
-			n.SelectedNetworks = asCfg.SelectedNetworks
-		}
-		if asCfg.RpcHttpUrls != nil {
-			if n.RpcHttpUrls == nil || len(n.RpcHttpUrls) == 0 {
-				n.RpcHttpUrls = asCfg.RpcHttpUrls
-			} else {
-				for network, urls := range asCfg.RpcHttpUrls {
-					n.RpcHttpUrls[network] = urls
-				}
-			}
-		}
-		if asCfg.WsRpcsUrls != nil {
-			if n.WsRpcsUrls == nil || len(n.WsRpcsUrls) == 0 {
-				n.WsRpcsUrls = asCfg.WsRpcsUrls
-			} else {
-				for network, urls := range asCfg.WsRpcsUrls {
-					n.WsRpcsUrls[network] = urls
-				}
-			}
-		}
-		if asCfg.WalletKeys != nil {
-			if n.WalletKeys == nil || len(n.WalletKeys) == 0 {
-				n.WalletKeys = asCfg.WalletKeys
-			} else {
-				for network, urls := range asCfg.WalletKeys {
-					n.WalletKeys[network] = urls
-				}
-			}
-		}
-
+func (n *NetworkConfig) ApplyOverrides(from *NetworkConfig) error {
+	if from != nil {
 		return nil
-	case *NetworkConfig:
-		if asCfg.SelectedNetworks != nil {
-			n.SelectedNetworks = asCfg.SelectedNetworks
-		}
-		if asCfg.RpcHttpUrls != nil {
-			n.RpcHttpUrls = asCfg.RpcHttpUrls
-		}
-		if asCfg.WsRpcsUrls != nil {
-			n.WsRpcsUrls = asCfg.WsRpcsUrls
-		}
-		if asCfg.WalletKeys != nil {
-			n.WalletKeys = asCfg.WalletKeys
-		}
-
-		return nil
-	default:
-		return errors.Errorf("cannot apply overrides from unknown type %T", from)
 	}
+	if from.SelectedNetworks != nil {
+		n.SelectedNetworks = from.SelectedNetworks
+	}
+	if from.RpcHttpUrls != nil {
+		if n.RpcHttpUrls == nil || len(n.RpcHttpUrls) == 0 {
+			n.RpcHttpUrls = from.RpcHttpUrls
+		} else {
+			for network, urls := range from.RpcHttpUrls {
+				n.RpcHttpUrls[network] = urls
+			}
+		}
+	}
+	if from.WsRpcsUrls != nil {
+		if n.WsRpcsUrls == nil || len(n.WsRpcsUrls) == 0 {
+			n.WsRpcsUrls = from.WsRpcsUrls
+		} else {
+			for network, urls := range from.WsRpcsUrls {
+				n.WsRpcsUrls[network] = urls
+			}
+		}
+	}
+	if from.WalletKeys != nil {
+		if n.WalletKeys == nil || len(n.WalletKeys) == 0 {
+			n.WalletKeys = from.WalletKeys
+		} else {
+			for network, urls := range from.WalletKeys {
+				n.WalletKeys[network] = urls
+			}
+		}
+	}
+
+	return nil
 }
 
 func (n *NetworkConfig) Default() error {

@@ -1,8 +1,8 @@
 package config
 
 // GenericConfig is an interface for all product based config types to implement
-type GenericConfig interface {
+type GenericConfig[T any] interface {
 	Validate() error
-	ApplyOverrides(from interface{}) error
+	ApplyOverride(from T) error
 	Default() error
 }

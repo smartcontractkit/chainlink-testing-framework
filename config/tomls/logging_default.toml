@@ -1,5 +1,4 @@
-[Logging]
 test_log_level="INFO"
 
-[Logging.LogStream]
+[LogStream]
 log_targets=["file"]

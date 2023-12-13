@@ -21,30 +21,17 @@ func (c *ChainlinkImageConfig) Validate() error {
 	return nil
 }
 
-func (c *ChainlinkImageConfig) ApplyOverrides(from interface{}) error {
-	switch asCfg := (from).(type) {
-	case ChainlinkImageConfig:
-		if asCfg.Image != nil && *asCfg.Image != "" {
-			c.Image = asCfg.Image
-		}
-		if asCfg.Version != nil && *asCfg.Version != "" {
-			c.Version = asCfg.Version
-		}
+func (c *ChainlinkImageConfig) ApplyOverrides(from *ChainlinkImageConfig) error {
+	if from == nil {
 		return nil
-	case *ChainlinkImageConfig:
-		if asCfg == nil {
-			return nil
-		}
-		if asCfg.Image != nil && *asCfg.Image != "" {
-			c.Image = asCfg.Image
-		}
-		if asCfg.Version != nil && *asCfg.Version != "" {
-			c.Version = asCfg.Version
-		}
-		return nil
-	default:
-		return errors.Errorf("cannot apply overrides from unknown type %T", from)
 	}
+	if from.Image != nil && *from.Image != "" {
+		c.Image = from.Image
+	}
+	if from.Version != nil && *from.Version != "" {
+		c.Version = from.Version
+	}
+	return nil
 }
 
 func (c *ChainlinkImageConfig) Default() error {
