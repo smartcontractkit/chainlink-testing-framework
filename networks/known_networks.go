@@ -4,7 +4,6 @@ package networks
 import (
 	"crypto/ecdsa"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -12,7 +11,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
-	"github.com/smartcontractkit/chainlink-testing-framework/utils/osutil"
+	"github.com/smartcontractkit/chainlink-testing-framework/config"
 )
 
 // Pre-configured test networks and their connections
@@ -713,88 +712,38 @@ var (
 	}
 )
 
-// Get []blockchain.EVMNetwork from env vars. Panic if env vars not set or no networks found
-func MustGetSelectedNetworksFromEnv() []blockchain.EVMNetwork {
-	selectedNetworksEnv := os.Getenv("SELECTED_NETWORKS")
-	emptyEnvErr := fmt.Errorf("env var 'SELECTED_NETWORKS' is not set or is empty. Use valid network(s) separated by comma from %v", getValidNetworkKeys())
-	if selectedNetworksEnv == "" {
-		panic(emptyEnvErr)
+// Get []blockchain.EVMNetwork from TOML config. Panic if no networks are found
+func MustGetSelectedNetworkConfig(networkCfg *config.NetworkConfig) []blockchain.EVMNetwork {
+	if networkCfg == nil || networkCfg.Network == nil || len(networkCfg.Network.SelectedNetworks) == 0 {
+		panic(fmt.Errorf("network config has no or empty selected networks. Use valid network(s) separated by comma from %v", getValidNetworkKeys()))
 	}
-	networkKeys := strings.Split(selectedNetworksEnv, ",")
-	if len(networkKeys) == 0 {
-		panic(emptyEnvErr)
-	}
-	return SetNetworks(networkKeys)
+	return MustSetNetworks(*networkCfg)
 }
-func SetNetworks(networkKeys []string) []blockchain.EVMNetwork {
+
+func MustSetNetworks(networkCfg config.NetworkConfig) []blockchain.EVMNetwork {
 	networks := make([]blockchain.EVMNetwork, 0)
-	for i := range networkKeys {
+	selectedNetworks := networkCfg.Network.SelectedNetworks
+	for i := range selectedNetworks {
 		var walletKeys, httpUrls, wsUrls []string
-		if !strings.Contains(networkKeys[i], "SIMULATED") {
-			// Get network RPC WS URL from env var
-			wsEnvVar := fmt.Sprintf("%s_URLS", networkKeys[i])
-			wsEnvVal, err := osutil.GetEnv(wsEnvVar)
-			if err != nil {
-				log.Warn().Msgf("error getting %s var: %v", wsEnvVar, err)
-			}
-			if wsEnvVal == "" {
-				// Get default value
-				defaultUrls, err := osutil.GetEnv("EVM_URLS")
-				if err != nil {
-					panic(fmt.Errorf("error getting EVM_URLS var: %w", err))
-				}
-				if defaultUrls == "" {
-					panic(fmt.Errorf("set %s or EVM_URLS env var", wsEnvVar))
-				}
-				log.Warn().Msgf("%s not set, defaulting to EVM_URLS", wsEnvVar)
-				wsUrls = strings.Split(defaultUrls, ",")
-			} else {
-				wsUrls = strings.Split(wsEnvVal, ",")
+		networkName := strings.ToUpper(selectedNetworks[i])
+		if !strings.Contains(networkName, "SIMULATED") {
+			var ok bool
+			wsUrls, ok = networkCfg.Network.WsRpcsUrls[selectedNetworks[i]]
+			if !ok {
+				panic(fmt.Errorf("no rpc ws urls found in config for '%s' network", selectedNetworks[i]))
 			}
 
-			// Get network RPC HTTP URL from env var
-			httpEnvVar := fmt.Sprintf("%s_HTTP_URLS", networkKeys[i])
-			httpEnvVal, err := osutil.GetEnv(httpEnvVar)
-			if err != nil {
-				log.Warn().Msgf("error getting %s var: %v", httpEnvVal, err)
-			}
-			if httpEnvVal == "" {
-				// Get default value
-				defaultUrls, err := osutil.GetEnv("EVM_HTTP_URLS")
-				if err != nil {
-					panic(fmt.Errorf("error getting EVM_HTTP_URLS var: %w", err))
-				}
-				if defaultUrls == "" {
-					panic(fmt.Errorf("set %s or EVM_HTTP_URLS env var", httpEnvVar))
-				}
-				log.Warn().Msgf("%s not set, defaulting to EVM_HTTP_URLS", httpEnvVar)
-				httpUrls = strings.Split(defaultUrls, ",")
-			} else {
-				httpUrls = strings.Split(httpEnvVal, ",")
+			httpUrls, ok = networkCfg.Network.RpcHttpUrls[selectedNetworks[i]]
+			if !ok {
+				panic(fmt.Errorf("no rpc http urls found in config for '%s' network", selectedNetworks[i]))
 			}
 
-			// Get network wallet key from env var
-			walletKeysEnvVar := fmt.Sprintf("%s_KEYS", networkKeys[i])
-			walletKeysEnvVal, err := osutil.GetEnv(walletKeysEnvVar)
-			if err != nil {
-				log.Warn().Msgf("error getting %s var: %v", walletKeysEnvVal, err)
-			}
-			if walletKeysEnvVal == "" {
-				// Get default value
-				defaultKeys, err := osutil.GetEnv("EVM_KEYS")
-				if err != nil {
-					panic(fmt.Errorf("error getting EVM_KEYS var: %w", err))
-				}
-				if defaultKeys == "" {
-					panic(fmt.Errorf("set %s or EVM_KEYS env var", walletKeysEnvVar))
-				}
-				log.Warn().Msgf("%s not set, defaulting to EVM_KEYS", walletKeysEnvVar)
-				walletKeys = strings.Split(defaultKeys, ",")
-			} else {
-				walletKeys = strings.Split(walletKeysEnvVal, ",")
+			walletKeys, ok = networkCfg.Network.WalletKeys[selectedNetworks[i]]
+			if !ok {
+				panic(fmt.Errorf("no wallet keys found in config for '%s' network", selectedNetworks[i]))
 			}
 		}
-		network, err := NewEVMNetwork(networkKeys[i], walletKeys, httpUrls, wsUrls)
+		network, err := NewEVMNetwork(networkName, walletKeys, httpUrls, wsUrls)
 		if err != nil {
 			panic(err)
 		}

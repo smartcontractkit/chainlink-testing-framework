@@ -14,6 +14,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/logstream"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
@@ -134,7 +136,11 @@ func TestLogStreamDocker(t *testing.T) {
 			t.Parallel()
 			ctx := testcontext.Get(t)
 			dynamicContainerNames := replaceContainerNamePlaceholders(tc)
-			lw, err := logstream.NewLogStream(t, nil, logstream.WithLogTarget(logstream.InMemory))
+			loggingConfig := config.LoggingConfig{}
+			loggingConfig.Logging.LogStream = &config.LogStreamConfig{
+				LogTargets: []string{"in-memory"},
+			}
+			lw, err := logstream.NewLogStream(t, &loggingConfig)
 			require.NoError(t, err)
 
 			for _, cn := range dynamicContainerNames {
@@ -189,7 +195,12 @@ func TestLogStreamConnectWithDelayDocker(t *testing.T) {
 	interval := float64(1)
 	amount := 10
 
-	lw, err := logstream.NewLogStream(t, nil, logstream.WithLogTarget(logstream.InMemory))
+	loggingConfig := config.LoggingConfig{}
+	loggingConfig.Logging.LogStream = &config.LogStreamConfig{
+		LogTargets: []string{"in-memory"},
+	}
+
+	lw, err := logstream.NewLogStream(t, &loggingConfig)
 	require.NoError(t, err)
 	container, err := startTestContainer(ctx, containerName, message, amount, interval, false)
 	require.NoError(t, err)
@@ -226,7 +237,12 @@ func TestLogStream_GetAllLogs_ErrorsAfterFiveLogs(t *testing.T) {
 	interval := float64(1)
 	amount := 10
 
-	lw, err := logstream.NewLogStream(t, nil, logstream.WithLogTarget(logstream.InMemory))
+	loggingConfig := config.LoggingConfig{}
+	loggingConfig.Logging.LogStream = &config.LogStreamConfig{
+		LogTargets: []string{"in-memory"},
+	}
+
+	lw, err := logstream.NewLogStream(t, &loggingConfig)
 	require.NoError(t, err)
 	container, err := startTestContainer(ctx, containerName, message, amount, interval, false)
 	require.NoError(t, err)
@@ -276,7 +292,12 @@ func TestLogStream_GetAllLogs_TwoConsumers_FirstErrorsAfterFiveLogs(t *testing.T
 	interval := float64(1)
 	amount := 10
 
-	lw, err := logstream.NewLogStream(t, nil, logstream.WithLogTarget(logstream.InMemory))
+	loggingConfig := config.LoggingConfig{}
+	loggingConfig.Logging.LogStream = &config.LogStreamConfig{
+		LogTargets: []string{"in-memory"},
+	}
+
+	lw, err := logstream.NewLogStream(t, &loggingConfig)
 	require.NoError(t, err)
 	container_1, err := startTestContainer(ctx, containerName_1, message, amount, interval, false)
 	require.NoError(t, err)
@@ -339,7 +360,12 @@ func TestLogStream_GetAllLogs_ErrorsBeforeConsumption(t *testing.T) {
 	interval := float64(1)
 	amount := 10
 
-	lw, err := logstream.NewLogStream(t, nil, logstream.WithLogTarget(logstream.InMemory))
+	loggingConfig := config.LoggingConfig{}
+	loggingConfig.Logging.LogStream = &config.LogStreamConfig{
+		LogTargets: []string{"in-memory"},
+	}
+
+	lw, err := logstream.NewLogStream(t, &loggingConfig)
 	require.NoError(t, err)
 	container, err := startTestContainer(ctx, containerName, message, amount, interval, false)
 	require.NoError(t, err)
@@ -393,7 +419,12 @@ func TestLogStreamTwoDockerContainers(t *testing.T) {
 	amountFirst := 10
 	amountSecond := 20
 
-	lw, err := logstream.NewLogStream(t, nil, logstream.WithLogTarget(logstream.InMemory))
+	loggingConfig := config.LoggingConfig{}
+	loggingConfig.Logging.LogStream = &config.LogStreamConfig{
+		LogTargets: []string{"in-memory"},
+	}
+
+	lw, err := logstream.NewLogStream(t, &loggingConfig)
 	require.NoError(t, err, "logstream should be created")
 	containerOne, err := startTestContainer(ctx, containerOneName, message, amountFirst, interval, false)
 	require.NoError(t, err, "should not fail to start container")
@@ -545,7 +576,13 @@ func TestLogStreamConnectRetryMockContainer_FailsOnce(t *testing.T) {
 		errorChannelError: nil,
 	}
 
-	lw, err := logstream.NewLogStream(t, nil, logstream.WithLogProducerTimeout(1*time.Second), logstream.WithLogTarget(logstream.InMemory))
+	loggingConfig := config.LoggingConfig{}
+	loggingConfig.Logging.LogStream = &config.LogStreamConfig{
+		LogTargets:         []string{"in-memory"},
+		LogProducerTimeout: &blockchain.JSONStrDuration{Duration: time.Duration(1 * time.Second)},
+	}
+
+	lw, err := logstream.NewLogStream(t, &loggingConfig)
 	require.NoError(t, err, "logstream should be created")
 
 	go func() {
@@ -607,7 +644,13 @@ func TestLogStreamConnectRetryMockContainer_FailsTwice(t *testing.T) {
 		errorChannelError: nil,
 	}
 
-	lw, err := logstream.NewLogStream(t, nil, logstream.WithLogProducerTimeout(1*time.Second), logstream.WithLogTarget(logstream.InMemory))
+	loggingConfig := config.LoggingConfig{}
+	loggingConfig.Logging.LogStream = &config.LogStreamConfig{
+		LogTargets:         []string{"in-memory"},
+		LogProducerTimeout: &blockchain.JSONStrDuration{Duration: time.Duration(1 * time.Second)},
+	}
+
+	lw, err := logstream.NewLogStream(t, &loggingConfig)
 	require.NoError(t, err, "logstream should be created")
 
 	go func() {
@@ -682,7 +725,13 @@ func TestLogStreamConnectRetryMockContainer_FailsFirstRestart(t *testing.T) {
 		errorChannelError: nil,
 	}
 
-	lw, err := logstream.NewLogStream(t, nil, logstream.WithLogProducerTimeout(1*time.Second), logstream.WithLogTarget(logstream.InMemory))
+	loggingConfig := config.LoggingConfig{}
+	loggingConfig.Logging.LogStream = &config.LogStreamConfig{
+		LogTargets:         []string{"in-memory"},
+		LogProducerTimeout: &blockchain.JSONStrDuration{Duration: time.Duration(1 * time.Second)},
+	}
+
+	lw, err := logstream.NewLogStream(t, &loggingConfig)
 	require.NoError(t, err, "logstream should be created")
 
 	go func() {
@@ -750,7 +799,13 @@ func TestLogStreamConnectRetryMockContainer_AlwaysFailsRestart(t *testing.T) {
 		errorChannelError: nil,
 	}
 
-	lw, err := logstream.NewLogStream(t, nil, logstream.WithLogProducerTimeout(1*time.Second), logstream.WithLogProducerRetryLimit(4), logstream.WithLogTarget(logstream.InMemory))
+	loggingConfig := config.LoggingConfig{}
+	loggingConfig.Logging.LogStream = &config.LogStreamConfig{
+		LogTargets:         []string{"in-memory"},
+		LogProducerTimeout: &blockchain.JSONStrDuration{Duration: time.Duration(1 * time.Second)},
+	}
+
+	lw, err := logstream.NewLogStream(t, &loggingConfig)
 	require.NoError(t, err, "logstream should be created")
 
 	go func() {
@@ -822,7 +877,13 @@ func TestLogStreamConnectRetryTwoMockContainers_FirstAlwaysFailsRestart_SecondWo
 		errorChannelError: nil,
 	}
 
-	lw, err := logstream.NewLogStream(t, nil, logstream.WithLogProducerTimeout(1*time.Second), logstream.WithLogProducerRetryLimit(4), logstream.WithLogTarget(logstream.InMemory))
+	loggingConfig := config.LoggingConfig{}
+	loggingConfig.Logging.LogStream = &config.LogStreamConfig{
+		LogTargets:         []string{"in-memory"},
+		LogProducerTimeout: &blockchain.JSONStrDuration{Duration: time.Duration(1 * time.Second)},
+	}
+
+	lw, err := logstream.NewLogStream(t, &loggingConfig)
 	require.NoError(t, err, "logstream should be created")
 
 	go func() {

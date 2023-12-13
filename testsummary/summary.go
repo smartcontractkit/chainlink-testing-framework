@@ -28,7 +28,7 @@ type KeyContent struct {
 }
 
 func init() {
-	runId, err := runid.GetOrGenerateRunId()
+	runId, err := runid.GetOrGenerateRunId(nil)
 	if err != nil {
 		panic(err)
 	}

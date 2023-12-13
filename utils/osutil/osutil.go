@@ -96,3 +96,101 @@ func GetAbsoluteFolderPath(folder string) (string, error) {
 
 	return filepath.Join(wd, folder), nil
 }
+
+const DEFAULT_STOP_FILE_NAME = ".root_dir"
+
+func FindFile(filename, stopFile string) ([]byte, error) {
+	// Get the current working directory
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+
+	// Find "stopFile" to determine the starting point
+	rootDirPath, err := findFileRecursivelyWithLimit(currentDir, stopFile, "", 2)
+	if err != nil {
+		return nil, err // Return an error if "stopFile" is not found within the limit
+	}
+
+	// Use the location of "stopFile" as the starting point to find "filename"
+	configFileContent, err := findFileRecursively(rootDirPath, filename, "")
+	if err != nil {
+		return nil, err
+	}
+
+	return configFileContent, nil
+}
+
+func findFileRecursively(startDir, targetFileName, stopFileName string) ([]byte, error) {
+	var fileContent []byte
+
+	err := filepath.Walk(startDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Check if the file has the specified name
+		if info.IsDir() {
+			return nil // Skip directories
+		}
+
+		if info.Name() == targetFileName {
+			// Read the content of the file
+			fileContent, err = os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if fileContent == nil {
+		return nil, os.ErrNotExist // File not found
+	}
+
+	return fileContent, nil
+}
+
+func findFileRecursivelyWithLimit(startDir, targetFileName, stopFileName string, limit int) (string, error) {
+	var filePath string
+	parentLevel := 0
+
+	for parentLevel <= limit {
+		err := filepath.Walk(startDir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+
+			// Check if the file has the specified name
+			if !info.IsDir() && info.Name() == targetFileName {
+				// Set the filePath when the target file is found
+				filePath = path
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			return "", err
+		}
+
+		if filePath != "" {
+			break // Exit the loop if ".root_dir" is found
+		}
+
+		// Move to the parent directory
+		startDir = filepath.Dir(startDir)
+		parentLevel++
+	}
+
+	if filePath == "" {
+		return "", os.ErrNotExist // File not found
+	}
+
+	return filepath.Dir(filePath), nil
+}

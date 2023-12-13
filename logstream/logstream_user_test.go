@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/logstream"
 )
 
@@ -77,10 +78,15 @@ func TestFileLoggingTarget(t *testing.T) {
 	// nolint
 	defer d.Shutdown(ctx)
 	require.NoError(t, err)
+
+	loggingConfig := config.LoggingConfig{}
+	loggingConfig.Logging.LogStream = &config.LogStreamConfig{
+		LogTargets: []string{"file"},
+	}
+
 	lw, err := logstream.NewLogStream(
 		t,
-		nil,
-		logstream.WithLogTarget(logstream.File),
+		&loggingConfig,
 	)
 	require.NoError(t, err, "failed to create logstream")
 	err = d.ConnectLogs(lw)

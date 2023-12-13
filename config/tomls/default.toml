@@ -1,0 +1,5 @@
+[Logging]
+test_log_level="INFO"
+
+[Logging.LogStream]
+log_targets=["file"]

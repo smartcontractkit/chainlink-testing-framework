@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/logstream"
 )
 
@@ -55,13 +56,17 @@ func TestMultipleMockedLoggingTargets(t *testing.T) {
 	require.NoError(t, err)
 	mockedFileHandler := &MockedLogHandler{Target: logstream.File}
 	mockedLokiHanlder := &MockedLogHandler{Target: logstream.Loki}
+
+	loggingConfig := config.LoggingConfig{}
+	loggingConfig.Logging.LogStream = &config.LogStreamConfig{
+		LogTargets: []string{"loki", "file"},
+	}
+
 	lw, err := logstream.NewLogStream(
 		t,
-		nil,
+		&loggingConfig,
 		logstream.WithCustomLogHandler(logstream.File, mockedFileHandler),
 		logstream.WithCustomLogHandler(logstream.Loki, mockedLokiHanlder),
-		logstream.WithLogTarget(logstream.Loki),
-		logstream.WithLogTarget(logstream.File),
 	)
 	require.NoError(t, err, "failed to create logstream")
 	err = d.ConnectLogs(lw)
@@ -86,11 +91,16 @@ func TestOneMockedLoggingTarget(t *testing.T) {
 	defer d.Shutdown(ctx)
 	require.NoError(t, err)
 	mockedLokiHanlder := &MockedLogHandler{Target: logstream.Loki}
+
+	loggingConfig := config.LoggingConfig{}
+	loggingConfig.Logging.LogStream = &config.LogStreamConfig{
+		LogTargets: []string{"loki"},
+	}
+
 	lw, err := logstream.NewLogStream(
 		t,
-		nil,
+		&loggingConfig,
 		logstream.WithCustomLogHandler(logstream.Loki, mockedLokiHanlder),
-		logstream.WithLogTarget(logstream.Loki),
 	)
 	require.NoError(t, err, "failed to create logstream")
 	err = d.ConnectLogs(lw)
