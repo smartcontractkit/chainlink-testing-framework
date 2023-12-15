@@ -2,6 +2,8 @@ package config
 
 import (
 	"github.com/pkg/errors"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/net"
 )
 
 type PyroscopeConfig struct {
@@ -16,10 +18,13 @@ func (c *PyroscopeConfig) Validate() error {
 		if c.ServerUrl == nil {
 			return errors.New("pyroscope server url must be set")
 		}
-		if !isValidURL(*c.ServerUrl) {
+		if !net.IsValidURL(*c.ServerUrl) {
 			return errors.Errorf("invalid pyroscope server url %s", *c.ServerUrl)
 		}
-		if c.Environment == nil {
+		if c.Environment == nil || *c.Environment == "" {
+			return errors.New("pyroscope environment must be set")
+		}
+		if c.Key == nil || *c.Key == "" {
 			return errors.New("pyroscope environment must be set")
 		}
 	}

@@ -99,30 +99,27 @@ func GetAbsoluteFolderPath(folder string) (string, error) {
 
 const DEFAULT_STOP_FILE_NAME = ".root_dir"
 
-func FindFile(filename, stopFile string) ([]byte, error) {
-	// Get the current working directory
+func FindFile(filename, stopFile string) (string, error) {
 	currentDir, err := os.Getwd()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	// Find "stopFile" to determine the starting point
 	rootDirPath, err := findFileRecursivelyWithLimit(currentDir, stopFile, "", 2)
 	if err != nil {
-		return nil, err // Return an error if "stopFile" is not found within the limit
+		return "", err
 	}
 
-	// Use the location of "stopFile" as the starting point to find "filename"
-	configFileContent, err := findFileRecursively(rootDirPath, filename, "")
+	configFilePath, err := findFileRecursively(rootDirPath, filename, "")
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	return configFileContent, nil
+	return configFilePath, nil
 }
 
-func findFileRecursively(startDir, targetFileName, stopFileName string) ([]byte, error) {
-	var fileContent []byte
+func findFileRecursively(startDir, targetFileName, stopFileName string) (string, error) {
+	var filePath string
 
 	err := filepath.Walk(startDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -136,7 +133,7 @@ func findFileRecursively(startDir, targetFileName, stopFileName string) ([]byte,
 
 		if info.Name() == targetFileName {
 			// Read the content of the file
-			fileContent, err = os.ReadFile(path)
+			filePath = path
 			if err != nil {
 				return err
 			}
@@ -146,14 +143,14 @@ func findFileRecursively(startDir, targetFileName, stopFileName string) ([]byte,
 	})
 
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	if fileContent == nil {
-		return nil, os.ErrNotExist // File not found
+	if filePath == "" {
+		return "", os.ErrNotExist // File not found
 	}
 
-	return fileContent, nil
+	return filePath, nil
 }
 
 func findFileRecursivelyWithLimit(startDir, targetFileName, stopFileName string, limit int) (string, error) {

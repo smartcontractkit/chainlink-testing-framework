@@ -49,17 +49,15 @@ type LogProducingContainer interface {
 // LogStream is a test helper struct to monitor docker container logs for some patterns
 // and push their logs into Loki for further analysis
 type LogStream struct {
-	testName                     string
-	log                          zerolog.Logger
-	loki                         *wasp.LokiClient
-	containers                   []LogProducingContainer
-	consumers                    map[string]*ContainerLogConsumer
-	logTargetHandlers            map[LogTarget]HandleLogTarget
-	enabledLogTargets            []LogTarget
-	logProducerTimeout           time.Duration
-	logProducerTimeoutRetryLimit int // -1 for infinite retries
-	acceptMutex                  sync.Mutex
-	loggingConfig                config.LoggingConfig
+	testName          string
+	log               zerolog.Logger
+	loki              *wasp.LokiClient
+	containers        []LogProducingContainer
+	consumers         map[string]*ContainerLogConsumer
+	logTargetHandlers map[LogTarget]HandleLogTarget
+	enabledLogTargets []LogTarget
+	acceptMutex       sync.Mutex
+	loggingConfig     config.LoggingConfig
 }
 
 // LogContent is a representation of log that will be send to Loki
@@ -78,7 +76,7 @@ func NewLogStream(t *testing.T, loggingConfig *config.LoggingConfig, options ...
 		return nil, errors.New("logging config cannot be nil")
 	}
 
-	l := logging.GetLogger(nil, "LOGWATCH_LOG_LEVEL").With().Str("Component", "LogStream").Logger()
+	l := logging.GetLogger(nil, "LOGSTREAM_LOG_LEVEL").With().Str("Component", "LogStream").Logger()
 	var testName string
 	if t == nil {
 		testName = NO_TEST
@@ -99,14 +97,12 @@ func NewLogStream(t *testing.T, loggingConfig *config.LoggingConfig, options ...
 	loggingConfig.RunId = &runId
 
 	logWatch := &LogStream{
-		testName:                     testName,
-		log:                          l,
-		consumers:                    make(map[string]*ContainerLogConsumer, 0),
-		logTargetHandlers:            getDefaultLogHandlers(),
-		logProducerTimeout:           time.Duration(10 * time.Second),
-		logProducerTimeoutRetryLimit: 10,
-		enabledLogTargets:            logTargets,
-		loggingConfig:                *loggingConfig,
+		testName:          testName,
+		log:               l,
+		consumers:         make(map[string]*ContainerLogConsumer, 0),
+		logTargetHandlers: getDefaultLogHandlers(),
+		enabledLogTargets: logTargets,
+		loggingConfig:     *loggingConfig,
 	}
 
 	for _, option := range options {
@@ -200,12 +196,12 @@ func (m *LogStream) ConnectContainer(ctx context.Context, container LogProducing
 	m.log.Info().
 		Str("Prefix", prefix).
 		Str("Name", name).
-		Str("Timeout", m.logProducerTimeout.String()).
+		Str("Timeout", m.loggingConfig.LogStream.LogProducerTimeout.String()).
 		Msg("Connecting container logs")
 	m.consumers[name] = cons
 	m.containers = append(m.containers, container)
 	container.FollowOutput(cons)
-	err = container.StartLogProducer(ctx, m.logProducerTimeout)
+	err = container.StartLogProducer(ctx, m.loggingConfig.LogStream.LogProducerTimeout.Duration)
 
 	go func(done chan struct{}, timeout time.Duration, retryLimit int) {
 		defer m.log.Info().Str("Container name", name).Msg("Disconnected container logs")
@@ -297,7 +293,7 @@ func (m *LogStream) ConnectContainer(ctx context.Context, container LogProducing
 				return
 			}
 		}
-	}(cons.logListeningDone, m.logProducerTimeout, m.logProducerTimeoutRetryLimit)
+	}(cons.logListeningDone, m.loggingConfig.LogStream.LogProducerTimeout.Duration, int(*m.loggingConfig.LogStream.LogProducerRetryLimit))
 
 	return err
 }

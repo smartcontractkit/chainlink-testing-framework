@@ -17,6 +17,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/logstream"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/ptr"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
@@ -197,7 +198,9 @@ func TestLogStreamConnectWithDelayDocker(t *testing.T) {
 
 	loggingConfig := config.LoggingConfig{}
 	loggingConfig.LogStream = &config.LogStreamConfig{
-		LogTargets: []string{"in-memory"},
+		LogTargets:            []string{"in-memory"},
+		LogProducerTimeout:    &blockchain.StrDuration{Duration: 10 * time.Second},
+		LogProducerRetryLimit: ptr.Ptr(uint(10)),
 	}
 
 	lw, err := logstream.NewLogStream(t, &loggingConfig)
@@ -239,7 +242,9 @@ func TestLogStream_GetAllLogs_ErrorsAfterFiveLogs(t *testing.T) {
 
 	loggingConfig := config.LoggingConfig{}
 	loggingConfig.LogStream = &config.LogStreamConfig{
-		LogTargets: []string{"in-memory"},
+		LogTargets:            []string{"in-memory"},
+		LogProducerTimeout:    &blockchain.StrDuration{Duration: 10 * time.Second},
+		LogProducerRetryLimit: ptr.Ptr(uint(10)),
 	}
 
 	lw, err := logstream.NewLogStream(t, &loggingConfig)
@@ -294,7 +299,9 @@ func TestLogStream_GetAllLogs_TwoConsumers_FirstErrorsAfterFiveLogs(t *testing.T
 
 	loggingConfig := config.LoggingConfig{}
 	loggingConfig.LogStream = &config.LogStreamConfig{
-		LogTargets: []string{"in-memory"},
+		LogTargets:            []string{"in-memory"},
+		LogProducerTimeout:    &blockchain.StrDuration{Duration: 10 * time.Second},
+		LogProducerRetryLimit: ptr.Ptr(uint(10)),
 	}
 
 	lw, err := logstream.NewLogStream(t, &loggingConfig)
@@ -362,7 +369,9 @@ func TestLogStream_GetAllLogs_ErrorsBeforeConsumption(t *testing.T) {
 
 	loggingConfig := config.LoggingConfig{}
 	loggingConfig.LogStream = &config.LogStreamConfig{
-		LogTargets: []string{"in-memory"},
+		LogTargets:            []string{"in-memory"},
+		LogProducerTimeout:    &blockchain.StrDuration{Duration: 10 * time.Second},
+		LogProducerRetryLimit: ptr.Ptr(uint(10)),
 	}
 
 	lw, err := logstream.NewLogStream(t, &loggingConfig)
@@ -421,7 +430,9 @@ func TestLogStreamTwoDockerContainers(t *testing.T) {
 
 	loggingConfig := config.LoggingConfig{}
 	loggingConfig.LogStream = &config.LogStreamConfig{
-		LogTargets: []string{"in-memory"},
+		LogTargets:            []string{"in-memory"},
+		LogProducerTimeout:    &blockchain.StrDuration{Duration: 10 * time.Second},
+		LogProducerRetryLimit: ptr.Ptr(uint(10)),
 	}
 
 	lw, err := logstream.NewLogStream(t, &loggingConfig)
@@ -578,8 +589,9 @@ func TestLogStreamConnectRetryMockContainer_FailsOnce(t *testing.T) {
 
 	loggingConfig := config.LoggingConfig{}
 	loggingConfig.LogStream = &config.LogStreamConfig{
-		LogTargets:         []string{"in-memory"},
-		LogProducerTimeout: &blockchain.JSONStrDuration{Duration: time.Duration(1 * time.Second)},
+		LogTargets:            []string{"in-memory"},
+		LogProducerTimeout:    &blockchain.StrDuration{Duration: time.Duration(1 * time.Second)},
+		LogProducerRetryLimit: ptr.Ptr(uint(10)),
 	}
 
 	lw, err := logstream.NewLogStream(t, &loggingConfig)
@@ -646,8 +658,9 @@ func TestLogStreamConnectRetryMockContainer_FailsTwice(t *testing.T) {
 
 	loggingConfig := config.LoggingConfig{}
 	loggingConfig.LogStream = &config.LogStreamConfig{
-		LogTargets:         []string{"in-memory"},
-		LogProducerTimeout: &blockchain.JSONStrDuration{Duration: time.Duration(1 * time.Second)},
+		LogTargets:            []string{"in-memory"},
+		LogProducerTimeout:    &blockchain.StrDuration{Duration: time.Duration(1 * time.Second)},
+		LogProducerRetryLimit: ptr.Ptr(uint(10)),
 	}
 
 	lw, err := logstream.NewLogStream(t, &loggingConfig)
@@ -727,8 +740,9 @@ func TestLogStreamConnectRetryMockContainer_FailsFirstRestart(t *testing.T) {
 
 	loggingConfig := config.LoggingConfig{}
 	loggingConfig.LogStream = &config.LogStreamConfig{
-		LogTargets:         []string{"in-memory"},
-		LogProducerTimeout: &blockchain.JSONStrDuration{Duration: time.Duration(1 * time.Second)},
+		LogTargets:            []string{"in-memory"},
+		LogProducerTimeout:    &blockchain.StrDuration{Duration: time.Duration(1 * time.Second)},
+		LogProducerRetryLimit: ptr.Ptr(uint(10)),
 	}
 
 	lw, err := logstream.NewLogStream(t, &loggingConfig)
@@ -801,8 +815,9 @@ func TestLogStreamConnectRetryMockContainer_AlwaysFailsRestart(t *testing.T) {
 
 	loggingConfig := config.LoggingConfig{}
 	loggingConfig.LogStream = &config.LogStreamConfig{
-		LogTargets:         []string{"in-memory"},
-		LogProducerTimeout: &blockchain.JSONStrDuration{Duration: time.Duration(1 * time.Second)},
+		LogTargets:            []string{"in-memory"},
+		LogProducerTimeout:    &blockchain.StrDuration{Duration: time.Duration(1 * time.Second)},
+		LogProducerRetryLimit: ptr.Ptr(uint(10)),
 	}
 
 	lw, err := logstream.NewLogStream(t, &loggingConfig)
@@ -879,8 +894,9 @@ func TestLogStreamConnectRetryTwoMockContainers_FirstAlwaysFailsRestart_SecondWo
 
 	loggingConfig := config.LoggingConfig{}
 	loggingConfig.LogStream = &config.LogStreamConfig{
-		LogTargets:         []string{"in-memory"},
-		LogProducerTimeout: &blockchain.JSONStrDuration{Duration: time.Duration(1 * time.Second)},
+		LogTargets:            []string{"in-memory"},
+		LogProducerTimeout:    &blockchain.StrDuration{Duration: time.Duration(1 * time.Second)},
+		LogProducerRetryLimit: ptr.Ptr(uint(10)),
 	}
 
 	lw, err := logstream.NewLogStream(t, &loggingConfig)

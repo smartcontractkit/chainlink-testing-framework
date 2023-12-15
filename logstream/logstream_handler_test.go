@@ -8,8 +8,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/logstream"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/ptr"
 )
 
 type MockedLogHandler struct {
@@ -59,7 +61,9 @@ func TestMultipleMockedLoggingTargets(t *testing.T) {
 
 	loggingConfig := config.LoggingConfig{}
 	loggingConfig.LogStream = &config.LogStreamConfig{
-		LogTargets: []string{"loki", "file"},
+		LogTargets:            []string{"loki", "file"},
+		LogProducerTimeout:    &blockchain.StrDuration{Duration: 10 * time.Second},
+		LogProducerRetryLimit: ptr.Ptr(uint(10)),
 	}
 
 	lw, err := logstream.NewLogStream(
@@ -94,7 +98,9 @@ func TestOneMockedLoggingTarget(t *testing.T) {
 
 	loggingConfig := config.LoggingConfig{}
 	loggingConfig.LogStream = &config.LogStreamConfig{
-		LogTargets: []string{"loki"},
+		LogTargets:            []string{"loki"},
+		LogProducerTimeout:    &blockchain.StrDuration{Duration: 10 * time.Second},
+		LogProducerRetryLimit: ptr.Ptr(uint(10)),
 	}
 
 	lw, err := logstream.NewLogStream(

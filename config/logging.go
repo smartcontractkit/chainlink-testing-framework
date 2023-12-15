@@ -2,13 +2,12 @@ package config
 
 import (
 	_ "embed"
-	"net/url"
-	"strings"
 
 	"github.com/pelletier/go-toml/v2"
 	"github.com/pkg/errors"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/net"
 )
 
 //go:embed tomls/logging_default.toml
@@ -16,38 +15,23 @@ var DefaultLoggingConfig []byte
 
 type LoggingConfig struct {
 	TestLogCollect *bool            `toml:"test_log_collect"`
-	TestLogLevel   *string          `toml:"test_log_level"`
 	LokiTenantId   *string          `toml:"loki_tenant_id"`
 	LokiUrl        *string          `toml:"loki_url"`
 	LokiBasicAuth  *string          `toml:"loki_basic_auth"`
-	Grafana        *GrafanaConfig   `toml:"Grafana"`
 	RunId          *string          `toml:"run_id"`
-	LogStream      *LogStreamConfig `toml:"log_stream"`
+	Grafana        *GrafanaConfig   `toml:"Grafana"`
+	LogStream      *LogStreamConfig `toml:"LogStream"`
 }
 
 type LogStreamConfig struct {
-	LogTargets            []string                    `toml:"log_targets"`
-	LogProducerTimeout    *blockchain.JSONStrDuration `toml:"log_producer_timeout"`
-	LogProducerRetryLimit *uint                       `toml:"log_producer_retry_limit"`
+	LogTargets            []string                `toml:"log_targets"`
+	LogProducerTimeout    *blockchain.StrDuration `toml:"log_producer_timeout"`
+	LogProducerRetryLimit *uint                   `toml:"log_producer_retry_limit"`
 }
 
 func (l *LoggingConfig) Validate() error {
-	if l.TestLogLevel != nil {
-		validLevels := []string{"trace", "debug", "info", "warn", "error", "panic", "fatal"}
-		valid := false
-		for _, level := range validLevels {
-			if *l.TestLogLevel == strings.ToUpper(level) {
-				valid = true
-				break
-			}
-		}
-		if !valid {
-			return errors.Errorf("invalid test log level %s", *l.TestLogLevel)
-		}
-	}
-
 	if l.LokiUrl != nil {
-		if !isValidURL(*l.LokiUrl) {
+		if !net.IsValidURL(*l.LokiUrl) {
 			return errors.Errorf("invalid loki url %s", *l.LokiUrl)
 		}
 	}
@@ -70,9 +54,6 @@ func (l *LoggingConfig) Validate() error {
 func (l *LoggingConfig) ApplyOverrides(from *LoggingConfig) error {
 	if from == nil {
 		return nil
-	}
-	if from.TestLogLevel != nil {
-		l.TestLogLevel = from.TestLogLevel
 	}
 	if from.TestLogCollect != nil {
 		l.TestLogCollect = from.TestLogCollect
@@ -191,7 +172,7 @@ func (c *GrafanaConfig) ApplyOverrides(from interface{}) error {
 
 func (c *GrafanaConfig) Validate() error {
 	if c.GrafanaUrl != nil {
-		if !isValidURL(*c.GrafanaUrl) {
+		if !net.IsValidURL(*c.GrafanaUrl) {
 			return errors.Errorf("invalid grafana url %s", *c.GrafanaUrl)
 		}
 	}
@@ -201,9 +182,4 @@ func (c *GrafanaConfig) Validate() error {
 
 func (c *GrafanaConfig) Default() error {
 	return nil
-}
-
-func isValidURL(testURL string) bool {
-	parsedURL, err := url.Parse(testURL)
-	return err == nil && parsedURL.Scheme != "" && parsedURL.Host != ""
 }

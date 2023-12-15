@@ -29,7 +29,6 @@ const (
 )
 
 var (
-	ErrMissingExecClientEnvVar  = fmt.Errorf("environment variable %s is not set, but exec layer client config from env var was requested", EXEC_CLIENT_ENV_VAR_NAME)
 	ErrMissingConsensusType     = errors.New("consensus type is required")
 	ErrMissingExecutionLayer    = errors.New("execution layer is required")
 	ErrMissingConsensusLayer    = errors.New("consensus layer is required for PoS")
@@ -376,7 +375,7 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 	en.DockerNetworkNames = networkNames
 	net.ChainID = int64(en.EthereumChainConfig.ChainID)
 	// use a higher value than the default, because eth2 is slower than dev-mode eth1
-	net.Timeout = blockchain.JSONStrDuration{Duration: time.Duration(4 * time.Minute)}
+	net.Timeout = blockchain.StrDuration{Duration: time.Duration(4 * time.Minute)}
 	net.FinalityTag = true
 	net.FinalityDepth = 0
 
