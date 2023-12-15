@@ -210,11 +210,15 @@ func (h *LokiLogHandler) Init(c *ContainerLogConsumer) error {
 	h.loggingConfig = c.ls.loggingConfig
 
 	if c.ls.loki == nil {
+		if h.loggingConfig.Loki == nil {
+			return errors.New("Loki config is not set in logging config")
+		}
+
 		waspConfig := wasp.NewEnvLokiConfig()
-		waspConfig.TenantID = *h.loggingConfig.LokiTenantId
-		waspConfig.URL = *h.loggingConfig.LokiUrl
-		if h.loggingConfig.LokiBasicAuth != nil {
-			waspConfig.BasicAuth = *h.loggingConfig.LokiBasicAuth
+		waspConfig.TenantID = *h.loggingConfig.Loki.LokiTenantId
+		waspConfig.URL = *h.loggingConfig.Loki.LokiUrl
+		if h.loggingConfig.Loki.LokiBasicAuth != nil {
+			waspConfig.BasicAuth = *h.loggingConfig.Loki.LokiBasicAuth
 		}
 		loki, err := wasp.NewLokiClient(waspConfig)
 		if err != nil {
