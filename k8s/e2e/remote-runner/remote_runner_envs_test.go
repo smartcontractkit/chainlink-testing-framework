@@ -87,12 +87,11 @@ func TestFailedTestLogic(t *testing.T) {
 	e := presets.EVMMinimalLocal(testEnvConfig)
 	err := e.Run()
 	if e.WillUseRemoteRunner() {
-		require.Error(t, err, "Should return an error")
+		require.True(t, e.Cfg.Test.Failed(), "Expecting test status to be failed")
 		return
 	}
 	t.Cleanup(func() {
 		assert.NoError(t, e.Shutdown())
-		assert.True(t, e.Cfg.Test.Failed())
 	})
 	require.NoError(t, err)
 	fmt.Println(environment.TEST_FAILED)
