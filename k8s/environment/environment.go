@@ -32,6 +32,7 @@ import (
 const (
 	COVERAGE_DIR       string = "cover"
 	FAILED_FUND_RETURN string = "FAILED_FUND_RETURN"
+	TEST_FAILED        string = "TEST_FAILED"
 )
 
 const (
@@ -120,6 +121,9 @@ type Config struct {
 	detachRunner bool
 	// fundReturnFailed the status of a fund return
 	fundReturnFailed bool
+	// indicates if the test failed or not
+	// this is necessary to distinguish between certain exit states based on how we want Kubernetes to behave
+	testFailed bool
 }
 
 func defaultEnvConfig() *Config {
@@ -695,6 +699,9 @@ func (m *Environment) RunCustomReadyConditions(customCheck *client.ReadyCheckDat
 		if m.Cfg.fundReturnFailed {
 			return fmt.Errorf("failed to return funds in remote runner")
 		}
+		if m.Cfg.testFailed {
+			return fmt.Errorf("test failed in remote runner")
+		}
 		m.Cfg.jobDeployed = true
 	} else {
 		if err := m.Fwd.Connect(m.Cfg.Namespace, "", m.Cfg.InsideK8s); err != nil {
@@ -976,6 +983,9 @@ func (m *Environment) Shutdown() error {
 	if m.Cfg.fundReturnFailed {
 		return nil
 	}
+	if m.Cfg.testFailed {
+		m.Cfg.Test.Fail()
+	}
 
 	// don't shutdown if this is a test running remotely
 	if m.Cfg.InsideK8s {
@@ -1024,6 +1034,10 @@ func DefaultJobLogFunction(e *Environment, message string) {
 	found := strings.Contains(message, FAILED_FUND_RETURN)
 	if found {
 		e.Cfg.fundReturnFailed = true
+	}
+	found = strings.Contains(message, TEST_FAILED)
+	if found {
+		e.Cfg.testFailed = true
 	}
 }
 
