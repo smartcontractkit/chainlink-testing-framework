@@ -1,0 +1,19 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: {{ .Release.Name }}-{{ .Values.besu.name }}-svc
+  labels:
+    release: {{ .Release.Name }}
+spec:
+  selector:
+    app: {{ .Release.Name }}-{{ .Values.besu.name }}
+  ports:
+    - name: http-rpc
+      port: {{ .Values.besu.ports.http }}
+      targetPort: {{ .Values.besu.ports.http }}
+    - name: ws-rpc
+      port: {{ .Values.besu.ports.ws }}
+      targetPort: {{ .Values.besu.ports.ws }}
+    - name: execution-rpc
+      port: {{ .Values.besu.ports.execution }}
+      targetPort: {{ .Values.besu.ports.execution }}   

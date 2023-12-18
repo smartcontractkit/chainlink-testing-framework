@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ .Release.Name }}-chain-state-storage
+  labels:
+    release: {{ .Release.Name }}      
+spec:
+  capacity:
+    storage: {{ .Values.storage.size }}
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Delete
+  storageClassName: {{ .Values.storage.class }}
+  hostPath:
+    # small hack for local, because files on host are not deleted and genesis generation fails due to previous state being still present
+    # path: /tmp/data-{{ now | date "200601021504" }}
+    path: /tmp/data
