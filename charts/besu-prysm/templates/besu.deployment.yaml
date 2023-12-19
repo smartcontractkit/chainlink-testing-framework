@@ -1,17 +1,17 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Release.Name }}-{{ .Values.besu.name }}
+  name: {{ .Release.Name }}-{{ .Values.excutionClient.name }}
   labels:
     release: {{ .Release.Name }}
 spec:
   selector:
     matchLabels:
-      app: {{ .Release.Name }}-{{ .Values.besu.name }}
+      app: {{ .Release.Name }}-{{ .Values.excutionClient.name }}
   template:
     metadata:
       labels:
-        app: {{ .Release.Name }}-{{ .Values.besu.name }}
+        app: {{ .Release.Name }}-{{ .Values.excutionClient.name }}
         release: {{ .Release.Name }}
     spec:
       affinity:
@@ -33,12 +33,12 @@ spec:
       - name: {{ .Release.Name }}-genesis-config
         configMap:
           name: {{ .Release.Name }}-ethereum-genesis-generator-config       
-      - name: {{ .Release.Name }}-besu-config
+      - name: {{ .Release.Name }}-after-genesis-helper-config
         configMap:
-          name: {{ .Release.Name }}-besu-config          
+          name: {{ .Release.Name }}-after-genesis-helper-config
       containers:
-        - name: {{ .Values.besu.name }}
-          image: {{ .Values.besu.image.repository }}:{{ .Values.besu.image.tag }}
+        - name: {{ .Values.excutionClient.name }}
+          image: {{ .Values.excutionClient.image.repository }}:{{ .Values.excutionClient.image.tag }}
           imagePullPolicy: {{ .Values.imagePullPolicy }}
           env:
             - name: JAVA_OPTS
@@ -50,48 +50,48 @@ spec:
             - "--host-allowlist=*"
             - "--rpc-http-enabled=true"
             - "--rpc-http-host=0.0.0.0"
-            - "--rpc-http-port={{ .Values.besu.ports.http }}"
+            - "--rpc-http-port={{ .Values.excutionClient.ports.http }}"
             - "--rpc-http-api=ADMIN,CLIQUE,ETH,NET,DEBUG,TXPOOL,ENGINE,TRACE,WEB3"
             - "--rpc-http-cors-origins=*"
             - "--rpc-ws-enabled=true"
             - "--rpc-ws-host=0.0.0.0"
-            - "--rpc-ws-port={{ .Values.besu.ports.ws }}"
+            - "--rpc-ws-port={{ .Values.excutionClient.ports.ws }}"
             - "--rpc-ws-api=ADMIN,CLIQUE,ETH,NET,DEBUG,TXPOOL,ENGINE,TRACE,WEB3"
             - "--engine-rpc-enabled=true"            
             - "--engine-jwt-secret={{ .Values.shared.configDataDir }}/{{ .Values.shared.jwtFile }}"
             - "--engine-host-allowlist=*"
-            - "--engine-rpc-port={{ .Values.besu.ports.execution }}"
+            - "--engine-rpc-port={{ .Values.excutionClient.ports.execution }}"
             - "--sync-mode=FULL"
             - "--data-storage-format=BONSAI"
             - "--rpc-tx-feecap=0"                  
-            - "--logging={{ .Values.besu.logging.level }}"
+            - "--logging={{ .Values.excutionClient.logging.level }}"
             - "--kzg-trusted-setup=/data/custom_config_data/trusted_setup.txt"
           resources:
             requests:
-              memory: {{ .Values.besu.resources.requests.memory }}
-              cpu: {{ .Values.besu.resources.requests.cpu }}
+              memory: {{ .Values.excutionClient.resources.requests.memory }}
+              cpu: {{ .Values.excutionClient.resources.requests.cpu }}
             limits:
-              memory: {{ .Values.besu.resources.limits.memory }}
-              cpu: {{ .Values.besu.resources.limits.cpu }}
+              memory: {{ .Values.excutionClient.resources.limits.memory }}
+              cpu: {{ .Values.excutionClient.resources.limits.cpu }}
           ports:
             - name: http-rpc
-              containerPort: {{ .Values.besu.ports.http }}
+              containerPort: {{ .Values.excutionClient.ports.http }}
             - name: ws-rpc
-              containerPort: {{ .Values.besu.ports.ws }}
+              containerPort: {{ .Values.excutionClient.ports.ws }}
             - name: execution-rpc
-              containerPort: {{ .Values.besu.ports.execution }}
+              containerPort: {{ .Values.excutionClient.ports.execution }}
             - name: discovery-udp
-              containerPort: {{ .Values.besu.ports.discovery }}
+              containerPort: {{ .Values.excutionClient.ports.discovery }}
               protocol: UDP
             - name: discovery-tcp
-              containerPort: {{ .Values.besu.ports.discovery }}              
+              containerPort: {{ .Values.excutionClient.ports.discovery }}              
           volumeMounts:            
             - name: {{ .Release.Name }}-chain-state
               mountPath: /data
           readinessProbe:
             httpGet:
               path: /
-              port: {{ .Values.besu.ports.http }}
+              port: {{ .Values.excutionClient.ports.http }}
             initialDelaySeconds: 50
             periodSeconds: 5        
             failureThreshold: 2
@@ -99,54 +99,10 @@ spec:
           livenessProbe:
             httpGet:
               path: /
-              port: {{ .Values.besu.ports.http }}
+              port: {{ .Values.excutionClient.ports.http }}
             initialDelaySeconds: 50
             periodSeconds: 5        
             failureThreshold: 2
             timeoutSeconds: 120
-
-      initContainers:
-        - name: {{ .Release.Name }}-generate-val-keys
-          image: "{{ .Values.valKeys.image.repository }}:{{ .Values.valKeys.image.tag }}"
-          imagePullPolicy: "{{ .Values.imagePullPolicy }}"   
-          args:
-            - "keystores"
-            - "--out-loc=/app/generated/val_keys"
-            - "--insecure"
-            - "--prysm-pass={{ .Values.shared.password }}"
-            - "--source-mnemonic={{ .Values.shared.mnemonic }}"
-            - "--source-min=0"
-            - "--source-max={{ .Values.prysm.shared.validators }}"
-          volumeMounts:
-            - name: {{ .Release.Name }}-chain-state
-              mountPath: /app/generated
-        - name: {{ .Release.Name }}-ethereum-genesis-generator
-          image: "{{ .Values.genesis.image.repository }}:{{ .Values.genesis.image.tag }}"
-          imagePullPolicy: "{{ .Values.imagePullPolicy }}"      
-          command: ["/bin/sh","/entrypoint.sh"]
-          workingDir: /
-          volumeMounts:
-            - name: {{ .Release.Name }}-chain-state
-              mountPath: /data
-            - name: {{ .Release.Name }}-genesis-config
-              mountPath: values_template.env
-              subPath: values_template.env
-            - name: {{ .Release.Name }}-genesis-config
-              mountPath: genesis-config.yaml        
-              subPath: genesis-config.yaml
-            - name: {{ .Release.Name }}-genesis-config
-              mountPath: config.yaml               
-              subPath: config.yaml               
-            - name: {{ .Release.Name }}-genesis-config
-              mountPath: entrypoint.sh
-              subPath: entrypoint.sh
-        - name: {{ .Release.Name }}-after-gensis-helper
-          image: "{{ .Values.busybox.image.repository }}:{{ .Values.busybox.image.tag }}"
-          imagePullPolicy: "{{ .Values.imagePullPolicy }}"      
-          command: ["/bin/sh","/helper_script.sh"]
-          volumeMounts:       
-            - name: {{ .Release.Name }}-chain-state
-              mountPath: /data             
-            - name: {{ .Release.Name }}-besu-config
-              mountPath: helper_script.sh
-              subPath: helper_script.sh
+      
+{{- include "eth2-common.templates.execution-client.init-containers" . | nindent 6 }}

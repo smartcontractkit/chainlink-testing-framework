@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ .Release.Name }}-besu-config
+  name: {{ .Release.Name }}-after-genesis-helper-config
 data:
   helper_script.sh: |-
     #!/bin/bash

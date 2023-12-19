@@ -1,0 +1,69 @@
+{{/* Generate validator keys and genesis before launching the execution layer client */}}
+{{- define "eth2-common.templates.execution-client.init-containers" }}
+initContainers:
+  - name: {{ .Release.Name }}-generate-val-keys
+    image: "{{ .Values.valKeys.image.repository }}:{{ .Values.valKeys.image.tag }}"
+    imagePullPolicy: "{{ .Values.imagePullPolicy }}"   
+    args:
+      - "keystores"
+      - "--out-loc=/app/generated/val_keys"
+      - "--insecure"
+      - "--prysm-pass={{ .Values.shared.password }}"
+      - "--source-mnemonic={{ .Values.shared.mnemonic }}"
+      - "--source-min=0"
+      - "--source-max={{ .Values.genesis.values.validatorCount }}"
+    volumeMounts:
+      - name: {{ .Release.Name }}-chain-state
+        mountPath: /app/generated
+  - name: {{ .Release.Name }}-ethereum-genesis-generator
+    image: "{{ .Values.genesis.image.repository }}:{{ .Values.genesis.image.tag }}"
+    imagePullPolicy: "{{ .Values.imagePullPolicy }}"      
+    command: ["/bin/sh","/entrypoint.sh"]
+    workingDir: /
+    volumeMounts:
+      - name: {{ .Release.Name }}-chain-state
+        mountPath: /data
+      - name: {{ .Release.Name }}-genesis-config
+        mountPath: values_template.env
+        subPath: values_template.env
+      - name: {{ .Release.Name }}-genesis-config
+        mountPath: genesis-config.yaml        
+        subPath: genesis-config.yaml
+      - name: {{ .Release.Name }}-genesis-config
+        mountPath: config.yaml               
+        subPath: config.yaml               
+      - name: {{ .Release.Name }}-genesis-config
+        mountPath: entrypoint.sh
+        subPath: entrypoint.sh
+  - name: {{ .Release.Name }}-after-gensis-helper
+    image: "{{ .Values.busybox.image.repository }}:{{ .Values.busybox.image.tag }}"
+    imagePullPolicy: "{{ .Values.imagePullPolicy }}"      
+    command: ["/bin/sh","/helper_script.sh"]
+    volumeMounts:       
+      - name: {{ .Release.Name }}-chain-state
+        mountPath: /data             
+      - name: {{ .Release.Name }}-after-genesis-helper-config
+        mountPath: helper_script.sh
+        subPath: helper_script.sh
+{{- end }}        
+
+{{/* Wait for execution layer client to be ready */}}
+{{- define "eth2-common.templates.consensus-client.init-containers" }}
+initContainers:
+  - name: {{ .Release.Name }}-wait-for-execution-client
+    image: {{ .Values.busybox.image.repository }}:{{ .Values.busybox.image.tag }}
+    imagePullPolicy: {{ .Values.imagePullPolicy }} 
+    command:
+    - "/bin/sh"
+    - "-c"
+    - >
+      timeout 900 sh -c '
+        start_time=$(date +%s)
+        while ! nc -z -v {{ .Release.Name }}-{{ .Values.excutionClient.name }}-svc {{ .Values.excutionClient.ports.execution }}; do
+          current_time=$(date +%s)
+          elapsed_time=$((current_time - start_time))
+          remaining_time=$((900 - elapsed_time))
+          echo "Waiting for  {{ .Values.excutionClient.ports.execution }} (Remaining time: $remaining_time seconds)..."
+          sleep 2
+        done'
+{{- end }}

@@ -36,6 +36,11 @@ shared:
       slotsPerEpoch: 4
       # how many seconds in the future should the genesis time be set (this has to be after beacon chain starts )
       delaySeconds: 20        
+      # how many validators should the network have      
+      validatorCount: 8       
+      # array of adddresses that should be prefunded with ETH
+      preminedAddresses:
+        - "f39fd6e51aad88f6f4ce6ab8827279cfffb92266"      
 prysm: 
   shared: 
     # fee recipient for block validation
@@ -44,9 +49,6 @@ prysm:
     validators: 8
     # how many seconds should initContainers or beacon chain and validator wait for Geth to start
     gethInitTimeoutSeconds: 600 
-    # array of adddresses that should be prefunded with ETH
-    preminedAddresses:
-      - "f39fd6e51aad88f6f4ce6ab8827279cfffb92266"
 storage:
   # storage class to use for persistent volume that will be used to share data betwen containers
   class: hostpath

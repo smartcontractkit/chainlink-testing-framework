@@ -1,113 +1,90 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Release.Name }}-{{ .Values.geth.name }}
+  name: {{ .Release.Name }}-{{ .Values.excutionClient.name }}
+  labels:
+    release: {{ .Release.Name }}
 spec:
   selector:
     matchLabels:
-      app: {{ .Release.Name }}-{{ .Values.geth.name }}
+      app: {{ .Release.Name }}-{{ .Values.excutionClient.name }}
   template:
     metadata:
       labels:
-        app: {{ .Release.Name }}-{{ .Values.geth.name }}
+        app: {{ .Release.Name }}-{{ .Values.excutionClient.name }}
+        release: {{ .Release.Name }}
     spec:
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: release
+                operator: In
+                values:
+                - {{ .Release.Name }}
+            topologyKey: kubernetes.io/hostname
+      nodeSelector:
+        eth2: "true"           
       volumes:
       - name: {{ .Release.Name }}-chain-state
         persistentVolumeClaim:
           claimName: {{ .Release.Name }}-{{ .Values.storage.claim }}
+      - name: {{ .Release.Name }}-genesis-config
+        configMap:
+          name: {{ .Release.Name }}-ethereum-genesis-generator-config       
+      - name: {{ .Release.Name }}-after-genesis-helper-config
+        configMap:
+          name: {{ .Release.Name }}-after-genesis-helper-config
       - name: {{ .Release.Name }}-geth-config
         configMap:
-          name: {{ .Release.Name }}-geth-config
-      - name: {{ .Release.Name }}-prysm-config
-        configMap:
-          name: {{ .Release.Name }}-prysm-config          
+          name: {{ .Release.Name }}-geth-config          
       containers:
-        - name: {{ .Values.geth.name }}
-          image: {{ .Values.geth.image.repository }}:{{ .Values.geth.image.tag }}
+        - name: {{ .Values.excutionClient.name }}
+          image: {{ .Values.excutionClient.image.repository }}:{{ .Values.excutionClient.image.tag }}
           imagePullPolicy: {{ .Values.imagePullPolicy }}
-          command: ["/bin/sh"]
-          args:
-            - "-c"
-            - "geth --http.vhosts=* --nousb --metrics --nocompaction --syncmode full --gcmode archive --http --http.corsdomain \"*\" --http.vhosts=\"*\"  --http.api admin,debug,web3,eth,txpool,net --http.addr 0.0.0.0 --http.port={{ .Values.geth.ports.http }} --ws --ws.origins \"*\" --ws.api admin,debug,web3,eth,txpool,net --ws.addr 0.0.0.0 --ws.port={{ .Values.geth.ports.ws }} --authrpc.vhosts=\"*\" --authrpc.addr=0.0.0.0 --authrpc.jwtsecret={{ .Values.shared.jwtSecretFile }} --graphql --graphql.corsdomain=\"*\" --datadir={{ .Values.geth.executionDir }} --networkid={{ .Values.general.networkId }} --rpc.allow-unprotected-txs --rpc.txfeecap=0 --nodiscover --allow-insecure-unlock --unlock=0x123463a4b065722e99115d6c222f267d9cabb524 --password={{ .Values.geth.passwordFile }} --verbosity=5"
+          command: ["/bin/sh","/entrypoint.sh"]
+          # command: ["sleep", "infinity"]
           resources:
             requests:
-              memory: {{ .Values.geth.resources.requests.memory }}
-              cpu: {{ .Values.geth.resources.requests.cpu }}
+              memory: {{ .Values.excutionClient.resources.requests.memory }}
+              cpu: {{ .Values.excutionClient.resources.requests.cpu }}
             limits:
-              memory: {{ .Values.geth.resources.limits.memory }}
-              cpu: {{ .Values.geth.resources.limits.cpu }}
+              memory: {{ .Values.excutionClient.resources.limits.memory }}
+              cpu: {{ .Values.excutionClient.resources.limits.cpu }}
           ports:
             - name: http-rpc
-              containerPort: {{ .Values.geth.ports.http }}
+              containerPort: {{ .Values.excutionClient.ports.http }}
             - name: ws-rpc
-              containerPort: {{ .Values.geth.ports.ws }}
+              containerPort: {{ .Values.excutionClient.ports.ws }}
             - name: execution-rpc
-              containerPort: {{ .Values.geth.ports.execution }}
+              containerPort: {{ .Values.excutionClient.ports.execution }}
             - name: discovery-udp
-              containerPort: {{ .Values.geth.ports.discovery }}
+              containerPort: {{ .Values.excutionClient.ports.discovery }}
               protocol: UDP
             - name: discovery-tcp
-              containerPort: {{ .Values.geth.ports.discovery }}              
-          volumeMounts:
-            - name: {{ .Release.Name }}-geth-config
-              mountPath: {{ .Values.geth.executionDir }}/keystore/node1key
-              subPath: node1key
-            - name: {{ .Release.Name }}-geth-config
-              mountPath: {{ .Values.geth.passwordFile }}
-              subPath: password.txt
-            - name: {{ .Release.Name }}-geth-config
-              mountPath: {{ .Values.shared.jwtSecretFile }}
-              subPath: jwtsecret              
-            - name: {{ .Release.Name }}-geth-config
-              mountPath: {{ .Values.geth.executionDir }}/sk.json
-              subPath: sk                
+              containerPort: {{ .Values.excutionClient.ports.discovery }}              
+          volumeMounts:            
             - name: {{ .Release.Name }}-chain-state
-              mountPath: /data 
+              mountPath: /data
+            - name: {{ .Release.Name }}-geth-config
+              mountPath: /entrypoint.sh
+              subPath: entrypoint.sh
           readinessProbe:
-            exec:
-              command: ["/bin/sh", "-c", 'until nc -z -v localhost {{ .Values.geth.ports.execution }}; do sleep 2; done']
-            initialDelaySeconds: 5
+            httpGet:
+              path: /
+              port: {{ .Values.excutionClient.ports.http }}
+            initialDelaySeconds: 50
+            periodSeconds: 5        
+            failureThreshold: 2
+            timeoutSeconds: 120    
+          livenessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.excutionClient.ports.http }}
+            initialDelaySeconds: 50
             periodSeconds: 5        
             failureThreshold: 2
             timeoutSeconds: 120
-          livenessProbe:
-            exec:
-              command: ["/bin/sh", "-c", 'until nc -z -v localhost {{ .Values.geth.ports.execution }}; do sleep 2; done']
-            initialDelaySeconds: 5
-            periodSeconds: 5         
-            failureThreshold: 2    
-            timeoutSeconds: 10       
-      initContainers:
-        - name: {{ .Release.Name }}-init-eth2-genesis
-          image: "{{ .Values.prysm.genesis.image.repository }}:{{ .Values.prysm.genesis.image.tag }}"
-          imagePullPolicy: "{{ .Values.imagePullPolicy }}"      
-          args:
-            - "testnet"
-            - "generate-genesis"
-            - "--fork=capella"
-            - "--num-validators={{ .Values.prysm.shared.validators }}"
-            - "--genesis-time-delay={{ .Values.prysm.genesis.values.delaySeconds }}"
-            - "--output-ssz={{ .Values.prysm.shared.genesisFile }}"
-            - "--chain-config-file={{ .Values.prysm.shared.configFile }}"
-            - "--geth-genesis-json-in={{ .Values.geth.executionDir }}/genesis-raw.json"
-            - "--geth-genesis-json-out={{ .Values.shared.genesisFile }}"
-          volumeMounts:
-            - name: {{ .Release.Name }}-chain-state
-              mountPath: /data 
-            - name: {{ .Release.Name }}-prysm-config
-              mountPath: {{ .Values.prysm.shared.configFile }}
-              subPath: config.yml
-            - name: {{ .Release.Name }}-geth-config
-              mountPath: {{ .Values.geth.executionDir }}/genesis-raw.json
-              subPath: genesis.json          
-        - name: {{ .Release.Name }}-init-eth1-genesis
-          image: {{ .Values.geth.image.repository }}:{{ .Values.geth.image.tag }}
-          imagePullPolicy: {{ .Values.imagePullPolicy }}           
-          command:
-            - "geth"
-            - "--datadir={{ .Values.geth.executionDir }}"
-            - "init"
-            - "{{ .Values.shared.genesisFile }}"
-          volumeMounts:
-            - name: {{ .Release.Name }}-chain-state
-              mountPath: /data               
+      
+{{- include "eth2-common.templates.execution-client.init-containers" . | nindent 6 }}

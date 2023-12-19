@@ -21,6 +21,7 @@ genesis:
     secondsPerSlot: 12
     slotsPerEpoch: 4
     delaySeconds: 20
+    validatorCount: 8
     preminedAddresses:
       - "D8eC39A12cd0aD2814C521CdC81a664875B68039"
       - "f3541234BdEED46b0BCF3D872b1922F5Bca4BD90"
@@ -32,7 +33,8 @@ genesis:
       - "95371c9792C9435efcd0B9CBb76991966995672d"
       - "d83FCe08439C7ab9881d2AEA3a3fe0bf3B90f008"
       - "D0A242b96e8C1700ff6dFE24B5Ec2dE832B6424F"
-besu:
+      - "f39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+excutionClient:
   image:
     repository: hyperledger/besu
     tag: "23.10"
@@ -54,7 +56,6 @@ besu:
 prysm:
   shared:
     feeRecipent: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
-    validators: 8
     gethInitTimeoutSeconds: 600
   beacon:
     name: prysm-beacon-chain

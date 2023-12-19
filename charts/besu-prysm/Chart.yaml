@@ -1,4 +1,8 @@
-apiVersion: v1
-description: Eth2 private network with Prysm and Besu
-name: eth2
-version: 0.0.1
+apiVersion: v2
+description: Eth2 private network with Besu and Prysm
+name: besu-prysm
+version: 0.1.0
+dependencies:
+  - name: eth2-common
+    version: 0.1.0
+    repository: "file://../eth2-common"

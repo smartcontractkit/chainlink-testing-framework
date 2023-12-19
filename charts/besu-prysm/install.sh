@@ -1,9 +1,9 @@
 #!/bin/sh
 # Delete PVC and PV
-# PVC_NAME="chain-state-claim"
-# PV_NAME="chain-state-storage"
-# kubectl delete pvc $PVC_NAME
-# kubectl delete pv $PV_NAME
+PVC_NAME="chain-state-claim"
+PV_NAME="chain-state-storage"
+kubectl delete pvc $PVC_NAME
+kubectl delete pv $PV_NAME
 
 param=$1
 

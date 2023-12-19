@@ -1,4 +1,4 @@
-{{- define "genesis.formatPreminedAddresses" }}
+{{- define "eth2-common.genesis.formatPreminedAddresses" }}
 {{- $addresses := . }}
 {{- if $addresses }}
 export PREMINE_ADDRS='

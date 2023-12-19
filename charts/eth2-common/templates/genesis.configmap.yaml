@@ -10,7 +10,7 @@ data:
     export CL_EXEC_BLOCK="0"
     export SLOT_DURATION_IN_SECONDS={{ .Values.genesis.values.secondsPerSlot }}
     export DEPOSIT_CONTRACT_BLOCK="0x0000000000000000000000000000000000000000000000000000000000000000"
-    export NUMBER_OF_VALIDATORS={{ .Values.prysm.shared.validators }}
+    export NUMBER_OF_VALIDATORS={{ .Values.genesis.values.validatorCount }}
     export GENESIS_FORK_VERSION="0x10000038"
     export ALTAIR_FORK_VERSION="0x20000038"
     export BELLATRIX_FORK_VERSION="0x30000038"
@@ -27,7 +27,7 @@ data:
     export MAX_CHURN=8
     export EJECTION_BALANCE=16000000000
     export SLOTS_PER_EPOCH={{ .Values.genesis.values.slotsPerEpoch }}
-    {{- include "genesis.formatPreminedAddresses" .Values.genesis.values.preminedAddresses | nindent 4 }}
+    {{- include "eth2-common.genesis.formatPreminedAddresses" .Values.genesis.values.preminedAddresses | nindent 4 }}
   config.yaml: |-
     # Extends the mainnet preset
     PRESET_BASE: 'mainnet'
@@ -182,7 +182,7 @@ data:
     deneb_fork_epoch: ${DENEB_FORK_EPOCH}
   entrypoint.sh: |-        
     genesis_delay="{{ .Values.genesis.values.delaySeconds}}"
-    validator_count="{{ .Values.prysm.shared.validators }}"
+    validator_count="{{ .Values.genesis.values.validatorCount }}"
 
     validator_based_genesis_delay=$((validator_count * 5))
     current_unix_timestamp=$(date +%s)
