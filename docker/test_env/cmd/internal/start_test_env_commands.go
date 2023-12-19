@@ -34,6 +34,7 @@ const (
 	Flag_ExecutionLayer      = "execution-layer"
 	Flag_WaitForFinalization = "wait-for-finalization"
 	Flag_ChainID             = "chain-id"
+	Flag_DockerImage         = "docker-image"
 )
 
 func init() {
@@ -58,6 +59,13 @@ func init() {
 		"e",
 		"geth",
 		"execution layer (geth, nethermind, besu or erigon)",
+	)
+
+	StartTestEnvCmd.PersistentFlags().StringP(
+		Flag_DockerImage,
+		"i",
+		"",
+		"docker image of execution layer client",
 	)
 
 	StartTestEnvCmd.PersistentFlags().BoolP(
@@ -138,6 +146,11 @@ func startBesuPrysmChainE(cmd *cobra.Command, args []string) error {
 		consensusLayerToUse = ""
 	}
 
+	dockerImage, err := flags.GetString(Flag_DockerImage)
+	if err != nil {
+		return err
+	}
+
 	builder := test_env.NewEthereumNetworkBuilder()
 	builder = *builder.WithConsensusType(test_env.ConsensusType(consensusType)).
 		WithConsensusLayer(consensusLayerToUse).
@@ -151,6 +164,10 @@ func startBesuPrysmChainE(cmd *cobra.Command, args []string) error {
 
 	if waitForFinalization {
 		builder = *builder.WithWaitingForFinalization()
+	}
+
+	if dockerImage != "" {
+		builder = *builder.WithExecClientDockerImage(dockerImage)
 	}
 
 	cfg, err := builder.

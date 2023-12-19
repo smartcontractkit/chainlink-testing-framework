@@ -22,9 +22,8 @@ import (
 )
 
 const (
-	CONFIG_ENV_VAR_NAME                   = "PRIVATE_ETHEREUM_NETWORK_CONFIG_PATH"
-	EXEC_CLIENT_ENV_VAR_NAME              = "ETH2_EL_CLIENT"
-	EXEC_CLIENT_DOCKER_IMAGE_ENV_VAR_NAME = "ETH2_EL_CLIENT_DOCKER_IMAGE"
+	CONFIG_ENV_VAR_NAME      = "PRIVATE_ETHEREUM_NETWORK_CONFIG_PATH"
+	EXEC_CLIENT_ENV_VAR_NAME = "ETH2_EL_CLIENT"
 )
 
 var (
@@ -59,18 +58,18 @@ const (
 )
 
 type EthereumNetworkBuilder struct {
-	t                                     *testing.T
-	dockerNetworks                        []string
-	consensusType                         ConsensusType
-	consensusLayer                        *ConsensusLayer
-	executionLayer                        ExecutionLayer
-	ethereumChainConfig                   *EthereumChainConfig
-	existingConfig                        *EthereumNetwork
-	addressesToFund                       []string
-	waitForFinalization                   bool
-	existingFromEnvVar                    bool
-	execClientFromEnvVar                  bool
-	customExecClientDockerImageFromEnvVar bool
+	t                     *testing.T
+	dockerNetworks        []string
+	consensusType         ConsensusType
+	consensusLayer        *ConsensusLayer
+	executionLayer        ExecutionLayer
+	ethereumChainConfig   *EthereumChainConfig
+	existingConfig        *EthereumNetwork
+	addressesToFund       []string
+	waitForFinalization   bool
+	existingFromEnvVar    bool
+	execClientFromEnvVar  bool
+	execClientDockerImage *string
 }
 
 type EthereumNetworkParticipant struct {
@@ -126,8 +125,8 @@ func (b *EthereumNetworkBuilder) WithExecClientFromEnvVar() *EthereumNetworkBuil
 	return b
 }
 
-func (b *EthereumNetworkBuilder) WithExecClientDockerImageFromEnvVar() *EthereumNetworkBuilder {
-	b.customExecClientDockerImageFromEnvVar = true
+func (b *EthereumNetworkBuilder) WithExecClientDockerImage(image string) *EthereumNetworkBuilder {
+	b.execClientDockerImage = &image
 	return b
 }
 
@@ -153,15 +152,7 @@ func (b *EthereumNetworkBuilder) buildNetworkConfig() EthereumNetwork {
 		n.Containers = b.existingConfig.Containers
 	}
 
-	if b.customExecClientDockerImageFromEnvVar {
-		image := os.Getenv(EXEC_CLIENT_DOCKER_IMAGE_ENV_VAR_NAME)
-		if image != "" {
-			n.execClientDockerImage = &image
-		} else {
-			panic(fmt.Errorf("environment variable %s is not set, but build with docker image from env var was requested", EXEC_CLIENT_DOCKER_IMAGE_ENV_VAR_NAME))
-		}
-	}
-
+	n.execClientDockerImage = b.execClientDockerImage
 	n.WaitForFinalization = b.waitForFinalization
 	n.EthereumChainConfig = b.ethereumChainConfig
 	n.t = b.t
