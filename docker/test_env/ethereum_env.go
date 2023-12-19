@@ -22,8 +22,9 @@ import (
 )
 
 const (
-	CONFIG_ENV_VAR_NAME      = "PRIVATE_ETHEREUM_NETWORK_CONFIG_PATH"
-	EXEC_CLIENT_ENV_VAR_NAME = "ETH2_EL_CLIENT"
+	CONFIG_ENV_VAR_NAME                   = "PRIVATE_ETHEREUM_NETWORK_CONFIG_PATH"
+	EXEC_CLIENT_ENV_VAR_NAME              = "ETH2_EL_CLIENT"
+	EXEC_CLIENT_DOCKER_IMAGE_ENV_VAR_NAME = "ETH2_EL_CLIENT_DOCKER_IMAGE"
 )
 
 var (
@@ -58,17 +59,18 @@ const (
 )
 
 type EthereumNetworkBuilder struct {
-	t                    *testing.T
-	dockerNetworks       []string
-	consensusType        ConsensusType
-	consensusLayer       *ConsensusLayer
-	executionLayer       ExecutionLayer
-	ethereumChainConfig  *EthereumChainConfig
-	existingConfig       *EthereumNetwork
-	addressesToFund      []string
-	waitForFinalization  bool
-	existingFromEnvVar   bool
-	execClientFromEnvVar bool
+	t                                     *testing.T
+	dockerNetworks                        []string
+	consensusType                         ConsensusType
+	consensusLayer                        *ConsensusLayer
+	executionLayer                        ExecutionLayer
+	ethereumChainConfig                   *EthereumChainConfig
+	existingConfig                        *EthereumNetwork
+	addressesToFund                       []string
+	waitForFinalization                   bool
+	existingFromEnvVar                    bool
+	execClientFromEnvVar                  bool
+	customExecClientDockerImageFromEnvVar bool
 }
 
 type EthereumNetworkParticipant struct {
@@ -124,6 +126,11 @@ func (b *EthereumNetworkBuilder) WithExecClientFromEnvVar() *EthereumNetworkBuil
 	return b
 }
 
+func (b *EthereumNetworkBuilder) WithExecClientDockerImageFromEnvVar() *EthereumNetworkBuilder {
+	b.customExecClientDockerImageFromEnvVar = true
+	return b
+}
+
 func (b *EthereumNetworkBuilder) WithTest(t *testing.T) *EthereumNetworkBuilder {
 	b.t = t
 	return b
@@ -144,6 +151,15 @@ func (b *EthereumNetworkBuilder) buildNetworkConfig() EthereumNetwork {
 	if b.existingConfig != nil {
 		n.isRecreated = true
 		n.Containers = b.existingConfig.Containers
+	}
+
+	if b.customExecClientDockerImageFromEnvVar {
+		image := os.Getenv(EXEC_CLIENT_DOCKER_IMAGE_ENV_VAR_NAME)
+		if image != "" {
+			n.execClientDockerImage = &image
+		} else {
+			panic(fmt.Errorf("environment variable %s is not set, but build with docker image from env var was requested", EXEC_CLIENT_DOCKER_IMAGE_ENV_VAR_NAME))
+		}
 	}
 
 	n.WaitForFinalization = b.waitForFinalization
@@ -260,17 +276,18 @@ func (b *EthereumNetworkBuilder) validate() error {
 }
 
 type EthereumNetwork struct {
-	ConsensusType        ConsensusType             `json:"consensus_type"`
-	ConsensusLayer       *ConsensusLayer           `json:"consensus_layer"`
-	ExecutionLayer       ExecutionLayer            `json:"execution_layer"`
-	DockerNetworkNames   []string                  `json:"docker_network_names"`
-	Containers           EthereumNetworkContainers `json:"containers"`
-	WaitForFinalization  bool                      `json:"wait_for_finalization"`
-	GeneratedDataHostDir string                    `json:"generated_data_host_dir"`
-	ValKeysDir           string                    `json:"val_keys_dir"`
-	EthereumChainConfig  *EthereumChainConfig      `json:"ethereum_chain_config"`
-	isRecreated          bool
-	t                    *testing.T
+	ConsensusType         ConsensusType             `json:"consensus_type"`
+	ConsensusLayer        *ConsensusLayer           `json:"consensus_layer"`
+	ExecutionLayer        ExecutionLayer            `json:"execution_layer"`
+	DockerNetworkNames    []string                  `json:"docker_network_names"`
+	Containers            EthereumNetworkContainers `json:"containers"`
+	WaitForFinalization   bool                      `json:"wait_for_finalization"`
+	GeneratedDataHostDir  string                    `json:"generated_data_host_dir"`
+	ValKeysDir            string                    `json:"val_keys_dir"`
+	EthereumChainConfig   *EthereumChainConfig      `json:"ethereum_chain_config"`
+	isRecreated           bool
+	execClientDockerImage *string
+	t                     *testing.T
 }
 
 func (en *EthereumNetwork) Start() (blockchain.EVMNetwork, RpcProvider, error) {
@@ -372,6 +389,11 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 	}
 
 	client.WithTestInstance(en.t)
+	if en.execClientDockerImage != nil {
+		if n, ok := client.(*Nethermind); ok {
+			n.WithImage(*en.execClientDockerImage)
+		}
+	}
 
 	net, err = client.StartContainer()
 	if err != nil {
