@@ -73,11 +73,11 @@ prysm:
       status: 8080
     resources:
       requests:
-        cpu: 200m
-        memory: 528Mi
+        cpu: 512m
+        memory: 1Gi
       limits:
-        cpu: 200m
-        memory: 528Mi
+        cpu: 512m
+        memory: 1Gi
   validator:
     name: prysm-validator
     image:

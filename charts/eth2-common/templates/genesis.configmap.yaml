@@ -204,3 +204,7 @@ data:
     time_diff=$(($genesis_timestamp - current_timestamp))
     echo "More or less $time_diff seconds from now"
     ./work/entrypoint.sh all
+
+    echo "Fixing bug with Besu's hardcoded chain id"
+    cd /data/custom_config_data
+    jq '.config.chainId = {{ .Values.general.networkId }}' besu.json > tmpfile && mv tmpfile besu.json

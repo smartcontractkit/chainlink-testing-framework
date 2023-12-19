@@ -33,5 +33,6 @@ shared:
   jwtFile: jwtSecret
 
 storage:
+  class: hostpath
   claim: chain-state-claim
   size: 2Gi  

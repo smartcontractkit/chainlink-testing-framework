@@ -18,9 +18,9 @@ genesis:
     repository: tofelb/ethereum-genesis-generator
     tag: 2.0.4-slots-per-epoch
   values:
-    secondsPerSlot: 12
+    secondsPerSlot: 20 
     slotsPerEpoch: 4
-    delaySeconds: 20
+    delaySeconds: 90
     validatorCount: 8
     preminedAddresses:
       - "D8eC39A12cd0aD2814C521CdC81a664875B68039"
@@ -69,11 +69,11 @@ prysm:
       status: 8080
     resources:
       requests:
-        cpu: 200m
-        memory: 528Mi
+        cpu: 512m
+        memory: 1Gi
       limits:
-        cpu: 200m
-        memory: 528Mi
+        cpu: 512m
+        memory: 1Gi
   validator:
     name: prysm-validator
     image:
@@ -103,5 +103,6 @@ ready:
       cpu: 50m
       memory: 256Mi
 storage:
+  class: hostpath
   claim: chain-state-claim
   size: 2Gi
