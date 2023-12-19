@@ -63,7 +63,7 @@ initContainers:
           current_time=$(date +%s)
           elapsed_time=$((current_time - start_time))
           remaining_time=$((900 - elapsed_time))
-          echo "Waiting for  {{ .Values.excutionClient.ports.execution }} (Remaining time: $remaining_time seconds)..."
+          echo "Waiting for {{ .Values.excutionClient.name }} (Remaining time: $remaining_time seconds)..."
           sleep 2
         done'
 {{- end }}

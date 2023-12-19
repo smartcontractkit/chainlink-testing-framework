@@ -21,6 +21,7 @@ genesis:
       - "95371c9792C9435efcd0B9CBb76991966995672d"
       - "d83FCe08439C7ab9881d2AEA3a3fe0bf3B90f008"
       - "D0A242b96e8C1700ff6dFE24B5Ec2dE832B6424F"  
+      - "f39Fd6e51aad88F6F4ce6aB8827279cffFb92266"      
 
 shared:
   mnemonic: giant issue aisle success illegal bike spike question tent bar rely arctic volcano long crawl hungry vocal artwork sniff fantasy very lucky have athlete
@@ -32,6 +33,5 @@ shared:
   jwtFile: jwtSecret
 
 storage:
-  class: hostpath
   claim: chain-state-claim
   size: 2Gi  
