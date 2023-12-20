@@ -10,6 +10,7 @@ genesis:
     slotsPerEpoch: 4
     delaySeconds: 20
     validatorCount: 8
+    denebForkEpoch: 200
     preminedAddresses:
       - 'D8eC39A12cd0aD2814C521CdC81a664875B68039'
       - 'f3541234BdEED46b0BCF3D872b1922F5Bca4BD90'
@@ -30,7 +31,6 @@ shared:
   accountKeystoreFile: account_key
   accountPasswordFile: account_password.txt
   jwtFile: jwtSecret
-
 storage:
   class: hostpath
   claim: chain-state-claim

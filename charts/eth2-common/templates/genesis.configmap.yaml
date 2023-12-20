@@ -17,7 +17,7 @@ data:
     export CAPELLA_FORK_VERSION="0x40000038"
     export CAPELLA_FORK_EPOCH="0"
     export DENEB_FORK_VERSION="0x50000038"
-    export DENEB_FORK_EPOCH="500"
+    export DENEB_FORK_EPOCH="{{ .Values.genesis.values.denebForkEpoch }}"
     export ELECTRA_FORK_VERSION="0x60000038"
     export ELECTRA_FORK_EPOCH=""
     export WITHDRAWAL_TYPE="0x00"
@@ -42,7 +42,6 @@ data:
     MIN_GENESIS_TIME: $GENESIS_TIMESTAMP
     GENESIS_FORK_VERSION: $GENESIS_FORK_VERSION
     GENESIS_DELAY: $GENESIS_DELAY
-
 
     # Forking
     # ---------------------------------------------------------------
@@ -180,6 +179,7 @@ data:
     genesis_delay: ${GENESIS_DELAY}
     slot_duration_in_seconds: ${SLOT_DURATION_IN_SECONDS}
     deneb_fork_epoch: ${DENEB_FORK_EPOCH}
+    slots_per_epoch: ${SLOTS_PER_EPOCH}
   entrypoint.sh: |-        
     genesis_delay="{{ .Values.genesis.values.delaySeconds}}"
     validator_count="{{ .Values.genesis.values.validatorCount }}"
@@ -204,7 +204,3 @@ data:
     time_diff=$(($genesis_timestamp - current_timestamp))
     echo "More or less $time_diff seconds from now"
     ./work/entrypoint.sh all
-
-    echo "Fixing bug with Besu's hardcoded chain id"
-    cd /data/custom_config_data
-    jq '.config.chainId = {{ .Values.general.networkId }}' besu.json > tmpfile && mv tmpfile besu.json
