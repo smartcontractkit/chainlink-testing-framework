@@ -18,7 +18,7 @@ genesis:
     repository: tofelb/ethereum-genesis-generator
     tag: 2.0.4-slots-per-epoch
   values:
-    secondsPerSlot: 20 
+    secondsPerSlot: 20
     slotsPerEpoch: 4
     delaySeconds: 90
     validatorCount: 8

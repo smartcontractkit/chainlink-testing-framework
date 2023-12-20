@@ -5,4 +5,4 @@ version: 0.1.0
 dependencies:
   - name: eth2-common
     version: 0.1.0
-    repository: "file://../eth2-common"
+    repository: 'file://../eth2-common'
