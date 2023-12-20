@@ -194,6 +194,7 @@ func (g *Nethermind) getContainerRequest(networks []string) (*tc.ContainerReques
 			"--Network.MaxActivePeers=0",
 			"--Network.OnlyStaticPeers=true",
 			"--HealthChecks.Enabled=true", // default slug /health
+			"--log=DEBUG",
 		},
 		Mounts: tc.ContainerMounts{
 			tc.ContainerMount{
