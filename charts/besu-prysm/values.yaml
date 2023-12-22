@@ -103,6 +103,5 @@ ready:
       cpu: 50m
       memory: 256Mi
 storage:
-  class: hostpath
   claim: chain-state-claim
   size: 2Gi

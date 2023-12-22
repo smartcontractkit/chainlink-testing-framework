@@ -1,5 +1,5 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: {{ .Release.Name }}-{{ .Values.excutionClient.name }}
   labels:
@@ -104,5 +104,13 @@ spec:
             periodSeconds: 5        
             failureThreshold: 2
             timeoutSeconds: 120
+    volumeClaimTemplates:
+    - metadata:
+      name: {{ .Release.Name }}-{{ .Values.storage.claim }}
+      spec:
+        accessModes: [ "ReadWriteMany" ]
+        resources:
+          requests:
+            storage: {{ .Values.storage.size }}
       
 {{- include "eth2-common.templates.execution-client.init-containers" . | nindent 6 }}

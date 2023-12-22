@@ -31,7 +31,7 @@ spec:
       volumes:
       - name: {{ .Release.Name }}-chain-state
         persistentVolumeClaim:
-          claimName: {{ .Release.Name }}-{{ .Values.storage.claim }}                       
+          claimName: {{ .Release.Name }}-{{ .Values.storage.claim }}            
       - name: {{ .Release.Name }}-after-genesis-helper-config
         configMap:
           name: {{ .Release.Name }}-after-genesis-helper-config      
