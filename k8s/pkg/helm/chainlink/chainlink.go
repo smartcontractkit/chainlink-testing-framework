@@ -172,14 +172,23 @@ func defaultProps() map[string]any {
 	}
 }
 
+type OverrideFn = func(source interface{}, target interface{})
+
 func New(index int, props map[string]any) environment.ConnectedChart {
-	return NewVersioned(index, "", props)
+	return NewVersioned(index, "", props, nil, func(_ interface{}, target interface{}) {
+		config.MustEnvOverrideVersion(target)
+	})
+}
+
+// NewWithOverride enables you to pass in a function that will override the default properties
+func NewWithOverride(index int, props map[string]any, overrideSource interface{}, overrideFn OverrideFn) environment.ConnectedChart {
+	return NewVersioned(index, "", props, overrideSource, overrideFn)
 }
 
 // NewVersioned enables you to select a specific helm chart version
-func NewVersioned(index int, helmVersion string, props map[string]any) environment.ConnectedChart {
+func NewVersioned(index int, helmVersion string, props map[string]any, overrideSource interface{}, overrideFn OverrideFn) environment.ConnectedChart {
 	dp := defaultProps()
-	config.MustEnvOverrideVersion(&dp)
+	overrideFn(overrideSource, &dp)
 	config.MustMerge(&dp, props)
 	p := &Props{
 		HasReplicas: false,
