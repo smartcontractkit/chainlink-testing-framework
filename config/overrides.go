@@ -22,18 +22,17 @@ func MustConfigOverrideChainlinkVersion(config *ChainlinkImageConfig, target int
 	}
 }
 
-func MustConfigOverridePyroscopeKey(config *PyroscopeConfig, target interface{}) {
-	if config == nil {
-		panic("[Pyroscope] must be present")
+func MightConfigOverridePyroscopeKey(config *PyroscopeConfig, target interface{}) {
+	if config == nil || *config.Key == "" {
+		return
 	}
-	if config.Key != nil && *config.Key != "" {
-		env := make(map[string]string)
-		env["CL_PYROSCOPE_AUTH_TOKEN"] = *config.Key
 
-		if err := mergo.Merge(target, map[string]interface{}{
-			"env": env,
-		}, mergo.WithOverride); err != nil {
-			panic(err)
-		}
+	env := make(map[string]string)
+	env["CL_PYROSCOPE_AUTH_TOKEN"] = *config.Key
+
+	if err := mergo.Merge(target, map[string]interface{}{
+		"env": env,
+	}, mergo.WithOverride); err != nil {
+		panic(err)
 	}
 }
