@@ -6,7 +6,7 @@ import (
 
 func MustConfigOverrideChainlinkVersion(config *ChainlinkImageConfig, target interface{}) {
 	if config == nil {
-		panic("ChainlinkImageConfig must not be nil")
+		panic("[ChainlinkImageConfig] must be present")
 	}
 	if config.Image != nil && *config.Image != "" && config.Version != nil && *config.Version != "" {
 		if err := mergo.Merge(target, map[string]interface{}{
@@ -16,6 +16,22 @@ func MustConfigOverrideChainlinkVersion(config *ChainlinkImageConfig, target int
 					"version": *config.Version,
 				},
 			},
+		}, mergo.WithOverride); err != nil {
+			panic(err)
+		}
+	}
+}
+
+func MustConfigOverridePyroscopeKey(config *PyroscopeConfig, target interface{}) {
+	if config == nil {
+		panic("[Pyroscope] must be present")
+	}
+	if config.Key != nil && *config.Key != "" {
+		env := make(map[string]string)
+		env["CL_PYROSCOPE_AUTH_TOKEN"] = *config.Key
+
+		if err := mergo.Merge(target, map[string]interface{}{
+			"env": env,
 		}, mergo.WithOverride); err != nil {
 			panic(err)
 		}

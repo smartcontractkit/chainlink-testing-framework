@@ -126,10 +126,6 @@ func defaultProps() map[string]any {
 		postgresImage = fmt.Sprintf("%s/postgres", internalRepo)
 	}
 	env := make(map[string]string)
-	pyroscopeAuth := os.Getenv(config.EnvVarPyroscopeKey)
-	if pyroscopeAuth != "" {
-		env["CL_PYROSCOPE_AUTH_TOKEN"] = pyroscopeAuth
-	}
 	return map[string]any{
 		"replicas": "1",
 		"env":      env,

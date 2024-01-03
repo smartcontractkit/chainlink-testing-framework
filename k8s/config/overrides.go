@@ -30,10 +30,12 @@ const (
 	EnvVarInsideK8sDescription = "Internal variable to turn forwarding strategy off inside k8s, do not use"
 	EnvVarInsideK8sExample     = ""
 
+	// deprecated
 	EnvVarCLImage            = "CHAINLINK_IMAGE"
 	EnvVarCLImageDescription = "Chainlink image repository"
 	EnvVarCLImageExample     = "public.ecr.aws/chainlink/chainlink"
 
+	// deprecated
 	EnvVarCLTag            = "CHAINLINK_VERSION"
 	EnvVarCLTagDescription = "Chainlink image tag"
 	EnvVarCLTagExample     = "1.9.0"
@@ -54,10 +56,6 @@ const (
 	EnvVarLogLevelDescription = "Environment logging level"
 	EnvVarLogLevelExample     = "info | debug | trace"
 
-	EnvVarSelectedNetworks            = "SELECTED_NETWORKS"
-	EnvVarSelectedNetworksDescription = "Networks to select for testing"
-	EnvVarSelectedNetworksExample     = "SIMULATED"
-
 	EnvVarDBURL            = "DATABASE_URL"
 	EnvVarDBURLDescription = "DATABASE_URL needed for component test. This is only necessary if testhelper methods are imported from core"
 	EnvVarDBURLExample     = "postgresql://postgres:node@localhost:5432/chainlink_test?sslmode=disable"
@@ -73,10 +71,6 @@ const (
 	EnvVarSlackUser            = "SLACK_USER"
 	EnvVarSlackUserDescription = "The Slack code for the user you want to notify"
 	EnvVarSlackUserExample     = "U000000000"
-
-	EnvVarPyroscopeServer      = "PYROSCOPE_SERVER"
-	EnvVarPyroscopeEnvironment = "PYROSCOPE_ENVIRONMENT"
-	EnvVarPyroscopeKey         = "PYROSCOPE_KEY"
 
 	EnvVarToleration                 = "K8S_TOLERATION"
 	EnvVarTolerationsUserDescription = "Node roles to tolerate"
@@ -98,21 +92,9 @@ const (
 	EnvVarRemoteRunnerMemUserDescription = "The mem limit and req for the remote runner"
 	EnvVarRemoteRunnerMemExample         = "1024Mi"
 
-	EnvVarEVMKeys                = "EVM_KEYS"
-	EnvVarEVMKeysUserDescription = "The keys used to connect to the evm"
-	EnvVarEVMKeysExample         = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-
 	EnvVarInternalDockerRepo            = "INTERNAL_DOCKER_REPO"
 	EnvVarInternalDockerRepoDescription = "Use internal docker repository for some images"
 	EnvVarInternalDockerRepoExample     = "public.ecr.aws"
-
-	EnvVarEVMUrls                = "EVM_URLS"
-	EnvVarEVMUrlsUserDescription = "The RPC URLs used to connect to the chain"
-	EnvVarEVMUrlsExample         = "wss://mainnet.infura.io/ws/v3/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-
-	EnvVarEVMHttpUrls                = "EVM_HTTP_URLS"
-	EnvVarEVMHttpUrlsUserDescription = "The HTTP RPC URLs used to connect to the chain"
-	EnvVarEVMHttpUrlsExample         = "https://mainnet.infura.io/v3/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
 	EnvVarLocalCharts                = "LOCAL_CHARTS"
 	EnvVarLocalChartsUserDescription = "Use local charts from the CTF repository directly"
