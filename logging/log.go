@@ -106,3 +106,32 @@ func GetTestContainersGoTestLogger(t *testing.T) tc.Logging {
 	}
 	return l
 }
+
+// SplitStringIntoChunks takes a string and splits it into chunks of a specified size.
+func SplitStringIntoChunks(s string, chunkSize int) []string {
+	// Length of the string.
+	strLen := len(s)
+
+	// Number of chunks needed.
+	numChunks := (strLen + chunkSize - 1) / chunkSize
+
+	// Slice to hold the chunks.
+	chunks := make([]string, numChunks)
+
+	// Loop to create chunks.
+	for i := 0; i < numChunks; i++ {
+		// Calculate the start and end indices of the chunk.
+		start := i * chunkSize
+		end := start + chunkSize
+
+		// If the end index goes beyond the string length, adjust it to the string length.
+		if end > strLen {
+			end = strLen
+		}
+
+		// Slice the string and add the chunk to the slice.
+		chunks[i] = s[start:end]
+	}
+
+	return chunks
+}

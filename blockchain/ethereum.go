@@ -317,15 +317,22 @@ func (e *EthereumClient) ReturnFunds(fromKey *ecdsa.PrivateKey) error {
 		return err
 
 	}
-	gasLimit := big.NewInt(21_000)
+	gasLimit, err := e.Client.EstimateGas(context.Background(), ethereum.CallMsg{
+		From: fromAddress,
+		To:   &e.DefaultWallet.address,
+	})
+	if err != nil {
+		e.l.Warn().Int("Default", 21_000).Msg("Could not estimate gas for return funds transaction, using default")
+		gasLimit = 21_000
+	}
 	gasPrice, err := e.Client.SuggestGasPrice(context.Background())
 	if err != nil {
 		return err
 	}
-	totalGasCost := new(big.Int).Mul(gasLimit, gasPrice)
+	totalGasCost := new(big.Int).Mul(big.NewInt(0).SetUint64(gasLimit), gasPrice)
 	toSend := new(big.Int).Sub(balance, totalGasCost)
 
-	tx := types.NewTransaction(nonce, e.DefaultWallet.address, toSend, gasLimit.Uint64(), gasPrice, nil)
+	tx := types.NewTransaction(nonce, e.DefaultWallet.address, toSend, gasLimit, gasPrice, nil)
 	signedTx, err := types.SignTx(tx, types.LatestSignerForChainID(e.GetChainID()), fromKey)
 	if err != nil {
 		return err
@@ -350,7 +357,7 @@ func (e *EthereumClient) ReturnFunds(fromKey *ecdsa.PrivateKey) error {
 			return err
 		}
 		toSend.Sub(toSend, big.NewInt(int64(overshotAmount)))
-		tx := types.NewTransaction(nonce, e.DefaultWallet.address, toSend, gasLimit.Uint64(), gasPrice, nil)
+		tx := types.NewTransaction(nonce, e.DefaultWallet.address, toSend, gasLimit, gasPrice, nil)
 		signedTx, err = types.SignTx(tx, types.LatestSignerForChainID(e.GetChainID()), fromKey)
 		if err != nil {
 			return err
@@ -360,9 +367,10 @@ func (e *EthereumClient) ReturnFunds(fromKey *ecdsa.PrivateKey) error {
 
 	// Handle insufficient funds error
 	// We don't get an overshot calculation, we just know it was too much, so subtract by 1 GWei and try again
-	for fundReturnErr != nil && strings.Contains(fundReturnErr.Error(), "insufficient funds") {
+	for fundReturnErr != nil && (strings.Contains(fundReturnErr.Error(), "insufficient funds") || strings.Contains(fundReturnErr.Error(), "gas too low")) {
 		toSend.Sub(toSend, big.NewInt(GWei))
-		tx := types.NewTransaction(nonce, e.DefaultWallet.address, toSend, gasLimit.Uint64(), gasPrice, nil)
+		gasLimit += 21_000 // Add 21k gas for each attempt in case gas limit is too low
+		tx := types.NewTransaction(nonce, e.DefaultWallet.address, toSend, gasLimit, gasPrice, nil)
 		signedTx, err = types.SignTx(tx, types.LatestSignerForChainID(e.GetChainID()), fromKey)
 		if err != nil {
 			return err

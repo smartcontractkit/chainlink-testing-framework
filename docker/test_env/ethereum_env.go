@@ -135,6 +135,7 @@ func (b *EthereumNetworkBuilder) buildNetworkConfig() EthereumNetwork {
 		n.Containers = b.existingConfig.Containers
 	}
 
+	n.DockerNetworkNames = b.dockerNetworks
 	n.WaitForFinalization = &b.waitForFinalization
 	n.EthereumChainConfig = b.ethereumChainConfig
 	n.t = b.t
@@ -259,18 +260,15 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 	}
 
 	var net blockchain.EVMNetwork
-	var networkNames []string
 
 	if *en.ConsensusLayer != ConsensusLayer_Prysm {
 		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf("unsupported consensus layer: %s. Use 'prysm'", *en.ConsensusLayer)
 	}
 
-	singleNetwork, err := en.getOrCreateDockerNetworks()
+	dockerNetworks, err := en.getOrCreateDockerNetworks()
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
-	networkNames = append(networkNames, singleNetwork...)
-
 	var generatedDataHostDir, valKeysDir string
 
 	// create host directories and run genesis containers only if we are NOT recreating existing containers
@@ -322,13 +320,13 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 	var clientErr error
 	switch en.ExecutionLayer {
 	case ExecutionLayer_Geth:
-		client, clientErr = NewGeth2(singleNetwork, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Geth2))
+		client, clientErr = NewGeth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Geth2))
 	case ExecutionLayer_Nethermind:
-		client, clientErr = NewNethermind(singleNetwork, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Nethermind))
+		client, clientErr = NewNethermind(dockerNetworks, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Nethermind))
 	case ExecutionLayer_Erigon:
-		client, clientErr = NewErigon(singleNetwork, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Erigon))
+		client, clientErr = NewErigon(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Erigon))
 	case ExecutionLayer_Besu:
-		client, clientErr = NewBesu(singleNetwork, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Besu))
+		client, clientErr = NewBesu(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Besu))
 	default:
 		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf("unsupported execution layer: %s", en.ExecutionLayer)
 	}
@@ -344,7 +342,7 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
-	beacon, err := NewPrysmBeaconChain(singleNetwork, en.EthereumChainConfig, generatedDataHostDir, client.GetInternalExecutionURL(), en.setExistingContainerName(ContainerType_PrysmBeacon))
+	beacon, err := NewPrysmBeaconChain(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, client.GetInternalExecutionURL(), en.setExistingContainerName(ContainerType_PrysmBeacon))
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
@@ -355,7 +353,7 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
-	validator, err := NewPrysmValidator(singleNetwork, en.EthereumChainConfig, generatedDataHostDir, valKeysDir, beacon.
+	validator, err := NewPrysmValidator(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, valKeysDir, beacon.
 		InternalBeaconRpcProvider, en.setExistingContainerName(ContainerType_PrysmVal))
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
@@ -372,7 +370,7 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
-	en.DockerNetworkNames = networkNames
+	en.DockerNetworkNames = dockerNetworks
 	net.ChainID = int64(en.EthereumChainConfig.ChainID)
 	// use a higher value than the default, because eth2 is slower than dev-mode eth1
 	net.Timeout = blockchain.StrDuration{Duration: time.Duration(4 * time.Minute)}
@@ -432,7 +430,6 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 
 func (en *EthereumNetwork) startPow() (blockchain.EVMNetwork, RpcProvider, error) {
 	var net blockchain.EVMNetwork
-	var networkNames []string
 	rpcProvider := RpcProvider{
 		privateHttpUrls: []string{},
 		privatelWsUrls:  []string{},
@@ -443,20 +440,18 @@ func (en *EthereumNetwork) startPow() (blockchain.EVMNetwork, RpcProvider, error
 	if en.ExecutionLayer != ExecutionLayer_Geth {
 		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf("unsupported execution layer: %s", en.ExecutionLayer)
 	}
-	singleNetwork, err := en.getOrCreateDockerNetworks()
+	dockerNetworks, err := en.getOrCreateDockerNetworks()
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
-	geth := NewGeth(singleNetwork, en.EthereumChainConfig, en.setExistingContainerName(ContainerType_Geth)).WithTestInstance(en.t)
+	geth := NewGeth(dockerNetworks, en.EthereumChainConfig, en.setExistingContainerName(ContainerType_Geth)).WithTestInstance(en.t)
 	network, docker, err := geth.StartContainer()
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
 	net = network
-	networkNames = append(networkNames, singleNetwork...)
-
 	containers := EthereumNetworkContainers{
 		{
 			ContainerName: geth.ContainerName,
@@ -471,25 +466,22 @@ func (en *EthereumNetwork) startPow() (blockchain.EVMNetwork, RpcProvider, error
 	rpcProvider.publiclHttpUrls = append(rpcProvider.publiclHttpUrls, geth.ExternalHttpUrl)
 	rpcProvider.publicsUrls = append(rpcProvider.publicsUrls, geth.ExternalWsUrl)
 
-	en.DockerNetworkNames = networkNames
+	en.DockerNetworkNames = dockerNetworks
 
 	return net, rpcProvider, nil
 }
 
 func (en *EthereumNetwork) getOrCreateDockerNetworks() ([]string, error) {
-	var networkNames []string
-
-	if len(en.DockerNetworkNames) == 0 {
-		network, err := docker.CreateNetwork(logging.GetTestLogger(en.t))
-		if err != nil {
-			return networkNames, err
-		}
-		networkNames = []string{network.Name}
-	} else {
-		networkNames = en.DockerNetworkNames
+	if len(en.DockerNetworkNames) != 0 {
+		return en.DockerNetworkNames, nil
 	}
 
-	return networkNames, nil
+	network, err := docker.CreateNetwork(logging.GetTestLogger(en.t))
+	if err != nil {
+		return []string{}, err
+	}
+
+	return []string{network.Name}, nil
 }
 
 func (en *EthereumNetwork) Describe() string {

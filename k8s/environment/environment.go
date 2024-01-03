@@ -1017,7 +1017,10 @@ func (m *Environment) WillUseRemoteRunner() bool {
 }
 
 func DefaultJobLogFunction(e *Environment, message string) {
-	e.Cfg.Test.Log(message)
+	logChunks := logging.SplitStringIntoChunks(message, 50000)
+	for _, chunk := range logChunks {
+		e.Cfg.Test.Log(chunk)
+	}
 	found := strings.Contains(message, FAILED_FUND_RETURN)
 	if found {
 		e.Cfg.fundReturnFailed = true
