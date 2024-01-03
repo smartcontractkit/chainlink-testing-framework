@@ -214,6 +214,7 @@ func jobEnvVars(props *Props) *[]*k8s.EnvVar {
 		config.EnvVarEVMUrls,
 		config.EnvVarEVMHttpUrls,
 		config.EnvVarLocalCharts,
+		config.EnvBase64ConfigOverride,
 	}
 	for _, k := range lookups {
 		v, success := os.LookupEnv(k)
@@ -229,6 +230,7 @@ func jobEnvVars(props *Props) *[]*k8s.EnvVar {
 		if i := strings.Index(e, "="); i >= 0 {
 			if strings.HasPrefix(e[:i], config.EnvVarPrefix) {
 				withoutPrefix := strings.Replace(e[:i], config.EnvVarPrefix, "", 1)
+				log.Debug().Str(e[:i], e[i+1:]).Msg("Forwarding generic Env Var")
 				env[withoutPrefix] = e[i+1:]
 			}
 		}

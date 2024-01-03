@@ -117,6 +117,10 @@ const (
 	EnvVarLocalCharts                = "LOCAL_CHARTS"
 	EnvVarLocalChartsUserDescription = "Use local charts from the CTF repository directly"
 	EnvVarLocalChartsExample         = "true"
+
+	EnvBase64ConfigOverride             = "BASE64_CONFIG_OVERRIDE"
+	EnvBase64ConfigOverriderDescription = "Base64-encoded TOML config (should contain at least chainlink image and version)"
+	EnvBase64ConfigOverrideExample      = "W0NoYWlubGlua0ltYWdlXQppbWFnZT0icHVibGljLmVjci5hd3MvY2hhaW5saW5rL2NoYWlubGluayIKdmVyc2lvbj0iMi43LjEtYXV0b21hdGlvbi0yMDIzMTEyNyIKCltBdXRvbWF0aW9uXQpbQXV0b21hdGlvbi5HZW5lcmFsXQpkdXJhdGlvbj0yMDAK"
 )
 
 var (
