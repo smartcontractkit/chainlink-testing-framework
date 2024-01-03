@@ -15,7 +15,6 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
-	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 )
 
 type EthGenesisGeneretor struct {
@@ -29,10 +28,10 @@ type EthGenesisGeneretor struct {
 
 func NewEthGenesisGenerator(chainConfig EthereumChainConfig, generatedDataHostDir string, opts ...EnvComponentOption) (*EthGenesisGeneretor, error) {
 	// currently it uses 2.0.4-slots-per-epoch
-	dockerImage, err := mirror.GetImage("tofelb/ethereum-genesis-generator:2")
-	if err != nil {
-		return nil, err
-	}
+	// dockerImage, err := mirror.GetImage("tofelb/ethereum-genesis-generator:2")
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	g := &EthGenesisGeneretor{
 		EnvComponent: EnvComponent{
@@ -41,7 +40,7 @@ func NewEthGenesisGenerator(chainConfig EthereumChainConfig, generatedDataHostDi
 		chainConfig:          chainConfig,
 		generatedDataHostDir: generatedDataHostDir,
 		l:                    log.Logger,
-		image:                dockerImage,
+		image:                "tofelb/ethereum-genesis-generator:2.0.5",
 	}
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
