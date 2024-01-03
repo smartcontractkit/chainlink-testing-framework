@@ -122,15 +122,15 @@ func (l *LogStreamConfig) Default() error {
 }
 
 type LokiConfig struct {
-	LokiTenantId  *string `toml:"loki_tenant_id"`
-	LokiUrl       *string `toml:"loki_url"`
-	LokiBasicAuth *string `toml:"loki_basic_auth"`
+	TenantId  *string `toml:"tenant_id"`
+	Url       *string `toml:"url"`
+	BasicAuth *string `toml:"basic_auth"`
 }
 
 func (l *LokiConfig) Validate() error {
-	if l.LokiUrl != nil {
-		if !net.IsValidURL(*l.LokiUrl) {
-			return errors.Errorf("invalid loki url %s", *l.LokiUrl)
+	if l.Url != nil {
+		if !net.IsValidURL(*l.Url) {
+			return errors.Errorf("invalid loki url %s", *l.Url)
 		}
 	}
 
@@ -141,38 +141,38 @@ func (l *LokiConfig) ApplyOverrides(from *LokiConfig) error {
 	if from == nil {
 		return nil
 	}
-	if from.LokiTenantId != nil {
-		l.LokiTenantId = from.LokiTenantId
+	if from.TenantId != nil {
+		l.TenantId = from.TenantId
 	}
-	if from.LokiUrl != nil {
-		l.LokiUrl = from.LokiUrl
+	if from.Url != nil {
+		l.Url = from.Url
 	}
-	if from.LokiBasicAuth != nil {
-		l.LokiBasicAuth = from.LokiBasicAuth
+	if from.BasicAuth != nil {
+		l.BasicAuth = from.BasicAuth
 	}
 
 	return nil
 }
 
 type GrafanaConfig struct {
-	GrafanaUrl *string `toml:"grafana_url"`
+	Url *string `toml:"url"`
 }
 
 func (c *GrafanaConfig) ApplyOverrides(from *GrafanaConfig) error {
 	if from == nil {
 		return nil
 	}
-	if from.GrafanaUrl != nil {
-		c.GrafanaUrl = from.GrafanaUrl
+	if from.Url != nil {
+		c.Url = from.Url
 	}
 
 	return nil
 }
 
 func (c *GrafanaConfig) Validate() error {
-	if c.GrafanaUrl != nil {
-		if !net.IsValidURL(*c.GrafanaUrl) {
-			return errors.Errorf("invalid grafana url %s", *c.GrafanaUrl)
+	if c.Url != nil {
+		if !net.IsValidURL(*c.Url) {
+			return errors.Errorf("invalid grafana url %s", *c.Url)
 		}
 	}
 

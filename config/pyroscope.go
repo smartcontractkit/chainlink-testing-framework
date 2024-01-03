@@ -25,7 +25,7 @@ func (c *PyroscopeConfig) Validate() error {
 			return errors.New("pyroscope environment must be set")
 		}
 		if c.Key == nil || *c.Key == "" {
-			return errors.New("pyroscope environment must be set")
+			return errors.New("pyroscope key must be set")
 		}
 	}
 

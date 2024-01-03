@@ -163,11 +163,11 @@ func (h *LokiLogHandler) GetLogLocation(consumers map[string]*ContainerLogConsum
 		return "", errors.New("no Loki consumers found")
 	}
 
-	if h.loggingConfig.Grafana.GrafanaUrl == nil {
+	if h.loggingConfig.Grafana.Url == nil {
 		return "", errors.New("GrafanaUrl is not set in logging config")
 	}
 
-	grafanaBaseUrl := *h.loggingConfig.Grafana.GrafanaUrl
+	grafanaBaseUrl := *h.loggingConfig.Grafana.Url
 	grafanaBaseUrl = strings.TrimSuffix(grafanaBaseUrl, "/")
 
 	rangeFrom := time.Now()
@@ -215,10 +215,10 @@ func (h *LokiLogHandler) Init(c *ContainerLogConsumer) error {
 		}
 
 		waspConfig := wasp.NewEnvLokiConfig()
-		waspConfig.TenantID = *h.loggingConfig.Loki.LokiTenantId
-		waspConfig.URL = *h.loggingConfig.Loki.LokiUrl
-		if h.loggingConfig.Loki.LokiBasicAuth != nil {
-			waspConfig.BasicAuth = *h.loggingConfig.Loki.LokiBasicAuth
+		waspConfig.TenantID = *h.loggingConfig.Loki.TenantId
+		waspConfig.URL = *h.loggingConfig.Loki.Url
+		if h.loggingConfig.Loki.BasicAuth != nil {
+			waspConfig.BasicAuth = *h.loggingConfig.Loki.BasicAuth
 		}
 		loki, err := wasp.NewLokiClient(waspConfig)
 		if err != nil {
