@@ -28,8 +28,8 @@ type EthGenesisGeneretor struct {
 }
 
 func NewEthGenesisGenerator(chainConfig EthereumChainConfig, generatedDataHostDir string, opts ...EnvComponentOption) (*EthGenesisGeneretor, error) {
-	// currently it uses 2.0.4-slots-per-epoch
-	dockerImage, err := mirror.GetImage("tofelb/ethereum-genesis-generator:2")
+	// currently it uses 2.0.5
+	dockerImage, err := mirror.GetImage("tofelb/ethereum-genesis-generator:2.0.5")
 	if err != nil {
 		return nil, err
 	}
