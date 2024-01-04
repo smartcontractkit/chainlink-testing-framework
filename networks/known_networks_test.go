@@ -18,13 +18,13 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func TestMustGetSelectedNetworksFromEnv_MissingSelectedNetwork(t *testing.T) {
+func TestMustGetSelectedNetworkConfig_MissingSelectedNetwork(t *testing.T) {
 	require.Panics(t, func() {
 		MustGetSelectedNetworkConfig(&config.NetworkConfig{})
 	})
 }
 
-func TestMustGetSelectedNetworksFromEnv_Missing_RpcHttpUrls(t *testing.T) {
+func TestMustGetSelectedNetworkConfig_Missing_RpcHttpUrls(t *testing.T) {
 	networkName := "arbitrum_goerli"
 	testTOML := `
 	selected_networks = ["arbitrum_goerli"]
@@ -45,7 +45,7 @@ func TestMustGetSelectedNetworksFromEnv_Missing_RpcHttpUrls(t *testing.T) {
 	})
 }
 
-func TestMustGetSelectedNetworksFromEnv_Missing_RpcWsUrls(t *testing.T) {
+func TestMustGetSelectedNetworkConfig_Missing_RpcWsUrls(t *testing.T) {
 	networkName := "arbitrum_goerli"
 	testTOML := `
 	selected_networks = ["arbitrum_goerli"]
@@ -66,7 +66,7 @@ func TestMustGetSelectedNetworksFromEnv_Missing_RpcWsUrls(t *testing.T) {
 	})
 }
 
-func TestMustGetSelectedNetworksFromEnv_Missing_WalletKeys(t *testing.T) {
+func TestMustGetSelectedNetworkConfig_Missing_WalletKeys(t *testing.T) {
 	networkName := "arbitrum_goerli"
 	testTOML := `
 	selected_networks = ["arbitrum_goerli"]
@@ -87,7 +87,7 @@ func TestMustGetSelectedNetworksFromEnv_Missing_WalletKeys(t *testing.T) {
 	})
 }
 
-func TestMustGetSelectedNetworksFromEnv_DefaultUrlsFromSecret(t *testing.T) {
+func TestMustGetSelectedNetworkConfig_DefaultUrlsFromSecret(t *testing.T) {
 	networkConfigTOML := `
 	[RpcHttpUrls]
 	arbitrum_goerli = ["https://devnet-1.mt/ABC/rpc/"]
@@ -119,9 +119,7 @@ func TestMustGetSelectedNetworksFromEnv_DefaultUrlsFromSecret(t *testing.T) {
 	require.Equal(t, []string{"1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed"}, networks[0].PrivateKeys)
 }
 
-//defaults and passed in config, passed in config should override defaults
-
-func TestMustGetSelectedNetworksFromEnv_MultipleNetworks(t *testing.T) {
+func TesMustGetSelectedNetworkConfig_MultipleNetworks(t *testing.T) {
 	testTOML := `
 	selected_networks = ["arbitrum_goerli", "optimism_goerli"]
 	
@@ -148,7 +146,7 @@ func TestMustGetSelectedNetworksFromEnv_MultipleNetworks(t *testing.T) {
 	require.Equal(t, "Optimism Goerli", networks[1].Name)
 }
 
-func TestMustGetSelectedNetworksFromEnv_DefaultUrlsFromSecret_OverrideOne(t *testing.T) {
+func TestMustGetSelectedNetworkConfig_DefaultUrlsFromSecret_OverrideOne(t *testing.T) {
 	networkConfigTOML := `
 	[RpcHttpUrls]
 	arbitrum_goerli = ["https://devnet-1.mt/ABC/rpc/"]
