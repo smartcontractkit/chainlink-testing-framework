@@ -139,7 +139,9 @@ func TestLogStreamDocker(t *testing.T) {
 			dynamicContainerNames := replaceContainerNamePlaceholders(tc)
 			loggingConfig := config.LoggingConfig{}
 			loggingConfig.LogStream = &config.LogStreamConfig{
-				LogTargets: []string{"in-memory"},
+				LogTargets:            []string{"in-memory"},
+				LogProducerTimeout:    &blockchain.StrDuration{Duration: 10 * time.Second},
+				LogProducerRetryLimit: ptr.Ptr(uint(5)),
 			}
 			lw, err := logstream.NewLogStream(t, &loggingConfig)
 			require.NoError(t, err)
