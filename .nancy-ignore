@@ -9,3 +9,4 @@ CVE-2022-29153 # Server-Side Request Forgery (SSRF)
 CVE-2023-3518 # CWE-Other (when using JWT Auth for service mesh incorrectly allows/denies access regardless of service identities) -- coming from WASP
 CVE-2023-40591 # CWE-400 Uncontrolled Resource Consumption ('Resource Exhaustion') by geth (fixed in v1.12.2, which needs core to bump that dep first)
 CVE-2023-42319 # CWE-400 Uncontrolled Resource Consumption ('Resource Exhaustion') by geth (fixed in v1.12.2, which needs core to bump that dep first)
+CVE-2023-48795 # Improper Validation of Integrity Check Value x/crypto, hich is an indirect dependency
