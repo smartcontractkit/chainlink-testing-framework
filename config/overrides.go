@@ -23,7 +23,7 @@ func MustConfigOverrideChainlinkVersion(config *ChainlinkImageConfig, target int
 }
 
 func MightConfigOverridePyroscopeKey(config *PyroscopeConfig, target interface{}) {
-	if config == nil || *config.Key == "" {
+	if config == nil || (config.Enabled == nil || !*config.Enabled) || (config.Key == nil || *config.Key == "") {
 		return
 	}
 

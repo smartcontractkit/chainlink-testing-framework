@@ -30,12 +30,12 @@ const (
 	EnvVarInsideK8sDescription = "Internal variable to turn forwarding strategy off inside k8s, do not use"
 	EnvVarInsideK8sExample     = ""
 
-	// deprecated
+	// deprecated (use TOML config instead to pass the image)
 	EnvVarCLImage            = "CHAINLINK_IMAGE"
 	EnvVarCLImageDescription = "Chainlink image repository"
 	EnvVarCLImageExample     = "public.ecr.aws/chainlink/chainlink"
 
-	// deprecated
+	// deprecated (use TOML config instead to pass the version)
 	EnvVarCLTag            = "CHAINLINK_VERSION"
 	EnvVarCLTagDescription = "Chainlink image tag"
 	EnvVarCLTagExample     = "1.9.0"
