@@ -163,20 +163,19 @@ func (h *LokiLogHandler) GetLogLocation(consumers map[string]*ContainerLogConsum
 		return "", errors.New("no Loki consumers found")
 	}
 
-	if h.loggingConfig.Grafana.Url == nil {
-		return "", errors.New("GrafanaUrl is not set in logging config")
+	// if no Grafana URL has been set let's at least print query parameters that can be manually added to the dashboard url
+	grafanaDashboardUrl := ""
+	if h.loggingConfig.Grafana.Url != nil {
+		grafanaDashboardUrl = *h.loggingConfig.Grafana.Url
+		grafanaDashboardUrl = strings.TrimSuffix(grafanaDashboardUrl, "/")
 	}
-
-	grafanaBaseUrl := *h.loggingConfig.Grafana.Url
-	grafanaBaseUrl = strings.TrimSuffix(grafanaBaseUrl, "/")
 
 	rangeFrom := time.Now()
 	rangeTo := time.Now().Add(time.Minute) //just to make sure we get the last message
 
 	var sb strings.Builder
-	sb.WriteString(grafanaBaseUrl)
-	sb.WriteString("/d/ddf75041-1e39-42af-aa46-361fe4c36e9e/ci-e2e-tests-logs?orgId=1&")
-	sb.WriteString(fmt.Sprintf("var-run_id=%s", *h.loggingConfig.RunId))
+	sb.WriteString(grafanaDashboardUrl)
+	sb.WriteString(fmt.Sprintf("&var-run_id=%s", *h.loggingConfig.RunId))
 
 	var testName string
 	for _, c := range consumers {

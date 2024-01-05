@@ -170,6 +170,8 @@ LogStream stores all logs in gob temporary file. To actually send/save them, you
 
 *Important:* Flushing and accepting logs is blocking operation. That's because they both share the same cursor to temporary file and otherwise it's position would be racey and could result in mixed up logs.
 
+## Configuration
+
 Basic `LogStream` TOML configuration is following:
 ```toml
 [LogStream]
@@ -195,10 +197,46 @@ If your test has a Grafana dashboard in order for the url to be correctly printe
 url="http://grafana.somwhere.com/my_dashboard"
 ```
 
+## Initialisation
+
+First you need to create a new instance:
+```golang
+// t - instance of *testing.T (can be nil)
+// testConfig.Logging - pointer to logging part of TestConfig
+ls := logstream.NewLogStream(t, testConfig.Logging)
+```
+
+## Listening to logs
+
+If using `testcontainers-go` Docker containers it is recommended to use life cycle hooks for connecting and disconnecting LogStream from the container. You can do that when creating `ContainerRequest` in the following way:
+```golang
+
+containerRequest := &tc.ContainerRequest{
+		LifecycleHooks: []tc.ContainerLifecycleHooks{
+			{PostStarts: []tc.ContainerHook{
+				func(ctx context.Context, c tc.Container) error {
+					if ls != nil {
+						return n.ls.ConnectContainer(ctx, c, "custom-container-prefix-can-be-empty")
+					}
+					return nil
+				},
+			},
+				PostStops: []tc.ContainerHook{
+					func(ctx context.Context, c tc.Container) error {
+						if ls != nil {
+							return n.ls.DisconnectContainer(c)
+						}
+						return nil
+					},
+				}},
+		},
+	}
+```
+
 You can print log location for each target using this function: `(m *LogStream) PrintLogTargetsLocations()`. For `file` target it will print relative folder path, for `loki` it will print URL of a Grafana Dashboard scoped to current execution and container ids. For `in-memory` target it's no-op.
 
 It is recommended to shutdown LogStream at the end of your tests. Here's an example:
-```go
+```golang
 
 t.Cleanup(func() {
     l.Warn().Msg("Shutting down Log Stream")
@@ -206,12 +244,30 @@ t.Cleanup(func() {
     if t.Failed() || os.Getenv("TEST_LOG_COLLECT") == "true" {
         // we can't do much if this fails, so we just log the error
         _ = logStream.FlushLogsToTargets()
+        // this will log log locations for each target (for file it will be a folder, for Loki Grafana dashboard -- remember to provide it's url in config!)
         logStream.PrintLogTargetsLocations()
+        // this will save log locations in test summary, so that they can be easily accessed in GH's step summary
         logStream.SaveLogLocationInTestSummary()
     }
 
     // we can't do much if this fails, so we just log the error
     _ = logStream.Shutdown(testcontext.Get(b.t))
+    })
+```
+
+or in a bit shorter way:
+```golang
+t.Cleanup(func() {
+    l.Warn().Msg("Shutting down Log Stream")
+
+    if t.Failed() || os.Getenv("TEST_LOG_COLLECT") == "true" {
+        // this will log log locations for each target (for file it will be a folder, for Loki Grafana dashboard -- remember to provide it's url in config!)
+        logStream.PrintLogTargetsLocations()
+        // this will save log locations in test summary, so that they can be easily accessed in GH's step summary
+    }
+
+    // we can't do much if this fails
+    _ = logStream.FlushAndShutdown()
     })
 ```
 
