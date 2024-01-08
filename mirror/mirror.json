@@ -15,5 +15,6 @@
   "gcr.io/prysmaticlabs/prysm/beacon-chain:v4.1.1",
   "gcr.io/prysmaticlabs/prysm/validator:v4.1.1",
   "tofelb/ethereum-genesis-generator:2.0.4-slots-per-epoch",
+  "tofelb/ethereum-genesis-generator:2.0.5",
   "protolambda/eth2-val-tools:latest"
 ]
