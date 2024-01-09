@@ -101,7 +101,7 @@ func GetAbsoluteFolderPath(folder string) (string, error) {
 
 const (
 	DEFAULT_STOP_FILE_NAME         = ".root_dir"
-	ErrStopFileNotFoundWithinLimit = "stop file not found within limit"
+	ErrStopFileNotFoundWithinLimit = "stop file not found in any parent directory within limit"
 )
 
 // FindFile looks for given file in the current directory and its parent directories first by locating
@@ -142,7 +142,7 @@ func findTopParentFolderWithLimit(startDir, stopFileName string, limit int) (str
 		currentDir = parentDir
 	}
 
-	return "", errors.New(ErrStopFileNotFoundWithinLimit)
+	return "", fmt.Errorf("%s: %s", ErrStopFileNotFoundWithinLimit, stopFileName)
 }
 
 func findFileInSubfolders(startDir, targetFileName string) (string, error) {
