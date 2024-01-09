@@ -45,7 +45,7 @@ func GetConfig(configurationName string, product string) (TestConfig, error) {
 
 	for _, fileName := range fileNames {
 		logger.Debug().Msgf("Looking for config file %s", fileName)
-		filePath, err := osutil.FindFile(fileName, osutil.DEFAULT_STOP_FILE_NAME)
+		filePath, err := osutil.FindFile(fileName, osutil.DEFAULT_STOP_FILE_NAME, 2)
 
 		if err != nil && errors.Is(err, os.ErrNotExist) {
 			logger.Debug().Msgf("Config file %s not found", fileName)
