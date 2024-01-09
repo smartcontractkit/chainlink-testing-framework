@@ -113,6 +113,11 @@ func FindFile(filename, stopFile string, limit int) (string, error) {
 		return "", err
 	}
 
+	currentFilePath := filepath.Join(workingDir, filename)
+	if _, err := os.Stat(currentFilePath); err == nil {
+		return currentFilePath, nil
+	}
+
 	rootDirPath, err := findTopParentFolderWithLimit(workingDir, stopFile, limit)
 	if err != nil {
 		return "", err
@@ -120,13 +125,6 @@ func FindFile(filename, stopFile string, limit int) (string, error) {
 
 	configFilePath, err := findFileInSubfolders(rootDirPath, filename)
 	if err != nil {
-		if os.IsNotExist(err) {
-			// Try current directory as last resort
-			currentFilePath := filepath.Join(workingDir, filename)
-			if _, err := os.Stat(currentFilePath); err == nil {
-				return currentFilePath, nil
-			}
-		}
 		return "", err
 	}
 	return configFilePath, nil
