@@ -131,17 +131,9 @@ func (em *MockserverClient) SetAnyValuePath(path string, v interface{}) error {
 		Id:      id,
 		Request: HttpRequest{Path: path},
 		Response: HttpResponse{
-			Body: struct {
-				Id   string
-				Data struct {
-					Result interface{}
-				}
-				Error interface{}
-			}{
+			Body: AdapterResponse{
 				Id: "",
-				Data: struct {
-					Result interface{}
-				}{
+				Data: AdapterResult{
 					Result: v,
 				},
 				Error: nil,
@@ -240,7 +232,7 @@ type ContractInfoJSON struct {
 
 // AdapterResult represents an int result for an adapter
 type AdapterResult struct {
-	Result int `json:"result"`
+	Result interface{} `json:"result"`
 }
 
 // AdapterResponse represents a response from an adapter
