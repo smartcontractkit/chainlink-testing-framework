@@ -35,6 +35,20 @@ func WithContainerName(name string) EnvComponentOption {
 	}
 }
 
+func WithContainerImageWithVersion(imageWithVersion string) EnvComponentOption {
+	return func(c *EnvComponent) {
+		split := strings.Split(imageWithVersion, ":")
+		if len(split) == 2 {
+			c.ContainerImage = split[0]
+			c.ContainerVersion = split[1]
+		}
+	}
+}
+
+func (ec *EnvComponent) GetImageWithVersion() string {
+	return fmt.Sprintf("%s:%s", ec.ContainerImage, ec.ContainerVersion)
+}
+
 // ChaosPause pauses the container for the specified duration
 func (ec EnvComponent) ChaosPause(
 	l zerolog.Logger,

@@ -65,6 +65,7 @@ type EthereumNetworkBuilder struct {
 	executionLayer       ExecutionLayer
 	ethereumChainConfig  *EthereumChainConfig
 	existingConfig       *EthereumNetwork
+	imageOverrides       map[ContainerType]string
 	addressesToFund      []string
 	waitForFinalization  bool
 	existingFromEnvVar   bool
@@ -129,6 +130,11 @@ func (b *EthereumNetworkBuilder) WithTest(t *testing.T) *EthereumNetworkBuilder 
 	return b
 }
 
+func (b *EthereumNetworkBuilder) WithCustomDockerImages(newImages map[ContainerType]string) *EthereumNetworkBuilder {
+	b.imageOverrides = newImages
+	return b
+}
+
 func (b *EthereumNetworkBuilder) WithWaitingForFinalization() *EthereumNetworkBuilder {
 	b.waitForFinalization = true
 	return b
@@ -149,6 +155,7 @@ func (b *EthereumNetworkBuilder) buildNetworkConfig() EthereumNetwork {
 	n.DockerNetworkNames = b.dockerNetworks
 	n.WaitForFinalization = b.waitForFinalization
 	n.EthereumChainConfig = b.ethereumChainConfig
+	n.imageOverrides = b.imageOverrides
 	n.t = b.t
 
 	return n
@@ -270,6 +277,7 @@ type EthereumNetwork struct {
 	GeneratedDataHostDir string                    `json:"generated_data_host_dir"`
 	ValKeysDir           string                    `json:"val_keys_dir"`
 	EthereumChainConfig  *EthereumChainConfig      `json:"ethereum_chain_config"`
+	imageOverrides       map[ContainerType]string
 	isRecreated          bool
 	t                    *testing.T
 }
@@ -316,7 +324,7 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
 		}
 
-		valKeysGeneretor, err := NewValKeysGeneretor(en.EthereumChainConfig, valKeysDir)
+		valKeysGeneretor, err := NewValKeysGeneretor(en.EthereumChainConfig, valKeysDir, en.getImageOverride(ContainerType_ValKeysGenerator)...)
 		if err != nil {
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
 		}
@@ -327,7 +335,7 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
 		}
 
-		genesis, err := NewEthGenesisGenerator(*en.EthereumChainConfig, generatedDataHostDir)
+		genesis, err := NewEthGenesisGenerator(*en.EthereumChainConfig, generatedDataHostDir, en.getImageOverride(ContainerType_GenesisGenerator)...)
 		if err != nil {
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
 		}
@@ -354,13 +362,13 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 	var clientErr error
 	switch en.ExecutionLayer {
 	case ExecutionLayer_Geth:
-		client, clientErr = NewGeth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Geth2))
+		client, clientErr = NewGeth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, append(en.getImageOverride(ContainerType_Geth2), en.setExistingContainerName(ContainerType_Geth2))...)
 	case ExecutionLayer_Nethermind:
-		client, clientErr = NewNethermind(dockerNetworks, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Nethermind))
+		client, clientErr = NewNethermind(dockerNetworks, generatedDataHostDir, ConsensusLayer_Prysm, append(en.getImageOverride(ContainerType_Nethermind), en.setExistingContainerName(ContainerType_Nethermind))...)
 	case ExecutionLayer_Erigon:
-		client, clientErr = NewErigon(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Erigon))
+		client, clientErr = NewErigon(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, append(en.getImageOverride(ContainerType_Erigon), en.setExistingContainerName(ContainerType_Erigon))...)
 	case ExecutionLayer_Besu:
-		client, clientErr = NewBesu(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Besu))
+		client, clientErr = NewBesu(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, append(en.getImageOverride(ContainerType_Besu), en.setExistingContainerName(ContainerType_Besu))...)
 	default:
 		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf("unsupported execution layer: %s", en.ExecutionLayer)
 	}
@@ -376,7 +384,7 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
-	beacon, err := NewPrysmBeaconChain(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, client.GetInternalExecutionURL(), en.setExistingContainerName(ContainerType_PrysmBeacon))
+	beacon, err := NewPrysmBeaconChain(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, client.GetInternalExecutionURL(), append(en.getImageOverride(ContainerType_ValKeysGenerator), en.setExistingContainerName(ContainerType_PrysmBeacon))...)
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
@@ -388,7 +396,7 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 	}
 
 	validator, err := NewPrysmValidator(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, valKeysDir, beacon.
-		InternalBeaconRpcProvider, en.setExistingContainerName(ContainerType_PrysmVal))
+		InternalBeaconRpcProvider, append(en.getImageOverride(ContainerType_ValKeysGenerator), en.setExistingContainerName(ContainerType_PrysmVal))...)
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
@@ -478,7 +486,9 @@ func (en *EthereumNetwork) startPow() (blockchain.EVMNetwork, RpcProvider, error
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
-	geth := NewGeth(dockerNetworks, en.EthereumChainConfig, en.setExistingContainerName(ContainerType_Geth)).WithTestInstance(en.t)
+	geth := NewGeth(dockerNetworks, en.EthereumChainConfig, append(en.getImageOverride(ContainerType_Geth), en.setExistingContainerName(ContainerType_Geth))...)
+	geth.WithTestInstance(en.t)
+
 	network, docker, err := geth.StartContainer()
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
@@ -543,6 +553,14 @@ func (en *EthereumNetwork) setExistingContainerName(ct ContainerType) EnvCompone
 	return func(c *EnvComponent) {}
 }
 
+func (en *EthereumNetwork) getImageOverride(ct ContainerType) []EnvComponentOption {
+	options := []EnvComponentOption{}
+	if image, ok := en.imageOverrides[ct]; ok {
+		options = append(options, WithContainerImageWithVersion(image))
+	}
+	return options
+}
+
 func (en *EthereumNetwork) Save() error {
 	name := fmt.Sprintf("ethereum_network_%s", uuid.NewString()[0:8])
 	confPath, err := utils.SaveStructAsJson(en, ".private_chains", name)
@@ -584,13 +602,15 @@ func (s *RpcProvider) PublicWsUrls() []string {
 type ContainerType string
 
 const (
-	ContainerType_Geth        ContainerType = "geth"
-	ContainerType_Geth2       ContainerType = "geth2"
-	ContainerType_Erigon      ContainerType = "erigon"
-	ContainerType_Besu        ContainerType = "besu"
-	ContainerType_Nethermind  ContainerType = "nethermind"
-	ContainerType_PrysmBeacon ContainerType = "prysm-beacon"
-	ContainerType_PrysmVal    ContainerType = "prysm-validator"
+	ContainerType_Geth             ContainerType = "geth"
+	ContainerType_Geth2            ContainerType = "geth2"
+	ContainerType_Erigon           ContainerType = "erigon"
+	ContainerType_Besu             ContainerType = "besu"
+	ContainerType_Nethermind       ContainerType = "nethermind"
+	ContainerType_PrysmBeacon      ContainerType = "prysm-beacon"
+	ContainerType_PrysmVal         ContainerType = "prysm-validator"
+	ContainerType_GenesisGenerator ContainerType = "genesis-generator"
+	ContainerType_ValKeysGenerator ContainerType = "val-keys-generator"
 )
 
 type EthereumNetworkContainer struct {

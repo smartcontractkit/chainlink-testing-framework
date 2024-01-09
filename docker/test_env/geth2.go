@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -36,7 +37,6 @@ type Geth2 struct {
 	consensusLayer       ConsensusLayer
 	l                    zerolog.Logger
 	t                    *testing.T
-	image                string
 }
 
 func NewGeth2(networks []string, chainConfg *EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) (*Geth2, error) {
@@ -46,16 +46,18 @@ func NewGeth2(networks []string, chainConfg *EthereumChainConfig, generatedDataH
 		return nil, err
 	}
 
+	parts := strings.Split(dockerImage, ":")
 	g := &Geth2{
 		EnvComponent: EnvComponent{
-			ContainerName: fmt.Sprintf("%s-%s", "geth2", uuid.NewString()[0:8]),
-			Networks:      networks,
+			ContainerName:    fmt.Sprintf("%s-%s", "geth2", uuid.NewString()[0:8]),
+			Networks:         networks,
+			ContainerImage:   parts[0],
+			ContainerVersion: parts[1],
 		},
 		chainConfg:           chainConfg,
 		generatedDataHostDir: generatedDataHostDir,
 		consensusLayer:       consensusLayer,
 		l:                    logging.GetTestLogger(nil),
-		image:                dockerImage,
 	}
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
@@ -63,19 +65,10 @@ func NewGeth2(networks []string, chainConfg *EthereumChainConfig, generatedDataH
 	return g, nil
 }
 
-func (g *Geth2) WithImage(imageWithTag string) *Geth2 {
-	g.image = imageWithTag
-	return g
-}
-
 func (g *Geth2) WithTestInstance(t *testing.T) ExecutionClient {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
 	return g
-}
-
-func (g *Geth2) GetImage() string {
-	return g.image
 }
 
 func (g *Geth2) StartContainer() (blockchain.EVMNetwork, error) {
@@ -184,7 +177,7 @@ func (g *Geth2) getContainerRequest(networks []string) (*tc.ContainerRequest, er
 
 	return &tc.ContainerRequest{
 		Name:          g.ContainerName,
-		Image:         g.image,
+		Image:         g.GetImageWithVersion(),
 		Networks:      networks,
 		ImagePlatform: "linux/x86_64",
 		ExposedPorts:  []string{NatPortFormat(TX_GETH_HTTP_PORT), NatPortFormat(TX_GETH_WS_PORT), NatPortFormat(ETH2_EXECUTION_PORT)},

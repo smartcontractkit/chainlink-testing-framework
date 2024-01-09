@@ -140,8 +140,3 @@ type ExecutionClient interface {
 	WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error
 	WithTestInstance(t *testing.T) ExecutionClient
 }
-
-type HasDockerImage[T any] interface {
-	WithImage(imageWithTag string) T
-	GetImage() string
-}

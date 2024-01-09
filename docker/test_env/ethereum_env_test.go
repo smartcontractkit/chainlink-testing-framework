@@ -121,10 +121,6 @@ func TestEth2ExecClientFromEnv(t *testing.T) {
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
 		WithExecClientFromEnvVar().
-		WithEthereumChainConfig(EthereumChainConfig{
-			SecondsPerSlot: 6,
-			SlotsPerEpoch:  2,
-		}).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 	require.Equal(t, ExecutionLayer_Besu, cfg.ExecutionLayer, "Execution layer should be Besu")
@@ -142,4 +138,19 @@ func TestEth2CustomDockerNetworks(t *testing.T) {
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 	require.Equal(t, networks, cfg.DockerNetworkNames, "Incorrect docker networks in config")
+}
+
+func TestEth2CustomImages(t *testing.T) {
+	builder := NewEthereumNetworkBuilder()
+	cfg, err := builder.
+		WithConsensusType(ConsensusType_PoS).
+		WithConsensusLayer(ConsensusLayer_Prysm).
+		WithExecutionLayer(ExecutionLayer_Geth).
+		WithCustomDockerImages(map[ContainerType]string{
+			ContainerType_Geth2: "i-dont-exist:tag-me"}).
+		Build()
+	require.NoError(t, err, "Builder validation failed")
+
+	_, _, err = cfg.Start()
+	require.Error(t, err, "Could start PoS network using incorrect image")
 }

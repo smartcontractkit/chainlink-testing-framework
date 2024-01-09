@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -58,10 +59,18 @@ type Geth struct {
 }
 
 func NewGeth(networks []string, chainConfig *EthereumChainConfig, opts ...EnvComponentOption) *Geth {
+	dockerImage, err := mirror.GetImage("ethereum/client-go:v1.12")
+	if err != nil {
+		return nil
+	}
+
+	parts := strings.Split(dockerImage, ":")
 	g := &Geth{
 		EnvComponent: EnvComponent{
-			ContainerName: fmt.Sprintf("%s-%s", "geth", uuid.NewString()[0:8]),
-			Networks:      networks,
+			ContainerName:    fmt.Sprintf("%s-%s", "geth", uuid.NewString()[0:8]),
+			Networks:         networks,
+			ContainerImage:   parts[0],
+			ContainerVersion: parts[1],
 		},
 		chainConfig: chainConfig,
 		l:           log.Logger,
@@ -190,15 +199,11 @@ func (g *Geth) getGethContainerRequest(networks []string) (*tc.ContainerRequest,
 	if err != nil {
 		return nil, ks, &account, err
 	}
-	gethImage, err := mirror.GetImage("ethereum/client-go:v1.12")
-	if err != nil {
-		return nil, nil, nil, err
-	}
 
 	return &tc.ContainerRequest{
 		Name:            g.ContainerName,
 		AlwaysPullImage: true,
-		Image:           gethImage,
+		Image:           g.GetImageWithVersion(),
 		ExposedPorts:    []string{NatPortFormat(TX_GETH_HTTP_PORT), NatPortFormat(TX_GETH_WS_PORT)},
 		Networks:        networks,
 		WaitingFor: tcwait.ForAll(
