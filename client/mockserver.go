@@ -121,6 +121,9 @@ func (em *MockserverClient) SetValuePath(path string, v int) error {
 
 // SetAnyValuePath sets any type of value for a path
 func (em *MockserverClient) SetAnyValuePath(path string, v interface{}) error {
+	if !strings.HasPrefix(path, "/") {
+		path = fmt.Sprintf("/%s", path)
+	}
 	sanitizedPath := strings.ReplaceAll(path, "/", "_")
 	id := fmt.Sprintf("%s_mock_id", sanitizedPath)
 	log.Debug().Str("ID", id).
