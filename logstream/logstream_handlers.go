@@ -215,7 +215,7 @@ func (h *LokiLogHandler) Init(c *ContainerLogConsumer) error {
 
 		waspConfig := wasp.NewEnvLokiConfig()
 		waspConfig.TenantID = *h.loggingConfig.Loki.TenantId
-		waspConfig.URL = *h.loggingConfig.Loki.Url
+		waspConfig.URL = *h.loggingConfig.Loki.Endpoint
 		if h.loggingConfig.Loki.BasicAuth != nil {
 			waspConfig.BasicAuth = *h.loggingConfig.Loki.BasicAuth
 		}

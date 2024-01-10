@@ -123,14 +123,14 @@ func (l *LogStreamConfig) Default() error {
 
 type LokiConfig struct {
 	TenantId  *string `toml:"tenant_id"`
-	Url       *string `toml:"url"`
+	Endpoint  *string `toml:"endpoint"`
 	BasicAuth *string `toml:"basic_auth"`
 }
 
 func (l *LokiConfig) Validate() error {
-	if l.Url != nil {
-		if !net.IsValidURL(*l.Url) {
-			return errors.Errorf("invalid loki url %s", *l.Url)
+	if l.Endpoint != nil {
+		if !net.IsValidURL(*l.Endpoint) {
+			return errors.Errorf("invalid loki endpoint %s", *l.Endpoint)
 		}
 	}
 
@@ -144,8 +144,8 @@ func (l *LokiConfig) ApplyOverrides(from *LokiConfig) error {
 	if from.TenantId != nil {
 		l.TenantId = from.TenantId
 	}
-	if from.Url != nil {
-		l.Url = from.Url
+	if from.Endpoint != nil {
+		l.Endpoint = from.Endpoint
 	}
 	if from.BasicAuth != nil {
 		l.BasicAuth = from.BasicAuth
