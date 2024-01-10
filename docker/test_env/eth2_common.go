@@ -76,11 +76,11 @@ func (c *EthereumChainConfig) Validate(logger zerolog.Logger) error {
 	if c.ValidatorCount < 4 {
 		return fmt.Errorf("validator count must be >= 4")
 	}
-	if c.SecondsPerSlot < 4 {
-		return fmt.Errorf("seconds per slot must be >= 4")
+	if c.SecondsPerSlot < 3 {
+		return fmt.Errorf("seconds per slot must be >= 3")
 	}
-	if c.SlotsPerEpoch < 2 {
-		return fmt.Errorf("slots per epoch must be >= 2")
+	if c.SlotsPerEpoch < 1 {
+		return fmt.Errorf("slots per epoch must be >= 1")
 	}
 	if c.GenesisDelay < 10 {
 		return fmt.Errorf("genesis delay must be >= 10")
