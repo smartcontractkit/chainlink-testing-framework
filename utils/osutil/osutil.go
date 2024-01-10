@@ -3,8 +3,10 @@ package osutil
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -97,97 +99,80 @@ func GetAbsoluteFolderPath(folder string) (string, error) {
 	return filepath.Join(wd, folder), nil
 }
 
-const DEFAULT_STOP_FILE_NAME = ".root_dir"
+const (
+	DEFAULT_STOP_FILE_NAME         = ".root_dir"
+	ErrStopFileNotFoundWithinLimit = "stop file not found in any parent directory within limit"
+)
 
-func FindFile(filename, stopFile string) (string, error) {
-	currentDir, err := os.Getwd()
+// FindFile looks for given file in the current directory and its parent directories first by locating
+// top level parent folder where the search should begin (defined by stopFile, which cannot be located
+// further "up" than limit parent folders) and then by searching from there for the file all subdirectories
+func FindFile(filename, stopFile string, limit int) (string, error) {
+	workingDir, err := os.Getwd()
 	if err != nil {
 		return "", err
 	}
 
-	rootDirPath, err := findFileRecursivelyWithLimit(currentDir, stopFile, "", 2)
+	currentFilePath := filepath.Join(workingDir, filename)
+	if _, err := os.Stat(currentFilePath); err == nil {
+		return currentFilePath, nil
+	}
+
+	rootDirPath, err := findTopParentFolderWithLimit(workingDir, stopFile, limit)
 	if err != nil {
 		return "", err
 	}
 
-	configFilePath, err := findFileRecursively(rootDirPath, filename, "")
+	configFilePath, err := findFileInSubfolders(rootDirPath, filename)
 	if err != nil {
 		return "", err
 	}
-
 	return configFilePath, nil
 }
 
-func findFileRecursively(startDir, targetFileName, stopFileName string) (string, error) {
-	var filePath string
+func findTopParentFolderWithLimit(startDir, stopFileName string, limit int) (string, error) {
+	currentDir := startDir
 
-	err := filepath.Walk(startDir, func(path string, info os.FileInfo, err error) error {
+	for level := 0; level < limit; level++ {
+		stopFilePath := filepath.Join(currentDir, stopFileName)
+		if _, err := os.Stat(stopFilePath); err == nil {
+			return currentDir, nil
+		}
+
+		parentDir := filepath.Dir(currentDir)
+		if parentDir == currentDir {
+			break
+		}
+		currentDir = parentDir
+	}
+
+	return "", fmt.Errorf("%s: %s", ErrStopFileNotFoundWithinLimit, stopFileName)
+}
+
+func findFileInSubfolders(startDir, targetFileName string) (string, error) {
+	var filePath string
+	ErrFileFound := "file found"
+
+	err := filepath.WalkDir(startDir, func(path string, info fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 
-		// Check if the file has the specified name
-		if info.IsDir() {
-			return nil // Skip directories
-		}
-
-		if info.Name() == targetFileName {
-			// Read the content of the file
+		if !info.IsDir() && info.Name() == targetFileName {
 			filePath = path
-			if err != nil {
-				return err
-			}
+			return errors.New(ErrFileFound)
 		}
 
 		return nil
 	})
 
-	if err != nil {
+	if err != nil && err.Error() != ErrFileFound {
 		return "", err
 	}
 
 	if filePath == "" {
-		return "", os.ErrNotExist // File not found
+		return "", os.ErrNotExist
 	}
 
 	return filePath, nil
-}
-
-func findFileRecursivelyWithLimit(startDir, targetFileName, stopFileName string, limit int) (string, error) {
-	var filePath string
-	parentLevel := 0
-
-	for parentLevel <= limit {
-		err := filepath.Walk(startDir, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
-
-			// Check if the file has the specified name
-			if !info.IsDir() && info.Name() == targetFileName {
-				// Set the filePath when the target file is found
-				filePath = path
-			}
-
-			return nil
-		})
-
-		if err != nil {
-			return "", err
-		}
-
-		if filePath != "" {
-			break // Exit the loop if ".root_dir" is found
-		}
-
-		// Move to the parent directory
-		startDir = filepath.Dir(startDir)
-		parentLevel++
-	}
-
-	if filePath == "" {
-		return "", os.ErrNotExist // File not found
-	}
-
-	return filepath.Dir(filePath), nil
 }

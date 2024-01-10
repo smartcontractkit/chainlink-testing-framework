@@ -55,7 +55,7 @@ func TestExampleLokiStreaming(t *testing.T) {
 			}
 			loggingConfig.Loki = &config.LokiConfig{
 				TenantId: ptr.Ptr("CHANGE-ME"),
-				Url:      ptr.Ptr("CHANGE-ME"),
+				Endpoint: ptr.Ptr("CHANGE-ME"),
 			}
 			loggingConfig.Grafana = &config.GrafanaConfig{
 				BaseUrl:      ptr.Ptr("CHANGE-ME"),

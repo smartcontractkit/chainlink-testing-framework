@@ -14,7 +14,9 @@ log_producer_retry_limit=10
 
 [Logging.Loki]
 tenant_id="tenant_id"
-url="https://loki.url"
+# full URL of Loki ingest endpoint
+endpoint="https://loki.url/api/v3/push"
+# currently only needed when using public instance
 basic_auth="loki-basic-auth"
 
 # LogStream will try to shorten Grafana URLs by default (if all 3 variables are set)
