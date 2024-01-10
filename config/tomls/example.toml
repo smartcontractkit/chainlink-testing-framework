@@ -21,7 +21,7 @@ basic_auth="loki-basic-auth"
 [Logging.Grafana]
 # grafana url (trailing "/" will be stripped)
 base_url="http://grafana.url"
-# url of your grafana dashboard (prefix and suffix "/" are stirpped)
+# url of your grafana dashboard (prefix and suffix "/" are stirpped), example: /d/ad61652-2712-1722/my-dashboard
 dashboard_url="/d/your-dashboard"
 bearer_token="my-awesome-token"
 

@@ -183,6 +183,7 @@ func (h *LokiLogHandler) GetLogLocation(consumers map[string]*ContainerLogConsum
 
 	var sb strings.Builder
 	sb.WriteString(dabshoardUrl)
+	sb.WriteString("?orgId=1&")
 	sb.WriteString(fmt.Sprintf("&var-run_id=%s", *h.loggingConfig.RunId))
 
 	var testName string
