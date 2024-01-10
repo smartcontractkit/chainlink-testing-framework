@@ -20,7 +20,7 @@ func ShortenUrl(grafanaUrl, urlToShorten, bearerToken string) (string, error) {
 		Url string `json:"url"`
 	}
 
-	req, err := http.NewRequest(http.MethodPost, grafanaUrl, bodyReader)
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%sapi/short-urls", grafanaUrl), bodyReader)
 	if err != nil {
 		return "", fmt.Errorf("%s: %w", ShorteningFailedErr, err)
 	}
@@ -31,6 +31,10 @@ func ShortenUrl(grafanaUrl, urlToShorten, bearerToken string) (string, error) {
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("%s: %w", ShorteningFailedErr, err)
+	}
+
+	if res.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("%s: status code: %s", ShorteningFailedErr, res.Status)
 	}
 
 	defer res.Body.Close()

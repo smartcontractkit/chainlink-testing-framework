@@ -53,12 +53,33 @@ func TestExampleLokiStreaming(t *testing.T) {
 				LogProducerTimeout:    &blockchain.StrDuration{Duration: 10 * time.Second},
 				LogProducerRetryLimit: ptr.Ptr(uint(10)),
 			}
+			loggingConfig.Loki = &config.LokiConfig{
+				TenantId: ptr.Ptr("CHANGE-ME"),
+				Url:      ptr.Ptr("CHANGE-ME"),
+			}
+			loggingConfig.Grafana = &config.GrafanaConfig{
+				BaseUrl:      ptr.Ptr("CHANGE-ME"),
+				DashboardUrl: ptr.Ptr("CHANGE-ME"),
+				BearerToken:  ptr.Ptr("CHANGE-ME"),
+			}
 
 			lw, err := logstream.NewLogStream(t, &loggingConfig)
 			require.NoError(t, err)
-			err = d.ConnectLogs(lw)
-			require.NoError(t, err)
+			for _, c := range d.containers {
+				err = lw.ConnectContainer(ctx, c, "")
+				require.NoError(t, err)
+			}
 			time.Sleep(5 * time.Second)
+
+			// we don't want them to keep logging after we have stopped log stream by flushing logs
+			for _, c := range d.containers {
+				err = lw.DisconnectContainer(c)
+				require.NoError(t, err)
+			}
+
+			err = lw.FlushLogsToTargets()
+			require.NoError(t, err)
+			lw.PrintLogTargetsLocations()
 		})
 	}
 }

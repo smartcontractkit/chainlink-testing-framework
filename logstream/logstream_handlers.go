@@ -165,17 +165,17 @@ func (h *LokiLogHandler) GetLogLocation(consumers map[string]*ContainerLogConsum
 
 	// if no Grafana URL has been set let's at least print query parameters that can be manually added to the dashboard url
 	baseUrl := ""
-	if h.loggingConfig.Grafana.BaseUrl != nil {
+	if h.loggingConfig.Grafana != nil && h.loggingConfig.Grafana.BaseUrl != nil {
 		baseUrl = *h.loggingConfig.Grafana.BaseUrl
 		baseUrl = strings.TrimSuffix(baseUrl, "/")
+		baseUrl = baseUrl + "/"
 	}
 
 	dabshoardUrl := ""
-	if h.loggingConfig.Grafana.DashboardUrl != nil {
+	if h.loggingConfig.Grafana != nil && h.loggingConfig.Grafana.DashboardUrl != nil {
 		dabshoardUrl = *h.loggingConfig.Grafana.DashboardUrl
 		dabshoardUrl = strings.TrimSuffix(dabshoardUrl, "/")
 		dabshoardUrl = strings.TrimPrefix(dabshoardUrl, "/")
-		dabshoardUrl = "/" + dabshoardUrl
 	}
 
 	rangeFrom := time.Now()
@@ -205,16 +205,16 @@ func (h *LokiLogHandler) GetLogLocation(consumers map[string]*ContainerLogConsum
 		sb.WriteString(fmt.Sprintf("&var-test=%s", testName))
 	}
 
+	relativeUrl := sb.String()
+	sb.WriteString(baseUrl)
+	h.grafanaUrl = sb.String()
+
 	// try to shorten the URL only if we have all the required configuration parameters
 	if baseUrl != "" && dabshoardUrl != "" && h.loggingConfig.Grafana.BearerToken != nil {
-		var err error
-		h.grafanaUrl, err = ShortenUrl(baseUrl, sb.String(), *h.loggingConfig.Grafana.BearerToken)
-		// if shortening fails return original URL
-		if err != nil {
-			return sb.String(), err
+		shortened, err := ShortenUrl(baseUrl, relativeUrl, *h.loggingConfig.Grafana.BearerToken)
+		if err == nil {
+			h.grafanaUrl = shortened
 		}
-	} else {
-		h.grafanaUrl = sb.String()
 	}
 
 	return h.grafanaUrl, nil
