@@ -6,7 +6,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/logstream"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/ptr"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
@@ -43,7 +46,15 @@ func TestExampleLokiStreaming(t *testing.T) {
 			// nolint
 			defer d.Shutdown(ctx)
 			require.NoError(t, err)
-			lw, err := logstream.NewLogStream(t, nil, logstream.WithLogTarget(logstream.Loki))
+
+			loggingConfig := config.LoggingConfig{}
+			loggingConfig.LogStream = &config.LogStreamConfig{
+				LogTargets:            []string{"loki"},
+				LogProducerTimeout:    &blockchain.StrDuration{Duration: 10 * time.Second},
+				LogProducerRetryLimit: ptr.Ptr(uint(10)),
+			}
+
+			lw, err := logstream.NewLogStream(t, &loggingConfig)
 			require.NoError(t, err)
 			err = d.ConnectLogs(lw)
 			require.NoError(t, err)

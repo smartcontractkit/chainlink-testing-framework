@@ -2,10 +2,14 @@ package test_env
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/pelletier/go-toml/v2"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
 
@@ -27,23 +31,43 @@ var (
 )
 
 type EthereumChainConfig struct {
-	SecondsPerSlot   int      `json:"slots_per_epoch"`
-	SlotsPerEpoch    int      `json:"seconds_per_slot"`
-	GenesisDelay     int      `json:"genesis_delay"`
-	ValidatorCount   int      `json:"validator_count"`
-	ChainID          int      `json:"chain_id"`
+	SecondsPerSlot   int      `json:"seconds_per_slot" toml:"seconds_per_slot"`
+	SlotsPerEpoch    int      `json:"slots_per_epoch" toml:"slots_per_epoch"`
+	GenesisDelay     int      `json:"genesis_delay" toml:"genesis_delay"`
+	ValidatorCount   int      `json:"validator_count" toml:"validator_count"`
+	ChainID          int      `json:"chain_id" toml:"chain_id"`
 	genesisTimestamp int      // this is not serialized
-	AddressesToFund  []string `json:"addresses_to_fund"`
+	AddressesToFund  []string `json:"addresses_to_fund" toml:"addresses_to_fund"`
+}
+
+//go:embed tomls/default_ethereum_env.toml
+var defaultEthereumChainConfig []byte
+
+func (c *EthereumChainConfig) Default() error {
+	wrapper := struct {
+		EthereumNetwork *EthereumNetwork `toml:"PrivateEthereumNetwork"`
+	}{}
+	if err := toml.Unmarshal(defaultEthereumChainConfig, &wrapper); err != nil {
+		return errors.Wrapf(err, "error unmarshaling ethereum network config")
+	}
+
+	if wrapper.EthereumNetwork == nil {
+		return errors.Errorf("[EthereumNetwork] was not present in default TOML file")
+	}
+
+	*c = *wrapper.EthereumNetwork.EthereumChainConfig
+
+	if c.genesisTimestamp == 0 {
+		c.GenerateGenesisTimestamp()
+	}
+
+	return nil
 }
 
 func GetDefaultChainConfig() EthereumChainConfig {
-	config := EthereumChainConfig{
-		SecondsPerSlot:  12,
-		SlotsPerEpoch:   6,
-		GenesisDelay:    15,
-		ValidatorCount:  8,
-		ChainID:         1337,
-		AddressesToFund: []string{"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"},
+	config := EthereumChainConfig{}
+	if err := config.Default(); err != nil {
+		panic(err)
 	}
 	return config
 }
@@ -52,11 +76,11 @@ func (c *EthereumChainConfig) Validate(logger zerolog.Logger) error {
 	if c.ValidatorCount < 4 {
 		return fmt.Errorf("validator count must be >= 4")
 	}
-	if c.SecondsPerSlot < 4 {
-		return fmt.Errorf("seconds per slot must be >= 4")
+	if c.SecondsPerSlot < 3 {
+		return fmt.Errorf("seconds per slot must be >= 3")
 	}
 	if c.SlotsPerEpoch < 2 {
-		return fmt.Errorf("slots per epoch must be >= 2")
+		return fmt.Errorf("slots per epoch must be >= 1")
 	}
 	if c.GenesisDelay < 10 {
 		return fmt.Errorf("genesis delay must be >= 10")
@@ -72,6 +96,10 @@ func (c *EthereumChainConfig) Validate(logger zerolog.Logger) error {
 	deduplicated := make([]string, 0)
 
 	for _, addr := range c.AddressesToFund {
+		if !common.IsHexAddress(addr) {
+			return fmt.Errorf("address %s is not a valid hex address", addr)
+		}
+
 		if _, exists := addressSet[addr]; exists {
 			logger.Warn().Str("address", addr).Msg("duplicate address in addresses to fund, this should not happen, removing it so that genesis generation doesn't crash")
 			continue
@@ -83,6 +111,31 @@ func (c *EthereumChainConfig) Validate(logger zerolog.Logger) error {
 
 	c.AddressesToFund = deduplicated
 
+	return nil
+}
+
+func (c *EthereumChainConfig) ApplyOverrides(from *EthereumChainConfig) error {
+	if from == nil {
+		return nil
+	}
+	if from.ValidatorCount != 0 {
+		c.ValidatorCount = from.ValidatorCount
+	}
+	if from.SecondsPerSlot != 0 {
+		c.SecondsPerSlot = from.SecondsPerSlot
+	}
+	if from.SlotsPerEpoch != 0 {
+		c.SlotsPerEpoch = from.SlotsPerEpoch
+	}
+	if from.GenesisDelay != 0 {
+		c.GenesisDelay = from.GenesisDelay
+	}
+	if from.ChainID != 0 {
+		c.ChainID = from.ChainID
+	}
+	if len(from.AddressesToFund) != 0 {
+		c.AddressesToFund = append([]string{}, from.AddressesToFund...)
+	}
 	return nil
 }
 

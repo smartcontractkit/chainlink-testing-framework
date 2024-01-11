@@ -39,6 +39,7 @@ make install_deps
 To read how to run a test in k8s, read [here](./k8s/REMOTE_RUN.md)
 
 ### Usage
+#### With env vars (deprecated)
 Create an env in a separate file and run it
 ```
 export CHAINLINK_IMAGE="public.ecr.aws/chainlink/chainlink"
@@ -47,6 +48,16 @@ export CHAINLINK_ENV_USER="Satoshi"
 go run k8s/examples/simple/env.go
 ```
 For more features follow [tutorial](./k8s/TUTORIAL.md)
+
+#### With TOML config
+It should be noted that using env vars for configuring CL nodes in k8s is deprecated. TOML config should be used instead:
+```toml
+[ChainlinkImage]
+image="public.ecr.aws/chainlink/chainlink"
+version="v2.8.0"
+```
+
+Check the example here: [env.go](./k8s/examples/simple_toml/env_toml_config.go)
 
 ### Development
 #### Running standalone example environment
@@ -151,6 +162,7 @@ To connect to that environment in your tests use the following code:
 Builder will read the location of chain configuration from env var named `PRIVATE_ETHEREUM_NETWORK_CONFIG_PATH` (it will be printed in the console once the chain starts).
 
 `net` is an instance of `blockchain.EVMNetwork`, which contains characteristics of the network and can be used to connect to it using an EVM client. `rpc` variable contains arrays of public and private RPC endpoints, where "private" means URL that's accessible from the same Docker network as the chain is running in.
+
 # Using LogStream
 
 LogStream is a package that allows to connect to a Docker container and then flush logs to configured targets. Currently 3 targets are supported:
@@ -158,13 +170,9 @@ LogStream is a package that allows to connect to a Docker container and then flu
 * `loki` - sends logs to Loki
 * `in-memory` - stores logs in memory
 
-It can be configured to use multiple targets at once. If no target is specified, it becomes a no-op.
+It can be configured to use multiple targets at once. If no target is specified, it becomes a no-op. 
 
-Targets can be set in two ways:
-* using `LOGSTREAM_LOG_TARGETS` environment variable, e.g. `Loki,in-MemOry` (case insensitive)
-* using programmatic functional option `WithLogTarget()`
-
-Functional option has higher priority than environment variable.
+LogStream has to be configured by passing an instance of `LoggingConfig` to the constructor.
 
 When you connect a contaier LogStream will create a new consumer and start a detached goroutine that listens to logs emitted by that container and which reconnects and re-requests logs if listening fails for whatever reason. Retry limit and timeout can both be configured using functional options. In most cases one container should have one consumer, but it's possible to have multiple consumers for one container.
 
@@ -172,17 +180,73 @@ LogStream stores all logs in gob temporary file. To actually send/save them, you
 
 *Important:* Flushing and accepting logs is blocking operation. That's because they both share the same cursor to temporary file and otherwise it's position would be racey and could result in mixed up logs.
 
-When using `in-memory` or `file` target no other environment variables are required. When using `loki` target, following environment variables are required:
-* `LOKI_TENTANT_ID` - tenant ID
-* `LOKI_URL` - Loki URL to which logs will be pushed
-* `LOKI_BASIC_AUTH` -- only needed when running in CI and using public endpoint
+## Configuration
 
-Also, do remember that different `LOKI_URL` should be used when running in CI and everywhere else. In CI it should be a public endpoint, while in local environment it should be a private one.
+Basic `LogStream` TOML configuration is following:
+```toml
+[LogStream]
+log_targets=["file"]
+log_producer_timeout="10s"
+log_producer_retry_limit=10
+```
+You can find it here: [logging_default.toml](config/tomls/logging_default.toml)
+
+When using `in-memory` or `file` target no other configuration variables are required. When using `loki` target, following ones must be set:
+```toml
+[Logging.Loki]
+tenant_id="promtail"
+url="https://change.me"
+basic_auth="my-secret-auth"
+```
+
+Also, do remember that different URL should be used when running in CI and everywhere else. In CI it should be a public endpoint, while in local environment it should be a private one.
+
+If your test has a Grafana dashboard in order for the url to be correctly printed you should provide the following config:
+```toml
+[Logging.Grafana]
+url="http://grafana.somwhere.com/my_dashboard"
+```
+
+## Initialisation
+
+First you need to create a new instance:
+```golang
+// t - instance of *testing.T (can be nil)
+// testConfig.Logging - pointer to logging part of TestConfig
+ls := logstream.NewLogStream(t, testConfig.Logging)
+```
+
+## Listening to logs
+
+If using `testcontainers-go` Docker containers it is recommended to use life cycle hooks for connecting and disconnecting LogStream from the container. You can do that when creating `ContainerRequest` in the following way:
+```golang
+
+containerRequest := &tc.ContainerRequest{
+		LifecycleHooks: []tc.ContainerLifecycleHooks{
+			{PostStarts: []tc.ContainerHook{
+				func(ctx context.Context, c tc.Container) error {
+					if ls != nil {
+						return n.ls.ConnectContainer(ctx, c, "custom-container-prefix-can-be-empty")
+					}
+					return nil
+				},
+			},
+				PostStops: []tc.ContainerHook{
+					func(ctx context.Context, c tc.Container) error {
+						if ls != nil {
+							return n.ls.DisconnectContainer(c)
+						}
+						return nil
+					},
+				}},
+		},
+	}
+```
 
 You can print log location for each target using this function: `(m *LogStream) PrintLogTargetsLocations()`. For `file` target it will print relative folder path, for `loki` it will print URL of a Grafana Dashboard scoped to current execution and container ids. For `in-memory` target it's no-op.
 
 It is recommended to shutdown LogStream at the end of your tests. Here's an example:
-```go
+```golang
 
 t.Cleanup(func() {
     l.Warn().Msg("Shutting down Log Stream")
@@ -190,12 +254,30 @@ t.Cleanup(func() {
     if t.Failed() || os.Getenv("TEST_LOG_COLLECT") == "true" {
         // we can't do much if this fails, so we just log the error
         _ = logStream.FlushLogsToTargets()
+        // this will log log locations for each target (for file it will be a folder, for Loki Grafana dashboard -- remember to provide it's url in config!)
         logStream.PrintLogTargetsLocations()
+        // this will save log locations in test summary, so that they can be easily accessed in GH's step summary
         logStream.SaveLogLocationInTestSummary()
     }
 
     // we can't do much if this fails, so we just log the error
     _ = logStream.Shutdown(testcontext.Get(b.t))
+    })
+```
+
+or in a bit shorter way:
+```golang
+t.Cleanup(func() {
+    l.Warn().Msg("Shutting down Log Stream")
+
+    if t.Failed() || os.Getenv("TEST_LOG_COLLECT") == "true" {
+        // this will log log locations for each target (for file it will be a folder, for Loki Grafana dashboard -- remember to provide it's url in config!)
+        logStream.PrintLogTargetsLocations()
+        // this will save log locations in test summary, so that they can be easily accessed in GH's step summary
+    }
+
+    // we can't do much if this fails
+    _ = logStream.FlushAndShutdown()
     })
 ```
 
@@ -226,3 +308,6 @@ Example:
 ```
 
 In GHA after tests have ended we can use tools like `jq` to extract the information we need and display it in step summary.
+
+# TOML Config
+Basic and universal building blocks for TOML-based config are provided by `config` package. For more information do read [this](./config/README.md).
