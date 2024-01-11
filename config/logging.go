@@ -156,24 +156,42 @@ func (l *LokiConfig) ApplyOverrides(from *LokiConfig) error {
 }
 
 type GrafanaConfig struct {
-	Url *string `toml:"url"`
+	BaseUrl      *string `toml:"base_url"`
+	DashboardUrl *string `toml:"dashboard_url"`
+	BearerToken  *string `toml:"bearer_token"`
 }
 
 func (c *GrafanaConfig) ApplyOverrides(from *GrafanaConfig) error {
 	if from == nil {
 		return nil
 	}
-	if from.Url != nil {
-		c.Url = from.Url
+	if from.BaseUrl != nil {
+		c.BaseUrl = from.BaseUrl
+	}
+	if from.DashboardUrl != nil {
+		c.DashboardUrl = from.DashboardUrl
+	}
+	if from.BearerToken != nil {
+		c.BearerToken = from.BearerToken
 	}
 
 	return nil
 }
 
 func (c *GrafanaConfig) Validate() error {
-	if c.Url != nil {
-		if !net.IsValidURL(*c.Url) {
-			return fmt.Errorf("invalid grafana url %s", *c.Url)
+	if c.BaseUrl != nil {
+		if !net.IsValidURL(*c.BaseUrl) {
+			return fmt.Errorf("invalid grafana url %s", *c.BaseUrl)
+		}
+	}
+	if c.DashboardUrl != nil {
+		if *c.DashboardUrl == "" {
+			return errors.New("if set, grafana dashboard url cannot be an empty string")
+		}
+	}
+	if c.BearerToken != nil {
+		if *c.BearerToken == "" {
+			return errors.New("if set, grafana Bearer token cannot be an empty string")
 		}
 	}
 

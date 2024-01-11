@@ -386,8 +386,12 @@ func (m *LogStream) SaveLogTargetsLocations(writer LogWriter) {
 		name := string(handler.GetTarget())
 		location, err := handler.GetLogLocation(m.consumers)
 		if err != nil {
-			m.log.Error().Str("Handler", name).Err(err).Msg("Failed to get log location")
-			continue
+			if strings.Contains(err.Error(), ShorteningFailedErr) {
+				m.log.Warn().Str("Handler", name).Err(err).Msg("Failed to shorten Grafana URL, will use original one")
+			} else {
+				m.log.Error().Str("Handler", name).Err(err).Msg("Failed to get log location")
+				continue
+			}
 		}
 
 		if err := writer(m.testName, name, location); err != nil {
