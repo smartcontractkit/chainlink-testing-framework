@@ -3,13 +3,13 @@ package test_env
 import (
 	"context"
 	_ "embed"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pelletier/go-toml/v2"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
 
@@ -48,11 +48,11 @@ func (c *EthereumChainConfig) Default() error {
 		EthereumNetwork *EthereumNetwork `toml:"PrivateEthereumNetwork"`
 	}{}
 	if err := toml.Unmarshal(defaultEthereumChainConfig, &wrapper); err != nil {
-		return errors.Wrapf(err, "error unmarshaling ethereum network config")
+		return fmt.Errorf("error unmarshaling ethereum network config: %w", err)
 	}
 
 	if wrapper.EthereumNetwork == nil {
-		return errors.Errorf("[EthereumNetwork] was not present in default TOML file")
+		return errors.New("[EthereumNetwork] was not present in default TOML file")
 	}
 
 	*c = *wrapper.EthereumNetwork.EthereumChainConfig

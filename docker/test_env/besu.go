@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
 	tc "github.com/testcontainers/testcontainers-go"
@@ -90,7 +89,7 @@ func (g *Besu) StartContainer() (blockchain.EVMNetwork, error) {
 		Logger:           l,
 	})
 	if err != nil {
-		return blockchain.EVMNetwork{}, errors.Wrapf(err, "cannot start Besu container")
+		return blockchain.EVMNetwork{}, fmt.Errorf("cannot start Besu container: %w", err)
 	}
 
 	host, err := GetHost(testcontext.Get(g.t), ct)

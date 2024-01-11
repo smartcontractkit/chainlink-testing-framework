@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
 	tc "github.com/testcontainers/testcontainers-go"
@@ -92,7 +91,7 @@ func (g *Erigon) StartContainer() (blockchain.EVMNetwork, error) {
 		Logger:           l,
 	})
 	if err != nil {
-		return blockchain.EVMNetwork{}, errors.Wrapf(err, "cannot start erigon container")
+		return blockchain.EVMNetwork{}, fmt.Errorf("cannot start erigon container: %w", err)
 	}
 
 	host, err := GetHost(testcontext.Get(g.t), ct)

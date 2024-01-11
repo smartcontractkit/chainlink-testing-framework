@@ -8,7 +8,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pelletier/go-toml/v2"
-	"github.com/pkg/errors"
+
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
@@ -194,7 +194,7 @@ func readEthereumNetworkConfig(configDecoded string) (EthereumNetwork, error) {
 	var net ethereumNetworkWrapper
 	err := toml.Unmarshal([]byte(configDecoded), &net)
 	if err != nil {
-		return EthereumNetwork{}, errors.Wrapf(err, "error unmarshaling ethereum network config")
+		return EthereumNetwork{}, fmt.Errorf("error unmarshaling ethereum network config: %w", err)
 	}
 
 	return *net.EthereumNetwork, nil

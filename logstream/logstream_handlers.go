@@ -1,13 +1,13 @@
 package logstream
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/smartcontractkit/wasp"
 
@@ -56,7 +56,7 @@ func (h *FileLogHandler) Handle(c *ContainerLogConsumer, content LogContent) err
 	if err != nil {
 		h.shouldSkipLogging = true
 
-		return errors.Wrap(err, "failed to create logs folder. File logging stopped")
+		return fmt.Errorf("failed to create logs folder. File logging stopped: %w", err)
 	}
 
 	logFileName := filepath.Join(folder, fmt.Sprintf("%s.log", content.ContainerName))
@@ -64,7 +64,7 @@ func (h *FileLogHandler) Handle(c *ContainerLogConsumer, content LogContent) err
 	if err != nil {
 		h.shouldSkipLogging = true
 
-		return errors.Wrap(err, "failed to open log file. File logging stopped")
+		return fmt.Errorf("failed to open log file. File logging stopped: %w", err)
 	}
 
 	defer logFile.Close()
@@ -72,7 +72,7 @@ func (h *FileLogHandler) Handle(c *ContainerLogConsumer, content LogContent) err
 	if _, err := logFile.WriteString(string(content.Content)); err != nil {
 		h.shouldSkipLogging = true
 
-		return errors.Wrap(err, "failed to write to log file. File logging stopped")
+		return fmt.Errorf("failed to write to log file. File logging stopped: %w", err)
 	}
 
 	return nil
@@ -105,7 +105,7 @@ func (h *FileLogHandler) Init(c *ContainerLogConsumer) error {
 	if err != nil {
 		h.shouldSkipLogging = true
 
-		return errors.Wrap(err, "failed to create logs folder. File logging stopped")
+		return fmt.Errorf("failed to create logs folder. File logging stopped: %w", err)
 	}
 
 	logFileName := filepath.Join(folder, fmt.Sprintf("%s.log", c.name))
@@ -113,7 +113,7 @@ func (h *FileLogHandler) Init(c *ContainerLogConsumer) error {
 	if err != nil {
 		h.shouldSkipLogging = true
 
-		return errors.Wrap(err, "failed to open log file. File logging stopped")
+		return fmt.Errorf("failed to open log file. File logging stopped: %w", err)
 	}
 
 	return nil

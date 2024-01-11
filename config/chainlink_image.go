@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/pkg/errors"
+	"errors"
 )
 
 type ChainlinkImageConfig struct {

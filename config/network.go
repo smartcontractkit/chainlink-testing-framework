@@ -2,10 +2,12 @@ package config
 
 import (
 	"encoding/base64"
+	"fmt"
 	"strings"
 
+	"errors"
+
 	"github.com/pelletier/go-toml/v2"
-	"github.com/pkg/errors"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/osutil"
 )
@@ -29,7 +31,7 @@ func (n *NetworkConfig) ApplySecrets() error {
 
 	err = n.ApplyBase64Enconded(encodedEndpoints)
 	if err != nil {
-		return errors.Wrapf(err, "error reading network encoded endpoints")
+		return fmt.Errorf("error reading network encoded endpoints: %w", err)
 	}
 
 	return nil
@@ -43,12 +45,12 @@ func (n *NetworkConfig) ApplyDecoded(configDecoded string) error {
 	var cfg NetworkConfig
 	err := toml.Unmarshal([]byte(configDecoded), &cfg)
 	if err != nil {
-		return errors.Wrapf(err, "error unmarshaling network config")
+		return fmt.Errorf("error unmarshaling network config: %w", err)
 	}
 
 	err = n.ApplyOverrides(&cfg)
 	if err != nil {
-		return errors.Wrapf(err, "error applying overrides from decoded network config file to config")
+		return fmt.Errorf("error applying overrides from decoded network config file to config: %w", err)
 	}
 
 	return nil
@@ -101,15 +103,15 @@ func (n *NetworkConfig) Validate() error {
 		}
 
 		if _, ok := n.RpcHttpUrls[network]; !ok {
-			return errors.Errorf("At least one HTTP RPC endpoint for %s network must be set", network)
+			return fmt.Errorf("At least one HTTP RPC endpoint for %s network must be set", network)
 		}
 
 		if _, ok := n.RpcWsUrls[network]; !ok {
-			return errors.Errorf("At least one WS RPC endpoint for %s network must be set", network)
+			return fmt.Errorf("At least one WS RPC endpoint for %s network must be set", network)
 		}
 
 		if _, ok := n.WalletKeys[network]; !ok {
-			return errors.Errorf("At least one private key of funding wallet for %s network must be set", network)
+			return fmt.Errorf("At least one private key of funding wallet for %s network must be set", network)
 		}
 	}
 

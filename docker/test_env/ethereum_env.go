@@ -3,6 +3,7 @@ package test_env
 import (
 	"context"
 	_ "embed"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -12,7 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/google/uuid"
 	"github.com/pelletier/go-toml/v2"
-	"github.com/pkg/errors"
+
 	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
 
@@ -575,7 +576,7 @@ func (en *EthereumNetwork) ApplyOverrides(from *EthereumNetwork) error {
 		} else {
 			err := en.EthereumChainConfig.ApplyOverrides(from.EthereumChainConfig)
 			if err != nil {
-				return errors.Wrapf(err, "error applying overrides from network config file to config")
+				return fmt.Errorf("error applying overrides from network config file to config: %w", err)
 			}
 		}
 	}
@@ -591,7 +592,7 @@ func (en *EthereumNetwork) Default() error {
 		EthereumNetwork *EthereumNetwork `toml:"PrivateEthereumNetwork"`
 	}{}
 	if err := toml.Unmarshal(defaultEthEnvConfig, &wrapper); err != nil {
-		return errors.Wrapf(err, "error unmarshaling ethereum network config")
+		return fmt.Errorf("error unmarshaling ethereum network config: %w", err)
 	}
 
 	*en = *wrapper.EthereumNetwork

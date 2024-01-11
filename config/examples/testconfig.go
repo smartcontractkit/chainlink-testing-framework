@@ -6,8 +6,9 @@ import (
 	"os"
 	"strings"
 
+	"errors"
+
 	"github.com/pelletier/go-toml/v2"
-	"github.com/pkg/errors"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
@@ -55,13 +56,13 @@ func GetConfig(configurationName string, product string) (TestConfig, error) {
 
 		content, err := readFile(filePath)
 		if err != nil {
-			return TestConfig{}, errors.Wrapf(err, "error reading file %s", filePath)
+			return TestConfig{}, fmt.Errorf("error reading file %s: %w", filePath, err)
 		}
 
 		var readConfig TestConfig
 		err = toml.Unmarshal(content, &readConfig)
 		if err != nil {
-			return TestConfig{}, errors.Wrapf(err, "error unmarshaling config")
+			return TestConfig{}, fmt.Errorf("error unmarshaling config: %w", err)
 		}
 
 		logger.Debug().Msgf("Successfully unmarshalled config file %s", fileName)
@@ -102,7 +103,7 @@ func GetConfig(configurationName string, product string) (TestConfig, error) {
 		var base64override TestConfig
 		err = toml.Unmarshal(decoded, &base64override)
 		if err != nil {
-			return TestConfig{}, errors.Wrapf(err, "error unmarshaling base64 config")
+			return TestConfig{}, fmt.Errorf("error unmarshaling base64 config: %w", err)
 		}
 
 		logger.Debug().Msgf("Applying base64 config override from environment variable %s", k8s_config.EnvBase64ConfigOverride)
@@ -115,19 +116,19 @@ func GetConfig(configurationName string, product string) (TestConfig, error) {
 	testConfig.Network = &ctf_config.NetworkConfig{}
 	err := testConfig.Network.ApplySecrets()
 	if err != nil {
-		return TestConfig{}, errors.Wrapf(err, "error applying secrets to network config")
+		return TestConfig{}, fmt.Errorf("error applying secrets to network config: %w", err)
 	}
 
 	for i := range maybeTestConfigs {
 		err := testConfig.ApplyOverrides(&maybeTestConfigs[i])
 		if err != nil {
-			return TestConfig{}, errors.Wrapf(err, "error applying overrides to test config")
+			return TestConfig{}, fmt.Errorf("error applying overrides to test config: %w", err)
 		}
 	}
 
 	err = testConfig.Validate()
 	if err != nil {
-		return TestConfig{}, errors.Wrapf(err, "error validating test config")
+		return TestConfig{}, fmt.Errorf("error validating test config: %w", err)
 	}
 
 	return testConfig, nil
@@ -144,7 +145,7 @@ func (c *TestConfig) ApplyOverrides(from *TestConfig) error {
 		} else {
 			err := c.ChainlinkImage.ApplyOverrides(from.ChainlinkImage)
 			if err != nil {
-				return errors.Wrapf(err, "error applying overrides to chainlink image config")
+				return fmt.Errorf("error applying overrides to chainlink image config: %w", err)
 			}
 		}
 	}
@@ -155,7 +156,7 @@ func (c *TestConfig) ApplyOverrides(from *TestConfig) error {
 		} else {
 			err := c.Logging.ApplyOverrides(from.Logging)
 			if err != nil {
-				return errors.Wrapf(err, "error applying overrides to logging config")
+				return fmt.Errorf("error applying overrides to logging config: %w", err)
 			}
 		}
 	}
@@ -166,7 +167,7 @@ func (c *TestConfig) ApplyOverrides(from *TestConfig) error {
 		} else {
 			err := c.Network.ApplyOverrides(from.Network)
 			if err != nil {
-				return errors.Wrapf(err, "error applying overrides to network config")
+				return fmt.Errorf("error applying overrides to network config: %w", err)
 			}
 		}
 	}
@@ -177,7 +178,7 @@ func (c *TestConfig) ApplyOverrides(from *TestConfig) error {
 		} else {
 			err := c.Pyroscope.ApplyOverrides(from.Pyroscope)
 			if err != nil {
-				return errors.Wrapf(err, "error applying overrides to pyroscope config")
+				return fmt.Errorf("error applying overrides to pyroscope config: %w", err)
 			}
 		}
 	}
@@ -188,7 +189,7 @@ func (c *TestConfig) ApplyOverrides(from *TestConfig) error {
 		} else {
 			err := c.PrivateEthereumNetwork.ApplyOverrides(from.PrivateEthereumNetwork)
 			if err != nil {
-				return errors.Wrapf(err, "error applying overrides to private ethereum network config")
+				return fmt.Errorf("error applying overrides to private ethereum network config: %w", err)
 			}
 		}
 		c.PrivateEthereumNetwork.EthereumChainConfig.GenerateGenesisTimestamp()
@@ -202,25 +203,25 @@ func (c *TestConfig) Validate() error {
 		return fmt.Errorf("chainlink image config must be set")
 	}
 	if err := c.ChainlinkImage.Validate(); err != nil {
-		return errors.Wrapf(err, "chainlink image config validation failed")
+		return fmt.Errorf("chainlink image config validation failed: %w", err)
 	}
 	if err := c.Network.Validate(); err != nil {
-		return errors.Wrapf(err, "network config validation failed")
+		return fmt.Errorf("network config validation failed: %w", err)
 	}
 	if c.Logging == nil {
-		return fmt.Errorf("logging config must be set")
+		return errors.New("logging config must be set")
 	}
 	if err := c.Logging.Validate(); err != nil {
-		return errors.Wrapf(err, "logging config validation failed")
+		return fmt.Errorf("logging config validation failed: %w", err)
 	}
 	if c.Pyroscope != nil {
 		if err := c.Pyroscope.Validate(); err != nil {
-			return errors.Wrapf(err, "pyroscope config validation failed")
+			return fmt.Errorf("pyroscope config validation failed: %w", err)
 		}
 	}
 	if c.PrivateEthereumNetwork != nil {
 		if err := c.PrivateEthereumNetwork.Validate(); err != nil {
-			return errors.Wrapf(err, "private ethereum network config validation failed")
+			return fmt.Errorf("private ethereum network config validation failed: %w", err)
 		}
 	}
 
@@ -230,7 +231,7 @@ func (c *TestConfig) Validate() error {
 func readFile(filePath string) ([]byte, error) {
 	content, err := os.ReadFile(filePath)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error reading file %s", filePath)
+		return nil, fmt.Errorf("error reading file %s: %w", filePath, err)
 	}
 
 	return content, nil

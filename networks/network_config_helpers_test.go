@@ -5,8 +5,6 @@ import (
 	"testing"
 
 	"github.com/pelletier/go-toml/v2"
-
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
@@ -105,7 +103,7 @@ func readPyroscopeConfig(configDecoded string) (config.PyroscopeConfig, error) {
 	var cfg config.PyroscopeConfig
 	err := toml.Unmarshal([]byte(configDecoded), &cfg)
 	if err != nil {
-		return config.PyroscopeConfig{}, errors.Wrapf(err, "error unmarshaling pyroscope config")
+		return config.PyroscopeConfig{}, fmt.Errorf("error unmarshaling pyroscope config: %w", err)
 	}
 
 	return cfg, nil

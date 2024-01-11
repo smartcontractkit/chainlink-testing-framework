@@ -2,9 +2,10 @@ package config
 
 import (
 	_ "embed"
+	"errors"
+	"fmt"
 
 	"github.com/pelletier/go-toml/v2"
-	"github.com/pkg/errors"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/net"
@@ -24,13 +25,13 @@ type LoggingConfig struct {
 func (l *LoggingConfig) Validate() error {
 	if l.LogStream != nil {
 		if err := l.LogStream.Validate(); err != nil {
-			return errors.Wrapf(err, "invalid log stream config")
+			return fmt.Errorf("invalid log stream config: %w", err)
 		}
 	}
 
 	if l.Grafana != nil {
 		if err := l.Grafana.Validate(); err != nil {
-			return errors.Wrapf(err, "invalid grafana config")
+			return fmt.Errorf("invalid grafana config: %w", err)
 		}
 	}
 
@@ -48,14 +49,14 @@ func (l *LoggingConfig) ApplyOverrides(from *LoggingConfig) error {
 		l.LogStream = from.LogStream
 	} else if from.LogStream != nil && l.LogStream != nil {
 		if err := l.LogStream.ApplyOverrides(from.LogStream); err != nil {
-			return errors.Wrapf(err, "error applying overrides to log stream config")
+			return fmt.Errorf("error applying overrides to log stream config: %w", err)
 		}
 	}
 	if from.Loki != nil && l.Loki == nil {
 		l.Loki = from.Loki
 	} else if from.Loki != nil && l.Loki != nil {
 		if err := l.Loki.ApplyOverrides(from.Loki); err != nil {
-			return errors.Wrapf(err, "error applying overrides to loki config")
+			return fmt.Errorf("error applying overrides to loki config: %w", err)
 		}
 	}
 	if from.Grafana != nil {
@@ -70,7 +71,7 @@ func (l *LoggingConfig) ApplyOverrides(from *LoggingConfig) error {
 
 func (l *LoggingConfig) Default() error {
 	if err := toml.Unmarshal(DefaultLoggingConfig, l); err != nil {
-		return errors.Wrapf(err, "error unmarshaling config")
+		return fmt.Errorf("error unmarshaling config: %w", err)
 	}
 
 	return nil
@@ -103,14 +104,14 @@ func (l *LogStreamConfig) Validate() error {
 	if len(l.LogTargets) > 0 {
 		for _, target := range l.LogTargets {
 			if target != "loki" && target != "file" && target != "in-memory" {
-				return errors.Errorf("invalid log target %s", target)
+				return fmt.Errorf("invalid log target %s", target)
 			}
 		}
 	}
 
 	if l.LogProducerTimeout != nil {
 		if l.LogProducerTimeout.Duration == 0 {
-			return errors.Errorf("log producer timeout must be greater than 0")
+			return errors.New("log producer timeout must be greater than 0")
 		}
 	}
 
@@ -130,7 +131,7 @@ type LokiConfig struct {
 func (l *LokiConfig) Validate() error {
 	if l.Endpoint != nil {
 		if !net.IsValidURL(*l.Endpoint) {
-			return errors.Errorf("invalid loki endpoint %s", *l.Endpoint)
+			return fmt.Errorf("invalid loki endpoint %s", *l.Endpoint)
 		}
 	}
 
@@ -172,7 +173,7 @@ func (c *GrafanaConfig) ApplyOverrides(from *GrafanaConfig) error {
 func (c *GrafanaConfig) Validate() error {
 	if c.Url != nil {
 		if !net.IsValidURL(*c.Url) {
-			return errors.Errorf("invalid grafana url %s", *c.Url)
+			return fmt.Errorf("invalid grafana url %s", *c.Url)
 		}
 	}
 

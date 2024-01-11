@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	tc "github.com/testcontainers/testcontainers-go"
@@ -70,7 +69,7 @@ func (g *ValKeysGeneretor) StartContainer() error {
 		Logger:           l,
 	})
 	if err != nil {
-		return errors.Wrapf(err, "cannot start val keys generation container")
+		return fmt.Errorf("cannot start val keys generation container: %w", err)
 	}
 
 	g.l.Info().Str("containerName", g.ContainerName).
