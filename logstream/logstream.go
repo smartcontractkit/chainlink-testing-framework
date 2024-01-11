@@ -841,23 +841,22 @@ func (g *ContainerLogConsumer) hasLogTarget(logTarget LogTarget) bool {
 // getLogTargetsFromEnv gets log targets from LOGSTREAM_LOG_TARGETS env var
 func getLogTargetsFromEnv() ([]LogTarget, error) {
 	envLogTargetsValue := os.Getenv("LOGSTREAM_LOG_TARGETS")
-	if envLogTargetsValue != "" {
-		envLogTargets := make([]LogTarget, 0)
-		for _, target := range strings.Split(envLogTargetsValue, ",") {
-			switch strings.TrimSpace(strings.ToLower(target)) {
-			case "loki":
-				envLogTargets = append(envLogTargets, Loki)
-			case "file":
-				envLogTargets = append(envLogTargets, File)
-			case "in-memory":
-				envLogTargets = append(envLogTargets, InMemory)
-			default:
-				return []LogTarget{}, errors.Errorf("unknown log target: %s", target)
-			}
-		}
-		return envLogTargets, nil
+	if envLogTargetsValue == "" {
+		// default log target is file
+		return []LogTarget{"file"}, nil
 	}
-
-	// default log target is file
-	return []LogTarget{"file"}, nil
+	envLogTargets := make([]LogTarget, 0)
+	for _, target := range strings.Split(envLogTargetsValue, ",") {
+		switch strings.TrimSpace(strings.ToLower(target)) {
+		case "loki":
+			envLogTargets = append(envLogTargets, Loki)
+		case "file":
+			envLogTargets = append(envLogTargets, File)
+		case "in-memory":
+			envLogTargets = append(envLogTargets, InMemory)
+		default:
+			return []LogTarget{}, errors.Errorf("unknown log target: %s", target)
+		}
+	}
+	return envLogTargets, nil
 }
