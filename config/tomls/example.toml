@@ -19,9 +19,13 @@ endpoint="https://loki.url/api/v3/push"
 # currently only needed when using public instance
 basic_auth="loki-basic-auth"
 
+# LogStream will try to shorten Grafana URLs by default (if all 3 variables are set)
 [Logging.Grafana]
-# url of your grafana dashboard
-url="http://grafana.url/your-dashboard"
+# grafana url (trailing "/" will be stripped)
+base_url="http://grafana.url"
+# url of your grafana dashboard (prefix and suffix "/" are stirpped), example: /d/ad61652-2712-1722/my-dashboard
+dashboard_url="/d/your-dashboard"
+bearer_token="my-awesome-token"
 
 # if you want to use polygon_mumbial
 [Network]
