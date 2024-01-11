@@ -36,8 +36,10 @@ func SaveStructAsToml(v any, dirName, name string) (string, error) {
 		}
 	}
 	filePath := fmt.Sprintf("%s/%s.toml", fileDir, name)
-	f, _ := toml.Marshal(v)
-	err = os.WriteFile(filePath, f, 0600)
+	f, err := toml.Marshal(v)
+	if err != nil {
+		return "", err
+	}
 
-	return filePath, err
+	return filePath, os.WriteFile(filePath, f, 0600)
 }
