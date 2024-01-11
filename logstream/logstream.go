@@ -308,7 +308,7 @@ func wrapError(existingErr, newErr error) error {
 	if existingErr == nil {
 		return newErr
 	}
-	return fmt.Errorf("%w: %w", existingErr, newErr.Error())
+	return fmt.Errorf("%w: %w", existingErr, newErr)
 }
 
 // Shutdown disconnects all containers and stops all consumers
