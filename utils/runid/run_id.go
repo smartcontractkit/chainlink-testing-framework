@@ -44,6 +44,11 @@ func GetOrGenerateRunId() (string, error) {
 }
 
 func RemoveLocalRunId() error {
+	_, inOs := os.LookupEnv("RUN_ID")
+	if inOs {
+		return nil
+	}
+
 	workingDir, err := os.Getwd()
 	if err != nil {
 		return err
@@ -51,6 +56,7 @@ func RemoveLocalRunId() error {
 
 	possiblePath := workingDir + "/.run.id"
 	_, err = os.Stat(possiblePath)
+
 	if err != nil {
 		return err
 	}
