@@ -216,7 +216,7 @@ func (m *LogStream) ConnectContainer(ctx context.Context, container LogProducing
 		return err
 	}
 
-	m.log.Info().
+	m.log.Trace().
 		Str("Prefix", prefix).
 		Str("Name", name).
 		Str("Timeout", m.logProducerTimeout.String()).
@@ -227,7 +227,7 @@ func (m *LogStream) ConnectContainer(ctx context.Context, container LogProducing
 	err = container.StartLogProducer(ctx, m.logProducerTimeout)
 
 	go func(done chan struct{}, timeout time.Duration, retryLimit int) {
-		defer m.log.Info().Str("Container name", name).Msg("Disconnected container logs")
+		defer m.log.Trace().Str("Container name", name).Msg("Disconnected container logs")
 		currentAttempt := 1
 
 		var shouldRetry = func() bool {
@@ -437,7 +437,7 @@ func (m *LogStream) DisconnectContainer(container LogProducingContainer) error {
 	var err error
 
 	if container.IsRunning() {
-		m.log.Info().Str("container", container.GetContainerID()).Msg("Disconnecting container")
+		m.log.Trace().Str("container", container.GetContainerID()).Msg("Disconnecting container")
 		err = container.StopLogProducer()
 	}
 
@@ -564,10 +564,10 @@ func (m *LogStream) GetAllLogsAndConsume(preExecuteFn ConsumerConsumingFn, consu
 					break LOG_LOOP
 				}
 			} else if errors.Is(decodeErr, io.EOF) {
-				m.log.Info().
+				m.log.Debug().
 					Int("Log count", counter).
 					Str("Container", consumer.name).
-					Msg("Finished getting logs")
+					Msg("Finished collecting logs")
 				break
 			} else {
 				m.log.Error().
@@ -653,10 +653,10 @@ func (m *LogStream) FlushLogsToTargets() error {
 
 	flushErr := m.GetAllLogsAndConsume(preExecuteFn, flushLogsFn, postExecuteFn)
 	if flushErr == nil {
-		m.log.Info().
+		m.log.Debug().
 			Msg("Finished flushing logs")
 	} else {
-		m.log.Info().
+		m.log.Error().
 			Err(flushErr).
 			Msg("Failed to flush logs")
 	}
@@ -855,9 +855,9 @@ func getLogTargetsFromEnv() ([]LogTarget, error) {
 				return []LogTarget{}, errors.Errorf("unknown log target: %s", target)
 			}
 		}
-
 		return envLogTargets, nil
 	}
 
-	return []LogTarget{}, nil
+	// default log target is file
+	return []LogTarget{"file"}, nil
 }
