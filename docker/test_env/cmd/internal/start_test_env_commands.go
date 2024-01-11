@@ -235,7 +235,6 @@ func getCustomImages(flags *flag.FlagSet) (map[test_env.ContainerType]string, er
 		customImages[test_env.ContainerType_Besu] = executionClientImage
 		customImages[test_env.ContainerType_Erigon] = executionClientImage
 		customImages[test_env.ContainerType_Geth] = executionClientImage
-		customImages[test_env.ContainerType_Geth2] = executionClientImage
 		customImages[test_env.ContainerType_Nethermind] = executionClientImage
 	}
 

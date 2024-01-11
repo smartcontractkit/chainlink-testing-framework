@@ -275,5 +275,5 @@ func (g *Geth2) buildInitScript() (string, error) {
 }
 
 func (g *Geth2) GetContainerType() ContainerType {
-	return ContainerType_Geth2
+	return ContainerType_Geth
 }
