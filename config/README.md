@@ -17,15 +17,9 @@ type TestConfig struct {
 }
 ```
 
-It's up to the user to provide a way to read the config from file and unmarshal it into the struct. All of the building blocks do and should implement the following interface:
-```golang
-type GenericConfig[T any] interface {
-	Validate() error
-	ApplyOverride(from T) error
-}
-```
+It's up to the user to provide a way to read the config from file and unmarshal it into the struct. You can check [testconfig.go](../config/examples/testconfig.go) to see one way it chould be done..
 
-`Validate()` should be used to ensure that the config is valid. `ApplyOverride()` should be used to apply overrides from another config. Some of the building blocks have also a `Default()` method that can be used to get default values.
+`Validate()` should be used to ensure that the config is valid. Some of the building blocks have also a `Default()` method that can be used to get default values.
 
 ## Working example
 
@@ -37,25 +31,32 @@ For a full working example making use of all the building blocks see [testconfig
 
 All you need to do now to get the config is execute `func GetConfig(configurationName string, product string) (TestConfig, error)`. It will first look for folder with file `.root_dir` and from there it will look for config files in all subfolders, so that you can place the config files in whatever folder(s) work for you. It assumes that all configuration versions for a single product are kept in `[product_name].toml` under different configuration names (that can represent anything you want: a single test, a test type, a test group, etc).
 
-It is advised to add `overrides.toml` to `.gitignore`.
+Overrides of config files are done in a super-simple way. We try to unmarshall consecutive files into the same struct. Since it's all pointer based only not-nil keys are overwritten.
+
+## IMPORTANT!
+It is **required** to add `overrides.toml` to `.gitignore` in your project, so that you don't accidentally commit it as it might contain secrets.
 
 ## Network config (and default RPC endpoints)
 
 Some more explanation is needed for the `NetworkConfig`:
 ```golang
 type NetworkConfig struct {
+	// list of networks that should be used for testing
 	SelectedNetworks []string            `toml:"selected_networks"`
+	// map of network name to RPC endpoints where key is network name and value is a list of RPC HTTP endpoints
 	RpcHttpUrls      map[string][]string `toml:"RpcHttpUrls"`
+	// map of network name to RPC endpoints where key is network name and value is a list of RPC WS endpoints
 	RpcWsUrls        map[string][]string `toml:"RpcWsUrls"`
+	// map of network name to wallet keys where key is network name and value is a list of private keys (aka funding keys)
 	WalletKeys       map[string][]string `toml:"WalletKeys"`
 }
 
-func (n *NetworkConfig) ApplySecrets() error {
+func (n *NetworkConfig) Default() error {
     ...
 }
 ```
 
-It not only stores the configuration of selected networks and RPC endpoints and wallet keys, but via `ApplySecrets()` method provides a way to read from env var `BASE64_NETWORK_CONFIG` a base64-ed configuration of RPC endpoints and wallet keys. This could prove useful in the CI, where we could store as a secret a default configuration of stable endpoints, so that when we run a test job all that we have to provide is the network name and nothing more as it's pretty tedious, especially for on-demand jobs, to have to pass the whole RPC/wallet configuration every time you run it.
+It not only stores the configuration of selected networks and RPC endpoints and wallet keys, but via `Default()` method provides a way to read from env var `BASE64_NETWORK_CONFIG` a base64-ed configuration of RPC endpoints and wallet keys. This could prove useful in the CI, where we could store as a secret a default configuration of stable endpoints, so that when we run a test job all that we have to provide is the network name and nothing more as it's pretty tedious, especially for on-demand jobs, to have to pass the whole RPC/wallet configuration every time you run it.
 
 ## Providing custom values in the CI
 
@@ -130,7 +131,7 @@ echo ::add-mask::$BASE64_CONFIG_OVERRIDE
 echo "BASE64_CONFIG_OVERRIDE=$BASE64_CONFIG_OVERRIDE" >> $GITHUB_ENV
 ```
 
-These two lines in that very order are super important:
+**These two lines in that very order are super important**
 ```bash
 BASE64_CONFIG_OVERRIDE=$(cat config.toml | base64 -w 0)
 echo ::add-mask::$BASE64_CONFIG_OVERRIDE
@@ -147,10 +148,20 @@ It's easy. All you need to do is:
 * Base64 it: `cat your.toml | base64`
 * Set the base64 result as `BASE64_CONFIG_OVERRIDE` environment variable.
 
-Both `BASE64_CONFIG_OVERRIDE` and `BASE64_NETWORK_CONFIG` will be automatically forwarded to k8s, when creating the environment programmatically via `environment.New()`. 
+Both `BASE64_CONFIG_OVERRIDE` and `BASE64_NETWORK_CONFIG` will be automatically forwarded to k8s (as long as they are set and available to the test process), when creating the environment programmatically via `environment.New()`. 
 
+Quick example:
+```bash
+BASE64_CONFIG_OVERRIDE=$(cat your.toml | base64) go test your-test-that-runs-in-k8s ./file/with/your/test
+```
 
-# Known issues/limitations
-* Slack configuration wasn't moved to TOML
-* `TEST_LOG_LEVEL` als wasn't moved
+# Not moved to TOML
+Not moved to TOML:
+* `SLACK_API_KEY`
+* `SLACK_USER`
+* `SLACK_CHANNEL`
+* `TEST_LOG_LEVEL`
+* `CHAINLINK_ENV_USER`
+* `DETACH_RUNNER` 
+* `ENV_JOB_IMAGE`
 * most of k8s-specific env variables were left untouched
