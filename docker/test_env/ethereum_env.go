@@ -2,7 +2,6 @@ package test_env
 
 import (
 	"context"
-	_ "embed"
 	"errors"
 	"fmt"
 	"os"
