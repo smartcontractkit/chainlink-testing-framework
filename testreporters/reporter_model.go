@@ -21,7 +21,8 @@ import (
 )
 
 type GrafanaURLProvider interface {
-	GetGrafanaURL() (string, error)
+	GetGrafanaBaseURL() (string, error)
+	GetGrafanaDashboardURL() (string, error)
 }
 
 // TestReporter is a general interface for all test reporters

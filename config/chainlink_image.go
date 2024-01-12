@@ -20,20 +20,3 @@ func (c *ChainlinkImageConfig) Validate() error {
 
 	return nil
 }
-
-func (c *ChainlinkImageConfig) ApplyOverrides(from *ChainlinkImageConfig) error {
-	if from == nil {
-		return nil
-	}
-	if from.Image != nil && *from.Image != "" {
-		c.Image = from.Image
-	}
-	if from.Version != nil && *from.Version != "" {
-		c.Version = from.Version
-	}
-	return nil
-}
-
-func (c *ChainlinkImageConfig) Default() error {
-	return nil
-}

@@ -40,7 +40,7 @@ type EthereumChainConfig struct {
 	AddressesToFund  []string `json:"addresses_to_fund" toml:"addresses_to_fund"`
 }
 
-//go:embed tomls/default_ethereum_env.toml
+//go:embed example/default_ethereum_env.toml
 var defaultEthereumChainConfig []byte
 
 func (c *EthereumChainConfig) Default() error {

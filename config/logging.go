@@ -1,18 +1,12 @@
 package config
 
 import (
-	_ "embed"
 	"errors"
 	"fmt"
-
-	"github.com/pelletier/go-toml/v2"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/net"
 )
-
-//go:embed tomls/logging_default.toml
-var DefaultLoggingConfig []byte
 
 type LoggingConfig struct {
 	TestLogCollect *bool            `toml:"test_log_collect"`
@@ -69,14 +63,6 @@ func (l *LoggingConfig) ApplyOverrides(from *LoggingConfig) error {
 	return nil
 }
 
-func (l *LoggingConfig) Default() error {
-	if err := toml.Unmarshal(DefaultLoggingConfig, l); err != nil {
-		return fmt.Errorf("error unmarshaling config: %w", err)
-	}
-
-	return nil
-}
-
 type LogStreamConfig struct {
 	LogTargets            []string                `toml:"log_targets"`
 	LogProducerTimeout    *blockchain.StrDuration `toml:"log_producer_timeout"`
@@ -115,10 +101,6 @@ func (l *LogStreamConfig) Validate() error {
 		}
 	}
 
-	return nil
-}
-
-func (l *LogStreamConfig) Default() error {
 	return nil
 }
 
@@ -161,23 +143,6 @@ type GrafanaConfig struct {
 	BearerToken  *string `toml:"bearer_token"`
 }
 
-func (c *GrafanaConfig) ApplyOverrides(from *GrafanaConfig) error {
-	if from == nil {
-		return nil
-	}
-	if from.BaseUrl != nil {
-		c.BaseUrl = from.BaseUrl
-	}
-	if from.DashboardUrl != nil {
-		c.DashboardUrl = from.DashboardUrl
-	}
-	if from.BearerToken != nil {
-		c.BearerToken = from.BearerToken
-	}
-
-	return nil
-}
-
 func (c *GrafanaConfig) Validate() error {
 	if c.BaseUrl != nil {
 		if !net.IsValidURL(*c.BaseUrl) {
@@ -195,9 +160,5 @@ func (c *GrafanaConfig) Validate() error {
 		}
 	}
 
-	return nil
-}
-
-func (c *GrafanaConfig) Default() error {
 	return nil
 }

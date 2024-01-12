@@ -32,26 +32,3 @@ func (c *PyroscopeConfig) Validate() error {
 
 	return nil
 }
-
-func (c *PyroscopeConfig) ApplyOverrides(from *PyroscopeConfig) error {
-	if from == nil {
-		return nil
-	}
-	if from.Enabled != nil {
-		c.Enabled = from.Enabled
-	}
-	if from.ServerUrl != nil {
-		c.ServerUrl = from.ServerUrl
-	}
-	if from.Key != nil {
-		c.Key = from.Key
-	}
-	if from.Environment != nil {
-		c.Environment = from.Environment
-	}
-	return nil
-}
-
-func (c *PyroscopeConfig) Default() error {
-	return nil
-}

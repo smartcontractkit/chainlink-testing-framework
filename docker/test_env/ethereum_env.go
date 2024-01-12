@@ -12,7 +12,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/google/uuid"
-	"github.com/pelletier/go-toml/v2"
 
 	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
@@ -579,26 +578,6 @@ func (en *EthereumNetwork) ApplyOverrides(from *EthereumNetwork) error {
 				return fmt.Errorf("error applying overrides from network config file to config: %w", err)
 			}
 		}
-	}
-
-	return nil
-}
-
-//go:embed tomls/default_ethereum_env.toml
-var defaultEthEnvConfig []byte
-
-func (en *EthereumNetwork) Default() error {
-	wrapper := struct {
-		EthereumNetwork *EthereumNetwork `toml:"PrivateEthereumNetwork"`
-	}{}
-	if err := toml.Unmarshal(defaultEthEnvConfig, &wrapper); err != nil {
-		return fmt.Errorf("error unmarshaling ethereum network config: %w", err)
-	}
-
-	*en = *wrapper.EthereumNetwork
-
-	if en.EthereumChainConfig != nil && en.EthereumChainConfig.genesisTimestamp == 0 {
-		en.EthereumChainConfig.GenerateGenesisTimestamp()
 	}
 
 	return nil

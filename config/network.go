@@ -23,13 +23,13 @@ type NetworkConfig struct {
 	WalletKeys       map[string][]string `toml:"WalletKeys"`
 }
 
-func (n *NetworkConfig) ApplySecrets() error {
+func (n *NetworkConfig) applySecrets() error {
 	encodedEndpoints, err := osutil.GetEnv(Base64NetworkConfigEnvVarName)
 	if err != nil {
 		return err
 	}
 
-	err = n.ApplyBase64Enconded(encodedEndpoints)
+	err = n.applyBase64Enconded(encodedEndpoints)
 	if err != nil {
 		return fmt.Errorf("error reading network encoded endpoints: %w", err)
 	}
@@ -37,7 +37,7 @@ func (n *NetworkConfig) ApplySecrets() error {
 	return nil
 }
 
-func (n *NetworkConfig) ApplyDecoded(configDecoded string) error {
+func (n *NetworkConfig) applyDecoded(configDecoded string) error {
 	if configDecoded == "" {
 		return nil
 	}
@@ -48,7 +48,9 @@ func (n *NetworkConfig) ApplyDecoded(configDecoded string) error {
 		return fmt.Errorf("error unmarshaling network config: %w", err)
 	}
 
-	err = n.ApplyOverrides(&cfg)
+	cfg.UpperCaseNetworkNames()
+
+	err = n.ApplyDefaults(&cfg)
 	if err != nil {
 		return fmt.Errorf("error applying overrides from decoded network config file to config: %w", err)
 	}
@@ -56,7 +58,7 @@ func (n *NetworkConfig) ApplyDecoded(configDecoded string) error {
 	return nil
 }
 
-func (n *NetworkConfig) ApplyBase64Enconded(configEncoded string) error {
+func (n *NetworkConfig) applyBase64Enconded(configEncoded string) error {
 	if configEncoded == "" {
 		return nil
 	}
@@ -66,34 +68,12 @@ func (n *NetworkConfig) ApplyBase64Enconded(configEncoded string) error {
 		return err
 	}
 
-	return n.ApplyDecoded(string(decoded))
+	return n.applyDecoded(string(decoded))
 }
 
 func (n *NetworkConfig) Validate() error {
 	if len(n.SelectedNetworks) == 0 {
 		return errors.New("selected_networks must be set")
-	}
-
-	upperCasedHttpUrls := make(map[string][]string)
-	for key := range n.RpcHttpUrls {
-		upperCasedHttpUrls[strings.ToUpper(key)] = n.RpcHttpUrls[key]
-	}
-	n.RpcHttpUrls = upperCasedHttpUrls
-
-	upperCasedWsUrls := make(map[string][]string)
-	for key := range n.RpcWsUrls {
-		upperCasedWsUrls[strings.ToUpper(key)] = n.RpcWsUrls[key]
-	}
-	n.RpcWsUrls = upperCasedWsUrls
-
-	upperCasedWalletKeys := make(map[string][]string)
-	for key := range n.WalletKeys {
-		upperCasedWalletKeys[strings.ToUpper(key)] = n.WalletKeys[key]
-	}
-	n.WalletKeys = upperCasedWalletKeys
-
-	for i, network := range n.SelectedNetworks {
-		n.SelectedNetworks[i] = strings.ToUpper(network)
 	}
 
 	for _, network := range n.SelectedNetworks {
@@ -103,52 +83,83 @@ func (n *NetworkConfig) Validate() error {
 		}
 
 		if _, ok := n.RpcHttpUrls[network]; !ok {
-			return fmt.Errorf("At least one HTTP RPC endpoint for %s network must be set", network)
+			return fmt.Errorf("at least one HTTP RPC endpoint for %s network must be set", network)
 		}
 
 		if _, ok := n.RpcWsUrls[network]; !ok {
-			return fmt.Errorf("At least one WS RPC endpoint for %s network must be set", network)
+			return fmt.Errorf("at least one WS RPC endpoint for %s network must be set", network)
 		}
 
 		if _, ok := n.WalletKeys[network]; !ok {
-			return fmt.Errorf("At least one private key of funding wallet for %s network must be set", network)
+			return fmt.Errorf("at least one private key of funding wallet for %s network must be set", network)
 		}
 	}
 
 	return nil
 }
 
-func (n *NetworkConfig) ApplyOverrides(from *NetworkConfig) error {
-	if from == nil {
+func (n *NetworkConfig) UpperCaseNetworkNames() {
+	var upperCaseMapKeys = func(m map[string][]string) {
+		newMap := make(map[string][]string)
+		for key := range m {
+			newMap[strings.ToUpper(key)] = m[key]
+			delete(m, key)
+		}
+		for key := range newMap {
+			m[key] = newMap[key]
+		}
+	}
+
+	upperCaseMapKeys(n.RpcHttpUrls)
+	upperCaseMapKeys(n.RpcWsUrls)
+	upperCaseMapKeys(n.WalletKeys)
+
+	for i, network := range n.SelectedNetworks {
+		n.SelectedNetworks[i] = strings.ToUpper(network)
+	}
+}
+
+func (n *NetworkConfig) ApplyDefaults(defaults *NetworkConfig) error {
+	if defaults == nil {
 		return nil
 	}
-	if from.SelectedNetworks != nil {
-		n.SelectedNetworks = from.SelectedNetworks
+
+	n.UpperCaseNetworkNames()
+
+	if defaults.SelectedNetworks != nil {
+		n.SelectedNetworks = defaults.SelectedNetworks
 	}
-	if from.RpcHttpUrls != nil {
+	if defaults.RpcHttpUrls != nil {
 		if n.RpcHttpUrls == nil || len(n.RpcHttpUrls) == 0 {
-			n.RpcHttpUrls = from.RpcHttpUrls
+			n.RpcHttpUrls = defaults.RpcHttpUrls
 		} else {
-			for network, urls := range from.RpcHttpUrls {
-				n.RpcHttpUrls[network] = urls
+			for network, urls := range defaults.RpcHttpUrls {
+				if _, ok := n.RpcHttpUrls[network]; !ok {
+					n.RpcHttpUrls[network] = urls
+				}
 			}
 		}
 	}
-	if from.RpcWsUrls != nil {
+	if defaults.RpcWsUrls != nil {
 		if n.RpcWsUrls == nil || len(n.RpcWsUrls) == 0 {
-			n.RpcWsUrls = from.RpcWsUrls
+			n.RpcWsUrls = defaults.RpcWsUrls
 		} else {
-			for network, urls := range from.RpcWsUrls {
-				n.RpcWsUrls[network] = urls
+			for network, urls := range defaults.RpcWsUrls {
+				if _, ok := n.RpcWsUrls[network]; !ok {
+					n.RpcWsUrls[network] = urls
+				}
 			}
 		}
 	}
-	if from.WalletKeys != nil {
+	if defaults.WalletKeys != nil {
 		if n.WalletKeys == nil || len(n.WalletKeys) == 0 {
-			n.WalletKeys = from.WalletKeys
+			n.WalletKeys = defaults.WalletKeys
 		} else {
-			for network, urls := range from.WalletKeys {
-				n.WalletKeys[network] = urls
+
+			for network, keys := range defaults.WalletKeys {
+				if _, ok := n.WalletKeys[network]; !ok {
+					n.WalletKeys[network] = keys
+				}
 			}
 		}
 	}
@@ -157,5 +168,5 @@ func (n *NetworkConfig) ApplyOverrides(from *NetworkConfig) error {
 }
 
 func (n *NetworkConfig) Default() error {
-	return nil
+	return n.applySecrets()
 }
