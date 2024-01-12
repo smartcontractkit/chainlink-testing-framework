@@ -16,6 +16,7 @@ type LoggingConfig struct {
 	LogStream      *LogStreamConfig `toml:"LogStream"`
 }
 
+// Validate executes config validation for LogStream, Grafana and Loki
 func (l *LoggingConfig) Validate() error {
 	if l.LogStream != nil {
 		if err := l.LogStream.Validate(); err != nil {
@@ -29,35 +30,10 @@ func (l *LoggingConfig) Validate() error {
 		}
 	}
 
-	return nil
-}
-
-func (l *LoggingConfig) ApplyOverrides(from *LoggingConfig) error {
-	if from == nil {
-		return nil
-	}
-	if from.TestLogCollect != nil {
-		l.TestLogCollect = from.TestLogCollect
-	}
-	if from.LogStream != nil && l.LogStream == nil {
-		l.LogStream = from.LogStream
-	} else if from.LogStream != nil && l.LogStream != nil {
-		if err := l.LogStream.ApplyOverrides(from.LogStream); err != nil {
-			return fmt.Errorf("error applying overrides to log stream config: %w", err)
+	if l.Loki != nil {
+		if err := l.Loki.Validate(); err != nil {
+			return fmt.Errorf("invalid loki config: %w", err)
 		}
-	}
-	if from.Loki != nil && l.Loki == nil {
-		l.Loki = from.Loki
-	} else if from.Loki != nil && l.Loki != nil {
-		if err := l.Loki.ApplyOverrides(from.Loki); err != nil {
-			return fmt.Errorf("error applying overrides to loki config: %w", err)
-		}
-	}
-	if from.Grafana != nil {
-		l.Grafana = from.Grafana
-	}
-	if from.RunId != nil {
-		l.RunId = from.RunId
 	}
 
 	return nil
@@ -69,23 +45,8 @@ type LogStreamConfig struct {
 	LogProducerRetryLimit *uint                   `toml:"log_producer_retry_limit"`
 }
 
-func (l *LogStreamConfig) ApplyOverrides(from *LogStreamConfig) error {
-	if from == nil {
-		return nil
-	}
-	if from.LogTargets != nil {
-		l.LogTargets = from.LogTargets
-	}
-	if from.LogProducerTimeout != nil {
-		l.LogProducerTimeout = from.LogProducerTimeout
-	}
-	if from.LogProducerRetryLimit != nil {
-		l.LogProducerRetryLimit = from.LogProducerRetryLimit
-	}
-
-	return nil
-}
-
+// Validate checks that the log stream config is valid, which means that
+// log targets are valid and log producer timeout is greater than 0
 func (l *LogStreamConfig) Validate() error {
 	if len(l.LogTargets) > 0 {
 		for _, target := range l.LogTargets {
@@ -110,28 +71,16 @@ type LokiConfig struct {
 	BasicAuth *string `toml:"basic_auth"`
 }
 
+// Validate checks that the loki config is valid, which means that
+// endpoint is a valid URL and tenant id is not empty
 func (l *LokiConfig) Validate() error {
 	if l.Endpoint != nil {
 		if !net.IsValidURL(*l.Endpoint) {
 			return fmt.Errorf("invalid loki endpoint %s", *l.Endpoint)
 		}
 	}
-
-	return nil
-}
-
-func (l *LokiConfig) ApplyOverrides(from *LokiConfig) error {
-	if from == nil {
-		return nil
-	}
-	if from.TenantId != nil {
-		l.TenantId = from.TenantId
-	}
-	if from.Endpoint != nil {
-		l.Endpoint = from.Endpoint
-	}
-	if from.BasicAuth != nil {
-		l.BasicAuth = from.BasicAuth
+	if l.TenantId == nil || *l.TenantId == "" {
+		return errors.New("loki tenant id must be set")
 	}
 
 	return nil
@@ -143,6 +92,9 @@ type GrafanaConfig struct {
 	BearerToken  *string `toml:"bearer_token"`
 }
 
+// Validate checks that the grafana config is valid, which means that
+// base url is a valid URL and dashboard url and bearer token are not empty
+// but that only applies if they are set
 func (c *GrafanaConfig) Validate() error {
 	if c.BaseUrl != nil {
 		if !net.IsValidURL(*c.BaseUrl) {

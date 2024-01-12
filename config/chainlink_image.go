@@ -9,6 +9,8 @@ type ChainlinkImageConfig struct {
 	Version *string `toml:"version"`
 }
 
+// Validate checks that the chainlink image config is valid, which means that
+// both image and version are set and non-empty
 func (c *ChainlinkImageConfig) Validate() error {
 	if c.Image == nil || *c.Image == "" {
 		return errors.New("chainlink image name must be set")

@@ -14,6 +14,9 @@ type PyroscopeConfig struct {
 	Environment *string `toml:"environment"`
 }
 
+// Validate checks that the pyroscope config is valid, which means that
+// server url, environment and key are set and non-empty, but only if
+// pyroscope is enabled
 func (c *PyroscopeConfig) Validate() error {
 	if c.Enabled != nil && *c.Enabled {
 		if c.ServerUrl == nil {

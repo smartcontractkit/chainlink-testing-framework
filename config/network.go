@@ -50,7 +50,7 @@ func (n *NetworkConfig) applyDecoded(configDecoded string) error {
 
 	cfg.UpperCaseNetworkNames()
 
-	err = n.ApplyDefaults(&cfg)
+	err = n.applyDefaults(&cfg)
 	if err != nil {
 		return fmt.Errorf("error applying overrides from decoded network config file to config: %w", err)
 	}
@@ -71,6 +71,9 @@ func (n *NetworkConfig) applyBase64Enconded(configEncoded string) error {
 	return n.applyDecoded(string(decoded))
 }
 
+// Validate checks if all required fields are set, meaning that there must be at least
+// 1 selected network and unless it's a simulated network, there must be at least 1
+// rpc endpoint for HTTP and WS and 1 private key for funding wallet
 func (n *NetworkConfig) Validate() error {
 	if len(n.SelectedNetworks) == 0 {
 		return errors.New("selected_networks must be set")
@@ -98,6 +101,8 @@ func (n *NetworkConfig) Validate() error {
 	return nil
 }
 
+// UpperCaseNetworkNames converts all network name keys for wallet keys, rpc endpoints maps and
+// selected network slice to upper case
 func (n *NetworkConfig) UpperCaseNetworkNames() {
 	var upperCaseMapKeys = func(m map[string][]string) {
 		newMap := make(map[string][]string)
@@ -119,7 +124,7 @@ func (n *NetworkConfig) UpperCaseNetworkNames() {
 	}
 }
 
-func (n *NetworkConfig) ApplyDefaults(defaults *NetworkConfig) error {
+func (n *NetworkConfig) applyDefaults(defaults *NetworkConfig) error {
 	if defaults == nil {
 		return nil
 	}
@@ -167,6 +172,10 @@ func (n *NetworkConfig) ApplyDefaults(defaults *NetworkConfig) error {
 	return nil
 }
 
+// Default applies default values to the network config after reading it
+// from BASE64_NETWORK_CONFIG env var. It will only fill in the gaps, not override
+// meaning that if you provided WS RPC endpoint in your network config, but not the
+// HTTP one, then only HTTP will be taken from default config (provided it's there)
 func (n *NetworkConfig) Default() error {
 	return n.applySecrets()
 }

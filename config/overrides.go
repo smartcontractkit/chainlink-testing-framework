@@ -4,6 +4,8 @@ import (
 	"dario.cat/mergo"
 )
 
+// MightConfigOverrideChainlinkVersion will override the chainlink image and version
+// in property maps from the passed config. It will panic if the config is nil.
 func MustConfigOverrideChainlinkVersion(config *ChainlinkImageConfig, target interface{}) {
 	if config == nil {
 		panic("[ChainlinkImageConfig] must be present")
@@ -22,6 +24,9 @@ func MustConfigOverrideChainlinkVersion(config *ChainlinkImageConfig, target int
 	}
 }
 
+// MightConfigOverridePyroscope will override the pyroscope config in property maps
+// from the passed config. If the config is nil, or the enabled flag is not set, or
+// the key is not set, then this function will do nothing.
 func MightConfigOverridePyroscopeKey(config *PyroscopeConfig, target interface{}) {
 	if config == nil || (config.Enabled == nil || !*config.Enabled) || (config.Key == nil || *config.Key == "") {
 		return

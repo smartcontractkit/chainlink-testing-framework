@@ -21,6 +21,8 @@ It's up to the user to provide a way to read the config from file and unmarshal 
 
 `Validate()` should be used to ensure that the config is valid. Some of the building blocks have also a `Default()` method that can be used to get default values.
 
+Also you might find `BytesToAnyTomlStruct(logger zerolog.Logger, filename, configurationName string, target any, content []byte) error` utility method useful for unmarshalling TOMLs read from env var or files into a struct
+
 ## Working example
 
 For a full working example making use of all the building blocks see [testconfig.go](../config/examples/testconfig.go). It provides methods for reading TOML, applying overrides and validating non-empty config blocks. It supports 4 levels of overrides, in order of precedence:
@@ -44,6 +46,8 @@ type NetworkConfig struct {
 	// list of networks that should be used for testing
 	SelectedNetworks []string            `toml:"selected_networks"`
 	// map of network name to RPC endpoints where key is network name and value is a list of RPC HTTP endpoints
+	// it doesn't matter if you use `arbitrum_sepolia` or `ARBITRUM_SEPOLIA` or even `arbitrum_SEPOLIA` as key
+	// as all keys will be uppercased when loading the Default config
 	RpcHttpUrls      map[string][]string `toml:"RpcHttpUrls"`
 	// map of network name to RPC endpoints where key is network name and value is a list of RPC WS endpoints
 	RpcWsUrls        map[string][]string `toml:"RpcWsUrls"`
@@ -56,7 +60,45 @@ func (n *NetworkConfig) Default() error {
 }
 ```
 
+Sample TOML config:
+```toml
+selected_networks = ["arbitrum_goerli", "optimism_goerli"]
+
+[RpcHttpUrls]
+arbitrum_goerli = ["https://devnet-2.mt/ABC/rpc/"]
+
+[WalletKeys]
+arbitrum_goerli = ["1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed"]
+optimism_goerli = ["1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed"]
+```
+
+If your config struct looks like that:
+```golang
+
+type TestConfig struct {
+	Network *ctf_config.NetworkConfig `toml:"Network"`
+}
+```
+
+then your TOML file should look like that:
+```toml
+[Network]
+selected_networks = ["arbitrum_goerli"]
+
+[Network.RpcHttpUrls]
+arbitrum_goerli = ["https://devnet-2.mt/ABC/rpc/"]
+
+[Network.RpcWsUrls]
+arbitrum_goerli = ["ws://devnet-2.mt/ABC/rpc/"]
+
+[Network.WalletKeys]
+arbitrum_goerli = ["1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed"]
+```
+
+
 It not only stores the configuration of selected networks and RPC endpoints and wallet keys, but via `Default()` method provides a way to read from env var `BASE64_NETWORK_CONFIG` a base64-ed configuration of RPC endpoints and wallet keys. This could prove useful in the CI, where we could store as a secret a default configuration of stable endpoints, so that when we run a test job all that we have to provide is the network name and nothing more as it's pretty tedious, especially for on-demand jobs, to have to pass the whole RPC/wallet configuration every time you run it.
+
+If in your product config you want to support case-insensitive network names and map keys remember to run `NetworkConfig.UpperCaseNetworkNames()` on your config before using it.
 
 ## Providing custom values in the CI
 
