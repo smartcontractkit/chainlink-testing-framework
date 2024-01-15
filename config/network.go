@@ -3,13 +3,12 @@ package config
 import (
 	"encoding/base64"
 	"fmt"
+	"os"
 	"strings"
 
 	"errors"
 
 	"github.com/pelletier/go-toml/v2"
-
-	"github.com/smartcontractkit/chainlink-testing-framework/utils/osutil"
 )
 
 const (
@@ -24,12 +23,12 @@ type NetworkConfig struct {
 }
 
 func (n *NetworkConfig) applySecrets() error {
-	encodedEndpoints, err := osutil.GetEnv(Base64NetworkConfigEnvVarName)
-	if err != nil {
-		return err
+	encodedEndpoints, isSet := os.LookupEnv(Base64NetworkConfigEnvVarName)
+	if isSet {
+		return nil
 	}
 
-	err = n.applyBase64Enconded(encodedEndpoints)
+	err := n.applyBase64Enconded(encodedEndpoints)
 	if err != nil {
 		return fmt.Errorf("error reading network encoded endpoints: %w", err)
 	}

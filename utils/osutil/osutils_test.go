@@ -11,11 +11,12 @@ import (
 
 // both stop file and target file exist in working directory
 func TestFindFile_ExistingInWorkingDir(t *testing.T) {
-	_, err := os.Create("stopFile.txt")
+	st := "stopFile1.txt"
+	_, err := os.Create(st)
 	require.NoError(t, err, "error creating temp stop file")
 
 	t.Cleanup(func() {
-		_ = os.Remove("stopFile.txt")
+		_ = os.Remove(st)
 	})
 
 	tmpfile, err := os.Create("example")
@@ -25,7 +26,7 @@ func TestFindFile_ExistingInWorkingDir(t *testing.T) {
 		_ = os.Remove("example")
 	})
 
-	foundPath, err := FindFile("example", "stopFile.txt", 10)
+	foundPath, err := FindFile("example", st, 10)
 	require.NoError(t, err, "error calling FindFile")
 
 	wd, err := os.Getwd()
@@ -38,27 +39,31 @@ func TestFindFile_ExistingInWorkingDir(t *testing.T) {
 // stop file exists in working directory
 // target file exists in sub directory
 func TestFindFile_ExistsInSubDir(t *testing.T) {
+	st := "stopFile2.txt"
 	wd, err := os.Getwd()
 	require.NoError(t, err, "error getting working directory")
 
-	err = os.Mkdir("baseDir", 0755)
+	b := "baseDir2"
+	s := "subDir2"
+	err = os.Mkdir(b, 0755)
 	require.NoError(t, err, "error creating temp base dir")
 	t.Cleanup(func() {
-		os.RemoveAll(filepath.Join(wd, "baseDir"))
+		os.RemoveAll(filepath.Join(wd, b))
+		_ = os.Chdir(wd)
 	})
 
-	baseDir := filepath.Join(wd, "baseDir")
-	subDir := filepath.Join(baseDir, "subDir")
+	baseDir := filepath.Join(wd, b)
+	subDir := filepath.Join(baseDir, s)
 	err = os.Mkdir(subDir, 0755)
 	require.NoError(t, err, "error creating sub dir")
 
 	// create stop file in base dir
-	stopFile := filepath.Join(baseDir, "stopFile.txt")
+	stopFile := filepath.Join(baseDir, st)
 	_, err = os.Create(stopFile)
 	require.NoError(t, err, "error creating temp stop file")
 
 	// create nested file in sub dir
-	targetFileName := "target.txt"
+	targetFileName := "target2.txt"
 	targetFile := filepath.Join(subDir, targetFileName)
 	_, err = os.Create(targetFile)
 	require.NoError(t, err, "error creating temp test file")
@@ -66,7 +71,7 @@ func TestFindFile_ExistsInSubDir(t *testing.T) {
 	err = os.Chdir(subDir)
 	require.NoError(t, err, "error changing working directory")
 
-	foundPath, err := FindFile(targetFileName, "stopFile.txt", 2)
+	foundPath, err := FindFile(targetFileName, st, 2)
 	require.NoError(t, err, "error calling FindFile")
 	require.Equal(t, targetFile, foundPath, "expected %v, got %v", targetFile, foundPath)
 }
@@ -74,23 +79,30 @@ func TestFindFile_ExistsInSubDir(t *testing.T) {
 // stop file exists in parent directory relative to working directory
 // target file exists in a sub directory
 func TestFindFile_ExistsInSameDirAsStop(t *testing.T) {
+	st := "stopFile3.txt"
 	wd, err := os.Getwd()
 	require.NoError(t, err, "error getting working directory")
 
-	err = os.Mkdir("baseDir", 0755)
+	b := "baseDir3"
+	err = os.Mkdir(b, 0755)
 	require.NoError(t, err, "error creating temp base dir")
 	t.Cleanup(func() {
-		os.RemoveAll(filepath.Join(wd, "baseDir"))
+		os.RemoveAll(filepath.Join(wd, b))
 	})
 
-	baseDir := filepath.Join(wd, "baseDir")
+	baseDir := filepath.Join(wd, b)
 	// create stop file in base dir
-	stopFile := filepath.Join(wd, "stopFile.txt")
+	stopFile := filepath.Join(wd, st)
 	_, err = os.Create(stopFile)
 	require.NoError(t, err, "error creating temp stop file")
 
+	t.Cleanup(func() {
+		os.Remove(stopFile)
+		_ = os.Chdir(wd)
+	})
+
 	// create nested file in base dir
-	targetFileName := "target.txt"
+	targetFileName := "target3.txt"
 	targetFile := filepath.Join(baseDir, targetFileName)
 	_, err = os.Create(targetFile)
 	require.NoError(t, err, "error creating temp test file")
@@ -98,21 +110,22 @@ func TestFindFile_ExistsInSameDirAsStop(t *testing.T) {
 	err = os.Chdir(baseDir)
 	require.NoError(t, err, "error changing working directory")
 
-	foundPath, err := FindFile(targetFileName, "stopFile.txt", 2)
+	foundPath, err := FindFile(targetFileName, st, 2)
 	require.NoError(t, err, "error calling FindFile")
 	require.Equal(t, targetFile, foundPath, "expected %v, got %v", targetFile, foundPath)
 }
 
 // file doesn't exist anywhere
 func TestFindFile_FileDoesNotExist(t *testing.T) {
-	_, err := os.Create("stopFile.txt")
+	st := "stopFile4.txt"
+	_, err := os.Create(st)
 	require.NoError(t, err, "error creating temp stop file")
 
 	t.Cleanup(func() {
-		_ = os.Remove("stopFile.txt")
+		_ = os.Remove(st)
 	})
 
-	_, err = FindFile("nonExistentFile.txt", "stopFile.txt", 2)
+	_, err = FindFile("nonExistentFile.txt", st, 2)
 	require.Error(t, err, "expected error calling FindFile")
 	require.Contains(t, "file does not exist", err.Error(), "got wrong error")
 }
@@ -126,16 +139,19 @@ func TestFindFile_StopFileDoesNotExist(t *testing.T) {
 
 // stop file doesn't exist within search limit
 func TestFindFile_stopFileNotFoundWithinLimit(t *testing.T) {
+	st := "stopFile5.txt"
+	b := "baseDir5"
 	wd, err := os.Getwd()
 	require.NoError(t, err, "error getting working directory")
 
-	err = os.Mkdir("baseDir", 0755)
+	err = os.Mkdir(b, 0755)
 	require.NoError(t, err, "error creating temp base dir")
 	t.Cleanup(func() {
-		os.RemoveAll(filepath.Join(wd, "baseDir"))
+		os.RemoveAll(filepath.Join(wd, b))
+		_ = os.Chdir(wd)
 	})
 
-	baseDir := filepath.Join(wd, "baseDir")
+	baseDir := filepath.Join(wd, b)
 
 	currentDir := baseDir
 	for i := 0; i <= 3; i++ {
@@ -144,14 +160,15 @@ func TestFindFile_stopFileNotFoundWithinLimit(t *testing.T) {
 		require.NoError(t, err, "error creating temp nested dir")
 	}
 
-	stopFile := filepath.Join(baseDir, "stopFile.txt")
+	stopFile := filepath.Join(baseDir, st)
 	_, err = os.Create(stopFile)
 	require.NoError(t, err, "error creating temp stop file")
 
 	err = os.Chdir(currentDir)
 	require.NoError(t, err, "error changing working directory")
 
-	_, err = FindFile("target.txt", "stopFile.txt", 2)
+	tg := "target5.txt"
+	_, err = FindFile(tg, st, 2)
 	require.Error(t, err, "expected error calling FindFile")
 	require.Contains(t, err.Error(), ErrStopFileNotFoundWithinLimit, "got wrong error")
 }
