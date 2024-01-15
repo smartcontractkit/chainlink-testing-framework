@@ -100,7 +100,8 @@ func TestMustGetSelectedNetworkConfig_DefaultUrlsFromEnv(t *testing.T) {
 	arbitrum_goerli = ["wss://devnet-1.mt/ABC/rpc/"]
 	`
 	encoded := base64.StdEncoding.EncodeToString([]byte(networkConfigTOML))
-	os.Setenv("BASE64_NETWORK_CONFIG", encoded)
+	err := os.Setenv("BASE64_NETWORK_CONFIG", encoded)
+	require.NoError(t, err, "error setting env var")
 
 	testTOML := `
 	selected_networks = ["arbitrum_goerli"]
@@ -111,18 +112,23 @@ func TestMustGetSelectedNetworkConfig_DefaultUrlsFromEnv(t *testing.T) {
 
 	l := logging.GetTestLogger(t)
 	networkCfg := config.NetworkConfig{}
-	err := config.BytesToAnyTomlStruct(l, "test", "", &networkCfg, []byte(testTOML))
+	err = config.BytesToAnyTomlStruct(l, "test", "", &networkCfg, []byte(testTOML))
 	require.NoError(t, err, "error reading network config")
+
+	networkCfg.UpperCaseNetworkNames()
 
 	err = networkCfg.Default()
 	require.NoError(t, err, "error reading default network config")
 
+	err = networkCfg.Validate()
+	require.NoError(t, err, "error validating network config")
+
 	networks := MustGetSelectedNetworkConfig(&networkCfg)
-	require.Len(t, networks, 1)
-	require.Equal(t, "Arbitrum Goerli", networks[0].Name)
-	require.Equal(t, []string{"wss://devnet-1.mt/ABC/rpc/"}, networks[0].URLs)
-	require.Equal(t, []string{"https://devnet-1.mt/ABC/rpc/"}, networks[0].HTTPURLs)
-	require.Equal(t, []string{"1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed"}, networks[0].PrivateKeys)
+	require.Len(t, networks, 1, "should have 1 network")
+	require.Equal(t, "Arbitrum Goerli", networks[0].Name, "first network should be arbitrum")
+	require.Equal(t, []string{"wss://devnet-1.mt/ABC/rpc/"}, networks[0].URLs, "should have default ws url for arbitrum")
+	require.Equal(t, []string{"https://devnet-1.mt/ABC/rpc/"}, networks[0].HTTPURLs, "should have default http url for arbitrum")
+	require.Equal(t, []string{"1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed"}, networks[0].PrivateKeys, "should have correct wallet key for arbitrum")
 }
 
 func TestMustGetSelectedNetworkConfig_MultipleNetworks(t *testing.T) {

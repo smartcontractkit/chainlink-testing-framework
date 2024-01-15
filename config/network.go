@@ -24,7 +24,7 @@ type NetworkConfig struct {
 
 func (n *NetworkConfig) applySecrets() error {
 	encodedEndpoints, isSet := os.LookupEnv(Base64NetworkConfigEnvVarName)
-	if isSet {
+	if !isSet {
 		return nil
 	}
 
