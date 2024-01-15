@@ -128,8 +128,6 @@ func (n *NetworkConfig) applyDefaults(defaults *NetworkConfig) error {
 		return nil
 	}
 
-	n.UpperCaseNetworkNames()
-
 	if defaults.SelectedNetworks != nil {
 		n.SelectedNetworks = defaults.SelectedNetworks
 	}

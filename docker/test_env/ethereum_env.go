@@ -217,12 +217,11 @@ func (b *EthereumNetworkBuilder) validate() error {
 		}
 	}
 
-	err := b.ethereumChainConfig.Validate(logging.GetTestLogger(b.t))
-	if err != nil {
-		return err
+	if b.ethereumChainConfig == nil {
+		return errors.New("ethereum chain config is required")
 	}
 
-	return nil
+	return b.ethereumChainConfig.Validate(logging.GetTestLogger(nil), b.consensusType)
 }
 
 type EthereumNetwork struct {
@@ -543,12 +542,7 @@ func (en *EthereumNetwork) Validate() error {
 		return errors.New("ethereum chain config is required")
 	}
 
-	err := en.EthereumChainConfig.Validate(logging.GetTestLogger(nil))
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return en.EthereumChainConfig.Validate(logging.GetTestLogger(nil), en.ConsensusType)
 }
 
 func (en *EthereumNetwork) ApplyOverrides(from *EthereumNetwork) error {
