@@ -4,7 +4,7 @@ import (
 	"dario.cat/mergo"
 )
 
-// MightConfigOverrideChainlinkVersion will override the chainlink image and version
+// MustConfigOverrideChainlinkVersion will override the chainlink image and version
 // in property maps from the passed config. It will panic if the config is nil.
 func MustConfigOverrideChainlinkVersion(config *ChainlinkImageConfig, target interface{}) {
 	if config == nil {
