@@ -125,5 +125,11 @@ func (ms *MockServer) getContainerRequest() (tc.ContainerRequest, error) {
 		WaitingFor: tcwait.ForLog("INFO 1080 started on port: 1080").
 			WithStartupTimeout(30 * time.Second).
 			WithPollInterval(100 * time.Millisecond),
+		LifecycleHooks: []tc.ContainerLifecycleHooks{
+			{
+				PostStarts: ms.PostStartsHooks,
+				PostStops:  ms.PostStopsHooks,
+			},
+		},
 	}, nil
 }

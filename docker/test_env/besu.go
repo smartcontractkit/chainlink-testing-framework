@@ -55,6 +55,7 @@ func NewBesu(networks []string, chainConfg *EthereumChainConfig, generatedDataHo
 		l:                    logging.GetTestLogger(nil),
 		image:                dockerImage,
 	}
+	g.SetDefaultHooks()
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
@@ -209,6 +210,12 @@ func (g *Besu) getContainerRequest(networks []string) (*tc.ContainerRequest, err
 					HostPath: g.generatedDataHostDir,
 				},
 				Target: tc.ContainerMountTarget(GENERATED_DATA_DIR_INSIDE_CONTAINER),
+			},
+		},
+		LifecycleHooks: []tc.ContainerLifecycleHooks{
+			{
+				PostStarts: g.PostStartsHooks,
+				PostStops:  g.PostStopsHooks,
 			},
 		},
 	}, nil
