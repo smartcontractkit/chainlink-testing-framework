@@ -19,16 +19,16 @@ const (
 )
 
 type EnvComponent struct {
-	ContainerName      string            `json:"containerName"`
-	ContainerImage     string            `json:"containerImage"`
-	ContainerVersion   string            `json:"containerVersion"`
-	ContainerEnvs      map[string]string `json:"containerEnvs"`
-	Networks           []string          `json:"networks"`
-	Container          tc.Container      `json:"-"`
-	LogStream          *logstream.LogStream
-	PostStartsHooks    []tc.ContainerHook
-	PostStopsHooks     []tc.ContainerHook
-	PreTerminatesHooks []tc.ContainerHook
+	ContainerName      string               `json:"containerName"`
+	ContainerImage     string               `json:"containerImage"`
+	ContainerVersion   string               `json:"containerVersion"`
+	ContainerEnvs      map[string]string    `json:"containerEnvs"`
+	Networks           []string             `json:"networks"`
+	Container          tc.Container         `json:"-"`
+	LogStream          *logstream.LogStream `json:"-"`
+	PostStartsHooks    []tc.ContainerHook   `json:"-"`
+	PostStopsHooks     []tc.ContainerHook   `json:"-"`
+	PreTerminatesHooks []tc.ContainerHook   `json:"-"`
 }
 
 type EnvComponentOption = func(c *EnvComponent)
