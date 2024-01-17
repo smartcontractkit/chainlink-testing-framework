@@ -18,6 +18,8 @@ tenant_id="tenant_id"
 endpoint="https://loki.url/api/v3/push"
 # currently only needed when using public instance
 basic_auth="loki-basic-auth"
+# only needed for cloud grafana
+bearer_token="bearer_token"
 
 # LogStream will try to shorten Grafana URLs by default (if all 3 variables are set)
 [Logging.Grafana]

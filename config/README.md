@@ -163,6 +163,7 @@ log_targets=$log_targets
 tenant_id="$LOKI_TENANT_ID"
 url="$LOKI_URL"
 basic_auth="$LOKI_BASIC_AUTH"
+bearer_token="$LOKI_BEARER_TOKEN"
 
 [Logging.Grafana]
 url="$GRAFANA_URL"
