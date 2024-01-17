@@ -189,6 +189,7 @@ func TestMustGetSelectedNetworkConfig_DefaultUrlsFromSecret_OverrideOne(t *testi
 	err = config.BytesToAnyTomlStruct(l, "test", "", &networkCfg, []byte(testTOML))
 	require.NoError(t, err, "error reading network config")
 
+	networkCfg.UpperCaseNetworkNames()
 	err = networkCfg.Default()
 	require.NoError(t, err, "error reading default network config")
 
