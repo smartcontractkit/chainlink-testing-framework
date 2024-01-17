@@ -80,7 +80,7 @@ type NonDevBesuNode struct {
 }
 
 func NewNonDevBesuNode(networks []string, networkCfg *blockchain.EVMNetwork) *NonDevBesuNode {
-	return &NonDevBesuNode{
+	n := &NonDevBesuNode{
 		Config: gethTxNodeConfig{
 			chainId:    strconv.FormatInt(networkCfg.ChainID, 10),
 			networkCfg: networkCfg,
@@ -91,6 +91,9 @@ func NewNonDevBesuNode(networks []string, networkCfg *blockchain.EVMNetwork) *No
 			Networks: networks,
 		},
 	}
+	n.SetDefaultHooks()
+
+	return n
 }
 
 func (g *NonDevBesuNode) WithTestInstance(t *testing.T) NonDevNode {
@@ -351,6 +354,12 @@ func (g *NonDevBesuNode) getBesuBootNodeContainerRequest() (tc.ContainerRequest,
 				Target: "/opt/besu/nodedata/",
 			},
 		},
+		LifecycleHooks: []tc.ContainerLifecycleHooks{
+			{
+				PostStarts: g.PostStartsHooks,
+				PostStops:  g.PostStopsHooks,
+			},
+		},
 	}, nil
 }
 
@@ -426,6 +435,12 @@ func (g *NonDevBesuNode) getBesuContainerRequest() (tc.ContainerRequest, error) 
 					HostPath: g.Config.rootPath,
 				},
 				Target: "/opt/besu/nodedata/",
+			},
+		},
+		LifecycleHooks: []tc.ContainerLifecycleHooks{
+			{
+				PostStarts: g.PostStartsHooks,
+				PostStops:  g.PostStopsHooks,
 			},
 		},
 	}, nil

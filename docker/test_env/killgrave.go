@@ -84,6 +84,7 @@ func NewKillgrave(networks []string, impostersDirectoryPath string, opts ...EnvC
 		impostersPath: impostersDirectoryPath,
 		l:             log.Logger,
 	}
+	k.SetDefaultHooks()
 	for _, opt := range opts {
 		opt(&k.EnvComponent)
 	}
@@ -155,6 +156,12 @@ func (k *Killgrave) getContainerRequest() (tc.ContainerRequest, error) {
 			},
 		},
 		WaitingFor: wait.ForLog("The fake server is on tap now"),
+		LifecycleHooks: []tc.ContainerLifecycleHooks{
+			{
+				PostStarts: k.PostStartsHooks,
+				PostStops:  k.PostStopsHooks,
+			},
+		},
 	}, nil
 }
 
