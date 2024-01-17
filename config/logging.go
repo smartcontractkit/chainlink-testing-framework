@@ -66,9 +66,10 @@ func (l *LogStreamConfig) Validate() error {
 }
 
 type LokiConfig struct {
-	TenantId  *string `toml:"tenant_id"`
-	Endpoint  *string `toml:"endpoint"`
-	BasicAuth *string `toml:"basic_auth"`
+	TenantId    *string `toml:"tenant_id"`
+	Endpoint    *string `toml:"endpoint"`
+	BasicAuth   *string `toml:"basic_auth"`
+	BearerToken *string `toml:"bearer_token"`
 }
 
 // Validate checks that the loki config is valid, which means that
