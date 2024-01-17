@@ -25,12 +25,14 @@ type Zookeeper struct {
 
 func NewZookeeper(networks []string) *Zookeeper {
 	id, _ := uuid.NewRandom()
-	return &Zookeeper{
+	z := &Zookeeper{
 		EnvComponent: EnvComponent{
 			ContainerName: fmt.Sprintf("zookeper-%s", id.String()),
 			Networks:      networks,
 		},
 	}
+	z.SetDefaultHooks()
+	return z
 }
 
 func (z *Zookeeper) WithTestInstance(t *testing.T) *Zookeeper {
@@ -93,5 +95,11 @@ func (z *Zookeeper) getContainerRequest() (tc.ContainerRequest, error) {
 		WaitingFor: tcwait.ForLog("ZooKeeper audit is disabled.").
 			WithStartupTimeout(30 * time.Second).
 			WithPollInterval(100 * time.Millisecond),
+		LifecycleHooks: []tc.ContainerLifecycleHooks{
+			{
+				PostStarts: z.PostStartsHooks,
+				PostStops:  z.PostStopsHooks,
+			},
+		},
 	}, nil
 }
