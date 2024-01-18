@@ -40,8 +40,8 @@ type Erigon struct {
 }
 
 func NewErigon(networks []string, chainConfg *EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) (*Erigon, error) {
-	// currently it uses v2.54.0
-	dockerImage, err := mirror.GetImage("thorax/erigon:v")
+	// currently it uses v2.56.0
+	dockerImage, err := mirror.GetImage("thorax/erigon:v2.56")
 	if err != nil {
 		return nil, err
 	}
@@ -241,7 +241,7 @@ func (g *Erigon) buildInitScript() (string, error) {
 	erigon --http --http.api=eth,erigon,engine,web3,net,debug,trace,txpool,admin --http.addr=0.0.0.0 --http.corsdomain=* \
 		--http.vhosts=* --http.port={{.HttpPort}} --ws --authrpc.vhosts=* --authrpc.addr=0.0.0.0 --authrpc.jwtsecret={{.JwtFileLocation}} \
 		--datadir={{.ExecutionDir}} --rpc.allow-unprotected-txs --rpc.txfeecap=0 --allow-insecure-unlock \
-		--nodiscover --networkid={{.ChainID}}`
+		--nodiscover --networkid={{.ChainID}} --db.size.limit=8TB`
 
 	data := struct {
 		HttpPort         string
