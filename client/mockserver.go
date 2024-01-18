@@ -151,6 +151,39 @@ func (em *MockserverClient) SetAnyValuePath(path string, v interface{}) error {
 	return err
 }
 
+func (em *MockserverClient) SetAnyValueResponse(path string, v interface{}) error {
+	if !strings.HasPrefix(path, "/") {
+		path = fmt.Sprintf("/%s", path)
+	}
+	sanitizedPath := strings.ReplaceAll(path, "/", "_")
+	id := fmt.Sprintf("%s_mock_id", sanitizedPath)
+	log.Debug().Str("ID", id).
+		Str("Path", path).
+		Interface("Value", v).
+		Msg("Setting Mock Server Path")
+	initializer := HttpInitializer{
+		Id:      id,
+		Request: HttpRequest{Path: path},
+		Response: HttpResponse{
+			Body: struct {
+				Id    string      `json:"id"`
+				Data  interface{} `json:"data"`
+				Error interface{} `json:"error"`
+			}{
+				Id:    "",
+				Data:  v,
+				Error: nil,
+			},
+		},
+	}
+	initializers := []HttpInitializer{initializer}
+	resp, err := em.APIClient.R().SetBody(&initializers).Put("/expectation")
+	if resp.StatusCode() != http.StatusCreated {
+		err = fmt.Errorf("status code expected %d got %d", http.StatusCreated, resp.StatusCode())
+	}
+	return err
+}
+
 // SetStringValuePath sets a string value for a path and returns it as a raw string
 func (em *MockserverClient) SetStringValuePath(path string, stringValue string) error {
 	sanitizedPath := strings.ReplaceAll(path, "/", "_")
