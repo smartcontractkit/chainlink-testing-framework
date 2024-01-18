@@ -1010,10 +1010,10 @@ func (m *Environment) Shutdown() error {
 	return nil
 }
 
-// BeforeTest sets the test name variable and determines if we need to start the remote runner
+// WillUseRemoteRunner determines if we need to start the remote runner
 func (m *Environment) WillUseRemoteRunner() bool {
 	val, _ := os.LookupEnv(config.EnvVarJobImage)
-	return val != "" && m.Cfg.Test.Name() != ""
+	return val != "" && m.Cfg != nil && m.Cfg.Test != nil && m.Cfg.Test.Name() != ""
 }
 
 func DefaultJobLogFunction(e *Environment, message string) {

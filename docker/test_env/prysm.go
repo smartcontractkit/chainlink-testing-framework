@@ -2,11 +2,11 @@ package test_env
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
@@ -33,7 +33,6 @@ type PrysmBeaconChain struct {
 	chainConfig               *EthereumChainConfig
 	l                         zerolog.Logger
 	t                         *testing.T
-	image                     string
 }
 
 func NewPrysmBeaconChain(networks []string, chainConfig *EthereumChainConfig, customConfigDataDir, gethExecutionURL string, opts ...EnvComponentOption) (*PrysmBeaconChain, error) {
@@ -43,16 +42,18 @@ func NewPrysmBeaconChain(networks []string, chainConfig *EthereumChainConfig, cu
 		return nil, err
 	}
 
+	parts := strings.Split(dockerImage, ":")
 	g := &PrysmBeaconChain{
 		EnvComponent: EnvComponent{
-			ContainerName: fmt.Sprintf("%s-%s", "prysm-beacon-chain", uuid.NewString()[0:8]),
-			Networks:      networks,
+			ContainerName:    fmt.Sprintf("%s-%s", "prysm-beacon-chain", uuid.NewString()[0:8]),
+			Networks:         networks,
+			ContainerImage:   parts[0],
+			ContainerVersion: parts[1],
 		},
 		chainConfig:              chainConfig,
 		generatedDataHostDir:     customConfigDataDir,
 		gethInternalExecutionURL: gethExecutionURL,
 		l:                        logging.GetTestLogger(nil),
-		image:                    dockerImage,
 	}
 	g.SetDefaultHooks()
 	for _, opt := range opts {
@@ -61,19 +62,10 @@ func NewPrysmBeaconChain(networks []string, chainConfig *EthereumChainConfig, cu
 	return g, nil
 }
 
-func (g *PrysmBeaconChain) WithImage(imageWithTag string) *PrysmBeaconChain {
-	g.image = imageWithTag
-	return g
-}
-
 func (g *PrysmBeaconChain) WithTestInstance(t *testing.T) *PrysmBeaconChain {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
 	return g
-}
-
-func (g *PrysmBeaconChain) GetImage() string {
-	return g.image
 }
 
 func (g *PrysmBeaconChain) StartContainer() error {
@@ -90,7 +82,7 @@ func (g *PrysmBeaconChain) StartContainer() error {
 		Logger:           l,
 	})
 	if err != nil {
-		return errors.Wrapf(err, "cannot start prysm beacon chain container")
+		return fmt.Errorf("cannot start prysm beacon chain container: %w", err)
 	}
 
 	host, err := GetHost(testcontext.Get(g.t), ct)
@@ -122,7 +114,7 @@ func (g *PrysmBeaconChain) StartContainer() error {
 func (g *PrysmBeaconChain) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
 	return &tc.ContainerRequest{
 		Name:          g.ContainerName,
-		Image:         g.image,
+		Image:         g.GetImageWithVersion(),
 		ImagePlatform: "linux/amd64",
 		Networks:      networks,
 		WaitingFor: tcwait.ForAll(
@@ -173,7 +165,6 @@ type PrysmValidator struct {
 	generatedDataHostDir      string
 	l                         zerolog.Logger
 	t                         *testing.T
-	image                     string
 }
 
 func NewPrysmValidator(networks []string, chainConfig *EthereumChainConfig, generatedDataHostDir, valKeysDir, internalBeaconRpcProvider string, opts ...EnvComponentOption) (*PrysmValidator, error) {
@@ -183,17 +174,19 @@ func NewPrysmValidator(networks []string, chainConfig *EthereumChainConfig, gene
 		return nil, err
 	}
 
+	parts := strings.Split(dockerImage, ":")
 	g := &PrysmValidator{
 		EnvComponent: EnvComponent{
-			ContainerName: fmt.Sprintf("%s-%s", "prysm-validator", uuid.NewString()[0:8]),
-			Networks:      networks,
+			ContainerName:    fmt.Sprintf("%s-%s", "prysm-validator", uuid.NewString()[0:8]),
+			Networks:         networks,
+			ContainerImage:   parts[0],
+			ContainerVersion: parts[1],
 		},
 		chainConfig:               chainConfig,
 		generatedDataHostDir:      generatedDataHostDir,
 		valKeysDir:                valKeysDir,
 		internalBeaconRpcProvider: internalBeaconRpcProvider,
 		l:                         logging.GetTestLogger(nil),
-		image:                     dockerImage,
 	}
 	g.SetDefaultHooks()
 	for _, opt := range opts {
@@ -202,19 +195,10 @@ func NewPrysmValidator(networks []string, chainConfig *EthereumChainConfig, gene
 	return g, nil
 }
 
-func (g *PrysmValidator) WithImage(imageWithTag string) *PrysmValidator {
-	g.image = imageWithTag
-	return g
-}
-
 func (g *PrysmValidator) WithTestInstance(t *testing.T) *PrysmValidator {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
 	return g
-}
-
-func (g *PrysmValidator) GetImage() string {
-	return g.image
 }
 
 func (g *PrysmValidator) StartContainer() error {
@@ -231,7 +215,7 @@ func (g *PrysmValidator) StartContainer() error {
 		Logger:           l,
 	})
 	if err != nil {
-		return errors.Wrapf(err, "cannot start prysm validator container")
+		return fmt.Errorf("cannot start prysm validator container: %w", err)
 	}
 
 	g.Container = ct
@@ -245,7 +229,7 @@ func (g *PrysmValidator) StartContainer() error {
 func (g *PrysmValidator) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
 	return &tc.ContainerRequest{
 		Name:          g.ContainerName,
-		Image:         g.image,
+		Image:         g.GetImageWithVersion(),
 		Networks:      networks,
 		ImagePlatform: "linux/x86_64",
 		WaitingFor: tcwait.ForAll(

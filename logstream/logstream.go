@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/gob"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
-	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -15,11 +15,11 @@ import (
 
 	"github.com/avast/retry-go"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/smartcontractkit/wasp"
 	"github.com/testcontainers/testcontainers-go"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/testsummary"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/runid"
@@ -49,17 +49,15 @@ type LogProducingContainer interface {
 // LogStream is a test helper struct to monitor docker container logs for some patterns
 // and push their logs into Loki for further analysis
 type LogStream struct {
-	testName                     string
-	log                          zerolog.Logger
-	loki                         *wasp.LokiClient
-	containers                   []LogProducingContainer
-	consumers                    map[string]*ContainerLogConsumer
-	logTargetHandlers            map[LogTarget]HandleLogTarget
-	enabledLogTargets            []LogTarget
-	logProducerTimeout           time.Duration
-	logProducerTimeoutRetryLimit int // -1 for infinite retries
-	acceptMutex                  sync.Mutex
-	runId                        string
+	testName          string
+	log               zerolog.Logger
+	loki              *wasp.LokiClient
+	containers        []LogProducingContainer
+	consumers         map[string]*ContainerLogConsumer
+	logTargetHandlers map[LogTarget]HandleLogTarget
+	enabledLogTargets []LogTarget
+	acceptMutex       sync.Mutex
+	loggingConfig     config.LoggingConfig
 }
 
 // LogContent is a representation of log that will be send to Loki
@@ -73,8 +71,12 @@ type LogContent struct {
 type Option func(*LogStream)
 
 // NewLogStream creates a new LogStream instance, with Loki client only if Loki log target is enabled (lazy init)
-func NewLogStream(t *testing.T, patterns map[string][]*regexp.Regexp, options ...Option) (*LogStream, error) {
-	l := logging.GetLogger(nil, "LOGWATCH_LOG_LEVEL").With().Str("Component", "LogStream").Logger()
+func NewLogStream(t *testing.T, loggingConfig *config.LoggingConfig, options ...Option) (*LogStream, error) {
+	if loggingConfig == nil {
+		return nil, errors.New("logging config cannot be nil")
+	}
+
+	l := logging.GetLogger(nil, "LOGSTREAM_LOG_LEVEL").With().Str("Component", "LogStream").Logger()
 	var testName string
 	if t == nil {
 		testName = NO_TEST
@@ -82,25 +84,25 @@ func NewLogStream(t *testing.T, patterns map[string][]*regexp.Regexp, options ..
 		testName = t.Name()
 	}
 
-	envLogTargets, err := getLogTargetsFromEnv()
+	logTargets, err := getLogTargetsFromConfig(*loggingConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	runId, err := runid.GetOrGenerateRunId()
+	runId, err := runid.GetOrGenerateRunId(loggingConfig.RunId)
 	if err != nil {
 		return nil, err
 	}
+
+	loggingConfig.RunId = &runId
 
 	logWatch := &LogStream{
-		testName:                     testName,
-		log:                          l,
-		consumers:                    make(map[string]*ContainerLogConsumer, 0),
-		logTargetHandlers:            getDefaultLogHandlers(),
-		logProducerTimeout:           time.Duration(10 * time.Second),
-		logProducerTimeoutRetryLimit: 10,
-		enabledLogTargets:            envLogTargets,
-		runId:                        runId,
+		testName:          testName,
+		log:               l,
+		consumers:         make(map[string]*ContainerLogConsumer, 0),
+		logTargetHandlers: getDefaultLogHandlers(),
+		enabledLogTargets: logTargets,
+		loggingConfig:     *loggingConfig,
 	}
 
 	for _, option := range options {
@@ -111,11 +113,7 @@ func NewLogStream(t *testing.T, patterns map[string][]*regexp.Regexp, options ..
 		return nil, err
 	}
 
-	for _, handler := range logWatch.logTargetHandlers {
-		handler.SetRunId(logWatch.runId)
-	}
-
-	l.Info().Str("Run_id", logWatch.runId).Msg("LogStream initialized")
+	l.Info().Str("Run_id", *logWatch.loggingConfig.RunId).Msg("LogStream initialized")
 
 	return logWatch, nil
 }
@@ -132,7 +130,7 @@ func (m *LogStream) validateLogTargets() error {
 		}
 
 		if !found {
-			return errors.Errorf("no handler found for log target: %s", wantedTarget)
+			return fmt.Errorf("no handler found for log target: %s", wantedTarget)
 		}
 	}
 
@@ -161,27 +159,6 @@ func (m *LogStream) validateLogTargets() error {
 func WithCustomLogHandler(logTarget LogTarget, handler HandleLogTarget) Option {
 	return func(lw *LogStream) {
 		lw.logTargetHandlers[logTarget] = handler
-	}
-}
-
-// WithLogTarget allows setting log targets programmatically (also overrides LOGSTREAM_LOG_TARGETS env var)
-func WithLogTarget(logTarget LogTarget) Option {
-	return func(lw *LogStream) {
-		lw.enabledLogTargets = append(lw.enabledLogTargets, logTarget)
-	}
-}
-
-// WithLogProducerTimeout allows to override default log producer timeout of 5 seconds
-func WithLogProducerTimeout(timeout time.Duration) Option {
-	return func(lw *LogStream) {
-		lw.logProducerTimeout = timeout
-	}
-}
-
-// WithLogProducerRetryLimit allows to override default log producer retry limit of 10
-func WithLogProducerRetryLimit(retryLimit int) Option {
-	return func(lw *LogStream) {
-		lw.logProducerTimeoutRetryLimit = retryLimit
 	}
 }
 
@@ -219,12 +196,12 @@ func (m *LogStream) ConnectContainer(ctx context.Context, container LogProducing
 	m.log.Trace().
 		Str("Prefix", prefix).
 		Str("Name", name).
-		Str("Timeout", m.logProducerTimeout.String()).
+		Str("Timeout", m.loggingConfig.LogStream.LogProducerTimeout.String()).
 		Msg("Connecting container logs")
 	m.consumers[name] = cons
 	m.containers = append(m.containers, container)
 	container.FollowOutput(cons)
-	err = container.StartLogProducer(ctx, m.logProducerTimeout)
+	err = container.StartLogProducer(ctx, m.loggingConfig.LogStream.LogProducerTimeout.Duration)
 
 	go func(done chan struct{}, timeout time.Duration, retryLimit int) {
 		defer m.log.Trace().Str("Container name", name).Msg("Disconnected container logs")
@@ -316,7 +293,7 @@ func (m *LogStream) ConnectContainer(ctx context.Context, container LogProducing
 				return
 			}
 		}
-	}(cons.logListeningDone, m.logProducerTimeout, m.logProducerTimeoutRetryLimit)
+	}(cons.logListeningDone, m.loggingConfig.LogStream.LogProducerTimeout.Duration, int(*m.loggingConfig.LogStream.LogProducerRetryLimit))
 
 	return err
 }
@@ -331,7 +308,7 @@ func wrapError(existingErr, newErr error) error {
 	if existingErr == nil {
 		return newErr
 	}
-	return errors.Wrap(existingErr, newErr.Error())
+	return fmt.Errorf("%w: %w", existingErr, newErr)
 }
 
 // Shutdown disconnects all containers and stops all consumers
@@ -409,8 +386,12 @@ func (m *LogStream) SaveLogTargetsLocations(writer LogWriter) {
 		name := string(handler.GetTarget())
 		location, err := handler.GetLogLocation(m.consumers)
 		if err != nil {
-			m.log.Error().Str("Handler", name).Err(err).Msg("Failed to get log location")
-			continue
+			if strings.Contains(err.Error(), ShorteningFailedErr) {
+				m.log.Warn().Str("Handler", name).Err(err).Msg("Failed to shorten Grafana URL, will use original one")
+			} else {
+				m.log.Error().Str("Handler", name).Err(err).Msg("Failed to get log location")
+				continue
+			}
 		}
 
 		if err := writer(m.testName, name, location); err != nil {
@@ -503,7 +484,7 @@ func (m *LogStream) GetAllLogsAndConsume(preExecuteFn ConsumerConsumingFn, consu
 		if loopErr == nil {
 			loopErr = err
 		} else {
-			loopErr = errors.Wrap(loopErr, err.Error())
+			loopErr = wrapError(loopErr, err)
 		}
 	}
 
@@ -514,7 +495,7 @@ func (m *LogStream) GetAllLogsAndConsume(preExecuteFn ConsumerConsumingFn, consu
 		}
 
 		if consumer.tempFile == nil {
-			attachError(errors.Errorf("temp file is nil for container %s, this should never happen", consumer.name))
+			attachError(fmt.Errorf("temp file is nil for container %s, this should never happen", consumer.name))
 			return
 		}
 
@@ -629,7 +610,7 @@ func (m *LogStream) FlushLogsToTargets() error {
 					Str("log target", string(logTarget)).
 					Msg("No handler found for log target. Aborting")
 
-				return errors.Errorf("no handler found for log target: %s", logTarget)
+				return fmt.Errorf("no handler found for log target: %s", logTarget)
 			}
 		}
 
@@ -838,25 +819,25 @@ func (g *ContainerLogConsumer) hasLogTarget(logTarget LogTarget) bool {
 	return false
 }
 
-// getLogTargetsFromEnv gets log targets from LOGSTREAM_LOG_TARGETS env var
-func getLogTargetsFromEnv() ([]LogTarget, error) {
-	envLogTargetsValue := os.Getenv("LOGSTREAM_LOG_TARGETS")
-	if envLogTargetsValue == "" {
-		// default log target is file
-		return []LogTarget{"file"}, nil
-	}
-	envLogTargets := make([]LogTarget, 0)
-	for _, target := range strings.Split(envLogTargetsValue, ",") {
-		switch strings.TrimSpace(strings.ToLower(target)) {
-		case "loki":
-			envLogTargets = append(envLogTargets, Loki)
-		case "file":
-			envLogTargets = append(envLogTargets, File)
-		case "in-memory":
-			envLogTargets = append(envLogTargets, InMemory)
-		default:
-			return []LogTarget{}, errors.Errorf("unknown log target: %s", target)
+// getLogTargetsFromConfig gets log targets from logging config or returns 'file' log targets if none are configured
+func getLogTargetsFromConfig(config config.LoggingConfig) ([]LogTarget, error) {
+	if config.LogStream != nil && len(config.LogStream.LogTargets) > 0 {
+		logTargets := make([]LogTarget, 0)
+		for _, target := range config.LogStream.LogTargets {
+			switch strings.TrimSpace(strings.ToLower(target)) {
+			case "loki":
+				logTargets = append(logTargets, Loki)
+			case "file":
+				logTargets = append(logTargets, File)
+			case "in-memory":
+				logTargets = append(logTargets, InMemory)
+			default:
+				return []LogTarget{}, fmt.Errorf("unknown log target: %s", target)
+			}
 		}
+
+		return logTargets, nil
 	}
-	return envLogTargets, nil
+
+	return []LogTarget{"file"}, nil
 }

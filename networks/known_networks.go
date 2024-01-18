@@ -4,7 +4,6 @@ package networks
 import (
 	"crypto/ecdsa"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -12,7 +11,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
-	"github.com/smartcontractkit/chainlink-testing-framework/utils/osutil"
+	"github.com/smartcontractkit/chainlink-testing-framework/config"
 )
 
 // Pre-configured test networks and their connections
@@ -61,7 +60,7 @@ var (
 		URLs:                      []string{"ws://source-chain-ethereum-geth:8546"},
 		HTTPURLs:                  []string{"http://source-chain-ethereum-geth:8544"},
 		ChainlinkTransactionLimit: 500000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: 2 * time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: 2 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       10000,
 		DefaultGasLimit:           6000000,
@@ -80,7 +79,7 @@ var (
 		URLs:                      []string{"ws://dest-chain-ethereum-geth:8546"},
 		HTTPURLs:                  []string{"http://dest-chain-ethereum-geth:8544"},
 		ChainlinkTransactionLimit: 500000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: 2 * time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: 2 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       10000,
 		DefaultGasLimit:           6000000,
@@ -101,7 +100,7 @@ var (
 		URLs:                      []string{"ws://source-chain-ethereum-besu:8546"},
 		HTTPURLs:                  []string{"http://source-chain-ethereum-besu:8544"},
 		ChainlinkTransactionLimit: 500000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: 2 * time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: 2 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       10000,
 		DefaultGasLimit:           6000000,
@@ -122,7 +121,7 @@ var (
 		URLs:                      []string{"ws://dest-chain-ethereum-besu:8546"},
 		HTTPURLs:                  []string{"http://dest-chain-ethereum-besu:8544"},
 		ChainlinkTransactionLimit: 500000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: 2 * time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: 2 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       10000,
 		DefaultGasLimit:           6000000,
@@ -140,7 +139,7 @@ var (
 		URLs:                      []string{"ws://geth-ethereum-geth:8546"},
 		HTTPURLs:                  []string{"http://geth-ethereum-geth:8544"},
 		ChainlinkTransactionLimit: 500000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: 2 * time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: 2 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       10000,
 	}
@@ -152,7 +151,7 @@ var (
 		ChainID:                   1,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: 5 * time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: 5 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       0,
 		FinalityTag:               true,
@@ -167,7 +166,7 @@ var (
 		ChainID:                   11155111,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: 5 * time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: 5 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       1000,
 		FinalityTag:               true,
@@ -182,7 +181,7 @@ var (
 		ChainID:                   5,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: 5 * time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: 5 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       1000,
 		FinalityTag:               true,
@@ -196,7 +195,7 @@ var (
 		ChainID:                   8217,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       0,
 	}
@@ -209,7 +208,7 @@ var (
 		ChainID:                   1001,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       0,
 	}
@@ -221,7 +220,7 @@ var (
 		ChainID:                   1088,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       0,
 	}
@@ -234,7 +233,7 @@ var (
 		ChainID:                   588,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       1000,
 	}
@@ -246,7 +245,7 @@ var (
 		ChainID:                   42161,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: 2 * time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: 2 * time.Minute},
 		MinimumConfirmations:      0,
 		GasEstimationBuffer:       0,
 		FinalityTag:               true,
@@ -261,7 +260,7 @@ var (
 		ChainID:                   421613,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: 2 * time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: 2 * time.Minute},
 		MinimumConfirmations:      0,
 		GasEstimationBuffer:       0,
 		FinalityTag:               true,
@@ -275,7 +274,7 @@ var (
 		ChainID:                   421614,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: 2 * time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: 2 * time.Minute},
 		MinimumConfirmations:      0,
 		GasEstimationBuffer:       0,
 		FinalityTag:               true,
@@ -289,7 +288,7 @@ var (
 		ChainID:                   10,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: 3 * time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
 		MinimumConfirmations:      0,
 		GasEstimationBuffer:       0,
 		FinalityTag:               true,
@@ -304,7 +303,7 @@ var (
 		ChainID:                   420,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: 3 * time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
 		MinimumConfirmations:      0,
 		GasEstimationBuffer:       0,
 		FinalityTag:               true,
@@ -319,7 +318,7 @@ var (
 		ChainID:                   11155420,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: 3 * time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
 		MinimumConfirmations:      0,
 		GasEstimationBuffer:       0,
 		FinalityTag:               true,
@@ -333,7 +332,7 @@ var (
 		ChainID:                   30,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       1000,
 	}
@@ -346,7 +345,7 @@ var (
 		ChainID:                   31,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       1000,
 	}
@@ -358,7 +357,7 @@ var (
 		ChainID:                   137,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: 3 * time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       0,
 		FinalityTag:               true,
@@ -373,7 +372,7 @@ var (
 		ChainID:                   80001,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: 3 * time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       1000,
 		FinalityTag:               true,
@@ -387,7 +386,7 @@ var (
 		ChainID:                   43114,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: 2 * time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: 2 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       0,
 		FinalityTag:               true,
@@ -401,7 +400,7 @@ var (
 		ChainID:                   43113,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: 2 * time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: 2 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       1000,
 		FinalityTag:               true,
@@ -415,7 +414,7 @@ var (
 		ChainID:                   1337,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       0,
 	}
@@ -427,7 +426,7 @@ var (
 		ChainID:                   84531,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: 3 * time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
 		MinimumConfirmations:      0,
 		GasEstimationBuffer:       0,
 		FinalityTag:               true,
@@ -442,7 +441,7 @@ var (
 		ChainID:                   84532,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: 3 * time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
 		MinimumConfirmations:      0,
 		GasEstimationBuffer:       0,
 		FinalityTag:               true,
@@ -456,7 +455,7 @@ var (
 		ChainID:                   44787,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: 3 * time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       1000,
 	}
@@ -467,7 +466,7 @@ var (
 		ChainID:                   534351,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: 3 * time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       0,
 	}
@@ -478,7 +477,7 @@ var (
 		ChainID:                   534352,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: 3 * time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       0,
 	}
@@ -489,7 +488,7 @@ var (
 		ChainID:                   42220,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       1000,
 	}
@@ -501,7 +500,7 @@ var (
 		ChainID:                   8453,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: 3 * time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
 		MinimumConfirmations:      0,
 		GasEstimationBuffer:       0,
 		FinalityTag:               true,
@@ -515,7 +514,7 @@ var (
 		ChainID:                   97,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: 2 * time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: 2 * time.Minute},
 		MinimumConfirmations:      3,
 		GasEstimationBuffer:       0,
 		FinalityTag:               true,
@@ -529,7 +528,7 @@ var (
 		ChainID:                   56,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: 2 * time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: 2 * time.Minute},
 		MinimumConfirmations:      3,
 		GasEstimationBuffer:       0,
 		FinalityTag:               true,
@@ -543,7 +542,7 @@ var (
 		ChainID:                   59140,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: 3 * time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
 		MinimumConfirmations:      0,
 		GasEstimationBuffer:       1000,
 	}
@@ -555,7 +554,7 @@ var (
 		ChainID:                   59144,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: 3 * time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       1000,
 	}
@@ -567,7 +566,7 @@ var (
 		ChainID:                   1442,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: time.Minute},
 		MinimumConfirmations:      0,
 		GasEstimationBuffer:       1000,
 	}
@@ -579,7 +578,7 @@ var (
 		ChainID:                   1101,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: time.Minute},
 		MinimumConfirmations:      0,
 		GasEstimationBuffer:       1000,
 	}
@@ -591,7 +590,7 @@ var (
 		ChainID:                   1112,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       0,
 		FinalityTag:               true,
@@ -605,7 +604,7 @@ var (
 		ChainID:                   1111,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       0,
 		FinalityTag:               true,
@@ -619,7 +618,7 @@ var (
 		ChainID:                   4002,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: 3 * time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       1000,
 	}
@@ -631,7 +630,7 @@ var (
 		ChainID:                   250,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: 3 * time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       1000,
 	}
@@ -643,7 +642,7 @@ var (
 		ChainID:                   255,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       1000,
 		FinalityTag:               true,
@@ -657,7 +656,7 @@ var (
 		ChainID:                   2358,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       1000,
 		FinalityTag:               true,
@@ -671,7 +670,7 @@ var (
 		ChainID:                   955081,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       1000,
 		FinalityTag:               true,
@@ -728,88 +727,38 @@ var (
 	}
 )
 
-// Get []blockchain.EVMNetwork from env vars. Panic if env vars not set or no networks found
-func MustGetSelectedNetworksFromEnv() []blockchain.EVMNetwork {
-	selectedNetworksEnv := os.Getenv("SELECTED_NETWORKS")
-	emptyEnvErr := fmt.Errorf("env var 'SELECTED_NETWORKS' is not set or is empty. Use valid network(s) separated by comma from %v", getValidNetworkKeys())
-	if selectedNetworksEnv == "" {
-		panic(emptyEnvErr)
+// Get []blockchain.EVMNetwork from TOML config. Panic if no networks are found
+func MustGetSelectedNetworkConfig(networkCfg *config.NetworkConfig) []blockchain.EVMNetwork {
+	if networkCfg == nil || len(networkCfg.SelectedNetworks) == 0 {
+		panic(fmt.Errorf("network config has no or empty selected networks. Use valid network(s) separated by comma from %v", getValidNetworkKeys()))
 	}
-	networkKeys := strings.Split(selectedNetworksEnv, ",")
-	if len(networkKeys) == 0 {
-		panic(emptyEnvErr)
-	}
-	return SetNetworks(networkKeys)
+	return MustSetNetworks(*networkCfg)
 }
-func SetNetworks(networkKeys []string) []blockchain.EVMNetwork {
+
+func MustSetNetworks(networkCfg config.NetworkConfig) []blockchain.EVMNetwork {
 	networks := make([]blockchain.EVMNetwork, 0)
-	for i := range networkKeys {
+	selectedNetworks := networkCfg.SelectedNetworks
+	for i := range selectedNetworks {
 		var walletKeys, httpUrls, wsUrls []string
-		if !strings.Contains(networkKeys[i], "SIMULATED") {
-			// Get network RPC WS URL from env var
-			wsEnvVar := fmt.Sprintf("%s_URLS", networkKeys[i])
-			wsEnvVal, err := osutil.GetEnv(wsEnvVar)
-			if err != nil {
-				log.Warn().Msgf("error getting %s var: %v", wsEnvVar, err)
-			}
-			if wsEnvVal == "" {
-				// Get default value
-				defaultUrls, err := osutil.GetEnv("EVM_URLS")
-				if err != nil {
-					panic(fmt.Errorf("error getting EVM_URLS var: %w", err))
-				}
-				if defaultUrls == "" {
-					panic(fmt.Errorf("set %s or EVM_URLS env var", wsEnvVar))
-				}
-				log.Warn().Msgf("%s not set, defaulting to EVM_URLS", wsEnvVar)
-				wsUrls = strings.Split(defaultUrls, ",")
-			} else {
-				wsUrls = strings.Split(wsEnvVal, ",")
+		networkName := strings.ToUpper(selectedNetworks[i])
+		if !strings.Contains(networkName, "SIMULATED") {
+			var ok bool
+			wsUrls, ok = networkCfg.RpcWsUrls[selectedNetworks[i]]
+			if !ok {
+				panic(fmt.Errorf("no rpc ws urls found in config for '%s' network", selectedNetworks[i]))
 			}
 
-			// Get network RPC HTTP URL from env var
-			httpEnvVar := fmt.Sprintf("%s_HTTP_URLS", networkKeys[i])
-			httpEnvVal, err := osutil.GetEnv(httpEnvVar)
-			if err != nil {
-				log.Warn().Msgf("error getting %s var: %v", httpEnvVal, err)
-			}
-			if httpEnvVal == "" {
-				// Get default value
-				defaultUrls, err := osutil.GetEnv("EVM_HTTP_URLS")
-				if err != nil {
-					panic(fmt.Errorf("error getting EVM_HTTP_URLS var: %w", err))
-				}
-				if defaultUrls == "" {
-					panic(fmt.Errorf("set %s or EVM_HTTP_URLS env var", httpEnvVar))
-				}
-				log.Warn().Msgf("%s not set, defaulting to EVM_HTTP_URLS", httpEnvVar)
-				httpUrls = strings.Split(defaultUrls, ",")
-			} else {
-				httpUrls = strings.Split(httpEnvVal, ",")
+			httpUrls, ok = networkCfg.RpcHttpUrls[selectedNetworks[i]]
+			if !ok {
+				panic(fmt.Errorf("no rpc http urls found in config for '%s' network", selectedNetworks[i]))
 			}
 
-			// Get network wallet key from env var
-			walletKeysEnvVar := fmt.Sprintf("%s_KEYS", networkKeys[i])
-			walletKeysEnvVal, err := osutil.GetEnv(walletKeysEnvVar)
-			if err != nil {
-				log.Warn().Msgf("error getting %s var: %v", walletKeysEnvVal, err)
-			}
-			if walletKeysEnvVal == "" {
-				// Get default value
-				defaultKeys, err := osutil.GetEnv("EVM_KEYS")
-				if err != nil {
-					panic(fmt.Errorf("error getting EVM_KEYS var: %w", err))
-				}
-				if defaultKeys == "" {
-					panic(fmt.Errorf("set %s or EVM_KEYS env var", walletKeysEnvVar))
-				}
-				log.Warn().Msgf("%s not set, defaulting to EVM_KEYS", walletKeysEnvVar)
-				walletKeys = strings.Split(defaultKeys, ",")
-			} else {
-				walletKeys = strings.Split(walletKeysEnvVal, ",")
+			walletKeys, ok = networkCfg.WalletKeys[selectedNetworks[i]]
+			if !ok {
+				panic(fmt.Errorf("no wallet keys found in config for '%s' network", selectedNetworks[i]))
 			}
 		}
-		network, err := NewEVMNetwork(networkKeys[i], walletKeys, httpUrls, wsUrls)
+		network, err := NewEVMNetwork(networkName, walletKeys, httpUrls, wsUrls)
 		if err != nil {
 			panic(err)
 		}
