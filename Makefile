@@ -2,6 +2,7 @@ BIN_DIR = bin
 export GOPATH ?= $(shell go env GOPATH)
 export GO111MODULE ?= on
 CDK8S_CLI_VERSION=2.1.48
+GO_VERSION=1.21.3
 
 LINUX=LINUX
 OSX=OSX
@@ -18,6 +19,34 @@ else
 		OSFLAG = $(OSX)
 	endif
 endif
+
+dagger_registry_start_local_with_cache: dagger_registry_delete
+	# build the image
+	docker build --build-arg GO_VERSION=$(GO_VERSION) -t localhost:5000/local_ci_cache:latest -f ./Dockerfile.local_ci_cache .
+
+	# start a local registry
+	docker run -d --rm --name registry -p 5000:5000 -v regdata:/var/lib/registry registry:2
+
+	# push the image to the local registry
+	docker push localhost:5000/local_ci_cache:latest
+
+	# restart the registry on the dagger network
+	docker stop registry
+	docker run -d --rm --name registry --network container:$$(docker ps --filter "name=^dagger-engine-*" -q) -v regdata:/var/lib/registry registry:2
+
+dagger_registry_delete:
+	docker rm -fv registry || true
+	docker volume rm regdata || true
+
+dagger_run:
+	# make go happy by adding dagger deps to this project
+	go get dagger.io/dagger
+
+	# run the dagger ci job
+	LOCAL_CACHE_IMAGE=localhost:5000/local_ci_cache:latest GO_VERSION=$(GO_VERSION) dagger run go run ci/main.go
+
+	# clean the dagger deps out of this project
+	go mod tidy
 
 lint:
 	golangci-lint --color=always run ./... --fix -v

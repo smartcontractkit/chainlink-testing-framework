@@ -1,0 +1,9 @@
+ARG GO_VERSION=1.21.3
+FROM golang:${GO_VERSION}
+
+COPY . /tmpsrc/
+RUN cd /tmpsrc \
+    && go mod tidy \
+    && cd / \
+    && rm -rf /tmpsrc \
+    && go install github.com/gotesttools/gotestfmt/v2/cmd/gotestfmt@latest
