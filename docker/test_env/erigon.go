@@ -58,6 +58,7 @@ func NewErigon(networks []string, chainConfg *EthereumChainConfig, generatedData
 		consensusLayer:       consensusLayer,
 		l:                    logging.GetTestLogger(nil),
 	}
+	g.SetDefaultHooks()
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
@@ -199,6 +200,12 @@ func (g *Erigon) getContainerRequest(networks []string) (*tc.ContainerRequest, e
 					HostPath: g.generatedDataHostDir,
 				},
 				Target: tc.ContainerMountTarget(GENERATED_DATA_DIR_INSIDE_CONTAINER),
+			},
+		},
+		LifecycleHooks: []tc.ContainerLifecycleHooks{
+			{
+				PostStarts: g.PostStartsHooks,
+				PostStops:  g.PostStopsHooks,
 			},
 		},
 	}, nil

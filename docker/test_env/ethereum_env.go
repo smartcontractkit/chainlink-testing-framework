@@ -570,7 +570,7 @@ func (en *EthereumNetwork) Validate() error {
 		return errors.New("ethereum chain config is required")
 	}
 
-	return en.EthereumChainConfig.Validate(logging.GetTestLogger(nil), en.ConsensusType)
+	return en.EthereumChainConfig.Validate(logging.GetTestLogger(nil), *en.ConsensusType)
 }
 
 func (en *EthereumNetwork) ApplyOverrides(from *EthereumNetwork) error {

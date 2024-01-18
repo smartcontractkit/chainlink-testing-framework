@@ -75,6 +75,7 @@ func NewGeth(networks []string, chainConfig *EthereumChainConfig, opts ...EnvCom
 		chainConfig: chainConfig,
 		l:           log.Logger,
 	}
+	g.SetDefaultHooks()
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
@@ -278,6 +279,12 @@ func (g *Geth) getGethContainerRequest(networks []string) (*tc.ContainerRequest,
 					HostPath: configDir,
 				},
 				Target: "/root/config/",
+			},
+		},
+		LifecycleHooks: []tc.ContainerLifecycleHooks{
+			{
+				PostStarts: g.PostStartsHooks,
+				PostStops:  g.PostStopsHooks,
 			},
 		},
 	}, ks, &account, nil

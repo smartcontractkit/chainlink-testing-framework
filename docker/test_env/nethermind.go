@@ -195,6 +195,12 @@ func (g *Nethermind) getContainerRequest(networks []string) (*tc.ContainerReques
 				Target: tc.ContainerMountTarget(GENERATED_DATA_DIR_INSIDE_CONTAINER),
 			},
 		},
+		LifecycleHooks: []tc.ContainerLifecycleHooks{
+			{
+				PostStarts: g.PostStartsHooks,
+				PostStops:  g.PostStopsHooks,
+			},
+		},
 	}, nil
 }
 

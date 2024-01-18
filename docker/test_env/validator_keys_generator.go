@@ -44,6 +44,7 @@ func NewValKeysGeneretor(chainConfig *EthereumChainConfig, valKeysHostDataDir st
 		l:                  log.Logger,
 		addressesToFund:    []string{},
 	}
+	g.SetDefaultHooks()
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
@@ -104,6 +105,12 @@ func (g *ValKeysGeneretor) getContainerRequest(networks []string) (*tc.Container
 					HostPath: g.valKeysHostDataDir,
 				},
 				Target: tc.ContainerMountTarget(GENERATED_VALIDATOR_KEYS_DIR_INSIDE_CONTAINER),
+			},
+		},
+		LifecycleHooks: []tc.ContainerLifecycleHooks{
+			{
+				PostStarts: g.PostStartsHooks,
+				PostStops:  g.PostStopsHooks,
 			},
 		},
 	}, nil
