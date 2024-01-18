@@ -1,13 +1,13 @@
 package logstream
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/smartcontractkit/wasp"
 
@@ -56,7 +56,7 @@ func (h *FileLogHandler) Handle(c *ContainerLogConsumer, content LogContent) err
 	if err != nil {
 		h.shouldSkipLogging = true
 
-		return errors.Wrap(err, "failed to create logs folder. File logging stopped")
+		return fmt.Errorf("failed to create logs folder. File logging stopped: %w", err)
 	}
 
 	logFileName := filepath.Join(folder, fmt.Sprintf("%s.log", content.ContainerName))
@@ -64,7 +64,7 @@ func (h *FileLogHandler) Handle(c *ContainerLogConsumer, content LogContent) err
 	if err != nil {
 		h.shouldSkipLogging = true
 
-		return errors.Wrap(err, "failed to open log file. File logging stopped")
+		return fmt.Errorf("failed to open log file. File logging stopped: %w", err)
 	}
 
 	defer logFile.Close()
@@ -72,7 +72,7 @@ func (h *FileLogHandler) Handle(c *ContainerLogConsumer, content LogContent) err
 	if _, err := logFile.WriteString(string(content.Content)); err != nil {
 		h.shouldSkipLogging = true
 
-		return errors.Wrap(err, "failed to write to log file. File logging stopped")
+		return fmt.Errorf("failed to write to log file. File logging stopped: %w", err)
 	}
 
 	return nil
@@ -105,7 +105,7 @@ func (h *FileLogHandler) Init(c *ContainerLogConsumer) error {
 	if err != nil {
 		h.shouldSkipLogging = true
 
-		return errors.Wrap(err, "failed to create logs folder. File logging stopped")
+		return fmt.Errorf("failed to create logs folder. File logging stopped: %w", err)
 	}
 
 	logFileName := filepath.Join(folder, fmt.Sprintf("%s.log", c.name))
@@ -113,7 +113,7 @@ func (h *FileLogHandler) Init(c *ContainerLogConsumer) error {
 	if err != nil {
 		h.shouldSkipLogging = true
 
-		return errors.Wrap(err, "failed to open log file. File logging stopped")
+		return fmt.Errorf("failed to open log file. File logging stopped: %w", err)
 	}
 
 	return nil
@@ -164,17 +164,26 @@ func (h *LokiLogHandler) GetLogLocation(consumers map[string]*ContainerLogConsum
 	}
 
 	// if no Grafana URL has been set let's at least print query parameters that can be manually added to the dashboard url
-	grafanaDashboardUrl := ""
-	if h.loggingConfig.Grafana.Url != nil {
-		grafanaDashboardUrl = *h.loggingConfig.Grafana.Url
-		grafanaDashboardUrl = strings.TrimSuffix(grafanaDashboardUrl, "/")
+	baseUrl := ""
+	if h.loggingConfig.Grafana != nil && h.loggingConfig.Grafana.BaseUrl != nil {
+		baseUrl = *h.loggingConfig.Grafana.BaseUrl
+		baseUrl = strings.TrimSuffix(baseUrl, "/")
+		baseUrl = baseUrl + "/"
+	}
+
+	dabshoardUrl := ""
+	if h.loggingConfig.Grafana != nil && h.loggingConfig.Grafana.DashboardUrl != nil {
+		dabshoardUrl = *h.loggingConfig.Grafana.DashboardUrl
+		dabshoardUrl = strings.TrimSuffix(dabshoardUrl, "/")
+		dabshoardUrl = strings.TrimPrefix(dabshoardUrl, "/")
 	}
 
 	rangeFrom := time.Now()
 	rangeTo := time.Now().Add(time.Minute) //just to make sure we get the last message
 
 	var sb strings.Builder
-	sb.WriteString(grafanaDashboardUrl)
+	sb.WriteString(dabshoardUrl)
+	sb.WriteString("?orgId=1&")
 	sb.WriteString(fmt.Sprintf("&var-run_id=%s", *h.loggingConfig.RunId))
 
 	var testName string
@@ -196,7 +205,18 @@ func (h *LokiLogHandler) GetLogLocation(consumers map[string]*ContainerLogConsum
 	if testName != "" {
 		sb.WriteString(fmt.Sprintf("&var-test=%s", testName))
 	}
+
+	relativeUrl := sb.String()
+	sb.WriteString(baseUrl)
 	h.grafanaUrl = sb.String()
+
+	// try to shorten the URL only if we have all the required configuration parameters
+	if baseUrl != "" && dabshoardUrl != "" && h.loggingConfig.Grafana.BearerToken != nil {
+		shortened, err := ShortenUrl(baseUrl, relativeUrl, *h.loggingConfig.Grafana.BearerToken)
+		if err == nil {
+			h.grafanaUrl = shortened
+		}
+	}
 
 	return h.grafanaUrl, nil
 }

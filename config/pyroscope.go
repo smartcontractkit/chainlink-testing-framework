@@ -1,7 +1,8 @@
 package config
 
 import (
-	"github.com/pkg/errors"
+	"errors"
+	"fmt"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/net"
 )
@@ -13,13 +14,16 @@ type PyroscopeConfig struct {
 	Environment *string `toml:"environment"`
 }
 
+// Validate checks that the pyroscope config is valid, which means that
+// server url, environment and key are set and non-empty, but only if
+// pyroscope is enabled
 func (c *PyroscopeConfig) Validate() error {
 	if c.Enabled != nil && *c.Enabled {
 		if c.ServerUrl == nil {
 			return errors.New("pyroscope server url must be set")
 		}
 		if !net.IsValidURL(*c.ServerUrl) {
-			return errors.Errorf("invalid pyroscope server url %s", *c.ServerUrl)
+			return fmt.Errorf("invalid pyroscope server url %s", *c.ServerUrl)
 		}
 		if c.Environment == nil || *c.Environment == "" {
 			return errors.New("pyroscope environment must be set")
@@ -29,28 +33,5 @@ func (c *PyroscopeConfig) Validate() error {
 		}
 	}
 
-	return nil
-}
-
-func (c *PyroscopeConfig) ApplyOverrides(from *PyroscopeConfig) error {
-	if from == nil {
-		return nil
-	}
-	if from.Enabled != nil {
-		c.Enabled = from.Enabled
-	}
-	if from.ServerUrl != nil {
-		c.ServerUrl = from.ServerUrl
-	}
-	if from.Key != nil {
-		c.Key = from.Key
-	}
-	if from.Environment != nil {
-		c.Environment = from.Environment
-	}
-	return nil
-}
-
-func (c *PyroscopeConfig) Default() error {
 	return nil
 }

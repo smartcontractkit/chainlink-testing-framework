@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
 	tc "github.com/testcontainers/testcontainers-go"
@@ -79,7 +78,7 @@ func (g *Nethermind) StartContainer() (blockchain.EVMNetwork, error) {
 		Logger:           l,
 	})
 	if err != nil {
-		return blockchain.EVMNetwork{}, errors.Wrapf(err, "cannot start nethermind container")
+		return blockchain.EVMNetwork{}, fmt.Errorf("cannot start nethermind container: %w", err)
 	}
 
 	host, err := GetHost(context.Background(), ct)

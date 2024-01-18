@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
 	tc "github.com/testcontainers/testcontainers-go"
@@ -85,7 +84,7 @@ func (g *Geth2) StartContainer() (blockchain.EVMNetwork, error) {
 		Logger:           l,
 	})
 	if err != nil {
-		return blockchain.EVMNetwork{}, errors.Wrapf(err, "cannot start geth container")
+		return blockchain.EVMNetwork{}, fmt.Errorf("cannot start geth container: %w", err)
 	}
 
 	host, err := GetHost(testcontext.Get(g.t), ct)

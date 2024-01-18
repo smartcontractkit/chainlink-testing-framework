@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/pkg/errors"
+	"errors"
 )
 
 type ChainlinkImageConfig struct {
@@ -9,6 +9,8 @@ type ChainlinkImageConfig struct {
 	Version *string `toml:"version"`
 }
 
+// Validate checks that the chainlink image config is valid, which means that
+// both image and version are set and non-empty
 func (c *ChainlinkImageConfig) Validate() error {
 	if c.Image == nil || *c.Image == "" {
 		return errors.New("chainlink image name must be set")
@@ -18,22 +20,5 @@ func (c *ChainlinkImageConfig) Validate() error {
 		return errors.New("chainlink version must be set")
 	}
 
-	return nil
-}
-
-func (c *ChainlinkImageConfig) ApplyOverrides(from *ChainlinkImageConfig) error {
-	if from == nil {
-		return nil
-	}
-	if from.Image != nil && *from.Image != "" {
-		c.Image = from.Image
-	}
-	if from.Version != nil && *from.Version != "" {
-		c.Version = from.Version
-	}
-	return nil
-}
-
-func (c *ChainlinkImageConfig) Default() error {
 	return nil
 }

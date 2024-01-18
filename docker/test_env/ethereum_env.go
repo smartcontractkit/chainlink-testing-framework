@@ -2,7 +2,7 @@ package test_env
 
 import (
 	"context"
-	_ "embed"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -11,8 +11,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/google/uuid"
-	"github.com/pelletier/go-toml/v2"
-	"github.com/pkg/errors"
+
 	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
 
@@ -235,12 +234,11 @@ func (b *EthereumNetworkBuilder) validate() error {
 		}
 	}
 
-	err := b.ethereumChainConfig.Validate(logging.GetTestLogger(b.t))
-	if err != nil {
-		return err
+	if b.ethereumChainConfig == nil {
+		return errors.New("ethereum chain config is required")
 	}
 
-	return nil
+	return b.ethereumChainConfig.Validate(logging.GetTestLogger(nil), b.consensusType)
 }
 
 type EthereumNetwork struct {
@@ -572,12 +570,7 @@ func (en *EthereumNetwork) Validate() error {
 		return errors.New("ethereum chain config is required")
 	}
 
-	err := en.EthereumChainConfig.Validate(logging.GetTestLogger(nil))
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return en.EthereumChainConfig.Validate(logging.GetTestLogger(nil), en.ConsensusType)
 }
 
 func (en *EthereumNetwork) ApplyOverrides(from *EthereumNetwork) error {
@@ -603,29 +596,9 @@ func (en *EthereumNetwork) ApplyOverrides(from *EthereumNetwork) error {
 		} else {
 			err := en.EthereumChainConfig.ApplyOverrides(from.EthereumChainConfig)
 			if err != nil {
-				return errors.Wrapf(err, "error applying overrides from network config file to config")
+				return fmt.Errorf("error applying overrides from network config file to config: %w", err)
 			}
 		}
-	}
-
-	return nil
-}
-
-//go:embed tomls/default_ethereum_env.toml
-var defaultEthEnvConfig []byte
-
-func (en *EthereumNetwork) Default() error {
-	wrapper := struct {
-		EthereumNetwork *EthereumNetwork `toml:"PrivateEthereumNetwork"`
-	}{}
-	if err := toml.Unmarshal(defaultEthEnvConfig, &wrapper); err != nil {
-		return errors.Wrapf(err, "error unmarshaling ethereum network config")
-	}
-
-	*en = *wrapper.EthereumNetwork
-
-	if en.EthereumChainConfig != nil && en.EthereumChainConfig.genesisTimestamp == 0 {
-		en.EthereumChainConfig.GenerateGenesisTimestamp()
 	}
 
 	return nil

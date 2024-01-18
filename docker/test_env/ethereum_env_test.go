@@ -8,7 +8,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pelletier/go-toml/v2"
-	"github.com/pkg/errors"
+
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
@@ -200,30 +200,6 @@ func TestCustomDockerImagesFromToml(t *testing.T) {
 	require.Error(t, err, "Could start PoS network using incorrect image")
 }
 
-func TestReadDefaultEthereumNetworkConfig(t *testing.T) {
-	en := &EthereumNetwork{}
-	err := en.Default()
-	require.NoError(t, err, "Couldn't read default ethereum network config")
-
-	require.Equal(t, ExecutionLayer_Geth, en.ExecutionLayer, "Execution layer should be Geth")
-	require.NotNil(t, en.ConsensusLayer, "Consensus layer should not be nil")
-	require.Equal(t, ConsensusLayer_Prysm, *en.ConsensusLayer, "Consensus layer should be Prysm")
-	require.Equal(t, ConsensusType_PoS, en.ConsensusType, "Consensus type should be PoS")
-	require.NotNil(t, en.WaitForFinalization, "Wait for finalization should not be nil")
-	require.False(t, *en.WaitForFinalization, "Wait for finalization should be false")
-
-	require.NotNil(t, en.EthereumChainConfig, "EthereumChainConfig should not be nil")
-	config := en.EthereumChainConfig
-
-	require.Equal(t, 12, config.SecondsPerSlot, "SecondsPerSlot should be 12")
-	require.Equal(t, 6, config.SlotsPerEpoch, "SlotsPerEpoch should be 6")
-	require.Equal(t, 15, config.GenesisDelay, "Genesis delay should be 20")
-	require.Equal(t, 8, config.ValidatorCount, "Validator count should be 8")
-	require.Equal(t, 1337, config.ChainID, "Chain ID should be 1337")
-	require.Len(t, config.AddressesToFund, 1, "Should have 1 address to fund")
-	require.Equal(t, "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", config.AddressesToFund[0], "Should have address 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 to fund")
-}
-
 type ethereumNetworkWrapper struct {
 	EthereumNetwork *EthereumNetwork `toml:"EthereumNetwork"`
 }
@@ -232,7 +208,7 @@ func readEthereumNetworkConfig(configDecoded string) (EthereumNetwork, error) {
 	var net ethereumNetworkWrapper
 	err := toml.Unmarshal([]byte(configDecoded), &net)
 	if err != nil {
-		return EthereumNetwork{}, errors.Wrapf(err, "error unmarshaling ethereum network config")
+		return EthereumNetwork{}, fmt.Errorf("error unmarshaling ethereum network config: %w", err)
 	}
 
 	return *net.EthereumNetwork, nil

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
@@ -82,7 +81,7 @@ func (g *PrysmBeaconChain) StartContainer() error {
 		Logger:           l,
 	})
 	if err != nil {
-		return errors.Wrapf(err, "cannot start prysm beacon chain container")
+		return fmt.Errorf("cannot start prysm beacon chain container: %w", err)
 	}
 
 	host, err := GetHost(testcontext.Get(g.t), ct)
@@ -208,7 +207,7 @@ func (g *PrysmValidator) StartContainer() error {
 		Logger:           l,
 	})
 	if err != nil {
-		return errors.Wrapf(err, "cannot start prysm validator container")
+		return fmt.Errorf("cannot start prysm validator container: %w", err)
 	}
 
 	g.Container = ct

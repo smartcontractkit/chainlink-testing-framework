@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/gob"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -14,7 +15,6 @@ import (
 
 	"github.com/avast/retry-go"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/smartcontractkit/wasp"
 	"github.com/testcontainers/testcontainers-go"
@@ -130,7 +130,7 @@ func (m *LogStream) validateLogTargets() error {
 		}
 
 		if !found {
-			return errors.Errorf("no handler found for log target: %s", wantedTarget)
+			return fmt.Errorf("no handler found for log target: %s", wantedTarget)
 		}
 	}
 
@@ -308,7 +308,7 @@ func wrapError(existingErr, newErr error) error {
 	if existingErr == nil {
 		return newErr
 	}
-	return errors.Wrap(existingErr, newErr.Error())
+	return fmt.Errorf("%w: %w", existingErr, newErr)
 }
 
 // Shutdown disconnects all containers and stops all consumers
@@ -386,8 +386,12 @@ func (m *LogStream) SaveLogTargetsLocations(writer LogWriter) {
 		name := string(handler.GetTarget())
 		location, err := handler.GetLogLocation(m.consumers)
 		if err != nil {
-			m.log.Error().Str("Handler", name).Err(err).Msg("Failed to get log location")
-			continue
+			if strings.Contains(err.Error(), ShorteningFailedErr) {
+				m.log.Warn().Str("Handler", name).Err(err).Msg("Failed to shorten Grafana URL, will use original one")
+			} else {
+				m.log.Error().Str("Handler", name).Err(err).Msg("Failed to get log location")
+				continue
+			}
 		}
 
 		if err := writer(m.testName, name, location); err != nil {
@@ -480,7 +484,7 @@ func (m *LogStream) GetAllLogsAndConsume(preExecuteFn ConsumerConsumingFn, consu
 		if loopErr == nil {
 			loopErr = err
 		} else {
-			loopErr = errors.Wrap(loopErr, err.Error())
+			loopErr = wrapError(loopErr, err)
 		}
 	}
 
@@ -491,7 +495,7 @@ func (m *LogStream) GetAllLogsAndConsume(preExecuteFn ConsumerConsumingFn, consu
 		}
 
 		if consumer.tempFile == nil {
-			attachError(errors.Errorf("temp file is nil for container %s, this should never happen", consumer.name))
+			attachError(fmt.Errorf("temp file is nil for container %s, this should never happen", consumer.name))
 			return
 		}
 
@@ -606,7 +610,7 @@ func (m *LogStream) FlushLogsToTargets() error {
 					Str("log target", string(logTarget)).
 					Msg("No handler found for log target. Aborting")
 
-				return errors.Errorf("no handler found for log target: %s", logTarget)
+				return fmt.Errorf("no handler found for log target: %s", logTarget)
 			}
 		}
 
@@ -828,7 +832,7 @@ func getLogTargetsFromConfig(config config.LoggingConfig) ([]LogTarget, error) {
 			case "in-memory":
 				logTargets = append(logTargets, InMemory)
 			default:
-				return []LogTarget{}, errors.Errorf("unknown log target: %s", target)
+				return []LogTarget{}, fmt.Errorf("unknown log target: %s", target)
 			}
 		}
 
