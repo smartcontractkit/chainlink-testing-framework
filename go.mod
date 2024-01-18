@@ -21,7 +21,7 @@ require (
 	github.com/prometheus/common v0.44.0
 	github.com/rs/zerolog v1.30.0
 	github.com/slack-go/slack v0.12.2
-	github.com/smartcontractkit/wasp v0.3.7
+	github.com/smartcontractkit/wasp v0.4.1
 	github.com/stretchr/testify v1.8.4
 	github.com/testcontainers/testcontainers-go v0.23.0
 	go.uber.org/atomic v1.11.0
