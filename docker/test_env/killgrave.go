@@ -57,9 +57,7 @@ type KillgraveResponse struct {
 }
 
 type KillgraveResponseWithAnyData struct {
-	Id    string      `json:"id"`
-	Data  interface{} `json:"data"`
-	Error interface{} `json:"error"`
+	Data interface{} `json:"data"`
 }
 
 // ResponseDelay represent time delay before server responds.
@@ -274,9 +272,7 @@ func (k *Killgrave) SetAdapterBasedAnyValuePath(path string, methods []string, v
 
 func (k *Killgrave) SetAnyValueResponse(path string, methods []string, v interface{}) error {
 	ar := KillgraveResponseWithAnyData{
-		Id:    "",
-		Data:  v,
-		Error: nil,
+		Data: v,
 	}
 	data, err := json.Marshal(ar)
 	if err != nil {

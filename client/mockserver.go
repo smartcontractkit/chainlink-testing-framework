@@ -166,13 +166,9 @@ func (em *MockserverClient) SetAnyValueResponse(path string, v interface{}) erro
 		Request: HttpRequest{Path: path},
 		Response: HttpResponse{
 			Body: struct {
-				Id    string      `json:"id"`
-				Data  interface{} `json:"data"`
-				Error interface{} `json:"error"`
+				Data interface{} `json:"data"`
 			}{
-				Id:    "",
-				Data:  v,
-				Error: nil,
+				Data: v,
 			},
 		},
 	}
