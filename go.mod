@@ -3,6 +3,7 @@ module github.com/smartcontractkit/chainlink-testing-framework
 go 1.21
 
 require (
+	dario.cat/mergo v1.0.0
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/barkimedes/go-deepcopy v0.0.0-20220514131651-17c30cfc62df
 	github.com/chaos-mesh/chaos-mesh/api/v1alpha1 v0.0.0-20220226050744-799408773657
@@ -95,7 +96,6 @@ replace (
 )
 
 require (
-	dario.cat/mergo v1.0.0
 	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
 	github.com/DataDog/zstd v1.5.2 // indirect
 	github.com/K-Phoen/grabana v0.21.17 // indirect
