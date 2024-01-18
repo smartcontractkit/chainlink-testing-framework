@@ -36,6 +36,7 @@ func NewInitHelper(chainConfig EthereumChainConfig, customConfigDataDir string, 
 		l:                   log.Logger,
 		addressesToFund:     []string{},
 	}
+	g.SetDefaultHooks()
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
@@ -108,6 +109,12 @@ func (g *AfterGenesisHelper) getContainerRequest(networks []string) (*tc.Contain
 					HostPath: g.customConfigDataDir,
 				},
 				Target: tc.ContainerMountTarget(GENERATED_DATA_DIR_INSIDE_CONTAINER),
+			},
+		},
+		LifecycleHooks: []tc.ContainerLifecycleHooks{
+			{
+				PostStarts: g.PostStartsHooks,
+				PostStops:  g.PostStopsHooks,
 			},
 		},
 	}, nil

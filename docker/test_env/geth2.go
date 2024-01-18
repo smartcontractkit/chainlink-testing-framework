@@ -56,6 +56,7 @@ func NewGeth2(networks []string, chainConfg *EthereumChainConfig, generatedDataH
 		l:                    logging.GetTestLogger(nil),
 		image:                dockerImage,
 	}
+	g.SetDefaultHooks()
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
@@ -209,6 +210,12 @@ func (g *Geth2) getContainerRequest(networks []string) (*tc.ContainerRequest, er
 					HostPath: g.generatedDataHostDir,
 				},
 				Target: tc.ContainerMountTarget(GENERATED_DATA_DIR_INSIDE_CONTAINER),
+			},
+		},
+		LifecycleHooks: []tc.ContainerLifecycleHooks{
+			{
+				PostStarts: g.PostStartsHooks,
+				PostStops:  g.PostStopsHooks,
 			},
 		},
 	}, nil
