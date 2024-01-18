@@ -3,6 +3,7 @@ package test_env
 import (
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -23,7 +24,6 @@ type EthGenesisGeneretor struct {
 	l                    zerolog.Logger
 	generatedDataHostDir string
 	t                    *testing.T
-	image                string
 }
 
 func NewEthGenesisGenerator(chainConfig EthereumChainConfig, generatedDataHostDir string, opts ...EnvComponentOption) (*EthGenesisGeneretor, error) {
@@ -33,14 +33,16 @@ func NewEthGenesisGenerator(chainConfig EthereumChainConfig, generatedDataHostDi
 		return nil, err
 	}
 
+	parts := strings.Split(dockerImage, ":")
 	g := &EthGenesisGeneretor{
 		EnvComponent: EnvComponent{
-			ContainerName: fmt.Sprintf("%s-%s", "eth-genesis-generator", uuid.NewString()[0:8]),
+			ContainerName:    fmt.Sprintf("%s-%s", "eth-genesis-generator", uuid.NewString()[0:8]),
+			ContainerImage:   parts[0],
+			ContainerVersion: parts[1],
 		},
 		chainConfig:          chainConfig,
 		generatedDataHostDir: generatedDataHostDir,
 		l:                    log.Logger,
-		image:                dockerImage,
 	}
 	g.SetDefaultHooks()
 	for _, opt := range opts {
@@ -52,11 +54,6 @@ func NewEthGenesisGenerator(chainConfig EthereumChainConfig, generatedDataHostDi
 func (g *EthGenesisGeneretor) WithTestInstance(t *testing.T) *EthGenesisGeneretor {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
-	return g
-}
-
-func (g *EthGenesisGeneretor) WithImage(imageWithTag string) *EthGenesisGeneretor {
-	g.image = imageWithTag
 	return g
 }
 
@@ -127,7 +124,7 @@ func (g *EthGenesisGeneretor) getContainerRequest(networks []string) (*tc.Contai
 
 	return &tc.ContainerRequest{
 		Name:          g.ContainerName,
-		Image:         g.image,
+		Image:         g.GetImageWithVersion(),
 		ImagePlatform: "linux/x86_64",
 		Networks:      networks,
 		WaitingFor: tcwait.ForAll(

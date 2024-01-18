@@ -18,8 +18,8 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
-	utils "github.com/smartcontractkit/chainlink-testing-framework/utils/json"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
+	toml_utils "github.com/smartcontractkit/chainlink-testing-framework/utils/toml"
 )
 
 const (
@@ -65,6 +65,7 @@ type EthereumNetworkBuilder struct {
 	executionLayer      ExecutionLayer
 	ethereumChainConfig *EthereumChainConfig
 	existingConfig      *EthereumNetwork
+	customDockerImages  map[ContainerType]string
 	addressesToFund     []string
 	waitForFinalization bool
 	existingFromEnvVar  bool
@@ -117,6 +118,11 @@ func (b *EthereumNetworkBuilder) WithTest(t *testing.T) *EthereumNetworkBuilder 
 	return b
 }
 
+func (b *EthereumNetworkBuilder) WithCustomDockerImages(newImages map[ContainerType]string) *EthereumNetworkBuilder {
+	b.customDockerImages = newImages
+	return b
+}
+
 func (b *EthereumNetworkBuilder) WithWaitingForFinalization() *EthereumNetworkBuilder {
 	b.waitForFinalization = true
 	return b
@@ -124,8 +130,8 @@ func (b *EthereumNetworkBuilder) WithWaitingForFinalization() *EthereumNetworkBu
 
 func (b *EthereumNetworkBuilder) buildNetworkConfig() EthereumNetwork {
 	n := EthereumNetwork{
-		ConsensusType:  b.consensusType,
-		ExecutionLayer: b.executionLayer,
+		ConsensusType:  &b.consensusType,
+		ExecutionLayer: &b.executionLayer,
 		ConsensusLayer: b.consensusLayer,
 	}
 
@@ -137,6 +143,7 @@ func (b *EthereumNetworkBuilder) buildNetworkConfig() EthereumNetwork {
 	n.DockerNetworkNames = b.dockerNetworks
 	n.WaitForFinalization = &b.waitForFinalization
 	n.EthereumChainConfig = b.ethereumChainConfig
+	n.CustomDockerImages = b.customDockerImages
 	n.t = b.t
 
 	return n
@@ -183,13 +190,23 @@ func (b *EthereumNetworkBuilder) importExistingConfig() bool {
 		return false
 	}
 
-	b.consensusType = b.existingConfig.ConsensusType
-	b.consensusLayer = b.existingConfig.ConsensusLayer
-	b.executionLayer = b.existingConfig.ExecutionLayer
+	if b.existingConfig.ConsensusType != nil {
+		b.consensusType = *b.existingConfig.ConsensusType
+	}
+
+	if b.existingConfig.ConsensusLayer != nil {
+		b.consensusLayer = b.existingConfig.ConsensusLayer
+	}
+
+	if b.existingConfig.ExecutionLayer != nil {
+		b.executionLayer = *b.existingConfig.ExecutionLayer
+	}
+
 	if len(b.existingConfig.DockerNetworkNames) > 0 {
 		b.dockerNetworks = b.existingConfig.DockerNetworkNames
 	}
 	b.ethereumChainConfig = b.existingConfig.EthereumChainConfig
+	b.customDockerImages = b.existingConfig.CustomDockerImages
 
 	return true
 }
@@ -225,27 +242,28 @@ func (b *EthereumNetworkBuilder) validate() error {
 }
 
 type EthereumNetwork struct {
-	ConsensusType        ConsensusType             `json:"consensus_type" toml:"consensus_type"`
-	ConsensusLayer       *ConsensusLayer           `json:"consensus_layer" toml:"consensus_layer"`
-	ExecutionLayer       ExecutionLayer            `json:"execution_layer" toml:"execution_layer"`
-	DockerNetworkNames   []string                  `json:"docker_network_names"`
-	Containers           EthereumNetworkContainers `json:"containers"`
-	WaitForFinalization  *bool                     `json:"wait_for_finalization" toml:"wait_for_finalization"`
-	GeneratedDataHostDir string                    `json:"generated_data_host_dir"`
-	ValKeysDir           string                    `json:"val_keys_dir"`
-	EthereumChainConfig  *EthereumChainConfig      `json:"ethereum_chain_config" toml:"EthereumChainConfig"`
+	ConsensusType        *ConsensusType            `toml:"consensus_type"`
+	ConsensusLayer       *ConsensusLayer           `toml:"consensus_layer"`
+	ExecutionLayer       *ExecutionLayer           `toml:"execution_layer"`
+	DockerNetworkNames   []string                  `toml:"docker_network_names"`
+	Containers           EthereumNetworkContainers `toml:"containers"`
+	WaitForFinalization  *bool                     `toml:"wait_for_finalization"`
+	GeneratedDataHostDir *string                   `toml:"generated_data_host_dir"`
+	ValKeysDir           *string                   `toml:"val_keys_dir"`
+	EthereumChainConfig  *EthereumChainConfig      `toml:"EthereumChainConfig"`
+	CustomDockerImages   map[ContainerType]string  `toml:"CustomDockerImages"`
 	isRecreated          bool
 	t                    *testing.T
 }
 
 func (en *EthereumNetwork) Start() (blockchain.EVMNetwork, RpcProvider, error) {
-	switch en.ConsensusType {
+	switch *en.ConsensusType {
 	case ConsensusType_PoS:
 		return en.startPos()
 	case ConsensusType_PoW:
 		return en.startPow()
 	default:
-		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf("unknown consensus type: %s", en.ConsensusType)
+		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf("unknown consensus type: %s", *en.ConsensusType)
 	}
 }
 
@@ -273,14 +291,14 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 	if !en.isRecreated {
 		generatedDataHostDir, valKeysDir, err = createHostDirectories()
 
-		en.GeneratedDataHostDir = generatedDataHostDir
-		en.ValKeysDir = valKeysDir
+		en.GeneratedDataHostDir = &generatedDataHostDir
+		en.ValKeysDir = &valKeysDir
 
 		if err != nil {
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
 		}
 
-		valKeysGeneretor, err := NewValKeysGeneretor(en.EthereumChainConfig, valKeysDir)
+		valKeysGeneretor, err := NewValKeysGeneretor(en.EthereumChainConfig, valKeysDir, en.getImageOverride(ContainerType_ValKeysGenerator)...)
 		if err != nil {
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
 		}
@@ -291,7 +309,7 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
 		}
 
-		genesis, err := NewEthGenesisGenerator(*en.EthereumChainConfig, generatedDataHostDir)
+		genesis, err := NewEthGenesisGenerator(*en.EthereumChainConfig, generatedDataHostDir, en.getImageOverride(ContainerType_GenesisGenerator)...)
 		if err != nil {
 			return blockchain.EVMNetwork{}, RpcProvider{}, err
 		}
@@ -316,17 +334,17 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 
 	var client ExecutionClient
 	var clientErr error
-	switch en.ExecutionLayer {
+	switch *en.ExecutionLayer {
 	case ExecutionLayer_Geth:
-		client, clientErr = NewGeth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Geth2))
+		client, clientErr = NewGeth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, append(en.getImageOverride(ContainerType_Geth), en.setExistingContainerName(ContainerType_Geth))...)
 	case ExecutionLayer_Nethermind:
-		client, clientErr = NewNethermind(dockerNetworks, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Nethermind))
+		client, clientErr = NewNethermind(dockerNetworks, generatedDataHostDir, ConsensusLayer_Prysm, append(en.getImageOverride(ContainerType_Nethermind), en.setExistingContainerName(ContainerType_Nethermind))...)
 	case ExecutionLayer_Erigon:
-		client, clientErr = NewErigon(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Erigon))
+		client, clientErr = NewErigon(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, append(en.getImageOverride(ContainerType_Erigon), en.setExistingContainerName(ContainerType_Erigon))...)
 	case ExecutionLayer_Besu:
-		client, clientErr = NewBesu(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, en.setExistingContainerName(ContainerType_Besu))
+		client, clientErr = NewBesu(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, append(en.getImageOverride(ContainerType_Besu), en.setExistingContainerName(ContainerType_Besu))...)
 	default:
-		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf("unsupported execution layer: %s", en.ExecutionLayer)
+		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf("unsupported execution layer: %s", *en.ExecutionLayer)
 	}
 
 	if clientErr != nil {
@@ -340,7 +358,7 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
-	beacon, err := NewPrysmBeaconChain(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, client.GetInternalExecutionURL(), en.setExistingContainerName(ContainerType_PrysmBeacon))
+	beacon, err := NewPrysmBeaconChain(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, client.GetInternalExecutionURL(), append(en.getImageOverride(ContainerType_ValKeysGenerator), en.setExistingContainerName(ContainerType_PrysmBeacon))...)
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
@@ -352,7 +370,7 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 	}
 
 	validator, err := NewPrysmValidator(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, valKeysDir, beacon.
-		InternalBeaconRpcProvider, en.setExistingContainerName(ContainerType_PrysmVal))
+		InternalBeaconRpcProvider, append(en.getImageOverride(ContainerType_ValKeysGenerator), en.setExistingContainerName(ContainerType_PrysmVal))...)
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
@@ -375,7 +393,7 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 	net.FinalityTag = true
 	net.FinalityDepth = 0
 
-	if en.ExecutionLayer == ExecutionLayer_Besu {
+	if *en.ExecutionLayer == ExecutionLayer_Besu {
 		// Besu doesn't support "eth_maxPriorityFeePerGas" https://github.com/hyperledger/besu/issues/5658
 		// And if gas is too low, then transaction doesn't get to prioritized pool and is not a candidate for inclusion in the next block
 		net.GasEstimationBuffer = 10_000_000_000
@@ -435,15 +453,17 @@ func (en *EthereumNetwork) startPow() (blockchain.EVMNetwork, RpcProvider, error
 		publicsUrls:     []string{},
 	}
 
-	if en.ExecutionLayer != ExecutionLayer_Geth {
-		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf("unsupported execution layer: %s", en.ExecutionLayer)
+	if *en.ExecutionLayer != ExecutionLayer_Geth {
+		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf("unsupported execution layer: %s", *en.ExecutionLayer)
 	}
 	dockerNetworks, err := en.getOrCreateDockerNetworks()
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
-	geth := NewGeth(dockerNetworks, en.EthereumChainConfig, en.setExistingContainerName(ContainerType_Geth)).WithTestInstance(en.t)
+	geth := NewGeth(dockerNetworks, en.EthereumChainConfig, append(en.getImageOverride(ContainerType_Geth), en.setExistingContainerName(ContainerType_Geth))...)
+	geth.WithTestInstance(en.t)
+
 	network, docker, err := geth.StartContainer()
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
@@ -487,7 +507,7 @@ func (en *EthereumNetwork) Describe() string {
 	if en.ConsensusLayer == nil {
 		cL = "(none)"
 	}
-	return fmt.Sprintf("consensus type: %s, execution layer: %s, consensus layer: %s", en.ConsensusType, en.ExecutionLayer, cL)
+	return fmt.Sprintf("consensus type: %s, execution layer: %s, consensus layer: %s", *en.ConsensusType, *en.ExecutionLayer, cL)
 }
 
 func (en *EthereumNetwork) setExistingContainerName(ct ContainerType) EnvComponentOption {
@@ -508,9 +528,17 @@ func (en *EthereumNetwork) setExistingContainerName(ct ContainerType) EnvCompone
 	return func(c *EnvComponent) {}
 }
 
+func (en *EthereumNetwork) getImageOverride(ct ContainerType) []EnvComponentOption {
+	options := []EnvComponentOption{}
+	if image, ok := en.CustomDockerImages[ct]; ok {
+		options = append(options, WithContainerImageWithVersion(image))
+	}
+	return options
+}
+
 func (en *EthereumNetwork) Save() error {
 	name := fmt.Sprintf("ethereum_network_%s", uuid.NewString()[0:8])
-	confPath, err := utils.SaveStructAsJson(en, ".private_chains", name)
+	confPath, err := toml_utils.SaveStructAsToml(en, ".private_chains", name)
 	if err != nil {
 		return ErrTestConfigNotSaved
 	}
@@ -522,19 +550,19 @@ func (en *EthereumNetwork) Save() error {
 }
 
 func (en *EthereumNetwork) Validate() error {
-	if en.ConsensusType == "" {
+	if en.ConsensusType == nil || *en.ConsensusType == "" {
 		return ErrMissingConsensusType
 	}
 
-	if en.ExecutionLayer == "" {
+	if en.ExecutionLayer == nil || *en.ExecutionLayer == "" {
 		return ErrMissingExecutionLayer
 	}
 
-	if en.ConsensusType == ConsensusType_PoS && en.ConsensusLayer == nil {
+	if *en.ConsensusType == ConsensusType_PoS && (en.ConsensusLayer == nil || *en.ConsensusLayer == "") {
 		return ErrMissingConsensusLayer
 	}
 
-	if en.ConsensusType == ConsensusType_PoW && en.ConsensusLayer != nil {
+	if *en.ConsensusType == ConsensusType_PoW && (en.ConsensusLayer != nil && *en.ConsensusLayer != "") {
 		return ErrConsensusLayerNotAllowed
 	}
 
@@ -542,7 +570,7 @@ func (en *EthereumNetwork) Validate() error {
 		return errors.New("ethereum chain config is required")
 	}
 
-	return en.EthereumChainConfig.Validate(logging.GetTestLogger(nil), en.ConsensusType)
+	return en.EthereumChainConfig.Validate(logging.GetTestLogger(nil), *en.ConsensusType)
 }
 
 func (en *EthereumNetwork) ApplyOverrides(from *EthereumNetwork) error {
@@ -552,10 +580,10 @@ func (en *EthereumNetwork) ApplyOverrides(from *EthereumNetwork) error {
 	if from.ConsensusLayer != nil {
 		en.ConsensusLayer = from.ConsensusLayer
 	}
-	if from.ExecutionLayer != "" {
+	if from.ExecutionLayer != nil {
 		en.ExecutionLayer = from.ExecutionLayer
 	}
-	if from.ConsensusType != "" {
+	if from.ConsensusType != nil {
 		en.ConsensusType = from.ConsensusType
 	}
 	if from.WaitForFinalization != nil {
@@ -604,19 +632,20 @@ func (s *RpcProvider) PublicWsUrls() []string {
 type ContainerType string
 
 const (
-	ContainerType_Geth        ContainerType = "geth"
-	ContainerType_Geth2       ContainerType = "geth2"
-	ContainerType_Erigon      ContainerType = "erigon"
-	ContainerType_Besu        ContainerType = "besu"
-	ContainerType_Nethermind  ContainerType = "nethermind"
-	ContainerType_PrysmBeacon ContainerType = "prysm-beacon"
-	ContainerType_PrysmVal    ContainerType = "prysm-validator"
+	ContainerType_Geth             ContainerType = "geth"
+	ContainerType_Erigon           ContainerType = "erigon"
+	ContainerType_Besu             ContainerType = "besu"
+	ContainerType_Nethermind       ContainerType = "nethermind"
+	ContainerType_PrysmBeacon      ContainerType = "prysm-beacon"
+	ContainerType_PrysmVal         ContainerType = "prysm-validator"
+	ContainerType_GenesisGenerator ContainerType = "genesis-generator"
+	ContainerType_ValKeysGenerator ContainerType = "val-keys-generator"
 )
 
 type EthereumNetworkContainer struct {
-	ContainerName string        `json:"container_name"`
-	ContainerType ContainerType `json:"container_type"`
-	Container     *tc.Container `json:"-"`
+	ContainerName string        `toml:"container_name"`
+	ContainerType ContainerType `toml:"container_type"`
+	Container     *tc.Container `toml:"-"`
 }
 
 type EthereumNetworkContainers []EthereumNetworkContainer
@@ -671,6 +700,6 @@ func waitForChainToFinaliseAnEpoch(lggr zerolog.Logger, evmClient blockchain.EVM
 
 func NewPrivateChainEnvConfigFromFile(path string) (EthereumNetwork, error) {
 	c := EthereumNetwork{}
-	err := utils.OpenJsonFileAsStruct(path, &c)
+	err := toml_utils.OpenTomlFileAsStruct(path, &c)
 	return c, err
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -35,7 +36,6 @@ type Erigon struct {
 	consensusLayer       ConsensusLayer
 	l                    zerolog.Logger
 	t                    *testing.T
-	image                string
 }
 
 func NewErigon(networks []string, chainConfg *EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) (*Erigon, error) {
@@ -45,16 +45,18 @@ func NewErigon(networks []string, chainConfg *EthereumChainConfig, generatedData
 		return nil, err
 	}
 
+	parts := strings.Split(dockerImage, ":")
 	g := &Erigon{
 		EnvComponent: EnvComponent{
-			ContainerName: fmt.Sprintf("%s-%s", "erigon", uuid.NewString()[0:8]),
-			Networks:      networks,
+			ContainerName:    fmt.Sprintf("%s-%s", "erigon", uuid.NewString()[0:8]),
+			Networks:         networks,
+			ContainerImage:   parts[0],
+			ContainerVersion: parts[1],
 		},
 		chainConfg:           chainConfg,
 		generatedDataHostDir: generatedDataHostDir,
 		consensusLayer:       consensusLayer,
 		l:                    logging.GetTestLogger(nil),
-		image:                dockerImage,
 	}
 	g.SetDefaultHooks()
 	for _, opt := range opts {
@@ -63,19 +65,10 @@ func NewErigon(networks []string, chainConfg *EthereumChainConfig, generatedData
 	return g, nil
 }
 
-func (g *Erigon) WithImage(imageWithTag string) *Erigon {
-	g.image = imageWithTag
-	return g
-}
-
 func (g *Erigon) WithTestInstance(t *testing.T) ExecutionClient {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
 	return g
-}
-
-func (g *Erigon) GetImage() string {
-	return g.image
 }
 
 func (g *Erigon) StartContainer() (blockchain.EVMNetwork, error) {
@@ -180,7 +173,7 @@ func (g *Erigon) getContainerRequest(networks []string) (*tc.ContainerRequest, e
 
 	return &tc.ContainerRequest{
 		Name:          g.ContainerName,
-		Image:         g.image,
+		Image:         g.GetImageWithVersion(),
 		Networks:      networks,
 		ImagePlatform: "linux/x86_64",
 		ExposedPorts:  []string{NatPortFormat(TX_GETH_HTTP_PORT), NatPortFormat(ETH2_EXECUTION_PORT)},

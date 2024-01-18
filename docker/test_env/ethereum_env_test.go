@@ -118,7 +118,7 @@ func TestEth2WithPrysmAndGethReuseFromEnv(t *testing.T) {
 	require.NoError(t, err, "Couldn't close the client")
 }
 
-func TestEth2ExecClientFromEnv(t *testing.T) {
+func TestEth2ExecClientFromToml(t *testing.T) {
 	toml := `
 	[EthereumNetwork]
 	consensus_type="pos"
@@ -162,6 +162,44 @@ func TestEth2ExecClientFromEnv(t *testing.T) {
 	require.Equal(t, 1234, cfg.EthereumChainConfig.ChainID, "Chain ID should be 1234")
 }
 
+func TestCustomDockerImagesFromToml(t *testing.T) {
+	toml := `
+	[EthereumNetwork]
+	consensus_type="pos"
+	consensus_layer="prysm"
+	execution_layer="geth"
+	wait_for_finalization=false
+
+	[EthereumNetwork.EthereumChainConfig]
+	seconds_per_slot=12
+	slots_per_epoch=2
+	genesis_delay=20
+	validator_count=8
+	chain_id=1234
+	addresses_to_fund=["0x742d35Cc6634C0532925a3b844Bc454e4438f44e", "0x742d35Cc6634C0532925a3b844Bc454e4438f44f"]
+
+	[EthereumNetwork.CustomDockerImages]
+	geth="i-dont-exist:tag-me"	
+	`
+
+	tomlCfg, err := readEthereumNetworkConfig(toml)
+	require.NoError(t, err, "Couldn't read config")
+
+	tomlCfg.EthereumChainConfig.GenerateGenesisTimestamp()
+
+	err = tomlCfg.Validate()
+	require.NoError(t, err, "Couldn't validate TOML config")
+
+	builder := NewEthereumNetworkBuilder()
+	cfg, err := builder.
+		WithExistingConfig(tomlCfg).
+		Build()
+	require.NoError(t, err, "Builder validation failed")
+
+	_, _, err = cfg.Start()
+	require.Error(t, err, "Could start PoS network using incorrect image")
+}
+
 type ethereumNetworkWrapper struct {
 	EthereumNetwork *EthereumNetwork `toml:"EthereumNetwork"`
 }
@@ -188,4 +226,19 @@ func TestEth2CustomDockerNetworks(t *testing.T) {
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 	require.Equal(t, networks, cfg.DockerNetworkNames, "Incorrect docker networks in config")
+}
+
+func TestEth2CustomImages(t *testing.T) {
+	builder := NewEthereumNetworkBuilder()
+	cfg, err := builder.
+		WithConsensusType(ConsensusType_PoS).
+		WithConsensusLayer(ConsensusLayer_Prysm).
+		WithExecutionLayer(ExecutionLayer_Geth).
+		WithCustomDockerImages(map[ContainerType]string{
+			ContainerType_Geth: "i-dont-exist:tag-me"}).
+		Build()
+	require.NoError(t, err, "Builder validation failed")
+
+	_, _, err = cfg.Start()
+	require.Error(t, err, "Could start PoS network using incorrect image")
 }

@@ -115,6 +115,13 @@ We have extended support for execution layer clients in simulated networks. Foll
 
 When it comes to consensus layer we currently support only `Prysm`.
 
+Every component has some default Docker image it uses, but builder has a method that allows to pass custom one:
+```go
+WithCustomDockerImages(map[ContainerType]string{
+    ContainerType_Geth2: "my-custom-geth2-image:my-version"}).
+Build()
+```
+
 ## Command line
 
 You can start a simulated network with a single command:
@@ -131,6 +138,9 @@ Following cmd line flags are available:
   -t, --consensus-type string    consensus type (pow or pos) (default "pos")
   -e, --execution-layer string   execution layer (geth, nethermind, besu or erigon) (default "geth")
   -w, --wait-for-finalization    wait for finalization of at least 1 epoch (might take up to 5 mintues)
+      --consensus-client-image string   custom Docker image for consensus layer client  
+      --execution-layer-image string    custom Docker image for execution layer client
+      --validator-image string          custom Docker image for validator  
 ```
 
 To connect to that environment in your tests use the following code:

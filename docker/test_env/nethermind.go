@@ -3,6 +3,7 @@ package test_env
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -30,7 +31,6 @@ type Nethermind struct {
 	consensusLayer       ConsensusLayer
 	l                    zerolog.Logger
 	t                    *testing.T
-	image                string
 }
 
 func NewNethermind(networks []string, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) (*Nethermind, error) {
@@ -40,15 +40,17 @@ func NewNethermind(networks []string, generatedDataHostDir string, consensusLaye
 		return nil, err
 	}
 
+	parts := strings.Split(dockerImage, ":")
 	g := &Nethermind{
 		EnvComponent: EnvComponent{
-			ContainerName: fmt.Sprintf("%s-%s", "nethermind", uuid.NewString()[0:8]),
-			Networks:      networks,
+			ContainerName:    fmt.Sprintf("%s-%s", "nethermind", uuid.NewString()[0:8]),
+			Networks:         networks,
+			ContainerImage:   parts[0],
+			ContainerVersion: parts[1],
 		},
 		generatedDataHostDir: generatedDataHostDir,
 		consensusLayer:       consensusLayer,
 		l:                    logging.GetTestLogger(nil),
-		image:                dockerImage,
 	}
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
@@ -56,19 +58,10 @@ func NewNethermind(networks []string, generatedDataHostDir string, consensusLaye
 	return g, nil
 }
 
-func (g *Nethermind) WithImage(imageWithTag string) *Nethermind {
-	g.image = imageWithTag
-	return g
-}
-
 func (g *Nethermind) WithTestInstance(t *testing.T) ExecutionClient {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
 	return g
-}
-
-func (g *Nethermind) GetImage() string {
-	return g.image
 }
 
 func (g *Nethermind) StartContainer() (blockchain.EVMNetwork, error) {
@@ -162,7 +155,7 @@ func (g *Nethermind) GetContainer() *tc.Container {
 func (g *Nethermind) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
 	return &tc.ContainerRequest{
 		Name:            g.ContainerName,
-		Image:           g.image,
+		Image:           g.GetImageWithVersion(),
 		Networks:        networks,
 		AlwaysPullImage: true,
 		// ImagePlatform: "linux/x86_64",  //don't even try this on Apple Silicon, the node won't start due to .NET error
