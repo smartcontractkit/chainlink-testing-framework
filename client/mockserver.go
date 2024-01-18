@@ -165,11 +165,7 @@ func (em *MockserverClient) SetAnyValueResponse(path string, v interface{}) erro
 		Id:      id,
 		Request: HttpRequest{Path: path},
 		Response: HttpResponse{
-			Body: struct {
-				Data interface{} `json:"data"`
-			}{
-				Data: v,
-			},
+			Body: v,
 		},
 	}
 	initializers := []HttpInitializer{initializer}

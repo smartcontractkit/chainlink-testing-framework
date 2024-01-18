@@ -56,10 +56,6 @@ type KillgraveResponse struct {
 	Delay    *KillgraveResponseDelay `json:"delay,omitempty"`
 }
 
-type KillgraveResponseWithAnyData struct {
-	Data interface{} `json:"data"`
-}
-
 // ResponseDelay represent time delay before server responds.
 type KillgraveResponseDelay struct {
 	Delay  int64 `json:"delay,omitempty"`
@@ -271,10 +267,7 @@ func (k *Killgrave) SetAdapterBasedAnyValuePath(path string, methods []string, v
 }
 
 func (k *Killgrave) SetAnyValueResponse(path string, methods []string, v interface{}) error {
-	ar := KillgraveResponseWithAnyData{
-		Data: v,
-	}
-	data, err := json.Marshal(ar)
+	data, err := json.Marshal(v)
 	if err != nil {
 		return err
 	}
