@@ -11,6 +11,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
+	flag "github.com/spf13/pflag"
 	"github.com/testcontainers/testcontainers-go"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/docker/test_env"
@@ -25,15 +26,18 @@ var StartTestEnvCmd = &cobra.Command{
 var startPrivateChain = &cobra.Command{
 	Use:   "private-chain",
 	Short: "Private chain with 1 node",
-	RunE:  startBesuPrysmChainE,
+	RunE:  startPrivateEthChainE,
 }
 
 const (
-	Flag_ConsensusType       = "consensus-type"
-	Flag_ConsensusLayer      = "consensus-layer"
-	Flag_ExecutionLayer      = "execution-layer"
-	Flag_WaitForFinalization = "wait-for-finalization"
-	Flag_ChainID             = "chain-id"
+	Flag_ConsensusType        = "consensus-type"
+	Flag_ConsensusLayer       = "consensus-layer"
+	Flag_ExecutionLayer       = "execution-layer"
+	Flag_WaitForFinalization  = "wait-for-finalization"
+	Flag_ChainID              = "chain-id"
+	Flag_ExecutionClientImage = "execution-layer-image"
+	Flag_ConsensucClientImage = "consensus-client-image"
+	Flag_ValidatorImage       = "validator-image"
 )
 
 func init() {
@@ -74,6 +78,24 @@ func init() {
 		"chain id",
 	)
 
+	StartTestEnvCmd.PersistentFlags().String(
+		Flag_ExecutionClientImage,
+		"",
+		"custom Docker image for execution layer client",
+	)
+
+	StartTestEnvCmd.PersistentFlags().String(
+		Flag_ConsensucClientImage,
+		"",
+		"custom Docker image for consensus layer client",
+	)
+
+	StartTestEnvCmd.PersistentFlags().String(
+		Flag_ValidatorImage,
+		"",
+		"custom Docker image for validator",
+	)
+
 	// Set default log level for non-testcontainer code
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 
@@ -81,7 +103,7 @@ func init() {
 	testcontainers.Logger = defaultlog.New(io.Discard, "", defaultlog.LstdFlags)
 }
 
-func startBesuPrysmChainE(cmd *cobra.Command, args []string) error {
+func startPrivateEthChainE(cmd *cobra.Command, args []string) error {
 	log := logging.GetTestLogger(nil)
 	flags := cmd.Flags()
 
@@ -138,6 +160,11 @@ func startBesuPrysmChainE(cmd *cobra.Command, args []string) error {
 		consensusLayerToUse = ""
 	}
 
+	customDockerImages, err := getCustomImages(flags)
+	if err != nil {
+		return err
+	}
+
 	builder := test_env.NewEthereumNetworkBuilder()
 	builder = *builder.WithConsensusType(test_env.ConsensusType(consensusType)).
 		WithConsensusLayer(consensusLayerToUse).
@@ -151,6 +178,10 @@ func startBesuPrysmChainE(cmd *cobra.Command, args []string) error {
 
 	if waitForFinalization {
 		builder = *builder.WithWaitingForFinalization()
+	}
+
+	if len(customDockerImages) > 0 {
+		builder = *builder.WithCustomDockerImages(customDockerImages)
 	}
 
 	cfg, err := builder.
@@ -191,4 +222,39 @@ func handleExitSignal() {
 
 	// Block until an exit signal is received
 	<-exitChan
+}
+
+func getCustomImages(flags *flag.FlagSet) (map[test_env.ContainerType]string, error) {
+	customImages := make(map[test_env.ContainerType]string)
+	executionClientImage, err := flags.GetString(Flag_ExecutionClientImage)
+	if err != nil {
+		return nil, err
+	}
+
+	if executionClientImage != "" {
+		customImages[test_env.ContainerType_Besu] = executionClientImage
+		customImages[test_env.ContainerType_Erigon] = executionClientImage
+		customImages[test_env.ContainerType_Geth] = executionClientImage
+		customImages[test_env.ContainerType_Nethermind] = executionClientImage
+	}
+
+	consensusClientImage, err := flags.GetString(Flag_ConsensucClientImage)
+	if err != nil {
+		return nil, err
+	}
+
+	if consensusClientImage != "" {
+		customImages[test_env.ContainerType_PrysmBeacon] = consensusClientImage
+	}
+
+	validatorImage, err := flags.GetString(Flag_ValidatorImage)
+	if err != nil {
+		return nil, err
+	}
+
+	if validatorImage != "" {
+		customImages[test_env.ContainerType_PrysmVal] = validatorImage
+	}
+
+	return customImages, nil
 }

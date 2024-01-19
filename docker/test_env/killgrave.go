@@ -266,6 +266,17 @@ func (k *Killgrave) SetAdapterBasedAnyValuePath(path string, methods []string, v
 	}, string(data))
 }
 
+func (k *Killgrave) SetAnyValueResponse(path string, methods []string, v interface{}) error {
+	data, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	return k.SetStringValuePath(path, methods, map[string]string{
+		"Content-Type": "application/json",
+	}, string(data))
+}
+
 // SetAdapterBasedAnyValuePathObject sets a path to return a value as though it was from an adapter
 func (k *Killgrave) SetAdapterBasedIntValuePath(path string, methods []string, v int) error {
 	return k.SetAdapterBasedAnyValuePath(path, methods, v)

@@ -8,7 +8,6 @@ import (
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
@@ -86,7 +85,7 @@ func sendAndCompareBalances(ctx context.Context, c blockchain.EVMClient, address
 	expected := big.NewInt(0).Add(balanceBefore, sentInWei)
 
 	if expected.Cmp(balanceAfter) != 0 {
-		return errors.Errorf("Balance is incorrect. Expected %s, got %s", expected.String(), balanceAfter.String())
+		return fmt.Errorf("Balance is incorrect. Expected %s, got %s", expected.String(), balanceAfter.String())
 	}
 
 	return nil

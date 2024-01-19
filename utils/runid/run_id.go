@@ -7,11 +7,9 @@ import (
 	"github.com/google/uuid"
 )
 
-func GetOrGenerateRunId() (string, error) {
-	inOs := os.Getenv("RUN_ID")
-
-	if inOs != "" {
-		return inOs, nil
+func GetOrGenerateRunId(maybeRunId *string) (string, error) {
+	if maybeRunId != nil {
+		return *maybeRunId, nil
 	}
 
 	file, err := os.OpenFile(".run.id", os.O_RDWR|os.O_CREATE, 0644)
