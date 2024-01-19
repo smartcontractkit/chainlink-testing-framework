@@ -39,7 +39,7 @@ type Geth2 struct {
 }
 
 func NewGeth2(networks []string, chainConfg *EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) (*Geth2, error) {
-	// currently it uses v1.13.5
+	// currently it uses v1.13.10
 	dockerImage, err := mirror.GetImage("ethereum/client-go:v1.13")
 	if err != nil {
 		return nil, err

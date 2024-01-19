@@ -34,7 +34,7 @@ type Nethermind struct {
 }
 
 func NewNethermind(networks []string, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) (*Nethermind, error) {
-	// currently it uses 1.22.0
+	// currently it uses 1.25.1
 	dockerImage, err := mirror.GetImage("nethermind/nethermind:1")
 	if err != nil {
 		return nil, err
