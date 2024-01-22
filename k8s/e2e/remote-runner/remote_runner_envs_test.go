@@ -84,10 +84,10 @@ func TestFundReturnShutdownLogic(t *testing.T) {
 func TestFailedTestLogic(t *testing.T) {
 	t.Parallel()
 	testEnvConfig := common.GetTestEnvConfig(t)
-	e, err := presets.EVMOneNode(testEnvConfig)
-	require.NoError(t, err, "Error building initial environment")
-	err = e.Run()
+	e := presets.OnlyRemoteRunner(testEnvConfig)
+	err := e.Run()
 	if e.WillUseRemoteRunner() {
+		fmt.Println("Inside K8s?", e.Cfg.InsideK8s)
 		fmt.Println("Test Failed?", e.Cfg.Test.Failed())
 		return
 	}
@@ -95,6 +95,7 @@ func TestFailedTestLogic(t *testing.T) {
 		assert.NoError(t, e.Shutdown())
 	})
 	require.NoError(t, err)
+	fmt.Println("Inside K8s?", e.Cfg.InsideK8s)
 	fmt.Println(environment.TEST_FAILED)
 }
 
