@@ -82,6 +82,7 @@ func TestFundReturnShutdownLogic(t *testing.T) {
 }
 
 func TestFailedTestLogic(t *testing.T) {
+	t.Skip("This test is meant to fail, and can only be evaluated by looking at the logs. Only turn on if checking this specific logic.")
 	t.Parallel()
 	testEnvConfig := common.GetTestEnvConfig(t)
 	e := presets.OnlyRemoteRunner(testEnvConfig)
@@ -90,7 +91,7 @@ func TestFailedTestLogic(t *testing.T) {
 		fmt.Println("Inside K8s?", e.Cfg.InsideK8s)
 		fmt.Println("Test Failed?", e.Cfg.Test.Failed())
 		require.True(t, e.Cfg.Test.Failed(), "Test should have failed")
-		e.Cfg.Test.SkipNow()
+		fmt.Println("This is a test-of-a-test and is confusing. The test that this tests should fail. But that also means this tests fails. If you're reading this, the test has actually passed.")
 		return
 	}
 	t.Cleanup(func() {
