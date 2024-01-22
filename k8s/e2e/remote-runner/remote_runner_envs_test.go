@@ -89,6 +89,8 @@ func TestFailedTestLogic(t *testing.T) {
 	if e.WillUseRemoteRunner() {
 		fmt.Println("Inside K8s?", e.Cfg.InsideK8s)
 		fmt.Println("Test Failed?", e.Cfg.Test.Failed())
+		require.True(t, e.Cfg.Test.Failed(), "Test should have failed")
+		e.Cfg.Test.SkipNow()
 		return
 	}
 	t.Cleanup(func() {
