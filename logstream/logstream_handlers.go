@@ -207,8 +207,7 @@ func (h *LokiLogHandler) GetLogLocation(consumers map[string]*ContainerLogConsum
 	}
 
 	relativeUrl := sb.String()
-	sb.WriteString(baseUrl)
-	h.grafanaUrl = sb.String()
+	h.grafanaUrl = baseUrl + sb.String()
 
 	// try to shorten the URL only if we have all the required configuration parameters
 	if baseUrl != "" && dabshoardUrl != "" && h.loggingConfig.Grafana.BearerToken != nil {

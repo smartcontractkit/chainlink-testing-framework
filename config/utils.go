@@ -40,7 +40,7 @@ func BytesToAnyTomlStruct(logger zerolog.Logger, filename, configurationName str
 		return err
 	}
 
-	err = toml.Unmarshal(marshalled, &target)
+	err = toml.Unmarshal(marshalled, target)
 	if err != nil {
 		return err
 	}
