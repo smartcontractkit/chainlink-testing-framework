@@ -81,6 +81,23 @@ func TestFundReturnShutdownLogic(t *testing.T) {
 	fmt.Println(environment.FAILED_FUND_RETURN)
 }
 
+func TestFailedTestLogic(t *testing.T) {
+	t.Parallel()
+	testEnvConfig := common.GetTestEnvConfig(t)
+	e, err := presets.EVMOneNode(testEnvConfig)
+	require.NoError(t, err, "Error building initial environment")
+	err = e.Run()
+	if e.WillUseRemoteRunner() {
+		require.True(t, e.Cfg.Test.Failed(), "Expecting test status to be failed")
+		return
+	}
+	t.Cleanup(func() {
+		assert.NoError(t, e.Shutdown())
+	})
+	require.NoError(t, err)
+	fmt.Println(environment.TEST_FAILED)
+}
+
 func TestRemoteRunnerOneSetupWithMultipeTests(t *testing.T) {
 	t.Parallel()
 	testEnvConfig := common.GetTestEnvConfig(t)
