@@ -128,9 +128,7 @@ k8s_test_e2e_ci:
 	go test ./k8s/e2e/local-runner -count 1 -v -test.parallel=14 -test.timeout=1h -json 2>&1 | tee /tmp/gotest.log | gotestfmt
 
 k8s_test_e2e_ci_remote_runner:
-	# go test ./k8s/e2e/remote-runner -count 1 -v -test.parallel=20 -test.timeout=1h -json 2>&1 | tee /tmp/remoterunnergotest.log | gotestfmt
-	## DEBUG: Remove before merge
-	go test ./k8s/e2e/remote-runner -count 1 -v -run TestFailedTestLogic -test.timeout=1h -json 2>&1 | tee /tmp/remoterunnergotest.log | gotestfmt
+	go test ./k8s/e2e/remote-runner -count 1 -v -test.parallel=20 -test.timeout=1h -json 2>&1 | tee /tmp/remoterunnergotest.log | gotestfmt
 
 .PHONY: examples
 examples:
