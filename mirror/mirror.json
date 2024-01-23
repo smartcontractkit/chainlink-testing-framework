@@ -1,4 +1,5 @@
 [
+  "ethereum/client-go:v1.12.2",
   "ethereum/client-go:v1.12.0",
   "ethereum/client-go:v1.13.5",
   "ethereum/client-go:alltools-v1.10.25",
