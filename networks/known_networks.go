@@ -630,7 +630,7 @@ var (
 		ChainID:                   4002,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: 10 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       1000,
 	}
@@ -642,7 +642,7 @@ var (
 		ChainID:                   250,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: 10 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       1000,
 	}
