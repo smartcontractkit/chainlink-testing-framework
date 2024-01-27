@@ -689,6 +689,20 @@ var (
 		DefaultGasLimit:           6000000,
 	}
 
+	GnosisChiado blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Gnosis Chiado",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.EthereumClientImplementation,
+		ChainID:                   10200,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.JSONStrDuration{Duration: time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       1000,
+		FinalityTag:               true,
+		DefaultGasLimit:           6000000,
+	}
+
 	MappedNetworks = map[string]blockchain.EVMNetwork{
 		"SIMULATED":               SimulatedEVM,
 		"SIMULATED_1":             SimulatedEVMNonDev1,
@@ -737,6 +751,7 @@ var (
 		"KROMA_SEPOLIA":         KromaSepolia,
 		"KROMA_MAINNET":         KromaMainnet,
 		"NEXON_DEV":             NexonDev,
+		"GNOSIS_CHIADO":         GnosisChiado,
 	}
 )
 
