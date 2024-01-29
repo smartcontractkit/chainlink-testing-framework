@@ -50,6 +50,35 @@ spec:
             - {{ .Values.anvil.forkURL }}
             {{- else }}
             {{- end }}
+            {{- if .Values.anvil.forkBlockNumber }}
+            - "--fork-block-number"
+            - {{ .Values.anvil.forkBlockNumber | quote }}
+            {{- else }}
+            {{- end }}
+            {{- if .Values.anvil.forkRetryBackoff }}
+            - "--fork-retry-backoff"
+            - {{ .Values.anvil.forkRetryBackoff }}
+            {{- else }}
+            {{- end }}
+            {{- if .Values.anvil.forkRetries }}
+            - "--retries"
+            - {{ .Values.anvil.forkRetries | quote }}
+            {{- else }}
+            {{- end }}
+            {{- if .Values.anvil.forkTimeout }}
+            - "--timeout"
+            - {{ .Values.anvil.forkTimeout | quote }}
+            {{- else }}
+            {{- end }}
+            {{- if .Values.anvil.forkComputeUnitsPerSecond }}
+            - "--compute-units-per-second"
+            - {{ .Values.anvil.forkComputeUnitsPerSecond | quote }}
+            {{- else }}
+            {{- end }}
+            {{- if .Values.anvil.forkNoRateLimit }}
+            - "--no-rate-limit"
+            {{- else }}
+            {{- end }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http

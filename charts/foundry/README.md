@@ -7,8 +7,13 @@ Change the URL in [values.yaml](values.yaml) and deploy
 
 ```
 anvil:
-  host: "0.0.0.0"
-  port: "8545"
+  host: '0.0.0.0'
+  port: '8545'
   blockTime: 1
-  forkURL: "https://goerli.infura.io/v3/..."
+  forkURL: 'https://goerli.infura.io/v3/...'
+  forkBlockNumber: "10448829"
+  forkRetries: "5"
+  forkTimeout: "45000"
+  forkComputeUnitsPerSecond: "330"
+  # forkNoRateLimit: "true"
 ```
