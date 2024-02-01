@@ -583,6 +583,18 @@ var (
 		GasEstimationBuffer:       1000,
 	}
 
+	PolygonZkEvmCardona = blockchain.EVMNetwork{
+		Name:                      "Polygon zkEVM Cardona",
+		SupportsEIP1559:           false,
+		ClientImplementation:      blockchain.PolygonZkEvmClientImplementation,
+		ChainID:                   2442,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: time.Minute},
+		MinimumConfirmations:      0,
+		GasEstimationBuffer:       1000,
+	}
+
 	WeMixTestnet blockchain.EVMNetwork = blockchain.EVMNetwork{
 		Name:                      "WeMix Testnet",
 		SupportsEIP1559:           true,
@@ -716,6 +728,7 @@ var (
 		"LINEA_GOERLI":          LineaGoerli,
 		"LINEA_MAINNET":         LineaMainnet,
 		"POLYGON_ZKEVM_GOERLI":  PolygonZkEvmGoerli,
+		"POLYGON_ZKEVM_CARDONA": PolygonZkEvmCardona,
 		"POLYGON_ZKEVM_MAINNET": PolygonZkEvmMainnet,
 		"FANTOM_TESTNET":        FantomTestnet,
 		"FANTOM_MAINNET":        FantomMainnet,

@@ -36,8 +36,8 @@ type Besu struct {
 }
 
 func NewBesu(networks []string, chainConfg *EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) (*Besu, error) {
-	// currently it uses 23.10
-	dockerImage, err := mirror.GetImage("hyperledger/besu:23")
+	// currently it uses 24.1
+	dockerImage, err := mirror.GetImage("hyperledger/besu:24")
 
 	if err != nil {
 		return nil, err
