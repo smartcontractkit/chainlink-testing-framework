@@ -199,7 +199,6 @@ func lookupMap(m map[string]interface{}, ks ...string) (rval interface{}, err er
 		return ConnectionInfo{}, fmt.Errorf("key not found: '%s' remaining keys: %s, provided map: %s", ks[0], ks, m)
 	} else if len(ks) == 1 {
 		return rval, nil
-	} else {
-		return lookupMap(m[ks[0]].(map[string]interface{}), ks[1:]...)
 	}
+	return lookupMap(m[ks[0]].(map[string]interface{}), ks[1:]...)
 }
