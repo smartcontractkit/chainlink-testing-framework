@@ -1,0 +1,132 @@
+{{ if (hasKey .Values "geth") }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: geth
+spec:
+  selector:
+    matchLabels:
+      app: geth
+      # Used for testing.
+      # havoc-component-group and havoc-network-group are used by "havoc" chaos testing tool
+      havoc-component-group: "blockchain"
+      havoc-network-group: "blockchain"
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: geth
+        # Used for testing.
+        # havoc-component-group and havoc-network-group are used by "havoc" chaos testing tool
+        havoc-component-group: "blockchain"
+        havoc-network-group: "blockchain"
+        release: {{ .Release.Name }}
+      annotations:
+        {{- range $key, $value := .Values.podAnnotations }}
+        {{ $key }}: {{ $value | quote }}
+        {{- end }}
+    spec:
+      volumes:
+      - name: configmap-volume
+        configMap:
+          name: geth-cm
+      - name: devchain-volume
+        emptyDir: {}
+      securityContext:
+        {{- toYaml $.Values.geth.podSecurityContext | nindent 8 }}
+      containers:
+      - name: geth-network
+        securityContext:
+          {{- toYaml $.Values.geth.securityContext | nindent 12 }}
+        image: "{{ default "ethereum/client-go" .Values.geth.image }}:{{ default "stable" .Values.geth.version }}"
+        command: [ "sh", "/app/init.sh" ]
+        volumeMounts:
+        - name: devchain-volume
+          mountPath: /app/.ethereum/devchain
+        - name : configmap-volume
+          mountPath: /app/init.sh
+          subPath: init.sh
+        - name: configmap-volume
+          mountPath: /app/config
+        - name: configmap-volume
+          mountPath: /app/.ethereum/devchain/keystore/key1
+          subPath: key1
+        - name: configmap-volume
+          mountPath: /app/.ethereum/devchain/keystore/key2
+          subPath: key2
+        - name: configmap-volume
+          mountPath: /app/.ethereum/devchain/keystore/key3
+          subPath: key3
+        args:
+          - '--dev'
+          - '--password'
+          - '/app/config/password.txt'
+          - '--datadir'
+          - '/app/.ethereum/devchain'
+          - '--unlock'
+          - '0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266'
+          - '--unlock'
+          - '0x70997970C51812dc3A010C7d01b50e0d17dc79C8'
+          - '--unlock'
+          - '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC'
+          - '--mine'
+          - '--miner.etherbase'
+          - '0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266'
+          - '--ipcdisable'
+          - '--http.api'
+          - 'admin,debug,web3,eth,txpool,personal,miner,net'
+          - '--http'
+          - '--http.vhosts'
+          - '*'
+          - '--http.addr'
+          - '0.0.0.0'
+          - '--http.port=8544'
+          - '--ws'
+          - '--ws.origins'
+          - '*'
+          - '--ws.addr'
+          - '0.0.0.0'
+          - '--ws.port=8546'
+          - '--graphql'
+          - '-graphql.corsdomain'
+          - '*'
+          - '--allow-insecure-unlock'
+          - '--rpc.allow-unprotected-txs'
+          - '--http.corsdomain'
+          - '*'
+          - '--vmdebug'
+          - '--networkid={{ .Values.geth.networkId }}'
+          - '--rpc.txfeecap'
+          - '0'
+          - '--dev.period'
+          - '{{ .Values.geth.blocktime }}'
+          - '--miner.gasprice'
+          - '10000000000'
+        ports:
+        - name: http-rpc
+          containerPort: 8544
+        - name: ws-rpc
+          containerPort: 8546
+        {{ if (hasKey .Values.geth "resources") }}
+        resources:
+          requests:
+            memory: {{ default "1024Mi" .Values.geth.resources.requests.memory }}
+            cpu: {{ default "1000m" .Values.geth.resources.requests.cpu }}
+          limits:
+            memory: {{ default "1024Mi" .Values.geth.resources.limits.memory }}
+            cpu: {{ default "1000m" .Values.geth.resources.limits.cpu }}
+        {{ else }}
+        {{ end }}
+{{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .Values.affinity }}
+      affinity:
+        {{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .Values.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{ end }}
