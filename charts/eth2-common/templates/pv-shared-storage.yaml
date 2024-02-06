@@ -3,7 +3,7 @@ kind: PersistentVolume
 metadata:
   name: {{ .Release.Name }}-chain-state-storage
   labels:
-    release: {{ .Release.Name }}      
+    release: {{ .Release.Name }}
 spec:
   capacity:
     storage: {{ .Values.storage.size }}

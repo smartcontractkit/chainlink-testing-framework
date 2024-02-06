@@ -3,7 +3,7 @@ kind: PersistentVolumeClaim
 metadata:
   name: {{ .Release.Name }}-{{ .Values.storage.claim }}
   labels:
-    release: {{ .Release.Name }}      
+    release: {{ .Release.Name }}
 spec:
   accessModes:
     - ReadWriteMany

@@ -1,4 +1,7 @@
 imagePullPolicy: Always
+eth2-common:
+  general:
+    networkId: 2337
 general:
   networkId: 1337
 shared:
@@ -34,7 +37,7 @@ genesis:
       - '95371c9792C9435efcd0B9CBb76991966995672d'
       - 'd83FCe08439C7ab9881d2AEA3a3fe0bf3B90f008'
       - 'D0A242b96e8C1700ff6dFE24B5Ec2dE832B6424F'
-      - 'f39Fd6e51aad88F6F4ce6aB8827279cffFb92266'      
+      - 'f39Fd6e51aad88F6F4ce6aB8827279cffFb92266'
 excutionClient:
   image:
     repository: hyperledger/besu
@@ -47,13 +50,6 @@ excutionClient:
     discovery: 30303
   logging:
     level: INFO
-  resources:
-    requests:
-      cpu: 400m
-      memory: 1Gi
-    limits:
-      cpu: 400m
-      memory: 1Gi
 prysm:
   shared:
     feeRecipent: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'
@@ -67,25 +63,11 @@ prysm:
       query: 3500
       node: 4000
       status: 8080
-    resources:
-      requests:
-        cpu: 512m
-        memory: 1Gi
-      limits:
-        cpu: 512m
-        memory: 1Gi
   validator:
     name: prysm-validator
     image:
       repository: gcr.io/prysmaticlabs/prysm/validator
       tag: v4.1.1
-    resources:
-      requests:
-        cpu: 100m
-        memory: 256Mi
-      limits:
-        cpu: 100m
-        memory: 256Mi
 busybox:
   image:
     repository: busybox
@@ -95,13 +77,6 @@ ready:
   image:
     repository: curlimages/curl
     tag: 8.4.0
-  resources:
-    requests:
-      cpu: 50m
-      memory: 256Mi
-    limits:
-      cpu: 50m
-      memory: 256Mi
 storage:
   class: hostpath
   claim: chain-state-claim

@@ -1,6 +1,5 @@
 general:
   networkId: 1337
-
 genesis:
   image:
     repository: tofelb/ethereum-genesis-generator
@@ -34,5 +33,4 @@ shared:
 storage:
   class: hostpath
   claim: chain-state-claim
-  size: 2Gi  
-  
+  size: 2Gi

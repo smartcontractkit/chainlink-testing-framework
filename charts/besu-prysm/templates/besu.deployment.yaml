@@ -25,14 +25,14 @@ spec:
                 - {{ .Release.Name }}
             topologyKey: kubernetes.io/hostname
       nodeSelector:
-        eth2: "true"           
+        eth2: "true"
       volumes:
       - name: {{ .Release.Name }}-chain-state
         persistentVolumeClaim:
           claimName: {{ .Release.Name }}-{{ .Values.storage.claim }}
       - name: {{ .Release.Name }}-genesis-config
         configMap:
-          name: {{ .Release.Name }}-ethereum-genesis-generator-config       
+          name: {{ .Release.Name }}-ethereum-genesis-generator-config
       - name: {{ .Release.Name }}-after-genesis-helper-config
         configMap:
           name: {{ .Release.Name }}-after-genesis-helper-config
@@ -57,22 +57,15 @@ spec:
             - "--rpc-ws-host=0.0.0.0"
             - "--rpc-ws-port={{ .Values.excutionClient.ports.ws }}"
             - "--rpc-ws-api=ADMIN,CLIQUE,ETH,NET,DEBUG,TXPOOL,ENGINE,TRACE,WEB3"
-            - "--engine-rpc-enabled=true"            
+            - "--engine-rpc-enabled=true"
             - "--engine-jwt-secret={{ .Values.shared.configDataDir }}/{{ .Values.shared.jwtFile }}"
             - "--engine-host-allowlist=*"
             - "--engine-rpc-port={{ .Values.excutionClient.ports.execution }}"
             - "--sync-mode=FULL"
             - "--data-storage-format=BONSAI"
-            - "--rpc-tx-feecap=0"                  
+            - "--rpc-tx-feecap=0"
             - "--logging={{ .Values.excutionClient.logging.level }}"
             - "--kzg-trusted-setup=/data/custom_config_data/trusted_setup.txt"
-          resources:
-            requests:
-              memory: {{ .Values.excutionClient.resources.requests.memory }}
-              cpu: {{ .Values.excutionClient.resources.requests.cpu }}
-            limits:
-              memory: {{ .Values.excutionClient.resources.limits.memory }}
-              cpu: {{ .Values.excutionClient.resources.limits.cpu }}
           ports:
             - name: http-rpc
               containerPort: {{ .Values.excutionClient.ports.http }}
@@ -84,8 +77,8 @@ spec:
               containerPort: {{ .Values.excutionClient.ports.discovery }}
               protocol: UDP
             - name: discovery-tcp
-              containerPort: {{ .Values.excutionClient.ports.discovery }}              
-          volumeMounts:            
+              containerPort: {{ .Values.excutionClient.ports.discovery }}
+          volumeMounts:
             - name: {{ .Release.Name }}-chain-state
               mountPath: /data
           readinessProbe:
@@ -93,16 +86,16 @@ spec:
               path: /
               port: {{ .Values.excutionClient.ports.http }}
             initialDelaySeconds: 50
-            periodSeconds: 5        
+            periodSeconds: 5
             failureThreshold: 2
-            timeoutSeconds: 120              
+            timeoutSeconds: 120
           livenessProbe:
             httpGet:
               path: /
               port: {{ .Values.excutionClient.ports.http }}
             initialDelaySeconds: 50
-            periodSeconds: 5        
+            periodSeconds: 5
             failureThreshold: 2
             timeoutSeconds: 120
-      
+
 {{- include "eth2-common.templates.execution-client.init-containers" . | nindent 6 }}

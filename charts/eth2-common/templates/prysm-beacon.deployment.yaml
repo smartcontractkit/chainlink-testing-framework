@@ -1,11 +1,11 @@
 {{/* Prysm Beacon Chain Deployment */}}
 {{- define "eth2-common.templates.deployment.prysm-beacon" }}
 apiVersion: apps/v1
-kind: Deployment 
+kind: Deployment
 metadata:
   name: {{ .Release.Name }}-{{ .Values.prysm.beacon.name }}
   labels:
-    release: {{ .Release.Name }}  
+    release: {{ .Release.Name }}
 spec:
   selector:
     matchLabels:
@@ -27,14 +27,14 @@ spec:
                 - {{ .Release.Name }}
             topologyKey: kubernetes.io/hostname
       nodeSelector:
-        eth2: "true"              
+        eth2: "true"
       volumes:
       - name: {{ .Release.Name }}-chain-state
         persistentVolumeClaim:
-          claimName: {{ .Release.Name }}-{{ .Values.storage.claim }}                       
+          claimName: {{ .Release.Name }}-{{ .Values.storage.claim }}
       - name: {{ .Release.Name }}-after-genesis-helper-config
         configMap:
-          name: {{ .Release.Name }}-after-genesis-helper-config      
+          name: {{ .Release.Name }}-after-genesis-helper-config
       containers:
         - name: {{ .Values.prysm.beacon.name }}
           image: {{ .Values.prysm.beacon.image.repository }}:{{ .Values.prysm.beacon.image.tag }}
@@ -54,26 +54,19 @@ spec:
             - "--subscribe-all-subnets=true"
             - "--suggested-fee-recipient={{ .Values.prysm.shared.feeRecipent }}"
             - "--minimum-peers-per-subnet=0"
-            - "--min-sync-peers=0"        
+            - "--min-sync-peers=0"
             - "--force-clear-db"
             - "--interop-eth1data-votes"
-          resources:
-            requests:
-              memory: {{ .Values.prysm.beacon.resources.requests.memory }}
-              cpu: {{ .Values.prysm.beacon.resources.requests.cpu }}
-            limits:
-              memory: {{ .Values.prysm.beacon.resources.limits.memory }}
-              cpu: {{ .Values.prysm.beacon.resources.limits.cpu }}
           ports:
             - name: query-rpc
-              containerPort: {{ .Values.prysm.beacon.ports.query }}               
+              containerPort: {{ .Values.prysm.beacon.ports.query }}
             - name: node-rpc
-              containerPort: {{ .Values.prysm.beacon.ports.node }}    
+              containerPort: {{ .Values.prysm.beacon.ports.node }}
             - name: status
-              containerPort: {{ .Values.prysm.beacon.ports.status }}                              
-          volumeMounts:               
+              containerPort: {{ .Values.prysm.beacon.ports.status }}
+          volumeMounts:
             - name: {{ .Release.Name }}-chain-state
-              mountPath: /data       
+              mountPath: /data
 
 {{- include "eth2-common.templates.consensus-client.init-containers" . | nindent 6 }}
 {{- end}}
