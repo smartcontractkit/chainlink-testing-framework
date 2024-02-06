@@ -63,12 +63,14 @@ func (c *Chaos) waitForChaosStatus(id string, condition v1alpha1.ChaosConditionT
 		log.Info().Msg("timeout is less than 1 minute, setting to 1 minute")
 		timeout = time.Minute
 	}
-	return wait.PollImmediate(2*time.Second, timeout, func() (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	return wait.PollUntilContextTimeout(ctx, 2*time.Second, timeout, true, func(ctx context.Context) (bool, error) {
 		data, err := c.Client.ClientSet.
 			RESTClient().
 			Get().
 			RequestURI(fmt.Sprintf("/apis/chaos-mesh.org/v1alpha1/namespaces/%s/%s/%s", c.Namespace, c.ResourceByName[id], id)).
-			Do(context.Background()).
+			Do(ctx).
 			Raw()
 		if err == nil {
 			err = json.Unmarshal(data, &result)

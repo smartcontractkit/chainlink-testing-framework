@@ -3,11 +3,11 @@ package test_env
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
 	tc "github.com/testcontainers/testcontainers-go"
@@ -33,47 +33,40 @@ type Besu struct {
 	consensusLayer       ConsensusLayer
 	l                    zerolog.Logger
 	t                    *testing.T
-	image                string
 }
 
 func NewBesu(networks []string, chainConfg *EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) (*Besu, error) {
-	// currently it uses 23.10
-	dockerImage, err := mirror.GetImage("hyperledger/besu:23")
+	// currently it uses 24.1
+	dockerImage, err := mirror.GetImage("hyperledger/besu:24")
 
 	if err != nil {
 		return nil, err
 	}
 
+	parts := strings.Split(dockerImage, ":")
 	g := &Besu{
 		EnvComponent: EnvComponent{
-			ContainerName: fmt.Sprintf("%s-%s", "besu", uuid.NewString()[0:8]),
-			Networks:      networks,
+			ContainerName:    fmt.Sprintf("%s-%s", "besu", uuid.NewString()[0:8]),
+			Networks:         networks,
+			ContainerImage:   parts[0],
+			ContainerVersion: parts[1],
 		},
 		chainConfg:           chainConfg,
 		generatedDataHostDir: generatedDataHostDir,
 		consensusLayer:       consensusLayer,
 		l:                    logging.GetTestLogger(nil),
-		image:                dockerImage,
 	}
+	g.SetDefaultHooks()
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
 	return g, nil
 }
 
-func (g *Besu) WithImage(imageWithTag string) *Besu {
-	g.image = imageWithTag
-	return g
-}
-
 func (g *Besu) WithTestInstance(t *testing.T) ExecutionClient {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
 	return g
-}
-
-func (g *Besu) GetImage() string {
-	return g.image
 }
 
 func (g *Besu) StartContainer() (blockchain.EVMNetwork, error) {
@@ -90,7 +83,7 @@ func (g *Besu) StartContainer() (blockchain.EVMNetwork, error) {
 		Logger:           l,
 	})
 	if err != nil {
-		return blockchain.EVMNetwork{}, errors.Wrapf(err, "cannot start Besu container")
+		return blockchain.EVMNetwork{}, fmt.Errorf("cannot start Besu container: %w", err)
 	}
 
 	host, err := GetHost(testcontext.Get(g.t), ct)
@@ -167,7 +160,7 @@ func (g *Besu) GetContainer() *tc.Container {
 func (g *Besu) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
 	return &tc.ContainerRequest{
 		Name:     g.ContainerName,
-		Image:    g.image,
+		Image:    g.GetImageWithVersion(),
 		Networks: networks,
 		// ImagePlatform: "linux/x86_64", //don't even try this on Apple Silicon, the node won't start due to JVM error
 		ExposedPorts: []string{NatPortFormat(TX_GETH_HTTP_PORT), NatPortFormat(TX_GETH_WS_PORT), NatPortFormat(ETH2_EXECUTION_PORT)},
@@ -209,6 +202,12 @@ func (g *Besu) getContainerRequest(networks []string) (*tc.ContainerRequest, err
 					HostPath: g.generatedDataHostDir,
 				},
 				Target: tc.ContainerMountTarget(GENERATED_DATA_DIR_INSIDE_CONTAINER),
+			},
+		},
+		LifecycleHooks: []tc.ContainerLifecycleHooks{
+			{
+				PostStarts: g.PostStartsHooks,
+				PostStops:  g.PostStopsHooks,
 			},
 		},
 	}, nil

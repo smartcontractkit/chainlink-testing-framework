@@ -404,10 +404,12 @@ const (
 	EnvVarNamespaceDescription = "Namespace name to connect to"
 	EnvVarNamespaceExample     = "chainlink-test-epic"
 
+	// deprecated (for now left for backwards compatibility)
 	EnvVarCLImage            = "CHAINLINK_IMAGE"
 	EnvVarCLImageDescription = "Chainlink image repository"
 	EnvVarCLImageExample     = "public.ecr.aws/chainlink/chainlink"
 
+	// deprecated (for now left for backwards compatibility)
 	EnvVarCLTag            = "CHAINLINK_VERSION"
 	EnvVarCLTagDescription = "Chainlink image tag"
 	EnvVarCLTagExample     = "1.5.1-root"
@@ -590,3 +592,27 @@ func main() {
 ```
 
 After tests are finished, coverage is collected for every service, check `cover` directory
+
+# TOML Config
+Keep in mind that configuring Chainlink image/version & Pyroscope via env vars is deprecated. The latter won't even work anymore. That means that this method should be avoided in new environments. Instead, use the TOML config method described below.
+```golang
+	AddHelm(chainlink.New(0, nil))
+```
+
+It's recommended to use a TOML config file to configure Chainlink and Pyroscope:
+```golang
+
+// read the config file
+config := testconfig.GetConfig("Load", "Automation")
+
+var overrideFn = func(_ interface{}, target interface{}) {
+	ctf_config.MustConfigOverrideChainlinkVersion(&config.ChainlinkImage, target)
+	ctf_config.MightConfigOverridePyroscopeKey(&config.Pyroscope, target)
+}
+
+AddHelm(chainlink.NewWithOverride(0, map[string]interface{}{
+	"replicas": 1,
+}, &config, overrideFn))
+```
+
+Using that will cause the override function to be executed on the default propos thus overriding the default values with the values from the config file. If `config.ChainlinkImage` is `nil` or it's missing either `Image` or `Version` code will panic. If Pyroscope is disabled or key is not set it will be ignored.

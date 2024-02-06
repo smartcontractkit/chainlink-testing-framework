@@ -35,6 +35,10 @@ Enabled = true
 [P2P.V2]
 ListenAddresses = ["0.0.0.0:6690"]`
 
+func OnlyRemoteRunner(config *environment.Config) *environment.Environment {
+	return environment.New(config)
+}
+
 // EVMOneNode local development Chainlink deployment
 func EVMOneNode(config *environment.Config) (*environment.Environment, error) {
 

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	tc "github.com/testcontainers/testcontainers-go"
@@ -37,6 +36,7 @@ func NewInitHelper(chainConfig EthereumChainConfig, customConfigDataDir string, 
 		l:                   log.Logger,
 		addressesToFund:     []string{},
 	}
+	g.SetDefaultHooks()
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
@@ -63,7 +63,7 @@ func (g *AfterGenesisHelper) StartContainer() error {
 		Logger:           l,
 	})
 	if err != nil {
-		return errors.Wrapf(err, "cannot start after genesis helper container")
+		return fmt.Errorf("cannot start after genesis helper container: %w", err)
 	}
 
 	g.l.Info().Str("containerName", g.ContainerName).
@@ -109,6 +109,12 @@ func (g *AfterGenesisHelper) getContainerRequest(networks []string) (*tc.Contain
 					HostPath: g.customConfigDataDir,
 				},
 				Target: tc.ContainerMountTarget(GENERATED_DATA_DIR_INSIDE_CONTAINER),
+			},
+		},
+		LifecycleHooks: []tc.ContainerLifecycleHooks{
+			{
+				PostStarts: g.PostStartsHooks,
+				PostStops:  g.PostStopsHooks,
 			},
 		},
 	}, nil

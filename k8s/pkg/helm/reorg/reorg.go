@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/rs/zerolog/log"
 
@@ -199,7 +200,7 @@ func NewVersioned(helmVersion string, props *Props) environment.ConnectedChart {
 		chartPath = fmt.Sprintf("%s/geth-reorg", projectpath.ChartsRoot)
 	}
 	return Chart{
-		Name:    targetProps.NetworkName,
+		Name:    strings.ReplaceAll(strings.ToLower(targetProps.NetworkName), " ", "-"), // name cannot contain spaces
 		Path:    chartPath,
 		Values:  &targetProps.Values,
 		Props:   targetProps,

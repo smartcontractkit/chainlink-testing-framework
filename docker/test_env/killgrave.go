@@ -84,6 +84,7 @@ func NewKillgrave(networks []string, impostersDirectoryPath string, opts ...EnvC
 		impostersPath: impostersDirectoryPath,
 		l:             log.Logger,
 	}
+	k.SetDefaultHooks()
 	for _, opt := range opts {
 		opt(&k.EnvComponent)
 	}
@@ -155,6 +156,12 @@ func (k *Killgrave) getContainerRequest() (tc.ContainerRequest, error) {
 			},
 		},
 		WaitingFor: wait.ForLog("The fake server is on tap now"),
+		LifecycleHooks: []tc.ContainerLifecycleHooks{
+			{
+				PostStarts: k.PostStartsHooks,
+				PostStops:  k.PostStopsHooks,
+			},
+		},
 	}, nil
 }
 
@@ -250,6 +257,17 @@ func (k *Killgrave) SetAdapterBasedAnyValuePath(path string, methods []string, v
 		Error: nil,
 	}
 	data, err := json.Marshal(ar)
+	if err != nil {
+		return err
+	}
+
+	return k.SetStringValuePath(path, methods, map[string]string{
+		"Content-Type": "application/json",
+	}, string(data))
+}
+
+func (k *Killgrave) SetAnyValueResponse(path string, methods []string, v interface{}) error {
+	data, err := json.Marshal(v)
 	if err != nil {
 		return err
 	}

@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"html/template"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
 	tc "github.com/testcontainers/testcontainers-go"
@@ -36,46 +36,39 @@ type Erigon struct {
 	consensusLayer       ConsensusLayer
 	l                    zerolog.Logger
 	t                    *testing.T
-	image                string
 }
 
 func NewErigon(networks []string, chainConfg *EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) (*Erigon, error) {
-	// currently it uses v2.54.0
-	dockerImage, err := mirror.GetImage("thorax/erigon:v")
+	// currently it uses v2.56.0
+	dockerImage, err := mirror.GetImage("thorax/erigon:v2.56")
 	if err != nil {
 		return nil, err
 	}
 
+	parts := strings.Split(dockerImage, ":")
 	g := &Erigon{
 		EnvComponent: EnvComponent{
-			ContainerName: fmt.Sprintf("%s-%s", "erigon", uuid.NewString()[0:8]),
-			Networks:      networks,
+			ContainerName:    fmt.Sprintf("%s-%s", "erigon", uuid.NewString()[0:8]),
+			Networks:         networks,
+			ContainerImage:   parts[0],
+			ContainerVersion: parts[1],
 		},
 		chainConfg:           chainConfg,
 		generatedDataHostDir: generatedDataHostDir,
 		consensusLayer:       consensusLayer,
 		l:                    logging.GetTestLogger(nil),
-		image:                dockerImage,
 	}
+	g.SetDefaultHooks()
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
 	return g, nil
 }
 
-func (g *Erigon) WithImage(imageWithTag string) *Erigon {
-	g.image = imageWithTag
-	return g
-}
-
 func (g *Erigon) WithTestInstance(t *testing.T) ExecutionClient {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
 	return g
-}
-
-func (g *Erigon) GetImage() string {
-	return g.image
 }
 
 func (g *Erigon) StartContainer() (blockchain.EVMNetwork, error) {
@@ -92,7 +85,7 @@ func (g *Erigon) StartContainer() (blockchain.EVMNetwork, error) {
 		Logger:           l,
 	})
 	if err != nil {
-		return blockchain.EVMNetwork{}, errors.Wrapf(err, "cannot start erigon container")
+		return blockchain.EVMNetwork{}, fmt.Errorf("cannot start erigon container: %w", err)
 	}
 
 	host, err := GetHost(testcontext.Get(g.t), ct)
@@ -180,7 +173,7 @@ func (g *Erigon) getContainerRequest(networks []string) (*tc.ContainerRequest, e
 
 	return &tc.ContainerRequest{
 		Name:          g.ContainerName,
-		Image:         g.image,
+		Image:         g.GetImageWithVersion(),
 		Networks:      networks,
 		ImagePlatform: "linux/x86_64",
 		ExposedPorts:  []string{NatPortFormat(TX_GETH_HTTP_PORT), NatPortFormat(ETH2_EXECUTION_PORT)},
@@ -209,6 +202,12 @@ func (g *Erigon) getContainerRequest(networks []string) (*tc.ContainerRequest, e
 				Target: tc.ContainerMountTarget(GENERATED_DATA_DIR_INSIDE_CONTAINER),
 			},
 		},
+		LifecycleHooks: []tc.ContainerLifecycleHooks{
+			{
+				PostStarts: g.PostStartsHooks,
+				PostStops:  g.PostStopsHooks,
+			},
+		},
 	}, nil
 }
 
@@ -234,7 +233,7 @@ func (g *Erigon) buildInitScript() (string, error) {
 	erigon --http --http.api=eth,erigon,engine,web3,net,debug,trace,txpool,admin --http.addr=0.0.0.0 --http.corsdomain=* \
 		--http.vhosts=* --http.port={{.HttpPort}} --ws --authrpc.vhosts=* --authrpc.addr=0.0.0.0 --authrpc.jwtsecret={{.JwtFileLocation}} \
 		--datadir={{.ExecutionDir}} --rpc.allow-unprotected-txs --rpc.txfeecap=0 --allow-insecure-unlock \
-		--nodiscover --networkid={{.ChainID}}`
+		--nodiscover --networkid={{.ChainID}} --db.size.limit=8TB`
 
 	data := struct {
 		HttpPort         string

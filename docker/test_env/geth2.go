@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"html/template"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
 	tc "github.com/testcontainers/testcontainers-go"
@@ -36,46 +36,39 @@ type Geth2 struct {
 	consensusLayer       ConsensusLayer
 	l                    zerolog.Logger
 	t                    *testing.T
-	image                string
 }
 
 func NewGeth2(networks []string, chainConfg *EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) (*Geth2, error) {
-	// currently it uses v1.13.5
+	// currently it uses v1.13.10
 	dockerImage, err := mirror.GetImage("ethereum/client-go:v1.13")
 	if err != nil {
 		return nil, err
 	}
 
+	parts := strings.Split(dockerImage, ":")
 	g := &Geth2{
 		EnvComponent: EnvComponent{
-			ContainerName: fmt.Sprintf("%s-%s", "geth2", uuid.NewString()[0:8]),
-			Networks:      networks,
+			ContainerName:    fmt.Sprintf("%s-%s", "geth2", uuid.NewString()[0:8]),
+			Networks:         networks,
+			ContainerImage:   parts[0],
+			ContainerVersion: parts[1],
 		},
 		chainConfg:           chainConfg,
 		generatedDataHostDir: generatedDataHostDir,
 		consensusLayer:       consensusLayer,
 		l:                    logging.GetTestLogger(nil),
-		image:                dockerImage,
 	}
+	g.SetDefaultHooks()
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
 	return g, nil
 }
 
-func (g *Geth2) WithImage(imageWithTag string) *Geth2 {
-	g.image = imageWithTag
-	return g
-}
-
 func (g *Geth2) WithTestInstance(t *testing.T) ExecutionClient {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
 	return g
-}
-
-func (g *Geth2) GetImage() string {
-	return g.image
 }
 
 func (g *Geth2) StartContainer() (blockchain.EVMNetwork, error) {
@@ -92,7 +85,7 @@ func (g *Geth2) StartContainer() (blockchain.EVMNetwork, error) {
 		Logger:           l,
 	})
 	if err != nil {
-		return blockchain.EVMNetwork{}, errors.Wrapf(err, "cannot start geth container")
+		return blockchain.EVMNetwork{}, fmt.Errorf("cannot start geth container: %w", err)
 	}
 
 	host, err := GetHost(testcontext.Get(g.t), ct)
@@ -184,7 +177,7 @@ func (g *Geth2) getContainerRequest(networks []string) (*tc.ContainerRequest, er
 
 	return &tc.ContainerRequest{
 		Name:          g.ContainerName,
-		Image:         g.image,
+		Image:         g.GetImageWithVersion(),
 		Networks:      networks,
 		ImagePlatform: "linux/x86_64",
 		ExposedPorts:  []string{NatPortFormat(TX_GETH_HTTP_PORT), NatPortFormat(TX_GETH_WS_PORT), NatPortFormat(ETH2_EXECUTION_PORT)},
@@ -210,6 +203,12 @@ func (g *Geth2) getContainerRequest(networks []string) (*tc.ContainerRequest, er
 					HostPath: g.generatedDataHostDir,
 				},
 				Target: tc.ContainerMountTarget(GENERATED_DATA_DIR_INSIDE_CONTAINER),
+			},
+		},
+		LifecycleHooks: []tc.ContainerLifecycleHooks{
+			{
+				PostStarts: g.PostStartsHooks,
+				PostStops:  g.PostStopsHooks,
 			},
 		},
 	}, nil
@@ -282,5 +281,5 @@ func (g *Geth2) buildInitScript() (string, error) {
 }
 
 func (g *Geth2) GetContainerType() ContainerType {
-	return ContainerType_Geth2
+	return ContainerType_Geth
 }

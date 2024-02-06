@@ -249,7 +249,11 @@ func (m *K8sClient) EnumerateInstances(namespace string, selector string) error 
 func (m *K8sClient) waitForPodsExist(ns string, expectedPodCount int) error {
 	log.Debug().Int("ExpectedCount", expectedPodCount).Msg("Waiting for pods to exist")
 	var exitErr error
-	if err := wait.PollImmediate(2*time.Second, 15*time.Minute, func() (bool, error) {
+	timeout := 15 * time.Minute
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	if err := wait.PollUntilContextTimeout(ctx, 2*time.Second, timeout, true, func(ctx context.Context) (bool, error) {
+		// nolint:contextcheck
 		apps, err2 := m.UniqueLabels(ns, AppLabel)
 		if err2 != nil {
 			exitErr = err2
@@ -394,12 +398,15 @@ type ReadyCheckData struct {
 func (m *K8sClient) WaitForJob(namespaceName string, jobName string, fundReturnStatus func(string)) error {
 	cmd := fmt.Sprintf("kubectl --namespace %s logs --follow job/%s", namespaceName, jobName)
 	log.Info().Str("Job", jobName).Str("cmd", cmd).Msg("Waiting for job to complete")
-	if err := ExecCmdWithOptions(context.Background(), cmd, fundReturnStatus); err != nil {
+	ctx := context.Background()
+	if err := ExecCmdWithOptions(ctx, cmd, fundReturnStatus); err != nil {
 		return err
 	}
 	var exitErr error
-	if err := wait.PollImmediate(K8sStatePollInterval, JobFinalizedTimeout, func() (bool, error) {
-		job, err := m.ClientSet.BatchV1().Jobs(namespaceName).Get(context.Background(), jobName, metaV1.GetOptions{})
+	ctx, cancel := context.WithTimeout(ctx, JobFinalizedTimeout)
+	defer cancel()
+	if err := wait.PollUntilContextTimeout(ctx, K8sStatePollInterval, JobFinalizedTimeout, true, func(ctx context.Context) (bool, error) {
+		job, err := m.ClientSet.BatchV1().Jobs(namespaceName).Get(ctx, jobName, metaV1.GetOptions{})
 		if err != nil {
 			exitErr = err
 		}
