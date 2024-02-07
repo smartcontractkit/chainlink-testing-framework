@@ -6,7 +6,7 @@ geth:
       drop:
         - ALL
     readOnlyRootFilesystem: false
-    runAsNonRoot: true
+    runAsNonRoot: false
     runAsUser: 999
     runAsGroup: 999
   version: v1.12.0
