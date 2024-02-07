@@ -26,8 +26,8 @@ ingress:
   enabled: false
   annotations: {}
   ingressClassName: alb
-  annotation_certificate_arn: ""
-  annotation_group_name: ""
+  annotation_certificate_arn: ''
+  annotation_group_name: ''
   hosts:
     - host: chainlink-geth-http.local
       http:
@@ -58,7 +58,7 @@ networkPolicy:
     # Should be a comma separated list of CIDR blocks. To include
     # AWS ALB private CIDRs and optionally other custom CIDRs.
     # Example format: 10.0.0.0/16,192.168.0.1/24
-    allowCustomCidrs: "0.0.0.0/0"
+    allowCustomCidrs: '0.0.0.0/0'
 
 networkPolicies:
   enabled: true
@@ -70,4 +70,4 @@ networkPolicyDefault:
     # String of comma separated CIDRs
     customCidrs: null
     # Example:
-    # customCidrs: "10.0.0.0/16,192.168.0.1/24"
+    # customCidrs: '10.0.0.0/16,192.168.0.1/24'
