@@ -48,6 +48,7 @@ Selector labels
 {{- define "foundry.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "foundry.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
+app: {{ include "foundry.fullname" . }}
 {{- end }}
 
 {{/*
