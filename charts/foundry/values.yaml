@@ -7,16 +7,18 @@ replicaCount: 1
 anvil:
   host: '0.0.0.0'
   port: '8545'
+  chainId: 1337
   blockTime: 1
+  runAsOptimism: false
   forkURL: 'https://goerli.infura.io/v3/...'
   forkBlockNumber: "10448829"
   forkRetries: "5"
   forkTimeout: "45000"
   forkComputeUnitsPerSecond: "330"
-#  forkNoRateLimit: "true"
+  forkNoRateLimit: "true"
 
 image:
-  repository: f4hrenh9it/anvil
+  repository: ghcr.io/foundry-rs/foundry
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: 'latest'
@@ -40,15 +42,17 @@ podAnnotations: {}
 podLabels: {}
 
 podSecurityContext: {}
-  # fsGroup: 2000
+  # fsGroup: 1000
 
-securityContext: {}
-  # capabilities:
-  #   drop:
-  #   - ALL
-  # readOnlyRootFilesystem: true
-  # runAsNonRoot: true
-  # runAsUser: 1000
+securityContext:
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: false
+  runAsNonRoot: true
+  # foundry user/group
+  runAsUser: 1000
+  runAsGroup: 1000
 
 service:
   type: ClusterIP

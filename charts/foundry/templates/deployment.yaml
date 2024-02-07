@@ -39,6 +39,8 @@ spec:
           stdin: true
           command:
             - "anvil"
+            - "--chain-id"
+            - {{ .Values.anvil.chainId | quote }}
             - "--block-time"
             - {{ .Values.anvil.blockTime | quote }}
             - "--host"
@@ -78,6 +80,9 @@ spec:
             {{- if .Values.anvil.forkNoRateLimit }}
             - "--no-rate-limit"
             {{- else }}
+            {{- end }}
+            {{- if .Values.anvil.runAsOptimism }}
+            - "--optimism"
             {{- end }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
