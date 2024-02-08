@@ -16,7 +16,7 @@ const (
 )
 
 type Props struct {
-	NetworkName string `envconfig:"network_name"`
+	NetworkName string
 	Values      map[string]interface{}
 }
 
