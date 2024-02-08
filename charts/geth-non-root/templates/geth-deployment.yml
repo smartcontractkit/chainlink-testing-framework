@@ -63,7 +63,7 @@ spec:
           - '0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266'
           - '--ipcdisable'
           - '--http.api'
-          - 'admin,debug,web3,eth,txpool,personal,miner,net'
+          - 'admin,debug,clique,eth,miner,net,personal,txpool,web3'
           - '--http'
           - '--http.vhosts'
           - '*'
