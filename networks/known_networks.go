@@ -829,7 +829,12 @@ func MustSetNetworks(networkCfg config.NetworkConfig) []blockchain.EVMNetwork {
 	for i := range selectedNetworks {
 		var walletKeys, httpUrls, wsUrls []string
 		networkName := strings.ToUpper(selectedNetworks[i])
-		if !strings.Contains(networkName, "SIMULATED") {
+		forked := false
+		if networkCfg.ForkConfigs != nil {
+			_, forked = networkCfg.ForkConfigs[networkName]
+		}
+		// if network is not simulated or forked, use the rpc urls and wallet keys from config
+		if !strings.Contains(networkName, "SIMULATED") && !forked {
 			var ok bool
 			wsUrls, ok = networkCfg.RpcWsUrls[selectedNetworks[i]]
 			if !ok {
@@ -846,30 +851,48 @@ func MustSetNetworks(networkCfg config.NetworkConfig) []blockchain.EVMNetwork {
 				panic(fmt.Errorf("no wallet keys found in config for '%s' network", selectedNetworks[i]))
 			}
 		}
-		network, err := NewEVMNetwork(networkName, walletKeys, httpUrls, wsUrls)
-		if err != nil {
-			panic(err)
+		// if evm_network config is found, use it
+		if networkCfg.EVMNetworks != nil {
+			if network, ok := networkCfg.EVMNetworks[networkName]; ok && network != nil {
+				if err := NewEVMNetwork(network, walletKeys, httpUrls, wsUrls); err != nil {
+					panic(err)
+				}
+				networks = append(networks, *network)
+				continue
+			}
 		}
-		networks = append(networks, network)
+
+		if knownNetwork, valid := MappedNetworks[networkName]; valid {
+			err := NewEVMNetwork(&knownNetwork, walletKeys, httpUrls, wsUrls)
+			if err != nil {
+				panic(err)
+			}
+			networks = append(networks, knownNetwork)
+			continue
+		}
+		panic(fmt.Errorf("no evm_network config found in network config. "+
+			"network '%s' is not a valid network. "+
+			"Use valid network(s) separated by comma from %v "+
+			"or add the evm_network details to the network config file",
+			selectedNetworks[i], getValidNetworkKeys()))
 	}
 	return networks
 }
 
-func NewEVMNetwork(networkKey string, walletKeys, httpUrls, wsUrls []string) (blockchain.EVMNetwork, error) {
-	if network, valid := MappedNetworks[networkKey]; valid {
-		// Overwrite network default values
-		if len(httpUrls) > 0 {
-			network.HTTPURLs = httpUrls
-		}
-		if len(wsUrls) > 0 {
-			network.URLs = wsUrls
-		}
-		if len(walletKeys) > 0 {
-			setKeys(&network, walletKeys)
-		}
-		return network, nil
+func NewEVMNetwork(network *blockchain.EVMNetwork, walletKeys, httpUrls, wsUrls []string) error {
+	// Overwrite network default values
+	if len(httpUrls) > 0 {
+		network.HTTPURLs = httpUrls
 	}
-	return blockchain.EVMNetwork{}, fmt.Errorf("network key: '%v' is invalid. Use a valid network(s) separated by comma from %v", networkKey, getValidNetworkKeys())
+	if len(wsUrls) > 0 {
+		network.URLs = wsUrls
+	}
+	if len(walletKeys) > 0 {
+		if err := setKeys(network, walletKeys); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func getValidNetworkKeys() []string {
@@ -881,7 +904,7 @@ func getValidNetworkKeys() []string {
 }
 
 // setKeys sets a network's private key(s) based on env vars
-func setKeys(network *blockchain.EVMNetwork, walletKeys []string) {
+func setKeys(network *blockchain.EVMNetwork, walletKeys []string) error {
 	for keyIndex := range walletKeys { // Sanitize keys of possible `0x` prefix
 		// Trim some common addons
 		walletKeys[keyIndex] = strings.Trim(walletKeys[keyIndex], "\"'")
@@ -895,11 +918,12 @@ func setKeys(network *blockchain.EVMNetwork, walletKeys []string) {
 	for _, key := range network.PrivateKeys {
 		publicKey, err := privateKeyToAddress(key)
 		if err != nil {
-			log.Fatal().Err(err).Msg("Error reading private key")
+			return fmt.Errorf("error converting private key to public key: %w", err)
 		}
 		publicKeys = append(publicKeys, publicKey)
 	}
 	log.Info().Interface("Funding Addresses", publicKeys).Msg("Read Network Keys")
+	return nil
 }
 
 func privateKeyToAddress(privateKeyString string) (string, error) {

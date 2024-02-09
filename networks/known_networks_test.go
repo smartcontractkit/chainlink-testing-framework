@@ -220,24 +220,19 @@ func TestNewEVMNetwork(t *testing.T) {
 	}()
 
 	t.Run("valid networkKey", func(t *testing.T) {
-		network, err := NewEVMNetwork("VALID_KEY", nil, nil, nil)
+		network := MappedNetworks["VALID_KEY"]
+		err := NewEVMNetwork(&network, nil, nil, nil)
 		require.NoError(t, err)
 		require.Equal(t, MappedNetworks["VALID_KEY"].HTTPURLs, network.HTTPURLs)
 		require.Equal(t, MappedNetworks["VALID_KEY"].URLs, network.URLs)
-	})
-
-	t.Run("invalid networkKey", func(t *testing.T) {
-		_, err := NewEVMNetwork("INVALID_KEY", nil, nil, nil)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "network key: 'INVALID_KEY' is invalid")
 	})
 
 	t.Run("overwriting default values", func(t *testing.T) {
 		walletKeys := []string{"1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed"}
 		httpUrls := []string{"http://newurl.com"}
 		wsUrls := []string{"ws://newwsurl.com"}
-
-		network, err := NewEVMNetwork("VALID_KEY", walletKeys, httpUrls, wsUrls)
+		network := MappedNetworks["VALID_KEY"]
+		err := NewEVMNetwork(&network, walletKeys, httpUrls, wsUrls)
 		require.NoError(t, err)
 		require.Equal(t, httpUrls, network.HTTPURLs)
 		require.Equal(t, wsUrls, network.URLs)
