@@ -861,7 +861,7 @@ func MustSetNetworks(networkCfg config.NetworkConfig) []blockchain.EVMNetwork {
 				continue
 			}
 		}
-
+		// if there is no evm_network config, use the known networks to find the network config from the map
 		if knownNetwork, valid := MappedNetworks[networkName]; valid {
 			err := NewEVMNetwork(&knownNetwork, walletKeys, httpUrls, wsUrls)
 			if err != nil {
@@ -870,6 +870,7 @@ func MustSetNetworks(networkCfg config.NetworkConfig) []blockchain.EVMNetwork {
 			networks = append(networks, knownNetwork)
 			continue
 		}
+		// if network is not found in known networks or in toml's evm_network config, panic
 		panic(fmt.Errorf("no evm_network config found in network config. "+
 			"network '%s' is not a valid network. "+
 			"Use valid network(s) separated by comma from %v "+
