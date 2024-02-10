@@ -750,6 +750,7 @@ var (
 		"KROMA_SEPOLIA":         KromaSepolia,
 		"KROMA_MAINNET":         KromaMainnet,
 		"NEXON_DEV":             NexonDev,
+		"MANTLE_SEPOLIA":        MantleSepolia,
 	}
 )
 
