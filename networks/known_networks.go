@@ -689,6 +689,19 @@ var (
 		DefaultGasLimit:           6000000,
 	}
 
+	MantleSepolia blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Mantle Sepolia",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.MantleSepoliaClientImplementation,
+		ChainID:                   5003,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       1000,
+		FinalityTag:               false,
+	}
+
 	MappedNetworks = map[string]blockchain.EVMNetwork{
 		"SIMULATED":               SimulatedEVM,
 		"SIMULATED_1":             SimulatedEVMNonDev1,
