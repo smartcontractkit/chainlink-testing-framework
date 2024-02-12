@@ -417,6 +417,12 @@ func (e *EthereumClient) EstimateCostForChainlinkOperations(amountOfOperations i
 	return totalEthForAllOperations, nil
 }
 
+func (e *EthereumClient) RawJsonRPCCall(ctx context.Context, result interface{}, method string, params ...interface{}) error {
+	err := e.rawRPC.CallContext(ctx, &result, method, params...)
+
+	return err
+}
+
 // DeployContract acts as a general contract deployment tool to an ethereum chain
 func (e *EthereumClient) DeployContract(
 	contractName string,
@@ -1187,6 +1193,12 @@ func (e *EthereumMultinodeClient) HeaderByNumber(
 // HeaderByHash retrieves a Safe EVM header by hash
 func (e *EthereumMultinodeClient) HeaderByHash(ctx context.Context, hash common.Hash) (*SafeEVMHeader, error) {
 	return e.DefaultClient.HeaderByHash(ctx, hash)
+}
+
+func (e *EthereumMultinodeClient) RawJsonRPCCall(ctx context.Context, result interface{}, method string, params ...interface{}) error {
+	err := e.DefaultClient.RawJsonRPCCall(ctx, result, method, params)
+
+	return err
 }
 
 // LoadContract load already deployed contract instance
