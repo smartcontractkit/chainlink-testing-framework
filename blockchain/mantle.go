@@ -50,8 +50,8 @@ func (b *MantleSepoliaClient) DeployContract(
 		return nil, nil, nil, err
 	}
 
-	opts.GasLimit = uint64(11885630143)
-	opts.GasPrice = big.NewInt(110000000)
+	opts.GasLimit = uint64(100000000000)
+	opts.GasPrice = big.NewInt(10000000000)
 	//	opts.GasPrice.Mul(opts.GasPrice, multiplier)
 
 	contractAddress, transaction, contractInstance, err := deployer(opts, b.Client)
@@ -111,7 +111,7 @@ func (b *MantleSepoliaClient) TransactionOpts(from *EthereumWallet) (*bind.Trans
 	// 	return nil, err
 	// }
 	// opts.GasPrice.Mul(opts.GasPrice, multiplier)
-	opts.GasLimit = uint64(11885630143)
-	opts.GasPrice = big.NewInt(110000000)
+	opts.GasLimit = uint64(100000000000)
+	opts.GasPrice = big.NewInt(10000000000)
 	return opts, nil
 }
