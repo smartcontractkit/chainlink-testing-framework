@@ -50,7 +50,7 @@ func (b *MantleGoerliClient) DeployContract(
 		return nil, nil, nil, err
 	}
 
-	opts.GasLimit = uint64(50000000)
+	opts.GasLimit = uint64(30000000)
 	opts.GasPrice.Mul(opts.GasPrice, multiplier)
 
 	contractAddress, transaction, contractInstance, err := deployer(opts, b.Client)
@@ -104,7 +104,7 @@ func (b *MantleGoerliClient) TransactionOpts(from *EthereumWallet) (*bind.Transa
 	// }
 
 	multiplier := big.NewInt(4000)
-	opts.GasLimit = uint64(50000000)
+	opts.GasLimit = uint64(30000000)
 	opts.GasPrice, err = b.EstimateGasPrice()
 	if err != nil {
 		return nil, err
