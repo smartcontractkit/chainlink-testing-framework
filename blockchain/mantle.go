@@ -49,6 +49,8 @@ func (b *MantleGoerliClient) DeployContract(
 	if err != nil {
 		return nil, nil, nil, err
 	}
+
+	opts.GasLimit = uint64(50000000)
 	opts.GasPrice.Mul(opts.GasPrice, multiplier)
 
 	contractAddress, transaction, contractInstance, err := deployer(opts, b.Client)
@@ -97,10 +99,12 @@ func (b *MantleGoerliClient) TransactionOpts(from *EthereumWallet) (*bind.Transa
 		<-b.NonceSettings.registerInstantTransaction(from.Address(), nonce)
 	}
 	// if the gas limit is less than the default gas limit, use the default
-	if b.NetworkConfig.DefaultGasLimit > opts.GasLimit {
-		opts.GasLimit = b.NetworkConfig.DefaultGasLimit
-	}
+	// if b.NetworkConfig.DefaultGasLimit > opts.GasLimit {
+	// 	opts.GasLimit = b.NetworkConfig.DefaultGasLimit
+	// }
+
 	multiplier := big.NewInt(4000)
+	opts.GasLimit = uint64(50000000)
 	opts.GasPrice, err = b.EstimateGasPrice()
 	if err != nil {
 		return nil, err
