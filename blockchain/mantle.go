@@ -29,7 +29,7 @@ func (b *MantleGoerliClient) EstimateGas(callData ethereum.CallMsg) (GasEstimati
 	if err != nil {
 		return GasEstimations{}, err
 	}
-	multiplier := big.NewInt(1000) // 200 000 000 000  Max Price
+	multiplier := big.NewInt(4000) // 200 000 000 000
 	// gasEstimations.GasUnits = 1500000
 	gasEstimations.GasPrice.Mul(gasEstimations.GasPrice, multiplier)
 	return gasEstimations, err
@@ -40,7 +40,7 @@ func (b *MantleGoerliClient) DeployContract(
 	contractName string,
 	deployer ContractDeployer,
 ) (*common.Address, *types.Transaction, interface{}, error) {
-	multiplier := big.NewInt(1000)
+	multiplier := big.NewInt(4000)
 	opts, err := b.TransactionOpts(b.DefaultWallet)
 	if err != nil {
 		return nil, nil, nil, err
@@ -100,7 +100,7 @@ func (b *MantleGoerliClient) TransactionOpts(from *EthereumWallet) (*bind.Transa
 	if b.NetworkConfig.DefaultGasLimit > opts.GasLimit {
 		opts.GasLimit = b.NetworkConfig.DefaultGasLimit
 	}
-	multiplier := big.NewInt(1000)
+	multiplier := big.NewInt(4000)
 	opts.GasPrice, err = b.EstimateGasPrice()
 	if err != nil {
 		return nil, err
