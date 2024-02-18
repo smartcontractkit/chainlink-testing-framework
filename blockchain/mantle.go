@@ -15,16 +15,16 @@ import (
 )
 
 // BttcMultinodeClient represents a multi-node, EVM compatible client for the Kava network
-type MantleGoerliMultinodeClient struct {
+type MantleSepoliaMultinodeClient struct {
 	*EthereumMultinodeClient
 }
 
 // BttcClient represents a single node, EVM compatible client for the Kava network
-type MantleGoerliClient struct {
+type MantleSepoliaClient struct {
 	*EthereumClient
 }
 
-func (b *MantleGoerliClient) EstimateGas(callData ethereum.CallMsg) (GasEstimations, error) {
+func (b *MantleSepoliaClient) EstimateGas(callData ethereum.CallMsg) (GasEstimations, error) {
 	gasEstimations, err := b.EthereumClient.EstimateGas(callData)
 	if err != nil {
 		return GasEstimations{}, err
@@ -36,7 +36,7 @@ func (b *MantleGoerliClient) EstimateGas(callData ethereum.CallMsg) (GasEstimati
 }
 
 // DeployContract acts as a general contract deployment tool to an ethereum chain
-func (b *MantleGoerliClient) DeployContract(
+func (b *MantleSepoliaClient) DeployContract(
 	contractName string,
 	deployer ContractDeployer,
 ) (*common.Address, *types.Transaction, interface{}, error) {
@@ -77,7 +77,7 @@ func (b *MantleGoerliClient) DeployContract(
 
 // TransactionOpts returns the base Tx options for 'transactions' that interact with a smart contract. Since most
 // contract interactions in this framework are designed to happen through abigen calls, it's intentionally quite bare.
-func (b *MantleGoerliClient) TransactionOpts(from *EthereumWallet) (*bind.TransactOpts, error) {
+func (b *MantleSepoliaClient) TransactionOpts(from *EthereumWallet) (*bind.TransactOpts, error) {
 	privateKey, err := crypto.HexToECDSA(from.PrivateKey())
 	if err != nil {
 		return nil, fmt.Errorf("invalid private key: %w", err)

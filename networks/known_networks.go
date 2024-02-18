@@ -689,11 +689,11 @@ var (
 		DefaultGasLimit:           6000000,
 	}
 
-	MantleGoerli blockchain.EVMNetwork = blockchain.EVMNetwork{
-		Name:                      "Mantle Goerli",
-		SupportsEIP1559:           false,
-		ClientImplementation:      blockchain.MantleGoerliClientImplementation,
-		ChainID:                   5001,
+	MantleSepolia blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Mantle Sepolia",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.MantleSepoliaClientImplementation,
+		ChainID:                   5003,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
 		Timeout:                   blockchain.StrDuration{Duration: time.Minute},
@@ -750,7 +750,7 @@ var (
 		"KROMA_SEPOLIA":         KromaSepolia,
 		"KROMA_MAINNET":         KromaMainnet,
 		"NEXON_DEV":             NexonDev,
-		"MANTLE_GOERLI":         MantleGoerli,
+		"MANTLE_SEPOLIA":        MantleSepolia,
 	}
 )
 

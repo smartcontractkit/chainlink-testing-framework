@@ -9,23 +9,23 @@ type ClientImplementation string
 
 const (
 	// Ethereum uses the standard EVM implementation, and is considered default
-	EthereumClientImplementation     ClientImplementation = "Ethereum"
-	MetisClientImplementation        ClientImplementation = "Metis"
-	KlaytnClientImplementation       ClientImplementation = "Klaytn"
-	OptimismClientImplementation     ClientImplementation = "Optimism"
-	ArbitrumClientImplementation     ClientImplementation = "Arbitrum"
-	PolygonClientImplementation      ClientImplementation = "Polygon"
-	RSKClientImplementation          ClientImplementation = "RSK"
-	CeloClientImplementation         ClientImplementation = "Celo"
-	QuorumClientImplementation       ClientImplementation = "Quorum"
-	ScrollClientImplementation       ClientImplementation = "Scroll"
-	BSCClientImplementation          ClientImplementation = "BSC"
-	LineaClientImplementation        ClientImplementation = "Linea"
-	PolygonZkEvmClientImplementation ClientImplementation = "PolygonZkEvm"
-	FantomClientImplementation       ClientImplementation = "Fantom"
-	WeMixClientImplementation        ClientImplementation = "WeMix"
-	KromaClientImplementation        ClientImplementation = "Kroma"
-	MantleGoerliClientImplementation ClientImplementation = "MantleGoerli"
+	EthereumClientImplementation      ClientImplementation = "Ethereum"
+	MetisClientImplementation         ClientImplementation = "Metis"
+	KlaytnClientImplementation        ClientImplementation = "Klaytn"
+	OptimismClientImplementation      ClientImplementation = "Optimism"
+	ArbitrumClientImplementation      ClientImplementation = "Arbitrum"
+	PolygonClientImplementation       ClientImplementation = "Polygon"
+	RSKClientImplementation           ClientImplementation = "RSK"
+	CeloClientImplementation          ClientImplementation = "Celo"
+	QuorumClientImplementation        ClientImplementation = "Quorum"
+	ScrollClientImplementation        ClientImplementation = "Scroll"
+	BSCClientImplementation           ClientImplementation = "BSC"
+	LineaClientImplementation         ClientImplementation = "Linea"
+	PolygonZkEvmClientImplementation  ClientImplementation = "PolygonZkEvm"
+	FantomClientImplementation        ClientImplementation = "Fantom"
+	WeMixClientImplementation         ClientImplementation = "WeMix"
+	KromaClientImplementation         ClientImplementation = "Kroma"
+	MantleSepoliaClientImplementation ClientImplementation = "MantleSepolia"
 )
 
 // wrapSingleClient Wraps a single EVM client in its appropriate implementation, based on the chain ID
@@ -64,8 +64,8 @@ func wrapSingleClient(networkSettings EVMNetwork, client *EthereumClient) EVMCli
 		wrappedEc = &WeMixClient{client}
 	case KromaClientImplementation:
 		wrappedEc = &KromaClient{client}
-	case MantleGoerliClientImplementation:
-		wrappedEc = &MantleGoerliClient{client}
+	case MantleSepoliaClientImplementation:
+		wrappedEc = &MantleSepoliaClient{client}
 	default:
 		wrappedEc = client
 	}
@@ -125,9 +125,9 @@ func wrapMultiClient(networkSettings EVMNetwork, client *EthereumMultinodeClient
 	case KromaClientImplementation:
 		logMsg.Msg("Using Kroma Client")
 		wrappedEc = &KromaMultinodeClient{client}
-	case MantleGoerliClientImplementation:
+	case MantleSepoliaClientImplementation:
 		logMsg.Msg("Using Mantle Sepolia Client")
-		wrappedEc = &MantleGoerliMultinodeClient{client}
+		wrappedEc = &MantleSepoliaMultinodeClient{client}
 	default:
 		log.Warn().Str("Network", networkSettings.Name).Msg("Unknown client implementation, defaulting to standard Ethereum client")
 		wrappedEc = client
