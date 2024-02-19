@@ -698,7 +698,7 @@ var (
 		ChainlinkTransactionLimit: 5000,
 		Timeout:                   blockchain.StrDuration{Duration: time.Minute},
 		MinimumConfirmations:      0,
-		GasEstimationBuffer:       10000000,
+		GasEstimationBuffer:       1000,
 		FinalityTag:               false,
 	}
 
