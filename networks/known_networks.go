@@ -683,7 +683,49 @@ var (
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
 		Timeout:                   blockchain.StrDuration{Duration: time.Minute},
-		MinimumConfirmations:      1,
+		MinimumConfirmations:      0,
+		GasEstimationBuffer:       1000,
+		FinalityTag:               true,
+		DefaultGasLimit:           6000000,
+	}
+
+	NexonTest blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Nexon Test",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.EthereumClientImplementation,
+		ChainID:                   595581,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: time.Minute},
+		MinimumConfirmations:      0,
+		GasEstimationBuffer:       1000,
+		FinalityTag:               true,
+		DefaultGasLimit:           6000000,
+	}
+
+	NexonQa blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Nexon Qa",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.EthereumClientImplementation,
+		ChainID:                   807424,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: time.Minute},
+		MinimumConfirmations:      0,
+		GasEstimationBuffer:       1000,
+		FinalityTag:               true,
+		DefaultGasLimit:           6000000,
+	}
+
+	NexonStage blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Nexon Stage",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.EthereumClientImplementation,
+		ChainID:                   847799,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: time.Minute},
+		MinimumConfirmations:      0,
 		GasEstimationBuffer:       1000,
 		FinalityTag:               true,
 		DefaultGasLimit:           6000000,
@@ -751,6 +793,9 @@ var (
 		"KROMA_MAINNET":         KromaMainnet,
 		"NEXON_DEV":             NexonDev,
 		"MANTLE_SEPOLIA":        MantleSepolia,
+		"NEXON_TEST":            NexonTest,
+		"NEXON_QA":              NexonQa,
+		"NEXON_STAGE":           NexonStage,
 	}
 )
 
