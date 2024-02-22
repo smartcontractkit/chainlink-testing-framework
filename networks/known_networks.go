@@ -820,10 +820,14 @@ func MustGetSelectedNetworkConfig(networkCfg *config.NetworkConfig) []blockchain
 	if networkCfg == nil || len(networkCfg.SelectedNetworks) == 0 {
 		panic(fmt.Errorf("network config has no or empty selected networks. Use valid network(s) separated by comma from %v", getValidNetworkKeys()))
 	}
-	return MustSetNetworks(*networkCfg)
+	nets, err := MustSetNetworks(*networkCfg)
+	if err != nil {
+		panic(err)
+	}
+	return nets
 }
 
-func MustSetNetworks(networkCfg config.NetworkConfig) []blockchain.EVMNetwork {
+func MustSetNetworks(networkCfg config.NetworkConfig) ([]blockchain.EVMNetwork, error) {
 	networks := make([]blockchain.EVMNetwork, 0)
 	selectedNetworks := networkCfg.SelectedNetworks
 	for i := range selectedNetworks {
@@ -838,24 +842,24 @@ func MustSetNetworks(networkCfg config.NetworkConfig) []blockchain.EVMNetwork {
 			var ok bool
 			wsUrls, ok = networkCfg.RpcWsUrls[selectedNetworks[i]]
 			if !ok {
-				panic(fmt.Errorf("no rpc ws urls found in config for '%s' network", selectedNetworks[i]))
+				return nil, fmt.Errorf("no rpc ws urls found in config for '%s' network", selectedNetworks[i])
 			}
 
 			httpUrls, ok = networkCfg.RpcHttpUrls[selectedNetworks[i]]
 			if !ok {
-				panic(fmt.Errorf("no rpc http urls found in config for '%s' network", selectedNetworks[i]))
+				return nil, fmt.Errorf("no rpc http urls found in config for '%s' network", selectedNetworks[i])
 			}
 
 			walletKeys, ok = networkCfg.WalletKeys[selectedNetworks[i]]
 			if !ok {
-				panic(fmt.Errorf("no wallet keys found in config for '%s' network", selectedNetworks[i]))
+				return nil, fmt.Errorf("no wallet keys found in config for '%s' network", selectedNetworks[i])
 			}
 		}
 		// if evm_network config is found, use it
 		if networkCfg.EVMNetworks != nil {
 			if network, ok := networkCfg.EVMNetworks[networkName]; ok && network != nil {
 				if err := NewEVMNetwork(network, walletKeys, httpUrls, wsUrls); err != nil {
-					panic(err)
+					return nil, err
 				}
 				networks = append(networks, *network)
 				continue
@@ -865,19 +869,19 @@ func MustSetNetworks(networkCfg config.NetworkConfig) []blockchain.EVMNetwork {
 		if knownNetwork, valid := MappedNetworks[networkName]; valid {
 			err := NewEVMNetwork(&knownNetwork, walletKeys, httpUrls, wsUrls)
 			if err != nil {
-				panic(err)
+				return nil, err
 			}
 			networks = append(networks, knownNetwork)
 			continue
 		}
-		// if network is not found in known networks or in toml's evm_network config, panic
-		panic(fmt.Errorf("no evm_network config found in network config. "+
+		// if network is not found in known networks or in toml's evm_network config, throw an error
+		return nil, fmt.Errorf("no evm_network config found in network config. "+
 			"network '%s' is not a valid network. "+
 			"Use valid network(s) separated by comma from %v "+
 			"or add the evm_network details to the network config file",
-			selectedNetworks[i], getValidNetworkKeys()))
+			selectedNetworks[i], getValidNetworkKeys())
 	}
-	return networks
+	return networks, nil
 }
 
 func NewEVMNetwork(network *blockchain.EVMNetwork, walletKeys, httpUrls, wsUrls []string) error {

@@ -20,10 +20,10 @@ type ForkConfig struct {
 	URL              string `toml:"url"`          // URL is the URL of the node to fork from
 	BlockNumber      int64  `toml:"block_number"` // BlockNumber is the block number to fork from
 	BlockTime        int64  `toml:"block_time"`
-	Retries          int    `toml:"retries"`
-	Timeout          int64  `toml:"timeout"`
-	ComputePerSecond int64  `toml:"compute_per_second"`
-	RateLimitEnabled bool   `toml:"rate_limit_enabled"`
+	Retries          int    `toml:"retries,omitempty"`
+	Timeout          int64  `toml:"timeout,omitempty"`
+	ComputePerSecond int64  `toml:"compute_per_second,omitempty"`
+	RateLimitEnabled bool   `toml:"rate_limit_enabled,omitempty"`
 }
 
 // NetworkConfig is the configuration for the networks to be used
@@ -34,7 +34,7 @@ type NetworkConfig struct {
 	EVMNetworks map[string]*blockchain.EVMNetwork `toml:"evm_networks,omitempty"`
 	// ForkConfigs is the configuration for forking from a node,
 	// key is the network name as declared in selected_networks slice
-	ForkConfigs map[string]ForkConfig `toml:"fork_config,omitempty"`
+	ForkConfigs map[string]*ForkConfig `toml:"fork_config,omitempty"`
 	// RpcHttpUrls is the RPC HTTP endpoints for each network,
 	// key is the network name as declared in selected_networks slice
 	RpcHttpUrls map[string][]string `toml:"RpcHttpUrls"`
@@ -77,8 +77,38 @@ func (n *NetworkConfig) applyDecoded(configDecoded string) error {
 	if err != nil {
 		return fmt.Errorf("error applying overrides from decoded network config file to config: %w", err)
 	}
+	n.ApplyURLsAndKeysFromEVMNetwork()
 
 	return nil
+}
+
+// ApplyURLsAndKeysFromEVMNetwork applies the URLs and keys from the EVMNetworks to the NetworkConfig
+// it overrides the URLs and Keys present in RpcHttpUrls, RpcWsUrls and WalletKeys in the NetworkConfig
+// with the URLs and Keys provided in the EVMNetworks
+func (n *NetworkConfig) ApplyURLsAndKeysFromEVMNetwork() {
+	if n.EVMNetworks == nil {
+		return
+	}
+	for name, evmNetwork := range n.EVMNetworks {
+		if evmNetwork.URLs != nil && len(evmNetwork.URLs) > 0 {
+			if n.RpcWsUrls == nil {
+				n.RpcWsUrls = make(map[string][]string)
+			}
+			n.RpcWsUrls[name] = evmNetwork.URLs
+		}
+		if evmNetwork.HTTPURLs != nil && len(evmNetwork.HTTPURLs) > 0 {
+			if n.RpcHttpUrls == nil {
+				n.RpcHttpUrls = make(map[string][]string)
+			}
+			n.RpcHttpUrls[name] = evmNetwork.HTTPURLs
+		}
+		if evmNetwork.PrivateKeys != nil && len(evmNetwork.PrivateKeys) > 0 {
+			if n.WalletKeys == nil {
+				n.WalletKeys = make(map[string][]string)
+			}
+			n.WalletKeys[name] = evmNetwork.PrivateKeys
+		}
+	}
 }
 
 func (n *NetworkConfig) applyBase64Enconded(configEncoded string) error {
@@ -107,11 +137,16 @@ func (n *NetworkConfig) Validate() error {
 			// we don't need to validate RPC endpoints or private keys for simulated networks
 			continue
 		}
+		for name, evmNetwork := range n.EVMNetworks {
+			if evmNetwork.ClientImplementation == "" {
+				return fmt.Errorf("client implementation for %s network must be set", name)
+			}
+			if evmNetwork.ChainID == 0 {
+				return fmt.Errorf("chain ID for %s network must be set", name)
+			}
+		}
 		if n.ForkConfigs != nil {
 			if _, ok := n.ForkConfigs[network]; ok {
-				if evmConfig, exists := n.EVMNetworks[network]; !exists || evmConfig == nil {
-					return fmt.Errorf("fork config for %s network is set, but no corresponding EVM network is defined", network)
-				}
 				if n.ForkConfigs[network].URL == "" {
 					return fmt.Errorf("fork config for %s network must have a URL", network)
 				}
@@ -122,6 +157,7 @@ func (n *NetworkConfig) Validate() error {
 				continue
 			}
 		}
+		// if the network is not forked, we need to validate RPC endpoints and private keys
 		if _, ok := n.RpcHttpUrls[network]; !ok {
 			return fmt.Errorf("at least one HTTP RPC endpoint for %s network must be set", network)
 		}
@@ -159,12 +195,16 @@ func (n *NetworkConfig) UpperCaseNetworkNames() {
 	for i, network := range n.SelectedNetworks {
 		n.SelectedNetworks[i] = strings.ToUpper(network)
 		if _, ok := n.EVMNetworks[network]; ok {
-			n.EVMNetworks[strings.ToUpper(network)] = n.EVMNetworks[network]
-			delete(n.EVMNetworks, network)
+			if network != strings.ToUpper(network) {
+				n.EVMNetworks[strings.ToUpper(network)] = n.EVMNetworks[network]
+				delete(n.EVMNetworks, network)
+			}
 		}
 		if _, ok := n.ForkConfigs[network]; ok {
-			n.ForkConfigs[strings.ToUpper(network)] = n.ForkConfigs[network]
-			delete(n.ForkConfigs, network)
+			if network != strings.ToUpper(network) {
+				n.ForkConfigs[strings.ToUpper(network)] = n.ForkConfigs[network]
+				delete(n.ForkConfigs, network)
+			}
 		}
 	}
 }

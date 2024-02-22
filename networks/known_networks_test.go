@@ -239,3 +239,306 @@ func TestNewEVMNetwork(t *testing.T) {
 		require.Equal(t, walletKeys, network.PrivateKeys)
 	})
 }
+
+func TestVariousNetworkConfig(t *testing.T) {
+	newNetwork := blockchain.EVMNetwork{
+		Name:                      "new_test_network",
+		ChainID:                   100009,
+		Simulated:                 true,
+		ChainlinkTransactionLimit: 5000,
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       10000,
+		ClientImplementation:      blockchain.EthereumClientImplementation,
+		HTTPURLs: []string{
+			"http://localhost:8545",
+		},
+		URLs: []string{
+			"ws://localhost:8546",
+		},
+		SupportsEIP1559: true,
+		DefaultGasLimit: 6000000,
+		PrivateKeys: []string{
+			"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+		},
+	}
+	forkedNetwork := newNetwork
+	forkedNetwork.HTTPURLs = nil
+	forkedNetwork.URLs = nil
+	forkedNetwork.PrivateKeys = nil
+
+	defer func() {
+		ArbitrumGoerli.URLs = []string{}
+		ArbitrumGoerli.HTTPURLs = []string{}
+		ArbitrumGoerli.PrivateKeys = []string{}
+		OptimismGoerli.URLs = []string{}
+		OptimismGoerli.HTTPURLs = []string{}
+		OptimismGoerli.PrivateKeys = []string{}
+	}()
+	ArbitrumGoerli.URLs = []string{"wss://devnet-1.mt/ABC/rpc/"}
+	ArbitrumGoerli.HTTPURLs = []string{"https://devnet-1.mt/ABC/rpc/"}
+	ArbitrumGoerli.PrivateKeys = []string{"1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed"}
+	OptimismGoerli.URLs = []string{"wss://devnet-1.mt/ABC/rpc/"}
+	OptimismGoerli.HTTPURLs = []string{"https://devnet-1.mt/ABC/rpc/"}
+	OptimismGoerli.PrivateKeys = []string{"1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed"}
+
+	testcases := []struct {
+		name                 string
+		networkConfigTOML    string
+		isNetworkConfigError bool
+		isEVMNetworkError    bool
+		expNetworks          []blockchain.EVMNetwork
+	}{
+		{
+			name: "forked network for existing network",
+			networkConfigTOML: `
+selected_networks = ["KROMA_SEPOLIA"]
+
+[fork_config.KROMA_SEPOLIA]
+url = "ws://localhost:8546"
+block_number = 100
+`,
+			expNetworks: []blockchain.EVMNetwork{KromaSepolia},
+		},
+
+		{
+			name: "forked network for new network",
+			networkConfigTOML: `
+selected_networks = ["new_network"]
+
+[evm_networks.new_network]
+evm_name = "new_test_network"
+evm_chain_id = 100009
+evm_simulated = true
+client_implementation = "Ethereum"
+evm_chainlink_transaction_limit = 5000
+evm_minimum_confirmations = 1
+evm_gas_estimation_buffer = 10000
+evm_supports_eip1559 = true
+evm_default_gas_limit = 6000000
+
+[fork_config.new_network]
+url = "ws://localhost:8546"
+block_number = 100
+`,
+			expNetworks: []blockchain.EVMNetwork{forkedNetwork},
+		},
+		{
+			name: "existing network and new network together in one config",
+			networkConfigTOML: `
+selected_networks = ["new_network","arbitrum_goerli", "optimism_goerli"]
+
+[evm_networks.new_network]
+evm_name = "new_test_network"
+evm_chain_id = 100009
+evm_urls = ["ws://localhost:8546"]
+evm_http_urls = ["http://localhost:8545"]
+client_implementation = "Ethereum"
+evm_keys = ["ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"]
+evm_simulated = true
+evm_chainlink_transaction_limit = 5000
+evm_minimum_confirmations = 1
+evm_gas_estimation_buffer = 10000
+evm_supports_eip1559 = true
+evm_default_gas_limit = 6000000
+
+[RpcHttpUrls]
+arbitrum_goerli = ["https://devnet-1.mt/ABC/rpc/"]
+optimism_goerli = ["https://devnet-1.mt/ABC/rpc/"]
+
+[RpcWsUrls]
+arbitrum_goerli = ["wss://devnet-1.mt/ABC/rpc/"]
+optimism_goerli = ["wss://devnet-1.mt/ABC/rpc/"]
+
+[WalletKeys]
+arbitrum_goerli = ["1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed"]
+optimism_goerli = ["1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed"]
+		`,
+			expNetworks: []blockchain.EVMNetwork{
+				newNetwork, ArbitrumGoerli, OptimismGoerli,
+			},
+		},
+		{
+			name: "new network with empty chain id",
+			networkConfigTOML: `
+selected_networks = ["new_network"]
+
+[evm_networks.new_network]
+evm_name = "new_test_network"
+evm_urls = ["ws://localhost:8546"]
+evm_http_urls = ["http://localhost:8545"]
+evm_keys = ["ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"]
+evm_simulated = true
+evm_chainlink_transaction_limit = 5000
+client_implementation = "Ethereum"
+evm_minimum_confirmations = 1
+evm_gas_estimation_buffer = 10000
+evm_supports_eip1559 = true
+evm_default_gas_limit = 6000000
+		`,
+			isNetworkConfigError: true,
+		},
+		{
+			name: "new network with empty client implementation",
+			networkConfigTOML: `
+selected_networks = ["new_network"]
+
+[evm_networks.new_network]
+evm_name = "new_test_network"
+evm_chain_id = 100009
+evm_urls = ["ws://localhost:8546"]
+evm_http_urls = ["http://localhost:8545"]
+evm_keys = ["ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"]
+evm_simulated = true
+evm_chainlink_transaction_limit = 5000
+evm_minimum_confirmations = 1
+evm_gas_estimation_buffer = 10000
+evm_supports_eip1559 = true
+evm_default_gas_limit = 6000000
+		`,
+			isNetworkConfigError: true,
+		},
+		{
+			name: "new network without rpc urls",
+			networkConfigTOML: `
+selected_networks = ["new_network"]
+
+[evm_networks.new_network]
+evm_name = "new_test_network"
+evm_chain_id = 100009
+evm_keys = ["ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"]
+evm_simulated = true
+evm_chainlink_transaction_limit = 5000
+evm_minimum_confirmations = 1
+evm_gas_estimation_buffer = 10000
+client_implementation = "Ethereum"
+evm_supports_eip1559 = true
+evm_default_gas_limit = 6000000
+`,
+			isNetworkConfigError: true,
+		},
+		{
+			name: "new network with rpc urls and wallet keys both in EVMNetworks and Rpc<Http/Ws>Urls and WalletKeys",
+			networkConfigTOML: `
+selected_networks = ["new_network"]
+
+[evm_networks.new_network]
+evm_name = "new_test_network"
+evm_chain_id = 100009
+evm_urls = ["ws://localhost:8546"]
+evm_http_urls = ["http://localhost:8545"]
+evm_keys = ["ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"]
+evm_simulated = true
+evm_chainlink_transaction_limit = 5000
+evm_minimum_confirmations = 1
+evm_gas_estimation_buffer = 10000
+client_implementation = "Ethereum"
+evm_supports_eip1559 = true
+evm_default_gas_limit = 6000000
+
+[RpcHttpUrls]
+new_network = ["http://localhost:iamnotvalid"]
+[RpcWsUrls]
+new_network = ["ws://localhost:iamnotvalid"]
+[WalletKeys]
+new_network = ["something random"]
+`,
+			expNetworks: []blockchain.EVMNetwork{newNetwork},
+		},
+		{
+			name: "new network with rpc urls and wallet keys in EVMNetworks",
+			networkConfigTOML: `
+selected_networks = ["new_network"]
+
+[evm_networks.new_network]
+evm_name = "new_test_network"
+evm_chain_id = 100009
+evm_urls = ["ws://localhost:8546"]
+evm_http_urls = ["http://localhost:8545"]
+evm_keys = ["ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"]
+evm_simulated = true
+evm_chainlink_transaction_limit = 5000
+evm_minimum_confirmations = 1
+evm_gas_estimation_buffer = 10000
+client_implementation = "Ethereum"
+evm_supports_eip1559 = true
+evm_default_gas_limit = 6000000
+`,
+			expNetworks: []blockchain.EVMNetwork{newNetwork},
+		},
+		{
+			name: "new network with rpc urls in EVMNetworks and wallet keys in WalletKeys NetworkConfig",
+			networkConfigTOML: `
+selected_networks = ["new_network"]
+
+[evm_networks.new_network]
+evm_name = "new_test_network"
+evm_chain_id = 100009
+evm_urls = ["ws://localhost:8546"]
+evm_http_urls = ["http://localhost:8545"]
+evm_simulated = true
+evm_chainlink_transaction_limit = 5000
+evm_minimum_confirmations = 1
+evm_gas_estimation_buffer = 10000
+client_implementation = "Ethereum"
+evm_supports_eip1559 = true
+evm_default_gas_limit = 6000000
+
+[WalletKeys]
+new_network = ["ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"]
+`,
+			expNetworks: []blockchain.EVMNetwork{newNetwork},
+		},
+		{
+			name: "new network with rpc urls and wallet keys in NetworkConfig",
+			networkConfigTOML: `
+selected_networks = ["new_network"]
+
+[evm_networks.new_network]
+evm_name = "new_test_network"
+evm_chain_id = 100009
+evm_simulated = true
+evm_chainlink_transaction_limit = 5000
+evm_minimum_confirmations = 1
+evm_gas_estimation_buffer = 10000
+client_implementation = "Ethereum"
+evm_supports_eip1559 = true
+evm_default_gas_limit = 6000000
+
+[RpcHttpUrls]
+new_network = ["http://localhost:8545"]
+[RpcWsUrls]
+new_network = ["ws://localhost:8546"]
+[WalletKeys]
+new_network = ["ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"]
+`,
+			expNetworks: []blockchain.EVMNetwork{newNetwork},
+		},
+	}
+	for _, tc := range testcases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			encoded := base64.StdEncoding.EncodeToString([]byte(tc.networkConfigTOML))
+			err := os.Setenv("BASE64_NETWORK_CONFIG", encoded)
+			require.NoError(t, err, "error setting env var")
+
+			networkCfg := &config.NetworkConfig{}
+			networkCfg.UpperCaseNetworkNames()
+			err = networkCfg.Default()
+			require.NoError(t, err, "error setting default network config")
+			err = networkCfg.Validate()
+			if tc.isNetworkConfigError {
+				require.Error(t, err, "expected network config error")
+				return
+			}
+			require.NoError(t, err, "error validating network config")
+			actualNets, err := MustSetNetworks(*networkCfg)
+			if tc.isEVMNetworkError {
+				t.Log(err)
+				require.Error(t, err, "expected evmNetwork set up error")
+				return
+			}
+			require.NoError(t, err, "unexpected error")
+			require.Equal(t, tc.expNetworks, actualNets, "unexpected networks")
+		})
+	}
+}
