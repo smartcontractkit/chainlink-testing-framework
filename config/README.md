@@ -83,6 +83,10 @@ client_implementation = "Ethereum"
 evm_supports_eip1559 = true
 evm_default_gas_limit = 6000000
 
+[ForkConfigs.new_network]
+url = "ws://localhost:8546"
+block_number = 100
+
 [RpcHttpUrls]
 arbitrum_goerli = ["https://devnet-2.mt/ABC/rpc/"]
 new_network = ["http://localhost:8545"]
