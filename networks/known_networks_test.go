@@ -293,7 +293,7 @@ func TestVariousNetworkConfig(t *testing.T) {
 			networkConfigTOML: `
 selected_networks = ["KROMA_SEPOLIA"]
 
-[fork_config.KROMA_SEPOLIA]
+[ForkConfigs.KROMA_SEPOLIA]
 url = "ws://localhost:8546"
 block_number = 100
 `,
@@ -305,7 +305,7 @@ block_number = 100
 			networkConfigTOML: `
 selected_networks = ["new_network"]
 
-[evm_networks.new_network]
+[EVMNetworks.new_network]
 evm_name = "new_test_network"
 evm_chain_id = 100009
 evm_simulated = true
@@ -316,7 +316,7 @@ evm_gas_estimation_buffer = 10000
 evm_supports_eip1559 = true
 evm_default_gas_limit = 6000000
 
-[fork_config.new_network]
+[ForkConfigs.new_network]
 url = "ws://localhost:8546"
 block_number = 100
 `,
@@ -327,7 +327,7 @@ block_number = 100
 			networkConfigTOML: `
 selected_networks = ["new_network","arbitrum_goerli", "optimism_goerli"]
 
-[evm_networks.new_network]
+[EVMNetworks.new_network]
 evm_name = "new_test_network"
 evm_chain_id = 100009
 evm_urls = ["ws://localhost:8546"]
@@ -362,7 +362,7 @@ optimism_goerli = ["1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b6
 			networkConfigTOML: `
 selected_networks = ["new_network"]
 
-[evm_networks.new_network]
+[EVMNetworks.new_network]
 evm_name = "new_test_network"
 evm_urls = ["ws://localhost:8546"]
 evm_http_urls = ["http://localhost:8545"]
@@ -382,7 +382,7 @@ evm_default_gas_limit = 6000000
 			networkConfigTOML: `
 selected_networks = ["new_network"]
 
-[evm_networks.new_network]
+[EVMNetworks.new_network]
 evm_name = "new_test_network"
 evm_chain_id = 100009
 evm_urls = ["ws://localhost:8546"]
@@ -402,7 +402,7 @@ evm_default_gas_limit = 6000000
 			networkConfigTOML: `
 selected_networks = ["new_network"]
 
-[evm_networks.new_network]
+[EVMNetworks.new_network]
 evm_name = "new_test_network"
 evm_chain_id = 100009
 evm_keys = ["ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"]
@@ -421,7 +421,7 @@ evm_default_gas_limit = 6000000
 			networkConfigTOML: `
 selected_networks = ["new_network"]
 
-[evm_networks.new_network]
+[EVMNetworks.new_network]
 evm_name = "new_test_network"
 evm_chain_id = 100009
 evm_urls = ["ws://localhost:8546"]
@@ -449,7 +449,7 @@ new_network = ["something random"]
 			networkConfigTOML: `
 selected_networks = ["new_network"]
 
-[evm_networks.new_network]
+[EVMNetworks.new_network]
 evm_name = "new_test_network"
 evm_chain_id = 100009
 evm_urls = ["ws://localhost:8546"]
@@ -470,7 +470,7 @@ evm_default_gas_limit = 6000000
 			networkConfigTOML: `
 selected_networks = ["new_network"]
 
-[evm_networks.new_network]
+[EVMNetworks.new_network]
 evm_name = "new_test_network"
 evm_chain_id = 100009
 evm_urls = ["ws://localhost:8546"]
@@ -493,7 +493,7 @@ new_network = ["ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 			networkConfigTOML: `
 selected_networks = ["new_network"]
 
-[evm_networks.new_network]
+[EVMNetworks.new_network]
 evm_name = "new_test_network"
 evm_chain_id = 100009
 evm_simulated = true

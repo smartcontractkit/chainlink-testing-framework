@@ -31,10 +31,10 @@ type NetworkConfig struct {
 	SelectedNetworks []string `toml:"selected_networks"`
 	// EVMNetworks is the configuration for the EVM networks, key is the network name as declared in selected_networks slice.
 	// if not set, it will try to find the network from defined networks in MappedNetworks under known_networks.go
-	EVMNetworks map[string]*blockchain.EVMNetwork `toml:"evm_networks,omitempty"`
+	EVMNetworks map[string]*blockchain.EVMNetwork `toml:"EVMNetworks,omitempty"`
 	// ForkConfigs is the configuration for forking from a node,
 	// key is the network name as declared in selected_networks slice
-	ForkConfigs map[string]*ForkConfig `toml:"fork_config,omitempty"`
+	ForkConfigs map[string]*ForkConfig `toml:"ForkConfigs,omitempty"`
 	// RpcHttpUrls is the RPC HTTP endpoints for each network,
 	// key is the network name as declared in selected_networks slice
 	RpcHttpUrls map[string][]string `toml:"RpcHttpUrls"`
