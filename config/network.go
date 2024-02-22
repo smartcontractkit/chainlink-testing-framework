@@ -196,20 +196,22 @@ func (n *NetworkConfig) UpperCaseNetworkNames() {
 	upperCaseMapKeys(n.RpcWsUrls)
 	upperCaseMapKeys(n.WalletKeys)
 
+	for network := range n.EVMNetworks {
+		if network != strings.ToUpper(network) {
+			n.EVMNetworks[strings.ToUpper(network)] = n.EVMNetworks[network]
+			delete(n.EVMNetworks, network)
+		}
+	}
+
+	for network := range n.ForkConfigs {
+		if network != strings.ToUpper(network) {
+			n.ForkConfigs[strings.ToUpper(network)] = n.ForkConfigs[network]
+			delete(n.ForkConfigs, network)
+		}
+	}
+
 	for i, network := range n.SelectedNetworks {
 		n.SelectedNetworks[i] = strings.ToUpper(network)
-		if _, ok := n.EVMNetworks[network]; ok {
-			if network != strings.ToUpper(network) {
-				n.EVMNetworks[strings.ToUpper(network)] = n.EVMNetworks[network]
-				delete(n.EVMNetworks, network)
-			}
-		}
-		if _, ok := n.ForkConfigs[network]; ok {
-			if network != strings.ToUpper(network) {
-				n.ForkConfigs[strings.ToUpper(network)] = n.ForkConfigs[network]
-				delete(n.ForkConfigs, network)
-			}
-		}
 	}
 }
 

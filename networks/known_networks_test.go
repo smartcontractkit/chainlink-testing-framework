@@ -265,15 +265,14 @@ func TestVariousNetworkConfig(t *testing.T) {
 	forkedNetwork.HTTPURLs = nil
 	forkedNetwork.URLs = nil
 	forkedNetwork.PrivateKeys = nil
-
-	defer func() {
+	t.Cleanup(func() {
 		ArbitrumGoerli.URLs = []string{}
 		ArbitrumGoerli.HTTPURLs = []string{}
 		ArbitrumGoerli.PrivateKeys = []string{}
 		OptimismGoerli.URLs = []string{}
 		OptimismGoerli.HTTPURLs = []string{}
 		OptimismGoerli.PrivateKeys = []string{}
-	}()
+	})
 	ArbitrumGoerli.URLs = []string{"wss://devnet-1.mt/ABC/rpc/"}
 	ArbitrumGoerli.HTTPURLs = []string{"https://devnet-1.mt/ABC/rpc/"}
 	ArbitrumGoerli.PrivateKeys = []string{"1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed"}
@@ -284,10 +283,70 @@ func TestVariousNetworkConfig(t *testing.T) {
 	testcases := []struct {
 		name                 string
 		networkConfigTOML    string
+		overrideTOML         string
 		isNetworkConfigError bool
 		isEVMNetworkError    bool
 		expNetworks          []blockchain.EVMNetwork
 	}{
+		{
+			name: "case insensitive network key to EVMNetworks",
+			networkConfigTOML: `
+selected_networks = ["NEW_NETWORK"]
+
+[EVMNetworks.new_Network]
+evm_name = "new_test_network"
+evm_chain_id = 100009
+evm_urls = ["ws://localhost:8546"]
+evm_http_urls = ["http://localhost:8545"]
+client_implementation = "Ethereum"
+evm_keys = ["ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"]
+evm_simulated = true
+evm_chainlink_transaction_limit = 5000
+evm_minimum_confirmations = 1
+evm_gas_estimation_buffer = 10000
+evm_supports_eip1559 = true
+evm_default_gas_limit = 6000000
+`,
+			expNetworks: []blockchain.EVMNetwork{newNetwork},
+		},
+		{
+			name: "case insensitive network key fo fork config",
+			networkConfigTOML: `
+selected_networks = ["KROMA_SEPOLIA"]
+
+[ForkConfigs.kroma_SEPOLIA]
+url = "ws://localhost:8546"
+block_number = 100
+`,
+			expNetworks: []blockchain.EVMNetwork{KromaSepolia},
+		},
+		{
+			name: "override with new ForkConfigs and new EVMNetworks",
+			networkConfigTOML: `
+selected_networks = ["KROMA_SEPOLIA","NEW_NETWORK"]
+
+[ForkConfigs.KROMA_SEPOLIA]
+url = "ws://localhost:8546"
+block_number = 100
+`,
+			overrideTOML: `
+[EVMNetworks.new_network]
+evm_name = "new_test_network"
+evm_chain_id = 100009
+evm_simulated = true
+client_implementation = "Ethereum"
+evm_chainlink_transaction_limit = 5000
+evm_minimum_confirmations = 1
+evm_gas_estimation_buffer = 10000
+evm_supports_eip1559 = true
+evm_default_gas_limit = 6000000
+
+[ForkConfigs.new_network]
+url = "ws://localhost:8546"
+block_number = 100
+`,
+			expNetworks: []blockchain.EVMNetwork{KromaSepolia, forkedNetwork},
+		},
 		{
 			name: "forked network for existing network",
 			networkConfigTOML: `
@@ -522,6 +581,11 @@ new_network = ["ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 			require.NoError(t, err, "error setting env var")
 
 			networkCfg := &config.NetworkConfig{}
+			if tc.overrideTOML != "" {
+				l := logging.GetTestLogger(t)
+				err = config.BytesToAnyTomlStruct(l, "test", "", &networkCfg, []byte(tc.overrideTOML))
+				require.NoError(t, err, "error reading network config")
+			}
 			networkCfg.UpperCaseNetworkNames()
 			err = networkCfg.Default()
 			require.NoError(t, err, "error setting default network config")
