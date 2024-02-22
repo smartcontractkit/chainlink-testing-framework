@@ -810,7 +810,7 @@ var (
 		"NEXON_TEST":            NexonTest,
 		"NEXON_QA":              NexonQa,
 		"NEXON_STAGE":           NexonStage,
-    "GNOSIS_CHIADO":         GnosisChiado,
+		"GNOSIS_CHIADO":         GnosisChiado,
 		"GNOSIS_MAINNET":        GnosisMainnet,
 	}
 )
@@ -820,14 +820,14 @@ func MustGetSelectedNetworkConfig(networkCfg *config.NetworkConfig) []blockchain
 	if networkCfg == nil || len(networkCfg.SelectedNetworks) == 0 {
 		panic(fmt.Errorf("network config has no or empty selected networks. Use valid network(s) separated by comma from %v", getValidNetworkKeys()))
 	}
-	nets, err := MustSetNetworks(*networkCfg)
+	nets, err := SetNetworks(*networkCfg)
 	if err != nil {
 		panic(err)
 	}
 	return nets
 }
 
-func MustSetNetworks(networkCfg config.NetworkConfig) ([]blockchain.EVMNetwork, error) {
+func SetNetworks(networkCfg config.NetworkConfig) ([]blockchain.EVMNetwork, error) {
 	networks := make([]blockchain.EVMNetwork, 0)
 	selectedNetworks := networkCfg.SelectedNetworks
 	for i := range selectedNetworks {

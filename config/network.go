@@ -17,13 +17,13 @@ const (
 )
 
 type ForkConfig struct {
-	URL              string `toml:"url"`          // URL is the URL of the node to fork from
-	BlockNumber      int64  `toml:"block_number"` // BlockNumber is the block number to fork from
-	BlockTime        int64  `toml:"block_time"`
-	Retries          int    `toml:"retries,omitempty"`
-	Timeout          int64  `toml:"timeout,omitempty"`
-	ComputePerSecond int64  `toml:"compute_per_second,omitempty"`
-	RateLimitEnabled bool   `toml:"rate_limit_enabled,omitempty"`
+	URL              string `toml:"url"`                          // URL is the URL of the node to fork from. Refer to https://book.getfoundry.sh/reference/anvil/#options
+	BlockNumber      int64  `toml:"block_number"`                 // BlockNumber is the block number to fork from. Refer to https://book.getfoundry.sh/reference/anvil/#options
+	BlockTime        int64  `toml:"block_time"`                   // how frequent blocks are mined. By default, it automatically generates a new block as soon as a transaction is submitted. Refer to https://book.getfoundry.sh/reference/anvil/#options
+	Retries          int    `toml:"retries,omitempty"`            //  Number of retry requests for spurious networks (timed out requests). Refer to https://book.getfoundry.sh/reference/anvil/#options
+	Timeout          int64  `toml:"timeout,omitempty"`            //  Timeout in ms for requests sent to remote JSON-RPC server in forking mode. Refer to https://book.getfoundry.sh/reference/anvil/#options
+	ComputePerSecond int64  `toml:"compute_per_second,omitempty"` // Sets the number of assumed available compute units per second for this provider. Refer to https://book.getfoundry.sh/reference/anvil/#options
+	RateLimitEnabled bool   `toml:"rate_limit_enabled,omitempty"` //  rate limiting for this node’s provider. Refer to https://book.getfoundry.sh/reference/anvil/#options
 }
 
 // NetworkConfig is the configuration for the networks to be used
@@ -77,15 +77,15 @@ func (n *NetworkConfig) applyDecoded(configDecoded string) error {
 	if err != nil {
 		return fmt.Errorf("error applying overrides from decoded network config file to config: %w", err)
 	}
-	n.ApplyURLsAndKeysFromEVMNetwork()
+	n.OverrideURLsAndKeysFromEVMNetwork()
 
 	return nil
 }
 
-// ApplyURLsAndKeysFromEVMNetwork applies the URLs and keys from the EVMNetworks to the NetworkConfig
+// OverrideURLsAndKeysFromEVMNetwork applies the URLs and keys from the EVMNetworks to the NetworkConfig
 // it overrides the URLs and Keys present in RpcHttpUrls, RpcWsUrls and WalletKeys in the NetworkConfig
 // with the URLs and Keys provided in the EVMNetworks
-func (n *NetworkConfig) ApplyURLsAndKeysFromEVMNetwork() {
+func (n *NetworkConfig) OverrideURLsAndKeysFromEVMNetwork() {
 	if n.EVMNetworks == nil {
 		return
 	}

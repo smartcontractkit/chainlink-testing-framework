@@ -531,7 +531,7 @@ new_network = ["ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 				return
 			}
 			require.NoError(t, err, "error validating network config")
-			actualNets, err := MustSetNetworks(*networkCfg)
+			actualNets, err := SetNetworks(*networkCfg)
 			if tc.isEVMNetworkError {
 				t.Log(err)
 				require.Error(t, err, "expected evmNetwork set up error")
