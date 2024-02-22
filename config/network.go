@@ -2,24 +2,49 @@ package config
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
 
-	"errors"
-
 	"github.com/pelletier/go-toml/v2"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 )
 
 const (
 	Base64NetworkConfigEnvVarName = "BASE64_NETWORK_CONFIG"
 )
 
+type ForkConfig struct {
+	URL              string `toml:"url"`                          // URL is the URL of the node to fork from. Refer to https://book.getfoundry.sh/reference/anvil/#options
+	BlockNumber      int64  `toml:"block_number"`                 // BlockNumber is the block number to fork from. Refer to https://book.getfoundry.sh/reference/anvil/#options
+	BlockTime        int64  `toml:"block_time"`                   // how frequent blocks are mined. By default, it automatically generates a new block as soon as a transaction is submitted. Refer to https://book.getfoundry.sh/reference/anvil/#options
+	Retries          int    `toml:"retries,omitempty"`            //  Number of retry requests for spurious networks (timed out requests). Refer to https://book.getfoundry.sh/reference/anvil/#options
+	Timeout          int64  `toml:"timeout,omitempty"`            //  Timeout in ms for requests sent to remote JSON-RPC server in forking mode. Refer to https://book.getfoundry.sh/reference/anvil/#options
+	ComputePerSecond int64  `toml:"compute_per_second,omitempty"` // Sets the number of assumed available compute units per second for this provider. Refer to https://book.getfoundry.sh/reference/anvil/#options
+	RateLimitEnabled bool   `toml:"rate_limit_enabled,omitempty"` //  rate limiting for this node’s provider. Refer to https://book.getfoundry.sh/reference/anvil/#options
+}
+
+// NetworkConfig is the configuration for the networks to be used
 type NetworkConfig struct {
-	SelectedNetworks []string            `toml:"selected_networks"`
-	RpcHttpUrls      map[string][]string `toml:"RpcHttpUrls"`
-	RpcWsUrls        map[string][]string `toml:"RpcWsUrls"`
-	WalletKeys       map[string][]string `toml:"WalletKeys"`
+	SelectedNetworks []string `toml:"selected_networks"`
+	// EVMNetworks is the configuration for the EVM networks, key is the network name as declared in selected_networks slice.
+	// if not set, it will try to find the network from defined networks in MappedNetworks under known_networks.go
+	EVMNetworks map[string]*blockchain.EVMNetwork `toml:"EVMNetworks,omitempty"`
+	// ForkConfigs is the configuration for forking from a node,
+	// key is the network name as declared in selected_networks slice
+	ForkConfigs map[string]*ForkConfig `toml:"ForkConfigs,omitempty"`
+	// RpcHttpUrls is the RPC HTTP endpoints for each network,
+	// key is the network name as declared in selected_networks slice
+	RpcHttpUrls map[string][]string `toml:"RpcHttpUrls"`
+	// RpcWsUrls is the RPC WS endpoints for each network,
+	// key is the network name as declared in selected_networks slice
+	RpcWsUrls map[string][]string `toml:"RpcWsUrls"`
+	// WalletKeys is the private keys for the funding wallets for each network,
+	// key is the network name as declared in selected_networks slice
+	WalletKeys map[string][]string `toml:"WalletKeys"`
 }
 
 func (n *NetworkConfig) applySecrets() error {
@@ -53,8 +78,41 @@ func (n *NetworkConfig) applyDecoded(configDecoded string) error {
 	if err != nil {
 		return fmt.Errorf("error applying overrides from decoded network config file to config: %w", err)
 	}
+	n.OverrideURLsAndKeysFromEVMNetwork()
 
 	return nil
+}
+
+// OverrideURLsAndKeysFromEVMNetwork applies the URLs and keys from the EVMNetworks to the NetworkConfig
+// it overrides the URLs and Keys present in RpcHttpUrls, RpcWsUrls and WalletKeys in the NetworkConfig
+// with the URLs and Keys provided in the EVMNetworks
+func (n *NetworkConfig) OverrideURLsAndKeysFromEVMNetwork() {
+	if n.EVMNetworks == nil {
+		return
+	}
+	for name, evmNetwork := range n.EVMNetworks {
+		if evmNetwork.URLs != nil && len(evmNetwork.URLs) > 0 {
+			logging.L.Warn().Str("network", name).Msg("found URLs in EVMNetwork. overriding RPC URLs in RpcWsUrls with EVMNetwork URLs")
+			if n.RpcWsUrls == nil {
+				n.RpcWsUrls = make(map[string][]string)
+			}
+			n.RpcWsUrls[name] = evmNetwork.URLs
+		}
+		if evmNetwork.HTTPURLs != nil && len(evmNetwork.HTTPURLs) > 0 {
+			logging.L.Warn().Str("network", name).Msg("found HTTPURLs in EVMNetwork. overriding RPC URLs in RpcHttpUrls with EVMNetwork HTTP URLs")
+			if n.RpcHttpUrls == nil {
+				n.RpcHttpUrls = make(map[string][]string)
+			}
+			n.RpcHttpUrls[name] = evmNetwork.HTTPURLs
+		}
+		if evmNetwork.PrivateKeys != nil && len(evmNetwork.PrivateKeys) > 0 {
+			logging.L.Warn().Str("network", name).Msg("found PrivateKeys in EVMNetwork. overriding wallet keys in WalletKeys with EVMNetwork private keys")
+			if n.WalletKeys == nil {
+				n.WalletKeys = make(map[string][]string)
+			}
+			n.WalletKeys[name] = evmNetwork.PrivateKeys
+		}
+	}
 }
 
 func (n *NetworkConfig) applyBase64Enconded(configEncoded string) error {
@@ -83,7 +141,27 @@ func (n *NetworkConfig) Validate() error {
 			// we don't need to validate RPC endpoints or private keys for simulated networks
 			continue
 		}
-
+		for name, evmNetwork := range n.EVMNetworks {
+			if evmNetwork.ClientImplementation == "" {
+				return fmt.Errorf("client implementation for %s network must be set", name)
+			}
+			if evmNetwork.ChainID == 0 {
+				return fmt.Errorf("chain ID for %s network must be set", name)
+			}
+		}
+		if n.ForkConfigs != nil {
+			if _, ok := n.ForkConfigs[network]; ok {
+				if n.ForkConfigs[network].URL == "" {
+					return fmt.Errorf("fork config for %s network must have a URL", network)
+				}
+				if n.ForkConfigs[network].BlockNumber == 0 {
+					return fmt.Errorf("fork config for %s network must have a block number", network)
+				}
+				// we don't need to validate RPC endpoints or private keys for forked networks
+				continue
+			}
+		}
+		// if the network is not forked, we need to validate RPC endpoints and private keys
 		if _, ok := n.RpcHttpUrls[network]; !ok {
 			return fmt.Errorf("at least one HTTP RPC endpoint for %s network must be set", network)
 		}
@@ -118,6 +196,20 @@ func (n *NetworkConfig) UpperCaseNetworkNames() {
 	upperCaseMapKeys(n.RpcWsUrls)
 	upperCaseMapKeys(n.WalletKeys)
 
+	for network := range n.EVMNetworks {
+		if network != strings.ToUpper(network) {
+			n.EVMNetworks[strings.ToUpper(network)] = n.EVMNetworks[network]
+			delete(n.EVMNetworks, network)
+		}
+	}
+
+	for network := range n.ForkConfigs {
+		if network != strings.ToUpper(network) {
+			n.ForkConfigs[strings.ToUpper(network)] = n.ForkConfigs[network]
+			delete(n.ForkConfigs, network)
+		}
+	}
+
 	for i, network := range n.SelectedNetworks {
 		n.SelectedNetworks[i] = strings.ToUpper(network)
 	}
@@ -130,6 +222,28 @@ func (n *NetworkConfig) applyDefaults(defaults *NetworkConfig) error {
 
 	if defaults.SelectedNetworks != nil {
 		n.SelectedNetworks = defaults.SelectedNetworks
+	}
+	if defaults.EVMNetworks != nil {
+		if n.EVMNetworks == nil || len(n.EVMNetworks) == 0 {
+			n.EVMNetworks = defaults.EVMNetworks
+		} else {
+			for network, cfg := range defaults.EVMNetworks {
+				if _, ok := n.EVMNetworks[network]; !ok {
+					n.EVMNetworks[network] = cfg
+				}
+			}
+		}
+	}
+	if defaults.ForkConfigs != nil {
+		if n.ForkConfigs == nil || len(n.ForkConfigs) == 0 {
+			n.ForkConfigs = defaults.ForkConfigs
+		} else {
+			for network, cfg := range defaults.ForkConfigs {
+				if _, ok := n.ForkConfigs[network]; !ok {
+					n.ForkConfigs[network] = cfg
+				}
+			}
+		}
 	}
 	if defaults.RpcHttpUrls != nil {
 		if n.RpcHttpUrls == nil || len(n.RpcHttpUrls) == 0 {
