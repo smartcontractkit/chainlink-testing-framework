@@ -87,11 +87,38 @@ evm_default_gas_limit = 6000000
 arbitrum_goerli = ["https://devnet-2.mt/ABC/rpc/"]
 new_network = ["http://localhost:8545"]
 
+[RpcWsUrls]
+arbitrum_goerli = ["wss://devnet-2.mt/ABC/ws/"]
+new_network = ["ws://localhost:8546"]
+
 [WalletKeys]
 arbitrum_goerli = ["1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed"]
 optimism_goerli = ["1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed"]
 new_network = ["ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"]
 ```
+
+Whenver you are adding a new EVMNetwork to the config, you can either 
+- provide the rpcs and wallet keys in Rpc<Http/Ws>Urls and WalletKeys. Like in the example above, you can see that `new_network` is added to the `selected_networks` and `EVMNetworks` and then the rpcs and wallet keys are provided in `RpcHttpUrls`, `RpcWsUrls` and `WalletKeys` respectively.
+- provide the rpcs and wallet keys in the `EVMNetworks` itself. Like in the example below, you can see that `new_network` is added to the `selected_networks` and `EVMNetworks` and then the rpcs and wallet keys are provided in `EVMNetworks` itself.
+```toml
+
+selected_networks = ["new_network"]
+
+[EVMNetworks.new_network]
+evm_name = "new_test_network"
+evm_chain_id = 100009
+evm_urls = ["ws://localhost:8546"]
+evm_http_urls = ["http://localhost:8545"]
+evm_keys = ["ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"]
+evm_simulated = true
+evm_chainlink_transaction_limit = 5000
+evm_minimum_confirmations = 1
+evm_gas_estimation_buffer = 10000
+client_implementation = "Ethereum"
+evm_supports_eip1559 = true
+evm_default_gas_limit = 6000000
+```
+
 
 If your config struct looks like that:
 ```golang
