@@ -884,8 +884,8 @@ func MustSetNetworks(networkCfg config.NetworkConfig) ([]blockchain.EVMNetwork, 
 	return networks, nil
 }
 
+// NewEVMNetwork sets the network's private key(s) and rpc urls
 func NewEVMNetwork(network *blockchain.EVMNetwork, walletKeys, httpUrls, wsUrls []string) error {
-	// Overwrite network default values
 	if len(httpUrls) > 0 {
 		network.HTTPURLs = httpUrls
 	}
