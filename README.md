@@ -117,9 +117,28 @@ When it comes to consensus layer we currently support only `Prysm`.
 
 Every component has some default Docker image it uses, but builder has a method that allows to pass custom one:
 ```go
-WithCustomDockerImages(map[ContainerType]string{
-    ContainerType_Geth2: "my-custom-geth2-image:my-version"}).
-Build()
+builder := NewEthereumNetworkBuilder()
+cfg, err: = builder.
+    WithConsensusType(ConsensusType_PoS).
+    WithConsensusLayer(ConsensusLayer_Prysm).
+    WithExecutionLayer(ExecutionLayer_Geth).
+    WithCustomDockerImages(map[ContainerType]string{
+        ContainerType_Geth2: "my-custom-geth2-image:my-version"}).
+    Build()
+
+```
+
+You can also configure epochs at which hardforks will happen. Currently only `Deneb` is supported. Epoch must be >= 1. Example:
+```go
+builder := NewEthereumNetworkBuilder()
+cfg, err: = builder.
+    WithConsensusType(ConsensusType_PoS).
+    WithConsensusLayer(ConsensusLayer_Prysm).
+    WithExecutionLayer(ExecutionLayer_Geth).
+    WithEthereumChainConfig(EthereumChainConfig{
+        HardForkEpochs: map[string]int{"Deneb": 1},
+    }).
+    Build()
 ```
 
 ## Command line
@@ -138,9 +157,9 @@ Following cmd line flags are available:
   -t, --consensus-type string    consensus type (pow or pos) (default "pos")
   -e, --execution-layer string   execution layer (geth, nethermind, besu or erigon) (default "geth")
   -w, --wait-for-finalization    wait for finalization of at least 1 epoch (might take up to 5 mintues)
-      --consensus-client-image string   custom Docker image for consensus layer client  
+      --consensus-client-image string   custom Docker image for consensus layer client
       --execution-layer-image string    custom Docker image for execution layer client
-      --validator-image string          custom Docker image for validator  
+      --validator-image string          custom Docker image for validator
 ```
 
 To connect to that environment in your tests use the following code:
@@ -170,7 +189,7 @@ LogStream is a package that allows to connect to a Docker container and then flu
 * `loki` - sends logs to Loki
 * `in-memory` - stores logs in memory
 
-It can be configured to use multiple targets at once. If no target is specified, it becomes a no-op. 
+It can be configured to use multiple targets at once. If no target is specified, it becomes a no-op.
 
 LogStream has to be configured by passing an instance of `LoggingConfig` to the constructor.
 
