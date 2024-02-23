@@ -12,7 +12,7 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
-type GrafanaClient struct {
+type Client struct {
 	AlertManager *AlertManagerClient
 	resty        *resty.Client
 }
@@ -33,23 +33,23 @@ func (g *AlertManagerClient) GetAlterManagerAlerts() ([]interface{}, *resty.Resp
 	return result, r, err
 }
 
-func NewGrafanaClient(url, apiKey string) *GrafanaClient {
+func NewGrafanaClient(url, apiKey string) *Client {
 	isDebug := os.Getenv("DEBUG_RESTY") == "true"
 	resty := resty.New().SetDebug(isDebug).SetBaseURL(url).SetHeader("Authorization", "Bearer "+apiKey)
 
-	return &GrafanaClient{
+	return &Client{
 		resty:        resty,
 		AlertManager: &AlertManagerClient{resty: resty},
 	}
 }
 
-func (g *GrafanaClient) GetAlertsRules() ([]ProvisionedAlertRule, *resty.Response, error) {
+func (g *Client) GetAlertsRules() ([]ProvisionedAlertRule, *resty.Response, error) {
 	var result []ProvisionedAlertRule
 	r, err := g.resty.R().SetResult(&result).Get("/api/v1/provisioning/alert-rules")
 	return result, r, err
 }
 
-func (g *GrafanaClient) GetAlertRulesForDashboardID(dashboardID string) ([]ProvisionedAlertRule, error) {
+func (g *Client) GetAlertRulesForDashboardID(dashboardID string) ([]ProvisionedAlertRule, error) {
 	rules, _, err := g.GetAlertsRules()
 	if err != nil {
 		return nil, err
@@ -139,7 +139,7 @@ type PostAnnotation struct {
 	Text         string
 }
 
-func (g *GrafanaClient) GetAnnotations(params AnnotationsQueryParams) ([]Annotation, *resty.Response, error) {
+func (g *Client) GetAnnotations(params AnnotationsQueryParams) ([]Annotation, *resty.Response, error) {
 	query := make(url.Values)
 	if params.Limit != nil {
 		query.Set("limit", fmt.Sprintf("%d", *params.Limit))
@@ -178,7 +178,7 @@ func (g *GrafanaClient) GetAnnotations(params AnnotationsQueryParams) ([]Annotat
 	return result, r, err
 }
 
-func (g *GrafanaClient) PostAnnotation(annotation PostAnnotation) (*resty.Response, error) {
+func (g *Client) PostAnnotation(annotation PostAnnotation) (*resty.Response, error) {
 	a := map[string]interface{}{
 		"dashboardUID": annotation.DashboardUID,
 		"tags":         annotation.Tags,
@@ -202,7 +202,7 @@ func (g *GrafanaClient) PostAnnotation(annotation PostAnnotation) (*resty.Respon
 }
 
 // ruler API is deprecated https://github.com/grafana/grafana/issues/74434
-func (g *GrafanaClient) GetAlertsForDashboard(dashboardUID string) (map[string][]interface{}, *resty.Response, error) {
+func (g *Client) GetAlertsForDashboard(dashboardUID string) (map[string][]interface{}, *resty.Response, error) {
 	var result map[string][]interface{}
 	r, err := g.resty.R().SetResult(&result).Get("/api/ruler/grafana/api/v1/rules?dashboard_uid=" + url.QueryEscape(dashboardUID))
 	return result, r, err
