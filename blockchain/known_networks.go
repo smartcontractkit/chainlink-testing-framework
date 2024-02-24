@@ -131,6 +131,9 @@ func wrapMultiClient(networkSettings EVMNetwork, client *EthereumMultinodeClient
 	case GnosisClientImplementation:
 		logMsg.Msg("Using Gnosis Client")
 		wrappedEc = &GnosisMultinodeClient{client}
+	case MantleClientImplementation:
+		logMsg.Msg("Using Mantle Client")
+		wrappedEc = &MantleMultinodeClient{client}
 	default:
 		log.Warn().Str("Network", networkSettings.Name).Msg("Unknown client implementation, defaulting to standard Ethereum client")
 		wrappedEc = client
