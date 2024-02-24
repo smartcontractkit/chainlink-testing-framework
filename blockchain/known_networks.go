@@ -26,6 +26,7 @@ const (
 	WeMixClientImplementation        ClientImplementation = "WeMix"
 	KromaClientImplementation        ClientImplementation = "Kroma"
 	GnosisClientImplementation       ClientImplementation = "Gnosis"
+	MantleClientImplementation       ClientImplementation = "Mantle"
 )
 
 // wrapSingleClient Wraps a single EVM client in its appropriate implementation, based on the chain ID
@@ -66,6 +67,8 @@ func wrapSingleClient(networkSettings EVMNetwork, client *EthereumClient) EVMCli
 		wrappedEc = &KromaClient{client}
 	case GnosisClientImplementation:
 		wrappedEc = &GnosisClient{client}
+	case MantleClientImplementation:
+		wrappedEc = &MantleClient{client}
 	default:
 		wrappedEc = client
 	}
