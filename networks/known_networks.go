@@ -761,7 +761,7 @@ var (
 
 	MantleMainnet blockchain.EVMNetwork = blockchain.EVMNetwork{
 		Name:                      "Mantle Mainnet",
-		SupportsEIP1559:           true,
+		SupportsEIP1559:           false,
 		ClientImplementation:      blockchain.MantleClientImplementation,
 		ChainID:                   5000,
 		Simulated:                 false,
@@ -773,7 +773,7 @@ var (
 
 	MantleGoerli blockchain.EVMNetwork = blockchain.EVMNetwork{
 		Name:                      "Mantle Goerli",
-		SupportsEIP1559:           true,
+		SupportsEIP1559:           false,
 		ClientImplementation:      blockchain.MantleClientImplementation,
 		ChainID:                   5001,
 		Simulated:                 false,
