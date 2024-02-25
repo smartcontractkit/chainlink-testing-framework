@@ -780,7 +780,7 @@ var (
 		ChainlinkTransactionLimit: 5000,
 		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
 		MinimumConfirmations:      0,
-		GasEstimationBuffer:       1000,
+		GasEstimationBuffer:       10000,
 	}
 
 	MappedNetworks = map[string]blockchain.EVMNetwork{
