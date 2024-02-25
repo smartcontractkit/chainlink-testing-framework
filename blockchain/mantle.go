@@ -105,7 +105,7 @@ func (b *MantleClient) TransactionOpts(from *EthereumWallet) (*bind.TransactOpts
 	if b.NetworkConfig.DefaultGasLimit > opts.GasLimit {
 		opts.GasLimit = b.NetworkConfig.DefaultGasLimit
 	}
-	opts.GasLimit = 500_000
+	opts.GasLimit = 10_000_000
 	opts.GasPrice, err = b.EstimateGasPrice()
 	if err != nil {
 		return nil, err
