@@ -208,14 +208,12 @@ func (g *Client) GetAlertsForDashboard(dashboardUID string) (map[string][]interf
 	return result, r, err
 }
 
-type AlertQuery interface{}
-
 type ProvisionedAlertRule struct {
 	ID           int64             `json:"id"`
 	UID          string            `json:"uid"`
 	FolderUID    string            `json:"folderUID"`
 	Title        string            `json:"title"`
-	Data         []AlertQuery      `json:"data"`
+	Data         []interface{}     `json:"data"`
 	ExecErrState string            `json:"execErrState"`
 	Labels       map[string]string `json:"labels"`
 	RuleGroup    string            `json:"ruleGroup"`
@@ -229,10 +227,6 @@ func (p ProvisionedAlertRule) String() string {
 	sb.WriteString(fmt.Sprintf("UID: %s\n", p.UID))
 	sb.WriteString(fmt.Sprintf("FolderUID: %s\n", p.FolderUID))
 	sb.WriteString(fmt.Sprintf("Title: %s\n", p.Title))
-	// sb.WriteString("Data: [\n")
-	// for _, query := range p.Data {
-	// 	sb.WriteString(fmt.Sprintf("  %+v\n", query))
-	// }
 	sb.WriteString("]\n")
 	sb.WriteString(fmt.Sprintf("ExecErrState: %s\n", p.ExecErrState))
 	sb.WriteString("Labels: {\n")
