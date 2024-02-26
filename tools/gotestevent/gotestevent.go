@@ -1,21 +1,19 @@
 package gotestevent
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"regexp"
 	"time"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/tools/clireader"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/clitext"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/github"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/ptr"
 )
-
-const testingLogPrefix = `^(\s+)(\w+\.go:\d+: )`
-
-// func debugLog(msg string) {
-// 	fmt.Println(clitext.Color(clitext.ColorRed, "TATATATAATATATAT"+msg))
-// }
 
 type Action string
 
@@ -30,7 +28,8 @@ const (
 	ActionCont   Action = "cont"
 )
 
-type TestEvent struct {
+// Represntation of a go test -json event
+type GoTestEvent struct {
 	Time    time.Time `json:"Time,omitempty"`
 	Action  Action    `json:"Action,omitempty"`
 	Package string    `json:"Package,omitempty"`
@@ -39,65 +38,57 @@ type TestEvent struct {
 	Elapsed float64   `json:"Elapsed,omitempty"`
 }
 
-func (te *TestEvent) String() string {
+// String returns the JSON string representation of the GoTestEvent
+func (gte GoTestEvent) String() (string, error) {
 	// Convert the TestEvent instance to JSON
-	jsonBytes, err := json.Marshal(te)
+	jsonBytes, err := json.Marshal(gte)
 	if err != nil {
-		log.Fatalf("Error marshalling TestEvent to JSON: %v", err)
+		return "", err
 	}
 
 	// Convert bytes to string to get the JSON string representation
-	return string(jsonBytes)
+	return string(jsonBytes), nil
 }
 
-type TestLogModifierConfig struct {
-	IsJsonInput            *bool
-	RemoveTLogPrefix       *bool
-	RemoveTLogRegexp       *regexp.Regexp
-	OnlyErrors             *bool
-	CI                     *bool
-	ShouldImmediatelyPrint bool
+// Print prints the GoTestEvent to the console
+func (gte GoTestEvent) Print() {
+	if gte.Output != "" {
+		fmt.Print(gte.Output)
+	}
 }
 
-// ValidateConfig validates the TestLogModifierConfig does not have any invalid combinations
-func (c *TestLogModifierConfig) Validate() error {
-	if *c.OnlyErrors {
-		if !*c.IsJsonInput {
-			return fmt.Errorf("OnlyErrors flag is only valid when run with -json flag")
+type Test []GoTestEvent
+
+// Print prints the Test to the console
+func (t Test) Print(pass bool, c *TestLogModifierConfig) {
+	if !ptr.Val(c.IsJsonInput) {
+		return // not compatible with non json input
+	}
+	// start the group
+	if ptr.Val(c.CI) {
+		if pass {
+			StartGroupPass(t[0].Test, c)
+		} else {
+			StartGroupFail(t[0].Test, c)
 		}
 	}
-	return nil
-}
 
-type TestLogModifier func(*TestEvent, *TestLogModifierConfig) error
+	// print out the test logs
+	for _, log := range t {
+		l := log
+		l.Print()
+	}
 
-// parseTestEvent parses a byte slice into a TestEvent
-func ParseTestEvent(b []byte) (*TestEvent, error) {
-	// If a non json line is encountered return nil
-	if len(b) <= 0 || b[0] != '{' {
-		return nil, nil
+	// end the group if we are in CI mode
+	if ptr.Val(c.CI) {
+		github.EndGroup()
 	}
-	te := &TestEvent{}
-	err := json.Unmarshal(b, te)
-	return te, err
-}
-
-func RemoveTestLogPrefix(te *TestEvent, c *TestLogModifierConfig) error {
-	if c.RemoveTLogRegexp == nil {
-		c.RemoveTLogRegexp = regexp.MustCompile(testingLogPrefix)
-	}
-	if te.Action == ActionOutput {
-		if len(te.Output) > 0 && c.RemoveTLogRegexp.MatchString(te.Output) {
-			te.Output = c.RemoveTLogRegexp.ReplaceAllString(te.Output, "$1")
-		}
-	}
-	return nil
 }
 
 type TestPackage struct {
 	Name        string
-	NonTestLogs []TestEvent
-	TestLogs    map[string][]TestEvent
+	NonTestLogs []GoTestEvent
+	TestLogs    map[string]Test
 	TestOrder   []string
 	FailedTests []string
 	PanicTests  []string
@@ -105,77 +96,27 @@ type TestPackage struct {
 	Elapsed     float64
 }
 
-var TestPackageFailures = map[string]*TestPackage{}
-
-func JsonTestOutputToStandard(te *TestEvent, c *TestLogModifierConfig) error {
-	if len(te.Package) == 0 {
-		return nil
+func (p *TestPackage) AddTestEvent(te *GoTestEvent) {
+	if _, ok := p.TestLogs[te.Test]; !ok {
+		p.TestLogs[te.Test] = []GoTestEvent{}
+		p.TestOrder = append(p.TestOrder, te.Test)
 	}
-
-	// does this package exist in the map
-	_, ok := TestPackageFailures[te.Package]
-	if !ok {
-		TestPackageFailures[te.Package] = &TestPackage{
-			Name:        te.Package,
-			NonTestLogs: []TestEvent{},
-			TestLogs:    map[string][]TestEvent{},
-			TestOrder:   []string{},
-			FailedTests: []string{},
-			PanicTests:  []string{},
-		}
-	}
-
-	p := TestPackageFailures[te.Package]
-
-	// if this is a test log then make sure it is ordered correctly
-	if len(te.Test) > 0 {
-		if _, ok := p.TestLogs[te.Test]; !ok {
-			p.TestLogs[te.Test] = []TestEvent{}
-			p.TestOrder = append(p.TestOrder, te.Test)
-		}
-		p.TestLogs[te.Test] = append(p.TestLogs[te.Test], *te)
-
-		// if we have a test failure then we add it to the test failures
-		if te.Action == ActionFail && len(te.Test) > 0 {
-			p.FailedTests = append(p.FailedTests, te.Test)
-			p.Failed = true
-		}
-
-	} else if (te.Action == ActionFail || te.Action == ActionPass) && len(te.Test) == 0 {
-		// if we have a package completed then we can print out the errors if any
-		if te.Action == ActionFail {
-			p.Failed = true
-		}
-		p.Elapsed = te.Elapsed
-		printPackage(p, c)
-
-		// remove package from map since it has been printed and is no longer needed
-		delete(TestPackageFailures, te.Package)
-		return nil
-	} else {
-		p.NonTestLogs = append(p.NonTestLogs, *te)
-	}
-
-	// check output for a panic which is a rare case where a panic failed the test but the test was not marked as failed
-	// if ('Output' in result && result.Output.includes('panic:')) {
-	// 	const pattern = /^panic:.* (Test[A-Z]\w*)/
-	// p.PanicTests = append(p.PanicTests, te.Test)
-
-	return nil
+	p.TestLogs[te.Test] = append(p.TestLogs[te.Test], *te)
 }
 
-func printPackage(p *TestPackage, c *TestLogModifierConfig) {
+// Print prints the TestPackage to the console
+func (p TestPackage) Print(c *TestLogModifierConfig) {
 	// if package passed
 	if !p.Failed {
 		// if we only want errors then skip
-		if *c.OnlyErrors {
+		if ptr.Val(c.OnlyErrors) {
 			return
 		}
 		// right here is where we would print the passed package with elapsed time if needed
 	}
 
 	// start package group
-	if *c.CI {
+	if ptr.Val(c.CI) {
 		if p.Failed {
 			StartGroupFail(fmt.Sprintf("FAIL  \t%s\t%f", p.Name, p.Elapsed), c)
 		} else {
@@ -183,12 +124,27 @@ func printPackage(p *TestPackage, c *TestLogModifierConfig) {
 		}
 	}
 
+	p.printTestsInOrder(c)
+
+	// now print the non test logs for the package
+	for _, log := range p.NonTestLogs {
+		l := log
+		l.Print()
+	}
+
+	// end the group if we are in CI mode
+	if ptr.Val(c.CI) {
+		github.EndGroup()
+	}
+}
+
+func (p TestPackage) printTestsInOrder(c *TestLogModifierConfig) {
 	// print the tests in the order of first seen to last seen according to the json logs
 	for _, testName := range p.TestOrder {
 		test := p.TestLogs[testName]
 		shouldPrintLine := false
 		// if we only want errors
-		if *c.OnlyErrors && p.Failed {
+		if ptr.Val(c.OnlyErrors) && p.Failed {
 			if len(p.FailedTests) == 0 {
 				// we had a package fail without a test fail, we want all the logs for triage in this case
 				shouldPrintLine = true
@@ -201,70 +157,152 @@ func printPackage(p *TestPackage, c *TestLogModifierConfig) {
 		}
 
 		if shouldPrintLine {
-			printTest(test, !p.Failed, c)
+			test.Print(!p.Failed, c)
 		}
 	}
-
-	// now print the non test logs for the package
-	for _, log := range p.NonTestLogs {
-		l := log
-		PrintEvent(&l, c)
-	}
-
-	// end the group if we are in CI mode
-	if *c.CI {
-		github.EndGroup()
-	}
 }
 
-func printTest(logs []TestEvent, pass bool, c *TestLogModifierConfig) {
-	if !*c.IsJsonInput {
-		return // not compatible with non json input
-	}
-	// start the group
-	if *c.CI {
-		if pass {
-			StartGroupPass(logs[0].Test, c)
-		} else {
-			StartGroupFail(logs[0].Test, c)
+type TestPackageMap map[string]*TestPackage
+
+func (m TestPackageMap) InitPackageInMap(packageName string) {
+	_, ok := m[packageName]
+	if !ok {
+		m[packageName] = &TestPackage{
+			Name:        packageName,
+			NonTestLogs: []GoTestEvent{},
+			TestLogs:    map[string]Test{},
+			TestOrder:   []string{},
+			FailedTests: []string{},
+			PanicTests:  []string{},
 		}
 	}
-
-	// print out the test logs
-	for _, log := range logs {
-		l := log
-		PrintEvent(&l, c)
-	}
-
-	// end the group if we are in CI mode
-	if *c.CI {
-		github.EndGroup()
-	}
 }
 
-func PrintEvent(te *TestEvent, c *TestLogModifierConfig) {
-	if te.Output != "" {
-		fmt.Print(te.Output)
-	}
+type TestLogModifierConfig struct {
+	IsJsonInput            *bool
+	RemoveTLogPrefix       *bool
+	OnlyErrors             *bool
+	CI                     *bool
+	ShouldImmediatelyPrint bool
+	TestPackageMap         TestPackageMap
 }
 
+// ValidateConfig validates the TestLogModifierConfig does not have any invalid combinations
+func (c TestLogModifierConfig) Validate() error {
+	if ptr.Val(c.OnlyErrors) {
+		if !ptr.Val(c.IsJsonInput) {
+			return fmt.Errorf("OnlyErrors flag is only valid when run with -json flag")
+		}
+	}
+	return nil
+}
+
+// SetupModifiers sets up the modifiers based on the flags provided
+func SetupModifiers(c *TestLogModifierConfig) []TestLogModifier {
+	modifiers := []TestLogModifier{}
+	if *c.RemoveTLogPrefix {
+		modifiers = append(modifiers, RemoveTestLogPrefix)
+	}
+	if *c.IsJsonInput {
+		c.ShouldImmediatelyPrint = false
+		modifiers = append(modifiers, JsonTestOutputToStandard)
+	}
+	return modifiers
+}
+
+// TestLogModifier is a generic function interface that modifies a GoTestEvent
+type TestLogModifier func(*GoTestEvent, *TestLogModifierConfig) error
+
+// parseTestEvent parses a byte slice into a TestEvent
+func ParseTestEvent(b []byte) (*GoTestEvent, error) {
+	// If a non json line is encountered return nil
+	if len(b) <= 0 || b[0] != '{' {
+		return nil, nil
+	}
+	te := &GoTestEvent{}
+	err := json.Unmarshal(b, te)
+	return te, err
+}
+
+const testingLogPrefix = `^(\s+)(\w+\.go:\d+: )`
+const testPanic = `^panic:.* (Test[A-Z]\w*)`
+
+var removeTLogRegexp = regexp.MustCompile(testingLogPrefix)
+var testPanicRegexp = regexp.MustCompile(testPanic)
+
+// RemoveTestLogPrefix is a TestLogModifier that takes a GoTestEvent and removes the test log prefix
+func RemoveTestLogPrefix(te *GoTestEvent, _ *TestLogModifierConfig) error {
+	if te.Action == ActionOutput {
+		if len(te.Output) > 0 && removeTLogRegexp.MatchString(te.Output) {
+			te.Output = removeTLogRegexp.ReplaceAllString(te.Output, "$1")
+		}
+	}
+	return nil
+}
+
+// JsonTestOutputToStandard is a TestLogModifier that takes a GoTestEvent and modifies the output as configured
+func JsonTestOutputToStandard(te *GoTestEvent, c *TestLogModifierConfig) error {
+	if len(te.Package) == 0 {
+		return nil
+	}
+
+	if c.TestPackageMap == nil {
+		c.TestPackageMap = make(TestPackageMap)
+	}
+	// does this package exist in the map
+	c.TestPackageMap.InitPackageInMap(te.Package)
+
+	p := c.TestPackageMap[te.Package]
+
+	// if this is a test log then make sure it is ordered correctly
+	if len(te.Test) > 0 {
+		p.AddTestEvent(te)
+
+		// if we have a test failure or panic then we add it to the test failures
+		if te.Action == ActionFail || testPanicRegexp.MatchString(te.Output) {
+			p.FailedTests = append(p.FailedTests, te.Test)
+			p.Failed = true
+		}
+
+	} else if (te.Action == ActionFail || te.Action == ActionPass) && len(te.Test) == 0 {
+		// if we have a package completed then we can print out the errors if any
+		if te.Action == ActionFail {
+			p.Failed = true
+		}
+		p.Elapsed = te.Elapsed
+		p.Print(c)
+
+		// remove package from map since it has been printed and is no longer needed
+		delete(c.TestPackageMap, te.Package)
+		return nil
+	} else {
+		p.NonTestLogs = append(p.NonTestLogs, *te)
+	}
+
+	return nil
+}
+
+// StartGroupPass starts a group in the CI environment with a green title
 func StartGroupPass(title string, c *TestLogModifierConfig) {
 	t := clitext.Color(clitext.ColorGreen, title)
-	if *c.CI {
-		github.StartGroup(t)
-	} else {
-		fmt.Println(title)
-	}
-}
-func StartGroupFail(title string, c *TestLogModifierConfig) {
-	t := clitext.Color(clitext.ColorRed, title)
-	if *c.CI {
+	if ptr.Val(c.CI) {
 		github.StartGroup(t)
 	} else {
 		fmt.Println(title)
 	}
 }
 
+// StartGroupFail starts a group in the CI environment with a red title
+func StartGroupFail(title string, c *TestLogModifierConfig) {
+	t := clitext.Color(clitext.ColorRed, title)
+	if ptr.Val(c.CI) {
+		github.StartGroup(t)
+	} else {
+		fmt.Println(title)
+	}
+}
+
+// SliceContains checks if a slice contains a given item
 func SliceContains[T comparable](slice []T, item T) bool {
 	for _, v := range slice {
 		if v == item {
@@ -272,4 +310,50 @@ func SliceContains[T comparable](slice []T, item T) bool {
 		}
 	}
 	return false
+}
+
+func ReadAndModifyLogs(ctx context.Context, r io.Reader, modifiers []TestLogModifier, c *TestLogModifierConfig) error {
+	return clireader.ReadLine(ctx, r, func(b []byte) error {
+		var te *GoTestEvent
+		var err error
+
+		// build a TestEvent from the input line
+		if ptr.Val(c.IsJsonInput) {
+			te, err = ParseTestEvent(b)
+			if err != nil {
+				log.Fatalf("Error parsing json test event from stdin: %v\n", err)
+			}
+			if te == nil {
+				// got a non json line when expecting json, just print it out and move on
+				fmt.Println(string(b))
+				return nil
+			}
+		} else {
+			te = &GoTestEvent{}
+			te.Action = ActionOutput
+			te.Output = string(b)
+		}
+
+		// Run the modifiers on the output
+		for _, m := range modifiers {
+			err := m(te, c)
+			if err != nil {
+				log.Fatalf("Error modifying output: %v\nProblematic line: %s\n", err, te.Output)
+			}
+		}
+
+		// print line back out
+		if c.ShouldImmediatelyPrint {
+			if ptr.Val(c.IsJsonInput) {
+				s, err := te.String()
+				if err != nil {
+					return err
+				}
+				fmt.Println(s)
+			} else {
+				fmt.Println(te.Output)
+			}
+		}
+		return nil
+	})
 }

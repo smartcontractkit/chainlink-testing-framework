@@ -27,6 +27,6 @@ func ReadLine(ctx context.Context, reader io.Reader, handler CliOutputHandler) e
 }
 
 func DefaultReadLineHandler(b []byte) error {
-	fmt.Println(string(b))
+	fmt.Print(string(b))
 	return nil
 }

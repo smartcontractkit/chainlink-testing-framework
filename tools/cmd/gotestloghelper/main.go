@@ -37,7 +37,7 @@ func main() {
 	}
 
 	// Add modifiers to the list based on the flags provided, order could be important
-	modifiers := SetupModifiers(config)
+	modifiers := gotestevent.SetupModifiers(config)
 
 	err = ReadAndModifyLogs(ctx, os.Stdin, modifiers, config)
 	if err != nil {
@@ -45,22 +45,9 @@ func main() {
 	}
 }
 
-// SetupModifiers sets up the modifiers based on the flags provided
-func SetupModifiers(c *gotestevent.TestLogModifierConfig) []gotestevent.TestLogModifier {
-	modifiers := []gotestevent.TestLogModifier{}
-	if *c.RemoveTLogPrefix {
-		modifiers = append(modifiers, gotestevent.RemoveTestLogPrefix)
-	}
-	if *c.IsJsonInput {
-		c.ShouldImmediatelyPrint = false
-		modifiers = append(modifiers, gotestevent.JsonTestOutputToStandard)
-	}
-	return modifiers
-}
-
 func ReadAndModifyLogs(ctx context.Context, r io.Reader, modifiers []gotestevent.TestLogModifier, c *gotestevent.TestLogModifierConfig) error {
 	return clireader.ReadLine(ctx, r, func(b []byte) error {
-		var te *gotestevent.TestEvent
+		var te *gotestevent.GoTestEvent
 		var err error
 
 		// build a TestEvent from the input line
@@ -90,7 +77,11 @@ func ReadAndModifyLogs(ctx context.Context, r io.Reader, modifiers []gotestevent
 		// print line back out
 		if c.ShouldImmediatelyPrint {
 			if *c.IsJsonInput {
-				fmt.Println(te.String())
+				s, err := te.String()
+				if err != nil {
+					return err
+				}
+				fmt.Println(s)
 			} else {
 				fmt.Println(te.Output)
 			}
