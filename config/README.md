@@ -23,6 +23,10 @@ It's up to the user to provide a way to read the config from file and unmarshal 
 
 Also you might find `BytesToAnyTomlStruct(logger zerolog.Logger, filename, configurationName string, target any, content []byte) error` utility method useful for unmarshalling TOMLs read from env var or files into a struct
 
+## Secrets in TOML config
+
+For all values regarded as secrets, their keys should end with the `_secret` suffix. For example, use `basic_auth_secret="basic-auth"` instead of `basic_auth="basic-auth"`.
+
 ## Working example
 
 For a full working example making use of all the building blocks see [testconfig.go](../config/examples/testconfig.go). It provides methods for reading TOML, applying overrides and validating non-empty config blocks. It supports 4 levels of overrides, in order of precedence:
@@ -216,7 +220,7 @@ version="$CHAINLINK_VERSION"
 enabled=$pyroscope_enabled
 server_url="$PYROSCOPE_SERVER"
 environment="$PYROSCOPE_ENVIRONMENT"
-key="$PYROSCOPE_KEY"
+key_secret="$PYROSCOPE_KEY"
 
 [Logging]
 test_log_collect=$test_log_collect
@@ -228,8 +232,8 @@ log_targets=$log_targets
 [Logging.Loki]
 tenant_id="$LOKI_TENANT_ID"
 url="$LOKI_URL"
-basic_auth="$LOKI_BASIC_AUTH"
-bearer_token="$LOKI_BEARER_TOKEN"
+basic_auth_secret="$LOKI_BASIC_AUTH"
+bearer_token_secret="$LOKI_BEARER_TOKEN"
 
 [Logging.Grafana]
 url="$GRAFANA_URL"
