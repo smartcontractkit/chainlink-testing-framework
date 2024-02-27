@@ -23,6 +23,8 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
+const defaultErigonImage = "thorax/erigon:v2.56.2"
+
 type Erigon struct {
 	EnvComponent
 	ExternalHttpUrl      string
@@ -39,13 +41,7 @@ type Erigon struct {
 }
 
 func NewErigon(networks []string, chainConfg *EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) (*Erigon, error) {
-	// currently it uses v2.56.0
-	dockerImage, err := mirror.GetImage("thorax/erigon:v2.56")
-	if err != nil {
-		return nil, err
-	}
-
-	parts := strings.Split(dockerImage, ":")
+	parts := strings.Split(defaultErigonImage, ":")
 	g := &Erigon{
 		EnvComponent: EnvComponent{
 			ContainerName:    fmt.Sprintf("%s-%s", "erigon", uuid.NewString()[0:8]),
@@ -62,6 +58,8 @@ func NewErigon(networks []string, chainConfg *EthereumChainConfig, generatedData
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
+	// if the internal docker repo is set then add it to the version
+	g.EnvComponent.ContainerImage = mirror.AddMirrorToImageIfSet(g.EnvComponent.ContainerImage)
 	return g, nil
 }
 

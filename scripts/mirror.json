@@ -1,0 +1,5 @@
+[
+  "gcr.io/prysmaticlabs/prysm/beacon-chain:v4.1.1",
+  "gcr.io/prysmaticlabs/prysm/validator:v4.1.1",
+  "protolambda/eth2-val-tools:latest"
+]

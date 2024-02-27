@@ -13,14 +13,12 @@ import (
 )
 
 const RetryAttempts = 3
+const defaultRyukImage = "testcontainers/ryuk:0.5.1"
 
 func CreateNetwork(l zerolog.Logger) (*tc.DockerNetwork, error) {
 	uuidObj, _ := uuid.NewRandom()
 	var networkName = fmt.Sprintf("network-%s", uuidObj.String())
-	ryukImage, err := mirror.GetImage("testcontainers/ryuk")
-	if err != nil {
-		return nil, err
-	}
+	ryukImage := mirror.AddMirrorToImageIfSet(defaultRyukImage)
 	reaperCO := tc.WithImageName(ryukImage)
 	network, err := tc.GenericNetwork(testcontext.Get(nil), tc.GenericNetworkRequest{
 		NetworkRequest: tc.NetworkRequest{

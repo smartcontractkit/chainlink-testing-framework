@@ -16,6 +16,8 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 )
 
+const defaultEth2ValToolsImage = "protolambda/eth2-val-tools:latest"
+
 type ValKeysGeneretor struct {
 	EnvComponent
 	chainConfig        *EthereumChainConfig
@@ -26,13 +28,7 @@ type ValKeysGeneretor struct {
 }
 
 func NewValKeysGeneretor(chainConfig *EthereumChainConfig, valKeysHostDataDir string, opts ...EnvComponentOption) (*ValKeysGeneretor, error) {
-	// currently it uses latest (no fixed version available)
-	dockerImage, err := mirror.GetImage("protolambda/eth2-val-tools:l")
-	if err != nil {
-		return nil, err
-	}
-
-	parts := strings.Split(dockerImage, ":")
+	parts := strings.Split(defaultEth2ValToolsImage, ":")
 	g := &ValKeysGeneretor{
 		EnvComponent: EnvComponent{
 			ContainerName:    fmt.Sprintf("%s-%s", "val-keys-generator", uuid.NewString()[0:8]),
@@ -49,6 +45,8 @@ func NewValKeysGeneretor(chainConfig *EthereumChainConfig, valKeysHostDataDir st
 		opt(&g.EnvComponent)
 	}
 
+	// if the internal docker repo is set then add it to the version
+	g.EnvComponent.ContainerImage = mirror.AddMirrorToImageIfSet(g.EnvComponent.ContainerImage)
 	return g, nil
 }
 

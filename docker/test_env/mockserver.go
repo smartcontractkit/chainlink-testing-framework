@@ -20,6 +20,8 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
+const defaultMockServerImage = "mockserver/mockserver:5.15.0"
+
 type MockServer struct {
 	EnvComponent
 	Client           *ctfClient.MockserverClient
@@ -110,10 +112,8 @@ func (ms *MockServer) StartContainer() error {
 }
 
 func (ms *MockServer) getContainerRequest() (tc.ContainerRequest, error) {
-	msImage, err := mirror.GetImage("mockserver/mockserver")
-	if err != nil {
-		return tc.ContainerRequest{}, err
-	}
+	msImage := mirror.AddMirrorToImageIfSet(defaultMockServerImage)
+
 	return tc.ContainerRequest{
 		Name:         ms.ContainerName,
 		Image:        msImage,

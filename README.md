@@ -17,7 +17,9 @@ The Chainlink Testing Framework is a blockchain development framework written in
 If you're looking to implement a new chain integration for the testing framework, head over to the [blockchain](./blockchain/) directory for more info.
 
 ## k8s package
+
 We have a k8s package we are using in tests, it provides:
+
 - [cdk8s](https://cdk8s.io/) based wrappers
 - High-level k8s API
 - Automatic port forwarding
@@ -25,32 +27,42 @@ We have a k8s package we are using in tests, it provides:
 You can also use this package to spin up standalone environments.
 
 ### Local k8s cluster
+
 Read [here](./k8s/KUBERNETES.md) about how to spin up a local cluster
 
 #### Install
+
 Set up deps, you need to have `node 14.x.x`, [helm](https://helm.sh/docs/intro/install/) and [yarn](https://classic.yarnpkg.com/lang/en/docs/install/#mac-stable)
 
 Then use
+
 ```shell
 make install_deps
 ```
 
 ### Running tests in k8s
+
 To read how to run a test in k8s, read [here](./k8s/REMOTE_RUN.md)
 
 ### Usage
+
 #### With env vars (deprecated)
+
 Create an env in a separate file and run it
+
 ```
 export CHAINLINK_IMAGE="public.ecr.aws/chainlink/chainlink"
 export CHAINLINK_TAG="1.4.0-root"
 export CHAINLINK_ENV_USER="Satoshi"
 go run k8s/examples/simple/env.go
 ```
+
 For more features follow [tutorial](./k8s/TUTORIAL.md)
 
 #### With TOML config
+
 It should be noted that using env vars for configuring CL nodes in k8s is deprecated. TOML config should be used instead:
+
 ```toml
 [ChainlinkImage]
 image="public.ecr.aws/chainlink/chainlink"
@@ -60,11 +72,15 @@ version="v2.8.0"
 Check the example here: [env.go](./k8s/examples/simple_toml/env_toml_config.go)
 
 ### Development
+
 #### Running standalone example environment
+
 ```shell
 go run k8s/examples/simple/env.go
 ```
+
 If you have another env of that type, you can connect by overriding environment name
+
 ```
 ENV_NAMESPACE="..."  go run k8s/examples/chainlink/env.go
 ```
@@ -74,6 +90,7 @@ Add more presets [here](./k8s/presets)
 Add more programmatic examples [here](./k8s/examples/)
 
 If you have [chaosmesh]() installed in your cluster you can pull and generated CRD in go like that
+
 ```
 make chaosmesh
 ```
@@ -108,14 +125,16 @@ Note: The qa-charts repository is scheduled to look for changes to the charts on
 # Simulated EVM chains
 
 We have extended support for execution layer clients in simulated networks. Following ones are supported:
-* `Geth`
-* `Nethermind`
-* `Besu`
-* `Erigon`
+
+- `Geth`
+- `Nethermind`
+- `Besu`
+- `Erigon`
 
 When it comes to consensus layer we currently support only `Prysm`.
 
 Every component has some default Docker image it uses, but builder has a method that allows to pass custom one:
+
 ```go
 builder := NewEthereumNetworkBuilder()
 cfg, err: = builder.
@@ -129,6 +148,7 @@ cfg, err: = builder.
 ```
 
 You can also configure epochs at which hardforks will happen. Currently only `Deneb` is supported. Epoch must be >= 1. Example:
+
 ```go
 builder := NewEthereumNetworkBuilder()
 cfg, err: = builder.
@@ -144,6 +164,7 @@ cfg, err: = builder.
 ## Command line
 
 You can start a simulated network with a single command:
+
 ```
 go run docker/test_env/cmd/main.go start-test-env private-chain
 ```
@@ -151,6 +172,7 @@ go run docker/test_env/cmd/main.go start-test-env private-chain
 By default it will start a network with 1 node running `Geth` and `Prysm`. It will use default chain id of `1337` and won't wait for the chain to finalize at least one epoch. Once the chain is started it will save the network configuration in a `JSON` file, which then you can use in your tests to connect to that chain (and thus save time it takes to start a new chain each time you run your test).
 
 Following cmd line flags are available:
+
 ```
   -c, --chain-id int             chain id (default 1337)
   -l, --consensus-layer string   consensus layer (prysm) (default "prysm")
@@ -163,6 +185,7 @@ Following cmd line flags are available:
 ```
 
 To connect to that environment in your tests use the following code:
+
 ```
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
@@ -178,6 +201,7 @@ To connect to that environment in your tests use the following code:
         return err
     }
 ```
+
 Builder will read the location of chain configuration from env var named `PRIVATE_ETHEREUM_NETWORK_CONFIG_PATH` (it will be printed in the console once the chain starts).
 
 `net` is an instance of `blockchain.EVMNetwork`, which contains characteristics of the network and can be used to connect to it using an EVM client. `rpc` variable contains arrays of public and private RPC endpoints, where "private" means URL that's accessible from the same Docker network as the chain is running in.
@@ -185,9 +209,10 @@ Builder will read the location of chain configuration from env var named `PRIVAT
 # Using LogStream
 
 LogStream is a package that allows to connect to a Docker container and then flush logs to configured targets. Currently 3 targets are supported:
-* `file` - saves logs to a file in `./logs` folder
-* `loki` - sends logs to Loki
-* `in-memory` - stores logs in memory
+
+- `file` - saves logs to a file in `./logs` folder
+- `loki` - sends logs to Loki
+- `in-memory` - stores logs in memory
 
 It can be configured to use multiple targets at once. If no target is specified, it becomes a no-op.
 
@@ -197,20 +222,23 @@ When you connect a contaier LogStream will create a new consumer and start a det
 
 LogStream stores all logs in gob temporary file. To actually send/save them, you need to flush them. When you do it, LogStream will decode the file and send logs to configured targets. If log handling results in an error it won't be retried and processing of logs for given consumer will stop (if you think we should add a retry mechanism please let us know).
 
-*Important:* Flushing and accepting logs is blocking operation. That's because they both share the same cursor to temporary file and otherwise it's position would be racey and could result in mixed up logs.
+_Important:_ Flushing and accepting logs is blocking operation. That's because they both share the same cursor to temporary file and otherwise it's position would be racey and could result in mixed up logs.
 
 ## Configuration
 
 Basic `LogStream` TOML configuration is following:
+
 ```toml
 [LogStream]
 log_targets=["file"]
 log_producer_timeout="10s"
 log_producer_retry_limit=10
 ```
+
 You can find it here: [logging_default.toml](config/tomls/logging_default.toml)
 
 When using `in-memory` or `file` target no other configuration variables are required. When using `loki` target, following ones must be set:
+
 ```toml
 [Logging.Loki]
 tenant_id="promtail"
@@ -222,6 +250,7 @@ bearer_token_secret="bearer-token"
 Also, do remember that different URL should be used when running in CI and everywhere else. In CI it should be a public endpoint, while in local environment it should be a private one.
 
 If your test has a Grafana dashboard in order for the url to be correctly printed you should provide the following config:
+
 ```toml
 [Logging.Grafana]
 url="http://grafana.somwhere.com/my_dashboard"
@@ -230,6 +259,7 @@ url="http://grafana.somwhere.com/my_dashboard"
 ## Initialisation
 
 First you need to create a new instance:
+
 ```golang
 // t - instance of *testing.T (can be nil)
 // testConfig.Logging - pointer to logging part of TestConfig
@@ -239,6 +269,7 @@ ls := logstream.NewLogStream(t, testConfig.Logging)
 ## Listening to logs
 
 If using `testcontainers-go` Docker containers it is recommended to use life cycle hooks for connecting and disconnecting LogStream from the container. You can do that when creating `ContainerRequest` in the following way:
+
 ```golang
 
 containerRequest := &tc.ContainerRequest{
@@ -266,6 +297,7 @@ containerRequest := &tc.ContainerRequest{
 You can print log location for each target using this function: `(m *LogStream) PrintLogTargetsLocations()`. For `file` target it will print relative folder path, for `loki` it will print URL of a Grafana Dashboard scoped to current execution and container ids. For `in-memory` target it's no-op.
 
 It is recommended to shutdown LogStream at the end of your tests. Here's an example:
+
 ```golang
 
 t.Cleanup(func() {
@@ -286,6 +318,7 @@ t.Cleanup(func() {
 ```
 
 or in a bit shorter way:
+
 ```golang
 t.Cleanup(func() {
     l.Warn().Msg("Shutting down Log Stream")
@@ -310,6 +343,7 @@ When running tests in CI you're probably interested in grouping logs by test exe
 In order to facilitate displaying information in GH's step summary `testsummary` package was added. It exposes a single function `AddEntry(testName, key string, value interface{}) `. When you call it, it either creates a test summary JSON file or appends to it. The result is is a map of keys with values.
 
 Example:
+
 ```JSON
 {
    "file":[
@@ -330,4 +364,16 @@ Example:
 In GHA after tests have ended we can use tools like `jq` to extract the information we need and display it in step summary.
 
 # TOML Config
+
 Basic and universal building blocks for TOML-based config are provided by `config` package. For more information do read [this](./config/README.md).
+
+# ECR Mirror
+
+An ecr mirror can be used to push images used often in order to bypass rate limit issues from dockerhub. The list of image mirrors can be found in the [matrix here](./.github/workflows/update-internal-mirrors.yaml). This currently works with images with version numbers in dockerhub. Support for gcr is coming in the future. The images must also have a version number so putting `latest` will not work. We have a separate list for one offs we want that can be added to [here](./scripts/mirror.json) that does work with gcr and latest images. Note however for `latest` it will only pull it once and will not update it in our mirror if the latest on the public repository has changed, in this case it is preferable to update it manually when you know that you need the new latest and the update will not break your tests.
+
+For images in the mirrors you can use the INTERNAL_DOCKER_REPO environment variable when running tests and it will use that mirror in place of the public repository.
+
+We have two ways to add new images to the ecr. The first two requirements are that you create the ecr repository with the same name as the one in dockerhub out in aws and then add that ecr to the infra permissions (ask TT if you don't know how to do this).
+
+1. If it does not have version numbers or is gcr then you can add it [here](./scripts/mirror.json)
+2. You can add to the [mirror matrix](./.github/workflows/update-internal-mirrors.yaml) the new image name and an expression to get the latest versions added when the workflow runs. You can check the postgres one used in there for an example but basically the expression should filter out only the latest image or 2 for that particular version when calling the dockerhub endpoint, example curl call `curl -s "https://hub.docker.com/v2/repositories/${image_name}/tags/?page_size=100" | jq -r '.results[].name' | grep -E ${image_expression}` where image_name could be `library/postgres` and image_expression could be `'^[0-9]+\.[0-9]+$'`. Adding your ecr to this matrix should make sure we always have the latest versions for that expression.

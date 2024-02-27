@@ -22,6 +22,8 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
+const defaultKillgraveImage = "friendsofgo/killgrave:0.4.1"
+
 type Killgrave struct {
 	EnvComponent
 	ExternalEndpoint    string
@@ -137,10 +139,7 @@ func (k *Killgrave) StartContainer() error {
 }
 
 func (k *Killgrave) getContainerRequest() (tc.ContainerRequest, error) {
-	killgraveImage, err := mirror.GetImage("friendsofgo/killgrave")
-	if err != nil {
-		return tc.ContainerRequest{}, err
-	}
+	killgraveImage := mirror.AddMirrorToImageIfSet(defaultKillgraveImage)
 	return tc.ContainerRequest{
 		Name:         k.ContainerName,
 		Networks:     k.Networks,

@@ -19,6 +19,8 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 )
 
+const defaultNethermindImage = "nethermind/nethermind:1.25.1"
+
 type Nethermind struct {
 	EnvComponent
 	ExternalHttpUrl      string
@@ -34,13 +36,7 @@ type Nethermind struct {
 }
 
 func NewNethermind(networks []string, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) (*Nethermind, error) {
-	// currently it uses 1.25.1
-	dockerImage, err := mirror.GetImage("nethermind/nethermind:1")
-	if err != nil {
-		return nil, err
-	}
-
-	parts := strings.Split(dockerImage, ":")
+	parts := strings.Split(defaultNethermindImage, ":")
 	g := &Nethermind{
 		EnvComponent: EnvComponent{
 			ContainerName:    fmt.Sprintf("%s-%s", "nethermind", uuid.NewString()[0:8]),
@@ -55,6 +51,8 @@ func NewNethermind(networks []string, generatedDataHostDir string, consensusLaye
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
+	// if the internal docker repo is set then add it to the version
+	g.EnvComponent.ContainerImage = mirror.AddMirrorToImageIfSet(g.EnvComponent.ContainerImage)
 	return g, nil
 }
 

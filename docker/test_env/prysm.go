@@ -20,6 +20,9 @@ import (
 const (
 	PRYSM_QUERY_RPC_PORT = "3500"
 	PRYSM_NODE_RPC_PORT  = "4000"
+
+	defaultPrysmBeaconChainImage = "gcr.io/prysmaticlabs/prysm/beacon-chain:v4.1.1"
+	defaultPyrsmValidatorImage   = "gcr.io/prysmaticlabs/prysm/validator:v4.1.1"
 )
 
 type PrysmBeaconChain struct {
@@ -36,13 +39,7 @@ type PrysmBeaconChain struct {
 }
 
 func NewPrysmBeaconChain(networks []string, chainConfig *EthereumChainConfig, customConfigDataDir, gethExecutionURL string, opts ...EnvComponentOption) (*PrysmBeaconChain, error) {
-	// currently it uses v4.1.1
-	dockerImage, err := mirror.GetImage("gcr.io/prysmaticlabs/prysm/beacon-chain:v")
-	if err != nil {
-		return nil, err
-	}
-
-	parts := strings.Split(dockerImage, ":")
+	parts := strings.Split(defaultPrysmBeaconChainImage, ":")
 	g := &PrysmBeaconChain{
 		EnvComponent: EnvComponent{
 			ContainerName:    fmt.Sprintf("%s-%s", "prysm-beacon-chain", uuid.NewString()[0:8]),
@@ -59,6 +56,8 @@ func NewPrysmBeaconChain(networks []string, chainConfig *EthereumChainConfig, cu
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
+	// if the internal docker repo is set then add it to the version
+	g.EnvComponent.ContainerImage = mirror.AddMirrorToImageIfSet(g.EnvComponent.ContainerImage)
 	return g, nil
 }
 
@@ -168,13 +167,7 @@ type PrysmValidator struct {
 }
 
 func NewPrysmValidator(networks []string, chainConfig *EthereumChainConfig, generatedDataHostDir, valKeysDir, internalBeaconRpcProvider string, opts ...EnvComponentOption) (*PrysmValidator, error) {
-	// currently it uses v4.1.1
-	dockerImage, err := mirror.GetImage("gcr.io/prysmaticlabs/prysm/validator:v")
-	if err != nil {
-		return nil, err
-	}
-
-	parts := strings.Split(dockerImage, ":")
+	parts := strings.Split(defaultPyrsmValidatorImage, ":")
 	g := &PrysmValidator{
 		EnvComponent: EnvComponent{
 			ContainerName:    fmt.Sprintf("%s-%s", "prysm-validator", uuid.NewString()[0:8]),
@@ -192,6 +185,8 @@ func NewPrysmValidator(networks []string, chainConfig *EthereumChainConfig, gene
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
+	// if the internal docker repo is set then add it to the version
+	g.EnvComponent.ContainerImage = mirror.AddMirrorToImageIfSet(g.EnvComponent.ContainerImage)
 	return g, nil
 }
 

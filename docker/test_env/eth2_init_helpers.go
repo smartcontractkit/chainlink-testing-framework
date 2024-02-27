@@ -90,7 +90,7 @@ func (g *AfterGenesisHelper) getContainerRequest(networks []string) (*tc.Contain
 
 	return &tc.ContainerRequest{
 		Name:          g.ContainerName,
-		Image:         "protolambda/eth2-val-tools:latest",
+		Image:         defaultEth2ValToolsImage,
 		ImagePlatform: "linux/x86_64",
 		Networks:      networks,
 		WaitingFor: NewExitCodeStrategy().WithExitCode(0).
