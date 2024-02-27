@@ -215,8 +215,8 @@ When using `in-memory` or `file` target no other configuration variables are req
 [Logging.Loki]
 tenant_id="promtail"
 url="https://change.me"
-basic_auth="my-secret-auth"
-bearer_token="bearer-token"
+basic_auth_secret="my-secret-auth"
+bearer_token_secret="bearer-token"
 ```
 
 Also, do remember that different URL should be used when running in CI and everywhere else. In CI it should be a public endpoint, while in local environment it should be a private one.
