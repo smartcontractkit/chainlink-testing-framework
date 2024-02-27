@@ -9,6 +9,8 @@ import (
 	"regexp"
 	"time"
 
+	"dario.cat/mergo"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/clireader"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/clitext"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/github"
@@ -182,30 +184,54 @@ type TestLogModifierConfig struct {
 	IsJsonInput            *bool
 	RemoveTLogPrefix       *bool
 	OnlyErrors             *bool
+	Color                  *bool
 	CI                     *bool
 	ShouldImmediatelyPrint bool
 	TestPackageMap         TestPackageMap
 }
 
 // ValidateConfig validates the TestLogModifierConfig does not have any invalid combinations
-func (c TestLogModifierConfig) Validate() error {
+func (c *TestLogModifierConfig) Validate() error {
+	defaultConfig := &TestLogModifierConfig{
+		IsJsonInput:            ptr.Ptr(false),
+		RemoveTLogPrefix:       ptr.Ptr(false),
+		OnlyErrors:             ptr.Ptr(false),
+		Color:                  ptr.Ptr(false),
+		CI:                     ptr.Ptr(false),
+		ShouldImmediatelyPrint: false,
+	}
+	err := mergo.Merge(c, defaultConfig)
+	if err != nil {
+		return err
+	}
 	if ptr.Val(c.OnlyErrors) {
 		if !ptr.Val(c.IsJsonInput) {
 			return fmt.Errorf("OnlyErrors flag is only valid when run with -json flag")
 		}
 	}
+
 	return nil
 }
 
 // SetupModifiers sets up the modifiers based on the flags provided
 func SetupModifiers(c *TestLogModifierConfig) []TestLogModifier {
 	modifiers := []TestLogModifier{}
-	if *c.RemoveTLogPrefix {
+	if ptr.Val(c.CI) {
+		c.Color = ptr.Ptr(true)
+		c.IsJsonInput = ptr.Ptr(true)
+		c.ShouldImmediatelyPrint = false
+		c.OnlyErrors = ptr.Ptr(true)
+		c.RemoveTLogPrefix = ptr.Ptr(true)
+	}
+	if ptr.Val(c.RemoveTLogPrefix) {
 		modifiers = append(modifiers, RemoveTestLogPrefix)
 	}
-	if *c.IsJsonInput {
+	if ptr.Val(c.IsJsonInput) {
 		c.ShouldImmediatelyPrint = false
 		modifiers = append(modifiers, JsonTestOutputToStandard)
+	}
+	if ptr.Val(c.Color) {
+		modifiers = append(modifiers, HighlightErrorOutput)
 	}
 	return modifiers
 }
@@ -232,9 +258,24 @@ var testPanicRegexp = regexp.MustCompile(testPanic)
 
 // RemoveTestLogPrefix is a TestLogModifier that takes a GoTestEvent and removes the test log prefix
 func RemoveTestLogPrefix(te *GoTestEvent, _ *TestLogModifierConfig) error {
-	if te.Action == ActionOutput {
-		if len(te.Output) > 0 && removeTLogRegexp.MatchString(te.Output) {
+	if te.Action == ActionOutput && len(te.Output) > 0 {
+		if removeTLogRegexp.MatchString(te.Output) {
 			te.Output = removeTLogRegexp.ReplaceAllString(te.Output, "$1")
+		}
+	}
+	return nil
+}
+
+const testErrorPrefix = `^\s+(Error\sTrace|Error|Test):\s+`
+
+var testErrorPrefixRegexp = regexp.MustCompile(testErrorPrefix)
+
+func HighlightErrorOutput(te *GoTestEvent, _ *TestLogModifierConfig) error {
+	if te.Action == ActionOutput && len(te.Output) > 0 {
+		if testErrorPrefixRegexp.MatchString(te.Output) {
+			// fmt.Printf("Matched %s\n", te.Output)
+			te.Output = clitext.Color(clitext.ColorRed, te.Output)
+			// fmt.Printf("After %s\n", te.Output)
 		}
 	}
 	return nil
@@ -284,9 +325,11 @@ func JsonTestOutputToStandard(te *GoTestEvent, c *TestLogModifierConfig) error {
 
 // StartGroupPass starts a group in the CI environment with a green title
 func StartGroupPass(title string, c *TestLogModifierConfig) {
-	t := clitext.Color(clitext.ColorGreen, title)
+	if ptr.Val(c.Color) {
+		title = clitext.Color(clitext.ColorGreen, title)
+	}
 	if ptr.Val(c.CI) {
-		github.StartGroup(t)
+		github.StartGroup(title)
 	} else {
 		fmt.Println(title)
 	}
@@ -294,9 +337,11 @@ func StartGroupPass(title string, c *TestLogModifierConfig) {
 
 // StartGroupFail starts a group in the CI environment with a red title
 func StartGroupFail(title string, c *TestLogModifierConfig) {
-	t := clitext.Color(clitext.ColorRed, title)
+	if ptr.Val(c.Color) {
+		title = clitext.Color(clitext.ColorRed, title)
+	}
 	if ptr.Val(c.CI) {
-		github.StartGroup(t)
+		github.StartGroup(title)
 	} else {
 		fmt.Println(title)
 	}
