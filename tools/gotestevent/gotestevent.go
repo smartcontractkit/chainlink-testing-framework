@@ -118,11 +118,11 @@ func (p TestPackage) Print(c *TestLogModifierConfig) {
 	}
 
 	// start package group
-	if ptr.Val(c.CI) {
+	if ptr.Val(c.CI) || ptr.Val(c.Color) {
 		if p.Failed {
-			StartGroupFail(fmt.Sprintf("FAIL  \t%s\t%f", p.Name, p.Elapsed), c)
+			fmt.Printf("FAIL  \t%s\t%f\n", clitext.Color(clitext.ColorRed, p.Name), p.Elapsed)
 		} else {
-			StartGroupPass(fmt.Sprintf("ok  \t%s\t%f", p.Name, p.Elapsed), c)
+			fmt.Printf("ok  \t%s\t%f\n", clitext.Color(clitext.ColorGreen, p.Name), p.Elapsed)
 		}
 	}
 
@@ -145,12 +145,13 @@ func (p TestPackage) printTestsInOrder(c *TestLogModifierConfig) {
 	for _, testName := range p.TestOrder {
 		test := p.TestLogs[testName]
 		shouldPrintLine := false
+		testFailed := SliceContains(p.FailedTests, test[0].Test)
 		// if we only want errors
 		if ptr.Val(c.OnlyErrors) && p.Failed {
 			if len(p.FailedTests) == 0 {
 				// we had a package fail without a test fail, we want all the logs for triage in this case
 				shouldPrintLine = true
-			} else if SliceContains(p.FailedTests, test[0].Test) {
+			} else if testFailed {
 				shouldPrintLine = true
 			}
 		} else {
@@ -159,7 +160,7 @@ func (p TestPackage) printTestsInOrder(c *TestLogModifierConfig) {
 		}
 
 		if shouldPrintLine {
-			test.Print(!p.Failed, c)
+			test.Print(!testFailed, c)
 		}
 	}
 }
@@ -215,7 +216,7 @@ func (c *TestLogModifierConfig) Validate() error {
 
 // SetupModifiers sets up the modifiers based on the flags provided
 func SetupModifiers(c *TestLogModifierConfig) []TestLogModifier {
-	modifiers := []TestLogModifier{}
+	modifiers := []TestLogModifier{RemoveGeneralNoise}
 	if ptr.Val(c.CI) {
 		c.Color = ptr.Ptr(true)
 		c.IsJsonInput = ptr.Ptr(true)
@@ -248,6 +249,19 @@ func ParseTestEvent(b []byte) (*GoTestEvent, error) {
 	te := &GoTestEvent{}
 	err := json.Unmarshal(b, te)
 	return te, err
+}
+
+const testRunPrefix = `^=== RUN   `
+
+var testRunPrefixRegexp = regexp.MustCompile(testRunPrefix)
+
+func RemoveGeneralNoise(te *GoTestEvent, _ *TestLogModifierConfig) error {
+	if te.Action == ActionOutput && len(te.Output) > 0 {
+		if testRunPrefixRegexp.MatchString(te.Output) {
+			te.Output = ""
+		}
+	}
+	return nil
 }
 
 const testingLogPrefix = `^(\s+)(\w+\.go:\d+: )`
