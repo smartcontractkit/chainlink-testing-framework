@@ -123,7 +123,11 @@ MinContractPayment = '0'
 	evmNodeTOML = `[[EVM.Nodes]]
 Name = '%s'
 WSURL = '%s'
-HTTPURL = '%s'`
+HTTPURL = '%s'
+
+[P2P.V2]
+Enabled = true
+ListenAddresses = ["0.0.0.0:6690"]`
 )
 
 // MustChainlinkTOML marshals EVM network values into a TOML setting snippet. Will fail if error is encountered
