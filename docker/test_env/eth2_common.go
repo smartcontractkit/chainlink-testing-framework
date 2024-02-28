@@ -66,8 +66,6 @@ func (c *EthereumChainConfig) Default() error {
 		c.GenerateGenesisTimestamp()
 	}
 
-	c.HardForkEpochs = map[string]int{"Deben": 500}
-
 	return nil
 }
 
