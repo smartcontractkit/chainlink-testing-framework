@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/go-connections/nat"
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
@@ -266,19 +268,18 @@ func (g *Geth) getGethContainerRequest(networks []string) (*tc.ContainerRequest,
 				FileMode:          0644,
 			},
 		},
-		Mounts: tc.ContainerMounts{
-			tc.ContainerMount{
-				Source: tc.GenericBindMountSource{
-					HostPath: keystoreDir,
-				},
-				Target: "/root/.ethereum/devchain/keystore/",
-			},
-			tc.ContainerMount{
-				Source: tc.GenericBindMountSource{
-					HostPath: configDir,
-				},
-				Target: "/root/config/",
-			},
+		HostConfigModifier: func(hostConfig *container.HostConfig) {
+			hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
+				Type:     mount.TypeBind,
+				Source:   keystoreDir,
+				Target:   "/root/.ethereum/devchain/keystore/",
+				ReadOnly: false,
+			}, mount.Mount{
+				Type:     mount.TypeBind,
+				Source:   configDir,
+				Target:   "/root/config/",
+				ReadOnly: false,
+			})
 		},
 		LifecycleHooks: []tc.ContainerLifecycleHooks{
 			{

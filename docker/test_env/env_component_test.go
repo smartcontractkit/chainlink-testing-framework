@@ -27,7 +27,7 @@ func followLogs(t *testing.T, c testcontainers.Container) *TestLogConsumer {
 	}
 	go func() {
 		c.FollowOutput(consumer)
-		err := c.StartLogProducer(testcontext.Get(t), time.Duration(5*time.Second))
+		err := c.StartLogProducer(testcontext.Get(t), testcontainers.WithLogProductionTimeout(time.Duration(5*time.Second)))
 		require.NoError(t, err)
 	}()
 	return consumer

@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/google/uuid"
 	"github.com/otiai10/copy"
 	"github.com/rs/zerolog"
@@ -146,13 +148,13 @@ func (k *Killgrave) getContainerRequest() (tc.ContainerRequest, error) {
 		Image:        killgraveImage,
 		ExposedPorts: []string{NatPortFormat(k.InternalPort)},
 		Cmd:          []string{"-host=0.0.0.0", "-imposters=/imposters", "-watcher"},
-		Mounts: tc.ContainerMounts{
-			tc.ContainerMount{
-				Source: tc.GenericBindMountSource{
-					HostPath: k.impostersDirBinding,
-				},
-				Target: "/imposters",
-			},
+		HostConfigModifier: func(hostConfig *container.HostConfig) {
+			hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
+				Type:     mount.TypeBind,
+				Source:   k.impostersDirBinding,
+				Target:   "/imposters",
+				ReadOnly: false,
+			})
 		},
 		WaitingFor: wait.ForLog("The fake server is on tap now"),
 		LifecycleHooks: []tc.ContainerLifecycleHooks{

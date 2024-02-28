@@ -42,7 +42,7 @@ type EthereumChainConfig struct {
 	ChainID          int            `json:"chain_id" toml:"chain_id"`
 	genesisTimestamp int            // this is not serialized
 	AddressesToFund  []string       `json:"addresses_to_fund" toml:"addresses_to_fund"`
-	HardForkEpochs   map[string]int `json:"hard_fork_epochs" toml:"hard_fork_epochs"`
+	HardForkEpochs   map[string]int `json:"HardForkEpochs" toml:"HardForkEpochs"`
 }
 
 //go:embed example/default_ethereum_env.toml
@@ -65,8 +65,6 @@ func (c *EthereumChainConfig) Default() error {
 	if c.genesisTimestamp == 0 {
 		c.GenerateGenesisTimestamp()
 	}
-
-	c.HardForkEpochs = map[string]int{"Deben": 500}
 
 	return nil
 }
@@ -203,6 +201,10 @@ func (c *EthereumChainConfig) fillInMissingValuesWithDefault() {
 		c.AddressesToFund = append([]string{}, defaultConfig.AddressesToFund...)
 	} else {
 		c.AddressesToFund = append(append([]string{}, c.AddressesToFund...), defaultConfig.AddressesToFund...)
+	}
+
+	if len(c.HardForkEpochs) == 0 {
+		c.HardForkEpochs = defaultConfig.HardForkEpochs
 	}
 }
 

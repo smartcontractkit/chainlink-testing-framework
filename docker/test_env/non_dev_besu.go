@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -343,13 +345,13 @@ func (g *NonDevBesuNode) getBesuBootNodeContainerRequest() (tc.ContainerRequest,
 				FileMode:          0644,
 			},
 		},
-		Mounts: tc.ContainerMounts{
-			tc.ContainerMount{
-				Source: tc.GenericBindMountSource{
-					HostPath: g.Config.rootPath,
-				},
-				Target: "/opt/besu/nodedata/",
-			},
+		HostConfigModifier: func(hostConfig *container.HostConfig) {
+			hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
+				Type:     mount.TypeBind,
+				Source:   g.Config.rootPath,
+				Target:   "/opt/besu/nodedata/",
+				ReadOnly: false,
+			})
 		},
 		LifecycleHooks: []tc.ContainerLifecycleHooks{
 			{
@@ -417,19 +419,18 @@ func (g *NonDevBesuNode) getBesuContainerRequest() (tc.ContainerRequest, error) 
 				FileMode:          0644,
 			},
 		},
-		Mounts: tc.ContainerMounts{
-			tc.ContainerMount{
-				Source: tc.GenericBindMountSource{
-					HostPath: g.Config.keystorePath,
-				},
-				Target: "/opt/besu/nodedata/keystore/",
-			},
-			tc.ContainerMount{
-				Source: tc.GenericBindMountSource{
-					HostPath: g.Config.rootPath,
-				},
-				Target: "/opt/besu/nodedata/",
-			},
+		HostConfigModifier: func(hostConfig *container.HostConfig) {
+			hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
+				Type:     mount.TypeBind,
+				Source:   g.Config.keystorePath,
+				Target:   "/opt/besu/nodedata/keystore/",
+				ReadOnly: false,
+			}, mount.Mount{
+				Type:     mount.TypeBind,
+				Source:   g.Config.rootPath,
+				Target:   "/opt/besu/nodedata/",
+				ReadOnly: false,
+			})
 		},
 		LifecycleHooks: []tc.ContainerLifecycleHooks{
 			{

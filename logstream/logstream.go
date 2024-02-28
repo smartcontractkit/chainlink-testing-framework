@@ -18,6 +18,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/smartcontractkit/wasp"
 	"github.com/testcontainers/testcontainers-go"
+	tc "github.com/testcontainers/testcontainers-go"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
@@ -37,10 +38,10 @@ type LogNotification struct {
 // LogProducingContainer is a facade that needs to be implemented by any container that wants to be connected to LogStream
 type LogProducingContainer interface {
 	Name(ctx context.Context) (string, error)
-	FollowOutput(consumer testcontainers.LogConsumer)
-	StartLogProducer(ctx context.Context, timeout time.Duration) error
+	FollowOutput(consumer tc.LogConsumer)
+	StartLogProducer(ctx context.Context, opts ...tc.LogProductionOption) error
 	StopLogProducer() error
-	GetLogProducerErrorChannel() <-chan error
+	GetLogProductionErrorChannel() <-chan error
 	IsRunning() bool
 	GetContainerID() string
 	Terminate(context.Context) error
@@ -201,7 +202,7 @@ func (m *LogStream) ConnectContainer(ctx context.Context, container LogProducing
 	m.consumers[name] = cons
 	m.containers = append(m.containers, container)
 	container.FollowOutput(cons)
-	err = container.StartLogProducer(ctx, m.loggingConfig.LogStream.LogProducerTimeout.Duration)
+	err = container.StartLogProducer(ctx, testcontainers.WithLogProductionTimeout(m.loggingConfig.LogStream.LogProducerTimeout.Duration))
 
 	go func(done chan struct{}, timeout time.Duration, retryLimit int) {
 		defer m.log.Trace().Str("Container name", name).Msg("Disconnected container logs")
@@ -222,7 +223,7 @@ func (m *LogStream) ConnectContainer(ctx context.Context, container LogProducing
 
 		for {
 			select {
-			case logErr := <-container.GetLogProducerErrorChannel():
+			case logErr := <-container.GetLogProductionErrorChannel():
 				if logErr != nil {
 					m.log.Error().
 						Err(err).
@@ -252,7 +253,7 @@ func (m *LogStream) ConnectContainer(ctx context.Context, container LogProducing
 						}
 
 						startErr := retry.Do(func() error {
-							return container.StartLogProducer(ctx, timeout)
+							return container.StartLogProducer(ctx, tc.WithLogProductionTimeout(timeout))
 						},
 							retry.Attempts(uint(retryLimit)),
 							retry.Delay(1*time.Second),
@@ -733,7 +734,7 @@ func (g *ContainerLogConsumer) GetContainer() LogProducingContainer {
 }
 
 // Accept accepts the log message from particular container and saves it to the temp gob file
-func (g *ContainerLogConsumer) Accept(l testcontainers.Log) {
+func (g *ContainerLogConsumer) Accept(l tc.Log) {
 	g.ls.acceptMutex.Lock()
 	defer g.ls.acceptMutex.Unlock()
 

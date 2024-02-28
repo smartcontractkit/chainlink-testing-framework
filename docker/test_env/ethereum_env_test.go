@@ -148,10 +148,10 @@ func TestEth2ExecClientFromToml(t *testing.T) {
 		WithExistingConfig(tomlCfg).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
-	require.Equal(t, ExecutionLayer_Besu, cfg.ExecutionLayer, "Execution layer should be Besu")
+	require.Equal(t, ExecutionLayer_Besu, *cfg.ExecutionLayer, "Execution layer should be Besu")
 	require.NotNil(t, cfg.ConsensusLayer, "Consensus layer should not be nil")
 	require.Equal(t, ConsensusLayer_Prysm, *cfg.ConsensusLayer, "Consensus layer should be Prysm")
-	require.Equal(t, ConsensusType_PoS, cfg.ConsensusType, "Consensus type should be PoS")
+	require.Equal(t, ConsensusType_PoS, *cfg.ConsensusType, "Consensus type should be PoS")
 	require.NotNil(t, cfg.WaitForFinalization, "Wait for finalization should not be nil")
 	require.False(t, *cfg.WaitForFinalization, "Wait for finalization should be false")
 	require.Equal(t, 2, len(cfg.EthereumChainConfig.AddressesToFund), "Should have 2 addresses to fund")

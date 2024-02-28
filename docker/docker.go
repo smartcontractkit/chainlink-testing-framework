@@ -19,8 +19,14 @@ func CreateNetwork(l zerolog.Logger) (*tc.DockerNetwork, error) {
 	uuidObj, _ := uuid.NewRandom()
 	var networkName = fmt.Sprintf("network-%s", uuidObj.String())
 	ryukImage := mirror.AddMirrorToImageIfSet(defaultRyukImage)
+	// currently there's no way to use custom Ryuk image with testcontainers-go v0.28.0 :/
+	// but we can go around it, by setting TESTCONTAINERS_HUB_IMAGE_NAME_PREFIX env var to
+	// our custom registry and then using the default Ryuk image
+	//nolint:staticcheck
 	reaperCO := tc.WithImageName(ryukImage)
+	//nolint:staticcheck
 	network, err := tc.GenericNetwork(testcontext.Get(nil), tc.GenericNetworkRequest{
+		//nolint:staticcheck
 		NetworkRequest: tc.NetworkRequest{
 			Name:           networkName,
 			CheckDuplicate: true,
