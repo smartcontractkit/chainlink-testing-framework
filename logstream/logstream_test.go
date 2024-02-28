@@ -467,7 +467,7 @@ func (m *MockedLogProducingContainer) FollowOutput(consumer testcontainers.LogCo
 	m.consumer = consumer
 }
 
-func (m *MockedLogProducingContainer) StartLogProducer(ctx context.Context, timeout time.Duration) error {
+func (m *MockedLogProducingContainer) StartLogProducer(ctx context.Context, opts ...testcontainers.LogProductionOption) error {
 	m.startCounter++
 	m.errorCh = make(chan error, 1)
 
@@ -510,7 +510,7 @@ func (m *MockedLogProducingContainer) StopLogProducer() error {
 	return m.stopError
 }
 
-func (m *MockedLogProducingContainer) GetLogProducerErrorChannel() <-chan error {
+func (m *MockedLogProducingContainer) GetLogProductionErrorChannel() <-chan error {
 	return m.errorCh
 }
 
