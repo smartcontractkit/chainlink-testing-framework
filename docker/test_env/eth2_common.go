@@ -202,6 +202,10 @@ func (c *EthereumChainConfig) fillInMissingValuesWithDefault() {
 	} else {
 		c.AddressesToFund = append(append([]string{}, c.AddressesToFund...), defaultConfig.AddressesToFund...)
 	}
+
+	if len(c.HardForkEpochs) == 0 {
+		c.HardForkEpochs = defaultConfig.HardForkEpochs
+	}
 }
 
 func (c *EthereumChainConfig) GetValidatorBasedGenesisDelay() int {
