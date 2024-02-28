@@ -213,7 +213,10 @@ func (h *LokiLogHandler) GetLogLocation(consumers map[string]*ContainerLogConsum
 	if baseUrl != "" && dabshoardUrl != "" && h.loggingConfig.Grafana.BearerToken != nil {
 		shortened, err := ShortenUrl(baseUrl, relativeUrl, *h.loggingConfig.Grafana.BearerToken)
 		if err == nil {
+			fmt.Print("Succeeded shortening Granfana URL")
 			h.grafanaUrl = shortened
+		} else {
+			fmt.Printf("Failed to shorten Grafana URL due to: %v", err.Error())
 		}
 	}
 
