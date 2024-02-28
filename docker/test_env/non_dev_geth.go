@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -375,13 +377,13 @@ func (g *NonDevGethNode) getBootNodeContainerRequest() (tc.ContainerRequest, err
 				FileMode:          0644,
 			},
 		},
-		Mounts: tc.ContainerMounts{
-			tc.ContainerMount{
-				Source: tc.GenericBindMountSource{
-					HostPath: g.Config.rootPath,
-				},
-				Target: "/root/.ethereum/",
-			},
+		HostConfigModifier: func(hostConfig *container.HostConfig) {
+			hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
+				Type:     mount.TypeBind,
+				Source:   g.Config.rootPath,
+				Target:   "/root/.ethereum/",
+				ReadOnly: false,
+			})
 		},
 	}, nil
 }
@@ -445,19 +447,18 @@ func (g *NonDevGethNode) getGethContainerRequest() (tc.ContainerRequest, error) 
 				FileMode:          0644,
 			},
 		},
-		Mounts: tc.ContainerMounts{
-			tc.ContainerMount{
-				Source: tc.GenericBindMountSource{
-					HostPath: g.Config.keystorePath,
-				},
-				Target: "/root/.ethereum/keystore/",
-			},
-			tc.ContainerMount{
-				Source: tc.GenericBindMountSource{
-					HostPath: g.Config.rootPath,
-				},
-				Target: "/root/.ethereum/",
-			},
+		HostConfigModifier: func(hostConfig *container.HostConfig) {
+			hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
+				Type:     mount.TypeBind,
+				Source:   g.Config.keystorePath,
+				Target:   "/root/.ethereum/keystore/",
+				ReadOnly: false,
+			}, mount.Mount{
+				Type:     mount.TypeBind,
+				Source:   g.Config.rootPath,
+				Target:   "/root/.ethereum/",
+				ReadOnly: false,
+			})
 		},
 	}, nil
 }

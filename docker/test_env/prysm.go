@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
@@ -140,13 +142,13 @@ func (g *PrysmBeaconChain) getContainerRequest(networks []string) (*tc.Container
 			"--interop-eth1data-votes",
 		},
 		ExposedPorts: []string{NatPortFormat(PRYSM_NODE_RPC_PORT), NatPortFormat(PRYSM_QUERY_RPC_PORT)},
-		Mounts: tc.ContainerMounts{
-			tc.ContainerMount{
-				Source: tc.GenericBindMountSource{
-					HostPath: g.generatedDataHostDir,
-				},
-				Target: tc.ContainerMountTarget(GENERATED_DATA_DIR_INSIDE_CONTAINER),
-			},
+		HostConfigModifier: func(hostConfig *container.HostConfig) {
+			hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
+				Type:     mount.TypeBind,
+				Source:   g.generatedDataHostDir,
+				Target:   GENERATED_DATA_DIR_INSIDE_CONTAINER,
+				ReadOnly: false,
+			})
 		},
 		LifecycleHooks: []tc.ContainerLifecycleHooks{
 			{
@@ -246,19 +248,18 @@ func (g *PrysmValidator) getContainerRequest(networks []string) (*tc.ContainerRe
 			fmt.Sprintf("--wallet-dir=%s/prysm", NODE_0_DIR_INSIDE_CONTAINER),
 			fmt.Sprintf("--wallet-password-file=%s", VALIDATOR_WALLET_PASSWORD_FILE_INSIDE_CONTAINER),
 		},
-		Mounts: tc.ContainerMounts{
-			tc.ContainerMount{
-				Source: tc.GenericBindMountSource{
-					HostPath: g.valKeysDir,
-				},
-				Target: tc.ContainerMountTarget(GENERATED_VALIDATOR_KEYS_DIR_INSIDE_CONTAINER),
-			},
-			tc.ContainerMount{
-				Source: tc.GenericBindMountSource{
-					HostPath: g.generatedDataHostDir,
-				},
-				Target: tc.ContainerMountTarget(GENERATED_DATA_DIR_INSIDE_CONTAINER),
-			},
+		HostConfigModifier: func(hostConfig *container.HostConfig) {
+			hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
+				Type:     mount.TypeBind,
+				Source:   g.valKeysDir,
+				Target:   GENERATED_VALIDATOR_KEYS_DIR_INSIDE_CONTAINER,
+				ReadOnly: false,
+			}, mount.Mount{
+				Type:     mount.TypeBind,
+				Source:   g.generatedDataHostDir,
+				Target:   GENERATED_DATA_DIR_INSIDE_CONTAINER,
+				ReadOnly: false,
+			})
 		},
 		LifecycleHooks: []tc.ContainerLifecycleHooks{
 			{
