@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 
@@ -197,13 +199,13 @@ func (g *Geth2) getContainerRequest(networks []string) (*tc.ContainerRequest, er
 				FileMode:          0744,
 			},
 		},
-		Mounts: tc.ContainerMounts{
-			tc.ContainerMount{
-				Source: tc.GenericBindMountSource{
-					HostPath: g.generatedDataHostDir,
-				},
-				Target: tc.ContainerMountTarget(GENERATED_DATA_DIR_INSIDE_CONTAINER),
-			},
+		HostConfigModifier: func(hostConfig *container.HostConfig) {
+			hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
+				Type:     mount.TypeBind,
+				Source:   g.generatedDataHostDir,
+				Target:   GENERATED_DATA_DIR_INSIDE_CONTAINER,
+				ReadOnly: false,
+			})
 		},
 		LifecycleHooks: []tc.ContainerLifecycleHooks{
 			{
@@ -221,7 +223,7 @@ func (g *Geth2) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duratio
 
 func (g *Geth2) buildInitScript() (string, error) {
 	initTemplate := `#!/bin/bash
-	mkdir -p {{.ExecutionDir}} 
+	mkdir -p {{.ExecutionDir}}
 
 	# copy general keystore to execution directory, because Geth doesn't allow to specify keystore location
 	echo "Copying keystore to {{.ExecutionDir}}/keystore"
