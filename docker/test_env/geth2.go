@@ -25,6 +25,8 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
+const defaultGeth2Image = "ethereum/client-go:v1.13.10"
+
 type Geth2 struct {
 	EnvComponent
 	ExternalHttpUrl      string
@@ -41,13 +43,7 @@ type Geth2 struct {
 }
 
 func NewGeth2(networks []string, chainConfg *EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) (*Geth2, error) {
-	// currently it uses v1.13.10
-	dockerImage, err := mirror.GetImage("ethereum/client-go:v1.13")
-	if err != nil {
-		return nil, err
-	}
-
-	parts := strings.Split(dockerImage, ":")
+	parts := strings.Split(defaultGeth2Image, ":")
 	g := &Geth2{
 		EnvComponent: EnvComponent{
 			ContainerName:    fmt.Sprintf("%s-%s", "geth2", uuid.NewString()[0:8]),
@@ -64,6 +60,8 @@ func NewGeth2(networks []string, chainConfg *EthereumChainConfig, generatedDataH
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
+	// if the internal docker repo is set then add it to the version
+	g.EnvComponent.ContainerImage = mirror.AddMirrorToImageIfSet(g.EnvComponent.ContainerImage)
 	return g, nil
 }
 

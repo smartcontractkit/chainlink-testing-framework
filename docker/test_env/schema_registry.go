@@ -16,6 +16,8 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
+const defaultSchemaRegistryImage = "confluentinc/cp-schema-registry:7.4.0"
+
 type SchemaRegistry struct {
 	EnvComponent
 	EnvVars     map[string]string
@@ -107,10 +109,7 @@ func (r *SchemaRegistry) StartContainer() error {
 }
 
 func (r *SchemaRegistry) getContainerRequest() (tc.ContainerRequest, error) {
-	schemaImage, err := mirror.GetImage("confluentinc/cp-schema-registry")
-	if err != nil {
-		return tc.ContainerRequest{}, err
-	}
+	schemaImage := mirror.AddMirrorToImageIfSet(defaultSchemaRegistryImage)
 	return tc.ContainerRequest{
 		Name:         r.ContainerName,
 		Image:        schemaImage,
