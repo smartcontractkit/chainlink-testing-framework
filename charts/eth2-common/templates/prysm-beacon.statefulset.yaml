@@ -57,13 +57,6 @@ spec:
             - "--min-sync-peers=0"
             - "--force-clear-db"
             - "--interop-eth1data-votes"
-          resources:
-            requests:
-              memory: {{ .Values.prysm.beacon.resources.requests.memory }}
-              cpu: {{ .Values.prysm.beacon.resources.requests.cpu }}
-            limits:
-              memory: {{ .Values.prysm.beacon.resources.limits.memory }}
-              cpu: {{ .Values.prysm.beacon.resources.limits.cpu }}
           ports:
             - name: query-rpc
               containerPort: {{ .Values.prysm.beacon.ports.query }}
@@ -74,6 +67,7 @@ spec:
           volumeMounts:
             - name: {{ .Release.Name }}-chain-state
               mountPath: /data
+
 {{- include "eth2-common.templates.execution-client.init-containers" . | nindent 6 }}
 {{- include "eth2-common.templates.consensus-client.init-containers" . | nindent 6 }}
   volumeClaimTemplates:

@@ -1,6 +1,5 @@
 general:
   networkId: 1337
-
 genesis:
   image:
     repository: tofelb/ethereum-genesis-generator

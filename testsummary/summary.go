@@ -9,8 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pkg/errors"
-
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/runid"
 )
 
@@ -28,7 +26,7 @@ type KeyContent struct {
 }
 
 func init() {
-	runId, err := runid.GetOrGenerateRunId()
+	runId, err := runid.GetOrGenerateRunId(nil)
 	if err != nil {
 		panic(err)
 	}
@@ -41,7 +39,7 @@ func AddEntry(testName, key string, value interface{}) error {
 	defer mu.Unlock()
 
 	if _, ok := value.(string); !ok {
-		return errors.Errorf("type '%T' not supported", value)
+		return fmt.Errorf("type '%T' not supported", value)
 	}
 	strValue := value.(string)
 

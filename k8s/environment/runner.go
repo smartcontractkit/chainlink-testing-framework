@@ -202,18 +202,13 @@ func jobEnvVars(props *Props) *[]*k8s.EnvVar {
 		config.EnvVarSlackChannel,
 		config.EnvVarSlackKey,
 		config.EnvVarSlackUser,
-		config.EnvVarPyroscopeKey,
-		config.EnvVarPyroscopeEnvironment,
-		config.EnvVarPyroscopeServer,
 		config.EnvVarUser,
 		config.EnvVarNodeSelector,
-		config.EnvVarSelectedNetworks,
 		config.EnvVarDBURL,
-		config.EnvVarEVMKeys,
 		config.EnvVarInternalDockerRepo,
-		config.EnvVarEVMUrls,
-		config.EnvVarEVMHttpUrls,
 		config.EnvVarLocalCharts,
+		config.EnvBase64ConfigOverride,
+		config.EnvBase64NetworkConfig,
 	}
 	for _, k := range lookups {
 		v, success := os.LookupEnv(k)
@@ -229,6 +224,7 @@ func jobEnvVars(props *Props) *[]*k8s.EnvVar {
 		if i := strings.Index(e, "="); i >= 0 {
 			if strings.HasPrefix(e[:i], config.EnvVarPrefix) {
 				withoutPrefix := strings.Replace(e[:i], config.EnvVarPrefix, "", 1)
+				log.Debug().Str(e[:i], e[i+1:]).Msg("Forwarding generic Env Var")
 				env[withoutPrefix] = e[i+1:]
 			}
 		}

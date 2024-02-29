@@ -19,7 +19,6 @@ initContainers:
     image: "{{ .Values.genesis.image.repository }}:{{ .Values.genesis.image.tag }}"
     imagePullPolicy: "{{ .Values.imagePullPolicy }}"
     command: ["/bin/sh","/entrypoint.sh"]
-    # command: ["sleep", "infinity"]
     workingDir: /
     volumeMounts:
       - name: {{ .Release.Name }}-chain-state

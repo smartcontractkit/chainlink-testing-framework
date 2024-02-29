@@ -63,13 +63,6 @@ spec:
             - "--rpc-tx-feecap=0"
             - "--logging={{ .Values.excutionClient.logging.level }}"
             - "--kzg-trusted-setup=/data/custom_config_data/trusted_setup.txt"
-          resources:
-            requests:
-              memory: {{ .Values.excutionClient.resources.requests.memory }}
-              cpu: {{ .Values.excutionClient.resources.requests.cpu }}
-            limits:
-              memory: {{ .Values.excutionClient.resources.limits.memory }}
-              cpu: {{ .Values.excutionClient.resources.limits.cpu }}
           ports:
             - name: http-rpc
               containerPort: {{ .Values.excutionClient.ports.http }}
@@ -101,6 +94,7 @@ spec:
             periodSeconds: 5
             failureThreshold: 2
             timeoutSeconds: 120
+
 {{- include "eth2-common.templates.execution-client.init-containers" . | nindent 6 }}
   volumeClaimTemplates:
   - metadata:

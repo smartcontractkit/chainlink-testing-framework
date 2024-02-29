@@ -2,11 +2,10 @@ package utils
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
-
-	"github.com/pkg/errors"
 )
 
 func OpenJsonFileAsStruct(path string, v any) error {

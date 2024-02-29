@@ -45,16 +45,10 @@ spec:
           - "--wallet-dir=/data/val_keys/prysm"
           - "--wallet-password-file={{ .Values.shared.configDataDir }}/wallet_password.txt"
           - "--force-clear-db"
-          resources:
-            requests:
-              memory: {{ .Values.prysm.validator.resources.requests.memory }}
-              cpu: {{ .Values.prysm.validator.resources.requests.cpu }}
-            limits:
-              memory: {{ .Values.prysm.validator.resources.limits.memory }}
-              cpu: {{ .Values.prysm.validator.resources.limits.cpu }}
           volumeMounts:
             - name: {{ .Release.Name }}-chain-state
               mountPath: /data
+
 {{- include "eth2-common.templates.execution-client.init-containers" . | nindent 6 }}
 {{- include "eth2-common.templates.consensus-client.init-containers" . | nindent 6 }}
   volumeClaimTemplates:

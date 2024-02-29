@@ -16,4 +16,4 @@ spec:
       targetPort: {{ .Values.excutionClient.ports.ws }}
     - name: execution-rpc
       port: {{ .Values.excutionClient.ports.execution }}
-      targetPort: {{ .Values.excutionClient.ports.execution }}   
+      targetPort: {{ .Values.excutionClient.ports.execution }}

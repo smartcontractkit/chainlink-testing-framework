@@ -11,7 +11,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/logstream"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/ptr"
 )
 
 /* These tests are for user-facing API */
@@ -77,10 +80,17 @@ func TestFileLoggingTarget(t *testing.T) {
 	// nolint
 	defer d.Shutdown(ctx)
 	require.NoError(t, err)
+
+	loggingConfig := config.LoggingConfig{}
+	loggingConfig.LogStream = &config.LogStreamConfig{
+		LogTargets:            []string{"file"},
+		LogProducerTimeout:    &blockchain.StrDuration{Duration: 10 * time.Second},
+		LogProducerRetryLimit: ptr.Ptr(uint(10)),
+	}
+
 	lw, err := logstream.NewLogStream(
 		t,
-		nil,
-		logstream.WithLogTarget(logstream.File),
+		&loggingConfig,
 	)
 	require.NoError(t, err, "failed to create logstream")
 	err = d.ConnectLogs(lw)

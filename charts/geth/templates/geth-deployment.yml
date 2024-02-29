@@ -37,7 +37,7 @@ spec:
       - name: geth-network
         image: "{{ .Values.geth.image.image }}:{{ .Values.geth.image.version }}"
         command: [ "sh", "./root/init.sh" ]
-        volumeMounts: 
+        volumeMounts:
         - name: geth
           mountPath: /root/.ethereum/devchain/
         - name : configmap-volume

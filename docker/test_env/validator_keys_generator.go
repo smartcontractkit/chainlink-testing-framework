@@ -2,11 +2,11 @@ package test_env
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	tc "github.com/testcontainers/testcontainers-go"
@@ -23,7 +23,6 @@ type ValKeysGeneretor struct {
 	valKeysHostDataDir string
 	addressesToFund    []string
 	t                  *testing.T
-	image              string
 }
 
 func NewValKeysGeneretor(chainConfig *EthereumChainConfig, valKeysHostDataDir string, opts ...EnvComponentOption) (*ValKeysGeneretor, error) {
@@ -33,15 +32,17 @@ func NewValKeysGeneretor(chainConfig *EthereumChainConfig, valKeysHostDataDir st
 		return nil, err
 	}
 
+	parts := strings.Split(dockerImage, ":")
 	g := &ValKeysGeneretor{
 		EnvComponent: EnvComponent{
-			ContainerName: fmt.Sprintf("%s-%s", "val-keys-generator", uuid.NewString()[0:8]),
+			ContainerName:    fmt.Sprintf("%s-%s", "val-keys-generator", uuid.NewString()[0:8]),
+			ContainerImage:   parts[0],
+			ContainerVersion: parts[1],
 		},
 		chainConfig:        chainConfig,
 		valKeysHostDataDir: valKeysHostDataDir,
 		l:                  log.Logger,
 		addressesToFund:    []string{},
-		image:              dockerImage,
 	}
 	g.SetDefaultHooks()
 	for _, opt := range opts {
@@ -71,7 +72,7 @@ func (g *ValKeysGeneretor) StartContainer() error {
 		Logger:           l,
 	})
 	if err != nil {
-		return errors.Wrapf(err, "cannot start val keys generation container")
+		return fmt.Errorf("cannot start val keys generation container: %w", err)
 	}
 
 	g.l.Info().Str("containerName", g.ContainerName).
@@ -83,7 +84,7 @@ func (g *ValKeysGeneretor) StartContainer() error {
 func (g *ValKeysGeneretor) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
 	return &tc.ContainerRequest{
 		Name:          g.ContainerName,
-		Image:         g.image,
+		Image:         g.GetImageWithVersion(),
 		ImagePlatform: "linux/x86_64",
 		Networks:      networks,
 		WaitingFor: NewExitCodeStrategy().WithExitCode(0).

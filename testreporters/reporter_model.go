@@ -20,10 +20,15 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/environment"
 )
 
+type GrafanaURLProvider interface {
+	GetGrafanaBaseURL() (string, error)
+	GetGrafanaDashboardURL() (string, error)
+}
+
 // TestReporter is a general interface for all test reporters
 type TestReporter interface {
 	WriteReport(folderLocation string) error
-	SendSlackNotification(t *testing.T, slackClient *slack.Client) error
+	SendSlackNotification(t *testing.T, slackClient *slack.Client, grafanaUrlProvider GrafanaURLProvider) error
 	SetNamespace(namespace string)
 }
 
@@ -40,6 +45,7 @@ func WriteTeardownLogs(
 	env *environment.Environment,
 	optionalTestReporter TestReporter,
 	failingLogLevel zapcore.Level, // Chainlink core uses zapcore for logging https://docs.chain.link/chainlink-nodes/v1/configuration#log_level
+	grafanaUrlProvider GrafanaURLProvider,
 ) error {
 	logsPath := filepath.Join(DefaultArtifactsDir, fmt.Sprintf("%s-%s-%d", t.Name(), env.Cfg.Namespace, time.Now().Unix()))
 	if err := env.Artifacts.DumpTestResult(logsPath, "chainlink"); err != nil {
@@ -61,7 +67,7 @@ func WriteTeardownLogs(
 	assert.NoError(t, verifyLogsGroup.Wait(), "Found a concerning log")
 
 	if t.Failed() || optionalTestReporter != nil {
-		if err := SendReport(t, env.Cfg.Namespace, logsPath, optionalTestReporter); err != nil {
+		if err := SendReport(t, env.Cfg.Namespace, logsPath, optionalTestReporter, grafanaUrlProvider); err != nil {
 			log.Warn().Err(err).Msg("Error writing test report")
 		}
 	}
@@ -69,7 +75,7 @@ func WriteTeardownLogs(
 }
 
 // SendReport writes a test report and sends a Slack notification if the test provides one
-func SendReport(t *testing.T, namespace string, logsPath string, optionalTestReporter TestReporter) error {
+func SendReport(t *testing.T, namespace string, logsPath string, optionalTestReporter TestReporter, grafanaUrlProvider GrafanaURLProvider) error {
 	if optionalTestReporter != nil {
 		log.Info().Msg("Writing Test Report")
 		optionalTestReporter.SetNamespace(namespace)
@@ -77,7 +83,7 @@ func SendReport(t *testing.T, namespace string, logsPath string, optionalTestRep
 		if err != nil {
 			return err
 		}
-		err = optionalTestReporter.SendSlackNotification(t, nil)
+		err = optionalTestReporter.SendSlackNotification(t, nil, grafanaUrlProvider)
 		if err != nil {
 			return err
 		}

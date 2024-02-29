@@ -33,7 +33,7 @@ var (
 			"58845406a51d98fb2026887281b4e91b8843bbec5f16b89de06d5b9a62b231e8",
 		},
 		ChainlinkTransactionLimit: 500000,
-		Timeout:                   JSONStrDuration{2 * time.Minute},
+		Timeout:                   StrDuration{2 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       10000,
 	}
@@ -59,7 +59,7 @@ type EVMNetwork struct {
 	// nodes require to run the tests.
 	ChainlinkTransactionLimit uint64 `envconfig:"evm_chainlink_transaction_limit" default:"500000" toml:"evm_chainlink_transaction_limit" json:"evm_chainlink_transaction_limit"`
 	// How long to wait for on-chain operations before timing out an on-chain operation
-	Timeout JSONStrDuration `envconfig:"evm_transaction_timeout" default:"2m" toml:"evm_transaction_timeout" json:"evm_transaction_timeout"`
+	Timeout StrDuration `envconfig:"evm_transaction_timeout" default:"2m" toml:"evm_transaction_timeout" json:"evm_transaction_timeout"`
 	// How many block confirmations to wait to confirm on-chain events
 	MinimumConfirmations int `envconfig:"evm_minimum_confirmations" default:"1" toml:"evm_minimum_confirmations" json:"evm_minimum_confirmations"`
 	// How much WEI to add to gas estimations for sending transactions
@@ -78,7 +78,7 @@ type EVMNetwork struct {
 	FinalityDepth uint64 `envconfig:"evm_finality_depth" default:"50" toml:"evm_finality_depth" json:"evm_finality_depth"`
 
 	// TimeToReachFinality is the time it takes for a block to be considered final. This is used to determine how long to wait for a block to be considered final.
-	TimeToReachFinality JSONStrDuration `envconfig:"evm_time_to_reach_finality" default:"0s" toml:"evm_time_to_reach_finality" json:"evm_time_to_reach_finality"`
+	TimeToReachFinality StrDuration `envconfig:"evm_time_to_reach_finality" default:"0s" toml:"evm_time_to_reach_finality" json:"evm_time_to_reach_finality"`
 
 	// Only used internally, do not set
 	URL string `ignored:"true"`
@@ -147,16 +147,16 @@ func (e *EVMNetwork) MustChainlinkTOML(networkDetails string) string {
 	return netString
 }
 
-// JSONStrDuration is JSON friendly duration that can be parsed from "1h2m0s" Go format
-type JSONStrDuration struct {
+// StrDuration is JSON/TOML friendly duration that can be parsed from "1h2m0s" Go format
+type StrDuration struct {
 	time.Duration
 }
 
-func (d *JSONStrDuration) MarshalJSON() ([]byte, error) {
+func (d *StrDuration) MarshalJSON() ([]byte, error) {
 	return json.Marshal(d.String())
 }
 
-func (d *JSONStrDuration) UnmarshalJSON(b []byte) error {
+func (d *StrDuration) UnmarshalJSON(b []byte) error {
 	var v interface{}
 	if err := json.Unmarshal(b, &v); err != nil {
 		return err
@@ -172,4 +172,20 @@ func (d *JSONStrDuration) UnmarshalJSON(b []byte) error {
 	default:
 		return errors.New("invalid duration")
 	}
+}
+
+// MarshalText implements the text.Marshaler interface (used by toml)
+func (d StrDuration) MarshalText() ([]byte, error) {
+	return []byte(d.Duration.String()), nil
+}
+
+// UnmarshalText implements the text.Unmarshaler interface (used by toml)
+func (d *StrDuration) UnmarshalText(b []byte) error {
+	var err error
+	d.Duration, err = time.ParseDuration(string(b))
+	if err != nil {
+		return err
+	}
+	return nil
+
 }

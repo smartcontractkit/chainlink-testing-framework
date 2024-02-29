@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	tc "github.com/testcontainers/testcontainers-go"
@@ -64,7 +63,7 @@ func (g *AfterGenesisHelper) StartContainer() error {
 		Logger:           l,
 	})
 	if err != nil {
-		return errors.Wrapf(err, "cannot start after genesis helper container")
+		return fmt.Errorf("cannot start after genesis helper container: %w", err)
 	}
 
 	g.l.Info().Str("containerName", g.ContainerName).

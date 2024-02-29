@@ -1,3 +1,6 @@
+# VERY IMPORTANT
+**There needs to be least one node labeled with `eth2=true` for deployment to work! (see below how to do it)**
+
 # Deployment initalisation flow
 1. Generate validator keys
 2. Generate eth1 and eth2 genesis
@@ -64,7 +67,7 @@ storage:
 # Usage
 1. Connect with kubectl to the cluster you want to deploy to
 2. Set the context/namespace you want to use (if the namespace doesn't exist you might need to create it manually)
-3. Make sure that there's 1 node with with label `eth2=true` (this is used to schedule beacon chain and validator pods affinity to make sure they are deployed on the same node and have access to the same persistent volume). You can check it by running `kubectl get nodes --selector=eth2=true`. If there's no such node (which will especially be true on your local cluster, when running for the first time), run `kubectl get nodes --show-labels` to see all nodes and then pick one and run `kubectl label nodes <node-name> eth2=true` to add the label to it. It's best if you *don't do that* on remote clusters without previous consultation with the cluster owners. 
+3. Make sure that there's 1 node with with label `eth2=true` (this is used to schedule beacon chain and validator pods affinity to make sure they are deployed on the same node and have access to the same persistent volume). You can check it by running `kubectl get nodes --selector=eth2=true`. If there's no such node (which will especially be true on your local cluster, when running for the first time), run `kubectl get nodes --show-labels` to see all nodes and then pick one and run `kubectl label nodes <node-name> eth2=true` to add the label to it (for Docker Desktop use: `kubectl label nodes docker-desktop eth2=true`). It's best if you *don't do that* on remote clusters without previous consultation with the cluster owners. 
 Once you have one labeled node you can proceed with chart installation.
 3. Run `./install.sh`
 This command by default uses `values.yaml` file, which is meant for local cluster use (because of the storage class it uses). If you want to deploy to SDLC cluster you should execute `./install.sh sdlc` and it will take values from `values-sdlc.yaml`, which uses `longhorn` storage class that is available in SDLC cluster and supports `ReadWriteMany` access mode (which is crucial, because multiple pods are using the same persistent volume).

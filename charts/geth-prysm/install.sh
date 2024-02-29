@@ -1,5 +1,4 @@
 #!/bin/sh
-param=$1
 values_file="Values.yaml"
 
 if ! helm lint . -f ./$values_file; then
@@ -16,7 +15,7 @@ if [ -z "$chart_package" ]; then
   exit 1
 fi
 
-deployment_name=$2
+deployment_name=$1
 if [ -z "$deployment_name" ]; then
   deployment_name="--generate-name"
 fi
