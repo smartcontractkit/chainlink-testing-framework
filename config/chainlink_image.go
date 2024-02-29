@@ -5,8 +5,9 @@ import (
 )
 
 type ChainlinkImageConfig struct {
-	Image   *string `toml:"image"`
-	Version *string `toml:"version"`
+	Image           *string `toml:"image"`
+	Version         *string `toml:"version"`
+	PostgresVersion *string `toml:"postgres_version,omitempty"`
 }
 
 // Validate checks that the chainlink image config is valid, which means that

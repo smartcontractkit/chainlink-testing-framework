@@ -214,6 +214,7 @@ type ConnectedChart interface {
 	ExportData(e *Environment) error
 }
 ```
+
 Now let's tie them together
 
 ```golang
@@ -443,6 +444,7 @@ const (
 	EnvVarSlackUserExample     = "U000000000"
 )
 ```
+
 ### Environment config
 
 ```golang
@@ -558,6 +560,7 @@ RUN goc build -o my_service . --center http://goc:7777
 
 CMD ["./my_service"]
 ```
+
 Add `goc` to your deployment, check example with `dummy` service deployment:
 
 ```golang
@@ -594,12 +597,15 @@ func main() {
 After tests are finished, coverage is collected for every service, check `cover` directory
 
 # TOML Config
+
 Keep in mind that configuring Chainlink image/version & Pyroscope via env vars is deprecated. The latter won't even work anymore. That means that this method should be avoided in new environments. Instead, use the TOML config method described below.
+
 ```golang
 	AddHelm(chainlink.New(0, nil))
 ```
 
 It's recommended to use a TOML config file to configure Chainlink and Pyroscope:
+
 ```golang
 
 // read the config file
