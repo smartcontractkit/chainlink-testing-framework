@@ -1,6 +1,7 @@
 package test_env
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/logstream"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/osutil"
 )
 
@@ -17,12 +19,16 @@ const (
 )
 
 type EnvComponent struct {
-	ContainerName    string            `json:"containerName"`
-	ContainerImage   string            `json:"containerImage"`
-	ContainerVersion string            `json:"containerVersion"`
-	ContainerEnvs    map[string]string `json:"containerEnvs"`
-	Networks         []string          `json:"networks"`
-	Container        tc.Container      `json:"-"`
+	ContainerName      string               `json:"containerName"`
+	ContainerImage     string               `json:"containerImage"`
+	ContainerVersion   string               `json:"containerVersion"`
+	ContainerEnvs      map[string]string    `json:"containerEnvs"`
+	Networks           []string             `json:"networks"`
+	Container          tc.Container         `json:"-"`
+	LogStream          *logstream.LogStream `json:"-"`
+	PostStartsHooks    []tc.ContainerHook   `json:"-"`
+	PostStopsHooks     []tc.ContainerHook   `json:"-"`
+	PreTerminatesHooks []tc.ContainerHook   `json:"-"`
 }
 
 type EnvComponentOption = func(c *EnvComponent)
@@ -32,6 +38,49 @@ func WithContainerName(name string) EnvComponentOption {
 		if name != "" {
 			c.ContainerName = name
 		}
+	}
+}
+
+func WithLogStream(ls *logstream.LogStream) EnvComponentOption {
+	return func(c *EnvComponent) {
+		c.LogStream = ls
+	}
+}
+
+func WithPostStartsHooks(hooks ...tc.ContainerHook) EnvComponentOption {
+	return func(c *EnvComponent) {
+		c.PostStartsHooks = hooks
+	}
+}
+
+func WithPostStopsHooks(hooks ...tc.ContainerHook) EnvComponentOption {
+	return func(c *EnvComponent) {
+		c.PostStopsHooks = hooks
+	}
+}
+
+func WithPreTerminatesHooks(hooks ...tc.ContainerHook) EnvComponentOption {
+	return func(c *EnvComponent) {
+		c.PreTerminatesHooks = hooks
+	}
+}
+
+func (ec *EnvComponent) SetDefaultHooks() {
+	ec.PostStartsHooks = []tc.ContainerHook{
+		func(ctx context.Context, c tc.Container) error {
+			if ec.LogStream != nil {
+				return ec.LogStream.ConnectContainer(ctx, c, "")
+			}
+			return nil
+		},
+	}
+	ec.PostStopsHooks = []tc.ContainerHook{
+		func(ctx context.Context, c tc.Container) error {
+			if ec.LogStream != nil {
+				return ec.LogStream.DisconnectContainer(c)
+			}
+			return nil
+		},
 	}
 }
 

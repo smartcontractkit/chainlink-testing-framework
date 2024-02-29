@@ -102,6 +102,7 @@ genesis_timestamp: ${GENESIS_TIMESTAMP}
 genesis_delay: ${GENESIS_DELAY}
 slot_duration_in_seconds: ${SLOT_DURATION_IN_SECONDS}
 deneb_fork_epoch: ${DENEB_FORK_EPOCH}
+slots_per_epoch: ${SLOTS_PER_EPOCH}
 `
 
 var clGenesisConfig = `

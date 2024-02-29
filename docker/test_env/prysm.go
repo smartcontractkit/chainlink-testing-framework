@@ -54,6 +54,7 @@ func NewPrysmBeaconChain(networks []string, chainConfig *EthereumChainConfig, cu
 		l:                        logging.GetTestLogger(nil),
 		image:                    dockerImage,
 	}
+	g.SetDefaultHooks()
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
@@ -155,6 +156,12 @@ func (g *PrysmBeaconChain) getContainerRequest(networks []string) (*tc.Container
 				Target: tc.ContainerMountTarget(GENERATED_DATA_DIR_INSIDE_CONTAINER),
 			},
 		},
+		LifecycleHooks: []tc.ContainerLifecycleHooks{
+			{
+				PostStarts: g.PostStartsHooks,
+				PostStops:  g.PostStopsHooks,
+			},
+		},
 	}, nil
 }
 
@@ -188,6 +195,7 @@ func NewPrysmValidator(networks []string, chainConfig *EthereumChainConfig, gene
 		l:                         logging.GetTestLogger(nil),
 		image:                     dockerImage,
 	}
+	g.SetDefaultHooks()
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
@@ -266,6 +274,12 @@ func (g *PrysmValidator) getContainerRequest(networks []string) (*tc.ContainerRe
 					HostPath: g.generatedDataHostDir,
 				},
 				Target: tc.ContainerMountTarget(GENERATED_DATA_DIR_INSIDE_CONTAINER),
+			},
+		},
+		LifecycleHooks: []tc.ContainerLifecycleHooks{
+			{
+				PostStarts: g.PostStartsHooks,
+				PostStops:  g.PostStopsHooks,
 			},
 		},
 	}, nil

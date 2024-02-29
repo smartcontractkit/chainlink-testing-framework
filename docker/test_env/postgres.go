@@ -97,6 +97,7 @@ func NewPostgresDb(networks []string, opts ...PostgresDbOption) (*PostgresDb, er
 		l:            log.Logger,
 	}
 
+	pg.SetDefaultHooks()
 	for _, opt := range opts {
 		opt(pg)
 	}
@@ -178,5 +179,11 @@ func (pg *PostgresDb) getContainerRequest() *tc.ContainerRequest {
 		WaitingFor: tcwait.ForExec([]string{"psql", "-h", "127.0.0.1",
 			"-U", pg.User, "-c", "select", "1", "-d", pg.DbName}).
 			WithStartupTimeout(10 * time.Second),
+		LifecycleHooks: []tc.ContainerLifecycleHooks{
+			{
+				PostStarts: pg.PostStartsHooks,
+				PostStops:  pg.PostStopsHooks,
+			},
+		},
 	}
 }

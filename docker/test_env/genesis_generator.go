@@ -28,8 +28,8 @@ type EthGenesisGeneretor struct {
 }
 
 func NewEthGenesisGenerator(chainConfig EthereumChainConfig, generatedDataHostDir string, opts ...EnvComponentOption) (*EthGenesisGeneretor, error) {
-	// currently it uses 2.0.4-slots-per-epoch
-	dockerImage, err := mirror.GetImage("tofelb/ethereum-genesis-generator:2")
+	// currently it uses 2.0.5
+	dockerImage, err := mirror.GetImage("tofelb/ethereum-genesis-generator:2.0.5")
 	if err != nil {
 		return nil, err
 	}
@@ -43,6 +43,7 @@ func NewEthGenesisGenerator(chainConfig EthereumChainConfig, generatedDataHostDi
 		l:                    log.Logger,
 		image:                dockerImage,
 	}
+	g.SetDefaultHooks()
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
@@ -165,6 +166,12 @@ func (g *EthGenesisGeneretor) getContainerRequest(networks []string) (*tc.Contai
 					HostPath: g.generatedDataHostDir,
 				},
 				Target: tc.ContainerMountTarget(GENERATED_DATA_DIR_INSIDE_CONTAINER),
+			},
+		},
+		LifecycleHooks: []tc.ContainerLifecycleHooks{
+			{
+				PostStarts: g.PostStartsHooks,
+				PostStops:  g.PostStopsHooks,
 			},
 		},
 	}, nil

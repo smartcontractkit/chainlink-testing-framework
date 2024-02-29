@@ -129,3 +129,17 @@ func TestEth2ExecClientFromEnv(t *testing.T) {
 	require.NoError(t, err, "Builder validation failed")
 	require.Equal(t, ExecutionLayer_Besu, cfg.ExecutionLayer, "Execution layer should be Besu")
 }
+
+func TestEth2CustomDockerNetworks(t *testing.T) {
+	networks := []string{"test-network"}
+
+	builder := NewEthereumNetworkBuilder()
+	cfg, err := builder.
+		WithConsensusType(ConsensusType_PoS).
+		WithConsensusLayer(ConsensusLayer_Prysm).
+		WithExecutionLayer(ExecutionLayer_Geth).
+		WithDockerNetworks(networks).
+		Build()
+	require.NoError(t, err, "Builder validation failed")
+	require.Equal(t, networks, cfg.DockerNetworkNames, "Incorrect docker networks in config")
+}
