@@ -1,1 +1,0 @@
-{{- include "eth2-common.templates.deployment.prysm-beacon" .  }}

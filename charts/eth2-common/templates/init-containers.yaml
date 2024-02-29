@@ -3,7 +3,7 @@
 initContainers:
   - name: {{ .Release.Name }}-generate-val-keys
     image: "{{ .Values.valKeys.image.repository }}:{{ .Values.valKeys.image.tag }}"
-    imagePullPolicy: "{{ .Values.imagePullPolicy }}"   
+    imagePullPolicy: "{{ .Values.imagePullPolicy }}"
     args:
       - "keystores"
       - "--out-loc=/app/generated/val_keys"
@@ -17,7 +17,7 @@ initContainers:
         mountPath: /app/generated
   - name: {{ .Release.Name }}-ethereum-genesis-generator
     image: "{{ .Values.genesis.image.repository }}:{{ .Values.genesis.image.tag }}"
-    imagePullPolicy: "{{ .Values.imagePullPolicy }}"      
+    imagePullPolicy: "{{ .Values.imagePullPolicy }}"
     command: ["/bin/sh","/entrypoint.sh"]
     # command: ["sleep", "infinity"]
     workingDir: /
@@ -28,32 +28,32 @@ initContainers:
         mountPath: values_template.env
         subPath: values_template.env
       - name: {{ .Release.Name }}-genesis-config
-        mountPath: genesis-config.yaml        
+        mountPath: genesis-config.yaml
         subPath: genesis-config.yaml
       - name: {{ .Release.Name }}-genesis-config
-        mountPath: config.yaml               
-        subPath: config.yaml               
+        mountPath: config.yaml
+        subPath: config.yaml
       - name: {{ .Release.Name }}-genesis-config
         mountPath: entrypoint.sh
         subPath: entrypoint.sh
   - name: {{ .Release.Name }}-after-gensis-helper
     image: "{{ .Values.busybox.image.repository }}:{{ .Values.busybox.image.tag }}"
-    imagePullPolicy: "{{ .Values.imagePullPolicy }}"      
+    imagePullPolicy: "{{ .Values.imagePullPolicy }}"
     command: ["/bin/sh","/helper_script.sh"]
-    volumeMounts:       
+    volumeMounts:
       - name: {{ .Release.Name }}-chain-state
-        mountPath: /data             
+        mountPath: /data
       - name: {{ .Release.Name }}-after-genesis-helper-config
         mountPath: helper_script.sh
         subPath: helper_script.sh
-{{- end }}        
+{{- end }}
 
 {{/* Wait for execution layer client to be ready */}}
 {{- define "eth2-common.templates.consensus-client.init-containers" }}
 initContainers:
   - name: {{ .Release.Name }}-wait-for-execution-client
     image: {{ .Values.busybox.image.repository }}:{{ .Values.busybox.image.tag }}
-    imagePullPolicy: {{ .Values.imagePullPolicy }} 
+    imagePullPolicy: {{ .Values.imagePullPolicy }}
     command:
     - "/bin/sh"
     - "-c"

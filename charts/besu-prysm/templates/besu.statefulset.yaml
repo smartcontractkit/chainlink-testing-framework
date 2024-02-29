@@ -106,8 +106,7 @@ spec:
   - metadata:
       name: {{ .Release.Name }}-{{ .Values.storage.claim }}
     spec:
-      accessModes: [ "ReadWriteMany" ]
-      storageClassName: {{ .Values.storageClassName }}
+      accessModes: [ "ReadWriteOnce" ]
       resources:
         requests:
           storage: {{ .Values.storage.size }}

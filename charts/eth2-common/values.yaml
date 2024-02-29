@@ -6,6 +6,7 @@ genesis:
     repository: tofelb/ethereum-genesis-generator
     tag: 2.0.5
   values:
+    currentUnixTimestamp: 1600000000
     secondsPerSlot: 12
     slotsPerEpoch: 4
     delaySeconds: 20
@@ -33,5 +34,4 @@ shared:
   jwtFile: jwtSecret
 storage:
   claim: chain-state-claim
-  size: 2Gi  
-  
+  size: 2Gi

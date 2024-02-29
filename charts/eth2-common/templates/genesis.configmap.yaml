@@ -180,19 +180,19 @@ data:
     slot_duration_in_seconds: ${SLOT_DURATION_IN_SECONDS}
     deneb_fork_epoch: ${DENEB_FORK_EPOCH}
     slots_per_epoch: ${SLOTS_PER_EPOCH}
-  entrypoint.sh: |-        
+  entrypoint.sh: |-
     genesis_delay="{{ .Values.genesis.values.delaySeconds}}"
     validator_count="{{ .Values.genesis.values.validatorCount }}"
+    current_unix_timestamp="{{ .Values.genesis.values.currentUnixTimestamp }}"
 
     validator_based_genesis_delay=$((validator_count * 5))
-    current_unix_timestamp=$(date +%s)
     genesis_timestamp=$((current_unix_timestamp + genesis_delay + validator_based_genesis_delay))
 
-    mkdir -p /config/cl    
-    cp config.yaml /config/cl/config.yaml 
+    mkdir -p /config/cl
+    cp config.yaml /config/cl/config.yaml
 
     mkdir -p /config/el
-    cp genesis-config.yaml -r /config/el/genesis-config.yaml 
+    cp genesis-config.yaml -r /config/el/genesis-config.yaml
 
     cp values_template.env /config/values.env
     echo "\nexport GENESIS_TIMESTAMP=$genesis_timestamp" >> /config/values.env
