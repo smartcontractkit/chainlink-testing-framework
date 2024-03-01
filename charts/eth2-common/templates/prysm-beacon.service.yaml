@@ -1,0 +1,22 @@
+{{/* Prysm Beacon Chain Service */}}
+{{- define "eth2-common.templates.service.prysm-beacon" }}
+kind: Service
+apiVersion: v1
+metadata:
+  name: {{ .Release.Name }}-{{ .Values.prysm.beacon.name }}-svc
+  labels:
+    release: {{ .Release.Name }}
+spec:
+  selector:
+    app: {{ .Release.Name }}-{{ .Values.prysm.beacon.name }}
+  ports:
+    - name: query-rpc
+      port: {{ .Values.prysm.beacon.ports.query }}
+      targetPort: {{ .Values.prysm.beacon.ports.query }}
+    - name: node-rpc
+      port: {{ .Values.prysm.beacon.ports.node }}
+      targetPort: {{ .Values.prysm.beacon.ports.node }}
+    - name: status
+      port: {{ .Values.prysm.beacon.ports.status }}
+      targetPort: {{ .Values.prysm.beacon.ports.status }}
+{{- end}}
