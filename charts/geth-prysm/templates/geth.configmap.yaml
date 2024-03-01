@@ -5,7 +5,7 @@ metadata:
 data:
   entrypoint.sh: |-
     #!/bin/bash
-    mkdir -p {{ .Values.geth.executionDir }} 
+    mkdir -p {{ .Values.geth.executionDir }}
 
     # copy general keystore to execution directory, because Geth doesn't allow to specify keystore location
     echo "Copying keystore to {{ .Values.geth.executionDir }}/keystore"

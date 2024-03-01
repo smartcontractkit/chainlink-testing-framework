@@ -1,5 +1,5 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: {{ .Release.Name }}-{{ .Values.excutionClient.name }}
   labels:
@@ -27,9 +27,6 @@ spec:
       nodeSelector:
         eth2: "true"
       volumes:
-      - name: {{ .Release.Name }}-chain-state
-        persistentVolumeClaim:
-          claimName: {{ .Release.Name }}-{{ .Values.storage.claim }}
       - name: {{ .Release.Name }}-genesis-config
         configMap:
           name: {{ .Release.Name }}-ethereum-genesis-generator-config
@@ -57,7 +54,7 @@ spec:
             - name: discovery-tcp
               containerPort: {{ .Values.excutionClient.ports.discovery }}
           volumeMounts:
-            - name: {{ .Release.Name }}-chain-state
+            - name: {{ .Release.Name }}-{{ .Values.storage.claim }}-geth
               mountPath: /data
             - name: {{ .Release.Name }}-geth-config
               mountPath: /entrypoint.sh
@@ -79,4 +76,14 @@ spec:
             failureThreshold: 2
             timeoutSeconds: 120
 
-{{- include "eth2-common.templates.execution-client.init-containers" . | nindent 6 }}
+{{- $customData := dict "pvcName" (printf "%s-%s-geth" .Release.Name .Values.storage.claim) }}
+{{- $newContext := merge $customData . }}
+{{- include "eth2-common.templates.execution-client.init-containers" $newContext | nindent 6 }}
+  volumeClaimTemplates:
+  - metadata:
+      name: {{ .Release.Name }}-{{ .Values.storage.claim }}-geth
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: {{ .Values.storage.size }}

@@ -43,24 +43,3 @@ initContainers:
         mountPath: helper_script.sh
         subPath: helper_script.sh
 {{- end }}
-
-{{/* Wait for execution layer client to be ready */}}
-{{- define "eth2-common.templates.consensus-client.init-containers" }}
-initContainers:
-  - name: {{ .Release.Name }}-wait-for-execution-client
-    image: {{ .Values.busybox.image.repository }}:{{ .Values.busybox.image.tag }}
-    imagePullPolicy: {{ .Values.imagePullPolicy }}
-    command:
-    - "/bin/sh"
-    - "-c"
-    - >
-      timeout 900 sh -c '
-        start_time=$(date +%s)
-        while ! nc -z -v {{ .Release.Name }}-{{ .Values.excutionClient.name }}-svc {{ .Values.excutionClient.ports.execution }}; do
-          current_time=$(date +%s)
-          elapsed_time=$((current_time - start_time))
-          remaining_time=$((900 - elapsed_time))
-          echo "Waiting for {{ .Values.excutionClient.name }} (Remaining time: $remaining_time seconds)..."
-          sleep 2
-        done'
-{{- end }}

@@ -96,6 +96,6 @@ Then you should wait for `chain-ready` container to become ready, as that will m
 It's recommended to remove the installation with `./uninstall.sh` script, as it will remove all persistent volume claims from the namespace (something that `helm uninstall` doesn't do).
 
 # Limitations
-* No support for restarting of geth app (it will try to initialize the chain from scratch every time and that will fail, becuase it will try to generate genesis.json based on previous chain state)
+* No support for restarting of beacon chain pod (validator gets slashed)
 * Untested scalability
-* I wasn't able to add a working readiness/liveliness probe for beacon chain
+* no working readiness/liveliness probe for beacon chain
