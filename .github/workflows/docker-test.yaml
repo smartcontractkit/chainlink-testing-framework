@@ -7,7 +7,7 @@ on:
 
 jobs:
   docker:
-    if: ${{ github.event.label.name == 'docker_tests' }}
+    if: ${{ github.event_name == 'pull_request_review' || github.event.label.name == 'docker_tests' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the Repo

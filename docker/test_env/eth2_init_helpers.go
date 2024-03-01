@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -90,7 +92,7 @@ func (g *AfterGenesisHelper) getContainerRequest(networks []string) (*tc.Contain
 
 	return &tc.ContainerRequest{
 		Name:          g.ContainerName,
-		Image:         "protolambda/eth2-val-tools:latest",
+		Image:         defaultEth2ValToolsImage,
 		ImagePlatform: "linux/x86_64",
 		Networks:      networks,
 		WaitingFor: NewExitCodeStrategy().WithExitCode(0).
@@ -103,13 +105,13 @@ func (g *AfterGenesisHelper) getContainerRequest(networks []string) (*tc.Contain
 				FileMode:          0744,
 			},
 		},
-		Mounts: tc.ContainerMounts{
-			tc.ContainerMount{
-				Source: tc.GenericBindMountSource{
-					HostPath: g.customConfigDataDir,
-				},
-				Target: tc.ContainerMountTarget(GENERATED_DATA_DIR_INSIDE_CONTAINER),
-			},
+		HostConfigModifier: func(hostConfig *container.HostConfig) {
+			hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
+				Type:     mount.TypeBind,
+				Source:   g.customConfigDataDir,
+				Target:   GENERATED_DATA_DIR_INSIDE_CONTAINER,
+				ReadOnly: false,
+			})
 		},
 		LifecycleHooks: []tc.ContainerLifecycleHooks{
 			{
@@ -132,7 +134,7 @@ echo "" > {{.AccountPasswordFileLocation}}
 echo "Saving jwt secret to {{.JwtFileLocation}}"
 echo "0xfad2709d0bb03bf0e8ba3c99bea194575d3e98863133d1af638ed056d1d59345" > {{.JwtFileLocation}}
 echo "All done!"
-echo 
+echo
 echo "------------------------------------------------------------------"
 formatted_genesis_date=$(date -d "@{{.GenesisTimestamp}}" '+%Y-%m-%d %H:%M:%S')
 echo "Chain genesis timestamp: $formatted_genesis_date UTC"

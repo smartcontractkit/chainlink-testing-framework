@@ -10,6 +10,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
@@ -19,6 +21,8 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
+
+const defaultBesuImage = "hyperledger/besu:24.1"
 
 type Besu struct {
 	EnvComponent
@@ -36,14 +40,7 @@ type Besu struct {
 }
 
 func NewBesu(networks []string, chainConfg *EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) (*Besu, error) {
-	// currently it uses 24.1
-	dockerImage, err := mirror.GetImage("hyperledger/besu:24")
-
-	if err != nil {
-		return nil, err
-	}
-
-	parts := strings.Split(dockerImage, ":")
+	parts := strings.Split(defaultBesuImage, ":")
 	g := &Besu{
 		EnvComponent: EnvComponent{
 			ContainerName:    fmt.Sprintf("%s-%s", "besu", uuid.NewString()[0:8]),
@@ -60,6 +57,10 @@ func NewBesu(networks []string, chainConfg *EthereumChainConfig, generatedDataHo
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
+
+	// if the internal docker repo is set then add it to the version
+	g.EnvComponent.ContainerImage = mirror.AddMirrorToImageIfSet(g.EnvComponent.ContainerImage)
+
 	return g, nil
 }
 
@@ -196,13 +197,13 @@ func (g *Besu) getContainerRequest(networks []string) (*tc.ContainerRequest, err
 		Env: map[string]string{
 			"JAVA_OPTS": "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n",
 		},
-		Mounts: tc.ContainerMounts{
-			tc.ContainerMount{
-				Source: tc.GenericBindMountSource{
-					HostPath: g.generatedDataHostDir,
-				},
-				Target: tc.ContainerMountTarget(GENERATED_DATA_DIR_INSIDE_CONTAINER),
-			},
+		HostConfigModifier: func(hostConfig *container.HostConfig) {
+			hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
+				Type:     mount.TypeBind,
+				Source:   g.generatedDataHostDir,
+				Target:   GENERATED_DATA_DIR_INSIDE_CONTAINER,
+				ReadOnly: false,
+			})
 		},
 		LifecycleHooks: []tc.ContainerLifecycleHooks{
 			{

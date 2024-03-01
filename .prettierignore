@@ -1,5 +1,7 @@
 charts/**/templates/**/*.yml
 charts/**/templates/**/*.yaml
+charts/**/values.yml
+charts/**/values.yaml
 charts/**/README.md
 node_modules/
 index.yaml

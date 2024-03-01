@@ -16,6 +16,8 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
+const defaultZookeeperImage = "confluentinc/cp-zookeeper:7.4.0"
+
 type Zookeeper struct {
 	EnvComponent
 	InternalUrl string
@@ -79,10 +81,7 @@ func (z *Zookeeper) StartContainer() error {
 }
 
 func (z *Zookeeper) getContainerRequest() (tc.ContainerRequest, error) {
-	zookeeperImage, err := mirror.GetImage("confluentinc/cp-zookeeper")
-	if err != nil {
-		return tc.ContainerRequest{}, err
-	}
+	zookeeperImage := mirror.AddMirrorToImageIfSet(defaultZookeeperImage)
 	return tc.ContainerRequest{
 		Name:         z.ContainerName,
 		Image:        zookeeperImage,

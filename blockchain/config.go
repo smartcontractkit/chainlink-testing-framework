@@ -42,43 +42,43 @@ var (
 // EVMNetwork configures all the data the test needs to connect and operate on an EVM compatible network
 type EVMNetwork struct {
 	// Human-readable name of the network:
-	Name string `envconfig:"evm_name" default:"Unnamed EVM Network" toml:"evm_name" json:"evm_name"`
+	Name string `toml:"evm_name" json:"evm_name"`
 	// Chain ID for the blockchain
-	ChainID int64 `envconfig:"evm_chain_id" default:"1337" toml:"evm_chain_id" json:"evm_chain_id"`
+	ChainID int64 `toml:"evm_chain_id" json:"evm_chain_id"`
 	// List of websocket URLs you want to connect to
-	URLs []string `envconfig:"evm_urls" default:"ws://example.url" toml:"evm_urls" json:"evm_urls"`
+	URLs []string `toml:"evm_urls" json:"evm_urls"`
 	// List of websocket URLs you want to connect to
-	HTTPURLs []string `envconfig:"evm_http_urls" default:"http://example.url" toml:"evm_http_urls" json:"evm_http_urls"`
+	HTTPURLs []string `toml:"evm_http_urls" json:"evm_http_urls"`
 	// True if the network is simulated like a geth instance in dev mode. False if the network is a real test or mainnet
-	Simulated bool `envconfig:"evm_simulated" default:"false" toml:"evm_simulated" json:"evm_simulated"`
+	Simulated bool `toml:"evm_simulated" json:"evm_simulated"`
 	// Type of chain client node. Values: "none" | "geth" | "besu"
-	SimulationType string `envconfig:"evm_simulation_type" default:"geth" toml:"evm_simulation_type" json:"evm_simulation_type"`
+	SimulationType string `toml:"evm_simulation_type" json:"evm_simulation_type"`
 	// List of private keys to fund the tests
-	PrivateKeys []string `envconfig:"evm_keys" default:"examplePrivateKey" toml:"evm_keys" json:"evm_keys"`
+	PrivateKeys []string `toml:"evm_keys" json:"evm_keys"`
 	// Default gas limit to assume that Chainlink nodes will use. Used to try to estimate the funds that Chainlink
 	// nodes require to run the tests.
-	ChainlinkTransactionLimit uint64 `envconfig:"evm_chainlink_transaction_limit" default:"500000" toml:"evm_chainlink_transaction_limit" json:"evm_chainlink_transaction_limit"`
+	ChainlinkTransactionLimit uint64 `toml:"evm_chainlink_transaction_limit" json:"evm_chainlink_transaction_limit"`
 	// How long to wait for on-chain operations before timing out an on-chain operation
-	Timeout StrDuration `envconfig:"evm_transaction_timeout" default:"2m" toml:"evm_transaction_timeout" json:"evm_transaction_timeout"`
+	Timeout StrDuration `toml:"evm_transaction_timeout" json:"evm_transaction_timeout"`
 	// How many block confirmations to wait to confirm on-chain events
-	MinimumConfirmations int `envconfig:"evm_minimum_confirmations" default:"1" toml:"evm_minimum_confirmations" json:"evm_minimum_confirmations"`
+	MinimumConfirmations int `toml:"evm_minimum_confirmations" json:"evm_minimum_confirmations"`
 	// How much WEI to add to gas estimations for sending transactions
-	GasEstimationBuffer uint64 `envconfig:"evm_gas_estimation_buffer" default:"1000" toml:"evm_gas_estimation_buffer" json:"evm_gas_estimation_buffer"`
+	GasEstimationBuffer uint64 `toml:"evm_gas_estimation_buffer" json:"evm_gas_estimation_buffer"`
 	// ClientImplementation is the blockchain client to use when interacting with the test chain
-	ClientImplementation ClientImplementation `envconfig:"client_implementation" default:"Ethereum" toml:"client_implementation" json:"client_implementation"`
+	ClientImplementation ClientImplementation `toml:"client_implementation" json:"client_implementation"`
 	// SupportsEIP1559 indicates if the client should try to use EIP1559 style gas and transactions
-	SupportsEIP1559 bool `envconfig:"evm_supports_eip1559" default:"false" toml:"evm_supports_eip1559" json:"evm_supports_eip1559"`
+	SupportsEIP1559 bool `toml:"evm_supports_eip1559" json:"evm_supports_eip1559"`
 
 	// Default gaslimit to use when sending transactions. If set this will override the transactionOptions gaslimit in case the
 	// transactionOptions gaslimit is lesser than the defaultGasLimit.
-	DefaultGasLimit uint64 `envconfig:"evm_default_gas_limit" default:"500000" toml:"evm_default_gas_limit" json:"evm_default_gas_limit"`
+	DefaultGasLimit uint64 `toml:"evm_default_gas_limit" json:"evm_default_gas_limit"`
 	// Few chains use finality tags to mark blocks as finalized. This is used to determine if the chain uses finality tags.
-	FinalityTag bool `envconfig:"evm_finality_tag" default:"false" toml:"evm_finality_tag" json:"evm_finality_tag"`
+	FinalityTag bool `toml:"evm_finality_tag" json:"evm_finality_tag"`
 	// If the chain does not use finality tags, this is used to determine how many blocks to wait for before considering a block finalized.
-	FinalityDepth uint64 `envconfig:"evm_finality_depth" default:"50" toml:"evm_finality_depth" json:"evm_finality_depth"`
+	FinalityDepth uint64 `toml:"evm_finality_depth" json:"evm_finality_depth"`
 
 	// TimeToReachFinality is the time it takes for a block to be considered final. This is used to determine how long to wait for a block to be considered final.
-	TimeToReachFinality StrDuration `envconfig:"evm_time_to_reach_finality" default:"0s" toml:"evm_time_to_reach_finality" json:"evm_time_to_reach_finality"`
+	TimeToReachFinality StrDuration `toml:"evm_time_to_reach_finality" json:"evm_time_to_reach_finality"`
 
 	// Only used internally, do not set
 	URL string `ignored:"true"`

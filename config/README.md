@@ -23,6 +23,10 @@ It's up to the user to provide a way to read the config from file and unmarshal 
 
 Also you might find `BytesToAnyTomlStruct(logger zerolog.Logger, filename, configurationName string, target any, content []byte) error` utility method useful for unmarshalling TOMLs read from env var or files into a struct
 
+## Secrets in TOML config
+
+For all values regarded as secrets, their keys should end with the `_secret` suffix. For example, use `basic_auth_secret="basic-auth"` instead of `basic_auth="basic-auth"`.
+
 ## Working example
 
 For a full working example making use of all the building blocks see [testconfig.go](../config/examples/testconfig.go). It provides methods for reading TOML, applying overrides and validating non-empty config blocks. It supports 4 levels of overrides, in order of precedence:
@@ -45,9 +49,17 @@ Some more explanation is needed for the `NetworkConfig`:
 type NetworkConfig struct {
 	// list of networks that should be used for testing
 	SelectedNetworks []string            `toml:"selected_networks"`
-	// map of network name to RPC endpoints where key is network name and value is a list of RPC HTTP endpoints
+	// map of network name to EVMNetworks where key is network name and value is a pointer to EVMNetwork
+	// if not set, it will try to find the network from defined networks in MappedNetworks under known_networks.go
 	// it doesn't matter if you use `arbitrum_sepolia` or `ARBITRUM_SEPOLIA` or even `arbitrum_SEPOLIA` as key
 	// as all keys will be uppercased when loading the Default config
+	EVMNetworks map[string]*blockchain.EVMNetwork `toml:"EVMNetworks,omitempty"`
+	// map of network name to ForkConfigs where key is network name and value is a pointer to ForkConfig
+	// only used if network fork is needed, if provided, the network will be forked with the given config
+	// networkname is fetched first from the EVMNetworks and 
+	// if not defined with EVMNetworks, it will try to find the network from defined networks in MappedNetworks under known_networks.go
+    ForkConfigs map[string]*ForkConfig `toml:"ForkConfigs,omitempty"`
+	// map of network name to RPC endpoints where key is network name and value is a list of RPC HTTP endpoints
 	RpcHttpUrls      map[string][]string `toml:"RpcHttpUrls"`
 	// map of network name to RPC endpoints where key is network name and value is a list of RPC WS endpoints
 	RpcWsUrls        map[string][]string `toml:"RpcWsUrls"`
@@ -62,15 +74,59 @@ func (n *NetworkConfig) Default() error {
 
 Sample TOML config:
 ```toml
-selected_networks = ["arbitrum_goerli", "optimism_goerli"]
+selected_networks = ["arbitrum_goerli", "optimism_goerli", "new_network"]
+
+[EVMNetworks.new_network]
+evm_name = "new_test_network"
+evm_chain_id = 100009
+evm_simulated = true
+evm_chainlink_transaction_limit = 5000
+evm_minimum_confirmations = 1
+evm_gas_estimation_buffer = 10000
+client_implementation = "Ethereum"
+evm_supports_eip1559 = true
+evm_default_gas_limit = 6000000
+
+[ForkConfigs.new_network]
+url = "ws://localhost:8546"
+block_number = 100
 
 [RpcHttpUrls]
 arbitrum_goerli = ["https://devnet-2.mt/ABC/rpc/"]
+new_network = ["http://localhost:8545"]
+
+[RpcWsUrls]
+arbitrum_goerli = ["wss://devnet-2.mt/ABC/ws/"]
+new_network = ["ws://localhost:8546"]
 
 [WalletKeys]
 arbitrum_goerli = ["1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed"]
 optimism_goerli = ["1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed"]
+new_network = ["ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"]
 ```
+
+Whenver you are adding a new EVMNetwork to the config, you can either 
+- provide the rpcs and wallet keys in Rpc<Http/Ws>Urls and WalletKeys. Like in the example above, you can see that `new_network` is added to the `selected_networks` and `EVMNetworks` and then the rpcs and wallet keys are provided in `RpcHttpUrls`, `RpcWsUrls` and `WalletKeys` respectively.
+- provide the rpcs and wallet keys in the `EVMNetworks` itself. Like in the example below, you can see that `new_network` is added to the `selected_networks` and `EVMNetworks` and then the rpcs and wallet keys are provided in `EVMNetworks` itself.
+```toml
+
+selected_networks = ["new_network"]
+
+[EVMNetworks.new_network]
+evm_name = "new_test_network"
+evm_chain_id = 100009
+evm_urls = ["ws://localhost:8546"]
+evm_http_urls = ["http://localhost:8545"]
+evm_keys = ["ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"]
+evm_simulated = true
+evm_chainlink_transaction_limit = 5000
+evm_minimum_confirmations = 1
+evm_gas_estimation_buffer = 10000
+client_implementation = "Ethereum"
+evm_supports_eip1559 = true
+evm_default_gas_limit = 6000000
+```
+
 
 If your config struct looks like that:
 ```golang
@@ -83,16 +139,30 @@ type TestConfig struct {
 then your TOML file should look like that:
 ```toml
 [Network]
-selected_networks = ["arbitrum_goerli"]
+selected_networks = ["arbitrum_goerli","new_network"]
+
+[Network.EVMNetworks.new_network]
+evm_name = "new_test_network"
+evm_chain_id = 100009
+evm_simulated = true
+evm_chainlink_transaction_limit = 5000
+evm_minimum_confirmations = 1
+evm_gas_estimation_buffer = 10000
+client_implementation = "Ethereum"
+evm_supports_eip1559 = true
+evm_default_gas_limit = 6000000
 
 [Network.RpcHttpUrls]
 arbitrum_goerli = ["https://devnet-2.mt/ABC/rpc/"]
+new_network = ["http://localhost:8545"]
 
 [Network.RpcWsUrls]
 arbitrum_goerli = ["ws://devnet-2.mt/ABC/rpc/"]
+new_network = ["ws://localhost:8546"]
 
 [Network.WalletKeys]
 arbitrum_goerli = ["1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed"]
+new_network = ["ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"]
 ```
 
 
@@ -150,7 +220,7 @@ version="$CHAINLINK_VERSION"
 enabled=$pyroscope_enabled
 server_url="$PYROSCOPE_SERVER"
 environment="$PYROSCOPE_ENVIRONMENT"
-key="$PYROSCOPE_KEY"
+key_secret="$PYROSCOPE_KEY"
 
 [Logging]
 test_log_collect=$test_log_collect
@@ -162,8 +232,8 @@ log_targets=$log_targets
 [Logging.Loki]
 tenant_id="$LOKI_TENANT_ID"
 url="$LOKI_URL"
-basic_auth="$LOKI_BASIC_AUTH"
-bearer_token="$LOKI_BEARER_TOKEN"
+basic_auth_secret="$LOKI_BASIC_AUTH"
+bearer_token_secret="$LOKI_BEARER_TOKEN"
 
 [Logging.Grafana]
 url="$GRAFANA_URL"

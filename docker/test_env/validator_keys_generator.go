@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -15,6 +17,8 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 )
+
+const defaultEth2ValToolsImage = "protolambda/eth2-val-tools:latest"
 
 type ValKeysGeneretor struct {
 	EnvComponent
@@ -26,13 +30,7 @@ type ValKeysGeneretor struct {
 }
 
 func NewValKeysGeneretor(chainConfig *EthereumChainConfig, valKeysHostDataDir string, opts ...EnvComponentOption) (*ValKeysGeneretor, error) {
-	// currently it uses latest (no fixed version available)
-	dockerImage, err := mirror.GetImage("protolambda/eth2-val-tools:l")
-	if err != nil {
-		return nil, err
-	}
-
-	parts := strings.Split(dockerImage, ":")
+	parts := strings.Split(defaultEth2ValToolsImage, ":")
 	g := &ValKeysGeneretor{
 		EnvComponent: EnvComponent{
 			ContainerName:    fmt.Sprintf("%s-%s", "val-keys-generator", uuid.NewString()[0:8]),
@@ -49,6 +47,8 @@ func NewValKeysGeneretor(chainConfig *EthereumChainConfig, valKeysHostDataDir st
 		opt(&g.EnvComponent)
 	}
 
+	// if the internal docker repo is set then add it to the version
+	g.EnvComponent.ContainerImage = mirror.AddMirrorToImageIfSet(g.EnvComponent.ContainerImage)
 	return g, nil
 }
 
@@ -99,13 +99,13 @@ func (g *ValKeysGeneretor) getContainerRequest(networks []string) (*tc.Container
 			"--source-min=0",
 			fmt.Sprintf("--source-max=%d", g.chainConfig.ValidatorCount),
 		},
-		Mounts: tc.ContainerMounts{
-			tc.ContainerMount{
-				Source: tc.GenericBindMountSource{
-					HostPath: g.valKeysHostDataDir,
-				},
-				Target: tc.ContainerMountTarget(GENERATED_VALIDATOR_KEYS_DIR_INSIDE_CONTAINER),
-			},
+		HostConfigModifier: func(hostConfig *container.HostConfig) {
+			hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
+				Type:     mount.TypeBind,
+				Source:   g.valKeysHostDataDir,
+				Target:   GENERATED_VALIDATOR_KEYS_DIR_INSIDE_CONTAINER,
+				ReadOnly: false,
+			})
 		},
 		LifecycleHooks: []tc.ContainerLifecycleHooks{
 			{
