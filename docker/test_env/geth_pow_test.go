@@ -15,12 +15,12 @@ func TestOldGeth(t *testing.T) {
 	network, err := docker.CreateNetwork(l)
 	require.NoError(t, err)
 	defaultChainCfg := GetDefaultChainConfig()
-	g := NewGeth([]string{network.Name}, &defaultChainCfg).
+	g := NewGethPow([]string{network.Name}, &defaultChainCfg).
 		WithTestInstance(t)
-	_, _, err = g.StartContainer()
+	_, err = g.StartContainer()
 	require.NoError(t, err)
 	ns := blockchain.SimulatedEVMNetwork
-	ns.URLs = []string{g.ExternalWsUrl}
+	ns.URLs = []string{g.GetExternalWsUrl()}
 	c, err := blockchain.ConnectEVMClient(ns, l)
 	require.NoError(t, err, "Couldn't connect to the evm client")
 	err = c.Close()

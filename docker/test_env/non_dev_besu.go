@@ -28,7 +28,7 @@ import (
 )
 
 const (
-	defaultNonDevBesuImage = "hyperledger/besu:24.1"
+	defaultNonDevBesuImage = "hyperledger/besu:22.1"
 )
 
 type PrivateBesuChain struct {

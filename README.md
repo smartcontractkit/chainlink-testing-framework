@@ -142,7 +142,7 @@ cfg, err: = builder.
     WithConsensusLayer(ConsensusLayer_Prysm).
     WithExecutionLayer(ExecutionLayer_Geth).
     WithCustomDockerImages(map[ContainerType]string{
-        ContainerType_Geth2: "my-custom-geth2-image:my-version"}).
+        ContainerType_Geth: "my-custom-geth-pos-image:my-version"}).
     Build()
 
 ```

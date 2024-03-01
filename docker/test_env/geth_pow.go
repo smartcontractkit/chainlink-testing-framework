@@ -43,7 +43,7 @@ const (
 	TX_GETH_HTTP_PORT = "8544"
 	TX_GETH_WS_PORT   = "8545"
 
-	defaultGethImage = "ethereum/client-go:v1.12.0"
+	defaultGethPowImage = "ethereum/client-go:v1.12.0"
 )
 
 type InternalDockerUrls struct {
@@ -51,7 +51,7 @@ type InternalDockerUrls struct {
 	WsUrl   string
 }
 
-type Geth struct {
+type GethPow struct {
 	EnvComponent
 	ExternalHttpUrl string
 	InternalHttpUrl string
@@ -62,11 +62,11 @@ type Geth struct {
 	t               *testing.T
 }
 
-func NewGeth(networks []string, chainConfig *EthereumChainConfig, opts ...EnvComponentOption) *Geth {
-	parts := strings.Split(defaultGethImage, ":")
-	g := &Geth{
+func NewGethPow(networks []string, chainConfig *EthereumChainConfig, opts ...EnvComponentOption) *GethPow {
+	parts := strings.Split(defaultGethPowImage, ":")
+	g := &GethPow{
 		EnvComponent: EnvComponent{
-			ContainerName:    fmt.Sprintf("%s-%s", "geth", uuid.NewString()[0:8]),
+			ContainerName:    fmt.Sprintf("%s-%s", "geth-pow", uuid.NewString()[0:8]),
 			Networks:         networks,
 			ContainerImage:   parts[0],
 			ContainerVersion: parts[1],
@@ -83,21 +83,21 @@ func NewGeth(networks []string, chainConfig *EthereumChainConfig, opts ...EnvCom
 	return g
 }
 
-func (g *Geth) WithLogger(l zerolog.Logger) *Geth {
+func (g *GethPow) WithLogger(l zerolog.Logger) *GethPow {
 	g.l = l
 	return g
 }
 
-func (g *Geth) WithTestInstance(t *testing.T) *Geth {
+func (g *GethPow) WithTestInstance(t *testing.T) ExecutionClient {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
 	return g
 }
 
-func (g *Geth) StartContainer() (blockchain.EVMNetwork, InternalDockerUrls, error) {
+func (g *GethPow) StartContainer() (blockchain.EVMNetwork, error) {
 	r, _, _, err := g.getGethContainerRequest(g.Networks)
 	if err != nil {
-		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
+		return blockchain.EVMNetwork{}, err
 	}
 
 	l := logging.GetTestContainersGoTestLogger(g.t)
@@ -108,19 +108,19 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, InternalDockerUrls, erro
 		Logger:           l,
 	})
 	if err != nil {
-		return blockchain.EVMNetwork{}, InternalDockerUrls{}, fmt.Errorf("cannot start geth container: %w", err)
+		return blockchain.EVMNetwork{}, fmt.Errorf("cannot start geth-pow container: %w", err)
 	}
 	host, err := GetHost(testcontext.Get(g.t), ct)
 	if err != nil {
-		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
+		return blockchain.EVMNetwork{}, err
 	}
 	httpPort, err := ct.MappedPort(testcontext.Get(g.t), NatPort(TX_GETH_HTTP_PORT))
 	if err != nil {
-		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
+		return blockchain.EVMNetwork{}, err
 	}
 	wsPort, err := ct.MappedPort(testcontext.Get(g.t), NatPort(TX_GETH_WS_PORT))
 	if err != nil {
-		return blockchain.EVMNetwork{}, InternalDockerUrls{}, err
+		return blockchain.EVMNetwork{}, err
 	}
 
 	g.Container = ct
@@ -130,14 +130,9 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, InternalDockerUrls, erro
 	g.InternalWsUrl = FormatWsUrl(g.ContainerName, TX_GETH_WS_PORT)
 
 	networkConfig := blockchain.SimulatedEVMNetwork
-	networkConfig.Name = "geth"
+	networkConfig.Name = "geth-pow"
 	networkConfig.URLs = []string{g.ExternalWsUrl}
 	networkConfig.HTTPURLs = []string{g.ExternalHttpUrl}
-
-	internalDockerUrls := InternalDockerUrls{
-		HttpUrl: g.InternalHttpUrl,
-		WsUrl:   g.InternalWsUrl,
-	}
 
 	g.l.Info().Str("containerName", g.ContainerName).
 		Str("internalHttpUrl", g.InternalHttpUrl).
@@ -146,10 +141,46 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, InternalDockerUrls, erro
 		Str("internalWsUrl", g.InternalWsUrl).
 		Msg("Started Geth container")
 
-	return networkConfig, internalDockerUrls, nil
+	return networkConfig, nil
 }
 
-func (g *Geth) getGethContainerRequest(networks []string) (*tc.ContainerRequest, *keystore.KeyStore, *accounts.Account, error) {
+func (g *GethPow) GetContainer() *tc.Container {
+	return &g.Container
+}
+
+func (g *GethPow) GetContainerName() string {
+	return g.ContainerName
+}
+
+func (g *GethPow) GetContainerType() ContainerType {
+	return ContainerType_Geth
+}
+
+func (g *GethPow) GetInternalExecutionURL() string {
+	panic("not supported")
+}
+
+func (g *GethPow) GetExternalExecutionURL() string {
+	panic("not supported")
+}
+
+func (g *GethPow) GetInternalHttpUrl() string {
+	return g.InternalHttpUrl
+}
+
+func (g *GethPow) GetInternalWsUrl() string {
+	return g.InternalWsUrl
+}
+
+func (g *GethPow) GetExternalHttpUrl() string {
+	return g.ExternalHttpUrl
+}
+
+func (g *GethPow) GetExternalWsUrl() string {
+	return g.ExternalWsUrl
+}
+
+func (g *GethPow) getGethContainerRequest(networks []string) (*tc.ContainerRequest, *keystore.KeyStore, *accounts.Account, error) {
 	blocktime := "1"
 
 	initScriptFile, err := os.CreateTemp("", "init_script")
@@ -288,6 +319,10 @@ func (g *Geth) getGethContainerRequest(networks []string) (*tc.ContainerRequest,
 			},
 		},
 	}, ks, &account, nil
+}
+
+func (g *GethPow) WaitUntilChainIsReady(_ context.Context, _ time.Duration) error {
+	return nil
 }
 
 type WebSocketStrategy struct {

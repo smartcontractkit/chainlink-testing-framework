@@ -39,19 +39,19 @@ func TestEnvComponentPauseChaos(t *testing.T) {
 	require.NoError(t, err)
 
 	defaultChainCfg := GetDefaultChainConfig()
-	g := NewGeth([]string{network.Name}, &defaultChainCfg).
+	g := NewGethPow([]string{network.Name}, &defaultChainCfg).
 		WithTestInstance(t)
-	_, _, err = g.StartContainer()
+	_, err = g.StartContainer()
 	require.NoError(t, err)
 	t.Run("check that testcontainers can be paused", func(t *testing.T) {
-		consumer := followLogs(t, g.Container)
+		consumer := followLogs(t, *g.GetContainer())
 
 		timeStrNow := time.Now().Add(3 * time.Second).UTC().String()
 		justTime := strings.Split(timeStrNow, " ")[1]
 		justTimeWithoutMicrosecs := justTime[:len(justTime)-7]
 
 		// blocking
-		err = g.ChaosPause(l, 5*time.Second)
+		err = g.(*GethPow).ChaosPause(l, 5*time.Second)
 
 		// check that there were no logs when paused
 		for _, lo := range consumer.Msgs {
@@ -63,12 +63,12 @@ func TestEnvComponentPauseChaos(t *testing.T) {
 
 	t.Run("check container traffic can be lost", func(t *testing.T) {
 		// TODO: assert with a busybox container that the traffic is lost
-		err = g.ChaosNetworkLoss(l, 30*time.Second, 100, "", nil, nil, nil)
+		err = g.(*GethPow).ChaosNetworkLoss(l, 30*time.Second, 100, "", nil, nil, nil)
 		require.NoError(t, err)
 	})
 	t.Run("check container latency can be changed", func(t *testing.T) {
 		// TODO: assert with a busybox container that the traffic is delayed
-		err = g.ChaosNetworkDelay(l, 30*time.Second, 5*time.Second, "", nil, nil, nil)
+		err = g.(*GethPow).ChaosNetworkDelay(l, 30*time.Second, 5*time.Second, "", nil, nil, nil)
 		require.NoError(t, err)
 	})
 }

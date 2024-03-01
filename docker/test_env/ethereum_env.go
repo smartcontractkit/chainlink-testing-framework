@@ -38,8 +38,9 @@ var (
 type ConsensusType string
 
 const (
-	ConsensusType_PoS ConsensusType = "pos"
-	ConsensusType_PoW ConsensusType = "pow"
+	ConsensusType_PoS              ConsensusType = "pos"
+	ConsensusType_PoW              ConsensusType = "pow"
+	ConsensusType_VersionDependent ConsensusType = "version_dependent"
 )
 
 type ExecutionLayer string
@@ -177,7 +178,12 @@ func (b *EthereumNetworkBuilder) Build() (EthereumNetwork, error) {
 		b.ethereumChainConfig.GenerateGenesisTimestamp()
 	}
 
-	err := b.validate()
+	err := b.decideConsensusTypeIfNeeded()
+	if err != nil {
+		return EthereumNetwork{}, err
+	}
+
+	err = b.validate()
 	if err != nil {
 		return EthereumNetwork{}, err
 	}
@@ -239,6 +245,52 @@ func (b *EthereumNetworkBuilder) validate() error {
 	}
 
 	return b.ethereumChainConfig.Validate(logging.GetTestLogger(nil), b.consensusType)
+}
+
+func (b *EthereumNetworkBuilder) decideConsensusTypeIfNeeded() error {
+	if b.consensusType == "" {
+		b.consensusType = ConsensusType_VersionDependent
+	}
+
+	if b.executionLayer != "" && b.consensusType == ConsensusType_VersionDependent {
+		executionContainers := []ContainerType{ContainerType_Geth, ContainerType_Nethermind, ContainerType_Erigon, ContainerType_Besu}
+		var dockerImage string
+
+		// if we are using custom docker image for execution client, extract it
+		for t, v := range b.customDockerImages {
+			for _, c := range executionContainers {
+				if t == c {
+					dockerImage = v
+					break
+				}
+			}
+		}
+
+		// if we are not using custom image grab the default one
+		if dockerImage == "" {
+			switch b.executionLayer {
+			case ExecutionLayer_Geth:
+				dockerImage = defaultGethPosImage
+			case ExecutionLayer_Nethermind:
+				dockerImage = defaultNethermindImage
+			case ExecutionLayer_Erigon:
+				dockerImage = defaultErigonImage
+			case ExecutionLayer_Besu:
+				dockerImage = defaultBesuPosImage
+			default:
+				return fmt.Errorf("unknown execution layer: %s", b.executionLayer)
+			}
+		}
+
+		consensusType, err := GetConsensusTypeFromImage(b.executionLayer, dockerImage)
+		if err != nil {
+			return err
+		}
+
+		b.consensusType = consensusType
+	}
+
+	return nil
 }
 
 type EthereumNetwork struct {
@@ -336,13 +388,13 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 	var clientErr error
 	switch *en.ExecutionLayer {
 	case ExecutionLayer_Geth:
-		client, clientErr = NewGeth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, append(en.getImageOverride(ContainerType_Geth), en.setExistingContainerName(ContainerType_Geth))...)
+		client, clientErr = NewGethPos(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, append(en.getImageOverride(ContainerType_Geth), en.setExistingContainerName(ContainerType_Geth))...)
 	case ExecutionLayer_Nethermind:
 		client, clientErr = NewNethermind(dockerNetworks, generatedDataHostDir, ConsensusLayer_Prysm, append(en.getImageOverride(ContainerType_Nethermind), en.setExistingContainerName(ContainerType_Nethermind))...)
 	case ExecutionLayer_Erigon:
 		client, clientErr = NewErigon(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, append(en.getImageOverride(ContainerType_Erigon), en.setExistingContainerName(ContainerType_Erigon))...)
 	case ExecutionLayer_Besu:
-		client, clientErr = NewBesu(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, append(en.getImageOverride(ContainerType_Besu), en.setExistingContainerName(ContainerType_Besu))...)
+		client, clientErr = NewBesuPos(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, append(en.getImageOverride(ContainerType_Besu), en.setExistingContainerName(ContainerType_Besu))...)
 	default:
 		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf("unsupported execution layer: %s", *en.ExecutionLayer)
 	}
@@ -453,36 +505,44 @@ func (en *EthereumNetwork) startPow() (blockchain.EVMNetwork, RpcProvider, error
 		publicsUrls:     []string{},
 	}
 
-	if *en.ExecutionLayer != ExecutionLayer_Geth {
-		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf("unsupported execution layer: %s", *en.ExecutionLayer)
-	}
 	dockerNetworks, err := en.getOrCreateDockerNetworks()
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
-	geth := NewGeth(dockerNetworks, en.EthereumChainConfig, append(en.getImageOverride(ContainerType_Geth), en.setExistingContainerName(ContainerType_Geth))...)
-	geth.WithTestInstance(en.t)
+	var client ExecutionClient
+	var clientErr error
+	switch *en.ExecutionLayer {
+	case ExecutionLayer_Geth:
+		client = NewGethPow(dockerNetworks, en.EthereumChainConfig, append(en.getImageOverride(ContainerType_Geth), en.setExistingContainerName(ContainerType_Geth))...)
+	case ExecutionLayer_Besu:
+		client, clientErr = NewBesuPow(dockerNetworks, en.EthereumChainConfig, append(en.getImageOverride(ContainerType_Besu), en.setExistingContainerName(ContainerType_Besu))...)
+	}
 
-	network, docker, err := geth.StartContainer()
+	if clientErr != nil {
+		return blockchain.EVMNetwork{}, RpcProvider{}, clientErr
+	}
+
+	client.WithTestInstance(en.t)
+
+	net, err = client.StartContainer()
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
-	net = network
 	containers := EthereumNetworkContainers{
 		{
-			ContainerName: geth.ContainerName,
+			ContainerName: client.GetContainerName(),
 			ContainerType: ContainerType_Geth,
-			Container:     &geth.Container,
+			Container:     client.GetContainer(),
 		},
 	}
 
 	en.Containers = append(en.Containers, containers...)
-	rpcProvider.privateHttpUrls = append(rpcProvider.privateHttpUrls, docker.HttpUrl)
-	rpcProvider.privatelWsUrls = append(rpcProvider.privatelWsUrls, docker.WsUrl)
-	rpcProvider.publiclHttpUrls = append(rpcProvider.publiclHttpUrls, geth.ExternalHttpUrl)
-	rpcProvider.publicsUrls = append(rpcProvider.publicsUrls, geth.ExternalWsUrl)
+	rpcProvider.privateHttpUrls = append(rpcProvider.privateHttpUrls, client.GetInternalHttpUrl())
+	rpcProvider.privatelWsUrls = append(rpcProvider.privatelWsUrls, client.GetInternalWsUrl())
+	rpcProvider.publiclHttpUrls = append(rpcProvider.publiclHttpUrls, client.GetExternalHttpUrl())
+	rpcProvider.publicsUrls = append(rpcProvider.publicsUrls, client.GetExternalWsUrl())
 
 	en.DockerNetworkNames = dockerNetworks
 

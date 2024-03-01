@@ -25,9 +25,9 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
-const defaultGeth2Image = "ethereum/client-go:v1.13.10"
+const defaultGethPosImage = "ethereum/client-go:v1.13.10"
 
-type Geth2 struct {
+type GethPos struct {
 	EnvComponent
 	ExternalHttpUrl      string
 	InternalHttpUrl      string
@@ -42,11 +42,11 @@ type Geth2 struct {
 	t                    *testing.T
 }
 
-func NewGeth2(networks []string, chainConfg *EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) (*Geth2, error) {
-	parts := strings.Split(defaultGeth2Image, ":")
-	g := &Geth2{
+func NewGethPos(networks []string, chainConfg *EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) (*GethPos, error) {
+	parts := strings.Split(defaultGethPosImage, ":")
+	g := &GethPos{
 		EnvComponent: EnvComponent{
-			ContainerName:    fmt.Sprintf("%s-%s", "geth2", uuid.NewString()[0:8]),
+			ContainerName:    fmt.Sprintf("%s-%s", "geth-pos", uuid.NewString()[0:8]),
 			Networks:         networks,
 			ContainerImage:   parts[0],
 			ContainerVersion: parts[1],
@@ -65,13 +65,13 @@ func NewGeth2(networks []string, chainConfg *EthereumChainConfig, generatedDataH
 	return g, nil
 }
 
-func (g *Geth2) WithTestInstance(t *testing.T) ExecutionClient {
+func (g *GethPos) WithTestInstance(t *testing.T) ExecutionClient {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
 	return g
 }
 
-func (g *Geth2) StartContainer() (blockchain.EVMNetwork, error) {
+func (g *GethPos) StartContainer() (blockchain.EVMNetwork, error) {
 	r, err := g.getContainerRequest(g.Networks)
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
@@ -117,49 +117,49 @@ func (g *Geth2) StartContainer() (blockchain.EVMNetwork, error) {
 	g.ExternalExecutionURL = FormatHttpUrl(host, executionPort.Port())
 
 	networkConfig := blockchain.SimulatedEVMNetwork
-	networkConfig.Name = fmt.Sprintf("Simulated Eth2 (geth + %s)", g.consensusLayer)
+	networkConfig.Name = fmt.Sprintf("Simulated Ethereum-PoS (geth + %s)", g.consensusLayer)
 	networkConfig.URLs = []string{g.ExternalWsUrl}
 	networkConfig.HTTPURLs = []string{g.ExternalHttpUrl}
 
 	g.l.Info().Str("containerName", g.ContainerName).
-		Msg("Started Geth2 container")
+		Msg("Started Geth PoS container")
 
 	return networkConfig, nil
 }
 
-func (g *Geth2) GetInternalExecutionURL() string {
+func (g *GethPos) GetInternalExecutionURL() string {
 	return g.InternalExecutionURL
 }
 
-func (g *Geth2) GetExternalExecutionURL() string {
+func (g *GethPos) GetExternalExecutionURL() string {
 	return g.ExternalExecutionURL
 }
 
-func (g *Geth2) GetInternalHttpUrl() string {
+func (g *GethPos) GetInternalHttpUrl() string {
 	return g.InternalHttpUrl
 }
 
-func (g *Geth2) GetInternalWsUrl() string {
+func (g *GethPos) GetInternalWsUrl() string {
 	return g.InternalWsUrl
 }
 
-func (g *Geth2) GetExternalHttpUrl() string {
+func (g *GethPos) GetExternalHttpUrl() string {
 	return g.ExternalHttpUrl
 }
 
-func (g *Geth2) GetExternalWsUrl() string {
+func (g *GethPos) GetExternalWsUrl() string {
 	return g.ExternalWsUrl
 }
 
-func (g *Geth2) GetContainerName() string {
+func (g *GethPos) GetContainerName() string {
 	return g.ContainerName
 }
 
-func (g *Geth2) GetContainer() *tc.Container {
+func (g *GethPos) GetContainer() *tc.Container {
 	return &g.Container
 }
 
-func (g *Geth2) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
+func (g *GethPos) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
 	initFile, err := os.CreateTemp("", "init.sh")
 	if err != nil {
 		return nil, err
@@ -214,12 +214,12 @@ func (g *Geth2) getContainerRequest(networks []string) (*tc.ContainerRequest, er
 	}, nil
 }
 
-func (g *Geth2) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error {
+func (g *GethPos) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error {
 	waitForFirstBlock := tcwait.NewLogStrategy("Chain head was updated").WithPollInterval(1 * time.Second).WithStartupTimeout(waitTime)
 	return waitForFirstBlock.WaitUntilReady(ctx, *g.GetContainer())
 }
 
-func (g *Geth2) buildInitScript() (string, error) {
+func (g *GethPos) buildInitScript() (string, error) {
 	initTemplate := `#!/bin/bash
 	mkdir -p {{.ExecutionDir}}
 
@@ -280,6 +280,6 @@ func (g *Geth2) buildInitScript() (string, error) {
 
 }
 
-func (g *Geth2) GetContainerType() ContainerType {
+func (g *GethPos) GetContainerType() ContainerType {
 	return ContainerType_Geth
 }

@@ -5,6 +5,9 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -237,4 +240,51 @@ type ExecutionClient interface {
 	GetExternalWsUrl() string
 	WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error
 	WithTestInstance(t *testing.T) ExecutionClient
+}
+
+// GetConsensusTypeFromImage returns the consensus type based on the Docker image version
+func GetConsensusTypeFromImage(executionLayer ExecutionLayer, imageWithVersion string) (ConsensusType, error) {
+	parts := strings.Split(imageWithVersion, ":")
+	if len(parts) != 2 {
+		return "", fmt.Errorf("invalid docker image format: %s", imageWithVersion)
+	}
+
+	re := regexp.MustCompile("[a-zA-Z]")
+	cleanedVersion := re.ReplaceAllString(parts[1], "")
+	// remove patch version if present
+	if idx := strings.LastIndex(cleanedVersion, "."); idx >= 1 {
+		cleanedVersion = string(cleanedVersion[1])
+	}
+	version, err := strconv.ParseFloat(cleanedVersion, 64)
+	if err != nil {
+		return "", fmt.Errorf("failed to pase docker version to a number: %s", imageWithVersion)
+	}
+	switch executionLayer {
+	case ExecutionLayer_Geth:
+		if version < 1.13 {
+			return ConsensusType_PoW, nil
+		} else {
+			return ConsensusType_PoS, nil
+		}
+	case ExecutionLayer_Besu:
+		if version < 23.1 {
+			return ConsensusType_PoW, nil
+		} else {
+			return ConsensusType_PoS, nil
+		}
+	case ExecutionLayer_Erigon:
+		if version < 2.41 {
+			return ConsensusType_PoW, nil
+		} else {
+			return ConsensusType_PoS, nil
+		}
+	case ExecutionLayer_Nethermind:
+		if version < 1.14 {
+			return ConsensusType_PoW, nil
+		} else {
+			return ConsensusType_PoS, nil
+		}
+	}
+
+	return "", fmt.Errorf("unsupported execution layer: %s", executionLayer)
 }

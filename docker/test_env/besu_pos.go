@@ -22,9 +22,9 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
-const defaultBesuImage = "hyperledger/besu:24.1"
+const defaultBesuPosImage = "hyperledger/besu:24.1"
 
-type Besu struct {
+type BesuPos struct {
 	EnvComponent
 	ExternalHttpUrl      string
 	InternalHttpUrl      string
@@ -39,11 +39,11 @@ type Besu struct {
 	t                    *testing.T
 }
 
-func NewBesu(networks []string, chainConfg *EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) (*Besu, error) {
-	parts := strings.Split(defaultBesuImage, ":")
-	g := &Besu{
+func NewBesuPos(networks []string, chainConfg *EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) (*BesuPos, error) {
+	parts := strings.Split(defaultBesuPosImage, ":")
+	g := &BesuPos{
 		EnvComponent: EnvComponent{
-			ContainerName:    fmt.Sprintf("%s-%s", "besu", uuid.NewString()[0:8]),
+			ContainerName:    fmt.Sprintf("%s-%s", "besu-pos", uuid.NewString()[0:8]),
 			Networks:         networks,
 			ContainerImage:   parts[0],
 			ContainerVersion: parts[1],
@@ -64,13 +64,13 @@ func NewBesu(networks []string, chainConfg *EthereumChainConfig, generatedDataHo
 	return g, nil
 }
 
-func (g *Besu) WithTestInstance(t *testing.T) ExecutionClient {
+func (g *BesuPos) WithTestInstance(t *testing.T) ExecutionClient {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
 	return g
 }
 
-func (g *Besu) StartContainer() (blockchain.EVMNetwork, error) {
+func (g *BesuPos) StartContainer() (blockchain.EVMNetwork, error) {
 	r, err := g.getContainerRequest(g.Networks)
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
@@ -116,7 +116,7 @@ func (g *Besu) StartContainer() (blockchain.EVMNetwork, error) {
 	g.ExternalExecutionURL = FormatHttpUrl(host, executionPort.Port())
 
 	networkConfig := blockchain.SimulatedEVMNetwork
-	networkConfig.Name = fmt.Sprintf("Simulated Eth2 (besu + %s)", g.consensusLayer)
+	networkConfig.Name = fmt.Sprintf("Simulated Ethereum-PoS (besu + %s)", g.consensusLayer)
 	networkConfig.URLs = []string{g.ExternalWsUrl}
 	networkConfig.HTTPURLs = []string{g.ExternalHttpUrl}
 
@@ -126,39 +126,39 @@ func (g *Besu) StartContainer() (blockchain.EVMNetwork, error) {
 	return networkConfig, nil
 }
 
-func (g *Besu) GetInternalExecutionURL() string {
+func (g *BesuPos) GetInternalExecutionURL() string {
 	return g.InternalExecutionURL
 }
 
-func (g *Besu) GetExternalExecutionURL() string {
+func (g *BesuPos) GetExternalExecutionURL() string {
 	return g.ExternalExecutionURL
 }
 
-func (g *Besu) GetInternalHttpUrl() string {
+func (g *BesuPos) GetInternalHttpUrl() string {
 	return g.InternalHttpUrl
 }
 
-func (g *Besu) GetInternalWsUrl() string {
+func (g *BesuPos) GetInternalWsUrl() string {
 	return g.InternalWsUrl
 }
 
-func (g *Besu) GetExternalHttpUrl() string {
+func (g *BesuPos) GetExternalHttpUrl() string {
 	return g.ExternalHttpUrl
 }
 
-func (g *Besu) GetExternalWsUrl() string {
+func (g *BesuPos) GetExternalWsUrl() string {
 	return g.ExternalWsUrl
 }
 
-func (g *Besu) GetContainerName() string {
+func (g *BesuPos) GetContainerName() string {
 	return g.ContainerName
 }
 
-func (g *Besu) GetContainer() *tc.Container {
+func (g *BesuPos) GetContainer() *tc.Container {
 	return &g.Container
 }
 
-func (g *Besu) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
+func (g *BesuPos) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
 	return &tc.ContainerRequest{
 		Name:     g.ContainerName,
 		Image:    g.GetImageWithVersion(),
@@ -214,11 +214,11 @@ func (g *Besu) getContainerRequest(networks []string) (*tc.ContainerRequest, err
 	}, nil
 }
 
-func (g *Besu) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error {
+func (g *BesuPos) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error {
 	waitForFirstBlock := tcwait.NewLogStrategy("Imported #1").WithPollInterval(1 * time.Second).WithStartupTimeout(waitTime)
 	return waitForFirstBlock.WaitUntilReady(ctx, *g.GetContainer())
 }
 
-func (g *Besu) GetContainerType() ContainerType {
+func (g *BesuPos) GetContainerType() ContainerType {
 	return ContainerType_Besu
 }
