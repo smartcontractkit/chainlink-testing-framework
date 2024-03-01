@@ -274,7 +274,7 @@ func (b *EthereumNetworkBuilder) decideConsensusTypeIfNeeded() error {
 			case ExecutionLayer_Nethermind:
 				dockerImage = defaultNethermindImage
 			case ExecutionLayer_Erigon:
-				dockerImage = defaultErigonImage
+				dockerImage = defaultErigonPosImage
 			case ExecutionLayer_Besu:
 				dockerImage = defaultBesuPosImage
 			default:
@@ -392,7 +392,7 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 	case ExecutionLayer_Nethermind:
 		client, clientErr = NewNethermind(dockerNetworks, generatedDataHostDir, ConsensusLayer_Prysm, append(en.getImageOverride(ContainerType_Nethermind), en.setExistingContainerName(ContainerType_Nethermind))...)
 	case ExecutionLayer_Erigon:
-		client, clientErr = NewErigon(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, append(en.getImageOverride(ContainerType_Erigon), en.setExistingContainerName(ContainerType_Erigon))...)
+		client, clientErr = NewErigonPos(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, append(en.getImageOverride(ContainerType_Erigon), en.setExistingContainerName(ContainerType_Erigon))...)
 	case ExecutionLayer_Besu:
 		client, clientErr = NewBesuPos(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, append(en.getImageOverride(ContainerType_Besu), en.setExistingContainerName(ContainerType_Besu))...)
 	default:
@@ -517,6 +517,8 @@ func (en *EthereumNetwork) startPow() (blockchain.EVMNetwork, RpcProvider, error
 		client = NewGethPow(dockerNetworks, en.EthereumChainConfig, append(en.getImageOverride(ContainerType_Geth), en.setExistingContainerName(ContainerType_Geth))...)
 	case ExecutionLayer_Besu:
 		client, clientErr = NewBesuPow(dockerNetworks, en.EthereumChainConfig, append(en.getImageOverride(ContainerType_Besu), en.setExistingContainerName(ContainerType_Besu))...)
+	case ExecutionLayer_Erigon:
+		client, clientErr = NewErigonPow(dockerNetworks, en.EthereumChainConfig, append(en.getImageOverride(ContainerType_Erigon), en.setExistingContainerName(ContainerType_Erigon))...)
 	}
 
 	if clientErr != nil {

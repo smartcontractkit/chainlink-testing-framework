@@ -130,7 +130,7 @@ func (g *GethPow) StartContainer() (blockchain.EVMNetwork, error) {
 	g.InternalWsUrl = FormatWsUrl(g.ContainerName, TX_GETH_WS_PORT)
 
 	networkConfig := blockchain.SimulatedEVMNetwork
-	networkConfig.Name = "geth-pow"
+	networkConfig.Name = "Simulated Ethereum-PoW (geth)"
 	networkConfig.URLs = []string{g.ExternalWsUrl}
 	networkConfig.HTTPURLs = []string{g.ExternalHttpUrl}
 
@@ -249,7 +249,8 @@ func (g *GethPow) getGethContainerRequest(networks []string) (*tc.ContainerReque
 		),
 		Entrypoint: []string{"sh", "./root/init.sh",
 			"--dev",
-			"--password", "/root/config/password.txt",
+			"--password",
+			"/root/config/password.txt",
 			"--datadir",
 			"/root/.ethereum/devchain",
 			"--unlock",

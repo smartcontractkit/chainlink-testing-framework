@@ -22,39 +22,34 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/templates"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
-const defaultErigonImage = "thorax/erigon:v2.56.2"
+const defaultErigonPowImage = "thorax/erigon:v2.40.0"
 
-type Erigon struct {
+type ErigonPow struct {
 	EnvComponent
-	ExternalHttpUrl      string
-	InternalHttpUrl      string
-	ExternalWsUrl        string
-	InternalWsUrl        string
-	InternalExecutionURL string
-	ExternalExecutionURL string
-	generatedDataHostDir string
-	chainConfg           *EthereumChainConfig
-	consensusLayer       ConsensusLayer
-	l                    zerolog.Logger
-	t                    *testing.T
+	ExternalHttpUrl string
+	InternalHttpUrl string
+	ExternalWsUrl   string
+	InternalWsUrl   string
+	chainConfg      *EthereumChainConfig
+	l               zerolog.Logger
+	t               *testing.T
 }
 
-func NewErigon(networks []string, chainConfg *EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) (*Erigon, error) {
-	parts := strings.Split(defaultErigonImage, ":")
-	g := &Erigon{
+func NewErigonPow(networks []string, chainConfg *EthereumChainConfig, opts ...EnvComponentOption) (*ErigonPow, error) {
+	parts := strings.Split(defaultErigonPowImage, ":")
+	g := &ErigonPow{
 		EnvComponent: EnvComponent{
-			ContainerName:    fmt.Sprintf("%s-%s", "erigon", uuid.NewString()[0:8]),
+			ContainerName:    fmt.Sprintf("%s-%s", "erigon-pow", uuid.NewString()[0:8]),
 			Networks:         networks,
 			ContainerImage:   parts[0],
 			ContainerVersion: parts[1],
 		},
-		chainConfg:           chainConfg,
-		generatedDataHostDir: generatedDataHostDir,
-		consensusLayer:       consensusLayer,
-		l:                    logging.GetTestLogger(nil),
+		chainConfg: chainConfg,
+		l:          logging.GetTestLogger(nil),
 	}
 	g.SetDefaultHooks()
 	for _, opt := range opts {
@@ -65,14 +60,14 @@ func NewErigon(networks []string, chainConfg *EthereumChainConfig, generatedData
 	return g, nil
 }
 
-func (g *Erigon) WithTestInstance(t *testing.T) ExecutionClient {
+func (g *ErigonPow) WithTestInstance(t *testing.T) ExecutionClient {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
 	return g
 }
 
-func (g *Erigon) StartContainer() (blockchain.EVMNetwork, error) {
-	r, err := g.getContainerRequest(g.Networks)
+func (g *ErigonPow) StartContainer() (blockchain.EVMNetwork, error) {
+	r, err := g.getContainerRequest()
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
@@ -99,21 +94,15 @@ func (g *Erigon) StartContainer() (blockchain.EVMNetwork, error) {
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
-	executionPort, err := ct.MappedPort(testcontext.Get(g.t), NatPort(ETH2_EXECUTION_PORT))
-	if err != nil {
-		return blockchain.EVMNetwork{}, err
-	}
 
 	g.Container = ct
 	g.ExternalHttpUrl = FormatHttpUrl(host, httpPort.Port())
 	g.InternalHttpUrl = FormatHttpUrl(g.ContainerName, TX_GETH_HTTP_PORT)
 	g.ExternalWsUrl = FormatWsUrl(host, httpPort.Port())
 	g.InternalWsUrl = FormatWsUrl(g.ContainerName, TX_GETH_HTTP_PORT)
-	g.InternalExecutionURL = FormatHttpUrl(g.ContainerName, ETH2_EXECUTION_PORT)
-	g.ExternalExecutionURL = FormatHttpUrl(host, executionPort.Port())
 
 	networkConfig := blockchain.SimulatedEVMNetwork
-	networkConfig.Name = fmt.Sprintf("Simulated Eth2 (erigon + %s)", g.consensusLayer)
+	networkConfig.Name = "Simulated Ethereum-PoW (erigon)"
 	networkConfig.URLs = []string{g.ExternalWsUrl}
 	networkConfig.HTTPURLs = []string{g.ExternalHttpUrl}
 
@@ -123,39 +112,39 @@ func (g *Erigon) StartContainer() (blockchain.EVMNetwork, error) {
 	return networkConfig, nil
 }
 
-func (g *Erigon) GetInternalExecutionURL() string {
-	return g.InternalExecutionURL
+func (g *ErigonPow) GetInternalExecutionURL() string {
+	panic("not supported")
 }
 
-func (g *Erigon) GetExternalExecutionURL() string {
-	return g.ExternalExecutionURL
+func (g *ErigonPow) GetExternalExecutionURL() string {
+	panic("not supported")
 }
 
-func (g *Erigon) GetInternalHttpUrl() string {
+func (g *ErigonPow) GetInternalHttpUrl() string {
 	return g.InternalHttpUrl
 }
 
-func (g *Erigon) GetInternalWsUrl() string {
+func (g *ErigonPow) GetInternalWsUrl() string {
 	return g.InternalWsUrl
 }
 
-func (g *Erigon) GetExternalHttpUrl() string {
+func (g *ErigonPow) GetExternalHttpUrl() string {
 	return g.ExternalHttpUrl
 }
 
-func (g *Erigon) GetExternalWsUrl() string {
+func (g *ErigonPow) GetExternalWsUrl() string {
 	return g.ExternalWsUrl
 }
 
-func (g *Erigon) GetContainerName() string {
+func (g *ErigonPow) GetContainerName() string {
 	return g.ContainerName
 }
 
-func (g *Erigon) GetContainer() *tc.Container {
+func (g *ErigonPow) GetContainer() *tc.Container {
 	return &g.Container
 }
 
-func (g *Erigon) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
+func (g *ErigonPow) getContainerRequest() (*tc.ContainerRequest, error) {
 	initFile, err := os.CreateTemp("", "init.sh")
 	if err != nil {
 		return nil, err
@@ -171,16 +160,51 @@ func (g *Erigon) getContainerRequest(networks []string) (*tc.ContainerRequest, e
 		return nil, err
 	}
 
+	keystoreDir, err := os.MkdirTemp("", "keystore")
+	if err != nil {
+		return nil, err
+	}
+	// Create keystore and ethereum account
+	// ks := keystore.NewKeyStore(keystoreDir, keystore.StandardScryptN, keystore.StandardScryptP)
+	// account, err := ks.NewAccount("")
+	// if err != nil {
+	// 	return nil, err
+	// }
+	genesisJsonStr, err := templates.GenesisJsonTemplate{
+		ChainId:     fmt.Sprintf("%d", g.chainConfg.ChainID),
+		AccountAddr: RootFundingAddr,
+	}.String()
+	if err != nil {
+		return nil, err
+	}
+	genesisFile, err := os.CreateTemp("", "genesis_json")
+	if err != nil {
+		return nil, err
+	}
+	_, err = genesisFile.WriteString(genesisJsonStr)
+	if err != nil {
+		return nil, err
+	}
+	key1File, err := os.CreateTemp(keystoreDir, "key1")
+	if err != nil {
+		return nil, err
+	}
+	_, err = key1File.WriteString(RootFundingWallet)
+	if err != nil {
+		return nil, err
+	}
+
 	return &tc.ContainerRequest{
 		Name:          g.ContainerName,
 		Image:         g.GetImageWithVersion(),
-		Networks:      networks,
+		Networks:      g.Networks,
 		ImagePlatform: "linux/x86_64",
-		ExposedPorts:  []string{NatPortFormat(TX_GETH_HTTP_PORT), NatPortFormat(ETH2_EXECUTION_PORT)},
+		ExposedPorts:  []string{NatPortFormat(TX_GETH_HTTP_PORT)},
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForLog("Started P2P networking").
-				WithStartupTimeout(120 * time.Second).
-				WithPollInterval(1 * time.Second),
+				WithStartupTimeout(120*time.Second).
+				WithPollInterval(1*time.Second),
+			NewWebSocketStrategy(NatPort(TX_GETH_HTTP_PORT), g.l),
 		),
 		User: "0:0",
 		Entrypoint: []string{
@@ -190,6 +214,16 @@ func (g *Erigon) getContainerRequest(networks []string) (*tc.ContainerRequest, e
 		Files: []tc.ContainerFile{
 			{
 				HostFilePath:      initFile.Name(),
+				ContainerFilePath: "/root/init.sh",
+				FileMode:          0644,
+			},
+			{
+				HostFilePath:      genesisFile.Name(),
+				ContainerFilePath: "/root/genesis.json",
+				FileMode:          0644,
+			},
+			{
+				HostFilePath:      initFile.Name(),
 				ContainerFilePath: "/home/erigon/init.sh",
 				FileMode:          0744,
 			},
@@ -197,10 +231,11 @@ func (g *Erigon) getContainerRequest(networks []string) (*tc.ContainerRequest, e
 		HostConfigModifier: func(hostConfig *container.HostConfig) {
 			hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
 				Type:     mount.TypeBind,
-				Source:   g.generatedDataHostDir,
-				Target:   GENERATED_DATA_DIR_INSIDE_CONTAINER,
+				Source:   keystoreDir,
+				Target:   "/root/.local/share/erigon/keystore/",
 				ReadOnly: false,
-			})
+			},
+			)
 		},
 		LifecycleHooks: []tc.ContainerLifecycleHooks{
 			{
@@ -211,18 +246,14 @@ func (g *Erigon) getContainerRequest(networks []string) (*tc.ContainerRequest, e
 	}, nil
 }
 
-func (g *Erigon) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error {
-	waitForFirstBlock := tcwait.NewLogStrategy("Built block").WithPollInterval(1 * time.Second).WithStartupTimeout(waitTime)
-	return waitForFirstBlock.WaitUntilReady(ctx, *g.GetContainer())
+func (g *ErigonPow) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error {
+	return nil
 }
 
-func (g *Erigon) buildInitScript() (string, error) {
+func (g *ErigonPow) buildInitScript() (string, error) {
 	initTemplate := `#!/bin/bash
-	echo "Copied genesis file to {{.ExecutionDir}}"
-	mkdir -p {{.ExecutionDir}}
-	cp {{.GeneratedDataDir}}/genesis.json {{.ExecutionDir}}/genesis.json
 	echo "Running erigon init"
-	erigon init --datadir={{.ExecutionDir}} {{.ExecutionDir}}/genesis.json
+	erigon init /root/genesis.json
 	exit_code=$?
 	if [ $exit_code -ne 0 ]; then
 		echo "Erigon init failed with exit code $exit_code"
@@ -230,23 +261,18 @@ func (g *Erigon) buildInitScript() (string, error) {
 	fi
 
 	echo "Starting Erigon..."
-	erigon --http --http.api=eth,erigon,engine,web3,net,debug,trace,txpool,admin --http.addr=0.0.0.0 --http.corsdomain=* \
-		--http.vhosts=* --http.port={{.HttpPort}} --ws --authrpc.vhosts=* --authrpc.addr=0.0.0.0 --authrpc.jwtsecret={{.JwtFileLocation}} \
-		--datadir={{.ExecutionDir}} --rpc.allow-unprotected-txs --rpc.txfeecap=0 --allow-insecure-unlock \
-		--nodiscover --networkid={{.ChainID}} --db.size.limit=8TB`
+	erigon --http --http.api=eth,erigon,engine,web3,net,debug,trace,txpool,admin --http.addr=0.0.0.0 --http.corsdomain=* --http.vhosts=* --http.port={{.HttpPort}} --ws \
+	--allow-insecure-unlock  --nodiscover --networkid={{.ChainID}} --fakepow --mine \
+	--miner.etherbase {{.RootFundingAddr}}`
 
 	data := struct {
-		HttpPort         string
-		ChainID          int
-		GeneratedDataDir string
-		JwtFileLocation  string
-		ExecutionDir     string
+		HttpPort        string
+		ChainID         int
+		RootFundingAddr string
 	}{
-		HttpPort:         TX_GETH_HTTP_PORT,
-		ChainID:          g.chainConfg.ChainID,
-		GeneratedDataDir: GENERATED_DATA_DIR_INSIDE_CONTAINER,
-		JwtFileLocation:  JWT_SECRET_FILE_LOCATION_INSIDE_CONTAINER,
-		ExecutionDir:     "/home/erigon/execution-data",
+		HttpPort:        TX_GETH_HTTP_PORT,
+		ChainID:         g.chainConfg.ChainID,
+		RootFundingAddr: RootFundingAddr,
 	}
 
 	t, err := template.New("init").Parse(initTemplate)
@@ -262,6 +288,6 @@ func (g *Erigon) buildInitScript() (string, error) {
 
 }
 
-func (g *Erigon) GetContainerType() ContainerType {
+func (g *ErigonPow) GetContainerType() ContainerType {
 	return ContainerType_Erigon
 }
