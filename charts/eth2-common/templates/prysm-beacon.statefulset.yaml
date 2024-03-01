@@ -29,9 +29,9 @@ spec:
       nodeSelector:
         eth2: "true"
       volumes:
-      - name: {{ .Release.Name }}-chain-state
-        persistentVolumeClaim:
-          claimName: {{ .Release.Name }}-{{ .Values.storage.claim }}
+      - name: {{ .Release.Name }}-genesis-config
+        configMap:
+          name: {{ .Release.Name }}-ethereum-genesis-generator-config
       - name: {{ .Release.Name }}-after-genesis-helper-config
         configMap:
           name: {{ .Release.Name }}-after-genesis-helper-config
@@ -41,7 +41,7 @@ spec:
           imagePullPolicy: {{ .Values.imagePullPolicy }}
           args:
             - "--accept-terms-of-use"
-            - "--datadir=/consensus-data-chain"
+            - "--datadir={{ .Values.shared.configDataDir }}/consensus-data-chain"
             - "--genesis-state={{ .Values.shared.configDataDir }}/genesis.ssz"
             - "--chain-config-file={{ .Values.shared.configDataDir }}/config.yaml"
             - "--contract-deployment-block=0"
@@ -65,14 +65,15 @@ spec:
             - name: status
               containerPort: {{ .Values.prysm.beacon.ports.status }}
           volumeMounts:
-            - name: {{ .Release.Name }}-chain-state
+            - name: {{ .Release.Name }}-{{ .Values.storage.claim }}-beacon-chain
               mountPath: /data
 
-{{- include "eth2-common.templates.execution-client.init-containers" . | nindent 6 }}
-{{- include "eth2-common.templates.consensus-client.init-containers" . | nindent 6 }}
+{{- $customData := dict "pvcName" (printf "%s-%s-beacon-chain" .Release.Name .Values.storage.claim) }}
+{{- $newContext := merge $customData . }}
+{{- include "eth2-common.templates.execution-client.init-containers" $newContext | nindent 6 }}
   volumeClaimTemplates:
   - metadata:
-      name: {{ .Release.Name }}-{{ .Values.storage.claim }}
+      name: {{ .Release.Name }}-{{ .Values.storage.claim }}-beacon-chain
     spec:
       accessModes: [ "ReadWriteOnce" ]
       resources:

@@ -11,3 +11,14 @@ if [ -z "$release_name" ]; then
 fi
 
 helm uninstall "$release_name"
+
+echo "Deleting all PVCs"
+
+pvcs=$(kubectl get pvc --no-headers -o custom-columns=":metadata.name")
+
+for pvc in $pvcs; do
+    echo "Deleting PVC: $pvc"
+    kubectl delete pvc $pvc
+done
+
+echo "All PVCs have been deleted."

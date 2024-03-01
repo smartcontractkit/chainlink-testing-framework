@@ -20,4 +20,5 @@ if [ -z "$deployment_name" ]; then
   deployment_name="--generate-name"
 fi
 
-helm install "$deployment_name" "$chart_package" -f ./$values_file
+now=$(date +%s)
+helm install "$deployment_name" "$chart_package" -f ./$values_file --set "genesis.values.currentUnixTimestamp"="$now" --set "eth2-common.genesis.values.currentUnixTimestamp"="$now" $2

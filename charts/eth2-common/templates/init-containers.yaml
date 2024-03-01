@@ -4,16 +4,13 @@ initContainers:
   - name: {{ .Release.Name }}-generate-val-keys
     image: "{{ .Values.valKeys.image.repository }}:{{ .Values.valKeys.image.tag }}"
     imagePullPolicy: "{{ .Values.imagePullPolicy }}"
-    args:
-      - "keystores"
-      - "--out-loc=/app/generated/val_keys"
-      - "--insecure"
-      - "--prysm-pass={{ .Values.shared.password }}"
-      - "--source-mnemonic={{ .Values.shared.mnemonic }}"
-      - "--source-min=0"
-      - "--source-max={{ .Values.genesis.values.validatorCount }}"
+    command: ["/bin/sh","/entrypoint.sh"]
+    # command: ["sleep","infinity"]
     volumeMounts:
-      - name: {{ .Release.Name }}-chain-state
+      - name: {{ .Release.Name }}-genesis-config
+        mountPath: entrypoint.sh
+        subPath: valkeys-entrypoint.sh
+      - name:  {{ .pvcName }}
         mountPath: /app/generated
   - name: {{ .Release.Name }}-ethereum-genesis-generator
     image: "{{ .Values.genesis.image.repository }}:{{ .Values.genesis.image.tag }}"
@@ -21,7 +18,7 @@ initContainers:
     command: ["/bin/sh","/entrypoint.sh"]
     workingDir: /
     volumeMounts:
-      - name: {{ .Release.Name }}-chain-state
+      - name:  {{ .pvcName }}
         mountPath: /data
       - name: {{ .Release.Name }}-genesis-config
         mountPath: values_template.env
@@ -34,13 +31,13 @@ initContainers:
         subPath: config.yaml
       - name: {{ .Release.Name }}-genesis-config
         mountPath: entrypoint.sh
-        subPath: entrypoint.sh
+        subPath: genesis-entrypoint.sh
   - name: {{ .Release.Name }}-after-gensis-helper
     image: "{{ .Values.busybox.image.repository }}:{{ .Values.busybox.image.tag }}"
     imagePullPolicy: "{{ .Values.imagePullPolicy }}"
     command: ["/bin/sh","/helper_script.sh"]
     volumeMounts:
-      - name: {{ .Release.Name }}-chain-state
+      - name:  {{ .pvcName }}
         mountPath: /data
       - name: {{ .Release.Name }}-after-genesis-helper-config
         mountPath: helper_script.sh

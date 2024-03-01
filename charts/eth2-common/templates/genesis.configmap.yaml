@@ -180,7 +180,26 @@ data:
     slot_duration_in_seconds: ${SLOT_DURATION_IN_SECONDS}
     deneb_fork_epoch: ${DENEB_FORK_EPOCH}
     slots_per_epoch: ${SLOTS_PER_EPOCH}
-  entrypoint.sh: |-
+  valkeys-entrypoint.sh: |-
+    if [ -f "/app/generated/chain_initialised.done" ]; then
+        echo "Chain already initalised."
+        exit 0
+    fi
+    ./eth2-val-tools keystores --out-loc=/app/generated/val_keys \
+    --insecure --prysm-pass="{{ .Values.shared.password }}" \
+    --source-mnemonic="{{ .Values.shared.mnemonic }}" \
+    --source-min=0 --source-max={{ .Values.genesis.values.validatorCount }}
+
+  genesis-entrypoint.sh: |-
+    if [ -f "/data/chain_initialised.done" ]; then
+        echo "Chain already initalised."
+        exit 0
+    fi
+
+    # change ownership so that besu user (1000:1000) can persist chain data
+    mkdir /data/execution_data
+    chown -R 1000:1000 /data/execution_data
+
     genesis_delay="{{ .Values.genesis.values.delaySeconds}}"
     validator_count="{{ .Values.genesis.values.validatorCount }}"
     current_unix_timestamp="{{ .Values.genesis.values.currentUnixTimestamp }}"
@@ -204,3 +223,4 @@ data:
     time_diff=$(($genesis_timestamp - current_timestamp))
     echo "More or less $time_diff seconds from now"
     ./work/entrypoint.sh all
+    touch /data/chain_initialised.done

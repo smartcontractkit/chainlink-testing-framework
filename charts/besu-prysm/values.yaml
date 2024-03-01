@@ -2,6 +2,9 @@ imagePullPolicy: Always
 eth2-common:
   general:
     networkId: 1337
+  genesis:
+    values:
+      currentUnixTimestamp: 1600000000
 general:
   networkId: 1337
 shared:

@@ -41,7 +41,7 @@ spec:
             - name: JAVA_OPTS
               value: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n"
           args:
-            - "--data-path=/opt/besu/execution-data"
+            - "--data-path=/data/execution_data"
             - "--genesis-file={{ .Values.shared.configDataDir }}/besu.json"
             - "--network-id={{ .Values.general.networkId }}"
             - "--host-allowlist=*"
@@ -76,7 +76,7 @@ spec:
             - name: discovery-tcp
               containerPort: {{ .Values.excutionClient.ports.discovery }}
           volumeMounts:
-          - name: {{ .Release.Name }}-{{ .Values.storage.claim }}
+          - name: {{ .Release.Name }}-{{ .Values.storage.claim }}-besu
             mountPath: /data
           readinessProbe:
             httpGet:
@@ -95,10 +95,12 @@ spec:
             failureThreshold: 2
             timeoutSeconds: 120
 
-{{- include "eth2-common.templates.execution-client.init-containers" . | nindent 6 }}
+{{- $customData := dict "pvcName" (printf "%s-%s-besu" .Release.Name .Values.storage.claim) }}
+{{- $newContext := merge $customData . }}
+{{- include "eth2-common.templates.execution-client.init-containers" $newContext | nindent 6 }}
   volumeClaimTemplates:
   - metadata:
-      name: {{ .Release.Name }}-{{ .Values.storage.claim }}
+      name: {{ .Release.Name }}-{{ .Values.storage.claim }}-besu
     spec:
       accessModes: [ "ReadWriteOnce" ]
       resources:

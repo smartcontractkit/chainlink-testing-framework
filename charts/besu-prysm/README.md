@@ -2,16 +2,21 @@
 **There needs to be least one node labeled with `eth2=true` for deployment to work! (see below how to do it)**
 
 # Deployment initalisation flow
-1. Generate validator keys
-2. Generate eth1 and eth2 genesis
-3. Start Besu
-4. Generate common passwords, etc and save on shared volume
-5. Wait for Besu to start
-6. Start Prysm beacon chain
-7. Start Prysm validator
-8. Wait for first block to be produced (that's when `chain-ready` pod becomes ready)
+Each `StatefulSet` has the same `initContainers` that are responsible for:
+1. Generating validator keys
+2. Generating eth1 and eth2 genesis
+3. Generating common passwords, etc
 
-# Default ports 
+It's crucial that the chart is installed either via `install.sh` script or if installing it manually with identical values of `currentUnixTimestamp` for current package and `eth2-common` package, which can be achieved by running Helm install with:
+```
+now=$(date +%s)
+...
+--set "genesis.values.currentUnixTimestamp"="$now" --set "eth2-common.genesis.values.currentUnixTimestamp"="$now"
+```
+
+That's because we now generate genesis independently for each of the components, but they all need to have the same genesis time. Thanks to that we don't need to use a persistent volume with RWX access mode, which is not supported by most storage classes.
+
+# Default ports
 Note: These are ports that k8s services are exposed on, not localhost ports as local port forwarding has to be setup manually, but in order to access the RPC you should consider forwarding HTTP and WS RPCs ports.
 
 ## Besu
@@ -30,6 +35,18 @@ None
 # Configuration options
 Description of only some selected, important options:
 ``` yaml
+eth2-common:
+  general:
+    # network id that will be used for beacon chain and validator
+    networkId: 1337
+  genesis:
+    values:
+      # current timestamp in seconds that will be used to generate genesis time
+      currentUnixTimestamp: 1600000000
+general:
+  # network id that will be used for execution client
+  networkId: 1337
+
 shared:
   genesis:
     values:
@@ -38,26 +55,26 @@ shared:
       # how many slots should each epoch have (lower => shorter epoch => faster finality)
       slotsPerEpoch: 4
       # how many seconds in the future should the genesis time be set (this has to be after beacon chain starts )
-      delaySeconds: 20        
-      # how many validators should the network have      
-      validatorCount: 8       
+      delaySeconds: 20
+      # how many validators should the network have
+      validatorCount: 8
       # array of adddresses that should be prefunded with ETH
       preminedAddresses:
-        - "f39fd6e51aad88f6f4ce6ab8827279cfffb92266"      
-prysm: 
-  shared: 
+        - "f39fd6e51aad88f6f4ce6ab8827279cfffb92266"
+prysm:
+  shared:
     # fee recipient for block validation
     feeRecipent: "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
     # how many validators should the network have
     validators: 8
     # how many seconds should initContainers or beacon chain and validator wait for Geth to start
-    gethInitTimeoutSeconds: 600 
+    gethInitTimeoutSeconds: 600
 storage:
-  # storage class to use for persistent volume that will be used to share data betwen containers
-  class: hostpath
   # size of persistent volume
   size: 2Gi
 ```
+
+**Important**: remember to set `networkId` both for `eth2-common` and `general` sections, as otherwise you will end up in an inconsistent state. You need to override `networkId` for the `eth2-common` dependency.
 
 # Requirements
 1. `kubectl` installed
@@ -67,14 +84,16 @@ storage:
 # Usage
 1. Connect with kubectl to the cluster you want to deploy to
 2. Set the context/namespace you want to use (if the namespace doesn't exist you might need to create it manually)
-3. Make sure that there's 1 node with with label `eth2=true` (this is used to schedule beacon chain and validator pods affinity to make sure they are deployed on the same node and have access to the same persistent volume). You can check it by running `kubectl get nodes --selector=eth2=true`. If there's no such node (which will especially be true on your local cluster, when running for the first time), run `kubectl get nodes --show-labels` to see all nodes and then pick one and run `kubectl label nodes <node-name> eth2=true` to add the label to it (for Docker Desktop use: `kubectl label nodes docker-desktop eth2=true`). It's best if you *don't do that* on remote clusters without previous consultation with the cluster owners. 
+3. Make sure that there's 1 node with with label `eth2=true` (this is used to schedule beacon chain and validator pods affinity to make sure they are deployed on the same node and have access to the same persistent volume). You can check it by running `kubectl get nodes --selector=eth2=true`. If there's no such node (which will especially be true on your local cluster, when running for the first time), run `kubectl get nodes --show-labels` to see all nodes and then pick one and run `kubectl label nodes <node-name> eth2=true` to add the label to it (for Docker Desktop use: `kubectl label nodes docker-desktop eth2=true`). It's best if you *don't do that* on remote clusters without previous consultation with the cluster owners.
 Once you have one labeled node you can proceed with chart installation.
 3. Run `./install.sh`
-This command by default uses `values.yaml` file, which is meant for local cluster use (because of the storage class it uses). If you want to deploy to SDLC cluster you should execute `./install.sh sdlc` and it will take values from `values-sdlc.yaml`, which uses `longhorn` storage class that is available in SDLC cluster and supports `ReadWriteMany` access mode (which is crucial, because multiple pods are using the same persistent volume).
+This command uses `values.yaml` file while generating one value on the flight: `currentUnixTimestamp`.
 
 That script will run lints, prepare a package and then install it.
 
 Then you should wait for `chain-ready` container to become ready, as that will mean that chain started to produce blocks. You can check it's logs to see current latest unfinalized block.
+
+It's recommended to remove the installation with `./uninstall.sh` script, as it will remove all persistent volume claims from the namespace (something that `helm uninstall` doesn't do).
 
 # Limitations
 * No support for restarting of geth app (it will try to initialize the chain from scratch every time and that will fail, becuase it will try to generate genesis.json based on previous chain state)
