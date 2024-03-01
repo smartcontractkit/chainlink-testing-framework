@@ -1,6 +1,6 @@
 dependencies:
 - name: eth2-common
-  repository: file://../eth2-common
+  repository: https://raw.githubusercontent.com/smartcontractkit/qa-charts/gh-pages/
   version: 0.5.0
-digest: sha256:3940fa14f4260ef60ee183e1ecc40949ab658a12c79be48689cb50f3ef254cf9
-generated: "2024-03-01T11:09:00.968816-03:00"
+digest: sha256:0abfcaf54d2e80132e61214c1aa08dc78a9a68aaa4c7f6950c6ba47ae823f094
+generated: "2024-03-01T17:04:26.234465-07:00"
