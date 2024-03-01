@@ -21,9 +21,9 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 )
 
-const defaultNethermindImage = "nethermind/nethermind:1.25.1"
+const defaultNethermindPosImage = "nethermind/nethermind:1.25.1"
 
-type Nethermind struct {
+type NethermindPos struct {
 	EnvComponent
 	ExternalHttpUrl      string
 	InternalHttpUrl      string
@@ -37,11 +37,11 @@ type Nethermind struct {
 	t                    *testing.T
 }
 
-func NewNethermind(networks []string, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) (*Nethermind, error) {
-	parts := strings.Split(defaultNethermindImage, ":")
-	g := &Nethermind{
+func NewNethermindPos(networks []string, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) (*NethermindPos, error) {
+	parts := strings.Split(defaultNethermindPosImage, ":")
+	g := &NethermindPos{
 		EnvComponent: EnvComponent{
-			ContainerName:    fmt.Sprintf("%s-%s", "nethermind", uuid.NewString()[0:8]),
+			ContainerName:    fmt.Sprintf("%s-%s", "nethermind-pos", uuid.NewString()[0:8]),
 			Networks:         networks,
 			ContainerImage:   parts[0],
 			ContainerVersion: parts[1],
@@ -58,13 +58,13 @@ func NewNethermind(networks []string, generatedDataHostDir string, consensusLaye
 	return g, nil
 }
 
-func (g *Nethermind) WithTestInstance(t *testing.T) ExecutionClient {
+func (g *NethermindPos) WithTestInstance(t *testing.T) ExecutionClient {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
 	return g
 }
 
-func (g *Nethermind) StartContainer() (blockchain.EVMNetwork, error) {
+func (g *NethermindPos) StartContainer() (blockchain.EVMNetwork, error) {
 	r, err := g.getContainerRequest(g.Networks)
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
@@ -110,7 +110,7 @@ func (g *Nethermind) StartContainer() (blockchain.EVMNetwork, error) {
 	g.ExternalExecutionURL = FormatHttpUrl(host, executionPort.Port())
 
 	networkConfig := blockchain.SimulatedEVMNetwork
-	networkConfig.Name = fmt.Sprintf("Simulated Eth2 (nethermind + %s)", g.consensusLayer)
+	networkConfig.Name = fmt.Sprintf("Simulated Ethereum-PoS (nethermind + %s)", g.consensusLayer)
 	networkConfig.URLs = []string{g.ExternalWsUrl}
 	networkConfig.HTTPURLs = []string{g.ExternalHttpUrl}
 
@@ -120,39 +120,39 @@ func (g *Nethermind) StartContainer() (blockchain.EVMNetwork, error) {
 	return networkConfig, nil
 }
 
-func (g *Nethermind) GetInternalExecutionURL() string {
+func (g *NethermindPos) GetInternalExecutionURL() string {
 	return g.InternalExecutionURL
 }
 
-func (g *Nethermind) GetExternalExecutionURL() string {
+func (g *NethermindPos) GetExternalExecutionURL() string {
 	return g.ExternalExecutionURL
 }
 
-func (g *Nethermind) GetInternalHttpUrl() string {
+func (g *NethermindPos) GetInternalHttpUrl() string {
 	return g.InternalHttpUrl
 }
 
-func (g *Nethermind) GetInternalWsUrl() string {
+func (g *NethermindPos) GetInternalWsUrl() string {
 	return g.InternalWsUrl
 }
 
-func (g *Nethermind) GetExternalHttpUrl() string {
+func (g *NethermindPos) GetExternalHttpUrl() string {
 	return g.ExternalHttpUrl
 }
 
-func (g *Nethermind) GetExternalWsUrl() string {
+func (g *NethermindPos) GetExternalWsUrl() string {
 	return g.ExternalWsUrl
 }
 
-func (g *Nethermind) GetContainerName() string {
+func (g *NethermindPos) GetContainerName() string {
 	return g.ContainerName
 }
 
-func (g *Nethermind) GetContainer() *tc.Container {
+func (g *NethermindPos) GetContainer() *tc.Container {
 	return &g.Container
 }
 
-func (g *Nethermind) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
+func (g *NethermindPos) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
 	return &tc.ContainerRequest{
 		Name:            g.ContainerName,
 		Image:           g.GetImageWithVersion(),
@@ -204,11 +204,11 @@ func (g *Nethermind) getContainerRequest(networks []string) (*tc.ContainerReques
 	}, nil
 }
 
-func (g *Nethermind) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error {
+func (g *NethermindPos) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error {
 	waitForFirstBlock := tcwait.NewLogStrategy("Improved post-merge block").WithPollInterval(1 * time.Second).WithStartupTimeout(waitTime)
 	return waitForFirstBlock.WaitUntilReady(ctx, *g.GetContainer())
 }
 
-func (g *Nethermind) GetContainerType() ContainerType {
+func (g *NethermindPos) GetContainerType() ContainerType {
 	return ContainerType_Nethermind
 }

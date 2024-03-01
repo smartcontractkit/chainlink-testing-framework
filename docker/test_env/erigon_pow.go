@@ -164,13 +164,8 @@ func (g *ErigonPow) getContainerRequest() (*tc.ContainerRequest, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Create keystore and ethereum account
-	// ks := keystore.NewKeyStore(keystoreDir, keystore.StandardScryptN, keystore.StandardScryptP)
-	// account, err := ks.NewAccount("")
-	// if err != nil {
-	// 	return nil, err
-	// }
-	genesisJsonStr, err := templates.GenesisJsonTemplate{
+
+	genesisJsonStr, err := templates.GethPoWGenesisJsonTemplate{
 		ChainId:     fmt.Sprintf("%d", g.chainConfg.ChainID),
 		AccountAddr: RootFundingAddr,
 	}.String()

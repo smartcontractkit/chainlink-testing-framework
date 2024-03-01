@@ -201,7 +201,7 @@ func (g *GethPow) getGethContainerRequest(networks []string) (*tc.ContainerReque
 	if err != nil {
 		return nil, ks, &account, err
 	}
-	genesisJsonStr, err := templates.GenesisJsonTemplate{
+	genesisJsonStr, err := templates.GethPoWGenesisJsonTemplate{
 		ChainId:     fmt.Sprintf("%d", g.chainConfig.ChainID),
 		AccountAddr: account.Address.Hex(),
 	}.String()

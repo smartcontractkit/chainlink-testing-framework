@@ -38,9 +38,9 @@ var (
 type ConsensusType string
 
 const (
-	ConsensusType_PoS              ConsensusType = "pos"
-	ConsensusType_PoW              ConsensusType = "pow"
-	ConsensusType_VersionDependent ConsensusType = "version_dependent"
+	ConsensusType_PoS  ConsensusType = "pos"
+	ConsensusType_PoW  ConsensusType = "pow"
+	ConsensusType_Auto ConsensusType = "auto"
 )
 
 type ExecutionLayer string
@@ -54,9 +54,7 @@ const (
 
 type ConsensusLayer string
 
-const (
-	ConsensusLayer_Prysm ConsensusLayer = "prysm"
-)
+var ConsensusLayer_Prysm ConsensusLayer = "prysm"
 
 type EthereumNetworkBuilder struct {
 	t                   *testing.T
@@ -178,7 +176,7 @@ func (b *EthereumNetworkBuilder) Build() (EthereumNetwork, error) {
 		b.ethereumChainConfig.GenerateGenesisTimestamp()
 	}
 
-	err := b.decideConsensusTypeIfNeeded()
+	err := b.decideConsensusIfNeeded()
 	if err != nil {
 		return EthereumNetwork{}, err
 	}
@@ -230,10 +228,6 @@ func (b *EthereumNetworkBuilder) validate() error {
 		return ErrMissingConsensusLayer
 	}
 
-	if b.consensusType == ConsensusType_PoW && b.consensusLayer != nil {
-		return ErrConsensusLayerNotAllowed
-	}
-
 	for _, addr := range b.addressesToFund {
 		if !common.IsHexAddress(addr) {
 			return fmt.Errorf("address %s is not a valid hex address", addr)
@@ -247,12 +241,12 @@ func (b *EthereumNetworkBuilder) validate() error {
 	return b.ethereumChainConfig.Validate(logging.GetTestLogger(nil), b.consensusType)
 }
 
-func (b *EthereumNetworkBuilder) decideConsensusTypeIfNeeded() error {
+func (b *EthereumNetworkBuilder) decideConsensusIfNeeded() error {
 	if b.consensusType == "" {
-		b.consensusType = ConsensusType_VersionDependent
+		b.consensusType = ConsensusType_Auto
 	}
 
-	if b.executionLayer != "" && b.consensusType == ConsensusType_VersionDependent {
+	if b.executionLayer != "" && b.consensusType == ConsensusType_Auto {
 		executionContainers := []ContainerType{ContainerType_Geth, ContainerType_Nethermind, ContainerType_Erigon, ContainerType_Besu}
 		var dockerImage string
 
@@ -272,7 +266,7 @@ func (b *EthereumNetworkBuilder) decideConsensusTypeIfNeeded() error {
 			case ExecutionLayer_Geth:
 				dockerImage = defaultGethPosImage
 			case ExecutionLayer_Nethermind:
-				dockerImage = defaultNethermindImage
+				dockerImage = defaultNethermindPosImage
 			case ExecutionLayer_Erigon:
 				dockerImage = defaultErigonPosImage
 			case ExecutionLayer_Besu:
@@ -288,6 +282,10 @@ func (b *EthereumNetworkBuilder) decideConsensusTypeIfNeeded() error {
 		}
 
 		b.consensusType = consensusType
+	}
+
+	if b.consensusType == ConsensusType_PoS && b.consensusLayer == nil {
+		b.consensusLayer = &ConsensusLayer_Prysm
 	}
 
 	return nil
@@ -390,7 +388,7 @@ func (en *EthereumNetwork) startPos() (blockchain.EVMNetwork, RpcProvider, error
 	case ExecutionLayer_Geth:
 		client, clientErr = NewGethPos(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, append(en.getImageOverride(ContainerType_Geth), en.setExistingContainerName(ContainerType_Geth))...)
 	case ExecutionLayer_Nethermind:
-		client, clientErr = NewNethermind(dockerNetworks, generatedDataHostDir, ConsensusLayer_Prysm, append(en.getImageOverride(ContainerType_Nethermind), en.setExistingContainerName(ContainerType_Nethermind))...)
+		client, clientErr = NewNethermindPos(dockerNetworks, generatedDataHostDir, ConsensusLayer_Prysm, append(en.getImageOverride(ContainerType_Nethermind), en.setExistingContainerName(ContainerType_Nethermind))...)
 	case ExecutionLayer_Erigon:
 		client, clientErr = NewErigonPos(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, append(en.getImageOverride(ContainerType_Erigon), en.setExistingContainerName(ContainerType_Erigon))...)
 	case ExecutionLayer_Besu:
@@ -519,6 +517,10 @@ func (en *EthereumNetwork) startPow() (blockchain.EVMNetwork, RpcProvider, error
 		client, clientErr = NewBesuPow(dockerNetworks, en.EthereumChainConfig, append(en.getImageOverride(ContainerType_Besu), en.setExistingContainerName(ContainerType_Besu))...)
 	case ExecutionLayer_Erigon:
 		client, clientErr = NewErigonPow(dockerNetworks, en.EthereumChainConfig, append(en.getImageOverride(ContainerType_Erigon), en.setExistingContainerName(ContainerType_Erigon))...)
+	case ExecutionLayer_Nethermind:
+		client, clientErr = NewNethermindPow(dockerNetworks, en.EthereumChainConfig, append(en.getImageOverride(ContainerType_Nethermind), en.setExistingContainerName(ContainerType_Nethermind))...)
+	default:
+		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf("unsupported execution layer: %s", *en.ExecutionLayer)
 	}
 
 	if clientErr != nil {

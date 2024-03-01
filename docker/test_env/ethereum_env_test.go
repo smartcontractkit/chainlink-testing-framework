@@ -307,3 +307,66 @@ func TestEth2InvalidHardForks(t *testing.T) {
 	require.Error(t, err, "Builder validation failed")
 	require.Contains(t, err.Error(), UnsopportedForkErr)
 }
+
+func TestVersionDependentConsensusPoWMinor(t *testing.T) {
+	builder := NewEthereumNetworkBuilder()
+	cfg, err := builder.
+		WithExecutionLayer(ExecutionLayer_Nethermind).
+		WithCustomDockerImages(map[ContainerType]string{
+			ContainerType_Geth: "nethermind/nethermind:1.13.2"}).
+		Build()
+	require.NoError(t, err, "Builder validation failed")
+	require.Equal(t, ConsensusType_PoW, *cfg.ConsensusType, "Consensus type should be PoW")
+	require.Nil(t, cfg.ConsensusLayer, "Consensus layer should be nil")
+}
+
+func TestVersionDependentConsensusPoSMinor(t *testing.T) {
+	builder := NewEthereumNetworkBuilder()
+	cfg, err := builder.
+		WithExecutionLayer(ExecutionLayer_Nethermind).
+		WithCustomDockerImages(map[ContainerType]string{
+			ContainerType_Geth: "nethermind/nethermind:1.14.0"}).
+		Build()
+	require.NoError(t, err, "Builder validation failed")
+	require.Equal(t, ConsensusType_PoS, *cfg.ConsensusType, "Consensus type should be PoS")
+	require.Equal(t, ConsensusLayer_Prysm, *cfg.ConsensusLayer, "Consensus layer should be Prysm")
+}
+
+func TestVersionDependentConsensusRc(t *testing.T) {
+	builder := NewEthereumNetworkBuilder()
+	cfg, err := builder.
+		WithConsensusType(ConsensusType_Auto).
+		WithExecutionLayer(ExecutionLayer_Nethermind).
+		WithCustomDockerImages(map[ContainerType]string{
+			ContainerType_Geth: "nethermind/nethermind:1.17.0-RC2"}).
+		Build()
+	require.NoError(t, err, "Builder validation failed")
+	require.Equal(t, ConsensusType_PoS, *cfg.ConsensusType, "Consensus type should be PoS")
+	require.Equal(t, ConsensusLayer_Prysm, *cfg.ConsensusLayer, "Consensus layer should be Prysm")
+}
+
+func TestVersionDependentConsensusWithV(t *testing.T) {
+	builder := NewEthereumNetworkBuilder()
+	cfg, err := builder.
+		WithConsensusType(ConsensusType_Auto).
+		WithConsensusLayer(ConsensusLayer_Prysm).
+		WithExecutionLayer(ExecutionLayer_Geth).
+		WithCustomDockerImages(map[ContainerType]string{
+			ContainerType_Geth: "ethereum/client-go:v1.13.10"}).
+		Build()
+	require.NoError(t, err, "Builder validation failed")
+	require.Equal(t, ConsensusType_PoS, *cfg.ConsensusType, "Consensus type should be PoS")
+	require.Equal(t, ConsensusLayer_Prysm, *cfg.ConsensusLayer, "Consensus layer should be Prysm")
+}
+
+func TestVersionDependentConsensusOnlyMajor(t *testing.T) {
+	builder := NewEthereumNetworkBuilder()
+	cfg, err := builder.
+		WithExecutionLayer(ExecutionLayer_Geth).
+		WithCustomDockerImages(map[ContainerType]string{
+			ContainerType_Geth: "ethereum/client-go:v1.13"}).
+		Build()
+	require.NoError(t, err, "Builder validation failed")
+	require.Equal(t, ConsensusType_PoS, *cfg.ConsensusType, "Consensus type should be PoS")
+	require.Equal(t, ConsensusLayer_Prysm, *cfg.ConsensusLayer, "Consensus layer should be Prysm")
+}

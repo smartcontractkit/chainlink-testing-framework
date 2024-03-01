@@ -114,13 +114,13 @@ func BuildGenesisJsonForNonDevChain(chainId string, accountAddr []string, extraD
 	return buf.String(), err
 }
 
-type GenesisJsonTemplate struct {
+type GethPoWGenesisJsonTemplate struct {
 	AccountAddr string
 	ChainId     string
 }
 
 // String representation of the job
-func (c GenesisJsonTemplate) String() (string, error) {
+func (c GethPoWGenesisJsonTemplate) String() (string, error) {
 	tpl := `
 {
 	"config": {

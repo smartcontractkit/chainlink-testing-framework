@@ -251,13 +251,16 @@ func GetConsensusTypeFromImage(executionLayer ExecutionLayer, imageWithVersion s
 
 	re := regexp.MustCompile("[a-zA-Z]")
 	cleanedVersion := re.ReplaceAllString(parts[1], "")
+	if idx := strings.Index(cleanedVersion, "-"); idx != -1 {
+		cleanedVersion = string(cleanedVersion[:idx])
+	}
 	// remove patch version if present
-	if idx := strings.LastIndex(cleanedVersion, "."); idx >= 1 {
-		cleanedVersion = string(cleanedVersion[1])
+	if count := strings.Count(cleanedVersion, "."); count > 1 {
+		cleanedVersion = string(cleanedVersion[:strings.LastIndex(cleanedVersion, ".")])
 	}
 	version, err := strconv.ParseFloat(cleanedVersion, 64)
 	if err != nil {
-		return "", fmt.Errorf("failed to pase docker version to a number: %s", imageWithVersion)
+		return "", fmt.Errorf("failed to pase docker version to a number: %s", cleanedVersion)
 	}
 	switch executionLayer {
 	case ExecutionLayer_Geth:
