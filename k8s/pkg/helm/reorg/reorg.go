@@ -75,13 +75,16 @@ func (m Chart) ExportData(e *environment.Environment) error {
 			if err != nil {
 				return err
 			}
-			txNodeInternalWs, err := e.Fwd.FindPort(podName, "geth", "ws-rpc").As(client.RemoteConnection, client.WS)
-			if err != nil {
-				return err
-			}
+
 			if e.Cfg.InsideK8s {
-				urls = append(urls, txNodeInternalWs)
-				log.Info().Str("URL", txNodeInternalWs).Msgf("Geth network (TX Node) - %d", i)
+				services, err := e.Client.ListServices(e.Cfg.Namespace, fmt.Sprintf("app=%s-ethereum-geth", m.Props.NetworkName))
+				if err != nil {
+					return err
+				}
+				serviceURL := fmt.Sprintf("ws://%s:8546", services.Items[0].Name)
+				e.URLs[m.Props.NetworkName+"_http"] = append(e.URLs[m.Props.NetworkName+"_http"], fmt.Sprintf("http://%s:8544", services.Items[0].Name))
+				urls = append(urls, serviceURL)
+				log.Info().Str("URL", serviceURL).Msgf("Geth network (TX Node) - %d", i)
 			} else {
 				urls = append(urls, txNodeLocalWS)
 				log.Info().Str("URL", txNodeLocalWS).Msgf("Geth network (TX Node) - %d", i)
