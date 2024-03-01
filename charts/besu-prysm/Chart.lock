@@ -1,6 +1,6 @@
 dependencies:
 - name: eth2-common
   repository: file://../eth2-common
-  version: 0.1.0
-digest: sha256:5a1d10863232e8796ed8f0c040d00a513aa68e54752db76d0236757bfa13c7a2
-generated: "2023-12-19T20:21:18.270139-03:00"
+  version: 0.5.0
+digest: sha256:3940fa14f4260ef60ee183e1ecc40949ab658a12c79be48689cb50f3ef254cf9
+generated: "2024-03-01T11:09:00.968816-03:00"
