@@ -1,6 +1,6 @@
 apiVersion: v2
-description: Eth2 private network with Geth and Prysm
-name: geth-prysm
+description: Eth2 private network with Besu and Prysm
+name: besu-prysm
 version: 0.2.0
 dependencies:
   - name: eth2-common
