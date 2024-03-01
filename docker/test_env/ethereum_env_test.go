@@ -148,10 +148,10 @@ func TestEth2ExecClientFromToml(t *testing.T) {
 		WithExistingConfig(tomlCfg).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
-	require.Equal(t, ExecutionLayer_Besu, cfg.ExecutionLayer, "Execution layer should be Besu")
+	require.Equal(t, ExecutionLayer_Besu, *cfg.ExecutionLayer, "Execution layer should be Besu")
 	require.NotNil(t, cfg.ConsensusLayer, "Consensus layer should not be nil")
 	require.Equal(t, ConsensusLayer_Prysm, *cfg.ConsensusLayer, "Consensus layer should be Prysm")
-	require.Equal(t, ConsensusType_PoS, cfg.ConsensusType, "Consensus type should be PoS")
+	require.Equal(t, ConsensusType_PoS, *cfg.ConsensusType, "Consensus type should be PoS")
 	require.NotNil(t, cfg.WaitForFinalization, "Wait for finalization should not be nil")
 	require.False(t, *cfg.WaitForFinalization, "Wait for finalization should be false")
 	require.Equal(t, 2, len(cfg.EthereumChainConfig.AddressesToFund), "Should have 2 addresses to fund")
@@ -179,7 +179,7 @@ func TestCustomDockerImagesFromToml(t *testing.T) {
 	addresses_to_fund=["0x742d35Cc6634C0532925a3b844Bc454e4438f44e", "0x742d35Cc6634C0532925a3b844Bc454e4438f44f"]
 
 	[EthereumNetwork.CustomDockerImages]
-	geth="i-dont-exist:tag-me"	
+	geth="i-dont-exist:tag-me"
 	`
 
 	tomlCfg, err := readEthereumNetworkConfig(toml)
@@ -241,4 +241,69 @@ func TestEth2CustomImages(t *testing.T) {
 
 	_, _, err = cfg.Start()
 	require.Error(t, err, "Could start PoS network using incorrect image")
+}
+
+func TestEth2DenebHardFork(t *testing.T) {
+	l := logging.GetTestLogger(t)
+
+	builder := NewEthereumNetworkBuilder()
+	cfg, err := builder.
+		WithConsensusType(ConsensusType_PoS).
+		WithConsensusLayer(ConsensusLayer_Prysm).
+		WithExecutionLayer(ExecutionLayer_Geth).
+		WithEthereumChainConfig(EthereumChainConfig{
+			HardForkEpochs: map[string]int{"Deneb": 1},
+		}).
+		Build()
+	require.NoError(t, err, "Builder validation failed")
+
+	net, _, err := cfg.Start()
+	require.NoError(t, err, "Couldn't start PoS network")
+
+	c, err := blockchain.ConnectEVMClient(net, l)
+	require.NoError(t, err, "Couldn't connect to the evm client")
+	balance, err := c.BalanceAt(context.Background(), common.HexToAddress("0x14dc79964da2c08b23698b3d3cc7ca32193d9955"))
+	require.NoError(t, err, "Couldn't get balance")
+	require.Equal(t, "0", fmt.Sprintf("%d", balance.Uint64()), "Balance is not correct")
+
+	err = c.Close()
+	require.NoError(t, err, "Couldn't close the client")
+}
+
+func TestEth2InvalidHardForks(t *testing.T) {
+	builder := NewEthereumNetworkBuilder()
+	_, err := builder.
+		WithConsensusType(ConsensusType_PoS).
+		WithConsensusLayer(ConsensusLayer_Prysm).
+		WithExecutionLayer(ExecutionLayer_Geth).
+		WithEthereumChainConfig(EthereumChainConfig{
+			HardForkEpochs: map[string]int{"Deneb": 0},
+		}).
+		Build()
+	require.Error(t, err, "Builder validation failed")
+	require.Contains(t, err.Error(), "hard fork Deneb epoch must be >= 1")
+
+	builder = NewEthereumNetworkBuilder()
+	_, err = builder.
+		WithConsensusType(ConsensusType_PoS).
+		WithConsensusLayer(ConsensusLayer_Prysm).
+		WithExecutionLayer(ExecutionLayer_Geth).
+		WithEthereumChainConfig(EthereumChainConfig{
+			HardForkEpochs: map[string]int{"Electra": 1},
+		}).
+		Build()
+	require.Error(t, err, "Builder validation failed")
+	require.Contains(t, err.Error(), UnsopportedForkErr)
+
+	builder = NewEthereumNetworkBuilder()
+	_, err = builder.
+		WithConsensusType(ConsensusType_PoS).
+		WithConsensusLayer(ConsensusLayer_Prysm).
+		WithExecutionLayer(ExecutionLayer_Geth).
+		WithEthereumChainConfig(EthereumChainConfig{
+			HardForkEpochs: map[string]int{"Electra": 1, "Deneb": 1},
+		}).
+		Build()
+	require.Error(t, err, "Builder validation failed")
+	require.Contains(t, err.Error(), UnsopportedForkErr)
 }

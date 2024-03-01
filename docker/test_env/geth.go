@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/go-connections/nat"
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
@@ -40,6 +42,8 @@ const (
 
 	TX_GETH_HTTP_PORT = "8544"
 	TX_GETH_WS_PORT   = "8545"
+
+	defaultGethImage = "ethereum/client-go:v1.12.0"
 )
 
 type InternalDockerUrls struct {
@@ -59,12 +63,7 @@ type Geth struct {
 }
 
 func NewGeth(networks []string, chainConfig *EthereumChainConfig, opts ...EnvComponentOption) *Geth {
-	dockerImage, err := mirror.GetImage("ethereum/client-go:v1.12")
-	if err != nil {
-		return nil
-	}
-
-	parts := strings.Split(dockerImage, ":")
+	parts := strings.Split(defaultGethImage, ":")
 	g := &Geth{
 		EnvComponent: EnvComponent{
 			ContainerName:    fmt.Sprintf("%s-%s", "geth", uuid.NewString()[0:8]),
@@ -79,6 +78,8 @@ func NewGeth(networks []string, chainConfig *EthereumChainConfig, opts ...EnvCom
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
+	// if the internal docker repo is set then add it to the version
+	g.EnvComponent.ContainerImage = mirror.AddMirrorToImageIfSet(g.EnvComponent.ContainerImage)
 	return g
 }
 
@@ -267,19 +268,18 @@ func (g *Geth) getGethContainerRequest(networks []string) (*tc.ContainerRequest,
 				FileMode:          0644,
 			},
 		},
-		Mounts: tc.ContainerMounts{
-			tc.ContainerMount{
-				Source: tc.GenericBindMountSource{
-					HostPath: keystoreDir,
-				},
-				Target: "/root/.ethereum/devchain/keystore/",
-			},
-			tc.ContainerMount{
-				Source: tc.GenericBindMountSource{
-					HostPath: configDir,
-				},
-				Target: "/root/config/",
-			},
+		HostConfigModifier: func(hostConfig *container.HostConfig) {
+			hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
+				Type:     mount.TypeBind,
+				Source:   keystoreDir,
+				Target:   "/root/.ethereum/devchain/keystore/",
+				ReadOnly: false,
+			}, mount.Mount{
+				Type:     mount.TypeBind,
+				Source:   configDir,
+				Target:   "/root/config/",
+				ReadOnly: false,
+			})
 		},
 		LifecycleHooks: []tc.ContainerLifecycleHooks{
 			{

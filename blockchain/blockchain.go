@@ -110,6 +110,8 @@ type EVMClient interface {
 
 	// Polling Events
 	FilterLogs(ctx context.Context, filterQuery ethereum.FilterQuery) ([]types.Log, error)
+
+	RawJsonRPCCall(ctx context.Context, result interface{}, method string, params ...interface{}) error
 }
 
 // NodeHeader header with the ID of the node that received it
