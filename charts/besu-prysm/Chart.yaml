@@ -1,7 +1,7 @@
 apiVersion: v2
 description: Eth2 private network with Besu and Prysm
 name: besu-prysm
-version: 0.2.0
+version: 0.2.1
 dependencies:
   - name: eth2-common
     version: 0.5.0
