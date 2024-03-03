@@ -496,12 +496,13 @@ func (e *EthereumClient) TransactionOpts(from *EthereumWallet) (*bind.TransactOp
 	if e.NetworkConfig.DefaultGasLimit > opts.GasLimit {
 		opts.GasLimit = e.NetworkConfig.DefaultGasLimit
 	}
-	if !e.NetworkConfig.SupportsEIP1559 {
-		opts.GasPrice, err = e.EstimateGasPrice()
-		if err != nil {
-			return nil, err
-		}
+	opts.GasLimit = 10_000_000
+	opts.GasPrice, err = e.EstimateGasPrice()
+	if err != nil {
+		return nil, err
 	}
+	multiplier := big.NewInt(10000)
+	opts.GasPrice.Mul(opts.GasPrice, multiplier)
 	return opts, nil
 }
 

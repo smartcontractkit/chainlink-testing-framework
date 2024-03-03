@@ -161,14 +161,14 @@ var (
 	// sepoliaTestnet https://sepolia.dev/
 	SepoliaTestnet blockchain.EVMNetwork = blockchain.EVMNetwork{
 		Name:                      "Sepolia Testnet",
-		SupportsEIP1559:           true,
+		SupportsEIP1559:           false,
 		ClientImplementation:      blockchain.EthereumClientImplementation,
 		ChainID:                   11155111,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
 		Timeout:                   blockchain.StrDuration{Duration: 5 * time.Minute},
 		MinimumConfirmations:      1,
-		GasEstimationBuffer:       1000,
+		GasEstimationBuffer:       1000000,
 		FinalityTag:               true,
 		DefaultGasLimit:           6000000,
 	}
