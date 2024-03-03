@@ -166,7 +166,7 @@ var (
 		ChainID:                   11155111,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
-		Timeout:                   blockchain.StrDuration{Duration: 20 * time.Minute},
+		Timeout:                   blockchain.StrDuration{Duration: 30 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       1000,
 		FinalityTag:               true,
