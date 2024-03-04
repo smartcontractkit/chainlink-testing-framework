@@ -21,6 +21,7 @@ usage() {
     echo "Only add registry url to update from mirror.json file"
     echo "Add both image expression and image name to update from list in dockerhub."
     echo "expression example for something like postgres: '^15\.[0-9]+$'"
+    echo "Optional argument 4 is the number of images to check in dockerhub, useful for images like 50 that have lots of images between official version tags."
     exit 1
 
 }
@@ -75,17 +76,31 @@ push_images_in_mirror_json() {
 push_latest_images_for_expression_from_dockerhub() {
     local image_name=$1
     local image_expression=$2
+    local page_size=$3
     local images
 
-    if [[ $image_name == gcr.io* ]]; then
-        # Handle GCR images
-        images=$(gcloud container images list-tags gcr.io/prysmaticlabs/prysm/validator --limit=5 --filter='tags:v*' --format=json | jq -r '.[].tags[]' | grep -E "${image_expression}")
-    else
-        images=$(curl -s "https://hub.docker.com/v2/repositories/${image_name}/tags/?page_size=50" | jq -r '.results[].name' | grep -E "${image_expression}")
+    # check if we have a number for the page size, if not, set it to 50
+    if [ -z "$page_size" ] || ! [[ "$page_size" =~ ^[0-9]+$ ]] || [ "$page_size" -eq 0 ]; then
+        page_size=50
     fi
 
-    echo "Images found:"
-    echo "${images}"
+    set +e
+    if [[ $image_name == gcr.io* ]]; then
+        # Handle GCR images
+        images=$(gcloud container images list-tags gcr.io/prysmaticlabs/prysm/validator --limit="${page_size}" --filter='tags:v*' --format=json | jq -r '.[].tags[]' | grep -E "${image_expression}")
+    else
+        images=$(curl -s "https://hub.docker.com/v2/repositories/${image_name}/tags/?page_size=${page_size}" | jq -r '.results[].name' | grep -E "${image_expression}")
+    fi
+    set -e
+
+    if [ -z "$images" ]; then
+        echo "No images were found matching the expression. Either something went wrong or you need to increase the page size to greater than ${page_size}."
+        exit 1
+    else
+        echo "Images found:"
+        echo "$images"
+    fi
+
     image_list=()
 
     # Convert newline-separated string to an array
@@ -118,12 +133,12 @@ push_images_in_list() {
 
 }
 
-
+# Run the code
 if [ $# -eq 1 ]; then
     push_images_in_mirror_json
     echo "Update from mirror.json comleted."
-elif [ $# -eq 3 ]; then
-    push_latest_images_for_expression_from_dockerhub "$2" "$3"
+elif [ $# -eq 3 ] || [ $# -eq 4 ]; then
+    push_latest_images_for_expression_from_dockerhub "$2" "$3" "$4"
     echo "Update from dockerhub completed."
 else
     usage
