@@ -118,7 +118,7 @@ func (pg *PostgresDb) WithTestInstance(t *testing.T) *PostgresDb {
 }
 
 func (pg *PostgresDb) StartContainer() error {
-	req := pg.getContainerRequest()
+	req := pg.GetContainerRequest()
 	l := logging.GetTestContainersGoTestLogger(pg.t)
 	c, err := docker.StartContainerWithRetry(pg.l, tc.GenericContainerRequest{
 		ContainerRequest: *req,
@@ -170,7 +170,9 @@ func (pg *PostgresDb) ExecPgDump(stdout io.Writer) error {
 	return cmd.Run()
 }
 
-func (pg *PostgresDb) getContainerRequest() *tc.ContainerRequest {
+// GetContainerRequest returns a testcontainers.ContainerRequest for the PostgresDb
+// This is usually used to build a parallel container request. If you just want to start the DB, use StartContainer
+func (pg *PostgresDb) GetContainerRequest() *tc.ContainerRequest {
 	return &tc.ContainerRequest{
 		Name:         pg.ContainerName,
 		Image:        fmt.Sprintf("%s:%s", pg.ContainerImage, pg.ContainerVersion),

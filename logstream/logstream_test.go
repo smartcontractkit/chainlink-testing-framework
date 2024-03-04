@@ -55,7 +55,14 @@ func replaceContainerNamePlaceholders(tc TestCase) []string {
 }
 
 // startTestContainer with custom streams emitted
-func startTestContainer(ctx context.Context, containerName string, msg string, amount int, intervalSeconds float64, exitEarly bool) (testcontainers.Container, error) {
+func startTestContainer(
+	ctx context.Context,
+	containerName string,
+	msg string,
+	amount int,
+	intervalSeconds float64,
+	exitEarly bool,
+) (testcontainers.Container, error) {
 	var cmd []string
 	if exitEarly {
 		cmd = []string{"bash", "-c",

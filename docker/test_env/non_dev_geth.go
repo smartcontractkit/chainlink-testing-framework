@@ -353,10 +353,7 @@ func (g *NonDevGethNode) ConnectToClient() error {
 	default:
 		return fmt.Errorf("%+v not supported for geth", val)
 	}
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func (g *NonDevGethNode) getBootNodeContainerRequest() (tc.ContainerRequest, error) {
