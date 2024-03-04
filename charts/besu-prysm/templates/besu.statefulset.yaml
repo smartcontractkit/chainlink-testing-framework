@@ -24,8 +24,6 @@ spec:
                 values:
                 - {{ .Release.Name }}
             topologyKey: kubernetes.io/hostname
-      nodeSelector:
-        eth2: "true"
       volumes:
       - name: {{ .Release.Name }}-genesis-config
         configMap:
@@ -94,6 +92,13 @@ spec:
             periodSeconds: 5
             failureThreshold: 2
             timeoutSeconds: 120
+          resources:
+            requests:
+              cpu: 300m
+              memory: 600Mi
+            limits:
+              cpu: 2
+              memory: 4Gi
 
 {{- $customData := dict "pvcName" (printf "%s-%s-besu" .Release.Name .Values.storage.claim) }}
 {{- $newContext := merge $customData . }}

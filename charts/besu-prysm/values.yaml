@@ -1,12 +1,12 @@
 imagePullPolicy: Always
 eth2-common:
   general:
-    networkId: 1337
+    networkId: 2337
   genesis:
     values:
       currentUnixTimestamp: 1600000000
 general:
-  networkId: 1337
+  networkId: 2337
 shared:
   mnemonic: giant issue aisle success illegal bike spike question tent bar rely arctic volcano long crawl hungry vocal artwork sniff fantasy very lucky have athlete
   configDataDir: /data/custom_config_data
