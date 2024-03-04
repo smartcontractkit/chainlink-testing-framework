@@ -23,7 +23,7 @@ dependencies:
 dependencies:
   - name: eth2-common
     version: 0.1.0
-    repository: "https://smartcontractkit.github.io/qa-charts/eth2-common"
+    repository: "https://raw.githubusercontent.com/smartcontractkit/qa-charts/gh-pages/"
 ```
 
 Some of the elements will be automatically used from dependency as soon as they used anywhere and matched by name. In our case that's true for volume and claim definitions and config maps.
