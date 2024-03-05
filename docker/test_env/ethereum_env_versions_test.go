@@ -34,7 +34,7 @@ func TestNethermindCompatiblity(t *testing.T) {
 		nethermindTcs = append(nethermindTcs, fmt.Sprintf("nethermind/nethermind:1.%d.0", i))
 	}
 
-	nethermindTcs = append(nethermindTcs, defaultNethermindPosImage)
+	nethermindTcs = append(nethermindTcs, defaultNethermindEth2Image)
 
 	for _, tc := range nethermindTcs {
 		t.Run(fmt.Sprintf("nethermind-%s", tc), func(t *testing.T) {
@@ -77,7 +77,7 @@ func TestGethCompatiblity(t *testing.T) {
 		gethTcs = append(gethTcs, fmt.Sprintf("ethereum/client-go:v1.%d.0", i))
 	}
 
-	gethTcs = append(gethTcs, defaultGethPosImage)
+	gethTcs = append(gethTcs, defaultGethEth2Image)
 
 	for _, tc := range gethTcs {
 		t.Run(fmt.Sprintf("geth-%s", tc), func(t *testing.T) {
@@ -119,7 +119,7 @@ func TestErigonCompatiblity(t *testing.T) {
 		erigonTcs = append(erigonTcs, fmt.Sprintf("thorax/erigon:v2.%d.0", i))
 	}
 
-	erigonTcs = append(erigonTcs, defaultErigonPosImage)
+	erigonTcs = append(erigonTcs, defaultErigonEth2Image)
 
 	for _, tc := range erigonTcs {
 		t.Run(fmt.Sprintf("erigon-%s", tc), func(t *testing.T) {
@@ -161,7 +161,7 @@ func TestBesuCompatiblity(t *testing.T) {
 		besuTcs = append(besuTcs, fmt.Sprintf("hyperledger/besu:%d.1.0", i))
 	}
 
-	besuTcs = append(besuTcs, defaultBesuPosImage)
+	besuTcs = append(besuTcs, defaultBesuEth2Image)
 
 	for _, tc := range besuTcs {
 		t.Run(fmt.Sprintf("besu-%s", tc), func(t *testing.T) {

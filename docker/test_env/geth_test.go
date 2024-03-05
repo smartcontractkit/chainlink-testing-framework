@@ -18,7 +18,7 @@ func TestOldGeth(t *testing.T) {
 	network, err := docker.CreateNetwork(l)
 	require.NoError(t, err)
 	defaultChainCfg := GetDefaultChainConfig()
-	g := NewGethPoa([]string{network.Name}, &defaultChainCfg).
+	g := NewGethEth1([]string{network.Name}, &defaultChainCfg).
 		WithTestInstance(t)
 	_, err = g.StartContainer()
 	require.NoError(t, err)

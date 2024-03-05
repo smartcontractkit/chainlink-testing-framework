@@ -44,8 +44,6 @@ echo "Bootnode enode: $bootnode_enode"
 geth "$@"
 `
 
-// "ethash": {}
-
 var GenesisJson = `
 {
 	"config": {
@@ -138,14 +136,15 @@ func (c GenesisJsonTemplate) String() (string, error) {
 	case GethGenesisConsensus_Clique:
 		consensusStr = `,"clique": {"period": 1,"epoch": 30000}`
 	default:
-		// return "", fmt.Errorf("unsupported consensus type: %s", c.Consensus)
 		consensusStr = ""
 	}
 
+	extraData := c.ExtraData
+
 	if c.Consensus == GethGenesisConsensus_Clique && (c.ExtraData == "" || c.ExtraData == "0x") {
 		return "", fmt.Errorf("extraData is required for clique consensus")
-	} else if c.ExtraData == "" {
-		c.ExtraData = "0x"
+	} else if extraData == "" {
+		extraData = "0x"
 	}
 
 	data := struct {
@@ -156,7 +155,7 @@ func (c GenesisJsonTemplate) String() (string, error) {
 	}{
 		AccountAddr: c.AccountAddr,
 		ChainId:     c.ChainId,
-		ExtraData:   c.ExtraData,
+		ExtraData:   extraData,
 		Consensus:   consensusStr,
 	}
 
