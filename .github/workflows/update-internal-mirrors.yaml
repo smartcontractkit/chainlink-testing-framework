@@ -37,6 +37,7 @@ jobs:
             expression: '^[0-9]+\.[0-9]+\.[0-9]+$'
           - name: hyperledger/besu
             expression: '^[0-9]+\.[0-9]+$'
+            page_size: 100
           - name: thorax/erigon
             expression: '^v[0-9]+\.[0-9]+\.[0-9]+$'
           - name: nethermind/nethermind
@@ -85,7 +86,7 @@ jobs:
         id: check
         shell: bash
         run: |
-          ./scripts/update_mirrors.sh ${{ secrets.QA_AWS_ACCOUNT_NUMBER }}.dkr.ecr.${{ secrets.QA_AWS_REGION }}.amazonaws.com ${{matrix.mirror.name}} '${{matrix.mirror.expression}}'
+          ./scripts/update_mirrors.sh ${{ secrets.QA_AWS_ACCOUNT_NUMBER }}.dkr.ecr.${{ secrets.QA_AWS_REGION }}.amazonaws.com ${{matrix.mirror.name}} '${{matrix.mirror.expression}}' ${{matrix.mirror.page_size}}
 
   update-other-images:
     runs-on: ubuntu-latest
