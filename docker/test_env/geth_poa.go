@@ -17,8 +17,6 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/go-connections/nat"
-	"github.com/ethereum/go-ethereum/accounts"
-	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
@@ -96,7 +94,7 @@ func (g *GethPoa) WithTestInstance(t *testing.T) ExecutionClient {
 }
 
 func (g *GethPoa) StartContainer() (blockchain.EVMNetwork, error) {
-	r, _, _, err := g.getGethContainerRequest(g.Networks)
+	r, err := g.getGethContainerRequest()
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
@@ -181,78 +179,67 @@ func (g *GethPoa) GetExternalWsUrl() string {
 	return g.ExternalWsUrl
 }
 
-func (g *GethPoa) getGethContainerRequest(networks []string) (*tc.ContainerRequest, *keystore.KeyStore, *accounts.Account, error) {
+func (g *GethPoa) getGethContainerRequest() (*tc.ContainerRequest, error) {
 	initScriptFile, err := os.CreateTemp("", "init_script")
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, err
 	}
 	_, err = initScriptFile.WriteString(templates.InitGethScript)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, err
 	}
 	keystoreDir, err := os.MkdirTemp("", "keystore")
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, err
 	}
-	// Create keystore and ethereum account
-	ks := keystore.NewKeyStore(keystoreDir, keystore.StandardScryptN, keystore.StandardScryptP)
-	minerAccount, err := ks.NewAccount("")
+
+	generatedData, err := generateKeystoreAndExtraData(keystoreDir)
 	if err != nil {
-		return nil, ks, &minerAccount, err
+		return nil, err
 	}
 
-	minerAddr := strings.Replace(minerAccount.Address.Hex(), "0x", "", 1)
-	signerBytes, err := hex.DecodeString(minerAddr)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	zeroBytes := make([]byte, 32)                      // Create 32 zero bytes
-	extradata := append(zeroBytes, signerBytes...)     // Concatenate zero bytes and signer address
-	extradata = append(extradata, make([]byte, 65)...) // Concatenate 65 more zero bytes
-
-	genesisJsonStr, err := templates.GethPoWGenesisJsonTemplate{
+	genesisJsonStr, err := templates.GenesisJsonTemplate{
 		ChainId:     fmt.Sprintf("%d", g.chainConfig.ChainID),
-		AccountAddr: []string{minerAccount.Address.Hex(), RootFundingAddr},
+		AccountAddr: []string{generatedData.minerAccount.Address.Hex(), RootFundingAddr},
 		Consensus:   templates.GethGenesisConsensus_Clique,
-		ExtraData:   fmt.Sprintf("0x%s", hex.EncodeToString(extradata)),
+		ExtraData:   fmt.Sprintf("0x%s", hex.EncodeToString(generatedData.extraData)),
 	}.String()
 	if err != nil {
-		return nil, ks, &minerAccount, err
+		return nil, err
 	}
 	genesisFile, err := os.CreateTemp("", "genesis_json")
 	if err != nil {
-		return nil, ks, &minerAccount, err
+		return nil, err
 	}
 	_, err = genesisFile.WriteString(genesisJsonStr)
 	if err != nil {
-		return nil, ks, &minerAccount, err
+		return nil, err
 	}
 	key1File, err := os.CreateTemp(keystoreDir, "key1")
 	if err != nil {
-		return nil, ks, &minerAccount, err
+		return nil, err
 	}
 	_, err = key1File.WriteString(RootFundingWallet)
 	if err != nil {
-		return nil, ks, &minerAccount, err
+		return nil, err
 	}
 	configDir, err := os.MkdirTemp("", "config")
 	if err != nil {
-		return nil, ks, &minerAccount, err
+		return nil, err
 	}
 	err = os.WriteFile(configDir+"/password.txt", []byte(""), 0600)
 	if err != nil {
-		return nil, ks, &minerAccount, err
+		return nil, err
 	}
 
-	entrypoint, err := g.getEntryPointAndKeystoreLocation(minerAddr)
+	entrypoint, err := g.getEntryPointAndKeystoreLocation(generatedData.minerAccount.Address.Hex())
 	if err != nil {
-		return nil, ks, &minerAccount, err
+		return nil, err
 	}
 
 	websocketMsg, err := g.getWebsocketEnabledMessage()
 	if err != nil {
-		return nil, ks, &minerAccount, err
+		return nil, err
 	}
 
 	return &tc.ContainerRequest{
@@ -260,7 +247,7 @@ func (g *GethPoa) getGethContainerRequest(networks []string) (*tc.ContainerReque
 		AlwaysPullImage: true,
 		Image:           g.GetImageWithVersion(),
 		ExposedPorts:    []string{NatPortFormat(TX_GETH_HTTP_PORT), NatPortFormat(TX_GETH_WS_PORT)},
-		Networks:        networks,
+		Networks:        g.Networks,
 		WaitingFor: tcwait.ForAll(
 			NewHTTPStrategy("/", NatPort(TX_GETH_HTTP_PORT)),
 			tcwait.ForLog(websocketMsg),
@@ -301,7 +288,7 @@ func (g *GethPoa) getGethContainerRequest(networks []string) (*tc.ContainerReque
 				PostStops:  g.PostStopsHooks,
 			},
 		},
-	}, ks, &minerAccount, nil
+	}, nil
 }
 
 func (g *GethPoa) WaitUntilChainIsReady(_ context.Context, _ time.Duration) error {
@@ -414,16 +401,8 @@ func (g *GethPoa) getEntryPointAndKeystoreLocation(minerAddress string) ([]strin
 			"--wsapi",
 			"admin,debug,web3,eth,txpool,personal,clique,miner,net",
 			fmt.Sprintf("--wsport=%s", TX_GETH_WS_PORT),
-			// "--miner.threads",
-			// "1",
 		)
 	}
-
-	// if version >= 110 && version < 111 {
-	// 	entrypoint = append(entrypoint,
-	// 		"--miner.threads",
-	// 		"1")
-	// }
 
 	if version >= 110 {
 		entrypoint = append(entrypoint,
