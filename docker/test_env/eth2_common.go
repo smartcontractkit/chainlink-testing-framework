@@ -1,6 +1,7 @@
 package test_env
 
 import (
+	"context"
 	_ "embed"
 	"errors"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/rs/zerolog"
+	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 )
 
 var (
@@ -75,12 +77,12 @@ func GetDefaultChainConfig() EthereumChainConfig {
 	return config
 }
 
-func (c *EthereumChainConfig) Validate(logger zerolog.Logger, consensusType ConsensusType) error {
+func (c *EthereumChainConfig) Validate(logger zerolog.Logger, consensusType EthereumVersion) error {
 	if c.ChainID < 1 {
 		return fmt.Errorf("chain id must be >= 0")
 	}
 
-	if consensusType == ConsensusType_PoW {
+	if consensusType == EthereumVersion_Eth1_Legacy {
 		return nil
 	}
 
@@ -210,7 +212,7 @@ func (c *EthereumChainConfig) GetDefaultFinalizationWaitDuration() time.Duration
 }
 
 // GetConsensusTypeFromImage returns the consensus type based on the Docker image version
-func GetConsensusTypeFromImage(executionLayer ExecutionLayer, imageWithVersion string) (ConsensusType, error) {
+func GetConsensusTypeFromImage(executionLayer ExecutionLayer, imageWithVersion string) (EthereumVersion, error) {
 	version, err := GetComparableVersionFromDockerImage(imageWithVersion)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse docker image and extract version: %s", imageWithVersion)
@@ -218,27 +220,27 @@ func GetConsensusTypeFromImage(executionLayer ExecutionLayer, imageWithVersion s
 	switch executionLayer {
 	case ExecutionLayer_Geth:
 		if version < 113 {
-			return ConsensusType_PoW, nil
+			return EthereumVersion_Eth1_Legacy, nil
 		} else {
-			return ConsensusType_PoS, nil
+			return EthereumVersion_Eth2_Legacy, nil
 		}
 	case ExecutionLayer_Besu:
 		if version < 231 {
-			return ConsensusType_PoW, nil
+			return EthereumVersion_Eth1_Legacy, nil
 		} else {
-			return ConsensusType_PoS, nil
+			return EthereumVersion_Eth2_Legacy, nil
 		}
 	case ExecutionLayer_Erigon:
 		if version < 241 {
-			return ConsensusType_PoW, nil
+			return EthereumVersion_Eth1_Legacy, nil
 		} else {
-			return ConsensusType_PoS, nil
+			return EthereumVersion_Eth2_Legacy, nil
 		}
 	case ExecutionLayer_Nethermind:
 		if version < 117 {
-			return ConsensusType_PoW, nil
+			return EthereumVersion_Eth1_Legacy, nil
 		} else {
-			return ConsensusType_PoS, nil
+			return EthereumVersion_Eth2_Legacy, nil
 		}
 	}
 
@@ -291,4 +293,35 @@ func deduplicateAddresses(l zerolog.Logger, addresses []string) ([]string, error
 	}
 
 	return deduplicated, nil
+}
+
+func waitForChainToFinaliseAnEpoch(lggr zerolog.Logger, evmClient blockchain.EVMClient, timeout time.Duration) error {
+	lggr.Info().Msg("Waiting for chain to finalize an epoch")
+
+	timeoutC := time.After(timeout)
+	ticker := time.NewTicker(15 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-timeoutC:
+			return fmt.Errorf("chain %s failed to finalize an epoch", evmClient.GetNetworkName())
+		case <-ticker.C:
+			ctx, cancel := context.WithTimeout(context.Background(), time.Duration(10*time.Second))
+			finalized, err := evmClient.GetLatestFinalizedBlockHeader(ctx)
+			if err != nil {
+				if strings.Contains(err.Error(), "finalized block not found") {
+					lggr.Err(err).Msgf("error getting finalized block number for %s", evmClient.GetNetworkName())
+				} else {
+					lggr.Warn().Msgf("no epoch finalized yet for chain %s", evmClient.GetNetworkName())
+				}
+			}
+			cancel()
+
+			if finalized != nil && finalized.Number.Int64() > 0 {
+				lggr.Info().Msgf("Chain '%s' finalized an epoch", evmClient.GetNetworkName())
+				return nil
+			}
+		}
+	}
 }

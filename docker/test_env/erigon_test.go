@@ -17,7 +17,7 @@ func TestEth1WithErigon(t *testing.T) {
 
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WithConsensusType(ConsensusType_PoW).
+		WithConsensusType(EthereumVersion_Eth1_Legacy).
 		WithExecutionLayer(ExecutionLayer_Erigon).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
@@ -41,7 +41,7 @@ func TestEth2WithPrysmAndErigon(t *testing.T) {
 
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WithConsensusType(ConsensusType_PoS).
+		WithConsensusType(EthereumVersion_Eth2_Legacy).
 		WithConsensusLayer(ConsensusLayer_Prysm).
 		WithExecutionLayer(ExecutionLayer_Erigon).
 		Build()

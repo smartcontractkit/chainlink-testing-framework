@@ -17,11 +17,11 @@ const (
 	DEFAULT_EVM_NODE_WS_PORT   = "8545"
 )
 
-type EthereumVersion = string
+type EthereumVersion2 = string
 
 const (
-	EthereumVersion_Eth1 = "eth1"
-	EthereumVersion_Eth2 = "eth2"
+	EthereumVersion_Eth1sds = "eth1"
+	sds                     = "eth2"
 )
 
 type ExecutionClient interface {
@@ -35,7 +35,7 @@ type ExecutionClient interface {
 	GetInternalWsUrl() string
 	GetExternalHttpUrl() string
 	GetExternalWsUrl() string
-	GetEthereumVersion() EthereumVersion
+	GetEthereumVersion() EthereumVersion2
 	WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error
 	WithTestInstance(t *testing.T) ExecutionClient
 }

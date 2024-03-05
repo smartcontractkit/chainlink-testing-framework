@@ -20,7 +20,7 @@ func TestEth2CustomConfig(t *testing.T) {
 
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WithConsensusType(ConsensusType_PoS).
+		WithConsensusType(EthereumVersion_Eth2_Legacy).
 		WithConsensusLayer(ConsensusLayer_Prysm).
 		WithExecutionLayer(ExecutionLayer_Geth).
 		WithEthereumChainConfig(EthereumChainConfig{
@@ -46,7 +46,7 @@ func TestEth2ExtraFunding(t *testing.T) {
 
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WithConsensusType(ConsensusType_PoS).
+		WithConsensusType(EthereumVersion_Eth2_Legacy).
 		WithConsensusLayer(ConsensusLayer_Prysm).
 		WithExecutionLayer(ExecutionLayer_Geth).
 		WithEthereumChainConfig(EthereumChainConfig{
@@ -74,7 +74,7 @@ func TestEth2WithPrysmAndGethReuseNetwork(t *testing.T) {
 
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WithConsensusType(ConsensusType_PoS).
+		WithConsensusType(EthereumVersion_Eth2_Legacy).
 		WithConsensusLayer(ConsensusLayer_Prysm).
 		WithExecutionLayer(ExecutionLayer_Geth).
 		Build()
@@ -151,7 +151,7 @@ func TestEth2ExecClientFromToml(t *testing.T) {
 	require.Equal(t, ExecutionLayer_Besu, *cfg.ExecutionLayer, "Execution layer should be Besu")
 	require.NotNil(t, cfg.ConsensusLayer, "Consensus layer should not be nil")
 	require.Equal(t, ConsensusLayer_Prysm, *cfg.ConsensusLayer, "Consensus layer should be Prysm")
-	require.Equal(t, ConsensusType_PoS, *cfg.ConsensusType, "Consensus type should be PoS")
+	require.Equal(t, EthereumVersion_Eth2_Legacy, *cfg.EthereumVersion, "Consensus type should be PoS")
 	require.NotNil(t, cfg.WaitForFinalization, "Wait for finalization should not be nil")
 	require.False(t, *cfg.WaitForFinalization, "Wait for finalization should be false")
 	require.Equal(t, 2, len(cfg.EthereumChainConfig.AddressesToFund), "Should have 2 addresses to fund")
@@ -219,7 +219,7 @@ func TestEth2CustomDockerNetworks(t *testing.T) {
 
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WithConsensusType(ConsensusType_PoS).
+		WithConsensusType(EthereumVersion_Eth2_Legacy).
 		WithConsensusLayer(ConsensusLayer_Prysm).
 		WithExecutionLayer(ExecutionLayer_Geth).
 		WithDockerNetworks(networks).
@@ -231,7 +231,7 @@ func TestEth2CustomDockerNetworks(t *testing.T) {
 func TestEth2CustomImages(t *testing.T) {
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WithConsensusType(ConsensusType_PoS).
+		WithConsensusType(EthereumVersion_Eth2_Legacy).
 		WithConsensusLayer(ConsensusLayer_Prysm).
 		WithExecutionLayer(ExecutionLayer_Geth).
 		WithCustomDockerImages(map[ContainerType]string{
@@ -248,7 +248,7 @@ func TestEth2DenebHardFork(t *testing.T) {
 
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WithConsensusType(ConsensusType_PoS).
+		WithConsensusType(EthereumVersion_Eth2_Legacy).
 		WithConsensusLayer(ConsensusLayer_Prysm).
 		WithExecutionLayer(ExecutionLayer_Geth).
 		WithEthereumChainConfig(EthereumChainConfig{
@@ -273,7 +273,7 @@ func TestEth2DenebHardFork(t *testing.T) {
 func TestEth2InvalidHardForks(t *testing.T) {
 	builder := NewEthereumNetworkBuilder()
 	_, err := builder.
-		WithConsensusType(ConsensusType_PoS).
+		WithConsensusType(EthereumVersion_Eth2_Legacy).
 		WithConsensusLayer(ConsensusLayer_Prysm).
 		WithExecutionLayer(ExecutionLayer_Geth).
 		WithEthereumChainConfig(EthereumChainConfig{
@@ -285,7 +285,7 @@ func TestEth2InvalidHardForks(t *testing.T) {
 
 	builder = NewEthereumNetworkBuilder()
 	_, err = builder.
-		WithConsensusType(ConsensusType_PoS).
+		WithConsensusType(EthereumVersion_Eth2_Legacy).
 		WithConsensusLayer(ConsensusLayer_Prysm).
 		WithExecutionLayer(ExecutionLayer_Geth).
 		WithEthereumChainConfig(EthereumChainConfig{
@@ -297,7 +297,7 @@ func TestEth2InvalidHardForks(t *testing.T) {
 
 	builder = NewEthereumNetworkBuilder()
 	_, err = builder.
-		WithConsensusType(ConsensusType_PoS).
+		WithConsensusType(EthereumVersion_Eth2_Legacy).
 		WithConsensusLayer(ConsensusLayer_Prysm).
 		WithExecutionLayer(ExecutionLayer_Geth).
 		WithEthereumChainConfig(EthereumChainConfig{
@@ -316,7 +316,7 @@ func TestVersionDependentConsensusPoWMinor(t *testing.T) {
 			ContainerType_Geth: "nethermind/nethermind:1.13.2"}).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
-	require.Equal(t, ConsensusType_PoW, *cfg.ConsensusType, "Consensus type should be PoW")
+	require.Equal(t, EthereumVersion_Eth1_Legacy, *cfg.EthereumVersion, "Consensus type should be PoW")
 	require.Nil(t, cfg.ConsensusLayer, "Consensus layer should be nil")
 }
 
@@ -328,34 +328,34 @@ func TestVersionDependentConsensusPoSMinor(t *testing.T) {
 			ContainerType_Geth: "nethermind/nethermind:1.14.0"}).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
-	require.Equal(t, ConsensusType_PoS, *cfg.ConsensusType, "Consensus type should be PoS")
+	require.Equal(t, EthereumVersion_Eth2_Legacy, *cfg.EthereumVersion, "Consensus type should be PoS")
 	require.Equal(t, ConsensusLayer_Prysm, *cfg.ConsensusLayer, "Consensus layer should be Prysm")
 }
 
 func TestVersionDependentConsensusRc(t *testing.T) {
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WithConsensusType(ConsensusType_Auto).
+		WithConsensusType(EthereumVersion_Auto).
 		WithExecutionLayer(ExecutionLayer_Nethermind).
 		WithCustomDockerImages(map[ContainerType]string{
 			ContainerType_Geth: "nethermind/nethermind:1.17.0-RC2"}).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
-	require.Equal(t, ConsensusType_PoS, *cfg.ConsensusType, "Consensus type should be PoS")
+	require.Equal(t, EthereumVersion_Eth2_Legacy, *cfg.EthereumVersion, "Consensus type should be PoS")
 	require.Equal(t, ConsensusLayer_Prysm, *cfg.ConsensusLayer, "Consensus layer should be Prysm")
 }
 
 func TestVersionDependentConsensusWithV(t *testing.T) {
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WithConsensusType(ConsensusType_Auto).
+		WithConsensusType(EthereumVersion_Auto).
 		WithConsensusLayer(ConsensusLayer_Prysm).
 		WithExecutionLayer(ExecutionLayer_Geth).
 		WithCustomDockerImages(map[ContainerType]string{
 			ContainerType_Geth: "ethereum/client-go:v1.13.10"}).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
-	require.Equal(t, ConsensusType_PoS, *cfg.ConsensusType, "Consensus type should be PoS")
+	require.Equal(t, EthereumVersion_Eth2_Legacy, *cfg.EthereumVersion, "Consensus type should be PoS")
 	require.Equal(t, ConsensusLayer_Prysm, *cfg.ConsensusLayer, "Consensus layer should be Prysm")
 }
 
@@ -367,6 +367,6 @@ func TestVersionDependentConsensusOnlyMajor(t *testing.T) {
 			ContainerType_Geth: "ethereum/client-go:v1.13"}).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
-	require.Equal(t, ConsensusType_PoS, *cfg.ConsensusType, "Consensus type should be PoS")
+	require.Equal(t, EthereumVersion_Eth2_Legacy, *cfg.EthereumVersion, "Consensus type should be PoS")
 	require.Equal(t, ConsensusLayer_Prysm, *cfg.ConsensusLayer, "Consensus layer should be Prysm")
 }

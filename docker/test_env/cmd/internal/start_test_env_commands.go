@@ -166,7 +166,7 @@ func startPrivateEthChainE(cmd *cobra.Command, args []string) error {
 	}
 
 	builder := test_env.NewEthereumNetworkBuilder()
-	builder = *builder.WithConsensusType(test_env.ConsensusType(consensusType)).
+	builder = *builder.WithConsensusType(test_env.EthereumVersion(consensusType)).
 		WithConsensusLayer(consensusLayerToUse).
 		WithExecutionLayer(test_env.ExecutionLayer(executionLayer)).
 		WithEthereumChainConfig(test_env.EthereumChainConfig{
