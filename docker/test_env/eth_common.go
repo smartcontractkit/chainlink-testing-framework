@@ -17,11 +17,12 @@ const (
 	DEFAULT_EVM_NODE_WS_PORT   = "8545"
 )
 
-type EthereumVersion2 = string
+type ConsensusMechanism string
 
 const (
-	EthereumVersion_Eth1sds = "eth1"
-	sds                     = "eth2"
+	ConsensusMechanism_PoW ConsensusMechanism = "pow"
+	ConsensusMechanism_PoS ConsensusMechanism = "pos"
+	ConsensusMechanism_PoA ConsensusMechanism = "poa"
 )
 
 type ExecutionClient interface {
@@ -35,7 +36,8 @@ type ExecutionClient interface {
 	GetInternalWsUrl() string
 	GetExternalHttpUrl() string
 	GetExternalWsUrl() string
-	GetEthereumVersion() EthereumVersion2
+	GetEthereumVersion() EthereumVersion
+	GethConsensusMechanism() ConsensusMechanism
 	WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error
 	WithTestInstance(t *testing.T) ExecutionClient
 }

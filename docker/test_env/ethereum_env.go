@@ -651,7 +651,19 @@ func (en *EthereumNetwork) Validate() error {
 
 	if en.EthereumVersion == nil && en.ConsensusType != nil {
 		l.Debug().Msg("Using _deprecated_ ConsensusType as EthereumVersion")
-		en.EthereumVersion = (*EthereumVersion)(en.ConsensusType)
+		tempEthVersion := (*EthereumVersion)(en.ConsensusType)
+		switch *tempEthVersion {
+		case EthereumVersion_Eth1, EthereumVersion_Eth1_Legacy:
+			*tempEthVersion = EthereumVersion_Eth1
+		case EthereumVersion_Eth2, EthereumVersion_Eth2_Legacy:
+			*tempEthVersion = EthereumVersion_Eth2
+		case EthereumVersion_Auto:
+			*tempEthVersion = EthereumVersion_Auto
+		default:
+			return fmt.Errorf("unknown ethereum version (consensus type): %s", *en.ConsensusType)
+		}
+
+		en.EthereumVersion = tempEthVersion
 	}
 
 	if en.EthereumVersion == nil || *en.EthereumVersion == "" {
