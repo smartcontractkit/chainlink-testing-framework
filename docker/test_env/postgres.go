@@ -117,18 +117,9 @@ func (pg *PostgresDb) WithTestInstance(t *testing.T) *PostgresDb {
 	return pg
 }
 
-func (pg *PostgresDb) StartContainer() error {
-	req := pg.GetContainerRequest()
-	l := logging.GetTestContainersGoTestLogger(pg.t)
-	c, err := docker.StartContainerWithRetry(pg.l, tc.GenericContainerRequest{
-		ContainerRequest: *req,
-		Started:          true,
-		Reuse:            true,
-		Logger:           l,
-	})
-	if err != nil {
-		return err
-	}
+// UpdateContainerData updates the PostgresDb container data to match with an already started container
+// Typically used when setting up parallel containers
+func (pg *PostgresDb) UpdateContainerData(c tc.Container) error {
 	pg.Container = c
 	externalPort, err := c.MappedPort(testcontext.Get(pg.t), nat.Port(fmt.Sprintf("%s/tcp", pg.InternalPort)))
 	if err != nil {
@@ -148,16 +139,33 @@ func (pg *PostgresDb) StartContainer() error {
 		return fmt.Errorf("error parsing mercury db external url: %w", err)
 	}
 	pg.ExternalURL = externalUrl
-
 	pg.l.Info().
-		Str("containerName", pg.ContainerName).
-		Str("internalPort", pg.InternalPort).
 		Str("externalPort", pg.ExternalPort).
 		Str("internalURL", pg.InternalURL.String()).
 		Str("externalURL", pg.ExternalURL.String()).
+		Msg("Updated Postgres DB Container Data")
+	return nil
+}
+
+// StartContainer starts the PostgresDb container and sets all URLs and ports
+func (pg *PostgresDb) StartContainer() error {
+	req := pg.GetContainerRequest()
+	l := logging.GetTestContainersGoTestLogger(pg.t)
+	c, err := docker.StartContainerWithRetry(pg.l, tc.GenericContainerRequest{
+		ContainerRequest: *req,
+		Started:          true,
+		Reuse:            true,
+		Logger:           l,
+	})
+	if err != nil {
+		return err
+	}
+	pg.l.Info().
+		Str("containerName", pg.ContainerName).
+		Str("internalPort", pg.InternalPort).
 		Msg("Started Postgres DB container")
 
-	return nil
+	return pg.UpdateContainerData(c)
 }
 
 func (pg *PostgresDb) ExecPgDump(stdout io.Writer) error {

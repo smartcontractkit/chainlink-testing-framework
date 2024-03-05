@@ -82,7 +82,7 @@ var NaiveRetrier = func(l zerolog.Logger, startErr error, req tc.GenericContaine
 	return nil, startErr
 }
 
-var LinuxPlatoformImageRetrier = func(l zerolog.Logger, startErr error, req tc.GenericContainerRequest) (tc.Container, error) {
+var LinuxPlatformImageRetrier = func(l zerolog.Logger, startErr error, req tc.GenericContainerRequest) (tc.Container, error) {
 	// if it's nil we don't know if we can handle it so we won't try
 	if startErr == nil {
 		return nil, startErr
@@ -92,14 +92,14 @@ var LinuxPlatoformImageRetrier = func(l zerolog.Logger, startErr error, req tc.G
 	if !strings.Contains(startErr.Error(), "No such image") {
 		l.Debug().
 			Str("Start error", startErr.Error()).
-			Str("Retrier", "PlatoformImageRetrier").
+			Str("Retrier", "PlatformImageRetrier").
 			Msgf("Won't try to start %s container again, unsupported error", req.Name)
 		return nil, startErr
 	}
 
 	l.Debug().
 		Str("Start error", startErr.Error()).
-		Str("Retrier", "PlatoformImageRetrier").
+		Str("Retrier", "PlatformImageRetrier").
 		Msgf("Attempting to start %s container", req.Name)
 
 	originalPlatform := req.ImagePlatform
@@ -108,7 +108,7 @@ var LinuxPlatoformImageRetrier = func(l zerolog.Logger, startErr error, req tc.G
 	ct, err := tc.GenericContainer(testcontext.Get(nil), req)
 	if err == nil {
 		l.Debug().
-			Str("Retrier", "PlatoformImageRetrier").
+			Str("Retrier", "PlatformImageRetrier").
 			Msgf("Successfully started %s container", req.Name)
 		return ct, nil
 	}
@@ -126,7 +126,7 @@ var LinuxPlatoformImageRetrier = func(l zerolog.Logger, startErr error, req tc.G
 	l.Debug().
 		Str("Original start error", startErr.Error()).
 		Str("Current start error", err.Error()).
-		Str("Retrier", "PlatoformImageRetrier").
+		Str("Retrier", "PlatformImageRetrier").
 		Msgf("Failed to start %s container,", req.Name)
 
 	return nil, startErr
@@ -145,7 +145,7 @@ func StartContainerWithRetry(l zerolog.Logger, req tc.GenericContainerRequest, r
 	}
 
 	if len(retriers) == 0 {
-		retriers = append(retriers, LinuxPlatoformImageRetrier, NaiveRetrier)
+		retriers = append(retriers, LinuxPlatformImageRetrier, NaiveRetrier)
 	}
 
 	for i := 0; i < RetryAttempts; i++ {
