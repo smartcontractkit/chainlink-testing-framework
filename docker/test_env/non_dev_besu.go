@@ -203,7 +203,7 @@ func (g *NonDevBesuNode) ConnectToClient() error {
 	if err != nil {
 		return err
 	}
-	port := NatPort(TX_GETH_HTTP_PORT)
+	port := NatPort(DEFAULT_EVM_NODE_HTTP_PORT)
 	httpPort, err := ct.MappedPort(testcontext.Get(g.t), port)
 	if err != nil {
 		return err
@@ -214,7 +214,7 @@ func (g *NonDevBesuNode) ConnectToClient() error {
 		return err
 	}
 	g.ExternalHttpUrl = fmt.Sprintf("http://%s:%s", host, httpPort.Port())
-	g.InternalHttpUrl = fmt.Sprintf("http://%s:%s", g.ContainerName, TX_GETH_HTTP_PORT)
+	g.InternalHttpUrl = fmt.Sprintf("http://%s:%s", g.ContainerName, DEFAULT_EVM_NODE_HTTP_PORT)
 	g.ExternalWsUrl = fmt.Sprintf("ws://%s:%s", host, wsPort.Port())
 	g.InternalWsUrl = fmt.Sprintf("ws://%s:%s", g.ContainerName, TX_NON_DEV_GETH_WS_PORT)
 
@@ -383,14 +383,14 @@ func (g *NonDevBesuNode) getBesuContainerRequest() (tc.ContainerRequest, error) 
 		Name:  g.ContainerName,
 		Image: besuImage,
 		ExposedPorts: []string{
-			NatPortFormat(TX_GETH_HTTP_PORT),
+			NatPortFormat(DEFAULT_EVM_NODE_HTTP_PORT),
 			NatPortFormat(TX_NON_DEV_GETH_WS_PORT),
 			"30303/tcp", "30303/udp"},
 		Networks: g.Networks,
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForLog("WebSocketService | Websocket service started"),
 			NewWebSocketStrategy(NatPort(TX_NON_DEV_GETH_WS_PORT), g.l),
-			NewHTTPStrategy("/", NatPort(TX_GETH_HTTP_PORT)).WithStatusCode(201),
+			NewHTTPStrategy("/", NatPort(DEFAULT_EVM_NODE_HTTP_PORT)).WithStatusCode(201),
 		),
 		Entrypoint: []string{
 			"besu",
@@ -402,7 +402,7 @@ func (g *NonDevBesuNode) getBesuContainerRequest() (tc.ContainerRequest, error) 
 			"--rpc-http-cors-origins", "*",
 			"--rpc-http-api", "ADMIN,DEBUG,WEB3,ETH,TXPOOL,CLIQUE,MINER,NET",
 			"--rpc-http-host", "0.0.0.0",
-			fmt.Sprintf("--rpc-http-port=%s", TX_GETH_HTTP_PORT),
+			fmt.Sprintf("--rpc-http-port=%s", DEFAULT_EVM_NODE_HTTP_PORT),
 			"--rpc-ws-enabled",
 			"--rpc-ws-api", "ADMIN,DEBUG,WEB3,ETH,TXPOOL,CLIQUE,MINER,NET",
 			"--rpc-ws-host", "0.0.0.0",

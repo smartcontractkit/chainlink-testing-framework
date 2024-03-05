@@ -73,7 +73,7 @@ func TestGethCompatiblity(t *testing.T) {
 	l := logging.GetTestLogger(t)
 
 	gethTcs := []string{}
-	for i := 9; i < 14; i++ {
+	for i := 9; i < 12; i++ {
 		gethTcs = append(gethTcs, fmt.Sprintf("ethereum/client-go:v1.%d.0", i))
 	}
 

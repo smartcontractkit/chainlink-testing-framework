@@ -88,20 +88,20 @@ func (g *NethermindPoa) StartContainer() (blockchain.EVMNetwork, error) {
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
-	httpPort, err := ct.MappedPort(context.Background(), NatPort(TX_GETH_HTTP_PORT))
+	httpPort, err := ct.MappedPort(context.Background(), NatPort(DEFAULT_EVM_NODE_HTTP_PORT))
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
-	wsPort, err := ct.MappedPort(context.Background(), NatPort(TX_GETH_WS_PORT))
+	wsPort, err := ct.MappedPort(context.Background(), NatPort(DEFAULT_EVM_NODE_WS_PORT))
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
 
 	g.Container = ct
 	g.ExternalHttpUrl = FormatHttpUrl(host, httpPort.Port())
-	g.InternalHttpUrl = FormatHttpUrl(g.ContainerName, TX_GETH_HTTP_PORT)
+	g.InternalHttpUrl = FormatHttpUrl(g.ContainerName, DEFAULT_EVM_NODE_HTTP_PORT)
 	g.ExternalWsUrl = FormatWsUrl(host, wsPort.Port())
-	g.InternalWsUrl = FormatWsUrl(g.ContainerName, TX_GETH_WS_PORT)
+	g.InternalWsUrl = FormatWsUrl(g.ContainerName, DEFAULT_EVM_NODE_WS_PORT)
 
 	networkConfig := blockchain.SimulatedEVMNetwork
 	networkConfig.Name = "Simulated Ethereum-PoA (nethermind)"
@@ -226,7 +226,7 @@ func (g *NethermindPoa) getContainerRequest() (*tc.ContainerRequest, error) {
 		Networks:        g.Networks,
 		AlwaysPullImage: true,
 		// ImagePlatform: "linux/x86_64",  //don't even try this on Apple Silicon, the node won't start due to .NET error
-		ExposedPorts: []string{NatPortFormat(TX_GETH_HTTP_PORT), NatPortFormat(TX_GETH_WS_PORT)},
+		ExposedPorts: []string{NatPortFormat(DEFAULT_EVM_NODE_HTTP_PORT), NatPortFormat(DEFAULT_EVM_NODE_WS_PORT)},
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForLog("Nethermind initialization completed").
 				WithStartupTimeout(120 * time.Second).
@@ -237,11 +237,11 @@ func (g *NethermindPoa) getContainerRequest() (*tc.ContainerRequest, error) {
 			"--Init.ChainSpecPath=/chainspec.json",
 			"--Init.DiscoveryEnabled=false",
 			"--Init.WebSocketsEnabled=true",
-			fmt.Sprintf("--JsonRpc.WebSocketsPort=%s", TX_GETH_WS_PORT),
+			fmt.Sprintf("--JsonRpc.WebSocketsPort=%s", DEFAULT_EVM_NODE_WS_PORT),
 			"--JsonRpc.Enabled=true",
 			"--JsonRpc.EnabledModules=net,consensus,eth,subscribe,web3,admin,trace,txpool",
 			"--JsonRpc.Host=0.0.0.0",
-			fmt.Sprintf("--JsonRpc.Port=%s", TX_GETH_HTTP_PORT),
+			fmt.Sprintf("--JsonRpc.Port=%s", DEFAULT_EVM_NODE_HTTP_PORT),
 			"--KeyStore.KeyStoreDirectory=/keystore",
 			fmt.Sprintf("--KeyStore.BlockAuthorAccount=%s", account.Address.Hex()),
 			fmt.Sprintf("--KeyStore.UnlockAccounts=%s", account.Address.Hex()),

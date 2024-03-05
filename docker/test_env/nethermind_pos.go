@@ -89,11 +89,11 @@ func (g *NethermindPos) StartContainer() (blockchain.EVMNetwork, error) {
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
-	httpPort, err := ct.MappedPort(context.Background(), NatPort(TX_GETH_HTTP_PORT))
+	httpPort, err := ct.MappedPort(context.Background(), NatPort(DEFAULT_EVM_NODE_HTTP_PORT))
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
-	wsPort, err := ct.MappedPort(context.Background(), NatPort(TX_GETH_WS_PORT))
+	wsPort, err := ct.MappedPort(context.Background(), NatPort(DEFAULT_EVM_NODE_WS_PORT))
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
@@ -104,9 +104,9 @@ func (g *NethermindPos) StartContainer() (blockchain.EVMNetwork, error) {
 
 	g.Container = ct
 	g.ExternalHttpUrl = FormatHttpUrl(host, httpPort.Port())
-	g.InternalHttpUrl = FormatHttpUrl(g.ContainerName, TX_GETH_HTTP_PORT)
+	g.InternalHttpUrl = FormatHttpUrl(g.ContainerName, DEFAULT_EVM_NODE_HTTP_PORT)
 	g.ExternalWsUrl = FormatWsUrl(host, wsPort.Port())
-	g.InternalWsUrl = FormatWsUrl(g.ContainerName, TX_GETH_WS_PORT)
+	g.InternalWsUrl = FormatWsUrl(g.ContainerName, DEFAULT_EVM_NODE_WS_PORT)
 	g.InternalExecutionURL = FormatHttpUrl(g.ContainerName, ETH2_EXECUTION_PORT)
 	g.ExternalExecutionURL = FormatHttpUrl(host, executionPort.Port())
 
@@ -172,7 +172,7 @@ func (g *NethermindPos) getContainerRequest() (*tc.ContainerRequest, error) {
 		Networks:        g.Networks,
 		AlwaysPullImage: true,
 		// ImagePlatform: "linux/x86_64",  //don't even try this on Apple Silicon, the node won't start due to .NET error
-		ExposedPorts: []string{NatPortFormat(TX_GETH_HTTP_PORT), NatPortFormat(TX_GETH_WS_PORT), NatPortFormat(ETH2_EXECUTION_PORT)},
+		ExposedPorts: []string{NatPortFormat(DEFAULT_EVM_NODE_HTTP_PORT), NatPortFormat(DEFAULT_EVM_NODE_WS_PORT), NatPortFormat(ETH2_EXECUTION_PORT)},
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForLog("Nethermind initialization completed").
 				WithStartupTimeout(120 * time.Second).
@@ -184,11 +184,11 @@ func (g *NethermindPos) getContainerRequest() (*tc.ContainerRequest, error) {
 			fmt.Sprintf("--Init.ChainSpecPath=%s/chainspec.json", GENERATED_DATA_DIR_INSIDE_CONTAINER),
 			"--Init.DiscoveryEnabled=false",
 			"--Init.WebSocketsEnabled=true",
-			fmt.Sprintf("--JsonRpc.WebSocketsPort=%s", TX_GETH_WS_PORT),
+			fmt.Sprintf("--JsonRpc.WebSocketsPort=%s", DEFAULT_EVM_NODE_WS_PORT),
 			"--JsonRpc.Enabled=true",
 			"--JsonRpc.EnabledModules=net,eth,consensus,subscribe,web3,admin",
 			"--JsonRpc.Host=0.0.0.0",
-			fmt.Sprintf("--JsonRpc.Port=%s", TX_GETH_HTTP_PORT),
+			fmt.Sprintf("--JsonRpc.Port=%s", DEFAULT_EVM_NODE_HTTP_PORT),
 			"--JsonRpc.EngineHost=0.0.0.0",
 			"--JsonRpc.EnginePort=" + ETH2_EXECUTION_PORT,
 			fmt.Sprintf("--JsonRpc.JwtSecretFile=%s", JWT_SECRET_FILE_LOCATION_INSIDE_CONTAINER),

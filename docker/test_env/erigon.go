@@ -124,7 +124,7 @@ func (g *Erigon) StartContainer() (blockchain.EVMNetwork, error) {
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
-	httpPort, err := ct.MappedPort(testcontext.Get(g.t), NatPort(TX_GETH_HTTP_PORT))
+	httpPort, err := ct.MappedPort(testcontext.Get(g.t), NatPort(DEFAULT_EVM_NODE_HTTP_PORT))
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
@@ -140,9 +140,9 @@ func (g *Erigon) StartContainer() (blockchain.EVMNetwork, error) {
 
 	g.Container = ct
 	g.ExternalHttpUrl = FormatHttpUrl(host, httpPort.Port())
-	g.InternalHttpUrl = FormatHttpUrl(g.ContainerName, TX_GETH_HTTP_PORT)
+	g.InternalHttpUrl = FormatHttpUrl(g.ContainerName, DEFAULT_EVM_NODE_HTTP_PORT)
 	g.ExternalWsUrl = FormatWsUrl(host, httpPort.Port())
-	g.InternalWsUrl = FormatWsUrl(g.ContainerName, TX_GETH_HTTP_PORT)
+	g.InternalWsUrl = FormatWsUrl(g.ContainerName, DEFAULT_EVM_NODE_HTTP_PORT)
 
 	networkConfig := blockchain.SimulatedEVMNetwork
 	if g.consensusLayer != "" {
@@ -212,7 +212,7 @@ func (g *Erigon) getPosContainerRequest() (*tc.ContainerRequest, error) {
 		Image:         g.GetImageWithVersion(),
 		Networks:      g.Networks,
 		ImagePlatform: "linux/x86_64",
-		ExposedPorts:  []string{NatPortFormat(TX_GETH_HTTP_PORT), NatPortFormat(ETH2_EXECUTION_PORT)},
+		ExposedPorts:  []string{NatPortFormat(DEFAULT_EVM_NODE_HTTP_PORT), NatPortFormat(ETH2_EXECUTION_PORT)},
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForLog("Started P2P networking").
 				WithStartupTimeout(120 * time.Second).
@@ -304,12 +304,12 @@ func (g *Erigon) getPowContainerRequest() (*tc.ContainerRequest, error) {
 		Image:         g.GetImageWithVersion(),
 		Networks:      g.Networks,
 		ImagePlatform: "linux/x86_64",
-		ExposedPorts:  []string{NatPortFormat(TX_GETH_HTTP_PORT)},
+		ExposedPorts:  []string{NatPortFormat(DEFAULT_EVM_NODE_HTTP_PORT)},
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForLog("Started P2P networking").
 				WithStartupTimeout(120*time.Second).
 				WithPollInterval(1*time.Second),
-			NewWebSocketStrategy(NatPort(TX_GETH_HTTP_PORT), g.l),
+			NewWebSocketStrategy(NatPort(DEFAULT_EVM_NODE_HTTP_PORT), g.l),
 		),
 		User: "0:0",
 		Entrypoint: []string{
@@ -412,7 +412,7 @@ func (g *Erigon) buildPosInitScript() (string, error) {
 		ExecutionDir        string
 		ExtraExecutionFlags string
 	}{
-		HttpPort:            TX_GETH_HTTP_PORT,
+		HttpPort:            DEFAULT_EVM_NODE_HTTP_PORT,
 		ChainID:             g.chainConfg.ChainID,
 		GeneratedDataDir:    GENERATED_DATA_DIR_INSIDE_CONTAINER,
 		JwtFileLocation:     JWT_SECRET_FILE_LOCATION_INSIDE_CONTAINER,
@@ -451,7 +451,7 @@ func (g *Erigon) buildPowInitScript(minerAddr string) (string, error) {
 		ChainID   int
 		MinerAddr string
 	}{
-		HttpPort:  TX_GETH_HTTP_PORT,
+		HttpPort:  DEFAULT_EVM_NODE_HTTP_PORT,
 		ChainID:   g.chainConfg.ChainID,
 		MinerAddr: minerAddr,
 	}

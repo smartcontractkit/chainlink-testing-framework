@@ -141,11 +141,11 @@ func (g *Besu) StartContainer() (blockchain.EVMNetwork, error) {
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
-	httpPort, err := ct.MappedPort(testcontext.Get(g.t), NatPort(TX_GETH_HTTP_PORT))
+	httpPort, err := ct.MappedPort(testcontext.Get(g.t), NatPort(DEFAULT_EVM_NODE_HTTP_PORT))
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
-	wsPort, err := ct.MappedPort(testcontext.Get(g.t), NatPort(TX_GETH_WS_PORT))
+	wsPort, err := ct.MappedPort(testcontext.Get(g.t), NatPort(DEFAULT_EVM_NODE_WS_PORT))
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
@@ -161,9 +161,9 @@ func (g *Besu) StartContainer() (blockchain.EVMNetwork, error) {
 
 	g.Container = ct
 	g.ExternalHttpUrl = FormatHttpUrl(host, httpPort.Port())
-	g.InternalHttpUrl = FormatHttpUrl(g.ContainerName, TX_GETH_HTTP_PORT)
+	g.InternalHttpUrl = FormatHttpUrl(g.ContainerName, DEFAULT_EVM_NODE_HTTP_PORT)
 	g.ExternalWsUrl = FormatWsUrl(host, wsPort.Port())
-	g.InternalWsUrl = FormatWsUrl(g.ContainerName, TX_GETH_WS_PORT)
+	g.InternalWsUrl = FormatWsUrl(g.ContainerName, DEFAULT_EVM_NODE_WS_PORT)
 
 	networkConfig := blockchain.SimulatedEVMNetwork
 	networkConfig.URLs = []string{g.ExternalWsUrl}
@@ -232,7 +232,7 @@ func (g *Besu) getPosContainerRequest() (*tc.ContainerRequest, error) {
 		Image:    g.GetImageWithVersion(),
 		Networks: g.Networks,
 		// ImagePlatform: "linux/x86_64", //don't even try this on Apple Silicon, the node won't start due to JVM error
-		ExposedPorts: []string{NatPortFormat(TX_GETH_HTTP_PORT), NatPortFormat(TX_GETH_WS_PORT), NatPortFormat(ETH2_EXECUTION_PORT)},
+		ExposedPorts: []string{NatPortFormat(DEFAULT_EVM_NODE_HTTP_PORT), NatPortFormat(DEFAULT_EVM_NODE_WS_PORT), NatPortFormat(ETH2_EXECUTION_PORT)},
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForLog("Ethereum main loop is up").
 				WithStartupTimeout(120 * time.Second).
@@ -246,12 +246,12 @@ func (g *Besu) getPosContainerRequest() (*tc.ContainerRequest, error) {
 			"--host-allowlist=*",
 			"--rpc-http-enabled=true",
 			"--rpc-http-host=0.0.0.0",
-			fmt.Sprintf("--rpc-http-port=%s", TX_GETH_HTTP_PORT),
+			fmt.Sprintf("--rpc-http-port=%s", DEFAULT_EVM_NODE_HTTP_PORT),
 			"--rpc-http-api=ADMIN,CLIQUE,ETH,NET,DEBUG,TXPOOL,ENGINE,TRACE,WEB3",
 			"--rpc-http-cors-origins=*",
 			"--rpc-ws-enabled=true",
 			"--rpc-ws-host=0.0.0.0",
-			fmt.Sprintf("--rpc-ws-port=%s", TX_GETH_WS_PORT),
+			fmt.Sprintf("--rpc-ws-port=%s", DEFAULT_EVM_NODE_WS_PORT),
 			"--rpc-ws-api=ADMIN,CLIQUE,ETH,NET,DEBUG,TXPOOL,ENGINE,TRACE,WEB3",
 			"--engine-rpc-enabled=true",
 			fmt.Sprintf("--engine-jwt-secret=%s", JWT_SECRET_FILE_LOCATION_INSIDE_CONTAINER),
@@ -292,13 +292,13 @@ func (g *Besu) getPowContainerRequest() (*tc.ContainerRequest, error) {
 		Name:  g.ContainerName,
 		Image: g.GetImageWithVersion(),
 		ExposedPorts: []string{
-			NatPortFormat(TX_GETH_HTTP_PORT),
-			NatPortFormat(TX_GETH_WS_PORT)},
+			NatPortFormat(DEFAULT_EVM_NODE_HTTP_PORT),
+			NatPortFormat(DEFAULT_EVM_NODE_WS_PORT)},
 		Networks: g.Networks,
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForLog("WebSocketService | Websocket service started"),
-			NewWebSocketStrategy(NatPort(TX_GETH_WS_PORT), g.l),
-			NewHTTPStrategy("/", NatPort(TX_GETH_HTTP_PORT)).WithStatusCode(201),
+			NewWebSocketStrategy(NatPort(DEFAULT_EVM_NODE_WS_PORT), g.l),
+			NewHTTPStrategy("/", NatPort(DEFAULT_EVM_NODE_HTTP_PORT)).WithStatusCode(201),
 		),
 		Entrypoint: []string{
 			"besu",
@@ -308,11 +308,11 @@ func (g *Besu) getPowContainerRequest() (*tc.ContainerRequest, error) {
 			"--rpc-http-cors-origins", "*",
 			"--rpc-http-api", "ADMIN,DEBUG,WEB3,ETH,TXPOOL,CLIQUE,MINER,NET",
 			"--rpc-http-host", "0.0.0.0",
-			fmt.Sprintf("--rpc-http-port=%s", TX_GETH_HTTP_PORT),
+			fmt.Sprintf("--rpc-http-port=%s", DEFAULT_EVM_NODE_HTTP_PORT),
 			"--rpc-ws-enabled",
 			"--rpc-ws-api", "ADMIN,DEBUG,WEB3,ETH,TXPOOL,CLIQUE,MINER,NET",
 			"--rpc-ws-host", "0.0.0.0",
-			fmt.Sprintf("--rpc-ws-port=%s", TX_GETH_WS_PORT),
+			fmt.Sprintf("--rpc-ws-port=%s", DEFAULT_EVM_NODE_WS_PORT),
 			"--miner-enabled=true",
 			"--miner-coinbase", RootFundingAddr,
 			fmt.Sprintf("--network-id=%d", g.chainConfg.ChainID),

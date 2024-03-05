@@ -309,7 +309,7 @@ func (g *NonDevGethNode) ConnectToClient() error {
 	if err != nil {
 		return err
 	}
-	port := NatPort(TX_GETH_HTTP_PORT)
+	port := NatPort(DEFAULT_EVM_NODE_HTTP_PORT)
 	httpPort, err := ct.MappedPort(testcontext.Get(g.t), port)
 	if err != nil {
 		return err
@@ -320,7 +320,7 @@ func (g *NonDevGethNode) ConnectToClient() error {
 	}
 
 	g.ExternalHttpUrl = fmt.Sprintf("http://%s:%s", host, httpPort.Port())
-	g.InternalHttpUrl = fmt.Sprintf("http://%s:%s", g.ContainerName, TX_GETH_HTTP_PORT)
+	g.InternalHttpUrl = fmt.Sprintf("http://%s:%s", g.ContainerName, DEFAULT_EVM_NODE_HTTP_PORT)
 	g.ExternalWsUrl = fmt.Sprintf("ws://%s:%s", host, wsPort.Port())
 	g.InternalWsUrl = fmt.Sprintf("ws://%s:%s", g.ContainerName, TX_NON_DEV_GETH_WS_PORT)
 
@@ -393,12 +393,12 @@ func (g *NonDevGethNode) getGethContainerRequest() (tc.ContainerRequest, error) 
 		Name:  g.ContainerName,
 		Image: gethImage,
 		ExposedPorts: []string{
-			NatPortFormat(TX_GETH_HTTP_PORT),
+			NatPortFormat(DEFAULT_EVM_NODE_HTTP_PORT),
 			NatPortFormat(TX_NON_DEV_GETH_WS_PORT),
 			"30303/tcp", "30303/udp"},
 		Networks: g.Networks,
 		WaitingFor: tcwait.ForAll(
-			NewHTTPStrategy("/", NatPort(TX_GETH_HTTP_PORT)),
+			NewHTTPStrategy("/", NatPort(DEFAULT_EVM_NODE_HTTP_PORT)),
 			tcwait.ForLog("WebSocket enabled"),
 			NewWebSocketStrategy(NatPort(TX_NON_DEV_GETH_WS_PORT), g.l),
 		),
@@ -411,7 +411,7 @@ func (g *NonDevGethNode) getGethContainerRequest() (tc.ContainerRequest, error) 
 			"--http.corsdomain", "*",
 			"--http.api", "admin,debug,web3,eth,txpool,personal,clique,miner,net",
 			"--http.addr", "0.0.0.0",
-			fmt.Sprintf("--http.port=%s", TX_GETH_HTTP_PORT),
+			fmt.Sprintf("--http.port=%s", DEFAULT_EVM_NODE_HTTP_PORT),
 			"--ws",
 			"--ws.origins", "*",
 			"--ws.api", "admin,debug,web3,eth,txpool,personal,clique,miner,net",
