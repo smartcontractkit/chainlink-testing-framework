@@ -3,6 +3,7 @@ package test_env
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -65,7 +66,7 @@ func (g *NethermindPos) WithTestInstance(t *testing.T) ExecutionClient {
 }
 
 func (g *NethermindPos) StartContainer() (blockchain.EVMNetwork, error) {
-	r, err := g.getContainerRequest(g.Networks)
+	r, err := g.getContainerRequest()
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
@@ -152,11 +153,23 @@ func (g *NethermindPos) GetContainer() *tc.Container {
 	return &g.Container
 }
 
-func (g *NethermindPos) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
+func (g *NethermindPos) getContainerRequest() (*tc.ContainerRequest, error) {
+	// create empty cfg file since if we don't pass any
+	// default mainnet.cfg will be used
+	noneCfg, err := os.CreateTemp("", "none.cfg")
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = noneCfg.WriteString("{}")
+	if err != nil {
+		return nil, err
+	}
+
 	return &tc.ContainerRequest{
 		Name:            g.ContainerName,
 		Image:           g.GetImageWithVersion(),
-		Networks:        networks,
+		Networks:        g.Networks,
 		AlwaysPullImage: true,
 		// ImagePlatform: "linux/x86_64",  //don't even try this on Apple Silicon, the node won't start due to .NET error
 		ExposedPorts: []string{NatPortFormat(TX_GETH_HTTP_PORT), NatPortFormat(TX_GETH_WS_PORT), NatPortFormat(ETH2_EXECUTION_PORT)},
@@ -167,7 +180,7 @@ func (g *NethermindPos) getContainerRequest(networks []string) (*tc.ContainerReq
 		),
 		Cmd: []string{
 			"--datadir=/nethermind",
-			"--config=none.cfg",
+			"--config=/none.cfg",
 			fmt.Sprintf("--Init.ChainSpecPath=%s/chainspec.json", GENERATED_DATA_DIR_INSIDE_CONTAINER),
 			"--Init.DiscoveryEnabled=false",
 			"--Init.WebSocketsEnabled=true",
@@ -186,6 +199,13 @@ func (g *NethermindPos) getContainerRequest(networks []string) (*tc.ContainerReq
 			"--Network.MaxActivePeers=0",
 			"--Network.OnlyStaticPeers=true",
 			"--HealthChecks.Enabled=true", // default slug /health
+		},
+		Files: []tc.ContainerFile{
+			{
+				HostFilePath:      noneCfg.Name(),
+				ContainerFilePath: "/none.cfg",
+				FileMode:          0644,
+			},
 		},
 		HostConfigModifier: func(hostConfig *container.HostConfig) {
 			hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{

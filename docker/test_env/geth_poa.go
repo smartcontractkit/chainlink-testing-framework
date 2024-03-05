@@ -3,6 +3,7 @@ package test_env
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"fmt"
 	"net"
 	"net/http"
@@ -43,7 +44,7 @@ const (
 	TX_GETH_HTTP_PORT = "8544"
 	TX_GETH_WS_PORT   = "8545"
 
-	defaultGethPowImage = "ethereum/client-go:v1.12.0"
+	defaultGethPoaImage = "ethereum/client-go:v1.12.0"
 )
 
 type InternalDockerUrls struct {
@@ -51,7 +52,7 @@ type InternalDockerUrls struct {
 	WsUrl   string
 }
 
-type GethPow struct {
+type GethPoa struct {
 	EnvComponent
 	ExternalHttpUrl string
 	InternalHttpUrl string
@@ -62,9 +63,9 @@ type GethPow struct {
 	t               *testing.T
 }
 
-func NewGethPow(networks []string, chainConfig *EthereumChainConfig, opts ...EnvComponentOption) *GethPow {
-	parts := strings.Split(defaultGethPowImage, ":")
-	g := &GethPow{
+func NewGethPoa(networks []string, chainConfig *EthereumChainConfig, opts ...EnvComponentOption) *GethPoa {
+	parts := strings.Split(defaultGethPoaImage, ":")
+	g := &GethPoa{
 		EnvComponent: EnvComponent{
 			ContainerName:    fmt.Sprintf("%s-%s", "geth-pow", uuid.NewString()[0:8]),
 			Networks:         networks,
@@ -83,18 +84,18 @@ func NewGethPow(networks []string, chainConfig *EthereumChainConfig, opts ...Env
 	return g
 }
 
-func (g *GethPow) WithLogger(l zerolog.Logger) *GethPow {
+func (g *GethPoa) WithLogger(l zerolog.Logger) *GethPoa {
 	g.l = l
 	return g
 }
 
-func (g *GethPow) WithTestInstance(t *testing.T) ExecutionClient {
+func (g *GethPoa) WithTestInstance(t *testing.T) ExecutionClient {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
 	return g
 }
 
-func (g *GethPow) StartContainer() (blockchain.EVMNetwork, error) {
+func (g *GethPoa) StartContainer() (blockchain.EVMNetwork, error) {
 	r, _, _, err := g.getGethContainerRequest(g.Networks)
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
@@ -108,7 +109,7 @@ func (g *GethPow) StartContainer() (blockchain.EVMNetwork, error) {
 		Logger:           l,
 	})
 	if err != nil {
-		return blockchain.EVMNetwork{}, fmt.Errorf("cannot start geth-pow container: %w", err)
+		return blockchain.EVMNetwork{}, fmt.Errorf("cannot start geth-poa container: %w", err)
 	}
 	host, err := GetHost(testcontext.Get(g.t), ct)
 	if err != nil {
@@ -130,7 +131,7 @@ func (g *GethPow) StartContainer() (blockchain.EVMNetwork, error) {
 	g.InternalWsUrl = FormatWsUrl(g.ContainerName, TX_GETH_WS_PORT)
 
 	networkConfig := blockchain.SimulatedEVMNetwork
-	networkConfig.Name = "Simulated Ethereum-PoW (geth)"
+	networkConfig.Name = "Simulated Ethereum-PoA (geth)"
 	networkConfig.URLs = []string{g.ExternalWsUrl}
 	networkConfig.HTTPURLs = []string{g.ExternalHttpUrl}
 
@@ -144,45 +145,43 @@ func (g *GethPow) StartContainer() (blockchain.EVMNetwork, error) {
 	return networkConfig, nil
 }
 
-func (g *GethPow) GetContainer() *tc.Container {
+func (g *GethPoa) GetContainer() *tc.Container {
 	return &g.Container
 }
 
-func (g *GethPow) GetContainerName() string {
+func (g *GethPoa) GetContainerName() string {
 	return g.ContainerName
 }
 
-func (g *GethPow) GetContainerType() ContainerType {
+func (g *GethPoa) GetContainerType() ContainerType {
 	return ContainerType_Geth
 }
 
-func (g *GethPow) GetInternalExecutionURL() string {
+func (g *GethPoa) GetInternalExecutionURL() string {
 	panic("not supported")
 }
 
-func (g *GethPow) GetExternalExecutionURL() string {
+func (g *GethPoa) GetExternalExecutionURL() string {
 	panic("not supported")
 }
 
-func (g *GethPow) GetInternalHttpUrl() string {
+func (g *GethPoa) GetInternalHttpUrl() string {
 	return g.InternalHttpUrl
 }
 
-func (g *GethPow) GetInternalWsUrl() string {
+func (g *GethPoa) GetInternalWsUrl() string {
 	return g.InternalWsUrl
 }
 
-func (g *GethPow) GetExternalHttpUrl() string {
+func (g *GethPoa) GetExternalHttpUrl() string {
 	return g.ExternalHttpUrl
 }
 
-func (g *GethPow) GetExternalWsUrl() string {
+func (g *GethPoa) GetExternalWsUrl() string {
 	return g.ExternalWsUrl
 }
 
-func (g *GethPow) getGethContainerRequest(networks []string) (*tc.ContainerRequest, *keystore.KeyStore, *accounts.Account, error) {
-	blocktime := "1"
-
+func (g *GethPoa) getGethContainerRequest(networks []string) (*tc.ContainerRequest, *keystore.KeyStore, *accounts.Account, error) {
 	initScriptFile, err := os.CreateTemp("", "init_script")
 	if err != nil {
 		return nil, nil, nil, err
@@ -197,40 +196,63 @@ func (g *GethPow) getGethContainerRequest(networks []string) (*tc.ContainerReque
 	}
 	// Create keystore and ethereum account
 	ks := keystore.NewKeyStore(keystoreDir, keystore.StandardScryptN, keystore.StandardScryptP)
-	account, err := ks.NewAccount("")
+	minerAccount, err := ks.NewAccount("")
 	if err != nil {
-		return nil, ks, &account, err
+		return nil, ks, &minerAccount, err
 	}
+
+	minerAddr := strings.Replace(minerAccount.Address.Hex(), "0x", "", 1)
+	signerBytes, err := hex.DecodeString(minerAddr)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	zeroBytes := make([]byte, 32)                      // Create 32 zero bytes
+	extradata := append(zeroBytes, signerBytes...)     // Concatenate zero bytes and signer address
+	extradata = append(extradata, make([]byte, 65)...) // Concatenate 65 more zero bytes
+
 	genesisJsonStr, err := templates.GethPoWGenesisJsonTemplate{
 		ChainId:     fmt.Sprintf("%d", g.chainConfig.ChainID),
-		AccountAddr: account.Address.Hex(),
+		AccountAddr: []string{minerAccount.Address.Hex(), RootFundingAddr},
+		Consensus:   templates.GethGenesisConsensus_Clique,
+		ExtraData:   fmt.Sprintf("0x%s", hex.EncodeToString(extradata)),
 	}.String()
 	if err != nil {
-		return nil, ks, &account, err
+		return nil, ks, &minerAccount, err
 	}
 	genesisFile, err := os.CreateTemp("", "genesis_json")
 	if err != nil {
-		return nil, ks, &account, err
+		return nil, ks, &minerAccount, err
 	}
 	_, err = genesisFile.WriteString(genesisJsonStr)
 	if err != nil {
-		return nil, ks, &account, err
+		return nil, ks, &minerAccount, err
 	}
 	key1File, err := os.CreateTemp(keystoreDir, "key1")
 	if err != nil {
-		return nil, ks, &account, err
+		return nil, ks, &minerAccount, err
 	}
 	_, err = key1File.WriteString(RootFundingWallet)
 	if err != nil {
-		return nil, ks, &account, err
+		return nil, ks, &minerAccount, err
 	}
 	configDir, err := os.MkdirTemp("", "config")
 	if err != nil {
-		return nil, ks, &account, err
+		return nil, ks, &minerAccount, err
 	}
 	err = os.WriteFile(configDir+"/password.txt", []byte(""), 0600)
 	if err != nil {
-		return nil, ks, &account, err
+		return nil, ks, &minerAccount, err
+	}
+
+	entrypoint, err := g.getEntryPointAndKeystoreLocation(minerAddr)
+	if err != nil {
+		return nil, ks, &minerAccount, err
+	}
+
+	websocketMsg, err := g.getWebsocketEnabledMessage()
+	if err != nil {
+		return nil, ks, &minerAccount, err
 	}
 
 	return &tc.ContainerRequest{
@@ -241,53 +263,13 @@ func (g *GethPow) getGethContainerRequest(networks []string) (*tc.ContainerReque
 		Networks:        networks,
 		WaitingFor: tcwait.ForAll(
 			NewHTTPStrategy("/", NatPort(TX_GETH_HTTP_PORT)),
-			tcwait.ForLog("WebSocket enabled"),
+			tcwait.ForLog(websocketMsg),
 			tcwait.ForLog("Started P2P networking").
 				WithStartupTimeout(120*time.Second).
 				WithPollInterval(1*time.Second),
 			NewWebSocketStrategy(NatPort(TX_GETH_WS_PORT), g.l),
 		),
-		Entrypoint: []string{"sh", "./root/init.sh",
-			"--dev",
-			"--password",
-			"/root/config/password.txt",
-			"--datadir",
-			"/root/.ethereum/devchain",
-			"--unlock",
-			RootFundingAddr,
-			"--mine",
-			"--miner.etherbase",
-			RootFundingAddr,
-			"--ipcdisable",
-			"--http",
-			"--http.vhosts",
-			"*",
-			"--http.addr",
-			"0.0.0.0",
-			fmt.Sprintf("--http.port=%s", TX_GETH_HTTP_PORT),
-			"--ws",
-			"--ws.origins",
-			"*",
-			"--ws.addr",
-			"0.0.0.0",
-			"--ws.api", "admin,debug,web3,eth,txpool,personal,clique,miner,net",
-			fmt.Sprintf("--ws.port=%s", TX_GETH_WS_PORT),
-			"--graphql",
-			"-graphql.corsdomain",
-			"*",
-			"--allow-insecure-unlock",
-			"--rpc.allow-unprotected-txs",
-			"--http.api",
-			"eth,web3,debug",
-			"--http.corsdomain",
-			"*",
-			"--vmdebug",
-			fmt.Sprintf("--networkid=%d", g.chainConfig.ChainID),
-			"--rpc.txfeecap",
-			"0",
-			"--dev.period",
-			blocktime,
-		},
+		Entrypoint: entrypoint,
 		Files: []tc.ContainerFile{
 			{
 				HostFilePath:      initScriptFile.Name(),
@@ -319,10 +301,10 @@ func (g *GethPow) getGethContainerRequest(networks []string) (*tc.ContainerReque
 				PostStops:  g.PostStopsHooks,
 			},
 		},
-	}, ks, &account, nil
+	}, ks, &minerAccount, nil
 }
 
-func (g *GethPow) WaitUntilChainIsReady(_ context.Context, _ time.Duration) error {
+func (g *GethPoa) WaitUntilChainIsReady(_ context.Context, _ time.Duration) error {
 	return nil
 }
 
@@ -384,6 +366,105 @@ func (w *WebSocketStrategy) WaitUntilReady(ctx context.Context, target tcwait.St
 			w.l.Info().Msgf("WebSocket attempt %d failed: %s. Retrying...", i, err)
 		}
 	}
+}
+
+func (g *GethPoa) getEntryPointAndKeystoreLocation(minerAddress string) ([]string, error) {
+	version, err := GetComparableVersionFromDockerImage(g.GetImageWithVersion())
+	if err != nil {
+		return nil, err
+	}
+
+	entrypoint := []string{
+		"sh", "./root/init.sh",
+		"--password",
+		"/root/config/password.txt",
+		"--ipcdisable",
+		"--graphql",
+		"-graphql.corsdomain",
+		"*",
+		"--allow-insecure-unlock",
+		"--vmdebug",
+		fmt.Sprintf("--networkid=%d", g.chainConfig.ChainID),
+		"--datadir",
+		"/root/.ethereum/devchain",
+		"--mine",
+		"--miner.etherbase",
+		minerAddress,
+		"--unlock",
+		minerAddress,
+	}
+
+	if version < 110 {
+		entrypoint = append(entrypoint,
+			"--rpc",
+			"--rpcapi",
+			"admin,debug,web3,eth,txpool,personal,clique,miner,net",
+			"--rpccorsdomain",
+			"*",
+			"--rpcvhosts",
+			"*",
+			"--rpcaddr",
+			"0.0.0.0",
+			fmt.Sprintf("--rpcport=%s", TX_GETH_HTTP_PORT),
+			"--ws",
+			"--wsorigins",
+			"*",
+			"--wsaddr",
+			"0.0.0.0",
+			"--wsapi",
+			"admin,debug,web3,eth,txpool,personal,clique,miner,net",
+			fmt.Sprintf("--wsport=%s", TX_GETH_WS_PORT),
+			// "--miner.threads",
+			// "1",
+		)
+	}
+
+	// if version >= 110 && version < 111 {
+	// 	entrypoint = append(entrypoint,
+	// 		"--miner.threads",
+	// 		"1")
+	// }
+
+	if version >= 110 {
+		entrypoint = append(entrypoint,
+			"--http",
+			"--http.vhosts",
+			"*",
+			"--http.api",
+			"admin,debug,web3,eth,txpool,personal,clique,miner,net",
+			"--http.corsdomain",
+			"*",
+			"--http.addr",
+			"0.0.0.0",
+			fmt.Sprintf("--http.port=%s", TX_GETH_HTTP_PORT),
+			"--ws",
+			"--ws.origins",
+			"*",
+			"--ws.addr",
+			"0.0.0.0",
+			"--ws.api",
+			"admin,debug,web3,eth,txpool,personal,clique,miner,net",
+			fmt.Sprintf("--ws.port=%s", TX_GETH_WS_PORT),
+			"--rpc.allow-unprotected-txs",
+			"--rpc.txfeecap",
+			"0",
+		)
+	}
+
+	return entrypoint, nil
+}
+
+func (g *GethPoa) getWebsocketEnabledMessage() (string, error) {
+	version, err := GetComparableVersionFromDockerImage(g.GetImageWithVersion())
+	if err != nil {
+		return "", err
+	}
+
+	if version < 110 {
+		return "WebSocket endpoint opened", nil
+	}
+
+	return "WebSocket enabled", nil
 }
 
 type HTTPStrategy struct {

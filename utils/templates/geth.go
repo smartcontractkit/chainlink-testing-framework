@@ -5,15 +5,13 @@ import (
 	"fmt"
 	"os"
 	"text/template"
-
-	"github.com/google/uuid"
 )
 
 var InitGethScript = `
 #!/bin/bash
 if [ ! -d /root/.ethereum/keystore ]; then
 	echo "/root/.ethereum/keystore not found, running 'geth init'..."
-	geth init /root/genesis.json
+	geth init --datadir /root/.ethereum/devchain /root/genesis.json
 	echo "...done!"
 fi
 
@@ -46,6 +44,8 @@ echo "Bootnode enode: $bootnode_enode"
 geth "$@"
 `
 
+// "ethash": {}
+
 var GenesisJson = `
 {
 	"config": {
@@ -63,13 +63,14 @@ var GenesisJson = `
 	  "berlinBlock": 0,
 	  "londonBlock": 0,
 	  "clique": {
-			"period": 2,
-      		"epoch": 30000
-    	}
+		"period": 2,
+		  "epoch": 30000
+		}
 	},
 	"nonce": "0x0000000000000042",
 	"mixhash": "0x0000000000000000000000000000000000000000000000000000000000000000",
-	"difficulty": "1",
+
+	"difficulty": "0x1",
 	"coinbase": "0x3333333333333333333333333333333333333333",
 	"parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
 	"extraData": "{{ .ExtraData }}",
@@ -114,13 +115,50 @@ func BuildGenesisJsonForNonDevChain(chainId string, accountAddr []string, extraD
 	return buf.String(), err
 }
 
+type GethGenesisConsensus = string
+
+const (
+	GethGenesisConsensus_Ethash = "ethash"
+	GethGenesisConsensus_Clique = "clique"
+)
+
 type GethPoWGenesisJsonTemplate struct {
-	AccountAddr string
+	AccountAddr []string
 	ChainId     string
+	Consensus   GethGenesisConsensus
+	ExtraData   string
 }
 
 // String representation of the job
 func (c GethPoWGenesisJsonTemplate) String() (string, error) {
+	var consensusStr string
+	switch c.Consensus {
+	case GethGenesisConsensus_Ethash:
+		consensusStr = `,"ethash": {}`
+	case GethGenesisConsensus_Clique:
+		consensusStr = `,"clique": {"period": 1,"epoch": 30000}`
+	default:
+		return "", fmt.Errorf("unsupported consensus type: %s", c.Consensus)
+	}
+
+	if c.Consensus == GethGenesisConsensus_Clique && (c.ExtraData == "" || c.ExtraData == "0x") {
+		return "", fmt.Errorf("extraData is required for clique consensus")
+	} else if c.Consensus == GethGenesisConsensus_Ethash && c.ExtraData == "" {
+		c.ExtraData = "0x"
+	}
+
+	data := struct {
+		AccountAddr []string
+		ChainId     string
+		ExtraData   string
+		Consensus   string
+	}{
+		AccountAddr: c.AccountAddr,
+		ChainId:     c.ChainId,
+		ExtraData:   c.ExtraData,
+		Consensus:   consensusStr,
+	}
+
 	tpl := `
 {
 	"config": {
@@ -137,19 +175,33 @@ func (c GethPoWGenesisJsonTemplate) String() (string, error) {
 	  "muirGlacierBlock": 0,
 	  "berlinBlock": 0,
 	  "londonBlock": 0
+	  {{ .Consensus }}
 	},
 	"nonce": "0x0000000000000042",
 	"mixhash": "0x0000000000000000000000000000000000000000000000000000000000000000",
 	"difficulty": "1",
-	"coinbase": "0x3333333333333333333333333333333333333333",
+	"coinbase": "0x0000000000000000000000000000000000000000",
 	"parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
-	"extraData": "0x",
-	"gasLimit": "8000000000",
+	"extraData": "{{ .ExtraData }}",
+	"gasLimit": "0x2fefd8",
 	"alloc": {
-	  "{{ .AccountAddr }}": {
-		"balance": "20000000000000000000000"
-	  }
+		{{- $lastIndex := decrement (len $.AccountAddr)}}
+		{{- range $i, $addr := .AccountAddr }}
+	  "{{$addr}}": {
+		"balance": "9000000000000000000000000000"
+	  }{{ if ne $i $lastIndex }},{{ end }}
+	{{- end }}
 	}
   }`
-	return MarshalTemplate(c, uuid.NewString(), tpl)
+
+	t, err := template.New("genesis-json").Funcs(funcMap).Parse(tpl)
+	if err != nil {
+		fmt.Println("Error parsing template:", err)
+		os.Exit(1)
+	}
+
+	var buf bytes.Buffer
+	err = t.Execute(&buf, data)
+
+	return buf.String(), err
 }

@@ -71,7 +71,7 @@ func (g *BesuPos) WithTestInstance(t *testing.T) ExecutionClient {
 }
 
 func (g *BesuPos) StartContainer() (blockchain.EVMNetwork, error) {
-	r, err := g.getContainerRequest(g.Networks)
+	r, err := g.getContainerRequest()
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
@@ -158,11 +158,11 @@ func (g *BesuPos) GetContainer() *tc.Container {
 	return &g.Container
 }
 
-func (g *BesuPos) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
+func (g *BesuPos) getContainerRequest() (*tc.ContainerRequest, error) {
 	return &tc.ContainerRequest{
 		Name:     g.ContainerName,
 		Image:    g.GetImageWithVersion(),
-		Networks: networks,
+		Networks: g.Networks,
 		// ImagePlatform: "linux/x86_64", //don't even try this on Apple Silicon, the node won't start due to JVM error
 		ExposedPorts: []string{NatPortFormat(TX_GETH_HTTP_PORT), NatPortFormat(TX_GETH_WS_PORT), NatPortFormat(ETH2_EXECUTION_PORT)},
 		WaitingFor: tcwait.ForAll(

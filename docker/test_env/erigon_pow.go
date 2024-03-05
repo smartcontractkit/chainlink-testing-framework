@@ -167,7 +167,7 @@ func (g *ErigonPow) getContainerRequest() (*tc.ContainerRequest, error) {
 
 	genesisJsonStr, err := templates.GethPoWGenesisJsonTemplate{
 		ChainId:     fmt.Sprintf("%d", g.chainConfg.ChainID),
-		AccountAddr: RootFundingAddr,
+		AccountAddr: []string{RootFundingAddr},
 	}.String()
 	if err != nil {
 		return nil, err

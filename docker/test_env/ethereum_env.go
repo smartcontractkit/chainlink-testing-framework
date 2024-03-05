@@ -176,7 +176,7 @@ func (b *EthereumNetworkBuilder) Build() (EthereumNetwork, error) {
 		b.ethereumChainConfig.GenerateGenesisTimestamp()
 	}
 
-	err := b.decideConsensusIfNeeded()
+	err := b.autoFill()
 	if err != nil {
 		return EthereumNetwork{}, err
 	}
@@ -241,18 +241,39 @@ func (b *EthereumNetworkBuilder) validate() error {
 	return b.ethereumChainConfig.Validate(logging.GetTestLogger(nil), b.consensusType)
 }
 
-func (b *EthereumNetworkBuilder) decideConsensusIfNeeded() error {
+func (b *EthereumNetworkBuilder) autoFill() error {
+	executionContainersTypes := []ContainerType{ContainerType_Geth, ContainerType_Nethermind, ContainerType_Erigon, ContainerType_Besu}
+
 	if b.consensusType == "" {
 		b.consensusType = ConsensusType_Auto
 	}
 
+	if b.executionLayer == "" && len(b.customDockerImages) > 0 {
+		for _, c := range executionContainersTypes {
+			if _, ok := b.customDockerImages[c]; ok {
+				switch c {
+				case ContainerType_Geth:
+					b.executionLayer = ExecutionLayer_Geth
+				case ContainerType_Nethermind:
+					b.executionLayer = ExecutionLayer_Nethermind
+				case ContainerType_Erigon:
+					b.executionLayer = ExecutionLayer_Erigon
+				case ContainerType_Besu:
+					b.executionLayer = ExecutionLayer_Besu
+				default:
+					return fmt.Errorf("unknown execution layer: %s", b.executionLayer)
+				}
+				break
+			}
+		}
+	}
+
 	if b.executionLayer != "" && b.consensusType == ConsensusType_Auto {
-		executionContainers := []ContainerType{ContainerType_Geth, ContainerType_Nethermind, ContainerType_Erigon, ContainerType_Besu}
 		var dockerImage string
 
 		// if we are using custom docker image for execution client, extract it
 		for t, v := range b.customDockerImages {
-			for _, c := range executionContainers {
+			for _, c := range executionContainersTypes {
 				if t == c {
 					dockerImage = v
 					break
@@ -512,13 +533,13 @@ func (en *EthereumNetwork) startPow() (blockchain.EVMNetwork, RpcProvider, error
 	var clientErr error
 	switch *en.ExecutionLayer {
 	case ExecutionLayer_Geth:
-		client = NewGethPow(dockerNetworks, en.EthereumChainConfig, append(en.getImageOverride(ContainerType_Geth), en.setExistingContainerName(ContainerType_Geth))...)
+		client = NewGethPoa(dockerNetworks, en.EthereumChainConfig, append(en.getImageOverride(ContainerType_Geth), en.setExistingContainerName(ContainerType_Geth))...)
 	case ExecutionLayer_Besu:
 		client, clientErr = NewBesuPow(dockerNetworks, en.EthereumChainConfig, append(en.getImageOverride(ContainerType_Besu), en.setExistingContainerName(ContainerType_Besu))...)
 	case ExecutionLayer_Erigon:
 		client, clientErr = NewErigonPow(dockerNetworks, en.EthereumChainConfig, append(en.getImageOverride(ContainerType_Erigon), en.setExistingContainerName(ContainerType_Erigon))...)
 	case ExecutionLayer_Nethermind:
-		client, clientErr = NewNethermindPow(dockerNetworks, en.EthereumChainConfig, append(en.getImageOverride(ContainerType_Nethermind), en.setExistingContainerName(ContainerType_Nethermind))...)
+		client, clientErr = NewNethermindPoa(dockerNetworks, en.EthereumChainConfig, append(en.getImageOverride(ContainerType_Nethermind), en.setExistingContainerName(ContainerType_Nethermind))...)
 	default:
 		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf("unsupported execution layer: %s", *en.ExecutionLayer)
 	}

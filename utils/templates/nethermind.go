@@ -2,13 +2,13 @@ package templates
 
 import "github.com/google/uuid"
 
-type NethermindPoWGenesisJsonTemplate struct {
+type NethermindPoAGenesisJsonTemplate struct {
 	AccountAddr string
 	ChainId     string
 	ExtraData   string
 }
 
-func (c NethermindPoWGenesisJsonTemplate) String() (string, error) {
+func (c NethermindPoAGenesisJsonTemplate) String() (string, error) {
 	tpl := `
 	{
 		"name": "Devnet",

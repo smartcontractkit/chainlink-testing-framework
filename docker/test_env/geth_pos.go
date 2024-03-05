@@ -231,7 +231,8 @@ func (g *GethPos) buildInitScript() (string, error) {
 	echo "2e0834786285daccd064ca17f1654f67b4aef298acbb82cef9ec422fb4975622" > {{.ExecutionDir}}/sk.json
 
 	echo "Running geth init"
-	geth init --state.scheme=path --datadir={{.ExecutionDir}} {{.GeneratedDataDir}}/genesis.json
+	# geth init --state.scheme=path --datadir={{.ExecutionDir}} {{.GeneratedDataDir}}/genesis.json
+	geth init --datadir={{.ExecutionDir}} {{.GeneratedDataDir}}/genesis.json
 	exit_code=$?
 	if [ $exit_code -ne 0 ]; then
 		echo "Geth init failed with exit code $exit_code"

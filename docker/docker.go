@@ -82,7 +82,7 @@ var NaiveRetrier = func(l zerolog.Logger, startErr error, req tc.GenericContaine
 	return nil, startErr
 }
 
-var LinuxPlatoformImageRetrier = func(l zerolog.Logger, startErr error, req tc.GenericContainerRequest) (tc.Container, error) {
+var LinuxPlatformImageRetrier = func(l zerolog.Logger, startErr error, req tc.GenericContainerRequest) (tc.Container, error) {
 	// if it's nil we don't know if we can handle it so we won't try
 	if startErr == nil {
 		return nil, startErr
@@ -145,7 +145,7 @@ func StartContainerWithRetry(l zerolog.Logger, req tc.GenericContainerRequest, r
 	}
 
 	if len(retriers) == 0 {
-		retriers = append(retriers, LinuxPlatoformImageRetrier, NaiveRetrier)
+		retriers = append(retriers, LinuxPlatformImageRetrier, NaiveRetrier)
 	}
 
 	for i := 0; i < RetryAttempts; i++ {

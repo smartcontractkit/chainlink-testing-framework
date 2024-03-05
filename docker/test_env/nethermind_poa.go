@@ -25,9 +25,9 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/templates"
 )
 
-const defaultNethermindPowImage = "nethermind/nethermind:1.13.0"
+const defaultNethermindPoaImage = "nethermind/nethermind:1.16.0"
 
-type NethermindPow struct {
+type NethermindPoa struct {
 	EnvComponent
 	ExternalHttpUrl string
 	InternalHttpUrl string
@@ -38,11 +38,11 @@ type NethermindPow struct {
 	t               *testing.T
 }
 
-func NewNethermindPow(networks []string, chainConfg *EthereumChainConfig, opts ...EnvComponentOption) (*NethermindPow, error) {
-	parts := strings.Split(defaultNethermindPowImage, ":")
-	g := &NethermindPow{
+func NewNethermindPoa(networks []string, chainConfg *EthereumChainConfig, opts ...EnvComponentOption) (*NethermindPoa, error) {
+	parts := strings.Split(defaultNethermindPoaImage, ":")
+	g := &NethermindPoa{
 		EnvComponent: EnvComponent{
-			ContainerName:    fmt.Sprintf("%s-%s", "nethermind-pow", uuid.NewString()[0:8]),
+			ContainerName:    fmt.Sprintf("%s-%s", "nethermind-poa", uuid.NewString()[0:8]),
 			Networks:         networks,
 			ContainerImage:   parts[0],
 			ContainerVersion: parts[1],
@@ -58,13 +58,13 @@ func NewNethermindPow(networks []string, chainConfg *EthereumChainConfig, opts .
 	return g, nil
 }
 
-func (g *NethermindPow) WithTestInstance(t *testing.T) ExecutionClient {
+func (g *NethermindPoa) WithTestInstance(t *testing.T) ExecutionClient {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
 	return g
 }
 
-func (g *NethermindPow) StartContainer() (blockchain.EVMNetwork, error) {
+func (g *NethermindPoa) StartContainer() (blockchain.EVMNetwork, error) {
 	r, err := g.getContainerRequest()
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
@@ -104,7 +104,7 @@ func (g *NethermindPow) StartContainer() (blockchain.EVMNetwork, error) {
 	g.InternalWsUrl = FormatWsUrl(g.ContainerName, TX_GETH_WS_PORT)
 
 	networkConfig := blockchain.SimulatedEVMNetwork
-	networkConfig.Name = "Simulated Ethereum-PoW (nethermind)"
+	networkConfig.Name = "Simulated Ethereum-PoA (nethermind)"
 	networkConfig.URLs = []string{g.ExternalWsUrl}
 	networkConfig.HTTPURLs = []string{g.ExternalHttpUrl}
 	networkConfig.GasEstimationBuffer = 100_000_000_000
@@ -115,39 +115,39 @@ func (g *NethermindPow) StartContainer() (blockchain.EVMNetwork, error) {
 	return networkConfig, nil
 }
 
-func (g *NethermindPow) GetInternalExecutionURL() string {
+func (g *NethermindPoa) GetInternalExecutionURL() string {
 	panic("not supported")
 }
 
-func (g *NethermindPow) GetExternalExecutionURL() string {
+func (g *NethermindPoa) GetExternalExecutionURL() string {
 	panic("not supported")
 }
 
-func (g *NethermindPow) GetInternalHttpUrl() string {
+func (g *NethermindPoa) GetInternalHttpUrl() string {
 	return g.InternalHttpUrl
 }
 
-func (g *NethermindPow) GetInternalWsUrl() string {
+func (g *NethermindPoa) GetInternalWsUrl() string {
 	return g.InternalWsUrl
 }
 
-func (g *NethermindPow) GetExternalHttpUrl() string {
+func (g *NethermindPoa) GetExternalHttpUrl() string {
 	return g.ExternalHttpUrl
 }
 
-func (g *NethermindPow) GetExternalWsUrl() string {
+func (g *NethermindPoa) GetExternalWsUrl() string {
 	return g.ExternalWsUrl
 }
 
-func (g *NethermindPow) GetContainerName() string {
+func (g *NethermindPoa) GetContainerName() string {
 	return g.ContainerName
 }
 
-func (g *NethermindPow) GetContainer() *tc.Container {
+func (g *NethermindPoa) GetContainer() *tc.Container {
 	return &g.Container
 }
 
-func (g *NethermindPow) getContainerRequest() (*tc.ContainerRequest, error) {
+func (g *NethermindPoa) getContainerRequest() (*tc.ContainerRequest, error) {
 	keystoreDir, err := os.MkdirTemp("", "keystore")
 	if err != nil {
 		return nil, err
@@ -172,7 +172,7 @@ func (g *NethermindPow) getContainerRequest() (*tc.ContainerRequest, error) {
 	extradata := append(zeroBytes, signerBytes...)     // Concatenate zero bytes and signer address
 	extradata = append(extradata, make([]byte, 65)...) // Concatenate 65 more zero bytes
 
-	genesisJsonStr, err := templates.NethermindPoWGenesisJsonTemplate{
+	genesisJsonStr, err := templates.NethermindPoAGenesisJsonTemplate{
 		ChainId:     fmt.Sprintf("%d", g.chainConfg.ChainID),
 		AccountAddr: RootFundingAddr,
 		ExtraData:   fmt.Sprintf("0x%s", hex.EncodeToString(extradata)),
@@ -285,10 +285,10 @@ func (g *NethermindPow) getContainerRequest() (*tc.ContainerRequest, error) {
 	}, nil
 }
 
-func (g *NethermindPow) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error {
+func (g *NethermindPoa) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error {
 	return nil
 }
 
-func (g *NethermindPow) GetContainerType() ContainerType {
+func (g *NethermindPoa) GetContainerType() ContainerType {
 	return ContainerType_Nethermind
 }

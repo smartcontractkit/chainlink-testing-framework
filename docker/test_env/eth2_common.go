@@ -244,9 +244,46 @@ type ExecutionClient interface {
 
 // GetConsensusTypeFromImage returns the consensus type based on the Docker image version
 func GetConsensusTypeFromImage(executionLayer ExecutionLayer, imageWithVersion string) (ConsensusType, error) {
+	version, err := GetComparableVersionFromDockerImage(imageWithVersion)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse docker image and extract version: %s", imageWithVersion)
+	}
+	switch executionLayer {
+	case ExecutionLayer_Geth:
+		if version < 113 {
+			return ConsensusType_PoW, nil
+		} else {
+			return ConsensusType_PoS, nil
+		}
+	case ExecutionLayer_Besu:
+		if version < 231 {
+			return ConsensusType_PoW, nil
+		} else {
+			return ConsensusType_PoS, nil
+		}
+	case ExecutionLayer_Erigon:
+		if version < 241 {
+			return ConsensusType_PoW, nil
+		} else {
+			return ConsensusType_PoS, nil
+		}
+	case ExecutionLayer_Nethermind:
+		if version < 117 {
+			return ConsensusType_PoW, nil
+		} else {
+			return ConsensusType_PoS, nil
+		}
+	}
+
+	return "", fmt.Errorf("unsupported execution layer: %s", executionLayer)
+}
+
+// GetComparableVersionFromDockerImage returns version in xy format removing all non-numeric characters
+// and patch version if present. So x.y.z becomes xy.
+func GetComparableVersionFromDockerImage(imageWithVersion string) (int, error) {
 	parts := strings.Split(imageWithVersion, ":")
 	if len(parts) != 2 {
-		return "", fmt.Errorf("invalid docker image format: %s", imageWithVersion)
+		return -1, fmt.Errorf("invalid docker image format: %s", imageWithVersion)
 	}
 
 	re := regexp.MustCompile("[a-zA-Z]")
@@ -258,36 +295,10 @@ func GetConsensusTypeFromImage(executionLayer ExecutionLayer, imageWithVersion s
 	if count := strings.Count(cleanedVersion, "."); count > 1 {
 		cleanedVersion = string(cleanedVersion[:strings.LastIndex(cleanedVersion, ".")])
 	}
-	version, err := strconv.ParseFloat(cleanedVersion, 64)
+	version, err := strconv.Atoi(strings.Replace(cleanedVersion, ".", "", -1))
 	if err != nil {
-		return "", fmt.Errorf("failed to pase docker version to a number: %s", cleanedVersion)
-	}
-	switch executionLayer {
-	case ExecutionLayer_Geth:
-		if version < 1.13 {
-			return ConsensusType_PoW, nil
-		} else {
-			return ConsensusType_PoS, nil
-		}
-	case ExecutionLayer_Besu:
-		if version < 23.1 {
-			return ConsensusType_PoW, nil
-		} else {
-			return ConsensusType_PoS, nil
-		}
-	case ExecutionLayer_Erigon:
-		if version < 2.41 {
-			return ConsensusType_PoW, nil
-		} else {
-			return ConsensusType_PoS, nil
-		}
-	case ExecutionLayer_Nethermind:
-		if version < 1.14 {
-			return ConsensusType_PoW, nil
-		} else {
-			return ConsensusType_PoS, nil
-		}
+		return -1, fmt.Errorf("failed to pase docker version to an integer: %s", cleanedVersion)
 	}
 
-	return "", fmt.Errorf("unsupported execution layer: %s", executionLayer)
+	return version, nil
 }

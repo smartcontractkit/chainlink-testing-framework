@@ -1289,10 +1289,24 @@ func ConnectEVMClient(networkSettings EVMNetwork, logger zerolog.Logger) (EVMCli
 			continue
 		}
 		// a call to BalanceAt to ensure the client is connected
-		_, err = ec.BalanceAt(context.Background(), ec.GetDefaultWallet().address)
+		b, err := ec.BalanceAt(context.Background(), ec.GetDefaultWallet().address)
 		if err == nil {
 			ec.SetID(idx)
 			ecl.Clients = append(ecl.Clients, ec)
+
+			logger.Info().
+				Uint64("Balance", b.Uint64()).
+				Str("Address", ec.GetDefaultWallet().address.Hex()).
+				Msg("Default address balance")
+
+			if networkSettings.Simulated && b.Cmp(big.NewInt(0)) == 0 {
+				noBalanceErr := fmt.Errorf("Default wallet %s has no balance", ec.GetDefaultWallet().address.Hex())
+				logger.Err(noBalanceErr).
+					Msg("Ending test before it fails anyway")
+
+				return nil, noBalanceErr
+			}
+
 			break
 		}
 	}
@@ -1302,18 +1316,18 @@ func ConnectEVMClient(networkSettings EVMNetwork, logger zerolog.Logger) (EVMCli
 	ecl.DefaultClient = ecl.Clients[0]
 	wrappedClient := wrapMultiClient(networkSettings, ecl)
 	// required in Geth when you need to call "simulate" transactions from nodes
-	if ecl.NetworkSimulated() {
-		zero := common.HexToAddress("0x0")
-		gasEstimations, err := wrappedClient.EstimateGas(ethereum.CallMsg{
-			To: &zero,
-		})
-		if err != nil {
-			return nil, err
-		}
-		if err := ecl.Fund("0x0", big.NewFloat(1000), gasEstimations); err != nil {
-			return nil, err
-		}
-	}
+	// if ecl.NetworkSimulated() {
+	// 	zero := common.HexToAddress("0x0")
+	// 	gasEstimations, err := wrappedClient.EstimateGas(ethereum.CallMsg{
+	// 		To: &zero,
+	// 	})
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	if err := ecl.Fund("0x0", big.NewFloat(1000), gasEstimations); err != nil {
+	// 		return nil, err
+	// 	}
+	// }
 
 	return wrappedClient, nil
 }

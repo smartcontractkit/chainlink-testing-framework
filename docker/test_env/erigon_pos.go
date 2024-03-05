@@ -72,7 +72,7 @@ func (g *ErigonPos) WithTestInstance(t *testing.T) ExecutionClient {
 }
 
 func (g *ErigonPos) StartContainer() (blockchain.EVMNetwork, error) {
-	r, err := g.getContainerRequest(g.Networks)
+	r, err := g.getContainerRequest()
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
@@ -155,7 +155,7 @@ func (g *ErigonPos) GetContainer() *tc.Container {
 	return &g.Container
 }
 
-func (g *ErigonPos) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
+func (g *ErigonPos) getContainerRequest() (*tc.ContainerRequest, error) {
 	initFile, err := os.CreateTemp("", "init.sh")
 	if err != nil {
 		return nil, err
@@ -174,7 +174,7 @@ func (g *ErigonPos) getContainerRequest(networks []string) (*tc.ContainerRequest
 	return &tc.ContainerRequest{
 		Name:          g.ContainerName,
 		Image:         g.GetImageWithVersion(),
-		Networks:      networks,
+		Networks:      g.Networks,
 		ImagePlatform: "linux/x86_64",
 		ExposedPorts:  []string{NatPortFormat(TX_GETH_HTTP_PORT), NatPortFormat(ETH2_EXECUTION_PORT)},
 		WaitingFor: tcwait.ForAll(
@@ -216,7 +216,30 @@ func (g *ErigonPos) WaitUntilChainIsReady(ctx context.Context, waitTime time.Dur
 	return waitForFirstBlock.WaitUntilReady(ctx, *g.GetContainer())
 }
 
+func (c *ErigonPos) getExtraExecutionFlags() (string, error) {
+	version, err := GetComparableVersionFromDockerImage(c.GetImageWithVersion())
+	if err != nil {
+		return "", err
+	}
+
+	extraExecutionFlags := ""
+	if version > 247 {
+		extraExecutionFlags = "--rpc.txfeecap=0"
+	}
+
+	if version > 254 {
+		extraExecutionFlags += " --rpc.allow-unprotected-txs"
+	}
+
+	return extraExecutionFlags, nil
+}
+
 func (g *ErigonPos) buildInitScript() (string, error) {
+	extraExecutionFlags, err := g.getExtraExecutionFlags()
+	if err != nil {
+		return "", err
+	}
+
 	initTemplate := `#!/bin/bash
 	echo "Copied genesis file to {{.ExecutionDir}}"
 	mkdir -p {{.ExecutionDir}}
@@ -232,21 +255,23 @@ func (g *ErigonPos) buildInitScript() (string, error) {
 	echo "Starting Erigon..."
 	erigon --http --http.api=eth,erigon,engine,web3,net,debug,trace,txpool,admin --http.addr=0.0.0.0 --http.corsdomain=* \
 		--http.vhosts=* --http.port={{.HttpPort}} --ws --authrpc.vhosts=* --authrpc.addr=0.0.0.0 --authrpc.jwtsecret={{.JwtFileLocation}} \
-		--datadir={{.ExecutionDir}} --rpc.allow-unprotected-txs --rpc.txfeecap=0 --allow-insecure-unlock \
+		--datadir={{.ExecutionDir}} {{.ExtraExecutionFlags}} --allow-insecure-unlock \
 		--nodiscover --networkid={{.ChainID}} --db.size.limit=8TB`
 
 	data := struct {
-		HttpPort         string
-		ChainID          int
-		GeneratedDataDir string
-		JwtFileLocation  string
-		ExecutionDir     string
+		HttpPort            string
+		ChainID             int
+		GeneratedDataDir    string
+		JwtFileLocation     string
+		ExecutionDir        string
+		ExtraExecutionFlags string
 	}{
-		HttpPort:         TX_GETH_HTTP_PORT,
-		ChainID:          g.chainConfg.ChainID,
-		GeneratedDataDir: GENERATED_DATA_DIR_INSIDE_CONTAINER,
-		JwtFileLocation:  JWT_SECRET_FILE_LOCATION_INSIDE_CONTAINER,
-		ExecutionDir:     "/home/erigon/execution-data",
+		HttpPort:            TX_GETH_HTTP_PORT,
+		ChainID:             g.chainConfg.ChainID,
+		GeneratedDataDir:    GENERATED_DATA_DIR_INSIDE_CONTAINER,
+		JwtFileLocation:     JWT_SECRET_FILE_LOCATION_INSIDE_CONTAINER,
+		ExecutionDir:        "/home/erigon/execution-data",
+		ExtraExecutionFlags: extraExecutionFlags,
 	}
 
 	t, err := template.New("init").Parse(initTemplate)
