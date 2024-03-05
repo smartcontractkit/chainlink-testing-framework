@@ -109,24 +109,11 @@ func (c *EthereumChainConfig) Validate(logger zerolog.Logger, consensusType Cons
 		return err
 	}
 
-	addressSet := make(map[string]struct{})
-	deduplicated := make([]string, 0)
-
-	for _, addr := range c.AddressesToFund {
-		if !common.IsHexAddress(addr) {
-			return fmt.Errorf("address %s is not a valid hex address", addr)
-		}
-
-		if _, exists := addressSet[addr]; exists {
-			logger.Warn().Str("address", addr).Msg("duplicate address in addresses to fund, this should not happen, removing it so that genesis generation doesn't crash")
-			continue
-		}
-
-		addressSet[addr] = struct{}{}
-		deduplicated = append(deduplicated, addr)
+	var err error
+	c.AddressesToFund, err = deduplicateAddresses(logger, c.AddressesToFund)
+	if err != nil {
+		return err
 	}
-
-	c.AddressesToFund = deduplicated
 
 	return nil
 }
@@ -301,4 +288,27 @@ func GetComparableVersionFromDockerImage(imageWithVersion string) (int, error) {
 	}
 
 	return version, nil
+}
+
+func deduplicateAddresses(l zerolog.Logger, addresses []string) ([]string, error) {
+	addressSet := make(map[common.Address]struct{})
+	deduplicated := make([]string, 0)
+
+	for _, addr := range addresses {
+		if !common.IsHexAddress(addr) {
+			return []string{}, fmt.Errorf("address %s is not a valid hex address", addr)
+		}
+
+		asAddr := common.HexToAddress(addr)
+
+		if _, exists := addressSet[asAddr]; exists {
+			l.Warn().Str("address", addr).Msg("duplicate address in addresses to fund, this should not happen, removing it so that genesis generation doesn't crash")
+			continue
+		}
+
+		addressSet[asAddr] = struct{}{}
+		deduplicated = append(deduplicated, addr)
+	}
+
+	return deduplicated, nil
 }
