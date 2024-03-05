@@ -96,7 +96,13 @@ func (g *Geth) WithTestInstance(t *testing.T) ExecutionClient {
 }
 
 func (g *Geth) StartContainer() (blockchain.EVMNetwork, error) {
-	r, err := g.getPosContainerRequest(g.Networks)
+	var r *tc.ContainerRequest
+	var err error
+	if g.GetEthereumVersion() == EthereumVersion_Eth1 {
+		r, err = g.getPowGethContainerRequest()
+	} else {
+		r, err = g.getPosContainerRequest(g.Networks)
+	}
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
@@ -127,7 +133,7 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, error) {
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
-	if g.consensusLayer != "" {
+	if g.GetEthereumVersion() == EthereumVersion_Eth2 {
 		executionPort, err := ct.MappedPort(testcontext.Get(g.t), NatPort(ETH2_EXECUTION_PORT))
 		if err != nil {
 			return blockchain.EVMNetwork{}, err
@@ -143,10 +149,10 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, error) {
 	g.InternalWsUrl = FormatWsUrl(g.ContainerName, DEFAULT_EVM_NODE_WS_PORT)
 
 	networkConfig := blockchain.SimulatedEVMNetwork
-	if g.consensusLayer != "" {
-		networkConfig.Name = fmt.Sprintf("Simulated Ethereum-PoS (geth + %s)", g.consensusLayer)
+	if g.GetEthereumVersion() == EthereumVersion_Eth1 {
+		networkConfig.Name = "Simulated Eth-1-PoA (geth)"
 	} else {
-		networkConfig.Name = "Simulated Ethereum-PoA (geth)"
+		networkConfig.Name = fmt.Sprintf("Simulated Eth-2-PoS (geth + %s)", g.consensusLayer)
 	}
 	networkConfig.URLs = []string{g.ExternalWsUrl}
 	networkConfig.HTTPURLs = []string{g.ExternalHttpUrl}
@@ -158,10 +164,16 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, error) {
 }
 
 func (g *Geth) GetInternalExecutionURL() string {
+	if g.GetEthereumVersion() == EthereumVersion_Eth1 {
+		panic("eth1 node doesn't have an execution URL")
+	}
 	return g.InternalExecutionURL
 }
 
 func (g *Geth) GetExternalExecutionURL() string {
+	if g.GetEthereumVersion() == EthereumVersion_Eth1 {
+		panic("eth1 node doesn't have an execution URL")
+	}
 	return g.ExternalExecutionURL
 }
 
@@ -187,6 +199,22 @@ func (g *Geth) GetContainerName() string {
 
 func (g *Geth) GetContainer() *tc.Container {
 	return &g.Container
+}
+
+func (g *Geth) GetEthereumVersion() EthereumVersion {
+	if g.consensusLayer != "" {
+		return EthereumVersion_Eth2
+	}
+
+	return EthereumVersion_Eth1
+}
+
+func (g *Geth) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error {
+	if g.GetEthereumVersion() == EthereumVersion_Eth1 {
+		return nil
+	}
+	waitForFirstBlock := tcwait.NewLogStrategy("Chain head was updated").WithPollInterval(1 * time.Second).WithStartupTimeout(waitTime)
+	return waitForFirstBlock.WaitUntilReady(ctx, *g.GetContainer())
 }
 
 func (g *Geth) getPosContainerRequest(networks []string) (*tc.ContainerRequest, error) {
@@ -447,14 +475,6 @@ func (g *Geth) getWebsocketEnabledMessage() (string, error) {
 	}
 
 	return "WebSocket enabled", nil
-}
-
-func (g *Geth) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error {
-	if g.consensusLayer == "" {
-		return nil
-	}
-	waitForFirstBlock := tcwait.NewLogStrategy("Chain head was updated").WithPollInterval(1 * time.Second).WithStartupTimeout(waitTime)
-	return waitForFirstBlock.WaitUntilReady(ctx, *g.GetContainer())
 }
 
 func (g *Geth) buildInitScript() (string, error) {

@@ -113,11 +113,11 @@ func (g *Besu) StartContainer() (blockchain.EVMNetwork, error) {
 	var r *tc.ContainerRequest
 	var err error
 
-	if g.consensusLayer != "" {
-		r, err = g.getPosContainerRequest()
-	} else {
+	if g.GetEthereumVersion() == EthereumVersion_Eth1 {
 		r, err = g.getPowContainerRequest()
 
+	} else {
+		r, err = g.getPosContainerRequest()
 	}
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
@@ -150,7 +150,7 @@ func (g *Besu) StartContainer() (blockchain.EVMNetwork, error) {
 		return blockchain.EVMNetwork{}, err
 	}
 
-	if g.consensusLayer != "" {
+	if g.GetEthereumVersion() == EthereumVersion_Eth2 {
 		executionPort, err := ct.MappedPort(testcontext.Get(g.t), NatPort(ETH2_EXECUTION_PORT))
 		if err != nil {
 			return blockchain.EVMNetwork{}, err
@@ -170,10 +170,10 @@ func (g *Besu) StartContainer() (blockchain.EVMNetwork, error) {
 	networkConfig.HTTPURLs = []string{g.ExternalHttpUrl}
 	networkConfig.GasEstimationBuffer = 10_000_000_000
 
-	if g.consensusLayer != "" {
-		networkConfig.Name = fmt.Sprintf("Simulated Ethereum-PoS (besu + %s)", g.consensusLayer)
+	if g.GetEthereumVersion() == EthereumVersion_Eth1 {
+		networkConfig.Name = "Simulated Eth-1-PoA (besu)"
 	} else {
-		networkConfig.Name = "Simulated Ethereum-PoW (besu)"
+		networkConfig.Name = fmt.Sprintf("Simulated Eth-2-PoS (besu + %s)", g.consensusLayer)
 	}
 
 	g.l.Info().Str("containerName", g.ContainerName).
@@ -183,10 +183,16 @@ func (g *Besu) StartContainer() (blockchain.EVMNetwork, error) {
 }
 
 func (g *Besu) GetInternalExecutionURL() string {
+	if g.GetEthereumVersion() == EthereumVersion_Eth1 {
+		panic("eth1 node doesn't have an execution URL")
+	}
 	return g.InternalExecutionURL
 }
 
 func (g *Besu) GetExternalExecutionURL() string {
+	if g.GetEthereumVersion() == EthereumVersion_Eth1 {
+		panic("eth1 node doesn't have an execution URL")
+	}
 	return g.ExternalExecutionURL
 }
 
@@ -214,8 +220,16 @@ func (g *Besu) GetContainer() *tc.Container {
 	return &g.Container
 }
 
+func (g *Besu) GetEthereumVersion() EthereumVersion {
+	if g.consensusLayer != "" {
+		return EthereumVersion_Eth2
+	}
+
+	return EthereumVersion_Eth1
+}
+
 func (g *Besu) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error {
-	if g.consensusLayer == "" {
+	if g.GetEthereumVersion() == EthereumVersion_Eth1 {
 		return nil
 	}
 	waitForFirstBlock := tcwait.NewLogStrategy("Imported #1").WithPollInterval(1 * time.Second).WithStartupTimeout(waitTime)

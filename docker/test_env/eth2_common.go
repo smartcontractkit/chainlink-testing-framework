@@ -1,22 +1,17 @@
 package test_env
 
 import (
-	"context"
 	_ "embed"
 	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
-	"testing"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/rs/zerolog"
-	tc "github.com/testcontainers/testcontainers-go"
-
-	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 )
 
 var (
@@ -212,21 +207,6 @@ func (c *EthereumChainConfig) GetDefaultWaitDuration() time.Duration {
 
 func (c *EthereumChainConfig) GetDefaultFinalizationWaitDuration() time.Duration {
 	return time.Duration(5 * time.Minute)
-}
-
-type ExecutionClient interface {
-	GetContainerName() string
-	StartContainer() (blockchain.EVMNetwork, error)
-	GetContainer() *tc.Container
-	GetContainerType() ContainerType
-	GetInternalExecutionURL() string
-	GetExternalExecutionURL() string
-	GetInternalHttpUrl() string
-	GetInternalWsUrl() string
-	GetExternalHttpUrl() string
-	GetExternalWsUrl() string
-	WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error
-	WithTestInstance(t *testing.T) ExecutionClient
 }
 
 // GetConsensusTypeFromImage returns the consensus type based on the Docker image version

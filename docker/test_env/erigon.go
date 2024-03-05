@@ -97,10 +97,11 @@ func (g *Erigon) WithTestInstance(t *testing.T) ExecutionClient {
 func (g *Erigon) StartContainer() (blockchain.EVMNetwork, error) {
 	var r *tc.ContainerRequest
 	var err error
-	if g.consensusLayer != "" {
-		r, err = g.getPosContainerRequest()
-	} else {
+	if g.GetEthereumVersion() == EthereumVersion_Eth1 {
 		r, err = g.getPowContainerRequest()
+
+	} else {
+		r, err = g.getPosContainerRequest()
 	}
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
@@ -129,7 +130,7 @@ func (g *Erigon) StartContainer() (blockchain.EVMNetwork, error) {
 		return blockchain.EVMNetwork{}, err
 	}
 
-	if g.consensusLayer != "" {
+	if g.GetEthereumVersion() == EthereumVersion_Eth2 {
 		executionPort, err := ct.MappedPort(testcontext.Get(g.t), NatPort(ETH2_EXECUTION_PORT))
 		if err != nil {
 			return blockchain.EVMNetwork{}, err
@@ -145,10 +146,10 @@ func (g *Erigon) StartContainer() (blockchain.EVMNetwork, error) {
 	g.InternalWsUrl = FormatWsUrl(g.ContainerName, DEFAULT_EVM_NODE_HTTP_PORT)
 
 	networkConfig := blockchain.SimulatedEVMNetwork
-	if g.consensusLayer != "" {
-		networkConfig.Name = fmt.Sprintf("Simulated Ethereum-PoS (erigon + %s)", g.consensusLayer)
+	if g.GetEthereumVersion() == EthereumVersion_Eth1 {
+		networkConfig.Name = "Simulated Eth-1-PoW (erigon)"
 	} else {
-		networkConfig.Name = "Simulated Ethereum-PoW (erigon)"
+		networkConfig.Name = fmt.Sprintf("Simulated Eth-2-PoS (erigon + %s)", g.consensusLayer)
 	}
 	networkConfig.URLs = []string{g.ExternalWsUrl}
 	networkConfig.HTTPURLs = []string{g.ExternalHttpUrl}
@@ -160,10 +161,16 @@ func (g *Erigon) StartContainer() (blockchain.EVMNetwork, error) {
 }
 
 func (g *Erigon) GetInternalExecutionURL() string {
+	if g.GetEthereumVersion() == EthereumVersion_Eth1 {
+		panic("eth1 node doesn't have an execution URL")
+	}
 	return g.InternalExecutionURL
 }
 
 func (g *Erigon) GetExternalExecutionURL() string {
+	if g.GetEthereumVersion() == EthereumVersion_Eth1 {
+		panic("eth1 node doesn't have an execution URL")
+	}
 	return g.ExternalExecutionURL
 }
 
@@ -189,6 +196,26 @@ func (g *Erigon) GetContainerName() string {
 
 func (g *Erigon) GetContainer() *tc.Container {
 	return &g.Container
+}
+
+func (g *Erigon) GetEthereumVersion() EthereumVersion {
+	if g.consensusLayer != "" {
+		return EthereumVersion_Eth2
+	}
+
+	return EthereumVersion_Eth1
+}
+
+func (g *Erigon) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error {
+	if g.GetEthereumVersion() == EthereumVersion_Eth1 {
+		return nil
+	}
+	waitForFirstBlock := tcwait.NewLogStrategy("Built block").WithPollInterval(1 * time.Second).WithStartupTimeout(waitTime)
+	return waitForFirstBlock.WaitUntilReady(ctx, *g.GetContainer())
+}
+
+func (g *Erigon) GetContainerType() ContainerType {
+	return ContainerType_Erigon
 }
 
 func (g *Erigon) getPosContainerRequest() (*tc.ContainerRequest, error) {
@@ -351,14 +378,6 @@ func (g *Erigon) getPowContainerRequest() (*tc.ContainerRequest, error) {
 	}, nil
 }
 
-func (g *Erigon) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error {
-	if g.consensusLayer == "" {
-		return nil
-	}
-	waitForFirstBlock := tcwait.NewLogStrategy("Built block").WithPollInterval(1 * time.Second).WithStartupTimeout(waitTime)
-	return waitForFirstBlock.WaitUntilReady(ctx, *g.GetContainer())
-}
-
 func (g *Erigon) getExtraExecutionFlags() (string, error) {
 	version, err := GetComparableVersionFromDockerImage(g.GetImageWithVersion())
 	if err != nil {
@@ -467,8 +486,4 @@ func (g *Erigon) buildPowInitScript(minerAddr string) (string, error) {
 
 	return buf.String(), err
 
-}
-
-func (g *Erigon) GetContainerType() ContainerType {
-	return ContainerType_Erigon
 }
