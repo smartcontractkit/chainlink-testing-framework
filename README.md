@@ -133,19 +133,40 @@ We have extended support for execution layer clients in simulated networks. Foll
 
 When it comes to consensus layer we currently support only `Prysm`.
 
+The easiest way to start a simulated network is to use a builder. It allows to configure the network in a fluent way and then start it. For example:
+
+```go
+builder := NewEthereumNetworkBuilder()
+cfg, err: = builder.
+    WithEthereumVersion(EthereumVersion_Eth2).
+    WithExecutionLayer(ExecutionLayer_Geth).
+    Build()
+```
+
+Since we support both `eth1` (aka pre-Merge) and `eth2` (aka post-Merge) client versions, you need to specify which one you want to use. You can do that by calling `WithEthereumVersion` method. There's no default provided.
+
 Every component has some default Docker image it uses, but builder has a method that allows to pass custom one:
 
 ```go
 builder := NewEthereumNetworkBuilder()
 cfg, err: = builder.
-    WithConsensusType(ConsensusType_PoS).
+    WithEthereumVersion(EthereumVersion_Eth2).
     WithConsensusLayer(ConsensusLayer_Prysm).
     WithExecutionLayer(ExecutionLayer_Geth).
     WithCustomDockerImages(map[ContainerType]string{
         ContainerType_Geth: "my-custom-geth-pos-image:my-version"}).
     Build()
-
 ```
+
+When using a custom image you can even further simplify the builder by calling only `WithCustomDockerImages` method. Based on the image name and version we will determine which execution layer client it is and whether it's `eth1` or `eth2` client:
+```go
+builder := NewEthereumNetworkBuilder()
+cfg, err: = builder.
+    WithCustomDockerImages(map[ContainerType]string{
+        ContainerType_Geth: "ethereum/client-go:v1.13.10"}).
+    Build()
+```
+In the case above we would launch a `Geth` client with `eth2` network and `Prysm` consensus layer.
 
 You can also configure epochs at which hardforks will happen. Currently only `Deneb` is supported. Epoch must be >= 1. Example:
 

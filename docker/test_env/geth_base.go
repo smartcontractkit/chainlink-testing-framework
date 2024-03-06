@@ -150,11 +150,11 @@ func (g *Geth) GetContainer() *tc.Container {
 }
 
 func (g *Geth) GetEthereumVersion() EthereumVersion {
-	if g.consensusLayer != "" {
-		return EthereumVersion_Eth2
+	if g.consensusLayer == "" {
+		return EthereumVersion_Eth1
 	}
 
-	return EthereumVersion_Eth1
+	return EthereumVersion_Eth2
 }
 
 func (g *Geth) GetContainerType() ContainerType {

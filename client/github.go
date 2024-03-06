@@ -15,6 +15,8 @@ type GithubClient struct {
 	client *github.Client
 }
 
+const WITHOUT_TOKEN = ""
+
 func NewGithubClient(token string) *GithubClient {
 	// Optional: Authenticate with a personal access token if necessary
 	// This is recommended to avoid rate limits for unauthenticated requests
@@ -32,6 +34,12 @@ func NewGithubClient(token string) *GithubClient {
 	return &GithubClient{
 		client: client,
 	}
+}
+
+func (g *GithubClient) ListLatestReleases(org, repository string, count int) ([]*github.RepositoryRelease, error) {
+	ctx := context.Background()
+	releases, _, err := g.client.Repositories.ListReleases(ctx, org, repository, &github.ListOptions{PerPage: count})
+	return releases, err
 }
 
 func (g *GithubClient) ListLatestCLCoreReleases(count int) ([]*github.RepositoryRelease, error) {

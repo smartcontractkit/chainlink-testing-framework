@@ -5,8 +5,6 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -209,67 +207,6 @@ func (c *EthereumChainConfig) GetDefaultWaitDuration() time.Duration {
 
 func (c *EthereumChainConfig) GetDefaultFinalizationWaitDuration() time.Duration {
 	return time.Duration(5 * time.Minute)
-}
-
-// GetConsensusTypeFromImage returns the consensus type based on the Docker image version
-func GetConsensusTypeFromImage(executionLayer ExecutionLayer, imageWithVersion string) (EthereumVersion, error) {
-	version, err := GetComparableVersionFromDockerImage(imageWithVersion)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse docker image and extract version: %s", imageWithVersion)
-	}
-	switch executionLayer {
-	case ExecutionLayer_Geth:
-		if version < 113 {
-			return EthereumVersion_Eth1_Legacy, nil
-		} else {
-			return EthereumVersion_Eth2_Legacy, nil
-		}
-	case ExecutionLayer_Besu:
-		if version < 231 {
-			return EthereumVersion_Eth1_Legacy, nil
-		} else {
-			return EthereumVersion_Eth2_Legacy, nil
-		}
-	case ExecutionLayer_Erigon:
-		if version < 241 {
-			return EthereumVersion_Eth1_Legacy, nil
-		} else {
-			return EthereumVersion_Eth2_Legacy, nil
-		}
-	case ExecutionLayer_Nethermind:
-		if version < 117 {
-			return EthereumVersion_Eth1_Legacy, nil
-		} else {
-			return EthereumVersion_Eth2_Legacy, nil
-		}
-	}
-
-	return "", fmt.Errorf("unsupported execution layer: %s", executionLayer)
-}
-
-// GetComparableVersionFromDockerImage returns version in xy format removing all non-numeric characters
-// and patch version if present. So x.y.z becomes xy.
-func GetComparableVersionFromDockerImage(imageWithVersion string) (int, error) {
-	parts := strings.Split(imageWithVersion, ":")
-	if len(parts) != 2 {
-		return -1, fmt.Errorf("invalid docker image format: %s", imageWithVersion)
-	}
-
-	re := regexp.MustCompile("[a-zA-Z]")
-	cleanedVersion := re.ReplaceAllString(parts[1], "")
-	if idx := strings.Index(cleanedVersion, "-"); idx != -1 {
-		cleanedVersion = string(cleanedVersion[:idx])
-	}
-	// remove patch version if present
-	if count := strings.Count(cleanedVersion, "."); count > 1 {
-		cleanedVersion = string(cleanedVersion[:strings.LastIndex(cleanedVersion, ".")])
-	}
-	version, err := strconv.Atoi(strings.Replace(cleanedVersion, ".", "", -1))
-	if err != nil {
-		return -1, fmt.Errorf("failed to pase docker version to an integer: %s", cleanedVersion)
-	}
-
-	return version, nil
 }
 
 func deduplicateAddresses(l zerolog.Logger, addresses []string) ([]string, error) {

@@ -48,7 +48,6 @@ func (g *Erigon) StartContainer() (blockchain.EVMNetwork, error) {
 	var err error
 	if g.GetEthereumVersion() == EthereumVersion_Eth1 {
 		r, err = g.getEth1ContainerRequest()
-
 	} else {
 		r, err = g.getEth2ContainerRequest()
 	}
@@ -68,9 +67,6 @@ func (g *Erigon) StartContainer() (blockchain.EVMNetwork, error) {
 	}
 
 	host, err := GetHost(testcontext.Get(g.t), ct)
-	if err != nil {
-		return blockchain.EVMNetwork{}, err
-	}
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
@@ -148,11 +144,11 @@ func (g *Erigon) GetContainer() *tc.Container {
 }
 
 func (g *Erigon) GetEthereumVersion() EthereumVersion {
-	if g.consensusLayer != "" {
+	if g.consensusLayer == "" {
 		return EthereumVersion_Eth1
 	}
 
-	return EthereumVersion_Eth1
+	return EthereumVersion_Eth2
 }
 
 func (g *Erigon) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error {
@@ -189,8 +185,8 @@ func (g *Erigon) getExtraExecutionFlags() (string, error) {
 		extraExecutionFlags += " --rpc.allow-unprotected-txs"
 	}
 
-	if version > 255 {
-		extraExecutionFlags += " --db.size.limit=8TB"
+	if version > 242 {
+		extraExecutionFlags += " --db.size.limit=8GB"
 	}
 
 	return extraExecutionFlags, nil

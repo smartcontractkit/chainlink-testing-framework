@@ -362,11 +362,32 @@ func TestVersionDependentConsensusWithV(t *testing.T) {
 func TestVersionDependentConsensusOnlyMajor(t *testing.T) {
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WithExecutionLayer(ExecutionLayer_Geth).
 		WithCustomDockerImages(map[ContainerType]string{
 			ContainerType_Geth: "ethereum/client-go:v1.13"}).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 	require.Equal(t, EthereumVersion_Eth2_Legacy, *cfg.EthereumVersion, "Consensus type should be PoS")
 	require.Equal(t, ConsensusLayer_Prysm, *cfg.ConsensusLayer, "Consensus layer should be Prysm")
+}
+
+func TestLatestVersionFromGithub(t *testing.T) {
+	builder := NewEthereumNetworkBuilder()
+	cfg, err := builder.
+		WithCustomDockerImages(map[ContainerType]string{
+			ContainerType_Besu: fmt.Sprintf("hyperledger/besu:%s", AUTOMATIC_STABLE_LATEST_TAG)}).
+		Build()
+	require.NoError(t, err, "Builder validation failed")
+	require.Equal(t, EthereumVersion_Eth2_Legacy, *cfg.EthereumVersion, "Consensus type should be PoS")
+	require.Equal(t, ConsensusLayer_Prysm, *cfg.ConsensusLayer, "Consensus layer should be Prysm")
+	require.NotContains(t, cfg.CustomDockerImages[ContainerType_Besu], AUTOMATIC_STABLE_LATEST_TAG, "Automatic tag should be replaced")
+}
+
+func TestMischmachedExecutionClient(t *testing.T) {
+	builder := NewEthereumNetworkBuilder()
+	_, err := builder.
+		WithCustomDockerImages(map[ContainerType]string{
+			ContainerType_Geth: fmt.Sprintf("hyperledger/besu:%s", AUTOMATIC_LATEST_TAG)}).
+		Build()
+	require.Error(t, err, "Builder validation succeeded")
+	require.Equal(t, ErrMismatchedExecutionClient.Error(), err.Error(), "Error message is not correct")
 }

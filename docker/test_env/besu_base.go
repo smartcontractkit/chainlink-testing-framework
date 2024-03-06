@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	defaultBesuEth1Image = "hyperledger/besu:22.1"
-	defaultBesuEth2Image = "hyperledger/besu:24.1"
+	defaultBesuEth1Image = "hyperledger/besu:22.1.0"
+	defaultBesuEth2Image = "hyperledger/besu:24.1.0"
 )
 
 type posSettings struct {
@@ -167,11 +167,11 @@ func (g *Besu) GetContainer() *tc.Container {
 }
 
 func (g *Besu) GetEthereumVersion() EthereumVersion {
-	if g.consensusLayer != "" {
-		return EthereumVersion_Eth2
+	if g.consensusLayer == "" {
+		return EthereumVersion_Eth1
 	}
 
-	return EthereumVersion_Eth1
+	return EthereumVersion_Eth2
 }
 
 func (g *Besu) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error {

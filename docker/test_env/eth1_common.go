@@ -14,6 +14,8 @@ type keyStoreAndExtraData struct {
 	extraData    []byte
 }
 
+var EXECUTION_CONTAINER_TYPES = []ContainerType{ContainerType_Geth, ContainerType_Nethermind, ContainerType_Erigon, ContainerType_Besu}
+
 func generateKeystoreAndExtraData(keystoreDir string) (keyStoreAndExtraData, error) {
 	ks := keystore.NewKeyStore(keystoreDir, keystore.StandardScryptN, keystore.StandardScryptP)
 	minerAccount, err := ks.NewAccount("")

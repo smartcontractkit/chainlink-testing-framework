@@ -25,11 +25,20 @@ const (
 )
 
 var (
-	ErrMissingEthereumVersion   = errors.New("ehtereum version is required")
-	ErrMissingExecutionLayer    = errors.New("execution layer is required")
-	ErrMissingConsensusLayer    = errors.New("consensus layer is required for PoS")
-	ErrConsensusLayerNotAllowed = errors.New("consensus layer is not allowed for PoW")
-	ErrTestConfigNotSaved       = errors.New("could not save test env config")
+	ErrMissingEthereumVersion    = errors.New("ethereum version is required")
+	ErrMissingExecutionLayer     = errors.New("execution layer is required")
+	ErrMissingConsensusLayer     = errors.New("consensus layer is required for PoS")
+	ErrConsensusLayerNotAllowed  = errors.New("consensus layer is not allowed for PoW")
+	ErrTestConfigNotSaved        = errors.New("could not save test env config")
+	ErrMismatchedExecutionClient = errors.New("you provided a custom docker image for execution client, but explicitly set a different execution client")
+)
+
+// Deprecated: use EthereumVersion instead
+type ConsensusType string
+
+const (
+	ConsensusType_PoS ConsensusType = "pos"
+	ConsensusType_PoW ConsensusType = "pow"
 )
 
 type EthereumVersion string
@@ -230,8 +239,23 @@ func (b *EthereumNetworkBuilder) validate() error {
 		return ErrMissingExecutionLayer
 	}
 
-	if b.ethereumVersion == EthereumVersion_Eth2_Legacy && b.consensusLayer == nil {
+	if (b.ethereumVersion == EthereumVersion_Eth2 || b.ethereumVersion == EthereumVersion_Eth2_Legacy) && b.consensusLayer == nil {
 		return ErrMissingConsensusLayer
+	}
+
+	if len(b.customDockerImages) > 0 {
+		for _, c := range EXECUTION_CONTAINER_TYPES {
+			if v, ok := b.customDockerImages[c]; ok {
+				executionLayer, err := GetExecutionLayerFromDockerImage(v)
+				if err != nil {
+					return err
+				}
+
+				if executionLayer != b.executionLayer {
+					return ErrMismatchedExecutionClient
+				}
+			}
+		}
 	}
 
 	for _, addr := range b.addressesToFund {
@@ -248,14 +272,13 @@ func (b *EthereumNetworkBuilder) validate() error {
 }
 
 func (b *EthereumNetworkBuilder) autoFill() error {
-	executionContainersTypes := []ContainerType{ContainerType_Geth, ContainerType_Nethermind, ContainerType_Erigon, ContainerType_Besu}
-
 	if b.ethereumVersion == "" {
 		b.ethereumVersion = EthereumVersion_Auto
 	}
 
+	// try setting execution layer based on custom docker images
 	if b.executionLayer == "" && len(b.customDockerImages) > 0 {
-		for _, c := range executionContainersTypes {
+		for _, c := range EXECUTION_CONTAINER_TYPES {
 			if _, ok := b.customDockerImages[c]; ok {
 				switch c {
 				case ContainerType_Geth:
@@ -274,45 +297,56 @@ func (b *EthereumNetworkBuilder) autoFill() error {
 		}
 	}
 
-	if b.executionLayer != "" && b.ethereumVersion == EthereumVersion_Auto {
-		var dockerImage string
+	// fetch latest stable image if any of the automatic tags was provided
+	if len(b.customDockerImages) > 0 {
+		var err error
+		for _, c := range EXECUTION_CONTAINER_TYPES {
+			if image, ok := b.customDockerImages[c]; ok {
+				b.customDockerImages[c], err = fetchLatestIfNeed(image)
+				if err != nil {
+					return err
+				}
+				break
+			}
+		}
+	}
+
+	// try setting ethereum version based on image version
+	if b.ethereumVersion == EthereumVersion_Auto {
+		var dockerImageToUse string
 
 		// if we are using custom docker image for execution client, extract it
-		for t, v := range b.customDockerImages {
-			for _, c := range executionContainersTypes {
+		for t, customImage := range b.customDockerImages {
+			for _, c := range EXECUTION_CONTAINER_TYPES {
 				if t == c {
-					dockerImage = v
+					dockerImageToUse = customImage
 					break
 				}
 			}
 		}
 
-		// if we are not using custom image grab the default one
-		if dockerImage == "" {
-			switch b.executionLayer {
-			case ExecutionLayer_Geth:
-				dockerImage = defaultGethEth2Image
-			case ExecutionLayer_Nethermind:
-				dockerImage = defaultNethermindEth2Image
-			case ExecutionLayer_Erigon:
-				dockerImage = defaultErigonEth2Image
-			case ExecutionLayer_Besu:
-				dockerImage = defaultBesuEth2Image
-			default:
-				return fmt.Errorf("unknown execution layer: %s", b.executionLayer)
-			}
+		if dockerImageToUse == "" {
+			return errors.New("couldn't determine ethereum version as no custom docker image for execution layer was provided")
 		}
 
-		consensusType, err := GetConsensusTypeFromImage(b.executionLayer, dockerImage)
+		ethereumVersion, err := GetEthereumVersionFromImage(b.executionLayer, dockerImageToUse)
 		if err != nil {
 			return err
 		}
 
-		b.ethereumVersion = consensusType
+		b.ethereumVersion = ethereumVersion
 	}
 
-	if b.ethereumVersion == EthereumVersion_Eth2_Legacy && b.consensusLayer == nil {
+	if (b.ethereumVersion == EthereumVersion_Eth2_Legacy || b.ethereumVersion == EthereumVersion_Eth2) && b.consensusLayer == nil {
 		b.consensusLayer = &ConsensusLayer_Prysm
+	}
+
+	if b.ethereumVersion == EthereumVersion_Eth1_Legacy {
+		b.ethereumVersion = EthereumVersion_Eth1
+	}
+
+	if b.ethereumVersion == EthereumVersion_Eth2_Legacy {
+		b.ethereumVersion = EthereumVersion_Eth2
 	}
 
 	return nil

@@ -25,6 +25,7 @@ var stopAllContainers = func(t *testing.T, containers []EthereumNetworkContainer
 // 1.16 -> works
 // ...
 // 1.25 -> works
+// 1.20 FAILS
 func TestNethermindCompatiblity(t *testing.T) {
 	t.Skip("Execute manually when needed")
 	l := logging.GetTestLogger(t)
@@ -35,6 +36,11 @@ func TestNethermindCompatiblity(t *testing.T) {
 	}
 
 	nethermindTcs = append(nethermindTcs, defaultNethermindEth2Image)
+	latest, err := fetchLatestIfNeed(fmt.Sprintf("nethermind/nethermind:%s", AUTOMATIC_STABLE_LATEST_TAG))
+	require.NoError(t, err, "Couldn't fetch the latest Nethermind version")
+
+	nethermindTcs = append(nethermindTcs, latest)
+	nethermindTcs = UniqueStringSlice(nethermindTcs)
 
 	for _, tc := range nethermindTcs {
 		t.Run(fmt.Sprintf("nethermind-%s", tc), func(t *testing.T) {
@@ -78,6 +84,11 @@ func TestGethCompatiblity(t *testing.T) {
 	}
 
 	gethTcs = append(gethTcs, defaultGethEth2Image)
+	latest, err := fetchLatestIfNeed(fmt.Sprintf("ethereum/client-go:%s", AUTOMATIC_STABLE_LATEST_TAG))
+	require.NoError(t, err, "Couldn't fetch the latest Go Ethereum version")
+
+	gethTcs = append(gethTcs, latest)
+	gethTcs = UniqueStringSlice(gethTcs)
 
 	for _, tc := range gethTcs {
 		t.Run(fmt.Sprintf("geth-%s", tc), func(t *testing.T) {
@@ -109,7 +120,7 @@ func TestGethCompatiblity(t *testing.T) {
 
 // v2.40 -> works
 // ...
-// v2.58 -> works
+// v2.58.1 -> works
 func TestErigonCompatiblity(t *testing.T) {
 	t.Skip("Execute manually when needed")
 	l := logging.GetTestLogger(t)
@@ -120,6 +131,11 @@ func TestErigonCompatiblity(t *testing.T) {
 	}
 
 	erigonTcs = append(erigonTcs, defaultErigonEth2Image)
+	latest, err := fetchLatestIfNeed(fmt.Sprintf("thorax/erigon:%s", AUTOMATIC_STABLE_LATEST_TAG))
+	require.NoError(t, err, "Couldn't fetch the latest Erigon version")
+
+	erigonTcs = append(erigonTcs, latest)
+	erigonTcs = UniqueStringSlice(erigonTcs)
 
 	for _, tc := range erigonTcs {
 		t.Run(fmt.Sprintf("erigon-%s", tc), func(t *testing.T) {
@@ -151,7 +167,7 @@ func TestErigonCompatiblity(t *testing.T) {
 
 // 22.1 -> works
 // ...
-// 24.1 -> works
+// 24.1.2 -> works
 func TestBesuCompatiblity(t *testing.T) {
 	t.Skip("Execute manually when needed")
 	l := logging.GetTestLogger(t)
@@ -162,6 +178,11 @@ func TestBesuCompatiblity(t *testing.T) {
 	}
 
 	besuTcs = append(besuTcs, defaultBesuEth2Image)
+	latest, err := fetchLatestIfNeed(fmt.Sprintf("hyperledger/besu:%s", AUTOMATIC_STABLE_LATEST_TAG))
+	require.NoError(t, err, "Couldn't fetch the latest Erigon version")
+
+	besuTcs = append(besuTcs, latest)
+	besuTcs = UniqueStringSlice(besuTcs)
 
 	for _, tc := range besuTcs {
 		t.Run(fmt.Sprintf("besu-%s", tc), func(t *testing.T) {
