@@ -2,6 +2,8 @@ package test_env
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -40,4 +42,33 @@ type ExecutionClient interface {
 	GethConsensusMechanism() ConsensusMechanism
 	WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error
 	WithTestInstance(t *testing.T) ExecutionClient
+}
+
+type UnsupportedVersion struct {
+	Version string
+	Reason  string
+}
+
+var UNSUPPORTED_VERSIONS = map[ContainerType][]UnsupportedVersion{ContainerType_Nethermind: {
+	UnsupportedVersion{Version: "1.20.0",
+		Reason: "1.20.0 was replaced with 1.20.1, for more info check https://github.com/NethermindEth/nethermind/releases/tag/1.20.0",
+	}}}
+
+// IsDockerImageVersionSupported checks if the given docker image version is supported and if not returns the reason why
+func IsDockerImageVersionSupported(ct ContainerType, imageWithVersion string) (bool, string, error) {
+	parts := strings.Split(imageWithVersion, ":")
+	if len(parts) != 2 {
+		return false, "", fmt.Errorf("invalid docker image format: %s", imageWithVersion)
+	}
+
+	unsupportedVersions, ok := UNSUPPORTED_VERSIONS[ct]
+	if !ok {
+		return true, "", nil
+	}
+	for _, unsp := range unsupportedVersions {
+		if unsp.Version == parts[1] {
+			return false, unsp.Reason, nil
+		}
+	}
+	return true, "", nil
 }

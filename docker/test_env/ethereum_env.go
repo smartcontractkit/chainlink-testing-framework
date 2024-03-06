@@ -246,6 +246,16 @@ func (b *EthereumNetworkBuilder) validate() error {
 	if len(b.customDockerImages) > 0 {
 		for _, c := range EXECUTION_CONTAINER_TYPES {
 			if v, ok := b.customDockerImages[c]; ok {
+
+				supported, reason, err := IsDockerImageVersionSupported(c, v)
+				if err != nil {
+					return err
+				}
+
+				if !supported {
+					return fmt.Errorf("docker image %s is not supported, due to: %s", v, reason)
+				}
+
 				executionLayer, err := GetExecutionLayerFromDockerImage(v)
 				if err != nil {
 					return err

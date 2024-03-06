@@ -24,8 +24,7 @@ var stopAllContainers = func(t *testing.T, containers []EthereumNetworkContainer
 
 // 1.16 -> works
 // ...
-// 1.25 -> works
-// 1.20 FAILS
+// 1.25.4 -> works
 func TestNethermindCompatiblity(t *testing.T) {
 	t.Skip("Execute manually when needed")
 	l := logging.GetTestLogger(t)
