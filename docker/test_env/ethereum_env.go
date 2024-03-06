@@ -87,8 +87,15 @@ func NewEthereumNetworkBuilder() EthereumNetworkBuilder {
 
 // WithConsensusType sets the consensus type for the network
 // Deprecated: use WithEthereumVersion() instead
-func (b *EthereumNetworkBuilder) WithConsensusType(ethereumVersion EthereumVersion) *EthereumNetworkBuilder {
-	b.ethereumVersion = ethereumVersion
+func (b *EthereumNetworkBuilder) WithConsensusType(consensusType ConsensusType) *EthereumNetworkBuilder {
+	switch consensusType {
+	case ConsensusType_PoS:
+		b.ethereumVersion = EthereumVersion_Eth2
+	case ConsensusType_PoW:
+		b.ethereumVersion = EthereumVersion_Eth1
+	default:
+		b.ethereumVersion = EthereumVersion_Auto
+	}
 	return b
 }
 
