@@ -759,6 +759,20 @@ var (
 		DefaultGasLimit:           6000000,
 	}
 
+	FraxtalHolesky blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Fraxtal Holesky",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.EthereumClientImplementation,
+		ChainID:                   2522,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       1000,
+		FinalityTag:               true,
+		DefaultGasLimit:           6000000,
+	}
+
 	MappedNetworks = map[string]blockchain.EVMNetwork{
 		"SIMULATED":               SimulatedEVM,
 		"SIMULATED_1":             SimulatedEVMNonDev1,
@@ -812,6 +826,7 @@ var (
 		"NEXON_STAGE":           NexonStage,
 		"GNOSIS_CHIADO":         GnosisChiado,
 		"GNOSIS_MAINNET":        GnosisMainnet,
+		"FRAXTAL_HOLESKY":       FraxtalHolesky,
 	}
 )
 
