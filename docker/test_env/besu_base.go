@@ -117,9 +117,9 @@ func (g *Besu) StartContainer() (blockchain.EVMNetwork, error) {
 	networkConfig.GasEstimationBuffer = 10_000_000_000
 
 	if g.GetEthereumVersion() == EthereumVersion_Eth1 {
-		networkConfig.Name = "Simulated Eth-1-PoA (besu)"
+		networkConfig.Name = fmt.Sprintf("Simulated Eth-1-PoA [besu %s]", g.ContainerVersion)
 	} else {
-		networkConfig.Name = fmt.Sprintf("Simulated Eth-2-PoS (besu + %s)", g.consensusLayer)
+		networkConfig.Name = fmt.Sprintf("Simulated Eth-2-PoS [besu %s] + %s", g.consensusLayer, g.ContainerVersion)
 	}
 
 	g.l.Info().Str("containerName", g.ContainerName).

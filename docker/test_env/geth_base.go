@@ -98,9 +98,9 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, error) {
 
 	networkConfig := blockchain.SimulatedEVMNetwork
 	if g.GetEthereumVersion() == EthereumVersion_Eth1 {
-		networkConfig.Name = "Simulated Eth-1-PoA (geth)"
+		networkConfig.Name = fmt.Sprintf("Simulated Eth-1-PoA [geth %s]", g.ContainerVersion)
 	} else {
-		networkConfig.Name = fmt.Sprintf("Simulated Eth-2-PoS (geth + %s)", g.consensusLayer)
+		networkConfig.Name = fmt.Sprintf("Simulated Eth-2-PoS [geth %s] + %s", g.consensusLayer, g.ContainerVersion)
 	}
 	networkConfig.URLs = []string{g.ExternalWsUrl}
 	networkConfig.HTTPURLs = []string{g.ExternalHttpUrl}
@@ -202,6 +202,8 @@ func (g *Geth) getEntryPointAndKeystoreLocation(minerAddress string) ([]string, 
 		minerAddress,
 		"--unlock",
 		minerAddress,
+		"--verbosity",
+		"6",
 	}
 
 	if version < 110 {

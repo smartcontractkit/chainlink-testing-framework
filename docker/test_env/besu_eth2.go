@@ -8,10 +8,11 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/google/uuid"
-	"github.com/smartcontractkit/chainlink-testing-framework/logging"
-	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 )
 
 func NewBesuEth2(networks []string, chainConfg *EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) (*Besu, error) {
@@ -33,6 +34,7 @@ func NewBesuEth2(networks []string, chainConfg *EthereumChainConfig, generatedDa
 		opt(&g.EnvComponent)
 	}
 
+	g.EnvComponent.ContainerName = fmt.Sprintf("%s-%s-%s", "besu-eth2", strings.Replace(g.ContainerVersion, ".", "_", -1), uuid.NewString()[0:8])
 	// if the internal docker repo is set then add it to the version
 	g.EnvComponent.ContainerImage = mirror.AddMirrorToImageIfSet(g.EnvComponent.ContainerImage)
 

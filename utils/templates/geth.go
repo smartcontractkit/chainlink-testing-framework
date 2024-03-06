@@ -183,7 +183,7 @@ func (c GenesisJsonTemplate) String() (string, error) {
 	"coinbase": "0x0000000000000000000000000000000000000000",
 	"parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
 	"extraData": "{{ .ExtraData }}",
-	"gasLimit": "0x2fefd8",
+	"gasLimit": "8000000000",
 	"alloc": {
 		{{- $lastIndex := decrement (len $.AccountAddr)}}
 		{{- range $i, $addr := .AccountAddr }}

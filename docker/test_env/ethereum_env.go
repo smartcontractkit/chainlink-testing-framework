@@ -37,16 +37,20 @@ var (
 type ConsensusType string
 
 const (
+	// Deprecated: use EthereumVersion_Eth2 instead
 	ConsensusType_PoS ConsensusType = "pos"
+	// Deprecated: use EthereumVersion_Eth1 instead
 	ConsensusType_PoW ConsensusType = "pow"
 )
 
 type EthereumVersion string
 
 const (
-	EthereumVersion_Eth2        EthereumVersion = "eth2"
+	EthereumVersion_Eth2 EthereumVersion = "eth2"
+	// Deprecated: use EthereumVersion_Eth2 instead
 	EthereumVersion_Eth2_Legacy EthereumVersion = "pos"
 	EthereumVersion_Eth1        EthereumVersion = "eth1"
+	// Deprecated: use EthereumVersion_Eth1 instead
 	EthereumVersion_Eth1_Legacy EthereumVersion = "pow"
 	EthereumVersion_Auto        EthereumVersion = "auto"
 )

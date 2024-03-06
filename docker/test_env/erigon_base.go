@@ -92,9 +92,9 @@ func (g *Erigon) StartContainer() (blockchain.EVMNetwork, error) {
 
 	networkConfig := blockchain.SimulatedEVMNetwork
 	if g.GetEthereumVersion() == EthereumVersion_Eth1 {
-		networkConfig.Name = "Simulated Eth-1-PoW (erigon)"
+		networkConfig.Name = fmt.Sprintf("Simulated Eth-1-PoW [erigon %s]", g.ContainerVersion)
 	} else {
-		networkConfig.Name = fmt.Sprintf("Simulated Eth-2-PoS (erigon + %s)", g.consensusLayer)
+		networkConfig.Name = fmt.Sprintf("Simulated Eth-2-PoS [erigon %s] + %s", g.consensusLayer, g.ContainerVersion)
 	}
 	networkConfig.URLs = []string{g.ExternalWsUrl}
 	networkConfig.HTTPURLs = []string{g.ExternalHttpUrl}

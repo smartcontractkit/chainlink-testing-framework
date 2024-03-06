@@ -17,7 +17,7 @@ func TestEth1WithNethermind(t *testing.T) {
 
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WithConsensusType(EthereumVersion_Eth1_Legacy).
+		WithEthereumVersion(EthereumVersion_Eth1_Legacy).
 		WithExecutionLayer(ExecutionLayer_Nethermind).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
@@ -41,7 +41,7 @@ func TestEth2WithPrysmAndNethermind(t *testing.T) {
 
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WithConsensusType(EthereumVersion_Eth2_Legacy).
+		WithEthereumVersion(EthereumVersion_Eth2_Legacy).
 		WithConsensusLayer(ConsensusLayer_Prysm).
 		WithExecutionLayer(ExecutionLayer_Nethermind).
 		Build()

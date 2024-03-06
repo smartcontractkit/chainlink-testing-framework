@@ -20,7 +20,7 @@ func TestEth2CustomConfig(t *testing.T) {
 
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WithConsensusType(EthereumVersion_Eth2_Legacy).
+		WithEthereumVersion(EthereumVersion_Eth2).
 		WithConsensusLayer(ConsensusLayer_Prysm).
 		WithExecutionLayer(ExecutionLayer_Geth).
 		WithEthereumChainConfig(EthereumChainConfig{
@@ -46,7 +46,7 @@ func TestEth2ExtraFunding(t *testing.T) {
 
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WithConsensusType(EthereumVersion_Eth2_Legacy).
+		WithEthereumVersion(EthereumVersion_Eth2_Legacy).
 		WithConsensusLayer(ConsensusLayer_Prysm).
 		WithExecutionLayer(ExecutionLayer_Geth).
 		WithEthereumChainConfig(EthereumChainConfig{
@@ -74,7 +74,7 @@ func TestEth2WithPrysmAndGethReuseNetwork(t *testing.T) {
 
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WithConsensusType(EthereumVersion_Eth2_Legacy).
+		WithEthereumVersion(EthereumVersion_Eth2).
 		WithConsensusLayer(ConsensusLayer_Prysm).
 		WithExecutionLayer(ExecutionLayer_Geth).
 		Build()
@@ -219,7 +219,7 @@ func TestEth2CustomDockerNetworks(t *testing.T) {
 
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WithConsensusType(EthereumVersion_Eth2_Legacy).
+		WithEthereumVersion(EthereumVersion_Eth2).
 		WithConsensusLayer(ConsensusLayer_Prysm).
 		WithExecutionLayer(ExecutionLayer_Geth).
 		WithDockerNetworks(networks).
@@ -231,7 +231,7 @@ func TestEth2CustomDockerNetworks(t *testing.T) {
 func TestEth2CustomImages(t *testing.T) {
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WithConsensusType(EthereumVersion_Eth2_Legacy).
+		WithEthereumVersion(EthereumVersion_Eth2).
 		WithConsensusLayer(ConsensusLayer_Prysm).
 		WithExecutionLayer(ExecutionLayer_Geth).
 		WithCustomDockerImages(map[ContainerType]string{
@@ -248,7 +248,7 @@ func TestEth2DenebHardFork(t *testing.T) {
 
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WithConsensusType(EthereumVersion_Eth2_Legacy).
+		WithEthereumVersion(EthereumVersion_Eth2).
 		WithConsensusLayer(ConsensusLayer_Prysm).
 		WithExecutionLayer(ExecutionLayer_Geth).
 		WithEthereumChainConfig(EthereumChainConfig{
@@ -273,7 +273,7 @@ func TestEth2DenebHardFork(t *testing.T) {
 func TestEth2InvalidHardForks(t *testing.T) {
 	builder := NewEthereumNetworkBuilder()
 	_, err := builder.
-		WithConsensusType(EthereumVersion_Eth2_Legacy).
+		WithConsensusType(ConsensusType_PoS).
 		WithConsensusLayer(ConsensusLayer_Prysm).
 		WithExecutionLayer(ExecutionLayer_Geth).
 		WithEthereumChainConfig(EthereumChainConfig{
@@ -285,7 +285,7 @@ func TestEth2InvalidHardForks(t *testing.T) {
 
 	builder = NewEthereumNetworkBuilder()
 	_, err = builder.
-		WithConsensusType(EthereumVersion_Eth2_Legacy).
+		WithEthereumVersion(EthereumVersion_Eth2).
 		WithConsensusLayer(ConsensusLayer_Prysm).
 		WithExecutionLayer(ExecutionLayer_Geth).
 		WithEthereumChainConfig(EthereumChainConfig{
@@ -297,7 +297,7 @@ func TestEth2InvalidHardForks(t *testing.T) {
 
 	builder = NewEthereumNetworkBuilder()
 	_, err = builder.
-		WithConsensusType(EthereumVersion_Eth2_Legacy).
+		WithEthereumVersion(EthereumVersion_Eth2_Legacy).
 		WithConsensusLayer(ConsensusLayer_Prysm).
 		WithExecutionLayer(ExecutionLayer_Geth).
 		WithEthereumChainConfig(EthereumChainConfig{
@@ -335,7 +335,7 @@ func TestVersionDependentConsensusPoSMinor(t *testing.T) {
 func TestVersionDependentConsensusRc(t *testing.T) {
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WithConsensusType(EthereumVersion_Auto).
+		WithEthereumVersion(EthereumVersion_Auto).
 		WithExecutionLayer(ExecutionLayer_Nethermind).
 		WithCustomDockerImages(map[ContainerType]string{
 			ContainerType_Geth: "nethermind/nethermind:1.17.0-RC2"}).
@@ -345,10 +345,10 @@ func TestVersionDependentConsensusRc(t *testing.T) {
 	require.Equal(t, ConsensusLayer_Prysm, *cfg.ConsensusLayer, "Consensus layer should be Prysm")
 }
 
-func TestVersionDependentConsensusWithV(t *testing.T) {
+func TestVersionDependentConsensusWithLettersInVersion(t *testing.T) {
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WithConsensusType(EthereumVersion_Auto).
+		WithEthereumVersion(EthereumVersion_Auto).
 		WithConsensusLayer(ConsensusLayer_Prysm).
 		WithExecutionLayer(ExecutionLayer_Geth).
 		WithCustomDockerImages(map[ContainerType]string{
