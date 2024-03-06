@@ -84,7 +84,7 @@ LOOP:
 			}
 
 			logs := string(b)
-			if length == len(logs) && err != nil {
+			if length == len(logs) {
 				return err
 			} else if len(ws.Pattern.FindAllString(logs, -1)) >= ws.Occurrence {
 				break LOOP
