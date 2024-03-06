@@ -1,25 +1,33 @@
-imagePullPolicy: IfNotPresent
+imagePullPolicy: Always
 eth2-common:
   general:
-    networkId: 2337
+    networkId: 1337
+  genesis:
+    values:
+      currentUnixTimestamp: 1600000000
 general:
-  networkId: 2337
+  networkId: 1337
 shared:
   mnemonic: giant issue aisle success illegal bike spike question tent bar rely arctic volcano long crawl hungry vocal artwork sniff fantasy very lucky have athlete
-  password: password
   configDataDir: /data/custom_config_data
   keystoreDataSubdir: /keystore
+  password: password
+  accountKeystoreFile: account_key
   accountPasswordFile: account_password.txt
   jwtFile: jwtSecret
-  accountKeystoreFile: account_key
+valKeys:
+  image:
+    repository: protolambda/eth2-val-tools
+    tag: latest
 genesis:
   image:
     repository: tofelb/ethereum-genesis-generator
     tag: 2.0.5
   values:
-    secondsPerSlot: 4
-    slotsPerEpoch: 2
-    delaySeconds: 20
+    currentUnixTimestamp: 1600000000
+    secondsPerSlot: 20
+    slotsPerEpoch: 4
+    delaySeconds: 90
     validatorCount: 8
     denebForkEpoch: 200
     preminedAddresses:
@@ -34,15 +42,11 @@ genesis:
       - 'd83FCe08439C7ab9881d2AEA3a3fe0bf3B90f008'
       - 'D0A242b96e8C1700ff6dFE24B5Ec2dE832B6424F'
       - 'f39Fd6e51aad88F6F4ce6aB8827279cffFb92266'
-valKeys:
-  image:
-    repository: protolambda/eth2-val-tools
-    tag: latest
 excutionClient:
   image:
-    repository: ethereum/client-go
-    tag: v1.13.4
-  name: geth
+    repository: hyperledger/besu
+    tag: '23.10'
+  name: besu
   ports:
     http: 8544
     ws: 8545
@@ -50,8 +54,6 @@ excutionClient:
     discovery: 30303
   logging:
     level: INFO
-geth:
-  executionDir: /execution-data
 prysm:
   shared:
     feeRecipent: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'
@@ -80,6 +82,5 @@ ready:
     repository: curlimages/curl
     tag: 8.4.0
 storage:
-  class: hostpath
   claim: chain-state-claim
   size: 2Gi

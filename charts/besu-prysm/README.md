@@ -1,3 +1,6 @@
+# VERY IMPORTANT
+**There needs to be least one node labeled with `eth2=true` for deployment to work! (see below how to do it)**
+
 # Deployment initalisation flow
 Each `StatefulSet` has the same `initContainers` that are responsible for:
 1. Generating validator keys
@@ -11,10 +14,12 @@ now=$(date +%s)
 --set "genesis.values.currentUnixTimestamp"="$now" --set "eth2-common.genesis.values.currentUnixTimestamp"="$now"
 ```
 
+That's because we now generate genesis independently for each of the components, but they all need to have the same genesis time. Thanks to that we don't need to use a persistent volume with RWX access mode, which is not supported by most storage classes.
+
 # Default ports
 Note: These are ports that k8s services are exposed on, not localhost ports as local port forwarding has to be setup manually, but in order to access the RPC you should consider forwarding HTTP and WS RPCs ports.
 
-## Geth
+## Besu
 * `8544` - HTTP RPC
 * `8545` - WS RPC
 * `8551` - Execution RPC (used by consensus clients)
@@ -68,6 +73,8 @@ storage:
   # size of persistent volume
   size: 2Gi
 ```
+
+**Important**: remember to set `networkId` both for `eth2-common` and `general` sections, as otherwise you will end up in an inconsistent state. You need to override `networkId` for the `eth2-common` dependency.
 
 # Requirements
 1. `kubectl` installed

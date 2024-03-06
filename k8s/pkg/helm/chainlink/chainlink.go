@@ -150,7 +150,7 @@ func defaultProps() map[string]any {
 		"db": map[string]any{
 			"image": map[string]any{
 				"image":   postgresImage,
-				"version": "11.15",
+				"version": "12.18",
 			},
 			"stateful": false,
 			"capacity": "1Gi",

@@ -1232,6 +1232,9 @@ func NewEVMClientFromNetwork(networkSettings EVMNetwork, logger zerolog.Logger) 
 			break
 		}
 	}
+	if len(ecl.Clients) == 0 {
+		return nil, fmt.Errorf("No networks or URLS found for network %s", networkSettings.Name)
+	}
 	ecl.DefaultClient = ecl.Clients[0]
 	wrappedClient := wrapMultiClient(networkSettings, ecl)
 	// required in Geth when you need to call "simulate" transactions from nodes
