@@ -137,6 +137,10 @@ func (m *K8sTestRun) getChartPath() string {
 }
 
 func (m *K8sTestRun) deployHelm(testName string) error {
+	deleteCmd := fmt.Sprintf("helm delete %s -n %s --timeout 3m", testName, m.cfg.Namespace)
+	log.Info().Str("Cmd", deleteCmd).Msg("Delete previous release if exists") // This is needed when running on CI with GAP
+	ExecCmd(deleteCmd)
+
 	//nolint
 	defer os.Remove(m.cfg.tmpHelmFilePath)
 	var cmd strings.Builder
