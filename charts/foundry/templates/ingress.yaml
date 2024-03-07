@@ -1,61 +1,44 @@
 {{- if .Values.ingress.enabled -}}
-{{- $fullName := include "foundry.fullname" . -}}
-{{- $svcPort := .Values.service.port -}}
-{{- if and .Values.ingress.className (not (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion)) }}
-  {{- if not (hasKey .Values.ingress.annotations "kubernetes.io/ingress.class") }}
-  {{- $_ := set .Values.ingress.annotations "kubernetes.io/ingress.class" .Values.ingress.className}}
-  {{- end }}
-{{- end }}
-{{- if semverCompare ">=1.19-0" .Capabilities.KubeVersion.GitVersion -}}
 apiVersion: networking.k8s.io/v1
-{{- else if semverCompare ">=1.14-0" .Capabilities.KubeVersion.GitVersion -}}
-apiVersion: networking.k8s.io/v1beta1
-{{- else -}}
-apiVersion: extensions/v1beta1
-{{- end }}
 kind: Ingress
 metadata:
-  name: {{ $fullName }}
+  name: {{ .Release.Name }}
   labels:
-    {{- include "foundry.labels" . | nindent 4 }}
-  {{- with .Values.ingress.annotations }}
+    app: {{ .Release.Name }}
+    release: {{ .Release.Name }}
+    {{- range $key, $value := .Values.labels }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
   annotations:
-    {{- toYaml . | nindent 4 }}
+    alb.ingress.kubernetes.io/backend-protocol: HTTP
+    alb.ingress.kubernetes.io/certificate-arn: {{ .Values.ingress.annotation_certificate_arn | quote }}
+    alb.ingress.kubernetes.io/group.name: {{ .Values.ingress.annotation_group_name | quote }}
+    alb.ingress.kubernetes.io/scheme: internal
+    alb.ingress.kubernetes.io/target-type: ip
+    external-dns.alpha.kubernetes.io/ttl: "120"
+  {{- if .Values.ingress.extra_annotations }}
+  {{- range $key, $value := .Values.ingress.extra_annotations }}
+    {{ $key }}: {{ $value | quote }}
+  {{- end }}
   {{- end }}
 spec:
-  {{- if and .Values.ingress.className (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion) }}
-  ingressClassName: {{ .Values.ingress.className }}
-  {{- end }}
-  {{- if .Values.ingress.tls }}
-  tls:
-    {{- range .Values.ingress.tls }}
-    - hosts:
-        {{- range .hosts }}
-        - {{ . | quote }}
-        {{- end }}
-      secretName: {{ .secretName }}
-    {{- end }}
+  {{- with .Values.ingress.ingressClassName }}
+  ingressClassName: {{ . }}
   {{- end }}
   rules:
-    {{- range .Values.ingress.hosts }}
-    - host: {{ .host | quote }}
+  {{- $root := . -}}
+  {{- range .Values.ingress.hosts }}
+    - host: {{ .host }}
       http:
         paths:
-          {{- range .paths }}
-          - path: {{ .path }}
-            {{- if and .pathType (semverCompare ">=1.18-0" $.Capabilities.KubeVersion.GitVersion) }}
-            pathType: {{ .pathType }}
-            {{- end }}
+        {{- range .http.paths }}
+          - path: "/*"
+            pathType: ImplementationSpecific
             backend:
-              {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.GitVersion }}
               service:
-                name: {{ $fullName }}
+                name: {{ include "foundry.fullname" $root }}
                 port:
-                  number: {{ $svcPort }}
-              {{- else }}
-              serviceName: {{ $fullName }}
-              servicePort: {{ $svcPort }}
-              {{- end }}
-          {{- end }}
-    {{- end }}
-{{- end }}
+                  number: {{ .backend.service.port.number }}
+        {{- end }}
+  {{- end }}
+{{- end -}}
