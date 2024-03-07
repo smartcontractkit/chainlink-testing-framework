@@ -32,6 +32,9 @@ import (
 const (
 	TX_NON_DEV_GETH_WS_PORT = "8546"
 	BOOTNODE_PORT           = "30301"
+
+	defaultNonDevGethImage         = "ethereum/client-go:v1.12.0"
+	defaultNonDevGethAllToolsImage = "ethereum/client-go:alltools-v1.10.25"
 )
 
 var (
@@ -357,10 +360,7 @@ func (g *NonDevGethNode) ConnectToClient() error {
 }
 
 func (g *NonDevGethNode) getBootNodeContainerRequest() (tc.ContainerRequest, error) {
-	bootNodeImage, err := mirror.GetImage("ethereum/client-go:alltools")
-	if err != nil {
-		return tc.ContainerRequest{}, err
-	}
+	bootNodeImage := mirror.AddMirrorToImageIfSet(defaultNonDevGethAllToolsImage)
 	return tc.ContainerRequest{
 		Name:         g.ContainerName + "-bootnode",
 		Image:        bootNodeImage,
@@ -388,10 +388,7 @@ func (g *NonDevGethNode) getBootNodeContainerRequest() (tc.ContainerRequest, err
 	}, nil
 }
 func (g *NonDevGethNode) getGethContainerRequest() (tc.ContainerRequest, error) {
-	gethImage, err := mirror.GetImage("ethereum/client-go:v")
-	if err != nil {
-		return tc.ContainerRequest{}, err
-	}
+	gethImage := mirror.AddMirrorToImageIfSet(defaultNonDevGethImage)
 	return tc.ContainerRequest{
 		Name:  g.ContainerName,
 		Image: gethImage,

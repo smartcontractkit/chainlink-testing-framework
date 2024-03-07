@@ -21,6 +21,8 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
+const defaultKafkaImage = "confluentinc/cp-kafka:7.4.0"
+
 type Kafka struct {
 	EnvComponent
 	TopicConfigs       []KafkaTopicConfig
@@ -159,10 +161,7 @@ func (k *Kafka) CreateLocalTopics() error {
 }
 
 func (k *Kafka) getContainerRequest() (tc.ContainerRequest, error) {
-	kafkaImage, err := mirror.GetImage("confluentinc/cp-kafka")
-	if err != nil {
-		return tc.ContainerRequest{}, err
-	}
+	kafkaImage := mirror.AddMirrorToImageIfSet(defaultKafkaImage)
 	return tc.ContainerRequest{
 		Name:         k.ContainerName,
 		Image:        kafkaImage,

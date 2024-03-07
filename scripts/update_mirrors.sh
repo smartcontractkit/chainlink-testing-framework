@@ -1,10 +1,12 @@
 #!/bin/bash
 
+set -e
+
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 
 cd "$SCRIPT_DIR"/../ || exit 1
 
-# Check if an argument is provided
+# Check if any arguments are provided
 if [ $# -eq 0 ]; then
     echo "Usage: $0 <ecr-registry-url>"
     exit 1
@@ -12,6 +14,17 @@ fi
 
 # The first argument is the ECR registry URL
 ECR_REGISTRY_URL="$1"
+
+usage() {
+    echo "Need either 1 or 3 arguments depending on which operation mode you want"
+    echo "Usage: $0 <ecr-registry-url> [image-name] [image-expression]"
+    echo "Only add registry url to update from mirror.json file"
+    echo "Add both image expression and image name to update from list in dockerhub."
+    echo "expression example for something like postgres: '^15\.[0-9]+$'"
+    echo "Optional argument 4 is the number of images to check in dockerhub, useful for images like 50 that have lots of images between official version tags."
+    exit 1
+
+}
 
 # Function to check if the image exists in ECR
 check_image_in_ecr() {
@@ -50,25 +63,84 @@ pull_tag_push() {
     docker push "$ecr_image"
 }
 
-# Read the JSON file into a bash array
-docker_images=()
-while IFS= read -r line; do
-    docker_images+=("$line")
-done < <(jq -r '.[]' ./mirror/mirror.json)
+push_images_in_mirror_json() {
+    # Read the JSON file into a bash array
+    docker_images=()
+    while IFS= read -r line; do
+        docker_images+=("$line")
+    done < <(jq -r '.[]' ./scripts/mirror.json)
 
-# Iterate over the images
-for docker_image in "${docker_images[@]}"; do
-    echo "---"
-    echo "Checking if $docker_image exists in ECR..."
+    push_images_in_list "${docker_images[@]}"
+}
 
-    # Check if the image exists in ECR
-    if ! check_image_in_ecr "$docker_image"; then
-        echo "$docker_image does not exist in ECR. Mirroring image..."
-        # Pull, tag, and push the image to ECR
-        pull_tag_push "$docker_image"
-    else
-        echo "$docker_image already exists in ECR. Skipping..."
+push_latest_images_for_expression_from_dockerhub() {
+    local image_name=$1
+    local image_expression=$2
+    local page_size=$3
+    local images
+
+    # check if we have a number for the page size, if not, set it to 50
+    if [ -z "$page_size" ] || ! [[ "$page_size" =~ ^[0-9]+$ ]] || [ "$page_size" -eq 0 ]; then
+        page_size=50
     fi
-done
 
-echo "Mirroring process completed."
+    set +e
+    if [[ $image_name == gcr.io* ]]; then
+        # Handle GCR images
+        images=$(gcloud container images list-tags gcr.io/prysmaticlabs/prysm/validator --limit="${page_size}" --filter='tags:v*' --format=json | jq -r '.[].tags[]' | grep -E "${image_expression}")
+    else
+        images=$(curl -s "https://hub.docker.com/v2/repositories/${image_name}/tags/?page_size=${page_size}" | jq -r '.results[].name' | grep -E "${image_expression}")
+    fi
+    set -e
+
+    if [ -z "$images" ]; then
+        echo "No images were found matching the expression. Either something went wrong or you need to increase the page size to greater than ${page_size}."
+        exit 1
+    else
+        echo "Images found:"
+        echo "$images"
+    fi
+
+    image_list=()
+
+    # Convert newline-separated string to an array
+    while IFS= read -r line; do
+        image_list+=("${image_name}:${line}")
+    done <<< "$images"
+    push_images_in_list "${image_list[@]}"
+}
+
+push_images_in_list() {
+    local -a image_list=("$@")
+    local prefix="library/"
+    # Iterate over the images
+    for docker_image in "${image_list[@]}"; do
+        echo "---"
+        echo "Checking if $docker_image exists in ECR..."
+
+        # Check if the image is a standard libary image and needs the library/ prefix removed
+        docker_image="${docker_image#"$prefix"}"
+
+        # Check if the image exists in ECR
+        if ! check_image_in_ecr "$docker_image"; then
+            echo "$docker_image does not exist in ECR. Mirroring image..."
+            # Pull, tag, and push the image to ECR
+            pull_tag_push "$docker_image"
+        else
+            echo "$docker_image already exists in ECR. Skipping..."
+        fi
+    done
+
+}
+
+# Run the code
+if [ $# -eq 1 ]; then
+    push_images_in_mirror_json
+    echo "Update from mirror.json comleted."
+elif [ $# -eq 3 ] || [ $# -eq 4 ]; then
+    push_latest_images_for_expression_from_dockerhub "$2" "$3" "$4"
+    echo "Update from dockerhub completed."
+else
+    usage
+fi
+

@@ -60,28 +60,33 @@ func (m Chart) GetValues() *map[string]interface{} {
 
 func (m Chart) ExportData(e *environment.Environment) error {
 	urls := make([]string, 0)
-	minerPods, err := e.Client.ListPods(e.Cfg.Namespace, fmt.Sprintf("app=%s-ethereum-miner-node", m.Props.NetworkName))
+	networkName := strings.ReplaceAll(strings.ToLower(m.Props.NetworkName), " ", "-")
+	minerPods, err := e.Client.ListPods(e.Cfg.Namespace, fmt.Sprintf("app=%s-ethereum-miner-node", networkName))
 	if err != nil {
 		return err
 	}
-	txPods, err := e.Client.ListPods(e.Cfg.Namespace, fmt.Sprintf("app=%s-ethereum-geth", m.Props.NetworkName))
+	txPods, err := e.Client.ListPods(e.Cfg.Namespace, fmt.Sprintf("app=%s-ethereum-geth", networkName))
 	if err != nil {
 		return err
 	}
+
 	if len(txPods.Items) > 0 {
 		for i := range txPods.Items {
-			podName := fmt.Sprintf("%s-ethereum-geth:%d", m.Props.NetworkName, i)
+			podName := fmt.Sprintf("%s-ethereum-geth:%d", networkName, i)
 			txNodeLocalWS, err := e.Fwd.FindPort(podName, "geth", "ws-rpc").As(client.LocalConnection, client.WS)
 			if err != nil {
 				return err
 			}
-			txNodeInternalWs, err := e.Fwd.FindPort(podName, "geth", "ws-rpc").As(client.RemoteConnection, client.WS)
-			if err != nil {
-				return err
-			}
+
 			if e.Cfg.InsideK8s {
-				urls = append(urls, txNodeInternalWs)
-				log.Info().Str("URL", txNodeInternalWs).Msgf("Geth network (TX Node) - %d", i)
+				services, err := e.Client.ListServices(e.Cfg.Namespace, fmt.Sprintf("app=%s-ethereum-geth", networkName))
+				if err != nil {
+					return err
+				}
+				serviceURL := fmt.Sprintf("ws://%s:8546", services.Items[0].Name)
+				e.URLs[m.Props.NetworkName+"_http"] = append(e.URLs[m.Props.NetworkName+"_http"], fmt.Sprintf("http://%s:8544", services.Items[0].Name))
+				urls = append(urls, serviceURL)
+				log.Info().Str("URL", serviceURL).Msgf("Geth network (TX Node) - %d", i)
 			} else {
 				urls = append(urls, txNodeLocalWS)
 				log.Info().Str("URL", txNodeLocalWS).Msgf("Geth network (TX Node) - %d", i)
@@ -91,7 +96,7 @@ func (m Chart) ExportData(e *environment.Environment) error {
 
 	if len(minerPods.Items) > 0 {
 		for i := range minerPods.Items {
-			podName := fmt.Sprintf("%s-ethereum-miner-node:%d", m.Props.NetworkName, i)
+			podName := fmt.Sprintf("%s-ethereum-miner-node:%d", networkName, i)
 			minerNodeLocalWS, err := e.Fwd.FindPort(podName, "geth-miner", "ws-rpc-miner").As(client.LocalConnection, client.WS)
 			if err != nil {
 				return err

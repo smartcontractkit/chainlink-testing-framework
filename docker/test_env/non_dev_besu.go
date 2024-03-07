@@ -28,7 +28,7 @@ import (
 )
 
 const (
-	BESU_IMAGE = "hyperledger/besu"
+	defaultNonDevBesuImage = "hyperledger/besu:24.1"
 )
 
 type PrivateBesuChain struct {
@@ -320,10 +320,7 @@ func (g *NonDevBesuNode) Start() error {
 }
 
 func (g *NonDevBesuNode) getBesuBootNodeContainerRequest() (tc.ContainerRequest, error) {
-	besuImage, err := mirror.GetImage(BESU_IMAGE)
-	if err != nil {
-		return tc.ContainerRequest{}, err
-	}
+	besuImage := mirror.AddMirrorToImageIfSet(defaultNonDevBesuImage)
 	return tc.ContainerRequest{
 		Name:         g.ContainerName + "-bootnode",
 		Image:        besuImage,
@@ -381,10 +378,7 @@ func (g *NonDevBesuNode) exportBesuBootNodeAddress(bootNode tc.Container) (err e
 }
 
 func (g *NonDevBesuNode) getBesuContainerRequest() (tc.ContainerRequest, error) {
-	besuImage, err := mirror.GetImage(BESU_IMAGE)
-	if err != nil {
-		return tc.ContainerRequest{}, err
-	}
+	besuImage := mirror.AddMirrorToImageIfSet(defaultNonDevBesuImage)
 	return tc.ContainerRequest{
 		Name:  g.ContainerName,
 		Image: besuImage,

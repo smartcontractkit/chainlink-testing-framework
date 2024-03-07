@@ -2,15 +2,93 @@ name: Update Mirrors
 on:
   push:
     tags:
-      - v*
       - main
   workflow_dispatch:
+  schedule: # add schecule for once a week on saturday
+    - cron: '0 0 * * 6'
 
 concurrency:
   group: update-mirrors-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   update-mirrors:
+    runs-on: ubuntu-latest
+    environment: integration
+    strategy:
+      fail-fast: false
+      matrix:
+        mirror:
+          # note library just means it is part of the official library
+          - name: library/postgres
+            expression: '^[0-9]+\.[0-9]+$'
+          - name: ethereum/client-go
+            expression: '^(alltools-v|v)[0-9]\.[0-9]+\.[0-9]+$'
+          - name: friendsofgo/killgrave
+            expression: '^[0-9]+\.[0-9]+\.[0-9]+$'
+          - name: mockserver/mockserver
+            expression: '^[0-9]+\.[0-9]+\.[0-9]+$'
+          - name: testcontainers/ryuk
+            expression: '^[0-9]+\.[0-9]+\.[0-9]+$'
+          - name: confluentinc/cp-kafka
+            expression: '^[0-9]+\.[0-9]+\.[0-9]+$'
+          - name: confluentinc/cp-schema-registry
+            expression: '^[0-9]+\.[0-9]+\.[0-9]+$'
+          - name: confluentinc/cp-zookeeper
+            expression: '^[0-9]+\.[0-9]+\.[0-9]+$'
+          - name: hyperledger/besu
+            expression: '^[0-9]+\.[0-9]+$'
+            page_size: 100
+          - name: thorax/erigon
+            expression: '^v[0-9]+\.[0-9]+\.[0-9]+$'
+          - name: nethermind/nethermind
+            expression: '^[0-9]+\.[0-9]+\.[0-9]+$'
+          # disabled until gcloud auth is added
+          # - name: gcr.io/prysmaticlabs/prysm/beacon-chain
+          #   expression: '^v[0-9]+\.[0-9]+\.[0-9]+$'
+          # - name: gcr.io/prysmaticlabs/prysm/validator
+          #   expression: '^v[0-9]+\.[0-9]+\.[0-9]+$'
+          - name: tofelb/ethereum-genesis-generator
+            expression: '^[0-9]+\.[0-9]+\.[0-9]+(\-slots\-per\-epoch)?'
+          # This one only has latest tag, probably only want to update it when we know for sure it's a new version we want
+          #  - name: protolambda/eth2-val-tools
+          #   expression: 'latest'
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout the Repo
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+        # Setup AWS creds
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@010d0da01d0b5a38af31e9c3470dbfdabdecca3a # v4.0.1
+        with:
+          aws-region: ${{ secrets.QA_AWS_REGION }}
+          role-to-assume: ${{ secrets.QA_AWS_ROLE_TO_ASSUME }}
+          role-duration-seconds: 3600
+
+      # Login to ECR
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076 # v2.0.1
+        with:
+          mask-password: 'true'
+        env:
+          AWS_REGION: ${{ secrets.QA_AWS_REGION }}
+
+      # - name: Login to Google Cloud
+      #   uses: google-github-actions/auth@55bd3a7c6e2ae7cf1877fd1ccb9d54c0503c457c # v2.1.2
+      #   with:
+      #     credentials_json: '${{ secrets.GOOGLE_CREDENTIALS }}'
+
+      # Update all mirror images
+      - name: Update images
+        id: check
+        shell: bash
+        run: |
+          ./scripts/update_mirrors.sh ${{ secrets.QA_AWS_ACCOUNT_NUMBER }}.dkr.ecr.${{ secrets.QA_AWS_REGION }}.amazonaws.com ${{matrix.mirror.name}} '${{matrix.mirror.expression}}' ${{matrix.mirror.page_size}}
+
+  update-other-images:
     runs-on: ubuntu-latest
     environment: integration
     permissions:
@@ -41,4 +119,5 @@ jobs:
       - name: Update images
         id: check
         shell: bash
-        run: ./scripts/update_mirrors.sh ${{ secrets.QA_AWS_ACCOUNT_NUMBER }}.dkr.ecr.${{ secrets.QA_AWS_REGION }}.amazonaws.com
+        run: |
+          ./scripts/update_mirrors.sh ${{ secrets.QA_AWS_ACCOUNT_NUMBER }}.dkr.ecr.${{ secrets.QA_AWS_REGION }}.amazonaws.com
