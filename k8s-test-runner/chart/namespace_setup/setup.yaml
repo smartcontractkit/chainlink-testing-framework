@@ -4,13 +4,13 @@ metadata:
   name: wasp-role
 rules:
   - apiGroups:
-      - ""
-      - "apps"
-      - "batch"
+      - ''
+      - 'apps'
+      - 'batch'
     resources:
-      - "*"
+      - '*'
     verbs:
-      - "*"
+      - '*'
 ---
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1

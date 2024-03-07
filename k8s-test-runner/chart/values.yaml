@@ -5,12 +5,12 @@ jobs: 1
 sync:
 # Go test name and timeout
 test:
-  name: ""
-  timeout: "24h"
-  binaryName: ""
+  name: ''
+  timeout: '24h'
+  binaryName: ''
 
 # image + tag string - ${IMAGE}:${TAG} format
-image: ""
+image: ''
 imagePullPolicy: Always
 labels:
   app: wasp
@@ -19,10 +19,10 @@ env:
   wasp:
     log_level: info
   loki:
-    basic_auth: ""
-    tenant_id: ""
-    token: ""
-    url: ""
+    basic_auth: ''
+    tenant_id: ''
+    token: ''
+    url: ''
 resources:
   requests:
     cpu: 1000m
