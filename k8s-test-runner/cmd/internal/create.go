@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -24,6 +23,7 @@ func init() {
 	Create.MarkFlagRequired("image-registry-url")
 	Create.Flags().String("image-tag", "", "Test name (e.g. mercury-load-test)")
 	Create.MarkFlagRequired("image-registry-url")
+	Create.Flags().String("test-runner-root-dir", "./", "Test runner root directory with default chart and Dockerfile.testbin")
 }
 
 var (
@@ -42,40 +42,36 @@ func createRunnerImageRunE(cmd *cobra.Command, args []string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*5)
 	defer cancel()
 
-	// Get the file path of the current file
-	_, filename, _, ok := runtime.Caller(0)
-	if !ok {
-		return fmt.Errorf("error getting filepath of the current file")
+	rootDir, err := cmd.Flags().GetString("test-runner-root-dir")
+	if err != nil {
+		return fmt.Errorf("error getting test runner root directory: %v", err)
 	}
+
 	// Get the root directory of the k8s runner
-	k8sRunnerDir := filepath.Clean(filepath.Join(filepath.Dir(filename), "../../"))
+	rootDirAbs, err := filepath.Abs(rootDir)
+	if err != nil {
+		return fmt.Errorf("error getting absolute path: %v", err)
+	}
+
+	fmt.Printf("Test runner root directory: %s\n", rootDirAbs)
 
 	// Build the test binary
-	testBinPath := filepath.Join(k8sRunnerDir, "testbin")
+	testBinPath := filepath.Join(rootDirAbs, "testbin")
 	err = buildTestBinary(ctx, testPackage, testBinPath)
 	if err != nil {
 		return err
 	}
 
-	// Execute ls -l command
-	lsCmd := exec.Command("ls", "-lh", testBinPath)
-	lsOutput, err := lsCmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("error executing ls -l: %v", err)
-	}
-	fmt.Print(string(lsOutput))
+	fmt.Print("Creating docker image for the test binary..\n")
 
 	imageTag, err := cmd.Flags().GetString("image-tag")
 	if err != nil {
 		return fmt.Errorf("error getting test name: %v", err)
 	}
-
-	fmt.Print("Creating docker image for the test binary..\n")
-
 	buildTestBinDockerImageCmd := exec.CommandContext(ctx, "docker", "build", "--platform", "linux/amd64", "-f", "Dockerfile.testbin", "--build-arg", "TEST_BINARY=testbin", "-t", fmt.Sprintf("%s:%s", K8sTestRunnerImageName, imageTag), ".")
-	buildTestBinDockerImageCmd.Dir = k8sRunnerDir
+	buildTestBinDockerImageCmd.Dir = rootDirAbs
 
-	fmt.Printf("Running command from %s: %s\n", k8sRunnerDir, buildTestBinDockerImageCmd.String())
+	fmt.Printf("Running command from %s: %s\n", rootDirAbs, buildTestBinDockerImageCmd.String())
 
 	buildTestBinDockerImageOutput, err := buildTestBinDockerImageCmd.CombinedOutput()
 	if err != nil {

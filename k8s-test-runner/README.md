@@ -59,3 +59,52 @@ Where:
 - `test_name` is the name of the test to run (must be included in the test binary).
 - `test_config_env_name` is the name of the environment variable used to provide the test configuration for the test (optional).
 - `test_config_file_path` is the path to the configuration file for the test (optional).
+
+## Using K8s Test Runner on CI
+
+### Example
+
+This example demonstrates the process step by step. First, it shows how to download the Kubernetes Test Runner. Next, it details the use of the Test Runner to create a test binary specifically for the Mercury "e2e_tests/staging_prod/tests/load" test package. Finally, it describes executing the test in Kubernetes using a customized test runner configuration.
+
+```
+- name: Download K8s Test Runner
+    run: |
+        mkdir -p k8s-test-runner
+        cd k8s-test-runner
+        curl -L -o k8s-test-runner.tar.gz https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/v0.2.4/test-runner.tar.gz 
+        tar -xzf k8s-test-runner.tar.gz
+        chmod +x k8s-test-runner-linux-amd64
+
+- name: Build K8s Test Runner Image
+    if: github.event.inputs.test-type == 'load' && github.event.inputs.rebuild-test-image == 'yes'
+    run: |
+        cd e2e_tests/k8s-test-runner
+
+        ./k8s-test-runner-linux-amd64 create-test-image --image-registry-url "${{ secrets.AWS_ACCOUNT_ID_STAGING }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com" --image-tag "mercury-load-test" "../staging_prod/tests/load"
+
+- name: Run Test in K8s
+    run: |
+        cd e2e_tests/k8s-test-runner  
+
+        cat << EOF > config.toml
+        namespace = "wasp"
+        update_image = false
+        image_registry_url = "${{ secrets.AWS_ACCOUNT_ID_STAGING }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com"
+        image_name = "k8s-test-runner"
+        image_tag = "mercury-load-test"
+        wasp_jobs = "1"
+        wasp_log_level = "info"
+        keep_jobs = true
+        chart_path = "./chart"
+        test_name = "TestMercuryLoad/all_endpoints"
+        test_timeout = "24h"
+        test_config_env_name = "LOAD_TEST_BASE64_TOML_CONTENT"
+        test_config_base64 = "${{ steps.conditional-env-vars.outputs.LOAD_TEST_BASE64_TOML_CONTENT }}"
+        EOF
+
+        ./k8s-test-runner-linux-amd64 run -c config.toml        
+```
+
+## Release 
+
+Run `./package <version>`
