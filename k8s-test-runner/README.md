@@ -21,7 +21,12 @@ Ensure you complete the following steps before executing tests on the staging en
 
 ### Creating an Image with the Test Binary
 
-Before running tests, you must create a Docker image containing the test binary. To do this, execute the `create-test-image` command and provide the path to the test folder you wish to package.
+Before running tests, you must create a Docker image containing the test binary. To do this, execute the `create-test-image` command and provide the path to the test folder you wish to package. This command:
+
+1. Compiles test binary under `<path-to-test-folder>`
+2. Creates a docker image with the test binary
+3. Pushes the docker image to the image registry (e.g. Staging ECR)  
+
 
 ```sh
 go run ./cmd/main.go create-test-image --image-registry-url <staging-ecr-registry-url> --image-tag "<image-tag>" "<path-to-test-folder>"
