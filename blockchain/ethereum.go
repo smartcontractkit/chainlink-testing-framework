@@ -715,8 +715,12 @@ func (e *EthereumClient) IsTxConfirmed(txHash common.Hash) (bool, error) {
 		if receipt.Status == 0 { // 0 indicates failure, 1 indicates success
 			reason, err := e.errorReason(e.Client, tx, receipt)
 			if err != nil {
+				to := "(none)"
+				if tx.To() != nil {
+					to = tx.To().Hex()
+				}
 				e.l.Warn().Str("TX Hash", txHash.Hex()).
-					Str("To", tx.To().Hex()).
+					Str("To", to).
 					Uint64("Nonce", tx.Nonce()).
 					Str("Error extracting reason", err.Error()).
 					Msg("Transaction failed and was reverted! Unable to retrieve reason!")
