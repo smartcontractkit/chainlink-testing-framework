@@ -15,7 +15,7 @@ import (
 
 var ECR = &cobra.Command{
 	Use:   "ecr",
-	Short: "Create test image for K8s test runner",
+	Short: "ECR commands",
 }
 
 var dalUntaggedImages = &cobra.Command{
