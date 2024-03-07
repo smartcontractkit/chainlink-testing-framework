@@ -21,7 +21,7 @@ const (
 	K8sStatePollInterval = 3 * time.Second
 )
 
-// Client high level k8s client
+// High level k8s client
 type Client struct {
 	ClientSet  *kubernetes.Clientset
 	RESTConfig *rest.Config
@@ -85,22 +85,21 @@ func retryK8sCall(operation k8sOperation, maxRetries int) error {
 func (m *Client) ListPods(ctx context.Context, namespace, syncLabel string) (*v1.PodList, error) {
 	var pods *v1.PodList
 	maxRetries := 5 // Maximum number of retries
-
 	timeout := int64(30)
-	opts := metaV1.ListOptions{
-		LabelSelector:  syncSelector(syncLabel), // Using syncSelector to format label selector
-		TimeoutSeconds: &timeout,
-	}
+	labelSelector := syncSelector(syncLabel)
 	operation := func() error {
 		var err error
-		pods, err = m.ClientSet.CoreV1().Pods(namespace).List(ctx, opts)
+		pods, err = m.ClientSet.CoreV1().Pods(namespace).List(ctx, metaV1.ListOptions{
+			LabelSelector:  labelSelector,
+			TimeoutSeconds: &timeout,
+		})
 		return err
 	}
 
 	err := retryK8sCall(operation, maxRetries)
 	if err != nil {
 		// Wrap and return any error encountered during the retry operation
-		return nil, fmt.Errorf("failed to call CoreV1().Pods(%s).List(%v): %w", namespace, opts, err)
+		return nil, fmt.Errorf(`failed to call CoreV1().Pods().List(), namespace: %s, labelSelector: %s, timeout: %d: %w`, namespace, labelSelector, timeout, err)
 	}
 
 	// At this point, `pods` should be populated successfully
@@ -112,43 +111,33 @@ func (m *Client) ListJobs(ctx context.Context, namespace, syncLabel string) (*ba
 	maxRetries := 5 // Maximum number of retries
 
 	timeout := int64(30)
-	opts := metaV1.ListOptions{
-		LabelSelector:  syncSelector(syncLabel), // Assuming syncSelector is a function that formats the label selector
-		TimeoutSeconds: &timeout,
-	}
+	labelSelector := syncSelector(syncLabel)
 	call := func() error {
 		var err error
-		jobs, err = m.ClientSet.BatchV1().Jobs(namespace).List(ctx, opts)
+		jobs, err = m.ClientSet.BatchV1().Jobs(namespace).List(ctx, metaV1.ListOptions{
+			LabelSelector:  labelSelector,
+			TimeoutSeconds: &timeout,
+		})
 		return err
 	}
 
 	err := retryK8sCall(call, maxRetries)
 	if err != nil {
 		// Wrap and return any error encountered during the retry operation
-		return nil, fmt.Errorf("failed to call BatchV1().Jobs(%s).List(%v): %w", namespace, opts, err)
+		return nil, fmt.Errorf(`failed to call BatchV1().Jobs().List(), namespace: %s, labelSelector: %s, timeout: %d: %w`, namespace, labelSelector, timeout, err)
 	}
 
 	// At this point, `jobs` should be populated successfully
 	return jobs, nil
 }
 
-func (m *Client) GetPodLogs(ctx context.Context, nsName, syncLabel string) (map[string]string, error) {
+func (m *Client) GetPodLogs(ctx context.Context, namespace string, pods []v1.Pod) (map[string]string, error) {
 	podLogs := make(map[string]string)
 	maxRetries := 5 // Maximum number of retries
 
-	timeout := int64(30)
-	opts := metaV1.ListOptions{
-		LabelSelector:  syncSelector(syncLabel),
-		TimeoutSeconds: &timeout,
-	}
 	operation := func() error {
-		pods, err := m.ClientSet.CoreV1().Pods(nsName).List(ctx, opts)
-		if err != nil {
-			return err // Return the error to the retry mechanism
-		}
-
-		for _, pod := range pods.Items {
-			req := m.ClientSet.CoreV1().Pods(nsName).GetLogs(pod.Name, &v1.PodLogOptions{})
+		for _, pod := range pods {
+			req := m.ClientSet.CoreV1().Pods(namespace).GetLogs(pod.Name, &v1.PodLogOptions{})
 			podLog, err := req.Stream(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to open log stream for pod %s: %w", pod.Name, err)
@@ -179,9 +168,9 @@ func syncSelector(s string) string {
 	return fmt.Sprintf("sync=%s", s)
 }
 
-func (m *Client) removeJobs(ctx context.Context, nsName string, jobs *batchV1.JobList) error {
-	log.Info().Msg("Removing jobs")
-	for _, j := range jobs.Items {
+func (m *Client) removeJobs(ctx context.Context, nsName string, jobs []batchV1.Job) error {
+	log.Info().Interface("jobs", jobs).Msg("Removing jobs")
+	for _, j := range jobs {
 		dp := metaV1.DeletePropagationForeground
 		if err := m.ClientSet.BatchV1().Jobs(nsName).Delete(ctx, j.Name, metaV1.DeleteOptions{
 			PropagationPolicy: &dp,
@@ -214,9 +203,8 @@ outer:
 	}
 }
 
-// TrackJobs tracks both jobs and their pods until they succeed or fail
-func (m *Client) TrackJobs(ctx context.Context, nsName, syncLabel string, jobNum int, keepJobs bool) error {
-	log.Debug().Str("LabelSelector", syncSelector(syncLabel)).Msg("Searching for jobs/pods")
+func (m *Client) TrackJobs(ctx context.Context, nsName, syncLabelValue string, jobNum int, keepJobs bool) error {
+	log.Debug().Str("LabelSelector", syncSelector(syncLabelValue)).Msg("Searching for jobs/pods")
 	for {
 		select {
 		case <-ctx.Done():
@@ -224,34 +212,28 @@ func (m *Client) TrackJobs(ctx context.Context, nsName, syncLabel string, jobNum
 			return nil
 		default:
 			time.Sleep(K8sStatePollInterval)
-			jobs, err := m.ListJobs(ctx, nsName, syncLabel)
-			if err != nil {
-				return errors.Wrapf(err, "failed to get jobs")
-			}
-			jobPods, err := m.ListPods(ctx, nsName, syncLabel)
+			podList, err := m.ListPods(ctx, nsName, syncLabelValue)
 			if err != nil {
 				return errors.Wrapf(err, "failed to get job pods")
 			}
-			if len(jobPods.Items) != jobNum {
-				log.Info().Int("JobPods", jobNum).Msg("Awaiting job pods")
+			pods := getPodsByLabel(podList, "sync", syncLabelValue)
+			if len(pods) != jobNum {
+				log.Info().Int("actualJobs", len(pods)).Int("expectedJobs", jobNum).Msg("Awaiting job pods")
+				log.Info().Interface("Pods", pods).Msg("Pods")
 				continue
 			}
-			for _, jp := range jobPods.Items {
-				log.Debug().Interface("Phase", jp.Status.Phase).Msg("Job status")
+			jobList, err := m.ListJobs(ctx, nsName, syncLabelValue)
+			if err != nil {
+				m.PrintPodLogs(ctx, nsName, pods)
+				return errors.Wrapf(err, "failed to get jobs")
 			}
+			jobs := getJobsByLabel(jobList, "sync", syncLabelValue)
 			var successfulJobs int
-			for _, j := range jobs.Items {
+			for _, j := range jobs {
 				log.Debug().Interface("Status", j.Status).Str("Name", j.Name).Msg("Pod status")
 				if j.Status.Failed > 0 {
 					log.Warn().Str("Name", j.Name).Msg("Job has failed")
-					logs, err := m.GetPodLogs(ctx, nsName, syncLabel)
-					if err != nil {
-						log.Warn().Err(err).Msg("Failed to get pod logs")
-					} else {
-						for k, v := range logs {
-							log.Info().Str("Pod", k).Str("Logs", v).Msg("Pod logs")
-						}
-					}
+					m.PrintPodLogs(ctx, nsName, pods)
 					if !keepJobs {
 						if err := m.removeJobs(ctx, nsName, jobs); err != nil {
 							return err
@@ -264,7 +246,8 @@ func (m *Client) TrackJobs(ctx context.Context, nsName, syncLabel string, jobNum
 				}
 			}
 			if successfulJobs == jobNum {
-				log.Info().Msg("Test ended")
+				log.Info().Msg("Test run ended")
+				m.PrintPodLogs(ctx, nsName, pods)
 				if !keepJobs {
 					return m.removeJobs(ctx, nsName, jobs)
 				}
@@ -272,4 +255,36 @@ func (m *Client) TrackJobs(ctx context.Context, nsName, syncLabel string, jobNum
 			}
 		}
 	}
+}
+
+func (m *Client) PrintPodLogs(ctx context.Context, namespace string, pods []v1.Pod) {
+	logs, err := m.GetPodLogs(ctx, namespace, pods)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get pod logs")
+	} else {
+		for k, v := range logs {
+			log.Info().Str("Pod", k).Msg("Pod logs")
+			fmt.Println(v)
+		}
+	}
+}
+
+func getPodsByLabel(list *v1.PodList, labelKey, labelValue string) []v1.Pod {
+	items := make([]v1.Pod, 0)
+	for _, p := range list.Items {
+		if p.Labels[labelKey] == labelValue {
+			items = append(items, p)
+		}
+	}
+	return items
+}
+
+func getJobsByLabel(list *batchV1.JobList, labelKey, labelValue string) []batchV1.Job {
+	items := make([]batchV1.Job, 0)
+	for _, p := range list.Items {
+		if p.Labels[labelKey] == labelValue {
+			items = append(items, p)
+		}
+	}
+	return items
 }
