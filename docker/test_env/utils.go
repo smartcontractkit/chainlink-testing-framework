@@ -84,7 +84,7 @@ func GetEthereumVersionFromImage(executionLayer ExecutionLayer, imageWithVersion
 		}
 	}
 
-	return "", fmt.Errorf("unsupported execution layer: %s", executionLayer)
+	return "", fmt.Errorf(MsgUnsupportedExecutionLayer, executionLayer)
 }
 
 // GetComparableVersionFromDockerImage returns version in xy format removing all non-numeric characters
@@ -92,7 +92,7 @@ func GetEthereumVersionFromImage(executionLayer ExecutionLayer, imageWithVersion
 func GetComparableVersionFromDockerImage(imageWithVersion string) (int, error) {
 	parts := strings.Split(imageWithVersion, ":")
 	if len(parts) != 2 {
-		return -1, fmt.Errorf("invalid docker image format: %s", imageWithVersion)
+		return -1, fmt.Errorf(MsgInvalidDockerImageFormat, imageWithVersion)
 	}
 
 	re := regexp.MustCompile("[a-zA-Z]")
@@ -116,40 +116,40 @@ func GetComparableVersionFromDockerImage(imageWithVersion string) (int, error) {
 func GetGithubRepositoryFromDockerImage(imageWithVersion string) (string, error) {
 	parts := strings.Split(imageWithVersion, ":")
 	if len(parts) != 2 {
-		return "", fmt.Errorf("invalid docker image format: %s", imageWithVersion)
+		return "", fmt.Errorf(MsgInvalidDockerImageFormat, imageWithVersion)
 	}
 
-	switch parts[0] {
-	case "ethereum/client-go":
-		return "ethereum/go-ethereum", nil
-	case "hyperledger/besu":
-		return "hyperledger/besu", nil
-	case "nethermind/nethermind":
-		return "NethermindEth/nethermind", nil
-	case "thorax/erigon":
-		return "ledgerwatch/erigon", nil
+	switch {
+	case strings.Contains(parts[0], gethBaseImageName):
+		return gethGitRepo, nil
+	case strings.Contains(parts[0], besuBaseImageName):
+		return besuGitRepo, nil
+	case strings.Contains(parts[0], nethermindBaseImageName):
+		return nethermindGitRepo, nil
+	case strings.Contains(parts[0], erigonBaseImageName):
+		return erigonGitRepo, nil
 	default:
-		return "", fmt.Errorf("unsupported docker image: %s", parts[0])
+		return "", fmt.Errorf(MsgUnsupportedDockerImage, parts[0])
 	}
 }
 
 func GetExecutionLayerFromDockerImage(imageWithVersion string) (ExecutionLayer, error) {
 	parts := strings.Split(imageWithVersion, ":")
 	if len(parts) != 2 {
-		return "", fmt.Errorf("invalid docker image format: %s", imageWithVersion)
+		return "", fmt.Errorf(MsgInvalidDockerImageFormat, imageWithVersion)
 	}
 
-	switch parts[0] {
-	case "ethereum/client-go":
+	switch {
+	case strings.Contains(parts[0], gethBaseImageName):
 		return ExecutionLayer_Geth, nil
-	case "hyperledger/besu":
+	case strings.Contains(parts[0], besuBaseImageName):
 		return ExecutionLayer_Besu, nil
-	case "nethermind/nethermind":
+	case strings.Contains(parts[0], nethermindBaseImageName):
 		return ExecutionLayer_Nethermind, nil
-	case "thorax/erigon":
+	case strings.Contains(parts[0], erigonBaseImageName):
 		return ExecutionLayer_Erigon, nil
 	default:
-		return "", fmt.Errorf("unsupported docker image: %s", parts[0])
+		return "", fmt.Errorf(MsgUnsupportedDockerImage, parts[0])
 	}
 }
 

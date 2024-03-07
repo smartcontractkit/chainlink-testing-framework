@@ -143,7 +143,7 @@ cfg, err: = builder.
     Build()
 ```
 
-Since we support both `eth1` (aka pre-Merge) and `eth2` (aka post-Merge) client versions, you need to specify which one you want to use. You can do that by calling `WithEthereumVersion` method. There's no default provided.
+Since we support both `eth1` (aka pre-Merge) and `eth2` (aka post-Merge) client versions, you need to specify which one you want to use. You can do that by calling `WithEthereumVersion` method. There's no default provided. The only execption is when you use custom docker images (instead of default ones), because then we can determine which version it is based on the image version.
 
 Every component has some default Docker image it uses, but builder has a method that allows to pass custom one:
 

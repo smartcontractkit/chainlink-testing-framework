@@ -20,6 +20,8 @@ import (
 const (
 	defaultErigonEth1Image = "thorax/erigon:v2.40.0"
 	defaultErigonEth2Image = "thorax/erigon:v2.56.2"
+	erigonBaseImageName    = "thorax/erigon"
+	erigonGitRepo          = "ledgerwatch/erigon"
 )
 
 type Erigon struct {

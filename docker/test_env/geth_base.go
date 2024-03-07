@@ -20,6 +20,8 @@ import (
 const (
 	defaultGethEth1Image = "ethereum/client-go:v1.12.0"
 	defaultGethEth2Image = "ethereum/client-go:v1.13.10"
+	gethBaseImageName    = "ethereum/client-go"
+	gethGitRepo          = "ethereum/go-ethereum"
 )
 
 type Geth struct {

@@ -477,7 +477,7 @@ func (en *EthereumNetwork) startEth2() (blockchain.EVMNetwork, RpcProvider, erro
 	case ExecutionLayer_Besu:
 		client, clientErr = NewBesuEth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, append(en.getImageOverride(ContainerType_Besu), en.setExistingContainerName(ContainerType_Besu))...)
 	default:
-		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf("unsupported execution layer: %s", *en.ExecutionLayer)
+		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf(MsgUnsupportedExecutionLayer, *en.ExecutionLayer)
 	}
 
 	if clientErr != nil {
@@ -603,7 +603,7 @@ func (en *EthereumNetwork) startEth1() (blockchain.EVMNetwork, RpcProvider, erro
 	case ExecutionLayer_Nethermind:
 		client, clientErr = NewNethermindEth1(dockerNetworks, en.EthereumChainConfig, append(en.getImageOverride(ContainerType_Nethermind), en.setExistingContainerName(ContainerType_Nethermind))...)
 	default:
-		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf("unsupported execution layer: %s", *en.ExecutionLayer)
+		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf(MsgUnsupportedExecutionLayer, *en.ExecutionLayer)
 	}
 
 	if clientErr != nil {
@@ -730,11 +730,13 @@ func (en *EthereumNetwork) Validate() error {
 	}
 
 	if (*en.EthereumVersion == EthereumVersion_Eth2_Legacy || *en.EthereumVersion == EthereumVersion_Eth2) && (en.ConsensusLayer == nil || *en.ConsensusLayer == "") {
-		return ErrMissingConsensusLayer
+		l.Warn().Msg("Consensus layer is not set, but is required for PoS. Defaulting to Prysm")
+		en.ConsensusLayer = &ConsensusLayer_Prysm
 	}
 
 	if (*en.EthereumVersion == EthereumVersion_Eth1_Legacy || *en.EthereumVersion == EthereumVersion_Eth1) && (en.ConsensusLayer != nil && *en.ConsensusLayer != "") {
-		return ErrConsensusLayerNotAllowed
+		l.Warn().Msg("Consensus layer is set, but is not allowed for PoW. Ignoring")
+		en.ConsensusLayer = nil
 	}
 
 	if en.EthereumChainConfig == nil {

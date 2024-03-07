@@ -19,6 +19,8 @@ import (
 const (
 	defaultNethermindEth1Image = "nethermind/nethermind:1.16.0"
 	defaultNethermindEth2Image = "nethermind/nethermind:1.25.1"
+	nethermindBaseImageName    = "nethermind/nethermind"
+	nethermindGitRepo          = "NethermindEth/nethermind"
 )
 
 type Nethermind struct {

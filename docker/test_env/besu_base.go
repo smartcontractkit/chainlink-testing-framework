@@ -20,6 +20,8 @@ import (
 const (
 	defaultBesuEth1Image = "hyperledger/besu:22.1.0"
 	defaultBesuEth2Image = "hyperledger/besu:24.1.0"
+	besuBaseImageName    = "hyperledger/besu"
+	besuGitRepo          = "hyperledger/besu"
 )
 
 type posSettings struct {
