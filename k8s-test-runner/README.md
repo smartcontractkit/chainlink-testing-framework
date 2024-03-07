@@ -66,6 +66,7 @@ Where:
 
 This example demonstrates the process step by step. First, it shows how to download the Kubernetes Test Runner. Next, it details the use of the Test Runner to create a test binary specifically for the Mercury "e2e_tests/staging_prod/tests/load" test package. Finally, it describes executing the test in Kubernetes using a customized test runner configuration.
 
+
 ```
 - name: Download K8s Test Runner
     run: |
@@ -74,7 +75,22 @@ This example demonstrates the process step by step. First, it shows how to downl
         curl -L -o k8s-test-runner.tar.gz https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/v0.2.4/test-runner.tar.gz 
         tar -xzf k8s-test-runner.tar.gz
         chmod +x k8s-test-runner-linux-amd64
+```
 
+Alternatively, you can place the k8s-test-runner package within your repository and unpack it:
+
+```
+- name: Unpack K8s Test Runner
+    run: |
+        cd e2e_tests  
+        mkdir -p k8s-test-runner
+        tar -xzf k8s-test-runner-v0.0.1.tar.gz -C k8s-test-runner
+        chmod +x k8s-test-runner/k8s-test-runner-linux-amd64
+```
+
+Then:
+
+```
 - name: Build K8s Test Runner Image
     if: github.event.inputs.test-type == 'load' && github.event.inputs.rebuild-test-image == 'yes'
     run: |
