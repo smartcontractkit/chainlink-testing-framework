@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"strings"
@@ -551,7 +552,7 @@ func (e *EthereumClient) errorReason(
 	}
 	_, txError := b.CallContract(context.Background(), callMsg, receipt.BlockNumber)
 	if txError == nil {
-		return "", fmt.Errorf("no error in CallContract: %w", err)
+		return "", errors.New("couldn't find revert reason. CallContract did not fail")
 	}
 	return RPCErrorFromError(txError)
 }
