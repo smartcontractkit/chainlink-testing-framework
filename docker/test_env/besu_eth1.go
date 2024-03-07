@@ -9,11 +9,12 @@ import (
 	"github.com/docker/docker/api/types/mount"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/google/uuid"
+	tc "github.com/testcontainers/testcontainers-go"
+	tcwait "github.com/testcontainers/testcontainers-go/wait"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/templates"
-	tc "github.com/testcontainers/testcontainers-go"
-	tcwait "github.com/testcontainers/testcontainers-go/wait"
 )
 
 func NewBesuEth1(networks []string, chainConfg *EthereumChainConfig, opts ...EnvComponentOption) (*Besu, error) {
