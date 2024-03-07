@@ -216,26 +216,23 @@ func (m *Client) TrackJobs(ctx context.Context, nsName, syncLabelValue string, j
 			if err != nil {
 				return errors.Wrapf(err, "failed to get job pods")
 			}
-			pods := getPodsByLabel(podList, "sync", syncLabelValue)
-			if len(pods) != jobNum {
-				log.Info().Int("actualJobs", len(pods)).Int("expectedJobs", jobNum).Msg("Awaiting job pods")
-				log.Info().Interface("Pods", pods).Msg("Pods")
+			if len(podList.Items) != jobNum {
+				log.Info().Int("actualJobs", len(podList.Items)).Int("expectedJobs", jobNum).Msg("Awaiting job pods")
 				continue
 			}
 			jobList, err := m.ListJobs(ctx, nsName, syncLabelValue)
 			if err != nil {
-				m.PrintPodLogs(ctx, nsName, pods)
+				m.PrintPodLogs(ctx, nsName, podList.Items)
 				return errors.Wrapf(err, "failed to get jobs")
 			}
-			jobs := getJobsByLabel(jobList, "sync", syncLabelValue)
 			var successfulJobs int
-			for _, j := range jobs {
+			for _, j := range jobList.Items {
 				log.Debug().Interface("Status", j.Status).Str("Name", j.Name).Msg("Pod status")
 				if j.Status.Failed > 0 {
 					log.Warn().Str("Name", j.Name).Msg("Job has failed")
-					m.PrintPodLogs(ctx, nsName, pods)
+					m.PrintPodLogs(ctx, nsName, podList.Items)
 					if !keepJobs {
-						if err := m.removeJobs(ctx, nsName, jobs); err != nil {
+						if err := m.removeJobs(ctx, nsName, jobList.Items); err != nil {
 							return err
 						}
 					}
@@ -247,9 +244,9 @@ func (m *Client) TrackJobs(ctx context.Context, nsName, syncLabelValue string, j
 			}
 			if successfulJobs == jobNum {
 				log.Info().Msg("Test run ended")
-				m.PrintPodLogs(ctx, nsName, pods)
+				m.PrintPodLogs(ctx, nsName, podList.Items)
 				if !keepJobs {
-					return m.removeJobs(ctx, nsName, jobs)
+					return m.removeJobs(ctx, nsName, jobList.Items)
 				}
 				return nil
 			}
@@ -267,24 +264,4 @@ func (m *Client) PrintPodLogs(ctx context.Context, namespace string, pods []v1.P
 			fmt.Println(v)
 		}
 	}
-}
-
-func getPodsByLabel(list *v1.PodList, labelKey, labelValue string) []v1.Pod {
-	items := make([]v1.Pod, 0)
-	for _, p := range list.Items {
-		if p.Labels[labelKey] == labelValue {
-			items = append(items, p)
-		}
-	}
-	return items
-}
-
-func getJobsByLabel(list *batchV1.JobList, labelKey, labelValue string) []batchV1.Job {
-	items := make([]batchV1.Job, 0)
-	for _, p := range list.Items {
-		if p.Labels[labelKey] == labelValue {
-			items = append(items, p)
-		}
-	}
-	return items
 }
