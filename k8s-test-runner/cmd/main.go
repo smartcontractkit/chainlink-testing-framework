@@ -24,6 +24,7 @@ func init() {
 
 	rootCmd.AddCommand(internal.Create)
 	rootCmd.AddCommand(internal.Run)
+	rootCmd.AddCommand(internal.ECR)
 }
 
 func main() {
