@@ -79,7 +79,7 @@ func TestEth2WithPrysmAndGeth(t *testing.T) {
 	ctx := testcontext.Get(t)
 	address := common.HexToAddress("0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1")
 	err = sendAndCompareBalances(ctx, clientOne, address)
-	require.NoError(t, err, fmt.Sprintf("balance wasn't correctly updated when %s network", nonEip1559Network.Name))
+	require.NoError(t, err, fmt.Sprintf("balance wasn't correctly updated for %s network", nonEip1559Network.Name))
 
 	eip1559Network := blockchain.SimulatedEVMNetwork
 	eip1559Network.Name = "Simulated Geth + Prysm (EIP 1559)"
@@ -94,5 +94,5 @@ func TestEth2WithPrysmAndGeth(t *testing.T) {
 	})
 
 	err = sendAndCompareBalances(ctx, clientTwo, address)
-	require.NoError(t, err, fmt.Sprintf("balance wasn't correctly updated when %s network", eip1559Network.Name))
+	require.NoError(t, err, fmt.Sprintf("balance wasn't correctly updated for %s network", eip1559Network.Name))
 }

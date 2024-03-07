@@ -61,7 +61,7 @@ func TestNethermindCompatiblity(t *testing.T) {
 
 			address := common.HexToAddress("0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1")
 			err = sendAndCompareBalances(testcontext.Get(t), c, address)
-			require.NoError(t, err, fmt.Sprintf("balance wasn't correctly updated when %s network", net.Name))
+			require.NoError(t, err, fmt.Sprintf("balance wasn't correctly updated for %s network", net.Name))
 
 			err = c.Close()
 			require.NoError(t, err, "Couldn't close the client")
@@ -108,7 +108,7 @@ func TestGethCompatiblity(t *testing.T) {
 
 			address := common.HexToAddress("0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1")
 			err = sendAndCompareBalances(testcontext.Get(t), c, address)
-			require.NoError(t, err, fmt.Sprintf("balance wasn't correctly updated when %s network", net.Name))
+			require.NoError(t, err, fmt.Sprintf("balance wasn't correctly updated for %s network", net.Name))
 
 			err = c.Close()
 			require.NoError(t, err, "Couldn't close the client")
@@ -155,7 +155,7 @@ func TestErigonCompatiblity(t *testing.T) {
 
 			address := common.HexToAddress("0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1")
 			err = sendAndCompareBalances(testcontext.Get(t), c, address)
-			require.NoError(t, err, fmt.Sprintf("balance wasn't correctly updated when %s network", net.Name))
+			require.NoError(t, err, fmt.Sprintf("balance wasn't correctly updated for %s network", net.Name))
 
 			err = c.Close()
 			require.NoError(t, err, "Couldn't close the client")
@@ -202,7 +202,7 @@ func TestBesuCompatiblity(t *testing.T) {
 
 			address := common.HexToAddress("0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1")
 			err = sendAndCompareBalances(testcontext.Get(t), c, address)
-			require.NoError(t, err, fmt.Sprintf("balance wasn't correctly updated when %s network", net.Name))
+			require.NoError(t, err, fmt.Sprintf("balance wasn't correctly updated for %s network", net.Name))
 
 			err = c.Close()
 			require.NoError(t, err, "Couldn't close the client")

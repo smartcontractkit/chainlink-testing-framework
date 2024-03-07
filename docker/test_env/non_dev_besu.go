@@ -12,7 +12,6 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
-	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/google/uuid"
@@ -123,27 +122,12 @@ func (g *NonDevBesuNode) createMountDirs() error {
 	}
 	g.Config.keystorePath = keystorePath
 
-	// Create keystore and ethereum account
-	ks := keystore.NewKeyStore(g.Config.keystorePath, keystore.StandardScryptN, keystore.StandardScryptP)
-	account, err := ks.NewAccount("")
+	generatedData, err := generateKeystoreAndExtraData(keystorePath)
 	if err != nil {
 		return err
 	}
 
-	g.Config.accountAddr = account.Address.Hex()
-	addr := strings.Replace(account.Address.Hex(), "0x", "", 1)
-	FundingAddresses[addr] = ""
-	signerBytes, err := hex.DecodeString(addr)
-	if err != nil {
-		fmt.Println("Error decoding signer address:", err)
-		return err
-	}
-
-	zeroBytes := make([]byte, 32)                      // Create 32 zero bytes
-	extradata := append(zeroBytes, signerBytes...)     // Concatenate zero bytes and signer address
-	extradata = append(extradata, make([]byte, 65)...) // Concatenate 65 more zero bytes
-
-	fmt.Printf("Encoded extradata: 0x%s\n", hex.EncodeToString(extradata))
+	g.Config.accountAddr = generatedData.minerAccount.Address.Hex()
 
 	i := 1
 	var accounts []string
@@ -169,7 +153,7 @@ func (g *NonDevBesuNode) createMountDirs() error {
 
 	genesisJsonStr, err := templates.BuildBesuGenesisJsonForNonDevChain(g.Config.chainId,
 		accounts,
-		fmt.Sprintf("0x%s", hex.EncodeToString(extradata)))
+		fmt.Sprintf("0x%s", hex.EncodeToString(generatedData.extraData)))
 	if err != nil {
 		return err
 	}

@@ -36,18 +36,21 @@ func NewGithubClient(token string) *GithubClient {
 	}
 }
 
+// ListLatestReleases lists the latest releases for a given repository
 func (g *GithubClient) ListLatestReleases(org, repository string, count int) ([]*github.RepositoryRelease, error) {
 	ctx := context.Background()
 	releases, _, err := g.client.Repositories.ListReleases(ctx, org, repository, &github.ListOptions{PerPage: count})
 	return releases, err
 }
 
+// ListLatestCLCoreReleases lists the latest releases for the Chainlink core repository
 func (g *GithubClient) ListLatestCLCoreReleases(count int) ([]*github.RepositoryRelease, error) {
 	ctx := context.Background()
 	releases, _, err := g.client.Repositories.ListReleases(ctx, "smartcontractkit", "chainlink", &github.ListOptions{PerPage: count})
 	return releases, err
 }
 
+// ListLatestCLCoreTags lists the latest tags for the Chainlink core repository
 func (g *GithubClient) ListLatestCLCoreTags(count int) ([]*github.RepositoryTag, error) {
 	ctx := context.Background()
 	tags, _, err := g.client.Repositories.ListTags(ctx, "smartcontractkit", "chainlink", &github.ListOptions{PerPage: count})

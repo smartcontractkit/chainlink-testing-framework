@@ -20,7 +20,7 @@ import (
 
 const defaultEth2ValToolsImage = "protolambda/eth2-val-tools:latest"
 
-type ValKeysGeneretor struct {
+type ValKeysGenerator struct {
 	EnvComponent
 	chainConfig        *EthereumChainConfig
 	l                  zerolog.Logger
@@ -29,9 +29,9 @@ type ValKeysGeneretor struct {
 	t                  *testing.T
 }
 
-func NewValKeysGeneretor(chainConfig *EthereumChainConfig, valKeysHostDataDir string, opts ...EnvComponentOption) (*ValKeysGeneretor, error) {
+func NewValKeysGeneretor(chainConfig *EthereumChainConfig, valKeysHostDataDir string, opts ...EnvComponentOption) (*ValKeysGenerator, error) {
 	parts := strings.Split(defaultEth2ValToolsImage, ":")
-	g := &ValKeysGeneretor{
+	g := &ValKeysGenerator{
 		EnvComponent: EnvComponent{
 			ContainerName:    fmt.Sprintf("%s-%s", "val-keys-generator", uuid.NewString()[0:8]),
 			ContainerImage:   parts[0],
@@ -52,13 +52,13 @@ func NewValKeysGeneretor(chainConfig *EthereumChainConfig, valKeysHostDataDir st
 	return g, nil
 }
 
-func (g *ValKeysGeneretor) WithTestInstance(t *testing.T) *ValKeysGeneretor {
+func (g *ValKeysGenerator) WithTestInstance(t *testing.T) *ValKeysGenerator {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
 	return g
 }
 
-func (g *ValKeysGeneretor) StartContainer() error {
+func (g *ValKeysGenerator) StartContainer() error {
 	r, err := g.getContainerRequest(g.Networks)
 	if err != nil {
 		return err
@@ -81,7 +81,7 @@ func (g *ValKeysGeneretor) StartContainer() error {
 	return nil
 }
 
-func (g *ValKeysGeneretor) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
+func (g *ValKeysGenerator) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
 	return &tc.ContainerRequest{
 		Name:          g.ContainerName,
 		Image:         g.GetImageWithVersion(),

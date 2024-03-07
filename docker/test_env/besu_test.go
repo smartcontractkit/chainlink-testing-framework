@@ -30,7 +30,7 @@ func TestEth1WithBesu(t *testing.T) {
 
 	address := common.HexToAddress("0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1")
 	err = sendAndCompareBalances(testcontext.Get(t), c, address)
-	require.NoError(t, err, fmt.Sprintf("balance wasn't correctly updated when %s network", net.Name))
+	require.NoError(t, err, fmt.Sprintf("balance wasn't correctly updated for %s network", net.Name))
 
 	err = c.Close()
 	require.NoError(t, err, "Couldn't close the client")
@@ -64,7 +64,7 @@ func TestEth2WithPrysmAndBesu(t *testing.T) {
 
 	address := common.HexToAddress("0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1")
 	err = sendAndCompareBalances(testcontext.Get(t), clientOne, address)
-	require.NoError(t, err, fmt.Sprintf("balance wasn't correctly updated when %s network", nonEip1559Network.Name))
+	require.NoError(t, err, fmt.Sprintf("balance wasn't correctly updated for %s network", nonEip1559Network.Name))
 
 	eip1559Network := blockchain.SimulatedEVMNetwork
 	eip1559Network.Name = "Simulated Besu + Prysm (EIP 1559)"

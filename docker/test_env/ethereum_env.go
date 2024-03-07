@@ -254,6 +254,25 @@ func (b *EthereumNetworkBuilder) validate() error {
 		return ErrMissingConsensusLayer
 	}
 
+	err := b.validateCustomDockerImages()
+	if err != nil {
+		return err
+	}
+
+	for _, addr := range b.addressesToFund {
+		if !common.IsHexAddress(addr) {
+			return fmt.Errorf("address %s is not a valid hex address", addr)
+		}
+	}
+
+	if b.ethereumChainConfig == nil {
+		return errors.New("ethereum chain config is required")
+	}
+
+	return b.ethereumChainConfig.Validate(logging.GetTestLogger(nil), b.ethereumVersion)
+}
+
+func (b *EthereumNetworkBuilder) validateCustomDockerImages() error {
 	if len(b.customDockerImages) > 0 {
 		for _, c := range EXECUTION_CONTAINER_TYPES {
 			if v, ok := b.customDockerImages[c]; ok {
@@ -279,17 +298,7 @@ func (b *EthereumNetworkBuilder) validate() error {
 		}
 	}
 
-	for _, addr := range b.addressesToFund {
-		if !common.IsHexAddress(addr) {
-			return fmt.Errorf("address %s is not a valid hex address", addr)
-		}
-	}
-
-	if b.ethereumChainConfig == nil {
-		return errors.New("ethereum chain config is required")
-	}
-
-	return b.ethereumChainConfig.Validate(logging.GetTestLogger(nil), b.ethereumVersion)
+	return nil
 }
 
 func (b *EthereumNetworkBuilder) autoFill() error {
@@ -297,6 +306,37 @@ func (b *EthereumNetworkBuilder) autoFill() error {
 		b.ethereumVersion = EthereumVersion_Auto
 	}
 
+	err := b.setExecutionLayerBasedOnCustomDocker()
+	if err != nil {
+		return err
+	}
+
+	err = b.fetchLatestIfNeed()
+	if err != nil {
+		return err
+	}
+
+	err = b.trySettingEthereumVersionBasedOnImage()
+	if err != nil {
+		return err
+	}
+
+	if (b.ethereumVersion == EthereumVersion_Eth2_Legacy || b.ethereumVersion == EthereumVersion_Eth2) && b.consensusLayer == nil {
+		b.consensusLayer = &ConsensusLayer_Prysm
+	}
+
+	if b.ethereumVersion == EthereumVersion_Eth1_Legacy {
+		b.ethereumVersion = EthereumVersion_Eth1
+	}
+
+	if b.ethereumVersion == EthereumVersion_Eth2_Legacy {
+		b.ethereumVersion = EthereumVersion_Eth2
+	}
+
+	return nil
+}
+
+func (b *EthereumNetworkBuilder) setExecutionLayerBasedOnCustomDocker() error {
 	// try setting execution layer based on custom docker images
 	if b.executionLayer == "" && len(b.customDockerImages) > 0 {
 		for _, c := range EXECUTION_CONTAINER_TYPES {
@@ -318,21 +358,24 @@ func (b *EthereumNetworkBuilder) autoFill() error {
 		}
 	}
 
-	// fetch latest stable image if any of the automatic tags was provided
-	if len(b.customDockerImages) > 0 {
-		var err error
-		for _, c := range EXECUTION_CONTAINER_TYPES {
-			if image, ok := b.customDockerImages[c]; ok {
-				b.customDockerImages[c], err = fetchLatestIfNeed(image)
-				if err != nil {
-					return err
-				}
-				break
+	return nil
+}
+
+func (b *EthereumNetworkBuilder) fetchLatestIfNeed() error {
+	var err error
+	for _, c := range EXECUTION_CONTAINER_TYPES {
+		if image, ok := b.customDockerImages[c]; ok {
+			b.customDockerImages[c], err = fetchLatestIfNeed(image)
+			if err != nil {
+				return err
 			}
 		}
 	}
 
-	// try setting ethereum version based on image version
+	return nil
+}
+
+func (b *EthereumNetworkBuilder) trySettingEthereumVersionBasedOnImage() error {
 	if b.ethereumVersion == EthereumVersion_Auto {
 		var dockerImageToUse string
 
@@ -356,18 +399,6 @@ func (b *EthereumNetworkBuilder) autoFill() error {
 		}
 
 		b.ethereumVersion = ethereumVersion
-	}
-
-	if (b.ethereumVersion == EthereumVersion_Eth2_Legacy || b.ethereumVersion == EthereumVersion_Eth2) && b.consensusLayer == nil {
-		b.consensusLayer = &ConsensusLayer_Prysm
-	}
-
-	if b.ethereumVersion == EthereumVersion_Eth1_Legacy {
-		b.ethereumVersion = EthereumVersion_Eth1
-	}
-
-	if b.ethereumVersion == EthereumVersion_Eth2_Legacy {
-		b.ethereumVersion = EthereumVersion_Eth2
 	}
 
 	return nil
@@ -418,51 +449,9 @@ func (en *EthereumNetwork) startEth2() (blockchain.EVMNetwork, RpcProvider, erro
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
-	var generatedDataHostDir, valKeysDir string
-
-	// create host directories and run genesis containers only if we are NOT recreating existing containers
-	if !en.isRecreated {
-		generatedDataHostDir, valKeysDir, err = createHostDirectories()
-
-		en.GeneratedDataHostDir = &generatedDataHostDir
-		en.ValKeysDir = &valKeysDir
-
-		if err != nil {
-			return blockchain.EVMNetwork{}, RpcProvider{}, err
-		}
-
-		valKeysGeneretor, err := NewValKeysGeneretor(en.EthereumChainConfig, valKeysDir, en.getImageOverride(ContainerType_ValKeysGenerator)...)
-		if err != nil {
-			return blockchain.EVMNetwork{}, RpcProvider{}, err
-		}
-		valKeysGeneretor.WithTestInstance(en.t)
-
-		err = valKeysGeneretor.StartContainer()
-		if err != nil {
-			return blockchain.EVMNetwork{}, RpcProvider{}, err
-		}
-
-		genesis, err := NewEthGenesisGenerator(*en.EthereumChainConfig, generatedDataHostDir, en.getImageOverride(ContainerType_GenesisGenerator)...)
-		if err != nil {
-			return blockchain.EVMNetwork{}, RpcProvider{}, err
-		}
-
-		genesis.WithTestInstance(en.t)
-
-		err = genesis.StartContainer()
-		if err != nil {
-			return blockchain.EVMNetwork{}, RpcProvider{}, err
-		}
-
-		initHelper := NewInitHelper(*en.EthereumChainConfig, generatedDataHostDir).WithTestInstance(en.t)
-		err = initHelper.StartContainer()
-		if err != nil {
-			return blockchain.EVMNetwork{}, RpcProvider{}, err
-		}
-	} else {
-		// we don't set actual values to not increase complexity, as they do not matter for containers that are already running
-		generatedDataHostDir = ""
-		valKeysDir = ""
+	generatedDataHostDir, valKeysDir, err := en.getOrCreateHostDirectories()
+	if err != nil {
+		return blockchain.EVMNetwork{}, RpcProvider{}, err
 	}
 
 	var client ExecutionClient
@@ -520,19 +509,7 @@ func (en *EthereumNetwork) startEth2() (blockchain.EVMNetwork, RpcProvider, erro
 	}
 
 	en.DockerNetworkNames = dockerNetworks
-	net.ChainID = int64(en.EthereumChainConfig.ChainID)
-	// use a higher value than the default, because eth2 is slower than dev-mode eth1
-	net.Timeout = blockchain.StrDuration{Duration: time.Duration(4 * time.Minute)}
-	net.FinalityTag = true
-	net.FinalityDepth = 0
-
-	if *en.ExecutionLayer == ExecutionLayer_Besu {
-		// Besu doesn't support "eth_maxPriorityFeePerGas" https://github.com/hyperledger/besu/issues/5658
-		// And if gas is too low, then transaction doesn't get to prioritized pool and is not a candidate for inclusion in the next block
-		net.GasEstimationBuffer = 10_000_000_000
-	} else {
-		net.SupportsEIP1559 = true
-	}
+	net = en.getFinalEvmNetworkConfig(net)
 
 	logger := logging.GetTestLogger(en.t)
 	if en.WaitForFinalization != nil && *en.WaitForFinalization {
@@ -647,6 +624,75 @@ func (en *EthereumNetwork) getOrCreateDockerNetworks() ([]string, error) {
 	}
 
 	return []string{network.Name}, nil
+}
+
+func (en *EthereumNetwork) getOrCreateHostDirectories() (generatedDataHostDir string, valKeysDir string, err error) {
+	// create host directories and run genesis containers only if we are NOT recreating existing containers
+	if !en.isRecreated {
+		generatedDataHostDir, valKeysDir, err = createHostDirectories()
+
+		en.GeneratedDataHostDir = &generatedDataHostDir
+		en.ValKeysDir = &valKeysDir
+
+		if err != nil {
+			return
+		}
+
+		var valKeysGenerator *ValKeysGenerator
+		valKeysGenerator, err = NewValKeysGeneretor(en.EthereumChainConfig, valKeysDir, en.getImageOverride(ContainerType_ValKeysGenerator)...)
+		if err != nil {
+			return
+		}
+		valKeysGenerator.WithTestInstance(en.t)
+
+		err = valKeysGenerator.StartContainer()
+		if err != nil {
+			return
+		}
+
+		var genesis *EthGenesisGeneretor
+		genesis, err = NewEthGenesisGenerator(*en.EthereumChainConfig, generatedDataHostDir, en.getImageOverride(ContainerType_GenesisGenerator)...)
+		if err != nil {
+			return
+		}
+
+		genesis.WithTestInstance(en.t)
+
+		err = genesis.StartContainer()
+		if err != nil {
+			return
+		}
+
+		initHelper := NewInitHelper(*en.EthereumChainConfig, generatedDataHostDir).WithTestInstance(en.t)
+		err = initHelper.StartContainer()
+		if err != nil {
+			return
+		}
+	} else {
+		// we don't set actual values to not increase complexity, as they do not matter for containers that are already running
+		generatedDataHostDir = ""
+		valKeysDir = ""
+	}
+
+	return
+}
+
+func (en *EthereumNetwork) getFinalEvmNetworkConfig(net blockchain.EVMNetwork) blockchain.EVMNetwork {
+	net.ChainID = int64(en.EthereumChainConfig.ChainID)
+	// use a higher value than the default, because eth2 is slower than dev-mode eth1
+	net.Timeout = blockchain.StrDuration{Duration: time.Duration(4 * time.Minute)}
+	net.FinalityTag = true
+	net.FinalityDepth = 0
+
+	if *en.ExecutionLayer == ExecutionLayer_Besu {
+		// Besu doesn't support "eth_maxPriorityFeePerGas" https://github.com/hyperledger/besu/issues/5658
+		// And if gas is too low, then transaction doesn't get to prioritized pool and is not a candidate for inclusion in the next block
+		net.GasEstimationBuffer = 10_000_000_000
+	} else {
+		net.SupportsEIP1559 = true
+	}
+
+	return net
 }
 
 func (en *EthereumNetwork) Describe() string {
