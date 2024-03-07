@@ -43,6 +43,17 @@ func NewGrafanaClient(url, apiKey string) *Client {
 	}
 }
 
+type Dashboard struct {
+	Meta      map[string]interface{} `json:"meta"`
+	Dashboard map[string]interface{} `json:"dashboard"`
+}
+
+func (g *Client) GetDashboard(uid string) (Dashboard, *resty.Response, error) {
+	var result Dashboard
+	r, err := g.resty.R().SetResult(&result).Get("/api/dashboards/uid/" + uid)
+	return result, r, err
+}
+
 func (g *Client) GetAlertsRules() ([]ProvisionedAlertRule, *resty.Response, error) {
 	var result []ProvisionedAlertRule
 	r, err := g.resty.R().SetResult(&result).Get("/api/v1/provisioning/alert-rules")

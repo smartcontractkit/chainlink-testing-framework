@@ -53,13 +53,6 @@ ingress:
 # monitoring.coreos.com/v1 PodMonitor for each node
 prometheusMonitor: false
 
-networkPolicy:
-  ingress:
-    # Should be a comma separated list of CIDR blocks. To include
-    # AWS ALB private CIDRs and optionally other custom CIDRs.
-    # Example format: 10.0.0.0/16,192.168.0.1/24
-    allowCustomCidrs: '0.0.0.0/0'
-
 networkPolicies:
   enabled: true
 
@@ -67,7 +60,5 @@ networkPolicies:
 networkPolicyDefault:
   ingress:
     allowCustomCidrs: false
-    # String of comma separated CIDRs
-    customCidrs: null
-    # Example:
-    # customCidrs: '10.0.0.0/16,192.168.0.1/24'
+    # List of custom CIDRs to allow ingress from. If allowCustomCidrs is true, this list will be appended to the default list of CIDRs.
+    customCidrs: ''
