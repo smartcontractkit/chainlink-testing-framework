@@ -49,10 +49,16 @@ type UnsupportedVersion struct {
 	Reason  string
 }
 
-var UNSUPPORTED_VERSIONS = map[ContainerType][]UnsupportedVersion{ContainerType_Nethermind: {
-	UnsupportedVersion{Version: "1.20.0",
-		Reason: "1.20.0 was replaced with 1.20.1, for more info check https://github.com/NethermindEth/nethermind/releases/tag/1.20.0",
-	}}}
+var UNSUPPORTED_VERSIONS = map[ContainerType][]UnsupportedVersion{
+	ContainerType_Nethermind: {
+		UnsupportedVersion{Version: "1.20.0",
+			Reason: "1.20.0 was replaced with 1.20.1, for more info check https://github.com/NethermindEth/nethermind/releases/tag/1.20.0",
+		}},
+	ContainerType_Geth: {
+		UnsupportedVersion{Version: "v1.9.0",
+			Reason: "v1.9.0 randomly drops websocket connections, for more info check https://github.com/ethereum/go-ethereum/issues/19001",
+		}},
+}
 
 // IsDockerImageVersionSupported checks if the given docker image version is supported and if not returns the reason why
 func IsDockerImageVersionSupported(ct ContainerType, imageWithVersion string) (bool, string, error) {
