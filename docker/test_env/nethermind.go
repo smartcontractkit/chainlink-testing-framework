@@ -85,9 +85,6 @@ func (g *Nethermind) StartContainer() (blockchain.EVMNetwork, error) {
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
-	if err != nil {
-		return blockchain.EVMNetwork{}, err
-	}
 	httpPort, err := ct.MappedPort(context.Background(), NatPort(TX_GETH_HTTP_PORT))
 	if err != nil {
 		return blockchain.EVMNetwork{}, err

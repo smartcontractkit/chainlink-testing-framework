@@ -71,7 +71,6 @@ var NaiveRetrier = func(l zerolog.Logger, startErr error, req tc.GenericContaine
 			return nil, err
 		}
 	}
-	req.Reuse = false
 
 	l.Debug().
 		Str("Original start error", startErr.Error()).
@@ -87,6 +86,7 @@ var LinuxPlatoformImageRetrier = func(l zerolog.Logger, startErr error, req tc.G
 	if startErr == nil {
 		return nil, startErr
 	}
+	req.Reuse = false // We need to force a new container to be created
 
 	// a bit lame, but that's the lame error we get in case there's no specific image for our platform :facepalm:
 	if !strings.Contains(startErr.Error(), "No such image") {
@@ -151,6 +151,7 @@ func StartContainerWithRetry(l zerolog.Logger, req tc.GenericContainerRequest, r
 	for i := 0; i < RetryAttempts; i++ {
 		l.Info().Err(err).Msgf("Cannot start %s container, retrying %d/%d", req.Name, i+1, RetryAttempts)
 
+		req.Reuse = true // Try and see if we can reuse the container for a retry
 		for _, retrier := range retriers {
 			ct, err = retrier(l, err, req)
 			if err == nil {

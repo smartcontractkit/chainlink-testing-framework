@@ -123,7 +123,7 @@ func (pg *PostgresDb) StartContainer() error {
 	c, err := docker.StartContainerWithRetry(pg.l, tc.GenericContainerRequest{
 		ContainerRequest: *req,
 		Started:          true,
-		Reuse:            true,
+		Reuse:            false,
 		Logger:           l,
 	})
 	if err != nil {
