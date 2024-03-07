@@ -1,11 +1,10 @@
 module github.com/smartcontractkit/chainlink-testing-framework/k8s-test-runner
 
-go 1.21.5
+go 1.21
 
 replace github.com/gogo/protobuf => github.com/gogo/protobuf v1.3.2
 
 require (
-	github.com/aws/aws-sdk-go v1.45.25
 	github.com/aws/aws-sdk-go-v2 v1.25.2
 	github.com/aws/aws-sdk-go-v2/config v1.15.1
 	github.com/aws/aws-sdk-go-v2/service/ecr v1.27.1
