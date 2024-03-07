@@ -26,8 +26,6 @@ spec:
                 values:
                 - {{ .Release.Name }}
             topologyKey: kubernetes.io/hostname
-      nodeSelector:
-        eth2: "true"
       volumes:
       - name: {{ .Release.Name }}-genesis-config
         configMap:
