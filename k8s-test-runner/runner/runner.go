@@ -1,16 +1,11 @@
 package runner
 
 import (
-	"bufio"
 	"context"
 	_ "embed"
-	"errors"
 	"fmt"
-	"io"
-	"os/exec"
 	"path"
 	"runtime"
-	"strings"
 	"time"
 
 	"helm.sh/helm/v3/pkg/action"
@@ -21,27 +16,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s-test-runner/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s-test-runner/k8s_client"
-)
-
-const (
-	defaultHelmDeployTimeoutSec = "10m"
-)
-
-// k8s pods resources
-const (
-	DefaultRequestsCPU    = "1000m"
-	DefaultRequestsMemory = "512Mi"
-	DefaultLimitsCPU      = "1000m"
-	DefaultLimitsMemory   = "512Mi"
-)
-
-var DefaultDockerfile []byte
-
-var DefaultDockerIgnorefile []byte
-
-var (
-	ErrNoNamespace = errors.New("namespace is empty")
-	ErrNoJobs      = errors.New("HelmValues should contain \"jobs\" field used to scale your cluster jobs, jobs must be > 0")
 )
 
 type K8sTestRun struct {
@@ -123,43 +97,4 @@ func (m *K8sTestRun) Run() error {
 		}
 	}
 	return err
-}
-
-// ExecCmd executes os command, logging both streams
-func ExecCmd(command string) error {
-	return ExecCmdWithStreamFunc(command, func(m string) {
-		log.Info().Str("Text", m).Msg("Command output")
-	})
-}
-
-// readStdPipe continuously read a pipe from the command
-func readStdPipe(pipe io.ReadCloser, streamFunc func(string)) {
-	scanner := bufio.NewScanner(pipe)
-	scanner.Split(bufio.ScanLines)
-	for scanner.Scan() {
-		m := scanner.Text()
-		if streamFunc != nil {
-			streamFunc(m)
-		}
-	}
-}
-
-// ExecCmdWithStreamFunc executes command with stream function
-func ExecCmdWithStreamFunc(command string, outputFunction func(string)) error {
-	c := strings.Split(command, " ")
-	cmd := exec.Command(c[0], c[1:]...)
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return err
-	}
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return err
-	}
-	if err := cmd.Start(); err != nil {
-		return err
-	}
-	go readStdPipe(stderr, outputFunction)
-	go readStdPipe(stdout, outputFunction)
-	return cmd.Wait()
 }
