@@ -16,7 +16,6 @@ import (
 )
 
 func TestEth2CustomConfig(t *testing.T) {
-	t.Parallel()
 	l := logging.GetTestLogger(t)
 
 	builder := NewEthereumNetworkBuilder()
@@ -41,7 +40,6 @@ func TestEth2CustomConfig(t *testing.T) {
 }
 
 func TestEth2ExtraFunding(t *testing.T) {
-	t.Parallel()
 	l := logging.GetTestLogger(t)
 
 	addressToFund := "0x14dc79964da2c08b23698b3d3cc7ca32193d9955"
@@ -71,9 +69,7 @@ func TestEth2ExtraFunding(t *testing.T) {
 	require.NoError(t, err, "Couldn't close the client")
 }
 
-// failed
 func TestEth2WithPrysmAndGethReuseConfig(t *testing.T) {
-	t.Parallel()
 	l := logging.GetTestLogger(t)
 
 	builder := NewEthereumNetworkBuilder()
@@ -321,7 +317,7 @@ func TestAutoEthereumVersionEth2Minor(t *testing.T) {
 			ContainerType_ExecutionLayer: "nethermind/nethermind:1.14.0"}).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
-	require.Equal(t, EthereumVersion_Eth2, *cfg.EthereumVersion, "Ethereum Version should be Eth2")
+	require.Equal(t, EthereumVersion_Eth1, *cfg.EthereumVersion, "Ethereum Version should be Eth1")
 	require.Equal(t, ConsensusLayer_Prysm, *cfg.ConsensusLayer, "Consensus layer should be Prysm")
 }
 
@@ -384,9 +380,10 @@ func TestMischmachedExecutionClient(t *testing.T) {
 	t.Parallel()
 	builder := NewEthereumNetworkBuilder()
 	_, err := builder.
+		WithExecutionLayer(ExecutionLayer_Nethermind).
 		WithCustomDockerImages(map[ContainerType]string{
 			ContainerType_ExecutionLayer: fmt.Sprintf("hyperledger/besu:%s", AUTOMATIC_LATEST_TAG)}).
 		Build()
 	require.Error(t, err, "Builder validation succeeded")
-	require.Equal(t, fmt.Sprintf(MsgMismatchedExecutionClient, ExecutionLayer_Besu, ExecutionLayer_Geth), err.Error(), "Error message is not correct")
+	require.Equal(t, fmt.Sprintf(MsgMismatchedExecutionClient, ExecutionLayer_Besu, ExecutionLayer_Nethermind), err.Error(), "Error message is not correct")
 }

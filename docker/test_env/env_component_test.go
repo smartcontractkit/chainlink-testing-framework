@@ -34,7 +34,6 @@ func followLogs(t *testing.T, c testcontainers.Container) *TestLogConsumer {
 }
 
 func TestEnvComponentPauseChaos(t *testing.T) {
-	t.Parallel()
 	l := logging.GetTestLogger(t)
 	network, err := docker.CreateNetwork(l)
 	require.NoError(t, err)
@@ -57,7 +56,7 @@ func TestEnvComponentPauseChaos(t *testing.T) {
 		// check that there were no logs when paused
 		for _, lo := range consumer.Msgs {
 			if strings.Contains(lo, justTimeWithoutMicrosecs) {
-				t.Fail()
+				t.Errorf("container %s log message found during pause: %s", g.GetContainerName(), lo)
 			}
 		}
 	})

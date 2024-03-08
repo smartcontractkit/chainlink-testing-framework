@@ -11,7 +11,6 @@ import (
 )
 
 func TestNonDevGeth(t *testing.T) {
-	t.Parallel()
 	l := logging.GetTestLogger(t)
 	network, err := docker.CreateNetwork(l)
 	require.NoError(t, err)
