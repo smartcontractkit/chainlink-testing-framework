@@ -168,9 +168,15 @@ func syncSelector(s string) string {
 	return fmt.Sprintf("sync=%s", s)
 }
 
-func (m *Client) removeJobs(ctx context.Context, nsName string, jobs []batchV1.Job) error {
+func (m *Client) RemoveJobs(ctx context.Context, nsName string, syncLabelValue string) error {
+	jobs, err := m.ListJobs(ctx, nsName, syncLabelValue)
+	if err != nil {
+		return err
+	}
+
 	log.Info().Interface("jobs", jobs).Msg("Removing jobs")
-	for _, j := range jobs {
+
+	for _, j := range jobs.Items {
 		dp := metaV1.DeletePropagationForeground
 		if err := m.ClientSet.BatchV1().Jobs(nsName).Delete(ctx, j.Name, metaV1.DeleteOptions{
 			PropagationPolicy: &dp,
@@ -181,87 +187,68 @@ func (m *Client) removeJobs(ctx context.Context, nsName string, jobs []batchV1.J
 	return nil
 }
 
-func (m *Client) waitSyncGroup(ctx context.Context, nsName string, syncLabel string, jobNum int) error {
-outer:
-	for {
-		time.Sleep(K8sStatePollInterval)
-		log.Info().Str("SyncLabel", syncLabel).Msg("Awaiting group sync")
-		pods, err := m.ListPods(ctx, nsName, syncLabel)
-		if err != nil {
-			return err
-		}
-		if len(pods.Items) != jobNum {
-			log.Info().Str("SyncLabel", syncLabel).Msg("Awaiting pods")
+func (m *Client) WaitUntilJobsComplete(ctx context.Context, namespace, syncLabelValue string, expectedJobsCount int) error {
+	labelSelector := syncSelector(syncLabelValue)
+	watcher, err := m.ClientSet.BatchV1().Jobs(namespace).Watch(context.Background(), metaV1.ListOptions{
+		LabelSelector: labelSelector,
+	})
+	if err != nil {
+		return errors.Wrapf(err, "failed to watch jobs")
+	}
+
+	completedJobs := make(map[string]bool)
+	log.Info().Str("namespace", namespace).Str("labelSelector", labelSelector).Msg("Waiting for job to complete...")
+
+	for event := range watcher.ResultChan() {
+		job, ok := event.Object.(*batchV1.Job)
+		if !ok {
+			log.Debug().Msg("Unexpected type")
 			continue
 		}
-		for _, p := range pods.Items {
-			if p.Status.Phase != v1.PodRunning {
-				continue outer
-			}
-		}
-		return nil
-	}
-}
 
-func (m *Client) TrackJobs(ctx context.Context, nsName, syncLabelValue string, jobNum int, keepJobs bool) error {
-	log.Debug().Str("LabelSelector", syncSelector(syncLabelValue)).Msg("Searching for jobs/pods")
-	for {
-		select {
-		case <-ctx.Done():
-			log.Info().Msg("Cluster context finished")
-			return nil
-		default:
-			time.Sleep(K8sStatePollInterval)
-			podList, err := m.ListPods(ctx, nsName, syncLabelValue)
-			if err != nil {
-				return errors.Wrapf(err, "failed to get job pods")
-			}
-			if len(podList.Items) != jobNum {
-				log.Info().Int("actualJobs", len(podList.Items)).Int("expectedJobs", jobNum).Msg("Awaiting job pods")
-				continue
-			}
-			jobList, err := m.ListJobs(ctx, nsName, syncLabelValue)
-			if err != nil {
-				m.PrintPodLogs(ctx, nsName, podList.Items)
-				return errors.Wrapf(err, "failed to get jobs")
-			}
-			var successfulJobs int
-			for _, j := range jobList.Items {
-				log.Debug().Interface("Status", j.Status).Str("Name", j.Name).Msg("Pod status")
-				if j.Status.Failed > 0 {
-					log.Warn().Str("Name", j.Name).Msg("Job has failed")
-					m.PrintPodLogs(ctx, nsName, podList.Items)
-					if !keepJobs {
-						if err := m.removeJobs(ctx, nsName, jobList.Items); err != nil {
-							return err
-						}
-					}
-					return fmt.Errorf("job %s has failed", j.Name)
-				}
-				if j.Status.Succeeded > 0 {
-					successfulJobs += 1
-				}
-			}
-			if successfulJobs == jobNum {
-				log.Info().Msg("Test run ended")
-				m.PrintPodLogs(ctx, nsName, podList.Items)
-				if !keepJobs {
-					return m.removeJobs(ctx, nsName, jobList.Items)
-				}
-				return nil
-			}
+		if job.Status.Succeeded > 0 {
+			completedJobs[job.Name] = true
+			log.Info().Str("job", job.Name).Msg("Job succeeded")
+		} else if job.Status.Failed > 0 {
+			completedJobs[job.Name] = true
+			return errors.Errorf("job %s failed", job.Name)
+		}
+
+		// Exit the loop if all watched jobs have completed.
+		if len(completedJobs) == expectedJobsCount {
+			break
 		}
 	}
+
+	return nil
 }
 
-func (m *Client) PrintPodLogs(ctx context.Context, namespace string, pods []v1.Pod) {
-	logs, err := m.GetPodLogs(ctx, namespace, pods)
+func (m *Client) PrintPodLogs(ctx context.Context, namespace string, syncLabelValue string) {
+	pods, err := m.ListPods(ctx, namespace, syncLabelValue)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to list pods")
+		return
+	}
+
+	logs, err := m.GetPodLogs(ctx, namespace, pods.Items)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get pod logs")
 	} else {
 		for k, v := range logs {
 			log.Info().Str("Pod", k).Msg("Pod logs")
 			fmt.Println(v)
+		}
+	}
+}
+
+func (m *Client) LogNamespaceEvents(ctx context.Context, namespace string) {
+	events, err := m.ClientSet.CoreV1().Events(namespace).List(ctx, metaV1.ListOptions{})
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get namespace events")
+	} else {
+		log.Info().Msg("Namespace events:")
+		for _, e := range events.Items {
+			log.Info().Interface("Event", e).Msg("Event")
 		}
 	}
 }

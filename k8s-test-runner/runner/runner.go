@@ -166,7 +166,15 @@ func (m *K8sTestRun) Run() error {
 	if err != nil {
 		return err
 	}
-	return m.c.TrackJobs(m.Ctx, m.cfg.Namespace, m.cfg.HelmValues["sync"], jobNum, m.cfg.KeepJobs)
+	err = m.c.WaitUntilJobsComplete(m.Ctx, m.cfg.Namespace, m.cfg.HelmValues["sync"], jobNum)
+	m.c.PrintPodLogs(m.Ctx, m.cfg.Namespace, m.cfg.HelmValues["sync"])
+	if !m.cfg.KeepJobs {
+		err = m.c.RemoveJobs(m.Ctx, m.cfg.Namespace, m.cfg.HelmValues["sync"])
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to remove jobs")
+		}
+	}
+	return err
 }
 
 // ExecCmd executes os command, logging both streams
