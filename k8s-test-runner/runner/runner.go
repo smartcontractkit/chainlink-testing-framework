@@ -10,7 +10,6 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -130,7 +129,7 @@ func (m *K8sTestRun) getChartPath() string {
 		// Use default chart
 		_, f, _, _ := runtime.Caller(0)
 		dir := path.Join(path.Dir(f))
-		chartPath := path.Join(filepath.Dir(dir), "../chart")
+		chartPath := path.Join(dir, "../chart")
 		return chartPath
 	}
 	return m.cfg.ChartPath
