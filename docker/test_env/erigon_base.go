@@ -60,7 +60,7 @@ func (g *Erigon) StartContainer() (blockchain.EVMNetwork, error) {
 	l := logging.GetTestContainersGoTestLogger(g.t)
 	ct, err := docker.StartContainerWithRetry(g.l, tc.GenericContainerRequest{
 		ContainerRequest: *r,
-		Reuse:            true,
+		Reuse:            g.WasRecreated,
 		Started:          true,
 		Logger:           l,
 	})
@@ -159,10 +159,6 @@ func (g *Erigon) WaitUntilChainIsReady(ctx context.Context, waitTime time.Durati
 	}
 	waitForFirstBlock := tcwait.NewLogStrategy("Built block").WithPollInterval(1 * time.Second).WithStartupTimeout(waitTime)
 	return waitForFirstBlock.WaitUntilReady(ctx, *g.GetContainer())
-}
-
-func (g *Erigon) GetContainerType() ContainerType {
-	return ContainerType_Erigon
 }
 
 func (g *Erigon) GethConsensusMechanism() ConsensusMechanism {

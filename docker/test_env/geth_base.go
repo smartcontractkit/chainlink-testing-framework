@@ -60,7 +60,7 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, error) {
 	l := logging.GetTestContainersGoTestLogger(g.t)
 	ct, err := docker.StartContainerWithRetry(g.l, tc.GenericContainerRequest{
 		ContainerRequest: *r,
-		Reuse:            true,
+		Reuse:            g.WasRecreated,
 		Started:          true,
 		Logger:           l,
 	})
@@ -154,10 +154,6 @@ func (g *Geth) GetEthereumVersion() EthereumVersion {
 	}
 
 	return EthereumVersion_Eth2
-}
-
-func (g *Geth) GetContainerType() ContainerType {
-	return ContainerType_Geth
 }
 
 func (g *Geth) GethConsensusMechanism() ConsensusMechanism {

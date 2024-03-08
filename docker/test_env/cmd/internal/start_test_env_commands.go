@@ -233,10 +233,7 @@ func getCustomImages(flags *flag.FlagSet) (map[test_env.ContainerType]string, er
 	}
 
 	if executionClientImage != "" {
-		customImages[test_env.ContainerType_Besu] = executionClientImage
-		customImages[test_env.ContainerType_Erigon] = executionClientImage
-		customImages[test_env.ContainerType_Geth] = executionClientImage
-		customImages[test_env.ContainerType_Nethermind] = executionClientImage
+		customImages[test_env.ContainerType_ExecutionLayer] = executionClientImage
 	}
 
 	consensusClientImage, err := flags.GetString(Flag_ConsensucClientImage)
@@ -245,7 +242,7 @@ func getCustomImages(flags *flag.FlagSet) (map[test_env.ContainerType]string, er
 	}
 
 	if consensusClientImage != "" {
-		customImages[test_env.ContainerType_PrysmBeacon] = consensusClientImage
+		customImages[test_env.ContainerType_ConsensusLayer] = consensusClientImage
 	}
 
 	validatorImage, err := flags.GetString(Flag_ValidatorImage)
@@ -254,7 +251,7 @@ func getCustomImages(flags *flag.FlagSet) (map[test_env.ContainerType]string, er
 	}
 
 	if validatorImage != "" {
-		customImages[test_env.ContainerType_PrysmVal] = validatorImage
+		customImages[test_env.ContainerType_ConsensusValidator] = validatorImage
 	}
 
 	return customImages, nil

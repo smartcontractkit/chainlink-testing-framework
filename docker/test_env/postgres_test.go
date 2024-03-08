@@ -12,6 +12,7 @@ import (
 )
 
 func TestPostgresCustomImageVersionNotInMirror(t *testing.T) {
+	t.Parallel()
 	l := logging.GetTestLogger(t)
 	network, err := docker.CreateNetwork(l)
 	require.NoError(t, err)
@@ -29,6 +30,7 @@ func TestPostgresWithMirror(t *testing.T) {
 	if os.Getenv(config.EnvVarInternalDockerRepo) == "" {
 		t.Skipf("Skipping test because %s is not set", config.EnvVarInternalDockerRepo)
 	}
+	t.Parallel()
 	l := logging.GetTestLogger(t)
 	network, err := docker.CreateNetwork(l)
 	require.NoError(t, err)

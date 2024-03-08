@@ -36,8 +36,10 @@ func NewNethermindEth1(networks []string, chainConfig *EthereumChainConfig, opts
 		opt(&g.EnvComponent)
 	}
 
-	// set the container name again after applying functional options as version might have changed
-	g.EnvComponent.ContainerName = fmt.Sprintf("%s-%s-%s", "nethermind-eth1", strings.Replace(g.ContainerVersion, ".", "_", -1), uuid.NewString()[0:8])
+	if !g.WasRecreated {
+		// set the container name again after applying functional options as version might have changed
+		g.EnvComponent.ContainerName = fmt.Sprintf("%s-%s-%s", "nethermind-eth1", strings.Replace(g.ContainerVersion, ".", "_", -1), uuid.NewString()[0:8])
+	}
 	// if the internal docker repo is set then add it to the version
 	g.EnvComponent.ContainerImage = mirror.AddMirrorToImageIfSet(g.EnvComponent.ContainerImage)
 	return g, nil
@@ -50,7 +52,7 @@ func (g *Nethermind) getEth1ContainerRequest() (*tc.ContainerRequest, error) {
 	}
 
 	toFund := g.chainConfig.AddressesToFund
-	toFund = append(toFund, RootFundingWallet)
+	toFund = append(toFund, RootFundingAddr)
 	generatedData, err := generateKeystoreAndExtraData(keystorePath, toFund)
 	if err != nil {
 		return nil, err

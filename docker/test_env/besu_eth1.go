@@ -34,8 +34,11 @@ func NewBesuEth1(networks []string, chainConfig *EthereumChainConfig, opts ...En
 		opt(&g.EnvComponent)
 	}
 
-	// set the container name again after applying functional options as version might have changed
-	g.EnvComponent.ContainerName = fmt.Sprintf("%s-%s-%s", "besu-eth1", strings.Replace(g.ContainerVersion, ".", "_", -1), uuid.NewString()[0:8])
+	if !g.WasRecreated {
+		// set the container name again after applying functional options as version might have changed
+		g.EnvComponent.ContainerName = fmt.Sprintf("%s-%s-%s", "besu-eth1", strings.Replace(g.ContainerVersion, ".", "_", -1), uuid.NewString()[0:8])
+	}
+
 	// if the internal docker repo is set then add it to the version
 	g.EnvComponent.ContainerImage = mirror.AddMirrorToImageIfSet(g.EnvComponent.ContainerImage)
 
@@ -115,7 +118,7 @@ func (g *Besu) prepareEth1FilesAndDirs() error {
 	g.keystorePath = keystorePath
 
 	toFund := g.chainConfig.AddressesToFund
-	toFund = append(toFund, RootFundingWallet)
+	toFund = append(toFund, RootFundingAddr)
 	generatedData, err := generateKeystoreAndExtraData(keystorePath, toFund)
 	if err != nil {
 		return err

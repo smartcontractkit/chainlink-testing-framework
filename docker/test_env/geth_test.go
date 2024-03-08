@@ -14,6 +14,7 @@ import (
 )
 
 func TestOldGeth(t *testing.T) {
+	t.Parallel()
 	l := logging.GetTestLogger(t)
 	network, err := docker.CreateNetwork(l)
 	require.NoError(t, err)
@@ -31,6 +32,7 @@ func TestOldGeth(t *testing.T) {
 }
 
 func TestEth1WithGeth(t *testing.T) {
+	t.Parallel()
 	l := logging.GetTestLogger(t)
 
 	builder := NewEthereumNetworkBuilder()
@@ -52,6 +54,7 @@ func TestEth1WithGeth(t *testing.T) {
 }
 
 func TestEth2WithPrysmAndGeth(t *testing.T) {
+	t.Parallel()
 	l := logging.GetTestLogger(t)
 
 	builder := NewEthereumNetworkBuilder()

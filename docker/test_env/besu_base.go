@@ -74,7 +74,7 @@ func (g *Besu) StartContainer() (blockchain.EVMNetwork, error) {
 	l := logging.GetTestContainersGoTestLogger(g.t)
 	ct, err := docker.StartContainerWithRetry(g.l, tc.GenericContainerRequest{
 		ContainerRequest: *r,
-		Reuse:            true,
+		Reuse:            g.WasRecreated,
 		Started:          true,
 		Logger:           l,
 	})
@@ -179,10 +179,6 @@ func (g *Besu) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration
 	}
 	waitForFirstBlock := tcwait.NewLogStrategy("Imported #1").WithPollInterval(1 * time.Second).WithStartupTimeout(waitTime)
 	return waitForFirstBlock.WaitUntilReady(ctx, *g.GetContainer())
-}
-
-func (g *Besu) GetContainerType() ContainerType {
-	return ContainerType_Besu
 }
 
 func (g *Besu) GethConsensusMechanism() ConsensusMechanism {

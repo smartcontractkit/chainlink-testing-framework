@@ -48,7 +48,7 @@ func TestNethermindCompatiblity(t *testing.T) {
 			cfg, err := builder.
 				WithExecutionLayer(ExecutionLayer_Nethermind).
 				WithCustomDockerImages(map[ContainerType]string{
-					ContainerType_Nethermind: tc,
+					ContainerType_ExecutionLayer: tc,
 				}).
 				Build()
 			require.NoError(t, err, "Builder validation failed")
@@ -95,7 +95,7 @@ func TestGethCompatiblity(t *testing.T) {
 			builder := NewEthereumNetworkBuilder()
 			cfg, err := builder.
 				WithCustomDockerImages(map[ContainerType]string{
-					ContainerType_Geth: tc,
+					ContainerType_ExecutionLayer: tc,
 				}).
 				Build()
 			require.NoError(t, err, "Builder validation failed")
@@ -142,7 +142,7 @@ func TestErigonCompatiblity(t *testing.T) {
 			builder := NewEthereumNetworkBuilder()
 			cfg, err := builder.
 				WithCustomDockerImages(map[ContainerType]string{
-					ContainerType_Erigon: tc,
+					ContainerType_ExecutionLayer: tc,
 				}).
 				Build()
 			require.NoError(t, err, "Builder validation failed")
@@ -189,7 +189,7 @@ func TestBesuCompatiblity(t *testing.T) {
 			builder := NewEthereumNetworkBuilder()
 			cfg, err := builder.
 				WithCustomDockerImages(map[ContainerType]string{
-					ContainerType_Besu: tc,
+					ContainerType_ExecutionLayer: tc,
 				}).
 				Build()
 			require.NoError(t, err, "Builder validation failed")

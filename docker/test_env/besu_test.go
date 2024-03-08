@@ -13,6 +13,7 @@ import (
 )
 
 func TestEth1WithBesu(t *testing.T) {
+	t.Parallel()
 	l := logging.GetTestLogger(t)
 
 	builder := NewEthereumNetworkBuilder()
@@ -37,6 +38,7 @@ func TestEth1WithBesu(t *testing.T) {
 }
 
 func TestEth2WithPrysmAndBesu(t *testing.T) {
+	t.Parallel()
 	l := logging.GetTestLogger(t)
 
 	builder := NewEthereumNetworkBuilder()

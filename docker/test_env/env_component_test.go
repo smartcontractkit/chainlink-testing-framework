@@ -34,6 +34,7 @@ func followLogs(t *testing.T, c testcontainers.Container) *TestLogConsumer {
 }
 
 func TestEnvComponentPauseChaos(t *testing.T) {
+	t.Parallel()
 	l := logging.GetTestLogger(t)
 	network, err := docker.CreateNetwork(l)
 	require.NoError(t, err)

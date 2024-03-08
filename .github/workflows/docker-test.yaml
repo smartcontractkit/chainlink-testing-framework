@@ -8,7 +8,7 @@ on:
 jobs:
   docker:
     if: ${{ github.event_name == 'pull_request_review' || github.event.label.name == 'docker_tests' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu20.04-16cores-64GB
     steps:
       - name: Checkout the Repo
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
@@ -29,9 +29,7 @@ jobs:
           PATH=$PATH:$(go env GOPATH)/bin
           export PATH
           set -euo pipefail
-          # disabled, because we want to use a multiline output of go list command
-          # shellcheck disable=SC2046
-          go test -timeout 20m -json -cover -covermode=atomic -coverprofile=unit-test-coverage.out $(go list ./... | grep /docker/test_env) 2>&1 | tee /tmp/gotest.log | gotestfmt
+          make test_docker
       - name: Code Coverage
         uses: codecov/codecov-action@v3
         with:

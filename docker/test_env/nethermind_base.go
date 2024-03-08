@@ -60,7 +60,7 @@ func (g *Nethermind) StartContainer() (blockchain.EVMNetwork, error) {
 	l := logging.GetTestContainersGoTestLogger(g.t)
 	ct, err := docker.StartContainerWithRetry(g.l, tc.GenericContainerRequest{
 		ContainerRequest: *r,
-		Reuse:            true,
+		Reuse:            g.WasRecreated,
 		Started:          true,
 		Logger:           l,
 	})
@@ -164,10 +164,6 @@ func (g *Nethermind) WaitUntilChainIsReady(ctx context.Context, waitTime time.Du
 	}
 	waitForFirstBlock := tcwait.NewLogStrategy("Improved post-merge block").WithPollInterval(1 * time.Second).WithStartupTimeout(waitTime)
 	return waitForFirstBlock.WaitUntilReady(ctx, *g.GetContainer())
-}
-
-func (g *Nethermind) GetContainerType() ContainerType {
-	return ContainerType_Nethermind
 }
 
 func (g *Nethermind) GethConsensusMechanism() ConsensusMechanism {

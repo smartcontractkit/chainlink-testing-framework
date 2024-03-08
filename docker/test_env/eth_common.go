@@ -32,7 +32,6 @@ type ExecutionClient interface {
 	GetContainerName() string
 	StartContainer() (blockchain.EVMNetwork, error)
 	GetContainer() *tc.Container
-	GetContainerType() ContainerType
 	GetInternalExecutionURL() string
 	GetExternalExecutionURL() string
 	GetInternalHttpUrl() string
@@ -46,34 +45,28 @@ type ExecutionClient interface {
 }
 
 type UnsupportedVersion struct {
-	Version string
-	Reason  string
+	DockerImage string
+	Reason      string
 }
 
-var UNSUPPORTED_VERSIONS = map[ContainerType][]UnsupportedVersion{
-	ContainerType_Nethermind: {
-		UnsupportedVersion{Version: "1.20.0",
-			Reason: "1.20.0 was replaced with 1.20.1, for more info check https://github.com/NethermindEth/nethermind/releases/tag/1.20.0",
-		}},
-	ContainerType_Geth: {
-		UnsupportedVersion{Version: "v1.9.0",
-			Reason: "v1.9.0 randomly drops websocket connections, for more info check https://github.com/ethereum/go-ethereum/issues/19001",
-		}},
+var UNSUPPORTED_VERSIONS = []UnsupportedVersion{
+	UnsupportedVersion{DockerImage: fmt.Sprintf("%s:1.20.0", nethermindBaseImageName),
+		Reason: "1.20.0 was replaced with 1.20.1, for more info check https://github.com/NethermindEth/nethermind/releases/tag/1.20.0",
+	},
+	UnsupportedVersion{DockerImage: fmt.Sprintf("%s:v1.9.0", gethBaseImageName),
+		Reason: "v1.9.0 randomly drops websocket connections, for more info check https://github.com/ethereum/go-ethereum/issues/19001",
+	},
 }
 
 // IsDockerImageVersionSupported checks if the given docker image version is supported and if not returns the reason why
-func IsDockerImageVersionSupported(ct ContainerType, imageWithVersion string) (bool, string, error) {
+func IsDockerImageVersionSupported(imageWithVersion string) (bool, string, error) {
 	parts := strings.Split(imageWithVersion, ":")
 	if len(parts) != 2 {
 		return false, "", fmt.Errorf("invalid docker image format: %s", imageWithVersion)
 	}
 
-	unsupportedVersions, ok := UNSUPPORTED_VERSIONS[ct]
-	if !ok {
-		return true, "", nil
-	}
-	for _, unsp := range unsupportedVersions {
-		if unsp.Version == parts[1] {
+	for _, unsp := range UNSUPPORTED_VERSIONS {
+		if strings.Contains(imageWithVersion, unsp.DockerImage) {
 			return false, unsp.Reason, nil
 		}
 	}
