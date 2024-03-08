@@ -11,7 +11,7 @@ test:
 image: ''
 imagePullPolicy: Always
 labels:
-  app: wasp
+  app: k8s-test-runner
 annotations: {}
 env:
   # TEST_LOG_LEVEL: ''

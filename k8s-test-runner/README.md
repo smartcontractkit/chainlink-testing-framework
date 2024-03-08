@@ -43,7 +43,7 @@ go run ./cmd/main.go run -c "<path-to-test-runner-toml-config>"
 The TOML config should specify the test runner configuration as follows:
 
 ```
-namespace = "wasp"
+namespace = "e2e-tests"
 update_image = true
 image_registry_url = "" # URL to the ECR containing the test binary image, e.g., staging ECR URL
 image_name = "k8s-test-runner"
@@ -105,7 +105,7 @@ Then:
         cd e2e_tests/k8s-test-runner
 
         cat << EOF > config.toml
-        namespace = "wasp"
+        namespace = "e2e-tests"
         update_image = false
         image_registry_url = "${{ secrets.AWS_ACCOUNT_ID_STAGING }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com"
         image_name = "k8s-test-runner"

@@ -83,11 +83,9 @@ func getChartOverrides(c config.RemoteRunner) map[string]interface{} {
 		},
 		"image":           image,
 		"imagePullPolicy": "Always",
-		"labels": map[string]interface{}{
-			"app": "wasp",
-		},
-		"annotations": map[string]interface{}{}, // Add specific annotations if needed
-		"env":         envMap,
+		"labels":          map[string]interface{}{},
+		"annotations":     map[string]interface{}{}, // Add specific annotations if needed
+		"env":             envMap,
 		"resources": map[string]interface{}{
 			"requests": map[string]interface{}{
 				"cpu":    "1000m",
