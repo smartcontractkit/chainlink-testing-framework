@@ -6,13 +6,13 @@ import (
 	"io"
 	"time"
 
+	"github.com/aws/smithy-go/ptr"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	batchV1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -185,49 +185,50 @@ func (m *Client) RemoveJobs(ctx context.Context, nsName string, syncLabelValue s
 	return nil
 }
 
+// Use polling to wait for jobs to complete.
+// `watch` does not work in CI (GAP), so we have to poll.
 func (m *Client) WaitUntilJobsComplete(ctx context.Context, namespace, syncLabelValue string, expectedJobsCount int) error {
 	labelSelector := syncSelector(syncLabelValue)
-	var watcher watch.Interface
-	call := func() error {
-		var err error
-		watcher, err = m.ClientSet.BatchV1().Jobs(namespace).Watch(ctx, metaV1.ListOptions{
-			LabelSelector: labelSelector,
-			// TimeoutSeconds: &timeout,
-		})
-		return err
-	}
-	err := retryK8sCall(call, m.callRetryPolicy)
-	if err != nil {
-		return errors.Wrapf(err, "failed to watch jobs")
-	}
-
 	completedJobs := make(map[string]bool)
-	log.Info().Str("namespace", namespace).Str("labelSelector", labelSelector).Msgf("Waiting for %d job to complete...", expectedJobsCount)
+	pollingInterval := time.Second * 5
 
-	for event := range watcher.ResultChan() {
-		job, ok := event.Object.(*batchV1.Job)
-		if !ok {
-			log.Debug().Msg("Unexpected type")
-			continue
-		}
+	for {
+		select {
+		case <-ctx.Done():
+			log.Info().Msg("Context canceled")
+			return ctx.Err()
+		default:
+			jobs, err := m.ClientSet.BatchV1().Jobs(namespace).List(ctx, metaV1.ListOptions{
+				LabelSelector:  labelSelector,
+				TimeoutSeconds: ptr.Int64(30), // query timeout
+			})
+			if err != nil {
+				log.Error().Err(err).Msg("Failed to list jobs, will retry...")
+				time.Sleep(pollingInterval)
+				continue
+			}
 
-		if job.Status.Succeeded > 0 {
-			completedJobs[job.Name] = true
-			log.Info().Str("job", job.Name).Msg("Job succeeded")
-		} else if job.Status.Failed > 0 {
-			completedJobs[job.Name] = true
-			log.Info().Str("job", job.Name).Msg("Job failed")
-			return errors.Errorf("job %s failed", job.Name)
-		}
+			for _, job := range jobs.Items {
+				if job.Status.Succeeded > 0 {
+					completedJobs[job.Name] = true
+					log.Info().Str("job", job.Name).Msg("Job succeeded")
+				} else if job.Status.Failed > 0 {
+					completedJobs[job.Name] = true
+					log.Info().Str("job", job.Name).Msg("Job failed")
+					return errors.Errorf("job %s failed", job.Name)
+				}
+			}
 
-		// Exit the loop if all watched jobs have completed.
-		if len(completedJobs) == expectedJobsCount {
-			log.Info().Msgf("All %d jobs completed", expectedJobsCount)
-			return nil
+			if len(completedJobs) >= expectedJobsCount {
+				log.Info().Msgf("All %d jobs completed", expectedJobsCount)
+				return nil
+			} else {
+				log.Info().Msgf("Waiting for %d job(s) to complete...", expectedJobsCount-len(completedJobs))
+			}
+
+			time.Sleep(pollingInterval)
 		}
 	}
-
-	return fmt.Errorf("timed out waiting for jobs to complete")
 }
 
 func (m *Client) PrintPodLogs(ctx context.Context, namespace string, syncLabelValue string) {
