@@ -8,7 +8,7 @@ metadata:
     sync: "{{ $.Values.sync }}"
 spec:
   backoffLimit: 0
-  # ttlSecondsAfterFinished: 600
+  ttlSecondsAfterFinished: 600
   template:
     metadata:
       name: k8s-test-runner-{{ $.Release.Name }}-{{ $i }}
