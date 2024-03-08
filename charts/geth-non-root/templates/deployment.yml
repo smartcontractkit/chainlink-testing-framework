@@ -7,20 +7,22 @@ spec:
   selector:
     matchLabels:
       app: geth
+      release: {{ .Release.Name }}
+      instance: geth
       # Used for testing.
       # havoc-component-group and havoc-network-group are used by "havoc" chaos testing tool
       havoc-component-group: "blockchain"
       havoc-network-group: "blockchain"
-      release: {{ .Release.Name }}
   template:
     metadata:
       labels:
         app: geth
+        instance: geth
+        release: {{ .Release.Name }}
         # Used for testing.
         # havoc-component-group and havoc-network-group are used by "havoc" chaos testing tool
         havoc-component-group: "blockchain"
         havoc-network-group: "blockchain"
-        release: {{ .Release.Name }}
       annotations:
         {{- range $key, $value := .Values.podAnnotations }}
         {{ $key }}: {{ $value | quote }}
@@ -33,11 +35,11 @@ spec:
       - name: devchain-volume
         emptyDir: {}
       securityContext:
-        {{- toYaml $.Values.geth.podSecurityContext | nindent 8 }}
+        {{- toYaml .Values.geth.podSecurityContext | nindent 8 }}
       containers:
       - name: geth-network
         securityContext:
-          {{- toYaml $.Values.geth.securityContext | nindent 12 }}
+          {{- toYaml .Values.geth.securityContext | nindent 12 }}
         image: "{{ default "ethereum/client-go" .Values.geth.image }}:{{ default "stable" .Values.geth.version }}"
         command: [ "sh", "/chain/init.sh" ]
         volumeMounts:
@@ -88,7 +90,7 @@ spec:
           - '--rpc.txfeecap'
           - '0'
           - '--dev.period'
-          - '{{ .Values.geth.blocktime }}'
+          - '{{ $.Values.geth.blocktime }}'
           - '--miner.gasprice'
           - '10000000000'
         ports:
@@ -96,7 +98,7 @@ spec:
           containerPort: 8544
         - name: ws-rpc
           containerPort: 8546
-        {{ if (hasKey .Values.geth "resources") }}
+        {{ if (hasKey $.Values.geth "resources") }}
         resources:
           requests:
             memory: {{ default "1024Mi" .Values.geth.resources.requests.memory }}

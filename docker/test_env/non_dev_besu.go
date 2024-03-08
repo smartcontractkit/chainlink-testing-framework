@@ -231,10 +231,7 @@ func (g *NonDevBesuNode) ConnectToClient() error {
 	default:
 		return fmt.Errorf("%+v not supported for geth", val)
 	}
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func (g *NonDevBesuNode) Start() error {

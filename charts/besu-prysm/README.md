@@ -84,10 +84,8 @@ storage:
 # Usage
 1. Connect with kubectl to the cluster you want to deploy to
 2. Set the context/namespace you want to use (if the namespace doesn't exist you might need to create it manually)
-3. Make sure that there's 1 node with with label `eth2=true` (this is used to schedule beacon chain and validator pods affinity to make sure they are deployed on the same node and have access to the same persistent volume). You can check it by running `kubectl get nodes --selector=eth2=true`. If there's no such node (which will especially be true on your local cluster, when running for the first time), run `kubectl get nodes --show-labels` to see all nodes and then pick one and run `kubectl label nodes <node-name> eth2=true` to add the label to it (for Docker Desktop use: `kubectl label nodes docker-desktop eth2=true`). It's best if you *don't do that* on remote clusters without previous consultation with the cluster owners.
-Once you have one labeled node you can proceed with chart installation.
 3. Run `./install.sh`
-This command uses `values.yaml` file while generating one value on the flight: `currentUnixTimestamp`.
+This command uses `values.yaml` file while generating one value on the fly: `currentUnixTimestamp`. This is super important as all the components need to have the same genesis time.
 
 That script will run lints, prepare a package and then install it.
 

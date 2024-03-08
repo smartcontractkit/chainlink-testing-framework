@@ -86,9 +86,6 @@ func (g *Besu) StartContainer() (blockchain.EVMNetwork, error) {
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
-	if err != nil {
-		return blockchain.EVMNetwork{}, err
-	}
 	httpPort, err := ct.MappedPort(testcontext.Get(g.t), NatPort(DEFAULT_EVM_NODE_HTTP_PORT))
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
