@@ -389,5 +389,5 @@ func TestMischmachedExecutionClient(t *testing.T) {
 			ContainerType_Geth: fmt.Sprintf("hyperledger/besu:%s", AUTOMATIC_LATEST_TAG)}).
 		Build()
 	require.Error(t, err, "Builder validation succeeded")
-	require.Equal(t, ErrMismatchedExecutionClient.Error(), err.Error(), "Error message is not correct")
+	require.Equal(t, fmt.Sprintf(MsgMismatchedExecutionClient, ExecutionLayer_Besu, ExecutionLayer_Geth), err.Error(), "Error message is not correct")
 }

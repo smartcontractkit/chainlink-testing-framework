@@ -18,7 +18,8 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 )
 
-func NewGethEth2(networks []string, chainConfg *EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) (*Geth, error) {
+// NewGethEth2 starts a new Geth Eth2 node running in Docker
+func NewGethEth2(networks []string, chainConfig *EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) (*Geth, error) {
 	parts := strings.Split(defaultGethEth2Image, ":")
 	g := &Geth{
 		EnvComponent: EnvComponent{
@@ -27,7 +28,7 @@ func NewGethEth2(networks []string, chainConfg *EthereumChainConfig, generatedDa
 			ContainerImage:   parts[0],
 			ContainerVersion: parts[1],
 		},
-		chainConfig:          chainConfg,
+		chainConfig:          chainConfig,
 		generatedDataHostDir: generatedDataHostDir,
 		consensusLayer:       consensusLayer,
 		l:                    logging.GetTestLogger(nil),
@@ -37,6 +38,7 @@ func NewGethEth2(networks []string, chainConfg *EthereumChainConfig, generatedDa
 		opt(&g.EnvComponent)
 	}
 
+	// set the container name again after applying functional options as version might have changed
 	g.EnvComponent.ContainerName = fmt.Sprintf("%s-%s-%s", "geth-eth2", strings.Replace(g.ContainerVersion, ".", "_", -1), uuid.NewString()[0:8])
 	// if the internal docker repo is set then add it to the version
 	g.EnvComponent.ContainerImage = mirror.AddMirrorToImageIfSet(g.EnvComponent.ContainerImage)

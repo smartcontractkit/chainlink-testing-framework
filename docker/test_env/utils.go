@@ -112,8 +112,8 @@ func GetComparableVersionFromDockerImage(imageWithVersion string) (int, error) {
 	return version, nil
 }
 
-// GetGithubRepositoryFromDockerImage returns the GitHub repository name based on the Docker image
-func GetGithubRepositoryFromDockerImage(imageWithVersion string) (string, error) {
+// GetGithubRepositoryFromEthereumClientDockerImage returns the GitHub repository name based on the Docker image
+func GetGithubRepositoryFromEthereumClientDockerImage(imageWithVersion string) (string, error) {
 	parts := strings.Split(imageWithVersion, ":")
 	if len(parts) != 2 {
 		return "", fmt.Errorf(MsgInvalidDockerImageFormat, imageWithVersion)
@@ -133,6 +133,7 @@ func GetGithubRepositoryFromDockerImage(imageWithVersion string) (string, error)
 	}
 }
 
+// GetExecutionLayerFromDockerImage returns the execution layer based on the Docker image
 func GetExecutionLayerFromDockerImage(imageWithVersion string) (ExecutionLayer, error) {
 	parts := strings.Split(imageWithVersion, ":")
 	if len(parts) != 2 {

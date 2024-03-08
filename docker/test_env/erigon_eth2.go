@@ -18,7 +18,8 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 )
 
-func NewErigonEth2(networks []string, chainConfg *EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) (*Erigon, error) {
+// NewErigonEth2 starts a new Erigon Eth2 node running in Docker
+func NewErigonEth2(networks []string, chainConfig *EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) (*Erigon, error) {
 	parts := strings.Split(defaultErigonEth2Image, ":")
 	g := &Erigon{
 		EnvComponent: EnvComponent{
@@ -27,7 +28,7 @@ func NewErigonEth2(networks []string, chainConfg *EthereumChainConfig, generated
 			ContainerImage:   parts[0],
 			ContainerVersion: parts[1],
 		},
-		chainConfg:           chainConfg,
+		chainConfig:          chainConfig,
 		generatedDataHostDir: generatedDataHostDir,
 		consensusLayer:       consensusLayer,
 		l:                    logging.GetTestLogger(nil),
@@ -37,6 +38,7 @@ func NewErigonEth2(networks []string, chainConfg *EthereumChainConfig, generated
 		opt(&g.EnvComponent)
 	}
 
+	// set the container name again after applying functional options as version might have changed
 	g.EnvComponent.ContainerName = fmt.Sprintf("%s-%s-%s", "erigon-eth2", strings.Replace(g.ContainerVersion, ".", "_", -1), uuid.NewString()[0:8])
 	// if the internal docker repo is set then add it to the version
 	g.EnvComponent.ContainerImage = mirror.AddMirrorToImageIfSet(g.EnvComponent.ContainerImage)
@@ -131,7 +133,7 @@ func (g *Erigon) buildPosInitScript() (string, error) {
 		ExtraExecutionFlags string
 	}{
 		HttpPort:            DEFAULT_EVM_NODE_HTTP_PORT,
-		ChainID:             g.chainConfg.ChainID,
+		ChainID:             g.chainConfig.ChainID,
 		GeneratedDataDir:    GENERATED_DATA_DIR_INSIDE_CONTAINER,
 		JwtFileLocation:     JWT_SECRET_FILE_LOCATION_INSIDE_CONTAINER,
 		ExecutionDir:        "/home/erigon/execution-data",

@@ -33,7 +33,7 @@ type Erigon struct {
 	InternalExecutionURL string
 	ExternalExecutionURL string
 	generatedDataHostDir string
-	chainConfg           *EthereumChainConfig
+	chainConfig          *EthereumChainConfig
 	consensusLayer       ConsensusLayer
 	l                    zerolog.Logger
 	t                    *testing.T

@@ -122,7 +122,7 @@ func (g *NonDevBesuNode) createMountDirs() error {
 	}
 	g.Config.keystorePath = keystorePath
 
-	generatedData, err := generateKeystoreAndExtraData(keystorePath)
+	generatedData, err := generateKeystoreAndExtraData(keystorePath, []string{})
 	if err != nil {
 		return err
 	}

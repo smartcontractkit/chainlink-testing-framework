@@ -1,6 +1,5 @@
 [PrivateEthereumNetwork]
 ethereum_version="eth2"
-consensus_type="pos"
 consensus_layer="prysm"
 execution_layer="geth"
 wait_for_finalization=false

@@ -15,7 +15,8 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 )
 
-func NewBesuEth2(networks []string, chainConfg *EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) (*Besu, error) {
+// NewBesuEth2 starts a new Besu Eth2 node running in Docker
+func NewBesuEth2(networks []string, chainConfig *EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) (*Besu, error) {
 	parts := strings.Split(defaultBesuEth2Image, ":")
 	g := &Besu{
 		EnvComponent: EnvComponent{
@@ -24,7 +25,7 @@ func NewBesuEth2(networks []string, chainConfg *EthereumChainConfig, generatedDa
 			ContainerImage:   parts[0],
 			ContainerVersion: parts[1],
 		},
-		chainConfg:     chainConfg,
+		chainConfig:    chainConfig,
 		posSettings:    posSettings{generatedDataHostDir: generatedDataHostDir},
 		consensusLayer: consensusLayer,
 		l:              logging.GetTestLogger(nil),
@@ -34,6 +35,7 @@ func NewBesuEth2(networks []string, chainConfg *EthereumChainConfig, generatedDa
 		opt(&g.EnvComponent)
 	}
 
+	// set the container name again after applying functional options as version might have changed
 	g.EnvComponent.ContainerName = fmt.Sprintf("%s-%s-%s", "besu-eth2", strings.Replace(g.ContainerVersion, ".", "_", -1), uuid.NewString()[0:8])
 	// if the internal docker repo is set then add it to the version
 	g.EnvComponent.ContainerImage = mirror.AddMirrorToImageIfSet(g.EnvComponent.ContainerImage)
@@ -57,7 +59,7 @@ func (g *Besu) getEth2ContainerRequest() (*tc.ContainerRequest, error) {
 		Cmd: []string{
 			"--data-path=/opt/besu/execution-data",
 			fmt.Sprintf("--genesis-file=%s/besu.json", GENERATED_DATA_DIR_INSIDE_CONTAINER),
-			fmt.Sprintf("--network-id=%d", g.chainConfg.ChainID),
+			fmt.Sprintf("--network-id=%d", g.chainConfig.ChainID),
 			"--host-allowlist=*",
 			"--rpc-http-enabled=true",
 			"--rpc-http-host=0.0.0.0",

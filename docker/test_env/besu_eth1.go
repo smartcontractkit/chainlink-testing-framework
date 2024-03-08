@@ -7,7 +7,6 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
-	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/google/uuid"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
@@ -17,7 +16,8 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/templates"
 )
 
-func NewBesuEth1(networks []string, chainConfg *EthereumChainConfig, opts ...EnvComponentOption) (*Besu, error) {
+// NewBesuEth1 starts a new Besu Eth1 node running in Docker
+func NewBesuEth1(networks []string, chainConfig *EthereumChainConfig, opts ...EnvComponentOption) (*Besu, error) {
 	parts := strings.Split(defaultBesuEth1Image, ":")
 	g := &Besu{
 		EnvComponent: EnvComponent{
@@ -26,14 +26,15 @@ func NewBesuEth1(networks []string, chainConfg *EthereumChainConfig, opts ...Env
 			ContainerImage:   parts[0],
 			ContainerVersion: parts[1],
 		},
-		chainConfg: chainConfg,
-		l:          logging.GetTestLogger(nil),
+		chainConfig: chainConfig,
+		l:           logging.GetTestLogger(nil),
 	}
 	g.SetDefaultHooks()
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
 
+	// set the container name again after applying functional options as version might have changed
 	g.EnvComponent.ContainerName = fmt.Sprintf("%s-%s-%s", "besu-eth1", strings.Replace(g.ContainerVersion, ".", "_", -1), uuid.NewString()[0:8])
 	// if the internal docker repo is set then add it to the version
 	g.EnvComponent.ContainerImage = mirror.AddMirrorToImageIfSet(g.EnvComponent.ContainerImage)
@@ -74,7 +75,7 @@ func (g *Besu) getEth1ContainerRequest() (*tc.ContainerRequest, error) {
 			fmt.Sprintf("--rpc-ws-port=%s", DEFAULT_EVM_NODE_WS_PORT),
 			"--miner-enabled=true",
 			"--miner-coinbase", RootFundingAddr,
-			fmt.Sprintf("--network-id=%d", g.chainConfg.ChainID),
+			fmt.Sprintf("--network-id=%d", g.chainConfig.ChainID),
 			"--logging=DEBUG",
 		},
 		Files: []tc.ContainerFile{
@@ -113,53 +114,22 @@ func (g *Besu) prepareEth1FilesAndDirs() error {
 	}
 	g.keystorePath = keystorePath
 
-	// Create keystore and ethereum account
-	ks := keystore.NewKeyStore(g.keystorePath, keystore.StandardScryptN, keystore.StandardScryptP)
-	account, err := ks.NewAccount("")
+	toFund := g.chainConfig.AddressesToFund
+	toFund = append(toFund, RootFundingWallet)
+	generatedData, err := generateKeystoreAndExtraData(keystorePath, toFund)
 	if err != nil {
 		return err
 	}
 
-	g.accountAddr = account.Address.Hex()
-	addr := strings.Replace(account.Address.Hex(), "0x", "", 1)
-	FundingAddresses[addr] = ""
-
-	i := 1
-	var accounts []string
-	for addr, v := range FundingAddresses {
-		if v == "" {
-			continue
-		}
-		f, err := os.Create(fmt.Sprintf("%s/%s", g.keystorePath, fmt.Sprintf("key%d", i)))
-		if err != nil {
-			return err
-		}
-		_, err = f.WriteString(v)
-		if err != nil {
-			return err
-		}
-		i++
-		accounts = append(accounts, addr)
-	}
-
-	extraAddresses := []string{}
-	for _, addr := range g.chainConfg.AddressesToFund {
-		extraAddresses = append(extraAddresses, strings.Replace(addr, "0x", "", 1))
-	}
-
-	accounts = append(accounts, extraAddresses...)
-	accounts, err = deduplicateAddresses(g.l, accounts)
-	if err != nil {
-		return err
-	}
+	g.accountAddr = generatedData.minerAccount.Address.Hex()
 
 	err = os.WriteFile(g.keystorePath+"/password.txt", []byte(""), 0600)
 	if err != nil {
 		return err
 	}
 
-	genesisJsonStr, err := templates.BuildBesuGenesisJsonForNonDevChain(fmt.Sprint(g.chainConfg.ChainID),
-		accounts, "0x")
+	genesisJsonStr, err := templates.BuildBesuGenesisJsonForNonDevChain(fmt.Sprint(g.chainConfig.ChainID),
+		generatedData.accountsToFund, "0x")
 	if err != nil {
 		return err
 	}

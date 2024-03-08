@@ -18,6 +18,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/templates"
 )
 
+// NewGethEth1 starts a new Geth Eth1 node running in Docker
 func NewGethEth1(networks []string, chainConfig *EthereumChainConfig, opts ...EnvComponentOption) *Geth {
 	parts := strings.Split(defaultGethEth1Image, ":")
 	g := &Geth{
@@ -35,6 +36,7 @@ func NewGethEth1(networks []string, chainConfig *EthereumChainConfig, opts ...En
 		opt(&g.EnvComponent)
 	}
 
+	// set the container name again after applying functional options as version might have changed
 	g.EnvComponent.ContainerName = fmt.Sprintf("%s-%s-%s", "geth-eth1", strings.Replace(g.ContainerVersion, ".", "_", -1), uuid.NewString()[0:8])
 	// if the internal docker repo is set then add it to the version
 	g.EnvComponent.ContainerImage = mirror.AddMirrorToImageIfSet(g.EnvComponent.ContainerImage)
@@ -55,14 +57,16 @@ func (g *Geth) getEth1ContainerRequest() (*tc.ContainerRequest, error) {
 		return nil, err
 	}
 
-	generatedData, err := generateKeystoreAndExtraData(keystoreDir)
+	toFund := g.chainConfig.AddressesToFund
+	toFund = append(toFund, RootFundingWallet)
+	generatedData, err := generateKeystoreAndExtraData(keystoreDir, toFund)
 	if err != nil {
 		return nil, err
 	}
 
 	genesisJsonStr, err := templates.GenesisJsonTemplate{
 		ChainId:     fmt.Sprintf("%d", g.chainConfig.ChainID),
-		AccountAddr: []string{generatedData.minerAccount.Address.Hex(), RootFundingAddr},
+		AccountAddr: generatedData.accountsToFund,
 		Consensus:   templates.GethGenesisConsensus_Clique,
 		ExtraData:   fmt.Sprintf("0x%s", hex.EncodeToString(generatedData.extraData)),
 	}.String()

@@ -19,7 +19,8 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/templates"
 )
 
-func NewErigonEth1(networks []string, chainConfg *EthereumChainConfig, opts ...EnvComponentOption) (*Erigon, error) {
+// NewErigonEth1 starts a new Erigon Eth1 node running in Docker
+func NewErigonEth1(networks []string, chainConfig *EthereumChainConfig, opts ...EnvComponentOption) (*Erigon, error) {
 	parts := strings.Split(defaultErigonEth1Image, ":")
 	g := &Erigon{
 		EnvComponent: EnvComponent{
@@ -28,14 +29,15 @@ func NewErigonEth1(networks []string, chainConfg *EthereumChainConfig, opts ...E
 			ContainerImage:   parts[0],
 			ContainerVersion: parts[1],
 		},
-		chainConfg: chainConfg,
-		l:          logging.GetTestLogger(nil),
+		chainConfig: chainConfig,
+		l:           logging.GetTestLogger(nil),
 	}
 	g.SetDefaultHooks()
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
 
+	// set the container name again after applying functional options as version might have changed
 	g.EnvComponent.ContainerName = fmt.Sprintf("%s-%s-%s", "erigon-eth1", strings.Replace(g.ContainerVersion, ".", "_", -1), uuid.NewString()[0:8])
 	// if the internal docker repo is set then add it to the version
 	g.EnvComponent.ContainerImage = mirror.AddMirrorToImageIfSet(g.EnvComponent.ContainerImage)
@@ -48,14 +50,16 @@ func (g *Erigon) getEth1ContainerRequest() (*tc.ContainerRequest, error) {
 		return nil, err
 	}
 
-	generatedData, err := generateKeystoreAndExtraData(keystoreDir)
+	toFund := g.chainConfig.AddressesToFund
+	toFund = append(toFund, RootFundingWallet)
+	generatedData, err := generateKeystoreAndExtraData(keystoreDir, toFund)
 	if err != nil {
 		return nil, err
 	}
 
 	genesisJsonStr, err := templates.GenesisJsonTemplate{
-		ChainId:     fmt.Sprintf("%d", g.chainConfg.ChainID),
-		AccountAddr: []string{RootFundingAddr, generatedData.minerAccount.Address.Hex()},
+		ChainId:     fmt.Sprintf("%d", g.chainConfig.ChainID),
+		AccountAddr: generatedData.accountsToFund,
 		Consensus:   templates.GethGenesisConsensus_Ethash,
 	}.String()
 	if err != nil {
@@ -166,7 +170,7 @@ func (g *Erigon) buildPowInitScript(minerAddr string) (string, error) {
 		MinerAddr string
 	}{
 		HttpPort:  DEFAULT_EVM_NODE_HTTP_PORT,
-		ChainID:   g.chainConfg.ChainID,
+		ChainID:   g.chainConfig.ChainID,
 		MinerAddr: minerAddr,
 	}
 

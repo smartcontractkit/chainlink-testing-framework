@@ -43,7 +43,7 @@ type Besu struct {
 	InternalWsUrl        string
 	InternalExecutionURL string
 	ExternalExecutionURL string
-	chainConfg           *EthereumChainConfig
+	chainConfig          *EthereumChainConfig
 	consensusLayer       ConsensusLayer
 	l                    zerolog.Logger
 	t                    *testing.T

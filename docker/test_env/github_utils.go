@@ -10,13 +10,15 @@ import (
 const AUTOMATIC_LATEST_TAG = "latest_available"
 const AUTOMATIC_STABLE_LATEST_TAG = "latest_stable"
 
-func fetchLatestIfNeed(dockerImageWithVersion string) (string, error) {
+// FetchLatestEthereumClientDockerImageVersionIfNeed fetches the latest release version from Github if the version is set to AUTOMATIC_LATEST_TAG or AUTOMATIC_STABLE_LATEST_TAG
+// and returns the full docker image with the latest version. Works only for supported Ethereum clients: Geth, Erigon, Besu and Nethermind.
+func FetchLatestEthereumClientDockerImageVersionIfNeed(dockerImageWithVersion string) (string, error) {
 	imageParts := strings.Split(dockerImageWithVersion, ":")
 	if len(imageParts) != 2 {
 		return "", fmt.Errorf("expected correctly formatted docker image, but got '%s'", dockerImageWithVersion)
 	}
 
-	ghRepo, err := GetGithubRepositoryFromDockerImage(dockerImageWithVersion)
+	ghRepo, err := GetGithubRepositoryFromEthereumClientDockerImage(dockerImageWithVersion)
 	if err != nil {
 		return "", err
 	}

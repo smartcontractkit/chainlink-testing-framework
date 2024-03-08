@@ -1,14 +1,29 @@
 package templates
 
-import "github.com/google/uuid"
+import (
+	"bytes"
+	"fmt"
+	"os"
+	"text/template"
+)
 
 type NethermindPoAGenesisJsonTemplate struct {
-	AccountAddr string
+	AccountAddr []string
 	ChainId     string
 	ExtraData   string
 }
 
 func (c NethermindPoAGenesisJsonTemplate) String() (string, error) {
+	data := struct {
+		AccountAddr []string
+		ChainId     string
+		ExtraData   string
+	}{
+		AccountAddr: c.AccountAddr,
+		ChainId:     c.ChainId,
+		ExtraData:   c.ExtraData,
+	}
+
 	tpl := `
 	{
 		"name": "Devnet",
@@ -73,11 +88,23 @@ func (c NethermindPoAGenesisJsonTemplate) String() (string, error) {
 		  "gasLimit": "0x17D7840"
 		},
 		"accounts": {
-		  "{{ .AccountAddr }}": {
-			"balance": "1000000000000000000000000000"
-		  }
-		},
+			{{- $lastIndex := decrement (len $.AccountAddr)}}
+			{{- range $i, $addr := .AccountAddr }}
+		  "{{$addr}}": {
+			"balance": "9000000000000000000000000000"
+		  }{{ if ne $i $lastIndex }},{{ end }}
+		{{- end }}
+		}
 	  }
 	  `
-	return MarshalTemplate(c, uuid.NewString(), tpl)
+	t, err := template.New("genesis-json").Funcs(funcMap).Parse(tpl)
+	if err != nil {
+		fmt.Println("Error parsing template:", err)
+		os.Exit(1)
+	}
+
+	var buf bytes.Buffer
+	err = t.Execute(&buf, data)
+
+	return buf.String(), err
 }

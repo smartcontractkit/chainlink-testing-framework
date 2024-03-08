@@ -180,36 +180,19 @@ func (g *NonDevGethNode) createMountDirs() error {
 	}
 	g.Config.keystorePath = keystorePath
 
-	generatedData, err := generateKeystoreAndExtraData(keystorePath)
+	generatedData, err := generateKeystoreAndExtraData(keystorePath, []string{})
 	if err != nil {
 		return err
 	}
 
 	g.Config.accountAddr = generatedData.minerAccount.Address.Hex()
 
-	i := 1
-	var accounts []string
-	for addr, v := range FundingAddresses {
-		if v == "" {
-			continue
-		}
-		f, err := os.Create(fmt.Sprintf("%s/%s", g.Config.keystorePath, fmt.Sprintf("key%d", i)))
-		if err != nil {
-			return err
-		}
-		_, err = f.WriteString(v)
-		if err != nil {
-			return err
-		}
-		i++
-		accounts = append(accounts, addr)
-	}
 	err = os.WriteFile(g.Config.keystorePath+"/password.txt", []byte(""), 0600)
 	if err != nil {
 		return err
 	}
 
-	genesisJsonStr, err := templates.BuildGenesisJsonForNonDevChain(g.Config.chainId, accounts, fmt.Sprintf("0x%s", hex.EncodeToString(generatedData.extraData)))
+	genesisJsonStr, err := templates.BuildGenesisJsonForNonDevChain(g.Config.chainId, generatedData.accountsToFund, fmt.Sprintf("0x%s", hex.EncodeToString(generatedData.extraData)))
 	if err != nil {
 		return err
 	}

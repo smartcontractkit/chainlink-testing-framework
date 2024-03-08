@@ -106,9 +106,13 @@ func (c *EthereumChainConfig) Validate(logger zerolog.Logger, consensusType Ethe
 	}
 
 	var err error
-	c.AddressesToFund, err = deduplicateAddresses(logger, c.AddressesToFund)
+	var hadDuplicates bool
+	c.AddressesToFund, hadDuplicates, err = deduplicateAddresses(c.AddressesToFund)
 	if err != nil {
 		return err
+	}
+	if hadDuplicates {
+		logger.Warn().Msg("Duplicate addresses found in addresses_to_fund. Removed them. You might want to review your configuration.")
 	}
 
 	return nil
@@ -210,19 +214,21 @@ func (c *EthereumChainConfig) GetDefaultFinalizationWaitDuration() time.Duration
 	return time.Duration(5 * time.Minute)
 }
 
-func deduplicateAddresses(l zerolog.Logger, addresses []string) ([]string, error) {
+func deduplicateAddresses(addresses []string) ([]string, bool, error) {
 	addressSet := make(map[common.Address]struct{})
 	deduplicated := make([]string, 0)
 
+	hadDuplicates := false
+
 	for _, addr := range addresses {
 		if !common.IsHexAddress(addr) {
-			return []string{}, fmt.Errorf("address %s is not a valid hex address", addr)
+			return []string{}, false, fmt.Errorf("address %s is not a valid hex address", addr)
 		}
 
 		asAddr := common.HexToAddress(addr)
 
 		if _, exists := addressSet[asAddr]; exists {
-			l.Warn().Str("address", addr).Msg("duplicate address in addresses to fund, this should not happen, removing it so that genesis generation doesn't crash")
+			hadDuplicates = true
 			continue
 		}
 
@@ -230,7 +236,7 @@ func deduplicateAddresses(l zerolog.Logger, addresses []string) ([]string, error
 		deduplicated = append(deduplicated, addr)
 	}
 
-	return deduplicated, nil
+	return deduplicated, hadDuplicates, nil
 }
 
 func waitForChainToFinaliseAnEpoch(lggr zerolog.Logger, evmClient blockchain.EVMClient, timeout time.Duration) error {

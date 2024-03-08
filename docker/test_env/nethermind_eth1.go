@@ -18,7 +18,8 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/templates"
 )
 
-func NewNethermindEth1(networks []string, chainConfg *EthereumChainConfig, opts ...EnvComponentOption) (*Nethermind, error) {
+// NewNethermindEth1 starts a new Nethermin Eth1 node running in Docker
+func NewNethermindEth1(networks []string, chainConfig *EthereumChainConfig, opts ...EnvComponentOption) (*Nethermind, error) {
 	parts := strings.Split(defaultNethermindEth1Image, ":")
 	g := &Nethermind{
 		EnvComponent: EnvComponent{
@@ -27,14 +28,15 @@ func NewNethermindEth1(networks []string, chainConfg *EthereumChainConfig, opts 
 			ContainerImage:   parts[0],
 			ContainerVersion: parts[1],
 		},
-		chainConfg: chainConfg,
-		l:          logging.GetTestLogger(nil),
+		chainConfig: chainConfig,
+		l:           logging.GetTestLogger(nil),
 	}
 	g.SetDefaultHooks()
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
 
+	// set the container name again after applying functional options as version might have changed
 	g.EnvComponent.ContainerName = fmt.Sprintf("%s-%s-%s", "nethermind-eth1", strings.Replace(g.ContainerVersion, ".", "_", -1), uuid.NewString()[0:8])
 	// if the internal docker repo is set then add it to the version
 	g.EnvComponent.ContainerImage = mirror.AddMirrorToImageIfSet(g.EnvComponent.ContainerImage)
@@ -42,19 +44,21 @@ func NewNethermindEth1(networks []string, chainConfg *EthereumChainConfig, opts 
 }
 
 func (g *Nethermind) getEth1ContainerRequest() (*tc.ContainerRequest, error) {
-	keystoreDir, err := os.MkdirTemp("", "keystore")
+	keystorePath, err := os.MkdirTemp("", "keystore")
 	if err != nil {
 		return nil, err
 	}
 
-	generatedData, err := generateKeystoreAndExtraData(keystoreDir)
+	toFund := g.chainConfig.AddressesToFund
+	toFund = append(toFund, RootFundingWallet)
+	generatedData, err := generateKeystoreAndExtraData(keystorePath, toFund)
 	if err != nil {
 		return nil, err
 	}
 
 	genesisJsonStr, err := templates.NethermindPoAGenesisJsonTemplate{
-		ChainId:     fmt.Sprintf("%d", g.chainConfg.ChainID),
-		AccountAddr: RootFundingAddr,
+		ChainId:     fmt.Sprintf("%d", g.chainConfig.ChainID),
+		AccountAddr: generatedData.accountsToFund,
 		ExtraData:   fmt.Sprintf("0x%s", hex.EncodeToString(generatedData.extraData)),
 	}.String()
 	if err != nil {
@@ -91,7 +95,7 @@ func (g *Nethermind) getEth1ContainerRequest() (*tc.ContainerRequest, error) {
 		return nil, err
 	}
 
-	rootFile, err := os.CreateTemp(keystoreDir, RootFundingAddr)
+	rootFile, err := os.CreateTemp(keystorePath, RootFundingAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +154,7 @@ func (g *Nethermind) getEth1ContainerRequest() (*tc.ContainerRequest, error) {
 		HostConfigModifier: func(hostConfig *container.HostConfig) {
 			hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
 				Type:     mount.TypeBind,
-				Source:   keystoreDir,
+				Source:   keystorePath,
 				Target:   "/keystore",
 				ReadOnly: false,
 			})
