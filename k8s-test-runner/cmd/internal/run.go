@@ -33,7 +33,7 @@ func runRunE(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	var runnerCfg = &config.RemoteRunner{}
+	var runnerCfg = &config.Runner{}
 	err = config.Read(configPath, "", runnerCfg)
 	if err != nil {
 		return err
@@ -65,7 +65,7 @@ func runRunE(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func getChartOverrides(c config.RemoteRunner) map[string]interface{} {
+func getChartOverrides(c config.Runner) map[string]interface{} {
 	image := fmt.Sprintf("%s/%s:%s", c.ImageRegistryURL, c.ImageName, c.ImageTag)
 	envMap := c.Envs
 	if envMap == nil {

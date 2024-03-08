@@ -11,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-type RemoteRunner struct {
+type Runner struct {
 	Namespace               string            `toml:"namespace" validate:"required"`
 	SyncValue               string            `toml:"sync_value"` // Random if not set
 	ImageRegistryURL        string            `toml:"image_registry_url" envconfig:"IMAGE_REGISTRY_URL" validate:"required"`

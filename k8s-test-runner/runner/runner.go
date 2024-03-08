@@ -19,14 +19,14 @@ import (
 )
 
 type K8sTestRun struct {
-	cfg            *config.RemoteRunner
+	cfg            *config.Runner
 	c              *k8s_client.Client
 	Ctx            context.Context
 	Cancel         context.CancelFunc
 	ChartOverrides map[string]interface{}
 }
 
-func NewK8sTestRun(cfg *config.RemoteRunner, chartOverrides map[string]interface{}) (*K8sTestRun, error) {
+func NewK8sTestRun(cfg *config.Runner, chartOverrides map[string]interface{}) (*K8sTestRun, error) {
 	log.Info().Interface("Config", cfg).Msg("Cluster configuration")
 	runTimeout := cfg.TestTimeout + time.Minute*10
 	ctx, cancelFunc := context.WithTimeout(context.Background(), runTimeout)
