@@ -8,7 +8,7 @@ on:
 jobs:
   docker:
     if: ${{ github.event_name == 'pull_request_review' || github.event.label.name == 'docker_tests' }}
-    runs-on: ubuntu20.04-16cores-64GB
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout the Repo
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
