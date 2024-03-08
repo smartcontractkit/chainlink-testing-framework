@@ -48,15 +48,11 @@ func runRunE(cmd *cobra.Command, args []string) error {
 		runnerCfg.TestConfigBase64 = testCfgBase64
 	}
 
-	syncLabel := fmt.Sprintf("a%s", uuid.NewString()[0:5])
+	if runnerCfg.SyncValue == "" {
+		runnerCfg.SyncValue = fmt.Sprintf("a%s", uuid.NewString()[0:5])
+	}
 
-	p, err := runner.NewK8sTestRun(&runner.Config{
-		Namespace:      runnerCfg.Namespace,
-		KeepJobs:       runnerCfg.KeepJobs,
-		ChartPath:      runnerCfg.ChartPath,
-		SyncLabel:      syncLabel,
-		ChartOverrides: getChartOverrides(*runnerCfg, syncLabel),
-	})
+	p, err := runner.NewK8sTestRun(runnerCfg, getChartOverrides(*runnerCfg))
 	if err != nil {
 		return errors.Wrapf(err, "error creating test in k8s")
 	}
@@ -69,7 +65,7 @@ func runRunE(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func getChartOverrides(c config.RemoteRunner, syncLabel string) map[string]interface{} {
+func getChartOverrides(c config.RemoteRunner) map[string]interface{} {
 	image := fmt.Sprintf("%s/%s:%s", c.ImageRegistryURL, c.ImageName, c.ImageTag)
 	envMap := c.Envs
 	if envMap == nil {
@@ -79,8 +75,8 @@ func getChartOverrides(c config.RemoteRunner, syncLabel string) map[string]inter
 
 	return map[string]interface{}{
 		"namespace": c.Namespace,
-		"jobs":      fmt.Sprintf("%d", c.JobCount),
-		"sync":      syncLabel,
+		"jobs":      c.JobCount,
+		"sync":      c.SyncValue,
 		"test": map[string]interface{}{
 			"name":    c.TestName, // Set this to your specific test name
 			"timeout": c.TestTimeout,

@@ -16,6 +16,12 @@ COPY $TEST_BINARY /app/testbin
 # Make the binary executable
 RUN chmod +x /app/testbin
 
+# Adjust permissions to ensure the non-root user can access the necessary files
+RUN chown -R nobody:nobody /app && chmod -R 755 /app
+
+# Set the user to 'nobody'
+USER nobody
+
 # Use the entrypoint script as the entry point
 ENTRYPOINT ["/app/testbin"]
 

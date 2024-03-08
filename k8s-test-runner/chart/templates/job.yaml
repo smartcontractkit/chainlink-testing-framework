@@ -7,7 +7,7 @@ metadata:
     sync: "{{ $.Values.sync }}"
 spec:
   backoffLimit: 0
-  ttlSecondsAfterFinished: 600
+  # ttlSecondsAfterFinished: 600
   template:
     metadata:
       name: wasp-{{ $.Release.Name }}-{{ $i }}
@@ -25,6 +25,9 @@ spec:
       containers:
         - name: wasp
           image: {{ $.Values.image }}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534 # UID for 'nobody' in Alpine      
           args:
             - -test.v
             - -test.run
@@ -38,8 +41,8 @@ spec:
           {{- end }}
           env:
           {{- range $key, $val := $.Values.env }}
-          - name: {{ $key }}
-            value: {{ quote $val }}
+            - name: {{ $key }}
+              value: {{ quote $val }}
           {{- end }}
 ---
 {{- end }}

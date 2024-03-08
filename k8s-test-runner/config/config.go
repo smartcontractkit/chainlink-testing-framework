@@ -3,15 +3,17 @@ package config
 import (
 	"encoding/base64"
 	"os"
+	"time"
 
+	"github.com/BurntSushi/toml"
 	"github.com/go-playground/validator/v10"
 	"github.com/kelseyhightower/envconfig"
-	"github.com/naoina/toml"
 	"github.com/pkg/errors"
 )
 
 type RemoteRunner struct {
 	Namespace               string            `toml:"namespace"`
+	SyncValue               string            `toml:"sync_value"`
 	ImageRegistryURL        string            `toml:"image_registry_url" envconfig:"IMAGE_REGISTRY_URL"`
 	ImageName               string            `toml:"image_name"`
 	ImageTag                string            `toml:"image_tag"`
@@ -19,7 +21,7 @@ type RemoteRunner struct {
 	TestConfigBase64EnvName string            `toml:"test_config_base64_env_name"`
 	TestConfigFilePath      string            `toml:"test_config_file_path" envconfig:"TEST_CONFIG_FILE_PATH"`
 	TestConfigBase64        string            `toml:"test_config_base64" envconfig:"TEST_CONFIG_BASE64"`
-	TestTimeout             string            `toml:"test_timeout"`
+	TestTimeout             time.Duration     `toml:"test_timeout"`
 	JobCount                int               `toml:"job_count"`
 	KeepJobs                bool              `toml:"keep_jobs"`
 	UpdateImage             bool              `toml:"update_image"`
