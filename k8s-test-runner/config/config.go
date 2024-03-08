@@ -12,20 +12,24 @@ import (
 )
 
 type RemoteRunner struct {
-	Namespace               string            `toml:"namespace"`
-	SyncValue               string            `toml:"sync_value"`
-	ImageRegistryURL        string            `toml:"image_registry_url" envconfig:"IMAGE_REGISTRY_URL"`
-	ImageName               string            `toml:"image_name"`
-	ImageTag                string            `toml:"image_tag"`
-	TestName                string            `toml:"test_name"`
+	Namespace               string            `toml:"namespace" validate:"required"`
+	SyncValue               string            `toml:"sync_value"` // Random if not set
+	ImageRegistryURL        string            `toml:"image_registry_url" envconfig:"IMAGE_REGISTRY_URL" validate:"required"`
+	ImageName               string            `toml:"image_name" validate:"required"`
+	ImageTag                string            `toml:"image_tag" validate:"required"`
+	TestName                string            `toml:"test_name" validate:"required"`
 	TestConfigBase64EnvName string            `toml:"test_config_base64_env_name"`
 	TestConfigFilePath      string            `toml:"test_config_file_path" envconfig:"TEST_CONFIG_FILE_PATH"`
 	TestConfigBase64        string            `toml:"test_config_base64" envconfig:"TEST_CONFIG_BASE64"`
-	TestTimeout             time.Duration     `toml:"test_timeout"`
-	JobCount                int               `toml:"job_count"`
+	TestTimeout             time.Duration     `toml:"test_timeout" validate:"required"`
+	ResourcesRequestsCPU    string            `toml:"resources_requests_cpu" validate:"required"`    // Eg. "1000m"
+	ResourcesRequestsMemory string            `toml:"resources_requests_memory" validate:"required"` // Eg. "512Mi"
+	ResourcesLimitsCPU      string            `toml:"resources_limits_cpu" validate:"required"`      // Eg. "1000m"
+	ResourcesLimitsMemory   string            `toml:"resources_limits_memory" validate:"required"`   // Eg. "512Mi"
+	JobCount                int               `toml:"job_count" validate:"required"`
 	KeepJobs                bool              `toml:"keep_jobs"`
 	UpdateImage             bool              `toml:"update_image"`
-	ChartPath               string            `toml:"chart_path"`
+	ChartPath               string            `toml:"chart_path"` // Default chart if not set
 	Envs                    map[string]string `toml:"envs"`
 }
 
