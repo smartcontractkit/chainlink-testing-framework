@@ -65,7 +65,7 @@ func (g *Besu) getEth1ContainerRequest() (*tc.ContainerRequest, error) {
 		),
 		Entrypoint: []string{
 			"besu",
-			"--genesis-file", "/opt/besu/nodedata/genesis.json",
+			"--genesis-file", "/opt/besu/genesis/genesis.json",
 			"--host-allowlist", "*",
 			"--rpc-http-enabled",
 			"--rpc-http-cors-origins", "*",
@@ -84,7 +84,7 @@ func (g *Besu) getEth1ContainerRequest() (*tc.ContainerRequest, error) {
 		Files: []tc.ContainerFile{
 			{
 				HostFilePath:      g.genesisPath,
-				ContainerFilePath: "/opt/besu/nodedata/genesis.json",
+				ContainerFilePath: "/opt/besu/genesis/genesis.json",
 				FileMode:          0644,
 			},
 		},

@@ -300,9 +300,9 @@ func TestAutoEthereumVersionEth1Minor(t *testing.T) {
 	t.Parallel()
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WithExecutionLayer(ExecutionLayer_Nethermind).
+		WithExecutionLayer(ExecutionLayer_Besu).
 		WithCustomDockerImages(map[ContainerType]string{
-			ContainerType_ExecutionLayer: "nethermind/nethermind:1.13.2"}).
+			ContainerType_ExecutionLayer: "hyperledger/besu:20.1"}).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 	require.Equal(t, EthereumVersion_Eth1, *cfg.EthereumVersion, "Ethereum Version should be Eth1")
@@ -314,10 +314,10 @@ func TestAutoEthereumVersionEth2Minor(t *testing.T) {
 	cfg, err := builder.
 		WithExecutionLayer(ExecutionLayer_Nethermind).
 		WithCustomDockerImages(map[ContainerType]string{
-			ContainerType_ExecutionLayer: "nethermind/nethermind:1.14.0"}).
+			ContainerType_ExecutionLayer: "nethermind/nethermind:1.17.2"}).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
-	require.Equal(t, EthereumVersion_Eth1, *cfg.EthereumVersion, "Ethereum Version should be Eth1")
+	require.Equal(t, EthereumVersion_Eth2, *cfg.EthereumVersion, "Ethereum Version should be Eth2")
 	require.Equal(t, ConsensusLayer_Prysm, *cfg.ConsensusLayer, "Consensus layer should be Prysm")
 }
 
