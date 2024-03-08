@@ -11,20 +11,20 @@ import (
 )
 
 type RemoteRunner struct {
-	Namespace          string `toml:"namespace"`
-	ImageRegistryURL   string `toml:"image_registry_url" envconfig:"IMAGE_REGISTRY_URL"`
-	ImageName          string `toml:"image_name"`
-	ImageTag           string `toml:"image_tag"`
-	TestName           string `toml:"test_name"`
-	TestConfigEnvName  string `toml:"test_config_env_name"`
-	TestConfigFilePath string `toml:"test_config_file_path" envconfig:"TEST_CONFIG_FILE_PATH"`
-	TestConfigBase64   string `toml:"test_config_base64" envconfig:"TEST_CONFIG_BASE64"`
-	TestTimeout        string `toml:"test_timeout"`
-	KeepJobs           bool   `toml:"keep_jobs"`
-	WaspLogLevel       string `toml:"wasp_log_level"`
-	WaspJobs           string `toml:"wasp_jobs"`
-	UpdateImage        bool   `toml:"update_image"`
-	ChartPath          string `toml:"chart_path"`
+	Namespace               string            `toml:"namespace"`
+	ImageRegistryURL        string            `toml:"image_registry_url" envconfig:"IMAGE_REGISTRY_URL"`
+	ImageName               string            `toml:"image_name"`
+	ImageTag                string            `toml:"image_tag"`
+	TestName                string            `toml:"test_name"`
+	TestConfigBase64EnvName string            `toml:"test_config_base64_env_name"`
+	TestConfigFilePath      string            `toml:"test_config_file_path" envconfig:"TEST_CONFIG_FILE_PATH"`
+	TestConfigBase64        string            `toml:"test_config_base64" envconfig:"TEST_CONFIG_BASE64"`
+	TestTimeout             string            `toml:"test_timeout"`
+	JobCount                int               `toml:"job_count"`
+	KeepJobs                bool              `toml:"keep_jobs"`
+	UpdateImage             bool              `toml:"update_image"`
+	ChartPath               string            `toml:"chart_path"`
+	Envs                    map[string]string `toml:"envs"`
 }
 
 // Read initializes the configuration by sequentially loading from a TOML file,

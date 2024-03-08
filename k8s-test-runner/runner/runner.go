@@ -7,13 +7,16 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"os/exec"
 	"path"
 	"runtime"
-	"strconv"
 	"strings"
 	"time"
+
+	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/cli"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
@@ -45,6 +48,8 @@ var (
 type Config struct {
 	ChartPath            string
 	Namespace            string
+	SyncLabel            string
+	JobsCount            int
 	KeepJobs             bool
 	DockerCmdExecPath    string
 	DockerfilePath       string
@@ -54,45 +59,8 @@ type Config struct {
 	ImageTag             string
 	RegistryName         string
 	RepoName             string
-	HelmDeployTimeoutSec string
-	HelmValues           map[string]string
-	// generated values
-	tmpHelmFilePath string
-}
-
-func (m *Config) Defaults() error {
-	m.HelmValues["namespace"] = m.Namespace
-	// nolint
-	m.HelmValues["sync"] = fmt.Sprintf("a%s", uuid.NewString()[0:5])
-	if m.HelmDeployTimeoutSec == "" {
-		m.HelmDeployTimeoutSec = defaultHelmDeployTimeoutSec
-	}
-	if m.HelmValues["test.timeout"] == "" {
-		m.HelmValues["test.timeout"] = "12h"
-	}
-	if m.HelmValues["resources.requests.cpu"] == "" {
-		m.HelmValues["resources.requests.cpu"] = DefaultRequestsCPU
-	}
-	if m.HelmValues["resources.requests.memory"] == "" {
-		m.HelmValues["resources.requests.memory"] = DefaultRequestsMemory
-	}
-	if m.HelmValues["resources.limits.cpu"] == "" {
-		m.HelmValues["resources.limits.cpu"] = DefaultLimitsCPU
-	}
-	if m.HelmValues["resources.limits.memory"] == "" {
-		m.HelmValues["resources.limits.memory"] = DefaultLimitsMemory
-	}
-	return nil
-}
-
-func (m *Config) Validate() (err error) {
-	if m.Namespace == "" {
-		err = errors.Join(err, ErrNoNamespace)
-	}
-	if m.HelmValues["jobs"] == "" {
-		err = errors.Join(err, ErrNoJobs)
-	}
-	return
+	RunTimeout           time.Duration
+	ChartOverrides       map[string]interface{}
 }
 
 type K8sTestRun struct {
@@ -103,18 +71,8 @@ type K8sTestRun struct {
 }
 
 func NewK8sTestRun(cfg *Config) (*K8sTestRun, error) {
-	if err := cfg.Validate(); err != nil {
-		return nil, err
-	}
-	if err := cfg.Defaults(); err != nil {
-		return nil, err
-	}
 	log.Info().Interface("Config", cfg).Msg("Cluster configuration")
-	dur, err := time.ParseDuration(cfg.HelmValues["test.timeout"])
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse test timeout duration")
-	}
-	ctx, cancelFunc := context.WithTimeout(context.Background(), dur)
+	ctx, cancelFunc := context.WithTimeout(context.Background(), cfg.RunTimeout)
 	cp := &K8sTestRun{
 		cfg:    cfg,
 		c:      k8s_client.NewClient(),
@@ -135,22 +93,53 @@ func (m *K8sTestRun) getChartPath() string {
 	return m.cfg.ChartPath
 }
 
-func (m *K8sTestRun) deployHelm(testName string) error {
-	deleteCmd := fmt.Sprintf("helm delete %s -n %s --timeout 3m", testName, m.cfg.Namespace)
-	log.Info().Str("Cmd", deleteCmd).Msg("Delete previous release if exists") // This is needed when running on CI with GAP
-	ExecCmd(deleteCmd)
+// func (m *K8sTestRun) deployHelm(testName string) error {
+// 	deleteCmd := fmt.Sprintf("helm delete %s -n %s --timeout 3m", testName, m.cfg.Namespace)
+// 	log.Info().Str("Cmd", deleteCmd).Msg("Delete previous release if exists") // This is needed when running on CI with GAP
+// 	ExecCmd(deleteCmd)
 
-	//nolint
-	defer os.Remove(m.cfg.tmpHelmFilePath)
-	var cmd strings.Builder
-	cmd.WriteString(fmt.Sprintf("helm install %s %s", testName, m.getChartPath()))
-	for k, v := range m.cfg.HelmValues {
-		cmd.WriteString(fmt.Sprintf(" --set %s=%s", k, v))
+// 	//nolint
+// 	defer os.Remove(m.cfg.tmpHelmFilePath)
+// 	var cmd strings.Builder
+// 	cmd.WriteString(fmt.Sprintf("helm install %s %s", testName, m.getChartPath()))
+// 	for k, v := range m.cfg.HelmValues {
+// 		cmd.WriteString(fmt.Sprintf(" --set %s=%s", k, v))
+// 	}
+// 	cmd.WriteString(fmt.Sprintf(" -n %s", m.cfg.Namespace))
+// 	cmd.WriteString(fmt.Sprintf(" --timeout %s", m.cfg.HelmDeployTimeoutSec))
+// 	log.Info().Str("Cmd", cmd.String()).Msg("Deploying jobs")
+// 	return ExecCmd(cmd.String())
+// }
+
+func (m *K8sTestRun) deployHelm(testName string) error {
+	cli.New() // Initialize the Helm environment settings
+
+	kubeconfig := genericclioptions.NewConfigFlags(true)
+
+	actionConfig := new(action.Configuration)
+	if err := actionConfig.Init(kubeconfig, m.cfg.Namespace, "", log.Printf); err != nil {
+		return fmt.Errorf("failed to initialize Helm action configuration: %w", err)
 	}
-	cmd.WriteString(fmt.Sprintf(" -n %s", m.cfg.Namespace))
-	cmd.WriteString(fmt.Sprintf(" --timeout %s", m.cfg.HelmDeployTimeoutSec))
-	log.Info().Str("Cmd", cmd.String()).Msg("Deploying jobs")
-	return ExecCmd(cmd.String())
+
+	install := action.NewInstall(actionConfig)
+	install.ReleaseName = testName
+	install.Namespace = m.cfg.Namespace
+	install.Timeout = time.Minute * 3
+
+	chart, err := loader.Load(m.getChartPath())
+	if err != nil {
+		return fmt.Errorf("failed to load chart: %w", err)
+	}
+
+	// Install helm chart with overrides
+	log.Info().Interface("Overrides", m.cfg.ChartOverrides).Msg("Installing chart with overrides")
+	release, err := install.Run(chart, m.cfg.ChartOverrides)
+	if err != nil {
+		return fmt.Errorf("failed to install chart with overrides: %w", err)
+	}
+	log.Info().Interface("release", release).Msg("Chart installed successfully")
+
+	return nil
 }
 
 // Run starts a new test
@@ -162,14 +151,10 @@ func (m *K8sTestRun) Run() error {
 	if err := m.deployHelm(string(tn)); err != nil {
 		return err
 	}
-	jobNum, err := strconv.Atoi(m.cfg.HelmValues["jobs"])
-	if err != nil {
-		return err
-	}
-	err = m.c.WaitUntilJobsComplete(m.Ctx, m.cfg.Namespace, m.cfg.HelmValues["sync"], jobNum)
-	m.c.PrintPodLogs(m.Ctx, m.cfg.Namespace, m.cfg.HelmValues["sync"])
+	err := m.c.WaitUntilJobsComplete(m.Ctx, m.cfg.Namespace, m.cfg.SyncLabel, m.cfg.JobsCount)
+	m.c.PrintPodLogs(m.Ctx, m.cfg.Namespace, m.cfg.SyncLabel)
 	if !m.cfg.KeepJobs {
-		err = m.c.RemoveJobs(m.Ctx, m.cfg.Namespace, m.cfg.HelmValues["sync"])
+		err = m.c.RemoveJobs(m.Ctx, m.cfg.Namespace, m.cfg.SyncLabel)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to remove jobs")
 		}

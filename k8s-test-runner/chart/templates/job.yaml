@@ -7,6 +7,7 @@ metadata:
     sync: "{{ $.Values.sync }}"
 spec:
   backoffLimit: 0
+  ttlSecondsAfterFinished: 600
   template:
     metadata:
       name: wasp-{{ $.Release.Name }}-{{ $i }}
@@ -36,25 +37,9 @@ spec:
             {{- toYaml . | nindent 12 }}
           {{- end }}
           env:
-            - name: WASP_LOG_LEVEL
-              value: {{ $.Values.env.wasp.log_level }}
-            - name: WASP_NODE_ID
-              value: {{ $i | quote }}
-            - name: WASP_NAMESPACE
-              value: {{ $.Values.namespace }}
-            - name: WASP_SYNC
-              value: {{ $.Values.sync }}
-            - name: WASP_JOBS
-              value: {{ $.Values.jobs | quote }}
-          {{- range $key, $value := $.Values.test }}
-            {{- if $value }}
-            - name: {{ $key | upper}}
-              {{- if kindIs "string" $value}}
-              value: {{ $value | quote}}
-              {{- else }}
-              value: {{ $value }}
-              {{- end }}
-            {{- end }}
+          {{- range $key, $val := $.Values.env }}
+          - name: {{ $key }}
+            value: {{ quote $val }}
           {{- end }}
 ---
 {{- end }}

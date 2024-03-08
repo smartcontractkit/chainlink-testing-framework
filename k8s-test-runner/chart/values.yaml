@@ -1,4 +1,4 @@
-namespace: wasp
+namespace: ''
 # amount of jobs to spin up
 jobs: 1
 # a label jobs will use to sync before starting, a random 5-digit number by default
@@ -7,22 +7,14 @@ sync:
 test:
   name: ''
   timeout: '24h'
-  binaryName: ''
 
-# image + tag string - ${IMAGE}:${TAG} format
 image: ''
 imagePullPolicy: Always
 labels:
   app: wasp
 annotations: {}
 env:
-  wasp:
-    log_level: info
-  loki:
-    basic_auth: ''
-    tenant_id: ''
-    token: ''
-    url: ''
+  # TEST_LOG_LEVEL: ''
 resources:
   requests:
     cpu: 1000m

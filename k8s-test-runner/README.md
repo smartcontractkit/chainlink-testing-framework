@@ -48,7 +48,7 @@ update_image = true
 image_registry_url = "" # URL to the ECR containing the test binary image, e.g., staging ECR URL
 image_name = "k8s-test-runner"
 image_tag = ""  # The image tag to use, like "mercury-load-tests" (see readme above)
-wasp_jobs = "1"
+job_count = "1"
 keep_jobs = true
 wasp_log_level = "debug"
 test_name = "TestMercuryLoad/all_endpoints"
@@ -110,7 +110,7 @@ Then:
         image_registry_url = "${{ secrets.AWS_ACCOUNT_ID_STAGING }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com"
         image_name = "k8s-test-runner"
         image_tag = "mercury-load-test"
-        wasp_jobs = "1"
+        job_count = "1"
         wasp_log_level = "info"
         keep_jobs = true
         chart_path = "./chart"
