@@ -92,8 +92,8 @@ func getChartOverrides(c config.RemoteRunner) map[string]interface{} {
 				"memory": "512Mi",
 			},
 			"limits": map[string]interface{}{
-				"cpu":    "1000m",
-				"memory": "512Mi",
+				"cpu":    "2000m",
+				"memory": "1024Mi",
 			},
 		},
 		"nodeSelector": map[string]interface{}{}, // Specify node selector if needed
