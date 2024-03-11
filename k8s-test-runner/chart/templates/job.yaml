@@ -17,10 +17,12 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
         sync: {{ $.Values.sync }}
-      {{- with $.Values.annotations }}
       annotations:
+        {{- with $.Values.annotations }}
         {{- toYaml . | nindent 8 }}
-      {{- end }}
+        {{- end }}
+        karpenter.sh/do-not-evict: "true"
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
     spec:
       restartPolicy: Never
       containers:
