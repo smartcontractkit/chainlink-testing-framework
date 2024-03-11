@@ -1,7 +1,6 @@
 package test_env
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -9,6 +8,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 
 	tc "github.com/testcontainers/testcontainers-go"
 
@@ -434,11 +434,11 @@ func (en *EthereumNetwork) startEth2() (blockchain.EVMNetwork, RpcProvider, erro
 
 	dockerNetworks, err := en.getOrCreateDockerNetworks()
 	if err != nil {
-		return blockchain.EVMNetwork{}, RpcProvider{}, err
+		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to create docker networks")
 	}
-	generatedDataHostDir, valKeysDir, err := en.getOrCreateHostDirectories()
+	generatedDataHostDir, valKeysDir, err := en.generateGenesisAndFoldersIfNeeded()
 	if err != nil {
-		return blockchain.EVMNetwork{}, RpcProvider{}, err
+		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to create host directories")
 	}
 
 	var client ExecutionClient
@@ -457,42 +457,42 @@ func (en *EthereumNetwork) startEth2() (blockchain.EVMNetwork, RpcProvider, erro
 	}
 
 	if clientErr != nil {
-		return blockchain.EVMNetwork{}, RpcProvider{}, clientErr
+		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(clientErr, "failed to create  %s execution client instance", *en.ExecutionLayer)
 	}
 
 	client.WithTestInstance(en.t)
 
 	net, err = client.StartContainer()
 	if err != nil {
-		return blockchain.EVMNetwork{}, RpcProvider{}, err
+		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to start %s execution client", *en.ExecutionLayer)
 	}
 
 	beacon, err := NewPrysmBeaconChain(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, client.GetInternalExecutionURL(), append(en.getImageOverride(ContainerType_ValKeysGenerator), en.setExistingContainerName(ContainerType_ConsensusLayer))...)
 	if err != nil {
-		return blockchain.EVMNetwork{}, RpcProvider{}, err
+		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to create beacon chain instance")
 	}
 
 	beacon.WithTestInstance(en.t)
 	err = beacon.StartContainer()
 	if err != nil {
-		return blockchain.EVMNetwork{}, RpcProvider{}, err
+		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to start beacon chain")
 	}
 
 	validator, err := NewPrysmValidator(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, valKeysDir, beacon.
 		InternalBeaconRpcProvider, append(en.getImageOverride(ContainerType_ValKeysGenerator), en.setExistingContainerName(ContainerType_ConsensusValidator))...)
 	if err != nil {
-		return blockchain.EVMNetwork{}, RpcProvider{}, err
+		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to create validator instance")
 	}
 
 	validator.WithTestInstance(en.t)
 	err = validator.StartContainer()
 	if err != nil {
-		return blockchain.EVMNetwork{}, RpcProvider{}, err
+		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to start validator")
 	}
 
 	err = client.WaitUntilChainIsReady(testcontext.Get(en.t), en.EthereumChainConfig.GetDefaultWaitDuration())
 	if err != nil {
-		return blockchain.EVMNetwork{}, RpcProvider{}, err
+		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to wait for chain to be ready")
 	}
 
 	en.DockerNetworkNames = dockerNetworks
@@ -502,12 +502,12 @@ func (en *EthereumNetwork) startEth2() (blockchain.EVMNetwork, RpcProvider, erro
 	if en.WaitForFinalization != nil && *en.WaitForFinalization {
 		evmClient, err := blockchain.NewEVMClientFromNetwork(net, logger)
 		if err != nil {
-			return blockchain.EVMNetwork{}, RpcProvider{}, err
+			return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to create evm client")
 		}
 
 		err = waitForChainToFinaliseAnEpoch(logger, evmClient, en.EthereumChainConfig.GetDefaultFinalizationWaitDuration())
 		if err != nil {
-			return blockchain.EVMNetwork{}, RpcProvider{}, err
+			return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to wait for chain to finalize first epoch")
 		}
 	} else {
 		logger.Info().Msg("Not waiting for chain to finalize first epoch")
@@ -552,7 +552,7 @@ func (en *EthereumNetwork) startEth1() (blockchain.EVMNetwork, RpcProvider, erro
 
 	dockerNetworks, err := en.getOrCreateDockerNetworks()
 	if err != nil {
-		return blockchain.EVMNetwork{}, RpcProvider{}, err
+		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to create docker networks")
 	}
 
 	var client ExecutionClient
@@ -571,14 +571,14 @@ func (en *EthereumNetwork) startEth1() (blockchain.EVMNetwork, RpcProvider, erro
 	}
 
 	if clientErr != nil {
-		return blockchain.EVMNetwork{}, RpcProvider{}, clientErr
+		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(clientErr, "failed to create  %s execution client instance", *en.ExecutionLayer)
 	}
 
 	client.WithTestInstance(en.t)
 
 	net, err = client.StartContainer()
 	if err != nil {
-		return blockchain.EVMNetwork{}, RpcProvider{}, err
+		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to start %s execution client", *en.ExecutionLayer)
 	}
 
 	containers := EthereumNetworkContainers{
@@ -613,7 +613,7 @@ func (en *EthereumNetwork) getOrCreateDockerNetworks() ([]string, error) {
 	return []string{network.Name}, nil
 }
 
-func (en *EthereumNetwork) getOrCreateHostDirectories() (generatedDataHostDir string, valKeysDir string, err error) {
+func (en *EthereumNetwork) generateGenesisAndFoldersIfNeeded() (generatedDataHostDir string, valKeysDir string, err error) {
 	// create host directories and run genesis containers only if we are NOT recreating existing containers
 	if !en.isRecreated {
 		generatedDataHostDir, valKeysDir, err = createHostDirectories()
@@ -628,18 +628,21 @@ func (en *EthereumNetwork) getOrCreateHostDirectories() (generatedDataHostDir st
 		var valKeysGenerator *ValKeysGenerator
 		valKeysGenerator, err = NewValKeysGeneretor(en.EthereumChainConfig, valKeysDir, en.getImageOverride(ContainerType_ValKeysGenerator)...)
 		if err != nil {
+			err = errors.Wrap(err, "failed to start val keys generator")
 			return
 		}
 		valKeysGenerator.WithTestInstance(en.t)
 
 		err = valKeysGenerator.StartContainer()
 		if err != nil {
+			err = errors.Wrap(err, "failed to start val keys generator")
 			return
 		}
 
 		var genesis *EthGenesisGeneretor
 		genesis, err = NewEthGenesisGenerator(*en.EthereumChainConfig, generatedDataHostDir, en.getImageOverride(ContainerType_GenesisGenerator)...)
 		if err != nil {
+			err = errors.Wrap(err, "failed to start genesis generator")
 			return
 		}
 
@@ -653,6 +656,7 @@ func (en *EthereumNetwork) getOrCreateHostDirectories() (generatedDataHostDir st
 		initHelper := NewInitHelper(*en.EthereumChainConfig, generatedDataHostDir).WithTestInstance(en.t)
 		err = initHelper.StartContainer()
 		if err != nil {
+			err = errors.Wrap(err, "failed to start init helper")
 			return
 		}
 	} else {
