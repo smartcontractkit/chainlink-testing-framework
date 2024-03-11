@@ -103,9 +103,6 @@ func (ms *MockServer) StartContainer() error {
 		LocalURL:   endpoint,
 		ClusterURL: ms.InternalEndpoint,
 	})
-	if err != nil {
-		return fmt.Errorf("cannot create MockServer client: %w", err)
-	}
 	ms.Client = client
 
 	return nil
