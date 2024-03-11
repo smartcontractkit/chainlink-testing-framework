@@ -50,11 +50,18 @@ image_name = "k8s-test-runner"
 image_tag = ""  # The image tag to use, like "mercury-load-tests" (see readme above)
 job_count = "1"
 keep_jobs = true
-wasp_log_level = "debug"
 test_name = "TestMercuryLoad/all_endpoints"
 test_timeout = "24h"
-test_config_env_name = "LOAD_TEST_BASE64_TOML_CONTENT"
+test_config_base64_env_name = "LOAD_TEST_BASE64_TOML_CONTENT"
 test_config_file_path = "/Users/lukasz/Documents/test-configs/load-staging-testnet.toml"
+resources_requests_cpu = "1000m"
+resources_requests_memory = "512Mi"
+resources_limits_cpu = "2000m"
+resources_limits_memory = "1024Mi"
+[envs]
+WASP_LOG_LEVEL = "info"
+TEST_LOG_LEVEL = "info"
+MERCURY_TEST_LOG_LEVEL = "info"
 ```
 
 Where:
@@ -111,13 +118,20 @@ Then:
         image_name = "k8s-test-runner"
         image_tag = "mercury-load-test"
         job_count = "1"
-        wasp_log_level = "info"
         keep_jobs = true
         chart_path = "./chart"
         test_name = "TestMercuryLoad/all_endpoints"
         test_timeout = "24h"
-        test_config_env_name = "LOAD_TEST_BASE64_TOML_CONTENT"
+        resources_requests_cpu = "1000m"
+        resources_requests_memory = "512Mi"
+        resources_limits_cpu = "2000m"
+        resources_limits_memory = "1024Mi"
+        test_config_base64_env_name = "LOAD_TEST_BASE64_TOML_CONTENT"
         test_config_base64 = "${{ steps.conditional-env-vars.outputs.LOAD_TEST_BASE64_TOML_CONTENT }}"
+        [envs]
+        WASP_LOG_LEVEL = "info"
+        TEST_LOG_LEVEL = "info"
+        MERCURY_TEST_LOG_LEVEL = "info"
         EOF
 
         ./k8s-test-runner-linux-amd64 run -c config.toml
