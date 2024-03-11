@@ -1,0 +1,49 @@
+{{- range $i, $e := until (int .Values.jobs) }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: k8s-test-runner-{{ $.Release.Name }}-{{ $i }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    sync: "{{ $.Values.sync }}"
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      name: k8s-test-runner-{{ $.Release.Name }}-{{ $i }}
+      {{- with $.Values.labels }}
+      labels:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+        sync: {{ $.Values.sync }}
+      {{- with $.Values.annotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: k8s-test-runner
+          image: {{ $.Values.image }}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534 # UID for 'nobody' in Alpine      
+          args:
+            - -test.v
+            - -test.run
+            - "{{ $.Values.test.name }}"
+            - -test.timeout
+            - {{ $.Values.test.timeout }}
+          imagePullPolicy: {{ $.Values.imagePullPolicy }}
+          {{- with $.Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          env:
+          {{- range $key, $val := $.Values.env }}
+            - name: {{ $key }}
+              value: {{ quote $val }}
+          {{- end }}
+---
+{{- end }}

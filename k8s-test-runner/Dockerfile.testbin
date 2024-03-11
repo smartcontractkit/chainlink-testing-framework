@@ -1,0 +1,28 @@
+# Use a base image
+FROM alpine:latest
+
+# Set the working directory in the container
+WORKDIR /app
+
+# Declare the build argument
+ARG TEST_BINARY
+
+# Fail if TEST_BINARY is not set or is an empty string
+RUN if [ -z "$TEST_BINARY" ]; then echo "TEST_BINARY argument is required" >&2; exit 1; fi
+
+# Copy the binary into the container
+COPY $TEST_BINARY /app/testbin
+
+# Make the binary executable
+RUN chmod +x /app/testbin
+
+# Adjust permissions to ensure the non-root user can access the necessary files
+RUN chown -R nobody:nobody /app && chmod -R 755 /app
+
+# Set the user to 'nobody'
+USER nobody
+
+# Use the entrypoint script as the entry point
+ENTRYPOINT ["/app/testbin"]
+
+CMD []
