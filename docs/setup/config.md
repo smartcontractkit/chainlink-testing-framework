@@ -22,8 +22,8 @@ Location of this file can be overridden by setting a file path as the `FRAMEWORK
 # KEEP_ENVIRONMENTS=OnFail
 keep_environments: Never # Options: Always, OnFail, Never
 logging:
-    # panic=5, fatal=4, error=3, warn=2, info=1, debug=0, trace=-1
-    level: 0
+  # panic=5, fatal=4, error=3, warn=2, info=1, debug=0, trace=-1
+  level: 0
 
 # Specify the image and version of the Chainlink image you want to run tests against. Leave blank for default.
 chainlink_image: public.ecr.aws/chainlink/chainlink
@@ -38,7 +38,7 @@ This file handles the settings for each network you want to connect to. This is 
 Location of this file can be overridden by setting a file path as the `NETWORKS_CONFIG_FILE` environment variable. **The first private key listed will be considered the default one to use for deploying contracts and funding addresses**.
 
 ```yaml
-private_keys: &private_keys 
+private_keys: &private_keys
   private_keys: # Private keys that are used for simulated networks. These are publicly known keys for use only in simulated networks.
     - ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
     - 59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d
@@ -62,14 +62,14 @@ private_keys: &private_keys
     - df57089febbacf7ba0bc227dafbffa9fc08a93fdc68e1e42411a14efcf23656e
 
 selected_networks: # Selected network(s) for test execution
-  - "geth"
+  - 'geth'
 
-networks:
-  ... # See full file
+networks: ... # See full file
 ```
 
 Each network will have an identifier that can be listed in the `selected_networks` section.
 
+<!-- prettier-ignore-start -->
 ```yaml
 geth:                                 # Network identifier
   name: "Ethereum Geth dev"           # Human-readable name for network
@@ -85,6 +85,7 @@ geth:                                 # Network identifier
   gas_estimation_buffer: 10000        # How much gas to bump transaction an contract creations by (added to auto-estimations)
   block_gas_limit: 40000000           # How much gas each block of the network should be using
 ```
+<!-- prettier-ignore-end -->
 
 There are a couple values available for launching simulated Geth instances. If you choose them in your `selected_networks` list, they will launch with the following properties:
 
@@ -99,10 +100,10 @@ resources:
     memory: 1000Mi
 
 config_args:
-  "--dev.period": "1"
-  "--miner.threads": "1"
-  "--miner.gasprice": "10000000000"
-  "--miner.gastarget": "80000000000"
+  '--dev.period': '1'
+  '--miner.threads': '1'
+  '--miner.gasprice': '10000000000'
+  '--miner.gastarget': '80000000000'
 ```
 
 ### `geth_performance`
@@ -119,10 +120,10 @@ resources:
     memory: 4096Mi
 
 config_args:
-  "--dev.period": "1"
-  "--miner.threads": "4"
-  "--miner.gasprice": "10000000000"
-  "--miner.gastarget": "30000000000"
+  '--dev.period': '1'
+  '--miner.threads': '4'
+  '--miner.gasprice': '10000000000'
+  '--miner.gastarget': '30000000000'
 ```
 
 ### `geth_realistic`
@@ -139,8 +140,8 @@ resources:
     memory: 4096Mi
 
 config_args:
-  "--dev.period": "14"
-  "--miner.threads": "4"
-  "--miner.gasprice": "10000000000"
-  "--miner.gastarget": "15000000000"
+  '--dev.period': '14'
+  '--miner.threads': '4'
+  '--miner.gasprice': '10000000000'
+  '--miner.gastarget': '15000000000'
 ```
