@@ -30,6 +30,8 @@ jobs:
           # disabled, because we want to use a multiline output of go list command
           # shellcheck disable=SC2046
           go test -timeout 5m -json -cover -covermode=count -coverprofile=unit-test-coverage.out $(go list ./... | grep -v /k8s/e2e/ | grep -v /k8s/examples/ | grep -v /docker/test_env) 2>&1 | tee /tmp/gotest.log | go run ./tools/cmd/gotestloghelper/main.go -ci
+      - name: Improved output
+        run: cat /tmp/gotest.log | go run ./tools/cmd/gotestloghelper/main.go -tlogprefix=true -json -color
       - name: Code Coverage
         uses: codecov/codecov-action@v3
         with:
