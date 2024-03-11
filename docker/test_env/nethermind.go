@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 
@@ -18,6 +20,8 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 )
+
+const defaultNethermindImage = "nethermind/nethermind:1.25.1"
 
 type Nethermind struct {
 	EnvComponent
@@ -34,13 +38,7 @@ type Nethermind struct {
 }
 
 func NewNethermind(networks []string, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) (*Nethermind, error) {
-	// currently it uses 1.25.1
-	dockerImage, err := mirror.GetImage("nethermind/nethermind:1")
-	if err != nil {
-		return nil, err
-	}
-
-	parts := strings.Split(dockerImage, ":")
+	parts := strings.Split(defaultNethermindImage, ":")
 	g := &Nethermind{
 		EnvComponent: EnvComponent{
 			ContainerName:    fmt.Sprintf("%s-%s", "nethermind", uuid.NewString()[0:8]),
@@ -55,6 +53,8 @@ func NewNethermind(networks []string, generatedDataHostDir string, consensusLaye
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
+	// if the internal docker repo is set then add it to the version
+	g.EnvComponent.ContainerImage = mirror.AddMirrorToImageIfSet(g.EnvComponent.ContainerImage)
 	return g, nil
 }
 
@@ -82,9 +82,6 @@ func (g *Nethermind) StartContainer() (blockchain.EVMNetwork, error) {
 	}
 
 	host, err := GetHost(context.Background(), ct)
-	if err != nil {
-		return blockchain.EVMNetwork{}, err
-	}
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
@@ -187,13 +184,13 @@ func (g *Nethermind) getContainerRequest(networks []string) (*tc.ContainerReques
 			"--Network.OnlyStaticPeers=true",
 			"--HealthChecks.Enabled=true", // default slug /health
 		},
-		Mounts: tc.ContainerMounts{
-			tc.ContainerMount{
-				Source: tc.GenericBindMountSource{
-					HostPath: g.generatedDataHostDir,
-				},
-				Target: tc.ContainerMountTarget(GENERATED_DATA_DIR_INSIDE_CONTAINER),
-			},
+		HostConfigModifier: func(hostConfig *container.HostConfig) {
+			hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
+				Type:     mount.TypeBind,
+				Source:   g.generatedDataHostDir,
+				Target:   GENERATED_DATA_DIR_INSIDE_CONTAINER,
+				ReadOnly: false,
+			})
 		},
 		LifecycleHooks: []tc.ContainerLifecycleHooks{
 			{

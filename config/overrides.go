@@ -22,6 +22,18 @@ func MustConfigOverrideChainlinkVersion(config *ChainlinkImageConfig, target int
 			panic(err)
 		}
 	}
+
+	if config.PostgresVersion != nil && *config.PostgresVersion != "" {
+		if err := mergo.Merge(target, map[string]interface{}{
+			"db": map[string]interface{}{
+				"image": map[string]interface{}{
+					"version": *config.PostgresVersion,
+				},
+			},
+		}, mergo.WithOverride); err != nil {
+			panic(err)
+		}
+	}
 }
 
 // MightConfigOverridePyroscope will override the pyroscope config in property maps

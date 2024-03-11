@@ -683,6 +683,76 @@ var (
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
 		Timeout:                   blockchain.StrDuration{Duration: time.Minute},
+		MinimumConfirmations:      0,
+		GasEstimationBuffer:       1000,
+		FinalityTag:               true,
+		DefaultGasLimit:           6000000,
+	}
+
+	NexonTest blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Nexon Test",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.EthereumClientImplementation,
+		ChainID:                   595581,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: time.Minute},
+		MinimumConfirmations:      0,
+		GasEstimationBuffer:       1000,
+		FinalityTag:               true,
+		DefaultGasLimit:           6000000,
+	}
+
+	NexonQa blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Nexon Qa",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.EthereumClientImplementation,
+		ChainID:                   807424,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: time.Minute},
+		MinimumConfirmations:      0,
+		GasEstimationBuffer:       1000,
+		FinalityTag:               true,
+		DefaultGasLimit:           6000000,
+	}
+
+	NexonStage blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Nexon Stage",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.EthereumClientImplementation,
+		ChainID:                   847799,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: time.Minute},
+		MinimumConfirmations:      0,
+		GasEstimationBuffer:       1000,
+		FinalityTag:               true,
+		DefaultGasLimit:           6000000,
+	}
+
+	GnosisChiado blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Gnosis Chiado",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.GnosisClientImplementation,
+		ChainID:                   10200,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       1000,
+		FinalityTag:               true,
+		DefaultGasLimit:           6000000,
+	}
+
+	GnosisMainnet blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Gnosis Mainnet",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.GnosisClientImplementation,
+		ChainID:                   100,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       1000,
 		FinalityTag:               true,
@@ -737,6 +807,11 @@ var (
 		"KROMA_SEPOLIA":         KromaSepolia,
 		"KROMA_MAINNET":         KromaMainnet,
 		"NEXON_DEV":             NexonDev,
+		"NEXON_TEST":            NexonTest,
+		"NEXON_QA":              NexonQa,
+		"NEXON_STAGE":           NexonStage,
+		"GNOSIS_CHIADO":         GnosisChiado,
+		"GNOSIS_MAINNET":        GnosisMainnet,
 	}
 )
 
@@ -745,56 +820,84 @@ func MustGetSelectedNetworkConfig(networkCfg *config.NetworkConfig) []blockchain
 	if networkCfg == nil || len(networkCfg.SelectedNetworks) == 0 {
 		panic(fmt.Errorf("network config has no or empty selected networks. Use valid network(s) separated by comma from %v", getValidNetworkKeys()))
 	}
-	return MustSetNetworks(*networkCfg)
+	nets, err := SetNetworks(*networkCfg)
+	if err != nil {
+		panic(err)
+	}
+	return nets
 }
 
-func MustSetNetworks(networkCfg config.NetworkConfig) []blockchain.EVMNetwork {
+func SetNetworks(networkCfg config.NetworkConfig) ([]blockchain.EVMNetwork, error) {
 	networks := make([]blockchain.EVMNetwork, 0)
 	selectedNetworks := networkCfg.SelectedNetworks
 	for i := range selectedNetworks {
 		var walletKeys, httpUrls, wsUrls []string
 		networkName := strings.ToUpper(selectedNetworks[i])
-		if !strings.Contains(networkName, "SIMULATED") {
+		forked := false
+		if networkCfg.ForkConfigs != nil {
+			_, forked = networkCfg.ForkConfigs[networkName]
+		}
+		// if network is not simulated or forked, use the rpc urls and wallet keys from config
+		if !strings.Contains(networkName, "SIMULATED") && !forked {
 			var ok bool
 			wsUrls, ok = networkCfg.RpcWsUrls[selectedNetworks[i]]
 			if !ok {
-				panic(fmt.Errorf("no rpc ws urls found in config for '%s' network", selectedNetworks[i]))
+				return nil, fmt.Errorf("no rpc ws urls found in config for '%s' network", selectedNetworks[i])
 			}
 
 			httpUrls, ok = networkCfg.RpcHttpUrls[selectedNetworks[i]]
 			if !ok {
-				panic(fmt.Errorf("no rpc http urls found in config for '%s' network", selectedNetworks[i]))
+				return nil, fmt.Errorf("no rpc http urls found in config for '%s' network", selectedNetworks[i])
 			}
 
 			walletKeys, ok = networkCfg.WalletKeys[selectedNetworks[i]]
 			if !ok {
-				panic(fmt.Errorf("no wallet keys found in config for '%s' network", selectedNetworks[i]))
+				return nil, fmt.Errorf("no wallet keys found in config for '%s' network", selectedNetworks[i])
 			}
 		}
-		network, err := NewEVMNetwork(networkName, walletKeys, httpUrls, wsUrls)
-		if err != nil {
-			panic(err)
+		// if evm_network config is found, use it
+		if networkCfg.EVMNetworks != nil {
+			if network, ok := networkCfg.EVMNetworks[networkName]; ok && network != nil {
+				if err := NewEVMNetwork(network, walletKeys, httpUrls, wsUrls); err != nil {
+					return nil, err
+				}
+				networks = append(networks, *network)
+				continue
+			}
 		}
-		networks = append(networks, network)
+		// if there is no evm_network config, use the known networks to find the network config from the map
+		if knownNetwork, valid := MappedNetworks[networkName]; valid {
+			err := NewEVMNetwork(&knownNetwork, walletKeys, httpUrls, wsUrls)
+			if err != nil {
+				return nil, err
+			}
+			networks = append(networks, knownNetwork)
+			continue
+		}
+		// if network is not found in known networks or in toml's evm_network config, throw an error
+		return nil, fmt.Errorf("no evm_network config found in network config. "+
+			"network '%s' is not a valid network. "+
+			"Use valid network(s) separated by comma from %v "+
+			"or add the evm_network details to the network config file",
+			selectedNetworks[i], getValidNetworkKeys())
 	}
-	return networks
+	return networks, nil
 }
 
-func NewEVMNetwork(networkKey string, walletKeys, httpUrls, wsUrls []string) (blockchain.EVMNetwork, error) {
-	if network, valid := MappedNetworks[networkKey]; valid {
-		// Overwrite network default values
-		if len(httpUrls) > 0 {
-			network.HTTPURLs = httpUrls
-		}
-		if len(wsUrls) > 0 {
-			network.URLs = wsUrls
-		}
-		if len(walletKeys) > 0 {
-			setKeys(&network, walletKeys)
-		}
-		return network, nil
+// NewEVMNetwork sets the network's private key(s) and rpc urls
+func NewEVMNetwork(network *blockchain.EVMNetwork, walletKeys, httpUrls, wsUrls []string) error {
+	if len(httpUrls) > 0 {
+		network.HTTPURLs = httpUrls
 	}
-	return blockchain.EVMNetwork{}, fmt.Errorf("network key: '%v' is invalid. Use a valid network(s) separated by comma from %v", networkKey, getValidNetworkKeys())
+	if len(wsUrls) > 0 {
+		network.URLs = wsUrls
+	}
+	if len(walletKeys) > 0 {
+		if err := setKeys(network, walletKeys); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func getValidNetworkKeys() []string {
@@ -806,7 +909,7 @@ func getValidNetworkKeys() []string {
 }
 
 // setKeys sets a network's private key(s) based on env vars
-func setKeys(network *blockchain.EVMNetwork, walletKeys []string) {
+func setKeys(network *blockchain.EVMNetwork, walletKeys []string) error {
 	for keyIndex := range walletKeys { // Sanitize keys of possible `0x` prefix
 		// Trim some common addons
 		walletKeys[keyIndex] = strings.Trim(walletKeys[keyIndex], "\"'")
@@ -820,11 +923,12 @@ func setKeys(network *blockchain.EVMNetwork, walletKeys []string) {
 	for _, key := range network.PrivateKeys {
 		publicKey, err := privateKeyToAddress(key)
 		if err != nil {
-			log.Fatal().Err(err).Msg("Error reading private key")
+			return fmt.Errorf("error converting private key to public key: %w", err)
 		}
 		publicKeys = append(publicKeys, publicKey)
 	}
 	log.Info().Interface("Funding Addresses", publicKeys).Msg("Read Network Keys")
+	return nil
 }
 
 func privateKeyToAddress(privateKeyString string) (string, error) {

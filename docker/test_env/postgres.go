@@ -22,6 +22,8 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
+const defaultPostgresImage = "postgres:15.6"
+
 type PostgresDb struct {
 	EnvComponent
 	User         string   `json:"user"`
@@ -77,16 +79,12 @@ func WithContainerEnv(key, value string) PostgresDbOption {
 }
 
 func NewPostgresDb(networks []string, opts ...PostgresDbOption) (*PostgresDb, error) {
-	image, err := mirror.GetImage("postgres")
-	if err != nil {
-		return nil, err
-	}
-	parts := strings.Split(image, ":")
+	imageParts := strings.Split(defaultPostgresImage, ":")
 	pg := &PostgresDb{
 		EnvComponent: EnvComponent{
 			ContainerName:    fmt.Sprintf("%s-%s", "postgres-db", uuid.NewString()[0:8]),
-			ContainerImage:   parts[0],
-			ContainerVersion: parts[1],
+			ContainerImage:   imageParts[0],
+			ContainerVersion: imageParts[1],
 			ContainerEnvs:    map[string]string{},
 			Networks:         networks,
 		},
@@ -101,6 +99,9 @@ func NewPostgresDb(networks []string, opts ...PostgresDbOption) (*PostgresDb, er
 	for _, opt := range opts {
 		opt(pg)
 	}
+
+	// if the internal docker repo is set then add it to the version
+	pg.EnvComponent.ContainerImage = mirror.AddMirrorToImageIfSet(pg.EnvComponent.ContainerImage)
 
 	// Set default container envs
 	pg.ContainerEnvs["POSTGRES_USER"] = pg.User
@@ -122,7 +123,7 @@ func (pg *PostgresDb) StartContainer() error {
 	c, err := docker.StartContainerWithRetry(pg.l, tc.GenericContainerRequest{
 		ContainerRequest: *req,
 		Started:          true,
-		Reuse:            true,
+		Reuse:            false,
 		Logger:           l,
 	})
 	if err != nil {

@@ -57,9 +57,9 @@ defaultNetwork := networks.Default
 
 These common resources consist of
 
-* A simulated Geth instance
-* A basic mock server that serves as a mock adapter for Chainlink nodes
-* A specified number of chainlink nodes
+- A simulated Geth instance
+- A basic mock server that serves as a mock adapter for Chainlink nodes
+- A specified number of chainlink nodes
 
 ## Test Tear Down
 
@@ -67,7 +67,7 @@ When your test is done, you'll want to have a way to tear down the test environm
 
 ```go
 // Launch our environment
-env, err := environment.DeployOrLoadEnvironment( 
+env, err := environment.DeployOrLoadEnvironment(
   environment.NewChainlinkConfig(environment.ChainlinkReplicas(1, nil), "chainlink-test-setup"),
   tools.ChartsRoot,
 )

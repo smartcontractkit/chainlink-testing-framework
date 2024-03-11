@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 
@@ -22,6 +24,8 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
+
+const defaultGeth2Image = "ethereum/client-go:v1.13.10"
 
 type Geth2 struct {
 	EnvComponent
@@ -39,13 +43,7 @@ type Geth2 struct {
 }
 
 func NewGeth2(networks []string, chainConfg *EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) (*Geth2, error) {
-	// currently it uses v1.13.10
-	dockerImage, err := mirror.GetImage("ethereum/client-go:v1.13")
-	if err != nil {
-		return nil, err
-	}
-
-	parts := strings.Split(dockerImage, ":")
+	parts := strings.Split(defaultGeth2Image, ":")
 	g := &Geth2{
 		EnvComponent: EnvComponent{
 			ContainerName:    fmt.Sprintf("%s-%s", "geth2", uuid.NewString()[0:8]),
@@ -62,6 +60,8 @@ func NewGeth2(networks []string, chainConfg *EthereumChainConfig, generatedDataH
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
+	// if the internal docker repo is set then add it to the version
+	g.EnvComponent.ContainerImage = mirror.AddMirrorToImageIfSet(g.EnvComponent.ContainerImage)
 	return g, nil
 }
 
@@ -89,9 +89,6 @@ func (g *Geth2) StartContainer() (blockchain.EVMNetwork, error) {
 	}
 
 	host, err := GetHost(testcontext.Get(g.t), ct)
-	if err != nil {
-		return blockchain.EVMNetwork{}, err
-	}
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
@@ -197,13 +194,13 @@ func (g *Geth2) getContainerRequest(networks []string) (*tc.ContainerRequest, er
 				FileMode:          0744,
 			},
 		},
-		Mounts: tc.ContainerMounts{
-			tc.ContainerMount{
-				Source: tc.GenericBindMountSource{
-					HostPath: g.generatedDataHostDir,
-				},
-				Target: tc.ContainerMountTarget(GENERATED_DATA_DIR_INSIDE_CONTAINER),
-			},
+		HostConfigModifier: func(hostConfig *container.HostConfig) {
+			hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
+				Type:     mount.TypeBind,
+				Source:   g.generatedDataHostDir,
+				Target:   GENERATED_DATA_DIR_INSIDE_CONTAINER,
+				ReadOnly: false,
+			})
 		},
 		LifecycleHooks: []tc.ContainerLifecycleHooks{
 			{
@@ -221,7 +218,7 @@ func (g *Geth2) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duratio
 
 func (g *Geth2) buildInitScript() (string, error) {
 	initTemplate := `#!/bin/bash
-	mkdir -p {{.ExecutionDir}} 
+	mkdir -p {{.ExecutionDir}}
 
 	# copy general keystore to execution directory, because Geth doesn't allow to specify keystore location
 	echo "Copying keystore to {{.ExecutionDir}}/keystore"

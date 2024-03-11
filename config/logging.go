@@ -68,8 +68,8 @@ func (l *LogStreamConfig) Validate() error {
 type LokiConfig struct {
 	TenantId    *string `toml:"tenant_id"`
 	Endpoint    *string `toml:"endpoint"`
-	BasicAuth   *string `toml:"basic_auth"`
-	BearerToken *string `toml:"bearer_token"`
+	BasicAuth   *string `toml:"basic_auth_secret"`
+	BearerToken *string `toml:"bearer_token_secret"`
 }
 
 // Validate checks that the loki config is valid, which means that
@@ -90,7 +90,7 @@ func (l *LokiConfig) Validate() error {
 type GrafanaConfig struct {
 	BaseUrl      *string `toml:"base_url"`
 	DashboardUrl *string `toml:"dashboard_url"`
-	BearerToken  *string `toml:"bearer_token"`
+	BearerToken  *string `toml:"bearer_token_secret"`
 }
 
 // Validate checks that the grafana config is valid, which means that

@@ -17,3 +17,23 @@ anvil:
   forkComputeUnitsPerSecond: "330"
   # forkNoRateLimit: "true"
 ```
+
+By default ingress is disabled, so remember to enable it in `values.yaml`.
+Sample command:
+```bash
+export RELEASE_NAME="your-release-name"
+export NAMESPACE="your-namespace"
+export INGRESS_BASE_DOMAIN="your-ingress-base-domain"
+export INGRESS_CERT_ARN="your-ingress-certificate"
+export INGRESS_CIDRS="allowed-cidrs"
+
+helm install "${RELEASE_NAME}" . -f ./values.yaml \
+--set ingress.annotation_certificate_arn="${INGRESS_CERT_ARN}" \
+--set "ingress.hosts[0].host"="${NAMESPACE}-anvil.${INGRESS_BASE_DOMAIN}" \
+--set "ingress.annotation_group_name"="${NAMESPACE}" \
+--set "ingress.enabled"=true \
+--set "networkPolicyDefault.ingress.allowCustomCidrs"=true \
+--set "networkPolicyDefault.ingress.customCidrs"="${INGRESS_CIDRS}"
+# to override default chain id uncomment the following line
+# --set "anvil.chainId"="2337"
+```

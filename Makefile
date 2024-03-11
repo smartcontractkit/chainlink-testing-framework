@@ -43,6 +43,7 @@ ifeq ($(OSFLAG),$(OSX))
 	asdf plugin add k3d https://github.com/spencergilbert/asdf-k3d.git || true
 	asdf plugin add act https://github.com/grimoh/asdf-act.git || true
 	asdf plugin add golangci-lint https://github.com/hypnoglow/asdf-golangci-lint.git || true
+	asdf plugin add gcloud https://github.com/jthegedus/asdf-gcloud
 	asdf plugin add actionlint || true
 	asdf plugin add shellcheck || true
 	asdf plugin-add yarn || true

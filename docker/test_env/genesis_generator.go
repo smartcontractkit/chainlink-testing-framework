@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -18,6 +20,8 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 )
 
+const defaultGenisisGeneratorImage = "tofelb/ethereum-genesis-generator:2.0.5"
+
 type EthGenesisGeneretor struct {
 	EnvComponent
 	chainConfig          EthereumChainConfig
@@ -27,13 +31,7 @@ type EthGenesisGeneretor struct {
 }
 
 func NewEthGenesisGenerator(chainConfig EthereumChainConfig, generatedDataHostDir string, opts ...EnvComponentOption) (*EthGenesisGeneretor, error) {
-	// currently it uses 2.0.5
-	dockerImage, err := mirror.GetImage("tofelb/ethereum-genesis-generator:2.0.5")
-	if err != nil {
-		return nil, err
-	}
-
-	parts := strings.Split(dockerImage, ":")
+	parts := strings.Split(defaultGenisisGeneratorImage, ":")
 	g := &EthGenesisGeneretor{
 		EnvComponent: EnvComponent{
 			ContainerName:    fmt.Sprintf("%s-%s", "eth-genesis-generator", uuid.NewString()[0:8]),
@@ -48,6 +46,8 @@ func NewEthGenesisGenerator(chainConfig EthereumChainConfig, generatedDataHostDi
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
+	// if the internal docker repo is set then add it to the version
+	g.EnvComponent.ContainerImage = mirror.AddMirrorToImageIfSet(g.EnvComponent.ContainerImage)
 	return g, nil
 }
 
@@ -156,13 +156,13 @@ func (g *EthGenesisGeneretor) getContainerRequest(networks []string) (*tc.Contai
 				FileMode:          0644,
 			},
 		},
-		Mounts: tc.ContainerMounts{
-			tc.ContainerMount{
-				Source: tc.GenericBindMountSource{
-					HostPath: g.generatedDataHostDir,
-				},
-				Target: tc.ContainerMountTarget(GENERATED_DATA_DIR_INSIDE_CONTAINER),
-			},
+		HostConfigModifier: func(hostConfig *container.HostConfig) {
+			hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
+				Type:     mount.TypeBind,
+				Source:   g.generatedDataHostDir,
+				Target:   GENERATED_DATA_DIR_INSIDE_CONTAINER,
+				ReadOnly: false,
+			})
 		},
 		LifecycleHooks: []tc.ContainerLifecycleHooks{
 			{

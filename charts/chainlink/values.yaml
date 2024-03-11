@@ -14,7 +14,7 @@ chainlink:
 db:
   image:
     image: postgres
-    version: 11.15
+    version: 12.18
   stateful: true
   capacity: 1Gi
   resources:

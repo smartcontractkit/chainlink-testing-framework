@@ -2,6 +2,7 @@
 
 You can build a `Dockerfile` to run exactly the same environment interactions inside k8s in case you need to run long-running tests
 Base image is [here](Dockerfile.base)
+
 ```Dockerfile
 FROM <account number>.dkr.ecr.us-west-2.amazonaws.com/test-base-image:latest
 COPY . .
@@ -9,15 +10,21 @@ RUN env GOOS=linux GOARCH=amd64 go build -o test ./examples/remote-test-runner/e
 RUN chmod +x ./test
 ENTRYPOINT ["./test"]
 ```
+
 Build and upload it using the "latest" tag for the test-base-image
+
 ```bash
 build_test_image tag=someTag
 ```
+
 or if you want to specify a test-base-image tag
+
 ```bash
 build_test_image tag=someTag base_tag=latest
 ```
+
 Then run it
+
 ```bash
 # all environment variables with a prefix TEST_ would be provided for k8s job
 export TEST_ENV_VAR=myTestVarForAJob
