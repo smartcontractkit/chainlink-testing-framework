@@ -1,3 +1,6 @@
+//go:build erigon_tests
+// +build erigon_tests
+
 package test_env
 
 import (

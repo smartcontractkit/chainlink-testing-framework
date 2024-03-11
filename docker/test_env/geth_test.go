@@ -1,3 +1,6 @@
+//go:build geth_tests
+// +build geth_tests
+
 package test_env
 
 import (

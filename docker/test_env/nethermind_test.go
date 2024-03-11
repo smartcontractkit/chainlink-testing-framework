@@ -1,3 +1,6 @@
+//go:build nethermind_tests
+// +build nethermind_tests
+
 package test_env
 
 import (

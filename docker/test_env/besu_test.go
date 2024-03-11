@@ -1,3 +1,6 @@
+//go:build besu_tests
+// +build besu_tests
+
 package test_env
 
 import (
