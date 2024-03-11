@@ -13,6 +13,7 @@ import (
 
 type Runner struct {
 	Namespace               string            `toml:"namespace" validate:"required"`
+	RBACRoleName            string            `toml:"rbac_role_name" validate:"required"`
 	SyncValue               string            `toml:"sync_value"` // Random if not set
 	ImageRegistryURL        string            `toml:"image_registry_url" envconfig:"IMAGE_REGISTRY_URL" validate:"required"`
 	ImageName               string            `toml:"image_name" validate:"required"`

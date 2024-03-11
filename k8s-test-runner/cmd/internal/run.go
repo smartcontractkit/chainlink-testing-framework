@@ -75,8 +75,12 @@ func getChartOverrides(c config.Runner) map[string]interface{} {
 
 	return map[string]interface{}{
 		"namespace": c.Namespace,
-		"jobs":      c.JobCount,
-		"sync":      c.SyncValue,
+		"rbac": map[string]interface{}{
+			"roleName":           c.RBACRoleName,
+			"serviceAccountName": "default",
+		},
+		"jobs": c.JobCount,
+		"sync": c.SyncValue,
 		"test": map[string]interface{}{
 			"name":    c.TestName, // Set this to your specific test name
 			"timeout": c.TestTimeout,

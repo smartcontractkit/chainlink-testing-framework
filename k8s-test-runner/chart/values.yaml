@@ -25,3 +25,8 @@ resources:
 nodeSelector: {}
 tolerations: []
 affinity: {}
+
+# Role and RoleBinding for RBAC
+rbac:
+  roleName: ''
+  serviceAccountName: default

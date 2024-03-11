@@ -1,7 +1,7 @@
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: wasp-role
+  name: {{ .Values.rbac.roleName }}
 rules:
   - apiGroups:
       - ''
@@ -15,11 +15,11 @@ rules:
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: wasp-role
+  name: {{ .Values.rbac.roleName }}
 subjects:
   - kind: ServiceAccount
-    name: default
+    name: {{ .Values.rbac.serviceAccountName }}
 roleRef:
   kind: Role
-  name: wasp-role
+  name: {{ .Values.rbac.roleName }}
   apiGroup: rbac.authorization.k8s.io
