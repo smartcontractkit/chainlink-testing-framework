@@ -2,7 +2,7 @@
 layout: default
 title: Chainlink Testing Framework
 nav_order: 1
-description: "A general blockchain integration testing framework geared towards Chainlink projects"
+description: 'A general blockchain integration testing framework geared towards Chainlink projects'
 permalink: /
 ---
 
@@ -22,5 +22,5 @@ Here you'll find some guidelines on writing blockchain tests using this framewor
 
 Some notable packages we use include:
 
-* [zerolog](https://github.com/rs/zerolog)
-* [Kubernetes](https://github.com/kubernetes/kubernetes)
+- [zerolog](https://github.com/rs/zerolog)
+- [Kubernetes](https://github.com/kubernetes/kubernetes)
