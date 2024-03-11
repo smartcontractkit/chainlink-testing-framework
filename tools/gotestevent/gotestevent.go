@@ -133,11 +133,6 @@ func (p TestPackage) Print(c *TestLogModifierConfig) {
 		l := log
 		l.Print()
 	}
-
-	// end the group if we are in CI mode
-	if ptr.Val(c.CI) {
-		github.EndGroup()
-	}
 }
 
 func (p TestPackage) printTestsInOrder(c *TestLogModifierConfig) {
