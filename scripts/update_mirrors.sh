@@ -89,7 +89,7 @@ push_latest_images_for_expression_from_dockerhub() {
         # Handle GCR images
         images=$(gcloud container images list-tags gcr.io/prysmaticlabs/prysm/validator --limit="${page_size}" --filter='tags:v*' --format=json | jq -r '.[].tags[]' | grep -E "${image_expression}")
     else
-        images=$(curl -s "https://hub.docker.com/v2/repositories/${image_name}/tags/?page_size=${page_size}" | jq -r '.results[].name' | grep -E "${image_expression}")
+        images=$(fetch_images_from_dockerhub "${image_name}" "${image_expression}" "${page_size}")
     fi
     set -e
 
@@ -108,6 +108,32 @@ push_latest_images_for_expression_from_dockerhub() {
         image_list+=("${image_name}:${line}")
     done <<< "$images"
     push_images_in_list "${image_list[@]}"
+}
+
+# Function to fetch images from Docker Hub with pagination support
+fetch_images_from_dockerhub() {
+    local image_name=$1
+    local image_expression=$2
+    local desired_count=$3
+    local max_page_size=100  # Fixed maximum page size
+    local loop_count=0
+    local max_loops=$(( (desired_count + max_page_size - 1) / max_page_size ))  # Calculate max loops needed
+    local images=""
+    local next_url="https://hub.docker.com/v2/repositories/${image_name}/tags/?page_size=${max_page_size}"
+
+    while [ "$next_url" != "null" ] && [ "$loop_count" -lt "$max_loops" ]; do
+        response=$(curl -s "$next_url")
+        new_images=$(echo "$response" | jq -r '.results[].name' | grep -E "${image_expression}" | grep -v '^\s*$')
+        if [ -n "$new_images" ]; then
+            images+="$new_images"$'\n'
+        fi
+        next_url=$(echo "$response" | jq -r '.next')
+        loop_count=$((loop_count + 1))
+    done
+
+    # Ensure no trailing newlines
+    images=$(echo "$images" | grep -v '^\s*$')
+    echo "$images"
 }
 
 push_images_in_list() {
