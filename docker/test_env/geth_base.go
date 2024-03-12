@@ -104,6 +104,16 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, error) {
 	networkConfig.URLs = []string{g.ExternalWsUrl}
 	networkConfig.HTTPURLs = []string{g.ExternalHttpUrl}
 
+	comparableVersion, err := GetComparableVersionFromDockerImage(g.GetImageWithVersion())
+	if err != nil {
+		return blockchain.EVMNetwork{}, err
+	}
+
+	if comparableVersion >= 110 && comparableVersion < 111 {
+		// Geth v1.10.x will not set it itself if it's set 0, like later versions do
+		networkConfig.DefaultGasLimit = 9_000_000
+	}
+
 	g.l.Info().Str("containerName", g.ContainerName).
 		Msg("Started Geth PoS container")
 
