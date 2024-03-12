@@ -203,7 +203,7 @@ func (m *Client) WaitUntilJobsComplete(ctx context.Context, namespace, syncLabel
 				TimeoutSeconds: ptr.Int64(30), // query timeout
 			})
 			if err != nil {
-				log.Error().Err(err).Msg("Failed to list jobs, will retry...")
+				log.Error().Err(err).Str("labelSelector", labelSelector).Msg("Failed to list jobs, will retry...")
 				time.Sleep(pollingInterval)
 				continue
 			}

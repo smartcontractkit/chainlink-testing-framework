@@ -21,14 +21,12 @@ var Create = &cobra.Command{
 func init() {
 	Create.Flags().String("image-registry-url", "", "Image registry url (e.g. ECR url)")
 	Create.MarkFlagRequired("image-registry-url")
-	Create.Flags().String("image-tag", "", "Test name (e.g. mercury-load-test)")
-	Create.MarkFlagRequired("image-registry-url")
+	Create.Flags().String("image-name", "", "Image name (e.g. k8s-test-runner-binary)")
+	Create.MarkFlagRequired("image-name")
+	Create.Flags().String("image-tag", "", "Image tag (e.g. mercury-load-tests)")
+	Create.MarkFlagRequired("image-tag")
 	Create.Flags().String("test-runner-root-dir", "./", "Test runner root directory with default chart and Dockerfile.testbin")
 }
-
-var (
-	K8sTestRunnerImageName = "k8s-test-runner"
-)
 
 func createRunnerImageRunE(cmd *cobra.Command, args []string) error {
 	testPackage, err := filepath.Abs(args[0])
@@ -64,11 +62,16 @@ func createRunnerImageRunE(cmd *cobra.Command, args []string) error {
 
 	fmt.Print("Creating docker image for the test binary..\n")
 
+	imageName, err := cmd.Flags().GetString("image-name")
+	if err != nil {
+		return fmt.Errorf("error getting image name: %v", err)
+	}
 	imageTag, err := cmd.Flags().GetString("image-tag")
 	if err != nil {
-		return fmt.Errorf("error getting test name: %v", err)
+		return fmt.Errorf("error getting image tag: %v", err)
 	}
-	buildTestBinDockerImageCmd := exec.CommandContext(ctx, "docker", "build", "--platform", "linux/amd64", "-f", "Dockerfile.testbin", "--build-arg", "TEST_BINARY=testbin", "-t", fmt.Sprintf("%s:%s", K8sTestRunnerImageName, imageTag), ".")
+
+	buildTestBinDockerImageCmd := exec.CommandContext(ctx, "docker", "build", "--platform", "linux/amd64", "-f", "Dockerfile.testbin", "--build-arg", "TEST_BINARY=testbin", "-t", fmt.Sprintf("%s:%s", imageName, imageTag), ".")
 	buildTestBinDockerImageCmd.Dir = rootDirAbs
 
 	fmt.Printf("Running command from %s: %s\n", rootDirAbs, buildTestBinDockerImageCmd.String())
@@ -78,14 +81,14 @@ func createRunnerImageRunE(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("error building test binary image: %v, output: %s", err, buildTestBinDockerImageOutput)
 	}
 
-	fmt.Printf("Done. Created docker image %s:%s\n", K8sTestRunnerImageName, imageTag)
+	fmt.Printf("Done. Created docker image %s:%s\n", imageName, imageTag)
 
 	registryURL, err := cmd.Flags().GetString("image-registry-url")
 	if err != nil {
 		return fmt.Errorf("error getting ECR registry name: %v", err)
 	}
 
-	err = pushDockerImageToECR(ctx, "us-west-2", registryURL, K8sTestRunnerImageName, imageTag)
+	err = pushDockerImageToECR(ctx, "us-west-2", registryURL, imageName, imageTag)
 	if err != nil {
 		return fmt.Errorf("error pushing docker image to ECR: %v", err)
 	}
