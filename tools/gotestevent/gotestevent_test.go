@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/tools/flags"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/ptr"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
@@ -159,7 +160,7 @@ non-json-test-event-line
 			config: &TestLogModifierConfig{
 				IsJsonInput:      ptr.Ptr(true),
 				RemoveTLogPrefix: ptr.Ptr(true),
-				OnlyErrors:       ptr.Ptr(false),
+				OnlyErrors:       &flags.BoolFlag{IsSet: false, Value: false},
 				CI:               ptr.Ptr(false),
 			},
 
@@ -171,7 +172,7 @@ non-json-test-event-line
 			config: &TestLogModifierConfig{
 				IsJsonInput:      ptr.Ptr(true),
 				RemoveTLogPrefix: ptr.Ptr(true),
-				OnlyErrors:       ptr.Ptr(true),
+				OnlyErrors:       &flags.BoolFlag{IsSet: true, Value: true},
 				CI:               ptr.Ptr(false),
 			},
 
@@ -183,7 +184,7 @@ non-json-test-event-line
 			config: &TestLogModifierConfig{
 				IsJsonInput:      ptr.Ptr(true),
 				RemoveTLogPrefix: ptr.Ptr(true),
-				OnlyErrors:       ptr.Ptr(true),
+				OnlyErrors:       &flags.BoolFlag{IsSet: true, Value: true},
 				CI:               ptr.Ptr(true),
 			},
 
@@ -195,7 +196,7 @@ non-json-test-event-line
 			config: &TestLogModifierConfig{
 				IsJsonInput:      ptr.Ptr(true),
 				RemoveTLogPrefix: ptr.Ptr(true),
-				OnlyErrors:       ptr.Ptr(true),
+				OnlyErrors:       &flags.BoolFlag{IsSet: true, Value: true},
 				CI:               ptr.Ptr(false),
 			},
 
