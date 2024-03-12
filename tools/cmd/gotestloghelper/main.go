@@ -27,7 +27,7 @@ func main() {
 	}
 	config.RemoveTLogPrefix = flag.Bool("tlogprefix", false, "Set to true to remove the go test log prefix")
 	config.IsJsonInput = flag.Bool("json", false, "Set to true to enable parsing the input from a go test -json output")
-	config.OnlyErrors = flag.Bool("onlyerrors", false, "Set to true to only print tests that failed, not compatible without -json")
+	flag.Var(config.OnlyErrors, "onlyerrors", "Set to true to only print tests that failed, not compatible without -json")
 	config.Color = flag.Bool("color", false, "Set to true to enable color output")
 	config.CI = flag.Bool("ci", false, "Set to true to enable CI mode, which will print out the logs with groupings when combined with -json")
 	flag.Parse()

@@ -13,6 +13,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/clireader"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/clitext"
+	"github.com/smartcontractkit/chainlink-testing-framework/tools/flags"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/github"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/ptr"
 )
@@ -111,7 +112,7 @@ func (p TestPackage) Print(c *TestLogModifierConfig) {
 	// if package passed
 	if !p.Failed {
 		// if we only want errors then skip
-		if ptr.Val(c.OnlyErrors) {
+		if c.OnlyErrors.Value {
 			return
 		}
 		// right here is where we would print the passed package with elapsed time if needed
@@ -142,7 +143,7 @@ func (p TestPackage) printTestsInOrder(c *TestLogModifierConfig) {
 		shouldPrintLine := false
 		testFailed := SliceContains(p.FailedTests, test[0].Test)
 		// if we only want errors
-		if ptr.Val(c.OnlyErrors) && p.Failed {
+		if c.OnlyErrors.Value && p.Failed {
 			if len(p.FailedTests) == 0 {
 				// we had a package fail without a test fail, we want all the logs for triage in this case
 				shouldPrintLine = true
@@ -179,7 +180,7 @@ func (m TestPackageMap) InitPackageInMap(packageName string) {
 type TestLogModifierConfig struct {
 	IsJsonInput            *bool
 	RemoveTLogPrefix       *bool
-	OnlyErrors             *bool
+	OnlyErrors             *flags.BoolFlag
 	Color                  *bool
 	CI                     *bool
 	ShouldImmediatelyPrint bool
@@ -191,7 +192,7 @@ func (c *TestLogModifierConfig) Validate() error {
 	defaultConfig := &TestLogModifierConfig{
 		IsJsonInput:            ptr.Ptr(false),
 		RemoveTLogPrefix:       ptr.Ptr(false),
-		OnlyErrors:             ptr.Ptr(false),
+		OnlyErrors:             &flags.BoolFlag{},
 		Color:                  ptr.Ptr(false),
 		CI:                     ptr.Ptr(false),
 		ShouldImmediatelyPrint: false,
@@ -200,7 +201,7 @@ func (c *TestLogModifierConfig) Validate() error {
 	if err != nil {
 		return err
 	}
-	if ptr.Val(c.OnlyErrors) {
+	if c.OnlyErrors.Value {
 		if !ptr.Val(c.IsJsonInput) {
 			return fmt.Errorf("OnlyErrors flag is only valid when run with -json flag")
 		}
@@ -216,7 +217,9 @@ func SetupModifiers(c *TestLogModifierConfig) []TestLogModifier {
 		c.Color = ptr.Ptr(true)
 		c.IsJsonInput = ptr.Ptr(true)
 		c.ShouldImmediatelyPrint = false
-		c.OnlyErrors = ptr.Ptr(true)
+		if !c.OnlyErrors.IsSet {
+			c.OnlyErrors.Set("true")
+		}
 		c.RemoveTLogPrefix = ptr.Ptr(true)
 	}
 	if ptr.Val(c.RemoveTLogPrefix) {
@@ -246,7 +249,7 @@ func ParseTestEvent(b []byte) (*GoTestEvent, error) {
 	return te, err
 }
 
-const testRunPrefix = `^=== RUN   `
+const testRunPrefix = `^=== (RUN|PAUSE|CONT)   `
 
 var testRunPrefixRegexp = regexp.MustCompile(testRunPrefix)
 
