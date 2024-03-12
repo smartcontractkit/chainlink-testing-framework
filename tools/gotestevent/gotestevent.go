@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"regexp"
+	"strings"
 	"time"
 
 	"dario.cat/mergo"
@@ -30,6 +31,25 @@ const (
 	ActionPause  Action = "pause"
 	ActionCont   Action = "cont"
 )
+
+// regex strings
+const testRunPrefix = `^=== (RUN|PAUSE|CONT)   `
+
+//nolint:gosec
+const testPassFailPrefix = `^--- (PASS|FAIL):`
+
+//nolint:gosec
+const packagePassFailPrefix = `^(PASS|FAIL)\n$`
+const testingLogPrefix = `^(\s+)(\w+\.go:\d+: )`
+const testPanic = `^panic:.* (Test[A-Z]\w*)`
+const testErrorPrefix = `^\s+(Error\sTrace|Error|Test):\s+`
+
+var testRunPrefixRegexp = regexp.MustCompile(testRunPrefix)
+var testPassFailPrefixRegexp = regexp.MustCompile(testPassFailPrefix)
+var packagePassFailPrefixRegexp = regexp.MustCompile(packagePassFailPrefix)
+var removeTLogRegexp = regexp.MustCompile(testingLogPrefix)
+var testPanicRegexp = regexp.MustCompile(testPanic)
+var testErrorPrefixRegexp = regexp.MustCompile(testErrorPrefix)
 
 // Represntation of a go test -json event
 type GoTestEvent struct {
@@ -55,7 +75,7 @@ func (gte GoTestEvent) String() (string, error) {
 
 // Print prints the GoTestEvent to the console
 func (gte GoTestEvent) Print() {
-	if gte.Output != "" {
+	if strings.TrimSpace(gte.Output) != "" {
 		fmt.Print(gte.Output)
 	}
 }
@@ -67,19 +87,37 @@ func (t Test) Print(pass bool, c *TestLogModifierConfig) {
 	if !ptr.Val(c.IsJsonInput) {
 		return // not compatible with non json input
 	}
-	// start the group
-	if ptr.Val(c.CI) {
-		if pass {
-			StartGroupPass(t[0].Test, c)
-		} else {
-			StartGroupFail(t[0].Test, c)
+
+	// preprocess the logs
+	message := t[0].Test
+	toRemove := []int{}
+	for i, log := range t {
+		if testPassFailPrefixRegexp.MatchString(log.Output) {
+			message = log.Output
+			toRemove = append(toRemove, i)
 		}
 	}
 
+	// remove the logs that we don't want to print
+	for i := len(toRemove) - 1; i >= 0; i-- {
+		t = append(t[:toRemove[i]], t[toRemove[i]+1:]...)
+	}
+
+	// start the group
+	if ptr.Val(c.CI) {
+		if pass {
+			StartGroupPass(message, c)
+		} else {
+			StartGroupFail(message, c)
+		}
+	}
+	// else {
+	// 	fmt.Println(message)
+	// }
+
 	// print out the test logs
 	for _, log := range t {
-		l := log
-		l.Print()
+		log.Print()
 	}
 
 	// end the group if we are in CI mode
@@ -87,6 +125,10 @@ func (t Test) Print(pass bool, c *TestLogModifierConfig) {
 		github.EndGroup()
 	}
 }
+
+const packageOkFailPrefix = `^(ok|FAIL)\s*\t`
+
+var packageOkFailPrefixRegexp = regexp.MustCompile(packageOkFailPrefix)
 
 type TestPackage struct {
 	Name        string
@@ -97,9 +139,16 @@ type TestPackage struct {
 	PanicTests  []string
 	Failed      bool
 	Elapsed     float64
+	Message     string
 }
 
 func (p *TestPackage) AddTestEvent(te *GoTestEvent) {
+	// stop noise from being added to the logs
+	if testRunPrefixRegexp.MatchString(te.Output) ||
+		packagePassFailPrefixRegexp.MatchString(te.Output) {
+		return
+	}
+
 	if _, ok := p.TestLogs[te.Test]; !ok {
 		p.TestLogs[te.Test] = []GoTestEvent{}
 		p.TestOrder = append(p.TestOrder, te.Test)
@@ -118,12 +167,12 @@ func (p TestPackage) Print(c *TestLogModifierConfig) {
 		// right here is where we would print the passed package with elapsed time if needed
 	}
 
-	// start package group
+	// Add color to the output if needed
 	if ptr.Val(c.CI) || ptr.Val(c.Color) {
 		if p.Failed {
-			fmt.Printf("FAIL  \t%s\t%f\n", clitext.Color(clitext.ColorRed, p.Name), p.Elapsed)
+			fmt.Print(clitext.Color(clitext.ColorRed, p.Message))
 		} else {
-			fmt.Printf("ok  \t%s\t%f\n", clitext.Color(clitext.ColorGreen, p.Name), p.Elapsed)
+			fmt.Print(clitext.Color(clitext.ColorGreen, p.Message))
 		}
 	}
 
@@ -131,8 +180,7 @@ func (p TestPackage) Print(c *TestLogModifierConfig) {
 
 	// now print the non test logs for the package
 	for _, log := range p.NonTestLogs {
-		l := log
-		l.Print()
+		log.Print()
 	}
 }
 
@@ -216,7 +264,7 @@ func (c *TestLogModifierConfig) Validate() error {
 
 // SetupModifiers sets up the modifiers based on the flags provided
 func SetupModifiers(c *TestLogModifierConfig) []TestLogModifier {
-	modifiers := []TestLogModifier{RemoveGeneralNoise}
+	modifiers := []TestLogModifier{}
 	if ptr.Val(c.CI) {
 		c.Color = ptr.Ptr(true)
 		c.IsJsonInput = ptr.Ptr(true)
@@ -253,25 +301,6 @@ func ParseTestEvent(b []byte) (*GoTestEvent, error) {
 	return te, err
 }
 
-const testRunPrefix = `^=== (RUN|PAUSE|CONT)   `
-
-var testRunPrefixRegexp = regexp.MustCompile(testRunPrefix)
-
-func RemoveGeneralNoise(te *GoTestEvent, _ *TestLogModifierConfig) error {
-	if te.Action == ActionOutput && len(te.Output) > 0 {
-		if testRunPrefixRegexp.MatchString(te.Output) {
-			te.Output = ""
-		}
-	}
-	return nil
-}
-
-const testingLogPrefix = `^(\s+)(\w+\.go:\d+: )`
-const testPanic = `^panic:.* (Test[A-Z]\w*)`
-
-var removeTLogRegexp = regexp.MustCompile(testingLogPrefix)
-var testPanicRegexp = regexp.MustCompile(testPanic)
-
 // RemoveTestLogPrefix is a TestLogModifier that takes a GoTestEvent and removes the test log prefix
 func RemoveTestLogPrefix(te *GoTestEvent, _ *TestLogModifierConfig) error {
 	if te.Action == ActionOutput && len(te.Output) > 0 {
@@ -282,16 +311,10 @@ func RemoveTestLogPrefix(te *GoTestEvent, _ *TestLogModifierConfig) error {
 	return nil
 }
 
-const testErrorPrefix = `^\s+(Error\sTrace|Error|Test):\s+`
-
-var testErrorPrefixRegexp = regexp.MustCompile(testErrorPrefix)
-
 func HighlightErrorOutput(te *GoTestEvent, _ *TestLogModifierConfig) error {
 	if te.Action == ActionOutput && len(te.Output) > 0 {
 		if testErrorPrefixRegexp.MatchString(te.Output) {
-			// fmt.Printf("Matched %s\n", te.Output)
 			te.Output = clitext.Color(clitext.ColorRed, te.Output)
-			// fmt.Printf("After %s\n", te.Output)
 		}
 	}
 	return nil
@@ -333,7 +356,24 @@ func JsonTestOutputToStandard(te *GoTestEvent, c *TestLogModifierConfig) error {
 		delete(c.TestPackageMap, te.Package)
 		return nil
 	} else {
-		p.NonTestLogs = append(p.NonTestLogs, *te)
+		// this is package output
+		if len(te.Output) > 0 && testPanicRegexp.MatchString(te.Output) {
+			p.Failed = true
+			match := testPanicRegexp.FindStringSubmatch(te.Output)
+			te.Output = clitext.Color(clitext.ColorRed, te.Output)
+			p.NonTestLogs = append(p.NonTestLogs, *te)
+			// Check if there is a match for the test name
+			if len(match) > 1 {
+				// the second element should have the test name
+				p.FailedTests = append(p.FailedTests, match[1])
+			} else {
+				fmt.Println("What is wrong with this panic???", te.Output)
+			}
+		} else if len(te.Output) > 0 && packageOkFailPrefixRegexp.MatchString(te.Output) {
+			p.Message = te.Output
+		} else {
+			p.NonTestLogs = append(p.NonTestLogs, *te)
+		}
 	}
 
 	return nil
