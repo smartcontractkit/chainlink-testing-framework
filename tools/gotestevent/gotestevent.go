@@ -187,9 +187,8 @@ type TestLogModifierConfig struct {
 	TestPackageMap         TestPackageMap
 }
 
-// ValidateConfig validates the TestLogModifierConfig does not have any invalid combinations
-func (c *TestLogModifierConfig) Validate() error {
-	defaultConfig := &TestLogModifierConfig{
+func NewDefaultConfig() *TestLogModifierConfig {
+	return &TestLogModifierConfig{
 		IsJsonInput:            ptr.Ptr(false),
 		RemoveTLogPrefix:       ptr.Ptr(false),
 		OnlyErrors:             &flags.BoolFlag{},
@@ -197,6 +196,11 @@ func (c *TestLogModifierConfig) Validate() error {
 		CI:                     ptr.Ptr(false),
 		ShouldImmediatelyPrint: false,
 	}
+}
+
+// ValidateConfig validates the TestLogModifierConfig does not have any invalid combinations
+func (c *TestLogModifierConfig) Validate() error {
+	defaultConfig := NewDefaultConfig()
 	err := mergo.Merge(c, defaultConfig)
 	if err != nil {
 		return err

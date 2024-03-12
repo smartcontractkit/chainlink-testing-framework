@@ -22,9 +22,8 @@ func main() {
 		log.Println("Cancelling... interrupt again to exit")
 	}()
 
-	config := &gotestevent.TestLogModifierConfig{
-		ShouldImmediatelyPrint: true,
-	}
+	config := gotestevent.NewDefaultConfig()
+	config.ShouldImmediatelyPrint = true
 	config.RemoveTLogPrefix = flag.Bool("tlogprefix", false, "Set to true to remove the go test log prefix")
 	config.IsJsonInput = flag.Bool("json", false, "Set to true to enable parsing the input from a go test -json output")
 	flag.Var(config.OnlyErrors, "onlyerrors", "Set to true to only print tests that failed, not compatible without -json")
