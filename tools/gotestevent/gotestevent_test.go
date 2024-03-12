@@ -153,7 +153,7 @@ func TestParseOutNoise(t *testing.T) {
 	}{
 		{
 			name:  "TestPassTest",
-			input: "=== RUN   TestPassTest\n",
+			input: "a=== RUN   TestPassTest\n",
 		},
 		{
 			name:  "TestPassTest",
