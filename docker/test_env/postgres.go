@@ -118,12 +118,20 @@ func (pg *PostgresDb) WithTestInstance(t *testing.T) *PostgresDb {
 }
 
 func (pg *PostgresDb) StartContainer() error {
+	return pg.startContainer(false)
+}
+
+func (pg *PostgresDb) RestartContainer() error {
+	return pg.startContainer(true)
+}
+
+func (pg *PostgresDb) startContainer(withReuse bool) error {
 	req := pg.getContainerRequest()
 	l := logging.GetTestContainersGoTestLogger(pg.t)
 	c, err := docker.StartContainerWithRetry(pg.l, tc.GenericContainerRequest{
 		ContainerRequest: *req,
 		Started:          true,
-		Reuse:            false,
+		Reuse:            withReuse,
 		Logger:           l,
 	})
 	if err != nil {

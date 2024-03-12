@@ -55,6 +55,9 @@ var NaiveRetrier = func(l zerolog.Logger, startErr error, req tc.GenericContaine
 		Str("Retrier", "NaiveRetrier").
 		Msgf("Attempting to start %s container", req.Name)
 
+	oldName := req.Name
+	req.Name = req.Name + "-naive-retry"
+
 	ct, err := tc.GenericContainer(testcontext.Get(nil), req)
 	if err == nil {
 		l.Debug().
@@ -72,6 +75,8 @@ var NaiveRetrier = func(l zerolog.Logger, startErr error, req tc.GenericContaine
 		}
 	}
 
+	req.Name = oldName
+
 	l.Debug().
 		Str("Original start error", startErr.Error()).
 		Str("Current start error", err.Error()).
@@ -87,6 +92,8 @@ var LinuxPlatformImageRetrier = func(l zerolog.Logger, startErr error, req tc.Ge
 		return nil, startErr
 	}
 	req.Reuse = false // We need to force a new container to be created
+	oldName := req.Name
+	req.Name = req.Name + "-linux-retry"
 
 	// a bit lame, but that's the lame error we get in case there's no specific image for our platform :facepalm:
 	if !strings.Contains(startErr.Error(), "No such image") {
@@ -114,6 +121,7 @@ var LinuxPlatformImageRetrier = func(l zerolog.Logger, startErr error, req tc.Ge
 	}
 
 	req.ImagePlatform = originalPlatform
+	req.Name = oldName
 
 	if ct != nil {
 		err := ct.Terminate(testcontext.Get(nil))
@@ -148,15 +156,13 @@ func StartContainerWithRetry(l zerolog.Logger, req tc.GenericContainerRequest, r
 		retriers = append(retriers, LinuxPlatformImageRetrier, NaiveRetrier)
 	}
 
-	for i := 0; i < RetryAttempts; i++ {
-		l.Info().Err(err).Msgf("Cannot start %s container, retrying %d/%d", req.Name, i+1, RetryAttempts)
+	l.Info().Err(err).Msgf("Cannot start %s container, retrying", req.Name)
 
-		req.Reuse = true // Try and see if we can reuse the container for a retry
-		for _, retrier := range retriers {
-			ct, err = retrier(l, err, req)
-			if err == nil {
-				return ct, nil
-			}
+	req.Reuse = true // Try and see if we can reuse the container for a retry
+	for _, retrier := range retriers {
+		ct, err = retrier(l, err, req)
+		if err == nil {
+			return ct, nil
 		}
 	}
 

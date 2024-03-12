@@ -587,6 +587,10 @@ func (e *EthereumClient) ProcessTransaction(tx *types.Transaction) error {
 	return nil
 }
 
+func (e *EthereumClient) GetEthClient() *ethclient.Client {
+	return e.Client
+}
+
 // ProcessEvent will queue or wait on an event depending on whether parallel transactions are enabled
 func (e *EthereumClient) ProcessEvent(name string, event *types.Log, confirmedChan chan bool, errorChan chan error) error {
 	var eventConfirmer HeaderEventSubscription
@@ -1169,6 +1173,10 @@ func (e *EthereumClient) AvgBlockTime(ctx context.Context) (time.Duration, error
 type EthereumMultinodeClient struct {
 	DefaultClient EVMClient
 	Clients       []EVMClient
+}
+
+func (e *EthereumMultinodeClient) GetEthClient() *ethclient.Client {
+	return e.DefaultClient.GetEthClient()
 }
 
 func (e *EthereumMultinodeClient) Backend() bind.ContractBackend {
