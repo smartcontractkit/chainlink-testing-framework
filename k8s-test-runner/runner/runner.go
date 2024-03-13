@@ -75,7 +75,7 @@ func (m *K8sTestRun) deployHelm(testName string) error {
 	}
 
 	// Run helm install command
-	cmd := fmt.Sprintf("helm install %s %s --namespace %s --values %s --timeout 5m0s --debug", testName, m.getChartPath(), m.cfg.Namespace, tmpFile.Name())
+	cmd := fmt.Sprintf("helm install %s %s --namespace %s --values %s --timeout 30s --debug", testName, m.getChartPath(), m.cfg.Namespace, tmpFile.Name())
 	log.Info().Str("cmd", cmd).Msg("Running helm install...")
 	return exec.CmdWithStreamFunc(cmd, func(m string) {
 		fmt.Printf("%s\n", m)
