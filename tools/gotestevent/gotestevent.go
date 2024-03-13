@@ -40,6 +40,7 @@ const testPassFailPrefix = `^--- (PASS|FAIL):(.*)`
 
 //nolint:gosec
 const packagePassFailPrefix = `^(PASS|FAIL)\n$`
+const packageCoveragePrefix = `^coverage:`
 const testingLogPrefix = `^(\s+)(\w+\.go:\d+: )`
 const testPanic = `^panic:.* (Test[A-Z]\w*)`
 const testErrorPrefix = `^\s+(Error\sTrace|Error|Test):\s+`
@@ -48,6 +49,7 @@ const packageOkFailPrefix = `^(ok|FAIL)\s*\t(.*)` //`^(FAIL|ok).*\t(.*)$`
 var testRunPrefixRegexp = regexp.MustCompile(testRunPrefix)
 var testPassFailPrefixRegexp = regexp.MustCompile(testPassFailPrefix)
 var packagePassFailPrefixRegexp = regexp.MustCompile(packagePassFailPrefix)
+var packageCoveragePrefixRegexp = regexp.MustCompile(packageCoveragePrefix)
 var removeTLogRegexp = regexp.MustCompile(testingLogPrefix)
 var testPanicRegexp = regexp.MustCompile(testPanic)
 var testErrorPrefixRegexp = regexp.MustCompile(testErrorPrefix)
@@ -358,7 +360,8 @@ func JsonTestOutputToStandard(te *GoTestEvent, c *TestLogModifierConfig) error {
 	} else {
 		// this is package output
 		// remove noise from the logs
-		if packagePassFailPrefixRegexp.MatchString(te.Output) {
+		if packagePassFailPrefixRegexp.MatchString(te.Output) ||
+			packageCoveragePrefixRegexp.MatchString(te.Output) {
 			return nil
 		}
 		if len(te.Output) > 0 && testPanicRegexp.MatchString(te.Output) {
