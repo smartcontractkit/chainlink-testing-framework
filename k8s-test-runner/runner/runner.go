@@ -4,18 +4,18 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"os"
+
 	"path"
 	"runtime"
 	"time"
 
-	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/cli"
-
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s-test-runner/config"
+	"github.com/smartcontractkit/chainlink-testing-framework/k8s-test-runner/exec"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s-test-runner/k8s_client"
+	"gopkg.in/yaml.v2"
 )
 
 type K8sTestRun struct {
@@ -52,31 +52,34 @@ func (m *K8sTestRun) getChartPath() string {
 }
 
 func (m *K8sTestRun) deployHelm(testName string) error {
-	settings := cli.New() // Initialize the Helm environment settings
-	actionConfig := new(action.Configuration)
-	if err := actionConfig.Init(settings.RESTClientGetter(), m.cfg.Namespace, "", log.Printf); err != nil {
-		return fmt.Errorf("failed to initialize Helm action configuration: %w", err)
-	}
-
-	install := action.NewInstall(actionConfig)
-	install.ReleaseName = testName
-	install.Namespace = m.cfg.Namespace
-	install.Timeout = time.Minute * 3
-
-	chart, err := loader.Load(m.getChartPath())
+	overridesYAML, err := yaml.Marshal(m.ChartOverrides)
 	if err != nil {
-		return fmt.Errorf("failed to load chart: %w", err)
+		return fmt.Errorf("failed to convert overrides to YAML: %w", err)
 	}
 
-	// Install helm chart with overrides
-	log.Info().Interface("Overrides", m.ChartOverrides).Msg("Installing chart with overrides")
-	release, err := install.Run(chart, m.ChartOverrides)
+	// Create a temporary file to save the overrides
+	tmpFile, err := os.CreateTemp("", "helm-overrides-*.yaml")
 	if err != nil {
-		return fmt.Errorf("failed to install chart with overrides: %w", err)
+		return fmt.Errorf("failed to create temp file: %w", err)
 	}
-	log.Info().Str("releaseName", release.Name).Str("namespace", release.Namespace).Msg("Chart installed successfully")
+	defer tmpFile.Close()
 
-	return nil
+	// Write the YAML data to the temp file
+	if _, err = tmpFile.Write(overridesYAML); err != nil {
+		return fmt.Errorf("failed to write overrides to temp file: %w", err)
+	}
+
+	// Ensure to flush writes to storage
+	if err = tmpFile.Sync(); err != nil {
+		return fmt.Errorf("failed to flush writes to temp file: %w", err)
+	}
+
+	// Run helm install command
+	cmd := fmt.Sprintf("helm install %s %s --namespace %s --values %s --timeout 30s --debug", testName, m.getChartPath(), m.cfg.Namespace, tmpFile.Name())
+	log.Info().Str("cmd", cmd).Msg("Running helm install...")
+	return exec.CmdWithStreamFunc(cmd, func(m string) {
+		fmt.Printf("%s\n", m)
+	})
 }
 
 // Run starts a new test
