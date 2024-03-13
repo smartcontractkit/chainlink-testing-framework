@@ -36,7 +36,7 @@ const (
 const testRunPrefix = `^=== (RUN|PAUSE|CONT)   `
 
 //nolint:gosec
-const testPassFailPrefix = `^--- (PASS|FAIL):`
+const testPassFailPrefix = `^--- (PASS|FAIL):(.*)`
 
 //nolint:gosec
 const packagePassFailPrefix = `^(PASS|FAIL)\n$`
@@ -93,7 +93,13 @@ func (t Test) Print(pass bool, c *TestLogModifierConfig) {
 	toRemove := []int{}
 	for i, log := range t {
 		if testPassFailPrefixRegexp.MatchString(log.Output) {
-			message = log.Output
+
+			match := testPassFailPrefixRegexp.FindStringSubmatch(log.Output)
+			if strings.Contains(log.Output, "PASS") {
+				message = fmt.Sprintf("✅ %s", match[1])
+			} else {
+				message = fmt.Sprintf("X %s", match[1])
+			}
 			toRemove = append(toRemove, i)
 		}
 	}
@@ -111,9 +117,6 @@ func (t Test) Print(pass bool, c *TestLogModifierConfig) {
 			StartGroupFail(message, c)
 		}
 	}
-	// else {
-	// 	fmt.Println(message)
-	// }
 
 	// print out the test logs
 	for _, log := range t {
@@ -169,9 +172,9 @@ func (p TestPackage) Print(c *TestLogModifierConfig) {
 	// Add color to the output if needed
 	if ptr.Val(c.CI) || ptr.Val(c.Color) {
 		if p.Failed {
-			fmt.Print(clitext.Color(clitext.ColorRed, p.Message))
+			fmt.Printf("📦 %s", clitext.Color(clitext.ColorRed, p.Message))
 		} else {
-			fmt.Print(clitext.Color(clitext.ColorGreen, p.Message))
+			fmt.Printf("📦 %s", clitext.Color(clitext.ColorGreen, p.Message))
 		}
 	}
 

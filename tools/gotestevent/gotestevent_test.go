@@ -176,7 +176,7 @@ func TestParseOutNoise(t *testing.T) {
 			c := &TestLogModifierConfig{
 				IsJsonInput:      ptr.Ptr(true),
 				RemoveTLogPrefix: ptr.Ptr(true),
-				OnlyErrors:       &flags.BoolFlag{IsSet: true, Value: true},
+				OnlyErrors:       &flags.BoolFlag{IsSet: false, Value: false},
 				CI:               ptr.Ptr(true),
 			}
 			require.NoError(t, c.Validate(), "Config should be valid")
@@ -205,6 +205,7 @@ func TestBasicPassAndFail(t *testing.T) {
 		{
 			name: "ShowPassingTests",
 			inputs: []string{
+				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage","Output":"=== RUN\n"}`,
 				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage","Output":"abc\n"}`,
 				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage","Output":"--- PASS: TestGetImage (0.00s)\n"}`,
 				`{"Time":"2023-11-27T15:39:39.223335-07:00","Action":"pass","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage","Elapsed":0}`,
