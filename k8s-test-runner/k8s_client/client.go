@@ -9,6 +9,7 @@ import (
 	"github.com/aws/smithy-go/ptr"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+	exec "github.com/smartcontractkit/chainlink-testing-framework/k8s-test-runner/exec"
 	batchV1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -202,8 +203,14 @@ func (m *Client) WaitUntilJobsComplete(ctx context.Context, namespace, syncLabel
 				LabelSelector:  labelSelector,
 				TimeoutSeconds: ptr.Int64(30), // query timeout
 			})
+
 			if err != nil {
 				log.Error().Err(err).Str("labelSelector", labelSelector).Msg("Failed to list jobs, will retry...")
+
+				cmd := fmt.Sprintf("kubectl get jobs -l sync=%s -n wasp --v=7", syncLabelValue)
+				log.Info().Str("cmd", cmd).Msg("Running CLI command with verbose output to debug...")
+				_ = exec.Cmd(cmd)
+
 				time.Sleep(pollingInterval)
 				continue
 			}
