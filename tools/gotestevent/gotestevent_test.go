@@ -107,7 +107,7 @@ func TestHighlightErrorOutput(t *testing.T) {
 
 	err := HighlightErrorOutput(te, c)
 	require.NoError(t, err, "Error highlighting error output")
-	require.Equal(t, "\x1b[31m        \tError Trace:\t/Users/blarg/git/chainlink-testing-framework/failpackage/mirror_test.go:12\n        \tError:      \tAn error is expected but got nil.\n        \tTest:       \tTestFailTest \x1b[0m\n", te.Output)
+	require.Equal(t, "\x1b[0;31m        \tError Trace:\t/Users/blarg/git/chainlink-testing-framework/failpackage/mirror_test.go:12\n        \tError:      \tAn error is expected but got nil.\n        \tTest:       \tTestFailTest \x1b[0m\n", te.Output)
 }
 
 func TestRemoveTestLogPrefix(t *testing.T) {
@@ -213,7 +213,7 @@ func TestBasicPassAndFail(t *testing.T) {
 				`{"Time":"2023-11-27T15:39:39.223823-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Output":"ok  \tgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s\n"}`,
 				`{"Time":"2023-11-27T15:39:39.223871-07:00","Action":"pass","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Elapsed":0.333}`,
 			},
-			expected:   "📦 \x1b[32mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[32m✅ TestGetImage (0.00s) \x1b[0m\nabc\n::endgroup::\n",
+			expected:   "📦 \x1b[0;32mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[0;32m✅ TestGetImage (0.00s) \x1b[0m\nabc\n::endgroup::\n",
 			onlyErrors: false,
 		},
 		{
@@ -237,7 +237,7 @@ func TestBasicPassAndFail(t *testing.T) {
 				`{"Time":"2023-11-27T15:39:39.223823-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Output":"FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s\n"}`,
 				`{"Time":"2023-11-27T15:39:39.223871-07:00","Action":"fail","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Elapsed":0.333}`,
 			},
-			expected:   "📦 \x1b[31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[31m❌ TestGetImage (0.00s) \x1b[0m\nabc\n::endgroup::\n",
+			expected:   "📦 \x1b[0;31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[0;31m❌ TestGetImage (0.00s) \x1b[0m\nabc\n::endgroup::\n",
 			onlyErrors: false,
 		},
 		{
@@ -249,7 +249,7 @@ func TestBasicPassAndFail(t *testing.T) {
 				`{"Time":"2023-11-27T15:39:39.223823-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Output":"FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s\n"}`,
 				`{"Time":"2023-11-27T15:39:39.223871-07:00","Action":"fail","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Elapsed":0.333}`,
 			},
-			expected:   "📦 \x1b[31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[31m❌ TestGetImage (0.00s) \x1b[0m\nabc\n::endgroup::\n",
+			expected:   "📦 \x1b[0;31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[0;31m❌ TestGetImage (0.00s) \x1b[0m\nabc\n::endgroup::\n",
 			onlyErrors: true,
 		},
 		{
@@ -264,7 +264,7 @@ func TestBasicPassAndFail(t *testing.T) {
 				`{"Time":"2023-11-27T15:39:39.223823-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Output":"FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s\n"}`,
 				`{"Time":"2023-11-27T15:39:39.223871-07:00","Action":"fail","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Elapsed":0.333}`,
 			},
-			expected:   "📦 \x1b[31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[32m✅ TestGetImage1 (0.00s) \x1b[0m\nabc\n::endgroup::\n::group:: \x1b[31m❌ TestGetImage2 (0.00s) \x1b[0m\nefg\n::endgroup::\n",
+			expected:   "📦 \x1b[0;31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[0;32m✅ TestGetImage1 (0.00s) \x1b[0m\nabc\n::endgroup::\n::group:: \x1b[0;31m❌ TestGetImage2 (0.00s) \x1b[0m\nefg\n::endgroup::\n",
 			onlyErrors: false,
 		},
 		{
@@ -279,7 +279,7 @@ func TestBasicPassAndFail(t *testing.T) {
 				`{"Time":"2023-11-27T15:39:39.223823-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Output":"FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s\n"}`,
 				`{"Time":"2023-11-27T15:39:39.223871-07:00","Action":"fail","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Elapsed":0.333}`,
 			},
-			expected:   "📦 \x1b[31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[31m❌ TestGetImage2 (0.00s) \x1b[0m\nefg\n::endgroup::\n",
+			expected:   "📦 \x1b[0;31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[0;31m❌ TestGetImage2 (0.00s) \x1b[0m\nefg\n::endgroup::\n",
 			onlyErrors: true,
 		},
 		{
@@ -295,7 +295,7 @@ func TestBasicPassAndFail(t *testing.T) {
 				`{"Time":"2023-11-28T11:38:06.528992418Z","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Output":"panic: Log in goroutine after TestGetImage has completed: 2023-11-28T11:38:06.521Z\tWARN\tTelemetryManager.TelemetryIngressBatchClient\twsrpc@v0.7.2/uni_client.go:97\tctx error context canceled reconnecting\t{\"version\": \"2.7.0@0957729\"}\n"}`,
 				`{"Time":"2023-11-27T15:39:39.223871-07:00","Action":"fail","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Elapsed":0.333}`,
 			},
-			expected:   "📦 \x1b[31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[31m✅ TestGetImage (0.00s) \x1b[0m\nabc\n::endgroup::\n::group:: \x1b[32m✅ TestGetImage2 (0.00s) \x1b[0m\nefg\n::endgroup::\n\x1b[31mpanic: Log in goroutine after TestGetImage has completed: 2023-11-28T11:38:06.521Z\tWARN\tTelemetryManager.TelemetryIngressBatchClient\twsrpc@v0.7.2/uni_client.go:97\tctx error context canceled reconnecting\t{\"version\": \"2.7.0@0957729\"} \x1b[0m\n",
+			expected:   "📦 \x1b[0;31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[0;31m✅ TestGetImage (0.00s) \x1b[0m\nabc\n::endgroup::\n::group:: \x1b[0;32m✅ TestGetImage2 (0.00s) \x1b[0m\nefg\n::endgroup::\n\x1b[0;31mpanic: Log in goroutine after TestGetImage has completed: 2023-11-28T11:38:06.521Z\tWARN\tTelemetryManager.TelemetryIngressBatchClient\twsrpc@v0.7.2/uni_client.go:97\tctx error context canceled reconnecting\t{\"version\": \"2.7.0@0957729\"} \x1b[0m\n",
 			onlyErrors: false,
 		},
 		{
@@ -311,7 +311,7 @@ func TestBasicPassAndFail(t *testing.T) {
 				`{"Time":"2023-11-28T11:38:06.528992418Z","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Output":"panic: Log in goroutine after TestGetImage has completed: 2023-11-28T11:38:06.521Z\tWARN\tTelemetryManager.TelemetryIngressBatchClient\twsrpc@v0.7.2/uni_client.go:97\tctx error context canceled reconnecting\t{\"version\": \"2.7.0@0957729\"}\n"}`,
 				`{"Time":"2023-11-27T15:39:39.223871-07:00","Action":"fail","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Elapsed":0.333}`,
 			},
-			expected:   "📦 \x1b[31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[31m✅ TestGetImage (0.00s) \x1b[0m\nabc\n::endgroup::\n\x1b[31mpanic: Log in goroutine after TestGetImage has completed: 2023-11-28T11:38:06.521Z\tWARN\tTelemetryManager.TelemetryIngressBatchClient\twsrpc@v0.7.2/uni_client.go:97\tctx error context canceled reconnecting\t{\"version\": \"2.7.0@0957729\"} \x1b[0m\n",
+			expected:   "📦 \x1b[0;31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[0;31m✅ TestGetImage (0.00s) \x1b[0m\nabc\n::endgroup::\n\x1b[0;31mpanic: Log in goroutine after TestGetImage has completed: 2023-11-28T11:38:06.521Z\tWARN\tTelemetryManager.TelemetryIngressBatchClient\twsrpc@v0.7.2/uni_client.go:97\tctx error context canceled reconnecting\t{\"version\": \"2.7.0@0957729\"} \x1b[0m\n",
 			onlyErrors: true,
 		},
 	}
