@@ -44,6 +44,7 @@ const packageCoveragePrefix = `^coverage:`
 const testingLogPrefix = `^(\s+)(\w+\.go:\d+: )`
 const testPanic = `^panic:.* (Test[A-Z]\w*)`
 const testErrorPrefix = `^\s+(Error\sTrace|Error|Test):\s+`
+const testErrorPrefix2 = `        \t            \t.*`
 const packageOkFailPrefix = `^(ok|FAIL)\s*\t(.*)` //`^(FAIL|ok).*\t(.*)$`
 
 var testRunPrefixRegexp = regexp.MustCompile(testRunPrefix)
@@ -53,6 +54,7 @@ var packageCoveragePrefixRegexp = regexp.MustCompile(packageCoveragePrefix)
 var removeTLogRegexp = regexp.MustCompile(testingLogPrefix)
 var testPanicRegexp = regexp.MustCompile(testPanic)
 var testErrorPrefixRegexp = regexp.MustCompile(testErrorPrefix)
+var testErrorPrefix2Regexp = regexp.MustCompile(testErrorPrefix2)
 var packageOkFailPrefixRegexp = regexp.MustCompile(packageOkFailPrefix)
 
 // Represntation of a go test -json event
@@ -94,14 +96,20 @@ func (t Test) Print(pass bool, c *TestLogModifierConfig) {
 
 	// preprocess the logs
 	message := t[0].Test
+	outcomeType := "pass"
 	toRemove := []int{}
 	for i, log := range t {
 		if testPassFailPrefixRegexp.MatchString(log.Output) {
 			match := testPassFailPrefixRegexp.FindStringSubmatch(log.Output)
 			if strings.Contains(log.Output, "PASS") {
 				message = fmt.Sprintf("✅%s", match[2])
+				outcomeType = "pass"
+			} else if strings.Contains(log.Output, "SKIP") {
+				message = fmt.Sprintf("🚧%s", match[2])
+				outcomeType = "skip"
 			} else {
 				message = fmt.Sprintf("❌%s", match[2])
+				outcomeType = "fail"
 			}
 			toRemove = append(toRemove, i)
 		}
@@ -114,8 +122,10 @@ func (t Test) Print(pass bool, c *TestLogModifierConfig) {
 
 	// start the group
 	if ptr.Val(c.CI) {
-		if pass {
+		if outcomeType == "pass" {
 			StartGroupPass(message, c)
+		} else if outcomeType == "skip" {
+			StartGroupSkip(message, c)
 		} else {
 			StartGroupFail(message, c)
 		}
@@ -279,12 +289,12 @@ func SetupModifiers(c *TestLogModifierConfig) []TestLogModifier {
 	if ptr.Val(c.RemoveTLogPrefix) {
 		modifiers = append(modifiers, RemoveTestLogPrefix)
 	}
+	if ptr.Val(c.Color) {
+		modifiers = append(modifiers, HighlightErrorOutput)
+	}
 	if ptr.Val(c.IsJsonInput) {
 		c.ShouldImmediatelyPrint = false
 		modifiers = append(modifiers, JsonTestOutputToStandard)
-	}
-	if ptr.Val(c.Color) {
-		modifiers = append(modifiers, HighlightErrorOutput)
 	}
 	return modifiers
 }
@@ -315,7 +325,8 @@ func RemoveTestLogPrefix(te *GoTestEvent, _ *TestLogModifierConfig) error {
 
 func HighlightErrorOutput(te *GoTestEvent, _ *TestLogModifierConfig) error {
 	if te.Action == ActionOutput && len(te.Output) > 0 {
-		if testErrorPrefixRegexp.MatchString(te.Output) {
+		if testErrorPrefixRegexp.MatchString(te.Output) ||
+			testErrorPrefix2Regexp.MatchString(te.Output) {
 			te.Output = clitext.Color(clitext.ColorRed, te.Output)
 		}
 	}
@@ -390,6 +401,18 @@ func JsonTestOutputToStandard(te *GoTestEvent, c *TestLogModifierConfig) error {
 func StartGroupPass(title string, c *TestLogModifierConfig) {
 	if ptr.Val(c.Color) {
 		title = clitext.Color(clitext.ColorGreen, title)
+	}
+	if ptr.Val(c.CI) {
+		github.StartGroup(title)
+	} else {
+		fmt.Println(title)
+	}
+}
+
+// StartGroupSkip starts a group in the CI environment with a green title
+func StartGroupSkip(title string, c *TestLogModifierConfig) {
+	if ptr.Val(c.Color) {
+		title = clitext.Color(clitext.ColorYellow, title)
 	}
 	if ptr.Val(c.CI) {
 		github.StartGroup(title)
