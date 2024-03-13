@@ -26,6 +26,7 @@ func init() {
 	Create.Flags().String("image-tag", "", "Image tag (e.g. mercury-load-tests)")
 	Create.MarkFlagRequired("image-tag")
 	Create.Flags().String("test-runner-root-dir", "./", "Test runner root directory with default chart and Dockerfile.testbin")
+	Create.Flags().String("timeout", "10m", "Timeout for the test binary build and image push")
 }
 
 func createRunnerImageRunE(cmd *cobra.Command, args []string) error {
@@ -37,7 +38,12 @@ func createRunnerImageRunE(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("folder with the tests does not exist: %s", testPackage)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*5)
+	timeoutStr := cmd.Flag("timeout").Value.String()
+	timeout, err := time.ParseDuration(timeoutStr)
+	if err != nil {
+		return fmt.Errorf("error parsing timeout: %v", err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	rootDir, err := cmd.Flags().GetString("test-runner-root-dir")
