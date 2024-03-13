@@ -1,9 +1,11 @@
 package github
 
-import "fmt"
+import (
+	"fmt"
+)
 
 func StartGroup(title string) {
-	fmt.Printf("::group::%s", title)
+	fmt.Printf("::group:: %s", title)
 }
 func EndGroup() {
 	fmt.Println("::endgroup::")

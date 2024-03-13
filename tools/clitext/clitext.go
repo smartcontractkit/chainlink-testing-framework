@@ -1,6 +1,9 @@
 package clitext
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type CliColor string
 
@@ -12,5 +15,5 @@ const (
 )
 
 func Color(color CliColor, s string) string {
-	return fmt.Sprintf("%s%s%s", color, s, ColorReset)
+	return fmt.Sprintf("%s%s %s\n", color, strings.TrimRight(s, "\n"), ColorReset)
 }

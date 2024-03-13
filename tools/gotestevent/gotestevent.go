@@ -144,8 +144,7 @@ type TestPackage struct {
 
 func (p *TestPackage) AddTestEvent(te *GoTestEvent) {
 	// stop noise from being added to the logs
-	if testRunPrefixRegexp.MatchString(te.Output) ||
-		packagePassFailPrefixRegexp.MatchString(te.Output) {
+	if testRunPrefixRegexp.MatchString(te.Output) {
 		return
 	}
 
@@ -357,6 +356,10 @@ func JsonTestOutputToStandard(te *GoTestEvent, c *TestLogModifierConfig) error {
 		return nil
 	} else {
 		// this is package output
+		// remove noise from the logs
+		if packagePassFailPrefixRegexp.MatchString(te.Output) {
+			return nil
+		}
 		if len(te.Output) > 0 && testPanicRegexp.MatchString(te.Output) {
 			p.Failed = true
 			match := testPanicRegexp.FindStringSubmatch(te.Output)
