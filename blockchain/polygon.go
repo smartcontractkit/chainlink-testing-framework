@@ -47,8 +47,8 @@ func (e *PolygonClient) TransactionOpts(from *EthereumWallet) (*bind.TransactOpt
 	if e.NetworkConfig.DefaultGasLimit > opts.GasLimit {
 		opts.GasLimit = e.NetworkConfig.DefaultGasLimit
 	}
-	opts.GasFeeCap = big.NewInt(102052882926)
-	opts.GasTipCap = big.NewInt(30000000000)
+	opts.GasFeeCap = big.NewInt(137959521494)
+	opts.GasTipCap = big.NewInt(48115601418)
 	if !e.NetworkConfig.SupportsEIP1559 {
 		opts.GasPrice, err = e.EstimateGasPrice()
 		if err != nil {
