@@ -33,7 +33,7 @@ const (
 )
 
 // regex strings
-const testRunPrefix = `^=== (RUN|PAUSE|CONT)   `
+const testRunPrefix = `^=== (RUN|PAUSE|CONT)`
 
 //nolint:gosec
 const testPassFailPrefix = `^--- (PASS|FAIL):(.*)`
@@ -43,6 +43,7 @@ const packagePassFailPrefix = `^(PASS|FAIL)\n$`
 const testingLogPrefix = `^(\s+)(\w+\.go:\d+: )`
 const testPanic = `^panic:.* (Test[A-Z]\w*)`
 const testErrorPrefix = `^\s+(Error\sTrace|Error|Test):\s+`
+const packageOkFailPrefix = `^(ok|FAIL)\s*\t(.*)` //`^(FAIL|ok).*\t(.*)$`
 
 var testRunPrefixRegexp = regexp.MustCompile(testRunPrefix)
 var testPassFailPrefixRegexp = regexp.MustCompile(testPassFailPrefix)
@@ -50,6 +51,7 @@ var packagePassFailPrefixRegexp = regexp.MustCompile(packagePassFailPrefix)
 var removeTLogRegexp = regexp.MustCompile(testingLogPrefix)
 var testPanicRegexp = regexp.MustCompile(testPanic)
 var testErrorPrefixRegexp = regexp.MustCompile(testErrorPrefix)
+var packageOkFailPrefixRegexp = regexp.MustCompile(packageOkFailPrefix)
 
 // Represntation of a go test -json event
 type GoTestEvent struct {
@@ -93,12 +95,11 @@ func (t Test) Print(pass bool, c *TestLogModifierConfig) {
 	toRemove := []int{}
 	for i, log := range t {
 		if testPassFailPrefixRegexp.MatchString(log.Output) {
-
 			match := testPassFailPrefixRegexp.FindStringSubmatch(log.Output)
 			if strings.Contains(log.Output, "PASS") {
-				message = fmt.Sprintf("✅ %s", match[1])
+				message = fmt.Sprintf("✅%s", match[2])
 			} else {
-				message = fmt.Sprintf("X %s", match[1])
+				message = fmt.Sprintf("❌%s", match[2])
 			}
 			toRemove = append(toRemove, i)
 		}
@@ -128,10 +129,6 @@ func (t Test) Print(pass bool, c *TestLogModifierConfig) {
 		github.EndGroup()
 	}
 }
-
-const packageOkFailPrefix = `^(ok|FAIL)\s*\t`
-
-var packageOkFailPrefixRegexp = regexp.MustCompile(packageOkFailPrefix)
 
 type TestPackage struct {
 	Name        string
@@ -171,10 +168,11 @@ func (p TestPackage) Print(c *TestLogModifierConfig) {
 
 	// Add color to the output if needed
 	if ptr.Val(c.CI) || ptr.Val(c.Color) {
+		match := packageOkFailPrefixRegexp.FindStringSubmatch(p.Message)
 		if p.Failed {
-			fmt.Printf("📦 %s", clitext.Color(clitext.ColorRed, p.Message))
+			fmt.Printf("📦 %s", clitext.Color(clitext.ColorRed, match[2]))
 		} else {
-			fmt.Printf("📦 %s", clitext.Color(clitext.ColorGreen, p.Message))
+			fmt.Printf("📦 %s", clitext.Color(clitext.ColorGreen, match[2]))
 		}
 	}
 
