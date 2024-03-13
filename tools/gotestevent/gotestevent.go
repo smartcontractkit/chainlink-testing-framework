@@ -36,7 +36,7 @@ const (
 const testRunPrefix = `^=== (RUN|PAUSE|CONT)`
 
 //nolint:gosec
-const testPassFailPrefix = `^--- (PASS|FAIL):(.*)`
+const testPassFailPrefix = `^--- (PASS|FAIL|SKIP):(.*)`
 
 //nolint:gosec
 const packagePassFailPrefix = `^(PASS|FAIL)\n$`
