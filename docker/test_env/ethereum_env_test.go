@@ -382,7 +382,7 @@ func TestEthEnvMischmachedExecutionClient(t *testing.T) {
 	_, err := builder.
 		WithExecutionLayer(ExecutionLayer_Nethermind).
 		WithCustomDockerImages(map[ContainerType]string{
-			ContainerType_ExecutionLayer: fmt.Sprintf("hyperledger/besu:%s", AUTOMATIC_LATEST_TAG)}).
+			ContainerType_ExecutionLayer: "hyperledger/besu:v1.22.0"}).
 		Build()
 	require.Error(t, err, "Builder validation succeeded")
 	require.Equal(t, fmt.Sprintf(MsgMismatchedExecutionClient, ExecutionLayer_Besu, ExecutionLayer_Nethermind), err.Error(), "Error message is not correct")
