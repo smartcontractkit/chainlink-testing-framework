@@ -1,6 +1,3 @@
-//go:build eth_env_tests
-// +build eth_env_tests
-
 package test_env
 
 import (
@@ -29,7 +26,7 @@ var stopAllContainers = func(t *testing.T, containers []EthereumNetworkContainer
 // 1.16 -> works
 // ...
 // 1.25.4 -> works
-func TestNethermindCompatiblity(t *testing.T) {
+func TestEthEnvNethermindCompatiblity(t *testing.T) {
 	t.Skip("Execute manually when needed")
 	l := logging.GetTestLogger(t)
 
@@ -77,7 +74,7 @@ func TestNethermindCompatiblity(t *testing.T) {
 // 1.9 -> works
 // ...
 // 1.13 -> works
-func TestGethCompatiblity(t *testing.T) {
+func TestEthEnvGethCompatiblity(t *testing.T) {
 	t.Skip("Execute manually when needed")
 	l := logging.GetTestLogger(t)
 
@@ -124,7 +121,7 @@ func TestGethCompatiblity(t *testing.T) {
 // v2.40 -> works
 // ...
 // v2.58.1 -> works
-func TestErigonCompatiblity(t *testing.T) {
+func TestEthEnvErigonCompatiblity(t *testing.T) {
 	t.Skip("Execute manually when needed")
 	l := logging.GetTestLogger(t)
 
@@ -171,7 +168,7 @@ func TestErigonCompatiblity(t *testing.T) {
 // 22.1 -> works
 // ...
 // 24.1.2 -> works
-func TestBesuCompatiblity(t *testing.T) {
+func TestEthEnvBesuCompatiblity(t *testing.T) {
 	t.Skip("Execute manually when needed")
 	l := logging.GetTestLogger(t)
 

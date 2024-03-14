@@ -1,6 +1,3 @@
-//go:build nethermind_tests
-// +build nethermind_tests
-
 package test_env
 
 import (
@@ -15,7 +12,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
-func TestEth1WithNethermind(t *testing.T) {
+func TestNethermindEth1(t *testing.T) {
 	l := logging.GetTestLogger(t)
 
 	builder := NewEthereumNetworkBuilder()
@@ -39,7 +36,7 @@ func TestEth1WithNethermind(t *testing.T) {
 	require.NoError(t, err, "Couldn't close the client")
 }
 
-func TestEth2WithPrysmAndNethermind(t *testing.T) {
+func TestNethermindEth2(t *testing.T) {
 	l := logging.GetTestLogger(t)
 
 	builder := NewEthereumNetworkBuilder()

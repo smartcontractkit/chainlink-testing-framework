@@ -1,6 +1,3 @@
-//go:build eth_env_tests
-// +build eth_env_tests
-
 package test_env
 
 import (
@@ -9,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestReadDefaultChainConfig(t *testing.T) {
+func TestEthEnvReadDefaultChainConfig(t *testing.T) {
 	t.Parallel()
 	config := &EthereumChainConfig{}
 	err := config.Default()

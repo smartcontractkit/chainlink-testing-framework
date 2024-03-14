@@ -32,6 +32,7 @@ func NewGethEth2(networks []string, chainConfig *EthereumChainConfig, generatedD
 		generatedDataHostDir: generatedDataHostDir,
 		consensusLayer:       consensusLayer,
 		l:                    logging.GetTestLogger(nil),
+		ethereumVersion:      EthereumVersion_Eth2,
 	}
 	g.SetDefaultHooks()
 	for _, opt := range opts {

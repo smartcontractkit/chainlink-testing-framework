@@ -28,8 +28,9 @@ func NewNethermindEth1(networks []string, chainConfig *EthereumChainConfig, opts
 			ContainerImage:   parts[0],
 			ContainerVersion: parts[1],
 		},
-		chainConfig: chainConfig,
-		l:           logging.GetTestLogger(nil),
+		chainConfig:     chainConfig,
+		l:               logging.GetTestLogger(nil),
+		ethereumVersion: EthereumVersion_Eth1,
 	}
 	g.SetDefaultHooks()
 	for _, opt := range opts {

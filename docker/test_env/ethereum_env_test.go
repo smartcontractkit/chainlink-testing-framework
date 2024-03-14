@@ -1,6 +1,3 @@
-//go:build eth_env_tests
-// +build eth_env_tests
-
 package test_env
 
 import (
@@ -18,7 +15,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 )
 
-func TestEth2CustomConfig(t *testing.T) {
+func TestEthEnvCustomConfig(t *testing.T) {
 	l := logging.GetTestLogger(t)
 
 	builder := NewEthereumNetworkBuilder()
@@ -42,7 +39,7 @@ func TestEth2CustomConfig(t *testing.T) {
 	require.NoError(t, err, "Couldn't close the client")
 }
 
-func TestEth2ExtraFunding(t *testing.T) {
+func TestEthEnvExtraFunding(t *testing.T) {
 	l := logging.GetTestLogger(t)
 
 	addressToFund := "0x14dc79964da2c08b23698b3d3cc7ca32193d9955"
@@ -72,7 +69,7 @@ func TestEth2ExtraFunding(t *testing.T) {
 	require.NoError(t, err, "Couldn't close the client")
 }
 
-func TestEth2WithPrysmAndGethReuseConfig(t *testing.T) {
+func TestEthEnvWithPrysmAndGethReuseConfig(t *testing.T) {
 	l := logging.GetTestLogger(t)
 
 	builder := NewEthereumNetworkBuilder()
@@ -101,7 +98,7 @@ func TestEth2WithPrysmAndGethReuseConfig(t *testing.T) {
 	require.NoError(t, err, "Couldn't close the client")
 }
 
-func TestEth2WithPrysmAndGethReuseFromEnv(t *testing.T) {
+func TestEthEnvWithPrysmAndGethReuseFromEnv(t *testing.T) {
 	t.Skip("for demonstration purposes only")
 	l := logging.GetTestLogger(t)
 
@@ -121,7 +118,7 @@ func TestEth2WithPrysmAndGethReuseFromEnv(t *testing.T) {
 	require.NoError(t, err, "Couldn't close the client")
 }
 
-func TestEth2ExecClientFromToml(t *testing.T) {
+func TestEthEnvExecClientFromToml(t *testing.T) {
 	t.Parallel()
 	toml := `
 	[EthereumNetwork]
@@ -166,7 +163,7 @@ func TestEth2ExecClientFromToml(t *testing.T) {
 	require.Equal(t, 1234, cfg.EthereumChainConfig.ChainID, "Chain ID should be 1234")
 }
 
-func TestCustomDockerImagesFromToml(t *testing.T) {
+func TestEthEnvCustomDockerImagesFromToml(t *testing.T) {
 	t.Parallel()
 	toml := `
 	[EthereumNetwork]
@@ -217,7 +214,7 @@ func readEthereumNetworkConfig(configDecoded string) (EthereumNetwork, error) {
 	return *net.EthereumNetwork, nil
 }
 
-func TestEth2CustomDockerNetworks(t *testing.T) {
+func TestEthEnvCustomDockerNetworks(t *testing.T) {
 	t.Parallel()
 	networks := []string{"test-network"}
 
@@ -232,7 +229,7 @@ func TestEth2CustomDockerNetworks(t *testing.T) {
 	require.Equal(t, networks, cfg.DockerNetworkNames, "Incorrect docker networks in config")
 }
 
-func TestEth2DenebHardFork(t *testing.T) {
+func TestEthEnvDenebHardFork(t *testing.T) {
 	t.Parallel()
 	l := logging.GetTestLogger(t)
 
@@ -260,7 +257,7 @@ func TestEth2DenebHardFork(t *testing.T) {
 	require.NoError(t, err, "Couldn't close the client")
 }
 
-func TestEth2InvalidHardForks(t *testing.T) {
+func TestEthEnvInvalidHardForks(t *testing.T) {
 	t.Parallel()
 	builder := NewEthereumNetworkBuilder()
 	_, err := builder.
@@ -299,7 +296,7 @@ func TestEth2InvalidHardForks(t *testing.T) {
 	require.Contains(t, err.Error(), UnsopportedForkErr)
 }
 
-func TestAutoEthereumVersionEth1Minor(t *testing.T) {
+func TestEthEnvAutoEthereumVersionEth1Minor(t *testing.T) {
 	t.Parallel()
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
@@ -312,7 +309,7 @@ func TestAutoEthereumVersionEth1Minor(t *testing.T) {
 	require.Nil(t, cfg.ConsensusLayer, "Consensus layer should be nil")
 }
 
-func TestAutoEthereumVersionEth2Minor(t *testing.T) {
+func TestEthEnvAutoEthereumVersionEth2Minor(t *testing.T) {
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
 		WithExecutionLayer(ExecutionLayer_Nethermind).
@@ -324,7 +321,7 @@ func TestAutoEthereumVersionEth2Minor(t *testing.T) {
 	require.Equal(t, ConsensusLayer_Prysm, *cfg.ConsensusLayer, "Consensus layer should be Prysm")
 }
 
-func TestAutoEthereumVersionReleaseCandidate(t *testing.T) {
+func TestEthEnvAutoEthereumVersionReleaseCandidate(t *testing.T) {
 	t.Parallel()
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
@@ -337,7 +334,7 @@ func TestAutoEthereumVersionReleaseCandidate(t *testing.T) {
 	require.Equal(t, ConsensusLayer_Prysm, *cfg.ConsensusLayer, "Consensus layer should be Prysm")
 }
 
-func TestAutoEthereumVersionWithLettersInVersion(t *testing.T) {
+func TestEthEnvAutoEthereumVersionWithLettersInVersion(t *testing.T) {
 	t.Parallel()
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
@@ -352,7 +349,7 @@ func TestAutoEthereumVersionWithLettersInVersion(t *testing.T) {
 	require.Equal(t, ConsensusLayer_Prysm, *cfg.ConsensusLayer, "Consensus layer should be Prysm")
 }
 
-func TestAutoEthereumVersionOnlyMajor(t *testing.T) {
+func TestEthEnvAutoEthereumVersionOnlyMajor(t *testing.T) {
 	t.Parallel()
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
@@ -365,7 +362,7 @@ func TestAutoEthereumVersionOnlyMajor(t *testing.T) {
 	require.Equal(t, ConsensusLayer_Prysm, *cfg.ConsensusLayer, "Consensus layer should be Prysm")
 }
 
-func TestLatestVersionFromGithub(t *testing.T) {
+func TestEthEnvLatestVersionFromGithub(t *testing.T) {
 	t.Parallel()
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
@@ -379,7 +376,7 @@ func TestLatestVersionFromGithub(t *testing.T) {
 	require.NotContains(t, cfg.CustomDockerImages[ContainerType_ExecutionLayer], AUTOMATIC_STABLE_LATEST_TAG, "Automatic tag should be replaced")
 }
 
-func TestMischmachedExecutionClient(t *testing.T) {
+func TestEthEnvMischmachedExecutionClient(t *testing.T) {
 	t.Parallel()
 	builder := NewEthereumNetworkBuilder()
 	_, err := builder.

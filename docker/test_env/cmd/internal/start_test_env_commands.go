@@ -156,7 +156,7 @@ func startPrivateEthChainE(cmd *cobra.Command, args []string) error {
 	}
 
 	consensusLayerToUse := test_env.ConsensusLayer(consensusLayer)
-	if consensusLayer != "" && ethereumVersion == "pow" {
+	if consensusLayer != "" && ethereumVersion == "eth1" {
 		consensusLayerToUse = ""
 	}
 

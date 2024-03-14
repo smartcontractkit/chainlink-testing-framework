@@ -45,6 +45,7 @@ type Besu struct {
 	ExternalExecutionURL string
 	chainConfig          *EthereumChainConfig
 	consensusLayer       ConsensusLayer
+	ethereumVersion      EthereumVersion
 	l                    zerolog.Logger
 	t                    *testing.T
 	posSettings
@@ -166,11 +167,7 @@ func (g *Besu) GetContainer() *tc.Container {
 }
 
 func (g *Besu) GetEthereumVersion() EthereumVersion {
-	if g.consensusLayer == "" {
-		return EthereumVersion_Eth1
-	}
-
-	return EthereumVersion_Eth2
+	return g.ethereumVersion
 }
 
 func (g *Besu) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error {

@@ -35,6 +35,7 @@ type Geth struct {
 	generatedDataHostDir string
 	chainConfig          *EthereumChainConfig
 	consensusLayer       ConsensusLayer
+	ethereumVersion      EthereumVersion
 	l                    zerolog.Logger
 	t                    *testing.T
 }
@@ -159,11 +160,7 @@ func (g *Geth) GetContainer() *tc.Container {
 }
 
 func (g *Geth) GetEthereumVersion() EthereumVersion {
-	if g.consensusLayer == "" {
-		return EthereumVersion_Eth1
-	}
-
-	return EthereumVersion_Eth2
+	return g.ethereumVersion
 }
 
 func (g *Geth) GethConsensusMechanism() ConsensusMechanism {

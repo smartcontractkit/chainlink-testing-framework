@@ -29,6 +29,7 @@ func NewNethermindEth2(networks []string, generatedDataHostDir string, consensus
 		generatedDataHostDir: generatedDataHostDir,
 		consensusLayer:       consensusLayer,
 		l:                    logging.GetTestLogger(nil),
+		ethereumVersion:      EthereumVersion_Eth2,
 	}
 	g.SetDefaultHooks()
 	for _, opt := range opts {

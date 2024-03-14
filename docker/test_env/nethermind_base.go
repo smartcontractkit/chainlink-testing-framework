@@ -34,6 +34,7 @@ type Nethermind struct {
 	generatedDataHostDir string
 	chainConfig          *EthereumChainConfig
 	consensusLayer       ConsensusLayer
+	ethereumVersion      EthereumVersion
 	l                    zerolog.Logger
 	t                    *testing.T
 }
@@ -151,11 +152,7 @@ func (g *Nethermind) GetContainer() *tc.Container {
 }
 
 func (g *Nethermind) GetEthereumVersion() EthereumVersion {
-	if g.consensusLayer == "" {
-		return EthereumVersion_Eth1
-	}
-
-	return EthereumVersion_Eth2
+	return g.ethereumVersion
 }
 
 func (g *Nethermind) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error {

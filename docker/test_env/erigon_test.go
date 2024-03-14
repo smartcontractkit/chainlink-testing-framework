@@ -1,6 +1,3 @@
-//go:build erigon_tests
-// +build erigon_tests
-
 package test_env
 
 import (
@@ -15,7 +12,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
-func TestEth1WithErigon(t *testing.T) {
+func TestErigonEth1(t *testing.T) {
 	l := logging.GetTestLogger(t)
 
 	builder := NewEthereumNetworkBuilder()
@@ -39,7 +36,7 @@ func TestEth1WithErigon(t *testing.T) {
 	require.NoError(t, err, "Couldn't close the client")
 }
 
-func TestEth2WithPrysmAndErigon(t *testing.T) {
+func TestErigonEth2(t *testing.T) {
 	l := logging.GetTestLogger(t)
 
 	builder := NewEthereumNetworkBuilder()

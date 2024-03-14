@@ -1,6 +1,3 @@
-//go:build geth_tests
-// +build geth_tests
-
 package test_env
 
 import (
@@ -16,7 +13,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
-func TestOldGeth(t *testing.T) {
+func TestGethLegacy(t *testing.T) {
 	l := logging.GetTestLogger(t)
 	network, err := docker.CreateNetwork(l)
 	require.NoError(t, err)
@@ -33,7 +30,7 @@ func TestOldGeth(t *testing.T) {
 	require.NoError(t, err, "Couldn't close the client")
 }
 
-func TestEth1WithGeth(t *testing.T) {
+func TestGethEth1(t *testing.T) {
 	l := logging.GetTestLogger(t)
 
 	builder := NewEthereumNetworkBuilder()
@@ -54,7 +51,7 @@ func TestEth1WithGeth(t *testing.T) {
 	require.NoError(t, err, "Couldn't close the client")
 }
 
-func TestEth2WithPrysmAndGeth(t *testing.T) {
+func TestGethEth2(t *testing.T) {
 	l := logging.GetTestLogger(t)
 
 	builder := NewEthereumNetworkBuilder()

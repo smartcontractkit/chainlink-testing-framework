@@ -1,6 +1,3 @@
-//go:build besu_tests
-// +build besu_tests
-
 package test_env
 
 import (
@@ -15,7 +12,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
-func TestEth1WithBesu(t *testing.T) {
+func TestBesuEth1(t *testing.T) {
 	l := logging.GetTestLogger(t)
 
 	builder := NewEthereumNetworkBuilder()
@@ -39,7 +36,7 @@ func TestEth1WithBesu(t *testing.T) {
 	require.NoError(t, err, "Couldn't close the client")
 }
 
-func TestEth2WithPrysmAndBesu(t *testing.T) {
+func TestBesuEth2(t *testing.T) {
 	l := logging.GetTestLogger(t)
 
 	builder := NewEthereumNetworkBuilder()

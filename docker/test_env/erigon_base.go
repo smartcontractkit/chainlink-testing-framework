@@ -35,6 +35,7 @@ type Erigon struct {
 	generatedDataHostDir string
 	chainConfig          *EthereumChainConfig
 	consensusLayer       ConsensusLayer
+	ethereumVersion      EthereumVersion
 	l                    zerolog.Logger
 	t                    *testing.T
 }
@@ -146,11 +147,7 @@ func (g *Erigon) GetContainer() *tc.Container {
 }
 
 func (g *Erigon) GetEthereumVersion() EthereumVersion {
-	if g.consensusLayer == "" {
-		return EthereumVersion_Eth1
-	}
-
-	return EthereumVersion_Eth2
+	return g.ethereumVersion
 }
 
 func (g *Erigon) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error {
