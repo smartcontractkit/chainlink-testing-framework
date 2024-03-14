@@ -24,6 +24,7 @@ spec:
         karpenter.sh/do-not-evict: "true"
         cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
     spec:
+      serviceAccountName: {{ $.Values.rbac.serviceAccountName }}
       restartPolicy: Never
       containers:
         - name: k8s-test-runner

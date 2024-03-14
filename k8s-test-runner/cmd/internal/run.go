@@ -77,7 +77,7 @@ func getChartOverrides(c config.Runner) map[string]interface{} {
 		"namespace": c.Namespace,
 		"rbac": map[string]interface{}{
 			"roleName":           c.RBACRoleName,
-			"serviceAccountName": "default",
+			"serviceAccountName": c.RBACServiceAccountName,
 		},
 		"jobs": c.JobCount,
 		"sync": c.SyncValue,
