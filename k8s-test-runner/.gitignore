@@ -1,0 +1,4 @@
+testbin
+*.tar.gz
+*-darwin-*
+*-linux-*

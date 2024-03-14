@@ -49,16 +49,16 @@ Modify these values that make sense for the tests you want to run. Once the valu
 The rest of the `remote_runner_config.yaml` file holds various Slack bot params to notify you when the test finishes.
 
 ```yaml
-slack_api_key: abcdefg # A Slack API key to upload test results with. This should be the `Bot User OAuth Token` 
+slack_api_key: abcdefg # A Slack API key to upload test results with. This should be the `Bot User OAuth Token`
 slack_channel: C01xxxxx # The Slack Channel ID (open your Slack channel details and copy the ID there)
 slack_user_id: U01xxxxx # Your Slack member ID https://zapier.com/help/doc/common-problems-slack
 ```
 
 The Slack Bot will need to have the following:
 
-* Permission for [files:write](https://api.slack.com/scopes/files:write)
-* Permission for [chat:write](https://api.slack.com/scopes/chat:write)
-* The bot must be invited into the channel you want it to notify in: `/invite @botname` HINT: If you get the error `not_in_channel` this is likely what you need to set up.
+- Permission for [files:write](https://api.slack.com/scopes/files:write)
+- Permission for [chat:write](https://api.slack.com/scopes/chat:write)
+- The bot must be invited into the channel you want it to notify in: `/invite @botname` HINT: If you get the error `not_in_channel` this is likely what you need to set up.
 
 ## After the Test
 

@@ -14,9 +14,9 @@ The local version should update anytime you save changes to the site files.
 
 ## Basic Style Guidelines
 
-* Please use folders for top-level categories, even if they only include a single `index.md` file. This helps keep pages a bit more organized.
-* `Chainlink` should be capitalized when possible, unless following a programming languages capitalization conventions in a code sample.
-* Try using [Grammarly](https://app.grammarly.com/) or a similar service for spell-check and clarity suggestions.
+- Please use folders for top-level categories, even if they only include a single `index.md` file. This helps keep pages a bit more organized.
+- `Chainlink` should be capitalized when possible, unless following a programming languages capitalization conventions in a code sample.
+- Try using [Grammarly](https://app.grammarly.com/) or a similar service for spell-check and clarity suggestions.
 
 ## Custom CSS
 
@@ -28,6 +28,7 @@ You can add note `<divs>` with some borders to make text standout as warnings, a
 
 ![note example](./_static/images/note-example.png)
 
+<!-- prettier-ignore-start -->
 ```html
 <!-- Use for general info or tips -->
 <div class="note note-blue">
@@ -54,3 +55,4 @@ This is a note!
 This is a note!
 </div>
 ```
+<!-- prettier-ignore-end -->
