@@ -5,13 +5,12 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-	"testing"
+	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/rs/zerolog"
-	tc "github.com/testcontainers/testcontainers-go"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 )
@@ -77,12 +76,12 @@ func GetDefaultChainConfig() EthereumChainConfig {
 	return config
 }
 
-func (c *EthereumChainConfig) Validate(logger zerolog.Logger, consensusType ConsensusType) error {
+func (c *EthereumChainConfig) Validate(logger zerolog.Logger, consensusType EthereumVersion) error {
 	if c.ChainID < 1 {
 		return fmt.Errorf("chain id must be >= 0")
 	}
 
-	if consensusType == ConsensusType_PoW {
+	if consensusType == EthereumVersion_Eth1_Legacy {
 		return nil
 	}
 
@@ -106,24 +105,15 @@ func (c *EthereumChainConfig) Validate(logger zerolog.Logger, consensusType Cons
 		return err
 	}
 
-	addressSet := make(map[string]struct{})
-	deduplicated := make([]string, 0)
-
-	for _, addr := range c.AddressesToFund {
-		if !common.IsHexAddress(addr) {
-			return fmt.Errorf("address %s is not a valid hex address", addr)
-		}
-
-		if _, exists := addressSet[addr]; exists {
-			logger.Warn().Str("address", addr).Msg("duplicate address in addresses to fund, this should not happen, removing it so that genesis generation doesn't crash")
-			continue
-		}
-
-		addressSet[addr] = struct{}{}
-		deduplicated = append(deduplicated, addr)
+	var err error
+	var hadDuplicates bool
+	c.AddressesToFund, hadDuplicates, err = deduplicateAddresses(c.AddressesToFund)
+	if err != nil {
+		return err
 	}
-
-	c.AddressesToFund = deduplicated
+	if hadDuplicates {
+		logger.Warn().Msg("Duplicate addresses found in addresses_to_fund. Removed them. You might want to review your configuration.")
+	}
 
 	return nil
 }
@@ -224,17 +214,58 @@ func (c *EthereumChainConfig) GetDefaultFinalizationWaitDuration() time.Duration
 	return time.Duration(5 * time.Minute)
 }
 
-type ExecutionClient interface {
-	GetContainerName() string
-	StartContainer() (blockchain.EVMNetwork, error)
-	GetContainer() *tc.Container
-	GetContainerType() ContainerType
-	GetInternalExecutionURL() string
-	GetExternalExecutionURL() string
-	GetInternalHttpUrl() string
-	GetInternalWsUrl() string
-	GetExternalHttpUrl() string
-	GetExternalWsUrl() string
-	WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error
-	WithTestInstance(t *testing.T) ExecutionClient
+func deduplicateAddresses(addresses []string) ([]string, bool, error) {
+	addressSet := make(map[common.Address]struct{})
+	deduplicated := make([]string, 0)
+
+	hadDuplicates := false
+
+	for _, addr := range addresses {
+		if !common.IsHexAddress(addr) {
+			return []string{}, false, fmt.Errorf("address %s is not a valid hex address", addr)
+		}
+
+		asAddr := common.HexToAddress(addr)
+
+		if _, exists := addressSet[asAddr]; exists {
+			hadDuplicates = true
+			continue
+		}
+
+		addressSet[asAddr] = struct{}{}
+		deduplicated = append(deduplicated, addr)
+	}
+
+	return deduplicated, hadDuplicates, nil
+}
+
+func waitForChainToFinaliseAnEpoch(lggr zerolog.Logger, evmClient blockchain.EVMClient, timeout time.Duration) error {
+	lggr.Info().Msg("Waiting for chain to finalize an epoch")
+
+	timeoutC := time.After(timeout)
+	ticker := time.NewTicker(15 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-timeoutC:
+			return fmt.Errorf("chain %s failed to finalize an epoch", evmClient.GetNetworkName())
+		case <-ticker.C:
+			ctx, cancel := context.WithTimeout(context.Background(), time.Duration(10*time.Second))
+			finalized, err := evmClient.GetLatestFinalizedBlockHeader(ctx)
+			if err != nil {
+				if strings.Contains(err.Error(), "finalized block not found") {
+					lggr.Err(err).Msgf("error getting finalized block number for %s", evmClient.GetNetworkName())
+				} else {
+					lggr.Warn().Msgf("no epoch finalized yet for chain %s", evmClient.GetNetworkName())
+				}
+			}
+			cancel()
+
+			if finalized != nil && finalized.Number.Int64() > 0 {
+				lggr.Info().Msgf("Chain '%s' finalized an epoch", evmClient.GetNetworkName())
+				return nil
+			}
+		}
+	}
 }

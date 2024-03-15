@@ -30,7 +30,7 @@ var startPrivateChain = &cobra.Command{
 }
 
 const (
-	Flag_ConsensusType        = "consensus-type"
+	Flag_EthereumVersion      = "ethereum-version"
 	Flag_ConsensusLayer       = "consensus-layer"
 	Flag_ExecutionLayer       = "execution-layer"
 	Flag_WaitForFinalization  = "wait-for-finalization"
@@ -44,31 +44,31 @@ func init() {
 	StartTestEnvCmd.AddCommand(startPrivateChain)
 
 	StartTestEnvCmd.PersistentFlags().StringP(
-		Flag_ConsensusType,
-		"t",
-		"pos",
-		"consensus type (pow or pos)",
+		Flag_EthereumVersion,
+		"v",
+		"eth2",
+		"ethereum version (eth1, eth2) (default: eth2)",
 	)
 
 	StartTestEnvCmd.PersistentFlags().StringP(
 		Flag_ConsensusLayer,
 		"l",
 		"prysm",
-		"consensus layer (prysm)",
+		"consensus layer (prysm) (default: prysm)",
 	)
 
 	StartTestEnvCmd.PersistentFlags().StringP(
 		Flag_ExecutionLayer,
 		"e",
 		"geth",
-		"execution layer (geth, nethermind, besu or erigon)",
+		"execution layer (geth, nethermind, besu or erigon) (default: geth)",
 	)
 
 	StartTestEnvCmd.PersistentFlags().BoolP(
 		Flag_WaitForFinalization,
 		"w",
 		false,
-		"wait for finalization of at least 1 epoch (might take up to 5 mintues)",
+		"wait for finalization of at least 1 epoch (might take up to 5 mintues) default: false",
 	)
 
 	StartTestEnvCmd.PersistentFlags().IntP(
@@ -107,15 +107,15 @@ func startPrivateEthChainE(cmd *cobra.Command, args []string) error {
 	log := logging.GetTestLogger(nil)
 	flags := cmd.Flags()
 
-	consensusType, err := flags.GetString(Flag_ConsensusType)
+	ethereumVersion, err := flags.GetString(Flag_EthereumVersion)
 	if err != nil {
 		return err
 	}
 
-	consensusType = strings.ToLower(consensusType)
+	ethereumVersion = strings.ToLower(ethereumVersion)
 
-	if consensusType != "pos" && consensusType != "pow" {
-		return fmt.Errorf("invalid consensus type: %s. use 'pow' or 'pos'", consensusType)
+	if ethereumVersion != "eth1" && ethereumVersion != "eth2" {
+		return fmt.Errorf("invalid ethereum version: %s. use 'eth1' or 'eth2'", ethereumVersion)
 	}
 
 	consensusLayer, err := flags.GetString(Flag_ConsensusLayer)
@@ -129,8 +129,8 @@ func startPrivateEthChainE(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid consensus layer: %s. use 'prysm'", consensusLayer)
 	}
 
-	if consensusLayer != "" && consensusType == "pow" {
-		log.Warn().Msg("consensus layer was set, but it has no sense for a PoW conensus. Ignoring it")
+	if consensusLayer != "" && ethereumVersion == "eth1" {
+		log.Warn().Msg("consensus layer was set, but it has no sense for a eth1. Ignoring it")
 	}
 
 	executionLayer, err := flags.GetString(Flag_ExecutionLayer)
@@ -156,7 +156,7 @@ func startPrivateEthChainE(cmd *cobra.Command, args []string) error {
 	}
 
 	consensusLayerToUse := test_env.ConsensusLayer(consensusLayer)
-	if consensusLayer != "" && consensusType == "pow" {
+	if consensusLayer != "" && ethereumVersion == "eth1" {
 		consensusLayerToUse = ""
 	}
 
@@ -166,7 +166,7 @@ func startPrivateEthChainE(cmd *cobra.Command, args []string) error {
 	}
 
 	builder := test_env.NewEthereumNetworkBuilder()
-	builder = *builder.WithConsensusType(test_env.ConsensusType(consensusType)).
+	builder = *builder.WithEthereumVersion(test_env.EthereumVersion(ethereumVersion)).
 		WithConsensusLayer(consensusLayerToUse).
 		WithExecutionLayer(test_env.ExecutionLayer(executionLayer)).
 		WithEthereumChainConfig(test_env.EthereumChainConfig{
@@ -233,10 +233,7 @@ func getCustomImages(flags *flag.FlagSet) (map[test_env.ContainerType]string, er
 	}
 
 	if executionClientImage != "" {
-		customImages[test_env.ContainerType_Besu] = executionClientImage
-		customImages[test_env.ContainerType_Erigon] = executionClientImage
-		customImages[test_env.ContainerType_Geth] = executionClientImage
-		customImages[test_env.ContainerType_Nethermind] = executionClientImage
+		customImages[test_env.ContainerType_ExecutionLayer] = executionClientImage
 	}
 
 	consensusClientImage, err := flags.GetString(Flag_ConsensucClientImage)
@@ -245,7 +242,7 @@ func getCustomImages(flags *flag.FlagSet) (map[test_env.ContainerType]string, er
 	}
 
 	if consensusClientImage != "" {
-		customImages[test_env.ContainerType_PrysmBeacon] = consensusClientImage
+		customImages[test_env.ContainerType_ConsensusLayer] = consensusClientImage
 	}
 
 	validatorImage, err := flags.GetString(Flag_ValidatorImage)
@@ -254,7 +251,7 @@ func getCustomImages(flags *flag.FlagSet) (map[test_env.ContainerType]string, er
 	}
 
 	if validatorImage != "" {
-		customImages[test_env.ContainerType_PrysmVal] = validatorImage
+		customImages[test_env.ContainerType_ConsensusValidator] = validatorImage
 	}
 
 	return customImages, nil

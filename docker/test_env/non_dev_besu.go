@@ -12,7 +12,6 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
-	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/google/uuid"
@@ -28,7 +27,7 @@ import (
 )
 
 const (
-	defaultNonDevBesuImage = "hyperledger/besu:24.1"
+	defaultNonDevBesuImage = "hyperledger/besu:22.1"
 )
 
 type PrivateBesuChain struct {
@@ -123,27 +122,12 @@ func (g *NonDevBesuNode) createMountDirs() error {
 	}
 	g.Config.keystorePath = keystorePath
 
-	// Create keystore and ethereum account
-	ks := keystore.NewKeyStore(g.Config.keystorePath, keystore.StandardScryptN, keystore.StandardScryptP)
-	account, err := ks.NewAccount("")
+	generatedData, err := generateKeystoreAndExtraData(keystorePath, []string{})
 	if err != nil {
 		return err
 	}
 
-	g.Config.accountAddr = account.Address.Hex()
-	addr := strings.Replace(account.Address.Hex(), "0x", "", 1)
-	FundingAddresses[addr] = ""
-	signerBytes, err := hex.DecodeString(addr)
-	if err != nil {
-		fmt.Println("Error decoding signer address:", err)
-		return err
-	}
-
-	zeroBytes := make([]byte, 32)                      // Create 32 zero bytes
-	extradata := append(zeroBytes, signerBytes...)     // Concatenate zero bytes and signer address
-	extradata = append(extradata, make([]byte, 65)...) // Concatenate 65 more zero bytes
-
-	fmt.Printf("Encoded extradata: 0x%s\n", hex.EncodeToString(extradata))
+	g.Config.accountAddr = generatedData.minerAccount.Address.Hex()
 
 	i := 1
 	var accounts []string
@@ -169,7 +153,7 @@ func (g *NonDevBesuNode) createMountDirs() error {
 
 	genesisJsonStr, err := templates.BuildBesuGenesisJsonForNonDevChain(g.Config.chainId,
 		accounts,
-		fmt.Sprintf("0x%s", hex.EncodeToString(extradata)))
+		fmt.Sprintf("0x%s", hex.EncodeToString(generatedData.extraData)))
 	if err != nil {
 		return err
 	}
@@ -203,7 +187,7 @@ func (g *NonDevBesuNode) ConnectToClient() error {
 	if err != nil {
 		return err
 	}
-	port := NatPort(TX_GETH_HTTP_PORT)
+	port := NatPort(DEFAULT_EVM_NODE_HTTP_PORT)
 	httpPort, err := ct.MappedPort(testcontext.Get(g.t), port)
 	if err != nil {
 		return err
@@ -214,7 +198,7 @@ func (g *NonDevBesuNode) ConnectToClient() error {
 		return err
 	}
 	g.ExternalHttpUrl = fmt.Sprintf("http://%s:%s", host, httpPort.Port())
-	g.InternalHttpUrl = fmt.Sprintf("http://%s:%s", g.ContainerName, TX_GETH_HTTP_PORT)
+	g.InternalHttpUrl = fmt.Sprintf("http://%s:%s", g.ContainerName, DEFAULT_EVM_NODE_HTTP_PORT)
 	g.ExternalWsUrl = fmt.Sprintf("ws://%s:%s", host, wsPort.Port())
 	g.InternalWsUrl = fmt.Sprintf("ws://%s:%s", g.ContainerName, TX_NON_DEV_GETH_WS_PORT)
 
@@ -380,14 +364,14 @@ func (g *NonDevBesuNode) getBesuContainerRequest() (tc.ContainerRequest, error) 
 		Name:  g.ContainerName,
 		Image: besuImage,
 		ExposedPorts: []string{
-			NatPortFormat(TX_GETH_HTTP_PORT),
+			NatPortFormat(DEFAULT_EVM_NODE_HTTP_PORT),
 			NatPortFormat(TX_NON_DEV_GETH_WS_PORT),
 			"30303/tcp", "30303/udp"},
 		Networks: g.Networks,
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForLog("WebSocketService | Websocket service started"),
 			NewWebSocketStrategy(NatPort(TX_NON_DEV_GETH_WS_PORT), g.l),
-			NewHTTPStrategy("/", NatPort(TX_GETH_HTTP_PORT)).WithStatusCode(201),
+			NewHTTPStrategy("/", NatPort(DEFAULT_EVM_NODE_HTTP_PORT)).WithStatusCode(201),
 		),
 		Entrypoint: []string{
 			"besu",
@@ -399,7 +383,7 @@ func (g *NonDevBesuNode) getBesuContainerRequest() (tc.ContainerRequest, error) 
 			"--rpc-http-cors-origins", "*",
 			"--rpc-http-api", "ADMIN,DEBUG,WEB3,ETH,TXPOOL,CLIQUE,MINER,NET",
 			"--rpc-http-host", "0.0.0.0",
-			fmt.Sprintf("--rpc-http-port=%s", TX_GETH_HTTP_PORT),
+			fmt.Sprintf("--rpc-http-port=%s", DEFAULT_EVM_NODE_HTTP_PORT),
 			"--rpc-ws-enabled",
 			"--rpc-ws-api", "ADMIN,DEBUG,WEB3,ETH,TXPOOL,CLIQUE,MINER,NET",
 			"--rpc-ws-host", "0.0.0.0",
