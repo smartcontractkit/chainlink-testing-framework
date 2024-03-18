@@ -606,6 +606,10 @@ func (e *EthereumClient) ProcessTransaction(tx *types.Transaction) error {
 	return nil
 }
 
+func (e *EthereumClient) GetEthClient() *ethclient.Client {
+	return e.Client
+}
+
 // ProcessEvent will queue or wait on an event depending on whether parallel transactions are enabled
 func (e *EthereumClient) ProcessEvent(name string, event *types.Log, confirmedChan chan bool, errorChan chan error) error {
 	var eventConfirmer HeaderEventSubscription
@@ -1190,6 +1194,10 @@ type EthereumMultinodeClient struct {
 	Clients       []EVMClient
 }
 
+func (e *EthereumMultinodeClient) GetEthClient() *ethclient.Client {
+	return e.DefaultClient.GetEthClient()
+}
+
 func (e *EthereumMultinodeClient) Backend() bind.ContractBackend {
 	return e.DefaultClient.Backend()
 }
@@ -1315,10 +1323,24 @@ func ConnectEVMClient(networkSettings EVMNetwork, logger zerolog.Logger) (EVMCli
 			continue
 		}
 		// a call to BalanceAt to ensure the client is connected
-		_, err = ec.BalanceAt(context.Background(), ec.GetDefaultWallet().address)
+		b, err := ec.BalanceAt(context.Background(), ec.GetDefaultWallet().address)
 		if err == nil {
 			ec.SetID(idx)
 			ecl.Clients = append(ecl.Clients, ec)
+
+			logger.Info().
+				Uint64("Balance", b.Uint64()).
+				Str("Address", ec.GetDefaultWallet().address.Hex()).
+				Msg("Default address balance")
+
+			if networkSettings.Simulated && b.Cmp(big.NewInt(0)) == 0 {
+				noBalanceErr := fmt.Errorf("Default wallet %s has no balance", ec.GetDefaultWallet().address.Hex())
+				logger.Err(noBalanceErr).
+					Msg("Ending test before it fails anyway")
+
+				return nil, noBalanceErr
+			}
+
 			break
 		}
 	}

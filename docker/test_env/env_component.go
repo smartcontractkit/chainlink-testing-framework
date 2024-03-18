@@ -23,6 +23,7 @@ type EnvComponent struct {
 	ContainerImage     string               `json:"containerImage"`
 	ContainerVersion   string               `json:"containerVersion"`
 	ContainerEnvs      map[string]string    `json:"containerEnvs"`
+	WasRecreated       bool                 `json:"wasRecreated"`
 	Networks           []string             `json:"networks"`
 	Container          tc.Container         `json:"-"`
 	LogStream          *logstream.LogStream `json:"-"`

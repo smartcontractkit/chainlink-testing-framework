@@ -10,7 +10,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 )
 
-func TestNonDevGeth(t *testing.T) {
+func TestGethNonDev(t *testing.T) {
 	l := logging.GetTestLogger(t)
 	network, err := docker.CreateNetwork(l)
 	require.NoError(t, err)

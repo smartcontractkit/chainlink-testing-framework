@@ -12,12 +12,36 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
-func TestEth2WithPrysmAndErigon(t *testing.T) {
+func TestErigonEth1(t *testing.T) {
 	l := logging.GetTestLogger(t)
 
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WithConsensusType(ConsensusType_PoS).
+		WithEthereumVersion(EthereumVersion_Eth1_Legacy).
+		WithExecutionLayer(ExecutionLayer_Erigon).
+		Build()
+	require.NoError(t, err, "Builder validation failed")
+
+	net, _, err := cfg.Start()
+	require.NoError(t, err, "Couldn't start PoW network")
+
+	c, err := blockchain.ConnectEVMClient(net, l)
+	require.NoError(t, err, "Couldn't connect to the evm client")
+
+	address := common.HexToAddress("0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1")
+	err = sendAndCompareBalances(testcontext.Get(t), c, address)
+	require.NoError(t, err, fmt.Sprintf("balance wasn't correctly updated for %s network", net.Name))
+
+	err = c.Close()
+	require.NoError(t, err, "Couldn't close the client")
+}
+
+func TestErigonEth2(t *testing.T) {
+	l := logging.GetTestLogger(t)
+
+	builder := NewEthereumNetworkBuilder()
+	cfg, err := builder.
+		WithEthereumVersion(EthereumVersion_Eth2_Legacy).
 		WithConsensusLayer(ConsensusLayer_Prysm).
 		WithExecutionLayer(ExecutionLayer_Erigon).
 		Build()
@@ -40,7 +64,7 @@ func TestEth2WithPrysmAndErigon(t *testing.T) {
 	ctx := testcontext.Get(t)
 	address := common.HexToAddress("0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1")
 	err = sendAndCompareBalances(ctx, clientOne, address)
-	require.NoError(t, err, fmt.Sprintf("balance wasn't correctly updated when %s network", nonEip1559Network.Name))
+	require.NoError(t, err, fmt.Sprintf("balance wasn't correctly updated for %s network", nonEip1559Network.Name))
 
 	eip1559Network := blockchain.SimulatedEVMNetwork
 	eip1559Network.Name = "Simulated Erigon + Prysm (EIP 1559)"
@@ -55,5 +79,5 @@ func TestEth2WithPrysmAndErigon(t *testing.T) {
 	})
 
 	err = sendAndCompareBalances(ctx, clientTwo, address)
-	require.NoError(t, err, fmt.Sprintf("balance wasn't correctly updated when %s network", eip1559Network.Name))
+	require.NoError(t, err, fmt.Sprintf("balance wasn't correctly updated for %s network", eip1559Network.Name))
 }
