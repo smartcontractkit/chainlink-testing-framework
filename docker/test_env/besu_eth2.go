@@ -25,10 +25,11 @@ func NewBesuEth2(networks []string, chainConfig *EthereumChainConfig, generatedD
 			ContainerImage:   parts[0],
 			ContainerVersion: parts[1],
 		},
-		chainConfig:    chainConfig,
-		posSettings:    posSettings{generatedDataHostDir: generatedDataHostDir},
-		consensusLayer: consensusLayer,
-		l:              logging.GetTestLogger(nil),
+		chainConfig:     chainConfig,
+		posSettings:     posSettings{generatedDataHostDir: generatedDataHostDir},
+		consensusLayer:  consensusLayer,
+		l:               logging.GetTestLogger(nil),
+		ethereumVersion: EthereumVersion_Eth2,
 	}
 	g.SetDefaultHooks()
 	for _, opt := range opts {

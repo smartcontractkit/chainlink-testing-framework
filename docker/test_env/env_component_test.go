@@ -36,7 +36,7 @@ func followLogs(t *testing.T, c testcontainers.Container) *TestLogConsumer {
 	return consumer
 }
 
-func TestEnvComponentPauseChaos(t *testing.T) {
+func TestEthEnvComponentPauseChaos(t *testing.T) {
 	l := logging.GetTestLogger(t)
 	network, err := docker.CreateNetwork(l)
 	require.NoError(t, err)

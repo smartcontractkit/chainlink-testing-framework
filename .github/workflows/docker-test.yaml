@@ -31,7 +31,7 @@ jobs:
           set -euo pipefail
           # disabled, because we want to use a multiline output of go list command
           # shellcheck disable=SC2046
-          go test -tags=eth_env_tests -timeout 20m -json -parallel 2 -cover -covermode=atomic -coverprofile=unit-test-coverage.out $(go list ./... | grep /docker/test_env) 2>&1 | tee /tmp/gotest.log | gotestfmt
+          go test -timeout 20m -json -parallel 2 -cover -covermode=atomic -coverprofile=unit-test-coverage.out $(go list ./... | grep /docker/test_env) -run 'TestEthEnv' 2>&1 | tee /tmp/gotest.log | gotestfmt
       - name: Code Coverage
         uses: codecov/codecov-action@v3
         with:
@@ -69,7 +69,7 @@ jobs:
           set -euo pipefail
           # disabled, because we want to use a multiline output of go list command
           # shellcheck disable=SC2046
-          go test -tags=besu_tests,geth_tests,erigon_tests,nethermind_tests -timeout 20m -json -parallel 2 -cover -covermode=atomic -coverprofile=unit-test-coverage.out $(go list ./... | grep /docker/test_env) 2>&1 | tee /tmp/gotest.log | gotestfmt
+          go test -timeout 20m -json -parallel 2 -cover -covermode=atomic -coverprofile=unit-test-coverage.out $(go list ./... | grep /docker/test_env) -run 'TestBesu|TestGeth|TestNethermind|TestErigon' 2>&1 | tee /tmp/gotest.log | gotestfmt
       - name: Code Coverage
         uses: codecov/codecov-action@v3
         with:
@@ -107,7 +107,7 @@ jobs:
           set -euo pipefail
           # disabled, because we want to use a multiline output of go list command
           # shellcheck disable=SC2046
-          go test -tags=other_docker_tests -timeout 20m -json -parallel 2 -cover -covermode=atomic -coverprofile=unit-test-coverage.out $(go list ./... | grep /docker/test_env) 2>&1 | tee /tmp/gotest.log | gotestfmt
+          go test -timeout 20m -json -parallel 2 -cover -covermode=atomic -coverprofile=unit-test-coverage.out $(go list ./... | grep /docker/test_env) -run 'TestPostgres|TestMockServer|TestKillgrave' 2>&1 | tee /tmp/gotest.log | gotestfmt
       - name: Code Coverage
         uses: codecov/codecov-action@v3
         with:

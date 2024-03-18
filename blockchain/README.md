@@ -4,12 +4,12 @@ This folder contains the bulk of code that handles integrating with different EV
 
 ### Some Terminology
 
-* [L2 Chain](https://ethereum.org/en/layer-2/): A Layer 2 chain "branching" off Ethereum.
-* [EVM](https://ethereum.org/en/developers/docs/evm/): Ethereum Virtual Machine that underpins the Ethereum blockchain.
-* [EVM Compatible](https://blog.thirdweb.com/evm-compatible-blockchains-and-ethereum-virtual-machine/#:~:text=What%20does%20'EVM%20compatibility'%20mean,significant%20changes%20to%20their%20code.): A chain that has some large, underlying differences from how base Ethereum works, but can still be interacted with largely the same way as Ethereum.
-* [EIP-1559](https://eips.ethereum.org/EIPS/eip-1559): The Ethereum Improvement Proposal that changed how gas fees are calculated and paid on Ethereum
-* Legacy Transactions: Transactions that are sent using the old gas fee calculation method, the one used before EIP-1559.
-* Dynamic Fee Transaction: Transactions that are sent using the new gas fee calculation method, the one used after EIP-1559.
+- [L2 Chain](https://ethereum.org/en/layer-2/): A Layer 2 chain "branching" off Ethereum.
+- [EVM](https://ethereum.org/en/developers/docs/evm/): Ethereum Virtual Machine that underpins the Ethereum blockchain.
+- [EVM Compatible](https://blog.thirdweb.com/evm-compatible-blockchains-and-ethereum-virtual-machine/#:~:text=What%20does%20'EVM%20compatibility'%20mean,significant%20changes%20to%20their%20code.): A chain that has some large, underlying differences from how base Ethereum works, but can still be interacted with largely the same way as Ethereum.
+- [EIP-1559](https://eips.ethereum.org/EIPS/eip-1559): The Ethereum Improvement Proposal that changed how gas fees are calculated and paid on Ethereum
+- Legacy Transactions: Transactions that are sent using the old gas fee calculation method, the one used before EIP-1559.
+- Dynamic Fee Transaction: Transactions that are sent using the new gas fee calculation method, the one used after EIP-1559.
 
 ## How Client Integrations Work
 

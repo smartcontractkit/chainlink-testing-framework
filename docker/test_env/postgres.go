@@ -118,14 +118,14 @@ func (pg *PostgresDb) WithTestInstance(t *testing.T) *PostgresDb {
 }
 
 func (pg *PostgresDb) StartContainer() error {
-	return pg.startContainer(false)
+	return pg.startOrRestartContainer(false)
 }
 
 func (pg *PostgresDb) RestartContainer() error {
-	return pg.startContainer(true)
+	return pg.startOrRestartContainer(true)
 }
 
-func (pg *PostgresDb) startContainer(withReuse bool) error {
+func (pg *PostgresDb) startOrRestartContainer(withReuse bool) error {
 	req := pg.getContainerRequest()
 	l := logging.GetTestContainersGoTestLogger(pg.t)
 	c, err := docker.StartContainerWithRetry(pg.l, tc.GenericContainerRequest{
@@ -187,7 +187,7 @@ func (pg *PostgresDb) getContainerRequest() *tc.ContainerRequest {
 		Networks:     pg.Networks,
 		WaitingFor: tcwait.ForExec([]string{"psql", "-h", "127.0.0.1",
 			"-U", pg.User, "-c", "select", "1", "-d", pg.DbName}).
-			WithStartupTimeout(10 * time.Second),
+			WithStartupTimeout(20 * time.Second),
 		LifecycleHooks: []tc.ContainerLifecycleHooks{
 			{
 				PostStarts: pg.PostStartsHooks,
