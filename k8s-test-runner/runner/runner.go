@@ -106,11 +106,5 @@ func (m *K8sTestRun) Run() error {
 	}
 	err = m.c.WaitUntilJobsComplete(m.Ctx, m.cfg.Namespace, m.cfg.SyncValue, m.cfg.JobCount)
 	m.c.PrintPodLogs(m.Ctx, m.cfg.Namespace, m.cfg.SyncValue)
-	if !m.cfg.KeepJobs {
-		err = m.c.RemoveJobs(m.Ctx, m.cfg.Namespace, m.cfg.SyncValue)
-		if err != nil {
-			log.Error().Err(err).Msg("Failed to remove jobs")
-		}
-	}
 	return err
 }

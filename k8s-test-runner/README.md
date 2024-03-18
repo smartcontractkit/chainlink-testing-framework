@@ -50,7 +50,6 @@ image_registry_url = "" # URL to the ECR containing the test binary image, e.g.,
 image_name = "k8s-test-runner"
 image_tag = ""  # The image tag to use, like "mercury-load-tests" (see readme above)
 job_count = "1"
-keep_jobs = true
 test_name = "TestMercuryLoad/all_endpoints"
 test_timeout = "24h"
 test_config_base64_env_name = "LOAD_TEST_BASE64_TOML_CONTENT"
@@ -120,7 +119,6 @@ Then:
         image_name = "k8s-test-runner"
         image_tag = "mercury-load-test"
         job_count = "1"
-        keep_jobs = true
         chart_path = "./chart"
         test_name = "TestMercuryLoad/all_endpoints"
         test_timeout = "24h"

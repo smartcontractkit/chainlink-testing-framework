@@ -30,7 +30,6 @@ type Runner struct {
 	ResourcesLimitsCPU      string            `toml:"resources_limits_cpu" validate:"required"`      // Eg. "1000m"
 	ResourcesLimitsMemory   string            `toml:"resources_limits_memory" validate:"required"`   // Eg. "512Mi"
 	JobCount                int               `toml:"job_count" validate:"required"`
-	KeepJobs                bool              `toml:"keep_jobs"`
 	UpdateImage             bool              `toml:"update_image"`
 	ChartPath               string            `toml:"chart_path"` // Default chart if not set
 	DetachedMode            bool              `toml:"detached_mode"`
