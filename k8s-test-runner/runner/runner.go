@@ -75,7 +75,10 @@ func (m *K8sTestRun) deployHelm(testName string) error {
 	}
 
 	// Run helm install command
-	cmd := fmt.Sprintf("helm install %s %s --namespace %s --values %s --timeout 30s --debug", testName, m.getChartPath(), m.cfg.Namespace, tmpFile.Name())
+	cmd := fmt.Sprintf("helm install %s %s --namespace %s --values %s --timeout 30s", testName, m.getChartPath(), m.cfg.Namespace, tmpFile.Name())
+	if m.cfg.Debug {
+		cmd += " --debug"
+	}
 	log.Info().Str("cmd", cmd).Msg("Running helm install...")
 	return exec.CmdWithStreamFunc(cmd, func(m string) {
 		fmt.Printf("%s\n", m)
@@ -93,7 +96,7 @@ func (m *K8sTestRun) Run() error {
 	jobs, err := m.c.ListJobs(m.Ctx, m.cfg.Namespace, m.cfg.SyncValue)
 	if err == nil {
 		for _, j := range jobs.Items {
-			log.Info().Str("job", j.Name).Msg("Job created")
+			log.Info().Str("job", j.Name).Str("namespace", m.cfg.Namespace).Msg("Job created")
 		}
 	}
 	// Exit early in detached mode
