@@ -32,6 +32,7 @@ type Runner struct {
 	KeepJobs                bool              `toml:"keep_jobs"`
 	UpdateImage             bool              `toml:"update_image"`
 	ChartPath               string            `toml:"chart_path"` // Default chart if not set
+	DetachedMode            bool              `toml:"detached_mode"`
 	Envs                    map[string]string `toml:"envs"`
 }
 

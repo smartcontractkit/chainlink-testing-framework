@@ -25,10 +25,15 @@ func init() {
 		"",
 		"Path to TOML config",
 	)
+	Run.Flags().BoolP("detached", "d", false, "Run in detached mode")
 }
 
 func runRunE(cmd *cobra.Command, args []string) error {
 	configPath, err := cmd.Flags().GetString("config")
+	if err != nil {
+		return err
+	}
+	detachedMode, err := cmd.Flags().GetBool("detached")
 	if err != nil {
 		return err
 	}
@@ -51,6 +56,8 @@ func runRunE(cmd *cobra.Command, args []string) error {
 	if runnerCfg.SyncValue == "" {
 		runnerCfg.SyncValue = fmt.Sprintf("a%s", uuid.NewString()[0:5])
 	}
+
+	runnerCfg.DetachedMode = detachedMode
 
 	p, err := runner.NewK8sTestRun(runnerCfg, getChartOverrides(*runnerCfg))
 	if err != nil {

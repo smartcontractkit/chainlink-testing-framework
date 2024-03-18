@@ -82,7 +82,6 @@ func (m *K8sTestRun) deployHelm(testName string) error {
 	})
 }
 
-// Run starts a new test
 func (m *K8sTestRun) Run() error {
 	testName := uuid.NewString()[0:8]
 	tn := []rune(testName)
@@ -91,7 +90,18 @@ func (m *K8sTestRun) Run() error {
 	if err := m.deployHelm(string(tn)); err != nil {
 		return err
 	}
-	err := m.c.WaitUntilJobsComplete(m.Ctx, m.cfg.Namespace, m.cfg.SyncValue, m.cfg.JobCount)
+	jobs, err := m.c.ListJobs(m.Ctx, m.cfg.Namespace, m.cfg.SyncValue)
+	if err == nil {
+		for _, j := range jobs.Items {
+			log.Info().Str("job", j.Name).Msg("Job created")
+		}
+	}
+	// Exit early in detached mode
+	if m.cfg.DetachedMode {
+		log.Info().Msg("Running in detached mode, exiting early")
+		return nil
+	}
+	err = m.c.WaitUntilJobsComplete(m.Ctx, m.cfg.Namespace, m.cfg.SyncValue, m.cfg.JobCount)
 	m.c.PrintPodLogs(m.Ctx, m.cfg.Namespace, m.cfg.SyncValue)
 	if !m.cfg.KeepJobs {
 		err = m.c.RemoveJobs(m.Ctx, m.cfg.Namespace, m.cfg.SyncValue)
