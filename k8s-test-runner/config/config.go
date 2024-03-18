@@ -15,7 +15,8 @@ type Runner struct {
 	Namespace               string            `toml:"namespace" validate:"required"`
 	RBACRoleName            string            `toml:"rbac_role_name" validate:"required"`
 	RBACServiceAccountName  string            `toml:"rbac_service_account_name" validate:"required"`
-	SyncValue               string            `toml:"sync_value"` // Random if not set
+	SyncValue               string            `toml:"sync_value"`                 // Random if not set
+	TTLSecondsAfterFinished int               `toml:"ttl_seconds_after_finished"` // How long to keep the job after it's finished. Default is 600 seconds
 	ImageRegistryURL        string            `toml:"image_registry_url" envconfig:"IMAGE_REGISTRY_URL" validate:"required"`
 	ImageName               string            `toml:"image_name" validate:"required"`
 	ImageTag                string            `toml:"image_tag" validate:"required"`

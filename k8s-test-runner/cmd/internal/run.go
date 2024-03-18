@@ -57,6 +57,10 @@ func runRunE(cmd *cobra.Command, args []string) error {
 		runnerCfg.SyncValue = fmt.Sprintf("a%s", uuid.NewString()[0:5])
 	}
 
+	if runnerCfg.TTLSecondsAfterFinished == 0 {
+		runnerCfg.TTLSecondsAfterFinished = 600
+	}
+
 	runnerCfg.DetachedMode = detachedMode
 
 	p, err := runner.NewK8sTestRun(runnerCfg, getChartOverrides(*runnerCfg))
@@ -86,8 +90,9 @@ func getChartOverrides(c config.Runner) map[string]interface{} {
 			"roleName":           c.RBACRoleName,
 			"serviceAccountName": c.RBACServiceAccountName,
 		},
-		"jobs": c.JobCount,
-		"sync": c.SyncValue,
+		"jobs":                    c.JobCount,
+		"sync":                    c.SyncValue,
+		"ttlSecondsAfterFinished": c.TTLSecondsAfterFinished,
 		"test": map[string]interface{}{
 			"name":    c.TestName, // Set this to your specific test name
 			"timeout": c.TestTimeout,
