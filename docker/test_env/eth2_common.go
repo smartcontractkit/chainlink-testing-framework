@@ -76,12 +76,13 @@ func GetDefaultChainConfig() EthereumChainConfig {
 	return config
 }
 
-func (c *EthereumChainConfig) Validate(logger zerolog.Logger, consensusType EthereumVersion) error {
+func (c *EthereumChainConfig) Validate(logger zerolog.Logger, ethereumVersion *EthereumVersion) error {
 	if c.ChainID < 1 {
 		return fmt.Errorf("chain id must be >= 0")
 	}
 
-	if consensusType == EthereumVersion_Eth1_Legacy {
+	// don't like it 100% but in some cases we might now know at this point yet which version we are using
+	if ethereumVersion == nil || (*ethereumVersion == EthereumVersion_Eth1_Legacy || *ethereumVersion == EthereumVersion_Eth1) {
 		return nil
 	}
 

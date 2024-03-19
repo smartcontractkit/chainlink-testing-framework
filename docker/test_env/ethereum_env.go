@@ -495,8 +495,6 @@ func (en *EthereumNetwork) startEth2() (blockchain.EVMNetwork, RpcProvider, erro
 		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to wait for chain to be ready")
 	}
 
-	net.ChainID = int64(en.EthereumChainConfig.ChainID)
-
 	en.DockerNetworkNames = dockerNetworks
 	net = en.getFinalEvmNetworkConfig(net)
 
@@ -582,8 +580,6 @@ func (en *EthereumNetwork) startEth1() (blockchain.EVMNetwork, RpcProvider, erro
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to start %s execution client", *en.ExecutionLayer)
 	}
-
-	net.ChainID = int64(en.EthereumChainConfig.ChainID)
 
 	containers := EthereumNetworkContainers{
 		{
@@ -791,7 +787,7 @@ func (en *EthereumNetwork) Validate() error {
 		return errors.New("ethereum chain config is required")
 	}
 
-	return en.EthereumChainConfig.Validate(l, *en.EthereumVersion)
+	return en.EthereumChainConfig.Validate(l, en.EthereumVersion)
 }
 
 func (en *EthereumNetwork) ApplyOverrides(from *EthereumNetwork) error {
