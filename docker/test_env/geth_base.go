@@ -98,9 +98,9 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, error) {
 
 	networkConfig := blockchain.SimulatedEVMNetwork
 	if g.GetEthereumVersion() == EthereumVersion_Eth1 {
-		networkConfig.Name = fmt.Sprintf("Simulated Eth-1-PoA [geth %s]", g.ContainerVersion)
+		networkConfig.Name = fmt.Sprintf("Private Eth-1-PoA [geth %s]", g.ContainerVersion)
 	} else {
-		networkConfig.Name = fmt.Sprintf("Simulated Eth-2-PoS [geth %s] + %s", g.consensusLayer, g.ContainerVersion)
+		networkConfig.Name = fmt.Sprintf("Private Eth-2-PoS [geth %s] + %s", g.ContainerVersion, g.consensusLayer)
 	}
 	networkConfig.URLs = []string{g.ExternalWsUrl}
 	networkConfig.HTTPURLs = []string{g.ExternalHttpUrl}
@@ -184,7 +184,7 @@ func (g *Geth) getEntryPointAndKeystoreLocation(minerAddress string) ([]string, 
 		return nil, err
 	}
 
-	var enabledApis = "admin,debug,web3,eth,txpool,personal,clique,miner,net"
+	var enabledApis = "admin,debug,web3,eth,txpool,personal,ethash,miner,net"
 	var localhost = "0.0.0.0"
 
 	entrypoint := []string{
@@ -200,6 +200,7 @@ func (g *Geth) getEntryPointAndKeystoreLocation(minerAddress string) ([]string, 
 		"--mine",
 		"--miner.etherbase", minerAddress,
 		"--unlock", minerAddress,
+		"--miner.threads=1",
 	}
 
 	if version < 110 {

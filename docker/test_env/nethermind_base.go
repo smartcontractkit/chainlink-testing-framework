@@ -99,10 +99,10 @@ func (g *Nethermind) StartContainer() (blockchain.EVMNetwork, error) {
 
 	networkConfig := blockchain.SimulatedEVMNetwork
 	if g.GetEthereumVersion() == EthereumVersion_Eth1 {
-		networkConfig.Name = fmt.Sprintf("Simulated Eth-1-PoA [nethermind %s", g.ContainerVersion)
+		networkConfig.Name = fmt.Sprintf("Private Eth-1-PoA [nethermind %s", g.ContainerVersion)
 		networkConfig.GasEstimationBuffer = 100_000_000_000
 	} else {
-		networkConfig.Name = fmt.Sprintf("Simulated Eth-2-PoS [nethermind %s] + %s", g.consensusLayer, g.ContainerVersion)
+		networkConfig.Name = fmt.Sprintf("Private Eth-2-PoS [nethermind %s] + %s", g.ContainerVersion, g.consensusLayer)
 	}
 	networkConfig.URLs = []string{g.ExternalWsUrl}
 	networkConfig.HTTPURLs = []string{g.ExternalHttpUrl}

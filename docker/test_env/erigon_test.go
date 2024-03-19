@@ -69,6 +69,7 @@ func TestErigonEth2(t *testing.T) {
 	eip1559Network := blockchain.SimulatedEVMNetwork
 	eip1559Network.Name = "Simulated Erigon + Prysm (EIP 1559)"
 	eip1559Network.SupportsEIP1559 = true
+	eip1559Network.FinalityTag = true
 	eip1559Network.URLs = eth2.PublicWsUrls()
 	clientTwo, err := blockchain.ConnectEVMClient(eip1559Network, l)
 	require.NoError(t, err, "Couldn't connect to the evm client")
