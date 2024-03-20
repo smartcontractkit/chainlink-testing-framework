@@ -184,7 +184,7 @@ func (g *Geth) getEntryPointAndKeystoreLocation(minerAddress string) ([]string, 
 		return nil, err
 	}
 
-	var enabledApis = "admin,debug,web3,eth,txpool,personal,ethash,miner,net"
+	var enabledApis = "admin,debug,web3,eth,txpool,personal,clique,miner,net"
 	var localhost = "0.0.0.0"
 
 	entrypoint := []string{
@@ -200,7 +200,6 @@ func (g *Geth) getEntryPointAndKeystoreLocation(minerAddress string) ([]string, 
 		"--mine",
 		"--miner.etherbase", minerAddress,
 		"--unlock", minerAddress,
-		"--miner.threads=1",
 	}
 
 	if version < 110 {

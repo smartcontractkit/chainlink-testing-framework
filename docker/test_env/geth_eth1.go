@@ -70,7 +70,7 @@ func (g *Geth) getEth1ContainerRequest() (*tc.ContainerRequest, error) {
 	genesisJsonStr, err := templates.GenesisJsonTemplate{
 		ChainId:     fmt.Sprintf("%d", g.chainConfig.ChainID),
 		AccountAddr: generatedData.accountsToFund,
-		Consensus:   templates.GethGenesisConsensus_Ethash,
+		Consensus:   templates.GethGenesisConsensus_Clique,
 		ExtraData:   fmt.Sprintf("0x%s", hex.EncodeToString(generatedData.extraData)),
 	}.String()
 	if err != nil {

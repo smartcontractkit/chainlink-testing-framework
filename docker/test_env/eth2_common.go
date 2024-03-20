@@ -81,7 +81,8 @@ func (c *EthereumChainConfig) Validate(logger zerolog.Logger, ethereumVersion *E
 		return fmt.Errorf("chain id must be >= 0")
 	}
 
-	// don't like it 100% but in some cases we might now know at this point yet which version we are using
+	// don't like it 100% but in cases where we load private ethereum network config from TOML it might be incomplete
+	// until we pass it to ethereum network builder that will fill in defaults
 	if ethereumVersion == nil || (*ethereumVersion == EthereumVersion_Eth1_Legacy || *ethereumVersion == EthereumVersion_Eth1) {
 		return nil
 	}
