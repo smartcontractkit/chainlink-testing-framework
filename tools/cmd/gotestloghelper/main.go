@@ -10,7 +10,7 @@ import (
 	"os/signal"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/clireader"
-	"github.com/smartcontractkit/chainlink-testing-framework/tools/gotestevent"
+	"github.com/smartcontractkit/chainlink-testing-framework/tools/cmd/gotestloghelper/gotestevent"
 )
 
 func main() {
