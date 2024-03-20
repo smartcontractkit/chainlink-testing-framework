@@ -271,7 +271,7 @@ func (b *EthereumNetworkBuilder) validate() error {
 		return errors.New("ethereum chain config is required")
 	}
 
-	return b.ethereumChainConfig.Validate(logging.GetTestLogger(nil), b.ethereumVersion)
+	return b.ethereumChainConfig.Validate(logging.GetTestLogger(nil), &b.ethereumVersion)
 }
 
 func (b *EthereumNetworkBuilder) validateCustomDockerImages() error {
