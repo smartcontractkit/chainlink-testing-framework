@@ -636,10 +636,6 @@ func (e *EthereumClient) CancelFinalityPolling() {
 // If the network is simulated, it will return immediately
 // otherwise it waits for the transaction to be finalized and returns the block number and time of the finalization
 func (e *EthereumClient) WaitForFinalizedTx(txHash common.Hash) (*big.Int, time.Time, error) {
-	if e.NetworkSimulated() {
-		return nil, time.Time{}, nil
-	}
-
 	receipt, err := e.Client.TransactionReceipt(context.Background(), txHash)
 	if err != nil {
 		return nil, time.Time{}, err
@@ -663,11 +659,7 @@ func (e *EthereumClient) WaitForFinalizedTx(txHash common.Hash) (*big.Int, time.
 // in case of network with finality tag if the tx is not finalized it returns false,
 // the latest finalized header number and the time at which it was finalized
 // if the tx is finalized it returns true, the finalized header number by which the tx was considered finalized and the time at which it was finalized
-// In case of simulated network, it always returns true
 func (e *EthereumClient) IsTxHeadFinalized(txHdr, header *SafeEVMHeader) (bool, *big.Int, time.Time, error) {
-	if e.NetworkSimulated() {
-		return true, nil, time.Time{}, nil
-	}
 	if e.NetworkConfig.FinalityDepth > 0 {
 		if header.Number.Cmp(new(big.Int).Add(txHdr.Number,
 			big.NewInt(int64(e.NetworkConfig.FinalityDepth)))) > 0 {
