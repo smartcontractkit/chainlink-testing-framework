@@ -12,7 +12,6 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
-	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/google/uuid"
@@ -181,50 +180,19 @@ func (g *NonDevGethNode) createMountDirs() error {
 	}
 	g.Config.keystorePath = keystorePath
 
-	// Create keystore and ethereum account
-	ks := keystore.NewKeyStore(g.Config.keystorePath, keystore.StandardScryptN, keystore.StandardScryptP)
-	account, err := ks.NewAccount("")
+	generatedData, err := generateKeystoreAndExtraData(keystorePath, []string{})
 	if err != nil {
 		return err
 	}
-	g.Config.accountAddr = account.Address.Hex()
-	addr := strings.Replace(account.Address.Hex(), "0x", "", 1)
-	FundingAddresses[addr] = ""
-	signerBytes, err := hex.DecodeString(addr)
-	if err != nil {
-		fmt.Println("Error decoding signer address:", err)
-		return err
-	}
 
-	zeroBytes := make([]byte, 32)                      // Create 32 zero bytes
-	extradata := append(zeroBytes, signerBytes...)     // Concatenate zero bytes and signer address
-	extradata = append(extradata, make([]byte, 65)...) // Concatenate 65 more zero bytes
+	g.Config.accountAddr = generatedData.minerAccount.Address.Hex()
 
-	fmt.Printf("Encoded extradata: 0x%s\n", hex.EncodeToString(extradata))
-
-	i := 1
-	var accounts []string
-	for addr, v := range FundingAddresses {
-		if v == "" {
-			continue
-		}
-		f, err := os.Create(fmt.Sprintf("%s/%s", g.Config.keystorePath, fmt.Sprintf("key%d", i)))
-		if err != nil {
-			return err
-		}
-		_, err = f.WriteString(v)
-		if err != nil {
-			return err
-		}
-		i++
-		accounts = append(accounts, addr)
-	}
 	err = os.WriteFile(g.Config.keystorePath+"/password.txt", []byte(""), 0600)
 	if err != nil {
 		return err
 	}
 
-	genesisJsonStr, err := templates.BuildGenesisJsonForNonDevChain(g.Config.chainId, accounts, fmt.Sprintf("0x%s", hex.EncodeToString(extradata)))
+	genesisJsonStr, err := templates.BuildGenesisJsonForNonDevChain(g.Config.chainId, generatedData.accountsToFund, fmt.Sprintf("0x%s", hex.EncodeToString(generatedData.extraData)))
 	if err != nil {
 		return err
 	}
@@ -309,7 +277,7 @@ func (g *NonDevGethNode) ConnectToClient() error {
 	if err != nil {
 		return err
 	}
-	port := NatPort(TX_GETH_HTTP_PORT)
+	port := NatPort(DEFAULT_EVM_NODE_HTTP_PORT)
 	httpPort, err := ct.MappedPort(testcontext.Get(g.t), port)
 	if err != nil {
 		return err
@@ -320,7 +288,7 @@ func (g *NonDevGethNode) ConnectToClient() error {
 	}
 
 	g.ExternalHttpUrl = fmt.Sprintf("http://%s:%s", host, httpPort.Port())
-	g.InternalHttpUrl = fmt.Sprintf("http://%s:%s", g.ContainerName, TX_GETH_HTTP_PORT)
+	g.InternalHttpUrl = fmt.Sprintf("http://%s:%s", g.ContainerName, DEFAULT_EVM_NODE_HTTP_PORT)
 	g.ExternalWsUrl = fmt.Sprintf("ws://%s:%s", host, wsPort.Port())
 	g.InternalWsUrl = fmt.Sprintf("ws://%s:%s", g.ContainerName, TX_NON_DEV_GETH_WS_PORT)
 
@@ -390,12 +358,12 @@ func (g *NonDevGethNode) getGethContainerRequest() (tc.ContainerRequest, error) 
 		Name:  g.ContainerName,
 		Image: gethImage,
 		ExposedPorts: []string{
-			NatPortFormat(TX_GETH_HTTP_PORT),
+			NatPortFormat(DEFAULT_EVM_NODE_HTTP_PORT),
 			NatPortFormat(TX_NON_DEV_GETH_WS_PORT),
 			"30303/tcp", "30303/udp"},
 		Networks: g.Networks,
 		WaitingFor: tcwait.ForAll(
-			NewHTTPStrategy("/", NatPort(TX_GETH_HTTP_PORT)),
+			NewHTTPStrategy("/", NatPort(DEFAULT_EVM_NODE_HTTP_PORT)),
 			tcwait.ForLog("WebSocket enabled"),
 			NewWebSocketStrategy(NatPort(TX_NON_DEV_GETH_WS_PORT), g.l),
 		),
@@ -408,7 +376,7 @@ func (g *NonDevGethNode) getGethContainerRequest() (tc.ContainerRequest, error) 
 			"--http.corsdomain", "*",
 			"--http.api", "admin,debug,web3,eth,txpool,personal,clique,miner,net",
 			"--http.addr", "0.0.0.0",
-			fmt.Sprintf("--http.port=%s", TX_GETH_HTTP_PORT),
+			fmt.Sprintf("--http.port=%s", DEFAULT_EVM_NODE_HTTP_PORT),
 			"--ws",
 			"--ws.origins", "*",
 			"--ws.api", "admin,debug,web3,eth,txpool,personal,clique,miner,net",

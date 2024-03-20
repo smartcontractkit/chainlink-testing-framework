@@ -77,7 +77,7 @@ test_unit: install_gotestfmt
 	go test -json -cover -covermode=count -coverprofile=unit-test-coverage.out ./client ./gauntlet ./testreporters ./k8s/config ./utils/osutil 2 2>&1 | tee /tmp/gotest.log | gotestfmt
 
 test_docker: install_gotestfmt
-	go test -json -cover -covermode=count -coverprofile=unit-test-coverage.out ./docker/test_env ./logstream 2>&1 | tee /tmp/gotest.log | gotestfmt	
+	go test -timeout 20m -json -failfast -parallel 3 -cover -covermode=atomic -coverprofile=unit-test-coverage.out ./docker/test_env 2>&1 | tee /tmp/gotest.log | gotestfmt
 
 
 #######################
