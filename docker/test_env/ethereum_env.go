@@ -596,6 +596,7 @@ func (en *EthereumNetwork) startEth1() (blockchain.EVMNetwork, RpcProvider, erro
 	rpcProvider.publicsUrls = append(rpcProvider.publicsUrls, client.GetExternalWsUrl())
 
 	en.DockerNetworkNames = dockerNetworks
+	net.ChainID = int64(en.EthereumChainConfig.ChainID)
 
 	return net, rpcProvider, nil
 }
