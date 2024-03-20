@@ -90,7 +90,7 @@ type Test []GoTestEvent
 
 // Print prints the Test to the console
 func (t Test) Print(pass bool, c *TestLogModifierConfig) {
-	if !ptr.Val(c.IsJsonInput) {
+	if !*c.IsJsonInput {
 		return // not compatible with non json input
 	}
 
@@ -121,7 +121,7 @@ func (t Test) Print(pass bool, c *TestLogModifierConfig) {
 	}
 
 	// start the group
-	if ptr.Val(c.CI) {
+	if *c.CI {
 		if outcomeType == "pass" {
 			StartGroupPass(message, c)
 		} else if outcomeType == "skip" {
@@ -137,7 +137,7 @@ func (t Test) Print(pass bool, c *TestLogModifierConfig) {
 	}
 
 	// end the group if we are in CI mode
-	if ptr.Val(c.CI) {
+	if *c.CI {
 		github.EndGroup()
 	}
 }
@@ -179,7 +179,7 @@ func (p TestPackage) Print(c *TestLogModifierConfig) {
 	}
 
 	// Add color to the output if needed
-	if ptr.Val(c.CI) || ptr.Val(c.Color) {
+	if *c.CI || *c.Color {
 		match := packageOkFailPrefixRegexp.FindStringSubmatch(p.Message)
 		if p.Failed {
 			fmt.Printf("📦 %s", clitext.Color(clitext.ColorRed, match[2]))
@@ -266,7 +266,7 @@ func (c *TestLogModifierConfig) Validate() error {
 		return err
 	}
 	if c.OnlyErrors.Value {
-		if !ptr.Val(c.IsJsonInput) {
+		if !*c.IsJsonInput {
 			return fmt.Errorf("OnlyErrors flag is only valid when run with -json flag")
 		}
 	}
@@ -277,7 +277,7 @@ func (c *TestLogModifierConfig) Validate() error {
 // SetupModifiers sets up the modifiers based on the flags provided
 func SetupModifiers(c *TestLogModifierConfig) []TestLogModifier {
 	modifiers := []TestLogModifier{}
-	if ptr.Val(c.CI) {
+	if *c.CI {
 		c.Color = ptr.Ptr(true)
 		c.IsJsonInput = ptr.Ptr(true)
 		c.ShouldImmediatelyPrint = false
@@ -286,13 +286,13 @@ func SetupModifiers(c *TestLogModifierConfig) []TestLogModifier {
 		}
 		c.RemoveTLogPrefix = ptr.Ptr(true)
 	}
-	if ptr.Val(c.RemoveTLogPrefix) {
+	if *c.RemoveTLogPrefix {
 		modifiers = append(modifiers, RemoveTestLogPrefix)
 	}
-	if ptr.Val(c.Color) {
+	if *c.Color {
 		modifiers = append(modifiers, HighlightErrorOutput)
 	}
-	if ptr.Val(c.IsJsonInput) {
+	if *c.IsJsonInput {
 		c.ShouldImmediatelyPrint = false
 		modifiers = append(modifiers, JsonTestOutputToStandard)
 	}
@@ -399,10 +399,10 @@ func JsonTestOutputToStandard(te *GoTestEvent, c *TestLogModifierConfig) error {
 
 // StartGroupPass starts a group in the CI environment with a green title
 func StartGroupPass(title string, c *TestLogModifierConfig) {
-	if ptr.Val(c.Color) {
+	if *c.Color {
 		title = clitext.Color(clitext.ColorGreen, title)
 	}
-	if ptr.Val(c.CI) {
+	if *c.CI {
 		github.StartGroup(title)
 	} else {
 		fmt.Println(title)
@@ -411,10 +411,10 @@ func StartGroupPass(title string, c *TestLogModifierConfig) {
 
 // StartGroupSkip starts a group in the CI environment with a green title
 func StartGroupSkip(title string, c *TestLogModifierConfig) {
-	if ptr.Val(c.Color) {
+	if *c.Color {
 		title = clitext.Color(clitext.ColorYellow, title)
 	}
-	if ptr.Val(c.CI) {
+	if *c.CI {
 		github.StartGroup(title)
 	} else {
 		fmt.Println(title)
@@ -423,10 +423,10 @@ func StartGroupSkip(title string, c *TestLogModifierConfig) {
 
 // StartGroupFail starts a group in the CI environment with a red title
 func StartGroupFail(title string, c *TestLogModifierConfig) {
-	if ptr.Val(c.Color) {
+	if *c.Color {
 		title = clitext.Color(clitext.ColorRed, title)
 	}
-	if ptr.Val(c.CI) {
+	if *c.CI {
 		github.StartGroup(title)
 	} else {
 		fmt.Println(title)
@@ -449,7 +449,7 @@ func ReadAndModifyLogs(ctx context.Context, r io.Reader, modifiers []TestLogModi
 		var err error
 
 		// build a TestEvent from the input line
-		if ptr.Val(c.IsJsonInput) {
+		if *c.IsJsonInput {
 			te, err = ParseTestEvent(b)
 			if err != nil {
 				log.Fatalf("Error parsing json test event from stdin: %v\n", err)
@@ -475,7 +475,7 @@ func ReadAndModifyLogs(ctx context.Context, r io.Reader, modifiers []TestLogModi
 
 		// print line back out
 		if c.ShouldImmediatelyPrint {
-			if ptr.Val(c.IsJsonInput) {
+			if *c.IsJsonInput {
 				s, err := te.String()
 				if err != nil {
 					return err
