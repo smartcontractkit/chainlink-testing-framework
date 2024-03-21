@@ -84,8 +84,8 @@ func (f *FinalizedHeader) ReceiveHeader(header NodeHeader) error {
 // newGlobalFinalizedHeaderManager is a global manager for finalized headers per network.
 // It is used to keep track of the latest finalized header for each network.
 func newGlobalFinalizedHeaderManager(evmClient EVMClient) *FinalizedHeader {
-	// if simulated network or finality depth is greater than 0, there is no need to track finalized headers return nil
-	if evmClient.NetworkSimulated() || evmClient.GetNetworkConfig().FinalityDepth > 0 {
+	// if finality depth is greater than 0, there is no need to track finalized headers return nil
+	if evmClient.GetNetworkConfig().FinalityDepth > 0 {
 		return nil
 	}
 	f, ok := globalFinalizedHeaderManager.Load(evmClient.GetChainID().String())
@@ -167,10 +167,6 @@ func NewTransactionFinalizer(client EVMClient, txHdr *SafeEVMHeader, txHash comm
 }
 
 func (tf *TransactionFinalizer) ReceiveHeader(header NodeHeader) error {
-	// if simulated network, return
-	if tf.client.NetworkSimulated() {
-		return nil
-	}
 	isFinalized, by, at, err := tf.client.IsTxHeadFinalized(tf.txHdr, &header.SafeEVMHeader)
 	if err != nil {
 		return err
