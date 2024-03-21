@@ -76,12 +76,14 @@ func GetDefaultChainConfig() EthereumChainConfig {
 	return config
 }
 
-func (c *EthereumChainConfig) Validate(logger zerolog.Logger, consensusType EthereumVersion) error {
+func (c *EthereumChainConfig) Validate(logger zerolog.Logger, ethereumVersion *EthereumVersion) error {
 	if c.ChainID < 1 {
 		return fmt.Errorf("chain id must be >= 0")
 	}
 
-	if consensusType == EthereumVersion_Eth1_Legacy {
+	// don't like it 100% but in cases where we load private ethereum network config from TOML it might be incomplete
+	// until we pass it to ethereum network builder that will fill in defaults
+	if ethereumVersion == nil || (*ethereumVersion == EthereumVersion_Eth1_Legacy || *ethereumVersion == EthereumVersion_Eth1) {
 		return nil
 	}
 
