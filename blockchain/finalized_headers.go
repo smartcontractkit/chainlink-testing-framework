@@ -177,9 +177,9 @@ func (tf *TransactionFinalizer) ReceiveHeader(header NodeHeader) error {
 			Str("Tx block", tf.txHdr.Number.String()).
 			Msg("Found finalized log")
 		tf.complete = true
-		tf.doneChan <- struct{}{}
 		tf.FinalizedBy = by
 		tf.FinalizedAt = at
+		tf.doneChan <- struct{}{}
 	} else {
 		lgEvent := tf.lggr.Info()
 		// if the transaction is not finalized, notify every logNotifyFrequency duration
