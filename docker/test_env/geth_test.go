@@ -36,16 +36,17 @@ func TestGethEth1(t *testing.T) {
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
 		WithEthereumVersion(EthereumVersion_Eth1_Legacy).
+		WithEthereumChainConfig(EthereumChainConfig{
+			ChainID: 2337,
+		}).
 		WithExecutionLayer(ExecutionLayer_Geth).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 
-	_, eth2, err := cfg.Start()
+	net, _, err := cfg.Start()
 	require.NoError(t, err, "Couldn't start PoW network")
 
-	ns := blockchain.SimulatedEVMNetwork
-	ns.URLs = eth2.PublicWsUrls()
-	c, err := blockchain.ConnectEVMClient(ns, l)
+	c, err := blockchain.ConnectEVMClient(net, l)
 	require.NoError(t, err, "Couldn't connect to the evm client")
 	err = c.Close()
 	require.NoError(t, err, "Couldn't close the client")
