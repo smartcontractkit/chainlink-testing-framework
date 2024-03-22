@@ -247,6 +247,7 @@ type TestLogModifierConfig struct {
 	SinglePackage          *bool
 	ShouldImmediatelyPrint bool
 	TestPackageMap         TestPackageMap
+	FailuresExist          bool
 }
 
 func NewDefaultConfig() *TestLogModifierConfig {
@@ -286,7 +287,6 @@ func SetupModifiers(c *TestLogModifierConfig) []TestLogModifier {
 		c.ShouldImmediatelyPrint = false
 		if !c.OnlyErrors.IsSet {
 			c.OnlyErrors.Set("true")
-			fmt.Println("WHY IS THIS NOT SETTING THE ONLYERRORS FLAG")
 		}
 		c.RemoveTLogPrefix = ptr.Ptr(true)
 	}
@@ -359,6 +359,7 @@ func JsonTestOutputToStandard(te *GoTestEvent, c *TestLogModifierConfig) error {
 		if te.Action == ActionFail || testPanicRegexp.MatchString(te.Output) {
 			p.FailedTests = append(p.FailedTests, te.Test)
 			p.Failed = true
+			c.FailuresExist = true
 		}
 		t := p.TestLogs[te.Test]
 		if *c.SinglePackage && (te.Action == ActionFail || te.Action == ActionPass) && p.ShouldPrintTest(t, c) {
@@ -370,6 +371,7 @@ func JsonTestOutputToStandard(te *GoTestEvent, c *TestLogModifierConfig) error {
 		// if we have a package completed then we can print out the errors if any
 		if te.Action == ActionFail {
 			p.Failed = true
+			c.FailuresExist = true
 		}
 		p.Elapsed = te.Elapsed
 		p.Print(c)
@@ -386,6 +388,7 @@ func JsonTestOutputToStandard(te *GoTestEvent, c *TestLogModifierConfig) error {
 		}
 		if len(te.Output) > 0 && testPanicRegexp.MatchString(te.Output) {
 			p.Failed = true
+			c.FailuresExist = true
 			match := testPanicRegexp.FindStringSubmatch(te.Output)
 			te.Output = clitext.Color(clitext.ColorRed, te.Output)
 			p.NonTestLogs = append(p.NonTestLogs, *te)

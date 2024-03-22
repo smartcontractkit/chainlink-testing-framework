@@ -44,6 +44,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error reading and modifying logs: %v\n", err)
 	}
+	if config.FailuresExist {
+		os.Exit(1)
+	}
 }
 
 func ReadAndModifyLogs(ctx context.Context, r io.Reader, modifiers []gotestevent.TestLogModifier, c *gotestevent.TestLogModifierConfig) error {

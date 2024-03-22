@@ -80,6 +80,9 @@ jobs:
           QA_AWS_REGION: ${{ secrets.QA_AWS_REGION }}
           QA_AWS_ROLE_TO_ASSUME: ${{ secrets.QA_AWS_ROLE_TO_ASSUME }}
           QA_KUBECONFIG: ${{ secrets.QA_KUBECONFIG }}
+      - name: gotestfmt
+        if: failure()
+        run: cat /tmp/gotest.log && gotestfmt
       - name: Upload test log
         uses: actions/upload-artifact@v3
         if: failure()
@@ -113,6 +116,9 @@ jobs:
           QA_AWS_REGION: ${{ secrets.QA_AWS_REGION }}
           QA_AWS_ROLE_TO_ASSUME: ${{ secrets.QA_AWS_ROLE_TO_ASSUME }}
           QA_KUBECONFIG: ${{ secrets.QA_KUBECONFIG }}
+      - name: gotestfmt
+        if: failure()
+        run: cat /tmp/remoterunnergotest.log && gotestfmt
       - name: Upload test log
         uses: actions/upload-artifact@v2
         if: failure()
