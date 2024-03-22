@@ -82,7 +82,7 @@ jobs:
           QA_KUBECONFIG: ${{ secrets.QA_KUBECONFIG }}
       - name: gotestfmt
         if: failure()
-        run: cat /tmp/gotest.log && gotestfmt
+        run: cat /tmp/gotest.log | gotestfmt
       - name: Upload test log
         uses: actions/upload-artifact@v3
         if: failure()
@@ -118,7 +118,7 @@ jobs:
           QA_KUBECONFIG: ${{ secrets.QA_KUBECONFIG }}
       - name: gotestfmt
         if: failure()
-        run: cat /tmp/remoterunnergotest.log && gotestfmt
+        run: cat /tmp/remoterunnergotest.log | gotestfmt
       - name: Upload test log
         uses: actions/upload-artifact@v2
         if: failure()
