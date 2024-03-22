@@ -271,7 +271,7 @@ func (b *EthereumNetworkBuilder) validate() error {
 		return errors.New("ethereum chain config is required")
 	}
 
-	return b.ethereumChainConfig.Validate(logging.GetTestLogger(nil), b.ethereumVersion)
+	return b.ethereumChainConfig.Validate(logging.GetTestLogger(nil), &b.ethereumVersion)
 }
 
 func (b *EthereumNetworkBuilder) validateCustomDockerImages() error {
@@ -596,6 +596,7 @@ func (en *EthereumNetwork) startEth1() (blockchain.EVMNetwork, RpcProvider, erro
 	rpcProvider.publicsUrls = append(rpcProvider.publicsUrls, client.GetExternalWsUrl())
 
 	en.DockerNetworkNames = dockerNetworks
+	net.ChainID = int64(en.EthereumChainConfig.ChainID)
 
 	return net, rpcProvider, nil
 }
@@ -787,7 +788,7 @@ func (en *EthereumNetwork) Validate() error {
 		return errors.New("ethereum chain config is required")
 	}
 
-	return en.EthereumChainConfig.Validate(l, *en.EthereumVersion)
+	return en.EthereumChainConfig.Validate(l, en.EthereumVersion)
 }
 
 func (en *EthereumNetwork) ApplyOverrides(from *EthereumNetwork) error {
