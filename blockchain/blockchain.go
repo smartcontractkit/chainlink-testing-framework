@@ -13,6 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 // EVMClient is the interface that wraps a given client implementation for a blockchain, to allow for switching
@@ -112,6 +113,8 @@ type EVMClient interface {
 	FilterLogs(ctx context.Context, filterQuery ethereum.FilterQuery) ([]types.Log, error)
 
 	RawJsonRPCCall(ctx context.Context, result interface{}, method string, params ...interface{}) error
+
+	GetEthClient() *ethclient.Client
 }
 
 // NodeHeader header with the ID of the node that received it
