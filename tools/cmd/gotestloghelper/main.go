@@ -29,6 +29,7 @@ func main() {
 	flag.Var(config.OnlyErrors, "onlyerrors", "Set to true to only print tests that failed, not compatible without -json")
 	config.Color = flag.Bool("color", false, "Set to true to enable color output")
 	config.CI = flag.Bool("ci", false, "Set to true to enable CI mode, which will print out the logs with groupings when combined with -json")
+	config.SinglePackage = flag.Bool("singlepackage", false, "Set to true if the go test output is from a single package only, this will print tests out as they finish instead of waiting for the package to finish")
 	flag.Parse()
 
 	err := config.Validate()
@@ -47,8 +48,8 @@ func main() {
 
 func ReadAndModifyLogs(ctx context.Context, r io.Reader, modifiers []gotestevent.TestLogModifier, c *gotestevent.TestLogModifierConfig) error {
 	return clireader.ReadLine(ctx, r, func(b []byte) error {
-		var te *gotestevent.GoTestEvent
 		var err error
+		te := &gotestevent.GoTestEvent{}
 
 		// build a TestEvent from the input line
 		if *c.IsJsonInput {

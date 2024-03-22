@@ -33,6 +33,9 @@ jobs:
       - name: Improved output
         if: always()
         run: cat /tmp/gotest.log | go run ./tools/cmd/gotestloghelper/main.go -ci -onlyerrors=false
+      - name: Improved output 2
+        if: always()
+        run: cat /tmp/gotest.log | go run ./tools/cmd/gotestloghelper/main.go -ci
       - name: Code Coverage
         uses: codecov/codecov-action@v3
         with:

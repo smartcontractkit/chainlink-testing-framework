@@ -328,6 +328,7 @@ func TestBasicPassAndFail(t *testing.T) {
 				RemoveTLogPrefix: ptr.Ptr(true),
 				OnlyErrors:       &flags.BoolFlag{IsSet: true, Value: onlyErrors},
 				CI:               ptr.Ptr(true),
+				SinglePackage:    ptr.Ptr(false),
 			}
 			require.NoError(t, c.Validate(), "Config should be valid")
 			SetupModifiers(c)
@@ -341,6 +342,7 @@ func TestBasicPassAndFail(t *testing.T) {
 				}
 			}, true)
 			require.Equal(t, expected, output)
+			time.Sleep(3 * time.Second)
 		})
 	}
 }
