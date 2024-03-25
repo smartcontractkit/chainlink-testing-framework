@@ -45,12 +45,10 @@ The TOML config should specify the test runner configuration as follows:
 ```
 namespace = "e2e-tests"
 rbac_role_name = "" # RBAC role name for the chart
-update_image = true
 image_registry_url = "" # URL to the ECR containing the test binary image, e.g., staging ECR URL
 image_name = "k8s-test-runner"
 image_tag = ""  # The image tag to use, like "mercury-load-tests" (see readme above)
 job_count = "1"
-keep_jobs = true
 test_name = "TestMercuryLoad/all_endpoints"
 test_timeout = "24h"
 test_config_base64_env_name = "LOAD_TEST_BASE64_TOML_CONTENT"
@@ -115,12 +113,10 @@ Then:
         cat << EOF > config.toml
         namespace = "e2e-tests"
         rbac_role_name = "" # RBAC role name for the chart
-        update_image = false
         image_registry_url = "${{ secrets.AWS_ACCOUNT_ID_STAGING }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com"
         image_name = "k8s-test-runner"
         image_tag = "mercury-load-test"
         job_count = "1"
-        keep_jobs = true
         chart_path = "./chart"
         test_name = "TestMercuryLoad/all_endpoints"
         test_timeout = "24h"
