@@ -14,7 +14,9 @@ import (
 type Runner struct {
 	Namespace               string            `toml:"namespace" validate:"required"`
 	RBACRoleName            string            `toml:"rbac_role_name" validate:"required"`
-	SyncValue               string            `toml:"sync_value"` // Random if not set
+	RBACServiceAccountName  string            `toml:"rbac_service_account_name" validate:"required"`
+	SyncValue               string            `toml:"sync_value"`                 // Random if not set
+	TTLSecondsAfterFinished int               `toml:"ttl_seconds_after_finished"` // How long to keep the job after it's finished. Default is 600 seconds
 	ImageRegistryURL        string            `toml:"image_registry_url" envconfig:"IMAGE_REGISTRY_URL" validate:"required"`
 	ImageName               string            `toml:"image_name" validate:"required"`
 	ImageTag                string            `toml:"image_tag" validate:"required"`
@@ -28,9 +30,9 @@ type Runner struct {
 	ResourcesLimitsCPU      string            `toml:"resources_limits_cpu" validate:"required"`      // Eg. "1000m"
 	ResourcesLimitsMemory   string            `toml:"resources_limits_memory" validate:"required"`   // Eg. "512Mi"
 	JobCount                int               `toml:"job_count" validate:"required"`
-	KeepJobs                bool              `toml:"keep_jobs"`
-	UpdateImage             bool              `toml:"update_image"`
 	ChartPath               string            `toml:"chart_path"` // Default chart if not set
+	DetachedMode            bool              `toml:"detached_mode"`
+	Debug                   bool              `toml:"debug"`
 	Envs                    map[string]string `toml:"envs"`
 }
 
