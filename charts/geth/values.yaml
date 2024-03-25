@@ -7,6 +7,8 @@ geth:
 
   networkid: 1337
   blocktime: 1
+  startGaslimit: 11500000
+  targetGasLimit: 30000000
   capacity: 1Gi
 
 resources:
