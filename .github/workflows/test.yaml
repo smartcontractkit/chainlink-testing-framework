@@ -13,7 +13,7 @@ jobs:
           - name: root
             path: ./
           - name: gotestloghelper
-            path: ./tools/cmd/gotestloghelper/
+            path: ./tools/gotestloghelper/
     runs-on: ubuntu-latest
     name: ${{ matrix.project.name }} unit tests
     steps:
@@ -26,16 +26,9 @@ jobs:
           go_mod_path: ${{ matrix.project.path }}go.mod
           cache_key_id: ctf-go
           cache_restore_only: 'false'
-      # gotestfmt gives us pretty test output
-      - name: Set Up gotestfmt
-        uses: GoTestTools/gotestfmt-action@v2
-        with:
-          token: ${{ github.token }} # Avoids rate-limiting
       - name: Install gotestloghelper
-        shell: bash
-        run: make tools_build
+        run: make gotestloghelper_build
       - name: Run Tests
-        shell: bash
         run: |
           PATH=$PATH:$(go env GOPATH)/bin
           export PATH
@@ -43,13 +36,7 @@ jobs:
           # disabled, because we want to use a multiline output of go list command
           # shellcheck disable=SC2046
           cd ${{ matrix.project.path }}
-          go test -timeout 5m -json -cover -covermode=count -coverprofile=unit-test-coverage.out $(go list ./... | grep -v /k8s/e2e/ | grep -v /k8s/examples/ | grep -v /docker/test_env) 2>&1 | tee /tmp/gotest.log | gotestfmt
-      - name: Improved output
-        if: always()
-        run: cat /tmp/gotest.log | ./gotestloghelper -ci -onlyerrors=false
-      - name: Improved output 2
-        if: always()
-        run: cat /tmp/gotest.log | ./gotestloghelper -ci -onlyerrors=true -json
+          go test -timeout 5m -json -cover -covermode=count -coverprofile=unit-test-coverage.out $(go list ./... | grep -v /k8s/e2e/ | grep -v /k8s/examples/ | grep -v /docker/test_env) 2>&1 | tee /tmp/gotest.log | /gotestloghelper -ci
       - name: Code Coverage
         uses: codecov/codecov-action@v3
         with:

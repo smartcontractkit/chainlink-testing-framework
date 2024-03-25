@@ -1,4 +1,4 @@
-package clitext
+package clihelper
 
 import (
 	"fmt"

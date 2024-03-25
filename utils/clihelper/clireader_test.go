@@ -1,4 +1,4 @@
-package clireader
+package clihelper
 
 import (
 	"bytes"

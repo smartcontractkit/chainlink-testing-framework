@@ -12,10 +12,8 @@ import (
 
 	"dario.cat/mergo"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/tools/clireader"
-	"github.com/smartcontractkit/chainlink-testing-framework/tools/clitext"
-	"github.com/smartcontractkit/chainlink-testing-framework/tools/flags"
-	"github.com/smartcontractkit/chainlink-testing-framework/tools/github"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/clihelper"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/github"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/ptr"
 )
 
@@ -181,9 +179,9 @@ func (p TestPackage) Print(c *TestLogModifierConfig) {
 		if *c.CI || *c.Color {
 			match := packageOkFailPrefixRegexp.FindStringSubmatch(p.Message)
 			if p.Failed {
-				fmt.Printf("📦 %s", clitext.Color(clitext.ColorRed, match[2]))
+				fmt.Printf("📦 %s", clihelper.Color(clihelper.ColorRed, match[2]))
 			} else {
-				fmt.Printf("📦 %s", clitext.Color(clitext.ColorGreen, match[2]))
+				fmt.Printf("📦 %s", clihelper.Color(clihelper.ColorGreen, match[2]))
 			}
 		}
 
@@ -241,7 +239,7 @@ func (m TestPackageMap) InitPackageInMap(packageName string) {
 type TestLogModifierConfig struct {
 	IsJsonInput            *bool
 	RemoveTLogPrefix       *bool
-	OnlyErrors             *flags.BoolFlag
+	OnlyErrors             *clihelper.BoolFlag
 	Color                  *bool
 	CI                     *bool
 	SinglePackage          *bool
@@ -254,7 +252,7 @@ func NewDefaultConfig() *TestLogModifierConfig {
 	return &TestLogModifierConfig{
 		IsJsonInput:            ptr.Ptr(false),
 		RemoveTLogPrefix:       ptr.Ptr(false),
-		OnlyErrors:             &flags.BoolFlag{},
+		OnlyErrors:             &clihelper.BoolFlag{},
 		Color:                  ptr.Ptr(false),
 		CI:                     ptr.Ptr(false),
 		SinglePackage:          ptr.Ptr(false),
@@ -331,7 +329,7 @@ func HighlightErrorOutput(te *GoTestEvent, _ *TestLogModifierConfig) error {
 	if te.Action == ActionOutput && len(te.Output) > 0 {
 		if testErrorPrefixRegexp.MatchString(te.Output) ||
 			testErrorPrefix2Regexp.MatchString(te.Output) {
-			te.Output = clitext.Color(clitext.ColorRed, te.Output)
+			te.Output = clihelper.Color(clihelper.ColorRed, te.Output)
 		}
 	}
 	return nil
@@ -390,7 +388,7 @@ func JsonTestOutputToStandard(te *GoTestEvent, c *TestLogModifierConfig) error {
 			p.Failed = true
 			c.FailuresExist = true
 			match := testPanicRegexp.FindStringSubmatch(te.Output)
-			te.Output = clitext.Color(clitext.ColorRed, te.Output)
+			te.Output = clihelper.Color(clihelper.ColorRed, te.Output)
 			p.NonTestLogs = append(p.NonTestLogs, *te)
 			// Check if there is a match for the test name
 			if len(match) > 1 {
@@ -412,7 +410,7 @@ func JsonTestOutputToStandard(te *GoTestEvent, c *TestLogModifierConfig) error {
 // StartGroupPass starts a group in the CI environment with a green title
 func StartGroupPass(title string, c *TestLogModifierConfig) {
 	if *c.Color {
-		title = clitext.Color(clitext.ColorGreen, title)
+		title = clihelper.Color(clihelper.ColorGreen, title)
 	}
 	if *c.CI {
 		github.StartGroup(title)
@@ -424,7 +422,7 @@ func StartGroupPass(title string, c *TestLogModifierConfig) {
 // StartGroupSkip starts a group in the CI environment with a green title
 func StartGroupSkip(title string, c *TestLogModifierConfig) {
 	if *c.Color {
-		title = clitext.Color(clitext.ColorYellow, title)
+		title = clihelper.Color(clihelper.ColorYellow, title)
 	}
 	if *c.CI {
 		github.StartGroup(title)
@@ -436,7 +434,7 @@ func StartGroupSkip(title string, c *TestLogModifierConfig) {
 // StartGroupFail starts a group in the CI environment with a red title
 func StartGroupFail(title string, c *TestLogModifierConfig) {
 	if *c.Color {
-		title = clitext.Color(clitext.ColorRed, title)
+		title = clihelper.Color(clihelper.ColorRed, title)
 	}
 	if *c.CI {
 		github.StartGroup(title)
@@ -456,7 +454,7 @@ func SliceContains[T comparable](slice []T, item T) bool {
 }
 
 func ReadAndModifyLogs(ctx context.Context, r io.Reader, modifiers []TestLogModifier, c *TestLogModifierConfig) error {
-	return clireader.ReadLine(ctx, r, func(b []byte) error {
+	return clihelper.ReadLine(ctx, r, func(b []byte) error {
 		var te *GoTestEvent
 		var err error
 

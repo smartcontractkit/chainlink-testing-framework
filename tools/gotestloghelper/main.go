@@ -9,8 +9,8 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/tools/clireader"
-	"github.com/smartcontractkit/chainlink-testing-framework/tools/cmd/gotestloghelper/gotestevent"
+	"github.com/smartcontractkit/chainlink-testing-framework/tools/gotestloghelper/gotestevent"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/clihelper"
 )
 
 func main() {
@@ -50,7 +50,7 @@ func main() {
 }
 
 func ReadAndModifyLogs(ctx context.Context, r io.Reader, modifiers []gotestevent.TestLogModifier, c *gotestevent.TestLogModifierConfig) error {
-	return clireader.ReadLine(ctx, r, func(b []byte) error {
+	return clihelper.ReadLine(ctx, r, func(b []byte) error {
 		var err error
 		te := &gotestevent.GoTestEvent{}
 

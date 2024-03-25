@@ -1,8 +1,8 @@
-module github.com/smartcontractkit/chainlink-testing-framework/tools/cmd/gotestloghelper
+module github.com/smartcontractkit/chainlink-testing-framework/tools/gotestloghelper
 
 go 1.21.5
 
-replace github.com/smartcontractkit/chainlink-testing-framework => ../../../
+replace github.com/smartcontractkit/chainlink-testing-framework => ../../
 
 require (
 	github.com/smartcontractkit/chainlink-testing-framework v0.0.0-00010101000000-000000000000
