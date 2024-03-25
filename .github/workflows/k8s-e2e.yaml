@@ -71,7 +71,7 @@ jobs:
         with:
           cl_repo: ${{ env.CHAINLINK_IMAGE }}
           cl_image_tag: ${{ env.CHAINLINK_VERSION }}
-          test_command_to_run: unset ENV_JOB_IMAGE && helm repo update && make k8s_test_e2e_ci
+          test_command_to_run: make gotestloghelper_build && unset ENV_JOB_IMAGE && helm repo update && make k8s_test_e2e_ci
           test_download_vendor_packages_command: go mod download
           artifacts_location: ./e2e/logs
           publish_check_name: E2E Test Results
@@ -99,14 +99,12 @@ jobs:
       TEST_TRIGGERED_BY: chainlink-testing-framework-remote-runner-ci
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-      - name: Install gotestloghelper
-        run: make gotestloghelper_build
       - name: Run Remote Runner Tests
         uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/run-tests@ce87f8986ca18336cc5015df75916c2ec0a7c4b3 # v2.1.2
         with:
           cl_repo: ${{ env.CHAINLINK_IMAGE }}
           cl_image_tag: ${{ env.CHAINLINK_VERSION }}
-          test_command_to_run: helm repo update && make k8s_test_e2e_ci_remote_runner
+          test_command_to_run: make gotestloghelper_build && helm repo update && make k8s_test_e2e_ci_remote_runner
           test_download_vendor_packages_command: go mod download
           artifacts_location: ./k8s/logs
           publish_check_name: E2E Remote Runner Test Results
