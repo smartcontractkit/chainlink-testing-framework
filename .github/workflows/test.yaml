@@ -36,8 +36,7 @@ jobs:
           # disabled, because we want to use a multiline output of go list command
           # shellcheck disable=SC2046
           cd ${{ matrix.project.path }}
-          pwd
-          go test -timeout 5m -json -cover -covermode=count -coverprofile=unit-test-coverage.out $(go list ./... | grep -v /k8s/e2e/ | grep -v /k8s/examples/ | grep -v /docker/test_env) 2>&1 | tee /tmp/gotest.log | /gotestloghelper -ci
+          go test -timeout 5m -json -cover -covermode=count -coverprofile=unit-test-coverage.out $(go list ./... | grep -v /k8s/e2e/ | grep -v /k8s/examples/ | grep -v /docker/test_env) 2>&1 | tee /tmp/gotest.log | /home/runner/work/chainlink-testing-framework/chainlink-testing-framework/gotestloghelper -ci
       - name: Code Coverage
         uses: codecov/codecov-action@v3
         with:
