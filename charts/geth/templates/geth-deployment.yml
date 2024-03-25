@@ -101,6 +101,10 @@ spec:
           - '10000000000'
           - '--miner.gastarget'
           - '80000000000'
+          - '--miner.gaslimit'
+          - '{{ .Values.geth.targetGasLimit }}'
+          - '--dev.gaslimit'
+          - '{{ .Values.geth.startGaslimit }}'
         ports:
         - name: http-rpc
           containerPort: 8544
