@@ -75,14 +75,16 @@ func (m *K8sTestRun) deployHelm(testName string) error {
 	}
 
 	// Run helm install command
-	cmd := fmt.Sprintf("helm install %s %s --namespace %s --values %s --timeout 30s --debug", testName, m.getChartPath(), m.cfg.Namespace, tmpFile.Name())
+	cmd := fmt.Sprintf("helm install %s %s --namespace %s --values %s --timeout 30s", testName, m.getChartPath(), m.cfg.Namespace, tmpFile.Name())
+	if m.cfg.Debug {
+		cmd += " --debug"
+	}
 	log.Info().Str("cmd", cmd).Msg("Running helm install...")
 	return exec.CmdWithStreamFunc(cmd, func(m string) {
 		fmt.Printf("%s\n", m)
 	})
 }
 
-// Run starts a new test
 func (m *K8sTestRun) Run() error {
 	testName := uuid.NewString()[0:8]
 	tn := []rune(testName)
@@ -91,13 +93,18 @@ func (m *K8sTestRun) Run() error {
 	if err := m.deployHelm(string(tn)); err != nil {
 		return err
 	}
-	err := m.c.WaitUntilJobsComplete(m.Ctx, m.cfg.Namespace, m.cfg.SyncValue, m.cfg.JobCount)
-	m.c.PrintPodLogs(m.Ctx, m.cfg.Namespace, m.cfg.SyncValue)
-	if !m.cfg.KeepJobs {
-		err = m.c.RemoveJobs(m.Ctx, m.cfg.Namespace, m.cfg.SyncValue)
-		if err != nil {
-			log.Error().Err(err).Msg("Failed to remove jobs")
+	jobs, err := m.c.ListJobs(m.Ctx, m.cfg.Namespace, m.cfg.SyncValue)
+	if err == nil {
+		for _, j := range jobs.Items {
+			log.Info().Str("job", j.Name).Str("namespace", m.cfg.Namespace).Msg("Job created")
 		}
 	}
+	// Exit early in detached mode
+	if m.cfg.DetachedMode {
+		log.Info().Msg("Running in detached mode, exiting early")
+		return nil
+	}
+	err = m.c.WaitUntilJobsComplete(m.Ctx, m.cfg.Namespace, m.cfg.SyncValue, m.cfg.JobCount)
+	m.c.PrintPodLogs(m.Ctx, m.cfg.Namespace, m.cfg.SyncValue)
 	return err
 }
