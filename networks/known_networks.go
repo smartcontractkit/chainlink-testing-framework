@@ -64,6 +64,7 @@ var (
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       10000,
 		DefaultGasLimit:           6000000,
+		FinalityDepth:             1,
 	}
 
 	// SimulatedEVM_NON_DEV_2 represents a simulated network with chain id 2337 which can be used to deploy a non-dev geth node
@@ -83,6 +84,7 @@ var (
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       10000,
 		DefaultGasLimit:           6000000,
+		FinalityDepth:             1,
 	}
 
 	// SimulatedBesuNonDev1 represents a simulated network which can be used to deploy a non-dev besu node
