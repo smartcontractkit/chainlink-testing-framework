@@ -111,6 +111,8 @@ type Config struct {
 	// Remote Runner Specific Variables //
 	// JobImage an image to run environment as a job inside k8s
 	JobImage string
+	// Specify only if you want remote-runner to start with a specific name
+	RunnerName string
 	// JobLogFunction a function that will be run on each log
 	JobLogFunction func(*Environment, string)
 	// Test the testing library current Test struct
@@ -646,8 +648,12 @@ func (m *Environment) RunCustomReadyConditions(customCheck *client.ReadyCheckDat
 			return fmt.Errorf("Test must be configured in the environment when using the remote runner")
 		}
 		rrSelector := map[string]*string{pkg.NamespaceLabelKey: ptr.Ptr(m.Cfg.Namespace)}
+		remoteRunnerName := REMOTE_RUNNER_NAME
+		if m.Cfg.RunnerName != "" {
+			remoteRunnerName = m.Cfg.RunnerName
+		}
 		m.AddChart(NewRunner(&Props{
-			BaseName:           REMOTE_RUNNER_NAME,
+			BaseName:           remoteRunnerName,
 			TargetNamespace:    m.Cfg.Namespace,
 			Labels:             &rrSelector,
 			Image:              m.Cfg.JobImage,
