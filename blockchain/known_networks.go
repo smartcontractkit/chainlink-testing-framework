@@ -26,6 +26,7 @@ const (
 	WeMixClientImplementation        ClientImplementation = "WeMix"
 	KromaClientImplementation        ClientImplementation = "Kroma"
 	GnosisClientImplementation       ClientImplementation = "Gnosis"
+	ZKSyncClientImplementation       ClientImplementation = "ZKSync"
 )
 
 // wrapSingleClient Wraps a single EVM client in its appropriate implementation, based on the chain ID
@@ -128,6 +129,9 @@ func wrapMultiClient(networkSettings EVMNetwork, client *EthereumMultinodeClient
 	case GnosisClientImplementation:
 		logMsg.Msg("Using Gnosis Client")
 		wrappedEc = &GnosisMultinodeClient{client}
+	case ZKSyncClientImplementation:
+		logMsg.Msg("Using ZkSync Client")
+		wrappedEc = &ZKSyncMultiNodeClient{client}
 	default:
 		log.Warn().Str("Network", networkSettings.Name).Msg("Unknown client implementation, defaulting to standard Ethereum client")
 		wrappedEc = client
