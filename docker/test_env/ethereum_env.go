@@ -419,7 +419,7 @@ func (en *EthereumNetwork) Start() (blockchain.EVMNetwork, RpcProvider, error) {
 }
 
 func (en *EthereumNetwork) startEth2() (blockchain.EVMNetwork, RpcProvider, error) {
-	rpcProvider := NewRpcProvider([]string{}, []string{}, []string{}, []string{})
+	rpcProvider := NewRPCProvider([]string{}, []string{}, []string{}, []string{})
 
 	var net blockchain.EVMNetwork
 
