@@ -26,7 +26,7 @@ func (m Chart) IsDeploymentNeeded() bool {
 }
 
 func (m Chart) GetName() string {
-	return REMOTE_RUNNER_NAME
+	return m.Props.BaseName
 }
 
 func (m Chart) GetProps() interface{} {
