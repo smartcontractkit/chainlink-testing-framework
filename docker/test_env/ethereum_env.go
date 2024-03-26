@@ -421,9 +421,9 @@ func (en *EthereumNetwork) Start() (blockchain.EVMNetwork, RpcProvider, error) {
 func (en *EthereumNetwork) startEth2() (blockchain.EVMNetwork, RpcProvider, error) {
 	rpcProvider := RpcProvider{
 		privateHttpUrls: []string{},
-		privatelWsUrls:  []string{},
+		privateWsUrls:   []string{},
 		publiclHttpUrls: []string{},
-		publicsUrls:     []string{},
+		publicUrls:      []string{},
 	}
 
 	var net blockchain.EVMNetwork
@@ -534,9 +534,9 @@ func (en *EthereumNetwork) startEth2() (blockchain.EVMNetwork, RpcProvider, erro
 	en.Containers = append(en.Containers, containers...)
 
 	rpcProvider.privateHttpUrls = append(rpcProvider.privateHttpUrls, client.GetInternalHttpUrl())
-	rpcProvider.privatelWsUrls = append(rpcProvider.privatelWsUrls, client.GetInternalWsUrl())
+	rpcProvider.privateWsUrls = append(rpcProvider.privateWsUrls, client.GetInternalWsUrl())
 	rpcProvider.publiclHttpUrls = append(rpcProvider.publiclHttpUrls, client.GetExternalHttpUrl())
-	rpcProvider.publicsUrls = append(rpcProvider.publicsUrls, client.GetExternalWsUrl())
+	rpcProvider.publicUrls = append(rpcProvider.publicUrls, client.GetExternalWsUrl())
 
 	return net, rpcProvider, nil
 }
@@ -545,9 +545,9 @@ func (en *EthereumNetwork) startEth1() (blockchain.EVMNetwork, RpcProvider, erro
 	var net blockchain.EVMNetwork
 	rpcProvider := RpcProvider{
 		privateHttpUrls: []string{},
-		privatelWsUrls:  []string{},
+		privateWsUrls:   []string{},
 		publiclHttpUrls: []string{},
-		publicsUrls:     []string{},
+		publicUrls:      []string{},
 	}
 
 	dockerNetworks, err := en.getOrCreateDockerNetworks()
@@ -591,9 +591,9 @@ func (en *EthereumNetwork) startEth1() (blockchain.EVMNetwork, RpcProvider, erro
 
 	en.Containers = append(en.Containers, containers...)
 	rpcProvider.privateHttpUrls = append(rpcProvider.privateHttpUrls, client.GetInternalHttpUrl())
-	rpcProvider.privatelWsUrls = append(rpcProvider.privatelWsUrls, client.GetInternalWsUrl())
+	rpcProvider.privateWsUrls = append(rpcProvider.privateWsUrls, client.GetInternalWsUrl())
 	rpcProvider.publiclHttpUrls = append(rpcProvider.publiclHttpUrls, client.GetExternalHttpUrl())
-	rpcProvider.publicsUrls = append(rpcProvider.publicsUrls, client.GetExternalWsUrl())
+	rpcProvider.publicUrls = append(rpcProvider.publicUrls, client.GetExternalWsUrl())
 
 	en.DockerNetworkNames = dockerNetworks
 	net.ChainID = int64(en.EthereumChainConfig.ChainID)
@@ -822,13 +822,29 @@ func (en *EthereumNetwork) ApplyOverrides(from *EthereumNetwork) error {
 	return nil
 }
 
+// RpcProvider holds all necessary URLs to connect to a simulated chain or a real RPC provider connected to a live chain
 // maybe only store ports here and depending on where the test is executed return different URLs?
 // maybe 3 different constructors for each "perspective"? (docker, k8s with local runner, k8s with remote runner)
 type RpcProvider struct {
 	privateHttpUrls []string
-	privatelWsUrls  []string
+	privateWsUrls   []string
 	publiclHttpUrls []string
-	publicsUrls     []string
+	publicUrls      []string
+}
+
+// NewRPCProvider creates a new RpcProvider, and should only be used for custom network connections e.g. to a live testnet chain
+func NewRPCProvider(
+	privateHttpUrls,
+	privateWsUrls,
+	publiclHttpUrls,
+	publicUrls []string,
+) *RpcProvider {
+	return &RpcProvider{
+		privateHttpUrls: privateHttpUrls,
+		privateWsUrls:   privateWsUrls,
+		publiclHttpUrls: publiclHttpUrls,
+		publicUrls:      publicUrls,
+	}
 }
 
 func (s *RpcProvider) PrivateHttpUrls() []string {
@@ -836,7 +852,7 @@ func (s *RpcProvider) PrivateHttpUrls() []string {
 }
 
 func (s *RpcProvider) PrivateWsUrsl() []string {
-	return s.privatelWsUrls
+	return s.privateWsUrls
 }
 
 func (s *RpcProvider) PublicHttpUrls() []string {
@@ -844,7 +860,7 @@ func (s *RpcProvider) PublicHttpUrls() []string {
 }
 
 func (s *RpcProvider) PublicWsUrls() []string {
-	return s.publicsUrls
+	return s.publicUrls
 }
 
 type ContainerType string
