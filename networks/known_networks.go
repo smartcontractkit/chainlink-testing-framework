@@ -381,6 +381,20 @@ var (
 		DefaultGasLimit:           6000000,
 	}
 
+	PolygonAmoy blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Polygon Amoy",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.PolygonClientImplementation,
+		ChainID:                   80002,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       1000,
+		FinalityTag:               true,
+		DefaultGasLimit:           6000000,
+	}
+
 	AvalancheMainnet blockchain.EVMNetwork = blockchain.EVMNetwork{
 		Name:                      "Avalanche Mainnet",
 		SupportsEIP1559:           true,
@@ -788,6 +802,7 @@ var (
 		"CELO_MAINNET":          CeloMainnet,
 		"RSK":                   RSKTestnet,
 		"POLYGON_MUMBAI":        PolygonMumbai,
+		"POLYGON_AMOY":          PolygonAmoy,
 		"POLYGON_MAINNET":       PolygonMainnet,
 		"AVALANCHE_FUJI":        AvalancheFuji,
 		"AVALANCHE_MAINNET":     AvalancheMainnet,
