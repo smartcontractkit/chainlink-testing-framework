@@ -1166,9 +1166,6 @@ func (e *EthereumClient) AvgBlockTime(ctx context.Context) (time.Duration, error
 		}
 
 		blockTime := time.Unix(int64(hdr.Time), 0)
-		if err != nil {
-			return totalTime, err
-		}
 		previousBlockTime := time.Unix(int64(previousHeader.Time), 0)
 		blockDuration := blockTime.Sub(previousBlockTime)
 		totalTime += blockDuration
@@ -1256,7 +1253,7 @@ func NewEVMClientFromNetwork(networkSettings EVMNetwork, logger zerolog.Logger) 
 		}
 	}
 	if len(ecl.Clients) == 0 {
-		return nil, fmt.Errorf("No networks or URLS found for network %s", networkSettings.Name)
+		return nil, fmt.Errorf("no networks or URLS found for network %s", networkSettings.Name)
 	}
 	ecl.DefaultClient = ecl.Clients[0]
 	wrappedClient := wrapMultiClient(networkSettings, ecl)
@@ -1326,7 +1323,7 @@ func ConnectEVMClient(networkSettings EVMNetwork, logger zerolog.Logger) (EVMCli
 				Msg("Default address balance")
 
 			if networkSettings.Simulated && b.Cmp(big.NewInt(0)) == 0 {
-				noBalanceErr := fmt.Errorf("Default wallet %s has no balance", ec.GetDefaultWallet().address.Hex())
+				noBalanceErr := fmt.Errorf("default wallet %s has no balance", ec.GetDefaultWallet().address.Hex())
 				logger.Err(noBalanceErr).
 					Msg("Ending test before it fails anyway")
 

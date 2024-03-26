@@ -150,7 +150,7 @@ func (k *Kafka) CreateLocalTopics() error {
 		if code != 0 {
 			outputBytes, _ := io.ReadAll(output)
 			outputString := strings.TrimSpace(string(outputBytes))
-			return fmt.Errorf("Create topics returned %d code. Output: %s", code, outputString)
+			return fmt.Errorf("create topics returned %d code. Output: %s", code, outputString)
 		}
 		k.l.Info().
 			Strs("cmd", cmd).
