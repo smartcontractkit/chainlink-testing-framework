@@ -208,9 +208,9 @@ func (p TestPackage) ShouldPrintTest(test Test, c *TestLogModifierConfig) bool {
 	shouldPrintTest := false
 	testFailed := SliceContains(p.FailedTests, test[0].Test)
 	// if we only want errors
-	if c.OnlyErrors.Value && p.Failed {
+	if c.OnlyErrors.Value {
 		// if the test failed or if we had a package fail without a test fail, we want all the logs for triage in this case
-		if len(p.FailedTests) == 0 || testFailed {
+		if (len(p.FailedTests) == 0 || testFailed) && p.Failed {
 			shouldPrintTest = true
 		}
 	} else {
