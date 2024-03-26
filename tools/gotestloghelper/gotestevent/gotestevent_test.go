@@ -64,16 +64,6 @@ func (sr *stdoutRedirector) closeRedirect() string {
 }
 
 // do not use with parallel tests
-// func captureModifierOutput(t *testing.T, input string, modifiers []TestLogModifier, config *TestLogModifierConfig, shouldCapture bool) string {
-// 	reader := bytes.NewBufferString(input)
-
-// 	return genericCaptureOutput(func() {
-// 		err := ReadAndModifyLogs(testcontext.Get(t), reader, modifiers, config)
-// 		require.NoError(t, err, "Error reading and modifying logs")
-// 	}, shouldCapture)
-// }
-
-// do not use with parallel tests
 func genericCaptureOutput(fn func(), shouldCapture bool) string {
 	output := ""
 	sr := newStdoutRedirector()
