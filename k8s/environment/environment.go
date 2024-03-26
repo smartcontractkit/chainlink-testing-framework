@@ -648,12 +648,12 @@ func (m *Environment) RunCustomReadyConditions(customCheck *client.ReadyCheckDat
 			return fmt.Errorf("Test must be configured in the environment when using the remote runner")
 		}
 		rrSelector := map[string]*string{pkg.NamespaceLabelKey: ptr.Ptr(m.Cfg.Namespace)}
-		remoteRunnerName := REMOTE_RUNNER_NAME
-		if m.Cfg.RunnerName != "" {
-			remoteRunnerName = m.Cfg.RunnerName
+		// if no runner name is specified use constant
+		if m.Cfg.RunnerName == "" {
+			m.Cfg.RunnerName = REMOTE_RUNNER_NAME
 		}
 		m.AddChart(NewRunner(&Props{
-			BaseName:           remoteRunnerName,
+			BaseName:           m.Cfg.RunnerName,
 			TargetNamespace:    m.Cfg.Namespace,
 			Labels:             &rrSelector,
 			Image:              m.Cfg.JobImage,
@@ -690,7 +690,7 @@ func (m *Environment) RunCustomReadyConditions(customCheck *client.ReadyCheckDat
 		if m.Cfg.detachRunner {
 			return nil
 		}
-		if err := m.Client.WaitForJob(m.Cfg.Namespace, "remote-test-runner", func(message string) {
+		if err := m.Client.WaitForJob(m.Cfg.Namespace, m.Cfg.RunnerName, func(message string) {
 			if m.Cfg.JobLogFunction != nil {
 				m.Cfg.JobLogFunction(m, message)
 			} else {
