@@ -419,12 +419,7 @@ func (en *EthereumNetwork) Start() (blockchain.EVMNetwork, RpcProvider, error) {
 }
 
 func (en *EthereumNetwork) startEth2() (blockchain.EVMNetwork, RpcProvider, error) {
-	rpcProvider := RpcProvider{
-		privateHttpUrls: []string{},
-		privateWsUrls:   []string{},
-		publiclHttpUrls: []string{},
-		publicUrls:      []string{},
-	}
+	rpcProvider := NewRpcProvider([]string{}, []string{}, []string{}, []string{})
 
 	var net blockchain.EVMNetwork
 
@@ -536,7 +531,7 @@ func (en *EthereumNetwork) startEth2() (blockchain.EVMNetwork, RpcProvider, erro
 	rpcProvider.privateHttpUrls = append(rpcProvider.privateHttpUrls, client.GetInternalHttpUrl())
 	rpcProvider.privateWsUrls = append(rpcProvider.privateWsUrls, client.GetInternalWsUrl())
 	rpcProvider.publiclHttpUrls = append(rpcProvider.publiclHttpUrls, client.GetExternalHttpUrl())
-	rpcProvider.publicUrls = append(rpcProvider.publicUrls, client.GetExternalWsUrl())
+	rpcProvider.publicWsUrls = append(rpcProvider.publicWsUrls, client.GetExternalWsUrl())
 
 	return net, rpcProvider, nil
 }
@@ -547,7 +542,7 @@ func (en *EthereumNetwork) startEth1() (blockchain.EVMNetwork, RpcProvider, erro
 		privateHttpUrls: []string{},
 		privateWsUrls:   []string{},
 		publiclHttpUrls: []string{},
-		publicUrls:      []string{},
+		publicWsUrls:    []string{},
 	}
 
 	dockerNetworks, err := en.getOrCreateDockerNetworks()
@@ -593,7 +588,7 @@ func (en *EthereumNetwork) startEth1() (blockchain.EVMNetwork, RpcProvider, erro
 	rpcProvider.privateHttpUrls = append(rpcProvider.privateHttpUrls, client.GetInternalHttpUrl())
 	rpcProvider.privateWsUrls = append(rpcProvider.privateWsUrls, client.GetInternalWsUrl())
 	rpcProvider.publiclHttpUrls = append(rpcProvider.publiclHttpUrls, client.GetExternalHttpUrl())
-	rpcProvider.publicUrls = append(rpcProvider.publicUrls, client.GetExternalWsUrl())
+	rpcProvider.publicWsUrls = append(rpcProvider.publicWsUrls, client.GetExternalWsUrl())
 
 	en.DockerNetworkNames = dockerNetworks
 	net.ChainID = int64(en.EthereumChainConfig.ChainID)
@@ -829,7 +824,7 @@ type RpcProvider struct {
 	privateHttpUrls []string
 	privateWsUrls   []string
 	publiclHttpUrls []string
-	publicUrls      []string
+	publicWsUrls    []string
 }
 
 // NewRPCProvider creates a new RpcProvider, and should only be used for custom network connections e.g. to a live testnet chain
@@ -837,13 +832,13 @@ func NewRPCProvider(
 	privateHttpUrls,
 	privateWsUrls,
 	publiclHttpUrls,
-	publicUrls []string,
+	publicWsUrls []string,
 ) *RpcProvider {
 	return &RpcProvider{
 		privateHttpUrls: privateHttpUrls,
 		privateWsUrls:   privateWsUrls,
 		publiclHttpUrls: publiclHttpUrls,
-		publicUrls:      publicUrls,
+		publicWsUrls:    publicWsUrls,
 	}
 }
 
@@ -860,7 +855,7 @@ func (s *RpcProvider) PublicHttpUrls() []string {
 }
 
 func (s *RpcProvider) PublicWsUrls() []string {
-	return s.publicUrls
+	return s.publicWsUrls
 }
 
 type ContainerType string
