@@ -5,7 +5,6 @@ external_artifacts
 # Hardhat config that might sneak through
 node_modules/
 package-lock.json
-package.json
 artifacts/
 
 # Binaries for programs and plugins

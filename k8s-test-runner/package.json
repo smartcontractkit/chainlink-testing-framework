@@ -1,0 +1,5 @@
+{
+  "name": "k8s-test-runner",
+  "description": "A simple test runner for k8s tests",
+  "version": "1.0.0"
+}
