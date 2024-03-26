@@ -20,6 +20,9 @@ spec:
         resources:
           requests:
             storage: {{ $.Values.db.capacity }}
+        {{ if $.Values.db.storageClassName }}
+        storageClassName: {{ $.Values.db.storageClassName}}
+        {{ end }}
 {{ end }}
   selector:
     matchLabels:
