@@ -332,6 +332,16 @@ func (e *EthereumClient) ReturnFunds(fromKey *ecdsa.PrivateKey) error {
 	totalGasCost := new(big.Int).Mul(big.NewInt(0).SetUint64(gasLimit), gasPrice)
 	toSend := new(big.Int).Sub(balance, totalGasCost)
 
+	// Negative values can happen on large gas costs, and we can't send negative ETH
+	if toSend.Cmp(big.NewInt(0)) <= 0 {
+		e.l.Error().Str("From", fromAddress.Hex()).
+			Uint64("Estimated Gas Cost", totalGasCost.Uint64()).
+			Uint64("Balance", balance.Uint64()).
+			Str("To Send", toSend.String()).
+			Msg("Insufficient funds to return at current gas prices")
+		return fmt.Errorf("insufficient funds to return at current gas prices, balance: %s", balance.String())
+	}
+
 	tx := types.NewTransaction(nonce, e.DefaultWallet.address, toSend, gasLimit, gasPrice, nil)
 	signedTx, err := types.SignTx(tx, types.LatestSignerForChainID(e.GetChainID()), fromKey)
 	if err != nil {
@@ -339,7 +349,8 @@ func (e *EthereumClient) ReturnFunds(fromKey *ecdsa.PrivateKey) error {
 	}
 
 	// There are several errors that can happen when trying to drain an ETH wallet.
-	// Ultimately, we want our money back, so we'll catch errors and react to them until we get something through.
+	// Ultimately, we want our money back, so we'll catch errors and react to them until we get something through,
+	// or an error we don't recognize.
 
 	// Try to send the money back, see if we hit any issues, and if we recognize them
 	fundReturnErr := e.Client.SendTransaction(context.Background(), signedTx)
@@ -369,7 +380,15 @@ func (e *EthereumClient) ReturnFunds(fromKey *ecdsa.PrivateKey) error {
 	// We don't get an overshot calculation, we just know it was too much, so subtract by 1 GWei and try again
 	for fundReturnErr != nil && (strings.Contains(fundReturnErr.Error(), "insufficient funds") || strings.Contains(fundReturnErr.Error(), "gas too low")) {
 		toSend.Sub(toSend, big.NewInt(GWei))
-		gasLimit += 21_000 // Add 21k gas for each attempt in case gas limit is too low
+		if toSend.Cmp(big.NewInt(0)) <= 0 {
+			e.l.Error().Str("From", fromAddress.Hex()).
+				Uint64("Estimated Gas Cost", totalGasCost.Uint64()).
+				Uint64("Balance", balance.Uint64()).
+				Str("To Send", toSend.String()).
+				Msg("Insufficient funds to return at current gas prices")
+			return fmt.Errorf("insufficient funds to return at current gas prices, balance: %s : %w", balance.String(), fundReturnErr)
+		}
+		gasLimit += 21_000 // Add 21k gas for each attempt in case gas limit is too low, this has happened in weird L2 scenarios
 		tx := types.NewTransaction(nonce, e.DefaultWallet.address, toSend, gasLimit, gasPrice, nil)
 		signedTx, err = types.SignTx(tx, types.LatestSignerForChainID(e.GetChainID()), fromKey)
 		if err != nil {
