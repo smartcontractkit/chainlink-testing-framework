@@ -833,8 +833,8 @@ func NewRPCProvider(
 	privateWsUrls,
 	publiclHttpUrls,
 	publicWsUrls []string,
-) *RpcProvider {
-	return &RpcProvider{
+) RpcProvider {
+	return RpcProvider{
 		privateHttpUrls: privateHttpUrls,
 		privateWsUrls:   privateWsUrls,
 		publiclHttpUrls: publiclHttpUrls,
