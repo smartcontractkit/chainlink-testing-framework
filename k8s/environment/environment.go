@@ -111,6 +111,10 @@ type Config struct {
 	// Remote Runner Specific Variables //
 	// JobImage an image to run environment as a job inside k8s
 	JobImage string
+	// Specify only if you want remote-runner to start with a specific name
+	RunnerName string
+	// Specify only if you want to mount reports from test run in remote runner
+	ReportPath string
 	// JobLogFunction a function that will be run on each log
 	JobLogFunction func(*Environment, string)
 	// Test the testing library current Test struct
@@ -646,8 +650,13 @@ func (m *Environment) RunCustomReadyConditions(customCheck *client.ReadyCheckDat
 			return fmt.Errorf("Test must be configured in the environment when using the remote runner")
 		}
 		rrSelector := map[string]*string{pkg.NamespaceLabelKey: ptr.Ptr(m.Cfg.Namespace)}
+		// if no runner name is specified use constant
+		if m.Cfg.RunnerName == "" {
+			m.Cfg.RunnerName = REMOTE_RUNNER_NAME
+		}
 		m.AddChart(NewRunner(&Props{
-			BaseName:           REMOTE_RUNNER_NAME,
+			BaseName:           m.Cfg.RunnerName,
+			ReportPath:         m.Cfg.ReportPath,
 			TargetNamespace:    m.Cfg.Namespace,
 			Labels:             &rrSelector,
 			Image:              m.Cfg.JobImage,
@@ -684,7 +693,7 @@ func (m *Environment) RunCustomReadyConditions(customCheck *client.ReadyCheckDat
 		if m.Cfg.detachRunner {
 			return nil
 		}
-		if err := m.Client.WaitForJob(m.Cfg.Namespace, "remote-test-runner", func(message string) {
+		if err := m.Client.WaitForJob(m.Cfg.Namespace, m.Cfg.RunnerName, func(message string) {
 			if m.Cfg.JobLogFunction != nil {
 				m.Cfg.JobLogFunction(m, message)
 			} else {
@@ -818,6 +827,23 @@ func (m *Environment) RolloutStatefulSets() error {
 		return fmt.Errorf("timeout waiting for rollout statefulset to complete")
 	}
 	return err
+}
+
+func (m *Environment) CopyFromPod(selector, containerName, srcPath, destPath string) error {
+	pl, err := m.Client.ListPods(m.Cfg.Namespace, selector)
+	if err != nil {
+		return err
+	}
+	if len(pl.Items) == 0 {
+		return fmt.Errorf("no pods found for selector: %s", selector)
+	}
+	for _, p := range pl.Items {
+		err := m.Client.CopyFromPod(context.Background(), m.Cfg.Namespace, p.Name, containerName, srcPath, destPath)
+		if err != nil {
+			return fmt.Errorf("%w error copying from %s:%s to destination path %s", err, p.Name, srcPath, destPath)
+		}
+	}
+	return nil
 }
 
 // RolloutRestartBySelector applies "rollout restart" to the selected resources
