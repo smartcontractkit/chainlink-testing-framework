@@ -826,7 +826,7 @@ func (m *Environment) RolloutStatefulSets() error {
 	return err
 }
 
-func (m *Environment) CopyFromPod(selector, srcPath, destPath string) error {
+func (m *Environment) CopyFromPod(selector, containerName, srcPath, destPath string) error {
 	pl, err := m.Client.ListPods(m.Cfg.Namespace, selector)
 	if err != nil {
 		return err
@@ -835,7 +835,7 @@ func (m *Environment) CopyFromPod(selector, srcPath, destPath string) error {
 		return fmt.Errorf("no pods found for selector: %s", selector)
 	}
 	for _, p := range pl.Items {
-		err := m.Client.CopyFromPod(context.Background(), m.Cfg.Namespace, p.Name, srcPath, destPath)
+		err := m.Client.CopyFromPod(context.Background(), m.Cfg.Namespace, p.Name, containerName, srcPath, destPath)
 		if err != nil {
 			return fmt.Errorf("%w error copying from %s:%s to destination path %s", err, p.Name, srcPath, destPath)
 		}
