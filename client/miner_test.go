@@ -93,14 +93,14 @@ func sendTestTransactions(t *testing.T, client *ethclient.Client, interval time.
 }
 
 func TestAnvilMiner(t *testing.T) {
-	t.Run("mine periodically", func(t *testing.T) {
+	t.Run("test we can mine sub-second blocks", func(t *testing.T) {
 		period := 500 * time.Millisecond
 		iterations := 10
 		ac, err := startAnvil()
 		require.NoError(t, err)
 		client, err := ethclient.Dial(ac.URL)
 		require.NoError(t, err)
-		pm := NewAnvilMiner(ac.URL)
+		pm := NewRemoteAnvilMiner(ac.URL)
 		pm.MinePeriodically(500 * time.Millisecond)
 		time.Sleep(period * time.Duration(iterations))
 		pm.Stop()
@@ -108,7 +108,7 @@ func TestAnvilMiner(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, uint64(iterations), bn)
 	})
-	t.Run("mine batch", func(t *testing.T) {
+	t.Run("test we can mine blocks with strictly N+ transactions", func(t *testing.T) {
 		sendTransactionEvery := 500 * time.Millisecond
 		txnInBlock := int64(10)
 		iterations := 10
@@ -117,7 +117,7 @@ func TestAnvilMiner(t *testing.T) {
 		client, err := ethclient.Dial(ac.URL)
 		require.NoError(t, err)
 		stopTxns := sendTestTransactions(t, client, sendTransactionEvery)
-		pm := NewAnvilMiner(ac.URL)
+		pm := NewRemoteAnvilMiner(ac.URL)
 		pm.MineBatch(txnInBlock, 1*time.Second, 1*time.Minute)
 		time.Sleep(sendTransactionEvery * time.Duration(iterations) * 2)
 		pm.Stop()

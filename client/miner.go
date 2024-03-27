@@ -6,7 +6,9 @@ import (
 	"time"
 )
 
-type AnvilPeriodicMiner struct {
+// RemoteAnvilMiner is a remote miner for Anvil node
+// Allows to control blocks emission more precisely to mimic real networks workload
+type RemoteAnvilMiner struct {
 	Client            *AnvilClient
 	interval          time.Duration
 	batchSendInterval time.Duration
@@ -14,14 +16,17 @@ type AnvilPeriodicMiner struct {
 	stop              chan struct{}
 }
 
-func NewAnvilMiner(url string) *AnvilPeriodicMiner {
-	return &AnvilPeriodicMiner{
+// NewRemoteAnvilMiner creates a new remote miner client
+func NewRemoteAnvilMiner(url string) *RemoteAnvilMiner {
+	return &RemoteAnvilMiner{
 		Client: NewAnvilClient(url),
 		stop:   make(chan struct{}),
 	}
 }
 
-func (m *AnvilPeriodicMiner) MinePeriodically(interval time.Duration) {
+// MinePeriodically mines blocks with a specified interval
+// should be used when Anvil mining is off
+func (m *RemoteAnvilMiner) MinePeriodically(interval time.Duration) {
 	m.interval = interval
 	go func() {
 		for {
@@ -39,11 +44,13 @@ func (m *AnvilPeriodicMiner) MinePeriodically(interval time.Duration) {
 	}()
 }
 
-func (m *AnvilPeriodicMiner) Stop() {
+// Stop stops the miner
+func (m *RemoteAnvilMiner) Stop() {
 	m.stop <- struct{}{}
 }
 
-func (m *AnvilPeriodicMiner) MineBatch(capacity int64, checkInterval time.Duration, sendInterval time.Duration) {
+// MineBatch checks the pending transactions in the pool, if threshold is reached mines the block and repeat the process
+func (m *RemoteAnvilMiner) MineBatch(capacity int64, checkInterval time.Duration, sendInterval time.Duration) {
 	m.interval = checkInterval
 	m.batchCapacity = capacity
 	m.batchSendInterval = sendInterval

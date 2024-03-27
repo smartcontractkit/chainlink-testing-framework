@@ -7,15 +7,20 @@ import (
 	"math/rand"
 )
 
+// AnvilClient is an RPC client for Anvil node
+// https://book.getfoundry.sh/anvil/
+// API Reference https://book.getfoundry.sh/reference/anvil/
 type AnvilClient struct {
 	client *resty.Client
 	URL    string
 }
 
+// NewAnvilClient creates Anvil client
 func NewAnvilClient(url string) *AnvilClient {
 	return &AnvilClient{URL: url, client: resty.New()}
 }
 
+// Mine calls "evm_mine", mines one or more blocks, see the reference on AnvilClient
 func (m *AnvilClient) Mine(params []interface{}) error {
 	payload := map[string]interface{}{
 		"jsonrpc": "2.0",
@@ -29,6 +34,7 @@ func (m *AnvilClient) Mine(params []interface{}) error {
 	return nil
 }
 
+// SetAutoMine calls "evm_setAutomine", turns automatic mining on, see the reference on AnvilClient
 func (m *AnvilClient) SetAutoMine(flag bool) error {
 	payload := map[string]interface{}{
 		"jsonrpc": "2.0",
@@ -43,6 +49,7 @@ func (m *AnvilClient) SetAutoMine(flag bool) error {
 	return nil
 }
 
+// TxPoolStatus calls "txpool_status", returns txpool status, see the reference on AnvilClient
 func (m *AnvilClient) TxPoolStatus(params []interface{}) (*TxStatusResponse, error) {
 	payload := map[string]interface{}{
 		"jsonrpc": "2.0",
@@ -61,8 +68,7 @@ func (m *AnvilClient) TxPoolStatus(params []interface{}) (*TxStatusResponse, err
 	return txPoolStatusResponse, nil
 }
 
-/* Responses */
-
+// TxStatusResponse common RPC response body
 type TxStatusResponse struct {
 	Result struct {
 		Pending string `json:"pending"`
