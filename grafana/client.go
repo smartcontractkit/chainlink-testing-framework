@@ -150,6 +150,11 @@ type PostAnnotation struct {
 	Text         string
 }
 
+type PostAnnotationResponse struct {
+	Message string `json:"message"`
+	ID      int64  `json:"id"`
+}
+
 func (g *Client) GetAnnotations(params AnnotationsQueryParams) ([]Annotation, *resty.Response, error) {
 	query := make(url.Values)
 	if params.Limit != nil {
@@ -189,7 +194,16 @@ func (g *Client) GetAnnotations(params AnnotationsQueryParams) ([]Annotation, *r
 	return result, r, err
 }
 
-func (g *Client) PostAnnotation(annotation PostAnnotation) (*resty.Response, error) {
+func (g *Client) DeleteAnnotation(annotationID int64) (*resty.Response, error) {
+	urlPath := fmt.Sprintf("/api/annotations/%d", annotationID)
+
+	r, err := g.resty.R().
+		Delete(urlPath)
+
+	return r, err
+}
+
+func (g *Client) PostAnnotation(annotation PostAnnotation) (PostAnnotationResponse, *resty.Response, error) {
 	a := map[string]interface{}{
 		"dashboardUID": annotation.DashboardUID,
 		"tags":         annotation.Tags,
@@ -207,9 +221,12 @@ func (g *Client) PostAnnotation(annotation PostAnnotation) (*resty.Response, err
 	if annotation.TimeEnd != nil {
 		a["timeEnd"] = annotation.TimeEnd.UnixMilli()
 	}
-	return g.resty.R().
+	var result PostAnnotationResponse
+	r, err := g.resty.R().
 		SetBody(a).
+		SetResult(&result).
 		Post("/api/annotations")
+	return result, r, err
 }
 
 // ruler API is deprecated https://github.com/grafana/grafana/issues/74434

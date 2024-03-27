@@ -50,10 +50,10 @@ type UnsupportedVersion struct {
 }
 
 var UNSUPPORTED_VERSIONS = []UnsupportedVersion{
-	UnsupportedVersion{DockerImage: fmt.Sprintf("%s:1.20.0", nethermindBaseImageName),
+	{DockerImage: fmt.Sprintf("%s:1.20.0", nethermindBaseImageName),
 		Reason: "1.20.0 was replaced with 1.20.1, for more info check https://github.com/NethermindEth/nethermind/releases/tag/1.20.0",
 	},
-	UnsupportedVersion{DockerImage: fmt.Sprintf("%s:v1.9.0", gethBaseImageName),
+	{DockerImage: fmt.Sprintf("%s:v1.9.0", gethBaseImageName),
 		Reason: "v1.9.0 randomly drops websocket connections, for more info check https://github.com/ethereum/go-ethereum/issues/19001",
 	},
 }
