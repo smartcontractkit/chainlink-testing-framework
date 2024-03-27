@@ -349,6 +349,12 @@ func (m *K8sClient) RemoveNamespace(namespace string) error {
 	return m.ClientSet.CoreV1().Namespaces().Delete(context.Background(), namespace, metaV1.DeleteOptions{})
 }
 
+func (m *K8sClient) CopyFromPod(ctx context.Context, namespace, podName, srcPath, destPath string) error {
+	scmd := fmt.Sprintf("kubectl cp --namespace %s %s:%s %s", namespace, podName, srcPath, destPath)
+	log.Info().Str("Command", scmd).Msg("Waiting to finish copying")
+	return ExecCmdWithContext(ctx, scmd)
+}
+
 // RolloutStatefulSets applies "rollout statefulset" to all existing statefulsets in that namespace
 func (m *K8sClient) RolloutStatefulSets(ctx context.Context, namespace string) error {
 	stsClient := m.ClientSet.AppsV1().StatefulSets(namespace)
