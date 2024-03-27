@@ -29,16 +29,19 @@ type Gauntlet struct {
 }
 
 // NewGauntlet Sets up a gauntlet struct and checks if the yarn executable exists.
-func NewGauntlet() (*Gauntlet, error) {
-	yarn, err := exec.LookPath("yarn")
+func NewGauntlet(binaryName string, prefixCommand string) (*Gauntlet, error) {
+	binary, err := exec.LookPath(binaryName)
 	if err != nil {
-		return &Gauntlet{}, errors.New("'yarn' is not installed")
+		return &Gauntlet{}, errors.New(fmt.Sprintf("%s is missing from PATH", binaryName))
 	}
-	log.Debug().Str("PATH", yarn).Msg("Executable Path")
-	os.Setenv("SKIP_PROMPTS", "true")
+	log.Debug().Str("PATH", binary).Msg("Executable Path")
+	err = os.Setenv("SKIP_PROMPTS", "true")
+	if err != nil {
+		return &Gauntlet{}, errors.New("something went wrong when exporting config")
+	}
 	g := &Gauntlet{
-		exec:          yarn,
-		Command:       "gauntlet", // Setting gauntlet as the default command
+		exec:          binary,
+		Command:       prefixCommand, // Setting the default prefix command
 		NetworkConfig: make(map[string]string),
 	}
 	g.GenerateRandomNetwork()
@@ -75,7 +78,7 @@ type ExecCommandOptions struct {
 func (g *Gauntlet) ExecCommand(args []string, options ExecCommandOptions) (string, error) {
 	output := ""
 	var updatedArgs []string
-	if g.Command == "gauntlet" {
+	if strings.Contains(g.Command, "gauntlet") {
 		updatedArgs = append([]string{g.Command}, args...)
 		// Appending network to the gauntlet command
 		updatedArgs = insertArg(updatedArgs, 2, g.Flag("network", g.Network))
