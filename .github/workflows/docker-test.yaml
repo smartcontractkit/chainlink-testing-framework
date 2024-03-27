@@ -39,7 +39,7 @@ jobs:
           set -euo pipefail
           # disabled, because we want to use a multiline output of go list command
           # shellcheck disable=SC2046
-          go test -timeout 20m -json -parallel 2 -cover -covermode=atomic -coverprofile=unit-test-coverage.out $(go list ./... | grep /docker/test_env) -run '${{ matrix.test.tests }}' 2>&1 | tee /tmp/gotest.log | gotestloghelper -ci
+          go test -timeout 20m -json -parallel 2 -cover -covermode=atomic -coverprofile=unit-test-coverage.out $(go list ./... | grep /docker/test_env) -run '${{ matrix.test.tests }}' 2>&1 | tee /tmp/gotest.log | ./gotestloghelper -ci
       - name: Code Coverage
         uses: codecov/codecov-action@v3
         with:

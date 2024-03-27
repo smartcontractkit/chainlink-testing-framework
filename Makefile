@@ -24,8 +24,13 @@ lint:
 	cd ./tools/gotestloghelper && golangci-lint --color=always run ./... --fix -v && cd -
 	cd ./k8s-test-runner && golangci-lint --color=always run ./... --fix -v && cd -
 
-go_mod:
+.PHONY: tidy
+tidy:
 	go mod tidy
+	cd ./tools/gotestloghelper && go mod tidy && cd -
+	cd ./k8s-test-runner && go mod tidy && cd -
+
+go_mod: tidy
 	go mod download
 
 .PHONY: install_gotestfmt
