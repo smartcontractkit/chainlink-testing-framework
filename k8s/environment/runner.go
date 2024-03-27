@@ -29,6 +29,13 @@ func (m Chart) GetName() string {
 	return m.Props.BaseName
 }
 
+func (m Chart) GetReportPath() string {
+	if m.Props.ReportPath != "" {
+		return m.Props.ReportPath
+	}
+	return "reports/"
+}
+
 func (m Chart) GetProps() interface{} {
 	return m.Props
 }
@@ -62,6 +69,7 @@ func NewRunner(props *Props) func(root cdk8s.Chart) ConnectedChart {
 
 type Props struct {
 	BaseName           string
+	ReportPath         string
 	TargetNamespace    string
 	Labels             *map[string]*string
 	Image              string
@@ -189,7 +197,7 @@ func container(props *Props) *[]*k8s.Container {
 				{
 					Name:      ptr.Ptr("reports"),
 					MountPath: ptr.Ptr("/go/testdir/integration-tests"),
-					SubPath:   ptr.Ptr("reports/"),
+					SubPath:   ptr.Ptr(props.ReportPath),
 				},
 			},
 		},
