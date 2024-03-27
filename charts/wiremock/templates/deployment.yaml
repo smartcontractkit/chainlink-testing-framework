@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "wiremock.fullname" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "wiremock.name" . }}
+    helm.sh/chart: {{ include "wiremock.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  volumeClaimTemplates:
+    - metadata:
+        name: wiremock-mappings-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ .Values.storage.capacity }}
+  serviceName: {{ include "wiremock.fullname" . }}
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "wiremock.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "wiremock.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app: {{ include "wiremock.name" . }}
+        release: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if .Values.env }}
+          env:
+          {{- end }}
+          {{- range $key, $value := .Values.env }}
+          - name: {{ $key }}
+            value: {{ tpl $value $ | quote }}
+          {{- end }}
+          ports:
+            - containerPort: {{ .Values.service.internalPort }}
+              name: serviceport
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /__admin
+              port: {{ .Values.service.internalPort }}
+              scheme: {{ .Values.scheme }}
+          readinessProbe:
+            httpGet:
+              path: /__admin
+              port: {{ .Values.service.internalPort }}
+              scheme: {{ .Values.scheme }}
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+          volumeMounts:
+          - mountPath: /home/wiremock/storage/mappings
+            name: wiremock-mappings-data
+          - mountPath: /home/wiremock/storage/__files
+            name: responses-data
+    {{- with .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+      volumes:
+        - name: responses-data
+          emptyDir: {}
