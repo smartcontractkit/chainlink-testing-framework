@@ -35,7 +35,7 @@ jobs:
         uses: golangci/golangci-lint-action@3a919529898de77ec3da873e3063ca4b10e7f5cc # v3.7.0
         with:
           version: v${{ needs.tools.outputs.golangci-lint-version }}
-          args: --out-format checkstyle:golangci-lint-report.xml --build-tags=other_docker_tests,besu_tests,geth_tests,erigon_tests,nethermind_tests,eth_env_tests
+          args: --out-format checkstyle:golangci-lint-report.xml
       - name: Print lint report artifact
         if: always()
         run: test -f golangci-lint-report.xml || true

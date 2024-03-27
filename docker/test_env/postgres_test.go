@@ -1,6 +1,3 @@
-//go:build other_docker_tests
-// +build other_docker_tests
-
 package test_env
 
 import (

@@ -1,6 +1,3 @@
-//go:build eth_env_tests
-// +build eth_env_tests
-
 package test_env
 
 import (
