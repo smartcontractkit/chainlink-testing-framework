@@ -12,10 +12,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
+	"gopkg.in/yaml.v2"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s-test-runner/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s-test-runner/exec"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s-test-runner/k8s_client"
-	"gopkg.in/yaml.v2"
 )
 
 type K8sTestRun struct {

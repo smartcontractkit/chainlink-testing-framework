@@ -9,6 +9,17 @@ jobs:
   eth_env:
     if: ${{ github.event_name == 'pull_request_review' || github.event.label.name == 'docker_tests' }}
     runs-on: ubuntu-latest
+    name: Docker Test ${{ matrix.test.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        test:
+          - name: eth_env
+            tests: TestEthEnv
+          - name: eth_clients
+            tests: TestBesu|TestGeth|TestNethermind|TestErigon
+          - name: other
+            tests: TestPostgres|TestMockServer|TestKillgrave
     steps:
       - name: Checkout the Repo
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
@@ -19,11 +30,8 @@ jobs:
           go_mod_path: ./go.mod
           cache_key_id: ctf-go
           cache_restore_only: 'false'
-      # gotestfmt gives us pretty test output
-      - name: Set Up gotestfmt
-        uses: GoTestTools/gotestfmt-action@v2
-        with:
-          token: ${{ github.token }} # Avoids rate-limiting
+      - name: Install gotestloghelper
+        run: make gotestloghelper_build
       - name: Run Tests
         run: |
           PATH=$PATH:$(go env GOPATH)/bin
@@ -31,83 +39,7 @@ jobs:
           set -euo pipefail
           # disabled, because we want to use a multiline output of go list command
           # shellcheck disable=SC2046
-          go test -timeout 20m -json -parallel 2 -cover -covermode=atomic -coverprofile=unit-test-coverage.out $(go list ./... | grep /docker/test_env) -run 'TestEthEnv' 2>&1 | tee /tmp/gotest.log | gotestfmt
-      - name: Code Coverage
-        uses: codecov/codecov-action@v3
-        with:
-          files: ./unit-test-coverage.out
-          name: codecov-umbrella
-      - name: Publish Artifacts
-        if: failure()
-        uses: actions/upload-artifact@v3
-        with:
-          name: test-logs
-          path: ./logs
-
-  eth_clients:
-    if: ${{ github.event_name == 'pull_request_review' || github.event.label.name == 'docker_tests' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout the Repo
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-      - name: Install Go
-        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/setup-go@00c6214deb10a3f374c6d3430c32c5202015d463 # v2.2.12
-        with:
-          test_download_vendor_packages_command: go mod download
-          go_mod_path: ./go.mod
-          cache_key_id: ctf-go
-          cache_restore_only: 'false'
-      # gotestfmt gives us pretty test output
-      - name: Set Up gotestfmt
-        uses: GoTestTools/gotestfmt-action@v2
-        with:
-          token: ${{ github.token }} # Avoids rate-limiting
-      - name: Run Tests
-        run: |
-          PATH=$PATH:$(go env GOPATH)/bin
-          export PATH
-          set -euo pipefail
-          # disabled, because we want to use a multiline output of go list command
-          # shellcheck disable=SC2046
-          go test -timeout 20m -json -parallel 2 -cover -covermode=atomic -coverprofile=unit-test-coverage.out $(go list ./... | grep /docker/test_env) -run 'TestBesu|TestGeth|TestNethermind|TestErigon' 2>&1 | tee /tmp/gotest.log | gotestfmt
-      - name: Code Coverage
-        uses: codecov/codecov-action@v3
-        with:
-          files: ./unit-test-coverage.out
-          name: codecov-umbrella
-      - name: Publish Artifacts
-        if: failure()
-        uses: actions/upload-artifact@v3
-        with:
-          name: test-logs
-          path: ./logs
-
-  other:
-    if: ${{ github.event_name == 'pull_request_review' || github.event.label.name == 'docker_tests' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout the Repo
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-      - name: Install Go
-        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/setup-go@00c6214deb10a3f374c6d3430c32c5202015d463 # v2.2.12
-        with:
-          test_download_vendor_packages_command: go mod download
-          go_mod_path: ./go.mod
-          cache_key_id: ctf-go
-          cache_restore_only: 'false'
-      # gotestfmt gives us pretty test output
-      - name: Set Up gotestfmt
-        uses: GoTestTools/gotestfmt-action@v2
-        with:
-          token: ${{ github.token }} # Avoids rate-limiting
-      - name: Run Tests
-        run: |
-          PATH=$PATH:$(go env GOPATH)/bin
-          export PATH
-          set -euo pipefail
-          # disabled, because we want to use a multiline output of go list command
-          # shellcheck disable=SC2046
-          go test -timeout 20m -json -parallel 2 -cover -covermode=atomic -coverprofile=unit-test-coverage.out $(go list ./... | grep /docker/test_env) -run 'TestPostgres|TestMockServer|TestKillgrave' 2>&1 | tee /tmp/gotest.log | gotestfmt
+          go test -timeout 20m -json -parallel 2 -cover -covermode=atomic -coverprofile=unit-test-coverage.out $(go list ./... | grep /docker/test_env) -run '${{ matrix.test.tests }}' 2>&1 | tee /tmp/gotest.log | ./gotestloghelper -ci
       - name: Code Coverage
         uses: codecov/codecov-action@v3
         with:
