@@ -113,6 +113,8 @@ type Config struct {
 	JobImage string
 	// Specify only if you want remote-runner to start with a specific name
 	RunnerName string
+	// Specify only if you want to mount reports from test run in remote runner
+	ReportPath string
 	// JobLogFunction a function that will be run on each log
 	JobLogFunction func(*Environment, string)
 	// Test the testing library current Test struct
@@ -654,6 +656,7 @@ func (m *Environment) RunCustomReadyConditions(customCheck *client.ReadyCheckDat
 		}
 		m.AddChart(NewRunner(&Props{
 			BaseName:           m.Cfg.RunnerName,
+			ReportPath:         m.Cfg.ReportPath,
 			TargetNamespace:    m.Cfg.Namespace,
 			Labels:             &rrSelector,
 			Image:              m.Cfg.JobImage,
