@@ -837,7 +837,7 @@ func (m *Environment) CopyFromPod(selector, srcPath, destPath string) error {
 	for _, p := range pl.Items {
 		err := m.Client.CopyFromPod(context.Background(), m.Cfg.Namespace, p.Name, srcPath, destPath)
 		if err != nil {
-			return fmt.Errorf("error copying from %s:%s to destination path %s", p.Name, srcPath, destPath)
+			return fmt.Errorf("%w error copying from %s:%s to destination path %s", err, p.Name, srcPath, destPath)
 		}
 	}
 	return nil
