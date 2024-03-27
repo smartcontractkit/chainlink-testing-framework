@@ -152,6 +152,10 @@ func job(chart cdk8s.Chart, props *Props) {
 								Name:     ptr.Ptr("persistence"),
 								EmptyDir: &k8s.EmptyDirVolumeSource{},
 							},
+							{
+								Name:     ptr.Ptr("reports"),
+								EmptyDir: &k8s.EmptyDirVolumeSource{},
+							},
 						},
 					},
 				},
