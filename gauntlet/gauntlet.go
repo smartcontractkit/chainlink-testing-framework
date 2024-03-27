@@ -78,7 +78,7 @@ type ExecCommandOptions struct {
 func (g *Gauntlet) ExecCommand(args []string, options ExecCommandOptions) (string, error) {
 	output := ""
 	var updatedArgs []string
-	if g.Command == "gauntlet" {
+	if strings.Contains(g.Command, "gauntlet") {
 		updatedArgs = append([]string{g.Command}, args...)
 		// Appending network to the gauntlet command
 		updatedArgs = insertArg(updatedArgs, 2, g.Flag("network", g.Network))

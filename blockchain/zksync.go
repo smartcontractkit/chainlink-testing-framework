@@ -4,21 +4,14 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
-	"github.com/smartcontractkit/chainlink-testing-framework/utils/conversions"
-	"math/big"
-	"strconv"
-	"time"
-
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/rs/zerolog/log"
-	"github.com/zksync-sdk/zksync2-go/accounts"
-	"github.com/zksync-sdk/zksync2-go/clients"
-	zkutils "github.com/zksync-sdk/zksync2-go/utils"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/conversions"
+	"math/big"
 )
 
 // ZKSyncClient represents a single node, EVM compatible client for the ZKSync network
@@ -112,68 +105,69 @@ func (z *ZKSyncClient) IsTxConfirmed(txHash common.Hash) (bool, error) {
 	return !isPending, err
 }
 
-func (z *ZKSyncClient) Fund(
-	toAddress string,
-	amount *big.Float,
-	gasEstimations GasEstimations,
-) error {
-	// Connect to zkSync network
-	client, err := clients.Dial(z.GetNetworkConfig().HTTPURLs[0])
-	if err != nil {
-		return err
-	}
-	defer client.Close()
+//
+//func (z *ZKSyncClient) Fund(
+//	toAddress string,
+//	amount *big.Float,
+//	gasEstimations GasEstimations,
+//) error {
+//	// Connect to zkSync network
+//	client, err := clients.Dial(z.GetNetworkConfig().HTTPURLs[0])
+//	if err != nil {
+//		return err
+//	}
+//	defer client.Close()
+//
+//	// Connect to Ethereum network
+//	ethClient, err := ethclient.Dial(z.GetNetworkConfig().HTTPURLs[1])
+//	if err != nil {
+//		return err
+//	}
+//	defer ethClient.Close()
+//
+//	// Create wallet
+//	w, err := accounts.NewWallet(common.Hex2Bytes(z.DefaultWallet.PrivateKey()), &client, ethClient)
+//	if err != nil {
+//		return err
+//	}
+//
+//	opts := &accounts.TransactOpts{}
+//
+//	transferAmt, _ := amount.Int64()
+//	log.Info().
+//		Str("From", z.DefaultWallet.Address()).
+//		Str("To", toAddress).
+//		Str("Amount", strconv.FormatInt(transferAmt, 10)).
+//		Msg("Transferring ETH")
+//
+//	// Create a transfer transaction
+//	tx, err := w.Transfer(opts, accounts.TransferTransaction{
+//		To:     common.HexToAddress(toAddress),
+//		Amount: big.NewInt(transferAmt),
+//		Token:  zkutils.EthAddress,
+//	})
+//	if err != nil {
+//		return err
+//	}
+//	log.Info().Str("ZKSync", fmt.Sprintf("TXHash %s", tx.Hash())).Msg("Executing ZKSync transaction")
+//	return z.ProcessTransaction(tx)
+//}
 
-	// Connect to Ethereum network
-	ethClient, err := ethclient.Dial(z.GetNetworkConfig().HTTPURLs[1])
-	if err != nil {
-		return err
-	}
-	defer ethClient.Close()
-
-	// Create wallet
-	w, err := accounts.NewWallet(common.Hex2Bytes(z.DefaultWallet.PrivateKey()), &client, ethClient)
-	if err != nil {
-		return err
-	}
-
-	opts := &accounts.TransactOpts{}
-
-	transferAmt, _ := amount.Int64()
-	log.Info().
-		Str("From", z.DefaultWallet.Address()).
-		Str("To", toAddress).
-		Str("Amount", strconv.FormatInt(transferAmt, 10)).
-		Msg("Transferring ETH")
-
-	// Create a transfer transaction
-	tx, err := w.Transfer(opts, accounts.TransferTransaction{
-		To:     common.HexToAddress(toAddress),
-		Amount: big.NewInt(transferAmt),
-		Token:  zkutils.EthAddress,
-	})
-	if err != nil {
-		return err
-	}
-	log.Info().Str("ZKSync", fmt.Sprintf("TXHash %s", tx.Hash())).Msg("Executing ZKSync transaction")
-	return z.ProcessTransaction(tx)
-}
-
-// ReturnFunds overrides the EthereumClient.ReturnFunds method.
-// This is needed to call the ZKSyncClient.ProcessTransaction method instead of the EthereumClient.ProcessTransaction method.
-func (z *ZKSyncClient) ReturnFunds(fromKey *ecdsa.PrivateKey) error {
-	var tx *types.Transaction
-	var err error
-	for attempt := 0; attempt < 20; attempt++ {
-		tx, err = attemptZKSyncReturn(z, fromKey, attempt)
-		if err == nil {
-			return z.ProcessTransaction(tx)
-		}
-		z.l.Debug().Err(err).Int("Attempt", attempt+1).Msg("Error returning funds from Chainlink node, trying again")
-		time.Sleep(time.Millisecond * 500)
-	}
-	return err
-}
+//// ReturnFunds overrides the EthereumClient.ReturnFunds method.
+//// This is needed to call the ZKSyncClient.ProcessTransaction method instead of the EthereumClient.ProcessTransaction method.
+//func (z *ZKSyncClient) ReturnFunds(fromKey *ecdsa.PrivateKey) error {
+//	var tx *types.Transaction
+//	var err error
+//	for attempt := 0; attempt < 20; attempt++ {
+//		tx, err = attemptZKSyncReturn(z, fromKey, attempt)
+//		if err == nil {
+//			return z.ProcessTransaction(tx)
+//		}
+//		z.l.Debug().Err(err).Int("Attempt", attempt+1).Msg("Error returning funds from Chainlink node, trying again")
+//		time.Sleep(time.Millisecond * 500)
+//	}
+//	return err
+//}
 
 // This is just a 1:1 copy of attemptReturn, which can't be reused as-is for ZKSync as it doesn't
 // accept an interface.
