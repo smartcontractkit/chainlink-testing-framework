@@ -1,9 +1,10 @@
 package client
 
 import (
-	"github.com/rs/zerolog/log"
 	"strconv"
 	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
 // RemoteAnvilMiner is a remote miner for Anvil node

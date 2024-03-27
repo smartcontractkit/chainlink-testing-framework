@@ -2,9 +2,11 @@ package client
 
 import (
 	"encoding/json"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/rand"
+
 	"github.com/go-resty/resty/v2"
 	"github.com/pkg/errors"
-	"math/rand"
 )
 
 // AnvilClient is an RPC client for Anvil node
@@ -22,11 +24,15 @@ func NewAnvilClient(url string) *AnvilClient {
 
 // Mine calls "evm_mine", mines one or more blocks, see the reference on AnvilClient
 func (m *AnvilClient) Mine(params []interface{}) error {
+	rInt, err := rand.Int()
+	if err != nil {
+		return err
+	}
 	payload := map[string]interface{}{
 		"jsonrpc": "2.0",
 		"method":  "evm_mine",
 		"params":  params,
-		"id":      rand.Int(),
+		"id":      rInt,
 	}
 	if _, err := m.client.R().SetBody(payload).Post(m.URL); err != nil {
 		return errors.Wrap(err, "failed to call evm_mine")
@@ -36,13 +42,17 @@ func (m *AnvilClient) Mine(params []interface{}) error {
 
 // SetAutoMine calls "evm_setAutomine", turns automatic mining on, see the reference on AnvilClient
 func (m *AnvilClient) SetAutoMine(flag bool) error {
+	rInt, err := rand.Int()
+	if err != nil {
+		return err
+	}
 	payload := map[string]interface{}{
 		"jsonrpc": "2.0",
 		"method":  "evm_setAutomine",
 		"params":  []interface{}{flag},
-		"id":      rand.Int(),
+		"id":      rInt,
 	}
-	_, err := m.client.R().SetBody(payload).Post(m.URL)
+	_, err = m.client.R().SetBody(payload).Post(m.URL)
 	if err != nil {
 		return errors.Wrap(err, "failed to call evm_setAutomine")
 	}
@@ -51,11 +61,15 @@ func (m *AnvilClient) SetAutoMine(flag bool) error {
 
 // TxPoolStatus calls "txpool_status", returns txpool status, see the reference on AnvilClient
 func (m *AnvilClient) TxPoolStatus(params []interface{}) (*TxStatusResponse, error) {
+	rInt, err := rand.Int()
+	if err != nil {
+		return nil, err
+	}
 	payload := map[string]interface{}{
 		"jsonrpc": "2.0",
 		"method":  "txpool_status",
 		"params":  params,
-		"id":      rand.Int(),
+		"id":      rInt,
 	}
 	resp, err := m.client.R().SetBody(payload).Post(m.URL)
 	if err != nil {

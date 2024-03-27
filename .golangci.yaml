@@ -1,10 +1,6 @@
 run:
   concurrency: 4
   timeout: 5m
-  skip-dirs:
-    - contracts/ethereum
-    - examples
-    - imports
 linters:
   enable:
     # defaults
@@ -83,3 +79,8 @@ linters-settings:
       # - name: confusing-results
       - name: bool-literal-in-expr
       - name: atomic
+issues:
+  exclude-dirs:
+    - contracts/ethereum
+    - examples
+    - imports
