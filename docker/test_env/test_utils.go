@@ -42,7 +42,7 @@ func sendAndCompareBalances(ctx context.Context, c blockchain.EVMClient, address
 	expected := big.NewInt(0).Add(balanceBefore, sentInWei)
 
 	if expected.Cmp(balanceAfter) != 0 {
-		return fmt.Errorf("Balance is incorrect. Expected %s, got %s", expected.String(), balanceAfter.String())
+		return fmt.Errorf("balance is incorrect. Expected %s, got %s", expected.String(), balanceAfter.String())
 	}
 
 	return nil
