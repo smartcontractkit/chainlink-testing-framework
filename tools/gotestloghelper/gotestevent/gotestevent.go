@@ -284,6 +284,7 @@ func SetupModifiers(c *TestLogModifierConfig) []TestLogModifier {
 		c.IsJsonInput = ptr.Ptr(true)
 		c.ShouldImmediatelyPrint = false
 		if !c.OnlyErrors.IsSet {
+			// nolint errcheck
 			c.OnlyErrors.Set("true")
 		}
 		c.RemoveTLogPrefix = ptr.Ptr(true)

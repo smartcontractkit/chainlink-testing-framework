@@ -9,7 +9,6 @@ import (
 	"github.com/aws/smithy-go/ptr"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
-	exec "github.com/smartcontractkit/chainlink-testing-framework/k8s-test-runner/exec"
 	batchV1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,6 +16,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+
+	exec "github.com/smartcontractkit/chainlink-testing-framework/k8s-test-runner/exec"
 )
 
 const (

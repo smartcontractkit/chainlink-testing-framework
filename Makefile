@@ -21,6 +21,8 @@ endif
 
 lint:
 	golangci-lint --color=always run ./... --fix -v
+	cd ./tools/gotestloghelper && golangci-lint --color=always run ./... --fix -v && cd -
+	cd ./k8s-test-runner && golangci-lint --color=always run ./... --fix -v && cd -
 
 go_mod:
 	go mod tidy

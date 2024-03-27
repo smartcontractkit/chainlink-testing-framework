@@ -7,9 +7,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"github.com/spf13/cobra"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s-test-runner/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s-test-runner/runner"
-	"github.com/spf13/cobra"
 )
 
 var Run = &cobra.Command{
