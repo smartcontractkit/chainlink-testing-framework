@@ -145,10 +145,8 @@ func job(chart cdk8s.Chart, props *Props) {
 					},
 					Spec: &k8s.PodSpec{
 						ServiceAccountName: ptr.Ptr("default"),
-						Containers: &[]*k8s.Container{
-							container(props),
-						},
-						RestartPolicy: ptr.Ptr(restartPolicy),
+						Containers:         container(props),
+						RestartPolicy:      ptr.Ptr(restartPolicy),
 						Volumes: &[]*k8s.Volume{
 							{
 								Name:     ptr.Ptr("persistence"),
@@ -163,7 +161,7 @@ func job(chart cdk8s.Chart, props *Props) {
 		})
 }
 
-func container(props *Props) []*k8s.Container {
+func container(props *Props) *[]*k8s.Container {
 	cpu := os.Getenv(config.EnvVarRemoteRunnerCpu)
 	if cpu == "" {
 		cpu = "1000m"
@@ -172,7 +170,7 @@ func container(props *Props) []*k8s.Container {
 	if mem == "" {
 		mem = "1024Mi"
 	}
-	return []*k8s.Container{
+	return ptr.Ptr([]*k8s.Container{
 		{
 			Name:            ptr.Ptr(fmt.Sprintf("%s-node", props.BaseName)),
 			Image:           ptr.Ptr(props.Image),
@@ -210,7 +208,7 @@ func container(props *Props) []*k8s.Container {
 				},
 			},
 		},
-	}
+	})
 }
 
 func jobEnvVars(props *Props) *[]*k8s.EnvVar {
