@@ -85,7 +85,7 @@ func defaultProps() map[string]interface{} {
 	internalRepo := os.Getenv(config.EnvVarInternalDockerRepo)
 	wiremockRepo := "wiremock/wiremock"
 	if internalRepo != "" {
-		wiremockRepo = fmt.Sprintf("%s/wiremock", internalRepo)
+		wiremockRepo = fmt.Sprintf("%s/wiremock/wiremock", internalRepo)
 	}
 
 	return map[string]interface{}{
