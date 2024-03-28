@@ -10,14 +10,20 @@ import (
 	"time"
 
 	"github.com/go-resty/resty/v2"
+	"github.com/grafana/grafana-foundation-sdk/go/dashboard"
 )
 
 type Client struct {
 	AlertManager *AlertManagerClient
+	AlertRuler   *AlertRulerClient
 	resty        *resty.Client
 }
 
 type AlertManagerClient struct {
+	resty *resty.Client
+}
+
+type AlertRulerClient struct {
 	resty *resty.Client
 }
 
@@ -33,6 +39,30 @@ func (g *AlertManagerClient) GetAlterManagerAlerts() ([]interface{}, *resty.Resp
 	return result, r, err
 }
 
+func (c *Client) GetDatasources() (map[string]string, *resty.Response, error) {
+	var result []struct {
+		UID       string `json:"uid"`
+		Name      string `json:"name"`
+		IsDefault bool   `json:"isDefault"`
+	}
+
+	r, err := c.resty.R().SetResult(&result).Get("/api/datasources")
+	if err != nil {
+		return nil, r, fmt.Errorf("error making API request: %w", err)
+	}
+
+	datasourcesMap := make(map[string]string, len(result))
+	for _, ds := range result {
+		datasourcesMap[ds.Name] = ds.UID
+
+		if ds.IsDefault {
+			datasourcesMap["$grabana_default_datasource_key$"] = ds.UID
+		}
+	}
+
+	return datasourcesMap, r, err
+}
+
 func NewGrafanaClient(url, apiKey string) *Client {
 	isDebug := os.Getenv("DEBUG_RESTY") == "true"
 	resty := resty.New().SetDebug(isDebug).SetBaseURL(url).SetHeader("Authorization", "Bearer "+apiKey)
@@ -40,18 +70,57 @@ func NewGrafanaClient(url, apiKey string) *Client {
 	return &Client{
 		resty:        resty,
 		AlertManager: &AlertManagerClient{resty: resty},
+		AlertRuler:   &AlertRulerClient{resty: resty},
 	}
 }
 
-type Dashboard struct {
+type GetDashboardResponse struct {
 	Meta      map[string]interface{} `json:"meta"`
-	Dashboard map[string]interface{} `json:"dashboard"`
+	Dashboard *dashboard.Dashboard   `json:"dashboard"`
 }
 
-func (g *Client) GetDashboard(uid string) (Dashboard, *resty.Response, error) {
-	var result Dashboard
+func (g *Client) GetDashboard(uid string) (GetDashboardResponse, *resty.Response, error) {
+	var result GetDashboardResponse
 	r, err := g.resty.R().SetResult(&result).Get("/api/dashboards/uid/" + uid)
 	return result, r, err
+}
+
+type PostDashboardRequest struct {
+	Dashboard interface{} `json:"dashboard"`
+	FolderID  int         `json:"folderId"`
+	Overwrite bool        `json:"overwrite"`
+}
+
+type GrafanaResponse struct {
+	ID      *uint   `json:"id"`
+	OrgID   *uint   `json:"orgId"`
+	Message *string `json:"message"`
+	Slug    *string `json:"slug"`
+	Version *int    `json:"version"`
+	Status  *string `json:"status"`
+	UID     *string `json:"uid"`
+	URL     *string `json:"url"`
+}
+
+func (g *Client) PostDashboard(dashboard PostDashboardRequest) (GrafanaResponse, *resty.Response, error) {
+	var grafanaResp GrafanaResponse
+
+	resp, err := g.resty.R().
+		SetHeader("Content-Type", "application/json").
+		SetBody(dashboard).
+		SetResult(&grafanaResp). // SetResult will automatically unmarshal the response into grafanaResp
+		Post("/api/dashboards/db")
+
+	if err != nil {
+		return GrafanaResponse{}, resp, fmt.Errorf("error making API request: %w", err)
+	}
+
+	statusCode := resp.StatusCode()
+	if statusCode != 200 && statusCode != 201 {
+		return GrafanaResponse{}, resp, fmt.Errorf("error creating/updating dashboard, received unexpected status code %d: %s", statusCode, resp.String())
+	}
+
+	return grafanaResp, resp, nil
 }
 
 func (g *Client) GetAlertsRules() ([]ProvisionedAlertRule, *resty.Response, error) {
@@ -212,8 +281,14 @@ func (g *Client) PostAnnotation(annotation PostAnnotation) (*resty.Response, err
 		Post("/api/annotations")
 }
 
+func (g *AlertRulerClient) PostAlert(dashboardUID string) (map[string][]interface{}, *resty.Response, error) {
+	var result map[string][]interface{}
+	r, err := g.resty.R().SetResult(&result).Get("/api/ruler/grafana/api/v1/rules?dashboard_uid=" + url.QueryEscape(dashboardUID))
+	return result, r, err
+}
+
 // ruler API is deprecated https://github.com/grafana/grafana/issues/74434
-func (g *Client) GetAlertsForDashboard(dashboardUID string) (map[string][]interface{}, *resty.Response, error) {
+func (g *AlertRulerClient) GetAlertsForDashboard(dashboardUID string) (map[string][]interface{}, *resty.Response, error) {
 	var result map[string][]interface{}
 	r, err := g.resty.R().SetResult(&result).Get("/api/ruler/grafana/api/v1/rules?dashboard_uid=" + url.QueryEscape(dashboardUID))
 	return result, r, err
