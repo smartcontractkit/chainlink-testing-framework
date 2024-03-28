@@ -20,12 +20,18 @@ push_from_package_version() {
     local tool="$1"
     local version package tagexists
 
-    version="v$(cmd < ./"${tool}"/package.json | jq -r '.version')"
+    version="v$(jq -r '.version' ./"${tool}"/package.json)"
+    if [ "${version}" == "v" ]; then
+        echo "Error: version not found in package.json"
+        exit 1
+    fi
+    echo "version: ${version}"
     package="${tool}/${version}"
-    tagexists=$(git tag -l "${package}")
+    echo "package: ${package}"
+    tagexists=$(git ls-remote --tags origin "${package}")
     if [ -z "${tagexists}" ]; then
         git tag "${package}"
-        git push "${package}"
+        git push origin "${package}"
     else
         echo "Tag ${package} already exists."
     fi
