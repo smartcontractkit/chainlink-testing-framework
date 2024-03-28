@@ -41,7 +41,7 @@ const packagePassFailPrefix = `^(PASS|FAIL)\n$`
 const packageCoveragePrefix = `^coverage:`
 const testingLogPrefix = `^(\s+)(\w+\.go:\d+: )`
 const testPanic = `^panic:.* (Test[A-Z]\w*)`
-const testErrorPrefix = `^\s+(Error\sTrace|Error|Test):\s+`
+const testErrorPrefix = `^\s+(Error\sTrace|Error|Test|Messages):\s+`
 const testErrorPrefix2 = `        \t            \t.*`
 const packageOkFailPrefix = `^(ok|FAIL)\s*\t(.*)` //`^(FAIL|ok).*\t(.*)$`
 
