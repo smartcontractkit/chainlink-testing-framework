@@ -96,6 +96,7 @@ func (t Test) Print(c *TestLogModifierConfig) {
 	message := t[0].Test
 	outcomeType := "pass"
 	toRemove := []int{}
+	errorMessages := []GoTestEvent{}
 	for i, log := range t {
 		if testPassFailPrefixRegexp.MatchString(log.Output) {
 			match := testPassFailPrefixRegexp.FindStringSubmatch(log.Output)
@@ -110,6 +111,8 @@ func (t Test) Print(c *TestLogModifierConfig) {
 				outcomeType = "fail"
 			}
 			toRemove = append(toRemove, i)
+		} else if *c.CI && (testErrorPrefixRegexp.MatchString(log.Output) || testErrorPrefix2Regexp.MatchString(log.Output) || testPanicRegexp.MatchString(log.Output)) {
+			errorMessages = append(errorMessages, log)
 		}
 	}
 
@@ -119,12 +122,21 @@ func (t Test) Print(c *TestLogModifierConfig) {
 	}
 
 	// start the group
+	hasLogs := len(t) > 0
 	if outcomeType == "pass" {
-		StartGroupPass(message, c)
+		StartGroupPass(message, c, hasLogs)
 	} else if outcomeType == "skip" {
-		StartGroupSkip(message, c)
+		StartGroupSkip(message, c, hasLogs)
 	} else {
-		StartGroupFail(message, c)
+		StartGroupFail(message, c, hasLogs)
+	}
+
+	// print out the error message at the top if the logs are longer than the specified length
+	if *c.CI && *c.ErrorAtTopLength > 0 && len(t) > *c.ErrorAtTopLength {
+		fmt.Println("❌ Error found:")
+		for _, log := range errorMessages {
+			log.Print()
+		}
 	}
 
 	// print out the test logs
@@ -133,7 +145,7 @@ func (t Test) Print(c *TestLogModifierConfig) {
 	}
 
 	// end the group if we are in CI mode
-	if *c.CI {
+	if *c.CI && hasLogs {
 		github.EndGroup()
 	}
 }
@@ -246,6 +258,7 @@ type TestLogModifierConfig struct {
 	ShouldImmediatelyPrint bool
 	TestPackageMap         TestPackageMap
 	FailuresExist          bool
+	ErrorAtTopLength       *int
 }
 
 func NewDefaultConfig() *TestLogModifierConfig {
@@ -257,6 +270,7 @@ func NewDefaultConfig() *TestLogModifierConfig {
 		CI:                     ptr.Ptr(false),
 		SinglePackage:          ptr.Ptr(false),
 		ShouldImmediatelyPrint: false,
+		ErrorAtTopLength:       ptr.Ptr(100),
 	}
 }
 
@@ -271,6 +285,9 @@ func (c *TestLogModifierConfig) Validate() error {
 		if !*c.IsJsonInput {
 			return fmt.Errorf("OnlyErrors flag is only valid when run with -json flag")
 		}
+	}
+	if *c.ErrorAtTopLength < 0 {
+		return fmt.Errorf("ErrorAtTopLength must be greater than or equal to 0")
 	}
 
 	return nil
@@ -409,11 +426,11 @@ func JsonTestOutputToStandard(te *GoTestEvent, c *TestLogModifierConfig) error {
 }
 
 // StartGroupPass starts a group in the CI environment with a green title
-func StartGroupPass(title string, c *TestLogModifierConfig) {
+func StartGroupPass(title string, c *TestLogModifierConfig, hasLogs bool) {
 	if *c.Color {
 		title = clihelper.Color(clihelper.ColorGreen, title)
 	}
-	if *c.CI {
+	if *c.CI && hasLogs {
 		github.StartGroup(title)
 	} else {
 		fmt.Print(title)
@@ -421,11 +438,11 @@ func StartGroupPass(title string, c *TestLogModifierConfig) {
 }
 
 // StartGroupSkip starts a group in the CI environment with a green title
-func StartGroupSkip(title string, c *TestLogModifierConfig) {
+func StartGroupSkip(title string, c *TestLogModifierConfig, hasLogs bool) {
 	if *c.Color {
 		title = clihelper.Color(clihelper.ColorYellow, title)
 	}
-	if *c.CI {
+	if *c.CI && hasLogs {
 		github.StartGroup(title)
 	} else {
 		fmt.Print(title)
@@ -433,11 +450,11 @@ func StartGroupSkip(title string, c *TestLogModifierConfig) {
 }
 
 // StartGroupFail starts a group in the CI environment with a red title
-func StartGroupFail(title string, c *TestLogModifierConfig) {
+func StartGroupFail(title string, c *TestLogModifierConfig, hasLogs bool) {
 	if *c.Color {
 		title = clihelper.Color(clihelper.ColorRed, title)
 	}
-	if *c.CI {
+	if *c.CI && hasLogs {
 		github.StartGroup(title)
 	} else {
 		fmt.Print(title)
