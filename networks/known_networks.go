@@ -563,6 +563,18 @@ var (
 		GasEstimationBuffer:       1000,
 	}
 
+	LineaSepolia blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Linea Sepolia",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.LineaClientImplementation,
+		ChainID:                   59141,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
+		MinimumConfirmations:      0,
+		GasEstimationBuffer:       1000,
+	}
+
 	LineaMainnet blockchain.EVMNetwork = blockchain.EVMNetwork{
 		Name:                      "Linea Mainnet",
 		SupportsEIP1559:           true,
@@ -813,6 +825,7 @@ var (
 		"BSC_TESTNET":           BSCTestnet,
 		"BSC_MAINNET":           BSCMainnet,
 		"LINEA_GOERLI":          LineaGoerli,
+		"LINEA_SEPOLIA":         LineaSepolia,
 		"LINEA_MAINNET":         LineaMainnet,
 		"POLYGON_ZKEVM_GOERLI":  PolygonZkEvmGoerli,
 		"POLYGON_ZKEVM_CARDONA": PolygonZkEvmCardona,
