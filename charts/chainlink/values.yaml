@@ -40,6 +40,18 @@ db:
     - '-c'
     - 'work_mem=4MB'
 
+prometheusPostgresExporter:
+  image:
+    image: 'quay.io/prometheuscommunity/postgres-exporter:v0.15.0'
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+  containerPort: 9187
+
 replicas: 1
 nodes:
   - name: node-1
@@ -47,6 +59,7 @@ nodes:
       image:
         image: postgres
         version: 13.12
+      enablePrometheusPostgresExporter: false
 
 prometheus: false
 
