@@ -174,7 +174,7 @@ func (g *Gauntlet) WriteNetworkConfigMap(networkDirPath string) error {
 // checkForErrors Loops through provided err slice to see if the error exists in the output.
 func checkForErrors(errHandling []string, line string) error {
 	for _, e := range errHandling {
-		if strings.Contains(line, e) {
+		if strings.Contains(strings.ToLower(line), strings.ToLower(e)) {
 			log.Debug().Str("Error", line).Msg("Gauntlet Error Found")
 			return fmt.Errorf("found a gauntlet error")
 		}
