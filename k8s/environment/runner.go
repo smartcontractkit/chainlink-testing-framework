@@ -29,13 +29,6 @@ func (m Chart) GetName() string {
 	return m.Props.BaseName
 }
 
-func (m Chart) GetReportPath() string {
-	if m.Props.ReportPath != "" {
-		return m.Props.ReportPath
-	}
-	return "reports/"
-}
-
 func (m Chart) GetProps() interface{} {
 	return m.Props
 }
@@ -196,10 +189,21 @@ func container(props *Props) *[]*k8s.Container {
 				},
 				{
 					Name:      ptr.Ptr("reports"),
-					MountPath: ptr.Ptr("/go/testdir/integration-tests"),
-					SubPath:   ptr.Ptr(props.ReportPath),
+					MountPath: ptr.Ptr(fmt.Sprintf("/go/testdir/integration-tests/reports")),
+					SubPath:   ptr.Ptr("reports"),
 				},
 			},
+			Lifecycle: ptr.Ptr(k8s.Lifecycle{
+				PreStop: ptr.Ptr(k8s.Handler{
+					Exec: ptr.Ptr(k8s.ExecAction{
+						Command: ptr.Ptr([]*string{
+							ptr.Ptr("/bin/sh"),
+							ptr.Ptr("-c"),
+							ptr.Ptr(fmt.Sprintf("cp /go/testdir/integration-tests/%s /go/testdir/integration-tests/reports/%s", props.ReportPath, props.ReportPath)),
+						}),
+					}),
+				}),
+			}),
 		},
 		// we create this container to share same volume as remote-runner-node container. This container
 		// keeps on running and stays alive after the remote-runner-node gets completed, so that
@@ -208,7 +212,7 @@ func container(props *Props) *[]*k8s.Container {
 			Name:            ptr.Ptr(fmt.Sprintf("%s-data-files", props.BaseName)),
 			Image:           ptr.Ptr("busybox:stable"),
 			ImagePullPolicy: ptr.Ptr("Always"),
-			Command:         ptr.Ptr([]*string{ptr.Ptr("/bin/sh"), ptr.Ptr("-ec"), ptr.Ptr("while :; do echo '.'; sleep 5 ; done")}),
+			Command:         ptr.Ptr([]*string{ptr.Ptr("/bin/sh"), ptr.Ptr("-ec"), ptr.Ptr("while :; do echo 'executing..'; sleep 100 ; done")}),
 			Ports: ptr.Ptr([]*k8s.ContainerPort{
 				{
 					ContainerPort: ptr.Ptr(float64(80)),

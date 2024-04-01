@@ -654,6 +654,9 @@ func (m *Environment) RunCustomReadyConditions(customCheck *client.ReadyCheckDat
 		if m.Cfg.RunnerName == "" {
 			m.Cfg.RunnerName = REMOTE_RUNNER_NAME
 		}
+		if m.Cfg.ReportPath == "" {
+			m.Cfg.ReportPath = "data"
+		}
 		m.AddChart(NewRunner(&Props{
 			BaseName:           m.Cfg.RunnerName,
 			ReportPath:         m.Cfg.ReportPath,
