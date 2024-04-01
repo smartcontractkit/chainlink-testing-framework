@@ -42,7 +42,7 @@ func (c NethermindPoAGenesisJsonTemplate) String() (string, error) {
 		  "accountStartNonce": "0x0",
 		  "maximumExtraDataSize": "0xffff",
 		  "minGasLimit": "0x1388",
-		  "maxCodeSize": "0x6000",
+		  "maxCodeSize": "1F400",
 		  "maxCodeSizeTransition": "0x0",
 		  "eip150Transition": "0x0",
 		  "eip158Transition": "0x0",
