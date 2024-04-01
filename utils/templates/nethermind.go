@@ -85,7 +85,7 @@ func (c NethermindPoAGenesisJsonTemplate) String() (string, error) {
 		  "timestamp": "0x00",
 		  "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
 		  "extraData": "{{ .ExtraData }}",
-		  "gasLimit": "0x17D7840"
+		  "gasLimit": "0x5F5E100"
 		},
 		"accounts": {
 			{{- $lastIndex := decrement (len $.AccountAddr)}}
