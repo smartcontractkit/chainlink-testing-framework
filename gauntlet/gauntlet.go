@@ -91,21 +91,13 @@ func (g *Gauntlet) ExecCommand(args []string, options ExecCommandOptions) (strin
 	}
 	stdout, _ := cmd.StdoutPipe()
 	stderr, _ := cmd.StderrPipe()
-	if err := cmd.Start(); err != nil {
-		return output, err
-	}
+	cmdErr := cmd.Start()
 
 	reader := bufio.NewReader(stdout)
 	line, err := reader.ReadString('\n')
 	for err == nil {
 		log.Info().Str("stdout", line).Msg(g.Command)
 		output = fmt.Sprintf("%s%s", output, line)
-		if options.CheckErrorsInRead {
-			rerr := checkForErrors(options.ErrHandling, output)
-			if rerr != nil {
-				return output, rerr
-			}
-		}
 		line, err = reader.ReadString('\n')
 	}
 
@@ -114,18 +106,19 @@ func (g *Gauntlet) ExecCommand(args []string, options ExecCommandOptions) (strin
 	for err == nil {
 		log.Info().Str("stderr", line).Msg(g.Command)
 		output = fmt.Sprintf("%s%s", output, line)
-		if options.CheckErrorsInRead {
-			rerr := checkForErrors(options.ErrHandling, output)
-			if rerr != nil {
-				return output, rerr
-			}
-		}
 		line, err = reader.ReadString('\n')
 	}
 
-	rerr := checkForErrors(options.ErrHandling, output)
-	if rerr != nil {
-		return output, rerr
+	// return cmdErr from before, after stdout + stderr logging
+	if cmdErr != nil {
+		return output, cmdErr
+	}
+
+	if options.CheckErrorsInRead {
+		rerr := checkForErrors(options.ErrHandling, output)
+		if rerr != nil {
+			return output, rerr
+		}
 	}
 
 	if strings.Compare("EOF", err.Error()) > 0 {
