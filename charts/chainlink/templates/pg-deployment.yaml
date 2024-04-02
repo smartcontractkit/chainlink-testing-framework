@@ -129,7 +129,7 @@ spec:
               name: postgres
               subPath: postgres-db
           {{ end }}
-        {{- if $cfg.db.enablePrometheusPostgresExporter }}
+        {{- if $.Values.db.enablePrometheusPostgresExporter }}
         - name: prometheus-postgres-exporter
           image: {{ $.Values.prometheusPostgresExporter.image.image }}
           resources:
