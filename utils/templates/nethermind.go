@@ -80,7 +80,7 @@ func (c NethermindPoAGenesisJsonTemplate) String() (string, error) {
 			  "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000"
 			}
 		  },
-		  "difficulty": "0x01",
+		  "difficulty": "0x20000",
 		  "author": "0x0000000000000000000000000000000000000000",
 		  "timestamp": "0x00",
 		  "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
