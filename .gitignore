@@ -70,4 +70,6 @@ k3dvolume/
 charts/**/*.tgz
 __debug*
 # saved private chain configuration 
-.private_chains/* 
+.private_chains/*
+
+.direnv
