@@ -787,6 +787,30 @@ var (
 		DefaultGasLimit:           6000000,
 	}
 
+	MantleMainnet blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Mantle Mainnet",
+		SupportsEIP1559:           false,
+		ClientImplementation:      blockchain.MantleClientImplementation,
+		ChainID:                   5000,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
+		MinimumConfirmations:      0,
+		GasEstimationBuffer:       1000,
+	}
+
+	MantleGoerli blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Mantle Goerli",
+		SupportsEIP1559:           false,
+		ClientImplementation:      blockchain.MantleClientImplementation,
+		ChainID:                   5001,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
+		MinimumConfirmations:      0,
+		GasEstimationBuffer:       10000,
+	}
+
 	MappedNetworks = map[string]blockchain.EVMNetwork{
 		"SIMULATED":               SimulatedEVM,
 		"SIMULATED_1":             SimulatedEVMNonDev1,
@@ -842,6 +866,8 @@ var (
 		"NEXON_STAGE":           NexonStage,
 		"GNOSIS_CHIADO":         GnosisChiado,
 		"GNOSIS_MAINNET":        GnosisMainnet,
+		"MANTLE_GOERLI":         MantleGoerli,
+		"MANTLE_MAINNET":        MantleMainnet,
 	}
 )
 
