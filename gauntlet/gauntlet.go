@@ -101,7 +101,8 @@ func (g *Gauntlet) ExecCommand(args []string, options ExecCommandOptions) (strin
 		if options.CheckErrorsInRead {
 			rerr := checkForErrors(options.ErrHandling, output)
 			if rerr != nil {
-				return output, rerr
+				cmdErr = errors.Join(cmdErr, fmt.Errorf("stdout: %w", rerr))
+				break
 			}
 		}
 		line, err = reader.ReadString('\n')
@@ -115,7 +116,8 @@ func (g *Gauntlet) ExecCommand(args []string, options ExecCommandOptions) (strin
 		if options.CheckErrorsInRead {
 			rerr := checkForErrors(options.ErrHandling, output)
 			if rerr != nil {
-				return output, rerr
+				cmdErr = errors.Join(cmdErr, fmt.Errorf("stderr: %w", rerr))
+				break
 			}
 		}
 		line, err = reader.ReadString('\n')
