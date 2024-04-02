@@ -98,6 +98,12 @@ func (g *Gauntlet) ExecCommand(args []string, options ExecCommandOptions) (strin
 	for err == nil {
 		log.Info().Str("stdout", line).Msg(g.Command)
 		output = fmt.Sprintf("%s%s", output, line)
+		if options.CheckErrorsInRead {
+			rerr := checkForErrors(options.ErrHandling, output)
+			if rerr != nil {
+				return output, rerr
+			}
+		}
 		line, err = reader.ReadString('\n')
 	}
 
@@ -106,6 +112,12 @@ func (g *Gauntlet) ExecCommand(args []string, options ExecCommandOptions) (strin
 	for err == nil {
 		log.Info().Str("stderr", line).Msg(g.Command)
 		output = fmt.Sprintf("%s%s", output, line)
+		if options.CheckErrorsInRead {
+			rerr := checkForErrors(options.ErrHandling, output)
+			if rerr != nil {
+				return output, rerr
+			}
+		}
 		line, err = reader.ReadString('\n')
 	}
 
@@ -121,7 +133,7 @@ func (g *Gauntlet) ExecCommand(args []string, options ExecCommandOptions) (strin
 		}
 	}
 
-	if strings.Compare("EOF", err.Error()) > 0 {
+	if err != nil && strings.Compare("EOF", err.Error()) > 0 {
 		return output, err
 	}
 
