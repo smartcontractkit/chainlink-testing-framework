@@ -39,7 +39,7 @@ db:
     - 'effective_cache_size=4096MB'
     - '-c'
     - 'work_mem=4MB'
-  enablePrometheusPostgresExporter : false
+  enablePrometheusPostgresExporter: false
 
 prometheusPostgresExporter:
   image:
