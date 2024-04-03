@@ -58,5 +58,10 @@ mkShell {
     helm repo add grafana https://grafana.github.io/helm-charts
     helm repo add bitnami https://charts.bitnami.com/bitnami
     helm repo update
+    # install gotestloghelper
+    mkdir -p $HOME/.nix-go/bin
+    export PATH=$HOME/.nix-go/bin:$PATH
+    export GOBIN=$HOME/.nix-go/bin
+    go install github.com/smartcontractkit/chainlink-testing-framework/tools/gotestloghelper@latest
   '';
 }

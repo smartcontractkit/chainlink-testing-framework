@@ -66,15 +66,28 @@ jobs:
       TEST_SUITE: local-runner
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - name: Install Nix
+        uses: cachix/install-nix-action@8887e596b4ee1134dae06b98d573bd674693f47c # v26
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+      - name: Setup environment
+        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/setup-run-tests-environment@5bee84d30d90295010bda68b0cd46be3a1eea917 # v2.3.9
+        with:
+          go_mod_path: go.mod
+          QA_AWS_REGION: ${{ secrets.QA_AWS_REGION }}
+          QA_AWS_ROLE_TO_ASSUME: ${{ secrets.QA_AWS_ROLE_TO_ASSUME }}
+          QA_KUBECONFIG: ${{ secrets.QA_KUBECONFIG }}
+          go_necessary: false
       - name: Run Tests
         env:
           LOCAL_CHARTS: true
-        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/run-tests@ce87f8986ca18336cc5015df75916c2ec0a7c4b3 # v2.1.2
+        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/run-tests@5bee84d30d90295010bda68b0cd46be3a1eea917 # v2.3.9
         with:
           cl_repo: ${{ env.CHAINLINK_IMAGE }}
           cl_image_tag: ${{ env.CHAINLINK_VERSION }}
-          test_command_to_run: make gotestloghelper_build && unset ENV_JOB_IMAGE && helm repo update && make k8s_test_e2e_ci
-          test_download_vendor_packages_command: go mod download
+          test_command_to_run: |
+            unset ENV_JOB_IMAGE
+            nix develop -c make k8s_test_e2e_ci
           artifacts_location: ./e2e/logs
           publish_check_name: E2E Test Results
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -82,6 +95,7 @@ jobs:
           QA_AWS_REGION: ${{ secrets.QA_AWS_REGION }}
           QA_AWS_ROLE_TO_ASSUME: ${{ secrets.QA_AWS_ROLE_TO_ASSUME }}
           QA_KUBECONFIG: ${{ secrets.QA_KUBECONFIG }}
+          run_setup: false
       - name: Upload test log
         uses: actions/upload-artifact@v3
         if: failure()
@@ -101,13 +115,24 @@ jobs:
       TEST_TRIGGERED_BY: chainlink-testing-framework-remote-runner-ci
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - name: Install Nix
+        uses: cachix/install-nix-action@8887e596b4ee1134dae06b98d573bd674693f47c # v26
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+      - name: Setup environment
+        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/setup-run-tests-environment@5bee84d30d90295010bda68b0cd46be3a1eea917 # v2.3.9
+        with:
+          go_mod_path: go.mod
+          QA_AWS_REGION: ${{ secrets.QA_AWS_REGION }}
+          QA_AWS_ROLE_TO_ASSUME: ${{ secrets.QA_AWS_ROLE_TO_ASSUME }}
+          QA_KUBECONFIG: ${{ secrets.QA_KUBECONFIG }}
+          go_necessary: false
       - name: Run Remote Runner Tests
-        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/run-tests@ce87f8986ca18336cc5015df75916c2ec0a7c4b3 # v2.1.2
+        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/run-tests@5bee84d30d90295010bda68b0cd46be3a1eea917 # v2.3.9
         with:
           cl_repo: ${{ env.CHAINLINK_IMAGE }}
           cl_image_tag: ${{ env.CHAINLINK_VERSION }}
-          test_command_to_run: make gotestloghelper_build && helm repo update && make k8s_test_e2e_ci_remote_runner
-          test_download_vendor_packages_command: go mod download
+          test_command_to_run: nix develop -c make k8s_test_e2e_ci_remote_runner
           artifacts_location: ./k8s/logs
           publish_check_name: E2E Remote Runner Test Results
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -115,6 +140,7 @@ jobs:
           QA_AWS_REGION: ${{ secrets.QA_AWS_REGION }}
           QA_AWS_ROLE_TO_ASSUME: ${{ secrets.QA_AWS_ROLE_TO_ASSUME }}
           QA_KUBECONFIG: ${{ secrets.QA_KUBECONFIG }}
+          run_setup: false
       - name: Upload test log
         uses: actions/upload-artifact@v2
         if: failure()

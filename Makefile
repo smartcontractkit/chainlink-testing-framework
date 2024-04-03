@@ -30,7 +30,8 @@ tidy:
 	cd ./tools/gotestloghelper && go mod tidy && cd -
 	cd ./k8s-test-runner && go mod tidy && cd -
 
-go_mod: tidy
+.PHONY: go_mod
+go_mod:
 	go mod download
 
 .PHONY: install_gotestfmt
@@ -80,11 +81,11 @@ docker_prune:
 compile_contracts:
 	python3 ./utils/compile_contracts.py
 
-test_unit: install_gotestfmt
-	go test -json -cover -covermode=count -coverprofile=unit-test-coverage.out ./client ./gauntlet ./testreporters ./k8s/config ./utils/osutil 2>&1 | tee /tmp/gotest.log | gotestfmt
+test_unit: go_mod
+	go test -timeout 5m -json -cover -covermode=count -coverprofile=unit-test-coverage.out $(shell go list ./... | grep -v /k8s/e2e/ | grep -v /k8s/examples/ | grep -v /docker/test_env) 2>&1 | tee /tmp/gotest.log | gotestloghelper -ci -onlyerrors=false
 
-test_docker: install_gotestfmt
-	go test -timeout 20m -json -failfast -parallel 3 -cover -covermode=atomic -coverprofile=unit-test-coverage.out ./docker/test_env 2>&1 | tee /tmp/gotest.log | gotestfmt
+test_docker: go_mod
+	go test -timeout 20m -json -failfast -parallel 3 -cover -covermode=atomic -coverprofile=unit-test-coverage.out ./docker/test_env 2>&1 | tee /tmp/gotest.log | gotestloghelper -ci -onlyerrors=false
 
 
 #######################
@@ -132,11 +133,11 @@ k8s_test:
 k8s_test_e2e:
 	go test ./k8s/e2e/local-runner -count 1 -test.parallel=12 -v $(args)
 
-k8s_test_e2e_ci:
-	go test ./k8s/e2e/local-runner -count 1 -v -test.parallel=14 -test.timeout=1h -json 2>&1 | tee /tmp/gotest.log | gotestloghelper -ci -singlepackage
+k8s_test_e2e_ci: go_mod
+	go test ./k8s/e2e/local-runner -count 1 -test.parallel=14 -test.timeout=1h -json 2>&1 | tee /tmp/gotest.log | gotestloghelper -ci -onlyerrors=false -singlepackage
 
-k8s_test_e2e_ci_remote_runner:
-	go test ./k8s/e2e/remote-runner -count 1 -v -test.parallel=20 -test.timeout=1h -json 2>&1 | tee /tmp/remoterunnergotest.log | gotestloghelper -ci -singlepackage
+k8s_test_e2e_ci_remote_runner: go_mod
+	go test ./k8s/e2e/remote-runner -count 1 -test.parallel=20 -test.timeout=1h -json 2>&1 | tee /tmp/remoterunnergotest.log | gotestloghelper -ci -onlyerrors=false -singlepackage
 
 .PHONY: examples
 examples:
