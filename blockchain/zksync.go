@@ -4,14 +4,16 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
+	"math/big"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rs/zerolog/log"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/conversions"
-	"math/big"
 )
 
 // ZKSyncClient represents a single node, EVM compatible client for the ZKSync network
@@ -43,7 +45,7 @@ func (z *ZKSyncClient) TransactionOpts(from *EthereumWallet) (*bind.TransactOpts
 	opts.From = common.HexToAddress(from.Address())
 	opts.Context = context.Background()
 
-	nonce, err := z.GetNonce(context.Background(), common.HexToAddress(from.Address()))
+	nonce, err := z.GetNonce(context.Background(), common.HexToAddress(from.Address()), true)
 	if err != nil {
 		return nil, err
 	}
@@ -106,11 +108,11 @@ func (z *ZKSyncClient) IsTxConfirmed(txHash common.Hash) (bool, error) {
 }
 
 //
-//func (z *ZKSyncClient) Fund(
+// func (z *ZKSyncClient) Fund(
 //	toAddress string,
 //	amount *big.Float,
 //	gasEstimations GasEstimations,
-//) error {
+// ) error {
 //	// Connect to zkSync network
 //	client, err := clients.Dial(z.GetNetworkConfig().HTTPURLs[0])
 //	if err != nil {
@@ -151,11 +153,11 @@ func (z *ZKSyncClient) IsTxConfirmed(txHash common.Hash) (bool, error) {
 //	}
 //	log.Info().Str("ZKSync", fmt.Sprintf("TXHash %s", tx.Hash())).Msg("Executing ZKSync transaction")
 //	return z.ProcessTransaction(tx)
-//}
+// }
 
-//// ReturnFunds overrides the EthereumClient.ReturnFunds method.
-//// This is needed to call the ZKSyncClient.ProcessTransaction method instead of the EthereumClient.ProcessTransaction method.
-//func (z *ZKSyncClient) ReturnFunds(fromKey *ecdsa.PrivateKey) error {
+// // ReturnFunds overrides the EthereumClient.ReturnFunds method.
+// // This is needed to call the ZKSyncClient.ProcessTransaction method instead of the EthereumClient.ProcessTransaction method.
+// func (z *ZKSyncClient) ReturnFunds(fromKey *ecdsa.PrivateKey) error {
 //	var tx *types.Transaction
 //	var err error
 //	for attempt := 0; attempt < 20; attempt++ {
@@ -167,7 +169,7 @@ func (z *ZKSyncClient) IsTxConfirmed(txHash common.Hash) (bool, error) {
 //		time.Sleep(time.Millisecond * 500)
 //	}
 //	return err
-//}
+// }
 
 // This is just a 1:1 copy of attemptReturn, which can't be reused as-is for ZKSync as it doesn't
 // accept an interface.
@@ -177,7 +179,7 @@ func attemptZKSyncReturn(z *ZKSyncClient, fromKey *ecdsa.PrivateKey, _ int) (*ty
 	if err != nil {
 		return nil, err
 	}
-	nonce, err := z.GetNonce(context.Background(), fromAddress)
+	nonce, err := z.GetNonce(context.Background(), fromAddress, true)
 	if err != nil {
 		return nil, err
 	}

@@ -67,6 +67,8 @@ func wrapSingleClient(networkSettings EVMNetwork, client *EthereumClient) EVMCli
 		wrappedEc = &KromaClient{client}
 	case GnosisClientImplementation:
 		wrappedEc = &GnosisClient{client}
+	case ZKSyncClientImplementation:
+		wrappedEc = &ZKSyncClient{client}
 	default:
 		wrappedEc = client
 	}

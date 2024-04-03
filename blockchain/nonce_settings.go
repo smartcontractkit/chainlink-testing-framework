@@ -113,8 +113,12 @@ func (ns *NonceSettings) sentInstantTransaction(fromAddr string) {
 	ns.sentChan <- fromAddr
 }
 
-// GetNonce keep tracking of nonces per address, add last nonce for addr if the map is empty
-func (e *EthereumClient) GetNonce(ctx context.Context, addr common.Address) (uint64, error) {
+// GetNonce keeps track of nonces per address. If the nonce for an address hasn't been requested before, it will query
+// the network for the latest pending nonce.
+// If sync is set, it will always query the network for the latest nonce and only use the local state if it's ahead of
+// the network. This is useful when interacting with the address outside the client as this won't update the local state
+// but still enables rapid-sending of transactions.
+func (e *EthereumClient) GetNonce(ctx context.Context, addr common.Address, sync bool) (uint64, error) {
 	e.NonceSettings.NonceMu.Lock()
 	defer e.NonceSettings.NonceMu.Unlock()
 
@@ -125,7 +129,7 @@ func (e *EthereumClient) GetNonce(ctx context.Context, addr common.Address) (uin
 	// }
 	// fmt.Println("---------------------------------------------------")
 
-	if _, ok := e.NonceSettings.Nonces[addr.Hex()]; !ok {
+	if lastNonce, ok := e.NonceSettings.Nonces[addr.Hex()]; !ok {
 		pendingNonce, err := e.Client.PendingNonceAt(ctx, addr)
 		if err != nil {
 			return 0, err
@@ -137,9 +141,22 @@ func (e *EthereumClient) GetNonce(ctx context.Context, addr common.Address) (uin
 		e.NonceSettings.instantNoncesMu.Unlock()
 
 		return pendingNonce, nil
+	} else {
+		newNonce := lastNonce + 1
+		if sync {
+			// Query for the latest pending nonce and compare it to the local state.
+			// If the pending nonce is ahead, use it instead and update the local state.
+			pendingNonce, err := e.Client.PendingNonceAt(ctx, addr)
+			if err != nil {
+				return 0, err
+			}
+			if pendingNonce > newNonce {
+				newNonce = pendingNonce
+			}
+		}
+		e.NonceSettings.Nonces[addr.Hex()] = newNonce
+		return newNonce, nil
 	}
-	e.NonceSettings.Nonces[addr.Hex()]++
-	return e.NonceSettings.Nonces[addr.Hex()], nil
 }
 
 // PeekPendingNonce returns the current pending nonce for the address. Does not change any nonce settings state

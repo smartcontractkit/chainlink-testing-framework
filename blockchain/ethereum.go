@@ -272,7 +272,7 @@ func (e *EthereumClient) Fund(
 	}
 	to := common.HexToAddress(toAddress)
 
-	nonce, err := e.GetNonce(context.Background(), common.HexToAddress(e.DefaultWallet.Address()))
+	nonce, err := e.GetNonce(context.Background(), common.HexToAddress(e.DefaultWallet.Address()), false)
 	if err != nil {
 		return err
 	}
@@ -508,7 +508,7 @@ func (e *EthereumClient) TransactionOpts(from *EthereumWallet) (*bind.TransactOp
 	opts.From = common.HexToAddress(from.Address())
 	opts.Context = context.Background()
 
-	nonce, err := e.GetNonce(context.Background(), common.HexToAddress(from.Address()))
+	nonce, err := e.GetNonce(context.Background(), common.HexToAddress(from.Address()), false)
 	if err != nil {
 		return nil, err
 	}
