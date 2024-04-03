@@ -40,8 +40,8 @@ const testPassFailPrefix = `^--- (PASS|FAIL|SKIP):(.*)`
 const packagePassFailPrefix = `^(PASS|FAIL)\n$`
 const packageCoveragePrefix = `^coverage:`
 const testingLogPrefix = `^(\s+)(\w+\.go:\d+: )`
-const testPanic = `^panic:.* (Test[A-Z]\w*)`
-const testErrorPrefix = `^\s+(Error\sTrace|Error|Test|Messages):\s+`
+const testPanic = `^(\x1b\[0;31m)?panic:.* (Test[A-Z]\w*)`
+const testErrorPrefix = `^(\x1b\[0;31m)?\s+(Error\sTrace|Error|Test|Messages):\s+`
 const testErrorPrefix2 = `        \t            \t.*`
 const packageOkFailPrefix = `^(ok|FAIL)\s*\t(.*)` //`^(FAIL|ok).*\t(.*)$`
 
@@ -132,7 +132,7 @@ func (t Test) Print(c *TestLogModifierConfig) {
 	}
 
 	// print out the error message at the top if the logs are longer than the specified length
-	if *c.CI && *c.ErrorAtTopLength > 0 && len(t) > *c.ErrorAtTopLength {
+	if len(errorMessages) > 0 && *c.CI && *c.ErrorAtTopLength > 0 && len(t) > *c.ErrorAtTopLength {
 		fmt.Println("❌ Error found:")
 		for _, log := range errorMessages {
 			log.Print()
@@ -411,7 +411,7 @@ func JsonTestOutputToStandard(te *GoTestEvent, c *TestLogModifierConfig) error {
 			// Check if there is a match for the test name
 			if len(match) > 1 {
 				// the second element should have the test name
-				p.FailedTests = append(p.FailedTests, match[1])
+				p.FailedTests = append(p.FailedTests, match[2])
 			} else {
 				fmt.Println("What is wrong with this panic???", te.Output)
 			}
