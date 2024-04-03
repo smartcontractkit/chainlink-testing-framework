@@ -11,9 +11,24 @@ then
     printf "Run `golangci-lint run -v` and fix them\n"
 
     exit 1
-else 
+else
     printf "Executing linters... \e[32mOK!\e[0m\n"
 fi
+
+cd ./tools/gotestloghelper
+golangci-lint run > /dev/null
+linting_result=$?
+
+if [[ $linting_result -ne 0 ]];
+then
+    printf "Executing linters... \e[31mNOK!\e[0m\n"
+    printf "Run `cd ./tools/gotestloghelper && golangci-lint run -v` and fix them\n"
+
+    exit 1
+else
+    printf "Executing linters... \e[32mOK!\e[0m\n"
+fi
+cd -
 
 printf "Executing unit tests...\r"
 
@@ -26,7 +41,7 @@ then
     printf "Run `make test_unit` and fix them\n"
 
     exit 1
-else 
+else
     printf "Executing unit tests... \e[32mOK!\e[0m\n"
 fi
 

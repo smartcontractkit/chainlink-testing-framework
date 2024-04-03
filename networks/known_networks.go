@@ -381,6 +381,20 @@ var (
 		DefaultGasLimit:           6000000,
 	}
 
+	PolygonAmoy blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Polygon Amoy",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.PolygonClientImplementation,
+		ChainID:                   80002,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       1000,
+		FinalityTag:               true,
+		DefaultGasLimit:           6000000,
+	}
+
 	AvalancheMainnet blockchain.EVMNetwork = blockchain.EVMNetwork{
 		Name:                      "Avalanche Mainnet",
 		SupportsEIP1559:           true,
@@ -542,6 +556,18 @@ var (
 		SupportsEIP1559:           true,
 		ClientImplementation:      blockchain.LineaClientImplementation,
 		ChainID:                   59140,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
+		MinimumConfirmations:      0,
+		GasEstimationBuffer:       1000,
+	}
+
+	LineaSepolia blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Linea Sepolia",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.LineaClientImplementation,
+		ChainID:                   59141,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
 		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
@@ -812,6 +838,7 @@ var (
 		"CELO_MAINNET":          CeloMainnet,
 		"RSK":                   RSKTestnet,
 		"POLYGON_MUMBAI":        PolygonMumbai,
+		"POLYGON_AMOY":          PolygonAmoy,
 		"POLYGON_MAINNET":       PolygonMainnet,
 		"AVALANCHE_FUJI":        AvalancheFuji,
 		"AVALANCHE_MAINNET":     AvalancheMainnet,
@@ -822,6 +849,7 @@ var (
 		"BSC_TESTNET":           BSCTestnet,
 		"BSC_MAINNET":           BSCMainnet,
 		"LINEA_GOERLI":          LineaGoerli,
+		"LINEA_SEPOLIA":         LineaSepolia,
 		"LINEA_MAINNET":         LineaMainnet,
 		"POLYGON_ZKEVM_GOERLI":  PolygonZkEvmGoerli,
 		"POLYGON_ZKEVM_CARDONA": PolygonZkEvmCardona,

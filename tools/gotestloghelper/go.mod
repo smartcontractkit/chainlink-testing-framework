@@ -2,10 +2,8 @@ module github.com/smartcontractkit/chainlink-testing-framework/tools/gotestloghe
 
 go 1.21.5
 
-replace github.com/smartcontractkit/chainlink-testing-framework => ../../
-
 require (
-	github.com/smartcontractkit/chainlink-testing-framework v0.0.0-00010101000000-000000000000
+	github.com/smartcontractkit/chainlink-testing-framework v1.27.8
 	github.com/stretchr/testify v1.8.4
 )
 
