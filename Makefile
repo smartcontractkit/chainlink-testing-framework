@@ -133,10 +133,10 @@ k8s_test_e2e:
 	go test ./k8s/e2e/local-runner -count 1 -test.parallel=12 -v $(args)
 
 k8s_test_e2e_ci:
-	go test ./k8s/e2e/local-runner -count 1 -v -test.parallel=14 -test.timeout=1h -json 2>&1 | tee /tmp/gotest.log | ./gotestloghelper -ci -singlepackage
+	go test ./k8s/e2e/local-runner -count 1 -v -test.parallel=14 -test.timeout=1h -json 2>&1 | tee /tmp/gotest.log | gotestloghelper -ci -singlepackage
 
 k8s_test_e2e_ci_remote_runner:
-	go test ./k8s/e2e/remote-runner -count 1 -v -test.parallel=20 -test.timeout=1h -json 2>&1 | tee /tmp/remoterunnergotest.log | ./gotestloghelper -ci -singlepackage
+	go test ./k8s/e2e/remote-runner -count 1 -v -test.parallel=20 -test.timeout=1h -json 2>&1 | tee /tmp/remoterunnergotest.log | gotestloghelper -ci -singlepackage
 
 .PHONY: examples
 examples:
