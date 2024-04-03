@@ -82,10 +82,10 @@ compile_contracts:
 	python3 ./utils/compile_contracts.py
 
 test_unit: go_mod
-	go test -timeout 5m -json -cover -covermode=count -coverprofile=unit-test-coverage.out $(shell go list ./... | grep -v /k8s/e2e/ | grep -v /k8s/examples/ | grep -v /docker/test_env) 2>&1 | tee /tmp/gotest.log | gotestloghelper -ci -onlyerrors=false
+	go test -timeout 5m -json -cover -covermode=count -coverprofile=unit-test-coverage.out $(shell go list ./... | grep -v /k8s/e2e/ | grep -v /k8s/examples/ | grep -v /docker/test_env) 2>&1 | tee /tmp/gotest.log | gotestloghelper -ci
 
 test_docker: go_mod
-	go test -timeout 20m -json -failfast -parallel 3 -cover -covermode=atomic -coverprofile=unit-test-coverage.out ./docker/test_env 2>&1 | tee /tmp/gotest.log | gotestloghelper -ci -onlyerrors=false
+	go test -timeout 20m -json -failfast -parallel 3 -cover -covermode=atomic -coverprofile=unit-test-coverage.out ./docker/test_env 2>&1 | tee /tmp/gotest.log | gotestloghelper -ci
 
 
 #######################
@@ -134,10 +134,10 @@ k8s_test_e2e:
 	go test ./k8s/e2e/local-runner -count 1 -test.parallel=12 -v $(args)
 
 k8s_test_e2e_ci: go_mod
-	go test ./k8s/e2e/local-runner -count 1 -test.parallel=14 -test.timeout=1h -json 2>&1 | tee /tmp/gotest.log | gotestloghelper -ci -onlyerrors=false -singlepackage
+	go test ./k8s/e2e/local-runner -count 1 -test.parallel=14 -test.timeout=1h -json 2>&1 | tee /tmp/gotest.log | gotestloghelper -ci -singlepackage
 
 k8s_test_e2e_ci_remote_runner: go_mod
-	go test ./k8s/e2e/remote-runner -count 1 -test.parallel=20 -test.timeout=1h -json 2>&1 | tee /tmp/remoterunnergotest.log | gotestloghelper -ci -onlyerrors=false -singlepackage
+	go test ./k8s/e2e/remote-runner -count 1 -test.parallel=20 -test.timeout=1h -json 2>&1 | tee /tmp/remoterunnergotest.log | gotestloghelper -ci -singlepackage
 
 .PHONY: examples
 examples:
