@@ -81,7 +81,7 @@ compile_contracts:
 	python3 ./utils/compile_contracts.py
 
 test_unit: install_gotestfmt
-	go test -json -cover -covermode=count -coverprofile=unit-test-coverage.out ./client ./gauntlet ./testreporters ./k8s/config ./utils/osutil 2 2>&1 | tee /tmp/gotest.log | gotestfmt
+	go test -json -cover -covermode=count -coverprofile=unit-test-coverage.out ./client ./gauntlet ./testreporters ./k8s/config ./utils/osutil 2>&1 | tee /tmp/gotest.log | gotestfmt
 
 test_docker: install_gotestfmt
 	go test -timeout 20m -json -failfast -parallel 3 -cover -covermode=atomic -coverprofile=unit-test-coverage.out ./docker/test_env 2>&1 | tee /tmp/gotest.log | gotestfmt
@@ -157,3 +157,7 @@ chaosmesh: ## there is currently a bug on JS side to import all CRDs from one ya
 .PHONY: tools_build
 gotestloghelper_build:
 	cd ./tools/gotestloghelper && go build -o ../../gotestloghelper . && cd -
+
+.PHONY: nix_shell
+nix_shell:
+	nix develop
