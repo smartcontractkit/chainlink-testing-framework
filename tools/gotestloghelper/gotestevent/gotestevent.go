@@ -164,7 +164,7 @@ type TestPackage struct {
 
 func (p *TestPackage) AddTestEvent(te *GoTestEvent) {
 	// stop noise from being added to the logs
-	if testRunPrefixRegexp.MatchString(te.Output) {
+	if len(te.Output) == 0 || testRunPrefixRegexp.MatchString(te.Output) {
 		return
 	}
 
