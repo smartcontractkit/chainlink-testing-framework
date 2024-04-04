@@ -70,7 +70,8 @@ jobs:
       - name: Build stuff to cache
         run: |
           nix develop -c sh -c "go mod download && \
-          go build ./..."
+          go build ./... && \
+          go test -run=^# ./..."
       - name: Cache Nix
         uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4.0.0
         with:
