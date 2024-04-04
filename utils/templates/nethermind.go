@@ -42,7 +42,7 @@ func (c NethermindPoAGenesisJsonTemplate) String() (string, error) {
 		  "accountStartNonce": "0x0",
 		  "maximumExtraDataSize": "0xffff",
 		  "minGasLimit": "0x1388",
-		  "maxCodeSize": "0x6000",
+		  "maxCodeSize": "0x1F400",
 		  "maxCodeSizeTransition": "0x0",
 		  "eip150Transition": "0x0",
 		  "eip158Transition": "0x0",
@@ -80,12 +80,12 @@ func (c NethermindPoAGenesisJsonTemplate) String() (string, error) {
 			  "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000"
 			}
 		  },
-		  "difficulty": "0x01",
+		  "difficulty": "0x20000",
 		  "author": "0x0000000000000000000000000000000000000000",
 		  "timestamp": "0x00",
 		  "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
 		  "extraData": "{{ .ExtraData }}",
-		  "gasLimit": "0x17D7840"
+		  "gasLimit": "0x5F5E100"
 		},
 		"accounts": {
 			{{- $lastIndex := decrement (len $.AccountAddr)}}

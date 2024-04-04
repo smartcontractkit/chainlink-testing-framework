@@ -129,6 +129,22 @@ spec:
               name: postgres
               subPath: postgres-db
           {{ end }}
+        {{- if $.Values.db.enablePrometheusPostgresExporter }}
+        - name: prometheus-postgres-exporter
+          image: {{ $.Values.prometheusPostgresExporter.image.image }}
+          resources:
+            requests:
+              memory: {{ $.Values.prometheusPostgresExporter.resources.requests.memory }}
+              cpu: {{ $.Values.prometheusPostgresExporter.resources.requests.cpu }}
+            limits:
+              memory: {{ $.Values.prometheusPostgresExporter.resources.limits.memory }}
+              cpu: {{ $.Values.prometheusPostgresExporter.resources.limits.cpu }}
+          env:
+            - name: DATA_SOURCE_NAME
+              value: "postgresql://{{ $.Values.db.postgresUser }}:{{ $.Values.db.postgresPassword }}@localhost/{{ $.Values.db.postgresDatabase }}?sslmode=disable"
+          ports:
+            - containerPort: {{ $.Values.prometheusPostgresExporter.containerPort }}
+        {{- end }}
 {{- with $.Values.nodeSelector }}
       nodeSelector:
 {{ toYaml . | indent 8 }}
