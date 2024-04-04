@@ -25,6 +25,10 @@ jobs:
         uses: cachix/install-nix-action@8887e596b4ee1134dae06b98d573bd674693f47c # v26
         with:
           nix_path: nixpkgs=channel:nixos-unstable
+      - name: Load Nix
+        run: |
+          nix develop -c sh -c "cd ${{ matrix.project.path }} && \
+          go mod download"
       - name: Run Tests
         run: |
           PATH=$PATH:$(go env GOPATH)/bin
@@ -32,8 +36,8 @@ jobs:
           set -euo pipefail
           # disabled, because we want to use a multiline output of go list command
           # shellcheck disable=SC2046
-          cd ${{ matrix.project.path }}
-          nix develop -c make test_unit
+          nix develop -c sh -c "cd ${{ matrix.project.path }} && \
+            make test_unit"
       - name: Code Coverage
         uses: codecov/codecov-action@v3
         with:

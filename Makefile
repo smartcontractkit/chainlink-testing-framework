@@ -1,4 +1,3 @@
-BIN_DIR = bin
 export GOPATH ?= $(shell go env GOPATH)
 export GO111MODULE ?= on
 CDK8S_CLI_VERSION=2.1.48
@@ -33,11 +32,6 @@ tidy:
 .PHONY: go_mod
 go_mod:
 	go mod download
-
-.PHONY: install_gotestfmt
-install_gotestfmt:
-	go install github.com/gotesttools/gotestfmt/v2/cmd/gotestfmt@latest
-	set -euo pipefail
 
 install_tools:
 ifeq ($(OSFLAG),$(WINDOWS))

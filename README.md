@@ -40,6 +40,22 @@ Then use
 make install_deps
 ```
 
+##### Optional Nix
+
+We have setup a nix shell which will produce a reliable environment that will behave the same locally and in ci. To use it instead of the above you will need to [install nix](https://nixos.org/download/)
+
+To start the nix shell run:
+
+```shell
+make nix_shell
+```
+
+If you install [direnv](https://github.com/direnv/direnv/blob/master/docs/installation.md) you wil be able to have your environment start the nix shell as soon as you cd into it once you have allowed the directory via:
+
+```shell
+direnv allow
+```
+
 ### Running tests in k8s
 
 To read how to run a test in k8s, read [here](./k8s/REMOTE_RUN.md)
@@ -161,6 +177,7 @@ cfg, err: = builder.
 ```
 
 When using a custom image you can even further simplify the builder by calling only `WithCustomDockerImages` method. Based on the image name and version we will determine which execution layer client it is and whether it's `eth1` or `eth2` client:
+
 ```go
 builder := NewEthereumNetworkBuilder()
 cfg, err: = builder.
@@ -168,6 +185,7 @@ cfg, err: = builder.
         ContainerType_Geth: "ethereum/client-go:v1.13.10"}).
     Build()
 ```
+
 In the case above we would launch a `Geth` client with `eth2` network and `Prysm` consensus layer.
 
 You can also configure epochs at which hardforks will happen. Currently only `Deneb` is supported. Epoch must be >= 1. Example:

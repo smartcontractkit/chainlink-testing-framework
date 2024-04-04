@@ -70,6 +70,8 @@ jobs:
         uses: cachix/install-nix-action@8887e596b4ee1134dae06b98d573bd674693f47c # v26
         with:
           nix_path: nixpkgs=channel:nixos-unstable
+      - name: Load Nix
+        run: nix develop -c sh -c "go mod download"
       - name: Setup environment
         uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/setup-run-tests-environment@5bee84d30d90295010bda68b0cd46be3a1eea917 # v2.3.9
         with:
@@ -87,7 +89,7 @@ jobs:
           cl_image_tag: ${{ env.CHAINLINK_VERSION }}
           test_command_to_run: |
             unset ENV_JOB_IMAGE
-            nix develop -c make k8s_test_e2e_ci
+            nix develop -c sh -c "make k8s_test_e2e_ci"
           artifacts_location: ./e2e/logs
           publish_check_name: E2E Test Results
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -119,6 +121,8 @@ jobs:
         uses: cachix/install-nix-action@8887e596b4ee1134dae06b98d573bd674693f47c # v26
         with:
           nix_path: nixpkgs=channel:nixos-unstable
+      - name: Load Nix
+        run: nix develop -c sh -c "go mod download"
       - name: Setup environment
         uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/setup-run-tests-environment@5bee84d30d90295010bda68b0cd46be3a1eea917 # v2.3.9
         with:
@@ -132,7 +136,8 @@ jobs:
         with:
           cl_repo: ${{ env.CHAINLINK_IMAGE }}
           cl_image_tag: ${{ env.CHAINLINK_VERSION }}
-          test_command_to_run: nix develop -c make k8s_test_e2e_ci_remote_runner
+          test_command_to_run: |
+            nix develop -c sh -c "make k8s_test_e2e_ci_remote_runner"
           artifacts_location: ./k8s/logs
           publish_check_name: E2E Remote Runner Test Results
           token: ${{ secrets.GITHUB_TOKEN }}

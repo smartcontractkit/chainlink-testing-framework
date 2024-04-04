@@ -1,11 +1,10 @@
-{ pkgs }:
+{ pkgs, scriptDir }:
 with pkgs;
 let
   go = pkgs.go_1_21;
   postgresql = postgresql_15;
   nodejs = nodejs-18_x;
   nodePackages = pkgs.nodePackages.override { inherit nodejs; };
-  isDarwin = pkgs.stdenv.isDarwin;
 in
 mkShell {
   nativeBuildInputs = [
@@ -31,6 +30,7 @@ mkShell {
     golangci-lint
     github-cli
     jq
+    dasel
 
     # deployment
     awscli2
@@ -47,21 +47,19 @@ mkShell {
 
   LD_LIBRARY_PATH = lib.makeLibraryPath [pkgs.zlib stdenv.cc.cc.lib]; # lib64
   GOROOT = "${go}/share/go";
+  CGO_ENABLED = "0";
+  HELM_REPOSITORY_CONFIG = "${scriptDir}/.helm-repositories.yaml";
 
   shellHook = ''
-    # disable CGO by default
-    export CGO_ENABLED=0
     # enable pre-commit hooks
-    pre-commit install
-    # Setup helm repositories
-    helm repo add chainlink-qa https://raw.githubusercontent.com/smartcontractkit/qa-charts/gh-pages/
-    helm repo add grafana https://grafana.github.io/helm-charts
-    helm repo add bitnami https://charts.bitnami.com/bitnami
-    helm repo update
-    # install gotestloghelper
-    mkdir -p $HOME/.nix-go/bin
-    export PATH=$HOME/.nix-go/bin:$PATH
+    pre-commit install > /dev/null
+    # Update helm repositories
+    helm repo update > /dev/null
+    # setup go bin for nix
     export GOBIN=$HOME/.nix-go/bin
+    mkdir -p $GOBIN
+    export PATH=$GOBIN:$PATH
+    # install gotestloghelper
     go install github.com/smartcontractkit/chainlink-testing-framework/tools/gotestloghelper@latest
   '';
 }

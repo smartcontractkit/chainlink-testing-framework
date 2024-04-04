@@ -11,7 +11,10 @@
       let
         pkgs = import nixpkgs { inherit system; overlays = [ ]; };
       in rec {
-        devShell = pkgs.callPackage ./shell.nix {inherit pkgs;};
+        devShell = pkgs.callPackage ./shell.nix {
+          inherit pkgs;
+          scriptDir = toString ./.;  # This converts the flake's root directory to a string
+        };
         formatter = pkgs.nixpkgs-fmt;
       });
 }
