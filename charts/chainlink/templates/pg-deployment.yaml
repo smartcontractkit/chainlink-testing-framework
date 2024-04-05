@@ -38,6 +38,9 @@ spec:
         {{- range $key, $value := $.Values.db.labels }}
         {{ $key }}: {{ $value | quote }}
         {{- end }}
+        {{- if $cfg.db.enablePrometheusPostgresExporter }}
+        prometheus-postgres-exporter: true
+        {{- end }}
       annotations:
         prometheus.io/scrape: 'true'
     spec:
@@ -143,7 +146,8 @@ spec:
             - name: DATA_SOURCE_NAME
               value: "postgresql://{{ $.Values.db.postgresUser }}:{{ $.Values.db.postgresPassword }}@localhost/{{ $.Values.db.postgresDatabase }}?sslmode=disable"
           ports:
-            - containerPort: {{ $.Values.prometheusPostgresExporter.containerPort }}
+            - name: prom-pg-exporter
+              containerPort: {{ $.Values.prometheusPostgresExporter.containerPort }}
         {{- end }}
 {{- with $.Values.nodeSelector }}
       nodeSelector:

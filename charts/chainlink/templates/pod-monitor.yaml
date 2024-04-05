@@ -10,4 +10,19 @@ spec:
       release: {{ .Release.Name }}
   podMetricsEndpoints:
     - port: access
+---
+{{- if .Values.db.enablePrometheusPostgresExporter }}
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  labels:
+    release: grafana-agent
+spec:
+  selector:
+    matchLabels:
+      release: {{ .Release.Name }}
+      prometheus-postgres-exporter: true
+  podMetricsEndpoints:
+    - port: prom-pg-exporter
+{{- end }}
 {{- end }}
