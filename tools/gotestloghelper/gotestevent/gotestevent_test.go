@@ -188,10 +188,12 @@ func TestParseOutNoise(t *testing.T) {
 
 func TestBasicPassAndFail(t *testing.T) {
 	tests := []struct {
-		name       string
-		inputs     []string
-		expected   string
-		onlyErrors bool
+		name             string
+		inputs           []string
+		expected         string
+		onlyErrors       bool
+		errotAtTopLength *int
+		singlePackage    bool
 	}{
 		{
 			name: "ShowPassingTests",
@@ -274,6 +276,22 @@ func TestBasicPassAndFail(t *testing.T) {
 			onlyErrors: true,
 		},
 		{
+			name: "CombinedPassFailAndOnlyErrorsSinglePackage",
+			inputs: []string{
+				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage1","Output":"abc\n"}`,
+				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage1","Output":"--- PASS: TestGetImage1 (0.00s)\n"}`,
+				`{"Time":"2023-11-27T15:39:39.223335-07:00","Action":"pass","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage1","Elapsed":0}`,
+				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage2","Output":"efg\n"}`,
+				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage2","Output":"--- FAIL: TestGetImage2 (0.00s)\n"}`,
+				`{"Time":"2023-11-27T15:39:39.223335-07:00","Action":"fail","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage2","Elapsed":0}`,
+				`{"Time":"2023-11-27T15:39:39.223823-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Output":"FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s\n"}`,
+				`{"Time":"2023-11-27T15:39:39.223871-07:00","Action":"fail","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Elapsed":0.333}`,
+			},
+			expected:      "::group:: \x1b[0;31m❌ TestGetImage2 (0.00s) \x1b[0m\nefg\n::endgroup::\n",
+			onlyErrors:    true,
+			singlePackage: true,
+		},
+		{
 			name: "PackagePanicAfterTestPass",
 			inputs: []string{
 				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage","Output":"abc\n"}`,
@@ -305,6 +323,37 @@ func TestBasicPassAndFail(t *testing.T) {
 			expected:   "📦 \x1b[0;31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[0;32m✅ TestGetImage (0.00s) \x1b[0m\nabc\n::endgroup::\n\x1b[0;31mpanic: Log in goroutine after TestGetImage has completed: 2023-11-28T11:38:06.521Z\tWARN\tTelemetryManager.TelemetryIngressBatchClient\twsrpc@v0.7.2/uni_client.go:97\tctx error context canceled reconnecting\t{\"version\": \"2.7.0@0957729\"} \x1b[0m\n",
 			onlyErrors: true,
 		},
+		{
+			name: "NoDropDownIfNoLogsInTest",
+			inputs: []string{
+				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage2","Output":"--- FAIL: TestGetImage2 (0.00s)\n"}`,
+				`{"Time":"2023-11-27T15:39:39.223335-07:00","Action":"fail","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage2","Elapsed":0}`,
+				`{"Time":"2023-11-27T15:39:39.223823-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Output":"FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s\n"}`,
+				`{"Time":"2023-11-27T15:39:39.223871-07:00","Action":"fail","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Elapsed":0.333}`,
+			},
+			expected:   "📦 \x1b[0;31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n\x1b[0;31m❌ TestGetImage2 (0.00s) \x1b[0m\n",
+			onlyErrors: true,
+		},
+		{
+			name: "NoDropDownIfNoLogsInTest",
+			inputs: []string{
+				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage2","Output":"example 1\n"}`,
+				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage2","Output":"example 2\n"}`,
+				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage2","Output":"example 3\n"}`,
+				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage2","Output":"    test_common.go:193: \n"}`,
+				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage2","Output":"        \tError Trace:\t/home/runner/work/chainlink-testing-framework/chainlink-testing-framework/k8s/e2e/common/test_common.go:193\n"}`,
+				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage2","Output":"        \tError:      \tReceived unexpected error:\n"}`,
+				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage2","Output":"        \t            \twaitcontainersready, no pods in 'chainlink-testing-framework-k8s-test-862b1' with selector '' after timeout '15m0s'\n"}`,
+				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage2","Output":"        \tTest:       \tTestWithSingleNodeEnvLocalCharts\n"}`,
+				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage2","Output":"--- FAIL: TestGetImage2 (0.00s)\n"}`,
+				`{"Time":"2023-11-27T15:39:39.223335-07:00","Action":"fail","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage2","Elapsed":0}`,
+				`{"Time":"2023-11-27T15:39:39.223823-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Output":"FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s\n"}`,
+				`{"Time":"2023-11-27T15:39:39.223871-07:00","Action":"fail","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Elapsed":0.333}`,
+			},
+			expected:         "📦 \x1b[0;31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[0;31m❌ TestGetImage2 (0.00s) \x1b[0m\n❌ Error found:\n        \tError Trace:\t/home/runner/work/chainlink-testing-framework/chainlink-testing-framework/k8s/e2e/common/test_common.go:193\n        \tError:      \tReceived unexpected error:\n        \t            \twaitcontainersready, no pods in 'chainlink-testing-framework-k8s-test-862b1' with selector '' after timeout '15m0s'\n        \tTest:       \tTestWithSingleNodeEnvLocalCharts\nexample 1\nexample 2\nexample 3\n    test_common.go:193: \n        \tError Trace:\t/home/runner/work/chainlink-testing-framework/chainlink-testing-framework/k8s/e2e/common/test_common.go:193\n        \tError:      \tReceived unexpected error:\n        \t            \twaitcontainersready, no pods in 'chainlink-testing-framework-k8s-test-862b1' with selector '' after timeout '15m0s'\n        \tTest:       \tTestWithSingleNodeEnvLocalCharts\n::endgroup::\n",
+			onlyErrors:       true,
+			errotAtTopLength: ptr.Ptr(2),
+		},
 	}
 
 	for _, test := range tests {
@@ -312,6 +361,11 @@ func TestBasicPassAndFail(t *testing.T) {
 		expected := test.expected
 		onlyErrors := test.onlyErrors
 		inputs := test.inputs
+		errorAtTopLength := ptr.Ptr(50)
+		singlePackage := test.singlePackage
+		if test.errotAtTopLength != nil {
+			errorAtTopLength = test.errotAtTopLength
+		}
 		t.Run(name, func(t *testing.T) {
 			fmt.Println("Logging that happens in the test")
 
@@ -320,7 +374,8 @@ func TestBasicPassAndFail(t *testing.T) {
 				RemoveTLogPrefix: ptr.Ptr(true),
 				OnlyErrors:       &clihelper.BoolFlag{IsSet: true, Value: onlyErrors},
 				CI:               ptr.Ptr(true),
-				SinglePackage:    ptr.Ptr(false),
+				SinglePackage:    ptr.Ptr(singlePackage),
+				ErrorAtTopLength: errorAtTopLength,
 			}
 			require.NoError(t, c.Validate(), "Config should be valid")
 			SetupModifiers(c)
