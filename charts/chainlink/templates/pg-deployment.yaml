@@ -38,7 +38,7 @@ spec:
         {{- range $key, $value := $.Values.db.labels }}
         {{ $key }}: {{ $value | quote }}
         {{- end }}
-        {{- if $cfg.db.enablePrometheusPostgresExporter }}
+        {{- if $.Values.db.enablePrometheusPostgresExporter }}
         prometheus-postgres-exporter: true
         {{- end }}
       annotations:
