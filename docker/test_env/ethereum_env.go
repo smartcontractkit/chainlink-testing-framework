@@ -15,6 +15,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/logstream"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 	toml_utils "github.com/smartcontractkit/chainlink-testing-framework/utils/toml"
 )
@@ -70,6 +71,7 @@ var ConsensusLayer_Prysm ConsensusLayer = "prysm"
 
 type EthereumNetworkBuilder struct {
 	t                   *testing.T
+	ls                  *logstream.LogStream
 	dockerNetworks      []string
 	ethereumVersion     EthereumVersion
 	consensusLayer      *ConsensusLayer
@@ -143,6 +145,11 @@ func (b *EthereumNetworkBuilder) WithTest(t *testing.T) *EthereumNetworkBuilder 
 	return b
 }
 
+func (b *EthereumNetworkBuilder) WithLogStream(ls *logstream.LogStream) *EthereumNetworkBuilder {
+	b.ls = ls
+	return b
+}
+
 func (b *EthereumNetworkBuilder) WithCustomDockerImages(newImages map[ContainerType]string) *EthereumNetworkBuilder {
 	b.customDockerImages = newImages
 	return b
@@ -172,6 +179,7 @@ func (b *EthereumNetworkBuilder) buildNetworkConfig() EthereumNetwork {
 	n.EthereumChainConfig = b.ethereumChainConfig
 	n.CustomDockerImages = b.customDockerImages
 	n.t = b.t
+	n.ls = b.ls
 
 	return n
 }
@@ -405,6 +413,7 @@ type EthereumNetwork struct {
 	CustomDockerImages   map[ContainerType]string  `toml:"CustomDockerImages"`
 	isRecreated          bool
 	t                    *testing.T
+	ls                   *logstream.LogStream
 }
 
 func (en *EthereumNetwork) Start() (blockchain.EVMNetwork, RpcProvider, error) {
@@ -436,17 +445,19 @@ func (en *EthereumNetwork) startEth2() (blockchain.EVMNetwork, RpcProvider, erro
 		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to create host directories")
 	}
 
+	opts := en.getExecutionLayerEnvComponentOpts()
+
 	var client ExecutionClient
 	var clientErr error
 	switch *en.ExecutionLayer {
 	case ExecutionLayer_Geth:
-		client, clientErr = NewGethEth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, append(en.getImageOverride(ContainerType_ExecutionLayer), en.setExistingContainerName(ContainerType_ExecutionLayer))...)
+		client, clientErr = NewGethEth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, opts...)
 	case ExecutionLayer_Nethermind:
-		client, clientErr = NewNethermindEth2(dockerNetworks, generatedDataHostDir, ConsensusLayer_Prysm, append(en.getImageOverride(ContainerType_ExecutionLayer), en.setExistingContainerName(ContainerType_ExecutionLayer))...)
+		client, clientErr = NewNethermindEth2(dockerNetworks, generatedDataHostDir, ConsensusLayer_Prysm, opts...)
 	case ExecutionLayer_Erigon:
-		client, clientErr = NewErigonEth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, append(en.getImageOverride(ContainerType_ExecutionLayer), en.setExistingContainerName(ContainerType_ExecutionLayer))...)
+		client, clientErr = NewErigonEth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, opts...)
 	case ExecutionLayer_Besu:
-		client, clientErr = NewBesuEth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, append(en.getImageOverride(ContainerType_ExecutionLayer), en.setExistingContainerName(ContainerType_ExecutionLayer))...)
+		client, clientErr = NewBesuEth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, opts...)
 	default:
 		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf(MsgUnsupportedExecutionLayer, *en.ExecutionLayer)
 	}
@@ -550,17 +561,19 @@ func (en *EthereumNetwork) startEth1() (blockchain.EVMNetwork, RpcProvider, erro
 		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to create docker networks")
 	}
 
+	opts := en.getExecutionLayerEnvComponentOpts()
+
 	var client ExecutionClient
 	var clientErr error
 	switch *en.ExecutionLayer {
 	case ExecutionLayer_Geth:
-		client = NewGethEth1(dockerNetworks, en.EthereumChainConfig, append(en.getImageOverride(ContainerType_ExecutionLayer), en.setExistingContainerName(ContainerType_ExecutionLayer))...)
+		client = NewGethEth1(dockerNetworks, en.EthereumChainConfig, opts...)
 	case ExecutionLayer_Besu:
-		client, clientErr = NewBesuEth1(dockerNetworks, en.EthereumChainConfig, append(en.getImageOverride(ContainerType_ExecutionLayer), en.setExistingContainerName(ContainerType_ExecutionLayer))...)
+		client, clientErr = NewBesuEth1(dockerNetworks, en.EthereumChainConfig, opts...)
 	case ExecutionLayer_Erigon:
-		client, clientErr = NewErigonEth1(dockerNetworks, en.EthereumChainConfig, append(en.getImageOverride(ContainerType_ExecutionLayer), en.setExistingContainerName(ContainerType_ExecutionLayer))...)
+		client, clientErr = NewErigonEth1(dockerNetworks, en.EthereumChainConfig, opts...)
 	case ExecutionLayer_Nethermind:
-		client, clientErr = NewNethermindEth1(dockerNetworks, en.EthereumChainConfig, append(en.getImageOverride(ContainerType_ExecutionLayer), en.setExistingContainerName(ContainerType_ExecutionLayer))...)
+		client, clientErr = NewNethermindEth1(dockerNetworks, en.EthereumChainConfig, opts...)
 	default:
 		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf(MsgUnsupportedExecutionLayer, *en.ExecutionLayer)
 	}
@@ -815,6 +828,14 @@ func (en *EthereumNetwork) ApplyOverrides(from *EthereumNetwork) error {
 	}
 
 	return nil
+}
+
+func (en *EthereumNetwork) getExecutionLayerEnvComponentOpts() []EnvComponentOption {
+	opts := []EnvComponentOption{}
+	opts = append(opts, en.getImageOverride(ContainerType_ExecutionLayer)...)
+	opts = append(opts, en.setExistingContainerName(ContainerType_ExecutionLayer))
+	opts = append(opts, WithLogStream(en.ls))
+	return opts
 }
 
 // RpcProvider holds all necessary URLs to connect to a simulated chain or a real RPC provider connected to a live chain
