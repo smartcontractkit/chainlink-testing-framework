@@ -30,6 +30,7 @@ func main() {
 	config.Color = flag.Bool("color", false, "Set to true to enable color output")
 	config.CI = flag.Bool("ci", false, "Set to true to enable CI mode, which will print out the logs with groupings when combined with -json")
 	config.SinglePackage = flag.Bool("singlepackage", false, "Set to true if the go test output is from a single package only, this will print tests out as they finish instead of waiting for the package to finish")
+	config.ErrorAtTopLength = flag.Int("errorattoplength", 100, "If the error message doesn't appear before this many lines, it will be printed at the top of the test output as well. Set to 0 to disable. Only works with -ci")
 	flag.Parse()
 
 	err := config.Validate()
