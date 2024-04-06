@@ -2,6 +2,7 @@
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
+  name: "{{ .Release.Name }}-pod-monitor"
   labels:
     release: grafana-agent
 spec:
@@ -15,14 +16,15 @@ spec:
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
+  name: "{{ .Release.Name }}-pg-pod-monitor"
   labels:
     release: grafana-agent
 spec:
   selector:
     matchLabels:
       release: {{ .Release.Name }}
-      prometheus-postgres-exporter: true
+      prometheus-postgres-exporter: 'true'
   podMetricsEndpoints:
-    - port: prom-pg-exporter
+    - port: prom-pg-exp
 {{- end }}
 {{- end }}
