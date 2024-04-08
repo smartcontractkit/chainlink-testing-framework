@@ -10,8 +10,11 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs { inherit system; overlays = [ ]; };
+        # The current default sdk for macOS fails to compile go projects, so we use a newer one for now.
+        # This has no effect on other platforms.
+        callPackage = pkgs.darwin.apple_sdk_11_0.callPackage or pkgs.callPackage;
       in rec {
-        devShell = pkgs.callPackage ./shell.nix {
+        devShell = callPackage ./shell.nix {
           inherit pkgs;
           scriptDir = toString ./.;  # This converts the flake's root directory to a string
         };
