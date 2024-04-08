@@ -787,6 +787,34 @@ var (
 		DefaultGasLimit:           6000000,
 	}
 
+	XLayerSepolia = blockchain.EVMNetwork{
+		Name:                      "X Layer Sepolia",
+		SupportsEIP1559:           false,
+		ClientImplementation:      blockchain.XLayerClientImplementation,
+		ChainID:                   195,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: time.Minute * 5},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       1000,
+		FinalityTag:               true,
+		DefaultGasLimit:           6000000,
+	}
+
+	XLayerMainnet = blockchain.EVMNetwork{
+		Name:                      "X Layer Mainnet",
+		SupportsEIP1559:           false,
+		ClientImplementation:      blockchain.XLayerClientImplementation,
+		ChainID:                   196,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: time.Minute * 5},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       1000,
+		FinalityTag:               true,
+		DefaultGasLimit:           6000000,
+	}
+
 	MappedNetworks = map[string]blockchain.EVMNetwork{
 		"SIMULATED":               SimulatedEVM,
 		"SIMULATED_1":             SimulatedEVMNonDev1,
@@ -842,6 +870,8 @@ var (
 		"NEXON_STAGE":           NexonStage,
 		"GNOSIS_CHIADO":         GnosisChiado,
 		"GNOSIS_MAINNET":        GnosisMainnet,
+		"XLAYER_SEPOLIA":        XLayerSepolia,
+		"XLAYER_MAINNET":        XLayerMainnet,
 	}
 )
 
