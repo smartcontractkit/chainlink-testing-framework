@@ -240,6 +240,18 @@ var (
 		GasEstimationBuffer:       1000,
 	}
 
+	MetisSepolia blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Metis Sepolia",
+		SupportsEIP1559:           false,
+		ClientImplementation:      blockchain.MetisClientImplementation,
+		ChainID:                   59902,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       1000,
+	}
+
 	ArbitrumMainnet blockchain.EVMNetwork = blockchain.EVMNetwork{
 		Name:                      "Arbitrum Mainnet",
 		SupportsEIP1559:           true,
@@ -802,6 +814,7 @@ var (
 		"KLAYTN_BAOBAB":         KlaytnBaobab,
 		"METIS_ANDROMEDA":       MetisAndromeda,
 		"METIS_STARDUST":        MetisStardust,
+		"METIS_SEPOLIA":         MetisSepolia,
 		"ARBITRUM_MAINNET":      ArbitrumMainnet,
 		"ARBITRUM_GOERLI":       ArbitrumGoerli,
 		"ARBITRUM_SEPOLIA":      ArbitrumSepolia,
