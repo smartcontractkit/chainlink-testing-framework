@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -20,11 +21,17 @@ var Create = &cobra.Command{
 
 func init() {
 	Create.Flags().String("image-registry-url", "", "Image registry url (e.g. ECR url)")
-	Create.MarkFlagRequired("image-registry-url")
+	if err := Create.MarkFlagRequired("image-registry-url"); err != nil {
+		log.Fatalf("Failed to mark 'image-registry-url' flag as required: %v", err)
+	}
 	Create.Flags().String("image-name", "", "Image name (e.g. k8s-test-runner-binary)")
-	Create.MarkFlagRequired("image-name")
+	if err := Create.MarkFlagRequired("image-name"); err != nil {
+		log.Fatalf("Failed to mark 'image-name' flag as required: %v", err)
+	}
 	Create.Flags().String("image-tag", "", "Image tag (e.g. mercury-load-tests)")
-	Create.MarkFlagRequired("image-tag")
+	if err := Create.MarkFlagRequired("image-tag"); err != nil {
+		log.Fatalf("Failed to mark 'image-tag' flag as required: %v", err)
+	}
 	Create.Flags().String("test-runner-root-dir", "./", "Test runner root directory with default chart and Dockerfile.testbin")
 	Create.Flags().String("timeout", "10m", "Timeout for the test binary build and image push")
 }
@@ -77,6 +84,7 @@ func createRunnerImageRunE(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("error getting image tag: %v", err)
 	}
 
+	// #nosec G204
 	buildTestBinDockerImageCmd := exec.CommandContext(ctx, "docker", "build", "--platform", "linux/amd64", "-f", "Dockerfile.testbin", "--build-arg", "TEST_BINARY=testbin", "-t", fmt.Sprintf("%s:%s", imageName, imageTag), ".")
 	buildTestBinDockerImageCmd.Dir = rootDirAbs
 
@@ -148,6 +156,7 @@ func pushDockerImageToECR(ctx context.Context, region, ecrURL, imageName, imageT
 	fmt.Printf("Authenticated Docker with ECR: %s\n", ecrURL)
 
 	// Tag the Docker image with ECR registry name
+	// #nosec G204
 	cmdDockerTag := exec.CommandContext(ctx, "docker", "tag", fmt.Sprintf("%s:%s", imageName, imageTag), fmt.Sprintf("%s/%s:%s", ecrURL, imageName, imageTag))
 	if output, err := cmdDockerTag.CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to tag Docker image: %s, %w", string(output), err)
@@ -159,6 +168,7 @@ func pushDockerImageToECR(ctx context.Context, region, ecrURL, imageName, imageT
 
 	fmt.Printf("Running command: docker push %s/%s:%s\n", ecrURL, imageName, imageTag)
 
+	// #nosec G204
 	cmdDockerPush := exec.CommandContext(ctx, "docker", "push", fmt.Sprintf("%s/%s:%s", ecrURL, imageName, imageTag))
 	if output, err := cmdDockerPush.CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to push Docker image to ECR: %s, %w", string(output), err)
