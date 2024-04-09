@@ -86,17 +86,23 @@ func Read(tomlFilePath, base64Config string, targetConfig interface{}) error {
 	err := validate.Struct(targetConfig)
 
 	if err != nil {
-		if _, ok := err.(*validator.InvalidValidationError); ok {
+		var validationError *validator.InvalidValidationError
+		if errors.As(err, &validationError) {
+			// Handle the *validator.InvalidValidationError specifically
 			return errors.Wrap(err, "error validating test config")
 		}
 
-		for _, err := range err.(validator.ValidationErrors) {
-			// Customize the error message based on the validation tag
-			switch err.Tag() {
-			case "oneof":
-				return errors.Wrapf(err, "error validating test config. The field '%s' must be one of [%s].", err.Field(), err.Param())
-			default:
-				return errors.Wrap(err, "error validating test config")
+		var validationErrors validator.ValidationErrors
+		if errors.As(err, &validationErrors) {
+			// Iterate through validation errors if err is of type ValidationErrors
+			for _, ve := range validationErrors {
+				// Customize the error message based on the validation tag
+				switch ve.Tag() {
+				case "oneof":
+					return errors.Wrapf(ve, "error validating test config. The field '%s' must be one of [%s]", ve.Field(), ve.Param())
+				default:
+					return errors.Wrap(ve, "error validating test config")
+				}
 			}
 		}
 	}
