@@ -28,9 +28,13 @@ func init() {
 	ECR.AddCommand(dalUntaggedImages)
 
 	dalUntaggedImages.Flags().String("registry-id", "", "Image registry ID")
-	dalUntaggedImages.MarkFlagRequired("registry-id")
+	if err := dalUntaggedImages.MarkFlagRequired("registry-id"); err != nil {
+		log.Fatalf("Failed to mark 'registry-id' flag as required: %v", err)
+	}
 	dalUntaggedImages.Flags().String("repository-name", "", "Image repository name")
-	dalUntaggedImages.MarkFlagRequired("repository-name")
+	if err := dalUntaggedImages.MarkFlagRequired("repository-name"); err != nil {
+		log.Fatalf("Failed to mark 'repository-name' flag as required: %v", err)
+	}
 }
 
 func deleteUntaggedImagesRunE(cmd *cobra.Command, args []string) error {
