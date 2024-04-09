@@ -7,7 +7,7 @@ gotestloghelper CLI is a command-line interface tool designed to enhance the out
 To install gotestloghelper CLI, you need to have Go installed on your machine. With Go installed, run the following command:
 
 ```sh
-go intstall github.com/smartcontractkit/chainlink-testing-framework/tools/gotestloghelper
+go install github.com/smartcontractkit/chainlink-testing-framework/tools/gotestloghelper@latest
 ```
 
 ## Usage
@@ -15,7 +15,7 @@ go intstall github.com/smartcontractkit/chainlink-testing-framework/tools/gotest
 After installation, you can run gotestloghelper CLI using the following syntax:
 
 ```sh
-go test ./... -json | gotestevent [flags]
+go test ./... -json | gotestloghelper [flags]
 ```
 
 ## Available Flags
@@ -33,13 +33,13 @@ go test ./... -json | gotestevent [flags]
 To run gotestloghelper CLI with color output:
 
 ```sh
-go test ./... -json | gotestevent -json -color
+go test ./... -json | gotestloghelper -json -color
 ```
 
 To filter only errors from JSON-formatted test output:
 
 ```sh
-go test -json ./... | gotestevent -json -onlyerrors
+go test -json ./... | gotestloghelper -json -onlyerrors
 ```
 
 ## Additional Notes

@@ -1,0 +1,30 @@
+apiVersion: ''
+generated: '0001-01-01T00:00:00Z'
+repositories:
+  - caFile: ''
+    certFile: ''
+    insecure_skip_tls_verify: false
+    keyFile: ''
+    name: bitnami
+    pass_credentials_all: false
+    password: ''
+    url: https://charts.bitnami.com/bitnami
+    username: ''
+  - caFile: ''
+    certFile: ''
+    insecure_skip_tls_verify: false
+    keyFile: ''
+    name: chainlink-qa
+    pass_credentials_all: false
+    password: ''
+    url: https://raw.githubusercontent.com/smartcontractkit/qa-charts/gh-pages/
+    username: ''
+  - caFile: ''
+    certFile: ''
+    insecure_skip_tls_verify: false
+    keyFile: ''
+    name: grafana
+    pass_credentials_all: false
+    password: ''
+    url: https://grafana.github.io/helm-charts
+    username: ''

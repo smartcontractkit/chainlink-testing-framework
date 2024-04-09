@@ -1,7 +1,6 @@
 package gotestevent
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"testing"
@@ -367,8 +366,6 @@ func TestBasicPassAndFail(t *testing.T) {
 			errorAtTopLength = test.errotAtTopLength
 		}
 		t.Run(name, func(t *testing.T) {
-			fmt.Println("Logging that happens in the test")
-
 			c := &TestLogModifierConfig{
 				IsJsonInput:      ptr.Ptr(true),
 				RemoveTLogPrefix: ptr.Ptr(true),

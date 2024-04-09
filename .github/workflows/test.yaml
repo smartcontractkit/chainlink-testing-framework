@@ -19,15 +19,16 @@ jobs:
     steps:
       - name: Checkout the Repo
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-      - name: Install Go
-        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/setup-go@00c6214deb10a3f374c6d3430c32c5202015d463 # v2.2.12
-        with:
-          test_download_vendor_packages_command: go mod download
-          go_mod_path: ${{ matrix.project.path }}go.mod
-          cache_key_id: ctf-go
-          cache_restore_only: 'false'
       - name: Install gotestloghelper
         run: make gotestloghelper_build
+      - name: Install Nix
+        uses: cachix/install-nix-action@8887e596b4ee1134dae06b98d573bd674693f47c # v26
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+      - name: Load Nix
+        run: |
+          nix develop -c sh -c "cd ${{ matrix.project.path }} && \
+          go mod download"
       - name: Run Tests
         run: |
           PATH=$PATH:$(go env GOPATH)/bin
@@ -35,8 +36,8 @@ jobs:
           set -euo pipefail
           # disabled, because we want to use a multiline output of go list command
           # shellcheck disable=SC2046
-          cd ${{ matrix.project.path }}
-          go test -timeout 5m -json -cover -covermode=count -coverprofile=unit-test-coverage.out $(go list ./... | grep -v /k8s/e2e/ | grep -v /k8s/examples/ | grep -v /docker/test_env) 2>&1 | tee /tmp/gotest.log | /home/runner/work/chainlink-testing-framework/chainlink-testing-framework/gotestloghelper -ci
+          nix develop -c sh -c "cd ${{ matrix.project.path }} && \
+            make test_unit"
       - name: Code Coverage
         uses: codecov/codecov-action@v3
         with:
