@@ -135,6 +135,7 @@ spec:
         {{- if $.Values.db.enablePrometheusPostgresExporter }}
         - name: prometheus-postgres-exporter
           image: {{ $.Values.prometheusPostgresExporter.image.image }}
+          args: ["--collector.statio_user_indexes"]
           resources:
             requests:
               memory: {{ $.Values.prometheusPostgresExporter.resources.requests.memory }}
