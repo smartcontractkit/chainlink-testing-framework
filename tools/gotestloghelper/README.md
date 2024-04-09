@@ -26,6 +26,7 @@ go test ./... -json | gotestevent [flags]
     -color: Set to true to enable color output. Default: false
     -ci: Set to true to enable CI mode, which prints out logs with groupings when combined with -json. Default: false
     -singlepackage: Set to true if the Go test output is from a single package only. This prints tests out as they finish instead of waiting for the package to finish. Default: false
+    -errorattoplength: If the error message doesn't appear before this many lines, it will be printed at the top of the test output as well. Set to 0 to disable. Only works with -ci. Default: 100
 
 ## Examples
 

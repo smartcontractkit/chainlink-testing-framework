@@ -1,0 +1,25 @@
+name: PR Description Generator
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+  issue_comment:
+    # Reply to an existing PR to generate description (commenter requires PR write access)
+    # Requires `/gpt-create-pr` commands to invoke
+    types: [created]
+
+jobs:
+  llm-pr-generator:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      repository-projects: read
+    steps:
+      - name: Generate PR Description
+        uses: smartcontractkit/.github/actions/llm-pr-writer@763b4118dac59b74e3f4aef343918b7f334fb8a0 # 0.3.0
+        with:
+          gh-token: ${{ github.token }}
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          openai-model: 'gpt-4-0125-preview'
+          exclude-paths: 'artifacts/*;target/*;'
+          workflow-ref: '763b4118dac59b74e3f4aef343918b7f334fb8a0' # 0.3.0
