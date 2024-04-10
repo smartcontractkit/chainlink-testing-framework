@@ -1,7 +1,12 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
+	"time"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/rand"
 
@@ -82,9 +87,95 @@ func (m *AnvilClient) TxPoolStatus(params []interface{}) (*TxStatusResponse, err
 	return txPoolStatusResponse, nil
 }
 
+// SetMinGasPrice sets min gas price (pre-EIP-1559 anvil is required)
+func (m *AnvilClient) SetMinGasPrice(params []interface{}) error {
+	rInt, err := rand.Int()
+	if err != nil {
+		return err
+	}
+	payload := map[string]interface{}{
+		"jsonrpc": "2.0",
+		"method":  "anvil_setMinGasPrice",
+		"params":  params,
+		"id":      rInt,
+	}
+	if _, err := m.client.R().SetBody(payload).Post(m.URL); err != nil {
+		return errors.Wrap(err, "anvil_setMinGasPrice")
+	}
+	return nil
+}
+
+// SetNextBlockBaseFeePerGas sets next block base fee per gas value
+func (m *AnvilClient) SetNextBlockBaseFeePerGas(params []interface{}) error {
+	rInt, err := rand.Int()
+	if err != nil {
+		return err
+	}
+	payload := map[string]interface{}{
+		"jsonrpc": "2.0",
+		"method":  "anvil_setNextBlockBaseFeePerGas",
+		"params":  params,
+		"id":      rInt,
+	}
+	if _, err := m.client.R().SetBody(payload).Post(m.URL); err != nil {
+		return errors.Wrap(err, "anvil_setNextBlockBaseFeePerGas")
+	}
+	return nil
+}
+
+// SetBlockGasLimit sets next block gas limit
+func (m *AnvilClient) SetBlockGasLimit(params []interface{}) error {
+	rInt, err := rand.Int()
+	if err != nil {
+		return err
+	}
+	payload := map[string]interface{}{
+		"jsonrpc": "2.0",
+		"method":  "evm_setBlockGasLimit",
+		"params":  params,
+		"id":      rInt,
+	}
+	if _, err := m.client.R().SetBody(payload).Post(m.URL); err != nil {
+		return errors.Wrap(err, "evm_setBlockGasLimit")
+	}
+	return nil
+}
+
 // TxStatusResponse common RPC response body
 type TxStatusResponse struct {
 	Result struct {
 		Pending string `json:"pending"`
 	} `json:"result"`
+}
+
+type AnvilContainer struct {
+	testcontainers.Container
+	URL string
+}
+
+func StartAnvil(params []string) (*AnvilContainer, error) {
+	entryPoint := []string{"anvil", "--host", "0.0.0.0"}
+	for _, p := range params {
+		entryPoint = append(entryPoint, p)
+	}
+	req := testcontainers.ContainerRequest{
+		Image:        "ghcr.io/foundry-rs/foundry",
+		ExposedPorts: []string{"8545/tcp"},
+		WaitingFor:   wait.ForListeningPort("8545").WithStartupTimeout(10 * time.Second),
+		Entrypoint:   entryPoint,
+	}
+	container, err := testcontainers.GenericContainer(context.Background(), testcontainers.GenericContainerRequest{
+		ContainerRequest: req,
+		Started:          true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	time.Sleep(1 * time.Second)
+	mappedPort, err := container.MappedPort(context.Background(), "8545")
+	if err != nil {
+		return nil, err
+	}
+	url := fmt.Sprintf("http://localhost:%s", mappedPort.Port())
+	return &AnvilContainer{Container: container, URL: url}, nil
 }
