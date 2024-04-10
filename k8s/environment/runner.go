@@ -189,7 +189,7 @@ func container(props *Props) *[]*k8s.Container {
 				},
 				{
 					Name:      ptr.Ptr("reports"),
-					MountPath: ptr.Ptr("/go/testdir/integration-tests/"),
+					MountPath: ptr.Ptr(fmt.Sprintf("/go/testdir/integration-tests/%s", props.ReportPath)),
 					SubPath:   ptr.Ptr(props.ReportPath),
 				},
 			},
