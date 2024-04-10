@@ -210,7 +210,7 @@ func container(props *Props) *[]*k8s.Container {
 			VolumeMounts: &[]*k8s.VolumeMount{
 				{
 					Name:      ptr.Ptr("reports"),
-					MountPath: ptr.Ptr("/"),
+					MountPath: ptr.Ptr("reports"),
 				},
 			},
 		},
