@@ -5,8 +5,13 @@ let
   postgresql = postgresql_15;
   nodejs = nodejs-18_x;
   nodePackages = pkgs.nodePackages.override { inherit nodejs; };
+
+  mkShell' = mkShell.override {
+    # The current nix default sdk for macOS fails to compile go projects, so we use a newer one for now.
+    stdenv = if stdenv.isDarwin then overrideSDK stdenv "11.0" else stdenv;
+  };
 in
-mkShell {
+mkShell' {
   nativeBuildInputs = [
     go
     goreleaser
@@ -47,7 +52,6 @@ mkShell {
 
   LD_LIBRARY_PATH = lib.makeLibraryPath [pkgs.zlib stdenv.cc.cc.lib]; # lib64
   GOROOT = "${go}/share/go";
-  CGO_ENABLED = 0;
   HELM_REPOSITORY_CONFIG = "${scriptDir}/.helm-repositories.yaml";
 
   shellHook = ''
