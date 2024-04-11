@@ -278,12 +278,12 @@ func pvcVolume(chart cdk8s.Chart, props *Props) {
 			},
 			Spec: &k8s.PersistentVolumeClaimSpec{
 				AccessModes: ptr.Ptr([]*string{ptr.Ptr("ReadWriteOnce")}),
-				VolumeMode:  ptr.Ptr("Filesystem"),
 				Resources: &k8s.ResourceRequirements{
 					Requests: &map[string]k8s.Quantity{
 						"storage": k8s.Quantity_FromString(ptr.Ptr("256Mi")),
 					},
 				},
+				StorageClassName: ptr.Ptr("gp2"),
 			},
 		})
 }
