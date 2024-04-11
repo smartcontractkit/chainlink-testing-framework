@@ -10,7 +10,7 @@ import (
 // RemoteAnvilMiner is a remote miner for Anvil node
 // Allows to control blocks emission more precisely to mimic real networks workload
 type RemoteAnvilMiner struct {
-	Client            *AnvilClient
+	Client            *RPCClient
 	interval          time.Duration
 	batchSendInterval time.Duration
 	batchCapacity     int64
@@ -20,7 +20,7 @@ type RemoteAnvilMiner struct {
 // NewRemoteAnvilMiner creates a new remote miner client
 func NewRemoteAnvilMiner(url string) *RemoteAnvilMiner {
 	return &RemoteAnvilMiner{
-		Client: NewAnvilClient(url),
+		Client: NewRPCClient(url),
 		stop:   make(chan struct{}),
 	}
 }
@@ -36,7 +36,7 @@ func (m *RemoteAnvilMiner) MinePeriodically(interval time.Duration) {
 				log.Info().Msg("anvil miner exiting")
 				return
 			default:
-				if err := m.Client.Mine(nil); err != nil {
+				if err := m.Client.AnvilMine(nil); err != nil {
 					log.Err(err).Send()
 				}
 			}
@@ -58,9 +58,14 @@ func (m *RemoteAnvilMiner) MineBatch(capacity int64, checkInterval time.Duration
 	ticker := time.NewTicker(m.batchSendInterval)
 	go func() {
 		for {
-			resp, err := m.Client.TxPoolStatus(nil)
+			resp, err := m.Client.AnvilTxPoolStatus(nil)
 			if err != nil {
 				log.Err(err).Send()
+				return
+			}
+			if len(resp.Result.Pending) == 0 {
+				log.Error().Msg("no pending transactions found")
+				return
 			}
 			pendingTx, err := strconv.ParseInt(resp.Result.Pending[2:], 16, 64)
 			if err != nil {
@@ -68,7 +73,7 @@ func (m *RemoteAnvilMiner) MineBatch(capacity int64, checkInterval time.Duration
 			}
 			log.Info().Int64("Pending", pendingTx).Msg("Batch has pending transactions")
 			if pendingTx >= m.batchCapacity {
-				if err := m.Client.Mine(nil); err != nil {
+				if err := m.Client.AnvilMine(nil); err != nil {
 					log.Err(err).Send()
 				}
 				log.Info().Int64("Transactions", pendingTx).Msg("Block mined")
@@ -79,7 +84,7 @@ func (m *RemoteAnvilMiner) MineBatch(capacity int64, checkInterval time.Duration
 				ticker.Stop()
 				return
 			case <-ticker.C:
-				if err := m.Client.Mine(nil); err != nil {
+				if err := m.Client.AnvilMine(nil); err != nil {
 					log.Err(err).Send()
 				}
 				log.Info().Int64("Transactions", pendingTx).Msg("Block mined by timeout")
