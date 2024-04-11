@@ -3,10 +3,11 @@ package client
 import (
 	"context"
 	"crypto/ecdsa"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"math/big"
 	"testing"
 	"time"
+
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -16,13 +17,11 @@ import (
 )
 
 const (
-	firstAnvilPrivateKey = "5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a"
+	firstAnvilPrivateKey = "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
 	secondAnvilAddress   = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
 )
 
-var ()
-
-func sendTestTransaction(t *testing.T, client *ethclient.Client, gasFeeCap *big.Int, gasTipCap *big.Int, wait bool) error {
+func sendTestTransaction(t *testing.T, client *ethclient.Client, gasFeeCap *big.Int, gasTipCap *big.Int, wait bool) (*types.Transaction, error) {
 	privateKey, err := crypto.HexToECDSA(firstAnvilPrivateKey)
 	require.NoError(t, err)
 	publicKey := privateKey.Public()
@@ -31,14 +30,14 @@ func sendTestTransaction(t *testing.T, client *ethclient.Client, gasFeeCap *big.
 
 	nonce, err := client.PendingNonceAt(context.Background(), fromAddress)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	value := big.NewInt(1)
 	gasLimit := uint64(21000)
 	toAddress := common.HexToAddress(secondAnvilAddress)
 	chainID, err := client.NetworkID(context.Background())
 	if err != nil {
-		return err
+		return nil, err
 	}
 	rawTx := &types.DynamicFeeTx{
 		ChainID:   chainID,
@@ -51,11 +50,11 @@ func sendTestTransaction(t *testing.T, client *ethclient.Client, gasFeeCap *big.
 	}
 	signedTx, err := types.SignNewTx(privateKey, types.LatestSignerForChainID(chainID), rawTx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	err = client.SendTransaction(context.Background(), signedTx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	t.Log("sent test transaction")
 	if wait {
@@ -63,20 +62,22 @@ func sendTestTransaction(t *testing.T, client *ethclient.Client, gasFeeCap *big.
 		require.NoError(t, err)
 		t.Logf("receipt: %v", receipt)
 	}
-	return err
+	return signedTx, err
 }
 
 func sendTestTransactions(t *testing.T, client *ethclient.Client, interval time.Duration, gasFeeCap *big.Int, gasTipCap *big.Int, wait bool) (chan struct{}, chan error) {
 	stopCh := make(chan struct{})
-	errChan := make(chan error)
+	errChan := make(chan error, 100)
 	go func() {
 		for {
 			time.Sleep(interval)
 			select {
 			case <-stopCh:
+				close(errChan)
 				return
 			default:
-				sendTestTransaction(t, client, gasFeeCap, gasTipCap, wait)
+				_, err := sendTestTransaction(t, client, gasFeeCap, gasTipCap, wait)
+				errChan <- err
 			}
 		}
 	}()
@@ -92,53 +93,89 @@ func printGasPrices(t *testing.T, client *ethclient.Client) {
 	t.Logf("gas tip cap: %s", gasTipCap.String())
 }
 
-func TestAnvilAPIs(t *testing.T) {
-	t.Run("test we can shrink the block and control transaction inclusion", func(t *testing.T) {
+func TestRPCAPI(t *testing.T) {
+	t.Run("(geth) test reorg", func(t *testing.T) {
+		t.Skip("manual test")
+		// TODO: can't use our eth1/eth2 Geth to test here, need to decouple mockserver API
+		url := "http://localhost:8545"
+		client, err := ethclient.Dial(url)
+		require.NoError(t, err)
+
+		bnBefore, err := client.BlockNumber(context.Background())
+		require.NoError(t, err)
+
+		ac := NewRPCClient(url)
+		err = ac.GethSetHead(10)
+		require.NoError(t, err)
+		bnAfter, err := client.BlockNumber(context.Background())
+		require.NoError(t, err)
+		require.Greater(t, bnBefore, bnAfter)
+	})
+
+	t.Run("(anvil) test drop transaction", func(t *testing.T) {
+		ac, err := StartAnvil([]string{"--balance", "1", "--block-time", "5"})
+		require.NoError(t, err)
+		client, err := ethclient.Dial(ac.URL)
+		require.NoError(t, err)
+
+		tx, err := sendTestTransaction(t, client, big.NewInt(1e9), big.NewInt(1e9), false)
+		require.NoError(t, err)
+
+		anvilClient := NewRPCClient(ac.URL)
+		err = anvilClient.AnvilDropTransaction([]interface{}{tx.Hash().String()})
+		require.NoError(t, err)
+		status, err := anvilClient.AnvilTxPoolStatus(nil)
+		require.NoError(t, err)
+		require.Equal(t, status.Result.Pending, "0x0")
+		t.Logf("status: %v", status)
+	})
+
+	t.Run("(anvil) test we can shrink the block and control transaction inclusion", func(t *testing.T) {
 		ac, err := StartAnvil([]string{"--balance", "1", "--block-time", "1"})
 		require.NoError(t, err)
 		client, err := ethclient.Dial(ac.URL)
 		require.NoError(t, err)
 
-		anvilClient := NewAnvilClient(ac.URL)
-		err = anvilClient.SetBlockGasLimit([]interface{}{"1"})
+		anvilClient := NewRPCClient(ac.URL)
+		err = anvilClient.AnvilSetBlockGasLimit([]interface{}{"1"})
 		require.NoError(t, err)
 
-		err = sendTestTransaction(t, client, big.NewInt(1e9), big.NewInt(1e9), true)
+		_, err = sendTestTransaction(t, client, big.NewInt(1e9), big.NewInt(1e9), true)
 		require.Error(t, err)
 
-		err = anvilClient.SetBlockGasLimit([]interface{}{"30000000"})
+		err = anvilClient.AnvilSetBlockGasLimit([]interface{}{"30000000"})
 		require.NoError(t, err)
 
-		err = sendTestTransaction(t, client, big.NewInt(1e9), big.NewInt(1e9), true)
+		_, err = sendTestTransaction(t, client, big.NewInt(1e9), big.NewInt(1e9), true)
 		require.NoError(t, err)
 	})
 
-	t.Run("test we can change next block base fee per gas and make tx pass or fail", func(t *testing.T) {
+	t.Run("(anvil) test we can change next block base fee per gas and make tx pass or fail", func(t *testing.T) {
 		ac, err := StartAnvil([]string{"--balance", "1", "--block-time", "1"})
 		require.NoError(t, err)
 		client, err := ethclient.Dial(ac.URL)
 		require.NoError(t, err)
 		printGasPrices(t, client)
 
-		anvilClient := NewAnvilClient(ac.URL)
-		err = anvilClient.SetNextBlockBaseFeePerGas([]interface{}{"10000000000"})
+		anvilClient := NewRPCClient(ac.URL)
+		err = anvilClient.AnvilSetNextBlockBaseFeePerGas([]interface{}{"10000000000"})
 		require.NoError(t, err)
 		printGasPrices(t, client)
 		gasPrice, err := client.SuggestGasPrice(context.Background())
 		require.NoError(t, err)
 		require.Equal(t, int64(11000000000), gasPrice.Int64())
 
-		err = sendTestTransaction(t, client, big.NewInt(1e9), big.NewInt(1e9), true)
+		_, err = sendTestTransaction(t, client, big.NewInt(1e9), big.NewInt(1e9), true)
 		require.Error(t, err)
 
-		err = anvilClient.SetNextBlockBaseFeePerGas([]interface{}{"1"})
+		err = anvilClient.AnvilSetNextBlockBaseFeePerGas([]interface{}{"1"})
 		require.NoError(t, err)
 
-		err = sendTestTransaction(t, client, big.NewInt(1e9), big.NewInt(1e9), true)
+		_, err = sendTestTransaction(t, client, big.NewInt(1e9), big.NewInt(1e9), true)
 		require.NoError(t, err)
 	})
 
-	t.Run("test we can mine sub-second blocks", func(t *testing.T) {
+	t.Run("(anvil) test we can mine sub-second blocks", func(t *testing.T) {
 		period := 500 * time.Millisecond
 		iterations := 10
 		ac, err := StartAnvil([]string{"--no-mine"})
@@ -154,7 +191,7 @@ func TestAnvilAPIs(t *testing.T) {
 		require.Equal(t, uint64(iterations), bn)
 	})
 
-	t.Run("test we can mine blocks with strictly N+ transactions", func(t *testing.T) {
+	t.Run("(anvil) test we can mine blocks with strictly N+ transactions", func(t *testing.T) {
 		sendTransactionEvery := 500 * time.Millisecond
 		txnInBlock := int64(10)
 		iterations := 10
@@ -162,12 +199,15 @@ func TestAnvilAPIs(t *testing.T) {
 		require.NoError(t, err)
 		client, err := ethclient.Dial(ac.URL)
 		require.NoError(t, err)
-		stopTxns, _ := sendTestTransactions(t, client, sendTransactionEvery, big.NewInt(1e9), big.NewInt(1e9), false)
+		stopTxns, errCh := sendTestTransactions(t, client, sendTransactionEvery, big.NewInt(1e9), big.NewInt(1e9), false)
 		pm := NewRemoteAnvilMiner(ac.URL)
 		pm.MineBatch(txnInBlock, 1*time.Second, 1*time.Minute)
 		time.Sleep(sendTransactionEvery * time.Duration(iterations) * 2)
 		pm.Stop()
 		stopTxns <- struct{}{}
+		for e := range errCh {
+			require.NoError(t, e)
+		}
 		bn, err := client.BlockNumber(context.Background())
 		require.NoError(t, err)
 		for i := 1; i <= int(bn); i++ {

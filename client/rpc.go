@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"time"
+
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"time"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/rand"
 
@@ -14,21 +16,21 @@ import (
 	"github.com/pkg/errors"
 )
 
-// AnvilClient is an RPC client for Anvil node
-// https://book.getfoundry.sh/anvil/
+// RPCClient is an RPC client for various node simulators
 // API Reference https://book.getfoundry.sh/reference/anvil/
-type AnvilClient struct {
+type RPCClient struct {
 	client *resty.Client
 	URL    string
 }
 
-// NewAnvilClient creates Anvil client
-func NewAnvilClient(url string) *AnvilClient {
-	return &AnvilClient{URL: url, client: resty.New()}
+// NewRPCClient creates Anvil client
+func NewRPCClient(url string) *RPCClient {
+	return &RPCClient{URL: url, client: resty.New()}
 }
 
-// Mine calls "evm_mine", mines one or more blocks, see the reference on AnvilClient
-func (m *AnvilClient) Mine(params []interface{}) error {
+// AnvilMine calls "evm_mine", mines one or more blocks, see the reference on RPCClient
+// API Reference https://book.getfoundry.sh/reference/anvil/
+func (m *RPCClient) AnvilMine(params []interface{}) error {
 	rInt, err := rand.Int()
 	if err != nil {
 		return err
@@ -45,8 +47,9 @@ func (m *AnvilClient) Mine(params []interface{}) error {
 	return nil
 }
 
-// SetAutoMine calls "evm_setAutomine", turns automatic mining on, see the reference on AnvilClient
-func (m *AnvilClient) SetAutoMine(flag bool) error {
+// AnvilSetAutoMine calls "evm_setAutomine", turns automatic mining on, see the reference on RPCClient
+// API Reference https://book.getfoundry.sh/reference/anvil/
+func (m *RPCClient) AnvilSetAutoMine(flag bool) error {
 	rInt, err := rand.Int()
 	if err != nil {
 		return err
@@ -64,8 +67,9 @@ func (m *AnvilClient) SetAutoMine(flag bool) error {
 	return nil
 }
 
-// TxPoolStatus calls "txpool_status", returns txpool status, see the reference on AnvilClient
-func (m *AnvilClient) TxPoolStatus(params []interface{}) (*TxStatusResponse, error) {
+// AnvilTxPoolStatus calls "txpool_status", returns txpool status, see the reference on RPCClient
+// API Reference https://book.getfoundry.sh/reference/anvil/
+func (m *RPCClient) AnvilTxPoolStatus(params []interface{}) (*TxStatusResponse, error) {
 	rInt, err := rand.Int()
 	if err != nil {
 		return nil, err
@@ -87,8 +91,9 @@ func (m *AnvilClient) TxPoolStatus(params []interface{}) (*TxStatusResponse, err
 	return txPoolStatusResponse, nil
 }
 
-// SetMinGasPrice sets min gas price (pre-EIP-1559 anvil is required)
-func (m *AnvilClient) SetMinGasPrice(params []interface{}) error {
+// AnvilSetMinGasPrice sets min gas price (pre-EIP-1559 anvil is required)
+// API Reference https://book.getfoundry.sh/reference/anvil/
+func (m *RPCClient) AnvilSetMinGasPrice(params []interface{}) error {
 	rInt, err := rand.Int()
 	if err != nil {
 		return err
@@ -105,8 +110,9 @@ func (m *AnvilClient) SetMinGasPrice(params []interface{}) error {
 	return nil
 }
 
-// SetNextBlockBaseFeePerGas sets next block base fee per gas value
-func (m *AnvilClient) SetNextBlockBaseFeePerGas(params []interface{}) error {
+// AnvilSetNextBlockBaseFeePerGas sets next block base fee per gas value
+// API Reference https://book.getfoundry.sh/reference/anvil/
+func (m *RPCClient) AnvilSetNextBlockBaseFeePerGas(params []interface{}) error {
 	rInt, err := rand.Int()
 	if err != nil {
 		return err
@@ -123,8 +129,9 @@ func (m *AnvilClient) SetNextBlockBaseFeePerGas(params []interface{}) error {
 	return nil
 }
 
-// SetBlockGasLimit sets next block gas limit
-func (m *AnvilClient) SetBlockGasLimit(params []interface{}) error {
+// AnvilSetBlockGasLimit sets next block gas limit
+// API Reference https://book.getfoundry.sh/reference/anvil/
+func (m *RPCClient) AnvilSetBlockGasLimit(params []interface{}) error {
 	rInt, err := rand.Int()
 	if err != nil {
 		return err
@@ -141,6 +148,72 @@ func (m *AnvilClient) SetBlockGasLimit(params []interface{}) error {
 	return nil
 }
 
+// AnvilDropTransaction removes transaction from tx pool
+// API Reference https://book.getfoundry.sh/reference/anvil/
+func (m *RPCClient) AnvilDropTransaction(params []interface{}) error {
+	rInt, err := rand.Int()
+	if err != nil {
+		return err
+	}
+	payload := map[string]interface{}{
+		"jsonrpc": "2.0",
+		"method":  "anvil_dropTransaction",
+		"params":  params,
+		"id":      rInt,
+	}
+	if _, err := m.client.R().SetBody(payload).Post(m.URL); err != nil {
+		return errors.Wrap(err, "anvil_dropTransaction")
+	}
+	return nil
+}
+
+type CurrentBlockResponse struct {
+	Result string `json:"result"`
+}
+
+func (m *RPCClient) GethSetHead(blocksBack int) error {
+	rInt, err := rand.Int()
+	if err != nil {
+		return err
+	}
+	payload := map[string]interface{}{
+		"jsonrpc": "2.0",
+		"method":  "eth_blockNumber",
+		"params":  []interface{}{},
+		"id":      rInt,
+	}
+	bn, err := m.client.R().SetBody(payload).Post(m.URL)
+	if err != nil {
+		return errors.Wrap(err, "eth_blockNumber")
+	}
+
+	var res *CurrentBlockResponse
+	if err := json.Unmarshal(bn.Body(), &res); err != nil {
+		return err
+	}
+	decimalLastBlock, err := strconv.ParseInt(res.Result[2:], 16, 64)
+	if err != nil {
+		return err
+	}
+	moveToBlock := decimalLastBlock - int64(blocksBack)
+	moveToBlockHex := strconv.FormatInt(moveToBlock, 16)
+
+	rInt, err = rand.Int()
+	if err != nil {
+		return err
+	}
+	payload = map[string]interface{}{
+		"jsonrpc": "2.0",
+		"method":  "debug_setHead",
+		"params":  []interface{}{fmt.Sprintf("0x%s", moveToBlockHex)},
+		"id":      rInt,
+	}
+	if _, err := m.client.R().SetBody(payload).Post(m.URL); err != nil {
+		return errors.Wrap(err, "debug_setHead")
+	}
+	return nil
+}
+
 // TxStatusResponse common RPC response body
 type TxStatusResponse struct {
 	Result struct {
@@ -153,11 +226,14 @@ type AnvilContainer struct {
 	URL string
 }
 
+type GethContainer struct {
+	testcontainers.Container
+	URL string
+}
+
 func StartAnvil(params []string) (*AnvilContainer, error) {
 	entryPoint := []string{"anvil", "--host", "0.0.0.0"}
-	for _, p := range params {
-		entryPoint = append(entryPoint, p)
-	}
+	entryPoint = append(entryPoint, params...)
 	req := testcontainers.ContainerRequest{
 		Image:        "ghcr.io/foundry-rs/foundry",
 		ExposedPorts: []string{"8545/tcp"},
