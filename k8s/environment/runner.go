@@ -286,7 +286,6 @@ func pvcVolume(chart cdk8s.Chart, props *Props) {
 				Capacity: &map[string]k8s.Quantity{
 					"storage": k8s.Quantity_FromString(ptr.Ptr("256Mi")),
 				},
-				StorageClassName: ptr.Ptr("manual"),
 				HostPath: &k8s.HostPathVolumeSource{
 					Path: ptr.Ptr("/mnt/data"),
 				},
@@ -309,7 +308,6 @@ func pvcVolume(chart cdk8s.Chart, props *Props) {
 						"storage": k8s.Quantity_FromString(ptr.Ptr("256Mi")),
 					},
 				},
-				StorageClassName: ptr.Ptr("manual"),
 			},
 		})
 }
