@@ -858,6 +858,24 @@ func (m *Environment) CopyFromPod(selector, containerName, srcPath, destPath str
 	return nil
 }
 
+func (m *Environment) CopyToPod(selector, containerName, srcPath, destPath string) error {
+	pl, err := m.Client.ListPods(m.Cfg.Namespace, selector)
+	if err != nil {
+		return err
+	}
+	if len(pl.Items) == 0 {
+		return fmt.Errorf("no pods found for selector: %s", selector)
+	}
+	for _, p := range pl.Items {
+		destPath = fmt.Sprintf("%s/%s:/%s", m.Cfg.Namespace, p.Name, destPath)
+		_, _, _, err := m.Client.CopyToPod(m.Cfg.Namespace, srcPath, destPath, containerName)
+		if err != nil {
+			return fmt.Errorf("%w error copying from %s to destination path %s", err, srcPath, destPath)
+		}
+	}
+	return nil
+}
+
 // RolloutRestartBySelector applies "rollout restart" to the selected resources
 func (m *Environment) RolloutRestartBySelector(resource string, selector string) error {
 	if m.err != nil {
