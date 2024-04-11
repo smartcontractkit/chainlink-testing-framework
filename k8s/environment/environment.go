@@ -654,9 +654,6 @@ func (m *Environment) RunCustomReadyConditions(customCheck *client.ReadyCheckDat
 		if m.Cfg.RunnerName == "" {
 			m.Cfg.RunnerName = REMOTE_RUNNER_NAME
 		}
-		if m.Cfg.ReportPath == "" {
-			m.Cfg.ReportPath = "data"
-		}
 		m.AddChart(NewRunner(&Props{
 			BaseName:           m.Cfg.RunnerName,
 			ReportPath:         m.Cfg.ReportPath,
@@ -667,6 +664,18 @@ func (m *Environment) RunCustomReadyConditions(customCheck *client.ReadyCheckDat
 			NoManifestUpdate:   m.Cfg.NoManifestUpdate,
 			PreventPodEviction: m.Cfg.PreventPodEviction,
 		}))
+		if m.Cfg.ReportPath != "" {
+			m.AddChart(DataFromRunner(&Props{
+				BaseName:           m.Cfg.RunnerName,
+				ReportPath:         m.Cfg.ReportPath,
+				TargetNamespace:    m.Cfg.Namespace,
+				Labels:             &rrSelector,
+				Image:              m.Cfg.JobImage,
+				TestName:           m.Cfg.Test.Name(),
+				NoManifestUpdate:   m.Cfg.NoManifestUpdate,
+				PreventPodEviction: m.Cfg.PreventPodEviction,
+			}))
+		}
 	}
 	m.UpdateManifest()
 	m.ChainlinkNodeDetails = []*ChainlinkNodeDetail{} // Resets potentially old details if re-deploying
