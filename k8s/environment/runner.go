@@ -93,6 +93,21 @@ func DataFromRunner(props *Props) func(root cdk8s.Chart) ConnectedChart {
 						},
 						Spec: &k8s.PodSpec{
 							ServiceAccountName: ptr.Ptr("default"),
+							// try to schedule the pod on same node as remote runner job
+							Affinity: &k8s.Affinity{
+								PodAffinity: &k8s.PodAffinity{
+									RequiredDuringSchedulingIgnoredDuringExecution: &[]*k8s.PodAffinityTerm{
+										{
+											LabelSelector: &k8s.LabelSelector{
+												MatchLabels: &map[string]*string{
+													"job-name": ptr.Ptr("remote-test-runner"),
+												},
+											},
+											TopologyKey: ptr.Ptr("kubernetes.io/hostname"),
+										},
+									},
+								},
+							},
 							Volumes: ptr.Ptr([]*k8s.Volume{
 								{
 									Name: ptr.Ptr("reports"),
@@ -287,7 +302,7 @@ func pvcVolume(chart cdk8s.Chart, props *Props) {
 				},
 			},
 			Spec: &k8s.PersistentVolumeSpec{
-				AccessModes: ptr.Ptr([]*string{ptr.Ptr("ReadWriteMany")}),
+				AccessModes: ptr.Ptr([]*string{ptr.Ptr("ReadWriteOnce")}),
 				Capacity: &map[string]k8s.Quantity{
 					"storage": k8s.Quantity_FromString(ptr.Ptr("256Mi")),
 				},
@@ -306,7 +321,7 @@ func pvcVolume(chart cdk8s.Chart, props *Props) {
 				Name: ptr.Ptr(fmt.Sprintf("%s-data-pvc", props.BaseName)),
 			},
 			Spec: &k8s.PersistentVolumeClaimSpec{
-				AccessModes: ptr.Ptr([]*string{ptr.Ptr("ReadWriteMany")}),
+				AccessModes: ptr.Ptr([]*string{ptr.Ptr("ReadWriteOnce")}),
 				VolumeMode:  ptr.Ptr("Filesystem"),
 				Resources: &k8s.ResourceRequirements{
 					Requests: &map[string]k8s.Quantity{
