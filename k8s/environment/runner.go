@@ -274,7 +274,7 @@ func pvcVolume(chart cdk8s.Chart, props *Props) {
 		ptr.Ptr(fmt.Sprintf("%s-data-pv-volume", props.BaseName)),
 		&k8s.KubePersistentVolumeProps{
 			Metadata: &k8s.ObjectMeta{
-				Name: ptr.Ptr(props.BaseName),
+				Name: ptr.Ptr(fmt.Sprintf("%s-data-pv-volume", props.BaseName)),
 				Labels: &map[string]*string{
 					"type": ptr.Ptr("local"),
 				},
@@ -288,6 +288,7 @@ func pvcVolume(chart cdk8s.Chart, props *Props) {
 				HostPath: &k8s.HostPathVolumeSource{
 					Path: ptr.Ptr("/mnt/data"),
 				},
+				PersistentVolumeReclaimPolicy: ptr.Ptr("Delete"),
 			},
 		},
 	)
@@ -296,7 +297,7 @@ func pvcVolume(chart cdk8s.Chart, props *Props) {
 		ptr.Ptr(fmt.Sprintf("%s-data-pvc", props.BaseName)),
 		&k8s.KubePersistentVolumeClaimProps{
 			Metadata: &k8s.ObjectMeta{
-				Name: ptr.Ptr(props.BaseName),
+				Name: ptr.Ptr(fmt.Sprintf("%s-data-pvc", props.BaseName)),
 			},
 			Spec: &k8s.PersistentVolumeClaimSpec{
 				AccessModes: ptr.Ptr([]*string{ptr.Ptr("ReadWriteOnce")}),
