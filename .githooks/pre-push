@@ -1,3 +1,4 @@
+print "Remember to tap your Yubikey!"
 printf "\n\e[37m*** Running Pre-push hooks ***\e[0m\n\n"
 
 printf "Executing linters...\r"
