@@ -18,13 +18,13 @@ If you're looking to implement a new chain integration for the testing framework
 
 ## Developing
 
-In order to work with CTF, you'll need a few dependencies in place. First make sure to have [node](https://nodejs.org/en/download) installed. Then run the below:
+In order to work with CTF, you'll need a few dependencies in place. First make sure to have [node](https://nodejs.org/en/download) and [yarn](https://classic.yarnpkg.com/lang/en/docs/install) installed. Then run the below:
 
 ```sh
 make install
 ```
 
-We also recommend using our handy githooks.
+We also recommend using our handy githooks:
 
 ```sh
 git config core.hooksPath .githooks
