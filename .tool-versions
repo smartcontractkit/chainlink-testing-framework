@@ -1,5 +1,5 @@
 golang 1.21.5
-nodejs 14.20.0
+nodejs 16.16.0
 k3d 5.5.1
 act 0.2.52
 golangci-lint 1.57.1
