@@ -132,7 +132,7 @@ func TestConnectWithoutManifest(t *testing.T) {
 	}
 
 	// Now run an environment without a manifest like a normal test
-	testEnvConfig.ManifestUpdate = true
+	testEnvConfig.ManifestUpdate = false
 	testEnv := environment.New(testEnvConfig)
 	l.Info().Msgf("Testing Env Namespace %s", testEnv.Cfg.Namespace)
 	err := testEnv.AddHelm(ethereum.New(nil)).
