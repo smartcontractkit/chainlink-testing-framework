@@ -1,0 +1,86 @@
+#!/bin/bash
+
+echo "Running pre-commit checks..."
+
+has_errors=0
+
+# Run go mod tidy
+echo -n "Checking go mod tidy..."
+
+go mod tidy
+
+# Check if any changes were made
+if [[ $(git diff --name-only) ]]; then
+    echo -e "\rChecking go mod tidy... ❌"
+    echo "Changes made by 'go mod tidy'. Please commit the changes."
+    has_errors=1
+else
+    echo -e "\rChecking go mod tidy... ✅"
+fi
+
+# Define the regex pattern for Ethereum keys
+ethereum_key_pattern="(0x[a-fA-F0-9]{40})"
+# Define the regex pattern for HTTP and WS URLs
+url_pattern="(http|ws)(s)?:\/\/[^ \t\n\r]+"
+# Check for staged files
+staged_files=$(git diff --cached --name-only)
+
+echo -n "Checking for Ethereum keys, RPC URLs, and DEBUG: in staged files..."
+# Iterate through staged files
+for file in $staged_files; do
+    # Check if the file is tracked
+    if git ls-files --error-unmatch "$file" &>/dev/null; then
+        # Check if the file contains an Ethereum key
+        if grep -q "$ethereum_key_pattern" "$file"; then
+            has_errors=1
+            echo -e "\rChecking for Ethereum keys, RPC URLs, and DEBUG: in staged files... ❌"
+            echo "ERROR: Ethereum key detected in file: $file"
+            grep -n "$ethereum_key_pattern" "$file"
+            echo "Remove the Ethereum key before committing."
+        fi
+
+        # Check if the file contains a HTTP or WS URL
+        if grep -q "$url_pattern" "$file"; then
+            has_errors=1
+            echo -e "\rChecking for Ethereum keys, RPC URLs, and DEBUG: in staged files... ❌"
+            echo "ERROR: HTTP/WS URL detected in file: $file"
+            grep -n "$url_pattern" "$file"
+            echo "Please remove the URL before committing."
+        fi
+
+        if grep -q "DEBUG: " "$file"; then
+            has_errors=1
+            echo -e "\rChecking for Ethereum keys, RPC URLs, and DEBUG: in staged files... ❌"
+            echo "ERROR: 'DEBUG: ' detected in file: $file"
+            grep -n "DEBUG: " "$file"
+            echo "Un-Debug it"
+        fi
+    fi
+done
+
+if [[ $has_errors -eq 0 ]]; then
+    echo -e "\rChecking for Ethereum keys, RPC URLs, and DEBUG: in staged files... ✅"
+fi
+
+echo -n "Checking go.mod for local replacements..."
+# Using grep to search for local replacements in go.mod
+
+if grep -q "replace\s+\S+\s+=>\s+\/Users\/adamhamrick" "./go.mod"; then
+    has_errors=1
+    echo -e "\rChecking go.mod for local replacements... ❌"
+    grep -n "replace\s+\S+\s+=>\s+\/Users\/adamhamrick" "./go.mod"
+    echo "You forgot about a local replacement"
+else
+    echo -e "\rChecking go.mod for local replacements... ✅"
+fi
+
+if [[ $has_errors -eq 1 ]]; then
+    echo "❌Pre-commit checks failed. Fix the errors before committing.❌"
+    exit 1
+fi
+
+echo "✅Pre-commit checks passed.✅"
+
+echo "Remember to tap your Yubikey!"
+
+exit 0
