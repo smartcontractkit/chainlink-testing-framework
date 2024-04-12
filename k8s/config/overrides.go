@@ -10,7 +10,7 @@ import (
 const (
 	EnvVarPrefix = "TEST_"
 
-	EnvVarNoManifestUpdate            = "NO_MANIFEST_UPDATE"
+	EnvVarManifestUpdate              = "MANIFEST_UPDATE"
 	EnvVarNoManifestUpdateDescription = "Skip updating manifest when connecting to the namespace"
 	EnvVarNoManifestUpdateExample     = "false"
 
