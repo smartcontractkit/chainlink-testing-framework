@@ -1,3 +1,4 @@
+printf "Remember to tap your YubiKey" > /dev/tty
 printf "\n\e[37m*** Running Pre-push hooks ***\e[0m\n\n"
 
 printf "Executing unit tests...\r"
