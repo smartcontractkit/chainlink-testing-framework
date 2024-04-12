@@ -108,33 +108,34 @@ if [[ $found_issue -eq 0 ]]; then
     printf "Checking for DEBUG:... ✅\n"
 fi
 
-printf "Executing linters...\r"
+printf "Executing base linter...\r"
 
 golangci-lint run > /dev/null
 linting_result=$?
 
 if [[ $linting_result -ne 0 ]];
 then
-    printf "Executing linters... ❌\n"
+    printf "Executing base linter... ❌\n"
     printf "Run `golangci-lint run -v` and fix them\n"
 
     exit 1
 else
-    printf "Executing linters... ✅\n"
+    printf "Executing base linter... ✅\n"
 fi
 
+printf "Executing gotestloghelper linter...\r"
 cd ./tools/gotestloghelper
 golangci-lint run > /dev/null
 linting_result=$?
 
 if [[ $linting_result -ne 0 ]];
 then
-    printf "Executing linters... ❌\n"
+    printf "Executing gotestloghelper linter... ❌\n"
     printf "Run `cd ./tools/gotestloghelper && golangci-lint run -v` and fix them\n"
 
     exit 1
 else
-    printf "Executing linters... ✅\n"
+    printf "Executing gotestloghelper linter... ✅\n"
 fi
 cd - > /dev/null
 

@@ -1,5 +1,4 @@
-printf "Remember to tap your YubiKey" > /dev/tty
-printf "\n\e[37m*** Running Pre-push hooks ***\e[0m\n\n"
+printf "*** Running Pre-push hooks ***\n"
 
 printf "Executing unit tests...\r"
 
@@ -8,12 +7,12 @@ unit_test_result=$?
 
 if [[ $unit_test_result -ne 0 ]];
 then
-    printf "Executing unit tests... \e[31mNOK!\e[0m\n"
+    printf "Executing unit tests... ❌\n"
     printf "Run `make test_unit` and fix them\n"
 
     exit 1
 else
-    printf "Executing unit tests... \e[32mOK!\e[0m\n"
+    printf "Executing unit tests... ✅\n"
 fi
 
-printf "\n\e[37m*** All good! ***\e[0m\n\n"
+printf "\e[32mPre-push checks passed.\e[0m\n"
