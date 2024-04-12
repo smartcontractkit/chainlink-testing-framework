@@ -8,7 +8,7 @@ jobs:
   tools:
     strategy:
       matrix:
-        tool: [tools/gotestloghelper]
+        tool: [tools/gotestloghelper, tools/gotidy]
     name: Release ${{ matrix.tool }}
     runs-on: ubuntu-latest
     steps:

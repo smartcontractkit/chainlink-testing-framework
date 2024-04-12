@@ -7,5 +7,5 @@ import (
 func TestTidy(t *testing.T) {
 	project := "."
 
-	Main(project, false, false)
+	Main(project, false, false, false)
 }
