@@ -24,12 +24,6 @@ In order to work with CTF, you'll need a few dependencies in place. First make s
 make install
 ```
 
-We also recommend using our handy githooks:
-
-```sh
-git config core.hooksPath .githooks
-```
-
 ## k8s package
 
 We have a k8s package we are using in tests, it provides:

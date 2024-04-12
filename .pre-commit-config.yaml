@@ -7,6 +7,7 @@ repos:
         args: [--allow-missing-credentials]
       - id: check-added-large-files
       - id: check-json
+      - id: end-of-file-fixer
   - repo: https://github.com/gruntwork-io/pre-commit
     rev: e9250bd69bb312d55364213ff5ff037a09be55d9 # v0.1.12
     hooks:
@@ -21,8 +22,14 @@ repos:
         id: prettier
   - repo: local
     hooks:
-      - id: golangci-lint
-        name: golangci-lint
-        entry: golangci-lint run
-        language: system
-        types: [go]
+      - id: custom-pre-commit
+        name: Custom pre-commit hook
+        entry: ./githooks/pre-commit
+        language: script
+        stages: [commit]
+      - id: custom-pre-push
+        name: Custom pre-push hook
+        entry: ./githooks/pre-push
+        language: script
+        stages: [push]
+
