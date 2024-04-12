@@ -136,7 +136,7 @@ then
 else
     printf "Executing linters... ✅\n"
 fi
-cd -
+cd - > /dev/null
 
 if [[ $has_errors -eq 1 ]]; then
     printf "\e[31mPre-commit checks failed. Fix the errors before committing.\e[0m\n"
