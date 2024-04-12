@@ -16,6 +16,20 @@ The Chainlink Testing Framework is a blockchain development framework written in
 
 If you're looking to implement a new chain integration for the testing framework, head over to the [blockchain](./blockchain/) directory for more info.
 
+## Developing
+
+In order to work with CTF, you'll need a few dependencies in place. First make sure to have [node](https://nodejs.org/en/download) installed. Then run the below:
+
+```sh
+make install
+```
+
+We also recommend using our handy githooks.
+
+```sh
+git config core.hooksPath .githooks
+```
+
 ## k8s package
 
 We have a k8s package we are using in tests, it provides:
