@@ -1,4 +1,4 @@
-# Deployment initalisation flow
+# Deployment initialisation flow
 Each `StatefulSet` has the same `initContainers` that are responsible for:
 1. Generating validator keys
 2. Generating eth1 and eth2 genesis
