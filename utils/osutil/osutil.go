@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/rs/zerolog"
@@ -175,4 +176,25 @@ func findFileInSubfolders(startDir, targetFileName string) (string, error) {
 	}
 
 	return filePath, nil
+}
+
+// FindDirectoriesContainingFile finds all directories containing a file matching the given regular expression
+func FindDirectoriesContainingFile(dir string, r *regexp.Regexp) ([]string, error) {
+	foundDirs := []string{}
+	// Walk through all files in the directory and its sub-directories
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if r.MatchString(info.Name()) {
+			foundDirs = append(foundDirs, filepath.Dir(path))
+		}
+		return nil
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error walking the directory: %v\n", err)
+		return nil, err
+	}
+	return foundDirs, nil
 }
