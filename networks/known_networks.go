@@ -478,7 +478,7 @@ var (
 
 	CeloAlfajores = blockchain.EVMNetwork{
 		Name:                      "Celo Alfajores",
-		SupportsEIP1559:           false,
+		SupportsEIP1559:           true,
 		ClientImplementation:      blockchain.CeloClientImplementation,
 		ChainID:                   44787,
 		Simulated:                 false,
