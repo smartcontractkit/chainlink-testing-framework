@@ -8,14 +8,17 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"strings"
+	"regexp"
 
 	"github.com/rs/zerolog"
 	"github.com/sergi/go-diff/diffmatchpatch"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/tools/gotidy/git"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/clihelper"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/osutil"
 )
+
+var gomodRegex = regexp.MustCompile("^go.mod$")
 
 type GoProject struct {
 	BeforeMod string
@@ -40,6 +43,7 @@ func main() {
 	Main(*project, *commit, *subProjects, *verbose)
 }
 
+// Main is the entrypoint for the gotidy tool
 func Main(project string, commit, subProjects, verbose bool) {
 	// clean up the project path
 	projectPath, err := filepath.Abs(filepath.Dir(project))
@@ -49,7 +53,7 @@ func Main(project string, commit, subProjects, verbose bool) {
 
 	projectsToCheck := []string{projectPath}
 	if subProjects {
-		projectsToCheck, err = FindSubProjects(projectPath)
+		projectsToCheck, err = osutil.FindDirectoriesContainingFile(projectPath, gomodRegex)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -57,7 +61,7 @@ func Main(project string, commit, subProjects, verbose bool) {
 
 	// stash changes if the user wants to commit tidy fixes
 	if commit {
-		err = StashChanges()
+		err = git.StashChanges()
 		if err != nil {
 			ErrorString("Error stashing changes\n")
 			log.Fatal(err)
@@ -78,7 +82,7 @@ func Main(project string, commit, subProjects, verbose bool) {
 	}
 
 	if commit {
-		err = PopStash()
+		err = git.PopStash()
 		if err != nil {
 			ErrorString("Error un-stashing changes\n")
 			log.Fatal(err)
@@ -86,6 +90,7 @@ func Main(project string, commit, subProjects, verbose bool) {
 	}
 }
 
+// TidyProjects runs `go mod tidy` on a list of projects and compares the changes
 func TidyProjects(projects []string, verbose bool) (bool, error) {
 	var err error
 	foundChanges := false
@@ -136,10 +141,12 @@ func TidyProjects(projects []string, verbose bool) (bool, error) {
 	return foundChanges, nil
 }
 
+// ErrorString prints a message in red
 func ErrorString(message string) {
 	fmt.Print(clihelper.Color(clihelper.ColorRed, message))
 }
 
+// ReadModFiles reads the go.mod and go.sum files in a directory
 func ReadModFiles(dir string) (gomod string, gosum string, err error) {
 	var gomodB, gomodS []byte
 	gomodB, err = os.ReadFile(fmt.Sprintf("%s/go.mod", dir))
@@ -155,6 +162,7 @@ func ReadModFiles(dir string) (gomod string, gosum string, err error) {
 	return
 }
 
+// CompareFiles compares two strings and returns a human-readable diff, or empty string if there are no changes
 func CompareFiles(before, after string) string {
 	// Create a diff object
 	dmp := diffmatchpatch.New()
@@ -179,27 +187,22 @@ func CompareFiles(before, after string) string {
 	return ""
 }
 
+// CommitChanges adds the go.mod and go.sum files to the git index and commits them
 func CommitChanges(dir string) (err error) {
-	fmt.Println("Committing changes...")
-	err = osutil.ExecCmdWithOptions(context.Background(), zerolog.Logger{}, fmt.Sprintf("git add %s/go.mod", dir), func(m string) {
-		fmt.Println(m)
-	})
+	err = git.AddFile("**/go.mod")
 	if err != nil {
 		return
 	}
-	err = osutil.ExecCmdWithOptions(context.Background(), zerolog.Logger{}, fmt.Sprintf("git add %s/go.sum", dir), func(m string) {
-		fmt.Println(m)
-	})
+	err = git.AddFile("**/go.sum")
 	if err != nil {
 		return
 	}
-	err = osutil.ExecCmdWithOptions(context.Background(), zerolog.Logger{}, "git commit -m \"go_mod_tidy_cleanup\"", func(m string) {
-		fmt.Println(m)
-	})
 
+	err = git.CommitChanges("go_mod_tidy_cleanup")
 	return
 }
 
+// GoModTidy runs `go mod tidy` in the current directory
 func GoModTidy() (err error) {
 	err = osutil.ExecCmdWithOptions(context.Background(), zerolog.Logger{}, "go mod tidy", func(m string) {
 		fmt.Println(m)
@@ -208,52 +211,14 @@ func GoModTidy() (err error) {
 	return
 }
 
-func StashChanges() (err error) {
-	fmt.Println("Doing a git stash before tidying...")
-	err = osutil.ExecCmdWithOptions(context.Background(), zerolog.Logger{}, "git stash", func(m string) {
-		fmt.Println(m)
-	})
-
-	return
-}
-
-func PopStash() (err error) {
-	fmt.Println("Popping the stash to return previous changes...")
-	err = osutil.ExecCmdWithOptions(context.Background(), zerolog.Logger{}, "git stash pop", func(m string) {
-		fmt.Println(m)
-	})
-
-	return
-}
-
+// CleanOnError pops the stash if there was an error to return the branch to the original state
 func CleanOnError(commit bool, err error) {
 	if err != nil && commit {
-		pserr := PopStash()
+		pserr := git.PopStash()
 		if pserr != nil {
 			ErrorString("Error popping stash on cleanup\n")
 			log.Fatal(pserr)
 		}
 		log.Fatal(err)
 	}
-}
-
-func FindSubProjects(dir string) ([]string, error) {
-	subprojectPaths := []string{}
-	// Walk through all Go files in the directory and its sub-directories
-	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if strings.HasSuffix(info.Name(), ".mod") {
-			// Found a go.mod file, add the directory to the list of subprojects
-			subprojectPaths = append(subprojectPaths, filepath.Dir(path))
-		}
-		return nil
-	})
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error walking the directory: %v\n", err)
-		return nil, err
-	}
-	return subprojectPaths, nil
 }

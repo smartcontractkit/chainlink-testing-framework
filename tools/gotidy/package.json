@@ -1,5 +1,5 @@
 {
   "name": "gotidy",
   "description": "Tool to check a go project mod files for tidyness",
-  "version": "1.0.0"
+  "version": "0.1.0"
 }

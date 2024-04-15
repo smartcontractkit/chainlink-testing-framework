@@ -22,7 +22,8 @@ go tidy -path="./" -commit=true
 
     -path: Path to the go project to check for tidy. Default: .
     -commit: Commit the changes if there are any. Default: false
-    -onlyerrors: Set to true to only print tests that failed. Note: Not compatible without -json. Default: false
+    -subprojects: Check all go subprojects for tidy. Default: false
+    -v: Print verbose output.
 
 ## Examples
 
