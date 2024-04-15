@@ -29,6 +29,8 @@ jobs:
             path: ./
           - name: gotestloghelper
             path: ./tools/gotestloghelper/
+          - name: gotidy
+            path: ./tools/gotidy/
           - name: k8s-test-runner
             path: ./k8s-test-runner/
     steps:
