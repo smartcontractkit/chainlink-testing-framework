@@ -486,6 +486,7 @@ var (
 		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       1000,
+		FinalityDepth:             10,
 	}
 
 	ScrollSepolia = blockchain.EVMNetwork{
