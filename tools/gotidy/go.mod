@@ -5,7 +5,7 @@ go 1.21.5
 require (
 	github.com/rs/zerolog v1.30.0
 	github.com/sergi/go-diff v1.3.1
-	github.com/smartcontractkit/chainlink-testing-framework v1.28.3-0.20240415195554-878cb9fe9157
+	github.com/smartcontractkit/chainlink-testing-framework v1.28.3-0.20240415215851-04efb9f81fb7
 )
 
 require (

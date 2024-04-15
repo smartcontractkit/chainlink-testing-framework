@@ -13,7 +13,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/sergi/go-diff/diffmatchpatch"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/tools/gotidy/git"
+	"github.com/smartcontractkit/chainlink-testing-framework/tools/gotidy/githelpers"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/clihelper"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/osutil"
 )
@@ -61,7 +61,7 @@ func Main(project string, commit, subProjects, verbose bool) {
 
 	// stash changes if the user wants to commit tidy fixes
 	if commit {
-		err = git.StashChanges()
+		err = githelpers.StashChanges()
 		if err != nil {
 			ErrorString("Error stashing changes\n")
 			log.Fatal(err)
@@ -82,7 +82,7 @@ func Main(project string, commit, subProjects, verbose bool) {
 	}
 
 	if commit {
-		err = git.PopStash()
+		err = githelpers.PopStash()
 		if err != nil {
 			ErrorString("Error un-stashing changes\n")
 			log.Fatal(err)
@@ -189,16 +189,16 @@ func CompareFiles(before, after string) string {
 
 // CommitChanges adds the go.mod and go.sum files to the git index and commits them
 func CommitChanges(dir string) (err error) {
-	err = git.AddFile("**/go.mod")
+	err = githelpers.AddFile("**/go.mod")
 	if err != nil {
 		return
 	}
-	err = git.AddFile("**/go.sum")
+	err = githelpers.AddFile("**/go.sum")
 	if err != nil {
 		return
 	}
 
-	err = git.CommitChanges("go_mod_tidy_cleanup")
+	err = githelpers.CommitChanges("go_mod_tidy_cleanup")
 	return
 }
 
@@ -214,7 +214,7 @@ func GoModTidy() (err error) {
 // CleanOnError pops the stash if there was an error to return the branch to the original state
 func CleanOnError(commit bool, err error) {
 	if err != nil && commit {
-		pserr := git.PopStash()
+		pserr := githelpers.PopStash()
 		if pserr != nil {
 			ErrorString("Error popping stash on cleanup\n")
 			log.Fatal(pserr)
