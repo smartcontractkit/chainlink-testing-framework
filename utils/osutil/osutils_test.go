@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -171,4 +172,83 @@ func TestFindFile_stopFileNotFoundWithinLimit(t *testing.T) {
 	_, err = FindFile(tg, st, 2)
 	require.Error(t, err, "expected error calling FindFile")
 	require.Contains(t, err.Error(), ErrStopFileNotFoundWithinLimit, "got wrong error")
+}
+
+func TestFindDirectoriesContainingFile(t *testing.T) {
+	t.Run("file in root directory", func(t *testing.T) {
+		// Create a temporary directory using the os package
+		tempDir, err := os.MkdirTemp("", "rootcheck")
+		if err != nil {
+			require.NoError(t, err, "error creating temp directory")
+		}
+		defer os.RemoveAll(tempDir) // Clean up after yourself
+
+		exampleFile := "examplefile.txt"
+		_, err = os.CreateTemp(tempDir, exampleFile)
+		if err != nil {
+			require.NoError(t, err, "error creating temp file")
+		}
+
+		testRegex := regexp.MustCompile(".*examplefile.txt")
+		dirs, err := FindDirectoriesContainingFile(tempDir, testRegex)
+		require.NoError(t, err, "error calling FindDirectoriesContainingFile")
+		require.Equal(t, []string{tempDir}, dirs)
+	})
+
+	t.Run("file in root and sub directory", func(t *testing.T) {
+		// Create a temporary directory using the os package
+		tempDir, err := os.MkdirTemp("", "rootcheck")
+		if err != nil {
+			require.NoError(t, err, "error creating temp directory")
+		}
+		defer os.RemoveAll(tempDir) // Clean up after yourself
+
+		exampleFile := "examplefile.txt"
+		_, err = os.CreateTemp(tempDir, exampleFile)
+		if err != nil {
+			require.NoError(t, err, "error creating temp file")
+		}
+
+		subDir, err := os.MkdirTemp(tempDir, "subdir")
+		if err != nil {
+			require.NoError(t, err, "error creating temp directory")
+		}
+
+		exampleFile2 := "examplefile.txt"
+		_, err = os.CreateTemp(subDir, exampleFile2)
+		if err != nil {
+			require.NoError(t, err, "error creating temp file")
+		}
+
+		testRegex := regexp.MustCompile(".*examplefile.txt")
+		dirs, err := FindDirectoriesContainingFile(tempDir, testRegex)
+		require.NoError(t, err, "error calling FindDirectoriesContainingFile")
+		require.Equal(t, []string{tempDir, subDir}, dirs)
+	})
+
+	t.Run("file in sub directory", func(t *testing.T) {
+		// Create a temporary directory using the os package
+		tempDir, err := os.MkdirTemp("", "rootcheck")
+		if err != nil {
+			require.NoError(t, err, "error creating temp directory")
+		}
+		defer os.RemoveAll(tempDir) // Clean up after yourself
+
+		subDir, err := os.MkdirTemp(tempDir, "subdir")
+		if err != nil {
+			require.NoError(t, err, "error creating temp directory")
+		}
+
+		exampleFile2 := "examplefile.txt"
+		_, err = os.CreateTemp(subDir, exampleFile2)
+		if err != nil {
+			require.NoError(t, err, "error creating temp file")
+		}
+
+		testRegex := regexp.MustCompile(".*examplefile.txt")
+		dirs, err := FindDirectoriesContainingFile(tempDir, testRegex)
+		require.NoError(t, err, "error calling FindDirectoriesContainingFile")
+		require.Equal(t, []string{subDir}, dirs)
+	})
+
 }
