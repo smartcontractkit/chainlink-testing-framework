@@ -141,7 +141,7 @@ func TestRemoteRunnerOneSetupWithMultipeTests(t *testing.T) {
 		t1.Parallel()
 		test1EnvConfig := common.GetTestEnvConfig(t1)
 		test1EnvConfig.Namespace = e.Cfg.Namespace
-		test1EnvConfig.ManifestUpdate = true
+		test1EnvConfig.SkipManifestUpdate = true
 		e1 := presets.EVMMinimalLocal(test1EnvConfig)
 		err := e1.Run()
 		require.NoError(t1, err)
