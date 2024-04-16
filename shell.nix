@@ -13,6 +13,7 @@ let
 in
 mkShell' {
   nativeBuildInputs = [
+    git
     go
     goreleaser
     postgresql
