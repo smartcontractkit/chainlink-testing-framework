@@ -1,0 +1,36 @@
+#!/bin/bash
+
+echo -e "\n\e[37m*** Running Pre-commit lint-go ***\e[0m\n\n"
+
+echo -e "Executing linters..."
+
+# Define an array of directories to lint
+declare -a directories=("./" "./tools/gotestloghelper" "./k8s-test-runner" "./grafana")
+
+# Function to perform linting
+lint_directory() {
+    local directory=$1
+    cd "$directory" || exit 1
+
+    # Run linter and capture exit status
+    golangci-lint run  > /dev/null
+    local linting_result=$?
+
+    # Check linting result
+    if [[ $linting_result -ne 0 ]]; then
+        echo -e "Executing linters in $directory... \e[31mNOK!\e[0m\n"
+        echo -e "Run \`cd $directory && golangci-lint run -fix -v\` and fix the issues\n"
+        exit 1
+    else
+        echo -e "Executing linters in $directory... \e[32mOK!\e[0m\n"
+    fi
+
+    cd - || exit 1
+}
+
+# Loop through each directory and lint
+for directory in "${directories[@]}"; do
+    lint_directory "$directory"
+done
+
+echo -e "\n\e[37m*** Lint go all good! ***\e[0m\n\n"

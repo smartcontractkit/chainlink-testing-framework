@@ -1,0 +1,21 @@
+#!/bin/bash
+
+echo -e "\n\e[37m*** Running Pre-commit go mod local replace ***\e[0m\n\n"
+
+# Loop over each file passed to the script
+for file in "$@"; do
+    echo -n "Checking $file for local replacements... "
+
+    # Search for local replacements in the specified go.mod file
+    if grep -q 'replace .* => /' "$file"; then
+        # Print details about the replacements found
+        echo -e "❌\nFound local replacements in $file:"
+        grep -n 'replace .* => /' "$file"
+        echo -e "\e[31mYou forgot about a local replacement\e[0m\n"
+        exit 1
+    else
+        echo "✅"
+    fi
+done
+
+echo -e "\n\e[37m*** Go mod has no local replaces! ***\e[0m\n\n"

@@ -21,8 +21,23 @@ repos:
         id: prettier
   - repo: local
     hooks:
-      - id: golangci-lint
-        name: golangci-lint
-        entry: golangci-lint run
-        language: system
-        types: [go]
+      - id: custom-go-lint-pre-commit
+        name: Custom go lint pre-commit hook
+        entry: ./.githooks/lint-go-pre-commit
+        language: script
+        pass_filenames: false
+      - id: custom-go-mod-local-replace-pre-commit
+        name: Check for local replaces in go.mod
+        entry: ./.githooks/go-mod-local-replace-pre-commit
+        language: script
+        files: 'go\.mod$'
+      - id: custom-etherum-keys-pre-commit
+        name: Check for ethereum keys
+        entry: ./.githooks/ethereum-keys-pre-commit
+        language: script
+      - id: custom-pre-push
+        name: Custom pre-push hook
+        entry: ./.githooks/pre-push
+        language: script
+        pass_filenames: false
+        stages: [pre-push]
