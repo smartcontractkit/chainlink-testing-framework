@@ -28,7 +28,7 @@ func TestMustGetSelectedNetworkConfig_Missing_RpcHttpUrls(t *testing.T) {
 	networkName := "arbitrum_goerli"
 	testTOML := `
 	selected_networks = ["arbitrum_goerli"]
-	
+
 	[RpcWsUrls]
 	arbitrum_goerli = ["wss://devnet-1.mt/ABC/rpc/"]
 

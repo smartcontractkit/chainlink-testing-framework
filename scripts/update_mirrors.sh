@@ -52,13 +52,13 @@ check_image_in_ecr() {
 pull_tag_push() {
     local docker_image=$1
     local ecr_image="$ECR_REGISTRY_URL/${docker_image}"
-    
+
     # Pull the image from Docker Hub
     docker pull "$docker_image"
-    
+
     # Tag the image for ECR
     docker tag "$docker_image" "$ecr_image"
-    
+
     # Push the image to ECR
     docker push "$ecr_image"
 }
@@ -169,4 +169,3 @@ elif [ $# -eq 3 ] || [ $# -eq 4 ]; then
 else
     usage
 fi
-
