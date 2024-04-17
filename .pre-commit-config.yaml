@@ -26,6 +26,11 @@ repos:
         entry: ./.githooks/lint-go-pre-commit
         language: script
         pass_filenames: false
+      - id: custom-go-mod-tidy-pre-commit
+        name: Check go mod tidy
+        entry: ./.githooks/go-tidy-pre-commit
+        language: script
+        pass_filenames: false
       - id: custom-go-mod-local-replace-pre-commit
         name: Check for local replaces in go.mod
         entry: ./.githooks/go-mod-local-replace-pre-commit

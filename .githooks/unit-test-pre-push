@@ -1,7 +1,5 @@
 #!/bin/bash
 
-printf "\n\e[37m*** Running Pre-push unit test hook ***\e[0m\n"
-
 printf "Executing unit tests..."
 
 make test_unit > /dev/null 2>&1
@@ -15,5 +13,3 @@ then
 else
     printf "Executing unit tests... ✅\n"
 fi
-
-printf "\n\e[37m*** All good! ***\e[0m\n\n"

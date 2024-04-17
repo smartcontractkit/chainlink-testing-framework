@@ -1,7 +1,5 @@
 #!/bin/bash
 
-echo -e "\n\e[37m*** Running Pre-commit ethereum keys check ***\e[0m\n\n"
-
 # Define the regex pattern for Ethereum keys
 ethereum_key_pattern="(0x[a-fA-F0-9]{40})"
 
@@ -18,5 +16,3 @@ for file in "$@"; do
         echo "✅"
     fi
 done
-
-echo -e "\n\e[37m*** No ehereum keys were found in files! ***\e[0m\n\n"
