@@ -1,6 +1,6 @@
 #!/bin/bash
 
-printf "\n\e[37m*** Running Pre-push hooks ***\e[0m\n"
+printf "\n\e[37m*** Running Pre-push unit test hook ***\e[0m\n"
 
 printf "Executing unit tests..."
 

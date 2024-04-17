@@ -7,13 +7,11 @@ ethereum_key_pattern="(0x[a-fA-F0-9]{40})"
 
 # Loop over each file passed to the script
 for file in "$@"; do
-    echo -n "Checking $file for local replacements... "
+    echo -n "Checking $file for ethereum keys... "
 
-    # Search for local replacements in the specified go.mod file
     if grep -q "$ethereum_key_pattern" "$file"; then
-        # Print details about the replacements found
         echo -e "❌\nFound eth keys in $file:"
-        grep -q "$ethereum_key_pattern" "$file"
+        grep -n "$ethereum_key_pattern" "$file"
         echo -e "\e[31mRemove the Ethereum key before committing.\e[0m\n"
         exit 1
     else

@@ -22,7 +22,7 @@ repos:
   - repo: local
     hooks:
       - id: custom-go-lint-pre-commit
-        name: Custom go lint pre-commit hook
+        name: Check go lint
         entry: ./.githooks/lint-go-pre-commit
         language: script
         pass_filenames: false
@@ -35,9 +35,13 @@ repos:
         name: Check for ethereum keys
         entry: ./.githooks/ethereum-keys-pre-commit
         language: script
+      - id: custom-rpc-url-pre-commit
+        name: Check for RPC URLs
+        entry: ./.githooks/RPC-URLs-pre-commit
+        language: script
       - id: custom-pre-push
-        name: Custom pre-push hook
-        entry: ./.githooks/pre-push
+        name: Run unit tests
+        entry: ./.githooks/unit-test-pre-push
         language: script
         pass_filenames: false
         stages: [pre-push]
