@@ -1,24 +1,4 @@
 repos:
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: 2c9f875913ee60ca25ce70243dc24d5b6415598c # v4.6.0
-    hooks:
-      - id: detect-private-key
-      - id: detect-aws-credentials
-        args: [--allow-missing-credentials]
-      - id: check-added-large-files
-      - id: check-json
-  - repo: https://github.com/gruntwork-io/pre-commit
-    rev: e9250bd69bb312d55364213ff5ff037a09be55d9 # v0.1.12
-    hooks:
-      - name: Check Helm charts
-        id: helmlint
-      - name: Check shell scripts
-        id: shellcheck
-  - repo: https://github.com/pre-commit/mirrors-prettier
-    rev: bc48c541add1551be726f23c4294c773442341cb # v2.3.2
-    hooks:
-      - name: Prettier
-        id: prettier
   - repo: local
     hooks:
       - id: custom-go-lint-pre-commit
@@ -50,3 +30,31 @@ repos:
         language: script
         pass_filenames: false
         stages: [pre-push]
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: 2c9f875913ee60ca25ce70243dc24d5b6415598c # v4.6.0
+    hooks:
+      - id: detect-private-key
+      - id: detect-aws-credentials
+        args: [--allow-missing-credentials]
+      - id: check-added-large-files
+      - id: check-json
+      - id: check-toml
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: check-case-conflict
+      - id: check-executables-have-shebangs
+      - id: check-shebang-scripts-are-executable
+      - id: check-merge-conflict
+      - id: trailing-whitespace
+  - repo: https://github.com/gruntwork-io/pre-commit
+    rev: e9250bd69bb312d55364213ff5ff037a09be55d9 # v0.1.12
+    hooks:
+      - name: Check Helm charts
+        id: helmlint
+      - name: Check shell scripts
+        id: shellcheck
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: bc48c541add1551be726f23c4294c773442341cb # v2.3.2
+    hooks:
+      - name: Prettier
+        id: prettier
