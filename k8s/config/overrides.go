@@ -10,9 +10,9 @@ import (
 const (
 	EnvVarPrefix = "TEST_"
 
-	EnvVarNoManifestUpdate            = "NO_MANIFEST_UPDATE"
-	EnvVarNoManifestUpdateDescription = "Skip updating manifest when connecting to the namespace"
-	EnvVarNoManifestUpdateExample     = "false"
+	EnvVarSkipManifestUpdate            = "SKIP_MANIFEST_UPDATE"
+	EnvVarSkipManifestUpdateDescription = "Skip updating manifest when connecting to the namespace"
+	EnvVarSkipManifestUpdateExample     = "false"
 
 	EnvVarKeepEnvironments            = "KEEP_ENVIRONMENTS"
 	EnvVarKeepEnvironmentsDescription = "Should we keep environments on test completion"
