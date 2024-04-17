@@ -58,6 +58,8 @@ mkShell' {
   shellHook = ''
     # enable pre-commit hooks
     pre-commit install > /dev/null
+    # enable pre-push hooks
+    pre-commit install --hook-type pre-push > /dev/null
     # Update helm repositories
     helm repo update > /dev/null
     # setup go bin for nix

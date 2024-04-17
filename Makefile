@@ -62,6 +62,7 @@ ifeq ($(OSFLAG),$(OSX))
 	helm repo add grafana https://grafana.github.io/helm-charts
 	helm repo update
 	pre-commit install
+	pre-commit install --hook-type pre-push
 endif
 
 install: go_mod install_tools
