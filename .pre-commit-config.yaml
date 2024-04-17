@@ -19,8 +19,10 @@ repos:
     hooks:
       - name: Prettier
         id: prettier
-  - repo: https://github.com/golangci/golangci-lint
-    rev: v1.57.2
+  - repo: local
     hooks:
       - id: golangci-lint
-        args: ['--config', '.golangci.yaml']
+        name: golangci-lint
+        entry: golangci-lint run
+        language: system
+        types: [go]
