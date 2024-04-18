@@ -53,6 +53,7 @@ mkShell' {
 
   LD_LIBRARY_PATH = lib.makeLibraryPath [pkgs.zlib stdenv.cc.cc.lib]; # lib64
   GOROOT = "${go}/share/go";
+  CGO_ENABLED = "0";
   HELM_REPOSITORY_CONFIG = "${scriptDir}/.helm-repositories.yaml";
 
   shellHook = ''
