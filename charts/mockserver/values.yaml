@@ -17,6 +17,7 @@ app:
 
 image:
   repository: mockserver
+  version: 5.15.0
   snapshot: false
   pullPolicy: IfNotPresent
 

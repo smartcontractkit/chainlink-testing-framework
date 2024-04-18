@@ -17,7 +17,7 @@
 #     # meta.helm.sh/release-name: {{ .Release.Name }}
 #     meta.helm.sh/release-namespace: {{ .Values.namespace }}
 #   labels:
-#     app.kubernetes.io/managed-by: Helm  
+#     app.kubernetes.io/managed-by: Helm
 # rules:
 #   - apiGroups:
 #       - ""
@@ -38,7 +38,7 @@
 #     # meta.helm.sh/release-name: {{ .Release.Name }}
 #     meta.helm.sh/release-namespace: {{ .Values.namespace }}
 #   labels:
-#     app.kubernetes.io/managed-by: Helm  
+#     app.kubernetes.io/managed-by: Helm
 # subjects:
 #   - kind: ServiceAccount
 #     name: default
@@ -76,4 +76,3 @@
 #   kind: ClusterRole
 #   name: lf-chaos-role
 #   apiGroup: rbac.authorization.k8s.io
-

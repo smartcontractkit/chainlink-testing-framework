@@ -28,4 +28,4 @@ name: mockserver
 sources:
   - https://github.com/mock-server/mockserver
   - https://hub.docker.com/r/mockserver/mockserver
-version: 5.11.2
+version: 5.11.3
