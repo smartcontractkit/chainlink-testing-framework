@@ -1,32 +1,39 @@
 repos:
   - repo: local
     hooks:
-      - id: custom-go-lint-pre-commit
+      - id: go-lint
         name: Check go lint
-        entry: ./.githooks/lint-go-pre-commit
+        entry: ./.githooks/go-lint
         language: script
         pass_filenames: false
-      - id: custom-go-mod-tidy-pre-commit
-        name: Check go mod tidy
-        entry: ./.githooks/go-tidy-pre-commit
-        language: script
-        pass_filenames: false
-      - id: custom-go-mod-local-replace-pre-commit
+      - id: go-mod-local-replace
         name: Check for local replaces in go.mod
-        entry: ./.githooks/go-mod-local-replace-pre-commit
+        entry: ./.githooks/go-mod-local-replace
         language: script
         files: 'go\.mod$'
-      - id: custom-etherum-keys-pre-commit
-        name: Check for ethereum keys
-        entry: ./.githooks/ethereum-keys-pre-commit
+      - id: detect-etherum-keys
+        name: Detect ethereum keys
+        entry: ./.githooks/detect-ethereum-keys
         language: script
-      - id: custom-rpc-url-pre-commit
+      - id: detect-rpc-urls
         name: Check for RPC URLs
-        entry: ./.githooks/RPC-URLs-pre-commit
+        entry: ./.githooks/detect-rpc-urls
         language: script
-      - id: custom-pre-push
+      - id: go-mod-tidy
+        name: Check go mod tidy
+        entry: ./.githooks/go-mod-tidy
+        language: script
+        pass_filenames: false
+        stages: [pre-push]
+      - id: go-test-build
+        name: Check go test build
+        entry: ./.githooks/go-test-build
+        language: script
+        pass_filenames: false
+        stages: [pre-push]
+      - id: run-unit-tests
         name: Run unit tests
-        entry: ./.githooks/unit-test-pre-push
+        entry: ./.githooks/run-unit-tests
         language: script
         pass_filenames: false
         stages: [pre-push]
