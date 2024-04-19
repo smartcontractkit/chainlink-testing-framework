@@ -258,7 +258,7 @@ type CertificateSigningRequestSpec struct {
 	SignerName *string `field:"required" json:"signerName" yaml:"signerName"`
 	// expirationSeconds is the requested duration of validity of the issued certificate.
 	//
-	// The certificate signer may issue a certificate with a different validity duration so a client must check the delta between the notBefore and and notAfter fields in the issued certificate to determine the actual duration.
+	// The certificate signer may issue a certificate with a different validity duration so a client must check the delta between the notBefore and notAfter fields in the issued certificate to determine the actual duration.
 	//
 	// The v1.22+ in-tree implementations of the well-known Kubernetes signers will honor this field as long as the requested duration is not greater than the maximum duration they will honor per the --cluster-signing-duration CLI flag to the Kubernetes controller manager.
 	//
@@ -10929,7 +10929,7 @@ type KubeCsiStorageCapacityV1Alpha1Props struct {
 	MaximumVolumeSize Quantity `field:"optional" json:"maximumVolumeSize" yaml:"maximumVolumeSize"`
 	// Standard object's metadata.
 	//
-	// The name has no particular meaning. It must be be a DNS subdomain (dots allowed, 253 characters). To ensure that there are no conflicts with other CSI drivers on the cluster, the recommendation is to use csisc-<uuid>, a generated name, or a reverse-domain name which ends with the unique CSI driver name.
+	// The name has no particular meaning. It must be a DNS subdomain (dots allowed, 253 characters). To ensure that there are no conflicts with other CSI drivers on the cluster, the recommendation is to use csisc-<uuid>, a generated name, or a reverse-domain name which ends with the unique CSI driver name.
 	//
 	// Objects are namespaced.
 	//
@@ -11249,7 +11249,7 @@ type KubeCsiStorageCapacityV1Beta1Props struct {
 	MaximumVolumeSize Quantity `field:"optional" json:"maximumVolumeSize" yaml:"maximumVolumeSize"`
 	// Standard object's metadata.
 	//
-	// The name has no particular meaning. It must be be a DNS subdomain (dots allowed, 253 characters). To ensure that there are no conflicts with other CSI drivers on the cluster, the recommendation is to use csisc-<uuid>, a generated name, or a reverse-domain name which ends with the unique CSI driver name.
+	// The name has no particular meaning. It must be a DNS subdomain (dots allowed, 253 characters). To ensure that there are no conflicts with other CSI drivers on the cluster, the recommendation is to use csisc-<uuid>, a generated name, or a reverse-domain name which ends with the unique CSI driver name.
 	//
 	// Objects are namespaced.
 	//

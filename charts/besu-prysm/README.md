@@ -1,7 +1,7 @@
 # VERY IMPORTANT
 **There needs to be least one node labeled with `eth2=true` for deployment to work! (see below how to do it)**
 
-# Deployment initalisation flow
+# Deployment initialisation flow
 Each `StatefulSet` has the same `initContainers` that are responsible for:
 1. Generating validator keys
 2. Generating eth1 and eth2 genesis

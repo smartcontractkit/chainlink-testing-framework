@@ -159,7 +159,7 @@ cfg, err: = builder.
     Build()
 ```
 
-Since we support both `eth1` (aka pre-Merge) and `eth2` (aka post-Merge) client versions, you need to specify which one you want to use. You can do that by calling `WithEthereumVersion` method. There's no default provided. The only execption is when you use custom docker images (instead of default ones), because then we can determine which version it is based on the image version.
+Since we support both `eth1` (aka pre-Merge) and `eth2` (aka post-Merge) client versions, you need to specify which one you want to use. You can do that by calling `WithEthereumVersion` method. There's no default provided. The only exception is when you use custom docker images (instead of default ones), because then we can determine which version it is based on the image version.
 
 If you want your test to execute as fast as possible go for `eth1` since it's either using a fake PoW or PoA consensus and is much faster than `eth2` which uses PoS consensus (where there is a minimum viable length of slot/block, which is 4 seconds; for `eth1` it's 1 second). If you want to test the latest features, changes or forks in the Ethereum network and have your tests running on a network which is as close as possible to Ethereum Mainnet, go for `eth2`.
 
@@ -379,7 +379,7 @@ When running tests in CI you're probably interested in grouping logs by test exe
 
 ## Test Summary
 
-In order to facilitate displaying information in GH's step summary `testsummary` package was added. It exposes a single function `AddEntry(testName, key string, value interface{}) `. When you call it, it either creates a test summary JSON file or appends to it. The result is is a map of keys with values.
+In order to facilitate displaying information in GH's step summary `testsummary` package was added. It exposes a single function `AddEntry(testName, key string, value interface{}) `. When you call it, it either creates a test summary JSON file or appends to it. The result is a map of keys with values.
 
 Example:
 
