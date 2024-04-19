@@ -115,6 +115,11 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, error) {
 		networkConfig.DefaultGasLimit = 9_000_000
 	}
 
+	if comparableVersion < 110 {
+		// eth_maxPriorityFeePerGas is not implemented in Geth v1.10.x or lower
+		networkConfig.SupportsEIP1559 = false
+	}
+
 	g.l.Info().Str("containerName", g.ContainerName).
 		Msg("Started Geth PoS container")
 
