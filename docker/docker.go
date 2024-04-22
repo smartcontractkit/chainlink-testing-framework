@@ -56,7 +56,7 @@ var NaiveRetrier = func(l zerolog.Logger, startErr error, req tc.GenericContaine
 		Msgf("Attempting to start %s container", req.Name)
 
 	oldName := req.Name
-	req.Name = req.Name + "-naive-retry"
+	// req.Name = req.Name + "-naive-retry"
 
 	ct, err := tc.GenericContainer(testcontext.Get(nil), req)
 	if err == nil {
@@ -154,6 +154,12 @@ func StartContainerWithRetry(l zerolog.Logger, req tc.GenericContainerRequest, r
 
 	if len(retriers) == 0 {
 		retriers = append(retriers, LinuxPlatformImageRetrier, NaiveRetrier)
+	}
+
+	err = ct.Terminate(testcontext.Get(nil))
+	if err != nil {
+		l.Error().Err(err).Msgf("Cannot terminate %s container to initiate restart", req.Name)
+		return nil, err
 	}
 
 	l.Info().Err(err).Msgf("Cannot start %s container, retrying", req.Name)
