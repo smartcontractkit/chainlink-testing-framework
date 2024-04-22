@@ -476,7 +476,7 @@ func (e *EthereumClient) receiveHeader(header *SafeEVMHeader) error {
 	}
 	headerValue := *header
 
-	e.l.Debug().
+	e.l.Trace().
 		Str("NetworkName", e.NetworkConfig.Name).
 		Int("Node", e.ID).
 		Str("Hash", headerValue.Hash.String()).
