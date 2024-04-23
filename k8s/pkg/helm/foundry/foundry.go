@@ -109,12 +109,12 @@ func defaultProps() *Props {
 	}
 }
 
-func New(props Props) environment.ConnectedChart {
+func New(props *Props) environment.ConnectedChart {
 	return NewVersioned("", props)
 }
 
 // NewVersioned enables choosing a specific helm chart version
-func NewVersioned(helmVersion string, props Props) environment.ConnectedChart {
+func NewVersioned(helmVersion string, props *Props) environment.ConnectedChart {
 	dp := defaultProps()
 	config.MustMerge(dp, props)
 	config.MustMerge(&dp.Values, props.Values)
