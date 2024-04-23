@@ -9,12 +9,12 @@ import (
 )
 
 type LoggingConfig struct {
-	TestLogCollect         *bool            `toml:"test_log_collect"`
-	ShowHTMLCoverageReport *bool            `toml:"show_html_coverage_report"` // Show reports with go coverage data
-	RunId                  *string          `toml:"run_id"`
-	Loki                   *LokiConfig      `toml:"Loki"`
-	Grafana                *GrafanaConfig   `toml:"Grafana"`
-	LogStream              *LogStreamConfig `toml:"LogStream"`
+	TestLogCollect         *bool            `toml:"test_log_collect,omitempty"`
+	ShowHTMLCoverageReport *bool            `toml:"show_html_coverage_report,omitempty"` // Show reports with go coverage data
+	RunId                  *string          `toml:"run_id,omitempty"`
+	Loki                   *LokiConfig      `toml:"Loki,omitempty"`
+	Grafana                *GrafanaConfig   `toml:"Grafana,omitempty"`
+	LogStream              *LogStreamConfig `toml:"LogStream,omitempty"`
 }
 
 // Validate executes config validation for LogStream, Grafana and Loki
