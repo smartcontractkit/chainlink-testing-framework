@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# Define the regex pattern for Ethereum keys
+ethereum_key_pattern="(0x[a-fA-F0-9]{40})"
+
+# Loop over each file passed to the script
+for file in "$@"; do
+    echo -n "Checking $file for ethereum keys... "
+
+    if grep -q "$ethereum_key_pattern" "$file"; then
+        echo -e "❌\nFound eth keys in $file:"
+        grep -n "$ethereum_key_pattern" "$file"
+        echo -e "\e[31mRemove the Ethereum key before committing.\e[0m\n"
+        exit 1
+    else
+        echo "✅"
+    fi
+done

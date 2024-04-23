@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# Define the regex pattern for HTTP and WS URLs
+url_pattern="(http|ws)(s)?:\/\/[^ \t\n\r]+"
+
+# Loop over each file passed to the script
+for file in "$@"; do
+    echo -n "Checking $file for RPC URLs... "
+    if grep -q "$url_pattern" "$file"; then
+        echo -e "❌\nFound RPC URL in $file:"
+        grep -n "$url_pattern" "$file"
+        echo -e "\e[31mRemove the RPC URL before committing.\e[0m\n"
+        exit 1
+    else
+        echo "✅"
+    fi
+done
