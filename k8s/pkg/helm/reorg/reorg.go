@@ -14,12 +14,6 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/projectpath"
 )
 
-const (
-	URLsKey            = "geth"
-	TXNodesAppLabel    = "geth-ethereum-geth"
-	MinerNodesAppLabel = "geth-ethereum-miner-node" // #nosec G101
-)
-
 type Props struct {
 	NetworkName string `envconfig:"network_name"`
 	NetworkType string `envconfig:"network_type"`

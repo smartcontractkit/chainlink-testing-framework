@@ -151,12 +151,6 @@ func (n *NetworkConfig) Validate() error {
 		}
 		if n.ForkConfigs != nil {
 			if _, ok := n.ForkConfigs[network]; ok {
-				if n.ForkConfigs[network].URL == "" {
-					return fmt.Errorf("fork config for %s network must have a URL", network)
-				}
-				if n.ForkConfigs[network].BlockNumber == 0 {
-					return fmt.Errorf("fork config for %s network must have a block number", network)
-				}
 				// we don't need to validate RPC endpoints or private keys for forked networks
 				continue
 			}
