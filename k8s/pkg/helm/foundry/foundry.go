@@ -2,6 +2,7 @@ package foundry
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -62,25 +63,28 @@ func (m Chart) ExportData(e *environment.Environment) error {
 	if err != nil {
 		return err
 	}
+	parsed, err := url.Parse(internalHttp)
+	if err != nil {
+		return err
+	}
+	port := parsed.Port()
 	localWs, err := e.Fwd.FindPort(podName, ChartName, "http").As(client.LocalConnection, client.WS)
 	if err != nil {
 		return err
 	}
-	internalWs, err := e.Fwd.FindPort(podName, ChartName, "http").As(client.RemoteConnection, client.WS)
-	if err != nil {
-		return err
-	}
 	if e.Cfg.InsideK8s {
+		services, err := e.Client.ListServices(e.Cfg.Namespace, fmt.Sprintf("app=%s-%s", m.Props.NetworkName, ChartName))
+		if err != nil {
+			return err
+		}
+		internalWs := fmt.Sprintf("ws://%s:%s", services.Items[0].Name, port)
+		internalHttp = fmt.Sprintf("http://%s:%s", services.Items[0].Name, port)
 		e.URLs[m.Props.NetworkName] = []string{internalWs}
 		e.URLs[m.Props.NetworkName+"_http"] = []string{internalHttp}
 	} else {
 		e.URLs[m.Props.NetworkName] = []string{localWs}
 		e.URLs[m.Props.NetworkName+"_http"] = []string{localHttp}
 	}
-
-	// For cases like starknet we need the internalHttp address to set up the L1<>L2 interaction
-	e.URLs[m.Props.NetworkName+"_internal"] = []string{internalWs}
-	e.URLs[m.Props.NetworkName+"_internal_http"] = []string{internalHttp}
 
 	for k, v := range e.URLs {
 		if strings.Contains(k, m.Props.NetworkName) {
@@ -109,17 +113,18 @@ func defaultProps() *Props {
 	}
 }
 
-func New(props Props) environment.ConnectedChart {
+func New(props *Props) environment.ConnectedChart {
 	return NewVersioned("", props)
 }
 
 // NewVersioned enables choosing a specific helm chart version
-func NewVersioned(helmVersion string, props Props) environment.ConnectedChart {
+func NewVersioned(helmVersion string, props *Props) environment.ConnectedChart {
 	dp := defaultProps()
 	config.MustMerge(dp, props)
 	config.MustMerge(&dp.Values, props.Values)
+	dp.NetworkName = strings.ReplaceAll(strings.ToLower(dp.NetworkName), " ", "-")
 	return Chart{
-		Name:    strings.ReplaceAll(strings.ToLower(props.NetworkName), " ", "-"),
+		Name:    dp.NetworkName,
 		Path:    "chainlink-qa/foundry",
 		Values:  &dp.Values,
 		Props:   dp,
