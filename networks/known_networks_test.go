@@ -314,18 +314,18 @@ evm_default_gas_limit = 6000000
 			networkConfigTOML: `
 selected_networks = ["KROMA_SEPOLIA"]
 
-[ForkConfigs.kroma_SEPOLIA]
+[AnvilConfigs.kroma_SEPOLIA]
 url = "ws://localhost:8546"
 block_number = 100
 `,
 			expNetworks: []blockchain.EVMNetwork{KromaSepolia},
 		},
 		{
-			name: "override with new ForkConfigs and new EVMNetworks",
+			name: "override with new AnvilConfigs and new EVMNetworks",
 			networkConfigTOML: `
 selected_networks = ["KROMA_SEPOLIA","NEW_NETWORK"]
 
-[ForkConfigs.KROMA_SEPOLIA]
+[AnvilConfigs.KROMA_SEPOLIA]
 url = "ws://localhost:8546"
 block_number = 100
 `,
@@ -341,7 +341,7 @@ evm_gas_estimation_buffer = 10000
 evm_supports_eip1559 = true
 evm_default_gas_limit = 6000000
 
-[ForkConfigs.new_network]
+[AnvilConfigs.new_network]
 url = "ws://localhost:8546"
 block_number = 100
 `,
@@ -352,7 +352,7 @@ block_number = 100
 			networkConfigTOML: `
 selected_networks = ["KROMA_SEPOLIA"]
 
-[ForkConfigs.KROMA_SEPOLIA]
+[AnvilConfigs.KROMA_SEPOLIA]
 url = "ws://localhost:8546"
 block_number = 100
 `,
@@ -375,7 +375,7 @@ evm_gas_estimation_buffer = 10000
 evm_supports_eip1559 = true
 evm_default_gas_limit = 6000000
 
-[ForkConfigs.new_network]
+[AnvilConfigs.new_network]
 url = "ws://localhost:8546"
 block_number = 100
 `,
