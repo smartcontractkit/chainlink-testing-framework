@@ -118,8 +118,9 @@ func NewVersioned(helmVersion string, props *Props) environment.ConnectedChart {
 	dp := defaultProps()
 	config.MustMerge(dp, props)
 	config.MustMerge(&dp.Values, props.Values)
+	dp.NetworkName = strings.ReplaceAll(strings.ToLower(dp.NetworkName), " ", "-")
 	return Chart{
-		Name:    strings.ReplaceAll(strings.ToLower(props.NetworkName), " ", "-"),
+		Name:    dp.NetworkName,
 		Path:    "chainlink-qa/foundry",
 		Values:  &dp.Values,
 		Props:   dp,
