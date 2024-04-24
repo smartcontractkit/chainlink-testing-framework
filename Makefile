@@ -23,7 +23,7 @@ lint:
 
 .PHONY: tidy
 tidy:
-	pre-commit run go-mod-tidy --all-files --show-diff-on-failure --color=always
+	pre-commit run go-mod-tidy --hook-stage pre-push --all-files --show-diff-on-failure --color=always
 
 .PHONY: go_mod
 go_mod:
