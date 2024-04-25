@@ -18,13 +18,13 @@ const (
 )
 
 type AnvilConfig struct {
-	URL               *string `toml:"url,omitempty"`                 // Needed if you want to fork a network. URL is the URL of the node to fork from. Refer to https://book.getfoundry.sh/reference/anvil/#options
-	BlockNumber       *int64  `toml:"block_number,omitempty"`        // Needed if fork URL is provided for forking. BlockNumber is the block number to fork from. Refer to https://book.getfoundry.sh/reference/anvil/#options
-	BlockTime         *int64  `toml:"block_time,omitempty"`          // how frequent blocks are mined. By default, it automatically generates a new block as soon as a transaction is submitted. Refer to https://book.getfoundry.sh/reference/anvil/#options
-	Retries           *int    `toml:"retries,omitempty"`             //  Needed if fork URL is provided for forking. Number of retry requests for spurious networks (timed out requests). Refer to https://book.getfoundry.sh/reference/anvil/#options
-	Timeout           *int64  `toml:"timeout,omitempty"`             //  Needed if fork URL is provided for forking. Timeout in ms for requests sent to remote JSON-RPC server in forking mode. Refer to https://book.getfoundry.sh/reference/anvil/#options
-	ComputePerSecond  *int64  `toml:"compute_per_second,omitempty"`  // Needed if fork URL is provided for forking. Sets the number of assumed available compute units per second for this provider. Refer to https://book.getfoundry.sh/reference/anvil/#options
-	RateLimitDisabled *bool   `toml:"rate_limit_disabled,omitempty"` // Needed if fork URL is provided for forking. Rate limiting for this node’s provider. If set to true the node will start with --no-rate-limit Refer to https://book.getfoundry.sh/reference/anvil/#options
+	URL               *string  `toml:"url,omitempty"`                 // Needed if you want to fork a network. URL is the URL of the node to fork from. Refer to https://book.getfoundry.sh/reference/anvil/#options
+	BlockNumber       *int64   `toml:"block_number,omitempty"`        // Needed if fork URL is provided for forking. BlockNumber is the block number to fork from. Refer to https://book.getfoundry.sh/reference/anvil/#options
+	BlockTime         *float64 `toml:"block_time,omitempty"`          // how frequent blocks are mined. By default, it automatically generates a new block as soon as a transaction is submitted. Refer to https://book.getfoundry.sh/reference/anvil/#options
+	Retries           *int     `toml:"retries,omitempty"`             //  Needed if fork URL is provided for forking. Number of retry requests for spurious networks (timed out requests). Refer to https://book.getfoundry.sh/reference/anvil/#options
+	Timeout           *int64   `toml:"timeout,omitempty"`             //  Needed if fork URL is provided for forking. Timeout in ms for requests sent to remote JSON-RPC server in forking mode. Refer to https://book.getfoundry.sh/reference/anvil/#options
+	ComputePerSecond  *int64   `toml:"compute_per_second,omitempty"`  // Needed if fork URL is provided for forking. Sets the number of assumed available compute units per second for this provider. Refer to https://book.getfoundry.sh/reference/anvil/#options
+	RateLimitDisabled *bool    `toml:"rate_limit_disabled,omitempty"` // Needed if fork URL is provided for forking. Rate limiting for this node’s provider. If set to true the node will start with --no-rate-limit Refer to https://book.getfoundry.sh/reference/anvil/#options
 }
 
 // NetworkConfig is the configuration for the networks to be used
