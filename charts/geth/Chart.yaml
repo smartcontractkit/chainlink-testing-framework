@@ -2,4 +2,4 @@ apiVersion: v1
 name: geth
 description: A simulated go-ethereum network
 version: 0.4.3
-appVersion: '1.10.25'
+appVersion: '1.12.2'
