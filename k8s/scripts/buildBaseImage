@@ -8,6 +8,7 @@ set -e
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 
 cd "$SCRIPT_DIR"/../ || exit 1
+# shellcheck disable=SC1091
 source ./scripts/buildImageHelper
 
 buildImage "${1}" "test-base-image" "Dockerfile.base"

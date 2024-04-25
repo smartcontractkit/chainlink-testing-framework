@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -e
+
+# Find all 'go.mod' files, get their directories, and run an empty 'go test' in them to compile the tests.
+# shellcheck disable=SC2016
+find "./" -type f -name 'go.mod' -print0 | xargs -0 -I{} bash -c '
+    dir=$(dirname "{}")
+    echo "Executing cd \"$dir\" && go test -run=^# ./..."
+    cd "$dir"
+    go test -run=^# ./...
+'
