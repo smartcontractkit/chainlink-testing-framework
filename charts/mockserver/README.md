@@ -2,7 +2,7 @@
 
 ### Prerequisites
 
-- Kubernetes (i.e. [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) or [Docker for Desktop](https://www.docker.com/products/docker-desktop)) 
+- Kubernetes (i.e. [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) or [Docker for Desktop](https://www.docker.com/products/docker-desktop))
 - [Helm](https://docs.helm.sh/using_helm/#quickstart-guide)
 
 ### Helm Install
@@ -15,7 +15,7 @@ This is available by using `www.mock-server.com` as a chart repo, with the follo
 helm upgrade --install --namespace mockserver mockserver http://www.mock-server.com/mockserver-5.11.1.tgz
 ```
 
-**OR** 
+**OR**
 
 If you have helm chart source folder (i.e. you have the repository cloned):
 
@@ -23,7 +23,7 @@ If you have helm chart source folder (i.e. you have the repository cloned):
 helm upgrade --install --namespace mockserver mockserver helm/mockserver
 ```
 
-The two commands above will install MockServer into a **namespace** called `mockserver` with default configuration (as per the embedded [values.yaml](https://github.com/mock-server/mockserver/blob/master/helm/mockserver/values.yaml)).  
+The two commands above will install MockServer into a **namespace** called `mockserver` with default configuration (as per the embedded [values.yaml](https://github.com/mock-server/mockserver/blob/master/helm/mockserver/values.yaml)).
 MockServer will then be available on domain name `mockserver.mockserver.svc.cluster.local`, as long as the namespace you are calling from isn't prevented (by network policy) to call the `mockserver` namespace.
 
 **THEN**
@@ -85,7 +85,7 @@ This configmap can be used to configure MockServer by containing a `mockserver.p
 The `mockserver.properties` file should load these additional files from the directory `/config` which is the `mountPath` for the configmap.
 
 See [MockServer Configuration](https://www.mock-server.com/mock_server/configuration_properties.html) for details of all configuration options.
-  
+
 The mapping of the configuration configmap can be configured as follows:
 
 - `app.mountedConfigMapName` (default: mockserver-config) - name of the configuration configmap (in the same namespace) to mount
@@ -135,7 +135,7 @@ curl -v -X PUT http://$MOCKSERVER_HOST/status
 
 #### Docker for Desktop
 
-[Docker for Desktop](https://www.docker.com/products/docker-desktop) automatically exposes **LoadBalancer** services.  
+[Docker for Desktop](https://www.docker.com/products/docker-desktop) automatically exposes **LoadBalancer** services.
 On MacOS Docker for Desktop runs inside [Hyperkit](https://github.com/moby/hyperkit) so the node IP address is not reachable, therefore the only way to call services is via the exposed **LoadBalancer** service added by Docker for Desktop.
 
 To ensure that Docker for Desktop exposes MockServer update the service type to **LoadBalancer** using **--set service.type=LoadBalancer** and set the exposed port using **--set service.port=1080**, as follows:

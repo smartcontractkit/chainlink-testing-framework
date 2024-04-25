@@ -877,8 +877,8 @@ func SetNetworks(networkCfg config.NetworkConfig) ([]blockchain.EVMNetwork, erro
 		var walletKeys, httpUrls, wsUrls []string
 		networkName := strings.ToUpper(selectedNetworks[i])
 		forked := false
-		if networkCfg.ForkConfigs != nil {
-			_, forked = networkCfg.ForkConfigs[networkName]
+		if networkCfg.AnvilConfigs != nil {
+			_, forked = networkCfg.AnvilConfigs[networkName]
 		}
 		// if network is not simulated or forked, use the rpc urls and wallet keys from config
 		if !strings.Contains(networkName, "SIMULATED") && !forked {
