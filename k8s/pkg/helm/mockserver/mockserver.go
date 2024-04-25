@@ -113,6 +113,7 @@ func defaultProps() map[string]interface{} {
 		},
 		"image": map[string]interface{}{
 			"repository": mockserverRepo,
+			"version":    "5.15.0",
 			"snapshot":   false,
 			"pullPolicy": "IfNotPresent",
 		},

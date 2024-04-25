@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# Loop over each file passed to the script
+for file in "$@"; do
+    echo -n "Checking $file for local replacements... "
+    if grep -q 'replace .* => /' "$file"; then
+        echo -e "❌\nFound local replacements in $file:"
+        grep -n 'replace .* => /' "$file"
+        echo -e "\e[31mYou forgot about a local replacement\e[0m\n"
+        exit 1
+    else
+        echo "✅"
+    fi
+done

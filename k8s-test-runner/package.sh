@@ -17,7 +17,7 @@ if [ "$OS" != "darwin" ] && [ "$OS" != "linux" ]; then
 fi
 
 # Navigate to the cmd directory
-cd cmd/
+cd cmd/ || exit 1
 
 # Initialize binary name
 BINARY_NAME=""
@@ -35,5 +35,5 @@ fi
 cd ../
 
 # Package the Dockerfile, Helm chart, and the selected binary into a tarball, appending the version and OS to the tarball's name
-tar -czvf "k8s-test-runner-$OS-v$VERSION.tar.gz" Dockerfile.testbin chart -C cmd $BINARY_NAME
+tar -czvf "k8s-test-runner-$OS-v$VERSION.tar.gz" Dockerfile.testbin chart -C cmd "$BINARY_NAME"
 echo "Created k8s-test-runner-$OS-v$VERSION.tar.gz"

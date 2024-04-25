@@ -69,7 +69,7 @@ e2e.test
 k3dvolume/
 charts/**/*.tgz
 __debug*
-# saved private chain configuration 
+# saved private chain configuration
 .private_chains/*
 
 .direnv
