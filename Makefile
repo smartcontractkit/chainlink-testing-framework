@@ -19,15 +19,11 @@ else
 endif
 
 lint:
-	golangci-lint --color=always run ./... --fix -v
-	cd ./tools/gotestloghelper && golangci-lint --color=always run ./... --fix -v && cd -
-	cd ./k8s-test-runner && golangci-lint --color=always run ./... --fix -v && cd -
+	pre-commit run go-lint --all-files --show-diff-on-failure --color=always
 
 .PHONY: tidy
 tidy:
-	go mod tidy
-	cd ./tools/gotestloghelper && go mod tidy && cd -
-	cd ./k8s-test-runner && go mod tidy && cd -
+	pre-commit run go-mod-tidy --hook-stage pre-push --all-files --show-diff-on-failure --color=always
 
 .PHONY: go_mod
 go_mod:
@@ -62,6 +58,7 @@ ifeq ($(OSFLAG),$(OSX))
 	helm repo add grafana https://grafana.github.io/helm-charts
 	helm repo update
 	pre-commit install
+	pre-commit install --hook-type pre-push
 endif
 
 install: go_mod install_tools
@@ -71,9 +68,6 @@ install_ci: go_mod install_tools
 docker_prune:
 	docker system prune -a -f
 	docker volume prune -f
-
-compile_contracts:
-	python3 ./utils/compile_contracts.py
 
 test_unit: go_mod
 	go test -timeout 5m -json -cover -covermode=count -coverprofile=unit-test-coverage.out $(shell go list ./... | grep -v /k8s/e2e/ | grep -v /k8s/examples/ | grep -v /docker/test_env) 2>&1 | tee /tmp/gotest.log | gotestloghelper -ci

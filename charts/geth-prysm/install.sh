@@ -8,6 +8,7 @@ fi
 
 helm package .
 
+# shellcheck disable=SC2010
 chart_package=$(ls -1 | grep '.tgz')
 
 if [ -z "$chart_package" ]; then
@@ -21,4 +22,5 @@ if [ -z "$deployment_name" ]; then
 fi
 
 now=$(date +%s)
+# shellcheck disable=SC2086
 helm install "$deployment_name" "$chart_package" -f ./$values_file --set "genesis.values.currentUnixTimestamp"="$now" --set "eth2-common.genesis.values.currentUnixTimestamp"="$now" $2
