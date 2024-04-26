@@ -34,12 +34,6 @@ type Chart struct {
 	Values  *map[string]interface{}
 }
 
-const (
-	URLsKey            = "geth"
-	TXNodesAppLabel    = "geth-ethereum-geth"
-	MinerNodesAppLabel = "geth-ethereum-miner-node" // #nosec G101
-)
-
 func (m Chart) IsDeploymentNeeded() bool {
 	return true
 }
