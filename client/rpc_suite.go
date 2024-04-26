@@ -36,35 +36,32 @@ func (m *RPCClient) ModulateBaseFeeOverDuration(lggr zerolog.Logger, startingBas
 	ticker := time.NewTicker(partDuration)
 	defer ticker.Stop()
 	baseFeeToUpdate := startingBaseFee
-	for {
-		select {
-		case <-ticker.C:
-			lggr.Info().
-				Int64("Base Fee", baseFeeToUpdate).
-				Int64("Updating By", partUpdate).
-				Msg("Updating base fee per gas")
-			baseFeeToUpdate = baseFeeToUpdate + partUpdate
-			if spike {
-				if baseFeeToUpdate > intTargetBaseFee {
-					baseFeeToUpdate = intTargetBaseFee
-				}
-			} else {
-				if baseFeeToUpdate < intTargetBaseFee {
-					baseFeeToUpdate = intTargetBaseFee
-				}
+	for range ticker.C {
+		lggr.Info().
+			Int64("Base Fee", baseFeeToUpdate).
+			Int64("Updating By", partUpdate).
+			Msg("Updating base fee per gas")
+		baseFeeToUpdate = baseFeeToUpdate + partUpdate
+		if spike {
+			if baseFeeToUpdate > intTargetBaseFee {
+				baseFeeToUpdate = intTargetBaseFee
 			}
-			err := m.AnvilSetNextBlockBaseFeePerGas([]interface{}{strconv.FormatInt(baseFeeToUpdate, 10)})
-			if err != nil {
-				return fmt.Errorf("failed to set base fee %d: %w", baseFeeToUpdate, err)
-			}
-			lggr.Info().Int64("NextBlockBaseFeePerGas", baseFeeToUpdate).Msg("Updated base fee per gas")
-			if baseFeeToUpdate == intTargetBaseFee {
-				lggr.Info().
-					Int64("Base Fee", baseFeeToUpdate).
-					Msg("Reached target base fee")
-				return nil
+		} else {
+			if baseFeeToUpdate < intTargetBaseFee {
+				baseFeeToUpdate = intTargetBaseFee
 			}
 		}
+		err := m.AnvilSetNextBlockBaseFeePerGas([]interface{}{strconv.FormatInt(baseFeeToUpdate, 10)})
+		if err != nil {
+			return fmt.Errorf("failed to set base fee %d: %w", baseFeeToUpdate, err)
+		}
+		lggr.Info().Int64("NextBlockBaseFeePerGas", baseFeeToUpdate).Msg("Updated base fee per gas")
+		if baseFeeToUpdate == intTargetBaseFee {
+			lggr.Info().
+				Int64("Base Fee", baseFeeToUpdate).
+				Msg("Reached target base fee")
+			return nil
+		}
 	}
-
+	return fmt.Errorf("failed to reach target base fee %d", intTargetBaseFee)
 }
