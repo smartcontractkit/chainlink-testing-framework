@@ -78,7 +78,7 @@ func (g *Nethermind) getEth2ContainerRequest() (*tc.ContainerRequest, error) {
 			"--Init.WebSocketsEnabled=true",
 			fmt.Sprintf("--JsonRpc.WebSocketsPort=%s", DEFAULT_EVM_NODE_WS_PORT),
 			"--JsonRpc.Enabled=true",
-			"--JsonRpc.EnabledModules=net,eth,consensus,subscribe,web3,admin",
+			"--JsonRpc.EnabledModules=net,eth,consensus,subscribe,web3,admin,txpool,debug,trace",
 			"--JsonRpc.Host=0.0.0.0",
 			fmt.Sprintf("--JsonRpc.Port=%s", DEFAULT_EVM_NODE_HTTP_PORT),
 			"--JsonRpc.EngineHost=0.0.0.0",
