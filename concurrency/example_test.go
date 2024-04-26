@@ -1,9 +1,12 @@
-package concurrency
+package concurrency_test
 
 import (
 	"fmt"
+	"testing"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/concurrency"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/stretchr/testify/require"
 )
 
 type client struct{}
@@ -32,11 +35,17 @@ func (k contractResult) GetResult() ContractIntstance {
 	return k.instance
 }
 
+func TestExampleContractsWithConfiguration(t *testing.T) {
+	instances, err := DeployContractsWithConfiguration(&client{}, []contractConfiguration{{}, {}})
+	require.NoError(t, err, "failed to deploy contract instances")
+	require.Equal(t, 2, len(instances), "expected 2 contract instances")
+}
+
 // DeployContractsWithConfiguration shows a very simplified method that deploys concurrently contract instances with given configurations
 func DeployContractsWithConfiguration(client *client, contractConfigs []contractConfiguration) ([]ContractIntstance, error) {
 	l := logging.GetTestLogger(nil)
 
-	executor := NewConcurrentExecutor[ContractIntstance, contractResult, contractConfiguration](l)
+	executor := concurrency.NewConcurrentExecutor[ContractIntstance, contractResult, contractConfiguration](l)
 
 	var deployContractFn = func(channel chan contractResult, errorCh chan error, executorNum int, payload contractConfiguration) {
 		keyNum := executorNum + 1 // key 0 is the root key
@@ -62,12 +71,18 @@ func DeployContractsWithConfiguration(client *client, contractConfigs []contract
 	return results, nil
 }
 
+func TestExampleContractsWithoutConfiguration(t *testing.T) {
+	instances, err := DeployIdenticalContracts(&client{}, 2)
+	require.NoError(t, err, "failed to deploy contract instances")
+	require.Equal(t, 2, len(instances), "expected 2 contract instances")
+}
+
 // DeployIdenticalContracts shows a very simplified method that deploys concurrently identical contract instances
 // which require no configuration, just need to be exected N amount of times
 func DeployIdenticalContracts(client *client, numberOfContracts int) ([]ContractIntstance, error) {
 	l := logging.GetTestLogger(nil)
 
-	executor := NewConcurrentExecutor[ContractIntstance, contractResult, NoTaskType](l)
+	executor := concurrency.NewConcurrentExecutor[ContractIntstance, contractResult, concurrency.NoTaskType](l)
 
 	var deployContractFn = func(channel chan contractResult, errorCh chan error, executorNum int) {
 		keyNum := executorNum + 1 // key 0 is the root key

@@ -22,6 +22,7 @@ type ConcurrentExecutor[ResultType any, ResultChannelType ChannelWithResult[Resu
 	errors   []error
 	logger   zerolog.Logger
 	failFast bool
+	context  context.Context
 }
 
 // NewConcurrentExecutor creates a new ConcurrentExecutor
@@ -31,6 +32,7 @@ func NewConcurrentExecutor[ResultType any, ResultChannelType ChannelWithResult[R
 		results:  []ResultType{},
 		errors:   []error{},
 		failFast: true,
+		context:  context.Background(),
 	}
 
 	for _, opt := range opts {
@@ -38,6 +40,13 @@ func NewConcurrentExecutor[ResultType any, ResultChannelType ChannelWithResult[R
 	}
 
 	return c
+}
+
+// / WithContext sets the context for the executor, if not set it defaults to context.Background()
+func WithContext[ResultType any, ResultChannelType ChannelWithResult[ResultType], TaskType any](context context.Context) ConcurrentExecutorOpt[ResultType, ResultChannelType, TaskType] {
+	return func(c *ConcurrentExecutor[ResultType, ResultChannelType, TaskType]) {
+		c.context = context
+	}
 }
 
 // WithoutFailFast disables fail fast. Executor will wait for all tasks to finish even if some of them fail.
@@ -61,7 +70,7 @@ type ChannelWithResult[ResultType any] interface {
 	GetResult() ResultType
 }
 
-// GetResults returns all errors that occurred during processing
+// GetErrors returns all errors that occurred during processing
 func (e *ConcurrentExecutor[ResultType, ResultChannelType, TaskType]) GetErrors() []error {
 	return e.errors
 }
@@ -103,7 +112,7 @@ func (e *ConcurrentExecutor[ResultType, ResultChannelType, TaskType]) Execute(co
 	// atomic counter to keep track of processed tasks
 	var atomicCounter atomic.Int32
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(e.context)
 
 	// listen in the background until all tasks are processed (no fail-fast)
 	go func() {
