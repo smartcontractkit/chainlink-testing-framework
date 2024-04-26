@@ -8,12 +8,12 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// ModulateGasPriceOverDuration will cause the gas price to rise or drop to a certain percentage of the starting gas price
+// ModulateBaseFeeOverDuration will cause the gas price to rise or drop to a certain percentage of the starting gas price
 // over the duration specified.
 // Minimum duration is 1 s
 // if spike is true, the gas price will rise to the target price
 // if spike is false, the gas price will drop to the target price
-func (m *RPCClient) ModulateGasPriceOverDuration(lggr zerolog.Logger, startingBaseFee int64, percentage float64, duration time.Duration, spike bool) error {
+func (m *RPCClient) ModulateBaseFeeOverDuration(lggr zerolog.Logger, startingBaseFee int64, percentage float64, duration time.Duration, spike bool) error {
 	if duration < time.Second {
 		return fmt.Errorf("duration must be at least 1s")
 	}

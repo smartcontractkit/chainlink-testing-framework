@@ -34,7 +34,7 @@ func TestRPCSuite(t *testing.T) {
 		// check the base fee of the block
 		require.Equal(t, "2000000000", block.BaseFee().String(), "expected base fee to be 20 gwei")
 		logger := logging.GetTestLogger(t)
-		err = anvilClient.ModulateGasPriceOverDuration(logger, 2000000000, 0.5, 20*time.Second, true)
+		err = anvilClient.ModulateBaseFeeOverDuration(logger, 2000000000, 0.5, 20*time.Second, true)
 		require.NoError(t, err)
 		// mine a block
 		err = anvilClient.AnvilMine(nil)
@@ -45,7 +45,7 @@ func TestRPCSuite(t *testing.T) {
 		require.NoError(t, err)
 		// check the base fee of the block
 		require.Equal(t, "3000000000", block.BaseFee().String(), "expected base fee to be 30 gwei")
-		err = anvilClient.ModulateGasPriceOverDuration(logger, 3000000000, 0.25, 15*time.Second, false)
+		err = anvilClient.ModulateBaseFeeOverDuration(logger, 3000000000, 0.25, 15*time.Second, false)
 		require.NoError(t, err)
 		// mine a block
 		err = anvilClient.AnvilMine(nil)
