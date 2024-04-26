@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/concurrency"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
-	"github.com/stretchr/testify/require"
 )
 
 type client struct{}
