@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
@@ -17,7 +18,7 @@ func TestGethLegacy(t *testing.T) {
 	l := logging.GetTestLogger(t)
 	network, err := docker.CreateNetwork(l)
 	require.NoError(t, err)
-	defaultChainCfg := GetDefaultChainConfig()
+	defaultChainCfg := config.GetDefaultChainConfig()
 	g := NewGethEth1([]string{network.Name}, &defaultChainCfg).
 		WithTestInstance(t)
 	_, err = g.StartContainer()
@@ -35,11 +36,11 @@ func TestGethEth1(t *testing.T) {
 
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WithEthereumVersion(EthereumVersion_Eth1_Legacy).
-		WithEthereumChainConfig(EthereumChainConfig{
+		WithEthereumVersion(config.EthereumVersion_Eth1_Legacy).
+		WithEthereumChainConfig(config.EthereumChainConfig{
 			ChainID: 2337,
 		}).
-		WithExecutionLayer(ExecutionLayer_Geth).
+		WithExecutionLayer(config.ExecutionLayer_Geth).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 
@@ -57,9 +58,9 @@ func TestGethEth2(t *testing.T) {
 
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WithEthereumVersion(EthereumVersion_Eth2_Legacy).
-		WithConsensusLayer(ConsensusLayer_Prysm).
-		WithExecutionLayer(ExecutionLayer_Geth).
+		WithEthereumVersion(config.EthereumVersion_Eth2_Legacy).
+		WithConsensusLayer(config.ConsensusLayer_Prysm).
+		WithExecutionLayer(config.ExecutionLayer_Geth).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 

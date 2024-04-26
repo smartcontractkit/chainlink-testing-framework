@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
@@ -38,7 +39,7 @@ func TestEthEnvComponentPauseChaos(t *testing.T) {
 	network, err := docker.CreateNetwork(l)
 	require.NoError(t, err)
 
-	defaultChainCfg := GetDefaultChainConfig()
+	defaultChainCfg := config.GetDefaultChainConfig()
 	g := NewGethEth1([]string{network.Name}, &defaultChainCfg).
 		WithTestInstance(t)
 	_, err = g.StartContainer()

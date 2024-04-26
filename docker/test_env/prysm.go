@@ -13,6 +13,7 @@ import (
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
@@ -35,12 +36,12 @@ type PrysmBeaconChain struct {
 	ExternalQueryRpcUrl       string
 	generatedDataHostDir      string
 	gethInternalExecutionURL  string
-	chainConfig               *EthereumChainConfig
+	chainConfig               *config.EthereumChainConfig
 	l                         zerolog.Logger
 	t                         *testing.T
 }
 
-func NewPrysmBeaconChain(networks []string, chainConfig *EthereumChainConfig, customConfigDataDir, gethExecutionURL string, opts ...EnvComponentOption) (*PrysmBeaconChain, error) {
+func NewPrysmBeaconChain(networks []string, chainConfig *config.EthereumChainConfig, customConfigDataDir, gethExecutionURL string, opts ...EnvComponentOption) (*PrysmBeaconChain, error) {
 	parts := strings.Split(defaultPrysmBeaconChainImage, ":")
 	g := &PrysmBeaconChain{
 		EnvComponent: EnvComponent{
@@ -160,7 +161,7 @@ func (g *PrysmBeaconChain) getContainerRequest(networks []string) (*tc.Container
 
 type PrysmValidator struct {
 	EnvComponent
-	chainConfig               *EthereumChainConfig
+	chainConfig               *config.EthereumChainConfig
 	internalBeaconRpcProvider string
 	valKeysDir                string
 	generatedDataHostDir      string
@@ -168,7 +169,7 @@ type PrysmValidator struct {
 	t                         *testing.T
 }
 
-func NewPrysmValidator(networks []string, chainConfig *EthereumChainConfig, generatedDataHostDir, valKeysDir, internalBeaconRpcProvider string, opts ...EnvComponentOption) (*PrysmValidator, error) {
+func NewPrysmValidator(networks []string, chainConfig *config.EthereumChainConfig, generatedDataHostDir, valKeysDir, internalBeaconRpcProvider string, opts ...EnvComponentOption) (*PrysmValidator, error) {
 	parts := strings.Split(defaultPyrsmValidatorImage, ":")
 	g := &PrysmValidator{
 		EnvComponent: EnvComponent{

@@ -14,6 +14,7 @@ import (
 	flag "github.com/spf13/pflag"
 	"github.com/testcontainers/testcontainers-go"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker/test_env"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 )
@@ -155,7 +156,7 @@ func startPrivateEthChainE(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	consensusLayerToUse := test_env.ConsensusLayer(consensusLayer)
+	consensusLayerToUse := config.ConsensusLayer(consensusLayer)
 	if consensusLayer != "" && ethereumVersion == "eth1" {
 		consensusLayerToUse = ""
 	}
@@ -166,10 +167,10 @@ func startPrivateEthChainE(cmd *cobra.Command, args []string) error {
 	}
 
 	builder := test_env.NewEthereumNetworkBuilder()
-	builder = *builder.WithEthereumVersion(test_env.EthereumVersion(ethereumVersion)).
+	builder = *builder.WithEthereumVersion(config.EthereumVersion(ethereumVersion)).
 		WithConsensusLayer(consensusLayerToUse).
-		WithExecutionLayer(test_env.ExecutionLayer(executionLayer)).
-		WithEthereumChainConfig(test_env.EthereumChainConfig{
+		WithExecutionLayer(config.ExecutionLayer(executionLayer)).
+		WithEthereumChainConfig(config.EthereumChainConfig{
 			ValidatorCount: 8,
 			SlotsPerEpoch:  2,
 			SecondsPerSlot: 6,
@@ -225,15 +226,15 @@ func handleExitSignal() {
 	<-exitChan
 }
 
-func getCustomImages(flags *flag.FlagSet) (map[test_env.ContainerType]string, error) {
-	customImages := make(map[test_env.ContainerType]string)
+func getCustomImages(flags *flag.FlagSet) (map[config.ContainerType]string, error) {
+	customImages := make(map[config.ContainerType]string)
 	executionClientImage, err := flags.GetString(Flag_ExecutionClientImage)
 	if err != nil {
 		return nil, err
 	}
 
 	if executionClientImage != "" {
-		customImages[test_env.ContainerType_ExecutionLayer] = executionClientImage
+		customImages[config.ContainerType_ExecutionLayer] = executionClientImage
 	}
 
 	consensusClientImage, err := flags.GetString(Flag_ConsensucClientImage)
@@ -242,7 +243,7 @@ func getCustomImages(flags *flag.FlagSet) (map[test_env.ContainerType]string, er
 	}
 
 	if consensusClientImage != "" {
-		customImages[test_env.ContainerType_ConsensusLayer] = consensusClientImage
+		customImages[config.ContainerType_ConsensusLayer] = consensusClientImage
 	}
 
 	validatorImage, err := flags.GetString(Flag_ValidatorImage)
@@ -251,7 +252,7 @@ func getCustomImages(flags *flag.FlagSet) (map[test_env.ContainerType]string, er
 	}
 
 	if validatorImage != "" {
-		customImages[test_env.ContainerType_ConsensusValidator] = validatorImage
+		customImages[config.ContainerType_ConsensusValidator] = validatorImage
 	}
 
 	return customImages, nil

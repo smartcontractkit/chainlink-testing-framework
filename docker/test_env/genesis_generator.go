@@ -15,6 +15,7 @@ import (
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
@@ -24,13 +25,13 @@ const defaultGenisisGeneratorImage = "tofelb/ethereum-genesis-generator:2.0.5"
 
 type EthGenesisGeneretor struct {
 	EnvComponent
-	chainConfig          EthereumChainConfig
+	chainConfig          config.EthereumChainConfig
 	l                    zerolog.Logger
 	generatedDataHostDir string
 	t                    *testing.T
 }
 
-func NewEthGenesisGenerator(chainConfig EthereumChainConfig, generatedDataHostDir string, opts ...EnvComponentOption) (*EthGenesisGeneretor, error) {
+func NewEthGenesisGenerator(chainConfig config.EthereumChainConfig, generatedDataHostDir string, opts ...EnvComponentOption) (*EthGenesisGeneretor, error) {
 	parts := strings.Split(defaultGenisisGeneratorImage, ":")
 	g := &EthGenesisGeneretor{
 		EnvComponent: EnvComponent{

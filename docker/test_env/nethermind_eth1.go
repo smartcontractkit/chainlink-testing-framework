@@ -13,13 +13,14 @@ import (
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/templates"
 )
 
 // NewNethermindEth1 starts a new Nethermin Eth1 node running in Docker
-func NewNethermindEth1(networks []string, chainConfig *EthereumChainConfig, opts ...EnvComponentOption) (*Nethermind, error) {
+func NewNethermindEth1(networks []string, chainConfig *config.EthereumChainConfig, opts ...EnvComponentOption) (*Nethermind, error) {
 	parts := strings.Split(defaultNethermindEth1Image, ":")
 	g := &Nethermind{
 		EnvComponent: EnvComponent{
@@ -30,7 +31,7 @@ func NewNethermindEth1(networks []string, chainConfig *EthereumChainConfig, opts
 		},
 		chainConfig:     chainConfig,
 		l:               logging.GetTestLogger(nil),
-		ethereumVersion: EthereumVersion_Eth1,
+		ethereumVersion: config.EthereumVersion_Eth1,
 	}
 	g.SetDefaultHooks()
 	for _, opt := range opts {

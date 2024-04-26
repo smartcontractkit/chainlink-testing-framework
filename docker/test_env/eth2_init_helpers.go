@@ -15,20 +15,21 @@ import (
 	"github.com/rs/zerolog/log"
 	tc "github.com/testcontainers/testcontainers-go"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 )
 
 type AfterGenesisHelper struct {
 	EnvComponent
-	chainConfig         EthereumChainConfig
+	chainConfig         config.EthereumChainConfig
 	l                   zerolog.Logger
 	customConfigDataDir string
 	addressesToFund     []string
 	t                   *testing.T
 }
 
-func NewInitHelper(chainConfig EthereumChainConfig, customConfigDataDir string, opts ...EnvComponentOption) *AfterGenesisHelper {
+func NewInitHelper(chainConfig config.EthereumChainConfig, customConfigDataDir string, opts ...EnvComponentOption) *AfterGenesisHelper {
 	g := &AfterGenesisHelper{
 		EnvComponent: EnvComponent{
 			ContainerName: fmt.Sprintf("%s-%s", "after-genesis-helper", uuid.NewString()[0:8]),
@@ -160,7 +161,7 @@ echo "------------------------------------------------------------------"
 		JwtFileLocation:             JWT_SECRET_FILE_LOCATION_INSIDE_CONTAINER,
 		AccountKeystoreFileLocation: ACCOUNT_KEYSTORE_FILE_INSIDE_CONTAINER,
 		KeystoreDirLocation:         KEYSTORE_DIR_LOCATION_INSIDE_CONTAINER,
-		GenesisTimestamp:            g.chainConfig.genesisTimestamp,
+		GenesisTimestamp:            g.chainConfig.GenesisTimestamp,
 	}
 
 	t, err := template.New("init").Parse(initTemplate)

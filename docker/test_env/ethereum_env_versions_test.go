@@ -10,12 +10,13 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
 var twentySecDuration = time.Duration(20 * time.Second)
-var stopAllContainers = func(t *testing.T, containers []EthereumNetworkContainer) {
+var stopAllContainers = func(t *testing.T, containers []config.EthereumNetworkContainer) {
 	for _, c := range containers {
 		err := (*c.Container).Stop(context.Background(), &twentySecDuration)
 		require.NoError(t, err, "Couldn't stop container")
@@ -46,9 +47,9 @@ func TestEthEnvNethermindCompatiblity(t *testing.T) {
 		t.Run(fmt.Sprintf("nethermind-%s", tc), func(t *testing.T) {
 			builder := NewEthereumNetworkBuilder()
 			cfg, err := builder.
-				WithExecutionLayer(ExecutionLayer_Nethermind).
-				WithCustomDockerImages(map[ContainerType]string{
-					ContainerType_ExecutionLayer: tc,
+				WithExecutionLayer(config.ExecutionLayer_Nethermind).
+				WithCustomDockerImages(map[config.ContainerType]string{
+					config.ContainerType_ExecutionLayer: tc,
 				}).
 				Build()
 			require.NoError(t, err, "Builder validation failed")
@@ -94,8 +95,8 @@ func TestEthEnvGethCompatiblity(t *testing.T) {
 		t.Run(fmt.Sprintf("geth-%s", tc), func(t *testing.T) {
 			builder := NewEthereumNetworkBuilder()
 			cfg, err := builder.
-				WithCustomDockerImages(map[ContainerType]string{
-					ContainerType_ExecutionLayer: tc,
+				WithCustomDockerImages(map[config.ContainerType]string{
+					config.ContainerType_ExecutionLayer: tc,
 				}).
 				Build()
 			require.NoError(t, err, "Builder validation failed")
@@ -141,8 +142,8 @@ func TestEthEnvErigonCompatiblity(t *testing.T) {
 		t.Run(fmt.Sprintf("erigon-%s", tc), func(t *testing.T) {
 			builder := NewEthereumNetworkBuilder()
 			cfg, err := builder.
-				WithCustomDockerImages(map[ContainerType]string{
-					ContainerType_ExecutionLayer: tc,
+				WithCustomDockerImages(map[config.ContainerType]string{
+					config.ContainerType_ExecutionLayer: tc,
 				}).
 				Build()
 			require.NoError(t, err, "Builder validation failed")
@@ -188,8 +189,8 @@ func TestEthEnvBesuCompatiblity(t *testing.T) {
 		t.Run(fmt.Sprintf("besu-%s", tc), func(t *testing.T) {
 			builder := NewEthereumNetworkBuilder()
 			cfg, err := builder.
-				WithCustomDockerImages(map[ContainerType]string{
-					ContainerType_ExecutionLayer: tc,
+				WithCustomDockerImages(map[config.ContainerType]string{
+					config.ContainerType_ExecutionLayer: tc,
 				}).
 				Build()
 			require.NoError(t, err, "Builder validation failed")

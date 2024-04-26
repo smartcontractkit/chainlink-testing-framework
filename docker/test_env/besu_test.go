@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
@@ -17,8 +18,8 @@ func TestBesuEth1(t *testing.T) {
 
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WithEthereumVersion(EthereumVersion_Eth1_Legacy).
-		WithExecutionLayer(ExecutionLayer_Besu).
+		WithEthereumVersion(config.EthereumVersion_Eth1_Legacy).
+		WithExecutionLayer(config.ExecutionLayer_Besu).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 
@@ -41,9 +42,9 @@ func TestBesuEth2(t *testing.T) {
 
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WithEthereumVersion(EthereumVersion_Eth2_Legacy).
-		WithConsensusLayer(ConsensusLayer_Prysm).
-		WithExecutionLayer(ExecutionLayer_Besu).
+		WithEthereumVersion(config.EthereumVersion_Eth2_Legacy).
+		WithConsensusLayer(config.ConsensusLayer_Prysm).
+		WithExecutionLayer(config.ExecutionLayer_Besu).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 
