@@ -113,7 +113,7 @@ func defaultProps() *Props {
 			"geth": map[string]interface{}{
 				"image": map[string]interface{}{
 					"image":   gethImage,
-					"version": "v1.10.25",
+					"version": "v1.12.2",
 				},
 			},
 			"resources": map[string]interface{}{

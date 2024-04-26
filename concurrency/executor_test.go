@@ -1,11 +1,13 @@
 package concurrency_test
 
 import (
+	"context"
 	"crypto/rand"
 	"errors"
 	"fmt"
 	"math/big"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -258,4 +260,40 @@ func TestExecuteSimple(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestParentContext(t *testing.T) {
+	l := logging.GetTestLogger(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	executor := concurrency.NewConcurrentExecutor(l, concurrency.WithContext[int, result, config](ctx))
+
+	processorFn := func(resultCh chan result, errCh chan error, keyNum int, _ config) {
+		time.Sleep(10 * time.Millisecond)
+		randomInt, err := rand.Int(rand.Reader, big.NewInt(100))
+		if err != nil {
+			errCh <- err
+			return
+		}
+
+		resultCh <- result{integer: int(randomInt.Int64())}
+	}
+
+	taskCount := 1000
+
+	configs := []config{}
+	for i := 0; i < taskCount; i++ {
+		configs = append(configs, struct{}{})
+	}
+
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		cancel()
+	}()
+
+	results, err := executor.Execute(10, configs, processorFn)
+
+	require.NoError(t, err, "Error executing concurrently")
+	require.GreaterOrEqual(t, len(results), 1, "Wrong result number")
+	require.Equal(t, 0, len(executor.GetErrors()), "No errors expected")
 }

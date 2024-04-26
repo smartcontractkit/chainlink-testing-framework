@@ -1,6 +1,7 @@
 package config
 
 import (
+	_ "embed"
 	"errors"
 	"fmt"
 	"time"
@@ -177,7 +178,7 @@ type EthereumChainConfig struct {
 	HardForkEpochs   map[string]int `json:"HardForkEpochs" toml:"HardForkEpochs"`
 }
 
-//go:embed example/default_ethereum_env.toml
+//go:embed tomls/default_ethereum_env.toml
 var defaultEthereumChainConfig []byte
 
 func (c *EthereumChainConfig) Default() error {
