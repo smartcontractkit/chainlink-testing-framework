@@ -31,7 +31,7 @@ spec:
           image: {{ $.Values.image }}
           securityContext:
             runAsNonRoot: true
-            runAsUser: 65534 # UID for 'nobody' in Alpine      
+            runAsUser: 65534 # UID for 'nobody' in Alpine
           args:
             - -test.v
             - -test.run

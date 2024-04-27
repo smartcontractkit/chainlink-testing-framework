@@ -1,0 +1,23 @@
+#!/bin/bash
+
+set -e
+
+# Find all 'go.mod' files, get their directories, and run 'go mod tidy'
+# shellcheck disable=SC2016
+find "./" -type f -name 'go.mod' -print0 | xargs -0 -I{} bash -c '
+    dir=$(dirname "{}")
+    echo "Executing cd \"$dir\" && go mod tidy"
+    cd "$dir"
+    go mod tidy
+'
+# pre-commit stashes changes before running the hooks so we can use git to check for changes here
+# Run git diff and capture output
+output=$(git diff --stat)
+
+if [ -z "$output" ]; then
+    echo "No changes in any files."
+else
+    echo "go.mod files that need to be tidied:"
+    echo "$output" | awk -F '|' '/\|/ { print $1 }'
+    exit 1
+fi

@@ -66,7 +66,7 @@ To read how to run a test in k8s, read [here](./k8s/REMOTE_RUN.md)
 
 Create an env in a separate file and run it
 
-```
+```sh
 export CHAINLINK_IMAGE="public.ecr.aws/chainlink/chainlink"
 export CHAINLINK_TAG="1.4.0-root"
 export CHAINLINK_ENV_USER="Satoshi"
@@ -97,7 +97,7 @@ go run k8s/examples/simple/env.go
 
 If you have another env of that type, you can connect by overriding environment name
 
-```
+```sh
 ENV_NAMESPACE="..."  go run k8s/examples/chainlink/env.go
 ```
 
@@ -105,9 +105,9 @@ Add more presets [here](./k8s/presets)
 
 Add more programmatic examples [here](./k8s/examples/)
 
-If you have [chaosmesh]() installed in your cluster you can pull and generated CRD in go like that
+If you have [chaosmesh](https://chaos-mesh.org/) installed in your cluster you can pull and generated CRD in go like that
 
-```
+```sh
 make chaosmesh
 ```
 
@@ -206,7 +206,7 @@ cfg, err: = builder.
 
 You can start a simulated network with a single command:
 
-```
+```sh
 go run docker/test_env/cmd/main.go start-test-env private-chain
 ```
 
@@ -214,7 +214,7 @@ By default it will start a network with 1 node running `Geth` and `Prysm`. It wi
 
 Following cmd line flags are available:
 
-```
+```sh
   -c, --chain-id int             chain id (default 1337)
   -l, --consensus-layer string   consensus layer (prysm) (default "prysm")
   -t, --consensus-type string    consensus type (pow or pos) (default "pos")
@@ -227,7 +227,7 @@ Following cmd line flags are available:
 
 To connect to that environment in your tests use the following code:
 
-```
+```go
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
 		WihtExistingConfigFromEnvVar().
@@ -312,7 +312,6 @@ ls := logstream.NewLogStream(t, testConfig.Logging)
 If using `testcontainers-go` Docker containers it is recommended to use life cycle hooks for connecting and disconnecting LogStream from the container. You can do that when creating `ContainerRequest` in the following way:
 
 ```golang
-
 containerRequest := &tc.ContainerRequest{
 		LifecycleHooks: []tc.ContainerLifecycleHooks{
 			{PostStarts: []tc.ContainerHook{
@@ -340,7 +339,6 @@ You can print log location for each target using this function: `(m *LogStream) 
 It is recommended to shutdown LogStream at the end of your tests. Here's an example:
 
 ```golang
-
 t.Cleanup(func() {
     l.Warn().Msg("Shutting down Log Stream")
 

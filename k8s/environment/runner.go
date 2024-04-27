@@ -150,7 +150,7 @@ type Props struct {
 	Labels             *map[string]*string
 	Image              string
 	TestName           string
-	NoManifestUpdate   bool
+	SkipManifestUpdate bool
 	PreventPodEviction bool
 }
 
@@ -379,7 +379,7 @@ func jobEnvVars(props *Props) *[]*k8s.EnvVar {
 	env[config.EnvVarNamespace] = props.TargetNamespace
 	env["TEST_NAME"] = props.TestName
 	env[config.EnvVarInsideK8s] = "true"
-	env[config.EnvVarNoManifestUpdate] = strconv.FormatBool(props.NoManifestUpdate)
+	env[config.EnvVarSkipManifestUpdate] = strconv.FormatBool(props.SkipManifestUpdate)
 
 	// convert from map to the expected array
 	cdk8sVars := make([]*k8s.EnvVar, 0)

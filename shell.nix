@@ -53,11 +53,14 @@ mkShell' {
 
   LD_LIBRARY_PATH = lib.makeLibraryPath [pkgs.zlib stdenv.cc.cc.lib]; # lib64
   GOROOT = "${go}/share/go";
+  CGO_ENABLED = "0";
   HELM_REPOSITORY_CONFIG = "${scriptDir}/.helm-repositories.yaml";
 
   shellHook = ''
     # enable pre-commit hooks
     pre-commit install > /dev/null
+    # enable pre-push hooks
+    pre-commit install --hook-type pre-push > /dev/null
     # Update helm repositories
     helm repo update > /dev/null
     # setup go bin for nix
