@@ -3,13 +3,13 @@
 set -e
 
 # Find all 'go.mod' files, get their directories, and run 'go mod tidy'
-# shellcheck disable=SC2016
-find "./" -type f -name 'go.mod' -print0 | xargs -0 -I{} bash -c '
-    dir=$(dirname "{}")
+find "./" -type f -name 'go.mod' -print0 | while IFS= read -r -d $'\0' file; do
+    dir=$(dirname "$file")
     echo "Executing cd \"$dir\" && go mod tidy"
     cd "$dir"
     go mod tidy
-'
+    cd -
+done
 # pre-commit stashes changes before running the hooks so we can use git to check for changes here
 # Run git diff and capture output
 output=$(git diff --stat)
