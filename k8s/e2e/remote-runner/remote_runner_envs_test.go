@@ -102,7 +102,7 @@ func TestFailedTestLogic(t *testing.T) {
 	fmt.Println(environment.TEST_FAILED)
 }
 
-func TestRemoteRunnerOneSetupWithMultipeTests(t *testing.T) {
+func TestRemoteRunnerOneSetupWithMultipleTests(t *testing.T) {
 	t.Parallel()
 	testEnvConfig := common.GetTestEnvConfig(t)
 	ethChart := ethereum.New(nil)

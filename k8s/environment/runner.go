@@ -375,7 +375,7 @@ func jobEnvVars(props *Props) *[]*k8s.EnvVar {
 		}
 	}
 
-	// Add variables that should need specific values for thre remote runner
+	// Add variables that should need specific values for the remote runner
 	env[config.EnvVarNamespace] = props.TargetNamespace
 	env["TEST_NAME"] = props.TestName
 	env[config.EnvVarInsideK8s] = "true"

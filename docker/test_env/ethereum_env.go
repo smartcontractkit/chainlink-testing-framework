@@ -135,7 +135,7 @@ func (b *EthereumNetworkBuilder) WithExistingConfig(config EthereumNetwork) *Eth
 	return b
 }
 
-func (b *EthereumNetworkBuilder) WihtExistingConfigFromEnvVar() *EthereumNetworkBuilder {
+func (b *EthereumNetworkBuilder) WithExistingConfigFromEnvVar() *EthereumNetworkBuilder {
 	b.existingFromEnvVar = true
 	return b
 }
@@ -754,7 +754,7 @@ func (en *EthereumNetwork) Save() error {
 func (en *EthereumNetwork) Validate() error {
 	l := logging.GetTestLogger(nil)
 
-	// logically it doesn't belong here, but placing it here guarantees it will always run without chaning API
+	// logically it doesn't belong here, but placing it here guarantees it will always run without chaining API
 	if en.EthereumVersion != nil && en.ConsensusType != nil {
 		l.Warn().Msg("Both EthereumVersion and ConsensusType are set. ConsensusType as a _deprecated_ field will be ignored")
 	}

@@ -50,6 +50,7 @@ ifeq ($(OSFLAG),$(OSX))
 	asdf plugin-add kubectl || true
 	asdf plugin-add python || true
 	asdf plugin add pre-commit || true
+	asdf plugin add typos || true
 	asdf install
 	mkdir /tmp/k3dvolume/ || true
 	yarn global add cdk8s-cli@$(CDK8S_CLI_VERSION)

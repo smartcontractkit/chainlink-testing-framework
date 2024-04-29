@@ -55,7 +55,7 @@ var testErrorPrefixRegexp = regexp.MustCompile(testErrorPrefix)
 var testErrorPrefix2Regexp = regexp.MustCompile(testErrorPrefix2)
 var packageOkFailPrefixRegexp = regexp.MustCompile(packageOkFailPrefix)
 
-// Represntation of a go test -json event
+// Representation of a go test -json event
 type GoTestEvent struct {
 	Time    time.Time `json:"Time,omitempty"`
 	Action  Action    `json:"Action,omitempty"`

@@ -53,7 +53,7 @@ func (n *NetworkConfig) applySecrets() error {
 		return nil
 	}
 
-	err := n.applyBase64Enconded(encodedEndpoints)
+	err := n.applyBase64Encoded(encodedEndpoints)
 	if err != nil {
 		return fmt.Errorf("error reading network encoded endpoints: %w", err)
 	}
@@ -69,7 +69,7 @@ func (n *NetworkConfig) applyDecoded(configDecoded string) error {
 	var cfg NetworkConfig
 	err := toml.Unmarshal([]byte(configDecoded), &cfg)
 	if err != nil {
-		return fmt.Errorf("error unmarshaling network config: %w", err)
+		return fmt.Errorf("error unmarshalling network config: %w", err)
 	}
 
 	cfg.UpperCaseNetworkNames()
@@ -115,7 +115,7 @@ func (n *NetworkConfig) OverrideURLsAndKeysFromEVMNetwork() {
 	}
 }
 
-func (n *NetworkConfig) applyBase64Enconded(configEncoded string) error {
+func (n *NetworkConfig) applyBase64Encoded(configEncoded string) error {
 	if configEncoded == "" {
 		return nil
 	}

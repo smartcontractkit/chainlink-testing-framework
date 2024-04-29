@@ -68,7 +68,7 @@ func init() {
 		Flag_WaitForFinalization,
 		"w",
 		false,
-		"wait for finalization of at least 1 epoch (might take up to 5 mintues) default: false",
+		"wait for finalization of at least 1 epoch (might take up to 5 minutes) default: false",
 	)
 
 	StartTestEnvCmd.PersistentFlags().IntP(

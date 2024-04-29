@@ -105,7 +105,7 @@ func TestEthEnvWithPrysmAndGethReuseFromEnv(t *testing.T) {
 	os.Setenv(CONFIG_ENV_VAR_NAME, "change-me-to-the-path-of-your-config-file")
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WihtExistingConfigFromEnvVar().
+		WithExistingConfigFromEnvVar().
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 
@@ -208,7 +208,7 @@ func readEthereumNetworkConfig(configDecoded string) (EthereumNetwork, error) {
 	var net ethereumNetworkWrapper
 	err := toml.Unmarshal([]byte(configDecoded), &net)
 	if err != nil {
-		return EthereumNetwork{}, fmt.Errorf("error unmarshaling ethereum network config: %w", err)
+		return EthereumNetwork{}, fmt.Errorf("error unmarshalling ethereum network config: %w", err)
 	}
 
 	return *net.EthereumNetwork, nil

@@ -564,9 +564,9 @@ func (m *K8sClient) ExecuteInPod(namespace, podName, containerName string, comma
 }
 
 func podNames(podItems *v1.PodList) []string {
-	pn := make([]string, 0)
+	on := make([]string, 0)
 	for _, p := range podItems.Items {
-		pn = append(pn, p.Name)
+		on = append(on, p.Name)
 	}
-	return pn
+	return on
 }

@@ -52,7 +52,7 @@ func (c *EthereumChainConfig) Default() error {
 		EthereumNetwork *EthereumNetwork `toml:"PrivateEthereumNetwork"`
 	}{}
 	if err := toml.Unmarshal(defaultEthereumChainConfig, &wrapper); err != nil {
-		return fmt.Errorf("error unmarshaling ethereum network config: %w", err)
+		return fmt.Errorf("error unmarshalling ethereum network config: %w", err)
 	}
 
 	if wrapper.EthereumNetwork == nil {

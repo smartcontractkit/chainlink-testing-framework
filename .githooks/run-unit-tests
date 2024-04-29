@@ -2,14 +2,4 @@
 
 printf "Executing unit tests..."
 
-make test_unit > /dev/null 2>&1
-unit_test_result=$?
-
-if [[ $unit_test_result -ne 0 ]];
-then
-    printf "Executing unit tests... ❌\n"
-    printf "Run 'make test_unit' to verify after you fix them.\n"
-    exit 1
-else
-    printf "Executing unit tests... ✅\n"
-fi
+make test_unit
