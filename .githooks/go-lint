@@ -1,14 +1,13 @@
 #!/bin/bash
 
 # Find all 'go.mod' files, get their directories, and run 'go mod tidy'
-# shellcheck disable=SC2016
-find "./" -type f -name 'go.mod' -print0 | xargs -0 -I{} bash -c '
-    directory=$(dirname "{}")
+find "./" -type f -name 'go.mod' -print0 | while IFS= read -r -d $'\0' file; do
+    directory=$(dirname "$file")
     cd "$directory" || exit 1
 
     # Run linter and capture exit status
-    golangci-lint run  > /dev/null
-    local linting_result=$?
+    golangci-lint run > /dev/null
+    linting_result=$?
 
     # Check linting result
     if [[ $linting_result -ne 0 ]]; then
@@ -18,4 +17,5 @@ find "./" -type f -name 'go.mod' -print0 | xargs -0 -I{} bash -c '
     else
         echo -e "Executing linters in $directory... \e[32mOK!\e[0m\n"
     fi
-'
+    cd - || exit 1
+done
