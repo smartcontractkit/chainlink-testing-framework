@@ -25,48 +25,12 @@ const (
 )
 
 var (
-	// ErrMissingEthereumVersion   = errors.New("ethereum version is required")
-	// ErrMissingExecutionLayer    = errors.New("execution layer is required")
 	ErrMissingConsensusLayer    = errors.New("consensus layer is required for PoS")
 	ErrConsensusLayerNotAllowed = errors.New("consensus layer is not allowed for PoW")
 	ErrTestConfigNotSaved       = errors.New("could not save test env config")
 )
 
 var MsgMismatchedExecutionClient = "you provided a custom docker image for %s execution client, but explicitly set a execution client to %s. Make them match or remove one or the other"
-
-// // Deprecated: use EthereumVersion instead
-// type ConsensusType string
-
-// const (
-// 	// Deprecated: use EthereumVersion_Eth2 instead
-// 	ConsensusType_PoS ConsensusType = "pos"
-// 	// Deprecated: use EthereumVersion_Eth1 instead
-// 	ConsensusType_PoW ConsensusType = "pow"
-// )
-
-// type EthereumVersion string
-
-// const (
-// 	EthereumVersion_Eth2 EthereumVersion = "eth2"
-// 	// Deprecated: use EthereumVersion_Eth2 instead
-// 	EthereumVersion_Eth2_Legacy EthereumVersion = "pos"
-// 	EthereumVersion_Eth1        EthereumVersion = "eth1"
-// 	// Deprecated: use EthereumVersion_Eth1 instead
-// 	EthereumVersion_Eth1_Legacy EthereumVersion = "pow"
-// )
-
-// type ExecutionLayer string
-
-// const (
-// 	ExecutionLayer_Geth       ExecutionLayer = "geth"
-// 	ExecutionLayer_Nethermind ExecutionLayer = "nethermind"
-// 	ExecutionLayer_Erigon     ExecutionLayer = "erigon"
-// 	ExecutionLayer_Besu       ExecutionLayer = "besu"
-// )
-
-// type ConsensusLayer string
-
-// var ConsensusLayer_Prysm ConsensusLayer = "prysm"
 
 type EthereumNetworkBuilder struct {
 	t                   *testing.T
@@ -750,85 +714,6 @@ func (en *EthereumNetwork) Save() error {
 	return nil
 }
 
-// func (en *EthereumNetwork) Validate() error {
-// 	l := logging.GetTestLogger(nil)
-
-// 	// logically it doesn't belong here, but placing it here guarantees it will always run without chaning API
-// 	if en.EthereumVersion != nil && en.ConsensusType != nil {
-// 		l.Warn().Msg("Both EthereumVersion and ConsensusType are set. ConsensusType as a _deprecated_ field will be ignored")
-// 	}
-
-// 	if en.EthereumVersion == nil && en.ConsensusType != nil {
-// 		l.Debug().Msg("Using _deprecated_ ConsensusType as EthereumVersion")
-// 		tempEthVersion := (*config.EthereumVersion)(en.ConsensusType)
-// 		switch *tempEthVersion {
-// 		case config.EthereumVersion_Eth1, config.EthereumVersion_Eth1_Legacy:
-// 			*tempEthVersion = config.EthereumVersion_Eth1
-// 		case config.EthereumVersion_Eth2, config.EthereumVersion_Eth2_Legacy:
-// 			*tempEthVersion = config.EthereumVersion_Eth2
-// 		default:
-// 			return fmt.Errorf("unknown ethereum version (consensus type): %s", *en.ConsensusType)
-// 		}
-
-// 		en.EthereumVersion = tempEthVersion
-// 	}
-
-// 	if (en.EthereumVersion == nil || *en.EthereumVersion == "") && len(en.CustomDockerImages) == 0 {
-// 		return ErrMissingEthereumVersion
-// 	}
-
-// 	if (en.ExecutionLayer == nil || *en.ExecutionLayer == "") && len(en.CustomDockerImages) == 0 {
-// 		return ErrMissingExecutionLayer
-// 	}
-
-// 	if (en.EthereumVersion != nil && (*en.EthereumVersion == config.EthereumVersion_Eth2_Legacy || *en.EthereumVersion == config.EthereumVersion_Eth2)) && (en.ConsensusLayer == nil || *en.ConsensusLayer == "") {
-// 		l.Warn().Msg("Consensus layer is not set, but is required for PoS. Defaulting to Prysm")
-// 		en.ConsensusLayer = &config.ConsensusLayer_Prysm
-// 	}
-
-// 	if (en.EthereumVersion != nil && (*en.EthereumVersion == config.EthereumVersion_Eth1_Legacy || *en.EthereumVersion == config.EthereumVersion_Eth1)) && (en.ConsensusLayer != nil && *en.ConsensusLayer != "") {
-// 		l.Warn().Msg("Consensus layer is set, but is not allowed for PoW. Ignoring")
-// 		en.ConsensusLayer = nil
-// 	}
-
-// 	if en.EthereumChainConfig == nil {
-// 		return errors.New("ethereum chain config is required")
-// 	}
-
-// 	return en.EthereumNetworkConfig.EthereumChainConfig.Validate(l, en.EthereumVersion)
-// }
-
-// func (en *EthereumNetwork) ApplyOverrides(from *EthereumNetwork) error {
-// 	if from == nil {
-// 		return nil
-// 	}
-// 	if from.ConsensusLayer != nil {
-// 		en.ConsensusLayer = from.ConsensusLayer
-// 	}
-// 	if from.ExecutionLayer != nil {
-// 		en.ExecutionLayer = from.ExecutionLayer
-// 	}
-// 	if from.EthereumVersion != nil {
-// 		en.EthereumVersion = from.EthereumVersion
-// 	}
-// 	if from.WaitForFinalization != nil {
-// 		en.WaitForFinalization = from.WaitForFinalization
-// 	}
-
-// 	if from.EthereumChainConfig != nil {
-// 		if en.EthereumChainConfig == nil {
-// 			en.EthereumChainConfig = from.EthereumChainConfig
-// 		} else {
-// 			err := en.EthereumNetworkConfig.EthereumChainConfig.ApplyOverrides(from.EthereumChainConfig)
-// 			if err != nil {
-// 				return fmt.Errorf("error applying overrides from network config file to config: %w", err)
-// 			}
-// 		}
-// 	}
-
-// 	return nil
-// }
-
 func (en *EthereumNetwork) getExecutionLayerEnvComponentOpts() []EnvComponentOption {
 	opts := []EnvComponentOption{}
 	opts = append(opts, en.getImageOverride(config.ContainerType_ExecutionLayer)...)
@@ -877,28 +762,6 @@ func (s *RpcProvider) PublicHttpUrls() []string {
 func (s *RpcProvider) PublicWsUrls() []string {
 	return s.publicWsUrls
 }
-
-// type ContainerType string
-
-// const (
-// 	// ContainerType_Geth               ContainerType = "geth"
-// 	// ContainerType_Erigon             ContainerType = "erigon"
-// 	// ContainerType_Besu               ContainerType = "besu"
-// 	// ContainerType_Nethermind         ContainerType = "nethermind"
-// 	ContainerType_ExecutionLayer     ContainerType = "execution_layer"
-// 	ContainerType_ConsensusLayer     ContainerType = "consensus_layer"
-// 	ContainerType_ConsensusValidator ContainerType = "consensus_validator"
-// 	ContainerType_GenesisGenerator   ContainerType = "genesis_generator"
-// 	ContainerType_ValKeysGenerator   ContainerType = "val_keys_generator"
-// )
-
-// type EthereumNetworkContainer struct {
-// 	ContainerName string        `toml:"container_name"`
-// 	ContainerType ContainerType `toml:"container_type"`
-// 	Container     *tc.Container `toml:"-"`
-// }
-
-// type EthereumNetworkContainers []EthereumNetworkContainer
 
 func createHostDirectories() (string, string, error) {
 	customConfigDataDir, err := os.MkdirTemp("", "custom_config_data")

@@ -8,6 +8,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/slice"
 )
 
 type keyStoreAndExtraData struct {
@@ -66,7 +68,7 @@ func generateKeystoreAndExtraData(keystoreDir string, extraAddressesToFound []st
 
 	accounts = append(accounts, minerAddr)
 	accounts = append(accounts, extraAddresses...)
-	accounts, _, err = deduplicateAddresses(accounts)
+	accounts, _, err = slice.ValidateAndDeduplicateAddresses(accounts)
 	if err != nil {
 		return keyStoreAndExtraData{}, err
 	}

@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/slice"
 )
 
 var (
@@ -244,7 +244,7 @@ func (c *EthereumChainConfig) Validate(logger zerolog.Logger, ethereumVersion *E
 
 	var err error
 	var hadDuplicates bool
-	c.AddressesToFund, hadDuplicates, err = deduplicateAddresses(c.AddressesToFund)
+	c.AddressesToFund, hadDuplicates, err = slice.ValidateAndDeduplicateAddresses(c.AddressesToFund)
 	if err != nil {
 		return err
 	}
@@ -349,29 +349,4 @@ func (c *EthereumChainConfig) GetDefaultWaitDuration() time.Duration {
 
 func (c *EthereumChainConfig) GetDefaultFinalizationWaitDuration() time.Duration {
 	return time.Duration(5 * time.Minute)
-}
-
-func deduplicateAddresses(addresses []string) ([]string, bool, error) {
-	addressSet := make(map[common.Address]struct{})
-	deduplicated := make([]string, 0)
-
-	hadDuplicates := false
-
-	for _, addr := range addresses {
-		if !common.IsHexAddress(addr) {
-			return []string{}, false, fmt.Errorf("address %s is not a valid hex address", addr)
-		}
-
-		asAddr := common.HexToAddress(addr)
-
-		if _, exists := addressSet[asAddr]; exists {
-			hadDuplicates = true
-			continue
-		}
-
-		addressSet[asAddr] = struct{}{}
-		deduplicated = append(deduplicated, addr)
-	}
-
-	return deduplicated, hadDuplicates, nil
 }
