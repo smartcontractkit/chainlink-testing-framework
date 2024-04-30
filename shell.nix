@@ -37,6 +37,7 @@ mkShell' {
     github-cli
     jq
     dasel
+    typos
 
     # deployment
     awscli2

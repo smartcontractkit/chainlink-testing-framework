@@ -1,4 +1,4 @@
-// Package jsii contains the functionaility needed for jsii packages to
+// Package jsii contains the functionality needed for jsii packages to
 // initialize their dependencies and themselves. Users should never need to use this package
 // directly. If you find you need to - please report a bug at
 // https://github.com/aws/jsii/issues/new/choose

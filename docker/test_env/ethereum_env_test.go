@@ -107,7 +107,7 @@ func TestEthEnvWithPrysmAndGethReuseFromEnv(t *testing.T) {
 	os.Setenv(CONFIG_ENV_VAR_NAME, "change-me-to-the-path-of-your-config-file")
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WihtExistingConfigFromEnvVar().
+		WithExistingConfigFromEnvVar().
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 

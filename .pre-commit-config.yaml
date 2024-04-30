@@ -19,6 +19,11 @@ repos:
         name: Check for RPC URLs
         entry: ./.githooks/detect-rpc-urls
         language: script
+      - id: detect-typos
+        name: Check for typos
+        entry: ./.githooks/typos
+        language: script
+        pass_filenames: false
       - id: go-mod-tidy
         name: Check go mod tidy
         entry: ./.githooks/go-mod-tidy

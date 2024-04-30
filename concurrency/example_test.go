@@ -16,11 +16,11 @@ func (c *client) getConcurrency() int {
 	return 1
 }
 
-func (c *client) deplyContractConfigurableFromKey(_ int, _ contractConfiguration) (ContractIntstance, error) {
+func (c *client) deployContractConfigurableFromKey(_ int, _ contractConfiguration) (ContractIntstance, error) {
 	return ContractIntstance{}, nil
 }
 
-func (c *client) deplyContractFromKey(_ int) (ContractIntstance, error) {
+func (c *client) deployContractFromKey(_ int) (ContractIntstance, error) {
 	return ContractIntstance{}, nil
 }
 
@@ -51,7 +51,7 @@ func DeployContractsWithConfiguration(client *client, contractConfigs []contract
 	var deployContractFn = func(channel chan contractResult, errorCh chan error, executorNum int, payload contractConfiguration) {
 		keyNum := executorNum + 1 // key 0 is the root key
 
-		instance, err := client.deplyContractConfigurableFromKey(keyNum, payload)
+		instance, err := client.deployContractConfigurableFromKey(keyNum, payload)
 		if err != nil {
 			errorCh <- err
 			return
@@ -79,7 +79,7 @@ func TestExampleContractsWithoutConfiguration(t *testing.T) {
 }
 
 // DeployIdenticalContracts shows a very simplified method that deploys concurrently identical contract instances
-// which require no configuration, just need to be exected N amount of times
+// which require no configuration, just need to be executed N amount of times
 func DeployIdenticalContracts(client *client, numberOfContracts int) ([]ContractIntstance, error) {
 	l := logging.GetTestLogger(nil)
 
@@ -88,7 +88,7 @@ func DeployIdenticalContracts(client *client, numberOfContracts int) ([]Contract
 	var deployContractFn = func(channel chan contractResult, errorCh chan error, executorNum int) {
 		keyNum := executorNum + 1 // key 0 is the root key
 
-		instance, err := client.deplyContractFromKey(keyNum)
+		instance, err := client.deployContractFromKey(keyNum)
 		if err != nil {
 			errorCh <- err
 			return

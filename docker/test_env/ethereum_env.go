@@ -100,7 +100,7 @@ func (b *EthereumNetworkBuilder) WithExistingConfig(config config.EthereumNetwor
 	return b
 }
 
-func (b *EthereumNetworkBuilder) WihtExistingConfigFromEnvVar() *EthereumNetworkBuilder {
+func (b *EthereumNetworkBuilder) WithExistingConfigFromEnvVar() *EthereumNetworkBuilder {
 	b.existingFromEnvVar = true
 	return b
 }

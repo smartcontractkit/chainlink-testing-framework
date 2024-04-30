@@ -127,8 +127,8 @@ func TestLogStreamDocker(t *testing.T) {
 	}
 
 	var getExpectedMsgCount = func(msg string, msgAmount int) int {
-		splitted := strings.Split(msg, "\n")
-		return len(splitted) * msgAmount
+		split := strings.Split(msg, "\n")
+		return len(split) * msgAmount
 	}
 
 	for _, tc := range tests {
@@ -163,7 +163,7 @@ func TestLogStreamDocker(t *testing.T) {
 			defer func() {
 				// testcontainers/ryuk:v0.5.1 will handle the shutdown automatically if container exited
 				// container.IsReady() is inconsistent and not always showing that container has exited
-				// ontainer.Terminate() and container.StopLogProducer() has known bugs, if you call them they can hang
+				// container.Terminate() and container.StopLogProducer() has known bugs, if you call them they can hang
 				// forever if container is already exited
 				// https://github.com/testcontainers/testcontainers-go/pull/1085
 				// tried latest branch with a fix, but no luck
@@ -213,7 +213,7 @@ func TestLogStreamConnectWithDelayDocker(t *testing.T) {
 
 	t.Cleanup(func() {
 		if err := lw.Shutdown(ctx); err != nil {
-			t.Fatalf("failed to shutodwn logstream: %s", err.Error())
+			t.Fatalf("failed to shutdown logstream: %s", err.Error())
 		}
 		if err := container.Terminate(ctx); err != nil {
 			t.Fatalf("failed to terminate container: %s", err.Error())
@@ -262,7 +262,7 @@ func TestLogStream_GetAllLogs_ErrorsAfterFiveLogs(t *testing.T) {
 
 	t.Cleanup(func() {
 		if err := lw.Shutdown(ctx); err != nil {
-			t.Fatalf("failed to shutodwn logstream: %s", err.Error())
+			t.Fatalf("failed to shutdown logstream: %s", err.Error())
 		}
 		if err := container.Terminate(ctx); err != nil {
 			t.Fatalf("failed to terminate container: %s", err.Error())
@@ -323,10 +323,10 @@ func TestLogStream_GetAllLogs_TwoConsumers_FirstErrorsAfterFiveLogs(t *testing.T
 
 	t.Cleanup(func() {
 		if err := lw.Shutdown(ctx); err != nil {
-			t.Fatalf("failed to shutodwn logstream: %s", err.Error())
+			t.Fatalf("failed to shutdown logstream: %s", err.Error())
 		}
 		if err := container_1.Terminate(ctx); err != nil {
-			t.Fatalf("failed to terminate first ontainer: %s", err.Error())
+			t.Fatalf("failed to terminate first container: %s", err.Error())
 		}
 		if err := container_2.Terminate(ctx); err != nil {
 			t.Fatalf("failed to terminate second container: %s", err.Error())
@@ -378,7 +378,7 @@ func TestLogStream_GetAllLogs_ErrorsBeforeConsumption(t *testing.T) {
 
 	t.Cleanup(func() {
 		if err := lw.Shutdown(ctx); err != nil {
-			t.Fatalf("failed to shutodwn logstream: %s", err.Error())
+			t.Fatalf("failed to shutdown logstream: %s", err.Error())
 		}
 		if err := container.Terminate(ctx); err != nil {
 			t.Fatalf("failed to terminate container: %s", err.Error())
@@ -434,7 +434,7 @@ func TestLogStreamTwoDockerContainers(t *testing.T) {
 
 	t.Cleanup(func() {
 		if err := lw.Shutdown(ctx); err != nil {
-			t.Fatalf("failed to shutodwn logstream: %s", err.Error())
+			t.Fatalf("failed to shutdown logstream: %s", err.Error())
 		}
 		if err := containerOne.Terminate(ctx); err != nil {
 			t.Fatalf("failed to terminate first container: %s", err.Error())
@@ -587,7 +587,7 @@ func TestLogStreamConnectRetryMockContainer_FailsOnce(t *testing.T) {
 
 	t.Cleanup(func() {
 		if err := lw.Shutdown(ctx); err != nil {
-			t.Fatalf("failed to shutodwn logstream: %s", err.Error())
+			t.Fatalf("failed to shutdown logstream: %s", err.Error())
 		}
 	})
 }
@@ -662,7 +662,7 @@ func TestLogStreamConnectRetryMockContainer_FailsTwice(t *testing.T) {
 
 	t.Cleanup(func() {
 		if err := lw.Shutdown(ctx); err != nil {
-			t.Fatalf("failed to shutodwn logstream: %s", err.Error())
+			t.Fatalf("failed to shutdown logstream: %s", err.Error())
 		}
 	})
 }
@@ -730,7 +730,7 @@ func TestLogStreamConnectRetryMockContainer_FailsFirstRestart(t *testing.T) {
 
 	t.Cleanup(func() {
 		if err := lw.Shutdown(ctx); err != nil {
-			t.Fatalf("failed to shutodwn logstream: %s", err.Error())
+			t.Fatalf("failed to shutdown logstream: %s", err.Error())
 		}
 	})
 }
@@ -791,7 +791,7 @@ func TestLogStreamConnectRetryMockContainer_AlwaysFailsRestart(t *testing.T) {
 
 	t.Cleanup(func() {
 		if err := lw.Shutdown(ctx); err != nil {
-			t.Fatalf("failed to shutodwn logstream: %s", err.Error())
+			t.Fatalf("failed to shutdown logstream: %s", err.Error())
 		}
 	})
 }
@@ -881,7 +881,7 @@ func TestLogStreamConnectRetryTwoMockContainers_FirstAlwaysFailsRestart_SecondWo
 
 	t.Cleanup(func() {
 		if err := lw.Shutdown(ctx); err != nil {
-			t.Fatalf("failed to shutodwn logstream: %s", err.Error())
+			t.Fatalf("failed to shutdown logstream: %s", err.Error())
 		}
 	})
 }

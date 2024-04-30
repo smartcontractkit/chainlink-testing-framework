@@ -310,7 +310,7 @@ evm_default_gas_limit = 6000000
 			expNetworks: []blockchain.EVMNetwork{newNetwork},
 		},
 		{
-			name: "case insensitive network key fo fork config",
+			name: "case insensitive network key of fork config",
 			networkConfigTOML: `
 selected_networks = ["KROMA_SEPOLIA"]
 

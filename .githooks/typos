@@ -1,0 +1,3 @@
+#!/bin/bash
+
+typos --write-changes --config ./_typos.toml

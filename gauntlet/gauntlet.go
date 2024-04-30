@@ -50,8 +50,8 @@ func (g *Gauntlet) Flag(flag, value string) string {
 	return fmt.Sprintf("--%s=%s", flag, value)
 }
 
-func (g *Gauntlet) SetWorkingDir(wrkDir string) {
-	execDir = wrkDir
+func (g *Gauntlet) SetWorkingDir(workDir string) {
+	execDir = workDir
 }
 
 // GenerateRandomNetwork Creates and sets a random network prepended with test

@@ -338,7 +338,7 @@ func (m *LogStream) Shutdown(context context.Context) error {
 func (m *LogStream) FlushAndShutdown() error {
 	var wrappedErr error
 
-	// first disonnect all containers, so that no new logs are accepted
+	// first disconnect all containers, so that no new logs are accepted
 	for _, c := range m.consumers {
 		if err := m.DisconnectContainer(c.container); err != nil {
 			m.log.Error().

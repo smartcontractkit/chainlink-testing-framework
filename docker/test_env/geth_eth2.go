@@ -55,7 +55,7 @@ func (g *Geth) getEth2ContainerRequest() (*tc.ContainerRequest, error) {
 		return nil, err
 	}
 
-	initScriptContent, err := g.builEth2dInitScript()
+	initScriptContent, err := g.buildEth2dInitScript()
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +104,7 @@ func (g *Geth) getEth2ContainerRequest() (*tc.ContainerRequest, error) {
 	}, nil
 }
 
-func (g *Geth) builEth2dInitScript() (string, error) {
+func (g *Geth) buildEth2dInitScript() (string, error) {
 	initTemplate := `#!/bin/bash
 	mkdir -p {{.ExecutionDir}}
 

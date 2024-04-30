@@ -45,7 +45,7 @@ func GetOrGenerateRunId(maybeRunId *string) (string, error) {
 	return runId, nil
 }
 
-// RemoveLocalRunId removes the .run.id file if it exists and the runId contains 'local' substring indiciating local execution.
+// RemoveLocalRunId removes the .run.id file if it exists and the runId contains 'local' substring indicating local execution.
 // In GHA we get run_id from TOML config, so we don't need to remove the file.
 func RemoveLocalRunId(runId *string) error {
 	if runId != nil && !strings.Contains(*runId, "local") {
