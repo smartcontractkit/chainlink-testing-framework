@@ -40,7 +40,7 @@ Distribute your funds across multiple private keys and update your configuration
 
 var noOpSethConfigFn = func(cfg *pkg_seth.Config) error { return nil }
 
-type SethConfigFunction = func(*pkg_seth.Config) error
+type ConfigFunction = func(*pkg_seth.Config) error
 
 // OneEphemeralKeysLiveTestnetCheckFn checks whether there's at least one ephemeral key on a simulated network or at least one static key on a live network,
 // and that there are no epehemeral keys on a live network. Root key is excluded from the check.
@@ -107,7 +107,7 @@ func GetChainClient(c config.SethConfig, network blockchain.EVMNetwork) (*pkg_se
 }
 
 // GetChainClientWithConfigFunction returns a seth client for the given network after validating the config and applying the config function
-func GetChainClientWithConfigFunction(c config.SethConfig, network blockchain.EVMNetwork, configFn SethConfigFunction) (*pkg_seth.Client, error) {
+func GetChainClientWithConfigFunction(c config.SethConfig, network blockchain.EVMNetwork, configFn ConfigFunction) (*pkg_seth.Client, error) {
 	readSethCfg := c.GetSethConfig()
 	if readSethCfg == nil {
 		return nil, fmt.Errorf("Seth config not found")

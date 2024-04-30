@@ -92,6 +92,8 @@ func NewEthereumNetworkBuilder() EthereumNetworkBuilder {
 
 // WithConsensusType sets the consensus type for the network
 // Deprecated: use WithEthereumVersion() instead
+//
+//nolint:staticcheck //ignore SA1019
 func (b *EthereumNetworkBuilder) WithConsensusType(consensusType config.ConsensusType) *EthereumNetworkBuilder {
 	switch consensusType {
 	case config.ConsensusType_PoS:
@@ -261,6 +263,7 @@ func (b *EthereumNetworkBuilder) validate() error {
 		return config.ErrMissingExecutionLayer
 	}
 
+	//nolint:staticcheck //ignore SA1019
 	if (b.ethereumVersion == config.EthereumVersion_Eth2 || b.ethereumVersion == config.EthereumVersion_Eth2_Legacy) && b.consensusLayer == nil {
 		return ErrMissingConsensusLayer
 	}
@@ -327,14 +330,17 @@ func (b *EthereumNetworkBuilder) autoFill() error {
 		}
 	}
 
+	//nolint:staticcheck //ignore SA1019
 	if (b.ethereumVersion == config.EthereumVersion_Eth2_Legacy || b.ethereumVersion == config.EthereumVersion_Eth2) && b.consensusLayer == nil {
 		b.consensusLayer = &config.ConsensusLayer_Prysm
 	}
 
+	//nolint:staticcheck //ignore SA1019
 	if b.ethereumVersion == config.EthereumVersion_Eth1_Legacy {
 		b.ethereumVersion = config.EthereumVersion_Eth1
 	}
 
+	//nolint:staticcheck //ignore SA1019
 	if b.ethereumVersion == config.EthereumVersion_Eth2_Legacy {
 		b.ethereumVersion = config.EthereumVersion_Eth2
 	}
@@ -409,8 +415,10 @@ type EthereumNetwork struct {
 
 func (en *EthereumNetwork) Start() (blockchain.EVMNetwork, RpcProvider, error) {
 	switch *en.EthereumVersion {
+	//nolint:staticcheck //ignore SA1019
 	case config.EthereumVersion_Eth1, config.EthereumVersion_Eth1_Legacy:
 		return en.startEth1()
+	//nolint:staticcheck //ignore SA1019
 	case config.EthereumVersion_Eth2_Legacy, config.EthereumVersion_Eth2:
 		return en.startEth2()
 	default:

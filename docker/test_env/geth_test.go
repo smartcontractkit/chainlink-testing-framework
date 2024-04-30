@@ -36,6 +36,7 @@ func TestGethEth1(t *testing.T) {
 
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
+		//nolint:staticcheck //ignore SA1019
 		WithEthereumVersion(config.EthereumVersion_Eth1_Legacy).
 		WithEthereumChainConfig(config.EthereumChainConfig{
 			ChainID: 2337,
@@ -58,6 +59,7 @@ func TestGethEth2(t *testing.T) {
 
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
+		//nolint:staticcheck //ignore SA1019
 		WithEthereumVersion(config.EthereumVersion_Eth2_Legacy).
 		WithConsensusLayer(config.ConsensusLayer_Prysm).
 		WithExecutionLayer(config.ExecutionLayer_Geth).

@@ -18,6 +18,7 @@ func TestNethermindEth1(t *testing.T) {
 
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
+		//nolint:staticcheck //ignore SA1019
 		WithEthereumVersion(config.EthereumVersion_Eth1_Legacy).
 		WithExecutionLayer(config.ExecutionLayer_Nethermind).
 		Build()
@@ -42,6 +43,7 @@ func TestNethermindEth2(t *testing.T) {
 
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
+		//nolint:staticcheck //ignore SA1019
 		WithEthereumVersion(config.EthereumVersion_Eth2_Legacy).
 		WithConsensusLayer(config.ConsensusLayer_Prysm).
 		WithExecutionLayer(config.ExecutionLayer_Nethermind).

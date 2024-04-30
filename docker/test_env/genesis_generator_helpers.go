@@ -6,8 +6,9 @@ import (
 	"html/template"
 	"time"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/config"
 )
 
 func generateEnvValues(c *config.EthereumChainConfig) (string, error) {

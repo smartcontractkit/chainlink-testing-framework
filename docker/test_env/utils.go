@@ -8,8 +8,9 @@ import (
 	"strings"
 
 	"github.com/docker/go-connections/nat"
-	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	tc "github.com/testcontainers/testcontainers-go"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/config"
 )
 
 func NatPortFormat(port string) string {

@@ -47,6 +47,7 @@ func TestEthEnvExtraFunding(t *testing.T) {
 
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
+		//nolint:staticcheck //ignore SA1019
 		WithEthereumVersion(config.EthereumVersion_Eth2_Legacy).
 		WithConsensusLayer(config.ConsensusLayer_Prysm).
 		WithExecutionLayer(config.ExecutionLayer_Geth).
@@ -262,6 +263,7 @@ func TestEthEnvInvalidHardForks(t *testing.T) {
 	t.Parallel()
 	builder := NewEthereumNetworkBuilder()
 	_, err := builder.
+		//nolint:staticcheck //ignore SA1019
 		WithConsensusType(config.ConsensusType_PoS).
 		WithConsensusLayer(config.ConsensusLayer_Prysm).
 		WithExecutionLayer(config.ExecutionLayer_Geth).
@@ -286,6 +288,7 @@ func TestEthEnvInvalidHardForks(t *testing.T) {
 
 	builder = NewEthereumNetworkBuilder()
 	_, err = builder.
+		//nolint:staticcheck //ignore SA1019
 		WithEthereumVersion(config.EthereumVersion_Eth2_Legacy).
 		WithConsensusLayer(config.ConsensusLayer_Prysm).
 		WithExecutionLayer(config.ExecutionLayer_Geth).

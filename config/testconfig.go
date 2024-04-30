@@ -4,15 +4,6 @@ import (
 	"github.com/smartcontractkit/seth"
 )
 
-type GlobalTestConfig interface {
-	GetChainlinkImageConfig() *ChainlinkImageConfig
-	GetLoggingConfig() *LoggingConfig
-	GetNetworkConfig() *NetworkConfig
-	GetPrivateEthereumNetworkConfig() *EthereumNetworkConfig
-	GetPyroscopeConfig() *PyroscopeConfig
-	SethConfig
-}
-
 func (c *TestConfig) GetLoggingConfig() *LoggingConfig {
 	return c.Logging
 }
@@ -31,14 +22,6 @@ func (c TestConfig) GetPrivateEthereumNetworkConfig() *EthereumNetworkConfig {
 
 func (c TestConfig) GetPyroscopeConfig() *PyroscopeConfig {
 	return c.Pyroscope
-}
-
-type NamedConfiguration interface {
-	GetConfigurationName() string
-}
-
-type SethConfig interface {
-	GetSethConfig() *seth.Config
 }
 
 type TestConfig struct {

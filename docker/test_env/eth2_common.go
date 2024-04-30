@@ -2,7 +2,7 @@ package test_env
 
 import (
 	"context"
-	_ "embed"
+	_ "embed" // leave me alone you linter
 	"fmt"
 	"strings"
 	"time"
@@ -31,16 +31,16 @@ var (
 // 	UnsopportedForkErr = "only Deneb hard fork is supported"
 // )
 
-type EthereumChainConfig struct {
-	SecondsPerSlot   int            `json:"seconds_per_slot" toml:"seconds_per_slot"`
-	SlotsPerEpoch    int            `json:"slots_per_epoch" toml:"slots_per_epoch"`
-	GenesisDelay     int            `json:"genesis_delay" toml:"genesis_delay"`
-	ValidatorCount   int            `json:"validator_count" toml:"validator_count"`
-	ChainID          int            `json:"chain_id" toml:"chain_id"`
-	genesisTimestamp int            // this is not serialized
-	AddressesToFund  []string       `json:"addresses_to_fund" toml:"addresses_to_fund"`
-	HardForkEpochs   map[string]int `json:"HardForkEpochs" toml:"HardForkEpochs"`
-}
+// type EthereumChainConfig struct {
+// 	SecondsPerSlot   int            `json:"seconds_per_slot" toml:"seconds_per_slot"`
+// 	SlotsPerEpoch    int            `json:"slots_per_epoch" toml:"slots_per_epoch"`
+// 	GenesisDelay     int            `json:"genesis_delay" toml:"genesis_delay"`
+// 	ValidatorCount   int            `json:"validator_count" toml:"validator_count"`
+// 	ChainID          int            `json:"chain_id" toml:"chain_id"`
+// 	genesisTimestamp int            // this is not serialized
+// 	AddressesToFund  []string       `json:"addresses_to_fund" toml:"addresses_to_fund"`
+// 	HardForkEpochs   map[string]int `json:"HardForkEpochs" toml:"HardForkEpochs"`
+// }
 
 // //go:embed example/default_ethereum_env.toml
 // var defaultEthereumChainConfig []byte
