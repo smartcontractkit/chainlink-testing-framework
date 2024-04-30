@@ -73,7 +73,7 @@ jobs:
       - name: Load Nix
         run: nix develop -c sh -c "go mod download"
       - name: Setup environment
-        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/setup-run-tests-environment@5bee84d30d90295010bda68b0cd46be3a1eea917 # v2.3.9
+        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/setup-run-tests-environment@e29366cdecfe6befff9ab8c3cfe4825218505d58 # v2.3.16
         with:
           go_mod_path: go.mod
           QA_AWS_REGION: ${{ secrets.QA_AWS_REGION }}
@@ -124,7 +124,7 @@ jobs:
       - name: Load Nix
         run: nix develop -c sh -c "go mod download"
       - name: Setup environment
-        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/setup-run-tests-environment@5bee84d30d90295010bda68b0cd46be3a1eea917 # v2.3.9
+        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/setup-run-tests-environment@e29366cdecfe6befff9ab8c3cfe4825218505d58 # v2.3.16
         with:
           go_mod_path: go.mod
           QA_AWS_REGION: ${{ secrets.QA_AWS_REGION }}
