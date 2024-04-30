@@ -106,7 +106,7 @@ func GetComparableVersionFromDockerImage(imageWithVersion string) (int, error) {
 	}
 	version, err := strconv.Atoi(strings.Replace(cleanedVersion, ".", "", -1))
 	if err != nil {
-		return -1, fmt.Errorf("failed to pase docker version to an integer: %s", cleanedVersion)
+		return -1, fmt.Errorf("failed to parse docker version to an integer: %s", cleanedVersion)
 	}
 
 	return version, nil

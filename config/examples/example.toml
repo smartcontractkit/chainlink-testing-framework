@@ -55,7 +55,7 @@ wait_for_finalization=false
 [PrivateEthereumNetwork.EthereumChainConfig]
 # duration of single slot, lower => faster block production, must be >= 4
 seconds_per_slot=12
-# numer of slots in epoch, lower => faster epoch finalisation, must be >= 4
+# number of slots in epoch, lower => faster epoch finalisation, must be >= 4
 slots_per_epoch=6
 # extra genesis gelay, no need to modify, but it should be after all validators/beacon chain starts
 genesis_delay=15

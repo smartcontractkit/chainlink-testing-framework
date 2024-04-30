@@ -144,7 +144,7 @@ push_images_in_list() {
         echo "---"
         echo "Checking if $docker_image exists in ECR..."
 
-        # Check if the image is a standard libary image and needs the library/ prefix removed
+        # Check if the image is a standard library image and needs the library/ prefix removed
         docker_image="${docker_image#"$prefix"}"
 
         # Check if the image exists in ECR
@@ -162,7 +162,7 @@ push_images_in_list() {
 # Run the code
 if [ $# -eq 1 ]; then
     push_images_in_mirror_json
-    echo "Update from mirror.json comleted."
+    echo "Update from mirror.json completed."
 elif [ $# -eq 3 ] || [ $# -eq 4 ]; then
     push_latest_images_for_expression_from_dockerhub "$2" "$3" "$4"
     echo "Update from dockerhub completed."

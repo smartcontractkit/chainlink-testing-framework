@@ -124,7 +124,7 @@ func TestConnectWithoutManifest(t *testing.T) {
 		// set the namespace to the existing one for local runs
 		testEnvConfig.Namespace = existingEnv.Cfg.Namespace
 	} else {
-		l.Info().Msg("Environment already exists, verfying it is correct")
+		l.Info().Msg("Environment already exists, verifying it is correct")
 		require.NotEmpty(t, os.Getenv(config.EnvVarNamespace))
 		skipManifestUpdate, err := strconv.ParseBool(os.Getenv(config.EnvVarSkipManifestUpdate))
 		require.NoError(t, err, "Failed to parse the no manifest update env var")

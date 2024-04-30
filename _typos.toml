@@ -1,0 +1,2 @@
+[files]
+extend-exclude = ["**/go.mod", "**/go.sum", "charts", "**/*.tgz", "**/*.png"]

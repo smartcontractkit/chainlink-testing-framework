@@ -152,13 +152,13 @@ func GetConfig(configurationName string, product Product) (TestConfig, error) {
 
 		err = toml.Unmarshal(decoded, &testConfig)
 		if err != nil {
-			return TestConfig{}, errors.Wrapf(err, "error unmarshaling base64 config")
+			return TestConfig{}, errors.Wrapf(err, "error unmarshalling base64 config")
 		}
 	} else {
 		logger.Debug().Msg("Base64 config override from environment variable not found")
 	}
 
-	// it neede some custom logic, so we do it separately
+	// it needs some custom logic, so we do it separately
 	err := testConfig.readNetworkConfiguration()
 	if err != nil {
 		return TestConfig{}, errors.Wrapf(err, "error reading network config")

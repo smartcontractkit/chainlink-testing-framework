@@ -13,7 +13,7 @@ func BytesToAnyTomlStruct(logger zerolog.Logger, filename, configurationName str
 	err := toml.Unmarshal(content, target)
 
 	if err != nil {
-		return errors.Wrapf(err, "error unmarshaling config")
+		return errors.Wrapf(err, "error unmarshalling config")
 	}
 
 	logger.Debug().Msgf("Successfully unmarshalled %s config file", filename)

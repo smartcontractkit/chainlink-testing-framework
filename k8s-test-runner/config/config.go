@@ -52,7 +52,7 @@ type Runner struct {
 // provided in 'base64Config'. Finally, it overwrites any existing configuration with
 // values from environment variables.
 //
-// Returns an error if any step of reading and unmarshaling configurations fails.
+// Returns an error if any step of reading and unmarshalling configurations fails.
 func Read(tomlFilePath, base64Config string, targetConfig interface{}) error {
 	// Load configuration from the TOML file if a path is provided.
 	if tomlFilePath != "" {
@@ -61,7 +61,7 @@ func Read(tomlFilePath, base64Config string, targetConfig interface{}) error {
 			return errors.Wrapf(err, "error reading TOML test config file at %s", tomlFilePath)
 		}
 		if err := toml.Unmarshal(tomlData, targetConfig); err != nil {
-			return errors.Wrap(err, "error unmarshaling TOML data for test config")
+			return errors.Wrap(err, "error unmarshalling TOML data for test config")
 		}
 	}
 
@@ -72,7 +72,7 @@ func Read(tomlFilePath, base64Config string, targetConfig interface{}) error {
 			return errors.Wrap(err, "error decoding base64 config string")
 		}
 		if err := toml.Unmarshal(decodedBase64Config, targetConfig); err != nil {
-			return errors.Wrap(err, "error unmarshaling base64 decoded data for test config")
+			return errors.Wrap(err, "error unmarshalling base64 decoded data for test config")
 		}
 	}
 

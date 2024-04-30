@@ -26,7 +26,7 @@ var stopAllContainers = func(t *testing.T, containers []EthereumNetworkContainer
 // 1.16 -> works
 // ...
 // 1.25.4 -> works
-func TestEthEnvNethermindCompatiblity(t *testing.T) {
+func TestEthEnvNethermindCompatibility(t *testing.T) {
 	t.Skip("Execute manually when needed")
 	l := logging.GetTestLogger(t)
 
@@ -74,7 +74,7 @@ func TestEthEnvNethermindCompatiblity(t *testing.T) {
 // 1.9 -> works
 // ...
 // 1.13 -> works
-func TestEthEnvGethCompatiblity(t *testing.T) {
+func TestEthEnvGethCompatibility(t *testing.T) {
 	t.Skip("Execute manually when needed")
 	l := logging.GetTestLogger(t)
 
@@ -121,7 +121,7 @@ func TestEthEnvGethCompatiblity(t *testing.T) {
 // v2.40 -> works
 // ...
 // v2.58.1 -> works
-func TestEthEnvErigonCompatiblity(t *testing.T) {
+func TestEthEnvErigonCompatibility(t *testing.T) {
 	t.Skip("Execute manually when needed")
 	l := logging.GetTestLogger(t)
 
@@ -168,7 +168,7 @@ func TestEthEnvErigonCompatiblity(t *testing.T) {
 // 22.1 -> works
 // ...
 // 24.1.2 -> works
-func TestEthEnvBesuCompatiblity(t *testing.T) {
+func TestEthEnvBesuCompatibility(t *testing.T) {
 	t.Skip("Execute manually when needed")
 	l := logging.GetTestLogger(t)
 

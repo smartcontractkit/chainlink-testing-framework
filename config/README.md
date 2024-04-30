@@ -18,7 +18,7 @@ type TestConfig struct {
 }
 ```
 
-It's up to the user to provide a way to read the config from file and unmarshal it into the struct. You can check [testconfig.go](../config/examples/testconfig.go) to see one way it chould be done..
+It's up to the user to provide a way to read the config from file and unmarshal it into the struct. You can check [testconfig.go](../config/examples/testconfig.go) to see one way it could be done..
 
 `Validate()` should be used to ensure that the config is valid. Some of the building blocks have also a `Default()` method that can be used to get default values.
 
@@ -110,7 +110,7 @@ optimism_goerli = ["1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b6
 new_network = ["ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"]
 ```
 
-Whenver you are adding a new EVMNetwork to the config, you can either
+Whenever you are adding a new EVMNetwork to the config, you can either
 
 - provide the rpcs and wallet keys in Rpc<Http/Ws>Urls and WalletKeys. Like in the example above, you can see that `new_network` is added to the `selected_networks` and `EVMNetworks` and then the rpcs and wallet keys are provided in `RpcHttpUrls`, `RpcWsUrls` and `WalletKeys` respectively.
 - provide the rpcs and wallet keys in the `EVMNetworks` itself. Like in the example below, you can see that `new_network` is added to the `selected_networks` and `EVMNetworks` and then the rpcs and wallet keys are provided in `EVMNetworks` itself.

@@ -11,3 +11,4 @@ yarn 1.22.19
 python 3.9.13
 pre-commit 3.5.0
 gcloud 466.0.0
+typos 1.20.3

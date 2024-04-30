@@ -1,6 +1,6 @@
 # Prysm containers
 
-Docker images provided by Prysm are bare-bone and do not even contain exectuable shell, which makes debugging impossible. To overcome it we need to build our own image with debug tools installed. The following Dockerfile will do the job for `beacon chain`:
+Docker images provided by Prysm are bare-bone and do not even contain executable shell, which makes debugging impossible. To overcome it we need to build our own image with debug tools installed. The following Dockerfile will do the job for `beacon chain`:
 
 ```
 ARG tag
@@ -67,6 +67,6 @@ docker run -it --rm --privileged --pid=host justincormack/nsenter1
 ```
 
 (Other options are described [here](https://gist.github.com/BretFisher/5e1a0c7bcca4c735e716abf62afad389))
-Then you need to find find a folder where `rootfs` for Docker VM is located, in my case it was `/containers/services/02-docker/rootfs` (search for a folder containing whatever hostpath you have the persistent volumne mounted at, or inspect one of your pods, check the volume mount and find it in the VM, just remember that even if your volume is supposedly mounted in `/data/shared` on the host in reality that `/data/shared` folder is still relative to wherever `rootfs` folder is located).
+Then you need to find find a folder where `rootfs` for Docker VM is located, in my case it was `/containers/services/02-docker/rootfs` (search for a folder containing whatever hostpath you have the persistent volume mounted at, or inspect one of your pods, check the volume mount and find it in the VM, just remember that even if your volume is supposedly mounted in `/data/shared` on the host in reality that `/data/shared` folder is still relative to wherever `rootfs` folder is located).
 
 Once you find it, you can delete the old data and start the service again. Or you can use it for debugging to easily inspect the content of shared volumes (useful in case of containers that are bare-bone and don't even have `bash` installed, like Prysm).

@@ -191,7 +191,7 @@ func TestBasicPassAndFail(t *testing.T) {
 		inputs           []string
 		expected         string
 		onlyErrors       bool
-		errotAtTopLength *int
+		errorAtTopLength *int
 		singlePackage    bool
 	}{
 		{
@@ -351,7 +351,7 @@ func TestBasicPassAndFail(t *testing.T) {
 			},
 			expected:         "📦 \x1b[0;31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[0;31m❌ TestGetImage2 (0.00s) \x1b[0m\n❌ Error found:\n        \tError Trace:\t/home/runner/work/chainlink-testing-framework/chainlink-testing-framework/k8s/e2e/common/test_common.go:193\n        \tError:      \tReceived unexpected error:\n        \t            \twaitcontainersready, no pods in 'chainlink-testing-framework-k8s-test-862b1' with selector '' after timeout '15m0s'\n        \tTest:       \tTestWithSingleNodeEnvLocalCharts\nexample 1\nexample 2\nexample 3\n    test_common.go:193: \n        \tError Trace:\t/home/runner/work/chainlink-testing-framework/chainlink-testing-framework/k8s/e2e/common/test_common.go:193\n        \tError:      \tReceived unexpected error:\n        \t            \twaitcontainersready, no pods in 'chainlink-testing-framework-k8s-test-862b1' with selector '' after timeout '15m0s'\n        \tTest:       \tTestWithSingleNodeEnvLocalCharts\n::endgroup::\n",
 			onlyErrors:       true,
-			errotAtTopLength: ptr.Ptr(2),
+			errorAtTopLength: ptr.Ptr(2),
 		},
 	}
 
@@ -362,8 +362,8 @@ func TestBasicPassAndFail(t *testing.T) {
 		inputs := test.inputs
 		errorAtTopLength := ptr.Ptr(50)
 		singlePackage := test.singlePackage
-		if test.errotAtTopLength != nil {
-			errorAtTopLength = test.errotAtTopLength
+		if test.errorAtTopLength != nil {
+			errorAtTopLength = test.errorAtTopLength
 		}
 		t.Run(name, func(t *testing.T) {
 			c := &TestLogModifierConfig{
