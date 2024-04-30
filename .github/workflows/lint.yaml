@@ -25,7 +25,7 @@ jobs:
       - name: Check out Code
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
       - name: Parse tool-versions file
-        uses: smartcontractkit/tool-versions-to-env-action@v1.0.8
+        uses: smartcontractkit/tool-versions-to-env-action@aabd5efbaf28005284e846c5cf3a02f2cba2f4c2 # v1.0.8
         id: tool-versions
     outputs:
       golangci-lint-version: ${{ steps.tool-versions.outputs.golangci-lint_version }}
