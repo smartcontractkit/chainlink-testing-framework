@@ -39,7 +39,7 @@ jobs:
           nix develop -c sh -c "cd ${{ matrix.project.path }} && \
             make test_unit"
       - name: Code Coverage
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@84508663e988701840491b86de86b666e8a86bed # v4.3.0
         with:
           files: ./unit-test-coverage.out
           name: codecov-umbrella
