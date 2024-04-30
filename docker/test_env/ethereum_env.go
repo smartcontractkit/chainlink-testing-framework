@@ -666,14 +666,6 @@ func (en *EthereumNetwork) getFinalEvmNetworkConfig(net blockchain.EVMNetwork) b
 	return net
 }
 
-func (en *EthereumNetwork) Describe() string {
-	cL := "prysm"
-	if en.ConsensusLayer == nil {
-		cL = "(none)"
-	}
-	return fmt.Sprintf("ethereum version: %s, execution layer: %s, consensus layer: %s", *en.EthereumVersion, *en.ExecutionLayer, cL)
-}
-
 func (en *EthereumNetwork) setExistingContainerName(ct config.ContainerType) EnvComponentOption {
 	if !en.isRecreated {
 		return func(c *EnvComponent) {}

@@ -112,6 +112,14 @@ func (en *EthereumNetworkConfig) ApplyOverrides(from *EthereumNetworkConfig) err
 	return nil
 }
 
+func (en *EthereumNetworkConfig) Describe() string {
+	cL := "prysm"
+	if en.ConsensusLayer == nil {
+		cL = "(none)"
+	}
+	return fmt.Sprintf("ethereum version: %s, execution layer: %s, consensus layer: %s", *en.EthereumVersion, *en.ExecutionLayer, cL)
+}
+
 type EthereumNetworkContainer struct {
 	ContainerName string        `toml:"container_name"`
 	ContainerType ContainerType `toml:"container_type"`
