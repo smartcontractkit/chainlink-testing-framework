@@ -18,6 +18,6 @@ jobs:
         with:
           languages: go
       - name: Autobuild
-        uses: github/codeql-action/autobuild@v2
+        uses: github/codeql-action/autobuild@d39d31e687223d841ef683f52467bd88e9b21c14 # v3.25.3
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v2
