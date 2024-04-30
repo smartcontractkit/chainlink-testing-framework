@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the Repo
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
       - name: Install Nix
         uses: cachix/install-nix-action@8887e596b4ee1134dae06b98d573bd674693f47c # v26
         with:
@@ -23,9 +23,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out Code
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
       - name: Parse tool-versions file
-        uses: smartcontractkit/tool-versions-to-env-action@v1.0.8
+        uses: smartcontractkit/tool-versions-to-env-action@aabd5efbaf28005284e846c5cf3a02f2cba2f4c2 # v1.0.8
         id: tool-versions
     outputs:
       golangci-lint-version: ${{ steps.tool-versions.outputs.golangci-lint_version }}
@@ -45,16 +45,16 @@ jobs:
             path: ./k8s-test-runner/
     steps:
       - name: Check out Code
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
       - name: Install Go
-        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/setup-go@00c6214deb10a3f374c6d3430c32c5202015d463 # v2.2.12
+        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/setup-go@e29366cdecfe6befff9ab8c3cfe4825218505d58 # v2.3.16
         with:
           test_download_vendor_packages_command: cd ${{ matrix.project.path }} && go mod download
           go_mod_path: ${{ matrix.project.path }}go.mod
           cache_key_id: ctf-go-${{ matrix.project.name }}
           cache_restore_only: 'false'
       - name: golangci-lint ${{ needs.tools.outputs.golangci-lint-version }}
-        uses: golangci/golangci-lint-action@3cfe3a4abbb849e10058ce4af15d205b6da42804 # v4.0.0
+        uses: golangci/golangci-lint-action@9d1e0624a798bb64f6c3cea93db47765312263dc # v5.1.0
         with:
           version: v${{ needs.tools.outputs.golangci-lint-version }}
           args: --out-format checkstyle:golangci-lint-report.xml
@@ -65,7 +65,7 @@ jobs:
         run: test -f ${{ matrix.project.path }}golangci-lint-report.xml || true
       - name: Store lint report artifact
         if: always()
-        uses: actions/upload-artifact@3cea5372237819ed00197afe530f5a7ea3e805c8 # v3.1.0
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
         with:
           name: golangci-lint-report-${{ matrix.project.name }}
           path: ${{ matrix.project.path }}golangci-lint-report.xml
@@ -76,9 +76,9 @@ jobs:
     needs: [tools]
     steps:
       - name: Check out Code
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
       - name: Install Go
-        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/setup-go@00c6214deb10a3f374c6d3430c32c5202015d463 # v2.2.12
+        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/setup-go@e29366cdecfe6befff9ab8c3cfe4825218505d58 # v2.3.16
         with:
           test_download_vendor_packages_command: go mod download
           go_mod_path: ./go.mod
@@ -94,7 +94,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out Code
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
       - name: Install asdf dependencies
         uses: asdf-vm/actions/install@05e0d2ed97b598bfce82fd30daf324ae0c4570e6 # v3.0.2
 
@@ -103,13 +103,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
         with:
           # Without this parameter, the merged commit that CI produces will make it so that ct will
           # not detect a diff even if one exists
           fetch-depth: 0
       - name: Set up chart-testing
-        uses: helm/chart-testing-action@b43128a8b25298e1e7b043b78ea6613844e079b1 # v2.6.0
+        uses: helm/chart-testing-action@e6669bcd63d7cb57cb4380c33043eebe5d111992 # v2.6.1
       - name: Add helm chart repo
         run: helm repo add chainlink-qa https://raw.githubusercontent.com/smartcontractkit/qa-charts/gh-pages/
       - name: Run chart-testing (lint)
@@ -120,9 +120,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out Code
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
       - name: Run actionlint
-        uses: reviewdog/action-actionlint@82693e9e3b239f213108d6e412506f8b54003586 # v1.39.1
+        uses: reviewdog/action-actionlint@9d8b58041eed1373f173e91b9a3db5a844197236 # v1.44.0
 
   sonarqube:
     name: SonarQube Analysis
@@ -130,13 +130,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the repo
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
         with:
           fetch-depth: 0 # fetches all history for all tags and branches to provide more metadata for sonar reports
       - name: Download all workflow run artifacts
-        uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3.0.2
+        uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e # v4.1.7
       - name: SonarQube Scan
-        uses: sonarsource/sonarqube-scan-action@4b0bfc149f5e285930eeb5e917327e66660c6e92 # v2.0.0
+        uses: sonarsource/sonarqube-scan-action@53c3e3207fe4b8d52e2f1ac9d6eb1d2506f626c0 # v2.0.2
         with:
           args: >
             -Dsonar.go.golangci-lint.reportPaths=golangci-lint-report/golangci-lint-report.xml
