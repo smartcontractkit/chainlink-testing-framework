@@ -83,7 +83,7 @@ jobs:
       - name: Run Tests
         env:
           LOCAL_CHARTS: true
-        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/run-tests@5bee84d30d90295010bda68b0cd46be3a1eea917 # v2.3.9
+        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/run-tests@e29366cdecfe6befff9ab8c3cfe4825218505d58 # v2.3.16
         with:
           cl_repo: ${{ env.CHAINLINK_IMAGE }}
           cl_image_tag: ${{ env.CHAINLINK_VERSION }}
@@ -132,7 +132,7 @@ jobs:
           QA_KUBECONFIG: ${{ secrets.QA_KUBECONFIG }}
           go_necessary: false
       - name: Run Remote Runner Tests
-        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/run-tests@5bee84d30d90295010bda68b0cd46be3a1eea917 # v2.3.9
+        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/run-tests@e29366cdecfe6befff9ab8c3cfe4825218505d58 # v2.3.16
         with:
           cl_repo: ${{ env.CHAINLINK_IMAGE }}
           cl_image_tag: ${{ env.CHAINLINK_VERSION }}
