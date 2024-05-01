@@ -471,12 +471,12 @@ func (e *EthereumClient) backfillMissedBlocks(lastBlockSeen uint64, headerChanne
 // receiveHeader takes in a new header from the chain, and sends the header to all active header subscriptions
 func (e *EthereumClient) receiveHeader(header *SafeEVMHeader) error {
 	if header == nil {
-		e.l.Debug().Msg("Received Nil Header")
+		e.l.Trace().Msg("Received Nil Header")
 		return nil
 	}
 	headerValue := *header
 
-	e.l.Debug().
+	e.l.Trace().
 		Str("NetworkName", e.NetworkConfig.Name).
 		Int("Node", e.ID).
 		Str("Hash", headerValue.Hash.String()).
