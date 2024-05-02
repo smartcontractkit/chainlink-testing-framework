@@ -150,9 +150,10 @@ func NewVersioned(helmVersion string, props *Props) environment.ConnectedChart {
 		}
 		return Chart{
 			HelmProps: &HelmProps{
-				Name:   "geth",
-				Path:   chartPath,
-				Values: &targetProps.Values,
+				Name:    "geth",
+				Path:    chartPath,
+				Values:  &targetProps.Values,
+				Version: helmVersion,
 			},
 			Props: targetProps,
 		}
