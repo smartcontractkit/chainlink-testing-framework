@@ -36,7 +36,7 @@ type EthereumNetworkConfig struct {
 func (en *EthereumNetworkConfig) Validate() error {
 	l := logging.GetTestLogger(nil)
 
-	// logically it doesn't belong here, but placing it here guarantees it will always run without chaning API
+	// logically it doesn't belong here, but placing it here guarantees it will always run without changing API
 	if en.EthereumVersion != nil && en.ConsensusType != nil {
 		l.Warn().Msg("Both EthereumVersion and ConsensusType are set. ConsensusType as a _deprecated_ field will be ignored")
 	}
@@ -195,7 +195,7 @@ func (c *EthereumChainConfig) Default() error {
 		EthereumNetwork *EthereumNetworkConfig `toml:"PrivateEthereumNetwork"`
 	}{}
 	if err := toml.Unmarshal(defaultEthereumChainConfig, &wrapper); err != nil {
-		return fmt.Errorf("error unmarshaling ethereum network config: %w", err)
+		return fmt.Errorf("error unmarshalling ethereum network config: %w", err)
 	}
 
 	if wrapper.EthereumNetwork == nil {

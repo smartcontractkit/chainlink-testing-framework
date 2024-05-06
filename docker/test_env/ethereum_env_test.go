@@ -210,7 +210,7 @@ func readEthereumNetworkConfig(configDecoded string) (config.EthereumNetworkConf
 	var net ethereumNetworkWrapper
 	err := toml.Unmarshal([]byte(configDecoded), &net)
 	if err != nil {
-		return config.EthereumNetworkConfig{}, fmt.Errorf("error unmarshaling ethereum network config: %w", err)
+		return config.EthereumNetworkConfig{}, fmt.Errorf("error unmarshalling ethereum network config: %w", err)
 	}
 
 	return *net.EthereumNetwork, nil
