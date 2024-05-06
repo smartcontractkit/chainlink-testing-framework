@@ -252,6 +252,7 @@ func (c *EthereumChainConfig) Validate(logger zerolog.Logger, ethereumVersion *E
 
 	var err error
 	var hadDuplicates bool
+	// we need to deduplicate addresses to fund, because if present they will crash the genesis
 	c.AddressesToFund, hadDuplicates, err = slice.ValidateAndDeduplicateAddresses(c.AddressesToFund)
 	if err != nil {
 		return err

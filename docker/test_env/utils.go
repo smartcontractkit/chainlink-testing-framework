@@ -158,15 +158,15 @@ func GetExecutionLayerFromDockerImage(imageWithVersion string) (config.Execution
 
 // UniqueStringSlice returns a deduplicated slice of strings
 func UniqueStringSlice(slice []string) []string {
-	addressSet := make(map[string]struct{})
+	stringSet := make(map[string]struct{})
 	deduplicated := make([]string, 0)
 
 	for _, el := range slice {
-		if _, exists := addressSet[el]; exists {
+		if _, exists := stringSet[el]; exists {
 			continue
 		}
 
-		addressSet[el] = struct{}{}
+		stringSet[el] = struct{}{}
 		deduplicated = append(deduplicated, el)
 	}
 

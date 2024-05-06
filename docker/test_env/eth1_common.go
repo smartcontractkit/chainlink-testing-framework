@@ -68,6 +68,8 @@ func generateKeystoreAndExtraData(keystoreDir string, extraAddressesToFound []st
 
 	accounts = append(accounts, minerAddr)
 	accounts = append(accounts, extraAddresses...)
+	// we need to deduplicate addresses to fund, because if present they will crash the genesis and here we cannot know
+	// whether the caller hasn't passed duplicates both in the slice or in the keystore.
 	accounts, _, err = slice.ValidateAndDeduplicateAddresses(accounts)
 	if err != nil {
 		return keyStoreAndExtraData{}, err
