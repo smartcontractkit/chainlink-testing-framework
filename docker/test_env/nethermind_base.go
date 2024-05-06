@@ -12,6 +12,7 @@ import (
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 )
@@ -32,9 +33,9 @@ type Nethermind struct {
 	InternalExecutionURL string
 	ExternalExecutionURL string
 	generatedDataHostDir string
-	chainConfig          *EthereumChainConfig
-	consensusLayer       ConsensusLayer
-	ethereumVersion      EthereumVersion
+	chainConfig          *config.EthereumChainConfig
+	consensusLayer       config.ConsensusLayer
+	ethereumVersion      config.EthereumVersion
 	l                    zerolog.Logger
 	t                    *testing.T
 }
@@ -48,7 +49,7 @@ func (g *Nethermind) WithTestInstance(t *testing.T) ExecutionClient {
 func (g *Nethermind) StartContainer() (blockchain.EVMNetwork, error) {
 	var r *tc.ContainerRequest
 	var err error
-	if g.GetEthereumVersion() == EthereumVersion_Eth1 {
+	if g.GetEthereumVersion() == config.EthereumVersion_Eth1 {
 		r, err = g.getEth1ContainerRequest()
 
 	} else {
@@ -82,7 +83,7 @@ func (g *Nethermind) StartContainer() (blockchain.EVMNetwork, error) {
 		return blockchain.EVMNetwork{}, err
 	}
 
-	if g.GetEthereumVersion() == EthereumVersion_Eth2 {
+	if g.GetEthereumVersion() == config.EthereumVersion_Eth2 {
 		executionPort, err := ct.MappedPort(context.Background(), NatPort(ETH2_EXECUTION_PORT))
 		if err != nil {
 			return blockchain.EVMNetwork{}, err
@@ -98,7 +99,7 @@ func (g *Nethermind) StartContainer() (blockchain.EVMNetwork, error) {
 	g.InternalWsUrl = FormatWsUrl(g.ContainerName, DEFAULT_EVM_NODE_WS_PORT)
 
 	networkConfig := blockchain.SimulatedEVMNetwork
-	if g.GetEthereumVersion() == EthereumVersion_Eth1 {
+	if g.GetEthereumVersion() == config.EthereumVersion_Eth1 {
 		networkConfig.Name = fmt.Sprintf("Private Eth-1-PoA [nethermind %s", g.ContainerVersion)
 		networkConfig.GasEstimationBuffer = 100_000_000_000
 	} else {
@@ -114,14 +115,14 @@ func (g *Nethermind) StartContainer() (blockchain.EVMNetwork, error) {
 }
 
 func (g *Nethermind) GetInternalExecutionURL() string {
-	if g.GetEthereumVersion() == EthereumVersion_Eth1 {
+	if g.GetEthereumVersion() == config.EthereumVersion_Eth1 {
 		panic("eth1 node doesn't have an execution URL")
 	}
 	return g.InternalExecutionURL
 }
 
 func (g *Nethermind) GetExternalExecutionURL() string {
-	if g.GetEthereumVersion() == EthereumVersion_Eth1 {
+	if g.GetEthereumVersion() == config.EthereumVersion_Eth1 {
 		panic("eth1 node doesn't have an execution URL")
 	}
 	return g.ExternalExecutionURL
@@ -151,12 +152,12 @@ func (g *Nethermind) GetContainer() *tc.Container {
 	return &g.Container
 }
 
-func (g *Nethermind) GetEthereumVersion() EthereumVersion {
+func (g *Nethermind) GetEthereumVersion() config.EthereumVersion {
 	return g.ethereumVersion
 }
 
 func (g *Nethermind) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error {
-	if g.GetEthereumVersion() == EthereumVersion_Eth1 {
+	if g.GetEthereumVersion() == config.EthereumVersion_Eth1 {
 		return nil
 	}
 	waitForFirstBlock := tcwait.NewLogStrategy("Improved post-merge block").WithPollInterval(1 * time.Second).WithStartupTimeout(waitTime)
@@ -164,7 +165,7 @@ func (g *Nethermind) WaitUntilChainIsReady(ctx context.Context, waitTime time.Du
 }
 
 func (g *Nethermind) GethConsensusMechanism() ConsensusMechanism {
-	if g.GetEthereumVersion() == EthereumVersion_Eth1 {
+	if g.GetEthereumVersion() == config.EthereumVersion_Eth1 {
 		return ConsensusMechanism_PoA
 	}
 	return ConsensusMechanism_PoS

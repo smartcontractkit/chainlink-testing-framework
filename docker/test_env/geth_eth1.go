@@ -13,13 +13,14 @@ import (
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/templates"
 )
 
 // NewGethEth1 starts a new Geth Eth1 node running in Docker
-func NewGethEth1(networks []string, chainConfig *EthereumChainConfig, opts ...EnvComponentOption) *Geth {
+func NewGethEth1(networks []string, chainConfig *config.EthereumChainConfig, opts ...EnvComponentOption) *Geth {
 	parts := strings.Split(defaultGethEth1Image, ":")
 	g := &Geth{
 		EnvComponent: EnvComponent{
@@ -30,7 +31,7 @@ func NewGethEth1(networks []string, chainConfig *EthereumChainConfig, opts ...En
 		},
 		chainConfig:     chainConfig,
 		l:               logging.GetTestLogger(nil),
-		ethereumVersion: EthereumVersion_Eth1,
+		ethereumVersion: config.EthereumVersion_Eth1,
 	}
 	g.SetDefaultHooks()
 	for _, opt := range opts {

@@ -12,12 +12,13 @@ import (
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 )
 
 // NewNethermindEth2 starts a new Nethermin Eth2 node running in Docker
-func NewNethermindEth2(networks []string, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) (*Nethermind, error) {
+func NewNethermindEth2(networks []string, generatedDataHostDir string, consensusLayer config.ConsensusLayer, opts ...EnvComponentOption) (*Nethermind, error) {
 	parts := strings.Split(defaultNethermindEth2Image, ":")
 	g := &Nethermind{
 		EnvComponent: EnvComponent{
@@ -29,7 +30,7 @@ func NewNethermindEth2(networks []string, generatedDataHostDir string, consensus
 		generatedDataHostDir: generatedDataHostDir,
 		consensusLayer:       consensusLayer,
 		l:                    logging.GetTestLogger(nil),
-		ethereumVersion:      EthereumVersion_Eth2,
+		ethereumVersion:      config.EthereumVersion_Eth2,
 	}
 	g.SetDefaultHooks()
 	for _, opt := range opts {

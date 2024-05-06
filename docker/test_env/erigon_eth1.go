@@ -14,13 +14,14 @@ import (
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/templates"
 )
 
 // NewErigonEth1 starts a new Erigon Eth1 node running in Docker
-func NewErigonEth1(networks []string, chainConfig *EthereumChainConfig, opts ...EnvComponentOption) (*Erigon, error) {
+func NewErigonEth1(networks []string, chainConfig *config.EthereumChainConfig, opts ...EnvComponentOption) (*Erigon, error) {
 	parts := strings.Split(defaultErigonEth1Image, ":")
 	g := &Erigon{
 		EnvComponent: EnvComponent{
@@ -31,7 +32,7 @@ func NewErigonEth1(networks []string, chainConfig *EthereumChainConfig, opts ...
 		},
 		chainConfig:     chainConfig,
 		l:               logging.GetTestLogger(nil),
-		ethereumVersion: EthereumVersion_Eth1,
+		ethereumVersion: config.EthereumVersion_Eth1,
 	}
 	g.SetDefaultHooks()
 	for _, opt := range opts {
