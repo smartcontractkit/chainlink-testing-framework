@@ -18,7 +18,7 @@ jobs:
     name: ${{ matrix.project.name }} unit tests
     steps:
       - name: Checkout the Repo
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
       - name: Install gotestloghelper
         run: make gotestloghelper_build
       - name: Install Nix
@@ -39,13 +39,13 @@ jobs:
           nix develop -c sh -c "cd ${{ matrix.project.path }} && \
             make test_unit"
       - name: Code Coverage
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@84508663e988701840491b86de86b666e8a86bed # v4.3.0
         with:
           files: ./unit-test-coverage.out
           name: codecov-umbrella
       - name: Publish Artifacts
         if: failure()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
         with:
           name: test-logs
           path: /tmp/gotest.log
