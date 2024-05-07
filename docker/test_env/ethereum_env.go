@@ -3,6 +3,7 @@ package test_env
 import (
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -20,14 +21,12 @@ import (
 )
 
 const (
-	CONFIG_ENV_VAR_NAME      = "PRIVATE_ETHEREUM_NETWORK_CONFIG_PATH"
-	EXEC_CLIENT_ENV_VAR_NAME = "ETH2_EL_CLIENT"
+	CONFIG_ENV_VAR_NAME = "PRIVATE_ETHEREUM_NETWORK_CONFIG_PATH"
 )
 
 var (
-	ErrMissingConsensusLayer    = errors.New("consensus layer is required for PoS")
-	ErrConsensusLayerNotAllowed = errors.New("consensus layer is not allowed for PoW")
-	ErrTestConfigNotSaved       = errors.New("could not save test env config")
+	ErrMissingConsensusLayer = errors.New("consensus layer is required for PoS")
+	ErrTestConfigNotSaved    = errors.New("could not save test env config")
 )
 
 var MsgMismatchedExecutionClient = "you provided a custom docker image for %s execution client, but explicitly set a execution client to %s. Make them match or remove one or the other"
@@ -711,6 +710,11 @@ func (en *EthereumNetwork) getExecutionLayerEnvComponentOpts() []EnvComponentOpt
 	opts = append(opts, en.getImageOverride(config.ContainerType_ExecutionLayer)...)
 	opts = append(opts, en.setExistingContainerName(config.ContainerType_ExecutionLayer))
 	opts = append(opts, WithLogStream(en.ls))
+
+	if en.NodeLogLevel != nil && *en.NodeLogLevel != "" {
+		opts = append(opts, WithLogLevel(strings.ToLower(*en.NodeLogLevel)))
+	}
+
 	return opts
 }
 

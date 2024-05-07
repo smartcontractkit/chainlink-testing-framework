@@ -166,16 +166,18 @@ func (g *Erigon) buildPowInitScript(minerAddr string) (string, error) {
 
 	echo "Starting Erigon..."
 	erigon --http --http.api=eth,erigon,engine,web3,net,debug,trace,txpool,admin --http.addr=0.0.0.0 --http.corsdomain=* --http.vhosts=* --http.port={{.HttpPort}} --ws \
-	--allow-insecure-unlock  --nodiscover --networkid={{.ChainID}} --mine --miner.etherbase={{.MinerAddr}} --fakepow`
+	--allow-insecure-unlock  --nodiscover --networkid={{.ChainID}} --mine --miner.etherbase={{.MinerAddr}} --fakepow --verbosity={{.LogLevel}}`
 
 	data := struct {
 		HttpPort  string
 		ChainID   int
 		MinerAddr string
+		LogLevel  string
 	}{
 		HttpPort:  DEFAULT_EVM_NODE_HTTP_PORT,
 		ChainID:   g.chainConfig.ChainID,
 		MinerAddr: minerAddr,
+		LogLevel:  g.LogLevel,
 	}
 
 	t, err := template.New("init").Parse(initTemplate)

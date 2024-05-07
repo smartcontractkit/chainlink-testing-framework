@@ -92,6 +92,7 @@ func (g *Nethermind) getEth2ContainerRequest() (*tc.ContainerRequest, error) {
 			"--Network.MaxActivePeers=0",
 			"--Network.OnlyStaticPeers=true",
 			"--HealthChecks.Enabled=true", // default slug /health
+			fmt.Sprintf("--log=%s", strings.ToUpper(g.LogLevel)),
 		},
 		Files: []tc.ContainerFile{
 			{
