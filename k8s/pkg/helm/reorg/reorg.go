@@ -60,6 +60,7 @@ func (m Chart) GetValues() *map[string]interface{} {
 
 func (m Chart) ExportData(e *environment.Environment) error {
 	urls := make([]string, 0)
+	httpURLs := make([]string, 0)
 	networkName := strings.ReplaceAll(strings.ToLower(m.Props.NetworkName), " ", "-")
 	minerPods, err := e.Client.ListPods(e.Cfg.Namespace, fmt.Sprintf("app=%s-ethereum-miner-node", networkName))
 	if err != nil {
@@ -77,19 +78,26 @@ func (m Chart) ExportData(e *environment.Environment) error {
 			if err != nil {
 				return err
 			}
-
+			txNodeLocalhttp, err := e.Fwd.FindPort(podName, "geth", "http-rpc").As(client.LocalConnection, client.HTTP)
+			if err != nil {
+				return err
+			}
 			if e.Cfg.InsideK8s {
 				services, err := e.Client.ListServices(e.Cfg.Namespace, fmt.Sprintf("app=%s-ethereum-geth", networkName))
 				if err != nil {
 					return err
 				}
 				serviceURL := fmt.Sprintf("ws://%s:8546", services.Items[0].Name)
-				e.URLs[m.Props.NetworkName+"_http"] = append(e.URLs[m.Props.NetworkName+"_http"], fmt.Sprintf("http://%s:8544", services.Items[0].Name))
 				urls = append(urls, serviceURL)
-				log.Info().Str("URL", serviceURL).Msgf("Geth network (TX Node) - %d", i)
+				log.Info().Str("wsURL", serviceURL).Msgf("Geth network (TX Node) - %d", i)
+				httpURL := fmt.Sprintf("http://%s:8544", services.Items[0].Name)
+				httpURLs = append(httpURLs, httpURL)
+				log.Info().Str("httpURL", httpURL).Msgf("Geth network (TX Node) - %d", i)
 			} else {
 				urls = append(urls, txNodeLocalWS)
 				log.Info().Str("URL", txNodeLocalWS).Msgf("Geth network (TX Node) - %d", i)
+				httpURLs = append(httpURLs, txNodeLocalhttp)
+				log.Info().Str("URL", txNodeLocalhttp).Msgf("Geth network (TX Node) - %d", i)
 			}
 		}
 	}
@@ -116,6 +124,7 @@ func (m Chart) ExportData(e *environment.Environment) error {
 	}
 
 	e.URLs[m.Props.NetworkName] = urls
+	e.URLs[m.Props.NetworkName+"_http"] = httpURLs
 	return nil
 }
 

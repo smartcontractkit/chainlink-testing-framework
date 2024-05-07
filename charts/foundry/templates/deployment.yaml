@@ -84,6 +84,10 @@ spec:
             {{- if .Values.anvil.runAsOptimism }}
             - "--optimism"
             {{- end }}
+            {{- if .Values.anvil.noOfAccounts }}
+            - "--accounts"
+            - {{ .Values.anvil.noOfAccounts | quote }}
+            {{- end }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
