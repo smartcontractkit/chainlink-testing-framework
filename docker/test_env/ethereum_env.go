@@ -188,7 +188,9 @@ func (b *EthereumNetworkBuilder) Build() (EthereumNetwork, error) {
 		return EthereumNetwork{}, err
 	}
 
-	return b.buildNetworkConfig(), nil
+	network := b.buildNetworkConfig()
+
+	return network, network.Validate()
 }
 
 func (b *EthereumNetworkBuilder) importExistingConfig() bool {
