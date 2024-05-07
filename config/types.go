@@ -16,5 +16,6 @@ type GlobalTestConfig interface {
 	GetNetworkConfig() *NetworkConfig
 	GetPrivateEthereumNetworkConfig() *EthereumNetworkConfig
 	GetPyroscopeConfig() *PyroscopeConfig
+	GetNodeConfig() *NodeConfig
 	SethConfig
 }
