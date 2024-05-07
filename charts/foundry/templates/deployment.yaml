@@ -43,6 +43,18 @@ spec:
             - {{ .Values.anvil.chainId | quote }}
             - "--block-time"
             - {{ .Values.anvil.blockTime | quote }}
+            {{- if .Values.anvil.blockGasLimit }}
+            - "--gas-limit"
+            - {{ .Values.anvil.blockGasLimit }}
+            {{- end }}
+            {{- if .Values.anvil.codeSizeLimit }}
+            - "--code-size-limit"
+            - {{ .Values.anvil.codeSizeLimit }}
+            {{- end }}
+            {{- if .Values.anvil.baseFee }}
+            - "--base-fee"
+            - {{ .Values.anvil.baseFee }}
+            {{- end }}
             - "--host"
             - {{ .Values.anvil.host }}
             - "--port"
@@ -87,6 +99,10 @@ spec:
             {{- if .Values.anvil.noOfAccounts }}
             - "--accounts"
             - {{ .Values.anvil.noOfAccounts | quote }}
+            {{- end }}
+            {{- if .Values.anvil.accountBalance }}
+            - "--balance"
+            -  {{ .Values.anvil.accountBalance | quote }}
             {{- end }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
