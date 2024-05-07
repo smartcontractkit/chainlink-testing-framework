@@ -102,7 +102,7 @@ spec:
             {{- end }}
             {{- if .Values.anvil.accountBalance }}
             - "--balance"
-            -  {{ .Values.anvil.accountBalance | quote }}
+            - {{ .Values.anvil.accountBalance | quote }}
             {{- end }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
