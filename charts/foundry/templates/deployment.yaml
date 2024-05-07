@@ -45,15 +45,15 @@ spec:
             - {{ .Values.anvil.blockTime | quote }}
             {{- if .Values.anvil.blockGasLimit }}
             - "--gas-limit"
-            - {{ .Values.anvil.blockGasLimit }}
+            - {{ .Values.anvil.blockGasLimit | quote }}
             {{- end }}
             {{- if .Values.anvil.codeSizeLimit }}
             - "--code-size-limit"
-            - {{ .Values.anvil.codeSizeLimit }}
+            - {{ .Values.anvil.codeSizeLimit | quote }}
             {{- end }}
             {{- if .Values.anvil.baseFee }}
             - "--base-fee"
-            - {{ .Values.anvil.baseFee }}
+            - {{ .Values.anvil.baseFee | quote }}
             {{- end }}
             - "--host"
             - {{ .Values.anvil.host }}
@@ -102,7 +102,7 @@ spec:
             {{- end }}
             {{- if .Values.anvil.accountBalance }}
             - "--balance"
-            -  {{ .Values.anvil.accountBalance | quote }}
+            - {{ .Values.anvil.accountBalance | quote }}
             {{- end }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
