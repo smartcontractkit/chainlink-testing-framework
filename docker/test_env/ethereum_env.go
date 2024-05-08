@@ -44,6 +44,7 @@ type EthereumNetworkBuilder struct {
 	addressesToFund     []string
 	waitForFinalization bool
 	existingFromEnvVar  bool
+	nodeLogLevel        string
 }
 
 func NewEthereumNetworkBuilder() EthereumNetworkBuilder {
@@ -91,6 +92,11 @@ func (b *EthereumNetworkBuilder) WithEthereumChainConfig(config config.EthereumC
 
 func (b *EthereumNetworkBuilder) WithDockerNetworks(networks []string) *EthereumNetworkBuilder {
 	b.dockerNetworks = networks
+	return b
+}
+
+func (b *EthereumNetworkBuilder) WithNodeLogLevel(nodeLogLevel string) *EthereumNetworkBuilder {
+	b.nodeLogLevel = nodeLogLevel
 	return b
 }
 
@@ -144,6 +150,7 @@ func (b *EthereumNetworkBuilder) buildNetworkConfig() EthereumNetwork {
 	n.WaitForFinalization = &b.waitForFinalization
 	n.EthereumNetworkConfig.EthereumChainConfig = b.ethereumChainConfig
 	n.EthereumNetworkConfig.CustomDockerImages = b.customDockerImages
+	n.NodeLogLevel = &b.nodeLogLevel
 	n.t = b.t
 	n.ls = b.ls
 
@@ -215,6 +222,12 @@ func (b *EthereumNetworkBuilder) importExistingConfig() bool {
 	}
 	b.ethereumChainConfig = b.existingConfig.EthereumChainConfig
 	b.customDockerImages = b.existingConfig.CustomDockerImages
+
+	if b.existingConfig.NodeLogLevel != nil {
+		b.nodeLogLevel = *b.existingConfig.NodeLogLevel
+	} else {
+		b.nodeLogLevel = config.DefaultNodeLogLevel
+	}
 
 	return true
 }
@@ -417,7 +430,7 @@ func (en *EthereumNetwork) startEth2() (blockchain.EVMNetwork, RpcProvider, erro
 	case config.ExecutionLayer_Geth:
 		client, clientErr = NewGethEth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, config.ConsensusLayer_Prysm, opts...)
 	case config.ExecutionLayer_Nethermind:
-		client, clientErr = NewNethermindEth2(dockerNetworks, generatedDataHostDir, config.ConsensusLayer_Prysm, opts...)
+		client, clientErr = NewNethermindEth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, config.ConsensusLayer_Prysm, opts...)
 	case config.ExecutionLayer_Erigon:
 		client, clientErr = NewErigonEth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, config.ConsensusLayer_Prysm, opts...)
 	case config.ExecutionLayer_Besu:
