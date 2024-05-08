@@ -323,6 +323,10 @@ func (b *EthereumNetworkBuilder) autoFill() error {
 		b.ethereumVersion = config.EthereumVersion_Eth2
 	}
 
+	if b.nodeLogLevel == "" {
+		b.nodeLogLevel = config.DefaultNodeLogLevel
+	}
+
 	return nil
 }
 
