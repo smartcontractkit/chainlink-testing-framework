@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/pelletier/go-toml/v2"
@@ -17,6 +18,7 @@ import (
 var (
 	ErrMissingEthereumVersion = errors.New("ethereum version is required")
 	ErrMissingExecutionLayer  = errors.New("execution layer is required")
+	DefaultNodeLogLevel       = "info"
 )
 
 type EthereumNetworkConfig struct {
@@ -31,6 +33,7 @@ type EthereumNetworkConfig struct {
 	ValKeysDir           *string                   `toml:"val_keys_dir"`
 	EthereumChainConfig  *EthereumChainConfig      `toml:"EthereumChainConfig"`
 	CustomDockerImages   map[ContainerType]string  `toml:"CustomDockerImages"`
+	NodeLogLevel         *string                   `toml:"node_log_level,omitempty"`
 }
 
 func (en *EthereumNetworkConfig) Validate() error {
@@ -72,6 +75,16 @@ func (en *EthereumNetworkConfig) Validate() error {
 	if (en.EthereumVersion != nil && (*en.EthereumVersion == EthereumVersion_Eth1_Legacy || *en.EthereumVersion == EthereumVersion_Eth1)) && (en.ConsensusLayer != nil && *en.ConsensusLayer != "") {
 		l.Warn().Msg("Consensus layer is set, but is not allowed for PoW. Ignoring")
 		en.ConsensusLayer = nil
+	}
+
+	if en.NodeLogLevel == nil {
+		en.NodeLogLevel = &DefaultNodeLogLevel
+	}
+
+	switch strings.ToLower(*en.NodeLogLevel) {
+	case "trace", "debug", "info", "warn", "error":
+	default:
+		return fmt.Errorf("invalid node log level: %s", *en.NodeLogLevel)
 	}
 
 	if en.EthereumChainConfig == nil {

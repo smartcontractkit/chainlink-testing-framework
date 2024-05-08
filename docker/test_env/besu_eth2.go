@@ -80,7 +80,7 @@ func (g *Besu) getEth2ContainerRequest() (*tc.ContainerRequest, error) {
 			fmt.Sprintf("--engine-rpc-port=%s", ETH2_EXECUTION_PORT),
 			"--sync-mode=FULL",
 			"--data-storage-format=BONSAI",
-			// "--logging=DEBUG",
+			fmt.Sprintf("--logging=%s", strings.ToUpper(g.LogLevel)),
 			"--rpc-tx-feecap=0",
 		},
 		Env: map[string]string{

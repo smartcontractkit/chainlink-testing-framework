@@ -30,6 +30,7 @@ type EnvComponent struct {
 	PostStartsHooks    []tc.ContainerHook   `json:"-"`
 	PostStopsHooks     []tc.ContainerHook   `json:"-"`
 	PreTerminatesHooks []tc.ContainerHook   `json:"-"`
+	LogLevel           string               `json:"-"`
 }
 
 type EnvComponentOption = func(c *EnvComponent)
@@ -48,6 +49,14 @@ func WithContainerImageWithVersion(imageWithVersion string) EnvComponentOption {
 		if len(split) == 2 {
 			c.ContainerImage = split[0]
 			c.ContainerVersion = split[1]
+		}
+	}
+}
+
+func WithLogLevel(logLevel string) EnvComponentOption {
+	return func(c *EnvComponent) {
+		if logLevel != "" {
+			c.LogLevel = logLevel
 		}
 	}
 }

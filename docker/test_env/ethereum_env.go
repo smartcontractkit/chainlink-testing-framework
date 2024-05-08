@@ -3,6 +3,7 @@ package test_env
 import (
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -20,14 +21,12 @@ import (
 )
 
 const (
-	CONFIG_ENV_VAR_NAME      = "PRIVATE_ETHEREUM_NETWORK_CONFIG_PATH"
-	EXEC_CLIENT_ENV_VAR_NAME = "ETH2_EL_CLIENT"
+	CONFIG_ENV_VAR_NAME = "PRIVATE_ETHEREUM_NETWORK_CONFIG_PATH"
 )
 
 var (
-	ErrMissingConsensusLayer    = errors.New("consensus layer is required for PoS")
-	ErrConsensusLayerNotAllowed = errors.New("consensus layer is not allowed for PoW")
-	ErrTestConfigNotSaved       = errors.New("could not save test env config")
+	ErrMissingConsensusLayer = errors.New("consensus layer is required for PoS")
+	ErrTestConfigNotSaved    = errors.New("could not save test env config")
 )
 
 var MsgMismatchedExecutionClient = "you provided a custom docker image for %s execution client, but explicitly set a execution client to %s. Make them match or remove one or the other"
@@ -45,6 +44,7 @@ type EthereumNetworkBuilder struct {
 	addressesToFund     []string
 	waitForFinalization bool
 	existingFromEnvVar  bool
+	nodeLogLevel        string
 }
 
 func NewEthereumNetworkBuilder() EthereumNetworkBuilder {
@@ -92,6 +92,11 @@ func (b *EthereumNetworkBuilder) WithEthereumChainConfig(config config.EthereumC
 
 func (b *EthereumNetworkBuilder) WithDockerNetworks(networks []string) *EthereumNetworkBuilder {
 	b.dockerNetworks = networks
+	return b
+}
+
+func (b *EthereumNetworkBuilder) WithNodeLogLevel(nodeLogLevel string) *EthereumNetworkBuilder {
+	b.nodeLogLevel = nodeLogLevel
 	return b
 }
 
@@ -145,6 +150,7 @@ func (b *EthereumNetworkBuilder) buildNetworkConfig() EthereumNetwork {
 	n.WaitForFinalization = &b.waitForFinalization
 	n.EthereumNetworkConfig.EthereumChainConfig = b.ethereumChainConfig
 	n.EthereumNetworkConfig.CustomDockerImages = b.customDockerImages
+	n.NodeLogLevel = &b.nodeLogLevel
 	n.t = b.t
 	n.ls = b.ls
 
@@ -189,7 +195,9 @@ func (b *EthereumNetworkBuilder) Build() (EthereumNetwork, error) {
 		return EthereumNetwork{}, err
 	}
 
-	return b.buildNetworkConfig(), nil
+	network := b.buildNetworkConfig()
+
+	return network, network.Validate()
 }
 
 func (b *EthereumNetworkBuilder) importExistingConfig() bool {
@@ -214,6 +222,12 @@ func (b *EthereumNetworkBuilder) importExistingConfig() bool {
 	}
 	b.ethereumChainConfig = b.existingConfig.EthereumChainConfig
 	b.customDockerImages = b.existingConfig.CustomDockerImages
+
+	if b.existingConfig.NodeLogLevel != nil {
+		b.nodeLogLevel = *b.existingConfig.NodeLogLevel
+	} else {
+		b.nodeLogLevel = config.DefaultNodeLogLevel
+	}
 
 	return true
 }
@@ -307,6 +321,10 @@ func (b *EthereumNetworkBuilder) autoFill() error {
 	//nolint:staticcheck //ignore SA1019
 	if b.ethereumVersion == config.EthereumVersion_Eth2_Legacy {
 		b.ethereumVersion = config.EthereumVersion_Eth2
+	}
+
+	if b.nodeLogLevel == "" {
+		b.nodeLogLevel = config.DefaultNodeLogLevel
 	}
 
 	return nil
@@ -416,7 +434,7 @@ func (en *EthereumNetwork) startEth2() (blockchain.EVMNetwork, RpcProvider, erro
 	case config.ExecutionLayer_Geth:
 		client, clientErr = NewGethEth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, config.ConsensusLayer_Prysm, opts...)
 	case config.ExecutionLayer_Nethermind:
-		client, clientErr = NewNethermindEth2(dockerNetworks, generatedDataHostDir, config.ConsensusLayer_Prysm, opts...)
+		client, clientErr = NewNethermindEth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, config.ConsensusLayer_Prysm, opts...)
 	case config.ExecutionLayer_Erigon:
 		client, clientErr = NewErigonEth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, config.ConsensusLayer_Prysm, opts...)
 	case config.ExecutionLayer_Besu:
@@ -711,6 +729,11 @@ func (en *EthereumNetwork) getExecutionLayerEnvComponentOpts() []EnvComponentOpt
 	opts = append(opts, en.getImageOverride(config.ContainerType_ExecutionLayer)...)
 	opts = append(opts, en.setExistingContainerName(config.ContainerType_ExecutionLayer))
 	opts = append(opts, WithLogStream(en.ls))
+
+	if en.NodeLogLevel != nil && *en.NodeLogLevel != "" {
+		opts = append(opts, WithLogLevel(strings.ToLower(*en.NodeLogLevel)))
+	}
+
 	return opts
 }
 
