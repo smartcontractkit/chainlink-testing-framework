@@ -105,7 +105,7 @@ spec:
             - {{ .Values.anvil.accountBalance | quote }}
             {{- end }}
             - "--state"
-            - "/data/dump.json"
+            - "/state/dump.json"
             - "--state-interval"
             - "10"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
@@ -131,7 +131,7 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
             - name: state-storage
-              mountPath: /data
+              mountPath: /state
           {{- with .Values.volumeMounts }}
             {{- toYaml . | nindent 12 }}
           {{- end }}
