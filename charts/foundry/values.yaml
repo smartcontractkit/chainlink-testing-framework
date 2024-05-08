@@ -120,10 +120,7 @@ volumes: []
 #     optional: false
 
 # Additional volumeMounts on the output Deployment definition.
-volumeMounts:
-   - name: data
-     mountPath: '/var'
-
+volumeMounts: []
 nodeSelector: {}
 
 tolerations: []
