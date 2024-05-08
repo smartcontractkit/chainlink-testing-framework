@@ -104,6 +104,10 @@ spec:
             - "--balance"
             - {{ .Values.anvil.accountBalance | quote }}
             {{- end }}
+            - "--state"
+            - "/data/dump.json"
+            - "--state-interval"
+            - "10"
             - "--prune-history"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
@@ -128,10 +132,16 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
           {{- with .Values.volumeMounts }}
           volumeMounts:
+            - name: state-storage
+              mountPath: /data
+              subPath: dump.json
             {{- toYaml . | nindent 12 }}
           {{- end }}
       {{- with .Values.volumes }}
       volumes:
+        - name: state-storage
+          persistentVolumeClaim:
+            claimName: {{ include "foundry.fullname" . }}-pvc
         {{- toYaml . | nindent 8 }}
       {{- end }}
       {{- with .Values.nodeSelector }}

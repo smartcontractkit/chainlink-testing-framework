@@ -103,6 +103,8 @@ resources: {}
   #   cpu: 100m
   #   memory: 128Mi
 
+capacity: 20Gi
+storageClassName: gp2
 autoscaling:
   enabled: false
   minReplicas: 1
@@ -118,10 +120,9 @@ volumes: []
 #     optional: false
 
 # Additional volumeMounts on the output Deployment definition.
-volumeMounts: []
-# - name: foo
-#   mountPath: '/etc/foo'
-#   readOnly: true
+volumeMounts:
+   - name: data
+     mountPath: '/var'
 
 nodeSelector: {}
 
