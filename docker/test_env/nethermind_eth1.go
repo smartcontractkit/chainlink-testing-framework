@@ -137,6 +137,7 @@ func (g *Nethermind) getEth1ContainerRequest() (*tc.ContainerRequest, error) {
 			"--Mining.Enabled=true",
 			"--Init.PeerManagerEnabled=false",
 			"--HealthChecks.Enabled=true", // default slug /health
+			fmt.Sprintf("--log=%s", strings.ToUpper(g.LogLevel)),
 		},
 		Files: []tc.ContainerFile{
 			{

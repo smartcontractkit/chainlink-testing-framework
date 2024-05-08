@@ -112,6 +112,7 @@ func (g *Erigon) buildPosInitScript() (string, error) {
 	}
 
 	initTemplate := `#!/bin/bash
+	echo "BAM!"
 	echo "Copied genesis file to {{.ExecutionDir}}"
 	mkdir -p {{.ExecutionDir}}
 	cp {{.GeneratedDataDir}}/genesis.json {{.ExecutionDir}}/genesis.json
@@ -124,9 +125,14 @@ func (g *Erigon) buildPosInitScript() (string, error) {
 	fi
 
 	echo "Starting Erigon..."
-	erigon --http --http.api=eth,erigon,engine,web3,net,debug,trace,txpool,admin --http.addr=0.0.0.0 --http.corsdomain=* \
-		--http.vhosts=* --http.port={{.HttpPort}} --ws --authrpc.vhosts=* --authrpc.addr=0.0.0.0 --authrpc.jwtsecret={{.JwtFileLocation}} \
-		--datadir={{.ExecutionDir}} {{.ExtraExecutionFlags}} --allow-insecure-unlock --nodiscover --networkid={{.ChainID}}`
+	command="erigon --http --http.api=eth,erigon,engine,web3,net,debug,trace,txpool,admin --http.addr=0.0.0.0 --http.corsdomain=* --http.vhosts=* --http.port={{.HttpPort}} --ws --authrpc.vhosts=* --authrpc.addr=0.0.0.0 --authrpc.jwtsecret={{.JwtFileLocation}} --datadir={{.ExecutionDir}} {{.ExtraExecutionFlags}} --allow-insecure-unlock --nodiscover --networkid={{.ChainID}} --log.console.verbosity={{.LogLevel}} --verbosity={{.LogLevel}}"
+
+	if [ "{{.LogLevel}}" == "trace" ]; then
+		echo "Enabling trace logging for senders: {{.SendersToTrace}}"
+		command="$command --txpool.trace.senders=\"{{.SendersToTrace}}\""
+	fi
+
+	eval $command`
 
 	data := struct {
 		HttpPort            string
@@ -135,6 +141,8 @@ func (g *Erigon) buildPosInitScript() (string, error) {
 		JwtFileLocation     string
 		ExecutionDir        string
 		ExtraExecutionFlags string
+		SendersToTrace      string
+		LogLevel            string
 	}{
 		HttpPort:            DEFAULT_EVM_NODE_HTTP_PORT,
 		ChainID:             g.chainConfig.ChainID,
@@ -142,6 +150,8 @@ func (g *Erigon) buildPosInitScript() (string, error) {
 		JwtFileLocation:     JWT_SECRET_FILE_LOCATION_INSIDE_CONTAINER,
 		ExecutionDir:        "/home/erigon/execution-data",
 		ExtraExecutionFlags: extraExecutionFlags,
+		SendersToTrace:      strings.Join(g.chainConfig.AddressesToFund, ","),
+		LogLevel:            g.LogLevel,
 	}
 
 	t, err := template.New("init").Parse(initTemplate)

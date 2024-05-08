@@ -16,6 +16,11 @@ anvil:
   # forkTimeout: "45000"
   # forkComputeUnitsPerSecond: "330"
   # forkNoRateLimit: "true"
+  noOfAccounts: 20
+  accountBalance: "2000000000000000000"
+  blockGasLimit: "400000000000000"
+  codeSizeLimit: "30000"
+  baseFee: "100000"
 
 image:
   repository: ghcr.io/foundry-rs/foundry

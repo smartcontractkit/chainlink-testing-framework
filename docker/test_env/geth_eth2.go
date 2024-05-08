@@ -131,7 +131,12 @@ func (g *Geth) buildEth2dInitScript() (string, error) {
 		--authrpc.addr=0.0.0.0 --authrpc.jwtsecret={{.JwtFileLocation}} --datadir={{.ExecutionDir}} \
 		--rpc.allow-unprotected-txs --rpc.txfeecap=0 --allow-insecure-unlock \
 		--password={{.PasswordFileLocation}} --nodiscover --syncmode=full --networkid={{.ChainID}} \
-		--graphql --graphql.corsdomain=* --unlock=0x123463a4b065722e99115d6c222f267d9cabb524`
+		--graphql --graphql.corsdomain=* --unlock=0x123463a4b065722e99115d6c222f267d9cabb524 --verbosity={{.Verbosity}}`
+
+	verbosity, err := g.logLevelToVerbosity()
+	if err != nil {
+		return "", err
+	}
 
 	data := struct {
 		HttpPort             string
@@ -142,6 +147,7 @@ func (g *Geth) buildEth2dInitScript() (string, error) {
 		PasswordFileLocation string
 		KeystoreDirLocation  string
 		ExecutionDir         string
+		Verbosity            int
 	}{
 		HttpPort:             DEFAULT_EVM_NODE_HTTP_PORT,
 		WsPort:               DEFAULT_EVM_NODE_WS_PORT,
@@ -151,6 +157,7 @@ func (g *Geth) buildEth2dInitScript() (string, error) {
 		PasswordFileLocation: ACCOUNT_PASSWORD_FILE_INSIDE_CONTAINER,
 		KeystoreDirLocation:  KEYSTORE_DIR_LOCATION_INSIDE_CONTAINER,
 		ExecutionDir:         "/execution-data",
+		Verbosity:            verbosity,
 	}
 
 	t, err := template.New("init").Parse(initTemplate)

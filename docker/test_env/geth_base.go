@@ -252,3 +252,22 @@ func (g *Geth) getWebsocketEnabledMessage() (string, error) {
 
 	return "WebSocket enabled", nil
 }
+
+func (g *Geth) logLevelToVerbosity() (int, error) {
+	switch g.LogLevel {
+	case "trace":
+		return 5, nil
+	case "debug":
+		return 4, nil
+	case "info":
+		return 3, nil
+	case "warn":
+		return 2, nil
+	case "error":
+		return 1, nil
+	case "silent":
+		return 0, nil
+	default:
+		return -1, fmt.Errorf("unknown log level: %s", g.LogLevel)
+	}
+}

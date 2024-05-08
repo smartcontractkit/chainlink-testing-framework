@@ -81,7 +81,7 @@ func (g *Besu) getEth1ContainerRequest() (*tc.ContainerRequest, error) {
 			"--miner-enabled=true",
 			"--miner-coinbase", RootFundingAddr,
 			fmt.Sprintf("--network-id=%d", g.chainConfig.ChainID),
-			"--logging=DEBUG",
+			fmt.Sprintf("--logging=%s", strings.ToUpper(g.LogLevel)),
 		},
 		Files: []tc.ContainerFile{
 			{

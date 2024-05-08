@@ -202,6 +202,91 @@ func TestEthEnvCustomDockerImagesFromToml(t *testing.T) {
 	require.Contains(t, fmt.Sprintf(MsgUnsupportedDockerImage, "i-dont-exist"), err.Error(), "Error message is not correct")
 }
 
+func TestEthNoLogLevelDefaultsToInfo(t *testing.T) {
+	t.Parallel()
+	tomlStr := `
+	[EthereumNetwork]
+	consensus_type="pos"
+	consensus_layer="prysm"
+	execution_layer="geth"
+	wait_for_finalization=false
+
+	[EthereumNetwork.EthereumChainConfig]
+	seconds_per_slot=12
+	slots_per_epoch=2
+	genesis_delay=20
+	validator_count=8
+	chain_id=1234
+	addresses_to_fund=["0x742d35Cc6634C0532925a3b844Bc454e4438f44e", "0x742d35Cc6634C0532925a3b844Bc454e4438f44f"]
+	`
+
+	tomlCfg, err := readEthereumNetworkConfig(tomlStr)
+	require.NoError(t, err, "Couldn't read config")
+
+	tomlCfg.EthereumChainConfig.GenerateGenesisTimestamp()
+
+	err = tomlCfg.Validate()
+	require.NoError(t, err, "Failed to validate correct TOML config")
+	require.Equal(t, config.DefaultNodeLogLevel, *tomlCfg.NodeLogLevel, "Incorrect default log level")
+}
+
+func TestEthLogLevelTrace(t *testing.T) {
+	t.Parallel()
+	tomlStr := `
+	[EthereumNetwork]
+	consensus_type="pos"
+	consensus_layer="prysm"
+	execution_layer="geth"
+	wait_for_finalization=false
+	node_log_level="trace"
+
+	[EthereumNetwork.EthereumChainConfig]
+	seconds_per_slot=12
+	slots_per_epoch=2
+	genesis_delay=20
+	validator_count=8
+	chain_id=1234
+	addresses_to_fund=["0x742d35Cc6634C0532925a3b844Bc454e4438f44e", "0x742d35Cc6634C0532925a3b844Bc454e4438f44f"]
+	`
+
+	tomlCfg, err := readEthereumNetworkConfig(tomlStr)
+	require.NoError(t, err, "Couldn't read config")
+
+	tomlCfg.EthereumChainConfig.GenerateGenesisTimestamp()
+
+	err = tomlCfg.Validate()
+	require.NoError(t, err, "Failed to validate correct TOML config")
+	require.Equal(t, "trace", *tomlCfg.NodeLogLevel, "Incorrect default log level")
+}
+
+func TestEthInvalidLogLevel(t *testing.T) {
+	t.Parallel()
+	tomlStr := `
+	[EthereumNetwork]
+	consensus_type="pos"
+	consensus_layer="prysm"
+	execution_layer="geth"
+	wait_for_finalization=false
+	node_log_level="random"
+
+	[EthereumNetwork.EthereumChainConfig]
+	seconds_per_slot=12
+	slots_per_epoch=2
+	genesis_delay=20
+	validator_count=8
+	chain_id=1234
+	addresses_to_fund=["0x742d35Cc6634C0532925a3b844Bc454e4438f44e", "0x742d35Cc6634C0532925a3b844Bc454e4438f44f"]
+	`
+
+	tomlCfg, err := readEthereumNetworkConfig(tomlStr)
+	require.NoError(t, err, "Couldn't read config")
+
+	tomlCfg.EthereumChainConfig.GenerateGenesisTimestamp()
+
+	err = tomlCfg.Validate()
+	require.Error(t, err, "Successfully validated incorrect TOML config")
+}
+
 type ethereumNetworkWrapper struct {
 	EthereumNetwork *config.EthereumNetworkConfig `toml:"EthereumNetwork"`
 }
