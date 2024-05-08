@@ -50,9 +50,6 @@ podSecurityContext: {}
   # fsGroup: 1000
 
 securityContext:
-  capabilities:
-    drop:
-    - ALL
   readOnlyRootFilesystem: false
   runAsNonRoot: true
   # foundry user/group
@@ -104,7 +101,7 @@ resources: {}
   #   memory: 128Mi
 
 capacity: 20Gi
-storageClassName: gp2
+storageClassName: gp3
 autoscaling:
   enabled: false
   minReplicas: 1
