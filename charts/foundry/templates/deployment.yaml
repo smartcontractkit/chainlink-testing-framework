@@ -132,7 +132,6 @@ spec:
           volumeMounts:
             - name: state-storage
               mountPath: /data
-              subPath: dump.json
           {{- with .Values.volumeMounts }}
             {{- toYaml . | nindent 12 }}
           {{- end }}
