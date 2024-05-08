@@ -105,9 +105,9 @@ spec:
             - {{ .Values.anvil.accountBalance | quote }}
             {{- end }}
             - "--state"
-            - "state/dump.json"
+            - "dump.json"
             - "--state-interval"
-            - "10"
+            - "60"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
