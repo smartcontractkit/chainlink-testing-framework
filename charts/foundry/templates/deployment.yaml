@@ -108,6 +108,7 @@ spec:
             - "/state/dump.json"
             - "--state-interval"
             - "60"
+            - "--prune-history"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
