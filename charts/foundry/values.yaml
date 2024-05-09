@@ -50,11 +50,10 @@ podSecurityContext: {}
   # fsGroup: 1000
 
 securityContext:
+  capabilities:
+    drop:
+    - ALL
   readOnlyRootFilesystem: false
-  runAsNonRoot: true
-  # foundry user/group
-  runAsUser: 1000
-  runAsGroup: 1000
 
 service:
   type: ClusterIP
