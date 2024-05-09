@@ -8,8 +8,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -379,6 +381,74 @@ func (m *LogStream) SaveLogLocationInTestSummary() {
 	m.SaveLogTargetsLocations(func(testName string, name string, location interface{}) error {
 		return testsummary.AddEntry(testName, name, location)
 	})
+}
+
+// SaveLogTargetsLocations saves all log targets locations to test summary
+func (m *LogStream) GetLogLocation() string {
+	var logLocation string
+	m.SaveLogTargetsLocations(func(testName string, name string, location interface{}) error {
+		logLocation = location.(string)
+		return nil
+	})
+
+	return logLocation
+}
+
+func (m *LogStream) ScanContainerLogsForMatches(containerName string, pattern string) (int, error) {
+	containerName = strings.Replace(containerName, "/", "", 1)
+	var consumer *ContainerLogConsumer
+	for _, c := range m.consumers {
+		if c.name == containerName {
+			consumer = c
+			break
+		}
+	}
+
+	if consumer == nil {
+		return 0, fmt.Errorf("no consumer found for container %s", containerName)
+	}
+
+	// Duplicate the file descriptor for independent reading
+	fd, err := syscall.Dup(int(consumer.tempFile.Fd()))
+	if err != nil {
+		panic(err)
+	}
+	readFile := os.NewFile(uintptr(fd), "name_doesnt_matter.txt")
+	_, err = readFile.Seek(0, 0)
+	if err != nil {
+		panic(err)
+	}
+
+	decoder := gob.NewDecoder(readFile)
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		return 0, err
+	}
+
+	matchesFound := 0
+	for {
+		var log LogContent
+		decodeErr := decoder.Decode(&log)
+		if decodeErr == nil {
+			if re.MatchString(string(log.Content)) {
+				matchesFound++
+			}
+		} else if errors.Is(decodeErr, io.EOF) {
+			m.log.Debug().
+				Str("Container", consumer.name).
+				Int("Matches found", matchesFound).
+				Msg("Finished scanning logs")
+			break
+		} else {
+			m.log.Error().
+				Err(decodeErr).
+				Str("Container", consumer.name).
+				Msg("Failed to decode log")
+			return 0, decodeErr
+		}
+	}
+
+	return matchesFound, nil
 }
 
 // SaveLogTargetsLocations saves all log targets given writer
