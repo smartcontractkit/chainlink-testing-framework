@@ -108,7 +108,8 @@ spec:
             - "/state/dump.json"
             - "--state-interval"
             - "60"
-            - "--prune-history"
+            - "--transaction-block-keeper"
+            - "3500"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
