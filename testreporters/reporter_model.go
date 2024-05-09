@@ -131,6 +131,8 @@ type AllowedLogMessage struct {
 	logWhenFound LogAllowed
 }
 
+// NewAllowedLogMessage creates a new AllowedLogMessage. If logWhenFound is true, the log message will be printed to the
+// console when found in the log file with Warn level (this can get noisy).
 func NewAllowedLogMessage(message string, reason string, level zapcore.Level, logWhenFound LogAllowed) AllowedLogMessage {
 	return AllowedLogMessage{
 		message:      message,
@@ -148,7 +150,10 @@ var defaultAllowedLogMessages = []AllowedLogMessage{
 	},
 }
 
-// VerifyLogFile verifies that a log file
+// VerifyLogFile verifies that a log file does not contain any logs at a level higher than the failingLogLevel. If it does,
+// it will return an error. It also allows for a list of AllowedLogMessages to be passed in, which will be ignored if found
+// in the log file. The failureThreshold is the number of logs at the failingLogLevel or higher that can be found before
+// the function returns an error.
 func VerifyLogFile(file *os.File, failingLogLevel zapcore.Level, failureThreshold uint, allowedMessages ...AllowedLogMessage) error {
 	// nolint
 	defer file.Close()
@@ -200,7 +205,7 @@ func VerifyLogFile(file *os.File, failingLogLevel zapcore.Level, failureThreshol
 			logMessage, hasMessage := jsonMapping["msg"]
 			if !hasMessage {
 				logsFound++
-				if logsFound > failureThreshold {
+				if logsFound >= failureThreshold {
 					return logErr
 				}
 				continue
@@ -219,7 +224,7 @@ func VerifyLogFile(file *os.File, failingLogLevel zapcore.Level, failureThreshol
 			}
 
 			logsFound++
-			if logsFound > failureThreshold {
+			if logsFound >= failureThreshold {
 				return logErr
 			}
 		}
