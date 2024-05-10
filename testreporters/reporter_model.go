@@ -116,11 +116,11 @@ func FindAllLogFilesToScan(directoryPath string, partialFilename string) (logFil
 	return logFilesToScan, err
 }
 
-type LogAllowed = bool
+type WarnAboutAllowedMsgs = bool
 
 const (
-	LogAllowed_Yes LogAllowed = true
-	LogAllowed_No  LogAllowed = false
+	WarnAboutAllowedMsgs_Yes WarnAboutAllowedMsgs = true
+	WarnAboutAllowedMsgs_No  WarnAboutAllowedMsgs = false
 )
 
 // AllowedLogMessage is a log message that might be thrown by a Chainlink node during a test, but is not a concern
@@ -128,12 +128,12 @@ type AllowedLogMessage struct {
 	message      string
 	reason       string
 	level        zapcore.Level
-	logWhenFound LogAllowed
+	logWhenFound WarnAboutAllowedMsgs
 }
 
 // NewAllowedLogMessage creates a new AllowedLogMessage. If logWhenFound is true, the log message will be printed to the
 // console when found in the log file with Warn level (this can get noisy).
-func NewAllowedLogMessage(message string, reason string, level zapcore.Level, logWhenFound LogAllowed) AllowedLogMessage {
+func NewAllowedLogMessage(message string, reason string, level zapcore.Level, logWhenFound WarnAboutAllowedMsgs) AllowedLogMessage {
 	return AllowedLogMessage{
 		message:      message,
 		reason:       reason,
@@ -169,6 +169,7 @@ func VerifyLogFile(file *os.File, failingLogLevel zapcore.Level, failureThreshol
 
 	var logsFound uint
 
+SCANNER_LOOP:
 	for scanner.Scan() {
 		jsonLogLine := scanner.Text()
 		if !strings.HasPrefix(jsonLogLine, "{") { // don't bother with non-json lines
@@ -212,14 +213,16 @@ func VerifyLogFile(file *os.File, failingLogLevel zapcore.Level, failureThreshol
 			}
 
 			for _, allowedLog := range allAllowedMessages {
-				if strings.Contains(logMessage.(string), allowedLog.message) && allowedLog.logWhenFound {
-					log.Warn().
-						Str("Reason", allowedLog.reason).
-						Str("Level", allowedLog.level.CapitalString()).
-						Str("Msg", logMessage.(string)).
-						Msg("Found allowed log message, ignoring")
+				if strings.Contains(logMessage.(string), allowedLog.message) {
+					if allowedLog.logWhenFound {
+						log.Warn().
+							Str("Reason", allowedLog.reason).
+							Str("Level", allowedLog.level.CapitalString()).
+							Str("Msg", logMessage.(string)).
+							Msg("Found allowed log message, ignoring")
+					}
 
-					continue
+					continue SCANNER_LOOP
 				}
 			}
 
