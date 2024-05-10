@@ -8,6 +8,10 @@ func (c *TestConfig) GetLoggingConfig() *LoggingConfig {
 	return c.Logging
 }
 
+func (c *TestConfig) GetNodeConfig() *NodeConfig {
+	return c.NodeConfig
+}
+
 func (c TestConfig) GetNetworkConfig() *NetworkConfig {
 	return c.Network
 }
@@ -33,4 +37,5 @@ type TestConfig struct {
 	PrivateEthereumNetwork *EthereumNetworkConfig `toml:"PrivateEthereumNetwork"`
 	WaspConfig             *WaspAutoBuildConfig   `toml:"WaspAutoBuild"`
 	Seth                   *seth.Config           `toml:"Seth"`
+	NodeConfig             *NodeConfig            `toml:"NodeConfig"`
 }
