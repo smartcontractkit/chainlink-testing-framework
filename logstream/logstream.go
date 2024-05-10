@@ -381,6 +381,17 @@ func (m *LogStream) SaveLogLocationInTestSummary() {
 	})
 }
 
+// SaveLogTargetsLocations saves all log targets locations to test summary
+func (m *LogStream) GetLogLocation() string {
+	var logLocation string
+	m.SaveLogTargetsLocations(func(testName string, name string, location interface{}) error {
+		logLocation = location.(string)
+		return nil
+	})
+
+	return logLocation
+}
+
 // SaveLogTargetsLocations saves all log targets given writer
 func (m *LogStream) SaveLogTargetsLocations(writer LogWriter) {
 	for _, handler := range m.logTargetHandlers {
