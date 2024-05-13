@@ -4,8 +4,8 @@ on:
     tags:
       - main
   workflow_dispatch:
-  schedule: # add schecule for once a week on saturday
-    - cron: '0 0 * * 6'
+  schedule: # Schedule to run twice a day at 8:00 AM and 8:00 PM
+    - cron: '0 8,20 * * *'
 
 concurrency:
   group: update-mirrors-${{ github.ref }}
