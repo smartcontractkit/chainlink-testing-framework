@@ -4,9 +4,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/testreporters"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zapcore"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/testreporters"
 )
 
 func TestVerifyLogFile(t *testing.T) {
