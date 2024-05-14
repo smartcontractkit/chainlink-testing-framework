@@ -20,7 +20,7 @@ import (
 
 const (
 	defaultBesuEth1Image = "hyperledger/besu:22.1.0"
-	defaultBesuEth2Image = "hyperledger/besu:24.1.0"
+	defaultBesuEth2Image = "hyperledger/besu:24.5.1"
 	besuBaseImageName    = "hyperledger/besu"
 	besuGitRepo          = "hyperledger/besu"
 )
@@ -116,6 +116,7 @@ func (g *Besu) StartContainer() (blockchain.EVMNetwork, error) {
 	networkConfig.URLs = []string{g.ExternalWsUrl}
 	networkConfig.HTTPURLs = []string{g.ExternalHttpUrl}
 	networkConfig.GasEstimationBuffer = 10_000_000_000
+	networkConfig.SimulationType = "Besu"
 
 	if g.GetEthereumVersion() == config.EthereumVersion_Eth1 {
 		networkConfig.Name = fmt.Sprintf("Private Eth-1-PoA [besu %s]", g.ContainerVersion)

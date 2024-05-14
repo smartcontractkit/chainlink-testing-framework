@@ -73,7 +73,15 @@ func TestBesuEth2(t *testing.T) {
 	eip1559Network.Name = "Simulated Besu + Prysm (EIP 1559)"
 	eip1559Network.SupportsEIP1559 = true
 	eip1559Network.URLs = eth2.PublicWsUrls()
-	_, err = blockchain.ConnectEVMClient(eip1559Network, l)
-	require.Error(t, err, "Could connect to the evm client")
+	clientTwo, err := blockchain.ConnectEVMClient(eip1559Network, l)
+	require.NoError(t, err, "Couldn't connect to the evm client")
+
+	t.Cleanup(func() {
+		err = clientTwo.Close()
+		require.NoError(t, err, "Couldn't close the client")
+	})
+
+	err = sendAndCompareBalances(testcontext.Get(t), clientTwo, address)
+	require.Error(t, err, "Couldn send EIP-1559 transaction to Besu")
 	require.Contains(t, err.Error(), "Method not found", "Besu should not work EIP-1559 yet")
 }
