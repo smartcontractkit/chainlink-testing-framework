@@ -96,7 +96,7 @@ func (t Test) Print(c *TestLogModifierConfig) {
 
 	// preprocess the logs
 	message := t[0].Test
-	outcomeType := "pass"
+	outcomeType := "fail"
 	toRemove := []int{}
 	errorMessages := []GoTestEvent{}
 	for i, log := range t {
