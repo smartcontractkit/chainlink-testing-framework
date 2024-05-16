@@ -123,8 +123,17 @@ func (t Test) Print(c *TestLogModifierConfig) {
 		t = append(t[:toRemove[i]], t[toRemove[i]+1:]...)
 	}
 
+	// check if all logs are empty logs
+	onlyEmpty := true
+	for _, l := range t {
+		if l.Output != "" {
+			onlyEmpty = false
+			break
+		}
+	}
+
 	// start the group
-	hasLogs := len(t) > 0
+	hasLogs := len(t) > 0 && !onlyEmpty
 	if outcomeType == "pass" {
 		StartGroupPass(message, c, hasLogs)
 	} else if outcomeType == "skip" {
@@ -143,7 +152,9 @@ func (t Test) Print(c *TestLogModifierConfig) {
 
 	// print out the test logs
 	for _, log := range t {
-		log.Print()
+		if log.Output != "" {
+			log.Print()
+		}
 	}
 
 	// end the group if we are in CI mode
@@ -153,26 +164,26 @@ func (t Test) Print(c *TestLogModifierConfig) {
 }
 
 type TestPackage struct {
-	Name        string
-	NonTestLogs []GoTestEvent
-	TestLogs    map[string]Test
-	TestOrder   []string
-	FailedTests []string
-	PanicTests  []string
-	Failed      bool
-	Elapsed     float64
-	Message     string
+	Name           string
+	NonTestLogs    []GoTestEvent
+	TestLogs       map[string]Test
+	TestOrder      []string
+	FailedTests    []string
+	CompletedTests []string
+	PanicTests     []string
+	Failed         bool
+	Elapsed        float64
+	Message        string
 }
 
 func (p *TestPackage) AddTestEvent(te *GoTestEvent) {
-	// stop noise from being added to the logs
-	if len(te.Output) == 0 || testRunPrefixRegexp.MatchString(te.Output) {
-		return
-	}
-
 	if _, ok := p.TestLogs[te.Test]; !ok {
 		p.TestLogs[te.Test] = []GoTestEvent{}
 		p.TestOrder = append(p.TestOrder, te.Test)
+	}
+	// stop noise from being added to the logs
+	if len(te.Output) == 0 || testRunPrefixRegexp.MatchString(te.Output) {
+		te.Output = ""
 	}
 	p.TestLogs[te.Test] = append(p.TestLogs[te.Test], *te)
 }
@@ -199,7 +210,7 @@ func (p *TestPackage) Print(c *TestLogModifierConfig) {
 			}
 		}
 		p.printTestsInOrder(c)
-	} else if len(p.FailedTests) > 0 {
+	} else if len(p.FailedTests) > 0 || len(p.CompletedTests) != len(p.TestOrder) {
 		p.printTestsInOrder(c)
 	}
 
@@ -226,10 +237,12 @@ func (p TestPackage) printTestsInOrder(c *TestLogModifierConfig) {
 func (p TestPackage) ShouldPrintTest(test Test, c *TestLogModifierConfig) bool {
 	shouldPrintTest := false
 	testFailed := SliceContains(p.FailedTests, test[0].Test)
+	testCompleted := SliceContains(p.CompletedTests, test[0].Test)
 	// if we only want errors
 	if c.OnlyErrors.Value {
 		// if the test failed or if we had a package fail without a test fail, we want all the logs for triage in this case
-		if (len(p.FailedTests) == 0 || testFailed) && p.Failed {
+		// if (len(p.FailedTests) == 0 || testFailed) && p.Failed {
+		if (testFailed || !testCompleted) && p.Failed {
 			shouldPrintTest = true
 		}
 	} else {
@@ -245,12 +258,13 @@ func (m TestPackageMap) InitPackageInMap(packageName string) {
 	_, ok := m[packageName]
 	if !ok {
 		m[packageName] = &TestPackage{
-			Name:        packageName,
-			NonTestLogs: []GoTestEvent{},
-			TestLogs:    map[string]Test{},
-			TestOrder:   []string{},
-			FailedTests: []string{},
-			PanicTests:  []string{},
+			Name:           packageName,
+			NonTestLogs:    []GoTestEvent{},
+			TestLogs:       map[string]Test{},
+			TestOrder:      []string{},
+			FailedTests:    []string{},
+			CompletedTests: []string{},
+			PanicTests:     []string{},
 		}
 	}
 }
@@ -378,6 +392,11 @@ func JsonTestOutputToStandard(te *GoTestEvent, c *TestLogModifierConfig) error {
 	// if this is a test log then make sure it is ordered correctly
 	if len(te.Test) > 0 {
 		p.AddTestEvent(te)
+
+		// if we have a completed test add it to the completed tests list
+		if te.Action == ActionPass || te.Action == ActionFail || te.Action == ActionSkip {
+			p.CompletedTests = append(p.CompletedTests, te.Test)
+		}
 
 		// if we have a test failure or panic then we add it to the test failures
 		if te.Action == ActionFail || testPanicRegexp.MatchString(te.Output) {
