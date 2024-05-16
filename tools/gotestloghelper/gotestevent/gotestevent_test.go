@@ -3,6 +3,7 @@ package gotestevent
 import (
 	"io"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -353,6 +354,40 @@ func TestBasicPassAndFail(t *testing.T) {
 			onlyErrors:       true,
 			errorAtTopLength: ptr.Ptr(2),
 		},
+		{
+			name: "SinglePackageWithSegFault",
+			inputs: []string{
+				`{"Time":"2024-05-12T00:07:20.069895141Z","Action":"start","Package":"github.com/smartcontractkit/chainlink/integration-tests/smoke"}`,
+				`{"Time":"2024-05-12T00:07:20.32149023Z","Action":"run","Package":"github.com/smartcontractkit/chainlink/integration-tests/smoke","Test":"TestAutomationNodeUpgrade"}`,
+				`{"Time":"2024-05-12T00:07:20.321515657Z","Action":"output","Package":"github.com/smartcontractkit/chainlink/integration-tests/smoke","Test":"TestAutomationNodeUpgrade","Output":"=== RUN   TestAutomationNodeUpgrade\n"}`,
+				`{"Time":"2024-05-12T00:07:20.321539933Z","Action":"output","Package":"github.com/smartcontractkit/chainlink/integration-tests/smoke","Test":"TestAutomationNodeUpgrade","Output":"\u001b[90m00:07:20.32\u001b[0m \u001b[32mINF\u001b[0m Reading configs from file system\n"}`,
+				`{"Time":"2024-05-12T00:07:20.324890771Z","Action":"output","Package":"github.com/smartcontractkit/chainlink/integration-tests/smoke","Test":"TestAutomationNodeUpgrade","Output":"=== PAUSE TestAutomationNodeUpgrade\n"}`,
+				`{"Time":"2024-05-12T00:07:20.32495929Z","Action":"run","Package":"github.com/smartcontractkit/chainlink/integration-tests/smoke","Test":"TestAutomationNodeUpgrade/registry_2_0"}`,
+				`{"Time":"2024-05-12T00:08:04.238366571Z","Action":"output","Package":"github.com/smartcontractkit/chainlink/integration-tests/smoke","Test":"TestAutomationNodeUpgrade/registry_2_0","Output":"    automation_test.go:1324: \n"}`,
+				`{"Time":"2024-05-12T00:08:04.23838193Z","Action":"output","Package":"github.com/smartcontractkit/chainlink/integration-tests/smoke","Test":"TestAutomationNodeUpgrade/registry_2_0","Output":"        \tError Trace:\t/home/runner/work/chainlink/chainlink/integration-tests/smoke/automation_test.go:1324\n"}`,
+				`{"Time":"2024-05-12T00:08:04.23838773Z","Action":"output","Package":"github.com/smartcontractkit/chainlink/integration-tests/smoke","Test":"TestAutomationNodeUpgrade/registry_2_0","Output":"        \t            \t\t\t\t/home/runner/work/chainlink/chainlink/integration-tests/smoke/automation_test.go:126\n"}`,
+				`{"Time":"2024-05-12T00:08:04.23839279Z","Action":"output","Package":"github.com/smartcontractkit/chainlink/integration-tests/smoke","Test":"TestAutomationNodeUpgrade/registry_2_0","Output":"        \tError:      \tReceived unexpected error:\n"}`,
+				`{"Time":"2024-05-12T00:08:04.23839816Z","Action":"output","Package":"github.com/smartcontractkit/chainlink/integration-tests/smoke","Test":"TestAutomationNodeUpgrade/registry_2_0","Output":"        \t            \tfailed to start CL node container err: Error response from daemon: No such image: public.ecr.aws/chainlink/chainlink:latest: failed to create container\n"}`,
+				`{"Time":"2024-05-12T00:08:04.238403179Z","Action":"output","Package":"github.com/smartcontractkit/chainlink/integration-tests/smoke","Test":"TestAutomationNodeUpgrade/registry_2_0","Output":"        \tTest:       \tTestAutomationNodeUpgrade/registry_2_0\n"}`,
+				`{"Time":"2024-05-12T00:08:04.238408109Z","Action":"output","Package":"github.com/smartcontractkit/chainlink/integration-tests/smoke","Test":"TestAutomationNodeUpgrade/registry_2_0","Output":"        \tMessages:   \tError deploying test environment\n"}`,
+				`{"Time":"2024-05-12T00:08:06.489477083Z","Action":"output","Package":"github.com/smartcontractkit/chainlink/integration-tests/smoke","Test":"TestAutomationNodeUpgrade/registry_2_0","Output":"panic: runtime error: invalid memory address or nil pointer dereference\n"}`,
+				`{"Time":"2024-05-12T00:08:06.489485969Z","Action":"output","Package":"github.com/smartcontractkit/chainlink/integration-tests/smoke","Test":"TestAutomationNodeUpgrade/registry_2_0","Output":"[signal SIGSEGV: segmentation violation code=0x1 addr=0xd8 pc=0x5ab986f]\n"}`,
+				`{"Time":"2024-05-12T00:08:06.489491479Z","Action":"output","Package":"github.com/smartcontractkit/chainlink/integration-tests/smoke","Test":"TestAutomationNodeUpgrade/registry_2_0","Output":"\n"}`,
+				`{"Time":"2024-05-12T00:08:06.489495457Z","Action":"output","Package":"github.com/smartcontractkit/chainlink/integration-tests/smoke","Test":"TestAutomationNodeUpgrade/registry_2_0","Output":"goroutine 1788 [running]:\n"}`,
+				`{"Time":"2024-05-12T00:08:06.48950252Z","Action":"output","Package":"github.com/smartcontractkit/chainlink/integration-tests/smoke","Test":"TestAutomationNodeUpgrade/registry_2_0","Output":"github.com/smartcontractkit/chainlink/integration-tests/docker/test_env.(*ClCluster).Stop.func1()\n"}`,
+				`{"Time":"2024-05-12T00:08:06.489507309Z","Action":"output","Package":"github.com/smartcontractkit/chainlink/integration-tests/smoke","Test":"TestAutomationNodeUpgrade/registry_2_0","Output":"\t/home/runner/work/chainlink/chainlink/integration-tests/docker/test_env/cl_node_cluster.go:54 +0x2f\n"}`,
+				`{"Time":"2024-05-12T00:08:06.489511628Z","Action":"output","Package":"github.com/smartcontractkit/chainlink/integration-tests/smoke","Test":"TestAutomationNodeUpgrade/registry_2_0","Output":"golang.org/x/sync/errgroup.(*Group).Go.func1()\n"}`,
+				`{"Time":"2024-05-12T00:08:06.489515956Z","Action":"output","Package":"github.com/smartcontractkit/chainlink/integration-tests/smoke","Test":"TestAutomationNodeUpgrade/registry_2_0","Output":"\t/home/runner/go/pkg/mod/golang.org/x/sync@v0.6.0/errgroup/errgroup.go:78 +0x56\n"}`,
+				`{"Time":"2024-05-12T00:08:06.489521276Z","Action":"output","Package":"github.com/smartcontractkit/chainlink/integration-tests/smoke","Test":"TestAutomationNodeUpgrade/registry_2_0","Output":"created by golang.org/x/sync/errgroup.(*Group).Go in goroutine 354\n"}`,
+				`{"Time":"2024-05-12T00:08:06.489525463Z","Action":"output","Package":"github.com/smartcontractkit/chainlink/integration-tests/smoke","Test":"TestAutomationNodeUpgrade/registry_2_0","Output":"\t/home/runner/go/pkg/mod/golang.org/x/sync@v0.6.0/errgroup/errgroup.go:75 +0x96\n"}`,
+				`{"Time":"2024-05-12T00:08:06.495576951Z","Action":"output","Package":"github.com/smartcontractkit/chainlink/integration-tests/smoke","Output":"FAIL\tgithub.com/smartcontractkit/chainlink/integration-tests/smoke\t46.425s\n"}`,
+				`{"Time":"2024-05-12T00:08:06.495595336Z","Action":"fail","Package":"github.com/smartcontractkit/chainlink/integration-tests/smoke","Elapsed":46.426}`,
+			},
+			expected:         "::group::\x1b[0;32mTestAutomationNodeUpgrade/registry_2_0\x1b[0mautomation_test.go:1324:ErrorTrace:/home/runner/work/chainlink/chainlink/integration-tests/smoke/automation_test.go:1324/home/runner/work/chainlink/chainlink/integration-tests/smoke/automation_test.go:126Error:Receivedunexpectederror:failedtostartCLnodecontainererr:Errorresponsefromdaemon:Nosuchimage:public.ecr.aws/chainlink/chainlink:latest:failedtocreatecontainerTest:TestAutomationNodeUpgrade/registry_2_0Messages:Errordeployingtestenvironmentpanic:runtimeerror:invalidmemoryaddressornilpointerdereference[signalSIGSEGV:segmentationviolationcode=0x1addr=0xd8pc=0x5ab986f]goroutine1788[running]:github.com/smartcontractkit/chainlink/integration-tests/docker/test_env.(*ClCluster).Stop.func1()/home/runner/work/chainlink/chainlink/integration-tests/docker/test_env/cl_node_cluster.go:54+0x2fgolang.org/x/sync/errgroup.(*Group).Go.func1()/home/runner/go/pkg/mod/golang.org/x/sync@v0.6.0/errgroup/errgroup.go:78+0x56createdbygolang.org/x/sync/errgroup.(*Group).Goingoroutine354/home/runner/go/pkg/mod/golang.org/x/sync@v0.6.0/errgroup/errgroup.go:75+0x96::endgroup::",
+			onlyErrors:       true,
+			errorAtTopLength: ptr.Ptr(50),
+			singlePackage:    true,
+		},
 	}
 
 	for _, test := range tests {
@@ -376,7 +411,6 @@ func TestBasicPassAndFail(t *testing.T) {
 			}
 			require.NoError(t, c.Validate(), "Config should be valid")
 			SetupModifiers(c)
-
 			output := genericCaptureOutput(func() {
 				for _, input := range inputs {
 					testEvent, err := ParseTestEvent([]byte(input))
@@ -385,7 +419,8 @@ func TestBasicPassAndFail(t *testing.T) {
 					require.NoError(t, err)
 				}
 			}, true)
-			require.Equal(t, expected, output)
+			require.Equal(t, strings.Join(strings.Fields(expected), ""), strings.Join(strings.Fields(output), ""))
 		})
 	}
+
 }

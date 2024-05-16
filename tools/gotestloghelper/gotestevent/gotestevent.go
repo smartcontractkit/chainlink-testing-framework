@@ -40,7 +40,8 @@ const testPassFailPrefix = `^--- (PASS|FAIL|SKIP):(.*)`
 const packagePassFailPrefix = `^(PASS|FAIL)\n$`
 const packageCoveragePrefix = `^coverage:`
 const testingLogPrefix = `^(\s+)(\w+\.go:\d+: )`
-const testPanic = `^(\x1b\[0;31m)?panic:.* (Test[A-Z]\w*)`
+const testPanicWithTest = `^(\x1b\[0;31m)?panic:.* (Test[A-Z]\w*)`
+const testPanic = `^(\x1b\[0;31m)?(\[signal SIGSEGV|panic):.* (Test[A-Z]\w*)?`
 const testErrorPrefix = `^(\x1b\[0;31m)?\s+(Error\sTrace|Error|Test|Messages):\s+`
 const testErrorPrefix2 = `        \t            \t.*`
 const packageOkFailPrefix = `^(ok|FAIL)\s*\t(.*)` //`^(FAIL|ok).*\t(.*)$`
@@ -50,6 +51,7 @@ var testPassFailPrefixRegexp = regexp.MustCompile(testPassFailPrefix)
 var packagePassFailPrefixRegexp = regexp.MustCompile(packagePassFailPrefix)
 var packageCoveragePrefixRegexp = regexp.MustCompile(packageCoveragePrefix)
 var removeTLogRegexp = regexp.MustCompile(testingLogPrefix)
+var testPanicWithTestRegexp = regexp.MustCompile(testPanicWithTest)
 var testPanicRegexp = regexp.MustCompile(testPanic)
 var testErrorPrefixRegexp = regexp.MustCompile(testErrorPrefix)
 var testErrorPrefix2Regexp = regexp.MustCompile(testErrorPrefix2)
@@ -176,7 +178,7 @@ func (p *TestPackage) AddTestEvent(te *GoTestEvent) {
 }
 
 // Print prints the TestPackage to the console
-func (p TestPackage) Print(c *TestLogModifierConfig) {
+func (p *TestPackage) Print(c *TestLogModifierConfig) {
 	// if package passed
 	if !p.Failed {
 		// if we only want errors then skip
@@ -196,7 +198,8 @@ func (p TestPackage) Print(c *TestLogModifierConfig) {
 				fmt.Printf("📦 %s", clihelper.Color(clihelper.ColorGreen, match[2]))
 			}
 		}
-
+		p.printTestsInOrder(c)
+	} else if len(p.FailedTests) > 0 {
 		p.printTestsInOrder(c)
 	}
 
@@ -204,6 +207,10 @@ func (p TestPackage) Print(c *TestLogModifierConfig) {
 	for _, log := range p.NonTestLogs {
 		log.Print()
 	}
+
+	// clear out logs that have already printed to save memory and to prevent double printing
+	p.TestLogs = map[string]Test{}
+	p.NonTestLogs = []GoTestEvent{}
 }
 
 func (p TestPackage) printTestsInOrder(c *TestLogModifierConfig) {
@@ -346,7 +353,8 @@ func RemoveTestLogPrefix(te *GoTestEvent, _ *TestLogModifierConfig) error {
 func HighlightErrorOutput(te *GoTestEvent, _ *TestLogModifierConfig) error {
 	if te.Action == ActionOutput && len(te.Output) > 0 {
 		if testErrorPrefixRegexp.MatchString(te.Output) ||
-			testErrorPrefix2Regexp.MatchString(te.Output) {
+			testErrorPrefix2Regexp.MatchString(te.Output) ||
+			testPanicRegexp.MatchString(te.Output) {
 			te.Output = clihelper.Color(clihelper.ColorRed, te.Output)
 		}
 	}
@@ -377,9 +385,14 @@ func JsonTestOutputToStandard(te *GoTestEvent, c *TestLogModifierConfig) error {
 			p.Failed = true
 			c.FailuresExist = true
 		}
+
+		// for single package mode we want to print tests out earlier so we can get logs to the user faster
 		t := p.TestLogs[te.Test]
 		if *c.SinglePackage && (te.Action == ActionFail || te.Action == ActionPass) && p.ShouldPrintTest(t, c) {
 			t.Print(c)
+			// clear out printed test logs to save memory and to prevent double printing
+			delete(p.TestLogs, te.Test)
+			p.TestOrder = deleteItemFromStrSlice(p.TestOrder, te.Test)
 			return nil
 		}
 
@@ -405,7 +418,7 @@ func JsonTestOutputToStandard(te *GoTestEvent, c *TestLogModifierConfig) error {
 		if len(te.Output) > 0 && testPanicRegexp.MatchString(te.Output) {
 			p.Failed = true
 			c.FailuresExist = true
-			match := testPanicRegexp.FindStringSubmatch(te.Output)
+			match := testPanicWithTestRegexp.FindStringSubmatch(te.Output)
 			te.Output = clihelper.Color(clihelper.ColorRed, te.Output)
 			p.NonTestLogs = append(p.NonTestLogs, *te)
 			// Check if there is a match for the test name
@@ -413,7 +426,7 @@ func JsonTestOutputToStandard(te *GoTestEvent, c *TestLogModifierConfig) error {
 				// the second element should have the test name
 				p.FailedTests = append(p.FailedTests, match[2])
 			} else {
-				fmt.Println("What is wrong with this panic???", te.Output)
+				fmt.Println(clihelper.Color(clihelper.ColorRed, "gotestloghelper: unexpected panic format, report to TT team"))
 			}
 		} else if len(te.Output) > 0 && packageOkFailPrefixRegexp.MatchString(te.Output) {
 			p.Message = te.Output
@@ -515,4 +528,14 @@ func ReadAndModifyLogs(ctx context.Context, r io.Reader, modifiers []TestLogModi
 		}
 		return nil
 	})
+}
+
+func deleteItemFromStrSlice(slice []string, strToRemove string) []string {
+	var newSlice []string
+	for _, item := range slice {
+		if item != strToRemove {
+			newSlice = append(newSlice, item)
+		}
+	}
+	return newSlice
 }

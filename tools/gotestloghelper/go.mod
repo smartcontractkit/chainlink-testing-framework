@@ -1,6 +1,6 @@
 module github.com/smartcontractkit/chainlink-testing-framework/tools/gotestloghelper
 
-go 1.21.5
+go 1.21.9
 
 require (
 	github.com/smartcontractkit/chainlink-testing-framework v1.27.8
