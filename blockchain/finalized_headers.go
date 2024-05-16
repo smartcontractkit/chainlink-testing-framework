@@ -15,7 +15,7 @@ import (
 
 const (
 	minBlocksToFinalize = 10
-	finalityTimeout     = 45 * time.Minute
+	finalityTimeout     = 90 * time.Minute
 	FinalizedHeaderKey  = "finalizedHeads"
 	logNotifyFrequency  = 2 * time.Minute
 )
