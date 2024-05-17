@@ -40,18 +40,17 @@ func (l *LogProcessor[ReturnType]) ProcessContainerLogs(containerName string, pr
 		return new(ReturnType), fmt.Errorf("no consumer found for container %s", containerName)
 	}
 
-	// Duplicate the file descriptor for independent reading, so we don't mess up writing the file by moving the cursor
-	fd, err := syscall.Dup(int(consumer.tempFile.Fd()))
+	// Create a temporary snapshot of the log file and temporarily lock accept mutex to prevent new logs from being written
+	// as that might corrupt the gob file due to saving of incomplete logs
+	l.logStream.acceptMutex.Lock()
+	tempSnapshotFile, err := createTemporarySnapshot(consumer.tempFile)
+	l.logStream.acceptMutex.Unlock()
 	if err != nil {
 		return new(ReturnType), err
 	}
-	readFile := os.NewFile(uintptr(fd), "name_doesnt_matter.txt")
-	_, err = readFile.Seek(0, 0)
-	if err != nil {
-		return new(ReturnType), err
-	}
+	defer func() { _ = os.Remove(tempSnapshotFile.Name()) }()
 
-	decoder := gob.NewDecoder(readFile)
+	decoder := gob.NewDecoder(tempSnapshotFile)
 	var returnValue ReturnType
 
 	for {
@@ -103,4 +102,52 @@ func GetRegexMatchingProcessor(logStream *LogStream, pattern string) (*LogProces
 	}
 
 	return logProcessor, processFn, nil
+}
+
+func createTemporarySnapshot(file *os.File) (*os.File, error) {
+	// Duplicate the file descriptor (so that when we work with the file, we don't affect the original file descriptor, especially cursor position)
+	fd, err := syscall.Dup(int(file.Fd()))
+	if err != nil {
+		return nil, err
+	}
+	readFile := os.NewFile(uintptr(fd), "name_doesnt_matter.txt")
+
+	// Move the cursor of the duplicated file descriptor to the beginning as otherwise, the file will be read from the current cursor position, which is at the end of the file
+	if _, err := readFile.Seek(0, 0); err != nil {
+		return nil, err
+	}
+
+	tempSnapshot, err := os.CreateTemp("", "snapshot")
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := io.Copy(tempSnapshot, readFile); err != nil {
+		return nil, err
+	}
+
+	snapshotStat, err := tempSnapshot.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if snapshotStat.Size() == 0 {
+		return nil, fmt.Errorf("temporary log snapshot is empty")
+	}
+
+	// Compare the snapshot size with the original file size to make sure everything was copied
+	// and nothing was added in the meantime
+	originalStat, err := file.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if snapshotStat.Size() != originalStat.Size() {
+		return nil, fmt.Errorf("temporary log snapshot size (%d) does not match original log file size (%d)", snapshotStat.Size(), originalStat.Size())
+	}
+
+	// Move cursor to the beginning of the temporary snapshot, so that it will be read from the beginning
+	if _, err := tempSnapshot.Seek(0, 0); err != nil {
+		return nil, err
+	}
+
+	return tempSnapshot, nil
 }
