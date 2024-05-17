@@ -109,7 +109,7 @@ spec:
             - "--state-interval"
             - "60"
             - "--transaction-block-keeper"
-            - "3500"
+            - "500"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
