@@ -20,7 +20,7 @@ import (
 
 const (
 	defaultErigonEth1Image = "thorax/erigon:v2.40.0"
-	defaultErigonEth2Image = "thorax/erigon:v2.56.2"
+	defaultErigonEth2Image = "thorax/erigon:v2.59.3" // v.2.60.0 is the latest, but gas estimations using zero address are broken
 	erigonBaseImageName    = "thorax/erigon"
 	erigonGitRepo          = "ledgerwatch/erigon"
 )
@@ -102,6 +102,7 @@ func (g *Erigon) StartContainer() (blockchain.EVMNetwork, error) {
 	}
 	networkConfig.URLs = []string{g.ExternalWsUrl}
 	networkConfig.HTTPURLs = []string{g.ExternalHttpUrl}
+	networkConfig.SimulationType = "Erigon"
 
 	g.l.Info().Str("containerName", g.ContainerName).
 		Msg("Started Erigon container")
