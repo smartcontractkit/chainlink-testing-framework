@@ -110,7 +110,8 @@ func createTemporarySnapshot(file *os.File) (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	readFile := os.NewFile(uintptr(fd), "name_doesnt_matter.txt")
+	// We are not creating a new file here, but creating a new file descriptor, but filename is still required
+	readFile := os.NewFile(uintptr(fd), "snapshot.txt")
 
 	// Move the cursor of the duplicated file descriptor to the beginning as otherwise, the file will be read from the current cursor position, which is at the end of the file
 	if _, err := readFile.Seek(0, 0); err != nil {
