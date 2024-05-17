@@ -20,7 +20,7 @@ import (
 
 const (
 	defaultErigonEth1Image = "thorax/erigon:v2.40.0"
-	defaultErigonEth2Image = "thorax/erigon:v2.60.0"
+	defaultErigonEth2Image = "thorax/erigon:v2.59.3" // v.2.60.0 is the latest, but gas estimations using zero address are broken
 	erigonBaseImageName    = "thorax/erigon"
 	erigonGitRepo          = "ledgerwatch/erigon"
 )

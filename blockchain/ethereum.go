@@ -1339,8 +1339,7 @@ func ConnectEVMClient(networkSettings EVMNetwork, logger zerolog.Logger) (EVMCli
 	ecl.DefaultClient = ecl.Clients[0]
 	wrappedClient := wrapMultiClient(networkSettings, ecl)
 	// required in Geth when you need to call "simulate" transactions from nodes
-	// but not in other clients
-	if ecl.NetworkSimulated() && strings.Contains(strings.ToLower(networkSettings.SimulationType), "geth") {
+	if ecl.NetworkSimulated() {
 		zero := common.HexToAddress("0x0")
 		gasEstimations, err := wrappedClient.EstimateGas(ethereum.CallMsg{
 			To: &zero,
