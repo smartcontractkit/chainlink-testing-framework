@@ -74,7 +74,7 @@ func TestBesuEth2(t *testing.T) {
 	eip1559Network.SupportsEIP1559 = true
 	eip1559Network.URLs = eth2.PublicWsUrls()
 	_, err = blockchain.ConnectEVMClient(eip1559Network, l)
-	require.Error(t, err, "Could connect Besu")
+	require.Error(t, err, "Could not connect to Besu")
 	require.Contains(t, err.Error(), "Method not found", "Besu should not work EIP-1559 yet")
 
 }
