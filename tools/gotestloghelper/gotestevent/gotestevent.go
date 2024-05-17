@@ -113,6 +113,7 @@ func (t *Test) Print(c *TestLogModifierConfig) {
 	// preprocess the logs
 	onlyEmpty := true
 	errorMessages := []GoTestEvent{}
+	firstPanicLineFound := false
 	for _, log := range t.Logs {
 		// check if all logs are empty logs
 		if log.Output != "" {
@@ -121,10 +122,11 @@ func (t *Test) Print(c *TestLogModifierConfig) {
 
 		// check for panic
 		if testPanicRegexp.MatchString(log.Output) {
+			firstPanicLineFound = true
 			t.HasPanic = true
 		}
 
-		if *c.CI && (testErrorPrefixRegexp.MatchString(log.Output) || testErrorPrefix2Regexp.MatchString(log.Output) || t.HasPanic) {
+		if *c.CI && (testErrorPrefixRegexp.MatchString(log.Output) || testErrorPrefix2Regexp.MatchString(log.Output) || firstPanicLineFound) {
 			errorMessages = append(errorMessages, log)
 		}
 	}
