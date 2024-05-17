@@ -169,7 +169,7 @@ func TestExecuteFailFast(t *testing.T) {
 				errCh <- errors.New("always fail")
 			}
 
-			expectedExecutions := 100
+			expectedExecutions := 1000
 
 			configs := []config{}
 			for i := 0; i < expectedExecutions; i++ {
