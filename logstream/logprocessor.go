@@ -29,12 +29,14 @@ type LogProcessorFn[ReturnType any] func(content LogContent, returnValue *Return
 func (l *LogProcessor[ReturnType]) ProcessContainerLogs(containerName string, processFn func(content LogContent, returnValue *ReturnType) error) (*ReturnType, error) {
 	containerName = strings.Replace(containerName, "/", "", 1)
 	var consumer *ContainerLogConsumer
+	l.logStream.consumerMutex.RLock()
 	for _, c := range l.logStream.consumers {
 		if c.name == containerName {
 			consumer = c
 			break
 		}
 	}
+	l.logStream.consumerMutex.RUnlock()
 
 	if consumer == nil {
 		return new(ReturnType), fmt.Errorf("no consumer found for container %s", containerName)
