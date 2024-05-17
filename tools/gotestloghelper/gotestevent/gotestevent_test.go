@@ -175,11 +175,14 @@ func TestParseOutNoise(t *testing.T) {
 			require.NoError(t, err, "Error highlighting error output")
 			require.Equal(t, 1, len(c.TestPackageMap))
 			require.Equal(t, te.Package, c.TestPackageMap[te.Package].Name)
-			require.Equal(t, 0, len(c.TestPackageMap[te.Package].TestLogs))
-			require.Equal(t, 0, len(c.TestPackageMap[te.Package].TestOrder))
-			require.Equal(t, 0, len(c.TestPackageMap[te.Package].FailedTests))
-			require.Equal(t, 0, len(c.TestPackageMap[te.Package].PanicTests))
-			require.Equal(t, false, c.TestPackageMap[te.Package].Failed)
+			if name == "" {
+				require.Equal(t, 0, len(c.TestPackageMap[te.Package].Tests))
+				require.Equal(t, 0, len(c.TestPackageMap[te.Package].TestOrder))
+				require.Equal(t, false, c.TestPackageMap[te.Package].Failed)
+			} else {
+				require.Equal(t, 1, len(c.TestPackageMap[te.Package].Tests))
+				require.Equal(t, 1, len(c.TestPackageMap[te.Package].TestOrder))
+			}
 			require.Equal(t, float64(0), c.TestPackageMap[te.Package].Elapsed)
 			require.Equal(t, "", c.TestPackageMap[te.Package].Message)
 		})
@@ -201,12 +204,12 @@ func TestBasicPassAndFail(t *testing.T) {
 				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage","Output":"=== RUN\n"}`,
 				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage","Output":"abc\n"}`,
 				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage","Output":"--- PASS: TestGetImage (0.00s)\n"}`,
-				`{"Time":"2023-11-27T15:39:39.223335-07:00","Action":"pass","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage","Elapsed":0}`,
+				`{"Time":"2023-11-27T15:39:39.223335-07:00","Action":"pass","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage","Elapsed":1.02}`,
 				`{"Time":"2023-11-27T15:39:39.223823-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Output":"PASS\n"}`,
 				`{"Time":"2023-11-27T15:39:39.223823-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Output":"ok  \tgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s\n"}`,
 				`{"Time":"2023-11-27T15:39:39.223871-07:00","Action":"pass","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Elapsed":0.333}`,
 			},
-			expected:   "📦 \x1b[0;32mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[0;32m✅ TestGetImage (0.00s) \x1b[0m\nabc\n::endgroup::\n",
+			expected:   "📦 \x1b[0;32mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[0;32m✅ TestGetImage (1.02s) \x1b[0m\nabc\n::endgroup::\n",
 			onlyErrors: false,
 		},
 		{
@@ -304,7 +307,7 @@ func TestBasicPassAndFail(t *testing.T) {
 				`{"Time":"2023-11-28T11:38:06.528992418Z","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Output":"panic: Log in goroutine after TestGetImage has completed: 2023-11-28T11:38:06.521Z\tWARN\tTelemetryManager.TelemetryIngressBatchClient\twsrpc@v0.7.2/uni_client.go:97\tctx error context canceled reconnecting\t{\"version\": \"2.7.0@0957729\"}\n"}`,
 				`{"Time":"2023-11-27T15:39:39.223871-07:00","Action":"fail","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Elapsed":0.333}`,
 			},
-			expected:   "📦 \x1b[0;31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[0;32m✅ TestGetImage (0.00s) \x1b[0m\nabc\n::endgroup::\n::group:: \x1b[0;32m✅ TestGetImage2 (0.00s) \x1b[0m\nefg\n::endgroup::\n\x1b[0;31mpanic: Log in goroutine after TestGetImage has completed: 2023-11-28T11:38:06.521Z\tWARN\tTelemetryManager.TelemetryIngressBatchClient\twsrpc@v0.7.2/uni_client.go:97\tctx error context canceled reconnecting\t{\"version\": \"2.7.0@0957729\"} \x1b[0m\n",
+			expected:   "📦 \x1b[0;31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[0;31m❌ TestGetImage (0.00s) \x1b[0m\nabc\n::endgroup::\n::group:: \x1b[0;32m✅ TestGetImage2 (0.00s) \x1b[0m\nefg\n::endgroup::\n\x1b[0;31mpanic: Log in goroutine after TestGetImage has completed: 2023-11-28T11:38:06.521Z\tWARN\tTelemetryManager.TelemetryIngressBatchClient\twsrpc@v0.7.2/uni_client.go:97\tctx error context canceled reconnecting\t{\"version\": \"2.7.0@0957729\"} \x1b[0m\n",
 			onlyErrors: false,
 		},
 		{
@@ -320,7 +323,7 @@ func TestBasicPassAndFail(t *testing.T) {
 				`{"Time":"2023-11-28T11:38:06.528992418Z","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Output":"panic: Log in goroutine after TestGetImage has completed: 2023-11-28T11:38:06.521Z\tWARN\tTelemetryManager.TelemetryIngressBatchClient\twsrpc@v0.7.2/uni_client.go:97\tctx error context canceled reconnecting\t{\"version\": \"2.7.0@0957729\"}\n"}`,
 				`{"Time":"2023-11-27T15:39:39.223871-07:00","Action":"fail","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Elapsed":0.333}`,
 			},
-			expected:   "📦 \x1b[0;31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[0;32m✅ TestGetImage (0.00s) \x1b[0m\nabc\n::endgroup::\n\x1b[0;31mpanic: Log in goroutine after TestGetImage has completed: 2023-11-28T11:38:06.521Z\tWARN\tTelemetryManager.TelemetryIngressBatchClient\twsrpc@v0.7.2/uni_client.go:97\tctx error context canceled reconnecting\t{\"version\": \"2.7.0@0957729\"} \x1b[0m\n",
+			expected:   "📦 \x1b[0;31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[0;31m❌ TestGetImage (0.00s) \x1b[0m\nabc\n::endgroup::\n\x1b[0;31mpanic: Log in goroutine after TestGetImage has completed: 2023-11-28T11:38:06.521Z\tWARN\tTelemetryManager.TelemetryIngressBatchClient\twsrpc@v0.7.2/uni_client.go:97\tctx error context canceled reconnecting\t{\"version\": \"2.7.0@0957729\"} \x1b[0m\n",
 			onlyErrors: true,
 		},
 		{
@@ -381,7 +384,7 @@ func TestBasicPassAndFail(t *testing.T) {
 				`{"Time":"2024-05-12T00:08:06.495576951Z","Action":"output","Package":"github.com/smartcontractkit/chainlink/integration-tests/smoke","Output":"FAIL\tgithub.com/smartcontractkit/chainlink/integration-tests/smoke\t46.425s\n"}`,
 				`{"Time":"2024-05-12T00:08:06.495595336Z","Action":"fail","Package":"github.com/smartcontractkit/chainlink/integration-tests/smoke","Elapsed":46.426}`,
 			},
-			expected:      "::group::\x1b[0;31mTestAutomationNodeUpgrade/registry_2_0\x1b[0mautomation_test.go:1324:ErrorTrace:/home/runner/work/chainlink/chainlink/integration-tests/smoke/automation_test.go:1324/home/runner/work/chainlink/chainlink/integration-tests/smoke/automation_test.go:126Error:Receivedunexpectederror:failedtostartCLnodecontainererr:Errorresponsefromdaemon:Nosuchimage:public.ecr.aws/chainlink/chainlink:latest:failedtocreatecontainerTest:TestAutomationNodeUpgrade/registry_2_0Messages:Errordeployingtestenvironmentpanic:runtimeerror:invalidmemoryaddressornilpointerdereference[signalSIGSEGV:segmentationviolationcode=0x1addr=0xd8pc=0x5ab986f]goroutine1788[running]:github.com/smartcontractkit/chainlink/integration-tests/docker/test_env.(*ClCluster).Stop.func1()/home/runner/work/chainlink/chainlink/integration-tests/docker/test_env/cl_node_cluster.go:54+0x2fgolang.org/x/sync/errgroup.(*Group).Go.func1()/home/runner/go/pkg/mod/golang.org/x/sync@v0.6.0/errgroup/errgroup.go:78+0x56createdbygolang.org/x/sync/errgroup.(*Group).Goingoroutine354/home/runner/go/pkg/mod/golang.org/x/sync@v0.6.0/errgroup/errgroup.go:75+0x96::endgroup::",
+			expected:      "::group::\x1b[0;31mIncompleteTest:TestAutomationNodeUpgrade(0.00s)\x1b[0m\x1b[90m00:07:20.32\x1b[0m\x1b[32mINF\x1b[0mReadingconfigsfromfilesystem::endgroup::::group::\x1b[0;31mIncompleteTest:TestAutomationNodeUpgrade/registry_2_0(0.00s)\x1b[0mautomation_test.go:1324:ErrorTrace:/home/runner/work/chainlink/chainlink/integration-tests/smoke/automation_test.go:1324/home/runner/work/chainlink/chainlink/integration-tests/smoke/automation_test.go:126Error:Receivedunexpectederror:failedtostartCLnodecontainererr:Errorresponsefromdaemon:Nosuchimage:public.ecr.aws/chainlink/chainlink:latest:failedtocreatecontainerTest:TestAutomationNodeUpgrade/registry_2_0Messages:Errordeployingtestenvironmentpanic:runtimeerror:invalidmemoryaddressornilpointerdereference[signalSIGSEGV:segmentationviolationcode=0x1addr=0xd8pc=0x5ab986f]goroutine1788[running]:github.com/smartcontractkit/chainlink/integration-tests/docker/test_env.(*ClCluster).Stop.func1()/home/runner/work/chainlink/chainlink/integration-tests/docker/test_env/cl_node_cluster.go:54+0x2fgolang.org/x/sync/errgroup.(*Group).Go.func1()/home/runner/go/pkg/mod/golang.org/x/sync@v0.6.0/errgroup/errgroup.go:78+0x56createdbygolang.org/x/sync/errgroup.(*Group).Goingoroutine354/home/runner/go/pkg/mod/golang.org/x/sync@v0.6.0/errgroup/errgroup.go:75+0x96::endgroup::",
 			onlyErrors:    true,
 			singlePackage: true,
 		},
@@ -397,9 +400,50 @@ func TestBasicPassAndFail(t *testing.T) {
 				`{"Time":"2024-05-12T00:08:06.495576951Z","Action":"output","Package":"github.com/smartcontractkit/chainlink/integration-tests/smoke","Output":"FAIL\tgithub.com/smartcontractkit/chainlink/integration-tests/smoke\t46.425s\n"}`,
 				`{"Time":"2024-05-12T00:08:06.495595336Z","Action":"fail","Package":"github.com/smartcontractkit/chainlink/integration-tests/smoke","Elapsed":46.426}`,
 			},
-			expected:      "📦\x1b[0;31mgithub.com/smartcontractkit/chainlink/integration-tests/smoke46.425s\x1b[0m::group::\x1b[0;31mTestAutomationNodeUpgrade/registry_2_0\x1b[0m[signalSIGSEGV:segmentationviolationcode=0x1addr=0xd8pc=0x5ab986f]::endgroup::",
+			expected:      "📦\x1b[0;31mgithub.com/smartcontractkit/chainlink/integration-tests/smoke46.425s\x1b[0m::group::\x1b[0;31mIncompleteTest:TestAutomationNodeUpgrade(0.00s)\x1b[0m\x1b[90m00:07:20.32\x1b[0m\x1b[32mINF\x1b[0mReadingconfigsfromfilesystem::endgroup::::group::\x1b[0;31m❌TestAutomationNodeUpgrade/registry_2_0(0.00s)\x1b[0m[signalSIGSEGV:segmentationviolationcode=0x1addr=0xd8pc=0x5ab986f]::endgroup::",
 			onlyErrors:    true,
 			singlePackage: false,
+		},
+		{
+			name: "CombinedPassFailWithoutPanic",
+			inputs: []string{
+				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage1","Output":"abc\n"}`,
+				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage1","Output":"--- PASS: TestGetImage1 (0.00s)\n"}`,
+				`{"Time":"2023-11-27T15:39:39.223335-07:00","Action":"pass","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage1","Elapsed":0}`,
+				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage2","Output":"efg\n"}`,
+				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage2","Output":"--- FAIL: TestGetImage2 (0.00s)\n"}`,
+				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage2","Output":"nothing to see here\n"}`,
+				`{"Time":"2023-11-27T15:39:39.223823-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Output":"FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s\n"}`,
+				`{"Time":"2023-11-27T15:39:39.223871-07:00","Action":"fail","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Elapsed":0.333}`,
+			},
+			expected:      "::group::\x1b[0;31mIncompleteTest:TestGetImage2(0.00s)\x1b[0mefgnothingtoseehere::endgroup::",
+			onlyErrors:    true,
+			singlePackage: true,
+		},
+		{
+			name: "UnfinishedTestsWhenPanicOccurs",
+			inputs: []string{
+				`{"Time":"2024-05-16T17:29:48.996704064-05:00","Action":"start","Package":"github.com/jmank88/gotest/c"}`,
+				`{"Time":"2024-05-16T17:29:48.998332751-05:00","Action":"run","Package":"github.com/jmank88/gotest/c","Test":"TestC"}`,
+				`{"Time":"2024-05-16T17:29:48.998344563-05:00","Action":"output","Package":"github.com/jmank88/gotest/c","Test":"TestC","Output":"=== RUN   TestC\n"}`,
+				`{"Time":"2024-05-16T17:29:48.998378367-05:00","Action":"output","Package":"github.com/jmank88/gotest/c","Test":"TestC","Output":"=== PAUSE TestC\n"}`,
+				`{"Time":"2024-05-16T17:29:48.998383998-05:00","Action":"pause","Package":"github.com/jmank88/gotest/c","Test":"TestC"}`,
+				`{"Time":"2024-05-16T17:29:48.998392303-05:00","Action":"run","Package":"github.com/jmank88/gotest/c","Test":"TestLong"}`,
+				`{"Time":"2024-05-16T17:29:48.998397253-05:00","Action":"output","Package":"github.com/jmank88/gotest/c","Test":"TestLong","Output":"=== RUN   TestLong\n"}`,
+				`{"Time":"2024-05-16T17:29:48.998404166-05:00","Action":"output","Package":"github.com/jmank88/gotest/c","Test":"TestLong","Output":"=== PAUSE TestLong\n"}`,
+				`{"Time":"2024-05-16T17:29:48.998408925-05:00","Action":"pause","Package":"github.com/jmank88/gotest/c","Test":"TestLong"}`,
+				`{"Time":"2024-05-16T17:29:48.998414255-05:00","Action":"cont","Package":"github.com/jmank88/gotest/c","Test":"TestC"}`,
+				`{"Time":"2024-05-16T17:29:48.998418784-05:00","Action":"output","Package":"github.com/jmank88/gotest/c","Test":"TestC","Output":"=== CONT  TestC\n"}`,
+				`{"Time":"2024-05-16T17:29:48.998423603-05:00","Action":"cont","Package":"github.com/jmank88/gotest/c","Test":"TestLong"}`,
+				`{"Time":"2024-05-16T17:29:48.998428322-05:00","Action":"output","Package":"github.com/jmank88/gotest/c","Test":"TestLong","Output":"=== CONT  TestLong\n"}`,
+				`{"Time":"2024-05-16T17:29:49.998588859-05:00","Action":"output","Package":"github.com/jmank88/gotest/c","Test":"TestC","Output":"--- FAIL: TestC (1.00s)\n"}`,
+				`{"Time":"2024-05-16T17:29:50.000739915-05:00","Action":"output","Package":"github.com/jmank88/gotest/c","Test":"TestC","Output":"panic: test panic [recovered]\n"}`,
+				`{"Time":"2024-05-16T17:29:50.001589475-05:00","Action":"fail","Package":"github.com/jmank88/gotest/c","Test":"TestC","Elapsed":1}`,
+				`{"Time":"2024-05-16T17:29:50.001616567-05:00","Action":"output","Package":"github.com/jmank88/gotest/c","Output":"FAIL\tgithub.com/jmank88/gotest/c\t1.005s\n"}`,
+				`{"Time":"2024-05-16T17:29:50.001628149-05:00","Action":"fail","Package":"github.com/jmank88/gotest/c","Elapsed":1.005}`,
+			},
+			expected:   "📦\x1b[0;31mgithub.com/jmank88/gotest/c1.005s\x1b[0m::group::\x1b[0;31m❌TestC(1.00s)\x1b[0mpanic:testpanic[recovered]::endgroup::\x1b[0;31mIncompleteTest:TestLong(0.00s)\x1b[0m",
+			onlyErrors: true,
 		},
 	}
 
@@ -427,7 +471,7 @@ func TestBasicPassAndFail(t *testing.T) {
 			output := genericCaptureOutput(func() {
 				for _, input := range inputs {
 					testEvent, err := ParseTestEvent([]byte(input))
-					require.NoError(t, err)
+					require.NoError(t, err, "input: ", input)
 					err = JsonTestOutputToStandard(testEvent, c)
 					require.NoError(t, err)
 				}
