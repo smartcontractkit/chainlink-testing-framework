@@ -19,7 +19,7 @@ import (
 
 const (
 	defaultNethermindEth1Image = "nethermind/nethermind:1.16.0"
-	defaultNethermindEth2Image = "nethermind/nethermind:1.25.1"
+	defaultNethermindEth2Image = "nethermind/nethermind:1.26.0"
 	nethermindBaseImageName    = "nethermind/nethermind"
 	nethermindGitRepo          = "NethermindEth/nethermind"
 )
@@ -107,6 +107,7 @@ func (g *Nethermind) StartContainer() (blockchain.EVMNetwork, error) {
 	}
 	networkConfig.URLs = []string{g.ExternalWsUrl}
 	networkConfig.HTTPURLs = []string{g.ExternalHttpUrl}
+	networkConfig.SimulationType = "Nethermind"
 
 	g.l.Info().Str("containerName", g.ContainerName).
 		Msg("Started Nethermind container")

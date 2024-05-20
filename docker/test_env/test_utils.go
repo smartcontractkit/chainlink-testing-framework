@@ -18,8 +18,16 @@ func sendAndCompareBalances(ctx context.Context, c blockchain.EVMClient, address
 	}
 
 	toSendEth := big.NewFloat(1)
+
+	exp := new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
+	toSendEthInt := new(big.Int)
+	_, _ = toSendEth.Int(toSendEthInt)
+	sentInWei := new(big.Int).Mul(toSendEthInt, exp)
+
 	gasEstimations, err := c.EstimateGas(ethereum.CallMsg{
-		To: &address,
+		From:  common.HexToAddress(c.GetDefaultWallet().Address()),
+		To:    &address,
+		Value: sentInWei,
 	})
 	if err != nil {
 		return err
@@ -33,11 +41,6 @@ func sendAndCompareBalances(ctx context.Context, c blockchain.EVMClient, address
 	if err != nil {
 		return err
 	}
-
-	exp := new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
-	toSendEthInt := new(big.Int)
-	_, _ = toSendEth.Int(toSendEthInt)
-	sentInWei := new(big.Int).Mul(toSendEthInt, exp)
 
 	expected := big.NewInt(0).Add(balanceBefore, sentInWei)
 
