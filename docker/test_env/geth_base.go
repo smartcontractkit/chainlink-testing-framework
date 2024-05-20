@@ -20,7 +20,7 @@ import (
 
 const (
 	defaultGethEth1Image = "ethereum/client-go:v1.12.0"
-	defaultGethEth2Image = "ethereum/client-go:v1.13.10"
+	defaultGethEth2Image = "ethereum/client-go:v1.14.3"
 	gethBaseImageName    = "ethereum/client-go"
 	gethGitRepo          = "ethereum/go-ethereum"
 )
@@ -105,6 +105,7 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, error) {
 	}
 	networkConfig.URLs = []string{g.ExternalWsUrl}
 	networkConfig.HTTPURLs = []string{g.ExternalHttpUrl}
+	networkConfig.SimulationType = "Geth"
 
 	comparableVersion, err := GetComparableVersionFromDockerImage(g.GetImageWithVersion())
 	if err != nil {
