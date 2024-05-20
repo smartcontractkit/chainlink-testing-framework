@@ -10,9 +10,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/rs/zerolog/log"
 	"github.com/slack-go/slack"
-	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/sync/errgroup"
 
@@ -63,7 +64,10 @@ func WriteTeardownLogs(
 			return VerifyLogFile(file, failingLogLevel, 1)
 		})
 	}
-	assert.NoError(t, verifyLogsGroup.Wait(), "Found a concerning log")
+	err = verifyLogsGroup.Wait()
+	if err != nil {
+		return errors.Wrap(err, "found a concerning log")
+	}
 
 	if t.Failed() || optionalTestReporter != nil {
 		if err := SendReport(t, env.Cfg.Namespace, logsPath, optionalTestReporter, grafanaUrlProvider); err != nil {
