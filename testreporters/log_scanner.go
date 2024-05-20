@@ -14,7 +14,7 @@ var (
 	MultipleLogsAtLogLevelErr = "found too many logs at level"
 )
 
-// ScanLogLine scans a log line for a failing log level, returning the number of failing logs found so far. It return an error if the failure threshold is reached or if any panic is found
+// ScanLogLine scans a log line for a failing log level, returning the number of failing logs found so far. It returns an error if the failure threshold is reached or if any panic is found
 // or if there's no log level found. It also takes a list of allowed messages that are ignored if found.
 func ScanLogLine(log zerolog.Logger, jsonLogLine string, failingLogLevel zapcore.Level, foundSoFar, failureThreshold uint, allowedMessages []AllowedLogMessage) (uint, error) {
 	var zapLevel zapcore.Level

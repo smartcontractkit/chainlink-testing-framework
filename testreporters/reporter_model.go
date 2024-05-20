@@ -154,7 +154,6 @@ var defaultAllowedLogMessages = []AllowedLogMessage{
 // in the log file. The failureThreshold is the number of logs at the failingLogLevel or higher that can be found before
 // the function returns an error.
 func VerifyLogFile(file *os.File, failingLogLevel zapcore.Level, failureThreshold uint, allowedMessages ...AllowedLogMessage) error {
-	// nolint
 	defer func(file *os.File) {
 		_ = file.Close()
 	}(file)
