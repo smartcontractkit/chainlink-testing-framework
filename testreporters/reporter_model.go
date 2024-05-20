@@ -2,7 +2,6 @@ package testreporters
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"io/fs"
 	"os"
@@ -156,12 +155,11 @@ var defaultAllowedLogMessages = []AllowedLogMessage{
 // the function returns an error.
 func VerifyLogFile(file *os.File, failingLogLevel zapcore.Level, failureThreshold uint, allowedMessages ...AllowedLogMessage) error {
 	// nolint
-	defer file.Close()
+	defer func(file *os.File) {
+		_ = file.Close()
+	}(file)
 
-	var (
-		zapLevel zapcore.Level
-		err      error
-	)
+	var err error
 	scanner := bufio.NewScanner(file)
 	scanner.Split(bufio.ScanLines)
 
@@ -169,67 +167,11 @@ func VerifyLogFile(file *os.File, failingLogLevel zapcore.Level, failureThreshol
 
 	var logsFound uint
 
-SCANNER_LOOP:
 	for scanner.Scan() {
 		jsonLogLine := scanner.Text()
-		if !strings.HasPrefix(jsonLogLine, "{") { // don't bother with non-json lines
-			if strings.HasPrefix(jsonLogLine, "panic") { // unless it's a panic
-				return fmt.Errorf("found panic: %s", jsonLogLine)
-			}
-			continue
-		}
-		jsonMapping := map[string]any{}
-
-		if err = json.Unmarshal([]byte(jsonLogLine), &jsonMapping); err != nil {
-			// This error can occur anytime someone uses %+v in a log message, ignoring
-			continue
-		}
-		logLevel, ok := jsonMapping["level"].(string)
-		if !ok {
-			return fmt.Errorf("found no log level in chainlink log line: %s", jsonLogLine)
-		}
-
-		if logLevel == "crit" { // "crit" is a custom core type they map to DPanic
-			zapLevel = zapcore.DPanicLevel
-		} else {
-			zapLevel, err = zapcore.ParseLevel(logLevel)
-			if err != nil {
-				return fmt.Errorf("'%s' not a valid zapcore level", logLevel)
-			}
-		}
-
-		if zapLevel >= failingLogLevel {
-			logErr := fmt.Errorf("found log at level '%s', failing any log level higher than %s: %s", logLevel, zapLevel.String(), jsonLogLine)
-			if failureThreshold > 1 {
-				logErr = fmt.Errorf("found too many logs at level '%s' or above; failure threshold of %d reached; last error found: %s", logLevel, failureThreshold, jsonLogLine)
-			}
-			logMessage, hasMessage := jsonMapping["msg"]
-			if !hasMessage {
-				logsFound++
-				if logsFound >= failureThreshold {
-					return logErr
-				}
-				continue
-			}
-
-			for _, allowedLog := range allAllowedMessages {
-				if strings.Contains(logMessage.(string), allowedLog.message) {
-					if allowedLog.logWhenFound {
-						log.Warn().
-							Str("Reason", allowedLog.reason).
-							Str("Level", allowedLog.level.CapitalString()).
-							Str("Msg", logMessage.(string)).
-							Msg("Found allowed log message, ignoring")
-					}
-
-					continue SCANNER_LOOP
-				}
-			}
-
-			logsFound++
-			if logsFound >= failureThreshold {
-				return logErr
-			}
+		logsFound, err = ScanLogLine(log.Logger, jsonLogLine, failingLogLevel, logsFound, failureThreshold, allAllowedMessages)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
