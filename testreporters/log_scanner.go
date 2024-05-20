@@ -3,9 +3,10 @@ package testreporters
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
+
 	"github.com/rs/zerolog"
 	"go.uber.org/zap/zapcore"
-	"strings"
 )
 
 var (
