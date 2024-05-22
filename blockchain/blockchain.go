@@ -28,6 +28,7 @@ type EVMClient interface {
 	GetClients() []EVMClient
 	GetDefaultWallet() *EthereumWallet
 	GetWallets() []*EthereumWallet
+	NewWallet(funding *big.Int) (int, error)
 	GetNetworkConfig() *EVMNetwork
 	GetNonceSetting() NonceSettings
 
