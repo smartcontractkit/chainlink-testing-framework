@@ -172,7 +172,7 @@ func (e *EthereumClient) GetWallets() []*EthereumWallet {
 
 // NewWallet generates a new ethereum wallet and adds it to the Wallets list, funding it if funding is specified
 // and returning its index in the wallet list
-func (e *EthereumClient) NewWallet(funding *big.Int) (int, error) {
+func (e *EthereumClient) NewWallet(funding *big.Float) (int, error) {
 	privateKey, err := crypto.GenerateKey()
 	if err != nil {
 		return -1, err
@@ -184,7 +184,13 @@ func (e *EthereumClient) NewWallet(funding *big.Int) (int, error) {
 		return -1, err
 	}
 	if funding != nil {
-		if err = e.Fund(newWallet.Address(), conversions.WeiToEther(funding), GasEstimations{}); err != nil {
+		gasEstimations, err := e.EstimateGas(ethereum.CallMsg{
+			To: &newWallet.address,
+		})
+		if err != nil {
+			return -1, err
+		}
+		if err = e.Fund(newWallet.Address(), funding, gasEstimations); err != nil {
 			return -1, err
 		}
 	}
@@ -1465,7 +1471,7 @@ func (e *EthereumMultinodeClient) GetWallets() []*EthereumWallet {
 	return e.DefaultClient.GetWallets()
 }
 
-func (e *EthereumMultinodeClient) NewWallet(funding *big.Int) (int, error) {
+func (e *EthereumMultinodeClient) NewWallet(funding *big.Float) (int, error) {
 	return e.DefaultClient.NewWallet(funding)
 }
 
