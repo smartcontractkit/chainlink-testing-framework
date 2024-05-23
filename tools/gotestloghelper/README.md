@@ -23,6 +23,7 @@ go test ./... -json | gotestloghelper [flags]
     -tlogprefix: Set to true to remove the Go test log prefix. Default: false
     -json: Set to true to enable parsing the input from a go test -json output. Default: false
     -onlyerrors: Set to true to only print tests that failed. Note: Not compatible without -json. Default: false
+    -showpassingtests: Show passing tests but not their logs, only compatible when used with -onlyerrors. Default: false
     -color: Set to true to enable color output. Default: false
     -ci: Set to true to enable CI mode, which prints out logs with groupings when combined with -json. Default: false
     -singlepackage: Set to true if the Go test output is from a single package only. This prints tests out as they finish instead of waiting for the package to finish. Default: false

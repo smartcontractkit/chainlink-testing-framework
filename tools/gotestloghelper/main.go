@@ -26,7 +26,8 @@ func main() {
 	config.ShouldImmediatelyPrint = true
 	config.RemoveTLogPrefix = flag.Bool("tlogprefix", false, "Set to true to remove the go test log prefix")
 	config.IsJsonInput = flag.Bool("json", false, "Set to true to enable parsing the input from a go test -json output")
-	flag.Var(config.OnlyErrors, "onlyerrors", "Set to true to only print tests that failed, not compatible without -json")
+	flag.Var(config.OnlyErrors, "onlyerrors", "Set to true to only print tests that failed, only compatible when used with -json")
+	config.ShowPassingTests = flag.Bool("showpassingtests", false, "Show passing tests but not their logs, only compatible when used with -onlyerrors")
 	config.Color = flag.Bool("color", false, "Set to true to enable color output")
 	config.CI = flag.Bool("ci", false, "Set to true to enable CI mode, which will print out the logs with groupings when combined with -json")
 	config.SinglePackage = flag.Bool("singlepackage", false, "Set to true if the go test output is from a single package only, this will print tests out as they finish instead of waiting for the package to finish")

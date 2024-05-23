@@ -134,21 +134,31 @@ func (t *Test) Print(c *TestLogModifierConfig) {
 	// start the group
 	hasLogs := len(t.Logs) > 0 && !onlyEmpty
 	if t.Status == TestStatusPass {
+		// when we want to show errors and their logs but passing tests without their logs
+		if c.OnlyErrors.Value && *c.ShowPassingTests {
+			hasLogs = false
+			t.Logs = []GoTestEvent{}
+		}
 		StartGroupPass(fmt.Sprintf("✅ %s (%.2fs)", t.Name, t.Elapsed), c, hasLogs)
 	} else if t.Status == TestStatusSkip {
 		StartGroupSkip(fmt.Sprintf("🚧 %s (%.2fs)", t.Name, t.Elapsed), c, hasLogs)
 	} else if !t.Complete {
-		StartGroupFail(fmt.Sprintf("Incomplete Test: %s (%.2fs)", t.Name, t.Elapsed), c, hasLogs)
+		StartGroupSkip(fmt.Sprintf("Incomplete Test: %s (%.2fs)", t.Name, t.Elapsed), c, hasLogs)
 	} else {
-		StartGroupFail(fmt.Sprintf("❌ %s (%.2fs)", t.Name, t.Elapsed), c, hasLogs)
+		errorStart := "❌"
+		if t.HasPanic {
+			errorStart = "❌PANIC❌"
+		}
+		StartGroupFail(fmt.Sprintf("%s %s (%.2fs)", errorStart, t.Name, t.Elapsed), c, hasLogs)
 	}
 
 	// print out the error message at the top if the logs are longer than the specified length
 	if len(errorMessages) > 0 && *c.CI && *c.ErrorAtTopLength > 0 && len(t.Logs) > *c.ErrorAtTopLength {
-		fmt.Println("❌ Error found:")
+		fmt.Println("---❌ Error Found ❌---")
 		for _, log := range errorMessages {
 			log.Print()
 		}
+		fmt.Println("---❌  End Error  ❌---")
 	}
 
 	// print out the test logs
@@ -213,7 +223,7 @@ func (p *TestPackage) Print(c *TestLogModifierConfig) {
 	// if package passed
 	if !p.Failed {
 		// if we only want errors then skip
-		if c.OnlyErrors.Value {
+		if c.OnlyErrors.Value && !*c.ShowPassingTests {
 			return
 		}
 		// right here is where we would print the passed package with elapsed time if needed
@@ -266,7 +276,7 @@ func (p TestPackage) hasIncompleteTests() bool {
 func (p TestPackage) ShouldPrintTest(test Test, c *TestLogModifierConfig) bool {
 	shouldPrintTest := false
 	// if we only want errors
-	if c.OnlyErrors.Value {
+	if c.OnlyErrors.Value && !*c.ShowPassingTests {
 		// if the test failed or if we had a package fail without a test fail, we want all the logs for triage in this case
 		if (test.Status == TestStatusFail || !test.Complete) && p.Failed {
 			shouldPrintTest = true
@@ -296,6 +306,7 @@ type TestLogModifierConfig struct {
 	IsJsonInput            *bool
 	RemoveTLogPrefix       *bool
 	OnlyErrors             *clihelper.BoolFlag
+	ShowPassingTests       *bool
 	Color                  *bool
 	CI                     *bool
 	SinglePackage          *bool
@@ -310,6 +321,7 @@ func NewDefaultConfig() *TestLogModifierConfig {
 		IsJsonInput:            ptr.Ptr(false),
 		RemoveTLogPrefix:       ptr.Ptr(false),
 		OnlyErrors:             &clihelper.BoolFlag{},
+		ShowPassingTests:       ptr.Ptr(false),
 		Color:                  ptr.Ptr(false),
 		CI:                     ptr.Ptr(false),
 		SinglePackage:          ptr.Ptr(false),
@@ -332,6 +344,11 @@ func (c *TestLogModifierConfig) Validate() error {
 	}
 	if *c.ErrorAtTopLength < 0 {
 		return fmt.Errorf("ErrorAtTopLength must be greater than or equal to 0")
+	}
+	if *c.ShowPassingTests {
+		if !c.OnlyErrors.Value {
+			return fmt.Errorf("ShowPassingTests flag is only valid when run with -onlyerrors flag")
+		}
 	}
 
 	return nil
