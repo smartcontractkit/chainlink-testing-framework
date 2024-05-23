@@ -184,8 +184,7 @@ func (e *EthereumClient) NewWallet(funding *big.Int) (int, error) {
 		return -1, err
 	}
 	if funding != nil {
-		err = e.Fund(newWallet.Address(), conversions.WeiToEther(funding), GasEstimations{})
-		if err != nil {
+		if err = e.Fund(newWallet.Address(), conversions.WeiToEther(funding), GasEstimations{}); err != nil {
 			return -1, err
 		}
 	}
