@@ -1,5 +1,5 @@
 {
   "name": "gotestloghelper",
   "description": "Tool to clean up go test logs and reduce noise delivered to the developer",
-  "version": "1.0.5"
+  "version": "1.0.6"
 }
