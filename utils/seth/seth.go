@@ -43,7 +43,7 @@ var noOpSethConfigFn = func(cfg *pkg_seth.Config) error { return nil }
 type ConfigFunction = func(*pkg_seth.Config) error
 
 // OneEphemeralKeysLiveTestnetCheckFn checks whether there's at least one ephemeral key on a simulated network or at least one static key on a live network,
-// and that there are no epehemeral keys on a live network. Root key is excluded from the check.
+// and that there are no ephemeral keys on a live network. Root key is excluded from the check.
 var OneEphemeralKeysLiveTestnetCheckFn = func(sethCfg *pkg_seth.Config) error {
 	concurrency := sethCfg.GetMaxConcurrency()
 
@@ -77,7 +77,7 @@ var OneEphemeralKeysLiveTestnetCheckFn = func(sethCfg *pkg_seth.Config) error {
 }
 
 // OneEphemeralKeysLiveTestnetAutoFixFn checks whether there's at least one ephemeral key on a simulated network or at least one static key on a live network,
-// and that there are no epehemeral keys on a live network (if ephemeral keys count is different from zero, it will disable them). Root key is excluded from the check.
+// and that there are no ephemeral keys on a live network (if ephemeral keys count is different from zero, it will disable them). Root key is excluded from the check.
 var OneEphemeralKeysLiveTestnetAutoFixFn = func(sethCfg *pkg_seth.Config) error {
 	concurrency := sethCfg.GetMaxConcurrency()
 
@@ -138,7 +138,7 @@ func GetChainClientWithConfigFunction(c config.SethConfig, network blockchain.EV
 
 // MergeSethAndEvmNetworkConfigs merges EVMNetwork to Seth config. If Seth config already has Network settings,
 // it will return unchanged Seth config that was passed to it. If the network is simulated, it will
-// use Geth-specific settings. Otherwise it will use the chain ID to find the correct network settings.
+// use Geth-specific settings. Otherwise, it will use the chain ID to find the correct network settings.
 // If no match is found it will return error.
 func MergeSethAndEvmNetworkConfigs(evmNetwork blockchain.EVMNetwork, sethConfig pkg_seth.Config) (pkg_seth.Config, error) {
 	if sethConfig.Network != nil {
@@ -177,7 +177,26 @@ func MergeSethAndEvmNetworkConfigs(evmNetwork blockchain.EVMNetwork, sethConfig 
 	}
 
 	if sethNetwork == nil {
-		return pkg_seth.Config{}, fmt.Errorf("No matching EVM network found for chain ID %d. If it's a new network please define it as [Network.EVMNetworks.NETWORK_NAME] in TOML", evmNetwork.ChainID)
+		for _, conf := range sethConfig.Networks {
+			if conf.ChainID == fmt.Sprint(pkg_seth.DefaultChainID) {
+				conf.Name = evmNetwork.Name
+				conf.ChainID = fmt.Sprint(evmNetwork.ChainID)
+				conf.PrivateKeys = evmNetwork.PrivateKeys
+				conf.URLs = evmNetwork.URLs
+
+				sethNetwork = conf
+				break
+			}
+		}
+
+		if sethNetwork == nil {
+			msg := `Failed to build network config for chain ID %d. This could be the result of various reasons:
+1. You are running tests for a network that hasn't been defined in known_networks.go and you have not defined it under [Network.EVMNetworks.NETWORK_NAME] in TOML
+3. You have not defined Seth network settings for the chain ID %d in TOML under [Seth.Networks]
+2. You have not defined a Seth Default network in your TOML config file under [Seth.Networks] using chain ID %s and name %s`
+
+			return pkg_seth.Config{}, fmt.Errorf(msg, evmNetwork.ChainID, evmNetwork.ChainID, pkg_seth.DefaultChainID, pkg_seth.DefaultNetworkName)
+		}
 	}
 
 	sethConfig.Network = sethNetwork
@@ -256,4 +275,16 @@ func ValidateSethNetworkConfig(cfg *pkg_seth.Network) error {
 	}
 
 	return nil
+}
+
+const RootKeyNum = 0
+
+// AvailableSethKeyNum returns the available Seth address index
+// If there are multiple addresses, it will return any synced key
+// Otherwise it will return the root key
+func AvailableSethKeyNum(client *pkg_seth.Client) int {
+	if len(client.Addresses) > 1 {
+		return client.AnySyncedKey()
+	}
+	return RootKeyNum
 }
