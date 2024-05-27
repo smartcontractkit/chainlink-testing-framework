@@ -14,7 +14,7 @@ var GetLatestEthereumClientVersionCmd = &cobra.Command{
 	Short: "Get the latest Ethereum client release version from Github",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) != 1 {
-			return fmt.Errorf("please provide the repository in the format 'owner/repo:tag'")
+			return fmt.Errorf("please provide the repository in the format 'org/repo:tag'")
 		}
 
 		repo := args[0]
