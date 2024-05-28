@@ -39,6 +39,5 @@ runs:
     - name: Update images
       shell: bash
       run: |
-        ls
-        tree .
-        ./.github/actions/update-internal-mirrors/scripts/update_mirrors.sh ${{ inputs.aws_account_number }}.dkr.ecr.${{ inputs.aws_region }}.amazonaws.com ${{inputs.image_name}} '${{inputs.expression}}' ${{inputs.page_size}}
+        cd ${{github.action_path}} # Change to the directory where the action is stored
+        ./scripts/update_mirrors.sh ${{ inputs.aws_account_number }}.dkr.ecr.${{ inputs.aws_region }}.amazonaws.com ${{inputs.image_name}} '${{inputs.expression}}' ${{inputs.page_size}}
