@@ -10,3 +10,4 @@ CVE-2023-3518 # CWE-Other (when using JWT Auth for service mesh incorrectly allo
 CVE-2023-48795 # Improper Validation of Integrity Check Value x/crypto, which is an indirect dependency
 CVE-2024-24786 # CWE-835 Loop with Unreachable Exit Condition ('Infinite Loop') in indirect dependency
 CVE-2024-32972 # CWE-400: Uncontrolled Resource Consumption ('Resource Exhaustion') [still not fixed, not even in v1.13.8]
+CVE-2023-42319 # CWE-noinfo: lol... go-ethereum v1.13.8 again
