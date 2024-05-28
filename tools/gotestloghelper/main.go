@@ -26,13 +26,18 @@ func main() {
 	config.ShouldImmediatelyPrint = true
 	config.RemoveTLogPrefix = flag.Bool("tlogprefix", false, "Set to true to remove the go test log prefix")
 	config.IsJsonInput = flag.Bool("json", false, "Set to true to enable parsing the input from a go test -json output")
-	flag.Var(config.OnlyErrors, "onlyerrors", "Set to true to only print tests that failed, not compatible without -json")
+	flag.Var(config.HidePassingTests, "hidepassingtests", "Set to true to hide passing tests, only compatible when used with -json")
+	config.HidePassingLogs = flag.Bool("hidepassinglogs", false, "Set to true to hide logs from passing tests, only compatible when used with -json")
 	config.Color = flag.Bool("color", false, "Set to true to enable color output")
 	config.CI = flag.Bool("ci", false, "Set to true to enable CI mode, which will print out the logs with groupings when combined with -json")
 	config.SinglePackage = flag.Bool("singlepackage", false, "Set to true if the go test output is from a single package only, this will print tests out as they finish instead of waiting for the package to finish")
 	config.ErrorAtTopLength = flag.Int("errorattoplength", 100, "If the error message doesn't appear before this many lines, it will be printed at the top of the test output as well. Set to 0 to disable. Only works with -ci")
-	flag.Parse()
 
+	// Deprecated flags
+	flag.Var(config.OnlyErrors, "onlyerrors", "Deprecated: -hidepassingtests should be used instead. Set to true to only print tests that failed, only compatible when used with -json")
+
+	// Parse and validate the flags
+	flag.Parse()
 	err := config.Validate()
 	if err != nil {
 		log.Fatalf("Invalid config: %v\n", err)

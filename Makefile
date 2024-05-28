@@ -54,12 +54,12 @@ ifeq ($(OSFLAG),$(OSX))
 	asdf install
 	mkdir /tmp/k3dvolume/ || true
 	yarn global add cdk8s-cli@$(CDK8S_CLI_VERSION)
-	curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 	helm repo add chainlink-qa https://raw.githubusercontent.com/smartcontractkit/qa-charts/gh-pages/
 	helm repo add grafana https://grafana.github.io/helm-charts
 	helm repo update
 	pre-commit install
-	pre-commit install --hook-type pre-push
+	pre-commit install -f --hook-type pre-push
+	go install github.com/smartcontractkit/chainlink-testing-framework/tools/gotestloghelper@latest
 endif
 
 install: go_mod install_tools
