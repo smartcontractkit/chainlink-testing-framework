@@ -75,7 +75,7 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - name: Update other imagesq
+      - name: Update other images
         uses: smartcontractkit/chainlink-testing-framework/.github/actions/update-internal-mirrors@9190fa16db15bbb7caa5595b347c51acdda9eb3a
         with:
           aws_region: ${{ secrets.QA_AWS_REGION }}
