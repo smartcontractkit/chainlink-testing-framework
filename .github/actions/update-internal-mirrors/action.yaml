@@ -47,4 +47,4 @@ runs:
         else
           # Update ${{ inputs.image_name }}
           ./scripts/update_mirrors.sh ${{ inputs.aws_account_number }}.dkr.ecr.${{ inputs.aws_region }}.amazonaws.com ${{ inputs.image_name }} '${{ inputs.expression }}' ${{ inputs.page_size }}
-        fi      
+        fi
