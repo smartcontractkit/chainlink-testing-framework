@@ -343,23 +343,23 @@ func (c *TestLogModifierConfig) Validate() error {
 		if c.HidePassingTests.Value || c.OnlyErrors.Value {
 			return fmt.Errorf("-hidepassinglogs flag is not compatible with -hidepassingtests or -onlyerrors flags")
 		}
-		if !*c.IsJsonInput {
-			return fmt.Errorf("hidepassinglogs flag is only valid when run with -json flag")
+		if !*c.IsJsonInput && !*c.CI {
+			return fmt.Errorf("-hidepassinglogs flag is only valid when run with -json flag")
 		}
 	}
 	if c.OnlyErrors.Value {
-		if !*c.IsJsonInput {
+		if !*c.IsJsonInput && !*c.CI {
 			return fmt.Errorf("-onlyerrors flag is only valid when run with -json flag")
 		}
 		c.HidePassingTests = c.OnlyErrors
 	}
 	if c.HidePassingTests.Value {
-		if !*c.IsJsonInput {
+		if !*c.IsJsonInput && !*c.CI {
 			return fmt.Errorf("-hidepassingtests flag is only valid when run with -json flag")
 		}
 	}
 	if *c.ErrorAtTopLength < 0 {
-		return fmt.Errorf("ErrorAtTopLength must be greater than or equal to 0")
+		return fmt.Errorf("-errorattoplength must be greater than or equal to 0")
 	}
 	return nil
 }
