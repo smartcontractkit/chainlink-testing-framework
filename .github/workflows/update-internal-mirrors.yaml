@@ -58,8 +58,8 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - name: Update images
-        uses: smartcontractkit/chainlink-testing-framework/.github/actions/update-internal-mirrors@49e0591f6274fd63091e10d6622765e685fe980a
+      - name: Update image
+        uses: smartcontractkit/chainlink-testing-framework/.github/actions/update-internal-mirrors@af6a79a683ea5d514b6f7c498ebf268e602dc7e2
         with:
           aws_region: ${{ secrets.QA_AWS_REGION }}
           role_to_assume: ${{ secrets.QA_AWS_ROLE_TO_ASSUME }}
@@ -75,8 +75,8 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - name: Update all mirror images
-        uses: smartcontractkit/chainlink-testing-framework/.github/actions/update-internal-mirrors@49e0591f6274fd63091e10d6622765e685fe980a
+      - name: Update other images
+        uses: smartcontractkit/chainlink-testing-framework/.github/actions/update-internal-mirrors@af6a79a683ea5d514b6f7c498ebf268e602dc7e2
         with:
           aws_region: ${{ secrets.QA_AWS_REGION }}
           role_to_assume: ${{ secrets.QA_AWS_ROLE_TO_ASSUME }}
