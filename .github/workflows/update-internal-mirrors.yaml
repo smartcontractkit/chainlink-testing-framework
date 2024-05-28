@@ -58,37 +58,15 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - name: Checkout the Repo
-        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
-
-        # Setup AWS creds
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
+      - name: Update image
+        uses: smartcontractkit/chainlink-testing-framework/.github/actions/update-internal-mirrors@9190fa16db15bbb7caa5595b347c51acdda9eb3a
         with:
-          aws-region: ${{ secrets.QA_AWS_REGION }}
-          role-to-assume: ${{ secrets.QA_AWS_ROLE_TO_ASSUME }}
-          role-duration-seconds: 3600
-
-      # Login to ECR
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076 # v2.0.1
-        with:
-          mask-password: 'true'
-        env:
-          AWS_REGION: ${{ secrets.QA_AWS_REGION }}
-
-      # - name: Login to Google Cloud
-      #   uses: google-github-actions/auth@55bd3a7c6e2ae7cf1877fd1ccb9d54c0503c457c # v2.1.2
-      #   with:
-      #     credentials_json: '${{ secrets.GOOGLE_CREDENTIALS }}'
-
-      # Update all mirror images
-      - name: Update images
-        id: check
-        shell: bash
-        run: |
-          ./scripts/update_mirrors.sh ${{ secrets.QA_AWS_ACCOUNT_NUMBER }}.dkr.ecr.${{ secrets.QA_AWS_REGION }}.amazonaws.com ${{matrix.mirror.name}} '${{matrix.mirror.expression}}' ${{matrix.mirror.page_size}}
+          aws_region: ${{ secrets.QA_AWS_REGION }}
+          role_to_assume: ${{ secrets.QA_AWS_ROLE_TO_ASSUME }}
+          aws_account_number: ${{ secrets.QA_AWS_ACCOUNT_NUMBER }}
+          image_name: ${{matrix.mirror.name}}
+          expression: ${{matrix.mirror.expression}}
+          page_size: ${{matrix.mirror.page_size}}
 
   update-other-images:
     runs-on: ubuntu-latest
@@ -97,29 +75,9 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - name: Checkout the Repo
-        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
-
-        # Setup AWS creds
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
+      - name: Update other images
+        uses: smartcontractkit/chainlink-testing-framework/.github/actions/update-internal-mirrors@9190fa16db15bbb7caa5595b347c51acdda9eb3a
         with:
-          aws-region: ${{ secrets.QA_AWS_REGION }}
-          role-to-assume: ${{ secrets.QA_AWS_ROLE_TO_ASSUME }}
-          role-duration-seconds: 3600
-
-      # Login to ECR
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076 # v2.0.1
-        with:
-          mask-password: 'true'
-        env:
-          AWS_REGION: ${{ secrets.QA_AWS_REGION }}
-
-      # Update all mirror images
-      - name: Update images
-        id: check
-        shell: bash
-        run: |
-          ./scripts/update_mirrors.sh ${{ secrets.QA_AWS_ACCOUNT_NUMBER }}.dkr.ecr.${{ secrets.QA_AWS_REGION }}.amazonaws.com
+          aws_region: ${{ secrets.QA_AWS_REGION }}
+          role_to_assume: ${{ secrets.QA_AWS_ROLE_TO_ASSUME }}
+          aws_account_number: ${{ secrets.QA_AWS_ACCOUNT_NUMBER }}
