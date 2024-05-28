@@ -35,7 +35,7 @@ runs:
       with:
         mask-password: 'true'
       env:
-        AWS_REGION: ${{ inputs.aws_region }} 
+        AWS_REGION: ${{ inputs.aws_region }}
     - name: Update images
       shell: bash
       run: |
