@@ -2,7 +2,6 @@ package seth
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -177,18 +176,21 @@ func MergeSethAndEvmNetworkConfigs(evmNetwork blockchain.EVMNetwork, sethConfig 
 		}
 	}
 
-	for _, conf := range sethConfig.Networks {
-		if conf.Name == fmt.Sprint(pkg_seth.DefaultNetworkName) {
-			conf.Name = evmNetwork.Name
-			conf.ChainID = fmt.Sprint(evmNetwork.ChainID)
-			conf.PrivateKeys = evmNetwork.PrivateKeys
-			conf.URLs = evmNetwork.URLs
+	// If the network is not found, try to find the default network and replace it with the EVM network
+	if sethNetwork == nil {
+		for _, conf := range sethConfig.Networks {
+			if conf.Name == fmt.Sprint(pkg_seth.DefaultNetworkName) {
+				conf.Name = evmNetwork.Name
+				conf.PrivateKeys = evmNetwork.PrivateKeys
+				conf.URLs = evmNetwork.URLs
 
-			sethNetwork = conf
-			break
+				sethNetwork = conf
+				break
+			}
 		}
 	}
 
+	// If the network is still not found, return an error
 	if sethNetwork == nil {
 		msg := `Failed to build network config for chain ID %d. This could be the result of various reasons:
 1. You are running tests for a network that hasn't been defined in known_networks.go and you have not defined it under [Network.EVMNetworks.NETWORK_NAME] in TOML
@@ -236,13 +238,6 @@ func MustReplaceSimulatedNetworkUrlWithK8(l zerolog.Logger, network blockchain.E
 func ValidateSethNetworkConfig(cfg *pkg_seth.Network) error {
 	if cfg == nil {
 		return errors.New("network cannot be nil")
-	}
-	if cfg.ChainID == "" {
-		return errors.New("ChainID is required")
-	}
-	_, err := strconv.Atoi(cfg.ChainID)
-	if err != nil {
-		return errors.New("ChainID needs to be a number")
 	}
 	if cfg.URLs == nil || len(cfg.URLs) == 0 {
 		return errors.New("URLs are required")
