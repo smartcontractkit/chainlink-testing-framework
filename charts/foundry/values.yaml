@@ -21,6 +21,8 @@ anvil:
   blockGasLimit: "400000000000000"
   codeSizeLimit: "30000"
   baseFee: "100000"
+  blocksToKeepInMemory: "500"
+  intervalInSecondsToDumpState : "60"
 
 image:
   repository: ghcr.io/foundry-rs/foundry

@@ -106,10 +106,14 @@ spec:
             {{- end }}
             - "--state"
             - "/state/dump.json"
+            {{- if .Values.anvil.intervalInSecondsToDumpState }}
             - "--state-interval"
-            - "60"
+            - {{ .Values.anvil.intervalInSecondsToDumpState | quote }}
+            {{- end }}
+            {{- if .Values.anvil.blocksToKeepInMemory }}
             - "--transaction-block-keeper"
-            - "500"
+            - {{ .Values.anvil.blocksToKeepInMemory | quote }}
+            {{- end }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
