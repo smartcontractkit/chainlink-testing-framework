@@ -2,19 +2,19 @@ name: 'Update Internal Mirrors Action'
 inputs:
   aws_region:
     description: 'AWS region for the ECR'
-    required: true
+    required: false
   role_to_assume:
     description: 'AWS IAM role to assume'
-    required: true
+    required: false
   aws_account_number:
     description: 'AWS Account Number'
-    required: true
+    required: false
   image_name:
     description: 'Name of the docker image to update'
-    required: true
+    required: false
   expression:
     description: 'Regex expression for image tags'
-    required: true
+    required: false
   page_size:
     description: 'Number of tags to return per page'
     required: false
