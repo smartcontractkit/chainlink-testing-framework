@@ -7,7 +7,7 @@ CVE-2021-42219 # Uncontrolled Resource Consumption ('Resource Exhaustion')
 CVE-2020-28483 # Inconsistent Interpretation of HTTP Requests ('HTTP Request Smuggling')
 CVE-2022-29153 # Server-Side Request Forgery (SSRF)
 CVE-2023-3518 # CWE-Other (when using JWT Auth for service mesh incorrectly allows/denies access regardless of service identities) -- coming from WASP
-CVE-2023-40591 # CWE-400 Uncontrolled Resource Consumption ('Resource Exhaustion') by geth (fixed in v1.12.2, which needs core to bump that dep first)
-CVE-2023-42319 # CWE-400 Uncontrolled Resource Consumption ('Resource Exhaustion') by geth (fixed in v1.12.2, which needs core to bump that dep first)
 CVE-2023-48795 # Improper Validation of Integrity Check Value x/crypto, which is an indirect dependency
 CVE-2024-24786 # CWE-835 Loop with Unreachable Exit Condition ('Infinite Loop') in indirect dependency
+CVE-2024-32972 # CWE-400: Uncontrolled Resource Consumption ('Resource Exhaustion') [still not fixed, not even in v1.13.8]
+CVE-2023-42319 # CWE-noinfo: lol... go-ethereum v1.13.8 again
