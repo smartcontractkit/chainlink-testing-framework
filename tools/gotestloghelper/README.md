@@ -1,6 +1,6 @@
 # gotestloghelper CLI
 
-gotestloghelper CLI is a command-line interface tool designed to enhance the output of Go test runs. It provides features such as colorized output for better readability, showing only errors, and removing log prefixed added by testing.T.Log, especially useful in Continuous Integration (CI) environments.
+gotestloghelper CLI is a command-line interface tool designed to enhance the output of Go test runs. It provides features such as colorized output for better readability, hiding passing logs or passing tests altogether, and removing log prefix added by testing.T.Log, especially useful in Continuous Integration (CI) environments.
 
 ## Installation
 
@@ -22,12 +22,15 @@ go test ./... -json | gotestloghelper [flags]
 
     -tlogprefix: Set to true to remove the Go test log prefix. Default: false
     -json: Set to true to enable parsing the input from a go test -json output. Default: false
-    -onlyerrors: Set to true to only print tests that failed. Note: Not compatible without -json. Default: false
-    -showpassingtests: Show passing tests but not their logs, only compatible when used with -onlyerrors. Default: false
+    -hidepassingtests: Set to true to hide passing tests, only compatible when used with -json.
+    -hidepassinglogs: Set to true to hide passing test logs but not the tests themselves, only compatible when used with -json. Default: false
     -color: Set to true to enable color output. Default: false
     -ci: Set to true to enable CI mode, which prints out logs with groupings when combined with -json. Default: false
     -singlepackage: Set to true if the Go test output is from a single package only. This prints tests out as they finish instead of waiting for the package to finish. Default: false
     -errorattoplength: If the error message doesn't appear before this many lines, it will be printed at the top of the test output as well. Set to 0 to disable. Only works with -ci. Default: 100
+
+    Deprecated:
+    -onlyerrors: Now this sets -hidepassingtests to true. Set to true to only print tests that failed. Note: Only compatible with -json. Default: false
 
 ## Examples
 
@@ -40,7 +43,13 @@ go test ./... -json | gotestloghelper -json -color
 To filter only errors from JSON-formatted test output:
 
 ```sh
-go test -json ./... | gotestloghelper -json -onlyerrors
+go test -json ./... | gotestloghelper -json -hidepassingtests
+```
+
+To filter passing test logs but still show all tests and failing test logs from JSON-formatted test output:
+
+```sh
+go test -json ./... | gotestloghelper -json -hidepassinglogs
 ```
 
 ## Additional Notes
