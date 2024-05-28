@@ -39,12 +39,12 @@ runs:
     - name: Update images
       shell: bash
       run: |
+        # Update images
         # Change to the directory where the action is stored
         cd ${{ github.action_path }}
         if [[ -z "${{ inputs.image_name }}" ]]; then
-          # Update ${{ inputs.image_name }}
           ./scripts/update_mirrors.sh ${{ inputs.aws_account_number }}.dkr.ecr.${{ inputs.aws_region }}.amazonaws.com
         else
-          # Update all images
+          # Update ${{ inputs.image_name }}
           ./scripts/update_mirrors.sh ${{ inputs.aws_account_number }}.dkr.ecr.${{ inputs.aws_region }}.amazonaws.com ${{ inputs.image_name }} '${{ inputs.expression }}' ${{ inputs.page_size }}
         fi      
