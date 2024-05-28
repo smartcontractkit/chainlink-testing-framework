@@ -41,10 +41,10 @@ func init() {
 		"chaos-meshorg.HttpChaosSpecMode",
 		reflect.TypeOf((*HttpChaosSpecMode)(nil)).Elem(),
 		map[string]interface{}{
-			"ONE": HttpChaosSpecMode_ONE,
-			"ALL": HttpChaosSpecMode_ALL,
-			"FIXED": HttpChaosSpecMode_FIXED,
-			"FIXED_PERCENT": HttpChaosSpecMode_FIXED_PERCENT,
+			"ONE":                HttpChaosSpecMode_ONE,
+			"ALL":                HttpChaosSpecMode_ALL,
+			"FIXED":              HttpChaosSpecMode_FIXED,
+			"FIXED_PERCENT":      HttpChaosSpecMode_FIXED_PERCENT,
 			"RANDOM_MAX_PERCENT": HttpChaosSpecMode_RANDOM_MAX_PERCENT,
 		},
 	)
@@ -72,7 +72,7 @@ func init() {
 		"chaos-meshorg.HttpChaosSpecTarget",
 		reflect.TypeOf((*HttpChaosSpecTarget)(nil)).Elem(),
 		map[string]interface{}{
-			"REQUEST": HttpChaosSpecTarget_REQUEST,
+			"REQUEST":  HttpChaosSpecTarget_REQUEST,
 			"RESPONSE": HttpChaosSpecTarget_RESPONSE,
 		},
 	)

@@ -41,8 +41,8 @@ func init() {
 		"chaos-meshorg.PodChaosSpecAction",
 		reflect.TypeOf((*PodChaosSpecAction)(nil)).Elem(),
 		map[string]interface{}{
-			"POD_KILL": PodChaosSpecAction_POD_KILL,
-			"POD_FAILURE": PodChaosSpecAction_POD_FAILURE,
+			"POD_KILL":       PodChaosSpecAction_POD_KILL,
+			"POD_FAILURE":    PodChaosSpecAction_POD_FAILURE,
 			"CONTAINER_KILL": PodChaosSpecAction_CONTAINER_KILL,
 		},
 	)
@@ -50,10 +50,10 @@ func init() {
 		"chaos-meshorg.PodChaosSpecMode",
 		reflect.TypeOf((*PodChaosSpecMode)(nil)).Elem(),
 		map[string]interface{}{
-			"ONE": PodChaosSpecMode_ONE,
-			"ALL": PodChaosSpecMode_ALL,
-			"FIXED": PodChaosSpecMode_FIXED,
-			"FIXED_PERCENT": PodChaosSpecMode_FIXED_PERCENT,
+			"ONE":                PodChaosSpecMode_ONE,
+			"ALL":                PodChaosSpecMode_ALL,
+			"FIXED":              PodChaosSpecMode_FIXED,
+			"FIXED_PERCENT":      PodChaosSpecMode_FIXED_PERCENT,
 			"RANDOM_MAX_PERCENT": PodChaosSpecMode_RANDOM_MAX_PERCENT,
 		},
 	)

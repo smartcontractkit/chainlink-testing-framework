@@ -28,7 +28,7 @@ require (
 	github.com/prometheus/common v0.45.0
 	github.com/rs/zerolog v1.30.0
 	github.com/slack-go/slack v0.12.2
-	github.com/smartcontractkit/seth v1.0.10-0.20240527141846-e5cc48324890
+	github.com/smartcontractkit/seth v1.0.11
 	github.com/smartcontractkit/wasp v0.4.1
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.5

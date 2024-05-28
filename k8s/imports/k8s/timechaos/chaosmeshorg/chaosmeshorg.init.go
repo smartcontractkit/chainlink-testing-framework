@@ -41,10 +41,10 @@ func init() {
 		"chaos-meshorg.TimeChaosSpecMode",
 		reflect.TypeOf((*TimeChaosSpecMode)(nil)).Elem(),
 		map[string]interface{}{
-			"ONE": TimeChaosSpecMode_ONE,
-			"ALL": TimeChaosSpecMode_ALL,
-			"FIXED": TimeChaosSpecMode_FIXED,
-			"FIXED_PERCENT": TimeChaosSpecMode_FIXED_PERCENT,
+			"ONE":                TimeChaosSpecMode_ONE,
+			"ALL":                TimeChaosSpecMode_ALL,
+			"FIXED":              TimeChaosSpecMode_FIXED,
+			"FIXED_PERCENT":      TimeChaosSpecMode_FIXED_PERCENT,
 			"RANDOM_MAX_PERCENT": TimeChaosSpecMode_RANDOM_MAX_PERCENT,
 		},
 	)

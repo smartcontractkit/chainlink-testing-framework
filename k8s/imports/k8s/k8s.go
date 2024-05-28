@@ -5,10 +5,12 @@ import (
 	"time"
 
 	_jsii_ "github.com/aws/jsii-runtime-go/runtime"
+
 	_init_ "github.com/smartcontractkit/chainlink-testing-framework/k8s/imports/k8s/jsii"
 
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/imports/k8s/internal"
 )
 

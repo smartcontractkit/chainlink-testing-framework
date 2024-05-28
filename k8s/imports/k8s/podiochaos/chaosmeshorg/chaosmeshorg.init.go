@@ -61,7 +61,7 @@ func init() {
 		"chaos-meshorg.PodIoChaosSpecActionsMistakeFilling",
 		reflect.TypeOf((*PodIoChaosSpecActionsMistakeFilling)(nil)).Elem(),
 		map[string]interface{}{
-			"ZERO": PodIoChaosSpecActionsMistakeFilling_ZERO,
+			"ZERO":   PodIoChaosSpecActionsMistakeFilling_ZERO,
 			"RANDOM": PodIoChaosSpecActionsMistakeFilling_RANDOM,
 		},
 	)

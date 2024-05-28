@@ -41,10 +41,10 @@ func init() {
 		"chaos-meshorg.StressChaosSpecMode",
 		reflect.TypeOf((*StressChaosSpecMode)(nil)).Elem(),
 		map[string]interface{}{
-			"ONE": StressChaosSpecMode_ONE,
-			"ALL": StressChaosSpecMode_ALL,
-			"FIXED": StressChaosSpecMode_FIXED,
-			"FIXED_PERCENT": StressChaosSpecMode_FIXED_PERCENT,
+			"ONE":                StressChaosSpecMode_ONE,
+			"ALL":                StressChaosSpecMode_ALL,
+			"FIXED":              StressChaosSpecMode_FIXED,
+			"FIXED_PERCENT":      StressChaosSpecMode_FIXED_PERCENT,
 			"RANDOM_MAX_PERCENT": StressChaosSpecMode_RANDOM_MAX_PERCENT,
 		},
 	)

@@ -41,11 +41,11 @@ func init() {
 		"chaos-meshorg.NetworkChaosSpecAction",
 		reflect.TypeOf((*NetworkChaosSpecAction)(nil)).Elem(),
 		map[string]interface{}{
-			"NETEM": NetworkChaosSpecAction_NETEM,
-			"DELAY": NetworkChaosSpecAction_DELAY,
-			"LOSS": NetworkChaosSpecAction_LOSS,
+			"NETEM":     NetworkChaosSpecAction_NETEM,
+			"DELAY":     NetworkChaosSpecAction_DELAY,
+			"LOSS":      NetworkChaosSpecAction_LOSS,
 			"DUPLICATE": NetworkChaosSpecAction_DUPLICATE,
-			"CORRUPT": NetworkChaosSpecAction_CORRUPT,
+			"CORRUPT":   NetworkChaosSpecAction_CORRUPT,
 			"PARTITION": NetworkChaosSpecAction_PARTITION,
 			"BANDWIDTH": NetworkChaosSpecAction_BANDWIDTH,
 		},
@@ -70,9 +70,9 @@ func init() {
 		"chaos-meshorg.NetworkChaosSpecDirection",
 		reflect.TypeOf((*NetworkChaosSpecDirection)(nil)).Elem(),
 		map[string]interface{}{
-			"TO": NetworkChaosSpecDirection_TO,
-			"FROM": NetworkChaosSpecDirection_FROM,
-			"BOTH": NetworkChaosSpecDirection_BOTH,
+			"TO":     NetworkChaosSpecDirection_TO,
+			"FROM":   NetworkChaosSpecDirection_FROM,
+			"BOTH":   NetworkChaosSpecDirection_BOTH,
 			"VALUE_": NetworkChaosSpecDirection_VALUE_,
 		},
 	)
@@ -88,10 +88,10 @@ func init() {
 		"chaos-meshorg.NetworkChaosSpecMode",
 		reflect.TypeOf((*NetworkChaosSpecMode)(nil)).Elem(),
 		map[string]interface{}{
-			"ONE": NetworkChaosSpecMode_ONE,
-			"ALL": NetworkChaosSpecMode_ALL,
-			"FIXED": NetworkChaosSpecMode_FIXED,
-			"FIXED_PERCENT": NetworkChaosSpecMode_FIXED_PERCENT,
+			"ONE":                NetworkChaosSpecMode_ONE,
+			"ALL":                NetworkChaosSpecMode_ALL,
+			"FIXED":              NetworkChaosSpecMode_FIXED,
+			"FIXED_PERCENT":      NetworkChaosSpecMode_FIXED_PERCENT,
 			"RANDOM_MAX_PERCENT": NetworkChaosSpecMode_RANDOM_MAX_PERCENT,
 		},
 	)
@@ -111,10 +111,10 @@ func init() {
 		"chaos-meshorg.NetworkChaosSpecTargetMode",
 		reflect.TypeOf((*NetworkChaosSpecTargetMode)(nil)).Elem(),
 		map[string]interface{}{
-			"ONE": NetworkChaosSpecTargetMode_ONE,
-			"ALL": NetworkChaosSpecTargetMode_ALL,
-			"FIXED": NetworkChaosSpecTargetMode_FIXED,
-			"FIXED_PERCENT": NetworkChaosSpecTargetMode_FIXED_PERCENT,
+			"ONE":                NetworkChaosSpecTargetMode_ONE,
+			"ALL":                NetworkChaosSpecTargetMode_ALL,
+			"FIXED":              NetworkChaosSpecTargetMode_FIXED,
+			"FIXED_PERCENT":      NetworkChaosSpecTargetMode_FIXED_PERCENT,
 			"RANDOM_MAX_PERCENT": NetworkChaosSpecTargetMode_RANDOM_MAX_PERCENT,
 		},
 	)

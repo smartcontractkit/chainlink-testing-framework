@@ -1032,8 +1032,8 @@ github.com/sirupsen/logrus v1.9.3 h1:dueUQJ1C2q9oE3F7wvmSGAaVtTmUizReu6fjN8uqzbQ
 github.com/sirupsen/logrus v1.9.3/go.mod h1:naHLuLoDiP4jHNo9R0sCBMtWGeIprob74mVsIT4qYEQ=
 github.com/slack-go/slack v0.12.2 h1:x3OppyMyGIbbiyFhsBmpf9pwkUzMhthJMRNmNlA4LaQ=
 github.com/slack-go/slack v0.12.2/go.mod h1:hlGi5oXA+Gt+yWTPP0plCdRKmjsDxecdHxYQdlMQKOw=
-github.com/smartcontractkit/seth v1.0.10-0.20240527141846-e5cc48324890 h1:3wvckBhXb28O4v5LJxp2KNwzn6+EKHOq1bQRDV+U7Ag=
-github.com/smartcontractkit/seth v1.0.10-0.20240527141846-e5cc48324890/go.mod h1:fVCE+8LD6AbU7d8BHZ1uS/ceJ+8JO0iVTUcDdQmGPAc=
+github.com/smartcontractkit/seth v1.0.11 h1:Ct8wSifW2ZXnyHtYRKaawBnpW7Ef0m8zItUcqYPallM=
+github.com/smartcontractkit/seth v1.0.11/go.mod h1:fVCE+8LD6AbU7d8BHZ1uS/ceJ+8JO0iVTUcDdQmGPAc=
 github.com/smartcontractkit/wasp v0.4.1 h1:qgIx2s+eCwH0OaBKaHEAHUQ1Z47bAgDu+ICS9IOqvGQ=
 github.com/smartcontractkit/wasp v0.4.1/go.mod h1:3qiofyI3pkbrc48a3CVshbMfgl74SiuPL/tm30d9Wb4=
 github.com/smartystreets/assertions v0.0.0-20180927180507-b2de0cb4f26d/go.mod h1:OnSkiWE9lh6wB0YB77sQom3nweQdgAjqCqsofrRNTgc=

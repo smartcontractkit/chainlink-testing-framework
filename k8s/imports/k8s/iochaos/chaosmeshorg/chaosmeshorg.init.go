@@ -41,10 +41,10 @@ func init() {
 		"chaos-meshorg.IoChaosSpecAction",
 		reflect.TypeOf((*IoChaosSpecAction)(nil)).Elem(),
 		map[string]interface{}{
-			"LATENCY": IoChaosSpecAction_LATENCY,
-			"FAULT": IoChaosSpecAction_FAULT,
+			"LATENCY":       IoChaosSpecAction_LATENCY,
+			"FAULT":         IoChaosSpecAction_FAULT,
 			"ATTR_OVERRIDE": IoChaosSpecAction_ATTR_OVERRIDE,
-			"MISTAKE": IoChaosSpecAction_MISTAKE,
+			"MISTAKE":       IoChaosSpecAction_MISTAKE,
 		},
 	)
 	_jsii_.RegisterStruct(
@@ -71,7 +71,7 @@ func init() {
 		"chaos-meshorg.IoChaosSpecMistakeFilling",
 		reflect.TypeOf((*IoChaosSpecMistakeFilling)(nil)).Elem(),
 		map[string]interface{}{
-			"ZERO": IoChaosSpecMistakeFilling_ZERO,
+			"ZERO":   IoChaosSpecMistakeFilling_ZERO,
 			"RANDOM": IoChaosSpecMistakeFilling_RANDOM,
 		},
 	)
@@ -79,10 +79,10 @@ func init() {
 		"chaos-meshorg.IoChaosSpecMode",
 		reflect.TypeOf((*IoChaosSpecMode)(nil)).Elem(),
 		map[string]interface{}{
-			"ONE": IoChaosSpecMode_ONE,
-			"ALL": IoChaosSpecMode_ALL,
-			"FIXED": IoChaosSpecMode_FIXED,
-			"FIXED_PERCENT": IoChaosSpecMode_FIXED_PERCENT,
+			"ONE":                IoChaosSpecMode_ONE,
+			"ALL":                IoChaosSpecMode_ALL,
+			"FIXED":              IoChaosSpecMode_FIXED,
+			"FIXED_PERCENT":      IoChaosSpecMode_FIXED_PERCENT,
 			"RANDOM_MAX_PERCENT": IoChaosSpecMode_RANDOM_MAX_PERCENT,
 		},
 	)
