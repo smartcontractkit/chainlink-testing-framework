@@ -41,8 +41,13 @@ spec:
             - "anvil"
             - "--chain-id"
             - {{ .Values.anvil.chainId | quote }}
+            {{- if .Values.anvil.noMine }}
+            - "--no-mine"
+            {{- end }}
+            {{- if not .Values.anvil.noMine }}
             - "--block-time"
             - {{ .Values.anvil.blockTime | quote }}
+            {{- end }}
             {{- if .Values.anvil.blockGasLimit }}
             - "--gas-limit"
             - {{ .Values.anvil.blockGasLimit | quote }}
