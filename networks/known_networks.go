@@ -106,6 +106,7 @@ var (
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       10000,
 		DefaultGasLimit:           6000000,
+		FinalityDepth:             1,
 	}
 
 	// SimulatedBesuNonDev2 represents a simulated network which can be used to deploy a non-dev besu node
@@ -127,6 +128,7 @@ var (
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       10000,
 		DefaultGasLimit:           6000000,
+		FinalityDepth:             1,
 	}
 
 	SimulatedEVMNonDev = blockchain.EVMNetwork{
