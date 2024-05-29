@@ -40,9 +40,14 @@ spec:
           command:
             - "anvil"
             - "--chain-id"
+            {{- if .Values.anvil.noMine }}
+            - "--no-mine"
+            {{- end }}
             - {{ .Values.anvil.chainId | quote }}
+            {{- if not .Values.anvil.noMine }}
             - "--block-time"
             - {{ .Values.anvil.blockTime | quote }}
+            {{- end }}
             {{- if .Values.anvil.blockGasLimit }}
             - "--gas-limit"
             - {{ .Values.anvil.blockGasLimit | quote }}
