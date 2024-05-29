@@ -40,10 +40,10 @@ spec:
           command:
             - "anvil"
             - "--chain-id"
+            - {{ .Values.anvil.chainId | quote }}
             {{- if .Values.anvil.noMine }}
             - "--no-mine"
             {{- end }}
-            - {{ .Values.anvil.chainId | quote }}
             {{- if not .Values.anvil.noMine }}
             - "--block-time"
             - {{ .Values.anvil.blockTime | quote }}
