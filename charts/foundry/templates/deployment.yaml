@@ -44,6 +44,9 @@ spec:
             {{- if .Values.anvil.noMine }}
             - "--no-mine"
             {{- end }}
+            {{- if .Values.anvil.enableTracing }}
+            - "--steps-tracing"
+            {{- end }}
             {{- if not .Values.anvil.noMine }}
             - "--block-time"
             - {{ .Values.anvil.blockTime | quote }}
