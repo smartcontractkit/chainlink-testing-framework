@@ -68,9 +68,9 @@ type AllowedHostPathV1Beta1 struct {
 //
 // Only https is supported, though you are able to disable certificate verification.
 type ApiServiceSpec struct {
-	// GroupPriorityMininum is the priority this group should have at least.
+	// GroupPriorityMinimum is the priority this group should have at least.
 	//
-	// Higher priority means that the group is preferred by clients over lower priority ones. Note that other versions of this group might specify even higher GroupPriorityMininum values such that the whole group gets a higher priority. The primary sort is based on GroupPriorityMinimum, ordered highest number to lowest (20 before 10). The secondary sort is based on the alphabetical comparison of the name of the object.  (v1.bar before v1.foo) We'd recommend something like: *.k8s.io (except extensions) at 18000 and PaaSes (OpenShift, Deis) are recommended to be in the 2000s
+	// Higher priority means that the group is preferred by clients over lower priority ones. Note that other versions of this group might specify even higher GroupPriorityMinimum values such that the whole group gets a higher priority. The primary sort is based on GroupPriorityMinimum, ordered highest number to lowest (20 before 10). The secondary sort is based on the alphabetical comparison of the name of the object.  (v1.bar before v1.foo) We'd recommend something like: *.k8s.io (except extensions) at 18000 and PaaSes (OpenShift, Deis) are recommended to be in the 2000s
 	GroupPriorityMinimum *float64 `field:"required" json:"groupPriorityMinimum" yaml:"groupPriorityMinimum"`
 	// VersionPriority controls the ordering of this API version inside of its group.
 	//
@@ -698,7 +698,7 @@ type CsiDriverSpec struct {
 	//
 	// Defaults to ReadWriteOnceWithFSType, which will examine each volume to determine if Kubernetes should modify_helm ownership and permissions of the volume. With the default policy the defined fsGroup will only be applied if a fstype is defined and the volume's access mode contains ReadWriteOnce.
 	FsGroupPolicy *string `field:"optional" json:"fsGroupPolicy" yaml:"fsGroupPolicy"`
-	// If set to true, podInfoOnMount indicates this CSI volume driver requires additional pod information (like podName, podUID, etc.) during mount operations. If set to false, pod information will not be passed on mount. Default is false. The CSI driver specifies podInfoOnMount as part of driver deployment. If true, Kubelet will pass pod information as VolumeContext in the CSI NodePublishVolume() calls. The CSI driver is responsible for parsing and validating the information passed in as VolumeContext. The following VolumeConext will be passed if podInfoOnMount is set to true. This list might grow, but the prefix will be used. "csi.storage.k8s.io/pod.name": pod.Name "csi.storage.k8s.io/pod.namespace": pod.Namespace "csi.storage.k8s.io/pod.uid": string(pod.UID) "csi.storage.k8s.io/ephemeral": "true" if the volume is an ephemeral inline volume defined by a CSIVolumeSource, otherwise "false".
+	// If set to true, podInfoOnMount indicates this CSI volume driver requires additional pod information (like podName, podUID, etc.) during mount operations. If set to false, pod information will not be passed on mount. Default is false. The CSI driver specifies podInfoOnMount as part of driver deployment. If true, Kubelet will pass pod information as VolumeContext in the CSI NodePublishVolume() calls. The CSI driver is responsible for parsing and validating the information passed in as VolumeContext. The following VolumeContext will be passed if podInfoOnMount is set to true. This list might grow, but the prefix will be used. "csi.storage.k8s.io/pod.name": pod.Name "csi.storage.k8s.io/pod.namespace": pod.Namespace "csi.storage.k8s.io/pod.uid": string(pod.UID) "csi.storage.k8s.io/ephemeral": "true" if the volume is an ephemeral inline volume defined by a CSIVolumeSource, otherwise "false".
 	//
 	// "csi.storage.k8s.io/ephemeral" is a new feature in Kubernetes 1.16. It is only required for drivers which support both the "Persistent" and "Ephemeral" VolumeLifecycleMode. Other drivers can leave pod info disabled and/or ignore this field. As Kubernetes 1.15 doesn't support this field, drivers can only support one mode when deployed on such a cluster and the deployment determines which mode that is, for example via a command line parameter of the driver.
 	//
@@ -1241,7 +1241,7 @@ type EndpointPortV1Beta1 struct {
 	AppProtocol *string `field:"optional" json:"appProtocol" yaml:"appProtocol"`
 	// The name of this port.
 	//
-	// All ports in an EndpointSlice must have a unique name. If the EndpointSlice is dervied from a Kubernetes service, this corresponds to the Service.ports[].name. Name must either be an empty string or pass DNS_LABEL validation: * must be no more than 63 characters long. * must consist of lower case alphanumeric characters or '-'. * must start and end with an alphanumeric character. Default is empty string.
+	// All ports in an EndpointSlice must have a unique name. If the EndpointSlice is derived from a Kubernetes service, this corresponds to the Service.ports[].name. Name must either be an empty string or pass DNS_LABEL validation: * must be no more than 63 characters long. * must consist of lower case alphanumeric characters or '-'. * must start and end with an alphanumeric character. Default is empty string.
 	Name *string `field:"optional" json:"name" yaml:"name"`
 	// The port number of the endpoint.
 	//
@@ -42379,15 +42379,15 @@ type KubeVolumeAttachmentV1Alpha1Props struct {
 
 // A label selector is a label query over a set of resources.
 //
-// The result of matchLabels and matchExpressions are ANDed. An empty label selector matches all objects. A null label selector matches no objects.
+// The result of matchLabels and matchExpressions are ANDead. An empty label selector matches all objects. A null label selector matches no objects.
 type LabelSelector struct {
 	// matchExpressions is a list of label selector requirements.
 	//
-	// The requirements are ANDed.
+	// The requirements are ANDead.
 	MatchExpressions *[]*LabelSelectorRequirement `field:"optional" json:"matchExpressions" yaml:"matchExpressions"`
 	// matchLabels is a map of {key,value} pairs.
 	//
-	// A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
+	// A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDead.
 	MatchLabels *map[string]*string `field:"optional" json:"matchLabels" yaml:"matchLabels"`
 }
 
@@ -42477,7 +42477,7 @@ type LimitResponseV1Beta1 struct {
 // * How are requests for this priority level limited?
 // * What should be done with requests that exceed the limit?
 type LimitedPriorityLevelConfigurationV1Beta1 struct {
-	// `assuredConcurrencyShares` (ACS) configures the execution limit, which is a limit on the number of requests of this priority level that may be exeucting at a given time.
+	// `assuredConcurrencyShares` (ACS) configures the execution limit, which is a limit on the number of requests of this priority level that may be executing at a given time.
 	//
 	// ACS must be a positive number. The server's concurrency limit (SCL) is divided among the concurrency-controlled priority levels in proportion to their assured concurrency shares. This produces the assured concurrency value (ACV) --- the number of requests that may be executing at a time --- for each such priority level:
 	//
@@ -42527,7 +42527,7 @@ type LocalVolumeSource struct {
 	Path *string `field:"required" json:"path" yaml:"path"`
 	// Filesystem type to mount.
 	//
-	// It applies only when the Path is a block device. Must be a filesystem type supported by the host operating system. Ex. "ext4", "xfs", "ntfs". The default value is to auto-select a fileystem if unspecified.
+	// It applies only when the Path is a block device. Must be a filesystem type supported by the host operating system. Ex. "ext4", "xfs", "ntfs". The default value is to auto-select a filesystem if unspecified.
 	FsType *string `field:"optional" json:"fsType" yaml:"fsType"`
 }
 
@@ -42873,7 +42873,7 @@ type NodeSelectorRequirement struct {
 
 // A null or empty node selector term matches no objects.
 //
-// The requirements of them are ANDed. The TopologySelectorTerm type implements a subset of the NodeSelectorTerm.
+// The requirements of them are ANDead. The TopologySelectorTerm type implements a subset of the NodeSelectorTerm.
 type NodeSelectorTerm struct {
 	// A list of node selector requirements by node's labels.
 	MatchExpressions *[]*NodeSelectorRequirement `field:"optional" json:"matchExpressions" yaml:"matchExpressions"`
@@ -43638,7 +43638,7 @@ type PodSpec struct {
 	Tolerations *[]*Toleration `field:"optional" json:"tolerations" yaml:"tolerations"`
 	// TopologySpreadConstraints describes how a group of pods ought to spread across topology domains.
 	//
-	// Scheduler will schedule pods in a way which abides by the constraints. All topologySpreadConstraints are ANDed.
+	// Scheduler will schedule pods in a way which abides by the constraints. All topologySpreadConstraints are ANDead.
 	TopologySpreadConstraints *[]*TopologySpreadConstraint `field:"optional" json:"topologySpreadConstraints" yaml:"topologySpreadConstraints"`
 	// List of volumes that can be mounted by containers belonging to the pod.
 	//
@@ -45089,7 +45089,7 @@ type TopologySelectorLabelRequirement struct {
 
 // A topology selector term represents the result of label queries.
 //
-// A null or empty topology selector term matches no objects. The requirements of them are ANDed. It provides a subset of functionality as NodeSelectorTerm. This is an alpha feature and may change in the future.
+// A null or empty topology selector term matches no objects. The requirements of them are ANDead. It provides a subset of functionality as NodeSelectorTerm. This is an alpha feature and may change in the future.
 type TopologySelectorTerm struct {
 	// A list of topology selector requirements by labels.
 	MatchLabelExpressions *[]*TopologySelectorLabelRequirement `field:"optional" json:"matchLabelExpressions" yaml:"matchLabelExpressions"`
@@ -45110,7 +45110,7 @@ type TopologySpreadConstraint struct {
 	// - DoNotSchedule (default) tells the scheduler not to schedule it. - ScheduleAnyway tells the scheduler to schedule the pod in any location,
 	// but giving higher precedence to topologies that would help reduce the
 	// skew.
-	// A constraint is considered "Unsatisfiable" for an incoming pod if and only if every possible node assigment for that pod would violate "MaxSkew" on some topology. For example, in a 3-zone cluster, MaxSkew is set to 1, and pods with the same labelSelector spread as 3/1/1: | zone1 | zone2 | zone3 | | P P P |   P   |   P   | If WhenUnsatisfiable is set to DoNotSchedule, incoming pod can only be scheduled to zone2(zone3) to become 3/2/1(3/1/2) as ActualSkew(2-1) on zone2(zone3) satisfies MaxSkew(1). In other words, the cluster can still be imbalanced, but scheduler won't make it *more* imbalanced. It's a required field.
+	// A constraint is considered "Unsatisfiable" for an incoming pod if and only if every possible node assignment for that pod would violate "MaxSkew" on some topology. For example, in a 3-zone cluster, MaxSkew is set to 1, and pods with the same labelSelector spread as 3/1/1: | zone1 | zone2 | zone3 | | P P P |   P   |   P   | If WhenUnsatisfiable is set to DoNotSchedule, incoming pod can only be scheduled to zone2(zone3) to become 3/2/1(3/1/2) as ActualSkew(2-1) on zone2(zone3) satisfies MaxSkew(1). In other words, the cluster can still be imbalanced, but scheduler won't make it *more* imbalanced. It's a required field.
 	WhenUnsatisfiable *string `field:"required" json:"whenUnsatisfiable" yaml:"whenUnsatisfiable"`
 	// LabelSelector is used to find matching pods.
 	//
@@ -45325,7 +45325,7 @@ type Volume struct {
 
 // VolumeAttachmentSource represents a volume that should be attached.
 //
-// Right now only PersistenVolumes can be attached via external attacher, in future we may allow also inline volumes in pods. Exactly one member can be set.
+// Right now only PersistentVolumes can be attached via external attacher, in future we may allow also inline volumes in pods. Exactly one member can be set.
 type VolumeAttachmentSource struct {
 	// inlineVolumeSpec contains all the information necessary to attach a persistent volume defined by a pod's inline VolumeSource.
 	//
@@ -45337,7 +45337,7 @@ type VolumeAttachmentSource struct {
 
 // VolumeAttachmentSource represents a volume that should be attached.
 //
-// Right now only PersistenVolumes can be attached via external attacher, in future we may allow also inline volumes in pods. Exactly one member can be set.
+// Right now only PersistentVolumes can be attached via external attacher, in future we may allow also inline volumes in pods. Exactly one member can be set.
 type VolumeAttachmentSourceV1Alpha1 struct {
 	// inlineVolumeSpec contains all the information necessary to attach a persistent volume defined by a pod's inline VolumeSource.
 	//

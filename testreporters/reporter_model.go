@@ -2,7 +2,6 @@ package testreporters
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"io/fs"
 	"os"
@@ -11,9 +10,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/rs/zerolog/log"
 	"github.com/slack-go/slack"
-	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/sync/errgroup"
 
@@ -52,7 +52,7 @@ func WriteTeardownLogs(
 		log.Warn().Err(err).Msg("Error trying to collect pod logs")
 		return err
 	}
-	logFiles, err := findAllLogFilesToScan(logsPath)
+	logFiles, err := FindAllLogFilesToScan(logsPath, "node.log")
 	if err != nil {
 		log.Warn().Err(err).Msg("Error looking for pod logs")
 		return err
@@ -61,10 +61,13 @@ func WriteTeardownLogs(
 	for _, f := range logFiles {
 		file := f
 		verifyLogsGroup.Go(func() error {
-			return verifyLogFile(file, failingLogLevel)
+			return VerifyLogFile(file, failingLogLevel, 1)
 		})
 	}
-	assert.NoError(t, verifyLogsGroup.Wait(), "Found a concerning log")
+	err = verifyLogsGroup.Wait()
+	if err != nil {
+		return errors.Wrap(err, "found a concerning log")
+	}
 
 	if t.Failed() || optionalTestReporter != nil {
 		if err := SendReport(t, env.Cfg.Namespace, logsPath, optionalTestReporter, grafanaUrlProvider); err != nil {
@@ -91,8 +94,8 @@ func SendReport(t *testing.T, namespace string, logsPath string, optionalTestRep
 	return nil
 }
 
-// findAllLogFilesToScan walks through log files pulled from all pods, and gets all chainlink node logs
-func findAllLogFilesToScan(directoryPath string) (logFilesToScan []*os.File, err error) {
+// FindAllLogFilesToScan walks through log files pulled from all pods, and gets all chainlink node logs
+func FindAllLogFilesToScan(directoryPath string, partialFilename string) (logFilesToScan []*os.File, err error) {
 	logFilePaths := []string{}
 	err = filepath.Walk(directoryPath, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
@@ -105,7 +108,7 @@ func findAllLogFilesToScan(directoryPath string) (logFilesToScan []*os.File, err
 	})
 
 	for _, filePath := range logFilePaths {
-		if strings.Contains(filePath, "node.log") {
+		if strings.Contains(filePath, partialFilename) {
 			logFileToScan, err := os.Open(filePath)
 			if err != nil {
 				return nil, err
@@ -116,14 +119,33 @@ func findAllLogFilesToScan(directoryPath string) (logFilesToScan []*os.File, err
 	return logFilesToScan, err
 }
 
-// allowedLogMessage is a log message that might be thrown by a Chainlink node during a test, but is not a concern
-type allowedLogMessage struct {
-	message string
-	reason  string
-	level   zapcore.Level
+type WarnAboutAllowedMsgs = bool
+
+const (
+	WarnAboutAllowedMsgs_Yes WarnAboutAllowedMsgs = true
+	WarnAboutAllowedMsgs_No  WarnAboutAllowedMsgs = false
+)
+
+// AllowedLogMessage is a log message that might be thrown by a Chainlink node during a test, but is not a concern
+type AllowedLogMessage struct {
+	message      string
+	reason       string
+	level        zapcore.Level
+	logWhenFound WarnAboutAllowedMsgs
 }
 
-var allowedLogMessages = []allowedLogMessage{
+// NewAllowedLogMessage creates a new AllowedLogMessage. If logWhenFound is true, the log message will be printed to the
+// console when found in the log file with Warn level (this can get noisy).
+func NewAllowedLogMessage(message string, reason string, level zapcore.Level, logWhenFound WarnAboutAllowedMsgs) AllowedLogMessage {
+	return AllowedLogMessage{
+		message:      message,
+		reason:       reason,
+		level:        level,
+		logWhenFound: logWhenFound,
+	}
+}
+
+var defaultAllowedLogMessages = []AllowedLogMessage{
 	{
 		message: "No EVM primary nodes available: 0/1 nodes are alive",
 		reason:  "Sometimes geth gets unlucky in the start up process and the Chainlink node starts before geth is ready",
@@ -131,60 +153,28 @@ var allowedLogMessages = []allowedLogMessage{
 	},
 }
 
-// verifyLogFile verifies that a log file
-func verifyLogFile(file *os.File, failingLogLevel zapcore.Level) error {
-	// nolint
-	defer file.Close()
+// VerifyLogFile verifies that a log file does not contain any logs at a level higher than the failingLogLevel. If it does,
+// it will return an error. It also allows for a list of AllowedLogMessages to be passed in, which will be ignored if found
+// in the log file. The failureThreshold is the number of logs at the failingLogLevel or higher that can be found before
+// the function returns an error.
+func VerifyLogFile(file *os.File, failingLogLevel zapcore.Level, failureThreshold uint, allowedMessages ...AllowedLogMessage) error {
+	defer func(file *os.File) {
+		_ = file.Close()
+	}(file)
 
-	var (
-		zapLevel zapcore.Level
-		err      error
-	)
+	var err error
 	scanner := bufio.NewScanner(file)
 	scanner.Split(bufio.ScanLines)
+
+	allAllowedMessages := append(defaultAllowedLogMessages, allowedMessages...)
+
+	var logsFound uint
+
 	for scanner.Scan() {
 		jsonLogLine := scanner.Text()
-		if !strings.HasPrefix(jsonLogLine, "{") { // don't bother with non-json lines
-			if strings.HasPrefix(jsonLogLine, "panic") { // unless it's a panic
-				return fmt.Errorf("found panic: %s", jsonLogLine)
-			}
-			continue
-		}
-		jsonMapping := map[string]any{}
-
-		if err = json.Unmarshal([]byte(jsonLogLine), &jsonMapping); err != nil {
-			// This error can occur anytime someone uses %+v in a log message, ignoring
-			continue
-		}
-		logLevel, ok := jsonMapping["level"].(string)
-		if !ok {
-			return fmt.Errorf("found no log level in chainlink log line: %s", jsonLogLine)
-		}
-
-		if logLevel == "crit" { // "crit" is a custom core type they map to DPanic
-			zapLevel = zapcore.DPanicLevel
-		} else {
-			zapLevel, err = zapcore.ParseLevel(logLevel)
-			if err != nil {
-				return fmt.Errorf("'%s' not a valid zapcore level", logLevel)
-			}
-		}
-
-		if zapLevel > failingLogLevel {
-			logErr := fmt.Errorf("found log at level '%s', failing any log level higher than %s: %s", logLevel, zapLevel.String(), jsonLogLine)
-			logMessage, hasMessage := jsonMapping["msg"]
-			if !hasMessage {
-				return logErr
-			}
-			for _, allowedLog := range allowedLogMessages {
-				if strings.Contains(logMessage.(string), allowedLog.message) {
-					log.Warn().
-						Str("Reason", allowedLog.reason).
-						Str("Level", allowedLog.level.CapitalString()).
-						Str("Msg", logMessage.(string)).
-						Msg("Found allowed log message, ignoring")
-				}
-			}
+		logsFound, err = ScanLogLine(log.Logger, jsonLogLine, failingLogLevel, logsFound, failureThreshold, allAllowedMessages)
+		if err != nil {
+			return err
 		}
 	}
 	return nil

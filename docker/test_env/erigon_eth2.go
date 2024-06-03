@@ -14,12 +14,13 @@ import (
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 )
 
 // NewErigonEth2 starts a new Erigon Eth2 node running in Docker
-func NewErigonEth2(networks []string, chainConfig *EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) (*Erigon, error) {
+func NewErigonEth2(networks []string, chainConfig *config.EthereumChainConfig, generatedDataHostDir string, consensusLayer config.ConsensusLayer, opts ...EnvComponentOption) (*Erigon, error) {
 	parts := strings.Split(defaultErigonEth2Image, ":")
 	g := &Erigon{
 		EnvComponent: EnvComponent{
@@ -32,7 +33,7 @@ func NewErigonEth2(networks []string, chainConfig *EthereumChainConfig, generate
 		generatedDataHostDir: generatedDataHostDir,
 		consensusLayer:       consensusLayer,
 		l:                    logging.GetTestLogger(nil),
-		ethereumVersion:      EthereumVersion_Eth2,
+		ethereumVersion:      config.EthereumVersion_Eth2,
 	}
 	g.SetDefaultHooks()
 	for _, opt := range opts {
@@ -111,6 +112,7 @@ func (g *Erigon) buildPosInitScript() (string, error) {
 	}
 
 	initTemplate := `#!/bin/bash
+	echo "BAM!"
 	echo "Copied genesis file to {{.ExecutionDir}}"
 	mkdir -p {{.ExecutionDir}}
 	cp {{.GeneratedDataDir}}/genesis.json {{.ExecutionDir}}/genesis.json
@@ -123,9 +125,14 @@ func (g *Erigon) buildPosInitScript() (string, error) {
 	fi
 
 	echo "Starting Erigon..."
-	erigon --http --http.api=eth,erigon,engine,web3,net,debug,trace,txpool,admin --http.addr=0.0.0.0 --http.corsdomain=* \
-		--http.vhosts=* --http.port={{.HttpPort}} --ws --authrpc.vhosts=* --authrpc.addr=0.0.0.0 --authrpc.jwtsecret={{.JwtFileLocation}} \
-		--datadir={{.ExecutionDir}} {{.ExtraExecutionFlags}} --allow-insecure-unlock --nodiscover --networkid={{.ChainID}}`
+	command="erigon --http --http.api=eth,erigon,engine,web3,net,debug,trace,txpool,admin --http.addr=0.0.0.0 --http.corsdomain=* --http.vhosts=* --http.port={{.HttpPort}} --ws --authrpc.vhosts=* --authrpc.addr=0.0.0.0 --authrpc.jwtsecret={{.JwtFileLocation}} --datadir={{.ExecutionDir}} {{.ExtraExecutionFlags}} --allow-insecure-unlock --nodiscover --networkid={{.ChainID}} --log.console.verbosity={{.LogLevel}} --verbosity={{.LogLevel}}"
+
+	if [ "{{.LogLevel}}" == "trace" ]; then
+		echo "Enabling trace logging for senders: {{.SendersToTrace}}"
+		command="$command --txpool.trace.senders=\"{{.SendersToTrace}}\""
+	fi
+
+	eval $command`
 
 	data := struct {
 		HttpPort            string
@@ -134,6 +141,8 @@ func (g *Erigon) buildPosInitScript() (string, error) {
 		JwtFileLocation     string
 		ExecutionDir        string
 		ExtraExecutionFlags string
+		SendersToTrace      string
+		LogLevel            string
 	}{
 		HttpPort:            DEFAULT_EVM_NODE_HTTP_PORT,
 		ChainID:             g.chainConfig.ChainID,
@@ -141,6 +150,8 @@ func (g *Erigon) buildPosInitScript() (string, error) {
 		JwtFileLocation:     JWT_SECRET_FILE_LOCATION_INSIDE_CONTAINER,
 		ExecutionDir:        "/home/erigon/execution-data",
 		ExtraExecutionFlags: extraExecutionFlags,
+		SendersToTrace:      strings.Join(g.chainConfig.AddressesToFund, ","),
+		LogLevel:            g.LogLevel,
 	}
 
 	t, err := template.New("init").Parse(initTemplate)

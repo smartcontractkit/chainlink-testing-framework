@@ -41,8 +41,28 @@ spec:
             - "anvil"
             - "--chain-id"
             - {{ .Values.anvil.chainId | quote }}
+            {{- if .Values.anvil.noMine }}
+            - "--no-mine"
+            {{- end }}
+            {{- if .Values.anvil.enableTracing }}
+            - "--steps-tracing"
+            {{- end }}
+            {{- if not .Values.anvil.noMine }}
             - "--block-time"
             - {{ .Values.anvil.blockTime | quote }}
+            {{- end }}
+            {{- if .Values.anvil.blockGasLimit }}
+            - "--gas-limit"
+            - {{ .Values.anvil.blockGasLimit | quote }}
+            {{- end }}
+            {{- if .Values.anvil.codeSizeLimit }}
+            - "--code-size-limit"
+            - {{ .Values.anvil.codeSizeLimit | quote }}
+            {{- end }}
+            {{- if .Values.anvil.baseFee }}
+            - "--base-fee"
+            - {{ .Values.anvil.baseFee | quote }}
+            {{- end }}
             - "--host"
             - {{ .Values.anvil.host }}
             - "--port"
@@ -84,6 +104,24 @@ spec:
             {{- if .Values.anvil.runAsOptimism }}
             - "--optimism"
             {{- end }}
+            {{- if .Values.anvil.noOfAccounts }}
+            - "--accounts"
+            - {{ .Values.anvil.noOfAccounts | quote }}
+            {{- end }}
+            {{- if .Values.anvil.accountBalance }}
+            - "--balance"
+            - {{ .Values.anvil.accountBalance | quote }}
+            {{- end }}
+            - "--state"
+            - "/state/dump.json"
+            {{- if .Values.anvil.intervalInSecondsToDumpState }}
+            - "--state-interval"
+            - {{ .Values.anvil.intervalInSecondsToDumpState | quote }}
+            {{- end }}
+            {{- if .Values.anvil.blocksToKeepInMemory }}
+            - "--transaction-block-keeper"
+            - {{ .Values.anvil.blocksToKeepInMemory | quote }}
+            {{- end }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
@@ -105,12 +143,17 @@ spec:
             timeoutSeconds: 10
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
-          {{- with .Values.volumeMounts }}
           volumeMounts:
+            - name: state-storage
+              mountPath: /state
+          {{- with .Values.volumeMounts }}
             {{- toYaml . | nindent 12 }}
           {{- end }}
-      {{- with .Values.volumes }}
       volumes:
+        - name: state-storage
+          persistentVolumeClaim:
+            claimName: {{ include "foundry.fullname" . }}-pvc
+      {{- with .Values.volumes }}
         {{- toYaml . | nindent 8 }}
       {{- end }}
       {{- with .Values.nodeSelector }}

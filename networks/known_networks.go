@@ -106,6 +106,7 @@ var (
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       10000,
 		DefaultGasLimit:           6000000,
+		FinalityDepth:             1,
 	}
 
 	// SimulatedBesuNonDev2 represents a simulated network which can be used to deploy a non-dev besu node
@@ -127,6 +128,7 @@ var (
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       10000,
 		DefaultGasLimit:           6000000,
+		FinalityDepth:             1,
 	}
 
 	SimulatedEVMNonDev = blockchain.EVMNetwork{
@@ -233,6 +235,18 @@ var (
 		SupportsEIP1559:           false,
 		ClientImplementation:      blockchain.MetisClientImplementation,
 		ChainID:                   588,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       1000,
+	}
+
+	MetisSepolia blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Metis Sepolia",
+		SupportsEIP1559:           false,
+		ClientImplementation:      blockchain.MetisClientImplementation,
+		ChainID:                   59902,
 		Simulated:                 false,
 		ChainlinkTransactionLimit: 5000,
 		Timeout:                   blockchain.StrDuration{Duration: time.Minute},
@@ -811,6 +825,62 @@ var (
 		GasEstimationBuffer:       1000,
 	}
 
+	ModeSepolia = blockchain.EVMNetwork{
+		Name:                      "Mode Sepolia",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.EthereumClientImplementation,
+		ChainID:                   919,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: 2 * time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       1000,
+		FinalityTag:               true,
+		DefaultGasLimit:           6000000,
+	}
+
+	ModeMainnet = blockchain.EVMNetwork{
+		Name:                      "Mode Mainnet",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.EthereumClientImplementation,
+		ChainID:                   34443,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: 2 * time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       1000,
+		FinalityTag:               true,
+		DefaultGasLimit:           6000000,
+	}
+
+	BlastSepolia = blockchain.EVMNetwork{
+		Name:                      "Blast Sepolia",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.EthereumClientImplementation,
+		ChainID:                   168587773,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: 2 * time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       10000,
+		FinalityTag:               true,
+		DefaultGasLimit:           6000000,
+	}
+
+	BlastMainnet = blockchain.EVMNetwork{
+		Name:                      "Blast Mainnet",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.EthereumClientImplementation,
+		ChainID:                   81457,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: 2 * time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       10000,
+		FinalityTag:               true,
+		DefaultGasLimit:           6000000,
+	}
+
 	MappedNetworks = map[string]blockchain.EVMNetwork{
 		"SIMULATED":               SimulatedEVM,
 		"SIMULATED_1":             SimulatedEVMNonDev1,
@@ -826,6 +896,7 @@ var (
 		"KLAYTN_BAOBAB":         KlaytnBaobab,
 		"METIS_ANDROMEDA":       MetisAndromeda,
 		"METIS_STARDUST":        MetisStardust,
+		"METIS_SEPOLIA":         MetisSepolia,
 		"ARBITRUM_MAINNET":      ArbitrumMainnet,
 		"ARBITRUM_GOERLI":       ArbitrumGoerli,
 		"ARBITRUM_SEPOLIA":      ArbitrumSepolia,
@@ -868,6 +939,10 @@ var (
 		"GNOSIS_MAINNET":        GnosisMainnet,
 		"ZK_SYNC_GOERLI":        ZKSyncGoerliTestnet,
 		"ZK_SYNC_SEPOLIA":       ZKSyncSepoliaTestnet,
+		"BLAST_SEPOLIA":         BlastSepolia,
+		"BLAST_MAINNET":         BlastMainnet,
+		"MODE_SEPOLIA":          ModeSepolia,
+		"MODE_MAINNET":          ModeMainnet,
 	}
 )
 
@@ -890,8 +965,8 @@ func SetNetworks(networkCfg config.NetworkConfig) ([]blockchain.EVMNetwork, erro
 		var walletKeys, httpUrls, wsUrls []string
 		networkName := strings.ToUpper(selectedNetworks[i])
 		forked := false
-		if networkCfg.ForkConfigs != nil {
-			_, forked = networkCfg.ForkConfigs[networkName]
+		if networkCfg.AnvilConfigs != nil {
+			_, forked = networkCfg.AnvilConfigs[networkName]
 		}
 		// if network is not simulated or forked, use the rpc urls and wallet keys from config
 		if !strings.Contains(networkName, "SIMULATED") && !forked {

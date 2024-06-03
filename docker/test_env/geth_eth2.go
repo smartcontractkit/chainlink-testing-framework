@@ -14,12 +14,13 @@ import (
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 )
 
 // NewGethEth2 starts a new Geth Eth2 node running in Docker
-func NewGethEth2(networks []string, chainConfig *EthereumChainConfig, generatedDataHostDir string, consensusLayer ConsensusLayer, opts ...EnvComponentOption) (*Geth, error) {
+func NewGethEth2(networks []string, chainConfig *config.EthereumChainConfig, generatedDataHostDir string, consensusLayer config.ConsensusLayer, opts ...EnvComponentOption) (*Geth, error) {
 	parts := strings.Split(defaultGethEth2Image, ":")
 	g := &Geth{
 		EnvComponent: EnvComponent{
@@ -32,7 +33,7 @@ func NewGethEth2(networks []string, chainConfig *EthereumChainConfig, generatedD
 		generatedDataHostDir: generatedDataHostDir,
 		consensusLayer:       consensusLayer,
 		l:                    logging.GetTestLogger(nil),
-		ethereumVersion:      EthereumVersion_Eth2,
+		ethereumVersion:      config.EthereumVersion_Eth2,
 	}
 	g.SetDefaultHooks()
 	for _, opt := range opts {
@@ -54,7 +55,7 @@ func (g *Geth) getEth2ContainerRequest() (*tc.ContainerRequest, error) {
 		return nil, err
 	}
 
-	initScriptContent, err := g.builEth2dInitScript()
+	initScriptContent, err := g.buildEth2dInitScript()
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +104,7 @@ func (g *Geth) getEth2ContainerRequest() (*tc.ContainerRequest, error) {
 	}, nil
 }
 
-func (g *Geth) builEth2dInitScript() (string, error) {
+func (g *Geth) buildEth2dInitScript() (string, error) {
 	initTemplate := `#!/bin/bash
 	mkdir -p {{.ExecutionDir}}
 
@@ -130,7 +131,12 @@ func (g *Geth) builEth2dInitScript() (string, error) {
 		--authrpc.addr=0.0.0.0 --authrpc.jwtsecret={{.JwtFileLocation}} --datadir={{.ExecutionDir}} \
 		--rpc.allow-unprotected-txs --rpc.txfeecap=0 --allow-insecure-unlock \
 		--password={{.PasswordFileLocation}} --nodiscover --syncmode=full --networkid={{.ChainID}} \
-		--graphql --graphql.corsdomain=* --unlock=0x123463a4b065722e99115d6c222f267d9cabb524`
+		--graphql --graphql.corsdomain=* --unlock=0x123463a4b065722e99115d6c222f267d9cabb524 --verbosity={{.Verbosity}}`
+
+	verbosity, err := g.logLevelToVerbosity()
+	if err != nil {
+		return "", err
+	}
 
 	data := struct {
 		HttpPort             string
@@ -141,6 +147,7 @@ func (g *Geth) builEth2dInitScript() (string, error) {
 		PasswordFileLocation string
 		KeystoreDirLocation  string
 		ExecutionDir         string
+		Verbosity            int
 	}{
 		HttpPort:             DEFAULT_EVM_NODE_HTTP_PORT,
 		WsPort:               DEFAULT_EVM_NODE_WS_PORT,
@@ -150,6 +157,7 @@ func (g *Geth) builEth2dInitScript() (string, error) {
 		PasswordFileLocation: ACCOUNT_PASSWORD_FILE_INSIDE_CONTAINER,
 		KeystoreDirLocation:  KEYSTORE_DIR_LOCATION_INSIDE_CONTAINER,
 		ExecutionDir:         "/execution-data",
+		Verbosity:            verbosity,
 	}
 
 	t, err := template.New("init").Parse(initTemplate)

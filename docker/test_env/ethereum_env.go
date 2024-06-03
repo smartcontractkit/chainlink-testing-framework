@@ -3,6 +3,7 @@ package test_env
 import (
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -10,76 +11,40 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 
-	tc "github.com/testcontainers/testcontainers-go"
-
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/logstream"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 	toml_utils "github.com/smartcontractkit/chainlink-testing-framework/utils/toml"
 )
 
 const (
-	CONFIG_ENV_VAR_NAME      = "PRIVATE_ETHEREUM_NETWORK_CONFIG_PATH"
-	EXEC_CLIENT_ENV_VAR_NAME = "ETH2_EL_CLIENT"
+	CONFIG_ENV_VAR_NAME = "PRIVATE_ETHEREUM_NETWORK_CONFIG_PATH"
 )
 
 var (
-	ErrMissingEthereumVersion   = errors.New("ethereum version is required")
-	ErrMissingExecutionLayer    = errors.New("execution layer is required")
-	ErrMissingConsensusLayer    = errors.New("consensus layer is required for PoS")
-	ErrConsensusLayerNotAllowed = errors.New("consensus layer is not allowed for PoW")
-	ErrTestConfigNotSaved       = errors.New("could not save test env config")
+	ErrMissingConsensusLayer = errors.New("consensus layer is required for PoS")
+	ErrTestConfigNotSaved    = errors.New("could not save test env config")
 )
 
 var MsgMismatchedExecutionClient = "you provided a custom docker image for %s execution client, but explicitly set a execution client to %s. Make them match or remove one or the other"
 
-// Deprecated: use EthereumVersion instead
-type ConsensusType string
-
-const (
-	// Deprecated: use EthereumVersion_Eth2 instead
-	ConsensusType_PoS ConsensusType = "pos"
-	// Deprecated: use EthereumVersion_Eth1 instead
-	ConsensusType_PoW ConsensusType = "pow"
-)
-
-type EthereumVersion string
-
-const (
-	EthereumVersion_Eth2 EthereumVersion = "eth2"
-	// Deprecated: use EthereumVersion_Eth2 instead
-	EthereumVersion_Eth2_Legacy EthereumVersion = "pos"
-	EthereumVersion_Eth1        EthereumVersion = "eth1"
-	// Deprecated: use EthereumVersion_Eth1 instead
-	EthereumVersion_Eth1_Legacy EthereumVersion = "pow"
-)
-
-type ExecutionLayer string
-
-const (
-	ExecutionLayer_Geth       ExecutionLayer = "geth"
-	ExecutionLayer_Nethermind ExecutionLayer = "nethermind"
-	ExecutionLayer_Erigon     ExecutionLayer = "erigon"
-	ExecutionLayer_Besu       ExecutionLayer = "besu"
-)
-
-type ConsensusLayer string
-
-var ConsensusLayer_Prysm ConsensusLayer = "prysm"
-
 type EthereumNetworkBuilder struct {
 	t                   *testing.T
+	ls                  *logstream.LogStream
 	dockerNetworks      []string
-	ethereumVersion     EthereumVersion
-	consensusLayer      *ConsensusLayer
-	executionLayer      ExecutionLayer
-	ethereumChainConfig *EthereumChainConfig
-	existingConfig      *EthereumNetwork
-	customDockerImages  map[ContainerType]string
+	ethereumVersion     config.EthereumVersion
+	consensusLayer      *config.ConsensusLayer
+	executionLayer      config.ExecutionLayer
+	ethereumChainConfig *config.EthereumChainConfig
+	existingConfig      *config.EthereumNetworkConfig
+	customDockerImages  map[config.ContainerType]string
 	addressesToFund     []string
 	waitForFinalization bool
 	existingFromEnvVar  bool
+	nodeLogLevel        string
 }
 
 func NewEthereumNetworkBuilder() EthereumNetworkBuilder {
@@ -91,34 +56,36 @@ func NewEthereumNetworkBuilder() EthereumNetworkBuilder {
 
 // WithConsensusType sets the consensus type for the network
 // Deprecated: use WithEthereumVersion() instead
-func (b *EthereumNetworkBuilder) WithConsensusType(consensusType ConsensusType) *EthereumNetworkBuilder {
+//
+//nolint:staticcheck //ignore SA1019
+func (b *EthereumNetworkBuilder) WithConsensusType(consensusType config.ConsensusType) *EthereumNetworkBuilder {
 	switch consensusType {
-	case ConsensusType_PoS:
-		b.ethereumVersion = EthereumVersion_Eth2
-	case ConsensusType_PoW:
-		b.ethereumVersion = EthereumVersion_Eth1
+	case config.ConsensusType_PoS:
+		b.ethereumVersion = config.EthereumVersion_Eth2
+	case config.ConsensusType_PoW:
+		b.ethereumVersion = config.EthereumVersion_Eth1
 	default:
 		panic(fmt.Sprintf("unknown consensus type: %s", consensusType))
 	}
 	return b
 }
 
-func (b *EthereumNetworkBuilder) WithEthereumVersion(ethereumVersion EthereumVersion) *EthereumNetworkBuilder {
+func (b *EthereumNetworkBuilder) WithEthereumVersion(ethereumVersion config.EthereumVersion) *EthereumNetworkBuilder {
 	b.ethereumVersion = ethereumVersion
 	return b
 }
 
-func (b *EthereumNetworkBuilder) WithConsensusLayer(consensusLayer ConsensusLayer) *EthereumNetworkBuilder {
+func (b *EthereumNetworkBuilder) WithConsensusLayer(consensusLayer config.ConsensusLayer) *EthereumNetworkBuilder {
 	b.consensusLayer = &consensusLayer
 	return b
 }
 
-func (b *EthereumNetworkBuilder) WithExecutionLayer(executionLayer ExecutionLayer) *EthereumNetworkBuilder {
+func (b *EthereumNetworkBuilder) WithExecutionLayer(executionLayer config.ExecutionLayer) *EthereumNetworkBuilder {
 	b.executionLayer = executionLayer
 	return b
 }
 
-func (b *EthereumNetworkBuilder) WithEthereumChainConfig(config EthereumChainConfig) *EthereumNetworkBuilder {
+func (b *EthereumNetworkBuilder) WithEthereumChainConfig(config config.EthereumChainConfig) *EthereumNetworkBuilder {
 	b.ethereumChainConfig = &config
 	return b
 }
@@ -128,12 +95,17 @@ func (b *EthereumNetworkBuilder) WithDockerNetworks(networks []string) *Ethereum
 	return b
 }
 
-func (b *EthereumNetworkBuilder) WithExistingConfig(config EthereumNetwork) *EthereumNetworkBuilder {
+func (b *EthereumNetworkBuilder) WithNodeLogLevel(nodeLogLevel string) *EthereumNetworkBuilder {
+	b.nodeLogLevel = nodeLogLevel
+	return b
+}
+
+func (b *EthereumNetworkBuilder) WithExistingConfig(config config.EthereumNetworkConfig) *EthereumNetworkBuilder {
 	b.existingConfig = &config
 	return b
 }
 
-func (b *EthereumNetworkBuilder) WihtExistingConfigFromEnvVar() *EthereumNetworkBuilder {
+func (b *EthereumNetworkBuilder) WithExistingConfigFromEnvVar() *EthereumNetworkBuilder {
 	b.existingFromEnvVar = true
 	return b
 }
@@ -143,7 +115,12 @@ func (b *EthereumNetworkBuilder) WithTest(t *testing.T) *EthereumNetworkBuilder 
 	return b
 }
 
-func (b *EthereumNetworkBuilder) WithCustomDockerImages(newImages map[ContainerType]string) *EthereumNetworkBuilder {
+func (b *EthereumNetworkBuilder) WithLogStream(ls *logstream.LogStream) *EthereumNetworkBuilder {
+	b.ls = ls
+	return b
+}
+
+func (b *EthereumNetworkBuilder) WithCustomDockerImages(newImages map[config.ContainerType]string) *EthereumNetworkBuilder {
 	b.customDockerImages = newImages
 	return b
 }
@@ -155,9 +132,11 @@ func (b *EthereumNetworkBuilder) WithWaitingForFinalization() *EthereumNetworkBu
 
 func (b *EthereumNetworkBuilder) buildNetworkConfig() EthereumNetwork {
 	n := EthereumNetwork{
-		EthereumVersion: &b.ethereumVersion,
-		ExecutionLayer:  &b.executionLayer,
-		ConsensusLayer:  b.consensusLayer,
+		EthereumNetworkConfig: config.EthereumNetworkConfig{
+			EthereumVersion: &b.ethereumVersion,
+			ExecutionLayer:  &b.executionLayer,
+			ConsensusLayer:  b.consensusLayer,
+		},
 	}
 
 	if b.existingConfig != nil && len(b.existingConfig.Containers) > 0 {
@@ -169,9 +148,11 @@ func (b *EthereumNetworkBuilder) buildNetworkConfig() EthereumNetwork {
 
 	n.DockerNetworkNames = b.dockerNetworks
 	n.WaitForFinalization = &b.waitForFinalization
-	n.EthereumChainConfig = b.ethereumChainConfig
-	n.CustomDockerImages = b.customDockerImages
+	n.EthereumNetworkConfig.EthereumChainConfig = b.ethereumChainConfig
+	n.EthereumNetworkConfig.CustomDockerImages = b.customDockerImages
+	n.NodeLogLevel = &b.nodeLogLevel
 	n.t = b.t
+	n.ls = b.ls
 
 	return n
 }
@@ -195,10 +176,10 @@ func (b *EthereumNetworkBuilder) Build() (EthereumNetwork, error) {
 
 	if !b.importExistingConfig() {
 		if b.ethereumChainConfig == nil {
-			defaultConfig := GetDefaultChainConfig()
+			defaultConfig := config.GetDefaultChainConfig()
 			b.ethereumChainConfig = &defaultConfig
 		} else {
-			b.ethereumChainConfig.fillInMissingValuesWithDefault()
+			b.ethereumChainConfig.FillInMissingValuesWithDefault()
 		}
 
 		b.ethereumChainConfig.GenerateGenesisTimestamp()
@@ -214,7 +195,9 @@ func (b *EthereumNetworkBuilder) Build() (EthereumNetwork, error) {
 		return EthereumNetwork{}, err
 	}
 
-	return b.buildNetworkConfig(), nil
+	network := b.buildNetworkConfig()
+
+	return network, network.Validate()
 }
 
 func (b *EthereumNetworkBuilder) importExistingConfig() bool {
@@ -240,19 +223,30 @@ func (b *EthereumNetworkBuilder) importExistingConfig() bool {
 	b.ethereumChainConfig = b.existingConfig.EthereumChainConfig
 	b.customDockerImages = b.existingConfig.CustomDockerImages
 
+	if b.existingConfig.WaitForFinalization != nil {
+		b.waitForFinalization = *b.existingConfig.WaitForFinalization
+	}
+
+	if b.existingConfig.NodeLogLevel != nil {
+		b.nodeLogLevel = *b.existingConfig.NodeLogLevel
+	} else {
+		b.nodeLogLevel = config.DefaultNodeLogLevel
+	}
+
 	return true
 }
 
 func (b *EthereumNetworkBuilder) validate() error {
 	if b.ethereumVersion == "" {
-		return ErrMissingEthereumVersion
+		return config.ErrMissingEthereumVersion
 	}
 
 	if b.executionLayer == "" {
-		return ErrMissingExecutionLayer
+		return config.ErrMissingExecutionLayer
 	}
 
-	if (b.ethereumVersion == EthereumVersion_Eth2 || b.ethereumVersion == EthereumVersion_Eth2_Legacy) && b.consensusLayer == nil {
+	//nolint:staticcheck //ignore SA1019
+	if (b.ethereumVersion == config.EthereumVersion_Eth2 || b.ethereumVersion == config.EthereumVersion_Eth2_Legacy) && b.consensusLayer == nil {
 		return ErrMissingConsensusLayer
 	}
 
@@ -276,7 +270,7 @@ func (b *EthereumNetworkBuilder) validate() error {
 
 func (b *EthereumNetworkBuilder) validateCustomDockerImages() error {
 	if len(b.customDockerImages) > 0 {
-		if image, ok := b.customDockerImages[ContainerType_ExecutionLayer]; ok {
+		if image, ok := b.customDockerImages[config.ContainerType_ExecutionLayer]; ok {
 
 			isSupported, reason, err := IsDockerImageVersionSupported(image)
 			if err != nil {
@@ -318,16 +312,23 @@ func (b *EthereumNetworkBuilder) autoFill() error {
 		}
 	}
 
-	if (b.ethereumVersion == EthereumVersion_Eth2_Legacy || b.ethereumVersion == EthereumVersion_Eth2) && b.consensusLayer == nil {
-		b.consensusLayer = &ConsensusLayer_Prysm
+	//nolint:staticcheck //ignore SA1019
+	if (b.ethereumVersion == config.EthereumVersion_Eth2_Legacy || b.ethereumVersion == config.EthereumVersion_Eth2) && b.consensusLayer == nil {
+		b.consensusLayer = &config.ConsensusLayer_Prysm
 	}
 
-	if b.ethereumVersion == EthereumVersion_Eth1_Legacy {
-		b.ethereumVersion = EthereumVersion_Eth1
+	//nolint:staticcheck //ignore SA1019
+	if b.ethereumVersion == config.EthereumVersion_Eth1_Legacy {
+		b.ethereumVersion = config.EthereumVersion_Eth1
 	}
 
-	if b.ethereumVersion == EthereumVersion_Eth2_Legacy {
-		b.ethereumVersion = EthereumVersion_Eth2
+	//nolint:staticcheck //ignore SA1019
+	if b.ethereumVersion == config.EthereumVersion_Eth2_Legacy {
+		b.ethereumVersion = config.EthereumVersion_Eth2
+	}
+
+	if b.nodeLogLevel == "" {
+		b.nodeLogLevel = config.DefaultNodeLogLevel
 	}
 
 	return nil
@@ -335,7 +336,7 @@ func (b *EthereumNetworkBuilder) autoFill() error {
 
 func (b *EthereumNetworkBuilder) setExecutionLayerBasedOnCustomDocker() error {
 	if b.executionLayer == "" && len(b.customDockerImages) > 0 {
-		if image, ok := b.customDockerImages[ContainerType_ExecutionLayer]; ok {
+		if image, ok := b.customDockerImages[config.ContainerType_ExecutionLayer]; ok {
 			var err error
 			b.executionLayer, err = GetExecutionLayerFromDockerImage(image)
 			if err != nil {
@@ -348,9 +349,9 @@ func (b *EthereumNetworkBuilder) setExecutionLayerBasedOnCustomDocker() error {
 }
 
 func (b *EthereumNetworkBuilder) fetchLatestReleaseVersionIfNeed() error {
-	if image, ok := b.customDockerImages[ContainerType_ExecutionLayer]; ok {
+	if image, ok := b.customDockerImages[config.ContainerType_ExecutionLayer]; ok {
 		var err error
-		b.customDockerImages[ContainerType_ExecutionLayer], err = FetchLatestEthereumClientDockerImageVersionIfNeed(image)
+		b.customDockerImages[config.ContainerType_ExecutionLayer], err = FetchLatestEthereumClientDockerImageVersionIfNeed(image)
 		if err != nil {
 			return err
 		}
@@ -367,7 +368,7 @@ func (b *EthereumNetworkBuilder) trySettingEthereumVersionBasedOnCustomImage() e
 
 	// if we are using custom docker image for execution client, extract it
 	for t, customImage := range b.customDockerImages {
-		if t == ContainerType_ExecutionLayer {
+		if t == config.ContainerType_ExecutionLayer {
 			dockerImageToUse = customImage
 			count++
 		}
@@ -392,26 +393,19 @@ func (b *EthereumNetworkBuilder) trySettingEthereumVersionBasedOnCustomImage() e
 }
 
 type EthereumNetwork struct {
-	ConsensusType        *EthereumVersion          `toml:"consensus_type"`
-	EthereumVersion      *EthereumVersion          `toml:"ethereum_version"`
-	ConsensusLayer       *ConsensusLayer           `toml:"consensus_layer"`
-	ExecutionLayer       *ExecutionLayer           `toml:"execution_layer"`
-	DockerNetworkNames   []string                  `toml:"docker_network_names"`
-	Containers           EthereumNetworkContainers `toml:"containers"`
-	WaitForFinalization  *bool                     `toml:"wait_for_finalization"`
-	GeneratedDataHostDir *string                   `toml:"generated_data_host_dir"`
-	ValKeysDir           *string                   `toml:"val_keys_dir"`
-	EthereumChainConfig  *EthereumChainConfig      `toml:"EthereumChainConfig"`
-	CustomDockerImages   map[ContainerType]string  `toml:"CustomDockerImages"`
-	isRecreated          bool
-	t                    *testing.T
+	config.EthereumNetworkConfig
+	isRecreated bool
+	t           *testing.T
+	ls          *logstream.LogStream
 }
 
 func (en *EthereumNetwork) Start() (blockchain.EVMNetwork, RpcProvider, error) {
 	switch *en.EthereumVersion {
-	case EthereumVersion_Eth1, EthereumVersion_Eth1_Legacy:
+	//nolint:staticcheck //ignore SA1019
+	case config.EthereumVersion_Eth1, config.EthereumVersion_Eth1_Legacy:
 		return en.startEth1()
-	case EthereumVersion_Eth2_Legacy, EthereumVersion_Eth2:
+	//nolint:staticcheck //ignore SA1019
+	case config.EthereumVersion_Eth2_Legacy, config.EthereumVersion_Eth2:
 		return en.startEth2()
 	default:
 		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf("unknown ethereum version: %s", *en.EthereumVersion)
@@ -423,7 +417,7 @@ func (en *EthereumNetwork) startEth2() (blockchain.EVMNetwork, RpcProvider, erro
 
 	var net blockchain.EVMNetwork
 
-	if *en.ConsensusLayer != ConsensusLayer_Prysm {
+	if *en.ConsensusLayer != config.ConsensusLayer_Prysm {
 		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf("unsupported consensus layer: %s. Use 'prysm'", *en.ConsensusLayer)
 	}
 
@@ -436,17 +430,19 @@ func (en *EthereumNetwork) startEth2() (blockchain.EVMNetwork, RpcProvider, erro
 		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to create host directories")
 	}
 
+	opts := en.getExecutionLayerEnvComponentOpts()
+
 	var client ExecutionClient
 	var clientErr error
 	switch *en.ExecutionLayer {
-	case ExecutionLayer_Geth:
-		client, clientErr = NewGethEth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, append(en.getImageOverride(ContainerType_ExecutionLayer), en.setExistingContainerName(ContainerType_ExecutionLayer))...)
-	case ExecutionLayer_Nethermind:
-		client, clientErr = NewNethermindEth2(dockerNetworks, generatedDataHostDir, ConsensusLayer_Prysm, append(en.getImageOverride(ContainerType_ExecutionLayer), en.setExistingContainerName(ContainerType_ExecutionLayer))...)
-	case ExecutionLayer_Erigon:
-		client, clientErr = NewErigonEth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, append(en.getImageOverride(ContainerType_ExecutionLayer), en.setExistingContainerName(ContainerType_ExecutionLayer))...)
-	case ExecutionLayer_Besu:
-		client, clientErr = NewBesuEth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, ConsensusLayer_Prysm, append(en.getImageOverride(ContainerType_ExecutionLayer), en.setExistingContainerName(ContainerType_ExecutionLayer))...)
+	case config.ExecutionLayer_Geth:
+		client, clientErr = NewGethEth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, config.ConsensusLayer_Prysm, opts...)
+	case config.ExecutionLayer_Nethermind:
+		client, clientErr = NewNethermindEth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, config.ConsensusLayer_Prysm, opts...)
+	case config.ExecutionLayer_Erigon:
+		client, clientErr = NewErigonEth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, config.ConsensusLayer_Prysm, opts...)
+	case config.ExecutionLayer_Besu:
+		client, clientErr = NewBesuEth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, config.ConsensusLayer_Prysm, opts...)
 	default:
 		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf(MsgUnsupportedExecutionLayer, *en.ExecutionLayer)
 	}
@@ -462,7 +458,7 @@ func (en *EthereumNetwork) startEth2() (blockchain.EVMNetwork, RpcProvider, erro
 		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to start %s execution client", *en.ExecutionLayer)
 	}
 
-	beacon, err := NewPrysmBeaconChain(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, client.GetInternalExecutionURL(), append(en.getImageOverride(ContainerType_ValKeysGenerator), en.setExistingContainerName(ContainerType_ConsensusLayer))...)
+	beacon, err := NewPrysmBeaconChain(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, client.GetInternalExecutionURL(), append(en.getImageOverride(config.ContainerType_ValKeysGenerator), en.setExistingContainerName(config.ContainerType_ConsensusLayer))...)
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to create beacon chain instance")
 	}
@@ -474,7 +470,7 @@ func (en *EthereumNetwork) startEth2() (blockchain.EVMNetwork, RpcProvider, erro
 	}
 
 	validator, err := NewPrysmValidator(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, valKeysDir, beacon.
-		InternalBeaconRpcProvider, append(en.getImageOverride(ContainerType_ValKeysGenerator), en.setExistingContainerName(ContainerType_ConsensusValidator))...)
+		InternalBeaconRpcProvider, append(en.getImageOverride(config.ContainerType_ValKeysGenerator), en.setExistingContainerName(config.ContainerType_ConsensusValidator))...)
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to create validator instance")
 	}
@@ -508,20 +504,20 @@ func (en *EthereumNetwork) startEth2() (blockchain.EVMNetwork, RpcProvider, erro
 		logger.Info().Msg("Not waiting for chain to finalize first epoch")
 	}
 
-	containers := EthereumNetworkContainers{
+	containers := config.EthereumNetworkContainers{
 		{
 			ContainerName: client.GetContainerName(),
-			ContainerType: ContainerType_ExecutionLayer,
+			ContainerType: config.ContainerType_ExecutionLayer,
 			Container:     client.GetContainer(),
 		},
 		{
 			ContainerName: beacon.ContainerName,
-			ContainerType: ContainerType_ConsensusLayer,
+			ContainerType: config.ContainerType_ConsensusLayer,
 			Container:     &beacon.Container,
 		},
 		{
 			ContainerName: validator.ContainerName,
-			ContainerType: ContainerType_ConsensusValidator,
+			ContainerType: config.ContainerType_ConsensusValidator,
 			Container:     &validator.Container,
 		},
 	}
@@ -550,17 +546,19 @@ func (en *EthereumNetwork) startEth1() (blockchain.EVMNetwork, RpcProvider, erro
 		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to create docker networks")
 	}
 
+	opts := en.getExecutionLayerEnvComponentOpts()
+
 	var client ExecutionClient
 	var clientErr error
 	switch *en.ExecutionLayer {
-	case ExecutionLayer_Geth:
-		client = NewGethEth1(dockerNetworks, en.EthereumChainConfig, append(en.getImageOverride(ContainerType_ExecutionLayer), en.setExistingContainerName(ContainerType_ExecutionLayer))...)
-	case ExecutionLayer_Besu:
-		client, clientErr = NewBesuEth1(dockerNetworks, en.EthereumChainConfig, append(en.getImageOverride(ContainerType_ExecutionLayer), en.setExistingContainerName(ContainerType_ExecutionLayer))...)
-	case ExecutionLayer_Erigon:
-		client, clientErr = NewErigonEth1(dockerNetworks, en.EthereumChainConfig, append(en.getImageOverride(ContainerType_ExecutionLayer), en.setExistingContainerName(ContainerType_ExecutionLayer))...)
-	case ExecutionLayer_Nethermind:
-		client, clientErr = NewNethermindEth1(dockerNetworks, en.EthereumChainConfig, append(en.getImageOverride(ContainerType_ExecutionLayer), en.setExistingContainerName(ContainerType_ExecutionLayer))...)
+	case config.ExecutionLayer_Geth:
+		client = NewGethEth1(dockerNetworks, en.EthereumChainConfig, opts...)
+	case config.ExecutionLayer_Besu:
+		client, clientErr = NewBesuEth1(dockerNetworks, en.EthereumChainConfig, opts...)
+	case config.ExecutionLayer_Erigon:
+		client, clientErr = NewErigonEth1(dockerNetworks, en.EthereumChainConfig, opts...)
+	case config.ExecutionLayer_Nethermind:
+		client, clientErr = NewNethermindEth1(dockerNetworks, en.EthereumChainConfig, opts...)
 	default:
 		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf(MsgUnsupportedExecutionLayer, *en.ExecutionLayer)
 	}
@@ -576,10 +574,10 @@ func (en *EthereumNetwork) startEth1() (blockchain.EVMNetwork, RpcProvider, erro
 		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to start %s execution client", *en.ExecutionLayer)
 	}
 
-	containers := EthereumNetworkContainers{
+	containers := config.EthereumNetworkContainers{
 		{
 			ContainerName: client.GetContainerName(),
-			ContainerType: ContainerType_ExecutionLayer,
+			ContainerType: config.ContainerType_ExecutionLayer,
 			Container:     client.GetContainer(),
 		},
 	}
@@ -622,7 +620,7 @@ func (en *EthereumNetwork) generateGenesisAndFoldersIfNeeded() (generatedDataHos
 		}
 
 		var valKeysGenerator *ValKeysGenerator
-		valKeysGenerator, err = NewValKeysGeneretor(en.EthereumChainConfig, valKeysDir, en.getImageOverride(ContainerType_ValKeysGenerator)...)
+		valKeysGenerator, err = NewValKeysGeneretor(en.EthereumChainConfig, valKeysDir, en.getImageOverride(config.ContainerType_ValKeysGenerator)...)
 		if err != nil {
 			err = errors.Wrap(err, "failed to start val keys generator")
 			return
@@ -636,7 +634,7 @@ func (en *EthereumNetwork) generateGenesisAndFoldersIfNeeded() (generatedDataHos
 		}
 
 		var genesis *EthGenesisGeneretor
-		genesis, err = NewEthGenesisGenerator(*en.EthereumChainConfig, generatedDataHostDir, en.getImageOverride(ContainerType_GenesisGenerator)...)
+		genesis, err = NewEthGenesisGenerator(*en.EthereumChainConfig, generatedDataHostDir, en.getImageOverride(config.ContainerType_GenesisGenerator)...)
 		if err != nil {
 			err = errors.Wrap(err, "failed to start genesis generator")
 			return
@@ -679,7 +677,7 @@ func (en *EthereumNetwork) getFinalEvmNetworkConfig(net blockchain.EVMNetwork) b
 	net.FinalityTag = true
 	net.FinalityDepth = 0
 
-	if *en.ExecutionLayer == ExecutionLayer_Besu {
+	if *en.ExecutionLayer == config.ExecutionLayer_Besu {
 		// Besu doesn't support "eth_maxPriorityFeePerGas" https://github.com/hyperledger/besu/issues/5658
 		// And if gas is too low, then transaction doesn't get to prioritized pool and is not a candidate for inclusion in the next block
 		net.GasEstimationBuffer = 10_000_000_000
@@ -690,15 +688,7 @@ func (en *EthereumNetwork) getFinalEvmNetworkConfig(net blockchain.EVMNetwork) b
 	return net
 }
 
-func (en *EthereumNetwork) Describe() string {
-	cL := "prysm"
-	if en.ConsensusLayer == nil {
-		cL = "(none)"
-	}
-	return fmt.Sprintf("ethereum version: %s, execution layer: %s, consensus layer: %s", *en.EthereumVersion, *en.ExecutionLayer, cL)
-}
-
-func (en *EthereumNetwork) setExistingContainerName(ct ContainerType) EnvComponentOption {
+func (en *EthereumNetwork) setExistingContainerName(ct config.ContainerType) EnvComponentOption {
 	if !en.isRecreated {
 		return func(c *EnvComponent) {}
 	}
@@ -717,7 +707,7 @@ func (en *EthereumNetwork) setExistingContainerName(ct ContainerType) EnvCompone
 	return func(c *EnvComponent) {}
 }
 
-func (en *EthereumNetwork) getImageOverride(ct ContainerType) []EnvComponentOption {
+func (en *EthereumNetwork) getImageOverride(ct config.ContainerType) []EnvComponentOption {
 	options := []EnvComponentOption{}
 	if image, ok := en.CustomDockerImages[ct]; ok {
 		options = append(options, WithContainerImageWithVersion(image))
@@ -738,83 +728,17 @@ func (en *EthereumNetwork) Save() error {
 	return nil
 }
 
-func (en *EthereumNetwork) Validate() error {
-	l := logging.GetTestLogger(nil)
+func (en *EthereumNetwork) getExecutionLayerEnvComponentOpts() []EnvComponentOption {
+	opts := []EnvComponentOption{}
+	opts = append(opts, en.getImageOverride(config.ContainerType_ExecutionLayer)...)
+	opts = append(opts, en.setExistingContainerName(config.ContainerType_ExecutionLayer))
+	opts = append(opts, WithLogStream(en.ls))
 
-	// logically it doesn't belong here, but placing it here guarantees it will always run without chaning API
-	if en.EthereumVersion != nil && en.ConsensusType != nil {
-		l.Warn().Msg("Both EthereumVersion and ConsensusType are set. ConsensusType as a _deprecated_ field will be ignored")
-	}
-
-	if en.EthereumVersion == nil && en.ConsensusType != nil {
-		l.Debug().Msg("Using _deprecated_ ConsensusType as EthereumVersion")
-		tempEthVersion := (*EthereumVersion)(en.ConsensusType)
-		switch *tempEthVersion {
-		case EthereumVersion_Eth1, EthereumVersion_Eth1_Legacy:
-			*tempEthVersion = EthereumVersion_Eth1
-		case EthereumVersion_Eth2, EthereumVersion_Eth2_Legacy:
-			*tempEthVersion = EthereumVersion_Eth2
-		default:
-			return fmt.Errorf("unknown ethereum version (consensus type): %s", *en.ConsensusType)
-		}
-
-		en.EthereumVersion = tempEthVersion
+	if en.NodeLogLevel != nil && *en.NodeLogLevel != "" {
+		opts = append(opts, WithLogLevel(strings.ToLower(*en.NodeLogLevel)))
 	}
 
-	if (en.EthereumVersion == nil || *en.EthereumVersion == "") && len(en.CustomDockerImages) == 0 {
-		return ErrMissingEthereumVersion
-	}
-
-	if (en.ExecutionLayer == nil || *en.ExecutionLayer == "") && len(en.CustomDockerImages) == 0 {
-		return ErrMissingExecutionLayer
-	}
-
-	if (en.EthereumVersion != nil && (*en.EthereumVersion == EthereumVersion_Eth2_Legacy || *en.EthereumVersion == EthereumVersion_Eth2)) && (en.ConsensusLayer == nil || *en.ConsensusLayer == "") {
-		l.Warn().Msg("Consensus layer is not set, but is required for PoS. Defaulting to Prysm")
-		en.ConsensusLayer = &ConsensusLayer_Prysm
-	}
-
-	if (en.EthereumVersion != nil && (*en.EthereumVersion == EthereumVersion_Eth1_Legacy || *en.EthereumVersion == EthereumVersion_Eth1)) && (en.ConsensusLayer != nil && *en.ConsensusLayer != "") {
-		l.Warn().Msg("Consensus layer is set, but is not allowed for PoW. Ignoring")
-		en.ConsensusLayer = nil
-	}
-
-	if en.EthereumChainConfig == nil {
-		return errors.New("ethereum chain config is required")
-	}
-
-	return en.EthereumChainConfig.Validate(l, en.EthereumVersion)
-}
-
-func (en *EthereumNetwork) ApplyOverrides(from *EthereumNetwork) error {
-	if from == nil {
-		return nil
-	}
-	if from.ConsensusLayer != nil {
-		en.ConsensusLayer = from.ConsensusLayer
-	}
-	if from.ExecutionLayer != nil {
-		en.ExecutionLayer = from.ExecutionLayer
-	}
-	if from.EthereumVersion != nil {
-		en.EthereumVersion = from.EthereumVersion
-	}
-	if from.WaitForFinalization != nil {
-		en.WaitForFinalization = from.WaitForFinalization
-	}
-
-	if from.EthereumChainConfig != nil {
-		if en.EthereumChainConfig == nil {
-			en.EthereumChainConfig = from.EthereumChainConfig
-		} else {
-			err := en.EthereumChainConfig.ApplyOverrides(from.EthereumChainConfig)
-			if err != nil {
-				return fmt.Errorf("error applying overrides from network config file to config: %w", err)
-			}
-		}
-	}
-
-	return nil
+	return opts
 }
 
 // RpcProvider holds all necessary URLs to connect to a simulated chain or a real RPC provider connected to a live chain
@@ -857,28 +781,6 @@ func (s *RpcProvider) PublicHttpUrls() []string {
 func (s *RpcProvider) PublicWsUrls() []string {
 	return s.publicWsUrls
 }
-
-type ContainerType string
-
-const (
-	// ContainerType_Geth               ContainerType = "geth"
-	// ContainerType_Erigon             ContainerType = "erigon"
-	// ContainerType_Besu               ContainerType = "besu"
-	// ContainerType_Nethermind         ContainerType = "nethermind"
-	ContainerType_ExecutionLayer     ContainerType = "execution_layer"
-	ContainerType_ConsensusLayer     ContainerType = "consensus_layer"
-	ContainerType_ConsensusValidator ContainerType = "consensus_validator"
-	ContainerType_GenesisGenerator   ContainerType = "genesis_generator"
-	ContainerType_ValKeysGenerator   ContainerType = "val_keys_generator"
-)
-
-type EthereumNetworkContainer struct {
-	ContainerName string        `toml:"container_name"`
-	ContainerType ContainerType `toml:"container_type"`
-	Container     *tc.Container `toml:"-"`
-}
-
-type EthereumNetworkContainers []EthereumNetworkContainer
 
 func createHostDirectories() (string, string, error) {
 	customConfigDataDir, err := os.MkdirTemp("", "custom_config_data")

@@ -37,3 +37,12 @@ helm install "${RELEASE_NAME}" . -f ./values.yaml \
 # to override default chain id uncomment the following line
 # --set "anvil.chainId"="2337"
 ```
+
+You can find documentation for anvil [here](https://book.getfoundry.sh/reference/anvil/)
+
+Also additional use cases can be found in the [testcases](../../client/rpc_test.go) folder:
+1. (anvil) test drop transaction
+2. (anvil) test we can shrink the block and control transaction inclusion
+3. (anvil) test we can change next block base fee per gas and make tx pass or fail
+4. (anvil) test we can mine sub-second blocks
+5. (anvil) test we can mine blocks with strictly N+ transactions

@@ -10,6 +10,7 @@ import (
 	tc "github.com/testcontainers/testcontainers-go"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/config"
 )
 
 const (
@@ -38,7 +39,7 @@ type ExecutionClient interface {
 	GetInternalWsUrl() string
 	GetExternalHttpUrl() string
 	GetExternalWsUrl() string
-	GetEthereumVersion() EthereumVersion
+	GetEthereumVersion() config.EthereumVersion
 	GethConsensusMechanism() ConsensusMechanism
 	WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error
 	WithTestInstance(t *testing.T) ExecutionClient

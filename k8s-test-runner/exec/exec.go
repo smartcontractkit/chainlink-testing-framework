@@ -31,6 +31,7 @@ func readStdPipe(pipe io.ReadCloser, streamFunc func(string)) {
 // CmdWithStreamFunc executes command with stream function
 func CmdWithStreamFunc(command string, outputFunction func(string)) error {
 	c := strings.Split(command, " ")
+	// #nosec G204
 	cmd := exec.Command(c[0], c[1:]...)
 	stderr, err := cmd.StderrPipe()
 	if err != nil {

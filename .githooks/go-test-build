@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -e
+
+# Find all 'go.mod' files, get their directories, and run an empty 'go test' in them to compile the tests.
+find "./" -type f -name 'go.mod' -print0 | while IFS= read -r -d $'\0' file; do
+    dir=$(dirname "$file")
+    echo "Executing cd \"$dir\" && go test -run=^# ./..."
+    cd "$dir"
+    go test -run=^# ./...
+    cd -
+done

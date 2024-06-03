@@ -17,7 +17,7 @@ import (
 
 const afterTestEndedMsg = "LOG AFTER TEST ENDED"
 
-// CustomT wraps testing.T for two puposes:
+// CustomT wraps testing.T for two purposes:
 // 1. it implements Write to override the default logger
 // 2. it implements Printf to implement the testcontainers-go/Logging interface
 // The reason for both of these is that go parallel testing causes the logs to get mixed up,

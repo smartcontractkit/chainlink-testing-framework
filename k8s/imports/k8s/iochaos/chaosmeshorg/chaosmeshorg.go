@@ -303,7 +303,7 @@ type IoChaosSpec struct {
 	Selector *IoChaosSpecSelector `field:"required" json:"selector" yaml:"selector"`
 	// VolumePath represents the mount path of injected volume.
 	VolumePath *string `field:"required" json:"volumePath" yaml:"volumePath"`
-	// Attr defines the overrided attribution.
+	// Attr defines the overridden attribution.
 	Attr *IoChaosSpecAttr `field:"optional" json:"attr" yaml:"attr"`
 	// ContainerNames indicates list of the name of affected container.
 	//
@@ -355,7 +355,7 @@ const (
 	IoChaosSpecAction_MISTAKE IoChaosSpecAction = "MISTAKE"
 )
 
-// Attr defines the overrided attribution.
+// Attr defines the overridden attribution.
 type IoChaosSpecAttr struct {
 	// Timespec represents a time.
 	Atime  *IoChaosSpecAttrAtime `field:"optional" json:"atime" yaml:"atime"`

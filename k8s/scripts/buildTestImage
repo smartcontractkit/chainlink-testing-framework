@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Runs compiled go executables and specificies the test to run
+# Runs compiled go executables and specifies the test to run
 # Builds executable go test binaries for this repos tests
 
 set -ex
@@ -8,10 +8,10 @@ set -ex
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 
 cd "$SCRIPT_DIR"/../ || exit 1
+# shellcheck disable=SC1091
 source ./scripts/buildImageHelper
 
-# get account and region
-REGION=
+# get account
 TEST_BASE_VERSION="${2}"
 TEST_BASE_VERSION_DEFAULT=latest
 ACCOUNT=$(aws sts get-caller-identity | jq -r .Account)

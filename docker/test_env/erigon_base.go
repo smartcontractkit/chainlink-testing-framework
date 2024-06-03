@@ -12,6 +12,7 @@ import (
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
@@ -19,7 +20,7 @@ import (
 
 const (
 	defaultErigonEth1Image = "thorax/erigon:v2.40.0"
-	defaultErigonEth2Image = "thorax/erigon:v2.56.2"
+	defaultErigonEth2Image = "thorax/erigon:v2.59.3" // v.2.60.0 is the latest, but gas estimations using zero address are broken
 	erigonBaseImageName    = "thorax/erigon"
 	erigonGitRepo          = "ledgerwatch/erigon"
 )
@@ -33,9 +34,9 @@ type Erigon struct {
 	InternalExecutionURL string
 	ExternalExecutionURL string
 	generatedDataHostDir string
-	chainConfig          *EthereumChainConfig
-	consensusLayer       ConsensusLayer
-	ethereumVersion      EthereumVersion
+	chainConfig          *config.EthereumChainConfig
+	consensusLayer       config.ConsensusLayer
+	ethereumVersion      config.EthereumVersion
 	l                    zerolog.Logger
 	t                    *testing.T
 }
@@ -49,7 +50,7 @@ func (g *Erigon) WithTestInstance(t *testing.T) ExecutionClient {
 func (g *Erigon) StartContainer() (blockchain.EVMNetwork, error) {
 	var r *tc.ContainerRequest
 	var err error
-	if g.GetEthereumVersion() == EthereumVersion_Eth1 {
+	if g.GetEthereumVersion() == config.EthereumVersion_Eth1 {
 		r, err = g.getEth1ContainerRequest()
 	} else {
 		r, err = g.getEth2ContainerRequest()
@@ -78,7 +79,7 @@ func (g *Erigon) StartContainer() (blockchain.EVMNetwork, error) {
 		return blockchain.EVMNetwork{}, err
 	}
 
-	if g.GetEthereumVersion() == EthereumVersion_Eth2 {
+	if g.GetEthereumVersion() == config.EthereumVersion_Eth2 {
 		executionPort, err := ct.MappedPort(testcontext.Get(g.t), NatPort(ETH2_EXECUTION_PORT))
 		if err != nil {
 			return blockchain.EVMNetwork{}, err
@@ -94,13 +95,14 @@ func (g *Erigon) StartContainer() (blockchain.EVMNetwork, error) {
 	g.InternalWsUrl = FormatWsUrl(g.ContainerName, DEFAULT_EVM_NODE_HTTP_PORT)
 
 	networkConfig := blockchain.SimulatedEVMNetwork
-	if g.GetEthereumVersion() == EthereumVersion_Eth1 {
+	if g.GetEthereumVersion() == config.EthereumVersion_Eth1 {
 		networkConfig.Name = fmt.Sprintf("Private Eth-1-PoW [erigon %s]", g.ContainerVersion)
 	} else {
 		networkConfig.Name = fmt.Sprintf("Private Eth-2-PoS [erigon %s] + %s", g.ContainerVersion, g.consensusLayer)
 	}
 	networkConfig.URLs = []string{g.ExternalWsUrl}
 	networkConfig.HTTPURLs = []string{g.ExternalHttpUrl}
+	networkConfig.SimulationType = "Erigon"
 
 	g.l.Info().Str("containerName", g.ContainerName).
 		Msg("Started Erigon container")
@@ -109,14 +111,14 @@ func (g *Erigon) StartContainer() (blockchain.EVMNetwork, error) {
 }
 
 func (g *Erigon) GetInternalExecutionURL() string {
-	if g.GetEthereumVersion() == EthereumVersion_Eth1 {
+	if g.GetEthereumVersion() == config.EthereumVersion_Eth1 {
 		panic("eth1 node doesn't have an execution URL")
 	}
 	return g.InternalExecutionURL
 }
 
 func (g *Erigon) GetExternalExecutionURL() string {
-	if g.GetEthereumVersion() == EthereumVersion_Eth1 {
+	if g.GetEthereumVersion() == config.EthereumVersion_Eth1 {
 		panic("eth1 node doesn't have an execution URL")
 	}
 	return g.ExternalExecutionURL
@@ -146,12 +148,12 @@ func (g *Erigon) GetContainer() *tc.Container {
 	return &g.Container
 }
 
-func (g *Erigon) GetEthereumVersion() EthereumVersion {
+func (g *Erigon) GetEthereumVersion() config.EthereumVersion {
 	return g.ethereumVersion
 }
 
 func (g *Erigon) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error {
-	if g.GetEthereumVersion() == EthereumVersion_Eth1 {
+	if g.GetEthereumVersion() == config.EthereumVersion_Eth1 {
 		return nil
 	}
 	waitForFirstBlock := tcwait.NewLogStrategy("Built block").WithPollInterval(1 * time.Second).WithStartupTimeout(waitTime)
@@ -159,7 +161,7 @@ func (g *Erigon) WaitUntilChainIsReady(ctx context.Context, waitTime time.Durati
 }
 
 func (g *Erigon) GethConsensusMechanism() ConsensusMechanism {
-	if g.GetEthereumVersion() == EthereumVersion_Eth1 {
+	if g.GetEthereumVersion() == config.EthereumVersion_Eth1 {
 		return ConsensusMechanism_PoW
 	}
 	return ConsensusMechanism_PoS

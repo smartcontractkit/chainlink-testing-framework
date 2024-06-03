@@ -13,6 +13,7 @@ import (
 	"github.com/rs/zerolog/log"
 	tc "github.com/testcontainers/testcontainers-go"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
@@ -22,14 +23,14 @@ const defaultEth2ValToolsImage = "protolambda/eth2-val-tools:latest"
 
 type ValKeysGenerator struct {
 	EnvComponent
-	chainConfig        *EthereumChainConfig
+	chainConfig        *config.EthereumChainConfig
 	l                  zerolog.Logger
 	valKeysHostDataDir string
 	addressesToFund    []string
 	t                  *testing.T
 }
 
-func NewValKeysGeneretor(chainConfig *EthereumChainConfig, valKeysHostDataDir string, opts ...EnvComponentOption) (*ValKeysGenerator, error) {
+func NewValKeysGeneretor(chainConfig *config.EthereumChainConfig, valKeysHostDataDir string, opts ...EnvComponentOption) (*ValKeysGenerator, error) {
 	parts := strings.Split(defaultEth2ValToolsImage, ":")
 	g := &ValKeysGenerator{
 		EnvComponent: EnvComponent{

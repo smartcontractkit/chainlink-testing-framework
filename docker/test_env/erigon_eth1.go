@@ -14,13 +14,14 @@ import (
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/templates"
 )
 
 // NewErigonEth1 starts a new Erigon Eth1 node running in Docker
-func NewErigonEth1(networks []string, chainConfig *EthereumChainConfig, opts ...EnvComponentOption) (*Erigon, error) {
+func NewErigonEth1(networks []string, chainConfig *config.EthereumChainConfig, opts ...EnvComponentOption) (*Erigon, error) {
 	parts := strings.Split(defaultErigonEth1Image, ":")
 	g := &Erigon{
 		EnvComponent: EnvComponent{
@@ -31,7 +32,7 @@ func NewErigonEth1(networks []string, chainConfig *EthereumChainConfig, opts ...
 		},
 		chainConfig:     chainConfig,
 		l:               logging.GetTestLogger(nil),
-		ethereumVersion: EthereumVersion_Eth1,
+		ethereumVersion: config.EthereumVersion_Eth1,
 	}
 	g.SetDefaultHooks()
 	for _, opt := range opts {
@@ -165,16 +166,18 @@ func (g *Erigon) buildPowInitScript(minerAddr string) (string, error) {
 
 	echo "Starting Erigon..."
 	erigon --http --http.api=eth,erigon,engine,web3,net,debug,trace,txpool,admin --http.addr=0.0.0.0 --http.corsdomain=* --http.vhosts=* --http.port={{.HttpPort}} --ws \
-	--allow-insecure-unlock  --nodiscover --networkid={{.ChainID}} --mine --miner.etherbase={{.MinerAddr}} --fakepow`
+	--allow-insecure-unlock  --nodiscover --networkid={{.ChainID}} --mine --miner.etherbase={{.MinerAddr}} --fakepow --log.console.verbosity={{.LogLevel}}`
 
 	data := struct {
 		HttpPort  string
 		ChainID   int
 		MinerAddr string
+		LogLevel  string
 	}{
 		HttpPort:  DEFAULT_EVM_NODE_HTTP_PORT,
 		ChainID:   g.chainConfig.ChainID,
 		MinerAddr: minerAddr,
+		LogLevel:  g.LogLevel,
 	}
 
 	t, err := template.New("init").Parse(initTemplate)

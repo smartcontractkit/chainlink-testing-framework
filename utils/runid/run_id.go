@@ -2,11 +2,15 @@ package runid
 
 import (
 	"bufio"
+	"fmt"
 	"os"
+	"strings"
 
 	"github.com/google/uuid"
 )
 
+// GetOrGenerateRunId returns the runId if it is not nil, otherwise it reads the .run.id file and returns the value, or
+// creates it with a new UUID, saves to file and returns the value.
 func GetOrGenerateRunId(maybeRunId *string) (string, error) {
 	if maybeRunId != nil {
 		return *maybeRunId, nil
@@ -32,7 +36,7 @@ func GetOrGenerateRunId(maybeRunId *string) (string, error) {
 		return runId, nil
 	}
 
-	runId = uuid.NewString()
+	runId = fmt.Sprintf("local_%s", uuid.NewString())
 
 	if _, err := file.WriteString(runId); err != nil {
 		return "", err
@@ -41,9 +45,10 @@ func GetOrGenerateRunId(maybeRunId *string) (string, error) {
 	return runId, nil
 }
 
-func RemoveLocalRunId() error {
-	_, inOs := os.LookupEnv("RUN_ID")
-	if inOs {
+// RemoveLocalRunId removes the .run.id file if it exists and the runId contains 'local' substring indicating local execution.
+// In GHA we get run_id from TOML config, so we don't need to remove the file.
+func RemoveLocalRunId(runId *string) error {
+	if runId != nil && !strings.Contains(*runId, "local") {
 		return nil
 	}
 

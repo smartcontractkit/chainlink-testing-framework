@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
@@ -17,8 +18,9 @@ func TestBesuEth1(t *testing.T) {
 
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WithEthereumVersion(EthereumVersion_Eth1_Legacy).
-		WithExecutionLayer(ExecutionLayer_Besu).
+		//nolint:staticcheck //ignore SA1019
+		WithEthereumVersion(config.EthereumVersion_Eth1_Legacy).
+		WithExecutionLayer(config.ExecutionLayer_Besu).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 
@@ -41,9 +43,10 @@ func TestBesuEth2(t *testing.T) {
 
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WithEthereumVersion(EthereumVersion_Eth2_Legacy).
-		WithConsensusLayer(ConsensusLayer_Prysm).
-		WithExecutionLayer(ExecutionLayer_Besu).
+		//nolint:staticcheck //ignore SA1019
+		WithEthereumVersion(config.EthereumVersion_Eth2_Legacy).
+		WithConsensusLayer(config.ConsensusLayer_Prysm).
+		WithExecutionLayer(config.ExecutionLayer_Besu).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 
@@ -71,6 +74,7 @@ func TestBesuEth2(t *testing.T) {
 	eip1559Network.SupportsEIP1559 = true
 	eip1559Network.URLs = eth2.PublicWsUrls()
 	_, err = blockchain.ConnectEVMClient(eip1559Network, l)
-	require.Error(t, err, "Could connect to the evm client")
+	require.Error(t, err, "Could not connect to Besu")
 	require.Contains(t, err.Error(), "Method not found", "Besu should not work EIP-1559 yet")
+
 }

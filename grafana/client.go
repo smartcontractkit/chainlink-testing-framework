@@ -79,9 +79,9 @@ type GetDashboardResponse struct {
 	Dashboard *dashboard.Dashboard   `json:"dashboard"`
 }
 
-func (g *Client) GetDashboard(uid string) (GetDashboardResponse, *resty.Response, error) {
+func (c *Client) GetDashboard(uid string) (GetDashboardResponse, *resty.Response, error) {
 	var result GetDashboardResponse
-	r, err := g.resty.R().SetResult(&result).Get("/api/dashboards/uid/" + uid)
+	r, err := c.resty.R().SetResult(&result).Get("/api/dashboards/uid/" + uid)
 	return result, r, err
 }
 
@@ -91,6 +91,7 @@ type PostDashboardRequest struct {
 	Overwrite bool        `json:"overwrite"`
 }
 
+// nolint:revive
 type GrafanaResponse struct {
 	ID      *uint   `json:"id"`
 	OrgID   *uint   `json:"orgId"`
@@ -102,10 +103,10 @@ type GrafanaResponse struct {
 	URL     *string `json:"url"`
 }
 
-func (g *Client) PostDashboard(dashboard PostDashboardRequest) (GrafanaResponse, *resty.Response, error) {
+func (c *Client) PostDashboard(dashboard PostDashboardRequest) (GrafanaResponse, *resty.Response, error) {
 	var grafanaResp GrafanaResponse
 
-	resp, err := g.resty.R().
+	resp, err := c.resty.R().
 		SetHeader("Content-Type", "application/json").
 		SetBody(dashboard).
 		SetResult(&grafanaResp). // SetResult will automatically unmarshal the response into grafanaResp
@@ -123,14 +124,14 @@ func (g *Client) PostDashboard(dashboard PostDashboardRequest) (GrafanaResponse,
 	return grafanaResp, resp, nil
 }
 
-func (g *Client) GetAlertsRules() ([]ProvisionedAlertRule, *resty.Response, error) {
+func (c *Client) GetAlertsRules() ([]ProvisionedAlertRule, *resty.Response, error) {
 	var result []ProvisionedAlertRule
-	r, err := g.resty.R().SetResult(&result).Get("/api/v1/provisioning/alert-rules")
+	r, err := c.resty.R().SetResult(&result).Get("/api/v1/provisioning/alert-rules")
 	return result, r, err
 }
 
-func (g *Client) GetAlertRulesForDashboardID(dashboardID string) ([]ProvisionedAlertRule, error) {
-	rules, _, err := g.GetAlertsRules()
+func (c *Client) GetAlertRulesForDashboardID(dashboardID string) ([]ProvisionedAlertRule, error) {
+	rules, _, err := c.GetAlertsRules()
 	if err != nil {
 		return nil, err
 	}
@@ -224,7 +225,7 @@ type PostAnnotationResponse struct {
 	ID      int64  `json:"id"`
 }
 
-func (g *Client) GetAnnotations(params AnnotationsQueryParams) ([]Annotation, *resty.Response, error) {
+func (c *Client) GetAnnotations(params AnnotationsQueryParams) ([]Annotation, *resty.Response, error) {
 	query := make(url.Values)
 	if params.Limit != nil {
 		query.Set("limit", fmt.Sprintf("%d", *params.Limit))
@@ -256,23 +257,23 @@ func (g *Client) GetAnnotations(params AnnotationsQueryParams) ([]Annotation, *r
 	}
 
 	var result []Annotation
-	r, err := g.resty.R().
+	r, err := c.resty.R().
 		SetResult(&result).
 		SetQueryString(query.Encode()).
 		Get("/api/annotations")
 	return result, r, err
 }
 
-func (g *Client) DeleteAnnotation(annotationID int64) (*resty.Response, error) {
+func (c *Client) DeleteAnnotation(annotationID int64) (*resty.Response, error) {
 	urlPath := fmt.Sprintf("/api/annotations/%d", annotationID)
 
-	r, err := g.resty.R().
+	r, err := c.resty.R().
 		Delete(urlPath)
 
 	return r, err
 }
 
-func (g *Client) PostAnnotation(annotation PostAnnotation) (PostAnnotationResponse, *resty.Response, error) {
+func (c *Client) PostAnnotation(annotation PostAnnotation) (PostAnnotationResponse, *resty.Response, error) {
 	a := map[string]interface{}{
 		"dashboardUID": annotation.DashboardUID,
 		"tags":         annotation.Tags,
@@ -291,7 +292,7 @@ func (g *Client) PostAnnotation(annotation PostAnnotation) (PostAnnotationRespon
 		a["timeEnd"] = annotation.TimeEnd.UnixMilli()
 	}
 	var result PostAnnotationResponse
-	r, err := g.resty.R().
+	r, err := c.resty.R().
 		SetBody(a).
 		SetResult(&result).
 		Post("/api/annotations")

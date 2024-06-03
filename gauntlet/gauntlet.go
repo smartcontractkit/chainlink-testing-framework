@@ -53,8 +53,8 @@ func (g *Gauntlet) Flag(flag, value string) string {
 	return fmt.Sprintf("--%s=%s", flag, value)
 }
 
-func (g *Gauntlet) SetWorkingDir(wrkDir string) {
-	execDir = wrkDir
+func (g *Gauntlet) SetWorkingDir(workDir string) {
+	execDir = workDir
 }
 
 // GenerateRandomNetwork Creates and sets a random network prepended with test
@@ -180,6 +180,20 @@ func (g *Gauntlet) WriteNetworkConfigMap(networkDirPath string) error {
 	}
 	return nil
 }
+func (g *Gauntlet) WriteNetworkConfigVar(networkDirPath string, k string, v string) error {
+	file := filepath.Join(networkDirPath, fmt.Sprintf(".env.%s", g.Network))
+	f, err := os.OpenFile(file, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	log.Debug().Str(k, v).Msg("Gauntlet .env config value:")
+	_, err = f.WriteString(fmt.Sprintf("\n%s=%s", k, v))
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
 // checkForErrors Loops through provided err slice to see if the error exists in the output.
 func checkForErrors(errHandling []string, line string) error {
@@ -213,5 +227,9 @@ func printArgs(args []string) {
 }
 
 func (g *Gauntlet) AddNetworkConfigVar(k string, v string) {
+	if existingVal, exists := g.NetworkConfig[k]; exists && existingVal == v {
+		log.Info().Str("stdout", "gauntlet network").Msg("Skipping adding duplicate key to network config")
+		return
+	}
 	g.NetworkConfig[k] = v
 }

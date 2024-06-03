@@ -124,15 +124,15 @@ func TestConnectWithoutManifest(t *testing.T) {
 		// set the namespace to the existing one for local runs
 		testEnvConfig.Namespace = existingEnv.Cfg.Namespace
 	} else {
-		l.Info().Msg("Environment already exists, verfying it is correct")
+		l.Info().Msg("Environment already exists, verifying it is correct")
 		require.NotEmpty(t, os.Getenv(config.EnvVarNamespace))
-		noManifestUpdate, err := strconv.ParseBool(os.Getenv(config.EnvVarNoManifestUpdate))
+		skipManifestUpdate, err := strconv.ParseBool(os.Getenv(config.EnvVarSkipManifestUpdate))
 		require.NoError(t, err, "Failed to parse the no manifest update env var")
-		require.True(t, noManifestUpdate)
+		require.True(t, skipManifestUpdate)
 	}
 
 	// Now run an environment without a manifest like a normal test
-	testEnvConfig.NoManifestUpdate = true
+	testEnvConfig.SkipManifestUpdate = true
 	testEnv := environment.New(testEnvConfig)
 	l.Info().Msgf("Testing Env Namespace %s", testEnv.Cfg.Namespace)
 	err := testEnv.AddHelm(ethereum.New(nil)).

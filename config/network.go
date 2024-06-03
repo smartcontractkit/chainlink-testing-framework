@@ -17,14 +17,19 @@ const (
 	Base64NetworkConfigEnvVarName = "BASE64_NETWORK_CONFIG"
 )
 
-type ForkConfig struct {
-	URL              string `toml:"url"`                          // URL is the URL of the node to fork from. Refer to https://book.getfoundry.sh/reference/anvil/#options
-	BlockNumber      int64  `toml:"block_number"`                 // BlockNumber is the block number to fork from. Refer to https://book.getfoundry.sh/reference/anvil/#options
-	BlockTime        int64  `toml:"block_time"`                   // how frequent blocks are mined. By default, it automatically generates a new block as soon as a transaction is submitted. Refer to https://book.getfoundry.sh/reference/anvil/#options
-	Retries          int    `toml:"retries,omitempty"`            //  Number of retry requests for spurious networks (timed out requests). Refer to https://book.getfoundry.sh/reference/anvil/#options
-	Timeout          int64  `toml:"timeout,omitempty"`            //  Timeout in ms for requests sent to remote JSON-RPC server in forking mode. Refer to https://book.getfoundry.sh/reference/anvil/#options
-	ComputePerSecond int64  `toml:"compute_per_second,omitempty"` // Sets the number of assumed available compute units per second for this provider. Refer to https://book.getfoundry.sh/reference/anvil/#options
-	RateLimitEnabled bool   `toml:"rate_limit_enabled,omitempty"` //  rate limiting for this node’s provider. Refer to https://book.getfoundry.sh/reference/anvil/#options
+type AnvilConfig struct {
+	URL               *string `toml:"url,omitempty"`                 // Needed if you want to fork a network. URL is the URL of the node to fork from. Refer to https://book.getfoundry.sh/reference/anvil/#options
+	BlockNumber       *int64  `toml:"block_number,omitempty"`        // Needed if fork URL is provided for forking. BlockNumber is the block number to fork from. Refer to https://book.getfoundry.sh/reference/anvil/#options
+	BlockTime         *int64  `toml:"block_time,omitempty"`          // how frequent blocks are mined. By default, it automatically generates a new block as soon as a transaction is submitted. Refer to https://book.getfoundry.sh/reference/anvil/#options
+	BlockGaslimit     *int64  `toml:"block_gaslimit,omitempty"`      //  BlockGaslimit is the gas limit for each block. Refer to https://book.getfoundry.sh/reference/anvil/#options
+	CodeSize          *int64  `toml:"code_size,omitempty"`           //  CodeSize is the size of the code in bytes. Refer to https://book.getfoundry.sh/reference/anvil/#options
+	BaseFee           *int64  `toml:"base_fee,omitempty"`            //  BaseFee is the base fee for block. Refer to https://book.getfoundry.sh/reference/anvil/#options
+	Retries           *int    `toml:"retries,omitempty"`             //  Needed if fork URL is provided for forking. Number of retry requests for spurious networks (timed out requests). Refer to https://book.getfoundry.sh/reference/anvil/#options
+	Timeout           *int64  `toml:"timeout,omitempty"`             //  Needed if fork URL is provided for forking. Timeout in ms for requests sent to remote JSON-RPC server in forking mode. Refer to https://book.getfoundry.sh/reference/anvil/#options
+	ComputePerSecond  *int64  `toml:"compute_per_second,omitempty"`  // Needed if fork URL is provided for forking. Sets the number of assumed available compute units per second for this provider. Refer to https://book.getfoundry.sh/reference/anvil/#options
+	RateLimitDisabled *bool   `toml:"rate_limit_disabled,omitempty"` // Needed if fork URL is provided for forking. Rate limiting for this node’s provider. If set to true the node will start with --no-rate-limit Refer to https://book.getfoundry.sh/reference/anvil/#options
+	NoOfAccounts      *int    `toml:"no_of_accounts,omitempty"`      // Number of accounts to generate. Refer to https://book.getfoundry.sh/reference/anvil/#options
+	EnableTracing     *bool   `toml:"enable_tracing,omitempty"`      // Enable tracing for the node. Refer to https://book.getfoundry.sh/reference/anvil/#options
 }
 
 // NetworkConfig is the configuration for the networks to be used
@@ -33,9 +38,9 @@ type NetworkConfig struct {
 	// EVMNetworks is the configuration for the EVM networks, key is the network name as declared in selected_networks slice.
 	// if not set, it will try to find the network from defined networks in MappedNetworks under known_networks.go
 	EVMNetworks map[string]*blockchain.EVMNetwork `toml:"EVMNetworks,omitempty"`
-	// ForkConfigs is the configuration for forking from a node,
+	// AnvilConfigs is the configuration for forking from a node,
 	// key is the network name as declared in selected_networks slice
-	ForkConfigs map[string]*ForkConfig `toml:"ForkConfigs,omitempty"`
+	AnvilConfigs map[string]*AnvilConfig `toml:"AnvilConfigs,omitempty"`
 	// RpcHttpUrls is the RPC HTTP endpoints for each network,
 	// key is the network name as declared in selected_networks slice
 	RpcHttpUrls map[string][]string `toml:"RpcHttpUrls,omitempty"`
@@ -53,7 +58,7 @@ func (n *NetworkConfig) applySecrets() error {
 		return nil
 	}
 
-	err := n.applyBase64Enconded(encodedEndpoints)
+	err := n.applyBase64Encoded(encodedEndpoints)
 	if err != nil {
 		return fmt.Errorf("error reading network encoded endpoints: %w", err)
 	}
@@ -69,7 +74,7 @@ func (n *NetworkConfig) applyDecoded(configDecoded string) error {
 	var cfg NetworkConfig
 	err := toml.Unmarshal([]byte(configDecoded), &cfg)
 	if err != nil {
-		return fmt.Errorf("error unmarshaling network config: %w", err)
+		return fmt.Errorf("error unmarshalling network config: %w", err)
 	}
 
 	cfg.UpperCaseNetworkNames()
@@ -115,7 +120,7 @@ func (n *NetworkConfig) OverrideURLsAndKeysFromEVMNetwork() {
 	}
 }
 
-func (n *NetworkConfig) applyBase64Enconded(configEncoded string) error {
+func (n *NetworkConfig) applyBase64Encoded(configEncoded string) error {
 	if configEncoded == "" {
 		return nil
 	}
@@ -149,14 +154,8 @@ func (n *NetworkConfig) Validate() error {
 				return fmt.Errorf("chain ID for %s network must be set", name)
 			}
 		}
-		if n.ForkConfigs != nil {
-			if _, ok := n.ForkConfigs[network]; ok {
-				if n.ForkConfigs[network].URL == "" {
-					return fmt.Errorf("fork config for %s network must have a URL", network)
-				}
-				if n.ForkConfigs[network].BlockNumber == 0 {
-					return fmt.Errorf("fork config for %s network must have a block number", network)
-				}
+		if n.AnvilConfigs != nil {
+			if _, ok := n.AnvilConfigs[network]; ok {
 				// we don't need to validate RPC endpoints or private keys for forked networks
 				continue
 			}
@@ -203,10 +202,10 @@ func (n *NetworkConfig) UpperCaseNetworkNames() {
 		}
 	}
 
-	for network := range n.ForkConfigs {
+	for network := range n.AnvilConfigs {
 		if network != strings.ToUpper(network) {
-			n.ForkConfigs[strings.ToUpper(network)] = n.ForkConfigs[network]
-			delete(n.ForkConfigs, network)
+			n.AnvilConfigs[strings.ToUpper(network)] = n.AnvilConfigs[network]
+			delete(n.AnvilConfigs, network)
 		}
 	}
 
@@ -234,13 +233,13 @@ func (n *NetworkConfig) applyDefaults(defaults *NetworkConfig) error {
 			}
 		}
 	}
-	if defaults.ForkConfigs != nil {
-		if n.ForkConfigs == nil || len(n.ForkConfigs) == 0 {
-			n.ForkConfigs = defaults.ForkConfigs
+	if defaults.AnvilConfigs != nil {
+		if n.AnvilConfigs == nil || len(n.AnvilConfigs) == 0 {
+			n.AnvilConfigs = defaults.AnvilConfigs
 		} else {
-			for network, cfg := range defaults.ForkConfigs {
-				if _, ok := n.ForkConfigs[network]; !ok {
-					n.ForkConfigs[network] = cfg
+			for network, cfg := range defaults.AnvilConfigs {
+				if _, ok := n.AnvilConfigs[network]; !ok {
+					n.AnvilConfigs[network] = cfg
 				}
 			}
 		}

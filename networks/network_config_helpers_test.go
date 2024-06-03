@@ -22,13 +22,13 @@ ListenAddresses = ["0.0.0.0:6690"]`
 }
 
 func TestAddNetworksConfigCaseInsensitive(t *testing.T) {
-	netowrkTOML := `
+	networkTOML := `
 	selected_networks = ["sIMulated"]
 	`
 
 	l := logging.GetTestLogger(t)
 	networkCfg := config.NetworkConfig{}
-	err := config.BytesToAnyTomlStruct(l, "test", "", &networkCfg, []byte(netowrkTOML))
+	err := config.BytesToAnyTomlStruct(l, "test", "", &networkCfg, []byte(networkTOML))
 	require.NoError(t, err, "error reading network config")
 
 	s := AddNetworksConfig(getTestBaseToml(), &config.PyroscopeConfig{}, MustGetSelectedNetworkConfig(&networkCfg)[0])
@@ -37,13 +37,13 @@ func TestAddNetworksConfigCaseInsensitive(t *testing.T) {
 }
 
 func TestAddNetworksConfigNoPyroscope(t *testing.T) {
-	netowrkTOML := `
+	networkTOML := `
 	selected_networks = ["SIMULATED"]
 	`
 
 	l := logging.GetTestLogger(t)
 	networkCfg := config.NetworkConfig{}
-	err := config.BytesToAnyTomlStruct(l, "test", "", &networkCfg, []byte(netowrkTOML))
+	err := config.BytesToAnyTomlStruct(l, "test", "", &networkCfg, []byte(networkTOML))
 	require.NoError(t, err, "error reading network config")
 
 	s := AddNetworksConfig(getTestBaseToml(), &config.PyroscopeConfig{}, MustGetSelectedNetworkConfig(&networkCfg)[0])
@@ -52,7 +52,7 @@ func TestAddNetworksConfigNoPyroscope(t *testing.T) {
 }
 
 func TestAddNetworksConfigWithPyroscopeEnabled(t *testing.T) {
-	netowrkTOML := `
+	networkTOML := `
 	selected_networks = ["SIMULATED"]
 	`
 	peryscopeTOML := `
@@ -63,7 +63,7 @@ func TestAddNetworksConfigWithPyroscopeEnabled(t *testing.T) {
 
 	l := logging.GetTestLogger(t)
 	networkCfg := config.NetworkConfig{}
-	err := config.BytesToAnyTomlStruct(l, "test", "", &networkCfg, []byte(netowrkTOML))
+	err := config.BytesToAnyTomlStruct(l, "test", "", &networkCfg, []byte(networkTOML))
 	require.NoError(t, err, "error reading network config")
 
 	pyroCfg, err := readPyroscopeConfig(peryscopeTOML)
@@ -77,7 +77,7 @@ func TestAddNetworksConfigWithPyroscopeEnabled(t *testing.T) {
 }
 
 func TestAddNetworksConfigWithPyroscopeDisabled(t *testing.T) {
-	netowrkTOML := `
+	networkTOML := `
 	selected_networks = ["SIMULATED"]
 	`
 	peryscopeTOML := `
@@ -88,7 +88,7 @@ func TestAddNetworksConfigWithPyroscopeDisabled(t *testing.T) {
 
 	l := logging.GetTestLogger(t)
 	networkCfg := config.NetworkConfig{}
-	err := config.BytesToAnyTomlStruct(l, "test", "", &networkCfg, []byte(netowrkTOML))
+	err := config.BytesToAnyTomlStruct(l, "test", "", &networkCfg, []byte(networkTOML))
 	require.NoError(t, err, "error reading network config")
 
 	pyroCfg, err := readPyroscopeConfig(peryscopeTOML)
@@ -110,7 +110,7 @@ func readPyroscopeConfig(configDecoded string) (config.PyroscopeConfig, error) {
 	var cfg config.PyroscopeConfig
 	err := toml.Unmarshal([]byte(configDecoded), &cfg)
 	if err != nil {
-		return config.PyroscopeConfig{}, fmt.Errorf("error unmarshaling pyroscope config: %w", err)
+		return config.PyroscopeConfig{}, fmt.Errorf("error unmarshalling pyroscope config: %w", err)
 	}
 
 	return cfg, nil

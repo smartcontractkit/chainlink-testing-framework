@@ -57,7 +57,7 @@ func TestMultipleMockedLoggingTargets(t *testing.T) {
 	defer d.Shutdown(ctx)
 	require.NoError(t, err)
 	mockedFileHandler := &MockedLogHandler{Target: logstream.File}
-	mockedLokiHanlder := &MockedLogHandler{Target: logstream.Loki}
+	mockedLokiHandler := &MockedLogHandler{Target: logstream.Loki}
 
 	loggingConfig := config.LoggingConfig{}
 	loggingConfig.LogStream = &config.LogStreamConfig{
@@ -70,7 +70,7 @@ func TestMultipleMockedLoggingTargets(t *testing.T) {
 		t,
 		&loggingConfig,
 		logstream.WithCustomLogHandler(logstream.File, mockedFileHandler),
-		logstream.WithCustomLogHandler(logstream.Loki, mockedLokiHanlder),
+		logstream.WithCustomLogHandler(logstream.Loki, mockedLokiHandler),
 	)
 	require.NoError(t, err, "failed to create logstream")
 	err = d.ConnectLogs(lw)
@@ -81,7 +81,7 @@ func TestMultipleMockedLoggingTargets(t *testing.T) {
 	require.NoError(t, err, "failed to flush logs to targets")
 
 	assertMockedHandlerHasLogs(t, mockedFileHandler)
-	assertMockedHandlerHasLogs(t, mockedLokiHanlder)
+	assertMockedHandlerHasLogs(t, mockedLokiHandler)
 
 	err = lw.Shutdown(ctx)
 	require.NoError(t, err, "failed to shutdown logstream")
@@ -94,7 +94,7 @@ func TestOneMockedLoggingTarget(t *testing.T) {
 	// nolint
 	defer d.Shutdown(ctx)
 	require.NoError(t, err)
-	mockedLokiHanlder := &MockedLogHandler{Target: logstream.Loki}
+	mockedLokiHandler := &MockedLogHandler{Target: logstream.Loki}
 
 	loggingConfig := config.LoggingConfig{}
 	loggingConfig.LogStream = &config.LogStreamConfig{
@@ -106,7 +106,7 @@ func TestOneMockedLoggingTarget(t *testing.T) {
 	lw, err := logstream.NewLogStream(
 		t,
 		&loggingConfig,
-		logstream.WithCustomLogHandler(logstream.Loki, mockedLokiHanlder),
+		logstream.WithCustomLogHandler(logstream.Loki, mockedLokiHandler),
 	)
 	require.NoError(t, err, "failed to create logstream")
 	err = d.ConnectLogs(lw)
@@ -116,7 +116,7 @@ func TestOneMockedLoggingTarget(t *testing.T) {
 	err = lw.FlushLogsToTargets()
 	require.NoError(t, err, "failed to flush logs to targets")
 
-	assertMockedHandlerHasLogs(t, mockedLokiHanlder)
+	assertMockedHandlerHasLogs(t, mockedLokiHandler)
 
 	err = lw.Shutdown(ctx)
 	require.NoError(t, err, "failed to shutdown logstream")

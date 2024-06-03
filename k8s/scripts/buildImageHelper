@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Runs compiled go executables and specificies the test to run
+# Runs compiled go executables and specifies the test to run
 # Builds executable go test binaries for this repos tests
 
 set -ex
@@ -14,7 +14,8 @@ buildImage() {
     local REPO="${2}"
     local DOCKER_FILE="${3}"
     local ARGS=$4
-    local ACCOUNT=$(aws sts get-caller-identity | jq -r .Account)
+    local ACCOUNT
+    ACCOUNT=$(aws sts get-caller-identity | jq -r .Account)
     local TAG="${ACCOUNT}".dkr.ecr.us-west-2.amazonaws.com/"${REPO}":"${TAG_VERSION}"
 
     if [ "${TAG_VERSION}" = "" ]; then
@@ -32,7 +33,7 @@ buildImage() {
         exit 1
     fi
 
-    
+    # shellcheck disable=SC2086
     docker build -t "${TAG}" -f "${DOCKER_FILE}" $ARGS .
     aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin "${ACCOUNT}".dkr.ecr.us-west-2.amazonaws.com
     docker push "${TAG}"

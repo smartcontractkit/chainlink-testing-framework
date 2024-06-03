@@ -40,6 +40,22 @@ Then use
 make install_deps
 ```
 
+##### Optional Nix
+
+We have setup a nix shell which will produce a reliable environment that will behave the same locally and in ci. To use it instead of the above you will need to [install nix](https://nixos.org/download/)
+
+To start the nix shell run:
+
+```shell
+make nix_shell
+```
+
+If you install [direnv](https://github.com/direnv/direnv/blob/master/docs/installation.md) you will be able to have your environment start the nix shell as soon as you cd into it once you have allowed the directory via:
+
+```shell
+direnv allow
+```
+
 ### Running tests in k8s
 
 To read how to run a test in k8s, read [here](./k8s/REMOTE_RUN.md)
@@ -50,7 +66,7 @@ To read how to run a test in k8s, read [here](./k8s/REMOTE_RUN.md)
 
 Create an env in a separate file and run it
 
-```
+```sh
 export CHAINLINK_IMAGE="public.ecr.aws/chainlink/chainlink"
 export CHAINLINK_TAG="1.4.0-root"
 export CHAINLINK_ENV_USER="Satoshi"
@@ -81,7 +97,7 @@ go run k8s/examples/simple/env.go
 
 If you have another env of that type, you can connect by overriding environment name
 
-```
+```sh
 ENV_NAMESPACE="..."  go run k8s/examples/chainlink/env.go
 ```
 
@@ -89,9 +105,9 @@ Add more presets [here](./k8s/presets)
 
 Add more programmatic examples [here](./k8s/examples/)
 
-If you have [chaosmesh]() installed in your cluster you can pull and generated CRD in go like that
+If you have [chaosmesh](https://chaos-mesh.org/) installed in your cluster you can pull and generated CRD in go like that
 
-```
+```sh
 make chaosmesh
 ```
 
@@ -143,7 +159,7 @@ cfg, err: = builder.
     Build()
 ```
 
-Since we support both `eth1` (aka pre-Merge) and `eth2` (aka post-Merge) client versions, you need to specify which one you want to use. You can do that by calling `WithEthereumVersion` method. There's no default provided. The only execption is when you use custom docker images (instead of default ones), because then we can determine which version it is based on the image version.
+Since we support both `eth1` (aka pre-Merge) and `eth2` (aka post-Merge) client versions, you need to specify which one you want to use. You can do that by calling `WithEthereumVersion` method. There's no default provided. The only exception is when you use custom docker images (instead of default ones), because then we can determine which version it is based on the image version.
 
 If you want your test to execute as fast as possible go for `eth1` since it's either using a fake PoW or PoA consensus and is much faster than `eth2` which uses PoS consensus (where there is a minimum viable length of slot/block, which is 4 seconds; for `eth1` it's 1 second). If you want to test the latest features, changes or forks in the Ethereum network and have your tests running on a network which is as close as possible to Ethereum Mainnet, go for `eth2`.
 
@@ -161,6 +177,7 @@ cfg, err: = builder.
 ```
 
 When using a custom image you can even further simplify the builder by calling only `WithCustomDockerImages` method. Based on the image name and version we will determine which execution layer client it is and whether it's `eth1` or `eth2` client:
+
 ```go
 builder := NewEthereumNetworkBuilder()
 cfg, err: = builder.
@@ -168,6 +185,7 @@ cfg, err: = builder.
         ContainerType_Geth: "ethereum/client-go:v1.13.10"}).
     Build()
 ```
+
 In the case above we would launch a `Geth` client with `eth2` network and `Prysm` consensus layer.
 
 You can also configure epochs at which hardforks will happen. Currently only `Deneb` is supported. Epoch must be >= 1. Example:
@@ -188,7 +206,7 @@ cfg, err: = builder.
 
 You can start a simulated network with a single command:
 
-```
+```sh
 go run docker/test_env/cmd/main.go start-test-env private-chain
 ```
 
@@ -196,12 +214,12 @@ By default it will start a network with 1 node running `Geth` and `Prysm`. It wi
 
 Following cmd line flags are available:
 
-```
+```sh
   -c, --chain-id int             chain id (default 1337)
   -l, --consensus-layer string   consensus layer (prysm) (default "prysm")
   -t, --consensus-type string    consensus type (pow or pos) (default "pos")
   -e, --execution-layer string   execution layer (geth, nethermind, besu or erigon) (default "geth")
-  -w, --wait-for-finalization    wait for finalization of at least 1 epoch (might take up to 5 mintues)
+  -w, --wait-for-finalization    wait for finalization of at least 1 epoch (might take up to 5 minutes)
       --consensus-client-image string   custom Docker image for consensus layer client
       --execution-layer-image string    custom Docker image for execution layer client
       --validator-image string          custom Docker image for validator
@@ -209,10 +227,10 @@ Following cmd line flags are available:
 
 To connect to that environment in your tests use the following code:
 
-```
+```go
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WihtExistingConfigFromEnvVar().
+		WithExistingConfigFromEnvVar().
 		Build()
 
     if err != nil {
@@ -241,7 +259,7 @@ It can be configured to use multiple targets at once. If no target is specified,
 
 LogStream has to be configured by passing an instance of `LoggingConfig` to the constructor.
 
-When you connect a contaier LogStream will create a new consumer and start a detached goroutine that listens to logs emitted by that container and which reconnects and re-requests logs if listening fails for whatever reason. Retry limit and timeout can both be configured using functional options. In most cases one container should have one consumer, but it's possible to have multiple consumers for one container.
+When you connect a container LogStream will create a new consumer and start a detached goroutine that listens to logs emitted by that container and which reconnects and re-requests logs if listening fails for whatever reason. Retry limit and timeout can both be configured using functional options. In most cases one container should have one consumer, but it's possible to have multiple consumers for one container.
 
 LogStream stores all logs in gob temporary file. To actually send/save them, you need to flush them. When you do it, LogStream will decode the file and send logs to configured targets. If log handling results in an error it won't be retried and processing of logs for given consumer will stop (if you think we should add a retry mechanism please let us know).
 
@@ -294,7 +312,6 @@ ls := logstream.NewLogStream(t, testConfig.Logging)
 If using `testcontainers-go` Docker containers it is recommended to use life cycle hooks for connecting and disconnecting LogStream from the container. You can do that when creating `ContainerRequest` in the following way:
 
 ```golang
-
 containerRequest := &tc.ContainerRequest{
 		LifecycleHooks: []tc.ContainerLifecycleHooks{
 			{PostStarts: []tc.ContainerHook{
@@ -322,7 +339,6 @@ You can print log location for each target using this function: `(m *LogStream) 
 It is recommended to shutdown LogStream at the end of your tests. Here's an example:
 
 ```golang
-
 t.Cleanup(func() {
     l.Warn().Msg("Shutting down Log Stream")
 

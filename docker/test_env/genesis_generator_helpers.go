@@ -7,17 +7,19 @@ import (
 	"time"
 
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/config"
 )
 
-func generateEnvValues(config *EthereumChainConfig) (string, error) {
+func generateEnvValues(c *config.EthereumChainConfig) (string, error) {
 	// GenesisTimestamp needs to be exported in order to be used in the template
 	// but I don't want to expose it in config struct, user should not set it manually
 	data := struct {
-		EthereumChainConfig
+		config.EthereumChainConfig
 		GenesisTimestamp int
 	}{
-		EthereumChainConfig: *config,
-		GenesisTimestamp:    config.genesisTimestamp,
+		EthereumChainConfig: *c,
+		GenesisTimestamp:    c.GenesisTimestamp,
 	}
 	tmpl, err := template.New("valuesEnv").Funcs(funcMap).Parse(valuesEnv)
 	if err != nil {
