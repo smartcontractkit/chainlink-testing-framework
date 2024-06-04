@@ -2,7 +2,6 @@ package foundry
 
 import (
 	"fmt"
-	"net/url"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -21,14 +20,16 @@ type Props struct {
 }
 
 type Chart struct {
-	ServiceName string
-	AppLabel    string
-	Path        string
-	Version     string
-	Props       *Props
-	Values      *map[string]any
-	WSURL       []string
-	HTTPURL     []string
+	ServiceName      string
+	AppLabel         string
+	Path             string
+	Version          string
+	Props            *Props
+	Values           *map[string]any
+	ClusterWSURL     string
+	ClusterHTTPURL   string
+	ForwardedWSURL   string
+	ForwardedHTTPURL string
 }
 
 func (m Chart) IsDeploymentNeeded() bool {
@@ -57,44 +58,24 @@ func (m Chart) GetValues() *map[string]interface{} {
 
 func (m *Chart) ExportData(e *environment.Environment) error {
 	appInstance := fmt.Sprintf("%s:0", m.ServiceName) // uniquely identifies an instance of an anvil service running in a pod
-	forwardedHttp, err := e.Fwd.FindPort(appInstance, ChartName, "http").As(client.LocalConnection, client.HTTP)
+	var err error
+	m.ForwardedHTTPURL, err = e.Fwd.FindPort(appInstance, ChartName, "http").As(client.LocalConnection, client.HTTP)
 	if err != nil {
 		return err
 	}
-	internalHttp, err := e.Fwd.FindPort(appInstance, ChartName, "http").As(client.RemoteConnection, client.HTTP)
+	m.ForwardedWSURL, err = e.Fwd.FindPort(appInstance, ChartName, "http").As(client.LocalConnection, client.WS)
 	if err != nil {
 		return err
 	}
-	parsed, err := url.Parse(internalHttp)
-	if err != nil {
-		return err
-	}
-	port := parsed.Port()
-	forwardedWs, err := e.Fwd.FindPort(appInstance, ChartName, "http").As(client.LocalConnection, client.WS)
-	if err != nil {
-		return err
-	}
-	if e.Cfg.InsideK8s {
-		services, err := e.Client.ListServices(e.Cfg.Namespace, m.AppLabel)
-		if err != nil {
-			return err
-		}
-		internalWs := fmt.Sprintf("ws://%s:%s", services.Items[0].Name, port)
-		internalHttp = fmt.Sprintf("http://%s:%s", services.Items[0].Name, port)
-		m.WSURL = []string{internalWs}
-		m.HTTPURL = []string{internalHttp}
-		e.URLs[appInstance] = []string{internalWs}
-		e.URLs[appInstance+"_http"] = []string{internalHttp}
-	} else {
-		m.WSURL = []string{forwardedWs}
-		m.HTTPURL = []string{forwardedHttp}
-		e.URLs[appInstance] = []string{forwardedWs}
-		e.URLs[appInstance+"_http"] = []string{forwardedHttp}
-	}
+
+	e.URLs[appInstance+"cluster_ws"] = []string{m.ClusterWSURL}
+	e.URLs[appInstance+"cluster_http"] = []string{m.ClusterHTTPURL}
+	e.URLs[appInstance+"forwarded_ws"] = []string{m.ForwardedWSURL}
+	e.URLs[appInstance+"forwarded_http"] = []string{m.ForwardedHTTPURL}
 
 	for k, v := range e.URLs {
 		if strings.Contains(k, appInstance) {
-			log.Info().Str("Name", k).Strs("URLs", v).Msg("Forked network")
+			log.Info().Str("Name", k).Strs("URLs", v).Msg("Anvil URLs")
 		}
 	}
 
@@ -130,19 +111,21 @@ func NewVersioned(helmVersion string, props *Props) *Chart {
 	var serviceName, appLabel string
 	// If fullnameOverride is set it is used as the service name and app label
 	if props.Values["fullnameOverride"] != nil {
-		serviceName = props.Values["fullnameOverride"].(string)
-		appLabel = fmt.Sprintf("app=%s", props.Values["fullnameOverride"].(string))
+		serviceName = dp.Values["fullnameOverride"].(string)
+		appLabel = fmt.Sprintf("app=%s", dp.Values["fullnameOverride"].(string))
 	} else {
 		serviceName = ChartName
 		appLabel = fmt.Sprintf("app=%s", ChartName)
 	}
+	anvilValues := dp.Values["anvil"].(map[string]any)
 	return &Chart{
-		ServiceName: serviceName,
-		AppLabel:    appLabel,
-		// Path:    "chainlink-qa/foundry",
-		Path:    "/Users/lukasz/Documents/smartcontractkit/chainlink-testing-framework/charts/foundry",
-		Values:  &dp.Values,
-		Props:   dp,
-		Version: helmVersion,
+		ServiceName:    serviceName,
+		ClusterWSURL:   fmt.Sprintf("ws://%s:%s", serviceName, anvilValues["port"].(string)),
+		ClusterHTTPURL: fmt.Sprintf("http://%s:%s", serviceName, anvilValues["port"].(string)),
+		AppLabel:       appLabel,
+		Path:           "chainlink-qa/foundry",
+		Values:         &dp.Values,
+		Props:          dp,
+		Version:        helmVersion,
 	}
 }
