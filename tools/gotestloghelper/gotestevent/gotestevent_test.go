@@ -82,23 +82,62 @@ func genericCaptureOutput(fn func(), shouldCapture bool) string {
 }
 
 func TestHighlightErrorOutput(t *testing.T) {
-	te := &GoTestEvent{
-		Time:    time.Now(),
-		Action:  "output",
-		Package: "github.com/smartcontractkit/chainlink-testing-framework/failpackage",
-		Test:    "TestFailTest",
-		Output:  "        \tError Trace:\t/Users/blarg/git/chainlink-testing-framework/failpackage/mirror_test.go:12\n        \tError:      \tAn error is expected but got nil.\n        \tTest:       \tTestFailTest\n",
+	tests := []struct {
+		name     string
+		event    *GoTestEvent
+		expected string
+	}{
+		{
+			name: "Error",
+			event: &GoTestEvent{
+				Time:    time.Now(),
+				Action:  "output",
+				Package: "github.com/smartcontractkit/chainlink-testing-framework/failpackage",
+				Test:    "TestFailTest",
+				Output:  "        \tError Trace:\t/Users/blarg/git/chainlink-testing-framework/failpackage/mirror_test.go:12\n        \tError:      \tAn error is expected but got nil.\n        \tTest:       \tTestFailTest\n",
+			},
+			expected: "\x1b[0;31m        \tError Trace:\t/Users/blarg/git/chainlink-testing-framework/failpackage/mirror_test.go:12\n        \tError:      \tAn error is expected but got nil.\n        \tTest:       \tTestFailTest \x1b[0m\n",
+		},
+		{
+			name: "Panic",
+			event: &GoTestEvent{
+				Time:    time.Now(),
+				Action:  "output",
+				Package: "github.com/smartcontractkit/chainlink-testing-framework/failpackage",
+				Test:    "TestFailTest",
+				Output:  "panic: close of closed channel\n",
+			},
+			expected: "\x1b[0;31mpanic: close of closed channel \x1b[0m\n",
+		},
+		{
+			name: "SegFault",
+			event: &GoTestEvent{
+				Time:    time.Now(),
+				Action:  "output",
+				Package: "github.com/smartcontractkit/chainlink-testing-framework/failpackage",
+				Test:    "TestFailTest",
+				Output:  "[signal SIGSEGV: segmentation violation\n",
+			},
+			expected: "\x1b[0;31m[signal SIGSEGV: segmentation violation \x1b[0m\n",
+		},
 	}
-	c := &TestLogModifierConfig{
-		IsJsonInput:      ptr.Ptr(true),
-		RemoveTLogPrefix: ptr.Ptr(true),
-		OnlyErrors:       &clihelper.BoolFlag{IsSet: true, Value: true},
-		CI:               ptr.Ptr(true),
-	}
+	for _, test := range tests {
+		name := test.name
+		event := test.event
+		expected := test.expected
+		t.Run(name, func(t *testing.T) {
+			c := &TestLogModifierConfig{
+				IsJsonInput:      ptr.Ptr(true),
+				RemoveTLogPrefix: ptr.Ptr(true),
+				HidePassingTests: &clihelper.BoolFlag{IsSet: true, Value: true},
+				CI:               ptr.Ptr(true),
+			}
 
-	err := HighlightErrorOutput(te, c)
-	require.NoError(t, err, "Error highlighting error output")
-	require.Equal(t, "\x1b[0;31m        \tError Trace:\t/Users/blarg/git/chainlink-testing-framework/failpackage/mirror_test.go:12\n        \tError:      \tAn error is expected but got nil.\n        \tTest:       \tTestFailTest \x1b[0m\n", te.Output)
+			err := HighlightErrorOutput(event, c)
+			require.NoError(t, err, "Error highlighting error output")
+			require.Equal(t, expected, event.Output)
+		})
+	}
 }
 
 func TestRemoveTestLogPrefix(t *testing.T) {
@@ -111,7 +150,7 @@ func TestRemoveTestLogPrefix(t *testing.T) {
 	c := &TestLogModifierConfig{
 		IsJsonInput:      ptr.Ptr(true),
 		RemoveTLogPrefix: ptr.Ptr(true),
-		OnlyErrors:       &clihelper.BoolFlag{IsSet: true, Value: true},
+		HidePassingTests: &clihelper.BoolFlag{IsSet: true, Value: true},
 		CI:               ptr.Ptr(true),
 	}
 
@@ -167,7 +206,7 @@ func TestParseOutNoise(t *testing.T) {
 			c := &TestLogModifierConfig{
 				IsJsonInput:      ptr.Ptr(true),
 				RemoveTLogPrefix: ptr.Ptr(true),
-				OnlyErrors:       &clihelper.BoolFlag{IsSet: false, Value: false},
+				HidePassingTests: &clihelper.BoolFlag{IsSet: false, Value: false},
 				CI:               ptr.Ptr(true),
 			}
 			require.NoError(t, c.Validate(), "Config should be valid")
@@ -194,7 +233,8 @@ func TestBasicPassAndFail(t *testing.T) {
 		name             string
 		inputs           []string
 		expected         string
-		onlyErrors       bool
+		hidePassingTests bool
+		hidePassingLogs  bool
 		errorAtTopLength *int
 		singlePackage    bool
 	}{
@@ -209,8 +249,7 @@ func TestBasicPassAndFail(t *testing.T) {
 				`{"Time":"2023-11-27T15:39:39.223823-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Output":"ok  \tgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s\n"}`,
 				`{"Time":"2023-11-27T15:39:39.223871-07:00","Action":"pass","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Elapsed":0.333}`,
 			},
-			expected:   "📦 \x1b[0;32mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[0;32m✅ TestGetImage (1.02s) \x1b[0m\nabc\n::endgroup::\n",
-			onlyErrors: false,
+			expected: "📦 \x1b[0;32mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[0;32m✅ TestGetImage (1.02s) \x1b[0m\nabc\n::endgroup::\n",
 		},
 		{
 			name: "AllTestsPassButWeOnlyWantToShowErrors",
@@ -221,8 +260,8 @@ func TestBasicPassAndFail(t *testing.T) {
 				`{"Time":"2023-11-27T15:39:39.223823-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Output":"ok  \tgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s\n"}`,
 				`{"Time":"2023-11-27T15:39:39.223871-07:00","Action":"pass","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Elapsed":0.333}`,
 			},
-			expected:   "",
-			onlyErrors: true,
+			expected:         "",
+			hidePassingTests: true,
 		},
 		{
 			name: "ShowFailingTestsWithOnlyErrorsFalse",
@@ -233,8 +272,7 @@ func TestBasicPassAndFail(t *testing.T) {
 				`{"Time":"2023-11-27T15:39:39.223823-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Output":"FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s\n"}`,
 				`{"Time":"2023-11-27T15:39:39.223871-07:00","Action":"fail","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Elapsed":0.333}`,
 			},
-			expected:   "📦 \x1b[0;31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[0;31m❌ TestGetImage (0.00s) \x1b[0m\nabc\n::endgroup::\n",
-			onlyErrors: false,
+			expected: "📦 \x1b[0;31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[0;31m❌ TestGetImage (0.00s) \x1b[0m\nabc\n::endgroup::\n",
 		},
 		{
 			name: "ShowFailingTestsWithOnlyErrorsTrue",
@@ -245,8 +283,23 @@ func TestBasicPassAndFail(t *testing.T) {
 				`{"Time":"2023-11-27T15:39:39.223823-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Output":"FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s\n"}`,
 				`{"Time":"2023-11-27T15:39:39.223871-07:00","Action":"fail","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Elapsed":0.333}`,
 			},
-			expected:   "📦 \x1b[0;31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[0;31m❌ TestGetImage (0.00s) \x1b[0m\nabc\n::endgroup::\n",
-			onlyErrors: true,
+			expected:         "📦 \x1b[0;31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[0;31m❌ TestGetImage (0.00s) \x1b[0m\nabc\n::endgroup::\n",
+			hidePassingTests: true,
+		},
+		{
+			name: "HidePassingLogs",
+			inputs: []string{
+				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage1","Output":"abc\n"}`,
+				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage1","Output":"--- PASS: TestGetImage1 (0.00s)\n"}`,
+				`{"Time":"2023-11-27T15:39:39.223335-07:00","Action":"pass","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage1","Elapsed":0}`,
+				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage2","Output":"efg\n"}`,
+				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage2","Output":"--- FAIL: TestGetImage2 (0.00s)\n"}`,
+				`{"Time":"2023-11-27T15:39:39.223335-07:00","Action":"fail","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage2","Elapsed":0}`,
+				`{"Time":"2023-11-27T15:39:39.223823-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Output":"FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s\n"}`,
+				`{"Time":"2023-11-27T15:39:39.223871-07:00","Action":"fail","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Elapsed":0.333}`,
+			},
+			expected:        "📦 \x1b[0;31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n\x1b[0;32m✅ TestGetImage1 (0.00s) \x1b[0m\n::group:: \x1b[0;31m❌ TestGetImage2 (0.00s) \x1b[0m\nefg\n::endgroup::\n",
+			hidePassingLogs: true,
 		},
 		{
 			name: "CombinedPassFailAndCombinedOutput",
@@ -260,11 +313,10 @@ func TestBasicPassAndFail(t *testing.T) {
 				`{"Time":"2023-11-27T15:39:39.223823-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Output":"FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s\n"}`,
 				`{"Time":"2023-11-27T15:39:39.223871-07:00","Action":"fail","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Elapsed":0.333}`,
 			},
-			expected:   "📦 \x1b[0;31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[0;32m✅ TestGetImage1 (0.00s) \x1b[0m\nabc\n::endgroup::\n::group:: \x1b[0;31m❌ TestGetImage2 (0.00s) \x1b[0m\nefg\n::endgroup::\n",
-			onlyErrors: false,
+			expected: "📦 \x1b[0;31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[0;32m✅ TestGetImage1 (0.00s) \x1b[0m\nabc\n::endgroup::\n::group:: \x1b[0;31m❌ TestGetImage2 (0.00s) \x1b[0m\nefg\n::endgroup::\n",
 		},
 		{
-			name: "CombinedPassFailAndOnlyErrors",
+			name: "HidePassingTestsWhenBothPassAndFailExist",
 			inputs: []string{
 				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage1","Output":"abc\n"}`,
 				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage1","Output":"--- PASS: TestGetImage1 (0.00s)\n"}`,
@@ -275,11 +327,11 @@ func TestBasicPassAndFail(t *testing.T) {
 				`{"Time":"2023-11-27T15:39:39.223823-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Output":"FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s\n"}`,
 				`{"Time":"2023-11-27T15:39:39.223871-07:00","Action":"fail","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Elapsed":0.333}`,
 			},
-			expected:   "📦 \x1b[0;31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[0;31m❌ TestGetImage2 (0.00s) \x1b[0m\nefg\n::endgroup::\n",
-			onlyErrors: true,
+			expected:         "📦 \x1b[0;31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[0;31m❌ TestGetImage2 (0.00s) \x1b[0m\nefg\n::endgroup::\n",
+			hidePassingTests: true,
 		},
 		{
-			name: "CombinedPassFailAndOnlyErrorsSinglePackage",
+			name: "HidePassingTestsWhenWhenBothPassAndFailExistSinglePackage",
 			inputs: []string{
 				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage1","Output":"abc\n"}`,
 				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage1","Output":"--- PASS: TestGetImage1 (0.00s)\n"}`,
@@ -290,9 +342,39 @@ func TestBasicPassAndFail(t *testing.T) {
 				`{"Time":"2023-11-27T15:39:39.223823-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Output":"FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s\n"}`,
 				`{"Time":"2023-11-27T15:39:39.223871-07:00","Action":"fail","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Elapsed":0.333}`,
 			},
-			expected:      "::group:: \x1b[0;31m❌ TestGetImage2 (0.00s) \x1b[0m\nefg\n::endgroup::\n",
-			onlyErrors:    true,
-			singlePackage: true,
+			expected:         "::group:: \x1b[0;31m❌ TestGetImage2 (0.00s) \x1b[0m\nefg\n::endgroup::\n",
+			hidePassingTests: true,
+			singlePackage:    true,
+		},
+		{
+			name: "TestPanicCompleteTest",
+			inputs: []string{
+				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage1","Output":"abc\n"}`,
+				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage1","Output":"--- PASS: TestGetImage1 (0.00s)\n"}`,
+				`{"Time":"2023-11-27T15:39:39.223335-07:00","Action":"pass","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage1","Elapsed":0}`,
+				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage2","Output":"efg\n"}`,
+				`{"Time":"2024-05-12T00:08:06.489477083Z","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage2","Output":"panic: close of closed channel \n"}`,
+				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage2","Output":"--- FAIL: TestGetImage2 (0.00s)\n"}`,
+				`{"Time":"2023-11-27T15:39:39.223335-07:00","Action":"fail","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage2","Elapsed":0}`,
+				`{"Time":"2023-11-27T15:39:39.223823-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Output":"FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s\n"}`,
+				`{"Time":"2023-11-27T15:39:39.223871-07:00","Action":"fail","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Elapsed":0.333}`,
+			},
+			expected:         "📦\x1b[0;31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror0.332s\x1b[0m::group:: \x1b[0;31m❌PANIC❌ TestGetImage2 (0.00s) \x1b[0m\nefg\npanic: close of closed channel\n::endgroup::\n",
+			hidePassingTests: true,
+		},
+		{
+			name: "TestPanicInCompleteTest",
+			inputs: []string{
+				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage1","Output":"abc\n"}`,
+				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage1","Output":"--- PASS: TestGetImage1 (0.00s)\n"}`,
+				`{"Time":"2023-11-27T15:39:39.223335-07:00","Action":"pass","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage1","Elapsed":0}`,
+				`{"Time":"2023-11-27T15:39:39.223325-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage2","Output":"efg\n"}`,
+				`{"Time":"2024-05-12T00:08:06.489477083Z","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Test":"TestGetImage2","Output":"panic: close of closed channel \n"}`,
+				`{"Time":"2023-11-27T15:39:39.223823-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Output":"FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s\n"}`,
+				`{"Time":"2023-11-27T15:39:39.223871-07:00","Action":"fail","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Elapsed":0.333}`,
+			},
+			expected:         "📦\x1b[0;31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror0.332s\x1b[0m::group:: \x1b[0;31m❌PANIC❌ TestGetImage2 (0.00s) \x1b[0m\nefg\npanic: close of closed channel\n::endgroup::\n",
+			hidePassingTests: true,
 		},
 		{
 			name: "PackagePanicAfterTestPass",
@@ -307,8 +389,7 @@ func TestBasicPassAndFail(t *testing.T) {
 				`{"Time":"2023-11-28T11:38:06.528992418Z","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Output":"panic: Log in goroutine after TestGetImage has completed: 2023-11-28T11:38:06.521Z\tWARN\tTelemetryManager.TelemetryIngressBatchClient\twsrpc@v0.7.2/uni_client.go:97\tctx error context canceled reconnecting\t{\"version\": \"2.7.0@0957729\"}\n"}`,
 				`{"Time":"2023-11-27T15:39:39.223871-07:00","Action":"fail","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Elapsed":0.333}`,
 			},
-			expected:   "📦 \x1b[0;31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[0;31m❌ TestGetImage (0.00s) \x1b[0m\nabc\n::endgroup::\n::group:: \x1b[0;32m✅ TestGetImage2 (0.00s) \x1b[0m\nefg\n::endgroup::\n\x1b[0;31mpanic: Log in goroutine after TestGetImage has completed: 2023-11-28T11:38:06.521Z\tWARN\tTelemetryManager.TelemetryIngressBatchClient\twsrpc@v0.7.2/uni_client.go:97\tctx error context canceled reconnecting\t{\"version\": \"2.7.0@0957729\"} \x1b[0m\n",
-			onlyErrors: false,
+			expected: "📦 \x1b[0;31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[0;31m❌ TestGetImage (0.00s) \x1b[0m\nabc\n::endgroup::\n::group:: \x1b[0;32m✅ TestGetImage2 (0.00s) \x1b[0m\nefg\n::endgroup::\n\x1b[0;31mpanic: Log in goroutine after TestGetImage has completed: 2023-11-28T11:38:06.521Z\tWARN\tTelemetryManager.TelemetryIngressBatchClient\twsrpc@v0.7.2/uni_client.go:97\tctx error context canceled reconnecting\t{\"version\": \"2.7.0@0957729\"} \x1b[0m\n",
 		},
 		{
 			name: "PackagePanicAfterTestPassOnlyErrors",
@@ -323,8 +404,8 @@ func TestBasicPassAndFail(t *testing.T) {
 				`{"Time":"2023-11-28T11:38:06.528992418Z","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Output":"panic: Log in goroutine after TestGetImage has completed: 2023-11-28T11:38:06.521Z\tWARN\tTelemetryManager.TelemetryIngressBatchClient\twsrpc@v0.7.2/uni_client.go:97\tctx error context canceled reconnecting\t{\"version\": \"2.7.0@0957729\"}\n"}`,
 				`{"Time":"2023-11-27T15:39:39.223871-07:00","Action":"fail","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Elapsed":0.333}`,
 			},
-			expected:   "📦 \x1b[0;31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[0;31m❌ TestGetImage (0.00s) \x1b[0m\nabc\n::endgroup::\n\x1b[0;31mpanic: Log in goroutine after TestGetImage has completed: 2023-11-28T11:38:06.521Z\tWARN\tTelemetryManager.TelemetryIngressBatchClient\twsrpc@v0.7.2/uni_client.go:97\tctx error context canceled reconnecting\t{\"version\": \"2.7.0@0957729\"} \x1b[0m\n",
-			onlyErrors: true,
+			expected:         "📦 \x1b[0;31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[0;31m❌ TestGetImage (0.00s) \x1b[0m\nabc\n::endgroup::\n\x1b[0;31mpanic: Log in goroutine after TestGetImage has completed: 2023-11-28T11:38:06.521Z\tWARN\tTelemetryManager.TelemetryIngressBatchClient\twsrpc@v0.7.2/uni_client.go:97\tctx error context canceled reconnecting\t{\"version\": \"2.7.0@0957729\"} \x1b[0m\n",
+			hidePassingTests: true,
 		},
 		{
 			name: "NoDropDownIfNoLogsInTest",
@@ -334,8 +415,8 @@ func TestBasicPassAndFail(t *testing.T) {
 				`{"Time":"2023-11-27T15:39:39.223823-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Output":"FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s\n"}`,
 				`{"Time":"2023-11-27T15:39:39.223871-07:00","Action":"fail","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Elapsed":0.333}`,
 			},
-			expected:   "📦 \x1b[0;31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n\x1b[0;31m❌ TestGetImage2 (0.00s) \x1b[0m\n",
-			onlyErrors: true,
+			expected:         "📦 \x1b[0;31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n\x1b[0;31m❌ TestGetImage2 (0.00s) \x1b[0m\n",
+			hidePassingTests: true,
 		},
 		{
 			name: "NoDropDownIfNoLogsInTest",
@@ -353,8 +434,8 @@ func TestBasicPassAndFail(t *testing.T) {
 				`{"Time":"2023-11-27T15:39:39.223823-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Output":"FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s\n"}`,
 				`{"Time":"2023-11-27T15:39:39.223871-07:00","Action":"fail","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Elapsed":0.333}`,
 			},
-			expected:         "📦 \x1b[0;31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[0;31m❌ TestGetImage2 (0.00s) \x1b[0m\n❌ Error found:\n        \tError Trace:\t/home/runner/work/chainlink-testing-framework/chainlink-testing-framework/k8s/e2e/common/test_common.go:193\n        \tError:      \tReceived unexpected error:\n        \t            \twaitcontainersready, no pods in 'chainlink-testing-framework-k8s-test-862b1' with selector '' after timeout '15m0s'\n        \tTest:       \tTestWithSingleNodeEnvLocalCharts\nexample 1\nexample 2\nexample 3\n    test_common.go:193: \n        \tError Trace:\t/home/runner/work/chainlink-testing-framework/chainlink-testing-framework/k8s/e2e/common/test_common.go:193\n        \tError:      \tReceived unexpected error:\n        \t            \twaitcontainersready, no pods in 'chainlink-testing-framework-k8s-test-862b1' with selector '' after timeout '15m0s'\n        \tTest:       \tTestWithSingleNodeEnvLocalCharts\n::endgroup::\n",
-			onlyErrors:       true,
+			expected:         "📦 \x1b[0;31mgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s \x1b[0m\n::group:: \x1b[0;31m❌ TestGetImage2 (0.00s) \x1b[0m\n---❌ErrorFound❌---\n        \tError Trace:\t/home/runner/work/chainlink-testing-framework/chainlink-testing-framework/k8s/e2e/common/test_common.go:193\n        \tError:      \tReceived unexpected error:\n        \t            \twaitcontainersready, no pods in 'chainlink-testing-framework-k8s-test-862b1' with selector '' after timeout '15m0s'\n        \tTest:       \tTestWithSingleNodeEnvLocalCharts\n---❌EndError❌---\nexample 1\nexample 2\nexample 3\n    test_common.go:193: \n        \tError Trace:\t/home/runner/work/chainlink-testing-framework/chainlink-testing-framework/k8s/e2e/common/test_common.go:193\n        \tError:      \tReceived unexpected error:\n        \t            \twaitcontainersready, no pods in 'chainlink-testing-framework-k8s-test-862b1' with selector '' after timeout '15m0s'\n        \tTest:       \tTestWithSingleNodeEnvLocalCharts\n::endgroup::\n",
+			hidePassingTests: true,
 			errorAtTopLength: ptr.Ptr(2),
 		},
 		{
@@ -384,9 +465,9 @@ func TestBasicPassAndFail(t *testing.T) {
 				`{"Time":"2024-05-12T00:08:06.495576951Z","Action":"output","Package":"github.com/smartcontractkit/chainlink/integration-tests/smoke","Output":"FAIL\tgithub.com/smartcontractkit/chainlink/integration-tests/smoke\t46.425s\n"}`,
 				`{"Time":"2024-05-12T00:08:06.495595336Z","Action":"fail","Package":"github.com/smartcontractkit/chainlink/integration-tests/smoke","Elapsed":46.426}`,
 			},
-			expected:      "::group::\x1b[0;31mIncompleteTest:TestAutomationNodeUpgrade(0.00s)\x1b[0m\x1b[90m00:07:20.32\x1b[0m\x1b[32mINF\x1b[0mReadingconfigsfromfilesystem::endgroup::::group::\x1b[0;31mIncompleteTest:TestAutomationNodeUpgrade/registry_2_0(0.00s)\x1b[0mautomation_test.go:1324:ErrorTrace:/home/runner/work/chainlink/chainlink/integration-tests/smoke/automation_test.go:1324/home/runner/work/chainlink/chainlink/integration-tests/smoke/automation_test.go:126Error:Receivedunexpectederror:failedtostartCLnodecontainererr:Errorresponsefromdaemon:Nosuchimage:public.ecr.aws/chainlink/chainlink:latest:failedtocreatecontainerTest:TestAutomationNodeUpgrade/registry_2_0Messages:Errordeployingtestenvironmentpanic:runtimeerror:invalidmemoryaddressornilpointerdereference[signalSIGSEGV:segmentationviolationcode=0x1addr=0xd8pc=0x5ab986f]goroutine1788[running]:github.com/smartcontractkit/chainlink/integration-tests/docker/test_env.(*ClCluster).Stop.func1()/home/runner/work/chainlink/chainlink/integration-tests/docker/test_env/cl_node_cluster.go:54+0x2fgolang.org/x/sync/errgroup.(*Group).Go.func1()/home/runner/go/pkg/mod/golang.org/x/sync@v0.6.0/errgroup/errgroup.go:78+0x56createdbygolang.org/x/sync/errgroup.(*Group).Goingoroutine354/home/runner/go/pkg/mod/golang.org/x/sync@v0.6.0/errgroup/errgroup.go:75+0x96::endgroup::",
-			onlyErrors:    true,
-			singlePackage: true,
+			expected:         "::group::\x1b[0;33mIncompleteTest:TestAutomationNodeUpgrade(0.00s)\x1b[0m\x1b[90m00:07:20.32\x1b[0m\x1b[32mINF\x1b[0mReadingconfigsfromfilesystem::endgroup::::group::\x1b[0;31m❌PANIC❌TestAutomationNodeUpgrade/registry_2_0(0.00s)\x1b[0mautomation_test.go:1324:ErrorTrace:/home/runner/work/chainlink/chainlink/integration-tests/smoke/automation_test.go:1324/home/runner/work/chainlink/chainlink/integration-tests/smoke/automation_test.go:126Error:Receivedunexpectederror:failedtostartCLnodecontainererr:Errorresponsefromdaemon:Nosuchimage:public.ecr.aws/chainlink/chainlink:latest:failedtocreatecontainerTest:TestAutomationNodeUpgrade/registry_2_0Messages:Errordeployingtestenvironmentpanic:runtimeerror:invalidmemoryaddressornilpointerdereference[signalSIGSEGV:segmentationviolationcode=0x1addr=0xd8pc=0x5ab986f]goroutine1788[running]:github.com/smartcontractkit/chainlink/integration-tests/docker/test_env.(*ClCluster).Stop.func1()/home/runner/work/chainlink/chainlink/integration-tests/docker/test_env/cl_node_cluster.go:54+0x2fgolang.org/x/sync/errgroup.(*Group).Go.func1()/home/runner/go/pkg/mod/golang.org/x/sync@v0.6.0/errgroup/errgroup.go:78+0x56createdbygolang.org/x/sync/errgroup.(*Group).Goingoroutine354/home/runner/go/pkg/mod/golang.org/x/sync@v0.6.0/errgroup/errgroup.go:75+0x96::endgroup::",
+			hidePassingTests: true,
+			singlePackage:    true,
 		},
 		{
 			name: "TestFailWithSIGSEGV",
@@ -400,9 +481,9 @@ func TestBasicPassAndFail(t *testing.T) {
 				`{"Time":"2024-05-12T00:08:06.495576951Z","Action":"output","Package":"github.com/smartcontractkit/chainlink/integration-tests/smoke","Output":"FAIL\tgithub.com/smartcontractkit/chainlink/integration-tests/smoke\t46.425s\n"}`,
 				`{"Time":"2024-05-12T00:08:06.495595336Z","Action":"fail","Package":"github.com/smartcontractkit/chainlink/integration-tests/smoke","Elapsed":46.426}`,
 			},
-			expected:      "📦\x1b[0;31mgithub.com/smartcontractkit/chainlink/integration-tests/smoke46.425s\x1b[0m::group::\x1b[0;31mIncompleteTest:TestAutomationNodeUpgrade(0.00s)\x1b[0m\x1b[90m00:07:20.32\x1b[0m\x1b[32mINF\x1b[0mReadingconfigsfromfilesystem::endgroup::::group::\x1b[0;31m❌TestAutomationNodeUpgrade/registry_2_0(0.00s)\x1b[0m[signalSIGSEGV:segmentationviolationcode=0x1addr=0xd8pc=0x5ab986f]::endgroup::",
-			onlyErrors:    true,
-			singlePackage: false,
+			expected:         "📦\x1b[0;31mgithub.com/smartcontractkit/chainlink/integration-tests/smoke46.425s\x1b[0m::group::\x1b[0;33mIncompleteTest:TestAutomationNodeUpgrade(0.00s)\x1b[0m\x1b[90m00:07:20.32\x1b[0m\x1b[32mINF\x1b[0mReadingconfigsfromfilesystem::endgroup::::group::\x1b[0;31m❌PANIC❌TestAutomationNodeUpgrade/registry_2_0(0.00s)\x1b[0m[signalSIGSEGV:segmentationviolationcode=0x1addr=0xd8pc=0x5ab986f]::endgroup::",
+			hidePassingTests: true,
+			singlePackage:    false,
 		},
 		{
 			name: "CombinedPassFailWithoutPanic",
@@ -416,9 +497,9 @@ func TestBasicPassAndFail(t *testing.T) {
 				`{"Time":"2023-11-27T15:39:39.223823-07:00","Action":"output","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Output":"FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/mirror\t0.332s\n"}`,
 				`{"Time":"2023-11-27T15:39:39.223871-07:00","Action":"fail","Package":"github.com/smartcontractkit/chainlink-testing-framework/mirror","Elapsed":0.333}`,
 			},
-			expected:      "::group::\x1b[0;31mIncompleteTest:TestGetImage2(0.00s)\x1b[0mefgnothingtoseehere::endgroup::",
-			onlyErrors:    true,
-			singlePackage: true,
+			expected:         "::group::\x1b[0;33mIncompleteTest:TestGetImage2(0.00s)\x1b[0mefgnothingtoseehere::endgroup::",
+			hidePassingTests: true,
+			singlePackage:    true,
 		},
 		{
 			name: "UnfinishedTestsWhenPanicOccurs",
@@ -442,15 +523,16 @@ func TestBasicPassAndFail(t *testing.T) {
 				`{"Time":"2024-05-16T17:29:50.001616567-05:00","Action":"output","Package":"github.com/jmank88/gotest/c","Output":"FAIL\tgithub.com/jmank88/gotest/c\t1.005s\n"}`,
 				`{"Time":"2024-05-16T17:29:50.001628149-05:00","Action":"fail","Package":"github.com/jmank88/gotest/c","Elapsed":1.005}`,
 			},
-			expected:   "📦\x1b[0;31mgithub.com/jmank88/gotest/c1.005s\x1b[0m::group::\x1b[0;31m❌TestC(1.00s)\x1b[0mpanic:testpanic[recovered]::endgroup::\x1b[0;31mIncompleteTest:TestLong(0.00s)\x1b[0m",
-			onlyErrors: true,
+			expected:         "📦\x1b[0;31mgithub.com/jmank88/gotest/c1.005s\x1b[0m::group::\x1b[0;31m❌PANIC❌TestC(1.00s)\x1b[0mpanic:testpanic[recovered]::endgroup::\x1b[0;33mIncompleteTest:TestLong(0.00s)\x1b[0m",
+			hidePassingTests: true,
 		},
 	}
 
 	for _, test := range tests {
 		name := test.name
 		expected := test.expected
-		onlyErrors := test.onlyErrors
+		hidePassingTests := test.hidePassingTests
+		hidePassingLogs := test.hidePassingLogs
 		inputs := test.inputs
 		errorAtTopLength := ptr.Ptr(50)
 		singlePackage := test.singlePackage
@@ -461,7 +543,8 @@ func TestBasicPassAndFail(t *testing.T) {
 			c := &TestLogModifierConfig{
 				IsJsonInput:      ptr.Ptr(true),
 				RemoveTLogPrefix: ptr.Ptr(true),
-				OnlyErrors:       &clihelper.BoolFlag{IsSet: true, Value: onlyErrors},
+				HidePassingTests: &clihelper.BoolFlag{IsSet: true, Value: hidePassingTests},
+				HidePassingLogs:  ptr.Ptr(hidePassingLogs),
 				CI:               ptr.Ptr(true),
 				SinglePackage:    ptr.Ptr(singlePackage),
 				ErrorAtTopLength: errorAtTopLength,

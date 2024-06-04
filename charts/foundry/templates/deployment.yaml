@@ -41,8 +41,16 @@ spec:
             - "anvil"
             - "--chain-id"
             - {{ .Values.anvil.chainId | quote }}
+            {{- if .Values.anvil.noMine }}
+            - "--no-mine"
+            {{- end }}
+            {{- if .Values.anvil.enableTracing }}
+            - "--steps-tracing"
+            {{- end }}
+            {{- if not .Values.anvil.noMine }}
             - "--block-time"
             - {{ .Values.anvil.blockTime | quote }}
+            {{- end }}
             {{- if .Values.anvil.blockGasLimit }}
             - "--gas-limit"
             - {{ .Values.anvil.blockGasLimit | quote }}
@@ -104,7 +112,16 @@ spec:
             - "--balance"
             - {{ .Values.anvil.accountBalance | quote }}
             {{- end }}
-            - "--prune-history"
+            - "--state"
+            - "/state/dump.json"
+            {{- if .Values.anvil.intervalInSecondsToDumpState }}
+            - "--state-interval"
+            - {{ .Values.anvil.intervalInSecondsToDumpState | quote }}
+            {{- end }}
+            {{- if .Values.anvil.blocksToKeepInMemory }}
+            - "--transaction-block-keeper"
+            - {{ .Values.anvil.blocksToKeepInMemory | quote }}
+            {{- end }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
@@ -126,12 +143,17 @@ spec:
             timeoutSeconds: 10
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
-          {{- with .Values.volumeMounts }}
           volumeMounts:
+            - name: state-storage
+              mountPath: /state
+          {{- with .Values.volumeMounts }}
             {{- toYaml . | nindent 12 }}
           {{- end }}
-      {{- with .Values.volumes }}
       volumes:
+        - name: state-storage
+          persistentVolumeClaim:
+            claimName: {{ include "foundry.fullname" . }}-pvc
+      {{- with .Values.volumes }}
         {{- toYaml . | nindent 8 }}
       {{- end }}
       {{- with .Values.nodeSelector }}

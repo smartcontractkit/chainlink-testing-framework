@@ -8,6 +8,7 @@ anvil:
   host: '0.0.0.0'
   port: '8545'
   chainId: 1337
+  noMine: false
   blockTime: 1
   runAsOptimism: false
   # forkURL: 'https://goerli.infura.io/v3/...'
@@ -21,6 +22,9 @@ anvil:
   blockGasLimit: "400000000000000"
   codeSizeLimit: "30000"
   baseFee: "100000"
+  blocksToKeepInMemory: "500"
+  intervalInSecondsToDumpState: "60"
+  enableTracing: false
 
 image:
   repository: ghcr.io/foundry-rs/foundry
@@ -46,8 +50,8 @@ serviceAccount:
 podAnnotations: {}
 podLabels: {}
 
-podSecurityContext: {}
-  # fsGroup: 1000
+podSecurityContext:
+  fsGroup: 1000
 
 securityContext:
   capabilities:
@@ -103,6 +107,8 @@ resources: {}
   #   cpu: 100m
   #   memory: 128Mi
 
+capacity: 20Gi
+storageClassName: gp3
 autoscaling:
   enabled: false
   minReplicas: 1
@@ -119,10 +125,6 @@ volumes: []
 
 # Additional volumeMounts on the output Deployment definition.
 volumeMounts: []
-# - name: foo
-#   mountPath: '/etc/foo'
-#   readOnly: true
-
 nodeSelector: {}
 
 tolerations: []

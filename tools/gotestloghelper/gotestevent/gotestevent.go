@@ -134,21 +134,31 @@ func (t *Test) Print(c *TestLogModifierConfig) {
 	// start the group
 	hasLogs := len(t.Logs) > 0 && !onlyEmpty
 	if t.Status == TestStatusPass {
+		// Do we want to hide passing logs
+		if *c.HidePassingLogs {
+			hasLogs = false
+			t.Logs = []GoTestEvent{}
+		}
 		StartGroupPass(fmt.Sprintf("✅ %s (%.2fs)", t.Name, t.Elapsed), c, hasLogs)
 	} else if t.Status == TestStatusSkip {
 		StartGroupSkip(fmt.Sprintf("🚧 %s (%.2fs)", t.Name, t.Elapsed), c, hasLogs)
-	} else if !t.Complete {
-		StartGroupFail(fmt.Sprintf("Incomplete Test: %s (%.2fs)", t.Name, t.Elapsed), c, hasLogs)
+	} else if !t.Complete && !t.HasPanic {
+		StartGroupSkip(fmt.Sprintf("Incomplete Test: %s (%.2fs)", t.Name, t.Elapsed), c, hasLogs)
 	} else {
-		StartGroupFail(fmt.Sprintf("❌ %s (%.2fs)", t.Name, t.Elapsed), c, hasLogs)
+		errorStart := "❌"
+		if t.HasPanic {
+			errorStart = "❌PANIC❌"
+		}
+		StartGroupFail(fmt.Sprintf("%s %s (%.2fs)", errorStart, t.Name, t.Elapsed), c, hasLogs)
 	}
 
 	// print out the error message at the top if the logs are longer than the specified length
 	if len(errorMessages) > 0 && *c.CI && *c.ErrorAtTopLength > 0 && len(t.Logs) > *c.ErrorAtTopLength {
-		fmt.Println("❌ Error found:")
+		fmt.Println("---❌ Error Found ❌---")
 		for _, log := range errorMessages {
 			log.Print()
 		}
+		fmt.Println("---❌  End Error  ❌---")
 	}
 
 	// print out the test logs
@@ -213,7 +223,7 @@ func (p *TestPackage) Print(c *TestLogModifierConfig) {
 	// if package passed
 	if !p.Failed {
 		// if we only want errors then skip
-		if c.OnlyErrors.Value {
+		if c.HidePassingTests.Value {
 			return
 		}
 		// right here is where we would print the passed package with elapsed time if needed
@@ -266,7 +276,7 @@ func (p TestPackage) hasIncompleteTests() bool {
 func (p TestPackage) ShouldPrintTest(test Test, c *TestLogModifierConfig) bool {
 	shouldPrintTest := false
 	// if we only want errors
-	if c.OnlyErrors.Value {
+	if c.HidePassingTests.Value {
 		// if the test failed or if we had a package fail without a test fail, we want all the logs for triage in this case
 		if (test.Status == TestStatusFail || !test.Complete) && p.Failed {
 			shouldPrintTest = true
@@ -295,6 +305,8 @@ func (m TestPackageMap) InitPackageInMap(packageName string) {
 type TestLogModifierConfig struct {
 	IsJsonInput            *bool
 	RemoveTLogPrefix       *bool
+	HidePassingTests       *clihelper.BoolFlag
+	HidePassingLogs        *bool
 	OnlyErrors             *clihelper.BoolFlag
 	Color                  *bool
 	CI                     *bool
@@ -309,6 +321,8 @@ func NewDefaultConfig() *TestLogModifierConfig {
 	return &TestLogModifierConfig{
 		IsJsonInput:            ptr.Ptr(false),
 		RemoveTLogPrefix:       ptr.Ptr(false),
+		HidePassingTests:       &clihelper.BoolFlag{},
+		HidePassingLogs:        ptr.Ptr(false),
 		OnlyErrors:             &clihelper.BoolFlag{},
 		Color:                  ptr.Ptr(false),
 		CI:                     ptr.Ptr(false),
@@ -325,15 +339,28 @@ func (c *TestLogModifierConfig) Validate() error {
 	if err != nil {
 		return err
 	}
+	if *c.HidePassingLogs {
+		if c.HidePassingTests.Value || c.OnlyErrors.Value {
+			return fmt.Errorf("-hidepassinglogs flag is not compatible with -hidepassingtests or -onlyerrors flags")
+		}
+		if !*c.IsJsonInput && !*c.CI {
+			return fmt.Errorf("-hidepassinglogs flag is only valid when run with -json flag")
+		}
+	}
 	if c.OnlyErrors.Value {
-		if !*c.IsJsonInput {
-			return fmt.Errorf("OnlyErrors flag is only valid when run with -json flag")
+		if !*c.IsJsonInput && !*c.CI {
+			return fmt.Errorf("-onlyerrors flag is only valid when run with -json flag")
+		}
+		c.HidePassingTests = c.OnlyErrors
+	}
+	if c.HidePassingTests.Value {
+		if !*c.IsJsonInput && !*c.CI {
+			return fmt.Errorf("-hidepassingtests flag is only valid when run with -json flag")
 		}
 	}
 	if *c.ErrorAtTopLength < 0 {
-		return fmt.Errorf("ErrorAtTopLength must be greater than or equal to 0")
+		return fmt.Errorf("-errorattoplength must be greater than or equal to 0")
 	}
-
 	return nil
 }
 
@@ -344,9 +371,9 @@ func SetupModifiers(c *TestLogModifierConfig) []TestLogModifier {
 		c.Color = ptr.Ptr(true)
 		c.IsJsonInput = ptr.Ptr(true)
 		c.ShouldImmediatelyPrint = false
-		if !c.OnlyErrors.IsSet {
+		if !c.HidePassingTests.IsSet {
 			// nolint errcheck
-			c.OnlyErrors.Set("true")
+			c.HidePassingTests.Set("true")
 		}
 		c.RemoveTLogPrefix = ptr.Ptr(true)
 	}
@@ -359,6 +386,9 @@ func SetupModifiers(c *TestLogModifierConfig) []TestLogModifier {
 	if *c.IsJsonInput {
 		c.ShouldImmediatelyPrint = false
 		modifiers = append(modifiers, JsonTestOutputToStandard)
+	}
+	if c.HidePassingTests.Value {
+		c.HidePassingLogs = ptr.Ptr(true)
 	}
 	return modifiers
 }

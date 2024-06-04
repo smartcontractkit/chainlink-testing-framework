@@ -223,6 +223,10 @@ func (b *EthereumNetworkBuilder) importExistingConfig() bool {
 	b.ethereumChainConfig = b.existingConfig.EthereumChainConfig
 	b.customDockerImages = b.existingConfig.CustomDockerImages
 
+	if b.existingConfig.WaitForFinalization != nil {
+		b.waitForFinalization = *b.existingConfig.WaitForFinalization
+	}
+
 	if b.existingConfig.NodeLogLevel != nil {
 		b.nodeLogLevel = *b.existingConfig.NodeLogLevel
 	} else {

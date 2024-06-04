@@ -29,6 +29,7 @@ type AnvilConfig struct {
 	ComputePerSecond  *int64  `toml:"compute_per_second,omitempty"`  // Needed if fork URL is provided for forking. Sets the number of assumed available compute units per second for this provider. Refer to https://book.getfoundry.sh/reference/anvil/#options
 	RateLimitDisabled *bool   `toml:"rate_limit_disabled,omitempty"` // Needed if fork URL is provided for forking. Rate limiting for this node’s provider. If set to true the node will start with --no-rate-limit Refer to https://book.getfoundry.sh/reference/anvil/#options
 	NoOfAccounts      *int    `toml:"no_of_accounts,omitempty"`      // Number of accounts to generate. Refer to https://book.getfoundry.sh/reference/anvil/#options
+	EnableTracing     *bool   `toml:"enable_tracing,omitempty"`      // Enable tracing for the node. Refer to https://book.getfoundry.sh/reference/anvil/#options
 }
 
 // NetworkConfig is the configuration for the networks to be used
