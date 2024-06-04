@@ -17,16 +17,18 @@ const (
 )
 
 type Props struct {
-	NetworkName string
-	Values      map[string]interface{}
+	Values map[string]interface{}
 }
 
 type Chart struct {
-	Name    string
-	Path    string
-	Version string
-	Props   *Props
-	Values  *map[string]any
+	ServiceName string
+	AppLabel    string
+	Path        string
+	Version     string
+	Props       *Props
+	Values      *map[string]any
+	WSURL       []string
+	HTTPURL     []string
 }
 
 func (m Chart) IsDeploymentNeeded() bool {
@@ -34,7 +36,7 @@ func (m Chart) IsDeploymentNeeded() bool {
 }
 
 func (m Chart) GetName() string {
-	return m.Name
+	return ChartName
 }
 
 func (m Chart) GetPath() string {
@@ -53,13 +55,13 @@ func (m Chart) GetValues() *map[string]interface{} {
 	return m.Values
 }
 
-func (m Chart) ExportData(e *environment.Environment) error {
-	podName := fmt.Sprintf("%s-%s:0", m.Props.NetworkName, ChartName)
-	localHttp, err := e.Fwd.FindPort(podName, ChartName, "http").As(client.LocalConnection, client.HTTP)
+func (m *Chart) ExportData(e *environment.Environment) error {
+	appInstance := fmt.Sprintf("%s:0", m.ServiceName) // uniquely identifies an instance of an anvil service running in a pod
+	forwardedHttp, err := e.Fwd.FindPort(appInstance, ChartName, "http").As(client.LocalConnection, client.HTTP)
 	if err != nil {
 		return err
 	}
-	internalHttp, err := e.Fwd.FindPort(podName, ChartName, "http").As(client.RemoteConnection, client.HTTP)
+	internalHttp, err := e.Fwd.FindPort(appInstance, ChartName, "http").As(client.RemoteConnection, client.HTTP)
 	if err != nil {
 		return err
 	}
@@ -68,26 +70,30 @@ func (m Chart) ExportData(e *environment.Environment) error {
 		return err
 	}
 	port := parsed.Port()
-	localWs, err := e.Fwd.FindPort(podName, ChartName, "http").As(client.LocalConnection, client.WS)
+	forwardedWs, err := e.Fwd.FindPort(appInstance, ChartName, "http").As(client.LocalConnection, client.WS)
 	if err != nil {
 		return err
 	}
 	if e.Cfg.InsideK8s {
-		services, err := e.Client.ListServices(e.Cfg.Namespace, fmt.Sprintf("app=%s-%s", m.Props.NetworkName, ChartName))
+		services, err := e.Client.ListServices(e.Cfg.Namespace, m.AppLabel)
 		if err != nil {
 			return err
 		}
 		internalWs := fmt.Sprintf("ws://%s:%s", services.Items[0].Name, port)
 		internalHttp = fmt.Sprintf("http://%s:%s", services.Items[0].Name, port)
-		e.URLs[m.Props.NetworkName] = []string{internalWs}
-		e.URLs[m.Props.NetworkName+"_http"] = []string{internalHttp}
+		m.WSURL = []string{internalWs}
+		m.HTTPURL = []string{internalHttp}
+		e.URLs[appInstance] = []string{internalWs}
+		e.URLs[appInstance+"_http"] = []string{internalHttp}
 	} else {
-		e.URLs[m.Props.NetworkName] = []string{localWs}
-		e.URLs[m.Props.NetworkName+"_http"] = []string{localHttp}
+		m.WSURL = []string{forwardedWs}
+		m.HTTPURL = []string{forwardedHttp}
+		e.URLs[appInstance] = []string{forwardedWs}
+		e.URLs[appInstance+"_http"] = []string{forwardedHttp}
 	}
 
 	for k, v := range e.URLs {
-		if strings.Contains(k, m.Props.NetworkName) {
+		if strings.Contains(k, appInstance) {
 			log.Info().Str("Name", k).Strs("URLs", v).Msg("Forked network")
 		}
 	}
@@ -97,7 +103,6 @@ func (m Chart) ExportData(e *environment.Environment) error {
 
 func defaultProps() *Props {
 	return &Props{
-		NetworkName: "fork",
 		Values: map[string]any{
 			"replicaCount": "1",
 			"anvil": map[string]any{
@@ -113,19 +118,29 @@ func defaultProps() *Props {
 	}
 }
 
-func New(props *Props) environment.ConnectedChart {
+func New(props *Props) *Chart {
 	return NewVersioned("", props)
 }
 
 // NewVersioned enables choosing a specific helm chart version
-func NewVersioned(helmVersion string, props *Props) environment.ConnectedChart {
+func NewVersioned(helmVersion string, props *Props) *Chart {
 	dp := defaultProps()
 	config.MustMerge(dp, props)
 	config.MustMerge(&dp.Values, props.Values)
-	dp.NetworkName = strings.ReplaceAll(strings.ToLower(dp.NetworkName), " ", "-")
-	return Chart{
-		Name:    dp.NetworkName,
-		Path:    "chainlink-qa/foundry",
+	var serviceName, appLabel string
+	// If fullnameOverride is set it is used as the service name and app label
+	if props.Values["fullnameOverride"] != nil {
+		serviceName = props.Values["fullnameOverride"].(string)
+		appLabel = fmt.Sprintf("app=%s", props.Values["fullnameOverride"].(string))
+	} else {
+		serviceName = ChartName
+		appLabel = fmt.Sprintf("app=%s", ChartName)
+	}
+	return &Chart{
+		ServiceName: serviceName,
+		AppLabel:    appLabel,
+		// Path:    "chainlink-qa/foundry",
+		Path:    "/Users/lukasz/Documents/smartcontractkit/chainlink-testing-framework/charts/foundry",
 		Values:  &dp.Values,
 		Props:   dp,
 		Version: helmVersion,
