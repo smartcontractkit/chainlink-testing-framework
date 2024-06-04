@@ -148,8 +148,8 @@ var (
 		GasEstimationBuffer:       10000,
 	}
 
-	SimulatedAnvil = blockchain.EVMNetwork{
-		Name:                 "Simulated Anvil",
+	Anvil = blockchain.EVMNetwork{
+		Name:                 "Anvil",
 		Simulated:            true,
 		SupportsEIP1559:      true,
 		ClientImplementation: blockchain.EthereumClientImplementation,
@@ -878,7 +878,7 @@ var (
 
 	MappedNetworks = map[string]blockchain.EVMNetwork{
 		"SIMULATED":               SimulatedEVM,
-		"SIMULATED_ANVIL":         SimulatedAnvil,
+		"ANVIL":                   Anvil,
 		"SIMULATED_1":             SimulatedEVMNonDev1,
 		"SIMULATED_2":             SimulatedEVMNonDev2,
 		"SIMULATED_BESU_NONDEV_1": SimulatedBesuNonDev1,
