@@ -149,7 +149,7 @@ func MergeSethAndEvmNetworkConfigs(evmNetwork blockchain.EVMNetwork, sethConfig 
 
 	for _, conf := range sethConfig.Networks {
 		if evmNetwork.Simulated {
-			if conf.Name == pkg_seth.GETH {
+			if conf.Name == pkg_seth.GETH || conf.Name == pkg_seth.ANVIL {
 				conf.PrivateKeys = evmNetwork.PrivateKeys
 				if len(conf.URLs) == 0 {
 					conf.URLs = evmNetwork.URLs
@@ -211,7 +211,7 @@ func MustReplaceSimulatedNetworkUrlWithK8(l zerolog.Logger, network blockchain.E
 		return network
 	}
 
-	networkKeys := []string{"Simulated Geth", "Simulated-Geth"}
+	networkKeys := []string{"Simulated Geth", "Simulated-Geth", "simulated-geth_http"}
 	var keyToUse string
 
 	for _, key := range networkKeys {
