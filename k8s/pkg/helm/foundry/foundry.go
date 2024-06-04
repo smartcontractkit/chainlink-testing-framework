@@ -68,10 +68,10 @@ func (m *Chart) ExportData(e *environment.Environment) error {
 		return err
 	}
 
-	e.URLs[appInstance+"cluster_ws"] = []string{m.ClusterWSURL}
-	e.URLs[appInstance+"cluster_http"] = []string{m.ClusterHTTPURL}
-	e.URLs[appInstance+"forwarded_ws"] = []string{m.ForwardedWSURL}
-	e.URLs[appInstance+"forwarded_http"] = []string{m.ForwardedHTTPURL}
+	e.URLs[appInstance+"_cluster_ws"] = []string{m.ClusterWSURL}
+	e.URLs[appInstance+"_cluster_http"] = []string{m.ClusterHTTPURL}
+	e.URLs[appInstance+"_forwarded_ws"] = []string{m.ForwardedWSURL}
+	e.URLs[appInstance+"_forwarded_http"] = []string{m.ForwardedHTTPURL}
 
 	for k, v := range e.URLs {
 		if strings.Contains(k, appInstance) {
