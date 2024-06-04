@@ -211,7 +211,7 @@ func MustReplaceSimulatedNetworkUrlWithK8(l zerolog.Logger, network blockchain.E
 		return network
 	}
 
-	networkKeys := []string{"Simulated Geth", "Simulated-Geth", "simulated-geth_http"}
+	networkKeys := []string{"Simulated Geth", "Simulated-Geth"}
 	var keyToUse string
 
 	for _, key := range networkKeys {
