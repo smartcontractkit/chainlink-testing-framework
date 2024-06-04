@@ -28,6 +28,7 @@ type EVMClient interface {
 	GetClients() []EVMClient
 	GetDefaultWallet() *EthereumWallet
 	GetWallets() []*EthereumWallet
+	GetWalletByAddress(address common.Address) *EthereumWallet
 	NewWallet(funding *big.Float) (int, error)
 	GetNetworkConfig() *EVMNetwork
 	GetNonceSetting() NonceSettings
@@ -37,6 +38,7 @@ type EVMClient interface {
 	// Setters
 	SetID(id int)
 	SetDefaultWallet(num int) error
+	SetDefaultWalletByAddress(address common.Address) error
 	SetWallets([]*EthereumWallet)
 	LoadWallets(ns EVMNetwork) error
 	SwitchNode(node int) error
