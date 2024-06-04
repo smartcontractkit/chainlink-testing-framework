@@ -170,6 +170,45 @@ func (e *EthereumClient) GetWallets() []*EthereumWallet {
 	return e.Wallets
 }
 
+// GetWalletByAddress returns the Ethereum wallet by address if it exists, else returns nil
+func (e *EthereumClient) GetWalletByAddress(address common.Address) *EthereumWallet {
+	for _, w := range e.Wallets {
+		if w.address == address {
+			return w
+		}
+	}
+	return nil
+}
+
+// NewWallet generates a new ethereum wallet and adds it to the Wallets list, funding it if funding is specified
+// and returning its index in the wallet list
+func (e *EthereumClient) NewWallet(funding *big.Float) (int, error) {
+	privateKey, err := crypto.GenerateKey()
+	if err != nil {
+		return -1, err
+	}
+	privateKeyBytes := crypto.FromECDSA(privateKey)
+	privateKeyHex := hex.EncodeToString(privateKeyBytes)
+	newWallet, err := NewEthereumWallet(privateKeyHex)
+	if err != nil {
+		return -1, err
+	}
+	if funding != nil {
+		gasEstimations, err := e.EstimateGas(ethereum.CallMsg{
+			To: &newWallet.address,
+		})
+		if err != nil {
+			return -1, err
+		}
+		if err = e.Fund(newWallet.Address(), funding, gasEstimations); err != nil {
+			return -1, err
+		}
+	}
+	e.Wallets = append(e.Wallets, newWallet)
+	e.l.Info().Str("Address", newWallet.Address()).Str("Funding", funding.String()).Int("Index", len(e.Wallets)-1).Msg("Created new wallet")
+	return len(e.Wallets) - 1, nil
+}
+
 // DefaultWallet returns the default wallet for the network
 func (e *EthereumClient) GetNetworkConfig() *EVMNetwork {
 	return &e.NetworkConfig
@@ -186,6 +225,18 @@ func (e *EthereumClient) SetDefaultWallet(num int) error {
 		return fmt.Errorf("no wallet #%d found for default client", num)
 	}
 	e.DefaultWallet = e.Wallets[num]
+	e.l.Debug().Str("Address", e.DefaultWallet.Address()).Int("Index", num).Msg("Set default wallet")
+	return nil
+}
+
+// SetDefaultWalletByAddress sets default wallet by address if it exists, else returns error
+func (e *EthereumClient) SetDefaultWalletByAddress(address common.Address) error {
+	w := e.GetWalletByAddress(address)
+	if w == nil {
+		return fmt.Errorf("no wallet found for address %s", address.Hex())
+	}
+	e.DefaultWallet = w
+	e.l.Debug().Int("Client", e.ID).Str("Address", e.DefaultWallet.Address()).Msg("Set default wallet")
 	return nil
 }
 
@@ -728,20 +779,28 @@ func (e *EthereumClient) IsTxConfirmed(txHash common.Hash) (bool, error) {
 			CumulativeGasUsed: receipt.CumulativeGasUsed,
 		})
 		if receipt.Status == 0 { // 0 indicates failure, 1 indicates success
+			to := "(none)"
+			if tx.To() != nil {
+				to = tx.To().Hex()
+			}
+			from := "(unknown)"
+			fromAddr, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx)
+			if err == nil {
+				from = fromAddr.Hex()
+			}
 			reason, err := e.errorReason(e.Client, tx, receipt)
 			if err != nil {
-				to := "(none)"
-				if tx.To() != nil {
-					to = tx.To().Hex()
-				}
 				e.l.Warn().Str("TX Hash", txHash.Hex()).
 					Str("To", to).
+					Str("From", from).
 					Uint64("Nonce", tx.Nonce()).
 					Str("Error extracting reason", err.Error()).
 					Msg("Transaction failed and was reverted! Unable to retrieve reason!")
 			} else {
 				e.l.Warn().Str("TX Hash", txHash.Hex()).
 					Str("Revert reason", reason).
+					Str("To", to).
+					Str("From", from).
 					Msg("Transaction failed and was reverted!")
 			}
 			return false, fmt.Errorf("transaction failed and was reverted")
@@ -1395,8 +1454,22 @@ func ConcurrentEVMClient(networkSettings EVMNetwork, env *environment.Environmen
 	}
 	ecl.DefaultClient = ecl.Clients[0]
 	wrappedClient := wrapMultiClient(networkSettings, ecl)
+	ecl.SetWallets(existing.GetWallets())
+	if err := ecl.SetDefaultWalletByAddress(existing.GetDefaultWallet().address); err != nil {
+		return nil, err
+	}
 	// no need to fund the account as it is already funded in the existing client
 	return wrappedClient, nil
+}
+
+// SetDefaultWalletByAddress sets default wallet by address if it exists, else returns error
+func (e *EthereumMultinodeClient) SetDefaultWalletByAddress(address common.Address) error {
+	return e.DefaultClient.SetDefaultWalletByAddress(address)
+}
+
+// GetWalletByAddress returns the Ethereum wallet by address if it exists, else returns nil
+func (e *EthereumMultinodeClient) GetWalletByAddress(address common.Address) *EthereumWallet {
+	return e.DefaultClient.GetWalletByAddress(address)
 }
 
 // Get gets default client as an interface{}
@@ -1441,6 +1514,10 @@ func (e *EthereumMultinodeClient) GetDefaultWallet() *EthereumWallet {
 // GetWallets returns the default wallet for the network
 func (e *EthereumMultinodeClient) GetWallets() []*EthereumWallet {
 	return e.DefaultClient.GetWallets()
+}
+
+func (e *EthereumMultinodeClient) NewWallet(funding *big.Float) (int, error) {
+	return e.DefaultClient.NewWallet(funding)
 }
 
 // GetNetworkConfig return the network config
