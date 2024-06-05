@@ -149,7 +149,7 @@ func MergeSethAndEvmNetworkConfigs(evmNetwork blockchain.EVMNetwork, sethConfig 
 
 	for _, conf := range sethConfig.Networks {
 		if evmNetwork.Simulated {
-			if conf.Name == pkg_seth.GETH {
+			if conf.Name == pkg_seth.GETH || conf.Name == pkg_seth.ANVIL {
 				conf.PrivateKeys = evmNetwork.PrivateKeys
 				if len(conf.URLs) == 0 {
 					conf.URLs = evmNetwork.URLs
