@@ -18,6 +18,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/logstream"
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
@@ -53,6 +54,12 @@ func WithPostgresImageName(imageName string) PostgresDbOption {
 		if imageName != "" {
 			c.ContainerImage = imageName
 		}
+	}
+}
+
+func WithPostgresDbLogStream(ls *logstream.LogStream) PostgresDbOption {
+	return func(c *PostgresDb) {
+		c.LogStream = ls
 	}
 }
 
