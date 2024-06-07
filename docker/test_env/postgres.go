@@ -2,7 +2,6 @@ package test_env
 
 import (
 	"fmt"
-	"github.com/smartcontractkit/chainlink-testing-framework/logstream"
 	"io"
 	"net/url"
 	"os/exec"
@@ -19,6 +18,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/logstream"
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
