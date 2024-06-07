@@ -67,6 +67,9 @@ func BytesToAnyTomlStruct(logger zerolog.Logger, filename, configurationName str
 }
 
 func replaceMapsAndSlices(target, newStruct reflect.Value) {
+	target = reflect.Indirect(target)
+	newStruct = reflect.Indirect(newStruct)
+
 	for i := 0; i < target.NumField(); i++ {
 		targetField := target.Field(i)
 		newStructField := newStruct.Field(i)
