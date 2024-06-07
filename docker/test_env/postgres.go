@@ -2,6 +2,7 @@ package test_env
 
 import (
 	"fmt"
+	"github.com/smartcontractkit/chainlink-testing-framework/logstream"
 	"io"
 	"net/url"
 	"os/exec"
@@ -53,6 +54,12 @@ func WithPostgresImageName(imageName string) PostgresDbOption {
 		if imageName != "" {
 			c.ContainerImage = imageName
 		}
+	}
+}
+
+func WithPostgresDbLogStream(ls *logstream.LogStream) PostgresDbOption {
+	return func(c *PostgresDb) {
+		c.LogStream = ls
 	}
 }
 
