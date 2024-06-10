@@ -41,6 +41,8 @@ type NetworkConfig struct {
 	// AnvilConfigs is the configuration for forking from a node,
 	// key is the network name as declared in selected_networks slice
 	AnvilConfigs map[string]*AnvilConfig `toml:"AnvilConfigs,omitempty"`
+	// GethReorgConfig is the configuration for handling reorgs on Simulated Geth
+	GethReorgConfig ReorgConfig `toml:"GethReorgConfig,omitempty"`
 	// RpcHttpUrls is the RPC HTTP endpoints for each network,
 	// key is the network name as declared in selected_networks slice
 	RpcHttpUrls map[string][]string `toml:"RpcHttpUrls,omitempty"`
@@ -50,6 +52,21 @@ type NetworkConfig struct {
 	// WalletKeys is the private keys for the funding wallets for each network,
 	// key is the network name as declared in selected_networks slice
 	WalletKeys map[string][]string `toml:"WalletKeys,omitempty"`
+}
+
+type ReorgConfig struct {
+	Enabled     bool                   `toml:"enabled,omitempty"`
+	Depth       int                    `toml:"depth,omitempty"`
+	DelayCreate blockchain.StrDuration `toml:"delay_create,omitempty"` // Delay before creating, expressed in Go duration format (e.g., "1m", "30s")
+}
+
+func (n NetworkConfig) IsSimulatedGethSelected() bool {
+	for _, network := range n.SelectedNetworks {
+		if strings.ToLower(network) == "simulated" {
+			return true
+		}
+	}
+	return false
 }
 
 func (n *NetworkConfig) applySecrets() error {
