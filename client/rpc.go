@@ -171,10 +171,11 @@ type CurrentBlockResponse struct {
 	Result string `json:"result"`
 }
 
-func (m *RPCClient) GethSetHead(blocksBack int) error {
+// Call "eth_blockNumber" to get the current block number
+func (m *RPCClient) BlockNumber() (int64, error) {
 	rInt, err := rand.Int()
 	if err != nil {
-		return err
+		return -1, err
 	}
 	payload := map[string]interface{}{
 		"jsonrpc": "2.0",
@@ -182,27 +183,34 @@ func (m *RPCClient) GethSetHead(blocksBack int) error {
 		"params":  []interface{}{},
 		"id":      rInt,
 	}
-	bn, err := m.client.R().SetBody(payload).Post(m.URL)
+	resp, err := m.client.R().SetBody(payload).Post(m.URL)
 	if err != nil {
-		return errors.Wrap(err, "eth_blockNumber")
+		return -1, errors.Wrap(err, "eth_blockNumber")
 	}
+	var blockNumberResp *CurrentBlockResponse
+	if err := json.Unmarshal(resp.Body(), &blockNumberResp); err != nil {
+		return -1, err
+	}
+	bn, err := strconv.ParseInt(blockNumberResp.Result[2:], 16, 64)
+	if err != nil {
+		return -1, err
+	}
+	return bn, nil
+}
 
-	var res *CurrentBlockResponse
-	if err := json.Unmarshal(bn.Body(), &res); err != nil {
-		return err
-	}
-	decimalLastBlock, err := strconv.ParseInt(res.Result[2:], 16, 64)
+func (m *RPCClient) GethSetHead(blocksBack int) error {
+	decimalLastBlock, err := m.BlockNumber()
 	if err != nil {
 		return err
 	}
 	moveToBlock := decimalLastBlock - int64(blocksBack)
 	moveToBlockHex := strconv.FormatInt(moveToBlock, 16)
 
-	rInt, err = rand.Int()
+	rInt, err := rand.Int()
 	if err != nil {
 		return err
 	}
-	payload = map[string]interface{}{
+	payload := map[string]interface{}{
 		"jsonrpc": "2.0",
 		"method":  "debug_setHead",
 		"params":  []interface{}{fmt.Sprintf("0x%s", moveToBlockHex)},
