@@ -150,6 +150,9 @@ func MergeSethAndEvmNetworkConfigs(evmNetwork blockchain.EVMNetwork, sethConfig 
 	for _, conf := range sethConfig.Networks {
 		if evmNetwork.Simulated {
 			if conf.Name == pkg_seth.GETH || conf.Name == pkg_seth.ANVIL {
+				fmt.Printf("Using simulated evm network %s\n", evmNetwork.Name)
+				fmt.Printf("Using simulated seth network %s\n", conf.Name)
+				fmt.Printf("Number of private keys in evm netowrk: %d\n", len(evmNetwork.PrivateKeys))
 				conf.PrivateKeys = evmNetwork.PrivateKeys
 				if len(conf.URLs) == 0 {
 					conf.URLs = evmNetwork.URLs
@@ -166,6 +169,9 @@ func MergeSethAndEvmNetworkConfigs(evmNetwork blockchain.EVMNetwork, sethConfig 
 				break
 			}
 		} else if strings.EqualFold(conf.Name, fmt.Sprint(evmNetwork.Name)) {
+			fmt.Printf("Using evm network %s\n", evmNetwork.Name)
+			fmt.Printf("Using seth network %s\n", conf.Name)
+			fmt.Printf("Number of private keys in evm netowrk: %d\n", len(evmNetwork.PrivateKeys))
 			conf.PrivateKeys = evmNetwork.PrivateKeys
 			if len(conf.URLs) == 0 {
 				conf.URLs = evmNetwork.URLs
@@ -180,6 +186,9 @@ func MergeSethAndEvmNetworkConfigs(evmNetwork blockchain.EVMNetwork, sethConfig 
 	if sethNetwork == nil {
 		for _, conf := range sethConfig.Networks {
 			if conf.Name == fmt.Sprint(pkg_seth.DefaultNetworkName) {
+				fmt.Printf("Using default seth network %s\n", conf.Name)
+				fmt.Printf("Using evm network %s\n", evmNetwork.Name)
+				fmt.Printf("Number of private keys in evm netowrk: %d\n", len(evmNetwork.PrivateKeys))
 				conf.Name = evmNetwork.Name
 				conf.PrivateKeys = evmNetwork.PrivateKeys
 				conf.URLs = evmNetwork.URLs
