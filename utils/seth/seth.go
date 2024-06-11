@@ -2,6 +2,7 @@ package seth
 
 import (
 	"fmt"
+	jsoniter "github.com/json-iterator/go"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -147,7 +148,14 @@ func MergeSethAndEvmNetworkConfigs(evmNetwork blockchain.EVMNetwork, sethConfig 
 
 	var sethNetwork *pkg_seth.Network
 
+	fmt.Printf("Is EVMNetwork Simulated? %t\n", evmNetwork.Simulated)
+	json, err := jsoniter.MarshalIndent(evmNetwork, "", "  ")
+	if err == nil {
+		fmt.Printf("EVMNetwork: %s\n", string(json))
+	}
+
 	for _, conf := range sethConfig.Networks {
+		fmt.Printf("Seth network: %s\n", conf.Name)
 		if evmNetwork.Simulated {
 			if conf.Name == pkg_seth.GETH || conf.Name == pkg_seth.ANVIL {
 				fmt.Printf("Using simulated evm network %s\n", evmNetwork.Name)
