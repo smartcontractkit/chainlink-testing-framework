@@ -13,7 +13,7 @@ jobs:
             tools/gotestloghelper,
             tools/testlistgenerator,
             tools/ecrimagefetcher,
-            tools/ghlatestreleasechecker
+            tools/ghlatestreleasechecker,
           ]
     name: Release ${{ matrix.tool }}
     runs-on: ubuntu-latest
