@@ -29,6 +29,7 @@ spec:
         {{- end }}
     spec:
       restartPolicy: Always
+      enableServiceLinks: false
       volumes:
       - name: configmap-volume
         configMap:
