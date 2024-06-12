@@ -142,9 +142,10 @@ func TestExecute(t *testing.T) {
 func TestExecuteFailFast(t *testing.T) {
 
 	type tc struct {
-		name     string
-		executor *concurrency.ConcurrentExecutor[int, result, config]
-		failFast bool
+		name        string
+		executor    *concurrency.ConcurrentExecutor[int, result, config]
+		processorFn func(resultCh chan result, errCh chan error, keyNum int, payload config)
+		failFast    bool
 	}
 
 	tcs := []tc{
@@ -152,11 +153,18 @@ func TestExecuteFailFast(t *testing.T) {
 			name:     "fail fast enabled",
 			executor: concurrency.NewConcurrentExecutor[int, result, config](logging.GetTestLogger(t)),
 			failFast: true,
+			processorFn: func(resultCh chan result, errCh chan error, keyNum int, payload config) {
+				time.Sleep(10 * time.Millisecond)
+				errCh <- errors.New("always fail, fail fast enabled")
+			},
 		},
 		{
 			name:     "fail fast disabled",
 			executor: concurrency.NewConcurrentExecutor(logging.GetTestLogger(t), concurrency.WithoutFailFast[int, result, config]()),
 			failFast: false,
+			processorFn: func(resultCh chan result, errCh chan error, keyNum int, payload config) {
+				errCh <- errors.New("always fail, fail fast disabled")
+			},
 		},
 	}
 
@@ -165,10 +173,6 @@ func TestExecuteFailFast(t *testing.T) {
 			tc := tc
 			t.Parallel()
 
-			processorFn := func(resultCh chan result, errCh chan error, keyNum int, payload config) {
-				errCh <- errors.New("always fail")
-			}
-
 			expectedExecutions := 1000
 
 			configs := []config{}
@@ -176,10 +180,11 @@ func TestExecuteFailFast(t *testing.T) {
 				configs = append(configs, struct{}{})
 			}
 
-			results, err := tc.executor.Execute(expectedExecutions, configs, processorFn)
+			results, err := tc.executor.Execute(100, configs, tc.processorFn)
 			require.Error(t, err, "No error returned when executing concurrently")
 			require.Len(t, results, 0, "Expected no results")
 			if tc.failFast {
+				fmt.Println(len(tc.executor.GetErrors()))
 				require.Less(t, len(tc.executor.GetErrors()), expectedExecutions, "With fail fast enabled not all tasks should be executed")
 			} else {
 				require.Equal(t, len(tc.executor.GetErrors()), expectedExecutions, "With fail fast disabled all tasks should be executed")
