@@ -8,7 +8,7 @@ jobs:
   tools:
     strategy:
       matrix:
-        tool: [tools/gotestloghelper]
+        tool: [tools/gotestloghelper,tools/testlistgenerator,tools/ecrimagefetcher,tools/ghlatestreleasechecker]
     name: Release ${{ matrix.tool }}
     runs-on: ubuntu-latest
     steps:
