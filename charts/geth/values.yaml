@@ -13,11 +13,11 @@ geth:
 
 resources:
   requests:
-    cpu: 200m
-    memory: 528Mi
+    cpu: 1000m
+    memory: 768Mi
   limits:
-    cpu: 200m
-    memory: 528Mi
+    cpu: 1000m
+    memory: 768Mi
 
 podAnnotations: {}
 
