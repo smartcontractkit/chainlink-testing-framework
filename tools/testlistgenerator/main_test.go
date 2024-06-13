@@ -31,6 +31,24 @@ func TestMainFunction(t *testing.T) {
 		require.PanicsWithError(t, fmt.Sprintf("docker image format is invalid: %s", "hyperledger/besu"), func() { main() })
 	})
 
+	t.Run("InvalidDockerImageFormatCCIP", func(t *testing.T) {
+		resetEnv()
+		os.Args = []string{"main", OutputFile, "ocr", "TestOCR.*", "./smoke/ocr_test.go", "besu", "hyperledger/besu", CCIPFlag}
+		require.PanicsWithError(t, fmt.Sprintf("for CCIP docker image format, must be following '<chainID>|...<chainID>|<image>:<tag>', but following was used: %s", "hyperledger/besu"), func() { main() })
+	})
+
+	t.Run("NoChainIDCCIP", func(t *testing.T) {
+		resetEnv()
+		os.Args = []string{"main", OutputFile, "ocr", "TestOCR.*", "./smoke/ocr_test.go", "besu", "|hyperledger/besu", CCIPFlag}
+		require.PanicsWithError(t, "for CCIP, chainID and image must be provided", func() { main() })
+	})
+
+	t.Run("ChainIdNotIntCCIP", func(t *testing.T) {
+		resetEnv()
+		os.Args = []string{"main", OutputFile, "ocr", "TestOCR.*", "./smoke/ocr_test.go", "besu", "asda|hyperledger/besu", CCIPFlag}
+		require.PanicsWithError(t, "for CCIP, chainID must be an integer", func() { main() })
+	})
+
 	t.Run("FileCreationAndWrite", func(t *testing.T) {
 		resetEnv()
 		os.Args = []string{"main", OutputFile, "ocr", "TestOCR.*", "./smoke/ocr_test.go", "besu", "hyperledger/besu:21.0.0,hyperledger/besu:22.0.0"}
@@ -49,6 +67,46 @@ func TestMainFunction(t *testing.T) {
 		require.Equal(t, "./smoke/ocr_test.go", output.Entries[0].File)
 		require.Equal(t, "besu", output.Entries[0].EthImplementationName)
 		require.Equal(t, "hyperledger/besu:21.0.0", output.Entries[0].DockerImage)
+	})
+
+	t.Run("FileCreationAndWriteCCIPOneChain", func(t *testing.T) {
+		resetEnv()
+		os.Args = []string{"main", OutputFile, "ocr", "TestOCR.*", "./smoke/ocr_test.go", "besu", "1337|hyperledger/besu:21.0.0", CCIPFlag}
+		require.NotPanics(t, func() { main() })
+
+		require.FileExists(t, OutputFile)
+		bytes, err := os.ReadFile(OutputFile)
+		require.NoError(t, err)
+
+		var output Output
+		err = json.Unmarshal(bytes, &output)
+		require.NoError(t, err)
+		require.Len(t, output.Entries, 1)
+		require.Equal(t, "ocr", output.Entries[0].Product)
+		require.Equal(t, "TestOCR.*", output.Entries[0].TestRegex)
+		require.Equal(t, "./smoke/ocr_test.go", output.Entries[0].File)
+		require.Equal(t, "besu", output.Entries[0].EthImplementationName)
+		require.Equal(t, "1337=hyperledger/besu:21.0.0", output.Entries[0].DockerImage)
+	})
+
+	t.Run("FileCreationAndWriteCCIPTwoChains", func(t *testing.T) {
+		resetEnv()
+		os.Args = []string{"main", OutputFile, "ocr", "TestOCR.*", "./smoke/ocr_test.go", "besu", "1337|2337|hyperledger/besu:21.0.0", CCIPFlag}
+		require.NotPanics(t, func() { main() })
+
+		require.FileExists(t, OutputFile)
+		bytes, err := os.ReadFile(OutputFile)
+		require.NoError(t, err)
+
+		var output Output
+		err = json.Unmarshal(bytes, &output)
+		require.NoError(t, err)
+		require.Len(t, output.Entries, 1)
+		require.Equal(t, "ocr", output.Entries[0].Product)
+		require.Equal(t, "TestOCR.*", output.Entries[0].TestRegex)
+		require.Equal(t, "./smoke/ocr_test.go", output.Entries[0].File)
+		require.Equal(t, "besu", output.Entries[0].EthImplementationName)
+		require.Equal(t, "1337=hyperledger/besu:21.0.0,2337=hyperledger/besu:21.0.0", output.Entries[0].DockerImage)
 	})
 
 	t.Run("AppendToFile", func(t *testing.T) {

@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -30,8 +31,10 @@ type Output struct {
 	Entries []OutputEntry `json:"tests"`
 }
 
+const CCIPFlag = "--ccip"
+
 const (
-	InsufficientArgsErr = `Usage: go run main.go <output_file_name> <product> <test_regex> <file> '<eth_implementation> <docker_images>'
+	InsufficientArgsErr = `Usage: go run main.go <output_file_name> <product> <test_regex> <file> <eth_implementation> <docker_images> [--ccip]
 Example: go run main.go 'ocr' 'TestOCR.*' './smoke/ocr_test.go' 'besu' 'hyperledger/besu:21.0.0,hyperledger/besu:22.0.0'`
 	EmptyParameterErr = "parameter '%s' cannot be empty"
 )
@@ -49,6 +52,11 @@ func main() {
 	dockerImagesArg := os.Args[6]
 	dockerImages := strings.Split(dockerImagesArg, ",")
 
+	isCCIP := false
+	if len(os.Args) == 8 && os.Args[7] == CCIPFlag {
+		isCCIP = true
+	}
+
 	input := Input{
 		Product:           os.Args[2],
 		TestRegex:         os.Args[3],
@@ -57,7 +65,7 @@ func main() {
 		DockerImages:      dockerImages,
 	}
 
-	validateInput(input)
+	validateInput(input, isCCIP)
 
 	var output Output
 	var file *os.File
@@ -95,7 +103,7 @@ func main() {
 			TestRegex:             input.TestRegex,
 			File:                  input.File,
 			EthImplementationName: input.EthImplementation,
-			DockerImage:           image,
+			DockerImage:           prepareDockerImage(image, isCCIP),
 		})
 	}
 
@@ -111,7 +119,27 @@ func main() {
 	fmt.Printf("%d compatibility test(s) for %s and %s added successfully!\n", len(dockerImages), input.Product, input.EthImplementation)
 }
 
-func validateInput(input Input) {
+func prepareDockerImage(image string, isCCIP bool) string {
+	if !isCCIP {
+		return image
+	}
+
+	finalImage := ""
+	split := strings.Split(image, "|")
+	cleanImage := split[len(split)-1]
+	for _, str := range split {
+		_, err := strconv.Atoi(str)
+		if err == nil {
+			finalImage += fmt.Sprintf("%s=%s,", str, cleanImage)
+		}
+	}
+
+	finalImage = strings.TrimSuffix(finalImage, ",")
+
+	return finalImage
+}
+
+func validateInput(input Input, isCCIP bool) {
 	if input.Product == "" {
 		panic(fmt.Errorf(EmptyParameterErr, "product"))
 	}
@@ -131,5 +159,27 @@ func validateInput(input Input) {
 	}
 	if len(input.DockerImages) == 0 || (len(input.DockerImages) == 1 && input.DockerImages[0] == "") {
 		panic(fmt.Errorf(EmptyParameterErr, "docker_images"))
+	}
+	if isCCIP {
+		for _, image := range input.DockerImages {
+			split := strings.Split(image, "|")
+			if len(split) < 2 {
+				panic(fmt.Errorf("for CCIP docker image format, must be following '<chainID>|...<chainID>|<image>:<tag>', but following was used: %s", image))
+			}
+			for _, str := range split {
+				if str == "" {
+					panic(fmt.Errorf("for CCIP, chainID and image must be provided"))
+				}
+			}
+			for _, str := range split[:len(split)-1] {
+				if str == "|" {
+					continue
+				}
+				_, err := strconv.Atoi(str)
+				if err != nil {
+					panic(fmt.Errorf("for CCIP, chainID must be an integer"))
+				}
+			}
+		}
 	}
 }
