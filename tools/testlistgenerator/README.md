@@ -1,5 +1,3 @@
-Sure! Here's the updated `README.md` to reflect the changes made:
-
 # Test List Generator
 
 This Go script builds a JSON file containing tests to be run for a given product and Ethereum implementation. It reads command line arguments to construct and append entries to a JSON file.
