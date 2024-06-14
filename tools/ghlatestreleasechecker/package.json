@@ -1,0 +1,5 @@
+{
+  "name": "ghlatestreleasechecker",
+  "description": "Tool that checks whether a new stable release of a project is available on GitHub",
+  "version": "1.0.0"
+}

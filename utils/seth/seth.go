@@ -147,24 +147,29 @@ func MergeSethAndEvmNetworkConfigs(evmNetwork blockchain.EVMNetwork, sethConfig 
 
 	var sethNetwork *pkg_seth.Network
 
+	mergeSimulatedNetworks := func(evmNetwork blockchain.EVMNetwork, sethNetwork pkg_seth.Network) *pkg_seth.Network {
+		sethNetwork.PrivateKeys = evmNetwork.PrivateKeys
+		if len(sethNetwork.URLs) == 0 {
+			sethNetwork.URLs = evmNetwork.URLs
+		}
+		// important since Besu doesn't support EIP-1559, but other EVM clients do
+		sethNetwork.EIP1559DynamicFees = evmNetwork.SupportsEIP1559
+		// might be needed for cases, when node is incapable of estimating gas limit (e.g. Geth < v1.10.0)
+		if evmNetwork.DefaultGasLimit != 0 {
+			sethNetwork.GasLimit = evmNetwork.DefaultGasLimit
+		}
+		return &sethNetwork
+	}
+
 	for _, conf := range sethConfig.Networks {
-		if evmNetwork.Simulated {
-			if conf.Name == pkg_seth.GETH {
-				conf.PrivateKeys = evmNetwork.PrivateKeys
-				if len(conf.URLs) == 0 {
-					conf.URLs = evmNetwork.URLs
-				}
-				// important since Besu doesn't support EIP-1559, but other EVM clients do
-				conf.EIP1559DynamicFees = evmNetwork.SupportsEIP1559
-
-				// might be needed for cases, when node is incapable of estimating gas limit (e.g. Geth < v1.10.0)
-				if evmNetwork.DefaultGasLimit != 0 {
-					conf.GasLimit = evmNetwork.DefaultGasLimit
-				}
-
-				sethNetwork = conf
-				break
-			}
+		if evmNetwork.Simulated && evmNetwork.Name == pkg_seth.ANVIL && conf.Name == pkg_seth.ANVIL {
+			// Merge Anvil network
+			sethNetwork = mergeSimulatedNetworks(evmNetwork, *conf)
+			break
+		} else if evmNetwork.Simulated && conf.Name == pkg_seth.GETH {
+			// Merge all other simulated Geth networks
+			sethNetwork = mergeSimulatedNetworks(evmNetwork, *conf)
+			break
 		} else if strings.EqualFold(conf.Name, fmt.Sprint(evmNetwork.Name)) {
 			conf.PrivateKeys = evmNetwork.PrivateKeys
 			if len(conf.URLs) == 0 {

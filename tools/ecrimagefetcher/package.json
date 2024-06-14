@@ -1,0 +1,5 @@
+{
+  "name": "ecrimagefetcher",
+  "description": "Tool that fetches latest ECR images for a given repository",
+  "version": "1.0.1"
+}

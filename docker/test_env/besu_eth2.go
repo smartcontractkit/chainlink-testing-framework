@@ -48,6 +48,40 @@ func NewBesuEth2(networks []string, chainConfig *config.EthereumChainConfig, gen
 }
 
 func (g *Besu) getEth2ContainerRequest() (*tc.ContainerRequest, error) {
+	cmd := []string{
+		"--data-path=/opt/besu/execution-data",
+		fmt.Sprintf("--genesis-file=%s/besu.json", GENERATED_DATA_DIR_INSIDE_CONTAINER),
+		fmt.Sprintf("--network-id=%d", g.chainConfig.ChainID),
+		"--host-allowlist=*",
+		"--rpc-http-enabled=true",
+		"--rpc-http-host=0.0.0.0",
+		fmt.Sprintf("--rpc-http-port=%s", DEFAULT_EVM_NODE_HTTP_PORT),
+		"--rpc-http-api=ADMIN,CLIQUE,ETH,NET,DEBUG,TXPOOL,ENGINE,TRACE,WEB3",
+		"--rpc-http-cors-origins=*",
+		"--rpc-ws-enabled=true",
+		"--rpc-ws-host=0.0.0.0",
+		fmt.Sprintf("--rpc-ws-port=%s", DEFAULT_EVM_NODE_WS_PORT),
+		"--rpc-ws-api=ADMIN,CLIQUE,ETH,NET,DEBUG,TXPOOL,ENGINE,TRACE,WEB3",
+		"--engine-rpc-enabled=true",
+		fmt.Sprintf("--engine-jwt-secret=%s", JWT_SECRET_FILE_LOCATION_INSIDE_CONTAINER),
+		"--engine-host-allowlist=*",
+		fmt.Sprintf("--engine-rpc-port=%s", ETH2_EXECUTION_PORT),
+		"--sync-mode=FULL",
+		"--data-storage-format=BONSAI",
+		fmt.Sprintf("--logging=%s", strings.ToUpper(g.LogLevel)),
+		"--rpc-tx-feecap=0",
+	}
+
+	version, err := GetComparableVersionFromDockerImage(g.GetImageWithVersion())
+	if err != nil {
+		return nil, err
+	}
+
+	if version >= 246 {
+		// it crashes with sync-mode=FULL, and when we use a different sync mode then consensus client fails to propose correct blocks
+		cmd = append(cmd, "--bonsai-limit-trie-logs-enabled=false")
+	}
+
 	return &tc.ContainerRequest{
 		Name:     g.ContainerName,
 		Image:    g.GetImageWithVersion(),
@@ -60,29 +94,7 @@ func (g *Besu) getEth2ContainerRequest() (*tc.ContainerRequest, error) {
 				WithPollInterval(1 * time.Second),
 		),
 		User: "0:0", //otherwise in CI we get "permission denied" error, when trying to access data from mounted volume
-		Cmd: []string{
-			"--data-path=/opt/besu/execution-data",
-			fmt.Sprintf("--genesis-file=%s/besu.json", GENERATED_DATA_DIR_INSIDE_CONTAINER),
-			fmt.Sprintf("--network-id=%d", g.chainConfig.ChainID),
-			"--host-allowlist=*",
-			"--rpc-http-enabled=true",
-			"--rpc-http-host=0.0.0.0",
-			fmt.Sprintf("--rpc-http-port=%s", DEFAULT_EVM_NODE_HTTP_PORT),
-			"--rpc-http-api=ADMIN,CLIQUE,ETH,NET,DEBUG,TXPOOL,ENGINE,TRACE,WEB3",
-			"--rpc-http-cors-origins=*",
-			"--rpc-ws-enabled=true",
-			"--rpc-ws-host=0.0.0.0",
-			fmt.Sprintf("--rpc-ws-port=%s", DEFAULT_EVM_NODE_WS_PORT),
-			"--rpc-ws-api=ADMIN,CLIQUE,ETH,NET,DEBUG,TXPOOL,ENGINE,TRACE,WEB3",
-			"--engine-rpc-enabled=true",
-			fmt.Sprintf("--engine-jwt-secret=%s", JWT_SECRET_FILE_LOCATION_INSIDE_CONTAINER),
-			"--engine-host-allowlist=*",
-			fmt.Sprintf("--engine-rpc-port=%s", ETH2_EXECUTION_PORT),
-			"--sync-mode=FULL",
-			"--data-storage-format=BONSAI",
-			fmt.Sprintf("--logging=%s", strings.ToUpper(g.LogLevel)),
-			"--rpc-tx-feecap=0",
-		},
+		Cmd:  cmd,
 		Env: map[string]string{
 			"JAVA_OPTS": "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n",
 		},

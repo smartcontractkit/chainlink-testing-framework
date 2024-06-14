@@ -191,13 +191,9 @@ func New(cfg *Config) *Environment {
 		targetCfg.Namespace = fmt.Sprintf("%s-%s", targetCfg.NamespacePrefix, uuid.NewString()[0:5])
 		log.Info().Str("Namespace", targetCfg.Namespace).Msg("Creating new namespace")
 	}
-	jobImage := os.Getenv(config.EnvVarJobImage)
-	if jobImage != "" {
-		targetCfg.JobImage = jobImage
-		targetCfg.detachRunner, _ = strconv.ParseBool(os.Getenv(config.EnvVarDetachRunner))
-	} else {
-		targetCfg.InsideK8s, _ = strconv.ParseBool(os.Getenv(config.EnvVarInsideK8s))
-	}
+	targetCfg.JobImage = os.Getenv(config.EnvVarJobImage)
+	targetCfg.detachRunner, _ = strconv.ParseBool(os.Getenv(config.EnvVarDetachRunner))
+	targetCfg.InsideK8s, _ = strconv.ParseBool(os.Getenv(config.EnvVarInsideK8s))
 
 	c, err := client.NewK8sClient()
 	if err != nil {

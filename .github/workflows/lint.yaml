@@ -54,6 +54,12 @@ jobs:
             path: ./tools/gotestloghelper/
           - name: k8s-test-runner
             path: ./k8s-test-runner/
+          - name: testlistgenerator
+            path: ./tools/testlistgenerator/
+          - name: ecrimagefetcher
+            path: ./tools/ecrimagefetcher/
+          - name: ghlatestreleasechecker
+            path: ./tools/ghlatestreleasechecker/
     steps:
       - name: Check out Code
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4

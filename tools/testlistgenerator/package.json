@@ -1,0 +1,5 @@
+{
+  "name": "testlistgenerator",
+  "description": "Tool to generate a JSON list of tests",
+  "version": "1.1.0"
+}
