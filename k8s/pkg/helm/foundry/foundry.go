@@ -12,6 +12,10 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/environment"
 )
 
+const (
+	ChartName = "foundry" // Chart name as defined in Chart.yaml
+)
+
 type Props struct {
 	Values map[string]interface{}
 }
@@ -56,11 +60,11 @@ func (m Chart) GetValues() *map[string]interface{} {
 func (m *Chart) ExportData(e *environment.Environment) error {
 	appInstance := fmt.Sprintf("%s:0", m.Name) // uniquely identifies an instance of an anvil service running in a pod
 	var err error
-	m.ForwardedHTTPURL, err = e.Fwd.FindPort(appInstance, m.GetName(), "http").As(client.LocalConnection, client.HTTP)
+	m.ForwardedHTTPURL, err = e.Fwd.FindPort(appInstance, ChartName, "http").As(client.LocalConnection, client.HTTP)
 	if err != nil {
 		return err
 	}
-	m.ForwardedWSURL, err = e.Fwd.FindPort(appInstance, m.GetName(), "http").As(client.LocalConnection, client.WS)
+	m.ForwardedWSURL, err = e.Fwd.FindPort(appInstance, ChartName, "http").As(client.LocalConnection, client.WS)
 	if err != nil {
 		return err
 	}
