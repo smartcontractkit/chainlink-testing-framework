@@ -59,7 +59,7 @@ func (m Chart) GetValues() *map[string]interface{} {
 }
 
 func (m *Chart) ExportData(e *environment.Environment) error {
-	appInstance := fmt.Sprintf("%s-%s:0", m.Name, ChartName) // uniquely identifies an instance of an anvil service running in a pod
+	appInstance := fmt.Sprintf("%s:0", m.Name) // uniquely identifies an instance of an anvil service running in a pod
 	var err error
 	m.ForwardedHTTPURL, err = e.Fwd.FindPort(appInstance, ChartName, "http").As(client.LocalConnection, client.HTTP)
 	if err != nil {

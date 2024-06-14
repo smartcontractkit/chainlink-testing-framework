@@ -229,5 +229,9 @@ func EVMSoak(config *environment.Config) *environment.Environment {
 
 func FoundryNetwork(config *environment.Config) *environment.Environment {
 	return environment.New(config).
-		AddHelm(foundry.New(nil))
+		AddHelm(foundry.New(&foundry.Props{
+			Values: map[string]interface{}{
+				"fullnameOverride": "foundry",
+			},
+		}))
 }
