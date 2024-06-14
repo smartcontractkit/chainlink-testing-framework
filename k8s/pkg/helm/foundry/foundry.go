@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/client"
@@ -12,7 +13,7 @@ import (
 )
 
 const (
-	ChartName = "foundry"
+	ChartName = "foundry" // Chart name as defined in Chart.yaml
 )
 
 type Props struct {
@@ -20,7 +21,7 @@ type Props struct {
 }
 
 type Chart struct {
-	ServiceName      string
+	Name             string
 	AppLabel         string
 	Path             string
 	Version          string
@@ -37,7 +38,7 @@ func (m Chart) IsDeploymentNeeded() bool {
 }
 
 func (m Chart) GetName() string {
-	return ChartName
+	return m.Name
 }
 
 func (m Chart) GetPath() string {
@@ -57,7 +58,7 @@ func (m Chart) GetValues() *map[string]interface{} {
 }
 
 func (m *Chart) ExportData(e *environment.Environment) error {
-	appInstance := fmt.Sprintf("%s:0", m.ServiceName) // uniquely identifies an instance of an anvil service running in a pod
+	appInstance := fmt.Sprintf("%s:0", m.Name) // uniquely identifies an instance of an anvil service running in a pod
 	var err error
 	m.ForwardedHTTPURL, err = e.Fwd.FindPort(appInstance, ChartName, "http").As(client.LocalConnection, client.HTTP)
 	if err != nil {
@@ -108,21 +109,20 @@ func NewVersioned(helmVersion string, props *Props) *Chart {
 	dp := defaultProps()
 	config.MustMerge(dp, props)
 	config.MustMerge(&dp.Values, props.Values)
-	var serviceName, appLabel string
-	// If fullnameOverride is set it is used as the service name and app label
+	var name string
 	if props.Values["fullnameOverride"] != nil {
-		serviceName = dp.Values["fullnameOverride"].(string)
-		appLabel = fmt.Sprintf("app=%s", dp.Values["fullnameOverride"].(string))
+		// If fullnameOverride is set it is used as the service name and app label
+		name = dp.Values["fullnameOverride"].(string)
 	} else {
-		serviceName = ChartName
-		appLabel = fmt.Sprintf("app=%s", ChartName)
+		// Use default name with random suffix to allow multiple charts in the same namespace
+		name = fmt.Sprintf("anvil-%s", uuid.New().String()[0:5])
 	}
 	anvilValues := dp.Values["anvil"].(map[string]any)
 	return &Chart{
-		ServiceName:    serviceName,
-		ClusterWSURL:   fmt.Sprintf("ws://%s:%s", serviceName, anvilValues["port"].(string)),
-		ClusterHTTPURL: fmt.Sprintf("http://%s:%s", serviceName, anvilValues["port"].(string)),
-		AppLabel:       appLabel,
+		Name:           name,
+		AppLabel:       fmt.Sprintf("app=%s", name),
+		ClusterWSURL:   fmt.Sprintf("ws://%s:%s", name, anvilValues["port"].(string)),
+		ClusterHTTPURL: fmt.Sprintf("http://%s:%s", name, anvilValues["port"].(string)),
 		Path:           "chainlink-qa/foundry",
 		Values:         &dp.Values,
 		Props:          dp,
