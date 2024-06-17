@@ -18,18 +18,19 @@ const (
 )
 
 type AnvilConfig struct {
-	URL               *string `toml:"url,omitempty"`                 // Needed if you want to fork a network. URL is the URL of the node to fork from. Refer to https://book.getfoundry.sh/reference/anvil/#options
-	BlockNumber       *int64  `toml:"block_number,omitempty"`        // Needed if fork URL is provided for forking. BlockNumber is the block number to fork from. Refer to https://book.getfoundry.sh/reference/anvil/#options
-	BlockTime         *int64  `toml:"block_time,omitempty"`          // how frequent blocks are mined. By default, it automatically generates a new block as soon as a transaction is submitted. Refer to https://book.getfoundry.sh/reference/anvil/#options
-	BlockGaslimit     *int64  `toml:"block_gaslimit,omitempty"`      //  BlockGaslimit is the gas limit for each block. Refer to https://book.getfoundry.sh/reference/anvil/#options
-	CodeSize          *int64  `toml:"code_size,omitempty"`           //  CodeSize is the size of the code in bytes. Refer to https://book.getfoundry.sh/reference/anvil/#options
-	BaseFee           *int64  `toml:"base_fee,omitempty"`            //  BaseFee is the base fee for block. Refer to https://book.getfoundry.sh/reference/anvil/#options
-	Retries           *int    `toml:"retries,omitempty"`             //  Needed if fork URL is provided for forking. Number of retry requests for spurious networks (timed out requests). Refer to https://book.getfoundry.sh/reference/anvil/#options
-	Timeout           *int64  `toml:"timeout,omitempty"`             //  Needed if fork URL is provided for forking. Timeout in ms for requests sent to remote JSON-RPC server in forking mode. Refer to https://book.getfoundry.sh/reference/anvil/#options
-	ComputePerSecond  *int64  `toml:"compute_per_second,omitempty"`  // Needed if fork URL is provided for forking. Sets the number of assumed available compute units per second for this provider. Refer to https://book.getfoundry.sh/reference/anvil/#options
-	RateLimitDisabled *bool   `toml:"rate_limit_disabled,omitempty"` // Needed if fork URL is provided for forking. Rate limiting for this node’s provider. If set to true the node will start with --no-rate-limit Refer to https://book.getfoundry.sh/reference/anvil/#options
-	NoOfAccounts      *int    `toml:"no_of_accounts,omitempty"`      // Number of accounts to generate. Refer to https://book.getfoundry.sh/reference/anvil/#options
-	EnableTracing     *bool   `toml:"enable_tracing,omitempty"`      // Enable tracing for the node. Refer to https://book.getfoundry.sh/reference/anvil/#options
+	URL               *string             `toml:"url,omitempty"`                 // Needed if you want to fork a network. URL is the URL of the node to fork from. Refer to https://book.getfoundry.sh/reference/anvil/#options
+	BlockNumber       *int64              `toml:"block_number,omitempty"`        // Needed if fork URL is provided for forking. BlockNumber is the block number to fork from. Refer to https://book.getfoundry.sh/reference/anvil/#options
+	BlockTime         *int64              `toml:"block_time,omitempty"`          // how frequent blocks are mined. By default, it automatically generates a new block as soon as a transaction is submitted. Refer to https://book.getfoundry.sh/reference/anvil/#options
+	BlockGaslimit     *int64              `toml:"block_gaslimit,omitempty"`      //  BlockGaslimit is the gas limit for each block. Refer to https://book.getfoundry.sh/reference/anvil/#options
+	CodeSize          *int64              `toml:"code_size,omitempty"`           //  CodeSize is the size of the code in bytes. Refer to https://book.getfoundry.sh/reference/anvil/#options
+	BaseFee           *int64              `toml:"base_fee,omitempty"`            //  BaseFee is the base fee for block. Refer to https://book.getfoundry.sh/reference/anvil/#options
+	Retries           *int                `toml:"retries,omitempty"`             //  Needed if fork URL is provided for forking. Number of retry requests for spurious networks (timed out requests). Refer to https://book.getfoundry.sh/reference/anvil/#options
+	Timeout           *int64              `toml:"timeout,omitempty"`             //  Needed if fork URL is provided for forking. Timeout in ms for requests sent to remote JSON-RPC server in forking mode. Refer to https://book.getfoundry.sh/reference/anvil/#options
+	ComputePerSecond  *int64              `toml:"compute_per_second,omitempty"`  // Needed if fork URL is provided for forking. Sets the number of assumed available compute units per second for this provider. Refer to https://book.getfoundry.sh/reference/anvil/#options
+	RateLimitDisabled *bool               `toml:"rate_limit_disabled,omitempty"` // Needed if fork URL is provided for forking. Rate limiting for this node’s provider. If set to true the node will start with --no-rate-limit Refer to https://book.getfoundry.sh/reference/anvil/#options
+	NoOfAccounts      *int                `toml:"no_of_accounts,omitempty"`      // Number of accounts to generate. Refer to https://book.getfoundry.sh/reference/anvil/#options
+	EnableTracing     *bool               `toml:"enable_tracing,omitempty"`      // Enable tracing for the node. Refer to https://book.getfoundry.sh/reference/anvil/#options
+	GasSimulation     GasSimulationConfig `toml:"GasSimulation,omitempty"`       // GasSimulation is the configuration for gas simulation on the Anvil blockchain
 }
 
 // NetworkConfig is the configuration for the networks to be used
@@ -58,6 +59,15 @@ type ReorgConfig struct {
 	Enabled     bool                   `toml:"enabled,omitempty"`
 	Depth       int                    `toml:"depth,omitempty"`
 	DelayCreate blockchain.StrDuration `toml:"delay_create,omitempty"` // Delay before creating, expressed in Go duration format (e.g., "1m", "30s")
+}
+
+type GasSimulationConfig struct {
+	Enabled           bool                   `toml:"enabled,omitempty"`
+	StartGasPrice     int64                  `toml:"start_gas_price,omitempty"`
+	GasRisePercentage float64                `toml:"gas_rise_percentage,omitempty"`
+	GasSpike          bool                   `toml:"gas_spike,omitempty"`
+	DelayCreate       blockchain.StrDuration `toml:"delay_create,omitempty"` // Delay before creating, expressed in Go duration format (e.g., "1m", "30s")
+	Duration          blockchain.StrDuration `toml:"duration,omitempty"`     // Duration of the gas simulation, expressed in Go duration format (e.g., "1m", "30s")
 }
 
 func (n NetworkConfig) IsSimulatedGethSelected() bool {
