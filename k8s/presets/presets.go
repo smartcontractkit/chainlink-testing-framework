@@ -5,6 +5,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/pkg/cdk8s/blockscout"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/pkg/helm/chainlink"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/pkg/helm/ethereum"
+	"github.com/smartcontractkit/chainlink-testing-framework/k8s/pkg/helm/foundry"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/pkg/helm/mockserver"
 	mockservercfg "github.com/smartcontractkit/chainlink-testing-framework/k8s/pkg/helm/mockserver-cfg"
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/pkg/helm/reorg"
@@ -222,6 +223,15 @@ func EVMSoak(config *environment.Config) *environment.Environment {
 						"memory": "2048Mi",
 					},
 				},
+			},
+		}))
+}
+
+func FoundryNetwork(config *environment.Config) *environment.Environment {
+	return environment.New(config).
+		AddHelm(foundry.New(&foundry.Props{
+			Values: map[string]interface{}{
+				"fullnameOverride": "foundry",
 			},
 		}))
 }

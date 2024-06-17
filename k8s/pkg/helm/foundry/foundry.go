@@ -17,7 +17,8 @@ const (
 )
 
 type Props struct {
-	Values map[string]interface{}
+	NetworkName string
+	Values      map[string]interface{}
 }
 
 type Chart struct {
@@ -74,6 +75,15 @@ func (m *Chart) ExportData(e *environment.Environment) error {
 	e.URLs[appInstance+"_forwarded_ws"] = []string{m.ForwardedWSURL}
 	e.URLs[appInstance+"_forwarded_http"] = []string{m.ForwardedHTTPURL}
 
+	// This is required for blockchain.EVMClient to work
+	if e.Cfg.InsideK8s {
+		e.URLs[m.Props.NetworkName] = []string{m.ClusterWSURL}
+		e.URLs[m.Props.NetworkName+"_http"] = []string{m.ClusterHTTPURL}
+	} else {
+		e.URLs[m.Props.NetworkName] = []string{m.ForwardedWSURL}
+		e.URLs[m.Props.NetworkName+"_http"] = []string{m.ForwardedHTTPURL}
+	}
+
 	for k, v := range e.URLs {
 		if strings.Contains(k, appInstance) {
 			log.Info().Str("Name", k).Strs("URLs", v).Msg("Anvil URLs")
@@ -87,14 +97,14 @@ func defaultProps() *Props {
 	return &Props{
 		Values: map[string]any{
 			"replicaCount": "1",
+			// default values for anvil
+			// these can be overridden by setting the values in the Props struct
+			// Try not to provide any fork config here, so that by default anvil can be used for non-forked chains as well
 			"anvil": map[string]any{
-				"host":                      "0.0.0.0",
-				"port":                      "8545",
-				"blockTime":                 1,
-				"forkRetries":               "5",
-				"forkTimeout":               "45000",
-				"forkComputeUnitsPerSecond": "330",
-				"chainId":                   "1337",
+				"host":      "0.0.0.0",
+				"port":      "8545",
+				"blockTime": 1,
+				"chainId":   "1337",
 			},
 		},
 	}
@@ -107,6 +117,9 @@ func New(props *Props) *Chart {
 // NewVersioned enables choosing a specific helm chart version
 func NewVersioned(helmVersion string, props *Props) *Chart {
 	dp := defaultProps()
+	if props == nil {
+		props = &Props{}
+	}
 	config.MustMerge(dp, props)
 	config.MustMerge(&dp.Values, props.Values)
 	var name string

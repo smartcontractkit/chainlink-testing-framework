@@ -76,3 +76,7 @@ func TestRunTimeout(t *testing.T) {
 func TestReallyLongLogs(t *testing.T) {
 	common.TestReallyLongLogs(t)
 }
+
+func TestWithAnvil(t *testing.T) {
+	common.TestAnvil(t)
+}
