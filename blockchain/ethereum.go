@@ -180,35 +180,6 @@ func (e *EthereumClient) GetWalletByAddress(address common.Address) *EthereumWal
 	return nil
 }
 
-// NewWallet generates a new ethereum wallet and adds it to the Wallets list, funding it if funding is specified
-// and returning its index in the wallet list
-func (e *EthereumClient) NewWallet(funding *big.Float) (int, error) {
-	privateKey, err := crypto.GenerateKey()
-	if err != nil {
-		return -1, err
-	}
-	privateKeyBytes := crypto.FromECDSA(privateKey)
-	privateKeyHex := hex.EncodeToString(privateKeyBytes)
-	newWallet, err := NewEthereumWallet(privateKeyHex)
-	if err != nil {
-		return -1, err
-	}
-	if funding != nil {
-		gasEstimations, err := e.EstimateGas(ethereum.CallMsg{
-			To: &newWallet.address,
-		})
-		if err != nil {
-			return -1, err
-		}
-		if err = e.Fund(newWallet.Address(), funding, gasEstimations); err != nil {
-			return -1, err
-		}
-	}
-	e.Wallets = append(e.Wallets, newWallet)
-	e.l.Info().Str("Address", newWallet.Address()).Str("Funding", funding.String()).Int("Index", len(e.Wallets)-1).Msg("Created new wallet")
-	return len(e.Wallets) - 1, nil
-}
-
 // DefaultWallet returns the default wallet for the network
 func (e *EthereumClient) GetNetworkConfig() *EVMNetwork {
 	return &e.NetworkConfig
@@ -1514,10 +1485,6 @@ func (e *EthereumMultinodeClient) GetDefaultWallet() *EthereumWallet {
 // GetWallets returns the default wallet for the network
 func (e *EthereumMultinodeClient) GetWallets() []*EthereumWallet {
 	return e.DefaultClient.GetWallets()
-}
-
-func (e *EthereumMultinodeClient) NewWallet(funding *big.Float) (int, error) {
-	return e.DefaultClient.NewWallet(funding)
 }
 
 // GetNetworkConfig return the network config
