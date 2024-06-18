@@ -184,7 +184,7 @@ func TestRPCAPI(t *testing.T) {
 		require.NoError(t, err)
 		pm := NewRemoteAnvilMiner(ac.URL)
 		pm.MinePeriodically(500 * time.Millisecond)
-		time.Sleep(period * time.Duration(iterations))
+		time.Sleep(period*time.Duration(iterations) + 200*time.Millisecond)
 		pm.Stop()
 		bn, err := client.BlockNumber(context.Background())
 		require.NoError(t, err)
