@@ -120,11 +120,65 @@ func parseResults(jobNameRegex, workflowRunID *string, jobs []Job) ([]ParsedResu
 	}
 
 	if len(parsedResults) == 0 {
-		return nil, fmt.Errorf("No results found for '%s' regex in workflow id %s\n", *jobNameRegex, *workflowRunID)
+		return nil, fmt.Errorf("no results found for '%s' regex in workflow id %s", *jobNameRegex, *workflowRunID)
 
 	}
 
 	return parsedResults, nil
+}
+
+func processResults(parsedResults []ParsedResult, namedKey, jobNameRegex, workflowRunID, outputFile *string) error {
+	results := ResultsMap{}
+
+	if *outputFile != "" {
+		if _, statErr := os.Stat(*outputFile); statErr == nil {
+			existingData, readErr := os.ReadFile(*outputFile)
+			if readErr == nil {
+				jsonErr := json.Unmarshal(existingData, &results)
+				if jsonErr != nil {
+					return fmt.Errorf("error unmarshalling existing data: %w", jsonErr)
+				}
+			}
+		}
+	}
+
+	key := "results"
+	if *namedKey != "" {
+		key = *namedKey
+	}
+	results[key] = append(results[key], parsedResults...)
+
+	formattedResults, err := json.MarshalIndent(results, "", "  ")
+	if err != nil {
+		return fmt.Errorf("error marshalling formatted results: %w", err)
+	}
+
+	if *outputFile != "" {
+		err = os.WriteFile(*outputFile, formattedResults, 0600)
+		if err != nil {
+			return fmt.Errorf("error writing results to file: %w", err)
+		}
+		fmt.Printf("Results for '%s' regex and workflow id %s saved to %s\n", *jobNameRegex, *workflowRunID, *outputFile)
+	}
+
+	fmt.Println(string(formattedResults))
+	return nil
+}
+
+func execute(githubToken, githubRepo, workflowRunID, jobNameRegex, namedKey, outputFile *string, client HTTPClient) error {
+	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/actions/runs/%s/jobs?per_page=100", *githubRepo, *workflowRunID)
+
+	jobs, err := fetchGitHubJobs(apiURL, *githubToken, client)
+	if err != nil {
+		return err
+	}
+
+	parsedResults, err := parseResults(jobNameRegex, workflowRunID, jobs)
+	if err != nil {
+		return err
+	}
+
+	return processResults(parsedResults, namedKey, jobNameRegex, workflowRunID, outputFile)
 }
 
 func main() {
@@ -141,52 +195,8 @@ func main() {
 		panic(fmt.Errorf("Please provide all required flags: --githubToken, --githubRepo, --workflowRunID, --jobNameRegex"))
 	}
 
-	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/actions/runs/%s/jobs?per_page=100", *githubRepo, *workflowRunID)
-
 	client := &http.Client{Timeout: 10 * time.Second}
-	jobs, err := fetchGitHubJobs(apiURL, *githubToken, client)
-	if err != nil {
+	if err := execute(githubToken, githubRepo, workflowRunID, jobNameRegex, namedKey, outputFile, client); err != nil {
 		panic(err)
 	}
-
-	var parsedResults []ParsedResult
-	parsedResults, err = parseResults(jobNameRegex, workflowRunID, jobs)
-	if err != nil {
-		panic(err)
-	}
-
-	results := ResultsMap{}
-
-	if *outputFile != "" {
-		if _, statErr := os.Stat(*outputFile); statErr == nil {
-			existingData, readErr := os.ReadFile(*outputFile)
-			if readErr == nil {
-				jsonErr := json.Unmarshal(existingData, &results)
-				if jsonErr != nil {
-					panic(fmt.Errorf("error unmarshalling existing data: %w", jsonErr))
-				}
-			}
-		}
-	}
-
-	key := "results"
-	if *namedKey != "" {
-		key = *namedKey
-	}
-	results[key] = append(results[key], parsedResults...)
-
-	formattedResults, err := json.MarshalIndent(results, "", "  ")
-	if err != nil {
-		panic(fmt.Errorf("error marshalling formatted results: %w", err))
-	}
-
-	if *outputFile != "" {
-		err = os.WriteFile(*outputFile, formattedResults, 0600)
-		if err != nil {
-			panic(fmt.Errorf("error writing results to file: %w", err))
-		}
-		fmt.Printf("Results for '%s' regex and workflow id %s saved to %s\n", *jobNameRegex, *workflowRunID, *outputFile)
-	}
-
-	fmt.Println(string(formattedResults))
 }

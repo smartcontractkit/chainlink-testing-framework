@@ -134,12 +134,9 @@ func TestFetchGitHubJobs(t *testing.T) {
 				t.Errorf("fetchGitHubJobs() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if len(jobs) != tt.wantJobs {
-				t.Errorf("fetchGitHubJobs() got %d jobs, want %d", len(jobs), tt.wantJobs)
-			}
-			if pageCounter != tt.pageCount {
-				t.Errorf("fetchGitHubJobs() fetched %d pages, want %d", pageCounter, tt.pageCount)
-			}
+
+			require.Equal(t, tt.wantJobs, len(jobs), "fetchGitHubJobs() got %d jobs, want %d", len(jobs), tt.wantJobs)
+			require.Equal(t, tt.pageCount, pageCounter, "fetchGitHubJobs() fetched %d pages, want %d", pageCounter, tt.pageCount)
 		})
 	}
 }
@@ -209,18 +206,17 @@ func TestParseJobs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			one := "1"
-			parsedResults, err := parseResults(&tt.jobNameRegex, &one, tt.mockJobs)
+			regexName := tt.jobNameRegex
+			parsedResults, err := parseResults(&regexName, &one, tt.mockJobs)
 			if len(tt.expectedResults) == 0 {
 				require.Error(t, err)
-				require.Equal(t, fmt.Sprintf("No results found for '%s' regex in workflow id 1\n", tt.jobNameRegex), err.Error())
+				require.Equal(t, fmt.Sprintf("no results found for '%s' regex in workflow id 1", tt.jobNameRegex), err.Error())
 			} else {
 				require.NoError(t, err)
 			}
 
 			for i, result := range parsedResults {
-				if result != tt.expectedResults[i] {
-					t.Errorf("Expected result %+v, got %+v", tt.expectedResults[i], result)
-				}
+				require.EqualValues(t, tt.expectedResults[i], result, "Expected result %+v, got %+v", tt.expectedResults[i], result)
 			}
 		})
 	}
@@ -253,17 +249,9 @@ func TestMainOutput(t *testing.T) {
 	client := &http.Client{Timeout: 10 * time.Second}
 
 	jobs, err := fetchGitHubJobs(server.URL, "dummy_token", client)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-
-	if len(jobs) != 2 {
-		t.Fatalf("Expected 2 jobs, got %d", len(jobs))
-	}
-
-	if jobs[0].Name != "Test Job 1" {
-		t.Fatalf("Expected job name 'Test Job 1', got %s", jobs[0].Name)
-	}
+	require.NoError(t, err, "Expected no error, got %v", err)
+	require.Equal(t, 2, len(jobs), "Expected 2 jobs, got %d", len(jobs))
+	require.Equal(t, "Test Job 1", jobs[0].Name, "Expected job name 'Test Job 1', got %s", jobs[0].Name)
 }
 
 func TestMainFunction(t *testing.T) {
@@ -343,4 +331,137 @@ func TestMainFunction(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestProcessResults(t *testing.T) {
+	tests := []struct {
+		name          string
+		parsedResults []ParsedResult
+		namedKey      string
+		outputFile    string
+		wantErr       bool
+	}{
+		{
+			name: "Process Results with Named Key",
+			parsedResults: []ParsedResult{
+				{Conclusion: ":white_check_mark:", Cap: "1", URL: "http://example.com/job1"},
+				{Conclusion: ":x:", Cap: "2", URL: "http://example.com/job2"},
+			},
+			namedKey:   "testKey",
+			outputFile: "",
+			wantErr:    false,
+		},
+		{
+			name: "Process Results to File",
+			parsedResults: []ParsedResult{
+				{Conclusion: ":white_check_mark:", Cap: "1", URL: "http://example.com/job1"},
+				{Conclusion: ":x:", Cap: "2", URL: "http://example.com/job2"},
+			},
+			namedKey:   "",
+			outputFile: "test_output.json",
+			wantErr:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.outputFile != "" {
+				defer func() { _ = os.Remove(tt.outputFile) }()
+			}
+			namedKey := tt.namedKey
+			outputFile := tt.outputFile
+			fakeRegex := "regex"
+			fakeWorkflowID := "1"
+			err := processResults(tt.parsedResults, &namedKey, &fakeRegex, &fakeWorkflowID, &outputFile)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("processResults() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestExecute(t *testing.T) {
+	githubToken := "dummy_token"
+	githubRepo := "owner/repo"
+	workflowRunID := "1"
+	jobNameRegex := "Test Job (\\d)"
+	namedKey := ""
+	outputFile := ""
+
+	client := &MockClient{
+		DoFunc: func(req *http.Request) (*http.Response, error) {
+			r := io.NopCloser(strings.NewReader(`{
+				"total_count": 2,
+				"jobs": [
+					{
+						"name": "Test Job 1",
+						"steps": [{"name": "Run Tests", "conclusion": "success"}],
+						"html_url": "http://example.com/job1"
+					},
+					{
+						"name": "Test Job 2",
+						"steps": [{"name": "Run Tests", "conclusion": "failure"}],
+						"html_url": "http://example.com/job2"
+					}
+				]
+			}`))
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       r,
+				Header:     make(http.Header),
+			}, nil
+		},
+	}
+
+	err := execute(&githubToken, &githubRepo, &workflowRunID, &jobNameRegex, &namedKey, &outputFile, client)
+	require.NoError(t, err, "Expected no error, got %v", err)
+}
+
+func TestProcessResults_AppendToFile(t *testing.T) {
+	tmpFile, err := os.CreateTemp("", "test_output.json")
+	require.NoError(t, err, "Failed to create temp file")
+	defer func() { _ = os.Remove(tmpFile.Name()) }()
+
+	initialData := ResultsMap{
+		"results": {
+			{Conclusion: ":white_check_mark:", Cap: "1", URL: "http://example.com/job1"},
+		},
+	}
+	initialBytes, err := json.Marshal(initialData)
+	require.NoError(t, err, "Failed to marshal initial data")
+
+	_, err = tmpFile.Write(initialBytes)
+	require.NoError(t, err, "Failed to write initial data to temp file")
+
+	err = tmpFile.Close()
+	require.NoError(t, err, "Failed to close temp file")
+
+	newParsedResults := []ParsedResult{
+		{Conclusion: ":x:", Cap: "2", URL: "http://example.com/job2"},
+	}
+
+	fakeRegex := "regex"
+	fakeWorkflowID := "1"
+
+	namedKey := ""
+	outputFile := tmpFile.Name()
+	err = processResults(newParsedResults, &namedKey, &fakeRegex, &fakeWorkflowID, &outputFile)
+	require.NoError(t, err, "processResults() error = %v", err)
+
+	contents, err := os.ReadFile(tmpFile.Name())
+	require.NoError(t, err, "Failed to read back contents of temp file")
+
+	var finalResults ResultsMap
+	err = json.Unmarshal(contents, &finalResults)
+	require.NoError(t, err, "Failed to unmarshal final results")
+
+	expectedResults := ResultsMap{
+		"results": {
+			{Conclusion: ":white_check_mark:", Cap: "1", URL: "http://example.com/job1"},
+			{Conclusion: ":x:", Cap: "2", URL: "http://example.com/job2"},
+		},
+	}
+
+	require.EqualValues(t, expectedResults, finalResults, "Expected final results: %+v, got: %+v", expectedResults, finalResults)
 }
