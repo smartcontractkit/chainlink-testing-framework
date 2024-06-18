@@ -35,6 +35,98 @@ type ParsedResult struct {
 
 type ResultsMap map[string][]ParsedResult
 
+type HTTPClient interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
+func fetchGitHubJobs(apiURL, token string, client HTTPClient) ([]Job, error) {
+	var allJobs []Job
+
+	for {
+		req, err := http.NewRequest("GET", apiURL, nil)
+		if err != nil {
+			return nil, fmt.Errorf("error creating HTTP request: %w", err)
+		}
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		resp, err := client.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("error making HTTP request: %w", err)
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("GitHub API request failed with status: %s", resp.Status)
+		}
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("error reading response body: %w", err)
+		}
+
+		_ = resp.Body.Close()
+
+		var githubResponse GitHubResponse
+		err = json.Unmarshal(body, &githubResponse)
+		if err != nil {
+			return nil, fmt.Errorf("error unmarshalling JSON response: %w", err)
+		}
+
+		allJobs = append(allJobs, githubResponse.Jobs...)
+
+		re := regexp.MustCompile(`&page=(\d+)`)
+		matches := re.FindStringSubmatch(apiURL)
+		pageNum := 0
+		if len(matches) > 1 {
+			_, err = fmt.Sscanf(matches[1], "%d", &pageNum)
+			if err != nil {
+				return nil, fmt.Errorf("error parsing page number: %w", err)
+			}
+		}
+
+		if (len(githubResponse.Jobs) < 100) || (len(githubResponse.Jobs) == 100 && githubResponse.TotalCount/100 == pageNum) {
+			break
+		}
+
+		if pageNum == 0 {
+			apiURL = apiURL + "&page=2"
+		} else {
+			apiURL = re.ReplaceAllString(apiURL, fmt.Sprintf("&page=%d", pageNum+1))
+		}
+	}
+
+	return allJobs, nil
+}
+
+func parseResults(jobNameRegex, workflowRunID *string, jobs []Job) ([]ParsedResult, error) {
+	var parsedResults []ParsedResult
+	re := regexp.MustCompile(*jobNameRegex)
+	for _, job := range jobs {
+		if re.MatchString(job.Name) {
+			for _, step := range job.Steps {
+				if step.Name == "Run Tests" {
+					conclusion := ":x:"
+					if step.Conclusion == "success" {
+						conclusion = ":white_check_mark:"
+					}
+					captureGroup := re.FindStringSubmatch(job.Name)[1]
+					parsedResults = append(parsedResults, ParsedResult{
+						Conclusion: conclusion,
+						Cap:        captureGroup,
+						URL:        job.URL,
+					})
+				}
+			}
+		}
+	}
+
+	if len(parsedResults) == 0 {
+		return nil, fmt.Errorf("No results found for '%s' regex in workflow id %s\n", *jobNameRegex, *workflowRunID)
+
+	}
+
+	return parsedResults, nil
+}
+
 func main() {
 	githubToken := flag.String("githubToken", "", "GitHub token for authentication")
 	githubRepo := flag.String("githubRepo", "", "GitHub repository in the format owner/repo")
@@ -50,58 +142,17 @@ func main() {
 	}
 
 	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/actions/runs/%s/jobs?per_page=100", *githubRepo, *workflowRunID)
-	req, err := http.NewRequest("GET", apiURL, nil)
-	if err != nil {
-		panic(fmt.Errorf("error creating HTTP request:", err))
-	}
-	req.Header.Set("Authorization", "Bearer "+*githubToken)
 
 	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
+	jobs, err := fetchGitHubJobs(apiURL, *githubToken, client)
 	if err != nil {
-		panic(fmt.Errorf("error making HTTP request:", err))
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		panic(fmt.Errorf("GitHub API request failed with status:", resp.Status))
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		panic(fmt.Errorf("error reading response body:", err))
-	}
-
-	var githubResponse GitHubResponse
-	err = json.Unmarshal(body, &githubResponse)
-	if err != nil {
-		panic(fmt.Errorf("error unmarshalling JSON response:", err))
+		panic(err)
 	}
 
 	var parsedResults []ParsedResult
-	re := regexp.MustCompile(*jobNameRegex)
-	for _, job := range githubResponse.Jobs {
-		if re.MatchString(job.Name) {
-			for _, step := range job.Steps {
-				if step.Name == "Run Tests" {
-					conclusion := ":x:"
-					if step.Conclusion == "success" {
-						conclusion = ":white_check_mark:"
-					}
-					captureGroup := fmt.Sprintf("%s", re.FindStringSubmatch(job.Name)[1])
-					parsedResults = append(parsedResults, ParsedResult{
-						Conclusion: conclusion,
-						Cap:        captureGroup,
-						URL:        job.URL,
-					})
-				}
-			}
-		}
-	}
-
-	if len(parsedResults) == 0 {
-		fmt.Printf("No results found for '%s' regex in workflow id %s\n", *jobNameRegex, *workflowRunID)
-		return
+	parsedResults, err = parseResults(jobNameRegex, workflowRunID, jobs)
+	if err != nil {
+		panic(err)
 	}
 
 	results := ResultsMap{}
@@ -112,7 +163,7 @@ func main() {
 			if readErr == nil {
 				jsonErr := json.Unmarshal(existingData, &results)
 				if jsonErr != nil {
-					panic(fmt.Errorf("error unmarshalling existing data:", jsonErr))
+					panic(fmt.Errorf("error unmarshalling existing data: %w", jsonErr))
 				}
 			}
 		}
@@ -126,17 +177,16 @@ func main() {
 
 	formattedResults, err := json.MarshalIndent(results, "", "  ")
 	if err != nil {
-		panic(fmt.Errorf("error marshalling formatted results:", err))
+		panic(fmt.Errorf("error marshalling formatted results: %w", err))
 	}
 
 	if *outputFile != "" {
-		err = os.WriteFile(*outputFile, formattedResults, 0644)
+		err = os.WriteFile(*outputFile, formattedResults, 0600)
 		if err != nil {
-			panic(fmt.Errorf("error writing results to file:", err))
-		} else {
-			fmt.Printf("Results for '%s' regex and workflow id %s saved to %s\n", *jobNameRegex, *workflowRunID, *outputFile)
+			panic(fmt.Errorf("error writing results to file: %w", err))
 		}
-	} else {
-		fmt.Println(string(formattedResults))
+		fmt.Printf("Results for '%s' regex and workflow id %s saved to %s\n", *jobNameRegex, *workflowRunID, *outputFile)
 	}
+
+	fmt.Println(string(formattedResults))
 }
