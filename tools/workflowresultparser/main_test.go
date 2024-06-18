@@ -208,12 +208,7 @@ func TestParseJobs(t *testing.T) {
 			one := "1"
 			regexName := tt.jobNameRegex
 			parsedResults, err := parseResults(&regexName, &one, tt.mockJobs)
-			if len(tt.expectedResults) == 0 {
-				require.Error(t, err)
-				require.Equal(t, fmt.Sprintf("no results found for '%s' regex in workflow id 1", tt.jobNameRegex), err.Error())
-			} else {
-				require.NoError(t, err)
-			}
+			require.NoError(t, err)
 
 			for i, result := range parsedResults {
 				require.EqualValues(t, tt.expectedResults[i], result, "Expected result %+v, got %+v", tt.expectedResults[i], result)
