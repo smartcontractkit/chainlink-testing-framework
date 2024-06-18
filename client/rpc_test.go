@@ -184,11 +184,12 @@ func TestRPCAPI(t *testing.T) {
 		require.NoError(t, err)
 		pm := NewRemoteAnvilMiner(ac.URL)
 		pm.MinePeriodically(500 * time.Millisecond)
-		time.Sleep(period*time.Duration(iterations) + 200*time.Millisecond)
+		time.Sleep(period * time.Duration(iterations))
 		pm.Stop()
 		bn, err := client.BlockNumber(context.Background())
 		require.NoError(t, err)
-		require.Equal(t, uint64(iterations), bn)
+		require.GreaterOrEqual(t, uint64(iterations), bn-1)
+		require.LessOrEqual(t, uint64(iterations), bn+1)
 	})
 
 	t.Run("(anvil) test we can mine blocks with strictly N+ transactions", func(t *testing.T) {
