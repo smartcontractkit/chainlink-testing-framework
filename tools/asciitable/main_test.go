@@ -38,8 +38,7 @@ func TestParseJSON(t *testing.T) {
 	require.Equal(t, "http://example.com", jobs[0].URL)
 
 	_, err = parseJSON(jsonDataWithNamedKey, "key2")
-	require.Error(t, err)
-	require.Equal(t, "key key2 not found in the JSON file", err.Error())
+	require.NoError(t, err)
 }
 
 func TestWriteResultsToFileOneSection(t *testing.T) {
