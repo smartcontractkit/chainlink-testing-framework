@@ -14,6 +14,11 @@ type ParsedResult struct {
 	URL        string `json:"html_url"`
 }
 
+type section struct {
+	name string
+	jobs []ParsedResult
+}
+
 type ResultsMap map[string][]ParsedResult
 
 func parseJSON(jsonData []byte, namedKey string) ([]ParsedResult, error) {
@@ -36,15 +41,15 @@ func parseJSON(jsonData []byte, namedKey string) ([]ParsedResult, error) {
 	return jobs, nil
 }
 
-func calculateColumnWidths(firstColumnHeader, secondColumnHeader string, sections map[string][]ParsedResult) (int, int) {
+func calculateColumnWidths(firstColumnHeader, secondColumnHeader string, sections []section) (int, int) {
 	maxFirstColumnLen := len(firstColumnHeader)
 	maxSecondColumnLen := len(secondColumnHeader)
 
-	for section, jobs := range sections {
-		if len(section) > maxFirstColumnLen {
-			maxFirstColumnLen = len(section)
+	for _, s := range sections {
+		if len(s.name) > maxFirstColumnLen {
+			maxFirstColumnLen = len(s.name)
 		}
-		for _, job := range jobs {
+		for _, job := range s.jobs {
 			if len(job.Cap) > maxFirstColumnLen {
 				maxFirstColumnLen = len(job.Cap)
 			}
@@ -55,8 +60,7 @@ func calculateColumnWidths(firstColumnHeader, secondColumnHeader string, section
 }
 
 func writeResultsToFile(fileName string, firstColumnHeader, secondColumnHeader, currentSection string, jobs []ParsedResult) error {
-	// Read existing data
-	sections := make(map[string][]ParsedResult)
+	orderedSections := make([]section, 0)
 	if _, err := os.Stat(fileName); err == nil {
 		data, err := os.ReadFile(fileName)
 		if err != nil {
@@ -73,45 +77,32 @@ func writeResultsToFile(fileName string, firstColumnHeader, secondColumnHeader, 
 					if strings.TrimSpace(parts[1]) == firstColumnHeader || strings.TrimSpace(parts[2]) == secondColumnHeader {
 						continue
 					}
-					if sectionName != "" {
-						sections[sectionName] = append(sections[sectionName], ParsedResult{
+					parsedResults := []ParsedResult{
+						{
 							Cap:        strings.TrimSpace(parts[1]),
 							Conclusion: strings.TrimSpace(parts[2]),
-						})
-					} else {
-						sections[""] = append(sections[""], ParsedResult{
-							Cap:        strings.TrimSpace(parts[1]),
-							Conclusion: strings.TrimSpace(parts[2]),
-						})
-					}
+						}}
+
+					orderedSections = append(orderedSections, section{name: sectionName, jobs: parsedResults})
 				}
 			}
 		}
 	}
 
-	// Add new jobs to the current section or default section
-	if currentSection != "" {
-		sections[currentSection] = append(sections[currentSection], jobs...)
-	} else {
-		sections[""] = append(sections[""], jobs...)
-	}
-
-	// Calculate column widths
-	maxFirstColumnLen, maxSecondColumnLen := calculateColumnWidths(firstColumnHeader, secondColumnHeader, sections)
+	orderedSections = append(orderedSections, section{name: currentSection, jobs: jobs})
+	maxFirstColumnLen, maxSecondColumnLen := calculateColumnWidths(firstColumnHeader, secondColumnHeader, orderedSections)
 
 	firstColumnFormat := fmt.Sprintf("%%-%ds", maxFirstColumnLen)
 	secondColumnFormat := fmt.Sprintf("%%-%ds", maxSecondColumnLen)
 	rowFormat := fmt.Sprintf("| %s | %s |\n", firstColumnFormat, secondColumnFormat)
 	separator := fmt.Sprintf("+-%s-+-%s-+\n", strings.Repeat("-", maxFirstColumnLen), strings.Repeat("-", maxSecondColumnLen))
 
-	// Open file for writing
 	file, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = file.Close() }()
 
-	// Write header
 	header := separator
 	header += fmt.Sprintf(rowFormat, firstColumnHeader, secondColumnHeader)
 	header += separator
@@ -120,10 +111,9 @@ func writeResultsToFile(fileName string, firstColumnHeader, secondColumnHeader, 
 		return err
 	}
 
-	// Write sections and jobs
-	for section, jobs := range sections {
-		if section != "" {
-			sectionHeader := fmt.Sprintf("| %s |\n", centerText(section, maxFirstColumnLen+maxSecondColumnLen+3))
+	for _, s := range orderedSections {
+		if s.name != "" {
+			sectionHeader := fmt.Sprintf("| %s |\n", centerText(s.name, maxFirstColumnLen+maxSecondColumnLen+3))
 			_, err = file.WriteString(sectionHeader)
 			if err != nil {
 				return err
@@ -134,7 +124,7 @@ func writeResultsToFile(fileName string, firstColumnHeader, secondColumnHeader, 
 			}
 		}
 
-		for _, job := range jobs {
+		for _, job := range s.jobs {
 			result := "X"
 			if job.Conclusion == ":white_check_mark:" || job.Conclusion == "√" {
 				result = "√"
