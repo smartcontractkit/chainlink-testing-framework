@@ -83,7 +83,17 @@ func writeResultsToFile(fileName string, firstColumnHeader, secondColumnHeader, 
 							Conclusion: strings.TrimSpace(parts[2]),
 						}}
 
-					orderedSections = append(orderedSections, section{name: sectionName, jobs: parsedResults})
+					sectionFound := false
+					for i, orderedSection := range orderedSections {
+						if orderedSection.name == sectionName {
+							orderedSections[i].jobs = append(orderedSections[i].jobs, parsedResults...)
+							sectionFound = true
+							break
+						}
+					}
+					if !sectionFound {
+						orderedSections = append(orderedSections, section{name: sectionName, jobs: parsedResults})
+					}
 				}
 			}
 		}

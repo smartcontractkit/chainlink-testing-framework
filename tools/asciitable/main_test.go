@@ -232,6 +232,110 @@ func TestMainFunction_Double_Write_Two_Sections_Rewrite(t *testing.T) {
 	require.Equal(t, expectedContent, string(data))
 }
 
+func TestMainFunction_Double_Write_Two_Long_Sections_Rewrite(t *testing.T) {
+	content := []byte(`[{"conclusion": ":white_check_mark:", "cap": "First short one", "html_url": "http://example.com"}, {"conclusion": ":white_check_mark:", "cap": "Second short one", "html_url": "http://example.com"}]`)
+	test1Json := "test5a.json"
+	err := os.WriteFile(test1Json, content, 0600)
+	require.NoError(t, err)
+	defer func() { _ = os.Remove(test1Json) }()
+
+	outputFileName := "output_two_sections.txt"
+	defer func() { _ = os.Remove(outputFileName) }()
+
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	os.Args = []string{"cmd", "--jsonfile", test1Json, "--outputFile", outputFileName, "--section", "Section1"}
+	main()
+
+	content = []byte(`[{"conclusion": ":x:", "cap": "I am much longer", "html_url": "http://example.com"}]`)
+	test2Json := "test6a.json"
+	err = os.WriteFile(test2Json, content, 0600)
+	require.NoError(t, err)
+	defer func() { _ = os.Remove(test2Json) }()
+
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	os.Args = []string{"cmd", "--jsonfile", test2Json, "--outputFile", outputFileName, "--section", "Section2"}
+	main()
+
+	data, err := os.ReadFile(outputFileName)
+	require.NoError(t, err)
+
+	expectedContent := `+------------------+--------+
+| Value            | Result |
++------------------+--------+
+|         Section1          |
++------------------+--------+
+| First short one  | √      |
+| Second short one | √      |
++------------------+--------+
+|         Section2          |
++------------------+--------+
+| I am much longer | X      |
++------------------+--------+
+`
+	fmt.Println(string(data))
+	require.Equal(t, expectedContent, string(data))
+}
+
+func TestMainFunction_Double_Write_Three_Long_Sections_Rewrite(t *testing.T) {
+	content := []byte(`[{"conclusion": ":white_check_mark:", "cap": "First short one", "html_url": "http://example.com"},{"conclusion": ":white_check_mark:", "cap": "Second short one", "html_url": "http://example.com"}, {"conclusion": ":x:", "cap": "Third short one", "html_url": "http://example.com"}]`)
+	test1Json := "test5b.json"
+	err := os.WriteFile(test1Json, content, 0600)
+	require.NoError(t, err)
+	defer func() { _ = os.Remove(test1Json) }()
+
+	outputFileName := "output_two_sections.txt"
+	defer func() { _ = os.Remove(outputFileName) }()
+
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	os.Args = []string{"cmd", "--jsonfile", test1Json, "--outputFile", outputFileName, "--section", "Section1"}
+	main()
+
+	content = []byte(`[{"conclusion": ":x:", "cap": "I am much longer", "html_url": "http://example.com"},{"conclusion": ":x:", "cap": "I am much longer", "html_url": "http://example.com"}]`)
+	test2Json := "test6b.json"
+	err = os.WriteFile(test2Json, content, 0600)
+	require.NoError(t, err)
+	defer func() { _ = os.Remove(test2Json) }()
+
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	os.Args = []string{"cmd", "--jsonfile", test2Json, "--outputFile", outputFileName, "--section", "Section2"}
+	main()
+
+	content = []byte(`[{"conclusion": ":white_check_mark:", "cap": "I the last of us", "html_url": "http://example.com"}]`)
+	test3Json := "test6c.json"
+	err = os.WriteFile(test3Json, content, 0600)
+	require.NoError(t, err)
+	defer func() { _ = os.Remove(test3Json) }()
+
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	os.Args = []string{"cmd", "--jsonfile", test3Json, "--outputFile", outputFileName, "--section", "Section3"}
+	main()
+
+	data, err := os.ReadFile(outputFileName)
+	require.NoError(t, err)
+
+	expectedContent := `+------------------+--------+
+| Value            | Result |
++------------------+--------+
+|         Section1          |
++------------------+--------+
+| First short one  | √      |
+| Second short one | √      |
+| Third short one  | X      |
++------------------+--------+
+|         Section2          |
++------------------+--------+
+| I am much longer | X      |
+| I am much longer | X      |
++------------------+--------+
+|         Section3          |
++------------------+--------+
+| I the last of us | √      |
++------------------+--------+
+`
+	fmt.Println(string(data))
+	require.Equal(t, expectedContent, string(data))
+}
+
 func TestMainFunction_Double_Write_Mix_Section_No_Section(t *testing.T) {
 	content := []byte(`[{"conclusion": ":white_check_mark:", "cap": "No section here", "html_url": "http://example.com"}]`)
 	test1Json := "test7.json"
