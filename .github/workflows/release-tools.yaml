@@ -14,6 +14,8 @@ jobs:
             tools/testlistgenerator,
             tools/ecrimagefetcher,
             tools/ghlatestreleasechecker,
+            tools/asciitable,
+            tools/workflowresultparser,
           ]
     name: Release ${{ matrix.tool }}
     runs-on: ubuntu-latest
