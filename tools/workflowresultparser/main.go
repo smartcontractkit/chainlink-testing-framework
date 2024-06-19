@@ -108,10 +108,13 @@ func parseResults(jobNameRegex, workflowRunID *string, jobs []Job) ([]ParsedResu
 					if step.Conclusion == "success" {
 						conclusion = ":white_check_mark:"
 					}
-					captureGroup := re.FindStringSubmatch(job.Name)[1]
+					matches := re.FindStringSubmatch(job.Name)
+					if len(matches) < 2 {
+						continue
+					}
 					parsedResults = append(parsedResults, ParsedResult{
 						Conclusion: conclusion,
-						Cap:        captureGroup,
+						Cap:        matches[1],
 						URL:        job.URL,
 					})
 				}
@@ -132,11 +135,12 @@ func processResults(parsedResults []ParsedResult, namedKey, jobNameRegex, workfl
 	if *outputFile != "" {
 		if _, statErr := os.Stat(*outputFile); statErr == nil {
 			existingData, readErr := os.ReadFile(*outputFile)
-			if readErr == nil {
-				jsonErr := json.Unmarshal(existingData, &results)
-				if jsonErr != nil {
-					return fmt.Errorf("error unmarshalling existing data: %w", jsonErr)
-				}
+			if readErr != nil {
+				return fmt.Errorf("error reading existing data from file: %w", readErr)
+			}
+			jsonErr := json.Unmarshal(existingData, &results)
+			if jsonErr != nil {
+				return fmt.Errorf("error unmarshalling existing data: %w", jsonErr)
 			}
 		}
 	}
@@ -195,11 +199,29 @@ func main() {
 	flag.Parse()
 
 	if *githubToken == "" || *githubRepo == "" || *workflowRunID == "" || *jobNameRegex == "" {
-		panic(fmt.Errorf("Please provide all required flags: --githubToken, --githubRepo, --workflowRunID, --jobNameRegex"))
+		panic(fmt.Errorf("please provide all required flags: --githubToken, --githubRepo, --workflowRunID, --jobNameRegex"))
+	}
+
+	if err := validateJobNameRegex(*jobNameRegex); err != nil {
+		panic(err)
 	}
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	if err := execute(githubToken, githubRepo, workflowRunID, jobNameRegex, namedKey, outputFile, client); err != nil {
 		panic(err)
 	}
+}
+
+func validateJobNameRegex(jobNameRegex string) error {
+	re, err := regexp.Compile(jobNameRegex)
+	if err != nil {
+		return fmt.Errorf("error compiling regex: %w", err)
+	}
+
+	numGroups := re.NumSubexp()
+	if numGroups != 1 {
+		return fmt.Errorf("%d capture groups found in job name regex, but only 1 is supported", numGroups)
+	}
+
+	return err
 }

@@ -8,18 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestReadJSONFile(t *testing.T) {
-	content := []byte(`[{"conclusion": ":white_check_mark:", "cap": "Cap1", "html_url": "http://example.com"}]`)
-	fileName := "test.json"
-	err := os.WriteFile(fileName, content, 0600)
-	require.NoError(t, err)
-	defer func() { _ = os.Remove(fileName) }()
-
-	data, err := readJSONFile(fileName)
-	require.NoError(t, err)
-	require.Equal(t, content, data)
-}
-
 func TestParseJSON(t *testing.T) {
 	jsonData := []byte(`[{"conclusion": ":white_check_mark:", "cap": "Cap1", "html_url": "http://example.com"}]`)
 	jobs, err := parseJSON(jsonData, "")

@@ -264,13 +264,25 @@ func TestMainFunction(t *testing.T) {
 		{
 			name:       "Missing Required Flags",
 			args:       []string{"cmd"},
-			wantOutput: "Please provide all required flags: --githubToken, --githubRepo, --workflowRunID, --jobNameRegex",
+			wantOutput: "please provide all required flags: --githubToken, --githubRepo, --workflowRunID, --jobNameRegex",
 			wantErr:    true,
 		},
 		{
 			name:    "Valid Flags",
 			args:    []string{"cmd", "--githubToken=dummy_token", "--githubRepo=owner/repo", "--workflowRunID=1", "--jobNameRegex=Test Job (\\d)"},
 			wantErr: true,
+		},
+		{
+			name:       "Regex without capture group",
+			args:       []string{"cmd", "--githubToken=dummy_token", "--githubRepo=owner/repo", "--workflowRunID=1", "--jobNameRegex=Test Job"},
+			wantErr:    true,
+			wantOutput: "0 capture groups found in job name regex, but only 1 is supported",
+		},
+		{
+			name:       "Regex with 2 capture groups",
+			args:       []string{"cmd", "--githubToken=dummy_token", "--githubRepo=owner/repo", "--workflowRunID=1", "--jobNameRegex=Test Job (\\d)(\\d)"},
+			wantErr:    true,
+			wantOutput: "2 capture groups found in job name regex, but only 1 is supported",
 		},
 	}
 

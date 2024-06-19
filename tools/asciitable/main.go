@@ -16,10 +16,6 @@ type ParsedResult struct {
 
 type ResultsMap map[string][]ParsedResult
 
-func readJSONFile(filePath string) ([]byte, error) {
-	return os.ReadFile(filePath)
-}
-
 func parseJSON(jsonData []byte, namedKey string) ([]ParsedResult, error) {
 	var jobs []ParsedResult
 	if namedKey == "" {
@@ -181,7 +177,7 @@ func main() {
 		panic(fmt.Errorf("please provide a path to the JSON input file using --jsonfile flag"))
 	}
 
-	jsonFile, err := readJSONFile(*jsonFileFlag)
+	jsonFile, err := os.ReadFile(*jsonFileFlag)
 	if err != nil {
 		panic(fmt.Errorf("error reading JSON file: %v", err))
 	}
