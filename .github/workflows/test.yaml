@@ -20,6 +20,10 @@ jobs:
             path: ./tools/ecrimagefetcher/
           - name: ghlatestreleasechecker
             path: ./tools/ghlatestreleasechecker/
+          - name: asciitable
+            path: ./tools/asciitable/
+          - name: workflowresultparser
+            path: ./tools/workflowresultparser/
     runs-on: ubuntu-latest
     name: ${{ matrix.project.name }} unit tests
     steps:
