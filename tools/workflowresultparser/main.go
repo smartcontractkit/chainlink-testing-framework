@@ -120,7 +120,7 @@ func parseResults(jobNameRegex, workflowRunID *string, jobs []Job) ([]ParsedResu
 	}
 
 	if len(parsedResults) == 0 {
-		_, _ = fmt.Fprintf(os.Stderr, "no results found for '%s' regex in workflow id %s", *jobNameRegex, *workflowRunID)
+		_, _ = fmt.Fprintf(os.Stderr, "no results found for '%s' regex in workflow id %s\n", *jobNameRegex, *workflowRunID)
 	}
 
 	return parsedResults, nil
