@@ -2,6 +2,7 @@ package seth
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -170,7 +171,7 @@ func MergeSethAndEvmNetworkConfigs(evmNetwork blockchain.EVMNetwork, sethConfig 
 			// Merge all other simulated Geth networks
 			sethNetwork = mergeSimulatedNetworks(evmNetwork, *conf)
 			break
-		} else if strings.EqualFold(conf.Name, fmt.Sprint(evmNetwork.Name)) {
+		} else if isSameNetwork(conf, evmNetwork) {
 			conf.PrivateKeys = evmNetwork.PrivateKeys
 			if len(conf.URLs) == 0 {
 				conf.URLs = evmNetwork.URLs
@@ -285,4 +286,16 @@ func AvailableSethKeyNum(client *pkg_seth.Client) int {
 		return client.AnySyncedKey()
 	}
 	return RootKeyNum
+}
+
+func isSameNetwork(conf *pkg_seth.Network, network blockchain.EVMNetwork) bool {
+	if strings.EqualFold(conf.Name, fmt.Sprint(network.Name)) {
+		return true
+	}
+
+	re := regexp.MustCompile(`[\s-]+`)
+	cleanSethName := re.ReplaceAllString(conf.Name, "_")
+	cleanNetworkName := re.ReplaceAllString(fmt.Sprint(network.Name), "_")
+
+	return strings.EqualFold(cleanSethName, cleanNetworkName)
 }
