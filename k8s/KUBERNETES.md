@@ -9,7 +9,7 @@ We run our software in Kubernetes.
    or from source [here](https://github.com/smartcontractkit/helmenv)
 3. Setup your docker resources, 6vCPU/10Gb RAM are enough for most CL related tasks
 4. `make create_cluster`
-5. `make install_monitoring`
+5. `make install_monitoring` Note: this will be actively connected to the server, the final log when it is ready is`Forwarding from [::1]:3000 -> 3000` and you can continue with the steps below in another terminal.
 6. Check your contexts with `kubectl config get-contexts`
 7. Switch context `kubectl config use-context k3d-local`
 8. Read [here](README.md) and do some deployments
