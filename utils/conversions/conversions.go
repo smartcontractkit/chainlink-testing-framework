@@ -21,6 +21,15 @@ func PrivateKeyToAddress(privateKey *ecdsa.PrivateKey) (common.Address, error) {
 	return crypto.PubkeyToAddress(*publicKeyECDSA), nil
 }
 
+// PrivateKeyHexToAddress is a handy converter for a string private key to a usable eth address
+func PrivateKeyHexToAddress(privateKeyStr string) (common.Address, error) {
+	privateKey, err := crypto.HexToECDSA(privateKeyStr)
+	if err != nil {
+		return common.Address{}, fmt.Errorf("Error converting private key to ECDSA format: %s", err)
+	}
+	return PrivateKeyToAddress(privateKey)
+}
+
 // Credit to kimxilxyong: https://github.com/ethereum/go-ethereum/issues/21221#issuecomment-802092592
 
 // EtherToWei converts an ETH float amount to wei
