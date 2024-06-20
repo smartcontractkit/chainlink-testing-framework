@@ -109,8 +109,9 @@ func runTestWithExpectations(t *testing.T, k *Killgrave, expectations []kgTest) 
 	})
 	var err error
 	// Check the different kinds of responses
-	for _, e := range expectations {
-		test := e
+	for _, test := range expectations {
+		test := test
+
 		t.Run(test.Name, func(t *testing.T) {
 			t.Parallel()
 			m := []string{http.MethodGet}
@@ -162,4 +163,52 @@ func runTestWithExpectations(t *testing.T, k *Killgrave, expectations []kgTest) 
 			require.Equal(t, test.Expected, responseString)
 		})
 	}
+}
+
+func TestKillgraveRequestDump(t *testing.T) {
+	t.Parallel()
+	l := logging.GetTestLogger(t)
+	network, err := docker.CreateNetwork(l)
+	require.NoError(t, err)
+
+	k := NewKillgrave([]string{network.Name}, "./killgrave_imposters").
+		WithTestInstance(t)
+	err = k.StartContainer()
+	require.NoError(t, err)
+
+	path := "/stringany"
+	m := []string{http.MethodGet}
+	headers := map[string]string{"Content-Type": "text/plain"}
+	err = k.SetStringValuePath("/stringany", m, headers, "{\"id\":\"\",\"data\":{\"result\":5},\"error\":null}")
+	require.NoError(t, err)
+	var url string
+	if strings.HasPrefix(path, "/") {
+		url = fmt.Sprintf("%s%s", k.ExternalEndpoint, path)
+	} else {
+		url = fmt.Sprintf("%s/%s", k.ExternalEndpoint, path)
+	}
+	bodyRequest := []byte("{\n\"a\":5,\n\"b\":6\n}")
+	req1, err := http.NewRequest(m[0], url, bytes.NewBuffer(bodyRequest))
+	require.NoError(t, err)
+	req1.Header.Set("Content-Type", "application/json")
+	req2, err := http.NewRequest(m[0], url, bytes.NewBuffer(bodyRequest))
+	require.NoError(t, err)
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+	resp1, err := client.Do(req1)
+	require.NoError(t, err)
+	defer resp1.Body.Close()
+	require.Equal(t, http.StatusOK, resp1.StatusCode, fmt.Sprintf("url: %s", url))
+	resp2, err := client.Do(req2)
+	require.NoError(t, err)
+	defer resp2.Body.Close()
+	require.Equal(t, http.StatusOK, resp2.StatusCode, fmt.Sprintf("url: %s", url))
+
+	requests, err := k.GetReceivedRequests()
+	require.NoError(t, err)
+	fmt.Printf("Requests: %+v\n", requests)
+	require.Equal(t, 2, len(requests))
+	require.Equal(t, string(bodyRequest), requests[0].Body)
+	require.Equal(t, string(bodyRequest), requests[1].Body)
 }

@@ -148,6 +148,10 @@ chaosmesh: ## there is currently a bug on JS side to import all CRDs from one ya
 gotestloghelper_build:
 	cd ./tools/gotestloghelper && go build -o ../../gotestloghelper . && cd -
 
+.PHONY: typos
+typos:
+	pre-commit run detect-typos --all-files --show-diff-on-failure --color=always
+
 .PHONY: nix_shell
 nix_shell:
 	nix develop

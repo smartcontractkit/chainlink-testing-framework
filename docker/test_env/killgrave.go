@@ -19,22 +19,23 @@ import (
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/k8s/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
-	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
-const defaultKillgraveImage = "friendsofgo/killgrave:0.4.1"
+const defaultKillgraveImage = "friendsofgo/killgrave:v0.5.1-request-dump"
 
 type Killgrave struct {
 	EnvComponent
-	ExternalEndpoint    string
-	InternalPort        string
-	InternalEndpoint    string
-	impostersPath       string
-	impostersDirBinding string
-	t                   *testing.T
-	l                   zerolog.Logger
+	ExternalEndpoint      string
+	InternalPort          string
+	InternalEndpoint      string
+	impostersPath         string
+	impostersDirBinding   string
+	requestDumpDirBinding string
+	t                     *testing.T
+	l                     zerolog.Logger
 }
 
 // Imposter define an imposter structure
@@ -106,6 +107,10 @@ func (k *Killgrave) StartContainer() error {
 	if err != nil {
 		return err
 	}
+	err = k.setupRequestDump()
+	if err != nil {
+		return err
+	}
 	if k.t != nil {
 		k.t.Cleanup(func() {
 			os.RemoveAll(k.impostersDirBinding)
@@ -141,18 +146,32 @@ func (k *Killgrave) StartContainer() error {
 }
 
 func (k *Killgrave) getContainerRequest() (tc.ContainerRequest, error) {
-	killgraveImage := mirror.AddMirrorToImageIfSet(defaultKillgraveImage)
+	// TT-1290 Temporary work around using fork of killgrave, uncomment line below when fork is merged
+	// killgraveImage := mirror.AddMirrorToImageIfSet(defaultKillgraveImage)
+	// TT-1290 Temporary code to set image to the fork or the ecr mirror depending on the config
+	killgraveImage := "tateexon/killgrave:v0.5.1-request-dump"
+	ecr := os.Getenv(config.EnvVarInternalDockerRepo)
+	if ecr != "" {
+		killgraveImage = fmt.Sprintf("%s/%s", ecr, defaultKillgraveImage)
+	}
+	// end temporary code
+
 	return tc.ContainerRequest{
 		Name:         k.ContainerName,
 		Networks:     k.Networks,
 		Image:        killgraveImage,
 		ExposedPorts: []string{NatPortFormat(k.InternalPort)},
-		Cmd:          []string{"-host=0.0.0.0", "-imposters=/imposters", "-watcher"},
+		Cmd:          []string{"-H=0.0.0.0", "-i=/imposters", "-w", "-v", "-d=/requestDump/requestDump.log"},
 		HostConfigModifier: func(hostConfig *container.HostConfig) {
 			hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
 				Type:     mount.TypeBind,
 				Source:   k.impostersDirBinding,
 				Target:   "/imposters",
+				ReadOnly: false,
+			}, mount.Mount{
+				Type:     mount.TypeBind,
+				Source:   k.requestDumpDirBinding,
+				Target:   "/requestDump",
 				ReadOnly: false,
 			})
 		},
@@ -185,6 +204,13 @@ func (k *Killgrave) setupImposters() error {
 
 	// add default five imposter
 	return k.SetAdapterBasedIntValuePath("/five", []string{http.MethodGet, http.MethodPost}, 5)
+}
+
+func (k *Killgrave) setupRequestDump() error {
+	// create temporary directory for request dumps
+	var err error
+	k.requestDumpDirBinding, err = os.MkdirTemp(k.requestDumpDirBinding, "requestDump*")
+	return err
 }
 
 // AddImposter adds an imposter to the killgrave container
@@ -281,4 +307,57 @@ func (k *Killgrave) SetAnyValueResponse(path string, methods []string, v interfa
 // SetAdapterBasedAnyValuePathObject sets a path to return a value as though it was from an adapter
 func (k *Killgrave) SetAdapterBasedIntValuePath(path string, methods []string, v int) error {
 	return k.SetAdapterBasedAnyValuePath(path, methods, v)
+}
+
+type RequestData struct {
+	Method string              `json:"method"`
+	Host   string              `json:"host"`
+	URL    string              `json:"url"`
+	Header map[string][]string `json:"header"`
+	Body   string              `json:"body"`
+}
+
+func (k *Killgrave) GetReceivedRequests() ([]RequestData, error) {
+	// killgrave uses a channel to write the request data to a file so we want to make sure
+	// all requests have been written before reading the file
+	time.Sleep(1 * time.Second)
+
+	// Read the directory entries
+	files, err := os.ReadDir(k.requestDumpDirBinding)
+	if err != nil {
+		return nil, err
+	}
+
+	// Iterate over the directory entries
+	fmt.Println("Files Start")
+	for _, file := range files {
+		fmt.Println(file.Name())
+	}
+	fmt.Println("Files End")
+
+	fileContent, err := os.ReadFile(filepath.Join(k.requestDumpDirBinding, "requestDump.log"))
+	if err != nil {
+		return nil, fmt.Errorf("error reading file: %w", err)
+	}
+
+	fmt.Println("File Content Start")
+	fmt.Println(string(fileContent))
+	fmt.Println("File Content End")
+
+	// Split the contents by the newline separator
+	requestDumps := strings.Split(string(fileContent), "\n")
+	requestsData := []RequestData{}
+	for _, requestDump := range requestDumps {
+		if requestDump == "" {
+			continue
+		}
+
+		rd := RequestData{}
+		err := json.Unmarshal([]byte(requestDump), &rd)
+		if err != nil {
+			return nil, fmt.Errorf("error unmarshalling JSON: %w", err)
+		}
+		requestsData = append(requestsData, rd)
+	}
+	return requestsData, nil
 }
