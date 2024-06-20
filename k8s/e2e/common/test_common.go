@@ -462,3 +462,14 @@ func TestReallyLongLogs(t *testing.T) {
 	// this shouldn't hang
 	l.Info().Int("len", len(s)).Str("string", s).Msg("string")
 }
+
+func TestAnvil(t *testing.T) {
+	t.Parallel()
+	testEnvConfig := GetTestEnvConfig(t)
+	e := presets.FoundryNetwork(testEnvConfig)
+	err := e.Run()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		assert.NoError(t, e.Shutdown())
+	})
+}

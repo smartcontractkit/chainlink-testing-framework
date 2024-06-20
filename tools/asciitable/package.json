@@ -1,0 +1,5 @@
+{
+  "name": "asciitable",
+  "description": "Tool render an appendable ASCII table with 2 columns, header and optional sections",
+  "version": "1.0.2"
+}
