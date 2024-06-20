@@ -101,7 +101,7 @@ install_monitoring:
 	helm repo add grafana https://grafana.github.io/helm-charts
 	helm repo update
 	kubectl create namespace monitoring || true
-	helm upgrade --wait --namespace monitoring --install loki grafana/loki-stack  --set grafana.enabled=true,prometheus.enabled=true,prometheus.alertmanager.persistentVolume.enabled=false,prometheus.server.persistentVolume.enabled=false,loki.persistence.enabled=false --values k8s/grafana/values.yml
+	helm upgrade --wait --namespace monitoring --install loki grafana/loki-stack --version 2.10.2 --set grafana.enabled=true,prometheus.enabled=true,prometheus.alertmanager.persistentVolume.enabled=false,prometheus.server.persistentVolume.enabled=false,loki.persistence.enabled=false --values k8s/grafana/values.yml
 	kubectl port-forward --namespace monitoring service/loki-grafana 3000:80
 
 .PHONY: uninstall_monitoring
