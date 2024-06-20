@@ -56,7 +56,7 @@ var (
 		ChainID:              1337,
 		PrivateKeys: []string{
 			"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
-			"7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6",
+			"59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d",
 		},
 		URLs:                      []string{"ws://source-chain-ethereum-geth:8546"},
 		HTTPURLs:                  []string{"http://source-chain-ethereum-geth:8544"},
@@ -76,8 +76,8 @@ var (
 		ClientImplementation: blockchain.EthereumClientImplementation,
 		ChainID:              2337,
 		PrivateKeys: []string{
+			"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
 			"59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d",
-			"47e179ec197488593b187f80a00eb0da91f1b9d0b13f8733639f19c30a34926a",
 		},
 		URLs:                      []string{"ws://dest-chain-ethereum-geth:8546"},
 		HTTPURLs:                  []string{"http://dest-chain-ethereum-geth:8544"},
@@ -100,7 +100,7 @@ var (
 		ChainID:              1337,
 		PrivateKeys: []string{
 			"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
-			"7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6",
+			"59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d",
 		},
 		URLs:                      []string{"ws://source-chain-ethereum-besu:8546"},
 		HTTPURLs:                  []string{"http://source-chain-ethereum-besu:8544"},
@@ -122,8 +122,8 @@ var (
 		SimulationType:       "besu",
 		ChainID:              2337,
 		PrivateKeys: []string{
+			"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
 			"59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d",
-			"47e179ec197488593b187f80a00eb0da91f1b9d0b13f8733639f19c30a34926a",
 		},
 		URLs:                      []string{"ws://dest-chain-ethereum-besu:8546"},
 		HTTPURLs:                  []string{"http://dest-chain-ethereum-besu:8544"},
@@ -143,7 +143,7 @@ var (
 		ChainID:              1337,
 		PrivateKeys: []string{
 			"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
-			"7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6",
+			"59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d",
 		},
 		URLs:                      []string{"ws://geth-ethereum-geth:8546"},
 		HTTPURLs:                  []string{"http://geth-ethereum-geth:8544"},
