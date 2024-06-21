@@ -2,6 +2,8 @@ package internal
 
 import (
 	"fmt"
+	"github.com/pelletier/go-toml/v2"
+	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"io"
 	defaultlog "log"
 	"os"
@@ -39,6 +41,7 @@ const (
 	Flag_ExecutionClientImage = "execution-layer-image"
 	Flag_ConsensucClientImage = "consensus-client-image"
 	Flag_ValidatorImage       = "validator-image"
+	Flag_TomlOutputFile       = "toml-output-file"
 )
 
 func init() {
@@ -95,6 +98,13 @@ func init() {
 		Flag_ValidatorImage,
 		"",
 		"custom Docker image for validator",
+	)
+
+	StartTestEnvCmd.PersistentFlags().StringP(
+		Flag_TomlOutputFile,
+		"o",
+		"",
+		"optional file for saving the generated Network/EVMNetwork TOML config",
 	)
 
 	// Set default log level for non-testcontainer code
@@ -189,13 +199,13 @@ func startPrivateEthChainE(cmd *cobra.Command, args []string) error {
 	cfg, err := builder.
 		Build()
 
-	log.Info().Str("chain", cfg.Describe()).Msg("Starting private chain")
-
 	if err != nil {
 		return err
 	}
 
-	_, eth2, err := cfg.Start()
+	log.Info().Str("chain", cfg.Describe()).Msg("Starting private chain")
+
+	evmNetwork, eth2, err := cfg.Start()
 
 	if err != nil {
 		return err
@@ -207,6 +217,20 @@ func startPrivateEthChainE(cmd *cobra.Command, args []string) error {
 	err = cfg.Save()
 	if err != nil {
 		return err
+	}
+
+	if tomlOutputFile, err := flags.GetString(Flag_TomlOutputFile); err == nil && tomlOutputFile != "" {
+		tomlConfig, err := generateTomlNetworkConfig(evmNetwork, eth2)
+		if err != nil {
+			return err
+		}
+
+		err = os.WriteFile(tomlOutputFile, tomlConfig, 0600)
+		if err != nil {
+			return err
+		}
+
+		log.Info().Msgf("Network/EVMNetwork TOML config saved to %s", tomlOutputFile)
 	}
 
 	handleExitSignal()
@@ -256,4 +280,31 @@ func getCustomImages(flags *flag.FlagSet) (map[config.ContainerType]string, erro
 	}
 
 	return customImages, nil
+}
+
+func generateTomlNetworkConfig(evmNetwork blockchain.EVMNetwork, rpcs test_env.RpcProvider) ([]byte, error) {
+	type toWrite struct {
+		Network config.NetworkConfig `toml:"Network"`
+	}
+
+	networkName := "LOCAL_GETH"
+	evmNetwork.Simulated = false
+	// here we should also export docker network name, maybe to a separate file, so it's easier to grab it
+	// we should also rewrite the HTTP/WS url so that it matches proxy settings:
+	// http://localhost:8544 -> http://<container_name>:8544/
+	// ws://localhost:8545 -> ws://<container_name>:8545/ws/
+
+	network := config.NetworkConfig{
+		SelectedNetworks: []string{networkName},
+		EVMNetworks: map[string]*blockchain.EVMNetwork{
+			networkName: &evmNetwork,
+		},
+	}
+
+	marshalled, err := toml.Marshal(toWrite{Network: network})
+	if err != nil {
+		return []byte{}, err
+	}
+
+	return marshalled, nil
 }
