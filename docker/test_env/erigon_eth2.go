@@ -28,6 +28,7 @@ func NewErigonEth2(networks []string, chainConfig *config.EthereumChainConfig, g
 			Networks:         networks,
 			ContainerImage:   parts[0],
 			ContainerVersion: parts[1],
+			StartupTimeout:   2 * time.Minute,
 		},
 		chainConfig:          chainConfig,
 		generatedDataHostDir: generatedDataHostDir,
@@ -73,9 +74,8 @@ func (g *Erigon) getEth2ContainerRequest() (*tc.ContainerRequest, error) {
 		ExposedPorts:  []string{NatPortFormat(DEFAULT_EVM_NODE_HTTP_PORT), NatPortFormat(ETH2_EXECUTION_PORT)},
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForLog("Started P2P networking").
-				WithStartupTimeout(120 * time.Second).
-				WithPollInterval(1 * time.Second),
-		),
+				WithPollInterval(1 * time.Second)).
+			WithStartupTimeoutDefault(120 * time.Second),
 		User: "0:0",
 		Entrypoint: []string{
 			"sh",

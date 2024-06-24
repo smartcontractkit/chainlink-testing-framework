@@ -38,6 +38,7 @@ func NewEthGenesisGenerator(chainConfig config.EthereumChainConfig, generatedDat
 			ContainerName:    fmt.Sprintf("%s-%s", "eth-genesis-generator", uuid.NewString()[0:8]),
 			ContainerImage:   parts[0],
 			ContainerVersion: parts[1],
+			StartupTimeout:   30 * time.Second,
 		},
 		chainConfig:          chainConfig,
 		generatedDataHostDir: generatedDataHostDir,
@@ -131,9 +132,8 @@ func (g *EthGenesisGeneretor) getContainerRequest(networks []string) (*tc.Contai
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForLog("+ terminalTotalDifficulty=0"),
 			tcwait.ForLog("+ sed -i 's/TERMINAL_TOTAL_DIFFICULTY:.*/TERMINAL_TOTAL_DIFFICULTY: 0/' /data/custom_config_data/config.yaml").
-				WithStartupTimeout(20*time.Second).
 				WithPollInterval(1*time.Second),
-		),
+		).WithStartupTimeoutDefault(g.StartupTimeout),
 		Cmd: []string{"all"},
 		Files: []tc.ContainerFile{
 			{
