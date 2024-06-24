@@ -427,7 +427,7 @@ func (en *EthereumNetwork) startEth2() (blockchain.EVMNetwork, RpcProvider, erro
 	}
 	generatedDataHostDir, valKeysDir, err := en.generateGenesisAndFoldersIfNeeded()
 	if err != nil {
-		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to create host directories")
+		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to prepare genesis")
 	}
 
 	opts := en.getExecutionLayerEnvComponentOpts()
@@ -783,7 +783,7 @@ func (s *RpcProvider) PublicWsUrls() []string {
 }
 
 func createHostDirectories() (string, string, error) {
-	customConfigDataDir, err := os.MkdirTemp("", "custom_config_data")
+	customConfigDataDir, err := os.MkdirTemp("", "metadata")
 	if err != nil {
 		return "", "", err
 	}
