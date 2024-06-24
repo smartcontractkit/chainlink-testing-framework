@@ -21,6 +21,6 @@ func TestEthEnvReadDefaultChainConfig(t *testing.T) {
 	require.Equal(t, 1337, c.ChainID, "Chain ID should be 1337")
 	require.Len(t, c.AddressesToFund, 1, "Should have 1 address to fund")
 	require.Equal(t, "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", c.AddressesToFund[0], "Should have address 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 to fund")
-	require.Len(t, c.HardForkEpochs, 1, "Should have 1 hard fork epoch")
-	require.Equal(t, map[string]int{"Deneb": 500}, c.HardForkEpochs, "Should have correct hard fork epochs")
+	require.Len(t, c.HardForkEpochs, 0, "Should have 0 hard fork epochs")
+	require.Nil(t, c.HardForkEpochs, "Should have no hard fork epochs")
 }
