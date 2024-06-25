@@ -24,8 +24,8 @@ const (
 	PRYSM_QUERY_RPC_PORT = "3500"
 	PRYSM_NODE_RPC_PORT  = "4000"
 
-	defaultPrysmBeaconChainImage = "gcr.io/prysmaticlabs/prysm/beacon-chain:v4.1.1"
-	defaultPyrsmValidatorImage   = "gcr.io/prysmaticlabs/prysm/validator:v4.1.1"
+	defaultPrysmBeaconChainImage = "gcr.io/prysmaticlabs/prysm/beacon-chain:v5.0.4"
+	defaultPyrsmValidatorImage   = "gcr.io/prysmaticlabs/prysm/validator:v5.0.4"
 )
 
 type PrysmBeaconChain struct {

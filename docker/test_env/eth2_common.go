@@ -21,7 +21,7 @@ var (
 	KEYSTORE_DIR_LOCATION_INSIDE_CONTAINER          = fmt.Sprintf("%s/keystore", GENERATED_DATA_DIR_INSIDE_CONTAINER)
 	GENERATED_VALIDATOR_KEYS_DIR_INSIDE_CONTAINER   = "/keys"
 	NODE_0_DIR_INSIDE_CONTAINER                     = fmt.Sprintf("%s/node-0", GENERATED_VALIDATOR_KEYS_DIR_INSIDE_CONTAINER)
-	GENERATED_DATA_DIR_INSIDE_CONTAINER             = "/data/custom_config_data"
+	GENERATED_DATA_DIR_INSIDE_CONTAINER             = "/data/metadata"
 	JWT_SECRET_FILE_LOCATION_INSIDE_CONTAINER       = fmt.Sprintf("%s/jwtsecret", GENERATED_DATA_DIR_INSIDE_CONTAINER) // #nosec G101
 	VALIDATOR_BIP39_MNEMONIC                        = "giant issue aisle success illegal bike spike question tent bar rely arctic volcano long crawl hungry vocal artwork sniff fantasy very lucky have athlete"
 )
