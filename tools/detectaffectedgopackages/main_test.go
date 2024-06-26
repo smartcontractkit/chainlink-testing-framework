@@ -44,44 +44,47 @@ func verifyAllItemsPresent(t *testing.T, expected, actual []string) {
 
 func TestGetChangedPackages(t *testing.T) {
 	input := fileToString(t, "testdata/gitdiff.txt")
-	config := SetConfig(ptr.Ptr("main"), ptr.Ptr(""), ptr.Ptr(""))
-	packages, err := getChangedPackages(stringToBytesBuffer(input), config.ProjectPath, config.Excludes)
+	listInput := fileToString(t, "testdata/golist.txt")
+	config := SetConfig(ptr.Ptr("main"), ptr.Ptr(""), ptr.Ptr(""), ptr.Ptr(2))
+	parsedPackages, err := parsePackages(stringToBytesBuffer(listInput))
+	require.NoError(t, err)
+	packages, err := getChangedPackages(stringToBytesBuffer(input), config.ProjectPath, config.Excludes, getGoFileMap(parsedPackages))
 	fmt.Printf("packages: %++v\n", packages)
 	require.NoError(t, err)
 	expected := []string{
-		"internal/config.go",
-		"internal/config_test.go",
-		"internal/server/http/dump.go",
-		"internal/server/http/server.go",
-		"internal/server/http/server_test.go",
-		"internal/app/cmd/cmd.go",
+		"github.com/friendsofgo/killgrave/internal",
+		"github.com/friendsofgo/killgrave/internal/server/http",
+		"github.com/friendsofgo/killgrave/internal/app/cmd",
 	}
 	verifyAllItemsPresent(t, expected, packages)
 }
 
 func TestGetChangedPackagesWithExcludes(t *testing.T) {
 	input := fileToString(t, "testdata/gitdiff.txt")
-	config := SetConfig(ptr.Ptr("main"), ptr.Ptr(""), ptr.Ptr("internal/server/http/,internal/app/cmd/"))
-	packages, err := getChangedPackages(stringToBytesBuffer(input), config.ProjectPath, config.Excludes)
+	listInput := fileToString(t, "testdata/golist.txt")
+	config := SetConfig(ptr.Ptr("main"), ptr.Ptr(""), ptr.Ptr("internal/server/http/,internal/app/cmd/"), ptr.Ptr(2))
+	parsedPackages, err := parsePackages(stringToBytesBuffer(listInput))
+	require.NoError(t, err)
+	packages, err := getChangedPackages(stringToBytesBuffer(input), config.ProjectPath, config.Excludes, getGoFileMap(parsedPackages))
 	fmt.Printf("packages: %++v\n", packages)
 	require.NoError(t, err)
 	expected := []string{
-		"internal/config.go",
-		"internal/config_test.go",
+		"github.com/friendsofgo/killgrave/internal",
 	}
 	verifyAllItemsPresent(t, expected, packages)
 }
 
 func TestGetChangedPackagesWithProjectPath(t *testing.T) {
 	input := fileToString(t, "testdata/gitdiff.txt")
-	config := SetConfig(ptr.Ptr("main"), ptr.Ptr("internal/server/http"), ptr.Ptr(""))
-	packages, err := getChangedPackages(stringToBytesBuffer(input), config.ProjectPath, config.Excludes)
+	listInput := fileToString(t, "testdata/golist.txt")
+	config := SetConfig(ptr.Ptr("main"), ptr.Ptr("internal/server/http"), ptr.Ptr(""), ptr.Ptr(2))
+	parsedPackages, err := parsePackages(stringToBytesBuffer(listInput))
+	require.NoError(t, err)
+	packages, err := getChangedPackages(stringToBytesBuffer(input), config.ProjectPath, config.Excludes, getGoFileMap(parsedPackages))
 	fmt.Printf("packages: %++v\n", packages)
 	require.NoError(t, err)
 	expected := []string{
-		"internal/server/http/dump.go",
-		"internal/server/http/server.go",
-		"internal/server/http/server_test.go",
+		"github.com/friendsofgo/killgrave/internal/server/http",
 	}
 	verifyAllItemsPresent(t, expected, packages)
 }
@@ -97,8 +100,10 @@ func TestGetGoModChanges(t *testing.T) {
 
 func TestGetGoDepMap(t *testing.T) {
 	input := fileToString(t, "testdata/golist.txt")
-	packages := getGoDepMap(stringToBytesBuffer(input))
-	require.Equal(t, 156, len(packages))
+	parsedPackages, err := parsePackages(stringToBytesBuffer(input))
+	require.NoError(t, err)
+	packages := getGoDepMap(parsedPackages)
+	require.Equal(t, 160, len(packages))
 	p := packages["github.com/friendsofgo/killgrave/internal/server/http"]
 	fmt.Printf("packages: %++v\n", p)
 	require.Equal(t, 3, len(p))
@@ -107,10 +112,21 @@ func TestGetGoDepMap(t *testing.T) {
 	require.Equal(t, "github.com/friendsofgo/killgrave/internal/app/cmd", p[2])
 }
 
+func TestGetGoFileMap(t *testing.T) {
+	input := fileToString(t, "testdata/golist.txt")
+	parsedPackages, err := parsePackages(stringToBytesBuffer(input))
+	require.NoError(t, err)
+	packages := getGoFileMap(parsedPackages)
+	require.Equal(t, 20, len(packages))
+	require.Equal(t, "github.com/friendsofgo/killgrave/internal", packages["internal/config.go"])
+}
+
 func TestFindAffectedPackagesExternalDep(t *testing.T) {
 	input := fileToString(t, "testdata/golist.txt")
-	packages := getGoDepMap(stringToBytesBuffer(input))
-	affected := findAffectedPackages("github.com/spf13/cobra", packages, true)
+	parsedPackages, err := parsePackages(stringToBytesBuffer(input))
+	require.NoError(t, err)
+	packages := getGoDepMap(parsedPackages)
+	affected := findAffectedPackages("github.com/spf13/cobra", packages, true, 2)
 	require.Equal(t, 3, len(affected))
 	fmt.Printf("%++v\n", affected)
 	require.Equal(t, "github.com/friendsofgo/killgrave/cmd/killgrave", affected[0])
@@ -120,8 +136,10 @@ func TestFindAffectedPackagesExternalDep(t *testing.T) {
 
 func TestFindAffectedPackagesInternalDep(t *testing.T) {
 	input := fileToString(t, "testdata/golist.txt")
-	packages := getGoDepMap(stringToBytesBuffer(input))
-	affected := findAffectedPackages("github.com/friendsofgo/killgrave/internal/server/http", packages, false)
+	parsedPackages, err := parsePackages(stringToBytesBuffer(input))
+	require.NoError(t, err)
+	packages := getGoDepMap(parsedPackages)
+	affected := findAffectedPackages("github.com/friendsofgo/killgrave/internal/server/http", packages, false, 2)
 	require.Equal(t, 4, len(affected))
 	fmt.Printf("%++v\n", affected)
 	require.Equal(t, "github.com/friendsofgo/killgrave/internal/server/http", affected[0])
