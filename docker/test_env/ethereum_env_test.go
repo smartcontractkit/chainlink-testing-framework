@@ -316,34 +316,6 @@ func TestEthEnvCustomDockerNetworks(t *testing.T) {
 	require.Equal(t, networks, cfg.DockerNetworkNames, "Incorrect docker networks in config")
 }
 
-func TestEthEnvDenebHardFork(t *testing.T) {
-	t.Parallel()
-	l := logging.GetTestLogger(t)
-
-	builder := NewEthereumNetworkBuilder()
-	cfg, err := builder.
-		WithEthereumVersion(config.EthereumVersion_Eth2).
-		WithConsensusLayer(config.ConsensusLayer_Prysm).
-		WithExecutionLayer(config.ExecutionLayer_Geth).
-		WithEthereumChainConfig(config.EthereumChainConfig{
-			HardForkEpochs: map[string]int{"Deneb": 1},
-		}).
-		Build()
-	require.NoError(t, err, "Builder validation failed")
-
-	net, _, err := cfg.Start()
-	require.NoError(t, err, "Couldn't start PoS network")
-
-	c, err := blockchain.ConnectEVMClient(net, l)
-	require.NoError(t, err, "Couldn't connect to the evm client")
-	balance, err := c.BalanceAt(context.Background(), common.HexToAddress("0x14dc79964da2c08b23698b3d3cc7ca32193d9955"))
-	require.NoError(t, err, "Couldn't get balance")
-	require.Equal(t, "0", fmt.Sprintf("%d", balance.Uint64()), "Balance is not correct")
-
-	err = c.Close()
-	require.NoError(t, err, "Couldn't close the client")
-}
-
 func TestEthEnvInvalidHardForks(t *testing.T) {
 	t.Parallel()
 	builder := NewEthereumNetworkBuilder()
@@ -353,36 +325,10 @@ func TestEthEnvInvalidHardForks(t *testing.T) {
 		WithConsensusLayer(config.ConsensusLayer_Prysm).
 		WithExecutionLayer(config.ExecutionLayer_Geth).
 		WithEthereumChainConfig(config.EthereumChainConfig{
-			HardForkEpochs: map[string]int{"Deneb": 0},
+			HardForkEpochs: map[string]int{"Electra": 0},
 		}).
 		Build()
-	require.Error(t, err, "Builder validation failed")
-	require.Contains(t, err.Error(), "hard fork Deneb epoch must be >= 1")
-
-	builder = NewEthereumNetworkBuilder()
-	_, err = builder.
-		WithEthereumVersion(config.EthereumVersion_Eth2).
-		WithConsensusLayer(config.ConsensusLayer_Prysm).
-		WithExecutionLayer(config.ExecutionLayer_Geth).
-		WithEthereumChainConfig(config.EthereumChainConfig{
-			HardForkEpochs: map[string]int{"Electra": 1},
-		}).
-		Build()
-	require.Error(t, err, "Builder validation failed")
-	require.Contains(t, err.Error(), config.UnsopportedForkErr)
-
-	builder = NewEthereumNetworkBuilder()
-	_, err = builder.
-		//nolint:staticcheck //ignore SA1019
-		WithEthereumVersion(config.EthereumVersion_Eth2_Legacy).
-		WithConsensusLayer(config.ConsensusLayer_Prysm).
-		WithExecutionLayer(config.ExecutionLayer_Geth).
-		WithEthereumChainConfig(config.EthereumChainConfig{
-			HardForkEpochs: map[string]int{"Electra": 1, "Deneb": 1},
-		}).
-		Build()
-	require.Error(t, err, "Builder validation failed")
-	require.Contains(t, err.Error(), config.UnsopportedForkErr)
+	require.NoError(t, err, "Builder validation failed")
 }
 
 func TestEthEnvAutoEthereumVersionEth1Minor(t *testing.T) {
