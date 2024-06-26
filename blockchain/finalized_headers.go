@@ -108,7 +108,7 @@ func newGlobalFinalizedHeaderManager(evmClient EVMClient) *FinalizedHeader {
 		lastFinalized, err := evmClient.GetLatestFinalizedBlockHeader(ctx)
 		ctxCancel()
 		if err != nil {
-			log.Err(fmt.Errorf("error getting latest finalized block header")).Msg("NewFinalizedHeader")
+			log.Err(fmt.Errorf("error getting latest finalized block header %w", err)).Msg("NewFinalizedHeader")
 			return nil
 		}
 		fHeader = &FinalizedHeader{

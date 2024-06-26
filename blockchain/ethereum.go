@@ -679,11 +679,11 @@ func (e *EthereumClient) CancelFinalityPolling() {
 func (e *EthereumClient) WaitForFinalizedTx(txHash common.Hash) (*big.Int, time.Time, error) {
 	receipt, err := e.Client.TransactionReceipt(context.Background(), txHash)
 	if err != nil {
-		return nil, time.Time{}, err
+		return nil, time.Time{}, fmt.Errorf("error getting receipt: %w in network %s tx %s", err, e.GetNetworkName(), txHash.Hex())
 	}
 	txHdr, err := e.HeaderByNumber(context.Background(), receipt.BlockNumber)
 	if err != nil {
-		return nil, time.Time{}, err
+		return nil, time.Time{}, fmt.Errorf("error getting header: %w in network %s tx %s", err, e.GetNetworkName(), txHash.Hex())
 	}
 	finalizer := NewTransactionFinalizer(e, txHdr, receipt.TxHash)
 	key := "txFinalizer-" + txHash.String()
@@ -691,7 +691,7 @@ func (e *EthereumClient) WaitForFinalizedTx(txHash common.Hash) (*big.Int, time.
 	defer e.DeleteHeaderEventSubscription(key)
 	err = finalizer.Wait()
 	if err != nil {
-		return nil, time.Time{}, err
+		return nil, time.Time{}, fmt.Errorf("error waiting for finalization: %w in network %s tx %s", err, e.GetNetworkName(), txHash.Hex())
 	}
 	return finalizer.FinalizedBy, finalizer.FinalizedAt, nil
 }
@@ -717,7 +717,7 @@ func (e *EthereumClient) IsTxHeadFinalized(txHdr, header *SafeEVMHeader) (bool, 
 		}
 		return false, latestFinalized, latestFinalizedAt, nil
 	}
-	return false, nil, time.Time{}, fmt.Errorf("no finalized head found. start polling for finalized header")
+	return false, nil, time.Time{}, fmt.Errorf("no finalized head found. start polling for finalized header, network %s", e.GetNetworkName())
 }
 
 // IsTxConfirmed checks if the transaction is confirmed on chain or not
