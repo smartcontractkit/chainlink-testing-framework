@@ -79,7 +79,7 @@ func (e *CeloClient) TransactionOpts(from *EthereumWallet) (*bind.TransactOpts, 
 	opts.From = common.HexToAddress(from.Address())
 	opts.Context = context.Background()
 
-	nonce, err := e.GetNonce(context.Background(), common.HexToAddress(from.Address()))
+	nonce, err := e.GetNonce(context.Background(), common.HexToAddress(from.Address()), false)
 	if err != nil {
 		return nil, err
 	}

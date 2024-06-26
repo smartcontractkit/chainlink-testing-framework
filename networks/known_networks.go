@@ -825,6 +825,30 @@ var (
 		DefaultGasLimit:           6000000,
 	}
 
+	// https://chainlist.org/chain/300
+	ZKSyncSepoliaTestnet blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "ZKSync Sepolia Testnet",
+		ClientImplementation:      blockchain.ZKSyncClientImplementation,
+		ChainID:                   300,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: 5 * time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       1000,
+	}
+
+	// https://era.zksync.io/docs/dev/troubleshooting/important-links.html
+	ZKSyncGoerliTestnet blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "ZKSync Goerli Testnet",
+		ClientImplementation:      blockchain.ZKSyncClientImplementation,
+		ChainID:                   280,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: 5 * time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       1000,
+	}
+
 	ModeSepolia = blockchain.EVMNetwork{
 		Name:                      "Mode Sepolia",
 		SupportsEIP1559:           true,
@@ -938,6 +962,8 @@ var (
 		"NEXON_STAGE":           NexonStage,
 		"GNOSIS_CHIADO":         GnosisChiado,
 		"GNOSIS_MAINNET":        GnosisMainnet,
+		"ZK_SYNC_GOERLI":        ZKSyncGoerliTestnet,
+		"ZK_SYNC_SEPOLIA":       ZKSyncSepoliaTestnet,
 		"BLAST_SEPOLIA":         BlastSepolia,
 		"BLAST_MAINNET":         BlastMainnet,
 		"MODE_SEPOLIA":          ModeSepolia,
