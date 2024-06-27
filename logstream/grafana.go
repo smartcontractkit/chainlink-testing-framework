@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
+
+	"github.com/avast/retry-go"
 )
 
 const (
@@ -20,25 +23,38 @@ func ShortenUrl(grafanaUrl, urlToShorten, bearerToken string) (string, error) {
 		Url string `json:"url"`
 	}
 
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%sapi/short-urls", grafanaUrl), bodyReader)
-	if err != nil {
+	var res *http.Response
+
+	if err := retry.Do(
+		func() error {
+			req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%sapi/short-urls", grafanaUrl), bodyReader)
+			if err != nil {
+				return err
+			}
+
+			req.Header.Add("Authorization", "Bearer "+bearerToken)
+			req.Header.Add("Content-Type", "application/json")
+
+			res, err = http.DefaultClient.Do(req)
+			if err != nil {
+				return err
+			}
+
+			if res.StatusCode != http.StatusOK {
+				return err
+			}
+
+			return nil
+		},
+		retry.DelayType(retry.FixedDelay),
+		retry.Attempts(10),
+		retry.Delay(time.Duration(1)*time.Second),
+	); err != nil {
 		return "", fmt.Errorf("%s: %w", ShorteningFailedErr, err)
-	}
-
-	req.Header.Add("Authorization", "Bearer "+bearerToken)
-	req.Header.Add("Content-Type", "application/json")
-
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("%s: %w", ShorteningFailedErr, err)
-	}
-
-	if res.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("%s: status code: %s", ShorteningFailedErr, res.Status)
 	}
 
 	defer res.Body.Close()
-	err = json.NewDecoder(res.Body).Decode(&responseObject)
+	err := json.NewDecoder(res.Body).Decode(&responseObject)
 	if err != nil {
 		return "", fmt.Errorf("%s: %w", ShorteningFailedErr, err)
 	}

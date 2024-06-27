@@ -425,7 +425,7 @@ func (m *LogStream) SaveLogTargetsLocations(writer LogWriter) {
 		m.consumerMutex.RUnlock()
 		if err != nil {
 			if strings.Contains(err.Error(), ShorteningFailedErr) {
-				m.log.Warn().Str("Handler", name).Err(err).Msg("Failed to shorten Grafana URL, will use original one")
+				m.log.Warn().Str("Handler", name).Err(err).Msg("Failed to shorten Grafana URL, won't output any url")
 			} else {
 				m.log.Error().Str("Handler", name).Err(err).Msg("Failed to get log location")
 				continue
