@@ -186,7 +186,7 @@ const (
 )
 
 const (
-	UnsopportedForkErr = "only Deneb hard fork is supported"
+	UnsopportedForkErr = "only 'Electra' and 'EOF' hard forks are supported"
 )
 
 type EthereumChainConfig struct {
@@ -282,24 +282,8 @@ func (c *EthereumChainConfig) ValidateHardForks() error {
 		return nil
 	}
 
-	switch len(c.HardForkEpochs) {
-	case 0:
-		return nil
-	case 1:
-		for k := range c.HardForkEpochs {
-			if k != "Deneb" {
-				return errors.New(UnsopportedForkErr)
-			}
-		}
-	default:
-		return errors.New(UnsopportedForkErr)
-	}
-
-	for fork, epoch := range c.HardForkEpochs {
-		if epoch < 1 {
-			return fmt.Errorf("hard fork %s epoch must be >= 1", fork)
-		}
-	}
+	// currently Prysm Beacon Chain doesn't support any fork (Electra is coming in 2025)
+	c.HardForkEpochs = map[string]int{}
 
 	return nil
 }

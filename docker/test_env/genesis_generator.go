@@ -21,7 +21,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 )
 
-const defaultGenisisGeneratorImage = "tofelb/ethereum-genesis-generator:2.0.5"
+const defaultGenisisGeneratorImage = "tofelb/ethereum-genesis-generator:3.3.4-slots-per-epoch"
 
 type EthGenesisGeneretor struct {
 	EnvComponent
@@ -131,7 +131,7 @@ func (g *EthGenesisGeneretor) getContainerRequest(networks []string) (*tc.Contai
 		Networks:      networks,
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForLog("+ terminalTotalDifficulty=0"),
-			tcwait.ForLog("+ sed -i 's/TERMINAL_TOTAL_DIFFICULTY:.*/TERMINAL_TOTAL_DIFFICULTY: 0/' /data/custom_config_data/config.yaml").
+			tcwait.ForLog("+ sed -i 's/TERMINAL_TOTAL_DIFFICULTY:.*/TERMINAL_TOTAL_DIFFICULTY: 0/' /data/metadata/config.yaml").
 				WithPollInterval(1*time.Second),
 		).WithStartupTimeoutDefault(g.StartupTimeout),
 		Cmd: []string{"all"},
