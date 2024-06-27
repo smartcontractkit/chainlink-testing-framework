@@ -3,7 +3,6 @@ package logstream
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -26,9 +25,6 @@ func ShortenUrl(grafanaUrl, urlToShorten, bearerToken string) (string, error) {
 
 	var res *http.Response
 
-	//TODO remove me
-	attempt := 0
-
 	if err := retry.Do(
 		func() error {
 			req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%sapi/short-urls", grafanaUrl), bodyReader)
@@ -48,16 +44,8 @@ func ShortenUrl(grafanaUrl, urlToShorten, bearerToken string) (string, error) {
 				return err
 			}
 
-			//TODO remove me
-			attempt++
-			if attempt < 3 {
-				return errors.New("on demand")
-			}
-
 			return nil
-		}, retry.OnRetry(func(i uint, _ error) {
-			fmt.Printf("Retrying Grafana URL shortening, attempt %d", i+1)
-		}),
+		},
 		retry.DelayType(retry.FixedDelay),
 		retry.Attempts(10),
 		retry.Delay(time.Duration(1)*time.Second),
