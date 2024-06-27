@@ -6,8 +6,8 @@ type SethConfig interface {
 	GetSethConfig() *seth.Config
 }
 
-type NamedConfiguration interface {
-	GetConfigurationName() string
+type NamedConfigurations interface {
+	GetConfigurationNames() []string
 }
 
 type GlobalTestConfig interface {
