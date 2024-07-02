@@ -1,0 +1,7 @@
+diff --git a/go.mod b/go.mod
+index c07c96a..46d9add 100644
+--- a/go.mod
++++ b/go.mod
+@@ -10 +10 @@ require (
+-	github.com/stretchr/testify v1.8.4
++	github.com/stretchr/testify v1.8.3

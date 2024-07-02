@@ -1,0 +1,11 @@
+.gitignore
+Dockerfile
+Makefile
+README.md
+internal/app/cmd/cmd.go
+internal/config.go
+internal/config_test.go
+internal/server/http/dump.go
+internal/server/http/server.go
+internal/server/http/server_test.go
+internal/server/http/test/testdata/imposters/test_request.imp.yaml

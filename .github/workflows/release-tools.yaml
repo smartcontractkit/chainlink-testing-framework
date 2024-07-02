@@ -16,6 +16,7 @@ jobs:
             tools/ghlatestreleasechecker,
             tools/asciitable,
             tools/workflowresultparser,
+            tools/detectaffectedgopackages,
           ]
     name: Release ${{ matrix.tool }}
     runs-on: ubuntu-latest

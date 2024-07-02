@@ -24,6 +24,8 @@ jobs:
             path: ./tools/asciitable/
           - name: workflowresultparser
             path: ./tools/workflowresultparser/
+          - name: detectaffectedgopackages
+            path: ./tools/detectaffectedgopackages/
     runs-on: ubuntu-latest
     name: ${{ matrix.project.name }} unit tests
     steps:
