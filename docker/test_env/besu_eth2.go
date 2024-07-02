@@ -25,6 +25,7 @@ func NewBesuEth2(networks []string, chainConfig *config.EthereumChainConfig, gen
 			Networks:         networks,
 			ContainerImage:   parts[0],
 			ContainerVersion: parts[1],
+			StartupTimeout:   2 * time.Minute,
 		},
 		chainConfig:     chainConfig,
 		posSettings:     posSettings{generatedDataHostDir: generatedDataHostDir},
@@ -90,9 +91,8 @@ func (g *Besu) getEth2ContainerRequest() (*tc.ContainerRequest, error) {
 		ExposedPorts: []string{NatPortFormat(DEFAULT_EVM_NODE_HTTP_PORT), NatPortFormat(DEFAULT_EVM_NODE_WS_PORT), NatPortFormat(ETH2_EXECUTION_PORT)},
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForLog("Ethereum main loop is up").
-				WithStartupTimeout(120 * time.Second).
-				WithPollInterval(1 * time.Second),
-		),
+				WithPollInterval(1 * time.Second)).
+			WithStartupTimeoutDefault(g.StartupTimeout),
 		User: "0:0", //otherwise in CI we get "permission denied" error, when trying to access data from mounted volume
 		Cmd:  cmd,
 		Env: map[string]string{

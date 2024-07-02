@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
@@ -26,6 +27,7 @@ func NewBesuEth1(networks []string, chainConfig *config.EthereumChainConfig, opt
 			Networks:         networks,
 			ContainerImage:   parts[0],
 			ContainerVersion: parts[1],
+			StartupTimeout:   2 * time.Minute,
 		},
 		chainConfig:     chainConfig,
 		l:               logging.GetTestLogger(nil),
@@ -63,8 +65,8 @@ func (g *Besu) getEth1ContainerRequest() (*tc.ContainerRequest, error) {
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForLog("WebSocketService | Websocket service started"),
 			NewWebSocketStrategy(NatPort(DEFAULT_EVM_NODE_WS_PORT), g.l),
-			NewHTTPStrategy("/", NatPort(DEFAULT_EVM_NODE_HTTP_PORT)).WithStatusCode(201),
-		),
+			NewHTTPStrategy("/", NatPort(DEFAULT_EVM_NODE_HTTP_PORT)).WithStatusCode(201)).
+			WithStartupTimeoutDefault(g.StartupTimeout),
 		Entrypoint: []string{
 			"besu",
 			"--genesis-file", "/opt/besu/genesis/genesis.json",

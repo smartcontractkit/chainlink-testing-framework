@@ -32,7 +32,8 @@ type AfterGenesisHelper struct {
 func NewInitHelper(chainConfig config.EthereumChainConfig, customConfigDataDir string, opts ...EnvComponentOption) *AfterGenesisHelper {
 	g := &AfterGenesisHelper{
 		EnvComponent: EnvComponent{
-			ContainerName: fmt.Sprintf("%s-%s", "after-genesis-helper", uuid.NewString()[0:8]),
+			ContainerName:  fmt.Sprintf("%s-%s", "after-genesis-helper", uuid.NewString()[0:8]),
+			StartupTimeout: 20 * time.Second,
 		},
 		chainConfig:         chainConfig,
 		customConfigDataDir: customConfigDataDir,
@@ -97,7 +98,7 @@ func (g *AfterGenesisHelper) getContainerRequest(networks []string) (*tc.Contain
 		ImagePlatform: "linux/x86_64",
 		Networks:      networks,
 		WaitingFor: NewExitCodeStrategy().WithExitCode(0).
-			WithPollInterval(1 * time.Second).WithTimeout(10 * time.Second),
+			WithPollInterval(1 * time.Second).WithTimeout(g.StartupTimeout),
 		Entrypoint: []string{"sh", "/init.sh"},
 		Files: []tc.ContainerFile{
 			{

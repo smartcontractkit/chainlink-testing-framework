@@ -56,8 +56,9 @@ func NewKafka(networks []string) *Kafka {
 	}
 	return &Kafka{
 		EnvComponent: EnvComponent{
-			ContainerName: containerName,
-			Networks:      networks,
+			ContainerName:  containerName,
+			Networks:       networks,
+			StartupTimeout: 1 * time.Minute,
 		},
 		EnvVars: defaultEnvVars,
 		l:       log.Logger,
@@ -169,7 +170,7 @@ func (k *Kafka) getContainerRequest() (tc.ContainerRequest, error) {
 		Env:          k.EnvVars,
 		Networks:     k.Networks,
 		WaitingFor: tcwait.ForLog("[KafkaServer id=1] started (kafka.server.KafkaServer)").
-			WithStartupTimeout(30 * time.Second).
+			WithStartupTimeout(k.StartupTimeout).
 			WithPollInterval(100 * time.Millisecond),
 	}, nil
 }

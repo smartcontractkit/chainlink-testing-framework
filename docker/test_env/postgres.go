@@ -94,6 +94,7 @@ func NewPostgresDb(networks []string, opts ...PostgresDbOption) (*PostgresDb, er
 			ContainerVersion: imageParts[1],
 			ContainerEnvs:    map[string]string{},
 			Networks:         networks,
+			StartupTimeout:   2 * time.Minute,
 		},
 		User:         "postgres",
 		Password:     "mysecretpassword",
@@ -194,7 +195,7 @@ func (pg *PostgresDb) getContainerRequest() *tc.ContainerRequest {
 		Networks:     pg.Networks,
 		WaitingFor: tcwait.ForExec([]string{"psql", "-h", "127.0.0.1",
 			"-U", pg.User, "-c", "select", "1", "-d", pg.DbName}).
-			WithStartupTimeout(20 * time.Second),
+			WithStartupTimeout(pg.StartupTimeout),
 		LifecycleHooks: []tc.ContainerLifecycleHooks{
 			{
 				PostStarts: pg.PostStartsHooks,

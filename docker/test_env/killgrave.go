@@ -82,8 +82,9 @@ type KillgraveAdapterResult struct {
 func NewKillgrave(networks []string, impostersDirectoryPath string, opts ...EnvComponentOption) *Killgrave {
 	k := &Killgrave{
 		EnvComponent: EnvComponent{
-			ContainerName: fmt.Sprintf("%s-%s", "killgrave", uuid.NewString()[0:3]),
-			Networks:      networks,
+			ContainerName:  fmt.Sprintf("%s-%s", "killgrave", uuid.NewString()[0:3]),
+			Networks:       networks,
+			StartupTimeout: 2 * time.Minute,
 		},
 		InternalPort:  "3000",
 		impostersPath: impostersDirectoryPath,
@@ -175,7 +176,7 @@ func (k *Killgrave) getContainerRequest() (tc.ContainerRequest, error) {
 				ReadOnly: false,
 			})
 		},
-		WaitingFor: wait.ForLog("The fake server is on tap now"),
+		WaitingFor: wait.ForLog("The fake server is on tap now").WithStartupTimeout(k.StartupTimeout),
 		LifecycleHooks: []tc.ContainerLifecycleHooks{
 			{
 				PostStarts: k.PostStartsHooks,

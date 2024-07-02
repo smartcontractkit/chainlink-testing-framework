@@ -35,8 +35,9 @@ type MockServer struct {
 func NewMockServer(networks []string, opts ...EnvComponentOption) *MockServer {
 	ms := &MockServer{
 		EnvComponent: EnvComponent{
-			ContainerName: fmt.Sprintf("%s-%s", "mockserver", uuid.NewString()[0:8]),
-			Networks:      networks,
+			ContainerName:  fmt.Sprintf("%s-%s", "mockserver", uuid.NewString()[0:8]),
+			Networks:       networks,
+			StartupTimeout: 1 * time.Minute,
 		},
 		l: log.Logger,
 	}
@@ -120,8 +121,7 @@ func (ms *MockServer) getContainerRequest() (tc.ContainerRequest, error) {
 		},
 		Networks: ms.Networks,
 		WaitingFor: tcwait.ForLog("INFO 1080 started on port: 1080").
-			WithStartupTimeout(30 * time.Second).
-			WithPollInterval(100 * time.Millisecond),
+			WithPollInterval(100 * time.Millisecond).WithStartupTimeout(ms.StartupTimeout),
 		LifecycleHooks: []tc.ContainerLifecycleHooks{
 			{
 				PostStarts: ms.PostStartsHooks,

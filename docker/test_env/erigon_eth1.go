@@ -29,6 +29,7 @@ func NewErigonEth1(networks []string, chainConfig *config.EthereumChainConfig, o
 			Networks:         networks,
 			ContainerImage:   parts[0],
 			ContainerVersion: parts[1],
+			StartupTimeout:   2 * time.Minute,
 		},
 		chainConfig:     chainConfig,
 		l:               logging.GetTestLogger(nil),
@@ -110,10 +111,9 @@ func (g *Erigon) getEth1ContainerRequest() (*tc.ContainerRequest, error) {
 		ExposedPorts:  []string{NatPortFormat(DEFAULT_EVM_NODE_HTTP_PORT)},
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForLog("Started P2P networking").
-				WithStartupTimeout(120*time.Second).
 				WithPollInterval(1*time.Second),
-			NewWebSocketStrategy(NatPort(DEFAULT_EVM_NODE_HTTP_PORT), g.l),
-		),
+			NewWebSocketStrategy(NatPort(DEFAULT_EVM_NODE_HTTP_PORT), g.l)).
+			WithStartupTimeoutDefault(g.StartupTimeout),
 		User: "0:0",
 		Entrypoint: []string{
 			"sh",
