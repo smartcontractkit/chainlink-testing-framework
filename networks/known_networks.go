@@ -504,7 +504,7 @@ var (
 
 	CeloAlfajores = blockchain.EVMNetwork{
 		Name:                      "Celo Alfajores",
-		SupportsEIP1559:           false,
+		SupportsEIP1559:           true,
 		ClientImplementation:      blockchain.CeloClientImplementation,
 		ChainID:                   44787,
 		Simulated:                 false,
@@ -512,6 +512,7 @@ var (
 		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       1000,
+		FinalityDepth:             10,
 	}
 
 	ScrollSepolia = blockchain.EVMNetwork{
