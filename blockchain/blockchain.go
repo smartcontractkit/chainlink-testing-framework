@@ -80,6 +80,7 @@ type EVMClient interface {
 	CancelFinalityPolling()
 	GetTxReceipt(txHash common.Hash) (*types.Receipt, error)
 	RevertReasonFromTx(txHash common.Hash, abiString string) (string, interface{}, error)
+	ErrorReason(b ethereum.ContractCaller, tx *types.Transaction, receipt *types.Receipt) (string, error)
 
 	ParallelTransactions(enabled bool)
 	Close() error
