@@ -522,8 +522,8 @@ func (e *EthereumClient) receiveHeader(header *SafeEVMHeader) error {
 	return nil
 }
 
-// errorReason decodes tx revert reason
-func (e *EthereumClient) errorReason(
+// ErrorReason decodes tx revert reason
+func (e *EthereumClient) ErrorReason(
 	b ethereum.ContractCaller,
 	tx *types.Transaction,
 	receipt *types.Receipt,
