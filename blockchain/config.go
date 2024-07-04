@@ -46,15 +46,15 @@ type EVMNetwork struct {
 	// Chain ID for the blockchain
 	ChainID int64 `toml:"evm_chain_id" json:"evm_chain_id"`
 	// List of websocket URLs you want to connect to
-	URLs []string `toml:"evm_urls" json:"evm_urls"`
+	URLs []string
 	// List of websocket URLs you want to connect to
-	HTTPURLs []string `toml:"evm_http_urls" json:"evm_http_urls"`
+	HTTPURLs []string
 	// True if the network is simulated like a geth instance in dev mode. False if the network is a real test or mainnet
 	Simulated bool `toml:"evm_simulated" json:"evm_simulated"`
 	// Type of chain client node. Values: "none" | "geth" | "besu"
 	SimulationType string `toml:"evm_simulation_type" json:"evm_simulation_type"`
 	// List of private keys to fund the tests
-	PrivateKeys []string `toml:"evm_keys" json:"evm_keys"`
+	PrivateKeys []string
 	// Default gas limit to assume that Chainlink nodes will use. Used to try to estimate the funds that Chainlink
 	// nodes require to run the tests.
 	ChainlinkTransactionLimit uint64 `toml:"evm_chainlink_transaction_limit" json:"evm_chainlink_transaction_limit"`
