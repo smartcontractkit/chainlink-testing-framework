@@ -75,7 +75,7 @@ func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
 	if err != nil {
 		return err
 	}
-	if chainlinkImage != nil && chainlinkImage.(string) != "" {
+	if chainlinkImage != nil {
 		if c.ChainlinkImage == nil {
 			c.ChainlinkImage = &ChainlinkImageConfig{}
 		}
@@ -87,7 +87,7 @@ func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
 	if err != nil {
 		return err
 	}
-	if chainlinkUpgradeImage != nil && chainlinkUpgradeImage.(string) != "" {
+	if chainlinkUpgradeImage != nil {
 		if c.ChainlinkUpgradeImage == nil {
 			c.ChainlinkUpgradeImage = &ChainlinkImageConfig{}
 		}
@@ -291,9 +291,12 @@ func readEnvVarValue(envVarName string, valueType EnvValueType) (interface{}, er
 	logger := logging.GetTestLogger(nil)
 
 	// Get the environment variable value
-	value := os.Getenv(envVarName)
-	if value == "" {
-		return nil, nil // Return nil without error if the variable is not found
+	value, isSet := os.LookupEnv(envVarName)
+	if !isSet {
+		return nil, nil
+	}
+	if isSet && value == "" {
+		return "", nil // Return "" if the environment variable is not set
 	}
 
 	// Parse the value according to the specified type
