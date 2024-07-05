@@ -6,11 +6,9 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/seth"
-	"github.com/spf13/viper"
 )
 
 func (c *TestConfig) GetLoggingConfig() *LoggingConfig {
@@ -49,144 +47,218 @@ type TestConfig struct {
 	NodeConfig             *NodeConfig            `toml:"NodeConfig"`
 }
 
-var viperLock sync.Mutex
-
 // Read config values from environment variables
 func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
-	err := c.readEnvVarGroups(
-		"Network.WalletKeys",
-		`TEST_CONFIG_(.+)_WALLET_KEY_(\d+)$`,
-	)
+	walletKeys := loadEnvVarGroups(`TEST_CONFIG_(.+)_WALLET_KEY_(\d+)$`)
+	if len(walletKeys) > 0 {
+		if c.Network == nil {
+			c.Network = &NetworkConfig{}
+		}
+		c.Network.WalletKeys = walletKeys
+	}
+	rpcHttpUrls := loadEnvVarGroups(`TEST_CONFIG_(.+)_RPC_HTTP_URL_(\d+)$`)
+	if len(rpcHttpUrls) > 0 {
+		if c.Network == nil {
+			c.Network = &NetworkConfig{}
+		}
+		c.Network.RpcHttpUrls = rpcHttpUrls
+	}
+	rpcWsUrls := loadEnvVarGroups(`TEST_CONFIG_(.+)_RPC_WS_URL_(\d+)$`)
+	if len(rpcWsUrls) > 0 {
+		if c.Network == nil {
+			c.Network = &NetworkConfig{}
+		}
+		c.Network.RpcWsUrls = rpcWsUrls
+	}
+
+	chainlinkImage, err := readEnvVarValue("TEST_CONFIG_CHAINLINK_IMAGE", String)
 	if err != nil {
 		return err
 	}
-	err = c.readEnvVarGroups(
-		"Network.RpcHttpUrls",
-		`TEST_CONFIG_(.+)_RPC_HTTP_URL_(\d+)$`,
-	)
+	if chainlinkImage != nil && chainlinkImage.(string) != "" {
+		if c.ChainlinkImage == nil {
+			c.ChainlinkImage = &ChainlinkImageConfig{}
+		}
+		image := chainlinkImage.(string)
+		c.ChainlinkImage.Image = &image
+	}
+
+	chainlinkUpgradeImage, err := readEnvVarValue("TEST_CONFIG_CHAINLINK_UPGRADE_IMAGE", String)
 	if err != nil {
 		return err
 	}
-	err = c.readEnvVarGroups(
-		"Network.RpcWsUrls",
-		`TEST_CONFIG_(.+)_RPC_WS_URL_(\d+)$`,
-	)
+	if chainlinkUpgradeImage != nil && chainlinkUpgradeImage.(string) != "" {
+		if c.ChainlinkUpgradeImage == nil {
+			c.ChainlinkUpgradeImage = &ChainlinkImageConfig{}
+		}
+		image := chainlinkUpgradeImage.(string)
+		c.ChainlinkUpgradeImage.Image = &image
+	}
+
+	lokiTenantID, err := readEnvVarValue("TEST_CONFIG_LOKI_TENANT_ID", String)
 	if err != nil {
 		return err
 	}
-	err = c.readSingleEnvVar(
-		"ChainlinkImage.Image",
-		"TEST_CONFIG_CHAINLINK_IMAGE",
-		EnvValueType(String),
-	)
+	if lokiTenantID != nil && lokiTenantID.(string) != "" {
+		if c.Logging == nil {
+			c.Logging = &LoggingConfig{}
+		}
+		if c.Logging.Loki == nil {
+			c.Logging.Loki = &LokiConfig{}
+		}
+		id := lokiTenantID.(string)
+		c.Logging.Loki.TenantId = &id
+	}
+
+	lokiEndpoint, err := readEnvVarValue("TEST_CONFIG_LOKI_ENDPOINT", String)
 	if err != nil {
 		return err
 	}
-	err = c.readSingleEnvVar(
-		"ChainlinkUpgradeImage.Image",
-		"TEST_CONFIG_CHAINLINK_UPGRADE_IMAGE",
-		EnvValueType(String),
-	)
+	if lokiEndpoint != nil && lokiEndpoint.(string) != "" {
+		if c.Logging == nil {
+			c.Logging = &LoggingConfig{}
+		}
+		if c.Logging.Loki == nil {
+			c.Logging.Loki = &LokiConfig{}
+		}
+		endpoint := lokiEndpoint.(string)
+		c.Logging.Loki.Endpoint = &endpoint
+	}
+
+	lokiBasicAuth, err := readEnvVarValue("TEST_CONFIG_LOKI_BASIC_AUTH", String)
 	if err != nil {
 		return err
 	}
-	err = c.readSingleEnvVar(
-		"Logging.Loki.TenantId",
-		"TEST_CONFIG_LOKI_TENANT_ID",
-		EnvValueType(String),
-	)
+	if lokiBasicAuth != nil && lokiBasicAuth.(string) != "" {
+		if c.Logging == nil {
+			c.Logging = &LoggingConfig{}
+		}
+		if c.Logging.Loki == nil {
+			c.Logging.Loki = &LokiConfig{}
+		}
+		basicAuth := lokiBasicAuth.(string)
+		c.Logging.Loki.BasicAuth = &basicAuth
+	}
+
+	lokiBearerToken, err := readEnvVarValue("TEST_CONFIG_LOKI_BEARER_TOKEN", String)
 	if err != nil {
 		return err
 	}
-	err = c.readSingleEnvVar(
-		"Logging.Loki.Endpoint",
-		"TEST_CONFIG_LOKI_ENDPOINT",
-		EnvValueType(String),
-	)
+	if lokiBearerToken != nil && lokiBearerToken.(string) != "" {
+		if c.Logging == nil {
+			c.Logging = &LoggingConfig{}
+		}
+		if c.Logging.Loki == nil {
+			c.Logging.Loki = &LokiConfig{}
+		}
+		bearerToken := lokiBearerToken.(string)
+		c.Logging.Loki.BearerToken = &bearerToken
+	}
+
+	grafanaBaseUrl, err := readEnvVarValue("TEST_CONFIG_GRAFANA_BASE_URL", String)
 	if err != nil {
 		return err
 	}
-	err = c.readSingleEnvVar(
-		"Logging.Loki.BasicAuth",
-		"TEST_CONFIG_LOKI_BASIC_AUTH",
-		EnvValueType(String),
-	)
+	if grafanaBaseUrl != nil && grafanaBaseUrl.(string) != "" {
+		if c.Logging == nil {
+			c.Logging = &LoggingConfig{}
+		}
+		if c.Logging.Grafana == nil {
+			c.Logging.Grafana = &GrafanaConfig{}
+		}
+		baseUrl := grafanaBaseUrl.(string)
+		c.Logging.Grafana.BaseUrl = &baseUrl
+	}
+
+	grafanaDashboardUrl, err := readEnvVarValue("TEST_CONFIG_GRAFANA_DASHBOARD_URL", String)
 	if err != nil {
 		return err
 	}
-	err = c.readSingleEnvVar(
-		"Logging.Loki.BearerToken",
-		"TEST_CONFIG_LOKI_BEARER_TOKEN",
-		EnvValueType(String),
-	)
+	if grafanaDashboardUrl != nil && grafanaDashboardUrl.(string) != "" {
+		if c.Logging == nil {
+			c.Logging = &LoggingConfig{}
+		}
+		if c.Logging.Grafana == nil {
+			c.Logging.Grafana = &GrafanaConfig{}
+		}
+		dashboardUrl := grafanaDashboardUrl.(string)
+		c.Logging.Grafana.DashboardUrl = &dashboardUrl
+	}
+
+	grafanaBearerToken, err := readEnvVarValue("TEST_CONFIG_GRAFANA_BEARER_TOKEN", String)
 	if err != nil {
 		return err
 	}
-	err = c.readSingleEnvVar(
-		"Logging.Grafana.BaseUrl",
-		"TEST_CONFIG_GRAFANA_BASE_URL",
-		EnvValueType(String),
-	)
+	if grafanaBearerToken != nil && grafanaBearerToken.(string) != "" {
+		if c.Logging == nil {
+			c.Logging = &LoggingConfig{}
+		}
+		if c.Logging.Grafana == nil {
+			c.Logging.Grafana = &GrafanaConfig{}
+		}
+		bearerToken := grafanaBearerToken.(string)
+		c.Logging.Grafana.BearerToken = &bearerToken
+	}
+
+	pyroscopeServerUrl, err := readEnvVarValue("TEST_CONFIG_PYROSCOPE_SERVER_URL", String)
 	if err != nil {
 		return err
 	}
-	err = c.readSingleEnvVar(
-		"Logging.Grafana.DashboardUrl",
-		"TEST_CONFIG_GRAFANA_DASHBOARD_URL",
-		EnvValueType(String),
-	)
+	if pyroscopeServerUrl != nil && pyroscopeServerUrl.(string) != "" {
+		if c.Pyroscope == nil {
+			c.Pyroscope = &PyroscopeConfig{}
+		}
+		serverUrl := pyroscopeServerUrl.(string)
+		c.Pyroscope.ServerUrl = &serverUrl
+	}
+
+	pyroscopeKey, err := readEnvVarValue("TEST_CONFIG_PYROSCOPE_KEY", String)
 	if err != nil {
 		return err
 	}
-	err = c.readSingleEnvVar(
-		"Logging.Grafana.BearerToken",
-		"TEST_CONFIG_GRAFANA_BEARER_TOKEN",
-		EnvValueType(String),
-	)
+	if pyroscopeKey != nil && pyroscopeKey.(string) != "" {
+		if c.Pyroscope == nil {
+			c.Pyroscope = &PyroscopeConfig{}
+		}
+		key := pyroscopeKey.(string)
+		c.Pyroscope.Key = &key
+	}
+
+	pyroscopeEnvironment, err := readEnvVarValue("TEST_CONFIG_PYROSCOPE_ENVIRONMENT", String)
 	if err != nil {
 		return err
 	}
-	err = c.readSingleEnvVar(
-		"Pyroscope.ServerUrl",
-		"TEST_CONFIG_PYROSCOPE_SERVER_URL",
-		EnvValueType(String),
-	)
+	if pyroscopeEnvironment != nil && pyroscopeEnvironment.(string) != "" {
+		if c.Pyroscope == nil {
+			c.Pyroscope = &PyroscopeConfig{}
+		}
+		environment := pyroscopeEnvironment.(string)
+		c.Pyroscope.Environment = &environment
+	}
+
+	pyroscopeEnabled, err := readEnvVarValue("TEST_CONFIG_PYROSCOPE_ENABLED", Boolean)
 	if err != nil {
 		return err
 	}
-	err = c.readSingleEnvVar(
-		"Pyroscope.Key",
-		"TEST_CONFIG_PYROSCOPE_KEY",
-		EnvValueType(String),
-	)
-	if err != nil {
-		return err
+	if pyroscopeEnabled != nil {
+		if c.Pyroscope == nil {
+			c.Pyroscope = &PyroscopeConfig{}
+		}
+		enabled := pyroscopeEnabled.(bool)
+		c.Pyroscope.Enabled = &enabled
 	}
-	err = c.readSingleEnvVar(
-		"Pyroscope.Environment",
-		"TEST_CONFIG_PYROSCOPE_ENVIRONMENT",
-		EnvValueType(String),
-	)
-	if err != nil {
-		return err
-	}
-	err = c.readSingleEnvVar(
-		"Pyroscope.Enabled",
-		"TEST_CONFIG_PYROSCOPE_ENABLED",
-		EnvValueType(Boolean),
-	)
-	if err != nil {
-		return err
-	}
+
 	return nil
 }
 
-// Read env vars for map[string][]string
-func (c *TestConfig) readEnvVarGroups(key string, regexpStr string) error {
+// loadEnvVarGroups scans all environment variables, matches them against
+// a specified pattern, and returns a map of grouped values based on the pattern.
+// The grouping is defined by the first capture group of the regex.
+func loadEnvVarGroups(pattern string) map[string][]string {
 	logger := logging.GetTestLogger(nil)
-	re := regexp.MustCompile(regexpStr)
+	re := regexp.MustCompile(pattern)
+	groupedVars := make(map[string][]string)
 
-	envVars := make(map[string][]string)
 	for _, env := range os.Environ() {
 		pair := strings.SplitN(env, "=", 2)
 		if len(pair) != 2 {
@@ -195,30 +267,14 @@ func (c *TestConfig) readEnvVarGroups(key string, regexpStr string) error {
 		key, value := pair[0], pair[1]
 
 		matches := re.FindStringSubmatch(key)
-		if matches != nil {
-			key := matches[1]
-			envVars[key] = append(envVars[key], value)
+		if len(matches) > 1 && value != "" {
+			group := matches[1] // Use the first capture group for grouping
+			groupedVars[group] = append(groupedVars[group], value)
+			logger.Debug().Msgf("Will override test config from env var '%s'", key)
 		}
 	}
 
-	if len(envVars) == 0 {
-		logger.Debug().Msgf("Not setting test config key '%s' because environment variables that match '%s' regex not found", key, regexpStr)
-		return nil
-	}
-
-	for network, keys := range envVars {
-		keyPath := fmt.Sprintf("%s.%s", key, network)
-		viperLock.Lock()
-		viper.Set(keyPath, keys)
-		viperLock.Unlock()
-		logger.Debug().Msgf("Setting test config key '%s' from env var", keyPath)
-	}
-
-	err := viper.Unmarshal(c)
-	if err != nil {
-		return fmt.Errorf("error reading test config values from environment variables. Unable to unmarshal config: %v", err)
-	}
-	return nil
+	return groupedVars
 }
 
 type EnvValueType int
@@ -230,50 +286,40 @@ const (
 	Float
 )
 
-// Read env var for single value
-func (c *TestConfig) readSingleEnvVar(key, envVarName string, valueType EnvValueType) error {
+// readEnvVarValue reads an environment variable and returns the value parsed according to the specified type.
+func readEnvVarValue(envVarName string, valueType EnvValueType) (interface{}, error) {
 	logger := logging.GetTestLogger(nil)
 
 	// Get the environment variable value
 	value := os.Getenv(envVarName)
 	if value == "" {
-		logger.Debug().Msgf("Not setting test config key '%s' because environment variable '%s' not found", key, envVarName)
-		return nil
+		return nil, nil // Return nil without error if the variable is not found
 	}
 
-	viperLock.Lock()
-	defer viperLock.Unlock()
-
-	// Parse the value according to the specified type and set it in Viper
+	// Parse the value according to the specified type
 	switch valueType {
 	case Integer:
 		intVal, err := strconv.Atoi(value)
 		if err != nil {
-			return fmt.Errorf("error converting value to integer: %v", err)
+			return nil, fmt.Errorf("error converting value to integer: %v", err)
 		}
-		viper.Set(key, intVal)
+		logger.Debug().Msgf("Will override test config from env var '%s'", envVarName)
+		return intVal, nil
 	case Boolean:
 		boolVal, err := strconv.ParseBool(value)
 		if err != nil {
-			return fmt.Errorf("error converting value to boolean: %v", err)
+			return nil, fmt.Errorf("error converting value to boolean: %v", err)
 		}
-		viper.Set(key, boolVal)
+		logger.Debug().Msgf("Will override test config from env var '%s'", envVarName)
+		return boolVal, nil
 	case Float:
 		floatVal, err := strconv.ParseFloat(value, 64)
 		if err != nil {
-			return fmt.Errorf("error converting value to float: %v", err)
+			return nil, fmt.Errorf("error converting value to float: %v", err)
 		}
-		viper.Set(key, floatVal)
+		logger.Debug().Msgf("Will override test config from env var '%s'", envVarName)
+		return floatVal, nil
 	default: // String or unrecognized type
-		viper.Set(key, value)
+		return value, nil
 	}
-
-	logger.Debug().Msgf("Setting test config key '%s' from environment variable '%s'", key, envVarName)
-
-	// Unmarshal the configuration into the TestConfig struct
-	if err := viper.Unmarshal(c); err != nil {
-		return fmt.Errorf("error reading test config values from environment variables. Unable to unmarshal config: %v", err)
-	}
-
-	return nil
 }
