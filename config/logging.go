@@ -12,7 +12,7 @@ type LoggingConfig struct {
 	TestLogCollect         *bool            `toml:"test_log_collect,omitempty"`
 	ShowHTMLCoverageReport *bool            `toml:"show_html_coverage_report,omitempty"` // Show reports with go coverage data
 	RunId                  *string          `toml:"run_id,omitempty"`
-	Loki                   *LokiConfig      `toml:"Loki,omitempty"`
+	Loki                   *LokiConfig      `toml:"-"`
 	Grafana                *GrafanaConfig   `toml:"Grafana,omitempty"`
 	LogStream              *LogStreamConfig `toml:"LogStream,omitempty"`
 }
@@ -92,7 +92,7 @@ type GrafanaConfig struct {
 	BaseUrl      *string `toml:"base_url"`
 	DashboardUrl *string `toml:"dashboard_url"`
 	DashboardUID *string `toml:"dashboard_uid"` // UID of the dashboard to put annotations on
-	BearerToken  *string
+	BearerToken  *string `toml:"-"`
 }
 
 // Validate checks that the grafana config is valid, which means that

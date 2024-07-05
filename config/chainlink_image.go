@@ -5,7 +5,7 @@ import (
 )
 
 type ChainlinkImageConfig struct {
-	Image           *string
+	Image           *string `toml:"-"`
 	Version         *string `toml:"version"`
 	PostgresVersion *string `toml:"postgres_version,omitempty"`
 }
