@@ -49,21 +49,21 @@ type TestConfig struct {
 
 // Read config values from environment variables
 func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
-	walletKeys := loadEnvVarGroups(`TEST_CONFIG_(.+)_WALLET_KEY_(\d+)$`)
+	walletKeys := loadEnvVarGroups(`(.+)_WALLET_KEY_(\d+)$`)
 	if len(walletKeys) > 0 {
 		if c.Network == nil {
 			c.Network = &NetworkConfig{}
 		}
 		c.Network.WalletKeys = walletKeys
 	}
-	rpcHttpUrls := loadEnvVarGroups(`TEST_CONFIG_(.+)_RPC_HTTP_URL_(\d+)$`)
+	rpcHttpUrls := loadEnvVarGroups(`(.+)_RPC_HTTP_URL_(\d+)$`)
 	if len(rpcHttpUrls) > 0 {
 		if c.Network == nil {
 			c.Network = &NetworkConfig{}
 		}
 		c.Network.RpcHttpUrls = rpcHttpUrls
 	}
-	rpcWsUrls := loadEnvVarGroups(`TEST_CONFIG_(.+)_RPC_WS_URL_(\d+)$`)
+	rpcWsUrls := loadEnvVarGroups(`(.+)_RPC_WS_URL_(\d+)$`)
 	if len(rpcWsUrls) > 0 {
 		if c.Network == nil {
 			c.Network = &NetworkConfig{}
@@ -71,7 +71,7 @@ func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
 		c.Network.RpcWsUrls = rpcWsUrls
 	}
 
-	chainlinkImage, err := readEnvVarValue("TEST_CONFIG_CHAINLINK_IMAGE", String)
+	chainlinkImage, err := readEnvVarValue("CHAINLINK_IMAGE", String)
 	if err != nil {
 		return err
 	}
@@ -83,7 +83,7 @@ func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
 		c.ChainlinkImage.Image = &image
 	}
 
-	chainlinkUpgradeImage, err := readEnvVarValue("TEST_CONFIG_CHAINLINK_UPGRADE_IMAGE", String)
+	chainlinkUpgradeImage, err := readEnvVarValue("CHAINLINK_UPGRADE_IMAGE", String)
 	if err != nil {
 		return err
 	}
@@ -95,7 +95,7 @@ func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
 		c.ChainlinkUpgradeImage.Image = &image
 	}
 
-	lokiTenantID, err := readEnvVarValue("TEST_CONFIG_LOKI_TENANT_ID", String)
+	lokiTenantID, err := readEnvVarValue("LOKI_TENANT_ID", String)
 	if err != nil {
 		return err
 	}
@@ -110,7 +110,7 @@ func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
 		c.Logging.Loki.TenantId = &id
 	}
 
-	lokiEndpoint, err := readEnvVarValue("TEST_CONFIG_LOKI_ENDPOINT", String)
+	lokiEndpoint, err := readEnvVarValue("LOKI_ENDPOINT", String)
 	if err != nil {
 		return err
 	}
@@ -125,7 +125,7 @@ func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
 		c.Logging.Loki.Endpoint = &endpoint
 	}
 
-	lokiBasicAuth, err := readEnvVarValue("TEST_CONFIG_LOKI_BASIC_AUTH", String)
+	lokiBasicAuth, err := readEnvVarValue("LOKI_BASIC_AUTH", String)
 	if err != nil {
 		return err
 	}
@@ -140,7 +140,7 @@ func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
 		c.Logging.Loki.BasicAuth = &basicAuth
 	}
 
-	lokiBearerToken, err := readEnvVarValue("TEST_CONFIG_LOKI_BEARER_TOKEN", String)
+	lokiBearerToken, err := readEnvVarValue("LOKI_BEARER_TOKEN", String)
 	if err != nil {
 		return err
 	}
@@ -155,7 +155,7 @@ func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
 		c.Logging.Loki.BearerToken = &bearerToken
 	}
 
-	grafanaBaseUrl, err := readEnvVarValue("TEST_CONFIG_GRAFANA_BASE_URL", String)
+	grafanaBaseUrl, err := readEnvVarValue("GRAFANA_BASE_URL", String)
 	if err != nil {
 		return err
 	}
@@ -170,7 +170,7 @@ func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
 		c.Logging.Grafana.BaseUrl = &baseUrl
 	}
 
-	grafanaDashboardUrl, err := readEnvVarValue("TEST_CONFIG_GRAFANA_DASHBOARD_URL", String)
+	grafanaDashboardUrl, err := readEnvVarValue("GRAFANA_DASHBOARD_URL", String)
 	if err != nil {
 		return err
 	}
@@ -185,7 +185,7 @@ func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
 		c.Logging.Grafana.DashboardUrl = &dashboardUrl
 	}
 
-	grafanaBearerToken, err := readEnvVarValue("TEST_CONFIG_GRAFANA_BEARER_TOKEN", String)
+	grafanaBearerToken, err := readEnvVarValue("GRAFANA_BEARER_TOKEN", String)
 	if err != nil {
 		return err
 	}
@@ -200,7 +200,7 @@ func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
 		c.Logging.Grafana.BearerToken = &bearerToken
 	}
 
-	pyroscopeServerUrl, err := readEnvVarValue("TEST_CONFIG_PYROSCOPE_SERVER_URL", String)
+	pyroscopeServerUrl, err := readEnvVarValue("PYROSCOPE_SERVER_URL", String)
 	if err != nil {
 		return err
 	}
@@ -212,7 +212,7 @@ func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
 		c.Pyroscope.ServerUrl = &serverUrl
 	}
 
-	pyroscopeKey, err := readEnvVarValue("TEST_CONFIG_PYROSCOPE_KEY", String)
+	pyroscopeKey, err := readEnvVarValue("PYROSCOPE_KEY", String)
 	if err != nil {
 		return err
 	}
@@ -224,7 +224,7 @@ func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
 		c.Pyroscope.Key = &key
 	}
 
-	pyroscopeEnvironment, err := readEnvVarValue("TEST_CONFIG_PYROSCOPE_ENVIRONMENT", String)
+	pyroscopeEnvironment, err := readEnvVarValue("PYROSCOPE_ENVIRONMENT", String)
 	if err != nil {
 		return err
 	}
@@ -236,7 +236,7 @@ func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
 		c.Pyroscope.Environment = &environment
 	}
 
-	pyroscopeEnabled, err := readEnvVarValue("TEST_CONFIG_PYROSCOPE_ENABLED", Boolean)
+	pyroscopeEnabled, err := readEnvVarValue("PYROSCOPE_ENABLED", Boolean)
 	if err != nil {
 		return err
 	}

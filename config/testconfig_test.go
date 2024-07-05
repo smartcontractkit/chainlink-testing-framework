@@ -20,18 +20,18 @@ func TestReadConfigValuesFromEnvVars(t *testing.T) {
 		{
 			name: "All configurations set correctly",
 			setupFunc: func() {
-				os.Setenv("TEST_CONFIG_GROUP1_WALLET_KEY_1", "walletValue1")
-				os.Setenv("TEST_CONFIG_GROUP2_RPC_HTTP_URL_1", "httpUrl1")
-				os.Setenv("TEST_CONFIG_GROUP3_RPC_WS_URL_1", "wsUrl1")
-				os.Setenv("TEST_CONFIG_CHAINLINK_IMAGE", "imageValue")
-				os.Setenv("TEST_CONFIG_PYROSCOPE_ENABLED", "true")
+				os.Setenv("GROUP1_WALLET_KEY_1", "walletValue1")
+				os.Setenv("GROUP2_RPC_HTTP_URL_1", "httpUrl1")
+				os.Setenv("GROUP3_RPC_WS_URL_1", "wsUrl1")
+				os.Setenv("CHAINLINK_IMAGE", "imageValue")
+				os.Setenv("PYROSCOPE_ENABLED", "true")
 			},
 			cleanupFunc: func() {
-				os.Unsetenv("TEST_CONFIG_GROUP1_WALLET_KEY_1")
-				os.Unsetenv("TEST_CONFIG_GROUP2_RPC_HTTP_URL_1")
-				os.Unsetenv("TEST_CONFIG_GROUP3_RPC_WS_URL_1")
-				os.Unsetenv("TEST_CONFIG_CHAINLINK_IMAGE")
-				os.Unsetenv("TEST_CONFIG_PYROSCOPE_ENABLED")
+				os.Unsetenv("GROUP1_WALLET_KEY_1")
+				os.Unsetenv("GROUP2_RPC_HTTP_URL_1")
+				os.Unsetenv("GROUP3_RPC_WS_URL_1")
+				os.Unsetenv("CHAINLINK_IMAGE")
+				os.Unsetenv("PYROSCOPE_ENABLED")
 			},
 			expectedConfig: TestConfig{
 				Network: &NetworkConfig{
@@ -46,16 +46,16 @@ func TestReadConfigValuesFromEnvVars(t *testing.T) {
 		{
 			name: "Environment variables are empty strings",
 			setupFunc: func() {
-				os.Setenv("TEST_CONFIG_GROUP1_WALLET_KEY_1", "")
-				os.Setenv("TEST_CONFIG_GROUP2_RPC_HTTP_URL_1", "")
-				os.Setenv("TEST_CONFIG_GROUP3_RPC_WS_URL_1", "")
-				os.Setenv("TEST_CONFIG_CHAINLINK_IMAGE", "")
+				os.Setenv("GROUP1_WALLET_KEY_1", "")
+				os.Setenv("GROUP2_RPC_HTTP_URL_1", "")
+				os.Setenv("GROUP3_RPC_WS_URL_1", "")
+				os.Setenv("CHAINLINK_IMAGE", "")
 			},
 			cleanupFunc: func() {
-				os.Unsetenv("TEST_CONFIG_GROUP1_WALLET_KEY_1")
-				os.Unsetenv("TEST_CONFIG_GROUP2_RPC_HTTP_URL_1")
-				os.Unsetenv("TEST_CONFIG_GROUP3_RPC_WS_URL_1")
-				os.Unsetenv("TEST_CONFIG_CHAINLINK_IMAGE")
+				os.Unsetenv("GROUP1_WALLET_KEY_1")
+				os.Unsetenv("GROUP2_RPC_HTTP_URL_1")
+				os.Unsetenv("GROUP3_RPC_WS_URL_1")
+				os.Unsetenv("CHAINLINK_IMAGE")
 			},
 			expectedConfig: TestConfig{},
 		},
