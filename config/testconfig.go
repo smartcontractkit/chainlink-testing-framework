@@ -49,11 +49,14 @@ type TestConfig struct {
 
 // Read config values from environment variables
 func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
+	logger := logging.GetTestLogger(nil)
+
 	walletKeys := loadEnvVarGroups(`(.+)_WALLET_KEY_(\d+)$`)
 	if len(walletKeys) > 0 {
 		if c.Network == nil {
 			c.Network = &NetworkConfig{}
 		}
+		logger.Debug().Msgf("Using *_WALLET_KEY_* env vars to override Network.WalletKeys")
 		c.Network.WalletKeys = walletKeys
 	}
 	rpcHttpUrls := loadEnvVarGroups(`(.+)_RPC_HTTP_URL_(\d+)$`)
@@ -61,6 +64,7 @@ func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
 		if c.Network == nil {
 			c.Network = &NetworkConfig{}
 		}
+		logger.Debug().Msgf("Using *_RPC_HTTP_URL_* env vars to override Network.RpcHttpUrls")
 		c.Network.RpcHttpUrls = rpcHttpUrls
 	}
 	rpcWsUrls := loadEnvVarGroups(`(.+)_RPC_WS_URL_(\d+)$`)
@@ -68,6 +72,7 @@ func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
 		if c.Network == nil {
 			c.Network = &NetworkConfig{}
 		}
+		logger.Debug().Msgf("Using *_RPC_WS_URL_* env var to override Network.RpcWsUrls")
 		c.Network.RpcWsUrls = rpcWsUrls
 	}
 
@@ -80,6 +85,7 @@ func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
 			c.ChainlinkImage = &ChainlinkImageConfig{}
 		}
 		image := chainlinkImage.(string)
+		logger.Debug().Msgf("Using CHAINLINK_IMAGE env var to override ChainlinkImage.Image")
 		c.ChainlinkImage.Image = &image
 	}
 
@@ -92,6 +98,7 @@ func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
 			c.ChainlinkUpgradeImage = &ChainlinkImageConfig{}
 		}
 		image := chainlinkUpgradeImage.(string)
+		logger.Debug().Msgf("Using CHAINLINK_UPGRADE_IMAGE env var to override ChainlinkUpgradeImage.Image")
 		c.ChainlinkUpgradeImage.Image = &image
 	}
 
@@ -107,6 +114,7 @@ func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
 			c.Logging.Loki = &LokiConfig{}
 		}
 		id := lokiTenantID.(string)
+		logger.Debug().Msgf("Using LOKI_TENANT_ID env var to override Logging.Loki.TenantId")
 		c.Logging.Loki.TenantId = &id
 	}
 
@@ -122,6 +130,7 @@ func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
 			c.Logging.Loki = &LokiConfig{}
 		}
 		endpoint := lokiEndpoint.(string)
+		logger.Debug().Msgf("Using LOKI_ENDPOINT env var to override Logging.Loki.Endpoint")
 		c.Logging.Loki.Endpoint = &endpoint
 	}
 
@@ -137,6 +146,7 @@ func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
 			c.Logging.Loki = &LokiConfig{}
 		}
 		basicAuth := lokiBasicAuth.(string)
+		logger.Debug().Msgf("Using LOKI_BASIC_AUTH env var to override Logging.Loki.BasicAuth")
 		c.Logging.Loki.BasicAuth = &basicAuth
 	}
 
@@ -152,6 +162,7 @@ func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
 			c.Logging.Loki = &LokiConfig{}
 		}
 		bearerToken := lokiBearerToken.(string)
+		logger.Debug().Msgf("Using LOKI_BEARER_TOKEN env var to override Logging.Loki.BearerToken")
 		c.Logging.Loki.BearerToken = &bearerToken
 	}
 
@@ -167,6 +178,7 @@ func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
 			c.Logging.Grafana = &GrafanaConfig{}
 		}
 		baseUrl := grafanaBaseUrl.(string)
+		logger.Debug().Msgf("Using GRAFANA_BASE_URL env var to override Logging.Grafana.BaseUrl")
 		c.Logging.Grafana.BaseUrl = &baseUrl
 	}
 
@@ -182,6 +194,7 @@ func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
 			c.Logging.Grafana = &GrafanaConfig{}
 		}
 		dashboardUrl := grafanaDashboardUrl.(string)
+		logger.Debug().Msgf("Using GRAFANA_DASHBOARD_URL env var to override Logging.Grafana.DashboardUrl")
 		c.Logging.Grafana.DashboardUrl = &dashboardUrl
 	}
 
@@ -197,6 +210,7 @@ func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
 			c.Logging.Grafana = &GrafanaConfig{}
 		}
 		bearerToken := grafanaBearerToken.(string)
+		logger.Debug().Msgf("Using GRAFANA_BEARER_TOKEN env var to override Logging.Grafana.BearerToken")
 		c.Logging.Grafana.BearerToken = &bearerToken
 	}
 
@@ -209,6 +223,7 @@ func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
 			c.Pyroscope = &PyroscopeConfig{}
 		}
 		serverUrl := pyroscopeServerUrl.(string)
+		logger.Debug().Msgf("Using PYROSCOPE_SERVER_URL env var to override Pyroscope.ServerUrl")
 		c.Pyroscope.ServerUrl = &serverUrl
 	}
 
@@ -221,6 +236,7 @@ func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
 			c.Pyroscope = &PyroscopeConfig{}
 		}
 		key := pyroscopeKey.(string)
+		logger.Debug().Msgf("Using PYROSCOPE_KEY env var to override Pyroscope.Key")
 		c.Pyroscope.Key = &key
 	}
 
@@ -233,6 +249,7 @@ func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
 			c.Pyroscope = &PyroscopeConfig{}
 		}
 		environment := pyroscopeEnvironment.(string)
+		logger.Debug().Msgf("Using PYROSCOPE_ENVIRONMENT env var to override Pyroscope.Environment")
 		c.Pyroscope.Environment = &environment
 	}
 
@@ -245,6 +262,7 @@ func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
 			c.Pyroscope = &PyroscopeConfig{}
 		}
 		enabled := pyroscopeEnabled.(bool)
+		logger.Debug().Msgf("Using PYROSCOPE_ENABLED env var to override Pyroscope.Enabled")
 		c.Pyroscope.Enabled = &enabled
 	}
 
@@ -288,8 +306,6 @@ const (
 
 // readEnvVarValue reads an environment variable and returns the value parsed according to the specified type.
 func readEnvVarValue(envVarName string, valueType EnvValueType) (interface{}, error) {
-	logger := logging.GetTestLogger(nil)
-
 	// Get the environment variable value
 	value, isSet := os.LookupEnv(envVarName)
 	if !isSet {
@@ -306,21 +322,18 @@ func readEnvVarValue(envVarName string, valueType EnvValueType) (interface{}, er
 		if err != nil {
 			return nil, fmt.Errorf("error converting value to integer: %v", err)
 		}
-		logger.Debug().Msgf("Will override test config from env var '%s'", envVarName)
 		return intVal, nil
 	case Boolean:
 		boolVal, err := strconv.ParseBool(value)
 		if err != nil {
 			return nil, fmt.Errorf("error converting value to boolean: %v", err)
 		}
-		logger.Debug().Msgf("Will override test config from env var '%s'", envVarName)
 		return boolVal, nil
 	case Float:
 		floatVal, err := strconv.ParseFloat(value, 64)
 		if err != nil {
 			return nil, fmt.Errorf("error converting value to float: %v", err)
 		}
-		logger.Debug().Msgf("Will override test config from env var '%s'", envVarName)
 		return floatVal, nil
 	default: // String or unrecognized type
 		return value, nil
