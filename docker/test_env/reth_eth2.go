@@ -19,15 +19,16 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 )
 
-// NewErigonEth2 starts a new Erigon Eth2 node running in Docker
-func NewErigonEth2(networks []string, chainConfig *config.EthereumChainConfig, generatedDataHostDir string, consensusLayer config.ConsensusLayer, opts ...EnvComponentOption) (*Erigon, error) {
-	parts := strings.Split(defaultErigonEth2Image, ":")
-	g := &Erigon{
+// NewRethEth2 starts a new Reth Eth2 node running in Docker
+func NewRethEth2(networks []string, chainConfig *config.EthereumChainConfig, generatedDataHostDir string, consensusLayer config.ConsensusLayer, opts ...EnvComponentOption) (*Reth, error) {
+	parts := strings.Split(defaultRethEth2Image, ":")
+	g := &Reth{
 		EnvComponent: EnvComponent{
-			ContainerName:    fmt.Sprintf("%s-%s", "erigon-eth2", uuid.NewString()[0:8]),
+			ContainerName:    fmt.Sprintf("%s-%s", "reth-eth2", uuid.NewString()[0:8]),
 			Networks:         networks,
 			ContainerImage:   parts[0],
 			ContainerVersion: parts[1],
+			LogLevel:         "debug",
 		},
 		chainConfig:          chainConfig,
 		generatedDataHostDir: generatedDataHostDir,
@@ -42,14 +43,14 @@ func NewErigonEth2(networks []string, chainConfig *config.EthereumChainConfig, g
 
 	if !g.WasRecreated {
 		// set the container name again after applying functional options as version might have changed
-		g.EnvComponent.ContainerName = fmt.Sprintf("%s-%s-%s", "erigon-eth2", strings.Replace(g.ContainerVersion, ".", "_", -1), uuid.NewString()[0:8])
+		g.EnvComponent.ContainerName = fmt.Sprintf("%s-%s-%s", "reth-eth2", strings.Replace(g.ContainerVersion, ".", "_", -1), uuid.NewString()[0:8])
 	}
 	// if the internal docker repo is set then add it to the version
 	g.EnvComponent.ContainerImage = mirror.AddMirrorToImageIfSet(g.EnvComponent.ContainerImage)
 	return g, nil
 }
 
-func (g *Erigon) getEth2ContainerRequest() (*tc.ContainerRequest, error) {
+func (g *Reth) getEth2ContainerRequest() (*tc.ContainerRequest, error) {
 	initFile, err := os.CreateTemp("", "init.sh")
 	if err != nil {
 		return nil, err
@@ -70,21 +71,21 @@ func (g *Erigon) getEth2ContainerRequest() (*tc.ContainerRequest, error) {
 		Image:         g.GetImageWithVersion(),
 		Networks:      g.Networks,
 		ImagePlatform: "linux/x86_64",
-		ExposedPorts:  []string{NatPortFormat(DEFAULT_EVM_NODE_HTTP_PORT), NatPortFormat(ETH2_EXECUTION_PORT)},
+		ExposedPorts:  []string{NatPortFormat(DEFAULT_EVM_NODE_HTTP_PORT), NatPortFormat("8546"), NatPortFormat(DEFAULT_EVM_NODE_WS_PORT), NatPortFormat(ETH2_EXECUTION_PORT)},
 		WaitingFor: tcwait.ForAll(
-			tcwait.ForLog("Started P2P networking").
-				WithStartupTimeout(120 * time.Second).
+			tcwait.ForLog("Starting consensus engine").
+				WithStartupTimeout(12000 * time.Second).
 				WithPollInterval(1 * time.Second),
 		),
 		User: "0:0",
 		Entrypoint: []string{
 			"sh",
-			"/home/erigon/init.sh",
+			"/root/init.sh",
 		},
 		Files: []tc.ContainerFile{
 			{
 				HostFilePath:      initFile.Name(),
-				ContainerFilePath: "/home/erigon/init.sh",
+				ContainerFilePath: "/root/init.sh",
 				FileMode:          0744,
 			},
 		},
@@ -105,52 +106,55 @@ func (g *Erigon) getEth2ContainerRequest() (*tc.ContainerRequest, error) {
 	}, nil
 }
 
-func (g *Erigon) buildPosInitScript() (string, error) {
-	extraExecutionFlags, err := g.getExtraExecutionFlags()
-	if err != nil {
-		return "", err
-	}
-
+func (g *Reth) buildPosInitScript() (string, error) {
 	initTemplate := `#!/bin/bash
 	echo "Copied genesis file to {{.ExecutionDir}}"
 	mkdir -p {{.ExecutionDir}}
 	cp {{.GeneratedDataDir}}/genesis.json {{.ExecutionDir}}/genesis.json
-	echo "Running erigon init"
-	erigon init --datadir={{.ExecutionDir}} {{.ExecutionDir}}/genesis.json
+	echo "Running reth init"
+	reth init --datadir={{.ExecutionDir}} --chain={{.ExecutionDir}}/genesis.json -vvvv
+	echo "Execution dir: {{.ExecutionDir}}"
 	exit_code=$?
 	if [ $exit_code -ne 0 ]; then
-		echo "Erigon init failed with exit code $exit_code"
+		echo "Reth init failed with exit code $exit_code"
 		exit 1
 	fi
 
-	echo "Starting Erigon..."
-	command="erigon --http --http.api=eth,erigon,engine,web3,net,debug,trace,txpool,admin --http.addr=0.0.0.0 --http.corsdomain=* --http.vhosts=* --http.port={{.HttpPort}} --ws --authrpc.vhosts=* --authrpc.addr=0.0.0.0 --authrpc.jwtsecret={{.JwtFileLocation}} --datadir={{.ExecutionDir}} {{.ExtraExecutionFlags}} --allow-insecure-unlock --nodiscover --networkid={{.ChainID}} --log.console.verbosity={{.LogLevel}} --verbosity={{.LogLevel}}"
+	echo "Starting Reth..."
+	command="reth node -d --ipcdisable --http --http.api=All --http.addr=0.0.0.0 --http.corsdomain='*' --http.port={{.HttpPort}} --ws --ws.addr=0.0.0.0 --ws.origins='*' --ws.port={{.WsPort}} --ws.api=All --authrpc.addr=0.0.0.0 --authrpc.jwtsecret={{.JwtFileLocation}} --chain={{.ExecutionDir}}/genesis.json --datadir={{.ExecutionDir}}"
 
-	if [ "{{.LogLevel}}" == "trace" ]; then
-		echo "Enabling trace logging for senders: {{.SendersToTrace}}"
-		command="$command --txpool.trace.senders=\"{{.SendersToTrace}}\""
+	if [ "{{.LogLevel}}" = "error" ]; then
+		command="$command -v"
+	elif [ "{{.LogLevel}}" = "warning" ]; then
+		command="$command -vv"
+	elif [ "{{.LogLevel}}" = "info" ]; then
+		command="$command -vvv"
+	elif [ "{{.LogLevel}}" = "debug" ]; then
+		command="$command -vvvv"
+	elif [ "{{.LogLevel}}" = "trace" ]; then
+		command="$command -vvvvv"
 	fi
 
+	echo "Running command: $command"
 	eval $command`
 
 	data := struct {
 		HttpPort            string
+		WsPort              string
 		ChainID             int
 		GeneratedDataDir    string
 		JwtFileLocation     string
 		ExecutionDir        string
 		ExtraExecutionFlags string
-		SendersToTrace      string
 		LogLevel            string
 	}{
-		HttpPort:            DEFAULT_EVM_NODE_HTTP_PORT,
-		ChainID:             g.chainConfig.ChainID,
-		GeneratedDataDir:    GENERATED_DATA_DIR_INSIDE_CONTAINER,
-		JwtFileLocation:     JWT_SECRET_FILE_LOCATION_INSIDE_CONTAINER,
-		ExecutionDir:        "/home/erigon/execution-data",
-		ExtraExecutionFlags: extraExecutionFlags,
-		SendersToTrace:      strings.Join(g.chainConfig.AddressesToFund, ","),
-		LogLevel:            g.LogLevel,
+		HttpPort:         DEFAULT_EVM_NODE_HTTP_PORT,
+		WsPort:           DEFAULT_EVM_NODE_WS_PORT,
+		ChainID:          g.chainConfig.ChainID,
+		GeneratedDataDir: GENERATED_DATA_DIR_INSIDE_CONTAINER,
+		JwtFileLocation:  JWT_SECRET_FILE_LOCATION_INSIDE_CONTAINER,
+		ExecutionDir:     "/root/.local",
+		LogLevel:         g.LogLevel,
 	}
 
 	t, err := template.New("init").Parse(initTemplate)

@@ -443,6 +443,8 @@ func (en *EthereumNetwork) startEth2() (blockchain.EVMNetwork, RpcProvider, erro
 		client, clientErr = NewErigonEth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, config.ConsensusLayer_Prysm, opts...)
 	case config.ExecutionLayer_Besu:
 		client, clientErr = NewBesuEth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, config.ConsensusLayer_Prysm, opts...)
+	case config.ExecutionLayer_Reth:
+		client, clientErr = NewRethEth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, config.ConsensusLayer_Prysm, opts...)
 	default:
 		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf(MsgUnsupportedExecutionLayer, *en.ExecutionLayer)
 	}
@@ -559,6 +561,8 @@ func (en *EthereumNetwork) startEth1() (blockchain.EVMNetwork, RpcProvider, erro
 		client, clientErr = NewErigonEth1(dockerNetworks, en.EthereumChainConfig, opts...)
 	case config.ExecutionLayer_Nethermind:
 		client, clientErr = NewNethermindEth1(dockerNetworks, en.EthereumChainConfig, opts...)
+	case config.ExecutionLayer_Reth:
+		clientErr = errors.New(config.Eth1NotSupportedByRethMsg)
 	default:
 		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf(MsgUnsupportedExecutionLayer, *en.ExecutionLayer)
 	}
