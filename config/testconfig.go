@@ -51,28 +51,25 @@ type TestConfig struct {
 func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
 	logger := logging.GetTestLogger(nil)
 
-	walletKeys := loadEnvVarGroups(`(.+)_WALLET_KEY_(\d+)$`)
+	walletKeys := mergeMaps(loadEnvVarSingleMap(`(.+)_WALLET_KEY$`), loadEnvVarGroupedMap(`(.+)_WALLET_KEY_(\d+)$`))
 	if len(walletKeys) > 0 {
 		if c.Network == nil {
 			c.Network = &NetworkConfig{}
 		}
-		logger.Debug().Msgf("Using *_WALLET_KEY_* env vars to override Network.WalletKeys")
 		c.Network.WalletKeys = walletKeys
 	}
-	rpcHttpUrls := loadEnvVarGroups(`(.+)_RPC_HTTP_URL_(\d+)$`)
+	rpcHttpUrls := mergeMaps(loadEnvVarSingleMap(`(.+)_RPC_HTTP_URL$`), loadEnvVarGroupedMap(`(.+)_RPC_HTTP_URL_(\d+)$`))
 	if len(rpcHttpUrls) > 0 {
 		if c.Network == nil {
 			c.Network = &NetworkConfig{}
 		}
-		logger.Debug().Msgf("Using *_RPC_HTTP_URL_* env vars to override Network.RpcHttpUrls")
 		c.Network.RpcHttpUrls = rpcHttpUrls
 	}
-	rpcWsUrls := loadEnvVarGroups(`(.+)_RPC_WS_URL_(\d+)$`)
+	rpcWsUrls := mergeMaps(loadEnvVarSingleMap(`(.+)_RPC_WS_URL$`), loadEnvVarGroupedMap(`(.+)_RPC_WS_URL_(\d+)$`))
 	if len(rpcWsUrls) > 0 {
 		if c.Network == nil {
 			c.Network = &NetworkConfig{}
 		}
-		logger.Debug().Msgf("Using *_RPC_WS_URL_* env var to override Network.RpcWsUrls")
 		c.Network.RpcWsUrls = rpcWsUrls
 	}
 
@@ -80,7 +77,7 @@ func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
 	if err != nil {
 		return err
 	}
-	if chainlinkImage != nil {
+	if chainlinkImage != nil && chainlinkImage.(string) != "" {
 		if c.ChainlinkImage == nil {
 			c.ChainlinkImage = &ChainlinkImageConfig{}
 		}
@@ -93,7 +90,7 @@ func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
 	if err != nil {
 		return err
 	}
-	if chainlinkUpgradeImage != nil {
+	if chainlinkUpgradeImage != nil && chainlinkUpgradeImage.(string) != "" {
 		if c.ChainlinkUpgradeImage == nil {
 			c.ChainlinkUpgradeImage = &ChainlinkImageConfig{}
 		}
@@ -269,21 +266,19 @@ func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
 	return nil
 }
 
-// loadEnvVarGroups scans all environment variables, matches them against
+// loadEnvVarGroupedMap scans all environment variables, matches them against
 // a specified pattern, and returns a map of grouped values based on the pattern.
 // The grouping is defined by the first capture group of the regex.
-func loadEnvVarGroups(pattern string) map[string][]string {
+func loadEnvVarGroupedMap(pattern string) map[string][]string {
 	logger := logging.GetTestLogger(nil)
 	re := regexp.MustCompile(pattern)
 	groupedVars := make(map[string][]string)
-
 	for _, env := range os.Environ() {
 		pair := strings.SplitN(env, "=", 2)
 		if len(pair) != 2 {
 			continue
 		}
 		key, value := pair[0], pair[1]
-
 		matches := re.FindStringSubmatch(key)
 		if len(matches) > 1 && value != "" {
 			group := matches[1] // Use the first capture group for grouping
@@ -291,8 +286,52 @@ func loadEnvVarGroups(pattern string) map[string][]string {
 			logger.Debug().Msgf("Will override test config from env var '%s'", key)
 		}
 	}
-
 	return groupedVars
+}
+
+func loadEnvVarSingleMap(pattern string) map[string]string {
+	logger := logging.GetTestLogger(nil)
+	re := regexp.MustCompile(pattern)
+	singleVars := make(map[string]string)
+	for _, env := range os.Environ() {
+		pair := strings.SplitN(env, "=", 2)
+		if len(pair) != 2 {
+			continue
+		}
+		key, value := pair[0], pair[1]
+		matches := re.FindStringSubmatch(key)
+		if len(matches) > 1 && value != "" {
+			group := matches[1] // Use the first capture group for grouping
+			singleVars[group] = value
+			logger.Debug().Msgf("Will override test config from env var '%s'", key)
+		}
+	}
+	return singleVars
+}
+
+// Merges a map[string]string with a map[string][]string and returns a new map[string][]string.
+// Elements from the single map are inserted at index 0 in the slice of the new map.
+func mergeMaps(single map[string]string, multi map[string][]string) map[string][]string {
+	newMap := make(map[string][]string)
+
+	// First, copy all elements from the multi map to the new map
+	for key, values := range multi {
+		newMap[key] = make([]string, len(values))
+		copy(newMap[key], values)
+	}
+
+	// Next, insert or prepend the elements from the single map
+	for key, value := range single {
+		if existingValues, exists := newMap[key]; exists {
+			// Prepend the value from the single map
+			newMap[key] = append([]string{value}, existingValues...)
+		} else {
+			// Initialize a new slice if the key does not exist
+			newMap[key] = []string{value}
+		}
+	}
+
+	return newMap
 }
 
 type EnvValueType int

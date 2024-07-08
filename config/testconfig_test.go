@@ -59,6 +59,34 @@ func TestReadConfigValuesFromEnvVars(t *testing.T) {
 			},
 			expectedConfig: TestConfig{},
 		},
+		{
+			name: "Environment variables set with mixed numeric suffixes",
+			setupFunc: func() {
+				os.Setenv("ARBITRUM_SEPOLIA_RPC_HTTP_URL", "url")
+				os.Setenv("ARBITRUM_SEPOLIA_RPC_HTTP_URL_1", "url1")
+				os.Setenv("ARBITRUM_SEPOLIA_RPC_WS_URL", "wsurl")
+				os.Setenv("ARBITRUM_SEPOLIA_RPC_WS_URL_1", "wsurl1")
+				os.Setenv("OPTIMISM_SEPOLIA_WALLET_KEY", "wallet")
+				os.Setenv("OPTIMISM_SEPOLIA_WALLET_KEY_1", "wallet1")
+				os.Setenv("OPTIMISM_SEPOLIA_WALLET_KEY_2", "wallet2")
+			},
+			cleanupFunc: func() {
+				os.Unsetenv("ARBITRUM_SEPOLIA_RPC_HTTP_URL_1")
+				os.Unsetenv("ARBITRUM_SEPOLIA_RPC_WS_URL")
+				os.Unsetenv("ARBITRUM_SEPOLIA_RPC_WS_URL_1")
+				os.Unsetenv("OPTIMISM_SEPOLIA_WALLET_KEY")
+				os.Unsetenv("OPTIMISM_SEPOLIA_WALLET_KEY_1")
+				os.Unsetenv("ARBITRUM_SEPOLIA_RPC_HTTP_URL_2")
+				os.Unsetenv("OPTIMISM_SEPOLIA_WALLET_KEY_2")
+			},
+			expectedConfig: TestConfig{
+				Network: &NetworkConfig{
+					RpcHttpUrls: map[string][]string{"ARBITRUM_SEPOLIA": {"url", "url1"}},
+					RpcWsUrls:   map[string][]string{"ARBITRUM_SEPOLIA": {"wsurl", "wsurl1"}},
+					WalletKeys:  map[string][]string{"OPTIMISM_SEPOLIA": {"wallet", "wallet1", "wallet2"}},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
