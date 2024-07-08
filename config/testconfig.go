@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/joho/godotenv"
+	"github.com/pkg/errors"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/seth"
 )
@@ -377,4 +379,49 @@ func readEnvVarValue(envVarName string, valueType EnvValueType) (interface{}, er
 	default: // String or unrecognized type
 		return value, nil
 	}
+}
+
+func LoadSecretEnvsFromFile() error {
+	logger := logging.GetTestLogger(nil)
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return errors.Wrapf(err, "error getting user home directory")
+	}
+	path := fmt.Sprintf("%s/.testsecrets", homeDir)
+
+	// Check if the file exists
+	info, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		logger.Debug().Msgf("No test secrets file found at %s", path)
+		return nil
+	}
+	if info.IsDir() {
+		return errors.Errorf("%s file is a directory but should be a file", path)
+	}
+
+	// Load existing environment variables into a map
+	existingEnv := make(map[string]string)
+	for _, env := range os.Environ() {
+		pair := strings.SplitN(env, "=", 2)
+		existingEnv[pair[0]] = pair[1]
+	}
+
+	// Load variables from the env file
+	envMap, err := godotenv.Read(path)
+	if err != nil {
+		return errors.Wrapf(err, "error loading %s file with test secrets", path)
+	}
+
+	// Set env vars from file only if they are not already set
+	for key, value := range envMap {
+		if _, exists := existingEnv[key]; !exists {
+			logger.Debug().Msgf("Setting env var %s from %s file", key, path)
+			os.Setenv(key, value)
+		} else {
+			logger.Debug().Msgf("Env var %s already set, not overriding it from %s file", key, path)
+		}
+	}
+
+	return nil
 }
