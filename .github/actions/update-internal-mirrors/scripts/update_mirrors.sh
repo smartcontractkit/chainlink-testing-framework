@@ -88,10 +88,14 @@ push_latest_images_for_expression_from_dockerhub() {
     if [[ $image_name == gcr.io* ]]; then
         # Handle GCR images
         images=$(gcloud container images list-tags gcr.io/prysmaticlabs/prysm/validator --limit="${page_size}" --filter='tags:v*' --format=json | jq -r '.[].tags[]' | grep -E "${image_expression}")
+    elif [[ $image_name == ghcr.io* ]]; then
+        # Handle GitHub Container Registry images
+        images=$(fetch_images_from_gh_container_registry "${image_name}" "${image_expression}" "${page_size}")
     else
         images=$(fetch_images_from_dockerhub "${image_name}" "${image_expression}" "${page_size}")
     fi
     set -e
+
 
     if [ -z "$images" ]; then
         echo "No images were found matching the expression. Either something went wrong or you need to increase the page size to greater than ${page_size}."
@@ -136,6 +140,113 @@ fetch_images_from_dockerhub() {
     echo "$images"
 }
 
+fetch_images_from_gh_container_registry() {
+        local image_name="$1"
+        local image_expression="$2"
+        local max_image_count="$3"
+
+        local org
+        local package
+
+        org=$(echo "$image_name" | awk -F'[/:]' '{print $2}')
+        package=$(echo "$image_name" | awk -F'[/:]' '{print $3}')
+
+        if [ -z "$org" ] || [ -z "$package" ]; then
+            echo "Error: Failed to extract organisation and package name from $image_name. Please provide the image name in the format ghcr.io/org/package." >&2
+            exit 1
+        fi
+
+        if [ -z "$GITHUB_TOKEN" ]; then
+            echo "Error: GITHUB_TOKEN environment variable is not set." >&2
+            exit 1
+        else
+            echo "GITHUB_TOKEN is set" >&2
+        fi
+
+        local url="https://api.github.com/orgs/$org/packages?package_type=container"
+
+        local image_count=0
+        local images=""
+
+        while [ -n "$url" ]; do
+            response=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+                              -H "Accept: application/vnd.github.v3+json" \
+                              "$url")
+
+            echo "response: $response" >&2
+
+            if ! echo "$response" | jq empty > /dev/null 2>&1; then
+                echo "Error: Received invalid JSON response." >&2
+                exit 1
+            fi
+
+            if echo "$response" | jq -e 'if type == "object" then (has("message") or has("status")) else false end' > /dev/null; then
+                message=$(echo "$response" | jq -r '.message // empty')
+                status=$(echo "$response" | jq -r '.status // empty')
+
+                if [ -n "$status" ] && [ "$status" -eq "$status" ] 2>/dev/null && [ "$status" -gt 299 ]; then
+                    echo "Error: Request to get containers failed with status $status and message: $message" >&2
+                    exit 1
+                fi
+            fi
+
+            packages=$(echo "$response" | jq -r --arg package "$package" '.[] | select(.name == $package) | .name')
+
+            if [ -z "$packages" ]; then
+                echo "Error: No matching packages found." >&2
+                exit 1
+            fi
+
+            for package in $packages; do
+                versions_url="https://api.github.com/orgs/$org/packages/container/$package/versions"
+                while [ -n "$versions_url" ]; do
+                    versions_response=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+                                             -H "Accept: application/vnd.github.v3+json" \
+                                             "$versions_url")
+
+                    if ! echo "$versions_response" | jq empty > /dev/null 2>&1; then
+                        echo "Error: Received invalid JSON response for versions." >&2
+                        exit 1
+                    fi
+
+                    tags=$(echo "$versions_response" | jq -r --arg regex "$image_expression" '
+                        .[] |
+                        select(.metadata.container.tags | length > 0) |
+                        .metadata.container.tags[] as $tag |
+                        select($tag | test($regex)) |
+                        $tag
+                    ')
+
+                    while read -r tag; do
+                        if [ "$image_count" -lt "$max_image_count" ]; then
+                            images+="$tag"$'\n'
+                            ((image_count++))
+                        else
+                            break 2
+                        fi
+                    done <<< "$tags"
+
+                    if [ "$image_count" -ge "$max_image_count" ]; then
+                        images=$(echo "$images" | grep -v '^\s*$')
+                        echo "$images"
+                        return
+                    fi
+
+                    versions_url=$(curl -sI -H "Authorization: token $GITHUB_TOKEN" \
+                                            -H "Accept: application/vnd.github.v3+json" \
+                                            "$versions_url" | awk -F'[<>]' '/rel="next"/{print $2}')
+                done
+            done
+
+            url=$(curl -sI -H "Authorization: token $GITHUB_TOKEN" \
+                        -H "Accept: application/vnd.github.v3+json" \
+                        "$url" | awk -F'[<>]' '/rel="next"/{print $2}')
+        done
+
+        images=$(echo "$images" | grep -v '^\s*$')
+        echo "$images"
+}
+
 push_images_in_list() {
     local -a image_list=("$@")
     local prefix="library/"
@@ -156,7 +267,6 @@ push_images_in_list() {
             echo "$docker_image already exists in ECR. Skipping..."
         fi
     done
-
 }
 
 # Run the code
