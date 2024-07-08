@@ -9,8 +9,9 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/pkg/errors"
-	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/seth"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 )
 
 func (c *TestConfig) GetLoggingConfig() *LoggingConfig {

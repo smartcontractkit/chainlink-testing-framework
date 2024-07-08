@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"reflect"
 	"testing"
@@ -91,8 +92,9 @@ func TestReadConfigValuesFromEnvVars(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.setupFunc()         // Setup the test environment
-			defer tt.cleanupFunc() // Ensure cleanup after the test
+			localTt := tt               // Create a local copy of tt
+			localTt.setupFunc()         // Setup the test environment
+			defer localTt.cleanupFunc() // Ensure cleanup after the test
 
 			c := &TestConfig{}
 
@@ -100,13 +102,13 @@ func TestReadConfigValuesFromEnvVars(t *testing.T) {
 			err := c.ReadConfigValuesFromEnvVars()
 
 			// Verify error handling
-			if err != tt.expectedError {
-				t.Errorf("Expected error to be %v, got %v", tt.expectedError, err)
+			if !errors.Is(err, localTt.expectedError) {
+				t.Errorf("Expected error to be %v, got %v", localTt.expectedError, err)
 			}
 
 			// Verify the config
-			if !reflect.DeepEqual(c, &tt.expectedConfig) {
-				t.Errorf("Expected config to be %+v, got %+v", tt.expectedConfig, c)
+			if !reflect.DeepEqual(c, &localTt.expectedConfig) {
+				t.Errorf("Expected config to be %+v, got %+v", localTt.expectedConfig, c)
 			}
 		})
 	}
