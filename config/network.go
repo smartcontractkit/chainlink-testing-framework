@@ -48,13 +48,13 @@ type NetworkConfig struct {
 	GethReorgConfig ReorgConfig `toml:"GethReorgConfig,omitempty"`
 	// RpcHttpUrls is the RPC HTTP endpoints for each network,
 	// key is the network name as declared in selected_networks slice
-	RpcHttpUrls map[string][]string `toml:"-"`
+	RpcHttpUrls map[string][]string `toml:"RpcHttpUrls,omitempty"`
 	// RpcWsUrls is the RPC WS endpoints for each network,
 	// key is the network name as declared in selected_networks slice
-	RpcWsUrls map[string][]string `toml:"-"`
+	RpcWsUrls map[string][]string `toml:"RpcWsUrls,omitempty"`
 	// WalletKeys is the private keys for the funding wallets for each network,
 	// key is the network name as declared in selected_networks slice
-	WalletKeys map[string][]string `toml:"-"`
+	WalletKeys map[string][]string `toml:"WalletKeys,omitempty"`
 }
 
 type ReorgConfig struct {

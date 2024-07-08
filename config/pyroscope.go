@@ -9,8 +9,8 @@ import (
 
 type PyroscopeConfig struct {
 	Enabled     *bool   `toml:"enabled"`
-	ServerUrl   *string `toml:"-"`
-	Key         *string `toml:"-"`
+	ServerUrl   *string `toml:"server_url"`
+	Key         *string `toml:"key_secret"`
 	Environment *string `toml:"environment"`
 }
 
