@@ -113,11 +113,9 @@ func setSecret(filePath, secretID string) {
 	}
 
 	fmt.Printf(
-		"Test secret set successfully in Github with key: %s\n"+
-			"To run tests with custom secrets, add the following flag to your workflow command:\n"+
-			"    -f test_secrets_override_key=%s\n"+
-			"Example command:\n"+
-			"    gh workflow run on-demand-vrfv2plus-eth2-clients-test.yml -f test_secrets_override_key=%s\n",
-		secretID, secretID, secretID,
+		"Test secret set successfully in Github with key: %s\n\n"+
+			"To run a Github workflow with the test secrets, use the 'test_secrets_override_key' flag.\n"+
+			"Example: gh workflow run ${workflow_name} -f test_secrets_override_key=%s\n",
+		secretID, secretID,
 	)
 }
