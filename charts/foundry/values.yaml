@@ -19,7 +19,7 @@ anvil:
   # forkNoRateLimit: "true"
   noOfAccounts: 20
   accountBalance: "2000000000000000000"
-  blockGasLimit: "400000000000000"
+  blockGasLimit: "100000000"
   codeSizeLimit: "30000"
   baseFee: "100000"
   blocksToKeepInMemory: "500"
