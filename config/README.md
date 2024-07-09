@@ -88,6 +88,16 @@ By default, GitHub workflows execute with a set of predefined secrets. However, 
 
 If the `test_secrets_override_key` is not provided, the workflow will default to using the secrets preconfigured in the CI environment.
 
+### Creating New Test Secrets in TestConfig
+
+When adding a new secret to the `TestConfig`, such as a token or other sensitive information, the method `ReadConfigValuesFromEnvVars()` in `config/testconfig.go` must be extended to include the new secret. Ensure that the new environment variable starts with the `E2E_TEST_` prefix. This prefix is crucial for ensuring that the secret is correctly propagated to Kubernetes tests when using the Remote Runner.
+
+Here’s a quick checklist for adding a new test secret:
+
+- Add the secret to ~/.testsecrets with the `E2E_TEST_` prefix to ensure proper handling.
+- Extend the `config/testconfig.go:ReadConfigValuesFromEnvVars()` method to load the secret in `TestConfig`
+- Add the secrets to [All E2E Test Secrets](https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/config/README.md#all-e2e-test-secrets) table.
+
 ## Working example
 
 For a full working example making use of all the building blocks see [testconfig.go](../config/examples/testconfig.go). It provides methods for reading TOML, applying overrides and validating non-empty config blocks. It supports 4 levels of overrides, in order of precedence:
