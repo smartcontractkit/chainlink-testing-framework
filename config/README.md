@@ -30,30 +30,7 @@ Test secrets are not stored directly within the `TestConfig` TOML due to securit
 
 ### Default Secret Loading
 
-By default, secrets are loaded from the `~/.testsecrets` dotenv file. However, alternative methods are available depending on your workflow or IDE setup:
-
-- **Directly in the Terminal:** Before running your tests, you can source your secrets file using the command:
-
-  ```sh
-  source ${path_to_file_with_secrets}
-
-  ```
-
-  Alternatively, you can export individual secrets directly:
-
-  ```sh
-  export E2E_TEST_CHAINLINK_IMAGE=qa_ecr_image_url
-  ```
-
-- **Visual Studio Code:** Use the `envFile` attribute in your launch.json configuration to specify the path to your secrets file:
-  ```json
-  {
-    "envFile": "path_to_file_with_secrets"
-  }
-  ```
-- **IntelliJ IDEA:** Install and configure the EnvFile plugin to manage environment variables through a GUI interface. This plugin allows you to attach environment variable files to run configurations easily.
-
-Example of a local `~/.testsecrets` file:
+By default, secrets are loaded from the `~/.testsecrets` dotenv file. Example of a local `~/.testsecrets` file:
 
 ```bash
 E2E_TEST_CHAINLINK_IMAGE=qa_ecr_image_url
