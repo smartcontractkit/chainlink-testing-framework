@@ -10,7 +10,6 @@ import (
 )
 
 func TestReadConfigValuesFromEnvVars(t *testing.T) {
-	// Define multiple test cases
 	tests := []struct {
 		name           string
 		setupFunc      func()
@@ -21,18 +20,18 @@ func TestReadConfigValuesFromEnvVars(t *testing.T) {
 		{
 			name: "All configurations set correctly",
 			setupFunc: func() {
-				os.Setenv("GROUP1_WALLET_KEY_1", "walletValue1")
-				os.Setenv("GROUP2_RPC_HTTP_URL_1", "httpUrl1")
-				os.Setenv("GROUP3_RPC_WS_URL_1", "wsUrl1")
-				os.Setenv("CHAINLINK_IMAGE", "imageValue")
-				os.Setenv("PYROSCOPE_ENABLED", "true")
+				os.Setenv("E2E_TEST_GROUP1_WALLET_KEY_1", "walletValue1")
+				os.Setenv("E2E_TEST_GROUP2_RPC_HTTP_URL_1", "httpUrl1")
+				os.Setenv("E2E_TEST_GROUP3_RPC_WS_URL_1", "wsUrl1")
+				os.Setenv("E2E_TEST_CHAINLINK_IMAGE", "imageValue")
+				os.Setenv("E2E_TEST_PYROSCOPE_ENABLED", "true")
 			},
 			cleanupFunc: func() {
-				os.Unsetenv("GROUP1_WALLET_KEY_1")
-				os.Unsetenv("GROUP2_RPC_HTTP_URL_1")
-				os.Unsetenv("GROUP3_RPC_WS_URL_1")
-				os.Unsetenv("CHAINLINK_IMAGE")
-				os.Unsetenv("PYROSCOPE_ENABLED")
+				os.Unsetenv("E2E_TEST_GROUP1_WALLET_KEY_1")
+				os.Unsetenv("E2E_TEST_GROUP2_RPC_HTTP_URL_1")
+				os.Unsetenv("E2E_TEST_GROUP3_RPC_WS_URL_1")
+				os.Unsetenv("E2E_TEST_CHAINLINK_IMAGE")
+				os.Unsetenv("E2E_TEST_PYROSCOPE_ENABLED")
 			},
 			expectedConfig: TestConfig{
 				Network: &NetworkConfig{
@@ -47,38 +46,38 @@ func TestReadConfigValuesFromEnvVars(t *testing.T) {
 		{
 			name: "Environment variables are empty strings",
 			setupFunc: func() {
-				os.Setenv("GROUP1_WALLET_KEY_1", "")
-				os.Setenv("GROUP2_RPC_HTTP_URL_1", "")
-				os.Setenv("GROUP3_RPC_WS_URL_1", "")
-				os.Setenv("CHAINLINK_IMAGE", "")
+				os.Setenv("E2E_TEST_GROUP1_WALLET_KEY_1", "")
+				os.Setenv("E2E_TEST_GROUP2_RPC_HTTP_URL_1", "")
+				os.Setenv("E2E_TEST_GROUP3_RPC_WS_URL_1", "")
+				os.Setenv("E2E_TEST_CHAINLINK_IMAGE", "")
 			},
 			cleanupFunc: func() {
-				os.Unsetenv("GROUP1_WALLET_KEY_1")
-				os.Unsetenv("GROUP2_RPC_HTTP_URL_1")
-				os.Unsetenv("GROUP3_RPC_WS_URL_1")
-				os.Unsetenv("CHAINLINK_IMAGE")
+				os.Unsetenv("E2E_TEST_GROUP1_WALLET_KEY_1")
+				os.Unsetenv("E2E_TEST_GROUP2_RPC_HTTP_URL_1")
+				os.Unsetenv("E2E_TEST_GROUP3_RPC_WS_URL_1")
+				os.Unsetenv("E2E_TEST_CHAINLINK_IMAGE")
 			},
 			expectedConfig: TestConfig{},
 		},
 		{
 			name: "Environment variables set with mixed numeric suffixes",
 			setupFunc: func() {
-				os.Setenv("ARBITRUM_SEPOLIA_RPC_HTTP_URL", "url")
-				os.Setenv("ARBITRUM_SEPOLIA_RPC_HTTP_URL_1", "url1")
-				os.Setenv("ARBITRUM_SEPOLIA_RPC_WS_URL", "wsurl")
-				os.Setenv("ARBITRUM_SEPOLIA_RPC_WS_URL_1", "wsurl1")
-				os.Setenv("OPTIMISM_SEPOLIA_WALLET_KEY", "wallet")
-				os.Setenv("OPTIMISM_SEPOLIA_WALLET_KEY_1", "wallet1")
-				os.Setenv("OPTIMISM_SEPOLIA_WALLET_KEY_2", "wallet2")
+				os.Setenv("E2E_TEST_ARBITRUM_SEPOLIA_RPC_HTTP_URL", "url")
+				os.Setenv("E2E_TEST_ARBITRUM_SEPOLIA_RPC_HTTP_URL_1", "url1")
+				os.Setenv("E2E_TEST_ARBITRUM_SEPOLIA_RPC_WS_URL", "wsurl")
+				os.Setenv("E2E_TEST_ARBITRUM_SEPOLIA_RPC_WS_URL_1", "wsurl1")
+				os.Setenv("E2E_TEST_OPTIMISM_SEPOLIA_WALLET_KEY", "wallet")
+				os.Setenv("E2E_TEST_OPTIMISM_SEPOLIA_WALLET_KEY_1", "wallet1")
+				os.Setenv("E2E_TEST_OPTIMISM_SEPOLIA_WALLET_KEY_2", "wallet2")
 			},
 			cleanupFunc: func() {
-				os.Unsetenv("ARBITRUM_SEPOLIA_RPC_HTTP_URL_1")
-				os.Unsetenv("ARBITRUM_SEPOLIA_RPC_WS_URL")
-				os.Unsetenv("ARBITRUM_SEPOLIA_RPC_WS_URL_1")
-				os.Unsetenv("OPTIMISM_SEPOLIA_WALLET_KEY")
-				os.Unsetenv("OPTIMISM_SEPOLIA_WALLET_KEY_1")
-				os.Unsetenv("ARBITRUM_SEPOLIA_RPC_HTTP_URL_2")
-				os.Unsetenv("OPTIMISM_SEPOLIA_WALLET_KEY_2")
+				os.Unsetenv("E2E_TEST_ARBITRUM_SEPOLIA_RPC_HTTP_URL_1")
+				os.Unsetenv("E2E_TEST_ARBITRUM_SEPOLIA_RPC_WS_URL")
+				os.Unsetenv("E2E_TEST_ARBITRUM_SEPOLIA_RPC_WS_URL_1")
+				os.Unsetenv("E2E_TEST_OPTIMISM_SEPOLIA_WALLET_KEY")
+				os.Unsetenv("E2E_TEST_OPTIMISM_SEPOLIA_WALLET_KEY_1")
+				os.Unsetenv("E2E_TEST_ARBITRUM_SEPOLIA_RPC_HTTP_URL_2")
+				os.Unsetenv("E2E_TEST_OPTIMISM_SEPOLIA_WALLET_KEY_2")
 			},
 			expectedConfig: TestConfig{
 				Network: &NetworkConfig{

@@ -33,15 +33,17 @@ Test secrets are not stored directly within the `TestConfig` TOML due to securit
 By default, secrets are loaded from the `~/.testsecrets` dotenv file. However, alternative methods are available depending on your workflow or IDE setup:
 
 - **Directly in the Terminal:** Before running your tests, you can source your secrets file using the command:
+
   ```sh
   source ${path_to_file_with_secrets}
 
-  ````
+  ```
 
   Alternatively, you can export individual secrets directly:
+
   ```sh
   export E2E_TEST_CHAINLINK_IMAGE=qa_ecr_image_url
-  ````
+  ```
 
 - **Visual Studio Code:** Use the `envFile` attribute in your launch.json configuration to specify the path to your secrets file:
   ```json
