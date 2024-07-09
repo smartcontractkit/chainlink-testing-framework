@@ -114,6 +114,7 @@ spec:
             {{- end }}
             - "--state"
             - "/state/dump.json"
+            - "--prune-history"
             {{- if .Values.anvil.intervalInSecondsToDumpState }}
             - "--state-interval"
             - {{ .Values.anvil.intervalInSecondsToDumpState | quote }}
@@ -121,9 +122,6 @@ spec:
             {{- if .Values.anvil.blocksToKeepInMemory }}
             - "--transaction-block-keeper"
             - {{ .Values.anvil.blocksToKeepInMemory | quote }}
-            - "--prune-history"
-            {{- end }}
-            {{- if .Values.anvil.enableTracing }}
             {{- end }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
