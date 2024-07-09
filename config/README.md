@@ -24,9 +24,69 @@ It's up to the user to provide a way to read the config from file and unmarshal 
 
 Also you might find `BytesToAnyTomlStruct(logger zerolog.Logger, filename, configurationName string, target any, content []byte) error` utility method useful for unmarshalling TOMLs read from env var or files into a struct
 
-## Secrets in TOML config
+## Test Secrets
 
-For all values regarded as secrets, their keys should end with the `_secret` suffix. For example, use `basic_auth_secret="basic-auth"` instead of `basic_auth="basic-auth"`.
+Test secrets are not stored directly within the `TestConfig` TOML due to security reasons. Instead, they are passed into `TestConfig` via environment variables. Below is a list of all available secrets. Set only the secrets required for your specific tests, like so: `E2E_TEST_CHAINLINK_IMAGE=qa_ecr_image_url`.
+
+### Default Secret Loading
+
+By default, secrets are loaded from the `~/.testsecrets` dotenv file. Example of a local `~/.testsecrets` file:
+
+```bash
+E2E_TEST_CHAINLINK_IMAGE=qa_ecr_image_url
+E2E_TEST_CHAINLINK_UPGRADE_IMAGE=qa_ecr_image_url
+E2E_TEST_ARBITRUM_SEPOLIA_WALLET_KEY=wallet_key
+```
+
+### All E2E Test Secrets
+
+| Secret                        | Env Var                                                             | Example                                             |
+| ----------------------------- | ------------------------------------------------------------------- | --------------------------------------------------- |
+| Chainlink Image               | `E2E_TEST_CHAINLINK_IMAGE`                                          | `E2E_TEST_CHAINLINK_IMAGE=qa_ecr_image_url`         |
+| Chainlink Upgrade Image       | `E2E_TEST_CHAINLINK_UPGRADE_IMAGE`                                  | `E2E_TEST_CHAINLINK_UPGRADE_IMAGE=qa_ecr_image_url` |
+| Wallet Key per network        | `E2E_TEST_(.+)_WALLET_KEY` or `E2E_TEST_(.+)_WALLET_KEY_(\d+)$`     | `E2E_TEST_ARBITRUM_SEPOLIA_WALLET_KEY=wallet_key`   |
+| RPC HTTP URL per network      | `E2E_TEST_(.+)_RPC_HTTP_URL` or `E2E_TEST_(.+)_RPC_HTTP_URL_(\d+)$` | `E2E_TEST_ARBITRUM_SEPOLIA_RPC_HTTP_URL=url`        |
+| RPC WebSocket URL per network | `E2E_TEST_(.+)_RPC_WS_URL` or `E2E_TEST_(.+)_RPC_WS_URL_(\d+)$`     | `E2E_TEST_ARBITRUM_RPC_WS_URL=ws_url`               |
+| Loki Tenant ID                | `E2E_TEST_LOKI_TENANT_ID`                                           | `E2E_TEST_LOKI_TENANT_ID=tenant_id`                 |
+| Loki Endpoint                 | `E2E_TEST_LOKI_ENDPOINT`                                            | `E2E_TEST_LOKI_ENDPOINT=url`                        |
+| Loki Basic Auth               | `E2E_TEST_LOKI_BASIC_AUTH`                                          | `E2E_TEST_LOKI_BASIC_AUTH=token`                    |
+| Loki Bearer Token             | `E2E_TEST_LOKI_BEARER_TOKEN`                                        | `E2E_TEST_LOKI_BEARER_TOKEN=token`                  |
+| Grafana Base URL              | `E2E_TEST_GRAFANA_BASE_URL`                                         | `E2E_TEST_GRAFANA_BASE_URL=base_url`                |
+| Grafana Dashboard URL         | `E2E_TEST_GRAFANA_DASHBOARD_URL`                                    | `E2E_TEST_GRAFANA_DASHBOARD_URL=url`                |
+| Grafana Bearer Token          | `E2E_TEST_GRAFANA_BEARER_TOKEN`                                     | `E2E_TEST_GRAFANA_BEARER_TOKEN=token`               |
+| Pyroscope Server URL          | `E2E_TEST_PYROSCOPE_SERVER_URL`                                     | `E2E_TEST_PYROSCOPE_SERVER_URL=url`                 |
+| Pyroscope Key                 | `E2E_TEST_PYROSCOPE_KEY`                                            | `E2E_TEST_PYROSCOPE_KEY=key`                        |
+| Pyroscope Environment         | `E2E_TEST_PYROSCOPE_ENVIRONMENT`                                    | `E2E_TEST_PYROSCOPE_ENVIRONMENT=env`                |
+| Pyroscope Enabled             | `E2E_TEST_PYROSCOPE_ENABLED`                                        | `E2E_TEST_PYROSCOPE_ENABLED=true`                   |
+
+### Run GitHub Workflow with Your Test Secrets
+
+By default, GitHub workflows execute with a set of predefined secrets. However, you can use custom secrets by specifying a unique identifier for your secrets when running the `gh workflow` command.
+
+#### Steps to Use Custom Secrets
+
+1. **Upload Local Secrets to GitHub Secrets Vault:**
+
+   - **Install `ghsecrets` tool:**
+     Install the `ghsecrets` tool to manage GitHub Secrets more efficiently.
+     ```bash
+     go install github.com/smartcontractkit/chainlink-testing-framework/tools/ghsecrets@latest
+     ```
+   - **Upload Secrets:**
+     Use `ghsecrets set` to upload the content of your `~/.testsecrets` file to the GitHub Secrets Vault and generate a unique identifier (referred to as `your_ghsecret_id`).
+     ```bash
+     ghsecrets set
+     ```
+
+2. **Execute the Workflow with Custom Secrets:**
+   - To use the custom secrets in your GitHub Actions workflow, pass the `-f test_secrets_override_key={your_ghsecret_id}` flag when running the `gh workflow` command.
+     ```bash
+     gh workflow run <workflow_name> -f test_secrets_override_key={your_ghsecret_id}
+     ```
+
+#### Default Secrets Handling
+
+If the `test_secrets_override_key` is not provided, the workflow will default to using the secrets preconfigured in the CI environment.
 
 ## Working example
 
