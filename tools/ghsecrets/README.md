@@ -26,7 +26,9 @@ ghsecrets set
 
 This error typically means that the directory where Go installs its binaries is not included in your system's PATH. The binaries are usually installed in $GOPATH/bin or $GOBIN. Here's how you can resolve this issue:
 
-1. Add Go bin directory to PATH:
+1. If you use `asdf` run `asdf reshim golang`
+
+2. Or, add Go bin directory to PATH:
 
 - First, find out where your Go bin directory is by running:
 
@@ -47,7 +49,7 @@ This error typically means that the directory where Go installs its binaries is 
   source ~/.bashrc  # Use the appropriate file like .zshrc if needed
   ```
 
-2. Alternatively, run using the full path:
+3. Alternatively, run using the full path:
 
    If you prefer not to alter your PATH, or if you are troubleshooting temporarily, you can run the tool directly using its full path:
 

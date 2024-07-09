@@ -51,13 +51,9 @@ E2E_TEST_ARBITRUM_SEPOLIA_WALLET_KEY=wallet_key
 | Loki Endpoint                 | `E2E_TEST_LOKI_ENDPOINT`                                            | `E2E_TEST_LOKI_ENDPOINT=url`                        |
 | Loki Basic Auth               | `E2E_TEST_LOKI_BASIC_AUTH`                                          | `E2E_TEST_LOKI_BASIC_AUTH=token`                    |
 | Loki Bearer Token             | `E2E_TEST_LOKI_BEARER_TOKEN`                                        | `E2E_TEST_LOKI_BEARER_TOKEN=token`                  |
-| Grafana Base URL              | `E2E_TEST_GRAFANA_BASE_URL`                                         | `E2E_TEST_GRAFANA_BASE_URL=base_url`                |
-| Grafana Dashboard URL         | `E2E_TEST_GRAFANA_DASHBOARD_URL`                                    | `E2E_TEST_GRAFANA_DASHBOARD_URL=url`                |
 | Grafana Bearer Token          | `E2E_TEST_GRAFANA_BEARER_TOKEN`                                     | `E2E_TEST_GRAFANA_BEARER_TOKEN=token`               |
 | Pyroscope Server URL          | `E2E_TEST_PYROSCOPE_SERVER_URL`                                     | `E2E_TEST_PYROSCOPE_SERVER_URL=url`                 |
 | Pyroscope Key                 | `E2E_TEST_PYROSCOPE_KEY`                                            | `E2E_TEST_PYROSCOPE_KEY=key`                        |
-| Pyroscope Environment         | `E2E_TEST_PYROSCOPE_ENVIRONMENT`                                    | `E2E_TEST_PYROSCOPE_ENVIRONMENT=env`                |
-| Pyroscope Enabled             | `E2E_TEST_PYROSCOPE_ENABLED`                                        | `E2E_TEST_PYROSCOPE_ENABLED=true`                   |
 
 ### Run GitHub Workflow with Your Test Secrets
 
@@ -87,6 +83,16 @@ By default, GitHub workflows execute with a set of predefined secrets. However, 
 #### Default Secrets Handling
 
 If the `test_secrets_override_key` is not provided, the workflow will default to using the secrets preconfigured in the CI environment.
+
+### Creating New Test Secrets in TestConfig
+
+When adding a new secret to the `TestConfig`, such as a token or other sensitive information, the method `ReadConfigValuesFromEnvVars()` in `config/testconfig.go` must be extended to include the new secret. Ensure that the new environment variable starts with the `E2E_TEST_` prefix. This prefix is crucial for ensuring that the secret is correctly propagated to Kubernetes tests when using the Remote Runner.
+
+Here’s a quick checklist for adding a new test secret:
+
+- Add the secret to ~/.testsecrets with the `E2E_TEST_` prefix to ensure proper handling.
+- Extend the `config/testconfig.go:ReadConfigValuesFromEnvVars()` method to load the secret in `TestConfig`
+- Add the secrets to [All E2E Test Secrets](https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/config/README.md#all-e2e-test-secrets) table.
 
 ## Working example
 
