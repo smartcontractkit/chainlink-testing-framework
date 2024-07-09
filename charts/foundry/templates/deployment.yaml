@@ -149,16 +149,11 @@ spec:
           volumeMounts:
             - name: state-storage
               mountPath: /state
-            - name: tmp-storage
-              mountPath: /home/foundry/.foundry/anvil/tmp
           {{- with .Values.volumeMounts }}
             {{- toYaml . | nindent 12 }}
           {{- end }}
       volumes:
         - name: state-storage
-          persistentVolumeClaim:
-            claimName: {{ include "foundry.fullname" . }}-pvc
-        - name: tmp-storage
           persistentVolumeClaim:
             claimName: {{ include "foundry.fullname" . }}-pvc
       {{- with .Values.volumes }}
