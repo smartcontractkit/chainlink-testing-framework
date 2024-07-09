@@ -51,13 +51,9 @@ E2E_TEST_ARBITRUM_SEPOLIA_WALLET_KEY=wallet_key
 | Loki Endpoint                 | `E2E_TEST_LOKI_ENDPOINT`                                            | `E2E_TEST_LOKI_ENDPOINT=url`                        |
 | Loki Basic Auth               | `E2E_TEST_LOKI_BASIC_AUTH`                                          | `E2E_TEST_LOKI_BASIC_AUTH=token`                    |
 | Loki Bearer Token             | `E2E_TEST_LOKI_BEARER_TOKEN`                                        | `E2E_TEST_LOKI_BEARER_TOKEN=token`                  |
-| Grafana Base URL              | `E2E_TEST_GRAFANA_BASE_URL`                                         | `E2E_TEST_GRAFANA_BASE_URL=base_url`                |
-| Grafana Dashboard URL         | `E2E_TEST_GRAFANA_DASHBOARD_URL`                                    | `E2E_TEST_GRAFANA_DASHBOARD_URL=url`                |
 | Grafana Bearer Token          | `E2E_TEST_GRAFANA_BEARER_TOKEN`                                     | `E2E_TEST_GRAFANA_BEARER_TOKEN=token`               |
 | Pyroscope Server URL          | `E2E_TEST_PYROSCOPE_SERVER_URL`                                     | `E2E_TEST_PYROSCOPE_SERVER_URL=url`                 |
 | Pyroscope Key                 | `E2E_TEST_PYROSCOPE_KEY`                                            | `E2E_TEST_PYROSCOPE_KEY=key`                        |
-| Pyroscope Environment         | `E2E_TEST_PYROSCOPE_ENVIRONMENT`                                    | `E2E_TEST_PYROSCOPE_ENVIRONMENT=env`                |
-| Pyroscope Enabled             | `E2E_TEST_PYROSCOPE_ENABLED`                                        | `E2E_TEST_PYROSCOPE_ENABLED=true`                   |
 
 ### Run GitHub Workflow with Your Test Secrets
 
