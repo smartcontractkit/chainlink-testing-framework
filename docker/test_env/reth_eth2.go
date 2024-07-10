@@ -29,7 +29,7 @@ func NewRethEth2(networks []string, chainConfig *config.EthereumChainConfig, gen
 			ContainerImage:   parts[0],
 			ContainerVersion: parts[1],
 			LogLevel:         "debug",
-			StartupTimeout:   128 * time.Second,
+			StartupTimeout:   120 * time.Second,
 		},
 		chainConfig:          chainConfig,
 		generatedDataHostDir: generatedDataHostDir,
