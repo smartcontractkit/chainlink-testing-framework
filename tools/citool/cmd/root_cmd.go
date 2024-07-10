@@ -8,7 +8,7 @@ import (
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "e2e_tests_tool",
+	Use:   "citool",
 	Short: "A tool to manage E2E tests on Github CI",
 }
 
@@ -28,7 +28,6 @@ func init() {
 	rootCmd.AddCommand(checkTestsCmd)
 	rootCmd.AddCommand(filterCmd)
 	rootCmd.AddCommand(testConfigCmd)
-	testConfigCmd.AddCommand(maskTestConfigCmd)
 	testConfigCmd.AddCommand(createTestConfigCmd)
 	testConfigCmd.AddCommand(overrideTestConfigCmd)
 }
