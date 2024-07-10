@@ -68,6 +68,8 @@ By default, GitHub workflows execute with a set of predefined secrets. However, 
      ```bash
      go install github.com/smartcontractkit/chainlink-testing-framework/tools/ghsecrets@latest
      ```
+	 If you use `asdf`, run `asdf reshim`
+
    - **Upload Secrets:**
      Run `ghsecrets set` from local core repo to upload the content of your `~/.testsecrets` file to the GitHub Secrets Vault and generate a unique identifier (referred to as `your_ghsecret_id`).
 
@@ -78,6 +80,8 @@ By default, GitHub workflows execute with a set of predefined secrets. However, 
    ```bash
    ghsecrets set
    ```
+
+   For more details about `ghsecrets`, visit https://github.com/smartcontractkit/chainlink-testing-framework/tree/main/tools/ghsecrets#faq
 
 2. **Execute the Workflow with Custom Secrets:**
    - To use the custom secrets in your GitHub Actions workflow, pass the `-f test_secrets_override_key={your_ghsecret_id}` flag when running the `gh workflow` command.
