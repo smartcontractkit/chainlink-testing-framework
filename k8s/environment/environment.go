@@ -281,6 +281,7 @@ func (m *Environment) initApp() error {
 		Labels:    nsLabels,
 		Namespace: ptr.Ptr(m.Cfg.Namespace),
 	})
+
 	k8s.NewKubeNamespace(m.root, ptr.Ptr("namespace"), &k8s.KubeNamespaceProps{
 		Metadata: &k8s.ObjectMeta{
 			Name:        ptr.Ptr(m.Cfg.Namespace),
@@ -288,23 +289,6 @@ func (m *Environment) initApp() error {
 			Annotations: &defaultNamespaceAnnotations,
 		},
 	})
-	if m.Cfg.PreventPodEviction {
-		zero := float64(0)
-		k8s.NewKubePodDisruptionBudget(m.root, ptr.Ptr("pdb"), &k8s.KubePodDisruptionBudgetProps{
-			Metadata: &k8s.ObjectMeta{
-				Name:      ptr.Ptr("clenv-pdb"),
-				Namespace: ptr.Ptr(m.Cfg.Namespace),
-			},
-			Spec: &k8s.PodDisruptionBudgetSpec{
-				MaxUnavailable: k8s.IntOrString_FromNumber(&zero),
-				Selector: &k8s.LabelSelector{
-					MatchLabels: &map[string]*string{
-						pkg.NamespaceLabelKey: ptr.Ptr(m.Cfg.Namespace),
-					},
-				},
-			},
-		})
-	}
 	m.CurrentManifest = *m.App.SynthYaml()
 	// loop retry applying the initial manifest with the namespace and other basics
 	ctx, cancel := context.WithTimeout(testcontext.Get(m.Cfg.Test), m.Cfg.ReadyCheckData.Timeout)
@@ -1093,6 +1077,7 @@ func markNotSafeToEvict(preventPodEviction bool, m map[string]string) map[string
 	}
 	if preventPodEviction {
 		m["karpenter.sh/do-not-evict"] = "true"
+		m["karpenter.sh/do-not-disrupt"] = "true"
 		m["cluster-autoscaler.kubernetes.io/safe-to-evict"] = "false"
 	}
 
