@@ -759,7 +759,7 @@ func (e *EthereumClient) IsTxConfirmed(txHash common.Hash) (bool, error) {
 			if err == nil {
 				from = fromAddr.Hex()
 			}
-			reason, err := e.errorReason(e.Client, tx, receipt)
+			reason, err := e.ErrorReason(e.Client, tx, receipt)
 			if err != nil {
 				e.l.Warn().Str("TX Hash", txHash.Hex()).
 					Str("To", to).
@@ -797,7 +797,7 @@ func (e *EthereumClient) IsEventConfirmed(event *types.Log) (confirmed, removed 
 		return false, event.Removed, err
 	}
 	if eventReceipt.Status == 0 { // Failed event tx
-		reason, err := e.errorReason(e.Client, eventTx, eventReceipt)
+		reason, err := e.ErrorReason(e.Client, eventTx, eventReceipt)
 		if err != nil {
 			e.l.Warn().Str("TX Hash", eventTx.Hash().Hex()).
 				Str("Error extracting reason", err.Error()).
@@ -839,7 +839,7 @@ func (e *EthereumClient) RevertReasonFromTx(txHash common.Hash, abiString string
 	if err != nil {
 		return "", nil, err
 	}
-	errData, err := e.errorReason(e.Client, tx, re)
+	errData, err := e.ErrorReason(e.Client, tx, re)
 	if err != nil {
 		return "", nil, err
 	}
@@ -1730,4 +1730,8 @@ func (e *EthereumMultinodeClient) WaitForEvents() error {
 		})
 	}
 	return g.Wait()
+}
+
+func (e *EthereumMultinodeClient) ErrorReason(b ethereum.ContractCaller, tx *types.Transaction, receipt *types.Receipt) (string, error) {
+	return e.DefaultClient.ErrorReason(b, tx, receipt)
 }

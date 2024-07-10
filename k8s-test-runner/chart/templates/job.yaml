@@ -22,6 +22,7 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
         karpenter.sh/do-not-evict: "true"
+        karpenter.sh/do-not-disrupt: "true"
         cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
     spec:
       serviceAccountName: {{ $.Values.rbac.serviceAccountName }}

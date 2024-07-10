@@ -372,6 +372,10 @@ func jobEnvVars(props *Props) *[]*k8s.EnvVar {
 				log.Debug().Str(e[:i], e[i+1:]).Msg("Forwarding generic Env Var")
 				env[withoutPrefix] = e[i+1:]
 			}
+			if strings.HasPrefix(e[:i], config.E2ETestEnvVarPrefix) {
+				log.Debug().Str("key", e[:i]).Msg("Forwarding E2E Test Env Var")
+				env[e[:i]] = e[i+1:]
+			}
 		}
 	}
 
