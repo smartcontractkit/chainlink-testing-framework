@@ -65,10 +65,12 @@ By default, GitHub workflows execute with a set of predefined secrets. However, 
 
    - **Install `ghsecrets` tool:**
      Install the `ghsecrets` tool to manage GitHub Secrets more efficiently.
+
      ```bash
      go install github.com/smartcontractkit/chainlink-testing-framework/tools/ghsecrets@latest
      ```
-	 If you use `asdf`, run `asdf reshim`
+
+     If you use `asdf`, run `asdf reshim`
 
    - **Upload Secrets:**
      Run `ghsecrets set` from local core repo to upload the content of your `~/.testsecrets` file to the GitHub Secrets Vault and generate a unique identifier (referred to as `your_ghsecret_id`).
