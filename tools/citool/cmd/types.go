@@ -13,7 +13,7 @@ type CITestConf struct {
 	TestType              string            `yaml:"test-type" json:"testType"`
 	RunsOn                string            `yaml:"runs-on" json:"runsOn"`
 	TestCmd               string            `yaml:"test-cmd" json:"testCmd"`
-	TestInputs            map[string]string `yaml:"test-inputs" json:"testInputs"`
+	DefaultTestInputs     map[string]string `yaml:"default-test-inputs" json:"defaultTestInputs"`
 	RemoteRunnerTestSuite string            `yaml:"remote-runner-test-suite" json:"remoteRunnerTestSuite"`
 	RemoteRunnerMemory    string            `yaml:"remote-runner-memory" json:"remoteRunnerMemory"`
 	PyroscopeEnv          string            `yaml:"pyroscope-env" json:"pyroscopeEnv"`
