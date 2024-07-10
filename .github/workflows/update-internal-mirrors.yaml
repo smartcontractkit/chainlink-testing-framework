@@ -46,11 +46,11 @@ jobs:
             expression: '^v[0-9]+\.[0-9]+\.[0-9]+$'
           - name: wiremock/wiremock
             expression: '^[0-9]+\.[0-9]+\.[0-9]+$'
-    # disabled until gcloud auth is added
-    # - name: gcr.io/prysmaticlabs/prysm/beacon-chain
-    #   expression: '^v[0-9]+\.[0-9]+\.[0-9]+$'
-    # - name: gcr.io/prysmaticlabs/prysm/validator
-    #   expression: '^v[0-9]+\.[0-9]+\.[0-9]+$'
+          # disabled until gcloud auth is added
+          # - name: gcr.io/prysmaticlabs/prysm/beacon-chain
+          #   expression: '^v[0-9]+\.[0-9]+\.[0-9]+$'
+          # - name: gcr.io/prysmaticlabs/prysm/validator
+          #   expression: '^v[0-9]+\.[0-9]+\.[0-9]+$'
           - name: tofelb/ethereum-genesis-generator
             expression: '^[0-9]+\.[0-9]+\.[0-9]+(\-slots\-per\-epoch)?'
     # This one only has latest tag, probably only want to update it when we know for sure it's a new version we want
@@ -62,7 +62,7 @@ jobs:
       packages: read
     steps:
       - name: Update image
-        uses: smartcontractkit/chainlink-testing-framework/.github/actions/update-internal-mirrors@ab6c608e317c68224c0581ef4f1dfaa0eaaec14e
+        uses: smartcontractkit/chainlink-testing-framework/.github/actions/update-internal-mirrors@4dcb58fdc5e64465370bf59f4f9a230a0829d118
         with:
           aws_region: ${{ secrets.QA_AWS_REGION }}
           role_to_assume: ${{ secrets.QA_AWS_ROLE_TO_ASSUME }}
@@ -80,7 +80,7 @@ jobs:
       contents: read
     steps:
       - name: Update other images
-        uses: smartcontractkit/chainlink-testing-framework/.github/actions/update-internal-mirrors@ab6c608e317c68224c0581ef4f1dfaa0eaaec14e
+        uses: smartcontractkit/chainlink-testing-framework/.github/actions/update-internal-mirrors@4dcb58fdc5e64465370bf59f4f9a230a0829d118
         with:
           aws_region: ${{ secrets.QA_AWS_REGION }}
           role_to_assume: ${{ secrets.QA_AWS_ROLE_TO_ASSUME }}
