@@ -29,6 +29,7 @@ func NewRethEth2(networks []string, chainConfig *config.EthereumChainConfig, gen
 			ContainerImage:   parts[0],
 			ContainerVersion: parts[1],
 			LogLevel:         "debug",
+			StartupTimeout:   128 * time.Second,
 		},
 		chainConfig:          chainConfig,
 		generatedDataHostDir: generatedDataHostDir,
@@ -74,7 +75,7 @@ func (g *Reth) getEth2ContainerRequest() (*tc.ContainerRequest, error) {
 		ExposedPorts:  []string{NatPortFormat(DEFAULT_EVM_NODE_HTTP_PORT), NatPortFormat("8546"), NatPortFormat(DEFAULT_EVM_NODE_WS_PORT), NatPortFormat(ETH2_EXECUTION_PORT)},
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForLog("Starting consensus engine").
-				WithStartupTimeout(12000 * time.Second).
+				WithStartupTimeout(g.StartupTimeout).
 				WithPollInterval(1 * time.Second),
 		),
 		User: "0:0",

@@ -26,6 +26,7 @@ func NewNethermindEth2(networks []string, chainConfig *config.EthereumChainConfi
 			Networks:         networks,
 			ContainerImage:   parts[0],
 			ContainerVersion: parts[1],
+			StartupTimeout:   2 * time.Minute,
 		},
 		generatedDataHostDir: generatedDataHostDir,
 		chainConfig:          chainConfig,
@@ -100,9 +101,8 @@ func (g *Nethermind) getEth2ContainerRequest() (*tc.ContainerRequest, error) {
 		ExposedPorts: []string{NatPortFormat(DEFAULT_EVM_NODE_HTTP_PORT), NatPortFormat(DEFAULT_EVM_NODE_WS_PORT), NatPortFormat(ETH2_EXECUTION_PORT)},
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForLog("Nethermind initialization completed").
-				WithStartupTimeout(120 * time.Second).
 				WithPollInterval(1 * time.Second),
-		),
+		).WithStartupTimeoutDefault(g.StartupTimeout),
 		Cmd: command,
 		Files: []tc.ContainerFile{
 			{

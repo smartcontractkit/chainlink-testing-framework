@@ -369,5 +369,5 @@ func (c *EthereumChainConfig) GetDefaultWaitDuration() time.Duration {
 }
 
 func (c *EthereumChainConfig) GetDefaultFinalizationWaitDuration() time.Duration {
-	return time.Duration(5 * time.Minute)
+	return 5 * time.Minute
 }

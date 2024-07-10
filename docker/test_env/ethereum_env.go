@@ -432,6 +432,7 @@ func (en *EthereumNetwork) startEth2() (blockchain.EVMNetwork, RpcProvider, erro
 
 	opts := en.getExecutionLayerEnvComponentOpts()
 
+	chainReadyWaitTime := en.EthereumChainConfig.GetDefaultWaitDuration()
 	var client ExecutionClient
 	var clientErr error
 	switch *en.ExecutionLayer {
@@ -439,10 +440,13 @@ func (en *EthereumNetwork) startEth2() (blockchain.EVMNetwork, RpcProvider, erro
 		client, clientErr = NewGethEth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, config.ConsensusLayer_Prysm, opts...)
 	case config.ExecutionLayer_Nethermind:
 		client, clientErr = NewNethermindEth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, config.ConsensusLayer_Prysm, opts...)
+		chainReadyWaitTime = chainReadyWaitTime * 2
 	case config.ExecutionLayer_Erigon:
 		client, clientErr = NewErigonEth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, config.ConsensusLayer_Prysm, opts...)
+		chainReadyWaitTime = chainReadyWaitTime * 2
 	case config.ExecutionLayer_Besu:
 		client, clientErr = NewBesuEth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, config.ConsensusLayer_Prysm, opts...)
+		chainReadyWaitTime = chainReadyWaitTime * 2
 	case config.ExecutionLayer_Reth:
 		client, clientErr = NewRethEth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, config.ConsensusLayer_Prysm, opts...)
 	default:
@@ -483,7 +487,7 @@ func (en *EthereumNetwork) startEth2() (blockchain.EVMNetwork, RpcProvider, erro
 		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to start validator")
 	}
 
-	err = client.WaitUntilChainIsReady(testcontext.Get(en.t), en.EthereumChainConfig.GetDefaultWaitDuration())
+	err = client.WaitUntilChainIsReady(testcontext.Get(en.t), chainReadyWaitTime)
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to wait for chain to be ready")
 	}

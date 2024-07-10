@@ -31,6 +31,7 @@ type EnvComponent struct {
 	PostStopsHooks     []tc.ContainerHook   `json:"-"`
 	PreTerminatesHooks []tc.ContainerHook   `json:"-"`
 	LogLevel           string               `json:"-"`
+	StartupTimeout     time.Duration        `json:"-"`
 }
 
 type EnvComponentOption = func(c *EnvComponent)
@@ -39,6 +40,14 @@ func WithContainerName(name string) EnvComponentOption {
 	return func(c *EnvComponent) {
 		if name != "" {
 			c.ContainerName = name
+		}
+	}
+}
+
+func WithStartupTimeout(timeout time.Duration) EnvComponentOption {
+	return func(c *EnvComponent) {
+		if timeout != 0 {
+			c.StartupTimeout = timeout
 		}
 	}
 }
