@@ -29,8 +29,9 @@ func NewZookeeper(networks []string) *Zookeeper {
 	id, _ := uuid.NewRandom()
 	z := &Zookeeper{
 		EnvComponent: EnvComponent{
-			ContainerName: fmt.Sprintf("zookeper-%s", id.String()),
-			Networks:      networks,
+			ContainerName:  fmt.Sprintf("zookeper-%s", id.String()),
+			Networks:       networks,
+			StartupTimeout: 1 * time.Minute,
 		},
 	}
 	z.SetDefaultHooks()
@@ -92,7 +93,7 @@ func (z *Zookeeper) getContainerRequest() (tc.ContainerRequest, error) {
 		},
 		Networks: z.Networks,
 		WaitingFor: tcwait.ForLog("ZooKeeper audit is disabled.").
-			WithStartupTimeout(30 * time.Second).
+			WithStartupTimeout(z.StartupTimeout).
 			WithPollInterval(100 * time.Millisecond),
 		LifecycleHooks: []tc.ContainerLifecycleHooks{
 			{
