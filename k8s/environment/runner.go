@@ -2,7 +2,6 @@ package environment
 
 import (
 	"bytes"
-	"encoding/base64"
 	"fmt"
 	"os"
 	"strconv"
@@ -62,6 +61,7 @@ func NewRunner(props *Props) func(root cdk8s.Chart) ConnectedChart {
 		if props.ReportPath != "" {
 			pvcVolume(root, props)
 		}
+		kubeSecret(root, props)
 		role(root, props)
 		job(root, props)
 		return c
@@ -133,10 +133,6 @@ func DataFromRunner(props *Props) func(root cdk8s.Chart) ConnectedChart {
 										{
 											Name:      ptr.Ptr("reports"),
 											MountPath: ptr.Ptr("reports"),
-										},
-										{
-											Name:      ptr.Ptr("ts"),
-											MountPath: ptr.Ptr("ts"),
 										},
 									},
 								},
@@ -212,6 +208,22 @@ func role(chart cdk8s.Chart, props *Props) {
 	)
 }
 
+func kubeSecret(chart cdk8s.Chart, _ *Props) {
+	k8s.NewKubeSecret(
+		chart,
+		ptr.Ptr("ts-secret"),
+		&k8s.KubeSecretProps{
+			Metadata: &k8s.ObjectMeta{
+				Name: ptr.Ptr("ts-secret"),
+			},
+			Type: ptr.Ptr("Opaque"), // Typical for storing arbitrary user-defined data
+			StringData: &map[string]*string{
+				".testsecrets": ptr.Ptr(createTestSecretsDotenvFromEnvVars()),
+			},
+		},
+	)
+}
+
 func job(chart cdk8s.Chart, props *Props) {
 	defaultRunnerPodAnnotations := markNotSafeToEvict(props.PreventPodEviction, nil)
 	restartPolicy := "Never"
@@ -235,6 +247,12 @@ func job(chart cdk8s.Chart, props *Props) {
 			}),
 		})
 	}
+	volumes = append(volumes, &k8s.Volume{
+		Name: ptr.Ptr("ts-volume"),
+		Secret: &k8s.SecretVolumeSource{
+			SecretName: ptr.Ptr("ts-secret"),
+		},
+	})
 	k8s.NewKubeJob(
 		chart,
 		ptr.Ptr(fmt.Sprintf("%s-job", props.BaseName)),
@@ -284,16 +302,11 @@ func container(props *Props) *[]*k8s.Container {
 			SubPath:   ptr.Ptr(props.ReportPath),
 		})
 	}
-	// Mount .testsecrets file
+	// Mount test secrets dotenv file
 	volumeMounts = append(volumeMounts, &k8s.VolumeMount{
-		Name:      ptr.Ptr("ts"),
-		MountPath: ptr.Ptr("/root/.testsecrets"),
+		Name:      ptr.Ptr("ts-volume"),
+		MountPath: ptr.Ptr("/etc/e2etests"),
 	})
-	createTestSecretsCmd := []*string{
-		ptr.Ptr("/bin/sh"),
-		ptr.Ptr("-c"),
-		ptr.Ptr("echo '" + getTestSecretsBase64() + "' | base64 -d > /root/.testsecrets"),
-	}
 	return ptr.Ptr([]*k8s.Container{
 		{
 			Name:            ptr.Ptr(fmt.Sprintf("%s-node", props.BaseName)),
@@ -301,7 +314,6 @@ func container(props *Props) *[]*k8s.Container {
 			ImagePullPolicy: ptr.Ptr("Always"),
 			Env:             jobEnvVars(props),
 			Resources:       a.ContainerResources(cpu, mem, cpu, mem),
-			Command:         ptr.Ptr(createTestSecretsCmd),
 			VolumeMounts:    &volumeMounts,
 		},
 	})
@@ -349,7 +361,7 @@ func pvcVolume(chart cdk8s.Chart, props *Props) {
 		})
 }
 
-func getTestSecretsBase64() string {
+func createTestSecretsDotenvFromEnvVars() string {
 	var buffer bytes.Buffer
 
 	for _, pair := range os.Environ() {
@@ -363,7 +375,7 @@ func getTestSecretsBase64() string {
 		}
 	}
 
-	return base64.StdEncoding.EncodeToString(buffer.Bytes())
+	return buffer.String()
 }
 
 func jobEnvVars(props *Props) *[]*k8s.EnvVar {
