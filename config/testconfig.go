@@ -409,9 +409,8 @@ func LoadSecretEnvsFromFiles() error {
 			if os.IsNotExist(err) {
 				logger.Debug().Msgf("No test secrets file found at %s", path)
 				continue
-			} else {
-				return errors.Wrapf(err, "error reading test secrets file at %s", path)
 			}
+			return errors.Wrapf(err, "error reading test secrets file at %s", path)
 		}
 
 		// Set env vars from file only if they are not already set
