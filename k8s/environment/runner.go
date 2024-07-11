@@ -1,6 +1,8 @@
 package environment
 
 import (
+	"bytes"
+	"encoding/base64"
 	"fmt"
 	"os"
 	"strconv"
@@ -131,6 +133,10 @@ func DataFromRunner(props *Props) func(root cdk8s.Chart) ConnectedChart {
 										{
 											Name:      ptr.Ptr("reports"),
 											MountPath: ptr.Ptr("reports"),
+										},
+										{
+											Name:      ptr.Ptr("ts"),
+											MountPath: ptr.Ptr("ts"),
 										},
 									},
 								},
@@ -278,6 +284,16 @@ func container(props *Props) *[]*k8s.Container {
 			SubPath:   ptr.Ptr(props.ReportPath),
 		})
 	}
+	// Mount .testsecrets file
+	volumeMounts = append(volumeMounts, &k8s.VolumeMount{
+		Name:      ptr.Ptr("ts"),
+		MountPath: ptr.Ptr("/root/.testsecrets"),
+	})
+	createTestSecretsCmd := []*string{
+		ptr.Ptr("/bin/sh"),
+		ptr.Ptr("-c"),
+		ptr.Ptr("echo '" + getTestSecretsBase64() + "' | base64 -d > /root/.testsecrets"),
+	}
 	return ptr.Ptr([]*k8s.Container{
 		{
 			Name:            ptr.Ptr(fmt.Sprintf("%s-node", props.BaseName)),
@@ -285,6 +301,7 @@ func container(props *Props) *[]*k8s.Container {
 			ImagePullPolicy: ptr.Ptr("Always"),
 			Env:             jobEnvVars(props),
 			Resources:       a.ContainerResources(cpu, mem, cpu, mem),
+			Command:         ptr.Ptr(createTestSecretsCmd),
 			VolumeMounts:    &volumeMounts,
 		},
 	})
@@ -332,6 +349,23 @@ func pvcVolume(chart cdk8s.Chart, props *Props) {
 		})
 }
 
+func getTestSecretsBase64() string {
+	var buffer bytes.Buffer
+
+	for _, pair := range os.Environ() {
+		split := strings.SplitN(pair, "=", 2) // Split the pair into key and value
+		if len(split) != 2 {
+			continue // Skip any invalid entries
+		}
+		key, value := split[0], split[1]
+		if strings.HasPrefix(key, config.E2ETestEnvVarPrefix) {
+			buffer.WriteString(fmt.Sprintf("%s=%s\n", key, value))
+		}
+	}
+
+	return base64.StdEncoding.EncodeToString(buffer.Bytes())
+}
+
 func jobEnvVars(props *Props) *[]*k8s.EnvVar {
 	// Use a map to set values so we can easily overwrite duplicate values
 	env := make(map[string]string)
@@ -371,10 +405,6 @@ func jobEnvVars(props *Props) *[]*k8s.EnvVar {
 				withoutPrefix := strings.Replace(e[:i], config.EnvVarPrefix, "", 1)
 				log.Debug().Str(e[:i], e[i+1:]).Msg("Forwarding generic Env Var")
 				env[withoutPrefix] = e[i+1:]
-			}
-			if strings.HasPrefix(e[:i], config.E2ETestEnvVarPrefix) {
-				log.Debug().Str("key", e[:i]).Msg("Forwarding E2E Test Env Var")
-				env[e[:i]] = e[i+1:]
 			}
 		}
 	}
