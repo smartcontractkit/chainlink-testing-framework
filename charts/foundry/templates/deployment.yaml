@@ -146,13 +146,18 @@ spec:
           volumeMounts:
             - name: state-storage
               mountPath: /state
+            - name: cache-storage
+              mountPath: /home
           {{- with .Values.volumeMounts }}
             {{- toYaml . | nindent 12 }}
           {{- end }}
       volumes:
         - name: state-storage
           persistentVolumeClaim:
-            claimName: {{ include "foundry.fullname" . }}-pvc
+            claimName: {{ include "foundry.fullname" . }}-state-pvc
+        - name: cache-storage
+          persistentVolumeClaim:
+            claimName: {{ include "foundry.fullname" . }}-cache-pvc
       {{- with .Values.volumes }}
         {{- toYaml . | nindent 8 }}
       {{- end }}
