@@ -1,11 +1,14 @@
 package config
 
 import (
-	"errors"
 	"fmt"
 
+	"github.com/pkg/errors"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/net"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/ptr"
 )
 
 type LoggingConfig struct {
@@ -15,6 +18,24 @@ type LoggingConfig struct {
 	Loki                   *LokiConfig      `toml:"Loki,omitempty"`
 	Grafana                *GrafanaConfig   `toml:"Grafana,omitempty"`
 	LogStream              *LogStreamConfig `toml:"LogStream,omitempty"`
+}
+
+func (c *LoggingConfig) LoadFromEnv() error {
+	if c.Loki == nil {
+		c.Loki = &LokiConfig{}
+	}
+	err := c.Loki.LoadFromEnv()
+	if err != nil {
+		return errors.Wrap(err, "error loading Loki config from env")
+	}
+	if c.Grafana == nil {
+		c.Grafana = &GrafanaConfig{}
+	}
+	err = c.Grafana.LoadFromEnv()
+	if err != nil {
+		return errors.Wrap(err, "error loading Grafana config from env")
+	}
+	return nil
 }
 
 // Validate executes config validation for LogStream, Grafana and Loki
@@ -73,6 +94,52 @@ type LokiConfig struct {
 	BearerToken *string `toml:"bearer_token_secret"`
 }
 
+func (l *LokiConfig) LoadFromEnv() error {
+	logger := logging.GetTestLogger(nil)
+
+	if l.TenantId == nil {
+		tenantId, err := readEnvVarValue("E2E_TEST_LOKI_TENANT_ID", String)
+		if err != nil {
+			return err
+		}
+		if tenantId != nil && tenantId.(string) != "" {
+			logger.Debug().Msg("Using E2E_TEST_LOKI_TENANT_ID env var to override Loki.TenantId")
+			l.TenantId = ptr.Ptr(tenantId.(string))
+		}
+	}
+	if l.Endpoint == nil {
+		endpoint, err := readEnvVarValue("E2E_TEST_LOKI_ENDPOINT", String)
+		if err != nil {
+			return err
+		}
+		if endpoint != nil && endpoint.(string) != "" {
+			logger.Debug().Msg("Using E2E_TEST_LOKI_ENDPOINT env var to override Loki.Endpoint")
+			l.Endpoint = ptr.Ptr(endpoint.(string))
+		}
+	}
+	if l.BasicAuth == nil {
+		basicAuth, err := readEnvVarValue("E2E_TEST_LOKI_BASIC_AUTH", String)
+		if err != nil {
+			return err
+		}
+		if basicAuth != nil && basicAuth.(string) != "" {
+			logger.Debug().Msg("Using E2E_TEST_LOKI_BASIC_AUTH env var to override Loki.BasicAuth")
+			l.BasicAuth = ptr.Ptr(basicAuth.(string))
+		}
+	}
+	if l.BearerToken == nil {
+		bearerToken, err := readEnvVarValue("E2E_TEST_LOKI_BEARER_TOKEN", String)
+		if err != nil {
+			return err
+		}
+		if bearerToken != nil && bearerToken.(string) != "" {
+			logger.Debug().Msg("Using E2E_TEST_LOKI_BEARER_TOKEN env var to override Loki.BearerToken")
+			l.BearerToken = ptr.Ptr(bearerToken.(string))
+		}
+	}
+	return nil
+}
+
 // Validate checks that the loki config is valid, which means that
 // endpoint is a valid URL and tenant id is not empty
 func (l *LokiConfig) Validate() error {
@@ -93,6 +160,42 @@ type GrafanaConfig struct {
 	DashboardUrl *string `toml:"dashboard_url"`
 	DashboardUID *string `toml:"dashboard_uid"` // UID of the dashboard to put annotations on
 	BearerToken  *string `toml:"bearer_token_secret"`
+}
+
+func (l *GrafanaConfig) LoadFromEnv() error {
+	logger := logging.GetTestLogger(nil)
+
+	if l.BaseUrl == nil {
+		baseUrl, err := readEnvVarValue("E2E_TEST_GRAFANA_BASE_URL", String)
+		if err != nil {
+			return err
+		}
+		if baseUrl != nil && baseUrl.(string) != "" {
+			logger.Debug().Msg("Using E2E_TEST_GRAFANA_BASE_URL env var to override Grafana.BaseUrl")
+			l.BaseUrl = ptr.Ptr(baseUrl.(string))
+		}
+	}
+	if l.DashboardUrl == nil {
+		dashboardUrl, err := readEnvVarValue("E2E_TEST_GRAFANA_DASHBOARD_URL", String)
+		if err != nil {
+			return err
+		}
+		if dashboardUrl != nil && dashboardUrl.(string) != "" {
+			logger.Debug().Msg("Using E2E_TEST_GRAFANA_DASHBOARD_URL env var to override Grafana.DashboardUrl")
+			l.DashboardUrl = ptr.Ptr(dashboardUrl.(string))
+		}
+	}
+	if l.BearerToken == nil {
+		bearerToken, err := readEnvVarValue("E2E_TEST_GRAFANA_BEARER_TOKEN", String)
+		if err != nil {
+			return err
+		}
+		if bearerToken != nil && bearerToken.(string) != "" {
+			logger.Debug().Msg("Using E2E_TEST_GRAFANA_BEARER_TOKEN env var to override Grafana.BearerToken")
+			l.BearerToken = ptr.Ptr(bearerToken.(string))
+		}
+	}
+	return nil
 }
 
 // Validate checks that the grafana config is valid, which means that

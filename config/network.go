@@ -57,6 +57,22 @@ type NetworkConfig struct {
 	WalletKeys map[string][]string `toml:"WalletKeys,omitempty"`
 }
 
+func (c *NetworkConfig) LoadFromEnv() error {
+	walletKeys := mergeMaps(loadEnvVarSingleMap(`E2E_TEST_(.+)_WALLET_KEY$`), loadEnvVarGroupedMap(`E2E_TEST_(.+)_WALLET_KEY_(\d+)$`))
+	if len(walletKeys) > 0 {
+		c.WalletKeys = walletKeys
+	}
+	rpcHttpUrls := mergeMaps(loadEnvVarSingleMap(`E2E_TEST_(.+)_RPC_HTTP_URL$`), loadEnvVarGroupedMap(`E2E_TEST_(.+)_RPC_HTTP_URL_(\d+)$`))
+	if len(rpcHttpUrls) > 0 {
+		c.RpcHttpUrls = rpcHttpUrls
+	}
+	rpcWsUrls := mergeMaps(loadEnvVarSingleMap(`E2E_TEST_(.+)_RPC_WS_URL$`), loadEnvVarGroupedMap(`E2E_TEST_(.+)_RPC_WS_URL_(\d+)$`))
+	if len(rpcWsUrls) > 0 {
+		c.RpcWsUrls = rpcWsUrls
+	}
+	return nil
+}
+
 type ReorgConfig struct {
 	Enabled     bool                   `toml:"enabled,omitempty"`
 	Depth       int                    `toml:"depth,omitempty"`

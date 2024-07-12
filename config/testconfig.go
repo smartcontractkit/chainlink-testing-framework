@@ -54,26 +54,12 @@ type TestConfig struct {
 func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
 	logger := logging.GetTestLogger(nil)
 
-	walletKeys := mergeMaps(loadEnvVarSingleMap(`E2E_TEST_(.+)_WALLET_KEY$`), loadEnvVarGroupedMap(`E2E_TEST_(.+)_WALLET_KEY_(\d+)$`))
-	if len(walletKeys) > 0 {
-		if c.Network == nil {
-			c.Network = &NetworkConfig{}
-		}
-		c.Network.WalletKeys = walletKeys
+	if c.Network == nil {
+		c.Network = &NetworkConfig{}
 	}
-	rpcHttpUrls := mergeMaps(loadEnvVarSingleMap(`E2E_TEST_(.+)_RPC_HTTP_URL$`), loadEnvVarGroupedMap(`E2E_TEST_(.+)_RPC_HTTP_URL_(\d+)$`))
-	if len(rpcHttpUrls) > 0 {
-		if c.Network == nil {
-			c.Network = &NetworkConfig{}
-		}
-		c.Network.RpcHttpUrls = rpcHttpUrls
-	}
-	rpcWsUrls := mergeMaps(loadEnvVarSingleMap(`E2E_TEST_(.+)_RPC_WS_URL$`), loadEnvVarGroupedMap(`E2E_TEST_(.+)_RPC_WS_URL_(\d+)$`))
-	if len(rpcWsUrls) > 0 {
-		if c.Network == nil {
-			c.Network = &NetworkConfig{}
-		}
-		c.Network.RpcWsUrls = rpcWsUrls
+	err := c.Network.LoadFromEnv()
+	if err != nil {
+		return errors.Wrap(err, "error loading network config from env")
 	}
 
 	chainlinkImage, err := readEnvVarValue("E2E_TEST_CHAINLINK_IMAGE", String)
@@ -102,168 +88,19 @@ func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
 		c.ChainlinkUpgradeImage.Image = &image
 	}
 
-	lokiTenantID, err := readEnvVarValue("E2E_TEST_LOKI_TENANT_ID", String)
+	if c.Logging == nil {
+		c.Logging = &LoggingConfig{}
+	}
+	err = c.Logging.LoadFromEnv()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error loading logging config from env")
 	}
-	if lokiTenantID != nil && lokiTenantID.(string) != "" {
-		if c.Logging == nil {
-			c.Logging = &LoggingConfig{}
-		}
-		if c.Logging.Loki == nil {
-			c.Logging.Loki = &LokiConfig{}
-		}
-		id := lokiTenantID.(string)
-		logger.Debug().Msgf("Using E2E_TEST_LOKI_TENANT_ID env var to override Logging.Loki.TenantId")
-		c.Logging.Loki.TenantId = &id
+	if c.Pyroscope == nil {
+		c.Pyroscope = &PyroscopeConfig{}
 	}
-
-	lokiEndpoint, err := readEnvVarValue("E2E_TEST_LOKI_ENDPOINT", String)
+	err = c.Pyroscope.LoadFromEnv()
 	if err != nil {
-		return err
-	}
-	if lokiEndpoint != nil && lokiEndpoint.(string) != "" {
-		if c.Logging == nil {
-			c.Logging = &LoggingConfig{}
-		}
-		if c.Logging.Loki == nil {
-			c.Logging.Loki = &LokiConfig{}
-		}
-		endpoint := lokiEndpoint.(string)
-		logger.Debug().Msgf("Using E2E_TEST_LOKI_ENDPOINT env var to override Logging.Loki.Endpoint")
-		c.Logging.Loki.Endpoint = &endpoint
-	}
-
-	lokiBasicAuth, err := readEnvVarValue("E2E_TEST_LOKI_BASIC_AUTH", String)
-	if err != nil {
-		return err
-	}
-	if lokiBasicAuth != nil && lokiBasicAuth.(string) != "" {
-		if c.Logging == nil {
-			c.Logging = &LoggingConfig{}
-		}
-		if c.Logging.Loki == nil {
-			c.Logging.Loki = &LokiConfig{}
-		}
-		basicAuth := lokiBasicAuth.(string)
-		logger.Debug().Msgf("Using E2E_TEST_LOKI_BASIC_AUTH env var to override Logging.Loki.BasicAuth")
-		c.Logging.Loki.BasicAuth = &basicAuth
-	}
-
-	lokiBearerToken, err := readEnvVarValue("E2E_TEST_LOKI_BEARER_TOKEN", String)
-	if err != nil {
-		return err
-	}
-	if lokiBearerToken != nil && lokiBearerToken.(string) != "" {
-		if c.Logging == nil {
-			c.Logging = &LoggingConfig{}
-		}
-		if c.Logging.Loki == nil {
-			c.Logging.Loki = &LokiConfig{}
-		}
-		bearerToken := lokiBearerToken.(string)
-		logger.Debug().Msgf("Using E2E_TEST_LOKI_BEARER_TOKEN env var to override Logging.Loki.BearerToken")
-		c.Logging.Loki.BearerToken = &bearerToken
-	}
-
-	grafanaBaseUrl, err := readEnvVarValue("E2E_TEST_GRAFANA_BASE_URL", String)
-	if err != nil {
-		return err
-	}
-	if grafanaBaseUrl != nil && grafanaBaseUrl.(string) != "" {
-		if c.Logging == nil {
-			c.Logging = &LoggingConfig{}
-		}
-		if c.Logging.Grafana == nil {
-			c.Logging.Grafana = &GrafanaConfig{}
-		}
-		baseUrl := grafanaBaseUrl.(string)
-		logger.Debug().Msgf("Using E2E_TEST_GRAFANA_BASE_URL env var to override Logging.Grafana.BaseUrl")
-		c.Logging.Grafana.BaseUrl = &baseUrl
-	}
-
-	grafanaDashboardUrl, err := readEnvVarValue("E2E_TEST_GRAFANA_DASHBOARD_URL", String)
-	if err != nil {
-		return err
-	}
-	if grafanaDashboardUrl != nil && grafanaDashboardUrl.(string) != "" {
-		if c.Logging == nil {
-			c.Logging = &LoggingConfig{}
-		}
-		if c.Logging.Grafana == nil {
-			c.Logging.Grafana = &GrafanaConfig{}
-		}
-		dashboardUrl := grafanaDashboardUrl.(string)
-		logger.Debug().Msgf("Using E2E_TEST_GRAFANA_DASHBOARD_URL env var to override Logging.Grafana.DashboardUrl")
-		c.Logging.Grafana.DashboardUrl = &dashboardUrl
-	}
-
-	grafanaBearerToken, err := readEnvVarValue("E2E_TEST_GRAFANA_BEARER_TOKEN", String)
-	if err != nil {
-		return err
-	}
-	if grafanaBearerToken != nil && grafanaBearerToken.(string) != "" {
-		if c.Logging == nil {
-			c.Logging = &LoggingConfig{}
-		}
-		if c.Logging.Grafana == nil {
-			c.Logging.Grafana = &GrafanaConfig{}
-		}
-		bearerToken := grafanaBearerToken.(string)
-		logger.Debug().Msgf("Using E2E_TEST_GRAFANA_BEARER_TOKEN env var to override Logging.Grafana.BearerToken")
-		c.Logging.Grafana.BearerToken = &bearerToken
-	}
-
-	pyroscopeServerUrl, err := readEnvVarValue("E2E_TEST_PYROSCOPE_SERVER_URL", String)
-	if err != nil {
-		return err
-	}
-	if pyroscopeServerUrl != nil && pyroscopeServerUrl.(string) != "" {
-		if c.Pyroscope == nil {
-			c.Pyroscope = &PyroscopeConfig{}
-		}
-		serverUrl := pyroscopeServerUrl.(string)
-		logger.Debug().Msgf("Using E2E_TEST_PYROSCOPE_SERVER_URL env var to override Pyroscope.ServerUrl")
-		c.Pyroscope.ServerUrl = &serverUrl
-	}
-
-	pyroscopeKey, err := readEnvVarValue("E2E_TEST_PYROSCOPE_KEY", String)
-	if err != nil {
-		return err
-	}
-	if pyroscopeKey != nil && pyroscopeKey.(string) != "" {
-		if c.Pyroscope == nil {
-			c.Pyroscope = &PyroscopeConfig{}
-		}
-		key := pyroscopeKey.(string)
-		logger.Debug().Msgf("Using E2E_TEST_PYROSCOPE_KEY env var to override Pyroscope.Key")
-		c.Pyroscope.Key = &key
-	}
-
-	pyroscopeEnvironment, err := readEnvVarValue("E2E_TEST_PYROSCOPE_ENVIRONMENT", String)
-	if err != nil {
-		return err
-	}
-	if pyroscopeEnvironment != nil && pyroscopeEnvironment.(string) != "" {
-		if c.Pyroscope == nil {
-			c.Pyroscope = &PyroscopeConfig{}
-		}
-		environment := pyroscopeEnvironment.(string)
-		logger.Debug().Msgf("Using E2E_TEST_PYROSCOPE_ENVIRONMENT env var to override Pyroscope.Environment")
-		c.Pyroscope.Environment = &environment
-	}
-
-	pyroscopeEnabled, err := readEnvVarValue("E2E_TEST_PYROSCOPE_ENABLED", Boolean)
-	if err != nil {
-		return err
-	}
-	if pyroscopeEnabled != nil {
-		if c.Pyroscope == nil {
-			c.Pyroscope = &PyroscopeConfig{}
-		}
-		enabled := pyroscopeEnabled.(bool)
-		logger.Debug().Msgf("Using E2E_TEST_PYROSCOPE_ENABLED env var to override Pyroscope.Enabled")
-		c.Pyroscope.Enabled = &enabled
+		return errors.Wrap(err, "error loading pyroscope config from env")
 	}
 
 	return nil
@@ -382,7 +219,8 @@ func readEnvVarValue(envVarName string, valueType EnvValueType) (interface{}, er
 	}
 }
 
-func LoadSecretEnvsFromFiles() error {
+// LoadSecretDotEnvFiles loads environment variables from .testsecrets files in /etc/e2etests and the user's home directory
+func LoadSecretDotEnvFiles() error {
 	logger := logging.GetTestLogger(nil)
 
 	// Load existing environment variables into a map
