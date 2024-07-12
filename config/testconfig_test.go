@@ -98,7 +98,7 @@ func TestReadConfigValuesFromEnvVars(t *testing.T) {
 			c := &TestConfig{}
 
 			// Execute
-			err := c.LoadFromEnv()
+			err := c.ReadFromEnvVar()
 
 			// Verify error handling
 			if !errors.Is(err, localTt.expectedError) {

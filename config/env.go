@@ -29,6 +29,9 @@ func MustReadEnvVar_String(name string) string {
 	if err != nil {
 		panic(err)
 	}
+	if value == nil {
+		return ""
+	}
 	return value.(string)
 }
 

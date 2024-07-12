@@ -18,24 +18,6 @@ type LoggingConfig struct {
 	LogStream              *LogStreamConfig `toml:"LogStream,omitempty"`
 }
 
-func (c *LoggingConfig) LoadFromEnv() error {
-	if c.Loki == nil {
-		c.Loki = &LokiConfig{}
-	}
-	err := c.Loki.LoadFromEnv()
-	if err != nil {
-		return errors.Wrap(err, "error loading Loki config from env")
-	}
-	if c.Grafana == nil {
-		c.Grafana = &GrafanaConfig{}
-	}
-	err = c.Grafana.LoadFromEnv()
-	if err != nil {
-		return errors.Wrap(err, "error loading Grafana config from env")
-	}
-	return nil
-}
-
 // Validate executes config validation for LogStream, Grafana and Loki
 func (l *LoggingConfig) Validate() error {
 	if l.LogStream != nil {
