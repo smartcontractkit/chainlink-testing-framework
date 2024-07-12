@@ -195,7 +195,6 @@ func (c *TestConfig) ReadFromEnvVar() error {
 		if c.ChainlinkImage == nil {
 			c.ChainlinkImage = &ChainlinkImageConfig{}
 		}
-
 		logger.Debug().Msgf("Using %s env var to override ChainlinkImage.Image", E2E_TEST_CHAINLINK_IMAGE_ENV)
 		c.ChainlinkImage.Image = &chainlinkImage
 	}
@@ -205,7 +204,6 @@ func (c *TestConfig) ReadFromEnvVar() error {
 		if c.ChainlinkUpgradeImage == nil {
 			c.ChainlinkUpgradeImage = &ChainlinkImageConfig{}
 		}
-
 		logger.Debug().Msgf("Using %s env var to override ChainlinkUpgradeImage.Image", E2E_TEST_CHAINLINK_UPGRADE_IMAGE_ENV)
 		c.ChainlinkUpgradeImage.Image = &chainlinkUpgradeImage
 	}
