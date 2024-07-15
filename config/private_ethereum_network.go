@@ -18,6 +18,7 @@ import (
 var (
 	ErrMissingEthereumVersion = errors.New("ethereum version is required")
 	ErrMissingExecutionLayer  = errors.New("execution layer is required")
+	Eth1NotSupportedByRethMsg = "eth1 is not supported by Reth, please use eth2"
 	DefaultNodeLogLevel       = "info"
 )
 
@@ -46,7 +47,7 @@ func (en *EthereumNetworkConfig) Validate() error {
 
 	if en.EthereumVersion == nil && en.ConsensusType != nil {
 		l.Debug().Msg("Using _deprecated_ ConsensusType as EthereumVersion")
-		tempEthVersion := (*EthereumVersion)(en.ConsensusType)
+		tempEthVersion := en.ConsensusType
 		switch *tempEthVersion {
 		case EthereumVersion_Eth1, EthereumVersion_Eth1_Legacy:
 			*tempEthVersion = EthereumVersion_Eth1
@@ -79,6 +80,19 @@ func (en *EthereumNetworkConfig) Validate() error {
 
 	if en.NodeLogLevel == nil {
 		en.NodeLogLevel = &DefaultNodeLogLevel
+	}
+
+	if *en.EthereumVersion == EthereumVersion_Eth1 && *en.ExecutionLayer == ExecutionLayer_Reth {
+		msg := `%s
+
+If you are using builder to create the network, please change the EthereumVersion to EthereumVersion_Eth2 by calling this method:
+WithEthereumVersion(config.EthereumVersion_Eth2).
+
+If you are using a TOML file, please change the EthereumVersion to "eth2" in the TOML file:
+[PrivateEthereumNetwork]
+ethereum_version="eth2"
+`
+		return fmt.Errorf(msg, Eth1NotSupportedByRethMsg)
 	}
 
 	switch strings.ToLower(*en.NodeLogLevel) {
@@ -167,6 +181,7 @@ const (
 	ExecutionLayer_Nethermind ExecutionLayer = "nethermind"
 	ExecutionLayer_Erigon     ExecutionLayer = "erigon"
 	ExecutionLayer_Besu       ExecutionLayer = "besu"
+	ExecutionLayer_Reth       ExecutionLayer = "reth"
 )
 
 type ConsensusLayer string
@@ -354,5 +369,5 @@ func (c *EthereumChainConfig) GetDefaultWaitDuration() time.Duration {
 }
 
 func (c *EthereumChainConfig) GetDefaultFinalizationWaitDuration() time.Duration {
-	return time.Duration(5 * time.Minute)
+	return 5 * time.Minute
 }
