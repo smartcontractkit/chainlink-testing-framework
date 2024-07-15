@@ -163,6 +163,15 @@ func (c *TestConfig) ReadFromEnvVar() error {
 		c.Pyroscope.Key = &pyroscopeKey
 	}
 
+	pyroscopeEnvironment := MustReadEnvVar_String(E2E_TEST_PYROSCOPE_ENVIRONMENT_ENV)
+	if pyroscopeEnvironment != "" {
+		if c.Pyroscope == nil {
+			c.Pyroscope = &PyroscopeConfig{}
+		}
+		logger.Info().Msgf("Using %s env var to override Pyroscope.Environment", E2E_TEST_PYROSCOPE_ENVIRONMENT_ENV)
+		c.Pyroscope.Environment = &pyroscopeEnvironment
+	}
+
 	walletKeys := ReadEnvVarGroupedMap(E2E_TEST_WALLET_KEY_ENV, E2E_TEST_WALLET_KEYS_ENV)
 	if len(walletKeys) > 0 {
 		if c.Network == nil {
