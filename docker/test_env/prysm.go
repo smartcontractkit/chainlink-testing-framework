@@ -49,6 +49,7 @@ func NewPrysmBeaconChain(networks []string, chainConfig *config.EthereumChainCon
 			Networks:         networks,
 			ContainerImage:   parts[0],
 			ContainerVersion: parts[1],
+			StartupTimeout:   2 * time.Minute,
 		},
 		chainConfig:              chainConfig,
 		generatedDataHostDir:     customConfigDataDir,
@@ -114,6 +115,11 @@ func (g *PrysmBeaconChain) StartContainer() error {
 }
 
 func (g *PrysmBeaconChain) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
+	timeout := g.chainConfig.GetDefaultWaitDuration()
+	if g.StartupTimeout < timeout {
+		timeout = g.StartupTimeout
+	}
+
 	return &tc.ContainerRequest{
 		Name:          g.ContainerName,
 		Image:         g.GetImageWithVersion(),
@@ -121,7 +127,7 @@ func (g *PrysmBeaconChain) getContainerRequest(networks []string) (*tc.Container
 		Networks:      networks,
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForLog("Starting beacon node").
-				WithStartupTimeout(g.chainConfig.GetDefaultWaitDuration()).
+				WithStartupTimeout(timeout).
 				WithPollInterval(2 * time.Second),
 		),
 		Cmd: []string{

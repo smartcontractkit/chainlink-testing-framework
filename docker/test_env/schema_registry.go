@@ -34,8 +34,9 @@ func NewSchemaRegistry(networks []string) *SchemaRegistry {
 	}
 	return &SchemaRegistry{
 		EnvComponent: EnvComponent{
-			ContainerName: fmt.Sprintf("schema-registry-%s", id.String()),
-			Networks:      networks,
+			ContainerName:  fmt.Sprintf("schema-registry-%s", id.String()),
+			Networks:       networks,
+			StartupTimeout: 1 * time.Minute,
 		},
 		EnvVars: defaultEnvVars,
 	}
@@ -117,7 +118,7 @@ func (r *SchemaRegistry) getContainerRequest() (tc.ContainerRequest, error) {
 		Env:          r.EnvVars,
 		Networks:     r.Networks,
 		WaitingFor: tcwait.ForLog("INFO Server started, listening for requests").
-			WithStartupTimeout(30 * time.Second).
+			WithStartupTimeout(r.StartupTimeout).
 			WithPollInterval(100 * time.Millisecond),
 	}, nil
 }

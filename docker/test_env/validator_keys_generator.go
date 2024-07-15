@@ -37,6 +37,7 @@ func NewValKeysGeneretor(chainConfig *config.EthereumChainConfig, valKeysHostDat
 			ContainerName:    fmt.Sprintf("%s-%s", "val-keys-generator", uuid.NewString()[0:8]),
 			ContainerImage:   parts[0],
 			ContainerVersion: parts[1],
+			StartupTimeout:   1 * time.Minute,
 		},
 		chainConfig:        chainConfig,
 		valKeysHostDataDir: valKeysHostDataDir,
@@ -89,7 +90,7 @@ func (g *ValKeysGenerator) getContainerRequest(networks []string) (*tc.Container
 		ImagePlatform: "linux/x86_64",
 		Networks:      networks,
 		WaitingFor: NewExitCodeStrategy().WithExitCode(0).
-			WithPollInterval(1 * time.Second).WithTimeout(10 * time.Second),
+			WithPollInterval(1 * time.Second).WithTimeout(g.StartupTimeout),
 		Cmd: []string{"keystores",
 			"--insecure",
 			fmt.Sprintf("--prysm-pass=%s", WALLET_PASSWORD),
