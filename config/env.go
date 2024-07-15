@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/ptr"
 )
 
@@ -99,7 +98,6 @@ func readEnvVarValue(envVarName string, valueType EnvValueType) (interface{}, er
 // a specified pattern, and returns a map of grouped values based on the pattern.
 // The grouping is defined by the first capture group of the regex.
 func readEnvVarGroupedMap(pattern string) map[string][]string {
-	logger := logging.GetTestLogger(nil)
 	re := regexp.MustCompile(pattern)
 	groupedVars := make(map[string][]string)
 	for _, env := range os.Environ() {
@@ -112,14 +110,12 @@ func readEnvVarGroupedMap(pattern string) map[string][]string {
 		if len(matches) > 1 && value != "" {
 			group := matches[1] // Use the first capture group for grouping
 			groupedVars[group] = append(groupedVars[group], value)
-			logger.Debug().Msgf("Will override test config from env var '%s'", key)
 		}
 	}
 	return groupedVars
 }
 
 func readEnvVarSingleMap(pattern string) map[string]string {
-	logger := logging.GetTestLogger(nil)
 	re := regexp.MustCompile(pattern)
 	singleVars := make(map[string]string)
 	for _, env := range os.Environ() {
@@ -132,7 +128,6 @@ func readEnvVarSingleMap(pattern string) map[string]string {
 		if len(matches) > 1 && value != "" {
 			group := matches[1] // Use the first capture group for grouping
 			singleVars[group] = value
-			logger.Debug().Msgf("Will override test config from env var '%s'", key)
 		}
 	}
 	return singleVars

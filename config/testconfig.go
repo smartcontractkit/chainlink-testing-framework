@@ -60,7 +60,7 @@ func (c *TestConfig) ReadFromEnvVar() error {
 		if c.Logging.Loki == nil {
 			c.Logging.Loki = &LokiConfig{}
 		}
-		logger.Debug().Msgf("Using %s env var to override Logging.Loki.TenantId", E2E_TEST_LOKI_TENANT_ID_ENV)
+		logger.Info().Msgf("Using %s env var to override Logging.Loki.TenantId", E2E_TEST_LOKI_TENANT_ID_ENV)
 		c.Logging.Loki.TenantId = &lokiTenantID
 	}
 
@@ -72,7 +72,7 @@ func (c *TestConfig) ReadFromEnvVar() error {
 		if c.Logging.Loki == nil {
 			c.Logging.Loki = &LokiConfig{}
 		}
-		logger.Debug().Msgf("Using %s env var to override Logging.Loki.Endpoint", E2E_TEST_LOKI_ENDPOINT_ENV)
+		logger.Info().Msgf("Using %s env var to override Logging.Loki.Endpoint", E2E_TEST_LOKI_ENDPOINT_ENV)
 		c.Logging.Loki.Endpoint = &lokiEndpoint
 	}
 
@@ -84,7 +84,7 @@ func (c *TestConfig) ReadFromEnvVar() error {
 		if c.Logging.Loki == nil {
 			c.Logging.Loki = &LokiConfig{}
 		}
-		logger.Debug().Msgf("Using %s env var to override Logging.Loki.BasicAuth", E2E_TEST_LOKI_BASIC_AUTH_ENV)
+		logger.Info().Msgf("Using %s env var to override Logging.Loki.BasicAuth", E2E_TEST_LOKI_BASIC_AUTH_ENV)
 		c.Logging.Loki.BasicAuth = &lokiBasicAuth
 	}
 
@@ -96,7 +96,7 @@ func (c *TestConfig) ReadFromEnvVar() error {
 		if c.Logging.Loki == nil {
 			c.Logging.Loki = &LokiConfig{}
 		}
-		logger.Debug().Msgf("Using %s env var to override Logging.Loki.BearerToken", E2E_TEST_LOKI_BEARER_TOKEN_ENV)
+		logger.Info().Msgf("Using %s env var to override Logging.Loki.BearerToken", E2E_TEST_LOKI_BEARER_TOKEN_ENV)
 		c.Logging.Loki.BearerToken = &lokiBearerToken
 	}
 
@@ -108,7 +108,7 @@ func (c *TestConfig) ReadFromEnvVar() error {
 		if c.Logging.Grafana == nil {
 			c.Logging.Grafana = &GrafanaConfig{}
 		}
-		logger.Debug().Msgf("Using %s env var to override Logging.Grafana.BaseUrl", E2E_TEST_GRAFANA_BASE_URL_ENV)
+		logger.Info().Msgf("Using %s env var to override Logging.Grafana.BaseUrl", E2E_TEST_GRAFANA_BASE_URL_ENV)
 		c.Logging.Grafana.BaseUrl = &grafanaBaseUrl
 	}
 
@@ -120,7 +120,7 @@ func (c *TestConfig) ReadFromEnvVar() error {
 		if c.Logging.Grafana == nil {
 			c.Logging.Grafana = &GrafanaConfig{}
 		}
-		logger.Debug().Msgf("Using %s env var to override Logging.Grafana.DashboardUrl", E2E_TEST_GRAFANA_DASHBOARD_URL_ENV)
+		logger.Info().Msgf("Using %s env var to override Logging.Grafana.DashboardUrl", E2E_TEST_GRAFANA_DASHBOARD_URL_ENV)
 		c.Logging.Grafana.DashboardUrl = &grafanaDashboardUrl
 	}
 
@@ -132,7 +132,7 @@ func (c *TestConfig) ReadFromEnvVar() error {
 		if c.Logging.Grafana == nil {
 			c.Logging.Grafana = &GrafanaConfig{}
 		}
-		logger.Debug().Msgf("Using %s env var to override Logging.Grafana.BearerToken", E2E_TEST_GRAFANA_BEARER_TOKEN_ENV)
+		logger.Info().Msgf("Using %s env var to override Logging.Grafana.BearerToken", E2E_TEST_GRAFANA_BEARER_TOKEN_ENV)
 		c.Logging.Grafana.BearerToken = &grafanaBearerToken
 	}
 
@@ -141,7 +141,7 @@ func (c *TestConfig) ReadFromEnvVar() error {
 		if c.Pyroscope == nil {
 			c.Pyroscope = &PyroscopeConfig{}
 		}
-		logger.Debug().Msgf("Using %s env var to override Pyroscope.Enabled", E2E_TEST_PYROSCOPE_ENABLED_ENV)
+		logger.Info().Msgf("Using %s env var to override Pyroscope.Enabled", E2E_TEST_PYROSCOPE_ENABLED_ENV)
 		c.Pyroscope.Enabled = pyroscopeEnabled
 	}
 
@@ -150,7 +150,7 @@ func (c *TestConfig) ReadFromEnvVar() error {
 		if c.Pyroscope == nil {
 			c.Pyroscope = &PyroscopeConfig{}
 		}
-		logger.Debug().Msgf("Using %s env var to override Pyroscope.ServerUrl", E2E_TEST_PYROSCOPE_SERVER_URL_ENV)
+		logger.Info().Msgf("Using %s env var to override Pyroscope.ServerUrl", E2E_TEST_PYROSCOPE_SERVER_URL_ENV)
 		c.Pyroscope.ServerUrl = &pyroscopeServerUrl
 	}
 
@@ -159,7 +159,7 @@ func (c *TestConfig) ReadFromEnvVar() error {
 		if c.Pyroscope == nil {
 			c.Pyroscope = &PyroscopeConfig{}
 		}
-		logger.Debug().Msgf("Using %s env var to override Pyroscope.Key", E2E_TEST_PYROSCOPE_KEY_ENV)
+		logger.Info().Msgf("Using %s env var to override Pyroscope.Key", E2E_TEST_PYROSCOPE_KEY_ENV)
 		c.Pyroscope.Key = &pyroscopeKey
 	}
 
@@ -168,7 +168,7 @@ func (c *TestConfig) ReadFromEnvVar() error {
 		if c.Network == nil {
 			c.Network = &NetworkConfig{}
 		}
-		logger.Debug().Msgf("Using %s and/or %s env vars to override Network.WalletKeys", E2E_TEST_WALLET_KEY_ENV, E2E_TEST_WALLET_KEYS_ENV)
+		logger.Info().Msgf("Using %s and/or %s env vars to override Network.WalletKeys", E2E_TEST_WALLET_KEY_ENV, E2E_TEST_WALLET_KEYS_ENV)
 		c.Network.WalletKeys = walletKeys
 	}
 
@@ -177,7 +177,7 @@ func (c *TestConfig) ReadFromEnvVar() error {
 		if c.Network == nil {
 			c.Network = &NetworkConfig{}
 		}
-		logger.Debug().Msgf("Using %s and/or %s env vars to override Network.RpcHttpUrls", E2E_TEST_RPC_HTTP_URL_ENV, E2E_TEST_RPC_HTTP_URLS_ENV)
+		logger.Info().Msgf("Using %s and/or %s env vars to override Network.RpcHttpUrls", E2E_TEST_RPC_HTTP_URL_ENV, E2E_TEST_RPC_HTTP_URLS_ENV)
 		c.Network.RpcHttpUrls = rpcHttpUrls
 	}
 
@@ -186,7 +186,7 @@ func (c *TestConfig) ReadFromEnvVar() error {
 		if c.Network == nil {
 			c.Network = &NetworkConfig{}
 		}
-		logger.Debug().Msgf("Using %s and/or %s env vars to override Network.RpcWsUrls", E2E_TEST_RPC_WS_URL_ENV, E2E_TEST_RPC_WS_URLS_ENV)
+		logger.Info().Msgf("Using %s and/or %s env vars to override Network.RpcWsUrls", E2E_TEST_RPC_WS_URL_ENV, E2E_TEST_RPC_WS_URLS_ENV)
 		c.Network.RpcWsUrls = rpcWsUrls
 	}
 
@@ -195,7 +195,7 @@ func (c *TestConfig) ReadFromEnvVar() error {
 		if c.ChainlinkImage == nil {
 			c.ChainlinkImage = &ChainlinkImageConfig{}
 		}
-		logger.Debug().Msgf("Using %s env var to override ChainlinkImage.Image", E2E_TEST_CHAINLINK_IMAGE_ENV)
+		logger.Info().Msgf("Using %s env var to override ChainlinkImage.Image", E2E_TEST_CHAINLINK_IMAGE_ENV)
 		c.ChainlinkImage.Image = &chainlinkImage
 	}
 
@@ -204,7 +204,7 @@ func (c *TestConfig) ReadFromEnvVar() error {
 		if c.ChainlinkUpgradeImage == nil {
 			c.ChainlinkUpgradeImage = &ChainlinkImageConfig{}
 		}
-		logger.Debug().Msgf("Using %s env var to override ChainlinkUpgradeImage.Image", E2E_TEST_CHAINLINK_UPGRADE_IMAGE_ENV)
+		logger.Info().Msgf("Using %s env var to override ChainlinkUpgradeImage.Image", E2E_TEST_CHAINLINK_UPGRADE_IMAGE_ENV)
 		c.ChainlinkUpgradeImage.Image = &chainlinkUpgradeImage
 	}
 
