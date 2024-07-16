@@ -52,7 +52,7 @@ func exportConfigToCSV(configFile string) error {
 	defer writer.Flush()
 
 	// Write CSV headers
-	headers := []string{"ID", "IDSanitized", "Path", "TestEnvType", "RunsOn", "TestCmd", "TestConfigOverrideRequired", "TestSecretsRequired", "RemoteRunnerMemory", "PyroscopeEnv", "Workflows", "TestInputs"}
+	headers := []string{"ID", "Test Path", "Test Env Type", "Runs On", "Test Cmd", "Test Config Override Required", "Test Secrets Required", "Remote Runner Memory", "Pyroscope Env", "Workflows", "Test Inputs"}
 	if err := writer.Write(headers); err != nil {
 		return err
 	}
@@ -65,7 +65,6 @@ func exportConfigToCSV(configFile string) error {
 
 		record := []string{
 			test.ID,
-			test.IDSanitized,
 			test.Path,
 			test.TestEnvType,
 			test.RunsOn,
