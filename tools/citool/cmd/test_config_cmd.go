@@ -1,11 +1,9 @@
 package cmd
 
 import (
-	"fmt"
-	"os"
-	"regexp"
 	"strings"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -93,55 +91,32 @@ func init() {
 		c.PreRun = func(_ *cobra.Command, _ []string) {
 			// Resolve selected networks environment variable if set
 			if len(oc.SelectedNetworks) > 0 {
-				_, hasEnvVar := lookupEnvVarName(oc.SelectedNetworks[0])
+				_, hasEnvVar := utils.LookupEnvVarName(oc.SelectedNetworks[0])
 				if hasEnvVar {
-					selectedNetworks := mustResolveEnvPlaceholder(oc.SelectedNetworks[0])
+					selectedNetworks := utils.MustResolveEnvPlaceholder(oc.SelectedNetworks[0])
 					oc.SelectedNetworks = strings.Split(selectedNetworks, ",")
 				}
 			}
 
 			// Resolve all other environment variables
-			oc.ChainlinkImage = mustResolveEnvPlaceholder(oc.ChainlinkImage)
-			oc.ChainlinkVersion = mustResolveEnvPlaceholder(oc.ChainlinkVersion)
-			oc.ChainlinkUpgradeImage = mustResolveEnvPlaceholder(oc.ChainlinkUpgradeImage)
-			oc.ChainlinkUpgradeVersion = mustResolveEnvPlaceholder(oc.ChainlinkUpgradeVersion)
-			oc.ChainlinkPostgresVersion = mustResolveEnvPlaceholder(oc.ChainlinkPostgresVersion)
-			oc.PyroscopeServerURL = mustResolveEnvPlaceholder(oc.PyroscopeServerURL)
-			oc.PyroscopeKey = mustResolveEnvPlaceholder(oc.PyroscopeKey)
-			oc.PyroscopeEnvironment = mustResolveEnvPlaceholder(oc.PyroscopeEnvironment)
-			oc.LoggingRunID = mustResolveEnvPlaceholder(oc.LoggingRunID)
-			oc.LoggingLokiTenantID = mustResolveEnvPlaceholder(oc.LoggingLokiTenantID)
-			oc.LoggingLokiEndpoint = mustResolveEnvPlaceholder(oc.LoggingLokiEndpoint)
-			oc.LoggingLokiBasicAuth = mustResolveEnvPlaceholder(oc.LoggingLokiBasicAuth)
-			oc.LoggingGrafanaBaseURL = mustResolveEnvPlaceholder(oc.LoggingGrafanaBaseURL)
-			oc.LoggingGrafanaDashboardURL = mustResolveEnvPlaceholder(oc.LoggingGrafanaDashboardURL)
-			oc.LoggingGrafanaBearerToken = mustResolveEnvPlaceholder(oc.LoggingGrafanaBearerToken)
-			oc.PrivateEthereumNetworkExecutionLayer = mustResolveEnvPlaceholder(oc.PrivateEthereumNetworkExecutionLayer)
-			oc.PrivateEthereumNetworkEthereumVersion = mustResolveEnvPlaceholder(oc.PrivateEthereumNetworkEthereumVersion)
-			oc.PrivateEthereumNetworkCustomDockerImages = mustResolveEnvPlaceholder(oc.PrivateEthereumNetworkCustomDockerImages)
+			oc.ChainlinkImage = utils.MustResolveEnvPlaceholder(oc.ChainlinkImage)
+			oc.ChainlinkVersion = utils.MustResolveEnvPlaceholder(oc.ChainlinkVersion)
+			oc.ChainlinkUpgradeImage = utils.MustResolveEnvPlaceholder(oc.ChainlinkUpgradeImage)
+			oc.ChainlinkUpgradeVersion = utils.MustResolveEnvPlaceholder(oc.ChainlinkUpgradeVersion)
+			oc.ChainlinkPostgresVersion = utils.MustResolveEnvPlaceholder(oc.ChainlinkPostgresVersion)
+			oc.PyroscopeServerURL = utils.MustResolveEnvPlaceholder(oc.PyroscopeServerURL)
+			oc.PyroscopeKey = utils.MustResolveEnvPlaceholder(oc.PyroscopeKey)
+			oc.PyroscopeEnvironment = utils.MustResolveEnvPlaceholder(oc.PyroscopeEnvironment)
+			oc.LoggingRunID = utils.MustResolveEnvPlaceholder(oc.LoggingRunID)
+			oc.LoggingLokiTenantID = utils.MustResolveEnvPlaceholder(oc.LoggingLokiTenantID)
+			oc.LoggingLokiEndpoint = utils.MustResolveEnvPlaceholder(oc.LoggingLokiEndpoint)
+			oc.LoggingLokiBasicAuth = utils.MustResolveEnvPlaceholder(oc.LoggingLokiBasicAuth)
+			oc.LoggingGrafanaBaseURL = utils.MustResolveEnvPlaceholder(oc.LoggingGrafanaBaseURL)
+			oc.LoggingGrafanaDashboardURL = utils.MustResolveEnvPlaceholder(oc.LoggingGrafanaDashboardURL)
+			oc.LoggingGrafanaBearerToken = utils.MustResolveEnvPlaceholder(oc.LoggingGrafanaBearerToken)
+			oc.PrivateEthereumNetworkExecutionLayer = utils.MustResolveEnvPlaceholder(oc.PrivateEthereumNetworkExecutionLayer)
+			oc.PrivateEthereumNetworkEthereumVersion = utils.MustResolveEnvPlaceholder(oc.PrivateEthereumNetworkEthereumVersion)
+			oc.PrivateEthereumNetworkCustomDockerImages = utils.MustResolveEnvPlaceholder(oc.PrivateEthereumNetworkCustomDockerImages)
 		}
 	}
-}
-
-// mustResolveEnvPlaceholder checks if the input string is an environment variable placeholder and resolves it.
-func mustResolveEnvPlaceholder(input string) string {
-	envVarName, hasEnvVar := lookupEnvVarName(input)
-	if hasEnvVar {
-		value, set := os.LookupEnv(envVarName)
-		if !set {
-			fmt.Fprintf(os.Stderr, "Error resolving '%s'. Environment variable '%s' not set or is empty\n", input, envVarName)
-			os.Exit(1)
-		}
-		return value
-	}
-	return input
-}
-
-func lookupEnvVarName(input string) (string, bool) {
-	re := regexp.MustCompile(`^{{ env\.([a-zA-Z_]+) }}$`)
-	matches := re.FindStringSubmatch(input)
-	if len(matches) > 1 {
-		return matches[1], true
-	}
-	return "", false
 }

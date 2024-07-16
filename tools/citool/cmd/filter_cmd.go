@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 )
@@ -32,7 +33,7 @@ func filterTests(allTests []CITestConf, workflow, testType, ids string, envresol
 		}
 		if envresolve {
 			for k, v := range test.TestInputs {
-				test.TestInputs[k] = mustResolveEnvPlaceholder(v)
+				test.TestInputs[k] = utils.MustResolveEnvPlaceholder(v)
 			}
 		}
 	}
@@ -74,7 +75,7 @@ func filterAndMergeTests(allTests []CITestConf, workflow, testType, base64Tests 
 		}
 		if envresolve {
 			for k, v := range test.TestInputs {
-				test.TestInputs[k] = mustResolveEnvPlaceholder(v)
+				test.TestInputs[k] = utils.MustResolveEnvPlaceholder(v)
 			}
 		}
 	}
