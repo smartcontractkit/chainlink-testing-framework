@@ -16,7 +16,6 @@ type CITestConf struct {
 	TestConfigOverrideRequired bool              `yaml:"test-config-override-required" json:"testConfigOverrideRequired"`
 	TestSecretsRequired        bool              `yaml:"test-secrets-required" json:"testSecretsRequired"`
 	TestInputs                 map[string]string `yaml:"test_inputs" json:"test_inputs"`
-	RemoteRunnerTestSuite      string            `yaml:"remote-runner-test-suite" json:"remoteRunnerTestSuite"`
 	RemoteRunnerMemory         string            `yaml:"remote-runner-memory" json:"remoteRunnerMemory"`
 	PyroscopeEnv               string            `yaml:"pyroscope-env" json:"pyroscopeEnv"`
 	Workflows                  []string          `yaml:"workflows" json:"workflows"`
