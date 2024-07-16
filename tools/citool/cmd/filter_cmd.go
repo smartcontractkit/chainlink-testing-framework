@@ -23,7 +23,7 @@ func filterTests(allTests []CITestConf, workflow, testType, ids string) []CITest
 
 	for _, test := range allTests {
 		workflowMatch := workflow == "" || contains(test.Workflows, workflowFilter)
-		typeMatch := testType == "" || test.TestType == typeFilter
+		typeMatch := testType == "" || test.TestEnvType == typeFilter
 		idMatch := ids == "*" || ids == "" || contains(idFilter, test.ID)
 
 		if workflowMatch && typeMatch && idMatch {
@@ -54,15 +54,15 @@ func filterAndMergeTests(allTests []CITestConf, workflow, testType, base64Tests 
 	var filteredTests []CITestConf
 	for _, test := range allTests {
 		workflowMatch := workflow == "" || contains(test.Workflows, workflow)
-		typeMatch := testType == "" || test.TestType == testType
+		typeMatch := testType == "" || test.TestEnvType == testType
 
 		if decodedTest, exists := idFilter[test.ID]; exists && workflowMatch && typeMatch {
 			// Override test inputs from the base64 encoded tests
-			for k, v := range decodedTest.DefaultTestInputs {
-				if test.DefaultTestInputs == nil {
-					test.DefaultTestInputs = make(map[string]string)
+			for k, v := range decodedTest.TestInputs {
+				if test.TestInputs == nil {
+					test.TestInputs = make(map[string]string)
 				}
-				test.DefaultTestInputs[k] = v
+				test.TestInputs[k] = v
 			}
 			test.IDSanitized = sanitizeTestID(test.ID)
 			filteredTests = append(filteredTests, test)
@@ -95,11 +95,11 @@ var filterCmd = &cobra.Command{
 	Short: "Filter test configurations based on specified criteria",
 	Long: `Filters tests from a YAML configuration based on name, workflow, test type, and test IDs.
 Example usage:
-./e2e_tests_tool filter --file .github/e2e-tests.yml --workflow "Run Nightly E2E Tests" --test-type "docker" --test-ids "test1,test2"`,
+./e2e_tests_tool filter --file .github/e2e-tests.yml --workflow "Run Nightly E2E Tests" --test-env-type "docker" --test-ids "test1,test2"`,
 	Run: func(cmd *cobra.Command, _ []string) {
 		yamlFile, _ := cmd.Flags().GetString("file")
 		workflow, _ := cmd.Flags().GetString("workflow")
-		testType, _ := cmd.Flags().GetString("test-type")
+		testType, _ := cmd.Flags().GetString("test-env-type")
 		testIDs, _ := cmd.Flags().GetString("test-ids")
 		testMap, _ := cmd.Flags().GetString("test-list")
 
@@ -138,9 +138,9 @@ Example usage:
 
 func init() {
 	filterCmd.Flags().StringP("file", "f", "", "Path to the YAML file")
-	filterCmd.Flags().String("test-list", "", "Base64 encoded list of tests (YML objects) to filter by. Can include test-inputs for each test.")
+	filterCmd.Flags().String("test-list", "", "Base64 encoded list of tests (YML objects) to filter by. Can include test_inputs for each test.")
 	filterCmd.Flags().StringP("test-ids", "i", "*", "Comma-separated list of test IDs to filter by")
-	filterCmd.Flags().StringP("test-type", "y", "", "Type of test to filter by")
+	filterCmd.Flags().StringP("test-env-type", "y", "", "Type of test to filter by")
 	filterCmd.Flags().StringP("workflow", "t", "", "Workflow filter")
 	err := filterCmd.MarkFlagRequired("file")
 	if err != nil {

@@ -10,12 +10,12 @@ type CITestConf struct {
 	ID                         string            `yaml:"id" json:"id"`
 	IDSanitized                string            `json:"idSanitized"`
 	Path                       string            `yaml:"path" json:"path"`
-	TestType                   string            `yaml:"test-type" json:"testType"`
+	TestEnvType                string            `yaml:"test_env_type" json:"test_env_type"`
 	RunsOn                     string            `yaml:"runs-on" json:"runsOn"`
 	TestCmd                    string            `yaml:"test-cmd" json:"testCmd"`
 	TestConfigOverrideRequired bool              `yaml:"test-config-override-required" json:"testConfigOverrideRequired"`
 	TestSecretsRequired        bool              `yaml:"test-secrets-required" json:"testSecretsRequired"`
-	DefaultTestInputs          map[string]string `yaml:"default-test-inputs" json:"defaultTestInputs"`
+	TestInputs                 map[string]string `yaml:"test_inputs" json:"test_inputs"`
 	RemoteRunnerTestSuite      string            `yaml:"remote-runner-test-suite" json:"remoteRunnerTestSuite"`
 	RemoteRunnerMemory         string            `yaml:"remote-runner-memory" json:"remoteRunnerMemory"`
 	PyroscopeEnv               string            `yaml:"pyroscope-env" json:"pyroscopeEnv"`
