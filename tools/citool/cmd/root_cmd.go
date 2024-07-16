@@ -27,6 +27,7 @@ func init() {
 	rootCmd.AddCommand(envresolveCmd)
 	rootCmd.AddCommand(checkTestsCmd)
 	rootCmd.AddCommand(filterCmd)
+	rootCmd.AddCommand(csvExportCmd)
 	rootCmd.AddCommand(testConfigCmd)
 	testConfigCmd.AddCommand(createTestConfigCmd)
 	testConfigCmd.AddCommand(overrideTestConfigCmd)
