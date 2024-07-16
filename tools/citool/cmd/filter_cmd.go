@@ -14,7 +14,7 @@ import (
 )
 
 // Filter tests based on workflow, test type, and test IDs.
-func filterTests(allTests []CITestConf, workflow, testType, ids string) []CITestConf {
+func filterTests(allTests []CITestConf, workflow, testType, ids string, envresolve bool) []CITestConf {
 	workflowFilter := workflow
 	typeFilter := testType
 	idFilter := strings.Split(ids, ",")
@@ -30,12 +30,17 @@ func filterTests(allTests []CITestConf, workflow, testType, ids string) []CITest
 			test.IDSanitized = sanitizeTestID(test.ID)
 			filteredTests = append(filteredTests, test)
 		}
+		if envresolve {
+			for k, v := range test.TestInputs {
+				test.TestInputs[k] = mustResolveEnvPlaceholder(v)
+			}
+		}
 	}
 
 	return filteredTests
 }
 
-func filterAndMergeTests(allTests []CITestConf, workflow, testType, base64Tests string) ([]CITestConf, error) {
+func filterAndMergeTests(allTests []CITestConf, workflow, testType, base64Tests string, envresolve bool) ([]CITestConf, error) {
 	decodedBytes, err := base64.StdEncoding.DecodeString(base64Tests)
 	if err != nil {
 		return nil, err
@@ -66,6 +71,11 @@ func filterAndMergeTests(allTests []CITestConf, workflow, testType, base64Tests 
 			}
 			test.IDSanitized = sanitizeTestID(test.ID)
 			filteredTests = append(filteredTests, test)
+		}
+		if envresolve {
+			for k, v := range test.TestInputs {
+				test.TestInputs[k] = mustResolveEnvPlaceholder(v)
+			}
 		}
 	}
 
@@ -102,6 +112,7 @@ Example usage:
 		testType, _ := cmd.Flags().GetString("test-env-type")
 		testIDs, _ := cmd.Flags().GetString("test-ids")
 		testMap, _ := cmd.Flags().GetString("test-list")
+		envresolve, _ := cmd.Flags().GetBool("envresolve")
 
 		data, err := os.ReadFile(yamlFile)
 		if err != nil {
@@ -118,9 +129,9 @@ Example usage:
 
 		var filteredTests []CITestConf
 		if testMap == "" {
-			filteredTests = filterTests(config.Tests, workflow, testType, testIDs)
+			filteredTests = filterTests(config.Tests, workflow, testType, testIDs, envresolve)
 		} else {
-			filteredTests, err = filterAndMergeTests(config.Tests, workflow, testType, testMap)
+			filteredTests, err = filterAndMergeTests(config.Tests, workflow, testType, testMap, envresolve)
 			if err != nil {
 				log.Fatalf("Error filtering and merging tests: %v", err)
 			}
@@ -142,6 +153,8 @@ func init() {
 	filterCmd.Flags().StringP("test-ids", "i", "*", "Comma-separated list of test IDs to filter by")
 	filterCmd.Flags().StringP("test-env-type", "y", "", "Type of test to filter by")
 	filterCmd.Flags().StringP("workflow", "t", "", "Workflow filter")
+	filterCmd.Flags().Bool("envresolve", false, "Resolve environment variables in test inputs")
+
 	err := filterCmd.MarkFlagRequired("file")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error marking flag as required: %v\n", err)
