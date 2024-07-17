@@ -1,0 +1,5 @@
+{
+  "name": "envresolve",
+  "description": "Resolve environment variables in a string. Example envresolve '{{ env.CHAINLINK_IMAGE }}'",
+  "version": "1.0.0"
+}
