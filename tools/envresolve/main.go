@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 	"github.com/spf13/cobra"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 )
 
 func main() {
