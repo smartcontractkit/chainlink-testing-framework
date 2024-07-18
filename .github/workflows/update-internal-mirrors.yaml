@@ -70,7 +70,7 @@ jobs:
           image_name: ${{matrix.mirror.name}}
           expression: ${{matrix.mirror.expression}}
           page_size: ${{matrix.mirror.page_size}}
-          github_token: ${{ github.token }}
+          github_token: ${{ secrets.RETH_GH_TOKEN }} # needed only for checking GHRC.io repositories
 
   update-other-images:
     runs-on: ubuntu-latest
