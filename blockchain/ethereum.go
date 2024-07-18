@@ -44,7 +44,7 @@ const (
 )
 
 var (
-	InvalidHeadersErr = errors.New("invalid RPC headers, format should be 'k=v,k=v', no trailing comma")
+	ErrInvalidHeaders = errors.New("invalid RPC headers, format should be 'k=v,k=v', no trailing comma")
 )
 
 // EthereumClient wraps the client and the BlockChain network to interact with an EVM based Blockchain
@@ -79,7 +79,7 @@ func ReadEnvRPCHeaders(logger zerolog.Logger) (http.Header, error) {
 	for _, h := range headers {
 		headerKV := strings.Split(h, "=")
 		if len(headerKV) != 2 {
-			return nil, InvalidHeadersErr
+			return nil, ErrInvalidHeaders
 		}
 		hm.Set(headerKV[0], headerKV[1])
 	}

@@ -4,10 +4,12 @@ This should be removed when we migrate all Ethereum client code to Seth
 package blockchain
 
 import (
-	"github.com/smartcontractkit/chainlink-testing-framework/logging"
-	"github.com/stretchr/testify/require"
 	"net/http"
 	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 )
 
 func TestRPCCustomHeadersFromEnv(t *testing.T) {
@@ -33,17 +35,17 @@ func TestRPCCustomHeadersFromEnv(t *testing.T) {
 		{
 			name:            "empty value",
 			headerEnvString: "Host=a,Accept",
-			expectedErr:     InvalidHeadersErr,
+			expectedErr:     ErrInvalidHeaders,
 		},
 		{
 			name:            "invalid value",
 			headerEnvString: "Host=a,Accept",
-			expectedErr:     InvalidHeadersErr,
+			expectedErr:     ErrInvalidHeaders,
 		},
 		{
 			name:            "invalid k-v, multiple =",
 			headerEnvString: "Host=a=b,Host=c",
-			expectedErr:     InvalidHeadersErr,
+			expectedErr:     ErrInvalidHeaders,
 		},
 	}
 
