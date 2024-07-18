@@ -416,3 +416,13 @@ We have two ways to add new images to the ecr. The first two requirements are th
 
 1. If it does not have version numbers or is gcr then you can add it [here](./scripts/mirror.json)
 2. You can add to the [mirror matrix](./.github/workflows/update-internal-mirrors.yaml) the new image name and an expression to get the latest versions added when the workflow runs. You can check the postgres one used in there for an example but basically the expression should filter out only the latest image or 2 for that particular version when calling the dockerhub endpoint, example curl call `curl -s "https://hub.docker.com/v2/repositories/${image_name}/tags/?page_size=100" | jq -r '.results[].name' | grep -E ${image_expression}` where image_name could be `library/postgres` and image_expression could be `'^[0-9]+\.[0-9]+$'`. Adding your ecr to this matrix should make sure we always have the latest versions for that expression.
+
+# Legacy Ethereum client
+
+Legacy Ethereum client is [here](blockchain/ethereum.go)
+
+If you need custom headers to interact with RPC use `ETH_RPC_HEADERS`
+
+```
+export ETH_RPC_HEADERS=Host=http.com,Host=http.com
+```
