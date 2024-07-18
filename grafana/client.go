@@ -3,6 +3,7 @@ package grafana
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/rs/zerolog"
 	"net/url"
 	"os"
 	"strings"
@@ -63,15 +64,22 @@ func (c *Client) GetDatasources() (map[string]string, *resty.Response, error) {
 	return datasourcesMap, r, err
 }
 
-func NewGrafanaClient(url, apiKey string) *Client {
+func NewGrafanaClient(url, apiKey string) (*Client, error) {
 	isDebug := os.Getenv("DEBUG_RESTY") == "true"
-	resty := resty.New().SetDebug(isDebug).SetBaseURL(url).SetHeader("Authorization", "Bearer "+apiKey)
-
+	h, err := ReadEnvHTTPHeaders(defaultLogger())
+	if err != nil {
+		return nil, err
+	}
+	resty := resty.New().
+		SetDebug(isDebug).
+		SetBaseURL(url).
+		SetHeader("Authorization", "Bearer "+apiKey).
+		SetHeaders(HeaderToMultiValueFormat(h))
 	return &Client{
 		resty:        resty,
 		AlertManager: &AlertManagerClient{resty: resty},
 		AlertRuler:   &AlertRulerClient{resty: resty},
-	}
+	}, nil
 }
 
 type GetDashboardResponse struct {
@@ -387,4 +395,8 @@ type Alert struct {
 	UpdatedAt    time.Time         `json:"updatedAt"`
 	GeneratorURL string            `json:"generatorURL"`
 	Labels       map[string]string `json:"labels"`
+}
+
+func defaultLogger() zerolog.Logger {
+	return zerolog.New(os.Stdout).Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "15:04:05.00"}).Level(zerolog.DebugLevel).With().Timestamp().Logger()
 }

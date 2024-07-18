@@ -28,8 +28,9 @@ func TestSetValuePath(t *testing.T) {
 	})
 	defer server.Close()
 
-	mockServerClient := newDefaultClient(server.URL)
-	err := mockServerClient.SetValuePath("variable", 5)
+	mockServerClient, err := newDefaultClient(server.URL)
+	require.NoError(t, err)
+	err = mockServerClient.SetValuePath("variable", 5)
 	require.NoError(t, err)
 }
 
@@ -50,8 +51,9 @@ func TestSetStringValuePath(t *testing.T) {
 	})
 	defer server.Close()
 
-	mockServerClient := newDefaultClient(server.URL)
-	err := mockServerClient.SetStringValuePath("variable", "hello")
+	mockServerClient, err := newDefaultClient(server.URL)
+	require.NoError(t, err)
+	err = mockServerClient.SetStringValuePath("variable", "hello")
 	require.NoError(t, err)
 }
 
@@ -72,7 +74,8 @@ func TestPutExpectations(t *testing.T) {
 	})
 	defer server.Close()
 
-	mockServerClient := newDefaultClient(server.URL)
+	mockServerClient, err := newDefaultClient(server.URL)
+	require.NoError(t, err)
 	var nodesInfo []client.NodeInfoJSON
 
 	nodesInitializer := client.HttpInitializer{
@@ -81,7 +84,7 @@ func TestPutExpectations(t *testing.T) {
 	}
 	initializers := []client.HttpInitializer{nodesInitializer}
 
-	err := mockServerClient.PutExpectations(initializers)
+	err = mockServerClient.PutExpectations(initializers)
 	require.NoError(t, err)
 }
 
@@ -102,17 +105,18 @@ func TestClearExpectations(t *testing.T) {
 	})
 	defer server.Close()
 
-	mockServerClient := newDefaultClient(server.URL)
-	err := mockServerClient.ClearExpectation(client.PathSelector{Path: "/nodes.json"})
+	mockServerClient, err := newDefaultClient(server.URL)
+	require.NoError(t, err)
+	err = mockServerClient.ClearExpectation(client.PathSelector{Path: "/nodes.json"})
 	require.NoError(t, err)
 }
 
-func newDefaultClient(url string) *client.MockserverClient {
-	ms := client.NewMockserverClient(&client.MockserverConfig{
+func newDefaultClient(url string) (*client.MockserverClient, error) {
+	ms, err := client.NewMockserverClient(&client.MockserverConfig{
 		LocalURL:   url,
 		ClusterURL: url,
 	})
-	return ms
+	return ms, err
 }
 
 func mockedServer(handlerFunc http.HandlerFunc) *httptest.Server {

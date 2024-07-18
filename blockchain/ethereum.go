@@ -11,9 +11,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/header"
 	"math/big"
-	"net/http"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -39,12 +38,7 @@ import (
 
 const (
 	MaxTimeoutForFinality = 15 * time.Minute
-	RPCHeadersEnvVar      = "ETH_RPC_HEADERS"
 	DefaultDialTimeout    = 1 * time.Minute
-)
-
-var (
-	ErrInvalidHeaders = errors.New("invalid RPC headers, format should be 'k=v,k=v', no trailing comma")
 )
 
 // EthereumClient wraps the client and the BlockChain network to interact with an EVM based Blockchain
@@ -68,25 +62,6 @@ type EthereumClient struct {
 	subscriptionWg       sync.WaitGroup
 }
 
-// ReadEnvRPCHeaders reads custom RPC headers from env vars
-func ReadEnvRPCHeaders(logger zerolog.Logger) (http.Header, error) {
-	hm := http.Header{}
-	customHeader := os.Getenv(RPCHeadersEnvVar)
-	if customHeader == "" {
-		return nil, nil
-	}
-	headers := strings.Split(customHeader, ",")
-	for _, h := range headers {
-		headerKV := strings.Split(h, "=")
-		if len(headerKV) != 2 {
-			return nil, ErrInvalidHeaders
-		}
-		hm.Set(headerKV[0], headerKV[1])
-	}
-	logger.Debug().Msgf("Using custom RPC headers: %s", hm)
-	return hm, nil
-}
-
 // newEVMClient creates an EVM client for a single node/URL
 func newEVMClient(networkSettings EVMNetwork, logger zerolog.Logger) (EVMClient, error) {
 	logger.Info().
@@ -97,7 +72,7 @@ func newEVMClient(networkSettings EVMNetwork, logger zerolog.Logger) (EVMClient,
 		Bool("Supports EIP-1559", networkSettings.SupportsEIP1559).
 		Bool("Finality Tag", networkSettings.FinalityTag).
 		Msg("Connecting client")
-	headers, err := ReadEnvRPCHeaders(logger)
+	headers, err := header.ReadEnvHTTPHeaders(logger)
 	if err != nil {
 		return nil, err
 	}

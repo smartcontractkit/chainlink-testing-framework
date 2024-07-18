@@ -1,19 +1,14 @@
-/*
-This should be removed when we migrate all Ethereum client code to Seth
-*/
-package blockchain
+package grafana
 
 import (
 	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
-	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 )
 
 func TestRPCCustomHeadersFromEnv(t *testing.T) {
-	l := logging.GetTestLogger(t)
+	l := defaultLogger()
 	tests := []struct {
 		name            string
 		headerEnvString string
@@ -51,8 +46,8 @@ func TestRPCCustomHeadersFromEnv(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Setenv("ETH_RPC_HEADERS", tt.headerEnvString)
-			result, err := ReadEnvRPCHeaders(l)
+			t.Setenv("CTF_HTTP_HEADERS", tt.headerEnvString)
+			result, err := ReadEnvHTTPHeaders(l)
 			require.Equal(t, tt.expectedErr, err)
 			require.Equal(t, tt.expected, result)
 		})

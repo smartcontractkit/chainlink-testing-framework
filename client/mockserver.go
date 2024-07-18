@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	resty2 "github.com/smartcontractkit/chainlink-testing-framework/utils/resty"
 	"net/http"
 	"strings"
 
@@ -26,29 +27,33 @@ type MockserverConfig struct {
 
 // ConnectMockServer creates a connection to a deployed mockserver in the environment
 func ConnectMockServer(e *environment.Environment) (*MockserverClient, error) {
-	c := NewMockserverClient(&MockserverConfig{
+	c, err := NewMockserverClient(&MockserverConfig{
 		LocalURL:   e.URLs[mockserver.LocalURLsKey][0],
 		ClusterURL: e.URLs[mockserver.InternalURLsKey][0],
 	})
-	return c, nil
+	return c, err
 }
 
 // ConnectMockServerURL creates a connection to a mockserver at a given url, should only be used for inside K8s tests
 func ConnectMockServerURL(url string) (*MockserverClient, error) {
-	c := NewMockserverClient(&MockserverConfig{
+	c, err := NewMockserverClient(&MockserverConfig{
 		LocalURL:   url,
 		ClusterURL: url,
 	})
-	return c, nil
+	return c, err
 }
 
 // NewMockserverClient returns a mockserver client
-func NewMockserverClient(cfg *MockserverConfig) *MockserverClient {
+func NewMockserverClient(cfg *MockserverConfig) (*MockserverClient, error) {
 	log.Debug().Str("Local URL", cfg.LocalURL).Str("Remote URL", cfg.ClusterURL).Msg("Connected to MockServer")
+	r, err := resty2.NewDefaultResty()
+	if err != nil {
+		return nil, err
+	}
 	return &MockserverClient{
 		Config:    cfg,
-		APIClient: resty.New().SetBaseURL(cfg.LocalURL),
-	}
+		APIClient: r.SetBaseURL(cfg.LocalURL),
+	}, nil
 }
 
 // PutExpectations sets the expectations (i.e. mocked responses)

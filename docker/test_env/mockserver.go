@@ -100,10 +100,13 @@ func (ms *MockServer) StartContainer() error {
 	ms.Endpoint = endpoint
 	ms.InternalEndpoint = fmt.Sprintf("http://%s:%s", ms.ContainerName, "1080")
 
-	client := ctfClient.NewMockserverClient(&ctfClient.MockserverConfig{
+	client, err := ctfClient.NewMockserverClient(&ctfClient.MockserverConfig{
 		LocalURL:   endpoint,
 		ClusterURL: ms.InternalEndpoint,
 	})
+	if err != nil {
+		return err
+	}
 	ms.Client = client
 
 	return nil

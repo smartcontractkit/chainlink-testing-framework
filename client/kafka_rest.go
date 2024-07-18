@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	restyHelper "github.com/smartcontractkit/chainlink-testing-framework/utils/resty"
 	"net/http"
 
 	"github.com/go-resty/resty/v2"
@@ -19,11 +20,15 @@ type KafkaRestConfig struct {
 }
 
 // NewKafkaRestClient creates a new KafkaRestClient
-func NewKafkaRestClient(cfg *KafkaRestConfig) *KafkaRestClient {
+func NewKafkaRestClient(cfg *KafkaRestConfig) (*KafkaRestClient, error) {
+	r, err := restyHelper.NewDefaultResty()
+	if err != nil {
+		return nil, err
+	}
 	return &KafkaRestClient{
 		Config:    cfg,
-		APIClient: resty.New().SetBaseURL(cfg.URL),
-	}
+		APIClient: r.SetBaseURL(cfg.URL),
+	}, nil
 }
 
 // GetTopics Get a list of Kafka topics.

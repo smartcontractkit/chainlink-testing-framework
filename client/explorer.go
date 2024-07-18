@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	resty2 "github.com/smartcontractkit/chainlink-testing-framework/utils/resty"
 	"net/http"
 
 	"github.com/go-resty/resty/v2"
@@ -15,11 +16,15 @@ type ExplorerClient struct {
 }
 
 // NewExplorerClient creates a new explorer mock client
-func NewExplorerClient(cfg *ExplorerConfig) *ExplorerClient {
+func NewExplorerClient(cfg *ExplorerConfig) (*ExplorerClient, error) {
+	r, err := resty2.NewDefaultResty()
+	if err != nil {
+		return nil, err
+	}
 	return &ExplorerClient{
 		Config:    cfg,
-		APIClient: resty.New().SetBaseURL(cfg.URL),
-	}
+		APIClient: r.SetBaseURL(cfg.URL),
+	}, nil
 }
 
 // PostAdminNodes is used to exercise the POST /api/v1/admin/nodes endpoint

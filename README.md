@@ -421,8 +421,8 @@ We have two ways to add new images to the ecr. The first two requirements are th
 
 Legacy Ethereum client is [here](blockchain/ethereum.go)
 
-If you need custom headers to interact with RPC use `ETH_RPC_HEADERS`
+If you need custom headers to interact with RPC use `CTF_HTTP_HEADERS`
 
 ```
-export ETH_RPC_HEADERS=Host=http.com,Host=http.com
+export CTF_HTTP_HEADERS=Host=http.com,Host=http.com
 ```
