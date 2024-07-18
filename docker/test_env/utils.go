@@ -84,6 +84,8 @@ func GetEthereumVersionFromImage(executionLayer config.ExecutionLayer, imageWith
 		} else {
 			return config.EthereumVersion_Eth2, nil
 		}
+	case config.ExecutionLayer_Reth:
+		return config.EthereumVersion_Eth2, nil
 	}
 
 	return "", fmt.Errorf(MsgUnsupportedExecutionLayer, executionLayer)
@@ -130,6 +132,8 @@ func GetGithubRepositoryFromEthereumClientDockerImage(imageWithVersion string) (
 		return nethermindGitRepo, nil
 	case strings.Contains(parts[0], erigonBaseImageName):
 		return erigonGitRepo, nil
+	case strings.Contains(parts[0], rethBaseImageName):
+		return rethGitRepo, nil
 	default:
 		return "", fmt.Errorf(MsgUnsupportedDockerImage, parts[0])
 	}
@@ -151,6 +155,8 @@ func GetExecutionLayerFromDockerImage(imageWithVersion string) (config.Execution
 		return config.ExecutionLayer_Nethermind, nil
 	case strings.Contains(parts[0], erigonBaseImageName):
 		return config.ExecutionLayer_Erigon, nil
+	case strings.Contains(parts[0], rethBaseImageName):
+		return config.ExecutionLayer_Reth, nil
 	default:
 		return "", fmt.Errorf(MsgUnsupportedDockerImage, parts[0])
 	}

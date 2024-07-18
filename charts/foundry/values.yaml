@@ -107,8 +107,13 @@ resources: {}
   #   cpu: 100m
   #   memory: 128Mi
 
-capacity: 20Gi
-storageClassName: gp3
+state:
+  capacity: 20Gi
+  storageClassName: gp3
+cache:
+  # bump this if running long running tests
+  capacity: 20Gi
+  storageClassName: gp3
 autoscaling:
   enabled: false
   minReplicas: 1

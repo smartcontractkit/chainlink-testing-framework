@@ -10,6 +10,8 @@ import (
 const (
 	EnvVarPrefix = "TEST_"
 
+	E2ETestEnvVarPrefix = "E2E_TEST_"
+
 	EnvVarSkipManifestUpdate            = "SKIP_MANIFEST_UPDATE"
 	EnvVarSkipManifestUpdateDescription = "Skip updating manifest when connecting to the namespace"
 	EnvVarSkipManifestUpdateExample     = "false"

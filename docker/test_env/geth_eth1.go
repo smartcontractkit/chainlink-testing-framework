@@ -28,6 +28,7 @@ func NewGethEth1(networks []string, chainConfig *config.EthereumChainConfig, opt
 			Networks:         networks,
 			ContainerImage:   parts[0],
 			ContainerVersion: parts[1],
+			StartupTimeout:   2 * time.Minute,
 		},
 		chainConfig:     chainConfig,
 		l:               logging.GetTestLogger(nil),
@@ -122,10 +123,9 @@ func (g *Geth) getEth1ContainerRequest() (*tc.ContainerRequest, error) {
 			NewHTTPStrategy("/", NatPort(DEFAULT_EVM_NODE_HTTP_PORT)),
 			tcwait.ForLog(websocketMsg),
 			tcwait.ForLog("Started P2P networking").
-				WithStartupTimeout(120*time.Second).
 				WithPollInterval(1*time.Second),
-			NewWebSocketStrategy(NatPort(DEFAULT_EVM_NODE_WS_PORT), g.l),
-		),
+			NewWebSocketStrategy(NatPort(DEFAULT_EVM_NODE_WS_PORT), g.l)).
+			WithStartupTimeoutDefault(g.StartupTimeout),
 		Entrypoint: entrypoint,
 		Files: []tc.ContainerFile{
 			{
