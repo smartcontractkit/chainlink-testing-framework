@@ -2,7 +2,7 @@ package client
 
 import (
 	"fmt"
-	resty2 "github.com/smartcontractkit/chainlink-testing-framework/utils/resty"
+	restyHelper "github.com/smartcontractkit/chainlink-testing-framework/utils/resty"
 	"net/http"
 	"strings"
 
@@ -46,7 +46,7 @@ func ConnectMockServerURL(url string) (*MockserverClient, error) {
 // NewMockserverClient returns a mockserver client
 func NewMockserverClient(cfg *MockserverConfig) (*MockserverClient, error) {
 	log.Debug().Str("Local URL", cfg.LocalURL).Str("Remote URL", cfg.ClusterURL).Msg("Connected to MockServer")
-	r, err := resty2.NewDefaultResty()
+	r, err := restyHelper.NewDefaultResty()
 	if err != nil {
 		return nil, err
 	}

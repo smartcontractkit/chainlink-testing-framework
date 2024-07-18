@@ -3,12 +3,13 @@ package grafana
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/rs/zerolog"
 	"net/url"
 	"os"
 	"strings"
 	"text/tabwriter"
 	"time"
+
+	"github.com/rs/zerolog"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/grafana/grafana-foundation-sdk/go/dashboard"

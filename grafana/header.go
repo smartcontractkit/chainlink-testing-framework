@@ -2,10 +2,11 @@ package grafana
 
 import (
 	"errors"
-	"github.com/rs/zerolog"
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/rs/zerolog"
 )
 
 const (
