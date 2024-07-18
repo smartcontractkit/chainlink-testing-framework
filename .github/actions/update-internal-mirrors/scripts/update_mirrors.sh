@@ -6,7 +6,6 @@ SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 
 cd "$SCRIPT_DIR"/../ || exit 1
 
-# Check if any arguments are provided
 if [ $# -eq 0 ]; then
     echo "Usage: $0 <ecr-registry-url>"
     exit 1
@@ -31,11 +30,9 @@ check_image_in_ecr() {
     local docker_image="$1"
     local repository_name image_tag
 
-    # Extract the repository name and tag from the docker image string
     repository_name=$(echo "$docker_image" | cut -d: -f1)
     image_tag=$(echo "$docker_image" | cut -d: -f2)
 
-    # If the image tag is empty, it means the image name did not include a tag, and we'll use "latest" by default
     if [[ -z "$image_tag" ]]; then
         image_tag="latest"
     fi
@@ -53,13 +50,8 @@ pull_tag_push() {
     local docker_image=$1
     local ecr_image="$ECR_REGISTRY_URL/${docker_image}"
 
-    # Pull the image from Docker Hub
     docker pull "$docker_image"
-
-    # Tag the image for ECR
     docker tag "$docker_image" "$ecr_image"
-
-    # Push the image to ECR
     docker push "$ecr_image"
 }
 
@@ -140,6 +132,7 @@ fetch_images_from_dockerhub() {
     echo "$images"
 }
 
+# Function to fetch images from Github Container Registry with pagination support
 fetch_images_from_gh_container_registry() {
         local image_name="$1"
         local image_expression="$2"
@@ -172,8 +165,6 @@ fetch_images_from_gh_container_registry() {
             response=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
                               -H "Accept: application/vnd.github.v3+json" \
                               "$url")
-
-            echo "response: $response" >&2
 
             if ! echo "$response" | jq empty > /dev/null 2>&1; then
                 echo "Error: Received invalid JSON response." >&2
@@ -250,18 +241,16 @@ fetch_images_from_gh_container_registry() {
 push_images_in_list() {
     local -a image_list=("$@")
     local prefix="library/"
-    # Iterate over the images
+
     for docker_image in "${image_list[@]}"; do
         echo "---"
         echo "Checking if $docker_image exists in ECR..."
 
-        # Check if the image is a standard library image and needs the library/ prefix removed
         docker_image="${docker_image#"$prefix"}"
 
-        # Check if the image exists in ECR
         if ! check_image_in_ecr "$docker_image"; then
             echo "$docker_image does not exist in ECR. Mirroring image..."
-            # Pull, tag, and push the image to ECR
+
             pull_tag_push "$docker_image"
         else
             echo "$docker_image already exists in ECR. Skipping..."
