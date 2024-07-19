@@ -154,17 +154,22 @@ fetch_images_from_gh_container_registry() {
             exit 1
         else
             echo "GH_TOKEN_NON_DEFAULT is set" >&2
+            l=${#GH_TOKEN_NON_DEFAULT}
+            echo "Length of GH_TOKEN_NON_DEFAULT is $l" >&2
         fi
 
         local url="https://api.github.com/orgs/$org/packages?package_type=container"
+        echo "::debug::url: $url"
 
         local image_count=0
         local images=""
 
         while [ -n "$url" ]; do
-            response=$(curl -s -H "Authorization: token $GH_TOKEN_NON_DEFAULT" \
+            response=$(curl -s -H "Authorization: Bearer $GH_TOKEN_NON_DEFAULT" \
                               -H "Accept: application/vnd.github.v3+json" \
                               "$url")
+
+            echo "::debug::response: $response"
 
             if ! echo "$response" | jq empty > /dev/null 2>&1; then
                 echo "Error: Received invalid JSON response." >&2
