@@ -149,11 +149,11 @@ fetch_images_from_gh_container_registry() {
             exit 1
         fi
 
-        if [ -z "$GITHUB_TOKEN" ]; then
-            echo "Error: GITHUB_TOKEN environment variable is not set." >&2
+        if [ -z "$GH_TOKEN_NON_DEFAULT" ]; then
+            echo "Error: GH_TOKEN_NON_DEFAULT environment variable is not set." >&2
             exit 1
         else
-            echo "GITHUB_TOKEN is set" >&2
+            echo "GH_TOKEN_NON_DEFAULT is set" >&2
         fi
 
         local url="https://api.github.com/orgs/$org/packages?package_type=container"
@@ -162,7 +162,7 @@ fetch_images_from_gh_container_registry() {
         local images=""
 
         while [ -n "$url" ]; do
-            response=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            response=$(curl -s -H "Authorization: token $GH_TOKEN_NON_DEFAULT" \
                               -H "Accept: application/vnd.github.v3+json" \
                               "$url")
 
