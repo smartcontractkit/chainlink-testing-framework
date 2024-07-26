@@ -1,9 +1,10 @@
 package client
 
 import (
+	"crypto/tls"
 	"fmt"
-	restyHelper "github.com/smartcontractkit/chainlink-testing-framework/utils/resty"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/go-resty/resty/v2"
@@ -23,37 +24,39 @@ type MockserverClient struct {
 type MockserverConfig struct {
 	LocalURL   string
 	ClusterURL string
+	Headers    map[string]string
 }
 
 // ConnectMockServer creates a connection to a deployed mockserver in the environment
-func ConnectMockServer(e *environment.Environment) (*MockserverClient, error) {
-	c, err := NewMockserverClient(&MockserverConfig{
+func ConnectMockServer(e *environment.Environment) *MockserverClient {
+	c := NewMockserverClient(&MockserverConfig{
 		LocalURL:   e.URLs[mockserver.LocalURLsKey][0],
 		ClusterURL: e.URLs[mockserver.InternalURLsKey][0],
 	})
-	return c, err
+	return c
 }
 
 // ConnectMockServerURL creates a connection to a mockserver at a given url, should only be used for inside K8s tests
-func ConnectMockServerURL(url string) (*MockserverClient, error) {
-	c, err := NewMockserverClient(&MockserverConfig{
+func ConnectMockServerURL(url string) *MockserverClient {
+	c := NewMockserverClient(&MockserverConfig{
 		LocalURL:   url,
 		ClusterURL: url,
 	})
-	return c, err
+	return c
 }
 
 // NewMockserverClient returns a mockserver client
-func NewMockserverClient(cfg *MockserverConfig) (*MockserverClient, error) {
+func NewMockserverClient(cfg *MockserverConfig) *MockserverClient {
 	log.Debug().Str("Local URL", cfg.LocalURL).Str("Remote URL", cfg.ClusterURL).Msg("Connected to MockServer")
-	r, err := restyHelper.NewDefaultResty()
-	if err != nil {
-		return nil, err
-	}
+	isDebug := os.Getenv("RESTY_DEBUG") == "true"
 	return &MockserverClient{
-		Config:    cfg,
-		APIClient: r.SetBaseURL(cfg.LocalURL),
-	}, nil
+		Config: cfg,
+		APIClient: resty.New().
+			SetBaseURL(cfg.LocalURL).
+			SetHeaders(cfg.Headers).
+			SetDebug(isDebug).
+			SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true}),
+	}
 }
 
 // PutExpectations sets the expectations (i.e. mocked responses)
@@ -119,7 +122,7 @@ func (em *MockserverClient) SetValuePath(path string, v int) error {
 	initializers := []HttpInitializer{initializer}
 	resp, err := em.APIClient.R().SetBody(&initializers).Put("/expectation")
 	if resp.StatusCode() != http.StatusCreated {
-		err = fmt.Errorf("status code expected %d got %d", http.StatusCreated, resp.StatusCode())
+		err = fmt.Errorf("status code expected %d got %d, err: %s", http.StatusCreated, resp.StatusCode(), err)
 	}
 	return err
 }

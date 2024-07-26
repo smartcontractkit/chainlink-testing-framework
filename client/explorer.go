@@ -2,7 +2,6 @@ package client
 
 import (
 	"fmt"
-	restyHelper "github.com/smartcontractkit/chainlink-testing-framework/utils/resty"
 	"net/http"
 
 	"github.com/go-resty/resty/v2"
@@ -17,13 +16,9 @@ type ExplorerClient struct {
 
 // NewExplorerClient creates a new explorer mock client
 func NewExplorerClient(cfg *ExplorerConfig) (*ExplorerClient, error) {
-	r, err := restyHelper.NewDefaultResty()
-	if err != nil {
-		return nil, err
-	}
 	return &ExplorerClient{
 		Config:    cfg,
-		APIClient: r.SetBaseURL(cfg.URL),
+		APIClient: resty.New().SetBaseURL(cfg.URL),
 	}, nil
 }
 

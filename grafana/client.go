@@ -9,8 +9,6 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/rs/zerolog"
-
 	"github.com/go-resty/resty/v2"
 	"github.com/grafana/grafana-foundation-sdk/go/dashboard"
 )
@@ -18,7 +16,7 @@ import (
 type Client struct {
 	AlertManager *AlertManagerClient
 	AlertRuler   *AlertRulerClient
-	resty        *resty.Client
+	Resty        *resty.Client
 }
 
 type AlertManagerClient struct {
@@ -48,7 +46,7 @@ func (c *Client) GetDatasources() (map[string]string, *resty.Response, error) {
 		IsDefault bool   `json:"isDefault"`
 	}
 
-	r, err := c.resty.R().SetResult(&result).Get("/api/datasources")
+	r, err := c.Resty.R().SetResult(&result).Get("/api/datasources")
 	if err != nil {
 		return nil, r, fmt.Errorf("error making API request: %w", err)
 	}
@@ -65,22 +63,17 @@ func (c *Client) GetDatasources() (map[string]string, *resty.Response, error) {
 	return datasourcesMap, r, err
 }
 
-func NewGrafanaClient(url, apiKey string) (*Client, error) {
-	isDebug := os.Getenv("DEBUG_RESTY") == "true"
-	h, err := ReadEnvHTTPHeaders(defaultLogger())
-	if err != nil {
-		return nil, err
-	}
+func NewGrafanaClient(url, apiKey string) *Client {
+	isDebug := os.Getenv("RESTY_DEBUG") == "true"
 	resty := resty.New().
 		SetDebug(isDebug).
 		SetBaseURL(url).
-		SetHeader("Authorization", "Bearer "+apiKey).
-		SetHeaders(HeaderToMultiValueFormat(h))
+		SetHeader("Authorization", "Bearer "+apiKey)
 	return &Client{
-		resty:        resty,
+		Resty:        resty,
 		AlertManager: &AlertManagerClient{resty: resty},
 		AlertRuler:   &AlertRulerClient{resty: resty},
-	}, nil
+	}
 }
 
 type GetDashboardResponse struct {
@@ -90,7 +83,7 @@ type GetDashboardResponse struct {
 
 func (c *Client) GetDashboard(uid string) (GetDashboardResponse, *resty.Response, error) {
 	var result GetDashboardResponse
-	r, err := c.resty.R().SetResult(&result).Get("/api/dashboards/uid/" + uid)
+	r, err := c.Resty.R().SetResult(&result).Get("/api/dashboards/uid/" + uid)
 	return result, r, err
 }
 
@@ -115,7 +108,7 @@ type GrafanaResponse struct {
 func (c *Client) PostDashboard(dashboard PostDashboardRequest) (GrafanaResponse, *resty.Response, error) {
 	var grafanaResp GrafanaResponse
 
-	resp, err := c.resty.R().
+	resp, err := c.Resty.R().
 		SetHeader("Content-Type", "application/json").
 		SetBody(dashboard).
 		SetResult(&grafanaResp). // SetResult will automatically unmarshal the response into grafanaResp
@@ -135,7 +128,7 @@ func (c *Client) PostDashboard(dashboard PostDashboardRequest) (GrafanaResponse,
 
 func (c *Client) GetAlertsRules() ([]ProvisionedAlertRule, *resty.Response, error) {
 	var result []ProvisionedAlertRule
-	r, err := c.resty.R().SetResult(&result).Get("/api/v1/provisioning/alert-rules")
+	r, err := c.Resty.R().SetResult(&result).Get("/api/v1/provisioning/alert-rules")
 	return result, r, err
 }
 
@@ -266,7 +259,7 @@ func (c *Client) GetAnnotations(params AnnotationsQueryParams) ([]Annotation, *r
 	}
 
 	var result []Annotation
-	r, err := c.resty.R().
+	r, err := c.Resty.R().
 		SetResult(&result).
 		SetQueryString(query.Encode()).
 		Get("/api/annotations")
@@ -276,7 +269,7 @@ func (c *Client) GetAnnotations(params AnnotationsQueryParams) ([]Annotation, *r
 func (c *Client) DeleteAnnotation(annotationID int64) (*resty.Response, error) {
 	urlPath := fmt.Sprintf("/api/annotations/%d", annotationID)
 
-	r, err := c.resty.R().
+	r, err := c.Resty.R().
 		Delete(urlPath)
 
 	return r, err
@@ -301,7 +294,7 @@ func (c *Client) PostAnnotation(annotation PostAnnotation) (PostAnnotationRespon
 		a["timeEnd"] = annotation.TimeEnd.UnixMilli()
 	}
 	var result PostAnnotationResponse
-	r, err := c.resty.R().
+	r, err := c.Resty.R().
 		SetBody(a).
 		SetResult(&result).
 		Post("/api/annotations")
@@ -396,8 +389,4 @@ type Alert struct {
 	UpdatedAt    time.Time         `json:"updatedAt"`
 	GeneratorURL string            `json:"generatorURL"`
 	Labels       map[string]string `json:"labels"`
-}
-
-func defaultLogger() zerolog.Logger {
-	return zerolog.New(os.Stdout).Output(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "15:04:05.00"}).Level(zerolog.DebugLevel).With().Timestamp().Logger()
 }

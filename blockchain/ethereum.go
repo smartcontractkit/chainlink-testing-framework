@@ -11,7 +11,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/smartcontractkit/chainlink-testing-framework/utils/header"
 	"math/big"
 	"regexp"
 	"strconv"
@@ -72,13 +71,9 @@ func newEVMClient(networkSettings EVMNetwork, logger zerolog.Logger) (EVMClient,
 		Bool("Supports EIP-1559", networkSettings.SupportsEIP1559).
 		Bool("Finality Tag", networkSettings.FinalityTag).
 		Msg("Connecting client")
-	headers, err := header.ReadEnvHTTPHeaders(logger)
-	if err != nil {
-		return nil, err
-	}
 	ctx, cancel := context.WithTimeout(context.Background(), DefaultDialTimeout)
 	defer cancel()
-	raw, err := rpc.DialOptions(ctx, networkSettings.URL, rpc.WithHeaders(headers))
+	raw, err := rpc.DialOptions(ctx, networkSettings.URL)
 	if err != nil {
 		return nil, err
 	}

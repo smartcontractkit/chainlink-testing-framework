@@ -2,6 +2,8 @@ module github.com/smartcontractkit/chainlink-testing-framework
 
 go 1.22.5
 
+replace github.com/smartcontractkit/seth => /Users/fahrenheit/GolandProjects/seth
+
 require (
 	dario.cat/mergo v1.0.0
 	github.com/avast/retry-go v3.0.0+incompatible
@@ -29,7 +31,7 @@ require (
 	github.com/prometheus/common v0.45.0
 	github.com/rs/zerolog v1.30.0
 	github.com/slack-go/slack v0.12.2
-	github.com/smartcontractkit/seth v1.0.11
+	github.com/smartcontractkit/seth v1.0.14-0.20240725161509-114ad0d1c325
 	github.com/smartcontractkit/wasp v0.4.1
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/pflag v1.0.5
@@ -68,6 +70,7 @@ require (
 	github.com/allegro/bigcache v1.2.1 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
+	github.com/awalterschulze/gographviz v2.0.3+incompatible // indirect
 	github.com/aws/aws-sdk-go v1.45.25 // indirect
 	github.com/benbjohnson/clock v1.3.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
