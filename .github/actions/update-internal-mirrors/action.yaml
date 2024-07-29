@@ -43,7 +43,7 @@ runs:
     - name: Update images
       shell: bash
       env:
-        GH_TOKEN_NON_DEFAULT: ${{ inputs.github_token }}
+        GHCR_TOKEN: ${{ inputs.github_token }}
       run: |
         # Update images
         # Change to the directory where the action is stored

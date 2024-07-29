@@ -145,17 +145,15 @@ fetch_images_from_gh_container_registry() {
         package=$(echo "$image_name" | awk -F'[/:]' '{print $3}')
 
         if [ -z "$org" ] || [ -z "$package" ]; then
-            echo "Error: Failed to extract organisation and package name from $image_name. Please provide the image name in the format ghcr.io/org/package." >&2
+            >&2 echo "Error: Failed to extract organisation and package name from $image_name. Please provide the image name in the format ghcr.io/org/package."
             exit 1
         fi
 
-        if [ -z "$GH_TOKEN_NON_DEFAULT" ]; then
-            echo "Error: GH_TOKEN_NON_DEFAULT environment variable is not set." >&2
+        if [ -z "$GHCR_TOKEN" ]; then
+            >&2 echo "Error: $GHCR_TOKEN environment variable is not set."
             exit 1
         else
-            echo "GH_TOKEN_NON_DEFAULT is set" >&2
-            l=${#GH_TOKEN_NON_DEFAULT}
-            echo "Length of GH_TOKEN_NON_DEFAULT is $l" >&2
+            >&2 echo "::debug::GHCR_TOKEN is set"
         fi
 
         local url="https://api.github.com/orgs/$org/packages?package_type=container"
@@ -165,14 +163,14 @@ fetch_images_from_gh_container_registry() {
         local images=""
 
         while [ -n "$url" ]; do
-            response=$(curl -s -H "Authorization: Bearer $GH_TOKEN_NON_DEFAULT" \
+            response=$(curl -s -H "Authorization: Bearer $GHCR_TOKEN" \
                               -H "Accept: application/vnd.github.v3+json" \
                               "$url")
 
             echo "::debug::response: $response"
 
             if ! echo "$response" | jq empty > /dev/null 2>&1; then
-                echo "Error: Received invalid JSON response." >&2
+                 >&2 echo "Error: Received invalid JSON response."
                 exit 1
             fi
 
@@ -181,7 +179,7 @@ fetch_images_from_gh_container_registry() {
                 status=$(echo "$response" | jq -r '.status // empty')
 
                 if [ -n "$status" ] && [ "$status" -eq "$status" ] 2>/dev/null && [ "$status" -gt 299 ]; then
-                    echo "Error: Request to get containers failed with status $status and message: $message" >&2
+                     >&2 echo "Error: Request to get containers failed with status $status and message: $message"
                     exit 1
                 fi
             fi
@@ -189,19 +187,19 @@ fetch_images_from_gh_container_registry() {
             packages=$(echo "$response" | jq -r --arg package "$package" '.[] | select(.name == $package) | .name')
 
             if [ -z "$packages" ]; then
-                echo "Error: No matching packages found." >&2
+                 >&2 echo "Error: No matching packages found."
                 exit 1
             fi
 
             for package in $packages; do
                 versions_url="https://api.github.com/orgs/$org/packages/container/$package/versions"
                 while [ -n "$versions_url" ]; do
-                    versions_response=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+                    versions_response=$(curl -s -H "Authorization: token $GHCR_TOKEN" \
                                              -H "Accept: application/vnd.github.v3+json" \
                                              "$versions_url")
 
                     if ! echo "$versions_response" | jq empty > /dev/null 2>&1; then
-                        echo "Error: Received invalid JSON response for versions." >&2
+                         >&2 echo "Error: Received invalid JSON response for versions."
                         exit 1
                     fi
 
@@ -228,13 +226,13 @@ fetch_images_from_gh_container_registry() {
                         return
                     fi
 
-                    versions_url=$(curl -sI -H "Authorization: token $GITHUB_TOKEN" \
+                    versions_url=$(curl -sI -H "Authorization: token $GHCR_TOKEN" \
                                             -H "Accept: application/vnd.github.v3+json" \
                                             "$versions_url" | awk -F'[<>]' '/rel="next"/{print $2}')
                 done
             done
 
-            url=$(curl -sI -H "Authorization: token $GITHUB_TOKEN" \
+            url=$(curl -sI -H "Authorization: token $GHCR_TOKEN" \
                         -H "Accept: application/vnd.github.v3+json" \
                         "$url" | awk -F'[<>]' '/rel="next"/{print $2}')
         done
