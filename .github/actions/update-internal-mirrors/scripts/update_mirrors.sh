@@ -157,7 +157,7 @@ fetch_images_from_gh_container_registry() {
         fi
 
         local url="https://api.github.com/orgs/$org/packages?package_type=container"
-        echo "::debug::url: $url"
+        >&2 echo "::debug::url: $url"
 
         local image_count=0
         local images=""
@@ -167,7 +167,7 @@ fetch_images_from_gh_container_registry() {
                               -H "Accept: application/vnd.github.v3+json" \
                               "$url")
 
-            echo "::debug::response: $response"
+             >&2 echo "::debug::response: $response"
 
             if ! echo "$response" | jq empty > /dev/null 2>&1; then
                  >&2 echo "Error: Received invalid JSON response."
