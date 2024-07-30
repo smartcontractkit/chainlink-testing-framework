@@ -122,6 +122,10 @@ spec:
             - "--transaction-block-keeper"
             - {{ .Values.anvil.blocksToKeepInMemory | quote }}
             {{- end }}
+            {{- if .Values.anvil.maxPersistedStates }}
+            - "--max-persisted-states"
+            - {{ .Values.anvil.maxPersistedStates | quote }}
+            {{- end }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
