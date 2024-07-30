@@ -13,6 +13,7 @@ import (
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
+	"github.com/smartcontractkit/chainlink-testing-framework/docker/ethereum"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/templates"
@@ -20,7 +21,7 @@ import (
 
 // NewBesuEth1 starts a new Besu Eth1 node running in Docker
 func NewBesuEth1(networks []string, chainConfig *config.EthereumChainConfig, opts ...EnvComponentOption) (*Besu, error) {
-	parts := strings.Split(defaultBesuEth1Image, ":")
+	parts := strings.Split(ethereum.DefaultBesuEth1Image, ":")
 	g := &Besu{
 		EnvComponent: EnvComponent{
 			ContainerName:    fmt.Sprintf("%s-%s", "besu-eth1", uuid.NewString()[0:8]),

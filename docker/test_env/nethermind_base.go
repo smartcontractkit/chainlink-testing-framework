@@ -17,13 +17,6 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 )
 
-const (
-	defaultNethermindEth1Image = "nethermind/nethermind:1.16.0"
-	defaultNethermindEth2Image = "nethermind/nethermind:1.26.0"
-	nethermindBaseImageName    = "nethermind/nethermind"
-	nethermindGitRepo          = "NethermindEth/nethermind"
-)
-
 type Nethermind struct {
 	EnvComponent
 	ExternalHttpUrl      string
@@ -32,12 +25,12 @@ type Nethermind struct {
 	InternalWsUrl        string
 	InternalExecutionURL string
 	ExternalExecutionURL string
-	generatedDataHostDir string
 	chainConfig          *config.EthereumChainConfig
 	consensusLayer       config.ConsensusLayer
 	ethereumVersion      config.EthereumVersion
 	l                    zerolog.Logger
 	t                    *testing.T
+	posContainerSettings
 }
 
 func (g *Nethermind) WithTestInstance(t *testing.T) ExecutionClient {

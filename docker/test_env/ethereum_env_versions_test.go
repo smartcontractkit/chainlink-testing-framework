@@ -6,6 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/config/types"
+	"github.com/smartcontractkit/chainlink-testing-framework/docker/ethereum"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 
@@ -36,7 +39,7 @@ func TestEthEnvNethermindCompatibility(t *testing.T) {
 		nethermindTcs = append(nethermindTcs, fmt.Sprintf("nethermind/nethermind:1.%d.0", i))
 	}
 
-	nethermindTcs = append(nethermindTcs, defaultNethermindEth2Image)
+	nethermindTcs = append(nethermindTcs, ethereum.DefaultNethermindEth2Image)
 	latest, err := FetchLatestEthereumClientDockerImageVersionIfNeed(fmt.Sprintf("nethermind/nethermind:%s", AUTOMATIC_STABLE_LATEST_TAG))
 	require.NoError(t, err, "Couldn't fetch the latest Nethermind version")
 
@@ -47,7 +50,7 @@ func TestEthEnvNethermindCompatibility(t *testing.T) {
 		t.Run(fmt.Sprintf("nethermind-%s", tc), func(t *testing.T) {
 			builder := NewEthereumNetworkBuilder()
 			cfg, err := builder.
-				WithExecutionLayer(config.ExecutionLayer_Nethermind).
+				WithExecutionLayer(types.ExecutionLayer_Nethermind).
 				WithCustomDockerImages(map[config.ContainerType]string{
 					config.ContainerType_ExecutionLayer: tc,
 				}).
@@ -84,7 +87,7 @@ func TestEthEnvGethCompatibility(t *testing.T) {
 		gethTcs = append(gethTcs, fmt.Sprintf("ethereum/client-go:v1.%d.0", i))
 	}
 
-	gethTcs = append(gethTcs, defaultGethEth2Image)
+	gethTcs = append(gethTcs, ethereum.DefaultGethEth2Image)
 	latest, err := FetchLatestEthereumClientDockerImageVersionIfNeed(fmt.Sprintf("ethereum/client-go:%s", AUTOMATIC_STABLE_LATEST_TAG))
 	require.NoError(t, err, "Couldn't fetch the latest Go Ethereum version")
 
@@ -131,7 +134,7 @@ func TestEthEnvErigonCompatibility(t *testing.T) {
 		erigonTcs = append(erigonTcs, fmt.Sprintf("thorax/erigon:v2.%d.0", i))
 	}
 
-	erigonTcs = append(erigonTcs, defaultErigonEth2Image)
+	erigonTcs = append(erigonTcs, ethereum.DefaultErigonEth2Image)
 	latest, err := FetchLatestEthereumClientDockerImageVersionIfNeed(fmt.Sprintf("thorax/erigon:%s", AUTOMATIC_STABLE_LATEST_TAG))
 	require.NoError(t, err, "Couldn't fetch the latest Erigon version")
 
@@ -178,7 +181,7 @@ func TestEthEnvBesuCompatibility(t *testing.T) {
 		besuTcs = append(besuTcs, fmt.Sprintf("hyperledger/besu:%d.1.0", i))
 	}
 
-	besuTcs = append(besuTcs, defaultBesuEth2Image)
+	besuTcs = append(besuTcs, ethereum.DefaultBesuEth2Image)
 	latest, err := FetchLatestEthereumClientDockerImageVersionIfNeed(fmt.Sprintf("hyperledger/besu:%s", AUTOMATIC_STABLE_LATEST_TAG))
 	require.NoError(t, err, "Couldn't fetch the latest Erigon version")
 

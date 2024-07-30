@@ -14,6 +14,7 @@ import (
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
+	"github.com/smartcontractkit/chainlink-testing-framework/docker/ethereum"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/templates"
@@ -21,7 +22,7 @@ import (
 
 // NewGethEth1 starts a new Geth Eth1 node running in Docker
 func NewGethEth1(networks []string, chainConfig *config.EthereumChainConfig, opts ...EnvComponentOption) *Geth {
-	parts := strings.Split(defaultGethEth1Image, ":")
+	parts := strings.Split(ethereum.DefaultGethEth1Image, ":")
 	g := &Geth{
 		EnvComponent: EnvComponent{
 			ContainerName:    fmt.Sprintf("%s-%s", "geth-eth1", uuid.NewString()[0:8]),

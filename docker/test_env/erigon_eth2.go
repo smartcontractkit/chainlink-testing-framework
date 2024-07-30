@@ -15,13 +15,14 @@ import (
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
+	"github.com/smartcontractkit/chainlink-testing-framework/docker/ethereum"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 )
 
 // NewErigonEth2 starts a new Erigon Eth2 node running in Docker
-func NewErigonEth2(networks []string, chainConfig *config.EthereumChainConfig, generatedDataHostDir string, consensusLayer config.ConsensusLayer, opts ...EnvComponentOption) (*Erigon, error) {
-	parts := strings.Split(defaultErigonEth2Image, ":")
+func NewErigonEth2(networks []string, chainConfig *config.EthereumChainConfig, generatedDataHostDir, generatedDataContainerDir string, consensusLayer config.ConsensusLayer, opts ...EnvComponentOption) (*Erigon, error) {
+	parts := strings.Split(ethereum.DefaultErigonEth2Image, ":")
 	g := &Erigon{
 		EnvComponent: EnvComponent{
 			ContainerName:    fmt.Sprintf("%s-%s", "erigon-eth2", uuid.NewString()[0:8]),
@@ -31,7 +32,7 @@ func NewErigonEth2(networks []string, chainConfig *config.EthereumChainConfig, g
 			StartupTimeout:   2 * time.Minute,
 		},
 		chainConfig:          chainConfig,
-		generatedDataHostDir: generatedDataHostDir,
+		posContainerSettings: posContainerSettings{generatedDataHostDir: generatedDataHostDir, generatedDataContainerDir: generatedDataContainerDir},
 		consensusLayer:       consensusLayer,
 		l:                    logging.GetTestLogger(nil),
 		ethereumVersion:      config.EthereumVersion_Eth2,
@@ -92,7 +93,7 @@ func (g *Erigon) getEth2ContainerRequest() (*tc.ContainerRequest, error) {
 			hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
 				Type:     mount.TypeBind,
 				Source:   g.generatedDataHostDir,
-				Target:   GENERATED_DATA_DIR_INSIDE_CONTAINER,
+				Target:   g.generatedDataContainerDir,
 				ReadOnly: false,
 			})
 		},
@@ -145,8 +146,8 @@ func (g *Erigon) buildPosInitScript() (string, error) {
 	}{
 		HttpPort:            DEFAULT_EVM_NODE_HTTP_PORT,
 		ChainID:             g.chainConfig.ChainID,
-		GeneratedDataDir:    GENERATED_DATA_DIR_INSIDE_CONTAINER,
-		JwtFileLocation:     JWT_SECRET_FILE_LOCATION_INSIDE_CONTAINER,
+		GeneratedDataDir:    g.generatedDataContainerDir,
+		JwtFileLocation:     getJWTSecretFileLocationInsideContainer(g.generatedDataContainerDir),
 		ExecutionDir:        "/home/erigon/execution-data",
 		ExtraExecutionFlags: extraExecutionFlags,
 		SendersToTrace:      strings.Join(g.chainConfig.AddressesToFund, ","),

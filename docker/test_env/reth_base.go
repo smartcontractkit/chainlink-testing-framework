@@ -19,12 +19,6 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
-const (
-	defaultRethEth2Image = "ghcr.io/paradigmxyz/reth:v1.0.0"
-	rethBaseImageName    = "ghcr.io/paradigmxyz/reth"
-	rethGitRepo          = "paradigmxyz/reth"
-)
-
 type Reth struct {
 	EnvComponent
 	ExternalHttpUrl      string
@@ -33,12 +27,12 @@ type Reth struct {
 	InternalWsUrl        string
 	InternalExecutionURL string
 	ExternalExecutionURL string
-	generatedDataHostDir string
 	chainConfig          *config.EthereumChainConfig
 	consensusLayer       config.ConsensusLayer
 	ethereumVersion      config.EthereumVersion
 	l                    zerolog.Logger
 	t                    *testing.T
+	posContainerSettings
 }
 
 func (g *Reth) WithTestInstance(t *testing.T) ExecutionClient {

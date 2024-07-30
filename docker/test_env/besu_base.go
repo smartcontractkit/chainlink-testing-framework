@@ -18,17 +18,6 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
 
-const (
-	defaultBesuEth1Image = "hyperledger/besu:22.1.0"
-	defaultBesuEth2Image = "hyperledger/besu:24.5.1"
-	besuBaseImageName    = "hyperledger/besu"
-	besuGitRepo          = "hyperledger/besu"
-)
-
-type posSettings struct {
-	generatedDataHostDir string
-}
-
 type powSettings struct {
 	genesisPath  string
 	rootPath     string
@@ -49,7 +38,7 @@ type Besu struct {
 	ethereumVersion      config.EthereumVersion
 	l                    zerolog.Logger
 	t                    *testing.T
-	posSettings
+	posContainerSettings
 	powSettings
 }
 

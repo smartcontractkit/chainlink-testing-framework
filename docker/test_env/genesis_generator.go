@@ -17,32 +17,53 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
+	"github.com/smartcontractkit/chainlink-testing-framework/docker/ethereum"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 )
 
-const defaultGenisisGeneratorImage = "tofelb/ethereum-genesis-generator:3.3.4-slots-per-epoch"
-
-type EthGenesisGeneretor struct {
-	EnvComponent
-	chainConfig          config.EthereumChainConfig
-	l                    zerolog.Logger
-	generatedDataHostDir string
-	t                    *testing.T
+var generatorForkToImageMap = map[ethereum.Fork]string{
+	ethereum.EthereumFork_Shanghai: "tofelb/ethereum-genesis-generator:2.0.5",
+	ethereum.EthereumFork_Deneb:    "tofelb/ethereum-genesis-generator:3.3.4-slots-per-epoch",
 }
 
-func NewEthGenesisGenerator(chainConfig config.EthereumChainConfig, generatedDataHostDir string, opts ...EnvComponentOption) (*EthGenesisGeneretor, error) {
-	parts := strings.Split(defaultGenisisGeneratorImage, ":")
-	g := &EthGenesisGeneretor{
+var generatorForkToDataDirMap = map[ethereum.Fork]string{
+	ethereum.EthereumFork_Shanghai: "/data/custom_config_data",
+	ethereum.EthereumFork_Deneb:    "/data/metadata",
+}
+
+type EthGenesisGenerator struct {
+	EnvComponent
+	chainConfig               config.EthereumChainConfig
+	l                         zerolog.Logger
+	generatedDataHostDir      string
+	generatedDataContainerDir string
+	t                         *testing.T
+}
+
+func NewEthGenesisGenerator(chainConfig config.EthereumChainConfig, generatedDataHostDir string, lastFork ethereum.Fork, opts ...EnvComponentOption) (*EthGenesisGenerator, error) {
+	genesisGeneratorImage, ok := generatorForkToImageMap[lastFork]
+	if !ok {
+		return nil, fmt.Errorf("unknown fork: %s", lastFork)
+	}
+
+	generatedDataContainerDir, ok := generatorForkToDataDirMap[lastFork]
+	if !ok {
+		return nil, fmt.Errorf("unknown fork: %s", lastFork)
+	}
+
+	parts := strings.Split(genesisGeneratorImage, ":")
+	g := &EthGenesisGenerator{
 		EnvComponent: EnvComponent{
 			ContainerName:    fmt.Sprintf("%s-%s", "eth-genesis-generator", uuid.NewString()[0:8]),
 			ContainerImage:   parts[0],
 			ContainerVersion: parts[1],
 			StartupTimeout:   30 * time.Second,
 		},
-		chainConfig:          chainConfig,
-		generatedDataHostDir: generatedDataHostDir,
-		l:                    log.Logger,
+		chainConfig:               chainConfig,
+		generatedDataHostDir:      generatedDataHostDir,
+		generatedDataContainerDir: generatedDataContainerDir,
+		l:                         log.Logger,
 	}
 	g.SetDefaultHooks()
 	for _, opt := range opts {
@@ -53,13 +74,13 @@ func NewEthGenesisGenerator(chainConfig config.EthereumChainConfig, generatedDat
 	return g, nil
 }
 
-func (g *EthGenesisGeneretor) WithTestInstance(t *testing.T) *EthGenesisGeneretor {
+func (g *EthGenesisGenerator) WithTestInstance(t *testing.T) *EthGenesisGenerator {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
 	return g
 }
 
-func (g *EthGenesisGeneretor) StartContainer() error {
+func (g *EthGenesisGenerator) StartContainer() error {
 	r, err := g.getContainerRequest(g.Networks)
 	if err != nil {
 		return err
@@ -82,7 +103,7 @@ func (g *EthGenesisGeneretor) StartContainer() error {
 	return nil
 }
 
-func (g *EthGenesisGeneretor) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
+func (g *EthGenesisGenerator) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
 	valuesEnv, err := os.CreateTemp("", "values.env")
 	if err != nil {
 		return nil, err
@@ -131,7 +152,7 @@ func (g *EthGenesisGeneretor) getContainerRequest(networks []string) (*tc.Contai
 		Networks:      networks,
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForLog("+ terminalTotalDifficulty=0"),
-			tcwait.ForLog("+ sed -i 's/TERMINAL_TOTAL_DIFFICULTY:.*/TERMINAL_TOTAL_DIFFICULTY: 0/' /data/metadata/config.yaml").
+			tcwait.ForLog(fmt.Sprintf("+ sed -i 's/TERMINAL_TOTAL_DIFFICULTY:.*/TERMINAL_TOTAL_DIFFICULTY: 0/' %s/config.yaml", g.generatedDataContainerDir)).
 				WithPollInterval(1*time.Second),
 		).WithStartupTimeoutDefault(g.StartupTimeout),
 		Cmd: []string{"all"},
@@ -161,7 +182,7 @@ func (g *EthGenesisGeneretor) getContainerRequest(networks []string) (*tc.Contai
 			hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
 				Type:     mount.TypeBind,
 				Source:   g.generatedDataHostDir,
-				Target:   GENERATED_DATA_DIR_INSIDE_CONTAINER,
+				Target:   g.generatedDataContainerDir,
 				ReadOnly: false,
 			})
 		},
@@ -172,4 +193,8 @@ func (g *EthGenesisGeneretor) getContainerRequest(networks []string) (*tc.Contai
 			},
 		},
 	}, nil
+}
+
+func (g *EthGenesisGenerator) GetGeneratedDataContainerDir() string {
+	return g.generatedDataContainerDir
 }

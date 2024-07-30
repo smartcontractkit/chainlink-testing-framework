@@ -13,7 +13,9 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
+	"github.com/smartcontractkit/chainlink-testing-framework/config/types"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
+	"github.com/smartcontractkit/chainlink-testing-framework/docker/ethereum"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/logstream"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
@@ -37,7 +39,7 @@ type EthereumNetworkBuilder struct {
 	dockerNetworks      []string
 	ethereumVersion     config.EthereumVersion
 	consensusLayer      *config.ConsensusLayer
-	executionLayer      config.ExecutionLayer
+	executionLayer      types.ExecutionLayer
 	ethereumChainConfig *config.EthereumChainConfig
 	existingConfig      *config.EthereumNetworkConfig
 	customDockerImages  map[config.ContainerType]string
@@ -80,7 +82,7 @@ func (b *EthereumNetworkBuilder) WithConsensusLayer(consensusLayer config.Consen
 	return b
 }
 
-func (b *EthereumNetworkBuilder) WithExecutionLayer(executionLayer config.ExecutionLayer) *EthereumNetworkBuilder {
+func (b *EthereumNetworkBuilder) WithExecutionLayer(executionLayer types.ExecutionLayer) *EthereumNetworkBuilder {
 	b.executionLayer = executionLayer
 	return b
 }
@@ -265,7 +267,7 @@ func (b *EthereumNetworkBuilder) validate() error {
 		return errors.New("ethereum chain config is required")
 	}
 
-	return b.ethereumChainConfig.Validate(logging.GetTestLogger(nil), &b.ethereumVersion)
+	return b.ethereumChainConfig.Validate(logging.GetTestLogger(nil), &b.ethereumVersion, &b.executionLayer, b.customDockerImages)
 }
 
 func (b *EthereumNetworkBuilder) validateCustomDockerImages() error {
@@ -281,7 +283,7 @@ func (b *EthereumNetworkBuilder) validateCustomDockerImages() error {
 				return fmt.Errorf("docker image %s is not supported, due to: %s", image, reason)
 			}
 
-			executionLayer, err := GetExecutionLayerFromDockerImage(image)
+			executionLayer, err := ethereum.GetExecutionLayerFromDockerImage(image)
 			if err != nil {
 				return err
 			}
@@ -338,7 +340,7 @@ func (b *EthereumNetworkBuilder) setExecutionLayerBasedOnCustomDocker() error {
 	if b.executionLayer == "" && len(b.customDockerImages) > 0 {
 		if image, ok := b.customDockerImages[config.ContainerType_ExecutionLayer]; ok {
 			var err error
-			b.executionLayer, err = GetExecutionLayerFromDockerImage(image)
+			b.executionLayer, err = ethereum.GetExecutionLayerFromDockerImage(image)
 			if err != nil {
 				return err
 			}
@@ -425,7 +427,31 @@ func (en *EthereumNetwork) startEth2() (blockchain.EVMNetwork, RpcProvider, erro
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to create docker networks")
 	}
-	generatedDataHostDir, valKeysDir, err := en.generateGenesisAndFoldersIfNeeded()
+
+	executionLayerImage := en.getImageOverride(config.ContainerType_ExecutionLayer)
+	if executionLayerImage == "" {
+		switch *en.ExecutionLayer {
+		case types.ExecutionLayer_Besu:
+			executionLayerImage = ethereum.DefaultBesuEth2Image
+		case types.ExecutionLayer_Geth:
+			executionLayerImage = ethereum.DefaultGethEth2Image
+		case types.ExecutionLayer_Nethermind:
+			executionLayerImage = ethereum.DefaultNethermindEth2Image
+		case types.ExecutionLayer_Erigon:
+			executionLayerImage = ethereum.DefaultErigonEth2Image
+		case types.ExecutionLayer_Reth:
+			executionLayerImage = ethereum.DefaultRethEth2Image
+		default:
+			return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf(MsgUnsupportedExecutionLayer, *en.ExecutionLayer)
+		}
+	}
+
+	baseEthereumFork, err := ethereum.GetLastSupportedForkForEthereumClient(executionLayerImage)
+	if err != nil {
+		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to get last supported fork for Ethereum client")
+	}
+
+	generatedDataHostDir, generatedDataContainerDir, valKeysDir, err := en.generateGenesisAndFoldersIfNeeded(baseEthereumFork)
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to prepare genesis")
 	}
@@ -436,19 +462,19 @@ func (en *EthereumNetwork) startEth2() (blockchain.EVMNetwork, RpcProvider, erro
 	var client ExecutionClient
 	var clientErr error
 	switch *en.ExecutionLayer {
-	case config.ExecutionLayer_Geth:
-		client, clientErr = NewGethEth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, config.ConsensusLayer_Prysm, opts...)
-	case config.ExecutionLayer_Nethermind:
-		client, clientErr = NewNethermindEth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, config.ConsensusLayer_Prysm, opts...)
+	case types.ExecutionLayer_Geth:
+		client, clientErr = NewGethEth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, generatedDataContainerDir, config.ConsensusLayer_Prysm, opts...)
+	case types.ExecutionLayer_Nethermind:
+		client, clientErr = NewNethermindEth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, generatedDataContainerDir, config.ConsensusLayer_Prysm, opts...)
 		chainReadyWaitTime = chainReadyWaitTime * 2
-	case config.ExecutionLayer_Erigon:
-		client, clientErr = NewErigonEth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, config.ConsensusLayer_Prysm, opts...)
+	case types.ExecutionLayer_Erigon:
+		client, clientErr = NewErigonEth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, generatedDataContainerDir, config.ConsensusLayer_Prysm, opts...)
 		chainReadyWaitTime = chainReadyWaitTime * 2
-	case config.ExecutionLayer_Besu:
-		client, clientErr = NewBesuEth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, config.ConsensusLayer_Prysm, opts...)
+	case types.ExecutionLayer_Besu:
+		client, clientErr = NewBesuEth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, generatedDataContainerDir, config.ConsensusLayer_Prysm, opts...)
 		chainReadyWaitTime = chainReadyWaitTime * 2
-	case config.ExecutionLayer_Reth:
-		client, clientErr = NewRethEth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, config.ConsensusLayer_Prysm, opts...)
+	case types.ExecutionLayer_Reth:
+		client, clientErr = NewRethEth2(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, generatedDataContainerDir, config.ConsensusLayer_Prysm, opts...)
 	default:
 		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf(MsgUnsupportedExecutionLayer, *en.ExecutionLayer)
 	}
@@ -464,7 +490,7 @@ func (en *EthereumNetwork) startEth2() (blockchain.EVMNetwork, RpcProvider, erro
 		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to start %s execution client", *en.ExecutionLayer)
 	}
 
-	beacon, err := NewPrysmBeaconChain(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, client.GetInternalExecutionURL(), append(en.getImageOverride(config.ContainerType_ValKeysGenerator), en.setExistingContainerName(config.ContainerType_ConsensusLayer))...)
+	beacon, err := NewPrysmBeaconChain(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, generatedDataContainerDir, client.GetInternalExecutionURL(), baseEthereumFork, append(en.getImageOverrideOpts(config.ContainerType_ValKeysGenerator), en.setExistingContainerName(config.ContainerType_ConsensusLayer))...)
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to create beacon chain instance")
 	}
@@ -475,8 +501,8 @@ func (en *EthereumNetwork) startEth2() (blockchain.EVMNetwork, RpcProvider, erro
 		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to start beacon chain")
 	}
 
-	validator, err := NewPrysmValidator(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, valKeysDir, beacon.
-		InternalBeaconRpcProvider, append(en.getImageOverride(config.ContainerType_ValKeysGenerator), en.setExistingContainerName(config.ContainerType_ConsensusValidator))...)
+	validator, err := NewPrysmValidator(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, generatedDataContainerDir, valKeysDir, beacon.
+		InternalBeaconRpcProvider, baseEthereumFork, append(en.getImageOverrideOpts(config.ContainerType_ValKeysGenerator), en.setExistingContainerName(config.ContainerType_ConsensusValidator))...)
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to create validator instance")
 	}
@@ -557,15 +583,15 @@ func (en *EthereumNetwork) startEth1() (blockchain.EVMNetwork, RpcProvider, erro
 	var client ExecutionClient
 	var clientErr error
 	switch *en.ExecutionLayer {
-	case config.ExecutionLayer_Geth:
+	case types.ExecutionLayer_Geth:
 		client = NewGethEth1(dockerNetworks, en.EthereumChainConfig, opts...)
-	case config.ExecutionLayer_Besu:
+	case types.ExecutionLayer_Besu:
 		client, clientErr = NewBesuEth1(dockerNetworks, en.EthereumChainConfig, opts...)
-	case config.ExecutionLayer_Erigon:
+	case types.ExecutionLayer_Erigon:
 		client, clientErr = NewErigonEth1(dockerNetworks, en.EthereumChainConfig, opts...)
-	case config.ExecutionLayer_Nethermind:
+	case types.ExecutionLayer_Nethermind:
 		client, clientErr = NewNethermindEth1(dockerNetworks, en.EthereumChainConfig, opts...)
-	case config.ExecutionLayer_Reth:
+	case types.ExecutionLayer_Reth:
 		clientErr = errors.New(config.Eth1NotSupportedByRethMsg)
 	default:
 		return blockchain.EVMNetwork{}, RpcProvider{}, fmt.Errorf(MsgUnsupportedExecutionLayer, *en.ExecutionLayer)
@@ -615,7 +641,7 @@ func (en *EthereumNetwork) getOrCreateDockerNetworks() ([]string, error) {
 	return []string{network.Name}, nil
 }
 
-func (en *EthereumNetwork) generateGenesisAndFoldersIfNeeded() (generatedDataHostDir string, valKeysDir string, err error) {
+func (en *EthereumNetwork) generateGenesisAndFoldersIfNeeded(baseEthereumFork ethereum.Fork) (generatedDataHostDir, generatedDataContainerDir, valKeysDir string, err error) {
 	// create host directories and run genesis containers only if we are NOT recreating existing containers
 	if !en.isRecreated {
 		generatedDataHostDir, valKeysDir, err = createHostDirectories()
@@ -628,7 +654,7 @@ func (en *EthereumNetwork) generateGenesisAndFoldersIfNeeded() (generatedDataHos
 		}
 
 		var valKeysGenerator *ValKeysGenerator
-		valKeysGenerator, err = NewValKeysGeneretor(en.EthereumChainConfig, valKeysDir, en.getImageOverride(config.ContainerType_ValKeysGenerator)...)
+		valKeysGenerator, err = NewValKeysGeneretor(en.EthereumChainConfig, valKeysDir, en.getImageOverrideOpts(config.ContainerType_ValKeysGenerator)...)
 		if err != nil {
 			err = errors.Wrap(err, "failed to start val keys generator")
 			return
@@ -641,8 +667,8 @@ func (en *EthereumNetwork) generateGenesisAndFoldersIfNeeded() (generatedDataHos
 			return
 		}
 
-		var genesis *EthGenesisGeneretor
-		genesis, err = NewEthGenesisGenerator(*en.EthereumChainConfig, generatedDataHostDir, en.getImageOverride(config.ContainerType_GenesisGenerator)...)
+		var genesis *EthGenesisGenerator
+		genesis, err = NewEthGenesisGenerator(*en.EthereumChainConfig, generatedDataHostDir, baseEthereumFork, en.getImageOverrideOpts(config.ContainerType_GenesisGenerator)...)
 		if err != nil {
 			err = errors.Wrap(err, "failed to start genesis generator")
 			return
@@ -655,7 +681,9 @@ func (en *EthereumNetwork) generateGenesisAndFoldersIfNeeded() (generatedDataHos
 			return
 		}
 
-		initHelper := NewInitHelper(*en.EthereumChainConfig, generatedDataHostDir).WithTestInstance(en.t)
+		generatedDataContainerDir = genesis.GetGeneratedDataContainerDir()
+
+		initHelper := NewInitHelper(*en.EthereumChainConfig, generatedDataHostDir, generatedDataContainerDir).WithTestInstance(en.t)
 		err = initHelper.StartContainer()
 		if err != nil {
 			err = errors.Wrap(err, "failed to start init helper")
@@ -685,7 +713,7 @@ func (en *EthereumNetwork) getFinalEvmNetworkConfig(net blockchain.EVMNetwork) b
 	net.FinalityTag = true
 	net.FinalityDepth = 0
 
-	if *en.ExecutionLayer == config.ExecutionLayer_Besu {
+	if *en.ExecutionLayer == types.ExecutionLayer_Besu {
 		// Besu doesn't support "eth_maxPriorityFeePerGas" https://github.com/hyperledger/besu/issues/5658
 		// And if gas is too low, then transaction doesn't get to prioritized pool and is not a candidate for inclusion in the next block
 		net.GasEstimationBuffer = 10_000_000_000
@@ -715,12 +743,19 @@ func (en *EthereumNetwork) setExistingContainerName(ct config.ContainerType) Env
 	return func(c *EnvComponent) {}
 }
 
-func (en *EthereumNetwork) getImageOverride(ct config.ContainerType) []EnvComponentOption {
-	options := []EnvComponentOption{}
-	if image, ok := en.CustomDockerImages[ct]; ok {
+func (en *EthereumNetwork) getImageOverrideOpts(ct config.ContainerType) []EnvComponentOption {
+	var options []EnvComponentOption
+	if image := en.getImageOverride(ct); image != "" {
 		options = append(options, WithContainerImageWithVersion(image))
 	}
 	return options
+}
+
+func (en *EthereumNetwork) getImageOverride(ct config.ContainerType) string {
+	if image, ok := en.CustomDockerImages[ct]; ok {
+		return image
+	}
+	return ""
 }
 
 func (en *EthereumNetwork) Save() error {
@@ -738,7 +773,7 @@ func (en *EthereumNetwork) Save() error {
 
 func (en *EthereumNetwork) getExecutionLayerEnvComponentOpts() []EnvComponentOption {
 	opts := []EnvComponentOption{}
-	opts = append(opts, en.getImageOverride(config.ContainerType_ExecutionLayer)...)
+	opts = append(opts, en.getImageOverrideOpts(config.ContainerType_ExecutionLayer)...)
 	opts = append(opts, en.setExistingContainerName(config.ContainerType_ExecutionLayer))
 	opts = append(opts, WithLogStream(en.ls))
 

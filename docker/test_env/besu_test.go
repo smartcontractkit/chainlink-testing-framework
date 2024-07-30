@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/config/types"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 
@@ -20,7 +22,7 @@ func TestBesuEth1(t *testing.T) {
 	cfg, err := builder.
 		//nolint:staticcheck //ignore SA1019
 		WithEthereumVersion(config.EthereumVersion_Eth1_Legacy).
-		WithExecutionLayer(config.ExecutionLayer_Besu).
+		WithExecutionLayer(types.ExecutionLayer_Besu).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 
@@ -38,15 +40,14 @@ func TestBesuEth1(t *testing.T) {
 	require.NoError(t, err, "Couldn't close the client")
 }
 
-func TestBesuEth2(t *testing.T) {
+func TestBesuEth2_Deneb(t *testing.T) {
 	l := logging.GetTestLogger(t)
 
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		//nolint:staticcheck //ignore SA1019
-		WithEthereumVersion(config.EthereumVersion_Eth2_Legacy).
+		WithCustomDockerImages(map[config.ContainerType]string{config.ContainerType_ExecutionLayer: "hyperledger/besu:24.1.0"}).
 		WithConsensusLayer(config.ConsensusLayer_Prysm).
-		WithExecutionLayer(config.ExecutionLayer_Besu).
+		WithExecutionLayer(types.ExecutionLayer_Besu).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 
@@ -76,5 +77,38 @@ func TestBesuEth2(t *testing.T) {
 	_, err = blockchain.ConnectEVMClient(eip1559Network, l)
 	require.Error(t, err, "Could not connect to Besu")
 	require.Contains(t, err.Error(), "Method not found", "Besu should not work EIP-1559 yet")
+}
 
+func TestBesuEth2_Shanghai(t *testing.T) {
+	l := logging.GetTestLogger(t)
+
+	chainConfig := config.GetDefaultChainConfig()
+	chainConfig.HardForkEpochs = map[string]int{"Deneb": 500}
+
+	builder := NewEthereumNetworkBuilder()
+	cfg, err := builder.
+		WithCustomDockerImages(map[config.ContainerType]string{config.ContainerType_ExecutionLayer: "hyperledger/besu:23.10"}).
+		WithExecutionLayer(types.ExecutionLayer_Besu).
+		WithEthereumChainConfig(chainConfig).
+		Build()
+	require.NoError(t, err, "Builder validation failed")
+
+	_, eth2, err := cfg.Start()
+	require.NoError(t, err, "Couldn't start PoS network")
+
+	nonEip1559Network := blockchain.SimulatedEVMNetwork
+	nonEip1559Network.Name = "Simulated Besu + Prysm (non-EIP 1559)"
+	nonEip1559Network.GasEstimationBuffer = 10_000_000_000
+	nonEip1559Network.URLs = eth2.PublicWsUrls()
+	clientOne, err := blockchain.ConnectEVMClient(nonEip1559Network, l)
+	require.NoError(t, err, "Couldn't connect to the evm client")
+
+	t.Cleanup(func() {
+		err = clientOne.Close()
+		require.NoError(t, err, "Couldn't close the client")
+	})
+
+	address := common.HexToAddress("0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1")
+	err = sendAndCompareBalances(testcontext.Get(t), clientOne, address)
+	require.NoError(t, err, fmt.Sprintf("balance wasn't correctly updated for %s network", nonEip1559Network.Name))
 }

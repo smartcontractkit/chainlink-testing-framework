@@ -15,6 +15,7 @@ import (
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
+	"github.com/smartcontractkit/chainlink-testing-framework/docker/ethereum"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/templates"
@@ -22,7 +23,7 @@ import (
 
 // NewErigonEth1 starts a new Erigon Eth1 node running in Docker
 func NewErigonEth1(networks []string, chainConfig *config.EthereumChainConfig, opts ...EnvComponentOption) (*Erigon, error) {
-	parts := strings.Split(defaultErigonEth1Image, ":")
+	parts := strings.Split(ethereum.DefaultErigonEth1Image, ":")
 	g := &Erigon{
 		EnvComponent: EnvComponent{
 			ContainerName:    fmt.Sprintf("%s-%s", "erigon-eth1", uuid.NewString()[0:8]),

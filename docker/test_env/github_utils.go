@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/client"
+	"github.com/smartcontractkit/chainlink-testing-framework/docker/ethereum"
 )
 
 const AUTOMATIC_LATEST_TAG = "latest_available"
@@ -18,7 +19,7 @@ func FetchLatestEthereumClientDockerImageVersionIfNeed(dockerImageWithVersion st
 		return "", fmt.Errorf("expected correctly formatted docker image, but got '%s'", dockerImageWithVersion)
 	}
 
-	ghRepo, err := GetGithubRepositoryFromEthereumClientDockerImage(dockerImageWithVersion)
+	ghRepo, err := ethereum.GetGithubRepositoryFromEthereumClientDockerImage(dockerImageWithVersion)
 	if err != nil {
 		return "", err
 	}

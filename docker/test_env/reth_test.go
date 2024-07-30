@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/config/types"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 
@@ -17,7 +19,7 @@ func TestRethEth1(t *testing.T) {
 	builder := NewEthereumNetworkBuilder()
 	_, err := builder.
 		WithEthereumVersion(config.EthereumVersion_Eth1).
-		WithExecutionLayer(config.ExecutionLayer_Reth).
+		WithExecutionLayer(types.ExecutionLayer_Reth).
 		Build()
 	require.Error(t, err, "Builder validation failed")
 	require.Contains(t, err.Error(), config.Eth1NotSupportedByRethMsg)
@@ -29,7 +31,7 @@ func TestRethEth2(t *testing.T) {
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
 		WithEthereumVersion(config.EthereumVersion_Eth2).
-		WithExecutionLayer(config.ExecutionLayer_Reth).
+		WithExecutionLayer(types.ExecutionLayer_Reth).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 

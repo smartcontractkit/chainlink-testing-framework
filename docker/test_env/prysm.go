@@ -15,6 +15,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
+	"github.com/smartcontractkit/chainlink-testing-framework/docker/ethereum"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
@@ -23,10 +24,17 @@ import (
 const (
 	PRYSM_QUERY_RPC_PORT = "3500"
 	PRYSM_NODE_RPC_PORT  = "4000"
-
-	defaultPrysmBeaconChainImage = "gcr.io/prysmaticlabs/prysm/beacon-chain:v5.0.4"
-	defaultPyrsmValidatorImage   = "gcr.io/prysmaticlabs/prysm/validator:v5.0.4"
 )
+
+var beaconForkToImageMap = map[ethereum.Fork]string{
+	ethereum.EthereumFork_Shanghai: "gcr.io/prysmaticlabs/prysm/beacon-chain:v4.1.1",
+	ethereum.EthereumFork_Deneb:    "gcr.io/prysmaticlabs/prysm/beacon-chain:v5.0.4",
+}
+
+var validatorForkToImageMap = map[ethereum.Fork]string{
+	ethereum.EthereumFork_Shanghai: "gcr.io/prysmaticlabs/prysm/validator:v4.1.1",
+	ethereum.EthereumFork_Deneb:    "gcr.io/prysmaticlabs/prysm/validator:v5.0.4",
+}
 
 type PrysmBeaconChain struct {
 	EnvComponent
@@ -34,15 +42,19 @@ type PrysmBeaconChain struct {
 	InternalQueryRpcUrl       string
 	ExternalBeaconRpcProvider string
 	ExternalQueryRpcUrl       string
-	generatedDataHostDir      string
 	gethInternalExecutionURL  string
 	chainConfig               *config.EthereumChainConfig
 	l                         zerolog.Logger
 	t                         *testing.T
+	posContainerSettings
 }
 
-func NewPrysmBeaconChain(networks []string, chainConfig *config.EthereumChainConfig, customConfigDataDir, gethExecutionURL string, opts ...EnvComponentOption) (*PrysmBeaconChain, error) {
-	parts := strings.Split(defaultPrysmBeaconChainImage, ":")
+func NewPrysmBeaconChain(networks []string, chainConfig *config.EthereumChainConfig, generatedDataHostDir, generatedDataContainerDir, gethExecutionURL string, baseEthereumFork ethereum.Fork, opts ...EnvComponentOption) (*PrysmBeaconChain, error) {
+	prysmBeaconChainImage, ok := beaconForkToImageMap[baseEthereumFork]
+	if !ok {
+		return nil, fmt.Errorf("unknown fork: %s", baseEthereumFork)
+	}
+	parts := strings.Split(prysmBeaconChainImage, ":")
 	g := &PrysmBeaconChain{
 		EnvComponent: EnvComponent{
 			ContainerName:    fmt.Sprintf("%s-%s", "prysm-beacon-chain", uuid.NewString()[0:8]),
@@ -52,7 +64,7 @@ func NewPrysmBeaconChain(networks []string, chainConfig *config.EthereumChainCon
 			StartupTimeout:   2 * time.Minute,
 		},
 		chainConfig:              chainConfig,
-		generatedDataHostDir:     customConfigDataDir,
+		posContainerSettings:     posContainerSettings{generatedDataHostDir: generatedDataHostDir, generatedDataContainerDir: generatedDataContainerDir},
 		gethInternalExecutionURL: gethExecutionURL,
 		l:                        logging.GetTestLogger(nil),
 	}
@@ -133,15 +145,15 @@ func (g *PrysmBeaconChain) getContainerRequest(networks []string) (*tc.Container
 		Cmd: []string{
 			"--accept-terms-of-use",
 			"--datadir=/consensus-data",
-			fmt.Sprintf("--chain-config-file=%s/config.yaml", GENERATED_DATA_DIR_INSIDE_CONTAINER),
-			fmt.Sprintf("--genesis-state=%s/genesis.ssz", GENERATED_DATA_DIR_INSIDE_CONTAINER),
+			fmt.Sprintf("--chain-config-file=%s/config.yaml", g.generatedDataContainerDir),
+			fmt.Sprintf("--genesis-state=%s/genesis.ssz", g.generatedDataContainerDir),
 			fmt.Sprintf("--execution-endpoint=%s", g.gethInternalExecutionURL),
 			"--rpc-host=0.0.0.0",
 			"--grpc-gateway-host=0.0.0.0",
 			"--grpc-gateway-corsdomain=*",
 			"--suggested-fee-recipient=0x8943545177806ED17B9F23F0a21ee5948eCaa776",
 			"--subscribe-all-subnets=true",
-			fmt.Sprintf("--jwt-secret=%s", JWT_SECRET_FILE_LOCATION_INSIDE_CONTAINER),
+			fmt.Sprintf("--jwt-secret=%s", getJWTSecretFileLocationInsideContainer(g.generatedDataContainerDir)),
 			// mine, modify when running multi-node
 			"--minimum-peers-per-subnet=0",
 			"--min-sync-peers=0",
@@ -152,7 +164,7 @@ func (g *PrysmBeaconChain) getContainerRequest(networks []string) (*tc.Container
 			hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
 				Type:     mount.TypeBind,
 				Source:   g.generatedDataHostDir,
-				Target:   GENERATED_DATA_DIR_INSIDE_CONTAINER,
+				Target:   g.generatedDataContainerDir,
 				ReadOnly: false,
 			})
 		},
@@ -170,13 +182,17 @@ type PrysmValidator struct {
 	chainConfig               *config.EthereumChainConfig
 	internalBeaconRpcProvider string
 	valKeysDir                string
-	generatedDataHostDir      string
 	l                         zerolog.Logger
 	t                         *testing.T
+	posContainerSettings
 }
 
-func NewPrysmValidator(networks []string, chainConfig *config.EthereumChainConfig, generatedDataHostDir, valKeysDir, internalBeaconRpcProvider string, opts ...EnvComponentOption) (*PrysmValidator, error) {
-	parts := strings.Split(defaultPyrsmValidatorImage, ":")
+func NewPrysmValidator(networks []string, chainConfig *config.EthereumChainConfig, generatedDataHostDir, generatedDataContainerDir, valKeysDir, internalBeaconRpcProvider string, baseEthereumFork ethereum.Fork, opts ...EnvComponentOption) (*PrysmValidator, error) {
+	pyrsmValidatorImage, ok := validatorForkToImageMap[baseEthereumFork]
+	if !ok {
+		return nil, fmt.Errorf("unknown fork: %s", baseEthereumFork)
+	}
+	parts := strings.Split(pyrsmValidatorImage, ":")
 	g := &PrysmValidator{
 		EnvComponent: EnvComponent{
 			ContainerName:    fmt.Sprintf("%s-%s", "prysm-validator", uuid.NewString()[0:8]),
@@ -185,7 +201,7 @@ func NewPrysmValidator(networks []string, chainConfig *config.EthereumChainConfi
 			ContainerVersion: parts[1],
 		},
 		chainConfig:               chainConfig,
-		generatedDataHostDir:      generatedDataHostDir,
+		posContainerSettings:      posContainerSettings{generatedDataHostDir: generatedDataHostDir, generatedDataContainerDir: generatedDataContainerDir},
 		valKeysDir:                valKeysDir,
 		internalBeaconRpcProvider: internalBeaconRpcProvider,
 		l:                         logging.GetTestLogger(nil),
@@ -243,12 +259,12 @@ func (g *PrysmValidator) getContainerRequest(networks []string) (*tc.ContainerRe
 		),
 		Cmd: []string{
 			"--accept-terms-of-use",
-			fmt.Sprintf("--chain-config-file=%s/config.yaml", GENERATED_DATA_DIR_INSIDE_CONTAINER),
+			fmt.Sprintf("--chain-config-file=%s/config.yaml", g.generatedDataContainerDir),
 			fmt.Sprintf("--beacon-rpc-provider=%s", g.internalBeaconRpcProvider),
 			"--datadir=/consensus-data",
 			"--suggested-fee-recipient=0x8943545177806ED17B9F23F0a21ee5948eCaa776",
 			fmt.Sprintf("--wallet-dir=%s/prysm", NODE_0_DIR_INSIDE_CONTAINER),
-			fmt.Sprintf("--wallet-password-file=%s", VALIDATOR_WALLET_PASSWORD_FILE_INSIDE_CONTAINER),
+			fmt.Sprintf("--wallet-password-file=%s", getValidatorWalletPasswordFileInsideContainer(g.generatedDataContainerDir)),
 		},
 		HostConfigModifier: func(hostConfig *container.HostConfig) {
 			hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
@@ -259,7 +275,7 @@ func (g *PrysmValidator) getContainerRequest(networks []string) (*tc.ContainerRe
 			}, mount.Mount{
 				Type:     mount.TypeBind,
 				Source:   g.generatedDataHostDir,
-				Target:   GENERATED_DATA_DIR_INSIDE_CONTAINER,
+				Target:   g.generatedDataContainerDir,
 				ReadOnly: false,
 			})
 		},
