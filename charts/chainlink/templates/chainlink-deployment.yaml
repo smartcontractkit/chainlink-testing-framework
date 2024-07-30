@@ -47,7 +47,7 @@ spec:
             {{- end }}
           {{- end }}
           image: {{ $image }}:{{ $tag }}
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           command: [ "/bin/bash" ]
           args:
             - "-c"
