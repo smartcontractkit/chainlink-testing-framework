@@ -6,7 +6,6 @@ SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 
 cd "$SCRIPT_DIR"/../ || exit 1
 
-# Check if any arguments are provided
 if [ $# -eq 0 ]; then
     echo "Usage: $0 <ecr-registry-url>"
     exit 1
@@ -31,11 +30,9 @@ check_image_in_ecr() {
     local docker_image="$1"
     local repository_name image_tag
 
-    # Extract the repository name and tag from the docker image string
     repository_name=$(echo "$docker_image" | cut -d: -f1)
     image_tag=$(echo "$docker_image" | cut -d: -f2)
 
-    # If the image tag is empty, it means the image name did not include a tag, and we'll use "latest" by default
     if [[ -z "$image_tag" ]]; then
         image_tag="latest"
     fi
@@ -53,13 +50,8 @@ pull_tag_push() {
     local docker_image=$1
     local ecr_image="$ECR_REGISTRY_URL/${docker_image}"
 
-    # Pull the image from Docker Hub
     docker pull "$docker_image"
-
-    # Tag the image for ECR
     docker tag "$docker_image" "$ecr_image"
-
-    # Push the image to ECR
     docker push "$ecr_image"
 }
 
@@ -88,10 +80,14 @@ push_latest_images_for_expression_from_dockerhub() {
     if [[ $image_name == gcr.io* ]]; then
         # Handle GCR images
         images=$(gcloud container images list-tags gcr.io/prysmaticlabs/prysm/validator --limit="${page_size}" --filter='tags:v*' --format=json | jq -r '.[].tags[]' | grep -E "${image_expression}")
+    elif [[ $image_name == ghcr.io* ]]; then
+        # Handle GitHub Container Registry images
+        images=$(fetch_images_from_gh_container_registry "${image_name}" "${image_expression}" "${page_size}")
     else
         images=$(fetch_images_from_dockerhub "${image_name}" "${image_expression}" "${page_size}")
     fi
     set -e
+
 
     if [ -z "$images" ]; then
         echo "No images were found matching the expression. Either something went wrong or you need to increase the page size to greater than ${page_size}."
@@ -136,27 +132,133 @@ fetch_images_from_dockerhub() {
     echo "$images"
 }
 
+# Function to fetch images from Github Container Registry with pagination support
+fetch_images_from_gh_container_registry() {
+        local image_name="$1"
+        local image_expression="$2"
+        local max_image_count="$3"
+
+        local org
+        local package
+
+        org=$(echo "$image_name" | awk -F'[/:]' '{print $2}')
+        package=$(echo "$image_name" | awk -F'[/:]' '{print $3}')
+
+        if [ -z "$org" ] || [ -z "$package" ]; then
+            >&2 echo "Error: Failed to extract organisation and package name from $image_name. Please provide the image name in the format ghcr.io/org/package."
+            exit 1
+        fi
+
+        if [ -z "$GHCR_TOKEN" ]; then
+            >&2 echo "Error: $GHCR_TOKEN environment variable is not set."
+            exit 1
+        else
+            >&2 echo "::debug::GHCR_TOKEN is set"
+        fi
+
+        local url="https://api.github.com/orgs/$org/packages?package_type=container"
+        >&2 echo "::debug::url: $url"
+
+        local image_count=0
+        local images=""
+
+        while [ -n "$url" ]; do
+            response=$(curl -s -H "Authorization: Bearer $GHCR_TOKEN" \
+                              -H "Accept: application/vnd.github.v3+json" \
+                              "$url")
+
+             >&2 echo "::debug::response: $response"
+
+            if ! echo "$response" | jq empty > /dev/null 2>&1; then
+                 >&2 echo "Error: Received invalid JSON response."
+                exit 1
+            fi
+
+            if echo "$response" | jq -e 'if type == "object" then (has("message") or has("status")) else false end' > /dev/null; then
+                message=$(echo "$response" | jq -r '.message // empty')
+                status=$(echo "$response" | jq -r '.status // empty')
+
+                if [ -n "$status" ] && [ "$status" -eq "$status" ] 2>/dev/null && [ "$status" -gt 299 ]; then
+                     >&2 echo "Error: Request to get containers failed with status $status and message: $message"
+                    exit 1
+                fi
+            fi
+
+            packages=$(echo "$response" | jq -r --arg package "$package" '.[] | select(.name == $package) | .name')
+
+            if [ -z "$packages" ]; then
+                 >&2 echo "Error: No matching packages found."
+                exit 1
+            fi
+
+            for package in $packages; do
+                versions_url="https://api.github.com/orgs/$org/packages/container/$package/versions"
+                while [ -n "$versions_url" ]; do
+                    versions_response=$(curl -s -H "Authorization: token $GHCR_TOKEN" \
+                                             -H "Accept: application/vnd.github.v3+json" \
+                                             "$versions_url")
+
+                    if ! echo "$versions_response" | jq empty > /dev/null 2>&1; then
+                         >&2 echo "Error: Received invalid JSON response for versions."
+                        exit 1
+                    fi
+
+                    tags=$(echo "$versions_response" | jq -r --arg regex "$image_expression" '
+                        .[] |
+                        select(.metadata.container.tags | length > 0) |
+                        .metadata.container.tags[] as $tag |
+                        select($tag | test($regex)) |
+                        $tag
+                    ')
+
+                    while read -r tag; do
+                        if [ "$image_count" -lt "$max_image_count" ]; then
+                            images+="$tag"$'\n'
+                            ((image_count++))
+                        else
+                            break 2
+                        fi
+                    done <<< "$tags"
+
+                    if [ "$image_count" -ge "$max_image_count" ]; then
+                        images=$(echo "$images" | grep -v '^\s*$')
+                        echo "$images"
+                        return
+                    fi
+
+                    versions_url=$(curl -sI -H "Authorization: token $GHCR_TOKEN" \
+                                            -H "Accept: application/vnd.github.v3+json" \
+                                            "$versions_url" | awk -F'[<>]' '/rel="next"/{print $2}')
+                done
+            done
+
+            url=$(curl -sI -H "Authorization: token $GHCR_TOKEN" \
+                        -H "Accept: application/vnd.github.v3+json" \
+                        "$url" | awk -F'[<>]' '/rel="next"/{print $2}')
+        done
+
+        images=$(echo "$images" | grep -v '^\s*$')
+        echo "$images"
+}
+
 push_images_in_list() {
     local -a image_list=("$@")
     local prefix="library/"
-    # Iterate over the images
+
     for docker_image in "${image_list[@]}"; do
         echo "---"
         echo "Checking if $docker_image exists in ECR..."
 
-        # Check if the image is a standard library image and needs the library/ prefix removed
         docker_image="${docker_image#"$prefix"}"
 
-        # Check if the image exists in ECR
         if ! check_image_in_ecr "$docker_image"; then
             echo "$docker_image does not exist in ECR. Mirroring image..."
-            # Pull, tag, and push the image to ECR
+
             pull_tag_push "$docker_image"
         else
             echo "$docker_image already exists in ECR. Skipping..."
         fi
     done
-
 }
 
 # Run the code

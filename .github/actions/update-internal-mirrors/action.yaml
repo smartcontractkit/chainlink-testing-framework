@@ -19,6 +19,10 @@ inputs:
     description: 'Number of tags to return per page'
     required: false
     default: '100'
+  github_token:
+    description: 'Token to use for GitHub API, in most cases github.token'
+    required: true
+
 runs:
   using: 'composite'
   steps:
@@ -38,6 +42,8 @@ runs:
         AWS_REGION: ${{ inputs.aws_region }}
     - name: Update images
       shell: bash
+      env:
+        GHCR_TOKEN: ${{ inputs.github_token }}
       run: |
         # Update images
         # Change to the directory where the action is stored
