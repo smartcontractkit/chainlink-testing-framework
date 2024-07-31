@@ -42,6 +42,8 @@ jobs:
             expression: '^v[0-9]+\.[0-9]+\.[0-9]+$'
           - name: nethermind/nethermind
             expression: '^[0-9]+\.[0-9]+\.[0-9]+$'
+          - name: ghcr.io/paradigmxyz/reth
+            expression: '^v[0-9]+\.[0-9]+\.[0-9]+$'
           - name: wiremock/wiremock
             expression: '^[0-9]+\.[0-9]+\.[0-9]+$'
           # disabled until gcloud auth is added
@@ -51,15 +53,16 @@ jobs:
           #   expression: '^v[0-9]+\.[0-9]+\.[0-9]+$'
           - name: tofelb/ethereum-genesis-generator
             expression: '^[0-9]+\.[0-9]+\.[0-9]+(\-slots\-per\-epoch)?'
-          # This one only has latest tag, probably only want to update it when we know for sure it's a new version we want
-          #  - name: protolambda/eth2-val-tools
-          #   expression: 'latest'
+    # This one only has latest tag, probably only want to update it when we know for sure it's a new version we want
+    #  - name: protolambda/eth2-val-tools
+    #   expression: 'latest'
     permissions:
       id-token: write
       contents: read
+      packages: read
     steps:
       - name: Update image
-        uses: smartcontractkit/chainlink-testing-framework/.github/actions/update-internal-mirrors@9190fa16db15bbb7caa5595b347c51acdda9eb3a
+        uses: smartcontractkit/chainlink-testing-framework/.github/actions/update-internal-mirrors@e7e2434b9616f4e984fa57024ce43f6a9f26688f
         with:
           aws_region: ${{ secrets.QA_AWS_REGION }}
           role_to_assume: ${{ secrets.QA_AWS_ROLE_TO_ASSUME }}
@@ -67,6 +70,7 @@ jobs:
           image_name: ${{matrix.mirror.name}}
           expression: ${{matrix.mirror.expression}}
           page_size: ${{matrix.mirror.page_size}}
+          github_token: ${{ secrets.RETH_GH_TOKEN }} # needed only for checking GHRC.io repositories
 
   update-other-images:
     runs-on: ubuntu-latest
@@ -76,7 +80,7 @@ jobs:
       contents: read
     steps:
       - name: Update other images
-        uses: smartcontractkit/chainlink-testing-framework/.github/actions/update-internal-mirrors@9190fa16db15bbb7caa5595b347c51acdda9eb3a
+        uses: smartcontractkit/chainlink-testing-framework/.github/actions/update-internal-mirrors@e7e2434b9616f4e984fa57024ce43f6a9f26688f
         with:
           aws_region: ${{ secrets.QA_AWS_REGION }}
           role_to_assume: ${{ secrets.QA_AWS_ROLE_TO_ASSUME }}
