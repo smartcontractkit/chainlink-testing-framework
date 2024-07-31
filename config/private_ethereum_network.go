@@ -281,10 +281,6 @@ func (c *EthereumChainConfig) Validate(l zerolog.Logger, ethereumVersion *Ethere
 }
 
 func (c *EthereumChainConfig) ValidateHardForks(l zerolog.Logger, ethereumVersion *EthereumVersion, executionLayer *types.ExecutionLayer, customDockerImages map[ContainerType]string) error {
-	if len(c.HardForkEpochs) == 0 {
-		return nil
-	}
-
 	if ethereumVersion == nil || (*ethereumVersion == EthereumVersion_Eth1_Legacy || *ethereumVersion == EthereumVersion_Eth1) {
 		return nil
 	}
@@ -340,6 +336,12 @@ func (c *EthereumChainConfig) ValidateHardForks(l zerolog.Logger, ethereumVersio
 		if !isValid {
 			l.Debug().Msgf("Fork %s is not supported. Removed it from configuration", fork)
 		}
+	}
+
+	// at the same time for Shanghai-based forks we need to add Deneb to the list if it's not there, so that genesis is valid
+	if _, ok := c.HardForkEpochs[string(ethereum.EthereumFork_Deneb)]; !ok && baseEthereumFork == ethereum.EthereumFork_Shanghai {
+		l.Debug().Msg("Adding Deneb to fork setup, because it's required, but was missing from the configuration. It's scheduled for epoch 1000")
+		validForks[string(ethereum.EthereumFork_Deneb)] = 1000
 	}
 
 	c.HardForkEpochs = validForks

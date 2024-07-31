@@ -102,6 +102,36 @@ func TestGethEth2_Deneb(t *testing.T) {
 	require.NoError(t, err, fmt.Sprintf("balance wasn't correctly updated for %s network", eip1559Network.Name))
 }
 
+func TestGethEth2_Shanghai_No_Fork_Setup(t *testing.T) {
+	l := logging.GetTestLogger(t)
+
+	builder := NewEthereumNetworkBuilder()
+	cfg, err := builder.
+		WithCustomDockerImages(map[config.ContainerType]string{config.ContainerType_ExecutionLayer: "ethereum/client-go:v1.13.11"}).
+		WithExecutionLayer(types.ExecutionLayer_Geth).
+		Build()
+	require.NoError(t, err, "Builder validation failed")
+
+	_, eth2, err := cfg.Start()
+	require.NoError(t, err, "Couldn't start PoS network")
+
+	nonEip1559Network := blockchain.SimulatedEVMNetwork
+	nonEip1559Network.Name = "Simulated Geth + Prysm (non-EIP 1559)"
+	nonEip1559Network.URLs = eth2.PublicWsUrls()
+	clientOne, err := blockchain.ConnectEVMClient(nonEip1559Network, l)
+	require.NoError(t, err, "Couldn't connect to the evm client")
+
+	t.Cleanup(func() {
+		err = clientOne.Close()
+		require.NoError(t, err, "Couldn't close the client")
+	})
+
+	ctx := testcontext.Get(t)
+	address := common.HexToAddress("0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1")
+	err = sendAndCompareBalances(ctx, clientOne, address)
+	require.NoError(t, err, fmt.Sprintf("balance wasn't correctly updated for %s network", nonEip1559Network.Name))
+}
+
 func TestGethEth2_Shanghai(t *testing.T) {
 	l := logging.GetTestLogger(t)
 
