@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	config_types "github.com/smartcontractkit/chainlink-testing-framework/config/types"
+
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/google/uuid"
@@ -32,7 +34,7 @@ func NewBesuEth1(networks []string, chainConfig *config.EthereumChainConfig, opt
 		},
 		chainConfig:     chainConfig,
 		l:               logging.GetTestLogger(nil),
-		ethereumVersion: config.EthereumVersion_Eth1,
+		ethereumVersion: config_types.EthereumVersion_Eth1,
 	}
 	g.SetDefaultHooks()
 	for _, opt := range opts {

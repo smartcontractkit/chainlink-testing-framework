@@ -127,7 +127,7 @@ func (g *PrysmBeaconChain) StartContainer() error {
 }
 
 func (g *PrysmBeaconChain) getContainerRequest(networks []string) (*tc.ContainerRequest, error) {
-	timeout := g.chainConfig.GetDefaultWaitDuration()
+	timeout := g.chainConfig.DefaultWaitDuration()
 	if g.StartupTimeout < timeout {
 		timeout = g.StartupTimeout
 	}
@@ -254,7 +254,7 @@ func (g *PrysmValidator) getContainerRequest(networks []string) (*tc.ContainerRe
 		ImagePlatform: "linux/x86_64",
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForLog("Beacon chain started").
-				WithStartupTimeout(g.chainConfig.GetDefaultWaitDuration()).
+				WithStartupTimeout(g.chainConfig.DefaultWaitDuration()).
 				WithPollInterval(2 * time.Second),
 		),
 		Cmd: []string{

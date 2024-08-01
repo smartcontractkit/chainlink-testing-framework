@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/config/types"
+	config_types "github.com/smartcontractkit/chainlink-testing-framework/config/types"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
@@ -21,8 +21,8 @@ func TestErigonEth1(t *testing.T) {
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
 		//nolint:staticcheck //ignore SA1019
-		WithEthereumVersion(config.EthereumVersion_Eth1_Legacy).
-		WithExecutionLayer(types.ExecutionLayer_Erigon).
+		WithEthereumVersion(config_types.EthereumVersion_Eth1_Legacy).
+		WithExecutionLayer(config_types.ExecutionLayer_Erigon).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 
@@ -48,7 +48,7 @@ func TestErigonEth2_Deneb(t *testing.T) {
 		//nolint:staticcheck //ignore SA1019
 		WithCustomDockerImages(map[config.ContainerType]string{config.ContainerType_ExecutionLayer: "thorax/erigon:v2.59.0"}).
 		WithConsensusLayer(config.ConsensusLayer_Prysm).
-		WithExecutionLayer(types.ExecutionLayer_Erigon).
+		WithExecutionLayer(config_types.ExecutionLayer_Erigon).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 
@@ -90,13 +90,13 @@ func TestErigonEth2_Deneb(t *testing.T) {
 func TestErigonEth2_Shanghai(t *testing.T) {
 	l := logging.GetTestLogger(t)
 
-	chainConfig := config.GetDefaultChainConfig()
+	chainConfig := config.MustGetDefaultChainConfig()
 	chainConfig.HardForkEpochs = map[string]int{"Deneb": 500}
 
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
 		WithCustomDockerImages(map[config.ContainerType]string{config.ContainerType_ExecutionLayer: "thorax/erigon:v2.58.0"}).
-		WithExecutionLayer(types.ExecutionLayer_Erigon).
+		WithExecutionLayer(config_types.ExecutionLayer_Erigon).
 		WithEthereumChainConfig(chainConfig).
 		Build()
 	require.NoError(t, err, "Builder validation failed")

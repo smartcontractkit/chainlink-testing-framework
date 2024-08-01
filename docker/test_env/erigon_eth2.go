@@ -15,6 +15,7 @@ import (
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
+	config_types "github.com/smartcontractkit/chainlink-testing-framework/config/types"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker/ethereum"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
@@ -35,7 +36,7 @@ func NewErigonEth2(networks []string, chainConfig *config.EthereumChainConfig, g
 		posContainerSettings: posContainerSettings{generatedDataHostDir: generatedDataHostDir, generatedDataContainerDir: generatedDataContainerDir},
 		consensusLayer:       consensusLayer,
 		l:                    logging.GetTestLogger(nil),
-		ethereumVersion:      config.EthereumVersion_Eth2,
+		ethereumVersion:      config_types.EthereumVersion_Eth2,
 	}
 	g.SetDefaultHooks()
 	for _, opt := range opts {

@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/config/types"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
+	config_types "github.com/smartcontractkit/chainlink-testing-framework/config/types"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
@@ -21,8 +21,8 @@ func TestBesuEth1(t *testing.T) {
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
 		//nolint:staticcheck //ignore SA1019
-		WithEthereumVersion(config.EthereumVersion_Eth1_Legacy).
-		WithExecutionLayer(types.ExecutionLayer_Besu).
+		WithEthereumVersion(config_types.EthereumVersion_Eth1_Legacy).
+		WithExecutionLayer(config_types.ExecutionLayer_Besu).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 
@@ -47,7 +47,7 @@ func TestBesuEth2_Deneb(t *testing.T) {
 	cfg, err := builder.
 		WithCustomDockerImages(map[config.ContainerType]string{config.ContainerType_ExecutionLayer: "hyperledger/besu:24.1.0"}).
 		WithConsensusLayer(config.ConsensusLayer_Prysm).
-		WithExecutionLayer(types.ExecutionLayer_Besu).
+		WithExecutionLayer(config_types.ExecutionLayer_Besu).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 
@@ -82,13 +82,13 @@ func TestBesuEth2_Deneb(t *testing.T) {
 func TestBesuEth2_Shanghai(t *testing.T) {
 	l := logging.GetTestLogger(t)
 
-	chainConfig := config.GetDefaultChainConfig()
+	chainConfig := config.MustGetDefaultChainConfig()
 	chainConfig.HardForkEpochs = map[string]int{"Deneb": 500}
 
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
 		WithCustomDockerImages(map[config.ContainerType]string{config.ContainerType_ExecutionLayer: "hyperledger/besu:23.10"}).
-		WithExecutionLayer(types.ExecutionLayer_Besu).
+		WithExecutionLayer(config_types.ExecutionLayer_Besu).
 		WithEthereumChainConfig(chainConfig).
 		Build()
 	require.NoError(t, err, "Builder validation failed")

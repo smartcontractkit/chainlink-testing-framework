@@ -19,7 +19,7 @@ func FetchLatestEthereumClientDockerImageVersionIfNeed(dockerImageWithVersion st
 		return "", fmt.Errorf("expected correctly formatted docker image, but got '%s'", dockerImageWithVersion)
 	}
 
-	ghRepo, err := ethereum.GetGithubRepositoryFromEthereumClientDockerImage(dockerImageWithVersion)
+	ghRepo, err := ethereum.GithubRepositoryFromEthereumClientDockerImage(dockerImageWithVersion)
 	if err != nil {
 		return "", err
 	}

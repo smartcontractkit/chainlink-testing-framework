@@ -2,17 +2,11 @@ package test_env
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
-	"github.com/Masterminds/semver/v3"
 	"github.com/docker/go-connections/nat"
 	tc "github.com/testcontainers/testcontainers-go"
-
-	"github.com/smartcontractkit/chainlink-testing-framework/config"
-	"github.com/smartcontractkit/chainlink-testing-framework/config/types"
-	docker_utils "github.com/smartcontractkit/chainlink-testing-framework/utils/docker"
 )
 
 func NatPortFormat(port string) string {
@@ -53,40 +47,6 @@ func FormatHttpUrl(host string, port string) string {
 
 func FormatWsUrl(host string, port string) string {
 	return fmt.Sprintf("ws://%s:%s", host, port)
-}
-
-// GetEthereumVersionFromImage returns the consensus type based on the Docker image version
-func GetEthereumVersionFromImage(executionLayer types.ExecutionLayer, imageWithVersion string) (config.EthereumVersion, error) {
-	version, err := docker_utils.GetSemverFromImage(imageWithVersion)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse docker image and extract version: %s", imageWithVersion)
-	}
-
-	var constraint *semver.Constraints
-
-	switch executionLayer {
-	case types.ExecutionLayer_Geth:
-		constraint, err = semver.NewConstraint("<1.13.0")
-	case types.ExecutionLayer_Besu:
-		constraint, err = semver.NewConstraint("<23.1")
-	case types.ExecutionLayer_Erigon:
-		constraint, err = semver.NewConstraint("<v2.41.0")
-	case types.ExecutionLayer_Nethermind:
-		constraint, err = semver.NewConstraint("<1.17.0")
-	case types.ExecutionLayer_Reth:
-		return config.EthereumVersion_Eth2, nil
-	default:
-		return "", fmt.Errorf(MsgUnsupportedExecutionLayer, executionLayer)
-	}
-
-	if err != nil {
-		return "", errors.New("failed to parse semver constraint for comparison")
-	}
-
-	if constraint.Check(version) {
-		return config.EthereumVersion_Eth1, nil
-	}
-	return config.EthereumVersion_Eth2, nil
 }
 
 // UniqueStringSlice returns a deduplicated slice of strings

@@ -15,7 +15,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
-	"github.com/smartcontractkit/chainlink-testing-framework/config/types"
+	config_types "github.com/smartcontractkit/chainlink-testing-framework/config/types"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker/test_env"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 )
@@ -168,9 +168,9 @@ func startPrivateEthChainE(cmd *cobra.Command, args []string) error {
 	}
 
 	builder := test_env.NewEthereumNetworkBuilder()
-	builder = *builder.WithEthereumVersion(config.EthereumVersion(ethereumVersion)).
+	builder = *builder.WithEthereumVersion(config_types.EthereumVersion(ethereumVersion)).
 		WithConsensusLayer(consensusLayerToUse).
-		WithExecutionLayer(types.ExecutionLayer(executionLayer)).
+		WithExecutionLayer(config_types.ExecutionLayer(executionLayer)).
 		WithEthereumChainConfig(config.EthereumChainConfig{
 			ValidatorCount: 8,
 			SlotsPerEpoch:  2,

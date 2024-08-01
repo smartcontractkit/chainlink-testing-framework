@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	config_types "github.com/smartcontractkit/chainlink-testing-framework/config/types"
+
 	"github.com/Masterminds/semver/v3"
 	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
@@ -29,7 +31,7 @@ type Geth struct {
 	ExternalExecutionURL string
 	chainConfig          *config.EthereumChainConfig
 	consensusLayer       config.ConsensusLayer
-	ethereumVersion      config.EthereumVersion
+	ethereumVersion      config_types.EthereumVersion
 	l                    zerolog.Logger
 	t                    *testing.T
 	posContainerSettings
@@ -44,7 +46,7 @@ func (g *Geth) WithTestInstance(t *testing.T) ExecutionClient {
 func (g *Geth) StartContainer() (blockchain.EVMNetwork, error) {
 	var r *tc.ContainerRequest
 	var err error
-	if g.GetEthereumVersion() == config.EthereumVersion_Eth1 {
+	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		r, err = g.getEth1ContainerRequest()
 	} else {
 		r, err = g.getEth2ContainerRequest()
@@ -76,7 +78,7 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, error) {
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
-	if g.GetEthereumVersion() == config.EthereumVersion_Eth2 {
+	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth2 {
 		executionPort, err := ct.MappedPort(testcontext.Get(g.t), NatPort(ETH2_EXECUTION_PORT))
 		if err != nil {
 			return blockchain.EVMNetwork{}, err
@@ -92,7 +94,7 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, error) {
 	g.InternalWsUrl = FormatWsUrl(g.ContainerName, DEFAULT_EVM_NODE_WS_PORT)
 
 	networkConfig := blockchain.SimulatedEVMNetwork
-	if g.GetEthereumVersion() == config.EthereumVersion_Eth1 {
+	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		networkConfig.Name = fmt.Sprintf("Private Eth-1-PoA [geth %s]", g.ContainerVersion)
 	} else {
 		networkConfig.Name = fmt.Sprintf("Private Eth-2-PoS [geth %s] + %s", g.ContainerVersion, g.consensusLayer)
@@ -123,14 +125,14 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, error) {
 }
 
 func (g *Geth) GetInternalExecutionURL() string {
-	if g.GetEthereumVersion() == config.EthereumVersion_Eth1 {
+	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		panic("eth1 node doesn't have an execution URL")
 	}
 	return g.InternalExecutionURL
 }
 
 func (g *Geth) GetExternalExecutionURL() string {
-	if g.GetEthereumVersion() == config.EthereumVersion_Eth1 {
+	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		panic("eth1 node doesn't have an execution URL")
 	}
 	return g.ExternalExecutionURL
@@ -160,19 +162,19 @@ func (g *Geth) GetContainer() *tc.Container {
 	return &g.Container
 }
 
-func (g *Geth) GetEthereumVersion() config.EthereumVersion {
+func (g *Geth) GetEthereumVersion() config_types.EthereumVersion {
 	return g.ethereumVersion
 }
 
 func (g *Geth) GethConsensusMechanism() ConsensusMechanism {
-	if g.GetEthereumVersion() == config.EthereumVersion_Eth1 {
+	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		return ConsensusMechanism_PoA
 	}
 	return ConsensusMechanism_PoS
 }
 
 func (g *Geth) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error {
-	if g.GetEthereumVersion() == config.EthereumVersion_Eth1 {
+	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		return nil
 	}
 	waitForFirstBlock := tcwait.NewLogStrategy("Chain head was updated").WithPollInterval(1 * time.Second).WithStartupTimeout(waitTime)

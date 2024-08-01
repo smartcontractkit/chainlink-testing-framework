@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	config_types "github.com/smartcontractkit/chainlink-testing-framework/config/types"
+
 	"github.com/Masterminds/semver/v3"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
@@ -34,7 +36,7 @@ func NewBesuEth2(networks []string, chainConfig *config.EthereumChainConfig, gen
 		posContainerSettings: posContainerSettings{generatedDataHostDir: generatedDataHostDir, generatedDataContainerDir: generatedDataContainerDir},
 		consensusLayer:       consensusLayer,
 		l:                    logging.GetTestLogger(nil),
-		ethereumVersion:      config.EthereumVersion_Eth2,
+		ethereumVersion:      config_types.EthereumVersion_Eth2,
 	}
 	g.SetDefaultHooks()
 	for _, opt := range opts {

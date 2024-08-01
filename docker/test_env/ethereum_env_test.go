@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/config/types"
+	config_types "github.com/smartcontractkit/chainlink-testing-framework/config/types"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pelletier/go-toml/v2"
@@ -23,9 +23,9 @@ func TestEthEnvCustomConfig(t *testing.T) {
 
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WithEthereumVersion(config.EthereumVersion_Eth2).
+		WithEthereumVersion(config_types.EthereumVersion_Eth2).
 		WithConsensusLayer(config.ConsensusLayer_Prysm).
-		WithExecutionLayer(types.ExecutionLayer_Geth).
+		WithExecutionLayer(config_types.ExecutionLayer_Geth).
 		WithEthereumChainConfig(config.EthereumChainConfig{
 			SecondsPerSlot: 6,
 			SlotsPerEpoch:  2,
@@ -50,9 +50,9 @@ func TestEthEnvExtraFunding(t *testing.T) {
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
 		//nolint:staticcheck //ignore SA1019
-		WithEthereumVersion(config.EthereumVersion_Eth2_Legacy).
+		WithEthereumVersion(config_types.EthereumVersion_Eth2_Legacy).
 		WithConsensusLayer(config.ConsensusLayer_Prysm).
-		WithExecutionLayer(types.ExecutionLayer_Geth).
+		WithExecutionLayer(config_types.ExecutionLayer_Geth).
 		WithEthereumChainConfig(config.EthereumChainConfig{
 			AddressesToFund: []string{addressToFund},
 		}).
@@ -78,9 +78,9 @@ func TestEthEnvWithPrysmAndGethReuseConfig(t *testing.T) {
 
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WithEthereumVersion(config.EthereumVersion_Eth2).
+		WithEthereumVersion(config_types.EthereumVersion_Eth2).
 		WithConsensusLayer(config.ConsensusLayer_Prysm).
-		WithExecutionLayer(types.ExecutionLayer_Geth).
+		WithExecutionLayer(config_types.ExecutionLayer_Geth).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 
@@ -153,10 +153,10 @@ func TestEthEnvExecClientFromToml(t *testing.T) {
 		WithExistingConfig(tomlCfg).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
-	require.Equal(t, types.ExecutionLayer_Besu, *cfg.ExecutionLayer, "Execution layer should be Besu")
+	require.Equal(t, config_types.ExecutionLayer_Besu, *cfg.ExecutionLayer, "Execution layer should be Besu")
 	require.NotNil(t, cfg.ConsensusLayer, "Consensus layer should not be nil")
 	require.Equal(t, config.ConsensusLayer_Prysm, *cfg.ConsensusLayer, "Consensus layer should be Prysm")
-	require.Equal(t, config.EthereumVersion_Eth2, *cfg.EthereumVersion, "Ethereum Version should be Eth2")
+	require.Equal(t, config_types.EthereumVersion_Eth2, *cfg.EthereumVersion, "Ethereum Version should be Eth2")
 	require.NotNil(t, cfg.WaitForFinalization, "Wait for finalization should not be nil")
 	require.False(t, *cfg.WaitForFinalization, "Wait for finalization should be false")
 	require.Equal(t, 2, len(cfg.EthereumChainConfig.AddressesToFund), "Should have 2 addresses to fund")
@@ -201,7 +201,7 @@ func TestEthEnvCustomDockerImagesFromToml(t *testing.T) {
 		WithExistingConfig(tomlCfg).
 		Build()
 	require.Error(t, err, "Builder validation failed")
-	require.Contains(t, fmt.Sprintf(MsgUnsupportedDockerImage, "i-dont-exist"), err.Error(), "Error message is not correct")
+	require.Contains(t, fmt.Sprintf(config_types.MsgUnsupportedDockerImage, "i-dont-exist"), err.Error(), "Error message is not correct")
 }
 
 func TestEthNoLogLevelDefaultsToInfo(t *testing.T) {
@@ -309,9 +309,9 @@ func TestEthEnvCustomDockerNetworks(t *testing.T) {
 
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WithEthereumVersion(config.EthereumVersion_Eth2).
+		WithEthereumVersion(config_types.EthereumVersion_Eth2).
 		WithConsensusLayer(config.ConsensusLayer_Prysm).
-		WithExecutionLayer(types.ExecutionLayer_Geth).
+		WithExecutionLayer(config_types.ExecutionLayer_Geth).
 		WithDockerNetworks(networks).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
@@ -320,13 +320,13 @@ func TestEthEnvCustomDockerNetworks(t *testing.T) {
 
 func TestEthEnvValidHardForks(t *testing.T) {
 	t.Parallel()
-	chainConfig := config.GetDefaultChainConfig()
+	chainConfig := config.MustGetDefaultChainConfig()
 	chainConfig.HardForkEpochs = map[string]int{"Deneb": 500}
 
 	builder := NewEthereumNetworkBuilder()
 	_, err := builder.
 		WithCustomDockerImages(map[config.ContainerType]string{config.ContainerType_ExecutionLayer: "ethereum/client-go:v1.13.11"}).
-		WithExecutionLayer(types.ExecutionLayer_Geth).
+		WithExecutionLayer(config_types.ExecutionLayer_Geth).
 		WithEthereumChainConfig(chainConfig).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
@@ -336,9 +336,9 @@ func TestEthEnvInvalidHardForks(t *testing.T) {
 	t.Parallel()
 	builder := NewEthereumNetworkBuilder()
 	_, err := builder.
-		WithEthereumVersion(config.EthereumVersion_Eth2).
+		WithEthereumVersion(config_types.EthereumVersion_Eth2).
 		WithConsensusLayer(config.ConsensusLayer_Prysm).
-		WithExecutionLayer(types.ExecutionLayer_Geth).
+		WithExecutionLayer(config_types.ExecutionLayer_Geth).
 		WithEthereumChainConfig(config.EthereumChainConfig{
 			HardForkEpochs: map[string]int{"Electra": 0},
 		}).
@@ -350,24 +350,24 @@ func TestEthEnvAutoEthereumVersionEth1Minor(t *testing.T) {
 	t.Parallel()
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WithExecutionLayer(types.ExecutionLayer_Besu).
+		WithExecutionLayer(config_types.ExecutionLayer_Besu).
 		WithCustomDockerImages(map[config.ContainerType]string{
 			config.ContainerType_ExecutionLayer: "hyperledger/besu:20.1"}).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
-	require.Equal(t, config.EthereumVersion_Eth1, *cfg.EthereumVersion, "Ethereum Version should be Eth1")
+	require.Equal(t, config_types.EthereumVersion_Eth1, *cfg.EthereumVersion, "Ethereum Version should be Eth1")
 	require.Nil(t, cfg.ConsensusLayer, "Consensus layer should be nil")
 }
 
 func TestEthEnvAutoEthereumVersionEth2Minor(t *testing.T) {
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WithExecutionLayer(types.ExecutionLayer_Nethermind).
+		WithExecutionLayer(config_types.ExecutionLayer_Nethermind).
 		WithCustomDockerImages(map[config.ContainerType]string{
 			config.ContainerType_ExecutionLayer: "nethermind/nethermind:1.17.2"}).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
-	require.Equal(t, config.EthereumVersion_Eth2, *cfg.EthereumVersion, "Ethereum Version should be Eth2")
+	require.Equal(t, config_types.EthereumVersion_Eth2, *cfg.EthereumVersion, "Ethereum Version should be Eth2")
 	require.Equal(t, config.ConsensusLayer_Prysm, *cfg.ConsensusLayer, "Consensus layer should be Prysm")
 }
 
@@ -375,12 +375,12 @@ func TestEthEnvAutoEthereumVersionReleaseCandidate(t *testing.T) {
 	t.Parallel()
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		WithExecutionLayer(types.ExecutionLayer_Nethermind).
+		WithExecutionLayer(config_types.ExecutionLayer_Nethermind).
 		WithCustomDockerImages(map[config.ContainerType]string{
 			config.ContainerType_ExecutionLayer: "nethermind/nethermind:1.17.0-RC2"}).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
-	require.Equal(t, config.EthereumVersion_Eth2, *cfg.EthereumVersion, "Ethereum Version should be Eth2")
+	require.Equal(t, config_types.EthereumVersion_Eth2, *cfg.EthereumVersion, "Ethereum Version should be Eth2")
 	require.Equal(t, config.ConsensusLayer_Prysm, *cfg.ConsensusLayer, "Consensus layer should be Prysm")
 }
 
@@ -389,13 +389,13 @@ func TestEthEnvAutoEthereumVersionWithLettersInVersion(t *testing.T) {
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
 		WithConsensusLayer(config.ConsensusLayer_Prysm).
-		WithExecutionLayer(types.ExecutionLayer_Geth).
+		WithExecutionLayer(config_types.ExecutionLayer_Geth).
 		WithCustomDockerImages(map[config.ContainerType]string{
 			config.ContainerType_ExecutionLayer: "ethereum/client-go:v1.13.10"}).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
-	require.Equal(t, config.EthereumVersion_Eth2, *cfg.EthereumVersion, "Ethereum Version should be Eth2")
-	require.Equal(t, types.ExecutionLayer_Geth, *cfg.ExecutionLayer, "Execution layer should be Geth")
+	require.Equal(t, config_types.EthereumVersion_Eth2, *cfg.EthereumVersion, "Ethereum Version should be Eth2")
+	require.Equal(t, config_types.ExecutionLayer_Geth, *cfg.ExecutionLayer, "Execution layer should be Geth")
 	require.Equal(t, config.ConsensusLayer_Prysm, *cfg.ConsensusLayer, "Consensus layer should be Prysm")
 }
 
@@ -407,8 +407,8 @@ func TestEthEnvAutoEthereumVersionOnlyMajor(t *testing.T) {
 			config.ContainerType_ExecutionLayer: "hyperledger/besu:v24.1"}).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
-	require.Equal(t, config.EthereumVersion_Eth2, *cfg.EthereumVersion, "Ethereum Version should be Eth2")
-	require.Equal(t, types.ExecutionLayer_Besu, *cfg.ExecutionLayer, "Execution layer should be Besu")
+	require.Equal(t, config_types.EthereumVersion_Eth2, *cfg.EthereumVersion, "Ethereum Version should be Eth2")
+	require.Equal(t, config_types.ExecutionLayer_Besu, *cfg.ExecutionLayer, "Execution layer should be Besu")
 	require.Equal(t, config.ConsensusLayer_Prysm, *cfg.ConsensusLayer, "Consensus layer should be Prysm")
 }
 
@@ -420,8 +420,8 @@ func TestEthEnvLatestVersionFromGithub(t *testing.T) {
 			config.ContainerType_ExecutionLayer: fmt.Sprintf("hyperledger/besu:%s", AUTOMATIC_STABLE_LATEST_TAG)}).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
-	require.Equal(t, config.EthereumVersion_Eth2, *cfg.EthereumVersion, "Ethereum Version should be Eth2")
-	require.Equal(t, types.ExecutionLayer_Besu, *cfg.ExecutionLayer, "Execution layer should be Besu")
+	require.Equal(t, config_types.EthereumVersion_Eth2, *cfg.EthereumVersion, "Ethereum Version should be Eth2")
+	require.Equal(t, config_types.ExecutionLayer_Besu, *cfg.ExecutionLayer, "Execution layer should be Besu")
 	require.Equal(t, config.ConsensusLayer_Prysm, *cfg.ConsensusLayer, "Consensus layer should be Prysm")
 	require.NotContains(t, cfg.CustomDockerImages[config.ContainerType_ExecutionLayer], AUTOMATIC_STABLE_LATEST_TAG, "Automatic tag should be replaced")
 }
@@ -430,10 +430,10 @@ func TestEthEnvMischmachedExecutionClient(t *testing.T) {
 	t.Parallel()
 	builder := NewEthereumNetworkBuilder()
 	_, err := builder.
-		WithExecutionLayer(types.ExecutionLayer_Nethermind).
+		WithExecutionLayer(config_types.ExecutionLayer_Nethermind).
 		WithCustomDockerImages(map[config.ContainerType]string{
 			config.ContainerType_ExecutionLayer: "hyperledger/besu:v1.22.0"}).
 		Build()
 	require.Error(t, err, "Builder validation succeeded")
-	require.Equal(t, fmt.Sprintf(MsgMismatchedExecutionClient, types.ExecutionLayer_Besu, types.ExecutionLayer_Nethermind), err.Error(), "Error message is not correct")
+	require.Equal(t, fmt.Sprintf(MsgMismatchedExecutionClient, config_types.ExecutionLayer_Besu, config_types.ExecutionLayer_Nethermind), err.Error(), "Error message is not correct")
 }
