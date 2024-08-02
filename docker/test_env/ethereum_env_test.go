@@ -194,14 +194,9 @@ func TestEthEnvCustomDockerImagesFromToml(t *testing.T) {
 	tomlCfg.EthereumChainConfig.GenerateGenesisTimestamp()
 
 	err = tomlCfg.Validate()
-	require.NoError(t, err, "Couldn't validate TOML config")
-
-	builder := NewEthereumNetworkBuilder()
-	_, err = builder.
-		WithExistingConfig(tomlCfg).
-		Build()
-	require.Error(t, err, "Builder validation failed")
-	require.Contains(t, fmt.Sprintf(config_types.MsgUnsupportedDockerImage, "i-dont-exist"), err.Error(), "Error message is not correct")
+	require.NotNil(t, err, "Should have failed to validate TOML config")
+	require.Error(t, err, "Couldn't validate TOML config")
+	require.Equal(t, fmt.Sprintf("failed to parse docker image and extract version: %s", "i-dont-exist:tag-me"), err.Error(), "Error message is not correct")
 }
 
 func TestEthNoLogLevelDefaultsToInfo(t *testing.T) {
