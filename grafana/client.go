@@ -16,7 +16,7 @@ import (
 type Client struct {
 	AlertManager *AlertManagerClient
 	AlertRuler   *AlertRulerClient
-	Resty        *resty.Client
+	resty        *resty.Client
 }
 
 type AlertManagerClient struct {
@@ -46,7 +46,7 @@ func (c *Client) GetDatasources() (map[string]string, *resty.Response, error) {
 		IsDefault bool   `json:"isDefault"`
 	}
 
-	r, err := c.Resty.R().SetResult(&result).Get("/api/datasources")
+	r, err := c.resty.R().SetResult(&result).Get("/api/datasources")
 	if err != nil {
 		return nil, r, fmt.Errorf("error making API request: %w", err)
 	}
@@ -70,7 +70,7 @@ func NewGrafanaClient(url, apiKey string) *Client {
 		SetBaseURL(url).
 		SetHeader("Authorization", "Bearer "+apiKey)
 	return &Client{
-		Resty:        resty,
+		resty:        resty,
 		AlertManager: &AlertManagerClient{resty: resty},
 		AlertRuler:   &AlertRulerClient{resty: resty},
 	}
@@ -83,7 +83,7 @@ type GetDashboardResponse struct {
 
 func (c *Client) GetDashboard(uid string) (GetDashboardResponse, *resty.Response, error) {
 	var result GetDashboardResponse
-	r, err := c.Resty.R().SetResult(&result).Get("/api/dashboards/uid/" + uid)
+	r, err := c.resty.R().SetResult(&result).Get("/api/dashboards/uid/" + uid)
 	return result, r, err
 }
 
@@ -108,7 +108,7 @@ type GrafanaResponse struct {
 func (c *Client) PostDashboard(dashboard PostDashboardRequest) (GrafanaResponse, *resty.Response, error) {
 	var grafanaResp GrafanaResponse
 
-	resp, err := c.Resty.R().
+	resp, err := c.resty.R().
 		SetHeader("Content-Type", "application/json").
 		SetBody(dashboard).
 		SetResult(&grafanaResp). // SetResult will automatically unmarshal the response into grafanaResp
@@ -128,7 +128,7 @@ func (c *Client) PostDashboard(dashboard PostDashboardRequest) (GrafanaResponse,
 
 func (c *Client) GetAlertsRules() ([]ProvisionedAlertRule, *resty.Response, error) {
 	var result []ProvisionedAlertRule
-	r, err := c.Resty.R().SetResult(&result).Get("/api/v1/provisioning/alert-rules")
+	r, err := c.resty.R().SetResult(&result).Get("/api/v1/provisioning/alert-rules")
 	return result, r, err
 }
 
@@ -259,7 +259,7 @@ func (c *Client) GetAnnotations(params AnnotationsQueryParams) ([]Annotation, *r
 	}
 
 	var result []Annotation
-	r, err := c.Resty.R().
+	r, err := c.resty.R().
 		SetResult(&result).
 		SetQueryString(query.Encode()).
 		Get("/api/annotations")
@@ -269,7 +269,7 @@ func (c *Client) GetAnnotations(params AnnotationsQueryParams) ([]Annotation, *r
 func (c *Client) DeleteAnnotation(annotationID int64) (*resty.Response, error) {
 	urlPath := fmt.Sprintf("/api/annotations/%d", annotationID)
 
-	r, err := c.Resty.R().
+	r, err := c.resty.R().
 		Delete(urlPath)
 
 	return r, err
@@ -294,7 +294,7 @@ func (c *Client) PostAnnotation(annotation PostAnnotation) (PostAnnotationRespon
 		a["timeEnd"] = annotation.TimeEnd.UnixMilli()
 	}
 	var result PostAnnotationResponse
-	r, err := c.Resty.R().
+	r, err := c.resty.R().
 		SetBody(a).
 		SetResult(&result).
 		Post("/api/annotations")

@@ -20,9 +20,13 @@ const (
 	*/
 	MockserverCRIBTemplate        = "https://%s-mockserver%s"
 	InternalNodeDNSTemplate       = "app-node%d"
-	IngressNetworkWSURLTemplate   = "wss://%s-geth-1337-ws%s"
-	IngressNetworkHTTPURLTemplate = "https://%s-geth-1337-http%s"
-	HostHeader                    = "X-Original-Host"
+	IngressNetworkWSURLTemplate   = "wss://%s-geth-%d-ws%s"
+	IngressNetworkHTTPURLTemplate = "https://%s-geth-%d-http%s"
+	// DefaultSimulatedPrivateKey is a first key used for Geth/Hardhat/Anvil
+	DefaultSimulatedPrivateKey = "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+	// DefaultSimulatedNetworkChainID is a default chainID we use for Geth/Hardhat/Anvil
+	DefaultSimulatedNetworkChainID = 1337
+	HostHeader                     = "X-Original-Host"
 )
 
 // ConnectionVars common K8s connection vars
@@ -48,72 +52,55 @@ type CoreDONConnectionConfig struct {
 	MockserverURL         string
 }
 
-// CoreDONConnection returns all vars required to connect to core DON CRIB via GAP
-func CoreDONConnection() (*CoreDONConnectionConfig, error) {
+// CoreDONSimulatedConnection returns all vars required to connect to core DON Simulated CRIB
+// connects in CI via GAP if GAP_URL is provided
+func CoreDONSimulatedConnection() (*CoreDONConnectionConfig, error) {
 	vars, err := ReadCRIBVars()
 	if err != nil {
 		return nil, err
 	}
-	gapURL := os.Getenv("GAP_URL")
 	var conn *CoreDONConnectionConfig
+	clNodeURLs := make([]string, 0)
+	clNodesInternalDNS := make([]string, 0)
+	clNodesHeaders := make([]map[string]string, 0)
+	for i := 1; i <= vars.Nodes; i++ {
+		clNodesInternalDNS = append(clNodesInternalDNS, fmt.Sprintf(InternalNodeDNSTemplate, i))
+		clNodesHeaders = append(clNodesHeaders, map[string]string{
+			HostHeader: fmt.Sprintf("%s-node%d%s", vars.Namespace, i, vars.IngressSuffix),
+		})
+	}
+	conn = &CoreDONConnectionConfig{
+		ConnectionVars:  vars,
+		PrivateKeys:     []string{DefaultSimulatedPrivateKey},
+		NodeURLs:        clNodeURLs,
+		NodeInternalDNS: clNodesInternalDNS,
+		NodeHeaders:     clNodesHeaders,
+		BlockchainNodeHeaders: http.Header{
+			HostHeader: []string{fmt.Sprintf("%s-geth-%d-http%s", vars.Namespace, DefaultSimulatedNetworkChainID, vars.IngressSuffix)},
+		},
+		MockserverHeaders: map[string]string{
+			HostHeader: fmt.Sprintf("%s-mockserver%s", vars.Namespace, vars.IngressSuffix),
+		},
+		ChainID: DefaultSimulatedNetworkChainID,
+	}
+	// GAP connection
+	gapURL := os.Getenv("GAP_URL")
 	if gapURL == "" {
 		logging.L.Info().Msg("Connecting to CRIB locally")
-		clNodeURLs := make([]string, 0)
-		clNodesInternalDNS := make([]string, 0)
-		clNodesHeaders := make([]map[string]string, 0)
 		for i := 1; i <= vars.Nodes; i++ {
-			clNodeURLs = append(clNodeURLs, fmt.Sprintf("https://%s-node%d%s", vars.Namespace, i, vars.IngressSuffix))
-			clNodesInternalDNS = append(clNodesInternalDNS, fmt.Sprintf(InternalNodeDNSTemplate, i))
-			clNodesHeaders = append(clNodesHeaders, map[string]string{
-				HostHeader: fmt.Sprintf("%s-node%d%s", vars.Namespace, i, vars.IngressSuffix),
-			})
+			conn.NodeURLs = append(conn.NodeURLs, fmt.Sprintf("https://%s-node%d%s", vars.Namespace, i, vars.IngressSuffix))
 		}
-		conn = &CoreDONConnectionConfig{
-			ConnectionVars:  vars,
-			PrivateKeys:     []string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"},
-			NodeURLs:        clNodeURLs,
-			NodeInternalDNS: clNodesInternalDNS,
-			NodeHeaders:     clNodesHeaders,
-			BlockchainNodeHeaders: http.Header{
-				HostHeader: []string{fmt.Sprintf("%s-geth-1337-ws%s", vars.Namespace, vars.IngressSuffix)},
-			},
-			MockserverHeaders: map[string]string{
-				HostHeader: fmt.Sprintf("%s-mockserver%s", vars.Namespace, vars.IngressSuffix),
-			},
-			ChainID:        1337,
-			NetworkWSURL:   fmt.Sprintf(IngressNetworkWSURLTemplate, vars.Namespace, vars.IngressSuffix),
-			NetworkHTTPURL: fmt.Sprintf(IngressNetworkHTTPURLTemplate, vars.Namespace, vars.IngressSuffix),
-			MockserverURL:  fmt.Sprintf(MockserverCRIBTemplate, vars.Namespace, vars.IngressSuffix),
-		}
+		conn.NetworkWSURL = fmt.Sprintf(IngressNetworkWSURLTemplate, vars.Namespace, DefaultSimulatedNetworkChainID, vars.IngressSuffix)
+		conn.NetworkHTTPURL = fmt.Sprintf(IngressNetworkHTTPURLTemplate, vars.Namespace, DefaultSimulatedNetworkChainID, vars.IngressSuffix)
+		conn.MockserverURL = fmt.Sprintf(MockserverCRIBTemplate, vars.Namespace, vars.IngressSuffix)
 	} else {
 		logging.L.Info().Msg("Connecting to CRIB using GAP")
-		clNodeURLs := make([]string, 0)
-		clNodesInternalDNS := make([]string, 0)
-		clNodesHeaders := make([]map[string]string, 0)
 		for i := 1; i <= vars.Nodes; i++ {
-			clNodeURLs = append(clNodeURLs, gapURL)
-			clNodesInternalDNS = append(clNodesInternalDNS, fmt.Sprintf(InternalNodeDNSTemplate, i))
-			clNodesHeaders = append(clNodesHeaders, map[string]string{
-				HostHeader: fmt.Sprintf("%s-node%d%s", vars.Namespace, i, vars.IngressSuffix),
-			})
+			conn.NodeURLs = append(conn.NodeURLs, gapURL)
 		}
-		conn = &CoreDONConnectionConfig{
-			ConnectionVars:  vars,
-			PrivateKeys:     []string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"},
-			NodeURLs:        clNodeURLs,
-			NodeInternalDNS: clNodesInternalDNS,
-			NodeHeaders:     clNodesHeaders,
-			BlockchainNodeHeaders: http.Header{
-				HostHeader: []string{fmt.Sprintf("%s-geth-1337-http%s", vars.Namespace, vars.IngressSuffix)},
-			},
-			MockserverHeaders: map[string]string{
-				HostHeader: fmt.Sprintf("%s-mockserver%s", vars.Namespace, vars.IngressSuffix),
-			},
-			ChainID:        1337,
-			NetworkWSURL:   gapURL,
-			NetworkHTTPURL: gapURL,
-			MockserverURL:  gapURL,
-		}
+		conn.NetworkWSURL = gapURL
+		conn.NetworkHTTPURL = gapURL
+		conn.MockserverURL = gapURL
 	}
 	logging.L.Debug().Any("ConnectionInfo", conn).Msg("CRIB connection info")
 	return conn, nil
