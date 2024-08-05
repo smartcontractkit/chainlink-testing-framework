@@ -19,11 +19,11 @@ type KafkaRestConfig struct {
 }
 
 // NewKafkaRestClient creates a new KafkaRestClient
-func NewKafkaRestClient(cfg *KafkaRestConfig) *KafkaRestClient {
+func NewKafkaRestClient(cfg *KafkaRestConfig) (*KafkaRestClient, error) {
 	return &KafkaRestClient{
 		Config:    cfg,
 		APIClient: resty.New().SetBaseURL(cfg.URL),
-	}
+	}, nil
 }
 
 // GetTopics Get a list of Kafka topics.
