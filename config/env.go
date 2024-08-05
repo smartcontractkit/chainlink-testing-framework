@@ -54,8 +54,29 @@ func MustReadEnvVar_Boolean(name string) *bool {
 	return ptr.Ptr(value.(bool))
 }
 
+func ReadEnvVarSlice_String(pattern string) []string {
+	re := regexp.MustCompile(pattern)
+	var values []string
+
+	for _, env := range os.Environ() {
+		pair := strings.SplitN(env, "=", 2)
+		if len(pair) != 2 {
+			continue
+		}
+		key, value := pair[0], pair[1]
+		if re.MatchString(key) && value != "" {
+			values = append(values, value)
+		}
+	}
+	return values
+}
+
 func ReadEnvVarGroupedMap(singleEnvPattern, groupEnvPattern string) map[string][]string {
-	return mergeMaps(readEnvVarSingleMap(singleEnvPattern), readEnvVarGroupedMap(groupEnvPattern))
+	var singleMap map[string]string
+	if singleEnvPattern != "" {
+		singleMap = readEnvVarSingleMap(singleEnvPattern)
+	}
+	return mergeMaps(singleMap, readEnvVarGroupedMap(groupEnvPattern))
 }
 
 // readEnvVarValue reads an environment variable and returns the value parsed according to the specified type.
