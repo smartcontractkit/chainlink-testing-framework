@@ -200,20 +200,27 @@ func (pg *PostgresDb) ExecPgDumpFromContainer(writer io.Writer) error {
 		fmt.Sprintf("PGPASSWORD=%s", pg.Password),
 	}
 
-	_, _, err := pg.Container.Exec(context.Background(), command, tcexec.WithEnv(env))
+	ctx, cancelFn := context.WithTimeout(context.Background(), 10*time.Minute)
+
+	_, _, err := pg.Container.Exec(ctx, command, tcexec.WithEnv(env))
 	if err != nil {
+		cancelFn()
 		return errors.Wrap(err, "Failed to execute pg_dump")
 	}
 
-	reader, err := pg.Container.CopyFileFromContainer(context.Background(), tmpFile)
+	reader, err := pg.Container.CopyFileFromContainer(ctx, tmpFile)
 	if err != nil {
+		cancelFn()
 		return errors.Wrapf(err, "Failed to open for reading %s temporary file with db dump", tmpFile)
 	}
 
 	_, err = io.Copy(writer, reader)
 	if err != nil {
+		cancelFn()
 		return errors.Wrapf(err, "Failed to send data from %s temporary file with db dump", tmpFile)
 	}
+
+	cancelFn()
 
 	return nil
 }
