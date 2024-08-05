@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	config_types "github.com/smartcontractkit/chainlink-testing-framework/config/types"
+
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/google/uuid"
@@ -15,13 +17,14 @@ import (
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
+	"github.com/smartcontractkit/chainlink-testing-framework/docker/ethereum"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 )
 
 // NewGethEth2 starts a new Geth Eth2 node running in Docker
-func NewGethEth2(networks []string, chainConfig *config.EthereumChainConfig, generatedDataHostDir string, consensusLayer config.ConsensusLayer, opts ...EnvComponentOption) (*Geth, error) {
-	parts := strings.Split(defaultGethEth2Image, ":")
+func NewGethEth2(networks []string, chainConfig *config.EthereumChainConfig, generatedDataHostDir, generatedDataContainerDir string, consensusLayer config.ConsensusLayer, opts ...EnvComponentOption) (*Geth, error) {
+	parts := strings.Split(ethereum.DefaultGethEth2Image, ":")
 	g := &Geth{
 		EnvComponent: EnvComponent{
 			ContainerName:    fmt.Sprintf("%s-%s", "geth-eth2", uuid.NewString()[0:8]),
@@ -31,10 +34,10 @@ func NewGethEth2(networks []string, chainConfig *config.EthereumChainConfig, gen
 			StartupTimeout:   2 * time.Minute,
 		},
 		chainConfig:          chainConfig,
-		generatedDataHostDir: generatedDataHostDir,
+		posContainerSettings: posContainerSettings{generatedDataHostDir: generatedDataHostDir, generatedDataContainerDir: generatedDataContainerDir},
 		consensusLayer:       consensusLayer,
 		l:                    logging.GetTestLogger(nil),
-		ethereumVersion:      config.EthereumVersion_Eth2,
+		ethereumVersion:      config_types.EthereumVersion_Eth2,
 	}
 	g.SetDefaultHooks()
 	for _, opt := range opts {
@@ -91,7 +94,7 @@ func (g *Geth) getEth2ContainerRequest() (*tc.ContainerRequest, error) {
 			hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
 				Type:     mount.TypeBind,
 				Source:   g.generatedDataHostDir,
-				Target:   GENERATED_DATA_DIR_INSIDE_CONTAINER,
+				Target:   g.generatedDataContainerDir,
 				ReadOnly: false,
 			})
 		},
@@ -152,10 +155,10 @@ func (g *Geth) buildEth2dInitScript() (string, error) {
 		HttpPort:             DEFAULT_EVM_NODE_HTTP_PORT,
 		WsPort:               DEFAULT_EVM_NODE_WS_PORT,
 		ChainID:              g.chainConfig.ChainID,
-		GeneratedDataDir:     GENERATED_DATA_DIR_INSIDE_CONTAINER,
-		JwtFileLocation:      JWT_SECRET_FILE_LOCATION_INSIDE_CONTAINER,
-		PasswordFileLocation: ACCOUNT_PASSWORD_FILE_INSIDE_CONTAINER,
-		KeystoreDirLocation:  KEYSTORE_DIR_LOCATION_INSIDE_CONTAINER,
+		GeneratedDataDir:     g.generatedDataContainerDir,
+		JwtFileLocation:      getJWTSecretFileLocationInsideContainer(g.generatedDataContainerDir),
+		PasswordFileLocation: getAccountPasswordFileInsideContainer(g.generatedDataContainerDir),
+		KeystoreDirLocation:  getKeystoreDirLocationInsideContainer(g.generatedDataContainerDir),
 		ExecutionDir:         "/execution-data",
 		Verbosity:            verbosity,
 	}
