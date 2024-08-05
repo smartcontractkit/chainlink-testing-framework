@@ -55,6 +55,7 @@ func NewMockserverClient(cfg *MockserverConfig) *MockserverClient {
 			SetBaseURL(cfg.LocalURL).
 			SetHeaders(cfg.Headers).
 			SetDebug(isDebug).
+			//nolint
 			SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true}),
 	}
 }

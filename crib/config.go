@@ -2,11 +2,13 @@ package crib
 
 import (
 	"fmt"
-	"github.com/pkg/errors"
-	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"net/http"
 	"os"
 	"strconv"
+
+	"github.com/pkg/errors"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 )
 
 const (

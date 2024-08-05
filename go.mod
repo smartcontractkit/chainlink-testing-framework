@@ -2,8 +2,6 @@ module github.com/smartcontractkit/chainlink-testing-framework
 
 go 1.22.5
 
-replace github.com/smartcontractkit/seth => /Users/fahrenheit/GolandProjects/seth
-
 require (
 	dario.cat/mergo v1.0.0
 	github.com/avast/retry-go v3.0.0+incompatible
@@ -31,7 +29,7 @@ require (
 	github.com/prometheus/common v0.45.0
 	github.com/rs/zerolog v1.30.0
 	github.com/slack-go/slack v0.12.2
-	github.com/smartcontractkit/seth v1.0.14-0.20240725161509-114ad0d1c325
+	github.com/smartcontractkit/seth v1.1.1
 	github.com/smartcontractkit/wasp v0.4.1
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/pflag v1.0.5
