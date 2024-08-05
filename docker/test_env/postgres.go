@@ -1,6 +1,7 @@
 package test_env
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/url"
@@ -11,9 +12,11 @@ import (
 
 	"github.com/docker/go-connections/nat"
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	tc "github.com/testcontainers/testcontainers-go"
+	tcexec "github.com/testcontainers/testcontainers-go/exec"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
@@ -176,7 +179,9 @@ func (pg *PostgresDb) startOrRestartContainer(withReuse bool) error {
 	return nil
 }
 
-func (pg *PostgresDb) ExecPgDump(stdout io.Writer) error {
+// ExecPgDumpFromLocal executes pg_dump from local machine by connecting to external Postgres port. For it to work pg_dump
+// needs to be installed on local machine.
+func (pg *PostgresDb) ExecPgDumpFromLocal(stdout io.Writer) error {
 	cmd := exec.Command("pg_dump", "-U", pg.User, "-h", "127.0.0.1", "-p", pg.ExternalPort, pg.DbName) //nolint:gosec
 	cmd.Env = []string{
 		fmt.Sprintf("PGPASSWORD=%s", pg.Password),
@@ -184,6 +189,33 @@ func (pg *PostgresDb) ExecPgDump(stdout io.Writer) error {
 	cmd.Stdout = stdout
 
 	return cmd.Run()
+}
+
+// ExecPgDumpFromContainer executed pg_dump from inside the container. It dumps it to temporary file inside the container
+// and then writes to the writer.
+func (pg *PostgresDb) ExecPgDumpFromContainer(writer io.Writer) error {
+	tmpFile := "/tmp/db_dump.sql"
+	command := []string{"pg_dump", "-U", pg.User, "-f", tmpFile, pg.DbName}
+	env := []string{
+		fmt.Sprintf("PGPASSWORD=%s", pg.Password),
+	}
+
+	_, _, err := pg.Container.Exec(context.Background(), command, tcexec.WithEnv(env))
+	if err != nil {
+		return errors.Wrap(err, "Failed to execute pg_dump")
+	}
+
+	reader, err := pg.Container.CopyFileFromContainer(context.Background(), tmpFile)
+	if err != nil {
+		return errors.Wrapf(err, "Failed to open for reading %s temporary file with db dump", tmpFile)
+	}
+
+	_, err = io.Copy(writer, reader)
+	if err != nil {
+		return errors.Wrapf(err, "Failed to send data from %s temporary file with db dump", tmpFile)
+	}
+
+	return nil
 }
 
 func (pg *PostgresDb) getContainerRequest() *tc.ContainerRequest {
