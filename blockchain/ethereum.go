@@ -1,3 +1,6 @@
+/*
+This should be removed when we migrate all Ethereum client code to Seth
+*/
 package blockchain
 
 // Contains implementations for multi and single node ethereum clients
@@ -32,7 +35,10 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/conversions"
 )
 
-const MaxTimeoutForFinality = 15 * time.Minute
+const (
+	MaxTimeoutForFinality = 15 * time.Minute
+	DefaultDialTimeout    = 1 * time.Minute
+)
 
 // EthereumClient wraps the client and the BlockChain network to interact with an EVM based Blockchain
 type EthereumClient struct {
@@ -65,14 +71,13 @@ func newEVMClient(networkSettings EVMNetwork, logger zerolog.Logger) (EVMClient,
 		Bool("Supports EIP-1559", networkSettings.SupportsEIP1559).
 		Bool("Finality Tag", networkSettings.FinalityTag).
 		Msg("Connecting client")
-	cl, err := ethclient.Dial(networkSettings.URL)
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultDialTimeout)
+	defer cancel()
+	raw, err := rpc.DialOptions(ctx, networkSettings.URL)
 	if err != nil {
 		return nil, err
 	}
-	raw, err := rpc.Dial(networkSettings.URL)
-	if err != nil {
-		return nil, err
-	}
+	cl := ethclient.NewClient(raw)
 
 	ec := &EthereumClient{
 		NetworkConfig:       networkSettings,

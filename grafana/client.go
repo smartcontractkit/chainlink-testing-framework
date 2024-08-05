@@ -64,9 +64,11 @@ func (c *Client) GetDatasources() (map[string]string, *resty.Response, error) {
 }
 
 func NewGrafanaClient(url, apiKey string) *Client {
-	isDebug := os.Getenv("DEBUG_RESTY") == "true"
-	resty := resty.New().SetDebug(isDebug).SetBaseURL(url).SetHeader("Authorization", "Bearer "+apiKey)
-
+	isDebug := os.Getenv("RESTY_DEBUG") == "true"
+	resty := resty.New().
+		SetDebug(isDebug).
+		SetBaseURL(url).
+		SetHeader("Authorization", "Bearer "+apiKey)
 	return &Client{
 		resty:        resty,
 		AlertManager: &AlertManagerClient{resty: resty},
