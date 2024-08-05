@@ -24,7 +24,7 @@ import (
 
 var generatorForkToImageMap = map[ethereum.Fork]string{
 	ethereum.EthereumFork_Shanghai: "tofelb/ethereum-genesis-generator:2.0.5",
-	ethereum.EthereumFork_Deneb:    "tofelb/ethereum-genesis-generator:3.3.4-slots-per-epoch",
+	ethereum.EthereumFork_Deneb:    "tofelb/ethereum-genesis-generator:3.3.5-no-future-forks",
 }
 
 var generatorForkToDataDirMap = map[ethereum.Fork]string{
