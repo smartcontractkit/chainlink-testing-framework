@@ -22,23 +22,23 @@ import (
 
 type AfterGenesisHelper struct {
 	EnvComponent
-	chainConfig         config.EthereumChainConfig
-	l                   zerolog.Logger
-	customConfigDataDir string
-	addressesToFund     []string
-	t                   *testing.T
+	chainConfig     config.EthereumChainConfig
+	addressesToFund []string
+	l               zerolog.Logger
+	t               *testing.T
+	posContainerSettings
 }
 
-func NewInitHelper(chainConfig config.EthereumChainConfig, customConfigDataDir string, opts ...EnvComponentOption) *AfterGenesisHelper {
+func NewInitHelper(chainConfig config.EthereumChainConfig, generatedDataHostDir, generatedDataContainerDir string, opts ...EnvComponentOption) *AfterGenesisHelper {
 	g := &AfterGenesisHelper{
 		EnvComponent: EnvComponent{
 			ContainerName:  fmt.Sprintf("%s-%s", "after-genesis-helper", uuid.NewString()[0:8]),
 			StartupTimeout: 20 * time.Second,
 		},
-		chainConfig:         chainConfig,
-		customConfigDataDir: customConfigDataDir,
-		l:                   log.Logger,
-		addressesToFund:     []string{},
+		chainConfig:          chainConfig,
+		posContainerSettings: posContainerSettings{generatedDataHostDir: generatedDataHostDir, generatedDataContainerDir: generatedDataContainerDir},
+		l:                    log.Logger,
+		addressesToFund:      []string{},
 	}
 	g.SetDefaultHooks()
 	for _, opt := range opts {
@@ -110,8 +110,8 @@ func (g *AfterGenesisHelper) getContainerRequest(networks []string) (*tc.Contain
 		HostConfigModifier: func(hostConfig *container.HostConfig) {
 			hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
 				Type:     mount.TypeBind,
-				Source:   g.customConfigDataDir,
-				Target:   GENERATED_DATA_DIR_INSIDE_CONTAINER,
+				Source:   g.generatedDataHostDir,
+				Target:   g.generatedDataContainerDir,
 				ReadOnly: false,
 			})
 		},
@@ -157,11 +157,11 @@ echo "------------------------------------------------------------------"
 		GenesisTimestamp            int
 	}{
 		WalletPassword:              WALLET_PASSWORD,
-		WalletPasswordFileLocation:  VALIDATOR_WALLET_PASSWORD_FILE_INSIDE_CONTAINER,
-		AccountPasswordFileLocation: ACCOUNT_PASSWORD_FILE_INSIDE_CONTAINER,
-		JwtFileLocation:             JWT_SECRET_FILE_LOCATION_INSIDE_CONTAINER,
-		AccountKeystoreFileLocation: ACCOUNT_KEYSTORE_FILE_INSIDE_CONTAINER,
-		KeystoreDirLocation:         KEYSTORE_DIR_LOCATION_INSIDE_CONTAINER,
+		WalletPasswordFileLocation:  getValidatorWalletPasswordFileInsideContainer(g.generatedDataContainerDir),
+		AccountPasswordFileLocation: getAccountPasswordFileInsideContainer(g.generatedDataContainerDir),
+		JwtFileLocation:             getJWTSecretFileLocationInsideContainer(g.generatedDataContainerDir),
+		AccountKeystoreFileLocation: getAccountKeystoreFileInsideContainer(g.generatedDataContainerDir),
+		KeystoreDirLocation:         getKeystoreDirLocationInsideContainer(g.generatedDataContainerDir),
 		GenesisTimestamp:            g.chainConfig.GenesisTimestamp,
 	}
 

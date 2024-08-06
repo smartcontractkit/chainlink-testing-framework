@@ -5,6 +5,9 @@ import (
 	"strings"
 	"time"
 
+	config_types "github.com/smartcontractkit/chainlink-testing-framework/config/types"
+
+	"github.com/Masterminds/semver/v3"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/google/uuid"
@@ -12,13 +15,15 @@ import (
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
+	"github.com/smartcontractkit/chainlink-testing-framework/docker/ethereum"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
+	docker_utils "github.com/smartcontractkit/chainlink-testing-framework/utils/docker"
 )
 
 // NewBesuEth2 starts a new Besu Eth2 node running in Docker
-func NewBesuEth2(networks []string, chainConfig *config.EthereumChainConfig, generatedDataHostDir string, consensusLayer config.ConsensusLayer, opts ...EnvComponentOption) (*Besu, error) {
-	parts := strings.Split(defaultBesuEth2Image, ":")
+func NewBesuEth2(networks []string, chainConfig *config.EthereumChainConfig, generatedDataHostDir, generatedDataContainerDir string, consensusLayer config.ConsensusLayer, opts ...EnvComponentOption) (*Besu, error) {
+	parts := strings.Split(ethereum.DefaultBesuEth2Image, ":")
 	g := &Besu{
 		EnvComponent: EnvComponent{
 			ContainerName:    fmt.Sprintf("%s-%s", "besu-eth2", uuid.NewString()[0:8]),
@@ -27,11 +32,11 @@ func NewBesuEth2(networks []string, chainConfig *config.EthereumChainConfig, gen
 			ContainerVersion: parts[1],
 			StartupTimeout:   2 * time.Minute,
 		},
-		chainConfig:     chainConfig,
-		posSettings:     posSettings{generatedDataHostDir: generatedDataHostDir},
-		consensusLayer:  consensusLayer,
-		l:               logging.GetTestLogger(nil),
-		ethereumVersion: config.EthereumVersion_Eth2,
+		chainConfig:          chainConfig,
+		posContainerSettings: posContainerSettings{generatedDataHostDir: generatedDataHostDir, generatedDataContainerDir: generatedDataContainerDir},
+		consensusLayer:       consensusLayer,
+		l:                    logging.GetTestLogger(nil),
+		ethereumVersion:      config_types.EthereumVersion_Eth2,
 	}
 	g.SetDefaultHooks()
 	for _, opt := range opts {
@@ -51,7 +56,7 @@ func NewBesuEth2(networks []string, chainConfig *config.EthereumChainConfig, gen
 func (g *Besu) getEth2ContainerRequest() (*tc.ContainerRequest, error) {
 	cmd := []string{
 		"--data-path=/opt/besu/execution-data",
-		fmt.Sprintf("--genesis-file=%s/besu.json", GENERATED_DATA_DIR_INSIDE_CONTAINER),
+		fmt.Sprintf("--genesis-file=%s/besu.json", g.generatedDataContainerDir),
 		fmt.Sprintf("--network-id=%d", g.chainConfig.ChainID),
 		"--host-allowlist=*",
 		"--rpc-http-enabled=true",
@@ -64,7 +69,7 @@ func (g *Besu) getEth2ContainerRequest() (*tc.ContainerRequest, error) {
 		fmt.Sprintf("--rpc-ws-port=%s", DEFAULT_EVM_NODE_WS_PORT),
 		"--rpc-ws-api=ADMIN,CLIQUE,ETH,NET,DEBUG,TXPOOL,ENGINE,TRACE,WEB3",
 		"--engine-rpc-enabled=true",
-		fmt.Sprintf("--engine-jwt-secret=%s", JWT_SECRET_FILE_LOCATION_INSIDE_CONTAINER),
+		fmt.Sprintf("--engine-jwt-secret=%s", getJWTSecretFileLocationInsideContainer(g.generatedDataContainerDir)),
 		"--engine-host-allowlist=*",
 		fmt.Sprintf("--engine-rpc-port=%s", ETH2_EXECUTION_PORT),
 		"--sync-mode=FULL",
@@ -73,12 +78,26 @@ func (g *Besu) getEth2ContainerRequest() (*tc.ContainerRequest, error) {
 		"--rpc-tx-feecap=0",
 	}
 
-	version, err := GetComparableVersionFromDockerImage(g.GetImageWithVersion())
+	version, err := docker_utils.GetSemverFromImage(g.GetImageWithVersion())
 	if err != nil {
 		return nil, err
 	}
 
-	if version >= 246 {
+	kgzConstraint, err := semver.NewConstraint(">=23.1 <24.0")
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse constraint: %s", ">=23.1 && <23.7")
+	}
+
+	if kgzConstraint.Check(version) {
+		cmd = append(cmd, "--kzg-trusted-setup", fmt.Sprintf("%s/trusted_setup.txt", g.generatedDataContainerDir))
+	}
+
+	bonsaiConstraint, err := semver.NewConstraint(">=24.6")
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse constraint: %s", ">=24.6")
+	}
+
+	if bonsaiConstraint.Check(version) {
 		// it crashes with sync-mode=FULL, and when we use a different sync mode then consensus client fails to propose correct blocks
 		cmd = append(cmd, "--bonsai-limit-trie-logs-enabled=false")
 	}
@@ -102,7 +121,7 @@ func (g *Besu) getEth2ContainerRequest() (*tc.ContainerRequest, error) {
 			hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
 				Type:     mount.TypeBind,
 				Source:   g.generatedDataHostDir,
-				Target:   GENERATED_DATA_DIR_INSIDE_CONTAINER,
+				Target:   g.generatedDataContainerDir,
 				ReadOnly: false,
 			})
 		},

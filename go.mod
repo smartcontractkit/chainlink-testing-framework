@@ -4,6 +4,7 @@ go 1.22.5
 
 require (
 	dario.cat/mergo v1.0.0
+	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/aws/constructs-go/constructs/v10 v10.1.255
 	github.com/aws/jsii-runtime-go v1.75.0
@@ -29,7 +30,7 @@ require (
 	github.com/prometheus/common v0.45.0
 	github.com/rs/zerolog v1.30.0
 	github.com/slack-go/slack v0.12.2
-	github.com/smartcontractkit/seth v1.0.11
+	github.com/smartcontractkit/seth v1.1.1
 	github.com/smartcontractkit/wasp v0.4.1
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/pflag v1.0.5
@@ -59,7 +60,6 @@ require (
 	github.com/K-Phoen/sdk v0.12.2 // indirect
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
-	github.com/Masterminds/semver/v3 v3.2.1 // indirect
 	github.com/Masterminds/sprig/v3 v3.2.3 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/Microsoft/hcsshim v0.11.4 // indirect
@@ -68,6 +68,7 @@ require (
 	github.com/allegro/bigcache v1.2.1 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
+	github.com/awalterschulze/gographviz v2.0.3+incompatible // indirect
 	github.com/aws/aws-sdk-go v1.45.25 // indirect
 	github.com/benbjohnson/clock v1.3.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -285,7 +286,7 @@ require (
 	golang.org/x/arch v0.4.0 // indirect
 	golang.org/x/crypto v0.17.0 // indirect
 	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa // indirect
-	golang.org/x/mod v0.14.0 // indirect
+	golang.org/x/mod v0.19.0 // indirect
 	golang.org/x/sys v0.16.0 // indirect
 	golang.org/x/term v0.15.0 // indirect
 	golang.org/x/time v0.3.0 // indirect

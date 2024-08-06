@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	config_types "github.com/smartcontractkit/chainlink-testing-framework/config/types"
+
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/google/uuid"
@@ -14,14 +16,15 @@ import (
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
+	"github.com/smartcontractkit/chainlink-testing-framework/docker/ethereum"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/templates"
 )
 
-// NewNethermindEth1 starts a new Nethermin Eth1 node running in Docker
+// NewNethermindEth1 starts a new Nethermind Eth1 node running in Docker
 func NewNethermindEth1(networks []string, chainConfig *config.EthereumChainConfig, opts ...EnvComponentOption) (*Nethermind, error) {
-	parts := strings.Split(defaultNethermindEth1Image, ":")
+	parts := strings.Split(ethereum.DefaultNethermindEth1Image, ":")
 	g := &Nethermind{
 		EnvComponent: EnvComponent{
 			ContainerName:    fmt.Sprintf("%s-%s", "nethermind-eth1", uuid.NewString()[0:8]),
@@ -32,7 +35,7 @@ func NewNethermindEth1(networks []string, chainConfig *config.EthereumChainConfi
 		},
 		chainConfig:     chainConfig,
 		l:               logging.GetTestLogger(nil),
-		ethereumVersion: config.EthereumVersion_Eth1,
+		ethereumVersion: config_types.EthereumVersion_Eth1,
 	}
 	g.SetDefaultHooks()
 	for _, opt := range opts {

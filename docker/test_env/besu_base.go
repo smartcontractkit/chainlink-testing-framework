@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	config_types "github.com/smartcontractkit/chainlink-testing-framework/config/types"
+
 	"github.com/rs/zerolog"
 
 	tc "github.com/testcontainers/testcontainers-go"
@@ -17,17 +19,6 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
 )
-
-const (
-	defaultBesuEth1Image = "hyperledger/besu:22.1.0"
-	defaultBesuEth2Image = "hyperledger/besu:24.5.1"
-	besuBaseImageName    = "hyperledger/besu"
-	besuGitRepo          = "hyperledger/besu"
-)
-
-type posSettings struct {
-	generatedDataHostDir string
-}
 
 type powSettings struct {
 	genesisPath  string
@@ -46,10 +37,10 @@ type Besu struct {
 	ExternalExecutionURL string
 	chainConfig          *config.EthereumChainConfig
 	consensusLayer       config.ConsensusLayer
-	ethereumVersion      config.EthereumVersion
+	ethereumVersion      config_types.EthereumVersion
 	l                    zerolog.Logger
 	t                    *testing.T
-	posSettings
+	posContainerSettings
 	powSettings
 }
 
@@ -63,7 +54,7 @@ func (g *Besu) StartContainer() (blockchain.EVMNetwork, error) {
 	var r *tc.ContainerRequest
 	var err error
 
-	if g.GetEthereumVersion() == config.EthereumVersion_Eth1 {
+	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		r, err = g.getEth1ContainerRequest()
 
 	} else {
@@ -97,7 +88,7 @@ func (g *Besu) StartContainer() (blockchain.EVMNetwork, error) {
 		return blockchain.EVMNetwork{}, err
 	}
 
-	if g.GetEthereumVersion() == config.EthereumVersion_Eth2 {
+	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth2 {
 		executionPort, err := ct.MappedPort(testcontext.Get(g.t), NatPort(ETH2_EXECUTION_PORT))
 		if err != nil {
 			return blockchain.EVMNetwork{}, err
@@ -118,7 +109,7 @@ func (g *Besu) StartContainer() (blockchain.EVMNetwork, error) {
 	networkConfig.GasEstimationBuffer = 10_000_000_000
 	networkConfig.SimulationType = "Besu"
 
-	if g.GetEthereumVersion() == config.EthereumVersion_Eth1 {
+	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		networkConfig.Name = fmt.Sprintf("Private Eth-1-PoA [besu %s]", g.ContainerVersion)
 	} else {
 		networkConfig.Name = fmt.Sprintf("Private Eth-2-PoS [besu %s] + %s", g.ContainerVersion, g.consensusLayer)
@@ -131,14 +122,14 @@ func (g *Besu) StartContainer() (blockchain.EVMNetwork, error) {
 }
 
 func (g *Besu) GetInternalExecutionURL() string {
-	if g.GetEthereumVersion() == config.EthereumVersion_Eth1 {
+	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		panic("eth1 node doesn't have an execution URL")
 	}
 	return g.InternalExecutionURL
 }
 
 func (g *Besu) GetExternalExecutionURL() string {
-	if g.GetEthereumVersion() == config.EthereumVersion_Eth1 {
+	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		panic("eth1 node doesn't have an execution URL")
 	}
 	return g.ExternalExecutionURL
@@ -168,12 +159,12 @@ func (g *Besu) GetContainer() *tc.Container {
 	return &g.Container
 }
 
-func (g *Besu) GetEthereumVersion() config.EthereumVersion {
+func (g *Besu) GetEthereumVersion() config_types.EthereumVersion {
 	return g.ethereumVersion
 }
 
 func (g *Besu) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error {
-	if g.GetEthereumVersion() == config.EthereumVersion_Eth1 {
+	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		return nil
 	}
 	waitForFirstBlock := tcwait.NewLogStrategy("Imported #1").WithPollInterval(1 * time.Second).WithStartupTimeout(waitTime)
@@ -181,7 +172,7 @@ func (g *Besu) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration
 }
 
 func (g *Besu) GethConsensusMechanism() ConsensusMechanism {
-	if g.GetEthereumVersion() == config.EthereumVersion_Eth1 {
+	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		return ConsensusMechanism_PoA
 	}
 	return ConsensusMechanism_PoS
