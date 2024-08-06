@@ -379,7 +379,7 @@ When running tests in CI you're probably interested in grouping logs by test exe
 
 ## Test Summary
 
-In order to facilitate displaying information in GH's step summary `testsummary` package was added. It exposes a single function `AddEntry(testName, key string, value interface{}) `. When you call it, it either creates a test summary JSON file or appends to it. The result is is a map of keys with values.
+In order to facilitate displaying information in GH's step summary `testsummary` package was added. It exposes a single function `AddEntry(testName, key string, value interface{}) `. When you call it, it either creates a test summary JSON file or appends to it. The result is a map of keys with values.
 
 Example:
 
