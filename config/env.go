@@ -54,6 +54,7 @@ func MustReadEnvVar_Boolean(name string) *bool {
 	return ptr.Ptr(value.(bool))
 }
 
+// ReadEnvVarSlice_String reads all environment variables matching the specified pattern and returns a slice of strings.
 func ReadEnvVarSlice_String(pattern string) []string {
 	re := regexp.MustCompile(pattern)
 	var values []string
@@ -71,6 +72,9 @@ func ReadEnvVarSlice_String(pattern string) []string {
 	return values
 }
 
+// ReadEnvVarGroupedMap combines environment variables into a map where keys map to slices of strings.
+// It accepts `singleEnvPattern` for single variables and `groupEnvPattern` for grouped variables.
+// Returns a map combining values from both patterns, with single values wrapped in slices.
 func ReadEnvVarGroupedMap(singleEnvPattern, groupEnvPattern string) map[string][]string {
 	var singleMap map[string]string
 	if singleEnvPattern != "" {
