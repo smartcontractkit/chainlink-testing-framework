@@ -10,6 +10,7 @@ jobs:
       matrix:
         tool:
           [
+            tools/citool,
             tools/envresolve,
             tools/gotestloghelper,
             tools/testlistgenerator,
