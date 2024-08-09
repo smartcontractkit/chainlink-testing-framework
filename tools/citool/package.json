@@ -1,0 +1,5 @@
+{
+  "name": "citool",
+  "description": "Tool to manage E2E tests on Github CI",
+  "version": "1.0.0"
+}
