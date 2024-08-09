@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
+	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
@@ -75,9 +76,10 @@ func startTestContainer(ctx context.Context, containerName string, msg string, a
 			)}
 	}
 	req := testcontainers.ContainerRequest{
-		Name:  containerName,
-		Image: "ubuntu:latest",
-		Cmd:   cmd,
+		Name:       containerName,
+		Image:      "ubuntu:latest",
+		Cmd:        cmd,
+		WaitingFor: tcwait.ForLog(msg).WithPollInterval(100 * time.Millisecond).WithStartupTimeout(10 * time.Second),
 	}
 	return testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
@@ -281,17 +283,25 @@ func TestLogStream_GetAllLogs_TwoConsumers_FirstErrorsAfterFiveLogs(t *testing.T
 
 	lw, err := newDefaultLogStream()
 	require.NoError(t, err)
-	container_1, err := startTestContainer(ctx, containerName_1, message, amount, interval, false)
-	require.NoError(t, err)
 
-	err = lw.ConnectContainer(context.Background(), container_1, containerName_1)
-	require.NoError(t, err)
+	var container_1, container_2 testcontainers.Container
 
-	container_2, err := startTestContainer(ctx, containerName_2, message, amount, interval, false)
-	require.NoError(t, err)
+	go func() {
+		var err error
+		container_1, err = startTestContainer(ctx, containerName_1, message, amount, interval, false)
+		require.NoError(t, err)
+		err = lw.ConnectContainer(ctx, container_1, containerName_1)
+		require.NoError(t, err)
+	}()
 
-	err = lw.ConnectContainer(context.Background(), container_2, containerName_2)
-	require.NoError(t, err)
+	go func() {
+		var err error
+		container_2, err = startTestContainer(ctx, containerName_2, message, amount, interval, false)
+		require.NoError(t, err)
+
+		err = lw.ConnectContainer(ctx, container_2, containerName_2)
+		require.NoError(t, err)
+	}()
 
 	time.Sleep(time.Duration(int(interval*float64(amount)))*time.Second + 10*time.Second)
 
@@ -308,7 +318,9 @@ func TestLogStream_GetAllLogs_TwoConsumers_FirstErrorsAfterFiveLogs(t *testing.T
 			} else {
 				logsProcessed[name] = append(logsProcessed[name], string(log.Content))
 			}
-			count++
+			if name == containerName_1 {
+				count++
+			}
 			return nil
 		}
 
