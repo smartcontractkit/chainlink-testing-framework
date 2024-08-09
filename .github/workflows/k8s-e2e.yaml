@@ -27,7 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
       - name: Build Base Image
-        uses: smartcontractkit/chainlink-github-actions/docker/build-push@e29366cdecfe6befff9ab8c3cfe4825218505d58 # v2.3.16
+        uses: smartcontractkit/chainlink-github-actions/docker/build-push@aa8eea635029ab8d95abd3c206f56dae1e22e623 # v2.3.28
         with:
           tags: ${{ env.BASE_IMAGE_NAME }}
           file: k8s/Dockerfile.base
@@ -41,7 +41,7 @@ jobs:
           ### test-base-image image tag for this test run :ship: => \`ci.${{ github.sha }}\`
           EOT
       - name: Build Test Runner
-        uses: smartcontractkit/chainlink-github-actions/docker/build-push@e29366cdecfe6befff9ab8c3cfe4825218505d58 # v2.3.16
+        uses: smartcontractkit/chainlink-github-actions/docker/build-push@aa8eea635029ab8d95abd3c206f56dae1e22e623 # v2.3.28
         with:
           tags: ${{ env.ENV_JOB_IMAGE }}
           file: k8s/Dockerfile
@@ -73,7 +73,7 @@ jobs:
       - name: Load Nix
         run: nix develop -c sh -c "go mod download"
       - name: Setup environment
-        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/setup-run-tests-environment@e29366cdecfe6befff9ab8c3cfe4825218505d58 # v2.3.16
+        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/setup-run-tests-environment@aa8eea635029ab8d95abd3c206f56dae1e22e623 # v2.3.28
         with:
           go_mod_path: go.mod
           QA_AWS_REGION: ${{ secrets.QA_AWS_REGION }}
@@ -83,7 +83,7 @@ jobs:
       - name: Run Tests
         env:
           LOCAL_CHARTS: true
-        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/run-tests@e29366cdecfe6befff9ab8c3cfe4825218505d58 # v2.3.16
+        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/run-tests@aa8eea635029ab8d95abd3c206f56dae1e22e623 # v2.3.28
         with:
           cl_repo: ${{ env.CHAINLINK_IMAGE }}
           cl_image_tag: ${{ env.CHAINLINK_VERSION }}
@@ -124,7 +124,7 @@ jobs:
       - name: Load Nix
         run: nix develop -c sh -c "go mod download"
       - name: Setup environment
-        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/setup-run-tests-environment@e29366cdecfe6befff9ab8c3cfe4825218505d58 # v2.3.16
+        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/setup-run-tests-environment@aa8eea635029ab8d95abd3c206f56dae1e22e623 # v2.3.28
         with:
           go_mod_path: go.mod
           QA_AWS_REGION: ${{ secrets.QA_AWS_REGION }}
@@ -132,7 +132,7 @@ jobs:
           QA_KUBECONFIG: ${{ secrets.QA_KUBECONFIG }}
           go_necessary: false
       - name: Run Remote Runner Tests
-        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/run-tests@e29366cdecfe6befff9ab8c3cfe4825218505d58 # v2.3.16
+        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/run-tests@aa8eea635029ab8d95abd3c206f56dae1e22e623 # v2.3.28
         with:
           cl_repo: ${{ env.CHAINLINK_IMAGE }}
           cl_image_tag: ${{ env.CHAINLINK_VERSION }}
