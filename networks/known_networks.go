@@ -972,8 +972,8 @@ var (
 		"BLAST_MAINNET":         BlastMainnet,
 		"MODE_SEPOLIA":          ModeSepolia,
 		"MODE_MAINNET":          ModeMainnet,
-		"ZKSync_SEPOLIA":        ZKSyncSepolia,
-		"ZKSync_MAINNET":        ZKSyncMainnet,
+		"ZKSYNC_SEPOLIA":        ZKSyncSepolia,
+		"ZKSYNC_MAINNET":        ZKSyncMainnet,
 	}
 )
 
