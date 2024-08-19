@@ -52,6 +52,36 @@ type TestConfig struct {
 func (c *TestConfig) ReadFromEnvVar() error {
 	logger := logging.GetTestLogger(nil)
 
+	testLogCollect := MustReadEnvVar_Boolean(E2E_TEST_LOG_COLLECT_ENV)
+	if testLogCollect != nil {
+		if c.Logging == nil {
+			c.Logging = &LoggingConfig{}
+		}
+		logger.Debug().Msgf("Using %s env var to override Logging.TestLogCollect", E2E_TEST_LOG_COLLECT_ENV)
+		c.Logging.TestLogCollect = testLogCollect
+	}
+
+	loggingRunID := MustReadEnvVar_String(E2E_TEST_LOGGING_RUN_ID_ENV)
+	if loggingRunID != "" {
+		if c.Logging == nil {
+			c.Logging = &LoggingConfig{}
+		}
+		logger.Debug().Msgf("Using %s env var to override Logging.RunID", E2E_TEST_LOGGING_RUN_ID_ENV)
+		c.Logging.RunId = &loggingRunID
+	}
+
+	logstreamLogTargets := strings.Split(MustReadEnvVar_String(E2E_TEST_LOG_STREAM_LOG_TARGETS_ENV), ",")
+	if len(logstreamLogTargets) > 0 {
+		if c.Logging == nil {
+			c.Logging = &LoggingConfig{}
+		}
+		if c.Logging.LogStream == nil {
+			c.Logging.LogStream = &LogStreamConfig{}
+		}
+		logger.Debug().Msgf("Using %s env var to override Logging.LogStream.LogTargets", E2E_TEST_LOG_STREAM_LOG_TARGETS_ENV)
+		c.Logging.LogStream.LogTargets = logstreamLogTargets
+	}
+
 	lokiTenantID := MustReadEnvVar_String(E2E_TEST_LOKI_TENANT_ID_ENV)
 	if lokiTenantID != "" {
 		if c.Logging == nil {
@@ -172,6 +202,15 @@ func (c *TestConfig) ReadFromEnvVar() error {
 		c.Pyroscope.Environment = &pyroscopeEnvironment
 	}
 
+	selectedNetworks := strings.Split(MustReadEnvVar_String(E2E_TEST_SELECTED_NETWORK_ENV), ",")
+	if len(selectedNetworks) > 0 {
+		if c.Network == nil {
+			c.Network = &NetworkConfig{}
+		}
+		logger.Debug().Msgf("Using %s env var to override Network.SelectedNetworks", E2E_TEST_SELECTED_NETWORK_ENV)
+		c.Network.SelectedNetworks = selectedNetworks
+	}
+
 	walletKeys := ReadEnvVarGroupedMap(E2E_TEST_WALLET_KEY_ENV, E2E_TEST_WALLET_KEYS_ENV)
 	if len(walletKeys) > 0 {
 		if c.Network == nil {
@@ -208,6 +247,24 @@ func (c *TestConfig) ReadFromEnvVar() error {
 		c.ChainlinkImage.Image = &chainlinkImage
 	}
 
+	chainlinkVersion := MustReadEnvVar_String(E2E_TEST_CHAINLINK_VERSION_ENV)
+	if chainlinkVersion != "" {
+		if c.ChainlinkImage == nil {
+			c.ChainlinkImage = &ChainlinkImageConfig{}
+		}
+		logger.Debug().Msgf("Using %s env var to override ChainlinkImage.Version", E2E_TEST_CHAINLINK_VERSION_ENV)
+		c.ChainlinkImage.Version = &chainlinkVersion
+	}
+
+	chainlinkPostgresVersion := MustReadEnvVar_String(E2E_TEST_CHAINLINK_POSTGRES_VERSION_ENV)
+	if chainlinkPostgresVersion != "" {
+		if c.ChainlinkImage == nil {
+			c.ChainlinkImage = &ChainlinkImageConfig{}
+		}
+		logger.Debug().Msgf("Using %s env var to override ChainlinkImage.PostgresVersion", E2E_TEST_CHAINLINK_POSTGRES_VERSION_ENV)
+		c.ChainlinkImage.PostgresVersion = &chainlinkPostgresVersion
+	}
+
 	chainlinkUpgradeImage := MustReadEnvVar_String(E2E_TEST_CHAINLINK_UPGRADE_IMAGE_ENV)
 	if chainlinkUpgradeImage != "" {
 		if c.ChainlinkUpgradeImage == nil {
@@ -215,6 +272,15 @@ func (c *TestConfig) ReadFromEnvVar() error {
 		}
 		logger.Info().Msgf("Using %s env var to override ChainlinkUpgradeImage.Image", E2E_TEST_CHAINLINK_UPGRADE_IMAGE_ENV)
 		c.ChainlinkUpgradeImage.Image = &chainlinkUpgradeImage
+	}
+
+	chainlinkUpgradeVersion := MustReadEnvVar_String(E2E_TEST_CHAINLINK_UPGRADE_VERSION_ENV)
+	if chainlinkUpgradeVersion != "" {
+		if c.ChainlinkUpgradeImage == nil {
+			c.ChainlinkUpgradeImage = &ChainlinkImageConfig{}
+		}
+		logger.Debug().Msgf("Using %s env var to override ChainlinkUpgradeImage.Version", E2E_TEST_CHAINLINK_UPGRADE_VERSION_ENV)
+		c.ChainlinkUpgradeImage.Version = &chainlinkUpgradeVersion
 	}
 
 	return nil
