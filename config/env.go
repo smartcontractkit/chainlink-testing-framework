@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/utils"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/ptr"
 )
 
@@ -73,7 +74,7 @@ func ReadEnvVarSlice_String(pattern string) []string {
 		}
 		key, value := pair[0], pair[1]
 		if re.MatchString(key) && value != "" {
-			values = append(values, value)
+			values = append(values, utils.MustResolveEnvPlaceholder(value))
 		}
 	}
 	return values
@@ -100,6 +101,7 @@ func readEnvVarValue(envVarName string, valueType EnvValueType) (interface{}, er
 	if isSet && value == "" {
 		return "", nil // Return "" if the environment variable is not set
 	}
+	value = utils.MustResolveEnvPlaceholder(value)
 
 	// Parse the value according to the specified type
 	switch valueType {
@@ -141,7 +143,7 @@ func readEnvVarGroupedMap(pattern string) map[string][]string {
 		matches := re.FindStringSubmatch(key)
 		if len(matches) > 1 && value != "" {
 			group := matches[1] // Use the first capture group for grouping
-			groupedVars[group] = append(groupedVars[group], value)
+			groupedVars[group] = append(groupedVars[group], utils.MustResolveEnvPlaceholder(value))
 		}
 	}
 	return groupedVars
@@ -159,7 +161,7 @@ func readEnvVarSingleMap(pattern string) map[string]string {
 		matches := re.FindStringSubmatch(key)
 		if len(matches) > 1 && value != "" {
 			group := matches[1] // Use the first capture group for grouping
-			singleVars[group] = value
+			singleVars[group] = utils.MustResolveEnvPlaceholder(value)
 		}
 	}
 	return singleVars
