@@ -33,8 +33,8 @@ func filterTests(allTests []CITestConf, workflow, testType, ids string, envresol
 			filteredTests = append(filteredTests, test)
 		}
 		if envresolve {
-			for k, v := range test.TestInputs {
-				test.TestInputs[k] = utils.MustResolveEnvPlaceholder(v)
+			for k, v := range test.TestEnvVars {
+				test.TestEnvVars[k] = utils.MustResolveEnvPlaceholder(v)
 			}
 		}
 	}
@@ -65,18 +65,18 @@ func filterAndMergeTests(allTests []CITestConf, workflow, testType, base64Tests 
 
 		if decodedTest, exists := idFilter[test.ID]; exists && workflowMatch && typeMatch {
 			// Override test inputs from the base64 encoded tests
-			for k, v := range decodedTest.TestInputs {
-				if test.TestInputs == nil {
-					test.TestInputs = make(map[string]string)
+			for k, v := range decodedTest.TestEnvVars {
+				if test.TestEnvVars == nil {
+					test.TestEnvVars = make(map[string]string)
 				}
-				test.TestInputs[k] = v
+				test.TestEnvVars[k] = v
 			}
 			test.IDSanitized = sanitizeTestID(test.ID)
 			filteredTests = append(filteredTests, test)
 		}
 		if envresolve {
-			for k, v := range test.TestInputs {
-				test.TestInputs[k] = utils.MustResolveEnvPlaceholder(v)
+			for k, v := range test.TestEnvVars {
+				test.TestEnvVars[k] = utils.MustResolveEnvPlaceholder(v)
 			}
 		}
 	}

@@ -503,8 +503,6 @@ github.com/sirupsen/logrus v1.9.3 h1:dueUQJ1C2q9oE3F7wvmSGAaVtTmUizReu6fjN8uqzbQ
 github.com/sirupsen/logrus v1.9.3/go.mod h1:naHLuLoDiP4jHNo9R0sCBMtWGeIprob74mVsIT4qYEQ=
 github.com/smartcontractkit/chainlink-testing-framework v1.34.2 h1:YL3ft7KJB7SAopdmJeyeR4/kv0j4jOdagNihXq8OZ38=
 github.com/smartcontractkit/chainlink-testing-framework v1.34.2/go.mod h1:hRZEDh2+afO8MSZb9qYNscmWb+3mHZf01J5ACZuIdTQ=
-github.com/smartcontractkit/chainlink/integration-tests v0.0.0-20240809091712-98b90543972d h1:6FxG5HxqBChkibqk8w3sOtrdQjgoquz44gBA6+IcBDA=
-github.com/smartcontractkit/chainlink/integration-tests v0.0.0-20240809091712-98b90543972d/go.mod h1:dvQ1dAmlXaz9i1vzq9jpuLH33krZNC9E+ziHgqwIxws=
 github.com/smartcontractkit/seth v1.1.1 h1:6hvexjJD7ek8ht/CLlEwQcH21K2E/WEYwbSRdKInZmM=
 github.com/smartcontractkit/seth v1.1.1/go.mod h1:cDfKHi/hJLpO9sRpVbrflrHCOV+MJPAMJHloExJnIXk=
 github.com/smartystreets/assertions v0.0.0-20180927180507-b2de0cb4f26d/go.mod h1:OnSkiWE9lh6wB0YB77sQom3nweQdgAjqCqsofrRNTgc=
@@ -779,7 +777,6 @@ google.golang.org/genproto v0.0.0-20190819201941-24fa4b261c55/go.mod h1:DMBHOl98
 google.golang.org/genproto v0.0.0-20200324203455-a04cca1dde73/go.mod h1:55QSHmfGQM9UVYDPBsyGGes0y52j32PQ3BqQfXhyH3c=
 google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013/go.mod h1:NbSheEEYHJ7i3ixzK3sjbqSGDJWnxyFXZblF3eUsNvo=
 google.golang.org/genproto v0.0.0-20210624195500-8bfb893ecb84/go.mod h1:SzzZ/N+nwJDaO1kznhnlzqS8ocJICar6hYhVyhi++24=
-google.golang.org/genproto v0.0.0-20240711142825-46eb208f015d h1:/hmn0Ku5kWij/kjGsrcJeC1T/MrJi2iNWwgAqrihFwc=
 google.golang.org/genproto/googleapis/api v0.0.0-20240711142825-46eb208f015d h1:kHjw/5UfflP/L5EbledDrcG4C2597RtymmGRZvHiCuY=
 google.golang.org/genproto/googleapis/api v0.0.0-20240711142825-46eb208f015d/go.mod h1:mw8MG/Qz5wfgYr6VqVCiZcHe/GJEfI+oGGDCohaVgB0=
 google.golang.org/genproto/googleapis/rpc v0.0.0-20240711142825-46eb208f015d h1:JU0iKnSg02Gmb5ZdV8nYsKEKsP6o/FGVWTrw4i1DA9A=

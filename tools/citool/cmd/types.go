@@ -15,10 +15,10 @@ type CITestConf struct {
 	TestCmd                    string            `yaml:"test_cmd" json:"test_cmd"`
 	TestConfigOverrideRequired bool              `yaml:"test_config_override_required" json:"test_config_override_required"`
 	TestConfigOverridePath     string            `yaml:"test_config_override_path" json:"test_config_override_path"`
-	TestSecretsRequired        bool              `yaml:"test_secrets_required" json:"testSecretsRequired"`
-	TestInputs                 map[string]string `yaml:"test_inputs" json:"test_inputs"`
-	RemoteRunnerMemory         string            `yaml:"remote_runner_memory" json:"remoteRunnerMemory"`
-	PyroscopeEnv               string            `yaml:"pyroscope_env" json:"pyroscopeEnv"`
+	TestSecretsRequired        bool              `yaml:"test_secrets_required" json:"test_secrets_required"`
+	TestEnvVars                map[string]string `yaml:"test_env_vars" json:"test_env_vars"`
+	RemoteRunnerMemory         string            `yaml:"remote_runner_memory" json:"remote_runner_memory"`
+	PyroscopeEnv               string            `yaml:"pyroscope_env" json:"pyroscope_env"`
 	Workflows                  []string          `yaml:"workflows" json:"workflows"`
 }
 

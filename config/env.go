@@ -99,7 +99,7 @@ func readEnvVarValue(envVarName string, valueType EnvValueType) (interface{}, er
 		return nil, nil
 	}
 	if isSet && value == "" {
-		return "", nil // Return "" if the environment variable is not set
+		return nil, nil
 	}
 	value = utils.MustResolveEnvPlaceholder(value)
 
