@@ -911,6 +911,34 @@ var (
 		DefaultGasLimit:           6000000,
 	}
 
+	AstarShibuya = blockchain.EVMNetwork{
+		Name:                      "Astar Shibuya",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.EthereumClientImplementation,
+		ChainID:                   81,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       10000,
+		FinalityDepth:             100,
+		DefaultGasLimit:           8000000,
+	}
+
+	AstarMainnet = blockchain.EVMNetwork{
+		Name:                      "Astar Mainnet",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.EthereumClientImplementation,
+		ChainID:                   592,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       10000,
+		FinalityDepth:             100,
+		DefaultGasLimit:           8000000,
+	}
+
 	MappedNetworks = map[string]blockchain.EVMNetwork{
 		"SIMULATED":               SimulatedEVM,
 		"ANVIL":                   Anvil,
@@ -974,6 +1002,8 @@ var (
 		"MODE_MAINNET":          ModeMainnet,
 		"ZKSYNC_SEPOLIA":        ZKSyncSepolia,
 		"ZKSYNC_MAINNET":        ZKSyncMainnet,
+		"ASTAR_SHIBUYA":         AstarShibuya,
+		"ASTAR_MAINNET":         AstarMainnet,
 	}
 )
 
