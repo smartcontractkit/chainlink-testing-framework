@@ -921,7 +921,7 @@ var (
 		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       10000,
-		FinalityDepth:             100,
+		FinalityTag:               true,
 		DefaultGasLimit:           8000000,
 	}
 
@@ -935,7 +935,7 @@ var (
 		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       10000,
-		FinalityDepth:             100,
+		FinalityTag:               true,
 		DefaultGasLimit:           8000000,
 	}
 
