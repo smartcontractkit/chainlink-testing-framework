@@ -64,7 +64,7 @@ func exportConfigToCSV(configFile string) error {
 	for _, test := range config.Tests {
 		workflows := strings.Join(test.Workflows, ", ") // Combine workflows into a single CSV field
 		// Serialize TestInputs
-		testInputs := serializeMap(test.TestInputs)
+		testInputs := serializeMap(test.TestEnvVars)
 
 		record := []string{
 			test.ID,
