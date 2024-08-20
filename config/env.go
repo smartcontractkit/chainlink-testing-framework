@@ -51,6 +51,18 @@ func MustReadEnvVar_String(name string) string {
 	return value.(string)
 }
 
+func MustReadEnvVar_Strings(name, sep string) []string {
+	value, err := readEnvVarValue(name, String)
+	if err != nil {
+		panic(err)
+	}
+	if value == nil {
+		return nil
+	}
+	strVal := value.(string)
+	return strings.Split(strVal, sep)
+}
+
 func MustReadEnvVar_Boolean(name string) *bool {
 	value, err := readEnvVarValue(name, Boolean)
 	if err != nil {

@@ -70,7 +70,7 @@ func (c *TestConfig) ReadFromEnvVar() error {
 		c.Logging.RunId = &loggingRunID
 	}
 
-	logstreamLogTargets := strings.Split(MustReadEnvVar_String(E2E_TEST_LOG_STREAM_LOG_TARGETS_ENV), ",")
+	logstreamLogTargets := MustReadEnvVar_Strings(E2E_TEST_LOG_STREAM_LOG_TARGETS_ENV, ",")
 	if len(logstreamLogTargets) > 0 {
 		if c.Logging == nil {
 			c.Logging = &LoggingConfig{}
@@ -202,7 +202,7 @@ func (c *TestConfig) ReadFromEnvVar() error {
 		c.Pyroscope.Environment = &pyroscopeEnvironment
 	}
 
-	selectedNetworks := strings.Split(MustReadEnvVar_String(E2E_TEST_SELECTED_NETWORK_ENV), ",")
+	selectedNetworks := MustReadEnvVar_Strings(E2E_TEST_SELECTED_NETWORK_ENV, ",")
 	if len(selectedNetworks) > 0 {
 		if c.Network == nil {
 			c.Network = &NetworkConfig{}
