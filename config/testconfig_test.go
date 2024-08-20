@@ -25,6 +25,7 @@ func TestReadConfigValuesFromEnvVars(t *testing.T) {
 				os.Setenv("E2E_TEST_GROUP3_RPC_WS_URL_1", "wsUrl1")
 				os.Setenv("E2E_TEST_CHAINLINK_IMAGE", "imageValue")
 				os.Setenv("E2E_TEST_PYROSCOPE_ENABLED", "true")
+				os.Setenv("E2E_TEST_SELECTED_NETWORK", "networkA,networkB")
 			},
 			cleanupFunc: func() {
 				os.Unsetenv("E2E_TEST_GROUP1_WALLET_KEY_1")
@@ -32,12 +33,14 @@ func TestReadConfigValuesFromEnvVars(t *testing.T) {
 				os.Unsetenv("E2E_TEST_GROUP3_RPC_WS_URL_1")
 				os.Unsetenv("E2E_TEST_CHAINLINK_IMAGE")
 				os.Unsetenv("E2E_TEST_PYROSCOPE_ENABLED")
+				os.Unsetenv("E2E_TEST_SELECTED_NETWORK")
 			},
 			expectedConfig: TestConfig{
 				Network: &NetworkConfig{
-					WalletKeys:  map[string][]string{"GROUP1": {"walletValue1"}},
-					RpcHttpUrls: map[string][]string{"GROUP2": {"httpUrl1"}},
-					RpcWsUrls:   map[string][]string{"GROUP3": {"wsUrl1"}},
+					SelectedNetworks: []string{"networkA", "networkB"},
+					WalletKeys:       map[string][]string{"GROUP1": {"walletValue1"}},
+					RpcHttpUrls:      map[string][]string{"GROUP2": {"httpUrl1"}},
+					RpcWsUrls:        map[string][]string{"GROUP3": {"wsUrl1"}},
 				},
 				Pyroscope:      &PyroscopeConfig{Enabled: ptr.Ptr[bool](true)},
 				ChainlinkImage: &ChainlinkImageConfig{Image: newString("imageValue")},
