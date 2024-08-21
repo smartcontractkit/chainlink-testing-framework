@@ -1,4 +1,4 @@
-name: WASP E2E tests [Tools]
+name: WASP E2E tests
 on: [push]
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

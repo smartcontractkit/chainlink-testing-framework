@@ -40,7 +40,7 @@ var DefaultDockerfile []byte
 //go:embed DockerfileWasp.dockerignore
 var DefaultDockerIgnorefile []byte
 
-//go:embed build_test_image.sh
+// TODO: remove the whole stuff in favor of remote-runner
 var DefaultBuildScript []byte
 
 var (

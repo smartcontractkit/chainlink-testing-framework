@@ -1,4 +1,4 @@
-name: WASP Go Tests [Tools]
+name: WASP Go Tests
 on: [push]
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

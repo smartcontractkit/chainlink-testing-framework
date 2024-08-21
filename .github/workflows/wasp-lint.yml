@@ -1,4 +1,4 @@
-name: WASP Lint [Tools]
+name: WASP Lint
 on:
   push:
 permissions:
