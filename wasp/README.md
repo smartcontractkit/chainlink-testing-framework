@@ -3,11 +3,9 @@
 </p>
 <div align="center">
 
-![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/smartcontractkit/wasp)
-![GitHub](https://img.shields.io/github/license/smartcontractkit/wasp)
 [![Go Report Card](https://goreportcard.com/badge/github.com/smartcontractkit/wasp)](https://goreportcard.com/report/github.com/smartcontractkit/wasp)
-[![Go Tests](https://github.com/smartcontractkit/wasp/actions/workflows/test.yml/badge.svg)](https://github.com/smartcontractkit/wasp/actions/workflows/test.yml)
-[![Bench](https://github.com/smartcontractkit/wasp/actions/workflows/bench.yml/badge.svg?branch=master)](https://github.com/smartcontractkit/wasp/actions/workflows/bench.yml)
+[![Component Tests](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/wasp-test.yml/badge.svg)](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/wasp-test.yml)
+[![E2E tests](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/wasp-test-e2e.yml/badge.svg)](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/wasp-test-e2e.yml)
 <a href='https://github.com/jpoles1/gopherbadger' target='_blank'>![gopherbadger-tag-do-not-edit](https://img.shields.io/badge/Go%20Coverage-80%25-brightgreen.svg?longCache=true&style=flat)</a>
 
 Scalable protocol-agnostic load testing library for `Go`

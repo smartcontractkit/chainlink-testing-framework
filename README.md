@@ -12,9 +12,16 @@
 
 </div>
 
-The Chainlink Testing Framework is a blockchain development framework written in Go. Its primary purpose is to help chainlink developers create extensive integration, e2e, performance, and chaos tests to ensure the stability of the chainlink project. It can also be helpful to those who just want to use chainlink oracles in their projects to help test their contracts, or even for those that aren't using chainlink.
+The Chainlink Testing Framework (CTF) is a blockchain development framework written in Go. Its primary purpose is to help chainlink developers create extensive integration, e2e, performance, and chaos tests to ensure the stability of the chainlink project. It can also be helpful to those who just want to use chainlink oracles in their projects to help test their contracts, or even for those that aren't using chainlink.
 
 If you're looking to implement a new chain integration for the testing framework, head over to the [blockchain](./blockchain/) directory for more info.
+
+# Content
+1. [Libraries](#libraries)
+
+## Libraries
+CTF contains a set of useful libraries:
+- [WASP](wasp/README.md) - Scalable protocol-agnostic load testing library for `Go`
 
 ## k8s package
 
