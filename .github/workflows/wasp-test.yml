@@ -1,8 +1,5 @@
 name: WASP Go Tests
-on:
-  push:
-    paths:
-      - 'wasp/**'
+on: [push]
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
