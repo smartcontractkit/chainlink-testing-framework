@@ -5,6 +5,9 @@ permissions:
   contents: read
 jobs:
   golangci:
+    defaults:
+      run:
+        working-directory: tools/wasp
     name: lint
     runs-on: ubuntu-latest
     steps:
@@ -16,11 +19,9 @@ jobs:
             src:
               - 'tools/wasp/**'
       - uses: cachix/install-nix-action@v18
-        working-directory: tools/wasp
         with:
           nix_path: nixpkgs=channel:nixos-unstable
       - name: Run lint
         if: steps.changes.outputs.src == 'true'
-        working-directory: tools/wasp
         run: |-
           nix develop -c make lint
