@@ -1,0 +1,25 @@
+name: WASP Go Tests [Tools]
+on: [push]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            src:
+              - 'tools/wasp/**'
+      - uses: cachix/install-nix-action@v18
+        working-directory: tools/wasp
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+      - name: Run tests
+        if: steps.changes.outputs.src == 'true'
+        working-directory: tools/wasp
+        run: |-
+          nix develop -c make test_race

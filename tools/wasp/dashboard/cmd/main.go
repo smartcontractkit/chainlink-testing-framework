@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/smartcontractkit/wasp/dashboard"
+	"github.com/smartcontractkit/chainlink-testing-framework/wasp/dashboard"
 )
 
 func main() {
