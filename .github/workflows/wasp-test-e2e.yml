@@ -1,5 +1,8 @@
 name: WASP E2E tests
-on: [push]
+on:
+  push:
+    paths:
+      - 'wasp/**'
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
