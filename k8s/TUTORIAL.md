@@ -450,7 +450,7 @@ const (
 ```golang
 // Config is an environment common configuration, labels, annotations, connection types, readiness check, etc.
 type Config struct {
-	// TTL is time to live for the environment, used with kube-janitor
+	// TTL is time to live for the environment, used with kyverno
 	TTL time.Duration
 	// NamespacePrefix is a static namespace prefix
 	NamespacePrefix string
