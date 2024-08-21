@@ -1,0 +1,7 @@
+bin/
+.vscode/
+.idea/
+.direnv/
+
+k3dvolume/
+.private.env

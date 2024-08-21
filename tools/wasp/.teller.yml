@@ -1,0 +1,30 @@
+
+project: wasp
+
+# Set this if you want to carry over parent process' environment variables
+# carry_env: true 
+
+
+#
+# Variables
+#
+# Feel free to add options here to be used as a variable throughout
+# paths.
+#
+opts:
+  region: env:AWS_REGION    # you can get env variables with the 'env:' prefix, for default values if env not found use comma. Example: env:AWS_REGION,{DEFAULT_VALUE}
+  stage: development
+
+
+#
+# Providers
+#
+providers:
+  github:
+    env_sync:
+      path: smartcontractkit/wasp
+    env:
+      FROM_TELLER:
+        path: smartcontractkit/wasp
+      FROM_TELLER_2:
+        path: smartcontractkit/wasp

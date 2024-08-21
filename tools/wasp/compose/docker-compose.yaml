@@ -1,0 +1,31 @@
+version: "3"
+
+services:
+  loki:
+    image: grafana/loki:2.5.0
+    volumes:
+      - ./loki-config.yaml:/etc/loki/mounted-config.yaml
+      - ./conf/provisioning/rules/rules.yml:/etc/loki/rules/fake/rules.yml
+      - loki_data:/loki
+    ports:
+      - "3030:3100"
+    command: -config.file=/etc/loki/mounted-config.yaml -log.level=info -ruler.storage.local.directory=/etc/loki/rules
+
+  grafana:
+    image: grafana/grafana:latest
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - grafana_home:/usr/share/grafana
+      - grafana_logs:/var/log/grafana
+      - grafana_plugins:/var/lib/grafana/plugins
+      - ./conf/grafana.ini:/etc/grafana/grafana.ini
+      - ./conf/provisioning:/etc/grafana/provisioning
+    ports:
+      - "3000:3000"
+
+volumes:
+  loki_data:
+  grafana_data:
+  grafana_home:
+  grafana_logs:
+  grafana_plugins:

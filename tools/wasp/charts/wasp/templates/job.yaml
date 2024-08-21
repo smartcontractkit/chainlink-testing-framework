@@ -1,0 +1,69 @@
+{{- range $i, $e := until (int .Values.jobs) }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: wasp-{{ $.Release.Name }}-{{ $i }}
+  labels:
+    sync: "{{ $.Values.sync }}"
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      name: wasp-{{ $.Release.Name }}-{{ $i }}
+      {{- with $.Values.labels }}
+      labels:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+        sync: {{ $.Values.sync }}
+      {{- with $.Values.annotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: wasp
+          image: {{ $.Values.image }}
+          command:
+            - ./{{ $.Values.test.binaryName }}
+            - -test.v
+            - -test.run
+            - {{ $.Values.test.name }}
+            - -test.timeout
+            - {{ $.Values.test.timeout }}
+          imagePullPolicy: {{ $.Values.imagePullPolicy }}
+          {{- with $.Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          env:
+            - name: LOKI_URL
+              value: {{ $.Values.env.loki.url }}
+            - name: LOKI_TOKEN
+              value: {{ $.Values.env.loki.token }}
+            - name: LOKI_BASIC_AUTH
+              value: {{ $.Values.env.loki.basic_auth }}
+            - name: LOKI_TENANT_ID
+              value: {{ $.Values.env.loki.tenant_id }}
+            - name: WASP_LOG_LEVEL
+              value: {{ $.Values.env.wasp.log_level }}
+            - name: WASP_NODE_ID
+              value: {{ $i | quote }}
+            - name: WASP_NAMESPACE
+              value: {{ $.Values.namespace }}
+            - name: WASP_SYNC
+              value: {{ $.Values.sync }}
+            - name: WASP_JOBS
+              value: {{ $.Values.jobs | quote }}
+          {{- range $key, $value := $.Values.test }}
+            {{- if $value }}
+            - name: {{ $key | upper}}
+              {{- if kindIs "string" $value}}
+              value: {{ $value | quote}}
+              {{- else }}
+              value: {{ $value }}
+              {{- end }}
+            {{- end }}
+          {{- end }}
+---
+{{- end }}
