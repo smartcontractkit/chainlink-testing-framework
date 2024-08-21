@@ -423,3 +423,7 @@ We have two ways to add new images to the ecr. The first two requirements are th
 export SETH_LOG_LEVEL=info
 export RESTY_DEBUG=true
 ```
+
+## Using AWS Secrets Manager
+
+Check the [docs](SECRETS.md)
