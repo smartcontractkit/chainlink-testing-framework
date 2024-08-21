@@ -205,7 +205,7 @@ You can build your tests like in example `Dockerfile` in the root dir
 ```
 docker build -f Dockerfile.test --build-arg BUILD_ROOT=/go/src/examples/cluster -t wasp_test .
 docker tag wasp_test:latest ${registry}/wasp_test:latest
-docker push ${registry}/wasp_test:latest 
+docker push ${registry}/wasp_test:latest
 ```
 
 Then run an example test:

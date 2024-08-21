@@ -1,5 +1,5 @@
 <p align="center">
-    <img alt="wasp" src="./docs/wasp-2.png"> 
+    <img alt="wasp" src="./docs/wasp-2.png">
 </p>
 <div align="center">
 
@@ -119,7 +119,7 @@ Basic [dashboard](dashboard/dashboard.go):
 
 ### Reusing Dashboard Components
 
-You can integrate components from the WASP dashboard into your custom dashboards. 
+You can integrate components from the WASP dashboard into your custom dashboards.
 
 Example:
 

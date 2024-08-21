@@ -5,6 +5,6 @@ extend-exclude = [
     "charts",
     "**/*.tgz",
     "**/*.png",
-    "tools/wasp/HOW_IT_WORKS.md",
-    "tools/wasp/dashboard/**"
+    "wasp/HOW_IT_WORKS.md",
+    "wasp/dashboard/**"
 ]

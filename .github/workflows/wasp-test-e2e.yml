@@ -7,7 +7,7 @@ jobs:
   test:
     defaults:
       run:
-        working-directory: tools/wasp
+        working-directory: wasp
     env:
       LOKI_TENANT_ID: ${{ secrets.LOKI_TENANT_ID }}
       LOKI_BASIC_AUTH: ${{ secrets.LOKI_BASIC_AUTH }}
@@ -20,7 +20,7 @@ jobs:
         with:
           filters: |
             src:
-              - 'tools/wasp/**'
+              - 'wasp/**'
       - uses: cachix/install-nix-action@v18
         with:
           nix_path: nixpkgs=channel:nixos-unstable
