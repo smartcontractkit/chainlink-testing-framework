@@ -4,7 +4,7 @@ import "github.com/smartcontractkit/chainlink-testing-framework/utils/ptr"
 
 // Common labels for k8s envs
 const (
-	TTLLabelKey       = "janitor/ttl"
+	TTLLabelKey       = "cleanup.kyverno.io/ttl"
 	NamespaceLabelKey = "namespace"
 )
 

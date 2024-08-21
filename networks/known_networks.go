@@ -911,6 +911,86 @@ var (
 		DefaultGasLimit:           6000000,
 	}
 
+	AstarShibuya = blockchain.EVMNetwork{
+		Name:                      "Astar Shibuya",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.EthereumClientImplementation,
+		ChainID:                   81,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       10000,
+		FinalityTag:               true,
+		DefaultGasLimit:           8000000,
+	}
+
+	AstarMainnet = blockchain.EVMNetwork{
+		Name:                      "Astar Mainnet",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.EthereumClientImplementation,
+		ChainID:                   592,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       10000,
+		FinalityTag:               true,
+		DefaultGasLimit:           8000000,
+	}
+
+	HederaTestnet = blockchain.EVMNetwork{
+		Name:                      "Hedera Testnet",
+		SupportsEIP1559:           false,
+		ClientImplementation:      blockchain.EthereumClientImplementation,
+		ChainID:                   296,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       10000,
+		DefaultGasLimit:           6000000,
+	}
+
+	XLayerSepolia = blockchain.EVMNetwork{
+		Name:                      "XLayer Sepolia",
+		SupportsEIP1559:           false,
+		ClientImplementation:      blockchain.EthereumClientImplementation,
+		ChainID:                   195,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       10000,
+		DefaultGasLimit:           6000000,
+	}
+
+	XLayerMainnet = blockchain.EVMNetwork{
+		Name:                      "XLayer Mainnet",
+		SupportsEIP1559:           false,
+		ClientImplementation:      blockchain.EthereumClientImplementation,
+		ChainID:                   196,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       10000,
+		DefaultGasLimit:           6000000,
+	}
+
+	TreasureRuby = blockchain.EVMNetwork{
+		Name:                      "Treasure Ruby",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.EthereumClientImplementation,
+		ChainID:                   978657,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       10000,
+		DefaultGasLimit:           6000000,
+	}
+
 	MappedNetworks = map[string]blockchain.EVMNetwork{
 		"SIMULATED":               SimulatedEVM,
 		"ANVIL":                   Anvil,
@@ -974,6 +1054,12 @@ var (
 		"MODE_MAINNET":          ModeMainnet,
 		"ZKSYNC_SEPOLIA":        ZKSyncSepolia,
 		"ZKSYNC_MAINNET":        ZKSyncMainnet,
+		"ASTAR_SHIBUYA":         AstarShibuya,
+		"ASTAR_MAINNET":         AstarMainnet,
+		"HEDERA_TESTNET":        HederaTestnet,
+		"X_LAYER_SEPOLIA":       XLayerSepolia,
+		"X_LAYER_MAINNET":       XLayerMainnet,
+		"TREASURE_RUBY":         TreasureRuby,
 	}
 )
 

@@ -27,6 +27,4 @@ func init() {
 	rootCmd.AddCommand(checkTestsCmd)
 	rootCmd.AddCommand(filterCmd)
 	rootCmd.AddCommand(csvExportCmd)
-	rootCmd.AddCommand(testConfigCmd)
-	testConfigCmd.AddCommand(createTestConfigCmd)
 }
