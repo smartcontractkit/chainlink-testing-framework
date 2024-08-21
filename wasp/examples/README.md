@@ -44,7 +44,6 @@ These vars are required to rebuild default layout and update an image
 ```
 		UpdateImage:  true,
 		BuildCtxPath: "..",
-		
 		// Helm values
 		"image": ...
 ```
@@ -75,7 +74,7 @@ You can set your custom chart as a local path or as an OCI registry URI in [clus
 - Set [wasp chart](../charts/wasp) in test params
 ```
 ChartPath: "../../charts/wasp"
-or 
+or
 ChartPath: "oci://public.ecr.aws/chainlink/wasp"
 ```
 
@@ -87,24 +86,19 @@ ChartPath: "oci://public.ecr.aws/chainlink/wasp"
 			"env.loki.token":      os.Getenv("LOKI_TOKEN"),
 			"env.loki.basic_auth": os.Getenv("LOKI_BASIC_AUTH"),
 			"env.loki.tenant_id":  os.Getenv("LOKI_TENANT_ID"),
-			
 			// WASP vars
 			"env.wasp.log_level": "debug",
-
-			
 			// test vars
 			"image":               os.Getenv("WASP_TEST_IMAGE"),
 			"test.binaryName":     os.Getenv("WASP_TEST_BIN"),
 			"test.name":           os.Getenv("WASP_TEST_NAME"),
 			"test.timeout":       "24h",
 			"jobs":               "40",
-			
 			// k8s pods resources
 			"resources.requests.cpu":    "2000m",
 			"resources.requests.memory": "512Mi",
 			"resources.limits.cpu":      "2000m",
 			"resources.limits.memory":   "512Mi",
-			
 			// your custom vars that will pass through to k8s jobs
 			"test.MY_CUSTOM_VAR": "abc",
 ```

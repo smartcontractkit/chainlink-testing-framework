@@ -29,6 +29,7 @@ docker tag "$IMAGE_TAG" "$ECR_REGISTRY_NAME/$ECR_REGISTRY_REPO_NAME:$IMAGE_TAG"
 docker push "$ECR_REGISTRY_NAME/$ECR_REGISTRY_REPO_NAME:$IMAGE_TAG"
 
 # Verify push success
+# shellcheck disable=SC2181
 if [ $? -eq 0 ]; then
     echo "Image successfully pushed to ECR."
 else

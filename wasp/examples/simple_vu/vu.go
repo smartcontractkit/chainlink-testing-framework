@@ -14,7 +14,6 @@ type WSVirtualUser struct {
 	target string
 	conn   *websocket.Conn
 	Data   []string
-	stop   chan struct{}
 }
 
 func NewExampleWSVirtualUser(target string) *WSVirtualUser {

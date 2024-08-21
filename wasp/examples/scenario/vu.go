@@ -18,7 +18,6 @@ type VirtualUser struct {
 	Data   []string
 	rl     ratelimit.Limiter
 	client *resty.Client
-	stop   chan struct{}
 }
 
 func NewExampleScenario(target string) *VirtualUser {

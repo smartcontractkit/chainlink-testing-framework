@@ -16,7 +16,6 @@ type VirtualUser struct {
 	target string
 	Data   []string
 	client *resty.Client
-	stop   chan struct{}
 }
 
 func NewExampleScenario(target string) *VirtualUser {
