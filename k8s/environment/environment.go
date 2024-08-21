@@ -70,7 +70,7 @@ type ConnectedChart interface {
 
 // Config is an environment common configuration, labels, annotations, connection types, readiness check, etc.
 type Config struct {
-	// TTL is time to live for the environment, used with kube-janitor
+	// TTL is time to live for the environment, used with kyverno
 	TTL time.Duration
 	// NamespacePrefix is a static namespace prefix
 	NamespacePrefix string
@@ -272,11 +272,12 @@ func (m *Environment) initApp() error {
 		}
 	}
 
+	m.Cfg.Labels = append(m.Cfg.Labels, fmt.Sprintf("%s=%s", pkg.TTLLabelKey, *a.ShortDur(m.Cfg.TTL)))
 	nsLabels, err := a.ConvertLabels(m.Cfg.Labels)
 	if err != nil {
 		return err
 	}
-	defaultNamespaceAnnotations[pkg.TTLLabelKey] = a.ShortDur(m.Cfg.TTL)
+
 	m.root = cdk8s.NewChart(m.App, ptr.Ptr(fmt.Sprintf("root-chart-%s", m.Cfg.Namespace)), &cdk8s.ChartProps{
 		Labels:    nsLabels,
 		Namespace: ptr.Ptr(m.Cfg.Namespace),

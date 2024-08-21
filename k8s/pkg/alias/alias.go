@@ -9,7 +9,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/ptr"
 )
 
-// ShortDur is a helper method for kube-janitor duration format
+// ShortDur is a helper method for kyverno duration format
 func ShortDur(d time.Duration) *string {
 	s := d.String()
 	if strings.HasSuffix(s, "m0s") {
