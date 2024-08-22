@@ -1,171 +1,211 @@
 ## Havoc
 
-_DISCLAIMER_: This software is not even early Alpha, and still in development, use it on your own risk
+The `havoc` package is a Go library designed to facilitate chaos testing within Kubernetes environments using Chaos Mesh. It offers a structured way to define, execute, and manage chaos experiments as code, directly integrated into Go applications or testing suites. This package simplifies the creation and control of Chaos Mesh experiments, including network chaos, pod failures, and stress testing on Kubernetes clusters.
 
-Havoc is a tool that introspects your k8s namespace and generates a `ChaosMesh` CRDs suite for you
+### Features
 
-You can use havoc as a CLI to quickly test hypothesis or run it in "monkey" mode with your load tests and have Grafana annotations
+- **Chaos Object Management:** Easily create, update, pause, resume, and delete chaos experiments using Go structures and methods.
+- **Lifecycle Hooks:** Utilize chaos listeners to hook into lifecycle events of chaos experiments, such as creation, start, pause, resume, and finish.
+- **Support for Various Chaos Experiments:** Create and manage different types of chaos experiments like NetworkChaos, IOChaos, StressChaos, PodChaos, and HTTPChaos.
+- **Chaos Experiment Status Monitoring:** Monitor and react to the status of chaos experiments programmatically.
 
-### How it works
+### Installation
 
-![img.png](img.png)
-
-Havoc generates groups of experiments based on your pods and labels found in namespace
-
-In order to test your namespace you need to label pods accordingly:
-
-- `havoc-component-group` is like `app.kubernetes.io/component` (see [recommendation](https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/)) but should be set explicitly
-- `havoc-network-group` in most cases match `havoc-component-group` but sometimes you need to break network even inside component group, ex. distributed databases
-
-Example:
+To use `havoc` in your project, ensure you have a Go environment setup. Then, install the package using go get:
 
 ```
-      havoc-component-group: node
-      havoc-network-group: nodes-1
+go get -u github.com/smartcontractkit/chainlink-testing-framework/havoc
 ```
 
-Every pod without a group will be marked as `no-group` and experiments will be assigned accordingly
+Ensure your Kubernetes cluster is accessible and that you have Chaos Mesh installed and configured.
 
-Single pod experiments:
+### Monitoring and Observability in Chaos Experiments
 
-- PodFailure
-- NetworkChaos (Pod latency)
-- Stress (Memory)
-- Stress (CPU)
-- External service failure (Network partition)
-- Blockchain specific experiments
+`havoc` enhances chaos experiment observability through structured logging and Grafana annotations, facilitated by implementing the ChaosListener interface. This approach allows for detailed monitoring, debugging, and visual representation of chaos experiments' impact.
 
-Group experiments:
+#### Structured Logging with ChaosLogger
 
-- Group failure
-- Group latency
-- Group CPU
-- Group memory
-- Group network partition
-- OpenAPI based HTTP experiments
+`ChaosLogger` leverages the zerolog library to provide structured, queryable logging of chaos events. It automatically logs key lifecycle events such as creation, start, pause, and termination of chaos experiments, including detailed contextual information.
 
-You can generate default chaos suite by [configuring](havoc.toml) havoc then set `dir` param and add your custom experiments, then run monkey to test your services
-
-### Why use it?
-
-#### Without Havoc your workflow is
-
-- Inspect full rendered deployment of your namespace
-- Figure out multiple groups of components you can select by various labels or annotations to form experiments
-- If some components are not selectable - ask DevOps guys to change the manifests
-- Create set of experiments for each chaos experiment type by hand or copy from other product chaos tests
-- Calculate permutations of different groups and calculate composite experiments (network partitioning, latency)
-- Create experiment for each API in every OpenAPI spec
-- Compose huge ChaosMesh Workflow YAML that fails without proper validation errors if group has no match or label is invalid
-- Run the load test, then manually run the chaos suite
-- Check experiment logs to debug with kubectl
-- Figure out which failures are caused by which experiments
-- If you have more than one project, use some templating make experiments work for other projects
-
-#### With Havoc
-
-- Have a simple labelling convention for your namespaces, fill 5 vars in `TOML` config
-- Run chaos testing with `havoc -c havoc.toml run ${namespace}`
-
-### Install
-
-Please use GitHub releases of this repo
-Download latest [release](https://github.com/smartcontractkit/havoc/releases)
-
-You need `kubectl` to available on your machine
-
-You also need [ChaosMesh](https://chaos-mesh.org/) installed in your `k8s` cluster
-
-### Grafana integration
-
-Set env variables
+Instantiate `ChaosLogger` and register it as a listener to your chaos experiments:
 
 ```
-HAVOC_LOG_LEVEL={warn,info,debug,trace}
-GRAFANA_URL="..."
-GRAFANA_TOKEN="..."
+logger := havoc.NewChaosLogger()
+chaos.AddListener(logger)
 ```
 
-Set dashboard names in `havoc.toml`
+### Default package logger
+
+`havoc/logger.go` contains default `Logger` instance for the package.
+
+#### Visual Monitoring with Grafana Annotations
+
+`SingleLineGrafanaAnnotator` is a `ChaosListener` that annotates Grafana dashboards with chaos experiment events. This visual representation helps correlate chaos events with their effects on system metrics and logs.
+
+Initialize `SingleLineGrafanaAnnotator` with your Grafana instance details and register it alongside `ChaosLogger`:
 
 ```
-[havoc.grafana]
-# UIDs of dashboard which should be annotated with chaos experiments metadata
-# You can also try to use name as you see it in the top bar of your dashboard but that's not guaranteed to match
-dashboard_uids = ["WaspDebug", "e98b5451-12dc-4a8b-9576-2c0b67ddbd0c"]
+annotator := havoc.NewSingleLineGrafanaAnnotator(
+    "http://grafana-instance.com",
+    "grafana-access-token",
+    "dashboard-uid",
+)
+chaos.AddListener(annotator)
 ```
 
-### Manual usage
+### Creating a Chaos Experiment
 
-Generate default experiments for your namespace
+To create a chaos experiment, define the chaos object options, initialize a chaos experiment with NewChaos, and then call Create to start the experiment.
 
-```
-havoc -c havoc.toml generate [namespace]
-```
-
-Check this [section](havoc.toml) for `ignore_pods` and `ignore_group_labels`, default settings should be reasonable, however, you can tweak them
-
-This will create `havoc-experiments` dir, then you can choose from recommended experiments
+Here is an example of creating and starting a PodChaos experiment:
 
 ```
-havoc -c havoc.toml apply
+package main
+
+import (
+    "context"
+    "github.com/smartcontractkit/chainlink-testing-framework/havoc"
+    "github.com/chaos-mesh/chaos-mesh/api/v1alpha1"
+    "sigs.k8s.io/controller-runtime/pkg/client"
+    "time"
+)
+
+func main() {
+    // Initialize dependencies
+    client, err := havoc.NewChaosMeshClient()
+    if err != nil {
+        panic(err)
+    }
+    logger := havoc.NewChaosLogger()
+    annotator := havoc.NewSingleLineGrafanaAnnotator(
+        "http://grafana-instance.com",
+        "grafana-access-token",
+        "dashboard-uid",
+    )
+
+    // Define chaos experiment
+    podChaos := &v1alpha1.PodChaos{ /* PodChaos spec */ }
+    chaos, err := havoc.NewChaos(havoc.ChaosOpts{
+        Object:      podChaos,
+        Description: "Pod failure example",
+        DelayCreate: 5 * time.Second,
+        Client:      client,
+    })
+    if err != nil {
+        panic(err)
+    }
+
+    // Register listeners
+    chaos.AddListener(logger)
+    chaos.AddListener(annotator)
+
+    // Start chaos experiment
+    chaos.Create(context.Background())
+
+    // Manage chaos lifecycle...
+}
 ```
 
-You can also apply your experiment directly, using absolute or relative path to experiment file
+### Test Example
 
 ```
-havoc -c havoc.toml apply ${experiment_file_path}
-```
+func TestChaosDON(t *testing.T) {
+	testDuration := time.Minute * 60
 
-### Monkey mode
+    // Load test config
+	cfg := &config.MercuryQAEnvChaos{}
 
-You can run havoc as an automated sequential or randomized suite
+	// Define chaos experiments and their schedule
 
-```
-havoc -c havoc.toml run [namespace]
-```
+	k8sClient, err := havoc.NewChaosMeshClient()
+	require.NoError(t, err)
 
-See `[havoc.monkey]` config [here](havoc.toml)
+	// Test 3.2: Disable 2 nodes simultaneously
 
-### Programmatic usage
+	podFailureChaos4, err := k8s_chaos.MercuryPodChaosSchedule(k8s_chaos.MercuryScheduledPodChaosOpts{
+		Name:        "schedule-don-ocr-node-failure-4",
+		Description: "Disable 2 nodes (clc-ocr-mercury-arb-testnet-qa-nodes-3 and clc-ocr-mercury-arb-testnet-qa-nodes-4)",
+		DelayCreate: time.Minute * 0,
+		Duration:    time.Minute * 20,
+		Namespace:   cfg.ChaosNodeNamespace,
+		PodSelector: v1alpha1.PodSelector{
+			Mode: v1alpha1.AllMode,
+			Selector: v1alpha1.PodSelectorSpec{
+				GenericSelectorSpec: v1alpha1.GenericSelectorSpec{
+					Namespaces: []string{cfg.ChaosNodeNamespace},
+					ExpressionSelectors: v1alpha1.LabelSelectorRequirements{
+						{
+							Key:      "app.kubernetes.io/instance",
+							Operator: "In",
+							Values: []string{
+								"clc-ocr-mercury-arb-testnet-qa-nodes-3",
+								"clc-ocr-mercury-arb-testnet-qa-nodes-4",
+							},
+						},
+					},
+				},
+			},
+		},
+		Client: k8sClient,
+	})
+	require.NoError(t, err)
 
-See how you can use recommended experiments from code in [examples](examples)
+	// Test 3.3: Disable 3 nodes simultaneously
 
-### Custom experiments
+	podFailureChaos5, err := k8s_chaos.MercuryPodChaosSchedule(k8s_chaos.MercuryScheduledPodChaosOpts{
+		Name:        "schedule-don-ocr-node-failure-5",
+		Description: "Disable 3 nodes (clc-ocr-mercury-arb-testnet-qa-nodes-3, clc-ocr-mercury-arb-testnet-qa-nodes-4 and clc-ocr-mercury-arb-testnet-qa-nodes-5)",
+		DelayCreate: time.Minute * 40,
+		Duration:    time.Minute * 20,
+		Namespace:   cfg.ChaosNodeNamespace,
+		PodSelector: v1alpha1.PodSelector{
+			Mode: v1alpha1.AllMode,
+			Selector: v1alpha1.PodSelectorSpec{
+				GenericSelectorSpec: v1alpha1.GenericSelectorSpec{
+					Namespaces: []string{cfg.ChaosNodeNamespace},
+					ExpressionSelectors: v1alpha1.LabelSelectorRequirements{
+						{
+							Key:      "app.kubernetes.io/instance",
+							Operator: "In",
+							Values: []string{
+								"clc-ocr-mercury-arb-testnet-qa-nodes-3",
+								"clc-ocr-mercury-arb-testnet-qa-nodes-4",
+								"clc-ocr-mercury-arb-testnet-qa-nodes-5",
+							},
+						},
+					},
+				},
+			},
+		},
+		Client: k8sClient,
+	})
+	require.NoError(t, err)
 
-Havoc is just a generator and a module that reads your `dir = $mydir` from config
+	chaosList := []havoc.ChaosEntity{
+		podFailureChaos4,
+		podFailureChaos5,
+	}
 
-If you wish to add custom experiments written by hand create your custom directory and add experiments
+	for _, chaos := range chaosList {
+		chaos.AddListener(havoc.NewChaosLogger())
+		chaos.AddListener(havoc.NewSingleLineGrafanaAnnotator(cfg.GrafanaURL, cfg.GrafanaToken, cfg.GrafanaDashboardUID))
 
-Experiments will be executed in lexicographic order, however, for custom experiments there are 2 simple rules:
+		// Fail the test if the chaos object already exists
+		exists, err := havoc.ChaosObjectExists(chaos.GetObject(), k8sClient)
+		require.NoError(t, err)
+		require.False(t, exists, "chaos object already exists: %s. Delete it before starting the test", chaos.GetChaosName())
 
-- directory names must be in
+		chaos.Create(context.Background())
+	}
 
-```
-    "external",
-    "failure",
-    "latency",
-    "cpu",
-    "memory",
-    "group-failure",
-    "group-latency",
-    "group-cpu",
-    "group-memory",
-    "group-partition",
-    "blockchain_rewind_head",
-    "http"
-```
+	t.Cleanup(func() {
+		for _, chaos := range chaosList {
+			// Delete chaos object if it still exists
+			chaos.Delete(context.Background())
+		}
+	})
 
-- `metadata.name` should be equal to your experiment filename
-
-When you are using `run` monkey command, if directory is not empty havoc won't automatically generate experiments, so you can extend generated experiments with your custom modifications
-
-### Developing
-
-We are using [nix](https://nixos.org/)
-
-Enter the shell
-
-```
-nix develop
+	// Simulate user activity/load for the duration of the chaos experiments
+	runUserLoad(t, cfg, testDuration)
+}
 ```
