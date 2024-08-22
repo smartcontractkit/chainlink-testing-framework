@@ -108,6 +108,7 @@ func (c *Chaos) Update(ctx context.Context) error {
 	annotations["example.com/trigger-injection"] = "true"
 	c.Object.SetAnnotations(annotations)
 
+	//nolint
 	if err := c.Client.Update(ctx, c.Object); err != nil {
 		return errors.Wrap(err, "failed to update chaos object")
 	}
@@ -142,7 +143,7 @@ func (c *Chaos) Pause(ctx context.Context) error {
 	annotations[v1alpha1.PauseAnnotationKey] = strconv.FormatBool(true)
 	c.Object.SetAnnotations(annotations)
 
-	err = c.Client.Update(context.Background(), c.Object)
+	err = c.Client.Update(ctx, c.Object)
 	if err != nil {
 		return errors.Wrap(err, "could not update the annotation to set the chaos experiment into pause state")
 	}
@@ -462,7 +463,7 @@ func (c *Chaos) monitorStatus(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			err := c.updateChaosObject(context.Background())
+			err := c.updateChaosObject(ctx)
 			if err != nil {
 				c.logger.Error().Err(err).Msg("failed to update chaos object")
 				continue
@@ -521,11 +522,17 @@ func (c *Chaos) monitorStatus(ctx context.Context) {
 				case StatusFinished:
 					c.endTime = time.Now()
 					c.notifyListeners("finished", nil)
-					// Delete the chaos object when it finishes
-					err := c.Delete(context.Background())
+
+					err := c.Delete(ctx)
 					if err != nil {
 						c.logger.Error().Err(err).Msg("failed to delete chaos object")
 					}
+				case StatusCreationFailed:
+					panic("not implemented")
+				case StatusDeleted:
+					panic("not implemented")
+				case StatusUnknown:
+					panic("not implemented")
 				}
 			}
 		}

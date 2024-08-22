@@ -171,14 +171,14 @@ func (s *Schedule) createNow(ctx context.Context) {
 			if !deleteTimer.Stop() {
 				<-deleteTimer.C // Drain the timer if it already fired
 			}
-			err := s.Delete(context.Background())
+			err := s.Delete(ctx)
 			if err != nil {
 				s.logger.Error().Err(err).Msg("failed to delete chaos object")
 			}
 			close(done)
 		case <-deleteTimer.C:
 			// Duration elapsed, delete the chaos object
-			err := s.Delete(context.Background())
+			err := s.Delete(ctx)
 			if err != nil {
 				s.logger.Error().Err(err).Msg("failed to delete chaos object")
 			}

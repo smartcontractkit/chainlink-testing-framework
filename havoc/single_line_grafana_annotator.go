@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/grafana"
 )
 
