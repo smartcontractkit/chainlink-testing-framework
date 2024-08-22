@@ -1,0 +1,20 @@
+{
+  "items": [
+    {
+      "metadata": {
+        "name": "pod-1",
+        "labels": {
+          "havoc-component-group": "mygroup"
+        }
+      }
+    },
+    {
+      "metadata": {
+        "name": "pod-2",
+        "labels": {
+          "havoc-component-group": "mygroup"
+        }
+      }
+    }
+  ]
+}

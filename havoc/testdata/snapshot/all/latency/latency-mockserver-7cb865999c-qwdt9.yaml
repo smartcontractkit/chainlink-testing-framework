@@ -1,0 +1,24 @@
+kind: NetworkChaos
+apiVersion: chaos-mesh.org/v1alpha1
+metadata:
+  name: latency-mockserver-7cb865999c-qwdt9
+  namespace: cl-cluster
+spec:
+  selector:
+    namespaces:
+      - cl-cluster
+    fieldSelectors:
+      metadata.name: mockserver-7cb865999c-qwdt9
+  mode: one
+  action: delay
+  duration: 10s
+  delay:
+    latency: 300ms
+  direction: from
+  target:
+    selector:
+      namespaces:
+        - cl-cluster
+      fieldSelectors:
+        metadata.name: mockserver-7cb865999c-qwdt9
+    mode: one

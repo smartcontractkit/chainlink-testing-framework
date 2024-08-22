@@ -1,0 +1,59 @@
+# IDE and environment
+.idea/
+.vscode/
+.DS_STORE
+
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories
+dist/
+vendor/
+node_modules/
+.yarn/
+
+# Mercuy server configuration file
+config.toml
+config.*.toml
+
+# Personal/secret env vars
+.envrc-personal
+
+# Other
+tmp/
+*.log
+*.swp
+.air.toml
+.DS_Store
+output.txt
+
+# Default binary name with go build
+main
+test.sh
+
+# Default generated experiments
+havoc-experiments
+havoc-default
+experiments-crib-core
+testdata/experiments-test
+havoc-monkey-temp-dir
+
+# General env vars config
+.envrc
+
+# Dumps of configs
+config_dump.toml
+pods_dump.json
+testdata/result/**
+testdata/results/**
+!testdata/results/.gitkeep

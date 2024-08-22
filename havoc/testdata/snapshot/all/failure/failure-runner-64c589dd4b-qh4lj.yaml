@@ -1,0 +1,12 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: failure-runner-64c589dd4b-qh4lj
+  namespace: cl-cluster
+spec:
+  action: pod-failure
+  mode: one
+  duration: 10s
+  selector:
+    fieldSelectors:
+      metadata.name: runner-64c589dd4b-qh4lj

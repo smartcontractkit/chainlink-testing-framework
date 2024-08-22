@@ -1,0 +1,16 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: group-cpu-havoc-component-group-blockchain-2-fixed
+  namespace: cl-cluster
+spec:
+  mode: fixed
+  value: '2'
+  duration: 10s
+  selector:
+    labelSelectors:
+      'havoc-component-group': 'blockchain'
+  stressors:
+    cpu:
+      workers: 1
+      load: 100

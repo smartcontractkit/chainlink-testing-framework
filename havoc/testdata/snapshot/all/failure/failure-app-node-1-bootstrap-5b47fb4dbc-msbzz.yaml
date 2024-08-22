@@ -1,0 +1,12 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: failure-app-node-1-bootstrap-5b47fb4dbc-msbzz
+  namespace: cl-cluster
+spec:
+  action: pod-failure
+  mode: one
+  duration: 10s
+  selector:
+    fieldSelectors:
+      metadata.name: app-node-1-bootstrap-5b47fb4dbc-msbzz

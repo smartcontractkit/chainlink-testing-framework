@@ -1,0 +1,15 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: memory-my-single-app
+  namespace: cl-cluster
+spec:
+  mode: one
+  duration: 1m
+  selector:
+    fieldSelectors:
+      metadata.name: my-single-app
+  stressors:
+    memory:
+      workers: 1
+      size: 512MB

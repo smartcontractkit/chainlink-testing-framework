@@ -1,0 +1,12 @@
+{
+  "items": [
+    {
+      "metadata": {
+        "name": "my-single-app",
+        "labels": {
+          "app": "app"
+        }
+      }
+    }
+  ]
+}

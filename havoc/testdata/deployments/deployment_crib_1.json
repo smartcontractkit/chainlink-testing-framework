@@ -1,0 +1,178 @@
+{
+  "items": [
+    {
+      "metadata": {
+        "name": "app-node-1-6bfbd56f65-brdtd",
+        "labels": {
+          "app": "app",
+          "instance": "node-1",
+          "intents.otterize.com/server": "app-node-1-cl-cluster-f3da74",
+          "network-partition-group": "network-group-2",
+          "pod-template-hash": "6bfbd56f65",
+          "release": "app"
+        }
+      }
+    },
+    {
+      "metadata": {
+        "name": "app-node-1-db-dcd746f4c-2s9q7",
+        "labels": {
+          "app": "app-db",
+          "instance": "node-1-db",
+          "intents.otterize.com/server": "app-node-1-db-cl-cluster-162f92",
+          "pod-template-hash": "dcd746f4c",
+          "release": "app"
+        }
+      }
+    },
+    {
+      "metadata": {
+        "name": "app-node-2-c989699d9-ng772",
+        "labels": {
+          "app": "app",
+          "instance": "node-2",
+          "intents.otterize.com/server": "app-node-2-cl-cluster-23bb66",
+          "network-partition-group": "network-group-2",
+          "pod-template-hash": "c989699d9",
+          "release": "app"
+        }
+      }
+    },
+    {
+      "metadata": {
+        "name": "app-node-2-db-d668d649c-tnxkm",
+        "labels": {
+          "app": "app-db",
+          "instance": "node-2-db",
+          "intents.otterize.com/server": "app-node-2-db-cl-cluster-6999ba",
+          "pod-template-hash": "d668d649c",
+          "release": "app"
+        }
+      }
+    },
+    {
+      "metadata": {
+        "name": "app-node-3-77c8fcf86f-r2l8x",
+        "labels": {
+          "app": "app",
+          "instance": "node-3",
+          "intents.otterize.com/server": "app-node-3-cl-cluster-04fa6d",
+          "network-partition-group": "network-group-1",
+          "pod-template-hash": "77c8fcf86f",
+          "release": "app"
+        }
+      }
+    },
+    {
+      "metadata": {
+        "name": "app-node-3-db-69c7b7974c-9c2r6",
+        "labels": {
+          "app": "app-db",
+          "instance": "node-3-db",
+          "intents.otterize.com/server": "app-node-3-db-cl-cluster-31f364",
+          "pod-template-hash": "69c7b7974c",
+          "release": "app"
+        }
+      }
+    },
+    {
+      "metadata": {
+        "name": "app-node-4-764b96b95c-gl6nn",
+        "labels": {
+          "app": "app",
+          "instance": "node-4",
+          "intents.otterize.com/server": "app-node-4-cl-cluster-816e93",
+          "network-partition-group": "network-group-1",
+          "pod-template-hash": "764b96b95c",
+          "release": "app"
+        }
+      }
+    },
+    {
+      "metadata": {
+        "name": "app-node-4-db-58dcbd8c77-5hlbw",
+        "labels": {
+          "app": "app-db",
+          "instance": "node-4-db",
+          "intents.otterize.com/server": "app-node-4-db-cl-cluster-dd129f",
+          "pod-template-hash": "58dcbd8c77",
+          "release": "app"
+        }
+      }
+    },
+    {
+      "metadata": {
+        "name": "app-node-5-6998f89557-925zr",
+        "labels": {
+          "app": "app",
+          "instance": "node-5",
+          "intents.otterize.com/server": "app-node-5-cl-cluster-a9916b",
+          "network-partition-group": "network-group-1",
+          "pod-template-hash": "6998f89557",
+          "release": "app"
+        }
+      }
+    },
+    {
+      "metadata": {
+        "name": "app-node-5-db-77ff64c687-q4kph",
+        "labels": {
+          "app": "app-db",
+          "instance": "node-5-db",
+          "intents.otterize.com/server": "app-node-5-db-cl-cluster-a7c606",
+          "pod-template-hash": "77ff64c687",
+          "release": "app"
+        }
+      }
+    },
+    {
+      "metadata": {
+        "name": "app-node-6-788f849997-862hp",
+        "labels": {
+          "app": "app",
+          "instance": "node-6",
+          "intents.otterize.com/server": "app-node-6-cl-cluster-6ab39a",
+          "network-partition-group": "network-group-1",
+          "pod-template-hash": "788f849997",
+          "release": "app"
+        }
+      }
+    },
+    {
+      "metadata": {
+        "name": "app-node-6-db-58c5d55ccc-tfclz",
+        "labels": {
+          "app": "app-db",
+          "instance": "node-6-db",
+          "intents.otterize.com/server": "app-node-6-db-cl-cluster-cacf39",
+          "pod-template-hash": "58c5d55ccc",
+          "release": "app"
+        }
+      }
+    },
+    {
+      "metadata": {
+        "name": "geth-55b64cdf59-rxmxt",
+        "labels": {
+          "app": "geth",
+          "intents.otterize.com/server": "geth-cl-cluster-331d92",
+          "network-partition-group": "network-group-3",
+          "pod-template-hash": "55b64cdf59",
+          "release": "app"
+        }
+      }
+    },
+    {
+      "metadata": {
+        "name": "mockserver-7cb865999c-c8pcw",
+        "labels": {
+          "app": "mockserver",
+          "intents.otterize.com/server": "mockserver-cl-cluster-dedbac",
+          "network-partition-group": "network-group-4",
+          "pod-template-hash": "7cb865999c",
+          "release": "app"
+        }
+      }
+    }
+  ]
+}

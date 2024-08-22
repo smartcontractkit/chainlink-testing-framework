@@ -1,0 +1,12 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: failure-mockserver-7cb865999c-qwdt9
+  namespace: cl-cluster
+spec:
+  action: pod-failure
+  mode: one
+  duration: 10s
+  selector:
+    fieldSelectors:
+      metadata.name: mockserver-7cb865999c-qwdt9

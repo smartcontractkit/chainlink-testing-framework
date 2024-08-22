@@ -1,0 +1,15 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: cpu-mockserver-7cb865999c-qwdt9
+  namespace: cl-cluster
+spec:
+  mode: one
+  duration: 10s
+  selector:
+    fieldSelectors:
+      metadata.name: mockserver-7cb865999c-qwdt9
+  stressors:
+    cpu:
+      workers: 1
+      load: 100
