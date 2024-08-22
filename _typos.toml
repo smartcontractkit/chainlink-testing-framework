@@ -1,2 +1,10 @@
 [files]
-extend-exclude = ["**/go.mod", "**/go.sum", "charts", "**/*.tgz", "**/*.png"]
+extend-exclude = [
+    "**/go.mod",
+    "**/go.sum",
+    "charts",
+    "**/*.tgz",
+    "**/*.png",
+    "wasp/HOW_IT_WORKS.md",
+    "wasp/dashboard/**"
+]
