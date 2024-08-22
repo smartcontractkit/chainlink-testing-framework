@@ -25,6 +25,7 @@ If you're looking to implement a new chain integration for the testing framework
 CTF contains a set of useful libraries:
 
 - [WASP](wasp/README.md) - Scalable protocol-agnostic load testing library for `Go`
+- [Havoc](havoc/README.md) - Chaos testing library
 
 ## k8s package
 
