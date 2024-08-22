@@ -7,3 +7,4 @@ k8s-test-runner/chart/**/*.yaml
 node_modules/
 index.yaml
 wasp/**
+havoc/**
