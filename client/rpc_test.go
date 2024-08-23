@@ -104,7 +104,7 @@ func TestRPCAPI(t *testing.T) {
 		bnBefore, err := client.BlockNumber(context.Background())
 		require.NoError(t, err)
 
-		ac := NewRPCClient(url)
+		ac := NewRPCClient(url, nil)
 		err = ac.GethSetHead(10)
 		require.NoError(t, err)
 		bnAfter, err := client.BlockNumber(context.Background())
@@ -121,7 +121,7 @@ func TestRPCAPI(t *testing.T) {
 		tx, err := sendTestTransaction(t, client, big.NewInt(1e9), big.NewInt(1e9), false)
 		require.NoError(t, err)
 
-		anvilClient := NewRPCClient(ac.URL)
+		anvilClient := NewRPCClient(ac.URL, nil)
 		err = anvilClient.AnvilDropTransaction([]interface{}{tx.Hash().String()})
 		require.NoError(t, err)
 		status, err := anvilClient.AnvilTxPoolStatus(nil)
@@ -136,7 +136,7 @@ func TestRPCAPI(t *testing.T) {
 		client, err := ethclient.Dial(ac.URL)
 		require.NoError(t, err)
 
-		anvilClient := NewRPCClient(ac.URL)
+		anvilClient := NewRPCClient(ac.URL, nil)
 		err = anvilClient.AnvilSetBlockGasLimit([]interface{}{"1"})
 		require.NoError(t, err)
 
@@ -157,7 +157,7 @@ func TestRPCAPI(t *testing.T) {
 		require.NoError(t, err)
 		printGasPrices(t, client)
 
-		anvilClient := NewRPCClient(ac.URL)
+		anvilClient := NewRPCClient(ac.URL, nil)
 		err = anvilClient.AnvilSetNextBlockBaseFeePerGas([]interface{}{"10000000000"})
 		require.NoError(t, err)
 		printGasPrices(t, client)
@@ -182,7 +182,7 @@ func TestRPCAPI(t *testing.T) {
 		require.NoError(t, err)
 		client, err := ethclient.Dial(ac.URL)
 		require.NoError(t, err)
-		pm := NewRemoteAnvilMiner(ac.URL)
+		pm := NewRemoteAnvilMiner(ac.URL, nil)
 		pm.MinePeriodically(500 * time.Millisecond)
 		time.Sleep(period * time.Duration(iterations))
 		pm.Stop()
@@ -201,7 +201,7 @@ func TestRPCAPI(t *testing.T) {
 		client, err := ethclient.Dial(ac.URL)
 		require.NoError(t, err)
 		stopTxns, errCh := sendTestTransactions(t, client, sendTransactionEvery, big.NewInt(1e9), big.NewInt(1e9), false)
-		pm := NewRemoteAnvilMiner(ac.URL)
+		pm := NewRemoteAnvilMiner(ac.URL, nil)
 		pm.MineBatch(txnInBlock, 1*time.Second, 1*time.Minute)
 		time.Sleep(sendTransactionEvery * time.Duration(iterations) * 2)
 		pm.Stop()
