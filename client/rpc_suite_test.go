@@ -20,7 +20,7 @@ func TestRPCSuite(t *testing.T) {
 		require.NoError(t, err)
 		printGasPrices(t, client)
 		// set a base fee
-		anvilClient := NewRPCClient(ac.URL)
+		anvilClient := NewRPCClient(ac.URL, nil)
 		// set fee for the next block
 		err = anvilClient.AnvilSetNextBlockBaseFeePerGas([]interface{}{"2000000000"})
 		require.NoError(t, err)
