@@ -2,8 +2,11 @@ package client
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -24,8 +27,21 @@ type RPCClient struct {
 }
 
 // NewRPCClient creates Anvil client
-func NewRPCClient(url string) *RPCClient {
-	return &RPCClient{URL: url, client: resty.New()}
+func NewRPCClient(url string, headers http.Header) *RPCClient {
+	isDebug := os.Getenv("RESTY_DEBUG") == "true"
+	h := make(map[string]string)
+	for k, v := range headers {
+		h[k] = v[0]
+	}
+	// TODO: use proper certificated in CRIB
+	//nolint
+	return &RPCClient{
+		URL: url,
+		client: resty.New().
+			SetDebug(isDebug).
+			SetHeaders(h).
+			SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true}),
+	}
 }
 
 // AnvilMine calls "evm_mine", mines one or more blocks, see the reference on RPCClient

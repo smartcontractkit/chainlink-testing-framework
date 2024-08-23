@@ -1,6 +1,7 @@
 package client
 
 import (
+	"net/http"
 	"strconv"
 	"time"
 
@@ -18,9 +19,9 @@ type RemoteAnvilMiner struct {
 }
 
 // NewRemoteAnvilMiner creates a new remote miner client
-func NewRemoteAnvilMiner(url string) *RemoteAnvilMiner {
+func NewRemoteAnvilMiner(url string, headers http.Header) *RemoteAnvilMiner {
 	return &RemoteAnvilMiner{
-		Client: NewRPCClient(url),
+		Client: NewRPCClient(url, headers),
 		stop:   make(chan struct{}),
 	}
 }
