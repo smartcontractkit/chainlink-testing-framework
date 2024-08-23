@@ -13,18 +13,37 @@ import (
 )
 
 var (
-	ETH2_EXECUTION_PORT                             = "8551"
-	WALLET_PASSWORD                                 = "password"
-	VALIDATOR_WALLET_PASSWORD_FILE_INSIDE_CONTAINER = fmt.Sprintf("%s/wallet_password.txt", GENERATED_DATA_DIR_INSIDE_CONTAINER)
-	ACCOUNT_PASSWORD_FILE_INSIDE_CONTAINER          = fmt.Sprintf("%s/account_password.txt", GENERATED_DATA_DIR_INSIDE_CONTAINER)
-	ACCOUNT_KEYSTORE_FILE_INSIDE_CONTAINER          = fmt.Sprintf("%s/account_key", KEYSTORE_DIR_LOCATION_INSIDE_CONTAINER)
-	KEYSTORE_DIR_LOCATION_INSIDE_CONTAINER          = fmt.Sprintf("%s/keystore", GENERATED_DATA_DIR_INSIDE_CONTAINER)
-	GENERATED_VALIDATOR_KEYS_DIR_INSIDE_CONTAINER   = "/keys"
-	NODE_0_DIR_INSIDE_CONTAINER                     = fmt.Sprintf("%s/node-0", GENERATED_VALIDATOR_KEYS_DIR_INSIDE_CONTAINER)
-	GENERATED_DATA_DIR_INSIDE_CONTAINER             = "/data/metadata"
-	JWT_SECRET_FILE_LOCATION_INSIDE_CONTAINER       = fmt.Sprintf("%s/jwtsecret", GENERATED_DATA_DIR_INSIDE_CONTAINER) // #nosec G101
-	VALIDATOR_BIP39_MNEMONIC                        = "giant issue aisle success illegal bike spike question tent bar rely arctic volcano long crawl hungry vocal artwork sniff fantasy very lucky have athlete"
+	ETH2_EXECUTION_PORT                           = "8551"
+	WALLET_PASSWORD                               = "password"
+	GENERATED_VALIDATOR_KEYS_DIR_INSIDE_CONTAINER = "/keys"
+	NODE_0_DIR_INSIDE_CONTAINER                   = fmt.Sprintf("%s/node-0", GENERATED_VALIDATOR_KEYS_DIR_INSIDE_CONTAINER)
+	VALIDATOR_BIP39_MNEMONIC                      = "giant issue aisle success illegal bike spike question tent bar rely arctic volcano long crawl hungry vocal artwork sniff fantasy very lucky have athlete"
 )
+
+type posContainerSettings struct {
+	generatedDataHostDir      string
+	generatedDataContainerDir string
+}
+
+func getValidatorWalletPasswordFileInsideContainer(generatedDataContainerDir string) string {
+	return fmt.Sprintf("%s/wallet_password.txt", generatedDataContainerDir)
+}
+
+func getAccountPasswordFileInsideContainer(generatedDataContainerDir string) string {
+	return fmt.Sprintf("%s/account_password.txt", generatedDataContainerDir)
+}
+
+func getAccountKeystoreFileInsideContainer(generatedDataContainerDir string) string {
+	return fmt.Sprintf("%s/account_key", getKeystoreDirLocationInsideContainer(generatedDataContainerDir))
+}
+
+func getKeystoreDirLocationInsideContainer(generatedDataContainerDir string) string {
+	return fmt.Sprintf("%s/keystore", generatedDataContainerDir)
+}
+
+func getJWTSecretFileLocationInsideContainer(generatedDataContainerDir string) string {
+	return fmt.Sprintf("%s/jwtsecret", generatedDataContainerDir)
+}
 
 func waitForChainToFinaliseAnEpoch(lggr zerolog.Logger, evmClient blockchain.EVMClient, timeout time.Duration) error {
 	lggr.Info().Msg("Waiting for chain to finalize an epoch")

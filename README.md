@@ -12,9 +12,20 @@
 
 </div>
 
-The Chainlink Testing Framework is a blockchain development framework written in Go. Its primary purpose is to help chainlink developers create extensive integration, e2e, performance, and chaos tests to ensure the stability of the chainlink project. It can also be helpful to those who just want to use chainlink oracles in their projects to help test their contracts, or even for those that aren't using chainlink.
+The Chainlink Testing Framework (CTF) is a blockchain development framework written in Go. Its primary purpose is to help chainlink developers create extensive integration, e2e, performance, and chaos tests to ensure the stability of the chainlink project. It can also be helpful to those who just want to use chainlink oracles in their projects to help test their contracts, or even for those that aren't using chainlink.
 
 If you're looking to implement a new chain integration for the testing framework, head over to the [blockchain](./blockchain/) directory for more info.
+
+# Content
+
+1. [Libraries](#libraries)
+
+## Libraries
+
+CTF contains a set of useful libraries:
+
+- [WASP](wasp/README.md) - Scalable protocol-agnostic load testing library for `Go`
+- [Havoc](havoc/README.md) - Chaos testing library
 
 ## k8s package
 
@@ -416,3 +427,14 @@ We have two ways to add new images to the ecr. The first two requirements are th
 
 1. If it does not have version numbers or is gcr then you can add it [here](./scripts/mirror.json)
 2. You can add to the [mirror matrix](./.github/workflows/update-internal-mirrors.yaml) the new image name and an expression to get the latest versions added when the workflow runs. You can check the postgres one used in there for an example but basically the expression should filter out only the latest image or 2 for that particular version when calling the dockerhub endpoint, example curl call `curl -s "https://hub.docker.com/v2/repositories/${image_name}/tags/?page_size=100" | jq -r '.results[].name' | grep -E ${image_expression}` where image_name could be `library/postgres` and image_expression could be `'^[0-9]+\.[0-9]+$'`. Adding your ecr to this matrix should make sure we always have the latest versions for that expression.
+
+## Debugging HTTP and RPC calls
+
+```bash
+export SETH_LOG_LEVEL=info
+export RESTY_DEBUG=true
+```
+
+## Using AWS Secrets Manager
+
+Check the [docs](SECRETS.md)

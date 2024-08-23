@@ -1,5 +1,5 @@
 # base test for all k8s test runs
-FROM golang:1.21-bullseye
+FROM golang:1.22-bullseye
 
 ARG BASE_URL
 ARG HELM_VERSION

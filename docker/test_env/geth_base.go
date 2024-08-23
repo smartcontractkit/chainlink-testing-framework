@@ -6,8 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rs/zerolog"
+	config_types "github.com/smartcontractkit/chainlink-testing-framework/config/types"
 
+	"github.com/Masterminds/semver/v3"
+	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
@@ -15,14 +17,8 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	docker_utils "github.com/smartcontractkit/chainlink-testing-framework/utils/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
-)
-
-const (
-	defaultGethEth1Image = "ethereum/client-go:v1.13.8"
-	defaultGethEth2Image = "ethereum/client-go:v1.14.3"
-	gethBaseImageName    = "ethereum/client-go"
-	gethGitRepo          = "ethereum/go-ethereum"
 )
 
 type Geth struct {
@@ -33,12 +29,12 @@ type Geth struct {
 	InternalWsUrl        string
 	InternalExecutionURL string
 	ExternalExecutionURL string
-	generatedDataHostDir string
 	chainConfig          *config.EthereumChainConfig
 	consensusLayer       config.ConsensusLayer
-	ethereumVersion      config.EthereumVersion
+	ethereumVersion      config_types.EthereumVersion
 	l                    zerolog.Logger
 	t                    *testing.T
+	posContainerSettings
 }
 
 func (g *Geth) WithTestInstance(t *testing.T) ExecutionClient {
@@ -50,7 +46,7 @@ func (g *Geth) WithTestInstance(t *testing.T) ExecutionClient {
 func (g *Geth) StartContainer() (blockchain.EVMNetwork, error) {
 	var r *tc.ContainerRequest
 	var err error
-	if g.GetEthereumVersion() == config.EthereumVersion_Eth1 {
+	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		r, err = g.getEth1ContainerRequest()
 	} else {
 		r, err = g.getEth2ContainerRequest()
@@ -82,7 +78,7 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, error) {
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
-	if g.GetEthereumVersion() == config.EthereumVersion_Eth2 {
+	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth2 {
 		executionPort, err := ct.MappedPort(testcontext.Get(g.t), NatPort(ETH2_EXECUTION_PORT))
 		if err != nil {
 			return blockchain.EVMNetwork{}, err
@@ -98,7 +94,7 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, error) {
 	g.InternalWsUrl = FormatWsUrl(g.ContainerName, DEFAULT_EVM_NODE_WS_PORT)
 
 	networkConfig := blockchain.SimulatedEVMNetwork
-	if g.GetEthereumVersion() == config.EthereumVersion_Eth1 {
+	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		networkConfig.Name = fmt.Sprintf("Private Eth-1-PoA [geth %s]", g.ContainerVersion)
 	} else {
 		networkConfig.Name = fmt.Sprintf("Private Eth-2-PoS [geth %s] + %s", g.ContainerVersion, g.consensusLayer)
@@ -107,12 +103,17 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, error) {
 	networkConfig.HTTPURLs = []string{g.ExternalHttpUrl}
 	networkConfig.SimulationType = "Geth"
 
-	comparableVersion, err := GetComparableVersionFromDockerImage(g.GetImageWithVersion())
+	version, err := docker_utils.GetSemverFromImage(g.GetImageWithVersion())
 	if err != nil {
 		return blockchain.EVMNetwork{}, err
 	}
 
-	if comparableVersion >= 110 && comparableVersion < 111 {
+	constraint, err := semver.NewConstraint(">=1.10 <1.11")
+	if err != nil {
+		return blockchain.EVMNetwork{}, fmt.Errorf("failed to parse constraint: %s", ">=1.10 <1.11")
+	}
+
+	if constraint.Check(version) {
 		// Geth v1.10.x will not set it itself if it's set 0, like later versions do
 		networkConfig.DefaultGasLimit = 9_000_000
 	}
@@ -124,14 +125,14 @@ func (g *Geth) StartContainer() (blockchain.EVMNetwork, error) {
 }
 
 func (g *Geth) GetInternalExecutionURL() string {
-	if g.GetEthereumVersion() == config.EthereumVersion_Eth1 {
+	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		panic("eth1 node doesn't have an execution URL")
 	}
 	return g.InternalExecutionURL
 }
 
 func (g *Geth) GetExternalExecutionURL() string {
-	if g.GetEthereumVersion() == config.EthereumVersion_Eth1 {
+	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		panic("eth1 node doesn't have an execution URL")
 	}
 	return g.ExternalExecutionURL
@@ -161,19 +162,19 @@ func (g *Geth) GetContainer() *tc.Container {
 	return &g.Container
 }
 
-func (g *Geth) GetEthereumVersion() config.EthereumVersion {
+func (g *Geth) GetEthereumVersion() config_types.EthereumVersion {
 	return g.ethereumVersion
 }
 
 func (g *Geth) GethConsensusMechanism() ConsensusMechanism {
-	if g.GetEthereumVersion() == config.EthereumVersion_Eth1 {
+	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		return ConsensusMechanism_PoA
 	}
 	return ConsensusMechanism_PoS
 }
 
 func (g *Geth) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error {
-	if g.GetEthereumVersion() == config.EthereumVersion_Eth1 {
+	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		return nil
 	}
 	waitForFirstBlock := tcwait.NewLogStrategy("Chain head was updated").WithPollInterval(1 * time.Second).WithStartupTimeout(waitTime)
@@ -181,7 +182,7 @@ func (g *Geth) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration
 }
 
 func (g *Geth) getEntryPointAndKeystoreLocation(minerAddress string) ([]string, error) {
-	version, err := GetComparableVersionFromDockerImage(g.GetImageWithVersion())
+	version, err := docker_utils.GetSemverFromImage(g.GetImageWithVersion())
 	if err != nil {
 		return nil, err
 	}
@@ -204,7 +205,12 @@ func (g *Geth) getEntryPointAndKeystoreLocation(minerAddress string) ([]string, 
 		"--unlock", minerAddress,
 	}
 
-	if version < 110 {
+	constraint, err := semver.NewConstraint("<1.10")
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse constraint: %s", "<1.10")
+	}
+
+	if constraint.Check(version) {
 		entrypoint = append(entrypoint,
 			"--rpc",
 			"--rpcapi", enabledApis,
@@ -218,9 +224,7 @@ func (g *Geth) getEntryPointAndKeystoreLocation(minerAddress string) ([]string, 
 			"--wsapi", enabledApis,
 			fmt.Sprintf("--wsport=%s", DEFAULT_EVM_NODE_WS_PORT),
 		)
-	}
-
-	if version >= 110 {
+	} else {
 		entrypoint = append(entrypoint,
 			"--http",
 			"--http.vhosts", "*",
@@ -242,12 +246,17 @@ func (g *Geth) getEntryPointAndKeystoreLocation(minerAddress string) ([]string, 
 }
 
 func (g *Geth) getWebsocketEnabledMessage() (string, error) {
-	version, err := GetComparableVersionFromDockerImage(g.GetImageWithVersion())
+	version, err := docker_utils.GetSemverFromImage(g.GetImageWithVersion())
 	if err != nil {
 		return "", err
 	}
 
-	if version < 110 {
+	constraint, err := semver.NewConstraint("<1.10")
+	if err != nil {
+		return "", fmt.Errorf("failed to parse constraint: %s", "<1.10")
+	}
+
+	if constraint.Check(version) {
 		return "WebSocket endpoint opened", nil
 	}
 

@@ -122,6 +122,10 @@ spec:
             - "--transaction-block-keeper"
             - {{ .Values.anvil.blocksToKeepInMemory | quote }}
             {{- end }}
+            {{- if .Values.anvil.maxPersistedStates }}
+            - "--max-persisted-states"
+            - {{ .Values.anvil.maxPersistedStates | quote }}
+            {{- end }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
@@ -146,13 +150,18 @@ spec:
           volumeMounts:
             - name: state-storage
               mountPath: /state
+            - name: cache-storage
+              mountPath: /home
           {{- with .Values.volumeMounts }}
             {{- toYaml . | nindent 12 }}
           {{- end }}
       volumes:
         - name: state-storage
           persistentVolumeClaim:
-            claimName: {{ include "foundry.fullname" . }}-pvc
+            claimName: {{ include "foundry.fullname" . }}-state-pvc
+        - name: cache-storage
+          persistentVolumeClaim:
+            claimName: {{ include "foundry.fullname" . }}-cache-pvc
       {{- with .Values.volumes }}
         {{- toYaml . | nindent 8 }}
       {{- end }}

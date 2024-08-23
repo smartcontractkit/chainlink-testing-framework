@@ -3,8 +3,6 @@ package config
 import (
 	"fmt"
 	"os"
-	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/joho/godotenv"
@@ -51,335 +49,241 @@ type TestConfig struct {
 }
 
 // Read config values from environment variables
-func (c *TestConfig) ReadConfigValuesFromEnvVars() error {
+func (c *TestConfig) ReadFromEnvVar() error {
 	logger := logging.GetTestLogger(nil)
 
-	walletKeys := mergeMaps(loadEnvVarSingleMap(`E2E_TEST_(.+)_WALLET_KEY$`), loadEnvVarGroupedMap(`E2E_TEST_(.+)_WALLET_KEY_(\d+)$`))
-	if len(walletKeys) > 0 {
-		if c.Network == nil {
-			c.Network = &NetworkConfig{}
+	testLogCollect := MustReadEnvVar_Boolean(E2E_TEST_LOG_COLLECT_ENV)
+	if testLogCollect != nil {
+		if c.Logging == nil {
+			c.Logging = &LoggingConfig{}
 		}
-		c.Network.WalletKeys = walletKeys
-	}
-	rpcHttpUrls := mergeMaps(loadEnvVarSingleMap(`E2E_TEST_(.+)_RPC_HTTP_URL$`), loadEnvVarGroupedMap(`E2E_TEST_(.+)_RPC_HTTP_URL_(\d+)$`))
-	if len(rpcHttpUrls) > 0 {
-		if c.Network == nil {
-			c.Network = &NetworkConfig{}
-		}
-		c.Network.RpcHttpUrls = rpcHttpUrls
-	}
-	rpcWsUrls := mergeMaps(loadEnvVarSingleMap(`E2E_TEST_(.+)_RPC_WS_URL$`), loadEnvVarGroupedMap(`E2E_TEST_(.+)_RPC_WS_URL_(\d+)$`))
-	if len(rpcWsUrls) > 0 {
-		if c.Network == nil {
-			c.Network = &NetworkConfig{}
-		}
-		c.Network.RpcWsUrls = rpcWsUrls
+		logger.Debug().Msgf("Using %s env var to override Logging.TestLogCollect", E2E_TEST_LOG_COLLECT_ENV)
+		c.Logging.TestLogCollect = testLogCollect
 	}
 
-	chainlinkImage, err := readEnvVarValue("E2E_TEST_CHAINLINK_IMAGE", String)
-	if err != nil {
-		return err
-	}
-	if chainlinkImage != nil && chainlinkImage.(string) != "" {
-		if c.ChainlinkImage == nil {
-			c.ChainlinkImage = &ChainlinkImageConfig{}
+	loggingRunID := MustReadEnvVar_String(E2E_TEST_LOGGING_RUN_ID_ENV)
+	if loggingRunID != "" {
+		if c.Logging == nil {
+			c.Logging = &LoggingConfig{}
 		}
-		image := chainlinkImage.(string)
-		logger.Debug().Msgf("Using E2E_TEST_CHAINLINK_IMAGE env var to override ChainlinkImage.Image")
-		c.ChainlinkImage.Image = &image
+		logger.Debug().Msgf("Using %s env var to override Logging.RunID", E2E_TEST_LOGGING_RUN_ID_ENV)
+		c.Logging.RunId = &loggingRunID
 	}
 
-	chainlinkUpgradeImage, err := readEnvVarValue("E2E_TEST_CHAINLINK_UPGRADE_IMAGE", String)
-	if err != nil {
-		return err
-	}
-	if chainlinkUpgradeImage != nil && chainlinkUpgradeImage.(string) != "" {
-		if c.ChainlinkUpgradeImage == nil {
-			c.ChainlinkUpgradeImage = &ChainlinkImageConfig{}
+	logstreamLogTargets := MustReadEnvVar_Strings(E2E_TEST_LOG_STREAM_LOG_TARGETS_ENV, ",")
+	if len(logstreamLogTargets) > 0 {
+		if c.Logging == nil {
+			c.Logging = &LoggingConfig{}
 		}
-		image := chainlinkUpgradeImage.(string)
-		logger.Debug().Msgf("Using E2E_TEST_CHAINLINK_UPGRADE_IMAGE env var to override ChainlinkUpgradeImage.Image")
-		c.ChainlinkUpgradeImage.Image = &image
+		if c.Logging.LogStream == nil {
+			c.Logging.LogStream = &LogStreamConfig{}
+		}
+		logger.Debug().Msgf("Using %s env var to override Logging.LogStream.LogTargets", E2E_TEST_LOG_STREAM_LOG_TARGETS_ENV)
+		c.Logging.LogStream.LogTargets = logstreamLogTargets
 	}
 
-	lokiTenantID, err := readEnvVarValue("E2E_TEST_LOKI_TENANT_ID", String)
-	if err != nil {
-		return err
-	}
-	if lokiTenantID != nil && lokiTenantID.(string) != "" {
+	lokiTenantID := MustReadEnvVar_String(E2E_TEST_LOKI_TENANT_ID_ENV)
+	if lokiTenantID != "" {
 		if c.Logging == nil {
 			c.Logging = &LoggingConfig{}
 		}
 		if c.Logging.Loki == nil {
 			c.Logging.Loki = &LokiConfig{}
 		}
-		id := lokiTenantID.(string)
-		logger.Debug().Msgf("Using E2E_TEST_LOKI_TENANT_ID env var to override Logging.Loki.TenantId")
-		c.Logging.Loki.TenantId = &id
+		logger.Info().Msgf("Using %s env var to override Logging.Loki.TenantId", E2E_TEST_LOKI_TENANT_ID_ENV)
+		c.Logging.Loki.TenantId = &lokiTenantID
 	}
 
-	lokiEndpoint, err := readEnvVarValue("E2E_TEST_LOKI_ENDPOINT", String)
-	if err != nil {
-		return err
-	}
-	if lokiEndpoint != nil && lokiEndpoint.(string) != "" {
+	lokiEndpoint := MustReadEnvVar_String(E2E_TEST_LOKI_ENDPOINT_ENV)
+	if lokiEndpoint != "" {
 		if c.Logging == nil {
 			c.Logging = &LoggingConfig{}
 		}
 		if c.Logging.Loki == nil {
 			c.Logging.Loki = &LokiConfig{}
 		}
-		endpoint := lokiEndpoint.(string)
-		logger.Debug().Msgf("Using E2E_TEST_LOKI_ENDPOINT env var to override Logging.Loki.Endpoint")
-		c.Logging.Loki.Endpoint = &endpoint
+		logger.Info().Msgf("Using %s env var to override Logging.Loki.Endpoint", E2E_TEST_LOKI_ENDPOINT_ENV)
+		c.Logging.Loki.Endpoint = &lokiEndpoint
 	}
 
-	lokiBasicAuth, err := readEnvVarValue("E2E_TEST_LOKI_BASIC_AUTH", String)
-	if err != nil {
-		return err
-	}
-	if lokiBasicAuth != nil && lokiBasicAuth.(string) != "" {
+	lokiBasicAuth := MustReadEnvVar_String(E2E_TEST_LOKI_BASIC_AUTH_ENV)
+	if lokiBasicAuth != "" {
 		if c.Logging == nil {
 			c.Logging = &LoggingConfig{}
 		}
 		if c.Logging.Loki == nil {
 			c.Logging.Loki = &LokiConfig{}
 		}
-		basicAuth := lokiBasicAuth.(string)
-		logger.Debug().Msgf("Using E2E_TEST_LOKI_BASIC_AUTH env var to override Logging.Loki.BasicAuth")
-		c.Logging.Loki.BasicAuth = &basicAuth
+		logger.Info().Msgf("Using %s env var to override Logging.Loki.BasicAuth", E2E_TEST_LOKI_BASIC_AUTH_ENV)
+		c.Logging.Loki.BasicAuth = &lokiBasicAuth
 	}
 
-	lokiBearerToken, err := readEnvVarValue("E2E_TEST_LOKI_BEARER_TOKEN", String)
-	if err != nil {
-		return err
-	}
-	if lokiBearerToken != nil && lokiBearerToken.(string) != "" {
+	lokiBearerToken := MustReadEnvVar_String(E2E_TEST_LOKI_BEARER_TOKEN_ENV)
+	if lokiBearerToken != "" {
 		if c.Logging == nil {
 			c.Logging = &LoggingConfig{}
 		}
 		if c.Logging.Loki == nil {
 			c.Logging.Loki = &LokiConfig{}
 		}
-		bearerToken := lokiBearerToken.(string)
-		logger.Debug().Msgf("Using E2E_TEST_LOKI_BEARER_TOKEN env var to override Logging.Loki.BearerToken")
-		c.Logging.Loki.BearerToken = &bearerToken
+		logger.Info().Msgf("Using %s env var to override Logging.Loki.BearerToken", E2E_TEST_LOKI_BEARER_TOKEN_ENV)
+		c.Logging.Loki.BearerToken = &lokiBearerToken
 	}
 
-	grafanaBaseUrl, err := readEnvVarValue("E2E_TEST_GRAFANA_BASE_URL", String)
-	if err != nil {
-		return err
-	}
-	if grafanaBaseUrl != nil && grafanaBaseUrl.(string) != "" {
+	grafanaBaseUrl := MustReadEnvVar_String(E2E_TEST_GRAFANA_BASE_URL_ENV)
+	if grafanaBaseUrl != "" {
 		if c.Logging == nil {
 			c.Logging = &LoggingConfig{}
 		}
 		if c.Logging.Grafana == nil {
 			c.Logging.Grafana = &GrafanaConfig{}
 		}
-		baseUrl := grafanaBaseUrl.(string)
-		logger.Debug().Msgf("Using E2E_TEST_GRAFANA_BASE_URL env var to override Logging.Grafana.BaseUrl")
-		c.Logging.Grafana.BaseUrl = &baseUrl
+		logger.Info().Msgf("Using %s env var to override Logging.Grafana.BaseUrl", E2E_TEST_GRAFANA_BASE_URL_ENV)
+		c.Logging.Grafana.BaseUrl = &grafanaBaseUrl
 	}
 
-	grafanaDashboardUrl, err := readEnvVarValue("E2E_TEST_GRAFANA_DASHBOARD_URL", String)
-	if err != nil {
-		return err
-	}
-	if grafanaDashboardUrl != nil && grafanaDashboardUrl.(string) != "" {
+	grafanaDashboardUrl := MustReadEnvVar_String(E2E_TEST_GRAFANA_DASHBOARD_URL_ENV)
+	if grafanaDashboardUrl != "" {
 		if c.Logging == nil {
 			c.Logging = &LoggingConfig{}
 		}
 		if c.Logging.Grafana == nil {
 			c.Logging.Grafana = &GrafanaConfig{}
 		}
-		dashboardUrl := grafanaDashboardUrl.(string)
-		logger.Debug().Msgf("Using E2E_TEST_GRAFANA_DASHBOARD_URL env var to override Logging.Grafana.DashboardUrl")
-		c.Logging.Grafana.DashboardUrl = &dashboardUrl
+		logger.Info().Msgf("Using %s env var to override Logging.Grafana.DashboardUrl", E2E_TEST_GRAFANA_DASHBOARD_URL_ENV)
+		c.Logging.Grafana.DashboardUrl = &grafanaDashboardUrl
 	}
 
-	grafanaBearerToken, err := readEnvVarValue("E2E_TEST_GRAFANA_BEARER_TOKEN", String)
-	if err != nil {
-		return err
-	}
-	if grafanaBearerToken != nil && grafanaBearerToken.(string) != "" {
+	grafanaBearerToken := MustReadEnvVar_String(E2E_TEST_GRAFANA_BEARER_TOKEN_ENV)
+	if grafanaBearerToken != "" {
 		if c.Logging == nil {
 			c.Logging = &LoggingConfig{}
 		}
 		if c.Logging.Grafana == nil {
 			c.Logging.Grafana = &GrafanaConfig{}
 		}
-		bearerToken := grafanaBearerToken.(string)
-		logger.Debug().Msgf("Using E2E_TEST_GRAFANA_BEARER_TOKEN env var to override Logging.Grafana.BearerToken")
-		c.Logging.Grafana.BearerToken = &bearerToken
+		logger.Info().Msgf("Using %s env var to override Logging.Grafana.BearerToken", E2E_TEST_GRAFANA_BEARER_TOKEN_ENV)
+		c.Logging.Grafana.BearerToken = &grafanaBearerToken
 	}
 
-	pyroscopeServerUrl, err := readEnvVarValue("E2E_TEST_PYROSCOPE_SERVER_URL", String)
-	if err != nil {
-		return err
-	}
-	if pyroscopeServerUrl != nil && pyroscopeServerUrl.(string) != "" {
-		if c.Pyroscope == nil {
-			c.Pyroscope = &PyroscopeConfig{}
-		}
-		serverUrl := pyroscopeServerUrl.(string)
-		logger.Debug().Msgf("Using E2E_TEST_PYROSCOPE_SERVER_URL env var to override Pyroscope.ServerUrl")
-		c.Pyroscope.ServerUrl = &serverUrl
-	}
-
-	pyroscopeKey, err := readEnvVarValue("E2E_TEST_PYROSCOPE_KEY", String)
-	if err != nil {
-		return err
-	}
-	if pyroscopeKey != nil && pyroscopeKey.(string) != "" {
-		if c.Pyroscope == nil {
-			c.Pyroscope = &PyroscopeConfig{}
-		}
-		key := pyroscopeKey.(string)
-		logger.Debug().Msgf("Using E2E_TEST_PYROSCOPE_KEY env var to override Pyroscope.Key")
-		c.Pyroscope.Key = &key
-	}
-
-	pyroscopeEnvironment, err := readEnvVarValue("E2E_TEST_PYROSCOPE_ENVIRONMENT", String)
-	if err != nil {
-		return err
-	}
-	if pyroscopeEnvironment != nil && pyroscopeEnvironment.(string) != "" {
-		if c.Pyroscope == nil {
-			c.Pyroscope = &PyroscopeConfig{}
-		}
-		environment := pyroscopeEnvironment.(string)
-		logger.Debug().Msgf("Using E2E_TEST_PYROSCOPE_ENVIRONMENT env var to override Pyroscope.Environment")
-		c.Pyroscope.Environment = &environment
-	}
-
-	pyroscopeEnabled, err := readEnvVarValue("E2E_TEST_PYROSCOPE_ENABLED", Boolean)
-	if err != nil {
-		return err
-	}
+	pyroscopeEnabled := MustReadEnvVar_Boolean(E2E_TEST_PYROSCOPE_ENABLED_ENV)
 	if pyroscopeEnabled != nil {
 		if c.Pyroscope == nil {
 			c.Pyroscope = &PyroscopeConfig{}
 		}
-		enabled := pyroscopeEnabled.(bool)
-		logger.Debug().Msgf("Using E2E_TEST_PYROSCOPE_ENABLED env var to override Pyroscope.Enabled")
-		c.Pyroscope.Enabled = &enabled
+		logger.Info().Msgf("Using %s env var to override Pyroscope.Enabled", E2E_TEST_PYROSCOPE_ENABLED_ENV)
+		c.Pyroscope.Enabled = pyroscopeEnabled
+	}
+
+	pyroscopeServerUrl := MustReadEnvVar_String(E2E_TEST_PYROSCOPE_SERVER_URL_ENV)
+	if pyroscopeServerUrl != "" {
+		if c.Pyroscope == nil {
+			c.Pyroscope = &PyroscopeConfig{}
+		}
+		logger.Info().Msgf("Using %s env var to override Pyroscope.ServerUrl", E2E_TEST_PYROSCOPE_SERVER_URL_ENV)
+		c.Pyroscope.ServerUrl = &pyroscopeServerUrl
+	}
+
+	pyroscopeKey := MustReadEnvVar_String(E2E_TEST_PYROSCOPE_KEY_ENV)
+	if pyroscopeKey != "" {
+		if c.Pyroscope == nil {
+			c.Pyroscope = &PyroscopeConfig{}
+		}
+		logger.Info().Msgf("Using %s env var to override Pyroscope.Key", E2E_TEST_PYROSCOPE_KEY_ENV)
+		c.Pyroscope.Key = &pyroscopeKey
+	}
+
+	pyroscopeEnvironment := MustReadEnvVar_String(E2E_TEST_PYROSCOPE_ENVIRONMENT_ENV)
+	if pyroscopeEnvironment != "" {
+		if c.Pyroscope == nil {
+			c.Pyroscope = &PyroscopeConfig{}
+		}
+		logger.Info().Msgf("Using %s env var to override Pyroscope.Environment", E2E_TEST_PYROSCOPE_ENVIRONMENT_ENV)
+		c.Pyroscope.Environment = &pyroscopeEnvironment
+	}
+
+	selectedNetworks := MustReadEnvVar_Strings(E2E_TEST_SELECTED_NETWORK_ENV, ",")
+	if len(selectedNetworks) > 0 {
+		if c.Network == nil {
+			c.Network = &NetworkConfig{}
+		}
+		logger.Debug().Msgf("Using %s env var to override Network.SelectedNetworks", E2E_TEST_SELECTED_NETWORK_ENV)
+		c.Network.SelectedNetworks = selectedNetworks
+	}
+
+	walletKeys := ReadEnvVarGroupedMap(E2E_TEST_WALLET_KEY_ENV, E2E_TEST_WALLET_KEYS_ENV)
+	if len(walletKeys) > 0 {
+		if c.Network == nil {
+			c.Network = &NetworkConfig{}
+		}
+		logger.Info().Msgf("Using %s and/or %s env vars to override Network.WalletKeys", E2E_TEST_WALLET_KEY_ENV, E2E_TEST_WALLET_KEYS_ENV)
+		c.Network.WalletKeys = walletKeys
+	}
+
+	rpcHttpUrls := ReadEnvVarGroupedMap(E2E_TEST_RPC_HTTP_URL_ENV, E2E_TEST_RPC_HTTP_URLS_ENV)
+	if len(rpcHttpUrls) > 0 {
+		if c.Network == nil {
+			c.Network = &NetworkConfig{}
+		}
+		logger.Info().Msgf("Using %s and/or %s env vars to override Network.RpcHttpUrls", E2E_TEST_RPC_HTTP_URL_ENV, E2E_TEST_RPC_HTTP_URLS_ENV)
+		c.Network.RpcHttpUrls = rpcHttpUrls
+	}
+
+	rpcWsUrls := ReadEnvVarGroupedMap(E2E_TEST_RPC_WS_URL_ENV, E2E_TEST_RPC_WS_URLS_ENV)
+	if len(rpcWsUrls) > 0 {
+		if c.Network == nil {
+			c.Network = &NetworkConfig{}
+		}
+		logger.Info().Msgf("Using %s and/or %s env vars to override Network.RpcWsUrls", E2E_TEST_RPC_WS_URL_ENV, E2E_TEST_RPC_WS_URLS_ENV)
+		c.Network.RpcWsUrls = rpcWsUrls
+	}
+
+	chainlinkImage := MustReadEnvVar_String(E2E_TEST_CHAINLINK_IMAGE_ENV)
+	if chainlinkImage != "" {
+		if c.ChainlinkImage == nil {
+			c.ChainlinkImage = &ChainlinkImageConfig{}
+		}
+		logger.Info().Msgf("Using %s env var to override ChainlinkImage.Image", E2E_TEST_CHAINLINK_IMAGE_ENV)
+		c.ChainlinkImage.Image = &chainlinkImage
+	}
+
+	chainlinkVersion := MustReadEnvVar_String(E2E_TEST_CHAINLINK_VERSION_ENV)
+	if chainlinkVersion != "" {
+		if c.ChainlinkImage == nil {
+			c.ChainlinkImage = &ChainlinkImageConfig{}
+		}
+		logger.Debug().Msgf("Using %s env var to override ChainlinkImage.Version", E2E_TEST_CHAINLINK_VERSION_ENV)
+		c.ChainlinkImage.Version = &chainlinkVersion
+	}
+
+	chainlinkPostgresVersion := MustReadEnvVar_String(E2E_TEST_CHAINLINK_POSTGRES_VERSION_ENV)
+	if chainlinkPostgresVersion != "" {
+		if c.ChainlinkImage == nil {
+			c.ChainlinkImage = &ChainlinkImageConfig{}
+		}
+		logger.Debug().Msgf("Using %s env var to override ChainlinkImage.PostgresVersion", E2E_TEST_CHAINLINK_POSTGRES_VERSION_ENV)
+		c.ChainlinkImage.PostgresVersion = &chainlinkPostgresVersion
+	}
+
+	chainlinkUpgradeImage := MustReadEnvVar_String(E2E_TEST_CHAINLINK_UPGRADE_IMAGE_ENV)
+	if chainlinkUpgradeImage != "" {
+		if c.ChainlinkUpgradeImage == nil {
+			c.ChainlinkUpgradeImage = &ChainlinkImageConfig{}
+		}
+		logger.Info().Msgf("Using %s env var to override ChainlinkUpgradeImage.Image", E2E_TEST_CHAINLINK_UPGRADE_IMAGE_ENV)
+		c.ChainlinkUpgradeImage.Image = &chainlinkUpgradeImage
+	}
+
+	chainlinkUpgradeVersion := MustReadEnvVar_String(E2E_TEST_CHAINLINK_UPGRADE_VERSION_ENV)
+	if chainlinkUpgradeVersion != "" {
+		if c.ChainlinkUpgradeImage == nil {
+			c.ChainlinkUpgradeImage = &ChainlinkImageConfig{}
+		}
+		logger.Debug().Msgf("Using %s env var to override ChainlinkUpgradeImage.Version", E2E_TEST_CHAINLINK_UPGRADE_VERSION_ENV)
+		c.ChainlinkUpgradeImage.Version = &chainlinkUpgradeVersion
 	}
 
 	return nil
-}
-
-// loadEnvVarGroupedMap scans all environment variables, matches them against
-// a specified pattern, and returns a map of grouped values based on the pattern.
-// The grouping is defined by the first capture group of the regex.
-func loadEnvVarGroupedMap(pattern string) map[string][]string {
-	logger := logging.GetTestLogger(nil)
-	re := regexp.MustCompile(pattern)
-	groupedVars := make(map[string][]string)
-	for _, env := range os.Environ() {
-		pair := strings.SplitN(env, "=", 2)
-		if len(pair) != 2 {
-			continue
-		}
-		key, value := pair[0], pair[1]
-		matches := re.FindStringSubmatch(key)
-		if len(matches) > 1 && value != "" {
-			group := matches[1] // Use the first capture group for grouping
-			groupedVars[group] = append(groupedVars[group], value)
-			logger.Debug().Msgf("Will override test config from env var '%s'", key)
-		}
-	}
-	return groupedVars
-}
-
-func loadEnvVarSingleMap(pattern string) map[string]string {
-	logger := logging.GetTestLogger(nil)
-	re := regexp.MustCompile(pattern)
-	singleVars := make(map[string]string)
-	for _, env := range os.Environ() {
-		pair := strings.SplitN(env, "=", 2)
-		if len(pair) != 2 {
-			continue
-		}
-		key, value := pair[0], pair[1]
-		matches := re.FindStringSubmatch(key)
-		if len(matches) > 1 && value != "" {
-			group := matches[1] // Use the first capture group for grouping
-			singleVars[group] = value
-			logger.Debug().Msgf("Will override test config from env var '%s'", key)
-		}
-	}
-	return singleVars
-}
-
-// Merges a map[string]string with a map[string][]string and returns a new map[string][]string.
-// Elements from the single map are inserted at index 0 in the slice of the new map.
-func mergeMaps(single map[string]string, multi map[string][]string) map[string][]string {
-	newMap := make(map[string][]string)
-
-	// First, copy all elements from the multi map to the new map
-	for key, values := range multi {
-		newMap[key] = make([]string, len(values))
-		copy(newMap[key], values)
-	}
-
-	// Next, insert or prepend the elements from the single map
-	for key, value := range single {
-		if existingValues, exists := newMap[key]; exists {
-			// Prepend the value from the single map
-			newMap[key] = append([]string{value}, existingValues...)
-		} else {
-			// Initialize a new slice if the key does not exist
-			newMap[key] = []string{value}
-		}
-	}
-
-	return newMap
-}
-
-type EnvValueType int
-
-const (
-	String EnvValueType = iota
-	Integer
-	Boolean
-	Float
-)
-
-// readEnvVarValue reads an environment variable and returns the value parsed according to the specified type.
-func readEnvVarValue(envVarName string, valueType EnvValueType) (interface{}, error) {
-	// Get the environment variable value
-	value, isSet := os.LookupEnv(envVarName)
-	if !isSet {
-		return nil, nil
-	}
-	if isSet && value == "" {
-		return "", nil // Return "" if the environment variable is not set
-	}
-
-	// Parse the value according to the specified type
-	switch valueType {
-	case Integer:
-		intVal, err := strconv.Atoi(value)
-		if err != nil {
-			return nil, fmt.Errorf("error converting value to integer: %v", err)
-		}
-		return intVal, nil
-	case Boolean:
-		boolVal, err := strconv.ParseBool(value)
-		if err != nil {
-			return nil, fmt.Errorf("error converting value to boolean: %v", err)
-		}
-		return boolVal, nil
-	case Float:
-		floatVal, err := strconv.ParseFloat(value, 64)
-		if err != nil {
-			return nil, fmt.Errorf("error converting value to float: %v", err)
-		}
-		return floatVal, nil
-	default: // String or unrecognized type
-		return value, nil
-	}
 }
 
 func LoadSecretEnvsFromFiles() error {

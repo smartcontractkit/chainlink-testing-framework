@@ -15,11 +15,11 @@ type ExplorerClient struct {
 }
 
 // NewExplorerClient creates a new explorer mock client
-func NewExplorerClient(cfg *ExplorerConfig) *ExplorerClient {
+func NewExplorerClient(cfg *ExplorerConfig) (*ExplorerClient, error) {
 	return &ExplorerClient{
 		Config:    cfg,
 		APIClient: resty.New().SetBaseURL(cfg.URL),
-	}
+	}, nil
 }
 
 // PostAdminNodes is used to exercise the POST /api/v1/admin/nodes endpoint

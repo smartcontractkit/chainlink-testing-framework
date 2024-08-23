@@ -38,7 +38,7 @@ This error typically means that the directory where Go installs its binaries is 
 
   This command will print the path where Go binaries are installed, typically something like /home/username/go/bin
 
-- Add the following line at the end of the file:
+- Add the following line at the end of your shell config file (`.bashrc`, `.zshrc`), usually located at `~/`:
 
   ```sh
   export PATH="$PATH:<path-to-go-bin>"

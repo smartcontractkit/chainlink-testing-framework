@@ -11,6 +11,8 @@ import (
 	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
 
+	config_types "github.com/smartcontractkit/chainlink-testing-framework/config/types"
+	"github.com/smartcontractkit/chainlink-testing-framework/docker/ethereum"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/slice"
 )
@@ -23,18 +25,18 @@ var (
 )
 
 type EthereumNetworkConfig struct {
-	ConsensusType        *EthereumVersion          `toml:"consensus_type"`
-	EthereumVersion      *EthereumVersion          `toml:"ethereum_version"`
-	ConsensusLayer       *ConsensusLayer           `toml:"consensus_layer"`
-	ExecutionLayer       *ExecutionLayer           `toml:"execution_layer"`
-	DockerNetworkNames   []string                  `toml:"docker_network_names"`
-	Containers           EthereumNetworkContainers `toml:"containers"`
-	WaitForFinalization  *bool                     `toml:"wait_for_finalization"`
-	GeneratedDataHostDir *string                   `toml:"generated_data_host_dir"`
-	ValKeysDir           *string                   `toml:"val_keys_dir"`
-	EthereumChainConfig  *EthereumChainConfig      `toml:"EthereumChainConfig"`
-	CustomDockerImages   map[ContainerType]string  `toml:"CustomDockerImages"`
-	NodeLogLevel         *string                   `toml:"node_log_level,omitempty"`
+	ConsensusType        *config_types.EthereumVersion `toml:"consensus_type"`
+	EthereumVersion      *config_types.EthereumVersion `toml:"ethereum_version"`
+	ConsensusLayer       *ConsensusLayer               `toml:"consensus_layer"`
+	ExecutionLayer       *config_types.ExecutionLayer  `toml:"execution_layer"`
+	DockerNetworkNames   []string                      `toml:"docker_network_names"`
+	Containers           EthereumNetworkContainers     `toml:"containers"`
+	WaitForFinalization  *bool                         `toml:"wait_for_finalization"`
+	GeneratedDataHostDir *string                       `toml:"generated_data_host_dir"`
+	ValKeysDir           *string                       `toml:"val_keys_dir"`
+	EthereumChainConfig  *EthereumChainConfig          `toml:"EthereumChainConfig"`
+	CustomDockerImages   map[ContainerType]string      `toml:"CustomDockerImages"`
+	NodeLogLevel         *string                       `toml:"node_log_level,omitempty"`
 }
 
 func (en *EthereumNetworkConfig) Validate() error {
@@ -49,10 +51,12 @@ func (en *EthereumNetworkConfig) Validate() error {
 		l.Debug().Msg("Using _deprecated_ ConsensusType as EthereumVersion")
 		tempEthVersion := en.ConsensusType
 		switch *tempEthVersion {
-		case EthereumVersion_Eth1, EthereumVersion_Eth1_Legacy:
-			*tempEthVersion = EthereumVersion_Eth1
-		case EthereumVersion_Eth2, EthereumVersion_Eth2_Legacy:
-			*tempEthVersion = EthereumVersion_Eth2
+		//nolint:staticcheck //ignore SA1019
+		case config_types.EthereumVersion_Eth1, config_types.EthereumVersion_Eth1_Legacy:
+			*tempEthVersion = config_types.EthereumVersion_Eth1
+		//nolint:staticcheck //ignore SA1019
+		case config_types.EthereumVersion_Eth2, config_types.EthereumVersion_Eth2_Legacy:
+			*tempEthVersion = config_types.EthereumVersion_Eth2
 		default:
 			return fmt.Errorf("unknown ethereum version (consensus type): %s", *en.ConsensusType)
 		}
@@ -68,12 +72,14 @@ func (en *EthereumNetworkConfig) Validate() error {
 		return ErrMissingExecutionLayer
 	}
 
-	if (en.EthereumVersion != nil && (*en.EthereumVersion == EthereumVersion_Eth2_Legacy || *en.EthereumVersion == EthereumVersion_Eth2)) && (en.ConsensusLayer == nil || *en.ConsensusLayer == "") {
+	//nolint:staticcheck //ignore SA1019
+	if (en.EthereumVersion != nil && (*en.EthereumVersion == config_types.EthereumVersion_Eth2_Legacy || *en.EthereumVersion == config_types.EthereumVersion_Eth2)) && (en.ConsensusLayer == nil || *en.ConsensusLayer == "") {
 		l.Warn().Msg("Consensus layer is not set, but is required for PoS. Defaulting to Prysm")
 		en.ConsensusLayer = &ConsensusLayer_Prysm
 	}
 
-	if (en.EthereumVersion != nil && (*en.EthereumVersion == EthereumVersion_Eth1_Legacy || *en.EthereumVersion == EthereumVersion_Eth1)) && (en.ConsensusLayer != nil && *en.ConsensusLayer != "") {
+	//nolint:staticcheck //ignore SA1019
+	if (en.EthereumVersion != nil && (*en.EthereumVersion == config_types.EthereumVersion_Eth1_Legacy || *en.EthereumVersion == config_types.EthereumVersion_Eth1)) && (en.ConsensusLayer != nil && *en.ConsensusLayer != "") {
 		l.Warn().Msg("Consensus layer is set, but is not allowed for PoW. Ignoring")
 		en.ConsensusLayer = nil
 	}
@@ -82,7 +88,7 @@ func (en *EthereumNetworkConfig) Validate() error {
 		en.NodeLogLevel = &DefaultNodeLogLevel
 	}
 
-	if *en.EthereumVersion == EthereumVersion_Eth1 && *en.ExecutionLayer == ExecutionLayer_Reth {
+	if *en.EthereumVersion == config_types.EthereumVersion_Eth1 && *en.ExecutionLayer == config_types.ExecutionLayer_Reth {
 		msg := `%s
 
 If you are using builder to create the network, please change the EthereumVersion to EthereumVersion_Eth2 by calling this method:
@@ -105,7 +111,7 @@ ethereum_version="eth2"
 		return errors.New("ethereum chain config is required")
 	}
 
-	return en.EthereumChainConfig.Validate(l, en.EthereumVersion)
+	return en.EthereumChainConfig.Validate(l, en.EthereumVersion, en.ExecutionLayer, en.CustomDockerImages)
 }
 
 func (en *EthereumNetworkConfig) ApplyOverrides(from *EthereumNetworkConfig) error {
@@ -163,27 +169,6 @@ const (
 	ConsensusType_PoW ConsensusType = "pow"
 )
 
-type EthereumVersion string
-
-const (
-	EthereumVersion_Eth2 EthereumVersion = "eth2"
-	// Deprecated: use EthereumVersion_Eth2 instead
-	EthereumVersion_Eth2_Legacy EthereumVersion = "pos"
-	EthereumVersion_Eth1        EthereumVersion = "eth1"
-	// Deprecated: use EthereumVersion_Eth1 instead
-	EthereumVersion_Eth1_Legacy EthereumVersion = "pow"
-)
-
-type ExecutionLayer string
-
-const (
-	ExecutionLayer_Geth       ExecutionLayer = "geth"
-	ExecutionLayer_Nethermind ExecutionLayer = "nethermind"
-	ExecutionLayer_Erigon     ExecutionLayer = "erigon"
-	ExecutionLayer_Besu       ExecutionLayer = "besu"
-	ExecutionLayer_Reth       ExecutionLayer = "reth"
-)
-
 type ConsensusLayer string
 
 var ConsensusLayer_Prysm ConsensusLayer = "prysm"
@@ -200,10 +185,6 @@ const (
 	ContainerType_ValKeysGenerator   ContainerType = "val_keys_generator"
 )
 
-const (
-	UnsopportedForkErr = "only 'Electra' and 'EOF' hard forks are supported"
-)
-
 type EthereumChainConfig struct {
 	SecondsPerSlot   int            `json:"seconds_per_slot" toml:"seconds_per_slot"`
 	SlotsPerEpoch    int            `json:"slots_per_epoch" toml:"slots_per_epoch"`
@@ -218,6 +199,7 @@ type EthereumChainConfig struct {
 //go:embed tomls/default_ethereum_env.toml
 var defaultEthereumChainConfig []byte
 
+// Default sets the EthereumChainConfig to the default values
 func (c *EthereumChainConfig) Default() error {
 	wrapper := struct {
 		EthereumNetwork *EthereumNetworkConfig `toml:"PrivateEthereumNetwork"`
@@ -239,7 +221,8 @@ func (c *EthereumChainConfig) Default() error {
 	return nil
 }
 
-func GetDefaultChainConfig() EthereumChainConfig {
+// MustGetDefaultChainConfig returns the default EthereumChainConfig or panics if it can't be loaded
+func MustGetDefaultChainConfig() EthereumChainConfig {
 	config := EthereumChainConfig{}
 	if err := config.Default(); err != nil {
 		panic(err)
@@ -247,14 +230,16 @@ func GetDefaultChainConfig() EthereumChainConfig {
 	return config
 }
 
-func (c *EthereumChainConfig) Validate(logger zerolog.Logger, ethereumVersion *EthereumVersion) error {
+// Validate validates the EthereumChainConfig
+func (c *EthereumChainConfig) Validate(l zerolog.Logger, ethereumVersion *config_types.EthereumVersion, executionLayer *config_types.ExecutionLayer, customDockerImages map[ContainerType]string) error {
 	if c.ChainID < 1 {
 		return fmt.Errorf("chain id must be >= 0")
 	}
 
 	// don't like it 100% but in cases where we load private ethereum network config from TOML it might be incomplete
 	// until we pass it to ethereum network builder that will fill in defaults
-	if ethereumVersion == nil || (*ethereumVersion == EthereumVersion_Eth1_Legacy || *ethereumVersion == EthereumVersion_Eth1) {
+	//nolint:staticcheck //ignore SA1019
+	if ethereumVersion == nil || (*ethereumVersion == config_types.EthereumVersion_Eth1_Legacy || *ethereumVersion == config_types.EthereumVersion_Eth1) {
 		return nil
 	}
 
@@ -274,7 +259,7 @@ func (c *EthereumChainConfig) Validate(logger zerolog.Logger, ethereumVersion *E
 		return fmt.Errorf("genesis timestamp must be generated by calling GenerateGenesisTimestamp()")
 	}
 
-	if err := c.ValidateHardForks(); err != nil {
+	if err := c.ValidateHardForks(l, ethereumVersion, executionLayer, customDockerImages); err != nil {
 		return err
 	}
 
@@ -286,23 +271,84 @@ func (c *EthereumChainConfig) Validate(logger zerolog.Logger, ethereumVersion *E
 		return err
 	}
 	if hadDuplicates {
-		logger.Warn().Msg("Duplicate addresses found in addresses_to_fund. Removed them. You might want to review your configuration.")
+		l.Warn().Msg("Duplicate addresses found in addresses_to_fund. Removed them. You might want to review your configuration.")
 	}
 
 	return nil
 }
 
-func (c *EthereumChainConfig) ValidateHardForks() error {
-	if len(c.HardForkEpochs) == 0 {
+// ValidateHardForks validates hard forks based either on custom or default docker images for eth2 execution layer
+func (c *EthereumChainConfig) ValidateHardForks(l zerolog.Logger, ethereumVersion *config_types.EthereumVersion, executionLayer *config_types.ExecutionLayer, customDockerImages map[ContainerType]string) error {
+	//nolint:staticcheck //ignore SA1019
+	if ethereumVersion == nil || (*ethereumVersion == config_types.EthereumVersion_Eth1_Legacy || *ethereumVersion == config_types.EthereumVersion_Eth1) {
 		return nil
 	}
 
-	// currently Prysm Beacon Chain doesn't support any fork (Electra is coming in 2025)
-	c.HardForkEpochs = map[string]int{}
+	customImage := customDockerImages[ContainerType_ExecutionLayer]
+	var baseEthereumFork ethereum.Fork
+	var err error
+	if customImage == "" {
+		if executionLayer == nil {
+			return ErrMissingExecutionLayer
+		}
+		var dockerImage string
+		switch *executionLayer {
+		case config_types.ExecutionLayer_Geth:
+			dockerImage = ethereum.DefaultGethEth2Image
+		case config_types.ExecutionLayer_Nethermind:
+			dockerImage = ethereum.DefaultNethermindEth2Image
+		case config_types.ExecutionLayer_Erigon:
+			dockerImage = ethereum.DefaultErigonEth2Image
+		case config_types.ExecutionLayer_Besu:
+			dockerImage = ethereum.DefaultBesuEth2Image
+		case config_types.ExecutionLayer_Reth:
+			dockerImage = ethereum.DefaultRethEth2Image
+		}
+		baseEthereumFork, err = ethereum.LastSupportedForkForEthereumClient(dockerImage)
+	} else {
+		baseEthereumFork, err = ethereum.LastSupportedForkForEthereumClient(customImage)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	validFutureForks, err := baseEthereumFork.ValidFutureForks()
+	if err != nil {
+		return err
+	}
+
+	validForks := make(map[string]int)
+
+	// latest Prysm Beacon Chain doesn't support any fork (Electra is coming in 2025)
+	// but older versions do support Deneb
+	for fork, epoch := range c.HardForkEpochs {
+		isValid := false
+		for _, validFork := range validFutureForks {
+			if strings.EqualFold(fork, string(validFork)) {
+				isValid = true
+				validForks[fork] = epoch
+				break
+			}
+		}
+
+		if !isValid {
+			l.Debug().Msgf("Fork %s is not supported. Removed it from configuration", fork)
+		}
+	}
+
+	// at the same time for Shanghai-based forks we need to add Deneb to the list if it's not there, so that genesis is valid
+	if _, ok := c.HardForkEpochs[string(ethereum.EthereumFork_Deneb)]; !ok && baseEthereumFork == ethereum.EthereumFork_Shanghai {
+		l.Debug().Msg("Adding Deneb to fork setup, because it's required, but was missing from the configuration. It's scheduled for epoch 1000")
+		validForks[string(ethereum.EthereumFork_Deneb)] = 1000
+	}
+
+	c.HardForkEpochs = validForks
 
 	return nil
 }
 
+// ApplyOverrides applies overrides from another EthereumChainConfig
 func (c *EthereumChainConfig) ApplyOverrides(from *EthereumChainConfig) error {
 	if from == nil {
 		return nil
@@ -328,8 +374,9 @@ func (c *EthereumChainConfig) ApplyOverrides(from *EthereumChainConfig) error {
 	return nil
 }
 
+// FillInMissingValuesWithDefault fills in missing/zero values with default values
 func (c *EthereumChainConfig) FillInMissingValuesWithDefault() {
-	defaultConfig := GetDefaultChainConfig()
+	defaultConfig := MustGetDefaultChainConfig()
 	if c.ValidatorCount == 0 {
 		c.ValidatorCount = defaultConfig.ValidatorCount
 	}
@@ -356,18 +403,21 @@ func (c *EthereumChainConfig) FillInMissingValuesWithDefault() {
 	}
 }
 
-func (c *EthereumChainConfig) GetValidatorBasedGenesisDelay() int {
+// ValidatorBasedGenesisDelay returns the delay in seconds based on the number of validators
+func (c *EthereumChainConfig) ValidatorBasedGenesisDelay() int {
 	return c.ValidatorCount * 5
 }
 
 func (c *EthereumChainConfig) GenerateGenesisTimestamp() {
-	c.GenesisTimestamp = int(time.Now().Unix()) + c.GetValidatorBasedGenesisDelay()
+	c.GenesisTimestamp = int(time.Now().Unix()) + c.ValidatorBasedGenesisDelay()
 }
 
-func (c *EthereumChainConfig) GetDefaultWaitDuration() time.Duration {
-	return time.Duration((c.GenesisDelay+c.GetValidatorBasedGenesisDelay())*2) * time.Second
+// DefaultWaitDuration returns the default wait duration for the network based on the genesis delay and the number of validators
+func (c *EthereumChainConfig) DefaultWaitDuration() time.Duration {
+	return time.Duration((c.GenesisDelay+c.ValidatorBasedGenesisDelay())*2) * time.Second
 }
 
-func (c *EthereumChainConfig) GetDefaultFinalizationWaitDuration() time.Duration {
+// DefaultFinalizationWaitDuration returns the default wait duration for finalization
+func (c *EthereumChainConfig) DefaultFinalizationWaitDuration() time.Duration {
 	return 5 * time.Minute
 }

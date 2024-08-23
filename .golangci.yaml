@@ -84,3 +84,5 @@ issues:
     - contracts/ethereum
     - examples
     - imports
+    - wasp/examples/*
+    - k8s

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
@@ -82,6 +83,9 @@ type EVMNetwork struct {
 
 	// Only used internally, do not set
 	URL string `ignored:"true"`
+
+	// Only used internally, do not set
+	Headers http.Header `toml:"evm_headers" json:"evm_headers"`
 }
 
 // LoadNetworkFromEnvironment loads an EVM network from default environment variables. Helpful in soak tests

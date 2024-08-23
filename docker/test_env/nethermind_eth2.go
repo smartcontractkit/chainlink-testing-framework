@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	config_types "github.com/smartcontractkit/chainlink-testing-framework/config/types"
+
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/google/uuid"
@@ -13,13 +15,14 @@ import (
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
+	"github.com/smartcontractkit/chainlink-testing-framework/docker/ethereum"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
 )
 
 // NewNethermindEth2 starts a new Nethermin Eth2 node running in Docker
-func NewNethermindEth2(networks []string, chainConfig *config.EthereumChainConfig, generatedDataHostDir string, consensusLayer config.ConsensusLayer, opts ...EnvComponentOption) (*Nethermind, error) {
-	parts := strings.Split(defaultNethermindEth2Image, ":")
+func NewNethermindEth2(networks []string, chainConfig *config.EthereumChainConfig, generatedDataHostDir, generatedDataContainerDir string, consensusLayer config.ConsensusLayer, opts ...EnvComponentOption) (*Nethermind, error) {
+	parts := strings.Split(ethereum.DefaultNethermindEth2Image, ":")
 	g := &Nethermind{
 		EnvComponent: EnvComponent{
 			ContainerName:    fmt.Sprintf("%s-%s", "nethermind-eth2", uuid.NewString()[0:8]),
@@ -28,11 +31,11 @@ func NewNethermindEth2(networks []string, chainConfig *config.EthereumChainConfi
 			ContainerVersion: parts[1],
 			StartupTimeout:   2 * time.Minute,
 		},
-		generatedDataHostDir: generatedDataHostDir,
+		posContainerSettings: posContainerSettings{generatedDataHostDir: generatedDataHostDir, generatedDataContainerDir: generatedDataContainerDir},
 		chainConfig:          chainConfig,
 		consensusLayer:       consensusLayer,
 		l:                    logging.GetTestLogger(nil),
-		ethereumVersion:      config.EthereumVersion_Eth2,
+		ethereumVersion:      config_types.EthereumVersion_Eth2,
 	}
 	g.SetDefaultHooks()
 	for _, opt := range opts {
@@ -64,7 +67,7 @@ func (g *Nethermind) getEth2ContainerRequest() (*tc.ContainerRequest, error) {
 	command := []string{
 		"--datadir=/nethermind",
 		"--config=/none.cfg",
-		fmt.Sprintf("--Init.ChainSpecPath=%s/chainspec.json", GENERATED_DATA_DIR_INSIDE_CONTAINER),
+		fmt.Sprintf("--Init.ChainSpecPath=%s/chainspec.json", g.generatedDataContainerDir),
 		"--Init.DiscoveryEnabled=false",
 		"--Init.WebSocketsEnabled=true",
 		fmt.Sprintf("--JsonRpc.WebSocketsPort=%s", DEFAULT_EVM_NODE_WS_PORT),
@@ -75,11 +78,11 @@ func (g *Nethermind) getEth2ContainerRequest() (*tc.ContainerRequest, error) {
 		fmt.Sprintf("--JsonRpc.Port=%s", DEFAULT_EVM_NODE_HTTP_PORT),
 		"--JsonRpc.EngineHost=0.0.0.0",
 		"--JsonRpc.EnginePort=" + ETH2_EXECUTION_PORT,
-		fmt.Sprintf("--JsonRpc.JwtSecretFile=%s", JWT_SECRET_FILE_LOCATION_INSIDE_CONTAINER),
-		fmt.Sprintf("--KeyStore.KeyStoreDirectory=%s", KEYSTORE_DIR_LOCATION_INSIDE_CONTAINER),
+		fmt.Sprintf("--JsonRpc.JwtSecretFile=%s", getJWTSecretFileLocationInsideContainer(g.generatedDataContainerDir)),
+		fmt.Sprintf("--KeyStore.KeyStoreDirectory=%s", getKeystoreDirLocationInsideContainer(g.generatedDataContainerDir)),
 		"--KeyStore.BlockAuthorAccount=0x123463a4b065722e99115d6c222f267d9cabb524",
 		"--KeyStore.UnlockAccounts=0x123463a4b065722e99115d6c222f267d9cabb524",
-		fmt.Sprintf("--KeyStore.PasswordFiles=%s", ACCOUNT_PASSWORD_FILE_INSIDE_CONTAINER),
+		fmt.Sprintf("--KeyStore.PasswordFiles=%s", getAccountPasswordFileInsideContainer(g.generatedDataContainerDir)),
 		"--Network.MaxActivePeers=0",
 		"--Network.OnlyStaticPeers=true",
 		"--HealthChecks.Enabled=true", // default slug /health
@@ -115,7 +118,7 @@ func (g *Nethermind) getEth2ContainerRequest() (*tc.ContainerRequest, error) {
 			hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
 				Type:     mount.TypeBind,
 				Source:   g.generatedDataHostDir,
-				Target:   GENERATED_DATA_DIR_INSIDE_CONTAINER,
+				Target:   g.generatedDataContainerDir,
 				ReadOnly: false,
 			})
 		},

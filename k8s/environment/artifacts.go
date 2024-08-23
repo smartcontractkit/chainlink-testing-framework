@@ -94,7 +94,7 @@ func (a *Artifacts) dumpDB(pod coreV1.Pod, container coreV1.Container) (string, 
 		return "", err
 	}
 	outBuff, errBuff := &bytes.Buffer{}, &bytes.Buffer{}
-	err = exec.Stream(remotecommand.StreamOptions{
+	err = exec.StreamWithContext(context.Background(), remotecommand.StreamOptions{
 		Stdin:  &bytes.Reader{},
 		Stdout: outBuff,
 		Stderr: errBuff,

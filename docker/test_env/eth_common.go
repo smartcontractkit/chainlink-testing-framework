@@ -7,10 +7,12 @@ import (
 	"testing"
 	"time"
 
+	config_types "github.com/smartcontractkit/chainlink-testing-framework/config/types"
+
 	tc "github.com/testcontainers/testcontainers-go"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
-	"github.com/smartcontractkit/chainlink-testing-framework/config"
+	"github.com/smartcontractkit/chainlink-testing-framework/docker/ethereum"
 )
 
 const (
@@ -39,7 +41,7 @@ type ExecutionClient interface {
 	GetInternalWsUrl() string
 	GetExternalHttpUrl() string
 	GetExternalWsUrl() string
-	GetEthereumVersion() config.EthereumVersion
+	GetEthereumVersion() config_types.EthereumVersion
 	GethConsensusMechanism() ConsensusMechanism
 	WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error
 	WithTestInstance(t *testing.T) ExecutionClient
@@ -51,10 +53,10 @@ type UnsupportedVersion struct {
 }
 
 var UNSUPPORTED_VERSIONS = []UnsupportedVersion{
-	{DockerImage: fmt.Sprintf("%s:1.20.0", nethermindBaseImageName),
+	{DockerImage: fmt.Sprintf("%s:1.20.0", ethereum.NethermindBaseImageName),
 		Reason: "1.20.0 was replaced with 1.20.1, for more info check https://github.com/NethermindEth/nethermind/releases/tag/1.20.0",
 	},
-	{DockerImage: fmt.Sprintf("%s:v1.9.0", gethBaseImageName),
+	{DockerImage: fmt.Sprintf("%s:v1.9.0", ethereum.GethBaseImageName),
 		Reason: "v1.9.0 randomly drops websocket connections, for more info check https://github.com/ethereum/go-ethereum/issues/19001",
 	},
 }

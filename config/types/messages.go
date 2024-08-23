@@ -1,4 +1,4 @@
-package test_env
+package types
 
 const (
 	MsgInvalidDockerImageFormat  = "invalid docker image format: %s"
