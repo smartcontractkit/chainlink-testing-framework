@@ -2,12 +2,14 @@ package examples_wasp
 
 import (
 	"errors"
-	"github.com/smartcontractkit/chainlink-testing-framework/seth"
-	"github.com/smartcontractkit/wasp"
-	"github.com/stretchr/testify/require"
 	"math/big"
 	"testing"
 	"time"
+
+	"github.com/smartcontractkit/wasp"
+	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/seth"
 )
 
 type ExampleGun struct {

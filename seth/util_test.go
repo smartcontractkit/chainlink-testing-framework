@@ -199,11 +199,12 @@ func TestUtilPendingNonce(t *testing.T) {
 		}()
 
 		<-started
+		lastNonce, err := c.Client.NonceAt(context.Background(), c.Addresses[testCase.keyNum], nil)
+		require.NoError(t, err, "Error getting last nonce")
+
 		pendingNonce, err := c.Client.PendingNonceAt(context.Background(), c.Addresses[testCase.keyNum])
 		require.NoError(t, err, "Error getting pending nonce")
 
-		lastNonce, err := c.Client.NonceAt(context.Background(), c.Addresses[testCase.keyNum], nil)
-		require.NoError(t, err, "Error getting last nonce")
 		require.Greater(t, int64(pendingNonce), int64(lastNonce), "Pending nonce should be greater than last nonce")
 
 		if testCase.keyNum == 0 {
