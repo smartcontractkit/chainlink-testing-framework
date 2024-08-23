@@ -4,8 +4,9 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/seth"
 	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/seth"
 )
 
 func TestSmokeDebugReverts(t *testing.T) {

@@ -3,6 +3,7 @@ package seth
 import (
 	"crypto/ecdsa"
 	"errors"
+
 	"github.com/ethereum/go-ethereum/common"
 )
 

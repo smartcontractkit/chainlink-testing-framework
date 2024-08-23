@@ -4,8 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/seth"
 	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/seth"
 )
 
 func TestGasEstimator(t *testing.T) {

@@ -4,8 +4,9 @@ import (
 	"testing"
 
 	"github.com/pkg/errors"
-	"github.com/smartcontractkit/chainlink-testing-framework/seth"
 	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/seth"
 )
 
 func TestSmokeContractABIStore(t *testing.T) {

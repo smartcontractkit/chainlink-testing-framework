@@ -3,16 +3,17 @@ package seth
 import (
 	"context"
 	"fmt"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/pelletier/go-toml/v2"
-	"go.uber.org/ratelimit"
-	"golang.org/x/sync/errgroup"
 	"math"
 	"math/big"
 	"sort"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/pelletier/go-toml/v2"
+	"go.uber.org/ratelimit"
+	"golang.org/x/sync/errgroup"
 )
 
 type BlockStatsConfig struct {

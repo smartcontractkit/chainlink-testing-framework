@@ -56,9 +56,9 @@ func NewLoggingTransport() http.RoundTripper {
 				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 			},
 		}
-	} else {
-		return &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		}
+	}
+
+	return &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 }

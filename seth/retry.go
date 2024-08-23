@@ -3,10 +3,11 @@ package seth
 import (
 	"context"
 	"fmt"
-	"github.com/holiman/uint256"
 	"math/big"
 	"strings"
 	"time"
+
+	"github.com/holiman/uint256"
 
 	"github.com/avast/retry-go"
 	"github.com/ethereum/go-ethereum/core/types"
