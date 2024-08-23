@@ -26,6 +26,7 @@ CTF contains a set of useful libraries:
 
 - [WASP](wasp/README.md) - Scalable protocol-agnostic load testing library for `Go`
 - [Havoc](havoc/README.md) - Chaos testing library
+- [Seth](seth/README.md) - Ethereum client library with transaction tracing and gas bumping
 
 ## k8s package
 
@@ -93,7 +94,7 @@ It should be noted that using env vars for configuring CL nodes in k8s is deprec
 ```toml
 [ChainlinkImage]
 image="public.ecr.aws/chainlink/chainlink"
-version="v2.8.0"
+version="2.15.0"
 ```
 
 Check the example here: [env.go](./k8s/examples/simple_toml/env_toml_config.go)
