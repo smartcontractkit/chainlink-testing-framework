@@ -66,7 +66,7 @@ func (c *LFUHeaderCache) Set(header *types.Header) error {
 
 // evict removes the least frequently used item from the cache. If more than one item has the same frequency, the oldest is evicted.
 func (c *LFUHeaderCache) evict() {
-	var leastFreq int = int(^uint(0) >> 1)
+	var leastFreq = int(^uint(0) >> 1)
 	var evictKey int64
 	oldestBlockNumber := ^uint64(0)
 	for key, item := range c.cache {

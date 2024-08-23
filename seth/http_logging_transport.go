@@ -53,12 +53,14 @@ func NewLoggingTransport() http.RoundTripper {
 		return &LoggingTransport{
 			// TODO: GAP, add proper certificates
 			Transport: &http.Transport{
+				//nolint
 				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 			},
 		}
 	}
 
 	return &http.Transport{
+		//nolint
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 }

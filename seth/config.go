@@ -181,9 +181,8 @@ func ReadConfig() (*Config, error) {
 	rootPrivateKey := os.Getenv(ROOT_PRIVATE_KEY_ENV_VAR)
 	if rootPrivateKey == "" {
 		return nil, errors.Errorf(ErrEmptyRootPrivateKey, ROOT_PRIVATE_KEY_ENV_VAR)
-	} else {
-		cfg.Network.PrivateKeys = append(cfg.Network.PrivateKeys, rootPrivateKey)
 	}
+	cfg.Network.PrivateKeys = append(cfg.Network.PrivateKeys, rootPrivateKey)
 	if cfg.Network.DialTimeout == nil {
 		cfg.Network.DialTimeout = &Duration{D: DefaultDialTimeout}
 	}

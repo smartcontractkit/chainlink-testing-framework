@@ -15,7 +15,7 @@ import (
 )
 
 var oneEth = big.NewInt(1000000000000000000)
-var zero int64 = 0
+var zero int64
 
 func TestGasBumping_Contract_Deployment_Legacy_SufficientBumping(t *testing.T) {
 	c := newClient(t)

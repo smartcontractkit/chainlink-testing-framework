@@ -186,6 +186,7 @@ func (m *Client) GetSuggestedEIP1559Fees(ctx context.Context, priority string) (
 
 	// Fetch the baseline historical base fee and tip for the selected priority
 	var baseFee64, historicalSuggestedTip64 float64
+	//nolint
 	baseFee64, historicalSuggestedTip64, err = m.HistoricalFeeData(priority)
 	if err != nil {
 		return
@@ -266,6 +267,7 @@ func (m *Client) GetSuggestedEIP1559Fees(ctx context.Context, priority string) (
 
 	// between 0 and 1 (empty blocks - full blocks)
 	var congestionMetric float64
+	//nolint
 	congestionMetric, err = m.CalculateNetworkCongestionMetric(m.Cfg.Network.GasPriceEstimationBlocks, CongestionStrategy_NewestFirst)
 	if err == nil {
 		congestionClassification := classifyCongestion(congestionMetric)
@@ -366,6 +368,7 @@ func (m *Client) GetSuggestedLegacyFees(ctx context.Context, priority string) (a
 
 	// between 0 and 1 (empty blocks - full blocks)
 	var congestionMetric float64
+	//nolint
 	congestionMetric, err = m.CalculateNetworkCongestionMetric(m.Cfg.Network.GasPriceEstimationBlocks, CongestionStrategy_NewestFirst)
 	if err == nil {
 		congestionClassification := classifyCongestion(congestionMetric)
@@ -464,28 +467,29 @@ func (m *Client) HistoricalFeeData(priority string) (baseFee float64, historical
 			Msg("Failed to get fee history. Skipping automation gas estimation")
 
 		return
-	} else {
-		switch priority {
-		case Priority_Degen:
-			baseFee = stats.GasPrice.Max
-			historicalGasTipCap = stats.TipCap.Max
-		case Priority_Fast:
-			baseFee = stats.GasPrice.Perc99
-			historicalGasTipCap = stats.TipCap.Perc99
-		case Priority_Standard:
-			baseFee = stats.GasPrice.Perc50
-			historicalGasTipCap = stats.TipCap.Perc50
-		case Priority_Slow:
-			baseFee = stats.GasPrice.Perc25
-			historicalGasTipCap = stats.TipCap.Perc25
-		default:
-			err = fmt.Errorf("unknown priority: %s", priority)
-			L.Error().
-				Str("Priority", priority).
-				Msg("Unknown priority. Skipping automation gas estimation")
+	}
 
-			return
-		}
+	switch priority {
+	case Priority_Degen:
+		baseFee = stats.GasPrice.Max
+		historicalGasTipCap = stats.TipCap.Max
+	case Priority_Fast:
+		baseFee = stats.GasPrice.Perc99
+		historicalGasTipCap = stats.TipCap.Perc99
+	case Priority_Standard:
+		baseFee = stats.GasPrice.Perc50
+		historicalGasTipCap = stats.TipCap.Perc50
+	case Priority_Slow:
+		baseFee = stats.GasPrice.Perc25
+		historicalGasTipCap = stats.TipCap.Perc25
+	default:
+		err = fmt.Errorf("unknown priority: %s", priority)
+		L.Error().
+			Str("Priority", priority).
+			Msg("Unknown priority. Skipping automation gas estimation")
+
+		return
+
 	}
 
 	return baseFee, historicalGasTipCap, err

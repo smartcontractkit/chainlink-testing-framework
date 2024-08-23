@@ -1,6 +1,8 @@
 package seth
 
 import (
+	//we use it only to generate hash that's used to identify a node in graph, so we don't care about this function being weak
+	//nolint
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
@@ -284,12 +286,12 @@ func (t *Tracer) generateDotGraph(txHash string, calls []*DecodedCall, revertErr
 
 	f, err := os.Create(filePath)
 	if err != nil {
-		return fmt.Errorf("Error creating file: %v\n", err)
+		return fmt.Errorf("error creating file: %v", err)
 	}
 	defer func() { _ = f.Close() }()
 
 	if _, err := f.WriteString(g.String()); err != nil {
-		return fmt.Errorf("Error writing to file: %v\n", err)
+		return fmt.Errorf("error writing to file: %v", err)
 	}
 
 	L.Debug().Msgf("DOT graph saved to %s", filePath)
@@ -353,6 +355,8 @@ func formatMapForLabel(m map[string]interface{}, truncateTo int) string {
 }
 
 func hashCall(call *DecodedCall) string {
+	//we use it only to generate hash that's used to identify a node in graph, so we don't care about this function being weak
+	//nolint
 	h := sha1.New()
 	h.Write([]byte(fmt.Sprintf("%v", call)))
 	return hex.EncodeToString(h.Sum(nil))

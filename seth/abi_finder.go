@@ -98,36 +98,36 @@ func (a *ABIFinder) FindABIByMethod(address string, signature []byte) (ABIFinder
 		result.DuplicateCount = 0 // we know the exact contract, so the duplicates here do not matter
 
 		return result, nil
-	} else {
-		// if we do not know what contract is at given address we need to iterate over all known ABIs
-		// and check if any of them has a method with the given signature (this might gave false positives,
-		// when more than one contract has the same method signature, but we can't do anything about it)
-		// In any case this should happen only when we did not deploy the contract via Seth (as otherwise we
-		// know the address of the contract and can map it to the correct ABI instance).
-		// If there are duplicates we will use the first ABI that matched.
-		for abiName, abiInstanceCandidate := range a.ContractStore.ABIs {
-			methodCandidate, err := abiInstanceCandidate.MethodById(signature)
-			if err != nil {
-				L.Trace().
-					Err(err).
-					Str("Signature", stringSignature).
-					Msg("Method not found")
-				continue
-			}
+	}
 
-			a.ContractMap.AddContract(address, abiName)
-
-			result.ABI = abiInstanceCandidate
-			result.Method = methodCandidate
-			result.contractName = abiName
-			result.DuplicateCount = a.getDuplicateCount(signature)
-
-			break
+	// if we do not know what contract is at given address we need to iterate over all known ABIs
+	// and check if any of them has a method with the given signature (this might gave false positives,
+	// when more than one contract has the same method signature, but we can't do anything about it)
+	// In any case this should happen only when we did not deploy the contract via Seth (as otherwise we
+	// know the address of the contract and can map it to the correct ABI instance).
+	// If there are duplicates we will use the first ABI that matched.
+	for abiName, abiInstanceCandidate := range a.ContractStore.ABIs {
+		methodCandidate, err := abiInstanceCandidate.MethodById(signature)
+		if err != nil {
+			L.Trace().
+				Err(err).
+				Str("Signature", stringSignature).
+				Msg("Method not found")
+			continue
 		}
 
-		if result.Method == nil {
-			return ABIFinderResult{}, errors.New(ErrNoABIMethod)
-		}
+		a.ContractMap.AddContract(address, abiName)
+
+		result.ABI = abiInstanceCandidate
+		result.Method = methodCandidate
+		result.contractName = abiName
+		result.DuplicateCount = a.getDuplicateCount(signature)
+
+		break
+	}
+
+	if result.Method == nil {
+		return ABIFinderResult{}, errors.New(ErrNoABIMethod)
 	}
 
 	return result, nil

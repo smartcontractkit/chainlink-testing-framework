@@ -163,7 +163,7 @@ func (m *Client) decodeTransaction(l zerolog.Logger, tx *types.Transaction, rece
 		return defaultTxn, errors.Wrap(err, ErrDecodeInput)
 	}
 
-	var txIndex uint = 0
+	var txIndex uint
 
 	if receipt != nil {
 		l.Trace().Interface("Receipt", receipt).Msg("TX receipt")
@@ -213,6 +213,7 @@ func (m *Client) printDecodedTXData(l zerolog.Logger, ptx *DecodedTransaction) {
 
 // DecodeCustomABIErr decodes typed Solidity errors
 func (m *Client) DecodeCustomABIErr(txErr error) (string, error) {
+	//nolint
 	cerr, ok := txErr.(rpc.DataError)
 	if !ok {
 		return "", errors.New(ErrRPCJSONCastError)

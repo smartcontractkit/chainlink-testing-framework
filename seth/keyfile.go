@@ -53,13 +53,16 @@ func ReturnFunds(c *Client, toAddr string) error {
 	for i := 1; i < len(c.Addresses); i++ {
 		idx := i
 		eg.Go(func() error {
-			balance, err := c.Client.BalanceAt(context.Background(), c.Addresses[idx], nil)
+			ctx, balanceCancel := context.WithTimeout(egCtx, c.Cfg.Network.TxnTimeout.Duration())
+			balance, err := c.Client.BalanceAt(ctx, c.Addresses[idx], nil)
+			balanceCancel()
 			if err != nil {
 				L.Error().Err(err).Msg("Error getting balance")
 				return err
 			}
 
 			var gasLimit int64
+			//nolint
 			gasLimitRaw, err := c.EstimateGasLimitForFundTransfer(c.Addresses[idx], common.HexToAddress(toAddr), balance)
 			if err != nil {
 				gasLimit = c.Cfg.Network.TransferGasFee
@@ -98,9 +101,6 @@ func ReturnFunds(c *Client, toAddr string) error {
 			)
 		})
 	}
-	if err := eg.Wait(); err != nil {
-		return err
-	}
 
-	return nil
+	return eg.Wait()
 }

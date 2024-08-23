@@ -43,7 +43,7 @@ const (
 
 var (
 	// Amount of funds that will be left on the root key, when splitting funds between ephemeral addresses
-	ZeroInt64 int64 = 0
+	ZeroInt64 int64
 
 	TracingLevel_None     = "NONE"
 	TracingLevel_Reverted = "REVERTED"
@@ -469,9 +469,8 @@ func (m *Client) Decode(tx *types.Transaction, txErr error) (*DecodedTransaction
 			if replacementErr != nil {
 				L.Debug().Str("Replacement error", replacementErr.Error()).Str("Current error", retryErr.Error()).Uint("Attempt", i).Msg("Failed to prepare replacement transaction. Retrying without the original one")
 				return
-			} else {
-				L.Debug().Str("Current error", retryErr.Error()).Uint("Attempt", i).Msg("Waiting for transaction to be confirmed after gas bump")
 			}
+			L.Debug().Str("Current error", retryErr.Error()).Uint("Attempt", i).Msg("Waiting for transaction to be confirmed after gas bump")
 			tx = replacementTx
 		}),
 		retry.DelayType(retry.FixedDelay),
@@ -479,9 +478,8 @@ func (m *Client) Decode(tx *types.Transaction, txErr error) (*DecodedTransaction
 		retry.Attempts(func() uint {
 			if m.Cfg.GasBumpRetries() == 0 {
 				return 1
-			} else {
-				return m.Cfg.GasBumpRetries()
 			}
+			return m.Cfg.GasBumpRetries()
 		}()),
 		retry.RetryIf(func(err error) bool {
 			return m.Cfg.GasBumpRetries() != 0 && errors.Is(err, context.DeadlineExceeded)
@@ -594,12 +592,16 @@ func (m *Client) TransferETHFromKey(ctx context.Context, fromKeyNum int, to stri
 		return errors.Wrap(errors.New(ErrNoKeyLoaded), fmt.Sprintf("requested key: %d", fromKeyNum))
 	}
 	toAddr := common.HexToAddress(to)
-	chainID, err := m.Client.NetworkID(context.Background())
+	ctx, chainCancel := context.WithTimeout(ctx, m.Cfg.Network.TxnTimeout.Duration())
+	defer chainCancel()
+
+	chainID, err := m.Client.NetworkID(ctx)
 	if err != nil {
 		return errors.Wrap(err, "failed to get network ID")
 	}
 
 	var gasLimit int64
+	//nolint
 	gasLimitRaw, err := m.EstimateGasLimitForFundTransfer(m.Addresses[fromKeyNum], common.HexToAddress(to), value)
 	if err != nil {
 		gasLimit = m.Cfg.Network.TransferGasFee
@@ -624,8 +626,8 @@ func (m *Client) TransferETHFromKey(ctx context.Context, fromKeyNum int, to stri
 		return errors.Wrap(err, "failed to sign tx")
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, m.Cfg.Network.TxnTimeout.Duration())
-	defer cancel()
+	ctx, sendCancel := context.WithTimeout(ctx, m.Cfg.Network.TxnTimeout.Duration())
+	defer sendCancel()
 	err = m.Client.SendTransaction(ctx, signedTx)
 	if err != nil {
 		return errors.Wrap(err, "failed to send transaction")

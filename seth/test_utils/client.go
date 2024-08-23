@@ -12,13 +12,14 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/seth"
 )
 
+var zero int64
+
 // NewClientWithEphemeralAddresses creates a new Seth client with the given number of addresses. Each address is funded with the
 // calculated with the amount of ETH calculated by dividing the total balance of root key by the number of addresses (minus root key buffer amount).
 func NewClientWithEphemeralAddresses(t *testing.T, addressCount int) *seth.Client {
 	cfg, err := seth.ReadConfig()
 	require.NoError(t, err, "failed to read config")
 
-	var zero int64 = 0
 	cfg.EphemeralAddrs = &zero
 
 	c, err := seth.NewClientWithConfig(cfg)
@@ -72,7 +73,6 @@ func NewClientWithAddresses(t *testing.T, addressCount int, funding *big.Int) *s
 	cfg, err := seth.ReadConfig()
 	require.NoError(t, err, "failed to read config")
 
-	var zero int64 = 0
 	cfg.EphemeralAddrs = &zero
 
 	c, err := seth.NewClientWithConfig(cfg)

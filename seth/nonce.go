@@ -129,14 +129,15 @@ func (m *NonceManager) anySyncedKey() int {
 							Nonce:  nonce,
 						}
 						return nil
-					} else {
-						L.Trace().
-							Interface("KeyNum", keyData.KeyNum).
-							Uint64("Nonce", nonce).
-							Int("Expected nonce", int(keyData.Nonce+1)).
-							Interface("Address", m.Addresses[keyData.KeyNum]).
-							Msg("Key NOT synced")
 					}
+
+					L.Trace().
+						Interface("KeyNum", keyData.KeyNum).
+						Uint64("Nonce", nonce).
+						Int("Expected nonce", int(keyData.Nonce+1)).
+						Interface("Address", m.Addresses[keyData.KeyNum]).
+						Msg("Key NOT synced")
+
 					return errors.New(ErrKeySync)
 				},
 				retry.Attempts(m.cfg.KeySyncRetries),

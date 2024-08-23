@@ -78,7 +78,7 @@ func (m *Client) CalculateSubKeyFunding(addrs, gasPrice, rooKeyBuffer int64) (*F
 		Msg("Root key balance")
 
 	if freeBalance.Cmp(big.NewInt(0)) < 0 {
-		return nil, errors.New(fmt.Sprintf(ErrInsufficientRootKeyBalance, freeBalance.String()))
+		return nil, fmt.Errorf(ErrInsufficientRootKeyBalance, freeBalance.String())
 	}
 
 	addrFunding := new(big.Int).Div(freeBalance, big.NewInt(addrs))
@@ -91,7 +91,7 @@ func (m *Client) CalculateSubKeyFunding(addrs, gasPrice, rooKeyBuffer int64) (*F
 		Msg("Using hardcoded ephemeral funding")
 
 	if freeBalance.Cmp(requiredBalance) < 0 {
-		return nil, errors.New(fmt.Sprintf(ErrInsufficientRootKeyBalance, freeBalance.String()))
+		return nil, fmt.Errorf(ErrInsufficientRootKeyBalance, freeBalance.String())
 	}
 
 	bd := &FundingDetails{
