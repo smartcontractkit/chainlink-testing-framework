@@ -5,9 +5,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/smartcontractkit/seth"
-	sethcmd "github.com/smartcontractkit/seth/cmd"
 	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/seth"
+	sethcmd "github.com/smartcontractkit/chainlink-testing-framework/seth/cmd"
 )
 
 func TestCLITracing(t *testing.T) {

@@ -1,10 +1,25 @@
-name: (k8s package) Publish Test Base Image
+name: CTF k8s Publish Test Base Image
 on:
   push:
     tags:
       - 'v*'
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    environment: integration
+    outputs:
+      ctf_changes: ${{ steps.changes.outputs.src }}
+    steps:
+      - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
+      - name: Check for relevant changes
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        id: changes
+        with:
+          filters: |
+            src:
+              - '!(seth|havoc|wasp|tools)/**'
+
   publish_test_base_image:
     runs-on: ubuntu-latest
     environment: integration
@@ -13,6 +28,8 @@ jobs:
       contents: read
     env:
       BASE_IMAGE_TAG: ${{ secrets.QA_AWS_ACCOUNT_NUMBER }}.dkr.ecr.${{ secrets.QA_AWS_REGION }}.amazonaws.com/test-base-image:${{ github.ref_name }}
+    needs: [changes]
+    if: needs.changes.outputs.ctf_changes == 'true'
     steps:
       - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
       - name: Build Base Image

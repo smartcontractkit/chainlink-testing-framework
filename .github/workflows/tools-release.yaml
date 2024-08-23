@@ -1,4 +1,4 @@
-name: Release Tools
+name: TOOLS Release
 on:
   push:
     branches:

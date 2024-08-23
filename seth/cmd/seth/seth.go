@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/smartcontractkit/seth/cmd"
+	"github.com/smartcontractkit/chainlink-testing-framework/seth/cmd"
 )
 
 func main() {

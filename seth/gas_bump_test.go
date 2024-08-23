@@ -1,17 +1,17 @@
 package seth_test
 
 import (
-	"github.com/ethereum/go-ethereum/common"
-	link_token "github.com/smartcontractkit/seth/contracts/bind/link"
-	"github.com/smartcontractkit/seth/contracts/bind/link_token_interface"
-	"github.com/smartcontractkit/seth/test_utils"
 	"math/big"
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/seth"
+	"github.com/smartcontractkit/chainlink-testing-framework/seth"
+	link_token "github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/link"
+	"github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/link_token_interface"
+	"github.com/smartcontractkit/chainlink-testing-framework/seth/test_utils"
 )
 
 var oneEth = big.NewInt(1000000000000000000)

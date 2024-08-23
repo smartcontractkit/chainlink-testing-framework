@@ -18,8 +18,9 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/pkg/errors"
-	network_debug_contract "github.com/smartcontractkit/seth/contracts/bind/debug"
-	network_sub_debug_contract "github.com/smartcontractkit/seth/contracts/bind/sub"
+
+	network_debug_contract "github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/debug"
+	network_sub_debug_contract "github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/sub"
 )
 
 const (

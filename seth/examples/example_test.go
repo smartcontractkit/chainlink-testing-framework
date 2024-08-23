@@ -10,9 +10,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/seth"
+	"github.com/smartcontractkit/chainlink-testing-framework/seth"
+	"github.com/smartcontractkit/chainlink-testing-framework/seth/test_utils"
 	network_debug_contract "github.com/smartcontractkit/seth/contracts/bind/debug"
-	"github.com/smartcontractkit/seth/test_utils"
 )
 
 func commonEnvVars(t *testing.T) {
@@ -74,7 +74,7 @@ func TestSmokeExampleMultiKey(t *testing.T) {
 	// to simulate a case, when they were provided as part of the network config, instead of being
 	// generated as ephemeral keys by Seth
 	contract := setup(t)
-	c := test_utils.NewClientWithAddresses(t, 10)
+	c := test_utils.NewClientWithAddresses(t, 10, big.NewInt(2))
 	t.Cleanup(func() {
 		err := seth.ReturnFunds(c, c.Addresses[0].Hex())
 		require.NoError(t, err)

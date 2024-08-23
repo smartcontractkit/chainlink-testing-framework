@@ -7,7 +7,7 @@ toolchain go1.22.6
 require (
 	github.com/ethereum/go-ethereum v1.13.8
 	github.com/pkg/errors v0.9.1
-	github.com/smartcontractkit/seth v1.2.0
+	github.com/smartcontractkit/chainlink-testing-framework/seth v1.2.0
 	github.com/smartcontractkit/wasp v0.4.7-0.20240328221214-00cd8313cfd4
 	github.com/stretchr/testify v1.9.0
 )

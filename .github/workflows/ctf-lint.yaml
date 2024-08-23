@@ -1,4 +1,4 @@
-name: (all packages) Lints
+name: CTF Lints
 on:
   push:
     branches:
@@ -6,6 +6,33 @@ on:
   pull_request:
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    environment: integration
+    outputs:
+      ctf_changes: ${{ steps.changes.outputs.ctf_src }}
+      tools_changes: ${{ steps.changes.outputs.tools_src }}
+      charts_changes: ${{ steps.changes.outputs.charts_src }}
+      actions_changes: ${{ steps.changes.outputs.actions_src }}
+      k8s_test_runner_changes: ${{ steps.changes.outputs.k8s_test_runner_src }}
+    steps:
+      - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
+      - name: Check for relevant changes
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        id: changes
+        with:
+          filters: |
+            ctf_src:
+              - '!(seth|havoc|wasp|tools)/**'
+            tools_src:
+              - 'tools/**'
+            charts_src:
+              - 'charts/**'
+            actions_src:
+              - '.github/**'
+            k8s_test_runner_src:
+              - 'k8s-test-runner/**'
+
   pre-commit:
     name: Pre-commit checks
     runs-on: ubuntu-latest
@@ -29,8 +56,10 @@ jobs:
           gitdiffs=\$(git diff --name-only ${BASE_REF}...${HEAD_REF} | xargs) &&\
           echo \"changed files: \$gitdiffs\" &&\
           pre-commit run --hook-stage pre-commit --show-diff-on-failure --color=always --files \${gitdiffs}"
-  tools:
+
+  tools-version:
     name: Get tool-versions
+    needs: [changes]
     runs-on: ubuntu-latest
     steps:
       - name: Check out Code
@@ -40,20 +69,56 @@ jobs:
         id: tool-versions
     outputs:
       golangci-lint-version: ${{ steps.tool-versions.outputs.golangci-lint_version }}
-  golangci:
+
+  golangci-ctf:
     name: Linting-${{ matrix.project.name }}
     runs-on: ubuntu-latest
-    needs: [tools]
+    needs: [changes, tools-version]
+    if: needs.changes.outputs.ctf_changes == 'true'
     strategy:
       fail-fast: false
       matrix:
         project:
           - name: root
             path: ./
+    steps:
+      - name: Check out Code
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
+      - name: Install Go
+        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/setup-go@e29366cdecfe6befff9ab8c3cfe4825218505d58 # v2.3.16
+        with:
+          test_download_vendor_packages_command: cd ${{ matrix.project.path }} && go mod download
+          go_mod_path: ${{ matrix.project.path }}go.mod
+          cache_key_id: ctf-go-${{ matrix.project.name }}
+          cache_restore_only: 'false'
+      - name: golangci-lint ${{ needs.tools-version.outputs.golangci-lint-version }}
+        uses: golangci/golangci-lint-action@9d1e0624a798bb64f6c3cea93db47765312263dc # v5.1.0
+        with:
+          version: v${{ needs.tools-version.outputs.golangci-lint-version }}
+          args: --out-format checkstyle:golangci-lint-report.xml
+          skip-cache: true
+          working-directory: ${{ matrix.project.path }}
+      - name: Print lint report artifact
+        if: always()
+        run: test -f ${{ matrix.project.path }}golangci-lint-report.xml || true
+      - name: Store lint report artifact
+        if: always()
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
+        with:
+          name: golangci-lint-report-${{ matrix.project.name }}
+          path: ${{ matrix.project.path }}golangci-lint-report.xml
+
+  golangci-tools:
+    name: Linting-${{ matrix.project.name }}
+    runs-on: ubuntu-latest
+    needs: [changes, tools-version]
+    if: needs.changes.outputs.tools_changes == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
           - name: gotestloghelper
             path: ./tools/gotestloghelper/
-          - name: k8s-test-runner
-            path: ./k8s-test-runner/
           - name: testlistgenerator
             path: ./tools/testlistgenerator/
           - name: ecrimagefetcher
@@ -74,10 +139,48 @@ jobs:
           go_mod_path: ${{ matrix.project.path }}go.mod
           cache_key_id: ctf-go-${{ matrix.project.name }}
           cache_restore_only: 'false'
-      - name: golangci-lint ${{ needs.tools.outputs.golangci-lint-version }}
+      - name: golangci-lint ${{ needs.tools-version.outputs.golangci-lint-version }}
         uses: golangci/golangci-lint-action@9d1e0624a798bb64f6c3cea93db47765312263dc # v5.1.0
         with:
-          version: v${{ needs.tools.outputs.golangci-lint-version }}
+          version: v${{ needs.tools-version.outputs.golangci-lint-version }}
+          args: --out-format checkstyle:golangci-lint-report.xml
+          skip-cache: true
+          working-directory: ${{ matrix.project.path }}
+      - name: Print lint report artifact
+        if: always()
+        run: test -f ${{ matrix.project.path }}golangci-lint-report.xml || true
+      - name: Store lint report artifact
+        if: always()
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
+        with:
+          name: golangci-lint-report-${{ matrix.project.name }}
+          path: ${{ matrix.project.path }}golangci-lint-report.xml
+
+  golangci-k8s-test-runner:
+    name: Linting-${{ matrix.project.name }}
+    runs-on: ubuntu-latest
+    needs: [changes, tools-version]
+    if: needs.changes.outputs.k8s_test_runner_changes == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - name: k8s-test-runner
+            path: ./k8s-test-runner/
+    steps:
+      - name: Check out Code
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
+      - name: Install Go
+        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/setup-go@e29366cdecfe6befff9ab8c3cfe4825218505d58 # v2.3.16
+        with:
+          test_download_vendor_packages_command: cd ${{ matrix.project.path }} && go mod download
+          go_mod_path: ${{ matrix.project.path }}go.mod
+          cache_key_id: ctf-go-${{ matrix.project.name }}
+          cache_restore_only: 'false'
+      - name: golangci-lint ${{ needs.tools-version.outputs.golangci-lint-version }}
+        uses: golangci/golangci-lint-action@9d1e0624a798bb64f6c3cea93db47765312263dc # v5.1.0
+        with:
+          version: v${{ needs.tools-version.outputs.golangci-lint-version }}
           args: --out-format checkstyle:golangci-lint-report.xml
           skip-cache: true
           working-directory: ${{ matrix.project.path }}
@@ -94,7 +197,7 @@ jobs:
   vulnerabilities-check:
     name: Check for Vulnerabilities
     runs-on: ubuntu-latest
-    needs: [tools]
+    needs: [tools-version]
     steps:
       - name: Check out Code
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
@@ -113,6 +216,8 @@ jobs:
   asdf-install:
     name: Validate GitHub Action Workflows
     runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.actions_changes == 'true' || needs.changes.outputs.charts_changes == 'true'
     steps:
       - name: Check out Code
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
@@ -122,6 +227,8 @@ jobs:
   helmlint:
     name: Lint Helm Charts
     runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.charts_changes == 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
@@ -139,6 +246,8 @@ jobs:
   actionlint:
     name: Validate GitHub Action Workflows
     runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.actions_changes == 'true'
     steps:
       - name: Check out Code
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
@@ -147,7 +256,8 @@ jobs:
 
   sonarqube:
     name: SonarQube Analysis
-    needs: [golangci]
+    needs: [golangci-ctf, golangci-tools, golangci-k8s-test-runner]
+    if: ${{ needs.golangci-ctf.result != 'skipped' || needs.golangci-tools.result != 'skipped' || needs.golangci-k8s-test-runner.result != 'skipped' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the repo

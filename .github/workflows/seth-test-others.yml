@@ -1,4 +1,4 @@
-name: Other tests
+name: SETH Other tests
 on:
   push:
 concurrency:
@@ -33,4 +33,4 @@ jobs:
         env:
           SETH_NETWORK: ${{ matrix.network }}
         run: |
-          nix develop -c make $SETH_NETWORK && make root_private_key=$SETH_ROOT_PRIVATE_KEY network=$SETH_NETWORK test_others
+          nix develop -c make "$SETH_NETWORK" && make SETH_LOG_LEVEL=debug root_private_key="$SETH_ROOT_PRIVATE_KEY" network="$SETH_NETWORK" test_others

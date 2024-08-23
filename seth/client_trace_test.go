@@ -3,7 +3,6 @@ package seth_test
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/smartcontractkit/seth/test_utils"
 	"io"
 	"math/big"
 	"os"
@@ -15,12 +14,13 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/smartcontractkit/seth/contracts/bind/link_token_interface"
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/seth"
-	network_debug_contract "github.com/smartcontractkit/seth/contracts/bind/debug"
-	link_token "github.com/smartcontractkit/seth/contracts/bind/link"
+	"github.com/smartcontractkit/chainlink-testing-framework/seth"
+	network_debug_contract "github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/debug"
+	link_token "github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/link"
+	"github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/link_token_interface"
+	"github.com/smartcontractkit/chainlink-testing-framework/seth/test_utils"
 )
 
 const (

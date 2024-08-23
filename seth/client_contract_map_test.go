@@ -2,13 +2,15 @@ package seth_test
 
 import (
 	"crypto/ecdsa"
-	"github.com/barkimedes/go-deepcopy"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/smartcontractkit/seth"
-	"github.com/smartcontractkit/seth/test_utils"
-	"github.com/stretchr/testify/require"
 	"os"
 	"testing"
+
+	"github.com/barkimedes/go-deepcopy"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/seth"
+	"github.com/smartcontractkit/chainlink-testing-framework/seth/test_utils"
 )
 
 func TestContractMapSavesDeployedContractsToFileAndReadsThem(t *testing.T) {

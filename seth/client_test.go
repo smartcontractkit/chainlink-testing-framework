@@ -1,12 +1,13 @@
 package seth_test
 
 import (
-	"github.com/ethereum/go-ethereum/common"
-	link_token "github.com/smartcontractkit/seth/contracts/bind/link"
 	"testing"
 
-	"github.com/smartcontractkit/seth"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/seth"
+	link_token "github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/link"
 )
 
 func TestRPCHealthCheckEnabled_Node_OK(t *testing.T) {

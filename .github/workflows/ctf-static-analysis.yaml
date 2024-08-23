@@ -1,15 +1,32 @@
-name: (all packages) Static Analysis
+name: CTF Static Analysis
 on:
   push:
     branches: [main]
   schedule:
     - cron: '23 19 * * 4'
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    environment: integration
+    outputs:
+      ctf_changes: ${{ steps.changes.outputs.src }}
+    steps:
+      - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
+      - name: Check for relevant changes
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        id: changes
+        with:
+          filters: |
+            src:
+              - '!(seth|havoc|wasp|tools)/**'
+
   codeQL:
     name: CodeQL Checks
     runs-on: ubuntu-latest
     permissions:
       security-events: write
+    needs: [changes]
+    if: ${{ needs.changes.outputs.ctf_changes == 'true' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4

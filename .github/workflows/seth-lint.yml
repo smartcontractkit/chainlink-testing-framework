@@ -1,4 +1,4 @@
-name: Lint
+name: SETH Lint
 on:
   push:
 permissions:
@@ -25,7 +25,5 @@ jobs:
         with:
           nix_path: nixpkgs=channel:nixos-unstable
       - name: Run tests
-        env:
-          SETH_NETWORK: ${{ matrix.network }}
         run: |
           nix develop -c make lint

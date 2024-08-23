@@ -3,14 +3,15 @@ package seth_test
 import (
 	"context"
 	"errors"
-	network_sub_contract "github.com/smartcontractkit/seth/contracts/bind/sub"
 	"math/big"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/smartcontractkit/seth"
 	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/seth"
+	network_sub_contract "github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/sub"
 )
 
 func TestUtilDecodePragmaVersion(t *testing.T) {

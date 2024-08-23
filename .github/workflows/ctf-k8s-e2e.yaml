@@ -1,4 +1,4 @@
-name: (k8s package) E2E tests
+name: CTF k8s E2E tests
 on:
   pull_request:
 
@@ -18,12 +18,29 @@ env:
   TEST_LOG_LEVEL: debug
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    environment: integration
+    outputs:
+      ctf_changes: ${{ steps.changes.outputs.src }}
+    steps:
+      - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
+      - name: Check for relevant changes
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        id: changes
+        with:
+          filters: |
+            src:
+              - '!(seth|havoc|wasp|tools)/**'
+
   build_tests:
     runs-on: ubuntu-latest
     environment: integration
     permissions:
       id-token: write
       contents: read
+    needs: [changes]
+    if: needs.changes.outputs.ctf_changes == 'true'
     steps:
       - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
       - name: Build Base Image
@@ -34,6 +51,7 @@ jobs:
           AWS_REGION: ${{ secrets.QA_AWS_REGION }}
           AWS_ROLE_TO_ASSUME: ${{ secrets.QA_AWS_ROLE_TO_ASSUME }}
       - name: Base Image Built
+
         run: |
           # shellcheck disable=SC2086
           cat <<EOT >>$GITHUB_STEP_SUMMARY
@@ -56,6 +74,7 @@ jobs:
           cat <<EOT >>$GITHUB_STEP_SUMMARY
           ### chainlink-testing-framework-tests image tag for this test run :ship: -> \`ci.${{ github.sha }}\`
           EOT
+
   e2e_tests:
     runs-on: ubuntu-latest
     environment: integration
@@ -64,8 +83,17 @@ jobs:
       contents: read
     env:
       TEST_SUITE: local-runner
+    needs: [changes]
+    if: needs.changes.outputs.ctf_changes == 'true'
     steps:
       - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
+      - name: Check for relevant changes
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        id: changes
+        with:
+          filters: |
+            src:
+              - '!(seth|havoc|wasp|tools)/**'
       - name: Install Nix
         uses: cachix/install-nix-action@8887e596b4ee1134dae06b98d573bd674693f47c # v26
         with:
@@ -108,7 +136,8 @@ jobs:
   e2e_remote_runner_tests:
     runs-on: ubuntu-latest
     environment: integration
-    needs: [build_tests]
+    needs: [build_tests, changes]
+    if: needs.changes.outputs.ctf_changes == 'true'
     permissions:
       id-token: write
       contents: read

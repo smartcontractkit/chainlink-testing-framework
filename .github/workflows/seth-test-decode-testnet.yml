@@ -1,4 +1,4 @@
-name: Decoding tests (testnets)
+name: SETH Decoding tests (testnets)
 on:
   push:
     tags:
@@ -36,4 +36,4 @@ jobs:
           SETH_NETWORK: ${{ matrix.network }}
           SETH_ROOT_PRIVATE_KEY: ${{ secrets.TESTNET_COMMON_KEYS }}
         run: |
-          nix develop -c make root_private_key=$SETH_ROOT_PRIVATE_KEY network=$SETH_NETWORK test
+          nix develop -c make SETH_LOG_LEVEL=debug root_private_key="$SETH_ROOT_PRIVATE_KEY" network="$SETH_NETWORK" test

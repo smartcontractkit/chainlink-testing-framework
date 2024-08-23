@@ -1,4 +1,4 @@
-name: (all packages) Unit tests
+name: CTF Unit tests
 on:
   push:
     tags:

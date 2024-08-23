@@ -7,10 +7,10 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
-	"github.com/smartcontractkit/seth"
-	network_debug_contract "github.com/smartcontractkit/seth/contracts/bind/debug"
-	link_token "github.com/smartcontractkit/seth/contracts/bind/link"
-	network_sub_contract "github.com/smartcontractkit/seth/contracts/bind/sub"
+	"github.com/smartcontractkit/chainlink-testing-framework/seth"
+	network_debug_contract "github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/debug"
+	link_token "github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/link"
+	network_sub_contract "github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/sub"
 )
 
 func init() {
