@@ -26,6 +26,7 @@ CTF contains a set of useful libraries:
 
 - [WASP](wasp/README.md) - Scalable protocol-agnostic load testing library for `Go`
 - [Havoc](havoc/README.md) - Chaos testing library
+- [Seth](seth/README.md) - Ethereum client library with transaction tracing and gas bumping
 
 ## k8s package
 
