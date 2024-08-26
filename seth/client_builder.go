@@ -227,6 +227,13 @@ func (c *ClientBuilder) WithArtifactsFolder(folder string) *ClientBuilder {
 	return c
 }
 
+// WithGethWrappersFolders sets list of folders where the Geth wrappers are stored. Seth will load ABIs from all wrappers it finds in theses folders (including subfolders).
+// Default value is an empty string (= loading disabled).
+func (c *ClientBuilder) WithGethWrappersFolders(folders []string) *ClientBuilder {
+	c.config.GethWrappersDirs = folders
+	return c
+}
+
 // WithNonceManager sets the rate limit for key sync, number of retries, timeout and retry delay.
 // Default values are 10 calls per second, 3 retires, 60s timeout and 5s retry delay.
 func (c *ClientBuilder) WithNonceManager(rateLimitSec int, retries uint, timeout, retryDelay time.Duration) *ClientBuilder {

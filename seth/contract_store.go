@@ -1,6 +1,11 @@
 package seth
 
 import (
+	"encoding/json"
+	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,6 +20,7 @@ const (
 	ErrOpenABIFile = "failed to open ABI file"
 	ErrParseABI    = "failed to parse ABI file"
 	ErrOpenBINFile = "failed to open BIN file"
+	ErrNoABIInFile = "no ABI content not found in file"
 )
 
 // ContractStore contains all ABIs that are used in decoding. It might also contain contract bytecode for deployment
@@ -73,7 +79,7 @@ func (c *ContractStore) AddBIN(name string, bin []byte) {
 }
 
 // NewContractStore creates a new Contract store
-func NewContractStore(abiPath, binPath string) (*ContractStore, error) {
+func NewContractStore(abiPath, binPath string, gethWrappersPaths []string) (*ContractStore, error) {
 	cs := &ContractStore{ABIs: make(ABIStore), BINs: make(map[string][]byte), mu: &sync.RWMutex{}}
 
 	if abiPath != "" {
@@ -126,5 +132,118 @@ func NewContractStore(abiPath, binPath string) (*ContractStore, error) {
 		}
 	}
 
+	if len(gethWrappersPaths) > 0 {
+		for _, gethWrappersPath := range gethWrappersPaths {
+			err := filepath.Walk(gethWrappersPath, func(path string, info os.FileInfo, err error) error {
+				if err != nil {
+					return err
+				}
+
+				if filepath.Ext(path) == ".go" {
+					contractName, abiContent, err := extractABIFromGethWrapperDir(path)
+					if err != nil {
+						if !strings.Contains(err.Error(), ErrNoABIInFile) {
+							return err
+						} else {
+							L.Debug().Err(err).Msg("ABI not found in file. Skipping")
+							return nil
+						}
+					}
+					cs.AddABI(contractName, *abiContent)
+				}
+				return nil
+			})
+
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	if len(gethWrappersPaths) > 0 && abiPath != "" {
+		L.Debug().Msg("ABI files are loaded from both ABI path and Geth wrappers path. This might result in ABI duplication. It shouldn't cause any issues, but it's best to chose only one method.")
+	}
+
 	return cs, nil
+}
+
+// extractABIFromGethWrapperDir extracts ABI from gethwrappers in a given directory
+func extractABIFromGethWrapperDir(filePath string) (string, *abi.ABI, error) {
+	fileset := token.NewFileSet()
+	node, err := parser.ParseFile(fileset, filePath, nil, parser.AllErrors)
+	if err != nil {
+		return "", nil, err
+	}
+
+	const metaDataSuffix = "MetaData"
+
+	var abiContent string
+	// use package name as contract name
+	contractName := node.Name.Name
+
+	// Traverse the AST to find var declarations
+	for _, decl := range node.Decls {
+		genDecl, ok := decl.(*ast.GenDecl)
+		if !ok || genDecl.Tok != token.VAR {
+			continue
+		}
+
+		// Loop through the specs (each spec represents a variable or constant declaration)
+		for _, spec := range genDecl.Specs {
+			vspec, ok := spec.(*ast.ValueSpec)
+			if !ok {
+				continue
+			}
+
+			for i, name := range vspec.Names {
+				if strings.HasSuffix(name.Name, metaDataSuffix) {
+					// make sure that for given name index there's a value
+					if len(vspec.Values)-1 >= i {
+						// check for expected types until we find a field with bind.MetaData type
+						// this might need to be updated if the structure of the MetaData struct changes
+						// or if package name that stores MetaData changes
+						if unaryExpr, ok := vspec.Values[i].(*ast.UnaryExpr); ok {
+							if compLit, ok := unaryExpr.X.(*ast.CompositeLit); ok {
+								if expr, ok := compLit.Type.(*ast.SelectorExpr); ok {
+									if x, ok := expr.X.(*ast.Ident); ok {
+										if x.Name == "bind" && expr.Sel.Name == "MetaData" {
+											for _, elt := range compLit.Elts {
+												if kvExpr, ok := elt.(*ast.KeyValueExpr); ok {
+													// Now look for filed named "ABI"
+													// in a similar way we could extract bytecode from "BIN" field
+													if key, ok := kvExpr.Key.(*ast.Ident); ok && key.Name == "ABI" {
+														if abiValue, ok := kvExpr.Value.(*ast.BasicLit); ok && abiValue.Kind == token.STRING {
+															abiContent = abiValue.Value
+															break
+														}
+													}
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if abiContent == "" {
+		return "", nil, fmt.Errorf("%s: %s", ErrNoABIInFile, filePath)
+	}
+
+	// this cleans up all escape and similar characters that might interfere with the JSON unmarshalling
+	var rawAbi interface{}
+	if err := json.Unmarshal([]byte(abiContent), &rawAbi); err != nil {
+		return "", nil, errors.Wrap(err, "failed to unmarshal ABI content")
+	}
+
+	parsedAbi, err := abi.JSON(strings.NewReader(fmt.Sprint(rawAbi)))
+	if err != nil {
+		return "", nil, errors.Wrap(err, "failed to parse ABI content")
+	}
+
+	return contractName, &parsedAbi, nil
 }

@@ -70,6 +70,8 @@ func TestConfig_MaximalBuilder(t *testing.T) {
 		WithProtections(true, true).
 		// artifacts folder
 		WithArtifactsFolder("some_folder").
+		// geth wrappers folders
+		WithGethWrappersFolders([]string{"./contracts/bind"}).
 		// nonce manager
 		WithNonceManager(10, 3, 60, 5).
 		Build()

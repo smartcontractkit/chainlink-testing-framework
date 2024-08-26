@@ -85,7 +85,7 @@ func NewClientWithConfig(cfg *Config) (*Client, error) {
 	L.Debug().Msgf("Using tracing level: %s", cfg.TracingLevel)
 
 	cfg.setEphemeralAddrs()
-	cs, err := NewContractStore(filepath.Join(cfg.ConfigDir, cfg.ABIDir), filepath.Join(cfg.ConfigDir, cfg.BINDir))
+	cs, err := NewContractStore(filepath.Join(cfg.ConfigDir, cfg.ABIDir), filepath.Join(cfg.ConfigDir, cfg.BINDir), cfg.GethWrappersDirs)
 	if err != nil {
 		return nil, errors.Wrap(err, ErrCreateABIStore)
 	}
@@ -351,7 +351,7 @@ func NewClientRaw(
 
 	if c.Cfg.TracingLevel != TracingLevel_None && c.Tracer == nil {
 		if c.ContractStore == nil {
-			cs, err := NewContractStore(filepath.Join(cfg.ConfigDir, cfg.ABIDir), filepath.Join(cfg.ConfigDir, cfg.BINDir))
+			cs, err := NewContractStore(filepath.Join(cfg.ConfigDir, cfg.ABIDir), filepath.Join(cfg.ConfigDir, cfg.BINDir), cfg.GethWrappersDirs)
 			if err != nil {
 				return nil, errors.Wrap(err, ErrCreateABIStore)
 			}
