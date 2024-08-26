@@ -1,6 +1,6 @@
 package config
 
-import "github.com/smartcontractkit/seth"
+import "github.com/smartcontractkit/chainlink-testing-framework/seth"
 
 type SethConfig interface {
 	GetSethConfig() *seth.Config
