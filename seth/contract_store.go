@@ -20,7 +20,7 @@ const (
 	ErrOpenABIFile = "failed to open ABI file"
 	ErrParseABI    = "failed to parse ABI file"
 	ErrOpenBINFile = "failed to open BIN file"
-	ErrNoABIInFile = "no ABI content not found in file"
+	ErrNoABIInFile = "no ABI content found in file"
 )
 
 // ContractStore contains all ABIs that are used in decoding. It might also contain contract bytecode for deployment
@@ -98,7 +98,7 @@ func NewContractStore(abiPath, binPath string, gethWrappersPaths []string) (*Con
 
 	err = cs.loadGethWrappers(gethWrappersPaths)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to load geth wrappers from %v", gethWrappersPaths)
 	}
 
 	return cs, nil
@@ -127,8 +127,7 @@ func (c *ContractStore) loadABIs(abiPath string) error {
 			}
 		}
 		if !foundABI {
-			L.Warn().Msg("No ABI files found")
-			L.Warn().Msg("You will need to provide the bytecode manually, when deploying contracts")
+			return fmt.Errorf("no ABI files found in '%s'. Fix the path or comment out 'abi_dir' setting", abiPath)
 		}
 	}
 
@@ -154,8 +153,7 @@ func (c *ContractStore) loadBINs(binPath string) error {
 			}
 		}
 		if !foundBIN {
-			L.Warn().Msg("No BIN files found")
-			L.Warn().Msg("You will need to provide the bytecode manually, when deploying contracts")
+			return fmt.Errorf("no BIN files found in '%s'. Fix the path or comment out 'bin_dir' setting", binPath)
 		}
 	}
 
@@ -163,6 +161,7 @@ func (c *ContractStore) loadBINs(binPath string) error {
 }
 
 func (c *ContractStore) loadGethWrappers(gethWrappersPaths []string) error {
+	foundWrappers := false
 	for _, gethWrappersPath := range gethWrappersPaths {
 		err := filepath.Walk(gethWrappersPath, func(path string, _ os.FileInfo, err error) error {
 			if err != nil {
@@ -180,6 +179,11 @@ func (c *ContractStore) loadGethWrappers(gethWrappersPaths []string) error {
 					return nil
 				}
 				c.AddABI(contractName, *abiContent)
+
+				// we want to know whether we found at least one wrapper
+				if !foundWrappers {
+					foundWrappers = true
+				}
 			}
 			return nil
 		})
@@ -187,6 +191,10 @@ func (c *ContractStore) loadGethWrappers(gethWrappersPaths []string) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	if len(gethWrappersPaths) > 0 && !foundWrappers {
+		return fmt.Errorf("no geth wrappers found in '%v'. Fix the path or comment out 'geth_wrappers_dirs' setting", gethWrappersPaths)
 	}
 
 	return nil

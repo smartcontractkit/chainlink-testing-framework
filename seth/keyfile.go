@@ -13,27 +13,23 @@ import (
 )
 
 // NewAddress creates a new address
-func NewAddress() (address, privateKey string, err error) {
-	var rawPrivateKey *ecdsa.PrivateKey
-	rawPrivateKey, err = crypto.GenerateKey()
+func NewAddress() (string, string, error) {
+	privateKey, err := crypto.GenerateKey()
 	if err != nil {
-		return
+		return "", "", err
 	}
-	privateKeyBytes := crypto.FromECDSA(rawPrivateKey)
-	publicKey := rawPrivateKey.Public()
+	privateKeyBytes := crypto.FromECDSA(privateKey)
+	publicKey := privateKey.Public()
 	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
 	if !ok {
-		err = errors.New("error casting public key to ECDSA")
-
-		return
+		return "", "", errors.New("error casting public key to ECDSA")
 	}
-	address = crypto.PubkeyToAddress(*publicKeyECDSA).Hex()
+	address := crypto.PubkeyToAddress(*publicKeyECDSA).Hex()
 	L.Info().
 		Str("Addr", address).
 		Msg("New address created")
-	privateKey = hexutil.Encode(privateKeyBytes)[2:]
 
-	return
+	return address, hexutil.Encode(privateKeyBytes)[2:], nil
 }
 
 // ReturnFunds returns funds to the root key from all other keys

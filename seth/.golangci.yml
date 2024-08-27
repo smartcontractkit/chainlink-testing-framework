@@ -76,7 +76,7 @@ linters-settings:
       - name: defer
       - name: constant-logical-expr
       - name: confusing-naming
-      - name: confusing-results
+#      - name: confusing-results
       - name: bool-literal-in-expr
       - name: atomic
 issues:

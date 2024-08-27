@@ -218,13 +218,15 @@ client, err := builder.
     WithProtections(true, true).
     // artifacts folder
     WithArtifactsFolder("some_folder").
+	// folder with gethwrappers for ABI decoding
+    WithGethWrappersFolders([]string{"./gethwrappers/ccip", "./gethwrappers/keystone"}).
     // nonce manager
     WithNonceManager(10, 3, 60, 5).
     // EIP-1559 and gas estimations
     WithEIP1559DynamicFees(true).
     WithDynamicGasPrices(120_000_000_000, 44_000_000_000).
     WithGasPriceEstimations(false, 10, seth.Priority_Fast).
-	// gas bumping: retries, max gas price, bumping strategy function
+// gas bumping: retries, max gas price, bumping strategy function
     WithGasBumping(5, 100_000_000_000, PriorityBasedGasBumpingStrategyFn).
     Build()
 

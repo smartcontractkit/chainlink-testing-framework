@@ -69,6 +69,7 @@ mkShell' {
     export PATH=$GOBIN:$PATH
     # install gotestloghelper
     go install github.com/smartcontractkit/chainlink-testing-framework/tools/gotestloghelper@latest
+    # workaround to install newer golangci-lint, so that we don't have to update all dependencies
     go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.57.2
   '';
 }

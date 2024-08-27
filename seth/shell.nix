@@ -20,6 +20,7 @@ pkgs.mkShell {
   export GOBIN=$HOME/.nix-go/bin
   mkdir -p $GOBIN
   export PATH=$GOBIN:$PATH
+  # workaround to install newer golangci-lint, so that we don't have to update all dependencies
   go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.57.2
   '';
 }
