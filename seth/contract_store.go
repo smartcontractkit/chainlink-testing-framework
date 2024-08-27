@@ -134,7 +134,7 @@ func NewContractStore(abiPath, binPath string, gethWrappersPaths []string) (*Con
 
 	if len(gethWrappersPaths) > 0 {
 		for _, gethWrappersPath := range gethWrappersPaths {
-			err := filepath.Walk(gethWrappersPath, func(path string, info os.FileInfo, err error) error {
+			err := filepath.Walk(gethWrappersPath, func(path string, _ os.FileInfo, err error) error {
 				if err != nil {
 					return err
 				}
@@ -144,10 +144,10 @@ func NewContractStore(abiPath, binPath string, gethWrappersPaths []string) (*Con
 					if err != nil {
 						if !strings.Contains(err.Error(), ErrNoABIInFile) {
 							return err
-						} else {
-							L.Debug().Err(err).Msg("ABI not found in file. Skipping")
-							return nil
 						}
+						L.Debug().Err(err).Msg("ABI not found in file. Skipping")
+
+						return nil
 					}
 					cs.AddABI(contractName, *abiContent)
 				}
