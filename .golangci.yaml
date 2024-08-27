@@ -13,7 +13,6 @@ linters:
     - unused
     # extra
     - exhaustive
-    - exportloopref
     - revive
     - goimports
     - gosec
@@ -27,6 +26,9 @@ linters-settings:
     local-prefixes: github.com/smartcontractkit/chainlink-testing-framework
   gosec:
     exclude-generated: true
+    excludes:
+      # Potential integer overflow when converting between integer types, a lot of false positives
+      - G115
   govet:
     # report about shadowed variables
     check-shadowing: false

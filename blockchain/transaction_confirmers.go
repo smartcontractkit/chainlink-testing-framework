@@ -492,7 +492,6 @@ func (e *EthereumClient) receiveHeader(header *SafeEVMHeader) error {
 
 	g := errgroup.Group{}
 	for _, sub := range subs {
-		sub := sub
 		g.Go(func() error {
 			return sub.ReceiveHeader(safeHeader)
 		})

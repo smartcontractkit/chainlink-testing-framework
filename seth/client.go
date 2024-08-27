@@ -339,7 +339,6 @@ func NewClientRaw(
 		eg, egCtx := errgroup.WithContext(ctx)
 		// root key is element 0 in ephemeral
 		for _, addr := range c.Addresses[1:] {
-			addr := addr
 			eg.Go(func() error {
 				return c.TransferETHFromKey(egCtx, 0, addr.Hex(), bd.AddrFunding, gasPrice)
 			})
