@@ -33,7 +33,6 @@ mkShell' {
     gotools
     gopls
     delve
-    golangci-lint
     github-cli
     jq
     dasel
@@ -70,5 +69,6 @@ mkShell' {
     export PATH=$GOBIN:$PATH
     # install gotestloghelper
     go install github.com/smartcontractkit/chainlink-testing-framework/tools/gotestloghelper@latest
+    go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.57.2
   '';
 }

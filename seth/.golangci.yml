@@ -79,4 +79,8 @@ linters-settings:
       - name: confusing-results
       - name: bool-literal-in-expr
       - name: atomic
-
+issues:
+  exclude-dirs:
+    - contracts/*
+    - examples/*
+    - examples_wasp/*

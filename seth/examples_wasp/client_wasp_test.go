@@ -24,7 +24,7 @@ func NewExampleHTTPGun(client *seth.Client) *ExampleGun {
 	}
 }
 
-func (m *ExampleGun) Call(l *wasp.Generator) *wasp.Response {
+func (m *ExampleGun) Call(_ *wasp.Generator) *wasp.Response {
 	_, err := m.client.Decode(
 		TestEnv.DebugContract.AddCounter(m.client.NewTXKeyOpts(m.client.AnySyncedKey()), big.NewInt(0), big.NewInt(1)),
 	)
