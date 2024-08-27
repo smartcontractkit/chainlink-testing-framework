@@ -64,4 +64,4 @@ test_cover:
 
 .PHONY: lint
 lint:
-	golangci-lint --color=always run -v
+	golangci-lint --color=always run -v -c .golangci.yaml

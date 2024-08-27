@@ -181,7 +181,7 @@ func extractABIFromGethWrapperDir(filePath string) (string, *abi.ABI, error) {
 	// use package name as contract name
 	contractName := node.Name.Name
 
-	// Traverse the AST to find var declarations
+TOP_LOOP:
 	for _, decl := range node.Decls {
 		genDecl, ok := decl.(*ast.GenDecl)
 		if !ok || genDecl.Tok != token.VAR {
@@ -195,37 +195,9 @@ func extractABIFromGethWrapperDir(filePath string) (string, *abi.ABI, error) {
 				continue
 			}
 
-			for i, name := range vspec.Names {
-				if strings.HasSuffix(name.Name, metaDataSuffix) {
-					// make sure that for given name index there's a value
-					if len(vspec.Values)-1 >= i {
-						// check for expected types until we find a field with bind.MetaData type
-						// this might need to be updated if the structure of the MetaData struct changes
-						// or if package name that stores MetaData changes
-						if unaryExpr, ok := vspec.Values[i].(*ast.UnaryExpr); ok {
-							if compLit, ok := unaryExpr.X.(*ast.CompositeLit); ok {
-								if expr, ok := compLit.Type.(*ast.SelectorExpr); ok {
-									if x, ok := expr.X.(*ast.Ident); ok {
-										if x.Name == "bind" && expr.Sel.Name == "MetaData" {
-											for _, elt := range compLit.Elts {
-												if kvExpr, ok := elt.(*ast.KeyValueExpr); ok {
-													// Now look for filed named "ABI"
-													// in a similar way we could extract bytecode from "BIN" field
-													if key, ok := kvExpr.Key.(*ast.Ident); ok && key.Name == "ABI" {
-														if abiValue, ok := kvExpr.Value.(*ast.BasicLit); ok && abiValue.Kind == token.STRING {
-															abiContent = abiValue.Value
-															break
-														}
-													}
-												}
-											}
-										}
-									}
-								}
-							}
-						}
-					}
-				}
+			abiContent = extractValueFromCompositeLiteralField(vspec, "bind", "MetaData", "ABI")
+			if abiContent != "" {
+				break TOP_LOOP
 			}
 		}
 	}
@@ -246,4 +218,49 @@ func extractABIFromGethWrapperDir(filePath string) (string, *abi.ABI, error) {
 	}
 
 	return contractName, &parsedAbi, nil
+}
+
+// extractValueFromCompositeLiteralField finds a composite literal in a given ValueSpec with given type (packageName.typeName)
+// and extracts value of a field with a given name
+func extractValueFromCompositeLiteralField(vspec *ast.ValueSpec, varPackageName, varType, fieldName string) string {
+	for i := range vspec.Names {
+		// defensive programming - make sure that for given name index there's a value
+		if len(vspec.Values)-1 >= i {
+			// check for expected types until we find a field with bind.MetaData type
+			// this might need to be updated if the structure of the MetaData struct changes
+			// or if package name that stores MetaData changes
+			if unaryExpr, ok := vspec.Values[i].(*ast.UnaryExpr); ok {
+				if compLit, ok := unaryExpr.X.(*ast.CompositeLit); ok {
+					if expr, ok := compLit.Type.(*ast.SelectorExpr); ok {
+						if x, ok := expr.X.(*ast.Ident); ok {
+							if x.Name == varPackageName && expr.Sel.Name == varType {
+								return extractStringKeyFromCompositeLiteral(compLit, fieldName)
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return ""
+}
+
+// extractStringKeyFromCompositeLiteral returns value of a string field with a given name from a composite literal
+func extractStringKeyFromCompositeLiteral(compositeLiteral *ast.CompositeLit, keyName string) string {
+	var abiContent string
+	for _, elt := range compositeLiteral.Elts {
+		if kvExpr, ok := elt.(*ast.KeyValueExpr); ok {
+			// Look for filed named "ABI"
+			// in a similar way we could extract bytecode from "BIN" field
+			if key, ok := kvExpr.Key.(*ast.Ident); ok && key.Name == keyName {
+				if abiValue, ok := kvExpr.Value.(*ast.BasicLit); ok && abiValue.Kind == token.STRING {
+					abiContent = abiValue.Value
+					break
+				}
+			}
+		}
+	}
+
+	return abiContent
 }

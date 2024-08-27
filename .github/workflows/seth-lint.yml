@@ -24,6 +24,7 @@ jobs:
         if: steps.changes.outputs.src == 'true'
         with:
           nix_path: nixpkgs=channel:nixos-unstable
-      - name: Run tests
+      - name: Run lints
+        if: steps.changes.outputs.src == 'true'
         run: |
           nix develop -c make lint
