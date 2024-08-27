@@ -4,10 +4,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	verr "errors"
 	"fmt"
 	"math/big"
+	"path/filepath"
 	"strconv"
+	"strings"
 
+	"github.com/avast/retry-go"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
@@ -86,6 +90,250 @@ func getDefaultDecodedCall() *DecodedCall {
 		From:        UNKNOWN,
 		To:          UNKNOWN,
 		Events:      make([]DecodedCommonLog, 0),
+	}
+}
+
+// Decode waits for transaction to be minted, then decodes transaction inputs, outputs, logs and events and
+// depending on 'tracing_level' it either returns immediately or if the level matches it traces all calls.
+// Where tracing results are sent depends on the 'trace_outputs' field in the config.
+// If transaction was reverted the error returned will be revert error, not decoding error (that, if any, will only be logged).
+// At the same time we also return decoded transaction, so contrary to go convention you might get both error and result,
+// because we want to return the decoded transaction even if it was reverted.
+// Last, but not least, if gas bumps are enabled, we will try to bump gas on transaction mining timeout and resubmit it with higher gas.
+func (m *Client) Decode(tx *types.Transaction, txErr error) (*DecodedTransaction, error) {
+	if len(m.Errors) > 0 {
+		return nil, verr.Join(m.Errors...)
+	}
+
+	if m.DecodeSendErr(txErr) != nil {
+		return nil, txErr
+	}
+
+	return m.DecodeTx(tx)
+}
+
+// DecodeSendErr tries to decode the error and return the reason of the revert. If the error is not revert, it returns the original error.
+// If the error is revert, but it cannot be decoded, it logs the error and returns the original error.
+// If the error is revert, and it can be decoded, it returns the decoded error.
+// This function is used to decode errors that are returned by the send transaction function.
+func (m *Client) DecodeSendErr(txErr error) error {
+	if txErr == nil {
+		return nil
+	}
+
+	reason, decodingErr := m.DecodeCustomABIErr(txErr)
+
+	if decodingErr == nil {
+		return errors.Wrap(txErr, reason)
+	}
+
+	L.Trace().
+		Msg("No decode-able error found, returning original error")
+	return txErr
+}
+
+// DecodeTx waits for transaction to be minted, then decodes transaction inputs, outputs, logs and events and
+// depending on 'tracing_level' and transaction status (reverted or not) it either returns immediately or traces all calls.
+// If transaction was reverted the error returned will be revert error, not decoding error (that, if any, will only be logged).
+// At the same time we also return decoded transaction, so contrary to go convention you might get both error and result,
+// because we want to return the decoded transaction even if it was reverted.
+// Last, but not least, if gas bumps are enabled, we will try to bump gas on transaction mining timeout and resubmit it with higher gas.
+func (m *Client) DecodeTx(tx *types.Transaction) (*DecodedTransaction, error) {
+	if tx == nil {
+		L.Trace().
+			Msg("Skipping decoding, because transaction is nil. Nothing to decode")
+		return nil, nil
+	}
+
+	l := L.With().Str("Transaction", tx.Hash().Hex()).Logger()
+
+	var receipt *types.Receipt
+	var err error
+	tx, receipt, err = m.waitUntilMined(l, tx)
+	if err != nil {
+		return nil, err
+	}
+
+	var revertErr error
+	if receipt.Status == 0 {
+		revertErr = m.callAndGetRevertReason(tx, receipt)
+	}
+
+	decoded, decodeErr := m.decodeTransaction(l, tx, receipt)
+
+	if decodeErr != nil && errors.Is(decodeErr, errors.New(ErrNoABIMethod)) {
+		m.handleTxDecodingError(l, *decoded, decodeErr)
+		return decoded, revertErr
+	}
+
+	if m.Cfg.TracingLevel == TracingLevel_None {
+		m.handleDisabledTracing(l, *decoded)
+		return decoded, revertErr
+	}
+
+	if m.Cfg.TracingLevel == TracingLevel_All || (m.Cfg.TracingLevel == TracingLevel_Reverted && revertErr != nil) {
+		decodedCalls, traceErr := m.Tracer.TraceGethTX(decoded.Hash)
+		if traceErr != nil {
+			m.handleTracingError(l, *decoded, traceErr, revertErr)
+			return decoded, revertErr
+		}
+
+		m.handleSuccessfulTracing(l, *decoded, decodedCalls, revertErr)
+	} else {
+		l.Trace().
+			Str("Tracing level", m.Cfg.TracingLevel).
+			Bool("Was reverted?", revertErr != nil).
+			Msg("Transaction doesn't match tracing level, skipping decoding")
+	}
+
+	return decoded, revertErr
+}
+
+func (m *Client) waitUntilMined(l zerolog.Logger, tx *types.Transaction) (*types.Transaction, *types.Receipt, error) {
+	// if transaction was not mined, we will retry it with gas bumping, but only if gas bumping is enabled
+	// and if the transaction was not mined in time, other errors will be returned as is
+	var receipt *types.Receipt
+	err := retry.Do(
+		func() error {
+			var err error
+			ctx, cancel := context.WithTimeout(context.Background(), m.Cfg.Network.TxnTimeout.Duration())
+			receipt, err = m.WaitMined(ctx, l, m.Client, tx)
+			cancel()
+
+			return err
+		}, retry.OnRetry(func(i uint, retryErr error) {
+			replacementTx, replacementErr := prepareReplacementTransaction(m, tx)
+			if replacementErr != nil {
+				L.Debug().Str("Replacement error", replacementErr.Error()).Str("Current error", retryErr.Error()).Uint("Attempt", i).Msg("Failed to prepare replacement transaction. Retrying without the original one")
+				return
+			}
+			l.Debug().Str("Current error", retryErr.Error()).Uint("Attempt", i).Msg("Waiting for transaction to be confirmed after gas bump")
+			tx = replacementTx
+		}),
+		retry.DelayType(retry.FixedDelay),
+		// unless attempts is at least 1 retry.Do won't execute at all
+		retry.Attempts(func() uint {
+			if m.Cfg.GasBumpRetries() == 0 {
+				return 1
+			}
+			return m.Cfg.GasBumpRetries()
+		}()),
+		retry.RetryIf(func(err error) bool {
+			return m.Cfg.GasBumpRetries() != 0 && errors.Is(err, context.DeadlineExceeded)
+		}),
+	)
+
+	if err != nil {
+		l.Trace().
+			Err(err).
+			Msg("Skipping decoding, because transaction was not mined. Nothing to decode")
+		return nil, nil, err
+	}
+
+	return tx, receipt, nil
+}
+
+func (m *Client) handleTxDecodingError(l zerolog.Logger, decoded DecodedTransaction, decodeErr error) {
+	tx := decoded.Transaction
+
+	if m.Cfg.hasOutput(TraceOutput_JSON) {
+		l.Trace().
+			Err(decodeErr).
+			Msg("Failed to decode transaction. Saving transaction data hash as JSON")
+
+		err := CreateOrAppendToJsonArray(m.Cfg.revertedTransactionsFile, tx.Hash().Hex())
+		if err != nil {
+			l.Warn().
+				Err(err).
+				Str("TXHash", tx.Hash().Hex()).
+				Msg("Failed to save reverted transaction hash to file")
+		} else {
+			l.Trace().
+				Str("TXHash", tx.Hash().Hex()).
+				Msg("Saved reverted transaction to file")
+		}
+	}
+
+	if m.Cfg.hasOutput(TraceOutput_Console) {
+		m.printDecodedTXData(l, &decoded)
+	}
+}
+
+func (m *Client) handleTracingError(l zerolog.Logger, decoded DecodedTransaction, traceErr, revertErr error) {
+	if m.Cfg.hasOutput(TraceOutput_JSON) {
+		l.Trace().
+			Err(traceErr).
+			Msg("Failed to trace call, but decoding was successful. Saving decoded data as JSON")
+
+		path, saveErr := saveAsJson(decoded, filepath.Join(m.Cfg.ArtifactsDir, "traces"), decoded.Hash)
+		if saveErr != nil {
+			l.Warn().
+				Err(saveErr).
+				Msg("Failed to save decoded call as JSON")
+		} else {
+			l.Trace().
+				Str("Path", path).
+				Str("Tx hash", decoded.Hash).
+				Msg("Saved decoded transaction data to JSON")
+		}
+	}
+
+	if strings.Contains(traceErr.Error(), "debug_traceTransaction does not exist") {
+		l.Warn().
+			Msg("Debug API is either disabled or not available on the node. Disabling tracing")
+
+		l.Error().
+			Err(revertErr).
+			Msg("Transaction was reverted, but we couldn't trace the transaction.")
+
+		m.Cfg.TracingLevel = TracingLevel_None
+	}
+
+	if m.Cfg.hasOutput(TraceOutput_Console) {
+		m.printDecodedTXData(l, &decoded)
+	}
+}
+
+func (m *Client) handleSuccessfulTracing(l zerolog.Logger, decoded DecodedTransaction, decodedCalls []*DecodedCall, revertErr error) {
+	if m.Cfg.hasOutput(TraceOutput_JSON) {
+		path, saveErr := saveAsJson(m.Tracer.GetDecodedCalls(decoded.Hash), filepath.Join(m.Cfg.ArtifactsDir, "traces"), decoded.Hash)
+		if saveErr != nil {
+			l.Warn().
+				Err(saveErr).
+				Msg("Failed to save decoded call as JSON")
+		} else {
+			l.Trace().
+				Str("Path", path).
+				Str("Tx hash", decoded.Hash).
+				Msg("Saved decoded call data to JSON")
+		}
+	}
+
+	if m.Cfg.hasOutput(TraceOutput_Console) {
+		m.Tracer.printDecodedCallData(L, decodedCalls, revertErr)
+		if err := m.Tracer.PrintTXTrace(decoded.Hash); err != nil {
+			l.Trace().
+				Err(err).
+				Msg("Failed to print decoded call data")
+		}
+	}
+
+	if m.Cfg.hasOutput(TraceOutput_DOT) {
+		if err := m.Tracer.generateDotGraph(decoded.Hash, decodedCalls, revertErr); err != nil {
+			l.Trace().
+				Err(err).
+				Msg("Failed to generate DOT graph")
+		}
+	}
+}
+
+func (m *Client) handleDisabledTracing(l zerolog.Logger, decoded DecodedTransaction) {
+	tx := decoded.Transaction
+	L.Trace().
+		Str("Transaction Hash", tx.Hash().Hex()).
+		Msg("Tracing level is NONE, skipping decoding")
+	if m.Cfg.hasOutput(TraceOutput_Console) {
+		m.printDecodedTXData(l, &decoded)
 	}
 }
 
@@ -223,7 +471,7 @@ func (m *Client) DecodeCustomABIErr(txErr error) (string, error) {
 		return "", nil
 	}
 	if cerr.ErrorData() != nil {
-		L.Trace().Msg("Decoding custom ABI error from tx")
+		L.Trace().Msg("Decoding custom ABI error from tx error")
 		for _, a := range m.ContractStore.ABIs {
 			for k, abiError := range a.Errors {
 				data, err := hex.DecodeString(cerr.ErrorData().(string)[2:])
@@ -245,7 +493,7 @@ func (m *Client) DecodeCustomABIErr(txErr error) (string, error) {
 			}
 		}
 	} else {
-		L.Warn().Msg("No error data in tx")
+		L.Warn().Msg("No error data in tx submission error")
 	}
 	return "", nil
 }

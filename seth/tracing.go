@@ -147,7 +147,7 @@ func NewTracer(cs *ContractStore, abiFinder *ABIFinder, cfg *Config, contractAdd
 	}, nil
 }
 
-func (t *Tracer) TraceGethTX(txHash string, revertErr error) error {
+func (t *Tracer) TraceGethTX(txHash string) ([]*DecodedCall, error) {
 	fourByte, err := t.trace4Byte(txHash)
 	if err != nil {
 		L.Debug().Err(err).Msg("Failed to trace 4byte signatures. Some tracing data might be missing")
@@ -159,7 +159,7 @@ func (t *Tracer) TraceGethTX(txHash string, revertErr error) error {
 
 	callTrace, err := t.traceCallTracer(txHash)
 	if err != nil {
-		return err
+		return []*DecodedCall{}, err
 	}
 
 	t.addTrace(txHash, &Trace{
@@ -171,19 +171,10 @@ func (t *Tracer) TraceGethTX(txHash string, revertErr error) error {
 
 	decodedCalls, err := t.DecodeTrace(L, *t.getTrace(txHash))
 	if err != nil {
-		return err
+		return []*DecodedCall{}, err
 	}
 
-	if len(decodedCalls) != 0 {
-		t.printDecodedCallData(L, decodedCalls, revertErr)
-
-		err = t.generateDotGraph(txHash, decodedCalls, revertErr)
-		if err != nil {
-			return err
-		}
-	}
-
-	return t.PrintTXTrace(txHash)
+	return decodedCalls, nil
 }
 
 func (t *Tracer) PrintTXTrace(txHash string) error {
