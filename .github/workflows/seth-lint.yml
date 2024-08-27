@@ -49,7 +49,15 @@ jobs:
           working-directory: seth
       - name: Print lint report artifact
         if: always()
-        run: test -f seth/}golangci-lint-report.xml || true
+        working-directory: seth
+        shell: bash
+        run: |
+          if test -f golangci-lint-report.xml; then
+            cat golangci-lint-report.xml
+          else
+            echo "No golangci-lint-report.xml file  found"
+          fi
+
       - name: Store lint report artifact
         if: always()
         uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
