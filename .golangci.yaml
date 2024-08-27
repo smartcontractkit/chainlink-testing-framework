@@ -86,7 +86,7 @@ issues:
     - imports
     - wasp/examples/*
     - k8s
-    - seth/contracts/*
-    - seth/examples/*
-    - seth/examples_wasp/*
+    - seth/contracts
+    - seth/examples
+    - seth/examples_wasp
 

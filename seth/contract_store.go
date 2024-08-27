@@ -82,10 +82,33 @@ func (c *ContractStore) AddBIN(name string, bin []byte) {
 func NewContractStore(abiPath, binPath string, gethWrappersPaths []string) (*ContractStore, error) {
 	cs := &ContractStore{ABIs: make(ABIStore), BINs: make(map[string][]byte), mu: &sync.RWMutex{}}
 
+	if len(gethWrappersPaths) > 0 && abiPath != "" {
+		L.Debug().Msg("ABI files are loaded from both ABI path and Geth wrappers path. This might result in ABI duplication. It shouldn't cause any issues, but it's best to chose only one method.")
+	}
+
+	err := cs.loadABIs(abiPath)
+	if err != nil {
+		return nil, err
+	}
+
+	err = cs.loadBINs(binPath)
+	if err != nil {
+		return nil, err
+	}
+
+	err = cs.loadGethWrappers(gethWrappersPaths)
+	if err != nil {
+		return nil, err
+	}
+
+	return cs, nil
+}
+
+func (c *ContractStore) loadABIs(abiPath string) error {
 	if abiPath != "" {
 		files, err := os.ReadDir(abiPath)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		var foundABI bool
 		for _, f := range files {
@@ -93,13 +116,13 @@ func NewContractStore(abiPath, binPath string, gethWrappersPaths []string) (*Con
 				L.Debug().Str("File", f.Name()).Msg("ABI file loaded")
 				ff, err := os.Open(filepath.Join(abiPath, f.Name()))
 				if err != nil {
-					return nil, errors.Wrap(err, ErrOpenABIFile)
+					return errors.Wrap(err, ErrOpenABIFile)
 				}
 				a, err := abi.JSON(ff)
 				if err != nil {
-					return nil, errors.Wrap(err, ErrParseABI)
+					return errors.Wrap(err, ErrParseABI)
 				}
-				cs.ABIs[f.Name()] = a
+				c.ABIs[f.Name()] = a
 				foundABI = true
 			}
 		}
@@ -109,10 +132,14 @@ func NewContractStore(abiPath, binPath string, gethWrappersPaths []string) (*Con
 		}
 	}
 
+	return nil
+}
+
+func (c *ContractStore) loadBINs(binPath string) error {
 	if binPath != "" {
 		files, err := os.ReadDir(binPath)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		var foundBIN bool
 		for _, f := range files {
@@ -120,9 +147,9 @@ func NewContractStore(abiPath, binPath string, gethWrappersPaths []string) (*Con
 				L.Debug().Str("File", f.Name()).Msg("BIN file loaded")
 				bin, err := os.ReadFile(filepath.Join(binPath, f.Name()))
 				if err != nil {
-					return nil, errors.Wrap(err, ErrOpenBINFile)
+					return errors.Wrap(err, ErrOpenBINFile)
 				}
-				cs.BINs[f.Name()] = common.FromHex(string(bin))
+				c.BINs[f.Name()] = common.FromHex(string(bin))
 				foundBIN = true
 			}
 		}
@@ -132,6 +159,10 @@ func NewContractStore(abiPath, binPath string, gethWrappersPaths []string) (*Con
 		}
 	}
 
+	return nil
+}
+
+func (c *ContractStore) loadGethWrappers(gethWrappersPaths []string) error {
 	if len(gethWrappersPaths) > 0 {
 		for _, gethWrappersPath := range gethWrappersPaths {
 			err := filepath.Walk(gethWrappersPath, func(path string, _ os.FileInfo, err error) error {
@@ -149,22 +180,18 @@ func NewContractStore(abiPath, binPath string, gethWrappersPaths []string) (*Con
 
 						return nil
 					}
-					cs.AddABI(contractName, *abiContent)
+					c.AddABI(contractName, *abiContent)
 				}
 				return nil
 			})
 
 			if err != nil {
-				return nil, err
+				return err
 			}
 		}
 	}
 
-	if len(gethWrappersPaths) > 0 && abiPath != "" {
-		L.Debug().Msg("ABI files are loaded from both ABI path and Geth wrappers path. This might result in ABI duplication. It shouldn't cause any issues, but it's best to chose only one method.")
-	}
-
-	return cs, nil
+	return nil
 }
 
 // extractABIFromGethWrapperDir extracts ABI from gethwrappers in a given directory
