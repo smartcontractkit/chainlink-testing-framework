@@ -4,14 +4,14 @@ on:
 permissions:
   contents: read
 jobs:
-  golangci:
-    defaults:
-      run:
-        working-directory: seth
-    name: lint
+  tools:
+    name: Get tool-versions
     runs-on: ubuntu-latest
+    outputs:
+      golangci-lint-version: ${{ steps.tool-versions.outputs.golangci-lint_version }}
+      should_run: ${{ steps.changes.outputs.src }}
     steps:
-      - name: Checkout repo
+      - name: Check out Code
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
       - name: Check for changes in Seth project
         uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
@@ -20,11 +20,39 @@ jobs:
           filters: |
             src:
               - 'seth/**'
-      - uses: cachix/install-nix-action@8887e596b4ee1134dae06b98d573bd674693f47c # v26
+      - name: Parse tool-versions file
         if: steps.changes.outputs.src == 'true'
+        uses: smartcontractkit/tool-versions-to-env-action@aabd5efbaf28005284e846c5cf3a02f2cba2f4c2 # v1.0.8
+        id: tool-versions
+
+  golangci:
+    name: Linting Seth
+    if: needs.tools.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    needs: [tools]
+    steps:
+      - name: Check out Code
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
+      - name: Install Go
+        uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/setup-go@e29366cdecfe6befff9ab8c3cfe4825218505d58 # v2.3.16
         with:
-          nix_path: nixpkgs=channel:nixos-unstable
-      - name: Run lints
-        if: steps.changes.outputs.src == 'true'
-        run: |
-          nix develop -c make lint
+          test_download_vendor_packages_command: cd seth && go mod download
+          go_mod_path: seth/go.mod
+          cache_key_id: ctf-go-seth
+          cache_restore_only: 'false'
+      - name: golangci-lint ${{ needs.tools.outputs.golangci-lint-version }}
+        uses: golangci/golangci-lint-action@9d1e0624a798bb64f6c3cea93db47765312263dc # v5.1.0
+        with:
+          version: v${{ needs.tools.outputs.golangci-lint-version }}
+          args: --out-format checkstyle:golangci-lint-report.xml
+          skip-cache: true
+          working-directory: seth
+      - name: Print lint report artifact
+        if: always()
+        run: test -f seth/}golangci-lint-report.xml || true
+      - name: Store lint report artifact
+        if: always()
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
+        with:
+          name: golangci-lint-report-seth
+          path: seth/golangci-lint-report.xml

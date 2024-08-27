@@ -202,8 +202,6 @@ func extractABIFromGethWrapperDir(filePath string) (string, *abi.ABI, error) {
 		return "", nil, err
 	}
 
-	const metaDataSuffix = "MetaData"
-
 	var abiContent string
 	// use package name as contract name
 	contractName := node.Name.Name
