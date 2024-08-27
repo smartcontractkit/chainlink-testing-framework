@@ -163,31 +163,29 @@ func (c *ContractStore) loadBINs(binPath string) error {
 }
 
 func (c *ContractStore) loadGethWrappers(gethWrappersPaths []string) error {
-	if len(gethWrappersPaths) > 0 {
-		for _, gethWrappersPath := range gethWrappersPaths {
-			err := filepath.Walk(gethWrappersPath, func(path string, _ os.FileInfo, err error) error {
-				if err != nil {
-					return err
-				}
-
-				if filepath.Ext(path) == ".go" {
-					contractName, abiContent, err := extractABIFromGethWrapperDir(path)
-					if err != nil {
-						if !strings.Contains(err.Error(), ErrNoABIInFile) {
-							return err
-						}
-						L.Debug().Err(err).Msg("ABI not found in file. Skipping")
-
-						return nil
-					}
-					c.AddABI(contractName, *abiContent)
-				}
-				return nil
-			})
-
+	for _, gethWrappersPath := range gethWrappersPaths {
+		err := filepath.Walk(gethWrappersPath, func(path string, _ os.FileInfo, err error) error {
 			if err != nil {
 				return err
 			}
+
+			if filepath.Ext(path) == ".go" {
+				contractName, abiContent, err := extractABIFromGethWrapperDir(path)
+				if err != nil {
+					if !strings.Contains(err.Error(), ErrNoABIInFile) {
+						return err
+					}
+					L.Debug().Err(err).Msg("ABI not found in file. Skipping")
+
+					return nil
+				}
+				c.AddABI(contractName, *abiContent)
+			}
+			return nil
+		})
+
+		if err != nil {
+			return err
 		}
 	}
 
