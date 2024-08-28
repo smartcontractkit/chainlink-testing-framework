@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/go-resty/resty/v2"
-	"github.com/smartcontractkit/wasp"
+	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 )
 
 const (
