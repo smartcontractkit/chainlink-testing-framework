@@ -203,6 +203,10 @@ func ValidateConfig(cfg *Config) error {
 		cfg.Network.DialTimeout = &Duration{D: DefaultDialTimeout}
 	}
 
+	if cfg.PendingNonceProtectionTimeout == nil {
+		cfg.PendingNonceProtectionTimeout = &Duration{D: DefaultPendingNonceProtectionTimeout}
+	}
+
 	return nil
 }
 
@@ -752,7 +756,7 @@ func (m *Client) getProposedTransactionOptions(keyNum int) (*bind.TransactOpts, 
 	var ctx context.Context
 
 	if m.Cfg.PendingNonceProtectionEnabled {
-		if nonceStatus.PendingNonce > nonceStatus.LastNonce {
+		if pendingErr := m.WaitUntilNoPendingTxForKeyNum(keyNum, m.Cfg.PendingNonceProtectionTimeout.Duration()); pendingErr != nil {
 			errMsg := `
 pending nonce for key %d is higher than last nonce, there are %d pending transactions.
 
@@ -762,7 +766,7 @@ This issue is caused by one of two things:
 `
 			err := fmt.Errorf(errMsg, keyNum, nonceStatus.PendingNonce-nonceStatus.LastNonce)
 			m.Errors = append(m.Errors, err)
-			// can't return nil, otherwise RPC wrapper will panic and we might lose funds on testnets/mainnets, that's why
+			// can't return nil, otherwise RPC wrapper will panic, and we might lose funds on testnets/mainnets, that's why
 			// error is passed in Context here to avoid panic, whoever is using Seth should make sure that there is no error
 			// present in Context before using *bind.TransactOpts
 			ctx = context.WithValue(context.Background(), ContextErrorKey{}, err)

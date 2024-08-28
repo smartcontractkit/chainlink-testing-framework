@@ -29,8 +29,9 @@ const (
 	NETWORK_ENV_VAR          = "SETH_NETWORK"
 	URL_ENV_VAR              = "SETH_URL"
 
-	DefaultNetworkName = "Default"
-	DefaultDialTimeout = 1 * time.Minute
+	DefaultNetworkName                   = "Default"
+	DefaultDialTimeout                   = 1 * time.Minute
+	DefaultPendingNonceProtectionTimeout = 1 * time.Minute
 
 	DefaultTransferGasFee = 21_000
 	DefaultGasPrice       = 1_000_000_000   // 1 Gwei
@@ -60,6 +61,7 @@ type Config struct {
 	TracingLevel                  string            `toml:"tracing_level"`
 	TraceOutputs                  []string          `toml:"trace_outputs"`
 	PendingNonceProtectionEnabled bool              `toml:"pending_nonce_protection_enabled"`
+	PendingNonceProtectionTimeout *Duration         `toml:"pending_nonce_protection_timeout"`
 	ConfigDir                     string            `toml:"abs_path"`
 	ExperimentsEnabled            []string          `toml:"experiments_enabled"`
 	CheckRpcHealthOnStart         bool              `toml:"check_rpc_health_on_start"`

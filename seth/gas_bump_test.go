@@ -188,7 +188,7 @@ func TestGasBumping_Contract_Deployment_Legacy_CustomBumpingFunction(t *testing.
 		WithEIP1559DynamicFees(false).
 		WithLegacyGasPrice(1).
 		WithTransactionTimeout(10*time.Second).
-		WithProtections(false, false).
+		WithProtections(false, false, nil).
 		WithGasBumping(5, 0, func(gasPrice *big.Int) *big.Int {
 			customGasBumps++
 			return new(big.Int).Mul(gasPrice, big.NewInt(512))

@@ -216,7 +216,7 @@ client, err := builder.
     // tracing
     WithTracing(seth.TracingLevel_All, []string{seth.TraceOutput_Console}).
     // protections
-    WithProtections(true, true).
+    WithProtections(true, true, seth.MustMakeDuration(2*time.Minute)).
     // artifacts folder
     WithArtifactsFolder("some_folder").
 	// folder with gethwrappers for ABI decoding
@@ -320,6 +320,12 @@ check_rpc_health_on_start = false
 ```
 
 It will execute a simple check of transferring 10k wei from root key to root key and check if the transaction was successful.
+
+You can also enable pending nonce protection that will check if given key has any pending transactions. By default, we will wait 1 minute for all transactions to be mined. If any of them is still pending, we will panic. You can enable it with:
+```toml
+pending_nonce_protection_enabled = true
+pending_nonce_protection_timeout = "5m"
+```
 
 You can add more networks like this:
 

@@ -212,11 +212,12 @@ func (c *ClientBuilder) WithTracing(level string, outputs []string) *ClientBuild
 	return c
 }
 
-// WithProtections enables or disables nonce protection (fails, when key has a pending transaction and you try to submit another one) and node health check on startup.
-// Default values are false for nonce protection and true for node health check.
-func (c *ClientBuilder) WithProtections(pendingNonceProtectionEnabled, nodeHealthStartupCheck bool) *ClientBuilder {
+// WithProtections enables or disables nonce protection (fails, when key has a pending transaction, and you try to submit another one) and node health check on startup.
+// Default values are false for nonce protection, true for node health check and 1 minute timeout.
+func (c *ClientBuilder) WithProtections(pendingNonceProtectionEnabled, nodeHealthStartupCheck bool, pendingNonceProtectionTimeout *Duration) *ClientBuilder {
 	c.config.PendingNonceProtectionEnabled = pendingNonceProtectionEnabled
 	c.config.CheckRpcHealthOnStart = nodeHealthStartupCheck
+	c.config.PendingNonceProtectionTimeout = pendingNonceProtectionTimeout
 	return c
 }
 
