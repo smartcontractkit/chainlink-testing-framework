@@ -16,7 +16,7 @@ require (
 	github.com/docker/docker v25.0.2+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/ethereum/go-ethereum v1.13.8
-	github.com/go-resty/resty/v2 v2.11.0
+	github.com/go-resty/resty/v2 v2.14.0
 	github.com/google/go-github/v41 v41.0.0
 	github.com/google/uuid v1.6.0
 	github.com/imdario/mergo v0.3.16
@@ -40,7 +40,7 @@ require (
 	github.com/testcontainers/testcontainers-go v0.28.0
 	go.uber.org/atomic v1.11.0
 	go.uber.org/zap v1.26.0
-	golang.org/x/net v0.25.0
+	golang.org/x/net v0.27.0
 	golang.org/x/oauth2 v0.15.0
 	golang.org/x/sync v0.7.0
 	golang.org/x/text v0.16.0
