@@ -1,13 +1,14 @@
 package main
 
 import (
+	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
+	"github.com/smartcontractkit/chainlink-testing-framework/wasp/dashboard"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/K-Phoen/grabana/alert"
 	"github.com/K-Phoen/grabana/timeseries"
-	"github.com/smartcontractkit/wasp"
 	"github.com/stretchr/testify/require"
 )
 
@@ -41,11 +42,11 @@ func TestMain(m *testing.M) {
 	// - stress - another custom NFRs for stress
 	// WaspAlert can be defined on per Generator level
 	// usually, you define it once per project, generate your dashboard and upload it, it's here only for example purposes
-	d, err := wasp.NewDashboard([]wasp.WaspAlert{
+	d, err := dashboard.NewDashboard([]dashboard.WaspAlert{
 		// baseline group alerts
 		{
 			Name:                 "99th latency percentile is out of SLO for first API",
-			AlertType:            wasp.AlertTypeQuantile99,
+			AlertType:            dashboard.AlertTypeQuantile99,
 			TestName:             "TestBaselineRequirements",
 			GenName:              FirstGenName,
 			RequirementGroupName: BaselineRequirementGroupName,
@@ -53,7 +54,7 @@ func TestMain(m *testing.M) {
 		},
 		{
 			Name:                 "first API has errors",
-			AlertType:            wasp.AlertTypeErrors,
+			AlertType:            dashboard.AlertTypeErrors,
 			TestName:             "TestBaselineRequirements",
 			GenName:              FirstGenName,
 			RequirementGroupName: BaselineRequirementGroupName,
@@ -61,7 +62,7 @@ func TestMain(m *testing.M) {
 		},
 		{
 			Name:                 "99th latency percentile is out of SLO for second API",
-			AlertType:            wasp.AlertTypeQuantile99,
+			AlertType:            dashboard.AlertTypeQuantile99,
 			TestName:             "TestBaselineRequirements",
 			GenName:              FirstGenName,
 			RequirementGroupName: BaselineRequirementGroupName,
@@ -69,7 +70,7 @@ func TestMain(m *testing.M) {
 		},
 		{
 			Name:                 "second API has errors",
-			AlertType:            wasp.AlertTypeErrors,
+			AlertType:            dashboard.AlertTypeErrors,
 			TestName:             "TestBaselineRequirements",
 			GenName:              FirstGenName,
 			RequirementGroupName: BaselineRequirementGroupName,
@@ -78,7 +79,7 @@ func TestMain(m *testing.M) {
 		// stress group alerts
 		{
 			Name:                 "first API has errors > threshold",
-			AlertType:            wasp.AlertTypeErrors,
+			AlertType:            dashboard.AlertTypeErrors,
 			TestName:             "TestStressRequirements",
 			GenName:              FirstGenName,
 			RequirementGroupName: StressRequirementGroupName,
@@ -96,7 +97,7 @@ func TestMain(m *testing.M) {
 				alert.Tags(map[string]string{
 					"service": "wasp",
 					// set group label so it can be filtered
-					wasp.DefaultRequirementLabelKey: StressRequirementGroupName,
+					dashboard.DefaultRequirementLabelKey: StressRequirementGroupName,
 				}),
 				alert.WithLokiQuery(
 					"MyCustomAlert",
@@ -159,7 +160,7 @@ func TestBaselineRequirements(t *testing.T) {
 	// we are checking all active alerts for dashboard with UUID = "wasp" which have label "requirement_name" = "baseline"
 	// if any alerts of particular group, for example "baseline" were raised - we fail the test
 	// change some data in NewHTTPMockServer to make alerts disappear
-	_, err = wasp.NewAlertChecker(t).AnyAlerts(wasp.DefaultDashboardUUID, BaselineRequirementGroupName)
+	_, err = wasp.NewAlertChecker(t).AnyAlerts(dashboard.DefaultDashboardUUID, BaselineRequirementGroupName)
 	require.NoError(t, err)
 }
 
@@ -190,6 +191,6 @@ func TestStressRequirements(t *testing.T) {
 	// we are checking all active alerts for dashboard with UUID = "wasp" which have label "requirement_name" = "stress"
 	// if any alerts of particular group, for example "stress" were raised - we fail the test
 	// change some data in NewHTTPMockServer to make alerts disappear
-	_, err = wasp.NewAlertChecker(t).AnyAlerts(wasp.DefaultDashboardUUID, StressRequirementGroupName)
+	_, err = wasp.NewAlertChecker(t).AnyAlerts(dashboard.DefaultDashboardUUID, StressRequirementGroupName)
 	require.NoError(t, err)
 }

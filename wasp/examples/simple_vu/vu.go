@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/smartcontractkit/wasp"
+	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 	"nhooyr.io/websocket"
 	"nhooyr.io/websocket/wsjson"
 )
