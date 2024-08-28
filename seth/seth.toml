@@ -3,6 +3,10 @@ abi_dir = "contracts/abi"
 # contract bytecodes are optional, but necessary if we want to deploy them via Contract Store
 bin_dir = "contracts/bin"
 
+# Seth will walk through all the files in the directories and load ABIs from them, if they are valid Geth wrappers
+# Files that are not geth wrappers will be ignored. Invalid or empty ABIs will cause Seth to fail to initialise
+# geth_wrappers_dirs = ["contracts/bind"]
+
 # Uncomment if you want to load (address -> ABI_name) mapping from a file
 # It will also save any new contract deployment (address -> ABI_name) mapping there.
 # This functionality is not used for simulated networks.
