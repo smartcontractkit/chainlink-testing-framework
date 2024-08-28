@@ -26,15 +26,22 @@ func TestMustGetSelectedNetworkConfig_MissingSelectedNetwork(t *testing.T) {
 
 func TestMustGetSelectedNetworkConfig_Missing_RpcHttpUrls(t *testing.T) {
 	networkName := "arbitrum_goerli"
-	networkCfg := config.NetworkConfig{
-		SelectedNetworks: []string{networkName},
-		RpcWsUrls: map[string][]string{
-			"arbitrum_goerli": {"wss://devnet-1.mt/ABC/rpc/"},
-		},
-		WalletKeys: map[string][]string{
-			"arbitrum_goerli": {"1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed"},
-		},
-	}
+	testTOML := `
+	selected_networks = ["arbitrum_goerli"]
+
+	[RpcWsUrls]
+	arbitrum_goerli = ["wss://devnet-1.mt/ABC/rpc/"]
+
+	[WalletKeys]
+	arbitrum_goerli = ["1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed"]
+	`
+
+	l := logging.GetTestLogger(t)
+	networkCfg := config.NetworkConfig{}
+	err := config.BytesToAnyTomlStruct(l, "test", "", &networkCfg, []byte(testTOML))
+
+	require.NoError(t, err, "error reading network config")
+
 	require.PanicsWithError(t, fmt.Sprintf("no rpc http urls found in config for '%s' network", networkName), func() {
 		MustGetSelectedNetworkConfig(&networkCfg)
 	})
@@ -42,15 +49,21 @@ func TestMustGetSelectedNetworkConfig_Missing_RpcHttpUrls(t *testing.T) {
 
 func TestMustGetSelectedNetworkConfig_Missing_RpcWsUrls(t *testing.T) {
 	networkName := "arbitrum_goerli"
-	networkCfg := config.NetworkConfig{
-		SelectedNetworks: []string{networkName},
-		RpcHttpUrls: map[string][]string{
-			"arbitrum_goerli": {"https://devnet-1.mt/ABC/rpc/"},
-		},
-		WalletKeys: map[string][]string{
-			"arbitrum_goerli": {"1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed"},
-		},
-	}
+	testTOML := `
+	selected_networks = ["arbitrum_goerli"]
+
+	[RpcHttpUrls]
+	arbitrum_goerli = ["https://devnet-1.mt/ABC/rpc/"]
+
+	[WalletKeys]
+	arbitrum_goerli = ["1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed"]
+	`
+
+	l := logging.GetTestLogger(t)
+	networkCfg := config.NetworkConfig{}
+	err := config.BytesToAnyTomlStruct(l, "test", "", &networkCfg, []byte(testTOML))
+	require.NoError(t, err, "error reading network config")
+
 	require.PanicsWithError(t, fmt.Sprintf("no rpc ws urls found in config for '%s' network", networkName), func() {
 		MustGetSelectedNetworkConfig(&networkCfg)
 	})
@@ -58,18 +71,139 @@ func TestMustGetSelectedNetworkConfig_Missing_RpcWsUrls(t *testing.T) {
 
 func TestMustGetSelectedNetworkConfig_Missing_WalletKeys(t *testing.T) {
 	networkName := "arbitrum_goerli"
-	networkCfg := config.NetworkConfig{
-		SelectedNetworks: []string{networkName},
-		RpcWsUrls: map[string][]string{
-			"arbitrum_goerli": {"wss://devnet-1.mt/ABC/rpc/"},
-		},
-		RpcHttpUrls: map[string][]string{
-			"arbitrum_goerli": {"https://devnet-1.mt/ABC/rpc/"},
-		},
-	}
+	testTOML := `
+	selected_networks = ["arbitrum_goerli"]
+
+	[RpcHttpUrls]
+	arbitrum_goerli = ["https://devnet-1.mt/ABC/rpc/"]
+
+	[RpcWsUrls]
+	arbitrum_goerli = ["wss://devnet-1.mt/ABC/rpc/"]
+	`
+
+	l := logging.GetTestLogger(t)
+	networkCfg := config.NetworkConfig{}
+	err := config.BytesToAnyTomlStruct(l, "test", "", &networkCfg, []byte(testTOML))
+	require.NoError(t, err, "error reading network config")
+
 	require.PanicsWithError(t, fmt.Sprintf("no wallet keys found in config for '%s' network", networkName), func() {
 		MustGetSelectedNetworkConfig(&networkCfg)
 	})
+}
+
+func TestMustGetSelectedNetworkConfig_DefaultUrlsFromEnv(t *testing.T) {
+	networkConfigTOML := `
+	[RpcHttpUrls]
+	arbitrum_goerli = ["https://devnet-1.mt/ABC/rpc/"]
+
+	[RpcWsUrls]
+	arbitrum_goerli = ["wss://devnet-1.mt/ABC/rpc/"]
+	`
+	encoded := base64.StdEncoding.EncodeToString([]byte(networkConfigTOML))
+	err := os.Setenv("BASE64_NETWORK_CONFIG", encoded)
+	require.NoError(t, err, "error setting env var")
+
+	testTOML := `
+	selected_networks = ["arbitrum_goerli"]
+
+	[WalletKeys]
+	arbitrum_goerli = ["1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed"]
+	`
+
+	l := logging.GetTestLogger(t)
+	networkCfg := config.NetworkConfig{}
+	err = config.BytesToAnyTomlStruct(l, "test", "", &networkCfg, []byte(testTOML))
+	require.NoError(t, err, "error reading network config")
+
+	networkCfg.UpperCaseNetworkNames()
+
+	err = networkCfg.Default()
+	require.NoError(t, err, "error reading default network config")
+
+	err = networkCfg.Validate()
+	require.NoError(t, err, "error validating network config")
+
+	networks := MustGetSelectedNetworkConfig(&networkCfg)
+	require.Len(t, networks, 1, "should have 1 network")
+	require.Equal(t, "Arbitrum Goerli", networks[0].Name, "first network should be arbitrum")
+	require.Equal(t, []string{"wss://devnet-1.mt/ABC/rpc/"}, networks[0].URLs, "should have default ws url for arbitrum")
+	require.Equal(t, []string{"https://devnet-1.mt/ABC/rpc/"}, networks[0].HTTPURLs, "should have default http url for arbitrum")
+	require.Equal(t, []string{"1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed"}, networks[0].PrivateKeys, "should have correct wallet key for arbitrum")
+}
+
+func TestMustGetSelectedNetworkConfig_MultipleNetworks(t *testing.T) {
+	testTOML := `
+	selected_networks = ["arbitrum_goerli", "optimism_goerli"]
+
+	[RpcHttpUrls]
+	arbitrum_goerli = ["https://devnet-1.mt/ABC/rpc/"]
+	optimism_goerli = ["https://devnet-1.mt/ABC/rpc/"]
+
+	[RpcWsUrls]
+	arbitrum_goerli = ["wss://devnet-1.mt/ABC/rpc/"]
+	optimism_goerli = ["wss://devnet-1.mt/ABC/rpc/"]
+
+	[WalletKeys]
+	arbitrum_goerli = ["1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed"]
+	optimism_goerli = ["1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed"]
+	`
+
+	l := logging.GetTestLogger(t)
+	networkCfg := config.NetworkConfig{}
+	err := config.BytesToAnyTomlStruct(l, "test", "", &networkCfg, []byte(testTOML))
+	require.NoError(t, err, "error reading network config")
+
+	networks := MustGetSelectedNetworkConfig(&networkCfg)
+	require.Len(t, networks, 2)
+	require.Equal(t, "Arbitrum Goerli", networks[0].Name)
+	require.Equal(t, "Optimism Goerli", networks[1].Name)
+}
+
+func TestMustGetSelectedNetworkConfig_DefaultUrlsFromSecret_OverrideOne(t *testing.T) {
+	networkConfigTOML := `
+	[RpcHttpUrls]
+	arbitrum_goerli = ["https://devnet-1.mt/ABC/rpc/"]
+	optimism_goerli = ["https://devnet-1.mt/ABC/rpc/"]
+
+	[RpcWsUrls]
+	arbitrum_goerli = ["wss://devnet-1.mt/ABC/rpc/"]
+	optimism_goerli = ["wss://devnet-1.mt/ABC/rpc/"]
+	`
+	encoded := base64.StdEncoding.EncodeToString([]byte(networkConfigTOML))
+	err := os.Setenv("BASE64_NETWORK_CONFIG", encoded)
+	require.NoError(t, err, "error setting env var")
+
+	testTOML := `
+	selected_networks = ["arbitrum_goerli", "optimism_goerli"]
+
+	[RpcHttpUrls]
+	arbitrum_goerli = ["https://devnet-2.mt/ABC/rpc/"]
+
+	[WalletKeys]
+	arbitrum_goerli = ["1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed"]
+	optimism_goerli = ["1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed"]
+	`
+
+	l := logging.GetTestLogger(t)
+	networkCfg := config.NetworkConfig{}
+	err = config.BytesToAnyTomlStruct(l, "test", "", &networkCfg, []byte(testTOML))
+	require.NoError(t, err, "error reading network config")
+
+	networkCfg.UpperCaseNetworkNames()
+	err = networkCfg.Default()
+	require.NoError(t, err, "error reading default network config")
+
+	networks := MustGetSelectedNetworkConfig(&networkCfg)
+	require.Len(t, networks, 2, "should have 2 networks")
+	require.Equal(t, "Arbitrum Goerli", networks[0].Name, "first network should be arbitrum")
+	require.Equal(t, []string{"wss://devnet-1.mt/ABC/rpc/"}, networks[0].URLs, "should have default ws url for arbitrum")
+	require.Equal(t, []string{"https://devnet-2.mt/ABC/rpc/"}, networks[0].HTTPURLs, "should have overridden http url for arbitrum")
+	require.Equal(t, []string{"1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed"}, networks[0].PrivateKeys, "should have correct wallet key for arbitrum")
+
+	require.Equal(t, "Optimism Goerli", networks[1].Name, "first network should be optimism")
+	require.Equal(t, []string{"wss://devnet-1.mt/ABC/rpc/"}, networks[1].URLs, "should have default ws url for optimism")
+	require.Equal(t, []string{"https://devnet-1.mt/ABC/rpc/"}, networks[1].HTTPURLs, "should have default http url for optimism")
+	require.Equal(t, []string{"1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed"}, networks[1].PrivateKeys, "should have correct wallet key for optimism")
 }
 
 func TestNewEVMNetwork(t *testing.T) {
@@ -428,6 +562,13 @@ evm_gas_estimation_buffer = 10000
 client_implementation = "Ethereum"
 evm_supports_eip1559 = true
 evm_default_gas_limit = 6000000
+
+[RpcHttpUrls]
+new_network = ["http://localhost:8545"]
+[RpcWsUrls]
+new_network = ["ws://localhost:8546"]
+[WalletKeys]
+new_network = ["ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"]
 `,
 			expNetworks: []blockchain.EVMNetwork{newNetwork},
 		},
@@ -439,17 +580,7 @@ evm_default_gas_limit = 6000000
 			err := os.Setenv("BASE64_NETWORK_CONFIG", encoded)
 			require.NoError(t, err, "error setting env var")
 
-			networkCfg := &config.NetworkConfig{
-				RpcHttpUrls: map[string][]string{
-					"arbitrum_goerli": {"https://devnet-1.mt/ABC/rpc/"},
-				},
-				RpcWsUrls: map[string][]string{
-					"arbitrum_goerli": {"wss://devnet-1.mt/ABC/rpc/"},
-				},
-				WalletKeys: map[string][]string{
-					"arbitrum_goerli": {"1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b651ed"},
-				},
-			}
+			networkCfg := &config.NetworkConfig{}
 			if tc.overrideTOML != "" {
 				l := logging.GetTestLogger(t)
 				err = config.BytesToAnyTomlStruct(l, "test", "", &networkCfg, []byte(tc.overrideTOML))
