@@ -96,6 +96,8 @@ func (n *NetworkConfig) applySecrets() error {
 		return nil
 	}
 
+	logging.L.Warn().Msgf("%s is deprecated and will be removed soon. Use BASE64_CONFIG_OVERRIDE instead. For network secrets, use Test Secrets https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/config/README.md#test-secrets", Base64NetworkConfigEnvVarName)
+
 	err := n.applyBase64Encoded(encodedEndpoints)
 	if err != nil {
 		return fmt.Errorf("error reading network encoded endpoints: %w", err)
