@@ -45,7 +45,7 @@ func NewDebugContractSetup() (
 	if err != nil {
 		return nil, nil, common.Address{}, common.Address{}, nil, err
 	}
-	cs, err := seth.NewContractStore(cfg.ABIDir, cfg.BINDir)
+	cs, err := seth.NewContractStore(cfg.ABIDir, cfg.BINDir, nil)
 	if err != nil {
 		return nil, nil, common.Address{}, common.Address{}, nil, err
 	}

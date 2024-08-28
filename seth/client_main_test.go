@@ -129,7 +129,7 @@ func NewDebugContractSetup() (
 	if err != nil {
 		return nil, nil, common.Address{}, common.Address{}, nil, err
 	}
-	cs, err := seth.NewContractStore("./contracts/abi", "./contracts/bin")
+	cs, err := seth.NewContractStore("./contracts/abi", "./contracts/bin", nil)
 	if err != nil {
 		return nil, nil, common.Address{}, common.Address{}, nil, err
 	}

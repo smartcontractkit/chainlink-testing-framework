@@ -28,6 +28,7 @@ func NewAddress() (string, string, error) {
 	L.Info().
 		Str("Addr", address).
 		Msg("New address created")
+
 	return address, hexutil.Encode(privateKeyBytes)[2:], nil
 }
 
