@@ -421,3 +421,34 @@ func (c *EthereumChainConfig) DefaultWaitDuration() time.Duration {
 func (c *EthereumChainConfig) DefaultFinalizationWaitDuration() time.Duration {
 	return 5 * time.Minute
 }
+
+// PrivateEthereumNetworkConfig represents the configuration for a private Ethereum network
+// that can be used to start a network using the EthereumNetworkBuilder
+// Method names are non-idiomatic, because otherwise they would crash with public fields
+type PrivateEthereumNetworkConfig interface {
+	GetEthereumVersion() *config_types.EthereumVersion
+	GetExecutionLayer() *config_types.ExecutionLayer
+	GetDockerNetworkNames() []string
+	GetCustomDockerImages() map[ContainerType]string
+	GetChainConfig() EthereumChainConfig
+}
+
+func (en *EthereumNetworkConfig) GetEthereumVersion() *config_types.EthereumVersion {
+	return en.EthereumVersion
+}
+
+func (en *EthereumNetworkConfig) GetExecutionLayer() *config_types.ExecutionLayer {
+	return en.ExecutionLayer
+}
+
+func (en *EthereumNetworkConfig) GetDockerNetworkNames() []string {
+	return en.DockerNetworkNames
+}
+
+func (en *EthereumNetworkConfig) GetCustomDockerImages() map[ContainerType]string {
+	return en.CustomDockerImages
+}
+
+func (en *EthereumNetworkConfig) GetChainConfig() EthereumChainConfig {
+	return *en.EthereumChainConfig
+}
