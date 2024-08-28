@@ -44,6 +44,13 @@ func NewClientBuilder() *ClientBuilder {
 	}
 }
 
+// NewClientBuilderWithConfig creates a new ClientBuilder with a provided config.
+func NewClientBuilderWithConfig(config *Config) *ClientBuilder {
+	return &ClientBuilder{
+		config: config,
+	}
+}
+
 // WithRpcUrl sets the RPC URL for the config.
 // Default value is an empty string (which is an incorrect value).
 func (c *ClientBuilder) WithRpcUrl(url string) *ClientBuilder {
