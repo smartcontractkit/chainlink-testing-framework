@@ -35,6 +35,10 @@ ephemeral_addresses_number = 0
 # it when running load tests.
 pending_nonce_protection_enabled = false
 
+# When pending_nonce_protection_enabled is set to true, this value will be used to determine how long we should wait
+# for all pending transactions to be mined (so that pending nonce and last nonce are equal).
+# pending_nonce_protection_timeout = "10s"
+
 # Amount to be left on root key/address, when we are using ephemeral addresses. It's the amount that will not
 # be divided into ephemeral keys.
 root_key_funds_buffer = 10 # 10 ether
