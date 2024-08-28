@@ -2,12 +2,13 @@
 
 Reliable and debug-friendly Ethereum client
 
-[![Decoding tests](https://github.com/smartcontractkit/chainlink-testing-framework/seth/actions/workflows/seth-test-decode.yml/badge.svg)](https://github.com/smartcontractkit/seth/actions/workflows/test_decode.yml)
-[![Tracing tests](https://github.com/smartcontractkit/chainlink-testing-framework/seth/actions/workflows/seth-test-trace.yml/badge.svg)](https://github.com/smartcontractkit/seth/actions/workflows/test_trace.yml)
-[![Gas bumping tests](https://github.com/smartcontractkit/chainlink-testing-framework/seth/actions/workflows/seth-test-bumping.yml/badge.svg)](https://github.com/smartcontractkit/seth/actions/workflows/test_cli.yml)
-[![API tests](https://github.com/smartcontractkit/chainlink-testing-framework/seth/actions/workflows/seth-test-api.yml/badge.svg)](https://github.com/smartcontractkit/seth/actions/workflows/test_api.yml)
-[![CLI tests](https://github.com/smartcontractkit/chainlink-testing-framework/seth/actions/workflows/seth-test-cli.yml/badge.svg)](https://github.com/smartcontractkit/seth/actions/workflows/test_cli.yml)
-[![Integration tests (testnets)](https://github.com/smartcontractkit/chainlink-testing-framework/seth/actions/workflows/seth-test-decode-testnet.yml/badge.svg)](https://github.com/smartcontractkit/seth/actions/workflows/test_decode_testnet.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/smartcontractkit/chainlink-testing-framework/seth)](https://goreportcard.com/report/github.com/smartcontractkit/chainlink-testing-framework/seth)
+[![Decoding tests](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/seth-test-decode.yml/badge.svg)](https://github.com/smartcontractkit/seth/actions/workflows/test_decode.yml)
+[![Tracing tests](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/seth-test-trace.yml/badge.svg)](https://github.com/smartcontractkit/seth/actions/workflows/test_trace.yml)
+[![Gas bumping tests](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/seth-test-bumping.yml/badge.svg)](https://github.com/smartcontractkit/seth/actions/workflows/test_cli.yml)
+[![API tests](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/seth-test-api.yml/badge.svg)](https://github.com/smartcontractkit/seth/actions/workflows/test_api.yml)
+[![CLI tests](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/seth-test-cli.yml/badge.svg)](https://github.com/smartcontractkit/seth/actions/workflows/test_cli.yml)
+[![Integration tests (testnets)](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/seth-test-decode-testnet.yml/badge.svg)](https://github.com/smartcontractkit/seth/actions/workflows/test_decode_testnet.yml)
 <br/>
 
 # Content
