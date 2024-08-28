@@ -1321,6 +1321,7 @@ func NewEVMClient(networkSettings EVMNetwork, env *environment.Environment, logg
 			return nil, fmt.Errorf("network %s not found in environment", networkSettings.Name)
 		}
 		networkSettings.URLs = env.URLs[networkSettings.Name]
+		networkSettings.HTTPURLs = env.URLs[networkSettings.Name+"_http"]
 	}
 
 	return ConnectEVMClient(networkSettings, logger)
