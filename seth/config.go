@@ -52,6 +52,7 @@ type Config struct {
 	RootKeyFundsBuffer            *int64            `toml:"root_key_funds_buffer"`
 	ABIDir                        string            `toml:"abi_dir"`
 	BINDir                        string            `toml:"bin_dir"`
+	GethWrappersDirs              []string          `toml:"geth_wrappers_dirs"`
 	ContractMapFile               string            `toml:"contract_map_file"`
 	SaveDeployedContractsMap      bool              `toml:"save_deployed_contracts_map"`
 	Network                       *Network          `toml:"network"`

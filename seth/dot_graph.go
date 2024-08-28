@@ -117,102 +117,7 @@ func (t *Tracer) generateDotGraph(txHash string, calls []*DecodedCall, revertErr
 
 		var callID int
 		_, exists := callHashToID[hash]
-		if !exists {
-			callID = nextID
-			nextID++
-			callHashToID[hash] = callID
-
-			basicNodeID := "node" + strconv.Itoa(callID) + "_basic"
-			extraNodeID := "node" + strconv.Itoa(callID) + "_extra"
-
-			var from, to string
-			if call.From != "" && call.From != UNKNOWN {
-				from = call.From
-			} else {
-				from = call.FromAddress
-			}
-
-			if call.To != "" && call.To != UNKNOWN {
-				to = call.To
-			} else {
-				to = call.ToAddress
-			}
-
-			basicLabel := fmt.Sprintf("\"%s -> %s\n %s\"", from, to, call.CommonData.Method)
-			extraLabel := fmt.Sprintf("\"Inputs: %s\nOutputs: %s\"", formatMapForLabel(call.CommonData.Input, defaultTruncateTo), formatMapForLabel(call.CommonData.Output, defaultTruncateTo))
-
-			isMajorNode := false
-			for _, path := range shortestPath {
-				if path == call.Signature {
-					isMajorNode = true
-					break
-				}
-			}
-
-			style := "filled"
-			nodeColor := "darkslategray"
-			fontSize := "14.0"
-			if !isMajorNode {
-				style = "dashed"
-				fontSize = "9.0"
-				nodeColor = "lightslategray"
-			}
-
-			var subgraphAttrs map[string]string
-			subgraphAttrs = map[string]string{"color": "darkslategray"}
-			if call.Error != "" {
-				subgraphAttrs = map[string]string{"color": "lightcoral"}
-				nodeColor = "lightcoral"
-			}
-
-			if err := g.AddNode("G", basicNodeID, map[string]string{"label": basicLabel, "shape": "box", "style": style, "fillcolor": "ivory", "color": nodeColor, "fontcolor": "darkslategray", "fontsize": fontSize, "tooltip": formatTooltip(call)}); err != nil {
-				return fmt.Errorf("failed to add node: %w", err)
-			}
-			if err := g.AddNode("G", extraNodeID, map[string]string{"label": extraLabel, "shape": "box", "style": style, "fillcolor": "gainsboro", "color": nodeColor, "fontcolor": "darkslategray", "fontsize": fontSize}); err != nil {
-				return fmt.Errorf("failed to add node: %w", err)
-			}
-
-			subGraphName := "cluster_" + strconv.Itoa(callID)
-			if err := g.AddSubGraph("G", subGraphName, subgraphAttrs); err != nil {
-				return fmt.Errorf("failed to add node: %w", err)
-			}
-
-			if err := g.AddNode(subGraphName, basicNodeID, nil); err != nil {
-				return fmt.Errorf("failed to add node: %w", err)
-			}
-			if err := g.AddNode(subGraphName, extraNodeID, map[string]string{"rank": "same"}); err != nil {
-				return fmt.Errorf("failed to add node: %w", err)
-			}
-
-			if idx == 0 {
-				if err := g.AddEdge("start", basicNodeID, true, nil); err != nil {
-					return fmt.Errorf("failed to add edge: %w", err)
-				}
-			}
-
-			if call.CommonData.ParentSignature != "" {
-				for _, parentCall := range calls {
-					if parentCall.CommonData.Signature == call.CommonData.ParentSignature {
-						parentHash := hashCall(parentCall)
-						parentID := callHashToID[parentHash]
-						parentBasicNodeID := "node" + strconv.Itoa(parentID) + "_basic"
-						attrs := map[string]string{"fontsize": fontSize, "label": fmt.Sprintf(" \"(%s)\"", ordinalNumber(idx))}
-						if call.Error != "" {
-							attrs["color"] = "lightcoral"
-							attrs["fontcolor"] = "lightcoral"
-						} else {
-							attrs["color"] = "darkslategray"
-							attrs["fontcolor"] = "darkslategray"
-						}
-
-						if err := g.AddEdge(parentBasicNodeID, basicNodeID, true, attrs); err != nil {
-							return fmt.Errorf("failed to add edge: %w", err)
-						}
-						break
-					}
-				}
-			}
-		} else {
+		if exists {
 			// This could be also valid if the same call is present twice in the trace, but in typical scenarios that should not happen
 			L.Warn().Msg("The same call was present twice. This should not happen and might indicate a bug in the tracer. Check debug log for details")
 			marshalled, err := json.Marshal(call)
@@ -220,6 +125,102 @@ func (t *Tracer) generateDotGraph(txHash string, calls []*DecodedCall, revertErr
 				L.Debug().Msgf("Call: %v", marshalled)
 			}
 			continue
+
+		}
+
+		callID = nextID
+		nextID++
+		callHashToID[hash] = callID
+
+		basicNodeID := "node" + strconv.Itoa(callID) + "_basic"
+		extraNodeID := "node" + strconv.Itoa(callID) + "_extra"
+
+		var from, to string
+		if call.From != "" && call.From != UNKNOWN {
+			from = call.From
+		} else {
+			from = call.FromAddress
+		}
+
+		if call.To != "" && call.To != UNKNOWN {
+			to = call.To
+		} else {
+			to = call.ToAddress
+		}
+
+		basicLabel := fmt.Sprintf("\"%s -> %s\n %s\"", from, to, call.CommonData.Method)
+		extraLabel := fmt.Sprintf("\"Inputs: %s\nOutputs: %s\"", formatMapForLabel(call.CommonData.Input, defaultTruncateTo), formatMapForLabel(call.CommonData.Output, defaultTruncateTo))
+
+		isMajorNode := false
+		for _, path := range shortestPath {
+			if path == call.Signature {
+				isMajorNode = true
+				break
+			}
+		}
+
+		style := "filled"
+		nodeColor := "darkslategray"
+		fontSize := "14.0"
+		if !isMajorNode {
+			style = "dashed"
+			fontSize = "9.0"
+			nodeColor = "lightslategray"
+		}
+
+		var subgraphAttrs map[string]string
+		subgraphAttrs = map[string]string{"color": "darkslategray"}
+		if call.Error != "" {
+			subgraphAttrs = map[string]string{"color": "lightcoral"}
+			nodeColor = "lightcoral"
+		}
+
+		if err := g.AddNode("G", basicNodeID, map[string]string{"label": basicLabel, "shape": "box", "style": style, "fillcolor": "ivory", "color": nodeColor, "fontcolor": "darkslategray", "fontsize": fontSize, "tooltip": formatTooltip(call)}); err != nil {
+			return fmt.Errorf("failed to add node: %w", err)
+		}
+		if err := g.AddNode("G", extraNodeID, map[string]string{"label": extraLabel, "shape": "box", "style": style, "fillcolor": "gainsboro", "color": nodeColor, "fontcolor": "darkslategray", "fontsize": fontSize}); err != nil {
+			return fmt.Errorf("failed to add node: %w", err)
+		}
+
+		subGraphName := "cluster_" + strconv.Itoa(callID)
+		if err := g.AddSubGraph("G", subGraphName, subgraphAttrs); err != nil {
+			return fmt.Errorf("failed to add node: %w", err)
+		}
+
+		if err := g.AddNode(subGraphName, basicNodeID, nil); err != nil {
+			return fmt.Errorf("failed to add node: %w", err)
+		}
+		if err := g.AddNode(subGraphName, extraNodeID, map[string]string{"rank": "same"}); err != nil {
+			return fmt.Errorf("failed to add node: %w", err)
+		}
+
+		if idx == 0 {
+			if err := g.AddEdge("start", basicNodeID, true, nil); err != nil {
+				return fmt.Errorf("failed to add edge: %w", err)
+			}
+		}
+
+		if call.CommonData.ParentSignature != "" {
+			for _, parentCall := range calls {
+				if parentCall.CommonData.Signature == call.CommonData.ParentSignature {
+					parentHash := hashCall(parentCall)
+					parentID := callHashToID[parentHash]
+					parentBasicNodeID := "node" + strconv.Itoa(parentID) + "_basic"
+					attrs := map[string]string{"fontsize": fontSize, "label": fmt.Sprintf(" \"(%s)\"", ordinalNumber(idx))}
+					if call.Error != "" {
+						attrs["color"] = "lightcoral"
+						attrs["fontcolor"] = "lightcoral"
+					} else {
+						attrs["color"] = "darkslategray"
+						attrs["fontcolor"] = "darkslategray"
+					}
+
+					if err := g.AddEdge(parentBasicNodeID, basicNodeID, true, attrs); err != nil {
+						return fmt.Errorf("failed to add edge: %w", err)
+					}
+					break
+				}
+			}
 		}
 	}
 

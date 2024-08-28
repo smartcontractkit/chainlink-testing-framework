@@ -24,7 +24,7 @@ linters-settings:
   exhaustive:
     default-signifies-exhaustive: true
   goimports:
-    local-prefixes: github.com/smartcontractkit/chainlink-testing-framework
+    local-prefixes: github.com/smartcontractkit/chainlink-testing-framework/seth
   gosec:
     exclude-generated: true
   govet:
@@ -45,7 +45,7 @@ linters-settings:
       - name: error-naming
       - name: if-return
       - name: increment-decrement
-      # - name: var-naming
+#      - name: var-naming
       - name: var-declaration
       - name: package-comments
       - name: range
@@ -57,7 +57,7 @@ linters-settings:
       - name: exported
       - name: empty-block
       - name: superfluous-else
-      # - name: unused-parameter
+      - name: unused-parameter
       - name: unreachable-code
       - name: redefines-builtin-id
       - name: waitgroup-by-value
@@ -71,22 +71,16 @@ linters-settings:
       - name: modifies-parameter
       - name: identical-branches
       - name: get-return
-      # - name: flag-parameter
-      # - name: early-return
+      - name: flag-parameter
+      - name: early-return
       - name: defer
       - name: constant-logical-expr
-      # - name: confusing-naming
-      # - name: confusing-results
+      - name: confusing-naming
+#      - name: confusing-results
       - name: bool-literal-in-expr
       - name: atomic
 issues:
   exclude-dirs:
-    - contracts/ethereum
-    - examples
-    - imports
-    - wasp/examples/*
-    - seth/examples_wasp/*
-    - k8s
-    - seth/contracts
-    - seth/examples
-    - seth/examples_wasp
+    - contracts/*
+    - examples/*
+    - examples_wasp/*
