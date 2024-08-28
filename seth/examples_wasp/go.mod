@@ -1,4 +1,4 @@
-module github.com/smartcontractkit/seth-wasp-test
+module github.com/smartcontractkit/chainlink-testing-framework/seth-wasp-test
 
 go 1.22.5
 

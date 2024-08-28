@@ -1,4 +1,4 @@
-module github.com/smartcontractkit/wasp-tests
+module github.com/smartcontractkit/chainlink-testing-framework/wasp-tests
 
 go 1.21
 
