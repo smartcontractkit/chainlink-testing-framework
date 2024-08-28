@@ -42,7 +42,7 @@ require (
 	go.uber.org/zap v1.26.0
 	golang.org/x/net v0.25.0
 	golang.org/x/oauth2 v0.15.0
-	golang.org/x/sync v0.7.0
+	golang.org/x/sync v0.8.0
 	golang.org/x/text v0.16.0
 	k8s.io/api v0.28.2
 	k8s.io/apimachinery v0.28.2
