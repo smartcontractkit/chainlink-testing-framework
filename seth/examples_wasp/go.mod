@@ -8,7 +8,7 @@ require (
 	github.com/ethereum/go-ethereum v1.13.8
 	github.com/pkg/errors v0.9.1
 	github.com/smartcontractkit/chainlink-testing-framework/seth v1.2.0
-	github.com/smartcontractkit/wasp v0.4.7-0.20240328221214-00cd8313cfd4
+	github.com/smartcontractkit/chainlink-testing-framework/wasp v0.4.9
 	github.com/stretchr/testify v1.9.0
 )
 
@@ -81,7 +81,7 @@ require (
 	github.com/go-resty/resty/v2 v2.14.0 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/gogo/googleapis v1.4.1 // indirect
-	github.com/gogo/protobuf v1.3.3 // indirect
+	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/gogo/status v1.1.1 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
@@ -222,7 +222,4 @@ require (
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
-replace (
-	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
-	github.com/smartcontractkit/chainlink-testing-framework/seth => ../
-)
+replace github.com/smartcontractkit/chainlink-testing-framework/seth => ../

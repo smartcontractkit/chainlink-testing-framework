@@ -16,7 +16,7 @@ import (
 	"github.com/avast/retry-go"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
-	"github.com/smartcontractkit/wasp"
+	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 	"github.com/testcontainers/testcontainers-go"
 	tc "github.com/testcontainers/testcontainers-go"
 
