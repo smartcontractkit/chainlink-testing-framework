@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/pelletier/go-toml/v2"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/utils/ptr"
 )
 
 func getTestBaseToml() string {
@@ -55,19 +55,17 @@ func TestAddNetworksConfigWithPyroscopeEnabled(t *testing.T) {
 	networkTOML := `
 	selected_networks = ["SIMULATED"]
 	`
-	peryscopeTOML := `
-	enabled = true
-	server_url = "pyroServer"
-	environment = "pyroEnv"
-	`
 
 	l := logging.GetTestLogger(t)
 	networkCfg := config.NetworkConfig{}
 	err := config.BytesToAnyTomlStruct(l, "test", "", &networkCfg, []byte(networkTOML))
 	require.NoError(t, err, "error reading network config")
 
-	pyroCfg, err := readPyroscopeConfig(peryscopeTOML)
-	require.NoError(t, err, "error reading pyroscope config")
+	pyroCfg := config.PyroscopeConfig{
+		Enabled:     ptr.Ptr(true),
+		ServerUrl:   ptr.Ptr("pyroServer"),
+		Environment: ptr.Ptr("pyroEnv"),
+	}
 
 	s := AddNetworksConfig(getTestBaseToml(), &pyroCfg, MustGetSelectedNetworkConfig(&networkCfg)[0])
 	require.Contains(t, s, "[[EVM.Nodes]]")
@@ -80,19 +78,17 @@ func TestAddNetworksConfigWithPyroscopeDisabled(t *testing.T) {
 	networkTOML := `
 	selected_networks = ["SIMULATED"]
 	`
-	peryscopeTOML := `
-	enabled = false
-	server_url = "pyroServer"
-	environment = "pyroEnv"
-	`
 
 	l := logging.GetTestLogger(t)
 	networkCfg := config.NetworkConfig{}
 	err := config.BytesToAnyTomlStruct(l, "test", "", &networkCfg, []byte(networkTOML))
 	require.NoError(t, err, "error reading network config")
 
-	pyroCfg, err := readPyroscopeConfig(peryscopeTOML)
-	require.NoError(t, err, "error reading pyroscope config")
+	pyroCfg := config.PyroscopeConfig{
+		Enabled:     ptr.Ptr(false),
+		ServerUrl:   ptr.Ptr("pyroServer"),
+		Environment: ptr.Ptr("pyroEnv"),
+	}
 
 	s := AddNetworksConfig(getTestBaseToml(), &pyroCfg, MustGetSelectedNetworkConfig(&networkCfg)[0])
 	require.Contains(t, s, "[[EVM.Nodes]]")
@@ -104,14 +100,4 @@ func TestAddSecretTomlConfig(t *testing.T) {
 	require.Contains(t, s, fmt.Sprintf("URL = '%s'", "url"))
 	require.Contains(t, s, fmt.Sprintf("Username = '%s'", "name"))
 	require.Contains(t, s, fmt.Sprintf("Password = '%s'", "pass"))
-}
-
-func readPyroscopeConfig(configDecoded string) (config.PyroscopeConfig, error) {
-	var cfg config.PyroscopeConfig
-	err := toml.Unmarshal([]byte(configDecoded), &cfg)
-	if err != nil {
-		return config.PyroscopeConfig{}, fmt.Errorf("error unmarshalling pyroscope config: %w", err)
-	}
-
-	return cfg, nil
 }
