@@ -28,8 +28,8 @@ require (
 	github.com/otiai10/copy v1.14.0
 	github.com/pelletier/go-toml/v2 v2.2.2
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.17.0
-	github.com/prometheus/common v0.45.0
+	github.com/prometheus/client_golang v1.20.2
+	github.com/prometheus/common v0.55.0
 	github.com/rs/zerolog v1.30.0
 	github.com/slack-go/slack v0.12.2
 	github.com/smartcontractkit/chainlink-testing-framework/seth v1.2.1-0.20240827112945-bd8c580392d6
@@ -40,8 +40,8 @@ require (
 	github.com/testcontainers/testcontainers-go v0.28.0
 	go.uber.org/atomic v1.11.0
 	go.uber.org/zap v1.26.0
-	golang.org/x/net v0.25.0
-	golang.org/x/oauth2 v0.15.0
+	golang.org/x/net v0.26.0
+	golang.org/x/oauth2 v0.21.0
 	golang.org/x/sync v0.7.0
 	golang.org/x/text v0.16.0
 	k8s.io/api v0.28.2
@@ -93,7 +93,7 @@ require (
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/cespare/cp v1.1.1 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
-	github.com/cespare/xxhash/v2 v2.2.0 // indirect
+	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/chai2010/gettext-go v1.0.2 // indirect
 	github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311 // indirect
 	github.com/cockroachdb/errors v1.9.1 // indirect
@@ -200,7 +200,7 @@ require (
 	github.com/jpillora/backoff v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/julienschmidt/httprouter v1.3.0 // indirect
-	github.com/klauspost/compress v1.17.8 // indirect
+	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.5 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
@@ -214,7 +214,6 @@ require (
 	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible // indirect
-	github.com/matttproud/golang_protobuf_extensions/v2 v2.0.0 // indirect
 	github.com/miekg/dns v1.1.56 // indirect
 	github.com/mitchellh/copystructure v1.0.0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
@@ -247,10 +246,10 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/prometheus/alertmanager v0.26.0 // indirect
-	github.com/prometheus/client_model v0.5.0 // indirect
+	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common/sigv4 v0.1.0 // indirect
 	github.com/prometheus/exporter-toolkit v0.10.1-0.20230714054209-2f4150c63f97 // indirect
-	github.com/prometheus/procfs v0.12.0 // indirect
+	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/prometheus/prometheus v0.47.2-0.20231010075449-4b9c19fe5510 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
@@ -303,12 +302,11 @@ require (
 	golang.org/x/time v0.6.0 // indirect
 	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
-	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto v0.0.0-20231002182017-d307bd883b97 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20231012201019-e917dd12ba7a // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231009173412-8bfb1ae86b6c // indirect
 	google.golang.org/grpc v1.59.0 // indirect
-	google.golang.org/protobuf v1.32.0 // indirect
+	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
