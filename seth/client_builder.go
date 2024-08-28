@@ -245,3 +245,8 @@ func (c *ClientBuilder) WithNonceManager(rateLimitSec int, retries uint, timeout
 func (c *ClientBuilder) Build() (*Client, error) {
 	return NewClientWithConfig(c.config)
 }
+
+// BuildConfig returns the config from the builder.
+func (c *ClientBuilder) BuildConfig() *Config {
+	return c.config
+}
