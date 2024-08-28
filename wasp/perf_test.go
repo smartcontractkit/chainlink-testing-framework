@@ -1,6 +1,7 @@
 package wasp
 
 import (
+	"github.com/grafana/pyroscope-go"
 	"testing"
 	"time"
 
@@ -13,8 +14,6 @@ import (
 
 	"fmt"
 	"net/http/httptest"
-
-	"github.com/pyroscope-io/client/pyroscope"
 )
 
 /* This tests can also be used as a performance validation of a tool itself or as a dashboard data filler */

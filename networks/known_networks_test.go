@@ -574,7 +574,6 @@ new_network = ["ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 		},
 	}
 	for _, tc := range testcases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			encoded := base64.StdEncoding.EncodeToString([]byte(tc.networkConfigTOML))
 			err := os.Setenv("BASE64_NETWORK_CONFIG", encoded)

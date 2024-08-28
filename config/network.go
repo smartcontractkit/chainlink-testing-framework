@@ -134,21 +134,21 @@ func (n *NetworkConfig) OverrideURLsAndKeysFromEVMNetwork() {
 		return
 	}
 	for name, evmNetwork := range n.EVMNetworks {
-		if evmNetwork.URLs != nil && len(evmNetwork.URLs) > 0 {
+		if len(evmNetwork.URLs) > 0 {
 			logging.L.Warn().Str("network", name).Msg("found URLs in EVMNetwork. overriding RPC URLs in RpcWsUrls with EVMNetwork URLs")
 			if n.RpcWsUrls == nil {
 				n.RpcWsUrls = make(map[string][]string)
 			}
 			n.RpcWsUrls[name] = evmNetwork.URLs
 		}
-		if evmNetwork.HTTPURLs != nil && len(evmNetwork.HTTPURLs) > 0 {
+		if len(evmNetwork.HTTPURLs) > 0 {
 			logging.L.Warn().Str("network", name).Msg("found HTTPURLs in EVMNetwork. overriding RPC URLs in RpcHttpUrls with EVMNetwork HTTP URLs")
 			if n.RpcHttpUrls == nil {
 				n.RpcHttpUrls = make(map[string][]string)
 			}
 			n.RpcHttpUrls[name] = evmNetwork.HTTPURLs
 		}
-		if evmNetwork.PrivateKeys != nil && len(evmNetwork.PrivateKeys) > 0 {
+		if len(evmNetwork.PrivateKeys) > 0 {
 			logging.L.Warn().Str("network", name).Msg("found PrivateKeys in EVMNetwork. overriding wallet keys in WalletKeys with EVMNetwork private keys")
 			if n.WalletKeys == nil {
 				n.WalletKeys = make(map[string][]string)
@@ -261,7 +261,7 @@ func (n *NetworkConfig) applyDefaults(defaults *NetworkConfig) error {
 		n.SelectedNetworks = defaults.SelectedNetworks
 	}
 	if defaults.EVMNetworks != nil {
-		if n.EVMNetworks == nil || len(n.EVMNetworks) == 0 {
+		if len(n.EVMNetworks) == 0 {
 			n.EVMNetworks = defaults.EVMNetworks
 		} else {
 			for network, cfg := range defaults.EVMNetworks {
@@ -272,7 +272,7 @@ func (n *NetworkConfig) applyDefaults(defaults *NetworkConfig) error {
 		}
 	}
 	if defaults.AnvilConfigs != nil {
-		if n.AnvilConfigs == nil || len(n.AnvilConfigs) == 0 {
+		if len(n.AnvilConfigs) == 0 {
 			n.AnvilConfigs = defaults.AnvilConfigs
 		} else {
 			for network, cfg := range defaults.AnvilConfigs {
@@ -283,7 +283,7 @@ func (n *NetworkConfig) applyDefaults(defaults *NetworkConfig) error {
 		}
 	}
 	if defaults.RpcHttpUrls != nil {
-		if n.RpcHttpUrls == nil || len(n.RpcHttpUrls) == 0 {
+		if len(n.RpcHttpUrls) == 0 {
 			n.RpcHttpUrls = defaults.RpcHttpUrls
 		} else {
 			for network, urls := range defaults.RpcHttpUrls {
@@ -294,7 +294,7 @@ func (n *NetworkConfig) applyDefaults(defaults *NetworkConfig) error {
 		}
 	}
 	if defaults.RpcWsUrls != nil {
-		if n.RpcWsUrls == nil || len(n.RpcWsUrls) == 0 {
+		if len(n.RpcWsUrls) == 0 {
 			n.RpcWsUrls = defaults.RpcWsUrls
 		} else {
 			for network, urls := range defaults.RpcWsUrls {
@@ -305,7 +305,7 @@ func (n *NetworkConfig) applyDefaults(defaults *NetworkConfig) error {
 		}
 	}
 	if defaults.WalletKeys != nil {
-		if n.WalletKeys == nil || len(n.WalletKeys) == 0 {
+		if len(n.WalletKeys) == 0 {
 			n.WalletKeys = defaults.WalletKeys
 		} else {
 

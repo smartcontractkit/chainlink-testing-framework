@@ -1058,8 +1058,6 @@ func (e *EthereumClient) WaitForEvents() error {
 	g := errgroup.Group{}
 
 	for subName, sub := range queuedEvents {
-		subName := subName
-		sub := sub
 		g.Go(func() error {
 			defer func() {
 				// if the subscription is complete, delete it from the queue
@@ -1729,7 +1727,6 @@ func (e *EthereumMultinodeClient) DeleteHeaderEventSubscription(key string) {
 func (e *EthereumMultinodeClient) WaitForEvents() error {
 	g := errgroup.Group{}
 	for _, c := range e.Clients {
-		c := c
 		g.Go(func() error {
 			return c.WaitForEvents()
 		})

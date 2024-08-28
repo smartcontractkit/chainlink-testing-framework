@@ -107,7 +107,6 @@ func NewClientWithAddresses(t *testing.T, addressCount int, funding *big.Int) *s
 	eg, egCtx := errgroup.WithContext(ctx)
 	// root key is element 0 in ephemeral
 	for _, addr := range addresses {
-		addr := addr
 		eg.Go(func() error {
 			return c.TransferETHFromKey(egCtx, 0, addr, funding, gasPrice)
 		})

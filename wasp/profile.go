@@ -84,7 +84,7 @@ func (m *Profile) printDashboardLink() {
 	if err != nil {
 		log.Warn().Msgf("could not get dashboard link: %s", err)
 	} else {
-		log.Info().Msgf("Dashboard URL: " + url)
+		log.Info().Msgf("Dashboard URL: %s", url)
 	}
 }
 

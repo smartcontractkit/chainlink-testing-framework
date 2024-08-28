@@ -73,7 +73,6 @@ func (cs *BlockStats) Stats(startBlock *big.Int, endBlock *big.Int) error {
 	blockMu := &sync.Mutex{}
 	eg := &errgroup.Group{}
 	for bn := startBlock.Int64(); bn < endBlock.Int64(); bn++ {
-		bn := bn
 		eg.Go(func() error {
 			cs.Limiter.Take()
 			block, err := cs.Client.Client.BlockByNumber(context.Background(), big.NewInt(bn))
