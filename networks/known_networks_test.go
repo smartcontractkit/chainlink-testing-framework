@@ -595,16 +595,15 @@ evm_default_gas_limit = 6000000
 				defer tc.cleanupFunc()
 			}
 
-			encoded := base64.StdEncoding.EncodeToString([]byte(tc.configOverrideTOML))
-			err := os.Setenv("BASE64_CONFIG_OVERRIDE", encoded)
-			require.NoError(t, err, "error setting env var")
-
+			// Read from test config override
 			cfg := &config.TestConfig{}
+			encoded := base64.StdEncoding.EncodeToString([]byte(tc.configOverrideTOML))
 			decoded, err := base64.StdEncoding.DecodeString(encoded)
 			require.NoError(t, err, "error decoding base64 config")
 			err = toml.Unmarshal(decoded, &cfg)
 			require.NoError(t, err, "error unmarshalling config")
 
+			// Read from config env vars (test secrets)
 			err = cfg.ReadFromEnvVar()
 			require.NoError(t, err, "error reading from env var")
 
