@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pelletier/go-toml/v2"
-
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 )
@@ -82,28 +80,6 @@ func (n NetworkConfig) IsSimulatedGethSelected() bool {
 		}
 	}
 	return false
-}
-
-func (n *NetworkConfig) applyDecoded(configDecoded string) error {
-	if configDecoded == "" {
-		return nil
-	}
-
-	var cfg NetworkConfig
-	err := toml.Unmarshal([]byte(configDecoded), &cfg)
-	if err != nil {
-		return fmt.Errorf("error unmarshalling network config: %w", err)
-	}
-
-	cfg.UpperCaseNetworkNames()
-
-	err = n.applyDefaults(&cfg)
-	if err != nil {
-		return fmt.Errorf("error applying overrides from decoded network config file to config: %w", err)
-	}
-	n.OverrideURLsAndKeysFromEVMNetwork()
-
-	return nil
 }
 
 // OverrideURLsAndKeysFromEVMNetwork applies the URLs and keys from the EVMNetworks to the NetworkConfig
@@ -217,72 +193,4 @@ func (n *NetworkConfig) UpperCaseNetworkNames() {
 	for i, network := range n.SelectedNetworks {
 		n.SelectedNetworks[i] = strings.ToUpper(network)
 	}
-}
-
-func (n *NetworkConfig) applyDefaults(defaults *NetworkConfig) error {
-	if defaults == nil {
-		return nil
-	}
-
-	if defaults.SelectedNetworks != nil {
-		n.SelectedNetworks = defaults.SelectedNetworks
-	}
-	if defaults.EVMNetworks != nil {
-		if n.EVMNetworks == nil || len(n.EVMNetworks) == 0 {
-			n.EVMNetworks = defaults.EVMNetworks
-		} else {
-			for network, cfg := range defaults.EVMNetworks {
-				if _, ok := n.EVMNetworks[network]; !ok {
-					n.EVMNetworks[network] = cfg
-				}
-			}
-		}
-	}
-	if defaults.AnvilConfigs != nil {
-		if n.AnvilConfigs == nil || len(n.AnvilConfigs) == 0 {
-			n.AnvilConfigs = defaults.AnvilConfigs
-		} else {
-			for network, cfg := range defaults.AnvilConfigs {
-				if _, ok := n.AnvilConfigs[network]; !ok {
-					n.AnvilConfigs[network] = cfg
-				}
-			}
-		}
-	}
-	if defaults.RpcHttpUrls != nil {
-		if n.RpcHttpUrls == nil || len(n.RpcHttpUrls) == 0 {
-			n.RpcHttpUrls = defaults.RpcHttpUrls
-		} else {
-			for network, urls := range defaults.RpcHttpUrls {
-				if _, ok := n.RpcHttpUrls[network]; !ok {
-					n.RpcHttpUrls[network] = urls
-				}
-			}
-		}
-	}
-	if defaults.RpcWsUrls != nil {
-		if n.RpcWsUrls == nil || len(n.RpcWsUrls) == 0 {
-			n.RpcWsUrls = defaults.RpcWsUrls
-		} else {
-			for network, urls := range defaults.RpcWsUrls {
-				if _, ok := n.RpcWsUrls[network]; !ok {
-					n.RpcWsUrls[network] = urls
-				}
-			}
-		}
-	}
-	if defaults.WalletKeys != nil {
-		if n.WalletKeys == nil || len(n.WalletKeys) == 0 {
-			n.WalletKeys = defaults.WalletKeys
-		} else {
-
-			for network, keys := range defaults.WalletKeys {
-				if _, ok := n.WalletKeys[network]; !ok {
-					n.WalletKeys[network] = keys
-				}
-			}
-		}
-	}
-
-	return nil
 }
