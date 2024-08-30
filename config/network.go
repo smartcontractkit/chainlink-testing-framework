@@ -11,10 +11,6 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 )
 
-const (
-	Base64NetworkConfigEnvVarName = "BASE64_NETWORK_CONFIG"
-)
-
 type AnvilConfig struct {
 	URL                *string                  `toml:"url,omitempty"`                   // Needed if you want to fork a network. URL is the URL of the node to fork from. Refer to https://book.getfoundry.sh/reference/anvil/#options
 	BlockNumber        *int64                   `toml:"block_number,omitempty"`          // Needed if fork URL is provided for forking. BlockNumber is the block number to fork from. Refer to https://book.getfoundry.sh/reference/anvil/#options
