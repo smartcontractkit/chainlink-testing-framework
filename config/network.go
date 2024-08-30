@@ -1,10 +1,8 @@
 package config
 
 import (
-	"encoding/base64"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/pelletier/go-toml/v2"
@@ -90,22 +88,6 @@ func (n NetworkConfig) IsSimulatedGethSelected() bool {
 	return false
 }
 
-func (n *NetworkConfig) applySecrets() error {
-	encodedEndpoints, isSet := os.LookupEnv(Base64NetworkConfigEnvVarName)
-	if !isSet {
-		return nil
-	}
-
-	logging.L.Warn().Msgf("%s is deprecated and will be removed soon. Use BASE64_CONFIG_OVERRIDE instead. For network secrets, use Test Secrets https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/config/README.md#test-secrets", Base64NetworkConfigEnvVarName)
-
-	err := n.applyBase64Encoded(encodedEndpoints)
-	if err != nil {
-		return fmt.Errorf("error reading network encoded endpoints: %w", err)
-	}
-
-	return nil
-}
-
 func (n *NetworkConfig) applyDecoded(configDecoded string) error {
 	if configDecoded == "" {
 		return nil
@@ -158,19 +140,6 @@ func (n *NetworkConfig) OverrideURLsAndKeysFromEVMNetwork() {
 			n.WalletKeys[name] = evmNetwork.PrivateKeys
 		}
 	}
-}
-
-func (n *NetworkConfig) applyBase64Encoded(configEncoded string) error {
-	if configEncoded == "" {
-		return nil
-	}
-
-	decoded, err := base64.StdEncoding.DecodeString(configEncoded)
-	if err != nil {
-		return err
-	}
-
-	return n.applyDecoded(string(decoded))
 }
 
 // Validate checks if all required fields are set, meaning that there must be at least
@@ -320,12 +289,4 @@ func (n *NetworkConfig) applyDefaults(defaults *NetworkConfig) error {
 	}
 
 	return nil
-}
-
-// Default applies default values to the network config after reading it
-// from BASE64_NETWORK_CONFIG env var. It will only fill in the gaps, not override
-// meaning that if you provided WS RPC endpoint in your network config, but not the
-// HTTP one, then only HTTP will be taken from default config (provided it's there)
-func (n *NetworkConfig) Default() error {
-	return n.applySecrets()
 }

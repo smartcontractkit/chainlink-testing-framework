@@ -179,10 +179,9 @@ func (c *TestConfig) readNetworkConfiguration() error {
 	if c.Network == nil {
 		c.Network = &ctf_config.NetworkConfig{}
 	}
-	err := c.Network.Default()
-	if err != nil {
-		return errors.Wrapf(err, "error reading default network config")
-	}
+
+	c.Network.UpperCaseNetworkNames()
+	c.Network.OverrideURLsAndKeysFromEVMNetwork()
 
 	// this is the only value we need to generate dynamically before starting a new simulated chain
 	if c.PrivateEthereumNetwork != nil && c.PrivateEthereumNetwork.EthereumChainConfig != nil {
