@@ -49,7 +49,7 @@ jobs:
       matrix:
         project:
           - name: lib
-            path: ./lib
+            path: ./lib/
           - name: gotestloghelper
             path: ./lib/tools/gotestloghelper/
           - name: k8s-test-runner
