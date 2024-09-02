@@ -3,7 +3,7 @@ module github.com/smartcontractkit/chainlink-testing-framework/tools/gotestloghe
 go 1.22.5
 
 require (
-	github.com/smartcontractkit/chainlink-testing-framework/lib v1.99.1
+	github.com/smartcontractkit/chainlink-testing-framework/lib v1.99.31.99.1
 	github.com/stretchr/testify v1.9.0
 )
 
