@@ -1,4 +1,4 @@
-module github.com/smartcontractkit/chainlink-testing-framework/tools/envresolve
+module github.com/smartcontractkit/chainlink-testing-framework/lib/tools/envresolve
 
 go 1.22.5
 
