@@ -3,5 +3,5 @@ ARG IMAGE_VERSION=latest
 FROM ${BASE_IMAGE}:${IMAGE_VERSION}
 COPY . testdir/
 WORKDIR /go/testdir
-RUN ./lib/k8s/scripts/buildTests
-ENTRYPOINT ["./lib/k8s/scripts/entrypoint"]
+RUN ./k8s/scripts/buildTests
+ENTRYPOINT ["./k8s/scripts/entrypoint"]
