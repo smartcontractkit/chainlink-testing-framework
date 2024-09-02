@@ -1,6 +1,6 @@
 module github.com/smartcontractkit/chainlink-testing-framework/havoc
 
-go 1.22.6
+go 1.22.5
 
 exclude github.com/chaos-mesh/chaos-mesh/api/v1alpha1 v0.0.0-20220226050744-799408773657
 

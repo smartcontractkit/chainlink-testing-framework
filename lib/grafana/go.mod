@@ -1,6 +1,6 @@
 module github.com/smartcontractkit/chainlink-testing-framework/lib/grafana
 
-go 1.21
+go 1.22.5
 
 require (
 	github.com/go-resty/resty/v2 v2.11.0

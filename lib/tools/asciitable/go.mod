@@ -1,6 +1,6 @@
 module github.com/smartcontractkit/chainlink-testing-framework/lib/tools/asciitable
 
-go 1.21.9
+go 1.22.5
 
 require github.com/stretchr/testify v1.9.0
 

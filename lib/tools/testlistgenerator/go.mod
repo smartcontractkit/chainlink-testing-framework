@@ -1,6 +1,6 @@
 module github.com/smartcontractkit/chainlink-testing-framework/lib/tools/testlistgenerator
 
-go 1.21.7
+go 1.22.5
 
 require (
 	github.com/spf13/cobra v1.8.0

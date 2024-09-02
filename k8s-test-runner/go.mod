@@ -1,6 +1,6 @@
 module github.com/smartcontractkit/chainlink-testing-framework/k8s-test-runner
 
-go 1.21
+go 1.22.5
 
 require (
 	github.com/BurntSushi/toml v1.3.2
