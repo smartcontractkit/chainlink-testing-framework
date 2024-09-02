@@ -314,7 +314,7 @@ func LoadSecretEnvsFromFiles() error {
 				logger.Debug().Msgf("No test secrets file found at %s", path)
 				continue
 			}
-			return errors.Wrapf(err, "error reading test secrets file at %s", path)
+			return fmt.Errorf("error reading test secrets file at %s", path)
 		}
 
 		// Set env vars from file only if they are not already set

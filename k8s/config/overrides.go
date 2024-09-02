@@ -105,10 +105,6 @@ const (
 	EnvBase64ConfigOverride             = "BASE64_CONFIG_OVERRIDE"
 	EnvBase64ConfigOverriderDescription = "Base64-encoded TOML config (should contain at least chainlink image and version)"
 	EnvBase64ConfigOverrideExample      = "W0NoYWlubGlua0ltYWdlXQppbWFnZT0icHVibGljLmVjci5hd3MvY2hhaW5saW5rL2NoYWlubGluayIKdmVyc2lvbj0iMi43LjEtYXV0b21hdGlvbi0yMDIzMTEyNyIKCltBdXRvbWF0aW9uXQpbQXV0b21hdGlvbi5HZW5lcmFsXQpkdXJhdGlvbj0yMDAK"
-
-	EnvBase64NetworkConfig            = "BASE64_NETWORK_CONFIG"
-	EnvBase64NetworkConfigDescription = "Base64-encoded TOML network config with default RPC/WS endpoints and private keys"
-	EnvBase64NetworkConfigExample     = "Nope :-)"
 )
 
 var (

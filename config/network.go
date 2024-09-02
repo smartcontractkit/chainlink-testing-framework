@@ -1,20 +1,12 @@
 package config
 
 import (
-	"encoding/base64"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
-
-	"github.com/pelletier/go-toml/v2"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
-)
-
-const (
-	Base64NetworkConfigEnvVarName = "BASE64_NETWORK_CONFIG"
 )
 
 type AnvilConfig struct {
@@ -90,42 +82,6 @@ func (n NetworkConfig) IsSimulatedGethSelected() bool {
 	return false
 }
 
-func (n *NetworkConfig) applySecrets() error {
-	encodedEndpoints, isSet := os.LookupEnv(Base64NetworkConfigEnvVarName)
-	if !isSet {
-		return nil
-	}
-
-	err := n.applyBase64Encoded(encodedEndpoints)
-	if err != nil {
-		return fmt.Errorf("error reading network encoded endpoints: %w", err)
-	}
-
-	return nil
-}
-
-func (n *NetworkConfig) applyDecoded(configDecoded string) error {
-	if configDecoded == "" {
-		return nil
-	}
-
-	var cfg NetworkConfig
-	err := toml.Unmarshal([]byte(configDecoded), &cfg)
-	if err != nil {
-		return fmt.Errorf("error unmarshalling network config: %w", err)
-	}
-
-	cfg.UpperCaseNetworkNames()
-
-	err = n.applyDefaults(&cfg)
-	if err != nil {
-		return fmt.Errorf("error applying overrides from decoded network config file to config: %w", err)
-	}
-	n.OverrideURLsAndKeysFromEVMNetwork()
-
-	return nil
-}
-
 // OverrideURLsAndKeysFromEVMNetwork applies the URLs and keys from the EVMNetworks to the NetworkConfig
 // it overrides the URLs and Keys present in RpcHttpUrls, RpcWsUrls and WalletKeys in the NetworkConfig
 // with the URLs and Keys provided in the EVMNetworks
@@ -156,19 +112,6 @@ func (n *NetworkConfig) OverrideURLsAndKeysFromEVMNetwork() {
 			n.WalletKeys[name] = evmNetwork.PrivateKeys
 		}
 	}
-}
-
-func (n *NetworkConfig) applyBase64Encoded(configEncoded string) error {
-	if configEncoded == "" {
-		return nil
-	}
-
-	decoded, err := base64.StdEncoding.DecodeString(configEncoded)
-	if err != nil {
-		return err
-	}
-
-	return n.applyDecoded(string(decoded))
 }
 
 // Validate checks if all required fields are set, meaning that there must be at least
@@ -250,80 +193,4 @@ func (n *NetworkConfig) UpperCaseNetworkNames() {
 	for i, network := range n.SelectedNetworks {
 		n.SelectedNetworks[i] = strings.ToUpper(network)
 	}
-}
-
-func (n *NetworkConfig) applyDefaults(defaults *NetworkConfig) error {
-	if defaults == nil {
-		return nil
-	}
-
-	if defaults.SelectedNetworks != nil {
-		n.SelectedNetworks = defaults.SelectedNetworks
-	}
-	if defaults.EVMNetworks != nil {
-		if n.EVMNetworks == nil || len(n.EVMNetworks) == 0 {
-			n.EVMNetworks = defaults.EVMNetworks
-		} else {
-			for network, cfg := range defaults.EVMNetworks {
-				if _, ok := n.EVMNetworks[network]; !ok {
-					n.EVMNetworks[network] = cfg
-				}
-			}
-		}
-	}
-	if defaults.AnvilConfigs != nil {
-		if n.AnvilConfigs == nil || len(n.AnvilConfigs) == 0 {
-			n.AnvilConfigs = defaults.AnvilConfigs
-		} else {
-			for network, cfg := range defaults.AnvilConfigs {
-				if _, ok := n.AnvilConfigs[network]; !ok {
-					n.AnvilConfigs[network] = cfg
-				}
-			}
-		}
-	}
-	if defaults.RpcHttpUrls != nil {
-		if n.RpcHttpUrls == nil || len(n.RpcHttpUrls) == 0 {
-			n.RpcHttpUrls = defaults.RpcHttpUrls
-		} else {
-			for network, urls := range defaults.RpcHttpUrls {
-				if _, ok := n.RpcHttpUrls[network]; !ok {
-					n.RpcHttpUrls[network] = urls
-				}
-			}
-		}
-	}
-	if defaults.RpcWsUrls != nil {
-		if n.RpcWsUrls == nil || len(n.RpcWsUrls) == 0 {
-			n.RpcWsUrls = defaults.RpcWsUrls
-		} else {
-			for network, urls := range defaults.RpcWsUrls {
-				if _, ok := n.RpcWsUrls[network]; !ok {
-					n.RpcWsUrls[network] = urls
-				}
-			}
-		}
-	}
-	if defaults.WalletKeys != nil {
-		if n.WalletKeys == nil || len(n.WalletKeys) == 0 {
-			n.WalletKeys = defaults.WalletKeys
-		} else {
-
-			for network, keys := range defaults.WalletKeys {
-				if _, ok := n.WalletKeys[network]; !ok {
-					n.WalletKeys[network] = keys
-				}
-			}
-		}
-	}
-
-	return nil
-}
-
-// Default applies default values to the network config after reading it
-// from BASE64_NETWORK_CONFIG env var. It will only fill in the gaps, not override
-// meaning that if you provided WS RPC endpoint in your network config, but not the
-// HTTP one, then only HTTP will be taken from default config (provided it's there)
-func (n *NetworkConfig) Default() error {
-	return n.applySecrets()
 }
