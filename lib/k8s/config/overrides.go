@@ -4,7 +4,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/imdario/mergo"
+	"dario.cat/mergo"
 )
 
 const (
