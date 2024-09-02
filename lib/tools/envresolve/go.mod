@@ -3,7 +3,7 @@ module github.com/smartcontractkit/chainlink-testing-framework/tools/envresolve
 go 1.22.5
 
 require (
-	github.com/smartcontractkit/chainlink-testing-framework v1.34.10
+	github.com/smartcontractkit/chainlink-testing-framework/lib v1.99.1
 	github.com/spf13/cobra v1.8.1
 )
 

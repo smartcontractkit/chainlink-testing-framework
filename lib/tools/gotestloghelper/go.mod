@@ -1,4 +1,4 @@
-module github.com/smartcontractkit/chainlink-testing-framework/tools/gotestloghelper
+module github.com/smartcontractkit/chainlink-testing-framework/lib/tools/gotestloghelper
 
 go 1.22.5
 

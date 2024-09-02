@@ -16,7 +16,6 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/common v0.45.0
 	github.com/rs/zerolog v1.30.0
-	github.com/smartcontractkit/chainlink-testing-framework/grafana v0.0.0-20240328204215-ac91f55f1449
 	github.com/stretchr/testify v1.8.4
 	go.uber.org/ratelimit v0.2.0
 	google.golang.org/grpc v1.59.0 // indirect
@@ -166,7 +165,10 @@ require (
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
-require github.com/grafana/pyroscope-go v1.1.2
+require (
+	github.com/grafana/pyroscope-go v1.1.2
+	github.com/smartcontractkit/chainlink-testing-framework/lib/grafana v0.1.0
+)
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.7.0 // indirect
@@ -200,7 +202,6 @@ require (
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8 // indirect
 	github.com/sercand/kuberesolver/v5 v5.1.1 // indirect
 	github.com/shopspring/decimal v1.2.0 // indirect
-	github.com/smartcontractkit/chainlink-testing-framework/lib/grafana v0.1.0 // indirect
 	github.com/sony/gobreaker v0.5.0 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect

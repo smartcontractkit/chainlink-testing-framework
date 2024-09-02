@@ -13,6 +13,8 @@ require (
 	github.com/barkimedes/go-deepcopy v0.0.0-20220514131651-17c30cfc62df
 	github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2 v2.7.5
 	github.com/chaos-mesh/chaos-mesh/api v0.0.0-20240709130330-9f4feec7553f
+	github.com/docker/docker v25.0.2+incompatible
+	github.com/docker/go-connections v0.5.0
 	github.com/ethereum/go-ethereum v1.13.8
 	github.com/go-resty/resty/v2 v2.11.0
 	github.com/google/go-github/v41 v41.0.0
@@ -23,16 +25,17 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/lib/pq v1.10.9
 	github.com/onsi/gomega v1.27.10
+	github.com/otiai10/copy v1.14.0
 	github.com/pelletier/go-toml/v2 v2.2.2
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.17.0
 	github.com/prometheus/common v0.45.0
 	github.com/rs/zerolog v1.30.0
 	github.com/slack-go/slack v0.12.2
-	github.com/smartcontractkit/chainlink-testing-framework v1.35.0
 	github.com/smartcontractkit/chainlink-testing-framework/seth v1.2.1-0.20240827112945-bd8c580392d6
 	github.com/smartcontractkit/chainlink-testing-framework/wasp v0.4.9
 	github.com/spf13/cobra v1.8.0
+	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.9.0
 	github.com/testcontainers/testcontainers-go v0.28.0
 	go.uber.org/atomic v1.11.0
@@ -46,13 +49,6 @@ require (
 	k8s.io/cli-runtime v0.28.2
 	k8s.io/client-go v0.28.2
 	k8s.io/kubectl v0.28.2
-)
-
-require (
-	github.com/docker/docker v25.0.2+incompatible // indirect
-	github.com/docker/go-connections v0.5.0 // indirect
-	github.com/otiai10/copy v1.14.0 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
 )
 
 require (
