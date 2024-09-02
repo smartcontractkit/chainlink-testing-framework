@@ -13,7 +13,7 @@ type LoggingConfig struct {
 	TestLogCollect         *bool            `toml:"test_log_collect,omitempty"`
 	ShowHTMLCoverageReport *bool            `toml:"show_html_coverage_report,omitempty"` // Show reports with go coverage data
 	RunId                  *string          `toml:"run_id,omitempty"`
-	Loki                   *LokiConfig      `toml:"Loki,omitempty"`
+	Loki                   *LokiConfig      `toml:"-"`
 	Grafana                *GrafanaConfig   `toml:"Grafana,omitempty"`
 	LogStream              *LogStreamConfig `toml:"LogStream,omitempty"`
 }
@@ -68,10 +68,10 @@ func (l *LogStreamConfig) Validate() error {
 }
 
 type LokiConfig struct {
-	TenantId    *string `toml:"tenant_id"`
-	Endpoint    *string `toml:"endpoint"`
-	BasicAuth   *string `toml:"basic_auth_secret"`
-	BearerToken *string `toml:"bearer_token_secret"`
+	TenantId    *string `toml:"-"`
+	Endpoint    *string `toml:"-"`
+	BasicAuth   *string `toml:"-"`
+	BearerToken *string `toml:"-"`
 }
 
 // Validate checks that the loki config is valid, which means that
@@ -93,7 +93,7 @@ type GrafanaConfig struct {
 	BaseUrl      *string `toml:"base_url"`
 	DashboardUrl *string `toml:"dashboard_url"`
 	DashboardUID *string `toml:"dashboard_uid"` // UID of the dashboard to put annotations on
-	BearerToken  *string `toml:"bearer_token_secret"`
+	BearerToken  *string `toml:"-"`
 }
 
 // Validate checks that the grafana config is valid, which means that

@@ -250,8 +250,6 @@ arbitrum_goerli = ["1810868fc221b9f50b5b3e0186d8a5f343f892e51ce12a9e818f936ec0b6
 new_network = ["ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"]
 ```
 
-It not only stores the configuration of selected networks and RPC endpoints and wallet keys, but via `Default()` method provides a way to read from env var `BASE64_NETWORK_CONFIG` a base64-ed configuration of RPC endpoints and wallet keys. This could prove useful in the CI, where we could store as a secret a default configuration of stable endpoints, so that when we run a test job all that we have to provide is the network name and nothing more as it's pretty tedious, especially for on-demand jobs, to have to pass the whole RPC/wallet configuration every time you run it.
-
 If in your product config you want to support case-insensitive network names and map keys remember to run `NetworkConfig.UpperCaseNetworkNames()` on your config before using it.
 
 ## Providing custom values in the CI
@@ -350,7 +348,7 @@ It's easy. All you need to do is:
 - Base64 it: `cat your.toml | base64`
 - Set the base64 result as `BASE64_CONFIG_OVERRIDE` environment variable.
 
-Both `BASE64_CONFIG_OVERRIDE` and `BASE64_NETWORK_CONFIG` will be automatically forwarded to k8s (as long as they are set and available to the test process), when creating the environment programmatically via `environment.New()`.
+`BASE64_CONFIG_OVERRIDE` will be automatically forwarded to k8s (as long as it is set and available to the test process), when creating the environment programmatically via `environment.New()`.
 
 Quick example:
 

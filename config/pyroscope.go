@@ -9,9 +9,9 @@ import (
 
 type PyroscopeConfig struct {
 	Enabled     *bool   `toml:"enabled"`
-	ServerUrl   *string `toml:"server_url"`
-	Key         *string `toml:"key_secret"`
-	Environment *string `toml:"environment"`
+	ServerUrl   *string `toml:"-"`
+	Key         *string `toml:"-"`
+	Environment *string `toml:"-"`
 }
 
 // Validate checks that the pyroscope config is valid, which means that
