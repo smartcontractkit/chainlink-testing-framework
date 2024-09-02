@@ -48,22 +48,22 @@ jobs:
       fail-fast: false
       matrix:
         project:
-          - name: root
-            path: ./
+          - name: lib
+            path: ./lib
           - name: gotestloghelper
-            path: ./tools/gotestloghelper/
+            path: ./lib/tools/gotestloghelper/
           - name: k8s-test-runner
             path: ./k8s-test-runner/
           - name: testlistgenerator
-            path: ./tools/testlistgenerator/
+            path: ./lib/tools/testlistgenerator/
           - name: ecrimagefetcher
-            path: ./tools/ecrimagefetcher/
+            path: ./lib/tools/ecrimagefetcher/
           - name: ghlatestreleasechecker
-            path: ./tools/ghlatestreleasechecker/
+            path: ./lib/tools/ghlatestreleasechecker/
           - name: asciitable
-            path: ./tools/asciitable/
+            path: ./lib/tools/asciitable/
           - name: workflowresultparser
-            path: ./tools/workflowresultparser/
+            path: ./lib/tools/workflowresultparser/
     steps:
       - name: Check out Code
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
