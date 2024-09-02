@@ -1,4 +1,4 @@
-module github.com/smartcontractkit/chainlink-testing-framework/lib/tools/ghsecrets
+module github.com/smartcontractkit/chainlink-testing-framework/tools/ghsecrets
 
 go 1.22.5
 

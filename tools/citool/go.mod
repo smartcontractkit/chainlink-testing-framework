@@ -1,4 +1,4 @@
-module github.com/smartcontractkit/chainlink-testing-framework/lib/tools/citool
+module github.com/smartcontractkit/chainlink-testing-framework/tools/citool
 
 go 1.22.5
 

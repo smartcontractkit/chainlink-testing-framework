@@ -1,4 +1,4 @@
-module github.com/smartcontractkit/chainlink-testing-framework/lib/tools/testlistgenerator
+module github.com/smartcontractkit/chainlink-testing-framework/tools/testlistgenerator
 
 go 1.22.5
 

@@ -1,4 +1,4 @@
-module github.com/smartcontractkit/chainlink-testing-framework/lib/tools/ghlatestreleasechecker
+module github.com/smartcontractkit/chainlink-testing-framework/tools/ghlatestreleasechecker
 
 go 1.22.5
 

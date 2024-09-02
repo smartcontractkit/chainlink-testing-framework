@@ -1,4 +1,4 @@
-module github.com/smartcontractkit/chainlink-testing-framework/lib/tools/ecrimagefetcher
+module github.com/smartcontractkit/chainlink-testing-framework/tools/ecrimagefetcher
 
 go 1.22.5
 

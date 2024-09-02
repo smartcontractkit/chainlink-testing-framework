@@ -1,4 +1,4 @@
-module github.com/smartcontractkit/chainlink-testing-framework/lib/tools/workflowresultparser
+module github.com/smartcontractkit/chainlink-testing-framework/tools/workflowresultparser
 
 go 1.22.5
 

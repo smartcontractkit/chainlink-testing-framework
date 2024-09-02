@@ -1,4 +1,4 @@
-module github.com/smartcontractkit/chainlink-testing-framework/lib/tools/asciitable
+module github.com/smartcontractkit/chainlink-testing-framework/tools/asciitable
 
 go 1.22.5
 
