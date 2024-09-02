@@ -43,7 +43,7 @@ jobs:
       - name: Build Test Runner
         uses: smartcontractkit/chainlink-github-actions/docker/build-push@e9d23319de92c8909bf1cec18015da16506df112 # v2.3.16
         with:
-          context: ./lib
+          context: .
           tags: ${{ env.ENV_JOB_IMAGE }}
           file: lib/k8s/Dockerfile
           build-args: |
