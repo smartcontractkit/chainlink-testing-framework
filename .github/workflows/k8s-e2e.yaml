@@ -41,8 +41,9 @@ jobs:
           ### test-base-image image tag for this test run :ship: => \`ci.${{ github.sha }}\`
           EOT
       - name: Build Test Runner
-        uses: smartcontractkit/chainlink-github-actions/docker/build-push@16bd16fe8e51d04999f9f3e14fd55b563e7718c7 # v2.3.16
+        uses: smartcontractkit/chainlink-github-actions/docker/build-push@61429dcdcb011c76812c7715fadd2b34d26f308c # v2.3.16
         with:
+          working-directory: ./lib
           context: ./lib
           tags: ${{ env.ENV_JOB_IMAGE }}
           file: lib/k8s/Dockerfile
