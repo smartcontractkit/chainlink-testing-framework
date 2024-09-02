@@ -1,8 +1,0 @@
-FROM public.ecr.aws/chainlink/goc:latest
-
-COPY . app/
-WORKDIR app/cmd
-RUN goc build -o service1 . --center http://goc:7777
-RUN chmod +x ../entrypoint.sh
-
-CMD ["../entrypoint.sh"]
