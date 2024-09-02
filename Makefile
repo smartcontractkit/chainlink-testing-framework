@@ -71,10 +71,10 @@ docker_prune:
 	docker volume prune -f
 
 test_unit: go_mod
-	go test -timeout 5m -json -cover -covermode=count -coverprofile=unit-test-coverage.out $(shell go list ./... | grep -v /k8s/e2e/ | grep -v /k8s/examples/ | grep -v /docker/test_env) 2>&1 | tee /tmp/gotest.log | gotestloghelper -ci
+	cd lib && go test -timeout 5m -json -cover -covermode=count -coverprofile=unit-test-coverage.out $(shell go list ./... | grep -v /lib/k8s/e2e/ | grep -v /lib/k8s/examples/ | grep -v /docker/test_env) 2>&1 | tee /tmp/gotest.log | gotestloghelper -ci
 
 test_docker: go_mod
-	go test -timeout 20m -json -failfast -parallel 3 -cover -covermode=atomic -coverprofile=unit-test-coverage.out ./docker/test_env 2>&1 | tee /tmp/gotest.log | gotestloghelper -ci
+	cd lib && go test -timeout 20m -json -failfast -parallel 3 -cover -covermode=atomic -coverprofile=unit-test-coverage.out ./docker/test_env 2>&1 | tee /tmp/gotest.log | gotestloghelper -ci
 
 
 #######################
@@ -82,7 +82,7 @@ test_docker: go_mod
 #######################
 .PHONY: create_cluster
 create_cluster:
-	k3d cluster create local --config ./k8s/k3d.yaml
+	k3d cluster create local --config ./lib/k8s/k3d.yaml
 
 .PHONY: start_cluster
 start_cluster:
@@ -110,38 +110,38 @@ uninstall_monitoring:
 
 .PHONY: build_test_base_image
 build_k8s_test_base_image:
-	./k8s/scripts/buildBaseImage "$(tag)"
+	./lib/k8s/scripts/buildBaseImage "$(tag)"
 
 .PHONY: build_test_image
 build_k8s_test_image:
-	./k8s/scripts/buildTestImage "$(tag)" "$(base_tag)"
+	./lib/k8s/scripts/buildTestImage "$(tag)" "$(base_tag)"
 
 k8s_test:
-	go test -race ./k8s/config -count 1 -v
+	go test -race ./lib/k8s/config -count 1 -v
 
 k8s_test_e2e:
-	go test ./k8s/e2e/local-runner -count 1 -test.parallel=12 -v $(args)
+	go test ./lib/k8s/e2e/local-runner -count 1 -test.parallel=12 -v $(args)
 
 k8s_test_e2e_ci: go_mod
-	go test ./k8s/e2e/local-runner -count 1 -test.parallel=14 -test.timeout=1h -json 2>&1 | tee /tmp/gotest.log | gotestloghelper -ci -singlepackage
+	go test ./lib/k8s/e2e/local-runner -count 1 -test.parallel=14 -test.timeout=1h -json 2>&1 | tee /tmp/gotest.log | gotestloghelper -ci -singlepackage
 
 k8s_test_e2e_ci_remote_runner: go_mod
-	go test ./k8s/e2e/remote-runner -count 1 -test.parallel=20 -test.timeout=1h -json 2>&1 | tee /tmp/remoterunnergotest.log | gotestloghelper -ci -singlepackage
+	go test ./lib/k8s/e2e/remote-runner -count 1 -test.parallel=20 -test.timeout=1h -json 2>&1 | tee /tmp/remoterunnergotest.log | gotestloghelper -ci -singlepackage
 
 .PHONY: examples
 examples:
-	go run k8s/cmd/test.go
+	go run lib/k8s/cmd/test.go
 
 .PHONY: chaosmesh
 chaosmesh: ## there is currently a bug on JS side to import all CRDs from one yaml file, also a bug with stdin, so using cluster directly trough file
-	kubectl get crd networkchaos.chaos-mesh.org -o json > tmp.json && cdk8s import -o k8s/imports/k8s/networkchaos tmp.json
-	kubectl get crd stresschaos.chaos-mesh.org -o json > tmp.json && cdk8s import -o k8s/imports/k8s/stresschaos tmp.json
-	kubectl get crd timechaos.chaos-mesh.org -o json > tmp.json && cdk8s import -o k8s/imports/k8s/timechaos tmp.json
-	kubectl get crd podchaos.chaos-mesh.org -o json > tmp.json && cdk8s import -o k8s/imports/k8s/podchaos tmp.json
-	kubectl get crd podiochaos.chaos-mesh.org -o json > tmp.json && cdk8s import -o k8s/imports/k8s/podiochaos tmp.json
-	kubectl get crd httpchaos.chaos-mesh.org -o json > tmp.json && cdk8s import -o k8s/imports/k8s/httpchaos tmp.json
-	kubectl get crd iochaos.chaos-mesh.org -o json > tmp.json && cdk8s import -o k8s/imports/k8s/iochaos tmp.json
-	kubectl get crd podnetworkchaos.chaos-mesh.org -o json > tmp.json && cdk8s import -o k8s/imports/k8s/podnetworkchaos tmp.json
+	kubectl get crd networkchaos.chaos-mesh.org -o json > tmp.json && cdk8s import -o lib/k8s/imports/k8s/networkchaos tmp.json
+	kubectl get crd stresschaos.chaos-mesh.org -o json > tmp.json && cdk8s import -o lib/k8s/imports/k8s/stresschaos tmp.json
+	kubectl get crd timechaos.chaos-mesh.org -o json > tmp.json && cdk8s import -o lib/k8s/imports/k8s/timechaos tmp.json
+	kubectl get crd podchaos.chaos-mesh.org -o json > tmp.json && cdk8s import -o lib/k8s/imports/k8s/podchaos tmp.json
+	kubectl get crd podiochaos.chaos-mesh.org -o json > tmp.json && cdk8s import -o lib/k8s/imports/k8s/podiochaos tmp.json
+	kubectl get crd httpchaos.chaos-mesh.org -o json > tmp.json && cdk8s import -o lib/k8s/imports/k8s/httpchaos tmp.json
+	kubectl get crd iochaos.chaos-mesh.org -o json > tmp.json && cdk8s import -o lib/k8s/imports/k8s/iochaos tmp.json
+	kubectl get crd podnetworkchaos.chaos-mesh.org -o json > tmp.json && cdk8s import -o lib/k8s/imports/k8s/podnetworkchaos tmp.json
 	rm -rf tmp.json
 
 .PHONY: tools_build
