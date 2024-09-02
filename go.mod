@@ -33,7 +33,7 @@ require (
 	github.com/rs/zerolog v1.30.0
 	github.com/slack-go/slack v0.12.2
 	github.com/smartcontractkit/chainlink-testing-framework/seth v1.2.1-0.20240827112945-bd8c580392d6
-	github.com/smartcontractkit/wasp v0.4.8-0.20240826201742-8c8d2e49efb0
+	github.com/smartcontractkit/chainlink-testing-framework/wasp v0.4.9
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.9.0

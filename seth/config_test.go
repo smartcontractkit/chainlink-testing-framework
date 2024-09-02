@@ -67,9 +67,11 @@ func TestConfig_MaximalBuilder(t *testing.T) {
 		// tracing
 		WithTracing(seth.TracingLevel_All, []string{seth.TraceOutput_Console}).
 		// protections
-		WithProtections(true, true).
+		WithProtections(true, true, seth.MustMakeDuration(2*time.Minute)).
 		// artifacts folder
 		WithArtifactsFolder("some_folder").
+		// geth wrappers folders
+		WithGethWrappersFolders([]string{"./contracts/bind"}).
 		// nonce manager
 		WithNonceManager(10, 3, 60, 5).
 		Build()

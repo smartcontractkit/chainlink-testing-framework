@@ -1517,7 +1517,7 @@ func TestTraceContractTracingClientInitialisesTracerIfTracingIsEnabled(t *testin
 	cfg, err := test_utils.CopyConfig(TestEnv.Client.Cfg)
 	require.NoError(t, err, "failed to copy config")
 
-	as, err := seth.NewContractStore(filepath.Join(cfg.ConfigDir, cfg.ABIDir), filepath.Join(cfg.ConfigDir, cfg.BINDir))
+	as, err := seth.NewContractStore(filepath.Join(cfg.ConfigDir, cfg.ABIDir), filepath.Join(cfg.ConfigDir, cfg.BINDir), nil)
 	require.NoError(t, err, "failed to create contract store")
 
 	nm, err := seth.NewNonceManager(cfg, TestEnv.Client.Addresses, TestEnv.Client.PrivateKeys)
@@ -1567,7 +1567,7 @@ func TestTraceContractTracingSaveToJson(t *testing.T) {
 	cfg, err := test_utils.CopyConfig(TestEnv.Client.Cfg)
 	require.NoError(t, err, "failed to copy config")
 
-	as, err := seth.NewContractStore(filepath.Join(cfg.ConfigDir, cfg.ABIDir), filepath.Join(cfg.ConfigDir, cfg.BINDir))
+	as, err := seth.NewContractStore(filepath.Join(cfg.ConfigDir, cfg.ABIDir), filepath.Join(cfg.ConfigDir, cfg.BINDir), nil)
 	require.NoError(t, err, "failed to create contract store")
 
 	nm, err := seth.NewNonceManager(cfg, TestEnv.Client.Addresses, TestEnv.Client.PrivateKeys)
