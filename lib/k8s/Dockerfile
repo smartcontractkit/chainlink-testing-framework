@@ -4,4 +4,4 @@ FROM ${BASE_IMAGE}:${IMAGE_VERSION}
 COPY . testdir/
 WORKDIR /go/testdir
 RUN ./lib/k8s/scripts/buildTests
-ENTRYPOINT ["./k8s/scripts/entrypoint"]
+ENTRYPOINT ["./lib/k8s/scripts/entrypoint"]

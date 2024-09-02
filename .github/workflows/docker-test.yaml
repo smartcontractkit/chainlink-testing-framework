@@ -31,7 +31,7 @@ jobs:
           cache_key_id: ctf-go
           cache_restore_only: 'false'
       - name: Install gotestloghelper
-        run: make gotestloghelper_build
+        run: cd lib && make gotestloghelper_build
       - name: Run Tests
         run: |
           PATH=$PATH:$(go env GOPATH)/bin
