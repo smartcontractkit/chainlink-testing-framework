@@ -16,23 +16,23 @@ func (c *client) getConcurrency() int {
 	return 1
 }
 
-func (c *client) deployContractConfigurableFromKey(_ int, _ contractConfiguration) (ContractIntstance, error) {
-	return ContractIntstance{}, nil
+func (c *client) deployContractConfigurableFromKey(_ int, _ contractConfiguration) (ContractInstance, error) {
+	return ContractInstance{}, nil
 }
 
-func (c *client) deployContractFromKey(_ int) (ContractIntstance, error) {
-	return ContractIntstance{}, nil
+func (c *client) deployContractFromKey(_ int) (ContractInstance, error) {
+	return ContractInstance{}, nil
 }
 
-type ContractIntstance struct{}
+type ContractInstance struct{}
 
 type contractConfiguration struct{}
 
 type contractResult struct {
-	instance ContractIntstance
+	instance ContractInstance
 }
 
-func (k contractResult) GetResult() ContractIntstance {
+func (k contractResult) GetResult() ContractInstance {
 	return k.instance
 }
 
@@ -43,10 +43,10 @@ func TestExampleContractsWithConfiguration(t *testing.T) {
 }
 
 // DeployContractsWithConfiguration shows a very simplified method that deploys concurrently contract instances with given configurations
-func DeployContractsWithConfiguration(client *client, contractConfigs []contractConfiguration) ([]ContractIntstance, error) {
+func DeployContractsWithConfiguration(client *client, contractConfigs []contractConfiguration) ([]ContractInstance, error) {
 	l := logging.GetTestLogger(nil)
 
-	executor := concurrency.NewConcurrentExecutor[ContractIntstance, contractResult, contractConfiguration](l)
+	executor := concurrency.NewConcurrentExecutor[ContractInstance, contractResult, contractConfiguration](l)
 
 	var deployContractFn = func(channel chan contractResult, errorCh chan error, executorNum int, payload contractConfiguration) {
 		keyNum := executorNum + 1 // key 0 is the root key
@@ -62,11 +62,11 @@ func DeployContractsWithConfiguration(client *client, contractConfigs []contract
 
 	results, err := executor.Execute(client.getConcurrency(), contractConfigs, deployContractFn)
 	if err != nil {
-		return []ContractIntstance{}, err
+		return []ContractInstance{}, err
 	}
 
 	if len(results) != len(contractConfigs) {
-		return []ContractIntstance{}, fmt.Errorf("expected %v results, got %v", len(contractConfigs), len(results))
+		return []ContractInstance{}, fmt.Errorf("expected %v results, got %v", len(contractConfigs), len(results))
 	}
 
 	return results, nil
@@ -80,10 +80,10 @@ func TestExampleContractsWithoutConfiguration(t *testing.T) {
 
 // DeployIdenticalContracts shows a very simplified method that deploys concurrently identical contract instances
 // which require no configuration, just need to be executed N amount of times
-func DeployIdenticalContracts(client *client, numberOfContracts int) ([]ContractIntstance, error) {
+func DeployIdenticalContracts(client *client, numberOfContracts int) ([]ContractInstance, error) {
 	l := logging.GetTestLogger(nil)
 
-	executor := concurrency.NewConcurrentExecutor[ContractIntstance, contractResult, concurrency.NoTaskType](l)
+	executor := concurrency.NewConcurrentExecutor[ContractInstance, contractResult, concurrency.NoTaskType](l)
 
 	var deployContractFn = func(channel chan contractResult, errorCh chan error, executorNum int) {
 		keyNum := executorNum + 1 // key 0 is the root key
@@ -99,11 +99,11 @@ func DeployIdenticalContracts(client *client, numberOfContracts int) ([]Contract
 
 	results, err := executor.ExecuteSimple(client.getConcurrency(), numberOfContracts, deployContractFn)
 	if err != nil {
-		return []ContractIntstance{}, err
+		return []ContractInstance{}, err
 	}
 
 	if len(results) != numberOfContracts {
-		return []ContractIntstance{}, fmt.Errorf("expected %v results, got %v", numberOfContracts, len(results))
+		return []ContractInstance{}, fmt.Errorf("expected %v results, got %v", numberOfContracts, len(results))
 	}
 
 	return results, nil
