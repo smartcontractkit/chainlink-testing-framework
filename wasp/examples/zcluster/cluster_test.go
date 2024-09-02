@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/wasp"
 	"github.com/stretchr/testify/require"
 	"os"
 	"testing"

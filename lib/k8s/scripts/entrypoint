@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+# Runs compiled go executables and specifies the test to run
+
+set -ex
+
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
+
+cd "$SCRIPT_DIR"/../ || exit 1
+
+# shellcheck disable=SC2086
+./${SUITE}.test -test.v -test.count 1 -test.timeout 1h -test.run ^${TEST_NAME}$

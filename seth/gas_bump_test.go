@@ -8,10 +8,10 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/seth"
-	link_token "github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/link"
-	"github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/link_token_interface"
-	"github.com/smartcontractkit/chainlink-testing-framework/seth/test_utils"
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/seth"
+	link_token "github.com/smartcontractkit/chainlink-testing-framework/lib/seth/contracts/bind/link"
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/seth/contracts/bind/link_token_interface"
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/seth/test_utils"
 )
 
 var oneEth = big.NewInt(1000000000000000000)

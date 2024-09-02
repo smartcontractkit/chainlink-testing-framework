@@ -15,7 +15,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/seth"
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/seth"
 )
 
 const (

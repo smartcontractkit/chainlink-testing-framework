@@ -10,8 +10,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/seth"
-	network_sub_contract "github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/sub"
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/seth"
+	network_sub_contract "github.com/smartcontractkit/chainlink-testing-framework/lib/seth/contracts/bind/sub"
 )
 
 func TestUtilDecodePragmaVersion(t *testing.T) {

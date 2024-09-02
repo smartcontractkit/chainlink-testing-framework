@@ -7,8 +7,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/seth"
-	sethcmd "github.com/smartcontractkit/chainlink-testing-framework/seth/cmd"
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/seth"
+	sethcmd "github.com/smartcontractkit/chainlink-testing-framework/lib/seth/cmd"
 )
 
 func TestCLITracing(t *testing.T) {

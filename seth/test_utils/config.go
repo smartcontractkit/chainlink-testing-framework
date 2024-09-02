@@ -3,7 +3,7 @@ package test_utils
 import (
 	"github.com/pelletier/go-toml/v2"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/seth"
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/seth"
 )
 
 // CopyConfig creates a deep copy of Seth config

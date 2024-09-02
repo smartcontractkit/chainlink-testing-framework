@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/seth"
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/seth"
 )
 
 var zero int64

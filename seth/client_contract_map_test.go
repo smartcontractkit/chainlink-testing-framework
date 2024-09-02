@@ -9,8 +9,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/seth"
-	"github.com/smartcontractkit/chainlink-testing-framework/seth/test_utils"
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/seth"
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/seth/test_utils"
 )
 
 func TestContractMapSavesDeployedContractsToFileAndReadsThem(t *testing.T) {
