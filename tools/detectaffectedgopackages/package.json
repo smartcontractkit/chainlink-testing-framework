@@ -1,0 +1,5 @@
+{
+  "name": "detectaffectedgopackages",
+  "description": "Tool to detect affected go packages based on git diff for project",
+  "version": "0.1.0"
+}
