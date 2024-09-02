@@ -70,8 +70,8 @@ jobs:
         uses: cachix/install-nix-action@8887e596b4ee1134dae06b98d573bd674693f47c # v26
         with:
           nix_path: nixpkgs=channel:nixos-unstable
-      - name: Load Nix
-        run: nix develop -c sh -c "go mod download"
+#      - name: Load Nix
+#        run: nix develop -c sh -c "go mod download"
       - name: Setup environment
         uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/setup-run-tests-environment@e29366cdecfe6befff9ab8c3cfe4825218505d58 # v2.3.16
         with:
@@ -121,8 +121,8 @@ jobs:
         uses: cachix/install-nix-action@8887e596b4ee1134dae06b98d573bd674693f47c # v26
         with:
           nix_path: nixpkgs=channel:nixos-unstable
-      - name: Load Nix
-        run: nix develop -c sh -c "go mod download"
+#      - name: Load Nix
+#        run: nix develop -c sh -c "go mod download"
       - name: Setup environment
         uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/setup-run-tests-environment@e29366cdecfe6befff9ab8c3cfe4825218505d58 # v2.3.16
         with:
