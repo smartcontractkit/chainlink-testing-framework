@@ -27,7 +27,7 @@ tidy:
 
 .PHONY: go_mod
 go_mod:
-	go mod download
+	cd lib && go mod download
 
 install_tools:
 ifeq ($(OSFLAG),$(WINDOWS))
@@ -71,7 +71,7 @@ docker_prune:
 	docker volume prune -f
 
 test_unit: go_mod
-	cd lib && go test -timeout 5m -json -cover -covermode=count -coverprofile=unit-test-coverage.out $(shell go list ./... | grep -v /lib/k8s/e2e/ | grep -v /lib/k8s/examples/ | grep -v /docker/test_env) 2>&1 | tee /tmp/gotest.log | gotestloghelper -ci
+	cd lib && go test -timeout 5m -json -cover -covermode=count -coverprofile=unit-test-coverage.out $(shell cd lib && go list ./... | grep -v /lib/k8s/e2e/ | grep -v /lib/k8s/examples/ | grep -v /docker/test_env) 2>&1 | tee /tmp/gotest.log | gotestloghelper -ci
 
 test_docker: go_mod
 	cd lib && go test -timeout 20m -json -failfast -parallel 3 -cover -covermode=atomic -coverprofile=unit-test-coverage.out ./docker/test_env 2>&1 | tee /tmp/gotest.log | gotestloghelper -ci
