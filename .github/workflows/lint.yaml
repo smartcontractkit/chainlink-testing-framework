@@ -19,16 +19,8 @@ jobs:
         with:
           nix_path: nixpkgs=channel:nixos-unstable
       - name: Run pre-commit checks
-        env:
-          BASE_REF: ${{ github.base_ref }}
-          HEAD_REF: ${{ github.head_ref }}
         run: |
-          nix develop -c sh -c "\
-          git fetch origin ${BASE_REF}:${BASE_REF} &&\
-          git fetch origin ${HEAD_REF}:${HEAD_REF} &&\
-          gitdiffs=\$(git diff --name-only ${BASE_REF}...${HEAD_REF} | xargs) &&\
-          echo \"changed files: \$gitdiffs\" &&\
-          pre-commit run --hook-stage pre-commit --show-diff-on-failure --color=always --files \${gitdiffs}"
+          nix develop -c sh -c "pre-commit run --hook-stage pre-commit --show-diff-on-failure --color=always"
   tools:
     name: Get tool-versions
     runs-on: ubuntu-latest
