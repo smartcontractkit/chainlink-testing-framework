@@ -9,7 +9,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/seth"
+	"github.com/smartcontractkit/chainlink-testing-framework/seth"
 )
 
 func (c *TestConfig) GetLoggingConfig() *LoggingConfig {

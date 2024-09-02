@@ -8,9 +8,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/wasp"
+	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/seth"
+	"github.com/smartcontractkit/chainlink-testing-framework/seth"
 )
 
 type ExampleGun struct {

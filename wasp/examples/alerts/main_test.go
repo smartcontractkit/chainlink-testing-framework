@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/wasp"
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/wasp/dashboard"
+	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
+	"github.com/smartcontractkit/chainlink-testing-framework/wasp/dashboard"
 	"os"
 	"testing"
 	"time"

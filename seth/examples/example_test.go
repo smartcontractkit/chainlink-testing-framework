@@ -10,8 +10,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/seth"
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/seth/test_utils"
+	"github.com/smartcontractkit/chainlink-testing-framework/seth"
+	"github.com/smartcontractkit/chainlink-testing-framework/seth/test_utils"
 	network_debug_contract "github.com/smartcontractkit/seth/contracts/bind/debug"
 )
 

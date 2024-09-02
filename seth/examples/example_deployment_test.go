@@ -7,10 +7,10 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/seth"
-	network_debug_contract "github.com/smartcontractkit/chainlink-testing-framework/lib/seth/contracts/bind/debug"
-	link_token "github.com/smartcontractkit/chainlink-testing-framework/lib/seth/contracts/bind/link"
-	network_debug_sub_contract "github.com/smartcontractkit/chainlink-testing-framework/lib/seth/contracts/bind/sub"
+	"github.com/smartcontractkit/chainlink-testing-framework/seth"
+	network_debug_contract "github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/debug"
+	link_token "github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/link"
+	network_debug_sub_contract "github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/sub"
 )
 
 // Shows how to deploy a contract with parameterless constructor and bind it to it's Geth wrapper

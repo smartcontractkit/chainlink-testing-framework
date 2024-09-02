@@ -19,7 +19,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	tc "github.com/testcontainers/testcontainers-go"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/wasp"
+	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"

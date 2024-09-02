@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/wasp"
+	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 	"strings"
 )
 

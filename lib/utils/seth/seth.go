@@ -11,7 +11,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/k8s/environment"
-	pkg_seth "github.com/smartcontractkit/chainlink-testing-framework/lib/seth"
+	pkg_seth "github.com/smartcontractkit/chainlink-testing-framework/seth"
 )
 
 var ErrInsufficientEphemeralKeys = `

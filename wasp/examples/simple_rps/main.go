@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/wasp"
+	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 )
 
 func TestGun(t *testing.T) {

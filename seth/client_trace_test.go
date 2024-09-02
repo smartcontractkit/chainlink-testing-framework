@@ -16,11 +16,11 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/seth"
-	network_debug_contract "github.com/smartcontractkit/chainlink-testing-framework/lib/seth/contracts/bind/debug"
-	link_token "github.com/smartcontractkit/chainlink-testing-framework/lib/seth/contracts/bind/link"
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/seth/contracts/bind/link_token_interface"
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/seth/test_utils"
+	"github.com/smartcontractkit/chainlink-testing-framework/seth"
+	network_debug_contract "github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/debug"
+	link_token "github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/link"
+	"github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/link_token_interface"
+	"github.com/smartcontractkit/chainlink-testing-framework/seth/test_utils"
 )
 
 const (
