@@ -11,7 +11,7 @@ jobs:
       matrix:
         project:
           - name: root
-            path: ./lib/
+            path: ./
           - name: gotestloghelper
             path: ./tools/gotestloghelper/
           - name: testlistgenerator
