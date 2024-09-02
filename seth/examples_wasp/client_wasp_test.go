@@ -6,8 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/smartcontractkit/wasp"
 	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/seth"
 )
@@ -24,7 +25,7 @@ func NewExampleHTTPGun(client *seth.Client) *ExampleGun {
 	}
 }
 
-func (m *ExampleGun) Call(l *wasp.Generator) *wasp.Response {
+func (m *ExampleGun) Call(_ *wasp.Generator) *wasp.Response {
 	_, err := m.client.Decode(
 		TestEnv.DebugContract.AddCounter(m.client.NewTXKeyOpts(m.client.AnySyncedKey()), big.NewInt(0), big.NewInt(1)),
 	)

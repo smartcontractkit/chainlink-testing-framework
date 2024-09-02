@@ -251,6 +251,7 @@ var (
 		Timeout:                   blockchain.StrDuration{Duration: time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       0,
+		FinalityTag:               true,
 	}
 
 	// metisStardust https://www.metis.io/
@@ -276,6 +277,7 @@ var (
 		Timeout:                   blockchain.StrDuration{Duration: time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       1000,
+		FinalityTag:               true,
 	}
 
 	ArbitrumMainnet blockchain.EVMNetwork = blockchain.EVMNetwork{

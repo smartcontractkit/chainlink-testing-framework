@@ -7,7 +7,7 @@ find "./" -type f -name 'go.mod' -print0 | while IFS= read -r -d $'\0' file; do
 
     # Run linter and capture exit status
     set +e
-    golangci-lint run
+    golangci-lint run -v
     linting_result=$?
     set -e
 

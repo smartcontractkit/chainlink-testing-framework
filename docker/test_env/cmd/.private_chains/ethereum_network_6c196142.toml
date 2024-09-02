@@ -1,0 +1,31 @@
+ethereum_version = 'eth2'
+consensus_layer = 'prysm'
+execution_layer = 'geth'
+docker_network_names = ['network-1c36e593-ba16-41b9-a5e9-c1ac0084175c']
+wait_for_finalization = false
+generated_data_host_dir = '/var/folders/q4/975jb0kx3bb2x_yy0_7mf2y00000gn/T/metadata3375294890'
+val_keys_dir = '/var/folders/q4/975jb0kx3bb2x_yy0_7mf2y00000gn/T/val_keys3731567686'
+node_log_level = 'info'
+
+[[containers]]
+container_name = 'geth-eth2-v1_14_3-d3d721f4'
+container_type = 'execution_layer'
+
+[[containers]]
+container_name = 'prysm-beacon-chain-f5ae0a0f'
+container_type = 'consensus_layer'
+
+[[containers]]
+container_name = 'prysm-validator-92dea702'
+container_type = 'consensus_validator'
+
+[EthereumChainConfig]
+seconds_per_slot = 6
+slots_per_epoch = 2
+genesis_delay = 15
+validator_count = 8
+chain_id = 2337
+GenesisTimestamp = 1724770169
+addresses_to_fund = ['0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266']
+
+[EthereumChainConfig.HardForkEpochs]
