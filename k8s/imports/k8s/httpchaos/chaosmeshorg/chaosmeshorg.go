@@ -383,7 +383,7 @@ type HttpChaosSpecReplace struct {
 	Headers *map[string]*string `field:"optional" json:"headers" yaml:"headers"`
 	// Method is a rule to replace http method in request.
 	Method *string `field:"optional" json:"method" yaml:"method"`
-	// Path is rule to to replace uri path in http request.
+	// Path is rule to replace uri path in http request.
 	Path *string `field:"optional" json:"path" yaml:"path"`
 	// Queries is a rule to replace uri queries in http request.
 	//
