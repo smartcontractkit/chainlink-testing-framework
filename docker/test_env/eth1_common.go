@@ -80,7 +80,7 @@ func generateKeystoreAndExtraData(keystoreDir string, extraAddressesToFound []st
 		return keyStoreAndExtraData{}, err
 	}
 
-	zeroBytes := make([]byte, 32)                      // Create 32 zero bytes
+	zeroBytes := make([]byte, 0, 32)                      // Create 32 zero bytes
 	extradata := append(zeroBytes, signerBytes...)     // Concatenate zero bytes and signer address
 	extradata = append(extradata, make([]byte, 65)...) // Concatenate 65 more zero bytes
 
