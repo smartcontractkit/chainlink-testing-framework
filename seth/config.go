@@ -34,7 +34,7 @@ const (
 	DefaultPendingNonceProtectionTimeout = 1 * time.Minute
 
 	DefaultTransferGasFee = 21_000
-	DefaultGasPrice       = 1_000_000_000   // 1 Gwei
+	DefaultGasPrice       = 100_000_000_000 // 100 Gwei
 	DefaultGasFeeCap      = 100_000_000_000 // 100 Gwei
 	DefaultGasTipCap      = 50_000_000_000  // 50 Gwei
 )
