@@ -226,7 +226,7 @@ client, err := builder.
     // EIP-1559 and gas estimations
     WithEIP1559DynamicFees(true).
     WithDynamicGasPrices(120_000_000_000, 44_000_000_000).
-    WithGasPriceEstimations(false, 10, seth.Priority_Fast).
+    WithGasPriceEstimations(true, 10, seth.Priority_Fast).
 // gas bumping: retries, max gas price, bumping strategy function
     WithGasBumping(5, 100_000_000_000, PriorityBasedGasBumpingStrategyFn).
     Build()
@@ -400,19 +400,21 @@ For real networks, the estimation process differs for legacy transactions and th
 
 1. **Initial Price**: Query the network node for the current suggested gas price.
 2. **Priority Adjustment**: Modify the initial price based on `gas_price_estimation_tx_priority`. Higher priority increases the price to ensure faster inclusion in a block.
-3. **Congestion Analysis**: Examine the last X blocks (as specified by `gas_price_estimation_blocks`) to determine network congestion, calculating the usage rate of gas in each block and giving recent blocks more weight.
+3. **Congestion Analysis**: Examine the last X blocks (as specified by `gas_price_estimation_blocks`) to determine network congestion, calculating the usage rate of gas in each block and giving recent blocks more weight. Disabled if `gas_price_estimation_blocks` equals `0`.
 4. **Buffering**: Add a buffer to the adjusted gas price to increase transaction reliability during high congestion.
 
 ##### EIP-1559 Transactions
 
 1. **Tip Fee Query**: Ask the node for the current recommended tip fee.
 2. **Fee History Analysis**: Gather the base fee and tip history from recent blocks to establish a fee baseline.
-3. **Fee Selection**: Use the greater of the node's suggested tip or the historical average tip for upcoming calculations.
+3. **Fee Selection**: Use the greatest of the node's suggested tip or the historical average tip for upcoming calculations.
 4. **Priority and Adjustment**: Increase the base and tip fees based on transaction priority (`gas_price_estimation_tx_priority`), which influences how much you are willing to spend to expedite your transaction.
 5. **Final Fee Calculation**: Sum the base fee and adjusted tip to set the `gas_fee_cap`.
 6. **Congestion Buffer**: Similar to legacy transactions, analyze congestion and apply a buffer to both the fee cap and the tip to secure transaction inclusion.
 
 Understanding and setting these parameters correctly ensures that your transactions are processed efficiently and cost-effectively on the network.
+
+When fetching historical base fee and tip data, we will use the last `gas_price_estimation_blocks` blocks. If it's set to `0` we will default to `100` last blocks. If the blockchain has less than `100` blocks we will use all of them.
 
 Finally, `gas_price_estimation_tx_priority` is also used, when deciding, which percentile to use for base fee and tip for historical fee data. Here's how that looks:
 
@@ -445,7 +447,7 @@ For fast transactions we will increase gas price by 20%, for standard we will us
 
 ##### Buffer percents
 
-We further adjust the gas price by adding a buffer to it, based on congestion rate:
+If `gas_price_estimation_blocks` is higher than `0` we further adjust the gas price by adding a buffer to it, based on congestion rate:
 
 ```go
 case Congestion_Low:
@@ -458,13 +460,8 @@ case Congestion_VeryHigh:
     return 1.40, nil
 ```
 
-For low congestion rate we will increase gas price by 10%, for medium by 20%, for high by 30% and for very high by 40%.
-
-We cache block header data in an in-memory cache, so we don't have to fetch it every time we estimate gas. The cache has capacity equal to `gas_price_estimation_blocks` and every time we add a new element, we remove one that is least frequently used and oldest (with block number being a constant and chain always moving forward it makes no sense to keep old blocks).
-
-It's important to know that in order to use congestion metrics we need to fetch at least 80% of the requested blocks. If that fails, we will skip this part of the estimation and only adjust the gas price based on priority.
-
-For both transaction types if any of the steps fails, we fallback to hardcoded values.
+For low congestion rate we will increase gas price by 10%, for medium by 20%, for high by 30% and for very high by 40%. We cache block header data in an in-memory cache, so we don't have to fetch it every time we estimate gas. The cache has capacity equal to `gas_price_estimation_blocks` and every time we add a new element, we remove one that is least frequently used and oldest (with block number being a constant and chain always moving forward it makes no sense to keep old blocks). It's important to know that in order to use congestion metrics we need to fetch at least 80% of the requested blocks. If that fails, we will skip this part of the estimation and only adjust the gas price based on priority.
+For both transaction types if any of the steps fails, we fall back to hardcoded values.
 
 ### DOT graphs
 

@@ -125,7 +125,7 @@ func TestConfig_Eip1559Gas_With_Estimations(t *testing.T) {
 		// Gas price and estimations
 		WithEIP1559DynamicFees(true).
 		WithDynamicGasPrices(120_000_000_000, 44_000_000_000).
-		WithGasPriceEstimations(false, 10, seth.Priority_Fast).
+		WithGasPriceEstimations(true, 10, seth.Priority_Fast).
 		Build()
 
 	require.NoError(t, err, "failed to build client")
