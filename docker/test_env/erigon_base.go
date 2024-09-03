@@ -147,6 +147,10 @@ func (g *Erigon) GetEthereumVersion() config_types.EthereumVersion {
 	return g.ethereumVersion
 }
 
+func (g *Erigon) GetEnvComponent() *EnvComponent {
+	return &g.EnvComponent
+}
+
 func (g *Erigon) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error {
 	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		return nil

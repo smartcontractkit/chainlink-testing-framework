@@ -166,6 +166,10 @@ func (g *Geth) GetEthereumVersion() config_types.EthereumVersion {
 	return g.ethereumVersion
 }
 
+func (g *Geth) GetEnvComponent() *EnvComponent {
+	return &g.EnvComponent
+}
+
 func (g *Geth) GethConsensusMechanism() ConsensusMechanism {
 	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		return ConsensusMechanism_PoA

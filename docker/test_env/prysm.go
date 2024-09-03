@@ -83,6 +83,10 @@ func (g *PrysmBeaconChain) WithTestInstance(t *testing.T) *PrysmBeaconChain {
 	return g
 }
 
+func (g *PrysmBeaconChain) GetEnvComponent() *EnvComponent {
+	return &g.EnvComponent
+}
+
 func (g *PrysmBeaconChain) StartContainer() error {
 	r, err := g.getContainerRequest(g.Networks)
 	if err != nil {
@@ -219,6 +223,10 @@ func (g *PrysmValidator) WithTestInstance(t *testing.T) *PrysmValidator {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
 	return g
+}
+
+func (g *PrysmValidator) GetEnvComponent() *EnvComponent {
+	return &g.EnvComponent
 }
 
 func (g *PrysmValidator) StartContainer() error {

@@ -45,6 +45,7 @@ type ExecutionClient interface {
 	GethConsensusMechanism() ConsensusMechanism
 	WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error
 	WithTestInstance(t *testing.T) ExecutionClient
+	GetEnvComponent() *EnvComponent
 }
 
 type UnsupportedVersion struct {

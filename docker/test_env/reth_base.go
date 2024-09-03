@@ -152,6 +152,10 @@ func (g *Reth) GetEthereumVersion() config_types.EthereumVersion {
 	return g.ethereumVersion
 }
 
+func (g *Reth) GetEnvComponent() *EnvComponent {
+	return &g.EnvComponent
+}
+
 func (g *Reth) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error {
 	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		return nil

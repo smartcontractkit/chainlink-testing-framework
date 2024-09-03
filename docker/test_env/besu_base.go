@@ -163,6 +163,10 @@ func (g *Besu) GetEthereumVersion() config_types.EthereumVersion {
 	return g.ethereumVersion
 }
 
+func (g *Besu) GetEnvComponent() *EnvComponent {
+	return &g.EnvComponent
+}
+
 func (g *Besu) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error {
 	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		return nil
