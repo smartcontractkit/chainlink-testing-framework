@@ -10,7 +10,7 @@ jobs:
       fail-fast: false
       matrix:
         project:
-          - name: root
+          - name: lib
             path: ./lib/
           - name: gotestloghelper
             path: ./tools/gotestloghelper/

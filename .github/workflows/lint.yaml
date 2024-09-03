@@ -129,6 +129,7 @@ jobs:
       - name: Run chart-testing (lint)
         run: ct lint --config ${{ github.workspace }}/.github/configs/ct.yaml
 
+# TODO: this is disabled due to lib migration https://github.com/smartcontractkit/chainlink-testing-framework/pull/1113 enable it after we merge and tag ASAP
 #  actionlint:
 #    name: Validate GitHub Action Workflows
 #    runs-on: ubuntu-latest
