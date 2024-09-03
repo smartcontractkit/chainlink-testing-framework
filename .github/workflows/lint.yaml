@@ -129,15 +129,14 @@ jobs:
       - name: Run chart-testing (lint)
         run: ct lint --config ${{ github.workspace }}/.github/configs/ct.yaml
 
-# TODO: this is disabled due to lib migration https://github.com/smartcontractkit/chainlink-testing-framework/pull/1113 enable it after we merge and tag ASAP
-#  actionlint:
-#    name: Validate GitHub Action Workflows
-#    runs-on: ubuntu-latest
-#    steps:
-#      - name: Check out Code
-#        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
-#      - name: Run actionlint
-#        uses: reviewdog/action-actionlint@9d8b58041eed1373f173e91b9a3db5a844197236 # v1.44.0
+  actionlint:
+    name: Validate GitHub Action Workflows
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Code
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
+      - name: Run actionlint
+        uses: reviewdog/action-actionlint@9d8b58041eed1373f173e91b9a3db5a844197236 # v1.44.0
 
   sonarqube:
     name: SonarQube Analysis
