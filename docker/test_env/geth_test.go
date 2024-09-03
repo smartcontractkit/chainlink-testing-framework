@@ -21,8 +21,7 @@ func TestGethLegacy(t *testing.T) {
 	network, err := docker.CreateNetwork(l)
 	require.NoError(t, err)
 	defaultChainCfg := config.MustGetDefaultChainConfig()
-	g := NewGethEth1([]string{network.Name}, &defaultChainCfg).
-		WithTestInstance(t)
+	g := NewGethEth1([]string{network.Name}, &defaultChainCfg, WithTestInstance(t))
 	_, err = g.StartContainer()
 	require.NoError(t, err)
 	ns := blockchain.SimulatedEVMNetwork

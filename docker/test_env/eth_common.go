@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"testing"
 	"time"
 
 	config_types "github.com/smartcontractkit/chainlink-testing-framework/config/types"
@@ -44,7 +43,7 @@ type ExecutionClient interface {
 	GetEthereumVersion() config_types.EthereumVersion
 	GethConsensusMechanism() ConsensusMechanism
 	WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error
-	WithTestInstance(t *testing.T) ExecutionClient
+	//WithTestInstance(t *testing.T) ExecutionClient
 	GetEnvComponent() *EnvComponent
 }
 

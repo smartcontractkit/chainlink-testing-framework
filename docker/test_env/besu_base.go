@@ -3,18 +3,14 @@ package test_env
 import (
 	"context"
 	"fmt"
-	"testing"
 	"time"
-
-	config_types "github.com/smartcontractkit/chainlink-testing-framework/config/types"
-
-	"github.com/rs/zerolog"
 
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
+	config_types "github.com/smartcontractkit/chainlink-testing-framework/config/types"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/testcontext"
@@ -38,17 +34,17 @@ type Besu struct {
 	chainConfig          *config.EthereumChainConfig
 	consensusLayer       config.ConsensusLayer
 	ethereumVersion      config_types.EthereumVersion
-	l                    zerolog.Logger
-	t                    *testing.T
+	//l                    zerolog.Logger
+	//t                    *testing.T
 	posContainerSettings
 	powSettings
 }
 
-func (g *Besu) WithTestInstance(t *testing.T) ExecutionClient {
-	g.l = logging.GetTestLogger(t)
-	g.t = t
-	return g
-}
+//func (g *Besu) WithTestInstance(t *testing.T) ExecutionClient {
+//	g.l = logging.GetTestLogger(t)
+//	g.t = t
+//	return g
+//}
 
 func (g *Besu) StartContainer() (blockchain.EVMNetwork, error) {
 	var r *tc.ContainerRequest

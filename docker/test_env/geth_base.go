@@ -3,13 +3,11 @@ package test_env
 import (
 	"context"
 	"fmt"
-	"testing"
 	"time"
 
 	config_types "github.com/smartcontractkit/chainlink-testing-framework/config/types"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
@@ -32,16 +30,16 @@ type Geth struct {
 	chainConfig          *config.EthereumChainConfig
 	consensusLayer       config.ConsensusLayer
 	ethereumVersion      config_types.EthereumVersion
-	l                    zerolog.Logger
-	t                    *testing.T
+	//l                    zerolog.Logger
+	//t                    *testing.T
 	posContainerSettings
 }
 
-func (g *Geth) WithTestInstance(t *testing.T) ExecutionClient {
-	g.l = logging.GetTestLogger(t)
-	g.t = t
-	return g
-}
+//func (g *Geth) WithTestInstance(t *testing.T) ExecutionClient {
+//	g.l = logging.GetTestLogger(t)
+//	g.t = t
+//	return g
+//}
 
 func (g *Geth) StartContainer() (blockchain.EVMNetwork, error) {
 	var r *tc.ContainerRequest
