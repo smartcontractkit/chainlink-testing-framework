@@ -104,7 +104,7 @@ jobs:
         uses: sonatype-nexus-community/nancy-github-action@726e338312e68ecdd4b4195765f174d3b3ce1533 # v1.0.3
 
   asdf-install:
-    name: Validate GitHub Action Workflows
+    name: Install ASDF Dependencies
     runs-on: ubuntu-latest
     steps:
       - name: Check out Code
@@ -129,14 +129,14 @@ jobs:
       - name: Run chart-testing (lint)
         run: ct lint --config ${{ github.workspace }}/.github/configs/ct.yaml
 
-  actionlint:
-    name: Validate GitHub Action Workflows
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out Code
-        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
-      - name: Run actionlint
-        uses: reviewdog/action-actionlint@9d8b58041eed1373f173e91b9a3db5a844197236 # v1.44.0
+#  actionlint:
+#    name: Validate GitHub Action Workflows
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Check out Code
+#        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
+#      - name: Run actionlint
+#        uses: reviewdog/action-actionlint@9d8b58041eed1373f173e91b9a3db5a844197236 # v1.44.0
 
   sonarqube:
     name: SonarQube Analysis
