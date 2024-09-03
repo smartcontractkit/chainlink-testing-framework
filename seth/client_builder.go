@@ -44,6 +44,13 @@ func NewClientBuilder() *ClientBuilder {
 	}
 }
 
+// NewClientBuilderWithConfig creates a new ClientBuilder with a provided config.
+func NewClientBuilderWithConfig(config *Config) *ClientBuilder {
+	return &ClientBuilder{
+		config: config,
+	}
+}
+
 // WithRpcUrl sets the RPC URL for the config.
 // Default value is an empty string (which is an incorrect value).
 func (c *ClientBuilder) WithRpcUrl(url string) *ClientBuilder {
@@ -251,4 +258,9 @@ func (c *ClientBuilder) WithNonceManager(rateLimitSec int, retries uint, timeout
 // Build creates a new Client from the builder.
 func (c *ClientBuilder) Build() (*Client, error) {
 	return NewClientWithConfig(c.config)
+}
+
+// BuildConfig returns the config from the builder.
+func (c *ClientBuilder) BuildConfig() *Config {
+	return c.config
 }

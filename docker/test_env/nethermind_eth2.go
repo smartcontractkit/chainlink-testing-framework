@@ -30,12 +30,13 @@ func NewNethermindEth2(networks []string, chainConfig *config.EthereumChainConfi
 			ContainerImage:   parts[0],
 			ContainerVersion: parts[1],
 			StartupTimeout:   2 * time.Minute,
+			l:                logging.GetTestLogger(nil),
 		},
 		posContainerSettings: posContainerSettings{generatedDataHostDir: generatedDataHostDir, generatedDataContainerDir: generatedDataContainerDir},
 		chainConfig:          chainConfig,
 		consensusLayer:       consensusLayer,
-		l:                    logging.GetTestLogger(nil),
-		ethereumVersion:      config_types.EthereumVersion_Eth2,
+		//l:                    logging.GetTestLogger(nil),
+		ethereumVersion: config_types.EthereumVersion_Eth2,
 	}
 	g.SetDefaultHooks()
 	for _, opt := range opts {

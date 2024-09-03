@@ -33,12 +33,13 @@ func NewRethEth2(networks []string, chainConfig *config.EthereumChainConfig, gen
 			ContainerVersion: parts[1],
 			LogLevel:         "debug",
 			StartupTimeout:   120 * time.Second,
+			l:                logging.GetTestLogger(nil),
 		},
 		chainConfig:          chainConfig,
 		posContainerSettings: posContainerSettings{generatedDataHostDir: generatedDataHostDir, generatedDataContainerDir: generatedDataContainerDir},
 		consensusLayer:       consensusLayer,
-		l:                    logging.GetTestLogger(nil),
-		ethereumVersion:      config_types.EthereumVersion_Eth2,
+		//l:                    logging.GetTestLogger(nil),
+		ethereumVersion: config_types.EthereumVersion_Eth2,
 	}
 	g.SetDefaultHooks()
 	for _, opt := range opts {

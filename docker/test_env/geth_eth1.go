@@ -7,8 +7,6 @@ import (
 	"strings"
 	"time"
 
-	config_types "github.com/smartcontractkit/chainlink-testing-framework/config/types"
-
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/google/uuid"
@@ -16,6 +14,7 @@ import (
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/config"
+	config_types "github.com/smartcontractkit/chainlink-testing-framework/config/types"
 	"github.com/smartcontractkit/chainlink-testing-framework/docker/ethereum"
 	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/mirror"
@@ -32,9 +31,9 @@ func NewGethEth1(networks []string, chainConfig *config.EthereumChainConfig, opt
 			ContainerImage:   parts[0],
 			ContainerVersion: parts[1],
 			StartupTimeout:   2 * time.Minute,
+			l:                logging.GetTestLogger(nil),
 		},
 		chainConfig:     chainConfig,
-		l:               logging.GetTestLogger(nil),
 		ethereumVersion: config_types.EthereumVersion_Eth1,
 	}
 	g.SetDefaultHooks()

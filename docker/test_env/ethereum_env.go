@@ -33,6 +33,11 @@ var (
 
 var MsgMismatchedExecutionClient = "you provided a custom docker image for %s execution client, but explicitly set a execution client to %s. Make them match or remove one or the other"
 
+type EthereumNetworkHooks interface {
+	PreStartEnvComponentHooks() []EnvComponentOption
+	PostStartEnvComponentHooks() []EnvComponentOption
+}
+
 type EthereumNetworkBuilder struct {
 	t                   *testing.T
 	ls                  *logstream.LogStream
@@ -47,6 +52,7 @@ type EthereumNetworkBuilder struct {
 	waitForFinalization bool
 	existingFromEnvVar  bool
 	nodeLogLevel        string
+	hooks               EthereumNetworkHooks
 }
 
 func NewEthereumNetworkBuilder() EthereumNetworkBuilder {
@@ -132,6 +138,11 @@ func (b *EthereumNetworkBuilder) WithWaitingForFinalization() *EthereumNetworkBu
 	return b
 }
 
+func (b *EthereumNetworkBuilder) WithHooks(hooks EthereumNetworkHooks) *EthereumNetworkBuilder {
+	b.hooks = hooks
+	return b
+}
+
 func (b *EthereumNetworkBuilder) buildNetworkConfig() EthereumNetwork {
 	n := EthereumNetwork{
 		EthereumNetworkConfig: config.EthereumNetworkConfig{
@@ -155,6 +166,7 @@ func (b *EthereumNetworkBuilder) buildNetworkConfig() EthereumNetwork {
 	n.NodeLogLevel = &b.nodeLogLevel
 	n.t = b.t
 	n.ls = b.ls
+	n.hooks = b.hooks
 
 	return n
 }
@@ -399,6 +411,7 @@ type EthereumNetwork struct {
 	isRecreated bool
 	t           *testing.T
 	ls          *logstream.LogStream
+	hooks       EthereumNetworkHooks
 }
 
 func (en *EthereumNetwork) Start() (blockchain.EVMNetwork, RpcProvider, error) {
@@ -456,7 +469,7 @@ func (en *EthereumNetwork) startEth2() (blockchain.EVMNetwork, RpcProvider, erro
 		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to prepare genesis")
 	}
 
-	opts := en.getExecutionLayerEnvComponentOpts()
+	opts := en.getDefaultPreStartupExecutionLayerEnvComponentOpts()
 
 	chainReadyWaitTime := en.EthereumChainConfig.DefaultWaitDuration()
 	var client ExecutionClient
@@ -483,34 +496,41 @@ func (en *EthereumNetwork) startEth2() (blockchain.EVMNetwork, RpcProvider, erro
 		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(clientErr, "failed to create  %s execution client instance", *en.ExecutionLayer)
 	}
 
-	client.WithTestInstance(en.t)
+	//client.WithTestInstance(en.t)
 
 	net, err = client.StartContainer()
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to start %s execution client", *en.ExecutionLayer)
 	}
 
-	beacon, err := NewPrysmBeaconChain(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, generatedDataContainerDir, client.GetInternalExecutionURL(), baseEthereumFork, append(en.getImageOverrideOpts(config.ContainerType_ValKeysGenerator), en.setExistingContainerName(config.ContainerType_ConsensusLayer))...)
+	beacon, err := NewPrysmBeaconChain(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, generatedDataContainerDir, client.GetInternalExecutionURL(), baseEthereumFork, append(en.getImageOverrideOpts(config.ContainerType_ValKeysGenerator), en.setExistingContainerName(config.ContainerType_ConsensusLayer), WithTestInstance(en.t))...)
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to create beacon chain instance")
 	}
 
-	beacon.WithTestInstance(en.t)
 	err = beacon.StartContainer()
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to start beacon chain")
 	}
 
 	validator, err := NewPrysmValidator(dockerNetworks, en.EthereumChainConfig, generatedDataHostDir, generatedDataContainerDir, valKeysDir, beacon.
-		InternalBeaconRpcProvider, baseEthereumFork, append(en.getImageOverrideOpts(config.ContainerType_ValKeysGenerator), en.setExistingContainerName(config.ContainerType_ConsensusValidator))...)
+		InternalBeaconRpcProvider, baseEthereumFork, append(en.getImageOverrideOpts(config.ContainerType_ValKeysGenerator), en.setExistingContainerName(config.ContainerType_ConsensusValidator), WithTestInstance(en.t))...)
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to create validator instance")
 	}
 
-	validator.WithTestInstance(en.t)
+	//validator.WithTestInstance(en.t)
 	err = validator.StartContainer()
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to start validator")
+	}
+
+	if en.hooks != nil {
+		for _, postHook := range en.hooks.PostStartEnvComponentHooks() {
+			postHook(client.GetEnvComponent())
+			postHook(beacon.GetEnvComponent())
+			postHook(validator.GetEnvComponent())
+		}
 	}
 
 	err = client.WaitUntilChainIsReady(testcontext.Get(en.t), chainReadyWaitTime)
@@ -578,7 +598,7 @@ func (en *EthereumNetwork) startEth1() (blockchain.EVMNetwork, RpcProvider, erro
 		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to create docker networks")
 	}
 
-	opts := en.getExecutionLayerEnvComponentOpts()
+	opts := en.getDefaultPreStartupExecutionLayerEnvComponentOpts()
 
 	var client ExecutionClient
 	var clientErr error
@@ -601,11 +621,17 @@ func (en *EthereumNetwork) startEth1() (blockchain.EVMNetwork, RpcProvider, erro
 		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(clientErr, "failed to create  %s execution client instance", *en.ExecutionLayer)
 	}
 
-	client.WithTestInstance(en.t)
+	//client.WithTestInstance(en.t)
 
 	net, err = client.StartContainer()
 	if err != nil {
 		return blockchain.EVMNetwork{}, RpcProvider{}, errors.Wrapf(err, "failed to start %s execution client", *en.ExecutionLayer)
+	}
+
+	if en.hooks != nil {
+		for _, postHook := range en.hooks.PostStartEnvComponentHooks() {
+			postHook(client.GetEnvComponent())
+		}
 	}
 
 	containers := config.EthereumNetworkContainers{
@@ -771,7 +797,7 @@ func (en *EthereumNetwork) Save() error {
 	return nil
 }
 
-func (en *EthereumNetwork) getExecutionLayerEnvComponentOpts() []EnvComponentOption {
+func (en *EthereumNetwork) getDefaultPreStartupExecutionLayerEnvComponentOpts() []EnvComponentOption {
 	opts := []EnvComponentOption{}
 	opts = append(opts, en.getImageOverrideOpts(config.ContainerType_ExecutionLayer)...)
 	opts = append(opts, en.setExistingContainerName(config.ContainerType_ExecutionLayer))
@@ -779,6 +805,12 @@ func (en *EthereumNetwork) getExecutionLayerEnvComponentOpts() []EnvComponentOpt
 
 	if en.NodeLogLevel != nil && *en.NodeLogLevel != "" {
 		opts = append(opts, WithLogLevel(strings.ToLower(*en.NodeLogLevel)))
+	}
+
+	opts = append(opts, en.hooks.PreStartEnvComponentHooks()...)
+
+	if en.t != nil {
+		opts = append(opts, WithTestInstance(en.t))
 	}
 
 	return opts

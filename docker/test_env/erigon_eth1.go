@@ -32,9 +32,9 @@ func NewErigonEth1(networks []string, chainConfig *config.EthereumChainConfig, o
 			ContainerImage:   parts[0],
 			ContainerVersion: parts[1],
 			StartupTimeout:   2 * time.Minute,
+			l:                logging.GetTestLogger(nil),
 		},
 		chainConfig:     chainConfig,
-		l:               logging.GetTestLogger(nil),
 		ethereumVersion: config_types.EthereumVersion_Eth1,
 	}
 	g.SetDefaultHooks()

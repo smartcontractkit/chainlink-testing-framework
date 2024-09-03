@@ -3,13 +3,14 @@ package test_env
 import (
 	"context"
 	"fmt"
-	"time"
-
 	"strings"
+	"testing"
+	"time"
 
 	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/logstream"
 	"github.com/smartcontractkit/chainlink-testing-framework/utils/osutil"
 )
@@ -32,6 +33,8 @@ type EnvComponent struct {
 	PreTerminatesHooks []tc.ContainerHook   `json:"-"`
 	LogLevel           string               `json:"-"`
 	StartupTimeout     time.Duration        `json:"-"`
+	l                  zerolog.Logger
+	t                  *testing.T
 }
 
 type EnvComponentOption = func(c *EnvComponent)
@@ -73,6 +76,19 @@ func WithLogLevel(logLevel string) EnvComponentOption {
 func WithLogStream(ls *logstream.LogStream) EnvComponentOption {
 	return func(c *EnvComponent) {
 		c.LogStream = ls
+	}
+}
+
+func WithTestInstance(t *testing.T) EnvComponentOption {
+	return func(c *EnvComponent) {
+		c.t = t
+		c.l = logging.GetTestLogger(t)
+	}
+}
+
+func WithLogger(l zerolog.Logger) EnvComponentOption {
+	return func(c *EnvComponent) {
+		c.l = l
 	}
 }
 
