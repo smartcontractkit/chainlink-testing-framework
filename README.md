@@ -2,7 +2,10 @@
 
 # Chainlink Testing Framework
 
-[![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/smartcontractkit/chainlink-testing-framework)](https://github.com/smartcontractkit/chainlink-testing-framework/tags)
+[![Lib tag](https://img.shields.io/github/v/tag/smartcontractkit/chainlink-testing-framework?filter=%2Alib%2A)](https://github.com/smartcontractkit/chainlink-testing-framework/tags)
+[![WASP tag](https://img.shields.io/github/v/tag/smartcontractkit/chainlink-testing-framework?filter=%2Awasp%2A)](https://github.com/smartcontractkit/chainlink-testing-framework/tags)
+[![Seth tag](https://img.shields.io/github/v/tag/smartcontractkit/chainlink-testing-framework?filter=%2Aseth%2A)](https://github.com/smartcontractkit/chainlink-testing-framework/tags)
+[![Havoc tag](https://img.shields.io/github/v/tag/smartcontractkit/chainlink-testing-framework?filter=%2Ahavoc%2A)](https://github.com/smartcontractkit/chainlink-testing-framework/tags)
 [![Go Report Card](https://goreportcard.com/badge/github.com/smartcontractkit/chainlink-testing-framework)](https://goreportcard.com/report/github.com/smartcontractkit/chainlink-testing-framework)
 [![Go Reference](https://pkg.go.dev/badge/github.com/smartcontractkit/chainlink-testing-framework.svg)](https://pkg.go.dev/github.com/smartcontractkit/chainlink-testing-framework/lib)
 ![Go Version](https://img.shields.io/github/go-mod/go-version/smartcontractkit/chainlink-testing-framework?filename=./lib/go.mod)
