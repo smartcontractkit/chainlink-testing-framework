@@ -111,6 +111,7 @@ func (m *Client) CalculateNetworkCongestionMetric(blocksNumber uint64, strategy 
 			header, err := getHeaderData(bn)
 			if err != nil {
 				L.Error().Err(err).Msgf("Failed to get block %d header", bn.Int64())
+				wg.Done()
 				return
 			}
 			dataCh <- header
