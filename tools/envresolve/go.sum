@@ -2,8 +2,8 @@ github.com/cpuguy83/go-md2man/v2 v2.0.4/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46t
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
-github.com/smartcontractkit/chainlink-testing-framework v1.34.10 h1:7boGJr/wkX5TF6TBb4wRnP6t1IFL6RD98+fZBJBZyCY=
-github.com/smartcontractkit/chainlink-testing-framework v1.34.10/go.mod h1:ekYJbRAxXcs/YgOjHsY9/tlvDvXzv3lxcZK2eFUZduc=
+github.com/smartcontractkit/chainlink-testing-framework/lib v1.99.4-0.20240903123107-cd7909d3e9fb h1:3FUCF0KLWOVJdtTeSGhiSZYsNY7yimqW99k67f2vY+E=
+github.com/smartcontractkit/chainlink-testing-framework/lib v1.99.4-0.20240903123107-cd7909d3e9fb/go.mod h1:sJt0auUnNSN/bYhSyucgWi8hcWGEMAxc3+Vg6+zWmCw=
 github.com/spf13/cobra v1.8.1 h1:e5/vxKd/rZsfSJMUX1agtjeTDf+qv1/JdBF8gg5k9ZM=
 github.com/spf13/cobra v1.8.1/go.mod h1:wHxEcudfqmLYa8iTfL+OuZPbBZkmvliBWKIezN3kD9Y=
 github.com/spf13/pflag v1.0.5 h1:iy+VFUOCP1a+8yFto/drg2CJ5u0yRoB7fZw3DKv/JXA=

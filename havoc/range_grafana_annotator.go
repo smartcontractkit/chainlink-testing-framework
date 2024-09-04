@@ -8,7 +8,7 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/grafana"
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/grafana"
 )
 
 type RangeGrafanaAnnotator struct {
