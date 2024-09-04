@@ -1,32 +1,23 @@
 <div align="center">
 
-# Chainlink Testing Framework
+# Framework
 
-[![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/smartcontractkit/chainlink-testing-framework)](https://github.com/smartcontractkit/chainlink-testing-framework/tags)
+[![Lib tag](https://img.shields.io/github/v/tag/smartcontractkit/chainlink-testing-framework?filter=%2Alib%2A)](https://github.com/smartcontractkit/chainlink-testing-framework/tags)
 [![Go Report Card](https://goreportcard.com/badge/github.com/smartcontractkit/chainlink-testing-framework)](https://goreportcard.com/report/github.com/smartcontractkit/chainlink-testing-framework)
 [![Go Reference](https://pkg.go.dev/badge/github.com/smartcontractkit/chainlink-testing-framework.svg)](https://pkg.go.dev/github.com/smartcontractkit/chainlink-testing-framework)
-[![Go Version](https://img.shields.io/github/go-mod/go-version/smartcontractkit/chainlink-testing-framework)](https://go.dev/)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/smartcontractkit/chainlink-testing-framework?filename=./lib/go.mod)](https://go.dev/)
 ![Tests](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/test.yaml/badge.svg)
 ![Lint](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/lint.yaml/badge.svg)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 </div>
 
-The Chainlink Testing Framework (CTF) is a blockchain development framework written in Go. Its primary purpose is to help chainlink developers create extensive integration, e2e, performance, and chaos tests to ensure the stability of the chainlink project. It can also be helpful to those who just want to use chainlink oracles in their projects to help test their contracts, or even for those that aren't using chainlink.
+The purpose of this framework is to:
+- Interact with different blockchains
+- Configure CL jobs
+- Deploy using `docker`
+- Deploy using `k8s`
 
 If you're looking to implement a new chain integration for the testing framework, head over to the [blockchain](./blockchain/) directory for more info.
-
-# Content
-
-1. [Libraries](#libraries)
-
-## Libraries
-
-CTF contains a set of useful libraries:
-
-- [WASP](wasp/README.md) - Scalable protocol-agnostic load testing library for `Go`
-- [Havoc](havoc/README.md) - Chaos testing library
-- [Seth](seth/README.md) - Ethereum client library with transaction tracing and gas bumping
 
 ## k8s package
 
