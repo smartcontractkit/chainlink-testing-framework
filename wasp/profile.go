@@ -11,7 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
-	"github.com/smartcontractkit/chainlink-testing-framework/grafana"
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/grafana"
 )
 
 // Profile is a set of concurrent generators forming some workload profile

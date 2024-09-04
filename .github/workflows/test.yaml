@@ -10,8 +10,8 @@ jobs:
       fail-fast: false
       matrix:
         project:
-          - name: root
-            path: ./
+          - name: lib
+            path: ./lib/
           - name: gotestloghelper
             path: ./tools/gotestloghelper/
           - name: testlistgenerator
@@ -30,7 +30,7 @@ jobs:
       - name: Checkout the Repo
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
       - name: Install gotestloghelper
-        run: make gotestloghelper_build
+        run: cd lib && make gotestloghelper_build
       - name: Install Nix
         uses: cachix/install-nix-action@8887e596b4ee1134dae06b98d573bd674693f47c # v26
         with:

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/smartcontractkit/chainlink-testing-framework/grafana"
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/grafana"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
