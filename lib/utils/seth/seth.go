@@ -8,10 +8,11 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
+	pkg_seth "github.com/smartcontractkit/chainlink-testing-framework/seth"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/k8s/environment"
-	pkg_seth "github.com/smartcontractkit/chainlink-testing-framework/seth"
 )
 
 var ErrInsufficientEphemeralKeys = `

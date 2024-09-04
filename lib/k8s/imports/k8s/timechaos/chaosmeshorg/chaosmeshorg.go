@@ -3,10 +3,12 @@ package chaosmeshorg
 
 import (
 	_jsii_ "github.com/aws/jsii-runtime-go/runtime"
+
 	_init_ "github.com/smartcontractkit/chainlink-testing-framework/lib/k8s/imports/k8s/timechaos/chaosmeshorg/jsii"
 
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/k8s/imports/k8s/timechaos/chaosmeshorg/internal"
 )
 

@@ -3,9 +3,10 @@ package concurrent_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/k8s/environment"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/k8s/pkg/helm/chainlink"
-	"github.com/stretchr/testify/require"
 )
 
 func TestConcurrentEnvs(t *testing.T) {
