@@ -2,7 +2,8 @@ name: (k8s package) Publish Test Base Image
 on:
   push:
     tags:
-      - 'v*'
+      # we only need base image for k8s based tests
+      - 'lib/v*'
 
 jobs:
   publish_test_base_image:
