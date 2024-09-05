@@ -23,6 +23,24 @@ func TestConfig_DefaultClient(t *testing.T) {
 	require.NoError(t, err, "failed to deploy LINK contract")
 }
 
+func TestConfig_DefaultClient_EVMCustom(t *testing.T) {
+	client, err := seth.NewClientBuilder().
+		WithPrivateKeys([]string{"086873ab8f1098d6db323cb050204d09d2d5cba249481071bbb53e70f521aae2"}).
+		WithRpcUrl("wss://ws-nd-611-802-295.p2pify.com/05541dd996d9d812e580c32477f70b1a").
+		WithGasPriceEstimations(true, 0, seth.Priority_Standard).
+		WithDynamicGasPrices(100_000_000_000, 100_000_000_000).
+		WithProtections(true, false, seth.MustMakeDuration(1*time.Minute)).
+		Build()
+	require.NoError(t, err, "failed to create client with default config")
+	require.Equal(t, 1, len(client.PrivateKeys), "expected 1 private key")
+
+	linkAbi, err := link_token.LinkTokenMetaData.GetAbi()
+	require.NoError(t, err, "failed to get LINK ABI")
+
+	_, err = client.DeployContract(client.NewTXOpts(), "LinkToken", *linkAbi, common.FromHex(link_token.LinkTokenMetaData.Bin))
+	require.NoError(t, err, "failed to deploy LINK contract")
+}
+
 func TestConfig_Default_TwoPks(t *testing.T) {
 	client, err := seth.DefaultClient("ws://localhost:8546", []string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"})
 	require.NoError(t, err, "failed to create client with default config")

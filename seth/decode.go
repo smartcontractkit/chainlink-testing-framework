@@ -105,7 +105,7 @@ func (m *Client) Decode(tx *types.Transaction, txErr error) (*DecodedTransaction
 		return nil, verr.Join(m.Errors...)
 	}
 
-	if m.DecodeSendErr(txErr) != nil {
+	if m.DecodeSendErr(txErr) != nil && tx == nil {
 		return nil, txErr
 	}
 
@@ -123,7 +123,7 @@ func (m *Client) DecodeSendErr(txErr error) error {
 
 	reason, decodingErr := m.DecodeCustomABIErr(txErr)
 
-	if decodingErr == nil {
+	if decodingErr == nil && reason != "" {
 		return errors.Wrap(txErr, reason)
 	}
 
