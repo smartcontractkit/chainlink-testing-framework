@@ -17,15 +17,10 @@ jobs:
     steps:
       - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
 
-      - name: Strip slashes after colon in tag using Python
-        id: strip_tag
+      - name: Strip "lib/" from github.ref_name
         run: |
-          ref_name="${GITHUB_REF##*/}"
-          echo "ref_name: ${ref_name}"
-          # Use Python to replace slashes after the first colon
-          modified_tag=$(python3 -c 'import sys; ref_name = sys.argv[1]; modified = ref_name.split(":")[0] + ":" + ref_name.split(":")[1].replace("/", "-"); print(modified)' "$ref_name")
-          echo "modified tag: ${ref_name}"
-          echo "BASE_IMAGE_TAG=${{ secrets.QA_AWS_ACCOUNT_NUMBER }}.dkr.ecr.${{ secrets.QA_AWS_REGION }}.amazonaws.com/test-base-image:$modified_tag" >> $GITHUB_ENV
+          stripped_ref_name="${GITHUB_REF//refs\/tags\/lib\//}"
+          echo "BASE_IMAGE_TAG=${{ secrets.QA_AWS_ACCOUNT_NUMBER }}.dkr.ecr.${{ secrets.QA_AWS_REGION }}.amazonaws.com/test-base-image:$stripped_ref_name" >> $GITHUB_ENV
 
       - name: Build Base Image
         uses: smartcontractkit/chainlink-github-actions/docker/build-push@e29366cdecfe6befff9ab8c3cfe4825218505d58 # v2.3.16
