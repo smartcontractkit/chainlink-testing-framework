@@ -1,6 +1,6 @@
 module github.com/smartcontractkit/chainlink-testing-framework/wasp-tests
 
-go 1.21
+go 1.22.5
 
 require (
 	github.com/K-Phoen/grabana v0.22.1

@@ -111,6 +111,7 @@ func (m *Client) CalculateNetworkCongestionMetric(blocksNumber uint64, strategy 
 			header, err := getHeaderData(bn)
 			if err != nil {
 				L.Error().Err(err).Msgf("Failed to get block %d header", bn.Int64())
+				wg.Done()
 				return
 			}
 			dataCh <- header
@@ -265,44 +266,47 @@ func (m *Client) GetSuggestedEIP1559Fees(ctx context.Context, priority string) (
 
 	initialFeeCap := new(big.Int).Add(big.NewInt(int64(baseFee64)), currentGasTip)
 
-	// between 0 and 1 (empty blocks - full blocks)
-	var congestionMetric float64
-	//nolint
-	congestionMetric, err = m.CalculateNetworkCongestionMetric(m.Cfg.Network.GasPriceEstimationBlocks, CongestionStrategy_NewestFirst)
-	if err == nil {
-		congestionClassification := classifyCongestion(congestionMetric)
+	// skip if we do not want to calculate congestion metrics
+	if m.Cfg.Network.GasPriceEstimationBlocks > 0 {
+		// between 0 and 1 (empty blocks - full blocks)
+		var congestionMetric float64
+		//nolint
+		congestionMetric, err = m.CalculateNetworkCongestionMetric(m.Cfg.Network.GasPriceEstimationBlocks, CongestionStrategy_NewestFirst)
+		if err == nil {
+			congestionClassification := classifyCongestion(congestionMetric)
 
-		L.Debug().
-			Str("CongestionMetric", fmt.Sprintf("%.4f", congestionMetric)).
-			Str("CongestionClassification", congestionClassification).
-			Float64("AdjustmentFactor", adjustmentFactor).
-			Str("Priority", priority).
-			Msg("Adjustment factors")
+			L.Debug().
+				Str("CongestionMetric", fmt.Sprintf("%.4f", congestionMetric)).
+				Str("CongestionClassification", congestionClassification).
+				Float64("AdjustmentFactor", adjustmentFactor).
+				Str("Priority", priority).
+				Msg("Adjustment factors")
 
-		// between 1.1 and 1.4
-		var bufferAdjustment float64
-		bufferAdjustment, err = getCongestionFactor(congestionClassification)
-		if err != nil {
+			// between 1.1 and 1.4
+			var bufferAdjustment float64
+			bufferAdjustment, err = getCongestionFactor(congestionClassification)
+			if err != nil {
+				return
+			}
+
+			// Calculate base fee buffer
+			bufferedBaseFeeFloat := new(big.Float).Mul(new(big.Float).SetInt(adjustedBaseFee), big.NewFloat(bufferAdjustment))
+			adjustedBaseFee, _ = bufferedBaseFeeFloat.Int(nil)
+
+			// Apply buffer also to the tip
+			bufferedTipCapFloat := new(big.Float).Mul(new(big.Float).SetInt(adjustedTipCap), big.NewFloat(bufferAdjustment))
+			adjustedTipCap, _ = bufferedTipCapFloat.Int(nil)
+		} else if !strings.Contains(err.Error(), BlockFetchingErr) {
 			return
+		} else {
+			L.Warn().
+				Err(err).
+				Msg("Failed to calculate congestion metric. Skipping congestion buffer adjustment")
+
+			// set error to nil, as we can still calculate the fees, but without congestion buffer
+			// we don't want to return an error in this case
+			err = nil
 		}
-
-		// Calculate base fee buffer
-		bufferedBaseFeeFloat := new(big.Float).Mul(new(big.Float).SetInt(adjustedBaseFee), big.NewFloat(bufferAdjustment))
-		adjustedBaseFee, _ = bufferedBaseFeeFloat.Int(nil)
-
-		// Apply buffer also to the tip
-		bufferedTipCapFloat := new(big.Float).Mul(new(big.Float).SetInt(adjustedTipCap), big.NewFloat(bufferAdjustment))
-		adjustedTipCap, _ = bufferedTipCapFloat.Int(nil)
-	} else if !strings.Contains(err.Error(), BlockFetchingErr) {
-		return
-	} else {
-		L.Warn().
-			Err(err).
-			Msg("Failed to calculate congestion metric. Skipping congestion buffer adjustment")
-
-		// set error to nil, as we can still calculate the fees, but without congestion buffer
-		// we don't want to return an error in this case
-		err = nil
 	}
 
 	maxFeeCap = new(big.Int).Add(adjustedBaseFee, adjustedTipCap)
@@ -366,40 +370,43 @@ func (m *Client) GetSuggestedLegacyFees(ctx context.Context, priority string) (a
 	adjustedGasPriceFloat := new(big.Float).Mul(big.NewFloat(adjustmentFactor), new(big.Float).SetFloat64(float64(suggestedGasPrice.Int64())))
 	adjustedGasPrice, _ = adjustedGasPriceFloat.Int(nil)
 
-	// between 0 and 1 (empty blocks - full blocks)
-	var congestionMetric float64
-	//nolint
-	congestionMetric, err = m.CalculateNetworkCongestionMetric(m.Cfg.Network.GasPriceEstimationBlocks, CongestionStrategy_NewestFirst)
-	if err == nil {
-		congestionClassification := classifyCongestion(congestionMetric)
+	// skip if we do not want to calculate congestion metrics
+	if m.Cfg.Network.GasPriceEstimationBlocks > 0 {
+		// between 0 and 1 (empty blocks - full blocks)
+		var congestionMetric float64
+		//nolint
+		congestionMetric, err = m.CalculateNetworkCongestionMetric(m.Cfg.Network.GasPriceEstimationBlocks, CongestionStrategy_NewestFirst)
+		if err == nil {
+			congestionClassification := classifyCongestion(congestionMetric)
 
-		L.Debug().
-			Str("CongestionMetric", fmt.Sprintf("%.4f", congestionMetric)).
-			Str("CongestionClassification", congestionClassification).
-			Float64("AdjustmentFactor", adjustmentFactor).
-			Str("Priority", priority).
-			Msg("Suggested Legacy fees")
+			L.Debug().
+				Str("CongestionMetric", fmt.Sprintf("%.4f", congestionMetric)).
+				Str("CongestionClassification", congestionClassification).
+				Float64("AdjustmentFactor", adjustmentFactor).
+				Str("Priority", priority).
+				Msg("Suggested Legacy fees")
 
-		// between 1.1 and 1.4
-		var bufferAdjustment float64
-		bufferAdjustment, err = getCongestionFactor(congestionClassification)
-		if err != nil {
+			// between 1.1 and 1.4
+			var bufferAdjustment float64
+			bufferAdjustment, err = getCongestionFactor(congestionClassification)
+			if err != nil {
+				return
+			}
+
+			// Calculate and apply the buffer.
+			bufferedGasPriceFloat := new(big.Float).Mul(new(big.Float).SetInt(adjustedGasPrice), big.NewFloat(bufferAdjustment))
+			adjustedGasPrice, _ = bufferedGasPriceFloat.Int(nil)
+		} else if !strings.Contains(err.Error(), BlockFetchingErr) {
 			return
+		} else {
+			L.Warn().
+				Err(err).
+				Msg("Failed to calculate congestion metric. Skipping congestion buffer adjustment")
+
+			// set error to nil, as we can still calculate the fees, but without congestion buffer
+			// we don't want to return an error in this case
+			err = nil
 		}
-
-		// Calculate and apply the buffer.
-		bufferedGasPriceFloat := new(big.Float).Mul(new(big.Float).SetInt(adjustedGasPrice), big.NewFloat(bufferAdjustment))
-		adjustedGasPrice, _ = bufferedGasPriceFloat.Int(nil)
-	} else if !strings.Contains(err.Error(), BlockFetchingErr) {
-		return
-	} else {
-		L.Warn().
-			Err(err).
-			Msg("Failed to calculate congestion metric. Skipping congestion buffer adjustment")
-
-		// set error to nil, as we can still calculate the fees, but without congestion buffer
-		// we don't want to return an error in this case
-		err = nil
 	}
 
 	L.Debug().

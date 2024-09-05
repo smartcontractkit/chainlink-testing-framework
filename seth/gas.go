@@ -25,6 +25,13 @@ func (m *GasEstimator) Stats(fromNumber uint64, priorityPerc float64) (GasSugges
 	if err != nil {
 		return GasSuggestions{}, err
 	}
+	if fromNumber == 0 {
+		if bn > 100 {
+			fromNumber = bn - 100
+		} else {
+			fromNumber = 1
+		}
+	}
 	hist, err := m.Client.Client.FeeHistory(context.Background(), fromNumber, big.NewInt(int64(bn)), []float64{priorityPerc})
 	if err != nil {
 		return GasSuggestions{}, err

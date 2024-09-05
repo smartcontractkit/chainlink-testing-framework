@@ -30,7 +30,7 @@ jobs:
         uses: smartcontractkit/chainlink-github-actions/docker/build-push@e29366cdecfe6befff9ab8c3cfe4825218505d58 # v2.3.16
         with:
           tags: ${{ env.BASE_IMAGE_NAME }}
-          file: k8s/Dockerfile.base
+          file: lib/k8s/Dockerfile.base
           AWS_REGION: ${{ secrets.QA_AWS_REGION }}
           AWS_ROLE_TO_ASSUME: ${{ secrets.QA_AWS_ROLE_TO_ASSUME }}
       - name: Base Image Built
@@ -44,7 +44,7 @@ jobs:
         uses: smartcontractkit/chainlink-github-actions/docker/build-push@e29366cdecfe6befff9ab8c3cfe4825218505d58 # v2.3.16
         with:
           tags: ${{ env.ENV_JOB_IMAGE }}
-          file: k8s/Dockerfile
+          file: lib/k8s/Dockerfile
           build-args: |
             BASE_IMAGE=${{ secrets.QA_AWS_ACCOUNT_NUMBER }}.dkr.ecr.${{ secrets.QA_AWS_REGION }}.amazonaws.com/test-base-image
             IMAGE_VERSION=ci.${{ github.sha }}
@@ -71,7 +71,7 @@ jobs:
         with:
           nix_path: nixpkgs=channel:nixos-unstable
       - name: Load Nix
-        run: nix develop -c sh -c "go mod download"
+        run: nix develop -c sh -c "cd lib &&go mod download"
       - name: Setup environment
         uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/setup-run-tests-environment@e29366cdecfe6befff9ab8c3cfe4825218505d58 # v2.3.16
         with:
@@ -89,7 +89,7 @@ jobs:
           cl_image_tag: ${{ env.CHAINLINK_VERSION }}
           test_command_to_run: |
             unset ENV_JOB_IMAGE
-            nix develop -c sh -c "make k8s_test_e2e_ci"
+            nix develop -c sh -c "cd lib && make k8s_test_e2e_ci"
           artifacts_location: ./e2e/logs
           publish_check_name: E2E Test Results
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -122,7 +122,7 @@ jobs:
         with:
           nix_path: nixpkgs=channel:nixos-unstable
       - name: Load Nix
-        run: nix develop -c sh -c "go mod download"
+        run: nix develop -c sh -c "cd lib && go mod download"
       - name: Setup environment
         uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/setup-run-tests-environment@e29366cdecfe6befff9ab8c3cfe4825218505d58 # v2.3.16
         with:
@@ -137,7 +137,7 @@ jobs:
           cl_repo: ${{ env.CHAINLINK_IMAGE }}
           cl_image_tag: ${{ env.CHAINLINK_VERSION }}
           test_command_to_run: |
-            nix develop -c sh -c "make k8s_test_e2e_ci_remote_runner"
+            nix develop -c sh -c "cd lib && make k8s_test_e2e_ci_remote_runner"
           artifacts_location: ./k8s/logs
           publish_check_name: E2E Remote Runner Test Results
           token: ${{ secrets.GITHUB_TOKEN }}

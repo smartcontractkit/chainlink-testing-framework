@@ -151,7 +151,7 @@ func NewClientWithConfig(cfg *Config) (*Client, error) {
 func ValidateConfig(cfg *Config) error {
 	if cfg.Network.GasPriceEstimationEnabled {
 		if cfg.Network.GasPriceEstimationBlocks == 0 {
-			return errors.New("when automating gas estimation is enabled blocks must be greater than 0. fix it or disable gas estimation")
+			L.Debug().Msg("Gas estimation is enabled, but block headers to use is set to 0. Will not use block congestion for gas estimation")
 		}
 		cfg.Network.GasPriceEstimationTxPriority = strings.ToLower(cfg.Network.GasPriceEstimationTxPriority)
 

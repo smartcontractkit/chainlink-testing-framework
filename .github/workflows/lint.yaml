@@ -19,16 +19,8 @@ jobs:
         with:
           nix_path: nixpkgs=channel:nixos-unstable
       - name: Run pre-commit checks
-        env:
-          BASE_REF: ${{ github.base_ref }}
-          HEAD_REF: ${{ github.head_ref }}
         run: |
-          nix develop -c sh -c "\
-          git fetch origin ${BASE_REF}:${BASE_REF} &&\
-          git fetch origin ${HEAD_REF}:${HEAD_REF} &&\
-          gitdiffs=\$(git diff --name-only ${BASE_REF}...${HEAD_REF} | xargs) &&\
-          echo \"changed files: \$gitdiffs\" &&\
-          pre-commit run --hook-stage pre-commit --show-diff-on-failure --color=always --files \${gitdiffs}"
+          nix develop -c sh -c "pre-commit run --hook-stage pre-commit --show-diff-on-failure --color=always"
   tools:
     name: Get tool-versions
     runs-on: ubuntu-latest
@@ -48,8 +40,8 @@ jobs:
       fail-fast: false
       matrix:
         project:
-          - name: root
-            path: ./
+          - name: lib
+            path: ./lib/
           - name: gotestloghelper
             path: ./tools/gotestloghelper/
           - name: k8s-test-runner
@@ -101,17 +93,18 @@ jobs:
       - name: Install Go
         uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/setup-go@e29366cdecfe6befff9ab8c3cfe4825218505d58 # v2.3.16
         with:
-          test_download_vendor_packages_command: go mod download
-          go_mod_path: ./go.mod
+          test_download_vendor_packages_command: cd lib && go mod download
+          go_mod_path: ./lib/go.mod
           cache_key_id: ctf-go
           cache_restore_only: 'false'
       - name: Write Go List
-        run: go list -json -deps ./... > go.list
+        working-directory: lib
+        run: go list -json -deps ./... > ../go.list
       - name: Nancy
         uses: sonatype-nexus-community/nancy-github-action@726e338312e68ecdd4b4195765f174d3b3ce1533 # v1.0.3
 
   asdf-install:
-    name: Validate GitHub Action Workflows
+    name: Install ASDF Dependencies
     runs-on: ubuntu-latest
     steps:
       - name: Check out Code

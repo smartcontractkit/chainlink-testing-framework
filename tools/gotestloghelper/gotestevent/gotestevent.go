@@ -12,9 +12,9 @@ import (
 
 	"dario.cat/mergo"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/utils/clihelper"
-	"github.com/smartcontractkit/chainlink-testing-framework/utils/github"
-	"github.com/smartcontractkit/chainlink-testing-framework/utils/ptr"
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/clihelper"
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/github"
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/ptr"
 )
 
 type Action string
