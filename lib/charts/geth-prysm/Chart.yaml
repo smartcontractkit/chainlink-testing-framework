@@ -4,5 +4,6 @@ name: geth-prysm
 version: 0.2.3
 dependencies:
   - name: eth2-common
-    version: 0.5.2
-    repository: 'https://raw.githubusercontent.com/smartcontractkit/qa-charts/gh-pages/'
+    version: 0.5.*
+    repository: "file://../eth2-common"
+#    repository: 'https://raw.githubusercontent.com/smartcontractkit/qa-charts/gh-pages/'

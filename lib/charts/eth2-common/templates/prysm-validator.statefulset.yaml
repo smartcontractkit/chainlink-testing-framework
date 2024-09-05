@@ -16,16 +16,6 @@ spec:
         app: {{ .Release.Name }}-{{ .Values.prysm.validator.name }}
         release: {{ .Release.Name }}
     spec:
-      affinity:
-        podAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-              - key: release
-                operator: In
-                values:
-                - {{ .Release.Name }}
-            topologyKey: kubernetes.io/hostname
       volumes:
       - name: {{ .Release.Name }}-genesis-config
         configMap:
@@ -56,6 +46,9 @@ spec:
   volumeClaimTemplates:
   - metadata:
       name: {{ .Release.Name }}-{{ .Values.storage.claim }}-validator
+      labels:
+        app: {{ .Release.Name }}-{{ .Values.prysm.validator.name }}
+        release: {{ .Release.Name }}
     spec:
       accessModes: [ "ReadWriteOnce" ]
       resources:

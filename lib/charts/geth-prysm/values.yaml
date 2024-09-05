@@ -12,6 +12,9 @@ shared:
   accountPasswordFile: account_password.txt
   jwtFile: jwtSecret
   accountKeystoreFile: account_key
+securityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
 genesis:
   image:
     repository: tofelb/ethereum-genesis-generator

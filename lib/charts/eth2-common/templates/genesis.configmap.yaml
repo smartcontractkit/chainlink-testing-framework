@@ -181,41 +181,48 @@ data:
     deneb_fork_epoch: ${DENEB_FORK_EPOCH}
     slots_per_epoch: ${SLOTS_PER_EPOCH}
   valkeys-entrypoint.sh: |-
+    #!/bin/bash
+
     if [ -f "/app/generated/chain_initialised.done" ]; then
         echo "Chain already initalised."
         exit 0
     fi
+
+    rm -rf /app/generated/val_keys
+
     ./eth2-val-tools keystores --out-loc=/app/generated/val_keys \
     --insecure --prysm-pass="{{ .Values.shared.password }}" \
     --source-mnemonic="{{ .Values.shared.mnemonic }}" \
     --source-min=0 --source-max={{ .Values.genesis.values.validatorCount }}
 
   genesis-entrypoint.sh: |-
+    #!/usr/bin/env bash
+
+    set -euo
+
     if [ -f "/data/chain_initialised.done" ]; then
         echo "Chain already initalised."
         exit 0
     fi
 
-    # change ownership so that besu user (1000:1000) can persist chain data
-    mkdir /data/execution_data
-    chown -R 1000:1000 /data/execution_data
+    mkdir -p /data/execution_data
 
     genesis_delay="{{ .Values.genesis.values.delaySeconds}}"
     validator_count="{{ .Values.genesis.values.validatorCount }}"
-    current_unix_timestamp="{{ .Values.genesis.values.currentUnixTimestamp }}"
+    current_unix_timestamp="{{ .Values.genesis.values.currentUnixTimestamp | int }}"
 
     validator_based_genesis_delay=$((validator_count * 5))
     genesis_timestamp=$((current_unix_timestamp + genesis_delay + validator_based_genesis_delay))
 
-    mkdir -p /config/cl
-    cp config.yaml /config/cl/config.yaml
+    mkdir -p /tmp/config/cl
+    cp config.yaml /tmp/config/cl/config.yaml
 
-    mkdir -p /config/el
-    cp genesis-config.yaml -r /config/el/genesis-config.yaml
+    mkdir -p /tmp/config/el
+    cp genesis-config.yaml -r /tmp/config/el/genesis-config.yaml
 
-    cp values_template.env /config/values.env
-    echo "\nexport GENESIS_TIMESTAMP=$genesis_timestamp" >> /config/values.env
-    cat /config/values.env
+    cp values_template.env /tmp/config/values.env
+    echo "\nexport GENESIS_TIMESTAMP=$genesis_timestamp" >> /tmp/config/values.env
+    cat /tmp/config/values.env
     formatted_genesis_date=$(date -d "@$genesis_timestamp" '+%Y-%m-%d %H:%M:%S')
     echo "Chain genesis timestamp: $formatted_genesis_date UTC"
 
