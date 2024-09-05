@@ -2,7 +2,7 @@ name: (k8s package) Publish Test Base Image
 on:
   push:
     tags:
-      - 'v*'
+      - '*v*'
 
 jobs:
   publish_test_base_image:
