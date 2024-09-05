@@ -1,4 +1,4 @@
-module github.com/smartcontractkit/chainlink-testing-framework/lib/job-distributor
+module github.com/smartcontractkit/chainlink-testing-framework/lib/docker/job-distributor
 
 go 1.22.5
 
