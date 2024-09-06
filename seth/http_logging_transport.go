@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -49,7 +50,7 @@ func (t *LoggingTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 // NewLoggingTransport creates a new logging transport for GAP or default transport
 // controlled by SETH_LOG_LEVEL
 func NewLoggingTransport() http.RoundTripper {
-	if os.Getenv(LogLevelEnvVar) == "debug" {
+	if strings.EqualFold(os.Getenv(LogLevelEnvVar), "trace") {
 		return &LoggingTransport{
 			// TODO: GAP, add proper certificates
 			Transport: &http.Transport{

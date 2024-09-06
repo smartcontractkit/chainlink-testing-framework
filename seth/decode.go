@@ -27,7 +27,7 @@ const (
 	ErrDecodeLog            = "failed to decode log"
 	ErrDecodedLogNonIndexed = "failed to decode non-indexed log data"
 	ErrDecodeILogIndexed    = "failed to decode indexed log data"
-	ErrNoTxData             = "no tx data or it's less than 4 bytes"
+	ErrTooShortTxData       = "tx data is less than 4 bytes, can't decode"
 	ErrRPCJSONCastError     = "failed to cast CallMsg error as rpc.DataError"
 
 	WarnNoContractStore = "ContractStore is nil, use seth.NewContractStore(...) to decode transactions"
@@ -378,19 +378,25 @@ func (m *Client) decodeTransaction(l zerolog.Logger, tx *types.Transaction, rece
 		Protected:   tx.Protected(),
 		Hash:        tx.Hash().String(),
 	}
-	// if there is no tx data we have no inputs/outputs/logs
-	if len(txData) == 0 || len(txData) < 4 {
-		l.Err(errors.New(ErrNoTxData)).Send()
+
+	if len(txData) == 0 && tx.Value() != nil && tx.Value().Cmp(big.NewInt(0)) > 0 {
+		l.Debug().Msg("Transaction has no data. It looks like a simple ETH transfer and there is nothing to decode")
+		return defaultTxn, nil
+	}
+
+	// this might indicate a malformed tx, but we can't be sure, so we just log it and continue
+	if len(txData) < 4 {
+		l.Debug().Msgf("Transaction data is too short to decode. Expected at last 4 bytes, but got %d. Skipping decoding", len(txData))
 		return defaultTxn, nil
 	}
 	if m.ContractStore == nil {
-		L.Warn().Msg(WarnNoContractStore)
+		l.Warn().Msg(WarnNoContractStore)
 		return defaultTxn, nil
 	}
 
 	sig := txData[:4]
 	if m.ABIFinder == nil {
-		L.Err(errors.New("ABIFInder is nil")).Msg("ABIFinder is required for transaction decoding")
+		l.Err(errors.New("ABIFInder is nil")).Msg("ABIFinder is required for transaction decoding")
 		return defaultTxn, nil
 	}
 
@@ -593,7 +599,7 @@ func (m *Client) callAndGetRevertReason(tx *types.Transaction, rc *types.Receipt
 func decodeTxInputs(l zerolog.Logger, txData []byte, method *abi.Method) (map[string]interface{}, error) {
 	l.Trace().Msg("Parsing tx inputs")
 	if (len(txData)) < 4 {
-		return nil, errors.New(ErrNoTxData)
+		return nil, errors.New(ErrTooShortTxData)
 	}
 
 	inputMap := make(map[string]interface{})
