@@ -204,7 +204,7 @@ func (m *Client) waitUntilMined(l zerolog.Logger, tx *types.Transaction) (*types
 		}, retry.OnRetry(func(i uint, retryErr error) {
 			replacementTx, replacementErr := prepareReplacementTransaction(m, tx)
 			if replacementErr != nil {
-				L.Debug().Str("Replacement error", replacementErr.Error()).Str("Current error", retryErr.Error()).Uint("Attempt", i).Msg("Failed to prepare replacement transaction. Retrying without the original one")
+				L.Debug().Str("Replacement error", replacementErr.Error()).Str("Current error", retryErr.Error()).Uint("Attempt", i).Msg("Failed to prepare replacement transaction. Retrying with the original one")
 				return
 			}
 			l.Debug().Str("Current error", retryErr.Error()).Uint("Attempt", i).Msg("Waiting for transaction to be confirmed after gas bump")
