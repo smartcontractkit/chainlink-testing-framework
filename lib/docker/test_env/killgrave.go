@@ -7,14 +7,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"testing"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/google/uuid"
 	"github.com/otiai10/copy"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -34,8 +32,6 @@ type Killgrave struct {
 	impostersPath         string
 	impostersDirBinding   string
 	requestDumpDirBinding string
-	t                     *testing.T
-	l                     zerolog.Logger
 }
 
 // Imposter define an imposter structure
@@ -85,21 +81,15 @@ func NewKillgrave(networks []string, impostersDirectoryPath string, opts ...EnvC
 			ContainerName:  fmt.Sprintf("%s-%s", "killgrave", uuid.NewString()[0:3]),
 			Networks:       networks,
 			StartupTimeout: 2 * time.Minute,
+			l:              log.Logger,
 		},
 		InternalPort:  "3000",
 		impostersPath: impostersDirectoryPath,
-		l:             log.Logger,
 	}
 	k.SetDefaultHooks()
 	for _, opt := range opts {
 		opt(&k.EnvComponent)
 	}
-	return k
-}
-
-func (k *Killgrave) WithTestInstance(t *testing.T) *Killgrave {
-	k.l = logging.GetTestLogger(t)
-	k.t = t
 	return k
 }
 

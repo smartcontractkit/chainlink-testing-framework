@@ -3,13 +3,11 @@ package test_env
 import (
 	"fmt"
 	"strings"
-	"testing"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/google/uuid"
-	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
@@ -44,8 +42,6 @@ type PrysmBeaconChain struct {
 	ExternalQueryRpcUrl       string
 	gethInternalExecutionURL  string
 	chainConfig               *config.EthereumChainConfig
-	l                         zerolog.Logger
-	t                         *testing.T
 	posContainerSettings
 }
 
@@ -62,11 +58,11 @@ func NewPrysmBeaconChain(networks []string, chainConfig *config.EthereumChainCon
 			ContainerImage:   parts[0],
 			ContainerVersion: parts[1],
 			StartupTimeout:   2 * time.Minute,
+			l:                logging.GetTestLogger(nil),
 		},
 		chainConfig:              chainConfig,
 		posContainerSettings:     posContainerSettings{generatedDataHostDir: generatedDataHostDir, generatedDataContainerDir: generatedDataContainerDir},
 		gethInternalExecutionURL: gethExecutionURL,
-		l:                        logging.GetTestLogger(nil),
 	}
 	g.SetDefaultHooks()
 	for _, opt := range opts {
@@ -77,10 +73,8 @@ func NewPrysmBeaconChain(networks []string, chainConfig *config.EthereumChainCon
 	return g, nil
 }
 
-func (g *PrysmBeaconChain) WithTestInstance(t *testing.T) *PrysmBeaconChain {
-	g.l = logging.GetTestLogger(t)
-	g.t = t
-	return g
+func (g *PrysmBeaconChain) GetEnvComponent() *EnvComponent {
+	return &g.EnvComponent
 }
 
 func (g *PrysmBeaconChain) StartContainer() error {
@@ -182,8 +176,6 @@ type PrysmValidator struct {
 	chainConfig               *config.EthereumChainConfig
 	internalBeaconRpcProvider string
 	valKeysDir                string
-	l                         zerolog.Logger
-	t                         *testing.T
 	posContainerSettings
 }
 
@@ -199,12 +191,12 @@ func NewPrysmValidator(networks []string, chainConfig *config.EthereumChainConfi
 			Networks:         networks,
 			ContainerImage:   parts[0],
 			ContainerVersion: parts[1],
+			l:                logging.GetTestLogger(nil),
 		},
 		chainConfig:               chainConfig,
 		posContainerSettings:      posContainerSettings{generatedDataHostDir: generatedDataHostDir, generatedDataContainerDir: generatedDataContainerDir},
 		valKeysDir:                valKeysDir,
 		internalBeaconRpcProvider: internalBeaconRpcProvider,
-		l:                         logging.GetTestLogger(nil),
 	}
 	g.SetDefaultHooks()
 	for _, opt := range opts {
@@ -215,10 +207,8 @@ func NewPrysmValidator(networks []string, chainConfig *config.EthereumChainConfi
 	return g, nil
 }
 
-func (g *PrysmValidator) WithTestInstance(t *testing.T) *PrysmValidator {
-	g.l = logging.GetTestLogger(t)
-	g.t = t
-	return g
+func (g *PrysmValidator) GetEnvComponent() *EnvComponent {
+	return &g.EnvComponent
 }
 
 func (g *PrysmValidator) StartContainer() error {

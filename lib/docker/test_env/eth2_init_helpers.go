@@ -12,7 +12,6 @@ import (
 	"github.com/docker/docker/api/types/mount"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	tc "github.com/testcontainers/testcontainers-go"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/config"
@@ -24,8 +23,6 @@ type AfterGenesisHelper struct {
 	EnvComponent
 	chainConfig     config.EthereumChainConfig
 	addressesToFund []string
-	l               zerolog.Logger
-	t               *testing.T
 	posContainerSettings
 }
 
@@ -34,10 +31,10 @@ func NewInitHelper(chainConfig config.EthereumChainConfig, generatedDataHostDir,
 		EnvComponent: EnvComponent{
 			ContainerName:  fmt.Sprintf("%s-%s", "after-genesis-helper", uuid.NewString()[0:8]),
 			StartupTimeout: 20 * time.Second,
+			l:              zerolog.Logger{},
 		},
 		chainConfig:          chainConfig,
 		posContainerSettings: posContainerSettings{generatedDataHostDir: generatedDataHostDir, generatedDataContainerDir: generatedDataContainerDir},
-		l:                    log.Logger,
 		addressesToFund:      []string{},
 	}
 	g.SetDefaultHooks()

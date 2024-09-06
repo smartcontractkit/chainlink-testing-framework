@@ -9,7 +9,6 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/google/uuid"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	tc "github.com/testcontainers/testcontainers-go"
 
@@ -24,7 +23,6 @@ const defaultEth2ValToolsImage = "protolambda/eth2-val-tools:latest"
 type ValKeysGenerator struct {
 	EnvComponent
 	chainConfig        *config.EthereumChainConfig
-	l                  zerolog.Logger
 	valKeysHostDataDir string
 	addressesToFund    []string
 	t                  *testing.T
@@ -38,10 +36,10 @@ func NewValKeysGeneretor(chainConfig *config.EthereumChainConfig, valKeysHostDat
 			ContainerImage:   parts[0],
 			ContainerVersion: parts[1],
 			StartupTimeout:   1 * time.Minute,
+			l:                log.Logger,
 		},
 		chainConfig:        chainConfig,
 		valKeysHostDataDir: valKeysHostDataDir,
-		l:                  log.Logger,
 		addressesToFund:    []string{},
 	}
 	g.SetDefaultHooks()
@@ -52,12 +50,6 @@ func NewValKeysGeneretor(chainConfig *config.EthereumChainConfig, valKeysHostDat
 	// if the internal docker repo is set then add it to the version
 	g.EnvComponent.ContainerImage = mirror.AddMirrorToImageIfSet(g.EnvComponent.ContainerImage)
 	return g, nil
-}
-
-func (g *ValKeysGenerator) WithTestInstance(t *testing.T) *ValKeysGenerator {
-	g.l = logging.GetTestLogger(t)
-	g.t = t
-	return g
 }
 
 func (g *ValKeysGenerator) StartContainer() error {

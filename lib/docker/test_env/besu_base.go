@@ -3,18 +3,14 @@ package test_env
 import (
 	"context"
 	"fmt"
-	"testing"
 	"time"
-
-	config_types "github.com/smartcontractkit/chainlink-testing-framework/lib/config/types"
-
-	"github.com/rs/zerolog"
 
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/config"
+	config_types "github.com/smartcontractkit/chainlink-testing-framework/lib/config/types"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/testcontext"
@@ -38,16 +34,8 @@ type Besu struct {
 	chainConfig          *config.EthereumChainConfig
 	consensusLayer       config.ConsensusLayer
 	ethereumVersion      config_types.EthereumVersion
-	l                    zerolog.Logger
-	t                    *testing.T
 	posContainerSettings
 	powSettings
-}
-
-func (g *Besu) WithTestInstance(t *testing.T) ExecutionClient {
-	g.l = logging.GetTestLogger(t)
-	g.t = t
-	return g
 }
 
 func (g *Besu) StartContainer() (blockchain.EVMNetwork, error) {
@@ -161,6 +149,10 @@ func (g *Besu) GetContainer() *tc.Container {
 
 func (g *Besu) GetEthereumVersion() config_types.EthereumVersion {
 	return g.ethereumVersion
+}
+
+func (g *Besu) GetEnvComponent() *EnvComponent {
+	return &g.EnvComponent
 }
 
 func (g *Besu) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error {

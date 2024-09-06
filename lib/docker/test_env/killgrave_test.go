@@ -27,8 +27,7 @@ func TestKillgraveNoUserImposters(t *testing.T) {
 	l := logging.GetTestLogger(t)
 	network, err := docker.CreateNetwork(l)
 	require.NoError(t, err)
-	k := NewKillgrave([]string{network.Name}, "").
-		WithTestInstance(t)
+	k := NewKillgrave([]string{network.Name}, "", WithTestInstance(t))
 	err = k.StartContainer()
 	require.NoError(t, err)
 
@@ -41,8 +40,7 @@ func TestKillgraveMocks(t *testing.T) {
 	network, err := docker.CreateNetwork(l)
 	require.NoError(t, err)
 
-	k := NewKillgrave([]string{network.Name}, "./killgrave_imposters").
-		WithTestInstance(t)
+	k := NewKillgrave([]string{network.Name}, "./killgrave_imposters", WithTestInstance(t))
 	err = k.StartContainer()
 	require.NoError(t, err)
 
@@ -171,8 +169,7 @@ func TestKillgraveRequestDump(t *testing.T) {
 	network, err := docker.CreateNetwork(l)
 	require.NoError(t, err)
 
-	k := NewKillgrave([]string{network.Name}, "./killgrave_imposters").
-		WithTestInstance(t)
+	k := NewKillgrave([]string{network.Name}, "./killgrave_imposters", WithTestInstance(t))
 	err = k.StartContainer()
 	require.NoError(t, err)
 

@@ -12,7 +12,7 @@ import (
 )
 
 func generateEnvValues(c *config.EthereumChainConfig) (string, error) {
-	// GenesisTimestamp needs to be exported in order to be used in the template
+	// GenesisTimestamp needs to be exported in order to be used in the template,
 	// but I don't want to expose it in config struct, user should not set it manually
 	data := struct {
 		config.EthereumChainConfig

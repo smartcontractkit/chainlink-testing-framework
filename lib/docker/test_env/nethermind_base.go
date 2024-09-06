@@ -3,12 +3,9 @@ package test_env
 import (
 	"context"
 	"fmt"
-	"testing"
 	"time"
 
 	config_types "github.com/smartcontractkit/chainlink-testing-framework/lib/config/types"
-
-	"github.com/rs/zerolog"
 
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
@@ -30,15 +27,7 @@ type Nethermind struct {
 	chainConfig          *config.EthereumChainConfig
 	consensusLayer       config.ConsensusLayer
 	ethereumVersion      config_types.EthereumVersion
-	l                    zerolog.Logger
-	t                    *testing.T
 	posContainerSettings
-}
-
-func (g *Nethermind) WithTestInstance(t *testing.T) ExecutionClient {
-	g.l = logging.GetTestLogger(t)
-	g.t = t
-	return g
 }
 
 func (g *Nethermind) StartContainer() (blockchain.EVMNetwork, error) {
@@ -150,6 +139,10 @@ func (g *Nethermind) GetContainer() *tc.Container {
 
 func (g *Nethermind) GetEthereumVersion() config_types.EthereumVersion {
 	return g.ethereumVersion
+}
+
+func (g *Nethermind) GetEnvComponent() *EnvComponent {
+	return &g.EnvComponent
 }
 
 func (g *Nethermind) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error {

@@ -13,7 +13,6 @@ import (
 	"github.com/docker/go-connections/nat"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcexec "github.com/testcontainers/testcontainers-go/exec"
@@ -37,8 +36,6 @@ type PostgresDb struct {
 	ExternalPort string   `json:"-"`
 	InternalURL  *url.URL `json:"-"`
 	ExternalURL  *url.URL `json:"-"`
-	l            zerolog.Logger
-	t            *testing.T
 }
 
 type PostgresDbOption = func(c *PostgresDb)
@@ -98,12 +95,12 @@ func NewPostgresDb(networks []string, opts ...PostgresDbOption) (*PostgresDb, er
 			ContainerEnvs:    map[string]string{},
 			Networks:         networks,
 			StartupTimeout:   2 * time.Minute,
+			l:                log.Logger,
 		},
 		User:         "postgres",
 		Password:     "mysecretpassword",
 		DbName:       "testdb",
 		InternalPort: "5432",
-		l:            log.Logger,
 	}
 
 	pg.SetDefaultHooks()

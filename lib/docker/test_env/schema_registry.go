@@ -2,12 +2,10 @@ package test_env
 
 import (
 	"fmt"
-	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/imdario/mergo"
-	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
@@ -23,8 +21,6 @@ type SchemaRegistry struct {
 	EnvVars     map[string]string
 	InternalUrl string
 	ExternalUrl string
-	l           zerolog.Logger
-	t           *testing.T
 }
 
 func NewSchemaRegistry(networks []string) *SchemaRegistry {
@@ -40,12 +36,6 @@ func NewSchemaRegistry(networks []string) *SchemaRegistry {
 		},
 		EnvVars: defaultEnvVars,
 	}
-}
-
-func (r *SchemaRegistry) WithTestInstance(t *testing.T) *SchemaRegistry {
-	r.l = logging.GetTestLogger(t)
-	r.t = t
-	return r
 }
 
 func (r *SchemaRegistry) WithContainerName(name string) *SchemaRegistry {

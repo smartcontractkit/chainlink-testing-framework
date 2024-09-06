@@ -4,13 +4,11 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"testing"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/google/uuid"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
@@ -35,10 +33,8 @@ var generatorForkToDataDirMap = map[ethereum.Fork]string{
 type EthGenesisGenerator struct {
 	EnvComponent
 	chainConfig               config.EthereumChainConfig
-	l                         zerolog.Logger
 	generatedDataHostDir      string
 	generatedDataContainerDir string
-	t                         *testing.T
 }
 
 func NewEthGenesisGenerator(chainConfig config.EthereumChainConfig, generatedDataHostDir string, lastFork ethereum.Fork, opts ...EnvComponentOption) (*EthGenesisGenerator, error) {
@@ -59,11 +55,11 @@ func NewEthGenesisGenerator(chainConfig config.EthereumChainConfig, generatedDat
 			ContainerImage:   parts[0],
 			ContainerVersion: parts[1],
 			StartupTimeout:   30 * time.Second,
+			l:                log.Logger,
 		},
 		chainConfig:               chainConfig,
 		generatedDataHostDir:      generatedDataHostDir,
 		generatedDataContainerDir: generatedDataContainerDir,
-		l:                         log.Logger,
 	}
 	g.SetDefaultHooks()
 	for _, opt := range opts {
@@ -72,12 +68,6 @@ func NewEthGenesisGenerator(chainConfig config.EthereumChainConfig, generatedDat
 	// if the internal docker repo is set then add it to the version
 	g.EnvComponent.ContainerImage = mirror.AddMirrorToImageIfSet(g.EnvComponent.ContainerImage)
 	return g, nil
-}
-
-func (g *EthGenesisGenerator) WithTestInstance(t *testing.T) *EthGenesisGenerator {
-	g.l = logging.GetTestLogger(t)
-	g.t = t
-	return g
 }
 
 func (g *EthGenesisGenerator) StartContainer() error {

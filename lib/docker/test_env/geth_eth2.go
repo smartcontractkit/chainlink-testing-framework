@@ -32,11 +32,11 @@ func NewGethEth2(networks []string, chainConfig *config.EthereumChainConfig, gen
 			ContainerImage:   parts[0],
 			ContainerVersion: parts[1],
 			StartupTimeout:   2 * time.Minute,
+			l:                logging.GetTestLogger(nil),
 		},
 		chainConfig:          chainConfig,
 		posContainerSettings: posContainerSettings{generatedDataHostDir: generatedDataHostDir, generatedDataContainerDir: generatedDataContainerDir},
 		consensusLayer:       consensusLayer,
-		l:                    logging.GetTestLogger(nil),
 		ethereumVersion:      config_types.EthereumVersion_Eth2,
 	}
 	g.SetDefaultHooks()

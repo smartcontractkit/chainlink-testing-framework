@@ -4,11 +4,9 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
-	"testing"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
@@ -28,8 +26,6 @@ type MockServer struct {
 	Endpoint         string
 	InternalEndpoint string
 	EAMockUrls       []*url.URL
-	t                *testing.T
-	l                zerolog.Logger
 }
 
 func NewMockServer(networks []string, opts ...EnvComponentOption) *MockServer {
@@ -38,18 +34,12 @@ func NewMockServer(networks []string, opts ...EnvComponentOption) *MockServer {
 			ContainerName:  fmt.Sprintf("%s-%s", "mockserver", uuid.NewString()[0:8]),
 			Networks:       networks,
 			StartupTimeout: 1 * time.Minute,
+			l:              log.Logger,
 		},
-		l: log.Logger,
 	}
 	for _, opt := range opts {
 		opt(&ms.EnvComponent)
 	}
-	return ms
-}
-
-func (ms *MockServer) WithTestInstance(t *testing.T) *MockServer {
-	ms.l = logging.GetTestLogger(t)
-	ms.t = t
 	return ms
 }
 

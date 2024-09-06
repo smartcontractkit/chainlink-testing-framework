@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
@@ -21,8 +20,6 @@ const defaultZookeeperImage = "confluentinc/cp-zookeeper:7.4.0"
 type Zookeeper struct {
 	EnvComponent
 	InternalUrl string
-	l           zerolog.Logger
-	t           *testing.T
 }
 
 func NewZookeeper(networks []string) *Zookeeper {
