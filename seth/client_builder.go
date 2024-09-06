@@ -38,7 +38,7 @@ func NewClientBuilder() *ClientBuilder {
 			BlockStatsConfig:      &BlockStatsConfig{RPCRateLimit: 10},
 			NonceManager:          &NonceManagerCfg{KeySyncRateLimitSec: 10, KeySyncRetries: 3, KeySyncTimeout: MustMakeDuration(60 * time.Second), KeySyncRetryDelay: MustMakeDuration(5 * time.Second)},
 			GasBump: &GasBumpConfig{
-				Retries: 10,
+				Retries: 0, // bumping disabled by default
 			},
 		},
 	}

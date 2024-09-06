@@ -500,6 +500,7 @@ func (m *Client) WaitMined(ctx context.Context, l zerolog.Logger, b bind.DeployB
 			return receipt, nil
 		} else if errors.Is(err, ethereum.NotFound) {
 			l.Debug().
+				Str("Timeout", m.Cfg.Network.TxnTimeout.String()).
 				Str("TX", tx.Hash().String()).
 				Msg("Awaiting transaction")
 		} else {

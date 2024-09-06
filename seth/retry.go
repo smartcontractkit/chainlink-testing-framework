@@ -109,11 +109,11 @@ var prepareReplacementTransaction = func(client *Client, tx *types.Transaction) 
 	ctxPending, cancelPending := context.WithTimeout(context.Background(), client.Cfg.Network.TxnTimeout.Duration())
 	_, isPending, err := client.Client.TransactionByHash(ctxPending, tx.Hash())
 	defer cancelPending()
-	if err != nil {
+	if err != nil && !strings.Contains(err.Error(), "not found") {
 		return nil, err
 	}
 
-	if !isPending {
+	if err != nil && !isPending {
 		L.Debug().Str("Tx hash", tx.Hash().Hex()).Msg("Transaction was confirmed before bumping gas")
 		return nil, errors.New("transaction was confirmed before bumping gas")
 	}
