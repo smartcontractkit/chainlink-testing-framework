@@ -104,7 +104,7 @@ var PriorityBasedGasBumpingStrategyFn = func(priority string) GasBumpStrategyFn 
 // prepareReplacementTransaction bumps gas price of the transaction if it wasn't confirmed in time. It returns a signed replacement transaction.
 // Errors might be returned, because transaction was no longer pending, max gas price was reached or there was an error sending the transaction (e.g. nonce too low, meaning that original transaction was mined).
 var prepareReplacementTransaction = func(client *Client, tx *types.Transaction) (*types.Transaction, error) {
-	L.Warn().Msgf("Transaction wasn't confirmed in %s. Bumping gas", client.Cfg.Network.TxnTimeout.String())
+	L.Info().Msgf("Transaction wasn't confirmed in %s. Bumping gas", client.Cfg.Network.TxnTimeout.String())
 
 	ctxPending, cancelPending := context.WithTimeout(context.Background(), client.Cfg.Network.TxnTimeout.Duration())
 	_, isPending, err := client.Client.TransactionByHash(ctxPending, tx.Hash())
@@ -159,7 +159,7 @@ var prepareReplacementTransaction = func(client *Client, tx *types.Transaction) 
 		if err := checkMaxPrice(gasPrice, maxGasPrice); err != nil {
 			return nil, err
 		}
-		L.Warn().Interface("Old gas price", tx.GasPrice()).Interface("New gas price", gasPrice).Msg("Bumping gas price for legacy transaction")
+		L.Debug().Interface("Old gas price", tx.GasPrice()).Interface("New gas price", gasPrice).Msg("Bumping gas price for legacy transaction")
 		txData := &types.LegacyTx{
 			Nonce:    tx.Nonce(),
 			To:       tx.To(),
@@ -175,7 +175,7 @@ var prepareReplacementTransaction = func(client *Client, tx *types.Transaction) 
 		if err := checkMaxPrice(big.NewInt(0).Add(gasFeeCap, gasTipCap), maxGasPrice); err != nil {
 			return nil, err
 		}
-		L.Warn().Interface("Old gas fee cap", tx.GasFeeCap()).Interface("New gas fee cap", gasFeeCap).Interface("Old gas tip cap", tx.GasTipCap()).Interface("New gas tip cap", gasTipCap).Msg("Bumping gas fee cap and tip cap for EIP-1559 transaction")
+		L.Debug().Interface("Old gas fee cap", tx.GasFeeCap()).Interface("New gas fee cap", gasFeeCap).Interface("Old gas tip cap", tx.GasTipCap()).Interface("New gas tip cap", gasTipCap).Msg("Bumping gas fee cap and tip cap for EIP-1559 transaction")
 		txData := &types.DynamicFeeTx{
 			Nonce:     tx.Nonce(),
 			To:        tx.To(),
@@ -198,7 +198,7 @@ var prepareReplacementTransaction = func(client *Client, tx *types.Transaction) 
 			return nil, err
 		}
 
-		L.Warn().Interface("Old gas fee cap", tx.GasFeeCap()).Interface("Old max fee per blob", tx.BlobGasFeeCap()).Interface("New max fee per blob", blobFeeCap).Interface("New gas fee cap", gasFeeCap).Interface("Old gas tip cap", tx.GasTipCap()).Interface("New gas tip cap", gasTipCap).Msg("Bumping gas fee cap and tip cap for Blob transaction")
+		L.Debug().Interface("Old gas fee cap", tx.GasFeeCap()).Interface("Old max fee per blob", tx.BlobGasFeeCap()).Interface("New max fee per blob", blobFeeCap).Interface("New gas fee cap", gasFeeCap).Interface("Old gas tip cap", tx.GasTipCap()).Interface("New gas tip cap", gasTipCap).Msg("Bumping gas fee cap and tip cap for Blob transaction")
 		txData := &types.BlobTx{
 			Nonce:      tx.Nonce(),
 			To:         *tx.To(),
@@ -217,7 +217,7 @@ var prepareReplacementTransaction = func(client *Client, tx *types.Transaction) 
 		if err := checkMaxPrice(gasPrice, maxGasPrice); err != nil {
 			return nil, err
 		}
-		L.Warn().Interface("Old gas price", tx.GasPrice()).Interface("New gas price", gasPrice).Msg("Bumping gas price for access list transaction")
+		L.Debug().Interface("Old gas price", tx.GasPrice()).Interface("New gas price", gasPrice).Msg("Bumping gas price for access list transaction")
 
 		txData := &types.AccessListTx{
 			Nonce:      tx.Nonce(),

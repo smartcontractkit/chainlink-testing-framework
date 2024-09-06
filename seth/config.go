@@ -168,7 +168,7 @@ func ReadConfig() (*Config, error) {
 				cfg.Network.URLs = []string{url}
 
 				if selectedNetwork == "" {
-					L.Warn().Msg("No network name provided, using default network")
+					L.Debug().Msg("No network name provided, using default network")
 					cfg.Network.Name = DefaultNetworkName
 				}
 

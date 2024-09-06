@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -20,7 +21,7 @@ func (t *LoggingTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 
 	reqDump, err := httputil.DumpRequestOut(req, true)
 	if err != nil {
-		L.Error().Err(err).Msg("Error dumping request")
+		L.Warn().Err(err).Msg("Error dumping request")
 	} else {
 		fmt.Printf("Request:\n%s\n", string(reqDump))
 	}
@@ -37,7 +38,7 @@ func (t *LoggingTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 
 	respDump, err := httputil.DumpResponse(resp, true)
 	if err != nil {
-		L.Error().Err(err).Msg("Error dumping response")
+		L.Warn().Err(err).Msg("Error dumping response")
 	} else {
 		fmt.Printf("Response:\n%s\n", string(respDump))
 	}
@@ -49,7 +50,7 @@ func (t *LoggingTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 // NewLoggingTransport creates a new logging transport for GAP or default transport
 // controlled by SETH_LOG_LEVEL
 func NewLoggingTransport() http.RoundTripper {
-	if os.Getenv(LogLevelEnvVar) == "debug" {
+	if strings.EqualFold(os.Getenv(LogLevelEnvVar), "trace") {
 		return &LoggingTransport{
 			// TODO: GAP, add proper certificates
 			Transport: &http.Transport{
