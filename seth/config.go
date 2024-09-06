@@ -304,3 +304,13 @@ func (c *Config) hasOutput(output string) bool {
 
 	return false
 }
+
+func (c *Config) findNetworkByName(name string) *Network {
+	for _, n := range c.Networks {
+		if strings.EqualFold(n.Name, name) {
+			return n
+		}
+	}
+
+	return nil
+}

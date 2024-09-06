@@ -483,6 +483,9 @@ func (m *Client) TransferETHFromKey(ctx context.Context, fromKeyNum int, to stri
 
 // WaitMined the same as bind.WaitMined, awaits transaction receipt until timeout
 func (m *Client) WaitMined(ctx context.Context, l zerolog.Logger, b bind.DeployBackend, tx *types.Transaction) (*types.Receipt, error) {
+	l.Info().
+		Str("TX", tx.Hash().String()).
+		Msg("Waiting for transaction to be mined")
 	queryTicker := time.NewTicker(time.Second)
 	defer queryTicker.Stop()
 	ctx, cancel := context.WithTimeout(ctx, m.Cfg.Network.TxnTimeout.Duration())
