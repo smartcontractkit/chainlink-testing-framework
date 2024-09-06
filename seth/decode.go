@@ -279,12 +279,12 @@ func (m *Client) handleTracingError(l zerolog.Logger, decoded DecodedTransaction
 	}
 
 	if strings.Contains(traceErr.Error(), "debug_traceTransaction does not exist") {
-		l.Warn().
+		l.Debug().
 			Msg("Debug API is either disabled or not available on the node. Disabling tracing")
 
 		l.Error().
 			Err(revertErr).
-			Msg("Transaction was reverted, but we couldn't trace the transaction.")
+			Msg("Transaction was reverted, but we couldn't trace it, because debug API on the node is disabled")
 
 		m.Cfg.TracingLevel = TracingLevel_None
 	}
@@ -493,7 +493,7 @@ func (m *Client) DecodeCustomABIErr(txErr error) (string, error) {
 			}
 		}
 	} else {
-		L.Warn().Msg("No error data in tx submission error")
+		L.Debug().Msg("Transaction submission error doesn't contain any data. Impossible to decode the revert reason")
 	}
 	return "", nil
 }
@@ -503,8 +503,7 @@ func (m *Client) CallMsgFromTx(tx *types.Transaction) (ethereum.CallMsg, error) 
 	signer := types.LatestSignerForChainID(tx.ChainId())
 	sender, err := types.Sender(signer, tx)
 	if err != nil {
-		L.Warn().Err(err).Msg("Failed to get sender from tx")
-		return ethereum.CallMsg{}, err
+		return ethereum.CallMsg{}, errors.Wrapf(err, "failed to get sender from transaction")
 	}
 
 	if tx.Type() == types.LegacyTxType {
@@ -552,7 +551,7 @@ func (m *Client) callAndGetRevertReason(tx *types.Transaction, rc *types.Receipt
 	// if there is no match we print the error from CallMsg call
 	msg, err := m.CallMsgFromTx(tx)
 	if err != nil {
-		L.Warn().Err(err).Msg("Failed to get call msg from tx. We won't be able to decode revert reason.")
+		L.Debug().Msgf("Failed to extract required data from transaction due to: %s, We won't be able to decode revert reason.", err.Error())
 		return nil
 	}
 	_, plainStringErr := m.Client.CallContract(context.Background(), msg, rc.BlockNumber)
@@ -566,22 +565,22 @@ func (m *Client) callAndGetRevertReason(tx *types.Transaction, rc *types.Receipt
 	}
 
 	if plainStringErr != nil {
-		L.Warn().Msg("Failed to decode revert reason")
+		L.Debug().Msg("Failed to decode revert reason")
 
 		if plainStringErr.Error() == "execution reverted" && tx != nil && rc != nil {
 			if tx.To() != nil {
 				pragma, err := m.DownloadContractAndGetPragma(*tx.To(), rc.BlockNumber)
 				if err == nil {
 					if DoesPragmaSupportCustomRevert(pragma) {
-						L.Warn().Str("Pragma", fmt.Sprint(pragma)).Msg("Custom revert reason is supported by pragma, but we could not decode it. This might be a bug in Seth. Please contact the Test Tooling team.")
+						L.Warn().Str("Pragma", fmt.Sprint(pragma)).Msg("Custom revert reason is supported by pragma, but we could not decode it. If you are sure that this contract has custom revert reasons this might indicate a bug in Seth. Please contact the Test Tooling team.")
 					} else {
 						L.Info().Str("Pragma", fmt.Sprint(pragma)).Msg("Custom revert reason is not supported by pragma version (must be >= 0.8.4). There's nothing more we can do to get custom revert reason.")
 					}
 				} else {
-					L.Warn().Err(err).Msg("Failed to decode pragma version. Contract either uses very old version or was compiled without metadata. We won't be able to decode revert reason.")
+					L.Debug().Msgf("Failed to decode pragma version due to: %s. Contract either uses very old version or was compiled without metadata. We won't be able to decode revert reason.", err.Error())
 				}
 			} else {
-				L.Warn().Msg("Transaction has no recipient address. Most likely it's a contract creation transaction. We don't support decoding revert reasons for contract creation transactions yet.")
+				L.Debug().Msg("Transaction has no recipient address. Most likely it's a contract creation transaction. We don't support decoding revert reasons for contract creation transactions yet.")
 			}
 		}
 

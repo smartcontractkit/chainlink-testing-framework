@@ -20,7 +20,7 @@ func (t *LoggingTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 
 	reqDump, err := httputil.DumpRequestOut(req, true)
 	if err != nil {
-		L.Error().Err(err).Msg("Error dumping request")
+		L.Warn().Err(err).Msg("Error dumping request")
 	} else {
 		fmt.Printf("Request:\n%s\n", string(reqDump))
 	}
@@ -37,7 +37,7 @@ func (t *LoggingTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 
 	respDump, err := httputil.DumpResponse(resp, true)
 	if err != nil {
-		L.Error().Err(err).Msg("Error dumping response")
+		L.Warn().Err(err).Msg("Error dumping response")
 	} else {
 		fmt.Printf("Response:\n%s\n", string(respDump))
 	}

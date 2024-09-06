@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -110,7 +109,7 @@ func (m *Client) CalculateNetworkCongestionMetric(blocksNumber uint64, strategy 
 		go func(bn *big.Int) {
 			header, err := getHeaderData(bn)
 			if err != nil {
-				L.Error().Err(err).Msgf("Failed to get block %d header", bn.Int64())
+				L.Debug().Msgf("Failed to get block %d header due to: %s", bn.Int64(), err.Error())
 				wg.Done()
 				return
 			}
@@ -235,18 +234,15 @@ func (m *Client) GetSuggestedEIP1559Fees(ctx context.Context, priority string) (
 	}
 
 	if baseFee64 == 0.0 {
-		err = errors.New(ZeroGasSuggestedErr)
-
-		L.Error().
-			Err(err).
+		L.Debug().
 			Float64("BaseFee", baseFee64).
 			Int64("SuggestedTip", currentGasTip.Int64()).
-			Msg("Incorrect gas data received from node. Skipping automation gas estimation")
+			Msgf("Incorrect gas data received from node: historical base fee was 0. Skipping automation gas estimation")
 		return
 	}
 
 	if currentGasTip.Int64() == 0 {
-		L.Warn().
+		L.Debug().
 			Msg("Suggested tip is 0.0. Although not strictly incorrect, it is unusual. Transaction might take much longer to confirm.")
 	}
 
@@ -299,9 +295,8 @@ func (m *Client) GetSuggestedEIP1559Fees(ctx context.Context, priority string) (
 		} else if !strings.Contains(err.Error(), BlockFetchingErr) {
 			return
 		} else {
-			L.Warn().
-				Err(err).
-				Msg("Failed to calculate congestion metric. Skipping congestion buffer adjustment")
+			L.Debug().
+				Msgf("Failed to calculate congestion metric due to: %s. Skipping congestion buffer adjustment", err.Error())
 
 			// set error to nil, as we can still calculate the fees, but without congestion buffer
 			// we don't want to return an error in this case
@@ -354,9 +349,8 @@ func (m *Client) GetSuggestedLegacyFees(ctx context.Context, priority string) (a
 
 	if suggestedGasPrice.Int64() == 0 {
 		err = fmt.Errorf("suggested gas price is 0")
-		L.Error().
-			Err(err).
-			Msg("Incorrect gas data received from node. Skipping automation gas estimation")
+		L.Debug().
+			Msg("Incorrect gas data received from node: suggested gas price was 0. Skipping automation gas estimation")
 		return
 	}
 
@@ -399,9 +393,8 @@ func (m *Client) GetSuggestedLegacyFees(ctx context.Context, priority string) (a
 		} else if !strings.Contains(err.Error(), BlockFetchingErr) {
 			return
 		} else {
-			L.Warn().
-				Err(err).
-				Msg("Failed to calculate congestion metric. Skipping congestion buffer adjustment")
+			L.Debug().
+				Msgf("Failed to calculate congestion metric due to: %s. Skipping congestion buffer adjustment", err.Error())
 
 			// set error to nil, as we can still calculate the fees, but without congestion buffer
 			// we don't want to return an error in this case
@@ -469,9 +462,8 @@ func (m *Client) HistoricalFeeData(priority string) (baseFee float64, historical
 	estimator := NewGasEstimator(m)
 	stats, err := estimator.Stats(m.Cfg.Network.GasPriceEstimationBlocks, 99)
 	if err != nil {
-		L.Error().
-			Err(err).
-			Msg("Failed to get fee history. Skipping automation gas estimation")
+		L.Debug().
+			Msgf("Failed to get fee history due to: %s. Skipping automation gas estimation", err.Error())
 
 		return
 	}
@@ -491,15 +483,15 @@ func (m *Client) HistoricalFeeData(priority string) (baseFee float64, historical
 		historicalGasTipCap = stats.TipCap.Perc25
 	default:
 		err = fmt.Errorf("unknown priority: %s", priority)
-		L.Error().
+		L.Debug().
 			Str("Priority", priority).
-			Msg("Unknown priority. Skipping automation gas estimation")
+			Msgf("Unknown priority: %s. Skipping automation gas estimation", err.Error())
 
 		return
 
 	}
 
-	return baseFee, historicalGasTipCap, err
+	return
 }
 
 // calculateGasUsedRatio averages the gas used ratio for a sense of how full blocks are
