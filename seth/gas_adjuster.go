@@ -243,7 +243,11 @@ func (m *Client) GetSuggestedEIP1559Fees(ctx context.Context, priority string) (
 
 	if currentGasTip.Int64() == 0 {
 		L.Debug().
-			Msg("Suggested tip is 0.0. Although not strictly incorrect, it is unusual. Transaction might take much longer to confirm.")
+			Int64("SuggestedTip", currentGasTip.Int64()).
+			Str("Fallback gas tip", fmt.Sprintf("%d wei / %s ether", m.Cfg.Network.GasTipCap, WeiToEther(big.NewInt(m.Cfg.Network.GasTipCap)).Text('f', -1))).
+			Msg("Suggested tip is 0.0. Although not strictly incorrect, it is unusual. Will use fallback value instead")
+
+		currentGasTip = big.NewInt(m.Cfg.Network.GasTipCap)
 	}
 
 	// between 0.8 and 1.5

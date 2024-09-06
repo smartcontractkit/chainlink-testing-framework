@@ -92,7 +92,7 @@ func NewClientWithConfig(cfg *Config) (*Client, error) {
 		// we don't care about any other keys, only the root key
 		// you should not use ephemeral mode with more than 1 key
 		if len(cfg.Network.PrivateKeys) > 1 {
-			L.Debug().Msg("Ephemeral mode is enabled, but more than 1 key is loaded. Only the first key will be used")
+			L.Warn().Msg("Ephemeral mode is enabled, but more than 1 key is loaded. Only the first key will be used")
 		}
 		cfg.Network.PrivateKeys = cfg.Network.PrivateKeys[:1]
 		pkeys, err := NewEphemeralKeys(*cfg.EphemeralAddrs)
@@ -230,7 +230,7 @@ func NewClientRaw(
 		return nil, errors.New("no RPC URL provided")
 	}
 	if len(cfg.Network.URLs) > 1 {
-		L.Debug().Msg("Multiple RPC URLs provided, only the first one will be used")
+		L.Warn().Msg("Multiple RPC URLs provided, only the first one will be used")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.Network.DialTimeout.Duration())
 	defer cancel()
