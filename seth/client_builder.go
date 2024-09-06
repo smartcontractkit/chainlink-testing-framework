@@ -1,6 +1,7 @@
 package seth
 
 import (
+	"errors"
 	"time"
 )
 
@@ -44,11 +45,15 @@ func NewClientBuilder() *ClientBuilder {
 	}
 }
 
-// NewClientBuilderWithConfig creates a new ClientBuilder with a provided config.
-func NewClientBuilderWithConfig(config *Config) *ClientBuilder {
+// NewClientBuilderWithConfig creates a new ClientBuilder with a provided config. It requires the network to be set, as otherwise it will not know
+// which of the networks should be modified by other builder methods.
+func NewClientBuilderWithConfig(config *Config) (*ClientBuilder, error) {
+	if config.Network == nil {
+		return nil, errors.New("you can use NewClientBuilderWithConfig only with a config that has a Network set")
+	}
 	return &ClientBuilder{
 		config: config,
-	}
+	}, nil
 }
 
 // WithRpcUrl sets the RPC URL for the config.
