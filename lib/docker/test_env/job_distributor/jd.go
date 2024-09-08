@@ -187,8 +187,9 @@ func WithImage(image string) Option {
 	return func(j *Component) {
 		if strings.Contains(image, ":") {
 			split := strings.Split(image, ":")
-			j.ContainerImage = split[0]
-			j.ContainerVersion = split[1]
+			version := split[len(split)-1]
+			j.ContainerImage = strings.Split(image, fmt.Sprintf(":%s", version))[0]
+			j.ContainerVersion = version
 		} else {
 			j.ContainerImage = image
 		}
