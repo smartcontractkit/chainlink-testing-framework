@@ -3,7 +3,6 @@ package job_distributor
 import (
 	"fmt"
 	"net/url"
-	"strings"
 	"testing"
 	"time"
 
@@ -185,14 +184,7 @@ func WithContainerName(name string) Option {
 
 func WithImage(image string) Option {
 	return func(j *Component) {
-		if strings.Contains(image, ":") {
-			split := strings.Split(image, ":")
-			version := split[len(split)-1]
-			j.ContainerImage = strings.Split(image, fmt.Sprintf(":%s", version))[0]
-			j.ContainerVersion = version
-		} else {
-			j.ContainerImage = image
-		}
+		j.ContainerImage = image
 	}
 }
 

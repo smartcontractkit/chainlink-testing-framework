@@ -14,7 +14,7 @@ import (
 )
 
 func TestJDSpinUp(t *testing.T) {
-	//	t.Skipf("TODO enable this when jd image is available in ci")
+	t.Skipf("TODO enable this when jd image is available in ci")
 	l := logging.GetTestLogger(t)
 	network, err := docker.CreateNetwork(l)
 	require.NoError(t, err)
@@ -30,7 +30,8 @@ func TestJDSpinUp(t *testing.T) {
 
 	jd := New([]string{network.Name},
 		//TODO: replace with actual image
-		WithImage("localhost:5001/jd:latest"),
+		WithImage("localhost:5001/jd"),
+		WithVersion("latest"),
 		WithDBURL(pg.InternalURL.String()),
 	)
 
