@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	tc "github.com/testcontainers/testcontainers-go"
@@ -58,29 +59,29 @@ func (j *JobDistributor) startOrRestartContainer(withReuse bool) error {
 	ctx := testcontext.Get(j.t)
 	host, err := test_env.GetHost(ctx, c)
 	if err != nil {
-		return fmt.Errorf("cannot get host for container %s: %w", j.ContainerName, err)
+		return errors.Wrapf(err, "cannot get host for container %s", j.ContainerName)
 	}
 
 	p, err := c.MappedPort(ctx, test_env.NatPort(j.containerPort))
 	if err != nil {
-		return fmt.Errorf("cannot get container mapped port for container %s: %w", j.ContainerName, err)
+		return errors.Wrapf(err, "cannot get container mapped port for container %s", j.ContainerName)
 	}
 	j.Grpc = fmt.Sprintf("%s:%s", host, p.Port())
 
 	p, err = c.MappedPort(ctx, test_env.NatPort(j.wsrpcPort))
 	if err != nil {
-		return fmt.Errorf("cannot get wsrpc mapped port for container %s: %w", j.ContainerName, err)
+		return errors.Wrapf(err, "cannot get wsrpc mapped port for container %s", j.ContainerName)
 	}
 	j.Wsrpc, err = url.Parse(test_env.FormatWsUrl(host, p.Port()))
 	if err != nil {
-		return fmt.Errorf("error parsing wsrpc url: %w", err)
+		return errors.Wrap(err, "error parsing wsrpc url")
 	}
 
 	j.InternalGRPC = fmt.Sprintf("%s:%s", j.ContainerName, j.containerPort)
 
 	j.InternalWSRPC, err = url.Parse(test_env.FormatWsUrl(j.ContainerName, j.wsrpcPort))
 	if err != nil {
-		return fmt.Errorf("error parsing internal wsrpc url: %w", err)
+		return errors.Wrap(err, "error parsing internal wsrpc url")
 	}
 	j.l.Info().
 		Str("containerName", j.ContainerName).

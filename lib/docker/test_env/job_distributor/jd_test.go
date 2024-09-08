@@ -44,7 +44,7 @@ func TestJDSpinUp(t *testing.T) {
 func newConnection(target string) (*grpc.ClientConn, error) {
 	var opts []grpc.DialOption
 	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	conn, err := grpc.Dial(target, opts...)
+	conn, err := grpc.NewClient(target, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to connect to service at %s. Err: %w", target, err)
 	}
