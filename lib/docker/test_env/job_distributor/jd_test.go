@@ -28,7 +28,7 @@ func TestJDSpinUp(t *testing.T) {
 	err = pg.StartContainer()
 	require.NoError(t, err)
 
-	jd := NewJobDistributor([]string{network.Name},
+	jd := New([]string{network.Name},
 		//TODO: replace with actual image
 		WithImage("localhost:5001/jd"),
 		WithDBURL(pg.InternalURL.String()),

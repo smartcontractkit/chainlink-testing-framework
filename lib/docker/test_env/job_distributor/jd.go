@@ -27,9 +27,9 @@ const (
 	DEAFULTWSRPCContainerPort  string = "8080"
 )
 
-type Option = func(j *JobDistributor)
+type Option = func(j *Component)
 
-type JobDistributor struct {
+type Component struct {
 	test_env.EnvComponent
 	Grpc                string
 	Wsrpc               *url.URL
@@ -43,7 +43,7 @@ type JobDistributor struct {
 	csaKeyEncryptionKey string
 }
 
-func (j *JobDistributor) startOrRestartContainer(withReuse bool) error {
+func (j *Component) startOrRestartContainer(withReuse bool) error {
 	req := j.getContainerRequest()
 	l := logging.GetTestContainersGoTestLogger(j.t)
 	c, err := docker.StartContainerWithRetry(j.l, tc.GenericContainerRequest{
@@ -94,7 +94,7 @@ func (j *JobDistributor) startOrRestartContainer(withReuse bool) error {
 	return nil
 }
 
-func (j *JobDistributor) getContainerRequest() *tc.ContainerRequest {
+func (j *Component) getContainerRequest() *tc.ContainerRequest {
 	return &tc.ContainerRequest{
 		Name:  j.ContainerName,
 		Image: fmt.Sprintf("%s:%s", j.ContainerImage, j.ContainerVersion),
@@ -122,17 +122,17 @@ func (j *JobDistributor) getContainerRequest() *tc.ContainerRequest {
 	}
 }
 
-func (j *JobDistributor) StartContainer() error {
+func (j *Component) StartContainer() error {
 	return j.startOrRestartContainer(false)
 }
 
-func (j *JobDistributor) RestartContainer() error {
+func (j *Component) RestartContainer() error {
 	return j.startOrRestartContainer(true)
 }
 
-func NewJobDistributor(networks []string, opts ...Option) *JobDistributor {
+func New(networks []string, opts ...Option) *Component {
 	id, _ := uuid.NewRandom()
-	j := &JobDistributor{
+	j := &Component{
 		EnvComponent: test_env.EnvComponent{
 			ContainerName:  fmt.Sprintf("%s-%s", JDContainerName, id.String()[0:8]),
 			Networks:       networks,
@@ -151,26 +151,26 @@ func NewJobDistributor(networks []string, opts ...Option) *JobDistributor {
 }
 
 func WithTestInstance(t *testing.T) Option {
-	return func(j *JobDistributor) {
+	return func(j *Component) {
 		j.l = logging.GetTestLogger(t)
 		j.t = t
 	}
 }
 
 func WithContainerPort(port string) Option {
-	return func(j *JobDistributor) {
+	return func(j *Component) {
 		j.containerPort = port
 	}
 }
 
 func WithWSRPCContainerPort(port string) Option {
-	return func(j *JobDistributor) {
+	return func(j *Component) {
 		j.wsrpcPort = port
 	}
 }
 
 func WithDBURL(db string) Option {
-	return func(j *JobDistributor) {
+	return func(j *Component) {
 		if db != "" {
 			j.dbConnection = db
 		}
@@ -178,13 +178,13 @@ func WithDBURL(db string) Option {
 }
 
 func WithContainerName(name string) Option {
-	return func(j *JobDistributor) {
+	return func(j *Component) {
 		j.ContainerName = name
 	}
 }
 
 func WithImage(image string) Option {
-	return func(j *JobDistributor) {
+	return func(j *Component) {
 		if strings.Contains(image, ":") {
 			split := strings.Split(image, ":")
 			j.ContainerImage = split[0]
@@ -196,13 +196,13 @@ func WithImage(image string) Option {
 }
 
 func WithVersion(version string) Option {
-	return func(j *JobDistributor) {
+	return func(j *Component) {
 		j.ContainerVersion = version
 	}
 }
 
 func WithCSAKeyEncryptionKey(key string) Option {
-	return func(j *JobDistributor) {
+	return func(j *Component) {
 		j.csaKeyEncryptionKey = key
 	}
 }
