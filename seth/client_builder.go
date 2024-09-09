@@ -167,7 +167,8 @@ func (c *ClientBuilder) WithTransferGasFee(transferGasFee int64) *ClientBuilder 
 
 // WithGasBumping sets the number of retries for gas bumping and max gas price. You can also provide a custom bumping strategy. If the transaction is not mined within this number of retries, it will be considered failed.
 // If the gas price is bumped to a value higher than max gas price, no more gas bumping will be attempted and previous gas price will be used by all subsequent attempts. If set to 0 max price is not checked.
-// Default value is 10 retries, no max gas price and a default bumping strategy (with gas increase % based on gas_price_estimation_tx_priority)
+// Default value is no retires.
+// When enabling use `nil` as customBumpingStrategy to use the default strategy (more on it in the documentation).
 func (c *ClientBuilder) WithGasBumping(retries uint, maxGasPrice int64, customBumpingStrategy GasBumpStrategyFn) *ClientBuilder {
 	c.config.GasBump = &GasBumpConfig{
 		Retries:     retries,
