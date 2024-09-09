@@ -1,3 +1,7 @@
+# Common release pipeline that triggers on package tags:
+# - Prepare a release for a package $pkg/vX.X.X, collect commits info and changelog
+# - Create a GitHub release and combine all release notes
+# - Builds a binary for common platforms if package have "cmd" directory
 name: Release libraries and binaries
 on:
   push:
@@ -98,30 +102,6 @@ jobs:
         id: check_breaking_changes
         run: |
           go run cmd/main.go -path $GITHUB_WORKSPACE/${{ env.PACKAGE_NAME }}
-#          # Find the latest tag for the same package that is not the current tag
-#          LAST_TAG=$(git describe --abbrev=0 --match "$PACKAGE_NAME/v*" --tags $(git rev-list --tags --skip=1 --max-count=1))
-#
-#          TAG="${LAST_TAG#*/}"
-#
-#          echo "Previous tag: ${TAG}"
-#          echo "Current tag: ${VERSION}"
-#
-#          gorelease -base "${TAG}"
-#
-#          # Parse output for breaking changes
-#          BREAKING_CHANGES=$(gorelease -base "${TAG}" 2>&1)
-#
-#          # Output breaking changes
-#          echo "Breaking Changes:"
-#          echo "$BREAKING_CHANGES"
-#
-#          # Check if there are any breaking changes
-#          if [ -n "$BREAKING_CHANGES" ]; then
-#            # Safely set breaking changes as an environment variable using heredoc
-#            echo "BREAKING_CHANGES<<EOF" >> $GITHUB_ENV
-#            echo "$BREAKING_CHANGES" >> $GITHUB_ENV
-#            echo "EOF" >> $GITHUB_ENV
-#          fi
       - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -130,13 +110,15 @@ jobs:
           gh release create "${{ env.PACKAGE_NAME }}-${{ env.VERSION }}" --title "${{ env.PACKAGE_NAME }} ${{ env.VERSION }}" --notes "Release for ${{ env.PACKAGE_NAME }} version ${{ env.VERSION }}${{ env.FULL_RELEASE_NOTES }} ${{ env.BREAKING_CHANGES }}" || true
       - name: Check if 'cmd' directory exists and set environment variable
         run: |
-          if [ -d "$GITHUB_WORKSPACE/${{ env.PACKAGE_NAME}}/cmd" ]; then
+          if [ -d "$GITHUB_WORKSPACE/${{ env.PACKAGE_NAME }}/cmd" ] && [ -f "$GITHUB_WORKSPACE/${{ env.PACKAGE_NAME }}/cmd/main.go" ]; then
             echo "CMD_EXISTS=true" >> $GITHUB_ENV
           else
             echo "CMD_EXISTS=false" >> $GITHUB_ENV
+          fi
       - uses: wangyoucao577/go-release-action@v1
         if: env.CMD_EXISTS == 'true'
         with:
+          build_command: go build cmd/main.go
           github_token: ${{ secrets.GITHUB_TOKEN }}
           goversion: '1.22.6'
           goos: ${{ matrix.platform }}

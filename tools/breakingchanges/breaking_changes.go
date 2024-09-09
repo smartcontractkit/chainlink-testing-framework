@@ -24,7 +24,7 @@ func DetectBreakingChanges(rootPath string) {
 		log.Fatalf("%sgorelease could not be found. Please install it with 'go install golang.org/x/exp/cmd/gorelease@latest'.%s\n", green, noColor)
 	}
 
-	var eg errgroup.Group
+	eg := &errgroup.Group{}
 
 	// Function to process each directory
 	processDirectory := func(path string) error {
@@ -76,7 +76,7 @@ func runGorelease(path string) error {
 	packageFolder := filepath.Base(path)
 	var output bytes.Buffer
 
-	// Find the second latest tag for the package
+	// Find the second-latest tag for the package
 	cmd := exec.Command("git", "tag", "--sort=-creatordate")
 	cmd.Dir = path
 	cmd.Stdout = &output
@@ -105,7 +105,6 @@ func runGorelease(path string) error {
 	versionTag := strings.Split(previousTag, "/")[1]
 	fmt.Printf("%sRunning gorelease for package %s with base tag %s%s\n", green, packageFolder, versionTag, noColor)
 
-	// Run gorelease
 	cmd = exec.Command("gorelease", "-base", versionTag)
 	cmd.Dir = path
 	output.Reset()
