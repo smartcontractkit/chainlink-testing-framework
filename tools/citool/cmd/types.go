@@ -21,6 +21,7 @@ type CITestConf struct {
 	RemoteRunnerMemory         string            `yaml:"remote_runner_memory" json:"remote_runner_memory"`
 	PyroscopeEnv               string            `yaml:"pyroscope_env" json:"pyroscope_env"`
 	Workflows                  []string          `yaml:"workflows" json:"workflows"`
+	ArtifactPaths              []string          `yaml:"artifact_paths" json:"artifact_paths"`
 }
 
 type Config struct {
