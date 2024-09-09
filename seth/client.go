@@ -307,7 +307,7 @@ func NewClientRaw(
 
 	if cfg.CheckRpcHealthOnStart {
 		if c.NonceManager == nil {
-			L.Warn().Msg("Nonce manager is not set, RPC health check will be skipped. Client will most probably fail on first transaction")
+			L.Debug().Msg("Nonce manager is not set, RPC health check will be skipped. Client will most probably fail on first transaction")
 		} else {
 			if err := c.checkRPCHealth(); err != nil {
 				return nil, err
@@ -483,6 +483,8 @@ func (m *Client) TransferETHFromKey(ctx context.Context, fromKeyNum int, to stri
 
 // WaitMined the same as bind.WaitMined, awaits transaction receipt until timeout
 func (m *Client) WaitMined(ctx context.Context, l zerolog.Logger, b bind.DeployBackend, tx *types.Transaction) (*types.Receipt, error) {
+	l.Info().
+		Msg("Waiting for transaction to be mined")
 	queryTicker := time.NewTicker(time.Second)
 	defer queryTicker.Stop()
 	ctx, cancel := context.WithTimeout(ctx, m.Cfg.Network.TxnTimeout.Duration())
@@ -492,22 +494,19 @@ func (m *Client) WaitMined(ctx context.Context, l zerolog.Logger, b bind.DeployB
 		if err == nil {
 			l.Info().
 				Int64("BlockNumber", receipt.BlockNumber.Int64()).
-				Str("TX", tx.Hash().String()).
 				Msg("Transaction receipt found")
 			return receipt, nil
 		} else if errors.Is(err, ethereum.NotFound) {
 			l.Debug().
-				Str("TX", tx.Hash().String()).
+				Str("Timeout", m.Cfg.Network.TxnTimeout.String()).
 				Msg("Awaiting transaction")
 		} else {
-			l.Warn().
-				Err(err).
-				Str("TX", tx.Hash().String()).
-				Msg("Failed to get receipt")
+			l.Debug().
+				Msgf("Failed to get receipt due to: %s", err)
 		}
 		select {
 		case <-ctx.Done():
-			l.Error().Err(err).Msg("Transaction context is done")
+			l.Error().Err(err).Str("Tx hash", tx.Hash().Hex()).Msg("Timed out, while waiting for transaction to be mined")
 			return nil, ctx.Err()
 		case <-queryTicker.C:
 		}
@@ -727,7 +726,7 @@ func (m *Client) getNonceStatus(address common.Address) (NonceStatus, error) {
 	defer cancel()
 	pendingNonce, err := m.Client.PendingNonceAt(ctx, address)
 	if err != nil {
-		L.Error().Err(err).Msg("Failed to get pending nonce")
+		L.Error().Err(err).Msg("Failed to get pending nonce from RPC node")
 		return NonceStatus{}, err
 	}
 
@@ -848,7 +847,7 @@ func (m *Client) CalculateGasEstimations(request GasEstimationRequest) GasEstima
 		gasPrice, err := m.GetSuggestedLegacyFees(ctx, request.Priority)
 		if err != nil {
 			disableEstimationsIfNeeded(err)
-			L.Warn().Err(err).Msg("Failed to get suggested Legacy fees. Using hardcoded values")
+			L.Debug().Err(err).Msg("Failed to get suggested Legacy fees. Using hardcoded values")
 			estimations.GasPrice = big.NewInt(request.FallbackGasPrice)
 		} else {
 			estimations.GasPrice = gasPrice
@@ -858,7 +857,7 @@ func (m *Client) CalculateGasEstimations(request GasEstimationRequest) GasEstima
 	if m.Cfg.Network.EIP1559DynamicFees {
 		maxFee, priorityFee, err := m.GetSuggestedEIP1559Fees(ctx, request.Priority)
 		if err != nil {
-			L.Warn().Err(err).Msg("Failed to get suggested EIP1559 fees. Using hardcoded values")
+			L.Debug().Err(err).Msg("Failed to get suggested EIP1559 fees. Using hardcoded values")
 			estimations.GasFeeCap = big.NewInt(request.FallbackGasFeeCap)
 			estimations.GasTipCap = big.NewInt(request.FallbackGasTipCap)
 
@@ -893,7 +892,7 @@ func (m *Client) EstimateGasLimitForFundTransfer(from, to common.Address, amount
 		Value: amount,
 	})
 	if err != nil {
-		L.Warn().Err(err).Msg("Failed to estimate gas for fund transfer.")
+		L.Debug().Msgf("Failed to estimate gas for fund transfer due to: %s", err.Error())
 		return 0, errors.Wrapf(err, "failed to estimate gas for fund transfer")
 	}
 	return gasLimit, nil

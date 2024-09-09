@@ -38,7 +38,7 @@ func NewClientBuilder() *ClientBuilder {
 			BlockStatsConfig:      &BlockStatsConfig{RPCRateLimit: 10},
 			NonceManager:          &NonceManagerCfg{KeySyncRateLimitSec: 10, KeySyncRetries: 3, KeySyncTimeout: MustMakeDuration(60 * time.Second), KeySyncRetryDelay: MustMakeDuration(5 * time.Second)},
 			GasBump: &GasBumpConfig{
-				Retries: 10,
+				Retries: 0, // bumping disabled by default
 			},
 		},
 	}
@@ -47,12 +47,13 @@ func NewClientBuilder() *ClientBuilder {
 // WithRpcUrl sets the RPC URL for the config.
 // Default value is an empty string (which is an incorrect value).
 func (c *ClientBuilder) WithRpcUrl(url string) *ClientBuilder {
+	c.assertNetworkIsSet()
 	c.config.Network.URLs = []string{url}
 	// defensive programming
 	if len(c.config.Networks) == 0 {
 		c.config.Networks = append(c.config.Networks, c.config.Network)
-	} else {
-		c.config.Networks[0].URLs = []string{url}
+	} else if net := c.config.findNetworkByName(c.config.Network.Name); net != nil {
+		net.URLs = []string{url}
 	}
 	return c
 }
@@ -60,12 +61,13 @@ func (c *ClientBuilder) WithRpcUrl(url string) *ClientBuilder {
 // WithPrivateKeys sets the private keys for the config. At least one is required to build a valid config.
 // Default value is an empty slice (which is an incorrect value).
 func (c *ClientBuilder) WithPrivateKeys(pks []string) *ClientBuilder {
+	c.assertNetworkIsSet()
 	c.config.Network.PrivateKeys = pks
 	// defensive programming
 	if len(c.config.Networks) == 0 {
 		c.config.Networks = append(c.config.Networks, c.config.Network)
-	} else {
-		c.config.Networks[0].PrivateKeys = pks
+	} else if net := c.config.findNetworkByName(c.config.Network.Name); net != nil {
+		net.PrivateKeys = pks
 	}
 	return c
 }
@@ -73,12 +75,13 @@ func (c *ClientBuilder) WithPrivateKeys(pks []string) *ClientBuilder {
 // WithNetworkName sets the network name, useful mostly for debugging and logging.
 // Default value is "default".
 func (c *ClientBuilder) WithNetworkName(name string) *ClientBuilder {
+	c.assertNetworkIsSet()
 	c.config.Network.Name = name
 	// defensive programming
 	if len(c.config.Networks) == 0 {
 		c.config.Networks = append(c.config.Networks, c.config.Network)
-	} else {
-		c.config.Networks[0].Name = name
+	} else if net := c.config.findNetworkByName(c.config.Network.Name); net != nil {
+		net.Name = name
 	}
 	return c
 }
@@ -89,16 +92,17 @@ func (c *ClientBuilder) WithNetworkName(name string) *ClientBuilder {
 // Following priorities are supported: "slow", "standard" and "fast"
 // Default values are true for enabled, 200 blocks for estimation and "standard" for priority.
 func (c *ClientBuilder) WithGasPriceEstimations(enabled bool, estimationBlocks uint64, txPriority string) *ClientBuilder {
+	c.assertNetworkIsSet()
 	c.config.Network.GasPriceEstimationEnabled = enabled
 	c.config.Network.GasPriceEstimationBlocks = estimationBlocks
 	c.config.Network.GasPriceEstimationTxPriority = txPriority
 	// defensive programming
 	if len(c.config.Networks) == 0 {
 		c.config.Networks = append(c.config.Networks, c.config.Network)
-	} else {
-		c.config.Networks[0].GasPriceEstimationEnabled = enabled
-		c.config.Networks[0].GasPriceEstimationBlocks = estimationBlocks
-		c.config.Networks[0].GasPriceEstimationTxPriority = txPriority
+	} else if net := c.config.findNetworkByName(c.config.Network.Name); net != nil {
+		net.GasPriceEstimationEnabled = enabled
+		net.GasPriceEstimationBlocks = estimationBlocks
+		net.GasPriceEstimationTxPriority = txPriority
 	}
 	return c
 }
@@ -106,12 +110,13 @@ func (c *ClientBuilder) WithGasPriceEstimations(enabled bool, estimationBlocks u
 // WithEIP1559DynamicFees enables or disables EIP-1559 dynamic fees. If enabled, you should set gas fee cap and gas tip cap with `WithDynamicGasPrices()`
 // Default value is true.
 func (c *ClientBuilder) WithEIP1559DynamicFees(enabled bool) *ClientBuilder {
+	c.assertNetworkIsSet()
 	c.config.Network.EIP1559DynamicFees = enabled
 	// defensive programming
 	if len(c.config.Networks) == 0 {
 		c.config.Networks = append(c.config.Networks, c.config.Network)
-	} else {
-		c.config.Networks[0].EIP1559DynamicFees = enabled
+	} else if net := c.config.findNetworkByName(c.config.Network.Name); net != nil {
+		net.EIP1559DynamicFees = enabled
 	}
 	return c
 }
@@ -119,12 +124,13 @@ func (c *ClientBuilder) WithEIP1559DynamicFees(enabled bool) *ClientBuilder {
 // WithLegacyGasPrice sets the gas price for legacy transactions that will be used only if EIP-1559 dynamic fees are disabled.
 // Default value is 1 gwei.
 func (c *ClientBuilder) WithLegacyGasPrice(gasPrice int64) *ClientBuilder {
+	c.assertNetworkIsSet()
 	c.config.Network.GasPrice = gasPrice
 	// defensive programming
 	if len(c.config.Networks) == 0 {
 		c.config.Networks = append(c.config.Networks, c.config.Network)
-	} else {
-		c.config.Networks[0].GasPrice = gasPrice
+	} else if net := c.config.findNetworkByName(c.config.Network.Name); net != nil {
+		net.GasPrice = gasPrice
 	}
 	return c
 }
@@ -132,27 +138,29 @@ func (c *ClientBuilder) WithLegacyGasPrice(gasPrice int64) *ClientBuilder {
 // WithDynamicGasPrices sets the gas fee cap and gas tip cap for EIP-1559 dynamic fees. These values will be used only if EIP-1559 dynamic fees are enabled.
 // Default values are 150 gwei for gas fee cap and 50 gwei for gas tip cap.
 func (c *ClientBuilder) WithDynamicGasPrices(gasFeeCap, gasTipCap int64) *ClientBuilder {
+	c.assertNetworkIsSet()
 	c.config.Network.GasFeeCap = gasFeeCap
 	c.config.Network.GasTipCap = gasTipCap
 	// defensive programming
 	if len(c.config.Networks) == 0 {
 		c.config.Networks = append(c.config.Networks, c.config.Network)
-	} else {
-		c.config.Networks[0].GasFeeCap = gasFeeCap
-		c.config.Networks[0].GasTipCap = gasTipCap
+	} else if net := c.config.findNetworkByName(c.config.Network.Name); net != nil {
+		net.GasFeeCap = gasFeeCap
+		net.GasTipCap = gasTipCap
 	}
 	return c
 }
 
 // WithTransferGasFee sets the gas fee for transfer transactions. This value is used, when sending funds to ephemeral keys or returning funds to root private key.
 // Default value is 21_000 wei.
-func (c *ClientBuilder) WithTransferGasFee(gasFee int64) *ClientBuilder {
-	c.config.Network.TransferGasFee = gasFee
+func (c *ClientBuilder) WithTransferGasFee(transferGasFee int64) *ClientBuilder {
+	c.assertNetworkIsSet()
+	c.config.Network.TransferGasFee = transferGasFee
 	// defensive programming
 	if len(c.config.Networks) == 0 {
 		c.config.Networks = append(c.config.Networks, c.config.Network)
-	} else {
-		c.config.Networks[0].TransferGasFee = gasFee
+	} else if net := c.config.findNetworkByName(c.config.Network.Name); net != nil {
+		net.TransferGasFee = transferGasFee
 	}
 	return c
 }
@@ -172,12 +180,13 @@ func (c *ClientBuilder) WithGasBumping(retries uint, maxGasPrice int64, customBu
 // WithTransactionTimeout sets the timeout for transactions. If the transaction is not mined within this time, it will be considered failed.
 // Default value is 5 minutes.
 func (c *ClientBuilder) WithTransactionTimeout(timeout time.Duration) *ClientBuilder {
+	c.assertNetworkIsSet()
 	c.config.Network.TxnTimeout = MustMakeDuration(timeout)
 	// defensive programming
 	if len(c.config.Networks) == 0 {
 		c.config.Networks = append(c.config.Networks, c.config.Network)
-	} else {
-		c.config.Networks[0].TxnTimeout = MustMakeDuration(timeout)
+	} else if net := c.config.findNetworkByName(c.config.Network.Name); net != nil {
+		net.TxnTimeout = MustMakeDuration(timeout)
 	}
 	return c
 }
@@ -185,12 +194,13 @@ func (c *ClientBuilder) WithTransactionTimeout(timeout time.Duration) *ClientBui
 // WithRpcDialTimeout sets the timeout for dialing the RPC server. If the connection is not established within this time, it will be considered failed.
 // Default value is 1 minute.
 func (c *ClientBuilder) WithRpcDialTimeout(timeout time.Duration) *ClientBuilder {
+	c.assertNetworkIsSet()
 	c.config.Network.DialTimeout = MustMakeDuration(timeout)
 	// defensive programming
 	if len(c.config.Networks) == 0 {
 		c.config.Networks = append(c.config.Networks, c.config.Network)
-	} else {
-		c.config.Networks[0].DialTimeout = MustMakeDuration(timeout)
+	} else if net := c.config.findNetworkByName(c.config.Network.Name); net != nil {
+		net.DialTimeout = MustMakeDuration(timeout)
 	}
 	return c
 }
@@ -251,4 +261,10 @@ func (c *ClientBuilder) WithNonceManager(rateLimitSec int, retries uint, timeout
 // Build creates a new Client from the builder.
 func (c *ClientBuilder) Build() (*Client, error) {
 	return NewClientWithConfig(c.config)
+}
+
+func (c *ClientBuilder) assertNetworkIsSet() {
+	if c.config.Network == nil {
+		panic("Network is required to use this method, but it was nil")
+	}
 }

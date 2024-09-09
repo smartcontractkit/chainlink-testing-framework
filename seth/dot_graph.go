@@ -119,7 +119,7 @@ func (t *Tracer) generateDotGraph(txHash string, calls []*DecodedCall, revertErr
 		_, exists := callHashToID[hash]
 		if exists {
 			// This could be also valid if the same call is present twice in the trace, but in typical scenarios that should not happen
-			L.Warn().Msg("The same call was present twice. This should not happen and might indicate a bug in the tracer. Check debug log for details")
+			L.Warn().Msg("The same call was present twice. This should not happen and might indicate a bug in the tracer. Check debug log for details and contact the Test Tooling team")
 			marshalled, err := json.Marshal(call)
 			if err == nil {
 				L.Debug().Msgf("Call: %v", marshalled)
