@@ -2,7 +2,6 @@ package job_distributor
 
 import (
 	"fmt"
-	"net/url"
 	"testing"
 	"time"
 
@@ -31,9 +30,9 @@ type Option = func(j *Component)
 type Component struct {
 	test_env.EnvComponent
 	Grpc                string
-	Wsrpc               *url.URL
+	Wsrpc               string
 	InternalGRPC        string
-	InternalWSRPC       *url.URL
+	InternalWSRPC       string
 	l                   zerolog.Logger
 	t                   *testing.T
 	dbConnection        string
@@ -71,23 +70,16 @@ func (j *Component) startOrRestartContainer(withReuse bool) error {
 	if err != nil {
 		return errors.Wrapf(err, "cannot get wsrpc mapped port for container %s", j.ContainerName)
 	}
-	j.Wsrpc, err = url.Parse(test_env.FormatWsUrl(host, p.Port()))
-	if err != nil {
-		return errors.Wrap(err, "error parsing wsrpc url")
-	}
-
+	j.Wsrpc = fmt.Sprintf("%s:%s", host, p.Port())
 	j.InternalGRPC = fmt.Sprintf("%s:%s", j.ContainerName, j.containerPort)
 
-	j.InternalWSRPC, err = url.Parse(test_env.FormatWsUrl(j.ContainerName, j.wsrpcPort))
-	if err != nil {
-		return errors.Wrap(err, "error parsing internal wsrpc url")
-	}
+	j.InternalWSRPC = fmt.Sprintf("%s:%s", j.ContainerName, j.wsrpcPort)
 	j.l.Info().
 		Str("containerName", j.ContainerName).
 		Str("grpcURI", j.Grpc).
-		Str("wsrpcURI", j.Wsrpc.String()).
+		Str("wsrpcURI", j.Wsrpc).
 		Str("internalGRPC", j.InternalGRPC).
-		Str("internalWSRPC", j.InternalWSRPC.String()).
+		Str("internalWSRPC", j.InternalWSRPC).
 		Msg("Started Job Distributor container")
 
 	return nil
