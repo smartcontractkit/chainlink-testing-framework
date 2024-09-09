@@ -123,14 +123,19 @@ jobs:
 #            echo "EOF" >> $GITHUB_ENV
 #          fi
       - name: Create GitHub Release
-        if: always()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           sudo apt-get install -y gh
           gh release create "${{ env.PACKAGE_NAME }}-${{ env.VERSION }}" --title "${{ env.PACKAGE_NAME }} ${{ env.VERSION }}" --notes "Release for ${{ env.PACKAGE_NAME }} version ${{ env.VERSION }}${{ env.FULL_RELEASE_NOTES }} ${{ env.BREAKING_CHANGES }}" || true
+      - name: Check if 'cmd' directory exists and set environment variable
+        run: |
+          if [ -d "$GITHUB_WORKSPACE/${{ env.PACKAGE_NAME}}/cmd" ]; then
+            echo "CMD_EXISTS=true" >> $GITHUB_ENV
+          else
+            echo "CMD_EXISTS=false" >> $GITHUB_ENV
       - uses: wangyoucao577/go-release-action@v1
-        if: always()
+        if: env.CMD_EXISTS == 'true'
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           goversion: '1.22.6'
