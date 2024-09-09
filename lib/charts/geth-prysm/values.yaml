@@ -18,7 +18,7 @@ securityContext:
 genesis:
   image:
     repository: tofelb/ethereum-genesis-generator
-    tag: 2.0.5
+    tag: 2.1.0-amd64
   values:
     secondsPerSlot: 4
     slotsPerEpoch: 2

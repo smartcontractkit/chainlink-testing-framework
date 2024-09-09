@@ -180,6 +180,8 @@ data:
     slot_duration_in_seconds: ${SLOT_DURATION_IN_SECONDS}
     deneb_fork_epoch: ${DENEB_FORK_EPOCH}
     slots_per_epoch: ${SLOTS_PER_EPOCH}
+    additional_preloaded_contracts: {}
+
   valkeys-entrypoint.sh: |-
     #!/bin/bash
 
@@ -214,20 +216,22 @@ data:
     validator_based_genesis_delay=$((validator_count * 5))
     genesis_timestamp=$((current_unix_timestamp + genesis_delay + validator_based_genesis_delay))
 
-    mkdir -p /tmp/config/cl
-    cp config.yaml /tmp/config/cl/config.yaml
+    mkdir -p /config/cl
+    cp config.yaml /config/cl/config.yaml
 
-    mkdir -p /tmp/config/el
-    cp genesis-config.yaml -r /tmp/config/el/genesis-config.yaml
+    mkdir -p /config/el
+    cp genesis-config.yaml -r /config/el/genesis-config.yaml
 
-    cp values_template.env /tmp/config/values.env
-    echo "\nexport GENESIS_TIMESTAMP=$genesis_timestamp" >> /tmp/config/values.env
-    cat /tmp/config/values.env
+    cp values_template.env /config/values.env
+    echo "\nexport GENESIS_TIMESTAMP=$genesis_timestamp" >> /config/values.env
+    cat /config/values.env
     formatted_genesis_date=$(date -d "@$genesis_timestamp" '+%Y-%m-%d %H:%M:%S')
     echo "Chain genesis timestamp: $formatted_genesis_date UTC"
 
     current_timestamp=$(date +%s)
     time_diff=$(($genesis_timestamp - current_timestamp))
     echo "More or less $time_diff seconds from now"
+
+    # Genesis generator relies on hardcoded /config/ directory to read env variables
     ./work/entrypoint.sh all
     touch /data/chain_initialised.done
