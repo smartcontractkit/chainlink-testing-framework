@@ -13,6 +13,7 @@ type CITestConf struct {
 	TestEnvType                string            `yaml:"test_env_type" json:"test_env_type"`
 	RunsOn                     string            `yaml:"runs_on" json:"runs_on"`
 	TestCmd                    string            `yaml:"test_cmd" json:"test_cmd"`
+	TestCmdOpts                string            `yaml:"test_cmd_opts" json:"test_cmd_opts"`
 	TestConfigOverrideRequired bool              `yaml:"test_config_override_required" json:"test_config_override_required"`
 	TestConfigOverridePath     string            `yaml:"test_config_override_path" json:"test_config_override_path"`
 	TestSecretsRequired        bool              `yaml:"test_secrets_required" json:"test_secrets_required"`
