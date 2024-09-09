@@ -73,7 +73,6 @@ __debug*
 .private_chains/*
 
 .direnv
-/wasp/.envrc.ci
-/wasp/.envrc.local
-/tag.py
-/import_keys_test.go
+
+# asdf
+.tool-versions
