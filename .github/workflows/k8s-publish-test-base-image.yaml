@@ -2,7 +2,8 @@ name: (k8s package) Publish Test Base Image
 on:
   push:
     tags:
-      - 'v*'
+      # we only need base image for k8s based tests
+      - 'lib/v*'
 
 jobs:
   publish_test_base_image:
@@ -15,6 +16,12 @@ jobs:
       BASE_IMAGE_TAG: ${{ secrets.QA_AWS_ACCOUNT_NUMBER }}.dkr.ecr.${{ secrets.QA_AWS_REGION }}.amazonaws.com/test-base-image:${{ github.ref_name }}
     steps:
       - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
+
+      - name: Strip "lib/" from github.ref_name
+        run: |
+          stripped_ref_name="${GITHUB_REF//refs\/tags\/lib\//}"
+          echo "BASE_IMAGE_TAG=${{ secrets.QA_AWS_ACCOUNT_NUMBER }}.dkr.ecr.${{ secrets.QA_AWS_REGION }}.amazonaws.com/test-base-image:$stripped_ref_name" >> $GITHUB_ENV
+
       - name: Build Base Image
         uses: smartcontractkit/chainlink-github-actions/docker/build-push@e29366cdecfe6befff9ab8c3cfe4825218505d58 # v2.3.16
         with:

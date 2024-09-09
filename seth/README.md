@@ -34,6 +34,7 @@ Reliable and debug-friendly Ethereum client
 13. [Block Stats](#block-stats)
 14. [Single transaction tracing](#single-transaction-tracing)
 15. [Bulk transaction tracing](#bulk-transaction-tracing)
+16. [RPC traffic logging](#rpc-traffic-logging)
 
 ## Goals
 
@@ -786,3 +787,6 @@ You need to pass a file with a list of transaction hashes to trace. The file sho
 ```
 
 (Note that currently Seth automatically creates `reverted_transactions_<network>_<date>.json` with all reverted transactions, so you can use this file as input for the `trace` command.)
+
+### RPC Traffic logging
+With `SETH_LOG_LEVEL=trace` we will also log to console all traffic between Seth and RPC node. This can be useful for debugging as you can see all the requests and responses.

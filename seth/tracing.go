@@ -428,11 +428,10 @@ func (t *Tracer) decodeCall(byteSignature []byte, rawCall Call) (*DecodedCall, e
 		} else {
 			defaultCall.Comment = CommentMissingABI
 		}
-		L.Warn().
-			Err(err).
+		L.Debug().
 			Str("Method signature", common.Bytes2Hex(byteSignature)).
 			Str("Contract", rawCall.To).
-			Msg("Method not found in any ABI instance. Unable to provide full tracing information")
+			Msgf("Method not found in any ABI instance. Unable to provide full tracing information. Reason: %s", err.Error())
 
 		// let's not return the error, as we can still provide some information
 		return defaultCall, nil

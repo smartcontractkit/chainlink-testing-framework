@@ -174,7 +174,7 @@ func (c *ContractStore) loadGethWrappers(gethWrappersPaths []string) error {
 					if !strings.Contains(err.Error(), ErrNoABIInFile) {
 						return err
 					}
-					L.Debug().Err(err).Msg("ABI not found in file. Skipping")
+					L.Debug().Msgf("ABI not found in file due to: %s. Skipping", err.Error())
 
 					return nil
 				}

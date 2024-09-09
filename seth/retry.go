@@ -104,16 +104,16 @@ var PriorityBasedGasBumpingStrategyFn = func(priority string) GasBumpStrategyFn 
 // prepareReplacementTransaction bumps gas price of the transaction if it wasn't confirmed in time. It returns a signed replacement transaction.
 // Errors might be returned, because transaction was no longer pending, max gas price was reached or there was an error sending the transaction (e.g. nonce too low, meaning that original transaction was mined).
 var prepareReplacementTransaction = func(client *Client, tx *types.Transaction) (*types.Transaction, error) {
-	L.Warn().Msgf("Transaction wasn't confirmed in %s. Bumping gas", client.Cfg.Network.TxnTimeout.String())
+	L.Info().Msgf("Transaction wasn't confirmed in %s. Bumping gas", client.Cfg.Network.TxnTimeout.String())
 
 	ctxPending, cancelPending := context.WithTimeout(context.Background(), client.Cfg.Network.TxnTimeout.Duration())
 	_, isPending, err := client.Client.TransactionByHash(ctxPending, tx.Hash())
 	defer cancelPending()
-	if err != nil {
+	if err != nil && !strings.Contains(err.Error(), "not found") {
 		return nil, err
 	}
 
-	if !isPending {
+	if err != nil && !isPending {
 		L.Debug().Str("Tx hash", tx.Hash().Hex()).Msg("Transaction was confirmed before bumping gas")
 		return nil, errors.New("transaction was confirmed before bumping gas")
 	}
@@ -155,34 +155,48 @@ var prepareReplacementTransaction = func(client *Client, tx *types.Transaction) 
 
 	switch tx.Type() {
 	case types.LegacyTxType:
-		gasPrice := client.Cfg.GasBump.StrategyFn(tx.GasPrice())
-		if err := checkMaxPrice(gasPrice, maxGasPrice); err != nil {
+		newGasPrice := client.Cfg.GasBump.StrategyFn(tx.GasPrice())
+		if err := checkMaxPrice(newGasPrice, maxGasPrice); err != nil {
 			return nil, err
 		}
-		L.Warn().Interface("Old gas price", tx.GasPrice()).Interface("New gas price", gasPrice).Msg("Bumping gas price for legacy transaction")
+		gasPriceDiff := big.NewInt(0).Sub(newGasPrice, tx.GasPrice())
+		L.Debug().
+			Str("Old gas price", fmt.Sprintf("%s wei /%s ether", tx.GasPrice(), WeiToEther(tx.GasPrice()).Text('f', -1))).
+			Str("New gas price", fmt.Sprintf("%s wei /%s ether", newGasPrice, WeiToEther(newGasPrice).Text('f', -1))).
+			Str("Diff", fmt.Sprintf("%s wei /%s ether", gasPriceDiff, WeiToEther(gasPriceDiff).Text('f', -1))).
+			Msg("Bumping gas price for Legacy transaction")
 		txData := &types.LegacyTx{
 			Nonce:    tx.Nonce(),
 			To:       tx.To(),
 			Value:    tx.Value(),
 			Gas:      tx.Gas(),
-			GasPrice: gasPrice,
+			GasPrice: newGasPrice,
 			Data:     tx.Data(),
 		}
 		replacementTx, err = types.SignNewTx(privateKey, signer, txData)
 	case types.DynamicFeeTxType:
-		gasFeeCap := client.Cfg.GasBump.StrategyFn(tx.GasFeeCap())
-		gasTipCap := client.Cfg.GasBump.StrategyFn(tx.GasTipCap())
-		if err := checkMaxPrice(big.NewInt(0).Add(gasFeeCap, gasTipCap), maxGasPrice); err != nil {
+		newGasFeeCap := client.Cfg.GasBump.StrategyFn(tx.GasFeeCap())
+		newGasTipCap := client.Cfg.GasBump.StrategyFn(tx.GasTipCap())
+		if err := checkMaxPrice(big.NewInt(0).Add(newGasFeeCap, newGasTipCap), maxGasPrice); err != nil {
 			return nil, err
 		}
-		L.Warn().Interface("Old gas fee cap", tx.GasFeeCap()).Interface("New gas fee cap", gasFeeCap).Interface("Old gas tip cap", tx.GasTipCap()).Interface("New gas tip cap", gasTipCap).Msg("Bumping gas fee cap and tip cap for EIP-1559 transaction")
+		gasFeeCapDiff := big.NewInt(0).Sub(newGasFeeCap, tx.GasFeeCap())
+		gasTipCapDiff := big.NewInt(0).Sub(newGasTipCap, tx.GasTipCap())
+		L.Debug().
+			Str("Old gas fee cap", fmt.Sprintf("%s wei /%s ether", tx.GasFeeCap(), WeiToEther(tx.GasFeeCap()).Text('f', -1))).
+			Str("New gas fee cap", fmt.Sprintf("%s wei /%s ether", newGasFeeCap, WeiToEther(newGasFeeCap).Text('f', -1))).
+			Str("Gas fee cap diff", fmt.Sprintf("%s wei /%s ether", gasFeeCapDiff, WeiToEther(gasFeeCapDiff).Text('f', -1))).
+			Str("Old gas tip cap", fmt.Sprintf("%s wei /%s ether", tx.GasTipCap(), WeiToEther(tx.GasTipCap()).Text('f', -1))).
+			Str("New gas tip cap", fmt.Sprintf("%s wei /%s ether", newGasTipCap, WeiToEther(newGasTipCap).Text('f', -1))).
+			Str("Gas fee tip diff", fmt.Sprintf("%s wei /%s ether", gasTipCapDiff, WeiToEther(gasTipCapDiff).Text('f', -1))).
+			Msg("Bumping gas fee cap and tip cap for EIP-1559 transaction")
 		txData := &types.DynamicFeeTx{
 			Nonce:     tx.Nonce(),
 			To:        tx.To(),
 			Value:     tx.Value(),
 			Gas:       tx.Gas(),
-			GasFeeCap: gasFeeCap,
-			GasTipCap: gasTipCap,
+			GasFeeCap: newGasFeeCap,
+			GasTipCap: newGasTipCap,
 			Data:      tx.Data(),
 		}
 
@@ -191,33 +205,53 @@ var prepareReplacementTransaction = func(client *Client, tx *types.Transaction) 
 		if tx.To() == nil {
 			return nil, fmt.Errorf("blob tx with nil recipient is not supported")
 		}
-		gasFeeCap := client.Cfg.GasBump.StrategyFn(tx.GasFeeCap())
-		gasTipCap := client.Cfg.GasBump.StrategyFn(tx.GasTipCap())
-		blobFeeCap := client.Cfg.GasBump.StrategyFn(tx.BlobGasFeeCap())
-		if err := checkMaxPrice(big.NewInt(0).Add(gasFeeCap, big.NewInt(0).Add(gasTipCap, blobFeeCap)), maxGasPrice); err != nil {
+		newGasFeeCap := client.Cfg.GasBump.StrategyFn(tx.GasFeeCap())
+		newGasTipCap := client.Cfg.GasBump.StrategyFn(tx.GasTipCap())
+		newBlobFeeCap := client.Cfg.GasBump.StrategyFn(tx.BlobGasFeeCap())
+		if err := checkMaxPrice(big.NewInt(0).Add(newGasFeeCap, big.NewInt(0).Add(newGasTipCap, newBlobFeeCap)), maxGasPrice); err != nil {
 			return nil, err
 		}
 
-		L.Warn().Interface("Old gas fee cap", tx.GasFeeCap()).Interface("Old max fee per blob", tx.BlobGasFeeCap()).Interface("New max fee per blob", blobFeeCap).Interface("New gas fee cap", gasFeeCap).Interface("Old gas tip cap", tx.GasTipCap()).Interface("New gas tip cap", gasTipCap).Msg("Bumping gas fee cap and tip cap for Blob transaction")
+		gasFeeCapDiff := big.NewInt(0).Sub(newGasFeeCap, tx.GasFeeCap())
+		gasTipCapDiff := big.NewInt(0).Sub(newGasTipCap, tx.GasTipCap())
+		gasBlobFeeCapDiff := big.NewInt(0).Sub(newBlobFeeCap, tx.BlobGasFeeCap())
+
+		L.Debug().
+			Str("Old gas fee cap", fmt.Sprintf("%s wei /%s ether", tx.GasFeeCap(), WeiToEther(tx.GasFeeCap()).Text('f', -1))).
+			Str("New gas fee cap", fmt.Sprintf("%s wei /%s ether", newGasFeeCap, WeiToEther(newGasFeeCap).Text('f', -1))).
+			Str("Gas fee cap diff", fmt.Sprintf("%s wei /%s ether", gasFeeCapDiff, WeiToEther(gasFeeCapDiff).Text('f', -1))).
+			Str("Old gas tip cap", fmt.Sprintf("%s wei /%s ether", tx.GasTipCap(), WeiToEther(tx.GasTipCap()).Text('f', -1))).
+			Str("New gas tip cap", fmt.Sprintf("%s wei /%s ether", newGasTipCap, WeiToEther(newGasTipCap).Text('f', -1))).
+			Str("Gas fee tip diff", fmt.Sprintf("%s wei /%s ether", gasTipCapDiff, WeiToEther(gasTipCapDiff).Text('f', -1))).
+			Str("Old gas blob cap", fmt.Sprintf("%s wei /%s ether", tx.BlobGasFeeCap(), WeiToEther(tx.BlobGasFeeCap()).Text('f', -1))).
+			Str("New gas blob cap", fmt.Sprintf("%s wei /%s ether", newBlobFeeCap, WeiToEther(newBlobFeeCap).Text('f', -1))).
+			Str("Gas fee blob diff", fmt.Sprintf("%s wei /%s ether", gasBlobFeeCapDiff, WeiToEther(gasBlobFeeCapDiff).Text('f', -1))).
+			Msg("Bumping gas fee cap and tip cap for Blob transaction")
+
 		txData := &types.BlobTx{
 			Nonce:      tx.Nonce(),
 			To:         *tx.To(),
 			Value:      uint256.NewInt(tx.Value().Uint64()),
 			Gas:        tx.Gas(),
-			GasFeeCap:  uint256.NewInt(gasFeeCap.Uint64()),
-			GasTipCap:  uint256.NewInt(gasTipCap.Uint64()),
-			BlobFeeCap: uint256.NewInt(blobFeeCap.Uint64()),
+			GasFeeCap:  uint256.NewInt(newGasFeeCap.Uint64()),
+			GasTipCap:  uint256.NewInt(newGasTipCap.Uint64()),
+			BlobFeeCap: uint256.NewInt(newBlobFeeCap.Uint64()),
 			BlobHashes: tx.BlobHashes(),
 			Data:       tx.Data(),
 		}
 
 		replacementTx, err = types.SignNewTx(privateKey, signer, txData)
 	case types.AccessListTxType:
-		gasPrice := client.Cfg.GasBump.StrategyFn(tx.GasPrice())
-		if err := checkMaxPrice(gasPrice, maxGasPrice); err != nil {
+		newGasPrice := client.Cfg.GasBump.StrategyFn(tx.GasPrice())
+		if err := checkMaxPrice(newGasPrice, maxGasPrice); err != nil {
 			return nil, err
 		}
-		L.Warn().Interface("Old gas price", tx.GasPrice()).Interface("New gas price", gasPrice).Msg("Bumping gas price for access list transaction")
+		gasPriceDiff := big.NewInt(0).Sub(newGasPrice, tx.GasPrice())
+		L.Debug().
+			Str("Old gas price", fmt.Sprintf("%s wei /%s ether", tx.GasPrice(), WeiToEther(tx.GasPrice()).Text('f', -1))).
+			Str("New gas price", fmt.Sprintf("%s wei /%s ether", newGasPrice, WeiToEther(newGasPrice).Text('f', -1))).
+			Str("Diff", fmt.Sprintf("%s wei /%s ether", gasPriceDiff, WeiToEther(gasPriceDiff).Text('f', -1))).
+			Msg("Bumping gas price for Access List transaction")
 
 		txData := &types.AccessListTx{
 			Nonce:      tx.Nonce(),
