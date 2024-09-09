@@ -7,7 +7,7 @@ general:
 shared:
   mnemonic: giant issue aisle success illegal bike spike question tent bar rely arctic volcano long crawl hungry vocal artwork sniff fantasy very lucky have athlete
   password: password
-  configDataDir: /data/custom_config_data
+  configDataDir: /data/metadata
   keystoreDataSubdir: /keystore
   accountPasswordFile: account_password.txt
   jwtFile: jwtSecret
