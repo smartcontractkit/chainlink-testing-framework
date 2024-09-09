@@ -72,7 +72,7 @@ prysm:
     name: prysm-validator
     image:
       repository: gcr.io/prysmaticlabs/prysm/validator
-      tag: v4.1.1
+      tag: v5.0.4
 busybox:
   image:
     repository: busybox
