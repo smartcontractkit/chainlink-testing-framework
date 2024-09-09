@@ -1,0 +1,142 @@
+name: Release libraries and binaries
+on:
+  push:
+    tags:
+      - '*/v*.*.*'  # Trigger only on tags with the format $package/vX.X.X
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release_binaries:
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [ "linux", "darwin" ]
+        goarch: [ "amd64", "arm64" ]
+    name: Release multi-platform
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Extract Package Name from Tag
+        id: extract_package_name
+        run: |
+          TAG_REF="${GITHUB_REF#refs/tags/}"
+          PACKAGE_NAME=$(echo "$TAG_REF" | cut -d'/' -f1)
+          VERSION=$(echo "$TAG_REF" | cut -d'/' -f2)
+          echo "Tag Reference: $TAG_REF"
+          echo "Package Name: $PACKAGE_NAME"
+          echo "Version: $VERSION"
+          
+          echo "PACKAGE_NAME=$PACKAGE_NAME" >> $GITHUB_ENV
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+      - name: Show Package Name and Version
+        run: |
+          echo "Package Name: ${{ env.PACKAGE_NAME }}"
+          echo "Version: ${{ env.VERSION }}"
+      - name: Find Last Tag for Package and Generate Release Notes
+        id: generate_release_notes
+        run: |
+          # Extract the package name and version from the tag
+          TAG_REF="${GITHUB_REF#refs/tags/}"
+          PACKAGE_NAME=$(echo "$TAG_REF" | cut -d'/' -f1)
+          VERSION=$(echo "$TAG_REF" | cut -d'/' -f2)
+
+          # Find the latest tag for the same package that is not the current tag
+          LAST_TAG=$(git describe --abbrev=0 --match "$PACKAGE_NAME/v*" --tags $(git rev-list --tags --skip=1 --max-count=1))
+
+          # If no previous tag is found, use the initial commit as the reference
+          if [ -z "$LAST_TAG" ]; then
+            LAST_TAG=$(git rev-list --max-parents=0 HEAD)
+          fi
+
+          echo "Last tag found: $LAST_TAG"
+
+          # Get the commits between the last tag and the current tag
+          COMMITS=$(git log "$LAST_TAG..$PACKAGE_NAME/$VERSION" --pretty=format:"- %s (%h)")
+
+          # Output the release notes
+          echo "Release notes:"
+          echo "$COMMITS"
+
+          # Safely set the release notes as an environment variable using heredoc and EOF
+          echo "RELEASE_NOTES<<EOF" >> $GITHUB_ENV
+          echo "$COMMITS" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+      - name: Read Additional Release Notes from File
+        working-directory: ${{ env.PACKAGE_NAME }}
+        id: read_additional_notes
+        run: |
+          # Check if the .release_notes directory exists and the file for the current version is present
+          if [ -f ".release_notes/${{ env.VERSION }}.md" ]; then
+            # Read the content of the file
+            ADDITIONAL_NOTES=$(cat ".release_notes/${{ env.VERSION }}.md")
+
+            # Surround the additional notes with newlines safely using heredoc
+            echo "FULL_RELEASE_NOTES<<EOF" >> $GITHUB_ENV
+            echo "${{ env.RELEASE_NOTES }}" >> $GITHUB_ENV
+            echo "" >> $GITHUB_ENV
+            echo "$ADDITIONAL_NOTES" >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
+          else
+            # Print error message and fail the pipeline if the file is not found
+            echo "Error: Release notes file '.release_notes/${{ env.VERSION }}.md' not found."
+            exit 1
+          fi
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22.6'
+      - name: Install gorelease tool
+        run: |
+          go install golang.org/x/exp/cmd/gorelease@latest
+      - name: Run gorelease to check for breaking changes
+        working-directory: tools/breakingchanges
+        id: check_breaking_changes
+        run: |
+          go run cmd/main.go -path $GITHUB_WORKSPACE/${{ env.PACKAGE_NAME }}
+#          # Find the latest tag for the same package that is not the current tag
+#          LAST_TAG=$(git describe --abbrev=0 --match "$PACKAGE_NAME/v*" --tags $(git rev-list --tags --skip=1 --max-count=1))
+#
+#          TAG="${LAST_TAG#*/}"
+#
+#          echo "Previous tag: ${TAG}"
+#          echo "Current tag: ${VERSION}"
+#
+#          gorelease -base "${TAG}"
+#
+#          # Parse output for breaking changes
+#          BREAKING_CHANGES=$(gorelease -base "${TAG}" 2>&1)
+#
+#          # Output breaking changes
+#          echo "Breaking Changes:"
+#          echo "$BREAKING_CHANGES"
+#
+#          # Check if there are any breaking changes
+#          if [ -n "$BREAKING_CHANGES" ]; then
+#            # Safely set breaking changes as an environment variable using heredoc
+#            echo "BREAKING_CHANGES<<EOF" >> $GITHUB_ENV
+#            echo "$BREAKING_CHANGES" >> $GITHUB_ENV
+#            echo "EOF" >> $GITHUB_ENV
+#          fi
+      - name: Create GitHub Release
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          sudo apt-get install -y gh
+          gh release create "${{ env.PACKAGE_NAME }}-${{ env.VERSION }}" --title "${{ env.PACKAGE_NAME }} ${{ env.VERSION }}" --notes "Release for ${{ env.PACKAGE_NAME }} version ${{ env.VERSION }}${{ env.FULL_RELEASE_NOTES }} ${{ env.BREAKING_CHANGES }}" || true
+      - uses: wangyoucao577/go-release-action@v1
+        if: always()
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          goversion: '1.22.6'
+          goos: ${{ matrix.platform }}
+          goarch: ${{ matrix.goarch }}
+          release_name: ${{ env.PACKAGE_NAME }}
+          release_tag: ${{ env.PACKAGE_NAME}}-${{ env.VERSION }}
+          project_path: ${{ env.PACKAGE_NAME }}
+          asset_name: ${{ env.PACKAGE_NAME }}-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.goarch }}
