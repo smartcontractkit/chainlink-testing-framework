@@ -1,8 +1,11 @@
 package seth_test
 
 import (
+	"os"
 	"testing"
 	"time"
+
+	"github.com/pelletier/go-toml/v2"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
@@ -76,7 +79,6 @@ func TestConfig_MaximalBuilder(t *testing.T) {
 		WithNonceManager(10, 3, 60, 5).
 		Build()
 
-	require.NoError(t, err, "failed to build client")
 	require.NoError(t, err, "failed to create client")
 	require.Equal(t, 11, len(client.PrivateKeys), "expected 11 private keys")
 
@@ -90,6 +92,58 @@ func TestConfig_MaximalBuilder(t *testing.T) {
 
 	_, err = client.DeployContract(client.NewTXOpts(), "LinkToken", *linkAbi, common.FromHex(link_token.LinkTokenMetaData.Bin))
 	require.NoError(t, err, "failed to deploy LINK contract")
+}
+
+func TestConfig_ModifyExistingConfigWithBuilder(t *testing.T) {
+	configPath := os.Getenv(seth.CONFIG_FILE_ENV_VAR)
+	require.NotEmpty(t, configPath, "expected config file path to be set")
+
+	d, err := os.ReadFile(configPath)
+	require.NoError(t, err, "failed to read config file")
+
+	var sethConfig seth.Config
+	err = toml.Unmarshal(d, &sethConfig)
+	require.NoError(t, err, "failed to unmarshal config file")
+
+	client, err := seth.NewClientBuilderWithConfig(&sethConfig).
+		UseNetworkWithName(seth.GETH).
+		WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
+		Build()
+
+	require.NoError(t, err, "failed to create client")
+	require.Equal(t, 2, len(client.PrivateKeys), "expected 11 private keys")
+	require.NotNil(t, client.Cfg.Network, "expected network to be set")
+	require.Equal(t, uint64(1337), client.Cfg.Network.ChainID, "expected chain ID to be set")
+
+	linkAbi, err := link_token.LinkTokenMetaData.GetAbi()
+	require.NoError(t, err, "failed to get LINK ABI")
+
+	_, err = client.DeployContract(client.NewTXOpts(), "LinkToken", *linkAbi, common.FromHex(link_token.LinkTokenMetaData.Bin))
+	require.NoError(t, err, "failed to deploy LINK contract")
+}
+
+func TestConfig_ModifyExistingConfigWithBuilder_UnknownChainId(t *testing.T) {
+	configPath := os.Getenv(seth.CONFIG_FILE_ENV_VAR)
+	require.NotEmpty(t, configPath, "expected config file path to be set")
+
+	d, err := os.ReadFile(configPath)
+	require.NoError(t, err, "failed to read config file")
+
+	var sethConfig seth.Config
+	err = toml.Unmarshal(d, &sethConfig)
+	require.NoError(t, err, "failed to unmarshal config file")
+
+	_, err = seth.NewClientBuilderWithConfig(&sethConfig).
+		UseNetworkWithChainId(225).
+		WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
+		Build()
+
+	expectedError := `errors occurred during building the config:
+network with chainId '225' not found
+at least one method that required network to be set was called, but network is nil`
+
+	require.Error(t, err, "succeeded to create client")
+	require.Equal(t, expectedError, err.Error(), "expected error message")
 }
 
 func TestConfig_LegacyGas_No_Estimations(t *testing.T) {
