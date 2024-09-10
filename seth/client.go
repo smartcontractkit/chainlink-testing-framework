@@ -648,6 +648,20 @@ func WithGasTipCap(gasTipCap *big.Int) TransactOpt {
 	}
 }
 
+// WithSignerFn sets signerFn option for bind.TransactOpts
+func WithSignerFn(signerFn bind.SignerFn) TransactOpt {
+	return func(o *bind.TransactOpts) {
+		o.Signer = signerFn
+	}
+}
+
+// WithFrom sets from option for bind.TransactOpts
+func WithFrom(fromAddress common.Address) TransactOpt {
+	return func(o *bind.TransactOpts) {
+		o.From = fromAddress
+	}
+}
+
 type ContextErrorKey struct{}
 
 // NewTXOpts returns a new transaction options wrapper,
