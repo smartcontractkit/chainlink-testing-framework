@@ -30,6 +30,7 @@ func filterTests(allTests []CITestConf, workflow, testType, ids string, envresol
 
 		if workflowMatch && typeMatch && idMatch {
 			test.IDSanitized = sanitizeTestID(test.ID)
+			test.TestArtifactOnFailureStr = strings.Join(test.TestArtifactOnFailure, "\n")
 			filteredTests = append(filteredTests, test)
 		}
 		if envresolve {
@@ -72,6 +73,7 @@ func filterAndMergeTests(allTests []CITestConf, workflow, testType, base64Tests 
 				test.TestEnvVars[k] = v
 			}
 			test.IDSanitized = sanitizeTestID(test.ID)
+			test.TestArtifactOnFailureStr = strings.Join(test.TestArtifactOnFailure, "\n")
 			filteredTests = append(filteredTests, test)
 		}
 		if envresolve {

@@ -18,7 +18,8 @@ type CITestConf struct {
 	TestConfigOverridePath     string            `yaml:"test_config_override_path" json:"test_config_override_path"`
 	TestSecretsRequired        bool              `yaml:"test_secrets_required" json:"test_secrets_required"`
 	TestEnvVars                map[string]string `yaml:"test_env_vars" json:"test_env_vars"`
-	TestArtifactOnFailure      []string          `yaml:"test_artifacts_on_failure" json:"test_artifacts_on_failure"`
+	TestArtifactOnFailure      []string          `yaml:"test_artifacts_on_failure" json:"-"`
+	TestArtifactOnFailureStr   string            `json:"test_artifacts_on_failure"` // TestArtifactOnFailure in string format with new lines to be used in Github Actions
 	RemoteRunnerMemory         string            `yaml:"remote_runner_memory" json:"remote_runner_memory"`
 	PyroscopeEnv               string            `yaml:"pyroscope_env" json:"pyroscope_env"`
 	Workflows                  []string          `yaml:"workflows" json:"workflows"`
