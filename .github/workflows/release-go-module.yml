@@ -6,7 +6,7 @@ name: Release Go module
 on:
   push:
     tags:
-      - '*/v*.*.*'  # Trigger only on tags with the format $package/vX.X.X
+      - '*/v*.*.*' # Trigger only on tags with the format $package/vX.X.X
 
 permissions:
   contents: write
@@ -17,8 +17,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [ "linux", "darwin" ]
-        goarch: [ "amd64", "arm64" ]
+        platform: ['linux', 'darwin']
+        goarch: ['amd64', 'arm64']
     name: Release multi-platform
     runs-on: ubuntu-latest
     steps:
@@ -34,7 +34,7 @@ jobs:
           echo "Tag Reference: $TAG_REF"
           echo "Package Name: $PACKAGE_NAME"
           echo "Version: $VERSION"
-          
+
           echo "PACKAGE_NAME=$PACKAGE_NAME" >> $GITHUB_ENV
           echo "VERSION=$VERSION" >> $GITHUB_ENV
       - name: Show Package Name and Version
@@ -82,10 +82,12 @@ jobs:
         id: check_breaking_changes
         run: |
           set +e  # Disable exit on error to capture output even if the command fails
-          OUTPUT=$(go run cmd/main.go -path $GITHUB_WORKSPACE/${{ env.PACKAGE_NAME }} 2>&1)
+          # sed is used to remove ascii color codes
+          BREAKING_CHANGES=$(go run cmd/main.go -path $GITHUB_WORKSPACE/${{ env.PACKAGE_NAME }} 2>&1 | sed -r "s/\x1B\[[0-9;]*[mK]//g")
+          echo "Breaking changes: ${BREAKING_CHANGES}"
           set -e  # Re-enable exit on error for the subsequent steps
-          echo "FULL_RELEASE_NOTES<<EOF" >> $GITHUB_ENV
-          echo "$OUTPUT" >> $GITHUB_ENV
+          echo "BREAKING_CHANGES<<EOF" >> $GITHUB_ENV
+          echo "$BREAKING_CHANGES" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
       - name: Read Additional Release Notes from File
         if: always()
@@ -97,23 +99,27 @@ jobs:
             # Read the content of the file
             RELEASE_NOTES=$(cat ".changeset/${{ env.VERSION }}.md")
 
-            # Surround the additional notes with newlines safely using heredoc
+            # Format the release notes and breaking changes into FULL_RELEASE_NOTES
             echo "FULL_RELEASE_NOTES<<EOF" >> $GITHUB_ENV
-            echo "" >> $GITHUB_ENV
+            echo "Release notes:" >> $GITHUB_ENV
             echo "$RELEASE_NOTES" >> $GITHUB_ENV
+            echo "" >> $GITHUB_ENV
+            echo "Breaking changes:" >> $GITHUB_ENV
+            echo "${{ env.BREAKING_CHANGES }}" >> $GITHUB_ENV
             echo "EOF" >> $GITHUB_ENV
           else
             # Print error message and fail the pipeline if the file is not found
             echo "Error: Release notes file '.changeset/${{ env.VERSION }}.md' not found."
             exit 1
           fi
+
       - name: Create GitHub Release
         if: always()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           sudo apt-get install -y gh
-          gh release create "${{ env.PACKAGE_NAME }}-${{ env.VERSION }}" --title "${{ env.PACKAGE_NAME }} ${{ env.VERSION }}" --notes "Release for ${{ env.PACKAGE_NAME }} version ${{ env.VERSION }}${{ env.FULL_RELEASE_NOTES }} ${{ env.BREAKING_CHANGES }}" || true
+          gh release create "${{ env.PACKAGE_NAME }}-${{ env.VERSION }}" --title "${{ env.PACKAGE_NAME }} ${{ env.VERSION }}" --notes "${{ env.FULL_RELEASE_NOTES }}" || true
       - name: Check if 'cmd' directory exists and set environment variable
         run: |
           if [ -f "$GITHUB_WORKSPACE/${{ env.PACKAGE_NAME }}/cmd/main.go" ]; then
