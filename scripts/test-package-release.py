@@ -1,8 +1,6 @@
 import subprocess
 import argparse
-
-default_package = "k8s-test-runner"
-default_tag = "{}/v0.1.0-test-alpha-release"
+import os
 
 def run_command(command):
     """Run a shell command and capture its output."""
@@ -29,6 +27,29 @@ def remove_tag(tag):
     print(f"Removing tag '{tag}' from remote (if exists)...")
     run_command(f"git push origin :refs/tags/{tag}")
 
+def add_release_file(package_dir, tag):
+    """Change directory to the package and create a release file."""
+    # Extract the version part of the tag
+    version_part = tag.split('/')[-1]
+    filename = f".changeset/{version_part}.md"
+
+    # Change directory to the package
+    os.chdir(package_dir)
+    print(f"Changed directory to {package_dir}. Creating file {filename}...")
+
+    # Write example data to the release file
+    with open(filename, 'w') as f:
+        f.write(f"Initial release of {package_dir} test runner\n\n")
+        f.write("Features added:\n")
+        f.write("- One\n")
+        f.write("- Two\n")
+
+    # Add and commit the new file
+    run_command(f"git add {filename}")
+    commit_message = f"Test release commit {version_part}"
+    run_command(f"git commit -m '{commit_message}' --no-verify")
+    print(f"Committed the release file: {filename}")
+
 def add_tag(tag):
     """Create a new tag and push it."""
     print(f"Creating and adding new tag '{tag}' locally...")
@@ -46,19 +67,20 @@ def push_changes():
     run_command("git push --tags")
 
 def main():
-    parser = argparse.ArgumentParser(description="Remove a Git tag, add it if necessary, and push changes.")
-    parser.add_argument("-tag", required=False, help="The Git tag to remove and re-add.")
-    parser.add_argument("-package", required=False, default=default_package, help="The Git tag to remove and re-add.")
+    parser = argparse.ArgumentParser(description="Remove a Git tag, add a release file, and push changes.")
+    parser.add_argument("-tag", required=True, help="The Git tag to remove and re-add.")
+    parser.add_argument("-package", required=True, help="The package directory to create the release file in.")
 
     args = parser.parse_args()
 
-    tag = default_tag.format(args.package)
-
     # Remove the specified tag if it exists
-    remove_tag(tag)
+    remove_tag(args.tag)
+
+    # Add release file to the package directory
+    add_release_file(args.package, args.tag)
 
     # Add (or re-add) the tag
-    add_tag(tag)
+    add_tag(args.tag)
 
     # Push remaining changes and all tags
     push_changes()
