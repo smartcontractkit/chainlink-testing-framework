@@ -57,7 +57,7 @@ def add_tag(tag):
     run_command(f"git tag {tag}")
 
     print(f"Pushing new tag '{tag}' to remote...")
-    run_command(f"git push origin {tag}")
+    run_command(f"git push origin :refs/tags/{tag}")
 
 def push_changes():
     """Push changes to remote and push all tags."""
