@@ -1,7 +1,7 @@
 import subprocess
 import argparse
 
-default_tag = "v0.1.0-test-alpha-release"
+default_tag = "k8s-test-runner/v0.1.0-test-alpha-release"
 
 def run_command(command):
     """Run a shell command and capture its output."""
