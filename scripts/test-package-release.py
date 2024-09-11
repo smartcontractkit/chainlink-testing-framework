@@ -1,7 +1,8 @@
 import subprocess
 import argparse
 
-default_tag = "k8s-test-runner/v0.1.0-test-alpha-release"
+default_package = "k8s-test-runner"
+default_tag = "%s/v0.1.0-test-alpha-release"
 
 def run_command(command):
     """Run a shell command and capture its output."""
@@ -46,7 +47,8 @@ def push_changes():
 
 def main():
     parser = argparse.ArgumentParser(description="Remove a Git tag, add it if necessary, and push changes.")
-    parser.add_argument("-tag", required=False, default=default_tag, help="The Git tag to remove and re-add.")
+    parser.add_argument("-tag", required=False, default=default_tag.format(default_package), help="The Git tag to remove and re-add.")
+    parser.add_argument("-package", required=True, default=default_package, help="The Git tag to remove and re-add.")
 
     args = parser.parse_args()
 
