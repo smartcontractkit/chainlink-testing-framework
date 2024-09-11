@@ -102,6 +102,7 @@ jobs:
         run: |
           go run cmd/main.go -path $GITHUB_WORKSPACE/${{ env.PACKAGE_NAME }}
       - name: Create GitHub Release
+        if: always()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -109,15 +110,15 @@ jobs:
           gh release create "${{ env.PACKAGE_NAME }}-${{ env.VERSION }}" --title "${{ env.PACKAGE_NAME }} ${{ env.VERSION }}" --notes "Release for ${{ env.PACKAGE_NAME }} version ${{ env.VERSION }}${{ env.FULL_RELEASE_NOTES }} ${{ env.BREAKING_CHANGES }}" || true
       - name: Check if 'cmd' directory exists and set environment variable
         run: |
-          if [ -d "$GITHUB_WORKSPACE/${{ env.PACKAGE_NAME }}/cmd" ] && [ -f "$GITHUB_WORKSPACE/${{ env.PACKAGE_NAME }}/cmd/main.go" ]; then
-            echo "CMD_EXISTS=true" >> $GITHUB_ENV
+          if [ -f "$GITHUB_WORKSPACE/${{ env.PACKAGE_NAME }}/cmd/main.go" ]; then
+            echo "CMD_ENTRYPOINT_EXISTS=true" >> $GITHUB_ENV
           else
-            echo "CMD_EXISTS=false" >> $GITHUB_ENV
+            echo "CMD_ENTRYPOINT_EXISTS=false" >> $GITHUB_ENV
           fi
-      - uses: wangyoucao577/go-release-action@v1
-        if: env.CMD_EXISTS == 'true'
+      - name: Build binary release
+        uses: wangyoucao577/go-release-action@v1
+        if: env.CMD_ENTRYPOINT_EXISTS == 'true'
         with:
-          build_command: go build cmd/main.go
           github_token: ${{ secrets.GITHUB_TOKEN }}
           goversion: '1.22.6'
           goos: ${{ matrix.platform }}
