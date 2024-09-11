@@ -61,11 +61,11 @@ jobs:
           COMMITS=$(git log "$LAST_TAG..$PACKAGE_NAME/$VERSION" --pretty=format:"- %s (%h)")
           
           # Output the release notes
-          echo "Release notes:"
+          echo "Commits:"
           echo "$COMMITS"
           
           # Safely set the release notes as an environment variable using heredoc and EOF
-          echo "RELEASE_NOTES<<EOF" >> $GITHUB_ENV
+          echo "COMMITS<<EOF" >> $GITHUB_ENV
           echo "$COMMITS" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
       - name: Set up Go
