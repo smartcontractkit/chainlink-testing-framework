@@ -46,6 +46,7 @@ def add_release_file(package_dir, tag):
 
     # Add and commit the new file
     run_command(f"git add {filename}")
+    print("Yubikey signature might be required if the script is hanging for too long check your Yubikey...")
     commit_message = f"Test release commit {version_part}"
     run_command(f"git commit -m '{commit_message}' --no-verify")
     print(f"Committed the release file: {filename}")
