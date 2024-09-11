@@ -121,9 +121,6 @@ jobs:
           else
             echo "CMD_ENTRYPOINT_EXISTS=false" >> $GITHUB_ENV
           fi
-      - name: Test build
-        run: |
-          cd ${{ env.PACKAGE_NAME }}/cmd && go build -o ${{ env.PACKAGE_NAME }} .
       - name: Build binary release
         uses: wangyoucao577/go-release-action@v1
         if: env.CMD_ENTRYPOINT_EXISTS == 'true'

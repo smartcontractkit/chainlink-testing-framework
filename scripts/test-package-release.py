@@ -11,6 +11,11 @@ def run_command(command):
         print(f"Command '{command}' failed with error: {e.stderr.decode('utf-8').strip()}")
         sys.exit(1)
 
+def push_all_tags():
+    """Push all tags to the remote before removing the specified tag."""
+    print("Pushing all existing tags to remote before removing the specified tag...")
+    run_command("git push --tags")
+
 def remove_tag(tag):
     """Remove the specified Git tag locally and remotely."""
     print(f"Removing tag '{tag}' locally...")
@@ -20,11 +25,11 @@ def remove_tag(tag):
     run_command(f"git push origin :refs/tags/{tag}")
 
 def push_changes():
-    """Push changes to remote and push all tags."""
+    """Push changes to remote and push all remaining tags."""
     print("Pushing changes to remote with --no-verify and --force...")
     run_command("git push --no-verify --force")
 
-    print("Pushing all tags to remote...")
+    print("Pushing all remaining tags to remote...")
     run_command("git push --tags")
 
 def main():
@@ -33,7 +38,13 @@ def main():
 
     args = parser.parse_args()
 
+    # Push all existing tags before deleting the specified tag
+    push_all_tags()
+
+    # Remove the specified tag
     remove_tag(args.tag)
+
+    # Push remaining changes and tags
     push_changes()
 
 if __name__ == "__main__":
