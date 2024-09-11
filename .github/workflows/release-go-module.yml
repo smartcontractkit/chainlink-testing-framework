@@ -37,10 +37,6 @@ jobs:
 
           echo "PACKAGE_NAME=$PACKAGE_NAME" >> $GITHUB_ENV
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-      - name: Show Package Name and Version
-        run: |
-          echo "Package Name: ${{ env.PACKAGE_NAME }}"
-          echo "Version: ${{ env.VERSION }}"
       - name: Find Last Tag for Package and Generate Release Notes
         id: generate_release_notes
         run: |
@@ -48,24 +44,26 @@ jobs:
           TAG_REF="${GITHUB_REF#refs/tags/}"
           PACKAGE_NAME=$(echo "$TAG_REF" | cut -d'/' -f1)
           VERSION=$(echo "$TAG_REF" | cut -d'/' -f2)
-
+          
           # Find the latest tag for the same package that is not the current tag
           LAST_TAG=$(git describe --abbrev=0 --match "$PACKAGE_NAME/v*" --tags $(git rev-list --tags --skip=1 --max-count=1))
-
+          
           # If no previous tag is found, use the initial commit as the reference
           if [ -z "$LAST_TAG" ]; then
             LAST_TAG=$(git rev-list --max-parents=0 HEAD)
           fi
-
-          echo "Last tag found: $LAST_TAG"
-
+          
+          # Extract the version part of the last tag
+          LAST_TAG_VERSION=$(echo "$LAST_TAG" | cut -d'/' -f2)
+          echo "Last tag version: $LAST_TAG_VERSION"
+          
           # Get the commits between the last tag and the current tag
           COMMITS=$(git log "$LAST_TAG..$PACKAGE_NAME/$VERSION" --pretty=format:"- %s (%h)")
-
+          
           # Output the release notes
           echo "Release notes:"
           echo "$COMMITS"
-
+          
           # Safely set the release notes as an environment variable using heredoc and EOF
           echo "RELEASE_NOTES<<EOF" >> $GITHUB_ENV
           echo "$COMMITS" >> $GITHUB_ENV
@@ -82,8 +80,7 @@ jobs:
         id: check_breaking_changes
         run: |
           set +e  # Disable exit on error to capture output even if the command fails
-          # sed is used to remove ascii color codes
-          BREAKING_CHANGES=$(go run cmd/main.go -path $GITHUB_WORKSPACE/${{ env.PACKAGE_NAME }} 2>&1 | sed -r "s/\x1B\[[0-9;]*[mK]//g")
+          BREAKING_CHANGES=$(gorelease -base $LAST_TAG_VERSION -version $VERSION 2>&1 | sed -r "s/\x1B\[[0-9;]*[mK]//g")
           echo "Breaking changes: ${BREAKING_CHANGES}"
           set -e  # Re-enable exit on error for the subsequent steps
           echo "BREAKING_CHANGES<<EOF" >> $GITHUB_ENV
