@@ -32,7 +32,7 @@ type Client struct {
 }
 
 // GetLocalK8sDeps get local k8s context config
-func GetLocalK8sDeps(a int) (*kubernetes.Clientset, *rest.Config, error) {
+func GetLocalK8sDeps() (*kubernetes.Clientset, *rest.Config, error) {
 	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
 	kubeConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, &clientcmd.ConfigOverrides{})
 	k8sConfig, err := kubeConfig.ClientConfig()
@@ -48,7 +48,7 @@ func GetLocalK8sDeps(a int) (*kubernetes.Clientset, *rest.Config, error) {
 
 // NewK8sClient creates a new k8s client with a REST config
 func NewClient() *Client {
-	cs, cfg, err := GetLocalK8sDeps(0)
+	cs, cfg, err := GetLocalK8sDeps()
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
