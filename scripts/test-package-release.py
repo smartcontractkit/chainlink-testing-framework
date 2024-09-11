@@ -33,8 +33,6 @@ def add_release_file(package_dir, tag):
     version_part = tag.split('/')[-1]
     filename = f".changeset/{version_part}.md"
 
-    os.remove(f"{package_dir}/{filename}")
-
     # Change directory to the package
     os.chdir(package_dir)
     print(f"Changed directory to {package_dir}. Creating file {filename}...")
