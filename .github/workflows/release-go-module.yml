@@ -80,7 +80,9 @@ jobs:
         id: check_breaking_changes
         run: |
           set +e  # Disable exit on error to capture output even if the command fails
-          BREAKING_CHANGES=$(gorelease -base=$LAST_TAG_VERSION -version=$VERSION 2>&1)
+          echo "Last tag version: ${LAST_TAG_VERSION}"
+          echo "Current tag version: ${VERSION}"
+          BREAKING_CHANGES=$(gorelease -base=${LAST_TAG_VERSION} -version=${VERSION} 2>&1)
           echo "Breaking changes: ${BREAKING_CHANGES}"
           set -e  # Re-enable exit on error for the subsequent steps
           echo "BREAKING_CHANGES<<EOF" >> $GITHUB_ENV
