@@ -98,13 +98,13 @@ jobs:
 
             # Format the release notes and breaking changes into FULL_RELEASE_NOTES
             echo "FULL_RELEASE_NOTES<<EOF" >> $GITHUB_ENV
-            echo "Release notes:" >> $GITHUB_ENV
+            echo "## Release notes:" >> $GITHUB_ENV
             echo "$RELEASE_NOTES" >> $GITHUB_ENV
             echo "" >> $GITHUB_ENV
-            echo "Commits:" >> $GITHUB_ENV
+            echo "## Commits:" >> $GITHUB_ENV
             echo "${{ env.COMMITS }}" >> $GITHUB_ENV
             echo "" >> $GITHUB_ENV
-            echo "Breaking changes:" >> $GITHUB_ENV
+            echo "## Breaking changes:" >> $GITHUB_ENV
             echo "${{ env.BREAKING_CHANGES }}" >> $GITHUB_ENV
             echo "EOF" >> $GITHUB_ENV
           else
