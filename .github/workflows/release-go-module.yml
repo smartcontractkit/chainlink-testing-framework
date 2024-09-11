@@ -25,6 +25,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
+          fetch-tags: true
       - name: Extract Package Name from Tag
         id: extract_package_name
         run: |
