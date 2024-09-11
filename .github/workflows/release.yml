@@ -74,20 +74,19 @@ jobs:
         working-directory: ${{ env.PACKAGE_NAME }}
         id: read_additional_notes
         run: |
-          # Check if the .release_notes directory exists and the file for the current version is present
-          if [ -f ".release_notes/${{ env.VERSION }}.md" ]; then
+          # Check if the .changeset directory exists and the file for the current version is present
+          if [ -f ".changeset/${{ env.VERSION }}.md" ]; then
             # Read the content of the file
-            ADDITIONAL_NOTES=$(cat ".release_notes/${{ env.VERSION }}.md")
+            RELEASE_NOTES=$(cat ".changeset/${{ env.VERSION }}.md")
 
             # Surround the additional notes with newlines safely using heredoc
             echo "FULL_RELEASE_NOTES<<EOF" >> $GITHUB_ENV
-            echo "${{ env.RELEASE_NOTES }}" >> $GITHUB_ENV
             echo "" >> $GITHUB_ENV
-            echo "$ADDITIONAL_NOTES" >> $GITHUB_ENV
+            echo "$RELEASE_NOTES" >> $GITHUB_ENV
             echo "EOF" >> $GITHUB_ENV
           else
             # Print error message and fail the pipeline if the file is not found
-            echo "Error: Release notes file '.release_notes/${{ env.VERSION }}.md' not found."
+            echo "Error: Release notes file '.changeset/${{ env.VERSION }}.md' not found."
             exit 1
           fi
       - name: Set up Go
