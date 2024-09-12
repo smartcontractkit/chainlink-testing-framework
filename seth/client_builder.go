@@ -351,7 +351,7 @@ func (c *ClientBuilder) BuildConfig() (*Config, error) {
 		for _, err := range c.errors {
 			concatenatedErrors = fmt.Sprintf("%s\n%s", concatenatedErrors, err.Error())
 		}
-		return nil, fmt.Errorf("errors occurred during building the config: %s", concatenatedErrors)
+		return nil, fmt.Errorf("errors occurred during building the config:%s", concatenatedErrors)
 	}
 	return c.config, nil
 }
