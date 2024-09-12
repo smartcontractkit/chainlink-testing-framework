@@ -83,6 +83,14 @@ func (c *ClientBuilder) UseNetworkWithName(name string) *ClientBuilder {
 		}
 	}
 
+	// if the network is not found, we will try to use the default network
+	for _, network := range c.config.Networks {
+		if network.Name == DefaultNetworkName {
+			c.config.Network = network
+			return c
+		}
+	}
+
 	c.errors = append(c.errors, fmt.Errorf("network with name '%s' not found", name))
 	return c
 }
@@ -92,6 +100,14 @@ func (c *ClientBuilder) UseNetworkWithName(name string) *ClientBuilder {
 func (c *ClientBuilder) UseNetworkWithChainId(chainId uint64) *ClientBuilder {
 	for _, network := range c.config.Networks {
 		if network.ChainID == chainId {
+			c.config.Network = network
+			return c
+		}
+	}
+
+	// if the network is not found, we will try to use the default network
+	for _, network := range c.config.Networks {
+		if network.Name == DefaultNetworkName {
 			c.config.Network = network
 			return c
 		}

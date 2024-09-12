@@ -133,6 +133,16 @@ func TestConfig_ModifyExistingConfigWithBuilder_UnknownChainId(t *testing.T) {
 	err = toml.Unmarshal(d, &sethConfig)
 	require.NoError(t, err, "failed to unmarshal config file")
 
+	// remove default network
+	networks := []*seth.Network{}
+	for _, network := range sethConfig.Networks {
+		if network.Name != seth.DefaultNetworkName {
+			networks = append(networks, network)
+		}
+	}
+
+	sethConfig.Networks = networks
+
 	_, err = seth.NewClientBuilderWithConfig(&sethConfig).
 		UseNetworkWithChainId(225).
 		WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
@@ -144,6 +154,26 @@ at least one method that required network to be set was called, but network is n
 
 	require.Error(t, err, "succeeded to create client")
 	require.Equal(t, expectedError, err.Error(), "expected error message")
+}
+
+func TestConfig_ModifyExistingConfigWithBuilder_UnknownChainId_UseDefault(t *testing.T) {
+	configPath := os.Getenv(seth.CONFIG_FILE_ENV_VAR)
+	require.NotEmpty(t, configPath, "expected config file path to be set")
+
+	d, err := os.ReadFile(configPath)
+	require.NoError(t, err, "failed to read config file")
+
+	var sethConfig seth.Config
+	err = toml.Unmarshal(d, &sethConfig)
+	require.NoError(t, err, "failed to unmarshal config file")
+
+	_, err = seth.NewClientBuilderWithConfig(&sethConfig).
+		UseNetworkWithChainId(225).
+		WithRpcUrl("ws://localhost:8546").
+		WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
+		Build()
+
+	require.NoError(t, err, "failed to create client")
 }
 
 func TestConfig_LegacyGas_No_Estimations(t *testing.T) {
