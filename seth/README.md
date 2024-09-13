@@ -254,6 +254,8 @@ export SETH_ROOT_PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae7
 alias seth="SETH_CONFIG_PATH=seth.toml go run cmd/seth/seth.go" # useful alias for CLI
 ```
 
+> Find the log level options [here](https://github.com/rs/zerolog?tab=readme-ov-file#leveled-logging)
+
 Alternatively if you don't have a network defined in the TOML you can still use the CLI by providing these 2 key env vars:
 
 ```sh
