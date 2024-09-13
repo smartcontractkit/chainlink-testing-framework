@@ -77,3 +77,5 @@ require (
 )
 
 replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.19.0
+
+retract [v1.999.0-test-release, v1.999.999-test-release]
