@@ -2,6 +2,7 @@ name: Print Consumers Dependabot Updates
 
 on:
   workflow_dispatch:
+  push:
 
 jobs:
   find_dependabot_prs:
@@ -12,9 +13,11 @@ jobs:
       - name: Set up jq for JSON parsing
         run: sudo apt-get install -y jq
       - name: Find Dependabot PRs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Define the list of repositories
-          repos=("owner/repo1" "owner/repo2" "owner/repo3")
+          repos=("smartcontractkit/chainlink" "smartcontractkit/chainlink-solana")
 
           # Define the title pattern to search for
           title_pattern="Bump github.com/smartcontractkit/chainlink-testing-framework/lib from"
