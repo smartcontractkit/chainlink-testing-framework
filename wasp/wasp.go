@@ -145,7 +145,7 @@ type Config struct {
 	nodeID string
 }
 
-func (lgc *Config) Validate(a int) error {
+func (lgc *Config) Validate() error {
 	if lgc.CallTimeout == 0 {
 		lgc.CallTimeout = DefaultCallTimeout
 	}
@@ -250,7 +250,7 @@ func NewGenerator(cfg *Config) (*Generator, error) {
 	if cfg == nil {
 		return nil, ErrNoCfg
 	}
-	if err := cfg.Validate(0); err != nil {
+	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
 	for _, s := range cfg.Schedule {
