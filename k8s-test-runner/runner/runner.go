@@ -35,7 +35,7 @@ func NewK8sTestRun(cfg *config.Runner, chartOverrides map[string]interface{}) (*
 
 	return &K8sTestRun{
 		cfg:            cfg,
-		c:              k8s_client.NewClient(0),
+		c:              k8s_client.NewClient(),
 		Ctx:            ctx,
 		Cancel:         cancelFunc,
 		ChartOverrides: chartOverrides,

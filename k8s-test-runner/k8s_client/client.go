@@ -47,7 +47,7 @@ func GetLocalK8sDeps(a int) (*kubernetes.Clientset, *rest.Config, error) {
 }
 
 // NewK8sClient creates a new k8s client with a REST config
-func NewClient(a int) *Client {
+func NewClient() *Client {
 	cs, cfg, err := GetLocalK8sDeps(0)
 	if err != nil {
 		log.Fatal().Err(err).Send()
