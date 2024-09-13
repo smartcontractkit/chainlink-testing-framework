@@ -17,8 +17,8 @@ securityContext:
   runAsGroup: 1000
 genesis:
   image:
-    repository: tofelb/ethereum-genesis-generator
-    tag: 3.3.5-no-future-forks-rootless-amd64
+    repository: public.ecr.aws/w0i8p0z9/ethereum-genesis-generator
+    tag: main-f3d278d
   values:
     secondsPerSlot: 4
     slotsPerEpoch: 2
