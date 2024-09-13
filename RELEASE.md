@@ -1,9 +1,9 @@
-## Releasing a module
+## Releasing Go modules
 
 The Chainlink repository contains multiple independent modules. To release any of them, follow these steps:
 
 - Merge all PRs that include the functionality you want to release (this can apply to multiple modules).
-- For each module being released, add a release notes file in the .changesets folder named `vX.X.X.md`. The format is flexible, but ensure to describe all changes and any necessary upgrade procedures.
+- For each module being released, add a release notes file in the `.changeset` folder named `vX.X.X.md`. The format is flexible, but ensure to describe all changes and any necessary upgrade procedures.
 - Follow tagging strategy described below, push the tag and check the [release page](https://github.com/smartcontractkit/chainlink-testing-framework/releases)
 
 ### Tagging strategy
@@ -28,8 +28,8 @@ git tag k8s-test-runner/v0.6.0-test-release-alpha && git push --tags
 
 There should be no breaking changes in patch or minor releases, check output of `Breaking changes` on the release page, if there are - fix them and publish another patch version.
 
-### Major release
-- Append `vX` to Go module path, example
+### Major releases
+- Append `vX` to Go module path in `go.mod`, example:
 ```
 module github.com/smartcontractkit/chainlink-testing-framework/wasp/v2
 ```
@@ -44,4 +44,10 @@ To test release for any module use `$pkg/$subpkg/v1.999.X-test-release` tags, th
 ```
 nix develop
 python ./scripts/test-package-release.py -tag k8s-test-runner/v1.999.0-test-release -package ./k8s-test-runner
+```
+
+## Check breaking changes locally
+We have a simple wrapper to check breaking changes for all the packages. Commit all your changes and run:
+```
+./scripts/breaking-changes.sh
 ```
