@@ -167,7 +167,7 @@ require (
 
 require (
 	github.com/grafana/pyroscope-go v1.1.2
-	github.com/smartcontractkit/chainlink-testing-framework/lib/grafana v0.1.0
+	github.com/smartcontractkit/chainlink-testing-framework/lib/grafana v1.50.0
 )
 
 require (

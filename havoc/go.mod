@@ -8,7 +8,7 @@ require (
 	github.com/chaos-mesh/chaos-mesh/api v0.0.0-20240821051457-da69c6d9617a
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.33.0
-	github.com/smartcontractkit/chainlink-testing-framework/lib/grafana v0.1.0
+	github.com/smartcontractkit/chainlink-testing-framework/lib/grafana v1.50.0
 	k8s.io/api v0.31.0
 	k8s.io/client-go v0.31.0
 	sigs.k8s.io/controller-runtime v0.16.2
