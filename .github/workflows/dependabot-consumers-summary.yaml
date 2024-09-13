@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Set up jq for JSON parsing
         run: sudo apt-get install -y jq
       - name: Find Dependabot PRs
@@ -20,7 +20,7 @@ jobs:
           repos=("smartcontractkit/chainlink" "smartcontractkit/chainlink-solana")
 
           # Define the title pattern to search for
-          title_pattern="Bump github.com/smartcontractkit/chainlink-testing-framework/lib from"
+          title_pattern="Bump github.com/smartcontractkit/chainlink-solana from"
 
           echo "# Dependabot PRs for Bumping chainlink-testing-framework/lib" >> "$GITHUB_STEP_SUMMARY"
 
