@@ -1,8 +1,11 @@
-name: Print Consumers Dependabot Updates
+# This pipeline aggregates summary of Dependabot PRs for all our dependants
+# Used to analyze major and alpha releases
+name: Consumers Dependabot Updates
 
 on:
+  schedule:
+    - cron: '0 10 * * *'
   workflow_dispatch:
-  push:
 
 jobs:
   find_dependabot_prs:
@@ -29,7 +32,11 @@ jobs:
           
           # Define the list of packages to search for
           pkgs=(
-              "github.com/smartcontractkit/chainlink-solana"
+              "github.com/smartcontractkit/chainlink-testing-framework/lib"
+              "github.com/smartcontractkit/chainlink-testing-framework/wasp"
+              "github.com/smartcontractkit/chainlink-testing-framework/havoc"
+              "github.com/smartcontractkit/chainlink-testing-framework/seth"
+              "github.com/smartcontractkit/chainlink-testing-framework/k8s-test-runner"
           )
           
           # Initialize the summary with a heading
