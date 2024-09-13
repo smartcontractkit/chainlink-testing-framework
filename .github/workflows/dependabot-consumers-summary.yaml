@@ -1,4 +1,4 @@
-name: Print Dependabot PRs
+name: Print Consumers Dependabot Updates
 
 on:
   workflow_dispatch:
