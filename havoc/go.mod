@@ -77,3 +77,5 @@ require (
 )
 
 replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.19.0
+
+exclude github.com/sourcegraph/sourcegraph/lib v0.0.0-20221216004406-749998a2ac74

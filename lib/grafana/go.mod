@@ -8,3 +8,5 @@ require (
 )
 
 require golang.org/x/net v0.17.0 // indirect
+
+exclude github.com/sourcegraph/sourcegraph/lib v0.0.0-20221216004406-749998a2ac74
