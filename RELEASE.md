@@ -35,10 +35,10 @@ module github.com/smartcontractkit/chainlink-testing-framework/wasp/v2
 ```
 - Tag the main branch using the format `$pkg/$subpkg/v2.X.X-alpha`
 - Push the tags and visit https://github.com/smartcontractkit/chainlink-testing-framework/releases to check the release.
-- Check Dependabot pipeline to analyze dependencies
+- Check Dependabot pipeline to analyze scope of changes across other repositories
 
 ## Debug Release Pipeline
-Since some components of pipeline are relying on published Go modules index and Dependabot it is hard to test it, but we have a test script for that purpose:
+Since some components of pipeline are relying on published Go modules index and Dependabot we have a test script to verify the release pipeline:
 
 To test release for any module use `$pkg/$subpkg/v1.999.X-test-release` tags, they are retracted so consumers can't accidentally install them
 ```

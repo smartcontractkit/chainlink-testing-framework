@@ -1,0 +1,35 @@
+name: Print Dependabot PRs
+
+on:
+  workflow_dispatch:
+
+jobs:
+  find_dependabot_prs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Set up jq for JSON parsing
+        run: sudo apt-get install -y jq
+      - name: Find Dependabot PRs
+        run: |
+          # Define the list of repositories
+          repos=("owner/repo1" "owner/repo2" "owner/repo3")
+
+          # Define the title pattern to search for
+          title_pattern="Bump github.com/smartcontractkit/chainlink-testing-framework/lib from"
+
+          echo "# Dependabot PRs for Bumping chainlink-testing-framework/lib" >> "$GITHUB_STEP_SUMMARY"
+
+          for repo in "${repos[@]}"; do
+            echo "## Repository: $repo" >> $GITHUB_STEP_SUMMARY
+            prs=$(gh pr list --repo $repo --search "$title_pattern" --json title,url)
+            if [ -z "$prs" ]; then
+              echo "No PRs found for this repository" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "$prs" | jq -r '.[] | "- [\(.title)](\(.url))"' >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+
+      - name: Print Summary
+        run: cat "$GITHUB_STEP_SUMMARY"

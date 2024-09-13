@@ -1,6 +1,6 @@
 # This script is used to verify release pipeline end-to-end
 # Usage:
-# python ./scripts/test-package-release.py -tag k8s-test-runner/v1.999.0-test-release -package ./k8s-test-runner
+# python ./scripts/test-package-release.py -tag $dir/$subdir/v1.999.0-test-release -package ./$dir/$subdir
 import subprocess
 import argparse
 import os
