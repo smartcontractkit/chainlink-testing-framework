@@ -37,6 +37,9 @@ module github.com/smartcontractkit/chainlink-testing-framework/wasp/v2
 - Push the tags and visit https://github.com/smartcontractkit/chainlink-testing-framework/releases to check the release.
 - Check Dependabot pipeline to analyze scope of changes across other repositories
 
+### Binary releases
+If your module have `cmd/main.go` we build binary automatically for various platforms and attach it to the release page.
+
 ## Debug Release Pipeline
 Since some components of pipeline are relying on published Go modules index and Dependabot we have a test script to verify the release pipeline:
 
@@ -45,6 +48,9 @@ To test release for any module use `$pkg/$subpkg/v1.999.X-test-release` tags, th
 nix develop
 python ./scripts/test-package-release.py -tag k8s-test-runner/v1.999.0-test-release -package ./k8s-test-runner
 ```
+
+[Pipeline for releasing Go modules](.github/workflows/release-go-module.yml)
+[Dependabot summary pipeline](.github/workflows/dependabot-consumers-summary.yaml)
 
 ## Check breaking changes locally
 We have a simple wrapper to check breaking changes for all the packages. Commit all your changes and run:

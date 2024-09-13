@@ -77,16 +77,9 @@ def main():
 
     args = parser.parse_args()
 
-    # Remove the specified tag if it exists
     remove_tag(args.tag)
-
-    # Add release file to the package directory
     add_release_file(args.package, args.tag)
-
-    # Add (or re-add) the tag
     add_tag(args.tag)
-
-    # Push remaining changes and all tags
     push_changes()
 
 if __name__ == "__main__":
