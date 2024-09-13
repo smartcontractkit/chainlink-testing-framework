@@ -42,10 +42,10 @@ def add_release_file(package_dir, tag):
 
     # Write example data to the release file
     with open(filename, 'w') as f:
-        f.write(f"Initial release of {package_dir} test runner\n\n")
+        f.write(f"Test release of {package_dir} module\n\n")
         f.write("Features added:\n")
-        f.write("- One\n")
-        f.write("- Two\n")
+        f.write("- Test feature #1\n")
+        f.write("- Test feature #2\n")
 
     # Add and commit the new file
     run_command(f"git add {filename}")
