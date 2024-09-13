@@ -38,10 +38,10 @@ module github.com/smartcontractkit/chainlink-testing-framework/wasp/v2
 - Check Dependabot pipeline to analyze dependencies
 
 ## Debug Release Pipeline
-Since some components of pipeline are relying on published Go modules index it is hard to test it, but we have a test script for that purpose:
+Since some components of pipeline are relying on published Go modules index and Dependabot it is hard to test it, but we have a test script for that purpose:
 
-To test release for any module use `-test-release-alpha` tags, they are retracted so consumers can't accidentally install them
+To test release for any module use `$pkg/$subpkg/v1.999.X-test-release` tags, they are retracted so consumers can't accidentally install them
 ```
 nix develop
-python ./scripts/test-package-release.py -tag k8s-test-runner/v0.6.0-test-release-alpha -package ./k8s-test-runner
+python ./scripts/test-package-release.py -tag k8s-test-runner/v1.999.0-test-release -package ./k8s-test-runner
 ```
