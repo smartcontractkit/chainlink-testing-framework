@@ -50,7 +50,7 @@ test_cli:
 
 .PHONY: test_others
 test_others:
-	SETH_NETWORK=$(network) SETH_ROOT_PRIVATE_KEY=$(root_private_key) go test -v -count 1 -race `go list ./... | grep -v examples` -run "TestContractMap|TestGasEstimator|TestRPCHealthCheck|TestUtil|TestContract|TestConfig"
+	SETH_CONFIG_PATH="seth.toml" SETH_NETWORK=$(network) SETH_ROOT_PRIVATE_KEY=$(root_private_key) go test -v -count 1 -race `go list ./... | grep -v examples` -run "TestContractMap|TestGasEstimator|TestRPCHealthCheck|TestUtil|TestContract|TestConfig"
 
 # this one is without -race flag, because zerolog is not thread safe and fails the run
 .PHONY: test_gas_bumping

@@ -266,7 +266,7 @@ func RunCLI(args []string) error {
 							if err != nil {
 								return errors.Wrap(err, "failed to get chain ID")
 							}
-							cfg.Network.ChainID = chainId.String()
+							cfg.Network.ChainID = chainId.Uint64()
 						}
 					}
 
