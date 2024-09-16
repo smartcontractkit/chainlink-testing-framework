@@ -24,8 +24,6 @@ spec:
       - name: {{ .Release.Name }}-geth-config
         configMap:
           name: {{ .Release.Name }}-geth-config
-      - name: execution-data
-        emptyDir: {}
       securityContext:
         fsGroup: {{ .Values.securityContext.runAsGroup }}
       containers:
@@ -51,8 +49,6 @@ spec:
             - name: {{ .Release.Name }}-geth-config
               mountPath: /entrypoint.sh
               subPath: entrypoint.sh
-            - name: execution-data
-              mountPath: {{ .Values.geth.executionDir }}
           securityContext:
             capabilities:
               drop:

@@ -52,6 +52,7 @@ spec:
             - "--data-storage-format=BONSAI"
             - "--rpc-tx-feecap=0"
             - "--logging={{ .Values.excutionClient.logging.level }}"
+            - "--kzg-trusted-setup={{ .Values.shared.configDataDir }}/trusted_setup.txt"
           ports:
             - name: http-rpc
               containerPort: {{ .Values.excutionClient.ports.http }}
