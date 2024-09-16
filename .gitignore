@@ -73,3 +73,6 @@ __debug*
 .private_chains/*
 
 .direnv
+
+# asdf
+.tool-versions

@@ -7,7 +7,6 @@ import (
 	"math/big"
 	"net/http"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -246,14 +245,12 @@ func NewClientRaw(
 	}
 	client := ethclient.NewClient(rpcClient)
 
-	chainId, err := client.ChainID(context.Background())
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get chain ID")
-	}
-	cfg.Network.ChainID = chainId.String()
-	cID, err := strconv.Atoi(cfg.Network.ChainID)
-	if err != nil {
-		return nil, err
+	if cfg.Network.ChainID == 0 {
+		chainId, err := client.ChainID(context.Background())
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to get chain ID")
+		}
+		cfg.Network.ChainID = chainId.Uint64()
 	}
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	c := &Client{
@@ -262,7 +259,7 @@ func NewClientRaw(
 		Addresses:   addrs,
 		PrivateKeys: pkeys,
 		URL:         cfg.FirstNetworkURL(),
-		ChainID:     int64(cID),
+		ChainID:     int64(cfg.Network.ChainID),
 		Context:     ctx,
 		CancelFunc:  cancelFunc,
 	}
@@ -321,7 +318,7 @@ func NewClientRaw(
 		Str("NetworkName", cfg.Network.Name).
 		Interface("Addresses", addrs).
 		Str("RPC", cfg.FirstNetworkURL()).
-		Str("ChainID", cfg.Network.ChainID).
+		Uint64("ChainID", cfg.Network.ChainID).
 		Int64("Ephemeral keys", *cfg.EphemeralAddrs).
 		Msg("Created new client")
 
@@ -645,6 +642,20 @@ func WithGasFeeCap(gasFeeCap *big.Int) TransactOpt {
 func WithGasTipCap(gasTipCap *big.Int) TransactOpt {
 	return func(o *bind.TransactOpts) {
 		o.GasTipCap = gasTipCap
+	}
+}
+
+// WithSignerFn sets signerFn option for bind.TransactOpts
+func WithSignerFn(signerFn bind.SignerFn) TransactOpt {
+	return func(o *bind.TransactOpts) {
+		o.Signer = signerFn
+	}
+}
+
+// WithFrom sets from option for bind.TransactOpts
+func WithFrom(fromAddress common.Address) TransactOpt {
+	return func(o *bind.TransactOpts) {
+		o.From = fromAddress
 	}
 }
 
