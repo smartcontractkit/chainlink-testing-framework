@@ -49,6 +49,12 @@ nix develop
 python ./scripts/test-package-release.py -tag k8s-test-runner/v1.999.0-test-release -package ./k8s-test-runner
 ```
 
+To remove all the test tags use
+```
+nix develop
+python3 ./scripts/test-package-release.py -remove-test-tags
+```
+
 [Pipeline for releasing Go modules](.github/workflows/release-go-module.yml)
 [Dependabot summary pipeline](.github/workflows/dependabot-consumers-summary.yaml)
 

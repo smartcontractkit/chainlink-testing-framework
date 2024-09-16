@@ -1,6 +1,3 @@
-# This script is used to verify release pipeline end-to-end
-# Usage:
-# python ./scripts/test-package-release.py -tag $dir/$subdir/v1.999.0-test-release -package ./$dir/$subdir
 import subprocess
 import argparse
 import os
@@ -29,6 +26,19 @@ def remove_tag(tag):
     # Attempt to remove the tag remotely
     print(f"Removing tag '{tag}' from remote (if exists)...")
     run_command(f"git push origin :refs/tags/{tag}")
+
+def remove_test_release_tags():
+    """Remove all tags with '-test-release' suffix locally and remotely."""
+    print("Finding all tags with '-test-release' suffix...")
+    tags_to_remove = run_command("git tag --list '*-test-release'").splitlines()
+
+    if not tags_to_remove:
+        print("No tags found with '-test-release' suffix.")
+        return
+
+    for tag in tags_to_remove:
+        print(f"Removing tag: {tag}")
+        remove_tag(tag)
 
 def add_release_file(package_dir, tag):
     """Change directory to the package and create a release file."""
@@ -71,16 +81,22 @@ def push_changes():
     run_command("git push --tags")
 
 def main():
-    parser = argparse.ArgumentParser(description="Remove a Git tag, add a release file, and push changes.")
-    parser.add_argument("-tag", required=True, help="The Git tag to remove and re-add.")
-    parser.add_argument("-package", required=True, help="The package directory to create the release file in.")
+    parser = argparse.ArgumentParser(description="Remove Git tags, add a release file, and push changes.")
+    parser.add_argument("-tag", required=False, help="The Git tag to remove and re-add.")
+    parser.add_argument("-package", required=False, help="The package directory to create the release file in.")
+    parser.add_argument("-remove-test-tags", required=False, action="store_true", help="Remove all Git tags with '-test-release' suffix.")
 
     args = parser.parse_args()
 
-    remove_tag(args.tag)
-    add_release_file(args.package, args.tag)
-    add_tag(args.tag)
-    push_changes()
+    if args.remove_test_tags:
+        remove_test_release_tags()
+    elif args.tag and args.package:
+        remove_tag(args.tag)
+        add_release_file(args.package, args.tag)
+        add_tag(args.tag)
+        push_changes()
+    else:
+        print("You must provide either '-remove-test-tags' or '-tag' and '-package' options.")
 
 if __name__ == "__main__":
     main()
