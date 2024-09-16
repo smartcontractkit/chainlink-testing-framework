@@ -61,7 +61,7 @@ jobs:
           echo "LAST_TAG_VERSION=${LAST_TAG_VERSION}" >> "$GITHUB_ENV"
 
           # Get the commits between the last tag and the current tag that are in the directory scope
-          COMMITS=$(git log "$LAST_TAG..$PACKAGE_NAME/$VERSION" -- "$PACKAGE_NAME" --pretty=format:"- %s (%h)")
+          COMMITS=$(git log "$LAST_TAG..$PACKAGE_NAME/$VERSION" --pretty=format:"- %s (%h)" -- "$PACKAGE_NAME")
 
           # Output the release notes
           echo "Commits:"
