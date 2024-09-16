@@ -12,6 +12,13 @@ initContainers:
         subPath: valkeys-entrypoint.sh
       - name:  {{ .pvcName }}
         mountPath: /app/generated
+    securityContext:
+      capabilities:
+        drop:
+          - ALL
+      runAsUser: {{ .Values.securityContext.runAsUser }}
+      runAsGroup: {{ .Values.securityContext.runAsGroup }}
+      runAsNonRoot: true
   - name: {{ .Release.Name }}-ethereum-genesis-generator
     image: "{{ .Values.genesis.image.repository }}:{{ .Values.genesis.image.tag }}"
     imagePullPolicy: "{{ .Values.imagePullPolicy }}"
@@ -32,6 +39,13 @@ initContainers:
       - name: {{ .Release.Name }}-genesis-config
         mountPath: entrypoint.sh
         subPath: genesis-entrypoint.sh
+    securityContext:
+      capabilities:
+        drop:
+          - ALL
+      runAsUser: {{ .Values.securityContext.runAsUser }}
+      runAsGroup: {{ .Values.securityContext.runAsGroup }}
+      runAsNonRoot: true
   - name: {{ .Release.Name }}-after-gensis-helper
     image: "{{ .Values.busybox.image.repository }}:{{ .Values.busybox.image.tag }}"
     imagePullPolicy: "{{ .Values.imagePullPolicy }}"
@@ -42,4 +56,11 @@ initContainers:
       - name: {{ .Release.Name }}-after-genesis-helper-config
         mountPath: helper_script.sh
         subPath: helper_script.sh
+    securityContext:
+      capabilities:
+        drop:
+          - ALL
+      runAsUser: {{ .Values.securityContext.runAsUser }}
+      runAsGroup: {{ .Values.securityContext.runAsGroup }}
+      runAsNonRoot: true
 {{- end }}
