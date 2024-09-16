@@ -45,28 +45,28 @@ jobs:
           TAG_REF="${GITHUB_REF#refs/tags/}"
           PACKAGE_NAME=$(echo "$TAG_REF" | cut -d'/' -f1)
           VERSION=$(echo "$TAG_REF" | cut -d'/' -f2)
-          
+
           # Find the latest tag for the same package that is not the current tag
           LAST_TAG=$(git describe --abbrev=0 --match "$PACKAGE_NAME/v*" --tags $(git rev-list --tags --skip=1 --max-count=1))
           echo "Last tag: ${LAST_TAG}"
-          
+
           # If no previous tag is found, use the initial commit as the reference
           if [ -z "$LAST_TAG" ]; then
             LAST_TAG=$(git rev-list --max-parents=0 HEAD)
           fi
-          
+
           # Extract the version part of the last tag
           LAST_TAG_VERSION=$(echo "$LAST_TAG" | cut -d'/' -f2)
           echo "Last tag version: $LAST_TAG_VERSION"
           echo "LAST_TAG_VERSION=${LAST_TAG_VERSION}" >> "$GITHUB_ENV"
-          
-          # Get the commits between the last tag and the current tag
-          COMMITS=$(git log "$LAST_TAG..$PACKAGE_NAME/$VERSION" --pretty=format:"- %s (%h)")
-          
+
+          # Get the commits between the last tag and the current tag that are in the directory scope
+          COMMITS=$(git log "$LAST_TAG..$PACKAGE_NAME/$VERSION" -- "$TAG_REF" --pretty=format:"- %s (%h)")
+
           # Output the release notes
           echo "Commits:"
           echo "$COMMITS"
-          
+
           # Safely set the release notes as an environment variable using heredoc and EOF
           echo "COMMITS<<EOF" >> "$GITHUB_ENV"
           echo "$COMMITS" >> "$GITHUB_ENV"
