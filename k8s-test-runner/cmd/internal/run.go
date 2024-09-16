@@ -69,7 +69,7 @@ func runRunE(cmd *cobra.Command, args []string) error {
 		return errors.Wrapf(err, "error creating test in k8s")
 	}
 
-	err = p.Run(0)
+	err = p.Run()
 	if err != nil {
 		return errors.Wrapf(err, "error running test in k8s")
 	}

@@ -87,7 +87,7 @@ func (m *K8sTestRun) deployHelm(testName string) error {
 	})
 }
 
-func (m *K8sTestRun) Run(a int) error {
+func (m *K8sTestRun) Run() error {
 	testName := uuid.NewString()[0:8]
 	tn := []rune(testName)
 	// replace first letter, since helm does not allow it to start with numbers
