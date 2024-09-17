@@ -5,4 +5,5 @@ version: 0.2.3
 dependencies:
   - name: eth2-common
     version: 0.6.0
-    repository: 'https://raw.githubusercontent.com/smartcontractkit/qa-charts/gh-pages/'
+    repository: "file://../eth2-common"
+    # repository: 'https://raw.githubusercontent.com/smartcontractkit/qa-charts/gh-pages/'
