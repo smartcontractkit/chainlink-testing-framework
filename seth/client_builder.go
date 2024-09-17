@@ -1,11 +1,15 @@
 package seth
 
 import (
+	"fmt"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 type ClientBuilder struct {
 	config *Config
+	errors []error
 }
 
 // NewClientBuilder creates a new ClientBuilder with reasonable default values. You only need to pass private key(s) and RPC URL to build a usable config.
@@ -44,10 +48,21 @@ func NewClientBuilder() *ClientBuilder {
 	}
 }
 
+// NewClientBuilderWithConfig creates a new ClientBuilder with a provided config. If it doesn't have the network set, remember to set it with `UseNetworkWithName(name string)`
+// or `WithSelectedNetworkWithChainId(chainId uint64)`, before calling any of the methods that modify the Network.
+func NewClientBuilderWithConfig(config *Config) *ClientBuilder {
+	return &ClientBuilder{
+		config: config,
+	}
+}
+
 // WithRpcUrl sets the RPC URL for the config.
 // Default value is an empty string (which is an incorrect value).
 func (c *ClientBuilder) WithRpcUrl(url string) *ClientBuilder {
-	c.assertNetworkIsSet()
+	if !c.checkIfNetworkIsSet() {
+		return c
+	}
+
 	c.config.Network.URLs = []string{url}
 	// defensive programming
 	if len(c.config.Networks) == 0 {
@@ -58,10 +73,56 @@ func (c *ClientBuilder) WithRpcUrl(url string) *ClientBuilder {
 	return c
 }
 
+// UseNetworkWithName sets the network to use by name. If the network with the provided name is not found in the `Networks` slice, config will fail on build.
+// There is no default value.
+func (c *ClientBuilder) UseNetworkWithName(name string) *ClientBuilder {
+	for _, network := range c.config.Networks {
+		if network.Name == name {
+			c.config.Network = network
+			return c
+		}
+	}
+
+	// if the network is not found, we will try to use the default network
+	for _, network := range c.config.Networks {
+		if network.Name == DefaultNetworkName {
+			c.config.Network = network
+			return c
+		}
+	}
+
+	c.errors = append(c.errors, fmt.Errorf("network with name '%s' not found", name))
+	return c
+}
+
+// UseNetworkWithChainId sets the network to use by chain ID. If the network with the provided chain ID is not found in the `Networks` slice, config will fail on build.
+// There is no default value.
+func (c *ClientBuilder) UseNetworkWithChainId(chainId uint64) *ClientBuilder {
+	for _, network := range c.config.Networks {
+		if network.ChainID == chainId {
+			c.config.Network = network
+			return c
+		}
+	}
+
+	// if the network is not found, we will try to use the default network
+	for _, network := range c.config.Networks {
+		if network.Name == DefaultNetworkName {
+			c.config.Network = network
+			return c
+		}
+	}
+
+	c.errors = append(c.errors, fmt.Errorf("network with chainId '%d' not found", chainId))
+	return c
+}
+
 // WithPrivateKeys sets the private keys for the config. At least one is required to build a valid config.
 // Default value is an empty slice (which is an incorrect value).
 func (c *ClientBuilder) WithPrivateKeys(pks []string) *ClientBuilder {
-	c.assertNetworkIsSet()
+	if !c.checkIfNetworkIsSet() {
+		return c
+	}
 	c.config.Network.PrivateKeys = pks
 	// defensive programming
 	if len(c.config.Networks) == 0 {
@@ -75,7 +136,9 @@ func (c *ClientBuilder) WithPrivateKeys(pks []string) *ClientBuilder {
 // WithNetworkName sets the network name, useful mostly for debugging and logging.
 // Default value is "default".
 func (c *ClientBuilder) WithNetworkName(name string) *ClientBuilder {
-	c.assertNetworkIsSet()
+	if !c.checkIfNetworkIsSet() {
+		return c
+	}
 	c.config.Network.Name = name
 	// defensive programming
 	if len(c.config.Networks) == 0 {
@@ -86,13 +149,31 @@ func (c *ClientBuilder) WithNetworkName(name string) *ClientBuilder {
 	return c
 }
 
+// WithNetworkChainId sets the network chainID. If no value is set, we will ask the RPC node for the chainID.
+// There is no default value.
+func (c *ClientBuilder) WithNetworkChainId(chainId uint64) *ClientBuilder {
+	if !c.checkIfNetworkIsSet() {
+		return c
+	}
+	c.config.Network.ChainID = chainId
+	// defensive programming
+	if len(c.config.Networks) == 0 {
+		c.config.Networks = append(c.config.Networks, c.config.Network)
+	} else if net := c.config.findNetworkByName(c.config.Network.Name); net != nil {
+		net.ChainID = chainId
+	}
+	return c
+}
+
 // WithGasPriceEstimations enables or disables gas price estimations, sets the number of blocks to use for estimation or transaction priority.
 // Even with estimations enabled you should still either set legacy gas price with `WithLegacyGasPrice()` or EIP-1559 dynamic fees with `WithDynamicGasPrices()`
 // ss they will be used as fallback values, if the estimations fail.
 // Following priorities are supported: "slow", "standard" and "fast"
 // Default values are true for enabled, 200 blocks for estimation and "standard" for priority.
 func (c *ClientBuilder) WithGasPriceEstimations(enabled bool, estimationBlocks uint64, txPriority string) *ClientBuilder {
-	c.assertNetworkIsSet()
+	if !c.checkIfNetworkIsSet() {
+		return c
+	}
 	c.config.Network.GasPriceEstimationEnabled = enabled
 	c.config.Network.GasPriceEstimationBlocks = estimationBlocks
 	c.config.Network.GasPriceEstimationTxPriority = txPriority
@@ -110,7 +191,9 @@ func (c *ClientBuilder) WithGasPriceEstimations(enabled bool, estimationBlocks u
 // WithEIP1559DynamicFees enables or disables EIP-1559 dynamic fees. If enabled, you should set gas fee cap and gas tip cap with `WithDynamicGasPrices()`
 // Default value is true.
 func (c *ClientBuilder) WithEIP1559DynamicFees(enabled bool) *ClientBuilder {
-	c.assertNetworkIsSet()
+	if !c.checkIfNetworkIsSet() {
+		return c
+	}
 	c.config.Network.EIP1559DynamicFees = enabled
 	// defensive programming
 	if len(c.config.Networks) == 0 {
@@ -124,7 +207,9 @@ func (c *ClientBuilder) WithEIP1559DynamicFees(enabled bool) *ClientBuilder {
 // WithLegacyGasPrice sets the gas price for legacy transactions that will be used only if EIP-1559 dynamic fees are disabled.
 // Default value is 1 gwei.
 func (c *ClientBuilder) WithLegacyGasPrice(gasPrice int64) *ClientBuilder {
-	c.assertNetworkIsSet()
+	if !c.checkIfNetworkIsSet() {
+		return c
+	}
 	c.config.Network.GasPrice = gasPrice
 	// defensive programming
 	if len(c.config.Networks) == 0 {
@@ -138,7 +223,9 @@ func (c *ClientBuilder) WithLegacyGasPrice(gasPrice int64) *ClientBuilder {
 // WithDynamicGasPrices sets the gas fee cap and gas tip cap for EIP-1559 dynamic fees. These values will be used only if EIP-1559 dynamic fees are enabled.
 // Default values are 150 gwei for gas fee cap and 50 gwei for gas tip cap.
 func (c *ClientBuilder) WithDynamicGasPrices(gasFeeCap, gasTipCap int64) *ClientBuilder {
-	c.assertNetworkIsSet()
+	if !c.checkIfNetworkIsSet() {
+		return c
+	}
 	c.config.Network.GasFeeCap = gasFeeCap
 	c.config.Network.GasTipCap = gasTipCap
 	// defensive programming
@@ -154,7 +241,9 @@ func (c *ClientBuilder) WithDynamicGasPrices(gasFeeCap, gasTipCap int64) *Client
 // WithTransferGasFee sets the gas fee for transfer transactions. This value is used, when sending funds to ephemeral keys or returning funds to root private key.
 // Default value is 21_000 wei.
 func (c *ClientBuilder) WithTransferGasFee(transferGasFee int64) *ClientBuilder {
-	c.assertNetworkIsSet()
+	if !c.checkIfNetworkIsSet() {
+		return c
+	}
 	c.config.Network.TransferGasFee = transferGasFee
 	// defensive programming
 	if len(c.config.Networks) == 0 {
@@ -167,7 +256,7 @@ func (c *ClientBuilder) WithTransferGasFee(transferGasFee int64) *ClientBuilder 
 
 // WithGasBumping sets the number of retries for gas bumping and max gas price. You can also provide a custom bumping strategy. If the transaction is not mined within this number of retries, it will be considered failed.
 // If the gas price is bumped to a value higher than max gas price, no more gas bumping will be attempted and previous gas price will be used by all subsequent attempts. If set to 0 max price is not checked.
-// Default value is 10 retries, no max gas price and a default bumping strategy (with gas increase % based on gas_price_estimation_tx_priority)
+// Default value is 0 retries. If you want to use default bumping strategy (where gas increase % based on gas_price_estimation_tx_priority), pass `nil` as the customBumpingStrategy.
 func (c *ClientBuilder) WithGasBumping(retries uint, maxGasPrice int64, customBumpingStrategy GasBumpStrategyFn) *ClientBuilder {
 	c.config.GasBump = &GasBumpConfig{
 		Retries:     retries,
@@ -180,7 +269,9 @@ func (c *ClientBuilder) WithGasBumping(retries uint, maxGasPrice int64, customBu
 // WithTransactionTimeout sets the timeout for transactions. If the transaction is not mined within this time, it will be considered failed.
 // Default value is 5 minutes.
 func (c *ClientBuilder) WithTransactionTimeout(timeout time.Duration) *ClientBuilder {
-	c.assertNetworkIsSet()
+	if !c.checkIfNetworkIsSet() {
+		return c
+	}
 	c.config.Network.TxnTimeout = MustMakeDuration(timeout)
 	// defensive programming
 	if len(c.config.Networks) == 0 {
@@ -194,7 +285,9 @@ func (c *ClientBuilder) WithTransactionTimeout(timeout time.Duration) *ClientBui
 // WithRpcDialTimeout sets the timeout for dialing the RPC server. If the connection is not established within this time, it will be considered failed.
 // Default value is 1 minute.
 func (c *ClientBuilder) WithRpcDialTimeout(timeout time.Duration) *ClientBuilder {
-	c.assertNetworkIsSet()
+	if !c.checkIfNetworkIsSet() {
+		return c
+	}
 	c.config.Network.DialTimeout = MustMakeDuration(timeout)
 	// defensive programming
 	if len(c.config.Networks) == 0 {
@@ -260,11 +353,29 @@ func (c *ClientBuilder) WithNonceManager(rateLimitSec int, retries uint, timeout
 
 // Build creates a new Client from the builder.
 func (c *ClientBuilder) Build() (*Client, error) {
-	return NewClientWithConfig(c.config)
+	config, err := c.BuildConfig()
+	if err != nil {
+		return nil, err
+	}
+	return NewClientWithConfig(config)
 }
 
-func (c *ClientBuilder) assertNetworkIsSet() {
-	if c.config.Network == nil {
-		panic("Network is required to use this method, but it was nil")
+// BuildConfig returns the config from the builder.
+func (c *ClientBuilder) BuildConfig() (*Config, error) {
+	if len(c.errors) > 0 {
+		var concatenatedErrors string
+		for _, err := range c.errors {
+			concatenatedErrors = fmt.Sprintf("%s\n%s", concatenatedErrors, err.Error())
+		}
+		return nil, fmt.Errorf("errors occurred during building the config:%s", concatenatedErrors)
 	}
+	return c.config, nil
+}
+
+func (c *ClientBuilder) checkIfNetworkIsSet() bool {
+	if c.config.Network == nil {
+		c.errors = append(c.errors, errors.New("at least one method that required network to be set was called, but network is nil"))
+		return false
+	}
+	return true
 }

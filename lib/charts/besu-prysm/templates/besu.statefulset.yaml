@@ -14,16 +14,6 @@ spec:
         app: {{ .Release.Name }}-{{ .Values.excutionClient.name }}
         release: {{ .Release.Name }}
     spec:
-      affinity:
-        podAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-              - key: release
-                operator: In
-                values:
-                - {{ .Release.Name }}
-            topologyKey: kubernetes.io/hostname
       volumes:
       - name: {{ .Release.Name }}-genesis-config
         configMap:
@@ -31,6 +21,8 @@ spec:
       - name: {{ .Release.Name }}-after-genesis-helper-config
         configMap:
           name: {{ .Release.Name }}-after-genesis-helper-config
+      securityContext:
+        fsGroup: {{ .Values.securityContext.runAsGroup }}
       containers:
         - name: {{ .Values.excutionClient.name }}
           image: {{ .Values.excutionClient.image.repository }}:{{ .Values.excutionClient.image.tag }}
@@ -60,7 +52,6 @@ spec:
             - "--data-storage-format=BONSAI"
             - "--rpc-tx-feecap=0"
             - "--logging={{ .Values.excutionClient.logging.level }}"
-            - "--kzg-trusted-setup=/data/custom_config_data/trusted_setup.txt"
           ports:
             - name: http-rpc
               containerPort: {{ .Values.excutionClient.ports.http }}
@@ -76,6 +67,13 @@ spec:
           volumeMounts:
           - name: {{ .Release.Name }}-{{ .Values.storage.claim }}-besu
             mountPath: /data
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
+            runAsUser: {{ .Values.securityContext.runAsUser }}
+            runAsGroup: {{ .Values.securityContext.runAsGroup }}
+            runAsNonRoot: true
           readinessProbe:
             httpGet:
               path: /
@@ -99,6 +97,9 @@ spec:
   volumeClaimTemplates:
   - metadata:
       name: {{ .Release.Name }}-{{ .Values.storage.claim }}-besu
+      labels:
+        app: {{ .Release.Name }}-{{ .Values.excutionClient.name }}
+        release: {{ .Release.Name }}
     spec:
       accessModes: [ "ReadWriteOnce" ]
       resources:

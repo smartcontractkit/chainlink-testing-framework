@@ -14,16 +14,6 @@ spec:
         app: {{ .Release.Name }}-{{ .Values.excutionClient.name }}
         release: {{ .Release.Name }}
     spec:
-      affinity:
-        podAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-              - key: release
-                operator: In
-                values:
-                - {{ .Release.Name }}
-            topologyKey: kubernetes.io/hostname
       volumes:
       - name: {{ .Release.Name }}-genesis-config
         configMap:
@@ -34,6 +24,8 @@ spec:
       - name: {{ .Release.Name }}-geth-config
         configMap:
           name: {{ .Release.Name }}-geth-config
+      securityContext:
+        fsGroup: {{ .Values.securityContext.runAsGroup }}
       containers:
         - name: {{ .Values.excutionClient.name }}
           image: {{ .Values.excutionClient.image.repository }}:{{ .Values.excutionClient.image.tag }}
@@ -57,6 +49,13 @@ spec:
             - name: {{ .Release.Name }}-geth-config
               mountPath: /entrypoint.sh
               subPath: entrypoint.sh
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
+            runAsUser: {{ .Values.securityContext.runAsUser }}
+            runAsGroup: {{ .Values.securityContext.runAsGroup }}
+            runAsNonRoot: true
           readinessProbe:
             httpGet:
               path: /
@@ -80,6 +79,9 @@ spec:
   volumeClaimTemplates:
   - metadata:
       name: {{ .Release.Name }}-{{ .Values.storage.claim }}-geth
+      labels:
+        app: {{ .Release.Name }}-{{ .Values.excutionClient.name }}
+        release: {{ .Release.Name }}
     spec:
       accessModes: [ "ReadWriteOnce" ]
       resources:
