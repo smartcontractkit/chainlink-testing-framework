@@ -326,3 +326,5 @@ require (
 )
 
 retract v1.50.0
+
+exclude github.com/sourcegraph/sourcegraph/lib v0.0.0-20221216004406-749998a2ac74
