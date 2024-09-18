@@ -23,5 +23,4 @@ jobs:
           go install golang.org/x/exp/cmd/gorelease@latest
       - name: Run Breaking Changes Script
         run: |
-          chmod +x ./scripts/breaking-changes.sh
-          ./scripts/breaking-changes.sh
+          go run ./tools/breakingchanges/cmd/main.go --ignore tools
