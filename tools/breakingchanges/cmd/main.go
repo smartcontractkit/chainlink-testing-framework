@@ -97,6 +97,9 @@ func getIgnoredDirs(flag *string) []string {
 
 func isIgnoredDirPrefix(pathPrefix string, ignoredDirs []string) bool {
 	for _, d := range ignoredDirs {
+		if d == "" {
+			continue
+		}
 		fmt.Printf("Checking prefix: %s, path: %s\n", d, pathPrefix)
 		if strings.HasPrefix(pathPrefix, d) {
 			fmt.Printf("Path is ignored, skipping: %s\n", pathPrefix)

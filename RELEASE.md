@@ -56,5 +56,6 @@ git tag k8s-test-runner/v1.999.X-test-release && git push --tags
 We have a simple wrapper to check breaking changes for all the packages. Commit all your changes and run:
 ```
 go run ./tools/breakingchanges/cmd/main.go
+go run ./tools/breakingchanges/cmd/main.go --subdir wasp # check recursively starting with subdir
 go run ./tools/breakingchanges/cmd/main.go --ignore tools,wasp,havoc,seth # to ignore some packages
 ```
