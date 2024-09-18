@@ -91,6 +91,7 @@ func (l *LokiConfig) Validate() error {
 
 type GrafanaConfig struct {
 	BaseUrl      *string `toml:"base_url"`
+	BaseUrlGap   *string `toml:"base_url_gap"` // Base URL for the dashboard via GAP proxy used on CI
 	DashboardUrl *string `toml:"dashboard_url"`
 	DashboardUID *string `toml:"dashboard_uid"` // UID of the dashboard to put annotations on
 	BearerToken  *string `toml:"-"`

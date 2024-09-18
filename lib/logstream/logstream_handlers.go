@@ -166,8 +166,8 @@ func (h *LokiLogHandler) GetLogLocation(consumers map[string]*ContainerLogConsum
 
 	// if no Grafana URL has been set lets at least print query parameters that can be manually added to the dashboard url
 	baseUrl := ""
-	if h.loggingConfig.Grafana != nil && h.loggingConfig.Grafana.BaseUrl != nil {
-		baseUrl = *h.loggingConfig.Grafana.BaseUrl
+	if h.loggingConfig.Grafana != nil && h.loggingConfig.Grafana.BaseUrlGap != nil {
+		baseUrl = *h.loggingConfig.Grafana.BaseUrlGap
 		baseUrl = strings.TrimSuffix(baseUrl, "/")
 		baseUrl = baseUrl + "/"
 	}
