@@ -18,6 +18,16 @@ const (
 	noColor = "\033[0m"
 )
 
+// GetRepoRoot returns the absolute path to the root directory of the Git repository.
+func GetRepoRoot() (string, error) {
+	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
+	output, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("failed to get repository root: %v", err)
+	}
+	return strings.TrimSpace(string(output)), nil
+}
+
 func DetectBreakingChanges(rootPath string) {
 	// Check if gorelease is installed
 	if _, err := exec.LookPath("gorelease"); err != nil {
@@ -33,8 +43,13 @@ func DetectBreakingChanges(rootPath string) {
 		})
 	}
 
+	_, err := GetRepoRoot()
+	if err != nil {
+		log.Fatal("failed to get root path through Git")
+	}
+
 	// Walk through directories starting from rootPath
-	err := filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
+	err = filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -46,6 +61,12 @@ func DetectBreakingChanges(rootPath string) {
 
 		// Check if go.mod exists in the directory
 		goModPath := filepath.Join(path, "go.mod")
+		// We need only the module path from the root
+		relPath, err := filepath.Rel("../..", path)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Path: %s", relPath)
 		if _, err := os.Stat(goModPath); err == nil {
 			eg.Go(func() error {
 				return runGorelease(path)
@@ -88,6 +109,7 @@ func runGorelease(path string) error {
 			if previousTag != "" {
 				break
 			}
+			fmt.Printf("Tag: %s", tag)
 			previousTag = tag
 		}
 	}
