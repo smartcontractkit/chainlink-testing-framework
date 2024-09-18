@@ -76,7 +76,7 @@ require (
 	github.com/gosimple/unidecode v1.0.1 // indirect
 	github.com/grafana/loki/pkg/push v0.0.0-20231124142027-e52380921608 // indirect
 	github.com/grafana/regexp v0.0.0-20221122212121-6b5c0a4cb7fd // indirect
-	github.com/hashicorp/consul/api v1.25.1 // indirect
+	github.com/hashicorp/consul/api v1.28.2 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-hclog v1.5.0 // indirect
