@@ -216,7 +216,8 @@ func (h *LokiLogHandler) GetLogLocation(consumers map[string]*ContainerLogConsum
 		h.grafanaUrl = shortUrl
 	} else {
 		if h.loggingConfig.Grafana == nil || h.loggingConfig.Grafana.BaseUrl == nil {
-			return "", fmt.Errorf("cannot generate full Grafana URL because Grafana base_url is not set in logging config. You can paste %s after the Grafana base URL to get the full URL", sb.String())
+			h.grafanaUrl = sb.String()
+			return h.grafanaUrl, nil
 		}
 		url := *h.loggingConfig.Grafana.BaseUrl
 		url = strings.TrimSuffix(url, "/")
