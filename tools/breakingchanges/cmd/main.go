@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io/fs"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -125,6 +126,7 @@ func main() {
 
 	ignoredDirs := getIgnoredDirs(ignoreDirs)
 
+	breakingChanges := false
 	for _, dirPath := range goModDirs {
 		// Convert the stripped path back to absolute
 		pathPrefix := strings.TrimPrefix(dirPath, absRootFolder+string(os.PathSeparator))
@@ -149,6 +151,7 @@ func main() {
 			stdout, stderr, err := checkBreakingChanges(lastTag)
 			if err != nil {
 				fmt.Printf("Error running gorelease: %v\n", err)
+				breakingChanges = true
 			}
 			fmt.Printf("%sgorelease output:\n%s%s\n", Green, stdout, Reset)
 			if stderr != "" {
@@ -161,5 +164,8 @@ func main() {
 		} else {
 			fmt.Printf("No valid tags found for path prefix: %s\n", pathPrefix)
 		}
+	}
+	if breakingChanges {
+		log.Fatalf("breaking changes detected!")
 	}
 }
