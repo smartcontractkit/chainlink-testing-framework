@@ -56,3 +56,5 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
+
+retract [v1.999.0-test-release, v1.999.999-test-release]

@@ -5,3 +5,5 @@ bin/
 
 k3dvolume/
 .private.env
+.envrc.ci
+.envrc.local

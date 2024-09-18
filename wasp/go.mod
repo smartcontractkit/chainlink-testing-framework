@@ -167,7 +167,7 @@ require (
 
 require (
 	github.com/grafana/pyroscope-go v1.1.2
-	github.com/smartcontractkit/chainlink-testing-framework/lib/grafana v0.1.0
+	github.com/smartcontractkit/chainlink-testing-framework/lib/grafana v1.50.0
 )
 
 require (
@@ -210,3 +210,5 @@ require (
 	go4.org/netipx v0.0.0-20230125063823-8449b0a6169f // indirect
 	golang.org/x/arch v0.4.0 // indirect
 )
+
+retract [v1.999.0-test-release, v1.999.999-test-release]
