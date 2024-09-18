@@ -41,19 +41,13 @@ module github.com/smartcontractkit/chainlink-testing-framework/wasp/v2
 If your module have `cmd/main.go` we build binary automatically for various platforms and attach it to the release page.
 
 ## Debug Release Pipeline
-Since some components of pipeline are relying on published Go modules index and Dependabot we have a test script to verify the release pipeline:
+To test the release pipeline use `$pkg/$subpkg/v1.999.X-test-release` tags, they are retracted so consumers can't accidentally install them
 
-To test release for any module use `$pkg/$subpkg/v1.999.X-test-release` tags, they are retracted so consumers can't accidentally install them
+Create a test file inside `.changeset` with format `v1.999.X-test-release.md`, tag and push:
 ```
-nix develop
-python ./scripts/test-package-release.py -tag k8s-test-runner/v1.999.0-test-release -package ./k8s-test-runner
+git tag k8s-test-runner/v1.999.X-test-release && git push --tags
 ```
 
-To remove all the test tags use
-```
-nix develop
-python3 ./scripts/test-package-release.py -remove-test-tags
-```
 
 [Pipeline for releasing Go modules](.github/workflows/release-go-module.yml)
 [Dependabot summary pipeline](.github/workflows/dependabot-consumers-summary.yaml)
@@ -61,5 +55,6 @@ python3 ./scripts/test-package-release.py -remove-test-tags
 ## Check breaking changes locally
 We have a simple wrapper to check breaking changes for all the packages. Commit all your changes and run:
 ```
-./scripts/breaking-changes.sh
+go run ./tools/breakingchanges/cmd/main.go
+go run ./tools/breakingchanges/cmd/main.go --ignore tools,wasp,havoc,seth # to ignore some packages
 ```

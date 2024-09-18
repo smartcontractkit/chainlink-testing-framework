@@ -108,7 +108,7 @@ func isIgnoredDirPrefix(pathPrefix string, ignoredDirs []string) bool {
 func main() {
 	rootFolder := flag.String("root", ".", "The root folder to start scanning from")
 	subDir := flag.String("subdir", "", "The subdirectory inside the root folder to scan for modules")
-	ignoreDirs := flag.String("ignore", "", "Ignore directory paths")
+	ignoreDirs := flag.String("ignore", "", "Ignore directory paths starting with prefix")
 	flag.Parse()
 
 	absRootFolder, err := filepath.Abs(*rootFolder)
