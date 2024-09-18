@@ -143,6 +143,18 @@ func (c *TestConfig) ReadFromEnvVar() error {
 		c.Logging.Grafana.BaseUrl = &grafanaBaseUrl
 	}
 
+	grafanaBaseUrlGap := MustReadEnvVar_String(E2E_TEST_GRAFANA_BASE_URL_GAP_ENV)
+	if grafanaBaseUrlGap != "" {
+		if c.Logging == nil {
+			c.Logging = &LoggingConfig{}
+		}
+		if c.Logging.Grafana == nil {
+			c.Logging.Grafana = &GrafanaConfig{}
+		}
+		logger.Info().Msgf("Using %s env var to override Logging.Grafana.BaseUrlGap", E2E_TEST_GRAFANA_BASE_URL_GAP_ENV)
+		c.Logging.Grafana.BaseUrlGap = &grafanaBaseUrlGap
+	}
+
 	grafanaDashboardUrl := MustReadEnvVar_String(E2E_TEST_GRAFANA_DASHBOARD_URL_ENV)
 	if grafanaDashboardUrl != "" {
 		if c.Logging == nil {
