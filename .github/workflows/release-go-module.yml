@@ -119,7 +119,6 @@ jobs:
           fi
 
       - name: Create GitHub Release
-        if: always()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
