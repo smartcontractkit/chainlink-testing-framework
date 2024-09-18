@@ -5,12 +5,8 @@ import (
 	dummy_module "github.com/smartcontractkit/chainlink-testing-framework/dummy-module"
 )
 
-func FuncTest() error {
-	return nil
-}
-
 func main() {
-	if err := dummy_module.FuncTest(); err != nil {
+	if err := dummy_module.FuncTest(0); err != nil {
 		panic(err)
 	}
 	fmt.Println("Hello!")

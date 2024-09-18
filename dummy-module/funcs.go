@@ -1,5 +1,5 @@
 package dummy_module
 
-func FuncTest() error {
+func FuncTest(a int) error {
 	return nil
 }
