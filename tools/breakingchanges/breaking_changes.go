@@ -26,15 +26,10 @@ func DetectBreakingChanges(rootPath string) {
 
 	eg := &errgroup.Group{}
 
-	// Function to process each directory
-	processDirectory := func(path string) error {
-		return runGorelease(path)
-	}
-
 	// Check root directory for go.mod
 	if _, err := os.Stat(filepath.Join(rootPath, "go.mod")); err == nil {
 		eg.Go(func() error {
-			return processDirectory(rootPath)
+			return runGorelease(rootPath)
 		})
 	}
 
@@ -53,7 +48,7 @@ func DetectBreakingChanges(rootPath string) {
 		goModPath := filepath.Join(path, "go.mod")
 		if _, err := os.Stat(goModPath); err == nil {
 			eg.Go(func() error {
-				return processDirectory(path)
+				return runGorelease(path)
 			})
 		}
 
