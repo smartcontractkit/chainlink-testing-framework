@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	if err := dummy_module.FuncTest(0); err != nil {
+	if err := dummy_module.FuncTest(); err != nil {
 		panic(err)
 	}
 	fmt.Println("Hello!")
