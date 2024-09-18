@@ -2,6 +2,7 @@
 
 # Chainlink Testing Framework
 
+[![Main branch breaking changes check](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/rc-breaking-changes.yaml/badge.svg)](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/rc-breaking-changes.yaml)
 [![Lib tag](https://img.shields.io/github/v/tag/smartcontractkit/chainlink-testing-framework?filter=%2Alib%2A)](https://github.com/smartcontractkit/chainlink-testing-framework/tags)
 [![WASP tag](https://img.shields.io/github/v/tag/smartcontractkit/chainlink-testing-framework?filter=%2Awasp%2A)](https://github.com/smartcontractkit/chainlink-testing-framework/tags)
 [![Seth tag](https://img.shields.io/github/v/tag/smartcontractkit/chainlink-testing-framework?filter=%2Aseth%2A)](https://github.com/smartcontractkit/chainlink-testing-framework/tags)
