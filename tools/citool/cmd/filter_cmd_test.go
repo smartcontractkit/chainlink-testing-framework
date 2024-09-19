@@ -24,7 +24,36 @@ func TestFilterTestsByID(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.description, func(t *testing.T) {
-			filtered := filterTests(tests, "", "", c.inputIDs, false)
+			filtered := filterTests(tests, "", "", c.inputIDs, "", false)
+			if len(filtered) != c.expectedLen {
+				t.Errorf("FilterTests(%s) returned %d tests, expected %d", c.description, len(filtered), c.expectedLen)
+			}
+		})
+	}
+}
+
+func TestFilterTestsByChainlinkImageType(t *testing.T) {
+	tests := []CITestConf{
+		{ChainlinkImageTypes: []string{"arm64"}, TestEnvType: "docker"},
+		{ChainlinkImageTypes: []string{"amd64"}, TestEnvType: "docker"},
+		{ChainlinkImageTypes: []string{"plugins", "arm64"}, TestEnvType: "k8s_remote_runner"},
+	}
+
+	cases := []struct {
+		description              string
+		inputChainlinkImageTypes string
+		expectedLen              int
+	}{
+		{"Filter by single type", "arm64", 2},
+		{"Filter by multiple types", "arm64,amd64", 3},
+		{"Filter by non-existent type", "nonsense", 0},
+		{"Wildcard to include all", "*", 3},
+		{"Empty type string to include all", "", 3},
+	}
+
+	for _, c := range cases {
+		t.Run(c.description, func(t *testing.T) {
+			filtered := filterTests(tests, "", "", "", c.inputChainlinkImageTypes, false)
 			if len(filtered) != c.expectedLen {
 				t.Errorf("FilterTests(%s) returned %d tests, expected %d", c.description, len(filtered), c.expectedLen)
 			}
@@ -55,7 +84,7 @@ func TestFilterTestsIntegration(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.description, func(t *testing.T) {
-			filtered := filterTests(tests, c.inputWorkflow, c.inputTestType, c.inputIDs, false)
+			filtered := filterTests(tests, c.inputWorkflow, c.inputTestType, c.inputIDs, "", false)
 			if len(filtered) != c.expectedLen {
 				t.Errorf("FilterTests(%s) returned %d tests, expected %d", c.description, len(filtered), c.expectedLen)
 			}

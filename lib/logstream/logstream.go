@@ -259,7 +259,7 @@ func (m *LogStream) ConnectContainer(ctx context.Context, container LogProducing
 						startErr := retry.Do(func() error {
 							return container.StartLogProducer(ctx, tc.WithLogProductionTimeout(timeout))
 						},
-							retry.Attempts(uint(retryLimit)),
+							retry.Attempts(uint(retryLimit)), // nolint gosec
 							retry.Delay(1*time.Second),
 							retry.OnRetry(func(n uint, err error) {
 								m.log.Info().
@@ -298,7 +298,7 @@ func (m *LogStream) ConnectContainer(ctx context.Context, container LogProducing
 				return
 			}
 		}
-	}(cons.logListeningDone, m.loggingConfig.LogStream.LogProducerTimeout.Duration, int(*m.loggingConfig.LogStream.LogProducerRetryLimit))
+	}(cons.logListeningDone, m.loggingConfig.LogStream.LogProducerTimeout.Duration, int(*m.loggingConfig.LogStream.LogProducerRetryLimit)) // nolint gosec
 
 	return err
 }

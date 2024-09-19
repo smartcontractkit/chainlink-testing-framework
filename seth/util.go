@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -61,6 +62,9 @@ func (m *Client) CalculateSubKeyFunding(addrs, gasPrice, rooKeyBuffer int64) (*F
 	if err == nil {
 		gasLimitRaw, err := m.EstimateGasLimitForFundTransfer(m.Addresses[0], common.HexToAddress(newAddress), big.NewInt(0).Quo(balance, big.NewInt(addrs)))
 		if err == nil {
+			if gasLimitRaw > math.MaxInt64 { // Protect against overflow
+				return nil, fmt.Errorf("raw gas limit is larger than max int64: %d", gasLimitRaw)
+			}
 			gasLimit = int64(gasLimitRaw)
 		}
 	}
@@ -382,7 +386,7 @@ func DecodePragmaVersion(bytecode string) (Pragma, error) {
 	}
 
 	// each byte is represented by 2 characters in hex
-	metadataLengthInt := int(metadataByteLengthUint) * 2
+	metadataLengthInt := int(metadataByteLengthUint) * 2 // nolint gosec
 
 	// if we get nonsensical metadata length, it means that metadata section is not present and last 2 bytes do not represent metadata length
 	if metadataLengthInt > len(bytecode) {

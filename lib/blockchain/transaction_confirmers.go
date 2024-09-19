@@ -453,7 +453,7 @@ func (e *EthereumClient) backfillMissedBlocks(lastBlockSeen uint64, headerChanne
 		Uint64("Latest Block", latestBlockNumber).
 		Msg("Backfilling missed blocks since RPC connection issues")
 	for i := lastBlockSeen + 1; i <= latestBlockNumber; i++ {
-		header, err := e.HeaderByNumber(context.Background(), big.NewInt(int64(i)))
+		header, err := e.HeaderByNumber(context.Background(), new(big.Int).SetUint64(i))
 		if err != nil {
 			e.l.Err(err).Uint64("Number", i).Msg("Error getting header, unable to backfill and process it")
 			return

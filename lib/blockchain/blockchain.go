@@ -165,7 +165,9 @@ func (h *SafeEVMHeader) UnmarshalJSON(bs []byte) error {
 
 	h.Hash = jsonHead.Hash
 	h.Number = (*big.Int)(jsonHead.Number)
-	h.Timestamp = time.Unix(int64(jsonHead.Timestamp), 0).UTC()
+
+	jsonTimestamp := jsonHead.Timestamp
+	h.Timestamp = time.Unix(int64(jsonTimestamp), 0).UTC() // nolint gosec
 	h.BaseFee = (*big.Int)(jsonHead.BaseFee)
 	return nil
 }

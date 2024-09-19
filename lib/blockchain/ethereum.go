@@ -11,6 +11,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"regexp"
 	"strconv"
@@ -263,7 +264,7 @@ func (e *EthereumClient) HeaderTimestampByNumber(ctx context.Context, bn *big.In
 	if err != nil {
 		return 0, err
 	}
-	return uint64(h.Timestamp.UTC().Unix()), nil
+	return uint64(h.Timestamp.UTC().Unix()), nil // nolint gosec
 }
 
 // BlockNumber gets latest block number
@@ -539,7 +540,7 @@ func (e *EthereumClient) TransactionOpts(from *EthereumWallet) (*bind.TransactOp
 	if err != nil {
 		return nil, err
 	}
-	opts.Nonce = big.NewInt(int64(nonce))
+	opts.Nonce = new(big.Int).SetUint64(nonce)
 
 	if e.NetworkConfig.MinimumConfirmations <= 0 { // Wait for your turn to send on an L2 chain
 		<-e.NonceSettings.registerInstantTransaction(from.Address(), nonce)
@@ -707,8 +708,7 @@ func (e *EthereumClient) WaitForFinalizedTx(txHash common.Hash) (*big.Int, time.
 // if the tx is finalized it returns true, the finalized header number by which the tx was considered finalized and the time at which it was finalized
 func (e *EthereumClient) IsTxHeadFinalized(txHdr, header *SafeEVMHeader) (bool, *big.Int, time.Time, error) {
 	if e.NetworkConfig.FinalityDepth > 0 {
-		if header.Number.Cmp(new(big.Int).Add(txHdr.Number,
-			big.NewInt(int64(e.NetworkConfig.FinalityDepth)))) > 0 {
+		if header.Number.Cmp(new(big.Int).Add(txHdr.Number, new(big.Int).SetUint64(e.NetworkConfig.FinalityDepth))) > 0 {
 			return true, header.Number, header.Timestamp, nil
 		}
 		return false, nil, time.Time{}, nil
@@ -1100,7 +1100,7 @@ func (e *EthereumClient) GetLatestFinalizedBlockHeader(ctx context.Context) (*ty
 	}
 	latestBlockNumber := header.Number.Uint64()
 	finalizedBlockNumber := latestBlockNumber - e.NetworkConfig.FinalityDepth
-	return e.Client.HeaderByNumber(ctx, big.NewInt(int64(finalizedBlockNumber)))
+	return e.Client.HeaderByNumber(ctx, new(big.Int).SetUint64(finalizedBlockNumber))
 }
 
 // EstimatedFinalizationTime returns the estimated time it takes for a block to be finalized
@@ -1118,10 +1118,14 @@ func (e *EthereumClient) EstimatedFinalizationTime(ctx context.Context) (time.Du
 	if err != nil {
 		return 0, err
 	}
-	if e.NetworkConfig.FinalityDepth == 0 {
+	finDepth := e.NetworkConfig.FinalityDepth
+	if finDepth == 0 {
 		return 0, fmt.Errorf("finality depth is 0 and finality tag is not enabled")
 	}
-	timeBetween := time.Duration(e.NetworkConfig.FinalityDepth) * blckTime
+	if finDepth > math.MaxInt64 {
+		return 0, fmt.Errorf("finality depth %d is larger than the max value of int64", finDepth)
+	}
+	timeBetween := time.Duration(finDepth) * blckTime
 	e.l.Info().
 		Str("Time", timeBetween.String()).
 		Str("Network", e.GetNetworkName()).
@@ -1159,7 +1163,7 @@ func (e *EthereumClient) TimeBetweenFinalizedBlocks(ctx context.Context, maxTime
 				return 0, err
 			}
 			if nextFinalizedHeader.Number.Cmp(currentFinalizedHeader.Number) > 0 {
-				timeBetween := time.Unix(int64(nextFinalizedHeader.Time), 0).Sub(time.Unix(int64(currentFinalizedHeader.Time), 0))
+				timeBetween := time.Unix(int64(nextFinalizedHeader.Time), 0).Sub(time.Unix(int64(currentFinalizedHeader.Time), 0)) // nolint gosec
 				e.l.Info().
 					Str("Time", timeBetween.String()).
 					Str("Network", e.GetNetworkName()).
@@ -1190,23 +1194,26 @@ func (e *EthereumClient) AvgBlockTime(ctx context.Context) (time.Duration, error
 	}
 	totalTime := time.Duration(0)
 	var previousHeader *types.Header
-	previousHeader, err = e.Client.HeaderByNumber(ctx, big.NewInt(int64(startBlockNumber-1)))
+	previousHeader, err = e.Client.HeaderByNumber(ctx, new(big.Int).SetUint64(startBlockNumber-1))
 	if err != nil {
 		return totalTime, err
 	}
 	for i := startBlockNumber; i <= latestBlockNumber; i++ {
-		hdr, err := e.Client.HeaderByNumber(ctx, big.NewInt(int64(i)))
+		hdr, err := e.Client.HeaderByNumber(ctx, new(big.Int).SetUint64(i))
 		if err != nil {
 			return totalTime, err
 		}
 
-		blockTime := time.Unix(int64(hdr.Time), 0)
-		previousBlockTime := time.Unix(int64(previousHeader.Time), 0)
+		blockTime := time.Unix(int64(hdr.Time), 0)                    // nolint gosec
+		previousBlockTime := time.Unix(int64(previousHeader.Time), 0) // nolint gosec
 		blockDuration := blockTime.Sub(previousBlockTime)
 		totalTime += blockDuration
 		previousHeader = hdr
 	}
 
+	if numBlocks > math.MaxInt64 {
+		return 0, fmt.Errorf("numBlocks %d is larger than the max value of int64", numBlocks)
+	}
 	averageBlockTime := totalTime / time.Duration(numBlocks)
 
 	return averageBlockTime, nil

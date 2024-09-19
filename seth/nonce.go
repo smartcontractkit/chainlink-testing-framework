@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"errors"
+	"fmt"
+	"math"
 	"time"
 
 	"math/big"
@@ -31,7 +33,7 @@ type NonceManager struct {
 	SyncedKeys  chan *KeyNonce
 	Addresses   []common.Address
 	PrivateKeys []*ecdsa.PrivateKey
-	Nonces      map[common.Address]int64
+	Nonces      map[common.Address]int64 // TODO: Use big.Int or uint64 instead of int64
 }
 
 type KeyNonce struct {
@@ -66,14 +68,23 @@ func (m *NonceManager) UpdateNonces() error {
 		if err != nil {
 			return err
 		}
+		if nonce > math.MaxInt64 { // Protect from overflow
+			return fmt.Errorf("nonce %d is larger than the max int64 value", nonce)
+		}
 		m.Nonces[addr] = int64(nonce)
 	}
 	L.Debug().Interface("Nonces", m.Nonces).Msg("Updated nonces for addresses")
 	m.SyncedKeys = make(chan *KeyNonce, len(m.Addresses))
 	for keyNum, addr := range m.Addresses[1:] {
+		// Protect from overflow
+		nonce := m.Nonces[addr]
+		if nonce < 0 {
+			return fmt.Errorf("negative nonce %d", nonce)
+		}
+
 		m.SyncedKeys <- &KeyNonce{
 			KeyNum: keyNum + 1,
-			Nonce:  uint64(m.Nonces[addr]),
+			Nonce:  uint64(nonce),
 		}
 	}
 	return nil
@@ -134,7 +145,7 @@ func (m *NonceManager) anySyncedKey() int {
 					L.Trace().
 						Interface("KeyNum", keyData.KeyNum).
 						Uint64("Nonce", nonce).
-						Int("Expected nonce", int(keyData.Nonce+1)).
+						Uint64("Expected nonce", keyData.Nonce+1).
 						Interface("Address", m.Addresses[keyData.KeyNum]).
 						Msg("Key NOT synced")
 

@@ -399,7 +399,7 @@ func (t *Tracer) decodeCall(byteSignature []byte, rawCall Call) (*DecodedCall, e
 	}
 
 	if rawCall.Gas != "" && rawCall.Gas != "0x0" {
-		decimalValue, err := strconv.ParseInt(strings.TrimPrefix(rawCall.Gas, "0x"), 16, 64)
+		decimalValue, err := strconv.ParseUint(strings.TrimPrefix(rawCall.Gas, "0x"), 16, 64)
 		if err != nil {
 			L.Debug().
 				Err(err).
@@ -411,14 +411,14 @@ func (t *Tracer) decodeCall(byteSignature []byte, rawCall Call) (*DecodedCall, e
 	}
 
 	if rawCall.GasUsed != "" && rawCall.GasUsed != "0x0" {
-		decimalValue, err := strconv.ParseInt(strings.TrimPrefix(rawCall.GasUsed, "0x"), 16, 64)
+		decimalValue, err := strconv.ParseUint(strings.TrimPrefix(rawCall.GasUsed, "0x"), 16, 64)
 		if err != nil {
 			L.Debug().
 				Err(err).
 				Str("GasUsed", rawCall.GasUsed).
 				Msg("Failed to parse value")
 		} else {
-			defaultCall.GasUsed = uint64(decimalValue)
+			defaultCall.GasUsed = decimalValue
 		}
 	}
 

@@ -188,8 +188,8 @@ func TestRPCAPI(t *testing.T) {
 		pm.Stop()
 		bn, err := client.BlockNumber(context.Background())
 		require.NoError(t, err)
-		require.GreaterOrEqual(t, uint64(iterations), bn-1)
-		require.LessOrEqual(t, uint64(iterations), bn+1)
+		require.GreaterOrEqual(t, uint64(iterations), bn-1) // nolint gosec
+		require.LessOrEqual(t, uint64(iterations), bn+1)    // nolint gosec
 	})
 
 	t.Run("(anvil) test we can mine blocks with strictly N+ transactions", func(t *testing.T) {
@@ -211,7 +211,7 @@ func TestRPCAPI(t *testing.T) {
 		}
 		bn, err := client.BlockNumber(context.Background())
 		require.NoError(t, err)
-		for i := 1; i <= int(bn); i++ {
+		for i := 1; i <= int(bn); i++ { // nolint gosec
 			block, err := client.BlockByNumber(context.Background(), big.NewInt(int64(i)))
 			require.NoError(t, err)
 			require.GreaterOrEqual(t, int64(block.Transactions().Len()), txnInBlock)

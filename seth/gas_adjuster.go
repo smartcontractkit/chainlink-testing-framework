@@ -59,7 +59,7 @@ func (m *Client) CalculateNetworkCongestionMetric(blocksNumber uint64, strategy 
 			timeout = 6
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second) // nolint gosec
 		defer cancel()
 		header, err := m.Client.HeaderByNumber(ctx, bn)
 		if err != nil {
@@ -79,7 +79,7 @@ func (m *Client) CalculateNetworkCongestionMetric(blocksNumber uint64, strategy 
 
 	L.Trace().Msgf("Block range for gas calculation: %d - %d", lastBlockNumber-blocksNumber, lastBlockNumber)
 
-	lastBlock, err := getHeaderData(big.NewInt(int64(lastBlockNumber)))
+	lastBlock, err := getHeaderData(new(big.Int).SetUint64(lastBlockNumber))
 	if err != nil {
 		return 0, err
 	}
@@ -114,7 +114,7 @@ func (m *Client) CalculateNetworkCongestionMetric(blocksNumber uint64, strategy 
 				return
 			}
 			dataCh <- header
-		}(big.NewInt(int64(i)))
+		}(new(big.Int).SetUint64(i))
 	}
 
 	wg.Wait()
@@ -147,7 +147,7 @@ func calculateSimpleNetworkCongestionMetric(headers []*types.Header) float64 {
 func calculateNewestFirstNetworkCongestionMetric(headers []*types.Header) float64 {
 	// sort blocks so that we are sure they are in ascending order
 	slices.SortFunc(headers, func(i, j *types.Header) int {
-		return int(i.Number.Uint64() - j.Number.Uint64())
+		return int(i.Number.Int64() - j.Number.Int64())
 	})
 
 	var weightedSum, totalWeight float64

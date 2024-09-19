@@ -90,21 +90,21 @@ func (n *NetworkConfig) OverrideURLsAndKeysFromEVMNetwork() {
 		return
 	}
 	for name, evmNetwork := range n.EVMNetworks {
-		if evmNetwork.URLs != nil && len(evmNetwork.URLs) > 0 {
+		if len(evmNetwork.URLs) > 0 {
 			logging.L.Warn().Str("network", name).Msg("found URLs in EVMNetwork. overriding RPC URLs in RpcWsUrls with EVMNetwork URLs")
 			if n.RpcWsUrls == nil {
 				n.RpcWsUrls = make(map[string][]string)
 			}
 			n.RpcWsUrls[name] = evmNetwork.URLs
 		}
-		if evmNetwork.HTTPURLs != nil && len(evmNetwork.HTTPURLs) > 0 {
+		if len(evmNetwork.HTTPURLs) > 0 {
 			logging.L.Warn().Str("network", name).Msg("found HTTPURLs in EVMNetwork. overriding RPC URLs in RpcHttpUrls with EVMNetwork HTTP URLs")
 			if n.RpcHttpUrls == nil {
 				n.RpcHttpUrls = make(map[string][]string)
 			}
 			n.RpcHttpUrls[name] = evmNetwork.HTTPURLs
 		}
-		if evmNetwork.PrivateKeys != nil && len(evmNetwork.PrivateKeys) > 0 {
+		if len(evmNetwork.PrivateKeys) > 0 {
 			logging.L.Warn().Str("network", name).Msg("found PrivateKeys in EVMNetwork. overriding wallet keys in WalletKeys with EVMNetwork private keys")
 			if n.WalletKeys == nil {
 				n.WalletKeys = make(map[string][]string)

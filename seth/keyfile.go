@@ -3,6 +3,8 @@ package seth
 import (
 	"context"
 	"crypto/ecdsa"
+	"fmt"
+	"math"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -68,6 +70,9 @@ func ReturnFunds(c *Client, toAddr string) error {
 			if err != nil {
 				gasLimit = c.Cfg.Network.TransferGasFee
 			} else {
+				if gasLimitRaw > math.MaxInt64 {
+					return fmt.Errorf("Gas limit exceeds maximum int64 value: %d", gasLimitRaw)
+				}
 				gasLimit = int64(gasLimitRaw)
 			}
 
