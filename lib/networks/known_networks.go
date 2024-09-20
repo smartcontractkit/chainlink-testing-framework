@@ -1007,6 +1007,21 @@ var (
 		DefaultGasLimit:           6000000,
 	}
 
+	SoneiumSepolia = blockchain.EVMNetwork{
+		Name:                      "Soneium Sepolia",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.OptimismClientImplementation,
+		ChainID:                   1946,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       10000,
+		DefaultGasLimit:           6000000,
+		FinalityTag:               true,
+		FinalityDepth:             200,
+	}
+
 	MappedNetworks = map[string]blockchain.EVMNetwork{
 		"SIMULATED":               SimulatedEVM,
 		"ANVIL":                   Anvil,
@@ -1076,6 +1091,7 @@ var (
 		"XLAYER_SEPOLIA":        XLayerSepolia,
 		"XLAYER_MAINNET":        XLayerMainnet,
 		"TREASURE_RUBY":         TreasureRuby,
+		"SONEIUM_SEPOLIA":       SoneiumSepolia,
 	}
 )
 
