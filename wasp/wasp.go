@@ -195,6 +195,7 @@ type Stats struct {
 	CurrentSegment  atomic.Int64 `json:"current_schedule_segment"`
 	SamplesRecorded atomic.Int64 `json:"samples_recorded"`
 	SamplesSkipped  atomic.Int64 `json:"samples_skipped"`
+	RunStarted      atomic.Bool  `json:"runStarted"`
 	RunPaused       atomic.Bool  `json:"runPaused"`
 	RunStopped      atomic.Bool  `json:"runStopped"`
 	RunFailed       atomic.Bool  `json:"runFailed"`
@@ -224,6 +225,7 @@ type Generator struct {
 	labels             model.LabelSet
 	rl                 atomic.Pointer[ratelimit.Limiter]
 	scheduleSegments   []*Segment
+	currentSegmentMu   *sync.Mutex
 	currentSegment     *Segment
 	ResponsesWaitGroup *sync.WaitGroup
 	dataWaitGroup      *sync.WaitGroup
@@ -298,6 +300,7 @@ func NewGenerator(cfg *Config) (*Generator, error) {
 		Responses:          NewResponses(rch),
 		ResponsesChan:      rch,
 		labels:             ls,
+		currentSegmentMu:   &sync.Mutex{},
 		responsesData: &ResponseData{
 			okDataMu:        &sync.Mutex{},
 			OKData:          NewSliceBuffer[any](cfg.CallResultBufLen),
@@ -323,16 +326,13 @@ func NewGenerator(cfg *Config) (*Generator, error) {
 	return g, nil
 }
 
-// setupSchedule set up initial data for both RPS and VirtualUser load types
-func (g *Generator) setupSchedule() {
+// runExecuteLoop set up initial data for both RPS and VirtualUser load types
+func (g *Generator) runExecuteLoop() {
 	g.currentSegment = g.scheduleSegments[0]
 	g.stats.LastSegment.Store(int64(len(g.scheduleSegments)))
 	switch g.Cfg.LoadType {
 	case RPS:
 		g.ResponsesWaitGroup.Add(1)
-		g.stats.CurrentRPS.Store(g.currentSegment.From)
-		newRateLimit := ratelimit.New(int(g.currentSegment.From), ratelimit.Per(g.Cfg.RateLimitUnitDuration))
-		g.rl.Store(&newRateLimit)
 		// we run pacedCall controlled by stats.CurrentRPS
 		go func() {
 			for {
@@ -347,7 +347,9 @@ func (g *Generator) setupSchedule() {
 			}
 		}()
 	case VU:
+		g.currentSegmentMu.Lock()
 		g.stats.CurrentVUs.Store(g.currentSegment.From)
+		g.currentSegmentMu.Unlock()
 		// we start all vus once
 		vus := g.stats.CurrentVUs.Load()
 		for i := 0; i < int(vus); i++ {
@@ -449,6 +451,7 @@ func (g *Generator) runVU(vu VirtualUser) {
 // changing both internal and Stats values to report
 func (g *Generator) processSegment() bool {
 	defer func() {
+		g.stats.RunStarted.Store(true)
 		g.Log.Info().
 			Int64("Segment", g.stats.CurrentSegment.Load()).
 			Int64("VUs", g.stats.CurrentVUs.Load()).
@@ -458,11 +461,13 @@ func (g *Generator) processSegment() bool {
 	if g.stats.CurrentSegment.Load() == g.stats.LastSegment.Load() {
 		return true
 	}
+	g.currentSegmentMu.Lock()
 	g.currentSegment = g.scheduleSegments[g.stats.CurrentSegment.Load()]
+	g.currentSegmentMu.Unlock()
 	g.stats.CurrentSegment.Add(1)
 	switch g.Cfg.LoadType {
 	case RPS:
-		newRateLimit := ratelimit.New(int(g.currentSegment.From), ratelimit.Per(g.Cfg.RateLimitUnitDuration))
+		newRateLimit := ratelimit.New(int(g.currentSegment.From), ratelimit.Per(g.Cfg.RateLimitUnitDuration), ratelimit.WithoutSlack)
 		g.rl.Store(&newRateLimit)
 		g.stats.CurrentRPS.Store(g.currentSegment.From)
 	case VU:
@@ -491,9 +496,9 @@ func (g *Generator) processSegment() bool {
 	return false
 }
 
-// runSchedule runs scheduling loop
+// runScheduleLoop runs scheduling loop
 // processing segments inside the whole schedule
-func (g *Generator) runSchedule() {
+func (g *Generator) runScheduleLoop() {
 	go func() {
 		for {
 			select {
@@ -583,11 +588,17 @@ func (g *Generator) collectVUResults() {
 
 // pacedCall calls a gun according to a scheduleSegments or plain RPS
 func (g *Generator) pacedCall() {
-	if g.stats.RunPaused.Load() || g.stats.RunStopped.Load() {
+	if !g.Stats().RunStarted.Load() {
 		return
 	}
 	l := *g.rl.Load()
 	l.Take()
+	if g.stats.RunPaused.Load() {
+		return
+	}
+	if g.stats.RunStopped.Load() {
+		return
+	}
 	result := make(chan *Response)
 	requestCtx, cancel := context.WithTimeout(context.Background(), g.Cfg.CallTimeout)
 	callStartTS := time.Now()
@@ -621,9 +632,9 @@ func (g *Generator) Run(wait bool) (interface{}, bool) {
 		g.sendResponsesToLoki()
 		g.sendStatsToLoki()
 	}
-	g.setupSchedule()
+	g.runScheduleLoop()
+	g.runExecuteLoop()
 	g.collectVUResults()
-	g.runSchedule()
 	if wait {
 		return g.Wait()
 	}
@@ -648,6 +659,7 @@ func (g *Generator) Stop() (interface{}, bool) {
 	if g.stats.RunStopped.Load() {
 		return nil, true
 	}
+	g.stats.RunStarted.Store(false)
 	g.stats.RunStopped.Store(true)
 	g.stats.RunFailed.Store(true)
 	g.Log.Warn().Msg("Graceful stop")

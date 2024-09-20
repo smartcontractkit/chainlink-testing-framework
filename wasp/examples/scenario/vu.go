@@ -24,7 +24,7 @@ func NewExampleScenario(target string) *VirtualUser {
 	return &VirtualUser{
 		VUControl: wasp.NewVUControl(),
 		target:    target,
-		rl:        ratelimit.New(10),
+		rl:        ratelimit.New(10, ratelimit.WithoutSlack),
 		client:    resty.New().SetBaseURL(target),
 		Data:      make([]string, 0),
 	}
@@ -34,7 +34,7 @@ func (m *VirtualUser) Clone(_ *wasp.Generator) wasp.VirtualUser {
 	return &VirtualUser{
 		VUControl: wasp.NewVUControl(),
 		target:    m.target,
-		rl:        ratelimit.New(10),
+		rl:        ratelimit.New(10, ratelimit.WithoutSlack),
 		client:    resty.New().SetBaseURL(m.target),
 		Data:      make([]string, 0),
 	}
