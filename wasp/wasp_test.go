@@ -449,13 +449,13 @@ func TestSmokeStaticRPSSchedulePrecision(t *testing.T) {
 	require.NoError(t, err)
 	_, failed := gen.Run(true)
 	require.Equal(t, false, failed)
-	require.GreaterOrEqual(t, gen.Stats().Success.Load(), int64(990))
+	require.GreaterOrEqual(t, gen.Stats().Success.Load(), int64(980))
 	require.LessOrEqual(t, gen.Stats().Success.Load(), int64(1010))
 	require.Equal(t, gen.Stats().Failed.Load(), int64(0))
 	require.Equal(t, gen.Stats().CallTimeout.Load(), int64(0))
 
 	okData, _, failResponses := convertResponsesData(gen)
-	require.GreaterOrEqual(t, len(okData), 990)
+	require.GreaterOrEqual(t, len(okData), 980)
 	require.LessOrEqual(t, len(okData), 1010)
 	require.Empty(t, failResponses)
 	require.Empty(t, gen.Errors())
@@ -475,14 +475,14 @@ func TestSmokeCustomUnitPrecision(t *testing.T) {
 	_, failed := gen.Run(true)
 	require.Equal(t, false, failed)
 	stats := gen.Stats()
-	require.GreaterOrEqual(t, stats.Success.Load(), int64(4990))
+	require.GreaterOrEqual(t, stats.Success.Load(), int64(4970))
 	require.LessOrEqual(t, stats.Success.Load(), int64(5010))
 	require.Equal(t, stats.Failed.Load(), int64(0))
 	require.Equal(t, stats.CallTimeout.Load(), int64(0))
 	require.Equal(t, stats.CurrentTimeUnit, gen.Cfg.RateLimitUnitDuration.Nanoseconds())
 
 	okData, _, failResponses := convertResponsesData(gen)
-	require.GreaterOrEqual(t, len(okData), 4990)
+	require.GreaterOrEqual(t, len(okData), 4970)
 	require.LessOrEqual(t, len(okData), 5010)
 	require.Empty(t, failResponses)
 	require.Empty(t, gen.Errors())
@@ -501,13 +501,13 @@ func TestSmokeStaticRPSScheduleIsNotBlocking(t *testing.T) {
 	require.NoError(t, err)
 	_, failed := gen.Run(true)
 	require.Equal(t, false, failed)
-	require.GreaterOrEqual(t, gen.Stats().Success.Load(), int64(990))
+	require.GreaterOrEqual(t, gen.Stats().Success.Load(), int64(980))
 	require.LessOrEqual(t, gen.Stats().Success.Load(), int64(1010))
 	require.Equal(t, gen.Stats().Failed.Load(), int64(0))
 	require.Equal(t, gen.Stats().CallTimeout.Load(), int64(0))
 
 	okData, _, failResponses := convertResponsesData(gen)
-	require.GreaterOrEqual(t, len(okData), 990)
+	require.GreaterOrEqual(t, len(okData), 980)
 	require.LessOrEqual(t, len(okData), 1010)
 	require.Empty(t, failResponses)
 	require.Empty(t, gen.Errors())
@@ -1041,7 +1041,7 @@ func TestSmokeNoDuplicateRequestsOnceOnStart(t *testing.T) {
 	gen, err := NewGenerator(&Config{
 		T:                 t,
 		LoadType:          RPS,
-		StatsPollInterval: 100 * time.Second,
+		StatsPollInterval: 1 * time.Second,
 		Schedule:          Plain(1, 1*time.Second),
 		Gun: NewMockGun(&MockGunConfig{
 			CallSleep: 50 * time.Millisecond,

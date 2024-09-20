@@ -225,6 +225,7 @@ type Generator struct {
 	labels             model.LabelSet
 	rl                 atomic.Pointer[ratelimit.Limiter]
 	scheduleSegments   []*Segment
+	currentSegmentMu   *sync.Mutex
 	currentSegment     *Segment
 	ResponsesWaitGroup *sync.WaitGroup
 	dataWaitGroup      *sync.WaitGroup
@@ -299,6 +300,7 @@ func NewGenerator(cfg *Config) (*Generator, error) {
 		Responses:          NewResponses(rch),
 		ResponsesChan:      rch,
 		labels:             ls,
+		currentSegmentMu:   &sync.Mutex{},
 		responsesData: &ResponseData{
 			okDataMu:        &sync.Mutex{},
 			OKData:          NewSliceBuffer[any](cfg.CallResultBufLen),
@@ -345,7 +347,9 @@ func (g *Generator) runExecuteLoop() {
 			}
 		}()
 	case VU:
+		g.currentSegmentMu.Lock()
 		g.stats.CurrentVUs.Store(g.currentSegment.From)
+		g.currentSegmentMu.Unlock()
 		// we start all vus once
 		vus := g.stats.CurrentVUs.Load()
 		for i := 0; i < int(vus); i++ {
@@ -457,7 +461,9 @@ func (g *Generator) processSegment() bool {
 	if g.stats.CurrentSegment.Load() == g.stats.LastSegment.Load() {
 		return true
 	}
+	g.currentSegmentMu.Lock()
 	g.currentSegment = g.scheduleSegments[g.stats.CurrentSegment.Load()]
+	g.currentSegmentMu.Unlock()
 	g.stats.CurrentSegment.Add(1)
 	switch g.Cfg.LoadType {
 	case RPS:
