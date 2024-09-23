@@ -45,9 +45,8 @@ func TestFilterTestsByChainlinkImageType(t *testing.T) {
 		expectedLen              int
 	}{
 		{"Filter by single type", "arm64", 2},
-		{"Filter by multiple types", "arm64,amd64", 3},
+		{"Filter by single type once", "amd64", 1},
 		{"Filter by non-existent type", "nonsense", 0},
-		{"Wildcard to include all", "*", 3},
 		{"Empty type string to include all", "", 3},
 	}
 

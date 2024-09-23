@@ -18,36 +18,25 @@ import (
 // filterTests filters tests based on workflow, test type, test IDs, and chainlink image types.
 func filterTests(
 	allTests []CITestConf,
-	workflow, testType, ids, chainlinkImageTypes string,
+	workflow, testType, ids, chainlinkImageType string,
 	envresolve bool,
 ) []CITestConf {
 	workflowFilter := workflow
-	typeFilter := testType
+	testTypeFilter := testType
+	imageTypeFilter := chainlinkImageType
 	idFilter := strings.Split(ids, ",")
-	imageTypesFilter := strings.Split(chainlinkImageTypes, ",")
 
 	var filteredTests []CITestConf
 
 	for _, test := range allTests {
 		var (
-			workflowMatch            = workflow == "" || contains(test.Workflows, workflowFilter)
-			typeMatch                = testType == "" || test.TestEnvType == typeFilter
-			idMatch                  = ids == "*" || ids == "" || contains(idFilter, test.ID)
-			chainlinkImageTypesMatch bool
+			workflowMatch  = workflow == "" || contains(test.Workflows, workflowFilter)
+			testTypeMatch  = testType == "" || test.TestEnvType == testTypeFilter
+			imageTypeMatch = chainlinkImageType == "" || contains(test.ChainlinkImageTypes, imageTypeFilter)
+			idMatch        = ids == "*" || ids == "" || contains(idFilter, test.ID)
 		)
 
-		if chainlinkImageTypes == "" || chainlinkImageTypes == "*" {
-			chainlinkImageTypesMatch = true
-		} else {
-			for _, chainlinkImageType := range test.ChainlinkImageTypes {
-				if contains(imageTypesFilter, chainlinkImageType) {
-					chainlinkImageTypesMatch = true
-					break
-				}
-			}
-		}
-
-		if workflowMatch && typeMatch && idMatch && chainlinkImageTypesMatch {
+		if workflowMatch && testTypeMatch && idMatch && imageTypeMatch {
 			test.IDSanitized = sanitizeTestID(test.ID)
 			filteredTests = append(filteredTests, test)
 		}
@@ -132,7 +121,7 @@ Example usage:
 		workflow, _ := cmd.Flags().GetString("workflow")
 		testType, _ := cmd.Flags().GetString("test-env-type")
 		testIDs, _ := cmd.Flags().GetString("test-ids")
-		chainlinkImageTypes, _ := cmd.Flags().GetString("chainlink-image-types")
+		chainlinkImageType, _ := cmd.Flags().GetString("chainlink-image-type")
 		testMap, _ := cmd.Flags().GetString("test-list")
 		envresolve, _ := cmd.Flags().GetBool("envresolve")
 
@@ -151,7 +140,7 @@ Example usage:
 
 		var filteredTests []CITestConf
 		if testMap == "" {
-			filteredTests = filterTests(config.Tests, workflow, testType, testIDs, chainlinkImageTypes, envresolve)
+			filteredTests = filterTests(config.Tests, workflow, testType, testIDs, chainlinkImageType, envresolve)
 		} else {
 			filteredTests, err = filterAndMergeTests(config.Tests, workflow, testType, testMap, envresolve)
 			if err != nil {
@@ -173,7 +162,7 @@ func init() {
 	filterCmd.Flags().StringP("file", "f", "", "Path to the YAML file")
 	filterCmd.Flags().String("test-list", "", "Base64 encoded list of tests (YML objects) to filter by. Can include test_inputs for each test.")
 	filterCmd.Flags().StringP("test-ids", "i", "*", "Comma-separated list of test IDs to filter by")
-	filterCmd.Flags().StringP("chainlink-image-types", "c", "*", "Comma-separated list of Chainlink image types to filter by")
+	filterCmd.Flags().StringP("chainlink-image-type", "c", "amd64", "Build type of Chainlink image to filter by (e.g. 'amd64', 'arm64')")
 	filterCmd.Flags().StringP("test-env-type", "y", "", "Type of test to filter by")
 	filterCmd.Flags().StringP("workflow", "t", "", "Workflow filter")
 	filterCmd.Flags().Bool("envresolve", false, "Resolve environment variables in test inputs")
