@@ -308,7 +308,7 @@ func (b *EthereumNetworkBuilder) autoFill() error {
 		return err
 	}
 
-	if b.ethereumVersion == "" {
+	if b.ethereumVersion == "" || b.ethereumVersion == "auto_fill" {
 		if err := b.trySettingEthereumVersionBasedOnCustomImage(); err != nil {
 			return err
 		}
