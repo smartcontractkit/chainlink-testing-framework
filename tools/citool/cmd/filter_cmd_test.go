@@ -37,6 +37,7 @@ func TestFilterTestsByChainlinkImageType(t *testing.T) {
 		{ChainlinkImageTypes: []string{"arm64"}, TestEnvType: "docker"},
 		{ChainlinkImageTypes: []string{"amd64"}, TestEnvType: "docker"},
 		{ChainlinkImageTypes: []string{"plugins", "arm64"}, TestEnvType: "k8s_remote_runner"},
+		{ChainlinkImageTypes: []string{}, TestEnvType: "docker"}, // Empty image type should default to amd64
 	}
 
 	cases := []struct {
@@ -45,9 +46,9 @@ func TestFilterTestsByChainlinkImageType(t *testing.T) {
 		expectedLen              int
 	}{
 		{"Filter by single type", "arm64", 2},
-		{"Filter by single type once", "amd64", 1},
+		{"Filter by single type once", "amd64", 2},
 		{"Filter by non-existent type", "nonsense", 0},
-		{"Empty type string to include all", "", 3},
+		{"Empty type string to include all", "", 4},
 	}
 
 	for _, c := range cases {

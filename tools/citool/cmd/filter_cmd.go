@@ -32,7 +32,7 @@ func filterTests(
 		var (
 			workflowMatch  = workflow == "" || contains(test.Workflows, workflowFilter)
 			testTypeMatch  = testType == "" || test.TestEnvType == testTypeFilter
-			imageTypeMatch = chainlinkImageType == "" || contains(test.ChainlinkImageTypes, imageTypeFilter)
+			imageTypeMatch = chainlinkImageType == "" || contains(test.ChainlinkImageTypes, imageTypeFilter) || (len(test.ChainlinkImageTypes) == 0 && imageTypeFilter == "amd64") // Default amd64 for all
 			idMatch        = ids == "*" || ids == "" || contains(idFilter, test.ID)
 		)
 
