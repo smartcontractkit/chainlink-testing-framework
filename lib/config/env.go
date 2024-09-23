@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -79,7 +80,7 @@ func ReadEnvVarSlice_String(pattern string) []string {
 	re := regexp.MustCompile(pattern)
 	var values []string
 
-	for _, env := range os.Environ() {
+	for _, env := range getSortedEnvs() {
 		pair := strings.SplitN(env, "=", 2)
 		if len(pair) != 2 {
 			continue
@@ -146,7 +147,7 @@ func readEnvVarValue(envVarName string, valueType EnvValueType) (interface{}, er
 func readEnvVarGroupedMap(pattern string) map[string][]string {
 	re := regexp.MustCompile(pattern)
 	groupedVars := make(map[string][]string)
-	for _, env := range os.Environ() {
+	for _, env := range getSortedEnvs() {
 		pair := strings.SplitN(env, "=", 2)
 		if len(pair) != 2 {
 			continue
@@ -164,7 +165,7 @@ func readEnvVarGroupedMap(pattern string) map[string][]string {
 func readEnvVarSingleMap(pattern string) map[string]string {
 	re := regexp.MustCompile(pattern)
 	singleVars := make(map[string]string)
-	for _, env := range os.Environ() {
+	for _, env := range getSortedEnvs() {
 		pair := strings.SplitN(env, "=", 2)
 		if len(pair) != 2 {
 			continue
@@ -212,3 +213,13 @@ const (
 	Boolean
 	Float
 )
+
+// getSortedEnvs returns a sorted slice of environment variables
+func getSortedEnvs() []string {
+	envs := os.Environ()
+	// Sort environment variables by key
+	sort.Slice(envs, func(i, j int) bool {
+		return strings.SplitN(envs[i], "=", 2)[0] < strings.SplitN(envs[j], "=", 2)[0]
+	})
+	return envs
+}
