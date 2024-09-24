@@ -63,15 +63,15 @@ func TestFilterTestsByChainlinkImageType(t *testing.T) {
 
 func TestFilterTestsIntegration(t *testing.T) {
 	tests := []CITestConf{
-		{ID: "run_all_in_ocr_tests_go", TestEnvType: "docker", Workflows: []string{"Run Nightly E2E Tests"}},
-		{ID: "run_all_in_ocr2_tests_go", TestEnvType: "docker", Workflows: []string{"Run PR E2E Tests"}},
-		{ID: "run_all_in_ocr3_tests_go", TestEnvType: "k8s_remote_runner", Workflows: []string{"Run PR E2E Tests"}},
+		{ID: "run_all_in_ocr_tests_go", TestEnvType: "docker", Triggers: []string{"Run Nightly E2E Tests"}},
+		{ID: "run_all_in_ocr2_tests_go", TestEnvType: "docker", Triggers: []string{"Run PR E2E Tests"}},
+		{ID: "run_all_in_ocr3_tests_go", TestEnvType: "k8s_remote_runner", Triggers: []string{"Run PR E2E Tests"}},
 	}
 
 	cases := []struct {
 		description   string
 		inputNames    string
-		inputWorkflow string
+		inputTrigger  string
 		inputTestType string
 		inputIDs      string
 		expectedLen   int
@@ -84,7 +84,7 @@ func TestFilterTestsIntegration(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.description, func(t *testing.T) {
-			filtered := filterTests(tests, c.inputWorkflow, c.inputTestType, c.inputIDs, "", false)
+			filtered := filterTests(tests, c.inputTrigger, c.inputTestType, c.inputIDs, "", false)
 			if len(filtered) != c.expectedLen {
 				t.Errorf("FilterTests(%s) returned %d tests, expected %d", c.description, len(filtered), c.expectedLen)
 			}

@@ -24,7 +24,7 @@ type CITestConf struct {
 	TestEnvVars                map[string]string `yaml:"test_env_vars" json:"test_env_vars"`
 	RemoteRunnerMemory         string            `yaml:"remote_runner_memory" json:"remote_runner_memory"`
 	PyroscopeEnv               string            `yaml:"pyroscope_env" json:"pyroscope_env"`
-	Workflows                  []string          `yaml:"workflows" json:"workflows"`
+	Triggers                   []string          `yaml:"triggers" json:"triggers"`
 }
 
 type Config struct {
