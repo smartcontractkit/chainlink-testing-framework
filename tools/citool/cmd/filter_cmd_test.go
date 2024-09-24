@@ -34,9 +34,9 @@ func TestFilterTestsByID(t *testing.T) {
 
 func TestFilterTestsIntegration(t *testing.T) {
 	tests := []CITestConf{
-		{ID: "run_all_in_ocr_tests_go", TestEnvType: "docker", Workflows: []string{"Run Nightly E2E Tests"}},
-		{ID: "run_all_in_ocr2_tests_go", TestEnvType: "docker", Workflows: []string{"Run PR E2E Tests"}},
-		{ID: "run_all_in_ocr3_tests_go", TestEnvType: "k8s_remote_runner", Workflows: []string{"Run PR E2E Tests"}},
+		{ID: "run_all_in_ocr_tests_go", TestEnvType: "docker", Triggers: []string{"Run Nightly E2E Tests"}},
+		{ID: "run_all_in_ocr2_tests_go", TestEnvType: "docker", Triggers: []string{"Run PR E2E Tests"}},
+		{ID: "run_all_in_ocr3_tests_go", TestEnvType: "k8s_remote_runner", Triggers: []string{"Run PR E2E Tests"}},
 	}
 
 	cases := []struct {
