@@ -157,10 +157,10 @@ github.com/aws/aws-sdk-go-v2/service/ssooidc v1.26.5 h1:SKvPgvdvmiTWoi0GAJ7AsJfO
 github.com/aws/aws-sdk-go-v2/service/ssooidc v1.26.5/go.mod h1:20sz31hv/WsPa3HhU3hfrIet2kxM4Pe0r20eBZ20Tac=
 github.com/aws/aws-sdk-go-v2/service/sts v1.30.4 h1:iAckBT2OeEK/kBDyN/jDtpEExhjeeA/Im2q4X0rJZT8=
 github.com/aws/aws-sdk-go-v2/service/sts v1.30.4/go.mod h1:vmSqFK+BVIwVpDAGZB3CoCXHzurt4qBE8lf+I/kRTh0=
-github.com/aws/constructs-go/constructs/v10 v10.1.255 h1:5hARfEmhBqHSTQf/C3QLA3sWOxO2Dfja0iA1W7ZcI7g=
-github.com/aws/constructs-go/constructs/v10 v10.1.255/go.mod h1:DCdBSjN04Ck2pajCacTD4RKFqSA7Utya8d62XreYctI=
-github.com/aws/jsii-runtime-go v1.75.0 h1:NhpUfyiL7/wsRuUekFsz8FFBCYLfPD/l61kKg9kL/a4=
-github.com/aws/jsii-runtime-go v1.75.0/go.mod h1:TKCyrtM0pygEPo4rDZzbMSDNCDNTSYSN6/mGyHI6O3I=
+github.com/aws/constructs-go/constructs/v10 v10.3.0 h1:LsjBIMiaDX/vqrXWhzTquBJ9pPdi02/H+z1DCwg0PEM=
+github.com/aws/constructs-go/constructs/v10 v10.3.0/go.mod h1:GgzwIwoRJ2UYsr3SU+JhAl+gq5j39bEMYf8ev3J+s9s=
+github.com/aws/jsii-runtime-go v1.90.0 h1:Kbw+bAy1etfyYSpNu09a12N9taT+/NxRDnfvgtmCGI8=
+github.com/aws/jsii-runtime-go v1.90.0/go.mod h1:xLBI2fKjWK68+eqqmvkv4HL1f4YUPLiAi5BT3wNUD74=
 github.com/aws/smithy-go v1.20.4 h1:2HK1zBdPgRbjFOHlfeQZfpC4r72MOb9bZkiFwggKO+4=
 github.com/aws/smithy-go v1.20.4/go.mod h1:irrKGvNn1InZwb2d7fkIRNucdfwR8R+Ts3wxYa/cJHg=
 github.com/aymerick/raymond v2.0.3-0.20180322193309-b565731e1464+incompatible/go.mod h1:osfaiScAUVup+UC9Nfq76eWqDhXlp+4UYaA8uhTBO6g=
