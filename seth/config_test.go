@@ -1,9 +1,15 @@
 package seth_test
 
 import (
+	"crypto/ecdsa"
+	"math/big"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient"
 
 	"github.com/pelletier/go-toml/v2"
 
@@ -220,6 +226,165 @@ func TestConfig_Eip1559Gas_With_Estimations(t *testing.T) {
 
 	_, err = client.DeployContract(client.NewTXOpts(), "LinkToken", *linkAbi, common.FromHex(link_token.LinkTokenMetaData.Bin))
 	require.NoError(t, err, "failed to deploy LINK contract")
+}
+
+func TestConfig_NoPrivateKeys_RpcHealthEnabled(t *testing.T) {
+	builder := seth.NewClientBuilder()
+
+	_, err := builder.
+		// network
+		WithNetworkName("my network").
+		WithRpcUrl("ws://localhost:8546").
+		// Gas price and estimations
+		WithEIP1559DynamicFees(true).
+		WithDynamicGasPrices(120_000_000_000, 44_000_000_000).
+		WithGasPriceEstimations(false, 10, seth.Priority_Fast).
+		Build()
+
+	require.Error(t, err, "succeeded in building the client")
+	require.Contains(t, err.Error(), seth.NoPkForRpcHealthCheckErr, "expected error message")
+}
+
+func TestConfig_NoPrivateKeys_PendingNonce(t *testing.T) {
+	builder := seth.NewClientBuilder()
+
+	_, err := builder.
+		// network
+		WithNetworkName("my network").
+		WithRpcUrl("ws://localhost:8546").
+		// Gas price and estimations
+		WithEIP1559DynamicFees(true).
+		WithDynamicGasPrices(120_000_000_000, 44_000_000_000).
+		WithGasPriceEstimations(false, 10, seth.Priority_Fast).
+		WithProtections(true, false, seth.MustMakeDuration(1*time.Minute)).
+		Build()
+
+	require.Error(t, err, "succeeded in building the client")
+	require.Contains(t, err.Error(), seth.NoPkForNonceProtection, "expected error message")
+}
+
+func TestConfig_NoPrivateKeys_EphemeralKeys(t *testing.T) {
+	builder := seth.NewClientBuilder()
+
+	_, err := builder.
+		// network
+		WithNetworkName("my network").
+		WithRpcUrl("ws://localhost:8546").
+		WithEphemeralAddresses(10, 1000).
+		// Gas price and estimations
+		WithEIP1559DynamicFees(true).
+		WithDynamicGasPrices(120_000_000_000, 44_000_000_000).
+		WithGasPriceEstimations(false, 10, seth.Priority_Fast).
+		WithProtections(false, false, seth.MustMakeDuration(1*time.Minute)).
+		Build()
+
+	require.Error(t, err, "succeeded in building the client")
+	require.Contains(t, err.Error(), seth.NoPkForEphemeralKeys, "expected error message")
+}
+
+func TestConfig_NoPrivateKeys_GasEstimations(t *testing.T) {
+	builder := seth.NewClientBuilder()
+
+	_, err := builder.
+		WithNetworkName("my network").
+		WithRpcUrl("ws://localhost:8546").
+		WithGasPriceEstimations(true, 10, seth.Priority_Fast).
+		WithProtections(false, false, seth.MustMakeDuration(1*time.Minute)).
+		Build()
+
+	require.Error(t, err, "succeeded in building the client")
+	require.Contains(t, err.Error(), seth.NoPkForGasPriceEstimation, "expected error message")
+}
+
+func TestConfig_NoPrivateKeys_TxOpts(t *testing.T) {
+	builder := seth.NewClientBuilder()
+
+	client, err := builder.
+		// network
+		WithNetworkName("my network").
+		WithRpcUrl("ws://localhost:8546").
+		// Gas price and estimations
+		WithEIP1559DynamicFees(true).
+		WithDynamicGasPrices(120_000_000_000, 44_000_000_000).
+		WithGasPriceEstimations(false, 10, seth.Priority_Fast).
+		WithProtections(false, false, seth.MustMakeDuration(1*time.Minute)).
+		Build()
+
+	require.NoError(t, err, "failed to the client")
+	require.Equal(t, 0, len(client.PrivateKeys), "expected 0 private keys")
+
+	_ = client.NewTXOpts()
+	require.Equal(t, 1, len(client.Errors), "expected 1 error")
+	require.Equal(t, "no private keys were loaded, but keyNum 0 was requested", client.Errors[0].Error(), "expected error message")
+}
+
+func TestConfig_NoPrivateKeys_Tracing(t *testing.T) {
+	builder := seth.NewClientBuilder()
+
+	client, err := builder.
+		WithNetworkName("my network").
+		WithRpcUrl("ws://localhost:8546").
+		WithEIP1559DynamicFees(true).
+		WithDynamicGasPrices(120_000_000_000, 44_000_000_000).
+		WithGasPriceEstimations(false, 10, seth.Priority_Fast).
+		WithProtections(false, false, seth.MustMakeDuration(1*time.Minute)).
+		WithGethWrappersFolders([]string{"./contracts/bind"}).
+		Build()
+
+	require.NoError(t, err, "failed to the client")
+	require.Equal(t, 0, len(client.PrivateKeys), "expected 0 private keys")
+
+	ethClient, err := ethclient.Dial("ws://localhost:8546")
+	require.NoError(t, err, "failed to dial eth client")
+
+	pk, err := crypto.HexToECDSA("ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80")
+	require.NoError(t, err, "failed to parse private key")
+
+	opts, err := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(1337))
+	require.NoError(t, err, "failed to create transactor")
+
+	addr, tx, instance, err := link_token.DeployLinkToken(opts, ethClient)
+	require.NoError(t, err, "failed to deploy LINK contract")
+
+	// it's a deployment transaction, we don't know yet how to decode it
+	_, decodeErr := client.DecodeTx(tx)
+	require.NoError(t, decodeErr, "failed to decode transaction")
+
+	publicKeyECDSA, ok := pk.Public().(*ecdsa.PublicKey)
+	require.True(t, ok, "failed to cast public key to ECDSA")
+	pubKeyAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
+
+	tx, err = instance.GrantMintRole(opts, pubKeyAddress)
+	decoded, decodeErr := client.Decode(tx, err)
+	require.NoError(t, decodeErr, "failed to decode transaction")
+	require.NotNil(t, decoded, "expected decoded call")
+	require.Equal(t, "c2e3273d", decoded.Signature, "signature mismatch")
+	require.Equal(t, "grantMintRole(address)", decoded.Method, "method mismatch")
+	require.Equal(t, common.HexToAddress("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"), decoded.Input["minter"], "minter mismatch")
+	require.Equal(t, 1, len(decoded.Events), "expected 1 event")
+	require.Equal(t, "MintAccessGranted(address)", decoded.Events[0].Signature, "event signature mismatch")
+	require.Equal(t, addr, decoded.Events[0].Address, "event address mismatch")
+	require.Equal(t, common.HexToAddress("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"), decoded.Events[0].EventData["minter"], "event minter mismatch")
+}
+
+func TestConfig_ReadOnlyMode(t *testing.T) {
+	builder := seth.NewClientBuilder()
+
+	client, err := builder.
+		WithNetworkName("my network").
+		WithRpcUrl("ws://localhost:8546").
+		WithEphemeralAddresses(10, 1000).
+		WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
+		WithGasPriceEstimations(true, 10, seth.Priority_Fast).
+		WithReadOnlyMode().
+		Build()
+
+	require.NoError(t, err, "failed to build client")
+	require.Equal(t, 0, len(client.PrivateKeys), "expected 0 private keys")
+	require.Equal(t, 0, len(client.Addresses), "expected 0 addresses")
+	require.False(t, client.Cfg.CheckRpcHealthOnStart, "expected rpc health check to be disabled")
+	require.False(t, client.Cfg.PendingNonceProtectionEnabled, "expected pending nonce protection to be disabled")
+	require.False(t, client.Cfg.Network.GasPriceEstimationEnabled, "expected gas price estimations to be disabled")
 }
 
 func TestConfigAppendPkToEmptyNetwork(t *testing.T) {

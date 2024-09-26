@@ -35,6 +35,9 @@ func NewAddress() (string, string, error) {
 // ReturnFunds returns funds to the root key from all other keys
 func ReturnFunds(c *Client, toAddr string) error {
 	if toAddr == "" {
+		if err := c.validateAddressesKeyNum(0); err != nil {
+			return err
+		}
 		toAddr = c.Addresses[0].Hex()
 	}
 

@@ -31,7 +31,6 @@ const (
 	ErrCreateNonceManager       = "failed to create nonce manager"
 	ErrCreateTracer             = "failed to create tracer"
 	ErrReadContractMap          = "failed to read deployed contract map"
-	ErrNoKeyLoaded              = "failed to load private key"
 	ErrRpcHealthCheckFailed     = "RPC health check failed ¯\\_(ツ)_/¯"
 	ErrContractDeploymentFailed = "contract deployment failed"
 
@@ -323,6 +322,9 @@ func NewClientRaw(
 		Msg("Created new client")
 
 	if cfg.ephemeral {
+		if len(c.Addresses) == 0 {
+			return nil, errors.New("no private keys loaded, cannot fund ephemeral addresses")
+		}
 		gasPrice, err := c.GetSuggestedLegacyFees(context.Background(), Priority_Standard)
 		if err != nil {
 			gasPrice = big.NewInt(c.Cfg.Network.GasPrice)
@@ -411,6 +413,10 @@ func (m *Client) checkRPCHealth() error {
 		gasPrice = big.NewInt(m.Cfg.Network.GasPrice)
 	}
 
+	if err := m.validateAddressesKeyNum(0); err != nil {
+		return err
+	}
+
 	err = m.TransferETHFromKey(ctx, 0, m.Addresses[0].Hex(), big.NewInt(10_000), gasPrice)
 	if err != nil {
 		return errors.Wrap(err, ErrRpcHealthCheckFailed)
@@ -421,8 +427,8 @@ func (m *Client) checkRPCHealth() error {
 }
 
 func (m *Client) TransferETHFromKey(ctx context.Context, fromKeyNum int, to string, value *big.Int, gasPrice *big.Int) error {
-	if fromKeyNum > len(m.PrivateKeys) || fromKeyNum > len(m.Addresses) {
-		return errors.Wrap(errors.New(ErrNoKeyLoaded), fmt.Sprintf("requested key: %d", fromKeyNum))
+	if err := m.validatePrivateKeysKeyNum(fromKeyNum); err != nil {
+		return err
 	}
 	toAddr := common.HexToAddress(to)
 	ctx, chainCancel := context.WithTimeout(ctx, m.Cfg.Network.TxnTimeout.Duration())
@@ -571,6 +577,9 @@ func WithBlockNumber(bn uint64) CallOpt {
 
 // NewCallOpts returns a new sequential call options wrapper
 func (m *Client) NewCallOpts(o ...CallOpt) *bind.CallOpts {
+	if errCallOpts := m.errCallOptsIfAddressCountTooLow(0); errCallOpts != nil {
+		return errCallOpts
+	}
 	co := &bind.CallOpts{
 		Pending: false,
 		From:    m.Addresses[0],
@@ -583,6 +592,10 @@ func (m *Client) NewCallOpts(o ...CallOpt) *bind.CallOpts {
 
 // NewCallKeyOpts returns a new sequential call options wrapper from the key N
 func (m *Client) NewCallKeyOpts(keyNum int, o ...CallOpt) *bind.CallOpts {
+	if errCallOpts := m.errCallOptsIfAddressCountTooLow(keyNum); errCallOpts != nil {
+		return errCallOpts
+	}
+
 	co := &bind.CallOpts{
 		Pending: false,
 		From:    m.Addresses[keyNum],
@@ -591,6 +604,52 @@ func (m *Client) NewCallKeyOpts(keyNum int, o ...CallOpt) *bind.CallOpts {
 		f(co)
 	}
 	return co
+}
+
+// errCallOptsIfAddressCountTooLow returns non-nil CallOpts with error in Context if keyNum is out of range
+func (m *Client) errCallOptsIfAddressCountTooLow(keyNum int) *bind.CallOpts {
+	if err := m.validateAddressesKeyNum(keyNum); err != nil {
+		errText := err.Error()
+		if keyNum == TimeoutKeyNum {
+			errText += " (this is a probably because we didn't manage to find any synced key before timeout)"
+		}
+
+		err := errors.New(errText)
+		m.Errors = append(m.Errors, err)
+		opts := &bind.CallOpts{}
+
+		// can't return nil, otherwise RPC wrapper will panic and we might lose funds on testnets/mainnets, that's why
+		// error is passed in Context here to avoid panic, whoever is using Seth should make sure that there is no error
+		// present in Context before using *bind.TransactOpts
+		opts.Context = context.WithValue(context.Background(), ContextErrorKey{}, err)
+
+		return opts
+	}
+
+	return nil
+}
+
+// errTxOptsIfPrivateKeysCountTooLow returns non-nil TransactOpts with error in Context if keyNum is out of range
+func (m *Client) errTxOptsIfPrivateKeysCountTooLow(keyNum int) *bind.TransactOpts {
+	if err := m.validatePrivateKeysKeyNum(keyNum); err != nil {
+		errText := err.Error()
+		if keyNum == TimeoutKeyNum {
+			errText += " (this is a probably because we didn't manage to find any synced key before timeout)"
+		}
+
+		err := errors.New(errText)
+		m.Errors = append(m.Errors, err)
+		opts := &bind.TransactOpts{}
+
+		// can't return nil, otherwise RPC wrapper will panic and we might lose funds on testnets/mainnets, that's why
+		// error is passed in Context here to avoid panic, whoever is using Seth should make sure that there is no error
+		// present in Context before using *bind.TransactOpts
+		opts.Context = context.WithValue(context.Background(), ContextErrorKey{}, err)
+
+		return opts
+	}
+
+	return nil
 }
 
 // TransactOpt is a wrapper for bind.TransactOpts
@@ -680,23 +739,10 @@ func (m *Client) NewTXOpts(o ...TransactOpt) *bind.TransactOpts {
 // NewTXKeyOpts returns a new transaction options wrapper,
 // sets opts.GasPrice and opts.GasLimit from seth.toml or override with options
 func (m *Client) NewTXKeyOpts(keyNum int, o ...TransactOpt) *bind.TransactOpts {
-	if keyNum > len(m.Addresses) || keyNum < 0 {
-		errText := fmt.Sprintf("keyNum is out of range. Expected %d-%d. Got: %d", 0, len(m.Addresses)-1, keyNum)
-		if keyNum == TimeoutKeyNum {
-			errText += " (this is a probably because, we didn't manage to find any synced key before timeout)"
-		}
-
-		err := errors.New(errText)
-		m.Errors = append(m.Errors, err)
-		opts := &bind.TransactOpts{}
-
-		// can't return nil, otherwise RPC wrapper will panic and we might lose funds on testnets/mainnets, that's why
-		// error is passed in Context here to avoid panic, whoever is using Seth should make sure that there is no error
-		// present in Context before using *bind.TransactOpts
-		opts.Context = context.WithValue(context.Background(), ContextErrorKey{}, err)
-
-		return opts
+	if errTxOpts := m.errTxOptsIfPrivateKeysCountTooLow(keyNum); errTxOpts != nil {
+		return errTxOpts
 	}
+
 	L.Debug().
 		Interface("KeyNum", keyNum).
 		Interface("Address", m.Addresses[keyNum]).
@@ -754,6 +800,10 @@ func (m *Client) getNonceStatus(address common.Address) (NonceStatus, error) {
 
 // getProposedTransactionOptions gets all the tx info that network proposed
 func (m *Client) getProposedTransactionOptions(keyNum int) (*bind.TransactOpts, NonceStatus, GasEstimations) {
+	if errTxOpts := m.errTxOptsIfPrivateKeysCountTooLow(keyNum); errTxOpts != nil {
+		return errTxOpts, NonceStatus{}, GasEstimations{}
+	}
+
 	nonceStatus, err := m.getNonceStatus(m.Addresses[keyNum])
 	if err != nil {
 		m.Errors = append(m.Errors, err)
@@ -1181,8 +1231,8 @@ func (m *Client) WaitUntilNoPendingTxForRootKey(timeout time.Duration) error {
 // WaitUntilNoPendingTxForKeyNum waits until there's no pending transaction for key at index `keyNum`. If index is out of range or
 // if after timeout there are still pending transactions, it returns error.
 func (m *Client) WaitUntilNoPendingTxForKeyNum(keyNum int, timeout time.Duration) error {
-	if keyNum > len(m.Addresses)-1 || keyNum < 0 {
-		return fmt.Errorf("keyNum is out of range. Expected %d-%d. Got: %d", 0, len(m.Addresses)-1, keyNum)
+	if err := m.validateAddressesKeyNum(keyNum); err != nil {
+		return err
 	}
 	return m.WaitUntilNoPendingTx(m.Addresses[keyNum], timeout)
 }
@@ -1215,6 +1265,28 @@ func (m *Client) WaitUntilNoPendingTx(address common.Address, timeout time.Durat
 			return nil
 		}
 	}
+}
+
+func (m *Client) validatePrivateKeysKeyNum(keyNum int) error {
+	if keyNum >= len(m.PrivateKeys) || keyNum < 0 {
+		if len(m.PrivateKeys) == 0 {
+			return fmt.Errorf("no private keys were loaded, but keyNum %d was requested", keyNum)
+		}
+		return fmt.Errorf("keyNum is out of range for known private keys. Expected %d to %d. Got: %d", 0, len(m.PrivateKeys)-1, keyNum)
+	}
+
+	return nil
+}
+
+func (m *Client) validateAddressesKeyNum(keyNum int) error {
+	if keyNum >= len(m.Addresses) || keyNum < 0 {
+		if len(m.Addresses) == 0 {
+			return fmt.Errorf("no addresses were loaded, but keyNum %d was requested", keyNum)
+		}
+		return fmt.Errorf("keyNum is out of range for known addresses. Expected %d to %d. Got: %d", 0, len(m.Addresses)-1, keyNum)
+	}
+
+	return nil
 }
 
 // mergeLogMeta add metadata from log
