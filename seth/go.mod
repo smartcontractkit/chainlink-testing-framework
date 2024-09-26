@@ -9,7 +9,7 @@ require (
 	github.com/ethereum/go-ethereum v1.13.8
 	github.com/holiman/uint256 v1.2.4
 	github.com/montanaflynn/stats v0.7.1
-	github.com/pelletier/go-toml/v2 v2.2.2
+	github.com/pelletier/go-toml/v2 v2.2.3
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.30.0
 	github.com/smartcontractkit/seth v1.2.1-0.20240827060008-860f949fcb26
