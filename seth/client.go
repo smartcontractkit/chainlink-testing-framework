@@ -31,6 +31,7 @@ const (
 	ErrCreateNonceManager       = "failed to create nonce manager"
 	ErrCreateTracer             = "failed to create tracer"
 	ErrReadContractMap          = "failed to read deployed contract map"
+	ErrNoKeyLoaded              = "failed to load private key"
 	ErrRpcHealthCheckFailed     = "RPC health check failed ¯\\_(ツ)_/¯"
 	ErrContractDeploymentFailed = "contract deployment failed"
 
