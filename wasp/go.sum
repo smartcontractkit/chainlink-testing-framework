@@ -62,8 +62,8 @@ github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym
 github.com/DataDog/datadog-go v3.2.0+incompatible/go.mod h1:LButxg5PwREeZtORoXG3tL4fMGNddJ+vMq1mwgfaqoQ=
 github.com/HdrHistogram/hdrhistogram-go v1.1.2 h1:5IcZpTvzydCQeHzK4Ef/D5rrSqwxob0t8PQPMybUNFM=
 github.com/HdrHistogram/hdrhistogram-go v1.1.2/go.mod h1:yDgFjdqOqDEKOvasDdhWNXYg9BVp4O+o5f6V/ehm6Oo=
-github.com/K-Phoen/grabana v0.22.1 h1:b/O+C3H2H6VNYSeMCYUO4X4wYuwFXgBcRkvYa+fjpQA=
-github.com/K-Phoen/grabana v0.22.1/go.mod h1:3LTXrTzQzTKTgvKSXdRjlsJbizSOW/V23Q3iX00R5bU=
+github.com/K-Phoen/grabana v0.22.2 h1:tMiSvcKHnDbXi3IgBCax2+sg5qL6x0G6wMURHgjGDag=
+github.com/K-Phoen/grabana v0.22.2/go.mod h1:TbgU7jM55UlExzQyzu6AMiSUXr9jiaXmCu9AN28WXHk=
 github.com/K-Phoen/sdk v0.12.4 h1:j2EYuBJm3zDTD0fGKACVFWxAXtkR0q5QzfVqxmHSeGQ=
 github.com/K-Phoen/sdk v0.12.4/go.mod h1:qmM0wO23CtoDux528MXPpYvS4XkRWkWX6rvX9Za8EVU=
 github.com/Masterminds/goutils v1.1.1 h1:5nUrii3FMTL5diU80unEVvNevw1nH4+ZV4DSLVJLSYI=
