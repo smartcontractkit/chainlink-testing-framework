@@ -17,7 +17,7 @@ require (
 	github.com/prometheus/common v0.45.0
 	github.com/rs/zerolog v1.30.0
 	github.com/stretchr/testify v1.8.4
-	go.uber.org/ratelimit v0.2.0
+	go.uber.org/ratelimit v0.3.1
 	google.golang.org/grpc v1.59.0 // indirect
 	k8s.io/api v0.28.2
 	k8s.io/apimachinery v0.28.2
@@ -28,7 +28,6 @@ require (
 require (
 	github.com/K-Phoen/sdk v0.12.4 // indirect
 	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137 // indirect
-	github.com/andres-erbsen/clock v0.0.0-20160526145045-9e14626cd129 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/aws/aws-sdk-go v1.45.25 // indirect
@@ -179,6 +178,7 @@ require (
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver/v3 v3.2.1 // indirect
 	github.com/Masterminds/sprig/v3 v3.2.3 // indirect
+	github.com/benbjohnson/clock v1.3.5 // indirect
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/bytedance/sonic v1.9.1 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
