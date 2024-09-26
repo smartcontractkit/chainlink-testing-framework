@@ -8,7 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.15.1
 	github.com/aws/aws-sdk-go-v2/service/ecr v1.27.1
 	github.com/go-playground/validator/v10 v10.19.0
-	github.com/google/uuid v1.3.1
+	github.com/google/uuid v1.6.0
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.30.0
