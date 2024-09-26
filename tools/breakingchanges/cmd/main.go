@@ -48,6 +48,7 @@ func findGoModDirs(rootFolder, subDir string) ([]string, error) {
 }
 
 func getLastTag(pathPrefix string) (string, error) {
+	//nolint
 	cmd := exec.Command("sh", "-c", fmt.Sprintf("git tag | grep '%s' | tail -1", pathPrefix))
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -88,9 +89,7 @@ func getIgnoredDirs(flag *string) []string {
 	ignoredDirs := make([]string, 0)
 	if flag != nil {
 		allDirs := strings.Split(*flag, ",")
-		for _, d := range allDirs {
-			ignoredDirs = append(ignoredDirs, d)
-		}
+		ignoredDirs = append(ignoredDirs, allDirs...)
 	}
 	return ignoredDirs
 }
