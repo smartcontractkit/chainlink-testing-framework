@@ -1,59 +1,50 @@
 ## Releasing Go modules
 
-The Chainlink repository contains multiple independent modules. To release any of them, follow these steps:
+The Chainlink Testing Framework (CTF) repository contains multiple independent modules. To release any of them, we follow some best practices about breaking changes.
 
-- Merge all PRs that include the functionality you want to release (this can apply to multiple modules).
-- For each module being released, add a release notes file in the `.changeset` folder named `vX.X.X.md`. The format is flexible, but ensure to describe all changes and any necessary upgrade procedures.
-- Follow tagging strategy described below, push the tag and check the [release page](https://github.com/smartcontractkit/chainlink-testing-framework/releases)
-
-### Tagging strategy
+### Release strategy
 
 Use only [lightweight tags](https://git-scm.com/book/en/v2/Git-Basics-Tagging)
 
 **Do not move tags between commits. If something need to be fixed increment patch or minor version.**
 
-Major versions require `$pkg/$subpkg/vX.X.X-alpha` to be released before to analyze the scope of breaking changes across other repositories via Dependabot.
-```
-git tag k8s-test-runner/v2.0.0-test-release-alpha && git push --tags
-```
+Steps to release:
 
-Minor changes can be tagged as `$pkg/$subpkg/vX.X.X` and released after verifying [release page](https://github.com/smartcontractkit/chainlink-testing-framework/releases)
-```
-git tag k8s-test-runner/v0.6.0-test-release-alpha && git push --tags
-```
-
-### Minor and patch releases
-- Tag the main branch using the format `$pkg/$subpkg/vX.X.X`
-- Push the tags and visit https://github.com/smartcontractkit/chainlink-testing-framework/releases to check the release.
-
-There should be no breaking changes in patch or minor releases, check output of `Breaking changes` on the release page, if there are - fix them and publish another patch version.
-
-### Major releases
-- Append `vX` to Go module path in `go.mod`, example:
-```
-module github.com/smartcontractkit/chainlink-testing-framework/wasp/v2
-```
-- Tag the main branch using the format `$pkg/$subpkg/v2.X.X-alpha`
-- Push the tags and visit https://github.com/smartcontractkit/chainlink-testing-framework/releases to check the release.
-- Check Dependabot pipeline to analyze scope of changes across other repositories
+- When all your PRs are merged to `main` check the `main` branch [breaking changes badge](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/rc-breaking-changes.yaml)
+- If there are no breaking changes for external methods, create a branch and explain all your module changes in `vX.X.X.md` committed under `.changeset` dir in your module. If changes are really short, and you run the [script](#check-breaking-changes-locally) locally you can push `.changeset` as a part of your final feature PR
+- If there are accidental breaking changes, and it is possible to make them backward compatible - fix them
+- If there are breaking changes, and we must release them change `go.mod` path, add prefix `/vX`, merge your PR(s)
+- When all the changes are merged, and there are no breaking changes in the [pipeline](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/rc-breaking-changes.yaml) then proceed with releasing
+- Tag `main` branch in format `$pkg/$subpkg/vX.X.X` according to your changes and push it, example:
+  ```
+  git tag $pkg/$subpkg/v1.1.0 && git push --tags
+  git tag $pkg/$subpkg/v1.1.1 && git push --tags
+  git tag $pkg/$subpkg/v2.0.0 && git push --tags
+  ```
+- Check the [release page](https://github.com/smartcontractkit/chainlink-testing-framework/releases)
 
 ### Binary releases
+
 If your module have `cmd/main.go` we build binary automatically for various platforms and attach it to the release page.
 
-## Debug Release Pipeline
-To test the release pipeline use `$pkg/$subpkg/v1.999.X-test-release` tags, they are retracted so consumers can't accidentally install them
+## Debugging release pipeline and `gorelease` tool
 
-Create a test file inside `.changeset` with format `v1.999.X-test-release.md`, tag and push:
-```
-git tag k8s-test-runner/v1.999.X-test-release && git push --tags
-```
+Checkout `dummy-release-branch` and release it:
 
+- `git tag dummy-module/v0.X.0`
+- Add `vX.X.X.md` in `.changeset`
+- `git push --no-verify --force && git push --tags`
+- Check [releases](https://github.com/smartcontractkit/chainlink-testing-framework/releases)
 
-[Pipeline for releasing Go modules](.github/workflows/release-go-module.yml)
-[Dependabot summary pipeline](.github/workflows/dependabot-consumers-summary.yaml)
+Pipelines:
+
+- [Main branch breaking changes](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/rc-breaking-changes.yaml)
+- [Pipeline for releasing Go modules](.github/workflows/release-go-module.yml)
 
 ## Check breaking changes locally
+
 We have a simple wrapper to check breaking changes for all the packages. Commit all your changes and run:
+
 ```
 go run ./tools/breakingchanges/cmd/main.go
 go run ./tools/breakingchanges/cmd/main.go --subdir wasp # check recursively starting with subdir

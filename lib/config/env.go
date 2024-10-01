@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -12,32 +13,35 @@ import (
 )
 
 const (
-	E2E_TEST_LOG_COLLECT_ENV                = "E2E_TEST_LOG_COLLECT"
-	E2E_TEST_LOGGING_RUN_ID_ENV             = "E2E_TEST_LOGGING_RUN_ID"
-	E2E_TEST_LOG_STREAM_LOG_TARGETS_ENV     = "E2E_TEST_LOG_STREAM_LOG_TARGETS"
-	E2E_TEST_LOKI_TENANT_ID_ENV             = "E2E_TEST_LOKI_TENANT_ID"
-	E2E_TEST_LOKI_ENDPOINT_ENV              = "E2E_TEST_LOKI_ENDPOINT"
-	E2E_TEST_LOKI_BASIC_AUTH_ENV            = "E2E_TEST_LOKI_BASIC_AUTH"
-	E2E_TEST_LOKI_BEARER_TOKEN_ENV          = "E2E_TEST_LOKI_BEARER_TOKEN" // #nosec G101
-	E2E_TEST_GRAFANA_BASE_URL_ENV           = "E2E_TEST_GRAFANA_BASE_URL"
-	E2E_TEST_GRAFANA_DASHBOARD_URL_ENV      = "E2E_TEST_GRAFANA_DASHBOARD_URL"
-	E2E_TEST_GRAFANA_BEARER_TOKEN_ENV       = "E2E_TEST_GRAFANA_BEARER_TOKEN" // #nosec G101
-	E2E_TEST_PYROSCOPE_ENABLED_ENV          = "E2E_TEST_PYROSCOPE_ENABLED"
-	E2E_TEST_PYROSCOPE_SERVER_URL_ENV       = "E2E_TEST_PYROSCOPE_SERVER_URL"
-	E2E_TEST_PYROSCOPE_KEY_ENV              = "E2E_TEST_PYROSCOPE_KEY"
-	E2E_TEST_PYROSCOPE_ENVIRONMENT_ENV      = "E2E_TEST_PYROSCOPE_ENVIRONMENT"
-	E2E_TEST_CHAINLINK_IMAGE_ENV            = "E2E_TEST_CHAINLINK_IMAGE"
-	E2E_TEST_CHAINLINK_VERSION_ENV          = "E2E_TEST_CHAINLINK_VERSION"
-	E2E_TEST_CHAINLINK_POSTGRES_VERSION_ENV = "E2E_TEST_CHAINLINK_POSTGRES_VERSION"
-	E2E_TEST_CHAINLINK_UPGRADE_IMAGE_ENV    = "E2E_TEST_CHAINLINK_UPGRADE_IMAGE"
-	E2E_TEST_CHAINLINK_UPGRADE_VERSION_ENV  = "E2E_TEST_CHAINLINK_UPGRADE_VERSION"
-	E2E_TEST_SELECTED_NETWORK_ENV           = `E2E_TEST_SELECTED_NETWORK`
-	E2E_TEST_WALLET_KEY_ENV                 = `E2E_TEST_(.+)_WALLET_KEY$`
-	E2E_TEST_WALLET_KEYS_ENV                = `E2E_TEST_(.+)_WALLET_KEY_(\d+)$`
-	E2E_TEST_RPC_HTTP_URL_ENV               = `E2E_TEST_(.+)_RPC_HTTP_URL$`
-	E2E_TEST_RPC_HTTP_URLS_ENV              = `E2E_TEST_(.+)_RPC_HTTP_URL_(\d+)$`
-	E2E_TEST_RPC_WS_URL_ENV                 = `E2E_TEST_(.+)_RPC_WS_URL$`
-	E2E_TEST_RPC_WS_URLS_ENV                = `E2E_TEST_(.+)_RPC_WS_URL_(\d+)$`
+	E2E_TEST_LOG_COLLECT_ENV                          = "E2E_TEST_LOG_COLLECT"
+	E2E_TEST_LOGGING_RUN_ID_ENV                       = "E2E_TEST_LOGGING_RUN_ID"
+	E2E_TEST_LOG_STREAM_LOG_TARGETS_ENV               = "E2E_TEST_LOG_STREAM_LOG_TARGETS"
+	E2E_TEST_LOKI_TENANT_ID_ENV                       = "E2E_TEST_LOKI_TENANT_ID"
+	E2E_TEST_LOKI_ENDPOINT_ENV                        = "E2E_TEST_LOKI_ENDPOINT"
+	E2E_TEST_LOKI_BASIC_AUTH_ENV                      = "E2E_TEST_LOKI_BASIC_AUTH"
+	E2E_TEST_LOKI_BEARER_TOKEN_ENV                    = "E2E_TEST_LOKI_BEARER_TOKEN" // #nosec G101
+	E2E_TEST_GRAFANA_BASE_URL_ENV                     = "E2E_TEST_GRAFANA_BASE_URL"
+	E2E_TEST_GRAFANA_DASHBOARD_URL_ENV                = "E2E_TEST_GRAFANA_DASHBOARD_URL"
+	E2E_TEST_GRAFANA_BEARER_TOKEN_ENV                 = "E2E_TEST_GRAFANA_BEARER_TOKEN" // #nosec G101
+	E2E_TEST_PYROSCOPE_ENABLED_ENV                    = "E2E_TEST_PYROSCOPE_ENABLED"
+	E2E_TEST_PYROSCOPE_SERVER_URL_ENV                 = "E2E_TEST_PYROSCOPE_SERVER_URL"
+	E2E_TEST_PYROSCOPE_KEY_ENV                        = "E2E_TEST_PYROSCOPE_KEY"
+	E2E_TEST_PYROSCOPE_ENVIRONMENT_ENV                = "E2E_TEST_PYROSCOPE_ENVIRONMENT"
+	E2E_TEST_CHAINLINK_IMAGE_ENV                      = "E2E_TEST_CHAINLINK_IMAGE"
+	E2E_TEST_CHAINLINK_VERSION_ENV                    = "E2E_TEST_CHAINLINK_VERSION"
+	E2E_TEST_CHAINLINK_POSTGRES_VERSION_ENV           = "E2E_TEST_CHAINLINK_POSTGRES_VERSION"
+	E2E_TEST_CHAINLINK_UPGRADE_IMAGE_ENV              = "E2E_TEST_CHAINLINK_UPGRADE_IMAGE"
+	E2E_TEST_CHAINLINK_UPGRADE_VERSION_ENV            = "E2E_TEST_CHAINLINK_UPGRADE_VERSION"
+	E2E_TEST_SELECTED_NETWORK_ENV                     = `E2E_TEST_SELECTED_NETWORK`
+	E2E_TEST_WALLET_KEY_ENV                           = `E2E_TEST_(.+)_WALLET_KEY$`
+	E2E_TEST_WALLET_KEYS_ENV                          = `E2E_TEST_(.+)_WALLET_KEY_(\d+)$`
+	E2E_TEST_RPC_HTTP_URL_ENV                         = `E2E_TEST_(.+)_RPC_HTTP_URL$`
+	E2E_TEST_RPC_HTTP_URLS_ENV                        = `E2E_TEST_(.+)_RPC_HTTP_URL_(\d+)$`
+	E2E_TEST_RPC_WS_URL_ENV                           = `E2E_TEST_(.+)_RPC_WS_URL$`
+	E2E_TEST_RPC_WS_URLS_ENV                          = `E2E_TEST_(.+)_RPC_WS_URL_(\d+)$`
+	E2E_TEST_PRIVATE_ETHEREUM_EXECUTION_LAYER_ENV     = "E2E_TEST_PRIVATE_ETHEREUM_EXECUTION_LAYER"
+	E2E_TEST_PRIVATE_ETHEREUM_ETHEREUM_VERSION_ENV    = "E2E_TEST_PRIVATE_ETHEREUM_ETHEREUM_VERSION"
+	E2E_TEST_PRIVATE_ETHEREUM_CUSTOM_DOCKER_IMAGE_ENV = "E2E_TEST_PRIVATE_ETHEREUM_CUSTOM_DOCKER_IMAGE"
 )
 
 func MustReadEnvVar_String(name string) string {
@@ -79,7 +83,7 @@ func ReadEnvVarSlice_String(pattern string) []string {
 	re := regexp.MustCompile(pattern)
 	var values []string
 
-	for _, env := range os.Environ() {
+	for _, env := range getSortedEnvs() {
 		pair := strings.SplitN(env, "=", 2)
 		if len(pair) != 2 {
 			continue
@@ -146,7 +150,7 @@ func readEnvVarValue(envVarName string, valueType EnvValueType) (interface{}, er
 func readEnvVarGroupedMap(pattern string) map[string][]string {
 	re := regexp.MustCompile(pattern)
 	groupedVars := make(map[string][]string)
-	for _, env := range os.Environ() {
+	for _, env := range getSortedEnvs() {
 		pair := strings.SplitN(env, "=", 2)
 		if len(pair) != 2 {
 			continue
@@ -164,7 +168,7 @@ func readEnvVarGroupedMap(pattern string) map[string][]string {
 func readEnvVarSingleMap(pattern string) map[string]string {
 	re := regexp.MustCompile(pattern)
 	singleVars := make(map[string]string)
-	for _, env := range os.Environ() {
+	for _, env := range getSortedEnvs() {
 		pair := strings.SplitN(env, "=", 2)
 		if len(pair) != 2 {
 			continue
@@ -212,3 +216,13 @@ const (
 	Boolean
 	Float
 )
+
+// getSortedEnvs returns a sorted slice of environment variables
+func getSortedEnvs() []string {
+	envs := os.Environ()
+	// Sort environment variables by key
+	sort.Slice(envs, func(i, j int) bool {
+		return strings.SplitN(envs[i], "=", 2)[0] < strings.SplitN(envs[j], "=", 2)[0]
+	})
+	return envs
+}
