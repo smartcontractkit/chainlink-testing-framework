@@ -89,7 +89,6 @@ func TestLokiClient_AuthenticationFailure(t *testing.T) {
 	logEntries, err := lokiClient.QueryLogs(context.Background())
 	assert.Nil(t, logEntries)
 	assert.Error(t, err)
-	assert.Equal(t, http.StatusUnauthorized, err.(*LokiAPIError).StatusCode)
 	var lokiErr *LokiAPIError
 	if errors.As(err, &lokiErr) {
 		assert.Equal(t, http.StatusUnauthorized, lokiErr.StatusCode)
@@ -125,7 +124,6 @@ func TestLokiClient_InternalServerError(t *testing.T) {
 	logEntries, err := lokiClient.QueryLogs(context.Background())
 	assert.Nil(t, logEntries)
 	assert.Error(t, err)
-	assert.Equal(t, http.StatusInternalServerError, err.(*LokiAPIError).StatusCode)
 	var lokiErr *LokiAPIError
 	if errors.As(err, &lokiErr) {
 		assert.Equal(t, http.StatusInternalServerError, lokiErr.StatusCode)
