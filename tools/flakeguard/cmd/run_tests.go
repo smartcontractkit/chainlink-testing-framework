@@ -15,6 +15,9 @@ var RunTestsCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		repoPath, _ := cmd.Flags().GetString("repo")
 		testPackagesJson, _ := cmd.Flags().GetString("test-packages-json")
+		count, _ := cmd.Flags().GetInt("count")
+		useRace, _ := cmd.Flags().GetBool("race")
+		failFast, _ := cmd.Flags().GetBool("fail-fast")
 
 		var testPackages []string
 		if err := json.Unmarshal([]byte(testPackagesJson), &testPackages); err != nil {
@@ -23,8 +26,11 @@ var RunTestsCmd = &cobra.Command{
 		}
 
 		runner := runner.Runner{
-			Verbose: true,
-			Dir:     repoPath,
+			Verbose:  true,
+			Dir:      repoPath,
+			Count:    count,
+			UseRace:  useRace,
+			FailFast: failFast,
 		}
 
 		if err := runner.RunTests(testPackages); err != nil {
@@ -37,4 +43,7 @@ var RunTestsCmd = &cobra.Command{
 func init() {
 	RunTestsCmd.Flags().StringP("repo", "r", ".", "Path to the Git repository")
 	RunTestsCmd.Flags().String("test-packages-json", "", "JSON-encoded string of test packages")
+	RunTestsCmd.Flags().IntP("count", "c", 1, "Number of times to run the tests")
+	RunTestsCmd.Flags().Bool("race", false, "Enable the race detector")
+	RunTestsCmd.Flags().Bool("fail-fast", false, "Stop on the first test failure")
 }
