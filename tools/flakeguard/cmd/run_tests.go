@@ -19,6 +19,7 @@ var RunTestsCmd = &cobra.Command{
 		count, _ := cmd.Flags().GetInt("count")
 		useRace, _ := cmd.Flags().GetBool("race")
 		failFast, _ := cmd.Flags().GetBool("fail-fast")
+		outputPath, _ := cmd.Flags().GetString("output-json")
 
 		var testPackages []string
 		if testPackagesJson != "" {
@@ -41,9 +42,24 @@ var RunTestsCmd = &cobra.Command{
 			FailFast: failFast,
 		}
 
-		if err := runner.RunTests(testPackages); err != nil {
+		testResults, err := runner.RunTests(testPackages)
+		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error running tests: %s\n", err)
 			os.Exit(1)
+		}
+
+		// Save the test results in JSON format
+		if outputPath != "" {
+			jsonData, err := json.MarshalIndent(testResults, "", "  ")
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error marshaling test results to JSON: %s\n", err)
+				os.Exit(1)
+			}
+			if err := os.WriteFile(outputPath, jsonData, 0644); err != nil {
+				fmt.Fprintf(os.Stderr, "Error writing test results to file: %s\n", err)
+				os.Exit(1)
+			}
+			fmt.Printf("Test results saved to %s\n", outputPath)
 		}
 	},
 }
@@ -55,4 +71,5 @@ func init() {
 	RunTestsCmd.Flags().IntP("count", "c", 1, "Number of times to run the tests")
 	RunTestsCmd.Flags().Bool("race", false, "Enable the race detector")
 	RunTestsCmd.Flags().Bool("fail-fast", false, "Stop on the first test failure")
+	RunTestsCmd.Flags().String("output-json", "", "Path to output the test results in JSON format")
 }

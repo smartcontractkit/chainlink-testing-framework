@@ -1,10 +1,11 @@
 package runner
 
 import (
+	"bufio"
+	"bytes"
+	"encoding/json"
 	"fmt"
-	"os"
 	"os/exec"
-	"strings"
 )
 
 type Runner struct {
@@ -16,18 +17,32 @@ type Runner struct {
 }
 
 // RunTests executes the tests for each provided package.
-func (r *Runner) RunTests(packages []string) error {
+func (r *Runner) RunTests(packages []string) ([]TestResult, error) {
+	var allResults []TestResult
+
 	for _, p := range packages {
-		if err := r.runSingleTest(p); err != nil {
-			return fmt.Errorf("failed to run test at %s: %w", p, err)
+		testResults, err := r.runTestPackage(p)
+		if err != nil {
+			return nil, fmt.Errorf("failed to run tests in package %s: %w", p, err)
 		}
+
+		// Append results from this package to the overall results
+		allResults = append(allResults, testResults...)
 	}
-	return nil
+
+	return allResults, nil
 }
 
-// runSingleTest executes the test command for a single test package.
-func (r *Runner) runSingleTest(testPackage string) error {
-	args := []string{"test"}
+type TestResult struct {
+	TestName  string
+	PassRatio float64
+	Runs      int
+	Passed    bool
+}
+
+// runTestPackage executes the test command for a single test package.
+func (r *Runner) runTestPackage(testPackage string) ([]TestResult, error) {
+	args := []string{"test", "-json"} // Enable JSON output
 	if r.Count > 0 {
 		args = append(args, "-count", fmt.Sprint(r.Count))
 	}
@@ -39,18 +54,74 @@ func (r *Runner) runSingleTest(testPackage string) error {
 	}
 	args = append(args, testPackage)
 
-	// Construct the command and display it
+	// Construct the command
 	cmd := exec.Command("go", args...)
+	// cmd.Env = append(cmd.Env, "GOFLAGS=-extldflags=-Wl,-ld_classic") // Ensure modules are enabled
 	cmd.Dir = r.Dir
-	cmdString := fmt.Sprintf("Executing command: go %s", strings.Join(args, " "))
-	fmt.Println(cmdString)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
 
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
+	// Run the command
 	err := cmd.Run()
 	if err != nil {
-		return fmt.Errorf("test failed at %s: %w", testPackage, err)
+		return nil, fmt.Errorf("test failed at %s: %w", testPackage, err)
 	}
-	return nil
+
+	// Parse test results from JSON output
+	return parseTestResults(out.Bytes())
+}
+
+// parseTestResults analyzes the JSON output from 'go test -json' to determine test results
+func parseTestResults(data []byte) ([]TestResult, error) {
+	scanner := bufio.NewScanner(bytes.NewReader(data))
+	testDetails := make(map[string]map[string]int) // Holds run and pass counts for each test
+
+	for scanner.Scan() {
+		var entry struct {
+			Action string `json:"Action"`
+			Test   string `json:"Test"`
+		}
+		if err := json.Unmarshal(scanner.Bytes(), &entry); err != nil {
+			return nil, fmt.Errorf("failed to parse json test output: %w", err)
+		}
+
+		// Skip processing if the test name is empty
+		if entry.Test == "" {
+			continue
+		}
+
+		if _, exists := testDetails[entry.Test]; !exists {
+			testDetails[entry.Test] = map[string]int{"run": 0, "pass": 0}
+		}
+
+		if entry.Action == "run" {
+			testDetails[entry.Test]["run"]++
+		}
+		if entry.Action == "pass" {
+			testDetails[entry.Test]["pass"]++
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("reading standard input: %w", err)
+	}
+
+	var results []TestResult
+	for testName, counts := range testDetails {
+		runs := counts["run"]
+		passes := counts["pass"]
+		passRatio := 0.0
+		if runs > 0 {
+			passRatio = float64(passes) * 100 / float64(runs)
+		}
+		results = append(results, TestResult{
+			TestName:  testName,
+			PassRatio: passRatio,
+			Passed:    passes == runs,
+			Runs:      runs,
+		})
+	}
+
+	return results, nil
 }
