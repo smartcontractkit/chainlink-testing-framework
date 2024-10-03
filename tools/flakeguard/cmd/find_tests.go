@@ -3,6 +3,7 @@ package cmd
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -13,27 +14,53 @@ import (
 )
 
 // findtestsCmd represents the findtests command
-var FindtestsCmd = &cobra.Command{
-	Use:   "find",
+var FindTestsCmd = &cobra.Command{
+	Use:   "find-tests",
 	Short: "Find tests based on changed Go files",
 	Run: func(cmd *cobra.Command, args []string) {
 		repoPath, _ := cmd.Flags().GetString("repo")
-		// findTestPackagesToRun(repoPath)
+		jsonOutput, _ := cmd.Flags().GetBool("json")
 
-		packages, err := findChangedNonTestPackages(repoPath)
+		testFiles, err := FindChangedTestFiles(repoPath)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error finding test packages: %s\n", err)
-			return
+			fmt.Fprintf(os.Stderr, "Error finding changed test files: %s\n", err)
+			os.Exit(1)
 		}
-		_ = packages
 
-		// TODO: create a separate sub command  to print packages to run based on the list of modified packages
-		findPackageWithDependencies(repoPath, packages)
+		if jsonOutput {
+			data, err := json.MarshalIndent(testFiles, "", "  ")
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error marshaling test files to JSON: %s\n", err)
+				os.Exit(1)
+			}
+			fmt.Println(string(data))
+		} else {
+			fmt.Println("Changed test files:")
+			for _, file := range testFiles {
+				fmt.Println(file)
+			}
+		}
 	},
 }
 
 func init() {
-	FindtestsCmd.Flags().StringP("repo", "r", ".", "Path to the Git repository")
+	FindTestsCmd.Flags().StringP("repo", "r", ".", "Path to the Git repository")
+	FindTestsCmd.Flags().Bool("json", false, "Output the results in JSON format")
+}
+
+func FindChangedTestFiles(repoPath string) ([]string, error) {
+	cmd := exec.Command("bash", "-c", "git diff --name-only --diff-filter=AM develop...HEAD | grep '_test\\.go$'")
+	cmd.Dir = repoPath
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("error executing git diff command: %w", err)
+	}
+	testFiles := strings.Split(strings.TrimSpace(out.String()), "\n")
+	if len(testFiles) == 1 && testFiles[0] == "" {
+		return []string{}, nil
+	}
+	return testFiles, nil
 }
 
 // TODO: currently this prints package names that import modified packages
@@ -94,7 +121,7 @@ func getDependencies(packageName, dir string) ([]string, error) {
 }
 
 func findTestPackagesToRun(repoPath string) ([]string, error) {
-	changedTestPackages, err := findChangedTestPackages(repoPath)
+	changedTestPackages, err := FindChangedTestFiles(repoPath)
 	if err != nil {
 		return nil, err
 	}
@@ -107,25 +134,6 @@ func findTestPackagesToRun(repoPath string) ([]string, error) {
 	// Combine and deduplicate test package names
 	allTestPackages := append(changedTestPackages, affectedTestPackages...)
 	return deduplicate(allTestPackages), nil
-}
-
-// TODO: use it as a primary way to find test packages to run
-func findChangedTestPackages(repoPath string) ([]string, error) {
-	cmd := exec.Command("bash", "-c", "git diff --name-only develop...HEAD | grep '_test\\.go$'")
-	cmd.Dir = repoPath
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("error executing git diff command: %w", err)
-	}
-
-	testFiles := strings.Split(strings.TrimSpace(out.String()), "\n")
-	if len(testFiles) == 1 && testFiles[0] == "" {
-		return []string{}, nil
-	}
-
-	uniqueDirs := uniqueDirectories(testFiles)
-	return getPackageNames(uniqueDirs, repoPath), nil
 }
 
 // Determine affected test packages by analyzing package dependencies
