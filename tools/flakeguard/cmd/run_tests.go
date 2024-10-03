@@ -13,7 +13,7 @@ var RunTestsCmd = &cobra.Command{
 	Use:   "run-tests",
 	Short: "Run tests to find flaky ones",
 	Run: func(cmd *cobra.Command, args []string) {
-		repoPath, _ := cmd.Flags().GetString("repo")
+		repoPath, _ := cmd.Flags().GetString("repo-path")
 		testPackagesJson, _ := cmd.Flags().GetString("test-packages-json")
 		count, _ := cmd.Flags().GetInt("count")
 		useRace, _ := cmd.Flags().GetBool("race")
@@ -41,7 +41,7 @@ var RunTestsCmd = &cobra.Command{
 }
 
 func init() {
-	RunTestsCmd.Flags().StringP("repo", "r", ".", "Path to the Git repository")
+	RunTestsCmd.Flags().StringP("repo-path", "r", ".", "Path to the Git repository")
 	RunTestsCmd.Flags().String("test-packages-json", "", "JSON-encoded string of test packages")
 	RunTestsCmd.Flags().IntP("count", "c", 1, "Number of times to run the tests")
 	RunTestsCmd.Flags().Bool("race", false, "Enable the race detector")

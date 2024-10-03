@@ -7,10 +7,11 @@ import (
 	"strings"
 )
 
-// FindChangedFiles executes a git diff and pipes the output through a user-defined grep command or sequence.
+// FindChangedFiles executes a git diff against a specified base reference and pipes the output through a user-defined grep command or sequence.
+// The baseRef parameter specifies the base git reference for comparison (e.g., "main", "develop").
 // The grepCmd parameter should include the full command to be executed after git diff, such as "grep '_test.go$'" or "grep -v '_test.go$' | sort".
-func FindChangedFiles(repoPath, grepCmd string) ([]string, error) {
-	cmdString := fmt.Sprintf("git diff --name-only --diff-filter=AM develop...HEAD | %s", grepCmd)
+func FindChangedFiles(repoPath, baseRef, grepCmd string) ([]string, error) {
+	cmdString := fmt.Sprintf("git diff --name-only --diff-filter=AM %s...HEAD | %s", baseRef, grepCmd)
 	cmd := exec.Command("bash", "-c", cmdString)
 	cmd.Dir = repoPath
 	var out bytes.Buffer

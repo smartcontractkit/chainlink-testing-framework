@@ -12,14 +12,16 @@ import (
 // findtestsCmd represents the findtests command
 var FindTestsCmd = &cobra.Command{
 	Use:   "find-tests",
+	Long:  "Analyzes the git repository for changed files against a specified base reference and determines the test packages that are potentially impacted",
 	Short: "Find tests based on changed Go files",
 	Run: func(cmd *cobra.Command, args []string) {
-		repoPath, _ := cmd.Flags().GetString("repo")
+		repoPath, _ := cmd.Flags().GetString("repo-path")
 		jsonOutput, _ := cmd.Flags().GetBool("json")
+		baseRef, _ := cmd.Flags().GetString("repo-base-ref")
 
 		// Find all changes in test files and get their package names
 
-		changedTestFiles, err := utils.FindChangedFiles(repoPath, "grep '_test\\.go$'")
+		changedTestFiles, err := utils.FindChangedFiles(repoPath, baseRef, "grep '_test\\.go$'")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error finding changed test files: %s\n", err)
 			os.Exit(1)
@@ -33,7 +35,7 @@ var FindTestsCmd = &cobra.Command{
 
 		// Find all changes in non-test files
 
-		changedFiles, err := utils.FindChangedFiles(repoPath, "grep -v '_test\\.go$'")
+		changedFiles, err := utils.FindChangedFiles(repoPath, baseRef, "grep -v '_test\\.go$'")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error finding changed non-test packages: %s\n", err)
 			os.Exit(1)
@@ -72,6 +74,11 @@ var FindTestsCmd = &cobra.Command{
 }
 
 func init() {
-	FindTestsCmd.Flags().StringP("repo", "r", ".", "Path to the Git repository")
+	FindTestsCmd.Flags().StringP("repo-path", "r", ".", "Path to the Git repository")
+	FindTestsCmd.Flags().String("repo-base-ref", "", "Git base reference (branch, tag, commit) for comparing changes. Required.")
 	FindTestsCmd.Flags().Bool("json", false, "Output the results in JSON format")
+
+	if err := FindTestsCmd.MarkFlagRequired("repo-base-ref"); err != nil {
+		fmt.Println("Error marking base-ref as required:", err)
+	}
 }
