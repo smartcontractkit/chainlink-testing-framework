@@ -58,7 +58,7 @@ var FindTestsCmd = &cobra.Command{
 		allTestPackages = utils.Deduplicate(allTestPackages)
 
 		if jsonOutput {
-			data, err := json.MarshalIndent(allTestPackages, "", "  ")
+			data, err := json.Marshal(allTestPackages)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error marshaling test files to JSON: %s\n", err)
 				os.Exit(1)
