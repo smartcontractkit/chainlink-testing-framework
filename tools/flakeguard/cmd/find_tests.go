@@ -21,6 +21,8 @@ var FindTestsCmd = &cobra.Command{
 		repoPath, _ := cmd.Flags().GetString("repo")
 		jsonOutput, _ := cmd.Flags().GetBool("json")
 
+		// Find all changes in test files and get their package names
+
 		testFiles, err := FindChangedTestFiles(repoPath)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error finding changed test files: %s\n", err)
@@ -33,8 +35,26 @@ var FindTestsCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
+		// Find all changes in non-test files
+
+		changedPackages, err := FindChangedNonTestPackages(repoPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error finding changed non-test packages: %s\n", err)
+			os.Exit(1)
+		}
+
+		dependentTestPackages, err := FindDependentPackages(repoPath, changedPackages)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error finding dependent test packages: %s\n", err)
+			os.Exit(1)
+		}
+
+		// Combine and deduplicate test package names
+		allTestPackages := append(testPackages, dependentTestPackages...)
+		allTestPackages = deduplicate(allTestPackages)
+
 		if jsonOutput {
-			data, err := json.MarshalIndent(testPackages, "", "  ")
+			data, err := json.MarshalIndent(allTestPackages, "", "  ")
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error marshaling test files to JSON: %s\n", err)
 				os.Exit(1)
@@ -42,7 +62,7 @@ var FindTestsCmd = &cobra.Command{
 			fmt.Println(string(data))
 		} else {
 			fmt.Println("Changed test packages:")
-			for _, file := range testPackages {
+			for _, file := range allTestPackages {
 				fmt.Println(file)
 			}
 		}
@@ -74,97 +94,7 @@ func GetFilePackages(repoPath string, files []string) ([]string, error) {
 	return getPackageNames(uniqueDirs, repoPath), nil
 }
 
-// TODO: currently this prints package names that import modified packages
-// Refactor to return the unique list of packages to run based on list of modified packages
-// TODO: create another function to print all test names to run based on the list of packages go test -v github.com/smartcontractkit/chainlink/v2/core/services/ocr2/plugins/ccip -list .
-func findPackageWithDependencies(repoPath string, packages []string) {
-
-	// Find all Go test packages in the current module
-	cmd := exec.Command("go", "list", "-f", `{{if .TestGoFiles}}{{.ImportPath}} {{join .Imports " "}} {{join .TestImports " "}}{{end}}`, "./...")
-	cmd.Dir = repoPath
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error running go list: %s\n", err)
-		return
-	}
-
-	// Scan through each package and check if it imports any of the modified packages
-	scanner := bufio.NewScanner(strings.NewReader(string(output)))
-	for scanner.Scan() {
-		line := scanner.Text()
-		parts := strings.SplitN(line, " ", 3)
-		if len(parts) < 3 {
-			continue // Skip entries without enough parts
-		}
-		packageName := parts[0]
-		// filePath := parts[1] + parts[2]
-
-		// cmd := exec.Command("go", "list", "-f", `{{join .Imports " "}} {{join .TestImports " "}}`, packageName)
-		// cmd.Dir = repoPath
-		// importsOutput, err := cmd.CombinedOutput()
-		dependencies, err := getDependencies(packageName, repoPath)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error running go list for imports: %s\n", err)
-			continue
-		}
-
-		for _, p := range packages {
-			for _, imp := range dependencies {
-				if imp == p {
-					fmt.Printf("Package %s depends on package %s\n", packageName, p)
-					break
-				}
-			}
-		}
-	}
-}
-
-func getDependencies(packageName, dir string) ([]string, error) {
-	cmd := exec.Command("go", "list", "-f", `{{join .Deps " "}}`, packageName)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Dir = dir
-	err := cmd.Run()
-	if err != nil {
-		return nil, err
-	}
-	return strings.Fields(out.String()), nil
-}
-
-func findTestPackagesToRun(repoPath string) ([]string, error) {
-	changedTestPackages, err := FindChangedTestFiles(repoPath)
-	if err != nil {
-		return nil, err
-	}
-
-	affectedTestPackages, err := findChangedNonTestPackages(repoPath)
-	if err != nil {
-		return nil, err
-	}
-
-	// Combine and deduplicate test package names
-	allTestPackages := append(changedTestPackages, affectedTestPackages...)
-	return deduplicate(allTestPackages), nil
-}
-
-// Determine affected test packages by analyzing package dependencies
-func getAffectedTestPackages(changedPackages []string, allPackages map[string][]string) []string {
-	testPackages := []string{}
-	// This is a simple and non-optimal way to check dependencies
-	for pkg, deps := range allPackages {
-		for _, dep := range deps {
-			for _, changed := range changedPackages {
-				if dep == changed {
-					testPackages = append(testPackages, pkg)
-					break
-				}
-			}
-		}
-	}
-	return testPackages
-}
-
-func findChangedNonTestPackages(repoPath string) ([]string, error) {
+func FindChangedNonTestPackages(repoPath string) ([]string, error) {
 	cmd := exec.Command("bash", "-c", "git diff --name-only develop...HEAD | grep -v '_test\\.go$'")
 	cmd.Dir = repoPath
 	var out bytes.Buffer
@@ -172,35 +102,47 @@ func findChangedNonTestPackages(repoPath string) ([]string, error) {
 	if err := cmd.Run(); err != nil {
 		return nil, fmt.Errorf("error executing git diff command: %w", err)
 	}
-
 	files := strings.Split(strings.TrimSpace(out.String()), "\n")
 	if len(files) == 1 && files[0] == "" {
 		return []string{}, nil
 	}
-
-	uniqueDirs := uniqueDirectories(files)
-	return getPackageNames(uniqueDirs, repoPath), nil
+	return GetFilePackages(repoPath, files)
 }
 
-func getTestPackageNamesFromDirs(dirs []string, repoPath string) []string {
-	var packageNames []string
-	for _, dir := range dirs {
-		if dir == "" {
-			continue
+// FindDependentPackages returns a list of packages that depend on any of the specified packages.
+func FindDependentPackages(repoPath string, targetPackages []string) ([]string, error) {
+	dependentPackages := make([]string, 0)
+
+	// Execute 'go list' to find all Go test packages with their dependencies in the current module
+	cmd := exec.Command("go", "list", "-f", `{{if .TestGoFiles}}{{.ImportPath}} {{join .Imports " "}} {{join .TestImports " "}}{{end}}`, "./...")
+	cmd.Dir = repoPath
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("error running 'go list': %w", err)
+	}
+
+	// Scan each line to determine if it imports any of the target packages
+	scanner := bufio.NewScanner(strings.NewReader(string(output)))
+	for scanner.Scan() {
+		line := scanner.Text()
+		parts := strings.SplitN(line, " ", 3)
+		if len(parts) < 3 {
+			continue // Skip if there aren't enough parts to include imports
 		}
-		cmd := exec.Command("go", "list", "-f", "{{if .TestGoFiles}}{{.ImportPath}}{{end}}", "-test", "./"+dir)
-		cmd.Dir = repoPath
-		out, err := cmd.Output()
-		if err != nil {
-			fmt.Printf("Error getting test packages for directory %s: %s\n", dir, err)
-			continue
-		}
-		packageName := strings.TrimSpace(string(out))
-		if packageName != "" {
-			packageNames = append(packageNames, packageName)
+		packageName := parts[0]
+		imports := strings.Fields(parts[1] + " " + parts[2])
+
+		for _, target := range targetPackages {
+			for _, imp := range imports {
+				if imp == target {
+					dependentPackages = append(dependentPackages, packageName)
+					break
+				}
+			}
 		}
 	}
-	return packageNames
+
+	return dependentPackages, nil
 }
 
 func uniqueDirectories(files []string) []string {
