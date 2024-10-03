@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -17,7 +18,7 @@ func TestLokiClient_SuccessfulQuery(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/loki/api/v1/query_range", r.URL.Path)
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{
+		_, err := w.Write([]byte(`{
 			"data": {
 				"result": [
 					{
@@ -30,6 +31,7 @@ func TestLokiClient_SuccessfulQuery(t *testing.T) {
 				]
 			}
 		}`))
+		assert.NoError(t, err)
 	}))
 	defer mockServer.Close()
 
@@ -87,16 +89,22 @@ func TestLokiClient_AuthenticationFailure(t *testing.T) {
 	logEntries, err := lokiClient.QueryLogs(context.Background())
 	assert.Nil(t, logEntries)
 	assert.Error(t, err)
-	assert.IsType(t, &LokiAPIError{}, err)
 	assert.Equal(t, http.StatusUnauthorized, err.(*LokiAPIError).StatusCode)
+	var lokiErr *LokiAPIError
+	if errors.As(err, &lokiErr) {
+		assert.Equal(t, http.StatusUnauthorized, lokiErr.StatusCode)
+	} else {
+		t.Fatalf("Expected LokiAPIError, got %v", err)
+	}
 }
 
 func TestLokiClient_InternalServerError(t *testing.T) {
 	// Create a mock Loki server
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/loki/api/v1/query_range", r.URL.Path)
-		w.WriteHeader(http.StatusInternalServerError)           // Simulate server error
-		w.Write([]byte(`{"message": "internal server error"}`)) // Error message in the response body
+		w.WriteHeader(http.StatusInternalServerError)                     // Simulate server error
+		_, err := w.Write([]byte(`{"message": "internal server error"}`)) // Error message in the response body
+		assert.NoError(t, err)
 	}))
 	defer mockServer.Close()
 
@@ -117,8 +125,13 @@ func TestLokiClient_InternalServerError(t *testing.T) {
 	logEntries, err := lokiClient.QueryLogs(context.Background())
 	assert.Nil(t, logEntries)
 	assert.Error(t, err)
-	assert.IsType(t, &LokiAPIError{}, err)
 	assert.Equal(t, http.StatusInternalServerError, err.(*LokiAPIError).StatusCode)
+	var lokiErr *LokiAPIError
+	if errors.As(err, &lokiErr) {
+		assert.Equal(t, http.StatusInternalServerError, lokiErr.StatusCode)
+	} else {
+		t.Fatalf("Expected LokiAPIError, got %v", err)
+	}
 }
 
 func TestLokiClient_DebugMode(t *testing.T) {
@@ -130,7 +143,7 @@ func TestLokiClient_DebugMode(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/loki/api/v1/query_range", r.URL.Path)
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{
+		_, err := w.Write([]byte(`{
             "data": {
                 "result": [
                     {
@@ -143,6 +156,7 @@ func TestLokiClient_DebugMode(t *testing.T) {
                 ]
             }
         }`))
+		assert.NoError(t, err)
 	}))
 	defer mockServer.Close()
 
