@@ -14,11 +14,17 @@ func FindChangedFiles(repoPath, baseRef, grepCmd string) ([]string, error) {
 	cmdString := fmt.Sprintf("git diff --name-only --diff-filter=AM %s...HEAD | %s", baseRef, grepCmd)
 	cmd := exec.Command("bash", "-c", cmdString)
 	cmd.Dir = repoPath
+
+	// Using a buffer to capture both stdout and stderr
 	var out bytes.Buffer
 	cmd.Stdout = &out
+	cmd.Stderr = &out // Capturing stderr in the same buffer as stdout
+
+	// Running the command
 	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("error executing command: %w", err)
+		return nil, fmt.Errorf("error executing command: %w; output: %s", err, out.String())
 	}
+
 	files := strings.Split(strings.TrimSpace(out.String()), "\n")
 	if len(files) == 1 && files[0] == "" {
 		return []string{}, nil
