@@ -11,6 +11,23 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
 )
 
+// LokiAPIError is a custom error type for handling non-200 responses from the Loki API
+type LokiAPIError struct {
+	StatusCode int
+	Message    string
+}
+
+// Implement the `Error` interface for LokiAPIError
+func (e *LokiAPIError) Error() string {
+	return fmt.Sprintf("Loki API error: %s (status code: %d)", e.Message, e.StatusCode)
+}
+
+// LokiBasicAuth holds the authentication details for Loki
+type LokiBasicAuth struct {
+	Username string
+	Password string
+}
+
 // LokiResponse represents the structure of the response from Loki
 type LokiResponse struct {
 	Data struct {
@@ -31,7 +48,7 @@ type LokiLogEntry struct {
 type LokiClient struct {
 	BaseURL     string
 	TenantID    string
-	BasicAuth   string
+	BasicAuth   LokiBasicAuth
 	QueryParams LokiQueryParams
 	Logger      logging.Logger
 	RestyClient *resty.Client
@@ -46,7 +63,7 @@ type LokiQueryParams struct {
 }
 
 // NewLokiClient creates a new Loki client with the given parameters, initializes a logger, and configures Resty with debug mode
-func NewLokiClient(baseURL, tenantID, basicAuth string, queryParams LokiQueryParams) *LokiClient {
+func NewLokiClient(baseURL, tenantID string, auth LokiBasicAuth, queryParams LokiQueryParams) *LokiClient {
 	logging.Init()
 
 	logger := logging.GetLogger(nil, "LOKI_CLIENT_LOG_LEVEL")
@@ -64,7 +81,7 @@ func NewLokiClient(baseURL, tenantID, basicAuth string, queryParams LokiQueryPar
 	return &LokiClient{
 		BaseURL:     baseURL,
 		TenantID:    tenantID,
-		BasicAuth:   basicAuth,
+		BasicAuth:   auth,
 		QueryParams: queryParams,
 		Logger:      logger,
 		RestyClient: restyClient,
@@ -96,7 +113,7 @@ func (lc *LokiClient) QueryLogs(ctx context.Context) ([]LokiLogEntry, error) {
 	resp, err := lc.RestyClient.R().
 		SetContext(ctx).
 		SetHeader("X-Scope-OrgID", lc.TenantID).
-		SetBasicAuth(lc.BasicAuth, "").
+		SetBasicAuth(lc.BasicAuth.Username, lc.BasicAuth.Password).
 		SetQueryParams(params).
 		Get(lc.BaseURL + "/loki/api/v1/query_range")
 
@@ -110,8 +127,19 @@ func (lc *LokiClient) QueryLogs(ctx context.Context) ([]LokiLogEntry, error) {
 
 	// Log non-200 responses
 	if resp.StatusCode() != 200 {
-		lc.Logger.Error().Int("StatusCode", resp.StatusCode()).Dur("duration", duration).Msg("Loki API returned non-200 status")
-		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode())
+		bodySnippet := string(resp.Body())
+		if len(bodySnippet) > 200 {
+			bodySnippet = bodySnippet[:200] + "..."
+		}
+		lc.Logger.Error().
+			Int("StatusCode", resp.StatusCode()).
+			Dur("duration", duration).
+			Str("ResponseBody", bodySnippet).
+			Msg("Loki API returned non-200 status")
+		return nil, &LokiAPIError{
+			StatusCode: resp.StatusCode(),
+			Message:    "unexpected status code from Loki API",
+		}
 	}
 
 	// Log successful response
