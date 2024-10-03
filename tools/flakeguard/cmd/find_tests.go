@@ -35,7 +35,7 @@ var FindTestsCmd = &cobra.Command{
 
 		// Find all changes in non-test files
 
-		changedFiles, err := utils.FindChangedFiles(repoPath, baseRef, "grep -v '_test\\.go$'")
+		changedFiles, err := utils.FindChangedFiles(repoPath, baseRef, "grep -v '_test\\.go$' | grep '\\.go$'")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error finding changed non-test packages: %s\n", err)
 			os.Exit(1)
