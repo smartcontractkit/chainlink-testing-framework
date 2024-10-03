@@ -14,11 +14,11 @@ var RunTestsCmd = &cobra.Command{
 	Short: "Run tests to find flaky ones",
 	Run: func(cmd *cobra.Command, args []string) {
 		repoPath, _ := cmd.Flags().GetString("repo")
-		testPathsJson, _ := cmd.Flags().GetString("test-paths-json")
+		testPackagesJson, _ := cmd.Flags().GetString("test-packages-json")
 
-		var testPaths []string
-		if err := json.Unmarshal([]byte(testPathsJson), &testPaths); err != nil {
-			fmt.Fprintf(os.Stderr, "Error decoding test paths JSON: %s\n", err)
+		var testPackages []string
+		if err := json.Unmarshal([]byte(testPackagesJson), &testPackages); err != nil {
+			fmt.Fprintf(os.Stderr, "Error decoding test packages JSON: %s\n", err)
 			os.Exit(1)
 		}
 
@@ -27,7 +27,7 @@ var RunTestsCmd = &cobra.Command{
 			Dir:     repoPath,
 		}
 
-		if err := runner.RunTests(testPaths); err != nil {
+		if err := runner.RunTests(testPackages); err != nil {
 			fmt.Fprintf(os.Stderr, "Error running tests: %s\n", err)
 			os.Exit(1)
 		}
@@ -36,5 +36,5 @@ var RunTestsCmd = &cobra.Command{
 
 func init() {
 	RunTestsCmd.Flags().StringP("repo", "r", ".", "Path to the Git repository")
-	RunTestsCmd.Flags().String("test-paths-json", "", "JSON-encoded string of test paths")
+	RunTestsCmd.Flags().String("test-packages-json", "", "JSON-encoded string of test packages")
 }

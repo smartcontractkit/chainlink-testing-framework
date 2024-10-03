@@ -27,16 +27,22 @@ var FindTestsCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
+		testPackages, err := GetFilePackages(repoPath, testFiles)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error getting package names for test files: %s\n", err)
+			os.Exit(1)
+		}
+
 		if jsonOutput {
-			data, err := json.MarshalIndent(testFiles, "", "  ")
+			data, err := json.MarshalIndent(testPackages, "", "  ")
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error marshaling test files to JSON: %s\n", err)
 				os.Exit(1)
 			}
 			fmt.Println(string(data))
 		} else {
-			fmt.Println("Changed test files:")
-			for _, file := range testFiles {
+			fmt.Println("Changed test packages:")
+			for _, file := range testPackages {
 				fmt.Println(file)
 			}
 		}
@@ -61,6 +67,11 @@ func FindChangedTestFiles(repoPath string) ([]string, error) {
 		return []string{}, nil
 	}
 	return testFiles, nil
+}
+
+func GetFilePackages(repoPath string, files []string) ([]string, error) {
+	uniqueDirs := uniqueDirectories(files)
+	return getPackageNames(uniqueDirs, repoPath), nil
 }
 
 // TODO: currently this prints package names that import modified packages
