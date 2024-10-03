@@ -35,7 +35,7 @@ func TestLokiClient_SuccessfulQuery(t *testing.T) {
 
 	// Create a BasicAuth object for testing
 	auth := LokiBasicAuth{
-		Username: "test-user",
+		Login:    "test-login",
 		Password: "test-password",
 	}
 
@@ -72,7 +72,7 @@ func TestLokiClient_AuthenticationFailure(t *testing.T) {
 
 	// Create a Loki client with incorrect credentials
 	auth := LokiBasicAuth{
-		Username: "wrong-user",
+		Login:    "wrong-login",
 		Password: "wrong-password",
 	}
 	queryParams := LokiQueryParams{
@@ -102,7 +102,7 @@ func TestLokiClient_InternalServerError(t *testing.T) {
 
 	// Create a Loki client
 	auth := LokiBasicAuth{
-		Username: "test-user",
+		Login:    "test-login",
 		Password: "test-password",
 	}
 	queryParams := LokiQueryParams{
@@ -148,7 +148,7 @@ func TestLokiClient_DebugMode(t *testing.T) {
 
 	// Create a Loki client
 	auth := LokiBasicAuth{
-		Username: "test-user",
+		Login:    "test-login",
 		Password: "test-password",
 	}
 	queryParams := LokiQueryParams{

@@ -24,7 +24,7 @@ func (e *LokiAPIError) Error() string {
 
 // LokiBasicAuth holds the authentication details for Loki
 type LokiBasicAuth struct {
-	Username string
+	Login    string
 	Password string
 }
 
@@ -113,7 +113,7 @@ func (lc *LokiClient) QueryLogs(ctx context.Context) ([]LokiLogEntry, error) {
 	resp, err := lc.RestyClient.R().
 		SetContext(ctx).
 		SetHeader("X-Scope-OrgID", lc.TenantID).
-		SetBasicAuth(lc.BasicAuth.Username, lc.BasicAuth.Password).
+		SetBasicAuth(lc.BasicAuth.Login, lc.BasicAuth.Password).
 		SetQueryParams(params).
 		Get(lc.BaseURL + "/loki/api/v1/query_range")
 
