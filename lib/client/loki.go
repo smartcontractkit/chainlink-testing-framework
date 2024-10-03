@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"os"
 	"time"
 
 	"github.com/go-resty/resty/v2"
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
 )
 
 // LokiResponse represents the structure of the response from Loki
@@ -32,6 +33,8 @@ type LokiClient struct {
 	TenantID    string
 	BasicAuth   string
 	QueryParams LokiQueryParams
+	Logger      logging.Logger
+	RestyClient *resty.Client
 }
 
 // LokiQueryParams holds the parameters required for querying Loki
@@ -42,54 +45,94 @@ type LokiQueryParams struct {
 	Limit     int
 }
 
-// NewLokiClient creates a new Loki client with the given parameters
+// NewLokiClient creates a new Loki client with the given parameters, initializes a logger, and configures Resty with debug mode
 func NewLokiClient(baseURL, tenantID, basicAuth string, queryParams LokiQueryParams) *LokiClient {
+	logging.Init()
+
+	logger := logging.GetLogger(nil, "LOKI_CLIENT_LOG_LEVEL")
+	logger.Info().
+		Str("BaseURL", baseURL).
+		Str("TenantID", tenantID).
+		Msg("Initializing Loki Client")
+
+	// Set debug mode for Resty if RESTY_DEBUG is enabled
+	isDebug := os.Getenv("RESTY_DEBUG") == "true"
+
+	restyClient := resty.New().
+		SetDebug(isDebug)
+
 	return &LokiClient{
 		BaseURL:     baseURL,
 		TenantID:    tenantID,
 		BasicAuth:   basicAuth,
 		QueryParams: queryParams,
+		Logger:      logger,
+		RestyClient: restyClient,
 	}
 }
 
 // QueryLogs queries Loki logs based on the query parameters and returns the raw log entries
 func (lc *LokiClient) QueryLogs(ctx context.Context) ([]LokiLogEntry, error) {
-	client := resty.New()
+	// Log request details
+	lc.Logger.Info().
+		Str("Query", lc.QueryParams.Query).
+		Str("StartTime", lc.QueryParams.StartTime.Format(time.RFC3339Nano)).
+		Str("EndTime", lc.QueryParams.EndTime.Format(time.RFC3339Nano)).
+		Int("Limit", lc.QueryParams.Limit).
+		Msg("Making request to Loki API")
+
+	// Start tracking request duration
+	start := time.Now()
 
 	// Build query parameters
 	params := map[string]string{
 		"query": lc.QueryParams.Query,
-		"start": fmt.Sprintf("%d", lc.QueryParams.StartTime.UnixNano()),
-		"end":   fmt.Sprintf("%d", lc.QueryParams.EndTime.UnixNano()),
+		"start": lc.QueryParams.StartTime.Format(time.RFC3339Nano),
+		"end":   lc.QueryParams.EndTime.Format(time.RFC3339Nano),
 		"limit": fmt.Sprintf("%d", lc.QueryParams.Limit),
 	}
 
-	// Send request using Resty
-	resp, err := client.R().
+	// Send request using the pre-configured Resty client
+	resp, err := lc.RestyClient.R().
 		SetContext(ctx).
 		SetHeader("X-Scope-OrgID", lc.TenantID).
 		SetBasicAuth(lc.BasicAuth, "").
 		SetQueryParams(params).
 		Get(lc.BaseURL + "/loki/api/v1/query_range")
 
+	// Track request duration
+	duration := time.Since(start)
+
 	if err != nil {
-		return nil, fmt.Errorf("error querying Loki: %w", err)
+		lc.Logger.Error().Err(err).Dur("duration", duration).Msg("Error querying Loki")
+		return nil, err
 	}
 
-	// Check response status
+	// Log non-200 responses
 	if resp.StatusCode() != 200 {
-		log.Printf("Loki API returned status code: %d", resp.StatusCode())
-		return nil, fmt.Errorf("unexpected response status: %d", resp.StatusCode())
+		lc.Logger.Error().Int("StatusCode", resp.StatusCode()).Dur("duration", duration).Msg("Loki API returned non-200 status")
+		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode())
 	}
+
+	// Log successful response
+	lc.Logger.Info().
+		Int("StatusCode", resp.StatusCode()).
+		Dur("duration", duration).
+		Msg("Successfully queried Loki API")
 
 	// Parse the response into the LokiResponse struct
 	var lokiResp LokiResponse
 	if err := json.Unmarshal(resp.Body(), &lokiResp); err != nil {
-		return nil, fmt.Errorf("error decoding response: %w", err)
+		lc.Logger.Error().Err(err).Msg("Error decoding response from Loki")
+		return nil, err
 	}
 
 	// Extract log entries from the response
 	logEntries := lc.extractRawLogEntries(lokiResp)
+
+	// Log the number of entries retrieved
+	lc.Logger.Info().Int("LogEntries", len(logEntries)).Msg("Successfully retrieved logs from Loki")
+
 	return logEntries, nil
 }
 
