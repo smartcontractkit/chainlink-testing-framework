@@ -21,7 +21,7 @@ jobs:
           filters: |
             src:
               - 'wasp/**'
-      - uses: cachix/install-nix-action@v18
+      - uses: cachix/install-nix-action@v30
         if: steps.changes.outputs.src == 'true'
         with:
           nix_path: nixpkgs=channel:nixos-unstable
