@@ -4,8 +4,8 @@ go 1.22.5
 
 require (
 	github.com/BurntSushi/toml v1.3.2
-	github.com/aws/aws-sdk-go-v2 v1.25.2
-	github.com/aws/aws-sdk-go-v2/config v1.15.1
+	github.com/aws/aws-sdk-go-v2 v1.32.1
+	github.com/aws/aws-sdk-go-v2/config v1.27.42
 	github.com/aws/aws-sdk-go-v2/service/ecr v1.27.1
 	github.com/go-playground/validator/v10 v10.19.0
 	github.com/google/uuid v1.3.1
@@ -20,15 +20,20 @@ require (
 )
 
 require (
-	github.com/aws/aws-sdk-go-v2/credentials v1.11.0 // indirect
-	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.12.1 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.2 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.2 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/ini v1.3.8 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.11.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.16.1 // indirect
-	github.com/aws/smithy-go v1.20.1
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.12.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.28.1 // indirect
+)
+
+require (
+	github.com/aws/aws-sdk-go-v2/credentials v1.17.40 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.16 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.20 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.20 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.12.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.24.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.32.1 // indirect
+	github.com/aws/smithy-go v1.22.0
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.3 // indirect
