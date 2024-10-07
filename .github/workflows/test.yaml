@@ -50,7 +50,7 @@ jobs:
             make test_unit"
       - name: Publish Artifacts
         if: failure()
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
+        uses: actions/upload-artifact@604373da6381bf24206979c74d06a550515601b9 # v4.4.1
         with:
           name: test-logs
           path: /tmp/gotest.log

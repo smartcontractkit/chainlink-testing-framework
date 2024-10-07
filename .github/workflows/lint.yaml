@@ -78,7 +78,7 @@ jobs:
         run: test -f ${{ matrix.project.path }}golangci-lint-report.xml || true
       - name: Store lint report artifact
         if: always()
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
+        uses: actions/upload-artifact@604373da6381bf24206979c74d06a550515601b9 # v4.4.1
         with:
           name: golangci-lint-report-${{ matrix.project.name }}
           path: ${{ matrix.project.path }}golangci-lint-report.xml

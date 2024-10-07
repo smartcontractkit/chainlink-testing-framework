@@ -99,7 +99,7 @@ jobs:
           QA_KUBECONFIG: ${{ secrets.QA_KUBECONFIG }}
           run_setup: false
       - name: Upload test log
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
+        uses: actions/upload-artifact@604373da6381bf24206979c74d06a550515601b9 # v4.4.1
         if: failure()
         with:
           name: test-log
@@ -147,7 +147,7 @@ jobs:
           QA_KUBECONFIG: ${{ secrets.QA_KUBECONFIG }}
           run_setup: false
       - name: Upload test log
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
+        uses: actions/upload-artifact@604373da6381bf24206979c74d06a550515601b9 # v4.4.1
         if: failure()
         with:
           name: remote-runner-test-log
