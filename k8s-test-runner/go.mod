@@ -4,7 +4,7 @@ go 1.22.5
 
 require (
 	github.com/BurntSushi/toml v1.3.2
-	github.com/aws/aws-sdk-go-v2 v1.25.2
+	github.com/aws/aws-sdk-go-v2 v1.32.1
 	github.com/aws/aws-sdk-go-v2/config v1.15.1
 	github.com/aws/aws-sdk-go-v2/service/ecr v1.27.1
 	github.com/go-playground/validator/v10 v10.19.0
@@ -28,7 +28,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.11.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.16.1 // indirect
-	github.com/aws/smithy-go v1.20.1
+	github.com/aws/smithy-go v1.22.0
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.3 // indirect
