@@ -130,6 +130,24 @@ func TestRPCAPI(t *testing.T) {
 		t.Logf("status: %v", status)
 	})
 
+	t.Run("(anvil) test set storage at address", func(t *testing.T) {
+		ac, err := StartAnvil([]string{"--balance", "1", "--block-time", "5"})
+		require.NoError(t, err)
+		client, err := ethclient.Dial(ac.URL)
+		require.NoError(t, err)
+
+		randomAddress := common.HexToAddress("0x0d2026b3EE6eC71FC6746ADb6311F6d3Ba1C000B")
+
+		anvilClient := NewRPCClient(ac.URL, nil)
+		err = anvilClient.AnvilSetStorageAt([]interface{}{randomAddress, "0x0", "0x420"})
+		require.NoError(t, err)
+		status, err := client.StorageAt(context.Background(), randomAddress, common.HexToHash("0x0"), nil)
+		require.NoError(t, err)
+		require.Equal(t, "0x420", string(status))
+
+		t.Logf("status: %v", status)
+	})
+
 	t.Run("(anvil) test we can shrink the block and control transaction inclusion", func(t *testing.T) {
 		ac, err := StartAnvil([]string{"--balance", "1", "--block-time", "1"})
 		require.NoError(t, err)
