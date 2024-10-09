@@ -757,6 +757,20 @@ var (
 		DefaultGasLimit:           6000000,
 	}
 
+	MantleSepolia blockchain.EVMNetwork = blockchain.EVMNetwork{
+		Name:                      "Mantle Sepolia",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.OptimismClientImplementation,
+		ChainID:                   5003,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       1000,
+		FinalityTag:               true,
+		DefaultGasLimit:           6000000,
+	}
+
 	NexonDev blockchain.EVMNetwork = blockchain.EVMNetwork{
 		Name:                      "Nexon Dev",
 		SupportsEIP1559:           true,
@@ -1076,6 +1090,7 @@ var (
 		"XLAYER_SEPOLIA":        XLayerSepolia,
 		"XLAYER_MAINNET":        XLayerMainnet,
 		"TREASURE_RUBY":         TreasureRuby,
+		"MANTLE_SEPOLIA":        MantleSepolia,
 	}
 )
 
