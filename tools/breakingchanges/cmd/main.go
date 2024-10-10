@@ -48,8 +48,7 @@ func findGoModDirs(rootFolder, subDir string) ([]string, error) {
 }
 
 func getLastTag(pathPrefix string) (string, error) {
-	//nolint
-	cmd := exec.Command("sh", "-c", fmt.Sprintf("git tag | grep '%s' | tail -1", pathPrefix))
+	cmd := exec.Command("sh", "-c", fmt.Sprintf("git tag | grep '%s' | tail -1", pathPrefix)) // #nosec G204
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	err := cmd.Run()

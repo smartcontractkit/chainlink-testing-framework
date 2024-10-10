@@ -124,7 +124,7 @@ func TestAPINonces(t *testing.T) {
 		{
 			name: "with nonce override",
 			transactionOpts: []seth.TransactOpt{
-				seth.WithNonce(big.NewInt(int64(pnonce))),
+				seth.WithNonce(new(big.Int).SetUint64(pnonce)),
 			},
 		},
 	}

@@ -32,7 +32,7 @@ func (m *GasEstimator) Stats(fromNumber uint64, priorityPerc float64) (GasSugges
 			fromNumber = 1
 		}
 	}
-	hist, err := m.Client.Client.FeeHistory(context.Background(), fromNumber, big.NewInt(int64(bn)), []float64{priorityPerc})
+	hist, err := m.Client.Client.FeeHistory(context.Background(), fromNumber, new(big.Int).SetUint64(bn), []float64{priorityPerc})
 	if err != nil {
 		return GasSuggestions{}, err
 	}

@@ -29,7 +29,7 @@ func TestRPCSuite(t *testing.T) {
 		require.NoError(t, err)
 		blockNumber, err := client.BlockNumber(context.Background())
 		require.NoError(t, err)
-		block, err := client.BlockByNumber(context.Background(), big.NewInt(int64(blockNumber)))
+		block, err := client.BlockByNumber(context.Background(), new(big.Int).SetUint64(blockNumber))
 		require.NoError(t, err)
 		// check the base fee of the block
 		require.Equal(t, "2000000000", block.BaseFee().String(), "expected base fee to be 20 gwei")
@@ -41,7 +41,7 @@ func TestRPCSuite(t *testing.T) {
 		require.NoError(t, err)
 		blockNumber, err = client.BlockNumber(context.Background())
 		require.NoError(t, err)
-		block, err = client.BlockByNumber(context.Background(), big.NewInt(int64(blockNumber)))
+		block, err = client.BlockByNumber(context.Background(), new(big.Int).SetUint64(blockNumber))
 		require.NoError(t, err)
 		// check the base fee of the block
 		require.Equal(t, "3000000000", block.BaseFee().String(), "expected base fee to be 30 gwei")
@@ -52,7 +52,7 @@ func TestRPCSuite(t *testing.T) {
 		require.NoError(t, err)
 		blockNumber, err = client.BlockNumber(context.Background())
 		require.NoError(t, err)
-		block, err = client.BlockByNumber(context.Background(), big.NewInt(int64(blockNumber)))
+		block, err = client.BlockByNumber(context.Background(), new(big.Int).SetUint64(blockNumber))
 		require.NoError(t, err)
 		// check the base fee of the block
 		require.Equal(t, "2250000000", block.BaseFee().String(), "expected base fee to be 30 gwei")
