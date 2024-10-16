@@ -15,34 +15,32 @@ func deployAnvil(in *Input) (*Output, error) {
 	entryPoint := []string{"anvil", "--host", "0.0.0.0", "--port", in.Port, "--chain-id", in.ChainID}
 	entryPoint = append(entryPoint, in.DockerCmdParamsOverrides...)
 	bindPort := fmt.Sprintf("%s/tcp", in.Port)
+	containerName := framework.DefaultTCName("anvil")
 
 	req := testcontainers.ContainerRequest{
 		Image:        "ghcr.io/foundry-rs/foundry",
 		Labels:       framework.DefaultTCLabels(),
-		Name:         framework.DefaultTCName("anvil"),
+		Name:         containerName,
 		ExposedPorts: []string{bindPort},
+		Networks:     []string{framework.DefaultNetworkName},
 		NetworkAliases: map[string][]string{
-			"bridge": {"anvil"},
+			framework.DefaultNetworkName: {containerName},
 		},
 		WaitingFor: wait.ForListeningPort(nat.Port(in.Port)).WithStartupTimeout(10 * time.Second),
-		//HostConfigModifier: func(hc *container.HostConfig) {
-		//	hc.NetworkMode = "host"
-		//	hc.PortBindings = framework.MapTheSamePort(bindPort)
-		//},
 		Entrypoint: entryPoint,
 	}
-	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+	_, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
 	})
-	host, err := framework.GetHost(c)
-	if err != nil {
-		return nil, err
-	}
-	mp, err := c.MappedPort(ctx, nat.Port(bindPort))
-	if err != nil {
-		return nil, err
-	}
+	//host, err := framework.GetHost(c)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//mp, err := c.MappedPort(ctx, nat.Port(bindPort))
+	//if err != nil {
+	//	return nil, err
+	//}
 	if err != nil {
 		return nil, err
 	}
@@ -50,8 +48,8 @@ func deployAnvil(in *Input) (*Output, error) {
 		ChainID: in.ChainID,
 		Nodes: []*Node{
 			{
-				WSUrl:   fmt.Sprintf("ws://%s:%s", host, mp.Port()),
-				HTTPUrl: fmt.Sprintf("http://%s:%s", host, mp.Port()),
+				WSUrl:   fmt.Sprintf("ws://%s:%s", containerName, in.Port),
+				HTTPUrl: fmt.Sprintf("http://%s:%s", containerName, in.Port),
 			},
 		},
 	}, nil

@@ -2,12 +2,14 @@ package framework
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/go-playground/validator/v10"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go/network"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -199,15 +201,14 @@ func Load[X any](t *testing.T) (*X, error) {
 	//	}
 	//}
 	// TODO: do we really need more than one environment locally? Do we need more than one in CI so network isolation make sense?
-	//net, err := network.New(
-	//	context.Background(),
-	//	network.WithDriver("bridge"),
-	//	network.WithLabels(map[string]string{"framework": "ctf"}),
-	//)
-	//if err != nil {
-	//	return input, err
-	//}
-	//DefaultNetworkName = net.Name
+	net, err := network.New(
+		context.Background(),
+		network.WithLabels(map[string]string{"framework": "ctf"}),
+	)
+	if err != nil {
+		return input, err
+	}
+	DefaultNetworkName = net.Name
 	if os.Getenv(EnvVarLokiStream) == "true" {
 		err = NewLokiStreamer()
 		require.NoError(t, err)

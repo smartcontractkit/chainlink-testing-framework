@@ -3,7 +3,6 @@ package clnode
 import (
 	"context"
 	"fmt"
-	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/postgres"
@@ -94,11 +93,17 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	}
 
 	bindPort := fmt.Sprintf("%s/tcp", in.Node.Port)
+	containerName := framework.DefaultTCName("clnode")
 
 	req := tc.ContainerRequest{
-		Image:  fmt.Sprintf("%s:%s", in.Node.Image, in.Node.Tag),
-		Name:   framework.DefaultTCName("clnode"),
-		Labels: framework.DefaultTCLabels(),
+		Image:    fmt.Sprintf("%s:%s", in.Node.Image, in.Node.Tag),
+		Name:     containerName,
+		Labels:   framework.DefaultTCLabels(),
+		Networks: []string{framework.DefaultNetworkName},
+		NetworkAliases: map[string][]string{
+			framework.DefaultNetworkName: {containerName},
+		},
+		ExposedPorts: []string{bindPort},
 		Entrypoint: []string{
 			"/bin/sh", "-c",
 			"chainlink -c /config/config -c /config/overrides -c /config/user-overrides -s /config/secrets -s /config/secrets-overrides -s /config/user-secrets-overrides node start -d -p /config/node_password -a /config/apicredentials",
@@ -145,11 +150,10 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 				FileMode:          0644,
 			},
 		},
-		HostConfigModifier: func(hc *container.HostConfig) {
-			// TODO: create networks separately
-			hc.NetworkMode = "host"
-			hc.PortBindings = framework.MapTheSamePort(bindPort)
-		},
+		//HostConfigModifier: func(hc *container.HostConfig) {
+		//	hc.NetworkMode = "host"
+		//	hc.PortBindings = framework.MapTheSamePort(bindPort)
+		//},
 		WaitingFor: wait.ForLog("Listening and serving HTTP").WithStartupTimeout(2 * time.Minute),
 	}
 	c, err := tc.GenericContainer(ctx, tc.GenericContainerRequest{
