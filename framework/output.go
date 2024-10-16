@@ -9,7 +9,7 @@ import (
 )
 
 func NoCache() bool {
-	return os.Getenv("NO_CACHE") == "true"
+	return os.Getenv("CTF_USE_CACHED_OUTPUTS") == "true"
 }
 
 func getBaseConfigPath() (string, error) {

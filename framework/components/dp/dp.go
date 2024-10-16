@@ -3,7 +3,6 @@ package dp
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"net/http"
 )
 
@@ -46,9 +45,6 @@ func runMocks(in *Input) {
 }
 
 func NewMockedDataProvider(in *Input) (*Output, error) {
-	if in.Out != nil && framework.NoCache() {
-		return in.Out, nil
-	}
 	go runMocks(in)
 	out := &Output{
 		Urls: []string{

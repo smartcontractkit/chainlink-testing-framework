@@ -5,8 +5,8 @@ You can use [direnv](https://direnv.net/) or raw `.envrc` files to set up common
 ```
 export CTF_LOG_LEVEL=debug
 export CTF_CONFIGS=smoke.toml
-export NO_CACHE=true
-export LOKI_STREAM=false
+export CTF_USE_CACHED_OUTPUTS=true
+export CTF_LOKI_STREAM=false
 export TESTCONTAINERS_RYUK_DISABLED=true
 ```
 

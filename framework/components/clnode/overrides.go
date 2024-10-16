@@ -109,7 +109,7 @@ func writeUserSecretsOverrides(cfgData string) (string, error) {
 
 func writeDefaultSecrets(pgOut *postgres.Output) (string, error) {
 	secretsPath := filepath.Join(framework.PathCLNode, "secrets.toml")
-	secretsOverrides, err := generateSecretsConfig(pgOut.Url, DefaultTestKeystorePassword)
+	secretsOverrides, err := generateSecretsConfig(pgOut.DockerInternalURL, DefaultTestKeystorePassword)
 	if err != nil {
 		return "", err
 	}

@@ -19,8 +19,10 @@ type Output struct {
 }
 
 type Node struct {
-	WSUrl   string `toml:"ws_url" validate:"required"`
-	HTTPUrl string `toml:"http_url" validate:"required"`
+	WSUrl                 string `toml:"ws_url"`
+	HTTPUrl               string `toml:"http_url"`
+	DockerInternalWSUrl   string `toml:"docker_internal_ws_url" validate:"required"`
+	DockerInternalHTTPUrl string `toml:"docker_internal_http_url" validate:"required"`
 }
 
 func NewBlockchainNetwork(input *Input) (*Output, error) {

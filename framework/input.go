@@ -24,8 +24,8 @@ const (
 
 const (
 	EnvVarTestConfigs       = "CTF_CONFIGS"
-	EnvVarLokiStream        = "LOKI_STREAM"
-	EnvVarAWSSecretsManager = "AWS_SECRETS_MANAGER"
+	EnvVarLokiStream        = "CTF_LOKI_STREAM"
+	EnvVarAWSSecretsManager = "CTF_AWS_SECRETS_MANAGER"
 )
 
 var (
@@ -176,7 +176,7 @@ func validateStruct(s interface{}) error {
 		L.Error().Any("error", e).Send()
 	}
 	if len(errs) > 0 {
-		return fmt.Errorf("promtailConfig validation failed, exiting")
+		return fmt.Errorf("config validation failed\nwe are using 'go-playground/validator', please read more here: https://github.com/go-playground/validator?tab=readme-ov-file#usage-and-documentation")
 	}
 	return nil
 }
@@ -200,7 +200,9 @@ func Load[X any](t *testing.T) (*X, error) {
 	//		return nil, fmt.Errorf("failed to connect AWSSecretsManager: %w", err)
 	//	}
 	//}
-	// TODO: do we really need more than one environment locally? Do we need more than one in CI so network isolation make sense?
+	// TODO: do we really need more than one environment locally? Do we need more than one in CI so network isolation makes sense?
+	// TODO: since CL will became a plugin platform it make sense to re-use one environment per runner and run more than one test now
+	// TODO: can the runner be our isolation, one static network per process (that's because GHA do not allow "host" network mode)
 	net, err := network.New(
 		context.Background(),
 		network.WithLabels(map[string]string{"framework": "ctf"}),

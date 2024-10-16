@@ -39,7 +39,8 @@ type NodeInput struct {
 }
 
 type NodeOut struct {
-	Url string `toml:"url"`
+	Url               string `toml:"url"`
+	DockerInternalURL string `toml:"docker_internal_url"`
 }
 
 func NewNode(in *Input) (*Output, error) {
@@ -172,5 +173,8 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		return nil, err
 	}
 
-	return &NodeOut{Url: fmt.Sprintf("%s:%s", host, mp.Port())}, nil
+	return &NodeOut{
+		DockerInternalURL: fmt.Sprintf("http://%s:%s", containerName, in.Node.Port),
+		Url:               fmt.Sprintf("%s:%s", host, mp.Port()),
+	}, nil
 }

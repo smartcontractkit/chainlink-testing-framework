@@ -115,7 +115,7 @@ func NewLokiStreamer() error {
 
 	cmd := make([]string, 0)
 	cmd = append(cmd, "-config.file=/etc/promtail/promtail-config.yml")
-	if os.Getenv("LOKI_STREAM_DEBUG") != "" {
+	if os.Getenv("CTF_LOKI_STREAM_DEBUG") != "" {
 		cmd = append(cmd, "-log.level=debug")
 	}
 

@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"github.com/docker/go-connections/nat"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
@@ -18,8 +19,8 @@ type Input struct {
 }
 
 type Output struct {
-	ContainerName string
-	Url           string `toml:"url"`
+	Url               string `toml:"url"`
+	DockerInternalURL string `toml:"docker_internal_url"`
 }
 
 func NewPostgreSQL(in *Input) (*Output, error) {
@@ -50,28 +51,36 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 			"-U", in.User, "-p", in.Port, "-c", "select", "1", "-d", in.Database}).
 			WithStartupTimeout(10 * time.Second),
 	}
-	_, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
 	})
 	if err != nil {
 		return nil, err
 	}
-	//host, err := framework.GetHost(c)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//mp, err := c.MappedPort(ctx, nat.Port(bindPort))
-	//if err != nil {
-	//	return nil, err
-	//}
+	host, err := framework.GetHost(c)
+	if err != nil {
+		return nil, err
+	}
+	mp, err := c.MappedPort(ctx, nat.Port(bindPort))
+	if err != nil {
+		return nil, err
+	}
 	return &Output{
-		Url: fmt.Sprintf(
+		DockerInternalURL: fmt.Sprintf(
 			"postgresql://%s:%s@%s:%s/%s?sslmode=disable",
 			in.User,
 			in.Password,
 			containerName,
 			in.Port,
+			in.Database,
+		),
+		Url: fmt.Sprintf(
+			"postgresql://%s:%s@%s:%s/%s?sslmode=disable",
+			in.User,
+			in.Password,
+			host,
+			mp.Port(),
 			in.Database,
 		),
 	}, nil

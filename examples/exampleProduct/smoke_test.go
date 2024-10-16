@@ -65,11 +65,6 @@ func TestMultiNodeMultiNetwork(t *testing.T) {
 	_, err = clnode.NewNode(in.CLNodeTwo)
 	require.NoError(t, err)
 
-	// connect
-	// seth, ctfCLClient, wasp, havoc
-
-	// test / assert
-
 	t.Run("test feature A1", func(t *testing.T) {
 		client := resty.New()
 		_, err := client.R().

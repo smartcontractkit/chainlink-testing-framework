@@ -30,8 +30,8 @@ func NewNetworkCfg(in *NetworkConfig, out *blockchain.Output) (string, error) {
 	}
 	for i, n := range out.Nodes {
 		in.EVMNodes[i].Name = fmt.Sprintf("node-%s-%d", uuid.NewString()[0:5], i)
-		in.EVMNodes[i].WsUrl = n.WSUrl
-		in.EVMNodes[i].HttpUrl = n.HTTPUrl
+		in.EVMNodes[i].WsUrl = n.DockerInternalWSUrl
+		in.EVMNodes[i].HttpUrl = n.DockerInternalHTTPUrl
 	}
 	in.ChainID = out.ChainID
 	resultCfg, err := framework.RenderTemplate(`
