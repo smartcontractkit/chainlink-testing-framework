@@ -39,7 +39,7 @@ func TestMultiNodeMultiNetwork(t *testing.T) {
 		EVMNodes: []*clnode.EVMNode{
 			{
 				SendOnly: false,
-				Order:    50,
+				Order:    100,
 			},
 		},
 	}, bcNodes1)
@@ -50,7 +50,7 @@ func TestMultiNodeMultiNetwork(t *testing.T) {
 		EVMNodes: []*clnode.EVMNode{
 			{
 				SendOnly: false,
-				Order:    50,
+				Order:    100,
 			},
 		},
 	}, bcNodes2)

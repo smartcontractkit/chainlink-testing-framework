@@ -31,7 +31,7 @@ func deployAnvil(in *Input) (*Output, error) {
 		//},
 		Entrypoint: entryPoint,
 	}
-	c, err := testcontainers.GenericContainer(context.Background(), testcontainers.GenericContainerRequest{
+	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
 	})

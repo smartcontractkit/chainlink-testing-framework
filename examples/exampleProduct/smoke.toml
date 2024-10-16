@@ -8,8 +8,8 @@ docker_cmd_params = ['--block-time=1']
 chain_id = '31337'
 
 [[blockchain_a.out.nodes]]
-ws_url = 'ws://127.0.0.1:32862'
-http_url = 'http://127.0.0.1:32862'
+ws_url = 'ws://127.0.0.1:32878'
+http_url = 'http://127.0.0.1:32878'
 
 [blockchain_b]
 type = 'anvil'
@@ -21,8 +21,8 @@ docker_cmd_params = ['--block-time=1']
 chain_id = '31338'
 
 [[blockchain_b.out.nodes]]
-ws_url = 'ws://127.0.0.1:32863'
-http_url = 'http://127.0.0.1:32863'
+ws_url = 'ws://127.0.0.1:32879'
+http_url = 'http://127.0.0.1:32879'
 
 [data_provider]
 port = 8080
@@ -43,7 +43,7 @@ port = '5432'
 image = 'public.ecr.aws/chainlink/chainlink'
 tag = 'v2.17.0'
 port = '6688'
-test_config_overrides = "\n\t[[EVM]]\n\tChainID = '31337'\n\tMinIncomingConfirmations = 1\n\tMinContractPayment = '0.0001 link'\n\n\t\n\t[[EVM.Nodes]]\n\tName = 'node-c8637-0'\n\tWsUrl = 'ws://127.0.0.1:32862'\n\tHttpUrl = 'http://127.0.0.1:32862'\n\tSendOnly = false\n\tOrder = 50\n\t\n\t\n\t[[EVM]]\n\tChainID = '31338'\n\tMinIncomingConfirmations = 1\n\tMinContractPayment = '0.0001 link'\n\n\t\n\t[[EVM.Nodes]]\n\tName = 'node-1c26f-0'\n\tWsUrl = 'ws://127.0.0.1:32863'\n\tHttpUrl = 'http://127.0.0.1:32863'\n\tSendOnly = false\n\tOrder = 50\n\t\n\t"
+test_config_overrides = "\n\t[[EVM]]\n\tChainID = '31337'\n\tMinIncomingConfirmations = 1\n\tMinContractPayment = '0.0001 link'\n\n\t\n\t[[EVM.Nodes]]\n\tName = 'node-c4bbe-0'\n\tWsUrl = 'ws://127.0.0.1:32878'\n\tHttpUrl = 'http://127.0.0.1:32878'\n\tSendOnly = false\n\tOrder = 100\n\t\n\t\n\t[[EVM]]\n\tChainID = '31338'\n\tMinIncomingConfirmations = 1\n\tMinContractPayment = '0.0001 link'\n\n\t\n\t[[EVM.Nodes]]\n\tName = 'node-f0acf-0'\n\tWsUrl = 'ws://127.0.0.1:32879'\n\tHttpUrl = 'http://127.0.0.1:32879'\n\tSendOnly = false\n\tOrder = 100\n\t\n\t"
 user_config_overrides = "[Log]\nLevel = 'debug'\n"
 test_secrets_overrides = ''
 user_secrets_overrides = ''
@@ -54,7 +54,7 @@ url = '127.0.0.1:6688'
 
 [clnode_1.out.postgresql]
 ContainerName = ''
-url = 'postgresql://chainlink:thispasswordislongenough@127.0.0.1:32864/chainlink?sslmode=disable'
+url = 'postgresql://chainlink:thispasswordislongenough@127.0.0.1:32880/chainlink?sslmode=disable'
 
 [clnode_2]
 data_provider_url = 'http://localhost:8080/mock1'
@@ -69,8 +69,8 @@ port = '5433'
 image = 'public.ecr.aws/chainlink/chainlink'
 tag = 'v2.17.0'
 port = '6689'
-test_config_overrides = "\n\t[[EVM]]\n\tChainID = '31338'\n\tMinIncomingConfirmations = 1\n\tMinContractPayment = '0.0001 link'\n\n\t\n\t[[EVM.Nodes]]\n\tName = 'node-1c26f-0'\n\tWsUrl = 'ws://127.0.0.1:32863'\n\tHttpUrl = 'http://127.0.0.1:32863'\n\tSendOnly = false\n\tOrder = 50\n\t\n\t"
-user_config_overrides = "[Log]\nLevel = 'info'\n"
+test_config_overrides = "\n\t[[EVM]]\n\tChainID = '31338'\n\tMinIncomingConfirmations = 1\n\tMinContractPayment = '0.0001 link'\n\n\t\n\t[[EVM.Nodes]]\n\tName = 'node-f0acf-0'\n\tWsUrl = 'ws://127.0.0.1:32879'\n\tHttpUrl = 'http://127.0.0.1:32879'\n\tSendOnly = false\n\tOrder = 100\n\t\n\t"
+user_config_overrides = "[Log]\nLevel = 'debug'\n"
 test_secrets_overrides = ''
 user_secrets_overrides = ''
 
@@ -80,4 +80,4 @@ url = '127.0.0.1:6689'
 
 [clnode_2.out.postgresql]
 ContainerName = ''
-url = 'postgresql://chainlink:thispasswordislongenough@127.0.0.1:32865/chainlink?sslmode=disable'
+url = 'postgresql://chainlink:thispasswordislongenough@127.0.0.1:32881/chainlink?sslmode=disable'
