@@ -12,25 +12,32 @@ func TestNodeRPS(t *testing.T) {
 	srv.Run()
 
 	labels := map[string]string{
-		"branch": "generator_healthcheck",
-		"commit": "generator_healthcheck",
+		"go_test_name": "test1",
+		"branch":       "profile-check",
+		"commit":       "profile-check",
 	}
 
 	_, err := wasp.NewProfile().
 		Add(wasp.NewGenerator(&wasp.Config{
-			T:          t,
-			LoadType:   wasp.RPS,
-			GenName:    "Alpha",
-			Schedule:   wasp.Steps(10, 10, 10, 60*time.Second),
+			LoadType: wasp.RPS,
+			GenName:  "Alpha",
+			Schedule: wasp.Combine(
+				wasp.Steps(1, 1, 9, 30*time.Second),
+				wasp.Plain(10, 30*time.Second),
+				wasp.Steps(10, -1, 10, 30*time.Second),
+			),
 			Gun:        NewExampleHTTPGun(srv.URL()),
 			Labels:     labels,
 			LokiConfig: wasp.NewEnvLokiConfig(),
 		})).
 		Add(wasp.NewGenerator(&wasp.Config{
-			T:          t,
-			LoadType:   wasp.RPS,
-			GenName:    "Beta",
-			Schedule:   wasp.Steps(20, 20, 10, 60*time.Second),
+			LoadType: wasp.RPS,
+			GenName:  "Beta",
+			Schedule: wasp.Combine(
+				wasp.Steps(1, 1, 9, 30*time.Second),
+				wasp.Plain(10, 30*time.Second),
+				wasp.Steps(10, -1, 10, 30*time.Second),
+			),
 			Gun:        NewExampleHTTPGun(srv.URL()),
 			Labels:     labels,
 			LokiConfig: wasp.NewEnvLokiConfig(),

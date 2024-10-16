@@ -1,0 +1,83 @@
+[blockchain_a]
+type = 'anvil'
+port = '8545'
+chain_id = '31337'
+docker_cmd_params = ['--block-time=1']
+
+[blockchain_a.out]
+chain_id = '31337'
+
+[[blockchain_a.out.nodes]]
+ws_url = 'ws://localhost:8545'
+http_url = 'http://localhost:8545'
+
+[blockchain_b]
+type = 'anvil'
+port = '8546'
+chain_id = '31338'
+docker_cmd_params = ['--block-time=1']
+
+[blockchain_b.out]
+chain_id = '31338'
+
+[[blockchain_b.out.nodes]]
+ws_url = 'ws://localhost:8546'
+http_url = 'http://localhost:8546'
+
+[data_provider]
+port = 8080
+
+[data_provider.out]
+data_provider_urls = ['http://localhost:8080/mock1', 'http://localhost:8080/mock2']
+
+[clnode_1]
+data_provider_url = 'http://localhost:8080/mock1'
+
+[clnode_1.db]
+user = 'chainlink'
+password = 'thispasswordislongenough'
+database = 'chainlink'
+port = '5432'
+
+[clnode_1.node]
+image = 'public.ecr.aws/chainlink/chainlink'
+tag = 'v2.17.0'
+port = '6688'
+test_config_overrides = "\n\t[[EVM]]\n\tChainID = '31337'\n\tMinIncomingConfirmations = 1\n\tMinContractPayment = '0.0001 link'\n\n\t\n\t[[EVM.Nodes]]\n\tName = 'node-dddeb-0'\n\tWsUrl = 'ws://localhost:8545'\n\tHttpUrl = 'http://localhost:8545'\n\tSendOnly = false\n\tOrder = 50\n\t\n\t\n\t[[EVM]]\n\tChainID = '31338'\n\tMinIncomingConfirmations = 1\n\tMinContractPayment = '0.0001 link'\n\n\t\n\t[[EVM.Nodes]]\n\tName = 'node-98a3a-0'\n\tWsUrl = 'ws://localhost:8546'\n\tHttpUrl = 'http://localhost:8546'\n\tSendOnly = false\n\tOrder = 50\n\t\n\t"
+user_config_overrides = "[Log]\nLevel = 'debug'\n"
+test_secrets_overrides = ''
+user_secrets_overrides = ''
+
+[clnode_1.out]
+[clnode_1.out.node]
+url = 'localhost:6688'
+
+[clnode_1.out.postgresql]
+ContainerName = ''
+url = 'postgresql://chainlink:thispasswordislongenough@localhost:5432/chainlink?sslmode=disable'
+
+[clnode_2]
+data_provider_url = 'http://localhost:8080/mock1'
+
+[clnode_2.db]
+user = 'chainlink'
+password = 'thispasswordislongenough'
+database = 'chainlink'
+port = '5433'
+
+[clnode_2.node]
+image = 'public.ecr.aws/chainlink/chainlink'
+tag = 'v2.17.0'
+port = '6689'
+test_config_overrides = "\n\t[[EVM]]\n\tChainID = '31338'\n\tMinIncomingConfirmations = 1\n\tMinContractPayment = '0.0001 link'\n\n\t\n\t[[EVM.Nodes]]\n\tName = 'node-98a3a-0'\n\tWsUrl = 'ws://localhost:8546'\n\tHttpUrl = 'http://localhost:8546'\n\tSendOnly = false\n\tOrder = 50\n\t\n\t"
+user_config_overrides = "[Log]\nLevel = 'info'\n"
+test_secrets_overrides = ''
+user_secrets_overrides = ''
+
+[clnode_2.out]
+[clnode_2.out.node]
+url = 'localhost:6689'
+
+[clnode_2.out.postgresql]
+ContainerName = ''
+url = 'postgresql://chainlink:thispasswordislongenough@localhost:5433/chainlink?sslmode=disable'
