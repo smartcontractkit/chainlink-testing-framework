@@ -3,7 +3,7 @@ package postgres
 import (
 	"context"
 	"fmt"
-	"github.com/docker/docker/api/types/container"
+	"github.com/docker/go-connections/nat"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
@@ -31,9 +31,10 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 	containerName := framework.DefaultTCName("postgresql")
 
 	req := testcontainers.ContainerRequest{
-		Image:  "postgres:15.6",
-		Name:   containerName,
-		Labels: framework.DefaultTCLabels(),
+		Image:        "postgres:15.6",
+		Name:         containerName,
+		Labels:       framework.DefaultTCLabels(),
+		ExposedPorts: []string{bindPort},
 		Env: map[string]string{
 			"POSTGRES_USER":     in.User,
 			"POSTGRES_PASSWORD": in.Password,
@@ -42,22 +43,22 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 		Cmd: []string{
 			"postgres", "-c", fmt.Sprintf("port=%s", in.Port),
 		},
-		HostConfigModifier: func(hc *container.HostConfig) {
-			hc.NetworkMode = "host"
-			hc.PortBindings = framework.MapTheSamePort(bindPort)
-		},
 		WaitingFor: tcwait.ForExec([]string{"psql", "-h", "127.0.0.1",
 			"-U", in.User, "-p", in.Port, "-c", "select", "1", "-d", in.Database}).
-			WithStartupTimeout(5 * time.Second),
+			WithStartupTimeout(10 * time.Second),
 	}
-	pgContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
 	})
 	if err != nil {
 		return nil, err
 	}
-	host, err := pgContainer.Host(ctx)
+	host, err := framework.GetHost(c)
+	if err != nil {
+		return nil, err
+	}
+	mp, err := c.MappedPort(ctx, nat.Port(bindPort))
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +68,7 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 			in.User,
 			in.Password,
 			host,
-			in.Port,
+			mp.Port(),
 			in.Database,
 		),
 	}, nil

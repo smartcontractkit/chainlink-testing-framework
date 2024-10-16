@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/go-connections/nat"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/postgres"
 	tc "github.com/testcontainers/testcontainers-go"
@@ -158,9 +159,14 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	if err != nil {
 		return nil, err
 	}
-	host, err := c.Host(ctx)
+	host, err := framework.GetHost(c)
 	if err != nil {
 		return nil, err
 	}
-	return &NodeOut{Url: fmt.Sprintf("%s:%s", host, in.Node.Port)}, nil
+	mp, err := c.MappedPort(ctx, nat.Port(bindPort))
+	if err != nil {
+		return nil, err
+	}
+
+	return &NodeOut{Url: fmt.Sprintf("%s:%s", host, mp.Port())}, nil
 }
