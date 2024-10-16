@@ -10,8 +10,8 @@ import (
 func GetPackageNames(dirs []string, repoPath string) []string {
 	var packageNames []string
 	for _, dir := range dirs {
-		cmd := exec.Command("go", "list", "-f", "{{.ImportPath}}", "./"+dir)
-		cmd.Dir = repoPath
+		cmd := exec.Command("go", "list", "-f", "{{.ImportPath}}", ".")
+		cmd.Dir = repoPath + dir
 		out, err := cmd.Output()
 		if err != nil {
 			fmt.Printf("Error getting package name for directory %s: %s\n", dir, err)
