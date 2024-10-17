@@ -1,4 +1,4 @@
-package dp
+package fake
 
 import (
 	"fmt"
@@ -19,7 +19,7 @@ type Output struct {
 	Urls []string `toml:"data_provider_urls"`
 }
 
-func Mock(path string, response gin.H, statusCode int) error {
+func Fake(path string, response gin.H, statusCode int) error {
 	if MockService == nil {
 		return fmt.Errorf("mock service is not initialized, please set up NewMockedDataProvider in your tests")
 	}

@@ -56,3 +56,25 @@ func NewNetworkCfg(in *NetworkConfig, out *blockchain.Output) (string, error) {
 	fmt.Println(resultCfg)
 	return resultCfg, nil
 }
+
+func NewNetworkCfgOneNetworkAllNodes(out *blockchain.Output) (string, error) {
+	resultCfg, err := framework.RenderTemplate(`
+	[[EVM]]
+	ChainID = '{{.ChainID}}'
+	MinIncomingConfirmations = 1
+	MinContractPayment = '0.0001 link'
+
+	{{range .Nodes}}
+	[[EVM.Nodes]]
+	Name = 'default'
+	WsUrl = '{{.DockerInternalWSUrl}}'
+	HttpUrl = '{{.DockerInternalHTTPUrl}}'
+	{{end}}
+	`, out)
+	if err != nil {
+		return "", err
+	}
+	fmt.Println("Configuring networks for CL node based on blockchain outputs:")
+	fmt.Println(resultCfg)
+	return resultCfg, nil
+}

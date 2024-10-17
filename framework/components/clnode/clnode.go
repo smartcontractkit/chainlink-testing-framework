@@ -151,12 +151,16 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 				FileMode:          0644,
 			},
 		},
-		//HostConfigModifier: func(hc *container.HostConfig) {
-		//	hc.NetworkMode = "host"
-		//	hc.PortBindings = framework.MapTheSamePort(bindPort)
-		//},
 		WaitingFor: wait.ForLog("Listening and serving HTTP").WithStartupTimeout(2 * time.Minute),
 	}
+	// TODO: this is complex, though, desired by developers because of static addresses and fast login
+	// TODO: skipping for now
+	//if in.HostNetworkEnabled {
+	//req.HostConfigModifier = func(hc *container.HostConfig) {
+	//	hc.NetworkMode = "host"
+	//	hc.PortBindings = framework.MapTheSamePort(bindPort)
+	//}
+	//}
 	c, err := tc.GenericContainer(ctx, tc.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
