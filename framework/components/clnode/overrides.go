@@ -55,89 +55,90 @@ func generateDefaultConfig(port string) (string, error) {
 	return output.String(), nil
 }
 
-func writeTestConfigOverrides(cfgData string) (string, error) {
+func writeTestConfigOverrides(cfgData string) (*os.File, error) {
 	cfgPath := filepath.Join(framework.PathCLNode, "overrides.toml")
-	co, err := os.Create(cfgPath)
+	co, err := os.CreateTemp("", filepath.Base(cfgPath))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	_, err = co.WriteString(cfgData)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return cfgPath, nil
+	return co, nil
 }
 
-func writeUserConfigOverrides(cfgData string) (string, error) {
+func writeUserConfigOverrides(cfgData string) (*os.File, error) {
 	cfgPath := filepath.Join(framework.PathCLNode, "user-overrides.toml")
-	co, err := os.Create(cfgPath)
+	co, err := os.CreateTemp("", filepath.Base(cfgPath))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	_, err = co.WriteString(cfgData)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return cfgPath, nil
+	return co, nil
 }
 
-func writeTestSecretsOverrides(cfgData string) (string, error) {
+func writeTestSecretsOverrides(cfgData string) (*os.File, error) {
 	cfgPath := filepath.Join(framework.PathCLNode, "secrets-overrides.toml")
 	co, err := os.Create(cfgPath)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	_, err = co.WriteString(cfgData)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return cfgPath, nil
+	return co, nil
 }
 
-func writeUserSecretsOverrides(cfgData string) (string, error) {
+func writeUserSecretsOverrides(cfgData string) (*os.File, error) {
 	cfgPath := filepath.Join(framework.PathCLNode, "user-secrets-overrides.toml")
 	co, err := os.Create(cfgPath)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	_, err = co.WriteString(cfgData)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return cfgPath, nil
+	return co, nil
 }
 
-func writeDefaultSecrets(pgOut *postgres.Output) (string, error) {
+func writeDefaultSecrets(pgOut *postgres.Output) (*os.File, error) {
 	secretsPath := filepath.Join(framework.PathCLNode, "secrets.toml")
 	secretsOverrides, err := generateSecretsConfig(pgOut.DockerInternalURL, DefaultTestKeystorePassword)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	sec, err := os.Create(secretsPath)
+	filename := filepath.Base(secretsPath)
+	sec, err := os.CreateTemp("", filename)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	_, err = sec.WriteString(secretsOverrides)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return secretsPath, nil
+	return sec, nil
 }
 
-func writeDefaultConfig(in *Input) (string, error) {
+func writeDefaultConfig(in *Input) (*os.File, error) {
 	cfgPath := filepath.Join(framework.PathCLNode, "config.toml")
 	cfg, err := generateDefaultConfig(in.Node.Port)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	filename := filepath.Base(cfgPath)
 	overrides, err := os.CreateTemp("", filename)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	_, err = overrides.WriteString(cfg)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return cfgPath, nil
+	return overrides, nil
 }

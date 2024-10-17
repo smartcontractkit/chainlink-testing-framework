@@ -111,32 +111,32 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		},
 		Files: []tc.ContainerFile{
 			{
-				HostFilePath:      cfgPath,
+				HostFilePath:      cfgPath.Name(),
 				ContainerFilePath: "/config/config",
 				FileMode:          0644,
 			},
 			{
-				HostFilePath:      secretsPath,
+				HostFilePath:      secretsPath.Name(),
 				ContainerFilePath: "/config/secrets",
 				FileMode:          0644,
 			},
 			{
-				HostFilePath:      cfgOverridesPath,
+				HostFilePath:      cfgOverridesPath.Name(),
 				ContainerFilePath: "/config/overrides",
 				FileMode:          0644,
 			},
 			{
-				HostFilePath:      cfgUserOverridesPath,
+				HostFilePath:      cfgUserOverridesPath.Name(),
 				ContainerFilePath: "/config/user-overrides",
 				FileMode:          0644,
 			},
 			{
-				HostFilePath:      cfgSecretsOverridesPath,
+				HostFilePath:      cfgSecretsOverridesPath.Name(),
 				ContainerFilePath: "/config/secrets-overrides",
 				FileMode:          0644,
 			},
 			{
-				HostFilePath:      cfgUserSecretsOverridesPath,
+				HostFilePath:      cfgUserSecretsOverridesPath.Name(),
 				ContainerFilePath: "/config/user-secrets-overrides",
 				FileMode:          0644,
 			},
