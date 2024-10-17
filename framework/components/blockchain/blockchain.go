@@ -7,6 +7,8 @@ import (
 
 type Input struct {
 	Type                     string   `toml:"type" validate:"required,oneof=anvil geth"`
+	Image                    string   `toml:"image" validate:"required"`
+	Tag                      string   `toml:"tag" validate:"required"`
 	Port                     string   `toml:"port" validate:"required"`
 	ChainID                  string   `toml:"chain_id" validate:"required"`
 	DockerCmdParamsOverrides []string `toml:"docker_cmd_params"`

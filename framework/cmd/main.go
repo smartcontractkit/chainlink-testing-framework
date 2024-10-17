@@ -20,7 +20,7 @@ var embeddedObservabilityFiles embed.FS
 
 const (
 	LocalLogsURL      = "http://localhost:3000/explore"
-	LocalPyroscopeURL = "http://localhost:4040"
+	LocalPyroScopeURL = "http://localhost:4040"
 )
 
 func main() {
@@ -168,7 +168,7 @@ func observabilityUp() error {
 		return err
 	}
 	u.RawQuery = queryParams
-	fmt.Printf("Check services logs here: %s\nUse '{job=\"ctf\"}' query to select all logs\nPyroscope traces are available at %s", LocalLogsURL, LocalPyroscopeURL)
+	fmt.Printf("Check services logs here: %s\nUse '{job=\"ctf\"}' query to select all logs\nPyroscope traces are available at %s\n", LocalLogsURL, LocalPyroScopeURL)
 	return nil
 }
 

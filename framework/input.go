@@ -64,7 +64,7 @@ func mergeInputs[T any]() (*T, error) {
 
 		err = toml.Unmarshal(file, &config)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing promtailConfig file %s: %w", path, err)
+			return nil, fmt.Errorf("error parsing config file %s: %w", path, err)
 		}
 	}
 	if L.GetLevel() == zerolog.DebugLevel {

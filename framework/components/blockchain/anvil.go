@@ -18,7 +18,7 @@ func deployAnvil(in *Input) (*Output, error) {
 	containerName := framework.DefaultTCName("anvil")
 
 	req := testcontainers.ContainerRequest{
-		Image:        "f4hrenh9it/foundry:latest",
+		Image:        fmt.Sprintf("%s:%s", in.Image, in.Tag),
 		Labels:       framework.DefaultTCLabels(),
 		Name:         containerName,
 		ExposedPorts: []string{bindPort},

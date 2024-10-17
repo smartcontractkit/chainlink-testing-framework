@@ -1,7 +1,7 @@
 ## Observability tools
 We have some observability tools we use with our harness, you can use them by calling
 ```
-ctf observability up
+ctf obs up
 ```
 Change your `Loki` config in your `.envrc` you use to run tests
 ```
