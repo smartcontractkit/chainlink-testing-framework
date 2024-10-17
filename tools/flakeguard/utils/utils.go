@@ -1,6 +1,8 @@
 package utils
 
-import "path/filepath"
+import (
+	"path/filepath"
+)
 
 func UniqueDirectories(files []string) []string {
 	dirSet := make(map[string]struct{})
@@ -25,9 +27,4 @@ func Deduplicate(items []string) []string {
 		}
 	}
 	return uniqueItems
-}
-
-func GetFilePackages(repoPath string, files []string) ([]string, error) {
-	uniqueDirs := UniqueDirectories(files)
-	return GetPackageNames(uniqueDirs, repoPath), nil
 }

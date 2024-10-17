@@ -10,8 +10,8 @@ import (
 )
 
 var RunTestsCmd = &cobra.Command{
-	Use:   "run-tests",
-	Short: "Run tests to find flaky ones",
+	Use:   "run",
+	Short: "Run tests to check if they are flaky",
 	Run: func(cmd *cobra.Command, args []string) {
 		repoPath, _ := cmd.Flags().GetString("repo-path")
 		testPackagesJson, _ := cmd.Flags().GetString("test-packages-json")
