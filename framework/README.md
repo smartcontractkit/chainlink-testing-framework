@@ -10,7 +10,7 @@ This module includes the CTFv2 harness, a lightweight, modular, and data-driven 
 - **Connectivity**: seamless connection of production-ready components and local components using [testcontainers-go networking](https://golang.testcontainers.org/features/networking/#exposing-host-ports-to-the-container)."
 
 
-### Environment variables
+### Environment variables (Tests, when using in Go code)
 |             Name             |                                                                      Description                                                                       |          Possible values | Default |        Required?         |
 |:----------------------------:|:------------------------------------------------------------------------------------------------------------------------------------------------------:|-------------------------:|:-------:|:------------------------:|
 |         CTF_CONFIGS          | Path(s) to test config files. <br/>Can be more than one, ex.: smoke.toml,smoke_1.toml,smoke_2.toml.<br/>First filepath will hold all the merged values | Any valid TOML file path |         |            ✅             |
@@ -19,3 +19,9 @@ This module includes the CTFv2 harness, a lightweight, modular, and data-driven 
 |           LOKI_URL           |                                            URL to `Loki` push api, should be like`${host}/loki/api/v1/push`                                            |                      URL |    -    | If you use `Loki` then ✅ |
 |        LOKI_TENANT_ID        |                                                Streams all components logs to `Loki`, see params below                                                 |          `true`, `false` |    -    | If you use `Loki` then ✅ |
 | TESTCONTAINERS_RYUK_DISABLED |                                   Testcontainers-Go reaper container, removes all the containers after the test exit                                   |          `true`, `false` | `false` |            🚫            |
+
+### CLI
+```
+go install github.com/smartcontractkit/chainlink-testing-framework/framework/cmd && mv ~/go/bin/cmd ~/go/bin/ctf
+ctf -h
+```

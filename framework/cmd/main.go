@@ -1,54 +1,70 @@
 package main
 
 import (
+	"embed"
 	"fmt"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/urfave/cli/v2"
+	"io/fs"
+	"io/ioutil"
 	"log"
+	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
+)
+
+//go:embed observability/*
+var embeddedObservabilityFiles embed.FS
+
+const (
+	LocalLogsURL      = "http://localhost:3000/explore"
+	LocalPyroscopeURL = "http://localhost:4040"
 )
 
 func main() {
 	app := &cli.App{
-		Name:  "ctf",
-		Usage: "Manage Docker containers, networks, and TOML files for CTF framework",
+		Name:      "ctf",
+		Usage:     "Chainlink Testing Framework CLI",
+		UsageText: "'ctf' is a useful utility that can:\n- clean up test docker containers\n- modify test files\n- create a local observability stack with Grafana/Loki/Pyroscope",
 		Commands: []*cli.Command{
 			{
-				Name:  "clean",
-				Usage: "Remove Docker containers and networks with 'framework=ctf' label",
-				Action: func(c *cli.Context) error {
-					// Execute the bash command
-					err := cleanDockerResources()
-					if err != nil {
-						return fmt.Errorf("failed to clean Docker resources: %w", err)
-					}
-					return nil
+				Name:    "docker",
+				Aliases: []string{"d"},
+				Usage:   "Control docker container marked with 'framework=ctf' label",
+				Subcommands: []*cli.Command{
+					{
+						Name:    "clean",
+						Aliases: []string{"rm"},
+						Usage:   "Remove Docker containers and networks with 'framework=ctf' label",
+						Action: func(c *cli.Context) error {
+							err := cleanDockerResources()
+							if err != nil {
+								return fmt.Errorf("failed to clean Docker resources: %w", err)
+							}
+							return nil
+						},
+					},
 				},
 			},
 			{
-				Name:  "observability",
-				Usage: "Process a TOML file, remove fields with '.out' keys",
+				Name:    "observability",
+				Aliases: []string{"obs"},
+				Usage:   "Spins up a local observability stack: Grafana, Loki, Pyroscope",
 				Subcommands: []*cli.Command{
 					{
 						Name:        "up",
-						Usage:       "",
-						UsageText:   "",
-						Description: "",
+						Usage:       "ctf obs up",
+						Description: "Spins up a local observability stack: Grafana, Loki, Pyroscope",
 						Action:      func(c *cli.Context) error { return observabilityUp() },
 					},
 					{
 						Name:        "down",
-						Usage:       "",
-						UsageText:   "",
-						Description: "",
+						Usage:       "ctf obs down",
+						Description: "Removes local observability stack",
 						Action:      func(c *cli.Context) error { return observabilityDown() },
 					},
-				},
-				Action: func(c *cli.Context) error {
-					_ = c.String("file")
-					// TODO: might be useful?
-					return nil
 				},
 			},
 		},
@@ -74,16 +90,85 @@ func cleanDockerResources() error {
 	return nil
 }
 
+// extractAllFiles goes through the embedded directory and extracts all files to the current directory
+func extractAllFiles(embeddedDir string) error {
+	// Get current working directory where CLI is running
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get current directory: %w", err)
+	}
+
+	// Walk through the embedded files
+	err = fs.WalkDir(embeddedObservabilityFiles, embeddedDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return fmt.Errorf("error walking the directory: %w", err)
+		}
+		if strings.Contains(path, "README.md") {
+			return nil
+		}
+
+		// Skip directories
+		if d.IsDir() {
+			return nil
+		}
+
+		// Read file content from embedded file system
+		content, err := embeddedObservabilityFiles.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("failed to read file %s: %w", path, err)
+		}
+
+		// Determine the target path (strip out the `embeddedDir` part)
+		relativePath, err := filepath.Rel(embeddedDir, path)
+		if err != nil {
+			return fmt.Errorf("failed to determine relative path for %s: %w", path, err)
+		}
+		targetPath := filepath.Join(currentDir, relativePath)
+
+		// Create target directories if necessary
+		targetDir := filepath.Dir(targetPath)
+		err = os.MkdirAll(targetDir, os.ModePerm)
+		if err != nil {
+			return fmt.Errorf("failed to create directory %s: %w", targetDir, err)
+		}
+
+		// Write the file content to the target path
+		err = ioutil.WriteFile(targetPath, content, 0644)
+		if err != nil {
+			return fmt.Errorf("failed to write file %s: %w", targetPath, err)
+		}
+
+		fmt.Printf("Extracted file: %s\n", targetPath)
+		return nil
+	})
+
+	return err
+}
+
 func observabilityUp() error {
+	if err := extractAllFiles("observability"); err != nil {
+		return err
+	}
 	cmd := exec.Command("bash", "-c", fmt.Sprintf(`
 		cd %s && \
-		docker compose up
-	`, framework.ObservabilityPath))
+		docker compose up -d
+	`, "compose"))
 	framework.L.Info().Str("Cmd", cmd.String()).Msg("Running command")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("error running clean command: %s", string(output))
 	}
+	// Original URL
+	baseURL := "http://localhost:3000/explore"
+	queryParams := "panes=%7B%22uRm%22:%7B%22datasource%22:%22P8E80F9AEF21F6940%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22expr%22:%22%7Bjob%3D%5C%22ctf%5C%22%7D%22,%22queryType%22:%22range%22,%22datasource%22:%7B%22type%22:%22loki%22,%22uid%22:%22P8E80F9AEF21F6940%22%7D,%22editorMode%22:%22code%22%7D%5D,%22range%22:%7B%22from%22:%22now-5m%22,%22to%22:%22now%22%7D%7D%7D&schemaVersion=1&orgId=1"
+
+	// Parse base URL
+	u, err := url.Parse(baseURL)
+	if err != nil {
+		return err
+	}
+	u.RawQuery = queryParams
+	fmt.Printf("Check services logs here: %s\nUse '{job=\"ctf\"}' query to select all logs\nPyroscope traces are available at %s", LocalLogsURL, LocalPyroscopeURL)
 	return nil
 }
 
@@ -91,7 +176,7 @@ func observabilityDown() error {
 	cmd := exec.Command("bash", "-c", fmt.Sprintf(`
 		cd %s && \
 		docker compose down -v
-	`, framework.ObservabilityPath))
+	`, "compose"))
 	framework.L.Info().Str("Cmd", cmd.String()).Msg("Running command")
 	output, err := cmd.CombinedOutput()
 	if err != nil {

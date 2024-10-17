@@ -3,7 +3,6 @@ module github.com/smartcontractkit/chainlink-testing-framework/framework
 go 1.22
 
 require (
-	github.com/BurntSushi/toml v1.4.0
 	github.com/aws/aws-sdk-go-v2/config v1.27.39
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.33.3
 	github.com/davecgh/go-spew v1.1.1
