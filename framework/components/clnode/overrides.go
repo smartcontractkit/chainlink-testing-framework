@@ -6,10 +6,8 @@ This file contains data that need to be overridden dynamically when we setup mor
 
 import (
 	"bytes"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/postgres"
 	"os"
-	"path/filepath"
 )
 
 import (
@@ -56,8 +54,7 @@ func generateDefaultConfig(port string) (string, error) {
 }
 
 func writeTestConfigOverrides(cfgData string) (*os.File, error) {
-	cfgPath := filepath.Join(framework.PathCLNode, "overrides.toml")
-	co, err := os.CreateTemp("", filepath.Base(cfgPath))
+	co, err := os.CreateTemp("", "overrides.toml")
 	if err != nil {
 		return nil, err
 	}
@@ -69,8 +66,7 @@ func writeTestConfigOverrides(cfgData string) (*os.File, error) {
 }
 
 func writeUserConfigOverrides(cfgData string) (*os.File, error) {
-	cfgPath := filepath.Join(framework.PathCLNode, "user-overrides.toml")
-	co, err := os.CreateTemp("", filepath.Base(cfgPath))
+	co, err := os.CreateTemp("", "user-overrides.toml")
 	if err != nil {
 		return nil, err
 	}
@@ -82,8 +78,7 @@ func writeUserConfigOverrides(cfgData string) (*os.File, error) {
 }
 
 func writeTestSecretsOverrides(cfgData string) (*os.File, error) {
-	cfgPath := filepath.Join(framework.PathCLNode, "secrets-overrides.toml")
-	co, err := os.Create(cfgPath)
+	co, err := os.CreateTemp("", "secrets-overrides.toml")
 	if err != nil {
 		return nil, err
 	}
@@ -95,8 +90,7 @@ func writeTestSecretsOverrides(cfgData string) (*os.File, error) {
 }
 
 func writeUserSecretsOverrides(cfgData string) (*os.File, error) {
-	cfgPath := filepath.Join(framework.PathCLNode, "user-secrets-overrides.toml")
-	co, err := os.Create(cfgPath)
+	co, err := os.CreateTemp("", "user-secrets-overrides.toml")
 	if err != nil {
 		return nil, err
 	}
@@ -108,13 +102,11 @@ func writeUserSecretsOverrides(cfgData string) (*os.File, error) {
 }
 
 func writeDefaultSecrets(pgOut *postgres.Output) (*os.File, error) {
-	secretsPath := filepath.Join(framework.PathCLNode, "secrets.toml")
 	secretsOverrides, err := generateSecretsConfig(pgOut.DockerInternalURL, DefaultTestKeystorePassword)
 	if err != nil {
 		return nil, err
 	}
-	filename := filepath.Base(secretsPath)
-	sec, err := os.CreateTemp("", filename)
+	sec, err := os.CreateTemp("", "secrets.toml")
 	if err != nil {
 		return nil, err
 	}
@@ -126,13 +118,11 @@ func writeDefaultSecrets(pgOut *postgres.Output) (*os.File, error) {
 }
 
 func writeDefaultConfig(in *Input) (*os.File, error) {
-	cfgPath := filepath.Join(framework.PathCLNode, "config.toml")
 	cfg, err := generateDefaultConfig(in.Node.Port)
 	if err != nil {
 		return nil, err
 	}
-	filename := filepath.Base(cfgPath)
-	overrides, err := os.CreateTemp("", filename)
+	overrides, err := os.CreateTemp("", "config.toml")
 	if err != nil {
 		return nil, err
 	}
