@@ -9,7 +9,6 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"os"
-	"path/filepath"
 	"strings"
 	"text/template"
 	"time"
@@ -23,7 +22,7 @@ type Config struct {
 }
 
 // The promtailConfig function to substitute values and write the final file
-func promtailConfig() error {
+func promtailConfig() (string, error) {
 	// Define the configuration as a string
 	configTemplate := `
 server:
@@ -60,7 +59,7 @@ scrape_configs:
 	lokiTenantID := os.Getenv("LOKI_TENANT_ID")
 
 	if lokiURL == "" || lokiTenantID == "" {
-		return errors.New("LOKI_URL or LOKI_TENANT_ID environment variable is missing")
+		return "", errors.New("LOKI_URL or LOKI_TENANT_ID environment variable is missing")
 	}
 
 	lokiBasicAuth := os.Getenv("LOKI_BASIC_AUTH")
@@ -69,7 +68,7 @@ scrape_configs:
 	if lokiBasicAuth != "" {
 		authParts := strings.SplitN(lokiBasicAuth, ":", 2)
 		if len(authParts) != 2 {
-			return errors.New("LOKI_BASIC_AUTH must be in the format 'user:password'")
+			return "", errors.New("LOKI_BASIC_AUTH must be in the format 'user:password'")
 		}
 		lokiBasicAuthUsername = authParts[0]
 		lokiBasicAuthPassword = authParts[1]
@@ -85,31 +84,32 @@ scrape_configs:
 	filePath := PathRoot + "/promtail-config.yml"
 
 	// Create the file where the promtailConfig will be written
-	configFile, err := os.Create(filePath)
+	configFile, err := os.CreateTemp("", "promtail-config.yml")
 	if err != nil {
-		return fmt.Errorf("could not create promtail-config.yml file: %w", err)
+		return "", fmt.Errorf("could not create promtail-config.yml file: %w", err)
 	}
 	defer configFile.Close()
 
-	tmpl, err := template.New("promtail-promtailConfig").Parse(configTemplate)
+	tmpl, err := template.New("promtail").Parse(configTemplate)
 	if err != nil {
-		return fmt.Errorf("could not parse promtailConfig template: %w", err)
+		return "", fmt.Errorf("could not parse promtailConfig template: %w", err)
 	}
 
 	err = tmpl.Execute(configFile, secrets)
 	if err != nil {
-		return fmt.Errorf("could not execute promtailConfig template: %w", err)
+		return "", fmt.Errorf("could not execute promtailConfig template: %w", err)
 	}
 
 	fmt.Printf("Promtail promtailConfig written to %s\n", filePath)
-	return nil
+	return configFile.Name(), nil
 }
 
 func NewLokiStreamer() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
-	if err := promtailConfig(); err != nil {
+	pcn, err := promtailConfig()
+	if err != nil {
 		return err
 	}
 
@@ -127,7 +127,7 @@ func NewLokiStreamer() error {
 		Labels:       DefaultTCLabels(),
 		Files: []testcontainers.ContainerFile{
 			{
-				HostFilePath:      filepath.Join(PathRoot, "promtail-config.yml"),
+				HostFilePath:      pcn,
 				ContainerFilePath: "/etc/promtail/promtail-config.yml",
 				FileMode:          0644,
 			},
@@ -149,7 +149,7 @@ func NewLokiStreamer() error {
 		},
 	}
 
-	_, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+	_, err = testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
 	})
