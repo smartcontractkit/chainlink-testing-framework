@@ -15,11 +15,19 @@ import (
 )
 
 type OverridesConfig struct {
-	HTTPPort      string
-	SecureCookies bool
+	HTTPPort             string
+	PyroscopeServerAddr  string
+	PyroscopeEnvironment string
+	SecureCookies        bool
 }
 
 const defaultConfigTmpl = `
+{{if .PyroscopeServerAddr}}
+[Pyroscope]
+ServerAddress = '{{.PyroscopeServerAddr}}' 
+Environment = '{{.PyroscopeEnvironment}}'
+{{else}}{{end}}
+
 [Log]
 Level = 'info'
 
@@ -36,9 +44,9 @@ HTTPSPort = 0
 DefaultTimeout = '10s'
 `
 
-func generateDefaultConfig(port string) (string, error) {
+func generateDefaultConfig(in *Input) (string, error) {
 	config := OverridesConfig{
-		HTTPPort:      port,
+		HTTPPort:      in.Node.Port,
 		SecureCookies: false,
 	}
 	tmpl, err := template.New("toml").Parse(defaultConfigTmpl)
@@ -118,7 +126,7 @@ func writeDefaultSecrets(pgOut *postgres.Output) (*os.File, error) {
 }
 
 func writeDefaultConfig(in *Input) (*os.File, error) {
-	cfg, err := generateDefaultConfig(in.Node.Port)
+	cfg, err := generateDefaultConfig(in)
 	if err != nil {
 		return nil, err
 	}

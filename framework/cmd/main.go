@@ -8,7 +8,6 @@ import (
 	"io/fs"
 	"io/ioutil"
 	"log"
-	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -32,7 +31,7 @@ func main() {
 			{
 				Name:    "docker",
 				Aliases: []string{"d"},
-				Usage:   "Control docker container marked with 'framework=ctf' label",
+				Usage:   "Control docker containers marked with 'framework=ctf' label",
 				Subcommands: []*cli.Command{
 					{
 						Name:    "clean",
@@ -137,8 +136,6 @@ func extractAllFiles(embeddedDir string) error {
 		if err != nil {
 			return fmt.Errorf("failed to write file %s: %w", targetPath, err)
 		}
-
-		fmt.Printf("Extracted file: %s\n", targetPath)
 		return nil
 	})
 
@@ -158,16 +155,6 @@ func observabilityUp() error {
 	if err != nil {
 		return fmt.Errorf("error running clean command: %s", string(output))
 	}
-	// Original URL
-	baseURL := "http://localhost:3000/explore"
-	queryParams := "panes=%7B%22uRm%22:%7B%22datasource%22:%22P8E80F9AEF21F6940%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22expr%22:%22%7Bjob%3D%5C%22ctf%5C%22%7D%22,%22queryType%22:%22range%22,%22datasource%22:%7B%22type%22:%22loki%22,%22uid%22:%22P8E80F9AEF21F6940%22%7D,%22editorMode%22:%22code%22%7D%5D,%22range%22:%7B%22from%22:%22now-5m%22,%22to%22:%22now%22%7D%7D%7D&schemaVersion=1&orgId=1"
-
-	// Parse base URL
-	u, err := url.Parse(baseURL)
-	if err != nil {
-		return err
-	}
-	u.RawQuery = queryParams
 	fmt.Printf("Check services logs here: %s\nUse '{job=\"ctf\"}' query to select all logs\nPyroscope traces are available at %s\n", LocalLogsURL, LocalPyroScopeURL)
 	return nil
 }
