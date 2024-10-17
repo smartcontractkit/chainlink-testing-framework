@@ -33,14 +33,14 @@ func deployAnvil(in *Input) (*Output, error) {
 		ContainerRequest: req,
 		Started:          true,
 	})
+	if err != nil {
+		return nil, err
+	}
 	host, err := framework.GetHost(c)
 	if err != nil {
 		return nil, err
 	}
 	mp, err := c.MappedPort(ctx, nat.Port(bindPort))
-	if err != nil {
-		return nil, err
-	}
 	if err != nil {
 		return nil, err
 	}
