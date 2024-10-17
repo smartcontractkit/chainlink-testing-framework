@@ -130,7 +130,8 @@ func writeDefaultConfig(in *Input) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	overrides, err := os.Create(cfgPath)
+	filename := filepath.Base(cfgPath)
+	overrides, err := os.CreateTemp("", filename)
 	if err != nil {
 		return "", err
 	}
