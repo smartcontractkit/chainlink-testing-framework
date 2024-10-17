@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner"
 	"github.com/spf13/cobra"
 )
@@ -21,6 +22,7 @@ var RunTestsCmd = &cobra.Command{
 		useRace, _ := cmd.Flags().GetBool("race")
 		failFast, _ := cmd.Flags().GetBool("fail-fast")
 		outputPath, _ := cmd.Flags().GetString("output-json")
+		threshold, _ := cmd.Flags().GetFloat64("threshold")
 
 		var testPackages []string
 		if testPackagesJson != "" {
@@ -41,31 +43,36 @@ var RunTestsCmd = &cobra.Command{
 			FailFast: failFast,
 		}
 
-		testResults, runErr := runner.RunTests(testPackages)
+		testResults, _ := runner.RunTests(testPackages)
+		// TODO: Handle error
 
-		jsonData, err := json.MarshalIndent(testResults, "", "  ")
-		if err != nil {
-			log.Fatalf("Error marshaling test results to JSON: %v", err)
+		// Filter out failed tests based on the threshold
+		failedTests := reports.FilterFailedTests(testResults, threshold)
+		if len(failedTests) > 0 {
+			jsonData, err := json.MarshalIndent(failedTests, "", "  ")
+			if err != nil {
+				log.Fatalf("Error marshaling test results to JSON: %v", err)
+			}
+			fmt.Printf("Threshold for flaky tests: %.2f\nFailed tests:\n%s\n", threshold, string(jsonData))
+			fmt.Println(string(jsonData))
 		}
-
-		// Print the test results
-		fmt.Println("Test results:")
-		fmt.Println(string(jsonData))
 
 		// Save the test results in JSON format
 		if outputPath != "" {
+			jsonData, err := json.MarshalIndent(testResults, "", "  ")
+			if err != nil {
+				log.Fatalf("Error marshaling test results to JSON: %v", err)
+			}
 			if err := os.WriteFile(outputPath, jsonData, 0644); err != nil {
 				log.Fatalf("Error writing test results to file: %v", err)
 			}
 			fmt.Printf("Test results saved to %s\n", outputPath)
 		}
 
-		// Handle error from running tests
-		if runErr != nil {
-			fmt.Println("Some tests failed")
+		if len(failedTests) > 0 {
 			os.Exit(1)
 		} else {
-			fmt.Println("Tests completed successfully")
+			fmt.Println("All tests passed.")
 		}
 	},
 }
@@ -78,4 +85,5 @@ func init() {
 	RunTestsCmd.Flags().Bool("race", false, "Enable the race detector")
 	RunTestsCmd.Flags().Bool("fail-fast", false, "Stop on the first test failure")
 	RunTestsCmd.Flags().String("output-json", "", "Path to output the test results in JSON format")
+	RunTestsCmd.Flags().Float64("threshold", 0.8, "Threshold for considering a test as flaky")
 }

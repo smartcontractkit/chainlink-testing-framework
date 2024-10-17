@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
 )
 
 type Runner struct {
@@ -19,8 +21,8 @@ type Runner struct {
 
 // RunTests executes the tests for each provided package and aggregates all results.
 // It returns all test results and any error encountered during testing.
-func (r *Runner) RunTests(packages []string) ([]TestResult, error) {
-	var allResults []TestResult
+func (r *Runner) RunTests(packages []string) ([]reports.TestResult, error) {
+	var allResults []reports.TestResult
 	var errors []string
 
 	for _, p := range packages {
@@ -39,15 +41,8 @@ func (r *Runner) RunTests(packages []string) ([]TestResult, error) {
 	return allResults, nil
 }
 
-type TestResult struct {
-	TestName  string
-	PassRatio float64
-	Runs      int
-	Passed    bool
-}
-
 // runTestPackage executes the test command for a single test package.
-func (r *Runner) runTestPackage(testPackage string) ([]TestResult, error) {
+func (r *Runner) runTestPackage(testPackage string) ([]reports.TestResult, error) {
 	args := []string{"test", "-json"} // Enable JSON output
 	if r.Count > 0 {
 		args = append(args, "-count", fmt.Sprint(r.Count))
@@ -85,7 +80,7 @@ func (r *Runner) runTestPackage(testPackage string) ([]TestResult, error) {
 }
 
 // parseTestResults analyzes the JSON output from 'go test -json' to determine test results
-func parseTestResults(data []byte) ([]TestResult, error) {
+func parseTestResults(data []byte) ([]reports.TestResult, error) {
 	scanner := bufio.NewScanner(bytes.NewReader(data))
 	testDetails := make(map[string]map[string]int) // Holds run and pass counts for each test
 
@@ -119,18 +114,17 @@ func parseTestResults(data []byte) ([]TestResult, error) {
 		return nil, fmt.Errorf("reading standard input: %w", err)
 	}
 
-	var results []TestResult
+	var results []reports.TestResult
 	for testName, counts := range testDetails {
 		runs := counts["run"]
 		passes := counts["pass"]
 		passRatio := 0.0
 		if runs > 0 {
-			passRatio = float64(passes) * 100 / float64(runs)
+			passRatio = float64(passes) / float64(runs)
 		}
-		results = append(results, TestResult{
+		results = append(results, reports.TestResult{
 			TestName:  testName,
 			PassRatio: passRatio,
-			Passed:    passes == runs,
 			Runs:      runs,
 		})
 	}
