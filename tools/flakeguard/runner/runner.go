@@ -45,7 +45,7 @@ func (r *Runner) RunTests(packages []string) ([]reports.TestResult, error) {
 func (r *Runner) runTestPackage(testPackage string) ([]reports.TestResult, error) {
 	args := []string{"test", "-json"} // Enable JSON output
 	if r.Count > 0 {
-		args = append(args, "-count", fmt.Sprint(r.Count))
+		args = append(args, fmt.Sprintf("-count=%d", r.Count))
 	}
 	if r.UseRace {
 		args = append(args, "-race")
@@ -55,8 +55,11 @@ func (r *Runner) runTestPackage(testPackage string) ([]reports.TestResult, error
 	}
 	args = append(args, testPackage)
 
-	// Construct the command
+	if r.Verbose {
+		fmt.Printf("Running command: go %s\n", strings.Join(args, " "))
+	}
 	cmd := exec.Command("go", args...)
+
 	// cmd.Env = append(cmd.Env, "GOFLAGS=-extldflags=-Wl,-ld_classic") // Ensure modules are enabled
 	cmd.Dir = r.Dir
 	var out bytes.Buffer
